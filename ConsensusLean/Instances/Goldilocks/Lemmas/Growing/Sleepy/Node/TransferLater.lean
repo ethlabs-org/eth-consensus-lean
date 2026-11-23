@@ -22,9 +22,9 @@ is the node transport's `carryAt_of_writer_at`. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
@@ -36,19 +36,19 @@ theorem honest_batch_carry_at {ini} (hrun : Growing.GoldilocksRun proposer dg H 
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {s : Nat}
     (hsa : a + κ ≤ sp.ts s)
     {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
+    (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hib : tr.time i ≤ b)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hall : ∀ x k e', HVoteAt tr H x k e' → e'.msg.slot = s →
-      SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
+      AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
     (hF : Anc (tr.HonestBlocksAt H) ℓ.frame.F B) :
-    SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s
+    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s
       {v | ∃ x j e', HVoteAt tr H x j e' ∧ e'.msg = v ∧ v.slot = s} := by
   have hU := honestBlocksAt_coherent hrun hnc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hd := hrun.time_nonneg i
   have hone : ∀ v ∈ {v | ∃ x j e', HVoteAt tr H x j e' ∧ e'.msg = v ∧ v.slot = s},
-      SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s {v} := by
+      AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s {v} := by
     rintro v ⟨x, k, e', hv', rfl, hvs⟩
     obtain ⟨hxk, ℓk, hck, he'⟩ := hVoteAt_iff.1 hv'
     have hk := (castAt_spec_at hrun hnc hxk ⟨hck, he'⟩).2.1
@@ -62,14 +62,14 @@ theorem honest_batch_carry_at {ini} (hrun : Growing.GoldilocksRun proposer dg H 
     refine carryAt_of_writer_at (w := x) hrun hnc hsync hsa hy hc hs hib ?_
     rintro v rfl
     refine ⟨hvs, ⟨k, hxk, ⟨ℓk, hck, Or.inl ⟨e', he', rfl⟩⟩,
-      (SA.ts_le_iff_le_slot sp (hrun.time_nonneg k) s).2 (by omega), hkt'⟩,
+      (AC.ts_le_iff_le_slot sp (hrun.time_nonneg k) s).2 (by omega), hkt'⟩,
       Hd, hHvr, hF.trans hBHv, ?_⟩
     rcases frame_anc_accepted_at hrun hnc hxk hck hHd .refl with hg | ⟨k', hk', hacc⟩
     · exact Or.inl hg
     · exact Or.inr ⟨k', hrun.antitone (hrun.time_mono hk') hxk, hacc,
         lt_of_le_of_lt (hrun.time_mono hk') hkt'⟩
   have hr := (acRun_upTo hrun hnc hd).localRun
-  have hcT : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hcT : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
   exact ⟨(hr.awake_of_call y hy i ℓ hcT.1).1, (castAt_spec_at hrun hnc hy hc).2.2.1,
     fun v hv => (hone v hv).heads v rfl, fun v hv => (hone v hv).holds v rfl⟩
 
@@ -78,34 +78,34 @@ there, `s ≥ σ₀`) gives the frame witness (`hframe`); below `fc_root` the vo
 otherwise the batch of every slot-`s` vote, carried and counted at the voter's cut, with the live
 locks compatible with `B` (`vote_locks_compatible_at`). -/
 theorem later_transfer_step_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
     (hBK : CommitteeBoundsFrom tr H K σ₀ b) {g : Time} {rL rO s : Nat} (hs₀ : σ₀ ≤ s)
     (hsa : a + κ ≤ sp.ts s) {y : Fin sp.n}
-    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
+    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hy : y ∈ H (tr.time i)) (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b)
-    (hlive : ∀ l ∈ SA.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), l.slot ≤ s →
+    (hlive : ∀ l ∈ AC.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), l.slot ≤ s →
       rL ≤ l.slot)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBc : ∀ C j, HealedOrigin tr H g rL rO C j b → j ≤ s → Compatible (tr.HonestBlocksAt H) B C)
     (hframe : (∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
-        SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) →
-      B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
+        AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) →
+      B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
         Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot)
     (hall : ∀ x k e', HVoteAt tr H x k e' → e'.msg.slot = s →
-      SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
-    (hE : SA.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B) :
-    SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
+      AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
+    (hE : AC.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B) :
+    AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hd := hrun.time_nonneg i
   have hti : sp.ts ((s + 1 : Nat) : Int) ≤ tr.time i := by
     have h := (castAt_spec_at hrun hnc hy hc).2.1
     rw [hs] at h
     change s + 1 = sp.slot (tr.time i) at h
-    exact (SA.ts_le_iff_le_slot sp hd _).2 (by exact_mod_cast h.le)
+    exact (AC.ts_le_iff_le_slot sp hd _).2 (by exact_mod_cast h.le)
   have hts1 : sp.ts ((s + 1 : Nat) : Int) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   -- a slot-`s` voter still honest at `t_s + Δ`
   have hcount := faults_lt_voters hrun hnc hKB hBK (s := s) (d := sp.ts s + sp.Δ) hs₀ le_rfl
     (by linarith) (by linarith)

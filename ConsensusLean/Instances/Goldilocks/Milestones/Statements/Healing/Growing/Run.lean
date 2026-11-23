@@ -35,7 +35,7 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar blockSupport)
+open AC (ACParams ReplayOrder Payload gbar declaredSupportVotes)
 open Regimes.Growing (hold)
 
 section Vocabulary
@@ -73,7 +73,7 @@ end Vocabulary
 
 section Goldilocks
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
 
 /-- **A ready proposal** under growing faults: the proposer `p` of slot `s`, honest through
@@ -81,10 +81,10 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 slot-`(s−1)` support reference of `B` is held before the vote deadline `t_s + Δ` by every validator
 honest at `t_s + Δ`. -/
 def ReadyProposal (proposer : Nat → Fin sp.n)
-    (p : Fin sp.n) (k s : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+    (p : Fin sp.n) (k s : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   p ∈ H (sp.ts s + hold sp) ∧ p = proposer s ∧ tr.JoinedAt p (sp.ts s) ∧ tr.ProposesAt p k B ∧
     B.slot = s ∧
-    ∀ x ∈ blockSupport B, x.slot + 1 = s → ∀ y j, y ∈ H (sp.ts s + sp.Δ) →
+    ∀ x ∈ declaredSupportVotes B, x.slot + 1 = s → ∀ y j, y ∈ H (sp.ts s + sp.Δ) →
       tr.FirstCutFrom j (sp.ts s + sp.Δ) →
       ∃ R ∈ (tr.state y j).fg.tree, R.root = x.head ∧ R.slot + 1 ≤ s
 
@@ -103,7 +103,7 @@ structure HSShared (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF : Ti
 
 /-- **A high origin** `(B, j)` under growing faults: written by `x` honest at its write and at
 `c_z`. -/
-def HighOrigin (g : Time) (x : Fin sp.n) (i j : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) :
+def HighOrigin (g : Time) (x : Fin sp.n) (i j : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))) :
     Prop :=
   x ∈ H (max (cutZ sp.toParams g) (tr.time i)) ∧ tr.JoinedAt x (tr.time i) ∧
     (∃ CV, Compose.StoredFastLockAt tr x i j B CV) ∧
@@ -130,13 +130,13 @@ def PhaseCount (P : Params) (ACP : Type) : Prop :=
 
 section Top
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
 
 /-- `P` is the honest proposal of slot `p`, by a proposer honest through `t_p + hold`. -/
 def HonestProposalRun (proposer : Nat → Fin sp.n)
-    (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
-  proposer p ∈ H (sp.ts p + hold sp) ∧ SA.HonestProposal tr.projAC (proposer p) p P
+    (p : Nat) (P : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+  proposer p ∈ H (sp.ts p + hold sp) ∧ AC.HonestProposal tr.projAC (proposer p) p P
 
 end Top
 

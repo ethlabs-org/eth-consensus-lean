@@ -1,14 +1,14 @@
 module
 public import Mathlib.Data.Set.Card
 public import ConsensusLean.Instances.Goldilocks.Spec.Frame
-public import ConsensusLean.Instances.Goldilocks.Spec.SA.State
+public import ConsensusLean.Instances.Goldilocks.Spec.AC.State
 
 @[expose] public section
 
-/-! # Goldilocks SA: blocks by name, votes and views
+/-! # Goldilocks AC: blocks by name, votes and views
 
 goldilocks-spec.tex §"Votes and views" (Figure "Goldilocks: votes and views"), over a frame `Φ`
-whose blocks carry the FG payload `FGP` (never read) and the SA payload.
+whose blocks carry the FG payload `FGP` (never read) and the AC payload.
 
 Blocks by name: the AC holds blocks by root, and "`H ∈ Φ.tree`" means that the tree holds a
 block with that root (`InTree`); `lookup` returns it. "Deepest" is maximum depth, ties by a
@@ -20,21 +20,21 @@ has no deepest block (empty; at a well-formed frame a nonempty `S ⊆ Φ.tree` h
 Views are pairs of vote sets (a count reads distinct votes); `voteViewList` keeps the pool
 order, which the proposal payload needs. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
 variable {n : Nat} {FGP : Type}
 
-/-- The blocks the SA sees. -/
+/-- The blocks the AC sees. -/
 abbrev Blk (n : Nat) (FGP : Type) := Block n FGP (Payload n)
 
-/-- The frames the SA reads. -/
+/-- The frames the AC reads. -/
 abbrev Frm (n : Nat) (FGP : Type) := Frame n FGP (Payload n)
 
 /-- A block's votes. -/
-abbrev blockVotes (B : Blk n FGP) : List (Vote n) := B.acPayload.1
+abbrev declaredHeadVotes (B : Blk n FGP) : List (Vote n) := B.acPayload.1
 
 /-- A block's support votes. -/
-abbrev blockSupport (B : Blk n FGP) : List (Vote n) := B.acPayload.2
+abbrev declaredSupportVotes (B : Blk n FGP) : List (Vote n) := B.acPayload.2
 
 section Blocks
 
@@ -76,7 +76,7 @@ structure View (n : Nat) where
 /-- The view of two vote lists. -/
 def View.ofLists (l : List (Vote n) × List (Vote n)) : View n := ⟨{v | v ∈ l.1}, {v | v ∈ l.2}⟩
 
-variable (sp : SAParams)
+variable (sp : ACParams)
 
 /-- `ac_valid_payload(B)`: the declared head votes of `B` (`B.declared_head_votes`, with the
 implicit slot `B.slot − 1 ≥ 0`) are distinct, no validator has more than two, and the support
@@ -84,13 +84,15 @@ list is an ordered sublist of them (the Lean form of `B.support_bits`: the marke
 order). Neither committee membership nor a signature is checked (a declaration is not a signed
 vote; see `Vote`). -/
 def validPayload (B : Blk n FGP) : Prop :=
-  (∀ v ∈ blockVotes B, v.slot + 1 = B.slot) ∧ (blockSupport B).Sublist (blockVotes B) ∧
-    (blockVotes B).Nodup ∧ ∀ i : Fin n, ((blockVotes B).filter (fun v => v.val = i)).length ≤ 2
+  (∀ v ∈ declaredHeadVotes B, v.slot + 1 = B.slot) ∧
+    (declaredSupportVotes B).Sublist (declaredHeadVotes B) ∧
+    (declaredHeadVotes B).Nodup ∧
+    ∀ i : Fin n, ((declaredHeadVotes B).filter (fun v => v.val = i)).length ≤ 2
 
-/-- `on_goldfish_vote(𝒜, t, vote)`: admission. The vote enters the pool of its slot with the
+/-- `on_head_vote(𝒜, t, vote)`: admission. The vote enters the pool of its slot with the
 stamp `t` when its slot is `slot(t) − 1` or `slot(t)`, the pool does not hold it, and the pool
 holds fewer than two distinct votes of its validator for that slot; otherwise nothing happens. -/
-def admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) : SAState sp.n :=
+def admitVote (A : ACState sp.n) (t : Time) (v : Vote sp.n) : ACState sp.n :=
   if (v.slot : Int) < (sp.slot t : Int) - 1 ∨ sp.slot t < v.slot ∨ v ∈ A.pool v.slot then A
   else if 2 ≤ ((A.pool v.slot).filter (fun x => x.val = v.val)).dedup.length then A
   else { A with
@@ -100,7 +102,7 @@ def admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) : SAState sp.n :=
 open Classical in
 /-- `resolution_time(𝒜, Φ, vote)`: `+∞` when the head is not in the tree or is of a later slot
 than the vote; otherwise the later of the vote's stamp and the head's stamp. -/
-noncomputable def resolutionTime (A : SAState n) (Φ : Frm n FGP) (v : Vote n) : ETime :=
+noncomputable def resolutionTime (A : ACState n) (Φ : Frm n FGP) (v : Vote n) : ETime :=
   match lookup Φ v.head with
   | none => ⊤
   | some H => if v.slot < H.slot then ⊤ else max (A.voteStamp v) (A.blockStamp v.head)
@@ -108,18 +110,18 @@ noncomputable def resolutionTime (A : SAState n) (Φ : Frm n FGP) (v : Vote n) :
 open Classical in
 /-- `vote_view(𝒜, Φ, s, cutoff)` as lists in pool order: the slot-`s` votes held before the
 cutoff, and the members resolved before it. -/
-noncomputable def voteViewList (A : SAState n) (Φ : Frm n FGP) (s : Int) (cutoff : ETime) :
+noncomputable def voteViewList (A : ACState n) (Φ : Frm n FGP) (s : Int) (cutoff : ETime) :
     List (Vote n) × List (Vote n) :=
   let votes := (A.poolAt s).filter (fun v => A.voteStamp v < cutoff)
   (votes, votes.filter (fun v => resolutionTime A Φ v < cutoff))
 
 /-- `vote_view(𝒜, Φ, s, cutoff)` as a view. -/
-noncomputable def voteView (A : SAState n) (Φ : Frm n FGP) (s : Int) (cutoff : ETime) : View n :=
+noncomputable def voteView (A : ACState n) (Φ : Frm n FGP) (s : Int) (cutoff : ETime) : View n :=
   View.ofLists (voteViewList A Φ s cutoff)
 
 /-- `latest_view(𝒜, Φ, t)`: every held vote of the latest slot whose votes are due (slot
 `s − 1` before `t_s + 2Δ`, slot `s` from then on), the resolved ones as support, and that slot. -/
-noncomputable def latestView (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) : View sp.n × Int :=
+noncomputable def latestView (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) : View sp.n × Int :=
   let s : Int := sp.slot t
   let s' : Int := if sp.ts s + 2 * sp.Δ ≤ t then s else s - 1
   (voteView A Φ s' ⊤, s')
@@ -133,16 +135,16 @@ def equivocators (votes : Set (Vote n)) : Set (Fin n) :=
 
 /-- `should_count_declared_vote(𝒜, x)`: the pool of the slot of the declared vote `x` holds `x`
 itself, or two distinct votes of its validator (a proof that it equivocated). The committee
-filter of `get_countable_declared_head_votes` is vacuous here: the SA's committee is the
+filter of `get_countable_declared_head_votes` is vacuous here: the AC's committee is the
 population (`Vote`). -/
-def ShouldCountDeclaredVote (A : SAState sp.n) (x : Vote sp.n) : Prop :=
+def ShouldCountDeclaredVote (A : ACState sp.n) (x : Vote sp.n) : Prop :=
   x ∈ A.poolAt x.slot ∨ x.val ∈ equivocators {y | y ∈ A.poolAt x.slot}
 
 /-- Every declared head vote and support entry by a committee member (`sp.committee`, the
 entries `get_countable_declared_head_votes` keeps) of every slot-`s` proposal of `Φ.tree` should
 be counted: the readiness condition of an early vote (`vote_ready`). -/
-def AllDeclaredVotesCounted (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Prop :=
-  ∀ B ∈ Φ.tree, B.slot = s → ∀ x, x ∈ blockVotes B ∨ x ∈ blockSupport B →
+def AllDeclaredVotesCounted (A : ACState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Prop :=
+  ∀ B ∈ Φ.tree, B.slot = s → ∀ x, x ∈ declaredHeadVotes B ∨ x ∈ declaredSupportVotes B →
     x.val ∈ sp.committee x.slot → ShouldCountDeclaredVote sp A x
 
 /-- `merged_vote_view(𝒜, Φ, s)`: the slot-`(s−1)` votes held before the vote freeze
@@ -151,12 +153,12 @@ committee members (`sp.committee`) of the slot-`s` proposals of `Φ.tree` that s
 and, as support, their support entries `(v, s−1, H)` by committee members that should be counted
 with `H ∈ Φ.tree` and `H.slot ≤ s − 1`. A declaration is never admitted: the pool is
 unchanged. -/
-noncomputable def mergedVoteView (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : View sp.n :=
+noncomputable def mergedVoteView (A : ACState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : View sp.n :=
   let base := voteView A Φ ((s : Int) - 1) (ETime.of (freeze sp s))
   { votes := base.votes ∪
-      {v | ∃ B ∈ Φ.tree, B.slot = s ∧ v ∈ blockVotes B ∧ v.val ∈ sp.committee v.slot ∧
+      {v | ∃ B ∈ Φ.tree, B.slot = s ∧ v ∈ declaredHeadVotes B ∧ v.val ∈ sp.committee v.slot ∧
         ShouldCountDeclaredVote sp A v}
-    support := base.support ∪ {v | ∃ B ∈ Φ.tree, B.slot = s ∧ v ∈ blockSupport B ∧
+    support := base.support ∪ {v | ∃ B ∈ Φ.tree, B.slot = s ∧ v ∈ declaredSupportVotes B ∧
       v.val ∈ sp.committee v.slot ∧ ShouldCountDeclaredVote sp A v ∧ v.slot + 1 = s ∧
       ∃ H ∈ Φ.tree, H.root = v.head ∧ H.slot + 1 ≤ s} }
 
@@ -170,7 +172,7 @@ def supporters (Φ : Frm n FGP) (V : View n) (s : Int) (B : Blk n FGP) : Set (Fi
 
 /-- `voter_block_tree(𝒜, Φ, s)`: the blocks of the tree received before the vote freeze
 `t_{s−1} + 3Δ`, and every ancestor of a slot-`s` proposal of the tree. -/
-def voterBlockTree (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Set (Blk sp.n FGP) :=
+def voterBlockTree (A : ACState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Set (Blk sp.n FGP) :=
   {B | B ∈ Φ.tree ∧ (A.blockStamp B.root < ETime.of (freeze sp s) ∨
     ∃ P ∈ Φ.tree, P.slot = s ∧ Φ.Anc B P)}
 
@@ -178,10 +180,10 @@ def voterBlockTree (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Set (Blk s
 voter block tree has no viable block in the current frame `Φ` (`fc_root` and viable heads as of
 now): goldilocks-spec.tex §"Votes and views" ("the vote domain") and the vote's pseudocode
 (`docs/decisions.md` §"Goldilocks model choices"). -/
-def voteDomain (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Set (Blk sp.n FGP) :=
+def voteDomain (A : ACState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Set (Blk sp.n FGP) :=
   {B | (B ∈ voterBlockTree sp A Φ s ∧ (Φ.viableTree (voterBlockTree sp A Φ s)).Nonempty) ∨
     (B ∈ Φ.tree ∧ ¬ (Φ.viableTree (voterBlockTree sp A Φ s)).Nonempty)}
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

@@ -12,17 +12,17 @@ honesty of the writer at those cuts, without assuming survival to another reader
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Vote)
+open AC (ACParams ReplayOrder Vote)
 
-variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
-  {T : SA.SATrace sp FGP ro} {H : Time → Set (Fin sp.n)} {U : Set (SA.Blk sp.n FGP)}
+variable {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
+  {T : AC.GTrace sp FGP ro} {H : Time → Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)}
 
 /-- Counted votes were released and their heads accepted while the writer was honest. -/
 theorem fastLock_writer_at {ini}
-    (hr : Goldilocks.Growing.ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
-    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
+    (hr : Goldilocks.Growing.ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} {i s : Nat} (hx : x ∈ H (T.time i))
-    {D : SA.Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : SA.FastLockAt T x i s D CV) :
+    {D : AC.Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : AC.FastLockAt T x i s D CV) :
     ∀ v ∈ CV, v.slot = s ∧
       (∃ k, x ∈ H (T.time k) ∧ T.SendOrAdmit x k v ∧
         sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
@@ -31,7 +31,7 @@ theorem fastLock_writer_at {ini}
           ∃ k, x ∈ H (T.time k) ∧ T.AcceptAt x k B ∧
             T.time k < sp.ts s + 2 * sp.Δ) := by
   have hp := hr.upTo (hr.time_nonneg i)
-  have hf := (SA.upTo_fastLockAt hr.time_mono).mpr ⟨le_rfl, hfl⟩
+  have hf := (AC.upTo_fastLockAt hr.time_mono).mpr ⟨le_rfl, hfl⟩
   intro v hv
   obtain ⟨hvs, ⟨k, hsend, hk1, hk2⟩, B, hB, hBr, hDB, hacc⟩ :=
     Healing.fastLock_writer hp hini hx hf v hv

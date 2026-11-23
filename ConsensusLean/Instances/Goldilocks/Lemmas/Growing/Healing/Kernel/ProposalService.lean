@@ -15,16 +15,16 @@ compromise never discharges a message or block already owed to the reader.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF b lo hi : Time}
 
 /-- Reset service projected with source honesty at release and reader honesty at its call. -/
 theorem ResetService.ac_service_at (hs : ResetService tr H g ΔF b)
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hg : g ≤ lo) :
-    SA.Growing.ServiceWindowBefore H (tr.HonestBlocksAt H) lo hi tr.projAC := by
+    AC.Growing.ServiceWindowBefore H (tr.HonestBlocksAt H) lo hi tr.projAC := by
   have hm := hrun.time_mono
   constructor
   · intro x i m hx hsa hai y j ell hy hc _ hdl
@@ -39,7 +39,7 @@ theorem ResetService.ac_service_at (hs : ResetService tr H g ΔF b)
     have he : max (tr.time i) g = tr.time i := max_eq_left (hg.trans hai)
     obtain ⟨k, hkj, htk, hp, hlt⟩ := hs.message x i m hx hsa' y j hy
       ⟨_, Compose.projAC_callAt.mp hc⟩ (by rw [he, ← Compose.projAC_deadline]; exact hdl)
-    apply (SA.messageServedBefore_iff _ _ _ _).mpr
+    apply (AC.messageServedBefore_iff _ _ _ _).mpr
     refine Or.inl ⟨k, hkj, htk, ?_, ?_⟩
     · rcases hp with ⟨ell', hc', hm'⟩ | ⟨ell', hc', hm'⟩
       exacts [⟨ell', Compose.projAC_callAt.mpr hc', Or.inl hm'⟩,

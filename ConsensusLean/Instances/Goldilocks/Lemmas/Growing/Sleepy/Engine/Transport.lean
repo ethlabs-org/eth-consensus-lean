@@ -60,7 +60,7 @@ end GoldilocksReady
 
 section Map
 
-variable {sp : SA.SAParams} {A : NodeAC sp.toParams} {O : OutputSchema} {I : Type}
+variable {sp : AC.ACParams} {A : NodeAC sp.toParams} {O : OutputSchema} {I : Type}
   [DecidableEq I] [Countable I] {F : ChainShapeFamily O I} {V : Type} [Fintype V] [DecidableEq V]
   {E : Env V} {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat} (M : RunMap rho payload)
 
@@ -229,7 +229,7 @@ charged at a time `≥ d` (compromise only grows). -/
 theorem committee_bounds_at (hv : rho.ExecutionValid) {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho)
       (honestKeysAt S rho) (simTraceAt S rho hn) ini)
-    {Sel : Time → Finset V} {K : SA.CommitteeDict (Fintype.card V)}
+    {Sel : Time → Finset V} {K : AC.CommitteeDict (Fintype.card V)}
     (hK : ∀ t, 0 ≤ t → ∀ y,
       y ∈ K.committee ((S.params (pubOf E) hn).slot t) ↔ rho.key y ∈ Sel t)
     (hne : ∀ s, (K.committee s).Nonempty)
@@ -255,12 +255,12 @@ theorem committee_bounds_at (hv : rho.ExecutionValid) {ini}
     exact committee_faultBoundAt S rho hn hv hrun hθ hc hW hb hsl ht hat htb
       ⟨rho.key y, (hK t ht y).1 hy⟩
   have hts1 : ∀ s : Nat, sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := fun s => by
-    simp only [SA.SAParams.ts]; push_cast; ring
+    simp only [AC.ACParams.ts]; push_cast; ring
   refine ⟨fun s d hs h1 hdb h6 => ?_, fun s d hs h0 hdb h2 => ?_⟩
   · have hσs := Compose.ts_le_ts (sp := sp) hs
     have h0 := Compose.Growing.ts_natCast_nonneg (sp := sp) s
     have hsl' : sp.slot (sp.ts s + sp.Δ) = s :=
-      SA.slot_of_mem sp s (by linarith) (by rw [hts1]; linarith)
+      AC.slot_of_mem sp s (by linarith) (by rw [hts1]; linarith)
     have h := hcnt (sp.ts s + sp.Δ) (by linarith) (by linarith) (h1.trans hdb)
     rw [hsl'] at h
     have hdd : d ≤ min (sp.ts s + sp.Δ + 5 * sp.Δ) b := le_min (by linarith) hdb
@@ -275,7 +275,7 @@ theorem committee_bounds_at (hv : rho.ExecutionValid) {ini}
     set t := min (sp.ts s + sp.Δ) b with ht
     have htl : sp.ts s ≤ t := le_min (by linarith) (by linarith)
     have htu : t ≤ sp.ts s + sp.Δ := min_le_left _ _
-    have hsl' : sp.slot t = s := SA.slot_of_mem sp s htl (by rw [hts1]; linarith)
+    have hsl' : sp.slot t = s := AC.slot_of_mem sp s htl (by rw [hts1]; linarith)
     have h := hcnt t (by linarith) (le_min (by linarith) hab') (min_le_right _ _)
     rw [hsl'] at h
     have hdd : d ≤ min (t + 5 * sp.Δ) b := by

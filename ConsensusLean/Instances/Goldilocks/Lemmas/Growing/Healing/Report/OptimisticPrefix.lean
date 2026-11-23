@@ -12,20 +12,20 @@ The writer pool is retained only at its write. Equivocation is charged at the
 receiving cast; historical writers need not remain honest there.
 -/
 
-namespace Consensus.Goldilocks.SA.Growing
+namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
-  {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
+  {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 /-- Counted optimistic votes dominate each child towards the historical anchor. The counted and
 merged voters are members of the slot-`s` committee (P, T), fewer than half of whose members are
 faulty at the receiving cast. -/
-theorem optimistic_isBest_of_carry_at {ini : Fin sp.n → SAState sp.n}
+theorem optimistic_isBest_of_carry_at {ini : Fin sp.n → ACState sp.n}
     (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n) (hPK : CommitteePAt K tr H)
     (hTK : CommitteeTAt K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
     {s : Nat} {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hx : x ∈ H (tr.time i₀)) (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D)
     (hf : 2 * (K.committee s ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
     (hy : y ∈ H (tr.time i)) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
@@ -33,10 +33,10 @@ theorem optimistic_isBest_of_carry_at {ini : Fin sp.n → SAState sp.n}
     {X C : Blk sp.n FGP}
     (hC : C ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
     (hp : C.parent = some X.root) (hCB : ℓ.frame.Anc C B) :
-    IsBest sp (goldfishScore sp ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s)
+    IsBest sp (headScore sp ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s)
       {Q | Q ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)) ∧
         Q.parent = some X.root ∧
-        goldfishEligible sp ℓ.frame (tr.time i) (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s Q}
+        headEligible sp ℓ.frame (tr.time i) (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s Q}
       C := by
   have hr := hrun.localRun
   have hry := hrun.upTo (hr.time_nonneg i)
@@ -61,7 +61,7 @@ theorem optimistic_isBest_of_carry_at {ini : Fin sp.n → SAState sp.n}
     change e.msg.slot = sp.slot (tr.time i) at hsv
     have ht := (ts_le_iff_le_slot sp (hr.time_nonneg i) (s + 1 : Nat)).mpr
       (by rw [← hsv, hs])
-    simp only [SAParams.ts] at ht ⊢
+    simp only [ACParams.ts] at ht ⊢
     push_cast at ht
     have hΔ := sp.toParams.hΔ
     linarith
@@ -95,11 +95,11 @@ theorem optimistic_isBest_of_carry_at {ini : Fin sp.n → SAState sp.n}
     (fun _ h => voteDomain_subset_tree h.1) hcover (cover_sdiff_lt h3) hC hp hCB
 
 /-- Explicit anchor order suffices for prefix reachability, without a prior-vote induction. -/
-theorem optimistic_prefix_of_carry_at {ini : Fin sp.n → SAState sp.n}
+theorem optimistic_prefix_of_carry_at {ini : Fin sp.n → ACState sp.n}
     (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n) (hPK : CommitteePAt K tr H)
     (hTK : CommitteeTAt K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
     {s : Nat} {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hx : x ∈ H (tr.time i₀)) (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D)
     (hf : 2 * (K.committee s ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
     (hy : y ∈ H (tr.time i)) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
@@ -131,6 +131,6 @@ theorem optimistic_prefix_of_carry_at {ini : Fin sp.n → SAState sp.n}
   exact ⟨C, optimistic_isBest_of_carry_at hrun K hPK hTK hsize hx hopt hBD hf hy hc hs hcarry
     hBt hCv eC.2.2 hCB, hCB⟩
 
-end Consensus.Goldilocks.SA.Growing
+end Consensus.Goldilocks.AC.Growing
 
 end

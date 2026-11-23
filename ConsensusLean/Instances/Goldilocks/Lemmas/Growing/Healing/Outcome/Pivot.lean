@@ -31,9 +31,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -44,7 +44,7 @@ theorem proposal_floor_above_old_at
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i)) (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp ro)} (hci : tr.projAC.CallAt p i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state p i).fg.tree)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state p i).fg.tree)
     (hBold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
       Anc (tr.HonestBlocksAt H) O B) :
     (tr.state p i).fg.headHeightFloor ≤ ((tr.state p i).fg.σ B.root).h := by
@@ -67,9 +67,9 @@ theorem reset_suffix_viable_at
     {ell : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hd : (AC.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
-    (D : SA.Blk sp.n (List (FG.Att sp.n))) (hDt : D ∈ ell.frame.tree)
+    (D : AC.Blk sp.n (List (FG.Att sp.n))) (hDt : D ∈ ell.frame.tree)
     (hsD : ell.frame.Anc d.start D)
     (hDold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
       Anc (tr.HonestBlocksAt H) O D) :
@@ -84,31 +84,31 @@ theorem reset_pivot_of_start_supported_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {k u : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + Regimes.Growing.hold sp))
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + Regimes.Growing.hold sp))
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
     (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
     {ellp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hd : (AC.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) (hPQ : P.parent = some d.head.root)
-    (hstart : ∀ y j elly e, y ∈ H (tr.time j) → SA.CastAt tr.projAC y j elly e →
+    (hstart : ∀ y j elly e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j elly e →
       e.msg.slot = u → tr.time j ≤ b →
       Anc (tr.HonestBlocksAt H) d.start
-        (SA.getHead sp e.readPoint elly.frame (tr.time j)
-          (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
-          (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1))) :
+        (AC.getHead sp e.readPoint elly.frame (tr.time j)
+          (elly.frame.viableTree (AC.voteDomain sp e.readPoint elly.frame u))
+          (AC.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1))) :
     ∃ D, ellp.frame.Anc d.start D ∧ ellp.frame.Anc D d.head ∧
       (∀ X, ellp.frame.Anc D X → ellp.frame.Anc X d.head → X ∈ ellp.frame.viableHeads) ∧
-      ∀ y j elly e, y ∈ H (tr.time j) → SA.CastAt tr.projAC y j elly e → e.msg.slot = u →
+      ∀ y j elly e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j elly e → e.msg.slot = u →
         tr.time j ≤ b →
-        (∀ x j' e', x ∈ H (tr.time j') → j' < j → SA.VoteAt tr.projAC x j' e' →
+        (∀ x j' e', x ∈ H (tr.time j') → j' < j → AC.VoteAt tr.projAC x j' e' →
           e'.msg.slot = u → e'.msg.head = P.root) →
         ∃ X, (X = P ∨ (ellp.frame.Anc D X ∧ ellp.frame.Anc X d.head)) ∧
-          elly.frame.Anc (SA.getAnchor sp e.readPoint elly.frame (tr.time j)) X ∧
-          elly.frame.Anc X (SA.getHead sp e.readPoint elly.frame (tr.time j)
-            (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
-            (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
+          elly.frame.Anc (AC.getAnchor sp e.readPoint elly.frame (tr.time j)) X ∧
+          elly.frame.Anc X (AC.getHead sp e.readPoint elly.frame (tr.time j)
+            (elly.frame.viableTree (AC.voteDomain sp e.readPoint elly.frame u))
+            (AC.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
   have hpI : p ∈ H (tr.time i) := hp.run.antitone
     (by rw [hti]; exact le_add_of_nonneg_right sp.toParams.hΔ.le) hpH
   have hr :=
@@ -116,7 +116,7 @@ theorem reset_pivot_of_start_supported_at
   have hPhi := Outcome.frame_realized hp.run hpI hci
   have hPhiU := Outcome.frame_tree_subset hp.run hpI hci
   have hkt : tr.time k = sp.ts u := by
-    simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hactual.2.2
+    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hactual.2.2
   have hpK : p ∈ H (tr.time k) := hp.run.antitone
     (by rw [hkt]; exact le_add_of_nonneg_right sp.toParams.hΔ.le) hpH
   have hactual' : (tr.upTo (tr.time k)).ProposesAt p k P := by
@@ -133,16 +133,16 @@ theorem reset_pivot_of_start_supported_at
     exact Set.mem_insert _ _
   refine (proposal_pivot_of_supports (tr := tr) (u := u) hr.coherent hPhi hPhiU hd hPQ
     {O | ∃ x r l, HighOrigin tr H g x r l O ∧ tr.time r < sp.ts u}
-    (fun y j elly e => y ∈ H (tr.time j) ∧ SA.CastAt tr.projAC y j elly e ∧ e.msg.slot = u ∧
-      tr.time j ≤ b ∧ ∀ x j' e', x ∈ H (tr.time j') → j' < j → SA.VoteAt tr.projAC x j' e' →
+    (fun y j elly e => y ∈ H (tr.time j) ∧ AC.CastAt tr.projAC y j elly e ∧ e.msg.slot = u ∧
+      tr.time j ≤ b ∧ ∀ x j' e', x ∈ H (tr.time j') → j' < j → AC.VoteAt tr.projAC x j' e' →
         e'.msg.slot = u → e'.msg.head = P.root)
     (hp.reset_proposal_passes_at hpI hR hci hcall hd hti hib)
     (fun D hDt hsD hDold => hp.reset_suffix_viable_at hpI hR hci hcall hd hti hib D hDt hsD
       fun x r l O ho hrt _ => hDold O ⟨x, r, l, ho, hrt⟩)
     (fun _ _ _ _ h => ⟨Outcome.frame_realized hp.run h.1 h.2.1.1,
       Outcome.frame_tree_subset hp.run h.1 h.2.1.1⟩)
-    (fun _ j _ _ h => h.2.2.1 ▸ (SA.castAt_spec (hr.upTo (hp.run.time_nonneg j)) h.1
-      (SA.upTo_castAt.mpr ⟨le_rfl, h.2.1⟩)).2.2.2)
+    (fun _ j _ _ h => h.2.2.1 ▸ (AC.castAt_spec (hr.upTo (hp.run.time_nonneg j)) h.1
+      (AC.upTo_castAt.mpr ⟨le_rfl, h.2.1⟩)).2.2.2)
     (fun y j elly e h => hstart y j elly e h.1 h.2.1 h.2.2.1 h.2.2.2.1)
     (fun O ⟨x, r, l, ho, hrt⟩ y j elly e ⟨hy, hcy, hes, hjb, _⟩ => by
       have hri : r < i :=
@@ -164,25 +164,25 @@ open Regimes.Growing (hold)
 theorem reset_pivot_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {k u : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
     (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
     {ellp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hd : (AC.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) (hPQ : P.parent = some d.head.root) :
     ∃ D, ellp.frame.Anc d.start D ∧ ellp.frame.Anc D d.head ∧
       (∀ X, ellp.frame.Anc D X → ellp.frame.Anc X d.head → X ∈ ellp.frame.viableHeads) ∧
-      ∀ y j elly e, y ∈ H (tr.time j) → SA.CastAt tr.projAC y j elly e → e.msg.slot = u →
+      ∀ y j elly e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j elly e → e.msg.slot = u →
         tr.time j ≤ b →
-        (∀ x j' e', x ∈ H (tr.time j') → j' < j → SA.VoteAt tr.projAC x j' e' →
+        (∀ x j' e', x ∈ H (tr.time j') → j' < j → AC.VoteAt tr.projAC x j' e' →
           e'.msg.slot = u → e'.msg.head = P.root) →
         ∃ X, (X = P ∨ (ellp.frame.Anc D X ∧ ellp.frame.Anc X d.head)) ∧
-          elly.frame.Anc (SA.getAnchor sp e.readPoint elly.frame (tr.time j)) X ∧
-          elly.frame.Anc X (SA.getHead sp e.readPoint elly.frame (tr.time j)
-            (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
-            (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
+          elly.frame.Anc (AC.getAnchor sp e.readPoint elly.frame (tr.time j)) X ∧
+          elly.frame.Anc X (AC.getHead sp e.readPoint elly.frame (tr.time j)
+            (elly.frame.viableTree (AC.voteDomain sp e.readPoint elly.frame u))
+            (AC.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
   refine hp.reset_pivot_of_start_supported_at hpH hactual hPs hR hci hcall hd hti hib hPQ ?_
   intro y j elly e hy hcy hes hjb
   have hpI : p ∈ H (tr.time i) := hp.run.antitone

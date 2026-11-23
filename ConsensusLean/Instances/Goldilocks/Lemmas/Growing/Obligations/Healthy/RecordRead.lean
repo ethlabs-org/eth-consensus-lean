@@ -36,9 +36,9 @@ open AsChainShape Simulation Blocks Shape
 
 section Trace
 
-variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
-  {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g b : Time}
+  {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {g b : Time}
   {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- A label `2k + 1` past a clean label is `k + 2` past it. -/
@@ -49,14 +49,14 @@ private theorem clean_add_k_two_le {c k s : Nat} (hk : 2 ≤ k) (h : c + 2 * k +
 /-- After the drain, the latest view is a natural label beyond the reset, and its voting time is
 no later than the read. -/
 theorem healthy_read_label_at (D : RepairSchedule tr H proposer dg g b cm βK)
-    (ac : SA.SAState sp.n) (frame : SA.Frm sp.n (List (FG.Att sp.n)))
+    (ac : AC.ACState sp.n) (frame : AC.Frm sp.n (List (FG.Att sp.n)))
     {t : Time} (ht0 : 0 ≤ t) (ht : Healing.drainTime sp D.resetTime ≤ t) :
-    ∃ L : Nat, (L : Int) = (SA.latestView sp ac frame t).2 ∧
+    ∃ L : Nat, (L : Int) = (AC.latestView sp ac frame t).2 ∧
       D.resetTime ≤ sp.ts L ∧ sp.ts L + sp.Δ ≤ t := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hslot : (sp.slot D.resetTime + 2 * sp.k + 5 : Nat) ≤ sp.slot t := by
     rw [Healing.drainTime_eq] at ht
-    exact_mod_cast (SA.ts_le_iff_le_slot sp ht0 _).mp ht
+    exact_mod_cast (AC.ts_le_iff_le_slot sp ht0 _).mp ht
   have hslot1 : sp.slot D.resetTime + 1 ≤ sp.slot t - 1 := by omega
   have hpos : 0 < sp.slot t := (Nat.succ_pos _).trans_le (hslot1.trans (Nat.sub_le _ _))
   have ha0 : 0 ≤ D.resetTime := by
@@ -65,21 +65,21 @@ theorem healthy_read_label_at (D : RepairSchedule tr H proposer dg g b cm βK)
   have ha : D.resetTime < sp.ts (sp.slot D.resetTime + 1 : Nat) := by
     have hh := Int.lt_ediv_add_one_mul_self D.resetTime
       (by linarith only [hΔ] : 0 < 4 * sp.Δ)
-    rw [← SA.slot_eq sp ha0] at hh
-    rw [SA.SAParams.ts, mul_comm]; exact_mod_cast hh
-  have htlo := (SA.ts_le_iff_le_slot sp ht0 (sp.slot t)).mpr le_rfl
+    rw [← AC.slot_eq sp ha0] at hh
+    rw [AC.ACParams.ts, mul_comm]; exact_mod_cast hh
+  have htlo := (AC.ts_le_iff_le_slot sp ht0 (sp.slot t)).mpr le_rfl
   by_cases hphase : sp.ts (sp.slot t) + 2 * sp.Δ ≤ t
   · refine ⟨sp.slot t, ?_, ?_, by linarith only [hphase, hΔ]⟩
-    · simp only [SA.latestView, ite_eq_left hphase]
-    · exact ha.le.trans ((SA.ts_le_iff sp).mpr
+    · simp only [AC.latestView, ite_eq_left hphase]
+    · exact ha.le.trans ((AC.ts_le_iff sp).mpr
         (by exact_mod_cast hslot1.trans (Nat.sub_le _ _)))
   · refine ⟨sp.slot t - 1, ?_, ?_, ?_⟩
-    · simp only [SA.latestView, ite_eq_right hphase]
+    · simp only [AC.latestView, ite_eq_right hphase]
       exact Nat.cast_pred hpos
-    · exact ha.le.trans ((SA.ts_le_iff sp).mpr (by exact_mod_cast hslot1))
+    · exact ha.le.trans ((AC.ts_le_iff sp).mpr (by exact_mod_cast hslot1))
     · have hs : ((sp.slot t - 1 : Nat) : Int) = (sp.slot t : Int) - 1 :=
         Nat.cast_pred hpos
-      simp only [SA.SAParams.ts] at htlo ⊢
+      simp only [AC.ACParams.ts] at htlo ⊢
       rw [hs]
       linarith only [htlo, hΔ]
 
@@ -89,11 +89,11 @@ read is its effective record, from the live candidates, the live chain and the m
 source through `read_eq_record_of_current_votes_at`. -/
 theorem current_record_read_of_context_at (D : RepairSchedule tr H proposer dg g b cm βK)
     {O : RepairOpening D} {y : Fin sp.n} {n : Nat} {t : Time} (C : RepairReadContext D O y n t)
-    (hupd : ∀ u : Nat, sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts u →
+    (hupd : ∀ u : Nat, sp.ts (sp.slot (AC.gbar g) + 1 : Nat) ≤ sp.ts u →
       sp.ts u + 6 * sp.Δ ≤ t → sp.ts u + 6 * sp.Δ < tr.time n →
-      ∃ j ell, SA.UpdateAt tr.projAC y j u ell ∧ j < n) :
+      ∃ j ell, AC.UpdateAt tr.projAC y j u ell ∧ j < n) :
     Regimes.readAfter tr y n t =
-      (SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
+      (AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
         (tr.state y n).fg.F := by
   have hrun := D.reset.run
   have hnc := D.reset.noColl
@@ -106,7 +106,7 @@ theorem current_record_read_of_context_at (D : RepairSchedule tr H proposer dg g
       D.reset.committeeFacts C.label_le C.fault
   apply read_source_of_recent_result_at D.reset C.time_bound
   by_cases hfc : (Node.frame (tr.state y n)).Anc R (Node.frame (tr.state y n)).fcRoot
-  · exact Or.inl (hfc.trans ((SA.anc_getAnchor hΦ (healthy_current_live_chain_at D C)).2 _
+  · exact Or.inl (hfc.trans ((AC.anc_getAnchor hΦ (healthy_current_live_chain_at D C)).2 _
       (Or.inr rfl)))
   rcases healthy_current_mature_or_anchor_at D C hupd hR with
     ha | ⟨x, r, s, B, CV, hx, hr, hRB, hrb, hs, hlate, hL⟩
@@ -134,7 +134,7 @@ theorem repair_read_context_at (D : RepairSchedule tr H proposer dg g b cm βK)
   obtain ⟨hw, hj⟩ := ready_implies_joined_at D.reset.run.toLocalRun hy ht0 hc hawake
   have hca := D.reset.cutZ_lt_reset_at
   obtain ⟨hsync, hcatch⟩ := D.reset.windows_at_reset_at ht0 htb
-  have hgL : SA.gbar g ≤ sp.ts L := by
+  have hgL : AC.gbar g ≤ sp.ts L := by
     have := Healing.lt_cutZ sp g
     linarith only [this, hca, haL, hΔ]
   have hfault := Healing.Growing.KernelProof.faultBoundK_late_at D.reset hgL
@@ -225,7 +225,7 @@ theorem healthy_current_record_read_at
     Regimes.readAfter Q.trace (Q.run.2.ownKey v)
         (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i))
         (stateAt S Q.run.2 Q.hn v i).now =
-      (SA.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v)
+      (AC.lookup (Node.frame (Q.trace.state (Q.run.2.ownKey v)
           (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i))))
         (Q.trace.state (Q.run.2.ownKey v)
           (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i))).ac.latestConfirmed).getD

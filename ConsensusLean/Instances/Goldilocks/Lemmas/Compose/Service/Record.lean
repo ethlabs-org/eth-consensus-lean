@@ -11,12 +11,12 @@ public section
 /-! # Goldilocks Service: the frame at an honest cut
 
 The frame of an honest node before every cut is well formed (`frameOK_state`), since every FG cut
-of an honest node runs an FG handler; the fork-choice lemmas (`SA.anc_acHead`,
-`SA.acConfirmed_eq`) read it. -/
+of an honest node runs an FG handler; the fork-choice lemmas (`AC.anc_acHead`,
+`AC.acConfirmed_eq`) read it. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
 /-- The frame of an honest node before every cut is well formed. -/
 theorem frameOK_state {P : Params} {A : NodeAC P}

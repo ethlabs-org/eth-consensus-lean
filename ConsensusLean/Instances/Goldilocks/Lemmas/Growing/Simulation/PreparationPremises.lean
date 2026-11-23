@@ -69,12 +69,12 @@ theorem goldilocks_premises_at (hv : rho.ExecutionValid) (K : Contract ProgressR
     ring
   have hsnap' : ∃ k, Healing.FirstCutAfter (simTraceAt S rho hn) k (Healing.cutZ sp.toParams gst) ∧
       (simTraceAt S rho hn).time k ≤ b := by
-    have haw' : ∀ y ∈ honestKeysAt S rho b, ∀ t, SA.gbar gst ≤ t →
+    have haw' : ∀ y ∈ honestKeysAt S rho b, ∀ t, AC.gbar gst ≤ t →
         t ≤ b → ((simTraceAt S rho hn).upTo b).awake y t :=
       fun y hy t ht htb => ⟨haw y t (hrun.antitone htb hy) ht (htb.trans hb), htb⟩
     have hcz := Healing.cutZ_le (sp := sp) gst
     exact Healing.snapshot_of_awake (hrun.upTo hb0).toLocalRun haw' hne (by
-      unfold SA.gbar at hcz
+      unfold AC.gbar at hcz
       change _ ≤ max gst 0 + 12 * E.ΔAC at hcz
       change Healing.cutZ _ gst + E.ΔAC ≤ b
       linarith)

@@ -11,7 +11,7 @@ the cut of the shape (`label_at`); the send-or-admission fields read the pools a
 
 namespace Consensus.Goldilocks.Witness.TwoRun
 
-open SA Node
+open AC Node
 
 /-! ## What a cut of the shape says -/
 

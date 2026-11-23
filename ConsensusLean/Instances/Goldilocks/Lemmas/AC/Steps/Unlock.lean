@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 
 public section
 
-/-! # Goldilocks SA: the locks at a voter after unlocking (A1.2–A1.4)
+/-! # Goldilocks AC: the locks at a voter after unlocking (A1.2–A1.4)
 
 The vote-transfer core needs every live lock block of the voter, after its unlocking, to be
 compatible with the transferred block `B`.
@@ -20,12 +20,12 @@ compatible with the transferred block `B`.
   the earlier honest slot-`(m+1)` votes extend `B`; those of slot `m` are a hypothesis, which each
   transfer node discharges with its own evidence (`locks_compatible`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : SAParams}
-  {ini : Fin sp.n → SAState sp.n}
+variable {FGP : Type} {sp : ACParams}
+  {ini : Fin sp.n → ACState sp.n}
 
 /-- **Unlocking against support for `B`.** -/
 theorem unlock_compatible {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp.n} {s : Int}
@@ -90,13 +90,13 @@ theorem unlockRel_compatible {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp
   · exact anc_total hΦ.coherent hYT h
 
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
-  {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+  {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-- **An optimistic origin is compatible.** A block `D` of a frame inside `U` with three quarters
 of the committee as optimistic voters, all members of the slot's committee `K σ`, in a pool whose
 honest votes extend `B` is compatible with `B`, when `2 |K σ ∩ Hᶜ| < committeeSize`. -/
 theorem origin_compatible (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree ⊆ U)
-    {A : SAState sp.n} {σ : Nat} {D B : Blk sp.n FGP} (K : CommitteeDict sp.n)
+    {A : ACState sp.n} {σ : Nat} {D B : Blk sp.n FGP} (K : CommitteeDict sp.n)
     (h34 : 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ σ D).ncard)
     (hOK : optimisticVoters sp A Φ σ D ⊆ K.committee σ)
     (hf : 2 * (K.committee σ ∩ Hᶜ).ncard < sp.committeeSize)
@@ -116,7 +116,7 @@ theorem locks_compatibleU
     (K : CommitteeDict sp.n)
     (hP : CommitteeP K tr H) {y : Fin sp.n} (hy : y ∈ H)
     {i m : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = m + 1) {B : Blk sp.n FGP} (hB : B ∈ ℓ.frame.tree) {S : Set (Fin sp.n)}
     (hS : ∀ w ∈ S, w ∈ equivocators (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes ∨
       ∃ x ∈ (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).support,
@@ -124,7 +124,7 @@ theorem locks_compatibleU
     (hn : sp.committeeSize ≤ 2 * S.ncard)
     (hf : 2 * (K.committee (m + 1) ∩ Hᶜ).ncard < sp.committeeSize)
     (hearlier : EarlierVotesExtend tr H U i (m + 1) B)
-    (hm : ∀ (Φ : Frm sp.n FGP) (A : SAState sp.n) (D : Blk sp.n FGP), FrameOK Φ → Φ.tree ⊆ U →
+    (hm : ∀ (Φ : Frm sp.n FGP) (A : ACState sp.n) (D : Blk sp.n FGP), FrameOK Φ → Φ.tree ⊆ U →
       D ∈ Φ.tree → 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ m D).ncard →
       (∀ v ∈ A.pool m, v.val ∈ H → v.slot = m ∧
         ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v) →
@@ -192,7 +192,7 @@ read point is compatible with `B`. From starts up to the vote permission. -/
 theorem locks_compatible (hrun : ACRun proposer tr H U ini)
     (K : CommitteeDict sp.n)
     (hP : CommitteeP K tr H) {y : Fin sp.n} (hy : y ∈ H) {i m : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = m + 1) {B : Blk sp.n FGP} (hB : B ∈ ℓ.frame.tree) {S : Set (Fin sp.n)}
     (hS : ∀ w ∈ S, w ∈ equivocators (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes ∨
       ∃ x ∈ (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).support,
@@ -200,7 +200,7 @@ theorem locks_compatible (hrun : ACRun proposer tr H U ini)
     (hn : sp.committeeSize ≤ 2 * S.ncard)
     (hf : 2 * (K.committee (m + 1) ∩ Hᶜ).ncard < sp.committeeSize)
     (hearlier : EarlierVotesExtend tr H U i (m + 1) B)
-    (hm : ∀ (Φ : Frm sp.n FGP) (A : SAState sp.n) (D : Blk sp.n FGP), FrameOK Φ → Φ.tree ⊆ U →
+    (hm : ∀ (Φ : Frm sp.n FGP) (A : ACState sp.n) (D : Blk sp.n FGP), FrameOK Φ → Φ.tree ⊆ U →
       D ∈ Φ.tree → 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ m D).ncard →
       (∀ v ∈ A.pool m, v.val ∈ H → v.slot = m ∧
         ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v) →
@@ -209,6 +209,6 @@ theorem locks_compatible (hrun : ACRun proposer tr H U ini)
     ∀ L ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i), Compatible U L B :=
   locks_compatibleU hrun.toU K hP hy hc hs hB hS hn hf hearlier hm
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

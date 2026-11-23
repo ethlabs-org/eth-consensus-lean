@@ -11,7 +11,7 @@ restart):
 * **`Carry`** (`carry_cv`, every slot): the vote of slot `s + 1` is cast in `ac_on_block` of
   the own block at `t_{s+1}`, when the validator has accepted `blk s` and its ancestors (at
   their slot starts) and holds `cv s` with a stamp before `t_s + 3Δ`. The stamp is traced
-  through `SA.readPoint_pool` and `SA.pool_origin`: it is the time of the cut that sent or
+  through `AC.readPoint_pool` and `AC.pool_origin`: it is the time of the cut that sent or
   admitted `cv s`, and that cut is before the tick of `t_s + 2Δ`, whose pool already holds
   `cv s` (`readPoint_stamp`).
 * `tickRun_sleepy`: `SleepyRun` (`Sync[0, ∞)` and `f < h_t` at every `t_s, t_s + Δ,
@@ -21,7 +21,7 @@ With `n = 1` and `f = 0` this shows the premise consistent, not met with faults.
 
 namespace Consensus.Goldilocks.Witness.One
 
-open SA Node ChainFrame
+open AC Node ChainFrame
 
 /-! ## Chain facts of the honest blocks -/
 
@@ -51,7 +51,7 @@ theorem vote_label (k : Nat) : ∃ (fg' : Store sp1.toParams N1.Payload) (e : N1
   rfl
 
 /-- The AC projection of the tick run is an AC run. -/
-theorem acRun : SA.ACRun (fun _ => v0) (tickRun N1 dg1).projAC Set.univ
+theorem acRun : AC.ACRun (fun _ => v0) (tickRun N1 dg1).projAC Set.univ
     ((tickRun N1 dg1).HonestBlocks Set.univ) :=
   Compose.goldilocks_ac_projection sp1 ro1 dg1 Set.univ (tickRun N1 dg1) (fun _ => v0)
     tickRun_goldilocksRun (dg1_noColl _)
@@ -63,12 +63,12 @@ theorem etime_of_lt {a b : Time} (h : a < b) : ETime.of a < ETime.of b :=
 the read point holds was received before `t_s + 3Δ`: its stamp is the time of the cut that sent
 or admitted it, before the tick of `t_s + 2Δ` (whose pool already holds it). -/
 theorem readPoint_stamp {s i : Nat} {ℓ : ACLabel N1} {e : N1.Em}
-    (hc : SA.CastAt (tickRun N1 dg1).projAC v0 i ℓ e) (hx : cv s ∈ e.readPoint.pool s) :
+    (hc : AC.CastAt (tickRun N1 dg1).projAC v0 i ℓ e) (hx : cv s ∈ e.readPoint.pool s) :
     e.readPoint.voteStamp (cv s) < ETime.of (sp1.ts s + 3 * sp1.Δ) := by
   have hr := acRun.localRun
-  obtain ⟨hpool, hst⟩ := SA.readPoint_pool hr (Set.mem_univ v0) hc hx
+  obtain ⟨hpool, hst⟩ := AC.readPoint_pool hr (Set.mem_univ v0) hc hx
   rw [← hst rfl]
-  rcases SA.pool_origin hr (fun _ => SA.voteStart_initial _) (Set.mem_univ v0) (i + 1)
+  rcases AC.pool_origin hr (fun _ => AC.voteStart_initial _) (Set.mem_univ v0) (i + 1)
     (cv s) hpool with
     ⟨k, -, ⟨ℓ', hc', hk⟩, hstk, -⟩ | ⟨k, -, ℓ', hc', hrs, -⟩
   · rw [hstk]
@@ -99,10 +99,10 @@ theorem readPoint_stamp {s i : Nat} {ℓ : ACLabel N1} {e : N1.Em}
 has accepted `blk s` and its ancestors before `t_s + 3Δ`, and holds `cv s`, received before
 `t_s + 3Δ`. -/
 theorem carry_cv (s : Nat) {CV : Set (Vote sp1.n)} (hCV : ∀ v ∈ CV, v = cv s) :
-    SA.Carry (tickRun N1 dg1).projAC Set.univ ((tickRun N1 dg1).HonestBlocks Set.univ) s CV := by
+    AC.Carry (tickRun N1 dg1).projAC Set.univ ((tickRun N1 dg1).HonestBlocks Set.univ) s CV := by
   rintro y - i e ⟨ℓ, hc, he⟩ hslot
   obtain ⟨rfl, -, hl⟩ := projAC_call hc
-  have hcast : SA.CastAt (tickRun N1 dg1).projAC v0 i ℓ e := ⟨hc, he⟩
+  have hcast : AC.CastAt (tickRun N1 dg1).projAC v0 i ℓ e := ⟨hc, he⟩
   rcases emit_cases hl he with ⟨-, hm, -⟩ | ⟨k, fg', -, -, -, -, hm, hp⟩
   · rw [hm] at hslot
     change 0 = s + 1 at hslot
@@ -115,7 +115,7 @@ theorem carry_cv (s : Nat) {CV : Set (Vote sp1.n)} (hCV : ∀ v ∈ CV, v = cv s
   have hx : cv k ∈ e.readPoint.pool k := by
     rw [hp, (good_tick (4 * (k + 1))).ac.pool k, tip_A, ite_pos ⟨by omega, le_rfl⟩]
     exact List.mem_singleton_self _
-  refine ⟨?_, (SA.castAt_spec acRun.localRun (Set.mem_univ v0) hcast).2.2.1, ?_, ?_⟩
+  refine ⟨?_, (AC.castAt_spec acRun.localRun (Set.mem_univ v0) hcast).2.2.1, ?_, ?_⟩
   · change (0 : Int) ≤ ((i / 8 : Nat) : Int)
     positivity
   · intro v hv

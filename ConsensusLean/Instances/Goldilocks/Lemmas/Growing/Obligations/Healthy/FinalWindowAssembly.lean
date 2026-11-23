@@ -29,7 +29,7 @@ namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation Obligations
 
 open Blocks Shape
-open SA (gbar)
+open AC (gbar)
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
@@ -151,7 +151,7 @@ theorem final_window_extract_of_gap_within_at
     hP hR hb3 (by rw [Q.params.slotTime_eq]; exact hs₀q)
     (by rw [Q.params.slotTime_eq, show Q.deadline = Q.query +
           ((K S A).params.latency .final Q.index : Time) * Q.run.1.ΔAC from rfl]
-        simp only [SA.SAParams.ts] at h3D; push_cast at h3D ⊢
+        simp only [AC.ACParams.ts] at h3D; push_cast at h3D ⊢
         linarith only [h3D, hΔ])
     hready (hcarrier _ _ (hP 3) hlast h3D)
   subst hWs hWb hWg

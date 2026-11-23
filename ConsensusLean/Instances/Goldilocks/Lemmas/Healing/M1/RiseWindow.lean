@@ -20,7 +20,7 @@ This module does not compose the reset or the heal. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 /-- The rise round count of the merged key value `v`: `2, 2, 1, 1, 0` for `v = 2HZ + j`. -/
 def riseRounds (HZ v : Nat) : Nat := 2 - (v - 2 * HZ) / 2
@@ -77,7 +77,7 @@ theorem le_floor_add_riseRounds {P : Params} {ACP : Type} (st : Store P ACP) {HZ
     simp only [hc, ↓reduceIte]
     omega
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 

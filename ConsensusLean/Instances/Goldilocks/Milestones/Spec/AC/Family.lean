@@ -1,14 +1,14 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes.Writes
 
 @[expose] public section
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-/-- AC operations with the SA payload carrier fixed by construction. State and messages
+/-- AC operations with the AC payload carrier fixed by construction. State and messages
 remain arbitrary; the existing AC interface supplies all derived operations. -/
-structure SAOperations (sp : SAParams) (FGP S M : Type) where
+structure ACOperations (sp : ACParams) (FGP S M : Type) where
   validPayload : Blk sp.n FGP → Prop
   validMsg : M → Prop
   holdsMsg : S → M → Prop
@@ -28,36 +28,36 @@ structure SAOperations (sp : SAParams) (FGP S M : Type) where
   restart : Fin sp.n → S → Frm sp.n FGP → Time →
     S × List (Emission sp.n FGP (Payload sp.n) S M)
 
-variable {sp : SAParams} {FGP S M : Type} {ro : ReplayOrder sp FGP}
+variable {sp : ACParams} {FGP S M : Type} {ro : ReplayOrder sp FGP}
 
 /-- No carrier equality transport occurs in this constructor. -/
-def SAOperations.toAC (A : SAOperations sp FGP S M) : ACInterface sp.toParams FGP :=
+def ACOperations.toAC (A : ACOperations sp FGP S M) : ACInterface sp.toParams FGP :=
   ⟨S, M, Payload sp.n, A.validPayload, A.validMsg, A.holdsMsg,
    A.genesisPayload, A.initial, A.onMessage, A.onBlock, A.onTick,
    A.proposal, A.toFG, A.confirmed, A.head, A.restart⟩
 
 /-- Forgetful observation data, independent of any execution law. -/
-structure SAFamily (A : SAOperations sp FGP S M) (ro : ReplayOrder sp FGP) where
-  stateView : S → SAState sp.n
+structure ACFamily (A : ACOperations sp FGP S M) (ro : ReplayOrder sp FGP) where
+  stateView : S → ACState sp.n
   voteEmbed : Vote sp.n → M
   voteView : M → Option (Vote sp.n)
   sg : M → Fin sp.n
   vote_retract : ∀ v, voteView (voteEmbed v) = some v
   vote_signer : ∀ m v, voteView m = some v → sg m = v.val
-  genesis : A.genesisPayload = (goldilocksSA sp FGP ro).genesisPayload
-  initial : stateView A.initial = (goldilocksSA sp FGP ro).initial
+  genesis : A.genesisPayload = (goldilocksAC sp FGP ro).genesisPayload
+  initial : stateView A.initial = (goldilocksAC sp FGP ro).initial
   mode : WriteMode
 
-namespace SAFamily
+namespace ACFamily
 
-variable {A : SAOperations sp FGP S M} (F : SAFamily A ro)
+variable {A : ACOperations sp FGP S M} (F : ACFamily A ro)
 
 /-- Retain the full read point and duty head of each projected vote. -/
 def projEm (e : A.toAC.Em) : Option (Em sp FGP) :=
   (F.voteView e.msg).map fun v => ⟨v, F.stateView e.readPoint, e.head⟩
 
 /-- Only messages outside the vote view are erased. -/
-def projCall : A.toAC.Call → Option (goldilocksSA sp FGP ro).Call
+def projCall : A.toAC.Call → Option (goldilocksAC sp FGP ro).Call
   | .tick => some .tick
   | .proposal => some .proposal
   | .toFG => some .toFG
@@ -66,25 +66,25 @@ def projCall : A.toAC.Call → Option (goldilocksSA sp FGP ro).Call
   | .restart => some .restart
 
 /-- A retained call preserves its frame and the exact ordered projected emissions. -/
-def projLabel (ℓ : ACLabel A.toAC) : Option (ACLabel (goldilocksSA sp FGP ro)) :=
+def projLabel (ℓ : ACLabel A.toAC) : Option (ACLabel (goldilocksAC sp FGP ro)) :=
   (F.projCall ℓ.call).map fun c => ⟨c, ℓ.frame, ℓ.emits.filterMap F.projEm⟩
 
 /-- Projection preserves cuts, including arbitrarily many erased calls. -/
-def proj (tr : ACTrace A.toAC) : SATrace sp FGP ro :=
+def proj (tr : ACTrace A.toAC) : GTrace sp FGP ro :=
   { init := fun y => F.stateView (tr.init y), node := tr.node,
     time := tr.time, event := tr.event, pos := tr.pos,
     label := fun i => (tr.label i).bind F.projLabel,
     post := fun i => F.stateView (tr.post i), awake := tr.awake,
     observationHorizon := tr.observationHorizon }
 
-end SAFamily
+end ACFamily
 
-variable {A : SAOperations sp FGP S M}
+variable {A : ACOperations sp FGP S M}
 
 namespace Growing
 
 /-- Growing honesty is checked at the actual cut, including for erased calls. -/
-structure ObservationAgreement (F : SAFamily A ro)
+structure ObservationAgreement (F : ACFamily A ro)
     (H : Time → Set (Fin sp.n)) (tr : ACTrace A.toAC) : Prop where
   state : ∀ y i, y ∈ H (tr.time i) →
     (F.proj tr).state y i = F.stateView (tr.state y i)
@@ -95,6 +95,6 @@ structure ObservationAgreement (F : SAFamily A ro)
 
 end Growing
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

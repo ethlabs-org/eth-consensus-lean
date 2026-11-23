@@ -28,7 +28,7 @@ section Run
 variable (S : Setup) {E : Env V} (rho : Model.Run (compiled (goldilocks S)) E)
 
 /-- The committee dictionary of a run: the keys selected for each slot's vote role. -/
-def voteK : SA.CommitteeDict (Fintype.card V) :=
+def voteK : AC.CommitteeDict (Fintype.card V) :=
   NodeAsChainShape.CanonicalTrace.voteK (rho.sel ∘ S.vote.voteRole)
 
 omit [DecidableEq V] in
@@ -79,7 +79,7 @@ theorem mem_voteK_iff_selected (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionVa
         rho.point.env ((shapeProgress (goldilocks S) V).toExternal.ext ⟨E, rho⟩) t := by
   have hslot : (t / (4 * (S.params (Model.pubOf E) hn).Δ)).toNat =
       (S.params (Model.pubOf E) hn).slot t := by
-    have h := SA.slot_eq (S.params (Model.pubOf E) hn) ht
+    have h := AC.slot_eq (S.params (Model.pubOf E) hn) ht
     omega
   have hrole : (Model.protoOf (compiled (goldilocks S)) E).participationRole t =
       S.vote.participationKind.map
@@ -101,7 +101,7 @@ end Run
 variable {S : Setup} {A : ContractAssumptions S}
 
 /-- The committee dictionary of an outage query: the run's `voteK`. -/
-abbrev OutageQueryAt.K (Q : OutageQueryAt S A V) : SA.CommitteeDict (Fintype.card V) :=
+abbrev OutageQueryAt.K (Q : OutageQueryAt S A V) : AC.CommitteeDict (Fintype.card V) :=
   voteK S Q.run.2
 
 end Consensus.Goldilocks.Obligations.Growing

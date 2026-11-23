@@ -50,7 +50,7 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar blockSupport)
+open AC (ACParams ReplayOrder Payload gbar declaredSupportVotes)
 
 section Vocabulary
 
@@ -96,7 +96,7 @@ end Vocabulary
 
 section Constants
 
-variable (sp : SAParams)
+variable (sp : ACParams)
 
 /-- The HS constant `D = (8k + 48)Δ + 2G`. -/
 def D_HS (G : Time) : Time := (8 * (sp.k : Time) + 48) * sp.Δ + 2 * G
@@ -199,7 +199,7 @@ end Run
 
 section Goldilocks
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
 
 /-- **A ready proposal**: the honest proposer `p` of slot `s`, joined at `t_s`, makes its
@@ -207,16 +207,17 @@ proposal `B` of slot `s` at cut `k`, and every slot-`(s−1)` support reference 
 slot `≤ s − 1` that every honest node holds before the vote deadline `t_s + Δ` (so `B` is ready
 at every honest voter: `vote_ready`'s condition). -/
 def ReadyProposal (proposer : Nat → Fin sp.n)
-    (p : Fin sp.n) (k s : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+    (p : Fin sp.n) (k s : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   p ∈ H ∧ p = proposer s ∧ tr.JoinedAt p (sp.ts s) ∧ tr.ProposesAt p k B ∧
     B.slot = s ∧
-    ∀ x ∈ blockSupport B, x.slot + 1 = s → ∀ y ∈ H, ∀ j, tr.FirstCutFrom j (sp.ts s + sp.Δ) →
+    ∀ x ∈ declaredSupportVotes B, x.slot + 1 = s → ∀ y ∈ H, ∀ j,
+      tr.FirstCutFrom j (sp.ts s + sp.Δ) →
       ∃ R ∈ (tr.state y j).fg.tree, R.root = x.head ∧ R.slot + 1 ≤ s
 
 /-- **`Prop⁺(G_p)`** (the HS ready-proposer premise with `G = G_p`): for every trigger `τ ≥ ḡ`
 there is a slot `s ≥ 1` with `τ ≤ t_s ≤ τ + G_p` with a ready proposal (`ReadyProposal`). -/
 def PropPlus (proposer : Nat → Fin sp.n) (g Gp : Time) : Prop :=
-  ∀ τ, gbar g ≤ τ → ∃ (s : Nat) (k : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))),
+  ∀ τ, gbar g ≤ τ → ∃ (s : Nat) (k : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))),
     1 ≤ s ∧ τ ≤ sp.ts s ∧ sp.ts s ≤ τ + Gp ∧
     ReadyProposal tr H proposer (proposer s) k s B
 
@@ -225,17 +226,17 @@ premises (`CatchRun`, `PropPlus`, taken separately): `NoColl` with a genesis who
 digest (the model's reading of `NoColl` for genesis, as C0.3), `Healthy(g)` (with `GST(g)`'s
 strict delivery, acceptance relay and attestation convention), no honest restart after `ḡ`, and the
 protocol's parameter bound `δ_t ≥ 𝓕 = ⌈(6Δ + Δ_F)/(4Δ)⌉` (from `δ_t ≥ x + 𝓕 + k_F`,
-`x, k_F ≥ 0`; `k ≥ 2` and `0 < Δ_F` are carried by `SAParams` and `SyncOn`; no order between
+`x, k_F ≥ 0`; `k ≥ 2` and `0 < Δ_F` are carried by `ACParams` and `SyncOn`; no order between
 `Δ` and `Δ_F` is assumed), and the committee premises of the slot dictionary `K`: its committee
 facts (`Compose.Growing.CommitteeFacts` at the constant honest set: committees of `committeeSize`
 members, honest pools and optimistic-check states hold only committee signatures, the frames of
 honest nodes carry only members' votes, and an honest node may vote in exactly its committees'
 slots) and CS2 for every slot after the slot of `ḡ` (no bound on a committee whose slot starts at
-or before `ḡ`). The statements that take it run from `K`'s committee start (`SA.committeeStart`).
+or before `ḡ`). The statements that take it run from `K`'s committee start (`AC.committeeStart`).
 Unforgeable
 signatures, persistent honest client records and finite event prefixes are laws of the run
 (`GoldilocksRun`). -/
-structure HSShared (K : SA.CommitteeDict sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+structure HSShared (K : AC.CommitteeDict sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (g ΔF : Time) : Prop where
   /-- `NoColl` on the blocks of the run. -/
   noColl : Compose.NoCollRun dg tr
@@ -261,7 +262,7 @@ structure HSShared (K : SA.CommitteeDict sp.n) (dg : Digest (List (FG.Att sp.n))
 whose stored block `B` has state height `≥ H_z + 1`. The stored block is the selected block `D`
 after the move back of `add_locks` (`viable_ancestor` in the frame of the writing call; claims
 C1.1, "stored block after the move back"), not the raw selected block. -/
-def HighOrigin (g : Time) (x : Fin sp.n) (i j : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) :
+def HighOrigin (g : Time) (x : Fin sp.n) (i j : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))) :
     Prop :=
   x ∈ H ∧ tr.JoinedAt x (tr.time i) ∧
     (∃ CV, Compose.StoredFastLockAt tr x i j B CV) ∧
@@ -289,9 +290,9 @@ structure RetentionAt (g a : Time) : Prop where
   vote `B` is in the voter's viable voter block tree or `B ⪯ fc_root` (block order inside the
   honest blocks, not ancestry inside the frame tree, which `B` leaves once `Σ.F` passes it). -/
   votes : ∀ x i j B, HighOrigin tr H g x i j B → ∀ y ∈ H, ∀ k ℓ e,
-    SA.CastAt tr.projAC y k ℓ e → j < e.msg.slot →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg B ∧
-      (B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
+    AC.CastAt tr.projAC y k ℓ e → j < e.msg.slot →
+      AC.VoteExtends (tr.HonestBlocks H) e.msg B ∧
+      (B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
         Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot)
   /-- (R4) For every `h ≥ H_z + 1`, the nonempty target, timeout and lock entries at `h` of the
   honest client records name at most one block. -/
@@ -315,7 +316,7 @@ frontier is `≤ H_z + 1`, so every honest attestation signed at `a` has height 
 for every entry of height `≥ H_z + 1` the first clause of (K1) of G1.10 holds with
 `T₀ = a − Δ`. -/
 def CutAndReset : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (g ΔF : Time),
@@ -323,10 +324,10 @@ def CutAndReset : Prop :=
     cutZ sp.toParams g ≤ gbar g + 12 * sp.Δ ∧
     (∀ y ∈ H, ∀ k att, tr.SignAt y k att → tr.time k ≤ cutZ sp.toParams g →
       att.h ≤ HZ tr H g) ∧
-    (∀ x ∈ H, ∀ i ℓ C, SA.ToFGAt tr.projAC x i ℓ C → cutZ sp.toParams g ≤ tr.time i →
-      ∃ l ∈ SA.liveLocks sp (tr.state x i).ac.locks ℓ.frame (tr.time i),
+    (∀ x ∈ H, ∀ i ℓ C, AC.ToFGAt tr.projAC x i ℓ C → cutZ sp.toParams g ≤ tr.time i →
+      ∃ l ∈ AC.liveLocks sp (tr.state x i).ac.locks ℓ.frame (tr.time i),
         l.fast = true ∧ l.block = C.root ∧
-        ∃ i' < i, ∃ B CV, SA.FastLockAt tr.projAC x i' l.slot B CV ∧ gbar g < tr.time i' ∧
+        ∃ i' < i, ∃ B CV, AC.FastLockAt tr.projAC x i' l.slot B CV ∧ gbar g < tr.time i' ∧
           Anc (tr.HonestBlocks H) C B) ∧
     (∀ y ∈ H, ∀ i, ∀ X ∈ (tr.state y i).fg.tree, HZ tr H g + 2 ≤ ((tr.state y i).fg.σ X.root).h →
       ∃ Y, (tr.state y i).fg.Anc Y X ∧ ∃ att ∈ Y.fgPayload, att.val ∈ H ∧ att.h = HZ tr H g + 1) ∧
@@ -371,11 +372,11 @@ count);
 `a_z ≤ c_z + 6(Δ + A_HS) ≤ ḡ + 24Δ + 12C_HS = ḡ + (96k + 612 + 48δ_t)Δ + 12Δ_F + 36G_p`, with
 `C_HS = (8k + 49 + 4δ_t)Δ + Δ_F + 3G_p`. -/
 def ResetExistence : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF Gp : Time),
-    GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+    (tr : GoldilocksTrace sp ro) (K : AC.CommitteeDict sp.n) (g ΔF Gp : Time),
+    GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K) →
     HSShared tr H K dg g ΔF → CatchRun tr H g (2 * sp.Δ) → PropPlus tr H proposer g Gp →
     (gbar g + 8 * sp.Δ < cutZ sp.toParams g ∧
       ∀ u, cutZ sp.toParams g ≤ u → ∀ j j', FirstCutAfter tr j u →
@@ -398,11 +399,11 @@ and `NoColl`, with the committee facts of `K` (`Compose.Growing.CommitteeFacts` 
 honest set) and CS2 for every slot after the slot of `ḡ`, if the reset `a_z` exists, (R1)–(R4)
 hold for it (`RetentionAt`). -/
 def HeightScopedRetention : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF : Time),
-    GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+    (tr : GoldilocksTrace sp ro) (K : AC.CommitteeDict sp.n) (g ΔF : Time),
+    GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K) →
     tr.HealthyRun H ΔF g → Compose.NoCollRun dg tr →
     Compose.Growing.CommitteeFacts tr (fun _ => H) K →
     (∀ s : Nat, sp.slot (gbar g) + 1 ≤ s →
@@ -411,17 +412,17 @@ def HeightScopedRetention : Prop :=
 
 section Top
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
 
 /-- The honest votes of slot `p` (over the AC projection) are all `P`. -/
-def Unanimous (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
-  ∀ x ∈ H, ∀ j e, SA.VoteAt tr.projAC x j e → e.msg.slot = p → e.msg.head = P.root
+def Unanimous (p : Nat) (P : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+  ∀ x ∈ H, ∀ j e, AC.VoteAt tr.projAC x j e → e.msg.slot = p → e.msg.head = P.root
 
 /-- `P` is the honest proposal of slot `p` (its proposer is honest) over the AC projection. -/
 def HonestProposalRun (proposer : Nat → Fin sp.n)
-    (p : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
-  proposer p ∈ H ∧ SA.HonestProposal tr.projAC (proposer p) p P
+    (p : Nat) (P : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+  proposer p ∈ H ∧ AC.HonestProposal tr.projAC (proposer p) p P
 
 /-- The proposal of slot `p` and the honest slot-`p` votes lie in one effective phase in which
 every honest node is settled (HS definitions, with `κ = 2Δ`): the run is settled at some
@@ -430,7 +431,7 @@ the last honest vote of slot `p`. -/
 def InSettledPhase (g : Time) (p : Nat) : Prop :=
   ∃ w m c, SettledAt tr H g (2 * sp.Δ) w ∧ w ≤ sp.ts p ∧
     ∀ i, w ≤ tr.time i →
-      (tr.time i ≤ sp.ts p ∨ ∃ y ∈ H, ∃ i' e, i ≤ i' ∧ SA.VoteAt tr.projAC y i' e ∧
+      (tr.time i ≤ sp.ts p ∨ ∃ y ∈ H, ∃ i' e, i ≤ i' ∧ AC.VoteAt tr.projAC y i' e ∧
         e.msg.slot = p) →
       PhaseAt tr.projFG H i m c
 
@@ -439,17 +440,17 @@ def InSettledPhase (g : Time) (p : Nat) : Prop :=
 `p ≥ s_AC(a + T_b)` (`t_p ≥ a + T_b + 2Θ + 8Δ`) whose proposal and votes lie in one settled
 effective phase. -/
 def BridgeAt (proposer : Nat → Fin sp.n) (g a Tb : Time) : Prop :=
-  SA.Inv proposer tr.projAC H (tr.HonestBlocks H) (a + Tb) ∧
+  AC.Inv proposer tr.projAC H (tr.HonestBlocks H) (a + Tb) ∧
     ∀ (p : Nat) P, HonestProposalRun tr H proposer p P →
-      a + Tb + 2 * SA.Θ sp + 8 * sp.Δ ≤ sp.ts p →
-      InSettledPhase tr H g p → SA.Geo proposer tr.projAC H p P
+      a + Tb + 2 * AC.Θ sp + 8 * sp.Δ ≤ sp.ts p →
+      InSettledPhase tr H g p → AC.Geo proposer tr.projAC H p P
 
 end Top
 
 /-- `T_heal = ḡ + 24Δ + 12C_HS + T_b + 2Θ + 8Δ` (claims H.4), that is
 `ḡ + (104k + 628 + 48δ_t)Δ + 12Δ_F + 36G_p + T_b`. -/
-def T_heal (sp : SAParams) (g ΔF Gp Tb : Time) : Time :=
-  gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF Gp + Tb + 2 * SA.Θ sp + 8 * sp.Δ
+def T_heal (sp : ACParams) (g ΔF Gp Tb : Time) : Time :=
+  gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF Gp + Tb + 2 * AC.Θ sp + 8 * sp.Δ
 
 end Consensus.Goldilocks.Healing
 

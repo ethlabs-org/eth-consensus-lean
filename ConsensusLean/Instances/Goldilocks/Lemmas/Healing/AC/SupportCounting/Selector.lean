@@ -15,9 +15,9 @@ unique parent path in `U`, and `C`, at or above `Φ.F`, lies on it), the tree de
 larger at `R` unless `C = R` (`depth_lt_of_frameAnc`: the ancestors of `R` in the tree are a
 finite chain), and the deepest selection excludes a strictly deeper eligible `R`. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {sp : SAParams} {FGP : Type}
+variable {sp : ACParams} {FGP : Type}
 
 /-- Two subsets of `D`, each a strict majority of `D`, intersect. -/
 theorem inter_nonempty_of_majority {D S S' : Set (Fin sp.n)} (hS : S ⊆ D) (hS' : S' ⊆ D)
@@ -31,7 +31,7 @@ theorem inter_nonempty_of_majority {D S S' : Set (Fin sp.n)} (hS : S ⊆ D) (hS'
 
 /-- The selected result of row `j` is in the tree, at or above `Φ.F`, a strict majority of the
 row's voters, and the deepest such block. -/
-private theorem selected_spec {A : SAState sp.n} {Φ : Frm sp.n FGP} {j : Nat} {C : Blk sp.n FGP}
+private theorem selected_spec {A : ACState sp.n} {Φ : Frm sp.n FGP} {j : Nat} {C : Blk sp.n FGP}
     (h : getConfirmation sp A Φ j = some C) :
     IsDeepest Φ {B | B ∈ Φ.tree ∧ Φ.Anc Φ.F B ∧
       (voters {v | v ∈ A.pool j}).ncard < 2 * confirmationScore sp A Φ j B} C :=
@@ -39,7 +39,7 @@ private theorem selected_spec {A : SAState sp.n} {Φ : Frm sp.n FGP} {j : Nat} {
 
 /-- Under the selector hypotheses, two blocks with strict-majority scores are comparable in `U`. -/
 private theorem comparable_of_majority {U : Set (Blk sp.n FGP)} {D : Set (Fin sp.n)}
-    {head : Fin sp.n → Blk sp.n FGP} {A A' : SAState sp.n} {Φ Φ' : Frm sp.n FGP} {j : Nat}
+    {head : Fin sp.n → Blk sp.n FGP} {A A' : ACState sp.n} {Φ Φ' : Frm sp.n FGP} {j : Nat}
     {B B' : Blk sp.n FGP} (hU : Coherent U) (hH : SelectorHyp U D head A Φ j)
     (hH' : SelectorHyp U D head A' Φ' j) (hB : D.ncard < 2 * confirmationScore sp A Φ j B)
     (hB' : D.ncard < 2 * confirmationScore sp A' Φ' j B') : Anc U B B' ∨ Anc U B' B := by
@@ -111,6 +111,6 @@ theorem eligible_below_selected : EligibleBelowSelected := by
         ⟨hR, hFR, by rw [hH.denominator]; exact hRmaj⟩
       rcases hsp.2 R hRin hRC with h' | ⟨h', -⟩ <;> omega
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

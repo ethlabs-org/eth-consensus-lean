@@ -11,24 +11,24 @@ or service premise is reconstructed for a retained cohort.
 
 namespace Consensus.Goldilocks.Healing.Growing.Outcome
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
 
 private theorem fastLock_frame_mem {x : Fin sp.n} {i s : Nat}
-    {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    (h : SA.FastLockAt tr.projAC x i s D CV) {ell : ACLabel (goldilocksNode sp ro)}
+    {D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
+    (h : AC.FastLockAt tr.projAC x i s D CV) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt x i ell) : D ∈ ell.frame.tree := by
   rcases h with ⟨ell', C, ⟨hc', -⟩, -, hD, -⟩ | ⟨ell', A, ⟨hc', -⟩, -, hsel, -⟩
   · obtain rfl : ell' = ell := Option.some.inj (hc'.2.symm.trans hc.2)
-    exact (SA.deepest_mem hD).1.1.1
+    exact (AC.deepest_mem hD).1.1.1
   · obtain rfl : ell' = ell := Option.some.inj (hc'.2.symm.trans hc.2)
-    unfold SA.optimisticSelect at hsel
+    unfold AC.optimisticSelect at hsel
     dsimp only at hsel
     split_ifs at hsel
-    exact (SA.deepest_mem hsel).1.1
+    exact (AC.deepest_mem hsel).1.1
 
 /-- The signed entry comes from a prior stored fast lock of the signer.
 This local extraction does not mention a reset or a snapshot height. -/
@@ -49,17 +49,17 @@ theorem signed_entry_source
   obtain ⟨d', rfl, ell, hc', hto, -, hC, hfgeq⟩ :=
     Compose.attest_source hrun.toLocalRun hv hcall
   have hpc : tr.projAC.CallAt v d' ell := Compose.projAC_callAt.mpr hc'
-  have hC' : (SA.acToFG sp (tr.projAC.state v d') ell.frame (tr.time d')).2 = some C := by
+  have hC' : (AC.acToFG sp (tr.projAC.state v d') ell.frame (tr.time d')).2 = some C := by
     rw [Compose.projAC_state hrun.toLocalRun hv]
     exact hC
-  obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := SA.toFG_candidate hC'
+  obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := AC.toFG_candidate hC'
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
   obtain ⟨r, hrd, CV, ellw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
     Healing.stored_fast_lock_provenance hr hrun.vstart hv d' l₀ hl₀ hlf
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hv hpc
-  obtain ⟨hPhiw, -⟩ := SA.frameIn_of_callAt hr hv hcw
+  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hv hpc
+  obtain ⟨hPhiw, -⟩ := AC.frameIn_of_callAt hr hv hcw
   have hCt : C ∈ ell.frame.tree := hCv.1
-  obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hPhi hB₀
+  obtain ⟨hvat, hva⟩ := AC.viableAncestor_anc hPhi hB₀
   obtain rfl : C = ell.frame.viableAncestor B₀ := hU.1 (hPhiU hCt) (hPhiU hvat) hlb.symm
   obtain rfl : L = B₀ := hU.1 hL (hPhiU hB₀) (hLr.trans hB₀r.symm)
   set O := ellw.frame.viableAncestor D
@@ -67,7 +67,7 @@ theorem signed_entry_source
     (hva.mono hPhiU).trans hLO
   have hOt : O ∈ (tr.state v r).fg.tree :=
     Healing.mem_tree_of_frame hrun hv hcw
-      (SA.viableAncestor_anc hPhiw (fastLock_frame_mem hfl hcw)).1
+      (AC.viableAncestor_anc hPhiw (fastLock_frame_mem hfl hcw)).1
   let st := (tr.state v (d' + 1)).fg
   have hreach := Compose.fg_reachable hrun.toLocalRun hv (d' + 1)
   have hCst : ell.frame.viableAncestor L ∈ st.tree := by
@@ -133,7 +133,7 @@ theorem high_row_source_at
   have hc' : tr.projAC.CallAt v r ell := by
     rw [RunTrace.upTo_projAC] at hc
     exact ((Trace.upTo_callAt tr.projAC).mp hc).2
-  have hfl' : SA.FastLockAt tr.projAC v r l D CV := by
+  have hfl' : AC.FastLockAt tr.projAC v r l D CV := by
     rw [RunTrace.upTo_projAC] at hfl
     have heAC := Trace.upTo_state tr.projAC v
       (fun k (hk : k < r) => hrun.time_mono (show k ≤ d by omega))

@@ -40,9 +40,9 @@ honest source of a crossing quorum and of `Σ.J` under `RowsAbove` (`frame_cross
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
@@ -53,7 +53,7 @@ section Geometry
 variable {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   (hnc : NoCollRun dg tr)
   (hf : 2 * Hᶜ.ncard < sp.n)
-  {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+  {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
 
 include hrun in
 /-- With `h_j = 0`, `Σ.J` is genesis. -/
@@ -67,7 +67,7 @@ include hrun hnc hf hy in
 honest source `D`, whose entry `E` of height `h_max − 1` extends `B`. -/
 theorem floor_or_crossing_of (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
     (hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D')
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B) (hB : B ∈ (tr.state y i).fg.tree) :
     (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ B.root).h ∨
       ∃ D E X, G D ∧ IsHonestSource tr H D E.root ∧ E ∈ (tr.state y i).fg.tree ∧
@@ -88,12 +88,12 @@ whose entry height is at least the reader's `h_j` need source witnesses. -/
 theorem floor_or_crossing_scoped {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
     (hsrc : ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H →
       (tr.state y i).fg.hj ≤ ((tr.state y i).fg.σ a.T).h →
       ∃ D, G D ∧ IsHonestSource tr H D a.T)
     (hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D')
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
     (hB : B ∈ (tr.state y i).fg.tree) :
     (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ B.root).h ∨
@@ -108,13 +108,13 @@ theorem floor_or_crossing_scoped {ini} (hrun : GoldilocksRun proposer dg H tr in
 section Wrappers
 
 variable (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) (hsl : tr.SleepyRun H ΔF)
-  {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+  {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
 
 /-- Justification provenance uses only the numerical fault bound and the supplied attestation
 sources. -/
 theorem justified_honest_source_before {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    {i : Nat} {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
     (hsrc : HonestRowsSourced tr H G y i)
     (hj : 1 ≤ (tr.state y i).fg.hj) :
     ((tr.state y i).fg.σ (tr.state y i).fg.J.root).h = (tr.state y i).fg.hj ∧
@@ -125,8 +125,8 @@ theorem justified_honest_source_before {ini} (hrun : GoldilocksRun proposer dg H
 /-- `frame_crossing_source` with the numerical fault bound in place of `Sleepy`. -/
 theorem frame_crossing_source_before {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourced tr H G y i)
-    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hW : W ∈ (tr.state y i).fg.tree) {j : Nat}
+    {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourced tr H G y i)
+    {W : AC.Blk sp.n (List (FG.Att sp.n))} (hW : W ∈ (tr.state y i).fg.tree) {j : Nat}
     (hj1 : 1 ≤ j) (hj2 : j < ((tr.state y i).fg.σ W.root).h) :
     ∃ E ∈ (tr.state y i).fg.tree, (tr.state y i).fg.Anc E W ∧
       ((tr.state y i).fg.σ E.root).h = j ∧ ((tr.state y i).fg.σ E.root).Th = E.root ∧

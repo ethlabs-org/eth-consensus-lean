@@ -31,14 +31,14 @@ structure HealthyPreparationScheduleAt (Q : HealthyPreparationQueryAt S A V)
   seedNode : Fin Q.params.n
   seedCut : Nat
   seedLabel : Nat
-  seed : SA.Blk Q.params.n (List (FG.Att Q.params.n))
+  seed : AC.Blk Q.params.n (List (FG.Att Q.params.n))
   seed_origin : Healing.Growing.HighOrigin Q.trace Q.keys Q.gst
     seedNode seedCut seedLabel seed
   seed_time : Q.trace.time seedCut ≤ resetTime
   seed_label : seedLabel ≤ Q.params.slot resetTime
   query : Time
   lower : max Q.ready (max (Healing.drainTime Q.params resetTime)
-    (max (Q.params.ts W.slot) (max (SA.gbar Q.gst + 4 * Q.params.Δ)
+    (max (Q.params.ts W.slot) (max (AC.gbar Q.gst + 4 * Q.params.Δ)
       (max 0 (Q.params.ts (seedLabel + 1 : Nat)))))) ≤ query
   reserve : query + (4 * (Q.index : Time) + 6) * Q.params.Δ < Q.heal - 1
 

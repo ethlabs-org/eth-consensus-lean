@@ -10,16 +10,16 @@ public section
 All counts are charged at the updater's cut. Its retained pool is unchanged.
 -/
 
-namespace Consensus.Goldilocks.SA.Growing
+namespace Consensus.Goldilocks.AC.Growing
 
-theorem optimistic_next_update (sp : SAParams) : OptimisticNextUpdate sp := by
+theorem optimistic_next_update (sp : ACParams) : OptimisticNextUpdate sp := by
   intro FGP ro H U tr proposer hrun K hP hT hsize s z k B ℓ hf hext hz hup hh hres
   have hm := hrun.localRun.time_mono
   have hr := hrun.upTo (hrun.localRun.time_nonneg k)
   have hs : (tr.upTo (tr.time k)).state z k = tr.state z k :=
     Trace.upTo_state tr z fun _ hi => hm hi.le
   rw [← hs]
-  apply SA.optimistic_next_update sp FGP ro (H (tr.time k)) U (tr.upTo (tr.time k))
+  apply AC.optimistic_next_update sp FGP ro (H (tr.time k)) U (tr.upTo (tr.time k))
     proposer hr K (hP.upTo hm hrun.localRun.antitone (tr.time k))
     (hT.upTo hrun.localRun.antitone (tr.time k)) hsize s z k B ℓ hf
   · intro x hx j e hv hslot
@@ -30,6 +30,6 @@ theorem optimistic_next_update (sp : SAParams) : OptimisticNextUpdate sp := by
   · simpa only [hs] using hh
   · simpa only [hs] using hres
 
-end Consensus.Goldilocks.SA.Growing
+end Consensus.Goldilocks.AC.Growing
 
 end

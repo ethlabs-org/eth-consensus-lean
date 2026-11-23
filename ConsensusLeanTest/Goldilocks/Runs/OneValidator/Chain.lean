@@ -25,7 +25,7 @@ step:
 
 namespace Consensus.Goldilocks.Witness.One
 
-open SA Node
+open AC Node
 
 theorem ite_pos {α : Sort*} {c : Prop} {_ : Decidable c} (h : c) {a b : α} : ite c a b = a := by
   simp [h]

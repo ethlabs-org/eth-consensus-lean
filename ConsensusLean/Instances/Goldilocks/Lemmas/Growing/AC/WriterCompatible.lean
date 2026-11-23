@@ -15,18 +15,18 @@ Service is the growing `ServiceWindowBefore` from `a ≤ t_s`, used only through
 `t_s + 6Δ ≤ b`. The releases end before `t_s + 2Δ`, so the only deadlines consumed are by
 `t_s + 3Δ`. -/
 
-namespace Consensus.Goldilocks.SA.Growing
+namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
-  {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
+  {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 /-- A release in `[t_s, t_s + 2Δ)`, at or after the start `a` of the service window, reaches an
 update of slot `s` at `t_s + 6Δ ≤ b` of a node honest at it whose restarts are by `t_s`. -/
 private theorem relayed_held_window {ini}
-    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hr : Goldilocks.Growing.ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     {a b : Time} {s : Nat} (hsvc : ServiceWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
-    {X Y : Fin sp.n} {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {X Y : Fin sp.n} {c : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     (hY : Y ∈ H (tr.time c)) (hc : tr.CallAt Y c ℓ)
     (ht : tr.time c = sp.ts s + 6 * sp.Δ) (hb : tr.time c ≤ b)
     (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s)
@@ -46,9 +46,9 @@ private theorem relayed_held_window {ini}
 /-- Votes for an incompatible block released by a writer while honest occupy seats of an update
 disjoint from its result's supporters, under windowed service. -/
 private theorem relayed_against_window {ini}
-    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hr : Goldilocks.Growing.ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     {a b : Time} {s : Nat} (hsvc : ServiceWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
-    {X Y : Fin sp.n} {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {X Y : Fin sp.n} {c : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     (hY : Y ∈ H (tr.time c)) (hc : tr.CallAt Y c ℓ)
     (ht : tr.time c = sp.ts s + 6 * sp.Δ) (hb : tr.time c ≤ b)
     (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s)
@@ -120,6 +120,6 @@ theorem result_optimistic_compatible_window_before_at {ini}
     (t := K.committee s) (by rintro w ⟨v, hv, rfl⟩; exact hP v hv)
   omega
 
-end Consensus.Goldilocks.SA.Growing
+end Consensus.Goldilocks.AC.Growing
 
 end

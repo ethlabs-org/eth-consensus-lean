@@ -23,7 +23,7 @@ block (entry constancy, `entry_root_eq`). -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Vote Payload gbar)
+open AC (ACParams ReplayOrder Vote Payload gbar)
 
 /-- Two self-entries at the same height below one held carrier are the same block. -/
 theorem self_entries_eq {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
@@ -112,8 +112,8 @@ theorem chain_pairs_entry {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P
         exact ⟨Z, hZ, hZY.tail hYW, hZr, hZh, hZT⟩
       · exact ⟨E, hE, hEY.tail hYW, hEr, hEh, hET'⟩
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {H : Set (Fin sp.n)}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
   {proposer : Nat → Fin sp.n}
 
@@ -209,11 +209,11 @@ The height comparison is in the reporter's store at the report cut. -/
 theorem ResetPremisesUpTo.finalized_descendant_report {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {W X P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {W X P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) (hX : X ∈ (tr.state y k).fg.tree)
     (hXr : X.root = ((tr.state y k).fg.σ W.root).F)
     (hPX : Anc (tr.HonestBlocks H) P X) (hne : P ≠ X) :
-    ∃ z ∈ H, ∃ r ℓ C, r < k ∧ SA.ToFGAt tr.projAC z r ℓ C ∧
+    ∃ z ∈ H, ∃ r ℓ C, r < k ∧ AC.ToFGAt tr.projAC z r ℓ C ∧
       Anc (tr.HonestBlocks H) P C ∧
       ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
   have hr := Compose.fg_reachable hp.run.toLocalRun hy k
@@ -280,10 +280,10 @@ theorem ResetPremisesUpTo.finalized_descendant_report {b : Time}
 cache either stays below `P` or already witnesses a strictly higher actual report. -/
 theorem ResetPremisesUpTo.finality_below_or_higher_report {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hcompat : Compatible (tr.HonestBlocks H) (tr.state y k).fg.F P) :
     Anc (tr.HonestBlocks H) (tr.state y k).fg.F P ∨
-      ∃ z ∈ H, ∃ r ℓ C, r < k ∧ SA.ToFGAt tr.projAC z r ℓ C ∧
+      ∃ z ∈ H, ∃ r ℓ C, r < k ∧ AC.ToFGAt tr.projAC z r ℓ C ∧
         Anc (tr.HonestBlocks H) P C ∧
         ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
   rcases hcompat with h | h
@@ -301,12 +301,12 @@ does not supply this fact. Heights are compared at the resulting reporter's cut.
 theorem ResetPremisesUpTo.higher_report_of_signed_entry {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i d : Nat}
-    {P E : SA.Blk sp.n (List (FG.Att sp.n))}
+    {P E : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ (tr.state y i).fg.tree) (hE : E ∈ (tr.state y i).fg.tree)
     {att : FG.Att sp.n} (hs : tr.SignAt z d att) (hdi : d < i)
     (hT : att.T = E.root) (hPE : Anc (tr.HonestBlocks H) P E)
     (hlt : ((tr.state y i).fg.σ P.root).h < ((tr.state y i).fg.σ E.root).h) :
-    ∃ r ell C, r < i ∧ SA.ToFGAt tr.projAC z r ell C ∧
+    ∃ r ell C, r < i ∧ AC.ToFGAt tr.projAC z r ell C ∧
       Anc (tr.HonestBlocks H) P C ∧
       ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
   obtain ⟨r, hrd, -, ell, C, E', hto, hC, hE', hEr, hEC, -, -, hEh, -⟩ :=
@@ -321,10 +321,10 @@ theorem ResetPremisesUpTo.higher_report_of_signed_entry {b : Time}
 
 /-- Whole-run specialization of the finite finality/report alternative. -/
 theorem finality_below_or_higher_report (hp : ResetPremises tr H K proposer dg g ΔF a)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hcompat : Compatible (tr.HonestBlocks H) (tr.state y k).fg.F P) :
     Anc (tr.HonestBlocks H) (tr.state y k).fg.F P ∨
-      ∃ z ∈ H, ∃ r ℓ C, r < k ∧ SA.ToFGAt tr.projAC z r ℓ C ∧
+      ∃ z ∈ H, ∃ r ℓ C, r < k ∧ AC.ToFGAt tr.projAC z r ℓ C ∧
         Anc (tr.HonestBlocks H) P C ∧
         ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h :=
   (ResetPremises.toUpTo tr H hp le_rfl).finality_below_or_higher_report hy hcompat
@@ -373,13 +373,13 @@ theorem high_record_entry (hp : ResetPremises tr H K proposer dg g ΔF a)
 theorem ResetPremisesUpTo.entry_root_eq {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {z : Fin sp.n} (hz : z ∈ H) {m : Nat}
-    {C Z₁ Z₂ : SA.Blk sp.n (List (FG.Att sp.n))} (hC : C ∈ (tr.state z m).fg.tree)
+    {C Z₁ Z₂ : AC.Blk sp.n (List (FG.Att sp.n))} (hC : C ∈ (tr.state z m).fg.tree)
     (h₁ : Anc (tr.HonestBlocks H) Z₁ C) (h₂ : Anc (tr.HonestBlocks H) Z₂ C)
     (hh : ((tr.state z m).fg.σ Z₁.root).h = ((tr.state z m).fg.σ Z₂.root).h)
     (hT₁ : ((tr.state z m).fg.σ Z₁.root).Th = Z₁.root)
     (hT₂ : ((tr.state z m).fg.σ Z₂.root).Th = Z₂.root) : Z₁.root = Z₂.root := by
   have hr := Compose.fg_reachable hp.run.toLocalRun hz m
-  rcases SA.anc_total hp.honest_coherent h₁ h₂ with h | h
+  rcases AC.anc_total hp.honest_coherent h₁ h₂ with h | h
   · have := Th_eq_of_anc hr (hp.anc_tree_of_anc hz h (hp.mem_tree_of_anc hz h₂ hC)) hh.symm
     rw [← hT₁, ← hT₂, this]
   · have := Th_eq_of_anc hr (hp.anc_tree_of_anc hz h (hp.mem_tree_of_anc hz h₁ hC)) hh
@@ -388,7 +388,7 @@ theorem ResetPremisesUpTo.entry_root_eq {b : Time}
 /-- Whole-run specialization of entry constancy. -/
 theorem entry_root_eq (hp : ResetPremises tr H K proposer dg g ΔF a)
     {z : Fin sp.n} (hz : z ∈ H) {m : Nat}
-    {C Z₁ Z₂ : SA.Blk sp.n (List (FG.Att sp.n))} (hC : C ∈ (tr.state z m).fg.tree)
+    {C Z₁ Z₂ : AC.Blk sp.n (List (FG.Att sp.n))} (hC : C ∈ (tr.state z m).fg.tree)
     (h₁ : Anc (tr.HonestBlocks H) Z₁ C) (h₂ : Anc (tr.HonestBlocks H) Z₂ C)
     (hh : ((tr.state z m).fg.σ Z₁.root).h = ((tr.state z m).fg.σ Z₂.root).h)
     (hT₁ : ((tr.state z m).fg.σ Z₁.root).Th = Z₁.root)

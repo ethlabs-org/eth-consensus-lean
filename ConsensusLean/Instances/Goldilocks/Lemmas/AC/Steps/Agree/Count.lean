@@ -6,7 +6,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks SA: an honest voter counts every vote an honest proposal declares
+/-! # Goldilocks AC: an honest voter counts every vote an honest proposal declares
 
 For an honest proposer `p` of slot `s + 1` proposing at `t_{s+1}` and an honest voter `y`
 casting its slot-`(s+1)` vote, under `Sync[t_s, t_{s+1}]`: every vote of `p`'s slot-`s` pool
@@ -24,14 +24,14 @@ exact-or-pair condition at the cast that the merged view needs to reproduce the 
 `count_declared_of_syncU` / `count_declared_of_sync`, and the service-window form
 `count_declared_of_window_beforeU` / `count_declared_of_window_before`. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
 
-private theorem admitVote_pool_sub (A : SAState sp.n) (t : Time) (v : Vote sp.n) (σ : Nat) :
+private theorem admitVote_pool_sub (A : ACState sp.n) (t : Time) (v : Vote sp.n) (σ : Nat) :
     A.pool σ ⊆ (admitVote sp A t v).pool σ := by
   intro x hx
   unfold admitVote
@@ -46,7 +46,7 @@ private theorem admitVote_pool_sub (A : SAState sp.n) (t : Time) (v : Vote sp.n)
 /-- The state before a cast's call holds no slot-`σ` vote that the read point lacks. -/
 private theorem state_pool_sub_readPointU {ini} {u : Nat → Set Lock}
     (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y j ℓ e) (σ : Nat) :
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y j ℓ e) (σ : Nat) :
     (tr.state y j).pool σ ⊆ e.readPoint.pool σ := by
   obtain ⟨-, hR, -⟩ := voteBranchAt_inputU hr hy (voteBranchAt_of_castAtU hr hy hc)
   have hin : (callInputM sp wm (tr.state y j) ℓ.frame (tr.time j) ℓ.call).pool σ ⊆
@@ -70,7 +70,7 @@ private theorem state_pool_sub_readPointU {ini} {u : Nat → Set Lock}
 /-- The proposal's declared head votes are the proposer's slot-`s` pool. -/
 private theorem mem_pay_of_pool {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {p : Fin sp.n} (hp : p ∈ H) {i s : Nat}
-    {ℓp : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n}
+    {ℓp : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n}
     (hprop : ProposalAt tr p i ℓp pay) (hsi : sp.slot (tr.time i) = s + 1) {v : Vote sp.n}
     (hv : v ∈ (tr.state p i).pool s) : v ∈ pay.1 := by
   obtain ⟨-, -, d, hd⟩ := hprop
@@ -85,14 +85,14 @@ private theorem mem_pay_of_pool {ini} {u : Nat → Set Lock} (hr : ACLocalRunU w
     have hvs := state_pool_slotU sp hr hini hp i s v hv
     obtain ⟨k, -, -, h, -⟩ := pool_origin_sentU hr hini hp i v (hvs ▸ hv)
     exact h ▸ WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _)
-  simp [voteViewList, SAState.poolAt, hv, hstamp]
+  simp [voteViewList, ACState.poolAt, hv, hstamp]
 
 /-- The core: the early case from readiness, the timeout case from the delivery of the
 proposer's forwarded admissions, given by `hdeliver` for the admissions inside `[t_s, t_{s+1}]`. -/
 private theorem count_declared_coreU {ini} {u : Nat → Set Lock}
     (hr : ACLocalRunU wm u H U tr ini) (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {s : Nat} {p y : Fin sp.n} {i j : Nat}
-    {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
+    {ℓp ℓy : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H)
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
@@ -106,7 +106,7 @@ private theorem count_declared_coreU {ini} {u : Nat → Set Lock}
   intro v hv
   have hΔ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hsi : sp.slot (tr.time i) = s + 1 := by
     rw [hti]; exact slot_of_mem sp (s + 1) le_rfl ((ts_lt_iff sp).2 (by push_cast; omega))
   obtain ⟨-, hsl, hjoin, -⟩ := castAt_specU hr hy hc
@@ -120,7 +120,7 @@ private theorem count_declared_coreU {ini} {u : Nat → Set Lock}
     have hrd : voteReady sp e.readPoint ℓy.frame (s + 1) := by
       by_contra h
       exact hready ⟨hearly, Or.inr h⟩
-    refine hrd.2 P hPt hPs v (Or.inl ?_) (by simp [SAParams.committee])
+    refine hrd.2 P hPt hPs v (Or.inl ?_) (by simp [ACParams.committee])
     change v ∈ P.acPayload.1
     rw [hPpay]
     exact mem_pay_of_pool hr hini hp hprop hsi hv
@@ -147,7 +147,7 @@ private theorem count_declared_coreU {ini} {u : Nat → Set Lock}
       rw [hvs] at hheld
       have hsub := state_pool_sub_readPointU hr hy hc s
       have hpa : e.readPoint.poolAt v.slot = e.readPoint.pool s := by
-        simp [SAState.poolAt, hvs]
+        simp [ACState.poolAt, hvs]
       rcases hheld with h | ⟨a, ha, b, hb', hab, hav, hbv⟩
       · exact Or.inl (hpa ▸ hsub h)
       · exact Or.inr ⟨a, hpa ▸ hsub ha, b, hpa ▸ hsub hb', hab, hav, hbv⟩
@@ -157,12 +157,12 @@ private theorem count_declared_coreU {ini} {u : Nat → Set Lock}
 theorem count_declared_of_syncU {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {s : Nat} {p y : Fin sp.n} {i j : Nat}
-    {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
+    {ℓp ℓy : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H)
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
     (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr) :
+    (hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr) :
     ∀ v ∈ (tr.state p i).pool s, ShouldCountDeclaredVote sp e.readPoint v := by
   refine count_declared_coreU hr hini hp hy hprop hti hc hes hP ?_
   intro k v hsend hsk hkb hvs hrs hdl
@@ -170,19 +170,19 @@ theorem count_declared_of_syncU {ini} {u : Nat → Set Lock} (hr : ACLocalRunU w
       rw [hvs]
       have hΔ := sp.toParams.hΔ
       have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-        simp only [SAParams.ts]; push_cast; ring
+        simp only [ACParams.ts]; push_cast; ring
       exact slot_window_of_forward (hr.time_nonneg k) hsk le_rfl (by linarith only [hkb, hts, hΔ]))
 
 /-- `count_declared_of_syncU` without the unlock. -/
-theorem count_declared_of_sync {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem count_declared_of_sync {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {s : Nat} {p y : Fin sp.n} {i j : Nat}
-    {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
+    {ℓp ℓy : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H)
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
     (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr) :
+    (hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr) :
     ∀ v ∈ (tr.state p i).pool s, ShouldCountDeclaredVote sp e.readPoint v :=
   count_declared_of_syncU (wm := WriteMode.parent sp) hr.toU hini hp hy hprop hti hc hes hP hsync
 
@@ -192,7 +192,7 @@ given). -/
 theorem count_declared_of_window_beforeU {ini} {u : Nat → Set Lock}
     (hr : ACLocalRunU wm u H U tr ini) (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {s : Nat} {p y : Fin sp.n} {i j : Nat}
-    {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
+    {ℓp ℓy : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H)
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
@@ -207,15 +207,15 @@ theorem count_declared_of_window_beforeU {ini} {u : Nat → Set Lock}
       rw [hvs]
       have hΔ := sp.toParams.hΔ
       have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-        simp only [SAParams.ts]; push_cast; ring
+        simp only [ACParams.ts]; push_cast; ring
       exact slot_window_of_forward (hr.time_nonneg k) hsk le_rfl (by linarith only [hkb, hts, hΔ]))
 
 /-- `count_declared_of_window_beforeU` without the unlock. -/
 theorem count_declared_of_window_before {ini}
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {s : Nat} {p y : Fin sp.n} {i j : Nat}
-    {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
+    {ℓp ℓy : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H)
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
@@ -226,6 +226,6 @@ theorem count_declared_of_window_before {ini}
   count_declared_of_window_beforeU (wm := WriteMode.parent sp) hr.toU hini hp hy hprop hti hc hes
     hP hsync ha hjb
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

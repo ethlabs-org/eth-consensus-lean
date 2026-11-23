@@ -31,8 +31,8 @@ open Consensus.Model (pubOf)
 /-- **Compatible held blocks have prefix-related header chains.** For two reachable stores whose
 trees lie in a coherent set `U`, blocks `B` and `C` held by the first and second store that are
 compatible in `U` have header chains of which one is a prefix of the other. -/
-theorem chainTo_compatible {sp : SA.SAParams} {acp₀ : SA.Payload sp.n}
-    {st st' : Store sp.toParams (SA.Payload sp.n)} (hr : st.Reachable acp₀)
+theorem chainTo_compatible {sp : AC.ACParams} {acp₀ : AC.Payload sp.n}
+    {st st' : Store sp.toParams (AC.Payload sp.n)} (hr : st.Reachable acp₀)
     (hr' : st'.Reachable acp₀) {U : Set (Blk sp)} (hU : Coherent U) (hs : st.tree ⊆ U)
     (hs' : st'.tree ⊆ U) {B C : Blk sp} (hB : B ∈ st.tree) (hC : C ∈ st'.tree)
     (hc : Compatible U B C) :

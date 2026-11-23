@@ -8,10 +8,10 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 
 /-! # Witnesses for the Goldilocks ACBase statements, and `CaseOneA13`
 
-On `Spec/AC` and `Spec/SA`, labelled by kind (CONTRIBUTING "Statements"), with one validator,
+On `Spec/AC` and `Spec/AC`, labelled by kind (CONTRIBUTING "Statements"), with one validator,
 `Δ = 1`, `t_s = 4s`, `k = 2`:
 
-* (a) `initial_reachable`: the initial SA state is reachable with the genesis frame inside the
+* (a) `initial_reachable`: the initial AC state is reachable with the genesis frame inside the
   coherent set `{genesis}` (the hypothesis of every `AtReachable` statement: A0.1–A0.6, A0.9).
 * (a) `proposal_at_slot_one`: from it, `ac_proposal` at `t_1` returns a proposal (the hypothesis
   of requirements 4 and 5, `ReqParent` and `ReqPayload`).
@@ -25,7 +25,7 @@ On `Spec/AC` and `Spec/SA`, labelled by kind (CONTRIBUTING "Statements"), with o
 contract, not a milestone statement: A1.3 is stated in ACSteps): A1.3 per vote, with the claims'
 hypotheses, `Sync_AC`, `Carry_y` and `f < h_τ` over the trace, and no FG state. -/
 
-namespace Consensus.Goldilocks.SA.Test
+namespace Consensus.Goldilocks.AC.Test
 
 /-- The shared parameters: one validator, `Δ = 1`, `t_s = 4s`, genesis root `0`. -/
 abbrev P1 : Params where
@@ -40,8 +40,8 @@ abbrev P1 : Params where
   genesisRoot := 0
   δt := 0
 
-/-- The SA parameters: `P1` with `k = 2`. -/
-abbrev sp1 : SAParams where
+/-- The AC parameters: `P1` with `k = 2`. -/
+abbrev sp1 : ACParams where
   toParams := P1
   slotTime_eq := fun s => by change 4 * (s : Int) = 4 * 1 * s; omega
   k := 2
@@ -55,8 +55,8 @@ abbrev v0 : Fin sp1.n := ⟨0, Nat.one_pos⟩
 /-- A replay order for restarts. -/
 noncomputable abbrev ro1 : ReplayOrder sp1 Unit := ReplayOrder.choice sp1
 
-/-- The Goldilocks SA with these parameters. -/
-noncomputable abbrev GA1 : ACInterface sp1.toParams Unit := goldilocksSA sp1 Unit ro1
+/-- The Goldilocks AC with these parameters. -/
+noncomputable abbrev GA1 : ACInterface sp1.toParams Unit := goldilocksAC sp1 Unit ro1
 
 /-- Genesis: root `0`, no parent, slot `0`, empty payloads. -/
 def g : Blk sp1.n Unit := ⟨0, none, 0, v0, 0, (), ([], [])⟩
@@ -79,34 +79,34 @@ theorem frameOK_Φ₀ : FrameOK Φ₀ where
 /-- `{genesis}` is coherent. -/
 theorem coherent_g : Coherent ({g} : Set (Blk sp1.n Unit)) := frameOK_Φ₀.coherent
 
-/-- (a) The initial SA state is reachable, with the genesis frame, inside `{genesis}`. -/
+/-- (a) The initial AC state is reachable, with the genesis frame, inside `{genesis}`. -/
 theorem initial_reachable :
-    (GA1).ReachableAt v0 ({g} : Set (Blk sp1.n Unit)) (SAState.initial 0) Φ₀ 0 :=
+    (GA1).ReachableAt v0 ({g} : Set (Blk sp1.n Unit)) (ACState.initial 0) Φ₀ 0 :=
   ACInterface.ReachableAtFrom.init (A := GA1) (self := v0) (U := {g}) Φ₀
     ⟨rfl, rfl, rfl, rfl, rfl⟩ ⟨frameOK_Φ₀, le_rfl⟩
 
 /-- (a) From the initial state, `ac_proposal` at `t_1` returns a proposal. -/
 theorem proposal_at_slot_one :
-    ((GA1).proposal (SAState.initial 0) Φ₀ (sp1.toParams.slotTime 1)).2.isSome
+    ((GA1).proposal (ACState.initial 0) Φ₀ (sp1.toParams.slotTime 1)).2.isSome
       := by
-  simp [acProposal, joined, SAState.initial]
+  simp [acProposal, joined, ACState.initial]
 
 /-- The one-tick trace: validator `0` makes one `on_tick` call at time `0` with the genesis
 frame, then the AC stutters; the validator is always awake. -/
-noncomputable def oneTick : SATrace sp1 Unit ro1 where
-  init := fun _ => SAState.initial 0
+noncomputable def oneTick : GTrace sp1 Unit ro1 where
+  init := fun _ => ACState.initial 0
   node := fun _ => v0
   time := fun _ => 0
   event := fun i => i
   pos := fun _ => 0
   label := fun i =>
-    if i = 0 then some ⟨.tick, Φ₀, (acOnTick sp1 v0 (SAState.initial 0) Φ₀ 0).2⟩ else none
-  post := fun _ => (acOnTick sp1 v0 (SAState.initial 0) Φ₀ 0).1
+    if i = 0 then some ⟨.tick, Φ₀, (acOnTick sp1 v0 (ACState.initial 0) Φ₀ 0).2⟩ else none
+  post := fun _ => (acOnTick sp1 v0 (ACState.initial 0) Φ₀ 0).1
   awake := fun _ _ => True
 
 /-- A labelled cut of `oneTick` is the tick at cut `0`. -/
 theorem oneTick_label {i : Nat} {ℓ} (h : oneTick.label i = some ℓ) :
-    i = 0 ∧ ℓ = ⟨.tick, Φ₀, (acOnTick sp1 v0 (SAState.initial 0) Φ₀ 0).2⟩ := by
+    i = 0 ∧ ℓ = ⟨.tick, Φ₀, (acOnTick sp1 v0 (ACState.initial 0) Φ₀ 0).2⟩ := by
   simp only [oneTick] at h
   split_ifs at h with h0
   · exact ⟨h0, (Option.some.inj h).symm⟩
@@ -140,35 +140,35 @@ slot-`m` vote extends `B`, the honest slot-`m` voters are at least half of the c
 `Carry_y(m, S_m, B)` holds for their votes, `f < h_τ`, `Sync[t_m, τ]` holds, at `e` the block `B` is
 in `y`'s viable voter block tree or at or below its `fc_root`, and every honest slot-`(m+1)` vote at
 an earlier cut extends `B`, then `e`'s vote extends `B`. -/
-def CaseOneA13 (sp : SAParams) : Prop :=
+def CaseOneA13 (sp : ACParams) : Prop :=
   ∀ (FGP : Type) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (ro : ReplayOrder sp FGP)
-    (tr : SATrace sp FGP ro),
-    ACLocalRun (goldilocksSA sp FGP ro) H U tr →
-    ∀ (m : Nat) (B : Blk sp.n FGP) (y : Fin sp.n) (i : Nat) (ℓ : ACLabel (goldilocksSA sp FGP ro))
+    (tr : GTrace sp FGP ro),
+    ACLocalRun (goldilocksAC sp FGP ro) H U tr →
+    ∀ (m : Nat) (B : Blk sp.n FGP) (y : Fin sp.n) (i : Nat) (ℓ : ACLabel (goldilocksAC sp FGP ro))
       (e : Em sp FGP), y ∈ H → tr.CallAt y i ℓ → e ∈ ℓ.emits → e.msg.slot = m + 1 →
     (∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = m → VoteExtends U e'.msg B) →
     sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard →
     CarryAt tr U y i e m {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m} →
     FaultBound tr H (tr.time i) →
-    SyncAC (goldilocksSA sp FGP ro) H U (sp.ts m) (tr.time i) tr →
+    SyncAC (goldilocksAC sp FGP ro) H U (sp.ts m) (tr.time i) tr →
     (B ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (m + 1)) ∨
       ℓ.frame.Anc B ℓ.frame.fcRoot) →
     (∀ x ∈ H, ∀ j < i, ∀ e', VoteAt tr x j e' → e'.msg.slot = m + 1 → VoteExtends U e'.msg B) →
     VoteExtends U e.msg B
 
-end Consensus.Goldilocks.SA.Test
+end Consensus.Goldilocks.AC.Test
 
-namespace Consensus.Goldilocks.SA.Test
+namespace Consensus.Goldilocks.AC.Test
 
 /-- The one-tick trace's tick changes nothing: at time `0` neither the vote check nor the update
 runs. -/
-theorem oneTick_post (i : Nat) : oneTick.post i = SAState.initial 0 := by
+theorem oneTick_post (i : Nat) : oneTick.post i = ACState.initial 0 := by
   have h0 : sp1.slot 0 = 0 := by simp [Params.slotOf]
   have hΔ : sp1.Δ = 1 := rfl
-  simp [oneTick, acOnTick, joined, SAParams.ts, h0, hΔ, SAState.initial]
+  simp [oneTick, acOnTick, joined, ACParams.ts, h0, hΔ, ACState.initial]
 
 /-- Every state of the one-tick trace is the initial state. -/
-theorem oneTick_state (y : Fin sp1.n) (i : Nat) : oneTick.state y i = SAState.initial 0 := by
+theorem oneTick_state (y : Fin sp1.n) (i : Nat) : oneTick.state y i = ACState.initial 0 := by
   induction i with
   | zero => rfl
   | succ i ih => simp only [Trace.state]; split_ifs <;> simp [oneTick_post, ih]
@@ -180,7 +180,7 @@ theorem acRun_one_tick : ACRun (fun _ => 0) oneTick Set.univ ({g} : Set (Blk sp1
   vstart := fun _ => voteStart_initial _
   honest :=
     { pool_vote := fun y _ i σ v hv _ => by
-        rw [oneTick_state] at hv; simp [SAState.initial] at hv
+        rw [oneTick_state] at hv; simp [ACState.initial] at hv
       message_vote := fun y _ i ℓ v h hc _ => by
         obtain ⟨rfl, rfl⟩ := oneTick_label h.2
         cases hc
@@ -196,8 +196,8 @@ theorem acRun_one_tick : ACRun (fun _ => 0) oneTick Set.univ ({g} : Set (Blk sp1
 The numerical readpoint data are the source-time counterexample: admission at 4, a new
 source at 5, and recipient deadline 8. This checks the adapter on those reduced facts,
 not a replay of the engine execution supplying them. -/
-theorem earlier_admission_served {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
-    (tr : SATrace sp FGP ro) (y : Fin sp.n) (v : Vote sp.n) {q j : Nat}
+theorem earlier_admission_served {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
+    (tr : GTrace sp FGP ro) (y : Fin sp.n) (v : Vote sp.n) {q j : Nat}
     (hqj : q ≤ j) (hp : v ∈ (tr.state y q).pool v.slot)
     (hst : (tr.state y q).voteStamp v = ETime.of 4)
     (hd : tr.deadline y j 5 = 8)
@@ -212,6 +212,6 @@ theorem earlier_admission_served {sp : SAParams} {FGP : Type} {ro : ReplayOrder 
   · rintro ⟨k, hk, ht, hm, -⟩
     exact hno k hk ht hm
 
-end Consensus.Goldilocks.SA.Test
+end Consensus.Goldilocks.AC.Test
 
 end

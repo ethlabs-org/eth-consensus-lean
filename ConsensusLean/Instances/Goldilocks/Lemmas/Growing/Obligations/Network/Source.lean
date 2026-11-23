@@ -29,7 +29,7 @@ time. Recursive delivery processing may occur later in the event, never at a lat
 theorem sendOrAdmit_process_same_time_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} {i : Nat}
     (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i))
-    {m : SA.Vote (Fintype.card V)} (hsource : (simTraceAt S rho hn).SendOrAdmitAt y i m) :
+    {m : AC.Vote (Fintype.card V)} (hsource : (simTraceAt S rho hn).SendOrAdmitAt y i m) :
     ∃ k, (simTraceAt S rho hn).projAC.ProcessAt y k m ∧
       (simTraceAt S rho hn).time k = (simTraceAt S rho hn).time i := by
   have hrun := simTraceAt_goldilocksRun S rho hn hv

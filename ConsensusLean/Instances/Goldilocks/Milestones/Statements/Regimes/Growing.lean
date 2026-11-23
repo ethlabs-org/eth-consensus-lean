@@ -33,17 +33,17 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Regimes.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
 /-- The sleepy look-ahead of the Goldilocks contract (`ahead = 5`) at `Δp = Δe`. -/
-def ahead (sp : SAParams) : Time := 5 * sp.Δ
+def ahead (sp : ACParams) : Time := 5 * sp.Δ
 
 /-- The proposer hold of the Goldilocks contract (`hold = 1`) at `Δp = Δe`. -/
-def hold (sp : SAParams) : Time := sp.Δ
+def hold (sp : ACParams) : Time := sp.Δ
 
 section Defs
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
 
 /-- `y` is ready at `t` with catch-up `c`: honest at `t` and awake throughout
@@ -53,7 +53,7 @@ def ReadyAt (c : Time) (y : Fin sp.n) (t : Time) : Prop :=
 
 /-- `P` is an honest proposal released at `τ` by a proposer ready at `τ` (catch-up `c`) and still
 honest at `τ + h`. -/
-def ReadyProposalAt (c τ h : Time) (P : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+def ReadyProposalAt (c τ h : Time) (P : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∃ p kP, ReadyAt tr H c p τ ∧ p ∈ H (τ + h) ∧ tr.ProposesAt p kP P ∧ tr.time kP = τ
 
 /-- One proposer ready at its slot start and still honest `h` later in every window of `k`
@@ -67,7 +67,7 @@ end Defs
 
 /-- **R.8, `nested`, under growing faults**, at every cut of a node honest at its time. -/
 def OutputsNested : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr →
@@ -77,7 +77,7 @@ def OutputsNested : Prop :=
 
 /-- **R.8, `finalMonotone`, under growing faults**, for a node honest at the later cut. -/
 def FinalizedMonotone : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr →
@@ -86,7 +86,7 @@ def FinalizedMonotone : Prop :=
 
 /-- **R.8, `outputValid`, under growing faults**, at every cut of a node honest at its time. -/
 def OutputsValid : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr →
@@ -99,7 +99,7 @@ honest at its own cut, conflict inside the blocks held while honest, at least `2
 validators each have a slashable pair among the attestations included on two chains the two
 readers hold. No fault bound. -/
 def FinalAccountable : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
@@ -113,7 +113,7 @@ def FinalAccountable : Prop :=
 /-- **R.7, `nonFraming`, under growing faults.** A validator honest at the later of two of its
 signings signs no slashable pair with them. -/
 def NonFraming : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr →
@@ -124,7 +124,7 @@ def NonFraming : Prop :=
 validators compromised by the later of the two reads, the finalized tips of two nodes, each honest
 at its own cut, never conflict. -/
 def FinalizedSafe : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →

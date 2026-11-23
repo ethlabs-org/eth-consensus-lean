@@ -42,12 +42,12 @@ Prerequisites for the post-reset proposal pivot. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-! ### The proposal walk and fork-choice roots -/
 
@@ -57,27 +57,27 @@ theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old {b : Time}
     {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp ro)} (hci : tr.projAC.CallAt p i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
-    {x : Fin sp.n} {q j : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {q j : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x q j O) (hqb : tr.time q ≤ b) :
-    SA.HighLocksCompatible (tr.HonestBlocks H) (tr.projAC.state p i)
+    AC.HighLocksCompatible (tr.HonestBlocks H) (tr.projAC.state p i)
       (tr.time i) (u - 1) O := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  rw [SA.highLocksCompatible_iff]
+  rw [AC.highLocksCompatible_iff]
   intro l hl _ hlabel L hL hLr
   obtain ⟨r, hri, D, hwrite, L', hL', hL'r, hLD⟩ :=
-    SA.lock_provenanceU hr.toU hp.run.vstart hpH i l hl
+    AC.lock_provenanceU hr.toU hp.run.vstart hpH i l hl
   obtain rfl : L' = L := hr.coherent.1 hL' hL (hL'r.trans hLr.symm)
   have hrt : tr.time r ≤ sp.ts u := hti ▸ hp.run.time_mono hri.le
   rcases hwrite with ⟨CV, hop⟩ | ⟨ell', hupd⟩
   · have hle : l.slot ≤ u := by
       obtain ⟨_, _, _, hsl, _⟩ := id hop
       have ht : sp.ts l.slot ≤ tr.time r :=
-        (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) l.slot).mpr (by omega)
-      exact_mod_cast (SA.ts_le_iff sp).mp (ht.trans hrt)
+        (AC.ts_le_iff_le_slot sp (hr.time_nonneg r) l.slot).mpr (by omega)
+      exact_mod_cast (AC.ts_le_iff sp).mp (ht.trans hrt)
     have hclean : cleanLabel sp a + sp.k + 2 ≤ l.slot := by
       change u - 1 ≤ l.slot at hlabel
       rw [drainTime_eq] at hR
-      have := (SA.ts_le_iff sp).mp hR
+      have := (AC.ts_le_iff sp).mp hR
       have := sp.two_le_k
       rw [cleanLabel_eq]
       omega
@@ -89,12 +89,12 @@ theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old {b : Time}
     rcases hp.protected_source_compatible_high_origin hc hpH (Or.inl ⟨CV, Or.inr hop⟩)
         hclean ((hp.run.time_mono hri.le).trans hib) ho hqb with h | h
     · exact Or.inl (hLD.trans h)
-    · exact SA.anc_total hr.coherent hLD h
+    · exact AC.anc_total hr.coherent hLD h
   · have ht : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
     have hslots : sp.ts u ≤ sp.ts (l.slot + 1 : Nat) :=
-      (SA.ts_le_iff sp).mpr (by clear * - hlabel; omega)
+      (AC.ts_le_iff sp).mpr (by clear * - hlabel; omega)
     have hsucc : sp.ts (l.slot + 1 : Nat) = sp.ts l.slot + 4 * sp.Δ := by
-      simp only [SA.SAParams.ts]; push_cast; ring
+      simp only [AC.ACParams.ts]; push_cast; ring
     rw [hsucc] at hslots
     have := sp.toParams.hΔ
     linarith only [hrt, ht, hslots, this]
@@ -104,13 +104,13 @@ previous label. Regular updates are too late and current-label optimism is exclu
 theorem proposal_stored_locks_compatible_old
     (hp : ResetPremises tr H K proposer dg g ΔF a)
     (_hc : CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k u P) (_hR : drainTime sp a ≤ sp.ts u)
     {i : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
     (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hti : tr.time i = sp.ts u) :
     ∀ O, OldSrc tr H g u O →
-      SA.HighLocksCompatible (tr.HonestBlocks H) (tr.projAC.state p i)
+      AC.HighLocksCompatible (tr.HonestBlocks H) (tr.projAC.state p i)
         (tr.time i) (u - 1) O := by
   intro O hO
   obtain ⟨_, _, _, ho, hqt⟩ := oldSrc_iff.1 hO
@@ -123,47 +123,47 @@ precedes the receiving cast, not necessarily the proposal. -/
 theorem ResetPremisesUpTo.vote_old_lock_source_before {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {j u : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
     (hR : drainTime sp a ≤ sp.ts u)
-    {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
+    {l : AC.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
     (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k)
-    {L : SA.Blk sp.n (List (FG.Att sp.n))}
+    {L : AC.Blk sp.n (List (FG.Att sp.n))}
     (hL : L ∈ ell.frame.tree) (hLr : L.root = l.block) :
     ∃ r D, r < j ∧ cleanLabel sp a + sp.k + 2 ≤ l.slot ∧ l.slot < u ∧
-      ((∃ CV, SA.FastLockAt tr.projAC y r l.slot D CV) ∨
-        SA.SlowLockAt tr.projAC y r l.slot D) ∧
+      ((∃ CV, AC.FastLockAt tr.projAC y r l.slot D CV) ∨
+        AC.SlowLockAt tr.projAC y r l.slot D) ∧
       Anc (tr.HonestBlocks H) (ell.frame.viableAncestor L) D := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
-  have hslot : sp.slot (tr.time j) = u := ((SA.castAt_spec hr hy hc).2.1).symm.trans hes
+  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hc.1
+  have hslot : sp.slot (tr.time j) = u := ((AC.castAt_spec hr hy hc).2.1).symm.trans hes
   have hclean : cleanLabel sp a + sp.k + 2 ≤ l.slot := by
     rw [drainTime_eq] at hR
-    have := (SA.ts_le_iff sp).mp hR
+    have := (AC.ts_le_iff sp).mp hR
     rw [hslot] at hlive
     rw [cleanLabel_eq]
     clear * - hlive this; omega
   have hu : 0 < u := by
     rw [drainTime_eq] at hR
-    have := (SA.ts_le_iff sp).mp hR
+    have := (AC.ts_le_iff sp).mp hR
     clear * - this; omega
   obtain ⟨l₀, hl₀, hs, B, hB, hBr, L', hL', hL'r, hLB⟩ :=
-    SA.readPoint_locks_below_stored hr hy hc
+    AC.readPoint_locks_below_stored hr hy hc
       (by change 0 < sp.slot (tr.time j); rw [hslot]; exact hu) l hl
       (by change l.slot ≠ sp.slot (tr.time j); simpa only [hslot] using hne)
   obtain rfl : L' = L := hPhi.coherent.1 hL' hL (hL'r.trans hLr.symm)
   obtain ⟨r, hrj, D, hraw, X, hX, hXr, hXD⟩ :
       ∃ r < j, ∃ D,
-        ((∃ CV, SA.FastLockAt tr.projAC y r l₀.slot D CV) ∨
-          SA.SlowLockAt tr.projAC y r l₀.slot D) ∧
+        ((∃ CV, AC.FastLockAt tr.projAC y r l₀.slot D CV) ∨
+          AC.SlowLockAt tr.projAC y r l₀.slot D) ∧
         ∃ X ∈ tr.HonestBlocks H, X.root = l₀.block ∧ Anc (tr.HonestBlocks H) X D := by
     cases hf : l₀.fast with
     | false =>
-      obtain ⟨r, hrj, D, hslow, hX⟩ := SA.slow_lock_provenance hr
+      obtain ⟨r, hrj, D, hslow, hX⟩ := AC.slow_lock_provenance hr
           hp.run.vstart hy j l₀ hl₀ hf
       exact ⟨r, hrj, D, Or.inr hslow, hX⟩
     | true =>
-      obtain ⟨r, hrj, D, CV, hfast, hX⟩ := SA.fast_lock_provenance hr
+      obtain ⟨r, hrj, D, CV, hfast, hX⟩ := AC.fast_lock_provenance hr
         hp.run.vstart hy j l₀ hl₀ hf
       exact ⟨r, hrj, D, Or.inl ⟨CV, hfast⟩, hX⟩
   obtain rfl : X = B := hr.coherent.1 hX (hPhiU hB) (hXr.trans hBr.symm)
@@ -175,31 +175,31 @@ theorem ResetPremisesUpTo.vote_old_lock_source_before {b : Time}
           have := sp.toParams.hΔ
           linarith only [ht, this]
         · change sp.slot (tr.time r) = l₀.slot at hsl
-          exact (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) l₀.slot).mpr (by
+          exact (AC.ts_le_iff_le_slot sp (hp.run.time_nonneg r) l₀.slot).mpr (by
               clear * - hsl; omega)
       · have ht : tr.time r = sp.ts l₀.slot + 6 * sp.Δ := hupd.2.2.1
         have hΔ : 0 < sp.Δ := sp.toParams.hΔ
         linarith only [ht, hΔ]
     have htj : l₀.slot ≤ sp.slot (tr.time j) := by
-      exact_mod_cast (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg j) l₀.slot).mp
+      exact_mod_cast (AC.ts_le_iff_le_slot sp (hp.run.time_nonneg j) l₀.slot).mp
         (ht.trans (hp.run.time_mono hrj.le))
     omega
   refine ⟨r, D, hrj, hclean, by clear * - hne hs hle; omega, hs ▸ hraw, ?_⟩
-  exact (Anc.mono hPhiU ((SA.anc_viableAncestor ell.frame L').trans hLB)).trans hXD
+  exact (Anc.mono hPhiU ((AC.anc_viableAncestor ell.frame L').trans hLB)).trans hXD
 
 /-- Whole-run specialization of actual read-point lock provenance. -/
 theorem vote_old_lock_source_before (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {j u : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
     (hR : drainTime sp a ≤ sp.ts u)
-    {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
+    {l : AC.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
     (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k)
-    {L : SA.Blk sp.n (List (FG.Att sp.n))}
+    {L : AC.Blk sp.n (List (FG.Att sp.n))}
     (hL : L ∈ ell.frame.tree) (hLr : L.root = l.block) :
     ∃ r D, r < j ∧ cleanLabel sp a + sp.k + 2 ≤ l.slot ∧ l.slot < u ∧
-      ((∃ CV, SA.FastLockAt tr.projAC y r l.slot D CV) ∨
-        SA.SlowLockAt tr.projAC y r l.slot D) ∧
+      ((∃ CV, AC.FastLockAt tr.projAC y r l.slot D CV) ∨
+        AC.SlowLockAt tr.projAC y r l.slot D) ∧
       Anc (tr.HonestBlocks H) (ell.frame.viableAncestor L) D :=
   (hp.toUpTo tr H (le_refl a)).vote_old_lock_source_before hy hc hes hR hl hne hlive hL hLr
 
@@ -210,14 +210,14 @@ theorem ResetPremisesUpTo.vote_old_live_lock_below_parent {b : Time}
     {ellp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hd : (AC.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {elly : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
-    {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
+    {elly : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hcy : AC.CastAt tr.projAC y j elly e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
+    {l : AC.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
     (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k)
-    {L : SA.Blk sp.n (List (FG.Att sp.n))} (hL : L ∈ elly.frame.tree) (hLr : L.root = l.block) :
+    {L : AC.Blk sp.n (List (FG.Att sp.n))} (hL : L ∈ elly.frame.tree) (hLr : L.root = l.block) :
     Anc (tr.HonestBlocks H) (elly.frame.viableAncestor L) d.head := by
   obtain ⟨r, D, hrj, hclean, hlu, hsource, hLD⟩ :=
     hp.vote_old_lock_source_before hy hcy hes hR hl hne hlive hL hLr
@@ -232,7 +232,7 @@ theorem ResetPremisesUpTo.vote_old_live_lock_below_parent {b : Time}
   rw [hes, he] at htj
   have hrt := hp.run.time_mono hrj.le
   have hts : sp.ts (l.slot + 1 : Nat) = sp.ts l.slot + 4 * sp.Δ := by
-    simp only [SA.SAParams.ts]; push_cast; ring
+    simp only [AC.ACParams.ts]; push_cast; ring
   have hΔ := sp.toParams.hΔ
   rcases hsource with ⟨CV, hfast⟩ | ⟨ellX, C, hupd, _⟩
   · rcases hfast with ⟨ellX, C, hupd, _⟩ | hop
@@ -253,26 +253,26 @@ section Support
 
 variable (hp : ResetPremises tr H K proposer dg g ΔF a)
   (hc : CatchRun tr H g (2 * sp.Δ))
-  {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+  {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
   (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
   {i : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
   {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
   (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-  (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+  (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
   (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
   {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-  {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-  (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = u)
-  (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' →
+  {ℓy : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+  (hcy : AC.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = u)
+  (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', AC.VoteAt tr.projAC x j' e' →
     e'.msg.slot = u → e'.msg.head = P.root)
 
 include hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE in
 set_option linter.unusedSectionVars false in
 /-- Non-current live locks move back below the proposal parent. -/
 theorem vote_old_live_lock_below_parent
-    {l : SA.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
+    {l : AC.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
     (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k)
-    {L : SA.Blk sp.n (List (FG.Att sp.n))}
+    {L : AC.Blk sp.n (List (FG.Att sp.n))}
     (hL : L ∈ ℓy.frame.tree) (hLr : L.root = l.block) :
     Anc (tr.HonestBlocks H) (ℓy.frame.viableAncestor L) d.head :=
   (hp.toUpTo tr H (le_max_left a (max (tr.time i) (tr.time j)))).vote_old_live_lock_below_parent

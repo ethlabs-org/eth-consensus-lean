@@ -6,23 +6,23 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks SA: forwarding sides of same-slot compatibility
+/-! # Goldilocks AC: forwarding sides of same-slot compatibility
 
 Early votes from an optimistic origin reach an honest update under synchrony. Validators of
 forwarded votes for a conflicting block are voters there, disjoint from its supporters.
 These facts are shared by fast-lock compatibility and Healing's result compatibility. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → SAState sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → ACState sp.n}
 
 /-- `u` has a slot-`s` vote whose head extends `D` inside `U`, which `X` sent or admitted at a
 time in `[t_s, t_s + 2Δ)`. -/
-def Fwd (tr : SATrace sp FGP ro) (U : Set (Blk sp.n FGP)) (X : Fin sp.n) (s : Nat)
+def Fwd (tr : GTrace sp FGP ro) (U : Set (Blk sp.n FGP)) (X : Fin sp.n) (s : Nat)
     (D : Blk sp.n FGP) : Set (Fin sp.n) :=
   {u | ∃ v : Vote sp.n, v.val = u ∧ v.slot = s ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
     ∃ k, tr.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧ tr.time k < sp.ts s + 2 * sp.Δ}
@@ -35,7 +35,7 @@ theorem fwd_iff {X : Fin sp.n} {s : Nat} {D : Blk sp.n FGP} {u : Fin sp.n} :
 
 theorem ts_add (s : Nat) (a : Time) :
     sp.ts (s + 1 : Nat) + a = sp.ts s + 4 * sp.Δ + a := by
-  simp only [SAParams.ts]; push_cast; ring
+  simp only [ACParams.ts]; push_cast; ring
 
 /-- The slot of a time in `[t_s, t_s + 4Δ)` is `s`. -/
 theorem CompatibleSides.slot_of_lt {s : Nat} {t : Time}
@@ -70,7 +70,7 @@ theorem admitted_of_heldU
 /-- A vote that an honest node holds before cut `c`, of slot `s`, admitted before a time of slot
 `s`, was admitted by the node at a time in `[t_s, T)` (a restart puts in the pools only votes of
 frame blocks, whose slots are at most the restart's). From starts up to the vote permission. -/
-theorem admitted_of_held (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem admitted_of_held (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {X : Fin sp.n}
     (hX : X ∈ H) {c s : Nat} {v : Vote sp.n} (hvs : v.slot = s) (hv : v ∈ (tr.state X c).pool s)
     {T : Time} (hT : T ≤ sp.ts s + 2 * sp.Δ)
@@ -120,8 +120,8 @@ theorem optimistic_side (hrun : ACRun proposer tr H U ini)
 given. -/
 theorem fwd_heldU
     {uL : Nat → Set Lock} {ini} (hr : ACLocalRunU wm uL H U tr ini) {s : Nat}
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
-    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    (hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
+    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
     (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) {D : Blk sp.n FGP} {u : Fin sp.n}
     (hu : u ∈ Fwd tr U X s D) :
@@ -142,8 +142,8 @@ validators `T` with forwardable votes for a block `D` that conflicts with `DY` a
 and none is a supporter `S` of `DY`. -/
 theorem against_updateU
     {uL : Nat → Set Lock} {ini} (hr : ACLocalRunU wm uL H U tr ini) {s : Nat}
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
-    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    (hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
+    {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     (hc : tr.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
     (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) {D DY : Blk sp.n FGP}
     {S T : Set (Fin sp.n)}
@@ -172,6 +172,6 @@ theorem against_updateU
   · obtain ⟨-, v, hv, rfl, -⟩ := hS u hu
     exact ⟨v, hv, rfl⟩
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

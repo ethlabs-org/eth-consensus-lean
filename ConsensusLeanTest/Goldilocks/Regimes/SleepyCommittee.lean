@@ -6,10 +6,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 /-! # The committee rows of R.2 at the full committee
 
 Kind (s), a specialisation (CONTRIBUTING "Statements"): at the full committee
-`K = SA.CommitteeDict.full` with `committeeSize = n`, the committee rows `IncludeSleepy` and
+`K = AC.CommitteeDict.full` with `committeeSize = n`, the committee rows `IncludeSleepy` and
 `GrowSleepy` (`Results/Statements/SleepyGrowth`) give the population rows over the default start,
 stated here as `PopulationIncludeSleepy` and `PopulationGrowSleepy`. The full committee's start is
-the default start (`SA.committeeStart_full`), its committee facts hold at the population size
+the default start (`AC.committeeStart_full`), its committee facts hold at the population size
 (`CommitteeFacts.of_full`), and its committee support follows from `Sleepy`
 (`sleepyBoundsFrom_of_sleepyRunAt`, `CommitteeBoundsFrom.of_full` at each consumption time).
 
@@ -18,11 +18,11 @@ the default start (`SA.committeeStart_full`), its committee facts hold at the po
 
 namespace Consensus.Goldilocks.Regimes.Growing.Test
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
 /-- R.2 inclusion under growing faults at population-sized committees, over the default start. -/
 def PopulationIncludeSleepy : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time),
     sp.committeeSize = sp.n →
@@ -34,7 +34,7 @@ def PopulationIncludeSleepy : Prop :=
 
 /-- R.2 growth under growing faults at population-sized committees, over the default start. -/
 def PopulationGrowSleepy : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time) (k : Nat),
     sp.committeeSize = sp.n →
@@ -51,21 +51,21 @@ def PopulationGrowSleepy : Prop :=
           ReadyAt tr H (catchUp sp) y (t + D) → CutAfter tr j (t + D) →
           Anc (tr.HonestBlocksAt H) (readAfter tr x jx t) (readAfter tr y j (t + D))
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- The default start is the full committee's start. -/
 theorem run_full (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) :
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot (SA.CommitteeDict.full sp.n)) := by
-  rw [SA.committeeStart_full]
+      (AC.committeeStart sp.genesisRoot (AC.CommitteeDict.full sp.n)) := by
+  rw [AC.committeeStart_full]
   exact hrun
 
 /-- Under `Sleepy`, the full committee has committee support. -/
 theorem committeeSleepy_full (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hsl : tr.SleepyRunAt H ΔF (ahead sp)) :
-    CommitteeSleepy tr H (SA.CommitteeDict.full sp.n) := by
+    CommitteeSleepy tr H (AC.CommitteeDict.full sp.n) := by
   have hK := fun d => Compose.Growing.CommitteeBoundsFrom.of_full hrun
     (sleepyBoundsFrom_of_sleepyRunAt hrun.antitone hsl d)
   exact ⟨fun s d h1 h6 => (hK d).slotK s d (Nat.zero_le s) h1 le_rfl h6,

@@ -25,7 +25,7 @@ public section
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 /-- `GST(g)` gives `Sync[a, b]` for every window that starts at or after `g`: an object sent at
 `τ ≥ g` is processed as if sent at `max τ g = τ`. -/
@@ -47,16 +47,16 @@ theorem syncRun_of_gst {P : Params} {A : NodeAC P} {tr : RunTrace A} {H : Set (F
     simp only [he _ hw.1] at this
     exact this
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) {K : SA.CommitteeDict sp.n}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) {K : AC.CommitteeDict sp.n}
 
 /-- **The premises of HR.4** for the reset `a`: a Goldilocks run from the committee start of the
 slot dictionary `K` under `Healthy(g)` and `NoColl`, with the committee facts of `K` and CS2 for
 every slot after the slot of `ḡ`, and `a` is the reset `a_z`. -/
-structure ResetPremises (K : SA.CommitteeDict sp.n) (proposer : Nat → Fin sp.n)
+structure ResetPremises (K : AC.CommitteeDict sp.n) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF a : Time) :
     Prop where
-  run : GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K)
+  run : GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K)
   healthy : tr.HealthyRun H ΔF g
   noColl : Compose.NoCollRun dg tr
   reset : IsReset tr H g a
@@ -101,9 +101,9 @@ theorem ResetService.of_gst {g ΔF b : Time} (h : tr.GSTRun H ΔF g) :
 /-- Finite reset premises. Reset existence and its cutoff are inputs, not consequences of
 bounded health. GST quantifies actual receiver calls, so remains finite-satisfiable.
 Progress and Catch are separate premises of the consumers that need them. -/
-structure ResetPremisesUpTo (K : SA.CommitteeDict sp.n) (proposer : Nat → Fin sp.n)
+structure ResetPremisesUpTo (K : AC.CommitteeDict sp.n) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF a b : Time) : Prop where
-  run : GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K)
+  run : GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K)
   noColl : Compose.NoCollRun dg tr
   sync : ResetService tr H g ΔF b
   awake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t
@@ -140,10 +140,10 @@ theorem ResetPremises.toUpTo {proposer : Nat → Fin sp.n}
 of a slot `> j` extends `B`, and at that vote `B` is in the viable voter block tree or
 `B ⪯ fc_root` (in the honest blocks). -/
 def VoteInv (g : Time) (k : Nat) : Prop :=
-  ∀ x i j B, HighOrigin tr H g x i j B → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
+  ∀ x i j B, HighOrigin tr H g x i j B → ∀ y ∈ H, ∀ ℓ e, AC.CastAt tr.projAC y k ℓ e →
     j < e.msg.slot →
-      SA.VoteExtends (tr.HonestBlocks H) e.msg B ∧
-      (B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
+      AC.VoteExtends (tr.HonestBlocks H) e.msg B ∧
+      (B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
         Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot)
 
 /-- (R2) after an honest call at cut `k` at a time `≥ a`, for every high origin `(B, j)` written
@@ -159,10 +159,10 @@ variable {tr H} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Tim
   {proposer : Nat → Fin sp.n}
 
 theorem voteInv_iff {g : Time} {k : Nat} : VoteInv tr H g k ↔
-    ∀ x i j B, HighOrigin tr H g x i j B → ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e →
+    ∀ x i j B, HighOrigin tr H g x i j B → ∀ y ∈ H, ∀ ℓ e, AC.CastAt tr.projAC y k ℓ e →
       j < e.msg.slot →
-        SA.VoteExtends (tr.HonestBlocks H) e.msg B ∧
-        (B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
+        AC.VoteExtends (tr.HonestBlocks H) e.msg B ∧
+        (B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
           Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) := Iff.rfl
 
 theorem cacheInv_iff {g a : Time} {k : Nat} : CacheInv tr H g a k ↔
@@ -183,13 +183,13 @@ theorem restart_le_before {b : Time} (hp : ResetPremisesUpTo tr H K proposer dg 
   by_contra hlt
   obtain ⟨u, -, huk, hu, hprev⟩ := hp.run.sleep_of_restart y hy k hk
   have hp₀ : gbar g ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
-    have h := (SA.ts_le_iff_le_slot sp (gbar_nonneg g) ((sp.slot (gbar g) + 1 : Nat) : Int)).not.mpr
+    have h := (AC.ts_le_iff_le_slot sp (gbar_nonneg g) ((sp.slot (gbar g) + 1 : Nat) : Int)).not.mpr
       (by push_cast; omega)
     exact (not_le.mp h).le
   by_cases hgu : gbar g ≤ u
   · exact hu (hp.awake y hy u hgu (huk.le.trans hkb))
   · obtain ⟨j, _x, hne, hcs, -⟩ := hp.run.tick_of_awake y hy _ ((gbar_nonneg g).trans hp₀)
-      ⟨4 * ((sp.slot (gbar g) + 1 : Nat) : Int), by simp only [SAParams.ts]; ring⟩
+      ⟨4 * ((sp.slot (gbar g) + 1 : Nat) : Int), by simp only [ACParams.ts]; ring⟩
       (hp.awake y hy _ hp₀ ((lt_of_not_ge hlt).le.trans hkb))
     obtain ⟨hn, ht, -, -, hl⟩ := hcs 0 (List.length_pos_of_ne_nil hne)
     simp only [Nat.add_zero] at hn ht hl
@@ -216,7 +216,7 @@ theorem fault_bound_late_before {b : Time}
   have hgt : gbar g ≤ t := by have := lt_cutZ sp g; linarith
   have ht0 : 0 ≤ t := (gbar_nonneg g).trans hgt
   have hs : sp.slot (gbar g) + 3 ≤ sp.slot t := by
-    have h := (SA.ts_le_iff_le_slot sp ht0 ((sp.slot (gbar g) + 3 : Nat) : Int)).mp
+    have h := (AC.ts_le_iff_le_slot sp ht0 ((sp.slot (gbar g) + 3 : Nat) : Int)).mp
       ((cutZ_eq sp g) ▸ ht)
     exact_mod_cast h
   have hsub : H ⊆ {y | y ∈ H ∧ tr.awake y t ∧ tr.JoinedAt y t} := by
@@ -226,7 +226,7 @@ theorem fault_bound_late_before {b : Time}
       sp.slotTime_eq _
     refine ⟨by omega, (restart_le_before hp hy hk (hkt.trans htb)).trans ?_⟩
     rw [he]
-    exact (SA.ts_le_iff sp).mpr (by omega)
+    exact (AC.ts_le_iff sp).mpr (by omega)
   have hle : H.ncard ≤ tr.honestAwakeJoined H t := Set.ncard_le_ncard hsub
   have hn : H.ncard + Hᶜ.ncard = sp.n := by
     rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]

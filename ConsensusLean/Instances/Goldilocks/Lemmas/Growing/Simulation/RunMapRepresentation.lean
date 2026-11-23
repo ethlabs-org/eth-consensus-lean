@@ -108,8 +108,8 @@ theorem goldilocksRunMap_honestReadTransport :
     exact held_att_in_view_at S rho hn hv' hi hh hY haY
 
 /-- The canonical chain map represents same-store ancestry by prefixes and survives store growth. -/
-theorem goldilocks_chainRepresentation (sp : SA.SAParams)
-    (ro : SA.ReplayOrder sp (List (FG.Att sp.n))) :
+theorem goldilocks_chainRepresentation (sp : AC.ACParams)
+    (ro : AC.ReplayOrder sp (List (FG.Att sp.n))) :
     Generic.ChainRepresentation (goldilocksNode sp ro)
       (fun st B => blocksTo st.fg.blocks (B.slot + 1) B) (headerOf sp) where
   same_store_prefix st hr B C h := by
@@ -142,7 +142,7 @@ theorem goldilocksRunMap_honestChainReads :
     all_goals
       rw [outTip_finalized, outTip_confirmed]
       have hΦ := (Store.frame_realization _ _ _ _ hR).1
-      have ha := hΦ.rooted.2 _ (Regimes.sa_tips (A := (((simTraceAt S rho hn).state
+      have ha := hΦ.rooted.2 _ (Regimes.ac_tips (A := (((simTraceAt S rho hn).state
         (rho.ownKey v) (cutMap S rho hn i))).ac) hΦ
         ((goldilocksRunMap S rho hn hv).clock (rho.stateBefore i v).st.1)).1
       exact Anc.mono (fun _ hX => hX.1) ha
@@ -196,10 +196,10 @@ theorem goldilocksRunMap_outputValidity :
 /-- Actual-read accountability for every Goldilocks run supplier whose runs are Goldilocks runs
 from some start: the shared FG argument at both readers' own read points
 (`finalAccountable_readPoint`). -/
-theorem goldilocks_actualReadAccountability {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {O : OutputSchema} {Info : Type}
+theorem goldilocks_actualReadAccountability {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {O : OutputSchema} {Info : Type}
     [DecidableEq Info] [Countable Info] {F : ChainShapeFamily O Info} {E : Env V}
-    {rho : Model.Run (compiled F) E} {payload : SA.Blk sp.n (List (FG.Att sp.n)) → Set Nat}
+    {rho : Model.Run (compiled F) E} {payload : AC.Blk sp.n (List (FG.Att sp.n)) → Set Nat}
     (M : Generic.RunMap (A := goldilocksNode sp ro) rho payload)
     (runs : Generic.ACRun (goldilocksNode sp ro) M.signer)
     (hruns : ∀ cm proposer dg H tr, runs.Run cm proposer dg H tr →

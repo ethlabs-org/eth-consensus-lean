@@ -25,16 +25,16 @@ public section
   next-slot unlock makes all older lock labels compatible at every later cut.
 -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g b : Time}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {g b : Time}
   {proposer : Nat → Fin sp.n}
 
 /-- Finite service and joinedness at the actual vote deadline take every honest node through the
 vote branch of the slot by its deadline, whether or not it may vote in the slot. No `4Δ`
 warm-start margin is needed when joinedness is supplied explicitly. -/
-theorem honest_vote_branches_of_joined_before {K : SA.CommitteeDict sp.n}
+theorem honest_vote_branches_of_joined_before {K : AC.CommitteeDict sp.n}
     (hS : HealthyBaseUpTo K tr H U proposer g b)
     {u : Nat} (hgu : gbar g ≤ sp.ts u) (hub : sp.ts u + sp.Δ ≤ b)
     (hjoin : ∀ x ∈ H, JoinedAt tr x (sp.ts u + sp.Δ)) :
@@ -46,9 +46,9 @@ theorem honest_vote_branches_of_joined_before {K : SA.CommitteeDict sp.n}
   intro x hx
   have hslot : sp.slot (sp.ts u + sp.Δ) = u := by
     apply slot_of_mem sp u (by linarith)
-    simp only [SAParams.ts]; push_cast; linarith
+    simp only [ACParams.ts]; push_cast; linarith
   obtain ⟨c, ell, hc, hcall, htc⟩ := hS.driven.tick x hx (sp.ts u + sp.Δ) (by linarith)
-    ⟨4 * u + 1, by simp only [SAParams.ts]; ring⟩ (hS.awake x hx _ (by linarith) hub)
+    ⟨4 * u + 1, by simp only [ACParams.ts]; ring⟩ (hS.awake x hx _ (by linarith) hub)
   have hj : joined sp (tr.state x c) (tr.time c) := by
     unfold joined
     rcases restartTime_state hr hS.run.vstart hx c with h | ⟨r, hrc, hrs, h⟩
@@ -66,7 +66,7 @@ theorem honest_vote_branches_of_joined_before {K : SA.CommitteeDict sp.n}
 /-- Finite service and joinedness at the actual vote deadline supply a vote of every honest
 member of the slot's committee: its vote branch (`honest_vote_branches_of_joined_before`) is a
 cast. -/
-theorem honest_votes_of_joined_before {K : SA.CommitteeDict sp.n}
+theorem honest_votes_of_joined_before {K : AC.CommitteeDict sp.n}
     (hS : HealthyBaseUpTo K tr H U proposer g b)
     {u : Nat} (hgu : gbar g ≤ sp.ts u) (hub : sp.ts u + sp.Δ ≤ b)
     (hjoin : ∀ x ∈ H, JoinedAt tr x (sp.ts u + sp.Δ)) :
@@ -80,10 +80,10 @@ theorem honest_votes_of_joined_before {K : SA.CommitteeDict sp.n}
 
 /-- An actual honest vote emitted after GST is held with its strict early stamp.
 The restart and deadline premises concern only cuts through the receiving call. -/
-theorem honest_vote_early_pool_before {K : SA.CommitteeDict sp.n}
+theorem honest_vote_early_pool_before {K : AC.CommitteeDict sp.n}
     (hS : HealthyBaseUpTo K tr H U proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ell) {u : Nat}
+    {ell : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ell) {u : Nat}
     (hgu : gbar g ≤ sp.ts u) (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)
     (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ max t (sp.ts u) + sp.Δ)
@@ -113,7 +113,7 @@ theorem honest_vote_early_pool_before {K : SA.CommitteeDict sp.n}
     linarith only [hti, hqt, hqdl]
   have hqj' : q < j := lt_of_le_of_ne hqj (by rintro rfl; linarith only [hqT, ht])
   have hts : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hqs : sp.slot (tr.time q) = u :=
     slot_of_mem sp u (by linarith only [hti0, hiq]) (by rw [hts]; linarith only [hti, hti0, hqT])
   have hxH : e.msg.val ∈ H := hval ▸ hx
@@ -130,7 +130,7 @@ theorem honest_vote_early_pool_before {K : SA.CommitteeDict sp.n}
       have hsw := state_pool_slot sp hr hS.run.vstart hy (q + 1) u _ hw
       rw [hvval] at hev
       rw [hwval] at hew
-      obtain ⟨-, rfl⟩ := SA.one_vote_per_slotU sp FGP ro H U tr hr.toU _ hxH iv iw ev ew
+      obtain ⟨-, rfl⟩ := AC.one_vote_per_slotU sp FGP ro H U tr hr.toU _ hxH iv iw ev ew
         hev hew (hsv.trans hsw.symm)
       exact hne rfl
   intro c hcj
@@ -151,7 +151,7 @@ theorem honest_vote_early_pool_before {K : SA.CommitteeDict sp.n}
 selection, when every pool vote is a committee member's and fewer than half of the committee
 is faulty. This is a pool calculation, independent of any lock-veto premise. -/
 theorem confirmation_of_unanimous_early_pool
-    {A : SAState sp.n} {Phi : Frm sp.n FGP} {u : Nat} {P : Blk sp.n FGP}
+    {A : ACState sp.n} {Phi : Frm sp.n FGP} {u : Nat} {P : Blk sp.n FGP}
     (hPhi : FrameOK Phi) (hPt : P ∈ Phi.tree) (hPg : P.root ≠ sp.genesisRoot)
     (K : CommitteeDict sp.n) (hsize : (K.committee u).ncard = sp.committeeSize)
     (hP : ∀ v ∈ A.pool u, v.val ∈ K.committee u)
@@ -225,10 +225,10 @@ labels compatible at every later cut**, the unlock being the vote branch of slot
 node, whether or not it may vote in that slot (the read point's locks are the unlock's, and the
 branch leaves the read point or the receipt of the node's own vote). Provenance excludes
 intervening writes of those old labels; equal-time calls are ordered by their actual cuts. -/
-theorem older_locks_compatible_after_unlock_branch {ini : Fin sp.n → SAState sp.n}
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem older_locks_compatible_after_unlock_branch {ini : Fin sp.n → ACState sp.n}
+    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {j k u : Nat}
-    {ell : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n}
+    {ell : ACLabel (goldilocksAC sp FGP ro)} {R : ACState sp.n}
     (hb : VoteBranchAt tr y j ell R) (hs : sp.slot (tr.time j) = u + 1) (hjk : j < k)
     {P : Blk sp.n FGP} (hPt : P ∈ ell.frame.tree) {S : Set (Fin sp.n)}
     (hS : ∀ x ∈ S, x ∈ equivocators (mergedVoteView sp R ell.frame (u + 1)).votes ∨
@@ -304,18 +304,18 @@ theorem older_locks_compatible_after_unlock_branch {ini : Fin sp.n → SAState s
     · have := slot_mono sp (hr.time_nonneg j) hmono
       omega
     · have hls' : (l.slot : Int) + 1 ≤ u := by exact_mod_cast hls
-      simp only [SAParams.ts] at htj ht'
+      simp only [ACParams.ts] at htj ht'
       push_cast at htj
       have h4 : (0 : Time) ≤ 4 * sp.Δ := by linarith [sp.toParams.hΔ]
       linarith [mul_le_mul_of_nonneg_left hls' h4]
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF b : Time}
 

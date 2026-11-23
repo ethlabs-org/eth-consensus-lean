@@ -20,23 +20,23 @@ concrete sleepy adapters read it from here.
 
 namespace Consensus.Goldilocks.Generic
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 open Healing Healing.Growing
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- The shared Goldilocks run interface, starting each node with its committee permission. -/
-noncomputable def goldilocksRunInterface (sp : SAParams)
+noncomputable def goldilocksRunInterface (sp : ACParams)
     (ro : ReplayOrder sp (List (FG.Att sp.n))) :
     ACRun (goldilocksNode sp ro) (fun v => v.val) where
   Run cm proposer dg H tr := Growing.GoldilocksRun proposer dg H tr
-    (SA.committeeStart sp.genesisRoot (dictOfTime sp cm)) ∧
+    (AC.committeeStart sp.genesisRoot (dictOfTime sp cm)) ∧
     0 < sp.committeeSize ∧
     (∀ s, ((dictOfTime sp cm).committee s).ncard = sp.committeeSize) ∧
     (Compose.NoCollRun dg tr → Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm))
-  start cm := SA.committeeStart sp.genesisRoot (dictOfTime sp cm)
+  start cm := AC.committeeStart sp.genesisRoot (dictOfTime sp cm)
   run_local h := h.1.toLocalRun
   run_requirements h y := Compose.requirements_from sp ro (h.1.vstart y)
   run_root h := h.1.genesis_root_ok
@@ -47,7 +47,7 @@ noncomputable def goldilocksRunInterface (sp : SAParams)
 theorem goldilocksRunInterface_run_iff (cm : Time → Finset (Fin sp.n)) :
     (goldilocksRunInterface sp ro).Run cm proposer dg H tr ↔
       Growing.GoldilocksRun proposer dg H tr
-        (SA.committeeStart sp.genesisRoot (dictOfTime sp cm)) ∧
+        (AC.committeeStart sp.genesisRoot (dictOfTime sp cm)) ∧
       0 < sp.committeeSize ∧
       (∀ s, ((dictOfTime sp cm).committee s).ncard = sp.committeeSize) ∧
       (Compose.NoCollRun dg tr → Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm)) := by rfl

@@ -44,9 +44,9 @@ latest view's slot at `t`. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
@@ -68,12 +68,12 @@ theorem anc_of_anc_superset {n : Nat} {FGP ACP : Type} {S U : Set (Block n FGP A
 /-- The record step over a chain `Ch` of pairwise compatible honest blocks that holds the
 record's block, `Σ.F`, and the selections of the cut. -/
 theorem record_step_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) {Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) {Ch : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
     (hcomp : ∀ X Y, X ∈ tr.HonestBlocks H → Y ∈ tr.HonestBlocks H → Ch X → Ch Y →
       Compatible (tr.HonestBlocks H) X Y)
     (hrec : ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y i).ac.latestConfirmed ∧ Ch C)
     (hFc : Ch (tr.state y i).fg.F)
-    (hnew : ∀ C s CV, SA.ResultAt tr.projAC y i s C CV ∨ SA.OptimisticLockAt tr.projAC y i s C CV →
+    (hnew : ∀ C s CV, AC.ResultAt tr.projAC y i s C CV ∨ AC.OptimisticLockAt tr.projAC y i s C CV →
       Ch C) :
     ∀ E ∈ tr.HonestBlocks H, E.root = (tr.state y i).ac.latestConfirmed →
       ∃ E' ∈ tr.HonestBlocks H, E'.root = (tr.state y (i + 1)).ac.latestConfirmed ∧
@@ -88,7 +88,7 @@ theorem record_step_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : 
     rw [← hst, tr.projAC.state_succ_of_not fun ℓ h => hcall ⟨ℓ, h⟩, hst]
     exact hEr
   obtain ⟨ℓ, hc⟩ := hcall
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hac hy hc
+  obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hac hy hc
   have hw := call_writes hac hy hc
   rw [← tr.projAC.state_succ_of_call hc, hst, hst] at hw
   -- the record's block before the call: in `y`'s tree, on the chain, in the frame or below `Σ.F`
@@ -105,8 +105,8 @@ theorem record_step_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : 
       exact Or.inl ⟨hC₀, anc_of_anc_superset hU (fun X hX => ⟨y, hy, i, hX⟩)
         (by simp [Params.genesisBlock]) hanc h hC₀⟩
   -- each write keeps the record's block or moves it to a descendant
-  suffices key : ∀ r', Writes ℓ.frame (fun C => ∃ s CV, SA.ResultAt tr.projAC y i s C CV ∨
-      SA.OptimisticLockAt tr.projAC y i s C CV) (tr.state y i).ac.latestConfirmed r' →
+  suffices key : ∀ r', Writes ℓ.frame (fun C => ∃ s CV, AC.ResultAt tr.projAC y i s C CV ∨
+      AC.OptimisticLockAt tr.projAC y i s C CV) (tr.state y i).ac.latestConfirmed r' →
       ∃ E' ∈ tr.HonestBlocks H, E'.root = r' ∧ Anc (tr.HonestBlocks H) E E' ∧
         (E' ∈ ℓ.frame.tree ∨ Anc (tr.HonestBlocks H) E' ℓ.frame.F) ∧ Ch E' by
     obtain ⟨E', hE', hE'r, hEE', -⟩ := key _ hw
@@ -124,7 +124,7 @@ theorem record_step_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : 
       rcases hpos₁ with hT | hF
       · rcases hcomp _ _ hE₁ (hΦU hC) hc₁ hCc with h | h
         · exact h
-        · exact absurd ⟨E₁, hT, hE₁r, SA.anc_tree_of_anc_U hU hΦ hΦU hC h hT⟩ hn
+        · exact absurd ⟨E₁, hT, hE₁r, AC.anc_tree_of_anc_U hU hΦ hΦU hC h hT⟩ hn
       · exact hF.trans ((hΦ.rooted.2 C hC).mono hΦU)
     exact ⟨C, hΦU hC, rfl, hEE₁.trans hE₁C, Or.inl hC, hCc⟩
 
@@ -174,12 +174,12 @@ theorem not_before_tick {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     simp only [Nat.add_zero] at hn0 hl0
     obtain ⟨hpos, h⟩ := hj i ⟨_, ⟨hn0, hl0⟩, rfl⟩ le_rfl
     rw [sp.slotTime_eq] at h
-    have hσ := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg i) (sp.slot (tr.time i))).2 le_rfl
+    have hσ := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) (sp.slot (tr.time i))).2 le_rfl
     have h1 : ((sp.toParams.slotOf (tr.time i) - 1 : Nat) : Int) + 1 = sp.slot (tr.time i) := by
-      simp only [SAParams.slot]; omega
+      simp only [ACParams.slot]; omega
     have h2 : sp.ts (sp.slot (tr.time i) : Int) =
         4 * sp.Δ * ((sp.toParams.slotOf (tr.time i) - 1 : Nat) : Int) + 4 * sp.Δ := by
-      simp only [SAParams.ts]; rw [← h1]; ring
+      simp only [ACParams.ts]; rw [← h1]; ring
     linarith [sp.toParams.hΔ]
   | block B => simp [Node.Event.phase] at hph
   | message m => simp [Node.Event.phase] at hph
@@ -211,8 +211,8 @@ viable at the cuts up to `i` and extended by the earlier honest votes of later s
 service `Service` (`ReadSyncOrService` at the served head). `Compose/Sleepy/Served` builds it
 under `Sleepy` from the full invariant, or from the invariant up to `b ≥ t`. -/
 structure ReadInvWith (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
-    (Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop)
-    (O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop) (y : Fin sp.n) (i : Nat) (t : Time)
+    (Ch : AC.Blk sp.n (List (FG.Att sp.n)) → Prop)
+    (O : AC.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop) (y : Fin sp.n) (i : Nat) (t : Time)
     (Service : Prop) : Prop where
   compat : ∀ X Y, X ∈ tr.HonestBlocks H → Y ∈ tr.HonestBlocks H → Ch X → Ch Y →
     Compatible (tr.HonestBlocks H) X Y
@@ -224,13 +224,13 @@ structure ReadInvWith (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
   viable : ∀ m ≤ i, ∀ C s, O C s → C ∈ (Node.frame (tr.state y m)).tree →
     (Node.frame (tr.state y m)).Anc C (Node.frame (tr.state y m)).fcRoot ∨
       C ∈ (Node.frame (tr.state y m)).viableTree (Node.frame (tr.state y m)).tree
-  vote_extends : ∀ C s, O C s → ∀ x ∈ H, ∀ k < i, ∀ e, SA.VoteAt tr.projAC x k e →
-    s < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg C
+  vote_extends : ∀ C s, O C s → ∀ x ∈ H, ∀ k < i, ∀ e, AC.VoteAt tr.projAC x k e →
+    s < e.msg.slot → AC.VoteExtends (tr.HonestBlocks H) e.msg C
   sync : Service
 
 abbrev ReadSyncOrService (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (t : Time) :=
   SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) 0 (t - sp.Δ) tr.projAC ∨
-    SA.ServiceBefore H (tr.HonestBlocks H) t tr.projAC
+    AC.ServiceBefore H (tr.HonestBlocks H) t tr.projAC
 
 /-- **The tick of the latest view's slot at a read.** At a read of an honest node at `t`, with
 `l` the latest view's slot at `t`: `t_l + 2Δ ≤ t`, the node's restarts up to `t` are at or before
@@ -239,31 +239,31 @@ theorem latest_slot_tick_at_read {ini} (hrun : GoldilocksRun proposer dg H tr in
     {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} {t : Time} (hrd : ReadAtCut proposer dg tr y i t)
     {L : Nat} (hL : (L : Int) =
-      (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2) :
+      (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2) :
     sp.ts L + 2 * sp.Δ ≤ t ∧
       (∀ r, tr.RestartAt y r → tr.time r ≤ t → tr.time r ≤ sp.ts L) ∧
       ∃ j ≤ i, ∃ ℓ, tr.projAC.CallAt y j ℓ ∧ tr.time j = sp.ts L + 2 * sp.Δ := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have ht0 := hrd.nonneg
-  have hσ := (SA.ts_le_iff_le_slot sp ht0 (sp.slot t)).2 le_rfl
+  have hσ := (AC.ts_le_iff_le_slot sp ht0 (sp.slot t)).2 le_rfl
   have hLσ : (sp.slot t : Int) ≤ L + 1 ∧ sp.ts L + 2 * sp.Δ ≤ t := by
-    simp only [SA.latestView] at hL
+    simp only [AC.latestView] at hL
     split_ifs at hL with h
     · exact ⟨by omega, by rw [hL]; exact h⟩
     · refine ⟨by omega, ?_⟩
       have hts : sp.ts (L : Int) = sp.ts (sp.slot t : Int) - 4 * sp.Δ := by
-        simp only [SAParams.ts]; rw [hL]; ring
+        simp only [ACParams.ts]; rw [hL]; ring
       linarith
   have hres : ∀ r, tr.RestartAt y r → tr.time r ≤ t → tr.time r ≤ sp.ts L := by
     intro r hr htr
     obtain ⟨-, h⟩ := hrd.joined r hr htr
     rw [sp.slotTime_eq] at h
     refine h.trans ?_
-    simp only [SAParams.ts]
+    simp only [ACParams.ts]
     have : ((sp.toParams.slotOf t - 1 : Nat) : Int) ≤ L := by
-      have := hLσ.1; simp only [SAParams.slot] at this; omega
+      have := hLσ.1; simp only [ACParams.slot] at this; omega
     exact mul_le_mul_of_nonneg_left this (by linarith)
-  have hT0 : 0 ≤ sp.ts L + 2 * sp.Δ := by simp only [SAParams.ts]; positivity
+  have hT0 : 0 ≤ sp.ts L + 2 * sp.Δ := by simp only [ACParams.ts]; positivity
   have hwT : tr.awake y (sp.ts L + 2 * sp.Δ) := by
     rcases hLσ.2.lt_or_eq with hlt | heq
     · by_contra hn
@@ -272,7 +272,7 @@ theorem latest_slot_tick_at_read {ini} (hrun : GoldilocksRun proposer dg H tr in
         (not_le.2 ((lt_add_of_pos_right _ (mul_pos two_pos hΔ)).trans hk1))
     · rw [heq]; exact hrd.awake
   obtain ⟨j₁, x₁, hj₁⟩ := hrun.tick_of_awake y hy _ hT0
-    (Dvd.intro (4 * (L : Int) + 2) (by simp only [SAParams.ts]; ring)) hwT
+    (Dvd.intro (4 * (L : Int) + 2) (by simp only [ACParams.ts]; ring)) hwT
   obtain ⟨ℓ₁, hc₁, -, ht₁⟩ := tickAt_acCall ⟨x₁, hj₁⟩
   refine ⟨hLσ.2, hres, j₁, ?_, ℓ₁, hc₁, ht₁⟩
   rcases hLσ.2.lt_or_eq with hlt | heq
@@ -291,13 +291,13 @@ theorem honest_head_in_frame_at_read {ini} (hrun : GoldilocksRun proposer dg H t
     {y : Fin sp.n} {i : Nat} {t : Time} (hsync : ReadSyncOrService tr H t ∨ ∃ a,
       SyncACWindowBefore H (tr.HonestBlocks H) a t tr.projAC ∧
       CatchACWindowBefore tr.projAC H (tr.HonestBlocks H) a (2 * sp.Δ) t ∧
-      a ≤ sp.ts (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
+      a ≤ sp.ts (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
     (hy : y ∈ H)
     (hrd : ReadAtCut proposer dg tr y i t) {L : Nat}
-    (hL : (L : Int) = (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
-    {x : Fin sp.n} (hx : x ∈ H) {j' : Nat} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hv : SA.VoteAt tr.projAC x j' e) (hes : e.msg.slot = L)
-    {Hd : SA.Blk sp.n (List (FG.Att sp.n))} (hHd : Hd ∈ tr.HonestBlocks H)
+    (hL : (L : Int) = (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
+    {x : Fin sp.n} (hx : x ∈ H) {j' : Nat} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hv : AC.VoteAt tr.projAC x j' e) (hes : e.msg.slot = L)
+    {Hd : AC.Blk sp.n (List (FG.Att sp.n))} (hHd : Hd ∈ tr.HonestBlocks H)
     (hHdr : Hd.root = e.msg.head) (hF : Anc (tr.HonestBlocks H) (tr.state y i).fg.F Hd) :
     Hd ∈ (Node.frame (tr.state y i)).tree ∧ (tr.projAC.state y i).blockStamp Hd.root < ⊤ := by
   have hrun' := goldilocks_ac_projection_from hrun hnc
@@ -312,16 +312,16 @@ theorem honest_head_in_frame_at_read {ini} (hrun : GoldilocksRun proposer dg H t
   obtain ⟨ℓ', hcall, hem⟩ := hv
   obtain ⟨⟨Hd', hHd'Φ, hHd'r, -⟩, htj'⟩ := cast_head_fcRoot hr hrun.vstart hx ⟨hcall, hem⟩
   obtain rfl : Hd' = Hd :=
-    hU.1 ((SA.frameIn_of_callAt hr hx hcall).2 hHd'Φ) hHd (hHd'r.trans hHdr.symm)
+    hU.1 ((AC.frameIn_of_callAt hr hx hcall).2 hHd'Φ) hHd (hHd'r.trans hHdr.symm)
   rw [hes] at htj'
   have hgr := fg_grows hrun hy hjci
   have hframe := frame_of_projAC hrun hy hcj
   have hFj : Anc (tr.HonestBlocks H) ℓj.frame.F Hd' := by
     rw [hframe]; exact hgr.2.trans hF
-  have htop : ∀ t : Time, SA.ETime.of t < ⊤ := fun t => WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _)
+  have htop : ∀ t : Time, AC.ETime.of t < ⊤ := fun t => WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _)
   -- `y` accepted `Hd'` before `t_l + 2Δ`, by its tick then
   obtain ⟨hinj, hacc⟩ : Hd' ∈ (tr.state y jc).fg.tree ∧
-      SA.AcceptedBefore tr.projAC y Hd' (sp.ts L + 2 * sp.Δ) := by
+      AC.AcceptedBefore tr.projAC y Hd' (sp.ts L + 2 * sp.Δ) := by
     rcases frame_anc_accepted hr hx j' ℓ' hcall Hd' hHd'Φ Hd' .refl with hg | ⟨k, hk, hkA⟩
     · refine ⟨?_, Or.inl hg⟩
       obtain ⟨-, -, hgen, -⟩ := Store.accepted_tree _ _ _ _ (fg_reachable hrun.toLocalRun hy jc)
@@ -366,7 +366,7 @@ theorem honest_head_in_frame_at_read {ini} (hrun : GoldilocksRun proposer dg H t
               (by change a + _ ≤ tr.time jc; rw [htj]; exact add_le_add ha le_rfl)
               (hjct jc le_rfl) hFj
             exact ⟨k₂, hk₂j, hk₂, hk₂t.trans_le (add_le_add ha le_rfl)⟩
-      have h1 := (SA.accept_new sp hr hy hk₂).1
+      have h1 := (AC.accept_new sp hr hy hk₂).1
       obtain ⟨ℓk, hck, hkc⟩ := hk₂
       refine ⟨?_, Or.inr ⟨k₂, ⟨ℓk, hck, hkc⟩, hk₂t⟩⟩
       have h2 := h1 ℓk hck
@@ -378,7 +378,7 @@ theorem honest_head_in_frame_at_read {ini} (hrun : GoldilocksRun proposer dg H t
   have hHdjc : Hd' ∈ (Node.frame (tr.state y jc)).tree :=
     ⟨hinj, anc_of_anc_superset hU (fun X hX => ⟨y, hy, jc, hX⟩) (by simp [Params.genesisBlock])
       (hanc jc) (hgr.2.trans hF) hinj⟩
-  have hst := SA.blockStamp_lt_of_acceptedBefore sp hr hrun.vstart hy hcj
+  have hst := AC.blockStamp_lt_of_acceptedBefore sp hr hrun.vstart hy hcj
     (by rw [hframe]; exact hHdjc) hacc
     (fun k hk hrk => by
       change tr.time k < _
@@ -396,18 +396,18 @@ theorem honest_head_in_frame_at_read {ini} (hrun : GoldilocksRun proposer dg H t
 theorem latest_honest_supporter (hrun : GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time}
-    {Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
+    {Ch : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    {O : AC.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
     (hI : ReadInvWith tr H Ch O y i t (ReadSyncOrService tr H t))
-    (hrd : ReadAtCut proposer dg tr y i t) {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hrd : ReadAtCut proposer dg tr y i t) {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : R ∈ (Node.frame (tr.state y i)).tree) {j : Nat} (hO : O R j)
-    (hjl : (j : Int) < (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2) :
-    ∀ w ∈ SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1.votes,
-      w ∈ H → w ∈ SA.supporters (Node.frame (tr.state y i))
-        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
-        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R := by
+    (hjl : (j : Int) < (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2) :
+    ∀ w ∈ AC.voters (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1.votes,
+      w ∈ H → w ∈ AC.supporters (Node.frame (tr.state y i))
+        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
+        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R := by
   obtain ⟨L, hL⟩ : ∃ L : Nat, (L : Int) =
-      (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 :=
+      (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 :=
     ⟨_, Int.toNat_of_nonneg (by omega)⟩
   apply latest_honest_supporter_of_target_votes hrun hnc hy hR hL
   · intro z hz q hq e hv hs
@@ -423,18 +423,18 @@ theorem latest_vote_delivered {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} {t : Time}
     (hsync : ReadSyncOrService tr H t ∨ ∃ a,
       SyncACWindowBefore H (tr.HonestBlocks H) a t tr.projAC ∧
-      a ≤ sp.ts (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
+      a ≤ sp.ts (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
     (hy : y ∈ H)
     (hrd : ReadAtCut proposer dg tr y i t) {L : Nat}
-    (hL : (L : Int) = (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
-    {x : Fin sp.n} (hx : x ∈ H) {k : Nat} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hv : SA.VoteAt tr.projAC x k e) (hes : e.msg.slot = L) :
+    (hL : (L : Int) = (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
+    {x : Fin sp.n} (hx : x ∈ H) {k : Nat} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hv : AC.VoteAt tr.projAC x k e) (hes : e.msg.slot = L) :
     e.msg ∈ (tr.state y i).ac.pool L := by
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨hTt, hres, jc, hjci, ℓj, hcj, htj⟩ := latest_slot_tick_at_read hrun hy hrd hL
   obtain ⟨ℓ, hck, he⟩ := hv
-  obtain ⟨hval, hsl', -, -⟩ := SA.castAt_spec hr hx ⟨hck, he⟩
+  obtain ⟨hval, hsl', -, -⟩ := AC.castAt_spec hr hx ⟨hck, he⟩
   -- `x` casts one vote per slot, so its only slot-`L` vote in an honest pool is `e.msg`
   have huniq : ∀ m σ (a : Vote sp.n), a ∈ (tr.projAC.state y m).pool σ → a.val = e.msg.val →
       a.slot = e.msg.slot → a = e.msg := by
@@ -442,7 +442,7 @@ theorem latest_vote_delivered {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     obtain ⟨j, -, e', hv', he'⟩ :=
       pool_vote_emitted hrun hy m σ a ha (by rw [hav, hval]; exact hx)
     rw [hav, hval] at hv'
-    obtain ⟨-, rfl⟩ := SA.one_vote_per_slotU sp _ _ _ _ _ hr.toU x hx j k e' e hv' ⟨ℓ, hck, he⟩
+    obtain ⟨-, rfl⟩ := AC.one_vote_per_slotU sp _ _ _ _ _ hr.toU x hx j k e' e hv' ⟨ℓ, hck, he⟩
       (by rw [he', has])
     exact he'.symm
   have hk : tr.projAC.time k ≤ sp.ts L + sp.Δ := by
@@ -450,7 +450,7 @@ theorem latest_vote_delivered {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     rwa [hes] at h
   rw [← projAC_state hrun.toLocalRun hy i]
   have hk0 : sp.ts L ≤ tr.projAC.time k :=
-    (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) L).2 (by omega)
+    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) L).2 (by omega)
   have hres' : ∀ r, tr.projAC.RestartAt y r → tr.projAC.time r ≤ t → tr.projAC.time r ≤ sp.ts L :=
     fun r ⟨ℓr, hcr, hrr⟩ hrt => hres r ⟨ℓr, projAC_callAt.1 hcr, hrr⟩ hrt
   have hjct : ∀ r ≤ jc, tr.projAC.time r ≤ t := fun r h =>
@@ -462,23 +462,23 @@ theorem latest_vote_delivered {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have hdj : tr.projAC.deadline y jc (tr.projAC.time k) ≤ tr.projAC.time jc := by
     change _ ≤ tr.time jc; rw [htj, two_mul, ← add_assoc]
     exact (hdl jc le_rfl).trans (add_le_add hk le_rfl)
-  have served : SA.MessageServedBefore tr.projAC y jc (tr.projAC.time k) e.msg := by
+  have served : AC.MessageServedBefore tr.projAC y jc (tr.projAC.time k) e.msg := by
     rcases hsync with hsync | ⟨a, hsync, ha⟩
     · exact hsync.elim
-        (fun h => (SA.messageServedBefore_iff _ _ _ _).mpr (Or.inl
+        (fun h => (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl
           (h.1 x hx k e.msg ⟨ℓ, hck, Or.inl ⟨e, he, rfl⟩⟩ (hr.time_nonneg k)
           (le_sub_iff_add_le.2 ((add_le_add hk le_rfl).trans
             (by rw [add_assoc, ← two_mul]; exact hTt))) y hy jc ℓj hcj hdj)))
         (fun h => h.message x hx k e.msg ⟨ℓ, hck, Or.inl ⟨e, he, rfl⟩⟩ (hr.time_nonneg k)
           y hy jc ℓj hcj (hdj.trans (hjct jc le_rfl)) hdj)
     · rw [← hL] at ha
-      exact (SA.messageServedBefore_iff _ _ _ _).mpr (Or.inl
+      exact (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl
         (hsync.message x hx k e.msg ⟨ℓ, hck, Or.inl ⟨e, he, rfl⟩⟩ (ha.trans hk0)
           y hy jc ℓj hcj (hdj.trans (hjct jc le_rfl)) hdj))
-  rcases (SA.messageServedBefore_iff _ _ _ _).mp served with served | retained
+  rcases (AC.messageServedBefore_iff _ _ _ _).mp served with served | retained
   swap
   · have evidence := retained.evidence hr hy
-    have hmono := SA.pool_mono hr hy hjci (fun r hrj hri hrr => by
+    have hmono := AC.pool_mono hr hy hjci (fun r hrj hri hrr => by
       obtain ⟨ℓr, hcr, hrr'⟩ := hrr
       obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart y hy r ℓr hcr hrr'
       by_cases heq : r = jc
@@ -493,7 +493,7 @@ theorem latest_vote_delivered {ini} (hrun : GoldilocksRun proposer dg H tr ini)
         rw [htj] at h₁
         exact lt_irrefl _ (h₂.trans_lt ((lt_add_of_pos_right _ (mul_pos two_pos hΔ)).trans
           (h₁.trans hu)))) L
-    rcases (SA.poolEvidenceBefore_iff _ _ _).mp evidence with hv |
+    rcases (AC.poolEvidenceBefore_iff _ _ _).mp evidence with hv |
       ⟨a, _, _, hav, _, has, _, ha, _⟩
     · exact hmono (by simpa only [hes] using hv.1)
     · have hpa := hmono (by simpa only [has, hes] using ha.1)
@@ -506,28 +506,28 @@ theorem latest_vote_delivered {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     lt_of_lt_of_le (lt_of_le_of_ne hk'j (by rintro rfl; exact hk'dl'.ne htj))
       hjci
   have hts1 : sp.ts ((L + 1 : Nat) : Int) = sp.ts L + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hsk' : sp.slot (tr.projAC.time k') = L :=
-    SA.slot_of_mem sp L (hk0.trans hkk') (by
+    AC.slot_of_mem sp L (hk0.trans hkk') (by
       rw [hts1]
       exact hk'dl'.trans
         (add_lt_add_of_le_of_lt le_rfl (mul_lt_mul_of_pos_right (by norm_num) hΔ)))
-  have hpm := SA.pool_mono hr hy (Nat.succ_le_of_lt hk'i) (fun r hr1 hr2 hrr => by
+  have hpm := AC.pool_mono hr hy (Nat.succ_le_of_lt hk'i) (fun r hr1 hr2 hrr => by
     obtain ⟨ℓr, hcr, hrr'⟩ := hrr
     obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart y hy r ℓr hcr hrr'
     obtain ⟨ℓ', hc', -⟩ := hp
     have h1 := hprev k' (by omega) ℓ' hc'
     have h2 := hres' r ⟨ℓr, hcr, hrr'⟩ (hrd.before r hr2)
     exact lt_irrefl _ (h1.trans (hu.trans_le (h2.trans (hk0.trans hkk'))))) L
-  rcases SA.held_of_processAt hr hy hp (by rw [hes, hsk']; omega) (by rw [hes, hsk']) with
+  rcases AC.held_of_processAt hr hy hp (by rw [hes, hsk']; omega) (by rw [hes, hsk']) with
     h | ⟨a, ha, a', ha', hne, hav, hav'⟩
   · rw [hes] at h
     exact hpm h
   · rw [hes] at ha ha'
     have h1 := huniq _ _ a ha hav
-      (by simpa [hes] using SA.state_pool_slot sp hr hrun.vstart hy _ L a ha)
+      (by simpa [hes] using AC.state_pool_slot sp hr hrun.vstart hy _ L a ha)
     have h2 := huniq _ _ a' ha' hav'
-      (by simpa [hes] using SA.state_pool_slot sp hr hrun.vstart hy _ L a' ha')
+      (by simpa [hes] using AC.state_pool_slot sp hr hrun.vstart hy _ L a' ha')
     exact absurd (h1.trans h2.symm) hne
 
 /-- **The awake validators vote in the latest view** (Sync): at a read at `t`, an honest
@@ -538,37 +538,37 @@ theorem latest_awake_voter (hrun : GoldilocksRun proposer dg H tr) (hnc : NoColl
     {y : Fin sp.n} {i : Nat} {t : Time}
     (hsync : ReadSyncOrService tr H t ∨ ∃ a,
       SyncACWindowBefore H (tr.HonestBlocks H) a t tr.projAC ∧
-      a ≤ sp.ts (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
+      a ≤ sp.ts (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
     (hy : y ∈ H)
     (hrd : ReadAtCut proposer dg tr y i t) {L : Nat}
-    (hL : (L : Int) = (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
+    (hL : (L : Int) = (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
     {x : Fin sp.n} (hx : x ∈ H) (hxw : tr.awake x (sp.ts L + sp.Δ))
     (hxj : tr.JoinedAt x (sp.ts L + sp.Δ)) :
-    x ∈ SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
+    x ∈ AC.voters (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
       t).1.votes := by
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   obtain ⟨k, e, ⟨ℓ, hck, he⟩, hes, -⟩ :=
     vote_of_awake_joined hrun hnc hx (mayVote_stock hrun hnc hx _) hxw hxj
-  obtain ⟨hval, -, -, -⟩ := SA.castAt_spec hr hx ⟨hck, he⟩
+  obtain ⟨hval, -, -, -⟩ := AC.castAt_spec hr hx ⟨hck, he⟩
   refine ⟨e.msg, mem_latest_votes hrun hnc hy hL ?_, hval⟩
   rw [projAC_state hrun.toLocalRun hy i]
   exact latest_vote_delivered hrun hnc hsync hy hrd hL hx ⟨ℓ, hck, he⟩ hes
 
 /-- A read at `t ≥ 0` is before `t_l + 6Δ`, with `l` the latest view's slot at `t`. -/
-theorem latestView_lt_six {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
-    {t : Time} (ht0 : 0 ≤ t) {L : Nat} (hL : (L : Int) = (SA.latestView sp A Φ t).2) :
+theorem latestView_lt_six {A : AC.ACState sp.n} {Φ : AC.Frm sp.n (List (FG.Att sp.n))}
+    {t : Time} (ht0 : 0 ≤ t) {L : Nat} (hL : (L : Int) = (AC.latestView sp A Φ t).2) :
     t < sp.ts L + 6 * sp.Δ := by
   have hΔ := sp.toParams.hΔ
   have hlt : t < sp.ts ((sp.slot t : Int) + 1) := lt_of_not_ge fun h => by
-    have := (SA.ts_le_iff_le_slot sp ht0 _).1 h
+    have := (AC.ts_le_iff_le_slot sp ht0 _).1 h
     omega
   have hts : sp.ts ((sp.slot t : Int) + 1) = sp.ts (sp.slot t : Int) + 4 * sp.Δ := by
-    simp only [SAParams.ts]; ring
-  simp only [SA.latestView] at hL
+    simp only [ACParams.ts]; ring
+  simp only [AC.latestView] at hL
   split_ifs at hL with h
   · rw [hL]; linarith
   · have : sp.ts (L : Int) = sp.ts (sp.slot t : Int) - 4 * sp.Δ := by
-      simp only [SAParams.ts]; rw [hL]; ring
+      simp only [ACParams.ts]; rw [hL]; ring
     linarith
 
 /-- **The supporter majority of an older origin**: at a read at `t`, an
@@ -577,26 +577,26 @@ majority of the latest view's voters: the honest voters support it, the more tha
 awake and joined at `t_l + Δ` are voters, and the other voters are faulty. -/
 theorem latest_majority (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time}
-    {Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
+    {Ch : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    {O : AC.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
     (hI : ReadInvWith tr H Ch O y i t (ReadSyncOrService tr H t))
     (hawake : ∀ s : Nat, sp.ts s + sp.Δ ≤ t → t < sp.ts s + 6 * sp.Δ →
       Hᶜ.ncard < {x | x ∈ H ∧ tr.awake x (sp.ts s + sp.Δ) ∧ tr.JoinedAt x (sp.ts s + sp.Δ)}.ncard)
     (hrd : ReadAtCut proposer dg tr y i t)
-    {R : SA.Blk sp.n (List (FG.Att sp.n))} (hR : R ∈ (Node.frame (tr.state y i)).tree) {j : Nat}
+    {R : AC.Blk sp.n (List (FG.Att sp.n))} (hR : R ∈ (Node.frame (tr.state y i)).tree) {j : Nat}
     (hO : O R j)
-    (hjl : (j : Int) < (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2) :
-    (SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
+    (hjl : (j : Int) < (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2) :
+    (AC.voters (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
         t).1.votes).ncard <
-      2 * (SA.supporters (Node.frame (tr.state y i))
-        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
-        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
+      2 * (AC.supporters (Node.frame (tr.state y i))
+        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
+        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
         R).ncard := by
-  set l := (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
-  set Vt := SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
+  set l := (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
+  set Vt := AC.voters (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
     t).1.votes
-  set Sp := SA.supporters (Node.frame (tr.state y i))
-    (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1 l R
+  set Sp := AC.supporters (Node.frame (tr.state y i))
+    (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1 l R
   obtain ⟨L, hL⟩ : ∃ L : Nat, (L : Int) = l := ⟨l.toNat, Int.toNat_of_nonneg (by omega)⟩
   have hHV : Vt ∩ H ⊆ Sp := fun w hwV =>
     latest_honest_supporter hrun hnc hy hI hrd hR hO hjl w hwV.1 hwV.2
@@ -621,19 +621,19 @@ result of its update, or as the selection of its optimistic check of the slot `s
 fast lock on `C` is still stored when every later call before `m` is in the next slot at the
 latest and holds `C` in its frame (the record has not changed since). -/
 theorem record_writer {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop} (m : Nat)
-    (hOO : ∀ k < m, ∀ C s CV, SA.OptimisticLockAt tr.projAC y k s C CV → O C s)
+    {y : Fin sp.n} (hy : y ∈ H) {O : AC.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop} (m : Nat)
+    (hOO : ∀ k < m, ∀ C s CV, AC.OptimisticLockAt tr.projAC y k s C CV → O C s)
     (hvi : ∀ k < m, ∀ C s, O C s → C ∈ (Node.frame (tr.state y k)).tree →
       (Node.frame (tr.state y k)).Anc C (Node.frame (tr.state y k)).fcRoot ∨
         C ∈ (Node.frame (tr.state y k)).viableTree (Node.frame (tr.state y k)).tree) :
     (tr.projAC.state y m).latestConfirmed = sp.genesisRoot ∨
       ∃ k < m, ∃ ℓk, tr.projAC.CallAt y k ℓk ∧ ∃ C ∈ ℓk.frame.tree,
         C.root = (tr.projAC.state y m).latestConfirmed ∧
-        ((∃ s CV, SA.ResultAt tr.projAC y k s C CV) ∨
-          ((∃ CV, SA.OptimisticLockAt tr.projAC y k (sp.slot (tr.time k)) C CV) ∧
+        ((∃ s CV, AC.ResultAt tr.projAC y k s C CV) ∨
+          ((∃ CV, AC.OptimisticLockAt tr.projAC y k (sp.slot (tr.time k)) C CV) ∧
             ((∀ m', k < m' → m' < m → ∀ ℓ', tr.projAC.CallAt y m' ℓ' →
                 sp.slot (tr.time m') ≤ sp.slot (tr.time k) + 1 ∧ C ∈ ℓ'.frame.tree) →
-              ∃ e, sp.slot (tr.time k) + 2 ≤ e ∧ (⟨C.root, sp.slot (tr.time k), true, e⟩ : SA.Lock)
+              ∃ e, sp.slot (tr.time k) + 2 ≤ e ∧ (⟨C.root, sp.slot (tr.time k), true, e⟩ : AC.Lock)
                   ∈ (tr.projAC.state y m).locks))) := by
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   induction m with
@@ -656,7 +656,7 @@ theorem record_writer {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : N
     obtain ⟨ℓ, hc⟩ := hcall
     rw [tr.projAC.state_succ_of_call hc]
     obtain ⟨hk, hrl⟩ := call_reclock hr hy hc
-    have hΦ := (SA.frameIn_of_callAt hr hy hc).1
+    have hΦ := (AC.frameIn_of_callAt hr hy hc).1
     have hframe : ℓ.frame = Node.frame (tr.state y m) := frame_of_projAC hrun hy hc
     have hcand : ∀ C ∈ ℓ.frame.tree, ∀ s, O C s →
         C ∈ ℓ.frame.viableTree ℓ.frame.tree ∨ ℓ.frame.Anc C ℓ.frame.fcRoot := by
@@ -678,7 +678,7 @@ theorem record_writer {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : N
           le_trans hs1 (show _ ≤ e by omega), C, hCm, rfl,
           hcand C hCm _ (hOO k (by omega) C _ CV hOk)⟩)⟩
     · exact Or.inr ⟨m, Nat.lt_succ_self m, ℓ, hc, C, hC, hCr.symm, Or.inl hres⟩
-    · rw [SA.viableAncestor_self hΦ hC (hcand C hC _ (hOO m (Nat.lt_succ_self m) C _ CV hOm))]
+    · rw [AC.viableAncestor_self hΦ hC (hcand C hC _ (hOO m (Nat.lt_succ_self m) C _ CV hOm))]
         at hl
       exact Or.inr ⟨m, Nat.lt_succ_self m, ℓ, hc, C, hC, hCr.symm, Or.inr ⟨⟨CV, hOm⟩, fun _ => hl⟩⟩
 
@@ -691,14 +691,14 @@ stored on `R`). -/
 theorem record_label_or_lock {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time}
-    {Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
+    {Ch : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    {O : AC.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
     (hI : ReadInvWith tr H Ch O y i t (ReadSyncOrService tr H t))
-    (hle : ∀ k < i, tr.time k ≤ t) {R : SA.Blk sp.n (List (FG.Att sp.n))} (hR : RecordAt tr y i R)
+    (hle : ∀ k < i, tr.time k ≤ t) {R : AC.Blk sp.n (List (FG.Att sp.n))} (hR : RecordAt tr y i R)
     (hRf : ¬ (Node.frame (tr.state y i)).Anc R (Node.frame (tr.state y i)).fcRoot) :
-    0 ≤ t ∧ (R ∈ SA.liveLockBlocks sp (tr.state y i).ac.locks (Node.frame (tr.state y i)) t ∨
+    0 ≤ t ∧ (R ∈ AC.liveLockBlocks sp (tr.state y i).ac.locks (Node.frame (tr.state y i)) t ∨
       ∃ j, O R j ∧ (j : Int) <
-        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2) := by
+        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2) := by
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hU := hr.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -707,9 +707,9 @@ theorem record_label_or_lock {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have hΦU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX.1⟩
   have hst := projAC_state hrun.toLocalRun hy i
   have hts1 : ∀ a : Nat, sp.ts ((a + 1 : Nat) : Int) = sp.ts (a : Int) + 4 * sp.Δ := fun a => by
-    simp only [SAParams.ts]; push_cast; ring
-  have hOb : ∀ k < i, ∀ C s CV, SA.ResultAt tr.projAC y k s C CV ∨
-      SA.OptimisticLockAt tr.projAC y k s C CV → O C s :=
+    simp only [ACParams.ts]; push_cast; ring
+  have hOb : ∀ k < i, ∀ C s CV, AC.ResultAt tr.projAC y k s C CV ∨
+      AC.OptimisticLockAt tr.projAC y k s C CV → O C s :=
     fun k hk C s CV h => hI.origin C s (originBefore_iff.2 ⟨y, hy, k, hk, CV, h⟩)
   rcases record_writer hrun hnc hy i (fun k hk C s CV h => hOb k hk C s CV (Or.inr h))
       (fun k hk => hI.viable k hk.le) with
@@ -726,11 +726,11 @@ theorem record_label_or_lock {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     rw [hRF]
     exact hΦ.F_anc_fcRoot
   all_goals
-    have hCU : C ∈ tr.HonestBlocks H := (SA.frameIn_of_callAt hr hy hck).2 hCk
+    have hCU : C ∈ tr.HonestBlocks H := (AC.frameIn_of_callAt hr hy hck).2 hCk
     obtain rfl : R = C := hU.1 (hΦU hR.1) hCU (hR.2.trans (hst ▸ hCr.symm))
     have hki' : tr.time k ≤ t := hle k hki
     have ht0 : 0 ≤ t := (hr.time_nonneg k).trans hki'
-    have hσ := (SA.ts_le_iff_le_slot sp ht0 (sp.slot t)).2 le_rfl
+    have hσ := (AC.ts_le_iff_le_slot sp ht0 (sp.slot t)).2 le_rfl
     refine ⟨ht0, ?_⟩
   · -- a result: its label is below the latest view's slot
     obtain ⟨s, CV, hRes⟩ := hres
@@ -739,30 +739,30 @@ theorem record_label_or_lock {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     have h1 : sp.ts ((s + 1 : Nat) : Int) + 2 * sp.Δ ≤ t := by
       have htk' : tr.time k = sp.ts s + 6 * sp.Δ := htk
       rw [hts1]; linarith
-    simp only [SA.latestView]
+    simp only [AC.latestView]
     split_ifs with h
-    · have := (SA.ts_le_iff_le_slot sp ht0 _).1 (by linarith : sp.ts ((s + 1 : Nat) : Int) ≤ _)
+    · have := (AC.ts_le_iff_le_slot sp ht0 _).1 (by linarith : sp.ts ((s + 1 : Nat) : Int) ≤ _)
       push_cast at this ⊢
       omega
     · have : sp.ts ((s + 1 : Nat) : Int) < sp.ts (sp.slot t : Int) := by
         rw [not_le] at h; linarith
-      rw [SA.ts_lt_iff] at this
+      rw [AC.ts_lt_iff] at this
       push_cast at this ⊢
       omega
   · -- an optimistic selection: an older label, or its fast lock is still stored on `R`
     obtain ⟨CV, hOk⟩ := hopt
     by_cases hsl : ((sp.slot (tr.time k) : Nat) : Int) <
-        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
+        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
     · exact Or.inr ⟨_, hOb k hki R _ CV (Or.inr hOk), hsl⟩
     left
     have hlσ : (sp.slot t : Int) - 1 ≤
-        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 := by
-      simp only [SA.latestView]; split_ifs <;> omega
+        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 := by
+      simp only [AC.latestView]; split_ifs <;> omega
     have hs : sp.slot t ≤ sp.slot (tr.time k) + 1 := by omega
     have hRk : R ∈ (tr.state y k).fg.tree := by
       rw [frame_of_projAC hrun hy hck] at hCk; exact hCk.1
     have hl := hlock fun m' h₁ h₂ ℓ' hc' => by
-      refine ⟨(SA.slot_mono sp (hr.time_nonneg m') (hle m' h₂)).trans hs, ?_⟩
+      refine ⟨(AC.slot_mono sp (hr.time_nonneg m') (hle m' h₂)).trans hs, ?_⟩
       rw [frame_of_projAC hrun hy hc']
       have hg₁ := fg_grows hrun hy h₁.le
       have hg₂ := fg_grows hrun hy h₂.le
@@ -773,7 +773,7 @@ theorem record_label_or_lock {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     rw [hst] at hl
     obtain ⟨e, he, hl⟩ := hl
     refine ⟨hR.1, _, ⟨_, hl, R, hR.1, rfl, show _ ≤ e by omega, rfl⟩, ?_⟩
-    rw [SA.viableAncestor_self hΦ hR.1
+    rw [AC.viableAncestor_self hΦ hR.1
       (hI.viable i le_rfl R _ (hOb k hki R _ CV (Or.inr hOk)) hR.1).symm]
 
 /-- **G1, G2 at a read**: the state of an honest node before cut `i` read at `t`, with every
@@ -783,28 +783,28 @@ compatible with `R`, and `R` is at or below it, or viable with a strict majority
 view's voters at `t` as supporters. -/
 theorem head_support_at {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time}
-    {Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
+    {Ch : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    {O : AC.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
     (hI : ReadInvWith tr H Ch O y i t (ReadSyncOrService tr H t))
-    (hle : ∀ k < i, tr.time k ≤ t) {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hle : ∀ k < i, tr.time k ≤ t) {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : RecordAt tr y i R)
     (hmaj : 0 ≤ t → ∀ j, O R j →
-      (j : Int) < (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 →
-      (SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
+      (j : Int) < (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 →
+      (AC.voters (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
           t).1.votes).ncard <
-        2 * (SA.supporters (Node.frame (tr.state y i))
-          (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
-          (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R).ncard) :
+        2 * (AC.supporters (Node.frame (tr.state y i))
+          (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
+          (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R).ncard) :
     Compatible (Node.frame (tr.state y i)).tree
-        (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R ∧
+        (AC.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R ∧
       ((Node.frame (tr.state y i)).Anc R
-          (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
+          (AC.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
         (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
-          (SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
+          (AC.voters (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
               t).1.votes).ncard <
-            2 * (SA.supporters (Node.frame (tr.state y i))
-              (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
-              (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
+            2 * (AC.supporters (Node.frame (tr.state y i))
+              (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
+              (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
               R).ncard)) := by
   have hac := (goldilocks_ac_projection_from hrun hnc).localRun
   have hU := hac.coherent
@@ -818,10 +818,10 @@ theorem head_support_at {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc :
     obtain rfl : R = C₀ := hU.1 (hΦU hR.1) ⟨y, hy, i, hC₀⟩ (hR.2.trans hC₀r.symm)
     exact hgo
   set Φ := Node.frame (tr.state y i) with hΦdef
-  set S := SA.liveLockBlocks sp (tr.state y i).ac.locks Φ t ∪ {Φ.fcRoot}
+  set S := AC.liveLockBlocks sp (tr.state y i).ac.locks Φ t ∪ {Φ.fcRoot}
   have hSc : ∀ X ∈ S, X ∈ Φ.tree ∧ Ch X := by
     rintro X (⟨hX, l, ⟨l₀, hl₀, B, hB, hBr, -, rfl⟩, hXr⟩ | hX)
-    · obtain ⟨hvt, hva⟩ := SA.viableAncestor_anc hΦ hB
+    · obtain ⟨hvt, hva⟩ := AC.viableAncestor_anc hΦ hB
       obtain rfl : X = Φ.viableAncestor B := hΦ.coherent.1 hX hvt hXr.symm
       obtain ⟨L, hL, hLr, hLc⟩ := hI.locks l₀ hl₀
       obtain rfl : B = L := hU.1 (hΦU hB) ⟨y, hy, i, hL⟩ (hBr.trans hLr.symm)
@@ -835,14 +835,14 @@ theorem head_support_at {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc :
   have hcomp : ∀ X Y, X ∈ Φ.tree → Y ∈ Φ.tree → Ch X → Ch Y →
       Compatible Φ.tree X Y := fun X Y hX hY hXc hYc =>
     (hI.compat _ _ (hΦU hX) (hΦU hY) hXc hYc).imp
-      (fun h => SA.anc_tree_of_anc_U hU hΦ hΦU hX h hY)
-      fun h => SA.anc_tree_of_anc_U hU hΦ hΦU hY h hX
+      (fun h => AC.anc_tree_of_anc_U hU hΦ hΦU hX h hY)
+      fun h => AC.anc_tree_of_anc_U hU hΦ hΦU hY h hX
   have hSsub : S ⊆ Φ.tree := fun X hX => (hSc X hX).1
-  obtain ⟨D, hD⟩ := SA.exists_deepest hΦ hSsub ⟨Φ.fcRoot, Or.inr rfl⟩
-  have ha : SA.getAnchor sp (tr.state y i).ac Φ t = D := by
-    simp only [SA.getAnchor, S, hD, Option.getD_some]
-  have hDS := (SA.deepest_mem hD).1
-  have hdom : ∀ X ∈ S, Φ.Anc X D := SA.anc_deepest hΦ hSsub
+  obtain ⟨D, hD⟩ := AC.exists_deepest hΦ hSsub ⟨Φ.fcRoot, Or.inr rfl⟩
+  have ha : AC.getAnchor sp (tr.state y i).ac Φ t = D := by
+    simp only [AC.getAnchor, S, hD, Option.getD_some]
+  have hDS := (AC.deepest_mem hD).1
+  have hdom : ∀ X ∈ S, Φ.Anc X D := AC.anc_deepest hΦ hSsub
     (fun X hX Y hY => hcomp X Y (hSc X hX).1 (hSc Y hY).1 (hSc X hX).2 (hSc Y hY).2) hD
   refine ⟨ha ▸ hcomp D R (hSc D hDS).1 hR.1 (hSc D hDS).2 hRc, ?_⟩
   rw [ha]
@@ -859,31 +859,31 @@ the node's tick at `t` is at a cut `≥ i`, it makes no call in between (the tic
 at `t`), so the read is the one before the tick's cut. -/
 theorem read_head_support_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {t : Time}
-    {Ch : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    {O : SA.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
+    {Ch : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    {O : AC.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop}
     (hI : ∀ m, (∀ k < m, tr.time k ≤ t) → tr.time m ≤ tr.time i →
       ReadInvWith tr H Ch O y m t (ReadSyncOrService tr H t))
     (hle : ∀ k < i, tr.time k ≤ t) (hti : t ≤ tr.time i)
-    (hwj : 0 ≤ t → tr.awake y t ∧ tr.JoinedAt y t) {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hwj : 0 ≤ t → tr.awake y t ∧ tr.JoinedAt y t) {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : RecordAt tr y i R)
     (hmaj : ∀ m, (∀ k < m, tr.time k ≤ t) → tr.time m ≤ tr.time i →
       ReadAtCut proposer dg tr y m t → RecordAt tr y m R → ∀ j, O R j →
-      (j : Int) < (SA.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).2 →
-      (SA.voters (SA.latestView sp (tr.state y m).ac (Node.frame (tr.state y m))
+      (j : Int) < (AC.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).2 →
+      (AC.voters (AC.latestView sp (tr.state y m).ac (Node.frame (tr.state y m))
           t).1.votes).ncard <
-        2 * (SA.supporters (Node.frame (tr.state y m))
-          (SA.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).1
-          (SA.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).2 R).ncard) :
+        2 * (AC.supporters (Node.frame (tr.state y m))
+          (AC.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).1
+          (AC.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).2 R).ncard) :
     Compatible (Node.frame (tr.state y i)).tree
-        (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R ∧
+        (AC.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R ∧
       ((Node.frame (tr.state y i)).Anc R
-          (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
+          (AC.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
         (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
-          (SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
+          (AC.voters (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
               t).1.votes).ncard <
-            2 * (SA.supporters (Node.frame (tr.state y i))
-              (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
-              (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
+            2 * (AC.supporters (Node.frame (tr.state y i))
+              (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
+              (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
               R).ncard)) := by
   by_cases hT : ∃ j₁, i ≤ j₁ ∧ tr.TickAt proposer dg y j₁ t
   · obtain ⟨j₁, hij, hT⟩ := hT

@@ -20,7 +20,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
 variable {binding : VoteBinding}
 
@@ -28,7 +28,7 @@ variable {binding : VoteBinding}
 
 section
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
 
 /-- One post-state per cut. -/

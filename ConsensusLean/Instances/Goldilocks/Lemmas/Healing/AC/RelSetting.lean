@@ -14,15 +14,15 @@ the unlock given by an oracle `u` (`ACLocalRunU`), the proposal is `acProposalWi
 `Milestones/Statements/Healing/ACU`). At the parent's oracle these are the parent's
 (`honestProposalU_parent_iff`, `Driven.toU`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
 
 /-- At the parent's oracle, `HonestProposalU` is `HonestProposal`. -/
-theorem honestProposalU_parent_iff (tr : SATrace sp FGP ro) (p : Fin sp.n) (s : Nat)
+theorem honestProposalU_parent_iff (tr : GTrace sp FGP ro) (p : Fin sp.n) (s : Nat)
     (P : Blk sp.n FGP) : HonestProposalU (parentOracle sp tr) tr p s P ↔ HonestProposal tr p s
         P := by
-  have key : ∀ k (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt p k ℓ → ℓ.call = .proposal →
+  have key : ∀ k (ℓ : ACLabel (goldilocksAC sp FGP ro)), tr.CallAt p k ℓ → ℓ.call = .proposal →
       acProposalWith sp (parentOracle sp tr k) (tr.state p k) ℓ.frame (tr.time k) =
         acProposal sp (tr.state p k) ℓ.frame (tr.time k) := by
     intro k ℓ hc hcall
@@ -34,12 +34,12 @@ theorem honestProposalU_parent_iff (tr : SATrace sp FGP ro) (p : Fin sp.n) (s : 
   · rintro ⟨k, ℓ, d, pay, hc, hcall, hp, rest⟩
     exact ⟨k, ℓ, d, pay, hc, hcall, by rw [key k ℓ hc hcall]; exact hp, rest⟩
 
-theorem HonestProposal.toU {tr : SATrace sp FGP ro} {p : Fin sp.n} {s : Nat} {P : Blk sp.n FGP}
+theorem HonestProposal.toU {tr : GTrace sp FGP ro} {p : Fin sp.n} {s : Nat} {P : Blk sp.n FGP}
     (h : HonestProposal tr p s P) : HonestProposalU (parentOracle sp tr) tr p s P :=
   (honestProposalU_parent_iff tr p s P).2 h
 
 /-- A driven parent trace is driven at the parent's oracle. -/
-theorem Driven.toU {proposer : Nat → Fin sp.n} {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)}
+theorem Driven.toU {proposer : Nat → Fin sp.n} {tr : GTrace sp FGP ro} {H : Set (Fin sp.n)}
     (h : Driven proposer tr H) : DrivenU (parentOracle sp tr) proposer tr H where
   blocks := h.blocks
   honest_slot y hy i B hB hg hp := (h.honest_slot y hy i B hB hg hp).toU
@@ -50,6 +50,6 @@ theorem Driven.toU {proposer : Nat → Fin sp.n} {tr : SATrace sp FGP ro} {H : S
   tick_first := h.tick_first
   proposal_first := h.proposal_first
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

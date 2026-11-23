@@ -23,9 +23,9 @@ and two origins compare only from there (`clean_sources_compatible_at`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 variable (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
 
 /-- **The healed record cover** at the origin floor `rO`: the record `R` of `y` before cut `n`,
@@ -33,18 +33,18 @@ read at `t`, is its finalized block, or an ancestor (inside the blocks held whil
 result or optimistic selection of label `≥ rO` by a node honest at its cut, before `n` and no later
 than `t`. -/
 def HealedRecordCoverAt (rO : Nat) (y : Fin sp.n) (n : Nat) (t : Time)
-    (R : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+    (R : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   R = (tr.state y n).fg.F ∨ ∃ x q s C CV, x ∈ H (tr.time q) ∧ q < n ∧ tr.time q ≤ t ∧ rO ≤ s ∧
-    (SA.ResultAt tr.projAC x q s C CV ∨ SA.OptimisticLockAt tr.projAC x q s C CV) ∧
+    (AC.ResultAt tr.projAC x q s C CV ∨ AC.OptimisticLockAt tr.projAC x q s C CV) ∧
     Anc (tr.HonestBlocksAt H) R C
 
 variable {tr H}
 
 theorem healedRecordCoverAt_iff {rO : Nat} {y : Fin sp.n} {n : Nat} {t : Time}
-    {R : SA.Blk sp.n (List (FG.Att sp.n))} :
+    {R : AC.Blk sp.n (List (FG.Att sp.n))} :
     HealedRecordCoverAt tr H rO y n t R ↔
       R = (tr.state y n).fg.F ∨ ∃ x q s C CV, x ∈ H (tr.time q) ∧ q < n ∧ tr.time q ≤ t ∧ rO ≤ s ∧
-        (SA.ResultAt tr.projAC x q s C CV ∨ SA.OptimisticLockAt tr.projAC x q s C CV) ∧
+        (AC.ResultAt tr.projAC x q s C CV ∨ AC.OptimisticLockAt tr.projAC x q s C CV) ∧
         Anc (tr.HonestBlocksAt H) R C :=
   Iff.rfl
 

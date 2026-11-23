@@ -13,10 +13,10 @@ public section
 
 `ACSteps` (for population-sized committees) from `Lemmas/AC/Steps/`. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-/-- **ACSteps** at the SA parameters `sp`. -/
-theorem acStepsAt (sp : SAParams) : ACStepsAt sp where
+/-- **ACSteps** at the AC parameters `sp`. -/
+theorem acStepsAt (sp : ACParams) : ACStepsAt sp where
   proposerVotersAgree := proposer_voters_agree sp
   firstTransfer := first_transfer sp
   nextTransfer := next_transfer sp
@@ -28,6 +28,6 @@ theorem acStepsAt (sp : SAParams) : ACStepsAt sp where
 /-- **ACSteps.** -/
 theorem acSteps : ACSteps := acStepsAt
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

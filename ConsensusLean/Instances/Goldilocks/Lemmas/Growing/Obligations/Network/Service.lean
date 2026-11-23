@@ -195,7 +195,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
 
 /-- Goldilocks interprets message publication as its first release of the vote envelope. -/
-def VotePublication (x : Fin (Fintype.card V)) (τ : Time) (m : SA.Vote (Fintype.card V))
+def VotePublication (x : Fin (Fintype.card V)) (τ : Time) (m : AC.Vote (Fintype.card V))
     (o : Wire (Fintype.card V) S.vote) : Prop :=
   o = .mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∧
     ∃ i, rho.SendsAt (rho.key x) i τ ∧ o ∈ rho.releasesAt i ∧
@@ -203,7 +203,7 @@ def VotePublication (x : Fin (Fintype.card V)) (τ : Time) (m : SA.Vote (Fintype
 
 /-- A held vote publication gives a processing cut, not an admission or store mutation. -/
 theorem votePublication_process (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    {x y : Fin (Fintype.card V)} {τ d : Time} {m : SA.Vote (Fintype.card V)}
+    {x y : Fin (Fintype.card V)} {τ d : Time} {m : AC.Vote (Fintype.card V)}
     {o : Wire (Fintype.card V) S.vote} (hpub : VotePublication S rho x τ m o)
     (hx : rho.key x ∉ rho.faultyAt τ) (hh : rho.log.Held rho.point (rho.key y) o d) :
     y = x ∨ ∃ k, (simTraceAt S rho hn).ProcessMsgAt y k m ∧
@@ -217,7 +217,7 @@ theorem votePublication_process (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionV
 
 /-- Construct the instance's publication witness from the containing event's first release. -/
 theorem votePublication_intro {source : Nat} {x : Fin (Fintype.card V)}
-    {τ : Time} {m : SA.Vote (Fintype.card V)}
+    {τ : Time} {m : AC.Vote (Fintype.card V)}
     (hs : rho.SendsAt (rho.key x) source τ)
     (hrel : Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∈
       rho.releasesAt source)
@@ -388,7 +388,7 @@ theorem acceptance_relay_syncUntil_at (hn : 1 ≤ Fintype.card V) (hv : rho.Exec
 honest at its release before its processing-cut deadline. -/
 theorem vote_message_service_other_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
-    {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : SA.Vote (Fintype.card V)}
+    {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : AC.Vote (Fintype.card V)}
     (hx : rho.key x ∉ rho.faultyAt τ) (hne : y ≠ x)
     (hτ : 0 ≤ τ) (hs : rho.SendsAt (rho.key x) source τ)
     (hrel : Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∈
@@ -442,7 +442,7 @@ theorem sleepyServiceBefore_of_syncUntil_at (hv : rho.ExecutionValid)
   have hsim := simTraceAt_simulates S rho hn hv
   apply sleepyServiceBefore_of_message_relay_at hr
   · intro x i m hx hsrc h0 y j ℓ hy hj hb hd
-    rw [SA.messageServedBefore_iff]
+    rw [AC.messageServedBefore_iff]
     apply Or.inl
     have hsource : (simTraceAt S rho hn).SendOrAdmitAt x i m := by
       obtain ⟨l, hl, hm⟩ := hsrc

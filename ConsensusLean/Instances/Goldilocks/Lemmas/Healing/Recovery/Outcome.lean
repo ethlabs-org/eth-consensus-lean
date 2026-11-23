@@ -18,7 +18,7 @@ previous-height finalization gate. Same-height reports supply the literal good-w
 
 namespace Consensus.Goldilocks.Healing.Recovery
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
 section FG
 
@@ -140,8 +140,8 @@ theorem accepted_justification_before_timeout (hr : FGLocalRun acp₀ H U tr)
 
 end FG
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {H : Set (Fin sp.n)}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
@@ -149,24 +149,24 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 receiver's finalized block has already passed the carrier, ancestor closure supplies its
 earlier acceptance; otherwise the ordinary acceptance relay applies. -/
 theorem carrier_below_origin_before (hp : ResetPremises tr H K proposer dg g ΔF a)
-    (hnr : NoRestartAfter tr H (SA.gbar g)) (hc : CatchRun tr H g (2 * sp.Δ))
-    {x z : Fin sp.n} {io jo k : Nat} {O X : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hnr : NoRestartAfter tr H (AC.gbar g)) (hc : CatchRun tr H g (2 * sp.Δ))
+    {x z : Fin sp.n} {io jo k : Nat} {O X : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x io jo O) (hz : z ∈ H) (hacc : tr.AcceptAt z k X)
     (hXO : Anc (tr.HonestBlocks H) X O)
     (hng : X ≠ sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload)
     {w : Time} (hmature : sp.ts (jo + 1 : Nat) ≤ w)
-    (hcatch : SA.gbar g + 2 * sp.Δ ≤ w) (hdeadline : tr.time k + sp.Δ ≤ w) :
+    (hcatch : AC.gbar g + 2 * sp.Δ ≤ w) (hdeadline : tr.time k + sp.Δ ≤ w) :
     ∀ y ∈ H, ∃ j, tr.AcceptAt y j X ∧ tr.time j < w := by
   intro y hy
   have hΔ := sp.toParams.hΔ
   obtain ⟨q, _, hq⟩ := hp.run.awake_in_horizon y hy w
-    (hp.healthy.2.1 y hy w (by change SA.gbar g ≤ w; linarith))
+    (hp.healthy.2.1 y hy w (by change AC.gbar g ≤ w; linarith))
   obtain ⟨i, hi, _⟩ := exists_firstCutFrom_le (tr := tr) (show w ≤ tr.time q by linarith)
   have hcomp := (vote_state_caches hp i (fun r _ => retention_inv hp r) ho hy
     (hmature.trans hi.1)).1
   have hheld : X ∈ (tr.state y i).fg.tree := by
     rcases hcomp with hFO | hOF
-    · rcases SA.anc_total (honest_coherent hp) hFO hXO with hFX | hXF
+    · rcases AC.anc_total (honest_coherent hp) hFO hXO with hFX | hXF
       · exact relay_held hp.run.toLocalRun hp.healthy hnr hc hz hy hacc hcatch hdeadline hi hFX
       · exact mem_tree_of_anc hp hy hXF
           (Goldilocks.Store.cache_invariants _ _ _ _
@@ -181,12 +181,12 @@ alternative, including strict carrier acceptance everywhere. No lower report tim
 theorem higher_report_early_outcome (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hs : HSShared tr H K dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {m r cF kF : Nat}
-    {T C : SA.Blk sp.n (List (FG.Att sp.n))} {ell : ACLabel (goldilocksNode sp ro)}
+    {T C : AC.Blk sp.n (List (FG.Att sp.n))} {ell : ACLabel (goldilocksNode sp ro)}
     (hT : T ∈ (tr.state y m).fg.tree) (he : ((tr.state y m).fg.σ T.root).Th = T.root)
     (hpos : 0 < T.slot) (hhigh : HZ tr H g + 1 ≤ ((tr.state y m).fg.σ T.root).h)
-    (hg : SA.gbar g + 2 * sp.Δ ≤ sp.ts T.slot)
+    (hg : AC.gbar g + 2 * sp.Δ ≤ sp.ts T.slot)
     (hcf : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (cF : Time))
-    (hrep : SA.ToFGAt tr.projAC z r ell C)
+    (hrep : AC.ToFGAt tr.projAC z r ell C)
     (hrt : tr.time r ≤ sp.ts T.slot + 6 * sp.Δ)
     (hTC : Anc (tr.HonestBlocks H) T C)
     (hh : ((tr.state z r).fg.σ T.root).h < ((tr.state z r).fg.σ C.root).h) :
@@ -199,25 +199,25 @@ theorem higher_report_early_outcome (hp : ResetPremises tr H K proposer dg g ΔF
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hCr : C ∈ ell.frame.tree := by
     have hh := hrep.2.2
-    unfold SA.acToFG at hh
+    unfold AC.acToFG at hh
     split_ifs at hh
     split at hh
     · cases hh
     · rename_i C' hC'
       split_ifs at hh
       cases hh
-      exact (SA.deepest_mem hC').1.1.1
+      exact (AC.deepest_mem hC').1.1.1
   have hC := frame_tree_subset hp hz hrep.1 hCr
   have hTr := mem_tree_of_anc hp hz hTC hC
   have hσ := σ_eq_run hp hz hy hTr hT
-  have hCt : sp.ts C.slot ≤ tr.time r := (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) _).2
-    (by exact_mod_cast SA.frame_slot_le sp hr hz hrep.1 C hCr)
+  have hCt : sp.ts C.slot ≤ tr.time r := (AC.ts_le_iff_le_slot sp (hr.time_nonneg r) _).2
+    (by exact_mod_cast AC.frame_slot_le sp hr hz hrep.1 C hCr)
   have hslot : C.slot < T.slot + sp.toParams.δt := by
     have hlt : sp.ts C.slot < sp.ts (T.slot + sp.toParams.δt : Nat) := by
-      simp only [SAParams.ts] at hCt hrt ⊢
+      simp only [ACParams.ts] at hCt hrt ⊢
       push_cast
       linarith [hs.timeoutDelay]
-    exact_mod_cast (SA.ts_lt_iff sp).1 hlt
+    exact_mod_cast (AC.ts_lt_iff sp).1 hlt
   have hfg : FGLocalRun (goldilocksNode sp ro).genesisPayload H
       (tr.HonestBlocks H) tr.projFG :=
     Compose.fg_projection_from (fun y _ => Compose.requirements_from sp ro
@@ -240,7 +240,7 @@ theorem higher_report_early_outcome (hp : ResetPremises tr H K proposer dg g ΔF
     have heq : X.slot = 0 := by rw [hX]; rfl
     omega
   have hbefore : sp.ts T.slot + 6 * sp.Δ < sp.ts (T.slot + cF + kF + 1 : Nat) := by
-    simp only [SAParams.ts]
+    simp only [ACParams.ts]
     push_cast
     linarith [mul_nonneg hΔ.le (Nat.cast_nonneg (α := Int) kF)]
   have hXt := (hp.run.time_mono hkr.le).trans hrt
@@ -251,7 +251,7 @@ theorem higher_report_early_outcome (hp : ResetPremises tr H K proposer dg g ΔF
     rcases hfl with ⟨ell, C, ⟨_, _, ht, _⟩, _⟩ | ⟨ell, A, _, hsl, _⟩
     · change tr.time io = sp.ts jo + 6 * sp.Δ at ht
       linarith
-    · exact (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg io) _).2 (by
+    · exact (AC.ts_le_iff_le_slot sp (hp.run.time_nonneg io) _).2 (by
         change sp.slot (tr.time io) = jo at hsl
         omega)
   have hio' := hio.trans ((hp.run.time_mono hior.le).trans hrt)
@@ -261,7 +261,7 @@ theorem higher_report_early_outcome (hp : ResetPremises tr H K proposer dg g ΔF
     obtain ⟨hF, hhF⟩ := hgate hb'
     exact ⟨by rw [hhF]; exact hb'.2, hF⟩
   · apply carrier_below_origin_before hp hs.noRestart hc ho hz hacc (hXU.trans hCO) hng
-    · simp only [SAParams.ts] at hio' ⊢
+    · simp only [ACParams.ts] at hio' ⊢
       push_cast at *
       linarith [mul_nonneg hΔ.le (Nat.cast_nonneg (α := Int) kF)]
     · linarith
@@ -270,17 +270,17 @@ theorem higher_report_early_outcome (hp : ResetPremises tr H K proposer dg g ΔF
 /-- The post-drain entry starts after the reset and the GST service margin. -/
 theorem drain_margins (hp : ResetPremises tr H K proposer dg g ΔF a) {u : Nat}
     (hR : drainTime sp a ≤ sp.ts u) :
-    0 < u ∧ a ≤ sp.ts u ∧ SA.gbar g + 4 * sp.Δ ≤ sp.ts u := by
+    0 < u ∧ a ≤ sp.ts u ∧ AC.gbar g + 4 * sp.Δ ≤ sp.ts u := by
   have hΔ := sp.toParams.hΔ
   have hcut := lt_cutZ sp g
   have hca := cutZ_lt_reset hp.run hp.healthy hp.reset
-  have ha0 : 0 ≤ a := by linarith [SA.gbar_nonneg g]
+  have ha0 : 0 ≤ a := by linarith [AC.gbar_nonneg g]
   have ha : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
-    have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+    have := (AC.ts_le_iff_le_slot sp ha0 _).1 h
     omega
   rw [drainTime_eq] at hR
-  have hu := (SA.ts_le_iff sp).1 hR
-  have hau : a ≤ sp.ts u := ha.le.trans ((SA.ts_le_iff sp).2 (by push_cast at hu; omega))
+  have hu := (AC.ts_le_iff sp).1 hR
+  have hau : a ≤ sp.ts u := ha.le.trans ((AC.ts_le_iff sp).2 (by push_cast at hu; omega))
   exact ⟨by push_cast at hu; omega, hau, by linarith⟩
 
 /-- The supplier's actual reports yield either an identity quorum of exact entry attestations
@@ -289,7 +289,7 @@ theorem rows_or_early_outcome
     (supply : ReadyProposalReportSupply tr H K proposer dg g ΔF a)
     (hp : ResetPremises tr H K proposer dg g ΔF a) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) {p y : Fin sp.n} {k u m cF kF : Nat}
-    {T : SA.Blk sp.n (List (FG.Att sp.n))}
+    {T : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k u T) (hR : drainTime sp a ≤ sp.ts u)
     (hy : y ∈ H) (hT : T ∈ (tr.state y m).fg.tree)
     (he : ((tr.state y m).fg.σ T.root).Th = T.root)
@@ -315,7 +315,7 @@ theorem rows_or_early_outcome
       (decide ((tr.state y m).fg.σ T.root).previousHeightJustified)
       ((tr.state y m).fg.σ T.root).J (sp.ts (u + cF + kF + 1 : Nat))
   · exact Or.inr hearly
-  have nohigher : ∀ z ∈ H, ∀ r ell C, SA.ToFGAt tr.projAC z r ell C →
+  have nohigher : ∀ z ∈ H, ∀ r ell C, AC.ToFGAt tr.projAC z r ell C →
       tr.time r ≤ sp.ts u + 6 * sp.Δ → Anc (tr.HonestBlocks H) T C →
       ¬ ((tr.state z r).fg.σ T.root).h < ((tr.state z r).fg.σ C.root).h := by
     intro z hz r ell C hr ht hTC hh
@@ -331,14 +331,14 @@ theorem rows_or_early_outcome
     obtain ⟨r, ell, C, hr, ht, hTC⟩ := hreports z hz
     have hCr : C ∈ (tr.state z r).fg.tree := by
       have ht' := hr.2.2
-      unfold SA.acToFG at ht'
+      unfold AC.acToFG at ht'
       split_ifs at ht'
       split at ht'
       · cases ht'
       · rename_i C' hC'
         split_ifs at ht'
         cases ht'
-        exact frame_tree_subset hp hz hr.1 (SA.deepest_mem hC').1.1.1
+        exact frame_tree_subset hp hz hr.1 (AC.deepest_mem hC').1.1.1
     have hσ := σ_eq_run hp hz hy (mem_tree_of_anc hp hz hTC hCr) hT
     have hle := h_le_of_store_anc (Compose.fg_reachable hp.run.toLocalRun hz r)
       (anc_tree_of_anc hp hz hTC hCr)
@@ -351,8 +351,8 @@ theorem rows_or_early_outcome
 /-- Exact C1.2 from the shared actual-report supplier. The public service statement is
 unchanged; this module does not import the operational implementation of the supplier. -/
 theorem outcome_service_of_reports
-    (supply : ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-      (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (K : SA.CommitteeDict sp.n)
+    (supply : ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+      (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (K : AC.CommitteeDict sp.n)
       (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
       (g ΔF a : Time),
       ReadyProposalReportSupply tr H K proposer dg g ΔF a) :
@@ -393,15 +393,15 @@ theorem outcome_service_of_reports
   have hWtime : tr.time kw = sp.ts W.slot := by
     rw [hW.2.2.2.1.2.2, sp.slotTime_eq]; rfl
   have hbefore : sp.ts W.slot < sp.ts (T.slot + cF + kF + 1 : Nat) :=
-    (SA.ts_lt_iff sp).2 (by exact_mod_cast (show W.slot < T.slot + cF + kF + 1 by omega))
-  have hTW : sp.ts T.slot ≤ sp.ts W.slot := (SA.ts_le_iff sp).2 (by exact_mod_cast
+    (AC.ts_lt_iff sp).2 (by exact_mod_cast (show W.slot < T.slot + cF + kF + 1 by omega))
+  have hTW : sp.ts T.slot ≤ sp.ts W.slot := (AC.ts_le_iff sp).2 (by exact_mod_cast
     (show T.slot ≤ W.slot by omega))
   have hcarrier := ready_proposal_accepted_everywhere hp hc hW (hR.trans hTW)
     (by omega) (hgu.trans hTW)
   have hbefore' : sp.ts W.slot + 4 * sp.Δ ≤ sp.ts (T.slot + cF + kF + 1 : Nat) := by
-    have h := (SA.ts_le_iff sp).2 (show ((W.slot + 1 : Nat) : Int) ≤
+    have h := (AC.ts_le_iff sp).2 (show ((W.slot + 1 : Nat) : Int) ≤
       ((T.slot + cF + kF + 1 : Nat) : Int) by push_cast; omega)
-    simp only [SAParams.ts] at h ⊢
+    simp only [ACParams.ts] at h ⊢
     push_cast at h ⊢
     linarith
   refine ⟨Or.inl ⟨w, kw, W, Pr, R, hWtime.trans_lt hbefore, hwin, ?_⟩, fun _ => ?_⟩

@@ -13,9 +13,9 @@ closed form (HR.3 (c)). -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams gbar)
+open AC (ACParams gbar)
 
-variable (sp : SAParams)
+variable (sp : ACParams)
 
 theorem gbar_nonneg (g : Time) : 0 ≤ gbar g := le_max_right g 0
 
@@ -26,9 +26,9 @@ theorem cutZ_eq (g : Time) : cutZ sp.toParams g = sp.ts (sp.slot (gbar g) + 3 : 
 
 /-- `c_z ≤ ḡ + 12Δ` (HR.1). -/
 theorem cutZ_le (g : Time) : cutZ sp.toParams g ≤ gbar g + 12 * sp.Δ := by
-  have h := (SA.ts_le_iff_le_slot sp (gbar_nonneg g) (sp.slot (gbar g))).mpr le_rfl
+  have h := (AC.ts_le_iff_le_slot sp (gbar_nonneg g) (sp.slot (gbar g))).mpr le_rfl
   rw [cutZ_eq]
-  simp only [SAParams.ts] at h ⊢
+  simp only [ACParams.ts] at h ⊢
   push_cast
   linarith
 
@@ -43,10 +43,10 @@ theorem cutZ_add_lt_ready_add (g c : Time) (hc : 9 * sp.Δ ≤ c) :
 /-- `ḡ + 8Δ < c_z` (HR.3 (a)). -/
 theorem lt_cutZ (g : Time) : gbar g + 8 * sp.Δ < cutZ sp.toParams g := by
   have h : ¬ sp.ts (sp.slot (gbar g) + 1 : Int) ≤ gbar g := fun h => by
-    have := (SA.ts_le_iff_le_slot sp (gbar_nonneg g) _).mp h
+    have := (AC.ts_le_iff_le_slot sp (gbar_nonneg g) _).mp h
     omega
   rw [cutZ_eq]
-  simp only [SAParams.ts, not_le] at h ⊢
+  simp only [ACParams.ts, not_le] at h ⊢
   push_cast at h ⊢
   linarith
 

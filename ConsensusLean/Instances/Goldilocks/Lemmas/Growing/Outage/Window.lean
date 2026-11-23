@@ -10,39 +10,39 @@ public section
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder)
+open AC (ACParams ReplayOrder)
 open Generic
 
 /-- The outage window starts one arming lag before the outage, clamped to the horizon. -/
-def outageWinStart (sp : SAParams) (b₀ hor : Time) : Time :=
+def outageWinStart (sp : ACParams) (b₀ hor : Time) : Time :=
   min (max 0 (b₀ - (4 * sp.k + 6) * sp.Δ)) hor
 
 /-- The outage window ends one arming lag after the stop, clamped to the horizon. -/
-def outageWinEnd (sp : SAParams) (b₁ hor : Time) : Time :=
+def outageWinEnd (sp : ACParams) (b₁ hor : Time) : Time :=
   min (b₁ + (4 * sp.k + 6) * sp.Δ) hor
 
-theorem outageWinStart_eq (sp : SAParams) (b₀ hor : Time) :
+theorem outageWinStart_eq (sp : ACParams) (b₀ hor : Time) :
     outageWinStart sp b₀ hor = min (max 0 (b₀ - (4 * sp.k + 6) * sp.Δ)) hor := by rfl
 
-theorem outageWinEnd_eq (sp : SAParams) (b₁ hor : Time) :
+theorem outageWinEnd_eq (sp : ACParams) (b₁ hor : Time) :
     outageWinEnd sp b₁ hor = min (b₁ + (4 * sp.k + 6) * sp.Δ) hor := by rfl
 
-theorem outageWinEnd_le_horizon (sp : SAParams) (b₁ hor : Time) :
+theorem outageWinEnd_le_horizon (sp : ACParams) (b₁ hor : Time) :
     outageWinEnd sp b₁ hor ≤ hor := by rw [outageWinEnd_eq]; exact min_le_right _ _
 
 /-- The first slot label whose vote offset reaches the stop. -/
-noncomputable def outageRestoredLabel (sp : SAParams) (b₁ : Time) : Nat := by
+noncomputable def outageRestoredLabel (sp : ACParams) (b₁ : Time) : Nat := by
   classical
   exact if h : ∃ s : Nat, b₁ ≤ sp.ts s + sp.Δ then Nat.find h else 0
 
-theorem outageRestoredLabel_eq (sp : SAParams) (b₁ : Time) :
+theorem outageRestoredLabel_eq (sp : ACParams) (b₁ : Time) :
     outageRestoredLabel sp b₁ = (by
       classical
       exact if h : ∃ s : Nat, b₁ ≤ sp.ts s + sp.Δ then Nat.find h else 0) := by
   classical
   rfl
 
-variable {sp : SAParams} {T b₀ b₁ hor : Time}
+variable {sp : ACParams} {T b₀ b₁ hor : Time}
 
 /-- The cover-label gates, budget, widened window and retained look-back in node units. -/
 theorem outage_window_numbers (hT : 0 ≤ T) (hlag : T + (4 * sp.k + 6) * sp.Δ ≤ b₀)
@@ -65,14 +65,14 @@ theorem outage_window_numbers (hT : 0 ≤ T) (hlag : T + (4 * sp.k + 6) * sp.Δ 
   have hb0 : 2 * sp.Δ ≤ b₀ := by linarith [mul_nonneg hk hΔ.le]
   obtain ⟨hg₁, hg₂⟩ := coverLabel_gates (sp := sp) hb0
   have hkj := (armed_label_lt (σ := 0) hT hlag
-    (by simpa [SA.SAParams.ts] using hT)).2
+    (by simpa [AC.ACParams.ts] using hT)).2
   have hkj' : (sp.k : Int) < j₀ := by exact_mod_cast hkj
   have hjnonneg : (0 : Time) ≤ (j₀ : Int) - sp.k := by
     exact_mod_cast (show (0 : Int) ≤ (j₀ : Int) - sp.k by omega)
   change 4 * sp.Δ * (j₀ : Int) + 2 * sp.Δ ≤ b₀ at hg₁
   change b₀ < 4 * sp.Δ * (j₀ : Int) + 6 * sp.Δ at hg₂
   rw [outageWinStart_eq, outageWinEnd_eq]
-  simp only [SA.SAParams.ts]
+  simp only [AC.ACParams.ts]
   push_cast
   refine ⟨⟨hg₁, by linarith, by linarith, hb, by linarith, by linarith,
     fun t ht hth => le_min (by linarith) hth⟩,
@@ -100,7 +100,7 @@ theorem outageRestoredLabel_spec (hT : 0 ≤ T)
 variable {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val)}
   {cm : Time → Finset (Fin sp.n)} {proposer : Nat → Fin sp.n}
-  {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+  {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- The local outage durations in node units, with the budget written without Nat subtraction. -/

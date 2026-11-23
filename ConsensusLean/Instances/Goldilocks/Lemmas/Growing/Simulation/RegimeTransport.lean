@@ -83,7 +83,7 @@ theorem goldilocks_regimeTransport (S : Setup) (A : ContractAssumptions S) {E : 
       have h := hsync.message x i m hx hsrc hi0 y j ℓ hy (Compose.projAC_callAt.mpr hcall)
         (by rw [Compose.projAC_deadline]; exact hdb) (by rw [Compose.projAC_deadline]; exact hdl)
       rw [es, hserved]
-      exact (SA.FamilyFacts.messageServedBefore_iff_old ..).mpr h
+      exact (AC.FamilyFacts.messageServedBefore_iff_old ..).mpr h
     · exact hsync.relay
     · intro s d hd' hsd
       have hd0 : 0 ≤ d := by

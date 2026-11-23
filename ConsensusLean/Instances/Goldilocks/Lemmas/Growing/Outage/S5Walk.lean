@@ -41,16 +41,16 @@ At a vote of `y` at cut `i`, `y` honest at `t_i`, from `OutageLockInv D i`:
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Two blocks of one coherent set with the same parent root: one below the other is the other. -/
-private theorem eq_of_anc_sibling {S : Set (SA.Blk sp.n (List (FG.Att sp.n)))} (hS : Coherent S)
-    {Y Y' : SA.Blk sp.n (List (FG.Att sp.n))} (hY' : Y' ∈ S) (hpar : Y'.parent = Y.parent)
+private theorem eq_of_anc_sibling {S : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (hS : Coherent S)
+    {Y Y' : AC.Blk sp.n (List (FG.Att sp.n))} (hY' : Y' ∈ S) (hpar : Y'.parent = Y.parent)
     (h : Anc S Y' Y) : Y' = Y := by
   obtain rfl | ⟨Z, hY'Z, hZY⟩ := (Relation.ReflTransGen.cases_tail_iff _ _ _).1 h
   · rfl
@@ -67,16 +67,16 @@ lock blocks of the walked state are compatible with `P` and the domain's viable 
 the domain is the whole tree. -/
 private theorem anc_getHead_of_hi {i : Nat} (hinv : OutageLockInv D i) {w : Fin sp.n}
     (hw : w ∈ H (tr.time i)) (hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n)
-    (hHi : HiAt tr H D.P w i) (A : SA.SAState sp.n) (t : Time) (V : SA.View sp.n)
-    (σ : Int) {dom : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
+    (hHi : HiAt tr H D.P w i) (A : AC.ACState sp.n) (t : Time) (V : AC.View sp.n)
+    (σ : Int) {dom : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
     (hdom : dom ⊆ (Node.frame (tr.state w i)).tree)
     (hdomA : ∀ B ∈ dom, ∀ X, (Node.frame (tr.state w i)).Anc X B → X ∈ dom)
     (hne : ((Node.frame (tr.state w i)).viableTree dom).Nonempty ∨
       (Node.frame (tr.state w i)).tree ⊆ dom)
-    (hlocks : ∀ L ∈ SA.liveLockBlocks sp A.locks (Node.frame (tr.state w i)) t,
+    (hlocks : ∀ L ∈ AC.liveLockBlocks sp A.locks (Node.frame (tr.state w i)) t,
       Compatible (tr.HonestBlocksAt H) L D.P) :
     Anc (tr.HonestBlocksAt H) D.P
-      (SA.getHead sp A (Node.frame (tr.state w i)) t
+      (AC.getHead sp A (Node.frame (tr.state w i)) t
         ((Node.frame (tr.state w i)).viableTree dom) V σ) := by
   have hU := D.coherent
   have hd := D.hrun.time_nonneg i
@@ -96,7 +96,7 @@ private theorem anc_getHead_of_hi {i : Nat} (hinv : OutageLockInv D i) {w : Fin 
     above_of_hi_height_at D hinv le_rfl hd ht hw hf hHi hX hh
   -- below `Σ.F`: the head is a block of the tree, which extends `Σ.F`
   by_cases hPF : Anc (tr.HonestBlocksAt H) D.P st.F
-  · have hmem := SA.getHead_mem hΦ (fun X hX => hdom hX.1) A t V σ
+  · have hmem := AC.getHead_mem hΦ (fun X hX => hdom hX.1) A t V σ
       (T := Φ.viableTree dom)
     exact hPF.trans (Anc.mono hΦU (hΦ.rooted.2 _ hmem))
   have hFP : Anc (tr.HonestBlocksAt H) st.F D.P :=
@@ -115,8 +115,8 @@ private theorem anc_getHead_of_hi {i : Nat} (hinv : OutageLockInv D i) {w : Fin 
     have hfc : Φ.fcRoot = st.J := Store.fcRoot_of_not_contest st hcond.1 hcond.2
     have hJΦ : st.J ∈ Φ.tree := hfc ▸ hΦ.fcRoot_mem
     have hPt := hPΦ st.J hJt hPJ
-    refine Anc.mono hΦU (SA.anc_getHead hU hΦ hΦU A t V σ hdom hdomA
-      (Or.inr (hfc ▸ SA.anc_tree_of_anc_U hU hΦ hΦU hPt hPJ hJΦ)) hlocks ?_)
+    refine Anc.mono hΦU (AC.anc_getHead hU hΦ hΦU A t V σ hdom hdomA
+      (Or.inr (hfc ▸ AC.anc_tree_of_anc_U hU hΦ hΦU hPt hPJ hJΦ)) hlocks ?_)
     intro X Cx hCx _ hCxP
     have hJP' : Anc (tr.HonestBlocksAt H) st.J D.P := Anc.mono hΦU ((hfc ▸ hCx.2.1).trans hCxP)
     exact absurd (congrArg (·.root) (Anc.antisymm hU hJP' hPJ)) hJP
@@ -150,10 +150,10 @@ private theorem anc_getHead_of_hi {i : Nat} (hinv : OutageLockInv D i) {w : Fin 
   have hPW := (hvh W hWv).1
   have hWΦ : W ∈ Φ.tree := hdom hWd
   have hPt := hPΦ W hWΦ.1 hPW
-  have hPWΦ := SA.anc_tree_of_anc_U hU hΦ hΦU hPt hPW hWΦ
+  have hPWΦ := AC.anc_tree_of_anc_U hU hΦ hΦU hPt hPW hWΦ
   have hPv : D.P ∈ Φ.viableTree dom :=
-    ⟨hdomA W hWd _ hPWΦ, hfc ▸ SA.anc_tree_of_anc_U hU hΦ hΦU hFΦ hFP hPt, W, hWd, hWv, hPWΦ⟩
-  refine Anc.mono hΦU (SA.anc_getHead hU hΦ hΦU A t V σ hdom hdomA (Or.inl hPv) hlocks ?_)
+    ⟨hdomA W hWd _ hPWΦ, hfc ▸ AC.anc_tree_of_anc_U hU hΦ hΦU hFΦ hFP hPt, W, hWd, hWv, hPWΦ⟩
+  refine Anc.mono hΦU (AC.anc_getHead hU hΦ hΦU A t V σ hdom hdomA (Or.inl hPv) hlocks ?_)
   intro X Cx hCx hpar hCxP
   have hCxPU : Anc (tr.HonestBlocksAt H) Cx D.P := Anc.mono hΦU hCxP
   have hCxΦ : Cx ∈ Φ.tree := hdom hCx.1
@@ -178,30 +178,30 @@ private theorem anc_getHead_of_hi {i : Nat} (hinv : OutageLockInv D i) {w : Fin 
 live lock blocks of its read point are compatible with `P`; counted at the cut's time. -/
 theorem vote_extends_of_hi_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
     (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
+    {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e)
     (hHi : HiAt tr H D.P y i)
-    (hL : ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
+    (hL : ∀ L ∈ AC.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
       Compatible (tr.HonestBlocksAt H) L D.P) :
-    SA.VoteExtends (tr.HonestBlocksAt H) e.msg D.P := by
+    AC.VoteExtends (tr.HonestBlocksAt H) e.msg D.P := by
   have hd := D.hrun.time_nonneg i
   have hr := (acRun_upTo D.hrun D.hnc hd).localRun
-  have hcT : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hcT : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
   have hf := D.two_faults_lt_at hy ⟨_, projAC_callAt.1 hc.1⟩
   have hfr : ℓ.frame = Node.frame (tr.state y i) := frame_of_projAC_at D.hrun hy hc.1
   obtain ⟨hΦ, hΦU⟩ := frameIn_at D.hrun D.hnc hy hc.1
   obtain ⟨-, -, -, hhead⟩ := castAt_spec_at D.hrun D.hnc hy hc
-  have hdomA := SA.voteDomain_anc hr D.hrun.vstart hy hcT
-  have hne : (ℓ.frame.viableTree (SA.voteDomain sp e.readPoint ℓ.frame e.msg.slot)).Nonempty ∨
-      ℓ.frame.tree ⊆ SA.voteDomain sp e.readPoint ℓ.frame e.msg.slot := by
+  have hdomA := AC.voteDomain_anc hr D.hrun.vstart hy hcT
+  have hne : (ℓ.frame.viableTree (AC.voteDomain sp e.readPoint ℓ.frame e.msg.slot)).Nonempty ∨
+      ℓ.frame.tree ⊆ AC.voteDomain sp e.readPoint ℓ.frame e.msg.slot := by
     by_cases hv :
-        (ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot)).Nonempty
-    · exact Or.inl (hv.mono SA.viableTree_voterBlockTree_subset_voteDomain)
-    · exact Or.inr (SA.voteDomain_eq_tree_of_not_viable hv).ge
+        (ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot)).Nonempty
+    · exact Or.inl (hv.mono AC.viableTree_voterBlockTree_subset_voteDomain)
+    · exact Or.inr (AC.voteDomain_eq_tree_of_not_viable hv).ge
   rw [hfr] at hdomA hne hL hhead hΦU
   have hanc := anc_getHead_of_hi D hinv hy hf hHi e.readPoint (tr.time i)
-    (SA.mergedVoteView sp e.readPoint (Node.frame (tr.state y i)) e.msg.slot)
-    ((e.msg.slot : Int) - 1) (fun B hB => SA.voteDomain_subset_tree hB) hdomA hne hL
-  refine ⟨_, hΦU (SA.getHead_mem (hfr ▸ hΦ) (fun X hX => SA.voteDomain_subset_tree hX.1) _ _ _ _),
+    (AC.mergedVoteView sp e.readPoint (Node.frame (tr.state y i)) e.msg.slot)
+    ((e.msg.slot : Int) - 1) (fun B hB => AC.voteDomain_subset_tree hB) hdomA hne hL
+  refine ⟨_, hΦU (AC.getHead_mem (hfr ▸ hΦ) (fun X hX => AC.voteDomain_subset_tree hX.1) _ _ _ _),
     hhead.symm, hanc⟩
 
 /-- **Lo is `Σ.J ⪯ P`**: `Σ.J`, read at a time at which its node is honest after every earlier
@@ -273,10 +273,10 @@ optimistic lock by the fast-lock count at `i` (its counted votes of validators h
 were cast at earlier cuts, at which they were honest). -/
 theorem readPoint_liveLockBlocks_compatible_at {i : Nat} (hinv : OutageLockInv D i)
     {y : Fin sp.n} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e)
-    (hpos : 0 < sp.slot (tr.time i)) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e)
+    (hpos : 0 < sp.slot (tr.time i)) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBP : Anc (tr.HonestBlocksAt H) B D.P) :
-    ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
+    ∀ L ∈ AC.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
       Compatible (tr.HonestBlocksAt H) L B := by
   intro L hL
   have hU := D.coherent
@@ -285,27 +285,27 @@ theorem readPoint_liveLockBlocks_compatible_at {i : Nat} (hinv : OutageLockInv D
   have hm := D.hrun.time_mono
   have hcall : tr.IsCall y i := ⟨_, projAC_callAt.1 hc.1⟩
   obtain ⟨hΦ, hΦU⟩ := frameIn_at D.hrun D.hnc hy hc.1
-  obtain ⟨l', hl', B₀, hB₀, hB₀r, -, rfl⟩ := SA.mem_liveLockBlocks hΦ hL
-  obtain ⟨B', hB', hB'r, h⟩ := SA.readPoint_locks_provenance_strict (acRun_upTo D.hrun D.hnc hd)
-    hy (sa_castAt_upTo.mpr ⟨le_rfl, hc⟩) hpos l' hl'
+  obtain ⟨l', hl', B₀, hB₀, hB₀r, -, rfl⟩ := AC.mem_liveLockBlocks hΦ hL
+  obtain ⟨B', hB', hB'r, h⟩ := AC.readPoint_locks_provenance_strict (acRun_upTo D.hrun D.hnc hd)
+    hy (ac_castAt_upTo.mpr ⟨le_rfl, hc⟩) hpos l' hl'
   obtain rfl : B₀ = B' := hΦ.coherent.1 hB₀ hB' (hB₀r.trans hB'r.symm)
   refine compatible_of_anc_right hU hBP
-    (compatible_of_head_anc hU ((SA.viableAncestor_anc hΦ hB₀).2.mono hΦU) ?_)
+    (compatible_of_head_anc hU ((AC.viableAncestor_anc hΦ hB₀).2.mono hΦU) ?_)
   rcases h with ⟨l, hl, B₁, hB₁, hB₁r, hanc⟩ | ⟨B₁, CV, hfl, hcut, hanc⟩
   · rw [projAC_upTo_state D.hrun le_rfl, projAC_state_at D.hrun hy] at hl
     obtain ⟨L', hL', hL'r, hcomp⟩ := hinv.locks_at_cut le_rfl hy l hl
     obtain rfl : B₁ = L' :=
       hU.1 (hΦU hB₁) (tree_held_at hd hy (fun _ hk => hm hk.le) hL') (hB₁r.trans hL'r.symm)
     exact compatible_of_head_anc hU (hanc.mono hΦU) hcomp
-  · obtain ⟨-, hfl⟩ := (sa_optimisticLockAt_upTo hm).mp hfl
+  · obtain ⟨-, hfl⟩ := (ac_optimisticLockAt_upTo hm).mp hfl
     refine compatible_of_head_anc hU (hanc.mono hΦU)
       (fastLock_compatible_at hinv.toOutageVoteInv hy (Or.inr hfl) (fun v hv hvH => ?_)
         fun hsK => D.hzc _ ?_ ⟨y, i, hy, hcall, le_rfl⟩)
     · obtain ⟨j, hj, e', hve, he'⟩ := hcut v hv hvH
-      obtain ⟨hjd, hve⟩ := sa_voteAt_upTo.mp hve
+      obtain ⟨hjd, hve⟩ := ac_voteAt_upTo.mp hve
       exact ⟨j, hj, e', hVoteAt_iff.2 ⟨D.hrun.antitone hjd hvH, hve⟩, he'⟩
     · -- the cast's slot is at most `j₀ + k`, so `t_i < t_{j₀+k} + 4Δ`
-      have h := (SA.ts_le_iff_le_slot sp hd ((sp.slot (tr.time i) + 1 : Nat) : Int))
+      have h := (AC.ts_le_iff_le_slot sp hd ((sp.slot (tr.time i) + 1 : Nat) : Int))
       have hlt : tr.time i < sp.ts ((sp.slot (tr.time i) + 1 : Nat) : Int) := by
         by_contra hge
         have := h.1 (not_lt.1 hge)
@@ -313,7 +313,7 @@ theorem readPoint_liveLockBlocks_compatible_at {i : Nat} (hinv : OutageLockInv D
       have hK := ts_le_ts (sp := sp) (show sp.slot (tr.time i) ≤ D.j₀ + sp.k from hsK)
       have hts : sp.ts ((sp.slot (tr.time i) + 1 : Nat) : Int) =
           sp.ts (sp.slot (tr.time i) : Nat) + 4 * sp.Δ := by
-        simp only [SAParams.ts]; push_cast; ring
+        simp only [ACParams.ts]; push_cast; ring
       linarith only [hlt, hts, hK, hΔ]
 
 include D in
@@ -321,10 +321,10 @@ include D in
 committee (`2 f^K_{t_c} < committeeSize`): a counted vote by a validator honest at `t_c`, cast at
 a cut at which it was honest, whose head extends the lock block. -/
 private theorem fastLock_extending_vote_at {c s : Nat} {y : Fin sp.n} (hy : y ∈ H (tr.time c))
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hfl : SA.FastLockAt tr.projAC y c s B CV) :
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hfl : AC.FastLockAt tr.projAC y c s B CV) :
     ∃ x j e, HVoteAt tr H x j e ∧ e.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
   obtain ⟨hcount, hCVK, hCV⟩ := fastLock_counted_at D.hrun D.hnc D.facts.hP hy hfl
   have hf := D.two_faults_lt_K (fastLockAt_ts_le D.hrun hfl) (fastLockAt_time_le D.hrun hfl)
     ⟨y, c, hy, fastLockAt_isCall hfl, le_rfl⟩
@@ -350,11 +350,11 @@ later slot is written after the vote, and an optimistic lock of slot `q + 1` bef
 attestation is excluded (`no_optimistic_before_held_row_at`, counted at the lock's cut). -/
 theorem rows_supported_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
     (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ℓ e) {q : Nat}
+    {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e) {q : Nat}
     (hs : e.msg.slot = q + 1) :
     HonestRowsSourcedAt tr H (fun Ds => Compatible (tr.HonestBlocksAt H) Ds D.P ∧
       ∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot ≤ q ∧
-        SA.VoteExtends (tr.HonestBlocksAt H) e'.msg Ds) y i := by
+        AC.VoteExtends (tr.HonestBlocksAt H) e'.msg Ds) y i := by
   have hrun := D.hrun
   have hU := D.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -367,7 +367,7 @@ theorem rows_supported_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
     have h : tr.time i ≤ sp.ts (e.msg.slot : Int) + sp.Δ :=
       (cast_head_fcRoot_at hrun D.hnc hy hc).2
     rw [hs] at h
-    simp only [SAParams.ts] at h ⊢
+    simp only [ACParams.ts] at h ⊢
     push_cast at h
     linarith only [h]
   refine honestRowsSourcedAt_iff.2 fun X hX a ha hav => ?_
@@ -381,7 +381,7 @@ theorem rows_supported_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
   rw [hst a.val (j + 1) hj1, hst a.val j (by omega)] at hfg
   have hav' : a.val ∈ H (tr.time j) := hrun.antitone hjd hav
   have hfr := (hrun.cutLaw a.val j _ hcj hav').1
-  have hto : SA.ToFGAt tr.projAC a.val j ℓz src :=
+  have hto : AC.ToFGAt tr.projAC a.val j ℓz src :=
     ⟨projAC_callAt.2 hcj, hcl, by rw [projAC_state_at hrun hav']; exact hC⟩
   have hcand := toFG_candidate hC
   have hst' : src ∈ (tr.state a.val (j + 1)).fg.tree := by
@@ -400,7 +400,7 @@ theorem rows_supported_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun D.hnc hav' (projAC_callAt.2 hcj)
   obtain ⟨hsv, l, hl, hlb, hlf, -⟩ := hcand
   obtain ⟨l₀, hl₀, B, hB, hBr, -, rfl⟩ := hl
-  obtain ⟨hVt, hVB⟩ := SA.viableAncestor_anc hΦ hB
+  obtain ⟨hVt, hVB⟩ := AC.viableAncestor_anc hΦ hB
   obtain rfl : src = ℓz.frame.viableAncestor B := hΦ.coherent.1 hsv.1 hVt hlb.symm
   obtain ⟨j', hj'j, B', CV, hfl, hyj', L, hLU, hLr, hLB'⟩ :=
     fastLock_provenance_at hrun D.hnc (hrun.time_nonneg j) (fun _ hk => hm hk.le) hav' hl₀ hlf
@@ -418,7 +418,7 @@ theorem rows_supported_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
   · have ht : tr.time j' = sp.ts l₀.slot + 6 * sp.Δ := hu.2.2.1
     have := ts_le_ts (sp := sp) hlt
     have hts : sp.ts (q + 1 : Nat) = sp.ts q + 4 * sp.Δ := by
-      simp only [SAParams.ts]; push_cast; ring
+      simp only [ACParams.ts]; push_cast; ring
     linarith only [ht, this, hts, hj'i, hti, hΔ]
   · rcases Nat.lt_or_ge l₀.slot (q + 2) with hl2 | hl2
     · obtain hq : l₀.slot = q + 1 := by omega
@@ -426,12 +426,12 @@ theorem rows_supported_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
       exact no_optimistic_before_held_row_at hrun D.hnc D.facts hy hc hs hmacc hmi
         (hrun.antitone (hm hmi.le) hav) hkm hsg hyj' (by omega) hO hfK
     · obtain ⟨ℓO, A, -, hslot, -⟩ := id hO
-      have h := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg j') (l₀.slot : Int)).2
+      have h := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg j') (l₀.slot : Int)).2
         (le_of_eq (by rw [show sp.slot (tr.time j') = l₀.slot from hslot]))
       have h' : sp.ts (l₀.slot : Int) ≤ tr.time j' := h
       have := ts_le_ts (sp := sp) hl2
       have hts : sp.ts (q + 2 : Nat) = sp.ts q + 8 * sp.Δ := by
-        simp only [SAParams.ts]; push_cast; ring
+        simp only [ACParams.ts]; push_cast; ring
       change sp.ts (l₀.slot : Nat) ≤ tr.time j' at h'
       linarith only [h', this, hts, hj'i, hti, hΔ]
 

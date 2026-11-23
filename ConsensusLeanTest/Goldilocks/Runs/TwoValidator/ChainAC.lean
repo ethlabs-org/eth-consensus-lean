@@ -3,17 +3,17 @@ public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 @[expose] public section
 
-/-! # The healthy two-validator run: the client record and the SA on the chain
+/-! # The healthy two-validator run: the client record and the AC on the chain
 
 * **The record** (`RecGood Λ n`) after the rows of heights `1, …, n`; `attest_new`: the node signs
   its row of the height of its source when it has not signed it yet; `attest_old`: otherwise it
   signs nothing.
-* **The SA on a chain frame** (`ChainFrame`): deepest blocks, viable ancestors, live locks,
+* **The AC on a chain frame** (`ChainFrame`): deepest blocks, viable ancestors, live locks,
   anchors and head walks along the chain. -/
 
 namespace Consensus.Goldilocks.Witness.TwoRun
 
-open SA Node
+open AC Node
 
 /-! ## The record -/
 
@@ -141,7 +141,7 @@ theorem attest_old {fg : Store sp.toParams N.Payload} {τ s : Nat} (h : FGGood f
   dsimp only
   rw [ite_eq_left hsent]
 
-/-! ## The SA on a chain frame -/
+/-! ## The AC on a chain frame -/
 
 theorem etime_of_lt_top (t : Time) : ETime.of t < ⊤ :=
   WithBot.coe_lt_coe.2 (WithTop.coe_lt_top t)
@@ -242,7 +242,7 @@ theorem liveLockBlocks_le (h : ChainFrame Φ f j τ) {L : Set Lock} {b : Nat} (h
   exact ⟨m, hm, (h.eq_of_root hBt (hr.symm.trans hr')).1⟩
 
 /-- The anchor is the latest live lock block (or `fc_root`). -/
-theorem getAnchor_eq (h : ChainFrame Φ f j τ) {A : SAState sp.n} {t : Time} {b : Nat}
+theorem getAnchor_eq (h : ChainFrame Φ f j τ) {A : ACState sp.n} {t : Time} {b : Nat}
     (hL : LocksLe A.locks b) (hjb : j ≤ b) (hb : blk b ∈ liveLockBlocks sp A.locks Φ t ∨ b = j) :
     getAnchor sp A Φ t = blk b := by
   unfold getAnchor
@@ -260,7 +260,7 @@ theorem getAnchor_eq (h : ChainFrame Φ f j τ) {A : SAState sp.n} {t : Time} {b
 
 end ChainFrame
 
-/-! ## The SA's steps on a chain frame -/
+/-! ## The AC's steps on a chain frame -/
 
 theorem ghost_tip {T : Set N.Blk} {b : Nat} (hT : ∀ B ∈ T, ∃ m ≤ b, B = blk m)
     (sc : N.Blk → Nat) (el : N.Blk → Prop) : ∀ n, ghost sp T sc el n (blk b) = blk b
@@ -302,8 +302,8 @@ theorem compatible_chain {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) 
   · exact Or.inl (h.anc hb1 hbc hc2)
   · exact Or.inr (h.anc hc1 hbc hb2)
 
-/-- The SA state apart from locks, the record of the confirmed block and the saved results. -/
-structure Same (A A' : SAState sp.n) : Prop where
+/-- The AC state apart from locks, the record of the confirmed block and the saved results. -/
+structure Same (A A' : ACState sp.n) : Prop where
   mayVote : A'.mayVote = A.mayVote
   pool : A'.pool = A.pool
   voteStamp : A'.voteStamp = A.voteStamp
@@ -312,9 +312,9 @@ structure Same (A A' : SAState sp.n) : Prop where
   fgReported : A'.fgReported = A.fgReported
   restartTime : A'.restartTime = A.restartTime
 
-theorem Same.refl (A : SAState sp.n) : Same A A := ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+theorem Same.refl (A : ACState sp.n) : Same A A := ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
-theorem Same.trans {A A' A'' : SAState sp.n} (h : Same A A') (h' : Same A' A'') : Same A A'' :=
+theorem Same.trans {A A' A'' : ACState sp.n} (h : Same A A') (h' : Same A' A'') : Same A A'' :=
   ⟨h'.mayVote.trans h.mayVote,
     h'.pool.trans h.pool, h'.voteStamp.trans h.voteStamp, h'.blockStamp.trans h.blockStamp,
     h'.votedSlot.trans h.votedSlot, h'.fgReported.trans h.fgReported,
@@ -325,14 +325,14 @@ theorem fastExpiry_eq (L : Set Lock) (Φ : N.Frm) (t : Time) (s : Nat) :
     fastExpiry sp L Φ t s = s + 2 :=
   le_antisymm (fastExpiry_le sp L Φ t s) (le_fastExpiry sp L Φ t s)
 
-theorem updateLatestConfirmed_eq (A : SAState sp.n) (Φ : N.Frm) (C : N.Blk) :
+theorem updateLatestConfirmed_eq (A : ACState sp.n) (Φ : N.Frm) (C : N.Blk) :
     ∃ c, updateLatestConfirmed sp A Φ C = { A with latestConfirmed := c } := by
   unfold updateLatestConfirmed
   split_ifs
   · exact ⟨A.latestConfirmed, rfl⟩
   · exact ⟨_, rfl⟩
 
-theorem optimisticConfirmation_cases (A : SAState sp.n) (Φ : N.Frm) (t : Time) :
+theorem optimisticConfirmation_cases (A : ACState sp.n) (Φ : N.Frm) (t : Time) :
     Same A (optimisticConfirmation sp A Φ t) ∧
       ((optimisticConfirmation sp A Φ t).locks = A.locks ∨ ∃ B,
         optimisticSelect sp A Φ t = some B ∧ (optimisticConfirmation sp A Φ t).locks =
@@ -348,14 +348,14 @@ theorem optimisticConfirmation_cases (A : SAState sp.n) (Φ : N.Frm) (t : Time) 
     rw [hc]
     exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inr ⟨B, hB, rfl⟩⟩
 
-theorem optimisticConfirmation_of_none {A : SAState sp.n} {Φ : N.Frm} {t : Time}
+theorem optimisticConfirmation_of_none {A : ACState sp.n} {Φ : N.Frm} {t : Time}
     (h : optimisticSelect sp A Φ t = none) : optimisticConfirmation sp A Φ t = A := by
   unfold optimisticConfirmation; rw [h]
 
 theorem deepest_empty (Φ : N.Frm) : deepest Φ (∅ : Set N.Blk) = none := by
   unfold deepest; rw [dite_eq_right]; rintro ⟨B, hB, -⟩; exact hB
 
-theorem optimisticSelect_of_pool_nil {A : SAState sp.n} {Φ : N.Frm} {t : Time}
+theorem optimisticSelect_of_pool_nil {A : ACState sp.n} {Φ : N.Frm} {t : Time}
     (h : A.pool (sp.slot t) = []) : optimisticSelect sp A Φ t = none := by
   unfold optimisticSelect
   dsimp only
@@ -371,7 +371,7 @@ theorem optimisticSelect_of_pool_nil {A : SAState sp.n} {Φ : N.Frm} {t : Time}
     change 3 * 2 ≤ 4 * 0 at h3
     omega
 
-theorem updateConfirmation_cases (A : SAState sp.n) (Φ : N.Frm) (t : Time) (s : Nat) :
+theorem updateConfirmation_cases (A : ACState sp.n) (Φ : N.Frm) (t : Time) (s : Nat) :
     Same A (updateConfirmation sp A Φ t s) ∧
       ((updateConfirmation sp A Φ t s).locks = A.locks ∨ ∃ N : Set (Nat × Bool × Nat),
         (∀ p ∈ N, ∃ B ∈ Φ.tree, p.1 = B.root) ∧
@@ -435,7 +435,7 @@ theorem mem_unlock {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {L : S
     l ∈ unlock sp L Φ t s V :=
   ⟨l, h.mem_liveLocks hl h1 h2 hr hlive, blk m, h.mem h1 h2, hr.symm, by rw [ite_eq_right hs]⟩
 
-/-! ## The SA's calls of the tick run -/
+/-! ## The AC's calls of the tick run -/
 
 theorem delta1 : sp.Δ = 1 := rfl
 
@@ -449,9 +449,9 @@ theorem slotOf_nat (t : Nat) : sp.toParams.slotOf (t : Int) = t / 4 := by
 theorem slot_nat (n : Nat) : sp.slot (n : Int) = n / 4 := slotOf_nat n
 
 theorem ts_nat (s : Nat) : sp.ts (s : Int) = 4 * (s : Int) := by
-  simp only [SAParams.ts]; change 4 * 1 * (s : Int) = _; ring
+  simp only [ACParams.ts]; change 4 * 1 * (s : Int) = _; ring
 
-theorem joined_of_bot {A : SAState sp.n} (h : A.restartTime = ⊥) (t : Time) : joined sp A t := by
+theorem joined_of_bot {A : ACState sp.n} (h : A.restartTime = ⊥) (t : Time) : joined sp A t := by
   unfold joined; rw [h]; exact bot_le
 
 namespace ChainFrame
@@ -477,10 +477,10 @@ theorem lookup_blk (h : ChainFrame Φ f j τ) {m : Nat} (h1 : f ≤ m) (h2 : m �
   have hs := hin.choose_spec
   rw [(h.eq_of_root hs.1 hs.2).1]
 
-theorem voterBlockTree_sub (A : SAState sp.n) (s : Nat) :
+theorem voterBlockTree_sub (A : ACState sp.n) (s : Nat) :
     voterBlockTree sp A Φ s ⊆ Φ.tree := fun _ hB => hB.1
 
-theorem mem_voterBlockTree (h : ChainFrame Φ f j τ) (A : SAState sp.n) {m : Nat} (h1 : f ≤ m)
+theorem mem_voterBlockTree (h : ChainFrame Φ f j τ) (A : ACState sp.n) {m : Nat} (h1 : f ≤ m)
     (h2 : m ≤ τ) : blk m ∈ voterBlockTree sp A Φ τ :=
   ⟨h.mem h1 h2, Or.inr ⟨blk τ, h.mem (by omega) le_rfl, blk_slot τ, h.anc h1 h2 le_rfl⟩⟩
 

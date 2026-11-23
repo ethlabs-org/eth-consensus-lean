@@ -70,10 +70,10 @@ theorem acRelayAt (hrun : LocalRun proposer dg H sg tr ini)
 theorem fgCatchAt (hrun : LocalRun proposer dg H sg tr ini) {g κ : Time}
     (hcatch : Healing.Growing.CatchRun tr H g κ)
     {x y : Fin P.n} {i j : Nat} {B : A.Blk}
-    (hx : x ∈ H (tr.time i)) (ha : tr.AcceptAt x i B) (hi : tr.time i < SA.gbar g)
-    (hy : y ∈ H (tr.time j)) (hj : SA.gbar g + κ ≤ tr.time j)
+    (hx : x ∈ H (tr.time i)) (ha : tr.AcceptAt x i B) (hi : tr.time i < AC.gbar g)
+    (hy : y ∈ H (tr.time j)) (hj : AC.gbar g + κ ≤ tr.time j)
     (hanc : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B) :
-    ∃ k < j, tr.AcceptAt y k B ∧ tr.time k < SA.gbar g + κ :=
+    ∃ k < j, tr.AcceptAt y k B ∧ tr.time k < AC.gbar g + κ :=
   Healing.accept_before_snapshot hj fun q hq hfirst =>
     hcatch x i B hx ha hi y q (hrun.antitone hj hy) hfirst ((hrun.finalized_mono hy hq).trans hanc)
 
@@ -81,10 +81,10 @@ theorem fgCatchAt (hrun : LocalRun proposer dg H sg tr ini) {g κ : Time}
 theorem acCatchAt (hrun : LocalRun proposer dg H sg tr ini) {g κ : Time}
     (hcatch : Healing.Growing.CatchRun tr H g κ)
     {x y : Fin P.n} {i j : Nat} {B : A.Blk} {ℓ : ACLabel A}
-    (hx : x ∈ H (tr.time i)) (ha : tr.projAC.AcceptAt x i B) (hi : tr.time i < SA.gbar g)
-    (hy : y ∈ H (tr.time j)) (hc : tr.projAC.CallAt y j ℓ) (hj : SA.gbar g + κ ≤ tr.time j)
+    (hx : x ∈ H (tr.time i)) (ha : tr.projAC.AcceptAt x i B) (hi : tr.time i < AC.gbar g)
+    (hy : y ∈ H (tr.time j)) (hc : tr.projAC.CallAt y j ℓ) (hj : AC.gbar g + κ ≤ tr.time j)
     (hanc : Anc (tr.HonestBlocksAt H) ℓ.frame.F B) :
-    ∃ k ≤ j, tr.projAC.AcceptAt y k B ∧ tr.time k < SA.gbar g + κ := by
+    ∃ k ≤ j, tr.projAC.AcceptAt y k B ∧ tr.time k < AC.gbar g + κ := by
   obtain ⟨ℓ₀, hc₀, hb⟩ := ha
   obtain ⟨q, _, hq, ht⟩ := hrun.acBlock_prev hx (Compose.projAC_callAt.mp hc₀) hb
   have hF : ℓ.frame.F = (tr.state y j).fg.F := by

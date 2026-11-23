@@ -23,9 +23,9 @@ the payload of a proposal is the proposer's view of the previous slot's pool (`p
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
 
 section Run
@@ -35,7 +35,7 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
 
 /-- **An honest node accepts its own proposal** (C0.3, under `NoColl`). -/
 theorem proposal_accepted {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
-    {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : tr.ProposesAt p k P) : tr.AcceptAt p k P := by
   have h := hrun.toLocalRun
   obtain ⟨⟨⟨acc, hcall⟩, hpos⟩, -, -⟩ := hP
@@ -57,8 +57,8 @@ theorem proposal_accepted {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc
 /-- **The honest proposal is the only honest block of its slot.** -/
 theorem eq_of_slot {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : tr.ProposesAt p k P)
-    {R : SA.Blk sp.n (List (FG.Att sp.n))} (hR : R ∈ tr.HonestBlocks H) (hRs : R.slot = P.slot) :
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : tr.ProposesAt p k P)
+    {R : AC.Blk sp.n (List (FG.Att sp.n))} (hR : R ∈ tr.HonestBlocks H) (hRs : R.slot = P.slot) :
     R = P := by
   have h := hrun.toLocalRun
   obtain ⟨⟨⟨acc, hcB⟩, hpos⟩, hpp, htk⟩ := hP
@@ -92,11 +92,11 @@ end Run
 section Proposal
 
 /-- The payload of a proposal is the proposer's view of the previous slot's pool. -/
-theorem payload_eq {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
+theorem payload_eq {A : AC.ACState sp.n} {Φ : AC.Frm sp.n (List (FG.Att sp.n))}
     {t : Time} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (h : (SA.acProposal sp A Φ t).2 = some (d, pay)) :
-    pay = SA.voteViewList A Φ ((sp.slot t : Int) - 1) ⊤ := by
-  unfold SA.acProposal at h
+    (h : (AC.acProposal sp A Φ t).2 = some (d, pay)) :
+    pay = AC.voteViewList A Φ ((sp.slot t : Int) - 1) ⊤ := by
+  unfold AC.acProposal at h
   split_ifs at h
   simp only [Option.some.injEq, Prod.mk.injEq] at h
   exact h.2.symm

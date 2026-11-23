@@ -17,9 +17,9 @@ to carry its tree forward to the read; the next event need not fall inside the h
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -30,13 +30,13 @@ theorem reset_seed_held_at_read_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {n u : Nat} {t : Time}
     (hrp : Regimes.ReadPoint tr n t) (htb : t ≤ b) (hy : y ∈ H t)
-    (hdrain : drainTime sp a ≤ sp.ts u) (hgst : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hdrain : drainTime sp a ≤ sp.ts u) (hgst : AC.gbar g + 4 * sp.Δ ≤ sp.ts u)
     (htime : sp.ts u + 6 * sp.Δ ≤ t) (hcut : sp.ts u + 6 * sp.Δ < tr.time n) :
     ∃ v r l S, HighOrigin tr H g v r l S ∧ tr.time r ≤ b ∧ l < u ∧
       tr.time r < sp.ts u ∧
       (Anc (tr.HonestBlocksAt H) (tr.state y n).fg.F S → S ∈ (tr.state y n).fg.tree) := by
   have hΔ := sp.toParams.hΔ
-  have hu0 : 0 ≤ sp.ts u := by simp only [SAParams.ts]; positivity
+  have hu0 : 0 ≤ sp.ts u := by simp only [ACParams.ts]; positivity
   have ht : 0 ≤ t := by linarith
   have hm := hp.run.time_mono
   have hr := hp.run.upTo ht
@@ -44,13 +44,13 @@ theorem reset_seed_held_at_read_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   obtain ⟨v, r, l, S, hS, hra, hrb, hheld⟩ := hp.reset_seed_held_at_call_at
   have hru : tr.time r < sp.ts u := by
     have hca := hp.cutZ_lt_reset_at
-    have ha0 : 0 ≤ a := by linarith [Healing.lt_cutZ sp g, SA.gbar_nonneg g]
+    have ha0 : 0 ≤ a := by linarith [Healing.lt_cutZ sp g, AC.gbar_nonneg g]
     rw [Healing.drainTime_eq] at hdrain
     have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
-      have := (SA.ts_le_iff_le_slot sp ha0 _).mp h
+      have := (AC.ts_le_iff_le_slot sp ha0 _).mp h
       omega
     have hts : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts (sp.slot a + 2 * sp.k + 5 : Nat) :=
-      (SA.ts_le_iff sp).mpr (by omega)
+      (AC.ts_le_iff sp).mpr (by omega)
     linarith
   have hlu : l < u := by
     obtain ⟨CV, ell, D, hcall, hfl, _⟩ := hS.2.2.1
@@ -59,21 +59,21 @@ theorem reset_seed_held_at_read_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       · change tr.time r = sp.ts l + 6 * sp.Δ at ht'
         linarith
       · change sp.slot (tr.time r) = l at hsl
-        exact (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) _).mpr (by omega)
-    exact_mod_cast (SA.ts_lt_iff sp).mp (hts.trans_lt hru)
-  have hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts u := by
-    have hslot := (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g)
-      (sp.slot (SA.gbar g))).mpr (by omega)
-    simp only [SAParams.ts] at hslot hgst ⊢
+        exact (AC.ts_le_iff_le_slot sp (hp.run.time_nonneg r) _).mpr (by omega)
+    exact_mod_cast (AC.ts_lt_iff sp).mp (hts.trans_lt hru)
+  have hjoin : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) ≤ sp.ts u := by
+    have hslot := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g)
+      (sp.slot (AC.gbar g))).mpr (by omega)
+    simp only [ACParams.ts] at hslot hgst ⊢
     push_cast
     linarith
   obtain ⟨j, ell, ell', hup, rest⟩ := Healing.update_toFG_calls_of_awake hr hy
     ((Trace.upTo_awake _ _ _).mpr ⟨hp.awake y _ (hp.run.antitone htime hy)
-      (by linarith [SA.le_gbar g]) (htime.trans htb), htime⟩) (by
+      (by linarith [AC.le_gbar g]) (htime.trans htb), htime⟩) (by
       intro i hi
       have hac := (Compose.goldilocks_ac_projection_from hr (hp.noColl.upTo t)).localRun
-      unfold SA.joined
-      rcases SA.restartTime_state hac hp.run.vstart hy i with h | ⟨r, hri, hrs, h⟩
+      unfold AC.joined
+      rcases AC.restartTime_state hac hp.run.vstart hy i with h | ⟨r, hri, hrs, h⟩
       · rw [h]; exact bot_le
       · rw [h]
         apply WithBot.coe_le_coe.mpr
@@ -82,8 +82,8 @@ theorem reset_seed_held_at_read_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
         have hrestart := hp.restart_le_before_at (hp.run.antitone hrt hy)
           (Compose.projAC_restartAt.mp hrs) (hrt.trans htb)
         have hslot : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=
-          SA.slot_of_mem sp (u + 1) (by simp only [SAParams.ts]; push_cast; linarith)
-            (by simp only [SAParams.ts]; push_cast; linarith)
+          AC.slot_of_mem sp (u + 1) (by simp only [ACParams.ts]; push_cast; linarith)
+            (by simp only [ACParams.ts]; push_cast; linarith)
         change tr.time r ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)
         change tr.time i = sp.ts u + 6 * sp.Δ at hi
         rw [hi, hslot]
@@ -107,13 +107,13 @@ theorem reset_seed_held_at_read_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     exact (hgrow.2.mono hsub).trans hF
   have hacall : a + sp.Δ ≤ tr.time j := by
     have hca := hp.cutZ_lt_reset_at
-    have ha0 : 0 ≤ a := by linarith [Healing.lt_cutZ sp g, SA.gbar_nonneg g]
+    have ha0 : 0 ≤ a := by linarith [Healing.lt_cutZ sp g, AC.gbar_nonneg g]
     have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
-      have := (SA.ts_le_iff_le_slot sp ha0 _).mp h
+      have := (AC.ts_le_iff_le_slot sp ha0 _).mp h
       omega
     have hts : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts u := by
       rw [Healing.drainTime_eq] at hdrain
-      exact ((SA.ts_le_iff sp).mpr (by omega)).trans hdrain
+      exact ((AC.ts_le_iff sp).mpr (by omega)).trans hdrain
     linarith
   have hSj := hheld y j ell (hp.run.antitone (hjt ▸ htime) hy)
     ((Trace.upTo_callAt _).mp hup.1).2 hacall ((hjt ▸ htime).trans htb) hFj

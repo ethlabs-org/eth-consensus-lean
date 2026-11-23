@@ -29,15 +29,15 @@ end Consensus.Goldilocks.Healing
 
 namespace Consensus.Goldilocks.Healing.Recovery
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 /-- The strengthened coverage supplier discharges all three public Recovery statements.
 `recovery_statements` supplies it by `pattern_coverage_supply`. -/
 theorem recovery_statements_of_coverage
-    (hcoverage : ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (hcoverage : ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
       (proposer : Nat → Fin sp.n)
       (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-      (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF Gp : Time)
+      (tr : GoldilocksTrace sp ro) (K : AC.CommitteeDict sp.n) (g ΔF Gp : Time)
       (W M cF kF : Nat),
       PatternCoverageSupply tr H K proposer dg g ΔF Gp W M cF kF) :
     RecoveryStatements := by

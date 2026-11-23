@@ -46,19 +46,19 @@ theorem goldilocks_slot_constancy : GoldilocksSlotConstancy (V := V) := by
   have hs : sp.slot (sp.ts s + sp.Δ) = sp.slot (sp.ts s) := by
     by_cases h : 0 ≤ s
     · lift s to Nat using h
-      rw [SA.slot_of_mem sp s (by linarith) (by
-        simp only [SA.SAParams.ts]
+      rw [AC.slot_of_mem sp s (by linarith) (by
+        simp only [AC.ACParams.ts]
         push_cast
-        linarith), SA.slot_of_mem sp s le_rfl (by
-        simp only [SA.SAParams.ts]
+        linarith), AC.slot_of_mem sp s le_rfl (by
+        simp only [AC.ACParams.ts]
         push_cast
         linarith)]
     · have hn : s ≤ -1 := by omega
       have ht : sp.ts s + sp.Δ < 0 := by
         have := mul_le_mul_of_nonneg_left hn (show 0 ≤ 4 * sp.Δ by positivity)
-        simp only [SA.SAParams.ts]
+        simp only [AC.ACParams.ts]
         linarith
-      rw [SA.slot_of_neg ht, SA.slot_of_neg (by linarith : sp.ts s < 0)]
+      rw [AC.slot_of_neg ht, AC.slot_of_neg (by linarith : sp.ts s < 0)]
   exact runCommittee_eq_of_slot_eq S rho hn hs
 
 /-- The population clause at threshold at least one half supplies the shared FG
@@ -489,7 +489,7 @@ private theorem canonical_window_premises
       (goldilocksRunMap S rho hn hv).honest p)
     {C' : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
       (goldilocksRunMap S rho hn hv).signer}
-    (hserved : C'.served = fun tr y j τ m => SA.FamilyFacts.MessageServedBefore tr.projAC y j τ m)
+    (hserved : C'.served = fun tr y j τ m => AC.FamilyFacts.MessageServedBefore tr.projAC y j τ m)
     (hpre : SleepyServicePrefix C' (goldilocksRunMap S rho hn hv).trace
       (goldilocksRunMap S rho hn hv).honest ΔF C.look b)
     (hK : CommitteeWindow C p (goldilocksRunMap S rho hn hv).committee b)

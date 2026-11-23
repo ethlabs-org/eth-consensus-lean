@@ -17,10 +17,10 @@ before the signing. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
   {proposer : Nat → Fin sp.n}
@@ -31,7 +31,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 (honest trees are parent-closed down to genesis). -/
 theorem store_anc_of_honest_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {A C : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {A C : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : Anc (tr.HonestBlocks H) A C) (hC : C ∈ (tr.state y k).fg.tree) :
     (tr.state y k).fg.Anc A C :=
   store_anc_of_honest_anc_from hrun.toLocalRun hnc hy h hC
@@ -39,7 +39,7 @@ theorem store_anc_of_honest_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini
 /-- A block below (inside the honest blocks) a block of an honest tree is in that tree. -/
 theorem mem_of_honest_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {A C : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {A C : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : Anc (tr.HonestBlocks H) A C) (hC : C ∈ (tr.state y k).fg.tree) :
     A ∈ (tr.state y k).fg.tree := by
   by_cases he : A = C
@@ -49,7 +49,7 @@ theorem mem_of_honest_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)
 /-- One state per block across the honest stores of a run. -/
 theorem σ_eq_honest {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBy : B ∈ (tr.state y i).fg.tree) (hBz : B ∈ (tr.state z j).fg.tree) :
     (tr.state y i).fg.σ B.root = (tr.state z j).fg.σ B.root :=
   Store.σ_eq_of_mem (Compose.fg_reachable hrun.toLocalRun hy i)
@@ -61,7 +61,7 @@ theorem σ_eq_honest {ini} (hrun : GoldilocksRun proposer dg H tr ini)
 theorem mem_tree_of_frame {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ℓ)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) :
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) :
     B ∈ (tr.state y k).fg.tree := by
   rw [Compose.frame_of_projAC hrun hy hc] at hB
   exact hB.1
@@ -69,22 +69,22 @@ theorem mem_tree_of_frame {ini} (hrun : GoldilocksRun proposer dg H tr ini)
 /-- The stored block of a fast-lock write is in the writer's FG tree, below its selection. -/
 theorem storedFastLock_mem (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    {x : Fin sp.n} (hx : x ∈ H) {i s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (SA.Vote sp.n)} (h : Compose.StoredFastLockAt tr x i s B CV) :
-    B ∈ (tr.state x i).fg.tree ∧ ∃ D, SA.FastLockAt tr.projAC x i s D CV ∧
+    {x : Fin sp.n} (hx : x ∈ H) {i s : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (AC.Vote sp.n)} (h : Compose.StoredFastLockAt tr x i s B CV) :
+    B ∈ (tr.state x i).fg.tree ∧ ∃ D, AC.FastLockAt tr.projAC x i s D CV ∧
       Anc (tr.HonestBlocks H) B D := by
   unfold Compose.StoredFastLockAt at h
   obtain ⟨ℓ, D, hc, hfl, rfl⟩ := h
   have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hx hc
-  obtain ⟨hvt, hva⟩ := SA.viableAncestor_anc hΦ (fastLockAt_frame_mem hfl hc)
+  obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hx hc
+  obtain ⟨hvt, hva⟩ := AC.viableAncestor_anc hΦ (fastLockAt_frame_mem hfl hc)
   exact ⟨mem_tree_of_frame hrun hx hc hvt, D, hfl, hva.mono hΦU⟩
 
 /-- **A fast-lock write is joined** (run level): `JoinedAt` at the write's time. -/
 theorem joinedAt_of_fastLockAt {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    {x : Fin sp.n} (hx : x ∈ H) {i s : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (SA.Vote sp.n)} (h : SA.FastLockAt tr.projAC x i s D CV) :
+    {x : Fin sp.n} (hx : x ∈ H) {i s : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (AC.Vote sp.n)} (h : AC.FastLockAt tr.projAC x i s D CV) :
     tr.JoinedAt x (tr.time i) := by
   have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   obtain ⟨hj, ℓ, hc, hnr⟩ := joined_of_fastLockAt hr hx h
@@ -116,24 +116,24 @@ theorem ResetPremisesUpTo.high_row_source {b : Time}
   obtain ⟨d', rfl, ℓ, hc', hto, -, hC, hfgeq⟩ :=
     Compose.attest_source hp.run.toLocalRun hv hcall
   have hpc : tr.projAC.CallAt v d' ℓ := Compose.projAC_callAt.mpr hc'
-  have hC' : (SA.acToFG sp (tr.projAC.state v d') ℓ.frame (tr.time d')).2 = some C := by
+  have hC' : (AC.acToFG sp (tr.projAC.state v d') ℓ.frame (tr.time d')).2 = some C := by
     rw [Compose.projAC_state hp.run.toLocalRun hv]
     exact hC
-  obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := SA.toFG_candidate hC'
+  obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := AC.toFG_candidate hC'
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
   obtain ⟨r, hrd, CV, ℓw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
     stored_fast_lock_provenance hr hp.run.vstart hv d' l₀ hl₀ hlf
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hv hpc
-  obtain ⟨hΦw, -⟩ := SA.frameIn_of_callAt hr hv hcw
+  obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hv hpc
+  obtain ⟨hΦw, -⟩ := AC.frameIn_of_callAt hr hv hcw
   -- the source is the viable ancestor of the live lock's block, below the stored block
   have hCt : C ∈ ℓ.frame.tree := hCv.1
-  obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hΦ hB₀
+  obtain ⟨hvat, hva⟩ := AC.viableAncestor_anc hΦ hB₀
   obtain rfl : C = ℓ.frame.viableAncestor B₀ := hU.1 (hΦU hCt) (hΦU hvat) hlb.symm
   obtain rfl : L = B₀ := hU.1 hL (hΦU hB₀) (hLr.trans hB₀r.symm)
   set O := ℓw.frame.viableAncestor D with hO
   have hCO : Anc (tr.HonestBlocks H) (ℓ.frame.viableAncestor L) O := (hva.mono hΦU).trans hLO
   have hOt : O ∈ (tr.state v r).fg.tree :=
-    mem_tree_of_frame hp.run hv hcw (SA.viableAncestor_anc hΦw (fastLockAt_frame_mem hfl hcw)).1
+    mem_tree_of_frame hp.run hv hcw (AC.viableAncestor_anc hΦw (fastLockAt_frame_mem hfl hcw)).1
   -- the entry of the source, in the store at the signing
   set st := (tr.state v (d' + 1)).fg with hst
   have hreach := Compose.fg_reachable hp.run.toLocalRun hv (d' + 1)

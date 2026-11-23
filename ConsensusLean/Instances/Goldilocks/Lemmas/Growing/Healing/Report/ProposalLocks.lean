@@ -10,21 +10,21 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 open Compose.Growing
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- A warm live lock is below the root, followed by votes, or from a current optimistic write. -/
 theorem proposal_lock_prefix_cases_at
     {g ΔF b : Time} {s₀ s floor : Nat} {kindJ : Prop}
-    {J X B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {J X B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J)
-    {K : SA.CommitteeDict sp.n}
+    {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K))
+      (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -34,15 +34,15 @@ theorem proposal_lock_prefix_cases_at
     {z : Fin sp.n} {i : Nat} (hz : z ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt z i ell)
     (hti : tr.time i = sp.ts (s + 1 : Nat))
-    {l : SA.Lock} (hl : l ∈ SA.liveLocks sp (tr.projAC.state z i).locks ell.frame (tr.time i))
+    {l : AC.Lock} (hl : l ∈ AC.liveLocks sp (tr.projAC.state z i).locks ell.frame (tr.time i))
     (hwarm : s₀ + sp.k ≤ l.slot) (hpos : 0 < l.slot)
     (hpred : s₀ ≤ l.slot - 1) (hold : l.slot < s + 1)
     (hB : B ∈ ell.frame.tree) (hBr : B.root = l.block) (hXB : ell.frame.Anc X B)
     (hK : CommitteeHalfUpTo tr H K g b) :
     Anc (tr.HonestBlocksAt H) X ell.frame.fcRoot ∨
-      (∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → e.msg.slot = s →
-        SA.VoteExtends (tr.HonestBlocksAt H) e.msg X) ∨
-      ∃ a < i, ∃ D CV, z ∈ H (tr.time a) ∧ SA.OptimisticLockAt tr.projAC z a s D CV ∧
+      (∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → e.msg.slot = s →
+        AC.VoteExtends (tr.HonestBlocksAt H) e.msg X) ∨
+      ∃ a < i, ∃ D CV, z ∈ H (tr.time a) ∧ AC.OptimisticLockAt tr.projAC z a s D CV ∧
         Anc (tr.HonestBlocksAt H) X D := by
   have hPhi := frameIn_at hrun hnc hz hc
   have hΔ := sp.toParams.hΔ
@@ -53,12 +53,12 @@ theorem proposal_lock_prefix_cases_at
   have hXA : Anc (tr.HonestBlocksAt H) X A := (Anc.mono hPhi.2 hXB).trans hBA
   have hW := frameIn_at hrun hnc hza ha
   have hAD : Anc (tr.HonestBlocksAt H) A D :=
-    Anc.mono hW.2 (SA.viableAncestor_anc hW.1 hD).2
-  have hregular (ho : (∃ CV, SA.FastUpdateAt tr.projAC z a l.slot D CV) ∨
-      SA.SlowLockAt tr.projAC z a l.slot D) :
-      ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → e.msg.slot = s →
-        SA.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
-    obtain ⟨ell', hu⟩ : ∃ ell', SA.UpdateAt tr.projAC z a l.slot ell' := by
+    Anc.mono hW.2 (AC.viableAncestor_anc hW.1 hD).2
+  have hregular (ho : (∃ CV, AC.FastUpdateAt tr.projAC z a l.slot D CV) ∨
+      AC.SlowLockAt tr.projAC z a l.slot D) :
+      ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → e.msg.slot = s →
+        AC.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
+    obtain ⟨ell', hu⟩ : ∃ ell', AC.UpdateAt tr.projAC z a l.slot ell' := by
       rcases ho with ⟨CV, ell', C, hu, -⟩ | ⟨ell', C, hu, -⟩ <;> exact ⟨ell', hu⟩
     have hgap : l.slot + 2 ≤ s + 1 := by
       have ht := hu.2.2.1
@@ -68,7 +68,7 @@ theorem proposal_lock_prefix_cases_at
       by_contra hn
       have he : s + 1 = l.slot + 1 := by omega
       rw [he] at htime
-      simp only [SAParams.ts] at ht htime
+      simp only [ACParams.ts] at ht htime
       push_cast at htime
       linarith only [hΔ, ht, htime]
     have hall := (hframe.regular_later_heads_at hrun hnc hsvc hawake hf hcatch hnr
@@ -82,12 +82,12 @@ theorem proposal_lock_prefix_cases_at
   by_cases hs : l.slot = s
   · exact Or.inr (Or.inr ⟨a, hai, D, CV, hza, hs ▸ hop, hXA.trans hAD⟩)
   have hlabel : s₀ ≤ l.slot := by omega
-  have hts : sp.ts s₀ ≤ sp.ts l.slot := (SA.ts_le_iff sp).2 (by exact_mod_cast hlabel)
+  have hts : sp.ts s₀ ≤ sp.ts l.slot := (AC.ts_le_iff sp).2 (by exact_mod_cast hlabel)
   have halo : sp.ts s₀ ≤ tr.time a := by
     obtain ⟨_, _, _, ht, -⟩ := hop
     change sp.slot (tr.time a) = l.slot at ht
-    exact hts.trans ((SA.ts_le_iff_le_slot sp (hrun.time_nonneg a) _).2 (by rw [ht]))
-  rcases (SA.viableAncestor_spec hW.1 hD).2.1 with hbelow | hAv
+    exact hts.trans ((AC.ts_le_iff_le_slot sp (hrun.time_nonneg a) _).2 (by rw [ht]))
+  rcases (AC.viableAncestor_spec hW.1 hD).2.1 with hbelow | hAv
   · exact Or.inl (unlocked_image_below_write_root_at hframe hrun hnc hz hai.le ha hc
       halo hi hXB hBA hbelow)
   obtain ⟨Q, hQ, hvQ, hAQ⟩ := hAv.2.2

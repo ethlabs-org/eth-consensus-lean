@@ -29,7 +29,7 @@ theorem sleepy_include_finite_at (hv : rho.ExecutionValid)
     (hsync : Compose.Growing.SleepyServiceBefore (simTraceAt S rho hn) (honestKeysAt S rho)
       (S.params (pubOf E) hn).Δ b)
     (hB : Compose.Growing.SleepyBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho) 0 b)
-    {τ t : Time} {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
+    {τ t : Time} {P : AC.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
     (hP : Regimes.Growing.ReadyProposalAt (simTraceAt S rho hn) (honestKeysAt S rho)
       (Regimes.catchUp (S.params (pubOf E) hn)) τ (Regimes.Growing.hold (S.params (pubOf E) hn))
       P)
@@ -37,7 +37,7 @@ theorem sleepy_include_finite_at (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} {j : Nat}
     (hy : Regimes.Growing.ReadyAt (simTraceAt S rho hn) (honestKeysAt S rho)
       (Regimes.catchUp (S.params (pubOf E) hn)) y t)
-    (hj : Regimes.CutAfter (simTraceAt S rho hn) j t) {K : SA.CommitteeDict (Fintype.card V)}
+    (hj : Regimes.CutAfter (simTraceAt S rho hn) j t) {K : AC.CommitteeDict (Fintype.card V)}
     (hKB : Compose.Growing.CommitteeFacts (simTraceAt S rho hn) (honestKeysAt S rho) K)
     (hBK : Compose.Growing.CommitteeBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho) K 0 b) :
     Anc ((simTraceAt S rho hn).HonestBlocksAt (honestKeysAt S rho)) P

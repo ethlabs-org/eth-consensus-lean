@@ -23,9 +23,9 @@ static lemma on the prefix through one time:
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -54,7 +54,7 @@ theorem caches_on_chain_of_two {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     simp only [FGTrace.store, projFG_state hrun.toLocalRun hy i]
   have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX⟩
   have hX : ∀ X ∈ ({(tr.state y i).fg.J, (tr.state y i).fg.F} :
-      Set (SA.Blk sp.n (List (FG.Att sp.n)))), X ∈ (tr.state y i).fg.tree →
+      Set (AC.Blk sp.n (List (FG.Att sp.n)))), X ∈ (tr.state y i).fg.tree →
       OnOriginChainWithin tr H X b := by
     intro X hXJF hXt
     rcases cache_quorum (fg_reachable hrun.toLocalRun hy i) X hXJF with hg | ⟨Q, hQ, hQv⟩
@@ -84,9 +84,9 @@ end Consensus.Goldilocks.Compose
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -94,7 +94,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 the origins within `b'` of the run. -/
 theorem onOriginChainWithin_of_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {d b' : Time}
-    (hd : 0 ≤ d) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hd : 0 ≤ d) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : Compose.OnOriginChainWithin (tr.upTo d) (H d) B b') : OnOriginChainWithin tr H B b' := by
   rcases Compose.onOriginChainWithin_iff.1 h with hg | ⟨C, s, hC, hBC⟩
   · exact onOriginChainWithin_iff.2 (Or.inl hg)
@@ -120,11 +120,11 @@ whose earlier cuts are at times `≤ b`. -/
 theorem source_on_chain_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} {b : Time} (hy : y ∈ H (tr.time i)) (hi : ∀ k < i, tr.time k ≤ b)
-    {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (h : SA.ToFGAt tr.projAC y i ℓ C) : OnOriginChainWithin tr H C b := by
+    {ℓ : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (h : AC.ToFGAt tr.projAC y i ℓ C) : OnOriginChainWithin tr H C b := by
   have hd := hrun.time_nonneg i
   obtain ⟨hc, hcall, hC⟩ := h
-  have h' : SA.ToFGAt (tr.upTo (tr.time i)).projAC y i ℓ C := by
+  have h' : AC.ToFGAt (tr.upTo (tr.time i)).projAC y i ℓ C := by
     rw [RunTrace.upTo_projAC]
     exact ⟨(Trace.upTo_callAt_of_le _ le_rfl).2 hc, hcall, by
       rw [projAC_upTo_state hrun le_rfl]; exact hC⟩

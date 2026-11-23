@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 
 public section
 
-/-! # Goldilocks SA: the update after an optimistic confirmation (A1.4 (b))
+/-! # Goldilocks AC: the update after an optimistic confirmation (A1.4 (b))
 
 If every honest slot-`(s+1)` vote extends `B`, an honest node `z` at its update of slot `s + 1`
 that holds the votes of at least half the committee size in honest voters, all resolved before
@@ -16,9 +16,9 @@ slot-`(s+1)` pool is signed by a member of the committee `K (s + 1)`, so with
 `voters < 2 · score` and pass the fast test, so the result, the deepest such block (the
 candidates lie on one chain), extends `B`, and so does the fast test's block on its path. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams}
+variable {FGP : Type} {sp : ACParams}
 
 /-- A nonempty set of blocks of a well-formed frame's tree has a deepest block. -/
 private theorem exists_deepest_eq {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {S : Set (Blk sp.n FGP)}
@@ -54,9 +54,9 @@ private theorem anc_of_isDeepest {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {S : Set
 selects a result extending it. Source provenance and service only produce these inputs. -/
 theorem update_extends_of_resolved_votes
     {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
-    {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
     {ini} (hrun : ACRun proposer tr H U ini) {s : Nat} {z : Fin sp.n} {k : Nat}
-    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (K : CommitteeDict sp.n)
+    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (K : CommitteeDict sp.n)
     (hP : ∀ v ∈ (tr.state z k).pool (s + 1), v.val ∈ K.committee (s + 1))
     (hf : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize)
     (hext : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = s + 1 → VoteExtends U e.msg B)
@@ -152,6 +152,6 @@ theorem optimistic_next_update : OptimisticNextUpdate sp := by
   intro FGP ro H U tr proposer hrun K hP hT hsize s z k B ℓ hf hext hz hup hh hres
   exact update_extends_of_resolved_votes hrun K (hP.1 z hz k (s + 1)) hf hext hz hup hh hres
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

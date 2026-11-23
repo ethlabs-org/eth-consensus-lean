@@ -43,9 +43,9 @@ variable (e : Encoding F E p hN hn A) (rho : Model.Run (compiled F) E)
 
 /-- A signed vote contained in an observed object is from a member of its slot's committee. -/
 theorem observed_vote_member (hv : rho.ExecutionValid)
-    {role : Nat → (Model.protoOf (compiled F) E).Role} {K : SA.CommitteeDict (Fintype.card V)}
+    {role : Nat → (Model.protoOf (compiled F) E).Role} {K : AC.CommitteeDict (Fintype.card V)}
     (hK : K.BindsSel rho role) {o obj : (Model.protoOf (compiled F) E).Object}
-    (ho : o ∈ rho.Observed) {v : SA.Vote (Fintype.card V)} (hc : Model.Obj.Contains o obj)
+    (ho : o ∈ rho.Observed) {v : AC.Vote (Fintype.card V)} (hc : Model.Obj.Contains o obj)
     (ha : obj.auth = .signed v.val (role v.slot)) : v.val ∈ K.committee v.slot :=
   ((K.bindsSel_iff rho role).1 hK v.slot v.val).2 (rho.selected_of_observed hv ho hc ha)
 
@@ -57,8 +57,8 @@ theorem simTraceAt_occurs_member (hv : rho.ExecutionValid)
       (paramsAtCount p (Fintype.card V) hN hn).IsPublic t →
       ∀ r ∈ eventCuts e rho j, ∀ b acc, r.label = .fg (.block b acc) → r.pos ≠ 0 →
         engineObj e (blockObj e.codec.encode e.codec.carried b) ∈ rho.releasesAt j)
-    {role : Nat → (Model.protoOf (compiled F) E).Role} {K : SA.CommitteeDict (Fintype.card V)}
-    (hK : K.BindsSel rho role) (votes : A.Blk → List (SA.Vote (Fintype.card V)))
+    {role : Nat → (Model.protoOf (compiled F) E).Role} {K : AC.CommitteeDict (Fintype.card V)}
+    (hK : K.BindsSel rho role) (votes : A.Blk → List (AC.Vote (Fintype.card V)))
     (hcontains : ∀ b, ∀ v ∈ votes b, ∃ obj,
       Model.Obj.Contains (engineObj e (blockObj e.codec.encode e.codec.carried b)) obj ∧
         obj.auth = .signed v.val (role v.slot))
@@ -74,13 +74,13 @@ namespace Consensus.Goldilocks.Simulation
 
 open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote)
+open AC (ACParams ReplayOrder Vote)
 
 /-- **The pool of an AC run keeps a vote predicate** that holds of the node's received
 messages and its own emissions. A block's declared references do not enter the pool. -/
-theorem pool_mem_of_run {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
-    {H₀ : Set (Fin sp.n)} {U : Set (SA.Blk sp.n FGP)} {trA : SA.SATrace sp FGP ro} {ini} {g : Nat}
-    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H₀ U trA ini) (hini : ∀ y, SA.VoteStart g (ini y))
+theorem pool_mem_of_run {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
+    {H₀ : Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)} {trA : AC.GTrace sp FGP ro} {ini} {g : Nat}
+    (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H₀ U trA ini) (hini : ∀ y, AC.VoteStart g (ini y))
     {y : Fin sp.n} (hy : y ∈ H₀)
     (P : Vote sp.n → Prop)
     (hmsg : ∀ i ℓ v, trA.CallAt y i ℓ → ℓ.call = .message v → P v)
@@ -111,7 +111,7 @@ theorem pool_mem_of_run {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-  {K : SA.CommitteeDict (Fintype.card V)}
+  {K : AC.CommitteeDict (Fintype.card V)}
 
 /-- **The committee of an observed vote object**: its signer is selected for the vote role of
 its slot. -/
@@ -146,12 +146,12 @@ theorem simTraceAt_gate (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.vote.vo
 /-- **A caster is a member of its vote's committee**: the emission gate at the cast, then the
 installed permission. -/
 theorem simTraceAt_vote_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.vote.voteRole) :
-    ∀ x i e, SA.VoteAt (simTraceAt S rho hn).projAC x i e → x ∈ K.committee e.msg.slot := by
+    ∀ x i e, AC.VoteAt (simTraceAt S rho hn).projAC x i e → x ∈ K.committee e.msg.slot := by
   rintro x i e ⟨ℓ, hc, he⟩
   obtain ⟨-, hstep, -, -⟩ :=
     simTraceAt_cutLaw S rho hn hv x i (.ac ℓ) (Compose.projAC_callAt.1 hc)
   exact (simTraceAt_mayVote_iff S rho hn hv hK x i _).1
-    (SA.emits_mayVote (S.ro _) x _ ℓ.frame _ ℓ.call e (by rw [hstep]; exact he))
+    (AC.emits_mayVote (S.ro _) x _ ℓ.frame _ ℓ.call e (by rw [hstep]; exact he))
 
 /-! ### On a run record of the canonical trace -/
 
@@ -174,7 +174,7 @@ private theorem upTo_pool_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho 
       ⟨ℓ, Compose.projAC_callAt.1 ((Trace.upTo_callAt _).mp hci).2, hcl⟩)
     (fun i ℓ e hci he => ?_)
   show e.msg.val ∈ K.committee e.msg.slot
-  rw [(SA.castAt_spec hr hw ⟨hci, he⟩).1]
+  rw [(AC.castAt_spec hr hw ⟨hci, he⟩).1]
   exact simTraceAt_vote_member S rho hn hv hK w i e ⟨ℓ, ((Trace.upTo_callAt _).mp hci).2, he⟩
 
 /-- **The pool after an honest call holds votes of members of its slot** (`hPool`). -/
@@ -191,7 +191,7 @@ theorem simTraceAt_pool_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.
   have hm := upTo_pool_member S hrun hv hK hnc hd hw (c + 1) m v hvp
   have hacr := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)
   rw [RunTrace.upTo_projAC] at hacr
-  rwa [SA.state_pool_slot _ hacr.localRun hacr.vstart hw (c + 1) m v hvp] at hm
+  rwa [AC.state_pool_slot _ hacr.localRun hacr.vstart hw (c + 1) m v hvp] at hm
 
 end Consensus.Goldilocks.Simulation
 

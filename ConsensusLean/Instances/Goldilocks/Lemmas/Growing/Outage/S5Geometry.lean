@@ -22,19 +22,19 @@ protected block `P`.
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Strictly above `P` in the node's justification cache. -/
 def HiAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-    (P : SA.Blk sp.n (List (FG.Att sp.n))) (y : Fin sp.n) (i : Nat) : Prop :=
+    (P : AC.Blk sp.n (List (FG.Att sp.n))) (y : Fin sp.n) (i : Nat) : Prop :=
   Anc (tr.HonestBlocksAt H) P (tr.state y i).fg.J ∧ (tr.state y i).fg.J.root ≠ P.root
 
-theorem hiAt_iff {P : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {i : Nat} :
+theorem hiAt_iff {P : AC.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {i : Nat} :
     HiAt tr H P y i ↔
       Anc (tr.HonestBlocksAt H) P (tr.state y i).fg.J ∧ (tr.state y i).fg.J.root ≠ P.root :=
   Iff.rfl
@@ -46,7 +46,7 @@ height at least `h_j + 1` is strictly above `P`. -/
 theorem above_of_hi_height_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} {k : Nat}
     {t : Time} (hk : k ≤ i) (ht0 : 0 ≤ t) (ht : ∀ k' < k, tr.time k' ≤ t) (hy : y ∈ H t)
     (hf : 2 * (H t)ᶜ.ncard < sp.n) (hHi : HiAt tr H D.P y k)
-    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y k).fg.tree)
+    {X : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y k).fg.tree)
     (hh : (tr.state y k).fg.hj + 1 ≤ ((tr.state y k).fg.σ X.root).h) :
     Anc (tr.HonestBlocksAt H) D.P X ∧ X.root ≠ D.P.root := by
   have hU := D.coherent

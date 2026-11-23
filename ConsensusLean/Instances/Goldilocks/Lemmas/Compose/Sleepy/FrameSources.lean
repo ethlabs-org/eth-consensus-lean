@@ -12,9 +12,9 @@ The frame geometry imports this module privately. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
@@ -23,12 +23,12 @@ section Geometry
 variable {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   (hnc : NoCollRun dg tr)
   (hf : 2 * Hᶜ.ncard < sp.n)
-  {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+  {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
 
 include hrun hnc hf hy in
 /-- A crossing quorum has an honest attestation, whose source satisfies `G`. -/
 theorem frame_crossing_source_of {h₀ : Nat} (hsrc : RowsAbove tr H G y i h₀)
-    {W : SA.Blk sp.n (List (FG.Att sp.n))}
+    {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y i).fg.tree) {j : Nat} (hj0 : h₀ ≤ j) (hj1 : 1 ≤ j)
     (hj2 : j < ((tr.state y i).fg.σ W.root).h) :
     ∃ E ∈ (tr.state y i).fg.tree, (tr.state y i).fg.Anc E W ∧

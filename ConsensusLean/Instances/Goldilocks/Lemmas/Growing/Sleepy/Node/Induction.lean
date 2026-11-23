@@ -21,9 +21,9 @@ of nodes honest at them, so a later compromise removes nothing from it. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
@@ -36,19 +36,19 @@ from the floors `rL`, `rO ≤ s₀`: the seed `P_{s₀}`, `V_{s₀}`; the commit
 `P_{s+1}`, the frozen witness for a member of label at most `s` with an honest slot-`s` supporter
 (`hframe`). -/
 theorem frontier_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
     (hBK : CommitteeBoundsFrom tr H K σ₀ b) {g : Time} {rL rO s₀ : Nat} (hσ₀ : σ₀ ≤ s₀)
     (hrO : rO ≤ s₀) (hsa : a + κ ≤ sp.ts s₀)
-    (hlive : ∀ s, s₀ ≤ s → ∀ y i ℓ e, y ∈ H (tr.time i) → SA.CastAt tr.projAC y i ℓ e →
+    (hlive : ∀ s, s₀ ≤ s → ∀ y i ℓ e, y ∈ H (tr.time i) → AC.CastAt tr.projAC y i ℓ e →
       e.msg.slot = s + 1 → tr.time i ≤ b →
-      ∀ l ∈ SA.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), l.slot ≤ s → rL ≤ l.slot)
+      ∀ l ∈ AC.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), l.slot ≤ s → rL ≤ l.slot)
     (hframe : ∀ s, s₀ ≤ s → HealedOriginsBelow tr H g rL rO (s + 1) b →
-      ∀ y i ℓ e, y ∈ H (tr.time i) → SA.CastAt tr.projAC y i ℓ e → e.msg.slot = s + 1 →
+      ∀ y i ℓ e, y ∈ H (tr.time i) → AC.CastAt tr.projAC y i ℓ e → e.msg.slot = s + 1 →
       tr.time i ≤ b → ∀ B j, HealedOrigin tr H g rL rO B j b → j ≤ s →
       (∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
-        SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) →
-      B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
+        AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) →
+      B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
         Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot)
     (hseed : HealedOriginsBelow tr H g rL rO s₀ b ∧ HealedVotesBelow tr H g rL rO s₀ b) :
     ∀ s, HealedOriginsBelow tr H g rL rO s b ∧ HealedVotesBelow tr H g rL rO s b := by
@@ -79,7 +79,7 @@ private theorem held_origin_viable_read {ini} (hrun : Growing.GoldilocksRun prop
     (hi : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) (hf : 2 * (H t)ᶜ.ncard < sp.n)
     (hP : ∀ C s C' s', OriginWithin tr H C s t → OriginWithin tr H C' s' t →
       Compatible (tr.HonestBlocksAt H) C C')
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBc : ∀ C s, OriginBefore tr H C s i → Compatible (tr.HonestBlocksAt H) B C)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
     (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
@@ -102,7 +102,7 @@ private theorem held_origin_viable_read {ini} (hrun : Growing.GoldilocksRun prop
 /-- **The healed frontier from genesis**: the floors `0` and the seed label `0` (vacuous seed),
 with the frozen witness `vote_frame_at`; every origin is a member. -/
 private theorem frontier_zero_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K) {b : Time}
+    (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K) {b : Time}
     (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)
     (hBK : CommitteeBoundsFrom tr H K 0 b) (g : Time) :
     ∀ s, HealedOriginsBelow tr H g 0 0 s b ∧ HealedVotesBelow tr H g 0 0 s b := by
@@ -122,7 +122,7 @@ private theorem frontier_zero_at {ini} (hrun : Growing.GoldilocksRun proposer dg
 service, the count shapes and the committee count shapes through `b`: the healed frontier from
 genesis (`frontier_zero_at`) restricted to the origins. -/
 theorem sleepy_invariant_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K) {b : Time}
+    (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K) {b : Time}
     (hb : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)
     (hBK : CommitteeBoundsFrom tr H K 0 b) : SleepyInvariantUpTo tr H b := by
   have hF := frontier_zero_at hrun hnc hKB hb hsync hB hBK 0

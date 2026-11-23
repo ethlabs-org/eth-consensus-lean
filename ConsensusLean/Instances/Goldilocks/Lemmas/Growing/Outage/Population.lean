@@ -10,10 +10,10 @@ public section
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder)
+open AC (ACParams ReplayOrder)
 open Consensus.Goldilocks.Generic
 
-variable {sp : SAParams}
+variable {sp : ACParams}
 
 section
 
@@ -117,11 +117,11 @@ theorem outage_opponents_lt_committee (hb : RunPointBinding tr H p)
     ((dictOfTime sp cm).committee s ∩ ((H z)ᶜ ∪ outageOpponents p η c z)).ncard <
       ((dictOfTime sp cm).committee s ∩ outageHolders p c z).ncard := by
   have h := outage_opponents_lt_at hb hη hL hz hzh hc hne ha hsz
-  simpa only [dictOfTime, sp.slotTime_eq, SA.SAParams.ts] using h
+  simpa only [dictOfTime, sp.slotTime_eq, AC.ACParams.ts] using h
 
 /-- Disjoint holders turn the opponent comparison into a strict half-committee bound. -/
 theorem outage_two_mul_opponents_lt (hb : RunPointBinding tr H p)
-    {K : SA.CommitteeDict sp.n} {η c z : Time} {s : Nat}
+    {K : AC.CommitteeDict sp.n} {η c z : Time} {s : Nat}
     (h : (K.committee s ∩ ((H z)ᶜ ∪ outageOpponents p η c z)).ncard <
       (K.committee s ∩ outageHolders p c z).ncard) :
     2 * (K.committee s ∩ ((H z)ᶜ ∪ outageOpponents p η c z)).ncard <
@@ -202,7 +202,7 @@ variable {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
 /-- The shifted outage family supplies the ordinary population and slot-committee bounds.
 No constancy of the time-indexed committee inside a slot is assumed. -/
 theorem outage_bounds {proposer : Nat → Fin sp.n}
-    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {ini}
+    {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {ini}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hb : RunPointBinding tr H p)
     {cm : Time → Finset (Fin sp.n)} (hpos : 0 < sp.committeeSize)
     (hsize : ∀ s, ((dictOfTime sp cm).committee s).ncard = sp.committeeSize)
@@ -233,7 +233,7 @@ theorem outage_bounds {proposer : Nat → Fin sp.n}
   have hne : ∀ s : Nat, (cm (sp.ts s)).Nonempty := by
     intro s
     have hs : (cm (sp.ts s) : Set (Fin sp.n)).ncard = sp.committeeSize := by
-      simpa only [dictOfTime, sp.slotTime_eq, SA.SAParams.ts] using hsize s
+      simpa only [dictOfTime, sp.slotTime_eq, AC.ACParams.ts] using hsize s
     exact Finset.card_pos.mp (by simpa using (hpos.trans_eq hs.symm))
   have hjoin : ∀ y t, y ∈ H t → 0 ≤ t →
       (∀ u, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) →
@@ -245,8 +245,8 @@ theorem outage_bounds {proposer : Nat → Fin sp.n}
   · intro s d _ htd hdb h6
     have h := outage_committee_count hrun.antitone hb hη0 hjoin hK hbh (hne s) hΔ.le hη htd hdb
       (by linarith)
-    simp only [SA.FaultBoundK, dictOfTime, sp.slotTime_eq]
-    simp only [SA.SAParams.ts] at h
+    simp only [AC.FaultBoundK, dictOfTime, sp.slotTime_eq]
+    simp only [AC.ACParams.ts] at h
     apply h.trans_le
     apply Set.ncard_le_ncard (ht := Set.toFinite _)
     intro y hy
@@ -262,7 +262,7 @@ theorem outage_bounds {proposer : Nat → Fin sp.n}
 theorem outage_bounds_of_local
     {C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val)}
     (hC : GoldilocksLocalData sp ro C) {cm : Time → Finset (Fin sp.n)}
-    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
     (hrun : C.run.Run cm proposer dg H tr) (hb : RunPointBinding tr H p)
     (hp : p.EtaSleepyOn C.θ C.outageEta (max C.catchUp (C.outageEta - 1))
       C.look 0 p.horizon)

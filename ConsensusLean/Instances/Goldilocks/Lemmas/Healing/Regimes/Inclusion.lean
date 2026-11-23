@@ -26,10 +26,10 @@ The file is in the Healing layer for the tick facts of `Healing/Projection/Run`.
 
 namespace Consensus.Goldilocks.Regimes
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 open Compose
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time}
@@ -46,18 +46,18 @@ theorem ready_proposer_proposes {ini} (hrun : GoldilocksRun proposer dg H tr ini
   have hΔ := sp.toParams.hΔ
   set p := proposer s
   have hp := hready.1
-  have ht0 : 0 ≤ sp.ts s := by simp only [SAParams.ts]; positivity
+  have ht0 : 0 ≤ sp.ts s := by simp only [ACParams.ts]; positivity
   have hslot : sp.toParams.slotOf (sp.ts s) = s :=
-    SA.slot_of_mem sp s le_rfl (by simp only [SAParams.ts]; push_cast; linarith)
-  have hpub : sp.toParams.IsPublic (sp.ts s) := ⟨4 * s, by simp only [SAParams.ts]; ring⟩
+    AC.slot_of_mem sp s le_rfl (by simp only [ACParams.ts]; push_cast; linarith)
+  have hpub : sp.toParams.IsPublic (sp.ts s) := ⟨4 * s, by simp only [ACParams.ts]; ring⟩
   have hc : (8 : Time) * sp.Δ ≤ catchUp sp + 1 := by simp only [catchUp]; linarith
   have hJ := ready_implies_joined_of hrun hp ht0 hc hready.2
   obtain ⟨j, x, hg⟩ := hrun.tick_of_awake p hp _ ht0 hpub hJ.1
   have hP : Node.Proposes proposer p (sp.ts s) :=
-    ⟨by rw [hslot]; exact hs, by rw [hslot, sp.slotTime_eq]; simp only [SAParams.ts],
+    ⟨by rw [hslot]; exact hs, by rw [hslot, sp.slotTime_eq]; simp only [ACParams.ts],
       by rw [hslot]⟩
   obtain ⟨hc₀, ht₀⟩ := Healing.tick_first_cut hg
-  have hj : SA.joined sp (tr.state p j).ac (sp.ts s) :=
+  have hj : AC.joined sp (tr.state p j).ac (sp.ts s) :=
     ((joined_projection_from hrun hp _).2.1 j ⟨_, hc₀⟩
       (fun ⟨ℓ, hc', hr⟩ => by
         have := Option.some.inj (hc₀.2.symm.trans hc'.2)
@@ -65,12 +65,12 @@ theorem ready_proposer_proposes {ini} (hrun : GoldilocksRun proposer dg H tr ini
         rw [← this] at hr
         cases hr) ht₀).1 hJ.2
   -- `ac_proposal` after the tick's `ac_on_tick` returns a proposal: the tick keeps `restart_time`
-  have hj' : SA.joined sp (Node.tickStep proposer dg p (tr.state p j) (sp.ts s) x .acTick).1.ac
+  have hj' : AC.joined sp (Node.tickStep proposer dg p (tr.state p j) (sp.ts s) x .acTick).1.ac
       (sp.ts s) := by
-    change SA.joined sp ((goldilocksNode sp ro).step p (tr.state p j).ac
+    change AC.joined sp ((goldilocksNode sp ro).step p (tr.state p j).ac
       (Node.frame (tr.state p j)) (sp.ts s) .tick).1 (sp.ts s)
-    unfold SA.joined at hj ⊢
-    rw [SA.step_restartTime p _ _ _ .tick (by simp)]
+    unfold AC.joined at hj ⊢
+    rw [AC.step_restartTime p _ _ _ .tick (by simp)]
     exact hj
   obtain ⟨d, pay, hr⟩ : ∃ d pay,
       (Node.acProposal (Node.tickStep proposer dg p (tr.state p j) (sp.ts s) x .acTick).1
@@ -79,8 +79,8 @@ theorem ready_proposer_proposes {ini} (hrun : GoldilocksRun proposer dg H tr ini
         (sp.ts s)).2.2 with
     | none =>
       exfalso
-      change (SA.acProposal sp _ _ (sp.ts s)).2 = none at hpr
-      unfold SA.acProposal at hpr
+      change (AC.acProposal sp _ _ (sp.ts s)).2 = none at hpr
+      unfold AC.acProposal at hpr
       simp [hj'] at hpr
     | some dp => exact ⟨dp.1, dp.2, rfl⟩
   obtain ⟨hacc, ht₂⟩ := Healing.own_block_accepted hrun.toLocalRun

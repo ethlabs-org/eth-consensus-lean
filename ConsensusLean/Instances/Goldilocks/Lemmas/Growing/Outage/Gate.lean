@@ -42,9 +42,9 @@ Every count classifies a validator at the cut that reads it: the update's cut, o
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -56,12 +56,12 @@ structure OutageReaderGate (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin s
   gate_le : sp.ts slot + 6 * sp.Δ ≤ t
   lt_next : t < sp.ts slot + 10 * sp.Δ
   cut : Nat
-  label : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)
-  update : SA.UpdateAt tr.projAC y cut slot label
+  label : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)
+  update : AC.UpdateAt tr.projAC y cut slot label
   cut_lt : cut < j
   restarts : ∀ k, tr.projAC.RestartAt y k → tr.time k ≤ t → tr.time k ≤ sp.ts slot
   read : Consensus.Goldilocks.Generic.ReadPointAt tr j t ∧ t < tr.time j
-  view : (SA.latestView sp (tr.state y j).ac (Node.frame (tr.state y j)) t).2 =
+  view : (AC.latestView sp (tr.state y j).ac (Node.frame (tr.state y j)) t).2 =
     ((slot + 1 : Nat) : Int)
 
 /-- Readiness over a joining window gives joining on the prefix through the read time. -/
@@ -115,7 +115,7 @@ theorem outage_reader_gate_at
   obtain ⟨c₁, x, hg⟩ := hrun.tick_of_awake y u hyu hu0 hpub hyuw
   obtain ⟨hc₁, ht₁⟩ := Healing.tick_first_cut hg
   have hJu := joined_of_ready hrun hyu hu0 (by linarith) hwin
-  have hj₁ : SA.joined sp (tr.state y c₁).ac u := by
+  have hj₁ : AC.joined sp (tr.state y c₁).ac u := by
     have hst : (tr.upTo u).state y c₁ = tr.state y c₁ :=
       RunTrace.upTo_state_of_le hrun.time_mono ht₁.le
     have h := ((Compose.joined_projection_from (hrun.upTo hu0) hyu u).2.1 c₁
@@ -127,9 +127,9 @@ theorem outage_reader_gate_at
         rw [← this] at hr
         cases hr) ht₁).1 (joinedAt_upTo hJu)
     rwa [hst] at h
-  obtain ⟨ℓ₁, hupd⟩ : ∃ ℓ₁, SA.UpdateAt tr.projAC y c₁ s ℓ₁ := by
+  obtain ⟨ℓ₁, hupd⟩ : ∃ ℓ₁, AC.UpdateAt tr.projAC y c₁ s ℓ₁ := by
     refine ⟨_, Compose.projAC_callAt.2 hc₁, rfl, ht₁.trans hu_def, ?_⟩
-    change SA.joined sp (tr.projAC.state y c₁) (tr.time c₁)
+    change AC.joined sp (tr.projAC.state y c₁) (tr.time c₁)
     rw [projAC_state_at hrun (ht₁ ▸ hyu), ht₁]
     exact hj₁
   have hc₁j : c₁ < j := by
@@ -148,9 +148,9 @@ theorem outage_reader_gate_at
     ⟨hR.1.2.1, hstrict⟩, hview⟩⟩
 
 /-- A block between `Σ.F` and a block of a well-formed frame is in the frame. -/
-private theorem mem_tree_between {n : Nat} {FGP : Type} {U : Set (SA.Blk n FGP)}
-    (hU : Coherent U) {Φ : SA.Frm n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
-    {B C : SA.Blk n FGP} (hFB : Anc U Φ.F B) (h : Anc U B C) : C ∈ Φ.tree → B ∈ Φ.tree := by
+private theorem mem_tree_between {n : Nat} {FGP : Type} {U : Set (AC.Blk n FGP)}
+    (hU : Coherent U) {Φ : AC.Frm n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
+    {B C : AC.Blk n FGP} (hFB : Anc U Φ.F B) (h : Anc U B C) : C ∈ Φ.tree → B ∈ Φ.tree := by
   induction h with
   | refl => exact id
   | @tail c d hBc e ih =>
@@ -174,20 +174,20 @@ theorem vote_held_before_early_at
     (hnc : NoCollRun dg tr)
     {g : Time} {y : Fin sp.n} {q c : Nat} (hy : y ∈ H (tr.time c))
     (hS : ReceiverServiceAfterAt H (tr.HonestBlocksAt H) g y tr.projAC)
-    {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)} (hc : tr.projAC.CallAt y c ℓ)
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)} (hc : tr.projAC.CallAt y c ℓ)
     (hct : sp.ts q + 2 * sp.Δ ≤ tr.time c) (hg : g ≤ sp.ts q + sp.Δ)
     (hres : ∀ k ≤ c, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts q)
-    {x : Fin sp.n} {i : Nat} {e : SA.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x i e)
-    (hx : x ∈ H (tr.time c)) (hes : e.msg.slot = q) {Hd : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {i : Nat} {e : AC.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x i e)
+    (hx : x ∈ H (tr.time c)) (hes : e.msg.slot = q) {Hd : AC.Blk sp.n (List (FG.Att sp.n))}
     (hHd : Hd ∈ tr.HonestBlocksAt H) (hHdr : Hd.root = e.msg.head)
     (hF : Anc (tr.HonestBlocksAt H) ℓ.frame.F Hd) :
     e.msg ∈ (tr.projAC.state y c).pool q ∧ Hd ∈ ℓ.frame.tree ∧
-      SA.resolutionTime (tr.projAC.state y c) ℓ.frame e.msg <
-        SA.ETime.of (sp.ts q + 2 * sp.Δ) := by
+      AC.resolutionTime (tr.projAC.state y c) ℓ.frame e.msg <
+        AC.ETime.of (sp.ts q + 2 * sp.Δ) := by
   obtain ⟨hxi, ℓv, hcv, hev⟩ := hVoteAt_iff.1 hv
   have hr := (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun
   obtain ⟨Hd₀, hHd₀, hHd₀r, hHd₀s⟩ :=
-    SA.honest_head_frame hr hxi (sa_castAt_upTo.mpr ⟨le_rfl, hcv, hev⟩)
+    AC.honest_head_frame hr hxi (ac_castAt_upTo.mpr ⟨le_rfl, hcv, hev⟩)
   obtain rfl : Hd₀ = Hd := (honestBlocksAt_coherent hrun hnc).1
     ((frameIn_at hrun hnc hxi hcv).2 hHd₀) hHd (hHd₀r.trans hHdr.symm)
   have htj : tr.time i ≤ sp.ts q + sp.Δ := by
@@ -209,22 +209,22 @@ casters of the label outnumber its opponents in the label's committee, both char
 update's cut (the pools of honest nodes hold votes of members, `hP`). -/
 theorem gate_result_extends_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hP : SA.CommitteePAt K tr.projAC H)
+    (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hP : AC.CommitteePAt K tr.projAC H)
     {g : Time} {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
     (hS : ReceiverServiceAfterAt H (tr.HonestBlocksAt H) g y tr.projAC)
-    {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
-    (hu : SA.UpdateAt tr.projAC y c s ℓ)
-    (hg : g ≤ sp.ts s + sp.Δ) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    (hu : AC.UpdateAt tr.projAC y c s ℓ)
+    (hg : g ≤ sp.ts s + sp.Δ) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hmaj : ExtendingMajorityAt tr H K B s (tr.time c))
     (hFB : Anc (tr.HonestBlocksAt H) ℓ.frame.F B) :
-    (∃ C CV, SA.ResultAt tr.projAC y c s C CV) ∧
-      ∀ C CV, SA.ResultAt tr.projAC y c s C CV → Anc (tr.HonestBlocksAt H) B C := by
+    (∃ C CV, AC.ResultAt tr.projAC y c s C CV) ∧
+      ∀ C CV, AC.ResultAt tr.projAC y c s C CV → Anc (tr.HonestBlocksAt H) B C := by
   have hm := hrun.time_mono
   have hU := honestBlocksAt_coherent hrun hnc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hr := (acRun_upTo hrun hnc (hrun.time_nonneg c)).localRun
   have hres : ∀ k ≤ c, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts s := fun k hk hrk =>
-    Compose.update_restarts hr hy ((sa_updateAt_upTo hm).2 ⟨le_rfl, hu⟩) k hk
+    Compose.update_restarts hr hy ((ac_updateAt_upTo hm).2 ⟨le_rfl, hu⟩) k hk
       ((ac_restartAt_upTo tr.projAC).2 ⟨hm hk, hrk⟩)
   have hct : sp.ts s + 2 * sp.Δ ≤ tr.time c := by
     have : tr.projAC.time c = sp.ts s + 6 * sp.Δ := hu.2.2.1
@@ -236,7 +236,7 @@ theorem gate_result_extends_at
   have hdel : ∀ x k e, HVoteAt tr H x k e → x ∈ H (tr.time c) → e.msg.slot = s →
       ∀ Hd ∈ tr.HonestBlocksAt H, Hd.root = e.msg.head → Anc (tr.HonestBlocksAt H) B Hd →
       e.msg ∈ A.pool s ∧ Hd ∈ ℓ.frame.tree ∧
-        SA.resolutionTime A ℓ.frame e.msg < SA.ETime.of (sp.ts s + 2 * sp.Δ) :=
+        AC.resolutionTime A ℓ.frame e.msg < AC.ETime.of (sp.ts s + 2 * sp.Δ) :=
     fun x k e hv hx hes Hd hHd hHdr hBHd =>
       vote_held_before_early_at hrun hnc hy hS hu.1 hct hg hres hv hx hes hHd hHdr
         (hFB.trans hBHd)
@@ -254,52 +254,52 @@ theorem gate_result_extends_at
     obtain ⟨j', -, e', hv', rfl⟩ := pool_vote_at hrun hnc hy hvp (hvx ▸ hx)
     have hs' := state_pool_slot_at hrun hnc hy s _ hvp
     rw [hvx] at hv'
-    exact congrArg (fun e : SA.Em sp (List (FG.Att sp.n)) => e.msg)
+    exact congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg)
       (one_vote_per_slot_at hrun hnc hv' hv (hs'.trans hs.symm)).2
-  set V : SA.View sp.n := ⟨{v | v ∈ A.pool s}, {v | v ∈ A.pool s ∧
-    SA.resolutionTime A ℓ.frame v < SA.ETime.of (sp.ts s + 2 * sp.Δ)}⟩
-  have hsupp : ExtendingCastersAt tr H B s (tr.time c) ⊆ SA.supporters ℓ.frame V s B := by
+  set V : AC.View sp.n := ⟨{v | v ∈ A.pool s}, {v | v ∈ A.pool s ∧
+    AC.resolutionTime A ℓ.frame v < AC.ETime.of (sp.ts s + 2 * sp.Δ)}⟩
+  have hsupp : ExtendingCastersAt tr H B s (tr.time c) ⊆ AC.supporters ℓ.frame V s B := by
     intro x hxE
     obtain ⟨hx, k, e, hv, hes, Hd, hHd, hHdr, hBHd⟩ := extendingCastersAt_iff.1 hxE
     obtain ⟨hvp, hHdt, hrs⟩ := hdel x k e hv hx hes Hd hHd hHdr hBHd
     obtain ⟨hxk, ℓv, hcv, hev⟩ := hVoteAt_iff.1 hv
     refine ⟨?_, e.msg, ⟨hvp, hrs⟩, (castAt_spec_at hrun hnc hxk ⟨hcv, hev⟩).1,
-      by exact_mod_cast hes, Hd, hHdt, hHdr, SA.anc_tree_of_anc_U hU hΦ hΦU hBt hBHd hHdt⟩
+      by exact_mod_cast hes, Hd, hHdt, hHdr, AC.anc_tree_of_anc_U hU hΦ hΦU hBt hBHd hHdt⟩
     rintro ⟨v, hv1, v', hv2, hne, hvx, hv'x⟩
     exact hne ((hone x hx k e hv hes v hv1 hvx).trans (hone x hx k e hv hes v' hv2 hv'x).symm)
-  have hvot : SA.voters {v | v ∈ A.pool s} ⊆ ExtendingCastersAt tr H B s (tr.time c) ∪
+  have hvot : AC.voters {v | v ∈ A.pool s} ⊆ ExtendingCastersAt tr H B s (tr.time c) ∪
       (K.committee s ∩ OpponentsAt tr H B s (tr.time c)) := by
     rintro w ⟨v, hv, rfl⟩
     have hvK : v.val ∈ K.committee s := hP.1 (tr.time c) y hy c (fun _ hk => hm hk.le) s v hv
     by_cases hw : v.val ∈ H (tr.time c)
     · obtain ⟨j, -, e, he, rfl⟩ := pool_vote_at hrun hnc hy hv hw
       have hs := state_pool_slot_at hrun hnc hy s _ hv
-      by_cases hext : SA.VoteExtends (tr.HonestBlocksAt H) e.msg B
+      by_cases hext : AC.VoteExtends (tr.HonestBlocksAt H) e.msg B
       · exact Or.inl (extendingCastersAt_iff.2 ⟨hw, j, e, he, hs, hext⟩)
       · exact Or.inr ⟨hvK, opponentsAt_iff.2 (Or.inr ⟨hw, j, e, he, hs, hext⟩)⟩
     · exact Or.inr ⟨hvK, opponentsAt_iff.2 (Or.inl hw)⟩
-  have hmaj' : (SA.voters {v | v ∈ A.pool s}).ncard <
-      2 * SA.confirmationScore sp A ℓ.frame s B := by
+  have hmaj' : (AC.voters {v | v ∈ A.pool s}).ncard <
+      2 * AC.confirmationScore sp A ℓ.frame s B := by
     have h1 := Set.ncard_le_ncard hvot (Set.toFinite _)
     have h2 := Set.ncard_union_le (ExtendingCastersAt tr H B s (tr.time c))
       (K.committee s ∩ OpponentsAt tr H B s (tr.time c))
     have h3 := Set.ncard_le_ncard hsupp (Set.toFinite _)
     have h4 := extendingMajorityAt_iff.1 hmaj
-    change _ < 2 * (SA.supporters ℓ.frame V s B).ncard
+    change _ < 2 * (AC.supporters ℓ.frame V s B).ncard
     omega
   -- the confirmation is the deepest majority block, which `B` is below
   set S := {X | X ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F X ∧
-    (SA.voters {v | v ∈ A.pool s}).ncard < 2 * SA.confirmationScore sp A ℓ.frame s X}
+    (AC.voters {v | v ∈ A.pool s}).ncard < 2 * AC.confirmationScore sp A ℓ.frame s X}
   have hS' : S ⊆ ℓ.frame.tree := fun X hX => hX.1
-  have hcs : ∀ X, SA.confirmationScore sp A ℓ.frame s X = (SA.supporters ℓ.frame V s X).ncard :=
+  have hcs : ∀ X, AC.confirmationScore sp A ℓ.frame s X = (AC.supporters ℓ.frame V s X).ncard :=
     fun _ => rfl
   have hsub : V.support ⊆ V.votes := fun _ hv => hv.1
   have hch : ∀ X ∈ S, ∀ Y ∈ S, Compatible ℓ.frame.tree X Y := fun X hX Y hY =>
-    SA.majority_chain sp _ ℓ.frame V s X Y hΦ hsub hX.1 hY.1 (hcs X ▸ hX.2.2) (hcs Y ▸ hY.2.2)
+    AC.majority_chain sp _ ℓ.frame V s X Y hΦ hsub hX.1 hY.1 (hcs X ▸ hX.2.2) (hcs Y ▸ hY.2.2)
   have hBS : B ∈ S := ⟨hBt, hΦ.rooted.2 B hBt, hmaj'⟩
-  obtain ⟨D, hD⟩ := SA.exists_deepest hΦ hS' ⟨B, hBS⟩
-  have hBD := SA.anc_deepest hΦ hS' hch hD B hBS
-  have hD' : SA.getConfirmation sp A ℓ.frame s = some D := hD
+  obtain ⟨D, hD⟩ := AC.exists_deepest hΦ hS' ⟨B, hBS⟩
+  have hBD := AC.anc_deepest hΦ hS' hch hD B hBS
+  have hD' : AC.getConfirmation sp A ℓ.frame s = some D := hD
   refine ⟨⟨D, _, ℓ, hu, hD', rfl⟩, ?_⟩
   rintro C CV ⟨ℓ', hu', hC, -⟩
   obtain rfl : ℓ' = ℓ := Option.some.inj (hu'.1.2.symm.trans hu.1.2)
@@ -320,8 +320,8 @@ private theorem pool_vote_read
   have hst : (tr.projAC.upTo d).state w i = tr.projAC.state w i := Trace.upTo_state _ w hi
   have hv' : v ∈ ((tr.projAC.upTo d).state w i).pool σ := by rw [hst]; exact hv
   obtain ⟨j, hj, e, hve, hev⟩ := hr.honest.pool_vote w hw i σ v hv' hvH
-  obtain ⟨hjd, hve⟩ := sa_voteAt_upTo.mp hve
-  exact ⟨SA.state_pool_slot sp hr.localRun hr.vstart hw i σ v hv', j, hj, e,
+  obtain ⟨hjd, hve⟩ := ac_voteAt_upTo.mp hve
+  exact ⟨AC.state_pool_slot sp hr.localRun hr.vstart hw i σ v hv', j, hj, e,
     hVoteAt_iff.2 ⟨hrun.antitone hjd hvH, hve⟩, hev⟩
 
 /-- **L3** under growing faults: at a read by a node honest at the read time `d` (every cut
@@ -331,20 +331,20 @@ validator honest at `d` is delivered, the latest view's voters are fewer than tw
 supporters of `B`. -/
 theorem read_majority_of_extending_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hP : SA.CommitteePAt K tr.projAC H)
+    (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hP : AC.CommitteePAt K tr.projAC H)
     {w : Fin sp.n} {i : Nat} {d : Time} (hd : 0 ≤ d) (hw : w ∈ H d)
-    (hi : ∀ k < i, tr.time k ≤ d) {t : Time} {B : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
-    (hs : (SA.latestView sp (tr.state w i).ac (Node.frame (tr.state w i)) t).2 = s)
+    (hi : ∀ k < i, tr.time k ≤ d) {t : Time} {B : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hs : (AC.latestView sp (tr.state w i).ac (Node.frame (tr.state w i)) t).2 = s)
     (hmaj : ExtendingMajorityAt tr H K B s d) (hBt : B ∈ (Node.frame (tr.state w i)).tree)
     (hdeliv : ∀ x k e, HVoteAt tr H x k e → x ∈ H d → e.msg.slot = s →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg B →
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg B →
       e.msg ∈ (tr.state w i).ac.pool s ∧
       ∃ Hd ∈ (Node.frame (tr.state w i)).tree, Hd.root = e.msg.head ∧
         (tr.state w i).ac.blockStamp Hd.root < ⊤) :
-    (SA.voters (SA.latestView sp (tr.state w i).ac (Node.frame (tr.state w i)) t).1.votes).ncard <
-      2 * (SA.supporters (Node.frame (tr.state w i))
-        (SA.latestView sp (tr.state w i).ac (Node.frame (tr.state w i)) t).1
-        (SA.latestView sp (tr.state w i).ac (Node.frame (tr.state w i)) t).2 B).ncard := by
+    (AC.voters (AC.latestView sp (tr.state w i).ac (Node.frame (tr.state w i)) t).1.votes).ncard <
+      2 * (AC.supporters (Node.frame (tr.state w i))
+        (AC.latestView sp (tr.state w i).ac (Node.frame (tr.state w i)) t).1
+        (AC.latestView sp (tr.state w i).ac (Node.frame (tr.state w i)) t).2 B).ncard := by
   have hU := honestBlocksAt_coherent hrun hnc
   have hstT : (tr.upTo d).state w i = tr.state w i := Trace.upTo_state tr w hi
   have hst : tr.projAC.state w i = (tr.state w i).ac := by
@@ -355,22 +355,22 @@ theorem read_majority_of_extending_at
     fun X hX => tree_held_at hd hw hi hX.1
   set A := (tr.state w i).ac
   set Φ := Node.frame (tr.state w i)
-  set LV := SA.latestView sp A Φ t
+  set LV := AC.latestView sp A Φ t
   have hL : ((s : Nat) : Int) = LV.2 := hs.symm
   -- the latest view's votes are slot-`s` pool votes
   have hpool : ∀ u ∈ LV.1.votes, u ∈ (tr.projAC.state w i).pool s := by
     intro u hu
     rw [hst]
     exact ((latestView_mem hL u).1.1 hu).1
-  have hsupp : ExtendingCastersAt tr H B s d ⊆ SA.supporters Φ LV.1 LV.2 B := by
+  have hsupp : ExtendingCastersAt tr H B s d ⊆ AC.supporters Φ LV.1 LV.2 B := by
     intro x hxE
     obtain ⟨hx, k, e, hv, hes, Hd, hHdU, hHdr, hBHd⟩ := extendingCastersAt_iff.1 hxE
     obtain ⟨hvp, Hd', hHd't, hHd'r, hbst⟩ := hdeliv x k e hv hx hes ⟨Hd, hHdU, hHdr, hBHd⟩
     obtain rfl : Hd' = Hd := hU.1 (hΦU hHd't) hHdU (hHd'r.trans hHdr.symm)
     obtain ⟨hxk, ℓv, hcv, hev⟩ := hVoteAt_iff.1 hv
     obtain ⟨Hd₂, hHd₂, hHd₂r, hHd₂s⟩ :=
-      SA.honest_head (acRun_upTo hrun hnc (hrun.time_nonneg k)) hxk
-        (sa_voteAt_upTo.mpr ⟨le_rfl, ℓv, hcv, hev⟩)
+      AC.honest_head (acRun_upTo hrun hnc (hrun.time_nonneg k)) hxk
+        (ac_voteAt_upTo.mpr ⟨le_rfl, ℓv, hcv, hev⟩)
     obtain rfl : Hd' = Hd₂ :=
       hU.1 hHdU (upTo_subset hrun (hrun.time_nonneg k) hHd₂) (hHdr.trans hHd₂r.symm)
     have hvotes : e.msg ∈ LV.1.votes := by
@@ -379,16 +379,16 @@ theorem read_majority_of_extending_at
       have h := mem_latest_votes (hrun.upTo hd) (hnc.upTo d) hw (by rw [hstT]; exact hL) hvp'
       rwa [hstT] at h
     have hvst : A.voteStamp e.msg < ⊤ := ((latestView_mem hL e.msg).1.1 hvotes).2
-    have hres : SA.resolutionTime A Φ e.msg < ⊤ := by
-      unfold SA.resolutionTime
-      rw [← hHdr, SA.lookup_of_mem hΦ hHd't]
+    have hres : AC.resolutionTime A Φ e.msg < ⊤ := by
+      unfold AC.resolutionTime
+      rw [← hHdr, AC.lookup_of_mem hΦ hHd't]
       dsimp only
       simp only [not_lt.2 hHd₂s, ↓reduceIte]
       exact max_lt hvst hbst
     have hval := (castAt_spec_at hrun hnc hxk ⟨hcv, hev⟩).1
     refine ⟨?_, e.msg, (latestView_mem hL e.msg).2.2 ⟨(latestView_mem hL e.msg).1.1 hvotes, hres⟩,
       hval, by rw [← hL, hes], Hd', hHd't, hHdr,
-      SA.anc_tree_of_anc_U hU hΦ hΦU hBt hBHd hHd't⟩
+      AC.anc_tree_of_anc_U hU hΦ hΦU hBt hBHd hHd't⟩
     rintro ⟨a, ha, b, hb, hab, hav, hbv⟩
     obtain ⟨-, ja, -, ea, hea, hea'⟩ :=
       pool_vote_read hrun hnc hd hw hi (hpool a ha) (by rw [hav]; exact hx)
@@ -400,13 +400,13 @@ theorem read_majority_of_extending_at
       (by rw [hea', heb', (pool_vote_read hrun hnc hd hw hi (hpool a ha) (by rw [hav]; exact hx)).1,
         (pool_vote_read hrun hnc hd hw hi (hpool b hb) (by rw [hbv]; exact hx)).1])
     exact hab (hea'.symm.trans heb')
-  have hvot : SA.voters LV.1.votes ⊆
+  have hvot : AC.voters LV.1.votes ⊆
       ExtendingCastersAt tr H B s d ∪ (K.committee s ∩ OpponentsAt tr H B s d) := by
     rintro u ⟨v, hv, rfl⟩
     have hvK : v.val ∈ K.committee s := hP.1 d w hw i hi s v (hpool _ hv)
     by_cases hu : v.val ∈ H d
     · obtain ⟨hes, j, -, e, he, rfl⟩ := pool_vote_read hrun hnc hd hw hi (hpool _ hv) hu
-      by_cases hext : SA.VoteExtends (tr.HonestBlocksAt H) e.msg B
+      by_cases hext : AC.VoteExtends (tr.HonestBlocksAt H) e.msg B
       · exact Or.inl (extendingCastersAt_iff.2 ⟨hu, j, e, he, hes, hext⟩)
       · exact Or.inr ⟨hvK, opponentsAt_iff.2 (Or.inr ⟨hu, j, e, he, hes, hext⟩)⟩
     · exact Or.inr ⟨hvK, opponentsAt_iff.2 (Or.inl hu)⟩

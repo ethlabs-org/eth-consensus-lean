@@ -21,9 +21,9 @@ validators honest then:
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -35,12 +35,12 @@ theorem report_of_compatible_candidate_of_run_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
-    (hcall : ell.call = .toFG) (hjoin : SA.joined sp (tr.projAC.state y j) (tr.time j))
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPg : P.root ≠ sp.genesisRoot)
-    (hPc : P ∈ SA.toFGCandidates sp (tr.projAC.state y j) ell.frame (tr.time j))
-    (hcompat : ∀ C ∈ SA.toFGCandidates sp (tr.projAC.state y j) ell.frame (tr.time j),
+    (hcall : ell.call = .toFG) (hjoin : AC.joined sp (tr.projAC.state y j) (tr.time j))
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPg : P.root ≠ sp.genesisRoot)
+    (hPc : P ∈ AC.toFGCandidates sp (tr.projAC.state y j) ell.frame (tr.time j))
+    (hcompat : ∀ C ∈ AC.toFGCandidates sp (tr.projAC.state y j) ell.frame (tr.time j),
       Compatible (tr.HonestBlocksAt H) C P) :
-    ∃ r ell' R, SA.ToFGAt tr.projAC y r ell' R ∧ tr.time r ≤ tr.time j ∧
+    ∃ r ell' R, AC.ToFGAt tr.projAC y r ell' R ∧ tr.time r ≤ tr.time j ∧
       Anc (tr.HonestBlocksAt H) P R := by
   have hd := hrun.time_nonneg j
   have hst : (tr.upTo (tr.time j)).projAC.state y j = tr.projAC.state y j := by
@@ -71,13 +71,13 @@ theorem cache_ahead_report_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     (hf : (H (tr.time i))ᶜ.ncard < sp.toParams.fg.q)
-    {P X : SA.Blk sp.n (List (FG.Att sp.n))}
+    {P X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : X = (tr.state y i).fg.F ∨ X = (tr.state y i).fg.J)
     (hP : P ∈ (tr.state y i).fg.tree)
     (hPX : Anc (tr.HonestBlocksAt H) P X) (hne : P ≠ X) :
     ∃ v, v ∈ H (tr.time i) ∧ ∃ j < i, ∃ k < i, ∃ att : FG.Att sp.n, ∃ ℓ C,
       tr.SignAt v k att ∧ k = j + 1 ∧ tr.time j = tr.time k ∧ tr.time j ≤ tr.time i ∧
-      SA.ToFGAt tr.projAC v j ℓ C ∧ att.T = X.root ∧
+      AC.ToFGAt tr.projAC v j ℓ C ∧ att.T = X.root ∧
       X ∈ (tr.state v j).fg.tree ∧ Anc (tr.HonestBlocksAt H) X C ∧
       ((tr.state v j).fg.σ C.root).Th = X.root ∧
       ((tr.state v j).fg.σ C.root).h = ((tr.state y i).fg.σ X.root).h ∧

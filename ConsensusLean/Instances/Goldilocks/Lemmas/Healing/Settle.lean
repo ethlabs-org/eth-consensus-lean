@@ -39,7 +39,7 @@ G1.2 at the chain level is `FG.FGParams.finalization_meets_crossing`
 namespace Consensus.Goldilocks.Healing
 
 open Store
-open SA (gbar)
+open AC (gbar)
 
 /-! ## Stores: strict-height finality and the evidence of a phase -/
 
@@ -269,27 +269,27 @@ end Runs
 
 /-- **Joined late** (no honest restart after `ḡ`): from `ḡ + 8Δ` on every honest node is joined,
 its restarts being at or before `ḡ < t_{slot(ḡ)+1} ≤ t_{slot(t)−1}`. -/
-theorem joined_late {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+theorem joined_late {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {g t : Time}
-    (hnr : NoRestartAfter tr H (SA.gbar g)) (ht : SA.gbar g + 8 * sp.Δ ≤ t) :
+    (hnr : NoRestartAfter tr H (AC.gbar g)) (ht : AC.gbar g + 8 * sp.Δ ≤ t) :
     ∀ y ∈ H, tr.JoinedAt y t := by
   intro y hy k hk _
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hg0 := gbar_nonneg g
-  have h1 := (SA.ts_le_iff_le_slot sp hg0 (sp.slot (SA.gbar g))).mpr le_rfl
-  have h2 : ¬ sp.ts (sp.slot (SA.gbar g) + 1 : Int) ≤ SA.gbar g := fun h => by
-    have := (SA.ts_le_iff_le_slot sp hg0 _).mp h
+  have h1 := (AC.ts_le_iff_le_slot sp hg0 (sp.slot (AC.gbar g))).mpr le_rfl
+  have h2 : ¬ sp.ts (sp.slot (AC.gbar g) + 1 : Int) ≤ AC.gbar g := fun h => by
+    have := (AC.ts_le_iff_le_slot sp hg0 _).mp h
     omega
-  have h3 : sp.ts ((sp.slot (SA.gbar g) : Int) + 2) = sp.ts (sp.slot (SA.gbar g)) + 8 * sp.Δ := by
-    simp only [SA.SAParams.ts]; ring
-  have hs : (sp.slot (SA.gbar g) : Int) + 2 ≤ sp.slot t :=
-    (SA.ts_le_iff_le_slot sp (by linarith) _).mp (by linarith)
+  have h3 : sp.ts ((sp.slot (AC.gbar g) : Int) + 2) = sp.ts (sp.slot (AC.gbar g)) + 8 * sp.Δ := by
+    simp only [AC.ACParams.ts]; ring
+  have hs : (sp.slot (AC.gbar g) : Int) + 2 ≤ sp.slot t :=
+    (AC.ts_le_iff_le_slot sp (by linarith) _).mp (by linarith)
   change 0 < sp.slot t ∧ tr.time k ≤ sp.toParams.slotTime (sp.slot t - 1)
   rw [sp.slotTime_eq]
   refine ⟨by omega, (hnr y hy k hk).trans ?_⟩
-  have : sp.ts (sp.slot (SA.gbar g) + 1 : Int) ≤ sp.ts ((sp.slot t - 1 : Nat) : Int) :=
-    (SA.ts_le_iff sp).mpr (by omega)
-  simp only [SA.SAParams.ts] at this h2 ⊢
+  have : sp.ts (sp.slot (AC.gbar g) + 1 : Int) ≤ sp.ts ((sp.slot t - 1 : Nat) : Int) :=
+    (AC.ts_le_iff sp).mpr (by omega)
+  simp only [AC.ACParams.ts] at this h2 ⊢
   linarith [not_le.1 h2]
 
 end Consensus.Goldilocks.Healing

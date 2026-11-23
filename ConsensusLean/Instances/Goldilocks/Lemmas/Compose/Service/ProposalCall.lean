@@ -23,25 +23,25 @@ both; the restarts are their users' (`proposal_call_restarts`). -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams Payload)
+open AC (ACParams Payload)
 
-variable {sp : SAParams} {FGP : Type}
+variable {sp : ACParams} {FGP : Type}
 
 /-- **The payload view of a proposal call**: when `ac_proposal` at a time of slot `s + 1` returns
 `(d, pay)`, the votes of `pay`'s view are the slot-`s` pool votes of `A` with a finite stamp, and
 its support those of them resolved in `Φ`. -/
-theorem acProposal_pay_view {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP} {t : Time} {s : Nat}
+theorem acProposal_pay_view {A : AC.ACState sp.n} {Φ : AC.Frm sp.n FGP} {t : Time} {s : Nat}
     {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
-    (hd : (SA.acProposal sp A Φ t).2 = some (d, pay)) (hsl : sp.slot t = s + 1) :
-    (∀ v, v ∈ (SA.View.ofLists pay).votes ↔ v ∈ A.pool s ∧ A.voteStamp v < ⊤) ∧
-      ∀ v, v ∈ (SA.View.ofLists pay).support ↔
-        (v ∈ A.pool s ∧ A.voteStamp v < ⊤) ∧ SA.resolutionTime A Φ v < ⊤ := by
-  obtain ⟨-, hpay, -⟩ := SA.proposal_payload hd
+    (hd : (AC.acProposal sp A Φ t).2 = some (d, pay)) (hsl : sp.slot t = s + 1) :
+    (∀ v, v ∈ (AC.View.ofLists pay).votes ↔ v ∈ A.pool s ∧ A.voteStamp v < ⊤) ∧
+      ∀ v, v ∈ (AC.View.ofLists pay).support ↔
+        (v ∈ A.pool s ∧ A.voteStamp v < ⊤) ∧ AC.resolutionTime A Φ v < ⊤ := by
+  obtain ⟨-, hpay, -⟩ := AC.proposal_payload hd
   rw [hsl, show (((s + 1 : Nat) : Int) - 1) = (s : Int) by push_cast; ring] at hpay
   subst hpay
   refine ⟨fun v => ?_, fun v => ?_⟩
-  · simp [SA.View.ofLists, SA.voteViewList, SA.SAState.poolAt]
-  · simp [SA.View.ofLists, SA.voteViewList, SA.SAState.poolAt]
+  · simp [AC.View.ofLists, AC.voteViewList, AC.ACState.poolAt]
+  · simp [AC.View.ofLists, AC.voteViewList, AC.ACState.poolAt]
     tauto
 
 /-- **The relay window before a proposal call**: let `p`'s call at cut `i` be at `t_s`, with
@@ -56,9 +56,9 @@ theorem proposal_relay_deadline {A : ACInterface sp.toParams FGP} {T : ACTrace A
       T.deadline p i (T.time kx) ≤ T.time i := by
   have hΔ := sp.toParams.hΔ
   have hsi : sp.slot (T.time i) = s := by
-    rw [hti]; simpa using (SA.slot_arithmetic sp s).1 0 (by omega)
+    rw [hti]; simpa using (AC.slot_arithmetic sp s).1 0 (by omega)
   have hts : sp.ts (s : Int) = sp.ts ((s : Int) - 1) + 4 * sp.Δ := by
-    simp only [SAParams.ts]; ring
+    simp only [ACParams.ts]; ring
   rw [hsi] at hrs
   have hdl : ∀ c ≤ i, T.deadline p c (T.time kx) ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ :=
     fun c hc' => by

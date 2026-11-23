@@ -90,7 +90,7 @@ public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.GoodWindow
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.LocalRun
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Ready
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Run
-public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.SA
+public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.ChainAC
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Step
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Sync
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.World

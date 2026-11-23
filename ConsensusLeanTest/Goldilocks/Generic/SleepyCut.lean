@@ -12,7 +12,7 @@ public section
 Reuse the healing guard's full type/value traversal, missing-constant checks,
 concrete negative control and proof-body controls for every declaration in the
 generic sleepy modules and their claim reductions, including private and auxiliary constants.
-Only the existing placement-only `SA.gbar` is allowed in modules whose fixed
+Only the existing placement-only `AC.gbar` is allowed in modules whose fixed
 generic interface reaches it; its own cone is checked by the reused guard.
 -/
 
@@ -22,13 +22,13 @@ open Consensus.Goldilocks.Generic.Test.HealingLeavesCut
 run_meta do
   for (mod, allowed) in #[
       (`ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyFG,
-        [``Consensus.Goldilocks.SA.gbar]),
+        [``Consensus.Goldilocks.AC.gbar]),
       (`ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyGlue,
-        [``Consensus.Goldilocks.SA.gbar]),
+        [``Consensus.Goldilocks.AC.gbar]),
       (`ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyTransport,
-        [``Consensus.Goldilocks.SA.gbar]),
+        [``Consensus.Goldilocks.AC.gbar]),
       (`ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ClaimReductionEdges,
-        [``Consensus.Goldilocks.SA.gbar])] do
+        [``Consensus.Goldilocks.AC.gbar])] do
     check mod allowed
       (`ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HeldSafetyAt,
         ``Consensus.Goldilocks.Healing.Growing.held_atts_safe_at)

@@ -12,9 +12,9 @@ public section
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {proposer : Nat → Fin sp.n}
 
@@ -22,7 +22,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem sign_public {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
     (hc : tr.CallAt y j (.fg (.attest C (some a)))) :
     sp.toParams.IsPublic (tr.time j) := by
   exact Compose.sign_public (hrun.upTo (hrun.time_nonneg j)) hy
@@ -33,7 +33,7 @@ Both states are retained at the signing cut, even if the node is compromised lat
 theorem attest_source {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
     (hc : tr.CallAt y j (.fg (.attest C (some a)))) :
     ∃ j', j = j' + 1 ∧ ∃ ℓ : ACLabel (goldilocksNode sp ro),
       tr.CallAt y j' (.ac ℓ) ∧ ℓ.call = .toFG ∧ tr.time j' = tr.time j ∧
@@ -51,7 +51,7 @@ theorem attest_source {ini : Fin sp.n → (goldilocksNode sp ro).State}
   exact ⟨j', hj, ℓ, ((Trace.upTo_callAt _).mp hc').2, hto, ht, hC, hs⟩
 
 variable {ΔF : Time} {x : Fin sp.n} {i₀ s m : Nat}
-  {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
+  {B : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
 
 end Consensus.Goldilocks.Compose.Growing
 

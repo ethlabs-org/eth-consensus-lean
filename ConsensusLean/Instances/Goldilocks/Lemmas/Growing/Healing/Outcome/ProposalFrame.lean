@@ -7,10 +7,10 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 open Regimes.Growing (hold)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -18,19 +18,19 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem reset_proposal_frame_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p y : Fin sp.n} {k j u : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
     (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
     (hu : 0 < u) (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j ell e)
-    (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
-    (hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
+    {e : AC.Em sp (List (FG.Att sp.n))} (hcy : AC.CastAt tr.projAC y j ell e)
+    (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) (hg : AC.gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hjoin : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
     (hF : Anc (tr.HonestBlocksAt H) ell.frame.F P) : P ∈ ell.frame.tree := by
   have hc := hp.catchUp
   by_cases hearly : tr.time j < sp.ts u + sp.Δ
   · exact Outcome.proposal_mem_of_early_cast hp.run hp.noColl hpH hdesignated hactual hPs
       hu hy hcy hes hearly
   have hk : tr.time k = sp.ts u := by
-    simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hactual.2.2
+    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hactual.2.2
   have ht : 0 ≤ sp.ts u := hk ▸ hp.run.time_nonneg k
   have hp₀ : p ∈ H (sp.ts u) :=
     hp.run.antitone (le_add_of_nonneg_right sp.toParams.hΔ.le) hpH

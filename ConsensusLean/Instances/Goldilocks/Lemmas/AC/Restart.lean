@@ -4,14 +4,14 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 
 public section
 
-/-! # Goldilocks SA: the restart (A0.7)
+/-! # Goldilocks AC: the restart (A0.7)
 
 What `ac_restart` keeps, resets and writes, and that the node is not joined at the restart, so
 the replay emits nothing. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable (sp : SAParams)
+variable (sp : ACParams)
 
 /-- Parent order at the genesis root of these protocol parameters. -/
 abbrev ParentOrder {FGP : Type} (Φ : Frm sp.n FGP) (l : List (Blk sp.n FGP)) : Prop :=
@@ -57,32 +57,32 @@ theorem parentOrder_exists {FGP : Type} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) :
 
 /-- What a restart at `t` from `A₀` leaves in a state, after any part of the replay with frame
 `Φ`: the kept and reset fields, the empty pools (the replay admits nothing), and the stamps. -/
-structure RestartInv {FGP : Type} (A₀ : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (A : SAState sp.n) : Prop where
+structure RestartInv {FGP : Type} (A₀ : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    (A : ACState sp.n) : Prop where
   locks : A.locks = A₀.locks
   latestConfirmed : A.latestConfirmed = A₀.latestConfirmed
   restartTime : A.restartTime = (t : WithBot Time)
-  saved : A.saved = (SAState.initial sp.genesisRoot : SAState sp.n).saved
-  fgReported : A.fgReported = (SAState.initial sp.genesisRoot : SAState sp.n).fgReported
-  votedSlot : A.votedSlot = (SAState.initial sp.genesisRoot : SAState sp.n).votedSlot
+  saved : A.saved = (ACState.initial sp.genesisRoot : ACState sp.n).saved
+  fgReported : A.fgReported = (ACState.initial sp.genesisRoot : ACState sp.n).fgReported
+  votedSlot : A.votedSlot = (ACState.initial sp.genesisRoot : ACState sp.n).votedSlot
   pool : ∀ σ, A.pool σ = []
   voteStamp : ∀ x, A.voteStamp x = ⊤ ∨ A.voteStamp x = ETime.of t
-  blockStamp : ∀ q, A.blockStamp q = (SAState.initial sp.genesisRoot : SAState sp.n).blockStamp q ∨
+  blockStamp : ∀ q, A.blockStamp q = (ACState.initial sp.genesisRoot : ACState sp.n).blockStamp q ∨
     (A.blockStamp q = ETime.of t ∧ q ≠ sp.genesisRoot ∧ InTree Φ q)
 
 /-- The receipt of a block of the tree other than genesis at `t` keeps the restart invariant. -/
-theorem RestartInv.blockReceipt {FGP : Type} {A₀ A : SAState sp.n} {Φ : Frm sp.n FGP}
+theorem RestartInv.blockReceipt {FGP : Type} {A₀ A : ACState sp.n} {Φ : Frm sp.n FGP}
     {t : Time} (h : RestartInv sp A₀ Φ t A) {B : Blk sp.n FGP} (hB : B ∈ Φ.tree)
-    (hg : B.root ≠ sp.genesisRoot) : RestartInv sp A₀ Φ t (SA.blockReceipt sp A t B) := by
+    (hg : B.root ≠ sp.genesisRoot) : RestartInv sp A₀ Φ t (AC.blockReceipt sp A t B) := by
   exact ⟨h.locks, h.latestConfirmed, h.restartTime, h.saved, h.fgReported, h.votedSlot, h.pool,
     h.voteStamp, fun q => by
-      simp only [SA.blockReceipt, Function.update_apply]
+      simp only [AC.blockReceipt, Function.update_apply]
       split_ifs with hq
       · exact Or.inr ⟨rfl, hq ▸ hg, ⟨B, hB, hq.symm⟩⟩
       · exact h.blockStamp q⟩
 
 /-- A node whose latest restart is at `t ≥ 0` is not joined at `t`. -/
-theorem not_joined_of_restartTime {A : SAState sp.n} {t : Time} (ht : 0 ≤ t)
+theorem not_joined_of_restartTime {A : ACState sp.n} {t : Time} (ht : 0 ≤ t)
     (h : A.restartTime = (t : WithBot Time)) : ¬ joined sp A t := by
   simp only [joined, h, WithBot.coe_le_coe]
   have h₁ := (ts_le_iff_le_slot sp ht (sp.slot t)).mpr le_rfl
@@ -92,30 +92,30 @@ theorem not_joined_of_restartTime {A : SAState sp.n} {t : Time} (ht : 0 ≤ t)
 
 /-- At a state with the restart invariant (so not joined), `ac_on_block` is its receipt and emits
 nothing. -/
-theorem RestartInv.acOnBlock {FGP : Type} {A₀ A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+theorem RestartInv.acOnBlock {FGP : Type} {A₀ A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     (ht : 0 ≤ t) (h : RestartInv sp A₀ Φ t A) {B : Blk sp.n FGP} (hB : B ∈ Φ.tree)
     (hg : B.root ≠ sp.genesisRoot) (self : Fin sp.n) :
-    SA.acOnBlock sp self A Φ t B = (SA.blockReceipt sp A t B, []) := by
+    AC.acOnBlock sp self A Φ t B = (AC.blockReceipt sp A t B, []) := by
   have hR := h.blockReceipt sp hB hg
   have hnj := not_joined_of_restartTime sp ht hR.restartTime
-  have hopt : optimisticConfirmation sp (SA.blockReceipt sp A t B) Φ t =
-      SA.blockReceipt sp A t B := by
+  have hopt : optimisticConfirmation sp (AC.blockReceipt sp A t B) Φ t =
+      AC.blockReceipt sp A t B := by
     simp only [optimisticConfirmation, optimisticSelect, hnj, not_false_eq_true, true_or,
       ite_true]
-  simp only [SA.acOnBlock, hopt, tryVote, hnj, not_false_eq_true, true_or, ite_true]
+  simp only [AC.acOnBlock, hopt, tryVote, hnj, not_false_eq_true, true_or, ite_true]
 
 /-- **A0.7, restart.** -/
 theorem restart_state : RestartState sp := by
   intro FGP ro self A Φ t hΦ ht
   have hl := ro.parentOrder t Φ (parentOrder_exists sp hΦ)
-  have h₀ : RestartInv sp A Φ t { SAState.initial sp.genesisRoot with
+  have h₀ : RestartInv sp A Φ t { ACState.initial sp.genesisRoot with
       locks := A.locks, latestConfirmed := A.latestConfirmed,
       restartTime := (t : WithBot Time), mayVote := A.mayVote } :=
     ⟨rfl, rfl, rfl, rfl, rfl, rfl, fun σ => rfl,
       fun x => Or.inl rfl, fun q => Or.inl rfl⟩
   have key : ∀ l : List (Blk sp.n FGP), (∀ B ∈ l, B ∈ Φ.tree ∧ B.root ≠ sp.genesisRoot) →
-      ∀ acc : SAState sp.n × List (Em sp FGP), acc.2 = [] → RestartInv sp A Φ t acc.1 →
-      let r := l.foldl (fun acc B => let r := SA.acOnBlock sp self acc.1 Φ t B;
+      ∀ acc : ACState sp.n × List (Em sp FGP), acc.2 = [] → RestartInv sp A Φ t acc.1 →
+      let r := l.foldl (fun acc B => let r := AC.acOnBlock sp self acc.1 Φ t B;
         (r.1, acc.2 ++ r.2)) acc
       r.2 = [] ∧ RestartInv sp A Φ t r.1 := by
     intro l
@@ -135,6 +135,6 @@ theorem restart_state : RestartState sp := by
     hr1.pool, hr1.voteStamp,
     hr1.blockStamp⟩
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

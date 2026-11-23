@@ -77,7 +77,7 @@ theorem hsSharedUpTo_of_rows_at (run : (Sys (goldilocks S) V).Run)
   have hnc := noCollRun_simTraceAt S run.2 hn valid noCollision
   have hnet : run.2.log.PSync run.2.point g := (Model.sysOf_delivers_iff _ _ _ _).mp healthy.1
   have hawake : ∀ y t, y ∈ honestKeysAt S run.2 t →
-      SA.gbar g ≤ t → t ≤ run.2.horizon →
+      AC.gbar g ≤ t → t ≤ run.2.horizon →
       (simTraceAt S run.2 hn).awake y t := by
     intro y t hy hg hb
     rw [simTraceAt_awake_iff S run.2 hn,

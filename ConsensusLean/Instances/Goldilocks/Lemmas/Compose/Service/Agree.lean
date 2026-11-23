@@ -28,9 +28,9 @@ public section
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
 
 /-- **The run's proposal of `P` is `ac_proposal`'s** at `t_s`: on the duty head `Q = P.parent`,
@@ -39,10 +39,10 @@ proposal step's (`blockCall_cases`), made by `Node.proposeBlock` from `ac_propos
 payload at the cut after the tick's `ac_on_tick`. -/
 theorem proposal_data {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) :
     ∃ i ℓp d pay, tr.projAC.CallAt p i ℓp ∧ ℓp.call = .proposal ∧
-      (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay) ∧
+      (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay) ∧
       tr.time i = sp.ts s ∧ P.parent = some d.head.root ∧ P.acPayload = pay := by
   have h := hrun.toLocalRun
   obtain ⟨⟨⟨acc, hcB⟩, hpos⟩, -, htk⟩ := hP

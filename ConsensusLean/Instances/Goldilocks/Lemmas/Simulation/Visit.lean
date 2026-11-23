@@ -24,13 +24,13 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape
 
 open Blocks Shape Node
-open SA (SAParams ReplayOrder)
+open AC (ACParams ReplayOrder)
 
 variable {binding : VoteBinding}
 
 section
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A received object standing for a block event decodes to that block. -/
 theorem decodeBlock_of_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.n binding}
@@ -234,8 +234,8 @@ end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
 
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape Shape Blocks
-open SA (SAParams ReplayOrder)
-variable {binding : VoteBinding} {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+open AC (ACParams ReplayOrder)
+variable {binding : VoteBinding} {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (hs : List (Header Info × Nat))
 
 /-- A delivery processes its delivered objects in order (`process`): their fold reaches

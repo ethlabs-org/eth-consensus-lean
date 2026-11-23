@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 
 public section
 
-/-! # Goldilocks SA: the head reaches the record, and the confirmed tip is the record
+/-! # Goldilocks AC: the head reaches the record, and the confirmed tip is the record
 
 The fork-choice half of A1.6, at one AC state and a well-formed frame. `ac_head` walks the viable
 tree from the anchor (the deepest of the live lock blocks and `fc_root`) with the latest view. It
@@ -18,9 +18,9 @@ among its votes, and a non-equivocator has one vote). When the head extends the 
 `ac_confirmed` is that block (`acConfirmed_eq`); when the tree holds no block named by the record,
 it is `Φ.F` (`acConfirmed_eq_F`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {sp : SAParams} {FGP : Type}
+variable {sp : ACParams} {FGP : Type}
 
 /-- Two distinct children of one block of a coherent set conflict. -/
 private theorem not_anc_sibling {S : Set (Blk sp.n FGP)} (hS : Coherent S) {X D Y : Blk sp.n FGP}
@@ -35,14 +35,14 @@ private theorem not_anc_sibling {S : Set (Blk sp.n FGP)} (hS : Coherent S) {X D 
   omega
 
 /-- The support of the latest view is among its votes. -/
-private theorem latestView_support {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time} {v : Vote sp.n}
+private theorem latestView_support {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time} {v : Vote sp.n}
     (hv : v ∈ (latestView sp A Φ t).1.support) : v ∈ (latestView sp A Φ t).1.votes := by
   simp only [latestView, voteView, voteViewList, View.ofLists, Set.mem_ofPred_eq,
     List.mem_filter] at hv ⊢
   exact hv.1
 
 /-- The supporters in the latest view are among its voters. -/
-private theorem supporters_subset_voters {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+private theorem supporters_subset_voters {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     (B : Blk sp.n FGP) :
     supporters Φ (latestView sp A Φ t).1 (latestView sp A Φ t).2 B ⊆
       voters (latestView sp A Φ t).1.votes := by
@@ -50,7 +50,7 @@ private theorem supporters_subset_voters {A : SAState sp.n} {Φ : Frm sp.n FGP} 
   exact ⟨x, latestView_support hx, hxi⟩
 
 /-- In the latest view, no validator supports two conflicting blocks. -/
-private theorem supporters_disjoint {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+private theorem supporters_disjoint {A : ACState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     {t : Time} {D Y : Blk sp.n FGP} (hc : ¬ Compatible Φ.tree D Y) :
     Disjoint (supporters Φ (latestView sp A Φ t).1 (latestView sp A Φ t).2 D)
       (supporters Φ (latestView sp A Φ t).1 (latestView sp A Φ t).2 Y) := by
@@ -64,7 +64,7 @@ private theorem supporters_disjoint {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ 
 /-- **The head reaches `R`.** At a well-formed frame, `ac_head(𝒜, Φ, t)` extends `R ∈ Φ.tree`
 when the anchor is compatible with `R`, and `R` is at or below the anchor, or `R` is in the
 viable tree and a strict majority of the latest view's voters support it. -/
-theorem anc_acHead {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time}
+theorem anc_acHead {A : ACState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time}
     {R : Blk sp.n FGP} (hR : R ∈ Φ.tree) (hcomp : Compatible Φ.tree (getAnchor sp A Φ t) R)
     (hsup : Φ.Anc R (getAnchor sp A Φ t) ∨ (R ∈ Φ.viableTree Φ.tree ∧
       (voters (latestView sp A Φ t).1.votes).ncard <
@@ -83,8 +83,8 @@ theorem anc_acHead {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t 
   have hdeep := deepest_mem hD
   rw [← ha] at hdeep
   have haT : a ∈ Φ.tree := hS hdeep.1
-  change Φ.Anc R (ghost sp (Φ.viableTree Φ.tree) (goldfishScore sp Φ V s)
-    (goldfishEligible sp Φ t V s) Φ.tree.ncard a)
+  change Φ.Anc R (ghost sp (Φ.viableTree Φ.tree) (headScore sp Φ V s)
+    (headEligible sp Φ t V s) Φ.tree.ncard a)
   rcases hsup with hRa | ⟨hRv, hmaj⟩
   · exact hRa.trans (anc_ghost hvt _ haT)
   rcases hcomp with haR | hRa
@@ -109,7 +109,7 @@ theorem anc_acHead {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t 
   have hsub : (supporters Φ V s R).ncard ≤ (supporters Φ V s Y).ncard :=
     Set.ncard_le_ncard (supporters_antitone sp FGP Φ V s Y R hYR) (Set.toFinite _)
   refine ⟨Y, ⟨⟨hYv, hXY.2.2, Or.inr (Or.inr ?_)⟩, fun D' hD' hne' => Or.inl ?_⟩, hYR⟩
-  · simp only [goldfishScore]
+  · simp only [headScore]
     omega
   -- a sibling `D'` of `Y` has fewer supporters
   have hc : ¬ Compatible Φ.tree D' Y := by
@@ -123,12 +123,12 @@ theorem anc_acHead {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t 
   have hle : (supporters Φ V s D' ∪ supporters Φ V s Y).ncard ≤ (voters V.votes).ncard :=
     Set.ncard_le_ncard (Set.union_subset (supporters_subset_voters (A := A) (t := t) D')
       (supporters_subset_voters (A := A) (t := t) Y)) (Set.toFinite _)
-  simp only [goldfishScore]
+  simp only [headScore]
   omega
 
 /-- **The confirmed tip is the record** when the head extends the block `R` of the tree named by
 `latest_confirmed`. -/
-theorem acConfirmed_eq {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time}
+theorem acConfirmed_eq {A : ACState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time}
     {R : Blk sp.n FGP} (hR : R ∈ Φ.tree) (hr : R.root = A.latestConfirmed)
     (hH : Φ.Anc R (acHead sp A Φ t)) : acConfirmed sp A Φ t = R := by
   have hin : InTree Φ A.latestConfirmed := ⟨R, hR, hr⟩
@@ -152,7 +152,7 @@ theorem acConfirmed_eq {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
   exact Anc.antisymm hΦ.coherent hDR hRD
 
 /-- At a well-formed frame, the head is in the tree. -/
-private theorem acHead_mem {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (t : Time) :
+private theorem acHead_mem {A : ACState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (t : Time) :
     acHead sp A Φ t ∈ Φ.tree := by
   have hS : liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} ⊆ Φ.tree := by
     rintro X (hX | hX)
@@ -163,8 +163,8 @@ private theorem acHead_mem {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK
     simp only [getAnchor, hD, Option.getD_some]
     exact hS (deepest_mem hD).1
   have h := anc_ghost (fun X (hX : X ∈ Φ.viableTree Φ.tree) => hX.1)
-    (score := goldfishScore sp Φ (latestView sp A Φ t).1 (latestView sp A Φ t).2)
-    (eligible := goldfishEligible sp Φ t (latestView sp A Φ t).1 (latestView sp A Φ t).2)
+    (score := headScore sp Φ (latestView sp A Φ t).1 (latestView sp A Φ t).2)
+    (eligible := headEligible sp Φ t (latestView sp A Φ t).1 (latestView sp A Φ t).2)
     Φ.tree.ncard haT
   by_cases he : getAnchor sp A Φ t = acHead sp A Φ t
   · exact he ▸ haT
@@ -172,7 +172,7 @@ private theorem acHead_mem {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK
 
 /-- **The confirmed tip falls back to `Φ.F`** when the tree holds no block named by
 `latest_confirmed`. -/
-theorem acConfirmed_eq_F {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time}
+theorem acConfirmed_eq_F {A : ACState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time}
     (hr : ¬ InTree Φ A.latestConfirmed) : acConfirmed sp A Φ t = Φ.F := by
   have hl : lookup Φ A.latestConfirmed = none := by
     unfold lookup
@@ -189,6 +189,6 @@ theorem acConfirmed_eq_F {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK �
   rw [hD, Option.getD_some]
   exact Anc.antisymm hΦ.coherent hDS.2.1 (hΦ.rooted.2 _ hDS.1)
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

@@ -8,9 +8,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -21,7 +21,7 @@ theorem finalized_below_floor_held_at
     (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {i m : Nat}
     (hy : y ∈ H (tr.time i)) (hz : z ∈ H (tr.time m))
     (hf : (H (max (tr.time i) (tr.time m)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hW : W ∈ (tr.state z m).fg.tree)
+    {W : AC.Blk sp.n (List (FG.Att sp.n))} (hW : W ∈ (tr.state z m).fg.tree)
     (hheight : (tr.state y i).fg.headHeightFloor ≤ ((tr.state z m).fg.σ W.root).h)
     (hJ : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 →
       ¬(tr.state y i).fg.Contest → Anc (tr.HonestBlocksAt H) (tr.state y i).fg.J W) :
@@ -71,14 +71,14 @@ theorem finalized_below_floor_held_at
 
 /-- A window's common floor places its finalized tip below an independently held descendant. -/
 theorem FrameWindow.finalized_below_descendant_at {lo hi : Time} {floor : Nat}
-    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H lo hi floor kindJ J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y x z : Fin sp.n} {j i c : Nat}
     (hy : y ∈ H (tr.time j)) (hx : x ∈ H (tr.time i)) (hz : z ∈ H (tr.time c))
     (hf : (H (max (tr.time j) (tr.time i)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hjlo : lo ≤ tr.time j) (hjhi : tr.time j ≤ hi)
-    {X W : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state z c).fg.tree)
+    {X W : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state z c).fg.tree)
     (hh : floor ≤ ((tr.state z c).fg.σ X.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocksAt H) J X)
     (hW : W ∈ (tr.state x i).fg.tree) (hXW : Anc (tr.HonestBlocksAt H) X W) :

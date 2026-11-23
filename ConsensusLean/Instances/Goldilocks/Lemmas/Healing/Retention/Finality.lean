@@ -19,7 +19,7 @@ the justified height), so a store's `Σ.F ⪯ Σ.J` is finalized at a height `�
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 namespace Store
 
@@ -263,8 +263,8 @@ theorem accepted_replay_finalized_cached {P : Params} {ACP : Type} {acp₀ : ACP
   rw [htree, ← hF] at hc
   exact hc.mono sub
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {H : Set (Fin sp.n)}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
   {proposer : Nat → Fin sp.n} {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
@@ -277,7 +277,7 @@ attestations (unforgeability) in one client run (`Store.signed_run`), against cl
 -/
 theorem finalized_anc_of_height_lt_of_run (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1) {y z : Fin sp.n}
-    (hy : y ∈ H) (hz : z ∈ H) {k m : Nat} {X F W : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hy : y ∈ H) (hz : z ∈ H) {k m : Nat} {X F W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state y k).fg.tree) (hF : F ∈ (tr.state y k).fg.tree)
     (hFr : F.root = ((tr.state y k).fg.σ X.root).F) (hW : W ∈ (tr.state z m).fg.tree)
     (hlt : ((tr.state y k).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h) :
@@ -305,7 +305,7 @@ genesis), so `Σ.F ⪯ B` by G1.2 (`finalized_anc_of_height_lt_of_run`). -/
 theorem low_finalized_below_high_block_of_run (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
     {y x : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H) {m i : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBt : B ∈ (tr.state x i).fg.tree)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hBt : B ∈ (tr.state x i).fg.tree)
     (hhigh : HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h)
     (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) :
     Anc (tr.HonestBlocks H) (tr.state y m).fg.F B := by
@@ -346,7 +346,7 @@ target's floor and, in the J-root case, extends the target's J. No target accept
 theorem finalized_below_floor_held (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i m : Nat}
-    {W : SA.Blk sp.n (List (FG.Att sp.n))}
+    {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state z m).fg.tree)
     (hheight : (tr.state y i).fg.headHeightFloor ≤ ((tr.state z m).fg.σ W.root).h)
     (hJ : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 →
@@ -404,7 +404,7 @@ This is local: no agreement between different frames is assumed. -/
 theorem viable_head_of_floor (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y i).fg.tree)
+    {X : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y i).fg.tree)
     (hh : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ X.root).h)
     (hJ : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 →
       ¬(tr.state y i).fg.Contest → (tr.state y i).fg.Anc (tr.state y i).fg.J X) :
@@ -426,7 +426,7 @@ theorem viable_head_of_floor (hrun : GoldilocksRun proposer dg H tr ini)
 theorem ResetPremisesUpTo.low_finalized_below_origin {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {y : Fin sp.n}
     (hy : y ∈ H) (m : Nat) (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) {x : Fin sp.n}
-    {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
+    {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
     Anc (tr.HonestBlocks H) (tr.state y m).fg.F B := by
   obtain ⟨CV, hst⟩ := ho.2.2.1
   exact low_finalized_below_high_block_of_run hp.run hp.noColl hp.faults hy ho.1

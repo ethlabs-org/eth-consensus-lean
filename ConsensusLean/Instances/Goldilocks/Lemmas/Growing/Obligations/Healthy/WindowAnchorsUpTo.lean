@@ -13,9 +13,9 @@ Guards as in the static form: `t_{s₁} ≤ b`, and `t_{s₀} + 6Δ ≤ b` for a
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -24,7 +24,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem anchors_chain_upTo_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {s₀ s₁ : Nat}
-    {P₀ P₁ : SA.Blk sp.n (List (FG.Att sp.n))}
+    {P₀ P₁ : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP₀ : Healing.Growing.HonestProposalRun tr H proposer s₀ P₀)
     (hR : Healing.drainTime sp a ≤ sp.ts s₀)
     (hP₁ : Healing.Growing.HonestProposalRun tr H proposer s₁ P₁) (hs : s₀ < s₁)
@@ -39,8 +39,8 @@ theorem anchors_chain_upTo_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 private theorem ts_add_eight_le {m n : Nat} (h : m + 2 ≤ n) :
     sp.ts m + 8 * sp.Δ ≤ sp.ts n := by
   have e : sp.ts (m + 2 : Nat) = sp.ts m + 8 * sp.Δ := by
-    simp only [SA.SAParams.ts]; push_cast; ring
-  have : sp.ts (m + 2 : Nat) ≤ sp.ts n := (SA.ts_le_iff sp).2 (by push_cast; omega)
+    simp only [AC.ACParams.ts]; push_cast; ring
+  have : sp.ts (m + 2 : Nat) ≤ sp.ts n := (AC.ts_le_iff sp).2 (by push_cast; omega)
   linarith
 
 /-- The ordered pairs of `Fin 4`: the last pair, a pair below `3`, or a pair `(i, 3)`, `i < 2`. -/
@@ -53,7 +53,7 @@ theorem window_anchors_chain_upTo_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {s : Fin 4 → Nat}
-    {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
+    {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer (s i) (P i)) (hs : StrictMono s)
     (hR : Healing.drainTime sp a ≤ sp.ts (s 0)) (hb : sp.ts (s 3) ≤ b)
     (hadj : s 3 = s 2 + 1 → sp.ts (s 2) + 6 * sp.Δ ≤ b) :
@@ -61,9 +61,9 @@ theorem window_anchors_chain_upTo_at
   intro i j hij
   rcases hij.lt_or_eq with hlt | rfl
   · have hRi : Healing.drainTime sp a ≤ sp.ts (s i) :=
-      hR.trans ((SA.ts_le_iff sp).2 (by exact_mod_cast hs.monotone (Fin.zero_le i)))
+      hR.trans ((AC.ts_le_iff sp).2 (by exact_mod_cast hs.monotone (Fin.zero_le i)))
     have hj3 : s j ≤ s 3 := hs.monotone (Fin.le_last j)
-    have hjb : sp.ts (s j) ≤ b := ((SA.ts_le_iff sp).2 (by exact_mod_cast hj3)).trans hb
+    have hjb : sp.ts (s j) ≤ b := ((AC.ts_le_iff sp).2 (by exact_mod_cast hj3)).trans hb
     refine anchors_chain_upTo_at hp (hP i) hRi (hP j) (hs hlt) hjb fun he => ?_
     have hΔ := sp.toParams.hΔ
     rcases fin4_pairs i j hlt with ⟨rfl, rfl⟩ | hj | ⟨hi, rfl⟩

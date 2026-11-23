@@ -32,10 +32,10 @@ there. A genesis head is excluded by the height of a high origin (`not_genesis_a
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 open ProposalImpl
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -43,10 +43,10 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 at the later of its acceptance and `c_z`. -/
 private theorem gst_le_acceptance {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) {w : Fin sp.n} {c : Nat}
     (hw : w ∈ H (max (tr.time c) (cutZ sp.toParams g)))
-    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hacc : tr.projAC.AcceptAt w c W)
+    {W : AC.Blk sp.n (List (FG.Att sp.n))} (hacc : tr.projAC.AcceptAt w c W)
     (hBW : Anc (tr.HonestBlocksAt H) B W) : g ≤ tr.time c := by
   have hwc := hp.run.antitone (le_max_left _ _) hw
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
@@ -55,23 +55,23 @@ private theorem gst_le_acceptance {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hcC' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcC)
   have hWc : W ∈ (tr.state w c).fg.tree :=
     (frame_tree_subset_at hp.run hp.noColl hwc hcC).2
-      ((SA.accept_new sp hrC hwc ⟨ellC, hcC', heC⟩).1 ellC hcC')
+      ((AC.accept_new sp hrC hwc ⟨ellC, hcC', heC⟩).1 ellC hcC')
   have := cutZ_lt_of_anc_at hp ho hw hWc hBW
-  linarith [Healing.lt_cutZ sp g, SA.le_gbar g, sp.toParams.hΔ]
+  linarith [Healing.lt_cutZ sp g, AC.le_gbar g, sp.toParams.hΔ]
 
 /-- A high origin's counted votes reach a next-slot honest cast without Catch. -/
 theorem first_carry_of_finalized_anc_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x y : Fin sp.n} {i j k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (Vote sp.n)}
     (ho : HighOrigin tr H g x i j B)
     (hfl : Compose.StoredFastLockAt tr x i j B CV)
     (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ell e) (_hkb : tr.time k ≤ b)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y k ell e) (_hkb : tr.time k ≤ b)
     (hs : e.msg.slot = j + 1) (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
-    SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y k e j CV := by
+    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y k e j CV := by
   have hm := hp.run.time_mono
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hx := hp.run.antitone (le_max_right _ _) ho.1
@@ -79,11 +79,11 @@ theorem first_carry_of_finalized_anc_at
     fun _ h => ⟨x, i, tr.time i, hp.run.time_nonneg i, fun _ hq => hm hq.le, hx, h⟩
   obtain ⟨ellw, D, hcw, hflD, rfl⟩ := hfl
   have hBD : Anc (tr.HonestBlocksAt H) (ellw.frame.viableAncestor D) D :=
-    (SA.anc_viableAncestor _ D).mono
+    (AC.anc_viableAncestor _ D).mono
       ((frame_tree_subset_at hp.run hp.noColl hx hcw).2.trans hxU)
   have hgj : g ≤ sp.ts j := by
     have := hp.cutZ_le_ts_of_highOrigin_at ho
-    linarith [Healing.lt_cutZ sp g, SA.le_gbar g, sp.toParams.hΔ]
+    linarith [Healing.lt_cutZ sp g, AC.le_gbar g, sp.toParams.hΔ]
   refine carry_of_post_gst_senders_at hp hgj hy hc hs fun v hv => ?_
   obtain ⟨hvs, ⟨k', hxk, hsend, hk1, hk2⟩, Hv, hHvU, hHvr, hDHv, hacc⟩ :=
     fastLock_writer_at hac.localRun hac.vstart hx hflD v hv
@@ -101,52 +101,52 @@ theorem first_carry_of_finalized_anc_at
 theorem later_carry_of_finalized_anc_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x y : Fin sp.n} {i j k m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x y : Fin sp.n} {i j k m : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B)
     (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ell e) (_hkb : tr.time k ≤ b)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y k ell e) (_hkb : tr.time k ≤ b)
     (hs : e.msg.slot = m + 1) (hjm : j < m)
     (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B)
     (hprior : ∀ z q e', q < k → Compose.Growing.HVoteAt tr H z q e' →
-      e'.msg.slot = m → SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
-    SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y k e m
+      e'.msg.slot = m → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
+    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y k e m
       {v | ∃ z q e', Compose.Growing.HVoteAt tr H z q e' ∧ e'.msg = v ∧ v.slot = m} := by
   have hm := hp.run.time_mono
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hU := hac.localRun.coherent
   have hZj := hp.cutZ_le_ts_of_highOrigin_at ho
-  have hjm' := (SA.ts_le_iff sp).mpr (show (j : Int) ≤ m by clear * - hjm; omega)
+  have hjm' := (AC.ts_le_iff sp).mpr (show (j : Int) ≤ m by clear * - hjm; omega)
   have hgm : g ≤ sp.ts m := by
-    linarith [Healing.lt_cutZ sp g, SA.le_gbar g]
+    linarith [Healing.lt_cutZ sp g, AC.le_gbar g]
   have hrk := hac.localRun.upTo (hp.run.time_nonneg k)
-  have hck : SA.CastAt (tr.projAC.upTo (tr.time k)) y k ell e :=
-    SA.upTo_castAt.mpr ⟨le_rfl, hc⟩
-  have hyk := (SA.castAt_spec hrk hy hck).2.1
+  have hck : AC.CastAt (tr.projAC.upTo (tr.time k)) y k ell e :=
+    AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
+  have hyk := (AC.castAt_spec hrk hy hck).2.1
   change e.msg.slot = sp.slot (tr.time k) at hyk
   refine carry_of_post_gst_senders_at hp hgm hy hc hs ?_
   rintro v ⟨z, q, e', hzv, rfl, hvs⟩
   obtain ⟨hzq, ellq, hcq, he'⟩ := Compose.Growing.hVoteAt_iff.mp hzv
   have hrq := hac.localRun.upTo (hp.run.time_nonneg q)
-  have hcq' : SA.CastAt (tr.projAC.upTo (tr.time q)) z q ellq e' :=
+  have hcq' : AC.CastAt (tr.projAC.upTo (tr.time q)) z q ellq e' :=
     ⟨(Trace.upTo_callAt _).mpr ⟨le_rfl, hcq⟩, he'⟩
-  have hzs := (SA.castAt_spec hrq hzq hcq').2.1
+  have hzs := (AC.castAt_spec hrq hzq hcq').2.1
   change e'.msg.slot = sp.slot (tr.time q) at hzs
   change e'.msg.slot = m at hvs
   have hqk : q < k := by
     by_contra hn
-    have := SA.slot_mono sp (hp.run.time_nonneg k) (hm (not_lt.mp hn))
+    have := AC.slot_mono sp (hp.run.time_nonneg k) (hm (not_lt.mp hn))
     clear * - this hyk hzs hvs hs; omega
   obtain ⟨Hv, hHvU, hHvr, hBHv⟩ := hprior z q e' hqk hzv hvs
   obtain ⟨⟨Hd, hHd, hHdr, -⟩, hqt⟩ := Compose.cast_head_fcRoot hrq hp.run.vstart hzq hcq'
-  have hHdU := (SA.frameIn_of_callAt hrq hzq hcq'.1).2 hHd
+  have hHdU := (AC.frameIn_of_callAt hrq hzq hcq'.1).2 hHd
   obtain rfl : Hd = Hv := hU.1 hHdU hHvU (hHdr.trans hHvr.symm)
   change tr.time q ≤ sp.ts e'.msg.slot + sp.Δ at hqt
   rw [hvs] at hqt
   have hqt' : tr.time q < sp.ts m + 2 * sp.Δ := by linarith
   have hmq : sp.ts m ≤ tr.time q :=
-    (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg q) m).mpr (by
+    (AC.ts_le_iff_le_slot sp (hp.run.time_nonneg q) m).mpr (by
       clear * - hzs hvs; omega)
   refine ⟨hvs, ⟨z, q, hzq, ⟨ellq, hcq, Or.inl ⟨e', he', rfl⟩⟩, hmq, hqt'⟩, Hd, hHdr,
     hF.trans hBHv, ?_⟩

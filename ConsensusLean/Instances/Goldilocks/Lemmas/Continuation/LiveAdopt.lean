@@ -28,15 +28,15 @@ For the proposal `P` of a slot `s` after a hand-over whose honest slot-`s` votes
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : SA.CommitteeDict sp.n}
+variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : AC.CommitteeDict sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
-  {T : Time} {r σ : Nat} {t₁ b : Time} {s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+  {T : Time} {r σ : Nat} {t₁ b : Time} {s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
 
 /-- **Every member of a label `≤ s` is below `P`** when every honest slot-`s` vote is `P`, through
 `b ≥ t_s + Δ`: a member of a label `< s` is extended by the vote of a slot-`s` voter awake and
@@ -46,7 +46,7 @@ theorem seeded_member_anc_proposal
     (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hrs : r ≤ s) (hPU : P ∈ tr.HonestBlocksAt H) (hsb : sp.ts s + sp.Δ ≤ b)
     (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {l : Nat}
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {l : Nat}
     (hC : HealedOrigin tr H g r (r + sp.k - 1) C l b) (hl : l ≤ s) :
     Anc (tr.HonestBlocksAt H) C P := by
   have hΔ := sp.toParams.hΔ
@@ -79,7 +79,7 @@ theorem seeded_votes_succ_extend
     (hs : σ + 1 ≤ s) (hPU : P ∈ tr.HonestBlocksAt H) (hsb : sp.ts s + sp.Δ ≤ b)
     (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root) :
     ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s + 1 → tr.time j ≤ b →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
   have hΔ := sp.toParams.hΔ
   obtain ⟨-, hrs, hga, -⟩ := hS.slot_timing hs
   have hrs' : r ≤ s := by have := sp.two_le_k; omega
@@ -88,7 +88,7 @@ theorem seeded_votes_succ_extend
     Or.inr (seeded_member_anc_proposal hS hrs' hPU hsb hall hC hj)
   have hPb : HealedOriginsBelow tr H g r (r + sp.k - 1) (s + 1) b :=
     healedOriginsBelow_iff.2 fun C j C' j' _ _ hC hC' => hS.inv.origins_compatible C j C' j' hC hC'
-  have hsa : SA.gbar g + 2 * sp.Δ ≤ sp.ts s := by
+  have hsa : AC.gbar g + 2 * sp.Δ ≤ sp.ts s := by
     have := hS.gbar_le hrs'
     linarith
   intro x j
@@ -118,7 +118,7 @@ theorem seeded_updater_F_anc
     (hs : σ + 1 ≤ s) (hPU : P ∈ tr.HonestBlocksAt H) (hPs : P.slot = s)
     (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root)
     {y : Fin sp.n} {k₀ : Nat} (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (ht₁ : t₁ ≤ tr.time k₀) (hb : tr.time k₀ ≤ b) :
+    (hu : AC.UpdateAt tr.projAC y k₀ s ℓ) (ht₁ : t₁ ≤ tr.time k₀) (hb : tr.time k₀ ≤ b) :
     Anc (tr.HonestBlocksAt H) (tr.state y k₀).fg.F P := by
   have hΔ := sp.toParams.hΔ
   have hk := sp.two_le_k
@@ -137,7 +137,7 @@ theorem seeded_updater_F_anc
   have hdt : sp.ts (r + sp.k : Nat) ≤ tr.time k₀ := hS.drain.trans ht₁
   have hcall := hS.called hy hdt le_rfl
   have hf := hS.bounds.two _ hd hb
-  set R : SA.Blk sp.n (List (FG.Att sp.n)) → Prop := fun D => Compatible (tr.HonestBlocksAt H) D P
+  set R : AC.Blk sp.n (List (FG.Att sp.n)) → Prop := fun D => Compatible (tr.HonestBlocksAt H) D P
   have hRc : ∀ A B, Anc (tr.HonestBlocksAt H) A B → R B → R A := by
     rintro A B hAB (hBP | hPB)
     · exact Or.inl (hAB.trans hBP)
@@ -157,9 +157,9 @@ theorem seeded_updater_F_anc
   have hsub := upTo_subset hrun hd
   have hsl₀ : sp.slot (tr.time k₀) = s + 1 := by
     have h6 : sp.ts s + 6 * sp.Δ = sp.ts ((s + 1 : Nat) : Int) + 2 * sp.Δ :=
-      (SA.slot_arithmetic sp s).2.2
+      (AC.slot_arithmetic sp s).2.2
     rw [ht, h6]
-    simpa using (SA.slot_arithmetic sp (s + 1)).1 2 (by omega)
+    simpa using (AC.slot_arithmetic sp (s + 1)).1 2 (by omega)
   have hzd : Healing.cutZ sp.toParams g ≤ tr.time k₀ := by
     have := ts_le_ts (sp := sp) (show r ≤ r + sp.k by omega)
     linarith [Healing.cutZ_le sp g, hS.seed.timing.2.2]
@@ -172,13 +172,13 @@ theorem seeded_updater_F_anc
         have ht' : tr.time c = sp.ts l + 6 * sp.Δ := hu'.2.2.1
         have hl : l ≤ s := by
           have : sp.ts (l : Int) ≤ sp.ts (s : Int) := by linarith
-          exact_mod_cast (SA.ts_le_iff sp).1 this
+          exact_mod_cast (AC.ts_le_iff sp).1 this
         exact Or.inl (hmem hCb hl)
       obtain ⟨ℓ', A, -, hslc, -⟩ := id hOp
       change sp.slot (tr.time c) = l at hslc
       have hl : l ≤ s + 1 := by
         rw [← hslc, ← hsl₀]
-        exact SA.slot_mono sp (hrun.time_nonneg c) hck₀
+        exact AC.slot_mono sp (hrun.time_nonneg c) hck₀
       rcases Nat.lt_or_ge l (s + 1) with hls | hls
       · exact Or.inl (hmem hCb (by omega))
       obtain rfl : l = s + 1 := le_antisymm hl hls
@@ -209,10 +209,10 @@ compatible with the member. -/
 theorem seeded_result_not_vetoed
     (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     {y : Fin sp.n} {k₀ m : Nat} (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ m ℓ) (ht₁ : t₁ ≤ tr.time k₀) (hb : tr.time k₀ ≤ b)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {l : Nat}
+    (hu : AC.UpdateAt tr.projAC y k₀ m ℓ) (ht₁ : t₁ ≤ tr.time k₀) (hb : tr.time k₀ ≤ b)
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {l : Nat}
     (hC : HealedOrigin tr H g r (r + sp.k - 1) C l b) (hCt : C ∈ ℓ.frame.tree) :
-    ¬ SA.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) C := by
+    ¬ AC.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) C := by
   have hrun := hS.run
   have hnc := hS.noColl
   have hU := honestBlocksAt_coherent hrun hnc
@@ -224,8 +224,8 @@ theorem seeded_result_not_vetoed
   have hcomp := OnHealedChain.compatible hrun hnc hS.inv.origins_compatible hVc hC
   apply hconf
   rcases hcomp with h | h
-  · exact Or.inr (SA.anc_tree_of_anc_U hU hΦ hHB hV.1 h hCt)
-  · exact Or.inl (SA.anc_tree_of_anc_U hU hΦ hHB hCt h hV.1)
+  · exact Or.inr (AC.anc_tree_of_anc_U hU hΦ hHB hV.1 h hCt)
+  · exact Or.inl (AC.anc_tree_of_anc_U hU hΦ hHB hCt h hV.1)
 
 /-- **Every honest update of a slot `s ≥ σ + 1` returns the proposal `P`, not vetoed**, for the
 proposal of slot `s` at `t_s ≥ t₁` by a proposer honest at `t_s + Δ`, through `b ≥ t_s + 6Δ`: every
@@ -238,16 +238,16 @@ theorem seeded_adopt_result
     (hs : σ + 1 ≤ s) {p : Fin sp.n} {k : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) (ht₁ : t₁ ≤ sp.ts s)
     {y : Fin sp.n} {k₀ : Nat} (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) :
-    SA.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some P ∧
-      ¬ SA.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) P := by
+    (hu : AC.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) :
+    AC.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some P ∧
+      ¬ AC.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) P := by
   have hΔ := sp.toParams.hΔ
   have hrun := hS.run
   have hnc := hS.noColl
   have ht : tr.time k₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
   obtain ⟨-, hrs, -, -⟩ := hS.slot_timing hs
   have hrs' : r ≤ s := by have := sp.two_le_k; omega
-  have hga : SA.gbar g + 2 * sp.Δ ≤ sp.ts s := by linarith [hS.gbar_le hrs']
+  have hga : AC.gbar g + 2 * sp.Δ ≤ sp.ts s := by linarith [hS.gbar_le hrs']
   have hkt : tr.time k = sp.ts s := by rw [hP.2.2, sp.slotTime_eq, hPs]; rfl
   have hPU := proposal_honest_at hrun hnc (hrun.antitone (by rw [hkt]; linarith) hp) hP
   have hall := seeded_votes_eq_proposal hS hs hp hP hPs ht₁ (by linarith)

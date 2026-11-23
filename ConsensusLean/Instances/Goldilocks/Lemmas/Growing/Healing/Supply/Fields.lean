@@ -16,7 +16,7 @@ public section
 Proofs of `ACHealing` fields at the committee-start Goldilocks run interface
 `goldilocksRunInterface`, each with exactly the field's statement:
 
-* `reportAt_iff_toFGAt`: an actual report of a node honest at it is an SA `ac_to_fg` call of the
+* `reportAt_iff_toFGAt`: an actual report of a node honest at it is an AC `ac_to_fg` call of the
   AC projection;
 * `goldilocks_proposal_floor`: the `proposal_floor` field;
 * `goldilocks_report_origin`: the `report_origin` field, with `Origin` the joined stored fast
@@ -31,19 +31,19 @@ Proofs of `ACHealing` fields at the committee-start Goldilocks run interface
 
 namespace Consensus.Goldilocks.Generic
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 open Healing.Growing (HZ IsReset)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- An actual report of a node honest at it is an `ac_to_fg` call of the AC projection. -/
 theorem reportAt_iff_toFGAt {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
-    {i : Nat} (hy : y ∈ H (tr.time i)) {R : SA.Blk sp.n (List (FG.Att sp.n))} :
-    ReportAt tr y i R ↔ ∃ ℓ, SA.ToFGAt tr.projAC y i ℓ R := by
-  unfold ReportAt SA.ToFGAt
+    {i : Nat} (hy : y ∈ H (tr.time i)) {R : AC.Blk sp.n (List (FG.Att sp.n))} :
+    ReportAt tr y i R ↔ ∃ ℓ, AC.ToFGAt tr.projAC y i ℓ R := by
+  unfold ReportAt AC.ToFGAt
   rw [Compose.Growing.projAC_state_at hrun hy]
   refine exists_congr fun ℓ => ?_
   rw [Compose.projAC_callAt]
@@ -53,7 +53,7 @@ theorem reportAt_iff_toFGAt {ini}
 inside a frame window, under the FG fault bound at its slot, has height at least the window's
 floor at its proposer right after the proposal. -/
 theorem goldilocks_proposal_floor {cm : Time → Finset (Fin sp.n)} {lo hi : Time}
-    {floor u : Nat} {kindJ : Prop} {J B : SA.Blk sp.n (List (FG.Att sp.n))} {z : Fin sp.n}
+    {floor u : Nat} {kindJ : Prop} {J B : AC.Blk sp.n (List (FG.Att sp.n))} {z : Fin sp.n}
     {kB : Nat} (hrun : (goldilocksRunInterface sp ro).Run cm proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hframe : FrameWindow tr H lo hi floor kindJ J)
     (hz : z ∈ H (sp.toParams.slotTime u)) (hdes : z = proposer u) (hP : tr.ProposesAt z kB B)
@@ -72,7 +72,7 @@ theorem goldilocks_proposal_floor {cm : Time → Finset (Fin sp.n)} {lo hi : Tim
 at it extends the stored block of an earlier joined fast-lock write of the same node, held by it
 at the write. Only collision freedom is read from the premises. -/
 theorem goldilocks_report_origin {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {g ΔF a b : Time}
-    {y : Fin sp.n} {i : Nat} {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} {i : Nat} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (_hβ : βK ≤ 1 / 2) (hrun : (goldilocksRunInterface sp ro).Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b)
     (_hr : IsReset tr H g a) (_hab : a ≤ b) (hy : y ∈ H (tr.time i)) (_hib : tr.time i ≤ b)
@@ -91,7 +91,7 @@ theorem goldilocks_report_origin {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {
         ((Healing.Growing.fastLockAt_upTo_iff hr.time_mono le_rfl).mpr hfl))
   obtain ⟨hok, hsub⟩ := Healing.Growing.frame_tree_subset_at hr hnc hyr hcw
   exact ⟨r, hri.le, j, ellw.frame.viableAncestor D, hyr, ⟨hj, CV, ellw, D, hcw, hfl, rfl⟩,
-    hsub (SA.viableAncestor_anc hok hD).1, hRB⟩
+    hsub (AC.viableAncestor_anc hok hD).1, hRB⟩
 
 /-- **The committee half bound from the committee fault bound** at the run's slot committees:
 with `βK ≤ 1/2`, the committee fault bound leaves fewer than half of each slot committee from `ḡ`
@@ -112,7 +112,7 @@ report time, within one slot plus two delays, and later honest proposal heads ex
 The proof is `KernelProof.proposal_report_follow_at` at the run's slot committees, with the
 committee half bound of the premises' committee fault bound (`committeeHalf_of_committeeFaults`). -/
 theorem goldilocks_report_follow {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {g ΔF b : Time}
-    {s₀ N u floor : Nat} {kindJ : Prop} {J B : SA.Blk sp.n (List (FG.Att sp.n))} {z : Fin sp.n}
+    {s₀ N u floor : Nat} {kindJ : Prop} {J B : AC.Blk sp.n (List (FG.Att sp.n))} {z : Fin sp.n}
     {kB : Nat} (hβ : βK ≤ 1 / 2) (hrun : (goldilocksRunInterface sp ro).Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b)
     (hframe : FrameWindow tr H (sp.toParams.slotTime s₀)

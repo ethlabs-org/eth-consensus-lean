@@ -12,9 +12,9 @@ delivery, at signing and at `c_z`, even if other historical holders have since b
 
 namespace Consensus.Goldilocks.Healing.Growing.Outcome
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g : Time}
 
@@ -27,7 +27,7 @@ theorem left_entry_origin_at
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
     (hq : (H (max (cutZ sp.toParams g) t))ᶜ.ncard < sp.toParams.fg.q)
-    {E C : SA.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ (tr.state y k).fg.tree)
+    {E C : AC.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ (tr.state y k).fg.tree)
     (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
     (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h)
     (hEC : (tr.state y k).fg.Anc E C)

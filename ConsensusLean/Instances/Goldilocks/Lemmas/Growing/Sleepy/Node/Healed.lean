@@ -30,29 +30,29 @@ constraint. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 variable (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
 
 /-- **A lock write within `b`**: a fast lock (a fast update or an optimistic selection) or a slow
 lock of label `s` on the block `C`, written at cut `i` by a writer `x` honest at that cut, at a
 time `≤ b`. -/
-def LockWithin (C : SA.Blk sp.n (List (FG.Att sp.n))) (s : Nat) (b : Time) : Prop :=
+def LockWithin (C : AC.Blk sp.n (List (FG.Att sp.n))) (s : Nat) (b : Time) : Prop :=
   ∃ x i, x ∈ H (tr.time i) ∧ tr.time i ≤ b ∧
-    ((∃ CV, SA.FastLockAt tr.projAC x i s C CV) ∨ SA.SlowLockAt tr.projAC x i s C)
+    ((∃ CV, AC.FastLockAt tr.projAC x i s C CV) ∨ AC.SlowLockAt tr.projAC x i s C)
 
 /-- **The healed family** of label `s` within `b`, from the lock floor `rL` and the origin floor
 `rO`: an origin of label `≥ rO`, a lock write of label `≥ rL`, or the block of a high origin of
 label `s` written at a time `≤ b`. -/
-def HealedOrigin (g : Time) (rL rO : Nat) (C : SA.Blk sp.n (List (FG.Att sp.n))) (s : Nat)
+def HealedOrigin (g : Time) (rL rO : Nat) (C : AC.Blk sp.n (List (FG.Att sp.n))) (s : Nat)
     (b : Time) : Prop :=
   (rO ≤ s ∧ OriginWithin tr H C s b) ∨ (rL ≤ s ∧ LockWithin tr H C s b) ∨
     ∃ x i, tr.time i ≤ b ∧ Healing.Growing.HighOrigin tr H g x i s C
 
 /-- `B` is an ancestor, inside the blocks held while honest, of a member of the healed family
 within `b`. -/
-def OnHealedChain (g : Time) (rL rO : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) (b : Time) :
+def OnHealedChain (g : Time) (rL rO : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))) (b : Time) :
     Prop :=
   ∃ C s, HealedOrigin tr H g rL rO C s b ∧ Anc (tr.HonestBlocksAt H) B C
 
@@ -66,23 +66,23 @@ def HealedOriginsBelow (g : Time) (rL rO s : Nat) (b : Time) : Prop :=
 `m` with `j < m ≤ s` extends every member of the healed family within `b` of label `j`. -/
 def HealedVotesBelow (g : Time) (rL rO s : Nat) (b : Time) : Prop :=
   ∀ C j, HealedOrigin tr H g rL rO C j b → ∀ y i e, HVoteAt tr H y i e → tr.time i ≤ b →
-    j < e.msg.slot → e.msg.slot ≤ s → SA.VoteExtends (tr.HonestBlocksAt H) e.msg C
+    j < e.msg.slot → e.msg.slot ≤ s → AC.VoteExtends (tr.HonestBlocksAt H) e.msg C
 
 variable {tr H}
 
-theorem lockWithin_iff {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time} :
+theorem lockWithin_iff {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time} :
     LockWithin tr H C s b ↔ ∃ x i, x ∈ H (tr.time i) ∧ tr.time i ≤ b ∧
-      ((∃ CV, SA.FastLockAt tr.projAC x i s C CV) ∨ SA.SlowLockAt tr.projAC x i s C) :=
+      ((∃ CV, AC.FastLockAt tr.projAC x i s C CV) ∨ AC.SlowLockAt tr.projAC x i s C) :=
   Iff.rfl
 
-theorem healedOrigin_iff {g : Time} {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))}
+theorem healedOrigin_iff {g : Time} {rL rO : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     {s : Nat} {b : Time} :
     HealedOrigin tr H g rL rO C s b ↔
       (rO ≤ s ∧ OriginWithin tr H C s b) ∨ (rL ≤ s ∧ LockWithin tr H C s b) ∨
         ∃ x i, tr.time i ≤ b ∧ Healing.Growing.HighOrigin tr H g x i s C :=
   Iff.rfl
 
-theorem onHealedChain_iff {g : Time} {rL rO : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+theorem onHealedChain_iff {g : Time} {rL rO : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     {b : Time} :
     OnHealedChain tr H g rL rO B b ↔
       ∃ C s, HealedOrigin tr H g rL rO C s b ∧ Anc (tr.HonestBlocksAt H) B C :=
@@ -97,15 +97,15 @@ theorem healedOriginsBelow_iff {g : Time} {rL rO s : Nat} {b : Time} :
 theorem healedVotesBelow_iff {g : Time} {rL rO s : Nat} {b : Time} :
     HealedVotesBelow tr H g rL rO s b ↔
       ∀ C j, HealedOrigin tr H g rL rO C j b → ∀ y i e, HVoteAt tr H y i e → tr.time i ≤ b →
-        j < e.msg.slot → e.msg.slot ≤ s → SA.VoteExtends (tr.HonestBlocksAt H) e.msg C :=
+        j < e.msg.slot → e.msg.slot ≤ s → AC.VoteExtends (tr.HonestBlocksAt H) e.msg C :=
   Iff.rfl
 
-theorem LockWithin.mono {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b b' : Time}
+theorem LockWithin.mono {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b b' : Time}
     (h : LockWithin tr H C s b) (hb : b ≤ b') : LockWithin tr H C s b' :=
   let ⟨x, i, hx, hi, h⟩ := h
   ⟨x, i, hx, hi.trans hb, h⟩
 
-theorem HealedOrigin.mono {g : Time} {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))}
+theorem HealedOrigin.mono {g : Time} {rL rO : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     {s : Nat} {b b' : Time} (h : HealedOrigin tr H g rL rO C s b) (hb : b ≤ b') :
     HealedOrigin tr H g rL rO C s b' := by
   rcases h with ⟨hs, h⟩ | ⟨hs, h⟩ | ⟨x, i, hi, h⟩
@@ -114,19 +114,19 @@ theorem HealedOrigin.mono {g : Time} {rL rO : Nat} {C : SA.Blk sp.n (List (FG.At
   · exact Or.inr (Or.inr ⟨x, i, hi.trans hb, h⟩)
 
 /-- An origin of label at least the origin floor is in the healed family. -/
-theorem HealedOrigin.of_origin {g : Time} {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))}
+theorem HealedOrigin.of_origin {g : Time} {rL rO : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     {s : Nat} {b : Time} (hs : rO ≤ s) (h : OriginWithin tr H C s b) :
     HealedOrigin tr H g rL rO C s b :=
   Or.inl ⟨hs, h⟩
 
 /-- A lock write of label at least the lock floor is in the healed family. -/
-theorem HealedOrigin.of_lock {g : Time} {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))}
+theorem HealedOrigin.of_lock {g : Time} {rL rO : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     {s : Nat} {b : Time} (hs : rL ≤ s) (h : LockWithin tr H C s b) :
     HealedOrigin tr H g rL rO C s b :=
   Or.inr (Or.inl ⟨hs, h⟩)
 
 /-- A high origin written at a time `≤ b` is in the healed family, at all floors. -/
-theorem HealedOrigin.of_high {g : Time} {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))}
+theorem HealedOrigin.of_high {g : Time} {rL rO : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     {s : Nat} {b : Time} {x : Fin sp.n} {i : Nat} (hi : tr.time i ≤ b)
     (h : Healing.Growing.HighOrigin tr H g x i s C) : HealedOrigin tr H g rL rO C s b :=
   Or.inr (Or.inr ⟨x, i, hi, h⟩)

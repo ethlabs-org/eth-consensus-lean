@@ -5,34 +5,34 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks SA: where the votes of an honest node's pools come from
+/-! # Goldilocks AC: where the votes of an honest node's pools come from
 
 Between restarts an honest node's pools only grow, and a vote's stamp is written once, when the
 node admits it (`SendOrAdmit`), with the time of the admission, of a slot at most the slot of that
 time. A vote that a restart put in the pools is a vote of a block of the restart's frame. A1.1
 reads this to forward a voter's early votes to the proposer under `Sync`. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : SAParams}
-  {ini : Fin sp.n → SAState sp.n}
+variable {FGP : Type} {sp : ACParams}
+  {ini : Fin sp.n → ACState sp.n}
 
-/-! ## The pools across one SA function -/
+/-! ## The pools across one AC function -/
 
 /-- From `A` to `A'` at `t`, the pools grow, a held vote keeps its stamp, and a new vote is
 stamped `t` and is of a slot at most `slot(t)`. -/
-private def Grow (t : Time) (A A' : SAState sp.n) : Prop :=
+private def Grow (t : Time) (A A' : ACState sp.n) : Prop :=
   (∀ σ, A.pool σ ⊆ A'.pool σ) ∧ ∀ x : Vote sp.n,
     (x ∈ A.pool x.slot → A'.voteStamp x = A.voteStamp x) ∧
     (x ∈ A'.pool x.slot → x ∉ A.pool x.slot → A'.voteStamp x = ETime.of t ∧ x.slot ≤ sp.slot t)
 
-private theorem Grow.of_eq {t : Time} {A A' : SAState sp.n} (hp : A'.pool = A.pool)
+private theorem Grow.of_eq {t : Time} {A A' : ACState sp.n} (hp : A'.pool = A.pool)
     (hs : A'.voteStamp = A.voteStamp) : Grow t A A' :=
   ⟨fun _ => hp ▸ List.Subset.refl _, fun _ => ⟨fun _ => hs ▸ rfl, fun h h' => absurd (hp ▸ h) h'⟩⟩
 
-private theorem Grow.trans {t : Time} {A₁ A₂ A₃ : SAState sp.n} (h₁ : Grow t A₁ A₂)
+private theorem Grow.trans {t : Time} {A₁ A₂ A₃ : ACState sp.n} (h₁ : Grow t A₁ A₂)
     (h₂ : Grow t A₂ A₃) : Grow t A₁ A₃ := by
   refine ⟨fun σ _ h => h₂.1 σ (h₁.1 σ h), fun x => ⟨fun hx => ?_, fun hx hx' => ?_⟩⟩
   · rw [(h₂.2 x).1 (h₁.1 _ hx), (h₁.2 x).1 hx]
@@ -41,7 +41,7 @@ private theorem Grow.trans {t : Time} {A₁ A₂ A₃ : SAState sp.n} (h₁ : Gr
       exact (h₁.2 x).2 h hx'
     · exact (h₂.2 x).2 hx h
 
-private theorem grow_admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+private theorem grow_admitVote (A : ACState sp.n) (t : Time) (v : Vote sp.n) :
     Grow t A (admitVote sp A t v) := by
   unfold admitVote
   split_ifs with h₁ h₂
@@ -67,11 +67,11 @@ private theorem grow_admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
           · exact absurd (List.mem_singleton.1 h) hxv
         · exact hx
 
-private theorem grow_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
+private theorem grow_blockReceipt (A : ACState sp.n) (t : Time) (B : Blk sp.n FGP) :
     Grow t A (blockReceipt sp A t B) :=
   Grow.of_eq rfl rfl
 
-private theorem grow_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+private theorem grow_optimistic (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Grow t A (optimisticConfirmationM sp wm A Φ t) := by
   refine optimisticConfirmationM_of (P := Grow t A) ?_ (Grow.of_eq rfl rfl)
   unfold optimisticConfirmation updateLatestConfirmed
@@ -79,7 +79,7 @@ private theorem grow_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time
   · exact Grow.of_eq rfl rfl
   · split_ifs <;> exact Grow.of_eq rfl rfl
 
-private theorem grow_updateConfirmation (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+private theorem grow_updateConfirmation (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (s : Nat) : Grow t A (updateConfirmationM sp wm A Φ t s) := by
   rw [updateConfirmationM_eq]
   change Grow t A (updateConfirmation sp A Φ t s)
@@ -90,7 +90,7 @@ private theorem grow_updateConfirmation (A : SAState sp.n) (Φ : Frm sp.n FGP) (
   · split_ifs <;> exact Grow.of_eq rfl rfl
 
 private theorem grow_tryVote
-    {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    {L : Set Lock} (x : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Grow t A (tryVoteWithM sp wm x L A Φ t).1 := by
   unfold tryVoteWithM
   dsimp only
@@ -105,8 +105,8 @@ private theorem grow_tryVote
 
 /-- A call other than a restart grows the pools (`Grow`). -/
 private theorem grow_step
-    {L : Set Lock} {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SAState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call)
+    {L : Set Lock} {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : ACState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP ro).Call)
     (hc : c ≠ .restart) : Grow t A (stepWithM sp ro wm self L A Φ t c).1 := by
   cases c with
   | tick =>
@@ -140,16 +140,16 @@ private theorem grow_step
 
 /-- A single non-restart call preserves every stored vote, without reachability or a
 coherent-universe premise. -/
-theorem step_pool_subset {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SAState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call)
+theorem step_pool_subset {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : ACState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP ro).Call)
     (hc : c ≠ .restart) (σ : Nat) :
-    A.pool σ ⊆ ((goldilocksSA sp FGP ro).step self A Φ t c).1.pool σ := by
+    A.pool σ ⊆ ((goldilocksAC sp FGP ro).step self A Φ t c).1.pool σ := by
   rw [step_eq_stepWith, ← stepWithM_parent]
   exact (grow_step self A Φ t c hc).1 σ
 
 /-- After a vote's receipt (an `on_message` call) or its emission, at a time of its slot or the
 next, the node holds it, or two other votes of its validator. -/
-private theorem held_after (A A' : SAState sp.n) {t : Time} {v : Vote sp.n}
+private theorem held_after (A A' : ACState sp.n) {t : Time} {v : Vote sp.n}
     (h₁ : (sp.slot t : Int) - 1 ≤ v.slot) (h₂ : v.slot ≤ sp.slot t)
     (h : Grow t (admitVote sp A t v) A') :
     v ∈ A'.pool v.slot ∨ v.val ∈ equivocators {w | w ∈ A'.pool v.slot} := by
@@ -157,18 +157,18 @@ private theorem held_after (A A' : SAState sp.n) {t : Time} {v : Vote sp.n}
   · exact Or.inl (h.1 _ hv)
   · exact Or.inr ⟨a, h.1 _ ha, b, h.1 _ hb, hab, hav, hbv⟩
 
-/-! ## Over an SA trace -/
+/-! ## Over an AC trace -/
 
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
-  {tr : SATrace sp FGP ro} {ini : Fin sp.n → SAState sp.n}
+  {tr : GTrace sp FGP ro} {ini : Fin sp.n → ACState sp.n}
 
 private theorem frameOK_of_callU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
-    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
+    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FrameOK ℓ.frame := by
   rcases hr.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.1
 
-theorem state_succ_of_call {y : Fin sp.n} {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+theorem state_succ_of_call {y : Fin sp.n} {k : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     (hc : tr.CallAt y k ℓ) : tr.state y (k + 1) = tr.post k := by
   rw [Trace.state]
   split_ifs with h
@@ -184,7 +184,7 @@ private theorem state_succ_of_not {y : Fin sp.n} {k : Nat}
 /-- A call other than a restart grows the pools. -/
 private theorem grow_callU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y k ℓ)
+    (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y k ℓ)
     (hnr : ℓ.call ≠ .restart) : Grow (tr.time k) (tr.state y k) (tr.post k) := by
   have he := hr.exec k ℓ hc.2 (hc.1 ▸ hy)
   rw [hc.1] at he
@@ -233,7 +233,7 @@ theorem pool_origin_sentU
 pool of its slot) was sent or admitted by it at an earlier cut, at a time of slot at least the
 vote's, which is its stamp (a restart empties the pools and its replay admits nothing). From
 starts up to the vote permission. -/
-theorem pool_origin_sent (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem pool_origin_sent (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) (c : Nat) (x : Vote sp.n) (hx : x ∈ (tr.state y c).pool x.slot) :
     ∃ k < c, tr.SendOrAdmit y k x ∧ (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧
@@ -248,17 +248,19 @@ theorem pool_originU
     (∃ k < c, tr.SendOrAdmit y k x ∧ (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧
       x.slot ≤ sp.slot (tr.time k)) ∨
     ∃ k < c, ∃ ℓ, tr.CallAt y k ℓ ∧ ℓ.call = .restart ∧
-      (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧ ∃ B ∈ ℓ.frame.tree, x ∈ blockVotes B :=
+      (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧
+        ∃ B ∈ ℓ.frame.tree, x ∈ declaredHeadVotes B :=
   Or.inl (pool_origin_sentU hr hini hy c x hx)
 
 /-- `pool_origin_sent` with a restart case, which never occurs (kept for its callers). -/
-theorem pool_origin (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem pool_origin (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) (c : Nat) (x : Vote sp.n) (hx : x ∈ (tr.state y c).pool x.slot) :
     (∃ k < c, tr.SendOrAdmit y k x ∧ (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧
       x.slot ≤ sp.slot (tr.time k)) ∨
     ∃ k < c, ∃ ℓ, tr.CallAt y k ℓ ∧ ℓ.call = .restart ∧
-      (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧ ∃ B ∈ ℓ.frame.tree, x ∈ blockVotes B :=
+      (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧
+        ∃ B ∈ ℓ.frame.tree, x ∈ declaredHeadVotes B :=
   Or.inl (pool_origin_sent hr hini hy c x hx)
 
 /-- `pool_mono` with the unlock given. -/
@@ -280,27 +282,27 @@ theorem pool_monoU
       exact hv
 
 /-- Between restarts, an honest node's pools only grow. -/
-theorem pool_mono (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n}
+theorem pool_mono (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {a b : Nat} (hab : a ≤ b) (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k)
     (σ : Nat) : (tr.state y a).pool σ ⊆ (tr.state y b).pool σ :=
   pool_monoU (hr := hr.toU) (y := y) (hy := hy) (a := a) (b := b) (hab := hab) (hnr := hnr) (σ := σ)
 
 /-- Retained service carries actual pool evidence, not merely a network receipt.
 Both witnesses of an equivocation retain the requested slot and validator. -/
-def PoolEvidenceBefore (A : SAState sp.n) (v : Vote sp.n) (T : Time) : Prop :=
+def PoolEvidenceBefore (A : ACState sp.n) (v : Vote sp.n) (T : Time) : Prop :=
   HeldBefore A v T ∨ ∃ a b : Vote sp.n, a ≠ b ∧
     a.val = v.val ∧ b.val = v.val ∧ a.slot = v.slot ∧ b.slot = v.slot ∧
     HeldBefore A a T ∧ HeldBefore A b T
 
 /-- Characterization for consumers without exposing the definition body. -/
-theorem poolEvidenceBefore_iff (A : SAState sp.n) (v : Vote sp.n) (T : Time) :
+theorem poolEvidenceBefore_iff (A : ACState sp.n) (v : Vote sp.n) (T : Time) :
     PoolEvidenceBefore A v T ↔ HeldBefore A v T ∨ ∃ a b : Vote sp.n, a ≠ b ∧
       a.val = v.val ∧ b.val = v.val ∧ a.slot = v.slot ∧ b.slot = v.slot ∧
       HeldBefore A a T ∧ HeldBefore A b T := by rfl
 
 /-- Message service may reuse earlier admission, but must certify actual timestamped
 pool evidence and exclude any intervening restart through the observation cut. -/
-def RetainedBefore (tr : SATrace sp FGP ro) (y : Fin sp.n) (j : Nat)
+def RetainedBefore (tr : GTrace sp FGP ro) (y : Fin sp.n) (j : Nat)
     (v : Vote sp.n) (T : Time) : Prop :=
   ∃ q ≤ j, PoolEvidenceBefore (tr.state y q) v T ∧
     ∀ r, q ≤ r → r < j → ¬ tr.RestartAt y r
@@ -312,7 +314,7 @@ theorem retainedBefore_iff (y : Fin sp.n) (j : Nat) (v : Vote sp.n) (T : Time) :
 
 /-- Fresh processing keeps the original lower bound. Retention instead carries stamped
 pool evidence; neither a raw receipt nor an unstamped membership satisfies that branch. -/
-def MessageServedBefore (tr : SATrace sp FGP ro) (y : Fin sp.n) (j : Nat)
+def MessageServedBefore (tr : GTrace sp FGP ro) (y : Fin sp.n) (j : Nat)
     (τ : Time) (v : Vote sp.n) : Prop :=
   (∃ k ≤ j, τ ≤ tr.time k ∧ tr.ProcessAt y k v ∧ tr.time k < tr.deadline y k τ) ∨
     RetainedBefore tr y j v (tr.deadline y j τ)
@@ -323,10 +325,10 @@ theorem messageServedBefore_iff (y : Fin sp.n) (j : Nat) (τ : Time) (v : Vote s
       (∃ k ≤ j, τ ≤ tr.time k ∧ tr.ProcessAt y k v ∧ tr.time k < tr.deadline y k τ) ∨
         RetainedBefore tr y j v (tr.deadline y j τ) := by rfl
 
-/-- Finite SA service allows retained vote evidence but still requires actual acceptance
+/-- Finite AC service allows retained vote evidence but still requires actual acceptance
 relay. The source window and recipient cutoff remain independent. -/
 structure ServiceWindowBefore (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (a b : Time) (tr : SATrace sp FGP ro) : Prop where
+    (a b : Time) (tr : GTrace sp FGP ro) : Prop where
   message : ∀ x ∈ H, ∀ i v, tr.SendOrAdmit x i v → a ≤ tr.time i →
     ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → tr.deadline y j (tr.time i) ≤ b →
       tr.deadline y j (tr.time i) ≤ tr.time j → MessageServedBefore tr y j (tr.time i) v
@@ -337,7 +339,7 @@ structure ServiceWindowBefore (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
 
 /-- The Sleepy service window starts at time zero. -/
 abbrev ServiceBefore (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (b : Time) (tr : SATrace sp FGP ro) : Prop := ServiceWindowBefore H U 0 b tr
+    (b : Time) (tr : GTrace sp FGP ro) : Prop := ServiceWindowBefore H U 0 b tr
 
 /-- Existing fresh-processing service remains a sufficient input. -/
 theorem serviceWindowBefore_of_sync {a b : Time} (h : SyncACWindowBefore H U a b tr) :
@@ -368,7 +370,7 @@ theorem heldBefore_monoU
       exact hv'
 
 /-- A held vote keeps its admission stamp between restarts. -/
-theorem heldBefore_mono (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n}
+theorem heldBefore_mono (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
     (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) {v : Vote sp.n} {T : Time}
     (hv : HeldBefore (tr.state y a) v T) : HeldBefore (tr.state y b) v T :=
@@ -390,7 +392,7 @@ theorem poolEvidenceBefore_monoU
       heldBefore_monoU hr hy hab hnr hu, heldBefore_monoU hr hy hab hnr hw⟩
 
 /-- An explicit deadline-to-freeze bound transports both witness timestamps. -/
-theorem PoolEvidenceBefore.weaken {A : SAState sp.n} {v : Vote sp.n} {T F : Time}
+theorem PoolEvidenceBefore.weaken {A : ACState sp.n} {v : Vote sp.n} {T F : Time}
     (h : PoolEvidenceBefore A v T) (hTF : T ≤ F) : PoolEvidenceBefore A v F := by
   have lift (u : Vote sp.n) (hu : HeldBefore A u T) : HeldBefore A u F :=
     ⟨hu.1, hu.2.trans_le (WithBot.coe_le_coe.mpr (WithTop.coe_le_coe.mpr hTF))⟩
@@ -408,7 +410,7 @@ theorem RetainedBefore.evidenceU
   exact poolEvidenceBefore_monoU hr hy hq hnr hp
 
 /-- The observation really holds the retained vote or both equivocation witnesses. -/
-theorem RetainedBefore.evidence (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem RetainedBefore.evidence (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {v : Vote sp.n} {T : Time}
     (hv : RetainedBefore tr y j v T) : PoolEvidenceBefore (tr.state y j) v T :=
   RetainedBefore.evidenceU (hr := hr.toU) (y := y) (hy := hy) (j := j) (v := v) (T := T) (hv := hv)
@@ -446,7 +448,7 @@ theorem held_of_processAtU
 /-- **An honest node holds a vote it processed.** When an honest node processes a vote (receives
 it, or emits it) at a time of the vote's slot or the next, the node holds it after that cut, or
 two other votes of its validator. -/
-theorem held_of_processAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem held_of_processAt (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {v : Vote sp.n} (hp : tr.ProcessAt y k v)
     (h₁ : (sp.slot (tr.time k) : Int) - 1 ≤ v.slot) (h₂ : v.slot ≤ sp.slot (tr.time k)) :
@@ -532,7 +534,7 @@ theorem held_of_deadline_serviceU
 /-- Both processing and retained evidence establish the writer's pool comparison.
 The retained route needs no artificial lower bound on the original admission time. -/
 theorem held_of_deadline_service
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {X : Fin sp.n}
+    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {X : Fin sp.n}
     {k : Nat} {v : Vote sp.n} (hX : X ∈ H) {i : Nat}
     (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
     (hdl : tr.time k + sp.Δ ≤ tr.time i)
@@ -547,9 +549,9 @@ theorem held_of_deadline_service
 /-- `sync_forward` with the unlock given. -/
 theorem sync_forwardU
     {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {a b : Time}
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U a b tr) {y X : Fin sp.n} (hy : y ∈ H)
+    (hsync : SyncAC (goldilocksAC sp FGP ro) H U a b tr) {y X : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {v : Vote sp.n} (hsend : tr.SendOrAdmit y k v) (ha : a ≤ tr.time k)
-    (hb : tr.time k ≤ b) (hX : X ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    (hb : tr.time k ≤ b) (hX : X ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     (hc : tr.CallAt X i ℓ) (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
     (hdl : tr.time k + sp.Δ ≤ tr.time i)
     (hslot : ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
@@ -566,10 +568,10 @@ the window of `Sync` is held, at a later call of an honest `X` at least `Δ` aft
 `X` holds two other votes of its validator; when every restart of `X` up to that call is at or
 before the time of `k`, and the vote's slot is the slot, or the previous one, of every time in
 `[t_k, t_k + Δ)`. -/
-theorem sync_forward (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {a b : Time}
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U a b tr) {y X : Fin sp.n} (hy : y ∈ H)
+theorem sync_forward (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr) {a b : Time}
+    (hsync : SyncAC (goldilocksAC sp FGP ro) H U a b tr) {y X : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {v : Vote sp.n} (hsend : tr.SendOrAdmit y k v) (ha : a ≤ tr.time k)
-    (hb : tr.time k ≤ b) (hX : X ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    (hb : tr.time k ≤ b) (hX : X ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     (hc : tr.CallAt X i ℓ) (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
     (hdl : tr.time k + sp.Δ ≤ tr.time i)
     (hslot : ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
@@ -587,7 +589,7 @@ theorem sync_window_before_forwardU
     {k : Nat} {v : Vote sp.n} (hsend : tr.SendOrAdmit y k v)
     (ha : a ≤ tr.time k)
     (hb : tr.time k + sp.Δ ≤ b) (hX : X ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt X i ℓ)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt X i ℓ)
     (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
     (hdl : tr.time k + sp.Δ ≤ tr.time i)
     (hslot : ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
@@ -601,12 +603,12 @@ theorem sync_window_before_forwardU
 
 /-- Forwarding under finite service uses only the source's recipient deadline, not a
 whole-run synchrony premise. The source plus `Δ` must lie inside the horizon. -/
-theorem sync_window_before_forward (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem sync_window_before_forward (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     {a b : Time} (hsync : ServiceWindowBefore H U a b tr) {y X : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {v : Vote sp.n} (hsend : tr.SendOrAdmit y k v)
     (ha : a ≤ tr.time k)
     (hb : tr.time k + sp.Δ ≤ b) (hX : X ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt X i ℓ)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt X i ℓ)
     (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
     (hdl : tr.time k + sp.Δ ≤ tr.time i)
     (hslot : ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
@@ -620,7 +622,7 @@ theorem sync_window_before_forward (hr : ACLocalRun (goldilocksSA sp FGP ro) H U
 /-- `readPoint_pool` with the unlock given. -/
 theorem readPoint_poolU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y j ℓ e) {x : Vote sp.n} {σ : Nat} (hx : x ∈ e.readPoint.pool σ) :
     x ∈ (tr.state y (j + 1)).pool σ ∧
       (x.slot = σ → (tr.state y (j + 1)).voteStamp x = e.readPoint.voteStamp x) := by
@@ -630,8 +632,8 @@ theorem readPoint_poolU
   exact ⟨hg.1 _ hx, fun h => (hg.2 x).1 (h ▸ hx)⟩
 
 /-- The state a cast leaves holds the votes of the vote's read point, with their stamps. -/
-theorem readPoint_pool (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+theorem readPoint_pool (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n}
+    (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y j ℓ e) {x : Vote sp.n} {σ : Nat} (hx : x ∈ e.readPoint.pool σ) :
     x ∈ (tr.state y (j + 1)).pool σ ∧
       (x.slot = σ → (tr.state y (j + 1)).voteStamp x = e.readPoint.voteStamp x) :=
@@ -641,11 +643,11 @@ theorem readPoint_pool (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y 
 /-- `restartTime_of_castAt` with the unlock given. -/
 theorem restartTime_of_castAtU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y j ℓ e) : (tr.post j).restartTime = e.readPoint.restartTime := by
-  have h₁ : ∀ (A : SAState sp.n) t v, (admitVote sp A t v).restartTime = A.restartTime := by
+  have h₁ : ∀ (A : ACState sp.n) t v, (admitVote sp A t v).restartTime = A.restartTime := by
     intro A t v; unfold admitVote; split_ifs <;> rfl
-  have h₂ : ∀ (A : SAState sp.n) (Φ : Frm sp.n FGP) t,
+  have h₂ : ∀ (A : ACState sp.n) (Φ : Frm sp.n FGP) t,
       (optimisticConfirmation sp A Φ t).restartTime = A.restartTime := by
     intro A Φ t; unfold optimisticConfirmation updateLatestConfirmed; split
     · rfl
@@ -653,16 +655,16 @@ theorem restartTime_of_castAtU
   rw [post_of_castAtU hr hy hc, optimisticConfirmationM_keep _ h₂, h₁]
 
 /-- A cast leaves the restart time of its read point. -/
-theorem restartTime_of_castAt (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+theorem restartTime_of_castAt (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n}
+    (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y j ℓ e) : (tr.post j).restartTime = e.readPoint.restartTime :=
   restartTime_of_castAtU (hr := hr.toU) (y := y) (hy := hy) (j := j) (ℓ := ℓ) (e := e) (hc := hc)
 
 /-- `optimisticPoint_pool_post` with the unlock given. -/
 theorem optimisticPoint_pool_postU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    {A : SAState sp.n} (hp : OptimisticPoint tr y k ℓ A) (σ : Nat) :
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {A : ACState sp.n} (hp : OptimisticPoint tr y k ℓ A) (σ : Nat) :
     A.pool σ ⊆ (tr.state y (k + 1)).pool σ := by
   obtain ⟨hc, ⟨m, hm, rfl⟩ | ⟨B, hB, rfl⟩ | ⟨e, he, rfl⟩⟩ := hp
   · rw [state_succ_of_call hc]
@@ -687,13 +689,13 @@ theorem optimisticPoint_pool_postU
     exact (grow_optimistic _ ℓ.frame (tr.time k)).1 σ
 
 /-- The pools at a state where an honest node runs the optimistic check are kept by the call. -/
-theorem optimisticPoint_pool_post (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    {A : SAState sp.n} (hp : OptimisticPoint tr y k ℓ A) (σ : Nat) :
+theorem optimisticPoint_pool_post (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {A : ACState sp.n} (hp : OptimisticPoint tr y k ℓ A) (σ : Nat) :
     A.pool σ ⊆ (tr.state y (k + 1)).pool σ :=
   optimisticPoint_pool_postU (hr := hr.toU) (y := y) (hy := hy) (k := k) (ℓ := ℓ) (A := A)
       (hp := hp) (σ := σ)
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

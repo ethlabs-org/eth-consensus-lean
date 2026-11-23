@@ -245,7 +245,7 @@ private theorem proposalHead_of_proposesAt {P : Params} {A : NodeAC P} {sg : A.M
 
 variable {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n} {runs : ACRun A sg}
 
-open SA (gbar)
+open AC (gbar)
 open Healing (cutZ)
 
 /-- Leaf 11: a later honest proposal `δt` slots after a warm one, before any height advance, is

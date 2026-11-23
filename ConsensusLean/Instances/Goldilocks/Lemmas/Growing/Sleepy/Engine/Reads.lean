@@ -119,7 +119,7 @@ theorem ready_read_cut_at (hv : rho.ExecutionValid)
 proposer ready at `τ ∈ [0, horizon]` (with any hold) is a proposal released at `τ` by a key ready
 at `τ` in the engine. -/
 theorem ready_proposal_at (hv : rho.ExecutionValid) {c τ h : Time} (hτh : τ ≤ rho.horizon)
-    {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
+    {P : AC.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
     (hP : Regimes.Growing.ReadyProposalAt (simTraceAt S rho hn)
         (honestKeysAt S rho) c τ h P) :
     ∃ k, rho.point.Ready c (rho.key k) τ ∧
@@ -148,7 +148,7 @@ every engine node ready at `t`. -/
 theorem confirmed_inBy_at (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {c : Time} (hc : 0 ≤ c) {τ t h : Time} (hτ : 0 ≤ τ) (hτt : τ ≤ t) (hth : t ≤ rho.horizon)
-    {P : SA.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
+    {P : AC.Blk (Fintype.card V) (List (FG.Att (Fintype.card V)))}
     (hP : Regimes.Growing.ReadyProposalAt (simTraceAt S rho hn)
         (honestKeysAt S rho) c τ h P)
     (hinc : ∀ y j, Regimes.Growing.ReadyAt (simTraceAt S rho hn)
@@ -180,7 +180,7 @@ theorem confirmed_inBy_at (hv : rho.ExecutionValid)
   have hcut := ready_read_cut_at S rho hn hv hc ht hth hr
   have hready := ready_transport_at S rho hn hv ht hth hr
   obtain ⟨hreach, hframe, hsub⟩ := held_state hrun ht hcut.1.1 hready.1
-  have htip := (Regimes.sa_tips
+  have htip := (Regimes.ac_tips
     (A := ((simTraceAt S rho hn).state (rho.ownKey v) j).ac) hframe t).1.1
   have ha := hinc _ j hready hcut.1
   have hanc := anc_in_store hreach (Compose.Growing.honest_blocks_coherent hrun hnc) hsub ha htip

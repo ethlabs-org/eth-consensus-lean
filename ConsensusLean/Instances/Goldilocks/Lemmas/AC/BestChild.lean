@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 
 public section
 
-/-! # Goldilocks SA: the best child carries over to another view
+/-! # Goldilocks AC: the best child carries over to another view
 
 For two frames `Φp`, `Φy` with views `Vp`, `Vy` at times `tp`, `ty`, the best eligible child `C`
 of a block `X` in a walked tree `Tp` of `Φp` is also the best eligible child of `X` in a walked
@@ -18,24 +18,24 @@ the same holds with the same scores (`isBest_transfer_low`). Used by the Sleepy 
 well-formed frame extends `fc_root` (`fcRoot_anc_getAnchor`), and a nonempty set of tree blocks
 has a best block (`exists_isBest`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams}
+variable {FGP : Type} {sp : ACParams}
 
 /-- **The best child carries over** (see the module docstring). -/
 theorem isBest_transfer {Φp Φy : Frm sp.n FGP} {Tp Ty : Set (Blk sp.n FGP)} {Vp Vy : View sp.n}
     {σ : Int} {tp ty : Time} {X C : Blk sp.n FGP} (hXv : X ∈ Φp.viableHeads)
     (hCs : C.slot ≠ sp.slot tp) (hvot : voters Vp.votes = voters Vy.votes)
     (hsc : ∀ B ∈ Φp.tree, B ∈ Φy.tree →
-      goldfishScore sp Φy Vy σ B = goldfishScore sp Φp Vp σ B)
+      headScore sp Φy Vy σ B = headScore sp Φp Vp σ B)
     (hTp : Tp ⊆ Φp.tree) (hTy : Ty ⊆ Φy.tree) (hCy : C ∈ Ty)
     (hrefl : ∀ B ∈ Ty, B.parent = some X.root → B ∈ Tp)
-    (hC : IsBest sp (goldfishScore sp Φp Vp σ)
-      {B | B ∈ Tp ∧ B.parent = some X.root ∧ goldfishEligible sp Φp tp Vp σ B} C) :
-    IsBest sp (goldfishScore sp Φy Vy σ)
-      {B | B ∈ Ty ∧ B.parent = some X.root ∧ goldfishEligible sp Φy ty Vy σ B} C := by
+    (hC : IsBest sp (headScore sp Φp Vp σ)
+      {B | B ∈ Tp ∧ B.parent = some X.root ∧ headEligible sp Φp tp Vp σ B} C) :
+    IsBest sp (headScore sp Φy Vy σ)
+      {B | B ∈ Ty ∧ B.parent = some X.root ∧ headEligible sp Φy ty Vy σ B} C := by
   obtain ⟨⟨hCp, hCX, hCel⟩, hbest⟩ := hC
-  have hmaj : (voters Vp.votes).ncard < 2 * goldfishScore sp Φp Vp σ C := by
+  have hmaj : (voters Vp.votes).ncard < 2 * headScore sp Φp Vp σ C := by
     rcases hCel with h | h | h
     · exact absurd ⟨X, hXv, hCX⟩ h
     · exact absurd h hCs
@@ -44,10 +44,10 @@ theorem isBest_transfer {Φp Φy : Frm sp.n FGP} {Tp Ty : Set (Blk sp.n FGP)} {V
   · rw [← hvot, hsc C (hTp hCp) (hTy hCy)]; exact hmaj
   have hBp := hrefl B hB.1 hB.2.1
   rw [hsc B (hTp hBp) (hTy hB.1), hsc C (hTp hCp) (hTy hCy)]
-  by_cases hel : goldfishEligible sp Φp tp Vp σ B
+  by_cases hel : headEligible sp Φp tp Vp σ B
   · exact hbest B ⟨hBp, hB.2.1, hel⟩ hBC
   · left
-    have : ¬ (voters Vp.votes).ncard < 2 * goldfishScore sp Φp Vp σ B :=
+    have : ¬ (voters Vp.votes).ncard < 2 * headScore sp Φp Vp σ B :=
       fun h => hel (Or.inr (Or.inr h))
     omega
 
@@ -58,15 +58,15 @@ theorem isBest_transfer_low {Φp Φy : Frm sp.n FGP} {Tp Ty : Set (Blk sp.n FGP)
     {Vp Vy : View sp.n} {σ : Int} {tp ty : Time} {X C : Blk sp.n FGP}
     (hXp : ∀ W ∈ Φp.viableHeads, W.root ≠ X.root) (hXy : ∀ W ∈ Φy.viableHeads, W.root ≠ X.root)
     (hsc : ∀ B ∈ Φp.tree, B ∈ Φy.tree →
-      goldfishScore sp Φy Vy σ B = goldfishScore sp Φp Vp σ B)
+      headScore sp Φy Vy σ B = headScore sp Φp Vp σ B)
     (hTp : Tp ⊆ Φp.tree) (hTy : Ty ⊆ Φy.tree) (hCy : C ∈ Ty)
     (hrefl : ∀ B ∈ Ty, B.parent = some X.root → B ∈ Tp)
-    (hC : IsBest sp (goldfishScore sp Φp Vp σ)
-      {B | B ∈ Tp ∧ B.parent = some X.root ∧ goldfishEligible sp Φp tp Vp σ B} C) :
-    IsBest sp (goldfishScore sp Φy Vy σ)
-      {B | B ∈ Ty ∧ B.parent = some X.root ∧ goldfishEligible sp Φy ty Vy σ B} C := by
+    (hC : IsBest sp (headScore sp Φp Vp σ)
+      {B | B ∈ Tp ∧ B.parent = some X.root ∧ headEligible sp Φp tp Vp σ B} C) :
+    IsBest sp (headScore sp Φy Vy σ)
+      {B | B ∈ Ty ∧ B.parent = some X.root ∧ headEligible sp Φy ty Vy σ B} C := by
   have low : ∀ {Φ : Frm sp.n FGP} {t V B}, (∀ W ∈ Φ.viableHeads, W.root ≠ X.root) →
-      B.parent = some X.root → goldfishEligible sp Φ t V σ B := fun hX hB =>
+      B.parent = some X.root → headEligible sp Φ t V σ B := fun hX hB =>
     Or.inl fun ⟨W, hW, hBW⟩ => hX W hW (Option.some_injective _ (hBW.symm.trans hB))
   obtain ⟨⟨hCp, hCX, -⟩, hbest⟩ := hC
   refine ⟨⟨hCy, hCX, low hXy hCX⟩, fun B hB hBC => ?_⟩
@@ -76,7 +76,7 @@ theorem isBest_transfer_low {Φp Φy : Frm sp.n FGP} {Tp Ty : Set (Blk sp.n FGP)
 
 /-- The anchor of a well-formed frame extends `fc_root`: it is `fc_root` or the deepest of a set
 holding `fc_root`, and a live lock block is viable (so above `fc_root`) or at or below it. -/
-theorem fcRoot_anc_getAnchor {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (A : SAState sp.n) (t : Time) :
+theorem fcRoot_anc_getAnchor {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (A : ACState sp.n) (t : Time) :
     Φ.Anc Φ.fcRoot (getAnchor sp A Φ t) := by
   have hS : liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} ⊆ Φ.tree := by
     rintro X (hX | hX)
@@ -115,6 +115,6 @@ theorem exists_isBest {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {S : Set (Blk sp.n 
   refine Or.inr ⟨hCd, lt_of_le_of_ne ?_ fun hr => hne (hΦ.coherent.1 (hS hC) (hS hD'S) hr.symm)⟩
   exact le_of_not_gt fun hlt => (hmin ⟨hC, hCd.trans hD'd⟩ hlt.le).not_gt hlt
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

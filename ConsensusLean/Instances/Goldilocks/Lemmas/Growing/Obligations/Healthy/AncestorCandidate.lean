@@ -22,9 +22,9 @@ seed. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -35,7 +35,7 @@ theorem held_target_ancestor_candidate_at_state_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y v : Fin sp.n} {i q m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ r < i, tr.time r ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) {P S : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hy : y ∈ H t) (htb : t ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ (Node.frame (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)
     (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocksAt H) S P)
     (hcompare : ∀ x r l B, r < i → HighOrigin tr H g x r l B →

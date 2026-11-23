@@ -34,7 +34,7 @@ compatible with every chain block and the lock premise holds without a vetoed lo
 
 namespace Consensus.Goldilocks.Witness.One
 
-open SA Node ChainFrame
+open AC Node ChainFrame
 
 /-- (a) **Every slot-`s` vote of the merged view at the vote of slot `s + 1` is `cv s`**: the
 read point's pool holds chain votes only, and the only slot-`(s + 1)` block of the frame is
@@ -47,7 +47,7 @@ theorem mergedView_slot_cv {s : Nat} {fg' : Store sp1.toParams N1.Payload} {e : 
   rcases hv with hv | ⟨B, hB, hBs, hv⟩
   · simp only [voteView, voteViewList, View.ofLists, Set.mem_ofPred_eq, List.mem_filter] at hv
     have hv' := hv.1
-    unfold SAState.poolAt at hv'
+    unfold ACState.poolAt at hv'
     split_ifs at hv'
     · simp at hv'
     · rw [hp] at hv'
@@ -110,9 +110,9 @@ update of slot `1` at cut `80` (time `10`), counting `{cv 1}`, and the slot-`2` 
 (time `8`). -/
 theorem resultTransfer_premises_satisfiable :
     ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n (List (FG.Att sp1.n))))
-      (tr : SATrace sp1 (List (FG.Att sp1.n)) ro1) (proposer : Nat → Fin sp1.n) (s : Nat)
+      (tr : GTrace sp1 (List (FG.Att sp1.n)) ro1) (proposer : Nat → Fin sp1.n) (s : Nat)
       (X y : Fin sp1.n) (i₀ i : Nat) (C : Blk sp1.n (List (FG.Att sp1.n)))
-      (CV : Set (Vote sp1.n)) (ℓ : ACLabel (goldilocksSA sp1 (List (FG.Att sp1.n)) ro1))
+      (CV : Set (Vote sp1.n)) (ℓ : ACLabel (goldilocksAC sp1 (List (FG.Att sp1.n)) ro1))
       (e : Em sp1 (List (FG.Att sp1.n))),
     ACRun proposer tr H U ∧
     X ∈ H ∧ ResultAt tr X i₀ s C CV ∧

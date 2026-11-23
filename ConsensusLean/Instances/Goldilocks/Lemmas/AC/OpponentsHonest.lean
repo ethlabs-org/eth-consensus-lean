@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.UnlockViewOpponents
 
 public section
 
-/-! # Goldilocks SA: the opponents of a block are outside the validators that do not oppose it
+/-! # Goldilocks AC: the opponents of a block are outside the validators that do not oppose it
 
 The static half of the drain link. Let `Hn` be a
 set of validators (the honest ones). If no validator of `Hn` equivocates in the votes of a view,
@@ -12,9 +12,9 @@ with `B`, then the opponents of `B` lie outside `Hn` (`opponents_subset_compl`).
 `2 · |Hnᶜ| < committeeSize`, `unlock` keeps `B` against the view of a call
 (`unlockTarget_unlockView_held_of_honest_slot`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams} {Φ : Frm sp.n FGP} {t : Time}
+variable {FGP : Type} {sp : ACParams} {Φ : Frm sp.n FGP} {t : Time}
 
 /-- **The opponents of `B` are not in `Hn`** when no validator of `Hn` equivocates in
 `V.votes` and every slot-`s` support vote of `Hn` has only heads compatible with `B`. -/
@@ -41,21 +41,21 @@ held vote of slot `slot(t) − 1`. -/
 
 /-- The votes of a pool view of slot `σ` are of slot `σ` when every pool holds votes of its own
 slot. -/
-theorem voteViewList_votes_slot {A : SAState sp.n} {σ : Int} {cutoff : ETime}
+theorem voteViewList_votes_slot {A : ACState sp.n} {σ : Int} {cutoff : ETime}
     (hp : ∀ τ, ∀ v ∈ A.pool τ, v.slot = τ) :
     ∀ v ∈ (View.ofLists (voteViewList A Φ σ cutoff)).votes, (v.slot : Int) = σ := by
   intro v hv
   simp only [voteViewList, View.ofLists, Set.mem_ofPred_eq, List.mem_filter,
     decide_eq_true_eq] at hv
   have h := hv.1
-  unfold SAState.poolAt at h
+  unfold ACState.poolAt at h
   split_ifs at h with hσ
   · exact absurd h List.not_mem_nil
   · rw [hp _ v h]; omega
 
 /-- The votes of the merged view of slot `s` are of slot `s − 1` when every pool holds votes of
 its own slot and every block of the tree has a valid payload. -/
-theorem mergedVoteView_votes_slot {A : SAState sp.n} (s : Nat)
+theorem mergedVoteView_votes_slot {A : ACState sp.n} (s : Nat)
     (hp : ∀ τ, ∀ v ∈ A.pool τ, v.slot = τ) (hpay : ∀ C ∈ Φ.tree, validPayload C) :
     ∀ v ∈ (mergedVoteView sp A Φ s).votes, (v.slot : Int) = (s : Int) - 1 := by
   rintro v (hv | ⟨C, hC, hCs, hv, -⟩)
@@ -65,9 +65,9 @@ theorem mergedVoteView_votes_slot {A : SAState sp.n} (s : Nat)
 
 /-- **The view of a call holds only slot-`(slot(t) − 1)` votes** when the pools before and
 after the call hold votes of their own slot and every block of `Φ.tree` has a valid payload. -/
-theorem unlockView_votes_slot {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A : SAState sp.n}
-    (c : (goldilocksSA sp FGP ro).Call) (hpre : ∀ τ, ∀ v ∈ A.pool τ, v.slot = τ)
-    (hpost : ∀ τ, ∀ v ∈ ((goldilocksSA sp FGP ro).step self A Φ t c).1.pool τ, v.slot = τ)
+theorem unlockView_votes_slot {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A : ACState sp.n}
+    (c : (goldilocksAC sp FGP ro).Call) (hpre : ∀ τ, ∀ v ∈ A.pool τ, v.slot = τ)
+    (hpost : ∀ τ, ∀ v ∈ ((goldilocksAC sp FGP ro).step self A Φ t c).1.pool τ, v.slot = τ)
     (hpay : ∀ C ∈ Φ.tree, validPayload C) :
     ∀ v ∈ (unlockView A Φ t c).votes, (v.slot : Int) = (sp.slot t : Int) - 1 := by
   cases c with
@@ -92,8 +92,8 @@ call's view is `B`. The premise `hne` is asked only of votes of slot `slot(t) �
 committee opposing set includes the non-members of that slot's committee, who hold no vote of
 that slot. -/
 theorem unlockTarget_unlockView_held_of_honest_slot {ro : ReplayOrder sp FGP} (self : Fin sp.n)
-    {A A' : SAState sp.n} (c : (goldilocksSA sp FGP ro).Call)
-    (hA' : ((goldilocksSA sp FGP ro).step self A Φ t c).1 = A') (hΦ : FrameOK Φ) (s : Int)
+    {A A' : ACState sp.n} (c : (goldilocksAC sp FGP ro).Call)
+    (hA' : ((goldilocksAC sp FGP ro).step self A Φ t c).1 = A') (hΦ : FrameOK Φ) (s : Int)
     {B : Blk sp.n FGP} (hB : B ∈ Φ.tree) {Hn : Set (Fin sp.n)}
     (hpre : ∀ τ, ∀ v ∈ A.pool τ, v.slot = τ) (hpost : ∀ τ, ∀ v ∈ A'.pool τ, v.slot = τ)
     (hpay : ∀ C ∈ Φ.tree, validPayload C)
@@ -107,7 +107,7 @@ theorem unlockTarget_unlockView_held_of_honest_slot {ro : ReplayOrder sp FGP} (s
   -- the view lies in the held votes, up to declarations of validators outside `Hn`: a counted
   -- declaration of a validator of `Hn` that equivocates in the pool before the call
   -- contradicts `hne`
-  let A' := ((goldilocksSA sp FGP ro).step self A Φ t c).1
+  let A' := ((goldilocksAC sp FGP ro).step self A Φ t c).1
   let S : Set (Vote sp.n) := {v | v ∈ heldVotes A A' Φ ∨ v.val ∉ Hn}
   have hheld : ∀ x ∈ S, x.val ∈ Hn → x ∈ heldVotes A A' Φ := fun x hx hxH =>
     hx.resolve_right (not_not.2 hxH)
@@ -138,6 +138,6 @@ theorem unlockTarget_unlockView_held_of_honest_slot {ro : ReplayOrder sp FGP} (s
     ((opponents_mono_view (W := ⟨W, _⟩) (fun v hv => ⟨hsub.1 hv, hsl v hv⟩) hsub.2 s B).trans
       hW) hf
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

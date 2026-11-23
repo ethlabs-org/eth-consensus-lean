@@ -33,7 +33,7 @@ theorem outage_stop_nonneg {S : Setup} {A : ContractAssumptions S} {V : Type}
   change start ≤ stop at h01
   linarith
 
-variable (sp : SA.SAParams)
+variable (sp : AC.ACParams)
 
 /-- **The latest gate of a read at `t`** from the recovery point `b + 9Δ` (`b ≥ 0`): the slot
 `s = slot(t − 6Δ)` has `b ≤ t_s + Δ` and `t_s + 6Δ ≤ t < t_s + 10Δ`. -/
@@ -43,14 +43,14 @@ theorem outage_latest_gate {b t : Time} (hb : 0 ≤ b) (ht : b + 9 * sp.Δ ≤ t
   have h6 : 0 ≤ t - 6 * sp.Δ := by linarith
   obtain ⟨s, hs⟩ : ∃ s, s = sp.slot (t - 6 * sp.Δ) := ⟨_, rfl⟩
   have hs₁ : 4 * sp.Δ * s ≤ t - 6 * sp.Δ := by
-    have := (SA.ts_le_iff_le_slot sp h6 (s : Int)).2 (by rw [hs])
-    simpa only [SA.SAParams.ts] using this
+    have := (AC.ts_le_iff_le_slot sp h6 (s : Int)).2 (by rw [hs])
+    simpa only [AC.ACParams.ts] using this
   have hs₂ : t - 6 * sp.Δ < 4 * sp.Δ * s + 4 * sp.Δ := by
     by_contra hh
-    have := (SA.ts_le_iff_le_slot sp h6 ((s : Int) + 1)).1 (by
-      simp only [SA.SAParams.ts]; linarith)
+    have := (AC.ts_le_iff_le_slot sp h6 ((s : Int) + 1)).1 (by
+      simp only [AC.ACParams.ts]; linarith)
     omega
-  refine ⟨s, ?_, ?_, ?_⟩ <;> simp only [SA.SAParams.ts] <;> linarith
+  refine ⟨s, ?_, ?_, ?_⟩ <;> simp only [AC.ACParams.ts] <;> linarith
 
 /-- **The restarts around a gate.** With `t_s + 6Δ ≤ t < t_s + 10Δ`: the gate tick `t_s + 6Δ` is in
 slot `s + 1`, so `t_{slot(t_s + 6Δ) − 1} = t_s`; and `slot t ≤ s + 2`, so
@@ -61,45 +61,45 @@ theorem outage_gate_restarts {s : Nat} {t : Time} (h₁ : sp.ts s + 6 * sp.Δ �
       sp.ts ((sp.slot t : Int) - 1) ≤ sp.ts s + 6 * sp.Δ := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hs0 : (0 : Time) ≤ 4 * sp.Δ * s := by positivity
-  simp only [SA.SAParams.ts] at h₁ h₂
+  simp only [AC.ACParams.ts] at h₁ h₂
   have ht0 : 0 ≤ t := by linarith
   have hslt : (sp.slot t : Int) ≤ s + 2 := by
     by_contra hh
-    have := (SA.ts_le_iff_le_slot sp ht0 ((s : Int) + 3)).2 (by omega)
-    simp only [SA.SAParams.ts] at this
+    have := (AC.ts_le_iff_le_slot sp ht0 ((s : Int) + 3)).2 (by omega)
+    simp only [AC.ACParams.ts] at this
     linarith
   have hslu : sp.slot (sp.ts s + 6 * sp.Δ) = s + 1 :=
-    SA.slot_of_mem sp (s + 1) (by simp only [SA.SAParams.ts]; push_cast; linarith)
-      (by simp only [SA.SAParams.ts]; push_cast; linarith)
+    AC.slot_of_mem sp (s + 1) (by simp only [AC.ACParams.ts]; push_cast; linarith)
+      (by simp only [AC.ACParams.ts]; push_cast; linarith)
   refine ⟨by rw [hslu]; push_cast; ring_nf, ?_⟩
   have h₃ : 4 * sp.Δ * ((sp.slot t : Int) - 1) ≤ 4 * sp.Δ * ((s : Int) + 1) :=
     mul_le_mul_of_nonneg_left (show (sp.slot t : Int) - 1 ≤ (s : Int) + 1 by omega)
       (by linarith)
-  simp only [SA.SAParams.ts]
+  simp only [AC.ACParams.ts]
   linarith
 
 /-- **The label of the latest view at a gate.** With `t_s + 6Δ ≤ t < t_s + 10Δ`, every latest view
 at `t` has label `s + 1`. -/
-theorem latestView_label_of_gate {FGP : Type} (st : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP)
+theorem latestView_label_of_gate {FGP : Type} (st : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP)
     {s : Nat} {t : Time} (h₁ : sp.ts s + 6 * sp.Δ ≤ t) (h₂ : t < sp.ts s + 10 * sp.Δ) :
-    (SA.latestView sp st Φ t).2 = ((s + 1 : Nat) : Int) := by
+    (AC.latestView sp st Φ t).2 = ((s + 1 : Nat) : Int) := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hs0 : (0 : Time) ≤ 4 * sp.Δ * s := by positivity
-  simp only [SA.SAParams.ts] at h₁ h₂
-  unfold SA.latestView
+  simp only [AC.ACParams.ts] at h₁ h₂
+  unfold AC.latestView
   dsimp only
   by_cases hlt : t < 4 * sp.Δ * s + 8 * sp.Δ
   · have hsl : sp.slot t = s + 1 :=
-      SA.slot_of_mem sp (s + 1) (by simp only [SA.SAParams.ts]; push_cast; linarith)
-        (by simp only [SA.SAParams.ts]; push_cast; linarith)
+      AC.slot_of_mem sp (s + 1) (by simp only [AC.ACParams.ts]; push_cast; linarith)
+        (by simp only [AC.ACParams.ts]; push_cast; linarith)
     split_ifs with hc
     · rw [hsl]
-    · exfalso; apply hc; rw [hsl]; simp only [SA.SAParams.ts]; push_cast; linarith
+    · exfalso; apply hc; rw [hsl]; simp only [AC.ACParams.ts]; push_cast; linarith
   · have hsl : sp.slot t = s + 2 :=
-      SA.slot_of_mem sp (s + 2) (by simp only [SA.SAParams.ts]; push_cast; linarith)
-        (by simp only [SA.SAParams.ts]; push_cast; linarith)
+      AC.slot_of_mem sp (s + 2) (by simp only [AC.ACParams.ts]; push_cast; linarith)
+        (by simp only [AC.ACParams.ts]; push_cast; linarith)
     split_ifs with hc
-    · exfalso; rw [hsl] at hc; simp only [SA.SAParams.ts] at hc; push_cast at hc; linarith
+    · exfalso; rw [hsl] at hc; simp only [AC.ACParams.ts] at hc; push_cast at hc; linarith
     · rw [hsl]; omega
 
 end Consensus.Goldilocks.Obligations

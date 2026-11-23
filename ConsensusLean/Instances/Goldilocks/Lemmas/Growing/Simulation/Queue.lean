@@ -16,26 +16,26 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote Payload SAState)
+open AC (ACParams ReplayOrder Vote Payload ACState)
 
 variable {binding : VoteBinding}
 
 section Pools
 
-variable {sp : SAParams} {FGP : Type}
+variable {sp : ACParams} {FGP : Type}
 
 /-- Restart replay can only add actual emissions to its cleared pools. -/
 theorem restart_pool_inventory (P : Vote sp.n → Prop) (ro : ReplayOrder sp FGP)
-    (self : Fin sp.n) (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time)
-    (he : ∀ e ∈ (SA.acRestart sp ro self A Φ t).2, P e.msg) :
-    ∀ s, ∀ v ∈ (SA.acRestart sp ro self A Φ t).1.pool s, P v :=
+    (self : Fin sp.n) (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time)
+    (he : ∀ e ∈ (AC.acRestart sp ro self A Φ t).2, P e.msg) :
+    ∀ s, ∀ v ∈ (AC.acRestart sp ro self A Φ t).1.pool s, P v :=
   Simulation.restart_pool_inventory P ro self A Φ t he
 
 end Pools
 
 section ShapeInventory
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Polling, including the due FG update, leaves vote pools unchanged. -/
 theorem poll_pool_eq (st : State sp ro binding) t :

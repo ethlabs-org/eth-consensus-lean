@@ -20,9 +20,9 @@ into its per-cut inputs.
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -31,29 +31,29 @@ theorem raw_writer_voterBlockTree_before_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {r s i : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
-    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    (hwriter : SA.ResultAt tr.projAC x r s C CV ∨ SA.FastLockAt tr.projAC x r s C CV)
+    {B C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
+    (hwriter : AC.ResultAt tr.projAC x r s C CV ∨ AC.FastLockAt tr.projAC x r s C CV)
     (hBC : Anc (tr.HonestBlocksAt H) B C)
-    (hgs : SA.gbar g + 4 * sp.Δ ≤ sp.ts s)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ell e) (hs : s < e.msg.slot)
+    (hgs : AC.gbar g + 4 * sp.Δ ≤ sp.ts s)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y i ell e) (hs : s < e.msg.slot)
     (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
-    B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
+    B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
   have hm := hp.run.time_mono
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
-  have hsvc := hp.sync.ac_service_at hp.run (lo := SA.gbar g) (hi := tr.time i) (le_gbar g)
+  have hsvc := hp.sync.ac_service_at hp.run (lo := AC.gbar g) (hi := tr.time i) (le_gbar g)
   have hΔ := sp.toParams.hΔ
   have hcatchAC : ∀ x q D, x ∈ H (tr.time q) → tr.projAC.AcceptAt x q D →
-      tr.time q < SA.gbar g → ∀ y j ell, y ∈ H (tr.time j) →
-      tr.projAC.CallAt y j ell → SA.gbar g + 2 * sp.Δ ≤ tr.time j → tr.time j ≤ tr.time i →
+      tr.time q < AC.gbar g → ∀ y j ell, y ∈ H (tr.time j) →
+      tr.projAC.CallAt y j ell → AC.gbar g + 2 * sp.Δ ≤ tr.time j → tr.time j ≤ tr.time i →
       Anc (tr.HonestBlocksAt H) ell.frame.F D →
-      ∃ k ≤ j, tr.projAC.AcceptAt y k D ∧ tr.time k < SA.gbar g + 2 * sp.Δ := by
+      ∃ k ≤ j, tr.projAC.AcceptAt y k D ∧ tr.time k < AC.gbar g + 2 * sp.Δ := by
     intro x q D hxq hq hqt y j ell hyj hcall hlate _ hFD
     exact hp.run.toLocalRun.acCatchAt hp.catchUp hxq hq hqt hyj hcall hlate hFD
-  apply SA.Growing.raw_writer_voterBlockTree_window_before_at
+  apply AC.Growing.raw_writer_voterBlockTree_window_before_at
     hp.committee_pos hac.localRun hac.vstart hsvc hcatchAC
     hx hy hwriter hBC hc (by omega) le_rfl ?_ hF
-  have hsm : sp.ts s ≤ sp.ts ((e.msg.slot : Int) - 1) := (SA.ts_le_iff sp).mpr (by omega)
+  have hsm : sp.ts s ≤ sp.ts ((e.msg.slot : Int) - 1) := (AC.ts_le_iff sp).mpr (by omega)
   linarith
 
 end Consensus.Goldilocks.Healing.Growing.ProposalImpl

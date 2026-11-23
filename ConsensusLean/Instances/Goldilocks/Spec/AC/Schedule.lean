@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Common.Params
 
 @[expose] public section
 
-/-! # Goldilocks SA: schedule and parameters
+/-! # Goldilocks AC: schedule and parameters
 
 `specs/goldilocks/tex/goldilocks-spec.tex` §"Schedule":
 slot `s` starts at `t_s = 4Δs`, so `slot(t) = ⌊t/(4Δ)⌋`, and in the spec its committee is all of
@@ -11,23 +11,23 @@ slot `s` starts at `t_s = 4Δs`, so `slot(t) = ⌊t/(4Δ)⌋`, and in the spec i
 which the rules read at slot `0` (`t_{-1} + 3Δ`, `t_{slot(t)-1}`). The lock window is `k ≥ 2`
 slots and the fast increment `c ≥ 2` slots.
 
-`SAParams` extends the shared parameters (`Params`) by the lock window, the fast increment, the
-hypothesis that the shared slot times are the SA's, and the public committee size
+`ACParams` extends the shared parameters (`Params`) by the lock window, the fast increment, the
+hypothesis that the shared slot times are the AC's, and the public committee size
 `committeeSize`, the denominator of the fixed vote thresholds (fast, optimistic, unlock). The
 spec's all-of-`V` committee is the specialization `committeeSize = n` (the default). `R`, `K_W`,
 `δ_t`'s lower bound and the source delay are the FG's and the regimes' (goldilocks-spec
-§"Schedule"); no SA rule reads them. -/
+§"Schedule"); no AC rule reads them. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-/-- The SA's parameters: the shared parameters, whose slot times are `t_s = 4Δs`, the lock
+/-- The AC's parameters: the shared parameters, whose slot times are `t_s = 4Δs`, the lock
 window `k ≥ 2`, the fast increment `c ≥ 2` and the public committee size. -/
-structure SAParams where
+structure ACParams where
   /-- The shared parameters. -/
   toParams : Params
   /-- Slot `s` starts at `4Δs`. -/
   slotTime_eq : ∀ s : Nat, toParams.slotTime s = 4 * toParams.Δ * s
-  /-- The slow window: a slow lock of slot `j` lives through slot `j + k`; no lock the SA writes
+  /-- The slow window: a slow lock of slot `j` lives through slot `j + k`; no lock the AC writes
   lives longer. -/
   k : Nat
   /-- The window is at least two slots. -/
@@ -39,9 +39,9 @@ structure SAParams where
   /-- Public size of the voting committee; stock uses the whole population. -/
   committeeSize : Nat := toParams.n
 
-namespace SAParams
+namespace ACParams
 
-variable (sp : SAParams)
+variable (sp : ACParams)
 
 /-- The number of validators. -/
 abbrev n : Nat := sp.toParams.n
@@ -63,8 +63,8 @@ note at the head of this file). Only the declared head votes of its members are 
 for (`get_countable_declared_head_votes`); in this model that check is vacuous. -/
 def committee (_s : Nat) : Set (Fin sp.n) := Set.univ
 
-end SAParams
+end ACParams
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

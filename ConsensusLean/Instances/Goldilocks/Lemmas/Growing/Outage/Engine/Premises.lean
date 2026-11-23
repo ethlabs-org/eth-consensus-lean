@@ -25,9 +25,9 @@ facts `voteK_facts`, and the query's numbers and counts. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -68,7 +68,7 @@ restored label of `b₁`. Every count reached by an honest call is within the ca
 pool delivery is post-stop service (`outage_pool_delivery_at`). -/
 noncomputable def outageLockPremises_of_arming {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {T b₀ b₁ hor a z : Time} {A₀ W : Set (Fin sp.n)} {r : Nat}
     (hT0 : 0 ≤ T) (hlag : T + (4 * sp.k + 6) * sp.Δ ≤ b₀) (hsh : b₀ ≤ hor)
     (hcall : ∀ x k, tr.IsCall x k → tr.time k ≤ hor)
@@ -95,7 +95,7 @@ noncomputable def outageLockPremises_of_arming {ini}
     have : (0 : Time) ≤ (4 * sp.k + 6) * sp.Δ := by positivity
     linarith
   have hkj : sp.k < coverLabel sp b₀ :=
-    (Compose.armed_label_lt (σ := 0) hT0 hlag (by simp only [SA.SAParams.ts]; simpa using hT0)).2
+    (Compose.armed_label_lt (σ := 0) hT0 hlag (by simp only [AC.ACParams.ts]; simpa using hT0)).2
   { b₀ := b₀
     b₁ := b₁
     a := a
@@ -122,7 +122,7 @@ noncomputable def outageLockPremises_of_arming {ini}
       obtain ⟨-, -, -, -, hK, hjs, -⟩ := hnum
       refine ⟨?_, hr.2 _ hK⟩
       by_contra h
-      have := (SA.ts_le_iff sp).2
+      have := (AC.ts_le_iff sp).2
         (show (r : Int) ≤ (coverLabel sp b₀ : Nat) by omega)
       linarith [hr.1]
     hgap := hnum.2.2.1
@@ -148,7 +148,7 @@ noncomputable def outageLockPremises_of_arming {ini}
     ha := by
       have h := haj
       have hj : (sp.k : Int) < coverLabel sp b₀ := by exact_mod_cast hkj
-      simp only [SA.SAParams.ts] at h ⊢
+      simp only [AC.ACParams.ts] at h ⊢
       have : (0 : Time) ≤ (sp.k : Int) - 1 := by linarith
       linarith [mul_nonneg this hΔ.le]
     hzc := fun t ht ⟨_, _, _, hc, hle⟩ => hnum.2.2.2.2.2.2 t ht (hle.trans (hcall _ _ hc))
@@ -160,7 +160,7 @@ noncomputable def outageLockPremises_of_arming {ini}
       exact ⟨c, ℓ, hu, hfirst, fun hF hVA hN => coverBaseAt_iff.2 (hcond hF hVA hN)⟩
     PG := fun w c m ℓ hw hu hrm x i e hve hes =>
       Simulation.outage_pool_delivery_at hrun hnc hpost w c m ℓ hw hu (hr.1.trans (by
-        have := (SA.ts_le_iff sp).2 (show (r : Int) ≤ m by exact_mod_cast hrm)
+        have := (AC.ts_le_iff sp).2 (show (r : Int) ≤ m by exact_mod_cast hrm)
         linarith)) x i e (hVoteAt_iff.1 hve).1 (hVoteAt_iff.1 hve).2 hes }
 
 
@@ -168,7 +168,7 @@ section NodeProjections
 
 variable {ini : Fin sp.n → (goldilocksNode sp ro).State}
   {hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini} {hnc : NoCollRun dg tr}
-  {K : SA.CommitteeDict sp.n} {hKB : CommitteeFacts tr H K} {T b₀ b₁ hor a z : Time}
+  {K : AC.CommitteeDict sp.n} {hKB : CommitteeFacts tr H K} {T b₀ b₁ hor a z : Time}
   {A₀ W : Set (Fin sp.n)} {r : Nat} {hT0 : 0 ≤ T} {hlag : T + (4 * sp.k + 6) * sp.Δ ≤ b₀}
   {hsh : b₀ ≤ hor} {hcall : ∀ x k, tr.IsCall x k → tr.time k ≤ hor}
   {service : SleepyServiceBefore tr H sp.Δ b₀} {hpost : Generic.PostStopService tr H b₁}

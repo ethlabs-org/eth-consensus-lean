@@ -30,9 +30,9 @@ Only that witness, not an arbitrary historical holder, is used to bound the rela
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -44,9 +44,9 @@ theorem proposal_holds_old_at
     {ell : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hd : (AC.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
-    {x : Fin sp.n} {r l : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {r l : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) (hrt : tr.time r < sp.ts u) :
     O ∈ ell.frame.tree ∨ Anc (tr.HonestBlocksAt H) O ell.frame.F := by
   have hm := hp.run.time_mono
@@ -55,7 +55,7 @@ theorem proposal_holds_old_at
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hac.localRun.upTo ht
   have hci' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hci)
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci'
+  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hpH hci'
   have hcmp := finalized_compatible_high_origin_at hp hpH hib ho hrb
   have hruni := hp.run.upTo ht
   have hcin : (tr.upTo (tr.time i)).projAC.CallAt p i ell := by
@@ -72,11 +72,11 @@ theorem proposal_holds_old_at
     have hf := hp.committee_cs2_at (s := l) (Healing.gbar_le_of_cutZ_le sp hlab)
       ((ProposalImpl.ts_le_of_fastLock_at hp.run hfl).trans hrb) (hp.run.time_nonneg r) hrb
     obtain ⟨z, hz, j, e, hv, hes, B, hB, hBr, hDB⟩ :=
-      SA.fastLock_honest_vote hr' _
-        (SA.CommitteePAt.upTo hm hp.run.antitone hp.committeeFacts.hP _)
+      AC.fastLock_honest_vote hr' _
+        (AC.CommitteePAt.upTo hm hp.run.antitone hp.committeeFacts.hP _)
         (hp.run.antitone (le_max_right _ _) ho.1)
-        ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hf
-    obtain ⟨hjr, hv₀⟩ := (SA.upTo_voteAt).mp hv
+        ((AC.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hf
+    obtain ⟨hjr, hv₀⟩ := (AC.upTo_voteAt).mp hv
     have hzj := hp.run.antitone hjr hz
     obtain ⟨ellZ, hcz, he⟩ := hv₀
     have hrj := hac.localRun.upTo (hp.run.time_nonneg j)
@@ -84,7 +84,7 @@ theorem proposal_holds_old_at
     obtain ⟨⟨B', hB't, hB'r, _⟩, hjt⟩ := Compose.cast_head_fcRoot hrj hp.run.vstart hzj
       ⟨hcz', he⟩
     have hBB : B' = B := hac.localRun.coherent.1
-      ((SA.frameIn_of_callAt hrj hzj hcz').2 hB't) hB (hB'r.trans hBr.symm)
+      ((AC.frameIn_of_callAt hrj hzj hcz').2 hB't) hB (hB'r.trans hBr.symm)
     subst B'
     have hOB := hOD.trans hDB
     have hzZ : z ∈ H (max (tr.time j) (cutZ sp.toParams g)) :=
@@ -93,7 +93,7 @@ theorem proposal_holds_old_at
       (frame_tree_subset_at hp.run hp.noColl hzj hcz).2 hB't
     have hZj := cutZ_lt_of_anc_at hp ho hzZ hBz hOB
     have hlu := label_lt_of_old_at hp.run ho hrt
-    have hts : sp.ts l ≤ sp.ts ((u : Int) - 1) := (SA.ts_le_iff sp).mpr (by omega)
+    have hts : sp.ts l ≤ sp.ts ((u : Int) - 1) := (AC.ts_le_iff sp).mpr (by omega)
     have hjt' : tr.time j ≤ sp.ts ((u : Int) - 1) + sp.Δ := by
       rw [hes] at hjt
       change tr.time j ≤ sp.ts l + sp.Δ at hjt
@@ -117,7 +117,7 @@ theorem proposal_holds_old_at
       have hrC := hac.localRun.upTo (hp.run.time_nonneg c)
       have hcC' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcC)
       exact (frame_tree_subset_at hp.run hp.noColl hzc₀ hcC).2
-        ((SA.accept_new sp hrC hzc₀ ⟨ellC, hcC', heC⟩).1 ellC hcC')
+        ((AC.accept_new sp hrC hzc₀ ⟨ellC, hcC', heC⟩).1 ellC hcC')
     have hgc : g ≤ tr.time c := by
       have hcZ := cutZ_lt_of_anc_at hp ho hzc hBc hOB
       have := lt_cutZ sp g
@@ -127,12 +127,12 @@ theorem proposal_holds_old_at
     have hct : tr.time c < sp.ts ((u : Int) - 1) + 2 * sp.Δ := by
       have := sp.toParams.hΔ
       linarith
-    have hd' : (SA.acProposal sp ((tr.upTo (tr.time i)).projAC.state p i)
+    have hd' : (AC.acProposal sp ((tr.upTo (tr.time i)).projAC.state p i)
         ell.frame (tr.time i)).2 = some (d, pay) := by
       rwa [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC p (fun _ hq => hm hq.le)]
     have hrs := Compose.proposal_call_restarts hruni (hp.noColl.upTo _) hpH hcin hcall hd'
     have hslot : sp.slot (tr.time i) = u := by
-      rw [hti]; simpa using (SA.slot_arithmetic sp u).1 0 (by omega)
+      rw [hti]; simpa using (AC.slot_arithmetic sp u).1 0 (by omega)
     change ∀ c ≤ i, (tr.upTo (tr.time i)).projAC.RestartAt p c →
       tr.time c ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) at hrs
     rw [hslot] at hrs
@@ -149,12 +149,12 @@ theorem proposal_holds_old_at
           sp.ts ((u : Int) - 1) + 2 * sp.Δ by linarith)
       linarith
     have htsu : sp.ts u = sp.ts ((u : Int) - 1) + 4 * sp.Δ := by
-      simp only [SAParams.ts]; ring
+      simp only [ACParams.ts]; ring
     obtain ⟨k, hki, hak, _⟩ := hp.frame_relay_at hzc₀ hacc₀ hgc hpH hci
       (by rw [hti, htsu]; have := hdl i le_rfl; have := sp.toParams.hΔ; linarith)
       (hFO.trans hOB)
     have hak' := (ACTrace.upTo_acceptAt).mpr (And.intro (hm hki) hak)
-    have hBt := SA.mem_tree_of_acceptAt sp hr hpH hak' hki hci' (hFO.trans hOB)
+    have hBt := AC.mem_tree_of_acceptAt sp hr hpH hak' hki hci' (hFO.trans hOB)
     exact Compose.mem_between hac.localRun.coherent hPhi hPhiU hPhi.rooted.1 hBt hFO hOB
   · exact Or.inr hOF
 

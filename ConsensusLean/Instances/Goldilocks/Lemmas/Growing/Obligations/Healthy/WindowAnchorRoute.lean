@@ -27,9 +27,9 @@ The growing form of the trace part of `Obligations/WindowAnchorRoute`; the store
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -41,7 +41,7 @@ theorem anchor_window_advance_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
-    {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
+    {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
     (hmem : ∀ i, P i ∈ (tr.state y k).fg.tree)
     (hstep : ∀ i : Fin 3, AnchorStepAt tr H (P i.castSucc) (P i.succ)) :
     ((tr.state y k).fg.σ (P 0).root).h + 3 ≤ ((tr.state y k).fg.σ (P 3).root).h := by
@@ -69,7 +69,7 @@ root `σ[P₃].F` is held by `y` and `P₀ ⪯ F` in the honest blocks. -/
 theorem cacheCoverage_of_anchor_window_upTo_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
+    (hnc : Compose.NoCollRun dg tr) {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
     (hch : ∀ i, Anc (tr.HonestBlocksAt H) (P i) (P 3))
     (hstep : ∀ i : Fin 3, AnchorStepAt tr H (P i.castSucc) (P i.succ))
     (hsl : (P 3).slot ≤ (P 0).slot + sp.toParams.fg.δt) {y : Fin sp.n} {k : Nat} {t : Time}
@@ -95,7 +95,7 @@ the reader accepts `B` before `j` (`hacc`), caches `X` there, and its cache grow
 theorem reader_cache_covers_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {c : Nat}
-    {A B X : SA.Blk sp.n (List (FG.Att sp.n))} (hx : x ∈ H (tr.time c))
+    {A B X : AC.Blk sp.n (List (FG.Att sp.n))} (hx : x ∈ H (tr.time c))
     (hBx : B ∈ (tr.state x (c + 1)).fg.tree)
     (hX : (tr.state x (c + 1)).fg.blocks ((tr.state x (c + 1)).fg.σ B.root).F = some X)
     (hAX : Anc (tr.HonestBlocksAt H) A X) {y : Fin sp.n} {j : Nat} {t : Time}

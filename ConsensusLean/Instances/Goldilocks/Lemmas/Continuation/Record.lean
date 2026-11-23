@@ -31,9 +31,9 @@ the read point at `T`:
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
@@ -55,11 +55,11 @@ theorem seeded_record_cover_at (hrun : Growing.GoldilocksRun proposer dg H tr in
     (_hdt : sp.ts (r + sp.k : Nat) ≤ t₁)
     (hcov : ∀ y n t, t₁ ≤ t → t ≤ T → y ∈ H t → Regimes.ReadPoint tr n t →
       HealedRecordCoverAt tr H (r + sp.k - 1) y n t
-        ((SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
+        ((AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
           (tr.state y n).fg.F)) :
     ∀ y n t, t₁ ≤ t → t ≤ b → y ∈ H t → Regimes.ReadPoint tr n t →
       HealedRecordCoverAt tr H (r + sp.k - 1) y n t
-        ((SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
+        ((AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
           (tr.state y n).fg.F) := by
   intro y n t ht₁ _ hy hrp
   rcases le_or_gt t T with htT | hTt
@@ -78,24 +78,24 @@ theorem seeded_record_cover_at (hrun : Growing.GoldilocksRun proposer dg H tr in
     ⟨fun k hk => (not_le.1 (Nat.find_min hex hk)).le, Nat.find_spec hex⟩
   have hyT : y ∈ H T := hrun.antitone hTt.le hy
   -- the reader's results and selections from there on have labels `≥ σ ≥ r + k − 1`
-  have hlab : ∀ k, Nat.find hex ≤ k → ∀ s C CV, SA.ResultAt tr.projAC y k s C CV ∨
-      SA.OptimisticLockAt tr.projAC y k s C CV → r + sp.k - 1 ≤ s := by
+  have hlab : ∀ k, Nat.find hex ≤ k → ∀ s C CV, AC.ResultAt tr.projAC y k s C CV ∨
+      AC.OptimisticLockAt tr.projAC y k s C CV → r + sp.k - 1 ≤ s := by
     intro k hk s C CV hs
     have htk : T ≤ tr.time k := (Nat.find_spec hex).trans (hrun.time_mono hk)
     have hσs : σ ≤ s := by
       rcases hs with ⟨ell, hu, _⟩ | ⟨ell, A, ho, hslot, _⟩
       · have ht : tr.time k = sp.ts s + 6 * sp.Δ := hu.2.2.1
-        have hh := (SA.ts_le_iff sp).mp (show sp.ts σ ≤ sp.ts s by linarith)
+        have hh := (AC.ts_le_iff sp).mp (show sp.ts σ ≤ sp.ts s by linarith)
         omega
-      · have hh := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg k) σ).mp (by linarith)
+      · have hh := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg k) σ).mp (by linarith)
         change sp.slot (tr.time k) = s at hslot
         omega
     omega
   have hind : ∀ k, Nat.find hex ≤ k → k ≤ n → ∀ R,
-      SA.lookup (Node.frame (tr.state y k)) (tr.state y k).ac.latestConfirmed = some R →
+      AC.lookup (Node.frame (tr.state y k)) (tr.state y k).ac.latestConfirmed = some R →
       R = (tr.state y k).fg.F ∨ ∃ x q s C CV, x ∈ H (tr.time q) ∧ q < k ∧ tr.time q ≤ t ∧
         r + sp.k - 1 ≤ s ∧
-        (SA.ResultAt tr.projAC x q s C CV ∨ SA.OptimisticLockAt tr.projAC x q s C CV) ∧
+        (AC.ResultAt tr.projAC x q s C CV ∨ AC.OptimisticLockAt tr.projAC x q s C CV) ∧
         Anc (tr.HonestBlocksAt H) R C := by
     intro k hk
     induction k, hk using Nat.le_induction with
@@ -116,7 +116,7 @@ theorem seeded_record_cover_at (hrun : Growing.GoldilocksRun proposer dg H tr in
       · have hRk := Obligations.Growing.record_lookup_of_later_at hrun hnc ht0 hle1 hy
           (Nat.le_succ k) heq hR
         rcases ih (by omega) R hRk with hRF | ⟨x, q, s, B, DV, hx, hqk, hqt, hsl, hB, hRB⟩
-        · obtain ⟨hRm, -⟩ := SA.lookup_eq_some hR
+        · obtain ⟨hRm, -⟩ := AC.lookup_eq_some hR
           have h₁ : Anc (tr.HonestBlocksAt H) (tr.state y (k + 1)).fg.F R :=
             (show Anc (tr.state y (k + 1)).fg.tree _ _ from hRm.2).mono
               (tree_subset_at ht0 hle1 hy)
@@ -125,13 +125,13 @@ theorem seeded_record_cover_at (hrun : Growing.GoldilocksRun proposer dg H tr in
             exact F_mono_at hrun ht0 hy hle1 (Nat.le_succ k)
           exact Or.inl (Anc.antisymm hU h₂ h₁)
         · exact Or.inr ⟨x, q, s, B, DV, hx, Nat.lt_succ_of_lt hqk, hqt, hsl, hB, hRB⟩
-      · obtain ⟨hRm, hRr⟩ := SA.lookup_eq_some hR
+      · obtain ⟨hRm, hRr⟩ := AC.lookup_eq_some hR
         obtain rfl : R = C := hU.1 ⟨y, k + 1, t, ht0, hle1, hy, hRm.1⟩
           ⟨y, k, t, ht0, hle0, hy, hC⟩ (hRr.trans hCr.symm)
         exact Or.inr ⟨y, k, s, R, CV, hyk, Nat.lt_succ_self _, hkt, hlab k hk s R CV hs, hs,
           .refl⟩
   rw [healedRecordCoverAt_iff]
-  cases hl : SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed with
+  cases hl : AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed with
   | none => exact Or.inl (by simp only [Option.getD_none])
   | some R =>
     rcases hind n hn₀n le_rfl R hl with h | ⟨x, q, s, C, CV, hx, hqn, hqt, hs, hC, hRC⟩

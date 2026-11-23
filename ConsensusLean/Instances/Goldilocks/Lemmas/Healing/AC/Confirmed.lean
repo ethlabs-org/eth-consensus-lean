@@ -15,12 +15,12 @@ For an honest proposal `P` of slot `p`:
 * `unanimous_pool_before`: the finite stamped honest batch of the slot committee, from actual
   unanimous casts. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
 /-! ## The record after the first update -/
 
@@ -31,7 +31,7 @@ coherent `U`, a block `P` below both the effective record (`latest_confirmed` if
 `Φ.F`) and the head is below the confirmed tip, the deepest common ancestor of the two (when `P` is
 not in the tree it is below `Φ.F`, which every block of the tree extends). -/
 theorem anc_acConfirmed_of_frame (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
-    (hΦU : Φ.tree ⊆ U) {A : SAState sp.n} {t : Time} {P : Blk sp.n FGP}
+    (hΦU : Φ.tree ⊆ U) {A : ACState sp.n} {t : Time} {P : Blk sp.n FGP}
     (hPC : Anc U P ((lookup Φ A.latestConfirmed).getD Φ.F))
     (hPH : Anc U P (acHead sp A Φ t)) : Anc U P (acConfirmed sp A Φ t) := by
   have hCt : (lookup Φ A.latestConfirmed).getD Φ.F ∈ Φ.tree := by
@@ -62,10 +62,10 @@ theorem anc_acConfirmed_of_frame (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : Fr
 /-- Finite stamped honest batch of the slot committee from actual unanimous casts. The
 actual-vote existence input is separate from agreement; no ready-proposal support clause is
 needed. -/
-theorem unanimous_pool_before {K : SA.CommitteeDict sp.n}
+theorem unanimous_pool_before {K : AC.CommitteeDict sp.n}
     {b : Time} (hS : HealthyBaseUpTo K tr H U proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
+    {ell : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)
     (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ max t (sp.ts s) + sp.Δ)
@@ -95,6 +95,6 @@ theorem unanimous_pool_before {K : SA.CommitteeDict sp.n}
     ((state_pool_slot sp hr hS.run.vstart hy j s _ hv').trans hes.symm)
   rfl
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

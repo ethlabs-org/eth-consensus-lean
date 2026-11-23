@@ -34,9 +34,9 @@ lock is live, moved, or a candidate); a rejection shows a premise's role where i
 The `*_applies` theorems apply each statement, assumed, to its witness: the premises are
 discharged as the statement states them, and its conclusion there is the one proved. -/
 
-namespace Consensus.Goldilocks.SA.Test.LockRule
+namespace Consensus.Goldilocks.AC.Test.LockRule
 
-open Consensus.Goldilocks.SA.Test.Graded
+open Consensus.Goldilocks.AC.Test.Graded
 
 theorem slot_20 : sp.slot 20 = 5 := by decide
 theorem slot_23 : sp.slot 23 = 5 := by decide
@@ -183,8 +183,8 @@ theorem unlockNoFallback_equivocation :
 /-- A replay order for restarts. -/
 noncomputable abbrev ro : ReplayOrder sp Unit := ReplayOrder.choice sp
 
-/-- The Goldilocks SA with the fixture's parameters. -/
-noncomputable abbrev GA : ACInterface sp.toParams Unit := goldilocksSA sp Unit ro
+/-- The Goldilocks AC with the fixture's parameters. -/
+noncomputable abbrev GA : ACInterface sp.toParams Unit := goldilocksAC sp Unit ro
 
 /-- The genesis frame. -/
 def Φ₀ : Frm sp.n Unit := ⟨{g}, g, g, {g}⟩
@@ -276,10 +276,10 @@ def w2 : Vote sp.n := ⟨v0, 2, 1⟩
 
 /-- After `ac_on_block(B1)` at `6` (slot `1`, after `t_1 + Δ`: no vote, and no optimistic check
 from `t_1 + 2Δ`). -/
-noncomputable def S1 : SAState sp.n := ((GA).step v0 (GA).initial Φ₁ 6 (.block B1)).1
+noncomputable def S1 : ACState sp.n := ((GA).step v0 (GA).initial Φ₁ 6 (.block B1)).1
 
 /-- After the slot-`2` vote on `B1` at `8 = t_2`. -/
-noncomputable def S2 : SAState sp.n := ((GA).step v0 S1 Φ₁ 8 (.message w2)).1
+noncomputable def S2 : ACState sp.n := ((GA).step v0 S1 Φ₁ 8 (.message w2)).1
 
 theorem reachable_init : (GA).ReachableAt v0 U (GA).initial Φ₀ 0 :=
   ACInterface.ReachableAtFrom.init (A := GA) (self := v0) (U := U) Φ₀ ⟨rfl, rfl, rfl, rfl, rfl⟩
@@ -288,8 +288,9 @@ theorem reachable_init : (GA).ReachableAt v0 U (GA).initial Φ₀ 0 :=
 /-- `ac_on_block(B1)` at `6` obeys the call law: `Φ₀ ⊑_{B1} Φ₁`, a valid payload, slot `1`. -/
 theorem callOK_B1 : (GA).CallOK U Φ₀ 6 (.block B1) Φ₁ :=
   ⟨⟨frameOK_Φ₁, tree₁_sub⟩, frameStep_B1,
-    ⟨fun v hv => by simp [blockVotes, B1] at hv, by simp [blockSupport, blockVotes, B1],
-      by simp [blockVotes, B1], fun i => by simp [blockVotes, B1]⟩,
+    ⟨fun v hv => by simp [declaredHeadVotes, B1] at hv,
+      by simp [declaredSupportVotes, declaredHeadVotes, B1],
+      by simp [declaredHeadVotes, B1], fun i => by simp [declaredHeadVotes, B1]⟩,
     by decide⟩
 
 /-- The vote message at `8` obeys the call law (same frame). -/
@@ -307,8 +308,8 @@ theorem reachable_S2 : (GA).ReachableAt v0 U S2 Φ₁ 8 := by
     (Φ := Φ₁) (Φ' := Φ₁) (t := 6) (t' := 8) (.message w2) reachable_S1 (by decide) callOK_w2
 
 /-- The first call only stamps `B1`. -/
-theorem S1_eq : S1 = blockReceipt sp (SAState.initial 0) 6 B1 := by
-  change (acOnBlock sp v0 (SAState.initial 0) Φ₁ 6 B1).1 = _
+theorem S1_eq : S1 = blockReceipt sp (ACState.initial 0) 6 B1 := by
+  change (acOnBlock sp v0 (ACState.initial 0) Φ₁ 6 B1).1 = _
   unfold acOnBlock optimisticConfirmation optimisticSelect
   dsimp only
   rw [slot_6, ite_eq_left (Or.inr (Or.inr (by decide)))]
@@ -324,7 +325,7 @@ theorem S1_latest : S1.latestConfirmed = 0 := by rw [S1_eq]; rfl
 theorem S1_votedSlot : S1.votedSlot = -1 := by rw [S1_eq]; rfl
 
 /-- The admission of the slot-`2` vote. -/
-noncomputable def A2 : SAState sp.n := admitVote sp S1 8 w2
+noncomputable def A2 : ACState sp.n := admitVote sp S1 8 w2
 
 theorem A2_eq : A2 = { S1 with
     pool := Function.update S1.pool 2 (S1.pool 2 ++ [w2])
@@ -368,13 +369,13 @@ theorem mem_liveLocks_lockA {t : Time} {l' : Lock} :
   · rintro ⟨rfl, hlive⟩
     exact ⟨lockA, rfl, B1, B1_mem₁, rfl, hlive, by rw [viableAncestor_Φ₁ B1_mem₁]; rfl⟩
 
-theorem updateLatestConfirmed_locks (A : SAState sp.n) (Ψ : Frm sp.n Unit) (C : Blk sp.n Unit) :
+theorem updateLatestConfirmed_locks (A : ACState sp.n) (Ψ : Frm sp.n Unit) (C : Blk sp.n Unit) :
     (updateLatestConfirmed sp A Ψ C).locks = A.locks := by
   unfold updateLatestConfirmed
   split_ifs <;> rfl
 
 /-- At `8 < t_2 + Δ` there is no slot-`2` proposal, so `try_vote` waits. -/
-theorem tryVote_8 (A : SAState sp.n) : tryVote sp v0 A Φ₁ 8 = (A, []) := by
+theorem tryVote_8 (A : ACState sp.n) : tryVote sp v0 A Φ₁ 8 = (A, []) := by
   have hr : ¬ voteReady sp A Φ₁ 2 := by
     rintro ⟨⟨B, hB, hs, -⟩, -⟩
     rcases hB with rfl | rfl <;> simp [B1, g] at hs
@@ -481,7 +482,7 @@ theorem liveLocksChain_witness :
     simp
 
 /-- An unreachable state with live fast locks on both conflicting children `B2` and `B3`. -/
-def Sbad : SAState sp.n := { SAState.initial 0 with locks := {⟨2, 3, true, 5⟩, ⟨3, 3, true, 5⟩} }
+def Sbad : ACState sp.n := { ACState.initial 0 with locks := {⟨2, 3, true, 5⟩, ⟨3, 3, true, 5⟩} }
 
 theorem liveLocks_Sbad : liveLocks sp Sbad.locks Φ 16 = Sbad.locks :=
   liveLocks_Φ (by rintro l (rfl | rfl) <;> exact ⟨by decide, by rw [slot_16]; decide⟩)
@@ -579,7 +580,7 @@ theorem lockToTip_witness :
 /-- **Rejection: reachability.** An unreachable state with the lock on `B1` but the record at
 genesis breaks lock to tip. -/
 theorem lockToTip_unreachable :
-    ¬ ∀ B ∈ liveLockBlocks sp ({ S2 with latestConfirmed := 0 } : SAState sp.n).locks Φ₁ 8,
+    ¬ ∀ B ∈ liveLockBlocks sp ({ S2 with latestConfirmed := 0 } : ACState sp.n).locks Φ₁ 8,
       Φ₁.Anc B ((lookup Φ₁ 0).getD Φ₁.F) := by
   intro h
   have := h B1 (mem_liveLockBlocks_S2.2 ⟨rfl, by rw [slot_8]; decide⟩)
@@ -633,4 +634,4 @@ theorem lockToTip_applies (h : LockToTip sp) : ∀ t, 8 ≤ t →
     ∀ B ∈ liveLockBlocks sp S2.locks Φ₁ t, Φ₁.Anc B ((lookup Φ₁ S2.latestConfirmed).getD Φ₁.F) :=
   fun t _ => h Unit ro v0 U coherent_U S2 Φ₁ 8 reachable_S2 t
 
-end Consensus.Goldilocks.SA.Test.LockRule
+end Consensus.Goldilocks.AC.Test.LockRule

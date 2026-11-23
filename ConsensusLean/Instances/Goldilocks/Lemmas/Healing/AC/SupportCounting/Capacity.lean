@@ -11,7 +11,7 @@ public section
 The arithmetic of the split-capacity statements (paper `cfb2d338`, §1): substituting
 `2b = n − m − (a − b)` in the support bound `b + h`. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
 theorem split_capacity_half : SplitCapacityHalf := by
   intro n m a b h habm hba hn
@@ -33,6 +33,6 @@ theorem split_three_quarter_excluded : SplitThreeQuarterExcluded := by
   intro n m a b h f habm hba hhf hfm hfn hq
   omega
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

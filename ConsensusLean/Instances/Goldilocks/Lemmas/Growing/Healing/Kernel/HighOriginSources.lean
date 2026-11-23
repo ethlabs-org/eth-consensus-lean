@@ -14,9 +14,9 @@ must remain below the retained-vote assembly in the import graph.
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g : Time}
 
@@ -24,8 +24,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem ts_le_of_fastLock_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {x : Fin sp.n} {r l : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (SA.Vote sp.n)} (hf : SA.FastLockAt tr.projAC x r l D CV) :
+    {x : Fin sp.n} {r l : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (AC.Vote sp.n)} (hf : AC.FastLockAt tr.projAC x r l D CV) :
     sp.ts l ≤ tr.time r := by
   rcases hf with ⟨ell, C, ⟨_, _, ht, _⟩, _⟩ | ⟨ell, A, _, hs, _⟩
   · have ht' : tr.time r = sp.ts l + 6 * sp.Δ := ht
@@ -33,32 +33,32 @@ theorem ts_le_of_fastLock_at
     have := sp.toParams.hΔ
     linarith
   · change sp.slot (tr.time r) = l at hs
-    exact (SA.ts_le_iff_le_slot sp (hrun.time_nonneg r) l).mpr (by omega)
+    exact (AC.ts_le_iff_le_slot sp (hrun.time_nonneg r) l).mpr (by omega)
 
 /-- An origin written strictly before a proposal's slot has a strictly older label. -/
 theorem label_lt_of_old_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {x : Fin sp.n} {r l u : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {r l u : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) (ht : tr.time r < sp.ts u) : l < u := by
   obtain ⟨_, _, ⟨CV, ell, D, _, hf, _⟩, _⟩ := ho
-  exact_mod_cast (SA.ts_lt_iff sp).mp ((ts_le_of_fastLock_at hrun hf).trans_lt ht)
+  exact_mod_cast (AC.ts_lt_iff sp).mp ((ts_le_of_fastLock_at hrun hf).trans_lt ht)
 
 /-- A high origin lies below its raw fast-lock head in the historical universe. -/
 theorem highOrigin_raw_head_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    {x : Fin sp.n} {r l : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {r l : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) :
-    ∃ ell D CV, tr.projAC.CallAt x r ell ∧ SA.FastLockAt tr.projAC x r l D CV ∧
+    ∃ ell D CV, tr.projAC.CallAt x r ell ∧ AC.FastLockAt tr.projAC x r l D CV ∧
       Anc (tr.HonestBlocksAt H) O D := by
   obtain ⟨hxz, _, ⟨CV, ell, D, hc, hf, rfl⟩, _⟩ := ho
   have hx := hrun.antitone (le_max_right _ _) hxz
   obtain ⟨ell', hc', hD⟩ := Healing.fastLock_mem hf
   obtain rfl : ell = ell' := Option.some.inj (hc.2.symm.trans hc'.2)
   obtain ⟨hok, hsub⟩ := frame_tree_subset_at hrun hnc hx hc
-  refine ⟨ell, D, CV, hc, hf, (SA.viableAncestor_anc hok hD).2.mono ?_⟩
+  refine ⟨ell, D, CV, hc, hf, (AC.viableAncestor_anc hok hD).2.mono ?_⟩
   exact fun _ hB => ⟨x, r, tr.time r, hrun.time_nonneg r,
     fun _ hq => hrun.time_mono hq.le, hx, hsub hB⟩
 
@@ -69,10 +69,10 @@ Honesty only at the earlier read would not suffice: that holder can disappear fr
 theorem cutZ_lt_of_anc_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) {z : Fin sp.n} {k : Nat}
     (hz : z ∈ H (max (tr.time k) (cutZ sp.toParams g)))
-    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hW : W ∈ (tr.state z k).fg.tree)
+    {W : AC.Blk sp.n (List (FG.Att sp.n))} (hW : W ∈ (tr.state z k).fg.tree)
     (hBW : Anc (tr.HonestBlocksAt H) B W) :
     cutZ sp.toParams g < tr.time k := by
   classical

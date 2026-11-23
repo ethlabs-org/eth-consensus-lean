@@ -59,7 +59,7 @@ theorem final_duty_proposal_run_at
   rw [htime] at hR hH
   have h0 : (0 : Time) ≤ Q.params.ts s := by
     have := Q.params.toParams.hΔ
-    simp only [SA.SAParams.ts]; positivity
+    simp only [AC.ACParams.ts]; positivity
   have hnode := ready_transport_at S Q.run.2 Q.hn Q.valid h0 hth hR
   have hkey : Q.run.2.ownKey (Q.run.2.key (runProposer S Q.run.2 Q.hn s)) =
       runProposer S Q.run.2 Q.hn s := Q.run.2.key.symm_apply_apply _
@@ -81,7 +81,7 @@ theorem final_duty_proposal_run_at
     have := hP.2.2
     rw [ht, Q.params.slotTime_eq] at this
     have he : (P.slot : Time) = (s : Time) := by
-      simp only [SA.SAParams.ts] at this
+      simp only [AC.ACParams.ts] at this
       exact mul_left_cancel₀ (mul_pos four_pos Q.params.toParams.hΔ).ne' this.symm
     exact_mod_cast he
   have hk : runProposer S Q.run.2 Q.hn s ∈ Q.keys (Q.trace.time k) := by

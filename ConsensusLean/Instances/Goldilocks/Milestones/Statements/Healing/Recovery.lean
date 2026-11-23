@@ -23,11 +23,11 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 section Constants
 
-variable (sp : SAParams)
+variable (sp : ACParams)
 
 /-- `⌈x / (4Δ)⌉` in slots (for `x ≥ 0`). -/
 def slotsCeil (x : Time) : Nat := ((x + 4 * sp.Δ - 1) / (4 * sp.Δ)).toNat
@@ -61,7 +61,7 @@ end Constants
 
 section Defs
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
 
 /-- **The recovery predicate `Rec(t₀)`** (O.1's (a)–(c) at `t₀`): (a), (c) every honest fast
@@ -80,15 +80,15 @@ source reaching `h` be after `t₀`.) -/
 structure Rec (t₀ : Time) : Prop where
   /-- (a), (c) `Clean(s, m, B)` for the honest fast confirmations written after `t₀`. -/
   clean : ∀ x ∈ H, ∀ i s B CV, Compose.StoredFastLockAt tr x i s B CV → t₀ < tr.time i →
-    SA.joined sp (tr.state x i).ac (tr.time i) → ∀ m, s < m → Compose.Clean tr H s m B
+    AC.joined sp (tr.state x i).ac (tr.time i) → ∀ m, s < m → Compose.Clean tr H s m B
   /-- (b) The honest sources after `t₀` are pairwise compatible. -/
-  sources : ∀ y ∈ H, ∀ z ∈ H, ∀ k ℓ C k' ℓ' C', SA.ToFGAt tr.projAC y k ℓ C →
-    SA.ToFGAt tr.projAC z k' ℓ' C' → t₀ < tr.time k → t₀ < tr.time k' →
+  sources : ∀ y ∈ H, ∀ z ∈ H, ∀ k ℓ C k' ℓ' C', AC.ToFGAt tr.projAC y k ℓ C →
+    AC.ToFGAt tr.projAC z k' ℓ' C' → t₀ < tr.time k → t₀ < tr.time k' →
     Compatible (tr.HonestBlocks H) C C'
   /-- (b) Clean records at the first source of an entry entered after `t₀`. -/
-  records : ∀ y ∈ H, ∀ k ℓ C E h, SA.ToFGAt tr.projAC y k ℓ C → t₀ < tr.time k →
+  records : ∀ y ∈ H, ∀ k ℓ C E h, AC.ToFGAt tr.projAC y k ℓ C → t₀ < tr.time k →
     EntryOf (tr.state y k).fg C E h → t₀ < sp.ts E.slot →
-    (∀ k' < k, ∀ ℓ' C', SA.ToFGAt tr.projAC y k' ℓ' C' → ¬ EntryOf (tr.state y k').fg C' E h) →
+    (∀ k' < k, ∀ ℓ' C', AC.ToFGAt tr.projAC y k' ℓ' C' → ¬ EntryOf (tr.state y k').fg C' E h) →
     ((tr.state y k).record.target h = none ∨ (tr.state y k).record.target h = some E.root) ∧
     (∀ r ∈ (tr.state y k).record.timeout h, r = E.root) ∧
     ((tr.state y k).record.lock h = none ∨ (tr.state y k).record.lock h = some E.root)
@@ -101,10 +101,10 @@ proposals (not merely for entries that happen to be served). -/
 def UPat (proposer : Nat → Fin sp.n) (g : Time) (W M cF kF : Nat) : Prop :=
   ∀ τ, gbar g ≤ τ → ∃ v : Nat, τ ≤ sp.ts v ∧ sp.ts v ≤ τ + 4 * sp.Δ * ((W : Time) + 1) ∧
     ∀ s, v ≤ s → s < v + M →
-      ∃ (k : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))),
+      ∃ (k : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))),
         ReadyProposal tr H proposer (proposer s) k s B ∧
         ∀ y i, Compose.RunEntry tr H y i B →
-          ∃ (w : Fin sp.n) (kw : Nat) (W' : SA.Blk sp.n (List (FG.Att sp.n))),
+          ∃ (w : Fin sp.n) (kw : Nat) (W' : AC.Blk sp.n (List (FG.Att sp.n))),
             ReadyProposal tr H proposer w kw W'.slot W' ∧
             s + cF ≤ W'.slot ∧ W'.slot ≤ s + cF + kF ∧
             ∃ Pr, W'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) B Pr
@@ -112,7 +112,7 @@ def UPat (proposer : Nat → Fin sp.n) (g : Time) (W M cF kF : Nat) : Prop :=
 /-- The premises of C1.2 (the HS shared premises with the committee facts of the slot dictionary
 `K`, `Catch(2Δ)`, `Prop⁺(G_p)`, the window parameters `c_F = ⌈(6Δ + Δ_F)/(4Δ)⌉` and
 `c_F + k_F ≤ δ_t`) and `UPat(W, M)` with `M ≥ M*`. -/
-structure PatternPremises (K : SA.CommitteeDict sp.n) (proposer : Nat → Fin sp.n)
+structure PatternPremises (K : AC.CommitteeDict sp.n) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF Gp : Time)
     (W M cF kF : Nat) : Prop where
   /-- The HS shared premises, with `Healthy(g)` and the committee facts of `K`. -/
@@ -142,11 +142,11 @@ dictionary `K`, under C1.2's premises (with the committee facts of `K`) and `UPa
 `≥ T_F = ḡ + T_rec − 12Δ`, `Σ.F` has state height `≥ H_z + 1`. (Not O.1's target: see the module
 docstring.) -/
 def PatternRecovery : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF Gp : Time) (W M cF kF : Nat),
-    GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+    (tr : GoldilocksTrace sp ro) (K : AC.CommitteeDict sp.n) (g ΔF Gp : Time) (W M cF kF : Nat),
+    GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K) →
     PatternPremises tr H K proposer dg g ΔF Gp W M cF kF →
     Rec tr H (gbar g + T_rec sp ΔF Gp W M) ∧
     ∀ y ∈ H, ∀ k, tr.IsCall y k → gbar g + T_rec sp ΔF Gp W M - 12 * sp.Δ ≤ tr.time k →
@@ -161,14 +161,14 @@ extending `P`, such that at every call of an honest node at a time `≥ t + 4Δ(
 coverage goes through the current entry of `P`, crossed on `P`'s retained chain, the new honest
 entry `U ⪰ P` and its actual successor `V`.) -/
 def FinalizingCoverage : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF Gp : Time) (W M cF kF : Nat),
-    GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+    (tr : GoldilocksTrace sp ro) (K : AC.CommitteeDict sp.n) (g ΔF Gp : Time) (W M cF kF : Nat),
+    GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K) →
     PatternPremises tr H K proposer dg g ΔF Gp W M cF kF →
     ∀ t, Rstar sp g ΔF Gp ≤ t →
-      ∃ (q : Fin sp.n) (kP : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))),
+      ∃ (q : Fin sp.n) (kP : Nat) (P : AC.Blk sp.n (List (FG.Att sp.n))),
         q ∈ H ∧ tr.ProposesAt q kP P ∧ t ≤ sp.ts P.slot ∧
         sp.ts P.slot ≤ t + 4 * sp.Δ * ((W : Time) + 1 + M) ∧
         (∃ x ∈ H, ∃ kX X, tr.AcceptAt x kX X ∧ ∃ Fx ∈ (tr.post kX).fg.tree,
@@ -184,11 +184,11 @@ at every honest node's acceptance of a block `B`, `F* = σ[B].F` satisfies `F* �
 neither is needed: of `Healthy(g)` only its fault bound `3|Hᶜ| ≤ n − 1` is used, at every height
 and time. The name keeps the claims node's.) -/
 def CacheAcceptanceAfterReset : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF : Time),
-    GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+    (tr : GoldilocksTrace sp ro) (K : AC.CommitteeDict sp.n) (g ΔF : Time),
+    GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K) →
     tr.HealthyRun H ΔF g → Compose.NoCollRun dg tr →
       ∀ y ∈ H, ∀ k B, tr.AcceptAt y k B →
         ∀ Fs ∈ (tr.post k).fg.tree, Fs.root = ((tr.post k).fg.σ B.root).F →

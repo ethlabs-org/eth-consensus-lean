@@ -122,23 +122,23 @@ end Consensus.Goldilocks.Obligations.Growing
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 open Simulation
 open Obligations
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Compatibility in the blocks held while honest is compatibility in a frame that holds both
 blocks. -/
-private theorem compatible_tree {sp : SA.SAParams} {U : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
-    {Φ : SA.Frm sp.n (List (FG.Att sp.n))} (hΦ : FrameOK Φ) (hU : Coherent U) (hΦU : Φ.tree ⊆ U)
-    {X Y : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ Φ.tree) (hY : Y ∈ Φ.tree)
+private theorem compatible_tree {sp : AC.ACParams} {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
+    {Φ : AC.Frm sp.n (List (FG.Att sp.n))} (hΦ : FrameOK Φ) (hU : Coherent U) (hΦU : Φ.tree ⊆ U)
+    {X Y : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ Φ.tree) (hY : Y ∈ Φ.tree)
     (h : Compatible U X Y) : Compatible Φ.tree X Y :=
-  h.imp (fun h => SA.anc_tree_of_anc_U hU hΦ hΦU hX h hY)
-    (fun h => SA.anc_tree_of_anc_U hU hΦ hΦU hY h hX)
+  h.imp (fun h => AC.anc_tree_of_anc_U hU hΦ hΦU hX h hY)
+    (fun h => AC.anc_tree_of_anc_U hU hΦ hΦU hY h hX)
 
 /-- **The extending majority past the first restored label**: at a label `q > r`, every vote of a
 node honest at its cast extends the origin (`restored_votes_extend_at`), so the committee slot
@@ -161,7 +161,7 @@ reads above the armed read tip of the ready source. -/
 theorem outage_reader_bridge_at (D : OutageLockPremises tr H proposer dg ini)
     (hS : Consensus.Goldilocks.Generic.PostStopService tr H D.b₁)
     (hinv : ∀ i, OutageLockInv D i)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : Anc (tr.HonestBlocksAt H) B D.P)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : Anc (tr.HonestBlocksAt H) B D.P)
     {y : Fin sp.n} {j : Nat} {t : Time} (hy : y ∈ H t) (ht0 : 0 ≤ t)
     (G : OutageReaderGate tr H D.b₁ y j t)
     (hBt : SleepyBoundsFrom tr H 0 t)
@@ -176,7 +176,7 @@ theorem outage_reader_bridge_at (D : OutageLockPremises tr H proposer dg ini)
   have hSD := receiverServiceAfterAt_of_postStop D.hrun hS
   have hrecv := hSD y
   have hts1 : ∀ s : Nat, sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    intro s; simp only [SA.SAParams.ts]; push_cast; ring
+    intro s; simp only [AC.ACParams.ts]; push_cast; ring
   set ŵ := y
   set U := tr.HonestBlocksAt H
   set st := tr.state ŵ j
@@ -197,17 +197,17 @@ theorem outage_reader_bridge_at (D : OutageLockPremises tr H proposer dg ini)
   obtain ⟨hfc, hviab⟩ := Compose.Growing.reader_frame_by hinv ht0 hjt hŵ hf t hB
   have hlocks := Compose.Growing.liveLockBlocks_compatible_by hinv ht0 hjt hŵ t hB
   -- the record and the head both extend the tip
-  suffices hrh : Anc U B ((SA.lookup (Node.frame st) st.ac.latestConfirmed).getD
-      (Node.frame st).F) ∧ Anc U B (SA.acHead sp st.ac (Node.frame st) t) from
+  suffices hrh : Anc U B ((AC.lookup (Node.frame st) st.ac.latestConfirmed).getD
+      (Node.frame st).F) ∧ Anc U B (AC.acHead sp st.ac (Node.frame st) t) from
     (exposed_prefix_preserved_of_record_head hU hΦ hΦU).2 hrh
   by_cases hA : Anc U B st.fg.F
   · -- Case A: the tip is below `Σ.F`
     refine ⟨?_, anc_acHead_of_current_certificate hΦ hΦU (Or.inl hA)⟩
-    have hR : (SA.lookup (Node.frame st) st.ac.latestConfirmed).getD (Node.frame st).F ∈
+    have hR : (AC.lookup (Node.frame st) st.ac.latestConfirmed).getD (Node.frame st).F ∈
         (Node.frame st).tree := by
-      cases he : SA.lookup (Node.frame st) st.ac.latestConfirmed with
+      cases he : AC.lookup (Node.frame st) st.ac.latestConfirmed with
       | none => exact hΦ.rooted.1
-      | some B => exact (SA.lookup_eq_some he).1
+      | some B => exact (AC.lookup_eq_some he).1
     exact hA.trans ((hΦ.rooted.2 _ hR).mono hΦU)
   -- Case B: `Σ.F` is below the tip
   have hFt : Anc U st.fg.F B := by
@@ -222,7 +222,7 @@ theorem outage_reader_bridge_at (D : OutageLockPremises tr H proposer dg ini)
     fun c hc => Compose.Growing.F_mono_at hrun ht0 hŵ hjt hc
   refine ⟨?_, ?_⟩
   · -- the record
-    by_cases hE : ∃ c ℓ, SA.UpdateAt tr.projAC ŵ c D.r ℓ
+    by_cases hE : ∃ c ℓ, AC.UpdateAt tr.projAC ŵ c D.r ℓ
     · obtain ⟨c, ℓ, hu⟩ := hE
       have hrs := D.hr.2 G.slot G.restored
       have hct : tr.time c ≤ t := by
@@ -282,7 +282,7 @@ theorem outage_reader_bridge_at (D : OutageLockPremises tr H proposer dg ini)
       fun k h1 h2 hrk => hnr k h1 h2 ((Compose.Growing.ac_restartAt_upTo _).1 hrk).2
     -- every vote extending the tip, of a validator honest at `t`, is delivered to the read cut
     have hdeliv : ∀ x k e, Compose.Growing.HVoteAt tr H x k e → x ∈ H t →
-        e.msg.slot = G.slot + 1 → SA.VoteExtends U e.msg B →
+        e.msg.slot = G.slot + 1 → AC.VoteExtends U e.msg B →
         e.msg ∈ st.ac.pool (G.slot + 1) ∧ ∃ Hd ∈ (Node.frame st).tree, Hd.root = e.msg.head ∧
           st.ac.blockStamp Hd.root < ⊤ := by
       rintro x k e hv hxt hes ⟨Hd, hHdU, hHdr, hBHd⟩
@@ -292,15 +292,15 @@ theorem outage_reader_bridge_at (D : OutageLockPremises tr H proposer dg ini)
         G.update.1 hct hgq hres hv (hrun.antitone hGtt hxt) hes hHdU hHdr hF
       have hΦc : FrameOK G.label.frame := (Compose.Growing.frameIn_at hrun hnc hŵG G.update.1).1
       have hbst : (tr.projAC.state ŵ G.cut).blockStamp Hd.root < ⊤ := by
-        unfold SA.resolutionTime at hrt
-        rw [← hHdr, SA.lookup_of_mem hΦc hHdt] at hrt
+        unfold AC.resolutionTime at hrt
+        rw [← hHdr, AC.lookup_of_mem hΦc hHdt] at hrt
         dsimp only at hrt
         split_ifs at hrt
         · exact absurd hrt (not_lt.2 le_top)
         · exact (max_lt_iff.1 hrt).2.trans (WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _))
       have hpool' : e.msg ∈ st.ac.pool (G.slot + 1) := by
         rw [← hstj, ← hstp j le_rfl]
-        exact SA.pool_mono hr' hŵ hGj hnr' _ (by rw [hstp G.cut hGj]; exact hpool)
+        exact AC.pool_mono hr' hŵ hGj hnr' _ (by rw [hstp G.cut hGj]; exact hpool)
       have hfg : Hd ∈ (tr.state ŵ G.cut).fg.tree := by
         rw [hFG] at hHdt; exact hHdt.1
       refine ⟨hpool', Hd, Compose.Growing.frame_mem_of_tree_at hrun hnc ht0 hŵ hjt
@@ -327,7 +327,7 @@ theorem outage_reader_bridge_at (D : OutageLockPremises tr H proposer dg ini)
       D.facts.hP ht0 hŵ
       hjt G.view hmaj' hBtree hdeliv
     have hanchor : Compatible (Node.frame st).tree
-        (SA.getAnchor sp st.ac (Node.frame st) t) B :=
+        (AC.getAnchor sp st.ac (Node.frame st) t) B :=
       Compose.anchor_compatible_of_live_candidates hΦ fun X hX => by
         rcases hX with hX | hX
         · exact compatible_tree hΦ hU hΦU hX.1 hBtree (hlocks X hX)

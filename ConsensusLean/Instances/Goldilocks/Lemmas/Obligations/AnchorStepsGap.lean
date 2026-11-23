@@ -15,15 +15,15 @@ at gap `c` are `anchorSteps_gap_at` (`Growing/Obligations/Healthy/AnchorStepsGap
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams}
+variable {sp : ACParams}
 
 /-! ## Arithmetic of the gap -/
 
 /-- `c` slots after `s`, the slot time is `4Δ·c` later. -/
 theorem ts_add_gap (s c : Nat) : sp.ts (s + c : Nat) = sp.ts s + 4 * sp.Δ * c := by
-  simp only [SAParams.ts]; push_cast; ring
+  simp only [ACParams.ts]; push_cast; ring
 
 /-- The slot-free delivery premise gives the delivery inequality at every slot. -/
 theorem gap_delivery {ΔF : Time} {c : Nat} (h : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * c) (s : Nat) :

@@ -12,9 +12,9 @@ The historical-write comparison that the proposal walk reads, forwarded to its p
 
 namespace Consensus.Goldilocks.Healing.Growing.WalkInputs
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -23,10 +23,10 @@ theorem protected_source_compatible_high_origin_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hsource : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hsource : (∃ CV, AC.FastLockAt tr.projAC x r s B CV) ∨ AC.SlowLockAt tr.projAC x r s B)
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b)
-    {y : Fin sp.n} {q t : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} {q t : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g y q t D) (hqb : tr.time q ≤ b) :
     Compatible (tr.HonestBlocksAt H) B D := by
   exact ProposalImpl.protected_source_compatible_high_origin_at hp hx hsource hs hrb ho hqb

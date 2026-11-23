@@ -8,38 +8,38 @@ public section
 
 /-! # Goldilocks under `Sleepy`: what a voter keeps of the votes and heads served to it
 
-The voter's side of the transport to a slot-`(s+1)` vote (`SA.CarryAt`), with the deliveries as
+The voter's side of the transport to a slot-`(s+1)` vote (`AC.CarryAt`), with the deliveries as
 premises: each counted vote is served to the voter from a release time in `[t_s, t_s + 2Δ)`, and
 each head is relayed from a time before `t_s + 2Δ` or accepted before the freeze `t_s + 3Δ` by
-other means. The argument reads one honest node's run over an SA trace; the sender and the
+other means. The argument reads one honest node's run over an AC trace; the sender and the
 service that delivers are its users' (`carryAt_of_writer_heads` under `Sync[0, ∞)` or a service
 window, and the growing-fault transports). -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Vote)
+open AC (ACParams ReplayOrder Vote)
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP ro}
 
 /-- At an honest vote, the pool of a slot other than the vote's, and the stamps of its votes,
 are those of the state after the vote's call. -/
-private theorem readPoint_slot {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
-    {e : SA.Em sp FGP} (hc : SA.CastAt T y i ℓ e) {σ : Nat} (hσ : e.msg.slot ≠ σ) :
+private theorem readPoint_slot {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)}
+    {e : AC.Em sp FGP} (hc : AC.CastAt T y i ℓ e) {σ : Nat} (hσ : e.msg.slot ≠ σ) :
     (T.state y (i + 1)).pool σ = e.readPoint.pool σ ∧
       ∀ u : Vote sp.n, u.slot = σ → (T.state y (i + 1)).voteStamp u = e.readPoint.voteStamp u := by
-  rw [Trace.state_succ_of_call T hc.1, SA.post_of_castAt hr hy hc]
-  have hopt : ∀ A : SA.SAState sp.n,
-      (SA.optimisticConfirmation sp A ℓ.frame (T.time i)).pool = A.pool ∧
-        (SA.optimisticConfirmation sp A ℓ.frame (T.time i)).voteStamp = A.voteStamp := by
+  rw [Trace.state_succ_of_call T hc.1, AC.post_of_castAt hr hy hc]
+  have hopt : ∀ A : AC.ACState sp.n,
+      (AC.optimisticConfirmation sp A ℓ.frame (T.time i)).pool = A.pool ∧
+        (AC.optimisticConfirmation sp A ℓ.frame (T.time i)).voteStamp = A.voteStamp := by
     intro A
-    unfold SA.optimisticConfirmation SA.updateLatestConfirmed
+    unfold AC.optimisticConfirmation AC.updateLatestConfirmed
     split
     · exact ⟨rfl, rfl⟩
     · split_ifs <;> exact ⟨rfl, rfl⟩
   rw [(hopt _).1, (hopt _).2]
-  unfold SA.admitVote
+  unfold AC.admitVote
   split_ifs
   · exact ⟨rfl, fun _ _ => rfl⟩
   · exact ⟨rfl, fun _ _ => rfl⟩
@@ -52,37 +52,37 @@ of slot `s`, has a release time `τ ∈ [t_s, t_s + 2Δ)` at which it is served 
 deadline for `τ` is at or before the vote), and has a head that is relayed to `y` from a time
 before `t_s + 2Δ` (likewise) or that `y` accepted before the freeze `t_s + 3Δ` (genesis
 included), then `Carry_y(s, ·, ·)` holds for the counted votes. -/
-theorem carryAt_of_served {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
-    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
+theorem carryAt_of_served {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
     {y : Fin sp.n} -- supplier: `frame_anc_accepted`
-    (hframe : ∀ k (ℓ : ACLabel (SA.goldilocksSA sp FGP ro)), T.CallAt y k ℓ →
+    (hframe : ∀ k (ℓ : ACLabel (AC.goldilocksAC sp FGP ro)), T.CallAt y k ℓ →
       ∀ B ∈ ℓ.frame.tree, ∀ X, Anc U X B →
         X.root = sp.genesisRoot ∨ ∃ k' ≤ k, T.AcceptAt y k' X)
-    (hy : y ∈ H) {s i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
-    {e : SA.Em sp FGP} (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1)
+    (hy : y ∈ H) {s i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)}
+    {e : AC.Em sp FGP} (hc : AC.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1)
     {CV : Set (Vote sp.n)}
     (hW : ∀ v ∈ CV, v.slot = s ∧
       (∃ τ, sp.ts s ≤ τ ∧ τ < sp.ts s + 2 * sp.Δ ∧
-        (T.deadline y i τ ≤ T.time i → SA.MessageServedBefore T y i τ v)) ∧
-      ∃ Hv : SA.Blk sp.n FGP, Hv.root = v.head ∧
+        (T.deadline y i τ ≤ T.time i → AC.MessageServedBefore T y i τ v)) ∧
+      ∃ Hv : AC.Blk sp.n FGP, Hv.root = v.head ∧
         ((∃ τ, τ < sp.ts s + 2 * sp.Δ ∧ (T.deadline y i τ ≤ T.time i →
             ∃ k ≤ i, T.AcceptAt y k Hv ∧ T.time k < T.deadline y k τ)) ∨
-          SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ))) :
-    SA.CarryAt T U y i e s CV := by
+          AC.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ))) :
+    AC.CarryAt T U y i e s CV := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
-  obtain ⟨-, hys, hyj, -⟩ := SA.castAt_spec hr hy hc
+    simp only [ACParams.ts]; push_cast; ring
+  obtain ⟨-, hys, hyj, -⟩ := AC.castAt_spec hr hy hc
   have hsi : sp.slot (T.time i) = s + 1 := by omega
   have hti : sp.ts s + 4 * sp.Δ ≤ T.time i := by
-    have := (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) ((s + 1 : Nat) : Int)).2 (by rw [hsi])
+    have := (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) ((s + 1 : Nat) : Int)).2 (by rw [hsi])
     rwa [hts] at this
   -- the voter's restarts up to its vote are at or before `t_s`
   have hrsy : ∀ k ≤ i, T.RestartAt y k → T.time k ≤ sp.ts s := by
-    have hj' : SA.joined sp (T.post i) (T.time i) := by
-      unfold SA.joined; rw [SA.restartTime_of_castAt hr hy hc]; exact hyj
+    have hj' : AC.joined sp (T.post i) (T.time i) := by
+      unfold AC.joined; rw [AC.restartTime_of_castAt hr hy hc]; exact hyj
     intro k hk hrk
-    have := (SA.joined_awakeU sp FGP ro H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
+    have := (AC.joined_awakeU sp FGP ro H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
     rwa [hsi, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by push_cast; ring] at this
   have hdl : ∀ k ≤ i, ∀ τ, τ < sp.ts s + 2 * sp.Δ → T.deadline y k τ < sp.ts s + 3 * sp.Δ := by
     intro k hk τ hτ
@@ -93,12 +93,12 @@ theorem carryAt_of_served {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U
     linarith only [h₁, h₂]
   have hdi : ∀ τ, τ < sp.ts s + 2 * sp.Δ → T.deadline y i τ ≤ T.time i := fun τ hτ => by
     linarith only [hdl i le_rfl τ hτ, hti, hΔ]
-  obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hy i ℓ hc.1
+  obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hy i ℓ hc.1
   refine ⟨hr.awake_of_call y hy i ℓ hc.1, hyj, fun v hv => ?_, fun v hv => ?_⟩
   · -- the head: relayed to `y` before `t_s + 3Δ`, with its ancestors
     obtain ⟨-, -, Hv, hHvr, hacc⟩ := hW v hv
     -- `y` accepted the head before the freeze: relayed, or by other means
-    have hyacc : SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ) := by
+    have hyacc : AC.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ) := by
       rcases hacc with ⟨τ, hτ, hdel⟩ | hacc
       · obtain ⟨ky, hky, hacc', hkyt⟩ := hdel (hdi τ hτ)
         exact Or.inr ⟨ky, hacc', hkyt.trans (hdl ky hky _ hτ)⟩
@@ -109,21 +109,21 @@ theorem carryAt_of_served {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U
       rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hX with rfl | ⟨Q, -, hQ⟩
       · exact hGr
       · exact absurd (hQ.2.2.symm.trans hGp) (Option.some_ne_none _)
-    have hHvk : Hv ∈ ℓk.frame.tree := (SA.accept_new sp hr hy ⟨ℓk, hck, hcall⟩).1 ℓk hck
-    refine ⟨Hv, (SA.frameIn_of_callAt hr hy hck).2 hHvk, hHvr, fun X hX => ?_⟩
+    have hHvk : Hv ∈ ℓk.frame.tree := (AC.accept_new sp hr hy ⟨ℓk, hck, hcall⟩).1 ℓk hck
+    refine ⟨Hv, (AC.frameIn_of_callAt hr hy hck).2 hHvk, hHvr, fun X hX => ?_⟩
     rcases hframe ky ℓk hck Hv hHvk X hX with hg | ⟨k, hk, hkX⟩
     · exact Or.inl hg
     · exact Or.inr ⟨k, hkX, lt_of_le_of_lt (hr.time_mono hk) hkyt'⟩
   · -- the vote: served to `y` before `t_s + 3Δ` and kept
     obtain ⟨hvs, ⟨τ, hk1, hk2, hdel⟩, -⟩ := hW v hv
     have delivered := hdel (hdi τ hk2)
-    rcases (SA.messageServedBefore_iff _ _ _ _).mp delivered with delivered | retained
+    rcases (AC.messageServedBefore_iff _ _ _ _).mp delivered with delivered | retained
     swap
     · have evidence := (retained.evidence hr hy).weaken (hdl i le_rfl _ hk2).le
       have hheld (u : Vote sp.n) (hus : u.slot = s)
-          (hu : SA.HeldBefore (T.state y i) u (sp.ts s + 3 * sp.Δ)) :
-          SA.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
-        have hp := SA.heldBefore_mono hr hy (Nat.le_succ i)
+          (hu : AC.HeldBefore (T.state y i) u (sp.ts s + 3 * sp.Δ)) :
+          AC.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
+        have hp := AC.heldBefore_mono hr hy (Nat.le_succ i)
           (fun r hr₁ hr₂ hrr => by
             have heq : r = i := by omega
             subst r
@@ -132,7 +132,7 @@ theorem carryAt_of_served {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U
         obtain ⟨hpool, hstamp⟩ := readPoint_slot hr hy hc (σ := s) (by omega)
         exact ⟨by rw [hus, ← hpool]; simpa only [hus] using hp.1,
           by rw [← hstamp u hus]; exact hp.2⟩
-      rcases (SA.poolEvidenceBefore_iff _ _ _).mp evidence with hv' |
+      rcases (AC.poolEvidenceBefore_iff _ _ _).mp evidence with hv' |
         ⟨u, w, huw, huv, hwv, hus, hws, hu, hw⟩
       · exact Or.inl (hheld v hvs hv')
       · by_cases huv' : u = v
@@ -152,19 +152,19 @@ theorem carryAt_of_served {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U
       have h₂ := hrsy r (by omega) ⟨ℓr, hcr, hrr⟩
       linarith only [h₁, h₂, hu, hk1, hkk']
     have hsk' : sp.slot (T.time k') = s :=
-      SA.slot_of_mem sp s (hk1.trans hkk') (by rw [hts]; linarith only [hk'lt, hΔ])
+      AC.slot_of_mem sp s (hk1.trans hkk') (by rw [hts]; linarith only [hk'lt, hΔ])
     -- every slot-`s` vote that `y` holds after `k'` is held at the vote, received before the freeze
     have hheld : ∀ u ∈ (T.state y (k' + 1)).pool s,
-        SA.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
+        AC.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
       intro u hu
-      have hus : u.slot = s := SA.state_pool_slot sp hr hini hy (k' + 1) s u hu
+      have hus : u.slot = s := AC.state_pool_slot sp hr hini hy (k' + 1) s u hu
       obtain ⟨hpool, hstamp⟩ := readPoint_slot hr hy hc (σ := s) (by omega)
-      have hu' := SA.pool_mono hr hy (show k' + 1 ≤ i + 1 by omega) hnr s hu
+      have hu' := AC.pool_mono hr hy (show k' + 1 ≤ i + 1 by omega) hnr s hu
       refine ⟨by rw [hus, ← hpool]; exact hu', ?_⟩
       rw [← hstamp u hus]
-      rcases SA.pool_origin hr hini hy (i + 1) u (by rw [hus]; exact hu') with
+      rcases AC.pool_origin hr hini hy (i + 1) u (by rw [hus]; exact hu') with
         ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
-      · rw [hst₁, SA.etime_of_lt_of]
+      · rw [hst₁, AC.etime_of_lt_of]
         by_cases hk₁k' : k₁ ≤ k'
         · exact lt_of_le_of_lt (hr.time_mono hk₁k') hk'lt
         · obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, rfl⟩ | ⟨-, hn₁, -⟩⟩ := hsend₁
@@ -172,21 +172,21 @@ theorem carryAt_of_served {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U
             have h := (cast_head_fcRoot hr hini hy ⟨hc₁, he₁⟩).2
             rw [hus] at h
             linarith only [h, hΔ]
-          · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
+          · exact absurd (AC.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
               (fun r h₁ h₂ => hnr r h₁ (by omega)) _ (by rw [hus]; exact hu)) hn₁
-      · rw [hst₁, SA.etime_of_lt_of]
+      · rw [hst₁, AC.etime_of_lt_of]
         have := hrsy k₁ (by omega) ⟨ℓ₁, hc₁, hr₁⟩
         linarith only [this, hΔ]
     by_cases hv' : v ∈ (T.state y (k' + 1)).pool s
     · exact Or.inl (hheld v hv')
-    · rcases SA.held_of_processAt hr hy hp (by rw [hvs, hsk']; omega) (by rw [hvs, hsk']) with
+    · rcases AC.held_of_processAt hr hy hp (by rw [hvs, hsk']; omega) (by rw [hvs, hsk']) with
         h | ⟨a, ha, c, hc'', hac, hav, hcv⟩
       · rw [hvs] at h
         exact absurd h hv'
       · have ha' : a ∈ (T.state y (k' + 1)).pool s := by rw [← hvs]; exact ha
         have hc' : c ∈ (T.state y (k' + 1)).pool s := by rw [← hvs]; exact hc''
-        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv, SA.state_pool_slot sp hr hini hy _ s a ha',
-          SA.state_pool_slot sp hr hini hy _ s c hc', hheld a ha', hheld c hc'⟩
+        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv, AC.state_pool_slot sp hr hini hy _ s a ha',
+          AC.state_pool_slot sp hr hini hy _ s c hc', hheld a ha', hheld c hc'⟩
         · rintro rfl; exact hv' ha'
         · rintro rfl; exact hv' hc'
 

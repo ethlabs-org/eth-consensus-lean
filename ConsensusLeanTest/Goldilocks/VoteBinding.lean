@@ -31,7 +31,7 @@ nonempty population). -/
 theorem committeeOne_voteRole (s : Slot) : committeeOne.voteRole s = .duty s .vote := rfl
 
 /-- A poll emission of a vote is signed in the vote's committee role. -/
-theorem committeeOne_candidateRole_vote {n : Nat} (t : Nat) (v : SA.Vote n) :
+theorem committeeOne_candidateRole_vote {n : Nat} (t : Nat) (v : AC.Vote n) :
     (committeeOne.candidateRole n (.poll t) (.data (.vote (encodeVote v)))).getD .poll =
       .duty v.slot .vote :=
   committeeOne.candidateRole_poll_vote t v
@@ -52,17 +52,17 @@ theorem committeeOne_init_mayVote (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) 
 any call, frame and time. -/
 theorem committeeOne_nonmember_silent (S : Setup) (pub : Public) (hn : 1 ≤ pub.n)
     (key : Fin pub.n) (p : ShapeRole VoteKind → Bool) (s : Slot)
-    (hp : p (.duty s .vote) = false) (Φ : SA.Frm pub.n (List (FG.Att pub.n))) (t : Time)
-    (c : (SA.goldilocksSA (({ S with vote := committeeOne } : Setup).params pub hn)
+    (hp : p (.duty s .vote) = false) (Φ : AC.Frm pub.n (List (FG.Att pub.n))) (t : Time)
+    (c : (AC.goldilocksAC (({ S with vote := committeeOne } : Setup).params pub hn)
       (List (FG.Att pub.n))
       (S.ro pub.n)).Call) :
-    ∀ e ∈ ((SA.goldilocksSA (({ S with vote := committeeOne } : Setup).params pub hn)
+    ∀ e ∈ ((AC.goldilocksAC (({ S with vote := committeeOne } : Setup).params pub hn)
       (List (FG.Att pub.n))
       (S.ro pub.n)).step key
         (((goldilocks { S with vote := committeeOne } pub).init key p hn).node.ac) Φ t c).2,
       e.msg.slot ≠ s := by
   intro e he hs
-  have h := SA.emits_mayVote (S.ro pub.n) key _ Φ t c e he
+  have h := AC.emits_mayVote (S.ro pub.n) key _ Φ t c e he
   rw [hs, committeeOne_init_mayVote S pub hn key p s, hp] at h
   exact Bool.false_ne_true h
 
@@ -73,16 +73,16 @@ theorem committeeOne_nonmember_silent_at {V : Type} [Fintype V] [DecidableEq V] 
     (S : Setup) (rho : Model.Run (compiled (goldilocks { S with vote := committeeOne })) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (v : V) (i : Nat) (s : Slot)
     (hs : rho.ownKey v ∉ rho.sel (.duty s .vote))
-    (key : Fin (Fintype.card V)) (Φ : SA.Frm (Fintype.card V) (List (FG.Att (Fintype.card V))))
+    (key : Fin (Fintype.card V)) (Φ : AC.Frm (Fintype.card V) (List (FG.Att (Fintype.card V))))
     (t : Time)
-    (c : (SA.goldilocksSA (Setup.params { S with vote := committeeOne } (Model.pubOf E) hn)
+    (c : (AC.goldilocksAC (Setup.params { S with vote := committeeOne } (Model.pubOf E) hn)
       (List (FG.Att (Fintype.card V))) (S.ro _)).Call) :
-    ∀ e ∈ ((SA.goldilocksSA (Setup.params { S with vote := committeeOne } (Model.pubOf E) hn)
+    ∀ e ∈ ((AC.goldilocksAC (Setup.params { S with vote := committeeOne } (Model.pubOf E) hn)
       (List (FG.Att (Fintype.card V))) (S.ro _)).step key
         (Simulation.stateAt { S with vote := committeeOne } rho hn v i).node.ac Φ t c).2,
       e.msg.slot ≠ s := by
   intro e he hes
-  have h := SA.emits_mayVote (S.ro _) key _ Φ t c e he
+  have h := AC.emits_mayVote (S.ro _) key _ Φ t c e he
   rw [hes, Simulation.stateAt_mayVote { S with vote := committeeOne } rho hn hv v i] at h
   exact hs (of_decide_eq_true h)
 
@@ -113,7 +113,7 @@ theorem committeeOne_member_releases_vote {V : Type} [Fintype V] [DecidableEq V]
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks { S with vote := committeeOne })) E))
     (t : Nat)
-    (m : SA.Vote (Fintype.card V))
+    (m : AC.Vote (Fintype.card V))
     (hb : (Simulation.pollPre
       (Simulation.shapeOf { S with vote := committeeOne } hn nd)).outbox.head? =
       some (.vote (encodeVote m)))

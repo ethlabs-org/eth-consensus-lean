@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Model
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Premises
 
 @[expose] public section
 
@@ -27,9 +27,9 @@ the run; some restate it (`HSShared.genesisRoot`). -/
 
 namespace Consensus.Goldilocks
 
-open SA (SAParams ReplayOrder goldilocksSA Vote Payload)
+open AC (ACParams ReplayOrder goldilocksAC Vote Payload)
 
-variable (sp : SAParams)
+variable (sp : ACParams)
 
 /-- A run trace of the Goldilocks protocol. -/
 abbrev GoldilocksTrace (ro : ReplayOrder sp (List (FG.Att sp.n))) :=
@@ -37,7 +37,7 @@ abbrev GoldilocksTrace (ro : ReplayOrder sp (List (FG.Att sp.n))) :=
 
 variable {sp} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-/-- **A run of the Goldilocks protocol** (claims §"Runs"): a run of the node with the SA, the
+/-- **A run of the Goldilocks protocol** (claims §"Runs"): a run of the node with the AC, the
 vote's validator as the signer of a message, and the genesis block's root the digest of its
 content. -/
 structure GoldilocksRun (proposer : Nat → Fin sp.n)
@@ -50,7 +50,7 @@ structure GoldilocksRun (proposer : Nat → Fin sp.n)
   C0.3 take over any AC (the Lean genesis root is a parameter). -/
   genesis_root_ok : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg
   /-- The AC starts are starts up to the vote permission. -/
-  vstart : ∀ y, SA.VoteStart sp.genesisRoot (ini y)
+  vstart : ∀ y, AC.VoteStart sp.genesisRoot (ini y)
 
 end Consensus.Goldilocks
 

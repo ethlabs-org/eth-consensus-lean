@@ -26,7 +26,7 @@ theorem emit_released_of (hv : rho.ExecutionValid)
     (htick : ∀ {i v t}, rho.events[i]? = some (.tick v t) →
       (S.params (pubOf E) hn).toParams.IsPublic t → ∀ r ∈ eventCuts S rho hn i,
       ∀ ℓ, r.label = .ac ℓ → ∀ m ∈ ℓ.emits, voteObj m.msg ∈ rho.releasesAt i)
-    {y : Fin (Fintype.card V)} {k : Nat} {m : SA.Vote (Fintype.card V)}
+    {y : Fin (Fintype.card V)} {k : Nat} {m : AC.Vote (Fintype.card V)}
     (hc : (simTrace S rho hn).EmitAt y k m) :
     ReleasedFrom S rho (rho.key y) (voteObj m) ((simTrace S rho hn).time k) := by
   obtain ⟨ℓ, ⟨hnode, hlab⟩, em, hem, rfl⟩ := hc

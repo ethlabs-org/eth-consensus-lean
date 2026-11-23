@@ -35,9 +35,9 @@ while honest.
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 
@@ -45,15 +45,15 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 node from `i` to `j` is a guarded write in the old frame with candidates compatible with `O`
 followed by a compatible floor, or a replacement effective record extending `O`. -/
 structure EffectiveRecordIntervalAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-    (y : Fin sp.n) (i j : Nat) (O : SA.Blk sp.n (List (FG.Att sp.n))) : Prop where
+    (y : Fin sp.n) (i j : Nat) (O : AC.Blk sp.n (List (FG.Att sp.n))) : Prop where
   step : ∀ q, i ≤ q → q < j →
-    (∃ New : SA.Blk sp.n (List (FG.Att sp.n)) → Prop,
+    (∃ New : AC.Blk sp.n (List (FG.Att sp.n)) → Prop,
       Compose.Writes (Node.frame (tr.state y q)) New
         (tr.state y q).ac.latestConfirmed (tr.state y (q + 1)).ac.latestConfirmed ∧
       (∀ D, New D → Compatible (tr.HonestBlocksAt H) O D) ∧
       Compatible (tr.HonestBlocksAt H) (tr.state y (q + 1)).fg.F O) ∨
     Anc (tr.HonestBlocksAt H) O
-      ((SA.lookup (Node.frame (tr.state y (q + 1)))
+      ((AC.lookup (Node.frame (tr.state y (q + 1)))
         (tr.state y (q + 1)).ac.latestConfirmed).getD (tr.state y (q + 1)).fg.F)
 
 /-- **A fixed record survives the node's floor change**, for a node honest at `t`, every cut
@@ -64,12 +64,12 @@ theorem effective_record_frame_of_run_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i j r : Nat} {t : Time} (ht0 : 0 ≤ t)
     (hjt : ∀ k < j, tr.time k ≤ t) (hy : y ∈ H t) (hij : i ≤ j)
-    {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (hFO : Compatible (tr.HonestBlocksAt H) (tr.state y j).fg.F O)
     (hO : Anc (tr.HonestBlocksAt H) O
-      ((SA.lookup (Node.frame (tr.state y i)) r).getD (tr.state y i).fg.F)) :
+      ((AC.lookup (Node.frame (tr.state y i)) r).getD (tr.state y i).fg.F)) :
     Anc (tr.HonestBlocksAt H) O
-      ((SA.lookup (Node.frame (tr.state y j)) r).getD (tr.state y j).fg.F) := by
+      ((AC.lookup (Node.frame (tr.state y j)) r).getD (tr.state y j).fg.F) := by
   have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
   have hit : ∀ k < i, tr.time k ≤ t := fun k hk => hjt k (by omega)
   have hreach := Healing.Growing.fg_reachable_at hrun ht0 hjt hy
@@ -85,11 +85,11 @@ theorem effective_record_frame_of_run_at
     exact h hC.1
   obtain ⟨hfin, htc, hgm, hgen⟩ := Store.accepted_tree _ _ _ _ hreach
   have hfull : FrameOK (⟨(tr.state y j).fg.tree, _, _, ∅⟩ :
-      Frame sp.n (List (FG.Att sp.n)) (SA.Payload sp.n)) :=
+      Frame sp.n (List (FG.Att sp.n)) (AC.Payload sp.n)) :=
     { finite := hfin, coherent := htc, rooted := ⟨hgm, hgen⟩, fcRoot_mem := hgm
       F_anc_fcRoot := .refl, viableHeads_subset := Set.empty_subset _
       fcRoot_anc_viableHeads := fun _ h => h.elim }
-  exact ⟨hCj, SA.anc_tree_of_anc_U hU hfull
+  exact ⟨hCj, AC.anc_tree_of_anc_U hU hfull
     (fun X hX => Compose.Growing.tree_subset_at ht0 hjt hy hX) hΨ.rooted.1.1 hFC hCj⟩
 
 /-- **The node's own candidates supply the interval**, for a node honest at `t`, every cut
@@ -100,9 +100,9 @@ theorem effectiveRecordInterval_of_candidates_before_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i j : Nat} {t : Time} (ht0 : 0 ≤ t)
-    (hjt : ∀ k < j, tr.time k ≤ t) (hy : y ∈ H t) {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hjt : ∀ k < j, tr.time k ≤ t) (hy : y ∈ H t) {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (hcandidates : ∀ q, i ≤ q → q < j → ∀ D s CV,
-      SA.ResultAt tr.projAC y q s D CV ∨ SA.OptimisticLockAt tr.projAC y q s D CV →
+      AC.ResultAt tr.projAC y q s D CV ∨ AC.OptimisticLockAt tr.projAC y q s D CV →
       Compatible (tr.HonestBlocksAt H) O D)
     (hframes : ∀ q, i ≤ q → q < j →
       Compatible (tr.HonestBlocksAt H) (tr.state y (q + 1)).fg.F O) :
@@ -114,12 +114,12 @@ theorem effectiveRecordInterval_of_candidates_before_at
   refine ⟨fun q hiq hqj => Or.inl ?_⟩
   have hq0 : ∀ k < q, tr.time k ≤ t := fun k hk => hjt k (by omega)
   have hq1 : ∀ k < q + 1, tr.time k ≤ t := fun k hk => hjt k (by omega)
-  refine ⟨(fun D => ∃ s CV, SA.ResultAt tr.projAC y q s D CV ∨
-    SA.OptimisticLockAt tr.projAC y q s D CV), ?_,
+  refine ⟨(fun D => ∃ s CV, AC.ResultAt tr.projAC y q s D CV ∨
+    AC.OptimisticLockAt tr.projAC y q s D CV), ?_,
     fun D ⟨s, CV, hD⟩ => hcandidates q hiq hqj D s CV hD, hframes q hiq hqj⟩
   have hw : Compose.Writes (Node.frame ((tr.upTo t).state y q))
-      (fun D => ∃ s CV, SA.ResultAt (tr.upTo t).projAC y q s D CV ∨
-        SA.OptimisticLockAt (tr.upTo t).projAC y q s D CV)
+      (fun D => ∃ s CV, AC.ResultAt (tr.upTo t).projAC y q s D CV ∨
+        AC.OptimisticLockAt (tr.upTo t).projAC y q s D CV)
       ((tr.upTo t).state y q).ac.latestConfirmed
       ((tr.upTo t).state y (q + 1)).ac.latestConfirmed := by
     by_cases hcall : ∃ ell, (tr.upTo t).projAC.CallAt y q ell
@@ -137,9 +137,9 @@ theorem effectiveRecordInterval_of_candidates_before_at
   refine hw.mono ?_
   rintro D ⟨s, CV, h | h⟩
   · rw [RunTrace.upTo_projAC] at h
-    exact ⟨s, CV, Or.inl ((Compose.Growing.sa_resultAt_upTo hrun.time_mono).mp h).2⟩
+    exact ⟨s, CV, Or.inl ((Compose.Growing.ac_resultAt_upTo hrun.time_mono).mp h).2⟩
   · rw [RunTrace.upTo_projAC] at h
-    exact ⟨s, CV, Or.inr ((Compose.Growing.sa_optimisticLockAt_upTo hrun.time_mono).mp h).2⟩
+    exact ⟨s, CV, Or.inr ((Compose.Growing.ac_optimisticLockAt_upTo hrun.time_mono).mp h).2⟩
 
 /-- **The interval preserves the effective record**, for a node honest at `t`, every cut before
 `j` at a time `≤ t`. -/
@@ -148,16 +148,16 @@ theorem effective_record_of_interval_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i j : Nat} {t : Time} (ht0 : 0 ≤ t)
     (hjt : ∀ k < j, tr.time k ≤ t) (hy : y ∈ H t) (hij : i ≤ j)
-    {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (hint : EffectiveRecordIntervalAt tr H y i j O)
-    (hO : Anc (tr.HonestBlocksAt H) O ((SA.lookup (Node.frame (tr.state y i))
+    (hO : Anc (tr.HonestBlocksAt H) O ((AC.lookup (Node.frame (tr.state y i))
       (tr.state y i).ac.latestConfirmed).getD (tr.state y i).fg.F)) :
-    Anc (tr.HonestBlocksAt H) O ((SA.lookup (Node.frame (tr.state y j))
+    Anc (tr.HonestBlocksAt H) O ((AC.lookup (Node.frame (tr.state y j))
       (tr.state y j).ac.latestConfirmed).getD (tr.state y j).fg.F) := by
   have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
   have hr := hrun.upTo ht0
   have step : ∀ q, i ≤ q → q ≤ j → Anc (tr.HonestBlocksAt H) O
-      ((SA.lookup (Node.frame (tr.state y q)) (tr.state y q).ac.latestConfirmed).getD
+      ((AC.lookup (Node.frame (tr.state y q)) (tr.state y q).ac.latestConfirmed).getD
         (tr.state y q).fg.F) := by
     intro q hiq
     induction q, hiq using Nat.le_induction with
@@ -182,11 +182,11 @@ theorem effective_record_after_ac_call_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
-    (hc : tr.projAC.CallAt y j ell) {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hc : tr.projAC.CallAt y j ell) {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : Anc (tr.HonestBlocksAt H) P
-      ((SA.lookup ell.frame (tr.projAC.post j).latestConfirmed).getD ell.frame.F)) :
+      ((AC.lookup ell.frame (tr.projAC.post j).latestConfirmed).getD ell.frame.F)) :
     Anc (tr.HonestBlocksAt H) P
-      ((SA.lookup (Node.frame (tr.state y (j + 1)))
+      ((AC.lookup (Node.frame (tr.state y (j + 1)))
         (tr.state y (j + 1)).ac.latestConfirmed).getD (tr.state y (j + 1)).fg.F) := by
   have hd := hrun.time_nonneg j
   have hle : ∀ k < j + 1, tr.time k ≤ tr.time j := fun k hk => hrun.time_mono (by omega)
@@ -201,7 +201,7 @@ theorem effective_record_after_ac_call_at
       tr.projAC.state_succ_of_call hc] at h
     exact h
   change Anc (tr.HonestBlocksAt H) P
-    ((SA.lookup (Node.frame (tr.state y (j + 1)))
+    ((AC.lookup (Node.frame (tr.state y (j + 1)))
       (tr.state y (j + 1)).ac.latestConfirmed).getD (Node.frame (tr.state y (j + 1))).F)
   rw [hframe, ← hstate]
   exact hP

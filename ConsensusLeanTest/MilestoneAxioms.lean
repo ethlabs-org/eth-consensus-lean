@@ -32,8 +32,8 @@ theorem Consensus.Goldilocks.FG.fGSafety : Consensus.Goldilocks.FG.FGSafety :=
   Consensus.Goldilocks.FG.fg_safety
 
 /-- Goldilocks ACSteps, the AC step lemmas. -/
-theorem Consensus.Goldilocks.SA.aCSteps : Consensus.Goldilocks.SA.ACSteps :=
-  Consensus.Goldilocks.SA.acSteps
+theorem Consensus.Goldilocks.AC.aCSteps : Consensus.Goldilocks.AC.ACSteps :=
+  Consensus.Goldilocks.AC.acSteps
 
 /-- Goldilocks FGStore, part 1: one FG store. -/
 theorem Consensus.Goldilocks.Store.fGStoreLocal : Consensus.Goldilocks.Store.FGStoreLocal :=
@@ -43,9 +43,9 @@ theorem Consensus.Goldilocks.Store.fGStoreLocal : Consensus.Goldilocks.Store.FGS
 theorem Consensus.Goldilocks.Store.fGStoreTrace : Consensus.Goldilocks.Store.FGStoreTrace :=
   Consensus.Goldilocks.Store.fg_store_trace
 
-/-- Goldilocks ACBase, the AC interface and the SA's foundations. -/
-theorem Consensus.Goldilocks.SA.aCBase : Consensus.Goldilocks.SA.ACBase :=
-  Consensus.Goldilocks.SA.acBase
+/-- Goldilocks ACBase, the AC interface and the AC's foundations. -/
+theorem Consensus.Goldilocks.AC.aCBase : Consensus.Goldilocks.AC.ACBase :=
+  Consensus.Goldilocks.AC.acBase
 
 /-- Goldilocks ACBase: the AC trace contract gives reachable states. -/
 theorem Consensus.Goldilocks.localRunReachable : Consensus.Goldilocks.LocalRunReachable :=
@@ -172,8 +172,8 @@ theorem Consensus.Goldilocks.Healing.finalizingCoverage :
 /-- info: 'Consensus.Goldilocks.FG.fGSafety' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.FG.fGSafety
 
-/-- info: 'Consensus.Goldilocks.SA.aCSteps' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCSteps
+/-- info: 'Consensus.Goldilocks.AC.aCSteps' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.AC.aCSteps
 
 /-- info: 'Consensus.Goldilocks.Store.fGStoreLocal' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Store.fGStoreLocal
@@ -181,8 +181,8 @@ theorem Consensus.Goldilocks.Healing.finalizingCoverage :
 /-- info: 'Consensus.Goldilocks.Store.fGStoreTrace' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Store.fGStoreTrace
 
-/-- info: 'Consensus.Goldilocks.SA.aCBase' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.SA.aCBase
+/-- info: 'Consensus.Goldilocks.AC.aCBase' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms Consensus.Goldilocks.AC.aCBase
 
 /-- info: 'Consensus.Goldilocks.localRunReachable' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.localRunReachable

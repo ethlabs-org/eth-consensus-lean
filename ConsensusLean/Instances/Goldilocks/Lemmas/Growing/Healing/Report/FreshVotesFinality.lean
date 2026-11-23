@@ -11,9 +11,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -21,7 +21,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- A separately honest finalized observation lies below the cast head when it lies above
 the cast anchor. The quorum bound is at the later of the two observations. -/
 theorem FrameWindow.finalized_anc_head_at_cast_at {lo hi : Time} {floor : Nat}
-    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H lo hi floor kindJ J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
@@ -30,22 +30,22 @@ theorem FrameWindow.finalized_anc_head_at_cast_at {lo hi : Time} {floor : Nat}
     (hf : (H (max (tr.time c) (tr.time i)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hclo : lo ≤ tr.time c) (hchi : tr.time c ≤ hi)
     (hilo : lo ≤ tr.time i) (hihi : tr.time i ≤ hi)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ell e)
-    {Y : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hY : Y ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y i ell e)
+    {Y : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hY : Y ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
     (hvY : Y ∈ ell.frame.viableHeads)
-    (haF : Anc (tr.HonestBlocksAt H) (SA.getAnchor sp e.readPoint ell.frame (tr.time i))
+    (haF : Anc (tr.HonestBlocksAt H) (AC.getAnchor sp e.readPoint ell.frame (tr.time i))
       (tr.state z c).fg.F) :
     Anc (tr.HonestBlocksAt H) (tr.state z c).fg.F
-      (SA.getHead sp e.readPoint ell.frame (tr.time i)
-        (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
-        (SA.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1)) := by
+      (AC.getHead sp e.readPoint ell.frame (tr.time i)
+        (ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
+        (AC.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1)) := by
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
   have hri := (hac.upTo (hrun.time_nonneg i)).localRun
-  have hPhi := SA.frameIn_of_callAt hri hy hci
+  have hPhi := AC.frameIn_of_callAt hri hy hci
   have hfr := (hrun.cutLaw y i _ (Compose.projAC_callAt.mp hc.1) hy).1
   have hfloor : ∀ Q ∈ ell.frame.viableHeads,
       ell.frame.Anc (tr.state z c).fg.F Q := by
@@ -63,27 +63,27 @@ theorem FrameWindow.finalized_anc_head_at_cast_at {lo hi : Time} {floor : Nat}
         exact hanc.mono (fun B hB =>
           ⟨y, i, tr.time i, hrun.time_nonneg i, (fun q hq => hrun.time_mono hq.le), hy, hB⟩))
       hV.1 .refl
-    have hFt := SA.frame_mem_of_between sp hac.localRun.coherent hPhi.1 hPhi.2
+    have hFt := AC.frame_mem_of_between sp hac.localRun.coherent hPhi.1 hPhi.2
       (hPhi.1.viableHeads_subset hQ) hFQ
       (Anc.mono hPhi.2 (hPhi.1.F_anc_fcRoot.trans
-        (SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i))) |>.trans haF)
-    exact SA.anc_tree_of_anc_U hac.localRun.coherent hPhi.1 hPhi.2 hFt hFQ
+        (AC.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i))) |>.trans haF)
+    exact AC.anc_tree_of_anc_U hac.localRun.coherent hPhi.1 hPhi.2 hFt hFQ
       (hPhi.1.viableHeads_subset hQ)
-  have hFt := SA.mem_of_anc (hfloor Y hvY) (hPhi.1.viableHeads_subset hvY)
-  have hat : SA.getAnchor sp e.readPoint ell.frame (tr.time i) ∈ ell.frame.tree := by
-    by_cases he : ell.frame.fcRoot = SA.getAnchor sp e.readPoint ell.frame (tr.time i)
+  have hFt := AC.mem_of_anc (hfloor Y hvY) (hPhi.1.viableHeads_subset hvY)
+  have hat : AC.getAnchor sp e.readPoint ell.frame (tr.time i) ∈ ell.frame.tree := by
+    by_cases he : ell.frame.fcRoot = AC.getAnchor sp e.readPoint ell.frame (tr.time i)
     · exact he ▸ hPhi.1.fcRoot_mem
-    · exact (Anc.mem (SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i)) he).2
-  have hcast : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ell e := ⟨hci, hc.2⟩
-  exact Anc.mono hPhi.2 (SA.finalized_floor_anc_getHead hPhi.1 (fun _ h => h.1)
-    (SA.voterBlockTree_anc hri hrun.vstart hy hcast) hfloor hY hvY (hfloor Y hvY)
-    e.readPoint (tr.time i) _ _ (SA.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i))
-    (SA.anc_tree_of_anc_U hac.localRun.coherent hPhi.1 hPhi.2 hat haF hFt))
+    · exact (Anc.mem (AC.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i)) he).2
+  have hcast : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ell e := ⟨hci, hc.2⟩
+  exact Anc.mono hPhi.2 (AC.finalized_floor_anc_getHead hPhi.1 (fun _ h => h.1)
+    (AC.voterBlockTree_anc hri hrun.vstart hy hcast) hfloor hY hvY (hfloor Y hvY)
+    e.readPoint (tr.time i) _ _ (AC.fcRoot_anc_getAnchor hPhi.1 e.readPoint (tr.time i))
+    (AC.anc_tree_of_anc_U hac.localRun.coherent hPhi.1 hPhi.2 hat haF hFt))
 
 /-- A cast reaches another honest frame's root: common J roots agree, and an F root
 uses the separately observed finalized prefix. -/
 theorem FrameWindow.fcRoot_anc_head_at_cast_at {lo hi : Time} {floor : Nat}
-    {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H lo hi floor kindJ J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
@@ -93,20 +93,20 @@ theorem FrameWindow.fcRoot_anc_head_at_cast_at {lo hi : Time} {floor : Nat}
     (hclo : lo ≤ tr.time c) (hchi : tr.time c ≤ hi)
     (hilo : lo ≤ tr.time i) (hihi : tr.time i ≤ hi)
     {ellz ell : ACLabel (goldilocksNode sp ro)} (hcz : tr.projAC.CallAt z c ellz)
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ell e)
-    {Y : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hY : Y ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
+    {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ell e)
+    {Y : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hY : Y ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
     (hvY : Y ∈ ell.frame.viableHeads)
-    (haF : Anc (tr.HonestBlocksAt H) (SA.getAnchor sp e.readPoint ell.frame (tr.time i))
+    (haF : Anc (tr.HonestBlocksAt H) (AC.getAnchor sp e.readPoint ell.frame (tr.time i))
       ellz.frame.fcRoot) :
     Anc (tr.HonestBlocksAt H) ellz.frame.fcRoot
-      (SA.getHead sp e.readPoint ell.frame (tr.time i)
-        (ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
-        (SA.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1)) := by
+      (AC.getHead sp e.readPoint ell.frame (tr.time i)
+        (ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
+        (AC.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1)) := by
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
-  have hPhi := SA.frameIn_of_callAt (hac.upTo (hrun.time_nonneg i)).localRun hy hci
+  have hPhi := AC.frameIn_of_callAt (hac.upTo (hrun.time_nonneg i)).localRun hy hci
   have hfr := (hrun.cutLaw y i _ (Compose.projAC_callAt.mp hc.1) hy).1
   have hfrz := (hrun.cutLaw z c _ (Compose.projAC_callAt.mp hcz) hz).1
   by_cases hk : kindJ
@@ -119,8 +119,8 @@ theorem FrameWindow.fcRoot_anc_head_at_cast_at {lo hi : Time} {floor : Nat}
         ite_eq_left ((hframe.kind_iff y i hy hilo hihi).mpr hk),
         hframe.root_eq z c hz hclo hchi hk, hframe.root_eq y i hy hilo hihi hk]
     rw [hroots]
-    exact Anc.mono hPhi.2 (SA.anc_getHead_of_compat hPhi.1 (Or.inr rfl)
-      (fun L hL => (SA.liveLockBlock_candidate hPhi.1 hL).elim
+    exact Anc.mono hPhi.2 (AC.anc_getHead_of_compat hPhi.1 (Or.inr rfl)
+      (fun L hL => (AC.liveLockBlock_candidate hPhi.1 hL).elim
         (fun h => Or.inr h.2.1) Or.inl) (fun _ h => h.1.1)
       _ _ (.refl : ell.frame.Anc ell.frame.fcRoot ell.frame.fcRoot))
   · have hroot : ellz.frame.fcRoot = (tr.state z c).fg.F := by

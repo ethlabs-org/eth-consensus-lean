@@ -27,7 +27,7 @@ of the validator at every time `t ≥ 0`, the initial node state throughout):
   `Spec/Run/Premises` is satisfiable by a `Node.LocalRun` (it forces an infinite run; see the
   module docstring there; `Sleepy` is met on the one-validator tick run,
   `Goldilocks/Persist/Premises`' `tickRun_sleepy`). The witness is over an AC that never proposes,
-  not over `GoldilocksRun`: a `Sleepy` or `Healthy` run of the SA itself would carry its
+  not over `GoldilocksRun`: a `Sleepy` or `Healthy` run of the AC itself would carry its
   proposals and votes, a larger witness left to the Healing/Regimes milestone. -/
 
 namespace Consensus.Goldilocks.Compose.Test

@@ -17,7 +17,7 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape
 
 open Blocks Shape
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
 variable {binding : VoteBinding}
 
@@ -103,7 +103,7 @@ theorem parentRoot_parentRef (g : Nat) (r : Nat) :
   · subst h; simp [parentRef_eq, parentRoot_eq]
   · simp [parentRef_eq, parentRoot_eq, h, taggedRoot_rawRoot g r h]
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-! ## Decoding the canonical objects -/
 
@@ -113,7 +113,7 @@ to the block. -/
 theorem decodeBlock_blockObj (hs : List (Header Info × Nat)) (B : Blk sp)
     (hpar : B.parent ≠ none) (hne : B.root ≠ sp.genesisRoot)
     (hroot : rootOf hs (headerOf sp B) = some (rawRoot sp.genesisRoot B.root))
-    (hwf : ∀ a ∈ B.fgPayload, a.WellFormed) (hval : SA.validPayload B) :
+    (hwf : ∀ a ∈ B.fgPayload, a.WellFormed) (hval : AC.validPayload B) :
     decodeBlock sp (binding := binding) hs (blockObj sp (binding := binding) B) = some B := by
   obtain ⟨r, hr⟩ := Option.ne_none_iff_exists'.1 hpar
   have hB : blockOf sp (rawRoot sp.genesisRoot B.root) (headerOf sp B)
@@ -488,7 +488,7 @@ theorem decodeForward_time_nonneg {hs : List (Header Info × Nat)} {o : Wire sp.
 
 /-- A successful decode of a constructed wrapper preserves its explicit stamp and parent
 when the canonical child has already been decoded in that table. -/
-theorem decoded_forward_fields {sp : SA.SAParams} (hs : List (Header Info × Nat))
+theorem decoded_forward_fields {sp : AC.ACParams} (hs : List (Header Info × Nat))
     (x : Fin sp.n) (t : Time) (p : Option (Wire sp.n binding)) (B : Blk sp)
     (hb : decodeBlock sp (binding := binding) hs (blockObj sp (binding := binding) B) = some B)
     {u : Time} {q : Option (Wire sp.n binding)} {C : Blk sp}
@@ -515,7 +515,7 @@ theorem decoded_forward_fields {sp : SA.SAParams} (hs : List (Header Info × Nat
 
 /-! ## Shape-level preservation -/
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- `apply` keeps the key. -/
 theorem apply_self (st : State sp ro binding) r : (apply st r).self = st.self := rfl

@@ -44,8 +44,8 @@ abbrev P6 : Params where
   genesisRoot := 0
   δt := 2
 
-/-- The SA parameters: `P6` with `k = c = 2`. -/
-abbrev sp6 : SA.SAParams where
+/-- The AC parameters: `P6` with `k = c = 2`. -/
+abbrev sp6 : AC.ACParams where
   toParams := P6
   slotTime_eq := fun s => by change 8 * (s : Int) = 4 * 2 * s; ring
   k := 2
@@ -54,13 +54,13 @@ abbrev sp6 : SA.SAParams where
   two_le_c := le_rfl
 
 /-- A replay order for restarts. -/
-noncomputable abbrev ro6 : SA.ReplayOrder sp6 (List (Att sp6.n)) := SA.ReplayOrder.choice sp6
+noncomputable abbrev ro6 : AC.ReplayOrder sp6 (List (Att sp6.n)) := AC.ReplayOrder.choice sp6
 
 /-- The node's AC. -/
 noncomputable abbrev Nd : NodeAC P6 := goldilocksNode sp6 ro6
 
 /-- The blocks of the node. -/
-abbrev Blk : Type := NodeBlock P6 (SA.Payload 6)
+abbrev Blk : Type := NodeBlock P6 (AC.Payload 6)
 
 /-- The proposer of every slot, faulty validator `0`. -/
 abbrev v0 : Fin 6 := 0
@@ -103,16 +103,16 @@ theorem chainOf_inp (c : Bool) : chainOf (inp c) = c := by cases c <;> rfl
 
 open Classical in
 /-- The digest: each block content of the two chains to its root, everything else to `0`. -/
-noncomputable def dg6 : Digest (List (Att 6)) (SA.Payload 6) := fun pr s x a p =>
+noncomputable def dg6 : Digest (List (Att 6)) (AC.Payload 6) := fun pr s x a p =>
   if s ∈ [1, 2, 3] ∧ (pr, s, x, a, p) =
-      (some (par (chainOf x) s), s, inp (chainOf x), atts (chainOf x) s, (([], []) : SA.Payload 6))
+      (some (par (chainOf x) s), s, inp (chainOf x), atts (chainOf x) s, (([], []) : AC.Payload 6))
   then rt (chainOf x) s else 0
 
 theorem dg6_blk (c : Bool) {i : Nat} (hi : i ∈ [1, 2, 3]) :
     dg6 (some (par c i)) i (inp c) (atts c i) ([], []) = rt c i := by
   simp only [dg6, chainOf_inp, and_true, hi, ↓reduceIte]
 
-theorem dg6_none (s x : Nat) (a : List (Att 6)) (p : SA.Payload 6) : dg6 none s x a p = 0 := by
+theorem dg6_none (s x : Nat) (a : List (Att 6)) (p : AC.Payload 6) : dg6 none s x a p = 0 := by
   simp [dg6]
 
 theorem blk_rootOk (c : Bool) {i : Nat} (hi : i ∈ [1, 2, 3]) : (blk c i).RootOk dg6 :=
@@ -213,37 +213,37 @@ def σ₂ (c : Bool) : ChainState 6 := (P6.fg.stateTransition (σ₁ c) (blk c 2
 def σ₃ (c : Bool) : ChainState 6 := (P6.fg.stateTransition (σ₂ c) (blk c 3).fgView).getD (σ₂ c)
 
 /-- The initial FG store. -/
-abbrev s₀ : Store P6 (SA.Payload 6) := Store.init ([], [])
+abbrev s₀ : Store P6 (AC.Payload 6) := Store.init ([], [])
 
 /-- `s₀` with block `1` and its chain state, before `update_finality`. -/
-def u₁ (c : Bool) : Store P6 (SA.Payload 6) :=
+def u₁ (c : Bool) : Store P6 (AC.Payload 6) :=
   { s₀ with blocks := Function.update s₀.blocks (blk c 1).root (some (blk c 1))
             σ := Function.update s₀.σ (blk c 1).root (σ₁ c) }
 
 /-- The store after block `1`: `J = genesis` at `h_j = 1`. -/
-def s₁ (c : Bool) : Store P6 (SA.Payload 6) :=
+def s₁ (c : Bool) : Store P6 (AC.Payload 6) :=
   ({ u₁ c with hmax := max (u₁ c).hmax (σ₁ c).h, J := G, hj := (σ₁ c).hj } :
-    Store P6 (SA.Payload 6)).addAtts (blk c 1).fgPayload
+    Store P6 (AC.Payload 6)).addAtts (blk c 1).fgPayload
 
 /-- `s₁` with block `2`, before `update_finality`. -/
-def u₂ (c : Bool) : Store P6 (SA.Payload 6) :=
+def u₂ (c : Bool) : Store P6 (AC.Payload 6) :=
   { s₁ c with blocks := Function.update (s₁ c).blocks (blk c 2).root (some (blk c 2))
               σ := Function.update (s₁ c).σ (blk c 2).root (σ₂ c) }
 
 /-- The store after block `2`: `J` = block `1` at `h_j = 2`. -/
-def s₂ (c : Bool) : Store P6 (SA.Payload 6) :=
+def s₂ (c : Bool) : Store P6 (AC.Payload 6) :=
   ({ u₂ c with hmax := max (u₂ c).hmax (σ₂ c).h, J := blk c 1, hj := (σ₂ c).hj } :
-    Store P6 (SA.Payload 6)).addAtts (blk c 2).fgPayload
+    Store P6 (AC.Payload 6)).addAtts (blk c 2).fgPayload
 
 /-- `s₂` with block `3`, before `update_finality`. -/
-def u₃ (c : Bool) : Store P6 (SA.Payload 6) :=
+def u₃ (c : Bool) : Store P6 (AC.Payload 6) :=
   { s₂ c with blocks := Function.update (s₂ c).blocks (blk c 3).root (some (blk c 3))
               σ := Function.update (s₂ c).σ (blk c 3).root (σ₃ c) }
 
 /-- The store after block `3`: `J` = block `2` at `h_j = 3`, and `F` = block `1`. -/
-def s₃ (c : Bool) : Store P6 (SA.Payload 6) :=
+def s₃ (c : Bool) : Store P6 (AC.Payload 6) :=
   ({ u₃ c with hmax := max (u₃ c).hmax (σ₃ c).h, J := blk c 2, hj := (σ₃ c).hj, F := blk c 1 } :
-    Store P6 (SA.Payload 6)).addAtts (blk c 3).fgPayload
+    Store P6 (AC.Payload 6)).addAtts (blk c 3).fgPayload
 
 attribute [irreducible] s₁ s₂ s₃
 
@@ -390,7 +390,7 @@ theorem onBlock₃ (c : Bool) : (s₂ c).onBlock (blk c 3) = some (s₃ c) := by
   have hB₁B₂ : (u₃ c).Anc (blk c 1) (blk c 2) := .single ⟨h₁, h₂, by simp [blk, par]⟩
   have hσ₃ : (u₃ c).σ (blk c 3).root = σ₃ c := Function.update_self _ _ _
   have hv : ({ u₃ c with hmax := max (u₃ c).hmax (σ₃ c).h, J := blk c 2, hj := (σ₃ c).hj } :
-      Store P6 (SA.Payload 6)).HasViableDescendant (blk c 1) := by
+      Store P6 (AC.Payload 6)).HasViableDescendant (blk c 1) := by
     have hanc : (u₃ c).Anc (blk c 1) (blk c 3) := anc_tail hB₁B₂ h₂ h₃ (by simp [blk, par])
     have hle : max (u₃ c).hmax (σ₃ c).h ≤ ((u₃ c).σ (blk c 3).root).h := by
       have hhm : (u₃ c).hmax = (s₂ c).hmax := by unfold u₃; rfl

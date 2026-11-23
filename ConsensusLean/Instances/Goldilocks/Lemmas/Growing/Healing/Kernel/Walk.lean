@@ -18,9 +18,9 @@ and origin writes.
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -32,18 +32,18 @@ theorem proposal_stored_locks_compatible_old_at
     (hR : drainTime sp a ≤ sp.ts u) {ell : ACLabel (goldilocksNode sp ro)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
-    {x : Fin sp.n} {q j : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {q j : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x q j O) (hqb : tr.time q ≤ b) :
-    SA.HighLocksCompatible (tr.HonestBlocksAt H) (tr.projAC.state p i)
+    AC.HighLocksCompatible (tr.HonestBlocksAt H) (tr.projAC.state p i)
       (tr.time i) (u - 1) O := by
   have hU := (Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl).localRun.coherent
-  rw [SA.highLocksCompatible_iff]
+  rw [AC.highLocksCompatible_iff]
   intro l hl _ hlabel L hL hLr
   -- the proposal is after the drain time, so after the reset and `ḡ`
-  have hgu : SA.gbar g ≤ sp.ts u := hp.gbar_le_ts_of_clean_at (by
+  have hgu : AC.gbar g ≤ sp.ts u := hp.gbar_le_ts_of_clean_at (by
     have hsu := hR
     rw [Healing.drainTime_eq] at hsu
-    have hsu' := (SA.ts_le_iff sp).mp hsu
+    have hsu' := (AC.ts_le_iff sp).mp hsu
     rw [Healing.cleanLabel_eq]
     push_cast at hsu'
     omega)
@@ -52,7 +52,7 @@ theorem proposal_stored_locks_compatible_old_at
   obtain rfl : L' = L := hU.1 hL' hL (hL'r.trans hLr.symm)
   have hclean : cleanLabel sp a + sp.k + 2 ≤ l.slot := by
     rw [Healing.drainTime_eq] at hR
-    have := (SA.ts_le_iff sp).mp hR
+    have := (AC.ts_le_iff sp).mp hR
     have := sp.two_le_k
     rw [Healing.cleanLabel_eq]
     omega

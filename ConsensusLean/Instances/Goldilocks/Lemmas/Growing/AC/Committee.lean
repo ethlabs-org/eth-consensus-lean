@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeRun
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.CommitteeRun
 
 public section
 
@@ -11,9 +11,9 @@ of the run through each time `t`, with honest set `H t` (`CommitteePAt.upTo`,
 `CommitteeTAt.upTo`), and P and T at a constant honest set are their growing forms
 (`CommitteeP.at`, `CommitteeT.at`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP} {tr : SATrace sp FGP ro}
+variable {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP} {tr : GTrace sp FGP ro}
   {K : CommitteeDict sp.n}
 
 /-- P under growing faults is P on the prefix through each time `t`, with honest set `H t`, in a
@@ -34,6 +34,6 @@ theorem CommitteeTAt.upTo {H : Time → Set (Fin sp.n)} (hanti : Antitone H)
   obtain ⟨hi, hc'⟩ := upTo_castAt.mp hc
   exact hT y i ℓ e (hanti hi hy) hc'
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

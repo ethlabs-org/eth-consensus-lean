@@ -50,9 +50,9 @@ the later member's origin; two of one label through their underlying origins.
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
@@ -78,7 +78,7 @@ structure HandoverSeed (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)
   reset : ∃ a, Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a T cm βK ∧
     r = Healing.cleanLabel sp a + sp.k + 2
   catchRun : Healing.Growing.CatchRun tr H g (2 * sp.Δ)
-  timing : sp.ts σ + 8 * sp.Δ ≤ T ∧ r + sp.k ≤ σ + 1 ∧ SA.gbar g + 20 * sp.Δ ≤ sp.ts r
+  timing : sp.ts σ + 8 * sp.Δ ≤ T ∧ r + sp.k ≤ σ + 1 ∧ AC.gbar g + 20 * sp.Δ ≤ sp.ts r
   frontier : HealedOriginsBelow tr H g r (r + sp.k - 1) (σ + 1) T ∧
     HealedVotesBelow tr H g r (r + sp.k - 1) (σ + 1) T
   rows : ∀ y k att, y ∈ H (max (Healing.cutZ sp.toParams g) (tr.time k)) → tr.SignAt y k att →
@@ -92,7 +92,7 @@ structure HandoverSeed (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)
       Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree
   covered : ∃ t₁, t₁ ≤ T ∧ ∀ y n t, t₁ ≤ t → t ≤ T → y ∈ H t → Regimes.ReadPoint tr n t →
     HealedRecordCoverAt tr H (r + sp.k - 1) y n t
-      ((SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
+      ((AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
         (tr.state y n).fg.F)
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
@@ -101,12 +101,12 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fi
 /-! ### Family members below origins, their supporters and their later votes -/
 
 /-- The healed family unpacked into its three kinds of members. -/
-private theorem healedOrigin_cases {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+private theorem healedOrigin_cases {rL rO : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hC : HealedOrigin tr H g rL rO C s b) :
     (rO ≤ s ∧ ∃ x i CV, x ∈ H (tr.time i) ∧ tr.time i ≤ b ∧
-      (SA.ResultAt tr.projAC x i s C CV ∨ SA.OptimisticLockAt tr.projAC x i s C CV)) ∨
+      (AC.ResultAt tr.projAC x i s C CV ∨ AC.OptimisticLockAt tr.projAC x i s C CV)) ∨
     (rL ≤ s ∧ ∃ x i, x ∈ H (tr.time i) ∧ tr.time i ≤ b ∧
-      ((∃ CV, SA.FastLockAt tr.projAC x i s C CV) ∨ SA.SlowLockAt tr.projAC x i s C)) ∨
+      ((∃ CV, AC.FastLockAt tr.projAC x i s C CV) ∨ AC.SlowLockAt tr.projAC x i s C)) ∨
     ∃ x i, tr.time i ≤ b ∧ Healing.Growing.HighOrigin tr H g x i s C := by
   rwa [healedOrigin_iff, originWithin_iff, lockWithin_iff] at hC
 
@@ -114,10 +114,10 @@ private theorem healedOrigin_cases {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att 
 at its cut, at a time `≤ b` (`HealedOrigin.below_origin`). -/
 private theorem member_below_origin {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hnc : NoCollRun dg tr) {rL rO : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hC : HealedOrigin tr H g rL rO C s b) :
     ∃ x i O OV, x ∈ H (tr.time i) ∧ tr.time i ≤ b ∧
-      (SA.ResultAt tr.projAC x i s O OV ∨ SA.OptimisticLockAt tr.projAC x i s O OV) ∧
+      (AC.ResultAt tr.projAC x i s O OV ∨ AC.OptimisticLockAt tr.projAC x i s O OV) ∧
       Anc (tr.HonestBlocksAt H) C O := by
   obtain ⟨O, hO, hCO⟩ := hC.below_origin hrun hnc
   obtain ⟨x, i, OV, hx, hib, hO⟩ := originWithin_iff.1 hO
@@ -129,12 +129,12 @@ private theorem origin_supporter
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x : Fin sp.n} {i s : Nat}
-    {O C : SA.Blk sp.n (List (FG.Att sp.n))} {OV : Set (Vote sp.n)} (hx : x ∈ H (tr.time i))
+    {O C : AC.Blk sp.n (List (FG.Att sp.n))} {OV : Set (Vote sp.n)} (hx : x ∈ H (tr.time i))
     (hib : tr.time i ≤ b)
-    (hO : SA.ResultAt tr.projAC x i s O OV ∨ SA.OptimisticLockAt tr.projAC x i s O OV)
+    (hO : AC.ResultAt tr.projAC x i s O OV ∨ AC.OptimisticLockAt tr.projAC x i s O OV)
     (hCO : Anc (tr.HonestBlocksAt H) C O) (hts : Healing.cutZ sp.toParams g ≤ sp.ts s) :
-    ∃ z j e, z ∈ H (tr.time j) ∧ tr.time j ≤ b ∧ SA.VoteAt tr.projAC z j e ∧
-      e.msg.slot = s ∧ SA.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
+    ∃ z j e, z ∈ H (tr.time j) ∧ tr.time j ≤ b ∧ AC.VoteAt tr.projAC z j e ∧
+      e.msg.slot = s ∧ AC.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
   have hm := hp.run.time_mono
   rcases hO with hO | hO
   · obtain ⟨z, hz, j, hji, e, hv, -, hes, hCH⟩ :=
@@ -153,10 +153,10 @@ at every label (`high_origin_votes_before_at`). -/
 private theorem member_votes {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {r : Nat}
-    (hr : r = Healing.cleanLabel sp a + sp.k + 2) {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hr : r = Healing.cleanLabel sp a + sp.k + 2) {C : AC.Blk sp.n (List (FG.Att sp.n))}
     {s : Nat} (hC : HealedOrigin tr H g r (r + sp.k - 1) C s b) :
     ∀ y i e, HVoteAt tr H y i e → tr.time i ≤ b → s < e.msg.slot →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
   intro y i e hv hib hse
   obtain ⟨hy, ell, hcast⟩ := hVoteAt_iff.mp hv
   have hk := sp.two_le_k
@@ -180,7 +180,7 @@ private theorem member_compatible
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {r : Nat}
-    (hr : r = Healing.cleanLabel sp a + sp.k + 2) {C C' : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hr : r = Healing.cleanLabel sp a + sp.k + 2) {C C' : AC.Blk sp.n (List (FG.Att sp.n))}
     {s s' : Nat} (hC : HealedOrigin tr H g r (r + sp.k - 1) C s b)
     (hC' : HealedOrigin tr H g r (r + sp.k - 1) C' s' b) :
     Compatible (tr.HonestBlocksAt H) C C' := by
@@ -199,7 +199,7 @@ private theorem member_compatible
     obtain ⟨Hd', hHd', he', hCH'⟩ := member_votes hp hr hC z j e
       (hVoteAt_iff.mpr ⟨hz, hv⟩) hjb (by omega)
     obtain rfl : Hd' = Hd := hU.1 hHd' hHd (he'.trans he.symm)
-    exact SA.anc_total hU hCH' hCH
+    exact AC.anc_total hU hCH' hCH
   -- a member of a label at least the lock floor
   have floor : ∀ {C s}, HealedOrigin tr H g r (r + sp.k - 1) C s b →
       r ≤ s ∨ ∃ x i, tr.time i ≤ b ∧ Healing.Growing.HighOrigin tr H g x i s C := by
@@ -224,8 +224,8 @@ private theorem member_compatible
       obtain ⟨x', i', O', OV', hx', hib', hO', hCO'⟩ := member_below_origin hp.run hp.noColl hC'
       rcases hp.sources_same_label_compatible_at hx hx' hO hO' hib hib' (hts s (by omega)) with
         h | h
-      · exact SA.anc_total hU (hCO.trans h) hCO'
-      · exact SA.anc_total hU hCO (hCO'.trans h)
+      · exact AC.anc_total hU (hCO.trans h) hCO'
+      · exact AC.anc_total hU hCO (hCO'.trans h)
     · exact (ordered hC' hC hgt (by omega)).symm
 
 /-! ### The seed from bounded reset premises -/
@@ -242,20 +242,20 @@ theorem HandoverSeed.of_reset {T : Time} {r σ : Nat}
     (hσ : sp.ts σ + 8 * sp.Δ ≤ T) (hrσ : r + sp.k ≤ σ + 1)
     (hcov : ∃ t₁, t₁ ≤ T ∧ ∀ y n t, t₁ ≤ t → t ≤ T → y ∈ H t → Regimes.ReadPoint tr n t →
       HealedRecordCoverAt tr H (r + sp.k - 1) y n t
-        ((SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
+        ((AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
           (tr.state y n).fg.F)) :
     HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK) := by
   have hrun := hp.run
   have hΔ := sp.toParams.hΔ
   have hca := hp.cutZ_lt_reset_at
   have hgz := Healing.lt_cutZ sp g
-  have ha0 : 0 ≤ a := by linarith [SA.gbar_nonneg g]
+  have ha0 : 0 ≤ a := by linarith [AC.gbar_nonneg g]
   have hsa : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
-    have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+    have := (AC.ts_le_iff_le_slot sp ha0 _).1 h
     omega
   have hts (s j : Nat) : sp.ts (s + j : Nat) = sp.ts ((sp.slot a : Int) + 1) +
       4 * sp.Δ * ((s : Int) + j - (sp.slot a + 1)) := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   refine ⟨⟨a, hp, hr⟩, hp.catchUp, ⟨hσ, hrσ, ?_⟩, ⟨?_, ?_⟩, ?_, ?_, hcov⟩
   · have h := hts (sp.slot a + 1) (sp.k + 4)
     rw [show sp.slot a + 1 + (sp.k + 4) = r by rw [hr, Healing.cleanLabel_eq]; omega] at h
@@ -294,9 +294,9 @@ theorem handover_live_lock_label_at {T : Time} {r σ : Nat}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK))
     {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))}
-    (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : σ < e.msg.slot) :
-    ∀ l ∈ SA.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), r ≤ l.slot := by
+    {e : AC.Em sp (List (FG.Att sp.n))}
+    (hy : y ∈ H (tr.time i)) (hc : AC.CastAt tr.projAC y i ℓ e) (hs : σ < e.msg.slot) :
+    ∀ l ∈ AC.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), r ≤ l.slot := by
   obtain ⟨a, hp, hr⟩ := hseed.reset
   have hrσ := hseed.timing.2.1
   have hrun := hp.run
@@ -305,12 +305,12 @@ theorem handover_live_lock_label_at {T : Time} {r σ : Nat}
   have hsl : e.msg.slot = sp.slot (tr.time i) := (castAt_spec_at hrun hnc hy hc).2.1
   have hdrain : Healing.drainTime sp a ≤ tr.time i := by
     rw [Healing.drainTime_eq]
-    refine (SA.ts_le_iff_le_slot sp hd _).mpr ?_
+    refine (AC.ts_le_iff_le_slot sp hd _).mpr ?_
     rw [hr, Healing.cleanLabel_eq] at hrσ
     push_cast
     omega
-  have hwf := SA.castAt_readPoint_locksWFU (hr := (acRun_upTo hrun hnc hd).localRun.toU)
-    hrun.vstart hy (sa_castAt_upTo.mpr ⟨le_rfl, hc⟩)
+  have hwf := AC.castAt_readPoint_locksWFU (hr := (acRun_upTo hrun hnc hd).localRun.toU)
+    hrun.vstart hy (ac_castAt_upTo.mpr ⟨le_rfl, hc⟩)
   intro l hl
   rw [hr]
   exact Healing.drain_live_locks (a := a) hwf hdrain l hl
@@ -349,7 +349,7 @@ theorem handover_seed_cover_at
         t₀ + 8 * Q.params.Δ + 1 ≤ Q.heal ∧
         ∀ y n t, t₀ ≤ t → t ≤ Q.bound → y ∈ Q.keys t → Regimes.ReadPoint Q.trace n t →
           Compose.Growing.HealedRecordCoverAt Q.trace Q.keys (r + Q.params.k - 1) y n t
-            ((SA.lookup (Node.frame (Q.trace.state y n))
+            ((AC.lookup (Node.frame (Q.trace.state y n))
               (Q.trace.state y n).ac.latestConfirmed).getD (Q.trace.state y n).fg.F) := by
   obtain ⟨W, Dprep, hlate⟩ := healthy_preparation_initialize_late_at
     S A V Q h0 hb hp
@@ -382,13 +382,13 @@ theorem handover_seed_cover_at
   -- the drain slot `r + k` ends two slots before the slot of `T`
   have hslot : Healing.cleanLabel Q.params D.resetTime + 2 * Q.params.k + 4 ≤
       Q.params.slot Q.bound := by
-    have h := (SA.ts_le_iff_le_slot Q.params hT0
+    have h := (AC.ts_le_iff_le_slot Q.params hT0
       ((Q.params.slot D.resetTime + 2 * Q.params.k + 7 : Nat) : Int)).mp (by
         rw [Healing.drainTime_eq] at hdrain
         have h : Q.params.ts (Q.params.slot D.resetTime + 2 * Q.params.k + 7 : Nat) =
             Q.params.ts (Q.params.slot D.resetTime + 2 * Q.params.k + 5 : Nat) +
               8 * Q.params.Δ := by
-          simp only [SA.SAParams.ts]; push_cast; ring
+          simp only [AC.ACParams.ts]; push_cast; ring
         linarith [mul_le_mul_of_nonneg_right hX hΔ.le])
     rw [Healing.cleanLabel_eq]
     omega
@@ -396,7 +396,7 @@ theorem handover_seed_cover_at
       t ≤ Q.bound → y ∈ Q.keys t → Regimes.ReadPoint Q.trace n t →
       Compose.Growing.HealedRecordCoverAt Q.trace Q.keys
         (Healing.cleanLabel Q.params D.resetTime + Q.params.k + 2 + Q.params.k - 1) y n t
-        ((SA.lookup (Node.frame (Q.trace.state y n)) (Q.trace.state y n).ac.latestConfirmed).getD
+        ((AC.lookup (Node.frame (Q.trace.state y n)) (Q.trace.state y n).ac.latestConfirmed).getD
           (Q.trace.state y n).fg.F) := by
     intro y n t ht htb hy hrp
     have hT : Q.params.ts O.slot + 6 * Q.params.Δ < t := by linarith [O.bounded]
@@ -421,9 +421,9 @@ theorem handover_seed_cover_at
     by rw [hDq]; linarith, hcov⟩
   have h : Q.params.ts ((Q.params.slot Q.bound - 2 : Nat) : Int) + 8 * Q.params.Δ =
       Q.params.ts (Q.params.slot Q.bound : Int) := by
-    simp only [SA.SAParams.ts]; push_cast [show 2 ≤ Q.params.slot Q.bound by omega]; ring
+    simp only [AC.ACParams.ts]; push_cast [show 2 ≤ Q.params.slot Q.bound by omega]; ring
   rw [h]
-  exact (SA.ts_le_iff_le_slot Q.params hT0 _).mpr le_rfl
+  exact (AC.ts_le_iff_le_slot Q.params hT0 _).mpr le_rfl
 
 end Consensus.Goldilocks.Obligations.Growing
 

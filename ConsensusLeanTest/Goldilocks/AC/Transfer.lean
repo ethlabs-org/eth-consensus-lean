@@ -20,7 +20,7 @@ lock of A1.2 has the optimistic origin (`v0`'s optimistic confirmation of slot `
 `t_1 + 6Δ = 10`, which is not a cut of `trW`; its only update (slot `2`, cut 3) could serve
 `s = 2` only, whose A1.2 needs a slot-`3` vote, and `trW` has none. Both would need a new run. -/
 
-namespace Consensus.Goldilocks.SA.Test
+namespace Consensus.Goldilocks.AC.Test
 
 /-! ## The premises -/
 
@@ -86,15 +86,15 @@ theorem carryHonest_W : CarryAt trW U₁ v0 1 e1 1
 statement holds of the run at `s = 1`, with the full committee: `v0`'s fast lock of slot `1` on
 `B1` at cut 0 (optimistic origin) and its slot-`2` vote at cut 1, time `9`. -/
 theorem firstTransfer_premises_satisfiable :
-    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : SATrace sp1 Unit ro1)
+    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : GTrace sp1 Unit ro1)
       (proposer : Nat → Fin sp1.n) (K : CommitteeDict sp1.n) (s : Nat) (x y : Fin sp1.n)
       (i₀ i : Nat) (B : Blk sp1.n Unit) (CV : Set (Vote sp1.n))
-      (ℓ : ACLabel (goldilocksSA sp1 Unit ro1)) (e : Em sp1 Unit),
+      (ℓ : ACLabel (goldilocksAC sp1 Unit ro1)) (e : Em sp1 Unit),
     ACRun proposer tr H U ∧
     CommitteeP K tr H ∧ CommitteeT K tr H ∧ (∀ σ, (K.committee σ).ncard = sp1.committeeSize) ∧
     x ∈ H ∧ FastLockAt tr x i₀ s B CV ∧
     y ∈ H ∧ CastAt tr y i ℓ e ∧ e.msg.slot = s + 1 ∧
-    SyncAC (goldilocksSA sp1 Unit ro1) H U (sp1.ts s) (tr.time i) tr ∧
+    SyncAC (goldilocksAC sp1 Unit ro1) H U (sp1.ts s) (tr.time i) tr ∧
     CarryAt tr U y i e s CV ∧ FaultBoundK K s tr H (tr.time i) ∧
     2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp1.committeeSize ∧
     ViableAtVote ℓ e (s + 1) B ∧ EarlierVotesExtend tr H U i (s + 1) B :=
@@ -107,9 +107,9 @@ theorem firstTransfer_premises_satisfiable :
 holds of the run at `m = 1`, with the full committee: the honest slot-`1` votes (`{vote1}`, on
 `B1`, the whole committee) and `v0`'s slot-`2` vote at cut 1, time `9`. -/
 theorem nextTransfer_premises_satisfiable :
-    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : SATrace sp1 Unit ro1)
+    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : GTrace sp1 Unit ro1)
       (proposer : Nat → Fin sp1.n) (K : CommitteeDict sp1.n) (m : Nat) (y : Fin sp1.n) (i : Nat)
-      (B : Blk sp1.n Unit) (ℓ : ACLabel (goldilocksSA sp1 Unit ro1)) (e : Em sp1 Unit),
+      (B : Blk sp1.n Unit) (ℓ : ACLabel (goldilocksAC sp1 Unit ro1)) (e : Em sp1 Unit),
     ACRun proposer tr H U ∧
     CommitteeP K tr H ∧ CommitteeT K tr H ∧ (∀ σ, (K.committee σ).ncard = sp1.committeeSize) ∧
     y ∈ H ∧ CastAt tr y i ℓ e ∧ e.msg.slot = m + 1 ∧
@@ -140,6 +140,6 @@ theorem nextTransfer_on_witness : VoteExtends U₁ e1.msg B1 :=
     ℓ1 e1 trivial castAt_W rfl slot1_extend_W participation1_W carryHonest_W (faultBoundK_W _ _)
     faultsK_W viable_W earlier_W
 
-end Consensus.Goldilocks.SA.Test
+end Consensus.Goldilocks.AC.Test
 
 end

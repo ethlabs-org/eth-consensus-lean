@@ -137,7 +137,7 @@ theorem engine_outputValid_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   | finalized => exact hvalid _ (Store.cache_invariants _ _ _ _ hr).1
   | confirmed =>
     have hΦ := (Store.frame_realization _ _ _ _ hr).1
-    exact hvalid _ (Regimes.sa_tips hΦ (stateAt S rho hn v i).now).1.1
+    exact hvalid _ (Regimes.ac_tips hΦ (stateAt S rho hn v i).now).1.1
 
 /-- **R.8 nesting under growing faults.** At every engine cut of a node honest there, its
 finalized read is a prefix of its confirmed read. -/
@@ -153,7 +153,7 @@ theorem engine_nested_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S :
   obtain ⟨hrun, hy, hs⟩ := prefix_reader_at S rho hn hv hi hh
   have hr := Compose.fg_reachable hrun.toLocalRun hy (cutMap S rho hn i)
   have hΦ := (Store.frame_realization _ _ _ _ hr).1
-  have hC := (Regimes.sa_tips
+  have hC := (Regimes.ac_tips
     (A := (((simTraceAt S rho hn).upTo (rho.cutTime i)).state
       (rho.ownKey v) (cutMap S rho hn i)).ac)
     hΦ (stateAt S rho hn v i).now).1

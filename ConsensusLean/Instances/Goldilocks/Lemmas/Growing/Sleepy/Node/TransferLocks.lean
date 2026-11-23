@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.LiftFrame
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.GrowingPremises
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
@@ -26,26 +26,26 @@ committeeSize` at the vote's cut (`hBK.twoK`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
 /-- **The live locks at a slot-`(s+1)` vote are compatible with `B`** under growing faults. -/
 theorem vote_locks_compatible_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {b : Time} {σ₀ : Nat} (hBK : CommitteeBoundsFrom tr H K σ₀ b)
     {g : Time} {rL rO s : Nat} {y : Fin sp.n}
-    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
+    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hy : y ∈ H (tr.time i)) (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) (hs₀ : σ₀ ≤ s)
-    (hlive : ∀ l ∈ SA.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), l.slot ≤ s →
+    (hlive : ∀ l ∈ AC.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), l.slot ≤ s →
       rL ≤ l.slot)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBc : ∀ C j, HealedOrigin tr H g rL rO C j b → j ≤ s → Compatible (tr.HonestBlocksAt H) B C)
-    (hE : SA.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B) :
-    ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
+    (hE : AC.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B) :
+    ∀ L ∈ AC.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
       Compatible (tr.HonestBlocksAt H) L B := by
   have hd := hrun.time_nonneg i
   have hm := hrun.time_mono
@@ -53,7 +53,7 @@ theorem vote_locks_compatible_at {ini} (hrun : Growing.GoldilocksRun proposer dg
   have hU := honestBlocksAt_coherent hrun hnc
   have hrun' := acRun_upTo hrun hnc hd
   have hr := hrun'.localRun
-  have hcT : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hcT : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
   have hΔ := sp.toParams.hΔ
   obtain ⟨hti0, hti1⟩ := cast_time_at hrun hnc hy hc
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hy hc.1
@@ -63,19 +63,19 @@ theorem vote_locks_compatible_at {ini} (hrun : Growing.GoldilocksRun proposer dg
       Compatible (tr.HonestBlocksAt H) X B := by
     rintro X Y hXY (h | h)
     · exact Or.inl (hXY.trans h)
-    · exact SA.anc_total hU hXY h
+    · exact AC.anc_total hU hXY h
   rintro L ⟨hL, l, hlm, hlL⟩
   have hlab := hlive l hlm
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, hlive, rfl⟩ := hlm
   have hLe : L = ℓ.frame.viableAncestor B₀ :=
-    hU.1 (hΦU hL) (hΦU (SA.viableAncestor_anc hΦ hB₀).1) hlL.symm
+    hU.1 (hΦU hL) (hΦU (AC.viableAncestor_anc hΦ hB₀).1) hlL.symm
   subst hLe
-  refine down (Anc.mono hΦU (SA.anc_viableAncestor _ B₀)) ?_
+  refine down (Anc.mono hΦU (AC.anc_viableAncestor _ B₀)) ?_
   rcases le_or_gt l₀.slot s with hle | hlt
   · -- a lock of slot at most `s` sits below a stored lock, below the holder's own lock write of
     -- its slot, a family member
     obtain ⟨l₁, hl₁, hsl₁, B₁, hB₁, hB₁r, B₀', hB₀', hB₀'r, hA⟩ :=
-      SA.readPoint_locks_below_stored hr hy hcT
+      AC.readPoint_locks_below_stored hr hy hcT
         (show 0 < sp.slot (tr.time i) by omega) l₀ hl₀
         (show l₀.slot ≠ sp.slot (tr.time i) by omega)
     obtain rfl : B₀' = B₀ := hΦ.coherent.1 hB₀' hB₀ (hB₀'r.trans hB₀r.symm)
@@ -90,27 +90,27 @@ theorem vote_locks_compatible_at {ini} (hrun : Growing.GoldilocksRun proposer dg
   · -- a lock of slot `s + 1` or later is optimistic, counted at the vote's cut, over earlier
     -- slot-`(s+1)` votes of nodes honest at them
     obtain ⟨Φ', A, D, -, hΦ'U, -, h34, hpool, ⟨k₀, -, hk₀⟩, L₀, hL₀, hL₀r, hL₀D⟩ :=
-      SA.lock_origin_readPoint hrun' hy hcT l₀ hl₀ (by rw [hs]; push_cast; omega)
+      AC.lock_origin_readPoint hrun' hy hcT l₀ hl₀ (by rw [hs]; push_cast; omega)
     obtain rfl : L₀ = B₀ := hU.1 (hsub hL₀) (hΦU hB₀) (hL₀r.trans hB₀r.symm)
     have hl₀s : l₀.slot = s + 1 := by
-      have h := SA.readPoint_lock_slot_leU hr.toU hrun'.vstart hy hcT l₀ hl₀
+      have h := AC.readPoint_lock_slot_leU hr.toU hrun'.vstart hy hcT l₀ hl₀
       change l₀.slot ≤ sp.slot (tr.time i) at h
       omega
-    have hPi := SA.CommitteePAt.upTo hm hrun.antitone hKB.hP (tr.time i)
+    have hPi := AC.CommitteePAt.upTo hm hrun.antitone hKB.hP (tr.time i)
     have hfK := hBK.twoK l₀.slot (tr.time i) (by omega) (by rw [hl₀s, ← hs]; exact hti0) hib
       (by rw [hl₀s, ← hs]; linarith)
     rw [hKB.hsize] at hfK
     refine down (Anc.mono hsub hL₀D)
-      (SA.origin_compatible hU (hΦ'U.trans hsub) K h34
+      (AC.origin_compatible hU (hΦ'U.trans hsub) K h34
         (fun _ ⟨v, hv, hvx, _⟩ => hvx ▸ hPi.1 y hy (k₀ + 1) _ v (hk₀ hv)) hfK
         fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
-    obtain ⟨hjd, hvote⟩ := sa_voteAt_upTo.mp hvote
+    obtain ⟨hjd, hvote⟩ := ac_voteAt_upTo.mp hvote
     have hvj : e'.msg.val ∈ H (tr.time j) := hrun.antitone hjd hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
     have hsj : e'.msg.slot = sp.slot (tr.time j) := (castAt_spec_at hrun hnc hvj hcj).2.1
     have : sp.slot (tr.time j) ≤ sp.slot (tr.time i) :=
-      SA.slot_mono sp (hrun.time_nonneg j) (hm hj.le)
+      AC.slot_mono sp (hrun.time_nonneg j) (hm hj.le)
     exact hE _ j hj hvj e' hvote (by omega)
 
 end Consensus.Goldilocks.Compose.Growing

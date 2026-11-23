@@ -21,13 +21,13 @@ so conjunct 5 fails (`19 > 18`), and the first restored label is `3 = j₀ + k +
 `(j₀, j₀ + k]`. With `4k − 5` the same start allows at most `b₁ = 17 ≤ 18`, and in general every
 start and every outage within that budget satisfies the bound (`budget_four_k_minus_five_bound`).
 
-The arithmetic is stated directly on `SAParams` and `Compose.coverLabel`, independently of the
+The arithmetic is stated directly on `ACParams` and `Compose.coverLabel`, independently of the
 outage query. Labelled by kind (CONTRIBUTING "Statements"): (r) `budget_four_k_minus_four_breaks`,
 (control) `budget_four_k_minus_five_bound`. -/
 
 namespace Consensus.Goldilocks.BudgetTightness
 
-open SA (SAParams)
+open AC (ACParams)
 
 /-- One validator, `Δ = 2`, slot `s` starts at `8s = 4Δs`, genesis root `0`. -/
 abbrev P₂ : Params where
@@ -42,8 +42,8 @@ abbrev P₂ : Params where
   genesisRoot := 0
   δt := 0
 
-/-- The SA parameters `P₂` with the slow window `k = 2`. -/
-abbrev sp₂ : SAParams where
+/-- The AC parameters `P₂` with the slow window `k = 2`. -/
+abbrev sp₂ : ACParams where
   toParams := P₂
   slotTime_eq := fun s => by change 8 * (s : Int) = 4 * 2 * s; ring
   k := 2
@@ -53,7 +53,7 @@ abbrev sp₂ : SAParams where
 
 /-- `t_s = 8s` at `sp₂`. -/
 theorem ts_eq (s : Int) : sp₂.ts s = 8 * s := by
-  simp only [SAParams.ts]; ring
+  simp only [ACParams.ts]; ring
 
 /-- The latest outage start of cover label `0`: `coverLabel 11 = 0`, with its gates
 `t₀ + 2Δ ≤ 11 < t₀ + 6Δ` (the next integer start `12` has cover label `1`). -/
@@ -62,10 +62,10 @@ theorem cover_eleven :
       (11 : Time) < sp₂.ts (0 : Nat) + 6 * sp₂.Δ ∧ Compose.coverLabel sp₂ 12 = 1 := by
   have h11 : Compose.coverLabel sp₂ 11 = 0 := by
     rw [Compose.coverLabel_eq]
-    exact SA.slot_of_mem sp₂ 0 (by rw [ts_eq]; norm_num) (by rw [ts_eq]; norm_num)
+    exact AC.slot_of_mem sp₂ 0 (by rw [ts_eq]; norm_num) (by rw [ts_eq]; norm_num)
   have h12 : Compose.coverLabel sp₂ 12 = 1 := by
     rw [Compose.coverLabel_eq]
-    exact SA.slot_of_mem sp₂ 1 (by rw [ts_eq]; norm_num) (by rw [ts_eq]; norm_num)
+    exact AC.slot_of_mem sp₂ 1 (by rw [ts_eq]; norm_num) (by rw [ts_eq]; norm_num)
   refine ⟨h11, ?_, ?_, h12⟩ <;> rw [ts_eq] <;> norm_num
 
 /-- (r) **Budget `4k − 4` breaks the restored-label bound** at `k = 2`, `Δ = 2`: the outage

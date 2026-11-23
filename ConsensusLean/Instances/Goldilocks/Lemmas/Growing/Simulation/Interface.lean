@@ -16,7 +16,7 @@ namespace Consensus.Goldilocks.Simulation
 
 open AsChainShape Blocks Shape
 open Consensus.Model (pubOf)
-open SA (Vote)
+open AC (Vote)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)

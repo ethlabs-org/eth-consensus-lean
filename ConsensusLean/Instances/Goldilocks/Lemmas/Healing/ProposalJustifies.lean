@@ -21,7 +21,7 @@ The chain step `FGParams.justify_of_target_chain` (`FGChain/Live`) at trace leve
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 section Chain
 
@@ -145,7 +145,7 @@ end AnyAC
 
 section Run
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -154,7 +154,7 @@ requirements from the run's starts). -/
 theorem proposal_rows_placed {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} (hp : p ∈ H) {kX : Nat}
-    {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
+    {X Pr : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
     (hPr : Pr ∈ (tr.state p kX).fg.tree) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧

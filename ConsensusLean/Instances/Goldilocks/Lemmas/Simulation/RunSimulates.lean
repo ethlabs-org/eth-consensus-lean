@@ -18,7 +18,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote Payload blockVotes)
+open AC (ACParams ReplayOrder Vote Payload declaredHeadVotes)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)

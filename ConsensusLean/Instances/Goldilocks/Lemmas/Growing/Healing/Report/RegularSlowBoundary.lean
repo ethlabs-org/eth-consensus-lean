@@ -9,19 +9,19 @@ Forwarded to its proof, `KernelProof.regular_slow_next_votes_at` in `Report/Regu
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- The regular slow selection constrains next-slot votes at independently honest cuts. -/
 theorem FrameWindow.regular_slow_next_votes_at {s₀ s floor : Nat}
-    {kindJ : Prop} {J D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
-    {K : SA.CommitteeDict sp.n}
+    {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K))
+      (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -30,9 +30,9 @@ theorem FrameWindow.regular_slow_next_votes_at {s₀ s floor : Nat}
     (hwarm : s₀ + sp.k ≤ s) (hpos : 0 < s) (hs₀ : s₀ ≤ s - 1)
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hmb : sp.ts s + 6 * sp.Δ ≤ b)
     {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c))
-    (hsl : SA.SlowLockAt tr.projAC x c s D) (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
+    (hsl : AC.SlowLockAt tr.projAC x c s D) (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
   exact KernelProof.regular_slow_next_votes_at hframe hrun hnc hsvc hawake hf hcatch hnr
     hwarm hpos hs₀ hm hmb hx hsl hK
 

@@ -11,7 +11,7 @@ The fields are obligations, not supplied evidence. No amended field has an inher
 
 namespace Consensus.Goldilocks.Generic
 
-open SA (gbar)
+open AC (gbar)
 open Healing (FirstCutAfter cutZ)
 open Healing.Growing (HZ IsReset CatchRun NoRestartAfter)
 

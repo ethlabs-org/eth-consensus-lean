@@ -1,43 +1,43 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Locks
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Events
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WriteMode
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.RelTrace
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.RelTrace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 
 public section
 
-/-! # SA traces with the unlock given per call: the laws
+/-! # AC traces with the unlock given per call: the laws
 
 The vocabulary (the handlers with the locks after the unlock given and at a write mode, the unlock
 input of a call, the unlock relation `UnlockRel`, the parent's oracle and the trace law
-`ACLocalRunU m u`) is in `Milestones/Spec/SA/RelTrace`. This module proves its laws: the parent's
+`ACLocalRunU m u`) is in `Milestones/Spec/AC/RelTrace`. This module proves its laws: the parent's
 calls are `stepWith` of their own unlock (`step_eq_stepWith`), the handlers at the parent's mode
 are the parent's (`stepWithM_parent` and the others, by `rfl`), the parent's `unlock` satisfies
 the relation (`unlockRel_unlock`) and related locks only move back (`UnlockRel.movesBack`), and
 the parent's runs and reachable states are such runs at the parent's mode and unlock
 (`ACLocalRun.toU`, `ACInterface.ReachableAtFrom.toU`, `ACRun.toU`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {sp : SAParams} {FGP : Type}
-  {ini : Fin sp.n → SAState sp.n}
+variable {sp : ACParams} {FGP : Type}
+  {ini : Fin sp.n → ACState sp.n}
 
 /-- `optimistic_confirmation` at any write mode keeps the permission `mayVote`. -/
-theorem optimisticM_mayVote (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+theorem optimisticM_mayVote (m : WriteMode) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmationM sp m A Φ t).mayVote = A.mayVote :=
   optimisticConfirmationM_keep _ optimisticConfirmation_mayVote m A Φ t
 
 /-- `update_confirmation` at any write mode keeps the permission `mayVote`. -/
-private theorem updateM_mayVote (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+private theorem updateM_mayVote (m : WriteMode) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) (s : Nat) : (updateConfirmationM sp m A Φ t s).mayVote = A.mayVote := by
-  rw [updateConfirmationM_field SAState.mayVote (fun _ _ => rfl)]
+  rw [updateConfirmationM_field ACState.mayVote (fun _ _ => rfl)]
   exact updateConfirmation_mayVote A Φ t s
 
 /-- `try_vote` with the locks after a given unlock, at any write mode, keeps the permission
 `mayVote`. -/
 private theorem tryVoteWithM_mayVote (m : WriteMode) (self : Fin sp.n) (L : Set Lock)
-    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (tryVoteWithM sp m self L A Φ t).1.mayVote = A.mayVote := by
   unfold tryVoteWithM
   dsimp only
@@ -46,8 +46,8 @@ private theorem tryVoteWithM_mayVote (m : WriteMode) (self : Fin sp.n) (L : Set 
 /-- Every call with the locks after a given unlock, at any write mode, keeps the permission
 `mayVote`. -/
 theorem stepWithM_mayVote (ro : ReplayOrder sp FGP) (m : WriteMode) (self : Fin sp.n)
-    (L : Set Lock) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (c : (goldilocksSA sp FGP ro).Call) :
+    (L : Set Lock) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    (c : (goldilocksAC sp FGP ro).Call) :
     (stepWithM sp ro m self L A Φ t c).1.mayVote = A.mayVote := by
   cases c with
   | tick =>
@@ -71,7 +71,7 @@ theorem stepWithM_mayVote (ro : ReplayOrder sp FGP) (m : WriteMode) (self : Fin 
 /-- On a trace with the unlock given per call, which starts every honest node at the initial
 state, every honest node may vote in every slot at every cut. -/
 theorem traceWithM_mayVote {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat → Set Lock}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     (hr : ACLocalRunU m u H U tr) {y : Fin sp.n} (hy : y ∈ H) (i s : Nat) :
     (tr.state y i).mayVote s = true := by
   induction i with
@@ -99,7 +99,7 @@ theorem traceWithM_mayVote {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat �
 
 /-- `ac_proposal` with the locks after the unlock given keeps `voted_slot` and
 `restart_time`. -/
-theorem acProposalWith_keeps (L : Set Lock) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+theorem acProposalWith_keeps (L : Set Lock) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (acProposalWith sp L A Φ t).1.votedSlot = A.votedSlot ∧
       (acProposalWith sp L A Φ t).1.restartTime = A.restartTime := by
   unfold acProposalWith
@@ -108,20 +108,20 @@ theorem acProposalWith_keeps (L : Set Lock) (A : SAState sp.n) (Φ : Frm sp.n FG
 /-! ### The unlock input of a call -/
 
 /-- **The parent's call is `stepWith` of its own unlock.** -/
-theorem step_eq_stepWith (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : SAState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call) :
-    (goldilocksSA sp FGP ro).step self A Φ t c =
+theorem step_eq_stepWith (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP ro).Call) :
+    (goldilocksAC sp FGP ro).step self A Φ t c =
       stepWith sp ro self (parentUnlock sp A Φ t c) A Φ t c := by
   cases c <;> rfl
 
-theorem tryVote_eq_tryVoteWith (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+theorem tryVote_eq_tryVoteWith (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) :
     tryVote sp self A Φ t = tryVoteWith sp self
       (unlock sp A.locks Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp A Φ (sp.slot t)))
       A Φ t := by
   rfl
 
-theorem acProposal_eq_acProposalWith (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+theorem acProposal_eq_acProposalWith (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     acProposal sp A Φ t = acProposalWith sp
       (unlock sp A.locks Φ t ((sp.slot t : Int) - 1)
         (View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤))) A Φ t := by
@@ -174,9 +174,9 @@ theorem UnlockRel.movesBack {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {L L' : Set L
 
 /-- The unlock relation at an honest call with a well-formed frame. -/
 theorem ACLocalRunU.lawfulAt {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat → Set Lock}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     (h : ACLocalRunU m u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ)
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ)
     (hΦ : FrameOK ℓ.frame) :
     UnlockRel sp (callInputM sp m (tr.state y i) ℓ.frame (tr.time i) ℓ.call).locks ℓ.frame
       (tr.time i) ((sp.slot (tr.time i) : Int) - 1)
@@ -186,8 +186,8 @@ theorem ACLocalRunU.lawfulAt {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat 
 
 /-- **The parent's runs are runs with the unlock given**, at the parent's own unlock. -/
 theorem _root_.Consensus.Goldilocks.ACLocalRun.toU {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {ini : Fin sp.n → SAState sp.n}
-    {tr : SATrace sp FGP ro} (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) :
+    {U : Set (Blk sp.n FGP)} {ini : Fin sp.n → ACState sp.n}
+    {tr : GTrace sp FGP ro} (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) :
     ACLocalRunU (WriteMode.parent sp) (parentOracle sp tr) H U tr ini where
   coherent := h.coherent
   init := h.init
@@ -212,9 +212,9 @@ theorem _root_.Consensus.Goldilocks.ACLocalRun.toU {ro : ReplayOrder sp FGP} {H 
 
 /-- **The parent's reachable states are reachable with the unlock given**, from the same start. -/
 theorem _root_.Consensus.Goldilocks.ACInterface.ReachableAtFrom.toU {ro : ReplayOrder sp FGP}
-    {self : Fin sp.n} {U : Set (Blk sp.n FGP)} {s₀ : SAState sp.n}
-    {A : (goldilocksSA sp FGP ro).State} {Φ : (goldilocksSA sp FGP ro).Frm} {t : Time}
-    (h : (goldilocksSA sp FGP ro).ReachableAtFrom s₀ self U A Φ t) :
+    {self : Fin sp.n} {U : Set (Blk sp.n FGP)} {s₀ : ACState sp.n}
+    {A : (goldilocksAC sp FGP ro).State} {Φ : (goldilocksAC sp FGP ro).Frm} {t : Time}
+    (h : (goldilocksAC sp FGP ro).ReachableAtFrom s₀ self U A Φ t) :
     ReachableAtUFrom (ro := ro) (WriteMode.parent sp) s₀ self U A Φ t := by
   induction h with
   | init Φ hi hf => exact .init Φ hi hf
@@ -225,11 +225,11 @@ theorem _root_.Consensus.Goldilocks.ACInterface.ReachableAtFrom.toU {ro : Replay
 
 /-- The parent's runs are runs with the unlock given. -/
 theorem ACRun.toU {ro : ReplayOrder sp FGP} {selectedProposer : Nat → Fin sp.n}
-    {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
+    {tr : GTrace sp FGP ro} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
     (h : ACRun selectedProposer tr H U ini) :
     ACRunU (WriteMode.parent sp) (parentOracle sp tr) selectedProposer tr H U ini :=
   ⟨h.localRun.toU, h.honest, h.vstart⟩
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

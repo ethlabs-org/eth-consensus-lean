@@ -1,10 +1,10 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Committee
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Events
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Committee
 
 @[expose] public section
 
-/-! # Goldilocks SA: a slot committee over an SA trace
+/-! # Goldilocks AC: a slot committee over an AC trace
 
 The committee facts the committee-native AC step statements take, for a slot dictionary
 `K : CommitteeDict sp.n` of an AC trace with honest set `H`:
@@ -25,25 +25,25 @@ Thresholds stay in `sp.committeeSize`; a caller binds `K` to it by `(K.committee
 sp.committeeSize`. At `K = CommitteeDict.full sp.n` with `sp.committeeSize = sp.n`, P and T hold
 for every validator and CS is `FaultBound tr H t`. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
 
 /-- **P**: honest pools and optimistic-check states hold only signatures of the slot's
 committee. -/
-def CommitteeP (K : CommitteeDict sp.n) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) : Prop :=
+def CommitteeP (K : CommitteeDict sp.n) (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) : Prop :=
   (∀ y ∈ H, ∀ (i s : Nat), ∀ v ∈ (tr.state y i).pool s, v.val ∈ K.committee s) ∧
   (∀ y ∈ H, ∀ i ℓ A, OptimisticPoint tr y i ℓ A → ∀ s : Nat, ∀ v ∈ A.pool s,
     v.val ∈ K.committee s)
 
 /-- **T**: the merged-view votes of an honest vote, counted declared head votes included, have
 validators that are members of their slot's committee (membership only, not a signature). -/
-def CommitteeT (K : CommitteeDict sp.n) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) : Prop :=
+def CommitteeT (K : CommitteeDict sp.n) (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) : Prop :=
   ∀ y ∈ H, ∀ i ℓ e, CastAt tr y i ℓ e → ∀ m : Nat,
     ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes, v.val ∈ K.committee v.slot
 
 /-- **CS** at the slot-`s` committee, with the faults charged at `t`. -/
-def FaultBoundK (K : CommitteeDict sp.n) (s : Nat) (tr : SATrace sp FGP ro)
+def FaultBoundK (K : CommitteeDict sp.n) (s : Nat) (tr : GTrace sp FGP ro)
     (H : Set (Fin sp.n)) (t : Time) : Prop :=
   (K.committee s ∩ Hᶜ).ncard <
     (K.committee s ∩ {y | y ∈ H ∧ tr.awake y t ∧ JoinedAt tr y t}).ncard
@@ -51,7 +51,7 @@ def FaultBoundK (K : CommitteeDict sp.n) (s : Nat) (tr : SATrace sp FGP ro)
 /-- **P under growing faults**: a node honest at `t` holds only committee signatures in its pools
 before every cut whose earlier cuts are at times `≤ t`, and at every optimistic check of a cut at
 which it is honest. -/
-def CommitteePAt (K : CommitteeDict sp.n) (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n)) :
+def CommitteePAt (K : CommitteeDict sp.n) (tr : GTrace sp FGP ro) (H : Time → Set (Fin sp.n)) :
     Prop :=
   (∀ t, ∀ y ∈ H t, ∀ i, (∀ k < i, tr.time k ≤ t) → ∀ s : Nat, ∀ v ∈ (tr.state y i).pool s,
     v.val ∈ K.committee s) ∧
@@ -60,11 +60,11 @@ def CommitteePAt (K : CommitteeDict sp.n) (tr : SATrace sp FGP ro) (H : Time →
 
 /-- **T under growing faults**: the merged-view votes of a vote of a node honest at its cut have
 validators that are members of their slot's committee (membership only, not a signature). -/
-def CommitteeTAt (K : CommitteeDict sp.n) (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n)) :
+def CommitteeTAt (K : CommitteeDict sp.n) (tr : GTrace sp FGP ro) (H : Time → Set (Fin sp.n)) :
     Prop :=
   ∀ y i ℓ e, y ∈ H (tr.time i) → CastAt tr y i ℓ e → ∀ m : Nat,
     ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes, v.val ∈ K.committee v.slot
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

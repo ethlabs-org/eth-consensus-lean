@@ -51,7 +51,7 @@ trace a run of the protocol. Faulty nodes have no cuts: what they send is an inp
 
 Premises (`Sync`, `GST`, `Sleepy`, `Healthy`) are in `Spec/Run/Premises`, `NoColl` over a run
 (`Compose.NoCollRun`) in `Statements/Compose/Run`; the
-concrete Goldilocks run (the node with `goldilocksSA`) in `Spec/Run/Goldilocks`; the
+concrete Goldilocks run (the node with `goldilocksAC`) in `Spec/Run/Goldilocks`; the
 projections onto the component traces in `Spec/Run/Projection`. -/
 
 namespace Consensus.Goldilocks

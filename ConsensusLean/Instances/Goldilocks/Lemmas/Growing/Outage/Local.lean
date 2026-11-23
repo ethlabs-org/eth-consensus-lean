@@ -25,9 +25,9 @@ and after every cut before `i` (the read-time form): each is the static fact on 
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
   {y : Fin sp.n} {i : Nat} {d : Time}
@@ -61,7 +61,7 @@ theorem F_mono_at {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propo
 
 theorem held_anc_at {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d)
-    {A W : SA.Blk sp.n (List (FG.Att sp.n))} (h : Anc (tr.HonestBlocksAt H) A W)
+    {A W : AC.Blk sp.n (List (FG.Att sp.n))} (h : Anc (tr.HonestBlocksAt H) A W)
     (hW : W ∈ (tr.state y i).fg.tree) : (tr.state y i).fg.Anc A W := by
   have hst := Trace.upTo_state tr y hi
   have hWU : W ∈ (tr.upTo d).HonestBlocks (H d) := ⟨y, hy, i, by rw [hst]; exact hW⟩
@@ -72,7 +72,7 @@ theorem held_anc_at {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun pro
 theorem frame_mem_of_tree_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y i).fg.tree)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y i).fg.tree)
     (hF : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F B) :
     B ∈ (tr.state y i).fg.toFrame.tree :=
   ⟨hB, held_anc_at hrun hnc hd hy hi hF hB⟩
@@ -80,7 +80,7 @@ theorem frame_mem_of_tree_at {ini}
 theorem floor_frame_transport_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hd : 0 ≤ d)
     (hy : y ∈ H d) {i' : Nat} (hi' : ∀ k < i', tr.time k ≤ d) (hii' : i ≤ i')
-    {B₀ B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {B₀ B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hB0 : B₀ ∈ (tr.state y i').fg.toFrame.tree) (hB : B ∈ (tr.state y i).fg.toFrame.tree)
     (h : (tr.state y i).fg.toFrame.Anc B₀ B) :
     B ∈ (tr.state y i').fg.toFrame.tree ∧ (tr.state y i').fg.toFrame.Anc B₀ B := by

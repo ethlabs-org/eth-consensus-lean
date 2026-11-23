@@ -12,7 +12,7 @@ it refuses (`createAtt_refused`), and the frame of a fast-lock write (`fastLockA
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
 section Store
 
@@ -72,21 +72,21 @@ theorem createAtt_refused {n : Nat} {Λ : FG.Record} {v : Fin n} {σe : FG.Chain
     obtain ⟨b, hb, hb'⟩ := List.any_eq_true.1 hany
     exact Or.inr ⟨b, hb, (of_decide_eq_true hb').1⟩
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
 
 /-- The selection of a fast-lock write is in the frame of its call. -/
 theorem fastLockAt_frame_mem {x : Fin sp.n} {i s : Nat}
-    {D : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    (h : SA.FastLockAt tr.projAC x i s D CV) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
+    (h : AC.FastLockAt tr.projAC x i s D CV) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt x i ℓ) : D ∈ ℓ.frame.tree := by
   rcases h with ⟨ℓ', C, ⟨hc', -⟩, -, hD, -⟩ | ⟨ℓ', A, ⟨hc', -⟩, -, hsel, -⟩
   · obtain rfl : ℓ' = ℓ := Option.some.inj (hc'.2.symm.trans hc.2)
-    exact (SA.deepest_mem hD).1.1.1
+    exact (AC.deepest_mem hD).1.1.1
   · obtain rfl : ℓ' = ℓ := Option.some.inj (hc'.2.symm.trans hc.2)
-    unfold SA.optimisticSelect at hsel
+    unfold AC.optimisticSelect at hsel
     dsimp only at hsel
     split_ifs at hsel
-    exact (SA.deepest_mem hsel).1.1
+    exact (AC.deepest_mem hsel).1.1
 
 end Consensus.Goldilocks.Healing
 

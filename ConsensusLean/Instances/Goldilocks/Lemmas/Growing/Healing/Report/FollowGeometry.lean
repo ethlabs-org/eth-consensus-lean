@@ -8,18 +8,18 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
 /-- A source's replay floor passes to a descendant held at an independently honest cut. -/
 theorem floor_le_of_honest_ancestor_at
-    {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x z : Fin sp.n} {i c : Nat}
     (hx : x ∈ H (tr.time i)) (hz : z ∈ H (tr.time c))
-    {X W : SA.Blk sp.n (List (FG.Att sp.n))} {floor : Nat}
+    {X W : AC.Blk sp.n (List (FG.Att sp.n))} {floor : Nat}
     (hX : X ∈ (tr.state z c).fg.tree) (hh : floor ≤ ((tr.state z c).fg.σ X.root).h)
     (hW : W ∈ (tr.state x i).fg.tree) (hXW : Anc (tr.HonestBlocksAt H) X W) :
     floor ≤ ((tr.state x i).fg.σ W.root).h := by
@@ -34,7 +34,7 @@ theorem floor_le_of_honest_ancestor_at
 
 /-- An accepted descendant makes a floor-viable historical source a viable frame head. -/
 theorem floor_ancestor_mem_frame_at
-    {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -42,7 +42,7 @@ theorem floor_ancestor_mem_frame_at
     (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {j c : Nat}
     (hy : y ∈ H (tr.time j)) (hz : z ∈ H (tr.time c))
     (hf : (H (tr.time j))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {X W : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state z c).fg.tree)
+    {X W : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state z c).fg.tree)
     (hh : (tr.state y j).fg.headHeightFloor ≤ ((tr.state z c).fg.σ X.root).h)
     (hJ : (tr.state y j).fg.hmax = (tr.state y j).fg.hj + 1 →
       ¬(tr.state y j).fg.Contest → Anc (tr.HonestBlocksAt H) (tr.state y j).fg.J X)
@@ -69,7 +69,7 @@ theorem floor_ancestor_mem_frame_at
   have hΦ := (Store.frame_realization _ _ _ _ (fg_reachable_at hrun ht hb hy)).1
   have hsub : (Node.frame (tr.state y j)).tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨y, j, tr.time j, ht, hb, hy, h.1⟩
-  exact ⟨htree, SA.anc_tree_of_anc_U (Compose.Growing.honest_blocks_coherent hrun hnc)
+  exact ⟨htree, AC.anc_tree_of_anc_U (Compose.Growing.honest_blocks_coherent hrun hnc)
     hΦ hsub hΦ.fcRoot_mem (honest_anc_of_store_anc_at ht hb hy hroot) htree, hv⟩
 
 end Consensus.Goldilocks.Healing.Growing

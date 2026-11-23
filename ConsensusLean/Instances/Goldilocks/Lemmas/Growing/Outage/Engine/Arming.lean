@@ -172,16 +172,16 @@ theorem opponents_lt_K (Q : OutageQueryAt S A V) {m : Nat}
         by linarith⟩
       have : (0 : Time) ≤ 4 * Q.params.k * Q.params.Δ := by positivity
       linarith
-    · have hm1 := (SA.ts_le_iff Q.params).2
+    · have hm1 := (AC.ts_le_iff Q.params).2
         (show ((Compose.coverLabel Q.params Q.start + 1 : Nat) : Int) ≤ m by omega)
-      have hmk := (SA.ts_le_iff Q.params).2
+      have hmk := (AC.ts_le_iff Q.params).2
         (show (m : Int) ≤ ((Compose.coverLabel Q.params Q.start + Q.params.k : Nat) : Int) by
           omega)
-      refine ⟨Q.params.ts m, ?_, SA.slot_of_mem _ m le_rfl ((SA.ts_lt_iff _).2 (by omega)), ?_, ?_,
+      refine ⟨Q.params.ts m, ?_, AC.slot_of_mem _ m le_rfl ((AC.ts_lt_iff _).2 (by omega)), ?_, ?_,
         hq⟩
-      · simp only [SA.SAParams.ts]; positivity
-      · simp only [SA.SAParams.ts] at hm1 hg₂ ⊢; push_cast at hm1 hg₂ ⊢; linarith
-      · simp only [SA.SAParams.ts] at hmk hg₁ ⊢; push_cast at hmk hg₁ ⊢; linarith
+      · simp only [AC.ACParams.ts]; positivity
+      · simp only [AC.ACParams.ts] at hm1 hg₂ ⊢; push_cast at hm1 hg₂ ⊢; linarith
+      · simp only [AC.ACParams.ts] at hmk hg₁ ⊢; push_cast at hmk hg₁ ⊢; linarith
   subst hslot
   -- the look-back `δ = z − t` reaches the band time `t` from the window end `z`
   obtain ⟨-, -, -, hbud⟩ := Q.outage.times
@@ -270,10 +270,10 @@ end OutageQueryAt
 end Consensus.Goldilocks.Obligations.Growing
 
 namespace Consensus.Goldilocks.Compose.Growing
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 open Blocks Shape
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -283,8 +283,8 @@ labels before `j₀`), S-vote, and O1 at `j₀ − 1` and `j₀` for the holders
 within `hor`. -/
 structure OutageArming (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (j₀ : Nat)
     (hor : Time) (A₀ : Set (Fin sp.n)) (y : Fin sp.n) (i : Nat) (T : Time) where
-  tip : SA.Blk sp.n (List (FG.Att sp.n))
-  origin : SA.Blk sp.n (List (FG.Att sp.n))
+  tip : AC.Blk sp.n (List (FG.Att sp.n))
+  origin : AC.Blk sp.n (List (FG.Att sp.n))
   σ : Nat
   /-- `tip` is the confirmed read of `y` at cut `i`, at clock `T`. -/
   tip_eq : tip = Regimes.readAfter tr y i T
@@ -297,25 +297,25 @@ structure OutageArming (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)
     (OriginWithin tr H origin σ T ∧ σ + sp.k < j₀)
   /-- S-vote. -/
   votes : ∀ x k e, HVoteAt tr H x k e → σ < e.msg.slot → e.msg.slot ≤ j₀ →
-    SA.VoteExtends (tr.HonestBlocksAt H) e.msg origin
+    AC.VoteExtends (tr.HonestBlocksAt H) e.msg origin
   /-- O1 at `j₀ − 1`. -/
   lockPrev : ∀ w ∈ A₀, origin.root ≠ sp.genesisRoot → sp.ts j₀ + 2 * sp.Δ ≤ hor →
-    ∃ c ℓ, SA.UpdateAt tr.projAC w c (j₀ - 1) ℓ ∧
+    ∃ c ℓ, AC.UpdateAt tr.projAC w c (j₀ - 1) ℓ ∧
       (Anc (tr.HonestBlocksAt H) origin (tr.state w c).fg.F ∨
        ∃ L f, L ∈ ℓ.frame.tree ∧ ℓ.frame.Anc origin L ∧
-         (⟨L.root, j₀ - 1, f, j₀ - 1 + sp.k⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks)
+         (⟨L.root, j₀ - 1, f, j₀ - 1 + sp.k⟩ : AC.Lock) ∈ (tr.state w (c + 1)).ac.locks)
   /-- O1 at `j₀`, given (F), (VA) outside root cover and (N) at the first `j₀` update. -/
   lockCover : ∀ w ∈ A₀, origin.root ≠ sp.genesisRoot → sp.ts j₀ + 6 * sp.Δ ≤ hor →
-    ∃ c ℓ, SA.UpdateAt tr.projAC w c j₀ ℓ ∧
-      (∀ k < c, ∀ ℓ', ¬ SA.UpdateAt tr.projAC w k j₀ ℓ') ∧
+    ∃ c ℓ, AC.UpdateAt tr.projAC w c j₀ ℓ ∧
+      (∀ k < c, ∀ ℓ', ¬ AC.UpdateAt tr.projAC w k j₀ ℓ') ∧
       (Compatible (tr.HonestBlocksAt H) (tr.state w c).fg.F origin →
        (Anc (tr.HonestBlocksAt H) (tr.state w c).fg.F origin →
          ℓ.frame.AncestorCandidate origin) →
        (∀ x ∈ A₀, ∀ j e, HVoteAt tr H x j e → e.msg.slot = j₀ + 1 → j < c →
-          SA.VoteExtends (tr.HonestBlocksAt H) e.msg origin) →
+          AC.VoteExtends (tr.HonestBlocksAt H) e.msg origin) →
        Anc (tr.HonestBlocksAt H) origin (tr.state w c).fg.F ∨
        (∃ L f, ℓ.frame.Anc origin L ∧
-          (⟨L.root, j₀, f, j₀ + sp.k⟩ : SA.Lock) ∈ (tr.state w (c + 1)).ac.locks))
+          (⟨L.root, j₀, f, j₀ + sp.k⟩ : AC.Lock) ∈ (tr.state w (c + 1)).ac.locks))
 
 /-- **Arming on a node trace**: a source honest at its read `(i, T)` within the call bound `hor`
 is armed, from the pre-start service, the two count shapes through `hor`, the proof window
@@ -326,7 +326,7 @@ origins within `T`, S-vote, and O1 at `j₀ − 1` (`armed_lock_formed_at`) and 
 (`armed_lock_cover_at`, with the opponents `(H z)ᶜ ∪ W`). -/
 theorem outage_arming_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {T b₀ hor a z : Time} {A₀ W : Set (Fin sp.n)}
     (hlag : T + (4 * sp.k + 6) * sp.Δ ≤ b₀)
     (hcall : ∀ x k, tr.IsCall x k → tr.time k ≤ hor)
@@ -378,7 +378,7 @@ theorem outage_arming_at {ini}
     obtain ⟨x, k, CV, -, hkT, ⟨ℓ, hu, -⟩ | ⟨ℓ, A', -, hs, -⟩⟩ := originWithin_iff.1 hCw
     · have ht : tr.time k = sp.ts σ + 6 * sp.Δ := hu.2.2.1
       linarith
-    · exact ((SA.ts_le_iff_le_slot sp (hrun.time_nonneg k) σ).2 (by
+    · exact ((AC.ts_le_iff_le_slot sp (hrun.time_nonneg k) σ).2 (by
         have hs' : sp.slot (tr.time k) = σ := hs
         rw [hs'])).trans hkT
   obtain ⟨hσk, hkj⟩ := Compose.armed_label_lt hT0 hlag hσT
@@ -388,16 +388,16 @@ theorem outage_arming_at {ini}
     linarith)
   have hts1 : sp.ts ((coverLabel sp b₀ : Int) - sp.k) ≤
       sp.ts ((coverLabel sp b₀ : Int) - sp.k + 1) :=
-    (SA.ts_le_iff _).2 (by omega)
+    (AC.ts_le_iff _).2 (by omega)
   have hjI : ((coverLabel sp b₀ - 1 : Nat) : Int) = (coverLabel sp b₀ : Int) - 1 := by omega
   have hjk : sp.ts ((coverLabel sp b₀ : Int) - sp.k) ≤ sp.ts (coverLabel sp b₀) :=
-    (SA.ts_le_iff _).2 (by omega)
+    (AC.ts_le_iff _).2 (by omega)
   refine ⟨⟨_, C, σ, rfl, htipU, hCU, htC, Or.inr ⟨hCw, hσk⟩,
     fun x k e hve hσe hej => ?_, fun w hw hCg hhz => ?_, fun w hw hCg hhz => ?_⟩⟩
   · -- S-vote
     obtain ⟨hx, ℓx, hcx, hex⟩ := hVoteAt_iff.1 hve
     have hvt := (cast_head_fcRoot_at hrun hnc hx ⟨hcx, hex⟩).2
-    have hts := (SA.ts_le_iff sp).2 (show (e.msg.slot : Int) ≤ coverLabel sp b₀ by
+    have hts := (AC.ts_le_iff sp).2 (show (e.msg.slot : Int) ≤ coverLabel sp b₀ by
       exact_mod_cast hej)
     have hkh : tr.time k ≤ hor := hcall x k ⟨_, Compose.projAC_callAt.1 hcx⟩
     exact hinv.vote_extends C σ hCb x k e hve
@@ -406,7 +406,7 @@ theorem outage_arming_at {ini}
     have hsz := hzj (2 * sp.Δ) (by linarith) hhz
     have hsz' : sp.ts ((coverLabel sp b₀ - 1 : Nat) : Int) + 6 * sp.Δ =
         sp.ts (coverLabel sp b₀) + 2 * sp.Δ := by
-      rw [hjI]; simp only [SA.SAParams.ts]; ring
+      rw [hjI]; simp only [AC.ACParams.ts]; ring
     have h1 : sp.k ≤ coverLabel sp b₀ - 1 := by omega
     have h2 : σ + sp.k ≤ coverLabel sp b₀ - 1 := by omega
     have h3 : a ≤ sp.ts (((coverLabel sp b₀ - 1 : Nat) : Int) - sp.k + 1) := by
@@ -425,7 +425,7 @@ theorem outage_arming_at {ini}
     have hsh : b₀ ≤ hor := by linarith
     have hq1 : sp.ts ((coverLabel sp b₀ + 1 : Nat) : Int) ≤ hor := by
       have h := hhz
-      simp only [SA.SAParams.ts] at h ⊢; push_cast; linarith
+      simp only [AC.ACParams.ts] at h ⊢; push_cast; linarith
     exact armed_lock_cover_at hrun hnc hKB hinv hsvc hBKh hCb hCg
       (hA₀ hw) hz (fun u hu₁ hu₂ => hawake w hw u hu₁ hu₂)
       (s := coverLabel sp b₀) h1 h2 (haj.trans hts1) hsz
@@ -436,11 +436,11 @@ theorem outage_arming_at {ini}
         · obtain ⟨hxj, ℓx, hcx, hex⟩ := hVoteAt_iff.1 hve
           have hxs := (castAt_spec_at hrun hnc hxj ⟨hcx, hex⟩).2.1
           have hjs : sp.ts ((coverLabel sp b₀ + 1 : Nat) : Int) ≤ tr.time j :=
-            (SA.ts_le_iff_le_slot _ (hrun.time_nonneg j) _).2 (by
+            (AC.ts_le_iff_le_slot _ (hrun.time_nonneg j) _).2 (by
               rw [← hes]; exact_mod_cast hxs.le)
           have hjk' : sp.ts ((coverLabel sp b₀ : Int) - sp.k) ≤
               sp.ts ((coverLabel sp b₀ + 1 : Nat) : Int) :=
-            (SA.ts_le_iff _).2 (by omega)
+            (AC.ts_le_iff _).2 (by omega)
           have haw := hrun.awake_of_call x j hxj ⟨_, Compose.projAC_callAt.1 hcx⟩
           rcases hclass x _ (by linarith) (hjt.trans hsz) hxz haw with h | h
           · exact Or.inl h

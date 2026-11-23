@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Premises
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.GrowingPremises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Growing
 
 @[expose] public section
@@ -13,7 +13,7 @@ The run statements of `Statements/Compose/Run` for a time-indexed honest set `H`
 over `Growing.LocalRun` / `Growing.GoldilocksRun`: each node is honest at the time of the cut or
 group it is named at, unforgeability reads the signer at the processing cut, and the projections
 land in the growing-fault component contracts (`Growing.ACLocalRun`, `Growing.FGLocalRun`,
-`SA.Growing.ACRun`, `SyncACAt`) inside the blocks held while honest. Joining projects, and the
+`AC.Growing.ACRun`, `SyncACAt`) inside the blocks held while honest. Joining projects, and the
 count `f_d < h_t` of the run is the AC projection's at every `t` and `d`. F.4 (ready implies
 joined) is proved only at a fixed honest set (`Compose.ReadyImpliesJoined`).
 
@@ -21,7 +21,7 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder goldilocksSA Vote Payload)
+open AC (ACParams ReplayOrder goldilocksAC Vote Payload)
 
 variable {P : Params} {A : NodeAC P}
 
@@ -52,11 +52,11 @@ def FGProjection : Prop :=
 
 /-- **The honest-object facts of the AC projection under growing faults.** -/
 def GoldilocksACProjection : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → NoCollRun dg tr →
-      SA.Growing.ACRun proposer tr.projAC H (tr.HonestBlocksAt H)
+      AC.Growing.ACRun proposer tr.projAC H (tr.HonestBlocksAt H)
 
 /-- **`Sync` projects under growing faults**, over a run from any start. -/
 def SyncProjection : Prop :=
@@ -70,16 +70,16 @@ def SyncProjection : Prop :=
 at `t` is the AC projection's, and the run's count of the validators honest at `d`, awake and
 joined at `t` is the AC projection's, at every `t` and `d`. -/
 def JoinedProjection : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr →
     (∀ y t, y ∈ H t →
-      (tr.JoinedAt y t ↔ SA.JoinedAt tr.projAC y t) ∧
+      (tr.JoinedAt y t ↔ AC.JoinedAt tr.projAC y t) ∧
       (∀ i, tr.IsCall y i → ¬ tr.RestartAt y i → tr.time i = t →
-        (tr.JoinedAt y t ↔ SA.joined sp (tr.state y i).ac t))) ∧
+        (tr.JoinedAt y t ↔ AC.joined sp (tr.state y i).ac t))) ∧
     ∀ t d, {y | y ∈ H d ∧ tr.awake y t ∧ tr.JoinedAt y t}.ncard =
-      {y | y ∈ H d ∧ tr.projAC.awake y t ∧ SA.JoinedAt tr.projAC y t}.ncard
+      {y | y ∈ H d ∧ tr.projAC.awake y t ∧ AC.JoinedAt tr.projAC y t}.ncard
 
 end Consensus.Goldilocks.Compose.Growing
 

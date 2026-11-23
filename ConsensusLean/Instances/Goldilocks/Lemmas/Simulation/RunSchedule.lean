@@ -21,7 +21,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote Payload blockVotes)
+open AC (ACParams ReplayOrder Vote Payload declaredHeadVotes)
 
 variable {binding : VoteBinding}
 

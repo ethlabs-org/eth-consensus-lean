@@ -5,21 +5,21 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 
 public section
 
-/-! # Retention of the SA run contract
+/-! # Retention of the AC run contract
 
 The retained run keeps `U`. Its honest-object laws use the original laws at retained calls;
 pool provenance is reconstructed through those calls, including the final frozen state.
 -/
 
-namespace Consensus.Goldilocks.SA.Growing
+namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
-  {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
+  {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
-/-- The prefix is an SA run for the validators still honest at its horizon, in the same `U`. -/
+/-- The prefix is an AC run for the validators still honest at its horizon, in the same `U`. -/
 theorem ACRun.upTo {ini} (h : ACRun proposer tr H U ini) {d : Time} (hd : 0 ≤ d) :
-    SA.ACRun proposer (tr.upTo d) (H d) U ini := by
+    AC.ACRun proposer (tr.upTo d) (H d) U ini := by
   have hr := h.localRun.upTo hd
   have hm := h.localRun.time_mono
   have anti : ∀ {t}, t ≤ d → H d ⊆ H t := fun ht => h.localRun.antitone ht
@@ -60,7 +60,7 @@ theorem ACRun.upTo {ini} (h : ACRun proposer tr H U ini) {d : Time} (hd : 0 ≤ 
         · by_cases hold : v ∈ ((tr.upTo d).state y i).pool v.slot
           · obtain ⟨j, hj, e, hvote, hev⟩ := ih v.slot v hold hvH
             exact ⟨j, hj.trans (Nat.lt_succ_self i), e, hvote, hev⟩
-          · have hnew : v ∈ ((goldilocksSA sp FGP ro).step y ((tr.upTo d).state y i)
+          · have hnew : v ∈ ((goldilocksAC sp FGP ro).step y ((tr.upTo d).state y i)
                 ℓ.frame ((tr.upTo d).time i) ℓ.call).1.pool v.slot := by
               rw [he, hslot]
               exact hv
@@ -94,6 +94,6 @@ theorem ACRun.upTo {ini} (h : ACRun proposer tr H U ini) {d : Time} (hd : 0 ≤ 
     exact h.honest.one_block_before h.localRun.antitone (anti hid hy) hc hB hid
       (anti hid' hy') hc' hB' hid' hp hpp hs
 
-end Consensus.Goldilocks.SA.Growing
+end Consensus.Goldilocks.AC.Growing
 
 end

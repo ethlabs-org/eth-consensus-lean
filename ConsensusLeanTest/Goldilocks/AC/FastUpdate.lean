@@ -45,7 +45,7 @@ the post-state membership alone. -/
 
 namespace Consensus.Goldilocks.Witness.One
 
-open SA Node ChainFrame
+open AC Node ChainFrame
 
 /-! ## The update cut -/
 
@@ -95,7 +95,7 @@ that sent or accepted it into the pool, before the tick of `t_s + 2Δ`, whose po
 theorem voteStamp_lt {s i : Nat} (hx : cv s ∈ ((tickRun N1 dg1).projAC.state v0 i).pool s) :
     ((tickRun N1 dg1).projAC.state v0 i).voteStamp (cv s) <
       ETime.of (sp1.ts s + 2 * sp1.Δ) := by
-  rcases SA.pool_origin acRun.localRun (fun _ => SA.voteStart_initial _)
+  rcases AC.pool_origin acRun.localRun (fun _ => AC.voteStart_initial _)
     (Set.mem_univ v0) i (cv s) hx with
     ⟨k, -, ⟨ℓ', hc', hk⟩, hstk, -⟩ | ⟨k, -, ℓ', hc', hrs, -⟩
   · rw [hstk]
@@ -167,7 +167,7 @@ theorem not_equivocator {S : Set (Vote sp1.n)} {w : Vote sp1.n} (hS : ∀ v ∈ 
   exact hne ((hS x hx).trans (hS z hz).symm)
 
 /-- With every slot-`s` pool vote `cv s`, a block of positive score is an ancestor of `blk s`. -/
-theorem ancR_of_score {Φ : N1.Frm} {A : SAState sp1.n} {s : Nat}
+theorem ancR_of_score {Φ : N1.Frm} {A : ACState sp1.n} {s : Nat}
     (hpool : ∀ v ∈ A.pool s, v = cv s) {B : N1.Blk} (h : confirmationScore sp1 A Φ s B ≠ 0) :
     AncR Φ B (blk s).root := by
   unfold confirmationScore at h
@@ -286,7 +286,7 @@ theorem fastLockAt_update {s : Nat} (hs : 1 ≤ s) :
 open Classical in
 /-- The locks after an update of slot `s` with result `C` whose fast test selects `D`: `add_locks`
 of the stored locks with new entries, among them the fast entry on `D` with expiry `s + 2`. -/
-theorem updateConfirmation_fastEntry {A : SAState sp1.n} {Φ : N1.Frm} {t : Time} {s : Nat}
+theorem updateConfirmation_fastEntry {A : ACState sp1.n} {Φ : N1.Frm} {t : Time} {s : Nat}
     {C D : N1.Blk} (hC : getConfirmation sp1 A Φ s = some C)
     (hD : deepest Φ {X | X ∈ confirmationPath sp1 Φ C ∧ ¬ conflictsWithLock sp1 A.locks Φ t X ∧
       FastTest sp1 A Φ s X} = some D) :
@@ -344,8 +344,8 @@ theorem update_writes_fastLock {s : Nat} (hs : 1 ≤ s) :
 
 /-- `f < h_t` on the AC projection at every time `t ≥ 0`. -/
 theorem tickRun_faultBound_proj {t : Time} (ht : 0 ≤ t) :
-    SA.FaultBound (tickRun N1 dg1).projAC Set.univ t := by
-  unfold SA.FaultBound
+    AC.FaultBound (tickRun N1 dg1).projAC Set.univ t := by
+  unfold AC.FaultBound
   rw [← (Compose.joined_projection sp1 ro1 dg1 Set.univ (tickRun N1 dg1) (fun _ => v0)
     tickRun_goldilocksRun v0 (Set.mem_univ _) t).2.2]
   exact tickRun_faultBound ht
@@ -358,7 +358,7 @@ update origin), counting `{cv s}`, and the validator's slot-`(s + 1)` vote at cu
 The vote's cut precedes the update's (`t_{s+1} < t_s + 6Δ`): A1.2 does not order them. -/
 theorem firstTransfer_premises_update {s : Nat} (hs : 1 ≤ s) :
     ∃ (ℓ : ACLabel N1) (e : N1.Em),
-      SA.ACRun (fun _ => v0) (tickRun N1 dg1).projAC Set.univ
+      AC.ACRun (fun _ => v0) (tickRun N1 dg1).projAC Set.univ
         ((tickRun N1 dg1).HonestBlocks Set.univ) ∧
       FastLockAt (tickRun N1 dg1).projAC v0 (8 * (4 * s + 6)) s (blk s) {cv s} ∧
       CastAt (tickRun N1 dg1).projAC v0 (8 * (4 * (s + 1)) + 3) ℓ e ∧ e.msg.slot = s + 1 ∧
@@ -366,7 +366,7 @@ theorem firstTransfer_premises_update {s : Nat} (hs : 1 ≤ s) :
         ((tickRun N1 dg1).projAC.time (8 * (4 * (s + 1)) + 3)) (tickRun N1 dg1).projAC ∧
       CarryAt (tickRun N1 dg1).projAC ((tickRun N1 dg1).HonestBlocks Set.univ) v0
         (8 * (4 * (s + 1)) + 3) e s {cv s} ∧
-      SA.FaultBound (tickRun N1 dg1).projAC Set.univ
+      AC.FaultBound (tickRun N1 dg1).projAC Set.univ
         ((tickRun N1 dg1).projAC.time (8 * (4 * (s + 1)) + 3)) ∧
       ViableAtVote ℓ e (s + 1) (blk s) ∧
       EarlierVotesExtend (tickRun N1 dg1).projAC Set.univ ((tickRun N1 dg1).HonestBlocks Set.univ)

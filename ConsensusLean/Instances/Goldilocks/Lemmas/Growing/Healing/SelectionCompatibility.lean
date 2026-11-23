@@ -9,9 +9,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -20,11 +20,11 @@ theorem high_origin_compatible_before_update_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {u : Nat}
-    {P B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {P B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ tr.HonestBlocksAt H) (hslot : P.slot = u) (hu : 0 < u)
-    (hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+    (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
-    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u)
     (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat)) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
     {x : Fin sp.n} {r m : Nat} (ho : HighOrigin tr H g x r m B)
     (ht : tr.time r ≤ sp.ts u + 6 * sp.Δ) : Compatible (tr.HonestBlocksAt H) B P := by
@@ -40,14 +40,14 @@ theorem high_origin_compatible_before_update_at
   obtain ⟨hPhi, hsub⟩ : FrameOK ell.frame ∧ ell.frame.tree ⊆ tr.HonestBlocksAt H := by
     rcases hac.localRun.frameLaw x r ell hx hcall with
       ⟨_, _, _, _, h⟩ | ⟨_, _, _, _, _, h⟩ <;> exact h.1
-  have hBD := (SA.anc_viableAncestor ell.frame D).mono hsub
+  have hBD := (AC.anc_viableAncestor ell.frame D).mono hsub
   rw [← hB] at hBD
   have hDP : Compatible (tr.HonestBlocksAt H) D P := by
     rcases hfl with ⟨ellr, C, hupd, _⟩ | hop
     · have htime : tr.time r = sp.ts m + 6 * sp.Δ := hupd.2.2.1
       have hmu : m ≤ u := by
         have hle : sp.ts m ≤ sp.ts u := by linarith
-        have := (SA.ts_le_iff sp).1 hle
+        have := (AC.ts_le_iff sp).1 hle
         omega
       by_cases heq : m = u
       · subst m
@@ -56,7 +56,7 @@ theorem high_origin_compatible_before_update_at
           (hp.cutZ_le_ts_of_highOrigin_at ho) hP hun)
       have hm : m < u := by omega
       have hbefore : tr.time r < sp.ts (u + 1 : Nat) := by
-        simp only [SAParams.ts] at htime ⊢
+        simp only [ACParams.ts] at htime ⊢
         push_cast at htime ⊢
         have hmu : (m : Time) + 1 ≤ u := by exact_mod_cast hm
         have h4 : (0 : Time) ≤ 4 * sp.Δ := by linarith [sp.toParams.hΔ]
@@ -64,13 +64,13 @@ theorem high_origin_compatible_before_update_at
       exact False.elim (ht' hbefore)
     · have hs : sp.slot (tr.time r) = m := hop.choose_spec.choose_spec.2.1
       have hdeadline : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=
-        SA.slot_of_mem sp (u + 1)
-          (by simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
-          (by simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ])
-      have hm := SA.slot_mono sp (hp.run.time_nonneg r) ht
+        AC.slot_of_mem sp (u + 1)
+          (by simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+          (by simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+      have hm := AC.slot_mono sp (hp.run.time_nonneg r) ht
       rw [hs, hdeadline] at hm
       have hml : u + 1 ≤ m := by
-        have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r)
+        have := (AC.ts_le_iff_le_slot sp (hp.run.time_nonneg r)
           ((u + 1 : Nat) : Int)).1 (not_lt.mp ht')
         omega
       have heq : m = u + 1 := by omega
@@ -78,17 +78,17 @@ theorem high_origin_compatible_before_update_at
         hx (heq ▸ hop) hrb
   rcases hDP with h | h
   · exact Or.inl (hBD.trans h)
-  · exact SA.anc_total (Compose.Growing.honest_blocks_coherent hp.run hp.noColl) hBD h
+  · exact AC.anc_total (Compose.Growing.honest_blocks_coherent hp.run hp.noColl) hBD h
 
 /-- A finalized cache after the reset is below a bounded origin compatible with the proposal. -/
 theorem finalized_compatible_before_update_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ tr.HonestBlocksAt H) (hslot : P.slot = u) (hu : 0 < u)
-    (hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+    (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
-    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u)
     (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat)) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) (ha : a ≤ tr.time k)
     (ht : tr.time k ≤ sp.ts u + 6 * sp.Δ) :
@@ -98,7 +98,7 @@ theorem finalized_compatible_before_update_at
   rcases high_origin_compatible_before_update_at hp hP hslot hu hun hgu hR hTb ho
       (hrk.trans ht) with h | h
   · exact Or.inl (hFB.trans h)
-  · exact SA.anc_total (Compose.Growing.honest_blocks_coherent hp.run hp.noColl) hFB h
+  · exact AC.anc_total (Compose.Growing.honest_blocks_coherent hp.run hp.noColl) hFB h
 
 end Consensus.Goldilocks.Healing.Growing
 

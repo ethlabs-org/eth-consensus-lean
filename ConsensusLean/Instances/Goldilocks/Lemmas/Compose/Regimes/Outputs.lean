@@ -12,7 +12,7 @@ The three R.8 rows of `Statements/Regimes/Always`, in every Goldilocks run (no `
 
 * `outputs_nested` (C0.1 at every cut): `Σ.F ⪯ ac_confirmed ⪯ ac_head` in the node's tree. The
   frame `fg_to_ac(Σ)` of a reachable FG state is well formed, and at a well-formed frame the
-  SA's confirmed tip is the deepest common ancestor of the record and the head, or `Φ.F`.
+  AC's confirmed tip is the deepest common ancestor of the record and the head, or `Φ.F`.
 * `finalized_monotone` (C0.2 over the run): every cut moves `Σ.F` to a descendant in the grown
   tree (`chain_fg`), also at restarts, which keep `Σ`.
 * `outputs_valid` (F.2 with the node's checks): every block of an honest tree other than genesis
@@ -21,25 +21,25 @@ The three R.8 rows of `Statements/Regimes/Always`, in every Goldilocks run (no `
 
 namespace Consensus.Goldilocks.Regimes
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 open Compose
 
-/-- At a well-formed frame, the SA's confirmed tip and head are blocks of the tree, and the
+/-- At a well-formed frame, the AC's confirmed tip and head are blocks of the tree, and the
 confirmed tip is an ancestor of the head. -/
-theorem sa_tips {sp : SAParams} {FGP : Type} {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP}
+theorem ac_tips {sp : ACParams} {FGP : Type} {A : AC.ACState sp.n} {Φ : AC.Frm sp.n FGP}
     (hΦ : FrameOK Φ) (t : Time) :
-    SA.acConfirmed sp A Φ t ∈ Φ.tree ∧ Φ.Anc (SA.acConfirmed sp A Φ t) (SA.acHead sp A Φ t) := by
-  have hH : SA.acHead sp A Φ t ∈ Φ.tree := SA.getHead_mem hΦ (fun _ h => h.1) _ _ _ _
-  unfold SA.acConfirmed
+    AC.acConfirmed sp A Φ t ∈ Φ.tree ∧ Φ.Anc (AC.acConfirmed sp A Φ t) (AC.acHead sp A Φ t) := by
+  have hH : AC.acHead sp A Φ t ∈ Φ.tree := AC.getHead_mem hΦ (fun _ h => h.1) _ _ _ _
+  unfold AC.acConfirmed
   dsimp only
-  cases hd : SA.deepest Φ {X | X ∈ Φ.tree ∧ Φ.Anc X ((SA.lookup Φ A.latestConfirmed).getD Φ.F) ∧
-      Φ.Anc X (SA.acHead sp A Φ t)} with
+  cases hd : AC.deepest Φ {X | X ∈ Φ.tree ∧ Φ.Anc X ((AC.lookup Φ A.latestConfirmed).getD Φ.F) ∧
+      Φ.Anc X (AC.acHead sp A Φ t)} with
   | none => exact ⟨hΦ.rooted.1, hΦ.rooted.2 _ hH⟩
   | some D =>
-    obtain ⟨hD, -⟩ := SA.deepest_mem hd
+    obtain ⟨hD, -⟩ := AC.deepest_mem hd
     exact ⟨hD.1, hD.2.2⟩
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -54,7 +54,7 @@ private theorem frame_ok (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
 theorem outputs_nested : OutputsNested := by
   intro sp ro dg H tr proposer hrun y hy i
   obtain ⟨hΦ, hsub⟩ := frame_ok hrun hy i
-  obtain ⟨hC, hCH⟩ := sa_tips (A := (tr.state y i).ac) hΦ (tr.time i)
+  obtain ⟨hC, hCH⟩ := ac_tips (A := (tr.state y i).ac) hΦ (tr.time i)
   exact ⟨Anc.mono hsub (hΦ.rooted.2 _ hC), Anc.mono hsub hCH⟩
 
 /-- `finalized_monotone` from any start: the proof reads only the cut law and FG reachability. -/
@@ -83,7 +83,7 @@ theorem finalized_monotone : FinalizedMonotone :=
 theorem validOutput_of_mem {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat}
-    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y i).fg.tree) :
+    {X : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y i).fg.tree) :
     ValidOutput tr proposer dg y i X := by
   have h := hrun.toLocalRun
   refine ⟨hX, fun Z hZX hZg => ?_⟩
@@ -111,7 +111,7 @@ theorem outputs_valid : OutputsValid := by
   obtain ⟨hΦ, hsub⟩ := frame_ok hrun hy i
   exact ⟨validOutput_of_mem hrun hy
       (Store.cache_invariants _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1,
-    validOutput_of_mem hrun hy (hsub (sa_tips (A := (tr.state y i).ac) hΦ (tr.time i)).1)⟩
+    validOutput_of_mem hrun hy (hsub (ac_tips (A := (tr.state y i).ac) hΦ (tr.time i)).1)⟩
 
 end Consensus.Goldilocks.Regimes
 

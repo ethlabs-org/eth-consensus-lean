@@ -59,7 +59,7 @@ theorem received_forward_stamp_le_at (hv : rho.ExecutionValid)
 the delivery's group, no earlier than the stamp. -/
 theorem received_voteForward_processAt_at (hv : rho.ExecutionValid)
     {source i : Nat} {x : Fin (Fintype.card V)} {v : V} {τ u : Time}
-    {receipt : Wire (Fintype.card V) S.vote} {m : SA.Vote (Fintype.card V)}
+    {receipt : Wire (Fintype.card V) S.vote} {m : AC.Vote (Fintype.card V)}
     (hx : rho.key x ∉ rho.faultyAt τ) (hs : rho.SendsAt (rho.key x) source τ)
     (hfirst : ∀ j < source,
       Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉
@@ -113,7 +113,7 @@ to its source or give an actual recipient processing cut between the stamp and t
 The source alternative is not itself a fresh-processing claim. -/
 theorem held_voteForward_source_or_process_at (hv : rho.ExecutionValid)
     {source : Nat} {x y : Fin (Fintype.card V)} {τ d : Time}
-    {m : SA.Vote (Fintype.card V)}
+    {m : AC.Vote (Fintype.card V)}
     (hx : rho.key x ∉ rho.faultyAt τ) (hs : rho.SendsAt (rho.key x) source τ)
     (hfirst : ∀ j < source,
       Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉

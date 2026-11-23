@@ -51,9 +51,9 @@ the cut or read time, where the node is honest throughout. -/
 namespace Consensus.Goldilocks.Obligations.Growing
 
 open AsChainShape Simulation
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -62,21 +62,21 @@ private theorem writer_shape_of_upTo
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {d : Time}
     {y : Fin sp.n} {q : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hle : ∀ k < q + 1, tr.time k ≤ d)
-    (h : (∃ s CV, SA.ResultAt (tr.upTo d).projAC y q s R CV) ∨
-      ((∃ CV, SA.OptimisticLockAt (tr.upTo d).projAC y q (sp.slot ((tr.upTo d).time q)) R CV) ∧
+    (h : (∃ s CV, AC.ResultAt (tr.upTo d).projAC y q s R CV) ∨
+      ((∃ CV, AC.OptimisticLockAt (tr.upTo d).projAC y q (sp.slot ((tr.upTo d).time q)) R CV) ∧
         ∃ e, (⟨(ell.frame.viableAncestor R).root, sp.slot ((tr.upTo d).time q), true, e⟩ :
-          SA.Lock) ∈ ((tr.upTo d).state y (q + 1)).ac.locks)) :
-    (∃ s CV, SA.ResultAt tr.projAC y q s R CV) ∨
-      ((∃ CV, SA.OptimisticLockAt tr.projAC y q (sp.slot (tr.time q)) R CV) ∧
-        ∃ e, (⟨(ell.frame.viableAncestor R).root, sp.slot (tr.time q), true, e⟩ : SA.Lock) ∈
+          AC.Lock) ∈ ((tr.upTo d).state y (q + 1)).ac.locks)) :
+    (∃ s CV, AC.ResultAt tr.projAC y q s R CV) ∨
+      ((∃ CV, AC.OptimisticLockAt tr.projAC y q (sp.slot (tr.time q)) R CV) ∧
+        ∃ e, (⟨(ell.frame.viableAncestor R).root, sp.slot (tr.time q), true, e⟩ : AC.Lock) ∈
           (tr.state y (q + 1)).ac.locks) := by
   have hm := hrun.time_mono
   rw [RunTrace.upTo_projAC, Trace.upTo_state tr y hle] at h
   rcases h with ⟨s, CV, hR⟩ | ⟨⟨CV, hO⟩, e, hl⟩
-  · exact Or.inl ⟨s, CV, ((Compose.Growing.sa_resultAt_upTo hm).mp hR).2⟩
-  · exact Or.inr ⟨⟨CV, ((Compose.Growing.sa_optimisticLockAt_upTo hm).mp hO).2⟩, e, hl⟩
+  · exact Or.inl ⟨s, CV, ((Compose.Growing.ac_resultAt_upTo hm).mp hR).2⟩
+  · exact Or.inr ⟨⟨CV, ((Compose.Growing.ac_optimisticLockAt_upTo hm).mp hO).2⟩, e, hl⟩
 
 /-- A non-genesis current record of a reader honest at `t` has a last own writer, with unchanged
 record roots thereafter and the actual creation lock in the optimistic case. -/
@@ -85,14 +85,14 @@ theorem last_record_writer_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {n : Nat} {t : Time} (ht0 : 0 ≤ t)
     (hnt : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t)
-    {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hR : SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed = some R)
+    {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hR : AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed = some R)
     (hgen : R.root ≠ sp.genesisRoot) :
     ∃ q < n, ∃ ell, tr.projAC.CallAt y q ell ∧ R ∈ ell.frame.tree ∧
       (∀ m, q < m → m ≤ n → (tr.state y m).ac.latestConfirmed = R.root) ∧
-      ((∃ s CV, SA.ResultAt tr.projAC y q s R CV) ∨
-        ((∃ CV, SA.OptimisticLockAt tr.projAC y q (sp.slot (tr.time q)) R CV) ∧
-          ∃ e, (⟨(ell.frame.viableAncestor R).root, sp.slot (tr.time q), true, e⟩ : SA.Lock) ∈
+      ((∃ s CV, AC.ResultAt tr.projAC y q s R CV) ∨
+        ((∃ CV, AC.OptimisticLockAt tr.projAC y q (sp.slot (tr.time q)) R CV) ∧
+          ∃ e, (⟨(ell.frame.viableAncestor R).root, sp.slot (tr.time q), true, e⟩ : AC.Lock) ∈
             (tr.state y (q + 1)).ac.locks)) := by
   have hst : ∀ m ≤ n, (tr.upTo t).state y m = tr.state y m :=
     fun m hm => Trace.upTo_state tr y fun k hk => hnt k (by omega)
@@ -113,7 +113,7 @@ theorem writer_mem_frame_between_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {q e n : Nat} {t : Time} (ht0 : 0 ≤ t)
     (hnt : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t) (hqe : q ≤ e) (hen : e ≤ n)
-    {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hRq : R ∈ (tr.state y q).fg.tree) (hRn : R ∈ (Node.frame (tr.state y n)).tree) :
     R ∈ (Node.frame (tr.state y e)).tree := by
   have hst : ∀ m ≤ n, (tr.upTo t).state y m = tr.state y m :=
@@ -133,9 +133,9 @@ terminal cut. -/
 theorem clean_optimistic_writer_candidate_interval_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {y : Fin sp.n} {q s n : Nat} {t : Time} {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (SA.Vote sp.n)} (ht0 : 0 ≤ t) (hnt : ∀ j < n, tr.time j ≤ t) (htb : t ≤ b)
-    (hy : y ∈ H t) (hop : SA.OptimisticLockAt tr.projAC y q s R CV)
+    {y : Fin sp.n} {q s n : Nat} {t : Time} {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (AC.Vote sp.n)} (ht0 : 0 ≤ t) (hnt : ∀ j < n, tr.time j ≤ t) (htb : t ≤ b)
+    (hy : y ∈ H t) (hop : AC.OptimisticLockAt tr.projAC y q s R CV)
     (hs : Healing.cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hqn : q < n)
     (hRn : R ∈ (Node.frame (tr.state y n)).tree) :
     ∀ e, q ≤ e → e ≤ n → (Node.frame (tr.state y e)).AncestorCandidate R := by
@@ -148,9 +148,9 @@ theorem clean_optimistic_writer_candidate_interval_at
   have hst : ∀ m ≤ n, (tr.upTo t).state y m = tr.state y m :=
     fun m hm' => Trace.upTo_state tr y fun k hk => hnt k (by omega)
   have hr := Compose.Growing.acRun_upTo hrun hnc ht0
-  obtain ⟨_, _, ell, _, hpoint, hRq, _, _⟩ := SA.optimisticLockAt_spec hr hy
-    ((Compose.Growing.sa_optimisticLockAt_upTo hm).mpr ⟨hqt, hop⟩) (SA.CommitteeDict.full sp.n)
-    (fun _ _ _ => SA.mem_full _ _)
+  obtain ⟨_, _, ell, _, hpoint, hRq, _, _⟩ := AC.optimisticLockAt_spec hr hy
+    ((Compose.Growing.ac_optimisticLockAt_upTo hm).mpr ⟨hqt, hop⟩) (AC.CommitteeDict.full sp.n)
+    (fun _ _ _ => AC.mem_full _ _)
   have hcallq : tr.projAC.CallAt y q ell := ((Trace.upTo_callAt _).mp hpoint.1).2
   have hframe := Compose.Growing.frame_of_projAC_at hrun hyq hcallq
   have hRq' : R ∈ (tr.state y q).fg.tree := (hframe ▸ hRq).1
@@ -158,19 +158,19 @@ theorem clean_optimistic_writer_candidate_interval_at
   have haq : a + sp.Δ ≤ tr.time q := by
     have ha0 := (hrun.time_nonneg r).trans hra
     have hnext : a < sp.ts (sp.slot a + 1 : Nat) :=
-      not_le.mp ((SA.ts_le_iff_le_slot sp ha0 ((sp.slot a + 1 : Nat) : Int)).not.mpr
+      not_le.mp ((AC.ts_le_iff_le_slot sp ha0 ((sp.slot a + 1 : Nat) : Int)).not.mpr
         (by push_cast; omega))
     have hclean : sp.ts (sp.slot a + 2 : Nat) ≤ sp.ts s := by
-      apply (SA.ts_le_iff sp).mpr
+      apply (AC.ts_le_iff sp).mpr
       rw [Healing.cleanLabel_eq] at hs
       exact_mod_cast (show sp.slot a + 2 ≤ s by omega)
     have htime : sp.ts s ≤ tr.time q := by
       obtain ⟨_, _, _, hslot, _⟩ := hop
-      exact (SA.ts_le_iff_le_slot sp (hrun.time_nonneg q) s).mpr (by
+      exact (AC.ts_le_iff_le_slot sp (hrun.time_nonneg q) s).mpr (by
         change sp.slot (tr.time q) = s at hslot
         omega)
     have hΔ := sp.toParams.hΔ
-    simp only [SA.SAParams.ts] at hnext hclean htime
+    simp only [AC.ACParams.ts] at hnext hclean htime
     push_cast at hnext hclean htime
     linarith
   intro e hqe hen
@@ -198,15 +198,15 @@ bound directly by time monotonicity. -/
 theorem retained_writer_slot_after_update_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hhold : p ∈ H (sp.ts u + sp.Δ)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
-    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
+    (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
     {y : Fin sp.n} {j n q : Nat} {t : Time}
     {ell ellq : ACLabel (goldilocksNode sp ro)} (ht0 : 0 ≤ t) (hnt : ∀ k < n, tr.time k ≤ t)
-    (hy : y ∈ H t) (hup : SA.UpdateAt tr.projAC y j u ell) (hjn : j < n)
-    {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hlookup : SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed = some R)
+    (hy : y ∈ H t) (hup : AC.UpdateAt tr.projAC y j u ell) (hjn : j < n)
+    {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hlookup : AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed = some R)
     (hcall : tr.projAC.CallAt y q ellq) (hRq : R ∈ ellq.frame.tree)
     (hrest : ∀ m, q < m → m ≤ n → (tr.state y m).ac.latestConfirmed = R.root) :
     u ≤ sp.slot (tr.time q) := by
@@ -231,14 +231,14 @@ theorem retained_writer_slot_after_update_at
     have hRj := writer_mem_frame_between_at hrun hnc ht0 hnt hy (by omega : q ≤ j + 1)
       (by omega : j + 1 ≤ n)
       ((Compose.Growing.frame_of_projAC_at hrun hyq hcall ▸ hRq).1)
-      (SA.lookup_eq_some hlookup).1
-    have hlook : SA.lookup ell.frame (tr.projAC.post j).latestConfirmed = some R := by
+      (AC.lookup_eq_some hlookup).1
+    have hlook : AC.lookup ell.frame (tr.projAC.post j).latestConfirmed = some R := by
       rw [hpost, hrest (j + 1) (by omega) (by omega)]
       rw [hframe] at hRj
-      cases he : SA.lookup ell.frame R.root with
-      | none => exact False.elim (SA.lookup_eq_none he ⟨R, hRj, rfl⟩)
+      cases he : AC.lookup ell.frame R.root with
+      | none => exact False.elim (AC.lookup_eq_none he ⟨R, hRj, rfl⟩)
       | some B =>
-        obtain ⟨hB, hBr⟩ := SA.lookup_eq_some he
+        obtain ⟨hB, hBr⟩ := AC.lookup_eq_some he
         have heq : B = R :=
           (Compose.Growing.frameIn_at hrun hnc hyj hup.1).1.coherent.1 hB hRj hBr
         exact congrArg some heq
@@ -246,7 +246,7 @@ theorem retained_writer_slot_after_update_at
       operational_update_selection_at hp hhold hdesignated hactual hPs hR hgu hTb hyj hup
     obtain ⟨hΦj, hΦjU⟩ := Compose.Growing.frameIn_at hrun hnc hyj hup.1
     have hPR : Anc (tr.HonestBlocksAt H) P
-        ((SA.lookup ell.frame (tr.projAC.post j).latestConfirmed).getD ell.frame.F) := by
+        ((AC.lookup ell.frame (tr.projAC.post j).latestConfirmed).getD ell.frame.F) := by
       rw [hrecord]
       exact (Obligations.effective_record_update_slot_growth (sp := sp) hΦj hPt).1.mono hΦjU
     rw [hlook] at hPR
@@ -258,7 +258,7 @@ theorem retained_writer_slot_after_update_at
       have ht : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
       have hmono := hm (show j ≤ q by omega)
       linarith [sp.toParams.hΔ]
-    exact_mod_cast (SA.ts_le_iff_le_slot sp (hrun.time_nonneg q) u).1 htime
+    exact_mod_cast (AC.ts_le_iff_le_slot sp (hrun.time_nonneg q) u).1 htime
 
 open Healing.Growing in
 /-- At slot `s + 2`, on the prefix through a read time `t ≤ b` of a reader honest at `t`, the votes
@@ -267,9 +267,9 @@ slot `s` by a writer honest at its write; only validators faulty at `t` can oppo
 private theorem optimistic_unlock_keeps_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x y : Fin sp.n} {q s j : Nat} {t : Time} {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x y : Fin sp.n} {q s j : Nat} {t : Time} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (Vote sp.n)} (hx : x ∈ H (tr.time q))
-    (hop : SA.OptimisticLockAt tr.projAC x q s R CV)
+    (hop : AC.OptimisticLockAt tr.projAC x q s R CV)
     (hs : Healing.cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hqb : tr.time q ≤ b)
     (ht0 : 0 ≤ t) (htb : t ≤ b) (hy : y ∈ H t) (hjt : tr.time j ≤ t)
     (hslot : sp.slot (tr.time j) = s + 2)
@@ -287,30 +287,30 @@ private theorem optimistic_unlock_keeps_at
   have hcallA := Compose.projAC_callAt.2 hcall
   obtain ⟨hfr, hst, _, _⟩ := hrT.cutLaw y hy j _ hcall
   rw [hfr] at hst
-  have hA' : ((SA.goldilocksSA sp (List (FG.Att sp.n)) ro).step y ((tr.upTo t).state y j).ac
+  have hA' : ((AC.goldilocksAC sp (List (FG.Att sp.n)) ro).step y ((tr.upTo t).state y j).ac
       (Node.frame ((tr.upTo t).state y j)) ((tr.upTo t).time j) ell.call).1 =
         ((tr.upTo t).state y (j + 1)).ac := by
     rw [(tr.upTo t).state_succ_of_call hcall, hst]
   have hpool : ∀ m τ, ∀ v ∈ ((tr.upTo t).state y m).ac.pool τ, v.slot = τ := fun m τ v hv => by
     rw [← Compose.projAC_state hrT.toLocalRun hy] at hv
     exact (Compose.state_pool_cap hrT hy m τ).1 v hv
-  have hpay : ∀ C ∈ (Node.frame ((tr.upTo t).state y j)).tree, SA.validPayload C := by
+  have hpay : ∀ C ∈ (Node.frame ((tr.upTo t).state y j)).tree, AC.validPayload C := by
     rw [← hfr]
-    exact SA.frame_validPayload sp hr hy hcallA
+    exact AC.frame_validPayload sp hr hy hcallA
   -- the held votes of slot `s + 1` are of slot-`s + 1` committee members, fewer than half of
   -- whom are faulty at `t`
   let K := Generic.dictOfTime sp cm
   have hts : sp.ts (s + 1) ≤ tr.time j :=
-    (SA.ts_le_iff_le_slot sp (hrun.time_nonneg j) (s + 1)).2 (by omega)
+    (AC.ts_le_iff_le_slot sp (hrun.time_nonneg j) (s + 1)).2 (by omega)
   have hf : 2 * (H t ∪ (K.committee (s + 1))ᶜ)ᶜ.ncard < sp.committeeSize := by
     rw [Set.compl_union, compl_compl, Set.inter_comm]
     exact hp.committee_cs2_at (hp.gbar_le_ts_of_clean_at (by omega))
       (hts.trans (hjt.trans htb)) ht0 htb
-  have hPK := SA.CommitteePAt.upTo hm hrun.antitone hp.committeeFacts.hP t
-  have hmemK : ∀ v ∈ SA.heldVotes ((tr.upTo t).state y j).ac ((tr.upTo t).state y (j + 1)).ac
+  have hPK := AC.CommitteePAt.upTo hm hrun.antitone hp.committeeFacts.hP t
+  have hmemK : ∀ v ∈ AC.heldVotes ((tr.upTo t).state y j).ac ((tr.upTo t).state y (j + 1)).ac
       (Node.frame ((tr.upTo t).state y j)), v.val ∈ K.committee v.slot := by
     intro v hv
-    rcases SA.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | ⟨-, w, hw, -, -, -, hwv, -⟩
+    rcases AC.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | ⟨-, w, hw, -, -, -, hwv, -⟩
     · rw [(hpool j τ v hv)]
       rw [← Compose.projAC_state hrT.toLocalRun hy, RunTrace.upTo_projAC] at hv
       exact hPK.1 y hy j τ v hv
@@ -321,7 +321,7 @@ private theorem optimistic_unlock_keeps_at
       rw [← hwv]
       rw [← Compose.projAC_state hrT.toLocalRun hy, RunTrace.upTo_projAC] at hw
       exact hPK.1 y hy (j + 1) _ w hw
-  have hon : ∀ v ∈ SA.heldVotes ((tr.upTo t).state y j).ac ((tr.upTo t).state y (j + 1)).ac
+  have hon : ∀ v ∈ AC.heldVotes ((tr.upTo t).state y j).ac ((tr.upTo t).state y (j + 1)).ac
       (Node.frame ((tr.upTo t).state y j)), v.val ∈ H t ∪ (K.committee (s + 1))ᶜ →
       (v.slot : Int) = (sp.slot (tr.time j) : Int) - 1 → v.val ∈ H t := by
     intro v hv hvn hvs
@@ -331,7 +331,7 @@ private theorem optimistic_unlock_keeps_at
   have hΦ := Compose.frameOK_state hrT.toLocalRun hy j
   have hPhiU : (Node.frame ((tr.upTo t).state y j)).tree ⊆ tr.HonestBlocksAt H :=
     fun B hB => RunTrace.honestBlocks_upTo_subset hm ht0 ⟨y, hy, j, hB.1⟩
-  apply SA.unlockTarget_unlockView_held_of_honest_slot y ell.call hA' hΦ _ hR (hpool j)
+  apply AC.unlockTarget_unlockView_held_of_honest_slot y ell.call hA' hΦ _ hR (hpool j)
     (hpool (j + 1)) hpay
     (fun v hv w hw hvH hval hsl hsl' =>
       Compose.heldVotes_honest_unique hrT hncT hy hv hw (hon v hv hvH hsl') hval hsl) ?_
@@ -339,8 +339,8 @@ private theorem optimistic_unlock_keeps_at
   intro v hv hvH hvs Hd hHd hHdr
   replace hvH := hon v hv hvH hvs
   obtain ⟨k, e, ⟨ell', hcast⟩, hmsg⟩ :
-      ∃ k e, SA.VoteAt (tr.upTo t).projAC v.val k e ∧ e.msg = v := by
-    rcases SA.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | ⟨-, x, hx, x', hx', hne, hxv, hx'v⟩
+      ∃ k e, AC.VoteAt (tr.upTo t).projAC v.val k e ∧ e.msg = v := by
+    rcases AC.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | ⟨-, x, hx, x', hx', hne, hxv, hx'v⟩
     · rw [← Compose.projAC_state hrT.toLocalRun hy] at hv
       obtain ⟨k, _, e, he, hm⟩ := hrunT.honest.pool_vote y hy j τ v hv hvH
       exact ⟨k, e, he, hm⟩
@@ -354,14 +354,14 @@ private theorem optimistic_unlock_keeps_at
       obtain ⟨k, _, e, he, rfl⟩ := hrunT.honest.pool_vote y hy (j + 1) _ x hx (hxv ▸ hvH)
       obtain ⟨k', _, e', he', rfl⟩ := hrunT.honest.pool_vote y hy (j + 1) _ x' hx' (hx'v ▸ hvH)
       rw [hx'v, ← hxv] at he'
-      exact absurd (congrArg (fun e : SA.Em sp (List (FG.Att sp.n)) => e.msg)
-        (SA.one_vote_per_slotU sp _ ro (H t) _ _ hrunT.localRun.toU _ (hxv ▸ hvH) k k' e e' he he'
+      exact absurd (congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg)
+        (AC.one_vote_per_slotU sp _ ro (H t) _ _ hrunT.localRun.toU _ (hxv ▸ hvH) k k' e e' he he'
           (hxs.trans hx's.symm)).2) hne
   have hkj : k < j :=
     Compose.cast_lt_of_slot hrT hncT hvH hcast (by simpa [hmsg] using hvs)
-  have hcastR : SA.CastAt tr.projAC v.val k ell' e := by
+  have hcastR : AC.CastAt tr.projAC v.val k ell' e := by
     rw [RunTrace.upTo_projAC] at hcast
-    exact (Compose.Growing.sa_castAt_upTo.mp hcast).2
+    exact (Compose.Growing.ac_castAt_upTo.mp hcast).2
   have hkt : tr.time k ≤ t := (hm hkj.le).trans hjt
   obtain ⟨Hd', hHd', hHd'r, hRHd⟩ := hp.fast_source_votes_before_at hx (Or.inr hop)
     (by have := sp.two_le_k; omega) hqb k (hkt.trans htb) v.val (hrun.antitone hkt hvH) ell' e
@@ -372,7 +372,7 @@ private theorem optimistic_unlock_keeps_at
   have heq : Hd' = Hd := hU.1 hHd' (hPhiU hHd)
     (hHd'r.trans ((congrArg Vote.head hmsg).trans hHdr.symm))
   subst Hd'
-  exact Or.inr (SA.anc_tree_of_anc_U hU hΦ hPhiU hR hRHd hHd)
+  exact Or.inr (AC.anc_tree_of_anc_U hU hΦ hPhiU hR hRHd hHd)
 
 open Healing.Growing in
 /-- The actual slot-`s` fast lock, of expiry at least `s + 2`, survives at a reader honest at
@@ -381,15 +381,15 @@ theorem young_optimistic_lock_persists_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {q s i n : Nat} {t : Time}
-    {R : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} {e : Nat}
-    (hx : x ∈ H (tr.time q)) (hop : SA.OptimisticLockAt tr.projAC x q s R CV)
+    {R : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} {e : Nat}
+    (hx : x ∈ H (tr.time q)) (hop : AC.OptimisticLockAt tr.projAC x q s R CV)
     (hs : Healing.cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hqb : tr.time q ≤ b)
     (hin : i ≤ n) (hread : ∀ j < n, tr.time j ≤ t) (htb : t ≤ b) (ht0 : 0 ≤ t)
     (hy : y ∈ H t) (hyoung : t ≤ sp.ts (s + 1 : Nat) + 6 * sp.Δ)
-    (he : s + 2 ≤ e) (hl : (⟨R.root, s, true, e⟩ : SA.Lock) ∈ (tr.state y i).ac.locks)
+    (he : s + 2 ≤ e) (hl : (⟨R.root, s, true, e⟩ : AC.Lock) ∈ (tr.state y i).ac.locks)
     (hframe : ∀ j, i ≤ j → j < n → R ∈ (Node.frame (tr.state y j)).tree ∧
       (Node.frame (tr.state y j)).AncestorCandidate R) :
-    (⟨R.root, s, true, e⟩ : SA.Lock) ∈ (tr.state y n).ac.locks := by
+    (⟨R.root, s, true, e⟩ : AC.Lock) ∈ (tr.state y n).ac.locks := by
   have hrun := hp.run
   have hrT := hrun.upTo ht0
   have hst : ∀ m ≤ n, (tr.upTo t).state y m = tr.state y m :=
@@ -400,10 +400,10 @@ theorem young_optimistic_lock_persists_at
       have hR' : R ∈ (Node.frame ((tr.upTo t).state y j)).tree := by rw [hst j hjn.le]; exact hR
       have hslot : sp.slot (tr.time j) ≤ s + 2 := by
         have htime := hread j hjn
-        have hfloor := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg j)
+        have hfloor := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg j)
           (sp.slot (tr.time j))).2 le_rfl
         have hΔ := sp.toParams.hΔ
-        simp only [SA.SAParams.ts] at hyoung hfloor
+        simp only [AC.ACParams.ts] at hyoung hfloor
         push_cast at hyoung hfloor
         by_contra h
         have : (s : Int) + 3 ≤ sp.slot (tr.time j) := by omega
@@ -411,7 +411,7 @@ theorem young_optimistic_lock_persists_at
       refine ⟨show sp.slot (tr.time j) ≤ e by omega, hR', ?_, ?_⟩
       · have hΦ := Compose.frameOK_state hrT.toLocalRun hy j
         rw [hst j hjn.le] at hΦ ⊢
-        exact SA.viableAncestor_self hΦ hR hcandidate.symm
+        exact AC.viableAncestor_self hΦ hR hcandidate.symm
       · intro ell hcall
         by_cases hshort : sp.slot (tr.time j) ≤ s + 1
         · left; change (sp.slot (tr.time j) : Int) - 1 ≤ (s : Int); omega
@@ -426,15 +426,15 @@ known to precede their stored-clock observation. -/
 theorem optimistic_result_or_finalized_at_update_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x y : Fin sp.n} {r s j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x y : Fin sp.n} {r s j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (Vote sp.n)} {ell : ACLabel (goldilocksNode sp ro)}
     (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time j))
-    (hop : SA.OptimisticLockAt tr.projAC x r s B CV)
+    (hop : AC.OptimisticLockAt tr.projAC x r s B CV)
     (hs : Healing.cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hrb : tr.time r ≤ b)
-    (hu : SA.UpdateAt tr.projAC y j (s + 1) ell)
+    (hu : AC.UpdateAt tr.projAC y j (s + 1) ell)
     (hjb : tr.time j ≤ b) (hR : Healing.drainTime sp a ≤ sp.ts (s + 1 + 1 : Nat)) :
     Anc (tr.HonestBlocksAt H) B (tr.state y j).fg.F ∨
-      ∃ D DV, SA.ResultAt tr.projAC y j (s + 1) D DV ∧ Anc (tr.HonestBlocksAt H) B D := by
+      ∃ D DV, AC.ResultAt tr.projAC y j (s + 1) D DV ∧ Anc (tr.HonestBlocksAt H) B D := by
   have hrun := hp.run
   rcases hp.finalized_compatible_clean_source_at hx (Or.inr hop) hs hrb
       (hrun.time_nonneg j) (fun q hq => hrun.time_mono hq.le) hy hjb with hFB | hBF
@@ -442,7 +442,7 @@ theorem optimistic_result_or_finalized_at_update_at
     have hcut := hp.clean_window_timing_at
       (show Healing.cleanLabel sp a + sp.k + 2 ≤ s by have := sp.two_le_k; omega)
       (s + 1) (by omega)
-    have hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts (s + 1 : Nat) := by
+    have hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts (s + 1 : Nat) := by
       have := Healing.lt_cutZ sp g
       linarith [sp.toParams.hΔ]
     apply optimistic_next_result_of_floor_at hp hx hy hop hs hrb hu hjb hgu hR
@@ -469,30 +469,30 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b :
     (hbh : b ≤ rho.horizon)
     {v : V} {i u : Nat} (hv : v ∉ rho.faultyAt (stateAt S rho hn v i).now)
     (hslot : (S.params (Model.pubOf E) hn).ts
-      ((S.params (Model.pubOf E) hn).slot (SA.gbar g) + 1 : Nat) ≤
+      ((S.params (Model.pubOf E) hn).slot (AC.gbar g) + 1 : Nat) ≤
         (S.params (Model.pubOf E) hn).ts u)
     (ht : (S.params (Model.pubOf E) hn).ts u +
       6 * (S.params (Model.pubOf E) hn).Δ ≤ (stateAt S rho hn v i).now)
     (htb : (stateAt S rho hn v i).now ≤ b) :
-    ∃ j ell, SA.UpdateAt (simTraceAt S rho hn).projAC
+    ∃ j ell, AC.UpdateAt (simTraceAt S rho hn).projAC
       (rho.ownKey v) j u ell ∧
       j < cutMap S rho hn (lastOwn S rho v i) := by
   let sp := S.params (Model.pubOf E) hn
   let T := sp.ts u + 6 * sp.Δ
   have hDelta := sp.toParams.hΔ
   have hT0 : 0 < T := by
-    dsimp [T, SA.SAParams.ts]
+    dsimp [T, AC.ACParams.ts]
     positivity
   have hTb : T ≤ b := ht.trans htb
   have hTh : T ≤ rho.horizon := hTb.trans hbh
-  have hslot' : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts u := hslot
-  have hgu : SA.gbar g ≤ sp.ts u := by
-    have hnext := (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g)
-      ((sp.slot (SA.gbar g) + 1 : Nat) : Int)).not.mpr (by push_cast; omega)
+  have hslot' : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) ≤ sp.ts u := hslot
+  have hgu : AC.gbar g ≤ sp.ts u := by
+    have hnext := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g)
+      ((sp.slot (AC.gbar g) + 1 : Nat) : Int)).not.mpr (by push_cast; omega)
     exact (not_le.mp hnext).le.trans hslot'
   have hvT : v ∉ rho.faultyAt T := fun h => hv (rho.faultyAt_mono ht h)
   have hpub : sp.toParams.IsPublic T :=
-    ⟨4 * (u : Int) + 6, by dsimp [T, SA.SAParams.ts]; ring⟩
+    ⟨4 * (u : Int) + 6, by dsimp [T, AC.ACParams.ts]; ring⟩
   have hy : rho.ownKey v ∈ honestKeysAt S rho T := honest_ownKey_at S rho hvT hTh
   have hawake := hp.awake _ T hy (by dsimp [T]; linarith) hTb
   have hawake' : E.awake v T = true := by
@@ -513,7 +513,7 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b :
       rw [simTraceAt_eq S rho hn, simTrace_time S rho hn, hrec]; exact htime
     have hbound := hp.restart_le_before_at (htime' ▸ hy) hrs (htime' ▸ hTb)
     rw [htime'] at hbound
-    have hbound' : sp.ts u + 6 * sp.Δ ≤ sp.ts (sp.slot (SA.gbar g) + 1 : Nat) := hbound
+    have hbound' : sp.ts u + 6 * sp.Δ ≤ sp.ts (sp.slot (AC.gbar g) + 1 : Nat) := hbound
     linarith
   have hpi := tick_before_stored_clock S rho hn hvalid he hT0 ht hnr
   have hpl : p + 1 ≤ lastOwn S rho v i := by
@@ -535,11 +535,11 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b :
   refine ⟨cutMap S rho hn p, ell, ⟨hcallA, hcalltick, htime, ?_⟩, ?_⟩
   · have hr := hp.run.upTo hT0.le
     have hac := (Compose.goldilocks_ac_projection_from hr (hp.noColl.upTo T)).localRun
-    have hj : SA.joined sp (((simTraceAt S rho hn).upTo T).projAC.state
+    have hj : AC.joined sp (((simTraceAt S rho hn).upTo T).projAC.state
         (rho.ownKey v) (cutMap S rho hn p))
             ((simTraceAt S rho hn).time (cutMap S rho hn p)) := by
-      unfold SA.joined
-      rcases SA.restartTime_state hac hp.run.vstart
+      unfold AC.joined
+      rcases AC.restartTime_state hac hp.run.vstart
         hy (cutMap S rho hn p) with
         h | ⟨r, hri, hrs, h⟩
       · rw [h]; exact bot_le
@@ -551,9 +551,9 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b :
           (hm hri.le).trans htime.le
         have hrestart := hp.restart_le_before_at (hp.run.antitone hrd hy) hrs' (hrd.trans hTb)
         have hsl : sp.slot T = u + 1 :=
-          SA.slot_of_mem sp (u + 1)
-            (by dsimp [T]; simp only [SA.SAParams.ts]; linarith)
-            (by dsimp [T]; simp only [SA.SAParams.ts]; linarith)
+          AC.slot_of_mem sp (u + 1)
+            (by dsimp [T]; simp only [AC.ACParams.ts]; linarith)
+            (by dsimp [T]; simp only [AC.ACParams.ts]; linarith)
         change (simTraceAt S rho hn).time r ≤
           sp.ts ((sp.slot ((simTraceAt S rho hn).time (cutMap S rho hn p)) :
               Int) - 1)

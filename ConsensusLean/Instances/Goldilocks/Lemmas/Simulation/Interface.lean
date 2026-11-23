@@ -61,11 +61,11 @@ open AsChainShape
 
 open Blocks Shape
 open Consensus.Model (pubOf)
-open SA (SAParams Vote Payload)
+open AC (ACParams Vote Payload)
 
 variable {binding : VoteBinding}
 
-variable {sp : SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The node's cuts for the engine's delivery of the objects `os` to `y` at time `t`, given the
 digests `hs`, from cut `j` to cut `j'`: in order, one top-level event (`canonEvent`) per

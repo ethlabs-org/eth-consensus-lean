@@ -20,9 +20,9 @@ post-GST acceptances; the growing Catch contract transports acceptances before t
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -30,12 +30,12 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem reset_accept_frame_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x y : Fin sp.n} {q j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x y : Fin sp.n} {q j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time q)) (ha : tr.projAC.AcceptAt x q B)
     (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
     (hcall : tr.projAC.CallAt y j ell) (hjb : tr.time j ≤ b)
-    (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
-    (hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
+    (hg : AC.gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hjoin : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
     (hq : tr.time q + sp.Δ ≤ tr.time j)
     (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B) : B ∈ ell.frame.tree := by
   have hm := hp.run.time_mono
@@ -44,22 +44,22 @@ theorem reset_accept_frame_at
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hR := (hac.upTo hj0).localRun
   have hcall' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcall)
-  by_cases hnew : SA.gbar g ≤ tr.time q
+  by_cases hnew : AC.gbar g ≤ tr.time q
   · have hd := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := j)
       (fun k hkj hk => hp.restart_le_before_at (hp.run.antitone (hm hkj) hy)
         (Compose.projAC_restartAt.mp hk) ((hm hkj).trans hjb)) (tr.time q)
     have hdl : tr.projAC.deadline y j (tr.time q) ≤ tr.time j := by
       apply hd.trans
-      change max (tr.time q) (sp.ts (sp.slot (SA.gbar g) + 1 : Nat)) + sp.Δ ≤ tr.time j
+      change max (tr.time q) (sp.ts (sp.slot (AC.gbar g) + 1 : Nat)) + sp.Δ ≤ tr.time j
       rw [← max_add_add_right]
       exact max_le hq hjoin
-    obtain ⟨k, hkj, hak, _⟩ := hp.frame_relay_at hx ha ((SA.le_gbar g).trans hnew)
+    obtain ⟨k, hkj, hak, _⟩ := hp.frame_relay_at hx ha ((AC.le_gbar g).trans hnew)
       hy hcall hdl hF
-    exact SA.mem_tree_of_acceptAt sp hR hy
+    exact AC.mem_tree_of_acceptAt sp hR hy
       ((ACTrace.upTo_acceptAt).mpr ⟨hm hkj, hak⟩) hkj hcall' hF
   · obtain ⟨k, hkj, hak, _⟩ := hp.run.toLocalRun.acCatchAt hp.catchUp hx ha (not_le.mp hnew)
       hy hcall hg hF
-    exact SA.mem_tree_of_acceptAt sp hR hy
+    exact AC.mem_tree_of_acceptAt sp hR hy
       ((ACTrace.upTo_acceptAt).mpr ⟨hm hkj, hak⟩) hkj hcall' hF
 
 /-- A historically held frame block reaches a bounded honest recipient above its guard. -/
@@ -69,9 +69,9 @@ theorem reset_frame_relay_at
     {x y : Fin sp.n} {q j : Nat} {ellx elly : ACLabel (goldilocksNode sp ro)}
     (hx : x ∈ H (tr.time q)) (hy : y ∈ H (tr.time j))
     (hcx : tr.projAC.CallAt x q ellx) (hcy : tr.projAC.CallAt y j elly)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ellx.frame.tree)
-    (hjb : tr.time j ≤ b) (hg : SA.gbar g + 2 * sp.Δ ≤ tr.time j)
-    (hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ellx.frame.tree)
+    (hjb : tr.time j ≤ b) (hg : AC.gbar g + 2 * sp.Δ ≤ tr.time j)
+    (hjoin : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
     (hq : tr.time q + sp.Δ ≤ tr.time j)
     (hF : Anc (tr.HonestBlocksAt H) elly.frame.F B) : B ∈ elly.frame.tree := by
   have hm := hp.run.time_mono
@@ -81,11 +81,11 @@ theorem reset_frame_relay_at
   have hcx' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcx)
   have hcy' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcy)
   rcases Compose.frame_anc_accepted hrq hx q ellx hcx' B hB B .refl with hgen | ⟨k, hk, ha⟩
-  · obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hrj hy j elly hcy'
-    obtain rfl : B = G := hac.localRun.coherent.1 ((SA.frameIn_of_callAt hrq hx hcx').2 hB)
+  · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hrj hy j elly hcy'
+    obtain rfl : B = G := hac.localRun.coherent.1 ((AC.frameIn_of_callAt hrq hx hcx').2 hB)
       hGU (hgen.trans hGr.symm)
     rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp hF with he | ⟨c, _, hpar⟩
-    · exact he ▸ (SA.frameIn_of_callAt hrj hy hcy').1.rooted.1
+    · exact he ▸ (AC.frameIn_of_callAt hrj hy hcy').1.rooted.1
     · exact absurd (hpar.2.2.symm.trans hGp) (Option.some_ne_none _)
   · obtain ⟨hkq, ha⟩ := (ACTrace.upTo_acceptAt).mp ha
     exact hp.reset_accept_frame_at (hp.run.antitone hkq hx) ha hy hcy hjb hg hjoin

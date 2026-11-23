@@ -11,10 +11,10 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 open Compose.Growing
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -28,7 +28,7 @@ theorem next_votes_of_early_witness_at
     (hcatch : CatchRun tr H g (2 * sp.Δ))
     {s floor : Nat} {hi : Time} (hm : gbar g ≤ sp.ts s)
     (hnext : sp.ts (s + 1 : Nat) + sp.Δ ≤ hi) (hmb : hi ≤ b)
-    {kindJ : Prop} {J X Q : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s) hi floor kindJ J)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (hat : tr.time a < sp.ts s + 2 * sp.Δ)
@@ -36,35 +36,35 @@ theorem next_votes_of_early_witness_at
     (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocksAt H) J X)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q)
-    (htransfer : ∀ y i ell e, y ∈ H (tr.time i) → SA.CastAt tr.projAC y i ell e →
+    (htransfer : ∀ y i ell e, y ∈ H (tr.time i) → AC.CastAt tr.projAC y i ell e →
       e.msg.slot = s + 1 → tr.time i ≤ hi →
       Anc (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).F X →
-      SA.ViableAtVote ell e (s + 1) X →
-      (∀ z k ev, k < i → z ∈ H (tr.time k) → SA.VoteAt tr.projAC z k ev →
-        ev.msg.slot = s + 1 → SA.VoteExtends (tr.HonestBlocksAt H) ev.msg X) →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg X) :
-    ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
+      AC.ViableAtVote ell e (s + 1) X →
+      (∀ z k ev, k < i → z ∈ H (tr.time k) → AC.VoteAt tr.projAC z k ev →
+        ev.msg.slot = s + 1 → AC.VoteExtends (tr.HonestBlocksAt H) ev.msg X) →
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg X) :
+    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
   have hU := honestBlocksAt_coherent hrun hnc
   have hQ : Q ∈ (tr.state w a).fg.tree := by
     rw [frame_of_projAC_at hrun hw hcw] at hQw
     exact hQw.1
-  suffices hall : ∀ i, ∀ y e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
-      e.msg.slot = s + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X from
+  suffices hall : ∀ i, ∀ y e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
+      e.msg.slot = s + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg X from
     fun y i e hy hv hs => hall i y e hy hv hs
   intro i
   induction i using Nat.strong_induction_on with
   | _ i ih =>
     intro y e hy ⟨ell, hc, he⟩ hs
-    have hcast : SA.CastAt tr.projAC y i ell e := ⟨hc, he⟩
+    have hcast : AC.CastAt tr.projAC y i ell e := ⟨hc, he⟩
     have ht0 := hrun.time_nonneg i
     have hr := (acRun_upTo hrun hnc ht0).localRun
-    have hcast' := sa_castAt_upTo.mpr ⟨le_rfl, hcast⟩
+    have hcast' := ac_castAt_upTo.mpr ⟨le_rfl, hcast⟩
     have hslot : sp.slot (tr.time i) = s + 1 :=
       (castAt_spec_at hrun hnc hy hcast).2.1.symm.trans hs
     have hti : sp.ts (s + 1 : Nat) ≤ tr.time i :=
-      (SA.ts_le_iff_le_slot sp ht0 _).2 (by rw [hslot])
-    have hts := SA.ts_succ s (sp := sp)
+      (AC.ts_le_iff_le_slot sp ht0 _).2 (by rw [hslot])
+    have hts := AC.ts_succ s (sp := sp)
     have hlo : sp.ts s ≤ tr.time i := by linarith only [hti, hts, sp.toParams.hΔ]
     have hhi : tr.time i ≤ hi := by
       have ht := (cast_head_fcRoot_at hrun hnc hy hcast).2
@@ -76,11 +76,11 @@ theorem next_votes_of_early_witness_at
       (by rw [max_eq_left (show tr.time a ≤ tr.time i by
             linarith only [hat, hti, hts, sp.toParams.hΔ])]; exact hmargin)
       hlo hhi hQ hh (fun hk => (hJ hk).trans hXQ) hQ .refl
-    rcases SA.anc_total hU hFQ hXQ with hFX | hXF
+    rcases AC.anc_total hU hFQ hXQ with hFX | hXF
     swap
     · obtain ⟨hPhi, hPhiU⟩ := frameIn_at hrun hnc hy hc
-      obtain ⟨W, hW, hWr, hFW⟩ := SA.castAt_head_anc hr hy hcast' (Or.inr rfl)
-        (fun L hL => (SA.liveLockBlock_candidate hPhi hL).elim
+      obtain ⟨W, hW, hWr, hFW⟩ := AC.castAt_head_anc hr hy hcast' (Or.inr rfl)
+        (fun L hL => (AC.liveLockBlock_candidate hPhi hL).elim
           (fun h => Or.inr h.2.1) Or.inl) hPhi.F_anc_fcRoot
       have hFW := hFW.mono hPhiU
       rw [frame_of_projAC_at hrun hy hc] at hFW
@@ -99,13 +99,13 @@ theorem next_votes_of_early_witness_at
     have hpath := witness_frame_at hrun hnc hframe hy hc hlo hhi hmargin hQy hhy hJ hXQ
     rcases hpath with hXF | ⟨-, hXt, hroot, -, hvQ, hXQf⟩
     · obtain ⟨hPhi, hPhiU⟩ := frameIn_at hrun hnc hy hc
-      obtain ⟨W, hW, hWr, hFW⟩ := SA.castAt_head_anc hr hy hcast' (Or.inr rfl)
-        (fun L hL => (SA.liveLockBlock_candidate hPhi hL).elim
+      obtain ⟨W, hW, hWr, hFW⟩ := AC.castAt_head_anc hr hy hcast' (Or.inr rfl)
+        (fun L hL => (AC.liveLockBlock_candidate hPhi hL).elim
           (fun h => Or.inr h.2.1) Or.inl) hPhi.F_anc_fcRoot
       have hFW := hFW.mono hPhiU
       exact ⟨W, hPhiU hW, hWr, hXF.trans hFW⟩
-    have hviab : SA.ViableAtVote ell e (s + 1) X := by
-      have hdomA := SA.voterBlockTree_anc hr hrun.vstart hy hcast'
+    have hviab : AC.ViableAtVote ell e (s + 1) X := by
+      have hdomA := AC.voterBlockTree_anc hr hrun.vstart hy hcast'
       rw [hs] at hdomA
       exact Or.inl ⟨hdomA Q hdom X hXQf, hroot, Q, hdom, hvQ, hXQf⟩
     exact htransfer y i ell e hy hcast hs hhi hFX hviab

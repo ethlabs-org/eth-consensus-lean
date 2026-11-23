@@ -32,7 +32,7 @@ with faults. -/
 
 namespace Consensus.Goldilocks.Witness.One
 
-open SA Node ChainFrame
+open AC Node ChainFrame
 
 /-! ## The parameters -/
 
@@ -59,7 +59,7 @@ theorem aZ_zero : aZ 0 = 16 := by
   unfold aZ; rw [zN_zero]; rfl
 
 /-- `Θ = 4(k + 1)Δ = 12`. -/
-theorem theta_sp1 : SA.Θ sp1 = 12 := by decide
+theorem theta_sp1 : AC.Θ sp1 = 12 := by decide
 
 /-- `C_HS = (8k + 49 + 4δ_t)Δ + Δ_F + 3G_p = 86` at `Δ_F = 1`, `G_p = 4`. -/
 theorem C_HS_sp1 : Healing.C_HS sp1 1 4 = 86 := by decide
@@ -74,7 +74,7 @@ run with the HS shared premises (`Healthy(0)`, `NoColl`, genesis root, no restar
 bound), `Catch(2Δ)` and `Prop⁺(4)`. -/
 theorem healing_premises :
     GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
-      Healing.HSShared (tickRun N1 dg1) Set.univ (SA.CommitteeDict.full sp1.n) dg1 0 1 ∧
+      Healing.HSShared (tickRun N1 dg1) Set.univ (AC.CommitteeDict.full sp1.n) dg1 0 1 ∧
       Healing.CatchRun (tickRun N1 dg1) Set.univ 0 (2 * sp1.Δ) ∧
       Healing.PropPlus (tickRun N1 dg1) Set.univ (fun _ => v0) 0 4 :=
   ⟨tickRun_goldilocksRun, tickRun_hsShared 0, tickRun_catch 0 _ (by decide),
@@ -100,12 +100,12 @@ theorem tickRun_cutAndReset :
     (12 : Time) ≤ 0 + 12 * sp1.Δ ∧
     (∀ y ∈ (Set.univ : Set (Fin sp1.n)), ∀ k att, (tickRun N1 dg1).SignAt y k att →
       (tickRun N1 dg1).time k ≤ 12 → att.h ≤ 3) ∧
-    (∀ x ∈ (Set.univ : Set (Fin sp1.n)), ∀ i ℓ C, SA.ToFGAt (tickRun N1 dg1).projAC x i ℓ C →
+    (∀ x ∈ (Set.univ : Set (Fin sp1.n)), ∀ i ℓ C, AC.ToFGAt (tickRun N1 dg1).projAC x i ℓ C →
       12 ≤ (tickRun N1 dg1).time i →
-      ∃ l ∈ SA.liveLocks sp1 ((tickRun N1 dg1).state x i).ac.locks ℓ.frame
+      ∃ l ∈ AC.liveLocks sp1 ((tickRun N1 dg1).state x i).ac.locks ℓ.frame
           ((tickRun N1 dg1).time i),
         l.fast = true ∧ l.block = C.root ∧
-        ∃ i' < i, ∃ B CV, SA.FastLockAt (tickRun N1 dg1).projAC x i' l.slot B CV ∧
+        ∃ i' < i, ∃ B CV, AC.FastLockAt (tickRun N1 dg1).projAC x i' l.slot B CV ∧
           0 < (tickRun N1 dg1).time i' ∧ Anc ((tickRun N1 dg1).HonestBlocks Set.univ) C B) ∧
     (∀ y ∈ (Set.univ : Set (Fin sp1.n)), ∀ i, ∀ X ∈ ((tickRun N1 dg1).state y i).fg.tree,
       3 + 2 ≤ (((tickRun N1 dg1).state y i).fg.σ X.root).h →
@@ -145,8 +145,8 @@ theorem tickRun_resetExistence :
     (1056 : Time) ≤ 0 + 24 * sp1.Δ + 12 * 86 ∧
     Healing.C_HS sp1 1 4 = 86 := by
   obtain ⟨⟨h1, h2⟩, h3, h4, h5, h6, -, h8⟩ := Healing.reset_existence sp1 ro1 (fun _ => v0) dg1
-    Set.univ (tickRun N1 dg1) (SA.CommitteeDict.full sp1.n) 0 1 4
-    (by rw [SA.committeeStart_full]; exact tickRun_goldilocksRun) (tickRun_hsShared 0)
+    Set.univ (tickRun N1 dg1) (AC.CommitteeDict.full sp1.n) 0 1 4
+    (by rw [AC.committeeStart_full]; exact tickRun_goldilocksRun) (tickRun_hsShared 0)
     (tickRun_catch 0 _ (by decide)) (tickRun_propPlus 0 4 le_rfl)
   rw [cutZ_zero] at h1 h2 h5 h6
   simp only [gbar_zero, A_HS_sp1, C_HS_sp1] at h1 h3 h5 h6
@@ -157,7 +157,7 @@ theorem tickRun_resetExistence :
 at the heights `≥ H_z + 1 = 4`. -/
 theorem tickRun_retention : Healing.RetentionAt (tickRun N1 dg1) Set.univ 0 16 :=
   Healing.height_scoped_retention sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1)
-    (SA.CommitteeDict.full sp1.n) 0 1 (by rw [SA.committeeStart_full]; exact tickRun_goldilocksRun)
+    (AC.CommitteeDict.full sp1.n) 0 1 (by rw [AC.committeeStart_full]; exact tickRun_goldilocksRun)
     (tickRun_healthy 0) (dg1_noColl _) (tickRun_hsShared 0).committee (tickRun_hsShared 0).twoK
     16 reset_bundle.1
 

@@ -34,7 +34,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote Payload SAState)
+open AC (ACParams ReplayOrder Vote Payload ACState)
 
 variable {binding : VoteBinding}
 
@@ -42,39 +42,39 @@ variable {binding : VoteBinding}
 
 section OneVote
 
-variable {sp : SAParams} {FGP : Type}
+variable {sp : ACParams} {FGP : Type}
 
-open SA (admitVote_keeps optimistic_keeps updateConfirmation_keeps blockReceipt_keeps)
+open AC (admitVote_keeps optimistic_keeps updateConfirmation_keeps blockReceipt_keeps)
 
 /-- A call from `A` at `t` that is not a restart, to `A'` with the emissions `es`: it keeps
 `restart_time`, keeps `voted_slot` or sets it to `slot(t)`, and emits at most one vote, only from a
 joined `A` with `voted_slot ≠ slot(t)`, after which `voted_slot = slot(t)`. -/
-def VoteStep (A A' : SAState sp.n) (es : List (SA.Em sp FGP)) (t : Time) : Prop :=
+def VoteStep (A A' : ACState sp.n) (es : List (AC.Em sp FGP)) (t : Time) : Prop :=
   A'.restartTime = A.restartTime ∧
     (A'.votedSlot = A.votedSlot ∨ A'.votedSlot = sp.slot t) ∧ es.length ≤ 1 ∧
-    ∀ e ∈ es, SA.joined sp A t ∧ A.votedSlot ≠ sp.slot t ∧ A'.votedSlot = sp.slot t
+    ∀ e ∈ es, AC.joined sp A t ∧ A.votedSlot ≠ sp.slot t ∧ A'.votedSlot = sp.slot t
 
-private theorem VoteStep.refl (A : SAState sp.n) (t : Time) :
+private theorem VoteStep.refl (A : ACState sp.n) (t : Time) :
     VoteStep (FGP := FGP) A A [] t :=
   ⟨rfl, Or.inl rfl, Nat.zero_le _, fun _ h => absurd h List.not_mem_nil⟩
 
-private theorem VoteStep.pre {A B A' : SAState sp.n} {es : List (SA.Em sp FGP)} {t : Time}
+private theorem VoteStep.pre {A B A' : ACState sp.n} {es : List (AC.Em sp FGP)} {t : Time}
     (h : VoteStep B A' es t) (hv : B.votedSlot = A.votedSlot)
     (hr : B.restartTime = A.restartTime) : VoteStep A A' es t := by
   obtain ⟨h₁, h₂, h₃, h₄⟩ := h
   refine ⟨h₁.trans hr, hv ▸ h₂, h₃, fun e he => ?_⟩
   obtain ⟨e₂, e₃, e₄⟩ := h₄ e he
-  exact ⟨by unfold SA.joined at e₂ ⊢; rwa [← hr], hv ▸ e₃, e₄⟩
+  exact ⟨by unfold AC.joined at e₂ ⊢; rwa [← hr], hv ▸ e₃, e₄⟩
 
-private theorem VoteStep.post {A A' A'' : SAState sp.n} {es : List (SA.Em sp FGP)} {t : Time}
+private theorem VoteStep.post {A A' A'' : ACState sp.n} {es : List (AC.Em sp FGP)} {t : Time}
     (h : VoteStep A A' es t) (hv : A''.votedSlot = A'.votedSlot)
     (hr : A''.restartTime = A'.restartTime) : VoteStep A A'' es t := by
   obtain ⟨h₁, h₂, h₃, h₄⟩ := h
   exact ⟨hr.trans h₁, hv ▸ h₂, h₃, fun e he => hv ▸ h₄ e he⟩
 
-private theorem tryVote_voteStep (self : Fin sp.n) (A : SAState sp.n) (Φ : SA.Frm sp.n FGP)
-    (t : Time) : VoteStep A (SA.tryVote sp self A Φ t).1 (SA.tryVote sp self A Φ t).2 t := by
-  unfold SA.tryVote
+private theorem tryVote_voteStep (self : Fin sp.n) (A : ACState sp.n) (Φ : AC.Frm sp.n FGP)
+    (t : Time) : VoteStep A (AC.tryVote sp self A Φ t).1 (AC.tryVote sp self A Φ t).2 t := by
+  unfold AC.tryVote
   dsimp only
   split_ifs with h₁ h₂
   · exact VoteStep.refl A t
@@ -84,29 +84,29 @@ private theorem tryVote_voteStep (self : Fin sp.n) (A : SAState sp.n) (Φ : SA.F
   all_goals
     simp only [not_or, not_not, not_lt] at h₁
     obtain ⟨hj, hv, -⟩ := h₁
-    have k₁ := fun A₁ v => ((optimistic_keeps (SA.admitVote sp A₁ t v) Φ t).1.trans
+    have k₁ := fun A₁ v => ((optimistic_keeps (AC.admitVote sp A₁ t v) Φ t).1.trans
       (admitVote_keeps A₁ t v).1)
-    have k₂ := fun A₁ v => ((optimistic_keeps (SA.admitVote sp A₁ t v) Φ t).2.trans
+    have k₂ := fun A₁ v => ((optimistic_keeps (AC.admitVote sp A₁ t v) Φ t).2.trans
       (admitVote_keeps A₁ t v).2)
     refine ⟨k₂ _ _, Or.inr (k₁ _ _), by simp, fun e he => ?_⟩
     rw [List.mem_singleton] at he
     subst he
     exact ⟨hj, hv, k₁ _ _⟩
 
-private theorem acOnBlock_voteStep (self : Fin sp.n) (A : SAState sp.n) (Φ : SA.Frm sp.n FGP)
-    (t : Time) (B : SA.Blk sp.n FGP) :
-    VoteStep A (SA.acOnBlock sp self A Φ t B).1 (SA.acOnBlock sp self A Φ t B).2 t :=
+private theorem acOnBlock_voteStep (self : Fin sp.n) (A : ACState sp.n) (Φ : AC.Frm sp.n FGP)
+    (t : Time) (B : AC.Blk sp.n FGP) :
+    VoteStep A (AC.acOnBlock sp self A Φ t B).1 (AC.acOnBlock sp self A Φ t B).2 t :=
   (tryVote_voteStep _ _ _ _).pre
     ((optimistic_keeps _ _ _).1.trans (blockReceipt_keeps _ _ _).1)
     ((optimistic_keeps _ _ _).2.trans (blockReceipt_keeps _ _ _).2)
 
 private theorem acRestart_emits_nil (ro : ReplayOrder sp FGP) (self : Fin sp.n)
-    (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) (ht : 0 ≤ t) :
-    (SA.acRestart sp ro self A Φ t).2 = [] := by
-  unfold SA.acRestart
-  suffices h : ∀ (l : List (SA.Blk sp.n FGP)) (acc : SAState sp.n × List (SA.Em sp FGP)),
+    (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time) (ht : 0 ≤ t) :
+    (AC.acRestart sp ro self A Φ t).2 = [] := by
+  unfold AC.acRestart
+  suffices h : ∀ (l : List (AC.Blk sp.n FGP)) (acc : ACState sp.n × List (AC.Em sp FGP)),
       acc.1.restartTime = (t : WithBot Time) → acc.2 = [] →
-      (l.foldl (fun acc B => let r := SA.acOnBlock sp self acc.1 Φ t B; (r.1, acc.2 ++ r.2))
+      (l.foldl (fun acc B => let r := AC.acOnBlock sp self acc.1 Φ t B; (r.1, acc.2 ++ r.2))
         acc).2 = [] from h _ _ rfl rfl
   intro l
   induction l with
@@ -114,18 +114,18 @@ private theorem acRestart_emits_nil (ro : ReplayOrder sp FGP) (self : Fin sp.n)
   | cons B l ih =>
     intro acc hr he
     obtain ⟨h₁, -, -, h₄⟩ := acOnBlock_voteStep self acc.1 Φ t B
-    have hnil : (SA.acOnBlock sp self acc.1 Φ t B).2 = [] := by
-      cases hc : (SA.acOnBlock sp self acc.1 Φ t B).2 with
+    have hnil : (AC.acOnBlock sp self acc.1 Φ t B).2 = [] := by
+      cases hc : (AC.acOnBlock sp self acc.1 Φ t B).2 with
       | nil => rfl
       | cons e es =>
         exact absurd (h₄ e (hc ▸ List.mem_cons_self)).1
-          (SA.not_joined_of_restartTime sp ht hr)
+          (AC.not_joined_of_restartTime sp ht hr)
     exact ih _ (h₁.trans hr) (by simp [he, hnil])
 
 /-- **One vote per call.** A call of the node's AC at `t ≥ 0` other than a restart is a
 `VoteStep`; a restart emits nothing. -/
 theorem step_voteStep (ro : ReplayOrder sp (List (FG.Att sp.n))) (self : Fin sp.n)
-    (A : SAState sp.n) (Φ : (goldilocksNode sp ro).Frm) (t : Time) (ht : 0 ≤ t)
+    (A : ACState sp.n) (Φ : (goldilocksNode sp ro).Frm) (t : Time) (ht : 0 ≤ t)
     (c : (goldilocksNode sp ro).Call) :
     (c = .restart ∧ ((goldilocksNode sp ro).step self A Φ t c).2 = []) ∨
       VoteStep A ((goldilocksNode sp ro).step self A Φ t c).1
@@ -133,16 +133,16 @@ theorem step_voteStep (ro : ReplayOrder sp (List (FG.Att sp.n))) (self : Fin sp.
   cases c with
   | tick =>
     right
-    change VoteStep A (SA.acOnTick sp self A Φ t).1 (SA.acOnTick sp self A Φ t).2 t
-    unfold SA.acOnTick
+    change VoteStep A (AC.acOnTick sp self A Φ t).1 (AC.acOnTick sp self A Φ t).2 t
+    unfold AC.acOnTick
     dsimp only
     have hr : VoteStep A
-        (if t = sp.ts (sp.slot t) + sp.Δ then SA.tryVote sp self A Φ t else (A, [])).1
-        (if t = sp.ts (sp.slot t) + sp.Δ then SA.tryVote sp self A Φ t else (A, [])).2 t := by
+        (if t = sp.ts (sp.slot t) + sp.Δ then AC.tryVote sp self A Φ t else (A, [])).1
+        (if t = sp.ts (sp.slot t) + sp.Δ then AC.tryVote sp self A Φ t else (A, [])).2 t := by
       split_ifs
       · exact tryVote_voteStep _ _ _ _
       · exact VoteStep.refl A t
-    generalize (if t = sp.ts (sp.slot t) + sp.Δ then SA.tryVote sp self A Φ t else (A, [])) = r
+    generalize (if t = sp.ts (sp.slot t) + sp.Δ then AC.tryVote sp self A Φ t else (A, [])) = r
       at hr ⊢
     split_ifs
     · exact hr.post (updateConfirmation_keeps _ _ _ _).1 (updateConfirmation_keeps _ _ _ _).2
@@ -150,15 +150,15 @@ theorem step_voteStep (ro : ReplayOrder sp (List (FG.Att sp.n))) (self : Fin sp.
     · exact VoteStep.refl A t
   | proposal =>
     right
-    change VoteStep A (SA.acProposal sp A Φ t).1 [] t
+    change VoteStep A (AC.acProposal sp A Φ t).1 [] t
     refine ⟨?_, Or.inl ?_, Nat.zero_le _, fun _ h => absurd h List.not_mem_nil⟩ <;>
-      (unfold SA.acProposal; split_ifs <;> rfl)
+      (unfold AC.acProposal; split_ifs <;> rfl)
   | toFG =>
     right
-    change VoteStep A (SA.acToFG sp A Φ t).1 [] t
-    have h : (SA.acToFG sp A Φ t).1.votedSlot = A.votedSlot ∧
-        (SA.acToFG sp A Φ t).1.restartTime = A.restartTime := by
-      unfold SA.acToFG
+    change VoteStep A (AC.acToFG sp A Φ t).1 [] t
+    have h : (AC.acToFG sp A Φ t).1.votedSlot = A.votedSlot ∧
+        (AC.acToFG sp A Φ t).1.restartTime = A.restartTime := by
+      unfold AC.acToFG
       split_ifs
       · split
         · exact ⟨rfl, rfl⟩
@@ -175,17 +175,17 @@ theorem step_voteStep (ro : ReplayOrder sp (List (FG.Att sp.n))) (self : Fin sp.
 
 /-- A restart at `t ≥ 0` emits nothing (it is not joined at its own time). -/
 theorem restart_emits_nil (ro : ReplayOrder sp (List (FG.Att sp.n))) (self : Fin sp.n)
-    (A : SAState sp.n) (Φ : (goldilocksNode sp ro).Frm) (t : Time) (ht : 0 ≤ t) :
+    (A : ACState sp.n) (Φ : (goldilocksNode sp ro).Frm) (t : Time) (ht : 0 ≤ t) :
     ((goldilocksNode sp ro).step self A Φ t .restart).2 = [] :=
   acRestart_emits_nil ro self A Φ t ht
 
 /-- The AC's tick emits only at `t_s + Δ`. -/
 theorem acOnTick_emits (ro : ReplayOrder sp (List (FG.Att sp.n))) (self : Fin sp.n)
-    (A : SAState sp.n) (Φ : (goldilocksNode sp ro).Frm) (t : Time)
+    (A : ACState sp.n) (Φ : (goldilocksNode sp ro).Frm) (t : Time)
     (h : ((goldilocksNode sp ro).step self A Φ t .tick).2 ≠ []) :
     t = sp.ts (sp.slot t) + sp.Δ := by
-  change (SA.acOnTick sp self A Φ t).2 ≠ [] at h
-  unfold SA.acOnTick at h
+  change (AC.acOnTick sp self A Φ t).2 ≠ [] at h
+  unfold AC.acOnTick at h
   dsimp only at h
   split_ifs at h with h₁ h₂ <;> first | exact absurd rfl h | assumption
 
@@ -195,14 +195,14 @@ end OneVote
 
 section Deliver
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The votes a handler's cuts queue: its AC cut's emissions. -/
 private theorem handler_voteStep (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (ht : 0 ≤ t)
     (e : Event (goldilocksNode sp ro)) (hne : ∀ x, e ≠ .tick x) (hnr : e ≠ .restart) :
-    ∃ (A' : SAState sp.n) (es : List (SA.Em sp (List (FG.Att sp.n)))),
+    ∃ (A' : ACState sp.n) (es : List (AC.Em sp (List (FG.Att sp.n)))),
       VoteStep st.ac A' es t ∧ (exec proposer dg self st t e).1.ac = A' ∧
         emitted (exec proposer dg self st t e).2 = es.map fun e => .vote (encodeVote e.msg) := by
   have hstep : ∀ (st' : NodeState (goldilocksNode sp ro)) (c : (goldilocksNode sp ro).Call),
@@ -319,7 +319,7 @@ end Deliver
 
 section Duties
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The state a poll step pops from: after the FG update when it is due. -/
 noncomputable def pollPre (st : State sp ro binding) : State sp ro binding :=
@@ -849,7 +849,7 @@ theorem slotStart_ne_tickVote (t : Time) (s : Nat)
   have h' : (S.params (pubOf E) hn).Δ * (4 * (s : Int) - 4 * k - 1) = 0 := by
     have e1 := hts
     have e2 := h
-    simp only [SA.SAParams.ts] at e2
+    simp only [AC.ACParams.ts] at e2
     change t = 4 * (S.params (pubOf E) hn).Δ * (s : Int) at e1
     linear_combination e1.symm.trans e2
   clear_value k

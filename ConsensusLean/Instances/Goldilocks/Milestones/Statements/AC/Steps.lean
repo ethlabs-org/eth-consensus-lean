@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeRun
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.CommitteeRun
 
 @[expose] public section
 
@@ -16,7 +16,7 @@ or a result (a fast lock write, an update's result) is a fixed datum, as in the 
 later than the vote (an update of slot `s` runs at `t_s + 6Δ`, after the slot-`(s+1)` votes). A1.6
 and A1.7 are run-level claims, not stated here.
 
-Every statement is over an AC trace of the Goldilocks SA with its contract and the honest-object
+Every statement is over an AC trace of the Goldilocks AC with its contract and the honest-object
 facts (`ACRun`, for the honest validators `H` inside the coherent set `U` of all frame blocks;
 A1.5, `SourceAge`, over the contract `ACLocalRun` only),
 with the network premises over the trace (`SyncAC`, `Carry` / `CarryAt`, `FaultBound`), never
@@ -25,16 +25,16 @@ members sign the votes the honest nodes hold (`CommitteeP`, `CommitteeT`), with 
 bounds charged to the slot committees (`FaultBoundK`, `2 |K s ∩ Hᶜ| < committeeSize`); at the
 full committee with `committeeSize = n` these are `FaultBound` and `2f < n`. `NoColl` is the
 coherence of `U` (roots injective; every AC lookup goes through
-frames inside `U`). The SA is parametric in its restart replay order and the statements quantify
+frames inside `U`). The AC is parametric in its restart replay order and the statements quantify
 over every order. "Precedes in the run's event order" (F.5 (run)) is the cut order. A block
 "extends" another inside `U`. `docs/goldilocks-mapping.md` §"ACSteps" maps each statement to its
 node.
 
 Statements only: no proofs here. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable (sp : SAParams)
+variable (sp : ACParams)
 
 /-- **A1.1, proposer and voters agree on unlocking.** Under `Sync[t_s, t_{s+1}]`: for the honest
 proposer `p` of slot `s + 1` with a proposal (payload `pay`) at `t_{s+1}`, and an honest voter
@@ -44,15 +44,15 @@ at most `s`, then the proposal's view and `y`'s merged view give the same oppone
 slot-`s` votes) to every block of slot at most `s`. -/
 def ProposerVotersAgree : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
+    (tr : GTrace sp FGP ro) (proposer : Nat → Fin sp.n),
     ACRun proposer tr H U → ∀ (s : Nat) (p y : Fin sp.n) (i j : Nat)
-      (ℓp ℓy : ACLabel (goldilocksSA sp FGP ro))
+      (ℓp ℓy : ACLabel (goldilocksAC sp FGP ro))
       (pay : Payload sp.n) (e : Em sp FGP),
     p ∈ H → y ∈ H → p = proposer (s + 1) →
     ProposalAt tr p i ℓp pay → tr.time i = sp.ts (s + 1 : Nat) →
     CastAt tr y j ℓy e → e.msg.slot = s + 1 →
     (∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay) →
-    SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr →
+    SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr →
     {X | X ∈ ℓp.frame.tree ∧ X.slot ≤ s} = {X | X ∈ ℓy.frame.tree ∧ X.slot ≤ s} →
     ∀ B ∈ ℓp.frame.tree, B.slot ≤ s →
       opponents sp ℓp.frame (View.ofLists pay) s B =
@@ -70,15 +70,15 @@ earlier cut extending `B`, the vote extends `B`. (The writer-pool condition A1.8
 `Sync`, which forwards votes admitted from a block's payload.) -/
 def FirstTransfer : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
+    (tr : GTrace sp FGP ro) (proposer : Nat → Fin sp.n),
     ACRun proposer tr H U →
     ∀ (K : CommitteeDict sp.n), CommitteeP K tr H → CommitteeT K tr H →
       (∀ σ, (K.committee σ).ncard = sp.committeeSize) →
     ∀ (s : Nat) (x y : Fin sp.n) (i₀ i : Nat) (B : Blk sp.n FGP)
-      (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (e : Em sp FGP),
+      (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksAC sp FGP ro)) (e : Em sp FGP),
     x ∈ H → FastLockAt tr x i₀ s B CV →
     y ∈ H → CastAt tr y i ℓ e → e.msg.slot = s + 1 →
-    SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr →
+    SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (tr.time i) tr →
     CarryAt tr U y i e s CV → FaultBoundK K s tr H (tr.time i) →
     2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize →
     ViableAtVote ℓ e (s + 1) B → EarlierVotesExtend tr H U i (s + 1) B →
@@ -93,12 +93,12 @@ its `fc_root`, and every honest slot-`(m+1)` vote at an earlier cut extends `B`,
 extends `B`. (The claims also assume `Sync[t_m, τ]`; it is not needed.) -/
 def NextTransfer : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
+    (tr : GTrace sp FGP ro) (proposer : Nat → Fin sp.n),
     ACRun proposer tr H U →
     ∀ (K : CommitteeDict sp.n), CommitteeP K tr H → CommitteeT K tr H →
       (∀ σ, (K.committee σ).ncard = sp.committeeSize) →
     ∀ (m : Nat) (y : Fin sp.n) (i : Nat) (B : Blk sp.n FGP)
-      (ℓ : ACLabel (goldilocksSA sp FGP ro)) (e : Em sp FGP),
+      (ℓ : ACLabel (goldilocksAC sp FGP ro)) (e : Em sp FGP),
     y ∈ H → CastAt tr y i ℓ e → e.msg.slot = m + 1 →
     (∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = m → VoteExtends U e'.msg B) →
     sp.committeeSize ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard →
@@ -117,12 +117,12 @@ an earlier cut extending `B`, the vote extends `B`. (The claims also assume `Syn
 not needed.) -/
 def OptimisticTransfer : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
+    (tr : GTrace sp FGP ro) (proposer : Nat → Fin sp.n),
     ACRun proposer tr H U →
     ∀ (K : CommitteeDict sp.n), CommitteeP K tr H → CommitteeT K tr H →
       (∀ σ, (K.committee σ).ncard = sp.committeeSize) →
     ∀ (s : Nat) (x y : Fin sp.n) (i₀ i : Nat) (B : Blk sp.n FGP)
-      (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (e : Em sp FGP),
+      (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksAC sp FGP ro)) (e : Em sp FGP),
     x ∈ H → OptimisticLockAt tr x i₀ s B CV →
     2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize →
     2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize →
@@ -142,12 +142,12 @@ resolved before
 test selects a block `D` that extends `B` (the write can still be vetoed or moved back). -/
 def OptimisticNextUpdate : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
+    (tr : GTrace sp FGP ro) (proposer : Nat → Fin sp.n),
     ACRun proposer tr H U →
     ∀ (K : CommitteeDict sp.n), CommitteeP K tr H → CommitteeT K tr H →
       (∀ σ, (K.committee σ).ncard = sp.committeeSize) →
     ∀ (s : Nat) (z : Fin sp.n) (k : Nat) (B : Blk sp.n FGP)
-      (ℓ : ACLabel (goldilocksSA sp FGP ro)),
+      (ℓ : ACLabel (goldilocksAC sp FGP ro)),
     2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize →
     (∀ x' ∈ H, ∀ j e, VoteAt tr x' j e → e.msg.slot = s + 1 → VoteExtends U e.msg B) →
     z ∈ H → UpdateAt tr z k (s + 1) ℓ →
@@ -165,9 +165,9 @@ AC trace contract (`ACLocalRun`), not the honest-object facts of `ACRun` (signat
 slot proposer). -/
 def SourceAge : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro),
-    ACLocalRun (goldilocksSA sp FGP ro) H U tr → ∀ (τ : Time) (x : Fin sp.n) (i : Nat)
-      (ℓ : ACLabel (goldilocksSA sp FGP ro)) (C : Blk sp.n FGP),
+    (tr : GTrace sp FGP ro),
+    ACLocalRun (goldilocksAC sp FGP ro) H U tr → ∀ (τ : Time) (x : Fin sp.n) (i : Nat)
+      (ℓ : ACLabel (goldilocksAC sp FGP ro)) (C : Blk sp.n FGP),
     x ∈ H → ToFGAt tr x i ℓ C → sp.slot τ + 3 ≤ sp.slot (tr.time i) →
     ∃ j ≤ i, ∃ s' B' CV', FastLockAt tr x j s' B' CV' ∧ τ < tr.time j ∧
       sp.slot (tr.time i) ≤ s' + 2 ∧ Anc U C B'
@@ -183,9 +183,9 @@ after its unlocking is compatible with `C`; and every slot-`s` vote of its merge
 extends `C`. (No participation bound.) -/
 def ResultTransfer : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n),
+    (tr : GTrace sp FGP ro) (proposer : Nat → Fin sp.n),
     ACRun proposer tr H U → ∀ (s : Nat) (X y : Fin sp.n) (i₀ i : Nat) (C : Blk sp.n FGP)
-      (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksSA sp FGP ro)) (e : Em sp FGP),
+      (CV : Set (Vote sp.n)) (ℓ : ACLabel (goldilocksAC sp FGP ro)) (e : Em sp FGP),
     X ∈ H → ResultAt tr X i₀ s C CV →
     y ∈ H → CastAt tr y i ℓ e → e.msg.slot = s + 1 →
     CarryAt tr U y i e s CV → ViableAtVote ℓ e (s + 1) C →
@@ -194,7 +194,7 @@ def ResultTransfer : Prop :=
       v ∈ (tr.state X i₀).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s}) →
     VoteExtends U e.msg C
 
-/-- The ACSteps statements, for the SA parameters `sp`. -/
+/-- The ACSteps statements, for the AC parameters `sp`. -/
 structure ACStepsAt : Prop where
   proposerVotersAgree : ProposerVotersAgree sp
   firstTransfer : FirstTransfer sp
@@ -205,8 +205,8 @@ structure ACStepsAt : Prop where
   resultTransfer : ResultTransfer sp
 
 /-- **Milestone ACSteps**: the ACSteps statements for population-sized committees. -/
-def ACSteps : Prop := ∀ sp : SAParams, ACStepsAt sp
+def ACSteps : Prop := ∀ sp : ACParams, ACStepsAt sp
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

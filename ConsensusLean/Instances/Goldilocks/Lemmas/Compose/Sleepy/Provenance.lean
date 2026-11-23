@@ -24,9 +24,9 @@ comparability: it holds of every Goldilocks run, by the handlers alone.
   origin, a block of the node's tree (`record_origin`).
 * Every stored lock sits below an origin of its own slot from an earlier cut (`lock_origin`): the
   update of slot `s` locks blocks on its result's path, an optimistic check locks its selection,
-  and the lock functions only move locks back (`SA.locks_move_back`). `SA.lock_provenance` does
+  and the lock functions only move locks back (`AC.locks_move_back`). `AC.lock_provenance` does
   not tie an update's locks to its result, so both facts come from one induction over the cuts
-  of the node (`good_state`), which follows each SA handler (`Good`, `Down`).
+  of the node (`good_state`), which follows each AC handler (`Good`, `Down`).
 * Every FG source at a cut within `b` is a live fast lock block, so on the chain of the origins
   within `b` (`source_on_chain_upTo`); every honest attestation signed at a cut within `b` names
   the entry of its source's state, an ancestor of the source (`row_on_chain_upTo`); every `Σ.F`
@@ -34,16 +34,16 @@ comparability: it holds of every Goldilocks run, by the handlers alone.
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-! ### The SA functions write the record and the locks only from selections
+/-! ### The AC functions write the record and the locks only from selections
 
 `Good R G A`: the record of `A` satisfies `R` and each stored lock `G`. When `G` is closed under
-moving a lock back in the frame (`Down`), every SA function keeps `Good`, given `R` and `G` of the
+moving a lock back in the frame (`Down`), every AC function keeps `Good`, given `R` and `G` of the
 blocks it newly selects: an optimistic selection (a fast lock of the current slot) and the result
 of a non-vetoed update (locks of its slot on ancestors of the result). -/
 
@@ -52,73 +52,73 @@ section Handlers
 variable {FGP : Type}
 
 /-- The record satisfies `R` and every stored lock `G`. -/
-private def Good (R : Nat → Prop) (G : SA.Lock → Prop) (A : SA.SAState sp.n) : Prop :=
+private def Good (R : Nat → Prop) (G : AC.Lock → Prop) (A : AC.ACState sp.n) : Prop :=
   R A.latestConfirmed ∧ ∀ l ∈ A.locks, G l
 
 /-- `G` is closed under moving a lock back to an ancestor (of the frame), keeping its slot. -/
-private def Down (Φ : SA.Frm sp.n FGP) (G : SA.Lock → Prop) : Prop :=
-  ∀ l l' : SA.Lock, l'.slot = l.slot → ∀ B ∈ Φ.tree, B.root = l.block → ∀ B' ∈ Φ.tree,
+private def Down (Φ : AC.Frm sp.n FGP) (G : AC.Lock → Prop) : Prop :=
+  ∀ l l' : AC.Lock, l'.slot = l.slot → ∀ B ∈ Φ.tree, B.root = l.block → ∀ B' ∈ Φ.tree,
     B'.root = l'.block → Φ.Anc B' B → G l → G l'
 
-variable {R : Nat → Prop} {G : SA.Lock → Prop} {Φ : SA.Frm sp.n FGP}
+variable {R : Nat → Prop} {G : AC.Lock → Prop} {Φ : AC.Frm sp.n FGP}
 
-private theorem good_movesBack (hD : Down Φ G) {L L' : Set SA.Lock} (hm : SA.MovesBack sp Φ L L')
+private theorem good_movesBack (hD : Down Φ G) {L L' : Set AC.Lock} (hm : AC.MovesBack sp Φ L L')
     (h : ∀ l ∈ L, G l) : ∀ l ∈ L', G l := by
   intro l' hl'
   obtain ⟨l, hl, hs, -, -, B, hB, hBr, B', hB', hB'r, hA⟩ := hm l' hl'
   exact hD l l' hs B hB hBr B' hB' hB'r hA (h l hl)
 
-private theorem good_addLocks (hΦ : FrameOK Φ) (hD : Down Φ G) {L : Set SA.Lock} {t : Time}
+private theorem good_addLocks (hΦ : FrameOK Φ) (hD : Down Φ G) {L : Set AC.Lock} {t : Time}
     {s : Nat} {N : Set (Nat × Bool × Nat)} (h : ∀ l ∈ L, G l) (hN : ∀ p
         ∈ N, G ⟨p.1, s, p.2.1, p.2.2⟩) :
-    ∀ l ∈ SA.addLocks sp L Φ t s N, G l :=
-  good_movesBack hD ((SA.locks_move_back sp FGP Φ L t hΦ).2.1 s N) (by
+    ∀ l ∈ AC.addLocks sp L Φ t s N, G l :=
+  good_movesBack hD ((AC.locks_move_back sp FGP Φ L t hΦ).2.1 s N) (by
     rintro l (hl | ⟨p, hp, rfl⟩)
     exacts [h l hl, hN p hp])
 
-private theorem good_admitVote {A : SA.SAState sp.n} (h : Good R G A) (t : Time) (v : Vote sp.n) :
-    Good R G (SA.admitVote sp A t v) := by
-  refine ⟨?_, by rw [SA.admitVote_locks_eq]; exact h.2⟩
-  have : (SA.admitVote sp A t v).latestConfirmed = A.latestConfirmed := by
-    unfold SA.admitVote
+private theorem good_admitVote {A : AC.ACState sp.n} (h : Good R G A) (t : Time) (v : Vote sp.n) :
+    Good R G (AC.admitVote sp A t v) := by
+  refine ⟨?_, by rw [AC.admitVote_locks_eq]; exact h.2⟩
+  have : (AC.admitVote sp A t v).latestConfirmed = A.latestConfirmed := by
+    unfold AC.admitVote
     split_ifs <;> rfl
   rw [this]
   exact h.1
 
-private theorem good_blockReceipt {A : SA.SAState sp.n} (h : Good R G A) (t : Time)
-    (B : SA.Blk sp.n FGP) : Good R G (SA.blockReceipt sp A t B) :=
+private theorem good_blockReceipt {A : AC.ACState sp.n} (h : Good R G A) (t : Time)
+    (B : AC.Blk sp.n FGP) : Good R G (AC.blockReceipt sp A t B) :=
   h
 
-private theorem good_optimistic (hΦ : FrameOK Φ) (hD : Down Φ G) {A : SA.SAState sp.n}
+private theorem good_optimistic (hΦ : FrameOK Φ) (hD : Down Φ G) {A : AC.ACState sp.n}
     (h : Good R G A) {t : Time}
-    (hnew : ∀ B, SA.optimisticSelect sp A Φ t = some B → R B.root ∧
+    (hnew : ∀ B, AC.optimisticSelect sp A Φ t = some B → R B.root ∧
       ∀ e, G ⟨B.root, sp.slot t, true, e⟩) :
-    Good R G (SA.optimisticConfirmation sp A Φ t) := by
-  unfold SA.optimisticConfirmation
-  rcases hsel : SA.optimisticSelect sp A Φ t with _ | B
+    Good R G (AC.optimisticConfirmation sp A Φ t) := by
+  unfold AC.optimisticConfirmation
+  rcases hsel : AC.optimisticSelect sp A Φ t with _ | B
   · exact h
   dsimp only
   have hl := good_addLocks (t := t) (s := sp.slot t)
-    (N := {(B.root, true, SA.fastExpiry sp A.locks Φ t (sp.slot t))}) hΦ hD h.2
+    (N := {(B.root, true, AC.fastExpiry sp A.locks Φ t (sp.slot t))}) hΦ hD h.2
     (by rintro p rfl; exact (hnew B hsel).2 _)
-  unfold SA.updateLatestConfirmed
+  unfold AC.updateLatestConfirmed
   split_ifs
   exacts [⟨h.1, hl⟩, ⟨(hnew B hsel).1, hl⟩]
 
 private theorem good_tryVote (hΦ : FrameOK Φ) (hD : Down Φ G) (x : Fin sp.n)
-    {A : SA.SAState sp.n} (h : Good R G A) {t : Time}
-    (hnew : ∀ e ∈ (SA.tryVote sp x A Φ t).2, ∀ B,
-      SA.optimisticSelect sp (SA.admitVote sp e.readPoint t e.msg) Φ t = some B →
+    {A : AC.ACState sp.n} (h : Good R G A) {t : Time}
+    (hnew : ∀ e ∈ (AC.tryVote sp x A Φ t).2, ∀ B,
+      AC.optimisticSelect sp (AC.admitVote sp e.readPoint t e.msg) Φ t = some B →
         R B.root ∧ ∀ e, G ⟨B.root, sp.slot t, true, e⟩) :
-    Good R G (SA.tryVote sp x A Φ t).1 := by
+    Good R G (AC.tryVote sp x A Φ t).1 := by
   revert hnew
-  unfold SA.tryVote
+  unfold AC.tryVote
   lift_lets
   extract_lets s V A₁ dom H A₂ vote A₃
   have hA₁ : Good R G A₁ := by
     simp only [A₁]
     split
-    · exact ⟨h.1, good_movesBack hD ((SA.locks_move_back sp FGP Φ A.locks t hΦ).2.2 _ _) h.2⟩
+    · exact ⟨h.1, good_movesBack hD ((AC.locks_move_back sp FGP Φ A.locks t hΦ).2.2 _ _) h.2⟩
     · exact h
   have hA₂ : Good R G A₂ := hA₁
   split_ifs with h₁ h₂ h₃ <;> intro hnew
@@ -129,14 +129,14 @@ private theorem good_tryVote (hΦ : FrameOK Φ) (hD : Down Φ G) (x : Fin sp.n)
     exact good_optimistic hΦ hD (good_admitVote hA₂ _ _) hnew
   · simpa only [A₃, h₃, Bool.false_eq_true, ↓reduceIte] using hA₂
 
-private theorem good_updateConfirmation (hΦ : FrameOK Φ) (hD : Down Φ G) {A : SA.SAState sp.n}
+private theorem good_updateConfirmation (hΦ : FrameOK Φ) (hD : Down Φ G) {A : AC.ACState sp.n}
     (h : Good R G A) {t : Time} {s : Nat}
-    (hnew : ∀ C, SA.getConfirmation sp A Φ s = some C →
+    (hnew : ∀ C, AC.getConfirmation sp A Φ s = some C →
       R C.root ∧ ∀ D ∈ Φ.tree, Φ.Anc D C → ∀ f e, G ⟨D.root, s, f, e⟩) :
-    Good R G (SA.updateConfirmation sp A Φ t s) := by
-  unfold SA.updateConfirmation
+    Good R G (AC.updateConfirmation sp A Φ t s) := by
+  unfold AC.updateConfirmation
   dsimp only
-  rcases hC : SA.getConfirmation sp A Φ s with _ | C
+  rcases hC : AC.getConfirmation sp A Φ s with _ | C
   · exact h
   dsimp only
   obtain ⟨hR, hG⟩ := hnew C hC
@@ -144,27 +144,27 @@ private theorem good_updateConfirmation (hΦ : FrameOK Φ) (hD : Down Φ G) {A :
   split_ifs with hconf
   all_goals
     refine ⟨?_, good_addLocks hΦ hD (by
-      first | exact h.2 | (rw [SA.updateLatestConfirmed_keeps_locks]; exact h.2)) ?_⟩
+      first | exact h.2 | (rw [AC.updateLatestConfirmed_keeps_locks]; exact h.2)) ?_⟩
     · first
         | exact h.1
-        | (change R (SA.updateLatestConfirmed sp _ Φ C).latestConfirmed
-           unfold SA.updateLatestConfirmed
+        | (change R (AC.updateLatestConfirmed sp _ Φ C).latestConfirmed
+           unfold AC.updateLatestConfirmed
            split_ifs
            exacts [h.1, hR])
     · rintro p (⟨D, hD, rfl⟩ | ⟨D, hD, rfl⟩) <;>
-      · obtain ⟨⟨⟨hDt, -, hDC⟩, -⟩, -⟩ := (SA.deepest_mem hD).1
+      · obtain ⟨⟨⟨hDt, -, hDC⟩, -⟩, -⟩ := (AC.deepest_mem hD).1
         exact hG D hDt hDC _ _
 
-private theorem good_onTick (hΦ : FrameOK Φ) (hD : Down Φ G) (x : Fin sp.n) {A : SA.SAState sp.n}
+private theorem good_onTick (hΦ : FrameOK Φ) (hD : Down Φ G) (x : Fin sp.n) {A : AC.ACState sp.n}
     (h : Good R G A) {t : Time}
-    (hopt : ∀ e ∈ (SA.acOnTick sp x A Φ t).2, ∀ B,
-      SA.optimisticSelect sp (SA.admitVote sp e.readPoint t e.msg) Φ t = some B →
+    (hopt : ∀ e ∈ (AC.acOnTick sp x A Φ t).2, ∀ B,
+      AC.optimisticSelect sp (AC.admitVote sp e.readPoint t e.msg) Φ t = some B →
         R B.root ∧ ∀ e, G ⟨B.root, sp.slot t, true, e⟩)
-    (hupd : t = sp.ts (sp.slot t) + 2 * sp.Δ → 0 < sp.slot t → SA.joined sp A t → ∀ C,
-      SA.getConfirmation sp A Φ (sp.slot t - 1) = some C →
+    (hupd : t = sp.ts (sp.slot t) + 2 * sp.Δ → 0 < sp.slot t → AC.joined sp A t → ∀ C,
+      AC.getConfirmation sp A Φ (sp.slot t - 1) = some C →
         R C.root ∧ ∀ D ∈ Φ.tree, Φ.Anc D C → ∀ f e, G ⟨D.root, sp.slot t - 1, f, e⟩) :
-    Good R G (SA.acOnTick sp x A Φ t).1 := by
-  unfold SA.acOnTick at hopt ⊢
+    Good R G (AC.acOnTick sp x A Φ t).1 := by
+  unfold AC.acOnTick at hopt ⊢
   dsimp only at hopt ⊢
   split_ifs at hopt ⊢ with hj ht hu hu
   · exfalso
@@ -175,18 +175,18 @@ private theorem good_onTick (hΦ : FrameOK Φ) (hD : Down Φ G) (x : Fin sp.n) {
   · exact h
   · exact h
 
-private theorem good_proposal (hΦ : FrameOK Φ) (hD : Down Φ G) {A : SA.SAState sp.n}
-    (h : Good R G A) (t : Time) : Good R G (SA.acProposal sp A Φ t).1 := by
-  unfold SA.acProposal
+private theorem good_proposal (hΦ : FrameOK Φ) (hD : Down Φ G) {A : AC.ACState sp.n}
+    (h : Good R G A) (t : Time) : Good R G (AC.acProposal sp A Φ t).1 := by
+  unfold AC.acProposal
   dsimp only
   split_ifs
   all_goals first
     | exact h
-    | exact ⟨h.1, good_movesBack hD ((SA.locks_move_back sp FGP Φ A.locks t hΦ).2.2 _ _) h.2⟩
+    | exact ⟨h.1, good_movesBack hD ((AC.locks_move_back sp FGP Φ A.locks t hΦ).2.2 _ _) h.2⟩
 
-private theorem good_toFG {A : SA.SAState sp.n} (h : Good R G A) (t : Time) :
-    Good R G (SA.acToFG sp A Φ t).1 := by
-  unfold SA.acToFG
+private theorem good_toFG {A : AC.ACState sp.n} (h : Good R G A) (t : Time) :
+    Good R G (AC.acToFG sp A Φ t).1 := by
+  unfold AC.acToFG
   split_ifs
   · split
     · exact h
@@ -201,16 +201,16 @@ end Handlers
 
 /-- The block `r` names in `T` is genesis or an origin from a cut before `i`. -/
 private def RecOK (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
-    (T : Set (SA.Blk sp.n (List (FG.Att sp.n)))) (i : Nat) (r : Nat) : Prop :=
+    (T : Set (AC.Blk sp.n (List (FG.Att sp.n)))) (i : Nat) (r : Nat) : Prop :=
   ∃ C ∈ T, C.root = r ∧ (C.root = sp.genesisRoot ∨ ∃ s, OriginBefore tr H C s i)
 
 /-- The lock `l` names a block of `T` below an origin of its slot from a cut before `i`. -/
 private def LockOK (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
-    (T : Set (SA.Blk sp.n (List (FG.Att sp.n)))) (i : Nat) (l : SA.Lock) : Prop :=
+    (T : Set (AC.Blk sp.n (List (FG.Att sp.n)))) (i : Nat) (l : AC.Lock) : Prop :=
   ∃ L ∈ T, L.root = l.block ∧ ∃ C, OriginBefore tr H C l.slot i ∧ Anc (tr.HonestBlocks H) L C
 
-private theorem good_mono {T T' : Set (SA.Blk sp.n (List (FG.Att sp.n)))} {i i' : Nat}
-    {A : SA.SAState sp.n} (h : Good (RecOK tr H T i) (LockOK tr H T i) A) (hT : T ⊆ T')
+private theorem good_mono {T T' : Set (AC.Blk sp.n (List (FG.Att sp.n)))} {i i' : Nat}
+    {A : AC.ACState sp.n} (h : Good (RecOK tr H T i) (LockOK tr H T i) A) (hT : T ⊆ T')
     (hi : i ≤ i') : Good (RecOK tr H T' i') (LockOK tr H T' i') A := by
   obtain ⟨⟨C, hC, h1, h2⟩, hl⟩ := h
   have hmono : ∀ {C s}, OriginBefore tr H C s i → OriginBefore tr H C s i' := fun hs => by
@@ -227,8 +227,8 @@ private theorem ac_run {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   ac_projection _ _ dg H _ tr proposer
     (fun y _ => payloadFrom_initial (requirements_from sp ro (hrun.vstart y)) y) hrun.toLocalRun hnc
 
-private theorem down_lockOK {T : Set (SA.Blk sp.n (List (FG.Att sp.n)))}
-    {Φ : SA.Frm sp.n (List (FG.Att sp.n))} (hU : Coherent (tr.HonestBlocks H))
+private theorem down_lockOK {T : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
+    {Φ : AC.Frm sp.n (List (FG.Att sp.n))} (hU : Coherent (tr.HonestBlocks H))
     (hTU : T ⊆ tr.HonestBlocks H) (hΦT : Φ.tree ⊆ T) (i : Nat) : Down Φ (LockOK tr H T i) := by
   rintro l l' hs B hB hBr B' hB' hB'r hA ⟨L, hL, hLr, C, hC, hLC⟩
   obtain rfl : B = L := hU.1 (hTU (hΦT hB)) (hTU hL) (hBr.trans hLr.symm)
@@ -254,25 +254,25 @@ private theorem good_acCall {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have hpc : tr.projAC.CallAt y i ℓ := ⟨hc.1, by simp [RunTrace.projAC, hc.2, RunTrace.acLabel]⟩
   have hps : tr.projAC.state y i = (tr.state y i).ac := projAC_state hrun.toLocalRun hy i
   -- the optimistic selections of the call
-  have opt : ∀ A₀, SA.OptimisticPoint tr.projAC y i ℓ A₀ → ∀ B,
-      SA.optimisticSelect sp A₀ ℓ.frame (tr.time i) = some B →
+  have opt : ∀ A₀, AC.OptimisticPoint tr.projAC y i ℓ A₀ → ∀ B,
+      AC.optimisticSelect sp A₀ ℓ.frame (tr.time i) = some B →
       RecOK tr H (tr.state y i).fg.tree (i + 1) B.root ∧
         ∀ e, LockOK tr H (tr.state y i).fg.tree (i + 1) ⟨B.root, sp.slot (tr.time i), true, e⟩ := by
     intro A₀ hpt B hsel
     have hB : B ∈ ℓ.frame.tree := by
       have h' := hsel
-      unfold SA.optimisticSelect at h'
+      unfold AC.optimisticSelect at h'
       dsimp only at h'
       split_ifs at h'
-      exact (SA.deepest_mem h').1.1
-    have hO : SA.OptimisticLockAt tr.projAC y i (sp.slot (tr.time i)) B _ :=
+      exact (AC.deepest_mem h').1.1
+    have hO : AC.OptimisticLockAt tr.projAC y i (sp.slot (tr.time i)) B _ :=
       ⟨ℓ, A₀, hpt, rfl, hsel, rfl⟩
     have hOb : OriginBefore tr H B (sp.slot (tr.time i)) (i + 1) :=
       originBefore_iff.2 ⟨y, hy, i, Nat.lt_succ_self i, _, Or.inr hO⟩
     exact ⟨⟨B, hΦT hB, rfl, Or.inr ⟨_, hOb⟩⟩,
       fun _ => ⟨B, hΦT hB, rfl, B, hOb, Relation.ReflTransGen.refl⟩⟩
-  have emit : ∀ e ∈ ℓ.emits, ∀ B, SA.optimisticSelect sp
-      (SA.admitVote sp e.readPoint (tr.time i) e.msg) ℓ.frame (tr.time i) = some B →
+  have emit : ∀ e ∈ ℓ.emits, ∀ B, AC.optimisticSelect sp
+      (AC.admitVote sp e.readPoint (tr.time i) e.msg) ℓ.frame (tr.time i) = some B →
       RecOK tr H (tr.state y i).fg.tree (i + 1) B.root ∧
         ∀ e, LockOK tr H (tr.state y i).fg.tree (i + 1) ⟨B.root, sp.slot (tr.time i), true, e⟩ :=
     fun e he => opt _ ⟨hpc, Or.inr (Or.inr ⟨e, he, rfl⟩)⟩
@@ -286,16 +286,16 @@ private theorem good_acCall {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     rw [hcall] at hem
     refine good_onTick hΦ hD y h (fun e he => emit e (hem ▸ he)) ?_
     intro ht hs0 hj C hC
-    have hu : SA.UpdateAt tr.projAC y i (sp.slot (tr.time i) - 1) ℓ := by
+    have hu : AC.UpdateAt tr.projAC y i (sp.slot (tr.time i) - 1) ℓ := by
       refine ⟨hpc, hcall, ?_, hps ▸ hj⟩
       change tr.time i = _
       conv_lhs => rw [ht]
-      simp only [SAParams.ts]
+      simp only [ACParams.ts]
       push_cast [Nat.cast_sub hs0]
       ring
-    have hr : SA.ResultAt tr.projAC y i (sp.slot (tr.time i) - 1) C _ :=
+    have hr : AC.ResultAt tr.projAC y i (sp.slot (tr.time i) - 1) C _ :=
       ⟨ℓ, hu, hps ▸ hC, rfl⟩
-    have hCt : C ∈ ℓ.frame.tree := (SA.deepest_mem hC).1.1
+    have hCt : C ∈ ℓ.frame.tree := (AC.deepest_mem hC).1.1
     have hOb : OriginBefore tr H C (sp.slot (tr.time i) - 1) (i + 1) :=
       originBefore_iff.2 ⟨y, hy, i, Nat.lt_succ_self i, _, Or.inl hr⟩
     exact ⟨⟨C, hΦT hCt, rfl, Or.inr ⟨_, hOb⟩⟩, fun D hD hDC f e =>
@@ -313,13 +313,13 @@ private theorem good_acCall {ini} (hrun : GoldilocksRun proposer dg H tr ini)
       (opt _ ⟨hpc, Or.inr (Or.inl ⟨B, hcall, by rw [hps]; rfl⟩)⟩))
       fun e he => emit e (hem ▸ he)
   | restart =>
-    obtain ⟨-, hl, hr, -⟩ := SA.restart_state sp _ ro y A ℓ.frame (tr.time i) hΦ
+    obtain ⟨-, hl, hr, -⟩ := AC.restart_state sp _ ro y A ℓ.frame (tr.time i) hΦ
       (hrun.time_nonneg i)
     refine ⟨?_, ?_⟩
-    · change RecOK _ _ _ _ (SA.acRestart sp ro y A ℓ.frame (tr.time i)).1.latestConfirmed
+    · change RecOK _ _ _ _ (AC.acRestart sp ro y A ℓ.frame (tr.time i)).1.latestConfirmed
       rw [hr]
       exact h.1
-    · change ∀ l ∈ (SA.acRestart sp ro y A ℓ.frame (tr.time i)).1.locks, _
+    · change ∀ l ∈ (AC.acRestart sp ro y A ℓ.frame (tr.time i)).1.locks, _
       rw [hl]
       exact h.2
 
@@ -347,16 +347,16 @@ theorem record_step_origin {ini : Fin sp.n → (goldilocksNode sp ro).State}
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     (tr.state y (i + 1)).ac.latestConfirmed = (tr.state y i).ac.latestConfirmed ∨
       ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y (i + 1)).ac.latestConfirmed ∧
-        ∃ s CV, SA.ResultAt tr.projAC y i s C CV ∨
-          SA.OptimisticLockAt tr.projAC y i s C CV := by
+        ∃ s CV, AC.ResultAt tr.projAC y i s C CV ∨
+          AC.OptimisticLockAt tr.projAC y i s C CV := by
   let R := fun r => r = (tr.state y i).ac.latestConfirmed ∨
     ∃ C ∈ (tr.state y i).fg.tree, C.root = r ∧
-      ∃ s CV, SA.ResultAt tr.projAC y i s C CV ∨ SA.OptimisticLockAt tr.projAC y i s C CV
+      ∃ s CV, AC.ResultAt tr.projAC y i s C CV ∨ AC.OptimisticLockAt tr.projAC y i s C CV
   by_cases hc : ∃ c, tr.CallAt y i c
   · obtain ⟨c, hc⟩ := hc
     rw [tr.state_succ_of_call hc]
     cases c with
-    | fg ℓ => exact Or.inl (congrArg SA.SAState.latestConfirmed (ac_of_fg hrun hy hc))
+    | fg ℓ => exact Or.inl (congrArg AC.ACState.latestConfirmed (ac_of_fg hrun hy hc))
     | ac ℓ =>
       obtain ⟨hfr, hstep, _, _⟩ := hrun.cutLaw y hy i _ hc
       have hΦ : FrameOK ℓ.frame :=
@@ -367,18 +367,18 @@ theorem record_step_origin {ini : Fin sp.n → (goldilocksNode sp ro).State}
       have hps := projAC_state hrun.toLocalRun hy i
       have h : Good R (fun _ => True) (tr.state y i).ac := ⟨Or.inl rfl, fun _ _ => trivial⟩
       have hD : Down ℓ.frame (fun _ => True) := fun _ _ _ _ _ _ _ _ _ _ _ => trivial
-      have opt : ∀ A₀, SA.OptimisticPoint tr.projAC y i ℓ A₀ → ∀ B,
-          SA.optimisticSelect sp A₀ ℓ.frame (tr.time i) = some B →
+      have opt : ∀ A₀, AC.OptimisticPoint tr.projAC y i ℓ A₀ → ∀ B,
+          AC.optimisticSelect sp A₀ ℓ.frame (tr.time i) = some B →
           R B.root ∧ ∀ _ : Nat, True := by
         intro A₀ hpt B hsel
         have hB : B ∈ ℓ.frame.tree := by
-          unfold SA.optimisticSelect at hsel
+          unfold AC.optimisticSelect at hsel
           dsimp only at hsel
           split_ifs at hsel
-          exact (SA.deepest_mem hsel).1.1
+          exact (AC.deepest_mem hsel).1.1
         exact ⟨Or.inr ⟨B, hΦT hB, rfl, _, _, Or.inr ⟨ℓ, A₀, hpt, rfl, hsel, rfl⟩⟩, fun _ => trivial⟩
-      have emit : ∀ e ∈ ℓ.emits, ∀ B, SA.optimisticSelect sp
-          (SA.admitVote sp e.readPoint (tr.time i) e.msg) ℓ.frame (tr.time i) = some B →
+      have emit : ∀ e ∈ ℓ.emits, ∀ B, AC.optimisticSelect sp
+          (AC.admitVote sp e.readPoint (tr.time i) e.msg) ℓ.frame (tr.time i) = some B →
           R B.root ∧ ∀ _ : Nat, True := fun e he => opt _ ⟨hpc, Or.inr (Or.inr ⟨e, he, rfl⟩)⟩
       have hpost := congrArg Prod.fst hstep
       have hem := congrArg Prod.snd hstep
@@ -390,14 +390,14 @@ theorem record_step_origin {ini : Fin sp.n → (goldilocksNode sp ro).State}
         rw [hcall] at hem
         apply (good_onTick hΦ hD y h (fun e he => emit e (hem ▸ he)) ?_).1
         intro ht hs0 hj C hC
-        have hu : SA.UpdateAt tr.projAC y i (sp.slot (tr.time i) - 1) ℓ := by
+        have hu : AC.UpdateAt tr.projAC y i (sp.slot (tr.time i) - 1) ℓ := by
           refine ⟨hpc, hcall, ?_, hps ▸ hj⟩
           change tr.time i = _
           conv_lhs => rw [ht]
-          simp only [SAParams.ts]
+          simp only [ACParams.ts]
           push_cast [Nat.cast_sub hs0]
           ring
-        exact ⟨Or.inr ⟨C, hΦT (SA.deepest_mem hC).1.1, rfl, _, _,
+        exact ⟨Or.inr ⟨C, hΦT (AC.deepest_mem hC).1.1, rfl, _, _,
           Or.inl ⟨ℓ, hu, hps ▸ hC, rfl⟩⟩, fun _ _ _ _ _ => trivial⟩
       | proposal => exact (good_proposal hΦ hD h _).1
       | toFG => exact (good_toFG h _).1
@@ -412,8 +412,8 @@ theorem record_step_origin {ini : Fin sp.n → (goldilocksNode sp ro).State}
           (opt _ ⟨hpc, Or.inr (Or.inl ⟨B, hcall, by rw [hps]; rfl⟩)⟩))
           (fun e he => emit e (hem ▸ he))).1
       | restart =>
-        change R (SA.acRestart sp ro y (tr.state y i).ac ℓ.frame (tr.time i)).1.latestConfirmed
-        rw [(SA.restart_state sp _ ro y _ ℓ.frame (tr.time i) hΦ (hrun.time_nonneg i)).2.2.1]
+        change R (AC.acRestart sp ro y (tr.state y i).ac ℓ.frame (tr.time i)).1.latestConfirmed
+        rw [(AC.restart_state sp _ ro y _ ℓ.frame (tr.time i) hΦ (hrun.time_nonneg i)).2.2.1]
         exact Or.inl rfl
   · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩]
     exact Or.inl rfl
@@ -454,7 +454,7 @@ private theorem good_state {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   induction i with
   | zero =>
     have h0 : tr.state y 0 = Node.initWith _ (ini y) := hrun.init y hy
-    obtain ⟨m, hm⟩ := SA.voteStart_iff.1 (hrun.vstart y)
+    obtain ⟨m, hm⟩ := AC.voteStart_iff.1 (hrun.vstart y)
     obtain ⟨-, -, hg, -⟩ := Store.accepted_tree _ _ _ _ (fg_reachable hrun.toLocalRun hy 0)
     refine ⟨⟨_, hg, ?_, Or.inl rfl⟩, ?_⟩
     · rw [h0, hm]
@@ -478,17 +478,17 @@ private theorem good_state {ini} (hrun : GoldilocksRun proposer dg H tr ini)
       exact ih'
 
 /-- `ac_to_fg` returns one of its candidates. -/
-theorem toFG_candidate {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))}
-    {t : Time} {C : SA.Blk sp.n (List (FG.Att sp.n))} (h : (SA.acToFG sp A Φ t).2 = some C) :
-    C ∈ SA.toFGCandidates sp A Φ t := by
-  unfold SA.acToFG at h
+theorem toFG_candidate {A : AC.ACState sp.n} {Φ : AC.Frm sp.n (List (FG.Att sp.n))}
+    {t : Time} {C : AC.Blk sp.n (List (FG.Att sp.n))} (h : (AC.acToFG sp A Φ t).2 = some C) :
+    C ∈ AC.toFGCandidates sp A Φ t := by
+  unfold AC.acToFG at h
   split_ifs at h
   split at h
   · cases h
   · rename_i C' hC'
     split_ifs at h
     cases h
-    exact (SA.deepest_mem hC').1
+    exact (AC.deepest_mem hC').1
 
 /-! ### The justified and finalized blocks of a chain have a quorum of attestations -/
 
@@ -613,13 +613,13 @@ block of a live fast lock. -/
 theorem source_on_chain_upTo {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {b : Time} (hi : ∀ k < i, tr.time k ≤ b)
-    {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (h : SA.ToFGAt tr.projAC y i ℓ C) : OnOriginChainWithin tr H C b := by
+    {ℓ : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (h : AC.ToFGAt tr.projAC y i ℓ C) : OnOriginChainWithin tr H C b := by
   obtain ⟨hpc, -, hC⟩ := h
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt (ac_run hrun hnc) hy hpc
+  obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt (ac_run hrun hnc) hy hpc
   rw [projAC_state hrun.toLocalRun hy i] at hC
   obtain ⟨hCv, l, ⟨l₀, hl₀, B, hB, hBr, -, rfl⟩, hlC, -, -⟩ := toFG_candidate hC
-  obtain ⟨hvt, hva⟩ := SA.viableAncestor_anc hΦ hB
+  obtain ⟨hvt, hva⟩ := AC.viableAncestor_anc hΦ hB
   obtain rfl : C = ℓ.frame.viableAncestor B := hΦ.coherent.1 hCv.1 hvt hlC.symm
   obtain ⟨L, hL, hLr, C', hC', hLC'⟩ := lock_origin hrun hnc hy i l₀ hl₀
   obtain rfl : B = L := (honest_coherent hrun hnc).1 (hΦU hB) ⟨y, hy, i, hL⟩ (hBr.trans hLr.symm)

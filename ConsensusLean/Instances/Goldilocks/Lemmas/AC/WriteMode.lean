@@ -4,9 +4,9 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes.Writ
 
 public section
 
-/-! # SA handlers at a write mode
+/-! # AC handlers at a write mode
 
-The SA's handlers with the locks after the unlock given (`Lemmas/AC/RelTrace`) and the writes of
+The AC's handlers with the locks after the unlock given (`Lemmas/AC/RelTrace`) and the writes of
 a write mode `m` (`Milestones/Spec/WriteModes/Writes`): `tryVoteWithM`, `acOnTickWithM`,
 `acOnMessageWithM`, `acOnBlockWithM`, the call `stepWithM`, and the unlock input `callInputM` and
 view `callViewM` of a call. The proposal writes nothing and is `acProposalWith`; `ac_to_fg` and
@@ -26,9 +26,9 @@ The laws:
   (`optimisticConfirmationM_of`), and a field the parent's keeps is kept
   (`optimisticConfirmationM_keep`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {sp : SAParams} {FGP : Type}
+variable {sp : ACParams} {FGP : Type}
 
 /-! ### The parent's mode -/
 
@@ -40,12 +40,12 @@ theorem optimisticConfirmationM_on {m : WriteMode} (h : m.optimistic = true) :
   rfl
 
 /-- **The optimistic write off** writes nothing. -/
-theorem optimisticConfirmationM_off {m : WriteMode} (h : m.optimistic = false) (A : SAState sp.n)
+theorem optimisticConfirmationM_off {m : WriteMode} (h : m.optimistic = false) (A : ACState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) : optimisticConfirmationM sp m A Φ t = A := by
   unfold optimisticConfirmationM
   rw [h]
 
-theorem optimisticConfirmationM_eq (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+theorem optimisticConfirmationM_eq (m : WriteMode) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : optimisticConfirmationM sp m A Φ t =
       if m.optimistic then optimisticConfirmation sp A Φ t else A := by
   cases h : m.optimistic
@@ -53,7 +53,7 @@ theorem optimisticConfirmationM_eq (m : WriteMode) (A : SAState sp.n) (Φ : Frm 
   · rw [optimisticConfirmationM_on h]; rfl
 
 /-- A property of the parent's optimistic confirmation and of its input holds at every mode. -/
-theorem optimisticConfirmationM_of {P : SAState sp.n → Prop} {m : WriteMode} {A : SAState sp.n}
+theorem optimisticConfirmationM_of {P : ACState sp.n → Prop} {m : WriteMode} {A : ACState sp.n}
     {Φ : Frm sp.n FGP} {t : Time} (h₁ : P (optimisticConfirmation sp A Φ t)) (h₂ : P A) :
     P (optimisticConfirmationM sp m A Φ t) := by
   rw [optimisticConfirmationM_eq]
@@ -61,14 +61,14 @@ theorem optimisticConfirmationM_of {P : SAState sp.n → Prop} {m : WriteMode} {
   exacts [h₁, h₂]
 
 /-- A field that the parent's optimistic confirmation keeps is kept at every mode. -/
-theorem optimisticConfirmationM_keep {α : Sort _} (f : SAState sp.n → α)
-    (hf : ∀ (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time),
+theorem optimisticConfirmationM_keep {α : Sort _} (f : ACState sp.n → α)
+    (hf : ∀ (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time),
       f (optimisticConfirmation sp A Φ t) = f A)
-    (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (m : WriteMode) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     f (optimisticConfirmationM sp m A Φ t) = f A :=
   optimisticConfirmationM_of (P := fun X => f X = f A) (hf A Φ t) rfl
 
-theorem optimisticM_keeps (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+theorem optimisticM_keeps (m : WriteMode) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmationM sp m A Φ t).votedSlot = A.votedSlot ∧
       (optimisticConfirmationM sp m A Φ t).restartTime = A.restartTime :=
   optimisticConfirmationM_of (P := fun X => X.votedSlot = A.votedSlot ∧
@@ -77,7 +77,7 @@ theorem optimisticM_keeps (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP)
 /-! ### The update at a mode -/
 
 /-- **The update at mode `m` is the parent's but for its locks.** -/
-theorem updateConfirmationM_eq (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+theorem updateConfirmationM_eq (m : WriteMode) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (s : Nat) : updateConfirmationM sp m A Φ t s =
       { updateConfirmation sp A Φ t s with locks := (updateConfirmationM sp m A Φ t s).locks } := by
   unfold updateConfirmationM updateConfirmation
@@ -86,26 +86,26 @@ theorem updateConfirmationM_eq (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n
   | some C => dsimp only
 
 /-- Every field of the update but its locks is the parent's. -/
-theorem updateConfirmationM_field {α : Sort _} (f : SAState sp.n → α)
-    (hf : ∀ (X : SAState sp.n) (L : Set Lock), f { X with locks := L } = f X) (m : WriteMode)
-    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
+theorem updateConfirmationM_field {α : Sort _} (f : ACState sp.n → α)
+    (hf : ∀ (X : ACState sp.n) (L : Set Lock), f { X with locks := L } = f X) (m : WriteMode)
+    (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
     f (updateConfirmationM sp m A Φ t s) = f (updateConfirmation sp A Φ t s) := by
   rw [updateConfirmationM_eq, hf]
 
-theorem updateConfirmationM_keeps (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+theorem updateConfirmationM_keeps (m : WriteMode) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) (s : Nat) : (updateConfirmationM sp m A Φ t s).votedSlot = A.votedSlot ∧
       (updateConfirmationM sp m A Φ t s).restartTime = A.restartTime := by
-  rw [updateConfirmationM_field SAState.votedSlot (fun _ _ => rfl),
-    updateConfirmationM_field SAState.restartTime (fun _ _ => rfl)]
+  rw [updateConfirmationM_field ACState.votedSlot (fun _ _ => rfl),
+    updateConfirmationM_field ACState.restartTime (fun _ _ => rfl)]
   exact updateConfirmation_keeps A Φ t s
 
-theorem updateConfirmationM_locks_of_none {m : WriteMode} {A : SAState sp.n} {Φ : Frm sp.n FGP}
+theorem updateConfirmationM_locks_of_none {m : WriteMode} {A : ACState sp.n} {Φ : Frm sp.n FGP}
     {t : Time} {s : Nat} (h : getConfirmation sp A Φ s = none) :
     (updateConfirmationM sp m A Φ t s).locks = A.locks := by
   unfold updateConfirmationM
   simp only [h]
 
-theorem updateConfirmationM_locks_of_some {m : WriteMode} {A : SAState sp.n} {Φ : Frm sp.n FGP}
+theorem updateConfirmationM_locks_of_some {m : WriteMode} {A : ACState sp.n} {Φ : Frm sp.n FGP}
     {t : Time} {s : Nat} {C : Blk sp.n FGP} (h : getConfirmation sp A Φ s = some C) :
     (updateConfirmationM sp m A Φ t s).locks = addLocks sp A.locks Φ t s
       (newLocksM sp m A Φ t s C (Function.update A.saved s (some C.root)) A.locks) := by
@@ -115,7 +115,7 @@ theorem updateConfirmationM_locks_of_some {m : WriteMode} {A : SAState sp.n} {Φ
 
 /-- **The new locks at mode `m`** are exactly its two arms: the fast lock of the path when
 `m.fastArm`, and the slow lock of width `m.width`. -/
-theorem mem_newLocksM {m : WriteMode} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time} {s : Nat}
+theorem mem_newLocksM {m : WriteMode} {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time} {s : Nat}
     {C : Blk sp.n FGP} {sv : Int → Option Nat} {L : Set Lock} {p : Nat × Bool × Nat} :
     p ∈ newLocksM sp m A Φ t s C sv L ↔
       (m.fastArm = true ∧ ∃ B, deepest Φ {B | (B ∈ confirmationPath sp Φ C ∧
@@ -128,6 +128,6 @@ theorem mem_newLocksM {m : WriteMode} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t 
   unfold newLocksM
   cases m.fastArm <;> simp
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

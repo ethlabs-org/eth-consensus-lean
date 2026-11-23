@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
 
 public section
 
-/-! # Goldilocks SA: the vote-transfer core
+/-! # Goldilocks AC: the vote-transfer core
 
 The head walk of a vote (or a proposal) from the anchor `get_anchor` over the viable tree of a
 domain extends a block `C` when `C` is in that viable tree or at or below `fc_root`, every live
@@ -13,21 +13,21 @@ best eligible child (lock compatibility is read inside a coherent `U ⊇ Φ.tree
 deepest of the live lock blocks and `fc_root`) is then compatible with `C`: if it extends `C`
 the walk, which only descends, does too; otherwise the walk passes `C` (`anc_ghost_of_best`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams}
+variable {FGP : Type} {sp : ACParams}
 
 /-- **The vote-transfer core.** -/
 theorem anc_getHead {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ : Frm sp.n FGP}
-    (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (A : SAState sp.n) (t : Time)
+    (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (A : ACState sp.n) (t : Time)
     (V : View sp.n) (σ : Int) {dom : Set (Blk sp.n FGP)} (hdom : dom ⊆ Φ.tree)
     (hdomA : ∀ B ∈ dom, ∀ X, Φ.Anc X B → X ∈ dom) {C : Blk sp.n FGP}
     (hviab : C ∈ Φ.viableTree dom ∨ Φ.Anc C Φ.fcRoot)
     (hlocks : ∀ L ∈ liveLockBlocks sp A.locks Φ t, Compatible U L C)
     (hbest : ∀ X Cx : Blk sp.n FGP, Cx ∈ Φ.viableTree dom → Cx.parent = some X.root →
       Φ.Anc Cx C →
-      IsBest sp (goldfishScore sp Φ V σ)
-        {B | B ∈ Φ.viableTree dom ∧ B.parent = some X.root ∧ goldfishEligible sp Φ t V σ B}
+      IsBest sp (headScore sp Φ V σ)
+        {B | B ∈ Φ.viableTree dom ∧ B.parent = some X.root ∧ headEligible sp Φ t V σ B}
         Cx) :
     Φ.Anc C (getHead sp A Φ t (Φ.viableTree dom) V σ) := by
   have hT : Φ.viableTree dom ⊆ Φ.tree := fun X hX => hdom hX.1
@@ -53,8 +53,8 @@ theorem anc_getHead {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ : Frm sp.n FG
     by_contra hne
     have := depth_lt_of_anc hΦ h hne hΦ.fcRoot_mem
     omega
-  have key : Φ.Anc C a → Φ.Anc C (ghost sp (Φ.viableTree dom) (goldfishScore sp Φ V σ)
-      (goldfishEligible sp Φ t V σ) Φ.tree.ncard a) := fun h => h.trans (anc_ghost hT _ hat)
+  have key : Φ.Anc C a → Φ.Anc C (ghost sp (Φ.viableTree dom) (headScore sp Φ V σ)
+      (headEligible sp Φ t V σ) Φ.tree.ncard a) := fun h => h.trans (anc_ghost hT _ hat)
   have hcomp : Compatible Φ.tree a C := by
     rcases haS with h | h
     · exact (hlocks a h).imp (anc_tree_of_anc_U hU hΦ hΦU h.1 · hCt)
@@ -76,6 +76,6 @@ theorem anc_getHead {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ : Frm sp.n FG
     ⟨hdomA C hCdom Cx hCxC, (hfa.trans haX).tail e, W, hWdom, hW, hCxC.trans hCW⟩
   exact ⟨Cx, hbest X Cx hCx e.2.2 hCxC, hCxC⟩
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

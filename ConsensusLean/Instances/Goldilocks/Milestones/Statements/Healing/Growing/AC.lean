@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.GrowingPremises
 
 @[expose] public section
 
@@ -12,13 +12,13 @@ at the processing cut is that proposer's proposal.
 
 Statements only: no proofs here. -/
 
-namespace Consensus.Goldilocks.SA.Growing
+namespace Consensus.Goldilocks.AC.Growing
 
-variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
+variable {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
 
 /-- **A driven AC trace under growing faults.** -/
 structure Driven (proposer : Nat → Fin sp.n)
-    (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n)) : Prop where
+    (tr : GTrace sp FGP ro) (H : Time → Set (Fin sp.n)) : Prop where
   /-- (a) Blocks have their slot's proposer, a slot not in the future, and an earlier parent. -/
   blocks : ∀ y i B, y ∈ H (tr.time i) → tr.AcceptAt y i B → B.root ≠ sp.genesisRoot →
     B.proposer = proposer B.slot ∧ B.slot ≤ sp.slot (tr.time i) ∧
@@ -44,6 +44,6 @@ structure Driven (proposer : Nat → Fin sp.n)
     ℓ'.call = .proposal → tr.time i = tr.time j →
     ((∃ m, ℓ.call = .message m) ∨ ∃ B, ℓ.call = .block B) → j < i
 
-end Consensus.Goldilocks.SA.Growing
+end Consensus.Goldilocks.AC.Growing
 
 end

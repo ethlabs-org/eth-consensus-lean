@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.G
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.GenericPremises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Node
 
 @[expose] public section
@@ -26,7 +26,7 @@ Service, Healing, Regimes) reads, over the spec's own run model (`Spec/Run`):
   `0` has not restarted", hold of a run: times are integers and a restart follows a sleep).
 * **C0.5's last sentence, the projections**: the AC projection of a run is an AC trace with the
   contract (`ACLocalRun`, with `U` the honest blocks of the run) and, for the Goldilocks run, the
-  honest-object facts (`SA.ACRun`); the FG projection is an FG trace with its contract
+  honest-object facts (`AC.ACRun`); the FG projection is an FG trace with its contract
   (`FGLocalRun`); the honest nodes' states at the start of every top-level event are
   `Node.Reachable` configurations; and the run premises project: `Sync` over the run gives
   `SyncAC` over the AC projection on the same window, and the joining and participation counts
@@ -44,7 +44,7 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder goldilocksSA Vote Payload)
+open AC (ACParams ReplayOrder goldilocksAC Vote Payload)
 
 variable {P : Params} {A : NodeAC P}
 
@@ -54,7 +54,7 @@ latest restart is at or before `t − c − 1`, or there is none, and `t − t_{
 Times are from `0` (`t < 0` makes the awake interval empty, and no run law forces a node to be
 awake before `0`). -/
 def ReadyImpliesJoined : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     GoldilocksRun proposer dg H tr → ∀ y ∈ H, ∀ (t c : Time), 0 ≤ t → 8 * sp.Δ ≤ c + 1 →
@@ -62,30 +62,30 @@ def ReadyImpliesJoined : Prop :=
       tr.awake y t ∧ tr.JoinedAt y t
 
 /-- **The honest-object facts hold of the Goldilocks run's AC projection** (claims §"Runs";
-the premises `SA.HonestObjects` of the AC step statements): with the AC contract, `SA.ACRun`.
+the premises `AC.HonestObjects` of the AC step statements): with the AC contract, `AC.ACRun`.
 Every non-genesis frame block's proposer is its slot's by the run's credential law,
 one block per honest proposer and slot by the proposal schedule, honest votes by the
 run's unforgeability. -/
 def GoldilocksACProjection : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     GoldilocksRun proposer dg H tr → NoCollRun dg tr →
-      SA.ACRun proposer tr.projAC H (tr.HonestBlocks H)
+      AC.ACRun proposer tr.projAC H (tr.HonestBlocks H)
 
 /-- **Joining and participation project**: in a Goldilocks run, an honest node is joined at `t`
-by the run's restarts (`RunTrace.JoinedAt`) exactly when the SA's joined test on its AC state
+by the run's restarts (`RunTrace.JoinedAt`) exactly when the AC's joined test on its AC state
 holds at every cut at `t` other than a restart (a restart cut sets `restart_time` only in its
 post-state), and the run's `h_t` and `f < h_t` are the AC projection's. -/
 def JoinedProjection : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     GoldilocksRun proposer dg H tr → ∀ y ∈ H, ∀ t,
-      (tr.JoinedAt y t ↔ SA.JoinedAt tr.projAC y t) ∧
+      (tr.JoinedAt y t ↔ AC.JoinedAt tr.projAC y t) ∧
       (∀ i, tr.IsCall y i → ¬ tr.RestartAt y i → tr.time i = t →
-        (tr.JoinedAt y t ↔ SA.joined sp (tr.state y i).ac t)) ∧
-      tr.honestAwakeJoined H t = SA.honestAwakeJoined tr.projAC H t
+        (tr.JoinedAt y t ↔ AC.joined sp (tr.state y i).ac t)) ∧
+      tr.honestAwakeJoined H t = AC.honestAwakeJoined tr.projAC H t
 
 end Consensus.Goldilocks.Compose
 

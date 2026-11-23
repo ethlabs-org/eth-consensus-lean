@@ -23,9 +23,9 @@ The persistence of a bounded operational proposal and the C4 wrappers:
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -34,7 +34,7 @@ two slots later**, under growing faults. -/
 theorem UpTo.operational_proposal_below_later_parent_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H (sp.ts u + Regimes.Growing.hold sp)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
     (hTb : sp.ts u + 6 * sp.Δ ≤ b)
@@ -42,7 +42,7 @@ theorem UpTo.operational_proposal_below_later_parent_at
     {ell : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt y i ell) (hcall : ell.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hd : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts v) (hib : tr.time i ≤ b) :
     Anc (tr.HonestBlocksAt H) P d.head := by
   have hDelta := sp.toParams.hΔ
@@ -59,21 +59,21 @@ theorem UpTo.operational_proposal_below_later_parent_at
   have hca := hp.cutZ_lt_reset_at
   have ha0 : 0 ≤ a := by
     have := Healing.lt_cutZ sp g
-    have := SA.gbar_nonneg g
+    have := AC.gbar_nonneg g
     linarith
   have hau : sp.slot a + 2 * sp.k + 5 ≤ u := by
     rw [Healing.drainTime_eq] at hR
-    exact_mod_cast (SA.ts_le_iff sp).1 hR
+    exact_mod_cast (AC.ts_le_iff sp).1 hR
   have hu : 0 < u := by omega
-  have hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u := by
+  have hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u := by
     have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
-      have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+      have := (AC.ts_le_iff_le_slot sp ha0 _).1 h
       omega
     have hle : sp.ts ((sp.slot a : Int) + 2) ≤ sp.ts u :=
-      (SA.ts_le_iff sp).2 (by omega)
+      (AC.ts_le_iff sp).2 (by omega)
     have hgap : sp.ts ((sp.slot a : Int) + 2) =
         sp.ts ((sp.slot a : Int) + 1) + 4 * sp.Δ := by
-      simp only [SAParams.ts]; ring
+      simp only [ACParams.ts]; ring
     have := Healing.lt_cutZ sp g
     rw [hgap] at hle
     linarith
@@ -85,11 +85,11 @@ theorem UpTo.operational_proposal_below_later_parent_at
       ⟨p, k + 1, tr.time k, hrun.time_nonneg k, hle1, hpk, hG⟩ he
     have hz : P.slot = 0 := by rw [heq]; rfl
     omega
-  have hun : ∀ z j e, z ∈ H (tr.time j) → SA.VoteAt tr.projAC z j e → tr.time j ≤ b →
+  have hun : ∀ z j e, z ∈ H (tr.time j) → AC.VoteAt tr.projAC z j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root := fun z j e hz hv hjb hs =>
     hp.operational_unanimous_at hpH hdesignated hactual hPs hR (by linarith)
       z j e hz hv hs hjb
-  have hRnext := hR.trans ((SA.ts_le_iff sp).2 (show (u : Int) ≤ (u + 1 : Nat) by omega))
+  have hRnext := hR.trans ((AC.ts_le_iff sp).2 (show (u : Int) ≤ (u + 1 : Nat) by omega))
   obtain ⟨x, q, m, S, ho, _, _, hqt⟩ := hp.reset_seed_before_slot_at hR
   have hSP := Healing.Growing.old_origin_below_unanimous_at hp hPU hun hgu hRnext
     (show sp.ts u + sp.Δ ≤ b by linarith) ho hqt
@@ -97,13 +97,13 @@ theorem UpTo.operational_proposal_below_later_parent_at
     have := hrun.time_nonneg k; rw [htk] at this; linarith
   have hczT : Healing.cutZ sp.toParams g ≤ sp.ts u + 6 * sp.Δ := by
     have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
-      have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+      have := (AC.ts_le_iff_le_slot sp ha0 _).1 h
       omega
-    have hle : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts u := (SA.ts_le_iff sp).2 (by omega)
+    have hle : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts u := (AC.ts_le_iff sp).2 (by omega)
     linarith [sp.toParams.hΔ]
   obtain ⟨z, r, ellr, C, hzz, hrep, hrt, hPC⟩ :
       ∃ z r ellr C, z ∈ H (max (Healing.cutZ sp.toParams g) (tr.time r)) ∧
-        SA.ToFGAt tr.projAC z r ellr C ∧
+        AC.ToFGAt tr.projAC z r ellr C ∧
         tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P C := by
     rcases Healing.Growing.report_cover_of_unanimous_at hp hPU hPs hu hPg hun hgu hRnext hTb
       with hall | hsome
@@ -126,11 +126,11 @@ theorem UpTo.operational_proposal_below_later_parent_at
   obtain ⟨io, hior, jo, O, D, CV, hO, _, _, hCO, _⟩ :=
     hp.high_report_origin_at hzz hrep (hrt.trans hTb) hhigh
   have hTv : sp.ts u + 6 * sp.Δ < sp.ts v := by
-    have hle : sp.ts (u + 2 : Nat) ≤ sp.ts v := (SA.ts_le_iff sp).2 (by omega)
-    simp only [SAParams.ts] at hle ⊢
+    have hle : sp.ts (u + 2 : Nat) ≤ sp.ts v := (AC.ts_le_iff sp).2 (by omega)
+    simp only [ACParams.ts] at hle ⊢
     push_cast at hle
     linarith
-  have hRv := hR.trans ((SA.ts_le_iff sp).2 (show (u : Int) ≤ v by omega))
+  have hRv := hR.trans ((AC.ts_le_iff sp).2 (show (u : Int) ≤ v by omega))
   exact hPC.trans (hCO.trans (hp.reset_proposal_passes_at hy hRv hci hcall hd hti hib O
     ⟨z, io, jo, hO, ((hrun.time_mono hior.le).trans hrt).trans_lt hTv⟩))
 
@@ -139,7 +139,7 @@ theorem honest_proposal_below_later_upTo_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {s s' : Nat}
-    {P P' : SA.Blk sp.n (List (FG.Att sp.n))}
+    {P P' : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : Healing.Growing.HonestProposalRun tr H proposer s P)
     (hR : Healing.drainTime sp a ≤ sp.ts s)
     (hP' : Healing.Growing.HonestProposalRun tr H proposer s' P') (hss : s + 2 ≤ s')
@@ -147,9 +147,9 @@ theorem honest_proposal_below_later_upTo_at
   obtain ⟨k, hk⟩ := proposesAt_of_honestProposalRun_at hp.run hP
   have hPs := honestProposalRun_slot_at hP
   have hΔ := sp.toParams.hΔ
-  have h2 : sp.ts (s + 2 : Nat) ≤ sp.ts s' := (SA.ts_le_iff sp).2 (by push_cast; omega)
+  have h2 : sp.ts (s + 2 : Nat) ≤ sp.ts s' := (AC.ts_le_iff sp).2 (by push_cast; omega)
   have he : sp.ts (s + 2 : Nat) = sp.ts s + 8 * sp.Δ := by
-    simp only [SA.SAParams.ts]; push_cast; ring
+    simp only [AC.ACParams.ts]; push_cast; ring
   have hTb : sp.ts s + 6 * sp.Δ ≤ b := by linarith
   have hy' : proposer s' ∈ H (sp.ts s') := hp.run.antitone
     (le_add_of_nonneg_right hΔ.le) hP'.1
@@ -163,7 +163,7 @@ theorem honest_proposal_below_next_upTo_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {s : Nat}
-    {P P' : SA.Blk sp.n (List (FG.Att sp.n))}
+    {P P' : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : Healing.Growing.HonestProposalRun tr H proposer s P)
     (hR : Healing.drainTime sp a ≤ sp.ts s)
     (hP' : Healing.Growing.HonestProposalRun tr H proposer (s + 1) P')

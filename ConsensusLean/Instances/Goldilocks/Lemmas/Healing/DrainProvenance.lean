@@ -24,11 +24,11 @@ toolkit (`Lemmas/AC/LockProvenance`), with the stored block of HR.4's
 write mode `wm` the slow lock has width `wm.width` (`slow_lock_provenance_storedM`, `SlowLockAtW`),
 and it is `SlowLockAt` at a mode of width `k` (`slow_lock_provenance_storedU`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : SAParams}
+variable {FGP : Type} {sp : ACParams}
 
 private theorem FromP.of_addLocks {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ : Frm sp.n FGP}
     (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) {L : Set Lock} {t : Time} {s : Nat}
@@ -51,7 +51,7 @@ variable {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
 
 /-- An optimistic confirmation writes only fast locks. -/
 private theorem FromP.of_optimistic (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
-    (A : SAState sp.n) (t : Time) :
+    (A : ACState sp.n) (t : Time) :
     FromP U A.locks (optimisticConfirmationM sp wm A Φ t).locks (fun _ f _ => f = true) := by
   rw [optimisticConfirmationM_eq]
   split_ifs
@@ -72,10 +72,10 @@ private theorem FromP.of_optimistic (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU :
 
 private theorem FromP.of_tryVote
     {L : Set Lock} (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
-    (x : Fin sp.n) (A : SAState sp.n) (t : Time)
+    (x : Fin sp.n) (A : ACState sp.n) (t : Time)
     (hL : UnlockRel sp A.locks Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp A Φ (sp.slot t)) L) :
     FromP U A.locks (tryVoteWithM sp wm x L A Φ t).1.locks (fun _ f _ => f = true) := by
-  have hopt : ∀ (A' : SAState sp.n) (v : Vote sp.n) (L : Set Lock), A'.locks = L →
+  have hopt : ∀ (A' : ACState sp.n) (v : Vote sp.n) (L : Set Lock), A'.locks = L →
       FromP U L (optimisticConfirmationM sp wm (admitVote sp A' t v) Φ t).locks
         (fun _ f _ => f = true) := fun A' v L hL => by
     have := FromP.of_optimistic (wm := wm) hU hΦ hΦU (admitVote sp A' t v) t
@@ -92,7 +92,7 @@ private theorem FromP.of_tryVote
 
 /-- The slow lock of width `w` that the update of slot `s` at `(A, Φ, t)` writes on `B` (vetoed
 or not). -/
-private def SlowW (w : Nat) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat)
+private def SlowW (w : Nat) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat)
     (B : Blk sp.n FGP) : Prop :=
   ∃ C, getConfirmation sp A Φ s = some C ∧
     deepest Φ {X | X ∈ confirmationPath sp Φ C ∧ ¬ conflictsWithLock sp A.locks Φ t X ∧
@@ -101,7 +101,7 @@ private def SlowW (w : Nat) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s
 
 private theorem FromP.of_onTick
     {L : Set Lock} (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
-    (x : Fin sp.n) (A : SAState sp.n) (t : Time)
+    (x : Fin sp.n) (A : ACState sp.n) (t : Time)
     (hL : UnlockRel sp A.locks Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp A Φ (sp.slot t)) L) :
     FromP U A.locks (acOnTickWithM sp wm x L A Φ t).1.locks
       (fun s f B => f = true ∨
@@ -121,13 +121,13 @@ private theorem FromP.of_onTick
   · exact FromP.of_eq rfl
   · exact FromP.of_eq rfl
 
-variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : SATrace sp FGP ro}
+variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : GTrace sp FGP ro}
 
 /-- A call of an honest node keeps its locks below earlier ones, or writes fast locks, or writes
 a slow lock of width `wm.width` of the slot of its update. -/
 private theorem call_fromPU
     {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
-    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
+    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FromP U (tr.state x i).locks (tr.post i).locks
       (fun s f O => f = false →
         ∃ D, SlowLockAtW wm.width tr x i s D ∧ O = ℓ.frame.viableAncestor D) := by
@@ -153,7 +153,7 @@ private theorem call_fromPU
         refine ⟨hc, hcall, ?_, hA ▸ hj⟩
         rw [hs]
         conv_lhs => rw [ht]
-        simp only [SAParams.ts]
+        simp only [ACParams.ts]
         push_cast [Nat.cast_sub hs0]
         ring
       obtain ⟨D, ⟨C, h1, h2⟩, rfl⟩ := hW hf
@@ -183,7 +183,7 @@ honest node holds before cut `i` sits below (inside `U`) the stored block
 node wrote at an earlier cut `j` (call label `ℓ`). -/
 theorem slow_lock_provenance_storedM
     {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
-    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} (hx : x ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state x i).locks, l.fast = false →
       ∃ j < i, ∃ ℓ D, tr.CallAt x j ℓ ∧ SlowLockAtW wm.width tr x j l.slot D ∧
@@ -192,7 +192,7 @@ theorem slow_lock_provenance_storedM
   | zero =>
     intro l hl
     change l ∈ (tr.init x).locks at hl
-    obtain ⟨m, hm⟩ := SA.voteStart_iff.1 (hini x)
+    obtain ⟨m, hm⟩ := AC.voteStart_iff.1 (hini x)
     rw [hr.init x hx, hm] at hl
     exact absurd hl (Set.notMem_empty l)
   | succ i ih =>
@@ -218,15 +218,15 @@ theorem slow_lock_provenance_storedU
       ∃ j < i, ∃ ℓ D, tr.CallAt x j ℓ ∧ SlowLockAt tr x j l.slot D ∧
         ∃ L ∈ U, L.root = l.block ∧ Anc U L (ℓ.frame.viableAncestor D) := by
   intro l hl hf
-  have h := slow_lock_provenance_storedM hr (fun _ => SA.voteStart_initial _) hx i l hl hf
+  have h := slow_lock_provenance_storedM hr (fun _ => AC.voteStart_initial _) hx i l hl hf
   rw [hw] at h
   simpa only [slowLockAtW_k] using h
 
 /-- **Stored slow-lock provenance**: every lock that is not fast and that an honest node holds
 before cut `i` sits below (inside `U`) the stored block `ℓ.frame.viableAncestor D` of a slow lock
 of its slot (selection `D`) that the node wrote at an earlier cut `j` (call label `ℓ`). -/
-theorem slow_lock_provenance_stored {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
-    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
+theorem slow_lock_provenance_stored {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} (hx : x ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state x i).locks, l.fast = false →
       ∃ j < i, ∃ ℓ D, tr.CallAt x j ℓ ∧ SlowLockAt tr x j l.slot D ∧
@@ -235,6 +235,6 @@ theorem slow_lock_provenance_stored {ini} (hr : ACLocalRun (goldilocksSA sp FGP 
   have h := slow_lock_provenance_storedM hr.toU hini hx i l hl hf
   simpa only [show (WriteMode.parent sp).width = sp.k from rfl, slowLockAtW_k] using h
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

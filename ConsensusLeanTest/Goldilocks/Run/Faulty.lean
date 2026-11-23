@@ -171,7 +171,7 @@ theorem slot_faultBound (hp : rho.point = point) (hv : rho.ExecutionValid) :
       (pubOf point.env) one_le_card).toParams.hΔ
   have hts : (0 : Time) ≤ (({ S with vote := AsChainShape.stock } : Setup).params
       (pubOf point.env) one_le_card).ts s := by
-    simp only [SA.SAParams.ts]
+    simp only [AC.ACParams.ts]
     exact mul_nonneg (mul_nonneg (by norm_num) hΔ.le) (Int.natCast_nonneg s)
   have hd0 : (0 : Time) ≤ d := by
     rcases hd with rfl | rfl | rfl

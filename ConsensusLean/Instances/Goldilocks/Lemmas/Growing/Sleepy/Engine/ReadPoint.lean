@@ -45,9 +45,9 @@ open Consensus.Model (pubOf)
 
 section Held
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -74,8 +74,8 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The first cut of an event's group is at position `0`. -/
-private theorem groupRecs_head_pos {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
-    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
+private theorem groupRecs_head_pos {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (id : Nat)
     (e : Event (goldilocksNode sp ro)) {r : CutRec sp ro}
     (h : (groupRecs proposer dg self st t id e)[0]? = some r) : r.pos = 0 := by
@@ -84,9 +84,9 @@ private theorem groupRecs_head_pos {sp : SA.SAParams} {ro : SA.ReplayOrder sp (L
   rfl
 
 /-- The first cut of a delivery is at position `0`. -/
-private theorem deliverRecs_head_pos {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {binding : VoteBinding}
-    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
+private theorem deliverRecs_head_pos {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {binding : VoteBinding}
+    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) :
     ∀ (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
       {r : CutRec sp ro}, (deliverRecs proposer dg hs self t i os st sub)[0]? = some r →
@@ -286,10 +286,10 @@ theorem read_prefix (hv : rho.ExecutionValid)
   obtain ⟨hrj, hΦj, hsj⟩ := held_state hrun ht' hj' hz
   have hC : Regimes.readAfter (simTraceAt S rho hn) y j t ∈
       ((simTraceAt S rho hn).state y j).fg.tree :=
-    (Regimes.sa_tips (A := ((simTraceAt S rho hn).state y j).ac) hΦi t).1.1
+    (Regimes.ac_tips (A := ((simTraceAt S rho hn).state y j).ac) hΦi t).1.1
   have hC' : Regimes.readAfter (simTraceAt S rho hn) z j' t' ∈
       ((simTraceAt S rho hn).state z j').fg.tree :=
-    (Regimes.sa_tips (A := ((simTraceAt S rho hn).state z j').ac) hΦj t').1.1
+    (Regimes.ac_tips (A := ((simTraceAt S rho hn).state z j').ac) hΦj t').1.1
   have ha' := anc_in_store hrj hU hsj ha hC'
   have hm : Regimes.readAfter (simTraceAt S rho hn) y j t ∈
       ((simTraceAt S rho hn).state z j').fg.tree := by

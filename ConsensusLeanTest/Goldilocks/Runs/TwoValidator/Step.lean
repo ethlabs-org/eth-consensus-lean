@@ -6,21 +6,21 @@ public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Facts
 /-! # The healthy two-validator run: the node's events
 
 The state of a node of the run (`NS`: the FG store with the chain up to a tip, its pool, its
-record, and the shape of its SA state `ACShape`), the state before each time (`Good`), and each
+record, and the shape of its AC state `ACShape`), the state before each time (`Good`), and each
 top-level event of the run computed from it: its cuts (up to frames and emission records) and the
 state after it. -/
 
 namespace Consensus.Goldilocks.Witness.TwoRun
 
-open SA Node ChainFrame
+open AC Node ChainFrame
 
 /-! ## The node state -/
 
-/-- The shape of an SA state: no restart, the voted slot `vs`, the pools `pl` (stamped at their
+/-- The shape of an AC state: no restart, the voted slot `vs`, the pools `pl` (stamped at their
 vote times), the blocks up to `τ` stamped at their slots, the first `us` slots saved with their
 blocks, locks on chain blocks up to `lk`, the fast lock of slot `tl` on its block (from `1`), the
 record on the block of slot `lc`, the block of slot `rp` reported. -/
-structure ACShape (A : SAState sp.n) (vs : Int) (τ : Nat) (pl : Nat → List (Vote sp.n))
+structure ACShape (A : ACState sp.n) (vs : Int) (τ : Nat) (pl : Nat → List (Vote sp.n))
     (lk tl lc rp us : Nat) : Prop where
   permission : A.mayVote = fun _ => true
   restart : A.restartTime = ⊥
@@ -36,7 +36,7 @@ structure ACShape (A : SAState sp.n) (vs : Int) (τ : Nat) (pl : Nat → List (V
   reported : A.fgReported = (blk rp).root
 
 /-- The state of node `y`: the chain accepted up to `τ`, the first `k` attestations of its pool,
-its rows of heights `1, …, nr` signed, and the SA state of that shape. -/
+its rows of heights `1, …, nr` signed, and the AC state of that shape. -/
 structure NS (st : St) (y : Fin sp.n) (τ k nr : Nat) (vs : Int) (pl : Nat → List (Vote sp.n))
     (lk tl lc rp us : Nat) : Prop where
   fg : FGGood st.fg τ
@@ -77,11 +77,11 @@ theorem good_init (y : Fin sp.n) : Good (Node.init N) y 0 := by
   refine ⟨fgGood_init, by
     rw [show cnt y 0 = 0 by unfold cnt nrw nrv; split_ifs <;> omega]; rfl, recGood_empty,
     ⟨rfl, rfl, rfl, ?_, ?_, ?_, ?_, ?_, ?_, ?_, rfl, rfl⟩⟩
-  · funext σ; simp [poolT, Node.init, SAState.initial]
+  · funext σ; simp [poolT, Node.init, ACState.initial]
   · intro σ x hx; simp [poolT] at hx
   · intro m h1 h2; simp [tip] at h2; omega
   · rfl
-  · intro j; simp [Node.init, SAState.initial, nsv]
+  · intro j; simp [Node.init, ACState.initial, nsv]
   · intro l hl; exact absurd hl (Set.notMem_empty _)
   · intro h; simp [tip] at h
 
@@ -133,7 +133,7 @@ theorem tickStep_fgUpdate_none {y : Fin sp.n} {st : St} {f j τ : Nat}
   obtain ⟨h1, h2⟩ := acToFG_none hf hL hb hbτ hrep (n : Int)
   simp only [tickStep, Node.acToFG]
   split
-  · change ({ st with ac := (SA.acToFG sp st.ac (Node.frame st) n).1 }, _) = _
+  · change ({ st with ac := (AC.acToFG sp st.ac (Node.frame st) n).1 }, _) = _
     rw [h1]
   · rename_i C heq
     exact absurd (heq.symm.trans h2) (by simp)
@@ -143,7 +143,7 @@ theorem jx_le_pred (τ : Nat) : jx τ ≤ τ - 1 ∨ jx τ = 0 := by
   · exact Or.inr rfl
   · exact Or.inl (by have := jx_succ_le τ; omega)
 
-/-- **A tick with nothing to do**: its SA tick changes nothing, it does not propose, and
+/-- **A tick with nothing to do**: its AC tick changes nothing, it does not propose, and
 `ac_to_fg` returns nothing (every lock at or below the reported block, which is the tip or its
 parent). -/
 theorem tick_noop {st : St} {y : Fin sp.n} {τ k nr : Nat} {vs : Int}
@@ -298,7 +298,7 @@ theorem frame_zero {st : St} {f : Nat} (hf : ChainFrame (Node.frame st) f (jx 0)
   have : f = 0 := by change f ≤ 0 at h1; omega
   subst this; exact hf
 
-theorem vstamp_update {A : SAState sp.n} {pl : Nat → List (Vote sp.n)}
+theorem vstamp_update {A : ACState sp.n} {pl : Nat → List (Vote sp.n)}
     (h : ∀ σ, ∀ x ∈ pl σ, A.voteStamp x = ETime.of ((vt σ : Nat) : Int)) {σ : Nat}
     {v : Vote sp.n} (hv : v.slot = σ) (hnot : ∀ σ', v ∉ pl σ') :
     ∀ σ', ∀ x ∈ Function.update pl σ (pl σ ++ [v]) σ',
@@ -354,8 +354,8 @@ theorem tick_vote0 {st : St} {y : Fin sp.n} (h : Good st y 1) :
     tickStep_fgUpdate_none (st := { st with ac := A' }) hf0 hac'.locks le_rfl le_rfl hac'.reported]
   rfl
 
-/-- The SA's receipt of the other validator's vote of the slot, the own vote already held. -/
-theorem acOnMessage_other {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} {t : Time} {σ : Nat}
+/-- The AC's receipt of the other validator's vote of the slot, the own vote already held. -/
+theorem acOnMessage_other {y : Fin sp.n} {A : ACState sp.n} {Φ : N.Frm} {t : Time} {σ : Nat}
     (hst : sp.slot t = σ) (hpool : A.pool σ = [vote y σ]) (hvs : A.votedSlot = σ) :
     acOnMessage sp y A Φ t (vote (other y) σ) =
       (optimisticConfirmation sp
@@ -440,11 +440,11 @@ theorem deliver_att {st : St} {y : Fin sp.n} {τ k nr : Nat} {vs : Int}
     exact ⟨hb, hs, hJ, hj, hm, hF⟩
   · change st.fg.atts ++ [poolAt y k] = _; rw [h.atts, poolOf_succ]
 
-theorem ac_report {A : SAState sp.n} {Φ : N.Frm} {f s : Nat} (hf : ChainFrame Φ f (jx s) s)
+theorem ac_report {A : ACState sp.n} {Φ : N.Frm} {f s : Nat} (hf : ChainFrame Φ f (jx s) s)
     (hs : 1 ≤ s) {vs : Int} {pl : Nat → List (Vote sp.n)} {lc us : Nat}
     (hac : ACShape A vs s pl s s lc (s - 1) us) :
-    (SA.acToFG sp A Φ ((4 * s + 1 : Nat) : Int)).1 = { A with fgReported := (blk s).root } ∧
-      (SA.acToFG sp A Φ ((4 * s + 1 : Nat) : Int)).2 = some (blk s) :=
+    (AC.acToFG sp A Φ ((4 * s + 1 : Nat) : Int)).1 = { A with fgReported := (blk s).root } ∧
+      (AC.acToFG sp A Φ ((4 * s + 1 : Nat) : Int)).2 = some (blk s) :=
   acToFG_tick hf hac.restart (by rw [slot_nat]; omega) (hac.tipLock hs) (by omega) hac.reported
 
 theorem tickStep_report {y : Fin sp.n} {st : St} {f s : Nat}
@@ -468,7 +468,7 @@ theorem tick_report_ac {y : Fin sp.n} {st : St} {s : Nat} (hs : 1 ≤ s)
   exact tryVote_voted (by rw [hac.voted, slot_nat]; unfold vsT; rw [tip_four1,
     ite_eq_right (by omega)]; congr 1; omega)
 
-theorem ac_reported {A : SAState sp.n} {vs : Int} {τ : Nat} {pl : Nat → List (Vote sp.n)}
+theorem ac_reported {A : ACState sp.n} {vs : Int} {τ : Nat} {pl : Nat → List (Vote sp.n)}
     {lk tl lc rp us : Nat} (h : ACShape A vs τ pl lk tl lc rp us) (r : Nat) :
     ACShape { A with fgReported := (blk r).root } vs τ pl lk tl lc r us :=
   ⟨h.permission, h.restart, h.voted, h.pool, h.vstamp, h.bstamp, h.bstamp0,
@@ -561,7 +561,7 @@ theorem tick_report_old {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s) (h10 :
 
 /-- **`ac_on_block` of the block of slot `k + 1`** at `t_{k+1}`: its stamp, and the vote of slot
 `k + 1` on it. -/
-theorem acOnBlock_blk {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} {f k : Nat}
+theorem acOnBlock_blk {y : Fin sp.n} {A : ACState sp.n} {Φ : N.Frm} {f k : Nat}
     (hperm : A.mayVote (k + 1) = true)
     (h : ChainFrame Φ f (jx (k + 1)) (k + 1)) (hj : A.restartTime = ⊥)
     (hvs : A.votedSlot = (k : Int)) (hpool : A.pool (k + 1) = [])
@@ -725,7 +725,7 @@ theorem mkBlock_blk {fg : Store sp.toParams N.Payload} {k : Nat}
 theorem cnt_w0_four (k : Nat) : cnt w0 (4 * (k + 1)) = (k + 9) / 10 + k / 10 := by
   unfold cnt nrw nrv; rw [ite_eq_left rfl]; split_ifs <;> omega
 
-theorem acOnTick_four {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} {s : Nat}
+theorem acOnTick_four {y : Fin sp.n} {A : ACState sp.n} {Φ : N.Frm} {s : Nat}
     (hj : A.restartTime = ⊥) : acOnTick sp y A Φ ((4 * s : Nat) : Int) = (A, []) := by
   rw [acOnTick_eq _ _ _ _ hj, ite_eq_right (by omega), ite_eq_right (by omega)]
 

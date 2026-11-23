@@ -25,10 +25,10 @@ open Consensus.Model (pubOf)
 
 section Run
 
-open SA (SAParams ReplayOrder)
+open AC (ACParams ReplayOrder)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- Post-stop service on a Goldilocks run gives every receiver honest at its call strict

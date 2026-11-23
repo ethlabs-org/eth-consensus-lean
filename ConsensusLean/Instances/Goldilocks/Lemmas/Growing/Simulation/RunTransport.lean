@@ -29,7 +29,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] (S : Setup) {E : Env V}
 
 /-- **The engine's starts are the run's selected-committee start.** -/
 theorem simIni_eq_runStart (hv : rho.ExecutionValid) :
-    simIni S rho hn = SA.committeeStart (S.params (pubOf E) hn).genesisRoot
+    simIni S rho hn = AC.committeeStart (S.params (pubOf E) hn).genesisRoot
       (Generic.dictOfTime (S.params (pubOf E) hn) (runCommittee S rho hn)) := by
   rw [dictOfTime_runCommittee]
   exact simIni_eq_committeeStart S rho hn hv (voteK_bindsSel S rho)

@@ -44,7 +44,7 @@ theorem sleepy_safe_finite_at (hv : rho.ExecutionValid)
     (hsync : Compose.Growing.SleepyServiceBefore (simTraceAt S rho hn) (honestKeysAt S rho)
       (S.params (pubOf E) hn).Δ b)
     (hB : Compose.Growing.SleepyBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho) 0 b)
-    {K : SA.CommitteeDict (Fintype.card V)}
+    {K : AC.CommitteeDict (Fintype.card V)}
     (hKB : Compose.Growing.CommitteeFacts (simTraceAt S rho hn) (honestKeysAt S rho) K)
     (hBK : Compose.Growing.CommitteeBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho) K 0 b) :
     Regimes.Growing.ReadySafeOn (simTraceAt S rho hn) (honestKeysAt S rho)
@@ -62,7 +62,7 @@ theorem sleepy_safe_engine_at (hv : rho.ExecutionValid)
       (S.params (pubOf E) hn).Δ rho.horizon)
     (hhalf : rho.point.SleepyOn (1 / 2) (Regimes.catchUp (S.params (pubOf E) hn))
       (5 * (S.params (pubOf E) hn).Δ) 0 rho.horizon)
-    {K : SA.CommitteeDict (Fintype.card V)}
+    {K : AC.CommitteeDict (Fintype.card V)}
     (hKB : Compose.Growing.CommitteeFacts (simTraceAt S rho hn) (honestKeysAt S rho) K)
     (hBK : Compose.Growing.CommitteeBoundsFrom (simTraceAt S rho hn) (honestKeysAt S rho) K 0
       rho.horizon) :

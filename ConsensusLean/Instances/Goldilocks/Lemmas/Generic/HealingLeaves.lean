@@ -461,7 +461,7 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
-open SA (gbar)
+open AC (gbar)
 open Healing (FirstCutAfter cutZ)
 
 /-- Public ticks supply the snapshot and the snapshot relay call before an honest receiver's
@@ -518,7 +518,7 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
-open SA (gbar)
+open AC (gbar)
 open Healing (FirstCutAfter cutZ)
 open Healing.Growing (HZ CatchRun)
 
@@ -696,7 +696,7 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
-open SA (gbar)
+open AC (gbar)
 open Healing.Growing (CatchRun)
 
 /-- The merged frame key of the generic statements is the merged frame key of the stores. -/
@@ -847,7 +847,7 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
-open SA (gbar)
+open AC (gbar)
 open Healing.Growing (NoRestartAfter)
 
 /-- An honestly signed row is processed strictly before a sufficiently late honest proposal,

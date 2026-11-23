@@ -26,21 +26,21 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
 
 /-- An entry of the run: the block `T` that some honest node has accepted at cut `i`, whose own
 state names it as the entry of its height (`σ[T].T_h = T`). -/
-def RunEntry (y : Fin sp.n) (i : Nat) (T : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+def RunEntry (y : Fin sp.n) (i : Nat) (T : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   y ∈ H ∧ tr.AcceptAt y i T ∧ ((tr.post i).fg.σ T.root).Th = T.root
 
 /-- An accepted block `X` of an honest node at cut `k` on whose chain the entry `T` (height `h`) is
 justified, accepted before `T₁`, and its carrier relayed: every honest node accepts `X` before `T₁ +
 Δ`. At an entry whose previous height is justified it has also finalized the predecessor `(h − 1,
 J)`. -/
-def EarlyOutcome (T : SA.Blk sp.n (List (FG.Att sp.n))) (h : Nat) (bound : Bool) (Jr : Nat)
+def EarlyOutcome (T : AC.Blk sp.n (List (FG.Att sp.n))) (h : Nat) (bound : Bool) (Jr : Nat)
     (T₁ : Time) : Prop :=
   ∃ y ∈ H, ∃ k X, tr.AcceptAt y k X ∧ tr.time k < T₁ ∧
     Store.JustifiesEntry sp.toParams (Payload sp.n) (tr.post k).fg T h X ∧
@@ -66,16 +66,16 @@ block) is accepted by every honest node within a further `Δ`; at an entry whose
 not justified, in both cases `E` is justified by then (its actual successor entry, entered by
 justifying it, exists). -/
 def OutcomeService : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (K : SA.CommitteeDict sp.n) (g ΔF a : Time) (cF kF : Nat),
-    GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+    (tr : GoldilocksTrace sp ro) (K : AC.CommitteeDict sp.n) (g ΔF a : Time) (cF kF : Nat),
+    GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K) →
     Healing.HSShared tr H K dg g ΔF →
     Healing.CatchRun tr H g (2 * sp.Δ) → 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (cF : Time) →
     cF + kF ≤ sp.toParams.δt →
     Healing.IsReset tr H g a →
-    ∀ (p : Fin sp.n) (k i : Nat) (T : SA.Blk sp.n (List (FG.Att sp.n))) (u : Nat),
+    ∀ (p : Fin sp.n) (k i : Nat) (T : AC.Blk sp.n (List (FG.Att sp.n))) (u : Nat),
       Healing.ReadyProposal tr H proposer p k u T →
       RunEntry tr H p i T →
       sp.ts (sp.slot a + 2 * sp.k + 5 : Nat) ≤ sp.ts u →
@@ -83,14 +83,14 @@ def OutcomeService : Prop :=
       (0 < ((tr.post i).fg.σ T.root).hj →
         ((tr.post i).fg.σ T.root).hj + 1 = ((tr.post i).fg.σ T.root).h →
         Healing.HZ tr H g + 1 ≤ ((tr.post i).fg.σ T.root).hj) →
-      (∃ (w : Fin sp.n) (kw : Nat) (W : SA.Blk sp.n (List (FG.Att sp.n))),
+      (∃ (w : Fin sp.n) (kw : Nat) (W : AC.Blk sp.n (List (FG.Att sp.n))),
         Healing.ReadyProposal tr H proposer w kw W.slot W ∧
         u + cF ≤ W.slot ∧ W.slot ≤ u + cF + kF ∧
         ∃ Pr, W.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) T Pr) →
       let h := ((tr.post i).fg.σ T.root).h
       let bound := decide ((tr.post i).fg.σ T.root).previousHeightJustified
       let T₁ := sp.ts (u + cF + kF + 1 : Nat)
-      ((∃ (q : Fin sp.n) (j : Nat) (Bs Pr : SA.Blk sp.n (List (FG.Att sp.n)))
+      ((∃ (q : Fin sp.n) (j : Nat) (Bs Pr : AC.Blk sp.n (List (FG.Att sp.n)))
           (R : Finset (FG.Att sp.n)),
           tr.projFG.time j < T₁ ∧
           Store.GoodWindow sp.toParams (Payload sp.n) H tr.projFG cF T 0 kF q j Bs Pr R ∧

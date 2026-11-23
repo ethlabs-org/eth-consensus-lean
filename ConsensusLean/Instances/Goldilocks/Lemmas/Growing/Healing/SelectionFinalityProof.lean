@@ -15,25 +15,25 @@ the updating node's prefix. No earlier origin writer must survive to this cut.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
 theorem finalized_below_unanimous_at_update_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPU : P ∈ tr.HonestBlocksAt H) (hPs : P.slot = u) (hu : 0 < u)
-    (hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+    (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
-    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u)
     (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
     (hTb : sp.ts u + 6 * sp.Δ ≤ b)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp ro)}
-    (hup : SA.UpdateAt tr.projAC y j u ell) (ha : a ≤ tr.time j) :
+    (hup : AC.UpdateAt tr.projAC y j u ell) (ha : a ≤ tr.time j) :
     Anc (tr.HonestBlocksAt H) ell.frame.F P := by
   have hm := hp.run.time_mono
   have hd := hp.run.time_nonneg j
@@ -60,9 +60,9 @@ theorem finalized_below_unanimous_at_update_at
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hup.1⟩
   have hsl : sp.slot ((tr.projAC.upTo (tr.time j)).time j) = u + 1 := by
     change sp.slot (tr.time j) = u + 1
-    rw [ht, (SA.slot_arithmetic sp u).2.2]
-    simpa using (SA.slot_arithmetic sp (u + 1)).1 2 (by omega)
-  have hBs : B.slot ≤ u + 1 := hsl ▸ SA.frame_slot_le sp hr.localRun hy hc' B hBf
+    rw [ht, (AC.slot_arithmetic sp u).2.2]
+    simpa using (AC.slot_arithmetic sp (u + 1)).1 2 (by omega)
+  have hBs : B.slot ≤ u + 1 := hsl ▸ AC.frame_slot_le sp hr.localRun hy hc' B hBf
   have hFs : (tr.state y j).fg.F.slot < B.slot :=
     (Anc.slot_le hU (hFB.mono hsub)).2 hne
   rcases hFR with h | hPF

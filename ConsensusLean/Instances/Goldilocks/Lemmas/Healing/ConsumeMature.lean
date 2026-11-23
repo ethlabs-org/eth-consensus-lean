@@ -24,15 +24,15 @@ actual acceptance strictly before `t_x + Δ`. Sorry-free. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
   {i₀ m : Nat}
-  {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
+  {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))}
 
 /-- **The attestations reach the proposer before `t_x`**
 (`GST(g)`'s attestation delivery): an attestation signed by an honest validator by `v` is
@@ -42,7 +42,7 @@ an attestation or carried by an accepted block). Post-`g` attestations have the 
 after `ḡ ≤ v`). -/
 theorem rows_delivered (hs : HSShared tr H K dg g ΔF) {v : Time}
     (hv : gbar g ≤ v) {p : Fin sp.n} (hp : p ∈ H) {kX : Nat}
-    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : tr.ProposesAt p kX X)
+    {X : AC.Blk sp.n (List (FG.Att sp.n))} (hX : tr.ProposesAt p kX X)
     (hvx : v + ΔF ≤ tr.time kX) {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {att : FG.Att sp.n}
     (hsig : tr.SignAt y k att) (hk : tr.time k ≤ v) :
     ∃ k' < kX, tr.ProcessAttAt p k' att := by
@@ -62,14 +62,14 @@ theorem rows_delivered (hs : HSShared tr H K dg g ΔF) {v : Time}
 step of `Service`'s `consume_continue`, with the phase `(m, c)` through `j_b`, `RowsBy` spelled out
 and HS.1 as the hypothesis `hret`). -/
 theorem mature_progress_of (hrun : GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
+      (AC.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) (hret : ViableWitnessRetention) {s h kW : Nat}
-    {E W : SA.Blk sp.n (List (FG.Att sp.n))}
+    {E W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : tr.ProposesAt (proposer s) kW W) (_hWs : W.slot = s)
     (hpH : proposer s ∈ H) (hE : EntryOf (tr.post kW).fg W E h)
     (hh : phaseFloor m c ≤ h) (hws : w ≤ sp.ts s)
-    (hparents : ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
+    (hparents : ∀ (s' : Nat) (P' : AC.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
       P'.slot = s' → tr.ProposesAt (proposer s') k' P' →
       proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
       ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) W Pr)
@@ -78,7 +78,7 @@ theorem mature_progress_of (hrun : GoldilocksRun proposer dg H tr
     (hjb : FirstCutAfter tr jb
       (max (sp.ts s + 6 * sp.Δ + ΔF) (sp.ts (E.slot + sp.toParams.δt : Nat)) + Gp + sp.Δ))
     (hon : PhaseOn tr.projFG H i₀ jb m c) :
-    ∃ (x kX : Nat) (X : SA.Blk sp.n (List (FG.Att sp.n))),
+    ∃ (x kX : Nat) (X : AC.Blk sp.n (List (FG.Att sp.n))),
       ReadyProposal tr H proposer (proposer x) kX x X ∧
       max (sp.ts s + 6 * sp.Δ + ΔF) (sp.ts (E.slot + sp.toParams.δt : Nat)) ≤ sp.ts x ∧
       sp.ts x + sp.Δ ≤
@@ -104,7 +104,7 @@ theorem mature_progress_of (hrun : GoldilocksRun proposer dg H tr
     linarith
   have hsx : s < x := by
     have : sp.ts s < sp.ts x := by linarith
-    exact_mod_cast (SA.ts_lt_iff sp).1 this
+    exact_mod_cast (AC.ts_lt_iff sp).1 this
   obtain ⟨hacc, hXt, hpost⟩ := accept_of_proposesAt hrun hnc hpX hprop
   obtain ⟨-, hWt, hpostW⟩ := accept_of_proposesAt hrun hnc hpH hW
   obtain ⟨Pr, hpar, hWPr⟩ :=
@@ -135,7 +135,7 @@ theorem mature_progress_of (hrun : GoldilocksRun proposer dg H tr
       have hEs : E.slot + sp.toParams.δt ≤ X.slot := by
         have := (le_max_right _ _).trans hx₁
         rw [hXs]
-        exact_mod_cast (SA.ts_le_iff sp).1 this
+        exact_mod_cast (AC.ts_le_iff sp).1 this
       have := crossing_of_rows hrun hs hpX hprop hpar hEPr hpH hEt hETh hEh
         (by rw [hpost]; exact heq.symm) hEs hdel
       rwa [hpost] at this
@@ -146,7 +146,7 @@ theorem mature_progress_of (hrun : GoldilocksRun proposer dg H tr
     (by omega)
   have hgx : gbar g ≤ sp.ts x := by linarith
   obtain ⟨j, _x, hne, hcs, -⟩ := hrun.tick_of_awake y hy (sp.ts x + sp.Δ)
-    (by linarith [gbar_nonneg g]) ⟨4 * (x : Int) + 1, by simp only [SAParams.ts]; ring⟩
+    (by linarith [gbar_nonneg g]) ⟨4 * (x : Int) + 1, by simp only [ACParams.ts]; ring⟩
     (hs.healthy.2.1 y hy _ (by change gbar g ≤ _; linarith))
   obtain ⟨hn, ht, -, -, hl⟩ := hcs 0 (List.length_pos_of_ne_nil hne)
   simp only [Nat.add_zero] at hn ht hl

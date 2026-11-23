@@ -15,27 +15,27 @@ through their common timestamp; no later honesty of the original proposer is req
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- Explicit joinedness, rather than a stronger GST margin, supplies actual votes
 by the slot deadline from the healthy base on that deadline's prefix. -/
-theorem honest_votes_of_joined_before_at {K : SA.CommitteeDict sp.n}
+theorem honest_votes_of_joined_before_at {K : AC.CommitteeDict sp.n}
     {g : Time} {u : Nat}
-    (hS : SA.HealthyBaseUpTo K (tr.projAC.upTo (sp.ts u + sp.Δ))
+    (hS : AC.HealthyBaseUpTo K (tr.projAC.upTo (sp.ts u + sp.Δ))
       (H (sp.ts u + sp.Δ)) ((tr.upTo (sp.ts u + sp.Δ)).HonestBlocks (H (sp.ts u + sp.Δ)))
       proposer g (sp.ts u + sp.Δ))
     (hgu : gbar g ≤ sp.ts u)
     (hjoin : ∀ x, x ∈ H (sp.ts u + sp.Δ) →
-      SA.JoinedAt tr.projAC x (sp.ts u + sp.Δ)) :
+      AC.JoinedAt tr.projAC x (sp.ts u + sp.Δ)) :
     ∀ x, x ∈ H (sp.ts u + sp.Δ) → x ∈ K.committee u →
-      ∃ j e, SA.VoteAt tr.projAC x j e ∧ e.msg.slot = u ∧
+      ∃ j e, AC.VoteAt tr.projAC x j e ∧ e.msg.slot = u ∧
         tr.time j ≤ sp.ts u + sp.Δ := by
   intro x hx hxK
-  obtain ⟨j, e, hv, hs, ht⟩ := SA.honest_votes_of_joined_before hS hgu le_rfl
+  obtain ⟨j, e, hv, hs, ht⟩ := AC.honest_votes_of_joined_before hS hgu le_rfl
     (fun x hx r hrs hrt => by
       obtain ⟨ell, hc, hrestart⟩ := hrs
       exact hjoin x hx r
@@ -45,19 +45,19 @@ theorem honest_votes_of_joined_before_at {K : SA.CommitteeDict sp.n}
 
 /-- Explicit joinedness gives every honest node, committee member or not, a vote branch of the
 slot by its deadline, from the healthy base on that deadline's prefix. -/
-theorem honest_vote_branches_of_joined_before_at {K : SA.CommitteeDict sp.n}
+theorem honest_vote_branches_of_joined_before_at {K : AC.CommitteeDict sp.n}
     {g : Time} {u : Nat}
-    (hS : SA.HealthyBaseUpTo K (tr.projAC.upTo (sp.ts u + sp.Δ))
+    (hS : AC.HealthyBaseUpTo K (tr.projAC.upTo (sp.ts u + sp.Δ))
       (H (sp.ts u + sp.Δ)) ((tr.upTo (sp.ts u + sp.Δ)).HonestBlocks (H (sp.ts u + sp.Δ)))
       proposer g (sp.ts u + sp.Δ))
     (hgu : gbar g ≤ sp.ts u)
     (hjoin : ∀ x, x ∈ H (sp.ts u + sp.Δ) →
-      SA.JoinedAt tr.projAC x (sp.ts u + sp.Δ)) :
+      AC.JoinedAt tr.projAC x (sp.ts u + sp.Δ)) :
     ∀ x, x ∈ H (sp.ts u + sp.Δ) →
-      ∃ j ell R, SA.VoteBranchAt tr.projAC x j ell R ∧ sp.slot (tr.time j) = u ∧
+      ∃ j ell R, AC.VoteBranchAt tr.projAC x j ell R ∧ sp.slot (tr.time j) = u ∧
         tr.time j ≤ sp.ts u + sp.Δ := by
   intro x hx
-  obtain ⟨j, ell, R, hb, hs, ht⟩ := SA.honest_vote_branches_of_joined_before hS hgu le_rfl
+  obtain ⟨j, ell, R, hb, hs, ht⟩ := AC.honest_vote_branches_of_joined_before hS hgu le_rfl
     (fun x hx r hrs hrt => by
       obtain ⟨ell, hc, hrestart⟩ := hrs
       exact hjoin x hx r
@@ -67,9 +67,9 @@ theorem honest_vote_branches_of_joined_before_at {K : SA.CommitteeDict sp.n}
 /-- A vote by a validator still honest at the read has its strict early message
 stamp in the receiver's pool, at the slot committees `K` of a run from `K`'s committee start.
 Only the receiving prefix is used. -/
-theorem honest_vote_early_pool_before_at {K : SA.CommitteeDict sp.n}
+theorem honest_vote_early_pool_before_at {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K))
+      (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -80,17 +80,17 @@ theorem honest_vote_early_pool_before_at {K : SA.CommitteeDict sp.n}
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
     (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
     {x : Fin sp.n} (hx : x ∈ H (tr.time j)) {i : Nat}
-    {e : SA.Em sp (List (FG.Att sp.n))}
-    (hv : SA.VoteAt tr.projAC x i e) (hes : e.msg.slot = u)
+    {e : AC.Em sp (List (FG.Att sp.n))}
+    (hv : AC.VoteAt tr.projAC x i e) (hes : e.msg.slot = u)
     (hit : tr.time i ≤ tr.time j) (hK : CommitteeHalfUpTo tr H K g b) :
     e.msg ∈ (tr.projAC.state y j).pool u ∧
-      (tr.projAC.state y j).voteStamp e.msg < SA.ETime.of (sp.ts u + 2 * sp.Δ) := by
+      (tr.projAC.state y j).voteStamp e.msg < AC.ETime.of (sp.ts u + 2 * sp.Δ) := by
   have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch (hrun.time_nonneg j) hjb
   have hs := Trace.upTo_state tr.projAC y (i := j)
     (fun q hq => hrun.time_mono hq.le)
   have hc' : (tr.projAC.upTo (tr.time j)).CallAt y j ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
-  have hv' : SA.VoteAt (tr.projAC.upTo (tr.time j)) x i e := by
+  have hv' : AC.VoteAt (tr.projAC.upTo (tr.time j)) x i e := by
     obtain ⟨ellx, hcx, he⟩ := hv
     exact ⟨ellx, (Trace.upTo_callAt _).mpr ⟨hit, hcx⟩, he⟩
   have hrst : ∀ k ≤ j, ACTrace.RestartAt (tr.projAC.upTo (tr.time j)) y k →
@@ -100,7 +100,7 @@ theorem honest_vote_early_pool_before_at {K : SA.CommitteeDict sp.n}
     have hbound := hnr y k (hrun.antitone hkt hy)
       (Compose.projAC_restartAt.mp ⟨ellk, ((Trace.upTo_callAt _).mp hck).2, hk⟩)
     linarith [sp.toParams.hΔ]
-  have hp := SA.honest_vote_early_pool_before hS hy hc'
+  have hp := AC.honest_vote_early_pool_before hS hy hc'
     (by linarith [sp.toParams.hΔ]) ht le_rfl
     (fun k hkj t _ => Compose.ac_deadline_le_of_restarts
       (fun r hr hrs => (hrst r (hr.trans hkj) hrs).le) t)
@@ -115,19 +115,19 @@ theorem blockStamp_early_of_historical_acceptance_at
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b) (hnr : NoRestartAfter tr H (gbar g))
     {u : Nat} (hgu : gbar g ≤ sp.ts u)
-    {x y : Fin sp.n} {i j : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x y : Fin sp.n} {i j : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (ha : tr.projAC.AcceptAt x i P)
     (hti : tr.time i = sp.ts u)
     (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y j ell) (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j)
     (hPt : P ∈ ell.frame.tree) :
-    (tr.projAC.state y j).blockStamp P.root < SA.ETime.of (sp.ts u + 2 * sp.Δ) := by
+    (tr.projAC.state y j).blockStamp P.root < AC.ETime.of (sp.ts u + 2 * sp.Δ) := by
   have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg j))
     (hnc.upTo (tr.time j))).localRun
   rw [RunTrace.upTo_projAC] at hr
   have hc' : (tr.projAC.upTo (tr.time j)).CallAt y j ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
-  have hPhi := SA.frameIn_of_callAt hr hy hc'
+  have hPhi := AC.frameIn_of_callAt hr hy hc'
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono
     (hrun.time_nonneg j)
   obtain ⟨q, hqj, haq, hqt⟩ := accepted_relay_before_at hrun hsvc hnr hx ha
@@ -136,7 +136,7 @@ theorem blockStamp_early_of_historical_acceptance_at
   have haq' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time j)) y q P := by
     obtain ⟨ellq, hcq, heq⟩ := haq
     exact ⟨ellq, (Trace.upTo_callAt _).mpr ⟨hrun.time_mono hqj, hcq⟩, heq⟩
-  have hp := SA.blockStamp_lt_of_acceptedBefore sp hr hrun.vstart hy hc' hPt
+  have hp := AC.blockStamp_lt_of_acceptedBefore sp hr hrun.vstart hy hc' hPt
     (Or.inr ⟨q, haq', by change tr.time q < _; rw [hti] at hqt; linarith [sp.toParams.hΔ]⟩)
     (fun k _ hrs => by
       have hck := hrs.choose_spec.1
@@ -152,31 +152,31 @@ theorem blockStamp_early_of_historical_acceptance_at
 /-- Early proposal resolution needs historical block relay only for the block
 stamp. Vote delivery and uniqueness are charged at the receiving cut. The pool holds the votes
 of the honest members of the slot committee `K u`, for a run from `K`'s committee start. -/
-theorem unanimous_early_pool_of_blockStamp_at {K : SA.CommitteeDict sp.n}
+theorem unanimous_early_pool_of_blockStamp_at {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K))
+      (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     {u : Nat} (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPs : P.slot = u)
-    (hun : ∀ x i e, x ∈ H (tr.time i) → SA.VoteAt tr.projAC x i e →
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPs : P.slot = u)
+    (hun : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e →
       e.msg.slot = u → e.msg.head = P.root)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
     (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
     (hPt : P ∈ ell.frame.tree)
     (hbs : (tr.projAC.state y j).blockStamp P.root <
-      SA.ETime.of (sp.ts u + 2 * sp.Δ))
+      AC.ETime.of (sp.ts u + 2 * sp.Δ))
     (hvotes : ∀ x, x ∈ H (tr.time j) → x ∈ K.committee u → ∃ i e,
-      SA.VoteAt tr.projAC x i e ∧ e.msg.slot = u ∧ tr.time i ≤ tr.time j)
+      AC.VoteAt tr.projAC x i e ∧ e.msg.slot = u ∧ tr.time i ≤ tr.time j)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ x, x ∈ H (tr.time j) → x ∈ K.committee u → ∃ v ∈ (tr.projAC.state y j).pool u,
       v.val = x ∧ v.head = P.root ∧
-      SA.resolutionTime (tr.projAC.state y j) ell.frame v <
-        SA.ETime.of (sp.ts u + 2 * sp.Δ) ∧
+      AC.resolutionTime (tr.projAC.state y j) ell.frame v <
+        AC.ETime.of (sp.ts u + 2 * sp.Δ) ∧
       ∀ v' ∈ (tr.projAC.state y j).pool u, v'.val = x → v' = v := by
   have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch (hrun.time_nonneg j) hjb
   have hr := hS.run.localRun
@@ -184,42 +184,42 @@ theorem unanimous_early_pool_of_blockStamp_at {K : SA.CommitteeDict sp.n}
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
   have hs := Trace.upTo_state tr.projAC y (i := j)
     (fun q hq => hrun.time_mono hq.le)
-  have hPhi := SA.frameIn_of_callAt hr hy hc'
+  have hPhi := AC.frameIn_of_callAt hr hy hc'
   intro x hx hxK
   obtain ⟨i, e, hv, hes, hit⟩ := hvotes x hx hxK
-  have hv' : SA.VoteAt (tr.projAC.upTo (tr.time j)) x i e := by
+  have hv' : AC.VoteAt (tr.projAC.upTo (tr.time j)) x i e := by
     obtain ⟨ellx, hcx, he⟩ := hv
     exact ⟨ellx, (Trace.upTo_callAt _).mpr ⟨hit, hcx⟩, he⟩
   have heP := hun x i e (hrun.antitone hit hx) hv hes
   obtain ⟨hm, hvs⟩ := honest_vote_early_pool_before_at hrun hnc hsvc hawake hf hcatch hnr
     hmargin hy hc ht hjb hx hv hes hit hK
-  have hval := (SA.castAt_spec hr hx ⟨hv'.choose_spec.1, hv'.choose_spec.2⟩).1
+  have hval := (AC.castAt_spec hr hx ⟨hv'.choose_spec.1, hv'.choose_spec.2⟩).1
   refine ⟨e.msg, hm, hval, heP,
-    SA.resolutionTime_lt_of hPhi.1 hPt heP.symm (by omega) hvs (heP ▸ hbs), ?_⟩
+    AC.resolutionTime_lt_of hPhi.1 hPt heP.symm (by omega) hvs (heP ▸ hbs), ?_⟩
   intro v' hm' hv'x
   have hm'' : v' ∈ ((tr.projAC.upTo (tr.time j)).state y j).pool u := by
     rwa [hs]
   obtain ⟨q, _, e', he', rfl⟩ := hS.run.honest.pool_vote y hy j u v' hm'' (hv'x ▸ hx)
   rw [hv'x] at he'
-  obtain ⟨_, rfl⟩ := SA.one_vote_per_slotU sp _ _ _ _ _ hr.toU x hx q i e' e he' hv'
-    ((SA.state_pool_slot sp hr hS.run.vstart hy j u _ hm'').trans hes.symm)
+  obtain ⟨_, rfl⟩ := AC.one_vote_per_slotU sp _ _ _ _ _ hr.toU x hx q i e' e he' hv'
+    ((AC.state_pool_slot sp hr hS.run.vstart hy j u _ hm'').trans hes.symm)
   rfl
 
 /-- The warm route assembles the early unanimous pool using only joinedness at
 the vote deadline and historical honesty of the proposal's first acceptance, for the honest
 members of the slot committee `K u` of a run from `K`'s committee start. -/
-theorem unanimous_early_pool_of_acceptance_at {K : SA.CommitteeDict sp.n}
+theorem unanimous_early_pool_of_acceptance_at {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K))
+      (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     {u : Nat} (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
-    (hjoin : ∀ x, x ∈ H (sp.ts u + sp.Δ) → SA.JoinedAt tr.projAC x (sp.ts u + sp.Δ))
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPs : P.slot = u)
-    (hun : ∀ x i e, x ∈ H (tr.time i) → SA.VoteAt tr.projAC x i e →
+    (hjoin : ∀ x, x ∈ H (sp.ts u + sp.Δ) → AC.JoinedAt tr.projAC x (sp.ts u + sp.Δ))
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPs : P.slot = u)
+    (hun : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e →
       e.msg.slot = u → e.msg.head = P.root)
     {z : Fin sp.n} {a : Nat} (hz : z ∈ H (tr.time a))
     (ha : tr.projAC.AcceptAt z a P) (hta : tr.time a = sp.ts u)
@@ -229,14 +229,14 @@ theorem unanimous_early_pool_of_acceptance_at {K : SA.CommitteeDict sp.n}
     (hPt : P ∈ ell.frame.tree) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ x, x ∈ H (tr.time j) → x ∈ K.committee u → ∃ v ∈ (tr.projAC.state y j).pool u,
       v.val = x ∧ v.head = P.root ∧
-      SA.resolutionTime (tr.projAC.state y j) ell.frame v <
-        SA.ETime.of (sp.ts u + 2 * sp.Δ) ∧
+      AC.resolutionTime (tr.projAC.state y j) ell.frame v <
+        AC.ETime.of (sp.ts u + 2 * sp.Δ) ∧
       ∀ v' ∈ (tr.projAC.state y j).pool u, v'.val = x → v' = v := by
   have hgu : gbar g ≤ sp.ts u := by linarith [sp.toParams.hΔ]
   have hshort : sp.ts u + sp.Δ ≤ tr.time j := by linarith [sp.toParams.hΔ]
   have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch
     (show 0 ≤ sp.ts u + sp.Δ by
-      linarith [SA.gbar_nonneg g, sp.toParams.hΔ]) (hshort.trans hjb)
+      linarith [AC.gbar_nonneg g, sp.toParams.hΔ]) (hshort.trans hjb)
   have hvotes := honest_votes_of_joined_before_at hS hgu hjoin
   exact unanimous_early_pool_of_blockStamp_at hrun hnc hsvc hawake hf hcatch hnr
     hmargin hPs hun hy hc ht hjb hPt
@@ -257,31 +257,31 @@ theorem update_toFG_calls_of_awake_at
     (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
     (hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
     {y : Fin sp.n} (hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ)) :
-    ∃ k ell ell', SA.UpdateAt tr.projAC y k u ell ∧
+    ∃ k ell ell', AC.UpdateAt tr.projAC y k u ell ∧
       tr.projAC.CallAt y (k + 1) ell' ∧ ell'.call = .toFG ∧
       tr.time (k + 1) = sp.ts (u + 1 : Nat) + 2 * sp.Δ ∧
       ell'.frame = ell.frame := by
   let T := sp.ts (u + 1 : Nat) + 2 * sp.Δ
   have hT : T = sp.ts u + 6 * sp.Δ := by
-    dsimp only [T, SAParams.ts]
+    dsimp only [T, ACParams.ts]
     push_cast
     ring
   have hΔ := sp.toParams.hΔ
   have hT0 : 0 ≤ T := by
     rw [hT]
-    have hu0 : 0 ≤ sp.ts u := by simp only [SAParams.ts]; positivity
+    have hu0 : 0 ≤ sp.ts u := by simp only [ACParams.ts]; positivity
     linarith
   have hr := hrun.upTo hT0
   have hslot : sp.slot T = u + 1 := by
     rw [hT]
-    apply SA.slot_of_mem sp (u + 1)
-    all_goals simp only [SAParams.ts]; push_cast; linarith
+    apply AC.slot_of_mem sp (u + 1)
+    all_goals simp only [ACParams.ts]; push_cast; linarith
   have hjoin : ∀ i, (tr.upTo T).time i = sp.ts u + 6 * sp.Δ →
-      SA.joined sp ((tr.upTo T).projAC.state y i) ((tr.upTo T).time i) := by
+      AC.joined sp ((tr.upTo T).projAC.state y i) ((tr.upTo T).time i) := by
     intro i hi
-    unfold SA.joined
+    unfold AC.joined
     have hac := (Compose.goldilocks_ac_projection_from hr (hnc.upTo T)).localRun
-    rcases SA.restartTime_state hac hrun.vstart hy i with h | ⟨r, _, hrs, h⟩
+    rcases AC.restartTime_state hac hrun.vstart hy i with h | ⟨r, _, hrs, h⟩
     · rw [h]; exact bot_le
     · rw [h]
       apply WithBot.coe_le_coe.mpr
@@ -316,14 +316,14 @@ theorem fresh_fast_lock_of_selection_at
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {k u : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hu : SA.UpdateAt tr.projAC y k u ell) (hPt : P ∈ ell.frame.tree)
-    (hconf : SA.getConfirmation sp (tr.projAC.state y k) ell.frame u = some P)
-    (hnv : ¬ SA.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P)
-    (hfast : SA.fastSelect sp (tr.projAC.state y k) ell.frame u P = some P)
+    {P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hu : AC.UpdateAt tr.projAC y k u ell) (hPt : P ∈ ell.frame.tree)
+    (hconf : AC.getConfirmation sp (tr.projAC.state y k) ell.frame u = some P)
+    (hnv : ¬ AC.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P)
+    (hfast : AC.fastSelect sp (tr.projAC.state y k) ell.frame u P = some P)
     (hva : ell.frame.viableAncestor P = P) :
     ∃ e, u + 2 ≤ e ∧
-      (⟨P.root, u, true, e⟩ : SA.Lock) ∈ (tr.projAC.post k).locks := by
+      (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.post k).locks := by
   have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg k))
     (hnc.upTo (tr.time k))).localRun
   rw [RunTrace.upTo_projAC] at hr
@@ -336,26 +336,26 @@ theorem fresh_fast_lock_of_selection_at
   have hkt : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
   have hslot : sp.slot (tr.time k) = u + 1 := by
     rw [hkt]
-    apply SA.slot_of_mem sp (u + 1)
-    all_goals simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ]
+    apply AC.slot_of_mem sp (u + 1)
+    all_goals simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ]
   have hpost : tr.projAC.post k =
-      SA.updateConfirmation sp (tr.projAC.state y k) ell.frame (tr.time k) u := by
+      AC.updateConfirmation sp (tr.projAC.state y k) ell.frame (tr.time k) u := by
     rw [show tr.projAC.post k =
-      (SA.acOnTick sp y (tr.projAC.state y k) ell.frame (tr.time k)).1 from
+      (AC.acOnTick sp y (tr.projAC.state y k) ell.frame (tr.time k)).1 from
         (congrArg Prod.fst he).symm]
-    unfold SA.acOnTick
+    unfold AC.acOnTick
     dsimp only
     rw [hslot]
     have ht1 : ¬ tr.time k = sp.ts (u + 1 : Nat) + sp.Δ := by
-      rw [hkt]; simp only [SAParams.ts]; push_cast; linarith [sp.toParams.hΔ]
+      rw [hkt]; simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ]
     have ht2 : tr.time k = sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
-      rw [hkt]; simp only [SAParams.ts]; push_cast; ring
-    have hj : SA.joined sp (tr.projAC.state y k) (tr.time k) := hu.2.2.2
+      rw [hkt]; simp only [ACParams.ts]; push_cast; ring
+    have hj : AC.joined sp (tr.projAC.state y k) (tr.time k) := hu.2.2.2
     rw [ite_eq_right (not_not.mpr hj), ite_eq_right ht1,
       ite_eq_left ⟨ht2, Nat.succ_pos u⟩]
     simp only [Nat.add_sub_cancel]
   rw [hpost]
-  exact SA.fastLock_mem_updateConfirmation_floor hPt hva hconf hnv hfast
+  exact AC.fastLock_mem_updateConfirmation_floor hPt hva hconf hnv hfast
     (by rw [hslot]; have := sp.two_le_k; omega)
 
 end Consensus.Goldilocks.Healing.Growing

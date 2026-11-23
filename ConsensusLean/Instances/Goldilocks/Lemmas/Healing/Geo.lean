@@ -31,7 +31,7 @@ settled effective phase `(m, c)`, from HS.1 (`viable_witness_retention_of`, `Ret
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 /-! ## Stores -/
 
@@ -256,9 +256,9 @@ end Stores
 
 section Runs
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
   {proposer : Nat → Fin sp.n}
 
@@ -276,7 +276,7 @@ theorem fg_run_of_hs (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared 
 ancestry of a held block does not change). -/
 theorem holdsEvidence_mono (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    {z : Fin sp.n} (hz : z ∈ H) {a b m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
+    {z : Fin sp.n} (hz : z ∈ H) {a b m : Nat} {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))}
     (hab : a ≤ b) (h : HoldsEvidence (tr.state z a).fg m c) :
     HoldsEvidence (tr.state z b).fg m c := by
   have hsub := Compose.tree_mono hrun.toLocalRun hz hab
@@ -286,12 +286,12 @@ theorem holdsEvidence_mono (hrun : GoldilocksRun proposer dg H tr ini)
   have hh : ∀ k, (∃ B ∈ (tr.state z a).fg.tree, ((tr.state z a).fg.σ B.root).h = k) →
       ∃ B ∈ (tr.state z b).fg.tree, ((tr.state z b).fg.σ B.root).h = k :=
     fun k ⟨B, hB, e⟩ => ⟨B, hsub hB, by rw [hσ B hB, e]⟩
-  have hj : ∀ J : SA.Blk sp.n (List (FG.Att sp.n)), (∃ B ∈ (tr.state z a).fg.tree,
+  have hj : ∀ J : AC.Blk sp.n (List (FG.Att sp.n)), (∃ B ∈ (tr.state z a).fg.tree,
       ((tr.state z a).fg.σ B.root).hj = m - 1 ∧ ((tr.state z a).fg.σ B.root).J = J.root) →
       ∃ B ∈ (tr.state z b).fg.tree,
         ((tr.state z b).fg.σ B.root).hj = m - 1 ∧ ((tr.state z b).fg.σ B.root).J = J.root :=
     fun J ⟨B, hB, e1, e2⟩ => ⟨B, hsub hB, by rw [hσ B hB, e1], by rw [hσ B hB, e2]⟩
-  have hc : ∀ J : SA.Blk sp.n (List (FG.Att sp.n)), (∃ B ∈ (tr.state z a).fg.tree,
+  have hc : ∀ J : AC.Blk sp.n (List (FG.Att sp.n)), (∃ B ∈ (tr.state z a).fg.tree,
       ((tr.state z a).fg.σ B.root).h = m ∧ ¬ (tr.state z a).fg.Anc J B) →
       ∃ B ∈ (tr.state z b).fg.tree,
         ((tr.state z b).fg.σ B.root).h = m ∧ ¬ (tr.state z b).fg.Anc J B :=
@@ -311,8 +311,8 @@ node's `Σ.h_max` is `m`; its `Σ.h_j` is `m − 1` exactly when the phase has a
 contest test agrees with the phase case (the contest witness extends `Σ.F` by HS.1). -/
 theorem viableHeads_iff (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H K dg g ΔF)
     (_hc : CatchRun tr H g (2 * sp.Δ)) {z : Fin sp.n} (hz : z ∈ H) {k m : Nat}
-    {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} (hph : PhaseAt tr.projFG H k m c)
-    (hev : HoldsEvidence (tr.state z k).fg m c) {X : SA.Blk sp.n (List (FG.Att sp.n))}
+    {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))} (hph : PhaseAt tr.projFG H k m c)
+    (hev : HoldsEvidence (tr.state z k).fg m c) {X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state z k).fg.tree) :
     X ∈ (Node.frame (tr.state z k)).viableHeads ↔
       (tr.state z k).fg.Anc (tr.state z k).fg.F X ∧ EffAllowed (tr.state z k).fg m c X := by
@@ -419,21 +419,21 @@ end Runs
 
 /-! ## The AC side: stamps, early votes, the proposal's parent -/
 
-section SAFacts
+section ACFacts
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (SA.Blk sp.n FGP)} {tr : SA.SATrace sp FGP ro}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {tr : AC.GTrace sp FGP ro}
 
 /-- **Where a block stamp comes from**: after an honest call, the stamp of a block of its frame is
 genesis's, or the time of an earlier call of the node whose frame holds the block (the call that
 accepted it, or a restart's replay). -/
-theorem stamp_origin {ini} (h : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr ini)
+theorem stamp_origin {ini} (h : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
     {y : Fin sp.n}
     (hy : y ∈ H) :
-    ∀ i (ℓ : ACLabel (SA.goldilocksSA sp FGP ro)), tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
-      X.root = sp.genesisRoot ∨ ∃ k ≤ i, ∃ ℓk : ACLabel (SA.goldilocksSA sp FGP ro),
+    ∀ i (ℓ : ACLabel (AC.goldilocksAC sp FGP ro)), tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
+      X.root = sp.genesisRoot ∨ ∃ k ≤ i, ∃ ℓk : ACLabel (AC.goldilocksAC sp FGP ro),
         tr.CallAt y k ℓk ∧ X ∈ ℓk.frame.tree ∧
-          (tr.post i).blockStamp X.root = SA.ETime.of (tr.time k) := by
+          (tr.post i).blockStamp X.root = AC.ETime.of (tr.time k) := by
   intro i
   induction i using Nat.strong_induction_on with
   | _ i ih =>
@@ -441,12 +441,12 @@ theorem stamp_origin {ini} (h : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr in
     have hexec := h.exec i ℓ hc.2 (hc.1 ▸ hy)
     rw [hc.1] at hexec
     have hpost : tr.post i =
-        ((SA.goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
+        ((AC.goldilocksAC sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
       rw [hexec]
-    obtain ⟨Φ, hok, hpre⟩ : ∃ Φ, (SA.goldilocksSA sp FGP ro).CallOK U Φ (tr.time i) ℓ.call
+    obtain ⟨Φ, hok, hpre⟩ : ∃ Φ, (AC.goldilocksAC sp FGP ro).CallOK U Φ (tr.time i) ℓ.call
         ℓ.frame ∧ ∀ X ∈ Φ.tree, X.root = sp.genesisRoot ∨ ∃ k ≤ i,
-          ∃ ℓk : ACLabel (SA.goldilocksSA sp FGP ro), tr.CallAt y k ℓk ∧ X ∈ ℓk.frame.tree ∧
-            (tr.state y i).blockStamp X.root = SA.ETime.of (tr.time k) := by
+          ∃ ℓk : ACLabel (AC.goldilocksAC sp FGP ro), tr.CallAt y k ℓk ∧ X ∈ ℓk.frame.tree ∧
+            (tr.state y i).blockStamp X.root = AC.ETime.of (tr.time k) := by
       rcases h.frameLaw y hy i ℓ hc with ⟨-, Φ₀, ⟨htree, hroot, -, -, -⟩, -, hok⟩ |
         ⟨j, ℓ', hj, hc', hnb, hok⟩
       · refine ⟨Φ₀, hok, fun X hX => Or.inl ?_⟩
@@ -457,7 +457,7 @@ theorem stamp_origin {ini} (h : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr in
         exact (ih j hj ℓ' hc' X hX).imp_right fun ⟨k, hk, ℓk, h1, h2, h3⟩ =>
           ⟨k, hk.trans hj.le, ℓk, h1, h2, h3⟩
     have hΦ' := hok.1
-    obtain ⟨hblk, hrst, hoth⟩ := SA.step_blockStamp_eq ro y (tr.state y i) hΦ'.1
+    obtain ⟨hblk, hrst, hoth⟩ := AC.step_blockStamp_eq ro y (tr.state y i) hΦ'.1
       (h.time_nonneg i) ℓ.call
     rw [hpost]
     generalize hcall : ℓ.call = c at hok hblk hrst hoth
@@ -483,31 +483,31 @@ theorem stamp_origin {ini} (h : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr in
 
 /-- The anchor of a walk is in the viable tree of the whole frame tree when `fc_root` is: it is
 `fc_root` or the deepest live lock block, a candidate at least as deep as `fc_root`. -/
-theorem getAnchor_viable {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) (A : SA.SAState sp.n) (t : Time)
-    (hfc : Φ.fcRoot ∈ Φ.viableTree Φ.tree) : SA.getAnchor sp A Φ t ∈ Φ.viableTree Φ.tree := by
-  unfold SA.getAnchor
-  rcases hD : SA.deepest Φ (SA.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) with _ | D
+theorem getAnchor_viable {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) (A : AC.ACState sp.n) (t : Time)
+    (hfc : Φ.fcRoot ∈ Φ.viableTree Φ.tree) : AC.getAnchor sp A Φ t ∈ Φ.viableTree Φ.tree := by
+  unfold AC.getAnchor
+  rcases hD : AC.deepest Φ (AC.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) with _ | D
   · exact hfc
-  · obtain ⟨hDS, hmax⟩ := SA.deepest_mem hD
+  · obtain ⟨hDS, hmax⟩ := AC.deepest_mem hD
     change D ∈ Φ.viableTree Φ.tree
     by_cases he : D = Φ.fcRoot
     · exact he ▸ hfc
     rcases hDS with hDl | hDf
-    · rcases SA.liveLockBlock_candidate hΦ hDl with h | h
+    · rcases AC.liveLockBlock_candidate hΦ hDl with h | h
       · exact h
-      · have h1 := SA.depth_lt_of_anc hΦ h he hΦ.fcRoot_mem
+      · have h1 := AC.depth_lt_of_anc hΦ h he hΦ.fcRoot_mem
         rcases hmax Φ.fcRoot (Or.inr rfl) (Ne.symm he) with h2 | ⟨h2, -⟩ <;> omega
     · exact absurd (Set.mem_singleton_iff.1 hDf) he
 
 /-- **The parent of an honest proposal is a viable head** of the proposer's frame when `fc_root`
 has a viable head above it (requirement 1: the walk starts at the anchor, in the viable tree), for
 starts up to the vote permission. -/
-theorem proposal_head_viable {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr ini)
-    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
+theorem proposal_head_viable {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)}
     (hc : tr.CallAt y k ℓ) (hcall : ℓ.call = .proposal) {σ : Nat}
     (hk : tr.time k = sp.toParams.slotTime σ) {d : DutyHead sp.n FGP (Payload sp.n)}
-    {pay : Payload sp.n} (hp : (SA.acProposal sp (tr.state y k) ℓ.frame (tr.time k)).2 =
+    {pay : Payload sp.n} (hp : (AC.acProposal sp (tr.state y k) ℓ.frame (tr.time k)).2 =
       some (d, pay)) (hfc : ℓ.frame.fcRoot ∈ ℓ.frame.viableTree ℓ.frame.tree) :
     d.head ∈ ℓ.frame.viableHeads := by
   obtain ⟨Φp, tp, hreach, htp, hok⟩ := Compose.pre_reachable hr hy hc
@@ -516,19 +516,19 @@ theorem proposal_head_viable {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) 
     rw [hcall] at this
     exact this
   have hΦ : FrameOK ℓ.frame := hok.1.1
-  have hOK := ((SA.interface_requirements_from sp FGP ro (hini y)).1 y U hr.coherent _ _ _
+  have hOK := ((AC.interface_requirements_from sp FGP ro (hini y)).1 y U hr.coherent _ _ _
     (ACInterface.reachableAtFrom_iff.1 hreach)).1 σ (hk ▸ htp) d pay
     (by rw [← hk, ← hΦp]; exact hp)
   rw [← hΦp] at hOK
   refine hOK.2 ?_
-  unfold SA.acProposal at hp
+  unfold AC.acProposal at hp
   dsimp only at hp
   split_ifs at hp
   simp only [Option.some.injEq, Prod.mk.injEq] at hp
   obtain ⟨rfl, -⟩ := hp
   exact getAnchor_viable hΦ _ _ hfc
 
-end SAFacts
+end ACFacts
 
 /-! ## The run: the proposal call of a tick -/
 
@@ -607,9 +607,9 @@ end RunCuts
 
 section Main
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
   {proposer : Nat → Fin sp.n}
 
@@ -617,7 +617,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem effAllowed_transfer (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i j m : Nat}
-    {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} {X : SA.Blk sp.n (List (FG.Att sp.n))}
+    {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))} {X : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : EffAllowed (tr.state y i).fg m c X) (hX : X ∈ (tr.state z j).fg.tree) :
     EffAllowed (tr.state z j).fg m c X :=
   ⟨hX, by rw [σ_eq_honest hrun hnc hz hy hX h.1]; exact h.2.1, fun J hJ =>

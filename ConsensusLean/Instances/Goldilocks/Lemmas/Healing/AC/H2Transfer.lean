@@ -19,21 +19,21 @@ public section
 * `next_vote_extends_before`: an honest vote of slot `m + 1` extends `B` when the honest votes of
   slots `m` and `m + 1` at earlier cuts do. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g t₀ : Time} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {g t₀ : Time} {proposer : Nat → Fin sp.n}
 
 /-- **(P) from a writer, after the GST or by catch-up** (`carryAt_of_writer_catch` at the
 proposal duty): a slot-`σ` vote sent or admitted by an honest writer in `[t_σ, t_σ + 2Δ)`, whose
 head extends the proposer's `Φ.F` and is genesis, or was accepted by the writer from `a₀` on before
 `t_σ + 2Δ`, or by the proposer before `t_σ + 3Δ`, reaches the honest proposer of slot `σ + 1`
 (Sync relays the vote and the head before `t_σ + 3Δ`; rooted retention keeps the head). -/
-theorem heldAtProposal_of_writer {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem heldAtProposal_of_writer {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
-    {a₀ b : Time} (hsync : SyncAC (goldilocksSA sp FGP ro) H U a₀ b tr) {σ : Nat}
+    {a₀ b : Time} (hsync : SyncAC (goldilocksAC sp FGP ro) H U a₀ b tr) {σ : Nat}
     (ha₀ : a₀ ≤ sp.ts σ) (hb : sp.ts σ + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H)
-    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     (hc : tr.CallAt x i ℓ) (ht : tr.time i = sp.ts (σ + 1 : Nat))
     (hrs : ∀ k ≤ i, tr.RestartAt x k → tr.time k < sp.ts σ) {v : Vote sp.n} (hvs : v.slot = σ)
     (hsend : ∃ k, tr.SendOrAdmit w k v ∧ sp.ts σ ≤ tr.time k ∧ tr.time k < sp.ts σ + 2 * sp.Δ)
@@ -45,7 +45,7 @@ theorem heldAtProposal_of_writer {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro)
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
   have hts : sp.ts (σ + 1 : Nat) = sp.ts σ + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hx hc
   have hdl : ∀ k ≤ i, ∀ τ, τ < sp.ts σ + 2 * sp.Δ → tr.deadline x k τ < sp.ts σ + 3 * sp.Δ := by
     intro k hk τ hτ
@@ -103,7 +103,7 @@ theorem result_prefix_vote_extends_of_stored {ini} (hrun : ACRun proposer tr H U
     (hy : y ∈ H) {r s i : Nat} {B C : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hf : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize)
     (hres : ResultAt tr x r s C CV) (hBC : Anc U B C)
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
     (hcarry : CarryAt tr U y i e s CV) (hviab : ViableAtVote ℓ e (s + 1) B)
     (hstored : ∀ l ∈ (tr.state y i).locks,
@@ -124,7 +124,7 @@ theorem next_vote_extends_before {ini} (hrun : ACRun proposer tr H U ini)
     (K : CommitteeDict sp.n) (hP : CommitteeP K tr H) (hT : CommitteeT K tr H)
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
     {m i : Nat} {y : Fin sp.n} {B : Blk sp.n FGP}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hy : y ∈ H) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = m + 1)
     (hprior : ∀ z ∈ H, ∀ q < i, ∀ e', VoteAt tr z q e' →
       (e'.msg.slot = m ∨ e'.msg.slot = m + 1) → VoteExtends U e'.msg B)
@@ -134,7 +134,7 @@ theorem next_vote_extends_before {ini} (hrun : ACRun proposer tr H U ini)
       {v | ∃ z ∈ H, ∃ q e', VoteAt tr z q e' ∧ e'.msg = v ∧ v.slot = m})
     (hfault : FaultBoundK K m tr H (tr.time i))
     (hf1 : 2 * (K.committee (m + 1) ∩ Hᶜ).ncard < sp.committeeSize)
-    (_hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts m) (tr.time i) tr)
+    (_hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts m) (tr.time i) tr)
     (hviab : ViableAtVote ℓ e (m + 1) B) :
     VoteExtends U e.msg B := by
   refine next_transfer_of_carry sp hrun K hP hT hsize hy hc hs ?_ hhalf hcarry hfault hf1 hviab
@@ -150,6 +150,6 @@ theorem next_vote_extends_before {ini} (hrun : ACRun proposer tr H U ini)
     omega
   exact hprior z hz q hqi e' hv (Or.inl he)
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

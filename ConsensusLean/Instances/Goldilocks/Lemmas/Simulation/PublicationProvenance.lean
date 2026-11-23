@@ -153,9 +153,9 @@ private theorem tick_forward_acceptance_wire (hv : rho.ExecutionValid) {i : Nat}
     rw [onTick_cuts (sp := S.params (Model.pubOf E) hn) (ro := S.ro _)]
     exact List.mem_append_left _ (List.mem_append_right _ hc)
 
-private theorem tick_accepted_root {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
-    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
+private theorem tick_accepted_root {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
     {B : Blk sp}
     (hm : .fg (.block B true) ∈ (exec proposer dg self st t (.tick x)).2) :
@@ -267,7 +267,7 @@ theorem decodeForward_receipt_iff {receipt o : Wire (Fintype.card V) S.vote}
 /-- A top-level signed vote envelope can only be released by its signer. Other nodes may
 carry it in unsigned gossip, but cannot account for an earlier top-level release of it. -/
 theorem voteForward_release_sender {i : Nat} {x : Fin (Fintype.card V)} {t : Time}
-    {m : SA.Vote (Fintype.card V)}
+    {m : AC.Vote (Fintype.card V)}
     (h : Model.Obj.mk (.signed x .poll) (.data (.voteForward t (encodeVote m))) [voteObj m] ∈
       rho.releasesAt i) : ∃ u, rho.SendsAt (rho.key x) i u := by
   cases he : rho.events[i]? with

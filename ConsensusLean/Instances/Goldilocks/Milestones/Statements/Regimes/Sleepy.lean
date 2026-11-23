@@ -37,11 +37,11 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Regimes
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
 section Defs
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
 
 /-- Cut `j` is the first cut after the time `t` (the state before it is the state after all
@@ -60,7 +60,7 @@ def Boundary (y : Fin sp.n) (j : Nat) : Prop := tr.IsCall y j → tr.pos j = 0
 
 /-- The catch-up `c = 18Δ` in the protocol's `Δ` (`sp.Δ`; at the simulation's `Δp = Δe` it is
 `18Δe`). -/
-def catchUp (sp : SAParams) : Time := 18 * sp.Δ
+def catchUp (sp : ACParams) : Time := 18 * sp.Δ
 
 /-- `y` is ready at `t` with catch-up `c`: honest and awake throughout `[max(0, t − c − 1), t]`. -/
 def ReadyAt (c : Time) (y : Fin sp.n) (t : Time) : Prop :=
@@ -68,11 +68,11 @@ def ReadyAt (c : Time) (y : Fin sp.n) (t : Time) : Prop :=
 
 /-- The confirmed output of `y` in its state before cut `j`, read at the time `t`. -/
 noncomputable def readAfter (y : Fin sp.n) (j : Nat) (t : Time) :
-    SA.Blk sp.n (List (FG.Att sp.n)) :=
+    AC.Blk sp.n (List (FG.Att sp.n)) :=
   (goldilocksNode sp ro).confirmed (tr.state y j).ac (Node.frame (tr.state y j)) t
 
 /-- `P` is an honest proposal released at `τ` by a proposer ready at `τ` (catch-up `c`). -/
-def ReadyProposalAt (c τ : Time) (P : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+def ReadyProposalAt (c τ : Time) (P : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∃ p kP, ReadyAt tr H c p τ ∧ tr.ProposesAt p kP P ∧ tr.time kP = τ
 
 /-- One honest proposer ready at its slot start in every window of `k` consecutive slots whose

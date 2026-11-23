@@ -219,7 +219,7 @@ def ResetHealBudgetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     max gst 0 ≤ P.slotTime (P.slotOf a + C.healing.drain) ∧
     P.slotTime (P.slotOf a + C.healing.drain) + C.margin + 1 ≤
       (Sys F V).heal K cap idx gst ⟨E, rho⟩ ∧
-    ∃ s₁ z k X, P.slotOf a + C.healing.drain ≤ s₁ ∧ SA.gbar gst + 4 * P.Δ ≤ P.slotTime s₁ ∧
+    ∃ s₁ z k X, P.slotOf a + C.healing.drain ≤ s₁ ∧ AC.gbar gst + 4 * P.Δ ≤ P.slotTime s₁ ∧
       P.slotTime s₁ + 6 * P.Δ ≤ rho.horizon ∧
       P.slotTime s₁ + C.margin + 2 ≤ (Sys F V).heal K cap idx gst ⟨E, rho⟩ ∧
       HonestProposal M.trace M.honest M.proposer s₁ z k X

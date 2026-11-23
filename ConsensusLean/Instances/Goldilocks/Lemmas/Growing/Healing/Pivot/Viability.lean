@@ -11,9 +11,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -24,7 +24,7 @@ theorem held_high_origin_viable_at
     {p : Fin sp.n} {c : Nat} (hpH : p ∈ H (tr.time c))
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p c ell)
     (hcb : tr.time c ≤ b) {x : Fin sp.n} {i j : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
     (hib : tr.time i ≤ b) (_ht : sp.ts (j + 1 : Nat) ≤ tr.time c)
     (hBt : B ∈ ell.frame.tree) :
     B ∈ ell.frame.viableTree ell.frame.tree ∨ ell.frame.Anc B ell.frame.fcRoot := by
@@ -40,7 +40,7 @@ theorem held_high_origin_viable_at
   have hfr := Outcome.frame_of_call hp.run hpH hc
   have hBf : B ∈ (Node.frame (tr.state p c)).tree := hfr ▸ hBt
   have hBh := hp.high_of_anc_at ho ht hle hpH hBf.1 .refl
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hc'
+  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hpH hc'
   have hroot : Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
     by_cases hhigh : HZ tr H g + 1 ≤ (tr.state p c).fg.hj
     · exact hp.high_J_root_of_held_at_call_before_at hpH hBf.1 hpH hcb hc hhigh
@@ -59,8 +59,8 @@ theorem held_high_origin_viable_at
       exact hh
   rcases hroot with hfB | hBfroot
   swap
-  · exact Or.inr (SA.anc_tree_of_anc_U hU hPhi hPhiU hBt hBfroot hPhi.fcRoot_mem)
-  have hfB' := SA.anc_tree_of_anc_U hU hPhi hPhiU hPhi.fcRoot_mem hfB hBt
+  · exact Or.inr (AC.anc_tree_of_anc_U hU hPhi hPhiU hBt hBfroot hPhi.fcRoot_mem)
+  have hfB' := AC.anc_tree_of_anc_U hU hPhi hPhiU hPhi.fcRoot_mem hfB hBt
   have hfBs : (tr.state p c).fg.Anc (tr.state p c).fg.fcRoot B := by
     rw [hfr] at hfB'
     exact hfB'.mono (fun _ h => h.1)
@@ -105,7 +105,7 @@ theorem held_high_origin_viable_at
     rw [hfr]
     exact ⟨hC, hCf.2, hfBs.trans hBC, hvC⟩
   exact Or.inl ⟨hBt, hfB', C, hCt, hCv,
-    SA.anc_tree_of_anc_U hU hPhi hPhiU hBt (hBC.mono hsub) hCt⟩
+    AC.anc_tree_of_anc_U hU hPhi hPhiU hBt (hBC.mono hsub) hCt⟩
 
 end Consensus.Goldilocks.Healing.Growing.ProposalImpl
 

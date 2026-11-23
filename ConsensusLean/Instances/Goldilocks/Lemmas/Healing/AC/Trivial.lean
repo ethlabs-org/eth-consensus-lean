@@ -13,12 +13,12 @@ Over the healthy setting, with `r = r_AC(ḡ)` (a slot `j` is `≥ r` exactly wh
 * **the honest batch** (`honest_voters_half`): in a slot `≥ r` every honest node votes;
 * **a fast lock's honest vote** (`fastLock_honest_voteU`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
 /-! ## Helpers -/
 
@@ -56,7 +56,7 @@ theorem HealthyBaseU.deadline_le
 /-! ## Trivial frames: blocks, stamps, relay and held votes -/
 
 theorem ts_succ (s : Nat) : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-  simp only [SAParams.ts]; push_cast; ring
+  simp only [ACParams.ts]; push_cast; ring
 
 /-- `stamp_lt_of_held_of_run` with the unlock given. -/
 theorem stamp_lt_of_held_of_runU
@@ -87,7 +87,7 @@ theorem stamp_lt_of_held_of_runU
 /-- A vote an honest node holds at cut `a` is held at every later cut `b` with no restart in
 between, with a stamp before `T` when every cut before `a`, every own vote of its slot and every
 restart are before `T`. -/
-theorem stamp_lt_of_held_of_run {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem stamp_lt_of_held_of_run {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H)
     {a b : Nat} (hab : a ≤ b) {w : Vote sp.n} (hw : w ∈ (tr.state y a).pool w.slot) {T : Time}
     (hta : ∀ k < a, tr.time k < T) (hwT : sp.ts w.slot + sp.Δ < T)
@@ -107,7 +107,7 @@ theorem stamp_lt_of_heldU
   stamp_lt_of_held_of_runU hS.run.localRun hS.run.vstart hy hab hw hta hwT
     (fun _ _ hk => (hS.restart_le hy hk).trans_lt hgT) hnr
 
-private theorem admitVote_pool_ne {A : SAState sp.n} {t : Time} {v : Vote sp.n} {σ : Nat}
+private theorem admitVote_pool_ne {A : ACState sp.n} {t : Time} {v : Vote sp.n} {σ : Nat}
     (h : v.slot ≠ σ) : (admitVote sp A t v).pool σ = A.pool σ := by
   unfold admitVote
   split_ifs
@@ -115,7 +115,7 @@ private theorem admitVote_pool_ne {A : SAState sp.n} {t : Time} {v : Vote sp.n} 
   · rfl
   · exact Function.update_of_ne (Ne.symm h) _ _
 
-private theorem admitVote_stamp_ne {A : SAState sp.n} {t : Time} {v w : Vote sp.n}
+private theorem admitVote_stamp_ne {A : ACState sp.n} {t : Time} {v w : Vote sp.n}
     (h : w ≠ v) : (admitVote sp A t v).voteStamp w = A.voteStamp w := by
   unfold admitVote
   split_ifs
@@ -123,7 +123,7 @@ private theorem admitVote_stamp_ne {A : SAState sp.n} {t : Time} {v w : Vote sp.
   · rfl
   · exact Function.update_of_ne h _ _
 
-private theorem optimistic_pool_stamp (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+private theorem optimistic_pool_stamp (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmationM sp wm A Φ t).pool = A.pool ∧
       (optimisticConfirmationM sp wm A Φ t).voteStamp = A.voteStamp := by
   refine optimisticConfirmationM_of (P := fun X => X.pool = A.pool ∧
@@ -135,8 +135,8 @@ private theorem optimistic_pool_stamp (A : SAState sp.n) (Φ : Frm sp.n FGP) (t 
 /-- `heldBefore_readPoint_branch` with the unlock given. -/
 theorem heldBefore_readPoint_branchU
     {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    {R : SAState sp.n} (hb : VoteBranchAt tr y i ℓ R) {w : Vote sp.n}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {R : ACState sp.n} (hb : VoteBranchAt tr y i ℓ R) {w : Vote sp.n}
     (hne : sp.slot (tr.time i) ≠ w.slot) {T : Time}
     (h : w ∈ (tr.state y (i + 1)).pool w.slot ∧ (tr.state y (i + 1)).voteStamp w < ETime.of T) :
     HeldBefore R w T := by
@@ -155,7 +155,7 @@ theorem heldBefore_readPoint_branchU
 vote branch). -/
 theorem heldBefore_readPointU
     {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {w : Vote sp.n} (hne : e.msg.slot ≠ w.slot) {T : Time}
     (h : w ∈ (tr.state y (i + 1)).pool w.slot ∧ (tr.state y (i + 1)).voteStamp w < ETime.of T) :
     HeldBefore e.readPoint w T :=
@@ -164,9 +164,9 @@ theorem heldBefore_readPointU
 
 /-- **A vote of another slot that the state after a vote branch holds, the branch's read point
 held**, with its stamp, whether or not the node may vote in the slot. -/
-theorem heldBefore_readPoint_branch {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    {R : SAState sp.n} (hb : VoteBranchAt tr y i ℓ R) {w : Vote sp.n}
+theorem heldBefore_readPoint_branch {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {R : ACState sp.n} (hb : VoteBranchAt tr y i ℓ R) {w : Vote sp.n}
     (hne : sp.slot (tr.time i) ≠ w.slot) {T : Time}
     (h : w ∈ (tr.state y (i + 1)).pool w.slot ∧ (tr.state y (i + 1)).voteStamp w < ETime.of T) :
     HeldBefore R w T :=
@@ -174,8 +174,8 @@ theorem heldBefore_readPoint_branch {ini} (hr : ACLocalRun (goldilocksSA sp FGP 
 
 /-- A vote of another slot that the state after an honest cast holds, it held at the read
 point, with its stamp. -/
-theorem heldBefore_readPoint {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+theorem heldBefore_readPoint {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {w : Vote sp.n} (hne : e.msg.slot ≠ w.slot) {T : Time}
     (h : w ∈ (tr.state y (i + 1)).pool w.slot ∧ (tr.state y (i + 1)).voteStamp w < ETime.of T) :
     HeldBefore e.readPoint w T :=
@@ -184,7 +184,7 @@ theorem heldBefore_readPoint {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U
 /-- Every honest member of the slot's committee has an actual vote by the bounded slot deadline
 (the committee start lets it vote there). Restart bounds are required only before that deadline,
 at the join threshold for this slot. -/
-theorem honest_votes_in_slot_before {K : SA.CommitteeDict sp.n} {b : Time}
+theorem honest_votes_in_slot_before {K : AC.CommitteeDict sp.n} {b : Time}
     (hS : HealthyBaseUpTo K tr H U proposer g b)
     {m : Nat} (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) (hmb : sp.ts m + sp.Δ ≤ b)
     (hrestart : ∀ x ∈ H, ∀ r, tr.time r ≤ sp.ts m + sp.Δ → tr.RestartAt x r →
@@ -197,9 +197,9 @@ theorem honest_votes_in_slot_before {K : SA.CommitteeDict sp.n} {b : Time}
   intro x hx hxK
   have hslot : sp.slot (sp.ts m + sp.Δ) = m := by
     apply slot_of_mem sp m (by linarith)
-    simp only [SAParams.ts]; push_cast; linarith
+    simp only [ACParams.ts]; push_cast; linarith
   obtain ⟨c, ell, hc, hcall, htc⟩ := hS.driven.tick x hx (sp.ts m + sp.Δ) (by linarith)
-    ⟨4 * m + 1, by simp only [SAParams.ts]; ring⟩ (hS.awake x hx _ (by linarith) hmb)
+    ⟨4 * m + 1, by simp only [ACParams.ts]; ring⟩ (hS.awake x hx _ (by linarith) hmb)
   have hj : joined sp (tr.state x c) (tr.time c) := by
     unfold joined
     rcases restartTime_state hr hS.run.vstart hx c with h | ⟨r, hrc, hrs, h⟩
@@ -230,7 +230,7 @@ theorem honest_votes_in_slot_before {K : SA.CommitteeDict sp.n} {b : Time}
 
 /-- The bounded actual honest vote batch occupies at least half the committee size: it holds the
 honest members of the slot's committee, fewer than half of which is faulty. -/
-theorem honest_voters_half_before {K : SA.CommitteeDict sp.n} {b : Time}
+theorem honest_voters_half_before {K : AC.CommitteeDict sp.n} {b : Time}
     (hS : HealthyBaseUpTo K tr H U proposer g b)
     {m : Nat} (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) (hmb : sp.ts m + sp.Δ ≤ b)
     (hrestart : ∀ x ∈ H, ∀ r, tr.time r ≤ sp.ts m + sp.Δ → tr.RestartAt x r →
@@ -258,10 +258,10 @@ theorem honest_votes_in_slotU
   intro x hx
   have hslot : sp.slot (sp.ts m + sp.Δ) = m := by
     refine slot_of_mem sp m (by linarith) ?_
-    rw [show sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ by simp only [SAParams.ts]; push_cast; ring]
+    rw [show sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ by simp only [ACParams.ts]; push_cast; ring]
     linarith
   obtain ⟨c, ℓ, hc, hcall, htc⟩ := hS.driven.tick x hx (sp.ts m + sp.Δ) (by linarith)
-    ⟨4 * m + 1, by simp only [SAParams.ts]; ring⟩ (hS.awake hx (by linarith))
+    ⟨4 * m + 1, by simp only [ACParams.ts]; ring⟩ (hS.awake hx (by linarith))
   have hj := hS.joined_state hx c (by rw [htc, hslot, ts_sub_one]; linarith)
   by_cases hv : (tr.state x c).votedSlot = (sp.slot (tr.time c) : Int)
   · obtain ⟨j, -, e, he, hes⟩ :=
@@ -367,6 +367,6 @@ theorem fastLock_honest_vote {ini}
 
 /-! ## A fast origin of label `≥ r` transfers -/
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

@@ -24,9 +24,9 @@ voter's cut. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
@@ -37,30 +37,30 @@ result transfers (the writer honest at its update, the voter at its vote) and an
 selection transfers with the committee counts `2 |K σ ∩ (H t_i)ᶜ| < committeeSize` at `σ = s, s + 1`
 counted at the voter's cut. -/
 theorem first_transfer_step_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
     (hBK : CommitteeBoundsFrom tr H K σ₀ b) {g : Time} {rL rO s : Nat} (hs₀ : σ₀ ≤ s)
     (hsa : a + κ ≤ sp.ts s) {y : Fin sp.n}
-    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
+    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hy : y ∈ H (tr.time i)) (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b)
-    (hlive : ∀ l ∈ SA.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), l.slot ≤ s →
+    (hlive : ∀ l ∈ AC.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), l.slot ≤ s →
       rL ≤ l.slot)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} (hC : OriginWithin tr H C s b)
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} (hC : OriginWithin tr H C s b)
     (hCc : ∀ C' j, HealedOrigin tr H g rL rO C' j b → j ≤ s →
       Compatible (tr.HonestBlocksAt H) C C')
     (hframe : (∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
-        SA.VoteExtends (tr.HonestBlocksAt H) e'.msg C) →
-      C ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
+        AC.VoteExtends (tr.HonestBlocksAt H) e'.msg C) →
+      C ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
         Anc (tr.HonestBlocksAt H) C ℓ.frame.fcRoot)
-    (hE : SA.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) C) :
-    SA.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
+    (hE : AC.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) C) :
+    AC.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
   have hrun' := goldilocks_ac_projection_from hrun hnc
   have hΔ := sp.toParams.hΔ
   obtain ⟨hti0, hti1⟩ := cast_time_at hrun hnc hy hc
   rw [hs] at hti0 hti1
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hf := hBK.two_of_slotK hs₀ (by linarith) hib (by linarith)
   rw [hKB.hsize s] at hf
   have hf1 := hBK.twoK (s + 1) (tr.time i) (hs₀.trans (Nat.le_succ s)) hti0 hib (by linarith)
@@ -76,12 +76,12 @@ theorem first_transfer_step_at {ini} (hrun : Growing.GoldilocksRun proposer dg H
     exact ⟨Hd, hΦU hHd, hHdr, hCf.trans (Anc.mono hΦU hfHd)⟩
   have hF : Anc (tr.HonestBlocksAt H) ℓ.frame.F C := Anc.mono hΦU (hΦ.rooted.2 C hv.1.1)
   obtain ⟨x, i₀, CV, hx, hi₀, hR | hO⟩ := originWithin_iff.1 hC
-  · exact SA.Growing.result_transfer hrun' hx hR hy hc hs
+  · exact AC.Growing.result_transfer hrun' hx hR hy hc hs
       (result_carry_at hrun hnc hsync hsa hx hR hy hc hs hib hF) (Or.inl hv) hlocks
       (result_writer_pool_at hrun hnc hsync ha hx hR hi₀ hy hc hs)
-  · exact SA.Growing.optimistic_transfer_stored hrun' K
-      (SA.CommitteePAt.upTo hrun.time_mono hrun.antitone hKB.hP)
-      (SA.CommitteeTAt.upTo hrun.antitone (hKB.committeeTAt hrun hnc)) hKB.hsize hx hO
+  · exact AC.Growing.optimistic_transfer_stored hrun' K
+      (AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hKB.hP)
+      (AC.CommitteeTAt.upTo hrun.antitone (hKB.committeeTAt hrun hnc)) hKB.hsize hx hO
       .refl hf hf1 hy hc hs
       (optimistic_carry_at hrun hnc hsync hsa hx hO hy hc hs hib hF) (Or.inl hv) hE
 

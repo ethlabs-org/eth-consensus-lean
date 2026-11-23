@@ -24,9 +24,9 @@ by the pivot cone in turn.
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -36,17 +36,17 @@ theorem protected_source_compatible_high_origin_of_sources_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hsource : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hsource : (∃ CV, AC.FastLockAt tr.projAC x r s B CV) ∨ AC.SlowLockAt tr.projAC x r s B)
     (hrb : tr.time r ≤ b) (hts : cutZ sp.toParams g ≤ sp.ts s)
     (hsame : ∀ {y q C D CV DV}, y ∈ H (tr.time q) → tr.time q ≤ b →
-      (SA.ResultAt tr.projAC x r s C CV ∨ SA.OptimisticLockAt tr.projAC x r s C CV) →
-      (SA.ResultAt tr.projAC y q s D DV ∨ SA.OptimisticLockAt tr.projAC y q s D DV) →
+      (AC.ResultAt tr.projAC x r s C CV ∨ AC.OptimisticLockAt tr.projAC x r s C CV) →
+      (AC.ResultAt tr.projAC y q s D DV ∨ AC.OptimisticLockAt tr.projAC y q s D DV) →
       Compatible (tr.HonestBlocksAt H) C D)
     (hnext : ∀ i, tr.time i ≤ b → ∀ z, z ∈ H (tr.time i) → ∀ e,
-      SA.VoteAt tr.projAC z i e → s < e.msg.slot →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg B)
-    {y : Fin sp.n} {q t : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
+      AC.VoteAt tr.projAC z i e → s < e.msg.slot →
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg B)
+    {y : Fin sp.n} {q t : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g y q t D) (hqb : tr.time q ≤ b) :
     Compatible (tr.HonestBlocksAt H) B D := by
   have hyo := hp.run.antitone (le_max_right _ _) ho.1
@@ -55,24 +55,24 @@ theorem protected_source_compatible_high_origin_of_sources_at
   have hframe : ∀ z k ell, z ∈ H (tr.time k) → tr.projAC.CallAt z k ell →
       ell.frame.tree ⊆ tr.HonestBlocksAt H := by
     intro z k ell hz hk
-    exact (SA.frameIn_of_callAt (hac.upTo (hp.run.time_nonneg k)).localRun hz
+    exact (AC.frameIn_of_callAt (hac.upTo (hp.run.time_nonneg k)).localRun hz
       ((Trace.upTo_callAt _).mpr ⟨le_rfl, hk⟩)).2
   have evidence : ∃ C CV,
-      (SA.ResultAt tr.projAC x r s C CV ∨ SA.OptimisticLockAt tr.projAC x r s C CV) ∧
+      (AC.ResultAt tr.projAC x r s C CV ∨ AC.OptimisticLockAt tr.projAC x r s C CV) ∧
       Anc (tr.HonestBlocksAt H) B C := by
     rcases hsource with ⟨CV, ⟨ell, C, hu, hR, hfast, _⟩ | hop⟩ | ⟨ell, C, hu, hR, hslow⟩
     · exact ⟨C, _, Or.inl ⟨ell, hu, hR, rfl⟩,
-        ((SA.deepest_mem hfast).1.1.2.2).mono
+        ((AC.deepest_mem hfast).1.1.2.2).mono
           (hframe x r ell hx hu.1)⟩
     · exact ⟨B, CV, Or.inr hop, .refl⟩
     · exact ⟨C, _, Or.inl ⟨ell, hu, hR, rfl⟩,
-        ((SA.deepest_mem hslow).1.1.2.2).mono
+        ((AC.deepest_mem hslow).1.1.2.2).mono
           (hframe x r ell hx hu.1)⟩
   obtain ⟨C, CV, hC, hBC⟩ := evidence
   rcases lt_trichotomy t s with h | rfl | h
   · have supporter : ∃ z j e, z ∈ H (tr.time j) ∧ j ≤ r ∧
-        SA.VoteAt tr.projAC z j e ∧ e.msg.slot = s ∧
-        SA.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
+        AC.VoteAt tr.projAC z j e ∧ e.msg.slot = s ∧
+        AC.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
       rcases hC with hC | hC
       · obtain ⟨z, hz, j, hj, e, hv, _, hes, hCH⟩ :=
           result_supporter_at hp hx hC (.refl : Anc (tr.HonestBlocksAt H) C C) hrb hts
@@ -86,39 +86,39 @@ theorem protected_source_compatible_high_origin_of_sources_at
   · obtain ⟨_, E, EV, _, hfl, hDE⟩ := highOrigin_raw_head_at hp.run hp.noColl ho
     have hcomp : Compatible (tr.HonestBlocksAt H) C E := by
       rcases hfl with ⟨ell, R, hu, hR, hfast, _⟩ | hop
-      · have hER := ((SA.deepest_mem hfast).1.1.2.2).mono
+      · have hER := ((AC.deepest_mem hfast).1.1.2.2).mono
           (hframe y q ell hyo hu.1)
         rcases hsame hyo hqb hC (Or.inl ⟨ell, hu, hR, rfl⟩) with h | h
-        · exact SA.anc_total hcoh h hER
+        · exact AC.anc_total hcoh h hER
         · exact Or.inr (hER.trans h)
       · exact hsame hyo hqb hC (Or.inr hop)
     rcases hcomp with h | h
-    · exact SA.anc_total hcoh (hBC.trans h) hDE
-    · exact SA.anc_total hcoh hBC (hDE.trans h)
+    · exact AC.anc_total hcoh (hBC.trans h) hDE
+    · exact AC.anc_total hcoh hBC (hDE.trans h)
   · obtain ⟨_, E, EV, _, hfl, hDE⟩ := highOrigin_raw_head_at hp.run hp.noColl ho
-    have hEB := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg q)) _
-      (SA.CommitteePAt.upTo hp.run.time_mono hp.run.antitone hp.committeeFacts.hP _) hyo
-      (Nat.lt_succ_self q) ((SA.upTo_fastLockAt hp.run.time_mono).mpr ⟨le_rfl, hfl⟩)
+    have hEB := AC.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg q)) _
+      (AC.CommitteePAt.upTo hp.run.time_mono hp.run.antitone hp.committeeFacts.hP _) hyo
+      (Nat.lt_succ_self q) ((AC.upTo_fastLockAt hp.run.time_mono).mpr ⟨le_rfl, hfl⟩)
       (hp.committee_cs2_at
         (Healing.gbar_le_of_cutZ_le sp (hp.cutZ_le_ts_of_highOrigin_at ho))
         ((ProposalImpl.ts_le_of_fastLock_at hp.run hfl).trans hqb) (hp.run.time_nonneg q) hqb)
       (by
         intro z hz j _ e hv hes
-        obtain ⟨hjt, hv⟩ := SA.upTo_voteAt.mp hv
+        obtain ⟨hjt, hv⟩ := AC.upTo_voteAt.mp hv
         exact hnext j (hjt.trans hqb) z (hp.run.antitone hjt hz) e hv (by omega))
     rcases hEB with h | h
     · exact Or.inr (hDE.trans h)
-    · exact SA.anc_total hcoh h hDE
+    · exact AC.anc_total hcoh h hDE
 
 /-- A clean protected source compares with every bounded high origin at its own honest cut. -/
 theorem protected_source_compatible_high_origin_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hsource : (∃ CV, SA.FastLockAt tr.projAC x r s B CV) ∨ SA.SlowLockAt tr.projAC x r s B)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hsource : (∃ CV, AC.FastLockAt tr.projAC x r s B CV) ∨ AC.SlowLockAt tr.projAC x r s B)
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b)
-    {y : Fin sp.n} {q t : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} {q t : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g y q t D) (hqb : tr.time q ≤ b) :
     Compatible (tr.HonestBlocksAt H) B D := by
   have hts := hp.clean_window_timing_at hs s (by have := sp.two_le_k; omega)

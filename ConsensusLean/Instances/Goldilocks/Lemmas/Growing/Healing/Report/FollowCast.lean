@@ -13,9 +13,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
@@ -24,7 +24,7 @@ caller's tree or the call is after its relay deadline, from any vote-permitted s
 theorem proposal_viable_at_call_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     {g ΔF b hi : Time} {s₀ p floor : Nat} {kindJ : Prop}
-    {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) hi floor kindJ J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
@@ -39,11 +39,11 @@ theorem proposal_viable_at_call_at
     (hearly : tr.time i < sp.ts p + sp.Δ → P ∈ ell.frame.tree) :
     P ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.fcRoot P ∧ P ∈ ell.frame.viableHeads := by
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
-  have hts : sp.ts s₀ ≤ sp.ts p := (SA.ts_le_iff sp).2 (by exact_mod_cast hsp)
+  have hts : sp.ts s₀ ≤ sp.ts p := (AC.ts_le_iff sp).2 (by exact_mod_cast hsp)
   have hlow := hts.trans hpT
   have hpb : sp.ts p + sp.Δ ≤ b := hphi.trans hib
   have htime : tr.time kP = sp.ts p := by
-    simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hP.2.2
+    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
   have hzk : z ∈ H (tr.time kP) :=
     hrun.antitone (by rw [htime]; linarith [sp.toParams.hΔ]) hz
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
@@ -62,7 +62,7 @@ theorem proposal_viable_at_call_at
   have hcp' := ((Trace.upTo_callAt tr.projAC).mp hcp).2
   have hstate := Trace.upTo_state tr.projAC z (d := tr.time kP) (i := ip)
     (fun q hq => (hrun.time_mono hq.le).trans (by rw [hip, htime]))
-  have hd' : (SA.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 =
+  have hd' : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 =
       some (d, pay) := by
     have hd'' := hd
     rw [hstate] at hd''
@@ -80,7 +80,7 @@ theorem proposal_viable_at_call_at
   have hca' := ((Trace.upTo_callAt tr.projAC).mp hca).2
   have hra := hac.upTo (hrun.time_nonneg ja)
   have hca'' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hca'⟩
-  have hPt := (SA.accept_new sp hra.localRun hzja ⟨ella, hca'', hblock⟩).1 ella hca''
+  have hPt := (AC.accept_new sp hra.localRun hzja ⟨ella, hca'', hblock⟩).1 ella hca''
   have hfa : ella.frame = Node.frame (tr.state z ja) :=
     (hrun.cutLaw z ja (.ac ella) (Compose.projAC_callAt.mp hca') hzja).1
   have hfp : ellp.frame = Node.frame (tr.state z ip) :=
@@ -123,7 +123,7 @@ theorem proposal_viable_at_call_at
       have haq' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time i)) y q P := by
         obtain ⟨ellq, hcq, heq⟩ := haq
         exact ⟨ellq, (Trace.upTo_callAt _).mpr ⟨hrun.time_mono hqi, hcq⟩, heq⟩
-      exact SA.mem_tree_of_acceptAt sp hri.localRun hy haq' hqi hci hFP
+      exact AC.mem_tree_of_acceptAt sp hri.localRun hy haq' hqi hci hFP
   obtain ⟨_, hroot, hv⟩ := floor_ancestor_mem_frame_at hrun hnc hy hzja
     (hmf _ (hrun.time_nonneg i) (hhigh.trans hib)) hPt.1
     (by rw [hframe.floor_eq y i hy hlow hhigh]; exact hh)
@@ -139,7 +139,7 @@ vote-permitted start. -/
 theorem proposal_viable_at_cast_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     {g ΔF b : Time} {s₀ p floor : Nat} {kindJ : Prop}
-    {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts p + sp.Δ) floor kindJ J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
@@ -150,26 +150,26 @@ theorem proposal_viable_at_cast_at
     {z : Fin sp.n} (hz : z ∈ H (sp.ts p + sp.Δ)) (hdes : z = proposer p)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = p)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p) :
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p) :
     P ∈ ell.frame.viableHeads ∧
-      P ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame p) := by
+      P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame p) := by
   have hri := (Compose.Growing.goldilocks_ac_projection_from hrun hnc).upTo (hrun.time_nonneg i)
-  have hci := SA.upTo_castAt.mpr ⟨le_rfl, hc⟩
-  have hslot : e.msg.slot = sp.slot (tr.time i) := (SA.castAt_spec hri.localRun hy hci).2.1
+  have hci := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
+  have hslot : e.msg.slot = sp.slot (tr.time i) := (AC.castAt_spec hri.localRun hy hci).2.1
   have hslot' := hslot.symm.trans hes
   have hpT : sp.ts p ≤ tr.time i :=
-    (SA.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by rw [hslot'])
+    (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by rw [hslot'])
   have hhigh : tr.time i ≤ sp.ts p + sp.Δ := by
-    have ht := SA.vote_time_le hri.localRun hy ⟨ell, hci⟩
+    have ht := AC.vote_time_le hri.localRun hy ⟨ell, hci⟩
     change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at ht
     rwa [hslot'] at ht
   obtain ⟨hPy, hroot, hv⟩ := proposal_viable_at_call_at hframe hrun hnc hsvc hf hnr hm hsp
     le_rfl hpb hz hdes hP hPs hy hc.1 hpT hhigh (fun hearly => by
-      obtain ⟨⟨Q, hQ, hQs, _⟩, -⟩ := SA.cast_ready hri.localRun hy hci (by rw [hes]; exact hearly)
+      obtain ⟨⟨Q, hQ, hQs, _⟩, -⟩ := AC.cast_ready hri.localRun hy hci (by rw [hes]; exact hearly)
       rw [hes] at hQs
       exact proposal_frame_unique_at hrun hnc hz hdes hP hPs hp0 hy hc.1 hhigh hQ hQs ▸ hQ)
-  have hdom : P ∈ SA.voterBlockTree sp e.readPoint ell.frame p :=
+  have hdom : P ∈ AC.voterBlockTree sp e.readPoint ell.frame p :=
     ⟨hPy, Or.inr ⟨P, hPy, hPs, .refl⟩⟩
   exact ⟨hv, hdom, hroot, P, hdom, hv, .refl⟩
 

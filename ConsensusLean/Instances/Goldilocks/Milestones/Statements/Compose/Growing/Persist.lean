@@ -27,25 +27,25 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder goldilocksSA Vote Payload)
+open AC (ACParams ReplayOrder goldilocksAC Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
 
 /-- The votes of slot `σ` of the validators honest at their votes. -/
 def honestVotes (σ : Nat) : Set (Vote sp.n) :=
-  {v | ∃ x j e', x ∈ H (tr.time j) ∧ SA.VoteAt tr.projAC x j e' ∧ e'.msg = v ∧ v.slot = σ}
+  {v | ∃ x j e', x ∈ H (tr.time j) ∧ AC.VoteAt tr.projAC x j e' ∧ e'.msg = v ∧ v.slot = σ}
 
 /-- **The excluded entries of C1.1's scope of G1.10** under growing faults: the blocks that
 conflict with `B` and strictly extend the `Σ.F` at `t_s` of some node honest at `t_s`. -/
-def excludedEntries (s : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) :
-    Set (SA.Blk sp.n (List (FG.Att sp.n))) :=
+def excludedEntries (s : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))) :
+    Set (AC.Blk sp.n (List (FG.Att sp.n))) :=
   {E' | ¬ Compatible (tr.HonestBlocksAt H) E' B ∧
     ∃ y j, y ∈ H (sp.ts s) ∧ tr.FirstCutFrom j (sp.ts s) ∧
       Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F E' ∧ E' ≠ (tr.state y j).fg.F}
 
 /-- **`Clean(s, m, B)`** under growing faults. -/
-structure Clean (s m : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) : Prop where
+structure Clean (s m : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))) : Prop where
   /-- (K0) The caches at `t_s` of the nodes honest at `t_s` are compatible with `B`. -/
   caches : ∀ y j, y ∈ H (sp.ts s) → tr.FirstCutFrom j (sp.ts s) →
     Compatible (tr.HonestBlocksAt H) (tr.state y j).fg.F B ∧
@@ -55,9 +55,9 @@ structure Clean (s m : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) : Prop where
     (Store.Growing.namers sp.toParams (Payload sp.n) H tr.projFG (sp.ts (s + 1 : Nat) + sp.Δ)
       (sp.ts m + 2 * sp.Δ) E').ncard < sp.toParams.fg.q
   /-- (K2) Height lead at each vote of a slot in `(s, m]` by a node honest at its vote. -/
-  heightLead : ∀ y i ℓ e, y ∈ H (tr.time i) → SA.CastAt tr.projAC y i ℓ e → s < e.msg.slot →
+  heightLead : ∀ y i ℓ e, y ∈ H (tr.time i) → AC.CastAt tr.projAC y i ℓ e → s < e.msg.slot →
     e.msg.slot ≤ m →
-    (∃ D ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
+    (∃ D ∈ AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
       Anc (tr.HonestBlocksAt H) B D ∧ (tr.state y i).fg.IsViable D) ∨
     Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot
 

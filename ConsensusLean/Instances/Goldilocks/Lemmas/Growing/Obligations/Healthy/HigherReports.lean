@@ -31,9 +31,9 @@ cut and `c_z`; each signature is then read on the prefix through its own signing
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -47,13 +47,13 @@ theorem higher_report_of_signed_entry_at {cm : Time → Finset (Fin sp.n)} {βK 
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y z : Fin sp.n} {i d : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t)
     (hy : y ∈ H t) (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time d)))
-    {P E : SA.Blk sp.n (List (FG.Att sp.n))}
+    {P E : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ (tr.state y i).fg.tree) (hE : E ∈ (tr.state y i).fg.tree)
     {att : FG.Att sp.n} (hs : tr.SignAt z d att) (hdi : d < i)
     (hT : att.T = E.root) (hPE : Anc (tr.HonestBlocksAt H) P E)
     (hlt : ((tr.state y i).fg.σ P.root).h < ((tr.state y i).fg.σ E.root).h) :
     ∃ r ell C, z ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
-      SA.ToFGAt tr.projAC z r ell C ∧ Anc (tr.HonestBlocksAt H) P C ∧
+      AC.ToFGAt tr.projAC z r ell C ∧ Anc (tr.HonestBlocksAt H) P C ∧
       ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
   have hrun := hp.run
   have hm := hrun.time_mono
@@ -87,12 +87,12 @@ two), whose report extends `P` at a strictly higher height. -/
 private theorem finalized_descendant_report_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) (hkb : tr.time k ≤ b)
-    {W X P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {W X P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) (hX : X ∈ (tr.state y k).fg.tree)
     (hXr : X.root = ((tr.state y k).fg.σ W.root).F)
     (hPX : Anc (tr.HonestBlocksAt H) P X) (hne : P ≠ X) :
     ∃ z r ell C, z ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < k ∧
-      SA.ToFGAt tr.projAC z r ell C ∧ Anc (tr.HonestBlocksAt H) P C ∧
+      AC.ToFGAt tr.projAC z r ell C ∧ Anc (tr.HonestBlocksAt H) P C ∧
       ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
   have hrun := hp.run
   have hm := hrun.time_mono
@@ -149,7 +149,7 @@ private theorem finalized_descendant_report_at {cm : Time → Finset (Fin sp.n)}
   rw [hst] at hJ hE hJE
   obtain rfl : J = X := hU.1 (hsub hs0 hsle has hJ) (hsub hk0 hkle hy hX) (hJr.trans hXr.symm)
   obtain ⟨⟨r, ell, C, hzr, hrs, hto, hPC, hlt⟩⟩ : Nonempty (∃ r ell C,
-      att.val ∈ H (tr.time r) ∧ r < s ∧ SA.ToFGAt tr.projAC att.val r ell C ∧
+      att.val ∈ H (tr.time r) ∧ r < s ∧ AC.ToFGAt tr.projAC att.val r ell C ∧
       Anc (tr.HonestBlocksAt H) P C ∧
       ((tr.state att.val r).fg.σ P.root).h < ((tr.state att.val r).fg.σ C.root).h) := by
     obtain ⟨r, hsr, ht, ell, C, E', hto, hC, hE', hE'r, hEC, hTh, hET, hEh, _⟩ :=
@@ -196,11 +196,11 @@ report and at `c_z`. -/
 theorem finality_below_or_higher_report_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) (hkb : tr.time k ≤ b)
-    {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hcompat : Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F P) :
     Anc (tr.HonestBlocksAt H) (tr.state y k).fg.F P ∨
       ∃ z r ell C, z ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < k ∧
-        SA.ToFGAt tr.projAC z r ell C ∧
+        AC.ToFGAt tr.projAC z r ell C ∧
         Anc (tr.HonestBlocksAt H) P C ∧
         ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
   rcases hcompat with h | h
@@ -219,7 +219,7 @@ theorem held_target_high_floor_report_before_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y v : Fin sp.n} {i q m : Nat} (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
-    {P S : SA.Blk sp.n (List (FG.Att sp.n))} (hPy : P ∈ (tr.state y i).fg.tree)
+    {P S : AC.Blk sp.n (List (FG.Att sp.n))} (hPy : P ∈ (tr.state y i).fg.tree)
     (hseed : HighOrigin tr H g v q m S) (hSP : Anc (tr.HonestBlocksAt H) S P)
     (hpair : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
       ∀ x' r' l' B', r' < i → HighOrigin tr H g x' r' l' B' →
@@ -230,7 +230,7 @@ theorem held_target_high_floor_report_before_at
       Compatible (tr.HonestBlocksAt H) P B)
     (hfloor : ((tr.state y i).fg.σ P.root).h < (tr.state y i).fg.headHeightFloor) :
     ∃ x r ell C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
-      SA.ToFGAt tr.projAC x r ell C ∧ Anc (tr.HonestBlocksAt H) P C ∧
+      AC.ToFGAt tr.projAC x r ell C ∧ Anc (tr.HonestBlocksAt H) P C ∧
       ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
   have hrun := hp.run
   have hU := Compose.Growing.honest_blocks_coherent hrun hp.noColl
@@ -255,14 +255,14 @@ theorem held_target_high_floor_report_before_at
           · change tr.time r' = sp.ts l + 6 * sp.Δ at ht
             linarith only [ht, sp.toParams.hΔ]
           · change sp.slot (tr.time r') = l at hsl
-            exact (SA.ts_le_iff_le_slot sp (hrun.time_nonneg r') l).2 (by omega)
-        have hlabel := (SA.ts_le_iff_le_slot sp hd l).1
+            exact (AC.ts_le_iff_le_slot sp (hrun.time_nonneg r') l).2 (by omega)
+        have hlabel := (AC.ts_le_iff_le_slot sp hd l).1
           (ht.trans (hrun.time_mono (by omega)))
         omega) hpair hseedcomp hSf
   have hPE : Anc (tr.HonestBlocksAt H) P E := by
     have hcomp : Compatible (tr.HonestBlocksAt H) P E := by
       rcases hcompare x r l B hri ho with h | h
-      · exact SA.anc_total hU h hEB
+      · exact AC.anc_total hU h hEB
       · exact Or.inr (hEB.trans h)
     rcases hcomp with h | h
     · exact h

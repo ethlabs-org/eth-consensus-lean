@@ -7,9 +7,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.Outcome
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g : Time}
 
@@ -18,7 +18,7 @@ theorem high_origin_mem_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {i j : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
     B ∈ (tr.state x i).fg.tree := by
   obtain ⟨CV, ell, D, hc, hfl, he⟩ := ho.2.2.1
   have hx := hrun.antitone (le_max_right _ _) ho.1
@@ -27,17 +27,17 @@ theorem high_origin_mem_at
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩
   have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo ht) (hnc.upTo _)).localRun
-  have hPhi := (SA.frameIn_of_callAt hr hx hc').1
+  have hPhi := (AC.frameIn_of_callAt hr hx hc').1
   have hD : D ∈ ell.frame.tree := by
     rcases hfl with ⟨ell', C, ⟨hc', -⟩, -, hD, -⟩ | ⟨ell', A, ⟨hc', -⟩, -, hs, -⟩
     · obtain rfl : ell' = ell := Option.some.inj (hc'.2.symm.trans hc.2)
-      exact (SA.deepest_mem hD).1.1.1
+      exact (AC.deepest_mem hD).1.1.1
     · obtain rfl : ell' = ell := Option.some.inj (hc'.2.symm.trans hc.2)
-      unfold SA.optimisticSelect at hs
+      unfold AC.optimisticSelect at hs
       dsimp only at hs
       split_ifs at hs
-      exact (SA.deepest_mem hs).1.1
-  have hB := (SA.viableAncestor_anc hPhi hD).1
+      exact (AC.deepest_mem hs).1.1
+  have hB := (AC.viableAncestor_anc hPhi hD).1
   rw [← he, frame_of_call hrun hx hc] at hB
   exact hB.1
 
@@ -46,7 +46,7 @@ theorem high_of_anc_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x z : Fin sp.n} {i j k : Nat} {t : Time}
-    {B W : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
+    {B W : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hz : z ∈ H t)
     (hW : W ∈ (tr.state z k).fg.tree) (hBW : Anc (tr.HonestBlocksAt H) B W) :
     HZ tr H g + 1 ≤ ((tr.state z k).fg.σ W.root).h := by

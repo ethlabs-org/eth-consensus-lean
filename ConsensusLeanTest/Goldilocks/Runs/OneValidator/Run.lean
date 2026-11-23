@@ -28,7 +28,7 @@ The remaining facts of the healing and pattern premises on the tick run of
 
 namespace Consensus.Goldilocks.Witness.One
 
-open SA Node ChainFrame
+open AC Node ChainFrame
 
 /-! ## The ticks of the run -/
 
@@ -353,7 +353,7 @@ theorem ancR_blk_le {Φ : N1.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {C :
   obtain ⟨c, hc, he, -⟩ := anc_blk_inv h.onChain ha
   exact ⟨c, hc, he⟩
 
-theorem getConfirmation_le {Φ : N1.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {A : SAState sp1.n}
+theorem getConfirmation_le {Φ : N1.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {A : ACState sp1.n}
     {s : Nat} (hpool : ∀ v ∈ A.pool s, v = cv s) {C : N1.Blk}
     (hC : getConfirmation sp1 A Φ s = some C) : ∃ c ≤ s, C = blk c := by
   obtain ⟨⟨-, -, hlt⟩, -⟩ := deepest_mem hC
@@ -367,7 +367,7 @@ theorem getConfirmation_le {Φ : N1.Frm} {f j τ : Nat} (h : ChainFrame Φ f j �
   exact ancR_blk_le h hanc
 
 theorem optimisticSelect_le {Φ : N1.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ)
-    {A : SAState sp1.n} {t : Time}
+    {A : ACState sp1.n} {t : Time}
     (hpool : ∀ v ∈ A.pool (sp1.slot t), ∃ σ ≤ sp1.slot t, v = cv σ) {B : N1.Blk}
     (hB : optimisticSelect sp1 A Φ t = some B) : ∃ m ≤ sp1.slot t, B = blk m := by
   unfold optimisticSelect at hB
@@ -396,7 +396,7 @@ theorem projAC_call {y : Fin sp1.n} {i : Nat} {ℓ : ACLabel N1}
 theorem time_eq (i : Nat) : (tickRun N1 dg1).projAC.time i = ((i / 8 : Nat) : Int) := rfl
 
 /-- The pool of the slot of a cut at an optimistic check: chain votes of that slot or earlier. -/
-theorem optPoint_pool {x : Fin sp1.n} {i : Nat} {ℓ : ACLabel N1} {A : SAState sp1.n}
+theorem optPoint_pool {x : Fin sp1.n} {i : Nat} {ℓ : ACLabel N1} {A : ACState sp1.n}
     (hp : OptimisticPoint (tickRun N1 dg1).projAC x i ℓ A) :
     ∀ v ∈ A.pool (sp1.slot ((tickRun N1 dg1).projAC.time i)),
       ∃ σ ≤ sp1.slot ((tickRun N1 dg1).projAC.time i), v = cv σ := by
@@ -409,20 +409,20 @@ theorem optPoint_pool {x : Fin sp1.n} {i : Nat} {ℓ : ACLabel N1} {A : SAState 
     have hs : sp1.slot ((tickRun N1 dg1).projAC.time (8 * (4 * (k + 1)) + 3)) = k + 1 := by
       rw [time_eq, slot_nat]; omega
     rw [hs] at hv ⊢
-    rcases SAPool.blockReceipt_pool sp1 _ _ _ _ v hv with hv | hv
+    rcases ACPool.blockReceipt_pool sp1 _ _ _ _ v hv with hv | hv
     · rw [projAC_state'] at hv; exact ⟨k + 1, le_rfl, pool_cv _ _ v hv⟩
-    · rw [show blockVotes (blk (k + 1)) = [cv k] from rfl, List.mem_singleton] at hv
+    · rw [show declaredHeadVotes (blk (k + 1)) = [cv k] from rfl, List.mem_singleton] at hv
       exact ⟨k, by omega, hv⟩
   · rcases emit_cases hl he with ⟨rfl, hm, hrp⟩ | ⟨k, fg', rfl, -, -, -, hm, hrp⟩
     · have hs : sp1.slot ((tickRun N1 dg1).projAC.time 8) = 0 := by rw [time_eq, slot_nat]
       rw [hs] at hv ⊢
-      rcases SAPool.admitVote_pool sp1 _ _ _ _ v hv with hv | hv
+      rcases ACPool.admitVote_pool sp1 _ _ _ _ v hv with hv | hv
       · rw [hrp] at hv; exact ⟨0, le_rfl, tickState_pool_cv _ _ v hv⟩
       · rw [hm] at hv; exact ⟨0, le_rfl, hv⟩
     · have hs : sp1.slot ((tickRun N1 dg1).projAC.time (8 * (4 * (k + 1)) + 3)) = k + 1 := by
         rw [time_eq, slot_nat]; omega
       rw [hs] at hv ⊢
-      rcases SAPool.admitVote_pool sp1 _ _ _ _ v hv with hv | hv
+      rcases ACPool.admitVote_pool sp1 _ _ _ _ v hv with hv | hv
       · rw [hrp] at hv; exact ⟨k + 1, le_rfl, tickState_pool_cv _ _ v hv⟩
       · rw [hm] at hv; exact ⟨k + 1, le_rfl, hv⟩
 
@@ -632,12 +632,12 @@ theorem tickRun_upat (g : Time) (M : Nat) :
   set v := sp1.slot τ + 1 with hv
   have hlt : τ < sp1.ts (v : Int) := by
     by_contra hc
-    have := (SA.ts_le_iff_le_slot sp1 h0 (v : Int)).1 (not_lt.1 hc)
+    have := (AC.ts_le_iff_le_slot sp1 h0 (v : Int)).1 (not_lt.1 hc)
     omega
-  have hle : sp1.ts (sp1.slot τ : Int) ≤ τ := (SA.ts_le_iff_le_slot sp1 h0 _).2 le_rfl
+  have hle : sp1.ts (sp1.slot τ : Int) ≤ τ := (AC.ts_le_iff_le_slot sp1 h0 _).2 le_rfl
   refine ⟨v, hlt.le, ?_, fun s hs _ => ?_⟩
   · have : sp1.ts (v : Int) = sp1.ts (sp1.slot τ : Int) + 4 := by
-      simp only [SAParams.ts, hv]; push_cast; ring
+      simp only [ACParams.ts, hv]; push_cast; ring
     change sp1.ts (v : Int) ≤ τ + 4 * 1 * (((1 : Nat) : Int) + 1)
     push_cast
     linarith
@@ -654,7 +654,7 @@ theorem tickRun_upat (g : Time) (M : Nat) :
 `W = 1`, `G_p ≥ 4Δ` and any `M ≥ M*`. -/
 theorem patternPremises_tickRun (g Gp : Time) (M : Nat) (hGp : 4 ≤ Gp)
     (hM : Healing.Mstar sp1 1 Gp 2 0 ≤ M) :
-    Healing.PatternPremises (tickRun N1 dg1) Set.univ (SA.CommitteeDict.full sp1.n) (fun _ => v0)
+    Healing.PatternPremises (tickRun N1 dg1) Set.univ (AC.CommitteeDict.full sp1.n) (fun _ => v0)
       dg1 g 1 Gp 1 M 2 0 :=
   tickRun_patternPremises g Gp M hGp (tickRun_upat g M) hM
 

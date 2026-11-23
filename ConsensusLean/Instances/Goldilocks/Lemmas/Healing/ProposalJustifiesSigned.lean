@@ -12,7 +12,7 @@ justification from signed attestations. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 /-- **The parent of an honest proposal is held at its cut**, for any AC from the proposer's start
 `ini p` at which it meets the requirements: the proposer's FG store before the proposal cut `kX`
@@ -36,7 +36,7 @@ theorem proposal_parent_held_from {P : Params} {A : NodeAC P}
   rw [hYr]
   exact hY
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -45,8 +45,8 @@ Goldilocks requirements from the run's starts). -/
 theorem proposal_parent_held {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} (hp : p ∈ H) {kX : Nat}
-    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : tr.ProposesAt p kX X) :
-    ∃ Pr : SA.Blk sp.n (List (FG.Att sp.n)), X.parent = some Pr.root ∧
+    {X : AC.Blk sp.n (List (FG.Att sp.n))} (hX : tr.ProposesAt p kX X) :
+    ∃ Pr : AC.Blk sp.n (List (FG.Att sp.n)), X.parent = some Pr.root ∧
       Pr ∈ (tr.state p kX).fg.tree :=
   proposal_parent_held_from hrun.toLocalRun hrun.genesis_root_ok hnc hp
     (Compose.requirements_from sp ro (hrun.vstart p)) hX

@@ -10,9 +10,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.Outcome
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -21,7 +21,7 @@ private theorem entry_root_eq_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {z : Fin sp.n} {m : Nat}
     (hz : z ∈ H (tr.time m))
-    {C Z₁ Z₂ : SA.Blk sp.n (List (FG.Att sp.n))} (hC : C ∈ (tr.state z m).fg.tree)
+    {C Z₁ Z₂ : AC.Blk sp.n (List (FG.Att sp.n))} (hC : C ∈ (tr.state z m).fg.tree)
     (h₁ : Anc (tr.HonestBlocksAt H) Z₁ C) (h₂ : Anc (tr.HonestBlocksAt H) Z₂ C)
     (hh : ((tr.state z m).fg.σ Z₁.root).h = ((tr.state z m).fg.σ Z₂.root).h)
     (hT₁ : ((tr.state z m).fg.σ Z₁.root).Th = Z₁.root)
@@ -29,7 +29,7 @@ private theorem entry_root_eq_at
   have ht := hrun.time_nonneg m
   have hm : ∀ q < m, tr.time q ≤ tr.time m := fun q hq => hrun.time_mono hq.le
   have hr := fg_reachable_at hrun ht hm hz
-  rcases SA.anc_total (Compose.Growing.honest_blocks_coherent hrun hnc) h₁ h₂ with h | h
+  rcases AC.anc_total (Compose.Growing.honest_blocks_coherent hrun hnc) h₁ h₂ with h | h
   · have := Healing.Th_eq_of_anc hr (store_anc_of_honest_anc_at hrun hnc ht hm hz h
       (mem_of_honest_anc_at hrun hnc ht hm hz h₂ hC)) hh.symm
     rw [← hT₁, ← hT₂, this]

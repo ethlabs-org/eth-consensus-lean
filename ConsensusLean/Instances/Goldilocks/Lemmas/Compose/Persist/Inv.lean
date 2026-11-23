@@ -11,23 +11,23 @@ of C1.1 at the honest call of cut `k`. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder goldilocksSA Vote Payload)
+open AC (ACParams ReplayOrder goldilocksAC Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
 
 /-- C1.1 (i) and (ii) at the honest votes cast at cut `k` of a slot in `(s, m]`. (i) reads "at or
 below `fc_root`" in the honest blocks (claims C1.1; the frame-tree reading of `ViableAtVote` fails
 once honest finality passes `B`). -/
-def VoteInv (s m : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) (k : Nat) : Prop :=
-  ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot → e.msg.slot ≤ m →
-    (B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
+def VoteInv (s m : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))) (k : Nat) : Prop :=
+  ∀ y ∈ H, ∀ ℓ e, AC.CastAt tr.projAC y k ℓ e → s < e.msg.slot → e.msg.slot ≤ m →
+    (B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) ∧
-    SA.VoteExtends (tr.HonestBlocks H) e.msg B
+    AC.VoteExtends (tr.HonestBlocks H) e.msg B
 
 /-- G1.10 at the scope of C1.1 at an honest call at cut `k` in `[t_s, t_m + 2Δ)`: the caches
 after the call are compatible with `B`, and a block it accepts satisfies (a) and (b). -/
-def CutInv (s m : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) (k : Nat) : Prop :=
+def CutInv (s m : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))) (k : Nat) : Prop :=
   ∀ y ∈ H, tr.IsCall y k → sp.ts s ≤ tr.time k → tr.time k < sp.ts m + 2 * sp.Δ →
     (Compatible (tr.HonestBlocks H) (tr.post k).fg.F B ∧
       Compatible (tr.HonestBlocks H) (tr.post k).fg.J B) ∧
@@ -43,15 +43,15 @@ def CutInv (s m : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))) (k : Nat) : Prop :
 
 variable {tr H}
 
-theorem voteInv_iff {s m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {k : Nat} :
+theorem voteInv_iff {s m : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} {k : Nat} :
     VoteInv tr H s m B k ↔
-    ∀ y ∈ H, ∀ ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot → e.msg.slot ≤ m →
-      (B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
+    ∀ y ∈ H, ∀ ℓ e, AC.CastAt tr.projAC y k ℓ e → s < e.msg.slot → e.msg.slot ≤ m →
+      (B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
         Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot) ∧
-      SA.VoteExtends (tr.HonestBlocks H) e.msg B :=
+      AC.VoteExtends (tr.HonestBlocks H) e.msg B :=
   Iff.rfl
 
-theorem cutInv_iff {s m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {k : Nat} :
+theorem cutInv_iff {s m : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} {k : Nat} :
     CutInv tr H s m B k ↔
     ∀ y ∈ H, tr.IsCall y k → sp.ts s ≤ tr.time k → tr.time k < sp.ts m + 2 * sp.Δ →
       (Compatible (tr.HonestBlocks H) (tr.post k).fg.F B ∧
@@ -68,7 +68,7 @@ theorem cutInv_iff {s m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {k : Nat} 
   Iff.rfl
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {ΔF : Time} {x : Fin sp.n}
-  {i₀ s m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+  {i₀ s m : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
   {proposer : Nat → Fin sp.n}
 
 /-- The state of `y` before cut `k` is its state before cut `j ≤ k`, or the state after a call of

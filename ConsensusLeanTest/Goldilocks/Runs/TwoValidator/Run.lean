@@ -40,7 +40,7 @@ unlabelled. -/
 
 namespace Consensus.Goldilocks.Witness.TwoRun
 
-open Node SA
+open Node AC
 
 /-! ## Parameters -/
 
@@ -57,8 +57,8 @@ abbrev P2 : Params where
   genesisRoot := 0
   δt := 11
 
-/-- The SA parameters: `k = 2`, `c = 2`. -/
-abbrev sp : SAParams where
+/-- The AC parameters: `k = 2`, `c = 2`. -/
+abbrev sp : ACParams where
   toParams := P2
   slotTime_eq := fun s => by change 4 * (s : Int) = 4 * 1 * s; omega
   k := 2

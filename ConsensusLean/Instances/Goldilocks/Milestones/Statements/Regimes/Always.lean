@@ -33,16 +33,16 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Regimes
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
 section Defs
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
 
 /-- The attestations included on the chain of `X` in the tree of `y` before cut `i`: the FG
 payloads of the blocks of `y`'s tree at or below `X`. -/
-def ChainAtts (y : Fin sp.n) (i : Nat) (X : SA.Blk sp.n (List (FG.Att sp.n))) :
+def ChainAtts (y : Fin sp.n) (i : Nat) (X : AC.Blk sp.n (List (FG.Att sp.n))) :
     Set (FG.Att sp.n) :=
   {a | ∃ Y ∈ (tr.state y i).fg.tree, (tr.state y i).fg.Anc Y X ∧ a ∈ Y.fgPayload}
 
@@ -52,7 +52,7 @@ digest as its root (`RootOk`), was accepted by `y` at an earlier cut (seen by th
 slot's proposer, and has a parent of a smaller slot in the tree. -/
 def ValidOutput (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (y : Fin sp.n) (i : Nat)
-    (X : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+    (X : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   X ∈ (tr.state y i).fg.tree ∧
     ∀ Z, (tr.state y i).fg.Anc Z X → Z.root ≠ sp.genesisRoot →
       Z.RootOk dg ∧ (∃ k < i, tr.AcceptAt y k Z) ∧
@@ -64,7 +64,7 @@ end Defs
 /-- **R.8, `nested`.** At every honest node and cut, the finalized tip is an ancestor of the
 confirmed tip, and the confirmed tip of the head, in the node's tree (C0.1; no `NoColl`). -/
 def OutputsNested : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     GoldilocksRun proposer dg H tr →
@@ -75,7 +75,7 @@ def OutputsNested : Prop :=
 /-- **R.8, `finalMonotone`.** The finalized tip of an honest node moves only to descendants,
 across restarts, in the node's later tree (C0.2; no `NoColl`). -/
 def FinalizedMonotone : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     GoldilocksRun proposer dg H tr →
@@ -84,7 +84,7 @@ def FinalizedMonotone : Prop :=
 /-- **R.8, `outputValid`.** The finalized and confirmed outputs of an honest node are valid
 outputs of its tree (F.2; no `NoColl`). -/
 def OutputsValid : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     GoldilocksRun proposer dg H tr →
@@ -97,7 +97,7 @@ honest nodes (at any cuts) conflict, at least `2q − n` validators each have a 
 the attestations included on two chains that the two readers hold: a block `X₁` of the first
 reader's tree and a block `X₂` of the second's, taken together. -/
 def FinalAccountable : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
@@ -111,7 +111,7 @@ def FinalAccountable : Prop :=
 /-- **R.7, `nonFraming`.** An honest validator signs no slashable pair (G0.5 over the run's
 durable, serialized clients; no `NoColl`). -/
 def NonFraming : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     GoldilocksRun proposer dg H tr →
@@ -120,7 +120,7 @@ def NonFraming : Prop :=
 /-- **R.7, `finalized_safe_below_third`** (G1.4 over the run). With `f < 2q − n`, the finalized
 tips of two honest nodes (at any cuts) never conflict. -/
 def FinalizedSafe : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
     GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →

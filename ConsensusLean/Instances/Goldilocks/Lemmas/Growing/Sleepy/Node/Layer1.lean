@@ -14,20 +14,20 @@ unconditional instance of the generic event-safety contract.
 
 namespace Consensus.Goldilocks.Generic.SleepyLayer1
 
-open SA (SAParams ReplayOrder)
+open AC (ACParams ReplayOrder)
 
 /-- Updates, including vetoed results, and optimistic locks are confirmation events. -/
-def goldilocksEvents (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :
+def goldilocksEvents (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :
     Data (goldilocksNode sp ro) where
   ConfirmedEvent tr x k s B :=
-    ∃ CV, SA.ResultAt tr.projAC x k s B CV ∨ SA.OptimisticLockAt tr.projAC x k s B CV
+    ∃ CV, AC.ResultAt tr.projAC x k s B CV ∨ AC.OptimisticLockAt tr.projAC x k s B CV
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The event projection records results and optimistic locks, without exposing the data body. -/
 theorem goldilocksEvents_confirmedEvent_iff {tr : GoldilocksTrace sp ro} {x k s B} :
     (goldilocksEvents sp ro).ConfirmedEvent tr x k s B ↔
-      ∃ CV, SA.ResultAt tr.projAC x k s B CV ∨ SA.OptimisticLockAt tr.projAC x k s B CV := by
+      ∃ CV, AC.ResultAt tr.projAC x k s B CV ∨ AC.OptimisticLockAt tr.projAC x k s B CV := by
   rfl
 
 /-- Output provenance at the reader's actual evaluation time. -/

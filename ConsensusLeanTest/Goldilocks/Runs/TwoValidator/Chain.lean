@@ -21,7 +21,7 @@ its FG side:
 
 namespace Consensus.Goldilocks.Witness.TwoRun
 
-open SA Node
+open AC Node
 
 /-! ## The chain -/
 

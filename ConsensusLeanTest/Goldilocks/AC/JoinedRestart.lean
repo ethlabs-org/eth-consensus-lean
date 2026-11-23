@@ -32,9 +32,9 @@ output):
 * `joinedAwake_applies`, `joinedKeepsVotes_applies`: each statement, assumed, applies to `trJR` at
   the joined tick with these premises. -/
 
-namespace Consensus.Goldilocks.SA.Test.JoinedRestart
+namespace Consensus.Goldilocks.AC.Test.JoinedRestart
 
-open Consensus.Goldilocks.SA.Test
+open Consensus.Goldilocks.AC.Test
 
 theorem slot_4 : sp1.slot 4 = 1 := by decide
 theorem slot_10 : sp1.slot 10 = 2 := by decide
@@ -44,22 +44,22 @@ theorem slot_19 : sp1.slot 19 = 4 := by decide
 def m1 : Vote sp1.n := ⟨v0, 1, 0⟩
 
 /-- Cut `0`: `ac_on_message(m1)` at `4` from the initial state. -/
-noncomputable def c0 : SAState sp1.n × List (Em sp1 Unit) :=
+noncomputable def c0 : ACState sp1.n × List (Em sp1 Unit) :=
   (GA1).step v0 (GA1).initial Φ₀ 4 (.message m1)
 
 /-- Cut `1`: `ac_restart` at `10`. -/
-noncomputable def c1 : SAState sp1.n × List (Em sp1 Unit) := (GA1).step v0 c0.1 Φ₀ 10 .restart
+noncomputable def c1 : ACState sp1.n × List (Em sp1 Unit) := (GA1).step v0 c0.1 Φ₀ 10 .restart
 
 /-- Cut `2`: `ac_on_tick` at `19`. -/
-noncomputable def c2 : SAState sp1.n × List (Em sp1 Unit) := (GA1).step v0 c1.1 Φ₀ 19 .tick
+noncomputable def c2 : ACState sp1.n × List (Em sp1 Unit) := (GA1).step v0 c1.1 Φ₀ 19 .tick
 
 noncomputable def ℓ0 : ACLabel GA1 := ⟨.message m1, Φ₀, c0.2⟩
 noncomputable def ℓ1 : ACLabel GA1 := ⟨.restart, Φ₀, c1.2⟩
 noncomputable def ℓ2 : ACLabel GA1 := ⟨.tick, Φ₀, c2.2⟩
 
 /-- The restart trace: one validator, awake on `[0, 6]` and from `10` on. -/
-noncomputable def trJR : SATrace sp1 Unit ro1 where
-  init := fun _ => SAState.initial 0
+noncomputable def trJR : GTrace sp1 Unit ro1 where
+  init := fun _ => ACState.initial 0
   node := fun _ => v0
   time := fun i => if i = 0 then 4 else if i = 1 then 10 else 19
   event := fun i => i
@@ -106,7 +106,7 @@ theorem restartAt_1 : trJR.RestartAt v0 1 := ⟨ℓ1, trJR_callAt rfl, rfl⟩
 /-! ## The states -/
 
 /-- Before `t_1 + Δ` and with no slot-`1` proposal in the genesis frame, `try_vote` waits. -/
-theorem tryVote_4 (A : SAState sp1.n) : tryVote sp1 v0 A Φ₀ 4 = (A, []) := by
+theorem tryVote_4 (A : ACState sp1.n) : tryVote sp1 v0 A Φ₀ 4 = (A, []) := by
   have hr : ¬ voteReady sp1 A Φ₀ 1 := by
     rintro ⟨⟨B, hB, hs, -⟩, -⟩
     rw [Set.mem_singleton_iff.mp hB] at hs
@@ -118,7 +118,7 @@ theorem tryVote_4 (A : SAState sp1.n) : tryVote sp1 v0 A Φ₀ 4 = (A, []) := by
   all_goals first | rfl | exact absurd ⟨by decide, Or.inr hr⟩ h2
 
 /-- The optimistic confirmation writes only the locks and the record. -/
-theorem optimisticConfirmation_eq (A : SAState sp1.n) (Ψ : Frm sp1.n Unit) (t : Time) :
+theorem optimisticConfirmation_eq (A : ACState sp1.n) (Ψ : Frm sp1.n Unit) (t : Time) :
     ∃ L r, optimisticConfirmation sp1 A Ψ t = { A with locks := L, latestConfirmed := r } := by
   unfold optimisticConfirmation
   split
@@ -130,15 +130,15 @@ theorem optimisticConfirmation_eq (A : SAState sp1.n) (Ψ : Frm sp1.n Unit) (t :
 
 /-- After cut `0`, the pools hold exactly `m1`, in the slot-`1` pool. -/
 theorem c0_pool (σ : Nat) : c0.1.pool σ = if σ = 1 then [m1] else [] := by
-  change (acOnMessage sp1 v0 (SAState.initial 0) Φ₀ 4 m1).1.pool σ = _
+  change (acOnMessage sp1 v0 (ACState.initial 0) Φ₀ 4 m1).1.pool σ = _
   unfold acOnMessage
   rw [tryVote_4]
-  obtain ⟨L, r, h⟩ := optimisticConfirmation_eq (admitVote sp1 (SAState.initial 0) 4 m1) Φ₀ 4
+  obtain ⟨L, r, h⟩ := optimisticConfirmation_eq (admitVote sp1 (ACState.initial 0) 4 m1) Φ₀ 4
   rw [h]
-  change (admitVote sp1 (SAState.initial 0) 4 m1).pool σ = _
+  change (admitVote sp1 (ACState.initial 0) 4 m1).pool σ = _
   unfold admitVote
-  rw [ite_eq_right (by rw [slot_4]; simp [m1, SAState.initial]),
-    ite_eq_right (by simp [SAState.initial])]
+  rw [ite_eq_right (by rw [slot_4]; simp [m1, ACState.initial]),
+    ite_eq_right (by simp [ACState.initial])]
   change Function.update (fun _ => []) 1 ([] ++ [m1]) σ = _
   by_cases hσ : σ = 1
   · rw [hσ, Function.update_self]; rfl
@@ -263,7 +263,7 @@ at the joined tick at `19`, `1 < slot(19) − 1 = 3`. -/
 theorem joinedKeepsVotes_witness :
     trJR.CallAt v0 2 ℓ2 ∧ joined sp1 (trJR.post 2) (trJR.time 2) ∧ trJR.RestartAt v0 1 ∧
     m1 ∈ (trJR.state v0 1).pool 1 ∧
-    ∀ j ≤ 2, trJR.RestartAt v0 j → ∀ σ, ∀ x ∈ (trJR.state v0 j : SAState sp1.n).pool σ,
+    ∀ j ≤ 2, trJR.RestartAt v0 j → ∀ σ, ∀ x ∈ (trJR.state v0 j : ACState sp1.n).pool σ,
       (x.slot : Int) < (sp1.slot (trJR.time 2) : Int) - 1 := by
   refine ⟨joinedAwake_witness.2.1, joinedAwake_witness.2.2.1, restartAt_1,
     by rw [state_1_pool]; exact List.mem_singleton.2 rfl, fun j _ hj σ x hx => ?_⟩
@@ -283,7 +283,7 @@ theorem joined_premise_needed :
     ¬ (∀ u : Time, max 0 (sp1.ts ((sp1.slot (trJR.time 1) : Int) - 1)) ≤ u → u ≤ trJR.time 1 →
       trJR.awake v0 u) ∧
     ¬ (trJR.time 1 ≤ sp1.ts ((sp1.slot (trJR.time 1) : Int) - 1)) ∧
-    ¬ (∀ σ, ∀ x ∈ (trJR.state v0 1 : SAState sp1.n).pool σ,
+    ¬ (∀ σ, ∀ x ∈ (trJR.state v0 1 : ACState sp1.n).pool σ,
       (x.slot : Int) < (sp1.slot (trJR.time 1) : Int) - 1) := by
   have ht : trJR.time 1 = 10 := rfl
   refine ⟨trJR_callAt rfl, ?_, fun h => ?_, by rw [ht, slot_10]; decide, fun h => ?_⟩
@@ -306,9 +306,9 @@ theorem joinedAwake_applies (h : JoinedAwake sp1) :
     joinedAwake_witness.2.2.1
 
 theorem joinedKeepsVotes_applies (h : JoinedKeepsVotes sp1) :
-    ∀ j ≤ 2, trJR.RestartAt v0 j → ∀ σ, ∀ x ∈ (trJR.state v0 j : SAState sp1.n).pool σ,
+    ∀ j ≤ 2, trJR.RestartAt v0 j → ∀ σ, ∀ x ∈ (trJR.state v0 j : ACState sp1.n).pool σ,
       (x.slot : Int) < (sp1.slot (trJR.time 2) : Int) - 1 :=
   h Unit ro1 Set.univ {g} trJR localRun_JR v0 trivial 2 ℓ2 (trJR_callAt rfl)
     joinedAwake_witness.2.2.1
 
-end Consensus.Goldilocks.SA.Test.JoinedRestart
+end Consensus.Goldilocks.AC.Test.JoinedRestart

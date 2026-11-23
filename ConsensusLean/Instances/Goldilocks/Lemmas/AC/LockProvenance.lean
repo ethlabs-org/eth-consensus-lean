@@ -4,18 +4,18 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
 
 public section
 
-/-! # Goldilocks SA: the lock-provenance toolkit
+/-! # Goldilocks AC: the lock-provenance toolkit
 
 `FromP U L L' New`: every lock of `L'` sits below (inside `U`) a lock of `L` with its slot and
-fast bit, or below a block `B` with `New l'.slot l'.fast B`. The SA functions that only move
+fast bit, or below a block `B` with `New l'.slot l'.fast B`. The AC functions that only move
 locks back keep `FromP` (`FromP.of_movesBack`, `FromP.of_proposalWith`, `toFG_locks`), and it
 composes (`FromP.trans`). Shared by the fast-lock provenance (`AC/Steps/Provenance`) and the slow
 and stored slow-lock provenance (`Healing/AC/SlowLock`, `Healing/DrainProvenance`), which add
 their own `New` for the writing functions. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams}
+variable {FGP : Type} {sp : ACParams}
 
 /-- The block of `l'` is an ancestor (inside `U`) of the block of `l`, or `l' = l`. -/
 def SitsBelow (U : Set (Blk sp.n FGP)) (l' l : Lock) : Prop :=
@@ -90,7 +90,7 @@ variable {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
 
 /-- The proposal with the unlock given keeps `FromP`: it only moves locks back. -/
 theorem FromP.of_proposalWith
-    {L : Set Lock} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (A : SAState sp.n)
+    {L : Set Lock} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (A : ACState sp.n)
     (t : Time) {New : Nat → Bool → Blk sp.n FGP → Prop}
     (hL : UnlockRel sp A.locks Φ t ((sp.slot t : Int) - 1)
       (View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤)) L) :
@@ -101,7 +101,7 @@ theorem FromP.of_proposalWith
   · exact FromP.of_movesBack hΦU (hL.movesBack hΦ)
   · exact FromP.of_eq rfl
 
-theorem toFG_locks (A : SAState sp.n) (t : Time) :
+theorem toFG_locks (A : ACState sp.n) (t : Time) :
     (acToFG sp A Φ t).1.locks = A.locks := by
   unfold acToFG
   split_ifs
@@ -119,6 +119,6 @@ theorem Below.of_sitsBelow (hU : Coherent U) {l' l : Lock} {B : Blk sp.n FGP}
   subst this
   exact ⟨A₁, hA₁, hA₁r, hA.trans hLB⟩
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

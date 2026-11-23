@@ -15,30 +15,30 @@ member once the members are pairwise compatible (`OnHealedChain.compatible`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
 /-- Compatibility with `B` passes to ancestors. -/
-theorem compatible_of_anc_left {U : Set (SA.Blk sp.n (List (FG.Att sp.n)))} (hU : Coherent U)
-    {X Y B : SA.Blk sp.n (List (FG.Att sp.n))} (hXY : Anc U X Y) (h : Compatible U Y B) :
+theorem compatible_of_anc_left {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (hU : Coherent U)
+    {X Y B : AC.Blk sp.n (List (FG.Att sp.n))} (hXY : Anc U X Y) (h : Compatible U Y B) :
     Compatible U X B := by
   rcases h with h | h
   · exact Or.inl (hXY.trans h)
-  · exact SA.anc_total hU hXY h
+  · exact AC.anc_total hU hXY h
 
 /-- A vote extending a block extends each of its ancestors. -/
-theorem voteExtends_of_anc {U : Set (SA.Blk sp.n (List (FG.Att sp.n)))} {v : Vote sp.n}
-    {C O : SA.Blk sp.n (List (FG.Att sp.n))} (h : SA.VoteExtends U v O) (hCO : Anc U C O) :
-    SA.VoteExtends U v C :=
+theorem voteExtends_of_anc {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))} {v : Vote sp.n}
+    {C O : AC.Blk sp.n (List (FG.Att sp.n))} (h : AC.VoteExtends U v O) (hCO : Anc U C O) :
+    AC.VoteExtends U v C :=
   let ⟨Hd, hHd, hHdr, hOHd⟩ := h
   ⟨Hd, hHd, hHdr, hCO.trans hOHd⟩
 
 /-- An origin within `b` is held while honest. -/
 theorem OriginWithin.mem {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time} (h : OriginWithin tr H C s b) :
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time} (h : OriginWithin tr H C s b) :
     C ∈ tr.HonestBlocksAt H := by
   obtain ⟨x, k, CV, hx, -, hO⟩ := originWithin_iff.1 h
   exact upTo_subset hrun (hrun.time_nonneg k)
@@ -46,7 +46,7 @@ theorem OriginWithin.mem {ini} (hrun : Growing.GoldilocksRun proposer dg H tr in
 
 /-- **Every member of the healed family is below an origin of its label within `b`**. -/
 theorem HealedOrigin.below_origin {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {g : Time} {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hnc : NoCollRun dg tr) {g : Time} {rL rO : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     {s : Nat} {b : Time} (hC : HealedOrigin tr H g rL rO C s b) :
     ∃ O, OriginWithin tr H O s b ∧ Anc (tr.HonestBlocksAt H) C O := by
   rcases healedOrigin_iff.1 hC with ⟨-, h⟩ | ⟨-, h⟩ | ⟨x, i, hib, ho⟩
@@ -56,12 +56,12 @@ theorem HealedOrigin.below_origin {ini} (hrun : Growing.GoldilocksRun proposer d
     have hx := hrun.antitone (le_max_right _ _) ho.1
     obtain ⟨O, OV, hO, hDO⟩ := lock_below_origin_at hrun hnc hx (Or.inl ⟨CV, hfl⟩)
     exact ⟨O, originWithin_iff.2 ⟨x, i, OV, hx, hib, hO⟩,
-      (Anc.mono (frameIn_at hrun hnc hx hcall).2 (SA.anc_viableAncestor _ D)).trans hDO⟩
+      (Anc.mono (frameIn_at hrun hnc hx hcall).2 (AC.anc_viableAncestor _ D)).trans hDO⟩
 
 /-- A member of the healed family is held while honest. -/
 theorem HealedOrigin.mem {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    {g : Time} {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time}
+    {g : Time} {rL rO : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time}
     (hC : HealedOrigin tr H g rL rO C s b) : C ∈ tr.HonestBlocksAt H := by
   obtain ⟨O, hO, hCO⟩ := hC.below_origin hrun hnc
   by_cases h : C = O
@@ -73,7 +73,7 @@ with every origin within `b` of label `≤ s` is compatible with every member of
 theorem HealedOrigin.compatible_of_origins {ini}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {g : Time} {rL rO s : Nat} {b : Time}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : ∀ C j, OriginWithin tr H C j b → j ≤ s → Compatible (tr.HonestBlocksAt H) B C) :
     ∀ C j, HealedOrigin tr H g rL rO C j b → j ≤ s → Compatible (tr.HonestBlocksAt H) B C := by
   intro C j hC hj
@@ -81,12 +81,12 @@ theorem HealedOrigin.compatible_of_origins {ini}
   exact (compatible_of_anc_left (honestBlocksAt_coherent hrun hnc) hCO (h O j hO hj).symm).symm
 
 /-- Two blocks below two compatible blocks are compatible. -/
-theorem compatible_of_anc_both {U : Set (SA.Blk sp.n (List (FG.Att sp.n)))} (hU : Coherent U)
-    {C C' O O' : SA.Blk sp.n (List (FG.Att sp.n))} (hCO : Anc U C O) (hC'O' : Anc U C' O')
+theorem compatible_of_anc_both {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (hU : Coherent U)
+    {C C' O O' : AC.Blk sp.n (List (FG.Att sp.n))} (hCO : Anc U C O) (hC'O' : Anc U C' O')
     (h : Compatible U O O') : Compatible U C C' := by
   rcases h with h | h
-  · exact SA.anc_total hU (hCO.trans h) hC'O'
-  · exact SA.anc_total hU hCO (hC'O'.trans h)
+  · exact AC.anc_total hU (hCO.trans h) hC'O'
+  · exact AC.anc_total hU hCO (hC'O'.trans h)
 
 /-- **A block on the healed chain is compatible with every member** when the members are
 pairwise compatible: it is below one member `C₀`, and every member is compatible with `C₀`. -/
@@ -95,7 +95,7 @@ theorem OnHealedChain.compatible {ini : Fin sp.n → (goldilocksNode sp ro).Stat
     (hnc : NoCollRun dg tr) {g : Time} {rL rO : Nat} {b : Time}
     (hP : ∀ C s C' s', HealedOrigin tr H g rL rO C s b → HealedOrigin tr H g rL rO C' s' b →
       Compatible (tr.HonestBlocksAt H) C C')
-    {X D : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hX : OnHealedChain tr H g rL rO X b)
+    {X D : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hX : OnHealedChain tr H g rL rO X b)
     (hD : HealedOrigin tr H g rL rO D s b) : Compatible (tr.HonestBlocksAt H) X D := by
   obtain ⟨C₀, s₀, hC₀, hXC₀⟩ := onHealedChain_iff.1 hX
   exact compatible_of_anc_left (honestBlocksAt_coherent hrun hnc) hXC₀ (hP C₀ s₀ D s hC₀ hD)

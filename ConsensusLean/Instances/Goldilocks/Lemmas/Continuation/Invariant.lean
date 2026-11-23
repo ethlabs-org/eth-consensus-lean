@@ -43,9 +43,9 @@ held seed after `T` (`Continuation/SeedHeld`), and the cache facts and the full-
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
@@ -58,12 +58,12 @@ structure SeededInvariant (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp
     HealedOrigin tr H g rL rO C' s' b → Compatible (tr.HonestBlocksAt H) C C'
   /-- S2: every honest vote at a time `≤ b` of a slot after a member's label extends it. -/
   vote_extends : ∀ C s, HealedOrigin tr H g rL rO C s b → ∀ y i e, HVoteAt tr H y i e →
-    tr.time i ≤ b → s < e.msg.slot → SA.VoteExtends (tr.HonestBlocksAt H) e.msg C
+    tr.time i ≤ b → s < e.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e.msg C
   /-- The record of a reader honest at a read point `t ∈ [t₁, b]` is its `Σ.F` or below an origin
   of label `≥ rO` written before the read. -/
   record : ∀ y i t, t₁ ≤ t → t ≤ b → y ∈ H t → Regimes.ReadPoint tr i t →
     HealedRecordCoverAt tr H rO y i t
-      ((SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
+      ((AC.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
         (tr.state y i).fg.F)
   /-- `Σ.F` is on the healed chain, and `fc_root` is compatible with every member held in the
   frame (state read at `t ∈ [t₁, b]`, of a node that has called from `t_{rL−k−3}` on before the
@@ -76,12 +76,12 @@ structure SeededInvariant (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp
         Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).fcRoot C
   /-- Every live lock block is on the healed chain (state read at `t ∈ [t₁, b]`). -/
   locks : ∀ y i t, t₁ ≤ t → (∀ k < i, tr.time k ≤ t) → t ≤ b → y ∈ H t →
-    ∀ L ∈ SA.liveLockBlocks sp (tr.state y i).ac.locks (Node.frame (tr.state y i)) t,
+    ∀ L ∈ AC.liveLockBlocks sp (tr.state y i).ac.locks (Node.frame (tr.state y i)) t,
       OnHealedChain tr H g rL rO L b
   /-- Every FG source of a node honest at its cut, at a time in `[t₁, b]`, is on the healed
   chain. -/
   sources : ∀ y i ℓ C, y ∈ H (tr.time i) → t₁ ≤ tr.time i → tr.time i ≤ b →
-    SA.ToFGAt tr.projAC y i ℓ C → OnHealedChain tr H g rL rO C b
+    AC.ToFGAt tr.projAC y i ℓ C → OnHealedChain tr H g rL rO C b
   /-- S3 (full reads): a block on the healed chain held in the frame (state read at
   `t ∈ [t₁, b]`, of a node that has called from `t_{rL−k−3}` on before the read) is at or below
   `fc_root` or in the full viable tree. -/
@@ -107,7 +107,7 @@ theorem seeded_chain_candidate_at {tr : GoldilocksTrace sp ro} {H : Time → Set
     (ht₁ : t₁ ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t)
     (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
       sp.ts (rL - sp.k - 3 : Nat) ≤ tr.time c)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} (hC : OnHealedChain tr H g rL rO C b)
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} (hC : OnHealedChain tr H g rL rO C b)
     (hCm : C ∈ (Node.frame (tr.state y i)).tree) :
     (Node.frame (tr.state y i)).AncestorCandidate C :=
   hinv.viable y i t ht₁ hi htb hy hcall C hC hCm
@@ -139,13 +139,13 @@ theorem seeded_locks_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
     {y : Fin sp.n} {i : Nat} {t : Time} (hdt : sp.ts (r + sp.k : Nat) ≤ t)
     (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t) :
-    ∀ L ∈ SA.liveLockBlocks sp (tr.state y i).ac.locks (Node.frame (tr.state y i)) t,
+    ∀ L ∈ AC.liveLockBlocks sp (tr.state y i).ac.locks (Node.frame (tr.state y i)) t,
       OnHealedChain tr H g r (r + sp.k - 1) L b := by
   obtain ⟨a, -, hr, hdrain⟩ := hseed.drainTime_eq
   have ht0 : 0 ≤ t := (ts_natCast_nonneg _).trans hdt
   have hst := Trace.upTo_state tr y (d := t) hi
   have hU := honestBlocksAt_coherent hrun hnc
-  have hwf : SA.LocksWF sp (tr.state y i).ac.locks := by
+  have hwf : AC.LocksWF sp (tr.state y i).ac.locks := by
     have h := Compose.locksWF_state (hrun.upTo ht0) (hnc.upTo _) hy i
     rwa [hst] at h
   have hreach := Compose.fg_reachable (hrun.upTo ht0).toLocalRun hy i
@@ -159,11 +159,11 @@ theorem seeded_locks_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc
     exact Healing.drain_live_locks (a := a) hwf (hdrain ▸ hdt) l hlm
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hlm
   obtain rfl : L = (Node.frame (tr.state y i)).viableAncestor B₀ :=
-    hΦ.coherent.1 hL (SA.viableAncestor_anc hΦ hB₀).1 hlL.symm
+    hΦ.coherent.1 hL (AC.viableAncestor_anc hΦ hB₀).1 hlL.symm
   obtain ⟨L₀, hL₀, hL₀r, D, hD, hL₀D⟩ := lock_write_at hrun hnc ht0 hi hy l₀ hl₀
   obtain rfl : B₀ = L₀ := hU.1 (hΦU hB₀) ⟨y, i, t, ht0, hi, hy, hL₀⟩ (hB₀r.trans hL₀r.symm)
   exact onHealedChain_iff.2 ⟨D, l₀.slot, .of_lock hlab (hD.mono htb),
-    ((SA.anc_viableAncestor _ B₀).mono hΦU).trans hL₀D⟩
+    ((AC.anc_viableAncestor _ B₀).mono hΦU).trans hL₀D⟩
 
 /-- **FG sources from the drain on are on the healed chain**: a source is the viable ancestor of
 the block of a live fast lock, below its holder's lock write of a label `≥ r`. -/
@@ -173,7 +173,7 @@ theorem seeded_sources_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) (hdt : sp.ts (r + sp.k : Nat) ≤ tr.time i)
     (hib : tr.time i ≤ b) {ℓ : ACLabel (goldilocksNode sp ro)}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} (h : SA.ToFGAt tr.projAC y i ℓ C) :
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} (h : AC.ToFGAt tr.projAC y i ℓ C) :
     OnHealedChain tr H g r (r + sp.k - 1) C b := by
   obtain ⟨a, -, hr, hdrain⟩ := hseed.drainTime_eq
   have hd := hrun.time_nonneg i
@@ -181,7 +181,7 @@ theorem seeded_sources_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   obtain ⟨hpc, -, hC⟩ := h
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hy hpc
   rw [projAC_state_at hrun hy] at hC
-  have hwf : SA.LocksWF sp (tr.state y i).ac.locks := by
+  have hwf : AC.LocksWF sp (tr.state y i).ac.locks := by
     have h := Compose.locksWF_state (hrun.upTo hd) (hnc.upTo _) hy i
     rwa [RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
   obtain ⟨hCv, l, hlm, hlC, -, -⟩ := Compose.toFG_candidate hC
@@ -189,7 +189,7 @@ theorem seeded_sources_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     rw [hr]
     exact Healing.drain_live_locks (a := a) hwf (hdrain ▸ hdt) l hlm
   obtain ⟨l₀, hl₀, B, hB, hBr, -, rfl⟩ := hlm
-  obtain ⟨hvt, hva⟩ := SA.viableAncestor_anc hΦ hB
+  obtain ⟨hvt, hva⟩ := AC.viableAncestor_anc hΦ hB
   obtain rfl : C = ℓ.frame.viableAncestor B := hΦ.coherent.1 hCv.1 hvt hlC.symm
   obtain ⟨L, hL, hLr, D, hD, hLD⟩ :=
     lock_write_at hrun hnc hd (fun _ hk => hrun.time_mono hk.le) hy l₀ hl₀
@@ -210,11 +210,11 @@ theorem seeded_record_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hn
     (hdt : sp.ts (r + sp.k : Nat) ≤ t₁)
     (hcov : ∀ y n t, t₁ ≤ t → t ≤ T → y ∈ H t → Regimes.ReadPoint tr n t →
       HealedRecordCoverAt tr H (r + sp.k - 1) y n t
-        ((SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
+        ((AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
           (tr.state y n).fg.F)) :
     ∀ y n t, t₁ ≤ t → t ≤ b → y ∈ H t → Regimes.ReadPoint tr n t →
       HealedRecordCoverAt tr H (r + sp.k - 1) y n t
-        ((SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
+        ((AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
           (tr.state y n).fg.F) := by
   exact seeded_record_cover_at hrun hnc hseed hTb hsvc hB hcv hdt hcov
 
@@ -226,7 +226,7 @@ private theorem seeded_members_compatible (hrun : Growing.GoldilocksRun proposer
       (hTb : T ≤ b)
     (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
     (hcv : ChainConvictedBelow tr H)
-    {K : SA.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
+    {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :
     ∀ C s C' s', HealedOrigin tr H g r (r + sp.k - 1) C s b →
       HealedOrigin tr H g r (r + sp.k - 1) C' s' b → Compatible (tr.HonestBlocksAt H) C C' :=
@@ -247,7 +247,7 @@ theorem seeded_caches_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hn
     (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t)
     (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
       sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c)
-    {K : SA.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
+    {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :
     OnHealedChain tr H g r (r + sp.k - 1) (tr.state y i).fg.F b ∧
       ∀ C s, HealedOrigin tr H g r (r + sp.k - 1) C s b →
@@ -271,7 +271,7 @@ theorem seeded_viable_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hn
     (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t)
     (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
       sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c)
-    {K : SA.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
+    {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :
     ∀ C, OnHealedChain tr H g r (r + sp.k - 1) C b → C ∈ (Node.frame (tr.state y i)).tree →
       (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).fcRoot ∨
@@ -311,9 +311,9 @@ theorem seeded_invariant_of_cover_at (hrun : Growing.GoldilocksRun proposer dg H
     (hcv : ChainConvictedBelow tr H) {tc : Time}
     (hcov : ∀ y n t, tc ≤ t → t ≤ T → y ∈ H t → Regimes.ReadPoint tr n t →
       HealedRecordCoverAt tr H (r + sp.k - 1) y n t
-        ((SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
+        ((AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
           (tr.state y n).fg.F))
-    {K : SA.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
+    {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :
     SeededInvariant tr H g r (r + sp.k - 1) (max tc (sp.ts (r + sp.k : Nat))) b := by
   have hdt : sp.ts (r + sp.k : Nat) ≤ max tc (sp.ts (r + sp.k : Nat)) := le_max_right _ _
@@ -342,7 +342,7 @@ theorem seeded_invariant_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
       (hTb : T ≤ b)
     (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
     (hcv : ChainConvictedBelow tr H)
-    {K : SA.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
+    {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :
     ∃ t₁, t₁ ≤ T ∧ sp.ts (r + sp.k : Nat) ≤ t₁ ∧ SeededInvariant tr H g r (r + sp.k - 1) t₁ b := by
   have hΔ := sp.toParams.hΔ
@@ -351,7 +351,7 @@ theorem seeded_invariant_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   have hDT : sp.ts (r + sp.k : Nat) ≤ T := by
     have := ts_le_ts (sp := sp) (show r + sp.k ≤ σ + 1 by omega)
     have hts : sp.ts ((σ + 1 : Nat) : Int) = sp.ts σ + 4 * sp.Δ := by
-      simp only [SAParams.ts]; push_cast; ring
+      simp only [ACParams.ts]; push_cast; ring
     linarith
   exact ⟨_, max_le htcT hDT, le_max_right _ _,
     seeded_invariant_of_cover_at hrun hnc hseed hTb hsvc hB hcv hcov hK hKB⟩

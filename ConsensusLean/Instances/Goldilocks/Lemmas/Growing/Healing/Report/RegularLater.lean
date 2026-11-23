@@ -12,21 +12,21 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 open Compose.Growing
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- The fast and slow next-vote bases propagate through independently honest later calls. -/
 theorem regular_later_heads_at
     {g ΔF b : Time} {s₀ s N floor : Nat} {kindJ : Prop}
-    {J D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {J D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
-    {K : SA.CommitteeDict sp.n}
+    {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K))
+      (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -35,19 +35,19 @@ theorem regular_later_heads_at
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hsN : s + 2 ≤ N)
     (hmb : sp.ts N + sp.Δ ≤ b)
     {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c))
-    (horigin : (∃ CV, SA.FastUpdateAt tr.projAC x c s D CV) ∨
-      SA.SlowLockAt tr.projAC x c s D) (hK : CommitteeHalfUpTo tr H K g b) :
+    (horigin : (∃ CV, AC.FastUpdateAt tr.projAC x c s D CV) ∨
+      AC.SlowLockAt tr.projAC x c s D) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ r, s + 1 ≤ r → r ≤ N →
-      (∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = r →
-        SA.VoteExtends (tr.HonestBlocksAt H) e.msg D) ∧
+      (∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = r →
+        AC.VoteExtends (tr.HonestBlocksAt H) e.msg D) ∧
       (s + 2 ≤ r → ∀ y i ell, y ∈ H (tr.time i) → tr.projAC.CallAt y i ell →
         ell.call = .proposal → tr.time i = sp.ts r → ∀ d pay,
-        (SA.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
+        (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
           Anc (tr.HonestBlocksAt H) D d.head) := by
   have hΔ := sp.toParams.hΔ
   have hts {a b : Nat} (hab : a ≤ b) : sp.ts a ≤ sp.ts b :=
-    (SA.ts_le_iff sp).mpr (by exact_mod_cast hab)
-  have hstep (a : Nat) : sp.ts (a + 1 : Nat) = sp.ts a + 4 * sp.Δ := SA.ts_succ a
+    (AC.ts_le_iff sp).mpr (by exact_mod_cast hab)
+  have hstep (a : Nat) : sp.ts (a + 1 : Nat) = sp.ts a + 4 * sp.Δ := AC.ts_succ a
   have hsub {lo hi : Time} (hl : sp.ts s₀ ≤ lo) (hh : hi ≤ sp.ts N + sp.Δ) :
       FrameWindow tr H lo hi floor kindJ J :=
     ⟨fun y i hy hlo hhi => hframe.floor_eq y i hy (hl.trans hlo) (hhi.trans hh),
@@ -57,18 +57,18 @@ theorem regular_later_heads_at
     have ht := hts hsN
     rw [show s + 2 = (s + 1) + 1 by omega, hstep, hstep] at ht
     linarith
-  have hbase : ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
-      e.msg.slot = s + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
+  have hbase : ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
+      e.msg.slot = s + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
     rcases horigin with ⟨CV, hfast⟩ | hslow
     · exact regular_fast_next_votes_at (hsub le_rfl h6) hrun hnc hsvc hawake hf hcatch hnr
         hwarm hpos hs₀ (hm.trans (hts hs₀)) (h6.trans hmb) hx hfast .refl hK
     · exact Growing.FrameWindow.regular_slow_next_votes_at (hsub le_rfl h6) hrun hnc hsvc
         hawake hf hcatch hnr hwarm hpos hs₀ hm (h6.trans hmb) hx hslow hK
-  obtain ⟨C, CV, hres, hDC⟩ : ∃ C CV, SA.ResultAt tr.projAC x c s C CV ∧
+  obtain ⟨C, CV, hres, hDC⟩ : ∃ C CV, AC.ResultAt tr.projAC x c s C CV ∧
       Anc (tr.HonestBlocksAt H) D C := by
     rcases horigin with ⟨CV, ell, C, hu, hconf, hsel, -⟩ | ⟨ell, C, hu, hconf, hsel⟩
     all_goals exact ⟨C, _, ⟨ell, hu, hconf, rfl⟩,
-      ((SA.deepest_mem hsel).1.1.2.2).mono (frameIn_at hrun hnc hx hu.1).2⟩
+      ((AC.deepest_mem hsel).1.1.2.2).mono (frameIn_at hrun hnc hx hu.1).2⟩
   have hs₀s : s₀ ≤ s := by omega
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
     result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr
@@ -77,22 +77,22 @@ theorem regular_later_heads_at
         exact hu.2.2.1.trans_le (h6.trans hmb)) hK
   have hDQ := hDC.trans hCQ
   have hr := (acRun_upTo hrun hnc (hrun.time_nonneg q)).localRun
-  have hc' := SA.upTo_castAt.mpr ⟨le_rfl, hc, he⟩
-  have htq := SA.vote_time_le hr hz ⟨ell, hc'.1, he⟩
-  have hslot := (SA.castAt_spec hr hz hc').2.1.symm.trans hes
+  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc, he⟩
+  have htq := AC.vote_time_le hr hz ⟨ell, hc'.1, he⟩
+  have hslot := (AC.castAt_spec hr hz hc').2.1.symm.trans hes
   change sp.slot (tr.time q) = s at hslot
   change tr.time q ≤ sp.ts (sp.slot (tr.time q)) + sp.Δ at htq
   rw [hslot] at htq
   have hqt : sp.ts s₀ ≤ tr.time q :=
-    (SA.ts_le_iff_le_slot sp (hrun.time_nonneg q) _).mpr (by rw [hslot]; omega)
+    (AC.ts_le_iff_le_slot sp (hrun.time_nonneg q) _).mpr (by rw [hslot]; omega)
   have hqhi : tr.time q ≤ sp.ts N + sp.Δ := by have := hts (show s ≤ N by omega); linarith
   have hprev : sp.ts ((s - 1 : Nat) : Int) = sp.ts s - 4 * sp.Δ := by
-    rw [Nat.cast_sub (by omega : 1 ≤ s), Nat.cast_one, SA.ts_sub_one]
+    rw [Nat.cast_sub (by omega : 1 ≤ s), Nat.cast_one, AC.ts_sub_one]
   obtain ⟨Hd, hHd, hHdr, hclass⟩ := vote_head_classification_of_service_at hframe
     hrun hnc hsvc hawake hf hcatch hnr hz ⟨hc, he⟩ hqhi (hqhi.trans hmb)
     (hes ▸ hwarm) (hes ▸ hpos) (hes ▸ hs₀) (by rw [hes]; exact hm.trans (hts hs₀))
     (by
-      rw [hes]; simp only [SA.freeze]
+      rw [hes]; simp only [AC.freeze]
       rw [show (s : Int) - 1 = ((s - 1 : Nat) : Int) by omega]
       have := hm.trans (hts hs₀)
       linarith) hK

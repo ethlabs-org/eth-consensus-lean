@@ -40,9 +40,9 @@ predicate `Ch` is the dynamic `OnOriginChainWithin` and the origin predicate `O`
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
@@ -50,27 +50,27 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 private theorem origin_read_majority_at {ini}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {b : Time} (hinv : SleepyInvariantUpTo tr H b)
-    (hsync : SleepyServiceBefore tr H ΔF b) {K : SA.CommitteeDict sp.n}
+    (hsync : SleepyServiceBefore tr H ΔF b) {K : AC.CommitteeDict sp.n}
     (hKB : CommitteeFacts tr H K) (hBK : CommitteeBoundsFrom tr H K 0 b)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (htb : t ≤ b)
     (hy : y ∈ H t) (hi : ∀ k < i, tr.time k ≤ t)
-    {R : SA.Blk sp.n (List (FG.Att sp.n))} {j q : Nat}
+    {R : AC.Blk sp.n (List (FG.Att sp.n))} {j q : Nat}
     (hO : OriginWithin tr H R j b) (hjq : j < q)
-    (hL : (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 = q)
+    (hL : (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 = q)
     (hrd : ReadAtCut proposer dg (tr.upTo t) y i t)
     (hRt : R ∈ (Node.frame (tr.state y i)).tree) :
-    (SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1.votes).ncard <
-      2 * (SA.supporters (Node.frame (tr.state y i))
-        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
-        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R).ncard := by
+    (AC.voters (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1.votes).ncard <
+      2 * (AC.supporters (Node.frame (tr.state y i))
+        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
+        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R).ncard := by
   have hst : (tr.upTo t).state y i = tr.state y i := Trace.upTo_state tr y hi
-  have hLp : (q : Int) = (SA.latestView sp ((tr.upTo t).state y i).ac
+  have hLp : (q : Int) = (AC.latestView sp ((tr.upTo t).state y i).ac
       (Node.frame ((tr.upTo t).state y i)) t).2 := by rw [hst]; exact hL.symm
   have hqt : sp.ts q + sp.Δ ≤ t := by
     have h := (latest_slot_tick_at_read (hrun.upTo ht0) hy hrd hLp).1
     linarith [sp.toParams.hΔ]
   have hall : ∀ x k e, HVoteAt tr H x k e → e.msg.slot = q →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg R := by
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg R := by
     intro x k e hv hs
     obtain ⟨hx, ℓ, hc⟩ := hVoteAt_iff.1 hv
     have hkt := (cast_time_at hrun hnc hx hc).2
@@ -84,9 +84,9 @@ private theorem origin_read_majority_at {ini}
       obtain ⟨hxk, ℓ, hc⟩ := hVoteAt_iff.1 hv
       have hkt := (cast_time_at hrun hnc hxk hc).2
       rw [hs] at hkt
-      have hvp : SA.VoteAt (tr.upTo t).projAC x k e := by
+      have hvp : AC.VoteAt (tr.upTo t).projAC x k e := by
         rw [RunTrace.upTo_projAC]
-        exact sa_voteAt_upTo.mpr ⟨hkt.trans hqt, ℓ, hc⟩
+        exact ac_voteAt_upTo.mpr ⟨hkt.trans hqt, ℓ, hc⟩
       have hac := (SleepyServiceBefore.upTo hrun hsync ht0).ac
       have hsyncp : ReadSyncOrService (tr.upTo t) (H t) t := Or.inr
         { message := fun x hx k v hv h0 z hz j ℓ hc hdl hj =>
@@ -115,15 +115,15 @@ private theorem origin_read_majority_at {ini}
 horizon after the cut's earlier cuts. -/
 private theorem originWithin_of_upTo' {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {d b : Time}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {s m : Nat}
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {s m : Nat}
     (hm : ∀ k < m, tr.time k ≤ b) (h : Compose.OriginBefore (tr.upTo d) (H d) C s m) :
     OriginWithin tr H C s b := by
   obtain ⟨x, hx, k, hk, CV, hO⟩ := Compose.originBefore_iff.1 h
   rw [RunTrace.upTo_projAC] at hO
   rcases hO with hO | hO
-  · obtain ⟨hkd, hO⟩ := (sa_resultAt_upTo hrun.time_mono).mp hO
+  · obtain ⟨hkd, hO⟩ := (ac_resultAt_upTo hrun.time_mono).mp hO
     exact OriginWithin.of_result (hrun.antitone hkd hx) (hm k hk) hO
-  · obtain ⟨hkd, hO⟩ := (sa_optimisticLockAt_upTo hrun.time_mono).mp hO
+  · obtain ⟨hkd, hO⟩ := (ac_optimisticLockAt_upTo hrun.time_mono).mp hO
     exact OriginWithin.of_optimistic (hrun.antitone hkd hx) (hm k hk) hO
 
 /-- **The static read invariant of the prefix** through the read time `t ≥ 0`, for a reader
@@ -164,7 +164,7 @@ private theorem readInvWith_upTo {b : Time} (hinv : SleepyInvariantUpTo tr H b)
       vote_extends := fun C s hO x hx k hk e hv hs => by
         have hv' := hv
         rw [RunTrace.upTo_projAC] at hv'
-        obtain ⟨hkd, hv'⟩ := sa_voteAt_upTo.mp hv'
+        obtain ⟨hkd, hv'⟩ := ac_voteAt_upTo.mp hv'
         exact voteExtends_upTo hrun hnc ht0 hx hv
           (hinv.vote_extends C s hO x k e (hVoteAt_iff.2 ⟨hrun.antitone hkd hx, hv'⟩)
             (hmb m le_rfl k hk) hs)
@@ -187,21 +187,21 @@ theorem read_head_support_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     (hsync : SleepyServiceBefore tr H ΔF b) {y : Fin sp.n} {i : Nat} {t : Time}
     (hy : y ∈ H t) (ht0 : 0 ≤ t) (htb : t ≤ b)
-    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     (hBK : CommitteeBoundsFrom tr H K 0 b)
     (hle : ∀ k < i, tr.time k ≤ t) (hti : t ≤ tr.time i)
-    (hwj : tr.awake y t ∧ tr.JoinedAt y t) {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hwj : tr.awake y t ∧ tr.JoinedAt y t) {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : RecordAt tr y i R) :
     Compatible (Node.frame (tr.state y i)).tree
-        (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R ∧
+        (AC.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R ∧
       ((Node.frame (tr.state y i)).Anc R
-          (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
+          (AC.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
         (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
-          (SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
+          (AC.voters (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i))
               t).1.votes).ncard <
-            2 * (SA.supporters (Node.frame (tr.state y i))
-              (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
-              (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
+            2 * (AC.supporters (Node.frame (tr.state y i))
+              (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
+              (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2
               R).ncard)) := by
   have hst : (tr.upTo t).state y i = tr.state y i := Trace.upTo_state tr y hle
   have h := Compose.read_head_support_of (hrun.upTo ht0) (hnc.upTo _) hy
@@ -214,7 +214,7 @@ theorem read_head_support_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)
       rw [RecordAt, hstm] at hRm
       rw [hstm] at hjl ⊢
       obtain ⟨q, hq⟩ : ∃ q : Nat, (q : Int) =
-          (SA.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).2 :=
+          (AC.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).2 :=
         ⟨_, Int.toNat_of_nonneg (by omega)⟩
       exact origin_read_majority_at hrun hnc hinv hsync hKB hBK ht0 htb hy hm hO
         (by omega) hq.symm hrd hRm.1)
@@ -253,9 +253,9 @@ theorem record_step_at {b : Time} (hinv : SleepyInvariantUpTo tr H b)
       refine onOriginChainWithin_iff.2 (Or.inr ⟨C, s, ?_, .refl⟩)
       rcases hO with hO | hO
       · exact OriginWithin.of_result hy (hi i le_rfl)
-          ((sa_resultAt_upTo hrun.time_mono).mp hO).2
+          ((ac_resultAt_upTo hrun.time_mono).mp hO).2
       · exact OriginWithin.of_optimistic hy (hi i le_rfl)
-          ((sa_optimisticLockAt_upTo hrun.time_mono).mp hO).2)
+          ((ac_optimisticLockAt_upTo hrun.time_mono).mp hO).2)
     E hCU (by rw [hst]; exact hEr)
   exact ⟨E', hsub hE', by rw [← hst']; exact hE'r, hEE'.mono hsub⟩
 

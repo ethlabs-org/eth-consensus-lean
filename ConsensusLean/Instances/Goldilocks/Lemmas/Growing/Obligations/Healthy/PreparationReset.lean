@@ -77,7 +77,7 @@ theorem healthy_preparation_reset_at
   have hcDur : 0 ≤ (Sys (goldilocks S) V).cDur (K S A) Q.run :=
     mul_nonneg (Int.natCast_nonneg _) Q.run.1.ΔAC_pos.le
   have hr0 : 0 ≤ Q.ready := by rw [hready]; linarith only [le_max_right Q.gst 0, hcDur]
-  have hgr : SA.gbar Q.gst ≤ Q.ready := by
+  have hgr : AC.gbar Q.gst ≤ Q.ready := by
     change max Q.gst 0 ≤ Q.ready
     rw [hready]; linarith only [hcDur]
   have hcz := cutZ_fit_of_catchUp A V (contract_coefficients S A)
@@ -131,7 +131,7 @@ theorem healthy_preparation_reset_at
         (by rw [max_eq_left hr0]; exact hs₀) (by linarith only [hN, hBh, hΔ]) c hc hcN
       exact ⟨x, hxl, hxr, hx, k, P, hP, hPs⟩) hdrain
     hhalf
-  have haw' : ∀ y ∈ Q.keys Q.bound, ∀ t, SA.gbar Q.gst ≤ t →
+  have haw' : ∀ y ∈ Q.keys Q.bound, ∀ t, AC.gbar Q.gst ≤ t →
       t ≤ Q.bound → (Q.trace.upTo Q.bound).awake y t := by
     intro y hy t ht htb
     exact ⟨haw y t (hrun.antitone htb hy) ht htb, htb⟩

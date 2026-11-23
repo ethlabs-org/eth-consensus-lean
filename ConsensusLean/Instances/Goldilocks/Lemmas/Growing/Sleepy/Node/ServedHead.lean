@@ -22,9 +22,9 @@ nodes honest at them, at times `≤ t`; the latest view's committee count is cha
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -40,26 +40,26 @@ private theorem read_majority_at_read_cut {ini}
     (hcatch : CatchACWindowBefore (tr.projAC.upTo t) (H t) ((tr.upTo t).HonestBlocks (H t)) a
       (2 * sp.Δ) t)
     {L : Nat} (hL : (L : Int) =
-      (SA.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).2)
-    (ha : a ≤ sp.ts L) {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hR : R ∈ (Node.frame (tr.state y m)).tree) {K : SA.CommitteeDict sp.n}
+      (AC.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).2)
+    (ha : a ≤ sp.ts L) {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hR : R ∈ (Node.frame (tr.state y m)).tree) {K : AC.CommitteeDict sp.n}
     (hKB : CommitteeFacts tr H K)
     (hall : ∀ x k e, HVoteAt tr H x k e → e.msg.slot = L →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg R)
-    (hLt : sp.ts L + sp.Δ ≤ t) (hfb : SA.FaultBoundK K L tr.projAC (H t) (sp.ts L + sp.Δ)) :
-    (SA.voters (SA.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).1.votes).ncard <
-      2 * (SA.supporters (Node.frame (tr.state y m))
-        (SA.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).1
-        (SA.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).2 R).ncard := by
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg R)
+    (hLt : sp.ts L + sp.Δ ≤ t) (hfb : AC.FaultBoundK K L tr.projAC (H t) (sp.ts L + sp.Δ)) :
+    (AC.voters (AC.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).1.votes).ncard <
+      2 * (AC.supporters (Node.frame (tr.state y m))
+        (AC.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).1
+        (AC.latestView sp (tr.state y m).ac (Node.frame (tr.state y m)) t).2 R).ncard := by
   have hle : ∀ k < m, tr.time k ≤ t := hrd.before
   have hst : (tr.upTo t).state y m = tr.state y m := Trace.upTo_state tr y hle
-  have hLp : (L : Int) = (SA.latestView sp ((tr.upTo t).state y m).ac
+  have hLp : (L : Int) = (AC.latestView sp ((tr.upTo t).state y m).ac
       (Node.frame ((tr.upTo t).state y m)) t).2 := by rw [hst]; exact hL
   have hsync' : SyncACWindowBefore (H t) ((tr.upTo t).HonestBlocks (H t)) a t
       (tr.upTo t).projAC := by rw [RunTrace.upTo_projAC]; exact hsync
   have hcatch' : CatchACWindowBefore (tr.upTo t).projAC (H t) ((tr.upTo t).HonestBlocks (H t)) a
       (2 * sp.Δ) t := by rw [RunTrace.upTo_projAC]; exact hcatch
-  have ha' : a ≤ sp.ts (SA.latestView sp ((tr.upTo t).state y m).ac
+  have ha' : a ≤ sp.ts (AC.latestView sp ((tr.upTo t).state y m).ac
       (Node.frame ((tr.upTo t).state y m)) t).2 := by rw [← hLp]; exact ha
   exact read_majority_of_extending_at hrun hnc hKB.hP ht0 hy hle hL.symm
     (extendingMajority_of_all_at hrun hnc hKB.hGate hall hLt hfb) hR (by
@@ -67,9 +67,9 @@ private theorem read_majority_at_read_cut {ini}
       obtain ⟨hxk, ℓ, hc⟩ := hVoteAt_iff.1 hv
       have hkt := (cast_time_at hrun hnc hxk hc).2
       rw [hs] at hkt
-      have hvp : SA.VoteAt (tr.upTo t).projAC x k e := by
+      have hvp : AC.VoteAt (tr.upTo t).projAC x k e := by
         rw [RunTrace.upTo_projAC]
-        exact sa_voteAt_upTo.mpr ⟨hkt.trans hLt, ℓ, hc⟩
+        exact ac_voteAt_upTo.mpr ⟨hkt.trans hLt, ℓ, hc⟩
       have hpool := latest_vote_delivered (hrun.upTo ht0) (hnc.upTo t)
         (Or.inr ⟨a, hsync', ha'⟩) hy hrd hLp hx hvp hs
       obtain ⟨Hd, hHd, hHdr, hRHd⟩ := voteExtends_upTo hrun hnc ht0 hx hvp hext
@@ -100,19 +100,19 @@ theorem read_majority_of_target_votes_at {ini}
     (hcatch : CatchACWindowBefore (tr.projAC.upTo t) (H t) ((tr.upTo t).HonestBlocks (H t)) a
       (2 * sp.Δ) t)
     {L : Nat} (hL : (L : Int) =
-      (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
-    (ha : a ≤ sp.ts L) {R : SA.Blk sp.n (List (FG.Att sp.n))}
+      (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
+    (ha : a ≤ sp.ts L) {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : R ∈ (Node.frame (tr.state y i)).tree)
     (hvotes : ∀ z q e, HVoteAt tr H z q e → tr.time q ≤ t → e.msg.slot = L →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg R)
-    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
-    (hLt : sp.ts L + sp.Δ ≤ t) (hfb : SA.FaultBoundK K L tr.projAC (H t) (sp.ts L + sp.Δ)) :
-    (SA.voters (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1.votes).ncard <
-      2 * (SA.supporters (Node.frame (tr.state y i))
-        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
-        (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R).ncard := by
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg R)
+    {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hLt : sp.ts L + sp.Δ ≤ t) (hfb : AC.FaultBoundK K L tr.projAC (H t) (sp.ts L + sp.Δ)) :
+    (AC.voters (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1.votes).ncard <
+      2 * (AC.supporters (Node.frame (tr.state y i))
+        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
+        (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R).ncard := by
   have hall : ∀ x k e, HVoteAt tr H x k e → e.msg.slot = L →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg R := by
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg R := by
     intro x k e hv hs
     obtain ⟨hx, ℓ, hc⟩ := hVoteAt_iff.1 hv
     have hkt := (cast_time_at hrun hnc hx hc).2
@@ -161,28 +161,28 @@ theorem read_head_support_of_target_votes_at {ini}
     (hcatch : CatchACWindowBefore (tr.projAC.upTo t) (H t) ((tr.upTo t).HonestBlocks (H t)) a
       (2 * sp.Δ) t)
     {L : Nat} (hL : (L : Int) =
-      (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
-    (ha : a ≤ sp.ts L) {R : SA.Blk sp.n (List (FG.Att sp.n))}
+      (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2)
+    (ha : a ≤ sp.ts L) {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : R ∈ (Node.frame (tr.state y i)).tree)
     (hanchor : Compatible (Node.frame (tr.state y i)).tree
-      (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R)
+      (AC.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R)
     (hsource : (Node.frame (tr.state y i)).Anc R
-        (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
+        (AC.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
       (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
         ∀ z q e, HVoteAt tr H z q e → tr.time q ≤ t → e.msg.slot = L →
-          SA.VoteExtends (tr.HonestBlocksAt H) e.msg R))
-    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
-    (hLt : sp.ts L + sp.Δ ≤ t) (hfb : SA.FaultBoundK K L tr.projAC (H t) (sp.ts L + sp.Δ)) :
+          AC.VoteExtends (tr.HonestBlocksAt H) e.msg R))
+    {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hLt : sp.ts L + sp.Δ ≤ t) (hfb : AC.FaultBoundK K L tr.projAC (H t) (sp.ts L + sp.Δ)) :
     Compatible (Node.frame (tr.state y i)).tree
-      (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R ∧
+      (AC.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) R ∧
       ((Node.frame (tr.state y i)).Anc R
-        (SA.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
+        (AC.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
       (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
-        (SA.voters (SA.latestView sp (tr.state y i).ac
+        (AC.voters (AC.latestView sp (tr.state y i).ac
           (Node.frame (tr.state y i)) t).1.votes).ncard <
-          2 * (SA.supporters (Node.frame (tr.state y i))
-            (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
-            (SA.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R).ncard)) := by
+          2 * (AC.supporters (Node.frame (tr.state y i))
+            (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1
+            (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R).ncard)) := by
   refine ⟨hanchor, ?_⟩
   rcases hsource with h | ⟨hv, hvotes⟩
   · exact Or.inl h

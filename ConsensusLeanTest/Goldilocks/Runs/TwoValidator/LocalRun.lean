@@ -21,7 +21,7 @@ honest, read off the shape of its events (`plan`, `segs_plan`, `label_at`, `sk_o
 
 namespace Consensus.Goldilocks.Witness.TwoRun
 
-open SA Node
+open AC Node
 
 /-! ## The shape, cut by cut -/
 
@@ -369,19 +369,19 @@ theorem run_localRun : Node.LocalRun prop dg Set.univ (fun v : Vote sp.n => v.va
         rcases mem_blk_fgPayload.1 ha with ⟨q, hq, -, rfl⟩ | ⟨q, hq, -, rfl⟩ <;>
           exact row_wellFormed _ hq
       · intro v hv
-        change v ∈ blockVotes (blk (s + 1)) at hv
-        rw [blockVotes_blk] at hv
+        change v ∈ declaredHeadVotes (blk (s + 1)) at hv
+        rw [declaredHeadVotes_blk] at hv
         rw [blk_slot]
         simp only [List.mem_cons, List.not_mem_nil, or_false] at hv
         rcases hv with rfl | rfl <;> rfl
-      · change (blockSupport (blk (s + 1))).Sublist (blockVotes (blk (s + 1)))
-        rw [blockSupport_blk, blockVotes_blk]
-      · change (blockVotes (blk (s + 1))).Nodup
-        rw [blockVotes_blk]
+      · change (declaredSupportVotes (blk (s + 1))).Sublist (declaredHeadVotes (blk (s + 1)))
+        rw [declaredSupportVotes_blk, declaredHeadVotes_blk]
+      · change (declaredHeadVotes (blk (s + 1))).Nodup
+        rw [declaredHeadVotes_blk]
         exact List.nodup_cons.2 ⟨fun h => w1_ne (vote_inj (List.mem_singleton.1 h)).1.symm,
           List.nodup_singleton _⟩
-      · change ((blockVotes (blk (s + 1))).filter _).length ≤ 2
-        rw [blockVotes_blk]
+      · change ((declaredHeadVotes (blk (s + 1))).filter _).length ≤ 2
+        rw [declaredHeadVotes_blk]
         exact List.length_filter_le _ _
   proposerCredential y _ j t B h := by
     obtain ⟨s, -, rfl⟩ := group_block h
@@ -471,7 +471,7 @@ theorem run_localRun : Node.LocalRun prop dg Set.univ (fun v : Vote sp.n => v.va
 theorem run_goldilocksRun : GoldilocksRun prop dg Set.univ run where
   toLocalRun := run_localRun
   genesis_root_ok := dg_genesis
-  vstart := fun _ => SA.voteStart_initial _
+  vstart := fun _ => AC.voteStart_initial _
 
 end Consensus.Goldilocks.Witness.TwoRun
 

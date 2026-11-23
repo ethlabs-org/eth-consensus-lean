@@ -67,13 +67,13 @@ theorem isFGAtt_attObj {binding : VoteBinding} {n : Nat} (a : FG.Att n) :
   simp [isFGAtt, IsAttObj, attObj]
 
 /-- A forwarding wrapper is not an attestation. -/
-theorem not_isFGAtt_forwardObj {binding : VoteBinding} {sp : SA.SAParams} (origin : Fin sp.n)
+theorem not_isFGAtt_forwardObj {binding : VoteBinding} {sp : AC.ACParams} (origin : Fin sp.n)
     (t : Time) (parent : Option (Wire sp.n binding)) (B : Blk sp) :
     ¬ isFGAtt (forwardObj sp origin t parent B) := by
   simp [forwardObj, isFGAtt, IsAttObj]
 
 /-- An object that decodes as a forwarding wrapper is not an attestation. -/
-theorem not_isFGAtt_of_decodeForward {binding : VoteBinding} {sp : SA.SAParams}
+theorem not_isFGAtt_of_decodeForward {binding : VoteBinding} {sp : AC.ACParams}
     {hs : List (Header Info × Nat)} {o : Wire sp.n binding}
     {q : Fin sp.n × Time × Option (Wire sp.n binding) × Blk sp}
     (h : decodeForward sp hs o = some q) : ¬ isFGAtt o := by

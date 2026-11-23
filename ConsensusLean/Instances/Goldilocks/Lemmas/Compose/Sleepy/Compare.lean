@@ -26,16 +26,16 @@ public section
   before a finite deadline, and with every honest committee member awake, joined and permitted, the
   faulty participants of the update pool are fewer than half. -/
 
-/-! ## Over SA traces: `voted_slot`, and the relay of one slot's votes to a writer -/
+/-! ## Over AC traces: `voted_slot`, and the relay of one slot's votes to a writer -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-- At the tick at `t_s + Δ` of a joined node, `try_vote` runs: the node votes in slot `s`, or
 `voted_slot = s` already. -/
-private theorem acOnTick_votes (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) {t : Time}
+private theorem acOnTick_votes (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) {t : Time}
     (hj : joined sp A t) (ht : t = sp.ts (sp.slot t) + sp.Δ)
     (hm : A.mayVote (sp.slot t) = true) :
     A.votedSlot = sp.slot t ∨ ∃ e ∈ (acOnTick sp self A Φ t).2, e.msg.slot = sp.slot t := by
@@ -62,9 +62,9 @@ private theorem add_delta_add_delta (x : Time) : x + sp.Δ + sp.Δ = x + 2 * sp.
 
 /-- The restarts of an honest node up to its update of slot `s` (joined) are at or before
 `t_s`. -/
-private theorem update_restarts {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+private theorem update_restarts {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     {Y : Fin sp.n}
-    (hY : Y ∈ H) {c s : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hu : UpdateAt tr Y c s ℓ) :
+    (hY : Y ∈ H) {c s : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hu : UpdateAt tr Y c s ℓ) :
     ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s := by
   obtain ⟨hc, hcall, ht, hj⟩ := hu
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -89,7 +89,7 @@ private theorem update_restarts {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) 
 
 /-- `u` has a slot-`s` vote whose head extends `D` inside `U`, which `X` sent or admitted at a
 time in `[t_s, t_s + 2Δ)`. -/
-private def Relayed (tr : SATrace sp FGP ro) (U : Set (Blk sp.n FGP)) (X : Fin sp.n) (s : Nat)
+private def Relayed (tr : GTrace sp FGP ro) (U : Set (Blk sp.n FGP)) (X : Fin sp.n) (s : Nat)
     (D : Blk sp.n FGP) (u : Fin sp.n) : Prop :=
   ∃ v : Vote sp.n, v.val = u ∧ v.slot = s ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
     ∃ k, tr.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧ tr.time k < sp.ts s + 2 * sp.Δ
@@ -100,7 +100,7 @@ in its pool, extending `D`, and does not equivocate there, and that vote was adm
 `[t_s, t_s + 2Δ)`. -/
 private theorem result_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : Y ∈ H) {c s : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hR : ResultAt tr Y c s D CV) :
-    ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
+    ∃ (ℓ : ACLabel (goldilocksAC sp FGP ro)) (S : Set (Fin sp.n)),
       tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
       (∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) ∧
       (voters {v | v ∈ (tr.state Y c).pool s}).ncard < 2 * S.ncard ∧
@@ -158,26 +158,26 @@ private theorem optimistic_seats
     (optimisticPoint_pool_post hr hX hpt s hv) le_rfl
     fun k' hk' _ => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hk')) htk
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 /-! ## Over a Goldilocks run -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 private theorem ts_nonneg (s : Nat) : (0 : Time) ≤ sp.ts s := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  simp only [SAParams.ts]
+  simp only [ACParams.ts]
   exact mul_nonneg (mul_nonneg (by norm_num) hΔ.le) (Int.natCast_nonneg s)
 
 /-- Slot starts are monotone in the slot. -/
 theorem ts_le_ts {s s' : Nat} (h : s ≤ s') : sp.ts s ≤ sp.ts s' :=
-  (SA.ts_le_iff sp).2 (by exact_mod_cast h)
+  (AC.ts_le_iff sp).2 (by exact_mod_cast h)
 
 variable {b : Time} {s₀ : Nat}
 
@@ -199,16 +199,16 @@ theorem vote_of_awake_joined {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {s : Nat} (hmv : ∀ i, (tr.state y i).ac.mayVote s = true)
     (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
-    ∃ k e, SA.VoteAt tr.projAC y k e ∧ e.msg.slot = s ∧ tr.projAC.time k ≤ sp.ts s + sp.Δ := by
+    ∃ k e, AC.VoteAt tr.projAC y k e ∧ e.msg.slot = s ∧ tr.projAC.time k ≤ sp.ts s + sp.Δ := by
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have h0 := ts_nonneg (sp := sp) s
   have hslot : sp.slot (sp.ts s + sp.Δ) = s :=
-    SA.slot_of_mem sp s (le_add_of_nonneg_right hΔ.le)
-      (by simp only [SAParams.ts]; push_cast; linarith)
+    AC.slot_of_mem sp s (le_add_of_nonneg_right hΔ.le)
+      (by simp only [ACParams.ts]; push_cast; linarith)
   obtain ⟨j, x, hj'⟩ := hrun.tick_of_awake y hy _ (add_nonneg h0 hΔ.le)
     (show sp.toParams.IsPublic _ from Dvd.intro (4 * (s : Int) + 1)
-      (by simp only [SAParams.ts]; ring)) hw
+      (by simp only [ACParams.ts]; ring)) hw
   obtain ⟨-, hk, -⟩ := hj'
   have hlen : 0 < (Node.exec proposer dg y (tr.state y j) (sp.ts s + sp.Δ) (.tick x)).2.length := by
     rw [tick_cuts]; simp [Node.tickStep]
@@ -224,7 +224,7 @@ theorem vote_of_awake_joined {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have htj : tr.projAC.time j = sp.ts s + sp.Δ := ht0
   have he := hr.exec j ℓ hc.2 (hc.1 ▸ hy)
   rw [hc.1, hcall] at he
-  have hemit : (SA.acOnTick sp y (tr.projAC.state y j) ℓ.frame (tr.projAC.time j)).2 = ℓ.emits :=
+  have hemit : (AC.acOnTick sp y (tr.projAC.state y j) ℓ.frame (tr.projAC.time j)).2 = ℓ.emits :=
     congrArg Prod.snd he
   have hnr : ¬ tr.RestartAt y j := by
     rintro ⟨ℓ', ⟨-, hl'⟩, hr'⟩
@@ -233,13 +233,13 @@ theorem vote_of_awake_joined {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     injection h with h
     rw [h, hcall] at hr'
     cases hr'
-  have hjo : SA.joined sp (tr.projAC.state y j) (tr.projAC.time j) := by
+  have hjo : AC.joined sp (tr.projAC.state y j) (tr.projAC.time j) := by
     rw [projAC_state hrun.toLocalRun hy j, htj]
     exact ((joined_projection_from hrun hy _).2.1 j ⟨_, hn0, hl⟩ hnr ht0).1 hj
-  rcases SA.acOnTick_votes y _ ℓ.frame hjo (by rw [htj, hslot])
+  rcases AC.acOnTick_votes y _ ℓ.frame hjo (by rw [htj, hslot])
       (by rw [htj, hslot, projAC_state hrun.toLocalRun hy j]; exact hmv j) with hv | ⟨e, he', hes⟩
   · rw [htj, hslot] at hv
-    rcases SA.cast_of_votedSlot hr hrun.vstart hy j s hv with
+    rcases AC.cast_of_votedSlot hr hrun.vstart hy j s hv with
       ⟨k, hk, e, hve, hes⟩ | hmf
     · exact ⟨k, e, hve, hes, (hr.time_mono hk.le).trans htj.le⟩
     · rw [projAC_state hrun.toLocalRun hy j, hmv j] at hmf
@@ -251,10 +251,10 @@ theorem vote_of_awake_joined {ini} (hrun : GoldilocksRun proposer dg H tr ini)
 trace (`trace_mayVote`). -/
 theorem mayVote_of_start {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) {s : Nat} (h₀ : SA.SAState.mayVote (ini y) s = true) :
+    (hy : y ∈ H) {s : Nat} (h₀ : AC.ACState.mayVote (ini y) s = true) :
     ∀ i, (tr.state y i).ac.mayVote s = true := fun i => by
   rw [← projAC_state hrun.toLocalRun hy i,
-    SA.trace_mayVote (goldilocks_ac_projection_from hrun hnc).localRun hy i]
+    AC.trace_mayVote (goldilocks_ac_projection_from hrun hnc).localRun hy i]
   exact h₀
 
 /-- `hmv` on a stock run: `mayVote_of_start` at the initial starts, whose permission is
@@ -267,41 +267,41 @@ theorem mayVote_stock (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun d
 cutoff. Only their vote deadlines are used; later receiver wakes are irrelevant. -/
 theorem awake_participant_window_before {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {s : Nat} {a b : Time}
-    (hsync : SA.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
+    (hsync : AC.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
     (ha : a ≤ sp.ts s)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
-    {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX)
+    {ℓX : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC X i₀ s ℓX)
     (hib : tr.time i₀ ≤ b) {y : Fin sp.n} (hy : y ∈ H)
     (hmv : ∀ i, (tr.state y i).ac.mayVote s = true)
     (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
-    y ∈ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
+    y ∈ AC.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨k, e, ⟨ℓ, hc, he⟩, hes, hk⟩ := vote_of_awake_joined hrun hnc hy hmv hw hj
-  obtain ⟨hval, hsl', -, -⟩ := SA.castAt_spec hr hy ⟨hc, he⟩
+  obtain ⟨hval, hsl', -, -⟩ := AC.castAt_spec hr hy ⟨hc, he⟩
   have hsk : sp.ts s ≤ tr.projAC.time k :=
-    (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by omega)
+    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by omega)
   have ht : tr.time i₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
   change tr.time k ≤ sp.ts s + sp.Δ at hk
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hkb : tr.projAC.time k + sp.Δ ≤ b := by
     change tr.time k + sp.Δ ≤ b
-    exact (add_le_add hk le_rfl).trans (((SA.add_delta_add_delta _).trans_le
-      (SA.add_mul_delta_le (by norm_num))).trans (ht.symm.trans_le hib))
+    exact (add_le_add hk le_rfl).trans (((AC.add_delta_add_delta _).trans_le
+      (AC.add_mul_delta_le (by norm_num))).trans (ht.symm.trans_le hib))
   have hki : tr.projAC.time k + sp.Δ ≤ tr.projAC.time i₀ := by
     change tr.time k + sp.Δ ≤ tr.time i₀
-    exact (add_le_add hk le_rfl).trans (((SA.add_delta_add_delta _).trans_le
-      (SA.add_mul_delta_le (by norm_num))).trans_eq ht.symm)
-  have := SA.sync_window_before_forward hr hsync hy ⟨ℓ, hc, Or.inl ⟨e, he, rfl⟩⟩
+    exact (add_le_add hk le_rfl).trans (((AC.add_delta_add_delta _).trans_le
+      (AC.add_mul_delta_le (by norm_num))).trans_eq ht.symm)
+  have := AC.sync_window_before_forward hr hsync hy ⟨ℓ, hc, Or.inl ⟨e, he, rfl⟩⟩
     (ha.trans hsk) hkb hX hu.1
-    (fun k' hk' hr' => (SA.update_restarts hr hX hu k' hk' hr').trans hsk) hki
+    (fun k' hk' hr' => (AC.update_restarts hr hX hu k' hk' hr').trans hsk) hki
     fun t h₁ h₂ => by
       change t < tr.time k + sp.Δ at h₂
-      have : sp.slot t = s := SA.slot_of_mem sp s (hsk.trans h₁) (by
+      have : sp.slot t = s := AC.slot_of_mem sp s (hsk.trans h₁) (by
         rw [hts]
         exact h₂.trans_le ((add_le_add hk le_rfl).trans
-          (by rw [SA.add_delta_add_delta]; exact SA.add_mul_delta_le (by norm_num))))
+          (by rw [AC.add_delta_add_delta]; exact AC.add_mul_delta_le (by norm_num))))
       omega
   rw [hes] at this
   rcases this with h | ⟨a, ha, -, -, -, hav, -⟩
@@ -312,38 +312,38 @@ theorem awake_participant_window_before {ini} (hrun : GoldilocksRun proposer dg 
 due by `t_s + 2Δ ≤ b`, so only the early cutoff needs to be within the service horizon. -/
 theorem awake_participant_early {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {s : Nat} {b : Time}
-    (hsync : SA.ServiceBefore H (tr.HonestBlocks H) b tr.projAC) (hb : sp.ts s + 2 * sp.Δ ≤ b)
+    (hsync : AC.ServiceBefore H (tr.HonestBlocks H) b tr.projAC) (hb : sp.ts s + 2 * sp.Δ ≤ b)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
-    {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX)
+    {ℓX : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC X i₀ s ℓX)
     {y : Fin sp.n} (hy : y ∈ H) (hmv : ∀ i, (tr.state y i).ac.mayVote s = true)
     (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
-    y ∈ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
+    y ∈ AC.voters {v | v ∈ (tr.projAC.state X i₀).pool s} := by
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨k, e, ⟨ℓ, hc, he⟩, hes, hk⟩ := vote_of_awake_joined hrun hnc hy hmv hw hj
-  obtain ⟨hval, hsl', -, -⟩ := SA.castAt_spec hr hy ⟨hc, he⟩
+  obtain ⟨hval, hsl', -, -⟩ := AC.castAt_spec hr hy ⟨hc, he⟩
   have hsk : sp.ts s ≤ tr.projAC.time k :=
-    (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by omega)
+    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by omega)
   have ht : tr.time i₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
   change tr.time k ≤ sp.ts s + sp.Δ at hk
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hkb : tr.projAC.time k + sp.Δ ≤ b := by
     change tr.time k + sp.Δ ≤ b
-    exact (add_le_add hk le_rfl).trans ((SA.add_delta_add_delta _).trans_le hb)
+    exact (add_le_add hk le_rfl).trans ((AC.add_delta_add_delta _).trans_le hb)
   have hki : tr.projAC.time k + sp.Δ ≤ tr.projAC.time i₀ := by
     change tr.time k + sp.Δ ≤ tr.time i₀
-    exact (add_le_add hk le_rfl).trans (((SA.add_delta_add_delta _).trans_le
-      (SA.add_mul_delta_le (by norm_num))).trans_eq ht.symm)
-  have := SA.sync_window_before_forward hr ⟨hsync.message, hsync.relay⟩ hy
+    exact (add_le_add hk le_rfl).trans (((AC.add_delta_add_delta _).trans_le
+      (AC.add_mul_delta_le (by norm_num))).trans_eq ht.symm)
+  have := AC.sync_window_before_forward hr ⟨hsync.message, hsync.relay⟩ hy
     ⟨ℓ, hc, Or.inl ⟨e, he, rfl⟩⟩ ((ts_nonneg s).trans hsk) hkb hX hu.1
-    (fun k' hk' hr' => (SA.update_restarts hr hX hu k' hk' hr').trans hsk) hki
+    (fun k' hk' hr' => (AC.update_restarts hr hX hu k' hk' hr').trans hsk) hki
     fun t h₁ h₂ => by
       change t < tr.time k + sp.Δ at h₂
-      have : sp.slot t = s := SA.slot_of_mem sp s (hsk.trans h₁) (by
+      have : sp.slot t = s := AC.slot_of_mem sp s (hsk.trans h₁) (by
         rw [hts]
         exact h₂.trans_le ((add_le_add hk le_rfl).trans
-          (by rw [SA.add_delta_add_delta]; exact SA.add_mul_delta_le (by norm_num))))
+          (by rw [AC.add_delta_add_delta]; exact AC.add_mul_delta_le (by norm_num))))
       omega
   rw [hes] at this
   rcases this with h | ⟨a, ha, -, -, -, hav, -⟩
@@ -355,19 +355,19 @@ windowed forwarding makes the faulty participants of the actual update pool fewe
 its participants, given that every pool vote is signed by a member and fewer than half of the
 committee is faulty. No head resolution is needed. -/
 theorem honest_participants_window_before {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n}
+    (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n}
     {a b : Time} {s : Nat}
-    (hsync : SA.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
+    (hsync : AC.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
     (ha : a ≤ sp.ts s) {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
-    {ℓX : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC X i₀ s ℓX)
+    {ℓX : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC X i₀ s ℓX)
     (hib : tr.time i₀ ≤ b)
     (hready : ∀ y ∈ H, tr.awake y (sp.ts s + sp.Δ) ∧ tr.JoinedAt y (sp.ts s + sp.Δ))
     (hmv : ∀ y ∈ H, y ∈ K.committee s → ∀ i, (tr.state y i).ac.mayVote s = true)
     (hP : ∀ v ∈ (tr.projAC.state X i₀).pool s, v.val ∈ K.committee s)
     (hf : 2 * (K.committee s ∩ Hᶜ).ncard < (K.committee s).ncard) :
-    2 * (Hᶜ ∩ SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s}).ncard <
-      (SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s}).ncard := by
-  set V := SA.voters {v | v ∈ (tr.projAC.state X i₀).pool s}
+    2 * (Hᶜ ∩ AC.voters {v | v ∈ (tr.projAC.state X i₀).pool s}).ncard <
+      (AC.voters {v | v ∈ (tr.projAC.state X i₀).pool s}).ncard := by
+  set V := AC.voters {v | v ∈ (tr.projAC.state X i₀).pool s}
   have hVK : V ⊆ K.committee s := by
     rintro w ⟨v, hv, rfl⟩
     exact hP v hv

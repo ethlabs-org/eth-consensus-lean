@@ -6,7 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Locks
 
 public section
 
-/-! # Goldilocks SA: a lock floor that every lock function keeps
+/-! # Goldilocks AC: a lock floor that every lock function keeps
 
 The floor form of the AC lock step. Fix a block `B₀` of the tree
 that is its own viable ancestor, and a slot `j`. The floor of a lock set `L` is a lock `l ∈ L`
@@ -19,7 +19,7 @@ view keeps `B₀` (or `slot(t) − 1 ≤ j`), every AC call keeps the floor
 (`exists_step_locks_floor`), and the read point of a cast holds a live lock block `⪰ B₀`
 (`exists_readPoint_liveLockBlocks_floor`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
 /-- **`viable_ancestor` is monotone above a candidate.** In a well-formed frame, if `B₀` is its
 own viable ancestor and `B₀ ⪯ B ∈ Φ.tree`, then `B₀ ⪯ viable_ancestor(Φ, B)`. -/
@@ -37,8 +37,8 @@ theorem anc_viableAncestor_of_candidate {n : Nat} {FGP : Type} {Φ : Frm n FGP}
     (h : Φ.Anc B₀ B) : Φ.Anc B₀ (Φ.viableAncestor B) :=
   (viableAncestor_spec hΦ hB).2.2 B₀ h hc.symm
 
-variable {FGP : Type} {sp : SAParams} {Φ : Frm sp.n FGP} {t : Time} {j m : Nat}
-  {B₀ : Blk sp.n FGP} {ini : Fin sp.n → SAState sp.n}
+variable {FGP : Type} {sp : ACParams} {Φ : Frm sp.n FGP} {t : Time} {j m : Nat}
+  {B₀ : Blk sp.n FGP} {ini : Fin sp.n → ACState sp.n}
 
 /-- **`unlock_target` is monotone above a kept block.** In a well-formed frame, if
 `unlockTarget(Φ, V, s, B₀) = B₀` and `B₀ ⪯ B ∈ Φ.tree`, then `B₀ ⪯ unlockTarget(Φ, V, s, B)`
@@ -113,7 +113,7 @@ theorem floor_unlock {L : Set Lock} {s : Int} {V : View sp.n} (hΦ : FrameOK Φ)
   · exact ⟨l, ⟨l, hl, B, hB, hBr, by simp only [hs, ↓reduceIte]⟩, rfl, he, B, hB, hBr, hB0B⟩
 
 /-- The optimistic confirmation keeps the floor. -/
-theorem floor_optimisticConfirmation {A : SAState sp.n} (hΦ : FrameOK Φ) (hB0 : B₀ ∈ Φ.tree)
+theorem floor_optimisticConfirmation {A : ACState sp.n} (hΦ : FrameOK Φ) (hB0 : B₀ ∈ Φ.tree)
     (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (h : ∃ l ∈ A.locks, l.slot = j ∧ m ≤ l.expiry ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B) :
@@ -126,7 +126,7 @@ theorem floor_optimisticConfirmation {A : SAState sp.n} (hΦ : FrameOK Φ) (hB0 
     exact floor_addLocks hΦ hB0 hva0 hk h
 
 /-- The confirmation update keeps the floor. -/
-theorem floor_updateConfirmation {A : SAState sp.n} {s : Nat} (hΦ : FrameOK Φ)
+theorem floor_updateConfirmation {A : ACState sp.n} {s : Nat} (hΦ : FrameOK Φ)
     (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (h : ∃ l ∈ A.locks, l.slot = j ∧ m ≤ l.expiry ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B) :
@@ -142,7 +142,7 @@ theorem floor_updateConfirmation {A : SAState sp.n} {s : Nat} (hΦ : FrameOK Φ)
       | (rw [updateLatestConfirmed_keeps_locks]; exact floor_addLocks hΦ hB0 hva0 hk h)
 
 /-- `try_vote` keeps the floor when `unlock` at the merged vote view of its input keeps `B₀`. -/
-theorem floor_tryVote (self : Fin sp.n) {A : SAState sp.n} (hΦ : FrameOK Φ)
+theorem floor_tryVote (self : Fin sp.n) {A : ACState sp.n} (hΦ : FrameOK Φ)
     (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (hu : (sp.slot t : Int) - 1 ≤ j ∨
       unlockTarget sp Φ (mergedVoteView sp A Φ (sp.slot t)) ((sp.slot t : Int) - 1) B₀ = B₀)
@@ -163,7 +163,7 @@ theorem floor_tryVote (self : Fin sp.n) {A : SAState sp.n} (hΦ : FrameOK Φ)
        exact h)
 
 /-- `ac_on_message` keeps the floor (the view of the state after the admission). -/
-theorem floor_acOnMessage (self : Fin sp.n) {A : SAState sp.n} (v : Vote sp.n)
+theorem floor_acOnMessage (self : Fin sp.n) {A : ACState sp.n} (v : Vote sp.n)
     (hΦ : FrameOK Φ) (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀)
     (hk : sp.slot t ≤ m)
     (hu : (sp.slot t : Int) - 1 ≤ j ∨ unlockTarget sp Φ
@@ -179,7 +179,7 @@ theorem floor_acOnMessage (self : Fin sp.n) {A : SAState sp.n} (v : Vote sp.n)
   exact h
 
 /-- `ac_on_block` keeps the floor (the view of the state after the block receipt). -/
-theorem floor_acOnBlock (self : Fin sp.n) {A : SAState sp.n} (C : Blk sp.n FGP)
+theorem floor_acOnBlock (self : Fin sp.n) {A : ACState sp.n} (C : Blk sp.n FGP)
     (hΦ : FrameOK Φ) (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀)
     (hk : sp.slot t ≤ m)
     (hu : (sp.slot t : Int) - 1 ≤ j ∨ unlockTarget sp Φ
@@ -195,7 +195,7 @@ theorem floor_acOnBlock (self : Fin sp.n) {A : SAState sp.n} (C : Blk sp.n FGP)
   exact h
 
 /-- `ac_on_tick` keeps the floor (the view of the state before the call). -/
-theorem floor_acOnTick (self : Fin sp.n) {A : SAState sp.n} (hΦ : FrameOK Φ)
+theorem floor_acOnTick (self : Fin sp.n) {A : ACState sp.n} (hΦ : FrameOK Φ)
     (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (hu : (sp.slot t : Int) - 1 ≤ j ∨
       unlockTarget sp Φ (mergedVoteView sp A Φ (sp.slot t)) ((sp.slot t : Int) - 1) B₀ = B₀)
@@ -214,7 +214,7 @@ theorem floor_acOnTick (self : Fin sp.n) {A : SAState sp.n} (hΦ : FrameOK Φ)
     | exact floor_updateConfirmation hΦ hB0 hva0 hk hv
 
 /-- `ac_proposal` keeps the floor (the slot-`(slot(t) − 1)` pool view). -/
-theorem floor_acProposal {A : SAState sp.n} (hΦ : FrameOK Φ) (hB0 : B₀ ∈ Φ.tree)
+theorem floor_acProposal {A : ACState sp.n} (hΦ : FrameOK Φ) (hB0 : B₀ ∈ Φ.tree)
     (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (hu : (sp.slot t : Int) - 1 ≤ j ∨ unlockTarget sp Φ
       (View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤))
@@ -230,20 +230,20 @@ theorem floor_acProposal {A : SAState sp.n} (hΦ : FrameOK Φ) (hB0 : B₀ ∈ �
     | exact h
     | exact floor_unlock hΦ hB0 hva0 hk hu h
 
-/-- **The floor lemma of an AC call.** A call of the SA at time `t ≥ 0` with a well-formed frame
+/-- **The floor lemma of an AC call.** A call of the AC at time `t ≥ 0` with a well-formed frame
 `Φ` keeps the floor: if `A.locks` holds a lock of slot `j` and expiry `≥ m` on a block `⪰ B₀`
 of the tree, with
 `B₀ ∈ Φ.tree` its own viable ancestor, `slot(t) ≤ m`, and `unlock` at the call's view
 keeping `B₀` (or `slot(t) − 1 ≤ j`), then the new locks hold a lock of slot `j` on a block
 `⪰ B₀` of the tree (the moved lock), which keeps its expiry `≥ m`. -/
 theorem exists_step_locks_floor {ro : ReplayOrder sp FGP} (self : Fin sp.n)
-    {A : SAState sp.n} (c : (goldilocksSA sp FGP ro).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t)
+    {A : ACState sp.n} (c : (goldilocksAC sp FGP ro).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t)
     (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (hu : (sp.slot t : Int) - 1 ≤ j ∨
       unlockTarget sp Φ (unlockView A Φ t c) ((sp.slot t : Int) - 1) B₀ = B₀)
     (h : ∃ l ∈ A.locks, l.slot = j ∧ m ≤ l.expiry ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B) :
-    ∃ l ∈ ((goldilocksSA sp FGP ro).step self A Φ t c).1.locks, l.slot = j ∧ m ≤ l.expiry ∧
+    ∃ l ∈ ((goldilocksAC sp FGP ro).step self A Φ t c).1.locks, l.slot = j ∧ m ≤ l.expiry ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B := by
   cases c with
   | tick =>
@@ -253,7 +253,7 @@ theorem exists_step_locks_floor {ro : ReplayOrder sp FGP} (self : Fin sp.n)
     rw [unlockView_proposal] at hu
     exact floor_acProposal hΦ hB0 hva0 hk hu h
   | toFG =>
-    have he : ((goldilocksSA sp FGP ro).step self A Φ t .toFG).1.locks = A.locks :=
+    have he : ((goldilocksAC sp FGP ro).step self A Φ t .toFG).1.locks = A.locks :=
       acToFG_locks_eq A
     rw [he]
     exact h
@@ -264,7 +264,7 @@ theorem exists_step_locks_floor {ro : ReplayOrder sp FGP} (self : Fin sp.n)
     rw [unlockView_block] at hu
     exact floor_acOnBlock self C hΦ hB0 hva0 hk hu h
   | restart =>
-    have he : ((goldilocksSA sp FGP ro).step self A Φ t .restart).1.locks = A.locks :=
+    have he : ((goldilocksAC sp FGP ro).step self A Φ t .restart).1.locks = A.locks :=
       ((restart_state sp) FGP ro self A Φ t hΦ ht).2.1
     rw [he]
     exact h
@@ -273,10 +273,10 @@ theorem exists_step_locks_floor {ro : ReplayOrder sp FGP} (self : Fin sp.n)
 
 section readPoint
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
-  {tr : SATrace sp FGP ro}
+  {tr : GTrace sp FGP ro}
 
 /-- `try_vote` keeps the floor in its read point. -/
-private theorem floor_tryVote_readPoint {x : Fin sp.n} {P : SAState sp.n} {e : Em sp FGP}
+private theorem floor_tryVote_readPoint {x : Fin sp.n} {P : ACState sp.n} {e : Em sp FGP}
     (he : e ∈ (tryVote sp x P Φ t).2) (hΦ : FrameOK Φ) (hB0 : B₀ ∈ Φ.tree)
     (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (hu : (sp.slot t : Int) - 1 ≤ j ∨
@@ -291,8 +291,8 @@ private theorem floor_tryVote_readPoint {x : Fin sp.n} {P : SAState sp.n} {e : E
   · exact h
 
 /-- **The floor is in the read point of a cast.** -/
-theorem floor_readPoint_locks (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+theorem floor_readPoint_locks (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) (hB0 : B₀ ∈ ℓ.frame.tree)
     (hva0 : ℓ.frame.viableAncestor B₀ = B₀) (hk : sp.slot (tr.time i) ≤ m)
     (hu : (sp.slot (tr.time i) : Int) - 1 ≤ j ∨
@@ -306,7 +306,7 @@ theorem floor_readPoint_locks (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr i
   have hΦ := (frameIn_of_callAt hr hy hc).1
   have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
   rw [hc.1] at hx
-  have he' : e ∈ ((goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i)
+  have he' : e ∈ ((goldilocksAC sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i)
       ℓ.call).2 := by
     rw [hx]
     exact he
@@ -350,8 +350,8 @@ theorem floor_readPoint_locks (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr i
 
 /-- **The read point of a cast holds a live lock block `⪰ B₀`.** -/
 theorem exists_readPoint_liveLockBlocks_floor
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
+    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
     (hB0 : B₀ ∈ ℓ.frame.tree) (hva0 : ℓ.frame.viableAncestor B₀ = B₀)
     (hk : sp.slot (tr.time i) ≤ m)
     (hu : (sp.slot (tr.time i) : Int) - 1 ≤ j ∨
@@ -367,6 +367,6 @@ theorem exists_readPoint_liveLockBlocks_floor
 
 end readPoint
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

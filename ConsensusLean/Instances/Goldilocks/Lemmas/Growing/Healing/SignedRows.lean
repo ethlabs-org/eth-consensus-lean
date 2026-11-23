@@ -19,9 +19,9 @@ the delivery of its row (`ResetService.signedRow`) and its validity need:
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -33,7 +33,7 @@ private theorem rows_delivered_upTo_at
     (hsvc : ResetService tr H g ΔF b) {v : Time}
     (hv : gbar g ≤ v) {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
     (hnr : ∀ r ≤ kX, tr.RestartAt p r → tr.time r ≤ gbar g)
-    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : tr.ProposesAt p kX X)
+    {X : AC.Blk sp.n (List (FG.Att sp.n))} (hX : tr.ProposesAt p kX X)
     (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) {att : FG.Att sp.n}
     (hsig : tr.SignAt y k att) (hk : tr.time k ≤ v) :
@@ -59,7 +59,7 @@ private theorem proposal_rows_placed_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
-    {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
+    {X Pr : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
     (hPr : Pr ∈ (tr.state p kX).fg.tree) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload (H (tr.time kX))
@@ -109,7 +109,7 @@ theorem justify_of_signed_rows'_upTo_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g ΔF v b : Time}
     (hs : HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
-    {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
+    {X Pr : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b)
     (hpar : X.parent = some Pr.root)
     (S : Finset (Fin sp.n)) (hS : sp.toParams.fg.q ≤ S.card)
@@ -153,7 +153,7 @@ theorem cross_of_signed_rows_upTo_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g ΔF v b : Time}
     (hs : HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
-    {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
+    {X Pr : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b)
     (hpar : X.parent = some Pr.root)
     (S : Finset (Fin sp.n)) (hS : sp.toParams.fg.q ≤ S.card)

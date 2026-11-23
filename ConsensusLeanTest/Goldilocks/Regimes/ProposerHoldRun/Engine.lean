@@ -255,7 +255,7 @@ theorem rho12_not_hashCollision : ¬ (rho12 S).HashCollision := by
 /-- **Key `1` releases only votes of slots up to `1`**: it is honest until `12`, and an honest
 node's released vote is its emission, of the slot of its time. -/
 theorem key1_vote_slot {i : Nat} {e : Ev S} (he : (rho S).events[i]? = some e) (h1 : e.node = 1)
-    {v : SA.Vote (Fintype.card (Fin 5))} (hv : voteObj v ∈ (rho S).releasesAt i) :
+    {v : AC.Vote (Fintype.card (Fin 5))} (hv : voteObj v ∈ (rho S).releasesAt i) :
     v.slot ≤ 1 := by
   obtain ⟨ys, hsplit, hys⟩ := (rho S).truncate_split rho_sorted 12
   have ht : e.time ≤ 12 := by
@@ -294,7 +294,7 @@ theorem key1_vote_slot {i : Nat} {e : Ev S} (he : (rho S).events[i]? = some e) (
     rw [Simulation.mem_honestKeys_iff]
     rw [show (rho12 S).key ((rho12 S).ownKey 1) = 1 from (rho12 S).key.apply_symm_apply 1]
     exact hv'
-  have hspec := SA.castAt_spec hac hy ⟨Compose.projAC_callAt.mpr hc, hem⟩
+  have hspec := AC.castAt_spec hac hy ⟨Compose.projAC_callAt.mpr hc, hem⟩
   rw [hspec.2.1]
   have hl : (Simulation.simTrace { S with vote := stock } (rho12 S)
       one_le_card).label k ≠ none := by
@@ -303,7 +303,7 @@ theorem key1_vote_slot {i : Nat} {e : Ev S} (he : (rho S).events[i]? = some e) (
     rho12_valid hl
   change _ ≤ (12 : Time) at hth
   have h0 := hrun.time_nonneg k
-  have hsl := SA.slot_eq
+  have hsl := AC.slot_eq
     (sp := ({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card) h0
   have hle : ((({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card).slot
       ((Simulation.simTrace { S with vote := stock } (rho12 S) one_le_card).time k) : Int) ≤ 1 := by
@@ -317,7 +317,7 @@ theorem key1_vote_slot {i : Nat} {e : Ev S} (he : (rho S).events[i]? = some e) (
 variable (S) in
 /-- `d` is not a vote of key `0` or `1` of a slot after `1`. -/
 def NoLateVote (d : Obj S) : Prop :=
-  ∀ v : SA.Vote (Fintype.card (Fin 5)), d = voteObj v → (v.val = key 0 ∨ v.val = key 1) → v.slot ≤ 1
+  ∀ v : AC.Vote (Fintype.card (Fin 5)), d = voteObj v → (v.val = key 0 ∨ v.val = key 1) → v.slot ≤ 1
 
 /-- **No released object carries a vote of key `0` or `1` of a slot after `1`.** -/
 theorem released_vote : ∀ i, ∀ o ∈ (rho S).releasesAt i, ∀ d, Model.Obj.Contains o d →

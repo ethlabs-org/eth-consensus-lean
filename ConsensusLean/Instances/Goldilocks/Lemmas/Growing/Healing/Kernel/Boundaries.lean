@@ -20,9 +20,9 @@ proved in `Kernel/ResetSource`. No deadline is lengthened here.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
@@ -66,7 +66,7 @@ delay on the four-`Δ` slot grid. -/
 theorem resetPremisesUpTo_of_reset_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot (Generic.dictOfTime sp cm)))
+      (AC.committeeStart sp.genesisRoot (Generic.dictOfTime sp cm)))
     (hnc : Compose.NoCollRun dg tr) {g ΔF a b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)

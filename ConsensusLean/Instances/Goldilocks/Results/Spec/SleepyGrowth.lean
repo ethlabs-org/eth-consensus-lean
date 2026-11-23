@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeRun
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.CommitteeRun
 
 @[expose] public section
 
@@ -16,14 +16,14 @@ Vocabulary only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Regimes.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
 /-- Committee support from genesis, with faults charged at each consumption time. -/
-def CommitteeSleepy {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+def CommitteeSleepy {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-    (K : SA.CommitteeDict sp.n) : Prop :=
+    (K : AC.CommitteeDict sp.n) : Prop :=
   (∀ (s : Nat) (d : Time), sp.ts s + sp.Δ ≤ d → d ≤ sp.ts s + 6 * sp.Δ →
-    SA.FaultBoundK K s tr.projAC (H d) (sp.ts s + sp.Δ)) ∧
+    AC.FaultBoundK K s tr.projAC (H d) (sp.ts s + sp.Δ)) ∧
   (∀ (s : Nat) (d : Time), sp.ts s ≤ d → d ≤ sp.ts s + 2 * sp.Δ →
     2 * (K.committee s ∩ (H d)ᶜ).ncard < (K.committee s).ncard)
 

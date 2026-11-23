@@ -31,9 +31,9 @@ honest at that cut's time; replay states of a block agree across independently h
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -41,7 +41,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 private theorem anchor_facts_at {g ΔR a b : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK) {s : Nat}
-    {A : SA.Blk sp.n (List (FG.Att sp.n))}
+    {A : AC.Blk sp.n (List (FG.Att sp.n))}
     (hA : Healing.Growing.HonestProposalRun tr H proposer s A)
     (hR : Healing.drainTime sp a ≤ sp.ts s) :
     (∃ k, tr.ProposesAt (proposer s) k A) ∧ A ∈ tr.HonestBlocksAt H ∧ A.slot = s ∧ 0 < s ∧
@@ -73,7 +73,7 @@ theorem anchorStep_gap_within_at {g ΔR a b gS ΔF D : Time}
     (hsup : Healing.Growing.RowSupplyWithin tr H g b D) (hD : 0 ≤ D)
     (hdel : sp.ts s + 6 * sp.Δ + D + ΔF ≤ sp.ts s')
     (hcr : sp.ts s + 6 * sp.Δ + D + sp.Δ ≤ sp.ts s')
-    {A X : SA.Blk sp.n (List (FG.Att sp.n))}
+    {A X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hA : Healing.Growing.HonestProposalRun tr H proposer s A)
     (hX : Healing.Growing.HonestProposalRun tr H proposer s' X)
     (hR : Healing.drainTime sp a ≤ sp.ts s) (hb : sp.ts s' ≤ b)
@@ -116,7 +116,7 @@ theorem anchorStep_gap_within_at {g ΔR a b gS ΔF D : Time}
     hpropX (by rw [htX]; linarith) (by rw [htX]; exact hb) hpar hPr hAPr ?_
   intro heq
   -- A higher report above `A` by `t_s + 6Δ`, of a node honest at it, contradicts `heq`.
-  have hcross : ∀ x r e C, x ∈ H (tr.time r) → SA.ToFGAt tr.projAC x r e C →
+  have hcross : ∀ x r e C, x ∈ H (tr.time r) → AC.ToFGAt tr.projAC x r e C →
       tr.time r ≤ sp.ts s + 6 * sp.Δ → Anc (tr.HonestBlocksAt H) A C →
       ((tr.state x r).fg.σ A.root).h < ((tr.state x r).fg.σ C.root).h → False := by
     intro x r e C hx hto ht hAC hlt
@@ -135,7 +135,7 @@ theorem anchorStep_gap_within_at {g ΔR a b gS ΔF D : Time}
       hAp] at this
     omega
   have hR1 : Healing.drainTime sp a ≤ sp.ts (s + 1 : Nat) :=
-    hR.trans ((SA.ts_le_iff sp).2 (by push_cast; omega))
+    hR.trans ((AC.ts_le_iff sp).2 (by push_cast; omega))
   have hun := hp.operational_unanimous_at hA.1 rfl hpropA hAs hR (by linarith)
   rcases Healing.Growing.report_cover_of_unanimous_at hp hAHB hAs hu hAg
       (fun y j e hy hv hjb hs' => hun y j e hy hv hs' hjb) hgu hR1 hTb with
@@ -154,9 +154,9 @@ theorem anchorStep_gap_within_at {g ΔR a b gS ΔF D : Time}
     intro hbd
     obtain ⟨-, h2⟩ := hbd
     omega
-  have hd0 : 0 ≤ sp.ts s + 6 * sp.Δ := by linarith [SA.gbar_nonneg g]
+  have hd0 : 0 ≤ sp.ts s + 6 * sp.Δ := by linarith [AC.gbar_nonneg g]
   have hreports : ∀ z, z ∈ H (max (Healing.cutZ sp.toParams g) (sp.ts s + 6 * sp.Δ)) →
-      ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧
+      ∃ r ell C, AC.ToFGAt tr.projAC z r ell C ∧
       tr.time r ≤ sp.ts s + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) E C ∧
       ((tr.state z r).fg.σ C.root).h = ((tr.state (proposer (s + c)) kX).fg.σ E.root).h := by
     intro z hzz
@@ -207,7 +207,7 @@ theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
     (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
     {s c s' : Nat} (hc2 : 2 ≤ c) (hs' : s' = s + c)
     (hdel : sp.ts s + 6 * sp.Δ + ΔF ≤ sp.ts s')
-    {A X : SA.Blk sp.n (List (FG.Att sp.n))}
+    {A X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hA : Healing.Growing.HonestProposalRun tr H proposer s A)
     (hX : Healing.Growing.HonestProposalRun tr H proposer s' X)
     (hR : Healing.drainTime sp a ≤ sp.ts s) (hb : sp.ts s' ≤ b)
@@ -229,7 +229,7 @@ private theorem height_next_at {g ΔR a b : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
     {s s' : Nat}
-    {A X : SA.Blk sp.n (List (FG.Att sp.n))}
+    {A X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hA : Healing.Growing.HonestProposalRun tr H proposer s A)
     (hX : Healing.Growing.HonestProposalRun tr H proposer s' X) (hss : s + 2 ≤ s')
     (hR : Healing.drainTime sp a ≤ sp.ts s) (hb : sp.ts s' ≤ b) {c : Nat}
@@ -263,7 +263,7 @@ theorem anchorSteps_gap_within_at {g ΔR a b gS ΔF d : Time}
     (hsup : Healing.Growing.RowSupplyWithin tr H g b d) (hd : 0 ≤ d)
     (hdel : 6 * sp.Δ + d + ΔF ≤ 4 * sp.Δ * c)
     (hrelay : 7 * sp.Δ + d ≤ 4 * sp.Δ * c) {s₀ : Nat}
-    {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
+    {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer
       (s₀ + ![0, c, 2 * c, 3 * c] i) (P i))
     (hR : Healing.drainTime sp a ≤ sp.ts s₀) (hb : sp.ts (s₀ + 3 * c : Nat) ≤ b)
@@ -279,7 +279,7 @@ theorem anchorSteps_gap_within_at {g ΔR a b gS ΔF d : Time}
   have hP3 : Healing.Growing.HonestProposalRun tr H proposer (s₀ + 3 * c) (P 3) := by
     simpa using hP 3
   have hmono : ∀ m n : Nat, m ≤ n → sp.ts m ≤ sp.ts n := fun m n h =>
-    (SA.ts_le_iff sp).2 (by exact_mod_cast h)
+    (AC.ts_le_iff sp).2 (by exact_mod_cast h)
   have hΔ := sp.toParams.hΔ
   have h1 := height_next_at hp hP0 hP1 (by omega) hR ((hmono _ _ (by omega)).trans hb) hh₀
   have h2 := height_next_at hp hP0 hP2 (by omega) hR ((hmono _ _ (by omega)).trans hb) hh₀
@@ -309,7 +309,7 @@ theorem anchorSteps_gap_at {g ΔR a b gS ΔF : Time}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
     (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b) {c : Nat} (hc2 : 2 ≤ c)
     (hdel : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * c) {s₀ : Nat}
-    {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
+    {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer
       (s₀ + ![0, c, 2 * c, 3 * c] i) (P i))
     (hR : Healing.drainTime sp a ≤ sp.ts s₀) (hb : sp.ts (s₀ + 3 * c : Nat) ≤ b)

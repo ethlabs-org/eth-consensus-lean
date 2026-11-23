@@ -18,12 +18,12 @@ conflicting blocks have disjoint supports (`rowSupport_disjoint`). Counting the 
 parts gives `no_conflicting_half_origins`. The faulty part's pool provenance is
 `pool_originU` (`counted_faulty_admitted`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {sp : SAParams} {FGP : Type}
+variable {sp : ACParams} {FGP : Type}
 
 /-- Both counters count identities with a row-`j` pool vote whose head extends the block. -/
-private theorem counted_pool {A : SAState sp.n} {Φ : Frm sp.n FGP} {j : Nat} {X : Blk sp.n FGP}
+private theorem counted_pool {A : ACState sp.n} {Φ : Frm sp.n FGP} {j : Nat} {X : Blk sp.n FGP}
     {κ : Counter} {x : Fin sp.n} (hx : x ∈ counted sp A Φ j X κ) :
     ∃ v ∈ A.pool j, v.val = x ∧ AncR Φ X v.head := by
   cases κ with
@@ -88,6 +88,6 @@ theorem counted_faulty_admitted : CountedFaultyAdmitted := by
   · exact ⟨k, hk, Or.inl hsa⟩
   · exact ⟨k, hk, Or.inr ⟨ℓ', hc', hrs, B, hB, hvB⟩⟩
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

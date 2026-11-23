@@ -8,11 +8,11 @@ public section
 
 /-! # An optimistic writer below a later honest proposal -/
 
-namespace Consensus.Goldilocks.SA.Growing.ProposalSources
+namespace Consensus.Goldilocks.AC.Growing.ProposalSources
 
-variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
+variable {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
   {proposer : Nat → Fin sp.n} {H : Time → Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {T : SATrace sp FGP ro}
+  {U : Set (Blk sp.n FGP)} {T : GTrace sp FGP ro}
 
 theorem optimistic_first_proposal_anc_at
     {ini} (hrun : Growing.ACRun proposer T H U ini) {K : CommitteeDict sp.n}
@@ -23,7 +23,7 @@ theorem optimistic_first_proposal_anc_at
     {D B : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt T X i₀ σ D CV) (hBD : Anc U B D)
     {x : Fin sp.n} (hx : x ∈ H (T.time i))
-    {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : T.CallAt x i ell)
+    {ell : ACLabel (goldilocksAC sp FGP ro)} (hc : T.CallAt x i ell)
     (hslot : sp.slot (T.time i) = σ + 1) {d : DutyHead sp.n FGP (Payload sp.n)}
     {pay : Payload sp.n}
     (hprop : (acProposal sp (T.state x i) ell.frame (T.time i)).2 = some (d, pay))
@@ -102,6 +102,6 @@ theorem optimistic_first_proposal_anc_at
   · exact Or.inr ⟨v, hv, hvw, hvs, hva⟩
   · exact Or.inl h
 
-end Consensus.Goldilocks.SA.Growing.ProposalSources
+end Consensus.Goldilocks.AC.Growing.ProposalSources
 
 end

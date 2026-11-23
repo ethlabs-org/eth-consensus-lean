@@ -24,7 +24,7 @@ open Blocks Shape Node
 
 variable {binding : VoteBinding}
 
-variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
 
 theorem contained_parts_infix {n : Nat} {Role Item Body : Type}
     {o q : Model.Obj n Role Item Body} (h : Model.Obj.Contains o q) :
@@ -43,7 +43,7 @@ decreasing_by exact lt_trans (List.sizeOf_lt_of_mem hc) (Model.Obj.carried_size_
 /-- Splitting recursive receipt processing preserves the actual intermediate cut,
 rather than replacing a processing occurrence by an arbitrary historical call. -/
 theorem deliverSeq_append_split {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp ro}
-    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {hs : List (Header Info × Nat)}
+    {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {hs : List (Header Info × Nat)}
     {y : Fin sp.n} {t : Time} (xs ys : List (Wire sp.n binding)) {j j' : Nat}
     (h : DeliverSeq proposer tr dg hs y t (xs ++ ys) j j') :
     ∃ m, DeliverSeq proposer tr dg hs y t xs j m ∧
@@ -72,7 +72,7 @@ private theorem canonEvent_forward_none (hs : List (Header Info × Nat))
 /-- A forwarding chain processes the parent's visit before the visit of the child's canonical
 block (with its payload when it is accepted); the split retains the actual cut boundary. -/
 theorem deliverSeq_forward_parent {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp ro}
-    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {hs : List (Header Info × Nat)}
+    {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {hs : List (Header Info × Nat)}
     {y x : Fin sp.n} {u t : Time} {parent : Wire sp.n binding} {B : Blk sp} {j j' : Nat}
     {σ : State sp ro binding}
     (h : DeliverSeq proposer tr dg hs y u
@@ -154,7 +154,7 @@ theorem decodeForward_transport {hs hs' : List (Header Info × Nat)} :
 /-- A single delivered object can create a wrapper only through its actual canonical
 handler. This keeps the handler state needed to locate the cut in recursive processing. -/
 theorem processOne_forward_origin (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
+    (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (hs : List (Header Info × Nat)) (st : State sp ro binding) (o : Wire sp.n binding)
     (q : Time × List (Wire sp.n binding)) (hq : q ∈ (processOne hs st o).forwards) :
     q ∈ st.forwards ∨ ∃ e B, ∃ p : Option (Wire sp.n binding),
@@ -176,7 +176,7 @@ theorem processOne_forward_origin (proposer : Nat → Fin sp.n)
 
 /-- A successful canonical handler cut names the exact decoded input block. -/
 private theorem accepted_canonEvent_block (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
+    (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (hs : List (Header Info × Nat)) (st : State sp ro binding) (o : Wire sp.n binding)
     {e : Event (goldilocksNode sp ro)} {B : Blk sp}
     (he : canonEvent sp ro hs o = some e)
@@ -206,7 +206,7 @@ private theorem accepted_canonEvent_block (proposer : Nat → Fin sp.n)
 /-- A fresh queue entry from recursive receipt has a successful record in that exact
 delivery traversal, including its node and clock. -/
 theorem foldl_processOne_forward_origin (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
+    (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (hs : List (Header Info × Nat)) (i : Nat) (q : Time × List (Wire sp.n binding)) :
     ∀ (os : List (Wire sp.n binding)) (st : State sp ro binding) (sub : Nat),
     q ∈ (os.foldl (processOne hs) st).forwards →

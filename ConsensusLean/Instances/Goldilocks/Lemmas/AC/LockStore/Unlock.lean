@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 
 public section
 
-/-! # Goldilocks SA: unlocking is idempotent (A0.4 (d))
+/-! # Goldilocks AC: unlocking is idempotent (A0.4 (d))
 
 Every lock that `unlock` returns is live and on a block that is its own viable ancestor (a lock
 block moved back to a candidate of `viable_ancestor` is moved to an ancestor that is again a
@@ -11,9 +11,9 @@ candidate) and, for a slot below `s`, its own unlock target (the deepest block b
 opponents is itself; when there is none, the target is `Φ.F`, whose own target is `Φ.F`). So a
 second `unlock` returns each lock unchanged. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {sp : SAParams} {FGP : Type}
+variable {sp : ACParams} {FGP : Type}
 
 /-- A block below a candidate of `viable_ancestor` is a candidate. -/
 private theorem candidate_of_anc {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {X B : Blk sp.n FGP}
@@ -118,6 +118,6 @@ theorem unlock_idempotent : UnlockIdempotent sp := by
     obtain ⟨B, hB, hBr, hk, he⟩ := hlive l hl
     exact ⟨l, ⟨l, hl, B, hB, hBr, hk, he⟩, B, hB, hBr, (hid l hl B hB hBr).symm⟩
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

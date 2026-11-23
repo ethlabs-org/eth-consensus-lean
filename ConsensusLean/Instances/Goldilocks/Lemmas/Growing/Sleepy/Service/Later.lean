@@ -24,9 +24,9 @@ proposal `P` of slot `s` (by a proposer honest at `t_s + Δ`), or its `Σ.F` ext
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
@@ -36,20 +36,20 @@ theorem update_of_awake_joined_at {ini} (hrun : Growing.GoldilocksRun proposer d
     {x : Fin sp.n}
     {s : Nat} (hx : x ∈ H (sp.ts s + 6 * sp.Δ)) (hw : tr.awake x (sp.ts s + 6 * sp.Δ))
     (hj : tr.JoinedAt x (sp.ts s + 6 * sp.Δ)) :
-    ∃ k ℓ, SA.UpdateAt tr.projAC x k s ℓ := by
+    ∃ k ℓ, AC.UpdateAt tr.projAC x k s ℓ := by
   have hd : (0 : Time) ≤ sp.ts s + 6 * sp.Δ := by
     have := ts_natCast_nonneg (sp := sp) s
     linarith [sp.toParams.hΔ]
   obtain ⟨k, ℓ, hu⟩ := Compose.update_of_awake_joined (hrun.upTo hd) hx ⟨hw, le_rfl⟩
     (joinedAt_upTo hj)
   rw [RunTrace.upTo_projAC] at hu
-  exact ⟨k, ℓ, ((sa_updateAt_upTo hrun.time_mono).1 hu).2⟩
+  exact ⟨k, ℓ, ((ac_updateAt_upTo hrun.time_mono).1 hu).2⟩
 
 /-- A block held while honest below a block of the tree of a node honest at a cut is below it in
 that node's store (the static `honest_held_anc` on the prefix through the cut). -/
 private theorem honest_held_anc_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {A W : SA.Blk sp.n (List (FG.Att sp.n))} (h : Anc (tr.HonestBlocksAt H) A W)
+    {A W : AC.Blk sp.n (List (FG.Att sp.n))} (h : Anc (tr.HonestBlocksAt H) A W)
     (hW : W ∈ (tr.state y i).fg.tree) : (tr.state y i).fg.Anc A W := by
   have hd := hrun.time_nonneg i
   have hst : (tr.upTo (tr.time i)).state y i = tr.state y i :=
@@ -70,17 +70,17 @@ majority, the deepest majority block above `Σ.F` extends it, and the record mov
 deeper one. -/
 theorem update_adopts_extended_from {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
-    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
-    (hBK : CommitteeBoundsFrom tr H K σ₀ b) {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hBK : CommitteeBoundsFrom tr H K σ₀ b) {P : AC.Blk sp.n (List (FG.Att sp.n))}
     {y : Fin sp.n} {k₀ s' : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀))
-    (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) (hb : tr.time k₀ ≤ b) (hσ₀ : σ₀ ≤ s')
+    (hu : AC.UpdateAt tr.projAC y k₀ s' ℓ) (hb : tr.time k₀ ≤ b) (hσ₀ : σ₀ ≤ s')
     (ha : a ≤ sp.ts s') (hκ : a + κ ≤ sp.ts s' + 2 * sp.Δ)
     (hFc : Compatible (tr.HonestBlocksAt H) P (tr.state y k₀).fg.F)
     (hext : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s' →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg P)
-    (hnv : ∀ C, SA.getConfirmation sp (tr.state y k₀).ac ℓ.frame s' = some C →
-      ¬ SA.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) C) :
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
+    (hnv : ∀ C, AC.getConfirmation sp (tr.state y k₀).ac ℓ.frame s' = some C →
+      ¬ AC.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) C) :
     Anc (tr.HonestBlocksAt H) P (tr.state y (k₀ + 1)).fg.F ∨
       ∃ E ∈ ℓ.frame.tree, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
         Anc (tr.HonestBlocksAt H) P E := by
@@ -114,8 +114,8 @@ theorem update_adopts_extended_from {ini} (hrun : Growing.GoldilocksRun proposer
   have hbatch : ∀ x j e, HVoteAt tr H x j e → x ∈ H d → e.msg.slot = s' →
       ∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ Anc (tr.HonestBlocksAt H) P Hd ∧
         e.msg ∈ (tr.projAC.state y k₀).pool s' ∧
-        SA.resolutionTime (tr.projAC.state y k₀) ℓ.frame e.msg <
-          SA.ETime.of (sp.ts s' + 2 * sp.Δ) := by
+        AC.resolutionTime (tr.projAC.state y k₀) ℓ.frame e.msg <
+          AC.ETime.of (sp.ts s' + 2 * sp.Δ) := by
     intro x j e hv hxd hes
     obtain ⟨Hd, hHdU, hHdr, hPHd⟩ := hext x j e hv hes
     obtain ⟨hHdt, hpool, hres⟩ := honest_vote_at_update_from hrun hnc hsync hy hu hb ha hκ hHdU
@@ -135,8 +135,8 @@ theorem update_adopts_extended_from {ini} (hrun : Growing.GoldilocksRun proposer
     exact ⟨hPfg, honest_held_anc_at hrun hnc hy hFP hPfg⟩
   have hFPΦ : ℓ.frame.Anc ℓ.frame.F P := hΦ.rooted.2 P hPt
   -- `P` has a strict majority at the update's test, counted at `d`
-  have hmaj : (SA.voters {v | v ∈ (tr.state y k₀).ac.pool s'}).ncard <
-      2 * SA.confirmationScore sp (tr.state y k₀).ac ℓ.frame s' P := by
+  have hmaj : (AC.voters {v | v ∈ (tr.state y k₀).ac.pool s'}).ncard <
+      2 * AC.confirmationScore sp (tr.state y k₀).ac ℓ.frame s' P := by
     rw [← projAC_state_at hrun hy]
     set A := tr.projAC.state y k₀
     set Hv := VotersAt tr H s' d
@@ -146,20 +146,20 @@ theorem update_adopts_extended_from {ini} (hrun : Growing.GoldilocksRun proposer
       obtain ⟨j', -, e', hv', rfl⟩ := pool_vote_at hrun hnc hy hvp (hvx ▸ hxd)
       have hs' := state_pool_slot_at hrun hnc hy s' _ hvp
       rw [hvx] at hv'
-      exact congrArg (fun e : SA.Em sp (List (FG.Att sp.n)) => e.msg)
+      exact congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg)
         (one_vote_per_slot_at hrun hnc hv' hv (hs'.trans hs.symm)).2
-    have hsupp : Hv ⊆ SA.supporters ℓ.frame ⟨{v | v ∈ A.pool s'}, {v | v ∈ A.pool s' ∧
-        SA.resolutionTime A ℓ.frame v < SA.ETime.of (sp.ts s' + 2 * sp.Δ)}⟩ s' P := by
+    have hsupp : Hv ⊆ AC.supporters ℓ.frame ⟨{v | v ∈ A.pool s'}, {v | v ∈ A.pool s' ∧
+        AC.resolutionTime A ℓ.frame v < AC.ETime.of (sp.ts s' + 2 * sp.Δ)}⟩ s' P := by
       intro x hxv
       obtain ⟨hxd, j, e, hv, hs⟩ := votersAt_iff.1 hxv
       obtain ⟨Hd, hHdt, hHdr, hPHd, hvp, hres⟩ := hbatch x j e hv hxd hs
       obtain ⟨hx, ℓx, hcx, hex⟩ := hVoteAt_iff.1 hv
       have hval := (castAt_spec_at hrun hnc hx ⟨hcx, hex⟩).1
       refine ⟨?_, e.msg, ⟨hvp, hres⟩, hval, by exact_mod_cast hs, Hd, hHdt, hHdr,
-        SA.anc_tree_of_anc_U hU hΦ hHB hPt hPHd hHdt⟩
+        AC.anc_tree_of_anc_U hU hΦ hHB hPt hPHd hHdt⟩
       rintro ⟨v, hv₁, v', hv', hne, hvx, hv'x⟩
       exact hne ((hone x j e hv hxd hs v hv₁ hvx).trans (hone x j e hv hxd hs v' hv' hv'x).symm)
-    have hvot : SA.voters {v | v ∈ A.pool s'} ⊆ Hv ∪ (K.committee s' ∩ (H d)ᶜ) := by
+    have hvot : AC.voters {v | v ∈ A.pool s'} ⊆ Hv ∪ (K.committee s' ∩ (H d)ᶜ) := by
       rintro w ⟨v, hv, rfl⟩
       by_cases hw : v.val ∈ H d
       · obtain ⟨j, -, e, he, rfl⟩ := pool_vote_at hrun hnc hy hv hw
@@ -168,33 +168,33 @@ theorem update_adopts_extended_from {ini} (hrun : Growing.GoldilocksRun proposer
     have h1 := Set.ncard_le_ncard hvot (Set.toFinite _)
     have h2 := Set.ncard_union_le Hv (K.committee s' ∩ (H d)ᶜ)
     have h3 := Set.ncard_le_ncard hsupp (Set.toFinite _)
-    change _ < 2 * (SA.supporters ℓ.frame _ s' P).ncard
+    change _ < 2 * (AC.supporters ℓ.frame _ s' P).ncard
     omega
   -- the result is the deepest majority block above `Σ.F`, which extends `P`
   set A := (tr.state y k₀).ac
   set S := {B | B ∈ ℓ.frame.tree ∧ ℓ.frame.Anc ℓ.frame.F B ∧
-    (SA.voters {v | v ∈ A.pool s'}).ncard < 2 * SA.confirmationScore sp A ℓ.frame s' B}
+    (AC.voters {v | v ∈ A.pool s'}).ncard < 2 * AC.confirmationScore sp A ℓ.frame s' B}
   have hS : S ⊆ ℓ.frame.tree := fun X hX => hX.1
-  set V : SA.View sp.n := ⟨{v | v ∈ A.pool s'}, {v | v ∈ A.pool s' ∧
-    SA.resolutionTime A ℓ.frame v < SA.ETime.of (sp.ts s' + 2 * sp.Δ)}⟩
-  have hcs : ∀ B, SA.confirmationScore sp A ℓ.frame s' B = (SA.supporters ℓ.frame V s' B).ncard :=
+  set V : AC.View sp.n := ⟨{v | v ∈ A.pool s'}, {v | v ∈ A.pool s' ∧
+    AC.resolutionTime A ℓ.frame v < AC.ETime.of (sp.ts s' + 2 * sp.Δ)}⟩
+  have hcs : ∀ B, AC.confirmationScore sp A ℓ.frame s' B = (AC.supporters ℓ.frame V s' B).ncard :=
     fun _ => rfl
   have hsub : V.support ⊆ V.votes := fun _ hv => hv.1
   have hch : ∀ B ∈ S, ∀ C ∈ S, Compatible ℓ.frame.tree B C := fun B hB C hC =>
-    SA.majority_chain sp _ ℓ.frame V s' B C hΦ hsub hB.1 hC.1 (hcs B ▸ hB.2.2) (hcs C ▸ hC.2.2)
-  obtain ⟨D, hD⟩ := SA.exists_deepest hΦ hS ⟨P, hPt, hFPΦ, hmaj⟩
-  have hPD := SA.anc_deepest hΦ hS hch hD P ⟨hPt, hFPΦ, hmaj⟩
-  have hC : SA.getConfirmation sp A ℓ.frame s' = some D := hD
+    AC.majority_chain sp _ ℓ.frame V s' B C hΦ hsub hB.1 hC.1 (hcs B ▸ hB.2.2) (hcs C ▸ hC.2.2)
+  obtain ⟨D, hD⟩ := AC.exists_deepest hΦ hS ⟨P, hPt, hFPΦ, hmaj⟩
+  have hPD := AC.anc_deepest hΦ hS hch hD P ⟨hPt, hFPΦ, hmaj⟩
+  have hC : AC.getConfirmation sp A ℓ.frame s' = some D := hD
   have hv := hnv D hC
   -- the record moves to the result, or keeps a deeper one
   obtain ⟨-, hcall, ht', hj⟩ := hu
   rw [projAC_state_at hrun hy] at hj
   classical
   have hrec : (tr.state y (k₀ + 1)).ac.latestConfirmed =
-      if SA.AncR ℓ.frame D A.latestConfirmed then A.latestConfirmed else D.root := by
+      if AC.AncR ℓ.frame D A.latestConfirmed then A.latestConfirmed else D.root := by
     rw [hpost, show (tr.post k₀).ac = _ from (congrArg Prod.fst hstep).symm, hcall]
     exact Compose.acOnTick_update_record y ht' hj hC hv
-  have hDt : D ∈ ℓ.frame.tree := (SA.deepest_mem hC).1.1
+  have hDt : D ∈ ℓ.frame.tree := (AC.deepest_mem hC).1.1
   split_ifs at hrec with hA
   · obtain ⟨R, hR, hRr, hDR⟩ := hA
     exact Or.inr ⟨R, hR, hRr.trans hrec.symm, Anc.mono hHB (hPD.trans hDR)⟩
@@ -208,11 +208,11 @@ at the update, so `P` is in the frame with a strict majority, the deepest majori
 theorem update_adopts_origin_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hinv : SleepyInvariantUpTo tr H b)
     (hsync : SleepyServiceBefore tr H ΔF b)
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPo : OriginWithin tr H P s b)
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPo : OriginWithin tr H P s b)
     (hPU : P ∈ tr.HonestBlocksAt H) {y : Fin sp.n} {k₀ s' : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀)) (hss : s < s')
-    (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) (hb : tr.time k₀ ≤ b)
-    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hu : AC.UpdateAt tr.projAC y k₀ s' ℓ) (hb : tr.time k₀ ≤ b)
+    {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     (hBK : CommitteeBoundsFrom tr H K 0 b) :
     ∃ E ∈ tr.HonestBlocksAt H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
       (Anc (tr.HonestBlocksAt H) P E ∨
@@ -253,11 +253,11 @@ count `SleepyBoundsFrom.late`), hence an origin of label `s`. -/
 theorem later_update_adopts_gt_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {y : Fin sp.n} {k₀ s' : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀)) (hss : s < s')
-    (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) (hb : tr.time k₀ ≤ b)
-    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hu : AC.UpdateAt tr.projAC y k₀ s' ℓ) (hb : tr.time k₀ ≤ b)
+    {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     (hBK : CommitteeBoundsFrom tr H K 0 b) :
     ∃ E ∈ tr.HonestBlocksAt H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
       (Anc (tr.HonestBlocksAt H) P E ∨
@@ -265,10 +265,10 @@ theorem later_update_adopts_gt_at {ini} (hrun : Growing.GoldilocksRun proposer d
   have hΔ := sp.toParams.hΔ
   have ht : tr.time k₀ = sp.ts s' + 6 * sp.Δ := hu.2.2.1
   have hsb : sp.ts s + 6 * sp.Δ ≤ b := by
-    have := (SA.ts_le_iff sp).2 (show (s : Int) ≤ s' by exact_mod_cast hss.le)
+    have := (AC.ts_le_iff sp).2 (show (s : Int) ≤ s' by exact_mod_cast hss.le)
     linarith
   have hT : sp.ts (s + 1 : Nat) + 2 * sp.Δ = sp.ts s + 6 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hf := hB.late (s + 1) (sp.ts (s + 1 : Nat) + 2 * sp.Δ) (Nat.zero_le _) le_rfl
     (by rw [hT]; exact hsb) (by linarith)
   rw [hT] at hf
@@ -278,7 +278,7 @@ theorem later_update_adopts_gt_at {ini} (hrun : Growing.GoldilocksRun proposer d
   have hxk : x ∈ H (tr.time kx) := hkx ▸ hx
   obtain ⟨hC, -⟩ := adopt_result_at hrun hnc hb0 hsync hB hinv hp hP hPs hxk hux (by linarith)
     hKB hBK
-  have hPt : P ∈ ℓx.frame.tree := (SA.deepest_mem hC).1.1
+  have hPt : P ∈ ℓx.frame.tree := (AC.deepest_mem hC).1.1
   have hPU : P ∈ tr.HonestBlocksAt H := (frameIn_at hrun hnc hxk hux.1).2 hPt
   have hxb : tr.time kx ≤ b := by linarith
   have hPo : OriginWithin tr H P s b := originWithin_iff.2
@@ -289,11 +289,11 @@ theorem later_update_adopts_gt_at {ini} (hrun : Growing.GoldilocksRun proposer d
 theorem later_update_adopts_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {y : Fin sp.n} {k₀ s' : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀)) (hss : s ≤ s')
-    (hu : SA.UpdateAt tr.projAC y k₀ s' ℓ) (hb : tr.time k₀ ≤ b)
-    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hu : AC.UpdateAt tr.projAC y k₀ s' ℓ) (hb : tr.time k₀ ≤ b)
+    {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     (hBK : CommitteeBoundsFrom tr H K 0 b) :
     ∃ E ∈ tr.HonestBlocksAt H, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
       (Anc (tr.HonestBlocksAt H) P E ∨

@@ -18,7 +18,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote Payload SAState)
+open AC (ACParams ReplayOrder Vote Payload ACState)
 
 variable {binding : VoteBinding}
 
@@ -310,7 +310,7 @@ theorem trailing_polls (v : V) (N4 : Model.Node (Model.protoOf (compiled (goldil
       exact Or.inr ⟨τ, m, rfl⟩
 
 /-- The proposal step of a key that does not propose at `t` makes no cut. -/
-theorem tickStep_proposal_not' {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+theorem tickStep_proposal_not' {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
     (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
     (h : ¬ Proposes (P := sp.toParams) proposer self t) :
@@ -762,7 +762,7 @@ theorem attest_val_of_mem_node_exec {P : Params} {A : NodeAC P}
   exact key (Compose.exec_is_cut_chain proposer dg self st t e) h
 
 /-- A signing cut of a handler of `self` signs an attestation of `self`. -/
-theorem attest_val_of_mem_exec {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+theorem attest_val_of_mem_exec {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
     (st : NodeState (goldilocksNode sp ro)) (t : Time) (e : Event (goldilocksNode sp ro))
     {C : (goldilocksNode sp ro).Blk} {a : FG.Att sp.n}

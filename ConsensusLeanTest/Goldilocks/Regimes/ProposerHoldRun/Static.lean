@@ -141,11 +141,11 @@ theorem rhoc_boundsAt : Compose.Growing.SleepyBoundsFrom (tr S) (Hg S) 0 41 := b
   exact h
 
 theorem rhoc_factsAt :
-    Compose.Growing.CommitteeFacts (tr S) (Hg S) (SA.CommitteeDict.full (Fintype.card (Fin 5))) :=
+    Compose.Growing.CommitteeFacts (tr S) (Hg S) (AC.CommitteeDict.full (Fintype.card (Fin 5))) :=
   Compose.Growing.CommitteeFacts.of_full rhoc_runAt rhoc_noColl rfl
 
 theorem rhoc_cboundsAt : Compose.Growing.CommitteeBoundsFrom (tr S) (Hg S)
-    (SA.CommitteeDict.full (Fintype.card (Fin 5))) 0 41 :=
+    (AC.CommitteeDict.full (Fintype.card (Fin 5))) 0 41 :=
   Compose.Growing.CommitteeBoundsFrom.of_full rhoc_runAt rhoc_boundsAt
 
 /-- **The Sleepy record invariant up to the horizon** on the retained run, under growing faults. -/

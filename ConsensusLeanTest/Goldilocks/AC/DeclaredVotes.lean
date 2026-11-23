@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Spec.SA.Restart
+public import ConsensusLean.Instances.Goldilocks.Spec.AC.Restart
 public import ConsensusLean.Instances.Goldilocks.AsChainShape
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Block
 @[expose] public section
@@ -40,7 +40,7 @@ state `st f l` holds the slot-`1` votes `f` stamped `5` (before the freeze) and 
 * several same-slot proposals: `not_ready_other_proposal`, `no_early_vote_other_proposal`,
   `declared_twice_counts_once`. -/
 
-namespace Consensus.Goldilocks.SA.Test.DeclaredVotes
+namespace Consensus.Goldilocks.AC.Test.DeclaredVotes
 
 /-- Three validators, `Δ = 1`, `t_s = 4s`, genesis root `0`. -/
 abbrev P3 : Params where
@@ -55,8 +55,8 @@ abbrev P3 : Params where
   genesisRoot := 0
   δt := 0
 
-/-- The SA parameters: `P3` with `k = c = 2`; the committee is the whole population. -/
-abbrev sp3 : SAParams where
+/-- The AC parameters: `P3` with `k = c = 2`; the committee is the whole population. -/
+abbrev sp3 : ACParams where
   toParams := P3
   slotTime_eq := fun s => by change 4 * (s : Int) = 4 * 1 * s; omega
   k := 2
@@ -89,8 +89,8 @@ def frm (ps : List (Blk sp3.n Unit)) : Frm sp3.n Unit :=
   ⟨{B | B = g ∨ B = X ∨ B = Y ∨ B ∈ ps}, g, g, ∅⟩
 
 /-- A reader holding the slot-`1` votes `f` stamped `5` and `l` stamped `8`. -/
-def st (f l : List (Vote sp3.n)) : SAState sp3.n :=
-  { SAState.initial (n := sp3.n) 0 with
+def st (f l : List (Vote sp3.n)) : ACState sp3.n :=
+  { ACState.initial (n := sp3.n) 0 with
     pool := fun s => if s = 1 then f ++ l else []
     voteStamp := fun v => if v ∈ f then ETime.of 5 else if v ∈ l then ETime.of 8 else ⊤ }
 
@@ -110,7 +110,7 @@ theorem guard_st (f l : List (Vote sp3.n)) (t : Time) (ht : t = 8 ∨ t = 9) :
       sp3.ts (2 : Nat) + sp3.Δ < t) := by
   rintro (h | h | h)
   · exact h (joined_st _ _ _)
-  · simp [st, SAState.initial] at h
+  · simp [st, ACState.initial] at h
   · rw [ts_2] at h; rcases ht with rfl | rfl <;> exact absurd h (by decide)
 
 /-- Not ready at `t_2 = 8`: no vote, nothing changes. -/
@@ -134,7 +134,7 @@ theorem tryVote_cast {f l : List (Vote sp3.n)} {Φ : Frm sp3.n Unit} (self : Fin
       · rw [ts_2] at hlt; exact absurd hlt (by decide)
   unfold tryVote
   rw [hs, ite_eq_right (fun h => absurd h h1), ite_eq_right (fun h => absurd h h2)]
-  simp [st, SAState.initial]
+  simp [st, ACState.initial]
 
 /-- The proposals of slot `2` in `frm ps` are those of `ps` (all of slot `2`). -/
 theorem slot_two {ps : List (Blk sp3.n Unit)} {B : Blk sp3.n Unit} (hB : B ∈ (frm ps).tree)
@@ -155,13 +155,13 @@ its validator. -/
 theorem shouldCount_st {f l : List (Vote sp3.n)} {v : Vote sp3.n} (hv : v.slot = 1) :
     ShouldCountDeclaredVote sp3 (st f l) v ↔
       v ∈ f ++ l ∨ v.val ∈ equivocators {y | y ∈ f ++ l} := by
-  simp [ShouldCountDeclaredVote, SAState.poolAt, st, hv]
+  simp [ShouldCountDeclaredVote, ACState.poolAt, st, hv]
 
 /-- The frozen base of a slot-`2` voter of `st f l` is `f`. -/
 theorem base_st (f l : List (Vote sp3.n)) (Φ : Frm sp3.n Unit) (v : Vote sp3.n) :
     v ∈ (voteView (st f l) Φ (((2 : Nat) : Int) - 1) (ETime.of (freeze sp3 2))).votes ↔ v ∈ f := by
   simp only [voteView, View.ofLists, voteViewList, Set.mem_ofPred_eq, List.mem_filter, freeze_2]
-  simp only [SAState.poolAt, st]
+  simp only [ACState.poolAt, st]
   constructor
   · rintro ⟨-, h⟩
     by_contra hf
@@ -176,7 +176,7 @@ theorem base_st (f l : List (Vote sp3.n)) (Φ : Frm sp3.n Unit) (v : Vote sp3.n)
 theorem merged_votes {f l : List (Vote sp3.n)} {ps : List (Blk sp3.n Unit)} {v : Vote sp3.n}
     (hps : ∀ B ∈ ps, B.slot = 2) :
     v ∈ (mergedVoteView sp3 (st f l) (frm ps) 2).votes ↔
-      v ∈ f ∨ ∃ B ∈ ps, v ∈ blockVotes B ∧ ShouldCountDeclaredVote sp3 (st f l) v := by
+      v ∈ f ∨ ∃ B ∈ ps, v ∈ declaredHeadVotes B ∧ ShouldCountDeclaredVote sp3 (st f l) v := by
   simp only [mergedVoteView, Set.mem_union, Set.mem_ofPred_eq]
   rw [base_st]
   constructor
@@ -231,7 +231,7 @@ theorem root_ne_of_support (dg : Digest Unit (Payload sp3.n))
 
 /-- A repeated declaration is rejected. -/
 theorem invalid_duplicate : ¬ validPayload (prop 3 ([a, a], [])) :=
-  fun h => by simpa [prop, blockVotes, a] using h.2.2.1
+  fun h => by simpa [prop, declaredHeadVotes, a] using h.2.2.1
 
 /-- A third declaration of one validator is rejected. -/
 theorem invalid_three_of_one_seat : ¬ validPayload (prop 3 ([b, b', z], [])) :=
@@ -249,7 +249,7 @@ theorem invalid_support : ¬ validPayload (prop 3 ([a], [b])) :=
 payload check reads no signature. -/
 theorem valid_unsigned_pair : validPayload (prop 3 ([a, b, z], [a, z])) := by
   refine ⟨?_, ?_, ?_, ?_⟩
-  · intro v hv; simp [prop, blockVotes] at hv; rcases hv with rfl | rfl | rfl <;> rfl
+  · intro v hv; simp [prop, declaredHeadVotes] at hv; rcases hv with rfl | rfl | rfl <;> rfl
   · decide
   · decide
   · decide
@@ -271,25 +271,25 @@ theorem unsigned_omitted_at_timeout :
 /-- A block receipt pools none of the block's declarations (under the former rule it would pool
 `a`, `b'` and `z`). -/
 theorem blockReceipt_admits_nothing :
-    (blockReceipt sp3 (SAState.initial 0) 8 (prop 3 ([a, b', z], [a]))).pool 1 = [] := rfl
+    (blockReceipt sp3 (ACState.initial 0) 8 (prop 3 ([a, b', z], [a]))).pool 1 = [] := rfl
 
 /-- A vote received as a message is still admitted. -/
-theorem message_admits : (admitVote sp3 (SAState.initial 0) 8 a).pool 1 = [a] := by
-  simp [admitVote, slot_8, SAState.initial, a]
+theorem message_admits : (admitVote sp3 (ACState.initial 0) 8 a).pool 1 = [a] := by
+  simp [admitVote, slot_8, ACState.initial, a]
 
 /-- A restart replays no declaration, whatever the frame and the replay order: the pools stay
 empty (the node is not joined at its restart time, so it casts no vote either). -/
-theorem acRestart_pools_empty (ro : ReplayOrder sp3 Unit) (self : Fin sp3.n) (A : SAState sp3.n)
+theorem acRestart_pools_empty (ro : ReplayOrder sp3 Unit) (self : Fin sp3.n) (A : ACState sp3.n)
     (Φ : Frm sp3.n Unit) :
     (acRestart sp3 ro self A Φ 10).1.pool = (fun _ => []) ∧
       (acRestart sp3 ro self A Φ 10).2 = [] := by
-  have hnj : ∀ A' : SAState sp3.n, A'.restartTime = ((10 : Time) : WithBot Time) →
+  have hnj : ∀ A' : ACState sp3.n, A'.restartTime = ((10 : Time) : WithBot Time) →
       ¬ joined sp3 A' 10 := by
     intro A' h hj
     unfold joined at hj
     rw [h, show sp3.slot 10 = 2 by decide] at hj
     exact absurd (WithBot.coe_le_coe.mp hj) (by decide)
-  have hblock : ∀ (A' : SAState sp3.n) (B : Blk sp3.n Unit),
+  have hblock : ∀ (A' : ACState sp3.n) (B : Blk sp3.n Unit),
       A'.restartTime = ((10 : Time) : WithBot Time) →
       acOnBlock sp3 self A' Φ 10 B = (blockReceipt sp3 A' 10 B, []) := by
     intro A' B h
@@ -302,9 +302,9 @@ theorem acRestart_pools_empty (ro : ReplayOrder sp3 Unit) (self : Fin sp3.n) (A 
     rw [ho]
     unfold tryVote
     rw [ite_eq_left (Or.inl hr)]
-  let step := fun (acc : SAState sp3.n × List (Em sp3 Unit)) B =>
+  let step := fun (acc : ACState sp3.n × List (Em sp3 Unit)) B =>
     let r := acOnBlock sp3 self acc.1 Φ 10 B; (r.1, acc.2 ++ r.2)
-  suffices ∀ (L : List (Blk sp3.n Unit)) (acc : SAState sp3.n × List (Em sp3 Unit)),
+  suffices ∀ (L : List (Blk sp3.n Unit)) (acc : ACState sp3.n × List (Em sp3 Unit)),
       acc.1.pool = (fun _ => []) → acc.1.restartTime = ((10 : Time) : WithBot Time) → acc.2 = [] →
       (L.foldl step acc).1.pool = (fun _ => []) ∧ (L.foldl step acc).2 = [] from
     this (ro.order 10 Φ) _ rfl rfl rfl
@@ -333,11 +333,11 @@ def P : Blk sp3.n Unit := prop 3 ([a, b], [a, b])
 /-- `a` and `b` held (after the freeze): ready. -/
 theorem ready_all_counted : voteReady sp3 (st [] [a, b]) (frm [P]) 2 := by
   refine ⟨⟨P, mem_frm (by simp), rfl, fun x hx _ _ => ?_⟩, fun B hB hs x hx _ => ?_⟩
-  · simp [P, prop, blockSupport] at hx
+  · simp [P, prop, declaredSupportVotes] at hx
     rcases hx with rfl | rfl <;> exact ⟨X, X_mem _, rfl, le_rfl⟩
   · have hB' := slot_two hB hs
     simp only [List.mem_singleton] at hB'; subst hB'
-    simp [P, prop, blockVotes, blockSupport] at hx
+    simp [P, prop, declaredHeadVotes, declaredSupportVotes] at hx
     rw [shouldCount_st (by rcases hx with rfl | rfl <;> rfl)]
     left; simpa using hx
 
@@ -350,7 +350,8 @@ theorem early_vote_all_counted : (tryVote sp3 v2 (st [] [a, b]) (frm [P]) 8).2 �
 /-- Nothing of `v1` held: `b` cannot be counted, so not ready. -/
 theorem not_ready_missing : ¬ voteReady sp3 (st [] [a]) (frm [P]) 2 := by
   rintro ⟨-, h⟩
-  have := h P (mem_frm (by simp)) rfl b (Or.inl (by simp [P, prop, blockVotes])) (Set.mem_univ _)
+  have := h P (mem_frm (by simp)) rfl b (Or.inl (by simp [P, prop, declaredHeadVotes]))
+    (Set.mem_univ _)
   rw [shouldCount_st rfl] at this
   rcases this with h | ⟨x, hx, y, hy, hne, -, -⟩
   · simp [a, b] at h
@@ -370,7 +371,7 @@ theorem missing_omitted :
     a ∈ (mergedVoteView sp3 (st [] [a]) (frm [P]) 2).votes ∧
       b ∉ (mergedVoteView sp3 (st [] [a]) (frm [P]) 2).votes := by
   have hps : ∀ B ∈ [P], B.slot = 2 := by simp [P, prop]
-  refine ⟨(merged_votes hps).2 (Or.inr ⟨P, by simp, by simp [P, prop, blockVotes],
+  refine ⟨(merged_votes hps).2 (Or.inr ⟨P, by simp, by simp [P, prop, declaredHeadVotes],
     (shouldCount_st rfl).2 (Or.inl (by simp))⟩), ?_⟩
   rw [merged_votes hps]
   rintro (h | ⟨B, -, -, hc⟩)
@@ -405,17 +406,18 @@ pool stays as it was. -/
 theorem pair_counts_unsigned :
     z ∈ (mergedVoteView sp3 (st [] [b, b']) (frm [Pz]) 2).votes ∧ z ∉ (st [] [b, b']).pool 1 := by
   refine ⟨(merged_votes (by simp [Pz, prop])).2 (Or.inr ⟨Pz, by simp,
-    by simp [Pz, prop, blockVotes],
+    by simp [Pz, prop, declaredHeadVotes],
     (shouldCount_st rfl).2 (Or.inr ⟨b, by simp, b', by simp, by decide, rfl, rfl⟩)⟩), ?_⟩
   simp [st, z, b, b']
 
 /-- And the pair makes the proposal ready. -/
 theorem pair_ready : voteReady sp3 (st [] [b, b']) (frm [Pz]) 2 := by
-  refine ⟨⟨Pz, mem_frm (by simp), rfl, fun x hx _ _ => by simp [Pz, prop, blockSupport] at hx⟩,
+  refine ⟨⟨Pz, mem_frm (by simp), rfl,
+    fun x hx _ _ => by simp [Pz, prop, declaredSupportVotes] at hx⟩,
     fun B hB hs x hx _ => ?_⟩
   have hB' := slot_two hB hs
   simp only [List.mem_singleton] at hB'; subst hB'
-  simp [Pz, prop, blockVotes, blockSupport] at hx; subst hx
+  simp [Pz, prop, declaredHeadVotes, declaredSupportVotes] at hx; subst hx
   exact (shouldCount_st rfl).2 (Or.inr ⟨b, by simp, b', by simp, by decide, rfl, rfl⟩)
 
 /-! ## Support bits -/
@@ -423,7 +425,7 @@ theorem pair_ready : voteReady sp3 (st [] [b, b']) (frm [Pz]) 2 := by
 /-- The supports of the merged view of a slot-`2` voter of `st [] l` (empty frozen base). -/
 theorem merged_support {l : List (Vote sp3.n)} {ps : List (Blk sp3.n Unit)} {v : Vote sp3.n} :
     v ∈ (mergedVoteView sp3 (st [] l) (frm ps) 2).support ↔
-      ∃ B ∈ (frm ps).tree, B.slot = 2 ∧ v ∈ blockSupport B ∧
+      ∃ B ∈ (frm ps).tree, B.slot = 2 ∧ v ∈ declaredSupportVotes B ∧
         ShouldCountDeclaredVote sp3 (st [] l) v ∧
         v.slot + 1 = 2 ∧ ∃ H ∈ (frm ps).tree, H.root = v.head ∧ H.slot + 1 ≤ 2 := by
   simp only [mergedVoteView, Set.mem_union, Set.mem_ofPred_eq]
@@ -437,7 +439,8 @@ theorem merged_support {l : List (Vote sp3.n)} {ps : List (Blk sp3.n Unit)} {v :
 /-- The marked `a` counts as support. -/
 theorem support_marked :
     a ∈ (mergedVoteView sp3 (st [] [a, b]) (frm [prop 3 ([a, b], [a])]) 2).support :=
-  merged_support.2 ⟨prop 3 ([a, b], [a]), mem_frm (by simp), rfl, by simp [prop, blockSupport],
+  merged_support.2 ⟨prop 3 ([a, b], [a]), mem_frm (by simp), rfl,
+    by simp [prop, declaredSupportVotes],
     (shouldCount_st rfl).2 (Or.inl (by simp)), rfl, X, X_mem _, rfl, le_rfl⟩
 
 /-- The same declarations without the mark: `a` is a vote, not support. -/
@@ -445,13 +448,13 @@ theorem support_unmarked :
     a ∈ (mergedVoteView sp3 (st [] [a, b]) (frm [prop 3 ([a, b], [])]) 2).votes ∧
       a ∉ (mergedVoteView sp3 (st [] [a, b]) (frm [prop 3 ([a, b], [])]) 2).support := by
   refine ⟨(merged_votes (by simp [prop])).2 (Or.inr ⟨prop 3 ([a, b], []), by simp,
-    by simp [prop, blockVotes],
+    by simp [prop, declaredHeadVotes],
     (shouldCount_st rfl).2 (Or.inl (by simp))⟩), ?_⟩
   rw [merged_support]
   rintro ⟨B, hB, hs, hv, -⟩
   have := slot_two hB hs
   simp only [List.mem_singleton] at this; subst this
-  simp [prop, blockSupport] at hv
+  simp [prop, declaredSupportVotes] at hv
 
 /-- A held vote of `v2` for a head outside the tree (root `5`). -/
 def c5 : Vote sp3.n := ⟨v2, 1, 5⟩
@@ -461,7 +464,7 @@ theorem support_unresolved :
     c5 ∈ (mergedVoteView sp3 (st [] [a, b, c5]) (frm [P, prop 4 ([c5], [c5])]) 2).votes ∧
       c5 ∉ (mergedVoteView sp3 (st [] [a, b, c5]) (frm [P, prop 4 ([c5], [c5])]) 2).support := by
   refine ⟨(merged_votes (by simp [P, prop])).2 (Or.inr ⟨prop 4 ([c5], [c5]), by simp,
-    by simp [prop, blockVotes], (shouldCount_st rfl).2 (Or.inl (by simp))⟩), ?_⟩
+    by simp [prop, declaredHeadVotes], (shouldCount_st rfl).2 (Or.inl (by simp))⟩), ?_⟩
   rw [merged_support]
   rintro ⟨-, -, -, -, -, -, H, hH, hr, -⟩
   rcases hH with rfl | rfl | rfl | h
@@ -474,12 +477,12 @@ theorem support_unresolved :
 not, and with every declaration held the voter is ready. -/
 theorem ready_one_resolved : voteReady sp3 (st [] [a, b, c5]) (frm [P, prop 4 ([c5], [c5])]) 2 := by
   refine ⟨⟨P, mem_frm (by simp), rfl, fun x hx _ _ => ?_⟩, fun B hB hs x hx _ => ?_⟩
-  · simp [P, prop, blockSupport] at hx
+  · simp [P, prop, declaredSupportVotes] at hx
     rcases hx with rfl | rfl <;> exact ⟨X, X_mem _, rfl, le_rfl⟩
   · have hB' := slot_two hB hs
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hB'
     rcases hB' with rfl | rfl <;>
-    · simp [P, prop, blockVotes, blockSupport] at hx
+    · simp [P, prop, declaredHeadVotes, declaredSupportVotes] at hx
       rw [shouldCount_st (by rcases hx with rfl | rfl <;> rfl)]
       left; simp only [List.nil_append, List.mem_cons, List.not_mem_nil,
         or_false]; tauto
@@ -495,7 +498,7 @@ theorem frozen_conflict_kept :
   have hb' : b' ∈ (mergedVoteView sp3 (st [b'] [b]) (frm [prop 3 ([b], [b])]) 2).votes :=
     (merged_votes hps).2 (Or.inl (by simp))
   have hb : b ∈ (mergedVoteView sp3 (st [b'] [b]) (frm [prop 3 ([b], [b])]) 2).votes :=
-    (merged_votes hps).2 (Or.inr ⟨prop 3 ([b], [b]), by simp, by simp [prop, blockVotes],
+    (merged_votes hps).2 (Or.inr ⟨prop 3 ([b], [b]), by simp, by simp [prop, declaredHeadVotes],
       (shouldCount_st rfl).2 (Or.inl (by simp))⟩)
   exact ⟨hb', hb, b, hb, b', hb', by decide, rfl, rfl⟩
 
@@ -509,7 +512,8 @@ theorem frozen_pair_kept :
   have hb' := (merged_votes (f := [b, b']) (l := []) (v := b') hps).2 (Or.inl (by simp))
   have hz := (merged_votes (f := [b, b']) (l := []) (v := z) hps).2 (Or.inr ⟨prop 4 ([z], []),
     by simp,
-    by simp [prop, blockVotes], (shouldCount_st rfl).2 (Or.inr ⟨b, by simp, b', by simp, by decide,
+    by simp [prop, declaredHeadVotes],
+    (shouldCount_st rfl).2 (Or.inr ⟨b, by simp, b', by simp, by decide,
       rfl, rfl⟩)⟩)
   exact ⟨hb, hb', hz, b, hb, b', hb', by decide, rfl, rfl⟩
 
@@ -522,7 +526,8 @@ def Pb : Blk sp3.n Unit := prop 4 ([b], [b])
 /-- `Pa` is resolved and its declaration held, but the other proposal's `b` is not: not ready. -/
 theorem not_ready_other_proposal : ¬ voteReady sp3 (st [] [a]) (frm [Pa, Pb]) 2 := by
   rintro ⟨-, h⟩
-  have := h Pb (mem_frm (by simp)) rfl b (Or.inl (by simp [Pb, prop, blockVotes])) (Set.mem_univ _)
+  have := h Pb (mem_frm (by simp)) rfl b (Or.inl (by simp [Pb, prop, declaredHeadVotes]))
+    (Set.mem_univ _)
   rw [shouldCount_st rfl] at this
   rcases this with h | ⟨x, hx, y, hy, hne, -, -⟩
   · simp [a, b] at h
@@ -539,7 +544,8 @@ theorem declared_twice_counts_once :
     let V := mergedVoteView sp3 (st [] [a]) (frm [prop 3 ([a], []), prop 4 ([a], [a])]) 2
     a ∈ V.votes ∧ v0 ∉ equivocators V.votes := by
   have hps : ∀ B ∈ [prop 3 ([a], []), prop 4 ([a], [a])], B.slot = 2 := by simp [prop]
-  refine ⟨(merged_votes hps).2 (Or.inr ⟨prop 3 ([a], []), by simp, by simp [prop, blockVotes],
+  refine ⟨(merged_votes hps).2 (Or.inr ⟨prop 3 ([a], []), by simp,
+    by simp [prop, declaredHeadVotes],
     (shouldCount_st rfl).2 (Or.inl (by simp))⟩), ?_⟩
   rintro ⟨x, hx, y, hy, hne, hx0, hy0⟩
   have only_a : ∀ w, w ∈ (mergedVoteView sp3 (st [] [a])
@@ -549,9 +555,9 @@ theorem declared_twice_counts_once :
     rcases hw with h | ⟨B, hB, hv, -⟩
     · simp at h
     · simp only [List.mem_cons, List.not_mem_nil, or_false] at hB
-      rcases hB with rfl | rfl <;> simpa [prop, blockVotes] using hv
+      rcases hB with rfl | rfl <;> simpa [prop, declaredHeadVotes] using hv
   exact hne ((only_a x hx).trans (only_a y hy).symm)
 
-end Consensus.Goldilocks.SA.Test.DeclaredVotes
+end Consensus.Goldilocks.AC.Test.DeclaredVotes
 
 end

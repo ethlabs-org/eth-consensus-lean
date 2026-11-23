@@ -67,8 +67,8 @@ theorem non_framing : NonFraming := by
     (h.upTo ((h.time_nonneg k).trans hkd)) v hv k k' a b
     ((RunTrace.upTo_signAt _).mpr ⟨hkd, ha⟩) ((RunTrace.upTo_signAt _).mpr ⟨hkd', hb⟩)
 
-private theorem fg_run {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
-    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {H : Time → Set (Fin sp.n)}
+private theorem fg_run {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+    {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {H : Time → Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) :
@@ -78,8 +78,8 @@ private theorem fg_run {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att 
     (fun y => Compose.requirements_from sp ro (hrun.vstart y))
     hrun.genesis_root_ok hrun.toLocalRun hnc
 
-private theorem store_eq {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
-    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {H : Time → Set (Fin sp.n)}
+private theorem store_eq {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+    {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {H : Time → Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) :

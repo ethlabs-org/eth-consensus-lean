@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 
 public section
 
-/-! # Goldilocks SA: when `unlock` leaves a lock in place
+/-! # Goldilocks AC: when `unlock` leaves a lock in place
 
 `unlockTarget(Φ, V, s, B)` is the deepest ancestor `B'` of `B` in the tree with
 `2 · |opponents(Φ, V, s, B')| < committeeSize`, or `Φ.F`. So:
@@ -16,9 +16,9 @@ public section
 `∀ V, unlockTarget sp Φ V s B = B` can hold only for `B = Φ.F` in general (a view where every
 validator equivocates has no block with few opponents). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams} {Φ : Frm sp.n FGP}
+variable {FGP : Type} {sp : ACParams} {Φ : Frm sp.n FGP}
 
 /-- **`unlock` keeps a block with few opponents.** If `B` is in the tree and fewer than half of
 the committee oppose `B` in `V` against the slot-`s` votes, then `unlockTarget` of `B` is `B`. -/
@@ -46,6 +46,6 @@ theorem unlockTarget_eq_self_of_subset (hΦ : FrameOK Φ) (V : View sp.n) (s : I
   unlockTarget_eq_self hΦ V s hB
     (lt_of_le_of_lt (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard hO O.toFinite)) hOn)
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

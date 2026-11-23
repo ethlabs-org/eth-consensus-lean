@@ -4,7 +4,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks SA: the interface requirements 1–4 (A0.6)
+/-! # Goldilocks AC: the interface requirements 1–4 (A0.6)
 
 The heads of the duties extend `fc_root` (the anchor does, and the walk only descends) and end in
 `viable_heads` when they start in the viable tree of their domain (a walk inside a viable tree
@@ -14,9 +14,9 @@ candidate below the anchor; the confirmed tip is between `Φ.F` and the head; an
 proposal is the head of `ac_head` at the state the proposal leaves (at a slot start the latest
 view is the proposal's view of the previous slot). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {sp : SAParams} {FGP : Type}
+variable {sp : ACParams} {FGP : Type}
 
 /-- A nonempty set of blocks of the tree has a best block for any score. -/
 private theorem exists_isBest {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {S : Set (Blk sp.n FGP)}
@@ -41,7 +41,7 @@ private theorem ghost_viableHead {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {dom : S
     (V : View sp.n) (σ : Int) :
     ∀ (fuel : Nat) (H : Blk sp.n FGP), H ∈ Φ.viableTree dom →
       {X | X ∈ Φ.viableTree dom ∧ Φ.Anc H X ∧ X ≠ H}.ncard ≤ fuel →
-      ghost sp (Φ.viableTree dom) (goldfishScore sp Φ V σ) (goldfishEligible sp Φ t V σ) fuel H ∈
+      ghost sp (Φ.viableTree dom) (headScore sp Φ V σ) (headEligible sp Φ t V σ) fuel H ∈
         Φ.viableHeads := by
   have hfin : ∀ H : Blk sp.n FGP, {X | X ∈ Φ.viableTree dom ∧ Φ.Anc H X ∧ X ≠ H}.Finite :=
     fun H => hΦ.finite.subset fun X hX => hdom hX.1.1
@@ -81,7 +81,7 @@ private theorem ghost_viableHead {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {dom : S
       rcases Relation.ReflTransGen.cases_head hHW with h | ⟨c, hHc, hcW⟩
       · exact hWH h.symm
       refine hb (exists_isBest hΦ (S := {B | B ∈ Φ.viableTree dom ∧ B.parent = some H.root ∧
-        goldfishEligible sp Φ t V σ B}) (fun B hB => hdom hB.1.1) ⟨c, ?_, hHc.2.2, ?_⟩ _)
+        headEligible sp Φ t V σ B}) (fun B hB => hdom hB.1.1) ⟨c, ?_, hHc.2.2, ?_⟩ _)
       · exact ⟨hdomA W hWd c hcW, hH.2.1.trans (Relation.ReflTransGen.single hHc), W, hWd,
           hWv, hcW⟩
       · refine Or.inl fun ⟨W', hW', hp⟩ => hnv ?_
@@ -96,8 +96,8 @@ theorem ghost_viable_dichotomy {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     (hdomA : ∀ B ∈ dom, ∀ X, Φ.Anc X B → X ∈ dom)
     {A : Blk sp.n FGP} (hA : A ∈ Φ.tree) (hroot : Φ.Anc Φ.fcRoot A)
     (t : Time) (V : View sp.n) (σ : Int) {fuel : Nat} (hf : Φ.tree.ncard ≤ fuel) :
-    let E := ghost sp (Φ.viableTree dom) (goldfishScore sp Φ V σ)
-      (goldfishEligible sp Φ t V σ) fuel A
+    let E := ghost sp (Φ.viableTree dom) (headScore sp Φ V σ)
+      (headEligible sp Φ t V σ) fuel A
     ((∃ W ∈ dom, W ∈ Φ.viableHeads ∧ Φ.Anc A W) → E ∈ dom ∧ E ∈ Φ.viableHeads) ∧
     ((¬ ∃ W ∈ dom, W ∈ Φ.viableHeads ∧ Φ.Anc A W) → E = A) := by
   dsimp only
@@ -110,7 +110,7 @@ theorem ghost_viable_dichotomy {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
       ((Set.ncard_le_ncard (fun X hX => hdom hX.1.1) hΦ.finite).trans hf)
     refine ⟨?_, hv⟩
     suffices hm : ∀ f B, B ∈ dom → ghost sp (Φ.viableTree dom)
-        (goldfishScore sp Φ V σ) (goldfishEligible sp Φ t V σ) f B ∈ dom from
+        (headScore sp Φ V σ) (headEligible sp Φ t V σ) f B ∈ dom from
       hm fuel A hAv.1
     intro f
     induction f with
@@ -122,9 +122,9 @@ theorem ghost_viable_dichotomy {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
       · exact ih _ hb.choose_spec.1.1.1
       · exact hB
   · intro hnone
-    have hn : ¬ ∃ C, IsBest sp (goldfishScore sp Φ V σ)
+    have hn : ¬ ∃ C, IsBest sp (headScore sp Φ V σ)
         {B | B ∈ Φ.viableTree dom ∧ B.parent = some A.root ∧
-          goldfishEligible sp Φ t V σ B} C := by
+          headEligible sp Φ t V σ B} C := by
       rintro ⟨C, ⟨⟨hCd, -, W, hW, hv, hCW⟩, hp, -⟩, -⟩
       exact hnone ⟨W, hW, hv,
         (Relation.ReflTransGen.single ⟨hA, hdom hCd, hp⟩).trans hCW⟩
@@ -136,7 +136,7 @@ theorem ghost_viable_dichotomy {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
 theorem getHead_viable_dichotomy {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     {dom : Set (Blk sp.n FGP)} (hdom : dom ⊆ Φ.tree)
     (hdomA : ∀ B ∈ dom, ∀ X, Φ.Anc X B → X ∈ dom)
-    (A : SAState sp.n) (t : Time) (V : View sp.n) (σ : Int)
+    (A : ACState sp.n) (t : Time) (V : View sp.n) (σ : Int)
     (ha : getAnchor sp A Φ t ∈ Φ.tree) (hroot : Φ.Anc Φ.fcRoot (getAnchor sp A Φ t)) :
     let hasDesc := ∃ W ∈ dom, W ∈ Φ.viableHeads ∧ Φ.Anc (getAnchor sp A Φ t) W
     (hasDesc → getHead sp A Φ t (Φ.viableTree dom) V σ ∈ dom ∧
@@ -160,7 +160,7 @@ private theorem anc_ghost' {Φ : Frm sp.n FGP} {tree : Set (Blk sp.n FGP)} (hT :
 
 /-- The head of a walk from the anchor over the viable tree of a domain closed under ancestors:
 in the tree, above the anchor, and a viable head when the anchor is in that viable tree. -/
-private theorem getHead_spec {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {A : SAState sp.n} {t : Time}
+private theorem getHead_spec {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {A : ACState sp.n} {t : Time}
     {dom : Set (Blk sp.n FGP)} (hdom : dom ⊆ Φ.tree)
     (hdomA : ∀ B ∈ dom, ∀ X, Φ.Anc X B → X ∈ dom) (V : View sp.n) (σ : Int)
     (ha : getAnchor sp A Φ t ∈ Φ.tree) :
@@ -170,29 +170,29 @@ private theorem getHead_spec {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {A : SAState
         getHead sp A Φ t (Φ.viableTree dom) V σ ∈ Φ.viableHeads) := by
   have hT : Φ.viableTree dom ⊆ Φ.tree := fun B hB => hdom hB.1
   unfold getHead
-  have hanc := anc_ghost' (score := goldfishScore sp Φ V σ)
-    (eligible := goldfishEligible sp Φ t V σ) hT Φ.tree.ncard ha
+  have hanc := anc_ghost' (score := headScore sp Φ V σ)
+    (eligible := headEligible sp Φ t V σ) hT Φ.tree.ncard ha
   refine ⟨?_, hanc, fun hav => ghost_viableHead hΦ hdom hdomA t V σ _ _ hav
     (Set.ncard_le_ncard (fun X hX => hT hX.1) hΦ.finite)⟩
-  by_cases he : getAnchor sp A Φ t = ghost sp (Φ.viableTree dom) (goldfishScore sp Φ V σ)
-    (goldfishEligible sp Φ t V σ) Φ.tree.ncard (getAnchor sp A Φ t)
+  by_cases he : getAnchor sp A Φ t = ghost sp (Φ.viableTree dom) (headScore sp Φ V σ)
+    (headEligible sp Φ t V σ) Φ.tree.ncard (getAnchor sp A Φ t)
   · exact he ▸ ha
   · exact (Anc.mem hanc he).2
 
 /-- **A duty head is good** (requirement 1) when its walk starts at the anchor of a state with
 the lock invariant and runs over the viable tree of a domain closed under ancestors. -/
 private theorem headOK_of {ro : ReplayOrder sp FGP} {U : Set (Blk sp.n FGP)} (hU : Coherent U)
-    {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) {A : SAState sp.n}
+    {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) {A : ACState sp.n}
     (h : LockInv U A Φ) {t : Time} {dom : Set (Blk sp.n FGP)} (hdom : dom ⊆ Φ.tree)
     (hdomA : ∀ B ∈ dom, ∀ X, Φ.Anc X B → X ∈ dom) (V : View sp.n) (σ : Int) :
-    (goldilocksSA sp FGP ro).HeadOK Φ
+    (goldilocksAC sp FGP ro).HeadOK Φ
       ⟨getHead sp A Φ t (Φ.viableTree dom) V σ, getAnchor sp A Φ t, dom⟩ := by
   obtain ⟨ha, hanc⟩ := anc_getAnchor hΦ (h.liveBlocks_chain hU hΦ hΦU (t := t))
   obtain ⟨-, hah, hv⟩ := getHead_spec hΦ hdom hdomA V σ ha
   exact ⟨(hanc Φ.fcRoot (Or.inr rfl)).trans hah, hv⟩
 
 /-- A block that `ac_to_fg` returns is a candidate. -/
-theorem toFG_candidate {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+theorem toFG_candidate {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     {C : Blk sp.n FGP} (h : (acToFG sp A Φ t).2 = some C) : C ∈ toFGCandidates sp A Φ t := by
   unfold acToFG at h
   split_ifs at h
@@ -204,7 +204,7 @@ theorem toFG_candidate {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     exact (deepest_mem hC').1
 
 /-- The voter block tree is closed under ancestors when block stamps grow along parent edges. -/
-private theorem voterBlockTree_closed {A : SAState sp.n} {Φ : Frm sp.n FGP}
+private theorem voterBlockTree_closed {A : ACState sp.n} {Φ : Frm sp.n FGP}
     (hsp : ∀ B ∈ Φ.tree, ∀ Pa ∈ Φ.tree, B.parent = some Pa.root →
       A.blockStamp Pa.root ≤ A.blockStamp B.root) (s : Nat) :
     ∀ B ∈ voterBlockTree sp A Φ s, ∀ X, Φ.Anc X B → X ∈ voterBlockTree sp A Φ s := by
@@ -219,14 +219,14 @@ private theorem voterBlockTree_closed {A : SAState sp.n} {Φ : Frm sp.n FGP}
 
 variable (sp)
 
-/-- **A0.6** from a start up to the vote permission: the requirements 1–4 of the SA started at
+/-- **A0.6** from a start up to the vote permission: the requirements 1–4 of the AC started at
 `s₀`, i.e. at the states reachable from `s₀` (`ACInterface.reachableAtFrom_iff`). -/
-theorem interface_requirements_from (FGP : Type) (ro : ReplayOrder sp FGP) {s₀ : SAState sp.n}
+theorem interface_requirements_from (FGP : Type) (ro : ReplayOrder sp FGP) {s₀ : ACState sp.n}
     (h₀ : VoteStart sp.genesisRoot s₀) :
-    ({ goldilocksSA sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqHeads ∧
-      ({ goldilocksSA sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqSource ∧
-      ({ goldilocksSA sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqOutputs ∧
-      ({ goldilocksSA sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqParent := by
+    ({ goldilocksAC sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqHeads ∧
+      ({ goldilocksAC sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqSource ∧
+      ({ goldilocksAC sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqOutputs ∧
+      ({ goldilocksAC sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqParent := by
   have hall : ∀ (Φ : Frm sp.n FGP), ∀ B ∈ Φ.tree, ∀ X, Φ.Anc X B → X ∈ Φ.tree :=
     fun Φ B hB X hX => mem_of_anc hX hB
   refine ⟨?_, ?_, ?_, ?_⟩
@@ -287,7 +287,7 @@ theorem interface_requirements_from (FGP : Type) (ro : ReplayOrder sp FGP) {s₀
     obtain ⟨rfl, ⟨rfl, -⟩, -⟩ := hp
     change _ = acHead sp _ Φ _
     have hts : sp.toParams.slotTime σ = sp.ts σ := by
-      rw [sp.slotTime_eq]; simp [SAParams.ts]
+      rw [sp.slotTime_eq]; simp [ACParams.ts]
     have hsl : sp.slot (sp.toParams.slotTime σ) = σ := by
       rw [hts]; exact slot_of_mem sp σ le_rfl ((ts_lt_iff sp).2 (by push_cast; omega))
     have hlt : ¬ (sp.ts (σ : Int) + 2 * sp.Δ ≤ sp.toParams.slotTime σ) := by
@@ -298,8 +298,8 @@ theorem interface_requirements_from (FGP : Type) (ro : ReplayOrder sp FGP) {s₀
 
 /-- **A0.6**: `interface_requirements_from` at the initial state. -/
 theorem interface_requirements : InterfaceRequirements sp := fun FGP ro =>
-  interface_requirements_from sp FGP ro (s₀ := SAState.initial sp.genesisRoot) (voteStart_initial _)
+  interface_requirements_from sp FGP ro (s₀ := ACState.initial sp.genesisRoot) (voteStart_initial _)
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

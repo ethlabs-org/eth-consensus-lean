@@ -1,9 +1,9 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeRun
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.CommitteeRun
 
 public section
 
-/-! # Goldilocks SA: committee count steps and the full committee
+/-! # Goldilocks AC: committee count steps and the full committee
 
 The count steps of the committee-native AC step lemmas and their reductions at the full committee.
 
@@ -22,7 +22,7 @@ and (ii) `∀ s, (K.committee s).ncard = sp.committeeSize`. Thresholds are in
   `faultBoundK_full_iff`); the half fault bound at the full committee from the population one
   (`cs2_full`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
 section Counts
 
@@ -200,25 +200,25 @@ theorem ncard_inter_full_lt_iff {n : Nat} (s : Nat) (F J : Set (Fin n)) :
       ((CommitteeDict.full n).committee s ∩ J).ncard ↔ F.ncard < J.ncard := by
   rw [ncard_inter_full, ncard_inter_full]
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
 
 /-- **P at `K = full`.** -/
-theorem CommitteeP.full {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} :
+theorem CommitteeP.full {tr : GTrace sp FGP ro} {H : Set (Fin sp.n)} :
     CommitteeP (CommitteeDict.full sp.n) tr H :=
   ⟨fun _ _ _ s _ _ => mem_full s _, fun _ _ _ _ _ _ s _ _ => mem_full s _⟩
 
 /-- **T at `K = full`.** -/
-theorem CommitteeT.full {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} :
+theorem CommitteeT.full {tr : GTrace sp FGP ro} {H : Set (Fin sp.n)} :
     CommitteeT (CommitteeDict.full sp.n) tr H :=
   fun _ _ _ _ _ _ _ v _ => mem_full v.slot _
 
 /-- P under growing faults holds at `K = full`. -/
-theorem CommitteePAt.full {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)} :
+theorem CommitteePAt.full {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)} :
     CommitteePAt (CommitteeDict.full sp.n) tr H :=
   ⟨fun _ _ _ _ _ s _ _ => mem_full s _, fun _ _ _ _ _ _ s _ _ => mem_full s _⟩
 
 /-- **CS at `K = full`** is `FaultBound`. -/
-theorem faultBoundK_full_iff {tr : SATrace sp FGP ro} {H : Set (Fin sp.n)} (s : Nat) (t : Time) :
+theorem faultBoundK_full_iff {tr : GTrace sp FGP ro} {H : Set (Fin sp.n)} (s : Nat) (t : Time) :
     FaultBoundK (CommitteeDict.full sp.n) s tr H t ↔ FaultBound tr H t :=
   ncard_inter_full_lt_iff s _ _
 
@@ -230,6 +230,6 @@ theorem cs2_full (hc : sp.committeeSize = sp.n) {F : Set (Fin sp.n)} (hf : 2 * F
 
 end Full
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

@@ -14,9 +14,9 @@ signer's prefix, and its high origin is honest at its own writing cut.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -45,10 +45,10 @@ theorem ResetPremisesUpTo.reset_seed_at
       have := sp.toParams.hΔ
       linarith
     · change sp.slot (tr.time io) = l at hsl
-      exact (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg io) l).mpr (by omega)
+      exact (AC.ts_le_iff_le_slot sp (hp.run.time_nonneg io) l).mpr (by omega)
   have hia : tr.time io ≤ a := (hp.run.time_mono (hio.le.trans hrk)).trans hka.le
   refine ⟨y, io, l, O, ho, hia, ?_⟩
-  exact_mod_cast (SA.ts_le_iff_le_slot sp ((hp.run.time_nonneg io).trans hia) l).mp
+  exact_mod_cast (AC.ts_le_iff_le_slot sp ((hp.run.time_nonneg io).trans hia) l).mp
     (htime.trans hia)
 
 /-- Every post-drain slot has a reset seed strictly before its start. -/
@@ -61,18 +61,18 @@ theorem ResetPremisesUpTo.reset_seed_before_slot_at
   obtain ⟨v, r, l, O, ho, hra, hl⟩ := hp.reset_seed_at
   have hlu : l + 2 ≤ u := by
     rw [Healing.drainTime_eq] at hR
-    have := (SA.ts_le_iff sp).mp hR
+    have := (AC.ts_le_iff sp).mp hR
     omega
   refine ⟨v, r, l, O, ho, hra.trans hp.reset_le, by omega, ?_⟩
   obtain ⟨_, _, ⟨CV, ell, D, _, hfl, _⟩, _⟩ := ho
   rcases hfl with ⟨ell', C, ⟨_, _, ht, _⟩, _⟩ | ⟨ell', A, _, hsl, _⟩
   · have ht' : tr.time r = sp.ts l + 6 * sp.Δ := ht
-    have hts := (SA.ts_le_iff sp).mpr (show (l : Int) + 2 ≤ u by omega)
+    have hts := (AC.ts_le_iff sp).mpr (show (l : Int) + 2 ≤ u by omega)
     have := sp.toParams.hΔ
-    simp only [SAParams.ts] at hts ht' ⊢
+    simp only [ACParams.ts] at hts ht' ⊢
     linarith
   · by_contra h
-    have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) u).mp (not_lt.mp h)
+    have := (AC.ts_le_iff_le_slot sp (hp.run.time_nonneg r) u).mp (not_lt.mp h)
     change sp.slot (tr.time r) = l at hsl
     omega
 

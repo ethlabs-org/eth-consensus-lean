@@ -21,13 +21,13 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote Payload SAState)
+open AC (ACParams ReplayOrder Vote Payload ACState)
 
 variable {binding : VoteBinding}
 
 section ShapeInventory
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Every pending admission envelope still has its vote in the stored pool. -/
 private def QueuedInPool (st : State sp ro binding) : Prop :=
@@ -48,7 +48,7 @@ private theorem block_queuedInPool (st : State sp ro binding) (B : Blk sp) (h : 
   · exact fun _ => List.Subset.refl _
   · split
     · exact fun _ => List.Subset.refl _
-    · exact SA.step_pool_subset st.self st.node.ac _ st.now (.block B) (by simp)
+    · exact AC.step_pool_subset st.self st.node.ac _ st.now (.block B) (by simp)
 
 private theorem processOne_queuedInPool hs (st : State sp ro binding) o (h : QueuedInPool st) :
     QueuedInPool (processOne hs st o) := by
@@ -58,7 +58,7 @@ private theorem processOne_queuedInPool hs (st : State sp ro binding) o (h : Que
     unfold relayIf
     split <;> exact block_queuedInPool st _ h
   · apply apply_queuedInPool st _ h
-    exact SA.step_pool_subset st.self st.node.ac _ st.now (.message _) (by simp)
+    exact AC.step_pool_subset st.self st.node.ac _ st.now (.message _) (by simp)
   · unfold relayIf
     split <;> apply apply_queuedInPool st _ h <;> exact fun _ => List.Subset.refl _
   · exact h
@@ -84,8 +84,8 @@ private theorem record_queuedInPool (st : State sp ro binding) o hs (h : QueuedI
 private theorem propose_queuedInPool (st : State sp ro binding) s (h : QueuedInPool st) :
     QueuedInPool (propose st s).1 := by
   have hp : (Node.acProposal st.node st.now).1.ac.pool = st.node.ac.pool := by
-    change (SA.acProposal sp st.node.ac (frame st.node) st.now).1.pool = _
-    unfold SA.acProposal
+    change (AC.acProposal sp st.node.ac (frame st.node) st.now).1.pool = _
+    unfold AC.acProposal
     split_ifs <;> rfl
   rw [propose_eq]
   dsimp only
@@ -96,7 +96,7 @@ private theorem nodeTick_queuedInPool (st : State sp ro binding) (h : QueuedInPo
   rw [nodeTick_eq]
   split
   · apply apply_queuedInPool st _ h
-    exact SA.step_pool_subset st.self st.node.ac _ st.now .tick (by simp)
+    exact AC.step_pool_subset st.self st.node.ac _ st.now .tick (by simp)
   · exact h
 
 private theorem poll_queuedInPool (st : State sp ro binding) t : QueuedInPool (poll st t).1 := by
@@ -112,7 +112,7 @@ private theorem block_pool_subset (st : State sp ro binding) (B : Blk sp) (σ : 
   · exact List.Subset.refl _
   · split
     · exact List.Subset.refl _
-    · exact SA.step_pool_subset st.self st.node.ac _ st.now (.block B) (by simp) σ
+    · exact AC.step_pool_subset st.self st.node.ac _ st.now (.block B) (by simp) σ
 
 private theorem record_pool_subset (st : State sp ro binding) o hs (σ : Nat) :
     st.node.ac.pool σ ⊆ (recordOwn st o hs).node.ac.pool σ := by
@@ -127,8 +127,8 @@ private theorem record_pool_subset (st : State sp ro binding) o hs (σ : Nat) :
 private theorem propose_pool_eq (st : State sp ro binding) s :
     (propose st s).1.node.ac.pool = st.node.ac.pool := by
   have hp : (Node.acProposal st.node st.now).1.ac.pool = st.node.ac.pool := by
-    change (SA.acProposal sp st.node.ac (frame st.node) st.now).1.pool = _
-    unfold SA.acProposal
+    change (AC.acProposal sp st.node.ac (frame st.node) st.now).1.pool = _
+    unfold AC.acProposal
     split_ifs <;> rfl
   rw [propose_eq]
   dsimp only
@@ -138,15 +138,15 @@ private theorem nodeTick_pool_subset (st : State sp ro binding) (σ : Nat) :
     st.node.ac.pool σ ⊆ (nodeTick st).node.ac.pool σ := by
   rw [nodeTick_eq]
   split
-  · exact SA.step_pool_subset st.self st.node.ac _ st.now .tick (by simp) σ
+  · exact AC.step_pool_subset st.self st.node.ac _ st.now .tick (by simp) σ
   · exact List.Subset.refl _
 
 /-- Polling, including the due FG update, leaves vote pools unchanged. -/
 theorem poll_pool_eq (st : State sp ro binding) t :
     (poll st t).1.node.ac.pool = st.node.ac.pool := by
   have hp : (Node.acToFG st.node st.now).1.ac.pool = st.node.ac.pool := by
-    change (SA.acToFG sp st.node.ac (frame st.node) st.now).1.pool = _
-    unfold SA.acToFG
+    change (AC.acToFG sp st.node.ac (frame st.node) st.now).1.pool = _
+    unfold AC.acToFG
     split_ifs
     · split
       · rfl

@@ -68,7 +68,7 @@ theorem goldilocks_resetHealBudgetSupply (S : Setup) (A : ContractAssumptions S)
   obtain ⟨D, -, -, hDq⟩ := healthy_repair_schedule_of_preparation_at S A V Q W Dprep
   obtain ⟨O⟩ := healthy_bounded_repairing_opening_at S A V Q hhb hp D
   have hts : ∀ s : Nat, sp.toParams.slotTime s = sp.ts s := fun s => by
-    rw [sp.slotTime_eq]; simp [SA.SAParams.ts]
+    rw [sp.slotTime_eq]; simp [AC.ACParams.ts]
   have hslot : ∀ a, sp.toParams.slotOf a = sp.slot a := fun _ => rfl
   -- the drain slot is the preparation's drain time
   have hdt : sp.toParams.slotTime (sp.toParams.slotOf D.resetTime + (hsg ▸ C).healing.drain) =
@@ -80,12 +80,12 @@ theorem goldilocks_resetHealBudgetSupply (S : Setup) (A : ContractAssumptions S)
   have hcz := D.reset.cutZ_lt_reset_at
   have hgz := Healing.lt_cutZ (sp := sp) gst
   have ha0 : 0 ≤ D.resetTime := by
-    have := SA.gbar_nonneg gst
+    have := AC.gbar_nonneg gst
     linarith
   have hadrain : D.resetTime < Healing.drainTime sp D.resetTime := by
     rw [Healing.drainTime_eq]
     by_contra h
-    have h' := (SA.ts_le_iff_le_slot sp ha0 _).mp (not_lt.mp h)
+    have h' := (AC.ts_le_iff_le_slot sp ha0 _).mp (not_lt.mp h)
     push_cast at h'
     omega
   have hX : (1 : Time) ≤ (idx : Nat) := by exact_mod_cast idx.pos
@@ -96,12 +96,12 @@ theorem goldilocks_resetHealBudgetSupply (S : Setup) (A : ContractAssumptions S)
   have hsd : Healing.drainTime sp D.resetTime ≤ sp.ts O.slot := O.drain
   have hs₁ : sp.slot D.resetTime + 2 * sp.k + 5 ≤ O.slot := by
     rw [Healing.drainTime_eq] at hsd
-    exact_mod_cast (SA.ts_le_iff sp).mp hsd
+    exact_mod_cast (AC.ts_le_iff sp).mp hsd
   refine ⟨D.resetTime, D.reset.reset, D.reset.reset_le, ?_, ?_, O.slot,
     runProposer S rho hn O.slot, O.cut, O.block, ?_, ?_, ?_, ?_,
     ⟨O.held, rfl, O.proposes, O.label⟩⟩
   · rw [hdt]
-    unfold SA.gbar at hgz
+    unfold AC.gbar at hgz
     linarith
   · rw [hdt, hmΔ]
     linarith [mul_nonneg (zero_le_one.trans hX) hΔ.le]

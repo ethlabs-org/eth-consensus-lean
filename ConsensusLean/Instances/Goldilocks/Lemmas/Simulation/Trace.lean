@@ -92,7 +92,7 @@ open AsChainShape
 
 open Shape Node
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
 variable {binding : VoteBinding}
 
@@ -131,7 +131,7 @@ theorem cutMap_index_le {i i' k k' : Nat} (hk : cutMap S rho hn i ≤ k)
   rw [(simTrace_encoding S rho hn).2] at hk hk'
   exact NodeAsChainShape.CanonicalTrace.cutMap_index_le (traceEncoding S hn) rho hk hk' h
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A canonical message in a recursive receipt has an actual AC message cut,
 even when its vote is already present or rejected by the pool cap. -/

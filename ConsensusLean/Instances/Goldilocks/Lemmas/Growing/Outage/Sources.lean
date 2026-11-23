@@ -24,9 +24,9 @@ public section
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -35,17 +35,17 @@ lock stored at `k` names a held block compatible with `B`. -/
 theorem source_compatible_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hlocks : ∀ l ∈ (tr.state y k).ac.locks, ∃ L ∈ (tr.state y k).fg.tree, L.root = l.block ∧
       Compatible (tr.HonestBlocksAt H) L B)
-    {ℓ : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (h : SA.ToFGAt tr.projAC y k ℓ C) : Compatible (tr.HonestBlocksAt H) C B := by
+    {ℓ : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (h : AC.ToFGAt tr.projAC y k ℓ C) : Compatible (tr.HonestBlocksAt H) C B := by
   have hU := honestBlocksAt_coherent hrun hnc
   obtain ⟨hpc, -, hC⟩ := h
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hy hpc
   rw [projAC_state_at hrun hy] at hC
   obtain ⟨hCv, l, ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩, hlC, -, -⟩ := toFG_candidate hC
-  obtain ⟨hvt, hva⟩ := SA.viableAncestor_anc hΦ hB₀
+  obtain ⟨hvt, hva⟩ := AC.viableAncestor_anc hΦ hB₀
   obtain rfl : C = ℓ.frame.viableAncestor B₀ := hΦ.coherent.1 hCv.1 hvt hlC.symm
   obtain ⟨L, hL, hLr, hLB⟩ := hlocks l₀ hl₀
   obtain rfl : B₀ = L := hU.1 (hΦU hB₀) (mem_honestBlocksAt hrun hy hL) (hB₀r.trans hLr.symm)
@@ -57,8 +57,8 @@ a node honest at a time `t ≥ 0` after every cut before `n`, by a validator hon
 source compatible with `B`, held by that validator at its signing cut. -/
 theorem rows_sourced_by {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {B : SA.Blk sp.n (List (FG.Att sp.n))} {n : Nat}
-    (hsrc : ∀ x k, k < n → x ∈ H (tr.time k) → ∀ ℓ C, SA.ToFGAt tr.projAC x k ℓ C →
+    (hnc : NoCollRun dg tr) {B : AC.Blk sp.n (List (FG.Att sp.n))} {n : Nat}
+    (hsrc : ∀ x k, k < n → x ∈ H (tr.time k) → ∀ ℓ C, AC.ToFGAt tr.projAC x k ℓ C →
       Compatible (tr.HonestBlocksAt H) C B)
     {y : Fin sp.n} {t : Time} (ht0 : 0 ≤ t) (ht : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t) :
     HonestRowsSourcedBy tr H (fun D => Compatible (tr.HonestBlocksAt H) D B) y n t := by
@@ -79,7 +79,7 @@ theorem rows_sourced_by {ini}
   have hav' : a.val ∈ H (tr.time j) := hrun.antitone hjd hav
   have hav1 : a.val ∈ H (tr.time (j + 1)) := hrun.antitone (ht _ hj1) hav
   have hfr := (hrun.cutLaw a.val j _ hcj hav').1
-  have hto : SA.ToFGAt tr.projAC a.val j ℓ src :=
+  have hto : AC.ToFGAt tr.projAC a.val j ℓ src :=
     ⟨projAC_callAt.2 hcj, hcl, by rw [projAC_state_at hrun hav']; exact hC⟩
   have hst' : src ∈ (tr.state a.val (j + 1)).fg.tree := by
     have h' := (toFG_candidate hC).1.1
@@ -102,8 +102,8 @@ theorem J_compatible_by {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t)
     (ht : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) (hf : 2 * (H t)ᶜ.ncard < sp.n)
-    {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
-    (hsrc : HonestRowsSourcedBy tr H G y i t) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    (hsrc : HonestRowsSourcedBy tr H G y i t) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocksAt H) D B) (hB : B ∈ tr.HonestBlocksAt H) :
     Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.J B := by
   have hU := honestBlocksAt_coherent hrun hnc
@@ -136,7 +136,7 @@ theorem caches_compatible_by {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {n : Nat} {t : Time} (ht0 : 0 ≤ t)
     (ht : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t) (hf : 2 * (H t)ᶜ.ncard < sp.n)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBU : B ∈ tr.HonestBlocksAt H)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hBU : B ∈ tr.HonestBlocksAt H)
     (hsrc : HonestRowsSourcedBy tr H (fun D => Compatible (tr.HonestBlocksAt H) D B) y n t) :
     Compatible (tr.HonestBlocksAt H) (tr.state y n).fg.F B ∧
       Compatible (tr.HonestBlocksAt H) (tr.state y n).fg.J B := by

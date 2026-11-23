@@ -34,9 +34,9 @@ through the node's cut; the only cross-node fact is the comparability of bounded
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a : Time}
 
@@ -52,7 +52,7 @@ private theorem row_source_static {H₀ : Set (Fin sp.n)} {tr₀ : GoldilocksTra
     (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H₀ tr₀ ini)
     (hnc : Compose.NoCollRun dg tr₀) {v : Fin sp.n} (hv : v ∈ H₀)
     {d : Nat} {att : FG.Att sp.n} (hs : tr₀.SignAt v d att) :
-    ∃ r < d, ∃ l O CV ℓw D, tr₀.projAC.CallAt v r ℓw ∧ SA.FastLockAt tr₀.projAC v r l D CV ∧
+    ∃ r < d, ∃ l O CV ℓw D, tr₀.projAC.CallAt v r ℓw ∧ AC.FastLockAt tr₀.projAC v r l D CV ∧
       O = ℓw.frame.viableAncestor D ∧ tr₀.JoinedAt v (tr₀.time r) ∧
       O ∈ (tr₀.state v r).fg.tree ∧ att.h ≤ ((tr₀.state v r).fg.σ O.root).h ∧
       ∃ E ∈ (tr₀.state v r).fg.tree, (tr₀.state v r).fg.Anc E O ∧ E.root = att.T ∧
@@ -64,24 +64,24 @@ private theorem row_source_static {H₀ : Set (Fin sp.n)} {tr₀ : GoldilocksTra
   obtain ⟨d', rfl, ℓ, hc', hto, -, hC, hfgeq⟩ :=
     Compose.attest_source hrun.toLocalRun hv hcall
   have hpc : tr₀.projAC.CallAt v d' ℓ := Compose.projAC_callAt.mpr hc'
-  have hC' : (SA.acToFG sp (tr₀.projAC.state v d') ℓ.frame (tr₀.time d')).2 = some C := by
+  have hC' : (AC.acToFG sp (tr₀.projAC.state v d') ℓ.frame (tr₀.time d')).2 = some C := by
     rw [Compose.projAC_state hrun.toLocalRun hv]
     exact hC
-  obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := SA.toFG_candidate hC'
+  obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := AC.toFG_candidate hC'
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
   obtain ⟨r, hrd, CV, ℓw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
     Healing.stored_fast_lock_provenance hr hacr.vstart hv d' l₀ hl₀ hlf
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hv hpc
-  obtain ⟨hΦw, -⟩ := SA.frameIn_of_callAt hr hv hcw
+  obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hv hpc
+  obtain ⟨hΦw, -⟩ := AC.frameIn_of_callAt hr hv hcw
   have hCt : C ∈ ℓ.frame.tree := hCv.1
-  obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hΦ hB₀
+  obtain ⟨hvat, hva⟩ := AC.viableAncestor_anc hΦ hB₀
   obtain rfl : C = ℓ.frame.viableAncestor B₀ := hU.1 (hΦU hCt) (hΦU hvat) hlb.symm
   obtain rfl : L = B₀ := hU.1 hL (hΦU hB₀) (hLr.trans hB₀r.symm)
   set O := ℓw.frame.viableAncestor D with hO
   have hCO : Anc (tr₀.HonestBlocks H₀) (ℓ.frame.viableAncestor L) O := (hva.mono hΦU).trans hLO
   have hOt : O ∈ (tr₀.state v r).fg.tree :=
     Healing.mem_tree_of_frame hrun hv hcw
-      (SA.viableAncestor_anc hΦw (fastLockAt_frame_mem hfl hcw)).1
+      (AC.viableAncestor_anc hΦw (fastLockAt_frame_mem hfl hcw)).1
   set st := (tr₀.state v (d' + 1)).fg with hst
   have hreach := Compose.fg_reachable hrun.toLocalRun hv (d' + 1)
   have hCst : ℓ.frame.viableAncestor L ∈ st.tree := by
@@ -213,7 +213,7 @@ theorem high_row_source_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hcw' : tr.projAC.CallAt v r ℓw := by
     rw [RunTrace.upTo_projAC] at hcw
     exact ((Trace.upTo_callAt _).mp hcw).2
-  have hfl' : SA.FastLockAt tr.projAC v r l D CV :=
+  have hfl' : AC.FastLockAt tr.projAC v r l D CV :=
     (fastLockAt_upTo_iff hrun.time_mono hrt).mp hfl
   have hj' : tr.JoinedAt v (tr.time r) := (joinedAt_upTo_iff hrt).mp hj
   refine ⟨r, hrd, l, _, ⟨hrun.antitone (max_le_max le_rfl hrt) hvz, hj',
@@ -224,7 +224,7 @@ time after its cuts. -/
 private theorem entry_root_eq_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {z : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < m, tr.time q ≤ t)
-    (hz : z ∈ H t) {C Z₁ Z₂ : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hz : z ∈ H t) {C Z₁ Z₂ : AC.Blk sp.n (List (FG.Att sp.n))}
     (hC : C ∈ (tr.state z m).fg.tree)
     (h₁ : Anc (tr.HonestBlocksAt H) Z₁ C) (h₂ : Anc (tr.HonestBlocksAt H) Z₂ C)
     (hh : ((tr.state z m).fg.σ Z₁.root).h = ((tr.state z m).fg.σ Z₂.root).h)
@@ -232,7 +232,7 @@ private theorem entry_root_eq_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hT₂ : ((tr.state z m).fg.σ Z₂.root).Th = Z₂.root) : Z₁.root = Z₂.root := by
   have hr := fg_reachable_at hp.run ht hle hz
   have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
-  rcases SA.anc_total hU h₁ h₂ with h | h
+  rcases AC.anc_total hU h₁ h₂ with h | h
   · have := Healing.Th_eq_of_anc hr (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hz h
       (mem_of_honest_anc_at hp.run hp.noColl ht hle hz h₂ hC)) hh.symm
     rw [← hT₁, ← hT₂, this]
@@ -244,7 +244,7 @@ private theorem entry_root_eq_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 holder honest at an observation time after its cuts. -/
 theorem high_entry_eq_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {x x' : Fin sp.n}
-    {i j i' j' : Nat} {B B' Z₁ Z₂ : SA.Blk sp.n (List (FG.Att sp.n))}
+    {i j i' j' : Nat} {B B' Z₁ Z₂ : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
     (ho' : HighOrigin tr H g x' i' j' B') (hi'b : tr.time i' ≤ b)
     (h₁ : Anc (tr.HonestBlocksAt H) Z₁ B) (h₂ : Anc (tr.HonestBlocksAt H) Z₂ B')
@@ -255,7 +255,7 @@ theorem high_entry_eq_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hh : ((tr.state y₁ m₁).fg.σ Z₁.root).h = ((tr.state y₂ m₂).fg.σ Z₂.root).h)
     (hT₁ : ((tr.state y₁ m₁).fg.σ Z₁.root).Th = Z₁.root)
     (hT₂ : ((tr.state y₂ m₂).fg.σ Z₂.root).Th = Z₂.root) : Z₁.root = Z₂.root := by
-  have key : ∀ {w : Fin sp.n} {k : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))},
+  have key : ∀ {w : Fin sp.n} {k : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))},
       w ∈ H (tr.time k) → D ∈ (tr.state w k).fg.tree → Anc (tr.HonestBlocksAt H) Z₁ D →
       Anc (tr.HonestBlocksAt H) Z₂ D → Z₁.root = Z₂.root := by
     intro w k D hw hD hZ₁D hZ₂D
@@ -282,7 +282,7 @@ theorem record_entry_eq_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hyz : y ∈ H (max (cutZ sp.toParams g) t)) (htb : t ≤ b) {h r : Nat} (hh : HZ tr H g + 1 ≤ h)
     (hr : (tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h ∨
       (tr.state y i).record.lock h = some r)
-    {xo : Fin sp.n} {io jo : Nat} {B E : SA.Blk sp.n (List (FG.Att sp.n))}
+    {xo : Fin sp.n} {io jo : Nat} {B E : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g xo io jo B) (hiob : tr.time io ≤ b)
     (hEB : Anc (tr.HonestBlocksAt H) E B) {z : Fin sp.n} {m : Nat} {u : Time} (hu : 0 ≤ u)
     (hlez : ∀ q < m, tr.time q ≤ u) (hz : z ∈ H u) (hE : E ∈ (tr.state z m).fg.tree)
@@ -392,11 +392,11 @@ theorem row_target_of_sign_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     {z : Fin sp.n} {j : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time j)))
     {att : FG.Att sp.n}
     (hs : tr.SignAt z j att) (hjb : tr.time j ≤ b)
-    {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
+    {T : AC.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ q < m, tr.time q ≤ t) (hy : y ∈ H t) (hT : T ∈ (tr.state y m).fg.tree)
     {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
     (hhT : HZ tr H g + 1 ≤ σT.h)
-    {xo : Fin sp.n} {io jo : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {xo : Fin sp.n} {io jo : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g xo io jo B) (hiob : tr.time io ≤ b)
     (hTB : Anc (tr.HonestBlocksAt H) T B) (hatt : att.h = σT.h) :
     att.val = z ∧ att.T = T.root ∧ att.timeout = false := by
@@ -425,11 +425,11 @@ theorem row_of_sign_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     {z : Fin sp.n} {j : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time j)))
     {att : FG.Att sp.n}
     (hs : tr.SignAt z j att) (hjb : tr.time j ≤ b)
-    {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
+    {T : AC.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ q < m, tr.time q ≤ t) (hy : y ∈ H t) (hT : T ∈ (tr.state y m).fg.tree)
     {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
     (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.previousHeightJustified → HZ tr H g + 1 ≤ σT.hj)
-    {xo : Fin sp.n} {io jo : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {xo : Fin sp.n} {io jo : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g xo io jo B) (hiob : tr.time io ≤ b)
     (hTB : Anc (tr.HonestBlocksAt H) T B) (hatt : att.h = σT.h) :
     att.val = z ∧ att.T = T.root ∧ att.timeout = false ∧
@@ -476,14 +476,14 @@ call. -/
 theorem sign_of_report_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {z : Fin sp.n} {r : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time r)))
-    {ell : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hrep : SA.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
-    {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
+    {ell : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hrep : AC.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
+    {T : AC.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ q < m, tr.time q ≤ t) (hy : y ∈ H t) (hT : T ∈ (tr.state y m).fg.tree)
     {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
     (hhT : HZ tr H g + 1 ≤ σT.h) (hTC : Anc (tr.HonestBlocksAt H) T C)
     (hCh : ((tr.state z r).fg.σ C.root).h = σT.h)
-    {xo : Fin sp.n} {io jo : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {xo : Fin sp.n} {io jo : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g xo io jo B) (hiob : tr.time io ≤ b)
     (hTB : Anc (tr.HonestBlocksAt H) T B) :
     ∃ j att, tr.SignAt z j att ∧ tr.time j ≤ tr.time r ∧ att.h = σT.h := by
@@ -541,9 +541,9 @@ entry attestation, with historical finality permission checked at the actual sig
 theorem row_of_report_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {z : Fin sp.n} {r : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time r)))
-    {ell : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hrep : SA.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
-    {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
+    {ell : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hrep : AC.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
+    {T : AC.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ q < m, tr.time q ≤ t) (hy : y ∈ H t) (hT : T ∈ (tr.state y m).fg.tree)
     {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
     (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.previousHeightJustified → HZ tr H g + 1 ≤ σT.hj)
@@ -567,12 +567,12 @@ such nodes with exact entry signatures by `d`. Historical reports count without 
 assumption. -/
 theorem row_signers_of_reports_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {T : SA.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
+    {T : AC.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ q < m, tr.time q ≤ t) (hy : y ∈ H t) (hT : T ∈ (tr.state y m).fg.tree)
     {σT : FG.ChainState sp.n} (hσ : (tr.state y m).fg.σ T.root = σT) (hTe : σT.Th = T.root)
     (hhT : HZ tr H g + 1 ≤ σT.h) (hhj : σT.previousHeightJustified → HZ tr H g + 1 ≤ σT.hj)
     {d : Time} (hd : 0 ≤ d) (hdb : d ≤ b)
-    (hreports : ∀ z, z ∈ H (max (cutZ sp.toParams g) d) → ∃ r ell C, SA.ToFGAt tr.projAC z r ell C ∧
+    (hreports : ∀ z, z ∈ H (max (cutZ sp.toParams g) d) → ∃ r ell C, AC.ToFGAt tr.projAC z r ell C ∧
       tr.time r ≤ d ∧ Anc (tr.HonestBlocksAt H) T C ∧ ((tr.state z r).fg.σ C.root).h = σT.h) :
     ∃ ids : Finset (Fin sp.n), sp.toParams.fg.q ≤ ids.card ∧
       ∀ z ∈ ids, z ∈ H (max (cutZ sp.toParams g) d) ∧ ∃ att j, tr.SignAt z j att ∧ att.val = z ∧

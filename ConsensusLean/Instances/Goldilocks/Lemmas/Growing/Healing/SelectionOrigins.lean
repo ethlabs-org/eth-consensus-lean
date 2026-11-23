@@ -19,9 +19,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -30,12 +30,12 @@ Older origins are tested against a surviving voter, not their possibly compromis
 theorem high_origins_before_next_slot_below_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
-    (hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+    {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
+    (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
-    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
     (hub : sp.ts u + sp.Δ ≤ b) {x : Fin sp.n} {r m : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x r m B)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x r m B)
     (ht : tr.time r < sp.ts (u + 1 : Nat)) (hrb : tr.time r ≤ b) :
     Anc (tr.HonestBlocksAt H) B P := by
   obtain ⟨CV, ell, D, hcall, hfl, hB⟩ := ho.2.2.1
@@ -43,15 +43,15 @@ theorem high_origins_before_next_slot_below_at
     rcases hfl with ⟨ell', C, hu, _⟩ | ⟨ell', A, _, hs, _⟩
     · have htime : tr.time r = sp.ts m + 6 * sp.Δ := hu.2.2.1
       have hts : sp.ts m < sp.ts (u + 1 : Nat) := by linarith [sp.toParams.hΔ]
-      have := (SA.ts_lt_iff sp).1 hts
+      have := (AC.ts_lt_iff sp).1 hts
       omega
     · have hs' : sp.slot (tr.time r) = m := hs
-      have := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) ((u + 1 : Nat) : Int)).not.mp
+      have := (AC.ts_le_iff_le_slot sp (hp.run.time_nonneg r) ((u + 1 : Nat) : Int)).not.mp
         (not_le.mpr ht)
       omega
   rcases lt_or_eq_of_le hmu with hmu | rfl
   · have hT0 : 0 ≤ sp.ts u + sp.Δ := by
-      have := SA.gbar_nonneg g
+      have := AC.gbar_nonneg g
       linarith [sp.toParams.hΔ]
     obtain ⟨w, hwK, hw⟩ := hp.committee_honest_nonempty_at (s := u)
       (by linarith [sp.toParams.hΔ]) (by linarith [sp.toParams.hΔ]) hT0 hub
@@ -70,7 +70,7 @@ theorem high_origins_before_next_slot_below_at
     obtain ⟨hPhi, hsub⟩ : FrameOK ell.frame ∧ ell.frame.tree ⊆ tr.HonestBlocksAt H := by
       rcases hac.localRun.frameLaw x r ell hx hcall with
         ⟨_, _, _, _, h⟩ | ⟨_, _, _, _, _, h⟩ <;> exact h.1
-    have hBD := (SA.anc_viableAncestor ell.frame D).mono hsub
+    have hBD := (AC.anc_viableAncestor ell.frame D).mono hsub
     rw [← hB] at hBD
     exact hBD.trans (hp.same_slot_source_below_unanimous_at hx
       (Or.inl ⟨CV, hfl⟩) hrb (hp.cutZ_le_ts_of_highOrigin_at ho) hP hun)

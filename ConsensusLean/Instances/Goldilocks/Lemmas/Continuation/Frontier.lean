@@ -25,9 +25,9 @@ healed family at the floors `(r, r + k − 1)`, through any bound `b ≥ T`.
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
@@ -39,22 +39,22 @@ variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 /-- An optimistic selection of slot `s` is made before `t_{s+1} = t_s + 4Δ`. -/
 private theorem optimistic_time_lt (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n}
-    {i s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (h : SA.OptimisticLockAt tr.projAC x i s C CV) : tr.time i < sp.ts s + 4 * sp.Δ := by
+    {i s : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (h : AC.OptimisticLockAt tr.projAC x i s C CV) : tr.time i < sp.ts s + 4 * sp.Δ := by
   obtain ⟨-, -, -, hsl, -⟩ := h
   have hts : sp.ts ((s + 1 : Nat) : Int) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   rw [← hts]
   refine lt_of_not_ge fun hge => ?_
-  have := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).1 hge
+  have := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).1 hge
   change sp.slot (tr.time i) = s at hsl
   omega
 
 /-- A fast lock write of label `s` is written by `t_s + 6Δ`. -/
 private theorem fastLockAt_time_le (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n}
-    {i s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (h : SA.FastLockAt tr.projAC x i s C CV) : tr.time i ≤ sp.ts s + 6 * sp.Δ := by
+    {i s : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (h : AC.FastLockAt tr.projAC x i s C CV) : tr.time i ≤ sp.ts s + 6 * sp.Δ := by
   rcases h with ⟨ℓ, C', hu, -⟩ | h
   · exact hu.2.2.1.le
   · linarith [optimistic_time_lt hrun h, sp.toParams.hΔ]
@@ -62,7 +62,7 @@ private theorem fastLockAt_time_le (hrun : Growing.GoldilocksRun proposer dg H t
 /-- **A member of label `s` is written by `t_s + 6Δ`**: it is a member within every bound from
 there on. -/
 private theorem HealedOrigin.within_label (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    {rL rO : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b T : Time}
+    {rL rO : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b T : Time}
     (hC : HealedOrigin tr H g rL rO C s b) (hT : sp.ts s + 6 * sp.Δ ≤ T) :
     HealedOrigin tr H g rL rO C s T := by
   rcases healedOrigin_iff.1 hC with ⟨hs, h⟩ | ⟨hs, h⟩ | ⟨x, i, -, ho⟩
@@ -83,12 +83,12 @@ private theorem HealedOrigin.within_label (hrun : Growing.GoldilocksRun proposer
 
 /-- An honest vote of slot `m` is cast before `t_{m+1}`. -/
 private theorem vote_time_lt (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} {e : SA.Em sp (List (FG.Att sp.n))}
+    (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} {e : AC.Em sp (List (FG.Att sp.n))}
     (hv : HVoteAt tr H y i e) : tr.time i < sp.ts ((e.msg.slot + 1 : Nat) : Int) := by
   obtain ⟨hy, ℓ, hc⟩ := hVoteAt_iff.1 hv
   have h := (castAt_spec_at hrun hnc hy hc).2.1
   refine lt_of_not_ge fun hge => ?_
-  have := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).1 hge
+  have := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).1 hge
   push_cast at this
   omega
 
@@ -106,7 +106,7 @@ theorem HandoverSeed.frontier_upTo (hrun : Growing.GoldilocksRun proposer dg H t
       HealedOrigin tr H g r (r + sp.k - 1) C j T := fun C j hC hj =>
     hC.within_label hrun (by linarith [ts_le_ts (sp := sp) (show j ≤ σ by omega)])
   have hts2 : sp.ts ((σ + 2 : Nat) : Int) = sp.ts σ + 8 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   refine ⟨healedOriginsBelow_iff.2 fun C j C' j' hj hj' hC hC' =>
     healedOriginsBelow_iff.1 hseed.frontier.1 C j C' j' hj hj' (hdown C j hC hj)
       (hdown C' j' hC' hj'), healedVotesBelow_iff.2 fun C j hC y i e hv _ hj hm => ?_⟩
@@ -118,7 +118,7 @@ theorem HandoverSeed.frontier_upTo (hrun : Growing.GoldilocksRun proposer dg H t
 /-! ### The healed frontier -/
 
 /-- The committee counts from `σ₀` give the committee counts from every `σ₁ ≥ σ₀`. -/
-private theorem CommitteeBoundsFrom.of_le {K : SA.CommitteeDict sp.n} {σ₀ σ₁ : Nat} {b : Time}
+private theorem CommitteeBoundsFrom.of_le {K : AC.CommitteeDict sp.n} {σ₀ σ₁ : Nat} {b : Time}
     (h : CommitteeBoundsFrom tr H K σ₀ b) (hσ : σ₀ ≤ σ₁) : CommitteeBoundsFrom tr H K σ₁ b :=
   ⟨fun s d hs => h.slotK s d (hσ.trans hs), fun s d hs => h.twoK s d (hσ.trans hs)⟩
 
@@ -136,7 +136,7 @@ theorem healed_frontier_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
       {b : Time}
     (hTb : T ≤ b) (hsvc : Healing.Growing.ResetService tr H g ΔF b)
     (hB : SleepyBoundsFrom tr H r b) (hcv : ChainConvictedBelow tr H)
-    {K : SA.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
+    {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :
     ∀ s, HealedOriginsBelow tr H g r (r + sp.k - 1) s b ∧
       HealedVotesBelow tr H g r (r + sp.k - 1) s b := by

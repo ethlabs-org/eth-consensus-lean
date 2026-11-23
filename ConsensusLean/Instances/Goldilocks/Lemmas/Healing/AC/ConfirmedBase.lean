@@ -17,19 +17,19 @@ The late honest votes held at a call, the results extended by their honest suppo
 (`first_update_post`: result `P`, not vetoed, with `P` passing the fast test, so its own fast
 selection, `fastSelect_eq_result`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
 
 /-- Finite message service retains an actual honest vote with its strict early stamp.
 Only deadlines and restarts through the receiving call are used. -/
-theorem late_vote_pool_before {K : SA.CommitteeDict sp.n}
+theorem late_vote_pool_before {K : AC.CommitteeDict sp.n}
     {b : Time} (hS : HealthyBaseUpTo K tr H U proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
+    {ell : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)
     (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ max t (sp.ts s) + sp.Δ)
@@ -60,7 +60,7 @@ theorem late_vote_pool_before {K : SA.CommitteeDict sp.n}
   have hqj' : q < j := lt_of_le_of_ne hqj (by rintro rfl; linarith only [hqT, ht])
   have hqs : sp.slot (tr.time q) = s :=
     slot_of_mem sp s (by linarith only [hti0, hiq]) (by
-        rw [SA.ts_succ]; linarith only [hti, hti0, hqT])
+        rw [AC.ts_succ]; linarith only [hti, hti0, hqT])
   have hxH : e.msg.val ∈ H := hval ▸ hx
   have hheld : e.msg ∈ (tr.state y (q + 1)).pool s := by
     rcases held_of_processAt hr hy hproc (by rw [hqs, hes]; omega) (by rw [hqs, hes]) with
@@ -91,10 +91,10 @@ theorem late_vote_pool_before {K : SA.CommitteeDict sp.n}
 
 /-- Finite message service carries an earlier-slot honest vote to the read point of a
 next-slot vote, not just to the receiving call's pre-state. -/
-theorem late_vote_readPoint_before {K : SA.CommitteeDict sp.n}
+theorem late_vote_readPoint_before {K : AC.CommitteeDict sp.n}
     {b : Time} (hS : HealthyBaseUpTo K tr H U proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ell : ACLabel (goldilocksSA sp FGP ro)} {e' : Em sp FGP}
+    {ell : ACLabel (goldilocksAC sp FGP ro)} {e' : Em sp FGP}
     (hc : CastAt tr y j ell e') {s : Nat} (hs' : e'.msg.slot = s + 1)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)
@@ -108,9 +108,9 @@ theorem late_vote_readPoint_before {K : SA.CommitteeDict sp.n}
     hx hv hes (j + 1) (Or.inr rfl)
 
 /-- Acceptance before a deadline carries every global ancestor before that deadline too. -/
-theorem acceptedBefore_ancestor {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem acceptedBefore_ancestor {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ell)
+    {ell : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ell)
     {B X : Blk sp.n FGP} (hB : B ∈ U)
     {T : Time} (hacc : AcceptedBefore tr y B T) (hX : Anc U X B) :
     AcceptedBefore tr y X T := by
@@ -127,10 +127,10 @@ theorem acceptedBefore_ancestor {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) 
 
 /-- Guarded finite acceptance service resolves the head of an actual honest vote before
 the same strict deadline as its message, retaining the acceptance witness. -/
-theorem late_vote_accepted_of_frame_before {K : SA.CommitteeDict sp.n}
+theorem late_vote_accepted_of_frame_before {K : AC.CommitteeDict sp.n}
     {b : Time} (hS : HealthyBaseUpTo K tr H U proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
+    {ell : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)
     (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ max t (sp.ts s) + sp.Δ)
@@ -191,10 +191,10 @@ theorem late_vote_accepted_of_frame_before {K : SA.CommitteeDict sp.n}
 
 /-- Guarded finite acceptance service resolves the head of an actual honest vote before
 the same strict deadline as its message. The output is at the observing pre-state. -/
-theorem late_vote_held_of_frame_before {K : SA.CommitteeDict sp.n}
+theorem late_vote_held_of_frame_before {K : AC.CommitteeDict sp.n}
     {b : Time} (hS : HealthyBaseUpTo K tr H U proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
+    {ell : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)
     (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ max t (sp.ts s) + sp.Δ)
@@ -212,10 +212,10 @@ theorem late_vote_held_of_frame_before {K : SA.CommitteeDict sp.n}
 
 /-- Finite service carries the honest preceding-slot batch at an actual next-slot vote.
 The frame-dependent delivery input uses the receiver's own F. -/
-theorem honest_batch_carry_before {K : SA.CommitteeDict sp.n}
+theorem honest_batch_carry_before {K : AC.CommitteeDict sp.n}
     {b : Time} (hS : HealthyBaseUpTo K tr H U proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ell : ACLabel (goldilocksSA sp FGP ro)} {e' : Em sp FGP}
+    {ell : ACLabel (goldilocksAC sp FGP ro)} {e' : Em sp FGP}
     (hc : CastAt tr y j ell e') {s : Nat} (hs' : e'.msg.slot = s + 1)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)
@@ -248,7 +248,7 @@ the call, with the unlock given. -/
 theorem late_vote_poolU
     {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
         {j : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ℓ) {s : Nat}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ℓ) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {e : Em sp FGP} (hv : VoteAt tr x i e) (hes : e.msg.slot = s) :
     ∀ c, (c = j ∨ c = j + 1) → e.msg ∈ (tr.state y c).pool s ∧
@@ -276,7 +276,7 @@ theorem late_vote_poolU
   have hk'j' : k' < j := lt_of_le_of_ne hk'j (by rintro rfl; linarith only [hk'T, ht])
   have hsl' : sp.slot (tr.time k') = s :=
     slot_of_mem sp s (by linarith only [hti', hik']) (by
-        rw [SA.ts_succ]; linarith only [hti, hti', hk'T])
+        rw [AC.ts_succ]; linarith only [hti, hti', hk'T])
   have hxH : e.msg.val ∈ H := hval ▸ hx
   have hheld : e.msg ∈ (tr.state y (k' + 1)).pool s := by
     rcases held_of_processAtU hr hy hproc (by rw [hsl', hes]; omega) (by rw [hsl', hes]) with
@@ -307,7 +307,7 @@ theorem late_vote_poolU
 /-- `late_vote_held_of_frame` with the unlock given. -/
 theorem late_vote_held_of_frameU
     {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
-    {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ℓ) {s : Nat}
+    {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ℓ) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {e : Em sp FGP} (hv : VoteAt tr x i e) (hes : e.msg.slot = s)
     (hF : ∀ Hd ∈ U, Hd.root = e.msg.head → Anc U ℓ.frame.F Hd) :
@@ -400,7 +400,7 @@ theorem late_vote_held_of_frameU
 head in the call's frame (of slot at most `s`), and both its stamp and its head's are before
 `t_s + 2Δ`, before and after the call. -/
 theorem late_vote_held_of_frame (hS : HealthyBase tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
-    {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y j ℓ) {s : Nat}
+    {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ℓ) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {e : Em sp FGP} (hv : VoteAt tr x i e) (hes : e.msg.slot = s)
     (hF : ∀ Hd ∈ U, Hd.root = e.msg.head → Anc U ℓ.frame.F Hd) :
@@ -414,7 +414,7 @@ theorem late_vote_held_of_frame (hS : HealthyBase tr H U proposer g) {y : Fin sp
 
 /-- The resolution time of a vote whose head is a block of the frame of a slot at most the
 vote's is the later of the two stamps. -/
-theorem resolutionTime_lt_of {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+theorem resolutionTime_lt_of {A : ACState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     {v : Vote sp.n} {Hd : Blk sp.n FGP} (hHd : Hd ∈ Φ.tree) (hr : Hd.root = v.head)
     (hsl : Hd.slot ≤ v.slot) {T : ETime} (h1 : A.voteStamp v < T)
     (h2 : A.blockStamp v.head < T) : resolutionTime A Φ v < T := by
@@ -472,7 +472,7 @@ member of which is such a voter, and at most half of which is faulty. -/
 theorem result_extended_of_members
     {uL : Nat → Set Lock} {ini} (hrun : ACRunU wm uL proposer tr H U ini) {s : Nat}
     {M : Set (Fin sp.n)} {x : Fin sp.n} (hx : x ∈ H) {c : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x c ℓ)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x c ℓ)
     (hMv : M ∩ H ⊆ voters {v | v ∈ (tr.state x c).pool s})
     (hvM : voters {v | v ∈ (tr.state x c).pool s} ⊆ M)
     (hf : (M ∩ Hᶜ).ncard ≤ (M ∩ H).ncard) {C : Blk sp.n FGP}
@@ -498,7 +498,7 @@ set_option linter.unusedVariables false in
 theorem result_extendedU
     {uL : Nat → Set Lock} (hS : HealthyBaseU wm uL tr H U proposer g) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) {x : Fin sp.n} (hx : x ∈ H) {c : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x c ℓ)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x c ℓ)
     (ht : sp.ts s + 2 * sp.Δ ≤ tr.time c) {C : Blk sp.n FGP}
     (hC : getConfirmation sp (tr.state x c) ℓ.frame s = some C) :
     ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = s ∧ VoteExtends U e.msg C := by
@@ -519,7 +519,7 @@ theorem result_extendedU
 are a strict majority of the voters, which include all honest validators. -/
 theorem result_extended (hS : HealthyBase tr H U proposer g) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) {x : Fin sp.n} (hx : x ∈ H) {c : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x c ℓ)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x c ℓ)
     (ht : sp.ts s + 2 * sp.Δ ≤ tr.time c) {C : Blk sp.n FGP}
     (hC : getConfirmation sp (tr.state x c) ℓ.frame s = some C) :
     ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = s ∧ VoteExtends U e.msg C :=
@@ -538,7 +538,7 @@ theorem first_update_post_of_members
     {uL : Nat → Set Lock} {ini} (hrun : ACRunU wm uL proposer tr H U ini) {p : Nat}
     {P : Blk sp.n FGP}
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     (hc : tr.CallAt y k ℓ) (hcall : ℓ.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ)
     (hj : joined sp (tr.state y k) (tr.time k)) (hPt : P ∈ ℓ.frame.tree)
     (hlocks : ∀ L ∈ liveLockBlocks sp (tr.state y k).locks ℓ.frame (tr.time k),
@@ -557,10 +557,10 @@ theorem first_update_post_of_members
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAtU hr hy hc
-  have hts1 := SA.ts_succ (sp := sp) p
+  have hts1 := AC.ts_succ (sp := sp) p
   have hslot : sp.slot (tr.time k) = p + 1 :=
     slot_of_mem sp (p + 1) (by rw [htk, hts1]; linarith only [hΔ]) (by
-        rw [htk, SA.ts_succ, hts1]; linarith only [hΔ])
+        rw [htk, AC.ts_succ, hts1]; linarith only [hΔ])
   have hT2 : tr.time k = sp.ts ((p + 1 : Nat) : Int) + 2 * sp.Δ := by rw [htk, hts1]; ring
   -- the tick is the slot-`p` update
   have he := hr.exec k ℓ hc.2 (hc.1 ▸ hy)
@@ -636,7 +636,7 @@ theorem first_update_postU
     {uL : Nat → Set Lock} (hS : HealthyBaseU wm uL tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     (hc : tr.CallAt y k ℓ) (hcall : ℓ.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ)
     (hPt : P ∈ ℓ.frame.tree)
     (hlocks : ∀ L ∈ liveLockBlocks sp (tr.state y k).locks ℓ.frame (tr.time k),
@@ -649,10 +649,10 @@ theorem first_update_postU
   have hU := hr.coherent
   have hΔ := sp.toParams.hΔ
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAtU hr hy hc
-  have hts1 := SA.ts_succ (sp := sp) p
+  have hts1 := AC.ts_succ (sp := sp) p
   have hslot : sp.slot (tr.time k) = p + 1 :=
     slot_of_mem sp (p + 1) (by rw [htk, hts1]; linarith only [hΔ]) (by
-        rw [htk, SA.ts_succ, hts1]; linarith only [hΔ])
+        rw [htk, AC.ts_succ, hts1]; linarith only [hΔ])
   have hj := hS.joined_state hy k (by
     rw [hslot, show (((p + 1 : Nat) : Int) - 1) = p by push_cast; ring]; linarith only [hp4, hΔ])
   have hHn : H.ncard + Hᶜ.ncard = sp.n := by
@@ -683,7 +683,7 @@ theorem first_update_post
     (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     (hc : tr.CallAt y k ℓ) (hcall : ℓ.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ)
     (hPt : P ∈ ℓ.frame.tree)
     (hlocks : ∀ L ∈ liveLockBlocks sp (tr.state y k).locks ℓ.frame (tr.time k),
@@ -707,7 +707,7 @@ theorem result_extended_before {K : CommitteeDict sp.n} {b : Time}
     (hS : HealthyBaseUpTo K tr H U proposer g b)
     (hrs : ∀ y ∈ H, ∀ k, tr.RestartAt y k → tr.time k ≤ b → tr.time k ≤ gbar g)
     {s : Nat} (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) {x : Fin sp.n} (hx : x ∈ H) {c : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x c ℓ)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x c ℓ)
     (ht : sp.ts s + 2 * sp.Δ ≤ tr.time c) (hcb : tr.time c ≤ b) {C : Blk sp.n FGP}
     (hC : getConfirmation sp (tr.state x c) ℓ.frame s = some C) :
     ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = s ∧ VoteExtends U e.msg C := by
@@ -739,7 +739,7 @@ theorem first_update_post_before {K : CommitteeDict sp.n} {b : Time}
     (hrs : ∀ y ∈ H, ∀ k, tr.RestartAt y k → tr.time k ≤ b → tr.time k ≤ gbar g)
     {p : Nat} {P : Blk sp.n FGP} (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
     (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     (hc : tr.CallAt y k ℓ) (hcall : ℓ.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ)
     (hkb : tr.time k ≤ b) (hPt : P ∈ ℓ.frame.tree)
     (hlocks : ∀ L ∈ liveLockBlocks sp (tr.state y k).locks ℓ.frame (tr.time k),
@@ -753,10 +753,10 @@ theorem first_update_post_before {K : CommitteeDict sp.n} {b : Time}
   have hΔ := sp.toParams.hΔ
   have hp1 := ts_sub_one sp (p : Int)
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hy hc
-  have hts1 := SA.ts_succ (sp := sp) p
+  have hts1 := AC.ts_succ (sp := sp) p
   have hslot : sp.slot (tr.time k) = p + 1 :=
     slot_of_mem sp (p + 1) (by rw [htk, hts1]; linarith only [hΔ]) (by
-        rw [htk, SA.ts_succ, hts1]; linarith only [hΔ])
+        rw [htk, AC.ts_succ, hts1]; linarith only [hΔ])
   have hrsy : ∀ q ≤ k, tr.RestartAt y q → tr.time q ≤ gbar g := fun q hq hrq =>
     hrs y hy q hrq ((hr.time_mono hq).trans hkb)
   have hj := joined_state_of_restarts hS.run.toU.localRun hS.run.vstart hy k fun q hq hrq =>
@@ -784,7 +784,7 @@ theorem first_update_post_before {K : CommitteeDict sp.n} {b : Time}
 /-- **A result passing the fast test is its own fast selection**: the path of `P` holds only
 non-genesis ancestors of `P` (no strict descendant), `P` is in the selection set (not genesis,
 passing the fast test), and every other member is a strict ancestor, so shallower. -/
-theorem fastSelect_eq_result {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {p : Nat}
+theorem fastSelect_eq_result {A : ACState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {p : Nat}
     {P : Blk sp.n FGP} (hPt : P ∈ Φ.tree) (hPg : P.root ≠ sp.genesisRoot)
     (hf : FastTest sp A Φ p P) : fastSelect sp A Φ p P = some P := by
   have hS : {B | B ∈ confirmationPath sp Φ P ∧ FastTest sp A Φ p B} ⊆ Φ.tree :=
@@ -797,6 +797,6 @@ theorem fastSelect_eq_result {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : Frame
   unfold fastSelect
   rw [hD, Anc.antisymm hΦ.coherent hDP hPD]
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

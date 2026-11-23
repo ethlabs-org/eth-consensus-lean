@@ -18,10 +18,10 @@ force each validator to have accepted the proposed block, independently of its l
 
 namespace Consensus.Goldilocks.Healing.Recovery
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {H : Set (Fin sp.n)}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
@@ -32,19 +32,19 @@ proposal, the relay of an honest slot-`u` voter's frame (which holds the unanimo
 leaves a strict margin. -/
 theorem ready_proposal_accepted_everywhere (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hcatch : CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {W : SA.Blk sp.n (List (FG.Att sp.n))}
+    {p : Fin sp.n} {k u : Nat} {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : ReadyProposal tr H proposer p k u W) (hR : drainTime sp a ≤ sp.ts u)
-    (hu : 0 < u) (hg : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) :
+    (hu : 0 < u) (hg : AC.gbar g + 4 * sp.Δ ≤ sp.ts u) :
     ∀ y ∈ H, ∃ j, tr.AcceptAt y j W ∧ tr.time j ≤ sp.ts u + 2 * sp.Δ := by
   have hΔ := sp.toParams.hΔ
   have hac := Compose.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hac.localRun
   have hca := cutZ_lt_reset hp.run hp.healthy hp.reset
-  have ha0 : 0 ≤ a := by linarith [lt_cutZ (sp := sp) g, SA.gbar_nonneg g]
+  have ha0 : 0 ≤ a := by linarith [lt_cutZ (sp := sp) g, AC.gbar_nonneg g]
   have hau : a ≤ sp.ts u := (lt_drainTime ha0).le.trans hR
   have hpU := hp.toUpTo tr H (show a ≤ sp.ts u + 6 * sp.Δ by linarith)
   have hR' : drainTime sp a ≤ sp.ts (u + 1 : Nat) :=
-    hR.trans ((SA.ts_le_iff sp).2 (by push_cast; omega))
+    hR.trans ((AC.ts_le_iff sp).2 (by push_cast; omega))
   obtain ⟨_, hWt, _⟩ := accept_of_proposesAt hp.run hp.noColl hW.1 hW.2.2.2.1
   have hWU : W ∈ tr.HonestBlocks H := ⟨p, hW.1, k + 1, hWt⟩
   have hun := ready_unanimous hp hcatch hW hR
@@ -52,7 +52,7 @@ theorem ready_proposal_accepted_everywhere (hp : ResetPremises tr H K proposer d
   obtain ⟨z, hz, q, v, ⟨ellv, hv⟩, hvs, hq⟩ :=
     Obligations.UpTo.exists_honest_vote_in_slot hpU hcatch hR' (by linarith)
   obtain ⟨⟨D, hD, hDr, _⟩, _⟩ := Compose.cast_head_fcRoot hr hac.vstart hz hv
-  have hDW : D = W := hr.coherent.1 ((SA.frameIn_of_callAt hr hz hv.1).2 hD) hWU
+  have hDW : D = W := hr.coherent.1 ((AC.frameIn_of_callAt hr hz hv.1).2 hD) hWU
     (hDr.trans (hun z hz q v ⟨ellv, hv⟩ hvs))
   rw [hDW] at hD
   have hq' : tr.time q ≤ sp.ts u + sp.Δ := hq
@@ -61,7 +61,7 @@ theorem ready_proposal_accepted_everywhere (hp : ResetPremises tr H K proposer d
   have hS := healthy_base_of_reset_catch_before hpU hcatch
   have hg' := slotAfter_le (sp := sp) g
   obtain ⟨c, ell, hc, -, htc⟩ := hS.driven.tick y hy (sp.ts u + 2 * sp.Δ)
-    (by linarith [SA.gbar_nonneg g]) ⟨4 * u + 2, by simp only [SAParams.ts]; ring⟩
+    (by linarith [AC.gbar_nonneg g]) ⟨4 * u + 2, by simp only [ACParams.ts]; ring⟩
     (hS.awake y hy _ (by rw [gbar_slotAfter]; linarith) (by linarith))
   have htc' : tr.time c = sp.ts u + 2 * sp.Δ := htc
   have hWy : W ∈ (tr.state y c).fg.tree := by
@@ -90,7 +90,7 @@ current entry that is not on the parent's chain (the good window's P5): `proposa
 keeps every pooled attestation valid against the parent's state, and those for the current entry
 are valid. -/
 private theorem proposal_includes_pool (hp : ResetPremises tr H K proposer dg g ΔF a)
-    {w : Fin sp.n} (hw : w ∈ H) {k : Nat} {W Pr : SA.Blk sp.n (List (FG.Att sp.n))}
+    {w : Fin sp.n} (hw : w ∈ H) {k : Nat} {W Pr : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : tr.ProposesAt w k W) (hPr : Pr ∈ (tr.state w k).fg.tree)
     (hpar : W.parent = some Pr.root) :
     ∀ att ∈ (tr.state w k).fg.atts, att.h = ((tr.state w k).fg.σ Pr.root).h →
@@ -117,12 +117,12 @@ private theorem proposal_includes_pool (hp : ResetPremises tr H K proposer dg g 
 `GoodWindow`. Neither report times nor signing times need a freshness lower bound. -/
 theorem good_window_of_rows (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hs : HSShared tr H K dg g ΔF) {y w : Fin sp.n} (hy : y ∈ H) (hw : w ∈ H)
-    {m k cF kF : Nat} {T W Pr : SA.Blk sp.n (List (FG.Att sp.n))}
+    {m k cF kF : Nat} {T W Pr : AC.Blk sp.n (List (FG.Att sp.n))}
     (hT : T ∈ (tr.state y m).fg.tree) (he : ((tr.state y m).fg.σ T.root).Th = T.root)
     (hW : tr.ProposesAt w k W) (hpar : W.parent = some Pr.root)
     (hTPr : Anc (tr.HonestBlocks H) T Pr)
     (hlo : T.slot + cF ≤ W.slot) (hhi : W.slot ≤ T.slot + cF + kF)
-    (hg : SA.gbar g ≤ sp.ts T.slot)
+    (hg : AC.gbar g ≤ sp.ts T.slot)
     (hcf : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (cF : Time))
     (hto : cF + kF ≤ sp.toParams.δt)
     (ids : Finset (Fin sp.n)) (hq : sp.toParams.fg.q ≤ ids.card)
@@ -148,8 +148,8 @@ theorem good_window_of_rows (hp : ResetPremises tr H K proposer dg g ΔF a)
   have hdelivery : sp.ts T.slot + 6 * sp.Δ + ΔF ≤ tr.time k := by
     rw [htime]
     have hslots : sp.ts (T.slot + cF : Nat) ≤ sp.ts W.slot :=
-      (SA.ts_le_iff sp).2 (by exact_mod_cast hlo)
-    simp only [SAParams.ts] at hslots ⊢
+      (AC.ts_le_iff sp).2 (by exact_mod_cast hlo)
+    simp only [ACParams.ts] at hslots ⊢
     push_cast at hslots
     linarith
   choose att j hsig hval hh hroot hto' ht hfin using fun z : ids => (hrows z z.property).2
@@ -188,7 +188,7 @@ theorem good_window_of_rows (hp : ResetPremises tr H K proposer dg g ΔF a)
       exact Compose.projFG_callAt.2 hc
     · rw [sp.slotTime_eq, Nat.add_zero]
       change tr.time (j z) ≤ 4 * sp.Δ * (T.slot : Int) + 6 * sp.Δ
-      simpa only [SAParams.ts] using ht z
+      simpa only [ACParams.ts] using ht z
   · intro row hr
     obtain ⟨z, _, rfl⟩ := Finset.mem_image.1 hr
     right

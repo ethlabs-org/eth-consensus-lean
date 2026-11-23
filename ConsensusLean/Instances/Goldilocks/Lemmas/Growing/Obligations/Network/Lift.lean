@@ -18,7 +18,7 @@ that cut's time (`Growing.GoldilocksRun.upTo`), where the node is honest through
   and a send or fresh admission is an emission, a message or a block-carried vote;
 * `run_F_mono_at`: `Σ.F` moves only to descendants, inside the blocks held while honest;
 * `acBlock_prev_at`, `accept_next_at`: an AC block call follows its FG acceptance at the same time;
-* `sleepyServiceBefore_of_message_relay_at`: the finite Sleepy service from SA message service and
+* `sleepyServiceBefore_of_message_relay_at`: the finite Sleepy service from AC message service and
   node acceptance relay. -/
 
 namespace Consensus.Goldilocks.Growing.LocalRun
@@ -52,9 +52,9 @@ end Consensus.Goldilocks.Growing.LocalRun
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -70,7 +70,7 @@ theorem projAC_state_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
 /-- A send or fresh admission of a node honest at its cut is an emission, or a received message
 that the node did not hold before the cut and holds after it. -/
 theorem sendOrAdmit_forward_source_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) {m : SA.Vote sp.n}
+    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) {m : AC.Vote sp.n}
     (h : tr.projAC.SendOrAdmit y k m) :
     tr.EmitAt y k m ∨
       (tr.MsgCallAt y k m ∧ m ∉ (tr.state y k).ac.pool m.slot ∧
@@ -116,7 +116,7 @@ theorem accept_next_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
       tr.time (i + 1) = tr.time i :=
   hrun.toLocalRun.accept_next hy hc
 
-/-- **The finite Sleepy service under growing faults** from SA message service and node
+/-- **The finite Sleepy service under growing faults** from AC message service and node
 acceptance relay (senders honest at the send, recipients at the reading call); the AC acceptance
 relay follows through the AC block cut after each acceptance. -/
 theorem sleepyServiceBefore_of_message_relay_at
@@ -125,7 +125,7 @@ theorem sleepyServiceBefore_of_message_relay_at
     (message : ∀ x i v, x ∈ H (tr.time i) → tr.projAC.SendOrAdmit x i v → 0 ≤ tr.time i →
       ∀ y j ℓ, y ∈ H (tr.time j) → tr.projAC.CallAt y j ℓ →
         tr.projAC.deadline y j (tr.time i) ≤ b → tr.projAC.deadline y j (tr.time i) ≤ tr.time j →
-        SA.MessageServedBefore tr.projAC y j (tr.time i) v)
+        AC.MessageServedBefore tr.projAC y j (tr.time i) v)
     (relay : ∀ x i B, x ∈ H (tr.time i) → tr.AcceptAt x i B → 0 ≤ tr.time i →
       ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j → tr.deadline y j (tr.time i) sp.Δ ≤ b →
         tr.deadline y j (tr.time i) sp.Δ ≤ tr.time j →

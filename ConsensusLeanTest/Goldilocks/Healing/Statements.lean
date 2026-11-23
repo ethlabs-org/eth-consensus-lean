@@ -18,7 +18,7 @@ Labelled by kind (CONTRIBUTING "Statements"):
 * (a) `oneTickRun_catch_noRestart`: the one-tick run of
   `ConsensusLeanTest/Goldilocks/Run/Statements` is a `Node.LocalRun` that satisfies `CatchRun` (for
   every `g`, `κ`; vacuously: no acceptance) and `NoRestartAfter` (for every time), over `idleAC`,
-  not the Goldilocks SA.
+  not the Goldilocks AC.
 * (a) `periodicRun_healthy_catch_noRestart`: the infinite periodic run of
   `ConsensusLeanTest/Goldilocks/Run/Statements` satisfies `Healthy(0)`, `CatchRun` (vacuously: no
   acceptance) and `NoRestartAfter` with the run laws: the generic `RunTrace` premises hold together
@@ -114,7 +114,7 @@ theorem periodicRun_label_ac {i : Nat} {c : Cut Compose.Test.idleAC}
 validator ticking at every time) satisfies `Healthy(0)` (with `Δ_F = 1`), `CatchRun` (for every `κ`)
 and `NoRestartAfter` (for every time) together with the run laws, on an infinite run over `idleAC`
 (`CatchRun` vacuously: no block is accepted). `GoldilocksRun`, `HSShared` and `Prop⁺` need the
-Goldilocks SA: a follow-up. -/
+Goldilocks AC: a follow-up. -/
 theorem periodicRun_healthy_catch_noRestart
     (sg : Compose.Test.idleAC.Msg → Fin Compose.Test.P₁.n) (κ t : Time) :
     Node.LocalRun (fun _ => Compose.Test.v₀) Compose.Test.dg₁ Set.univ sg Compose.Test.periodicRun ∧
@@ -132,24 +132,24 @@ theorem periodicRun_healthy_catch_noRestart
     rcases hcall with h | h | h <;> rw [h] at hr <;> cases hr
 
 /-- Arithmetic check: `C_HS = (8k + 49 + 4δ_t)Δ + Δ_F + 3G` (claims HR.3 (c)). -/
-theorem C_HS_closed_form (sp : SA.SAParams) (ΔF G : Time) :
+theorem C_HS_closed_form (sp : AC.ACParams) (ΔF G : Time) :
     C_HS sp ΔF G = (8 * (sp.k : Time) + 49 + 4 * (sp.toParams.δt : Time)) * sp.Δ + ΔF + 3 * G := by
   simp only [C_HS, D_HS]; ring
 
 /-- Arithmetic check: `ḡ + 24Δ + 12C_HS = ḡ + (96k + 612 + 48δ_t)Δ + 12Δ_F + 36G` (claims
 HR.3 (c)). -/
-theorem bound_closed_form (sp : SA.SAParams) (g ΔF G : Time) :
-    SA.gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF G =
-      SA.gbar g + (96 * (sp.k : Time) + 612 + 48 * (sp.toParams.δt : Time)) * sp.Δ + 12 * ΔF +
+theorem bound_closed_form (sp : AC.ACParams) (g ΔF G : Time) :
+    AC.gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF G =
+      AC.gbar g + (96 * (sp.k : Time) + 612 + 48 * (sp.toParams.δt : Time)) * sp.Δ + 12 * ΔF +
         36 * G := by
   simp only [C_HS, D_HS]; ring
 
 /-- Arithmetic check: `T_heal = ḡ + (104k + 628 + 48δ_t)Δ + 12Δ_F + 36G + T_b` (claims H.4). -/
-theorem T_heal_closed_form (sp : SA.SAParams) (g ΔF G Tb : Time) :
+theorem T_heal_closed_form (sp : AC.ACParams) (g ΔF G Tb : Time) :
     T_heal sp g ΔF G Tb =
-      SA.gbar g + (104 * (sp.k : Time) + 628 + 48 * (sp.toParams.δt : Time)) * sp.Δ + 12 * ΔF +
+      AC.gbar g + (104 * (sp.k : Time) + 628 + 48 * (sp.toParams.δt : Time)) * sp.Δ + 12 * ΔF +
         36 * G + Tb := by
-  simp only [T_heal, C_HS, D_HS, SA.Θ]; ring
+  simp only [T_heal, C_HS, D_HS, AC.Θ]; ring
 
 end Consensus.Goldilocks.Healing.Test
 

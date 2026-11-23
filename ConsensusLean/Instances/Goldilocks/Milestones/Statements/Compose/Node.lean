@@ -17,7 +17,7 @@ the record is a client run, every handler's cuts obey the cut law). C0.1 (three 
 chain) at the node is `TipsNested` (`Compose/Interface`) at the AC states of
 `ACStatesReachable`, so it has no statement here. The run-level composition statements (C1.1,
 Service, Healing, Regimes) are over `Spec/Run`, in their own modules; nothing here mentions a
-run, the SA or the engine.
+run, the AC or the engine.
 
 Statements only: no proofs here. -/
 

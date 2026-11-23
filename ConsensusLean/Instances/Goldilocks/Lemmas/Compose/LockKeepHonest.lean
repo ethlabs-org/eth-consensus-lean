@@ -9,18 +9,18 @@ public section
 /-! # Goldilocks: a lock kept over an interval of cuts against honest votes
 
 `heldVotes_honest_unique`: at an AC cut `j` of an honest node `y`,
-two votes held across the cut (`SA.heldVotes`) of one honest validator and one slot are equal
+two votes held across the cut (`AC.heldVotes`) of one honest validator and one slot are equal
 (each was emitted by its validator, `one_vote_per_slot`; a declared head vote counts only when its
 validator has two distinct pooled votes of its slot, impossible for an honest validator). With
 the fault bound `2 · |Hᶜ| < n` this keeps the unlock target
-(`SA.unlockTarget_unlockView_held_of_honest_slot`). It assumes `NoCollRun`, for the AC projection
+(`AC.unlockTarget_unlockView_held_of_honest_slot`). It assumes `NoCollRun`, for the AC projection
 of the run (`goldilocks_ac_projection`). -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -30,17 +30,17 @@ equal. -/
 theorem heldVotes_honest_unique {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {x x' : Vote sp.n}
-    (hx : x ∈ SA.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac (Node.frame (tr.state y j)))
+    (hx : x ∈ AC.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac (Node.frame (tr.state y j)))
     (hx' : x' ∈
-      SA.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac (Node.frame (tr.state y j)))
+      AC.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac (Node.frame (tr.state y j)))
     (hxH : x.val ∈ H) (hval : x'.val = x.val) (hs : x.slot = x'.slot) : x = x' := by
   have hrun' := goldilocks_ac_projection_from hrun hnc
   have hr := hrun'.localRun
-  have hem : ∀ v ∈ SA.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac
+  have hem : ∀ v ∈ AC.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac
       (Node.frame (tr.state y j)), v.val ∈ H →
-      ∃ k e, SA.VoteAt tr.projAC v.val k e ∧ e.msg = v := by
+      ∃ k e, AC.VoteAt tr.projAC v.val k e ∧ e.msg = v := by
     intro v hv hvH
-    rcases SA.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | ⟨-, hv⟩
+    rcases AC.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | ⟨-, hv⟩
     · rw [← projAC_state hrun.toLocalRun hy] at hv
       obtain ⟨k, -, e, he, hm⟩ := hrun'.honest.pool_vote y hy j τ v hv hvH
       exact ⟨k, e, he, hm⟩
@@ -59,15 +59,15 @@ theorem heldVotes_honest_unique {ini} (hrun : GoldilocksRun proposer dg H tr ini
       obtain ⟨k₂, -, e₂, he₂, hm₂⟩ := hrun'.honest.pool_vote y hy (j + 1) _ w₂ hw₂ (hw₂v ▸ hvH)
       rw [hw₁v] at he₁
       rw [hw₂v] at he₂
-      have := (SA.one_vote_per_slotU sp _ ro H _ _ hr.toU _ hvH k₁ k₂ e₁ e₂ he₁ he₂
+      have := (AC.one_vote_per_slotU sp _ ro H _ _ hr.toU _ hvH k₁ k₂ e₁ e₂ he₁ he₂
         (by rw [hm₁, hm₂, hs₁, hs₂])).2
       exact hne (hm₁.symm.trans
-        ((congrArg (fun e : SA.Em sp (List (FG.Att sp.n)) => e.msg) this).trans hm₂))
+        ((congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg) this).trans hm₂))
   obtain ⟨k, e, he, rfl⟩ := hem x hx hxH
   obtain ⟨k', e', he', rfl⟩ := hem x' hx' (hval ▸ hxH)
   rw [hval] at he'
-  exact congrArg (fun e : SA.Em sp (List (FG.Att sp.n)) => e.msg)
-    (SA.one_vote_per_slotU sp _ ro H _ _ hr.toU _ hxH k k' e e' he he' hs).2
+  exact congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg)
+    (AC.one_vote_per_slotU sp _ ro H _ _ hr.toU _ hxH k k' e e' he he' hs).2
 
 end Consensus.Goldilocks.Compose
 

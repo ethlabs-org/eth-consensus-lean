@@ -30,12 +30,12 @@ extends `J` in the top-`J` case).
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 open Compose (store_eq)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
   {proposer : Nat → Fin sp.n}
 
@@ -53,7 +53,7 @@ private theorem fg_run (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShare
 `Σ.J` (HR.2 (a)). -/
 private theorem J_eq_phase (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H K dg g ΔF)
-    {z : Fin sp.n} (hz : z ∈ H) {k m : Nat} {J₀ : SA.Blk sp.n (List (FG.Att sp.n))}
+    {z : Fin sp.n} (hz : z ∈ H) {k m : Nat} {J₀ : AC.Blk sp.n (List (FG.Att sp.n))}
     (hJ₀ : JustifiedAt tr.projFG H k (m - 1) J₀) (hj : (tr.state z k).fg.hj = m - 1) :
     (tr.state z k).fg.J = J₀ := by
   obtain ⟨hfg, hq⟩ := fg_run hrun hs
@@ -81,9 +81,9 @@ private theorem floor_ge {β : Type} (m : Nat) (c : PhaseCase β) : m - 1 ≤ ph
 /-- **HS.1 (a), lower finality is benign.** -/
 theorem finalized_anc_of_allowed (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H K dg g ΔF)
-    {i k m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
+    {i k m : Nat} {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))}
     (hon : PhaseOn tr.projFG H i k m c) {y : Fin sp.n} (hy : y ∈ H)
-    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hW : EffAllowed (tr.state y i).fg m c W)
+    {W : AC.Blk sp.n (List (FG.Att sp.n))} (hW : EffAllowed (tr.state y i).fg m c W)
     {z : Fin sp.n} (hz : z ∈ H) {k' : Nat} (h1 : i ≤ k') (h2 : k' ≤ k) :
     Anc (tr.HonestBlocks H) (tr.state z k').fg.F W := by
   obtain ⟨hfg, hq⟩ := fg_run hrun hs
@@ -147,9 +147,9 @@ theorem finalized_anc_of_allowed (hrun : GoldilocksRun proposer dg H tr ini)
 it. -/
 theorem viableHead_of_allowed (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H K dg g ΔF)
-    {i k m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
+    {i k m : Nat} {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))}
     (hon : PhaseOn tr.projFG H i k m c) {y : Fin sp.n} (hy : y ∈ H)
-    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hW : EffAllowed (tr.state y i).fg m c W)
+    {W : AC.Blk sp.n (List (FG.Att sp.n))} (hW : EffAllowed (tr.state y i).fg m c W)
     {z : Fin sp.n} (hz : z ∈ H) {k' : Nat} (h1 : i ≤ k') (h2 : k' ≤ k)
     (hWz : W ∈ (tr.state z k').fg.tree) : W ∈ (Node.frame (tr.state z k')).viableHeads := by
   have hl := hrun.toLocalRun
@@ -205,9 +205,9 @@ theorem viableHead_of_allowed (hrun : GoldilocksRun proposer dg H tr ini)
 /-- **HS.1, effective-phase viable-witness retention** (claims HS.1). -/
 theorem viable_witness_retention_of (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H K dg g ΔF)
-    {i k m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
+    {i k m : Nat} {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))}
     (hon : PhaseOn tr.projFG H i k m c) {y : Fin sp.n} (hy : y ∈ H)
-    {W : SA.Blk sp.n (List (FG.Att sp.n))} (hW : EffAllowed (tr.state y i).fg m c W)
+    {W : AC.Blk sp.n (List (FG.Att sp.n))} (hW : EffAllowed (tr.state y i).fg m c W)
     {z : Fin sp.n} (hz : z ∈ H) {k' : Nat} (h1 : i ≤ k') (h2 : k' ≤ k) :
     Anc (tr.HonestBlocks H) (tr.state z k').fg.F W ∧
       (W ∈ (tr.state z k').fg.tree →
@@ -217,10 +217,10 @@ theorem viable_witness_retention_of (hrun : GoldilocksRun proposer dg H tr ini)
         ∀ X, Anc (tr.HonestBlocks H) X W →
           Anc (tr.HonestBlocks H) X (Node.frame (tr.state z k')).fcRoot ∨
           X ∈ (Node.frame (tr.state z k')).viableTree (Node.frame (tr.state z k')).tree) ∧
-      ∀ ℓ e, SA.CastAt tr.projAC z k' ℓ e →
-        W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot →
+      ∀ ℓ e, AC.CastAt tr.projAC z k' ℓ e →
+        W ∈ AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot →
         ∀ X, Anc (tr.HonestBlocks H) X W →
-          X ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
+          X ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
           Anc (tr.HonestBlocks H) X ℓ.frame.fcRoot := by
   have hl := hrun.toLocalRun
   have hnc := hs.noColl
@@ -258,7 +258,7 @@ theorem viable_witness_retention_of (hrun : GoldilocksRun proposer dg H tr ini)
     have hv := viableHead_of_allowed hrun hs hon hy hW hz h1 h2 hWz
     rcases hanc hWz X hX with h | ⟨hfX, hXW⟩
     · exact Or.inr (hfr ▸ h)
-    · have hXv := SA.voterBlockTree_anc
+    · have hXv := AC.voterBlockTree_anc
         (Compose.goldilocks_ac_projection_from hrun hnc).localRun
         hrun.vstart hz hce W hWv X (hfr ▸ hXW)
       rw [hfr] at hXv hWv ⊢

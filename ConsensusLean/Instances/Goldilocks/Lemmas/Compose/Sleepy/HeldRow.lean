@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeRun
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.CommitteeRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 
@@ -21,9 +21,9 @@ The three steps of "no optimistic check of slot `s + 1` before a row held at a s
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -41,17 +41,17 @@ private theorem sign_at_public {A : NodeAC sp.toParams}
 
 /-- At `t = t_{slot(t)} + Δ`, `ac_on_tick` of a joined node that has not voted in the slot casts
 a vote. (As `Persist/Attest`'s `acOnTick_votes`.) -/
-private theorem tick_votes (self : Fin sp.n) (A : SA.SAState sp.n)
-    (Φ : SA.Frm sp.n (List (FG.Att sp.n))) {t : Time} (hj : SA.joined sp A t)
+private theorem tick_votes (self : Fin sp.n) (A : AC.ACState sp.n)
+    (Φ : AC.Frm sp.n (List (FG.Att sp.n))) {t : Time} (hj : AC.joined sp A t)
     (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ)
     (hm : A.mayVote (sp.slot t) = true) :
-    ((SA.goldilocksSA sp (List (FG.Att sp.n)) ro).step self A Φ t .tick).2 ≠ [] := by
-  change (SA.acOnTick sp self A Φ t).2 ≠ []
-  unfold SA.acOnTick
+    ((AC.goldilocksAC sp (List (FG.Att sp.n)) ro).step self A Φ t .tick).2 ≠ [] := by
+  change (AC.acOnTick sp self A Φ t).2 ≠ []
+  unfold AC.acOnTick
   dsimp only
   have hc : (t = sp.ts (sp.slot t) + sp.Δ) = True := eq_true ht
   simp only [hj, not_true_eq_false, hc, ↓reduceIte]
-  unfold SA.tryVote
+  unfold AC.tryVote
   dsimp only
   simp only [hm, ↓reduceIte]
   split_ifs with h₁ h₂
@@ -89,9 +89,9 @@ private theorem tick_ac_call {A : NodeAC sp.toParams}
 /-- A time of slot `s + 1` is at least `t_{s+1} = t_s + 4Δ`. -/
 private theorem slot_start_le {t : Time} (ht : 0 ≤ t) {s : Nat} (hsl : sp.slot t = s + 1) :
     sp.ts s + 4 * sp.Δ ≤ t := by
-  have h := (SA.ts_le_iff_le_slot sp ht ((s + 1 : Nat) : Int)).2 (le_of_eq (by rw [hsl]))
+  have h := (AC.ts_le_iff_le_slot sp ht ((s + 1 : Nat) : Int)).2 (le_of_eq (by rw [hsl]))
   have h' : sp.ts ((s + 1 : Nat) : Int) ≤ t := h
-  simp only [SAParams.ts] at h' ⊢
+  simp only [ACParams.ts] at h' ⊢
   push_cast at h'
   linarith only [h']
 
@@ -99,7 +99,7 @@ private theorem slot_start_le {t : Time} (ht : 0 ≤ t) {s : Nat} (hsl : sp.slot
 Kept for a downstream consumer. -/
 theorem le_ts_add_five {t : Time} {s : Nat}
     (h : t ≤ sp.ts ((s + 1 : Nat) : Int) + sp.Δ) : t ≤ sp.ts s + 5 * sp.Δ := by
-  simp only [SAParams.ts] at h ⊢
+  simp only [ACParams.ts] at h ⊢
   push_cast at h
   linarith only [h]
 
@@ -121,7 +121,7 @@ theorem held_row_sign_time_node {A : NodeAC sp.toParams}
   have ht4 := slot_start_le ht hsl
   have h4 := ht4.trans htk
   have h5 := le_ts_add_five hk
-  simp only [SAParams.ts] at ht4 h4 h5 ⊢
+  simp only [ACParams.ts] at ht4 h4 h5 ⊢
   have hq1 : 4 * (s : Int) + 4 ≤ q := by
     by_contra h
     have : q + 1 ≤ 4 * (s : Int) + 4 := by omega
@@ -149,9 +149,9 @@ vote, no block with a row signed at `t_{s+1} + Δ` before the acceptance: the vo
 `t_{s+1} + Δ` precedes the acceptance and casts a slot-`(s+1)` vote, a second one. -/
 theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
-    {X : SA.Blk sp.n (List (FG.Att sp.n))} {m : Nat} (hm : tr.AcceptAt y m X) (hmi : m < i)
+    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
+    {X : AC.Blk sp.n (List (FG.Att sp.n))} {m : Nat} (hm : tr.AcceptAt y m X) (hmi : m < i)
     {k : Nat} (hkm : k < m) (hT : tr.time k = sp.ts s + 5 * sp.Δ) : False := by
   have hr' := goldilocks_ac_projection_from hrun hnc
   have hr := hr'.localRun
@@ -160,8 +160,8 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   obtain ⟨hrs, hti⟩ := honest_vote_restarts hrun hnc hy hc hs
   have hti' : tr.time i ≤ sp.ts s + 5 * sp.Δ :=
     le_ts_add_five (by rw [← hs]; exact (cast_head_fcRoot hr hrun.vstart hy hc).2)
-  have hsi : sp.slot (tr.time i) = s + 1 := ((SA.castAt_spec hr hy hc).2.1.symm.trans hs)
-  have hvi : SA.VoteAt tr.projAC y i e := ⟨ℓ, hc.1, hc.2⟩
+  have hsi : sp.slot (tr.time i) = s + 1 := ((AC.castAt_spec hr hy hc).2.1.symm.trans hs)
+  have hvi : AC.VoteAt tr.projAC y i e := ⟨ℓ, hc.1, hc.2⟩
   have hkm' := hrun.time_mono hkm.le
   have hmi' := hrun.time_mono hmi.le
   have htm : tr.time m = sp.ts s + 5 * sp.Δ := le_antisymm (hmi'.trans hti') (hT ▸ hkm')
@@ -172,11 +172,11 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   · obtain ⟨-, hpt', -⟩ := hp
     have h1 : sp.toParams.slotOf (tr.time m) = s + 1 := hslm
     rw [h1, sp.slotTime_eq, htm] at hpt'
-    simp only [SAParams.ts] at hpt'
+    simp only [ACParams.ts] at hpt'
     push_cast at hpt'
     linarith only [hpt', hΔ]
   obtain ⟨jt, xt, hgt⟩ := hl.tick_of_awake y hy (tr.time m) (hl.time_nonneg m)
-    ⟨4 * (s : Int) + 5, by rw [htm]; simp only [SAParams.ts]; ring⟩
+    ⟨4 * (s : Int) + 5, by rw [htm]; simp only [ACParams.ts]; ring⟩
     (hl.awake_of_call y hy m ⟨_, hm⟩)
   have hjm : jt < m := by
     rcases lt_trichotomy jt m with h | rfl | h
@@ -201,12 +201,12 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   simp only [Nat.add_zero] at ht₀
   have hpt0 : tr.projAC.CallAt y jt ℓt := projAC_callAt.2 hct
   have hmay : (tr.projAC.state y jt).mayVote (s + 1) = true := by
-    rw [(SA.trace_mayVote hr hy jt).trans (SA.trace_mayVote hr hy i).symm, ← hs]
-    exact SA.mayVote_of_castAt hr hy hc
+    rw [(AC.trace_mayVote hr hy jt).trans (AC.trace_mayVote hr hy i).symm, ← hs]
+    exact AC.mayVote_of_castAt hr hy hc
   by_cases hvs : (tr.projAC.state y jt).votedSlot = ((s + 1 : Nat) : Int)
-  · rcases SA.cast_of_votedSlot hr hrun.vstart hy jt (s + 1) hvs with
+  · rcases AC.cast_of_votedSlot hr hrun.vstart hy jt (s + 1) hvs with
       ⟨j, hj, e', hv', hes'⟩ | hmf
-    · have := (SA.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy j i e' e hv' hvi
+    · have := (AC.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy j i e' e hv' hvi
         (hes'.trans hs.symm)).1
       omega
     · exact absurd hmay (by rw [hmf]; decide)
@@ -218,7 +218,7 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     rw [hslm, Nat.add_sub_cancel, sp.slotTime_eq]
     rcases le_or_gt k' i with hki | hki
     · have := hrs k' hki (projAC_restartAt.2 hk')
-      simp only [SAParams.ts] at this
+      simp only [ACParams.ts] at this
       exact this
     · obtain ⟨u, -, hu, -, hbefore⟩ := hl.sleep_of_restart y hy k' hk'
       have := hbefore i hki ⟨_, projAC_callAt.1 hc.1⟩
@@ -230,7 +230,7 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     cases h₁
     rw [hlt] at hkr
     cases hkr
-  have hjoined : SA.joined sp (tr.projAC.state y jt) (tr.time m) := by
+  have hjoined : AC.joined sp (tr.projAC.state y jt) (tr.time m) := by
     rw [projAC_state hl hy]
     exact ((joined_projection_from hrun hy (tr.time m)).2.1 jt ⟨_, hct⟩ hnr
       ht₀).mp hjr
@@ -238,14 +238,14 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   rw [hpt0.1, hlt] at hexec
   have hne := tick_votes (ro := ro) y (tr.projAC.state y jt) ℓt.frame hjoined
     (by rw [hslm]; exact hvs)
-    (by rw [hslm, htm]; simp only [SAParams.ts]; push_cast; ring)
+    (by rw [hslm, htm]; simp only [ACParams.ts]; push_cast; ring)
     (by rw [hslm]; exact hmay)
   rw [show tr.projAC.time jt = tr.time m from ht₀] at hexec
   rw [hexec] at hne
   obtain ⟨e₀, he₀⟩ := List.exists_mem_of_ne_nil _ hne
-  have hsl₀ : e₀.msg.slot = sp.slot (tr.time m) := (SA.castAt_spec hr hy ⟨hpt0, he₀⟩).2.1.trans
+  have hsl₀ : e₀.msg.slot = sp.slot (tr.time m) := (AC.castAt_spec hr hy ⟨hpt0, he₀⟩).2.1.trans
     (by rw [show tr.projAC.time jt = tr.time m from ht₀])
-  have := (SA.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy jt i e₀ e ⟨ℓt, hpt0, he₀⟩ hvi
+  have := (AC.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy jt i e₀ e ⟨ℓt, hpt0, he₀⟩ hvi
     (hsl₀.trans (hslm.trans hs.symm))).1
   omega
 
@@ -258,15 +258,15 @@ and three quarters of the committee size are at most `f + 1` with
 theorem held_row_early_count
     {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    (K : SA.CommitteeDict sp.n)
-    (hP : SA.CommitteeP K tr.projAC H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
+    (K : AC.CommitteeDict sp.n)
+    (hP : AC.CommitteeP K tr.projAC H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
     {s : Nat} (hfK : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize)
     {a : FG.Att sp.n} (hav : a.val ∈ H) {k : Nat} (hsg : tr.SignAt a.val k a)
     (hT0 : tr.time k = sp.ts s + 4 * sp.Δ)
-    {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (hck : c < k) {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (Vote sp.n)} (hO : SA.OptimisticLockAt tr.projAC z c (s + 1) C CV) :
+    {z : Fin sp.n} (hz : z ∈ H) {c : Nat} (hck : c < k) {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (Vote sp.n)} (hO : AC.OptimisticLockAt tr.projAC z c (s + 1) C CV) :
     ∃ u ∈ H, (∀ y ∈ K.committee (s + 1), y = u) ∧
-      ∃ j' ≤ c, ∃ e', SA.VoteAt tr.projAC u j' e' ∧ e'.msg.slot = s + 1 := by
+      ∃ j' ≤ c, ∃ e', AC.VoteAt tr.projAC u j' e' ∧ e'.msg.slot = s + 1 := by
   have hr' := goldilocks_ac_projection_from hrun hnc
   have hr := hr'.localRun
   have hl := hrun.toLocalRun
@@ -280,22 +280,22 @@ theorem held_row_early_count
   obtain ⟨xt, rfl⟩ := @signed_only_in_ticks sp.toParams (goldilocksNode sp ro) proposer dg a.val
     (tr.state a.val gx) (tr.time k) ex src a (List.mem_of_getElem? hkx)
   have hklen := (List.getElem?_eq_some_iff.1 hkx).1
-  unfold SA.optimisticSelect at hsel
+  unfold AC.optimisticSelect at hsel
   dsimp only at hsel
   split_ifs at hsel
-  have h34 := (SA.deepest_mem hsel).1.2.1
+  have h34 := (AC.deepest_mem hsel).1.2.1
   rw [hslc] at h34
-  have hprop : ∀ u ∈ SA.optimisticVoters sp AO ℓO.frame (s + 1) C, u ∈ H →
+  have hprop : ∀ u ∈ AC.optimisticVoters sp AO ℓO.frame (s + 1) C, u ∈ H →
       u = proposer (sp.toParams.slotOf (tr.time k)) ∧
-        ∃ j' ≤ c, ∃ e', SA.VoteAt tr.projAC u j' e' ∧ e'.msg.slot = s + 1 := by
+        ∃ j' ≤ c, ∃ e', AC.VoteAt tr.projAC u j' e' ∧ e'.msg.slot = s + 1 := by
     rintro u ⟨v, hv, hvu, -⟩ huH
     subst hvu
     obtain ⟨hvs, j', hj', e', ⟨ℓ', hc', he'⟩, rfl⟩ :=
-      SA.optimisticPoint_pool_vote hr' hz hpt hv huH
+      AC.optimisticPoint_pool_vote hr' hz hpt hv huH
     refine ⟨?_, j', hj', e', ⟨ℓ', hc', he'⟩, hvs⟩
     -- the vote is cast at `t_{s+1}`
     have hsl' : sp.slot (tr.time j') = s + 1 :=
-      (SA.castAt_spec hr huH ⟨hc', he'⟩).2.1.symm.trans hvs
+      (AC.castAt_spec hr huH ⟨hc', he'⟩).2.1.symm.trans hvs
     have htj : tr.time j' = tr.time k := by
       refine le_antisymm ((hrun.time_mono hj').trans (htc ▸ le_rfl)) ?_
       rw [hT0]; exact slot_start_le (hr.time_nonneg j') hsl'
@@ -320,7 +320,7 @@ theorem held_row_early_count
       rcases tick_ac_call hmem with h | h | h | hp
       · have h5 := htick h
         rw [hsl', htj, hT0] at h5
-        simp only [SAParams.ts] at h5
+        simp only [ACParams.ts] at h5
         push_cast at h5
         linarith only [h5, hΔ]
       · exact absurd h hnp
@@ -332,10 +332,10 @@ theorem held_row_early_count
     | _ => simp [Node.Event.phase] at hph
   -- counting: the voters are members (P), so `3·committeeSize ≤ 4(f + 1)` with
   -- `2f < committeeSize` leaves a one-member committee
-  have hOK : SA.optimisticVoters sp AO ℓO.frame (s + 1) C ⊆ K.committee (s + 1) := by
+  have hOK : AC.optimisticVoters sp AO ℓO.frame (s + 1) C ⊆ K.committee (s + 1) := by
     rintro u ⟨v, hv, rfl, -⟩
     exact hP.2 z hz c ℓO AO hpt (s + 1) v hv
-  have hsub : SA.optimisticVoters sp AO ℓO.frame (s + 1) C ⊆
+  have hsub : AC.optimisticVoters sp AO ℓO.frame (s + 1) C ⊆
       (K.committee (s + 1) ∩ Hᶜ) ∪ {proposer (sp.toParams.slotOf (tr.time k))} := fun u hu => by
     by_cases huH : u ∈ H
     · exact Or.inr (hprop u hu huH).1
@@ -344,7 +344,7 @@ theorem held_row_early_count
     ((Set.ncard_union_le _ _).trans (by rw [Set.ncard_singleton]))
   have hn1 : sp.committeeSize = 1 := by omega
   obtain ⟨u, hu⟩ := Set.nonempty_of_ncard_ne_zero
-    (show (SA.optimisticVoters sp AO ℓO.frame (s + 1) C).ncard ≠ 0 by omega)
+    (show (AC.optimisticVoters sp AO ℓO.frame (s + 1) C).ncard ≠ 0 by omega)
   have huH : u ∈ H := by
     by_contra h
     have := (Set.ncard_pos (Set.toFinite (K.committee (s + 1) ∩ Hᶜ))).2 ⟨u, hOK hu, h⟩

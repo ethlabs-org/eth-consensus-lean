@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Premises
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeRun
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.CommitteeRun
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -27,11 +27,11 @@ Every node quantifier reads honesty at the cut of the event it constrains:
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-/-- **The finite Sleepy service under growing faults**: SA message service and acceptance relay
+/-- **The finite Sleepy service under growing faults**: AC message service and acceptance relay
 (senders honest at the send, recipients honest at the reading call), and node acceptance relay
 inside the blocks held while honest. -/
 structure SleepyServiceBefore (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
@@ -40,7 +40,7 @@ structure SleepyServiceBefore (tr : GoldilocksTrace sp ro) (H : Time → Set (Fi
   message : ∀ x i v, x ∈ H (tr.time i) → tr.projAC.SendOrAdmit x i v → 0 ≤ tr.time i →
     ∀ y j ℓ, y ∈ H (tr.time j) → tr.projAC.CallAt y j ℓ → tr.projAC.deadline y j (tr.time i) ≤ b →
       tr.projAC.deadline y j (tr.time i) ≤ tr.time j →
-      SA.MessageServedBefore tr.projAC y j (tr.time i) v
+      AC.MessageServedBefore tr.projAC y j (tr.time i) v
   acRelay : ∀ x i B, x ∈ H (tr.time i) → tr.projAC.AcceptAt x i B → 0 ≤ tr.time i →
     ∀ y j ℓ, y ∈ H (tr.time j) → tr.projAC.CallAt y j ℓ → tr.projAC.deadline y j (tr.time i) ≤ b →
       tr.projAC.deadline y j (tr.time i) ≤ tr.time j → Anc (tr.HonestBlocksAt H) ℓ.frame.F B →
@@ -63,7 +63,7 @@ structure SleepyServiceFrom (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin 
   message : ∀ x i v, x ∈ H (tr.time i) → tr.projAC.SendOrAdmit x i v → a ≤ tr.time i →
     ∀ y j ℓ, y ∈ H (tr.time j) → tr.projAC.CallAt y j ℓ → tr.projAC.deadline y j (tr.time i) ≤ b →
       tr.projAC.deadline y j (tr.time i) ≤ tr.time j →
-      SA.MessageServedBefore tr.projAC y j (tr.time i) v
+      AC.MessageServedBefore tr.projAC y j (tr.time i) v
   acRelay : ∀ x i B, x ∈ H (tr.time i) → tr.projAC.AcceptAt x i B → a ≤ tr.time i →
     ∀ y j ℓ, y ∈ H (tr.time j) → tr.projAC.CallAt y j ℓ → tr.projAC.deadline y j (tr.time i) ≤ b →
       tr.projAC.deadline y j (tr.time i) ≤ tr.time j → Anc (tr.HonestBlocksAt H) ℓ.frame.F B →
@@ -84,27 +84,27 @@ structure SleepyServiceFrom (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin 
 variable (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
 
 /-- A vote cast at a cut at which its node is honest. -/
-def HVoteAt (y : Fin sp.n) (i : Nat) (e : SA.Em sp (List (FG.Att sp.n))) : Prop :=
-  y ∈ H (tr.time i) ∧ SA.VoteAt tr.projAC y i e
+def HVoteAt (y : Fin sp.n) (i : Nat) (e : AC.Em sp (List (FG.Att sp.n))) : Prop :=
+  y ∈ H (tr.time i) ∧ AC.VoteAt tr.projAC y i e
 
 /-- **An origin of label `s`**: the result of an update, or the selection of an optimistic check,
 of slot `s` by a node honest at its event cut. -/
-def Origin (C : SA.Blk sp.n (List (FG.Att sp.n))) (s : Nat) : Prop :=
+def Origin (C : AC.Blk sp.n (List (FG.Att sp.n))) (s : Nat) : Prop :=
   ∃ x i CV, x ∈ H (tr.time i) ∧
-    (SA.ResultAt tr.projAC x i s C CV ∨ SA.OptimisticLockAt tr.projAC x i s C CV)
+    (AC.ResultAt tr.projAC x i s C CV ∨ AC.OptimisticLockAt tr.projAC x i s C CV)
 
 /-- An origin of label `s` whose event cut is at a time `≤ b`. -/
-def OriginWithin (C : SA.Blk sp.n (List (FG.Att sp.n))) (s : Nat) (b : Time) : Prop :=
+def OriginWithin (C : AC.Blk sp.n (List (FG.Att sp.n))) (s : Nat) (b : Time) : Prop :=
   ∃ x i CV, x ∈ H (tr.time i) ∧ tr.time i ≤ b ∧
-    (SA.ResultAt tr.projAC x i s C CV ∨ SA.OptimisticLockAt tr.projAC x i s C CV)
+    (AC.ResultAt tr.projAC x i s C CV ∨ AC.OptimisticLockAt tr.projAC x i s C CV)
 
 /-- An origin of label `s` whose event is at a cut before `i`. -/
-def OriginBefore (C : SA.Blk sp.n (List (FG.Att sp.n))) (s i : Nat) : Prop :=
+def OriginBefore (C : AC.Blk sp.n (List (FG.Att sp.n))) (s i : Nat) : Prop :=
   ∃ x k CV, k < i ∧ x ∈ H (tr.time k) ∧
-    (SA.ResultAt tr.projAC x k s C CV ∨ SA.OptimisticLockAt tr.projAC x k s C CV)
+    (AC.ResultAt tr.projAC x k s C CV ∨ AC.OptimisticLockAt tr.projAC x k s C CV)
 
 /-- `B` is genesis or an ancestor (inside the blocks held while honest) of an origin within `b`. -/
-def OnOriginChainWithin (B : SA.Blk sp.n (List (FG.Att sp.n))) (b : Time) : Prop :=
+def OnOriginChainWithin (B : AC.Blk sp.n (List (FG.Att sp.n))) (b : Time) : Prop :=
   B.root = sp.genesisRoot ∨ ∃ C s, OriginWithin tr H C s b ∧ Anc (tr.HonestBlocksAt H) B C
 
 /-- **`P_s` up to `b`**: origins within `b` of labels below `s` are pairwise compatible. -/
@@ -116,7 +116,7 @@ def OriginsBelowUpTo (s : Nat) (b : Time) : Prop :=
 extends every origin within `b` of label `j`. -/
 def VotesBelowUpTo (s : Nat) (b : Time) : Prop :=
   ∀ C j, OriginWithin tr H C j b → ∀ y i e, HVoteAt tr H y i e → tr.time i ≤ b →
-    j < e.msg.slot → e.msg.slot ≤ s → SA.VoteExtends (tr.HonestBlocksAt H) e.msg C
+    j < e.msg.slot → e.msg.slot ≤ s → AC.VoteExtends (tr.HonestBlocksAt H) e.msg C
 
 /-- The voters of slot `s` (honest at their vote) that are still honest at `d`. -/
 def VotersAt (s : Nat) (d : Time) : Set (Fin sp.n) :=
@@ -137,9 +137,9 @@ structure SleepyBoundsFrom (σ₀ : Nat) (b : Time) : Prop where
 CS at the slot-`s` committee (`FaultBoundK`, faults charged at `d`, readiness at `t_s + Δ`) at
 every `d ∈ [t_s + Δ, min b (t_s + 6Δ)]`, and CS2 `2 f_d < |K s|` among the slot-`s` committee at
 every `d ∈ [t_s, min b (t_s + 2Δ)]`. -/
-structure CommitteeBoundsFrom (K : SA.CommitteeDict sp.n) (σ₀ : Nat) (b : Time) : Prop where
+structure CommitteeBoundsFrom (K : AC.CommitteeDict sp.n) (σ₀ : Nat) (b : Time) : Prop where
   slotK : ∀ (s : Nat) (d : Time), σ₀ ≤ s → sp.ts s + sp.Δ ≤ d → d ≤ b →
-    d ≤ sp.ts s + 6 * sp.Δ → SA.FaultBoundK K s tr.projAC (H d) (sp.ts s + sp.Δ)
+    d ≤ sp.ts s + 6 * sp.Δ → AC.FaultBoundK K s tr.projAC (H d) (sp.ts s + sp.Δ)
   twoK : ∀ (s : Nat) (d : Time), σ₀ ≤ s → sp.ts s ≤ d → d ≤ b → d ≤ sp.ts s + 2 * sp.Δ →
     2 * (K.committee s ∩ (H d)ᶜ).ncard < (K.committee s).ncard
 
@@ -154,7 +154,7 @@ structure SleepyInvariantUpTo (b : Time) : Prop where
   /-- S2: every honest vote at a time `≤ b` of a slot after the label of an origin within `b`
   extends it. -/
   vote_extends : ∀ C s, OriginWithin tr H C s b → ∀ y i e, HVoteAt tr H y i e →
-    tr.time i ≤ b → s < e.msg.slot → SA.VoteExtends (tr.HonestBlocksAt H) e.msg C
+    tr.time i ≤ b → s < e.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e.msg C
   /-- S1: the state of a node before a cut whose earlier cuts are at times `≤ t ≤ b`, with the node
   honest at `t`: the record names a block of its tree that is genesis or an origin within `b`. -/
   record : ∀ y i t, 0 ≤ t → (∀ k < i, tr.time k ≤ t) → t ≤ b → y ∈ H t →
@@ -171,7 +171,7 @@ structure SleepyInvariantUpTo (b : Time) : Prop where
     ∃ L ∈ (tr.state y i).fg.tree, L.root = l.block ∧ OnOriginChainWithin tr H L b
   /-- S1: every FG source is on the chain of the origins within `b`. -/
   sources : ∀ y i, y ∈ H (tr.time i) → (∀ k < i, tr.time k ≤ b) → ∀ ℓ C,
-    SA.ToFGAt tr.projAC y i ℓ C → OnOriginChainWithin tr H C b
+    AC.ToFGAt tr.projAC y i ℓ C → OnOriginChainWithin tr H C b
   /-- S3 (full reads): an origin within `b` that the node holds (state read at `t`) is at or below
   its `fc_root`, or in its full viable tree. -/
   viable : ∀ y i t, 0 ≤ t → (∀ k < i, tr.time k ≤ t) → t ≤ b → y ∈ H t → ∀ C s,
@@ -181,26 +181,26 @@ structure SleepyInvariantUpTo (b : Time) : Prop where
 
 variable {tr H}
 
-theorem hVoteAt_iff {y : Fin sp.n} {i : Nat} {e : SA.Em sp (List (FG.Att sp.n))} :
-    HVoteAt tr H y i e ↔ y ∈ H (tr.time i) ∧ SA.VoteAt tr.projAC y i e :=
+theorem hVoteAt_iff {y : Fin sp.n} {i : Nat} {e : AC.Em sp (List (FG.Att sp.n))} :
+    HVoteAt tr H y i e ↔ y ∈ H (tr.time i) ∧ AC.VoteAt tr.projAC y i e :=
   Iff.rfl
 
-theorem origin_iff {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} :
+theorem origin_iff {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} :
     Origin tr H C s ↔ ∃ x i CV, x ∈ H (tr.time i) ∧
-      (SA.ResultAt tr.projAC x i s C CV ∨ SA.OptimisticLockAt tr.projAC x i s C CV) :=
+      (AC.ResultAt tr.projAC x i s C CV ∨ AC.OptimisticLockAt tr.projAC x i s C CV) :=
   Iff.rfl
 
-theorem originWithin_iff {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time} :
+theorem originWithin_iff {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time} :
     OriginWithin tr H C s b ↔ ∃ x i CV, x ∈ H (tr.time i) ∧ tr.time i ≤ b ∧
-      (SA.ResultAt tr.projAC x i s C CV ∨ SA.OptimisticLockAt tr.projAC x i s C CV) :=
+      (AC.ResultAt tr.projAC x i s C CV ∨ AC.OptimisticLockAt tr.projAC x i s C CV) :=
   Iff.rfl
 
-theorem originBefore_iff {C : SA.Blk sp.n (List (FG.Att sp.n))} {s i : Nat} :
+theorem originBefore_iff {C : AC.Blk sp.n (List (FG.Att sp.n))} {s i : Nat} :
     OriginBefore tr H C s i ↔ ∃ x k CV, k < i ∧ x ∈ H (tr.time k) ∧
-      (SA.ResultAt tr.projAC x k s C CV ∨ SA.OptimisticLockAt tr.projAC x k s C CV) :=
+      (AC.ResultAt tr.projAC x k s C CV ∨ AC.OptimisticLockAt tr.projAC x k s C CV) :=
   Iff.rfl
 
-theorem onOriginChainWithin_iff {B : SA.Blk sp.n (List (FG.Att sp.n))} {b : Time} :
+theorem onOriginChainWithin_iff {B : AC.Blk sp.n (List (FG.Att sp.n))} {b : Time} :
     OnOriginChainWithin tr H B b ↔
       B.root = sp.genesisRoot ∨ ∃ C s, OriginWithin tr H C s b ∧ Anc (tr.HonestBlocksAt H) B C :=
   Iff.rfl
@@ -213,40 +213,40 @@ theorem originsBelowUpTo_iff {s : Nat} {b : Time} :
 theorem votesBelowUpTo_iff {s : Nat} {b : Time} :
     VotesBelowUpTo tr H s b ↔ ∀ C j, OriginWithin tr H C j b → ∀ y i e, HVoteAt tr H y i e →
       tr.time i ≤ b → j < e.msg.slot → e.msg.slot ≤ s →
-        SA.VoteExtends (tr.HonestBlocksAt H) e.msg C :=
+        AC.VoteExtends (tr.HonestBlocksAt H) e.msg C :=
   Iff.rfl
 
 theorem votersAt_iff {s : Nat} {d : Time} {x : Fin sp.n} :
     x ∈ VotersAt tr H s d ↔ x ∈ H d ∧ ∃ j e, HVoteAt tr H x j e ∧ e.msg.slot = s :=
   Iff.rfl
 
-theorem OriginWithin.origin {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time}
+theorem OriginWithin.origin {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b : Time}
     (h : OriginWithin tr H C s b) : Origin tr H C s :=
   let ⟨x, i, CV, hx, _, h⟩ := h
   ⟨x, i, CV, hx, h⟩
 
-theorem OriginWithin.mono {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b b' : Time}
+theorem OriginWithin.mono {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} {b b' : Time}
     (h : OriginWithin tr H C s b) (hb : b ≤ b') : OriginWithin tr H C s b' :=
   let ⟨x, i, CV, hx, hi, h⟩ := h
   ⟨x, i, CV, hx, hi.trans hb, h⟩
 
 /-- An origin whose event precedes a cut within `b` is within `b`. -/
-theorem OriginBefore.within {C : SA.Blk sp.n (List (FG.Att sp.n))} {s i : Nat} {b : Time}
+theorem OriginBefore.within {C : AC.Blk sp.n (List (FG.Att sp.n))} {s i : Nat} {b : Time}
     (h : OriginBefore tr H C s i) (hi : ∀ k < i, tr.time k ≤ b) : OriginWithin tr H C s b :=
   let ⟨x, k, CV, hk, hx, h⟩ := h
   ⟨x, k, CV, hx, hi k hk, h⟩
 
 /-- The result of a node honest at its update is an origin within every horizon after it. -/
 theorem OriginWithin.of_result {x : Fin sp.n} {i s : Nat} (hx : x ∈ H (tr.time i)) {b : Time}
-    (hib : tr.time i ≤ b) {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (h : SA.ResultAt tr.projAC x i s C CV) : OriginWithin tr H C s b :=
+    (hib : tr.time i ≤ b) {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (h : AC.ResultAt tr.projAC x i s C CV) : OriginWithin tr H C s b :=
   ⟨x, i, CV, hx, hib, Or.inl h⟩
 
 /-- The selection of a node honest at its optimistic check is an origin within every horizon
 after it. -/
 theorem OriginWithin.of_optimistic {x : Fin sp.n} {i s : Nat} (hx : x ∈ H (tr.time i)) {b : Time}
-    (hib : tr.time i ≤ b) {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (h : SA.OptimisticLockAt tr.projAC x i s C CV) : OriginWithin tr H C s b :=
+    (hib : tr.time i ≤ b) {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (h : AC.OptimisticLockAt tr.projAC x i s C CV) : OriginWithin tr H C s b :=
   ⟨x, i, CV, hx, hib, Or.inr h⟩
 
 /-- The bounds through `b` give the bounds through every `b' ≤ b`. -/
@@ -257,7 +257,7 @@ theorem SleepyBoundsFrom.mono {σ₀ : Nat} {b b' : Time} (h : SleepyBoundsFrom 
     fun s d hs h1 hd h7 => h.late s d hs h1 (hd.trans hb) h7⟩
 
 /-- The committee bounds through `b` give the committee bounds through every `b' ≤ b`. -/
-theorem CommitteeBoundsFrom.mono {K : SA.CommitteeDict sp.n} {σ₀ : Nat} {b b' : Time}
+theorem CommitteeBoundsFrom.mono {K : AC.CommitteeDict sp.n} {σ₀ : Nat} {b b' : Time}
     (h : CommitteeBoundsFrom tr H K σ₀ b) (hb : b' ≤ b) : CommitteeBoundsFrom tr H K σ₀ b' :=
   ⟨fun s d hs h1 hd h6 => h.slotK s d hs h1 (hd.trans hb) h6,
     fun s d hs h0 hd h2 => h.twoK s d hs h0 (hd.trans hb) h2⟩
@@ -274,24 +274,24 @@ theorem two_mul_inter_compl_lt {α : Type*} [Finite α] {S H J : Set α} (hJ : J
 
 /-- **CS2 from CS**: at `d ∈ [t_s + Δ, min b (t_s + 6Δ)]` for a slot `s ≥ σ₀`, fewer than half of
 the slot-`s` committee is compromised by `d`. -/
-theorem CommitteeBoundsFrom.two_of_slotK {K : SA.CommitteeDict sp.n} {σ₀ : Nat} {b : Time}
+theorem CommitteeBoundsFrom.two_of_slotK {K : AC.CommitteeDict sp.n} {σ₀ : Nat} {b : Time}
     (h : CommitteeBoundsFrom tr H K σ₀ b) {s : Nat} {d : Time} (hs : σ₀ ≤ s)
     (h1 : sp.ts s + sp.Δ ≤ d) (hdb : d ≤ b) (h6 : d ≤ sp.ts s + 6 * sp.Δ) :
     2 * (K.committee s ∩ (H d)ᶜ).ncard < (K.committee s).ncard := by
   have hk : (K.committee s ∩ (H d)ᶜ).ncard < (K.committee s ∩ {y | y ∈ H d ∧
-      tr.projAC.awake y (sp.ts s + sp.Δ) ∧ SA.JoinedAt tr.projAC y (sp.ts s + sp.Δ)}).ncard :=
+      tr.projAC.awake y (sp.ts s + sp.Δ) ∧ AC.JoinedAt tr.projAC y (sp.ts s + sp.Δ)}).ncard :=
     h.slotK s d hs h1 hdb h6
   exact two_mul_inter_compl_lt (fun _ hy => hy.1) hk
 
 /-- **CS2 across a slot**: at every `d ≤ b` in `[t_m, t_{m+1})` for a slot `m ≥ σ₀`, fewer than half
 of the slot-`m` committee is compromised by `d` (`twoK` up to `t_m + 2Δ`, then `two_of_slotK`). -/
-theorem CommitteeBoundsFrom.two_in_slot {K : SA.CommitteeDict sp.n} {σ₀ : Nat} {b : Time}
+theorem CommitteeBoundsFrom.two_in_slot {K : AC.CommitteeDict sp.n} {σ₀ : Nat} {b : Time}
     (h : CommitteeBoundsFrom tr H K σ₀ b) {m : Nat} {d : Time} (hm : σ₀ ≤ m)
     (h0 : sp.ts m ≤ d) (h1 : d < sp.ts (m + 1 : Nat)) (hdb : d ≤ b) :
     2 * (K.committee m ∩ (H d)ᶜ).ncard < (K.committee m).ncard := by
   have hΔ := sp.toParams.hΔ
   have hts : sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   rcases le_or_gt d (sp.ts m + 2 * sp.Δ) with h2 | h2
   · exact h.twoK m d hm h0 hdb h2
   · exact h.two_of_slotK hm (by linarith) hdb (by linarith)
@@ -300,7 +300,7 @@ theorem CommitteeBoundsFrom.two_in_slot {K : SA.CommitteeDict sp.n} {σ₀ : Nat
 theorem mem_awakeJoined_projAC {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {proposer : Nat → Fin sp.n} {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {t : Time} {y : Fin sp.n} :
-    (tr.projAC.awake y t ∧ SA.JoinedAt tr.projAC y t) ↔ (tr.awake y t ∧ tr.JoinedAt y t) :=
+    (tr.projAC.awake y t ∧ AC.JoinedAt tr.projAC y t) ↔ (tr.awake y t ∧ tr.JoinedAt y t) :=
   and_congr Iff.rfl (projAC_joinedAt_iff hrun.time_nonneg y t).symm
 
 /-- The service through `b` gives the service through every `b' ≤ b`. -/

@@ -16,9 +16,9 @@ No successful later update is assumed.
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -27,16 +27,16 @@ theorem same_slot_source_below_unanimous_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x : Fin sp.n} {r u : Nat} (hx : x ∈ H (tr.time r))
-    {B P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (horig : (∃ CV, SA.FastLockAt tr.projAC x r u B CV) ∨ SA.SlowLockAt tr.projAC x r u B)
+    {B P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (horig : (∃ CV, AC.FastLockAt tr.projAC x r u B CV) ∨ AC.SlowLockAt tr.projAC x r u B)
     (hrb : tr.time r ≤ b) (hts : cutZ sp.toParams g ≤ sp.ts u)
     (hPU : P ∈ tr.HonestBlocksAt H)
-    (hun : ∀ z q e, z ∈ H (tr.time q) → SA.VoteAt tr.projAC z q e → tr.time q ≤ b →
+    (hun : ∀ z q e, z ∈ H (tr.time q) → AC.VoteAt tr.projAC z q e → tr.time q ≤ b →
       e.msg.slot = u → e.msg.head = P.root) : Anc (tr.HonestBlocksAt H) B P := by
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have below : ∀ z q, z ∈ H (tr.time r) → q ≤ r → ∀ e,
-      SA.VoteAt tr.projAC z q e → e.msg.slot = u →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg B → Anc (tr.HonestBlocksAt H) B P := by
+      AC.VoteAt tr.projAC z q e → e.msg.slot = u →
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg B → Anc (tr.HonestBlocksAt H) B P := by
     rintro z q hz hqr e hv hes ⟨D, hD, hDr, hBD⟩
     obtain rfl : D = P := hac.localRun.coherent.1 hD hPU
       (hDr.trans (hun z q e (hp.run.antitone (hp.run.time_mono hqr) hz) hv
@@ -46,8 +46,8 @@ theorem same_slot_source_below_unanimous_at
   · have hr := hac.localRun.upTo (hp.run.time_nonneg r)
     have hcu := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hupd.1)
     obtain ⟨z, hz, q, hqr, e, hv, _, hes, he⟩ := ProposalImpl.result_supporter_at hp hx
-      ⟨ell, hupd, hC, rfl⟩ ((SA.deepest_mem hD).1.1.2.2.mono
-        (SA.frameIn_of_callAt hr hx hcu).2) hrb hts
+      ⟨ell, hupd, hC, rfl⟩ ((AC.deepest_mem hD).1.1.2.2.mono
+        (AC.frameIn_of_callAt hr hx hcu).2) hrb hts
     exact below z q hz hqr.le e hv hes he
   · obtain ⟨_, z, q, hz, hqr, e, hv, hes, he⟩ :=
       hp.optimistic_supporter_at hx hrb (Healing.gbar_le_of_cutZ_le sp hts) hop
@@ -55,8 +55,8 @@ theorem same_slot_source_below_unanimous_at
   · have hr := hac.localRun.upTo (hp.run.time_nonneg r)
     have hcu := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hupd.1)
     obtain ⟨z, hz, q, hqr, e, hv, _, hes, he⟩ := ProposalImpl.result_supporter_at hp hx
-      ⟨ell, hupd, hC, rfl⟩ ((SA.deepest_mem hD).1.1.2.2.mono
-        (SA.frameIn_of_callAt hr hx hcu).2) hrb hts
+      ⟨ell, hupd, hC, rfl⟩ ((AC.deepest_mem hD).1.1.2.2.mono
+        (AC.frameIn_of_callAt hr hx hcu).2) hrb hts
     exact below z q hz hqr.le e hv hes he
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo

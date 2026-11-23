@@ -20,10 +20,10 @@ node honest at the later of the acceptance and `c_z` is after `c_z` (`cutZ_lt_of
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 open ProposalImpl
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -31,9 +31,9 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 origin's writer, honest at `c_z`. The growing form of `genesis_not_high`. -/
 theorem ResetPremisesUpTo.not_genesis_above_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B)
-    {G : SA.Blk sp.n (List (FG.Att sp.n))} (hGU : G ∈ tr.HonestBlocksAt H)
+    {G : AC.Blk sp.n (List (FG.Att sp.n))} (hGU : G ∈ tr.HonestBlocksAt H)
     (hBG : Anc (tr.HonestBlocksAt H) B G) (hg : G.root = sp.genesisRoot) : False := by
   have hm := hp.run.time_mono
   have hi0 := hp.run.time_nonneg i
@@ -72,7 +72,7 @@ writer before `t_j + 2Δ`; it is above the origin, so not genesis, and its accep
 theorem ResetPremisesUpTo.cutZ_le_ts_of_highOrigin_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) :
     cutZ sp.toParams g ≤ sp.ts j := by
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
@@ -82,7 +82,7 @@ theorem ResetPremisesUpTo.cutZ_le_ts_of_highOrigin_at
   obtain ⟨ell', hc', -⟩ := Healing.fastLock_mem hfl
   obtain rfl : ell = ell' := Option.some.inj (hci.2.symm.trans hc'.2)
   obtain ⟨-, hPhiTree⟩ := frame_tree_subset_at hp.run hp.noColl hx hci
-  have hBD := (SA.anc_viableAncestor ell.frame D).mono fun C hC =>
+  have hBD := (AC.anc_viableAncestor ell.frame D).mono fun C hC =>
     (⟨x, i, tr.time i, hp.run.time_nonneg i, fun _ hq => hp.run.time_mono hq.le, hx,
       hPhiTree hC⟩ : C ∈ tr.HonestBlocksAt H)
   obtain ⟨v, hv⟩ := Healing.fastLock_counted_nonempty
@@ -96,7 +96,7 @@ theorem ResetPremisesUpTo.cutZ_le_ts_of_highOrigin_at
   have hcq' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcq)
   have hHvq : Hv ∈ (tr.state x q).fg.tree :=
     (frame_tree_subset_at hp.run hp.noColl hxq hcq).2
-      ((SA.accept_new sp hrq hxq ⟨ellq, hcq', heq⟩).1 ellq hcq')
+      ((AC.accept_new sp hrq hxq ⟨ellq, hcq', heq⟩).1 ellq hcq')
   have hxmax : x ∈ H (max (tr.time q) (cutZ sp.toParams g)) := by
     rcases le_total (tr.time q) (cutZ sp.toParams g) with h | h
     · rw [max_eq_right h]; exact hxZ
@@ -104,12 +104,12 @@ theorem ResetPremisesUpTo.cutZ_le_ts_of_highOrigin_at
   have hck := cutZ_lt_of_anc_at hp ho hxmax hHvq hBHv
   have hqt' : tr.time q < sp.ts j + 2 * sp.Δ := hqt
   rw [cutZ_eq] at hck ⊢
-  refine (SA.ts_le_iff sp).2 ?_
+  refine (AC.ts_le_iff sp).2 ?_
   by_contra hlt
-  have h₂ := (SA.ts_le_iff sp).2
-    (show (j : Int) + 1 ≤ ((sp.slot (SA.gbar g) + 3 : Nat) : Int) by clear * - hlt; omega)
+  have h₂ := (AC.ts_le_iff sp).2
+    (show (j : Int) + 1 ≤ ((sp.slot (AC.gbar g) + 3 : Nat) : Int) by clear * - hlt; omega)
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-  simp only [SAParams.ts] at h₂ hck hqt'
+  simp only [ACParams.ts] at h₂ hck hqt'
   linarith
 
 end Consensus.Goldilocks.Healing.Growing

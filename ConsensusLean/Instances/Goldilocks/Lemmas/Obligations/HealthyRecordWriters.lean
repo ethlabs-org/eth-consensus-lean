@@ -17,9 +17,9 @@ particular, no whole-history read invariant is assumed.
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -46,9 +46,9 @@ theorem record_changed_writer {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hne : (tr.state y (q + 1)).ac.latestConfirmed ≠ (tr.state y q).ac.latestConfirmed) :
     ∃ ell, tr.projAC.CallAt y q ell ∧
       ∃ R ∈ ell.frame.tree, (tr.state y (q + 1)).ac.latestConfirmed = R.root ∧
-        ((∃ s CV, SA.ResultAt tr.projAC y q s R CV) ∨
-          ((∃ CV, SA.OptimisticLockAt tr.projAC y q (sp.slot (tr.time q)) R CV) ∧
-            ∃ e, (⟨(ell.frame.viableAncestor R).root, sp.slot (tr.time q), true, e⟩ : SA.Lock) ∈
+        ((∃ s CV, AC.ResultAt tr.projAC y q s R CV) ∨
+          ((∃ CV, AC.OptimisticLockAt tr.projAC y q (sp.slot (tr.time q)) R CV) ∧
+            ∃ e, (⟨(ell.frame.viableAncestor R).root, sp.slot (tr.time q), true, e⟩ : AC.Lock) ∈
               (tr.state y (q + 1)).ac.locks)) := by
   obtain ⟨B, _, _, s, CV, hs⟩ := (Compose.record_step_origin hrun hy q).resolve_left hne
   obtain ⟨ell, hcall⟩ : ∃ ell, tr.projAC.CallAt y q ell := by
@@ -68,19 +68,19 @@ roots thereafter and the actual creation lock in the optimistic case. -/
 theorem last_record_writer {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {n : Nat}
-    {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hR : SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed = some R)
+    {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hR : AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed = some R)
     (hgen : R.root ≠ sp.genesisRoot) :
     ∃ q < n, ∃ ell, tr.projAC.CallAt y q ell ∧ R ∈ ell.frame.tree ∧
       (∀ m, q < m → m ≤ n → (tr.state y m).ac.latestConfirmed = R.root) ∧
-      ((∃ s CV, SA.ResultAt tr.projAC y q s R CV) ∨
-        ((∃ CV, SA.OptimisticLockAt tr.projAC y q (sp.slot (tr.time q)) R CV) ∧
-          ∃ e, (⟨(ell.frame.viableAncestor R).root, sp.slot (tr.time q), true, e⟩ : SA.Lock) ∈
+      ((∃ s CV, AC.ResultAt tr.projAC y q s R CV) ∨
+        ((∃ CV, AC.OptimisticLockAt tr.projAC y q (sp.slot (tr.time q)) R CV) ∧
+          ∃ e, (⟨(ell.frame.viableAncestor R).root, sp.slot (tr.time q), true, e⟩ : AC.Lock) ∈
             (tr.state y (q + 1)).ac.locks)) := by
-  obtain ⟨hRm, hRroot⟩ := SA.lookup_eq_some hR
+  obtain ⟨hRm, hRroot⟩ := AC.lookup_eq_some hR
   have hzero : (tr.state y 0).ac.latestConfirmed = sp.genesisRoot := by
     have h0 : tr.state y 0 = Node.initWith _ (ini y) := hrun.init y hy
-    obtain ⟨m, hm⟩ := SA.voteStart_iff.1 (hrun.vstart y)
+    obtain ⟨m, hm⟩ := AC.voteStart_iff.1 (hrun.vstart y)
     rw [h0, hm]
     rfl
   obtain ⟨q, hqn, hchange, hrest⟩ :=
@@ -101,7 +101,7 @@ block in every intervening filtered frame, not only in the archival store. -/
 theorem writer_mem_frame_between {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {q e n : Nat}
-    (hqe : q ≤ e) (hen : e ≤ n) {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hqe : q ≤ e) (hen : e ≤ n) {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hRq : R ∈ (tr.state y q).fg.tree) (hRn : R ∈ (Node.frame (tr.state y n)).tree) :
     R ∈ (Node.frame (tr.state y e)).tree := by
   have hRe := Compose.tree_mono hrun.toLocalRun hy hqe hRq

@@ -173,8 +173,8 @@ at `t = 8Δ − 1 = 15` with `c = 8Δ − 3 = 13` (`c + 1 = 8Δ − 2`), validat
 whole window `[1, 15]`, but its restart at `1` is after `t_{slot 15 − 1} = t_0 = 0`, so it is not
 joined at `15`. -/
 theorem readyImpliesJoined_needs_catchUp :
-    ¬ ∀ (sp : SA.SAParams) (ro : SA.ReplayOrder sp (List (FG.Att sp.n)))
-      (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)) (H : Set (Fin sp.n))
+    ¬ ∀ (sp : AC.ACParams) (ro : AC.ReplayOrder sp (List (FG.Att sp.n)))
+      (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)) (H : Set (Fin sp.n))
       (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
       GoldilocksRun proposer dg H tr → ∀ y ∈ H, ∀ (t c : Time), 0 ≤ t →
         (∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) →

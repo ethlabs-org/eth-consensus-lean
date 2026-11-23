@@ -7,14 +7,14 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks SA: schedule arithmetic (F.1)
+/-! # Goldilocks AC: schedule arithmetic (F.1)
 
-`slot(t) = ⌊t / 4Δ⌋` from time `0` on, and the facts of claims F.1 (a)–(c) about the SA's slot
+`slot(t) = ⌊t / 4Δ⌋` from time `0` on, and the facts of claims F.1 (a)–(c) about the AC's slot
 times `t_s = 4Δs`: slot arithmetic, lock expiry constant on a slot, and joining. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable (sp : SAParams)
+variable (sp : ACParams)
 
 theorem four_delta_pos : 0 < 4 * sp.Δ := by
   have := sp.toParams.hΔ; change (0 : Int) < 4 * sp.toParams.Δ; linarith
@@ -25,7 +25,7 @@ theorem slot_eq {t : Time} (ht : 0 ≤ t) : (sp.slot t : Int) = t / (4 * sp.Δ) 
   have hq : 0 ≤ t / (4 * sp.Δ) := Int.ediv_nonneg ht hd.le
   have hst : ∀ s : Nat, sp.toParams.slotTime s = 4 * sp.Δ * s := sp.slotTime_eq
   have key : sp.slot t = (t / (4 * sp.Δ)).toNat := by
-    simp only [SAParams.slot, Params.slotOf]
+    simp only [ACParams.slot, Params.slotOf]
     rw [Nat.findGreatest_eq_iff]
     refine ⟨?_, fun _ => ?_, fun n hn hle => ?_⟩
     · have h1 : t / (4 * sp.Δ) ≤ t := Int.ediv_le_self _ ht
@@ -44,9 +44,9 @@ theorem slot_eq {t : Time} (ht : 0 ≤ t) : (sp.slot t : Int) = t / (4 * sp.Δ) 
 theorem slot_of_mem (s : Nat) {t : Time} (h₁ : sp.ts s ≤ t) (h₂ : t < sp.ts (s + 1 : Nat)) :
     sp.slot t = s := by
   have hd := four_delta_pos sp
-  have ht : 0 ≤ t := le_trans (by simp only [SAParams.ts]; have := sp.toParams.hΔ; positivity) h₁
+  have ht : 0 ≤ t := le_trans (by simp only [ACParams.ts]; have := sp.toParams.hΔ; positivity) h₁
   have he := slot_eq sp ht
-  simp only [SAParams.ts] at h₁ h₂
+  simp only [ACParams.ts] at h₁ h₂
   have hlo := Int.ediv_mul_le t hd.ne'
   have hhi := Int.lt_ediv_add_one_mul_self t hd
   obtain ⟨q, hqd⟩ : ∃ q, q = t / (4 * sp.Δ) := ⟨_, rfl⟩
@@ -64,10 +64,10 @@ theorem slot_of_mem (s : Nat) {t : Time} (h₁ : sp.ts s ≤ t) (h₂ : t < sp.t
   exact_mod_cast he.trans hq
 
 theorem ts_le_iff {a b : Int} : sp.ts a ≤ sp.ts b ↔ a ≤ b := by
-  simp only [SAParams.ts]; exact mul_le_mul_iff_of_pos_left (four_delta_pos sp)
+  simp only [ACParams.ts]; exact mul_le_mul_iff_of_pos_left (four_delta_pos sp)
 
 theorem ts_lt_iff {a b : Int} : sp.ts a < sp.ts b ↔ a < b := by
-  simp only [SAParams.ts]; exact mul_lt_mul_iff_of_pos_left (four_delta_pos sp)
+  simp only [ACParams.ts]; exact mul_lt_mul_iff_of_pos_left (four_delta_pos sp)
 
 /-- From time `0` on, a slot starts at or before `t` exactly when it is at most `slot(t)`. -/
 theorem ts_le_iff_le_slot {t : Time} (ht : 0 ≤ t) (a : Int) : sp.ts a ≤ t ↔ a ≤ sp.slot t := by
@@ -76,7 +76,7 @@ theorem ts_le_iff_le_slot {t : Time} (ht : 0 ≤ t) (a : Int) : sp.ts a ≤ t �
   have hlo := Int.ediv_mul_le t hd.ne'
   have hhi := Int.lt_ediv_add_one_mul_self t hd
   rw [← he] at hlo hhi
-  simp only [SAParams.ts]
+  simp only [ACParams.ts]
   constructor
   · intro h
     by_contra hc
@@ -100,14 +100,14 @@ theorem slot_arithmetic : SlotArithmetic sp := by
   intro s
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   refine ⟨fun i hi => slot_of_mem sp s ?_ ?_, ?_, ?_⟩
-  · simp only [SAParams.ts]
+  · simp only [ACParams.ts]
     have : (0 : Int) ≤ i * sp.Δ := by positivity
     linarith
-  · simp only [SAParams.ts]; push_cast
+  · simp only [ACParams.ts]; push_cast
     have : (i : Int) ≤ 3 := by exact_mod_cast Nat.le_of_lt_succ hi
     linarith [mul_le_mul_of_nonneg_left this hΔ.le]
-  · simp only [SAParams.ts]; push_cast; ring
-  · simp only [SAParams.ts]; push_cast; ring
+  · simp only [ACParams.ts]; push_cast; ring
+  · simp only [ACParams.ts]; push_cast; ring
 
 /-- **F.1 (b).** -/
 theorem lock_expiry : LockExpiry sp := by
@@ -119,7 +119,7 @@ theorem joined_from : JoinedFrom sp := by
   intro A j w t hA hwt
   have hj : (0 : Time) ≤ sp.ts j := by
     have : (0 : Time) ≤ sp.Δ := sp.toParams.hΔ.le
-    simp only [SAParams.ts]; positivity
+    simp only [ACParams.ts]; positivity
   simp only [joined, hA, WithBot.coe_le_coe]
   refine ⟨fun hw => ?_, fun hw₁ hw₂ => ?_⟩
   · subst hw
@@ -136,6 +136,6 @@ theorem joined_from : JoinedFrom sp := by
         rw [ts_le_iff]; push_cast; omega
       exact le_trans hw₂.le this
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

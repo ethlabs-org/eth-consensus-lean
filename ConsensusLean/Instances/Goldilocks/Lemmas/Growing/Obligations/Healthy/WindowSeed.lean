@@ -25,9 +25,9 @@ earlier cuts (`seed_height_at`), and at the proposer of `P₀` just after its pr
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -40,7 +40,7 @@ theorem seed_height_at {g ΔR a b gS ΔF : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
     (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
-    (hδ : 2 ≤ sp.toParams.fg.δt) {u s₀ : Nat} {Q P₀ : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hδ : 2 ≤ sp.toParams.fg.δt) {u s₀ : Nat} {Q P₀ : AC.Blk sp.n (List (FG.Att sp.n))}
     (hQ : Healing.Growing.HonestProposalRun tr H proposer u Q) (hu : 0 < u)
     (hR : Healing.drainTime sp a ≤ sp.ts u) (hgu : gbar g + 4 * sp.Δ ≤ sp.ts u)
     (hP₀ : Healing.Growing.HonestProposalRun tr H proposer s₀ P₀)
@@ -74,8 +74,8 @@ theorem seed_height_at {g ΔR a b gS ΔF : Time}
   have htd : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time) := hs.timeoutDelay
   have hts : sp.ts u + 4 * sp.Δ * (sp.toParams.fg.δt : Time) ≤ sp.ts s₀ := by
     have hcast : ((u + sp.toParams.fg.δt : Nat) : Int) ≤ (s₀ : Int) := by exact_mod_cast hus
-    have := (SA.ts_le_iff sp).2 hcast
-    simp only [SA.SAParams.ts] at this ⊢
+    have := (AC.ts_le_iff sp).2 hcast
+    simp only [AC.ACParams.ts] at this ⊢
     push_cast at this
     linarith
   have h2δ : (2 : Time) ≤ (sp.toParams.fg.δt : Time) := by exact_mod_cast hδ
@@ -83,12 +83,12 @@ theorem seed_height_at {g ΔR a b gS ΔF : Time}
     linarith [mul_le_mul_of_nonneg_left h2δ (mul_nonneg zero_le_four sp.toParams.hΔ.le)]
   have hus2 : u + 2 ≤ s₀ := by omega
   have hub : sp.ts u + 6 * sp.Δ ≤ b := by linarith
-  have hd0 : 0 ≤ sp.ts u + 6 * sp.Δ := by linarith [SA.gbar_nonneg g]
+  have hd0 : 0 ≤ sp.ts u + 6 * sp.Δ := by linarith [AC.gbar_nonneg g]
   -- Step 1: H0 at the seed
   obtain ⟨v, r, l, O, ho, -, -, hrt⟩ := hp.reset_seed_before_slot_at hR
   have hun := hp.operational_unanimous_at hQ.1 rfl hkQ hQs hR (by linarith)
   have hR1 : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat) :=
-    hR.trans ((SA.ts_le_iff sp).2 (by push_cast; omega))
+    hR.trans ((AC.ts_le_iff sp).2 (by push_cast; omega))
   have hOQ := Healing.Growing.old_origin_below_unanimous_at hp hQH
     (fun y j e hy hv hjb hs' => hun y j e hy hv hs' hjb) hgu hR1 (by linarith) ho hrt
   -- Step 2: Q ⪯ P₀, hence Q ⪯ Pr
@@ -138,7 +138,7 @@ theorem seed_height_at {g ΔR a b gS ΔF : Time}
   have hPr1 : ((tr.state (proposer s₀) kX).fg.σ Pr.root).h =
       ((tr.state (proposer s₀) kX).fg.σ Q.root).h := by omega
   -- C1: a report of the seed strictly above it is impossible
-  have hesc : ∀ x r ell C, x ∈ H (tr.time r) → SA.ToFGAt tr.projAC x r ell C →
+  have hesc : ∀ x r ell C, x ∈ H (tr.time r) → AC.ToFGAt tr.projAC x r ell C →
       tr.time r ≤ sp.ts u + 6 * sp.Δ → Anc (tr.HonestBlocksAt H) Q C →
       ((tr.state x r).fg.σ Q.root).h < ((tr.state x r).fg.σ C.root).h → False := by
     intro x r ell C hx hto hrt' hQC hlt
@@ -204,7 +204,7 @@ theorem seed_height_at {g ΔR a b gS ΔF : Time}
     have hts := hp.clean_window_timing_at (s := u) (by
       rw [Healing.cleanLabel_eq]
       rw [Healing.drainTime_eq] at hR1
-      have := (SA.ts_le_iff sp).1 hR1
+      have := (AC.ts_le_iff sp).1 hR1
       push_cast at this
       omega) u (by omega)
     linarith [sp.toParams.hΔ]
@@ -245,7 +245,7 @@ theorem seed_height_held_at {g ΔR a b gS ΔF : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
     (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
-    (hδ : 2 ≤ sp.toParams.fg.δt) {u s₀ : Nat} {Q P₀ : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hδ : 2 ≤ sp.toParams.fg.δt) {u s₀ : Nat} {Q P₀ : AC.Blk sp.n (List (FG.Att sp.n))}
     (hQ : Healing.Growing.HonestProposalRun tr H proposer u Q) (hu : 0 < u)
     (hR : Healing.drainTime sp a ≤ sp.ts u) (hgu : gbar g + 4 * sp.Δ ≤ sp.ts u)
     (hP₀ : Healing.Growing.HonestProposalRun tr H proposer s₀ P₀)

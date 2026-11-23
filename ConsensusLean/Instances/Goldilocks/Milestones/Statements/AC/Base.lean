@@ -1,16 +1,16 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Premises
 
 @[expose] public section
 
-/-! # Goldilocks milestone ACBase: the AC interface and the SA's foundations (statements)
+/-! # Goldilocks milestone ACBase: the AC interface and the AC's foundations (statements)
 
 Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`, the
 L0 nodes of the AC module: F.1 (a)–(c)
-(the SA's schedule arithmetic, lock expiry, joining), A0.1–A0.5, A0.7, A0.8 (pool, resolution,
+(the AC's schedule arithmetic, lock expiry, joining), A0.1–A0.5, A0.7, A0.8 (pool, resolution,
 counting, lock store, lock to tip, restart, one vote per slot), A0.6 (requirements 1–4 of
 composition.tex §"The available chain" over reachable AC states) and A0.9 (requirement 5: the
-proposal payload is valid), against the SA of `Spec/SA` and the AC interface and traces of
+proposal payload is valid), against the AC of `Spec/AC` and the AC interface and traces of
 `Spec/AC`. One more statement is not a claims node: `LocalRunReachable`, that the AC trace contract
 gives reachable states, so that the step statements of ACSteps can use the A0
 nodes.
@@ -23,9 +23,9 @@ milestone ACSteps. `docs/goldilocks-mapping.md` §"ACBase" maps each statement t
 
 Statements only: no proofs here. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable (sp : SAParams)
+variable (sp : ACParams)
 
 /-- **F.1 (a), slot arithmetic.** `slot(t_s + iΔ) = s` for `0 ≤ i < 4`;
 `t_s + 5Δ = t_{s+1} + Δ` and `t_s + 6Δ = t_{s+1} + 2Δ`. -/
@@ -44,7 +44,7 @@ def LockExpiry : Prop :=
 /-- **F.1 (c), joining.** A node whose latest restart is at `t_j` is joined from `t_{j+1}`, and
 one whose latest restart is in `(t_j, t_{j+1})` from `t_{j+2}`. -/
 def JoinedFrom : Prop :=
-  ∀ (A : SAState sp.n) (j : Nat) (w t : Time), A.restartTime = (w : WithBot Time) → w ≤ t →
+  ∀ (A : ACState sp.n) (j : Nat) (w t : Time), A.restartTime = (w : WithBot Time) → w ≤ t →
     (w = sp.ts j → (joined sp A t ↔ sp.ts (j + 1 : Nat) ≤ t)) ∧
     (sp.ts j < w → w < sp.ts (j + 1 : Nat) → (joined sp A t ↔ sp.ts (j + 2 : Nat) ≤ t))
 
@@ -53,8 +53,8 @@ after a call at `t` has been awake on `[max(0, t_{slot(t)−1}), t]`, with no re
 `(t_{slot(t)−1}, t]` up to that call. -/
 def JoinedAwake : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro),
-    ACLocalRun (goldilocksSA sp FGP ro) H U tr → ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
+    (tr : GTrace sp FGP ro),
+    ACLocalRun (goldilocksAC sp FGP ro) H U tr → ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
       joined sp (tr.post i) (tr.time i) →
       (∀ u : Time, max 0 (sp.ts ((sp.slot (tr.time i) : Int) - 1)) ≤ u → u ≤ tr.time i →
         tr.awake y u) ∧
@@ -64,7 +64,7 @@ def JoinedAwake : Prop :=
 and at most two distinct votes per validator. -/
 def PoolCap : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP),
-    (goldilocksSA sp FGP ro).AtReachable fun _ _ (A : SAState sp.n) _ _ =>
+    (goldilocksAC sp FGP ro).AtReachable fun _ _ (A : ACState sp.n) _ _ =>
     ∀ σ, (∀ x ∈ A.pool σ, x.slot = σ) ∧
       ∀ i : Fin sp.n, ((A.pool σ).filter (fun x => x.val = i)).dedup.length ≤ 2
 
@@ -72,9 +72,9 @@ def PoolCap : Prop :=
 vote of the pools after the call that was not in them before (or every vote, for a restart) has
 slot `slot(t) − 1` or `slot(t)`. (The claims state it for lawful calls from reachable states.) -/
 def AdmissionSlots : Prop :=
-  ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : SAState sp.n)
-    (Φ' : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call),
-    let A' : SAState sp.n := ((goldilocksSA sp FGP ro).step self A Φ' t c).1
+  ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
+    (Φ' : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP ro).Call),
+    let A' : ACState sp.n := ((goldilocksAC sp FGP ro).step self A Φ' t c).1
     ∀ σ, ∀ x ∈ A'.pool σ, (x ∈ A.pool σ ∧ c ≠ .restart) ∨
       x.slot + 1 = sp.slot t ∨ x.slot = sp.slot t
 
@@ -82,11 +82,11 @@ def AdmissionSlots : Prop :=
 stamp that is set (finite or `−∞`): a stamp never changes between two restarts. -/
 def StampStable : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP),
-    (goldilocksSA sp FGP ro).AtReachable fun self U (A : SAState sp.n) Φ t₀ =>
-    ∀ (c : (goldilocksSA sp FGP ro).Call) Φ' t, t₀ ≤ t →
-      (goldilocksSA sp FGP ro).CallOK U Φ t c Φ' →
+    (goldilocksAC sp FGP ro).AtReachable fun self U (A : ACState sp.n) Φ t₀ =>
+    ∀ (c : (goldilocksAC sp FGP ro).Call) Φ' t, t₀ ≤ t →
+      (goldilocksAC sp FGP ro).CallOK U Φ t c Φ' →
       c ≠ .restart →
-      let A' : SAState sp.n := ((goldilocksSA sp FGP ro).step self A Φ' t c).1
+      let A' : ACState sp.n := ((goldilocksAC sp FGP ro).step self A Φ' t c).1
       (∀ x, A.voteStamp x ≠ ⊤ → A'.voteStamp x = A.voteStamp x) ∧
         ∀ r, A.blockStamp r ≠ ⊤ → A'.blockStamp r = A.blockStamp r
 
@@ -94,9 +94,9 @@ def StampStable : Prop :=
 already held before it, or is the node's own vote of the slot of `t` (its `try_vote`); a block's
 declarations are never admitted. -/
 def BlockAddsOnlyOwnVote : Prop :=
-  ∀ (FGP : Type) (self : Fin sp.n) (A : SAState sp.n) (Φ' : Frm sp.n FGP) (t : Time)
+  ∀ (FGP : Type) (self : Fin sp.n) (A : ACState sp.n) (Φ' : Frm sp.n FGP) (t : Time)
     (B : Blk sp.n FGP),
-    let A' : SAState sp.n := (acOnBlock sp self A Φ' t B).1
+    let A' : ACState sp.n := (acOnBlock sp self A Φ' t B).1
     ∀ σ, ∀ x ∈ A'.pool σ, x ∈ A.pool σ ∨ (x.val = self ∧ x.slot = sp.slot t)
 
 /-- **A0.1, stamps along parent edges.** At a reachable state, the stamp of a block of the
@@ -104,7 +104,7 @@ frame tree is at least the stamp of its parent in the tree (so a voter block tre
 under ancestors). -/
 def StampParent : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP),
-    (goldilocksSA sp FGP ro).AtReachable fun _ _ (A : SAState sp.n) Φ _ =>
+    (goldilocksAC sp FGP ro).AtReachable fun _ _ (A : ACState sp.n) Φ _ =>
     ∀ B ∈ Φ.tree, ∀ Pa ∈ Φ.tree, B.parent = some Pa.root →
       A.blockStamp Pa.root ≤ A.blockStamp B.root
 
@@ -113,11 +113,11 @@ in between: a resolved vote (finite resolution time) whose head is in the later 
 has the same resolution time at the later state and frame. -/
 def ResolutionStable : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP),
-    (goldilocksSA sp FGP ro).AtReachable fun self U (A : SAState sp.n) Φ t₀ =>
-    ∀ (A' : SAState sp.n) Φ' t',
+    (goldilocksAC sp FGP ro).AtReachable fun self U (A : ACState sp.n) Φ t₀ =>
+    ∀ (A' : ACState sp.n) Φ' t',
       Relation.ReflTransGen
         (fun p q => ∃ c, c ≠ ACInterface.Call.restart ∧
-          (goldilocksSA sp FGP ro).CallStep self U p c q) (A, Φ, t₀) (A', Φ', t') →
+          (goldilocksAC sp FGP ro).CallStep self U p c q) (A, Φ, t₀) (A', Φ', t') →
       ∀ v : Vote sp.n, resolutionTime A Φ v ≠ ⊤ → InTree Φ' v.head →
         resolutionTime A' Φ' v = resolutionTime A Φ v
 
@@ -125,7 +125,7 @@ def ResolutionStable : Prop :=
 votes of every vote view and of every merged view have their heads in the tree, so in such a
 view the opponents of `Φ.F` (against any slot) are exactly the equivocators. -/
 def SupportInTree : Prop :=
-  ∀ (FGP : Type) (A : SAState sp.n) (Φ : Frm sp.n FGP), FrameOK Φ →
+  ∀ (FGP : Type) (A : ACState sp.n) (Φ : Frm sp.n FGP), FrameOK Φ →
     (∀ (σ : Int) (cutoff : ETime) (s' : Int),
       (∀ x ∈ (voteView A Φ σ cutoff).support, InTree Φ x.head) ∧
       opponents sp Φ (voteView A Φ σ cutoff) s' Φ.F = equivocators (voteView A Φ σ cutoff).votes) ∧
@@ -159,7 +159,7 @@ def MajorityChain : Prop :=
 equivocate in the slot-`s` pool, the blocks of the tree with three quarters of the committee as
 optimistic voters lie on one chain. -/
 def OptimisticChain : Prop :=
-  ∀ (FGP : Type) (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) (B C : Blk sp.n FGP),
+  ∀ (FGP : Type) (A : ACState sp.n) (Φ : Frm sp.n FGP) (s : Nat) (B C : Blk sp.n FGP),
     FrameOK Φ → 2 * (equivocators {x | x ∈ A.pool s}).ncard < sp.n → B ∈ Φ.tree → C ∈ Φ.tree →
     3 * sp.n ≤ 4 * (optimisticVoters sp A Φ s B).ncard →
     3 * sp.n ≤ 4 * (optimisticVoters sp A Φ s C).ncard → Compatible Φ.tree B C
@@ -169,7 +169,7 @@ def OptimisticChain : Prop :=
 opponent in `vote_view(𝒜, Φ, σ, +∞)` (against the slot-`σ` votes). -/
 def MergedOpponents : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP),
-    (goldilocksSA sp FGP ro).AtReachable fun _ _ (A : SAState sp.n) Φ t₀ =>
+    (goldilocksAC sp FGP ro).AtReachable fun _ _ (A : ACState sp.n) Φ t₀ =>
     ∀ (σ : Nat) (B : Blk sp.n FGP), sp.slot t₀ = σ + 1 →
       opponents sp Φ (mergedVoteView sp A Φ (σ + 1)) σ B ⊆ opponents sp Φ (voteView A Φ σ ⊤) σ B
 
@@ -177,7 +177,7 @@ def MergedOpponents : Prop :=
 live locks lie on one chain, and each is in the viable tree or at or below `fc_root`. -/
 def LiveLocksChain : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP),
-    (goldilocksSA sp FGP ro).AtReachable fun _ _ (A : SAState sp.n) Φ _ =>
+    (goldilocksAC sp FGP ro).AtReachable fun _ _ (A : ACState sp.n) Φ _ =>
     ∀ t,
       (∀ B ∈ liveLockBlocks sp A.locks Φ t, ∀ C ∈ liveLockBlocks sp A.locks Φ t,
         Compatible Φ.tree B C) ∧
@@ -216,7 +216,7 @@ def UnlockNoFallback : Prop :=
 `ac_to_fg` lie on one chain and the anchor extends each of them. -/
 def CandidatesChain : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP),
-    (goldilocksSA sp FGP ro).AtReachable fun _ _ (A : SAState sp.n) Φ _ =>
+    (goldilocksAC sp FGP ro).AtReachable fun _ _ (A : ACState sp.n) Φ _ =>
     ∀ t,
       (∀ B ∈ toFGCandidates sp A Φ t, ∀ C ∈ toFGCandidates sp A Φ t, Compatible Φ.tree B C) ∧
       ∀ B ∈ toFGCandidates sp A Φ t, Φ.Anc B (getAnchor sp A Φ t)
@@ -225,16 +225,16 @@ def CandidatesChain : Prop :=
 an ancestor of the effective record: `latest_confirmed` when it is in the tree, else `Φ.F`. -/
 def LockToTip : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP),
-    (goldilocksSA sp FGP ro).AtReachable fun _ _ (A : SAState sp.n) Φ _ =>
+    (goldilocksAC sp FGP ro).AtReachable fun _ _ (A : ACState sp.n) Φ _ =>
     ∀ t, ∀ B ∈ liveLockBlocks sp A.locks Φ t,
       Φ.Anc B ((lookup Φ A.latestConfirmed).getD Φ.F)
 
 /-- **A0.6, the interface requirements 1–4** of composition.tex §"The available chain", for the
-Goldilocks SA, at every reachable state. -/
+Goldilocks AC, at every reachable state. -/
 def InterfaceRequirements : Prop :=
-  ∀ (FGP : Type) (ro : ReplayOrder sp FGP), (goldilocksSA sp FGP ro).ReqHeads ∧
-    (goldilocksSA sp FGP ro).ReqSource ∧ (goldilocksSA sp FGP ro).ReqOutputs ∧
-    (goldilocksSA sp FGP ro).ReqParent
+  ∀ (FGP : Type) (ro : ReplayOrder sp FGP), (goldilocksAC sp FGP ro).ReqHeads ∧
+    (goldilocksAC sp FGP ro).ReqSource ∧ (goldilocksAC sp FGP ro).ReqOutputs ∧
+    (goldilocksAC sp FGP ro).ReqParent
 
 /-- **A0.7, restart.** After `ac_restart` at `t ≥ 0` with a well-formed frame: the locks and
 `latest_confirmed` are kept; the saved results, `fg_reported` and `voted_slot` are initial;
@@ -242,10 +242,10 @@ def InterfaceRequirements : Prop :=
 stamp is `t` or unset; every block stamp is initial or `t` for a non-genesis block of the tree;
 the node is not joined at `t`, so the replay sends nothing. -/
 def RestartState : Prop :=
-  ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : SAState sp.n)
+  ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
     (Φ : Frm sp.n FGP) (t : Time), FrameOK Φ → 0 ≤ t →
     let r := acRestart sp ro self A Φ t
-    let I : SAState sp.n := SAState.initial sp.genesisRoot
+    let I : ACState sp.n := ACState.initial sp.genesisRoot
     r.2 = [] ∧ r.1.locks = A.locks ∧ r.1.latestConfirmed = A.latestConfirmed ∧
     r.1.saved = I.saved ∧ r.1.fgReported = I.fgReported ∧ r.1.votedSlot = I.votedSlot ∧
     r.1.restartTime = (t : WithBot Time) ∧ ¬ joined sp r.1 t ∧
@@ -258,26 +258,26 @@ def RestartState : Prop :=
 call at `t` erased, at each of its restarts, no vote of slot `slot(t) − 1` or later. -/
 def JoinedKeepsVotes : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro),
-    ACLocalRun (goldilocksSA sp FGP ro) H U tr → ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
+    (tr : GTrace sp FGP ro),
+    ACLocalRun (goldilocksAC sp FGP ro) H U tr → ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
       joined sp (tr.post i) (tr.time i) → ∀ j ≤ i, tr.RestartAt y j →
-        ∀ σ, ∀ x ∈ (tr.state y j : SAState sp.n).pool σ,
+        ∀ σ, ∀ x ∈ (tr.state y j : ACState sp.n).pool σ,
           (x.slot : Int) < (sp.slot (tr.time i) : Int) - 1
 
 /-- **A0.8, one vote per slot.** In an AC trace with its contract, an honest node casts at most
 one vote per slot, also across restarts. -/
 def OneVotePerSlot : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (tr : SATrace sp FGP ro),
-    ACLocalRun (goldilocksSA sp FGP ro) H U tr → ∀ y ∈ H, ∀ i j e e',
+    (tr : GTrace sp FGP ro),
+    ACLocalRun (goldilocksAC sp FGP ro) H U tr → ∀ y ∈ H, ∀ i j e e',
       VoteAt tr y i e → VoteAt tr y j e' → e.msg.slot = e'.msg.slot → i = j ∧ e = e'
 
-/-- **A0.9, the proposal payload is valid** (requirement 5) for the Goldilocks SA, at every
+/-- **A0.9, the proposal payload is valid** (requirement 5) for the Goldilocks AC, at every
 reachable state. -/
 def ProposalPayloadValid : Prop :=
-  ∀ (FGP : Type) (ro : ReplayOrder sp FGP), (goldilocksSA sp FGP ro).ReqPayload
+  ∀ (FGP : Type) (ro : ReplayOrder sp FGP), (goldilocksAC sp FGP ro).ReqPayload
 
-/-- The ACBase statements, for the SA parameters `sp`. -/
+/-- The ACBase statements, for the AC parameters `sp`. -/
 structure ACBaseAt : Prop where
   slotArithmetic : SlotArithmetic sp
   lockExpiry : LockExpiry sp
@@ -307,10 +307,10 @@ structure ACBaseAt : Prop where
   oneVotePerSlot : OneVotePerSlot sp
   proposalPayloadValid : ProposalPayloadValid sp
 
-/-- **Milestone ACBase**: the ACBase statements for all SA parameters. -/
-def ACBase : Prop := ∀ sp : SAParams, ACBaseAt sp
+/-- **Milestone ACBase**: the ACBase statements for all AC parameters. -/
+def ACBase : Prop := ∀ sp : ACParams, ACBaseAt sp
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 namespace Consensus.Goldilocks
 

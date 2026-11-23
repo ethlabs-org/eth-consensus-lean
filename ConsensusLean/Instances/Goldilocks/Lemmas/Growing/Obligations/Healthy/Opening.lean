@@ -112,7 +112,7 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
     rw [hkey] at h
     exact h
   have hold : D.oldLabel < s := by
-    exact_mod_cast (SA.ts_lt_iff Q.params).mp
+    exact_mod_cast (AC.ts_lt_iff Q.params).mp
       (lt_of_le_of_lt ((le_max_left _ _).trans ((le_max_right _ _).trans
         ((le_max_right _ _).trans D.lower))) hlo)
   have hshort : Regimes.Growing.ReadyAt Q.trace Q.keys (Regimes.catchUp Q.params)
@@ -134,7 +134,7 @@ theorem healthy_bounded_repairing_opening_at (Q : HealthyPreparationQueryAt S A 
     rw [ht] at this
     rw [Q.params.slotTime_eq] at this
     have he : (P.slot : Time) = (s : Time) := by
-      simp only [SA.SAParams.ts] at this
+      simp only [AC.ACParams.ts] at this
       exact (mul_left_cancel₀ (mul_pos (by norm_num : (0 : Time) < 4) hd).ne' this).symm
     exact_mod_cast he
   have hpk : runProposer S Q.run.2 Q.hn s ∈ Q.keys (Q.trace.time k) := by

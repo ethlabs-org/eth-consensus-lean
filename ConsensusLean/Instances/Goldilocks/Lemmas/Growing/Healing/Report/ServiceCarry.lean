@@ -15,10 +15,10 @@ at its send or acceptance, not when the receiver later casts.
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload Vote gbar)
+open AC (ACParams ReplayOrder Payload Vote gbar)
 open Compose.Growing
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -57,7 +57,7 @@ theorem service_syncACAt
 theorem service_catch_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g : Time} (hcatch : CatchRun tr H g (2 * sp.Δ)) {w : Fin sp.n} {kw : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hw : w ∈ H (tr.time kw))
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hw : w ∈ H (tr.time kw))
     (ha : tr.projAC.AcceptAt w kw B) (hkw : tr.time kw < gbar g) {y : Fin sp.n} {i : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time i))
     (hcy : tr.projAC.CallAt y i ell) (hi : gbar g + 2 * sp.Δ ≤ tr.time i)
@@ -71,28 +71,28 @@ theorem carry_of_service_senders
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hts : gbar g ≤ sp.ts s)
     {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
-    (hcast : SA.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
+    {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
+    (hcast : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
     (hW : ∀ v ∈ CV, v.slot = s ∧
       (∃ w k, w ∈ H (tr.time k) ∧ tr.projAC.SendOrAdmit w k v ∧ sp.ts s ≤ tr.time k ∧
         tr.time k < sp.ts s + 2 * sp.Δ) ∧
-      ∃ Hv : SA.Blk sp.n (List (FG.Att sp.n)), Hv.root = v.head ∧
+      ∃ Hv : AC.Blk sp.n (List (FG.Att sp.n)), Hv.root = v.head ∧
         Anc (tr.HonestBlocksAt H) ell.frame.F Hv ∧
         (Hv.root = sp.genesisRoot ∨ ∃ w k, w ∈ H (tr.time k) ∧ tr.projAC.AcceptAt w k Hv ∧
           tr.time k < sp.ts s + 2 * sp.Δ)) :
-    SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
+    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
   have hm := hrun.time_mono
   have hΔ := sp.toParams.hΔ
   have hd := hrun.time_nonneg i
   have hr := (acRun_upTo hrun hnc hd).localRun
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hm hd
-  have hc' := sa_castAt_upTo.mpr ⟨le_rfl, hcast⟩
+  have hc' := ac_castAt_upTo.mpr ⟨le_rfl, hcast⟩
   have hsync := service_syncACAt hrun hsvc (lo := g) (hi := sp.ts s + 2 * sp.Δ) le_rfl
   have hgg := le_gbar g
   have hti : sp.ts s + 4 * sp.Δ ≤ tr.time i := by
     have hsl := (castAt_spec_at hrun hnc hy hcast).2.1
-    have h := (SA.ts_le_iff_le_slot sp hd ((s + 1 : Nat) : Int)).2 (by rw [← hsl, hs])
-    simp only [SAParams.ts] at h ⊢
+    have h := (AC.ts_le_iff_le_slot sp hd ((s + 1 : Nat) : Int)).2 (by rw [← hsl, hs])
+    simp only [ACParams.ts] at h ⊢
     push_cast at h
     linarith only [h]
   have hcarry := carryAt_of_delivered hr hrun.vstart hy hc' hs (CV := CV)
@@ -100,8 +100,8 @@ theorem carry_of_service_senders
     obtain ⟨hvs, ⟨w, k, hwk, hsend, hk1, hk2⟩, Hv, hHvr, hFHv, hacc⟩ := hW v hv
     refine ⟨hvs, ⟨tr.time k, hk1, hk2, fun hdl => ?_⟩, Hv, hHvr, ?_⟩
     · rw [ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) (k := i) hm le_rfl] at hdl
-      exact sa_messageServedBefore_upTo hm le_rfl
-        ((SA.messageServedBefore_iff _ _ _ _).mpr (Or.inl
+      exact ac_messageServedBefore_upTo hm le_rfl
+        ((AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl
           (hsync.1 w k v hwk hsend (hgg.trans (hts.trans hk1)) hk2.le y i ell hy hcast.1 hdl)))
     rcases hacc with hg | ⟨w', kw, hwkw, hkw, hkwt⟩
     · exact Or.inr (Or.inl hg)
@@ -129,12 +129,12 @@ theorem result_carry_service_at
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hts : gbar g ≤ sp.ts s)
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hres : SA.ResultAt tr.projAC x c s C CV)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hres : AC.ResultAt tr.projAC x c s C CV)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hFC : Anc (tr.HonestBlocksAt H) ell.frame.F C) :
-    SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
+    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
   apply carry_of_service_senders hrun hnc hsvc hcatch hts hy hc hes
   intro v hv
   obtain ⟨hvs, ⟨k, hk, hsend, hlo, hhi⟩, Hv, -, hroot, hanc, hacc⟩ :=

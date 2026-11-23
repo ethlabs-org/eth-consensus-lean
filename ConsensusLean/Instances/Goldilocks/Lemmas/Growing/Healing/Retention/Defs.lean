@@ -12,9 +12,9 @@ at its receiving call; only signed-row service is restricted to the finite horiz
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
 
 /-- GST service, with signed rows consumed by the finite horizon. -/
@@ -57,7 +57,7 @@ structure ResetPremisesUpTo (proposer : Nat → Fin sp.n)
     (committee : Time → Finset (Fin sp.n)) (beta : ℚ) : Prop where
   beta_le : beta ≤ 1 / 2
   run : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-    (SA.committeeStart sp.genesisRoot (Generic.dictOfTime sp committee))
+    (AC.committeeStart sp.genesisRoot (Generic.dictOfTime sp committee))
   committee_pos : 0 < sp.committeeSize
   committeeFacts : Compose.Growing.CommitteeFacts tr H (Generic.dictOfTime sp committee)
   committeeFaults : Generic.CommitteeFaultsUpTo beta committee H g b

@@ -16,7 +16,7 @@ the five-window drain reset with the key-dependent window of `Healing.M1.RiseWin
 
 namespace Consensus.Goldilocks.Obligations
 
-open SA (gbar)
+open AC (gbar)
 open Healing
 
 /-- The reset bound of the key-dependent rise route: `lo + 5(4D(L_drain + 2) + 2D + λ) + 6·4Dρ`

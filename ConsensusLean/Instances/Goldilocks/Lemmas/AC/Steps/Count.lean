@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 
 public section
 
-/-! # Goldilocks SA: the best child from a transferred majority
+/-! # Goldilocks AC: the best child from a transferred majority
 
 The counting step of the vote transfer (Goldfish's argument, claims A1.8): if a set `SX` of
 validators are supporters of `C` in a view whose support is among its votes, and the view's
@@ -12,9 +12,9 @@ voters are among `VX` with `|VX| < 2|SX|`, then every child `Cx ⪯ C` of a bloc
 eligible (its score is a strict majority of the voters) and the best eligible child of `X`
 (any other child's supporters are disjoint from `Cx`'s, so its score is strictly smaller). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams}
+variable {FGP : Type} {sp : ACParams}
 
 /-- Two children of one block in a coherent tree that are compatible are equal. -/
 private theorem eq_of_compatible_siblings {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
@@ -55,8 +55,8 @@ theorem isBest_of_majority {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp.n
     (hT : T ⊆ Φ.tree) {C : Blk sp.n FGP} {SX VX : Set (Fin sp.n)}
     (h1 : SX ⊆ supporters Φ V σ C) (h2 : voters V.votes ⊆ VX) (h3 : VX.ncard < 2 * SX.ncard)
     {X Cx : Blk sp.n FGP} (hCx : Cx ∈ T) (hp : Cx.parent = some X.root) (hCxC : Φ.Anc Cx C) :
-    IsBest sp (goldfishScore sp Φ V σ)
-      {B | B ∈ T ∧ B.parent = some X.root ∧ goldfishEligible sp Φ t V σ B} Cx := by
+    IsBest sp (headScore sp Φ V σ)
+      {B | B ∈ T ∧ B.parent = some X.root ∧ headEligible sp Φ t V σ B} Cx := by
   have hsC : SX ⊆ supporters Φ V σ Cx :=
     h1.trans ((supporters_antitone sp) FGP Φ V σ Cx C hCxC)
   have hSX : SX.ncard ≤ (supporters Φ V σ Cx).ncard := Set.ncard_le_ncard hsC
@@ -68,7 +68,7 @@ theorem isBest_of_majority {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp.n
     rintro i ⟨x, hx, -, -, -, hval, -⟩
     exact ⟨x, hx, hval⟩
   refine ⟨⟨hCx, hp, Or.inr (Or.inr ?_)⟩, fun D hD hne => Or.inl ?_⟩
-  · simp only [goldfishScore]
+  · simp only [headScore]
     omega
   -- `D`'s and `Cx`'s supporters and the equivocators are disjoint sets of voters
   have hdisj := supporters_disjoint (σ := σ) hΦ hsupp (hT hD.1) (hT hCx) hD.2.1 hp hne
@@ -77,7 +77,7 @@ theorem isBest_of_majority {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp.n
   have hsum := Set.ncard_le_ncard (Set.union_subset (Set.union_subset heqv (hsupv D)) (hsupv Cx))
   rw [Set.ncard_union_eq (Set.disjoint_union_left.2 ⟨(hdisjE Cx), hdisj⟩),
     Set.ncard_union_eq (hdisjE D)] at hsum
-  simp only [goldfishScore]
+  simp only [headScore]
   omega
 
 /-- The cover count of `isBest_of_cover` from the cruder count that charges every equivocator
@@ -101,8 +101,8 @@ theorem isBest_of_cover {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp.n}
     (h3 : (voters V.votes \ (SX ∪ equivocators V.votes)).ncard <
       (SX \ equivocators V.votes).ncard)
     {X Cx : Blk sp.n FGP} (hCx : Cx ∈ T) (hp : Cx.parent = some X.root) (hCxC : Φ.Anc Cx C) :
-    IsBest sp (goldfishScore sp Φ V σ)
-      {B | B ∈ T ∧ B.parent = some X.root ∧ goldfishEligible sp Φ t V σ B} Cx := by
+    IsBest sp (headScore sp Φ V σ)
+      {B | B ∈ T ∧ B.parent = some X.root ∧ headEligible sp Φ t V σ B} Cx := by
   have hsC : SX ⊆ supporters Φ V σ Cx ∪ equivocators V.votes :=
     h1.trans (Set.union_subset_union_left _ ((supporters_antitone sp) FGP Φ V σ Cx C hCxC))
   have hdisjE : ∀ B, Disjoint (supporters Φ V σ B) (equivocators V.votes) := fun B =>
@@ -121,7 +121,7 @@ theorem isBest_of_cover {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp.n}
     · exact Or.inl (Or.inl ((hsC hiS).resolve_right hiE))
     · exact Or.inr ⟨hi, fun h => h.elim hiS hiE⟩
   refine ⟨⟨hCx, hp, Or.inr (Or.inr ?_)⟩, fun D hD hne => Or.inl ?_⟩
-  · simp only [goldfishScore]
+  · simp only [headScore]
     omega
   -- `D`'s supporters are non-equivocating voters outside `SX`
   have hdisj := supporters_disjoint (σ := σ) hΦ hsupp (hT hD.1) (hT hCx) hD.2.1 hp hne
@@ -136,9 +136,9 @@ theorem isBest_of_cover {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp.n}
         · exact Set.disjoint_left.1 (hdisjE D) hi h
       · exact Set.disjoint_left.1 (hdisjE D) hi hiE
   have := Set.ncard_le_ncard hDs
-  simp only [goldfishScore]
+  simp only [headScore]
   omega
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

@@ -24,7 +24,7 @@ antecedents on the run's trace.
 
 `ACServiceBefore` uses recipient-deadline cutoffs and the AC-owned `served` predicate.
 Fresh delivery implies `served`; Goldilocks interprets it as fresh processing or
-stamped retained evidence (`SA.MessageServedBefore`). Only message service and node
+stamped retained evidence (`AC.MessageServedBefore`). Only message service and node
 acceptance relay are required. Growing AC relay follows the `acBlock_prev`/`accept_next`
 derivation in `Growing/Compose/Sync`. Goldilocks fixes its interpretation in
 `GoldilocksLocalData.served`; another instance supplies its own.
@@ -191,7 +191,7 @@ safety, output provenance, extension and the population quorum are not supplied
 by constructing a generic adapter. Count transport never substitutes one
 look-ahead for the other. The `SleepyCut` test guards the complete constant closures of
 `SleepyFG`, `SleepyGlue`, `SleepyTransport` and `ClaimReductionEdges`, allowing only the existing
-placement-only `SA.gbar` dependency.
+placement-only `AC.gbar` dependency.
 
 **PROVED canonical instance fit: slot constancy.** `GoldilocksWindowPremises` requires
 `cm (sp.ts s + sp.Δ) = cm (sp.ts s)` at every slot. Generic `EventSafety`,

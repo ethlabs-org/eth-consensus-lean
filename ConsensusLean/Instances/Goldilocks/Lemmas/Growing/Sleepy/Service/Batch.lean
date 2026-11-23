@@ -21,9 +21,9 @@ voters `VotersAt s (t_s + 6Δ)` of the update's count):
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
@@ -32,12 +32,12 @@ before `t_s`. -/
 theorem update_restarts_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hy : y ∈ H (tr.time k₀)) (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) :
+    (hy : y ∈ H (tr.time k₀)) (hu : AC.UpdateAt tr.projAC y k₀ s ℓ) :
     ∀ k ≤ k₀, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts s := by
   intro k hk hrk
   have hd := hrun.time_nonneg k₀
   exact Compose.update_restarts (acRun_upTo hrun hnc hd).localRun hy
-    ((sa_updateAt_upTo hrun.time_mono).2 ⟨le_rfl, hu⟩) k hk
+    ((ac_updateAt_upTo hrun.time_mono).2 ⟨le_rfl, hu⟩) k hk
     ((ac_restartAt_upTo tr.projAC).2 ⟨hrun.time_mono hk, hrk⟩)
 
 /-- **Transport of the catch-up from `a`** to the prefix through `d ≥ 0`: an AC acceptance of a
@@ -64,14 +64,14 @@ validator still honest at the update is in the updater's pool, resolved before `
 theorem honest_batch_at_update_from {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {y : Fin sp.n} {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀))
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) (ha : a ≤ sp.ts s)
+    (hu : AC.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) (ha : a ≤ sp.ts s)
     (hκ : a + κ ≤ sp.ts s + 2 * sp.Δ)
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hPt : P ∈ ℓ.frame.tree)
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPt : P ∈ ℓ.frame.tree)
     (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root) :
     ∀ x j e, HVoteAt tr H x j e → x ∈ H (tr.time k₀) → e.msg.slot = s →
       e.msg ∈ (tr.projAC.state y k₀).pool s ∧
-        SA.resolutionTime (tr.projAC.state y k₀) ℓ.frame e.msg <
-          SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
+        AC.resolutionTime (tr.projAC.state y k₀) ℓ.frame e.msg <
+          AC.ETime.of (sp.ts s + 2 * sp.Δ) := by
   intro x j e hv hxd hes
   have hΔ := sp.toParams.hΔ
   have hd := hrun.time_nonneg k₀
@@ -83,18 +83,18 @@ theorem honest_batch_at_update_from {ini} (hrun : Growing.GoldilocksRun proposer
     linarith
   have hsvc := hsync.acWindow_upTo hrun hd
   have hcatch := hsync.acCatch_upTo hrun hd
-  have hu' : SA.UpdateAt (tr.upTo (tr.time k₀)).projAC y k₀ s ℓ := by
+  have hu' : AC.UpdateAt (tr.upTo (tr.time k₀)).projAC y k₀ s ℓ := by
     rw [RunTrace.upTo_projAC]
-    exact (sa_updateAt_upTo hrun.time_mono).2 ⟨le_rfl, hu⟩
-  have hall' : ∀ x ∈ H (tr.time k₀), ∀ j e, SA.VoteAt (tr.upTo (tr.time k₀)).projAC x j e →
+    exact (ac_updateAt_upTo hrun.time_mono).2 ⟨le_rfl, hu⟩
+  have hall' : ∀ x ∈ H (tr.time k₀), ∀ j e, AC.VoteAt (tr.upTo (tr.time k₀)).projAC x j e →
       e.msg.slot = s → e.msg.head = P.root := by
     intro x hx j e hv hs
     rw [RunTrace.upTo_projAC] at hv
-    obtain ⟨hjd, hv⟩ := sa_voteAt_upTo.1 hv
+    obtain ⟨hjd, hv⟩ := ac_voteAt_upTo.1 hv
     exact hall x j e (hVoteAt_iff.2 ⟨hrun.antitone hjd hx, hv⟩) hs
-  have hv' : SA.VoteAt (tr.upTo (tr.time k₀)).projAC x j e := by
+  have hv' : AC.VoteAt (tr.upTo (tr.time k₀)).projAC x j e := by
     rw [RunTrace.upTo_projAC]
-    exact sa_voteAt_upTo.2 ⟨hjt, ℓx, hcx, hex⟩
+    exact ac_voteAt_upTo.2 ⟨hjt, ℓx, hcx, hex⟩
   have h := Compose.honest_batch_at_update_window (hrun.upTo hd) (hnc.upTo _) hsvc hcatch hy hu'
     ha hκ (le_min (by linarith) (by linarith)) le_rfl hPt hall' x hxd j e hv' hes
   rwa [RunTrace.upTo_projAC, projAC_upTo_state hrun le_rfl] at h
@@ -108,15 +108,15 @@ theorem honest_vote_at_update_from {ini} (hrun : Growing.GoldilocksRun proposer 
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {y : Fin sp.n}
     {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀))
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) (ha : a ≤ sp.ts s)
+    (hu : AC.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) (ha : a ≤ sp.ts s)
     (hκ : a + κ ≤ sp.ts s + 2 * sp.Δ)
-    {Q : SA.Blk sp.n (List (FG.Att sp.n))} (hQU : Q ∈ tr.HonestBlocksAt H)
+    {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hQU : Q ∈ tr.HonestBlocksAt H)
     (hFQ : Anc (tr.HonestBlocksAt H) ℓ.frame.F Q) {x : Fin sp.n} {j : Nat}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x j e) (hxd : x ∈ H (tr.time k₀))
+    {e : AC.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x j e) (hxd : x ∈ H (tr.time k₀))
     (hes : e.msg.slot = s) (hhead : e.msg.head = Q.root) :
     Q ∈ ℓ.frame.tree ∧ e.msg ∈ (tr.projAC.state y k₀).pool s ∧
-      SA.resolutionTime (tr.projAC.state y k₀) ℓ.frame e.msg <
-        SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
+      AC.resolutionTime (tr.projAC.state y k₀) ℓ.frame e.msg <
+        AC.ETime.of (sp.ts s + 2 * sp.Δ) := by
   have hΔ := sp.toParams.hΔ
   have hd := hrun.time_nonneg k₀
   have ht : tr.time k₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
@@ -137,8 +137,8 @@ theorem honest_vote_at_update_from {ini} (hrun : Growing.GoldilocksRun proposer 
   rw [RunTrace.upTo_projAC] at hsvc hcatch
   have h := Compose.honest_vote_at_update_window (acRun_upTo hrun hnc hd) hsvc hcatch ha hκ
     (le_min (by linarith) (by linarith)) le_rfl hy
-    ((sa_updateAt_upTo hrun.time_mono).2 ⟨le_rfl, hu⟩) hQU' hFQ' hxd
-    (sa_voteAt_upTo.2 ⟨hjt, ℓx, hcx, hex⟩) hes hhead
+    ((ac_updateAt_upTo hrun.time_mono).2 ⟨le_rfl, hu⟩) hQU' hFQ' hxd
+    (ac_voteAt_upTo.2 ⟨hjt, ℓx, hcx, hex⟩) hes hhead
   rwa [projAC_upTo_state hrun le_rfl] at h
 
 end Consensus.Goldilocks.Compose.Growing

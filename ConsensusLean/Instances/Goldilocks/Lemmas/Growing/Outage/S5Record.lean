@@ -24,9 +24,9 @@ at a time at which the node is honest (`record_above_of_update_r_by`):
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -37,11 +37,11 @@ before `c'` at a time `≤ t`). -/
 theorem record_above_of_update_r_by (D : OutageLockPremises tr H proposer dg ini)
     (hS : ∀ y, ReceiverServiceAfterAt H (tr.HonestBlocksAt H) D.b₁ y tr.projAC)
     (hinv : ∀ i, OutageLockInv D i) {w : Fin sp.n} {c : Nat} (hw : w ∈ H (tr.time c))
-    {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
-    (hu : SA.UpdateAt tr.projAC w c D.r ℓ) :
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    (hu : AC.UpdateAt tr.projAC w c D.r ℓ) :
     ∀ c' t, c < c' → 0 ≤ t → (∀ k < c', tr.time k ≤ t) → w ∈ H t →
       Anc (tr.HonestBlocksAt H) D.P
-        ((SA.lookup (Node.frame (tr.state w c')) (tr.state w c').ac.latestConfirmed).getD
+        ((AC.lookup (Node.frame (tr.state w c')) (tr.state w c').ac.latestConfirmed).getD
           (Node.frame (tr.state w c')).F) := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hfr : ℓ.frame = Node.frame (tr.state w c) := frame_of_projAC_at D.hrun hw hu.1
@@ -54,10 +54,10 @@ theorem record_above_of_update_r_by (D : OutageLockPremises tr H proposer dg ini
       fun Z hZ => tree_held_at hd hwt hcut hZ.1
     have hPF' : Anc (tr.HonestBlocksAt H) D.P (Node.frame (tr.state w c')).F :=
       hPF.trans (F_mono_at D.hrun hd hwt hcut hcc'.le)
-    cases he : SA.lookup (Node.frame (tr.state w c')) (tr.state w c').ac.latestConfirmed with
+    cases he : AC.lookup (Node.frame (tr.state w c')) (tr.state w c').ac.latestConfirmed with
     | none => exact hPF'
     | some E =>
-      obtain ⟨hEt, -⟩ := SA.lookup_eq_some he
+      obtain ⟨hEt, -⟩ := AC.lookup_eq_some he
       exact hPF'.trans (Anc.mono hΦU (hΦ.rooted.2 E hEt))
   -- otherwise `Σ.F ⪯ P`, and the gate's result extends `P`
   have hFP : Anc (tr.HonestBlocksAt H) ℓ.frame.F D.P := by

@@ -24,9 +24,9 @@ earlier cut at a time `≤ t ≤ b`, `y ∈ H t`.
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -57,32 +57,32 @@ theorem confirmed_read_on_chain_at {b : Time} (hinv : SleepyInvariantUpTo tr H b
     fun hA hAB h => OnOriginChainWithin.of_anc hrun hnc hA hAB h
   have hF := (hinv.caches y i t ht0 hi htb hy).1
   -- the effective record is on the chain
-  have hCr : (SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
+  have hCr : (AC.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
         (Node.frame (tr.state y i)).F ∈ (Node.frame (tr.state y i)).tree ∧
-      OnOriginChainWithin tr H ((SA.lookup (Node.frame (tr.state y i))
+      OnOriginChainWithin tr H ((AC.lookup (Node.frame (tr.state y i))
         (tr.state y i).ac.latestConfirmed).getD (Node.frame (tr.state y i)).F) b := by
-    rcases hl : SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed with
+    rcases hl : AC.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed with
       _ | R
     · exact ⟨hΦ.rooted.1, hF⟩
-    · obtain ⟨hR, hRr⟩ := SA.lookup_eq_some hl
+    · obtain ⟨hR, hRr⟩ := AC.lookup_eq_some hl
       obtain ⟨C, hC, hCr, hgo⟩ := hinv.record y i t ht0 hi htb hy
       obtain rfl : R = C :=
         hU.1 (hsub hR) (tree_subset_at ht0 hi hy hC) (hRr.trans hCr.symm)
       exact ⟨hR, onOriginChainWithin_iff.2 (hgo.imp_right fun ⟨s, hs⟩ => ⟨R, s, hs, .refl⟩)⟩
   -- the confirmed output is an ancestor of it in the frame
-  have hX : ∀ X, X = (SA.deepest (Node.frame (tr.state y i))
+  have hX : ∀ X, X = (AC.deepest (Node.frame (tr.state y i))
       {X | X ∈ (Node.frame (tr.state y i)).tree ∧
-        (Node.frame (tr.state y i)).Anc X ((SA.lookup (Node.frame (tr.state y i))
+        (Node.frame (tr.state y i)).Anc X ((AC.lookup (Node.frame (tr.state y i))
           (tr.state y i).ac.latestConfirmed).getD (Node.frame (tr.state y i)).F) ∧
-        (Node.frame (tr.state y i)).Anc X (SA.acHead sp (tr.state y i).ac
+        (Node.frame (tr.state y i)).Anc X (AC.acHead sp (tr.state y i).ac
           (Node.frame (tr.state y i)) u)}).getD (Node.frame (tr.state y i)).F →
       X ∈ (Node.frame (tr.state y i)).tree ∧ (Node.frame (tr.state y i)).Anc X
-        ((SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
+        ((AC.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
           (Node.frame (tr.state y i)).F) := by
     rintro X rfl
-    rcases hd : SA.deepest (Node.frame (tr.state y i)) _ with _ | D
+    rcases hd : AC.deepest (Node.frame (tr.state y i)) _ with _ | D
     · exact ⟨hΦ.rooted.1, hΦ.rooted.2 _ hCr.1⟩
-    · obtain ⟨⟨hDt, hDC, -⟩, -⟩ := SA.deepest_mem hd
+    · obtain ⟨⟨hDt, hDC, -⟩, -⟩ := AC.deepest_mem hd
       exact ⟨hDt, hDC⟩
   replace hX := hX _ rfl
   exact ⟨hsub hX.1, hanc (hsub hX.1) (hX.2.mono hsub) hCr.2⟩
@@ -110,9 +110,9 @@ private theorem effective_record_spec_at {b : Time} (hinv : SleepyInvariantUpTo 
     {m : Nat} {t : Time} (ht0 : 0 ≤ t) (hm : ∀ k < m, tr.time k ≤ t) (htb : t ≤ b)
     (hy : y ∈ H t) :
     ∃ C ∈ tr.HonestBlocksAt H, C.root = (tr.state y m).ac.latestConfirmed ∧
-      (((SA.lookup (Node.frame (tr.state y m)) (tr.state y m).ac.latestConfirmed).getD
+      (((AC.lookup (Node.frame (tr.state y m)) (tr.state y m).ac.latestConfirmed).getD
           (Node.frame (tr.state y m)).F = C ∧ Anc (tr.HonestBlocksAt H) (tr.state y m).fg.F C) ∨
-        ((SA.lookup (Node.frame (tr.state y m)) (tr.state y m).ac.latestConfirmed).getD
+        ((AC.lookup (Node.frame (tr.state y m)) (tr.state y m).ac.latestConfirmed).getD
           (Node.frame (tr.state y m)).F = (tr.state y m).fg.F ∧
           Anc (tr.HonestBlocksAt H) C (tr.state y m).fg.F)) := by
   have hU := honestBlocksAt_coherent hrun hnc
@@ -123,22 +123,22 @@ private theorem effective_record_spec_at {b : Time} (hinv : SleepyInvariantUpTo 
   obtain ⟨C, hC, hCr, hgo⟩ := hinv.record y m t ht0 hm htb hy
   have hCU : C ∈ tr.HonestBlocksAt H := hts hC
   refine ⟨C, hCU, hCr, ?_⟩
-  rcases hl : SA.lookup (Node.frame (tr.state y m)) (tr.state y m).ac.latestConfirmed with _ | X
+  rcases hl : AC.lookup (Node.frame (tr.state y m)) (tr.state y m).ac.latestConfirmed with _ | X
   · refine Or.inr ⟨rfl, ?_⟩
     have hFt : (tr.state y m).fg.F ∈ (tr.state y m).fg.tree := hΦ.rooted.1.1
     have hCc : OnOriginChainWithin tr H C b :=
       onOriginChainWithin_iff.2 (hgo.imp_right fun ⟨s, hs⟩ => ⟨C, s, hs, .refl⟩)
     refine (OnOriginChainWithin.compatible hrun hnc hinv.origins_compatible hCU (hts hFt)
       hCc (hinv.caches y m t ht0 hm htb hy).1).resolve_right fun h =>
-        SA.lookup_eq_none hl ⟨C, ⟨hC, ?_⟩, hCr⟩
+        AC.lookup_eq_none hl ⟨C, ⟨hC, ?_⟩, hCr⟩
     obtain ⟨hfin, htc, hgm, hgen⟩ := Store.accepted_tree sp.toParams (Payload sp.n) _ _ hR
     have hΦg : FrameOK (⟨(tr.state y m).fg.tree, _, _, ∅⟩ :
         Frame sp.n (List (FG.Att sp.n)) (Payload sp.n)) :=
       { finite := hfin, coherent := htc, rooted := ⟨hgm, hgen⟩, fcRoot_mem := hgm
         F_anc_fcRoot := Relation.ReflTransGen.refl, viableHeads_subset := Set.empty_subset _
         fcRoot_anc_viableHeads := fun _ h => h.elim }
-    exact SA.anc_tree_of_anc_U hU hΦg hts hFt h hC
-  · obtain ⟨hX, hXr⟩ := SA.lookup_eq_some hl
+    exact AC.anc_tree_of_anc_U hU hΦg hts hFt h hC
+  · obtain ⟨hX, hXr⟩ := AC.lookup_eq_some hl
     obtain rfl : X = C := hU.1 (hΦU hX) hCU (hXr.trans hCr.symm)
     exact Or.inl ⟨rfl, (hΦ.rooted.2 X hX).mono hΦU⟩
 
@@ -150,9 +150,9 @@ theorem SleepyInvariantUpTo.effective_record_mono_at {b : Time} (hinv : SleepyIn
     {i j : Nat} {t' : Time} (hij : i ≤ j) (ht0 : 0 ≤ t') (hj : ∀ k < j, tr.time k ≤ t')
     (ht'b : t' ≤ b) (hy : y ∈ H t') :
     Anc (tr.HonestBlocksAt H)
-      ((SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
+      ((AC.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
         (Node.frame (tr.state y i)).F)
-      ((SA.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed).getD
+      ((AC.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed).getD
         (Node.frame (tr.state y j)).F) := by
   have hU := honestBlocksAt_coherent hrun hnc
   have hsub := upTo_subset hrun ht0
@@ -195,7 +195,7 @@ node ready at `t` (honest at `t`): when the frame holds the block `R` named by t
 `readAfter y j t = R`; otherwise it is `Σ.F`. The latest-view count is charged at `t`. -/
 theorem ready_read_record_at {ΔF b : Time} {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hinv : SleepyInvariantUpTo tr H b)
-    (hsync : SleepyServiceBefore tr H ΔF b) {K : SA.CommitteeDict sp.n}
+    (hsync : SleepyServiceBefore tr H ΔF b) {K : AC.CommitteeDict sp.n}
     (hKB : CommitteeFacts tr H K) (hBK : CommitteeBoundsFrom tr H K 0 b) {y : Fin sp.n}
     {j : Nat} {t : Time} (hrp : Regimes.ReadPoint tr j t) (ht0 : 0 ≤ t)
     (hready : Regimes.Growing.ReadyAt tr H (Regimes.catchUp sp) y t) (htb : t ≤ b) :
@@ -214,8 +214,8 @@ theorem ready_read_record_at {ΔF b : Time} {ini} (hrun : Growing.GoldilocksRun 
       hKB hBK hrp.1 hrp.2
       (ready_awake_joined_at hrun ht0 hready)
       ⟨hR, hRr⟩
-    exact Or.inl ⟨R, hR, hRr, SA.acConfirmed_eq hΦ hR hRr (SA.anc_acHead hΦ hR hc hs)⟩
-  · exact Or.inr ⟨hin, SA.acConfirmed_eq_F hΦ fun ⟨R, hR, hr⟩ => hin ⟨R, hR, hr⟩⟩
+    exact Or.inl ⟨R, hR, hRr, AC.acConfirmed_eq hΦ hR hRr (AC.anc_acHead hΦ hR hc hs)⟩
+  · exact Or.inr ⟨hin, AC.acConfirmed_eq_F hΦ fun ⟨R, hR, hr⟩ => hin ⟨R, hR, hr⟩⟩
 
 end Consensus.Goldilocks.Compose.Growing
 

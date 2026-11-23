@@ -23,16 +23,16 @@ variable {binding : VoteBinding}
 
 /-- Every successfully decoded durable wrapper names the block actually held at its map key.
 Existence of a decoding is supplied separately by `WrappersDecoded`. -/
-structure WrappersHeld {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+structure WrappersHeld {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (tables : Wire sp.n binding → List (Header Info × Nat)) (st : State sp ro binding) : Prop where
   held : ∀ root o t p B, st.wrappers root = some o →
     decodeForward sp (tables o) o = some (st.self, t, p, B) →
       st.node.fg.blocks root = some B
 
 /-- Empty wrapper maps have no correspondence obligations. -/
-theorem wrappersHeld_empty {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+theorem wrappersHeld_empty {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (tables : Wire sp.n binding → List (Header Info × Nat)) (st : State sp ro binding)
     (hm : ∀ root, st.wrappers root = none) : WrappersHeld tables st := by
   constructor
@@ -41,8 +41,8 @@ theorem wrappersHeld_empty {sp : SA.SAParams}
   cases ho
 
 /-- State transitions which leave both maps unchanged preserve their correspondence. -/
-theorem WrappersHeld.preserve {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+theorem WrappersHeld.preserve {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} {st st' : State sp ro binding}
     (h : WrappersHeld tables st) (hs : st'.self = st.self)
     (hw : st'.wrappers = st.wrappers) (hb : st'.node.fg.blocks = st.node.fg.blocks) :
@@ -56,8 +56,8 @@ theorem WrappersHeld.preserve {sp : SA.SAParams}
 
 /-- Synchronized insertion of an accepted block and its decoded wrapper preserves
 correspondence, including all other roots. No hash-injectivity assumption is needed. -/
-theorem WrappersHeld.insert {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+theorem WrappersHeld.insert {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} {st st' : State sp ro binding}
     (h : WrappersHeld tables st) (B : Blk sp) (o : Wire sp.n binding) (t : Time)
     (p : Option (Wire sp.n binding)) (hs : st'.self = st.self)
@@ -82,12 +82,12 @@ theorem WrappersHeld.insert {sp : SA.SAParams}
 
 /-- The selected decoded parent is strictly earlier in slot than an accepted child.
 The actual held-block correspondence, not equality of roots alone, supplies this fact. -/
-theorem WrappersHeld.parent_slot_lt {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+theorem WrappersHeld.parent_slot_lt {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} {st : State sp ro binding}
     (h : WrappersHeld tables st)
     (hreach : st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload)
-    (B : Blk sp) (fg' : Store sp.toParams (SA.Payload sp.n))
+    (B : Blk sp) (fg' : Store sp.toParams (AC.Payload sp.n))
     (haccept : st.node.fg.onBlock B = some fg')
     (root : Nat) (hr : B.parent = some root)
     (parent : Wire sp.n binding) (pt : Time) (pp : Option (Wire sp.n binding)) (A : Blk sp)
@@ -108,8 +108,8 @@ theorem WrappersHeld.parent_slot_lt {sp : SA.SAParams}
 
 /-- The actual accepting handler updates held blocks and durable wrappers together.
 The selected wrapper's decoding is supplied by the decoder preservation proof. -/
-theorem WrappersHeld.accept {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+theorem WrappersHeld.accept {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} {st : State sp ro binding}
     (h : WrappersHeld tables st) (B : Blk sp) (root : Nat) (p : Option (Wire sp.n binding))
     (hr : B.parent = some root)
@@ -141,8 +141,8 @@ theorem WrappersHeld.accept {sp : SA.SAParams}
       · exact hd
 
 /-- Accepted children cannot be stamped before their slot starts. -/
-theorem accepted_slotTime_le {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (B : Blk sp)
+theorem accepted_slotTime_le {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (B : Blk sp)
     (ht : 0 ≤ st.now)
     (ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2) :
     sp.toParams.slotTime B.slot ≤ st.now := by
@@ -187,8 +187,8 @@ theorem decoded_acceptance_enqueue {V : Type} [Fintype V] {E : Env V}
       parent pt pp A hp hd)
 
 /-- Transfer the queue decoder invariant to the full accepting handler state. -/
-theorem _root_.Consensus.Goldilocks.Simulation.WrappersDecoded.accept {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+theorem _root_.Consensus.Goldilocks.Simulation.WrappersDecoded.accept {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} (st : State sp ro binding) (B : Blk sp)
     (h : WrappersDecoded tables (queueAccepted st B))
     (hcover : WrappersCover st)
@@ -227,7 +227,7 @@ theorem own_proposal_decodes {V : Type} [Fintype V] {E : Env V}
       (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload).RootOk (digestOf S rho))
     {s₀ : (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).State}
     (hr : Node.Reachable proposer (digestOf S rho) self cfg s₀)
-    (h₀ : SA.VoteStart (S.params (pubOf E) hn).genesisRoot s₀)
+    (h₀ : AC.VoteStart (S.params (pubOf E) hn).genesisRoot s₀)
     (hs : Node.Step proposer (digestOf S rho) self cfg (.tick x) t cfg')
     (hp : Node.Proposes (P := (S.params (pubOf E) hn).toParams) proposer self t) :
     let r := Node.acProposal
@@ -373,8 +373,8 @@ theorem decoded_held_process {V : Type} [Fintype V] {E : Env V}
   exact fold _ (fun _ ho => mem_delivered _ ho) st hd hh hc hr ht
 
 /-- FG attestation work changes neither decoded wrapper inventory nor held blocks. -/
-theorem decoded_held_fgUpdate {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+theorem decoded_held_fgUpdate {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} (st : State sp ro binding)
     (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st) :
     WrappersDecoded tables (fgUpdate st) ∧ WrappersHeld tables (fgUpdate st) := by
@@ -390,8 +390,8 @@ theorem decoded_held_fgUpdate {sp : SA.SAParams}
       simpa only [Node.acToFG, Node.onAttestation] using congrArg Store.blocks he
 
 /-- Polling drains pending wrappers without losing durable decoding or held correspondence. -/
-theorem decoded_held_poll {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+theorem decoded_held_poll {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} (st : State sp ro binding) (t : Time)
     (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st) :
     WrappersDecoded tables (poll st t).1 ∧ WrappersHeld tables (poll st t).1 := by
@@ -407,8 +407,8 @@ theorem decoded_held_poll {sp : SA.SAParams}
     | exact clear _ (decoded_held_fgUpdate st hd hh).1 (decoded_held_fgUpdate st hd hh).2 _
 
 /-- AC tick preparation preserves both wrapper invariants. -/
-theorem decoded_held_nodeTick {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+theorem decoded_held_nodeTick {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} (st : State sp ro binding)
     (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st) :
     WrappersDecoded tables (nodeTick st) ∧ WrappersHeld tables (nodeTick st) := by
@@ -418,8 +418,8 @@ theorem decoded_held_nodeTick {sp : SA.SAParams}
   · exact ⟨hd, hh⟩
 
 /-- Proposal preparation changes AC state, not wrapper or held-block correspondence. -/
-theorem decoded_held_propose {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+theorem decoded_held_propose {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} (st : State sp ro binding) (s : Slot)
     (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st) :
     WrappersDecoded tables (propose st s).1 ∧ WrappersHeld tables (propose st s).1 := by
@@ -428,8 +428,8 @@ theorem decoded_held_propose {sp : SA.SAParams}
   split <;> exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
 
 /-- Restart at a later clock preserves wrappers for the same node identity. -/
-theorem decoded_held_restore {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+theorem decoded_held_restore {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} (st : State sp ro binding) (t : Time)
     (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st) (ht : st.now ≤ t) :
     WrappersDecoded tables (restore st.self st t) ∧

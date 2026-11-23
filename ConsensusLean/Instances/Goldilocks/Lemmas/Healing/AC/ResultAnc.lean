@@ -3,25 +3,25 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 
 public section
 
-/-! # Goldilocks SA: A1.8 for an ancestor of the result
+/-! # Goldilocks AC: A1.8 for an ancestor of the result
 
 A1.8 (`result_transfer`) with its hypotheses and conclusion about a block `D ⪯ C` of the result
 `C` (a slow lock's block is on its result's path). The counted supporters of `C` support
 `D`, and they are a strict majority of the writer's participants. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-variable (sp : SAParams)
+variable (sp : ACParams)
 
 /-- `result_transfer_anc` with the unlock given. -/
 theorem result_transfer_ancU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {proposer : Nat → Fin sp.n} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {proposer : Nat → Fin sp.n} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     {ini} (hrun : ACRunU wm u proposer tr H U ini) {s : Nat}
     {X y : Fin sp.n} {i₀ i : Nat} {C D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hX : X ∈ H)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hX : X ∈ H)
     (hres : ResultAt tr X i₀ s C CV) (hDC : Anc U D C) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = s + 1) (hcarry : CarryAt tr U y i e s CV)
     (hviab : ViableAtVote ℓ e (s + 1) D)
@@ -62,10 +62,10 @@ theorem result_transfer_ancU
 
 /-- **A1.8 for a block `D ⪯ C` of the result `C`.** -/
 theorem result_transfer_anc {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {proposer : Nat → Fin sp.n} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {proposer : Nat → Fin sp.n} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     (hrun : ACRun proposer tr H U) {s : Nat}
     {X y : Fin sp.n} {i₀ i : Nat} {C D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hX : X ∈ H)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hX : X ∈ H)
     (hres : ResultAt tr X i₀ s C CV) (hDC : Anc U D C) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = s + 1) (hcarry : CarryAt tr U y i e s CV)
     (hviab : ViableAtVote ℓ e (s + 1) D)
@@ -82,7 +82,7 @@ theorem result_transfer_anc {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin
 /-- A strict majority result has an earlier honest counted supporter when its
 participants number at least twice its faulty participants. -/
 theorem result_honest_supporter_of_participants {FGP : Type} {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     {proposer : Nat → Fin sp.n} {ini} (hrun : ACRun proposer tr H U ini)
     {x : Fin sp.n} (hx : x ∈ H) {i s : Nat} {B C : Blk sp.n FGP}
     {CV : Set (Vote sp.n)} (hR : ResultAt tr x i s C CV) (hBC : Anc U B C)
@@ -109,6 +109,6 @@ theorem result_honest_supporter_of_participants {FGP : Type} {ro : ReplayOrder s
     have hΦU := (frameIn_of_callAt hrun.localRun hx hupd.1).2
     exact ⟨R, hΦU hRt, hroot, hBC.trans (Anc.mono hΦU hCR)⟩
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

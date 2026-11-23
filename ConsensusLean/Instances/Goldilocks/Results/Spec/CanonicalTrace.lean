@@ -48,7 +48,7 @@ open AsChainShape
 open Shape Node
 open Consensus.Goldilocks.NodeAsChainShape hiding parentRef taggedRoot
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
 section
 variable {V : Type} [Fintype V] {E : Env V}
@@ -175,10 +175,10 @@ theorem stateAt_eq (v : V) (i : Nat) :
     stateAt S rho hn v i = (rho.stateBefore i v).st.1 hn :=
   CanonicalTrace.stateAt_eq (traceEncoding S hn) rho v i
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {binding : VoteBinding}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {binding : VoteBinding}
 
 /-- A trace cut: its node, time, event id, position in the event, label and post-state. -/
-structure CutRec (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) where
+structure CutRec (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) where
   node : Fin sp.n
   time : Time
   event : Nat

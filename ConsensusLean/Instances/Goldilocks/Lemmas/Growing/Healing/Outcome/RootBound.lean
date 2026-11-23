@@ -11,9 +11,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -23,8 +23,8 @@ theorem reset_vote_root_source_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) :
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) :
     ell.frame.fcRoot.root = sp.genesisRoot ∨
       ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b ∧
         Anc (tr.HonestBlocksAt H) ell.frame.fcRoot O := by
@@ -36,7 +36,7 @@ theorem reset_vote_root_source_at
   have hsub : (tr.state y j).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ hX => ⟨y, j, tr.time j, ht, hj, hy, hX⟩
   have hfr := Outcome.frame_of_call hp.run hy hc.1
-  have hc' : SA.CastAt (tr.projAC.upTo (tr.time j)) y j ell e :=
+  have hc' : AC.CastAt (tr.projAC.upTo (tr.time j)) y j ell e :=
     ⟨(Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩, hc.2⟩
   have htupper : tr.time j ≤ sp.ts u + sp.Δ := by
     have h := (Compose.cast_head_fcRoot (hac.localRun.upTo ht) hac.vstart hy hc').2
@@ -106,17 +106,17 @@ theorem reset_vote_root_below_bound_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {u : Nat} (hR : drainTime sp a ≤ sp.ts u)
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
     (hbound : ∀ x r l B, HighOrigin tr H g x r l B → tr.time r < sp.ts u → tr.time r ≤ b →
       Anc (tr.HonestBlocksAt H) B P)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y j ell e) (hs : e.msg.slot = u) (hjb : tr.time j ≤ b) :
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y j ell e) (hs : e.msg.slot = u) (hjb : tr.time j ≤ b) :
     Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P := by
   rcases hp.reset_vote_root_source_at hR hy hc hs hjb with hg | ⟨x, r, l, B, ho, ht, hrb, hroot⟩
   · have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
     have hc' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hc.1)
-    obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt (hac.localRun.upTo (hp.run.time_nonneg j)) hy hc'
+    obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt (hac.localRun.upTo (hp.run.time_nonneg j)) hy hc'
     exact ProposalImpl.genesis_root_anc_at hp.run hp.noColl (hPhiU hPhi.fcRoot_mem) hg hP
   · exact hroot.trans (hbound x r l B ho ht hrb)
 

@@ -8,7 +8,7 @@ public section
 
 /-! # Goldilocks AC traces: reachability and one node's life (F.1 (c), A0.7, A0.8)
 
-The AC trace contract gives reachable states; and, over an SA trace, a joined node has been
+The AC trace contract gives reachable states; and, over an AC trace, a joined node has been
 awake with no restart since the previous slot, erased no recent vote at its restarts, and casts
 one vote per slot. -/
 
@@ -120,22 +120,22 @@ theorem localRun_reachable {P : Params} {FGP : Type} {A : ACInterface P FGP}
 
 end Consensus.Goldilocks
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
 variable {wm : WriteMode}
 
-variable (sp : SAParams) {FGP : Type}
-variable {ini : Fin sp.n → SAState sp.n}
+variable (sp : ACParams) {FGP : Type}
+variable {ini : Fin sp.n → ACState sp.n}
 
 /-- `frame_validPayload` with the unlock given. -/
 theorem frame_validPayloadU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     (h : ACLocalRunU wm u H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ) :
     ∀ B ∈ ℓ.frame.tree, validPayload B := by
-  have step : ∀ (Φ Φ' : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call),
-      (goldilocksSA sp FGP ro).CallOK U Φ t c Φ' → (∀ B ∈ Φ.tree, validPayload B) →
+  have step : ∀ (Φ Φ' : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP ro).Call),
+      (goldilocksAC sp FGP ro).CallOK U Φ t c Φ' → (∀ B ∈ Φ.tree, validPayload B) →
       ∀ B ∈ Φ'.tree, validPayload B := by
     intro Φ Φ' t c hok hv X hX
     obtain ⟨-, hc⟩ := hok
@@ -158,16 +158,16 @@ theorem frame_validPayloadU
     · refine step Φ₀ _ _ _ hok fun B hB => ?_
       rw [htree, Set.mem_singleton_iff] at hB
       subst hB
-      simp [validPayload, blockVotes, blockSupport, hpay]
+      simp [validPayload, declaredHeadVotes, declaredSupportVotes, hpay]
     · exact step _ _ _ _ hok (ih j hj hc')
 
 /-- Every block of an honest node's frame passes `ac_valid_payload`: the initial frame holds
 genesis, whose payload is empty, and a frame step adds only the block of an `on_block` call,
 which passed the check (the input contract). -/
 theorem frame_validPayload {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ) :
     ∀ B ∈ ℓ.frame.tree, validPayload B := by
   apply frame_validPayloadU (wm := WriteMode.parent sp) <;>
     first | assumption | exact ACLocalRun.toU ‹_›
@@ -194,9 +194,9 @@ theorem frame_mem_of_between {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ : Fr
 /-- Across one lawful call, the finalized tip moves only forward (inside `U`) and a block of the
 old tree that extends the new tip is in the new tree. -/
 theorem callOK_retains {ro : ReplayOrder sp FGP} {U : Set (Blk sp.n FGP)} (hU : Coherent U)
-    {Φ Φ' : Frm sp.n FGP} {t : Time} {c : (goldilocksSA sp FGP ro).Call}
-    (hΦ : (goldilocksSA sp FGP ro).FrameIn U Φ)
-    (hok : (goldilocksSA sp FGP ro).CallOK U Φ t c Φ') :
+    {Φ Φ' : Frm sp.n FGP} {t : Time} {c : (goldilocksAC sp FGP ro).Call}
+    (hΦ : (goldilocksAC sp FGP ro).FrameIn U Φ)
+    (hok : (goldilocksAC sp FGP ro).CallOK U Φ t c Φ') :
     Anc U Φ.F Φ'.F ∧ ∀ X ∈ Φ.tree, Anc U Φ'.F X → X ∈ Φ'.tree := by
   obtain ⟨hΦ', hc⟩ := hok
   cases c with
@@ -227,10 +227,10 @@ node at `j ≤ i`, the finalized tip moves forward, and a block of the frame at 
 tip at `i` is in the frame at `i`. -/
 theorem retain_betweenU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     (h : ACLocalRunU wm u H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓj : ACLabel (goldilocksSA sp FGP ro)} (hcj : tr.CallAt y j ℓj) :
-    ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y i ℓ → j ≤ i →
+    {ℓj : ACLabel (goldilocksAC sp FGP ro)} (hcj : tr.CallAt y j ℓj) :
+    ∀ i (ℓ : ACLabel (goldilocksAC sp FGP ro)), tr.CallAt y i ℓ → j ≤ i →
       Anc U ℓj.frame.F ℓ.frame.F ∧ ∀ X ∈ ℓj.frame.tree, Anc U ℓ.frame.F X → X ∈ ℓ.frame.tree := by
   intro i
   induction i using Nat.strong_induction_on with
@@ -246,7 +246,7 @@ theorem retain_betweenU
       by_contra hlt
       exact hnb j (by omega) hji ℓj hcj
     obtain ⟨ihF, ihX⟩ := ih j' hj' ℓ' hc' hjj'
-    have hin : (goldilocksSA sp FGP ro).FrameIn U ℓ'.frame := by
+    have hin : (goldilocksAC sp FGP ro).FrameIn U ℓ'.frame := by
       rcases h.frameLaw y hy j' ℓ' hc' with ⟨_, _, _, _, hok'⟩ | ⟨_, _, _, _, _, hok'⟩
       · exact hok'.1
       · exact hok'.1
@@ -256,9 +256,9 @@ theorem retain_betweenU
 /-- `mem_tree_of_acceptAt` with the unlock given. -/
 theorem mem_tree_of_acceptAtU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     (h : ACLocalRunU wm u H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {k i : Nat}
-    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hk : tr.AcceptAt y k B)
+    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hk : tr.AcceptAt y k B)
     (hki : k ≤ i) (hc : tr.CallAt y i ℓ) (hF : Anc U ℓ.frame.F B) : B ∈ ℓ.frame.tree := by
   obtain ⟨ℓk, hck, hcall⟩ := hk
   have hBk : B ∈ ℓk.frame.tree := by
@@ -273,9 +273,9 @@ theorem mem_tree_of_acceptAtU
 later calls whose finalized tip it extends (inside `U`): the node's frames evolve by frame steps
 inside `U` (G0.3 (frame)), so a block leaves only when `Φ.F` moves past it, and never returns. -/
 theorem mem_tree_of_acceptAt {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {k i : Nat}
-    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hk : tr.AcceptAt y k B)
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {k i : Nat}
+    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hk : tr.AcceptAt y k B)
     (hki : k ≤ i) (hc : tr.CallAt y i ℓ) (hF : Anc U ℓ.frame.F B) : B ∈ ℓ.frame.tree := by
   apply mem_tree_of_acceptAtU (wm := WriteMode.parent sp) <;>
     first | assumption | exact ACLocalRun.toU ‹_›
@@ -283,9 +283,9 @@ theorem mem_tree_of_acceptAt {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
 /-- `genesis_mem_of_call` with the unlock given. -/
 theorem genesis_mem_of_callU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     (h : ACLocalRunU wm u H U tr ini) {y : Fin sp.n} (hy : y ∈ H) :
-    ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y i ℓ →
+    ∀ i (ℓ : ACLabel (goldilocksAC sp FGP ro)), tr.CallAt y i ℓ →
       ∃ G ∈ U, G.root = sp.genesisRoot ∧ G.parent = none := by
   intro i
   induction i using Nat.strong_induction_on with
@@ -299,9 +299,9 @@ theorem genesis_mem_of_callU
 /-- The coherent set of an honest node's frames holds a genesis block (root `genesisRoot`, no
 parent): its first call follows an initial frame. -/
 theorem genesis_mem_of_call {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) :
-    ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y i ℓ →
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) :
+    ∀ i (ℓ : ACLabel (goldilocksAC sp FGP ro)), tr.CallAt y i ℓ →
       ∃ G ∈ U, G.root = sp.genesisRoot ∧ G.parent = none := by
   apply genesis_mem_of_callU (wm := WriteMode.parent sp) <;>
     first | assumption | exact ACLocalRun.toU ‹_›
@@ -309,13 +309,13 @@ theorem genesis_mem_of_call {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
 /-- `accept_new` with the unlock given. -/
 theorem accept_newU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     (h : ACLocalRunU wm u H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {B : Blk sp.n FGP} (ha : tr.AcceptAt y i B) :
     (∀ ℓ, tr.CallAt y i ℓ → B ∈ ℓ.frame.tree) ∧
       ∀ k < i, ∀ ℓk, tr.CallAt y k ℓk → B ∉ ℓk.frame.tree := by
   obtain ⟨ℓ, hc, hcall⟩ := ha
-  have hok : ∃ Φ, (goldilocksSA sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame ∧
+  have hok : ∃ Φ, (goldilocksAC sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame ∧
       ((∀ k < i, ∀ ℓk, ¬ tr.CallAt y k ℓk) ∨ ∃ j < i, ∃ ℓj, tr.CallAt y j ℓj ∧
         tr.NoCallBetween y (j + 1) i ∧ Φ = ℓj.frame) := by
     rcases h.frameLaw y hy i ℓ hc with ⟨hn, Φ₀, -, -, hok⟩ | ⟨j, ℓ', hj, hc', hnb, hok⟩
@@ -333,7 +333,7 @@ theorem accept_newU
   have hkj : k ≤ j := by
     by_contra hlt
     exact hnb k (by omega) hk ℓk hck
-  have hinj : (goldilocksSA sp FGP ro).FrameIn U ℓj.frame := by
+  have hinj : (goldilocksAC sp FGP ro).FrameIn U ℓj.frame := by
     rcases h.frameLaw y hy j ℓj hcj with ⟨_, _, _, _, hok'⟩ | ⟨_, _, _, _, _, hok'⟩ <;>
       exact hok'.1
   have hFF := (callOK_retains sp h.coherent hinj hok).1
@@ -343,8 +343,8 @@ theorem accept_newU
 /-- The frame of an honest `on_block(B)` call holds `B`, which is in no frame of the node's
 earlier calls (it is new, and frames retain what extends their finalized tip). -/
 theorem accept_new {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {B : Blk sp.n FGP} (ha : tr.AcceptAt y i B) :
     (∀ ℓ, tr.CallAt y i ℓ → B ∈ ℓ.frame.tree) ∧
       ∀ k < i, ∀ ℓk, tr.CallAt y k ℓk → B ∉ ℓk.frame.tree := by
@@ -354,7 +354,7 @@ theorem accept_new {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
 /-- `accept_unique` with the unlock given. -/
 theorem accept_uniqueU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     (h : ACLocalRunU wm u H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {k k' : Nat}
     {B : Blk sp.n FGP} (hk : tr.AcceptAt y k B) (hk' : tr.AcceptAt y k' B) : k = k' := by
   rcases lt_trichotomy k k' with hlt | heq | hlt
@@ -368,8 +368,8 @@ theorem accept_uniqueU
 
 /-- An honest node accepts a block at most once. -/
 theorem accept_unique {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {k k' : Nat}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {k k' : Nat}
     {B : Blk sp.n FGP} (hk : tr.AcceptAt y k B) (hk' : tr.AcceptAt y k' B) : k = k' := by
   apply accept_uniqueU (wm := WriteMode.parent sp) <;>
     first | assumption | exact ACLocalRun.toU ‹_›
@@ -377,7 +377,7 @@ theorem accept_unique {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
 /-- `accept_ne_genesis` with the unlock given. -/
 theorem accept_ne_genesisU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     (h : ACLocalRunU wm u H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {B : Blk sp.n FGP} (hk : tr.AcceptAt y k B) : B.root ≠ sp.genesisRoot := by
   intro hg
@@ -398,8 +398,8 @@ theorem accept_ne_genesisU
 
 /-- An honest node never accepts a block with the genesis root. -/
 theorem accept_ne_genesis {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {B : Blk sp.n FGP} (hk : tr.AcceptAt y k B) : B.root ≠ sp.genesisRoot := by
   apply accept_ne_genesisU (wm := WriteMode.parent sp) <;>
     first | assumption | exact ACLocalRun.toU ‹_›
@@ -407,14 +407,14 @@ theorem accept_ne_genesis {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
 /-- `frame_genesis_or_accepted` with the unlock given. -/
 theorem frame_genesis_or_acceptedU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ) :
     ∀ B ∈ ℓ.frame.tree, B.slot = 0 ∨ ∃ k ≤ i, tr.AcceptAt y k B := by
   induction i using Nat.strong_induction_on generalizing ℓ with
   | _ i ih =>
     have step : ∀ Φ : Frm sp.n FGP,
-        (goldilocksSA sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame →
+        (goldilocksAC sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame →
         (∀ B ∈ Φ.tree, B.slot = 0 ∨ ∃ k ≤ i, tr.AcceptAt y k B) →
         ∀ B ∈ ℓ.frame.tree, B.slot = 0 ∨ ∃ k ≤ i, tr.AcceptAt y k B := by
       intro Φ hok hv X hX
@@ -443,9 +443,9 @@ theorem frame_genesis_or_acceptedU
 /-- Every block of an honest node's frame at a call is of slot `0` (genesis), or the node
 accepted it at that call or an earlier one. -/
 theorem frame_genesis_or_accepted {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ) :
     ∀ B ∈ ℓ.frame.tree, B.slot = 0 ∨ ∃ k ≤ i, tr.AcceptAt y k B := by
   apply frame_genesis_or_acceptedU (wm := WriteMode.parent sp) <;>
     first | assumption | exact ACLocalRun.toU ‹_›
@@ -453,10 +453,10 @@ theorem frame_genesis_or_accepted {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
 /-- `stamp_cases` with the unlock given, from starts up to the vote permission. -/
 theorem stamp_casesU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     (h : ACLocalRunU wm u H U tr ini) (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {y : Fin sp.n} (hy : y ∈ H) :
-    ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
+    ∀ i (ℓ : ACLabel (goldilocksAC sp FGP ro)), tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
       (tr.post i).blockStamp X.root = ⊥ ∨
         (∃ k ≤ i, tr.AcceptAt y k X ∧ (tr.post i).blockStamp X.root = ETime.of (tr.time k)) ∨
         (∃ r ≤ i, tr.RestartAt y r ∧ (tr.post i).blockStamp X.root = ETime.of (tr.time r)) := by
@@ -470,7 +470,7 @@ theorem stamp_casesU
         (stepWithM sp ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
       rw [hexec]
     -- the previous frame and the invariant for it, in the state before the call
-    obtain ⟨Φ, hok, hpre⟩ : ∃ Φ, (goldilocksSA sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame ∧
+    obtain ⟨Φ, hok, hpre⟩ : ∃ Φ, (goldilocksAC sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame ∧
         ∀ X ∈ Φ.tree, (tr.state y i).blockStamp X.root = ⊥ ∨
           (∃ k ≤ i, tr.AcceptAt y k X ∧
             (tr.state y i).blockStamp X.root = ETime.of (tr.time k)) ∨
@@ -521,9 +521,9 @@ theorem stamp_casesU
 /-- The stamp of a block of an honest node's frame after a call: `−∞` (genesis), the time of the
 node's acceptance of the block, or the time of one of its restarts, at or before the call. -/
 theorem stamp_cases {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) :
-    ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) :
+    ∀ i (ℓ : ACLabel (goldilocksAC sp FGP ro)), tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
       (tr.post i).blockStamp X.root = ⊥ ∨
         (∃ k ≤ i, tr.AcceptAt y k X ∧ (tr.post i).blockStamp X.root = ETime.of (tr.time k)) ∨
         (∃ r ≤ i, tr.RestartAt y r ∧ (tr.post i).blockStamp X.root = ETime.of (tr.time r)) := by
@@ -534,10 +534,10 @@ theorem stamp_cases {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
 permission. -/
 theorem blockStamp_lt_of_acceptedBeforeU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     (h : ACLocalRunU wm u H U tr ini) (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) {B : Blk sp.n FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ) {B : Blk sp.n FGP}
     (hB : B ∈ ℓ.frame.tree) {T : Time} (hacc : AcceptedBefore tr y B T)
     (hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < T)
     (hi : T ≤ tr.time i ∨ ℓ.call ≠ .block B) :
@@ -621,10 +621,10 @@ block (it is at or after `T`, or not `on_block(B)`): the stamp of a block is wri
 the node accepts it (once) and by a restart's replay (A0.7). From starts up to the vote
 permission. -/
 theorem blockStamp_lt_of_acceptedBefore {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) {B : Blk sp.n FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ) {B : Blk sp.n FGP}
     (hB : B ∈ ℓ.frame.tree) {T : Time} (hacc : AcceptedBefore tr y B T)
     (hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < T)
     (hi : T ≤ tr.time i ∨ ℓ.call ≠ .block B) :
@@ -635,7 +635,7 @@ theorem blockStamp_lt_of_acceptedBefore {ro : ReplayOrder sp FGP}
 /-- The AC trace contract with the unlock given, from the starts `ini`, gives the states reachable
 with the unlock given from each start. -/
 theorem localRun_reachableU {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {u : Nat → Set Lock}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {u : Nat → Set Lock}
     (h : ACLocalRunU wm u H U tr ini) {y : Fin sp.n} (hy : y ∈ H) :
     ∀ i ℓ, tr.CallAt y i ℓ →
       ReachableAtUFrom (ro := ro) wm (ini y) y U (tr.post i) ℓ.frame (tr.time i) := by
@@ -648,7 +648,7 @@ theorem localRun_reachableU {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin
     have hpost : tr.post i =
         (stepWithM sp ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
       rw [hexec]
-    have hok : ∀ Φ, (goldilocksSA sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame →
+    have hok : ∀ Φ, (goldilocksAC sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame →
         UnlockRel sp (callInputM sp wm (tr.state y i) ℓ.frame (tr.time i) ℓ.call).locks ℓ.frame
           (tr.time i) ((sp.slot (tr.time i) : Int) - 1)
           (callViewM sp wm (tr.state y i) ℓ.frame (tr.time i) ℓ.call) (u i) := fun Φ hok => by
@@ -667,7 +667,7 @@ theorem localRun_reachableU {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin
 
 /-- `state_reachable` with the unlock given. -/
 theorem state_reachableU {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {u : Nat → Set Lock}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {u : Nat → Set Lock}
     (h : ACLocalRunU wm u H U tr ini) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     tr.state y i = ini y ∨
       ∃ Φ t, ReachableAtUFrom (ro := ro) wm (ini y) y U (tr.state y i) Φ t ∧ t ≤ tr.time i := by
@@ -681,10 +681,10 @@ theorem state_reachableU {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 `i` is its start (no call yet), or reachable from it inside `U` with the frame and the time of its
 last call before `i` (which is at or before the time of cut `i`). -/
 theorem state_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     tr.state y i = ini y ∨
-      ∃ Φ t, (goldilocksSA sp FGP ro).ReachableAtFrom (ini y) y U (tr.state y i) Φ t ∧
+      ∃ Φ t, (goldilocksAC sp FGP ro).ReachableAtFrom (ini y) y U (tr.state y i) Φ t ∧
         t ≤ tr.time i := by
   rcases tr.noCall_or_lastCall y i with hnone | ⟨j, hj, ℓ, hc, hnb⟩
   · exact Or.inl ((tr.state_of_noCall hnone).trans (h.init y hy))
@@ -695,7 +695,7 @@ theorem state_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.
 /-- `state_pool_slot` with the unlock given, from starts up to the vote permission. -/
 theorem state_pool_slotU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     (h : ACLocalRunU wm u H U tr ini) (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {y : Fin sp.n} (hy : y ∈ H) (i σ : Nat) :
     ∀ v ∈ (tr.state y i).pool σ, v.slot = σ := by
@@ -706,8 +706,8 @@ theorem state_pool_slotU
 /-- The slot-`σ` pool of an honest node's state before any cut holds only slot-`σ` votes, from
 starts up to the vote permission. -/
 theorem state_pool_slot {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H) (i σ : Nat) :
     ∀ v ∈ (tr.state y i).pool σ, v.slot = σ :=
   state_pool_slotU (wm := WriteMode.parent sp) sp h.toU hini hy i σ
@@ -715,14 +715,14 @@ theorem state_pool_slot {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.
 /-- `frame_slot_le` with the unlock given. -/
 theorem frame_slot_leU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     (h : ACLocalRunU wm u H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ) :
     ∀ B ∈ ℓ.frame.tree, B.slot ≤ sp.slot (tr.time i) := by
   induction i using Nat.strong_induction_on generalizing ℓ with
   | _ i ih =>
-    have step : ∀ (Φ : Frm sp.n FGP) (c : (goldilocksSA sp FGP ro).Call),
-        (goldilocksSA sp FGP ro).CallOK U Φ (tr.time i) c ℓ.frame →
+    have step : ∀ (Φ : Frm sp.n FGP) (c : (goldilocksAC sp FGP ro).Call),
+        (goldilocksAC sp FGP ro).CallOK U Φ (tr.time i) c ℓ.frame →
         (∀ B ∈ Φ.tree, B.slot ≤ sp.slot (tr.time i)) →
         ∀ B ∈ ℓ.frame.tree, B.slot ≤ sp.slot (tr.time i) := by
       intro Φ c hok hv X hX
@@ -753,9 +753,9 @@ theorem frame_slot_leU
 genesis, of slot `0`, and a frame step adds only the block of an `on_block` call, which is not of
 a future slot (the input contract); calls are at nondecreasing times from `0`. -/
 theorem frame_slot_le {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ) :
     ∀ B ∈ ℓ.frame.tree, B.slot ≤ sp.slot (tr.time i) := by
   apply frame_slot_leU (wm := WriteMode.parent sp) <;>
     first | assumption | exact ACLocalRun.toU ‹_›
@@ -774,17 +774,17 @@ variable {sp}
 `restart_time`, keeps `voted_slot` or sets it to `slot(t)`, and emits at most one vote, of slot
 `slot(t)`, only from a joined `A` with `voted_slot ≠ slot(t)`, after which `voted_slot = slot(t)`.
 -/
-private def VoteStep (A A' : SAState sp.n) (es : List (Em sp FGP)) (t : Time) : Prop :=
+private def VoteStep (A A' : ACState sp.n) (es : List (Em sp FGP)) (t : Time) : Prop :=
   A'.restartTime = A.restartTime ∧
     (A'.votedSlot = A.votedSlot ∨ A'.votedSlot = sp.slot t) ∧ es.length ≤ 1 ∧
     ∀ e ∈ es, e.msg.slot = sp.slot t ∧ joined sp A t ∧ A.votedSlot ≠ sp.slot t ∧
       A'.votedSlot = sp.slot t
 
-private theorem VoteStep.refl (A : SAState sp.n) (t : Time) :
+private theorem VoteStep.refl (A : ACState sp.n) (t : Time) :
     VoteStep (FGP := FGP) A A [] t :=
   ⟨rfl, Or.inl rfl, Nat.zero_le _, fun _ h => absurd h List.not_mem_nil⟩
 
-private theorem VoteStep.pre {A B A' : SAState sp.n} {es : List (Em sp FGP)} {t : Time}
+private theorem VoteStep.pre {A B A' : ACState sp.n} {es : List (Em sp FGP)} {t : Time}
     (h : VoteStep B A' es t) (hv : B.votedSlot = A.votedSlot)
     (hr : B.restartTime = A.restartTime) : VoteStep A A' es t := by
   obtain ⟨h₁, h₂, h₃, h₄⟩ := h
@@ -792,13 +792,13 @@ private theorem VoteStep.pre {A B A' : SAState sp.n} {es : List (Em sp FGP)} {t 
   obtain ⟨e₁, e₂, e₃, e₄⟩ := h₄ e he
   exact ⟨e₁, by unfold joined at e₂ ⊢; rwa [← hr], hv ▸ e₃, e₄⟩
 
-private theorem VoteStep.post {A A' A'' : SAState sp.n} {es : List (Em sp FGP)} {t : Time}
+private theorem VoteStep.post {A A' A'' : ACState sp.n} {es : List (Em sp FGP)} {t : Time}
     (h : VoteStep A A' es t) (hv : A''.votedSlot = A'.votedSlot)
     (hr : A''.restartTime = A'.restartTime) : VoteStep A A'' es t := by
   obtain ⟨h₁, h₂, h₃, h₄⟩ := h
   exact ⟨hr.trans h₁, hv ▸ h₂, h₃, fun e he => hv ▸ h₄ e he⟩
 
-private theorem tryVote_voteStep {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n)
+private theorem tryVote_voteStep {L : Set Lock} (self : Fin sp.n) (A : ACState sp.n)
     (Φ : Frm sp.n FGP)
     (t : Time) :
     VoteStep A (tryVoteWithM sp wm self L A Φ t).1 (tryVoteWithM sp wm self L A Φ t).2 t := by
@@ -821,7 +821,7 @@ private theorem tryVote_voteStep {L : Set Lock} (self : Fin sp.n) (A : SAState s
     subst he
     exact ⟨rfl, hj, hv, k₁ _ _⟩
 
-private theorem acOnMessage_voteStep {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm
+private theorem acOnMessage_voteStep {L : Set Lock} (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm
     sp.n FGP)
     (t : Time) (v : Vote sp.n) :
     VoteStep A (acOnMessageWithM sp wm self L A Φ t v).1
@@ -830,7 +830,7 @@ private theorem acOnMessage_voteStep {L : Set Lock} (self : Fin sp.n) (A : SASta
     ((optimisticM_keeps _ _ _ _).1.trans (admitVote_keeps _ _ _).1)
     ((optimisticM_keeps _ _ _ _).2.trans (admitVote_keeps _ _ _).2)
 
-private theorem acOnBlock_voteStep {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm
+private theorem acOnBlock_voteStep {L : Set Lock} (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm
     sp.n FGP)
     (t : Time) (B : Blk sp.n FGP) :
     VoteStep A (acOnBlockWithM sp wm self L A Φ t B).1 (acOnBlockWithM sp wm self L A Φ t B).2 t :=
@@ -838,7 +838,7 @@ private theorem acOnBlock_voteStep {L : Set Lock} (self : Fin sp.n) (A : SAState
     ((optimisticM_keeps _ _ _ _).1.trans (blockReceipt_keeps _ _ _).1)
     ((optimisticM_keeps _ _ _ _).2.trans (blockReceipt_keeps _ _ _).2)
 
-private theorem acOnTick_voteStep {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm
+private theorem acOnTick_voteStep {L : Set Lock} (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm
     sp.n FGP)
     (t : Time) :
     VoteStep A (acOnTickWithM sp wm self L A Φ t).1 (acOnTickWithM sp wm self L A Φ t).2 t :=
@@ -861,9 +861,9 @@ private theorem acOnTick_voteStep {L : Set Lock} (self : Fin sp.n) (A : SAState 
 /-- One call from `A` at `t ≥ 0` with a well-formed frame, to `A'` with the emissions `es`: a
 restart, which emits nothing and writes `restart_time ← t`, or a `VoteStep`. -/
 private theorem step_voteStep {L : Set Lock} {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A A' :
-    SAState sp.n}
+    ACState sp.n}
     {Φ : Frm sp.n FGP} {t : Time} (hΦ : FrameOK Φ) (ht : 0 ≤ t)
-    (c : (goldilocksSA sp FGP ro).Call) {es : List (Em sp FGP)}
+    (c : (goldilocksAC sp FGP ro).Call) {es : List (Em sp FGP)}
     (hs : stepWithM sp ro wm self L A Φ t c = (A', es)) :
     (es = [] ∧ A'.restartTime = (t : WithBot Time)) ∨ VoteStep A A' es t := by
   have h₁ := congrArg Prod.fst hs
@@ -883,12 +883,12 @@ private theorem step_voteStep {L : Set Lock} {ro : ReplayOrder sp FGP} (self : F
     exact Or.inl ⟨he, hr⟩
 
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
-  {tr : SATrace sp FGP ro}
+  {tr : GTrace sp FGP ro}
 
 /-- An honest call at cut `i`: a restart at `time i` that emits nothing, or a `VoteStep`. -/
 private theorem call_voteStepU
     {u : Nat → Set Lock} (h : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ) :
     (ℓ.emits = [] ∧ (tr.post i).restartTime = (tr.time i : WithBot Time)) ∨
       VoteStep (tr.state y i) (tr.post i) ℓ.emits (tr.time i) := by
   have hexec := h.exec i ℓ hc.2 (hc.1 ▸ hy)
@@ -984,7 +984,7 @@ private theorem vote_slot_ne (htime : ∀ i, 0 ≤ tr.time i) (hmono : Monotone 
 frames, not a globally coherent block universe or collision freedom. -/
 theorem vote_slot_ne_of_exec (htime : ∀ i, 0 ≤ tr.time i) (hmono : Monotone tr.time)
     (hexec : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
-      (goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i) ℓ.call =
+      (goldilocksAC sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i) ℓ.call =
         (tr.post i, ℓ.emits))
     (hframes : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ → FrameOK ℓ.frame)
     {y : Fin sp.n} (hy : y ∈ H) {k i : Nat} (hki : k < i)
@@ -996,7 +996,7 @@ theorem vote_slot_ne_of_exec (htime : ∀ i, 0 ≤ tr.time i) (hmono : Monotone 
 
 /-- `step_restartTime` with the locks after the unlock given. -/
 theorem stepWith_restartTime {ro : ReplayOrder sp FGP} (self : Fin sp.n) (L : Set Lock)
-    (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call)
+    (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP ro).Call)
     (hc : c ≠ .restart) : (stepWithM sp ro wm self L A Φ t c).1.restartTime = A.restartTime := by
   cases c with
   | tick => exact (acOnTick_voteStep (L := L) self A Φ t).1
@@ -1007,18 +1007,18 @@ theorem stepWith_restartTime {ro : ReplayOrder sp FGP} (self : Fin sp.n) (L : Se
   | restart => exact absurd rfl hc
 
 /-- A call that is not a restart keeps `restart_time`. -/
-theorem step_restartTime {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : SAState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call) (hc : c ≠ .restart) :
-    ((goldilocksSA sp FGP ro).step self A Φ t c).1.restartTime = A.restartTime := by
+theorem step_restartTime {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : ACState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP ro).Call) (hc : c ≠ .restart) :
+    ((goldilocksAC sp FGP ro).step self A Φ t c).1.restartTime = A.restartTime := by
   rw [step_eq_stepWith]
   exact stepWith_restartTime (wm := WriteMode.parent sp) self _ A Φ t c hc
 
 /-- After an honest call at `i`, `restart_time` is at least the time of every restart of the node
 at a cut `≤ i`. -/
 private theorem restartTime_geU
-    {u : Nat → Set Lock} {ini : Fin sp.n → SAState sp.n} (h : ACLocalRunU wm u H U tr ini)
+    {u : Nat → Set Lock} {ini : Fin sp.n → ACState sp.n} (h : ACLocalRunU wm u H U tr ini)
     {y : Fin sp.n}
-    (hy : y ∈ H) : ∀ i (ℓ : ACLabel (goldilocksSA sp FGP ro)), tr.CallAt y i ℓ →
+    (hy : y ∈ H) : ∀ i (ℓ : ACLabel (goldilocksAC sp FGP ro)), tr.CallAt y i ℓ →
       ∀ j ≤ i, tr.RestartAt y j → (tr.time j : WithBot Time) ≤ (tr.post i).restartTime := by
   intro i
   induction i using Nat.strong_induction_on with
@@ -1101,8 +1101,8 @@ theorem cast_of_votedSlotU
 node may not vote in (a non-member's `voted_slot` moves without a cast). From starts up to the
 vote permission. -/
 theorem cast_of_votedSlot {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) (i σ : Nat) (hv : (tr.state y i).votedSlot = σ) :
     (∃ j < i, ∃ e, VoteAt tr y j e ∧ e.msg.slot = σ) ∨ (tr.state y i).mayVote σ = false := by
@@ -1111,9 +1111,9 @@ theorem cast_of_votedSlot {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
 
 /-- **A cast is at a slot the node may vote in** (the emission gate at the cast's call). -/
 theorem mayVote_of_castAt {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {ini : Fin sp.n → SAState sp.n}
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {ini : Fin sp.n → ACState sp.n}
+    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     (tr.state y i).mayVote e.msg.slot = true := by
   have he := hr.exec i ℓ hc.1.2 (hc.1.1 ▸ hy)
   rw [hc.1.1] at he
@@ -1123,8 +1123,8 @@ end OneVote
 
 /-- **F.1 (c), a joined node**, over a trace with the unlock given. -/
 theorem joined_awakeU (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
-    (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) {u : Nat → Set Lock}
-    {ini : Fin sp.n → SAState sp.n} (h : ACLocalRunU wm u H U tr ini) :
+    (U : Set (Blk sp.n FGP)) (tr : GTrace sp FGP ro) {u : Nat → Set Lock}
+    {ini : Fin sp.n → ACState sp.n} (h : ACLocalRunU wm u H U tr ini) :
     ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ →
       joined sp (tr.post i) (tr.time i) →
       (∀ u : Time, max 0 (sp.ts ((sp.slot (tr.time i) : Int) - 1)) ≤ u → u ≤ tr.time i →
@@ -1155,7 +1155,7 @@ theorem joined_awake : JoinedAwake sp :=
 
 /-- **A0.8**, over a trace with the unlock given. -/
 theorem one_vote_per_slotU (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
-    (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) {u : Nat → Set Lock}
+    (U : Set (Blk sp.n FGP)) (tr : GTrace sp FGP ro) {u : Nat → Set Lock}
     (h : ACLocalRunU wm u H U tr ini) : ∀ y ∈ H, ∀ i j e e',
       VoteAt tr y i e → VoteAt tr y j e' → e.msg.slot = e'.msg.slot → i = j ∧ e = e' := by
   intro y hy i j e e' hv hv' hσ
@@ -1179,6 +1179,6 @@ theorem one_vote_per_slotU (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin 
 theorem one_vote_per_slot : OneVotePerSlot sp :=
   fun FGP ro H U tr h => one_vote_per_slotU sp FGP ro H U tr h.toU
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

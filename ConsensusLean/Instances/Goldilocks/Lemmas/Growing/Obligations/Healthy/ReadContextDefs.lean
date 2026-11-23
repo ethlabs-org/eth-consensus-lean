@@ -18,9 +18,9 @@ namespace Consensus.Goldilocks.Obligations.Growing
 
 open AsChainShape Simulation Blocks Shape
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g b : Time}
   {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
@@ -38,14 +38,14 @@ structure RepairReadContext (D : RepairSchedule tr H proposer dg g b cm βK) (O 
   honest : y ∈ H t
   awake : tr.awake y t
   joined : tr.JoinedAt y t
-  latest : (label : Int) = (SA.latestView sp (tr.state y n).ac (Node.frame (tr.state y n)) t).2
+  latest : (label : Int) = (AC.latestView sp (tr.state y n).ac (Node.frame (tr.state y n)) t).2
   reset_le : D.resetTime ≤ sp.ts label
   label_le : sp.ts label + sp.Δ ≤ t
   sync : SyncACWindowBefore (H t) ((tr.upTo t).HonestBlocks (H t)) D.resetTime t
     (tr.projAC.upTo t)
   catchup : CatchACWindowBefore (tr.projAC.upTo t) (H t) ((tr.upTo t).HonestBlocks (H t))
     D.resetTime (2 * sp.Δ) t
-  fault : SA.FaultBoundK (Generic.dictOfTime sp cm) label tr.projAC (H t) (sp.ts label + sp.Δ)
+  fault : AC.FaultBoundK (Generic.dictOfTime sp cm) label tr.projAC (H t) (sp.ts label + sp.Δ)
 
 end Consensus.Goldilocks.Obligations.Growing
 

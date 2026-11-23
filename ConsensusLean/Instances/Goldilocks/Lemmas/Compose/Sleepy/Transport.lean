@@ -13,7 +13,7 @@ public section
 
 Transport and the non-root case of S3 (`SleepyInvariantUpTo`): for an origin `C` of label `s` and an
 honest slot-`(s+1)` vote whose `Σ.F` is at or below `C`, the counted votes and heads reach the voter
-in time (`SA.CarryAt`), and, for a result, every slot-`s` vote of the voter's merged view reaches
+in time (`AC.CarryAt`), and, for a result, every slot-`s` vote of the voter's merged view reaches
 the writer (A1.8 (d)). Under `Sync[0, ∞)`: each counted vote was admitted by the writer (so
 forwarded) and each counted head accepted by it (so relayed) before `t_s + 2Δ`; the voter is joined
 at its vote, so awake since `t_s` with its pool kept, and processes them before `t_s + 3Δ`; the
@@ -21,30 +21,30 @@ relay applies since the voter's `Σ.F` is below `C`, below each head. -/
 
 namespace Consensus.Goldilocks.Compose
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
 
-/-! ### One honest node over an SA trace -/
+/-! ### One honest node over an AC trace -/
 
 section Node
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP ro}
 
 /-- `frame_anc_accepted` with the unlock given. -/
 theorem frame_anc_acceptedU
-    {u : Nat → Set SA.Lock} {ini} (hr : SA.ACLocalRunU wm u H U T ini)
+    {u : Nat → Set AC.Lock} {ini} (hr : AC.ACLocalRunU wm u H U T ini)
     {y : Fin sp.n} (hy : y ∈ H) :
-    ∀ i (ℓ : ACLabel (SA.goldilocksSA sp FGP ro)), T.CallAt y i ℓ → ∀ B ∈ ℓ.frame.tree, ∀ X,
+    ∀ i (ℓ : ACLabel (AC.goldilocksAC sp FGP ro)), T.CallAt y i ℓ → ∀ B ∈ ℓ.frame.tree, ∀ X,
       Anc U X B → X.root = sp.genesisRoot ∨ ∃ k ≤ i, T.AcceptAt y k X := by
   intro i
   induction i using Nat.strong_induction_on with
   | _ i ih =>
     intro ℓ hc
-    have step : ∀ Φ : SA.Frm sp.n FGP, Φ.tree ⊆ U →
-        (SA.goldilocksSA sp FGP ro).CallOK U Φ (T.time i) ℓ.call ℓ.frame →
+    have step : ∀ Φ : AC.Frm sp.n FGP, Φ.tree ⊆ U →
+        (AC.goldilocksAC sp FGP ro).CallOK U Φ (T.time i) ℓ.call ℓ.frame →
         (∀ B ∈ Φ.tree, ∀ X, Anc U X B → X.root = sp.genesisRoot ∨ ∃ k ≤ i, T.AcceptAt y k X) →
         ∀ B ∈ ℓ.frame.tree, ∀ X, Anc U X B →
           X.root = sp.genesisRoot ∨ ∃ k ≤ i, T.AcceptAt y k X := by
@@ -83,9 +83,9 @@ theorem frame_anc_acceptedU
 
 /-- **Frames are closed under acceptance**: every ancestor (inside `U`) of a block of an honest
 node's frame at a call is genesis or was accepted by the node at that call or an earlier one. -/
-theorem frame_anc_accepted {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
+theorem frame_anc_accepted {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
     {y : Fin sp.n} (hy : y ∈ H) :
-    ∀ i (ℓ : ACLabel (SA.goldilocksSA sp FGP ro)), T.CallAt y i ℓ → ∀ B ∈ ℓ.frame.tree, ∀ X,
+    ∀ i (ℓ : ACLabel (AC.goldilocksAC sp FGP ro)), T.CallAt y i ℓ → ∀ B ∈ ℓ.frame.tree, ∀ X,
       Anc U X B → X.root = sp.genesisRoot ∨ ∃ k ≤ i, T.AcceptAt y k X :=
   frame_anc_acceptedU (hr := hr.toU) (y := y) (hy := hy)
 
@@ -96,26 +96,26 @@ or admitted by an honest writer `w` at a time in `[t_s, t_s + 2Δ)`, and has a h
 `t_s + 3Δ` by other means (genesis included), then `Carry_y(s, ·, ·)` holds for the counted
 votes. -/
 theorem carryAt_of_writer_heads
-    {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
-    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {a b : Time}
+    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {a b : Time}
     {s : Nat} (ha : a ≤ sp.ts s)
     (hb : sp.ts s + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
-    (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
-    (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U a b T ∨
-      SA.ServiceWindowBefore H U a (T.time i) T)
+    {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} {e : AC.Em sp FGP}
+    (hc : AC.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
+    (hsync : SyncAC (AC.goldilocksAC sp FGP ro) H U a b T ∨
+      AC.ServiceWindowBefore H U a (T.time i) T)
     (hW : ∀ v ∈ CV, v.slot = s ∧
       (∃ k, T.SendOrAdmit w k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
       ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
         ((∃ k, T.AcceptAt w k Hv ∧ a ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∨
-          SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ))) :
-    SA.CarryAt T U y i e s CV := by
+          AC.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ))) :
+    AC.CarryAt T U y i e s CV := by
   refine carryAt_of_served hr
     hini (frame_anc_accepted hr hy) hy hc hs fun v hv => ?_
   obtain ⟨hvs, ⟨k, hsend, hk1, hk2⟩, Hv, -, hHvr, hFHv, hacc⟩ := hW v hv
   -- the vote: forwarded by `w` from `t_k ∈ [t_s, t_s + 2Δ)`
   refine ⟨hvs, ⟨T.time k, hk1, hk2, fun hdi => hsync.elim
-    (fun h => (SA.messageServedBefore_iff _ _ _ _).mpr (Or.inl
+    (fun h => (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl
       (h.1 w hw k v hsend (ha.trans hk1) (by linarith only [hk2, hb]) y hy i ℓ hc.1 hdi)))
     (fun h => h.message w hw k v hsend (ha.trans hk1) y hy i ℓ hc.1 hdi hdi)⟩, Hv, hHvr, ?_⟩
   -- the head: relayed by `w` from its acceptance, or accepted by `y` by other means
@@ -126,21 +126,21 @@ theorem carryAt_of_writer_heads
 /-- **`Carry_y` from a writer, on a window**: `carryAt_of_writer_heads`, with every head that
 `w` accepted before `a` (outside the relay window) reaching `y` before the freeze (`hold`). -/
 private theorem carryAt_of_writer_service
-    {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
-    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {a b : Time}
+    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {a b : Time}
     {s : Nat} (ha : a ≤ sp.ts s)
     (hb : sp.ts s + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
-    (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
-    (hsync : SyncAC (SA.goldilocksSA sp FGP ro) H U a b T ∨
-      SA.ServiceWindowBefore H U a (T.time i) T)
+    {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} {e : AC.Em sp FGP}
+    (hc : AC.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
+    (hsync : SyncAC (AC.goldilocksAC sp FGP ro) H U a b T ∨
+      AC.ServiceWindowBefore H U a (T.time i) T)
     (hW : ∀ v ∈ CV, v.slot = s ∧
       (∃ k, T.SendOrAdmit w k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
       ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
         (Hv.root = sp.genesisRoot ∨ ∃ k, T.AcceptAt w k Hv ∧ T.time k < sp.ts s + 2 * sp.Δ))
     (hold : ∀ k Hv, T.AcceptAt w k Hv → T.time k < a → Anc U ℓ.frame.F Hv →
-      SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ)) :
-    SA.CarryAt T U y i e s CV := by
+      AC.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ)) :
+    AC.CarryAt T U y i e s CV := by
   refine carryAt_of_writer_heads hr hini ha hb hw hy hc hs hsync fun v hv => ?_
   obtain ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, hacc⟩ := hW v hv
   refine ⟨h₁, h₂, Hv, hHv, hHvr, hFHv, ?_⟩
@@ -152,20 +152,20 @@ private theorem carryAt_of_writer_service
 
 /-- Windowed writer transport combines new-source service with old-head catch-up. -/
 theorem carryAt_of_writer_window_before {ini}
-    (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
-    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
-    {a κ b : Time} (hsync : SA.ServiceWindowBefore H U a b T) {s : Nat} (ha : a ≤ sp.ts s)
+    (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
+    {a κ b : Time} (hsync : AC.ServiceWindowBefore H U a b T) {s : Nat} (ha : a ≤ sp.ts s)
     (hcatch : CatchACWindowBefore T H U a κ b) (hcatchTime : a + κ ≤ sp.ts s + 3 * sp.Δ)
     {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} {e : SA.Em sp FGP}
-    (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) (hi : T.time i ≤ b)
+    {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} {e : AC.Em sp FGP}
+    (hc : AC.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) (hi : T.time i ≤ b)
     {CV : Set (Vote sp.n)}
     (hW : ∀ v ∈ CV, v.slot = s ∧
       (∃ k, T.SendOrAdmit w k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
       ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U ℓ.frame.F Hv ∧
         (Hv.root = sp.genesisRoot ∨ ∃ k, T.AcceptAt w k Hv ∧ T.time k < sp.ts s + 2 * sp.Δ)) :
-    SA.CarryAt T U y i e s CV := by
-  have restricted : SA.ServiceWindowBefore H U a (T.time i) T := {
+    AC.CarryAt T U y i e s CV := by
+  have restricted : AC.ServiceWindowBefore H U a (T.time i) T := {
     message := fun x hx k m hm h0 z hz j ℓ hc hd ht =>
       hsync.message x hx k m hm h0 z hz j ℓ hc (hd.trans hi) ht
     relay := fun x hx k B hB h0 z hz j ℓ hc hd ht hanc =>
@@ -173,11 +173,11 @@ theorem carryAt_of_writer_window_before {ini}
   refine carryAt_of_writer_service hr hini (b := sp.ts s + 2 * sp.Δ) ha le_rfl
     hw hy hc hs (Or.inr restricted) hW ?_
   intro k B hk hka hanc
-  have hslot := (SA.castAt_spec hr hy hc).2.1
+  have hslot := (AC.castAt_spec hr hy hc).2.1
   have hstart : sp.ts (s + 1 : Nat) ≤ T.time i :=
-    (SA.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by omega)
+    (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by omega)
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   obtain ⟨j, -, hj, hjt⟩ := hcatch.relay w hw k B hk hka y hy i ℓ hc.1
     (by rw [hts] at hstart; linarith only [hstart, hcatchTime, sp.toParams.hΔ]) hi hanc
   exact Or.inr ⟨j, hj, hjt.trans_le hcatchTime⟩
@@ -185,10 +185,10 @@ theorem carryAt_of_writer_window_before {ini}
 /-- **What a result's writer did with its counted votes**: each was admitted (or sent) by the
 writer at a time in `[t_s, t_s + 2Δ)` (its stamp, below the resolution time), and its head extends
 the result and is genesis or was accepted by the writer before `t_s + 2Δ` (the head's stamp). -/
-theorem result_writer {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
-    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
-    {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat} {C : SA.Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    (hR : SA.ResultAt T X i₀ s C CV) :
+theorem result_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
+    {X : Fin sp.n} (hX : X ∈ H) {i₀ s : Nat} {C : AC.Blk sp.n FGP} {CV : Set (Vote sp.n)}
+    (hR : AC.ResultAt T X i₀ s C CV) :
     ∀ v ∈ CV, v.slot = s ∧
       (∃ k, T.SendOrAdmit X k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
       ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U C Hv ∧
@@ -196,33 +196,33 @@ theorem result_writer {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T i
   obtain ⟨ℓX, ⟨hcX, htick, -, -⟩, -, rfl⟩ := hR
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hΦXU : ℓX.frame.tree ⊆ U := by
     rcases hr.frameLaw X hX i₀ ℓX hcX with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.2
   rintro v ⟨hvp, -, hvres, R, hR, hRr, hCR⟩
-  have hvs : v.slot = s := SA.state_pool_slot sp hr hini hX i₀ s v hvp
+  have hvs : v.slot = s := AC.state_pool_slot sp hr hini hX i₀ s v hvp
   -- the stamps of the vote and of its head are before `t_s + 2Δ`
-  obtain ⟨hvst, hbst⟩ : (T.state X i₀).voteStamp v < SA.ETime.of (sp.ts s + 2 * sp.Δ) ∧
-      (T.state X i₀).blockStamp v.head < SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
-    unfold SA.resolutionTime at hvres
+  obtain ⟨hvst, hbst⟩ : (T.state X i₀).voteStamp v < AC.ETime.of (sp.ts s + 2 * sp.Δ) ∧
+      (T.state X i₀).blockStamp v.head < AC.ETime.of (sp.ts s + 2 * sp.Δ) := by
+    unfold AC.resolutionTime at hvres
     split at hvres
-    · exact absurd hvres (by simp [SA.ETime.of])
+    · exact absurd hvres (by simp [AC.ETime.of])
     · split_ifs at hvres
-      · exact absurd hvres (by simp [SA.ETime.of])
+      · exact absurd hvres (by simp [AC.ETime.of])
       · exact max_lt_iff.1 hvres
   refine ⟨hvs, ?_, R, hΦXU hR, hRr, Anc.mono hΦXU hCR, ?_⟩
-  · rcases SA.pool_origin hr hini hX i₀ v (by rw [hvs]; exact hvp) with
+  · rcases AC.pool_origin hr hini hX i₀ v (by rw [hvs]; exact hvp) with
       ⟨k, -, hsend, hst, hsl⟩ | ⟨k, -, ℓk, hck, -, hst, B, hB, hvB⟩
-    · rw [hst, SA.etime_of_lt_of] at hvst
-      exact ⟨k, hsend, (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2
+    · rw [hst, AC.etime_of_lt_of] at hvst
+      exact ⟨k, hsend, (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2
         (by rw [← hvs]; exact_mod_cast hsl), hvst⟩
     · -- a restart's vote is of a block of slot at most `slot(t_k) ≤ s`, so of slot below `s`
       exfalso
-      rw [hst, SA.etime_of_lt_of] at hvst
-      have hBv := (SA.frame_validPayload sp hr hX hck B hB).1 v hvB
-      have hBs := SA.frame_slot_le sp hr hX hck B hB
+      rw [hst, AC.etime_of_lt_of] at hvst
+      have hBv := (AC.frame_validPayload sp hr hX hck B hB).1 v hvB
+      have hBs := AC.frame_slot_le sp hr hX hck B hB
       have : ¬ ((s + 1 : Nat) : Int) ≤ sp.slot (T.time k) := fun h => by
-        have := (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 h
+        have := (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 h
         rw [hts] at this; linarith only [this, hvst, hΔ]
       omega
   · rcases frame_anc_accepted hr hX i₀ ℓX hcX R hR R Relation.ReflTransGen.refl with
@@ -236,20 +236,20 @@ theorem result_writer {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T i
         rw [Option.some.inj (hc'.2.symm.trans hcX.2), htick] at hcall
         cases hcall
       rw [← hRr] at hbst
-      have h := (blockStamp_ge_of_accept hr hX hacc (SA.accept_ne_genesis sp hr hX hacc) i₀
+      have h := (blockStamp_ge_of_accept hr hX hacc (AC.accept_ne_genesis sp hr hX hacc) i₀
         hki).trans_lt
         hbst
-      rw [SA.etime_of_lt_of] at h
+      rw [AC.etime_of_lt_of] at h
       linarith only [h, hge]
 
 /-- **What an optimistic selection's writer did with its counted votes**: each was admitted (or
 sent) by the writer at a time in `[t_s, t_s + 2Δ)` (at or before the selection), and its head
 extends the selection and is genesis or was accepted by the writer before `t_s + 2Δ` (it is in
 the writer's frame at the selection). -/
-theorem optimistic_writer_votes {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
-    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y))
-    {x : Fin sp.n} (hx : x ∈ H) {i₀ s : Nat} {C : SA.Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    (hO : SA.OptimisticLockAt T x i₀ s C CV) :
+theorem optimistic_writer_votes {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
+    {x : Fin sp.n} (hx : x ∈ H) {i₀ s : Nat} {C : AC.Blk sp.n FGP} {CV : Set (Vote sp.n)}
+    (hO : AC.OptimisticLockAt T x i₀ s C CV) :
     ∀ v ∈ CV, v.slot = s ∧
       (∃ k, T.SendOrAdmit x k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
       ∃ Hv ∈ U, Hv.root = v.head ∧ Anc U C Hv ∧
@@ -257,7 +257,7 @@ theorem optimistic_writer_votes {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP r
   obtain ⟨ℓx, A, hp, hsl, hsel, rfl⟩ := hO
   have hc := hp.1
   have hti : T.time i₀ < sp.ts (sp.slot (T.time i₀)) + 2 * sp.Δ := by
-    unfold SA.optimisticSelect at hsel
+    unfold AC.optimisticSelect at hsel
     dsimp only at hsel
     split_ifs at hsel with h
     all_goals first
@@ -267,18 +267,18 @@ theorem optimistic_writer_votes {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP r
   have hΦU : ℓx.frame.tree ⊆ U := by
     rcases hr.frameLaw x hx i₀ ℓx hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.2
   rintro v ⟨hvA, R, hR, hRr, hCR⟩
-  have hv1 := SA.optimisticPoint_pool_post hr hx hp s hvA
-  have hvs : v.slot = s := SA.state_pool_slot sp hr hini hx (i₀ + 1) s v hv1
+  have hv1 := AC.optimisticPoint_pool_post hr hx hp s hvA
+  have hvs : v.slot = s := AC.state_pool_slot sp hr hini hx (i₀ + 1) s v hv1
   refine ⟨hvs, ?_, R, hΦU hR, hRr, Anc.mono hΦU hCR, ?_⟩
-  · rcases SA.pool_origin hr hini hx (i₀ + 1) v (by rw [hvs]; exact hv1) with
+  · rcases AC.pool_origin hr hini hx (i₀ + 1) v (by rw [hvs]; exact hv1) with
       ⟨k, hk, hsend, -, hsl'⟩ | ⟨k, hk, ℓk, hck, -, -, B, hB, hvB⟩
-    · exact ⟨k, hsend, (SA.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2
+    · exact ⟨k, hsend, (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2
         (by rw [← hvs]; exact_mod_cast hsl'), lt_of_le_of_lt (hr.time_mono (by omega)) hti⟩
     · -- a restart's vote is of a block of slot at most `slot(t_k) ≤ s`, so of slot below `s`
       exfalso
-      have hBv := (SA.frame_validPayload sp hr hx hck B hB).1 v hvB
-      have hBs := SA.frame_slot_le sp hr hx hck B hB
-      have := SA.slot_mono sp (hr.time_nonneg k) (hr.time_mono (show k ≤ i₀ by omega))
+      have hBv := (AC.frame_validPayload sp hr hx hck B hB).1 v hvB
+      have hBs := AC.frame_slot_le sp hr hx hck B hB
+      have := AC.slot_mono sp (hr.time_nonneg k) (hr.time_mono (show k ≤ i₀ by omega))
       omega
   · rcases frame_anc_accepted hr hx i₀ ℓx hc R hR R Relation.ReflTransGen.refl with
       hg | ⟨k, hk, hacc⟩
@@ -287,7 +287,7 @@ theorem optimistic_writer_votes {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP r
 
 end Node
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 

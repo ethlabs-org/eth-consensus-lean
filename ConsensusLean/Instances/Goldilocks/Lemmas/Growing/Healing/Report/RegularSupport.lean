@@ -13,9 +13,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
@@ -23,26 +23,26 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 committees `K` of a run from `K`'s committee start. The writer pool and participation bound
 are read only at the update cut, where the honest members of the slot committee vote. -/
 theorem result_honest_supporter_before_at
-    {K : SA.CommitteeDict sp.n}
+    {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K))
+      (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     {s : Nat} (hm : gbar g + 4 * sp.Δ ≤ sp.ts s)
     {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c))
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    (hres : SA.ResultAt tr.projAC x c s C CV) (hcb : tr.time c ≤ b)
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
+    (hres : AC.ResultAt tr.projAC x c s C CV) (hcb : tr.time c ≤ b)
     (hK : CommitteeHalfUpTo tr H K g b) :
-    ∃ z q, z ∈ H (tr.time q) ∧ q < c ∧ ∃ e, SA.VoteAt tr.projAC z q e ∧ e.msg ∈ CV ∧
-      e.msg.slot = s ∧ SA.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
+    ∃ z q, z ∈ H (tr.time q) ∧ q < c ∧ ∃ e, AC.VoteAt tr.projAC z q e ∧ e.msg ∈ CV ∧
+      e.msg.slot = s ∧ AC.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
   have hΔ := sp.toParams.hΔ
   have hd0 := hrun.time_nonneg c
   have hm' := hrun.time_mono
   have hpre := hrun.upTo hd0
   have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch hd0 hcb
-  have hres' := (SA.upTo_resultAt hm').mpr ⟨le_rfl, hres⟩
+  have hres' := (AC.upTo_resultAt hm').mpr ⟨le_rfl, hres⟩
   obtain ⟨ell, hu, hconf, hCV⟩ := hres'
   have ht : tr.time c = sp.ts s + 6 * sp.Δ := hu.2.2.1
   have hsb : sp.ts s + sp.Δ ≤ tr.time c := by rw [ht]; linarith
@@ -51,10 +51,10 @@ theorem result_honest_supporter_before_at
     by_contra hn
     have he : s = 0 := by omega
     rw [he] at hm
-    simp only [SAParams.ts, Nat.cast_zero, mul_zero] at hm
-    linarith [SA.gbar_nonneg g]
+    simp only [ACParams.ts, Nat.cast_zero, mul_zero] at hm
+    linarith [AC.gbar_nonneg g]
   have hsl : sp.slot (sp.ts s + sp.Δ) = s :=
-    SA.slot_of_mem sp s (by linarith) (by simp only [SAParams.ts]; push_cast; linarith)
+    AC.slot_of_mem sp s (by linarith) (by simp only [ACParams.ts]; push_cast; linarith)
   -- every honest member of the slot-`s` committee is a voter of the update's pool
   have hready : ∀ y ∈ H (tr.time c), (tr.upTo (tr.time c)).awake y (sp.ts s + sp.Δ) ∧
       (tr.upTo (tr.time c)).JoinedAt y (sp.ts s + sp.Δ) := by
@@ -70,14 +70,14 @@ theorem result_honest_supporter_before_at
     refine ⟨hs0, (hnr y k hyt hk₀).trans ?_⟩
     have hcast : ((s - 1 : Nat) : Int) = (s : Int) - 1 := by omega
     rw [hcast]
-    simp only [SAParams.ts] at hm
+    simp only [ACParams.ts] at hm
     linarith
   have hparts := Compose.honest_participants_window_before hpre (hnc.upTo _) (K := K)
-    (by rw [RunTrace.upTo_projAC]; exact SA.serviceWindowBefore_of_sync hS.sync)
+    (by rw [RunTrace.upTo_projAC]; exact AC.serviceWindowBefore_of_sync hS.sync)
     hgs hx (by rwa [RunTrace.upTo_projAC]) le_rfl hready
     (fun y hy hyK i => by
       rw [← Compose.projAC_state hpre.toLocalRun hy i]
-      exact (SA.trace_mayVote_iff (Compose.goldilocks_ac_projection_from hpre
+      exact (AC.trace_mayVote_iff (Compose.goldilocks_ac_projection_from hpre
         (hnc.upTo _)).localRun hy i s).2 hyK)
     (fun v hv => hK.facts.hP.1 _ x hx c (fun _ hk => hm' hk.le) s v (by
       rwa [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC x (fun _ hk => hm' hk.le)] at hv))
@@ -86,9 +86,9 @@ theorem result_honest_supporter_before_at
       exact hK.cs2 s hgs (by linarith) _ hd0 hcb)
   rw [RunTrace.upTo_projAC] at hparts
   obtain ⟨z, hz, q, hqc, e, he, hmem, hes, R, hR, hroot, hCR⟩ :=
-    SA.result_honest_supporter_of_participants sp hS.run hx ⟨ell, hu, hconf, hCV⟩
+    AC.result_honest_supporter_of_participants sp hS.run hx ⟨ell, hu, hconf, hCV⟩
       (B := C) .refl hparts.le
-  obtain ⟨hqt, he⟩ := SA.upTo_voteAt.mp he
+  obtain ⟨hqt, he⟩ := AC.upTo_voteAt.mp he
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono (hrun.time_nonneg c)
   exact ⟨z, q, hrun.antitone hqt hz, hqc, e, he, hmem, hes,
     R, hsub hR, hroot, hCR.mono hsub⟩
@@ -97,17 +97,17 @@ theorem result_honest_supporter_before_at
 slot starts from `ḡ`, the faulty members of a slot committee from `ḡ` by `b` are fewer than its
 members honest, awake and joined at `t`. Every validator honest at `t` is awake and joined then,
 and the committee half bound leaves more than half of the committee honest at `t`. -/
-theorem faultBoundK_of_service_at {K : SA.CommitteeDict sp.n} {g b : Time}
+theorem faultBoundK_of_service_at {K : AC.CommitteeDict sp.n} {g b : Time}
     (hK : CommitteeHalfUpTo tr H K g b) {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hnr : NoRestartAfter tr H (gbar g)) {s : Nat} (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b)
     {t : Time} (ht0 : 0 ≤ t) (hprev : gbar g ≤ sp.ts ((sp.slot t : Int) - 1)) (htb : t ≤ b) :
-    SA.FaultBoundK K s tr.projAC (H t) t := by
+    AC.FaultBoundK K s tr.projAC (H t) t := by
   have hts : sp.ts ((sp.slot t : Int) - 1) ≤ t :=
-    (SA.ts_le_iff_le_slot sp ht0 _).mpr (by omega)
+    (AC.ts_le_iff_le_slot sp ht0 _).mpr (by omega)
   have hsub : K.committee s ∩ H t ⊆ K.committee s ∩
-      {y | y ∈ H t ∧ tr.projAC.awake y t ∧ SA.JoinedAt tr.projAC y t} := by
+      {y | y ∈ H t ∧ tr.projAC.awake y t ∧ AC.JoinedAt tr.projAC y t} := by
     rintro y ⟨hyK, hy⟩
     refine ⟨hyK, hy, hawake y t hy (hprev.trans hts) htb, ?_⟩
     intro k hk hkt
@@ -117,19 +117,19 @@ theorem faultBoundK_of_service_at {K : SA.CommitteeDict sp.n} {g b : Time}
       sp.committeeSize := by
     rw [← hK.facts.hsize s]
     exact Set.ncard_inter_add_ncard_sdiff_eq_ncard _ _ (Set.toFinite _)
-  unfold SA.FaultBoundK
+  unfold AC.FaultBoundK
   exact lt_of_lt_of_le (by omega) (Set.ncard_le_ncard hsub)
 
 /-- The committee fault bound at `t` holds on every prefix through `d ≥ t`: the awake and joined
 nodes at `t` read the same calls there. -/
-theorem faultBoundK_upTo {K : SA.CommitteeDict sp.n} {s : Nat} {H' : Set (Fin sp.n)}
-    {t d : Time} (htd : t ≤ d) (h : SA.FaultBoundK K s tr.projAC H' t) :
-    SA.FaultBoundK K s (tr.projAC.upTo d) H' t := by
-  unfold SA.FaultBoundK at h ⊢
+theorem faultBoundK_upTo {K : AC.CommitteeDict sp.n} {s : Nat} {H' : Set (Fin sp.n)}
+    {t d : Time} (htd : t ≤ d) (h : AC.FaultBoundK K s tr.projAC H' t) :
+    AC.FaultBoundK K s (tr.projAC.upTo d) H' t := by
+  unfold AC.FaultBoundK at h ⊢
   refine lt_of_lt_of_le h (Set.ncard_le_ncard ?_)
   rintro y ⟨hyK, hy, hw, hj⟩
   exact ⟨hyK, hy, (Trace.upTo_awake _ y t).mpr ⟨hw, htd⟩,
-    fun k hk hkt => hj k ((ACTrace.upTo_restartAt (A := SA.goldilocksSA sp _ ro)).mp hk).2 hkt⟩
+    fun k hk hkt => hj k ((ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _ ro)).mp hk).2 hkt⟩
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

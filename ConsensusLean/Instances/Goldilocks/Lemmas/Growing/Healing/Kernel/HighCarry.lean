@@ -18,9 +18,9 @@ need only ordinary reset service, not catch-up service.
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -29,22 +29,22 @@ theorem carry_of_post_gst_senders_at {cm : Time → Finset (Fin sp.n)} {βK : �
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {s : Nat} (hgs : g ≤ sp.ts s)
     {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
-    (hc : SA.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
+    {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
+    (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
     {CV : Set (Vote sp.n)}
     (hW : ∀ v ∈ CV, v.slot = s ∧
       (∃ w k, w ∈ H (tr.time k) ∧ tr.projAC.SendOrAdmit w k v ∧ sp.ts s ≤ tr.time k ∧
         tr.time k < sp.ts s + 2 * sp.Δ) ∧
-      ∃ Hv : SA.Blk sp.n (List (FG.Att sp.n)), Hv.root = v.head ∧
+      ∃ Hv : AC.Blk sp.n (List (FG.Att sp.n)), Hv.root = v.head ∧
         Anc (tr.HonestBlocksAt H) ell.frame.F Hv ∧
         ∃ w k, w ∈ H (tr.time k) ∧ tr.projAC.AcceptAt w k Hv ∧
           g ≤ tr.time k ∧ tr.time k < sp.ts s + 2 * sp.Δ) :
-    SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
+    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
   have hm := hp.run.time_mono
   have hd := hp.run.time_nonneg i
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hac.localRun.upTo hd
-  have hc' := (SA.upTo_castAt).mpr ⟨le_rfl, hc⟩
+  have hc' := (AC.upTo_castAt).mpr ⟨le_rfl, hc⟩
   have hsync := reset_syncACAt hp (lo := g) (hi := sp.ts s + 2 * sp.Δ) le_rfl
   have hcarry := Compose.Growing.carryAt_of_delivered hr hp.run.vstart hy hc'
       hs (CV := CV) fun v hv => by
@@ -55,7 +55,7 @@ theorem carry_of_post_gst_senders_at {cm : Time → Finset (Fin sp.n)} {βK : �
     · rw [Compose.Growing.ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) hm le_rfl] at hdl
       obtain ⟨k', hk', hk1', ⟨ell', hc', hm'⟩, hk2'⟩ := hsync.1 w k v hw hsend
         (hgs.trans hk1) hk2.le y i ell hy hc.1 hdl
-      exact (SA.messageServedBefore_iff _ _ _ _).mpr (Or.inl ⟨k', hk', hk1',
+      exact (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl ⟨k', hk', hk1',
         ⟨ell', (Trace.upTo_callAt _).mpr ⟨hm hk', hc'⟩, hm'⟩,
         by rw [Compose.Growing.ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) hm (hm hk')]
            exact hk2'⟩)
