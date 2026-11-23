@@ -351,8 +351,9 @@ theorem decoded_held_process {V : Type} [Fintype V] {E : Env V}
     let st' := process st receipt (digests rho.hash receipt)
     WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' ∧
     WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' := by
-  dsimp only
-  erw [AsChainShape.process_eq st receipt (digests rho.hash receipt)]
+  let tables := digests (P := protoOf (compiled (goldilocks S)) E) rho.hash
+  refine Eq.mpr (congrArg (fun s => WrappersDecoded tables s ∧ WrappersHeld tables s)
+    (AsChainShape.process_eq st receipt (tables receipt))) ?_
   let io := st.voteIO
   have fold : ∀ (os : List (Wire (Fintype.card V) S.vote)),
       (∀ o ∈ os, Obj.Contains receipt o) → ∀ st,

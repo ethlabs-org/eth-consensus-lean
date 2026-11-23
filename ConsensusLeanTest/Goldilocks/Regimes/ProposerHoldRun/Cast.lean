@@ -55,9 +55,9 @@ theorem twinBlk_obj :
       (twinBlk S) = twin S := by
   rw [blockObj_eq, twinBlk_header]; rfl
 
-theorem canon_twin :
+theorem canon_twin (io : VoteAuth (Fintype.card (Fin 5)) stock) :
     canonEvent (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
-      (S.ro _)
+      (S.ro _) io
       (Model.digests (rhoc S).hash (twin S)) (twin S) = some (.block (twinBlk S)) := by
   have h := decodeBlock_blockObj (binding := stock) [(hdr, 0)] (twinBlk S)
     (by simp [twinBlk, blockOf_eq, hdr, parentRoot_eq])
@@ -69,8 +69,9 @@ theorem canon_twin :
       by simp [twinBlk, blockOf_eq, AC.declaredHeadVotes],
       fun _ => by simp [twinBlk, blockOf_eq, AC.declaredHeadVotes]⟩
   rw [twinBlk_obj] at h
-  refine (canonEvent_eq _ _).trans ?_
-  rw [twin_digests, h]
+  let sp := ({ S with vote := stock } : Setup).params (pubOf env) one_le_card
+  exact (canonEvent_eq (sp := sp) (ro := S.ro _) (binding := stock)
+    io (Model.digests (rhoc S).hash (twin S)) (twin S)).trans (by rw [twin_digests, h])
 
 theorem twinBlk_parent :
     (twinBlk S).parent = some
@@ -330,7 +331,7 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
     intro A
     obtain ⟨-, htc, hgm, hanc⟩ := Store.accepted_tree _ _ _ _ hreach1
     have hF := (Store.cache_invariants _ _ _ _ hreach1).1
-    refine ⟨?_, fun B hB hB1 x hx _ => ?_⟩
+    refine ⟨?_, fun B hB hB1 x hx => ?_⟩
     · by_cases hFg :
           ((tr S).state y (k + 1)).fg.F.root =
             (({ S with vote := AsChainShape.stock } : Setup).params
@@ -373,12 +374,13 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
 /-- A delivery of one object is its event's group, or nothing (no event, or no cut). -/
 theorem deliverSeq_single {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp ro}
-    {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {hs : List (Header Info × Nat)}
+    {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {io : VoteAuth sp.n stock}
+    {hs : List (Header Info × Nat)}
     {y : Fin sp.n} {t : Time} {o : Wire sp.n} {j j' : Nat}
-    (h : DeliverSeq proposer tr dg hs y t [o] j j') :
-    (∃ e, canonEvent sp ro hs o = some e ∧ tr.GroupAt proposer dg y j t e) ∨
-      canonEvent sp ro hs o = none ∨
-      ∃ e, canonEvent sp ro hs o = some e ∧
+    (h : DeliverSeq proposer tr dg io hs y t [o] j j') :
+    (∃ e, canonEvent sp ro io hs o = some e ∧ tr.GroupAt proposer dg y j t e) ∨
+      canonEvent sp ro io hs o = none ∨
+      ∃ e, canonEvent sp ro io hs o = some e ∧
         (Node.exec proposer dg y (tr.state y j) t e).2 = [] := by
   cases h with
   | event e hce hg _ => exact Or.inl ⟨e, hce, hg⟩
@@ -392,19 +394,18 @@ theorem twin_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) :
   have hd := (simTraceAt_simulates { S with vote := stock } (rhoc S) one_le_card rhoc_valid).deliver
     _ i _ _ hi
   rw [simTraceAt_eq] at hd
-  have htwin : delivered (Model.digests (rhoc S).hash (twin S))
+  let io : VoteAuth (Fintype.card (Fin 5)) stock := (rhoc S).voteIO ((rhoc S).key y)
+  have htwin : delivered io (Model.digests (rhoc S).hash (twin S))
       (stateAt { S with vote := stock } (rhoc S) one_le_card ((rhoc S).key y) i) (twin S) =
-      [twin S] := delivered_of_carried_eq_nil _ _ rfl
+      [twin S] := delivered_of_carried_eq_nil _ _ _ rfl
   rw [htwin, ownKey_key { S with vote := stock } (rhoc S)] at hd
+  have hc := canon_twin (S := S) io
   rcases deliverSeq_single hd with ⟨e, hce, hg⟩ | hce | ⟨e, hce, hz⟩
-  · rw [canon_twin] at hce
-    cases hce
+  · obtain rfl := Option.some.inj (hce.symm.trans hc)
     obtain ⟨k, X, hacc, hX, hk⟩ := group_accept hy hg
     exact accept_vote hy hacc hX hk
-  · rw [canon_twin] at hce
-    cases hce
-  · rw [canon_twin] at hce
-    cases hce
+  · cases hce.symm.trans hc
+  · obtain rfl := Option.some.inj (hce.symm.trans hc)
     simp only [exec, onBlock] at hz
     split_ifs at hz with hfut
     · rw [twinBlk_slot] at hfut
