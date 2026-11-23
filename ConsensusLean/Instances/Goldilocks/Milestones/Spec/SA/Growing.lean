@@ -45,10 +45,6 @@ structure HonestObjects (selectedProposer : Nat → Fin sp.n)
   emitted by that validator's node at an earlier cut. -/
   message_vote : ∀ y i ℓ v, y ∈ H (tr.time i) → tr.CallAt y i ℓ → ℓ.call = .message v →
     v.val ∈ H (tr.time i) → ∃ j < i, ∃ e, VoteAt tr v.val j e ∧ e.msg = v
-  /-- A vote whose validator is honest at cut `i`, carried by a block of the frame of a node
-  honest at cut `i`, was emitted by that validator's node at an earlier cut. -/
-  carried_vote : ∀ y i ℓ, y ∈ H (tr.time i) → tr.CallAt y i ℓ → ∀ B ∈ ℓ.frame.tree,
-    ∀ v ∈ blockVotes B, v.val ∈ H (tr.time i) → ∃ j < i, ∃ e, VoteAt tr v.val j e ∧ e.msg = v
   /-- Every block of the frame of a node honest at the call, other than genesis, has its slot's
   proposer. -/
   proposer : ∀ B, HonestFrameBlockAt tr H B → B.root ≠ sp.genesisRoot →

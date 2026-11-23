@@ -14,15 +14,16 @@ AC trace of `goldilocksSA`:
   at `t_s + 6Δ` of a joined node, vetoed or not; over the path blocks no live lock vetoes;
   `FastUpdateAt`) or by an
   optimistic confirmation (`OptimisticLockAt`), which runs inside a call at its receipt (after
-  the admission of an `on_message` vote or of an `on_block` block's votes) and after the own vote's
-  admission; each comes with its **counted votes**. `ResultAt` is the result of
+  the admission of an `on_message` vote or the stamp of an `on_block` block) and after the own
+  vote's admission; each comes with its **counted votes**. `ResultAt` is the result of
   `get_confirmation` at an update (fast, slow, vetoed or not), with the votes it counts;
   `ToFGAt` is a block that `ac_to_fg` returns; `ProposalAt` is a proposal and its payload.
 * **Honest objects** (`HonestObjects`): the run facts about honest signers that the AC trace
   contract does not carry (claims §"Runs": signatures are unforgeable; the slot proposer, the
   paper's `state_transition` assertion, is in the model the run law `LocalRun.proposerCredential`):
-  every vote of an honest validator that an honest node holds, in its pools or in a block of its
-  frame, was emitted by that validator's node at an earlier cut; every block of an honest frame
+  every vote of an honest validator that an honest node holds in its pools or receives was
+  emitted by that validator's node at an earlier cut (a block's declared head votes are not votes:
+  nothing is claimed about them); every block of an honest frame
   other than genesis has the slot's proposer; and an honest proposer has at most one block per slot
   in the honest frames. `ACRun` bundles them with `ACLocalRun`. -/
 
@@ -130,10 +131,6 @@ structure HonestObjects (selectedProposer : Nat → Fin sp.n)
   `i`) was emitted by that validator's node at an earlier cut. -/
   message_vote : ∀ y ∈ H, ∀ i ℓ v, tr.CallAt y i ℓ → ℓ.call = .message v → v.val ∈ H →
     ∃ j < i, ∃ e, VoteAt tr v.val j e ∧ e.msg = v
-  /-- A vote of an honest validator carried by a block of an honest node's frame at cut `i` was
-  emitted by that validator's node at an earlier cut. -/
-  carried_vote : ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ → ∀ B ∈ ℓ.frame.tree, ∀ v ∈ blockVotes B,
-    v.val ∈ H → ∃ j < i, ∃ e, VoteAt tr v.val j e ∧ e.msg = v
   /-- Every block of an honest frame other than genesis has its slot's proposer. -/
   proposer : ∀ B, HonestFrameBlock tr H B → B.root ≠ sp.genesisRoot →
     B.proposer = selectedProposer B.slot
