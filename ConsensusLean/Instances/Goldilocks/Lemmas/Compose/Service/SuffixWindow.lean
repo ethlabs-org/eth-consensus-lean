@@ -203,7 +203,7 @@ private theorem voter_holds_proposal_before {ini} (hrun : GoldilocksRun proposer
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcy.1
   by_cases ht : tr.projAC.time j < sp.ts e.msg.slot + sp.Δ
-  · obtain ⟨P', hP't, hP's, -⟩ := SA.cast_readyU hr.toU hy hcy ht
+  · obtain ⟨P', hP't, hP's, -⟩ := (SA.cast_readyU hr.toU hy hcy ht).1
     rwa [eq_of_slot hrun hp hP (hΦU hP't) (hP's.trans (hes.trans hPs.symm))] at hP't
   obtain ⟨s', rfl⟩ : ∃ s', s = s' + 1 := ⟨s - 1, by omega⟩
   have hacc := proposal_accepted hrun hnc hp hP
@@ -590,17 +590,17 @@ private theorem views_agree_before {a₀ κ b : Time}
   have hii : tr.projAC.time i = tr.time i := rfl
   -- the early votes are ready
   have hready : tr.time j < sp.ts ((s' + 1 : Nat) : Int) + sp.Δ →
-      SA.voteReady sp ℓy.frame (s' + 1) := fun h =>
+      SA.voteReady sp e.readPoint ℓy.frame (s' + 1) := fun h =>
     hes ▸ SA.cast_readyU hr.toU hy hcy (by rw [hes]; exact h)
   have hj1 : sp.ts ((s' + 1 : Nat) : Int) ≤ tr.time j := by
     have h := (SA.castAt_spec hr hy hcy).2.1
     rw [hes] at h
     exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2 (by rw [h])
   refine hcast ▸ SA.view_agree_window_before hrun' hrun.vstart hp hy hpp ⟨hc, hcall, d, hd⟩ hti hcy
-    ⟨P, hPy, hPs, hpay⟩ hsync.window (by
+    hes ⟨P, hPy, hPs, hpay⟩ hsync.window (by
       have h := hsync.start
       rw [hcast] at h
-      linarith only [h, hsync.kappa]) hib ?_ ?_
+      linarith only [h, hsync.kappa]) hib hjb ?_ ?_
   · -- a voter block stamped before the freeze reaches the proposer by `t_s`
     intro Hd hHd hHds hst hFHd
     have hHdU := hΦyU hHd
@@ -625,7 +625,7 @@ private theorem views_agree_before {a₀ κ b : Time}
   · -- a support head of `P` reaches the voter by its vote
     intro x hx Hd hHd hHdr hFHd
     by_cases hE : tr.time j < sp.ts ((s' + 1 : Nat) : Int) + sp.Δ
-    · obtain ⟨P', hP't, hP's, hsup⟩ := hready hE
+    · obtain ⟨P', hP't, hP's, hsup⟩ := (hready hE).1
       obtain rfl := eq_of_slot hrun hp hP (hΦyU hP't) (hP's.trans hPs.symm)
       have hxs : x.slot + 1 = s' + 1 := by
         rw [payload_eq hd, hsi, hcast] at hx
@@ -633,7 +633,8 @@ private theorem views_agree_before {a₀ κ b : Time}
           List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
           Bool.and_eq_true, decide_eq_true_eq] at hx
         rw [SA.state_pool_slot sp hr hrun.vstart hp i s' x hx.1]
-      obtain ⟨H', hH't, hH'r, -⟩ := hsup x (by rw [SA.blockSupport, hpay]; exact hx) hxs
+      obtain ⟨H', hH't, hH'r, -⟩ :=
+        hsup x (by rw [SA.blockSupport, hpay]; exact hx) hxs (by simp [SA.SAParams.committee])
       rwa [hU.1 (hΦpU hHd) (hΦyU hH't) (hHdr.trans hH'r.symm)]
     · refine relay_mem_window_before hrun hnc hsync.window hsync.caught hp hy (hΦpU hHd) hcy.1 hjb
         (hsync.le_time hj1) hrsy ?_ hFHd

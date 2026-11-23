@@ -584,7 +584,7 @@ theorem reset_views_agree
   have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
     tr proposer ΔF (sp.ts s) (sp.ts (s + 1 : Nat)) hp.run.toLocalRun
     (syncRun_of_gst hp.healthy.1 ((SA.le_gbar g).trans hg))
-  apply SA.view_agree hac hP.1 hy hP.2.1 ⟨hci, hcall, d, hd⟩ hti hcy
+  apply SA.view_agree hac hP.1 hy hP.2.1 ⟨hci, hcall, d, hd⟩ hti hcy hes
     ⟨P, hPy, hP.2.2.2.2.1, hpay⟩ hsync
   · intro B hB _ hstamp hF
     exact reset_frozen_frame hp hc hP.1 hy hci hti hcy hgi hjoi hB hstamp hF
@@ -696,7 +696,7 @@ theorem ResetPremisesUpTo.reset_views_agree {b : Time}
           SA.supporters elly.frame (SA.mergedVoteView sp e.readPoint elly.frame (s + 1)) s X := by
   have hac := Compose.goldilocks_ac_projection_from hp.run hp.noColl
   have hsync := hp.sync.syncAC (hi := sp.ts (s + 1 : Nat)) hp.run ((SA.le_gbar g).trans hg)
-  apply SA.view_agree hac hpH hy hdesignated ⟨hci, hcall, d, hd⟩ hti hcy
+  apply SA.view_agree hac hpH hy hdesignated ⟨hci, hcall, d, hd⟩ hti hcy hes
     ⟨P, hPy, hPs, hpay⟩ hsync
   · intro B hB _ hstamp hF
     exact hp.reset_frozen_frame hc hpH hy hci hti hcy hib hgi hjoi hB hstamp hF

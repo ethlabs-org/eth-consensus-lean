@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.MergedOpponents
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -12,6 +13,66 @@ public section
 namespace Consensus.Goldilocks.SA.Growing
 
 variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
+
+/-- `Sync[a, b]` with time-indexed honesty gives `Sync[a, b]` on the prefix up to `d` for the
+validators honest at `d`. -/
+private theorem syncAC_upTo
+    {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {ini}
+    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {a b d : Time}
+    (hsync : SyncACAt (goldilocksSA sp FGP ro) H U a b tr) :
+    SyncAC (goldilocksSA sp FGP ro) (H d) U a b (tr.upTo d) := by
+  refine ⟨?_, ?_⟩
+  · intro x hx k v hsend ha hb y hy c ℓ hcc hdl
+    obtain ⟨hkd, hsend⟩ := (ACTrace.upTo_sendOrAdmit hr.time_mono).mp hsend
+    obtain ⟨hcd, hcc⟩ := (Trace.upTo_callAt tr).mp hcc
+    rw [ACTrace.upTo_deadline hr.time_mono hcd] at hdl
+    obtain ⟨r, hrc, hkr, hproc, ht⟩ := hsync.1 x k v (hr.antitone hkd hx) hsend ha hb
+      y c ℓ (hr.antitone hcd hy) hcc hdl
+    have hrd := (hr.time_mono hrc).trans hcd
+    exact ⟨r, hrc, hkr, (ACTrace.upTo_processAt (A := goldilocksSA sp FGP ro)).mpr ⟨hrd, hproc⟩,
+      by rwa [ACTrace.upTo_deadline hr.time_mono hrd]⟩
+  · intro x hx k B hacc ha hb y hy c ℓ hcc hdl hanc
+    obtain ⟨hkd, hacc⟩ := (ACTrace.upTo_acceptAt (A := goldilocksSA sp FGP ro)).mp hacc
+    obtain ⟨hcd, hcc⟩ := (Trace.upTo_callAt tr).mp hcc
+    rw [ACTrace.upTo_deadline hr.time_mono hcd] at hdl
+    obtain ⟨r, hrc, hacc, ht⟩ := hsync.2 x k B (hr.antitone hkd hx) hacc ha hb
+      y c ℓ (hr.antitone hcd hy) hcc hdl hanc
+    have hrd := (hr.time_mono hrc).trans hcd
+    exact ⟨r, hrc, (ACTrace.upTo_acceptAt (A := goldilocksSA sp FGP ro)).mpr ⟨hrd, hacc⟩,
+      by rwa [ACTrace.upTo_deadline hr.time_mono hrd]⟩
+
+/-- **Every vote an honest proposal declares is counted at an honest slot-`(s+1)` vote**, with
+time-indexed honesty: `count_declared_of_sync` on the prefix up to the vote, for a proposer
+honest at the vote and a voter honest at it. -/
+theorem count_declared_of_syncAt
+    {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+    {proposer : Nat → Fin sp.n} {ini} (hrun : ACRun proposer tr H U ini)
+    {s : Nat} {p y : Fin sp.n} {i j : Nat} {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)}
+    {pay : Payload sp.n} {e : Em sp FGP}
+    (hp : p ∈ H (tr.time j)) (hy : y ∈ H (tr.time j))
+    (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
+    (hc : CastAt tr y j ℓy e) (hs : e.msg.slot = s + 1)
+    (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
+    (hsync : SyncACAt (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr) :
+    ∀ v ∈ (tr.state p i).pool s, ShouldCountDeclaredVote sp e.readPoint v := by
+  have hr := hrun.localRun
+  have hd := hr.time_nonneg j
+  have hc' := upTo_castAt.mpr ⟨le_rfl, hc⟩
+  have hjt : tr.time i ≤ tr.time j := by
+    obtain ⟨P, hP, hPs, _⟩ := hP
+    have hslot := frame_slot_le sp (hr.upTo hd) hy hc'.1 P hP
+    rw [hPs] at hslot
+    rw [hti]
+    exact (ts_le_iff_le_slot sp hd (s + 1 : Nat)).mpr (by exact_mod_cast hslot)
+  have hstate : (tr.upTo (tr.time j)).state p i = tr.state p i :=
+    Trace.upTo_state tr p fun _ hk => (hr.time_mono hk.le).trans hjt
+  have hprop' : ProposalAt (tr.upTo (tr.time j)) p i ℓp pay := by
+    obtain ⟨hc, hcall, d, hp⟩ := hprop
+    refine ⟨(Trace.upTo_callAt tr).mpr ⟨hjt, hc⟩, hcall, d, ?_⟩
+    simpa only [hstate, Trace.upTo_time] using hp
+  have h := count_declared_of_sync (hrun.upTo hd).localRun hrun.vstart hp hy
+    hprop' hti hc' hs hP (syncAC_upTo hr hsync)
+  rwa [hstate] at h
 
 /-- Proposer honesty covers both frame-reading cuts. -/
 theorem proposer_voters_agree_of_honest_max
@@ -32,6 +93,8 @@ theorem proposer_voters_agree_of_honest_max
   have hr := hrun.localRun
   have hm := hr.time_mono
   have hp := hr.antitone (le_max_left _ _) hpmax
+  have hcount := count_declared_of_syncAt hrun (hr.antitone (le_max_right _ _) hpmax) hy hprop
+    hti hc hs hPy hsync
   have hpr := hrun.upTo (hr.time_nonneg i)
   have hyr := hrun.upTo (hr.time_nonneg j)
   have statep : (tr.upTo (tr.time i)).state p i = tr.state p i :=
@@ -153,7 +216,7 @@ theorem proposer_voters_agree_of_honest_max
     (huniq j ℓy le_rfl hc.1) hpool
     (fun x hx Hd hHd hHdr hHds =>
       resolutionTime_ne_top hΦp hHd hHdr hHds (hpool x hx).ne (hHdr ▸ hbs Hd hHd))
-    hstar hBs
+    hstar hcount hBs
 
 /-- Finite service survives retention for validators honest at the horizon. -/
 theorem ServiceWindowBefore.upTo
@@ -187,9 +250,10 @@ theorem view_agree_window_before
     {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H (max (tr.time i) (tr.time j))) (hy : y ∈ H (tr.time j))
     (hpp : p = proposer (s + 1)) (hprop : ProposalAt tr p i ℓp pay)
-    (hti : tr.time i = sp.ts (s + 1 : Nat)) (hc : CastAt tr y j ℓy e)
+    (hti : tr.time i = sp.ts (s + 1 : Nat)) (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
     (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
     {a b : Time} (hsync : ServiceWindowBefore H U a b tr) (ha : a ≤ sp.ts s) (hb : tr.time i ≤ b)
+    (hjb : tr.time j ≤ b)
     (hyp : ∀ Hd ∈ ℓy.frame.tree, Hd.slot ≤ s →
       e.readPoint.blockStamp Hd.root < ETime.of (freeze sp (s + 1)) → Anc U ℓp.frame.F Hd →
         Hd ∈ ℓp.frame.tree)
@@ -219,7 +283,7 @@ theorem view_agree_window_before
     simpa only [hstate, Trace.upTo_time] using hp
   exact SA.view_agree_window_before (hrun.upTo hd) (fun _ => SA.voteStart_initial _)
     (hr.antitone (le_max_right _ _) hp) hy
-    hpp hprop' hti hc' hP (hsync.upTo hr) ha hb hyp hpy
+    hpp hprop' hti hc' hes hP (hsync.upTo hr) ha hb hjb hyp hpy
 
 theorem view_agree_before
     {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
@@ -228,9 +292,9 @@ theorem view_agree_before
     {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H (max (tr.time i) (tr.time j))) (hy : y ∈ H (tr.time j))
     (hpp : p = proposer (s + 1)) (hprop : ProposalAt tr p i ℓp pay)
-    (hti : tr.time i = sp.ts (s + 1 : Nat)) (hc : CastAt tr y j ℓy e)
+    (hti : tr.time i = sp.ts (s + 1 : Nat)) (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
     (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
-    {b : Time} (hsync : ServiceBefore H U b tr) (hb : tr.time i ≤ b)
+    {b : Time} (hsync : ServiceBefore H U b tr) (hb : tr.time i ≤ b) (hjb : tr.time j ≤ b)
     (hyp : ∀ Hd ∈ ℓy.frame.tree, Hd.slot ≤ s →
       e.readPoint.blockStamp Hd.root < ETime.of (freeze sp (s + 1)) → Anc U ℓp.frame.F Hd →
         Hd ∈ ℓp.frame.tree)
@@ -243,8 +307,8 @@ theorem view_agree_before
       ∀ X ∈ ℓp.frame.tree, X ∈ ℓy.frame.tree →
         supporters ℓp.frame (View.ofLists pay) s X =
           supporters ℓy.frame (mergedVoteView sp e.readPoint ℓy.frame (s + 1)) s X :=
-  view_agree_window_before hrun hp hy hpp hprop hti hc hP hsync
-    (by have := sp.toParams.hΔ; simp only [SAParams.ts]; positivity) hb hyp hpy
+  view_agree_window_before hrun hp hy hpp hprop hti hc hes hP hsync
+    (by have := sp.toParams.hΔ; simp only [SAParams.ts]; positivity) hb hjb hyp hpy
 
 theorem view_agree
     {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
@@ -253,7 +317,7 @@ theorem view_agree
     {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H (max (tr.time i) (tr.time j))) (hy : y ∈ H (tr.time j))
     (hpp : p = proposer (s + 1)) (hprop : ProposalAt tr p i ℓp pay)
-    (hti : tr.time i = sp.ts (s + 1 : Nat)) (hc : CastAt tr y j ℓy e)
+    (hti : tr.time i = sp.ts (s + 1 : Nat)) (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
     (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
     (hsync : SyncACAt (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr)
     (hyp : ∀ Hd ∈ ℓy.frame.tree, Hd.slot ≤ s →
@@ -283,29 +347,9 @@ theorem view_agree
     have hstate : (tr.upTo (tr.time j)).state p i = tr.state p i :=
       Trace.upTo_state tr p fun _ hk => (hr.time_mono hk.le).trans hjt
     simpa only [hstate, Trace.upTo_time] using hp
-  have hsync' : SyncAC (goldilocksSA sp FGP ro) (H (tr.time j)) U
-      (sp.ts s) (sp.ts (s + 1 : Nat)) (tr.upTo (tr.time j)) := by
-    refine ⟨?_, ?_⟩
-    · intro x hx k v hsend ha hb y hy c ℓ hcc hdl
-      obtain ⟨hkd, hsend⟩ := (ACTrace.upTo_sendOrAdmit hr.time_mono).mp hsend
-      obtain ⟨hcd, hcc⟩ := (Trace.upTo_callAt tr).mp hcc
-      rw [ACTrace.upTo_deadline hr.time_mono hcd] at hdl
-      obtain ⟨r, hrc, hkr, hproc, ht⟩ := hsync.1 x k v (hr.antitone hkd hx) hsend ha hb
-        y c ℓ (hr.antitone hcd hy) hcc hdl
-      have hrd := (hr.time_mono hrc).trans hcd
-      exact ⟨r, hrc, hkr, (ACTrace.upTo_processAt (A := goldilocksSA sp FGP ro)).mpr ⟨hrd, hproc⟩,
-        by rwa [ACTrace.upTo_deadline hr.time_mono hrd]⟩
-    · intro x hx k B hacc ha hb y hy c ℓ hcc hdl hanc
-      obtain ⟨hkd, hacc⟩ := (ACTrace.upTo_acceptAt (A := goldilocksSA sp FGP ro)).mp hacc
-      obtain ⟨hcd, hcc⟩ := (Trace.upTo_callAt tr).mp hcc
-      rw [ACTrace.upTo_deadline hr.time_mono hcd] at hdl
-      obtain ⟨r, hrc, hacc, ht⟩ := hsync.2 x k B (hr.antitone hkd hx) hacc ha hb
-        y c ℓ (hr.antitone hcd hy) hcc hdl hanc
-      have hrd := (hr.time_mono hrc).trans hcd
-      exact ⟨r, hrc, (ACTrace.upTo_acceptAt (A := goldilocksSA sp FGP ro)).mpr ⟨hrd, hacc⟩,
-        by rwa [ACTrace.upTo_deadline hr.time_mono hrd]⟩
+  have hsync' := syncAC_upTo (d := tr.time j) hr hsync
   exact SA.view_agree (hrun.upTo hd) (hr.antitone (le_max_right _ _) hp) hy
-    hpp hprop' hti hc' hP hsync' hyp hpy
+    hpp hprop' hti hc' hes hP hsync' hyp hpy
 
 end Consensus.Goldilocks.SA.Growing
 
