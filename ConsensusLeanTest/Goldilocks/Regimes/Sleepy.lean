@@ -123,9 +123,6 @@ theorem tickRun_growingRun :
     { toLocalRun := Consensus.Goldilocks.Growing.LocalRun.const_iff.2
         tickRun_goldilocksRun.toLocalRun
       genesis_root_ok := tickRun_goldilocksRun.genesis_root_ok
-      carried_vote_unforgeable := fun y i B _ hB v hv _ =>
-        tickRun_goldilocksRun.carried_vote_unforgeable y (Set.mem_univ _) i B hB v hv
-          (Set.mem_univ _)
       vstart := tickRun_goldilocksRun.vstart }
 
 /-- `Sleepy` of the tick run, with look-ahead `ahead`, under the constant honest set. -/
