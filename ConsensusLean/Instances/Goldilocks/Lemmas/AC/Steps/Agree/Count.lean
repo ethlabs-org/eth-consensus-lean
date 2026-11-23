@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVotes
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -148,9 +149,8 @@ private theorem count_declared_coreU {ini} {u : Nat → Set Lock}
       have hsub := state_pool_sub_readPointU hr hy hc s
       have hpa : e.readPoint.poolAt v.slot = e.readPoint.pool s := by
         simp [ACState.poolAt, hvs]
-      rcases hheld with h | ⟨a, ha, b, hb', hab, hav, hbv⟩
-      · exact Or.inl (hpa ▸ hsub h)
-      · exact Or.inr ⟨a, hpa ▸ hsub ha, b, hpa ▸ hsub hb', hab, hav, hbv⟩
+      exact backed_mono (P := {w | w ∈ (tr.state y j).pool s})
+        (fun w (hw : w ∈ (tr.state y j).pool s) => hpa ▸ hsub hw) hheld
 
 /-- **Every vote an honest proposal declares is counted at an honest slot-`(s+1)` vote** under
 `Sync[t_s, t_{s+1}]` (with the unlock given). -/
