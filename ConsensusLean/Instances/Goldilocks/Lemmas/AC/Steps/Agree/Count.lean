@@ -151,6 +151,29 @@ private theorem count_declared_coreU {ini} {u : Nat → Set Lock}
       · exact Or.inl (hpa ▸ hsub h)
       · exact Or.inr ⟨a, hpa ▸ hsub ha, b, hpa ▸ hsub hb', hab, hav, hbv⟩
 
+/-- A slot-`s` vote sent at a time in `[t_s, t_{s+1}]` is of the slot, or the previous one, of
+every time in the following `Δ`. -/
+private theorem slot_window {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
+    {s k : Nat} {v : Vote sp.n} (hsk : sp.ts s ≤ tr.time k) (hkb : tr.time k ≤ sp.ts (s + 1 : Nat))
+    (hvs : v.slot = s) :
+    ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
+      (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t := by
+  intro t h₁ h₂
+  have hΔ := sp.toParams.hΔ
+  have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
+    simp only [SAParams.ts]; push_cast; ring
+  have hlo : (s : Int) ≤ sp.slot t :=
+    (ts_le_iff_le_slot sp ((hr.time_nonneg k).trans h₁) s).1 (hsk.trans h₁)
+  have hhi : sp.slot t < s + 2 := by
+    by_contra hc'
+    have := (ts_le_iff_le_slot sp ((hr.time_nonneg k).trans h₁) (s + 2 : Nat)).2
+      (by exact_mod_cast not_lt.1 hc')
+    have hts2 : sp.ts (s + 2 : Nat) = sp.ts s + 8 * sp.Δ := by
+      simp only [SAParams.ts]; push_cast; ring
+    linarith only [this, hts2, h₂, hkb, hts, hΔ]
+  rw [hvs]
+  omega
+
 /-- **Every vote an honest proposal declares is counted at an honest slot-`(s+1)` vote** under
 `Sync[t_s, t_{s+1}]` (with the unlock given). -/
 theorem count_declared_of_syncU {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
@@ -168,18 +191,7 @@ theorem count_declared_of_syncU {ini} {u : Nat → Set Lock} (hr : ACLocalRunU w
   have hΔ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
     simp only [SAParams.ts]; push_cast; ring
-  exact sync_forwardU hr hsync hp hsend hsk hkb hy hc.1 hrs hdl fun t h₁ h₂ => by
-    have hlo : (s : Int) ≤ sp.slot t :=
-      (ts_le_iff_le_slot sp ((hr.time_nonneg k).trans h₁) s).1 (hsk.trans h₁)
-    have hhi : sp.slot t < s + 2 := by
-      by_contra hc'
-      have := (ts_le_iff_le_slot sp ((hr.time_nonneg k).trans h₁) (s + 2 : Nat)).2
-        (by exact_mod_cast not_lt.1 hc')
-      have hts2 : sp.ts (s + 2 : Nat) = sp.ts s + 8 * sp.Δ := by
-        simp only [SAParams.ts]; push_cast; ring
-      linarith only [this, hts2, h₂, hkb, hts, hΔ]
-    rw [hvs]
-    omega
+  exact sync_forwardU hr hsync hp hsend hsk hkb hy hc.1 hrs hdl (slot_window hr hsk hkb hvs)
 
 /-- `count_declared_of_syncU` without the unlock. -/
 theorem count_declared_of_sync {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
@@ -193,6 +205,41 @@ theorem count_declared_of_sync {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr) :
     ∀ v ∈ (tr.state p i).pool s, ShouldCountDeclaredVote sp e.readPoint v :=
   count_declared_of_syncU (wm := WriteMode.parent sp) hr.toU hini hp hy hprop hti hc hes hP hsync
+
+/-- **Every vote an honest proposal declares is counted at an honest slot-`(s+1)` vote** under
+the source service window `[a, b]` with `a ≤ t_s` and the vote at or before `b` (with the unlock
+given). -/
+theorem count_declared_of_window_beforeU {ini} {u : Nat → Set Lock}
+    (hr : ACLocalRunU wm u H U tr ini) (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
+    {s : Nat} {p y : Fin sp.n} {i j : Nat}
+    {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
+    (hp : p ∈ H) (hy : y ∈ H)
+    (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
+    (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
+    (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
+    {a b : Time} (hsync : ServiceWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
+    (hjb : tr.time j ≤ b) :
+    ∀ v ∈ (tr.state p i).pool s, ShouldCountDeclaredVote sp e.readPoint v := by
+  refine count_declared_coreU hr hini hp hy hprop hti hc hes hP ?_
+  intro k v hsend hsk hkb hvs hrs hdl
+  exact sync_window_before_forwardU hr hsync hp hsend (ha.trans hsk) (hdl.trans hjb) hy hc.1
+    hrs hdl (slot_window hr hsk hkb hvs)
+
+/-- `count_declared_of_window_beforeU` without the unlock. -/
+theorem count_declared_of_window_before {ini}
+    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
+    {s : Nat} {p y : Fin sp.n} {i j : Nat}
+    {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
+    (hp : p ∈ H) (hy : y ∈ H)
+    (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
+    (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
+    (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
+    {a b : Time} (hsync : ServiceWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
+    (hjb : tr.time j ≤ b) :
+    ∀ v ∈ (tr.state p i).pool s, ShouldCountDeclaredVote sp e.readPoint v :=
+  count_declared_of_window_beforeU (wm := WriteMode.parent sp) hr.toU hini hp hy hprop hti hc hes
+    hP hsync ha hjb
 
 end Consensus.Goldilocks.SA
 

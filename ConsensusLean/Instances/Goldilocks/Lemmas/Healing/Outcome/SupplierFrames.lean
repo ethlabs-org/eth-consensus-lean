@@ -448,7 +448,7 @@ theorem reset_proposal_frame
     (hF : Anc (tr.HonestBlocks H) ell.frame.F P) : P ∈ ell.frame.tree := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   by_cases hearly : tr.time j < sp.ts u + sp.Δ
-  · obtain ⟨Q, hQ, hQs, -⟩ := SA.cast_ready hr hy hcy (by rw [hes]; exact hearly)
+  · obtain ⟨Q, hQ, hQs, -⟩ := (SA.cast_ready hr hy hcy (by rw [hes]; exact hearly)).1
     rw [hes] at hQs
     exact (reset_proposal_frame_unique hp hP hu hy hcy.1 hQ hQs) ▸ hQ
   · obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, -, ja, -, hacc, hta⟩ :=
@@ -470,7 +470,7 @@ theorem ResetPremisesUpTo.reset_proposal_frame {b : Time}
     (hF : Anc (tr.HonestBlocks H) ell.frame.F P) : P ∈ ell.frame.tree := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   by_cases hearly : tr.time j < sp.ts u + sp.Δ
-  · obtain ⟨Q, hQ, hQs, _⟩ := SA.cast_ready hr hy hcy (by rw [hes]; exact hearly)
+  · obtain ⟨Q, hQ, hQs, _⟩ := (SA.cast_ready hr hy hcy (by rw [hes]; exact hearly)).1
     rw [hes] at hQs
     exact (hp.reset_proposal_frame_unique hpH hdesignated hactual hPs hu hy hcy.1 hQ hQs) ▸ hQ
   · obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, ja, _, hacc, hta⟩ :=
@@ -499,7 +499,7 @@ theorem reset_support_frame
     (hF : Anc (tr.HonestBlocks H) elly.frame.F B) : B ∈ elly.frame.tree := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   by_cases hearly : tr.time j < sp.ts (s + 1 : Nat) + sp.Δ
-  · obtain ⟨Q, hQ, hQs, hsup⟩ := SA.cast_ready hr hy hcy (by rw [hes]; exact hearly)
+  · obtain ⟨Q, hQ, hQs, hsup⟩ := (SA.cast_ready hr hy hcy (by rw [hes]; exact hearly)).1
     rw [hes] at hQs hsup
     obtain rfl := reset_proposal_frame_unique hp hP (by omega) hy hcy.1 hQ hQs
     have hslot : sp.slot (tr.time i) = s + 1 := by
@@ -519,6 +519,7 @@ theorem reset_support_frame
         Bool.and_eq_true, decide_eq_true_eq] at hv
       rw [SA.state_pool_slot sp hr hp.run.vstart hP.1 i s v hv.1]
     obtain ⟨B', hB', hBr', -⟩ := hsup v (by rw [SA.blockSupport, hpay]; exact hv) hvs
+      (by simp [SA.SAParams.committee])
     rwa [hr.coherent.1 ((SA.frameIn_of_callAt hr hP.1 hci).2 hB)
       ((SA.frameIn_of_callAt hr hy hcy.1).2 hB') (hBr.trans hBr'.symm)]
   · exact reset_frame_relay hp hc hP.1 hy hci hcy.1 hB hg hjoin
@@ -610,7 +611,7 @@ theorem ResetPremisesUpTo.reset_support_frame {b : Time}
     (hF : Anc (tr.HonestBlocks H) elly.frame.F B) : B ∈ elly.frame.tree := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   by_cases hearly : tr.time j < sp.ts (s + 1 : Nat) + sp.Δ
-  · obtain ⟨Q, hQ, hQs, hsup⟩ := SA.cast_ready hr hy hcy (by rw [hes]; exact hearly)
+  · obtain ⟨Q, hQ, hQs, hsup⟩ := (SA.cast_ready hr hy hcy (by rw [hes]; exact hearly)).1
     rw [hes] at hQs hsup
     obtain rfl := hp.reset_proposal_frame_unique hpH hdesignated hactual hPs
       (by omega) hy hcy.1 hQ hQs
@@ -631,6 +632,7 @@ theorem ResetPremisesUpTo.reset_support_frame {b : Time}
         Bool.and_eq_true, decide_eq_true_eq] at hv
       rw [SA.state_pool_slot sp hr hp.run.vstart hpH i s v hv.1]
     obtain ⟨B', hB', hBr', _⟩ := hsup v (by rw [SA.blockSupport, hpay]; exact hv) hvs
+      (by simp [SA.SAParams.committee])
     rwa [hr.coherent.1 ((SA.frameIn_of_callAt hr hpH hci).2 hB)
       ((SA.frameIn_of_callAt hr hy hcy.1).2 hB') (hBr.trans hBr'.symm)]
   · exact hp.reset_frame_relay hc hpH hy hci hcy.1 hB hjb hg hjoin
