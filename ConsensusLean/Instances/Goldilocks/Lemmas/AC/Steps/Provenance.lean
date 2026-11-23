@@ -62,16 +62,8 @@ theorem admitVote_locks_eq (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
 
 /-- The receipt of a block keeps the locks. -/
 theorem blockReceipt_locks (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
-    (blockReceipt sp A t B).locks = A.locks := by
-  unfold blockReceipt
-  generalize hA' : ({ A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) } :
-    SAState sp.n) = A'
-  have : A'.locks = A.locks := by rw [← hA']
-  rw [← this]
-  clear hA' this
-  induction (blockVotes B) generalizing A' with
-  | nil => rfl
-  | cons v l ih => rw [List.foldl_cons, ih, admitVote_locks_eq]
+    (blockReceipt sp A t B).locks = A.locks :=
+  rfl
 
 variable {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
 
@@ -133,7 +125,7 @@ private theorem FromP.of_tryVote
   · rw [ite_eq_left h1]
     exact FromP.of_eq rfl
   rw [ite_eq_right h1]
-  by_cases h2 : t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ voteReady sp Φ (sp.slot t))
+  by_cases h2 : t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ voteReady sp A Φ (sp.slot t))
   · rw [ite_eq_left h2]
     exact FromP.of_eq rfl
   rw [ite_eq_right h2]
