@@ -50,7 +50,7 @@ theorem tick_att_releases_at (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
     | _ :: _ :: _ :: _, h, _ => simp at h
   rw [hobj, heq]
   have hk := pollRole_selected_of_not_vote S rho (poll_selected S rho hv v)
-    (b := .att (encodeAtt a)) (fun w h => by cases h)
+    (b := .att (encodeAtt a)) (fun _ _ h => by cases h)
   rcases hpos _ hq with h | h
   · refine List.mem_append_left _ (List.mem_append_left _ (List.mem_append_right _ ?_))
     apply List.mem_append_left
@@ -86,7 +86,8 @@ theorem simTraceAt_att_released (hv : rho.ExecutionValid) :
   | deliver v o t =>
     exfalso
     rw [eventCuts_deliver S rho hn i v o t he] at hmem
-    obtain ⟨o', e, st', _, hce, kk, hk, hlabk, -⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
+    obtain ⟨o', e, st', _, hce, kk, hk, hlabk, -⟩ :=
+      mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ _ hmem
     have hcut := List.getElem_mem hk
     rw [← hlabk, hrl] at hcut
     obtain ⟨x, rfl⟩ := Compose.signed_only_in_ticks _ _ _ st' t e src a hcut

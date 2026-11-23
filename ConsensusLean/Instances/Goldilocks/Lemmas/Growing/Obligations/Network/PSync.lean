@@ -521,12 +521,13 @@ deadline. -/
 theorem vote_message_service_psync_other_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {g : Time} (hnet : rho.log.PSync rho.point g)
     {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : AC.Vote (Fintype.card V)}
+    {z : Nat} (hck : rho.verify (m.val, S.vote.voteRole m.slot, encodeVote m) z = true)
     (hx : rho.key x ∉ rho.faultyAt τ) (hne : y ≠ x)
     (hτ : 0 ≤ τ) (hs : rho.SendsAt (rho.key x) source τ)
-    (hrel : Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∈
+    (hrel : Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m z] ∈
       rho.releasesAt source)
     (hfirst : ∀ i < source,
-      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉
+      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m z] ∉
         rho.releasesAt i)
     {j : Nat} (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time j))
     (hj : (simTraceAt S rho hn).IsCall y j)
@@ -541,7 +542,7 @@ theorem vote_message_service_psync_other_at (hn : 1 ≤ Fintype.card V) (hv : rh
   rw [htr, network_honestKeysAt_eq] at hy
   rw [htr] at hj hb hd
   have hp := NodeAsChainShape.CanonicalTrace.publication_messageDeliveredBy hrun hx hne
-    (votePublication_intro S rho hs hrel hfirst)
+    (votePublication_intro S rho hck hs hrel hfirst)
     (fun _ hy hj hb hd => NodeAsChainShape.CanonicalTrace.publication_held_before_psync
       hrun le_rfl hnet ⟨source, hs, hrel⟩ hx
       (by simp [log_fgAtt_iff, isFGAtt, IsAttObj]) hy hj hτ hb hd)
@@ -590,9 +591,9 @@ theorem message_service_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.Execution
       refine ⟨l, Compose.projAC_callAt.mpr hc, ?_⟩
       rw [projAC_state_at hr hx]
       exact hs
-    obtain ⟨source, _, _, hs, hrel, hfirst⟩ := hsim.vote_forwarded x i m hx
+    obtain ⟨z, hck, source, _, _, hs, hrel, hfirst⟩ := hsim.vote_forwarded x i m hx
       (sendOrAdmit_forward_source_at hr hx hproj)
-    exact ⟨_, votePublication_intro S rho hs hrel hfirst, ⟨source, hs, hrel⟩,
+    exact ⟨_, votePublication_intro S rho hck hs hrel hfirst, ⟨source, hs, hrel⟩,
       by simp [log_fgAtt_iff, isFGAtt, IsAttObj]⟩
   · intro o hrel hrow k hy hj
     exact NodeAsChainShape.CanonicalTrace.publication_held_before_psync hrun

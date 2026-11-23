@@ -25,8 +25,9 @@ noncomputable def deliveryPost (e : Encoding F E p hN hn A)
     (o : (Model.protoOf (compiled F) E).Object) : NodeState A :=
   let st := stateAt e rho v i
   let hs := Model.digests rho.hash o
-  (delivered e.codec e.adapter hs st (wireOf e o)).foldl
-    (fun s w => ((canonEvent e.codec hs w).map
+  let C := receiverCodec e rho v
+  (delivered C e.adapter hs st (wireOf e o)).foldl
+    (fun s w => ((canonEvent C hs w).map
       (fun ev => (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v) s t ev).1)).getD s)
     (e.adapter.node st)
 
@@ -35,8 +36,9 @@ theorem deliveryPost_eq (v : V) (t : Time) (i : Nat)
     (o : (Model.protoOf (compiled F) E).Object) : deliveryPost e rho v t i o =
     let st := stateAt e rho v i
     let hs := Model.digests rho.hash o
-    (delivered e.codec e.adapter hs st (wireOf e o)).foldl
-      (fun s w => ((canonEvent e.codec hs w).map
+    let C := receiverCodec e rho v
+    (delivered C e.adapter hs st (wireOf e o)).foldl
+      (fun s w => ((canonEvent C hs w).map
         (fun ev => (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v) s t ev).1)).getD s)
       (e.adapter.node st) := by rfl
 
@@ -99,7 +101,7 @@ open Classical in
 /-- Local operation laws and valid-run alignment for the encoded shape. `due` is an observer
 used only in the proofs of these laws, never in the construction of the replay. -/
 structure Encoding.Lawful (e : Encoding F E p hN hn A) (due : e.State hn → Bool) : Prop where
-  init_due : ∀ k select, due ((e.ops hn).init k select) = false
+  init_due : ∀ k select io, due ((e.ops hn).init k select io) = false
   set_due : ∀ st b, due (e.adapter.setDue st b) = b
   clock_due : ∀ st t, due ((e.ops hn).clock st t) = due st
   process_due : ∀ st o hs, due ((e.ops hn).process st o hs) = due st
@@ -161,22 +163,27 @@ structure Encoding.Lawful (e : Encoding F E p hN hn A) (due : e.State hn → Boo
 
 omit [DecidableEq V] in
 private theorem cast_init {s s' : ChainShape (Model.pubOf E) O.Id I} (h : s = s')
-    (k : Fin (Fintype.card V)) (select : (compile s).Role → Bool) :
-    cast (congrArg (fun q => q.State) h) (s.init k select) =
-      s'.init k (fun r => select (cast (congrArg (fun q => (compile q).Role) h.symm) r)) := by
+    (k : Fin (Fintype.card V)) (select : (compile s).Role → Bool)
+    (io : Model.VoteIO s.Token (compile s).Role s.VoteData (Fintype.card V)) :
+    cast (congrArg (fun q => q.State) h) (s.init k select io) =
+      s'.init k (fun r => select (cast (congrArg (fun q => (compile q).Role) h.symm) r))
+        (cast (congrArg (fun q => Model.VoteIO q.Token (compile q).Role q.VoteData
+          (Fintype.card V)) h) io) := by
   cases h
   rfl
 
 private theorem stateAt_zero (v : V) :
     e.adapter.node (stateAt e rho v 0) = initial e rho (rho.ownKey v) := by
   rw [stateAt_eq, initial_eq]
+  have hk : rho.key (rho.ownKey v) = v := rho.key.apply_symm_apply v
   simp only [Model.Run.stateBefore, List.take_zero, List.foldl_nil, Model.Run.initWorld,
-    engineRole_eq]
+    engineRole_eq, voteIOAt_eq, hk]
   change e.adapter.node ((cast (congrArg (fun q : ChainShape (Model.pubOf E) O.Id I => q.State)
     e.shape_eq)
-    ((F (Model.pubOf E)).init (rho.ownKey v) _)) hn) = _
-  rw [cast_init e.shape_eq]
-  rfl
+    ((F (Model.pubOf E)).init (rho.ownKey v) _ (rho.voteIO v))) hn) = _
+  exact congrArg (fun st : ∀ h, e.State h => e.adapter.node (st hn))
+    (cast_init e.shape_eq (rho.ownKey v) (fun r => decide (rho.ownKey v ∈ rho.sel r))
+      (rho.voteIO v))
 
 omit [DecidableEq V] in
 private theorem cast_restore {s s' : ChainShape (Model.pubOf E) O.Id I} (h : s = s')
@@ -386,13 +393,15 @@ theorem stateAgreement_all {due : e.State hn → Bool} (laws : e.Lawful due)
         rw [deliveryPost_eq]
         apply Eq.symm
         simpa only [ite_true] using
-          replay_deliver e.codec (runProposer rho hn) (digestOf e rho) (Model.digests rho.hash o)
+          replay_deliver (receiverCodec e rho v) (runProposer rho hn) (digestOf e rho)
+            (Model.digests rho.hash o)
             (rho.ownKey v) (rho.ownKey v) t j _ _ _ 0 (fun _ => rfl)
       · have hk : rho.ownKey w ≠ rho.ownKey v := fun h => heq (rho.key.symm.injective h)
         rw [stateAt_other v he heq]
         apply Eq.symm
         simpa only [ite_eq_right hk] using
-          replay_deliver e.codec (runProposer rho hn) (digestOf e rho) (Model.digests rho.hash o)
+          replay_deliver (receiverCodec e rho w) (runProposer rho hn) (digestOf e rho)
+            (Model.digests rho.hash o)
             (rho.ownKey v) (rho.ownKey w) t j _ _ _ 0 (fun h => (hk h.symm).elim)
 
 /-- The valid engine prefix and its replay agree at the same bounded observation cut. -/

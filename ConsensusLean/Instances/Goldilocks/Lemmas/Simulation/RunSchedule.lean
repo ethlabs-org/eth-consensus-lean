@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Unforgeable
-import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLaws
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLawsInstance
 import ConsensusLean.Lemmas.Model.Constant
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -39,7 +39,7 @@ theorem simTrace_init :
   by
     intro y _
     rw [(simTrace_encoding S rho hn).1]
-    refine traceEncoding_induction S hn (fun e _ =>
+    refine traceEncoding_induction S hn (fun e _ _ =>
       (NodeAsChainShape.CanonicalTrace.simTrace e rho).init y = _) ?_
     intro e _
     have hinit := NodeAsChainShape.CanonicalTrace.initial_eq e rho y
@@ -197,8 +197,8 @@ theorem simTrace_proposerCredential (hv : rho.ExecutionValid) :
 /-- A released canonical own vote comes from an emission before the event's end cut. -/
 theorem released_vote_cut (hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid)
     {i : Nat} {v : V} {t : Time}
-    (hs : rho.SendsAt v i t) (hv' : v ∉ rho.faultyAt 0) {m : Vote (Fintype.card V)}
-    (hb : voteObj m ∈ rho.releasesAt i) :
+    (hs : rho.SendsAt v i t) (hv' : v ∉ rho.faultyAt 0) {m : Vote (Fintype.card V)} {z : Nat}
+    (hb : voteObj m z ∈ rho.releasesAt i) :
     ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).EmitAt (rho.ownKey v) k m :=
   released_vote_cut_of S rho hn hv hs (fun _ => hv') (preNode_releasable S rho hn hf hv hv') hb
 

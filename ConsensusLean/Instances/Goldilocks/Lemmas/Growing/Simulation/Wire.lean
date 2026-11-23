@@ -28,15 +28,15 @@ theorem simTraceAt_wire (hv : rho.ExecutionValid) :
   rw [simTraceAt_eq, (simTrace_encoding S rho hn).1, hpr, hdg]
   intro y j t e hg
   apply NodeAsChainShape.CanonicalTrace.wire (traceEncoding S hn) rho _ _ _ hg
-  · apply traceEncoding_induction (E := E) S hn (fun enc _ =>
+  · apply traceEncoding_induction (E := E) S hn (fun enc _ _ =>
       ∀ {h atts payload}, enc.codec.decode h = some (atts, payload) →
         enc.codec.encode atts payload = h)
     dsimp only
     intro _ _ _ _ h
     exact encodeInfo_of_decodeInfo h
-  · intro w m _
+  · intro _ w m _
     trivial
-  · apply traceEncoding_induction (E := E) S hn (fun enc _ =>
+  · apply traceEncoding_induction (E := E) S hn (fun enc _ _ =>
       ∀ {w a}, enc.codec.attestation w = some a → a.WellFormed)
     dsimp only
     intro _ _ _ h

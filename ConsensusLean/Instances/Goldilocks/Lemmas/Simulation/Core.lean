@@ -49,13 +49,13 @@ private theorem delivery_label_cut {i : Nat} {v : V} {o : (Model.protoOf (compil
 /-- A visited object decoding to a message has an explicit processing cut in its delivery. -/
 theorem received_message_processAt {i : Nat} {v : V} {o : (Model.protoOf (compiled F) E).Object}
     {t : Time} {m : A.Msg} (he : rho.events[i]? = some (.deliver v o t))
-    (h : ∃ w ∈ delivered e.codec e.adapter (Model.digests rho.hash o)
+    (h : ∃ w ∈ delivered (receiverCodec e rho v) e.adapter (Model.digests rho.hash o)
         (stateAt e rho v i) (wireOf e o),
-      canonEvent e.codec (Model.digests rho.hash o) w = some (.message m)) :
+      canonEvent (receiverCodec e rho v) (Model.digests rho.hash o) w = some (.message m)) :
     ∃ k, cutMap e rho i ≤ k ∧ k < cutMap e rho (i + 1) ∧
       (simTrace e rho).projAC.ProcessAt (rho.ownKey v) k m ∧ (simTrace e rho).time k = t := by
-  obtain ⟨r, hr, l, hl, hm⟩ := deliverRecs_message_call e.codec _ (runProposer rho hn)
-    (digestOf e rho) (rho.ownKey v) t i m _ _ 0 h
+  obtain ⟨r, hr, l, hl, hm⟩ := deliverRecs_message_call (receiverCodec e rho v) _
+    (runProposer rho hn) (digestOf e rho) (rho.ownKey v) t i m _ _ 0 h
   have hr' : r ∈ eventCuts e rho i := by
     rw [eventCuts_deliver e rho i v o t he]
     exact hr
@@ -67,13 +67,13 @@ theorem received_message_processAt {i : Nat} {v : V} {o : (Model.protoOf (compil
 even if the attestation was already pooled. -/
 theorem received_att_processAt {i : Nat} {v : V} {o : (Model.protoOf (compiled F) E).Object}
     {t : Time} {a : FG.Att (Fintype.card V)} (he : rho.events[i]? = some (.deliver v o t))
-    (h : ∃ w ∈ delivered e.codec e.adapter (Model.digests rho.hash o)
+    (h : ∃ w ∈ delivered (receiverCodec e rho v) e.adapter (Model.digests rho.hash o)
         (stateAt e rho v i) (wireOf e o),
-      canonEvent e.codec (Model.digests rho.hash o) w = some (.attestation a)) :
+      canonEvent (receiverCodec e rho v) (Model.digests rho.hash o) w = some (.attestation a)) :
     ∃ k, cutMap e rho i ≤ k ∧ k < cutMap e rho (i + 1) ∧
       (simTrace e rho).ProcessAttAt (rho.ownKey v) k a ∧ (simTrace e rho).time k = t := by
-  obtain ⟨r, hr, hl⟩ := deliverRecs_label e.codec _ (runProposer rho hn) (digestOf e rho)
-    (rho.ownKey v) t i (.attestation a) (· = .fg (.attestation a)) _ _ 0 h
+  obtain ⟨r, hr, hl⟩ := deliverRecs_label (receiverCodec e rho v) _ (runProposer rho hn)
+    (digestOf e rho) (rho.ownKey v) t i (.attestation a) (· = .fg (.attestation a)) _ _ 0 h
     (by intro s; simp [exec, onAttestation])
   have hr' : r ∈ eventCuts e rho i := by
     rw [eventCuts_deliver e rho i v o t he]
@@ -87,13 +87,14 @@ theorem received_carried_message_processAt {i : Nat} {v : V}
     {o : (Model.protoOf (compiled F) E).Object} {t : Time} {m : A.Msg}
     {w : ShapeObj (Fintype.card V) e.skel.Kind I e.Body}
     (he : rho.events[i]? = some (.deliver v o t))
-    (ha : ¬ Refuses e.codec e.adapter (Model.digests rho.hash o) (stateAt e rho v i) (wireOf e o))
+    (ha : ¬ Refuses (receiverCodec e rho v) e.adapter (Model.digests rho.hash o)
+      (stateAt e rho v i) (wireOf e o))
     (hm : w ∈ (wireOf e o).carried)
-    (hd : canonEvent e.codec (Model.digests rho.hash o) w = some (.message m)) :
+    (hd : canonEvent (receiverCodec e rho v) (Model.digests rho.hash o) w = some (.message m)) :
     ∃ k, cutMap e rho i ≤ k ∧ k < cutMap e rho (i + 1) ∧
       (simTrace e rho).projAC.ProcessAt (rho.ownKey v) k m ∧ (simTrace e rho).time k = t :=
   received_message_processAt e rho he
-    ⟨w, carried_subset_delivered_self e.codec e.adapter _ ha hm, hd⟩
+    ⟨w, carried_subset_delivered_self (receiverCodec e rho v) e.adapter _ ha hm, hd⟩
 
 /-- An AC block call in a delivery witnesses admission of the decoded block. A carried object
 decoding to the requested message therefore has a processing cut in the same delivery. -/
@@ -102,15 +103,16 @@ theorem delivery_block_payload_processAt {due : e.State hn → Bool} (L : e.OpLa
     {t : Time} {r : CutRec A} {l : ACLabel A} {b : A.Blk} {m : A.Msg}
     (he : rho.events[i]? = some (.deliver v o t)) (hr : r ∈ eventCuts e rho i)
     (hl : r.label = .ac l) (hb : l.call = .block b)
-    (hp : ∃ w ∈ e.codec.carried b.fgPayload b.acPayload,
-      canonEvent e.codec (Model.digests rho.hash o) w = some (.message m)) :
+    (hp : ∃ w ∈ (receiverCodec e rho v).carried b.fgPayload b.acPayload,
+      canonEvent (receiverCodec e rho v) (Model.digests rho.hash o) w = some (.message m)) :
     ∃ k, cutMap e rho i ≤ k ∧ k < cutMap e rho (i + 1) ∧
       (simTrace e rho).projAC.ProcessAt (rho.ownKey v) k m ∧ (simTrace e rho).time k = t := by
   obtain ⟨pre, obj, post, ev, hsplit, hc, hk, ht, -, hcut, -⟩ :=
     L.replay_cut_in_applyCuts rho hv he hr
   dsimp only at hcut
   rw [hl, hk, ht] at hcut
-  let σ := pre.foldl (processOne e.codec e.adapter (Model.digests rho.hash o)) (stateAt e rho v i)
+  let C := receiverCodec e rho v
+  let σ := pre.foldl (processOne C e.adapter (Model.digests rho.hash o)) (stateAt e rho v i)
   have hadmit : ev = .block b ∧ ¬ (paramsAtCount p (Fintype.card V) hN hn).slotOf t < b.slot ∧
       (e.adapter.node σ).fg.onBlock b ≠ none := by
     cases ev with
@@ -134,11 +136,11 @@ theorem delivery_block_payload_processAt {due : e.State hn → Bool} (L : e.OpLa
           cases hb
           exact ⟨rfl, hslot, by rw [hfg]; simp⟩
   obtain ⟨rfl, hslot, hfg⟩ := hadmit
-  have hnref : ¬ Refuses e.codec e.adapter (Model.digests rho.hash o) σ obj := by
+  have hnref : ¬ Refuses C e.adapter (Model.digests rho.hash o) σ obj := by
     rintro ⟨_, h⟩
     rw [show e.adapter.now σ = t from ht] at h
     exact (h b hc).elim hslot hfg
-  have hdec : decodeBlock e.codec.decode e.codec.carried A.validPayload
+  have hdec : decodeBlock C.decode C.carried A.validPayload
       (Model.digests rho.hash o) obj = some b := by
     unfold canonEvent at hc
     split at hc
@@ -149,7 +151,7 @@ theorem delivery_block_payload_processAt {due : e.State hn → Bool} (L : e.OpLa
   obtain ⟨w, hw, hd⟩ := hp
   rw [← carried_of_decodeBlock hdec] at hw
   exact received_message_processAt e rho he
-    ⟨w, carried_subset_delivered e.codec e.adapter _ hsplit hnref hw, hd⟩
+    ⟨w, carried_subset_delivered C e.adapter _ hsplit hnref hw, hd⟩
 
 /-- A block call is either at a delivery processing its decoded payload message or at a public
 tick of the same node, in the interval covering the cut. -/
@@ -157,9 +159,9 @@ theorem acBlock_cut_cases {due : e.State hn → Bool} (L : e.OpLaws due)
     (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : Nat}
     {l : ACLabel A} {b : A.Blk} {m : A.Msg}
     (hc : (simTrace e rho).CallAt y k (.ac l)) (hb : l.call = .block b)
-    (hp : ∀ o : (Model.protoOf (compiled F) E).Object,
-      ∃ w ∈ e.codec.carried b.fgPayload b.acPayload,
-        canonEvent e.codec (Model.digests rho.hash o) w = some (.message m)) :
+    (hp : ∀ (v : V) (o : (Model.protoOf (compiled F) E).Object),
+      ∃ w ∈ (receiverCodec e rho v).carried b.fgPayload b.acPayload,
+        canonEvent (receiverCodec e rho v) (Model.digests rho.hash o) w = some (.message m)) :
     (∃ j, (simTrace e rho).projAC.ProcessAt y j m ∧
         (simTrace e rho).time j = (simTrace e rho).time k) ∨
       ∃ i v t, rho.events[i]? = some (.tick v t) ∧
@@ -186,7 +188,7 @@ theorem acBlock_cut_cases {due : e.State hn → Bool} (L : e.OpLaws due)
     | deliver v o t =>
       obtain ⟨j, -, -, hproc, htime⟩ :=
         delivery_block_payload_processAt e rho L hv (he.trans (congrArg some hev)) hmem
-          hlabel hb (hp o)
+          hlabel hb (hp v o)
       exact Or.inl ⟨j, (hev ▸ hkey) ▸ hproc, htime⟩
     | tick v t =>
       have he' := he.trans (congrArg some hev)
@@ -308,31 +310,41 @@ theorem simTrace_call_sending_event {y : Fin (Fintype.card V)} {k : Nat}
     have hcall := congrArg (fun c => match c with | .ac l => l.call | _ => .restart) heq
     exact False.elim (hnr hcall.symm)
 
-/-- A vote an actual receipt delivers (`delivered`: not the payload of a refused block) is
-processed at a cut of that same event. No fresh insertion, honest signer, or pool-cap premise is
-required. -/
+/-- An authenticated vote visited by a receipt is processed at a cut of that same delivery.
+Payloads of refused blocks are not visited. No fresh insertion, honest signer, or pool-cap
+premise is required. -/
 theorem received_vote_processAt {i : Nat} {v : V}
-    {receipt : Wire (Fintype.card V) S.vote} {u : Time} {m : AC.Vote (Fintype.card V)}
+    {receipt : Wire (Fintype.card V) S.vote} {u : Time} {m : AC.Vote (Fintype.card V)} {z : Nat}
     (he : rho.events[i]? = some (.deliver v receipt u))
-    (hc : voteObj m ∈ delivered (Model.digests rho.hash receipt) (stateAt S rho hn v i) receipt) :
+    (hcheck : (rho.voteIO v).check m.val (S.vote.voteRole m.slot) (encodeVote m) z = true)
+    (hc : voteObj m z ∈ delivered (stateAt S rho hn v i).voteIO
+      (Model.digests rho.hash receipt) (stateAt S rho hn v i) receipt) :
     ∃ k, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
       (simTrace S rho hn).projAC.ProcessAt (rho.ownKey v) k m ∧
       (simTrace S rho hn).time k = u := by
   rw [(simTrace_encoding S rho hn).1, (simTrace_encoding S rho hn).2]
   apply NodeAsChainShape.CanonicalTrace.received_message_processAt (traceEncoding S hn) rho he
-  apply traceEncoding_induction S hn (fun e _ =>
-    ∃ w ∈ NodeAsChainShape.delivered e.codec e.adapter (Model.digests rho.hash receipt)
-        (NodeAsChainShape.CanonicalTrace.stateAt e rho v i)
-        (NodeAsChainShape.CanonicalTrace.wireOf e receipt),
-      NodeAsChainShape.canonEvent e.codec (Model.digests rho.hash receipt) w = some (.message m))
-  intro _ _
-  refine ⟨voteObj (binding := S.vote) m, ?_,
-    canonEvent_voteObj (sp := S.params (pubOf E) hn) (ro := S.ro _)
-      (Model.digests rho.hash receipt) m⟩
-  rw [NodeAsChainShape.CanonicalTrace.stateAt_eq]
-  rw (config := { transparency := .default }) [NodeAsChainShape.CanonicalTrace.wireOf_eq]
-  rw [stateAt_eq] at hc
-  exact hc
+  open NodeAsChainShape.CanonicalTrace in
+  apply traceEncoding_induction S hn (fun e _ _ =>
+    ∃ w ∈ NodeAsChainShape.delivered (receiverCodec e rho v) e.adapter
+        (Model.digests rho.hash receipt) (NodeAsChainShape.CanonicalTrace.stateAt e rho v i)
+        (wireOf e receipt),
+      NodeAsChainShape.canonEvent (receiverCodec e rho v) (Model.digests rho.hash receipt) w =
+        some (.message m))
+  intro e _
+  refine ⟨voteObj (binding := S.vote) m z, ?_, ?_⟩
+  · rw [NodeAsChainShape.CanonicalTrace.stateAt_eq]
+    rw (config := { transparency := .default }) [NodeAsChainShape.CanonicalTrace.wireOf_eq]
+    rw [NodeAsChainShape.CanonicalTrace.receiverCodec_eq,
+      NodeAsChainShape.CanonicalTrace.voteIOAt_eq]
+    rw [stateAt_voteIO S rho hn, stateAt_eq] at hc
+    exact hc
+  · rw [NodeAsChainShape.CanonicalTrace.receiverCodec_eq,
+      NodeAsChainShape.CanonicalTrace.voteIOAt_eq]
+    have h := canonEvent_voteObj (sp := S.params (pubOf E) hn) (ro := S.ro _)
+      (binding := S.vote) (rho.voteIO v) (Model.digests rho.hash receipt) m z
+    rw [ite_eq_left hcheck] at h
+    exact h
 
 end Consensus.Goldilocks.Simulation
 

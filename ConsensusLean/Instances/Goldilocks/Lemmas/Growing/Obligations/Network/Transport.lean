@@ -183,7 +183,8 @@ theorem held_att_processed_before
     (hr : Growing.LocalRun proposer (digestOf e rho) (honestKeysAt rho) sg (simTrace e rho) ini)
     {y : Fin (Fintype.card V)} {a : FG.Att (Fintype.card V)}
     {o : (Model.protoOf (compiled F) E).Object}
-    (hdecode : canonEvent e.codec (Model.digests rho.hash o) (wireOf e o) = some (.attestation a))
+    (hdecode : canonEvent (receiverCodec e rho (rho.key y)) (Model.digests rho.hash o)
+      (wireOf e o) = some (.attestation a))
     (hown : ∀ u, rho.releases (rho.key y) o u →
       ∃ k, (simTrace e rho).ProcessAttAt y k a ∧ (simTrace e rho).time k ≤ u)
     {j : Nat} {d D : Time} (hh : rho.log.Held rho.point (rho.key y) o d)
@@ -194,7 +195,7 @@ theorem held_att_processed_before
     rcases hs with hs | ⟨i, hi⟩
     · exact hown u hs
     · obtain ⟨k, _, _, hk, ht⟩ := received_att_processAt e rho hi
-        ⟨wireOf e o, mem_delivered_self e.codec e.adapter _ _ _, hdecode⟩
+        ⟨wireOf e o, mem_delivered_self _ e.adapter _ _ _, hdecode⟩
       rw [Model.Run.ownKey, Equiv.symm_apply_apply] at hk
       exact ⟨k, hk, ht.le⟩
   obtain ⟨k, hk, ht⟩ := hp
@@ -206,8 +207,8 @@ theorem signed_row_service_psync
     (hr : Growing.LocalRun proposer (digestOf e rho) (honestKeysAt rho) sg (simTrace e rho) ini)
     {g ΔF : Time} (hnet : rho.log.PSync rho.point g)
     (attObj : FG.Att (Fintype.card V) → (Model.protoOf (compiled F) E).Object)
-    (hdecode : ∀ a, a.WellFormed →
-      canonEvent e.codec (Model.digests rho.hash (attObj a)) (wireOf e (attObj a)) =
+    (hdecode : ∀ a, a.WellFormed → ∀ v,
+      canonEvent (receiverCodec e rho v) (Model.digests rho.hash (attObj a)) (wireOf e (attObj a)) =
         some (.attestation a))
     (hrow : ∀ a, rho.log.fgAtt (attObj a))
     (hrel : ∀ x i a, x ∈ honestKeysAt rho ((simTrace e rho).time i) →
@@ -243,7 +244,7 @@ theorem signed_row_service_psync
       (by rw [hgw]; exact not_faulty_of_mem_honestKeysAt hy hbound hh)
       (by rw [hgw]; exact fun t hwt htd => haw t hwt (htd.trans hbound))
     rw [hgw] at held
-    obtain ⟨k, hkj, hp, ht⟩ := held_att_processed_before hr (hdecode a hwf) (hown y a) held
+    obtain ⟨k, hkj, hp, ht⟩ := held_att_processed_before hr (hdecode a hwf _) (hown y a) held
       (heq ▸ hslack w) hd
     refine ⟨k, hkj, ?_, hp, ht⟩
     rcases hp with hp | ⟨B, hp, _⟩ <;> exact ⟨_, hp⟩
@@ -401,17 +402,20 @@ theorem released_att_processAt_at (hn : 1 ≤ Fintype.card V) (hv : rho.Executio
 omit [DecidableEq V] in
 /-- The concrete codec reads the canonical attestation object of a well-formed attestation. -/
 private theorem decode_attObj (hn : 1 ≤ Fintype.card V) (a : FG.Att (Fintype.card V))
-    (hwf : a.WellFormed) :
-    NodeAsChainShape.canonEvent (traceEncoding (E := E) S hn).codec
+    (hwf : a.WellFormed) (v : V) :
+    NodeAsChainShape.canonEvent
+      (NodeAsChainShape.CanonicalTrace.receiverCodec (traceEncoding (E := E) S hn) rho v)
       (Model.digests rho.hash (attObj a))
       (NodeAsChainShape.CanonicalTrace.wireOf (traceEncoding S hn) (attObj a)) =
         some (.attestation a) := by
-  apply traceEncoding_induction S hn (fun e _ => NodeAsChainShape.canonEvent e.codec
+  apply traceEncoding_induction S hn (fun e _ _ => NodeAsChainShape.canonEvent
+    (NodeAsChainShape.CanonicalTrace.receiverCodec e rho v)
     (Model.digests rho.hash (attObj a)) (NodeAsChainShape.CanonicalTrace.wireOf e (attObj a)) =
       some (.attestation a))
   intro _ _
   rw (config := { transparency := .default }) [NodeAsChainShape.CanonicalTrace.wireOf_eq]
-  exact canonEvent_attObj (sp := S.params (Model.pubOf E) hn) (ro := S.ro _) _ a hwf
+  rw [NodeAsChainShape.CanonicalTrace.receiverCodec_eq, NodeAsChainShape.CanonicalTrace.voteIOAt_eq]
+  exact canonEvent_attObj (sp := S.params (Model.pubOf E) hn) (ro := S.ro _) _ _ a hwf
 
 private theorem own_att_process_by (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} {a : FG.Att (Fintype.card V)} {u : Time}
@@ -437,7 +441,7 @@ theorem held_att_processed_before_at {V : Type} [Fintype V] [DecidableEq V] {E :
         k < D := by
   rw [network_trace_eq S rho hn] at hj ⊢
   apply NodeAsChainShape.CanonicalTrace.held_att_processed_before (network_localRun S rho hn hv)
-    (decode_attObj S rho hn a hwf) (fun _ => own_att_process_by S rho hn hv) hh hd hj
+    (decode_attObj S rho hn a hwf _) (fun _ => own_att_process_by S rho hn hv) hh hd hj
 
 variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (ΔF : Time)

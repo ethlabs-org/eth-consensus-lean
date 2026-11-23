@@ -143,11 +143,12 @@ theorem received_forward_accepted_before_of_released_at (hv : rho.ExecutionValid
   -- Split the delivery at the received envelope.
   have hseq := simTraceAt_deliver S rho hn hv he
   set σ := stateAt S rho hn v i
-  have hparts : delivered (Model.digests rho.hash receipt) σ receipt =
-      [] ++ (visit (Model.digests rho.hash receipt) σ o).1 ++ [] := by
+  let io : VoteAuth (S.params (Model.pubOf E) hn).n S.vote := rho.voteIO v
+  have hparts : delivered io (Model.digests rho.hash receipt) σ receipt =
+      [] ++ (visit io (Model.digests rho.hash receipt) σ o).1 ++ [] := by
     subst hro
     simpa only [List.nil_append, List.append_nil] using
-      (delivered_eq (Model.digests rho.hash receipt) σ receipt)
+      (delivered_eq io (Model.digests rho.hash receipt) σ receipt)
   rw [hparts, List.append_assoc] at hseq
   obtain ⟨r, _, htail⟩ := deliverSeq_append_split _ _ hseq
   obtain ⟨e, hsub, hpost⟩ := deliverSeq_append_split _ _ htail

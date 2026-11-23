@@ -47,14 +47,15 @@ theorem receipt_ancestry {n : Nat} {FGP ACP : Type}
 acceptance there; a future-slot empty handler is excluded explicitly. -/
 theorem deliverSeq_block_accepts {proposer : Nat → Fin sp.n}
     {tr : GoldilocksTrace sp ro} {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-    {hs : List (Header Info × Nat)} {y : Fin sp.n} {u : Time} {B : Blk sp}
+    {io : VoteAuth sp.n binding} {hs : List (Header Info × Nat)} {y : Fin sp.n} {u : Time}
+    {B : Blk sp}
     {os : List (Wire sp.n binding)} {r e : Nat}
     (hd : decodeBlock sp (binding := binding) hs (blockObj sp B) = some B)
-    (hseq : DeliverSeq proposer tr dg hs y u (blockObj sp B :: os) r e)
+    (hseq : DeliverSeq proposer tr dg io hs y u (blockObj sp B :: os) r e)
     (ht : ¬ sp.toParams.slotOf u < B.slot)
     (hon : ∃ dst', (tr.state y r).fg.onBlock B = some dst') :
     tr.AcceptAt y r B ∧ r < e := by
-  have hc : canonEvent sp ro (binding := binding) hs (blockObj sp B) = some (.block B) := by
+  have hc : canonEvent sp ro (binding := binding) io hs (blockObj sp B) = some (.block B) := by
     simp only [canonEvent_eq, hd]
   obtain ⟨dst', hon⟩ := hon
   cases hseq with
@@ -78,18 +79,18 @@ theorem deliverSeq_block_accepts {proposer : Nat → Fin sp.n}
 /-- The leaf wrapper processes its genesis-parent child at the same starting cut. -/
 theorem deliverSeq_forward_genesis {proposer : Nat → Fin sp.n}
     {tr : GoldilocksTrace sp ro} {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-    {hs : List (Header Info × Nat)} {y x : Fin sp.n} {u t : Time} {B : Blk sp} {j j' : Nat}
+    {io : VoteAuth sp.n binding} {hs : List (Header Info × Nat)} {y x : Fin sp.n} {u t : Time}
+    {B : Blk sp} {j j' : Nat}
     {σ : State sp ro binding}
-    (h : DeliverSeq proposer tr dg hs y u (visit hs σ (forwardObj sp (binding
+    (h : DeliverSeq proposer tr dg io hs y u (visit io hs σ (forwardObj sp (binding
         := binding) x t none B)).1 j j') :
     ∃ σ' : State sp ro binding,
-      DeliverSeq proposer tr dg hs y u
-        (visit hs σ' (blockObj sp (binding := binding) B)).1 j j' := by
-  have hz : canonEvent sp ro (binding := binding) hs (forwardObj sp x t none B) = none := by
-    cases hp : binding.participationKind <;>
-      simp [canonEvent_eq, forwardObj, decodeBlock_eq, decodeVoteObj, decodeAttObj, hp]
-  rcases visit_cases hs σ (forwardObj sp x t none B) with ⟨hr, -⟩ | ⟨-, hv⟩
-  · exact absurd hr (not_refuses_of_data _ rfl)
+      DeliverSeq proposer tr dg io hs y u
+        (visit io hs σ' (blockObj sp (binding := binding) B)).1 j j' := by
+  have hz : canonEvent sp ro (binding := binding) io hs (forwardObj sp x t none B) = none := by
+    simp [canonEvent_eq, forwardObj, decodeBlock_eq, decodeVoteObj, presented, decodeAttObj]
+  rcases visit_cases io hs σ (forwardObj sp x t none B) with ⟨hr, -⟩ | ⟨-, hv⟩
+  · exact absurd hr (not_refuses_of_data io hs rfl)
   rw [hv] at h
   cases h with
   | event e he _ _ => rw [hz] at he; cases he

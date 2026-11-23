@@ -53,45 +53,46 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 /-- The node state after a delivery of the objects `os` at time `t` from `st`: the handler of
 each canonical object in order, nothing for a dropped object (the state `deliverRecs` threads). -/
 noncomputable def deliverState (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (io : VoteAuth sp.n binding)
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) :
     List (Wire sp.n binding) → NodeState (goldilocksNode sp ro) → NodeState (goldilocksNode sp ro)
   | [], st => st
   | o :: os, st =>
-      match canonEvent sp ro hs o with
-      | some e => deliverState proposer dg hs self t os (exec proposer dg self st t e).1
-      | none => deliverState proposer dg hs self t os st
+      match canonEvent sp ro io hs o with
+      | some e => deliverState proposer dg io hs self t os (exec proposer dg self st t e).1
+      | none => deliverState proposer dg io hs self t os st
 
 /-- The canonical event of a wire object, if any, is a block, a message or an attestation. -/
-theorem canonEvent_cases hs (o : Wire sp.n binding) :
-    canonEvent sp ro hs o = none ∨ (∃ B, canonEvent sp ro hs o = some (.block B)) ∨
-      (∃ v, canonEvent sp ro hs o = some (.message v)) ∨
-      (∃ a, canonEvent sp ro hs o = some (.attestation a)) := by
+theorem canonEvent_cases (io : VoteAuth sp.n binding) hs (o : Wire sp.n binding) :
+    canonEvent sp ro io hs o = none ∨ (∃ B, canonEvent sp ro io hs o = some (.block B)) ∨
+      (∃ v, canonEvent sp ro io hs o = some (.message v)) ∨
+      (∃ a, canonEvent sp ro io hs o = some (.attestation a)) := by
   rw [canonEvent_eq]
   split <;> simp
 
 /-- Processing one delivered object runs the handler of its canonical event, nothing if it has none.
 -/
 theorem processOne_node (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) hs (st : State sp ro binding)
-    o :
-    (processOne hs st o).node =
-      match canonEvent sp ro hs o with
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (io : VoteAuth sp.n binding) hs
+    (st : State sp ro binding) o :
+    (processOne io hs st o).node =
+      match canonEvent sp ro io hs o with
       | some e => (exec proposer dg st.self st.node st.now e).1
       | none => st.node := by
-  rcases canonEvent_cases (ro := ro) hs o with h | ⟨B, h⟩ | ⟨v, h⟩ | ⟨a, h⟩ <;>
+  rcases canonEvent_cases (ro := ro) io hs o with h | ⟨B, h⟩ | ⟨v, h⟩ | ⟨a, h⟩ <;>
     simp [processOne_eq, h, relayIf_node, apply_node, exec]
 
 /-- Processing a list of delivered objects runs `deliverState` on the node state. -/
 theorem foldl_processOne_node (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) hs
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (io : VoteAuth sp.n binding) hs
     (os : List (Wire sp.n binding)) (st : State sp ro binding) :
-    (os.foldl (processOne hs) st).node = deliverState proposer dg hs st.self st.now os st.node := by
+    (os.foldl (processOne io hs) st).node =
+      deliverState proposer dg io hs st.self st.now os st.node := by
   induction os generalizing st with
   | nil => rfl
   | cons o os ih =>
     rw [List.foldl_cons, ih, processOne_self, processOne_now, processOne_node proposer dg]
-    rcases canonEvent_cases (ro := ro) hs o with h | ⟨B, h⟩ | ⟨v, h⟩ | ⟨a, h⟩ <;>
+    rcases canonEvent_cases (ro := ro) io hs o with h | ⟨B, h⟩ | ⟨v, h⟩ | ⟨a, h⟩ <;>
       simp only [deliverState, h]
 
 /-- **`SimulatesAt.deliver`'s node step.** An engine delivery to an honest node runs the handlers of
@@ -101,10 +102,10 @@ theorem node_of_deliver (hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.faul
     (o : (Model.protoOf (compiled (goldilocks S)) E).Object) (t : Time)
     (he : rho.events[i]? = some (.deliver v o t)) :
     (stateAt S rho hn v (i + 1)).node =
-      deliverState (runProposer S rho hn) (digestOf S rho)
+      deliverState (runProposer S rho hn) (digestOf S rho) (stateAt S rho hn v i).voteIO
         (Model.digests rho.hash o) (rho.ownKey v) t
-        (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o)
-          (stateAt S rho hn v i).node := by
+        (delivered (stateAt S rho hn v i).voteIO (Model.digests rho.hash o)
+          (stateAt S rho hn v i) o) (stateAt S rho hn v i).node := by
   have hpre := (fgDue_eq_false S rho hn v i)
   rw [stateAt_deliver S rho hn v he]
   refine (deliver_pres S rho hn
@@ -116,7 +117,7 @@ theorem node_of_deliver (hv : rho.ExecutionValid) (v : V) (_hv' : v ∉ rho.faul
     v _ o t ⟨by rw [stateAt_eq],
       (process_fgDue _ _ _).trans (by simpa only [stateAt_eq] using hpre)⟩).1.trans ?_
   rw [process_eq (stateAt S rho hn v i) o (Model.digests rho.hash o)]
-  refine (foldl_processOne_node (runProposer S rho hn) (digestOf S rho) _ _ _).trans ?_
+  refine (foldl_processOne_node (runProposer S rho hn) (digestOf S rho) _ _ _ _).trans ?_
   rw [self_eq_ownKey, now_eq_lastClock S rho hn hv, lastClock_of_deliver S rho hv v he]
 
 /-! ## The digests of an own object -/
@@ -255,7 +256,7 @@ theorem selValid_proposer (hsel : rho.SelValid) (s : Nat) :
   rw [(runProposer_digestOf S rho hn).1,
     ← engineRole_proposer (traceEncoding S hn) s]
   exact traceEncoding_induction S hn
-    (fun e _ => rho.sel (NodeAsChainShape.CanonicalTrace.engineRole e (.proposer s)) =
+    (fun e _ _ => rho.sel (NodeAsChainShape.CanonicalTrace.engineRole e (.proposer s)) =
       {NodeAsChainShape.CanonicalTrace.runProposer rho hn s})
     (by
       intro e _

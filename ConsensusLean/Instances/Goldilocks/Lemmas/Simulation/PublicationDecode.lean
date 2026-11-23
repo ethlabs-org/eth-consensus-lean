@@ -44,10 +44,11 @@ decreasing_by exact lt_trans (List.sizeOf_lt_of_mem hc) (Model.Obj.carried_size_
 rather than replacing a processing occurrence by an arbitrary historical call. -/
 theorem deliverSeq_append_split {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp ro}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {hs : List (Header Info × Nat)}
+    {io : VoteAuth sp.n binding}
     {y : Fin sp.n} {t : Time} (xs ys : List (Wire sp.n binding)) {j j' : Nat}
-    (h : DeliverSeq proposer tr dg hs y t (xs ++ ys) j j') :
-    ∃ m, DeliverSeq proposer tr dg hs y t xs j m ∧
-      DeliverSeq proposer tr dg hs y t ys m j' := by
+    (h : DeliverSeq proposer tr dg io hs y t (xs ++ ys) j j') :
+    ∃ m, DeliverSeq proposer tr dg io hs y t xs j m ∧
+      DeliverSeq proposer tr dg io hs y t ys m j' := by
   induction xs generalizing j with
   | nil => exact ⟨j, .nil j, h⟩
   | cons x xs ih =>
@@ -63,27 +64,29 @@ theorem deliverSeq_append_split {proposer : Nat → Fin sp.n} {tr : GoldilocksTr
       exact ⟨m, .noCut e he hz hl, hr⟩
 
 /-- A forwarding envelope itself has no node handler. -/
-private theorem canonEvent_forward_none (hs : List (Header Info × Nat))
+private theorem canonEvent_forward_none (io : VoteAuth sp.n binding)
+    (hs : List (Header Info × Nat))
     (x : Fin sp.n) (t : Time) (p : Option (Wire sp.n binding)) (B : Blk sp) :
-    canonEvent sp ro hs (forwardObj sp x t p B) = none := by
+    canonEvent sp ro io hs (forwardObj sp x t p B) = none := by
   cases hp : binding.participationKind <;>
-    simp [canonEvent_eq, forwardObj, decodeBlock_eq, decodeVoteObj, decodeAttObj, hp]
+    simp [canonEvent_eq, forwardObj, decodeBlock_eq, decodeVoteObj, decodeAttObj, presented]
 
 /-- A forwarding chain processes the parent's visit before the visit of the child's canonical
 block (with its payload when it is accepted); the split retains the actual cut boundary. -/
 theorem deliverSeq_forward_parent {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp ro}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {hs : List (Header Info × Nat)}
+    {io : VoteAuth sp.n binding}
     {y x : Fin sp.n} {u t : Time} {parent : Wire sp.n binding} {B : Blk sp} {j j' : Nat}
     {σ : State sp ro binding}
-    (h : DeliverSeq proposer tr dg hs y u
-      (visit hs σ (forwardObj sp x t (some parent) B)).1 j j') :
+    (h : DeliverSeq proposer tr dg io hs y u
+      (visit io hs σ (forwardObj sp x t (some parent) B)).1 j j') :
     ∃ (m : Nat) (σ₁ σ₂ : State sp ro binding),
-      DeliverSeq proposer tr dg hs y u (visit hs σ₁ parent).1 j m ∧
-      DeliverSeq proposer tr dg hs y u
-        (visit hs σ₂ (blockObj sp (binding := binding) B)).1 m j' := by
-  have hz := canonEvent_forward_none (ro := ro) hs x t (some parent) B
-  rcases visit_cases hs σ (forwardObj sp x t (some parent) B) with ⟨hr, -⟩ | ⟨-, hv⟩
-  · exact absurd hr (not_refuses_of_data _ rfl)
+      DeliverSeq proposer tr dg io hs y u (visit io hs σ₁ parent).1 j m ∧
+      DeliverSeq proposer tr dg io hs y u
+        (visit io hs σ₂ (blockObj sp (binding := binding) B)).1 m j' := by
+  have hz := canonEvent_forward_none (ro := ro) io hs x t (some parent) B
+  rcases visit_cases io hs σ (forwardObj sp x t (some parent) B) with ⟨hr, -⟩ | ⟨-, hv⟩
+  · exact absurd hr (not_refuses_of_data _ _ rfl)
   rw [hv] at h
   cases h with
   | event e he _ _ => rw [hz] at he; cases he
@@ -155,10 +158,11 @@ theorem decodeForward_transport {hs hs' : List (Header Info × Nat)} :
 handler. This keeps the handler state needed to locate the cut in recursive processing. -/
 theorem processOne_forward_origin (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
+    (io : VoteAuth sp.n binding)
     (hs : List (Header Info × Nat)) (st : State sp ro binding) (o : Wire sp.n binding)
-    (q : Time × List (Wire sp.n binding)) (hq : q ∈ (processOne hs st o).forwards) :
+    (q : Time × List (Wire sp.n binding)) (hq : q ∈ (processOne io hs st o).forwards) :
     q ∈ st.forwards ∨ ∃ e B, ∃ p : Option (Wire sp.n binding),
-      canonEvent sp ro hs o = some e ∧
+      canonEvent sp ro io hs o = some e ∧
       .fg (.block B true) ∈ (exec proposer dg st.self st.node st.now e).2 ∧
       q = (st.now, p.toList ++ [blockObj sp B]) := by
   have hrelay : ∀ (s : State sp ro binding) (c : Prop) [Decidable c],
@@ -166,23 +170,24 @@ theorem processOne_forward_origin (proposer : Nat → Fin sp.n)
     intro s c _
     unfold relayIf
     split <;> rfl
-  rcases canonEvent_cases (ro := ro) hs o with he | ⟨B, he⟩ | ⟨v, he⟩ | ⟨a, he⟩
+  rcases canonEvent_cases (ro := ro) io hs o with he | ⟨B, he⟩ | ⟨v, he⟩ | ⟨a, he⟩
   · exact Or.inl (by simpa only [AsChainShape.processOne_eq, he] using hq)
   all_goals
     simp only [AsChainShape.processOne_eq, he, hrelay] at hq
-    rcases apply_forward_origin _ _ q hq with h | ⟨C, p, hm, hq⟩
+    rcases apply_forward_origin _ _ _ q hq with h | ⟨C, p, hm, hq⟩
     · exact Or.inl h
     · exact Or.inr ⟨_, C, p, he, hm, hq⟩
 
 /-- A successful canonical handler cut names the exact decoded input block. -/
 private theorem accepted_canonEvent_block (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
+    (io : VoteAuth sp.n binding)
     (hs : List (Header Info × Nat)) (st : State sp ro binding) (o : Wire sp.n binding)
     {e : Event (goldilocksNode sp ro)} {B : Blk sp}
-    (he : canonEvent sp ro hs o = some e)
+    (he : canonEvent sp ro io hs o = some e)
     (hb : .fg (.block B true) ∈ (exec proposer dg st.self st.node st.now e).2) :
     decodeBlock sp hs o = some B := by
-  rcases canonEvent_cases (ro := ro) hs o with h | ⟨C, h⟩ | ⟨v, h⟩ | ⟨a, h⟩
+  rcases canonEvent_cases (ro := ro) io hs o with h | ⟨C, h⟩ | ⟨v, h⟩ | ⟨a, h⟩
   · rw [h] at he
     cases he
   · have heq := Option.some.inj (he.symm.trans h)
@@ -207,11 +212,12 @@ private theorem accepted_canonEvent_block (proposer : Nat → Fin sp.n)
 delivery traversal, including its node and clock. -/
 theorem foldl_processOne_forward_origin (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
+    (io : VoteAuth sp.n binding)
     (hs : List (Header Info × Nat)) (i : Nat) (q : Time × List (Wire sp.n binding)) :
     ∀ (os : List (Wire sp.n binding)) (st : State sp ro binding) (sub : Nat),
-    q ∈ (os.foldl (processOne hs) st).forwards →
+    q ∈ (os.foldl (processOne io hs) st).forwards →
     q ∈ st.forwards ∨ ∃ B, ∃ p : Option (Wire sp.n binding), ∃ r,
-      r ∈ deliverRecs proposer dg hs st.self st.now i os st.node sub ∧
+      r ∈ deliverRecs io proposer dg hs st.self st.now i os st.node sub ∧
       r.label = .fg (.block B true) ∧ r.node = st.self ∧ r.time = st.now ∧
       q = (st.now, p.toList ++ [blockObj sp B]) ∧
       decodeBlock sp (binding := binding) hs (blockObj sp B) = some B ∧ blockObj sp B ∈ os := by
@@ -220,8 +226,8 @@ theorem foldl_processOne_forward_origin (proposer : Nat → Fin sp.n)
   | nil => intro st sub h; exact Or.inl h
   | cons o os ih =>
     intro st sub h
-    rcases ih (processOne hs st o) (sub + 1) h with h | ⟨B, p, r, hm, hl, hn, ht, hq, hd, ho⟩
-    · rcases processOne_forward_origin proposer dg hs st o q h with h | ⟨e, B, p, he, hm, hq⟩
+    rcases ih (processOne io hs st o) (sub + 1) h with h | ⟨B, p, r, hm, hl, hn, ht, hq, hd, ho⟩
+    · rcases processOne_forward_origin proposer dg io hs st o q h with h | ⟨e, B, p, he, hm, hq⟩
       · exact Or.inl h
       · obtain ⟨j, hj, hlabel⟩ := List.getElem_of_mem hm
         have hj' : j <
@@ -229,23 +235,23 @@ theorem foldl_processOne_forward_origin (proposer : Nat → Fin sp.n)
           rwa [length_groupRecs]
         obtain ⟨hn, ht, _, _, hl⟩ :=
           getElem_groupRecs proposer dg st.self st.node st.now (Nat.pair i sub) e j hj'
-        have hd := accepted_canonEvent_block proposer dg hs st o he hm
+        have hd := accepted_canonEvent_block proposer dg io hs st o he hm
         have hd' : decodeBlock sp (binding := binding) hs (blockObj sp B) = some B := by
           rwa [eq_blockObj_of_decodeBlock hd] at hd
         refine Or.inr ⟨B, p, _, ?_, hl.trans hlabel, hn, ht, hq, hd', ?_⟩
-        · rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ he]
+        · rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ _ he]
           exact List.mem_append_left _ (List.getElem_mem hj')
         · rw [eq_blockObj_of_decodeBlock hd]
           exact List.mem_cons_self
     · simp only [processOne_self, processOne_now] at hm hn ht hq
       rw [processOne_node proposer dg] at hm
       refine Or.inr ⟨B, p, r, ?_, hl, hn, ht, hq, hd, List.mem_cons_of_mem _ ho⟩
-      cases he : canonEvent sp ro hs o with
+      cases he : canonEvent sp ro io hs o with
       | none =>
-        rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he]
+        rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ _ he]
         simpa only [he] using hm
       | some e =>
-        rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ he]
+        rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ _ he]
         exact List.mem_append_right _ (by simpa only [he] using hm)
 
 end Consensus.Goldilocks.Simulation

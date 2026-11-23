@@ -19,7 +19,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 /-- A genuine release of a canonical vote comes from a local emission before the end cut. -/
 theorem released_vote_cut_at (hv : rho.ExecutionValid)
     {i : Nat} {v : V} {t : Time} (hs : rho.SendsAt v i t) {m : Vote (Fintype.card V)}
-    (hb : voteObj m ∈ rho.releasesAt i) :
+    {z : Nat} (hb : voteObj m z ∈ rho.releasesAt i) :
     ∃ k < cutMap S rho hn (i + 1), (simTraceAt S rho hn).EmitAt (rho.ownKey v) k m := by
   rw [simTraceAt_eq]
   exact released_vote_cut_of S rho hn hv hs (event_honest_zero S rho hv)
@@ -36,7 +36,7 @@ theorem simTraceAt_msg_unforgeable (hv : rho.ExecutionValid) :
   have hl : (simTrace S rho hn).label k ≠ none := by
     obtain ⟨_, ⟨_, hl⟩, _⟩ := hc
     rw [hl]; simp
-  refine msgCall_emit_of_released S rho hn hv hc ?_ fun hs hb => ?_
+  refine msgCall_emit_of_released S rho hn hv hc ?_ fun _ hs hb => ?_
   · rwa [mem_honestKeysAt_iff, min_eq_left (simTrace_labelled_time_le S rho hn hv hl)] at hhon
   · simpa only [simTraceAt_eq, ownKey_key] using released_vote_cut_at S rho hn hv hs hb
 

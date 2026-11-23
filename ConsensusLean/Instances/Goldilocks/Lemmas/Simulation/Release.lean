@@ -83,31 +83,36 @@ theorem mem_blockObjs {cs : List (Cut (goldilocksNode sp ro))} {o : Wire sp.n bi
   · rintro ⟨B, acc, hc, rfl⟩
     exact ⟨_, hc, List.mem_singleton_self _⟩
 
-theorem emitted_append (cs cs' : List (Cut (goldilocksNode sp ro))) :
-    emitted (cs ++ cs') = emitted cs ++ emitted cs' := by simp [emitted]
+theorem emitted_append (io : VoteAuth sp.n binding) (cs cs' : List (Cut (goldilocksNode sp ro))) :
+    emitted io (cs ++ cs') = emitted io cs ++ emitted io cs' := by simp [emitted]
 
-theorem mem_emitted {cs : List (Cut (goldilocksNode sp ro))} {v : Vote sp.n} :
-    Body.vote (encodeVote v) ∈ emitted cs ↔
-      ∃ ℓ, Cut.ac ℓ ∈ cs ∧ ∃ em ∈ ℓ.emits, em.msg = v := by
+/-- A vote is released with token `z` exactly when the cuts emit it and `z` is its own token. -/
+theorem mem_emitted {io : VoteAuth sp.n binding} {cs : List (Cut (goldilocksNode sp ro))}
+    {v : Vote sp.n} {z : Nat} :
+    Body.vote (encodeVote v) z ∈ emitted io cs ↔
+      (∃ ℓ, Cut.ac ℓ ∈ cs ∧ ∃ em ∈ ℓ.emits, em.msg = v) ∧ ownToken io v = some z := by
   simp only [emitted, List.mem_flatMap]
   constructor
   · rintro ⟨c, hc, hv⟩
     cases c with
     | fg => simp at hv
     | ac ℓ =>
-      obtain ⟨em, hem, heq⟩ := List.mem_map.mp hv
-      have h := congrArg (decodeVote sp.n) (Body.vote.inj heq)
+      obtain ⟨em, hem, hbody⟩ := List.mem_filterMap.mp hv
+      obtain ⟨z', hz', heq⟩ := Option.map_eq_some_iff.mp hbody
+      obtain ⟨hw, rfl⟩ := Body.vote.inj heq
+      have h := congrArg (decodeVote sp.n) hw
       rw [decodeVote_encodeVote, decodeVote_encodeVote] at h
-      exact ⟨ℓ, hc, em, hem, Option.some.inj h⟩
-  · rintro ⟨ℓ, hc, em, hem, heq⟩
-    exact ⟨_, hc, List.mem_map.mpr ⟨em, hem, by rw [heq]⟩⟩
+      cases Option.some.inj h
+      exact ⟨⟨ℓ, hc, em, hem, rfl⟩, hz'⟩
+  · rintro ⟨⟨ℓ, hc, em, hem, rfl⟩, hz⟩
+    exact ⟨_, hc, List.mem_filterMap.mpr ⟨em, hem, by rw [hz]; rfl⟩⟩
 
 theorem attBodies_append (cs cs' : List (Cut (goldilocksNode sp ro))) :
     attBodies (cs ++ cs') = attBodies cs ++ attBodies cs' := by
   simp only [attBodies_eq, List.flatMap_append]
 
-theorem vote_not_mem_attBodies (cs : List (Cut (goldilocksNode sp ro))) (w : WireVote) :
-    Body.vote w ∉ attBodies cs := by
+theorem vote_not_mem_attBodies (cs : List (Cut (goldilocksNode sp ro))) (w : WireVote)
+    (z : Nat) : Body.vote w z ∉ attBodies cs := by
   simp only [attBodies_eq, List.mem_flatMap, not_exists, not_and]
   intro c _
   cases c with
@@ -145,7 +150,7 @@ theorem fgUpdate_outbox_eq (proposer : Nat → Fin sp.n)
     (st : State sp ro binding) :
     (fgUpdate st).outbox =
         st.outbox ++ attBodies (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 ∧
-      emitted (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 = [] ∧
+      emitted st.voteIO (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 = [] ∧
       blockObjs (binding := binding)
         (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 = [] ∧
       ∀ C a, Cut.fg (.attest C (some a)) ∈ (Node.tickStep proposer dg st.self st.node st.now x
@@ -153,7 +158,7 @@ theorem fgUpdate_outbox_eq (proposer : Nat → Fin sp.n)
   simp only [fgUpdate_eq, Node.tickStep]
   rcases h : (Node.acToFG st.node st.now).2.2 with _ | C
   · simp only [attBodies_cons, attBodies_nil, acToFG, List.flatMap_cons, List.flatMap_nil,
-      List.append_nil, emitted, List.map_nil, blockObjs_cons, blockObjs_nil,
+      List.append_nil, emitted, List.filterMap_nil, blockObjs_cons, blockObjs_nil,
       List.mem_cons, reduceCtorEq, List.not_mem_nil, or_self,
       IsEmpty.forall_iff, implies_true, and_self]
   · unfold Node.attest
@@ -161,7 +166,7 @@ theorem fgUpdate_outbox_eq (proposer : Nat → Fin sp.n)
       st.self C with _ | ⟨a, Λ'⟩
     · simp only [Node.acToFG] at h'
       simp only [acToFG, h', attBodies_cons, attBodies_nil, List.flatMap_cons, List.flatMap_nil,
-        List.append_nil, emitted, List.map_nil, blockObjs_cons, blockObjs_nil,
+        List.append_nil, emitted, List.filterMap_nil, blockObjs_cons, blockObjs_nil,
         List.mem_cons, reduceCtorEq, Cut.fg.injEq,
         FGLabel.attest.injEq, and_false, List.not_mem_nil, or_self, IsEmpty.forall_iff,
         implies_true, and_self]
@@ -220,7 +225,8 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled
           (shapeOf S hn nd).node
           (shapeOf S hn nd).now (encodeTxs nd.st.2) .proposal).2 ∧
       (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1).outbox =
-        (shapeOf S hn nd).outbox ++ emitted (Node.tickStep (runProposer S rho hn)
+        (shapeOf S hn nd).outbox ++ emitted (shapeOf S hn nd).voteIO
+          (Node.tickStep (runProposer S rho hn)
           (digestOf S rho) (rho.ownKey v)
           (shapeOf S hn nd).node (shapeOf S hn nd).now (encodeTxs nd.st.2) .proposal).2 := by
   have hact2 := act_propose_snd S hn nd s hs
@@ -252,7 +258,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled
         rfl, ?_⟩
       change (a.1.1 hn).outbox = _
       rw [hact1]
-      simp only [emitted, acProposal, List.flatMap_cons, List.map_nil, List.flatMap_nil,
+      simp only [emitted, acProposal, List.flatMap_cons, List.filterMap_nil, List.flatMap_nil,
         List.append_nil]
     · simp only [hr] at hact1 hact2 hrel
       rw [hact2]
