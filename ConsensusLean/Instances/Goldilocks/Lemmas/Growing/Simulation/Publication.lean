@@ -26,7 +26,7 @@ theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
     ∀ r ∈ eventCuts S rho hn i,
       (∀ B acc, r.label = .fg (.block B acc) → r.pos ≠ 0 →
         blockObj (S.params (pubOf E) hn) B ∈ rho.releasesAt i) ∧
-      (∀ ℓ, r.label = .ac ℓ → ∀ m ∈ ℓ.emits, voteObj m.msg ∈ rho.releasesAt i) := by
+      (∀ ℓ, r.label = .ac ℓ → ∀ m ∈ ℓ.emits, ∃ z, voteObj m.msg z ∈ rho.releasesAt i) := by
   intro r hr
   have hEC := eventCuts_tick_public S rho hn i v t he hp
   have hlab : r.label ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
@@ -74,14 +74,16 @@ theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
         cast_eq]
       rfl
     rwa [hobj] at h
-  · have hval := emits_val_of_mem_exec _ _ _ _ _ _ (hℓ ▸ hlab) m hm
-    have hq : Body.vote (encodeVote m.msg) ∈ Q := by
+  · have hcut := hℓ ▸ hlab
+    have hval := emits_val_of_mem_exec _ _ _ _ _ _ hcut m hm
+    have hk := exec_emit_selected S rho hn hv hcut m hm
+    obtain ⟨z, hz⟩ := stateAt_ownToken_exists S rho hn hv v i m.msg
+      (emits_mayVote_of_mem_exec _ _ _ _ _ _ hcut m hm)
+    have hq : Body.vote (encodeVote m.msg) z ∈ Q := by
       rw [hQ]
-      exact List.mem_append_left _ (List.mem_flatMap.mpr ⟨_, hℓ ▸ hlab,
-        List.mem_map.mpr ⟨m, hm, rfl⟩⟩)
-    have hobj := voteObj_eq_pollObj S rho (show m.msg.val = rho.ownKey v from hval)
-    have hk := exec_emit_selected S rho hn hv (hℓ ▸ hlab) m hm
-    exact (congrArg (· ∈ rho.releasesAt i) hobj).mpr (hrelQ _ hq
-      (by rw [pollRole_vote]; exact hk))
+      exact List.mem_append_left _ (mem_emitted.mpr ⟨⟨ℓ, hcut, m, hm, rfl⟩, hz⟩)
+    refine ⟨z, ?_⟩
+    rw [voteObj_eq_pollObj S rho z (show m.msg.val = rho.ownKey v from hval)]
+    exact hrelQ _ hq (by rw [pollRole_vote]; exact hk)
 
 end Consensus.Goldilocks.Simulation

@@ -833,6 +833,13 @@ private theorem event_inventory (hv : rho.ExecutionValid)
         exact poll_duty_inventory S rho hn hv (.deliver he (List.getElem?_eq_some_iff.mp hd).1.le)
           (Or.inr ⟨_, _, he, hd⟩) hi
 
+/-- A vote allowed by the engine state's gate has a token from its installed issuer. -/
+theorem stateAt_ownToken_exists (hv : rho.ExecutionValid) (v : V) (i : Nat)
+    (m : Vote (Fintype.card V))
+    (hm : (stateAt S rho hn v i).node.ac.mayVote m.slot = true) :
+    ∃ z, ownToken (stateAt S rho hn v i).voteIO m = some z :=
+  (event_inventory S rho hn hv v i).gate m hm
+
 /-- At a tick duty prefix, every pooled vote is already held or pending in the
 ordinary outbox. This retains the actual prefix state needed by release guards. -/
 theorem tick_prefix_pool_available (hv : rho.ExecutionValid) {v : V}
