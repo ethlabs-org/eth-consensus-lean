@@ -93,7 +93,8 @@ private theorem tick_forward_queue (hv : rho.ExecutionValid) {i : Nat} {v : V}
               subst hmsg
               have hh : (ShapeRole.proposer s : ShapeRole S.vote.Kind) = .poll := by
                 injection hauth with _ h
-                exact (propose_candidateRole_of_not_vote S s hs fun _ h => by cases h).symm.trans h
+                exact (propose_candidateRole_of_not_vote S s hs
+                  fun _ _ h => by cases h).symm.trans h
               cases hh
             · exact False.elim (List.not_mem_nil h)
         · refine ⟨s, hs, hone, ?_⟩
@@ -267,8 +268,8 @@ theorem decodeForward_receipt_iff {receipt o : Wire (Fintype.card V) S.vote}
 /-- A top-level signed vote envelope can only be released by its signer. Other nodes may
 carry it in unsigned gossip, but cannot account for an earlier top-level release of it. -/
 theorem voteForward_release_sender {i : Nat} {x : Fin (Fintype.card V)} {t : Time}
-    {m : AC.Vote (Fintype.card V)}
-    (h : Model.Obj.mk (.signed x .poll) (.data (.voteForward t (encodeVote m))) [voteObj m] ∈
+    {m : AC.Vote (Fintype.card V)} {w : Wire (Fintype.card V) S.vote}
+    (h : Model.Obj.mk (.signed x .poll) (.data (.voteForward t (encodeVote m))) [w] ∈
       rho.releasesAt i) : ∃ u, rho.SendsAt (rho.key x) i u := by
   cases he : rho.events[i]? with
   | none =>
