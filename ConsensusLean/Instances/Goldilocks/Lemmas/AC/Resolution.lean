@@ -187,10 +187,10 @@ theorem merged_opponents : MergedOpponents sp := by
   have hheld : ∀ u ∈ (mergedVoteView sp A Φ (σ + 1)).votes,
       u ∈ A.pool σ ∨ u.val ∈ equivocators {x | x ∈ A.pool σ} := by
     intro u hu
-    rcases hu with hu' | ⟨P, hP, hPs, hu', hK, hc⟩
+    rcases hu with hu' | ⟨P, hP, hPs, hu', hc⟩
     · exact Or.inl ((hpool' u).mp (List.mem_filter.1 hu').1)
     · have hus : u.slot = σ := by have := (h.payload P hP).1 u hu'; omega
-      exact merged_declared_backing hus (Or.inr ⟨P, hP, hPs, hu', hK, hc⟩)
+      exact merged_declared_backing hus (Or.inr ⟨P, hP, hPs, hu', hc⟩)
   rintro i (⟨x, hx, y, hy, hxy, hxi, hyi⟩ | ⟨x, hx, hxi, hxs, H, hH, hHr, hc⟩)
   · rcases hheld x hx with hx' | hx'
     · rcases hheld y hy with hy' | hy'
@@ -202,11 +202,11 @@ theorem merged_opponents : MergedOpponents sp := by
     Or.inr ⟨x, hs, hxi, hxs, H, hH, hHr, hc⟩
   simp only [mergedVoteView, voteView, voteViewList, View.ofLists, Set.mem_union,
     Set.mem_ofPred_eq, List.mem_filter, decide_eq_true_eq] at hx
-  rcases hx with ⟨⟨hx, -⟩, hres⟩ | ⟨P, hP, hPs, hxP, hxK, hxc, hxs', H', hH', hH'r, hH's⟩
+  rcases hx with ⟨⟨hx, -⟩, hres⟩ | ⟨P, hP, hPs, hxP, hxc, hxs', H', hH', hH'r, hH's⟩
   · exact hopp (hfs x ((hpool' x).mp hx) (hres.trans (etime_lt_top _)))
   have hxσ : x.slot = σ := by omega
   obtain hx' | hx' := merged_declared_backing (Φ := Φ) hxσ
-    (Or.inr ⟨P, hP, hPs, (h.payload P hP).2.1.subset hxP, hxK, hxc⟩)
+    (Or.inr ⟨P, hP, hPs, (h.payload P hP).2.1.subset hxP, hxc⟩)
   · refine hopp (hfs x hx' ?_)
     have hl : lookup Φ x.head = some H' := by
       cases hl : lookup Φ x.head with

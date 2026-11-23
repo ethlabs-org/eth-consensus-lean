@@ -330,7 +330,7 @@ def P : Blk sp3.n Unit := prop 3 ([a, b], [a, b])
 
 /-- `a` and `b` held (after the freeze): ready. -/
 theorem ready_all_counted : voteReady sp3 (st [] [a, b]) (frm [P]) 2 := by
-  refine ⟨⟨P, mem_frm (by simp), rfl, fun x hx _ _ => ?_⟩, fun B hB hs x hx _ => ?_⟩
+  refine ⟨⟨P, mem_frm (by simp), rfl, fun x hx _ => ?_⟩, fun B hB hs x hx => ?_⟩
   · simp [P, prop, declaredSupportVotes] at hx
     rcases hx with rfl | rfl <;> exact ⟨X, X_mem _, rfl, le_rfl⟩
   · have hB' := slot_two hB hs
@@ -410,8 +410,8 @@ theorem pair_counts_unsigned :
 /-- And the pair makes the proposal ready. -/
 theorem pair_ready : voteReady sp3 (st [] [b, b']) (frm [Pz]) 2 := by
   refine ⟨⟨Pz, mem_frm (by simp), rfl,
-    fun x hx _ _ => by simp [Pz, prop, declaredSupportVotes] at hx⟩,
-    fun B hB hs x hx _ => ?_⟩
+    fun x hx _ => by simp [Pz, prop, declaredSupportVotes] at hx⟩,
+    fun B hB hs x hx => ?_⟩
   have hB' := slot_two hB hs
   simp only [List.mem_singleton] at hB'; subst hB'
   simp [Pz, prop, declaredHeadVotes, declaredSupportVotes] at hx; subst hx
@@ -427,7 +427,7 @@ theorem merged_support {l : List (Vote sp3.n)} {ps : List (Blk sp3.n Unit)} {v :
         v.slot + 1 = 2 ∧ ∃ H ∈ (frm ps).tree, H.root = v.head ∧ H.slot + 1 ≤ 2 := by
   simp only [mergedVoteView, Set.mem_union, Set.mem_ofPred_eq]
   constructor
-  · rintro (h | ⟨B, hB, hs, hv, -, h⟩)
+  · rintro (h | ⟨B, hB, hs, hv, h⟩)
     · exact absurd ((base_st [] l (frm ps) v).1 (List.mem_of_mem_filter h)) (by simp)
     · exact ⟨B, hB, hs, hv, h⟩
   · rintro ⟨B, hB, hs, hv, h⟩
@@ -463,7 +463,7 @@ theorem support_unresolved :
   refine ⟨(merged_votes (by simp [P, prop])).2 (Or.inr ⟨prop 4 ([c5], [c5]), by simp,
     by simp [prop, declaredHeadVotes], (shouldCount_st rfl).2 (Or.inl (by simp))⟩), ?_⟩
   rw [merged_support]
-  rintro ⟨-, -, -, -, -, H, hH, hr, -⟩
+  rintro ⟨-, -, -, -, -, -, H, hH, hr, -⟩
   rcases hH with rfl | rfl | rfl | h
   · simp [g, c5] at hr
   · simp [X, c5] at hr
@@ -473,7 +473,7 @@ theorem support_unresolved :
 /-- Head readiness of one proposal suffices: `P` is resolved, the other proposal's marked head is
 not, and with every declaration held the voter is ready. -/
 theorem ready_one_resolved : voteReady sp3 (st [] [a, b, c5]) (frm [P, prop 4 ([c5], [c5])]) 2 := by
-  refine ⟨⟨P, mem_frm (by simp), rfl, fun x hx _ _ => ?_⟩, fun B hB hs x hx _ => ?_⟩
+  refine ⟨⟨P, mem_frm (by simp), rfl, fun x hx _ => ?_⟩, fun B hB hs x hx => ?_⟩
   · simp [P, prop, declaredSupportVotes] at hx
     rcases hx with rfl | rfl <;> exact ⟨X, X_mem _, rfl, le_rfl⟩
   · have hB' := slot_two hB hs

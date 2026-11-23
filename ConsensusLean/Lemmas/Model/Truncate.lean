@@ -193,10 +193,10 @@ theorem truncate_valid (hv : rho.ExecutionValid) {b : Time} (hb : 0 ≤ b)
     refine ⟨j, t', hj, ?_, ?_⟩
     · exact (truncate_sendsAt_iff hsplit hjl).mpr hjt
     · rw [truncate_releasesAt hsplit hjl]; exact hjo
-  · intro i w o t hi o' hc k r ha
+  · refine ⟨hv.credentials.1, fun i w o t hi o' hc k r ha hb => ?_⟩
     have hil : i < (rho.truncate b).events.length := (List.getElem?_eq_some_iff.mp hi).1
     rw [truncate_getElem? hsplit hil] at hi
-    exact hv.credentials i w o t hi o' hc k r ha
+    exact hv.credentials.2 i w o t hi o' hc k r ha hb
 
 /-- The truncation at `b` of a valid run is its L0 prefix up to `b` in the
 system `sysOf`: the trace is `Trace.PrefixOf` the full trace at `b`, views

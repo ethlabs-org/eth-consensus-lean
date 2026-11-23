@@ -69,10 +69,10 @@ theorem mergedVoteView_subset {A : ACState sp.n} {s : Nat} {S : Set (Vote sp.n)}
     simp only [ShouldCountDeclaredVote, hpa] at hv
     exact hv.imp (hpool _ v) id
   refine ⟨fun v hv => ?_, fun v hv => ?_⟩
-  · rcases hv with hv | ⟨C, hC, hCs, hv, -, hcount⟩
+  · rcases hv with hv | ⟨C, hC, hCs, hv, hcount⟩
     · exact hb.1 hv
     · exact (hc v hcount).elim id (htree C hC hCs v (Or.inl hv))
-  · rcases hv with hv | ⟨C, hC, hCs, hv, -, hcount, -⟩
+  · rcases hv with hv | ⟨C, hC, hCs, hv, hcount, -⟩
     · exact hb.2 hv
     · exact (hc v hcount).elim id (htree C hC hCs v (Or.inr hv))
 
