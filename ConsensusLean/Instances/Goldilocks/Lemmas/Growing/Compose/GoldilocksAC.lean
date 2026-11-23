@@ -35,8 +35,6 @@ theorem goldilocks_ac_projection_from {sp : SA.SAParams}
     { pool_vote := fun y i σ hy v hv hval => ?_
       message_vote := fun y i ℓ v hy hc hm hv =>
         emission ((retained i).honest.message_vote y hy i ℓ v (call hc) hm hv)
-      carried_vote := fun y i ℓ hy hc B hB v hv hval =>
-        emission ((retained i).honest.carried_vote y hy i ℓ (call hc) B hB v hv hval)
       proposer := fun B hB hng => ?_
       one_block := fun y i ℓ B y' i' ℓ' B' hy hc hB hy' hc' hB' hp hprop hslot => ?_ },
     h.vstart⟩
