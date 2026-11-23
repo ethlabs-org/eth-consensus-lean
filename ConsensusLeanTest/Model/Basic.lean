@@ -51,7 +51,7 @@ def proto (pub : Public) : Protocol pub Unit where
   selSpec := fun r => if r then .sized 1 else .fixed Finset.univ
   role := fun _ => false
   duties := fun t => [t]
-  init := fun _ _ => ()
+  init := fun _ _ _ => ()
   clock := fun _ _ _ => ()
   act := fun _ _ => ((), [(.data (), [])])
   gossip := fun _ _ => []
@@ -59,6 +59,7 @@ def proto (pub : Public) : Protocol pub Unit where
   recordOwn := fun _ _ _ => ()
   durable := fun _ => ()
   restore := fun _ _ _ => ()
+  tokensCover := ⟨⟨fun x => absurd x.2 (by simp), fun x => absurd x.2 (by simp)⟩⟩
   out := fun _ _ => []
   conflicts := fun _ _ => false
 
@@ -111,7 +112,7 @@ child-first refuses the child without retry. Unselected duties release neither. 
 theorem signed_batch_dependency_order :
     let rho : Run (O := schema) batchProto (Env.mk 1 (by decide) 1 (by decide) (fun _ _ => true)) :=
       Run.mk (fun _ => ∅) monotone_const 1 [] (pkiFin 1) (fun _ => Finset.univ)
-        (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
+        (fun _ _ => []) (fun _ _ => []) (fun _ => 0) (fun q => q.2.2.elim) (fun _ _ => false)
     let parent := Obj.mk (.signed (0 : Fin 1) false) (.item ()) []
     let child := Obj.mk (.signed (0 : Fin 1) false) (.data ()) []
     (rho.dutyStep 0 ⟨(), []⟩ (0 : Time)).2 = [parent, child] ∧
@@ -153,7 +154,7 @@ theorem sel_valid (rho : Run family env) (h : rho.sel = sel) : rho.SelValid := b
 survives restarts and is available to the next clock. -/
 def relayedRun : Run family env :=
   Run.mk (fun _ => ∅) monotone_const 5 [.restart 0 3] (pkiFin 2) sel (fun _ _ => [])
-      (fun _ t => if t = 2 then [42] else []) (fun _ => 0)
+      (fun _ t => if t = 2 then [42] else []) (fun _ => 0) (fun q => q.2.2.elim) (fun _ _ => false)
 
 theorem injected_held : CommLog.TxHeld relayedRun.log 0 42 3 :=
   ⟨2, by decide, by decide, by simp [relayedRun, Run.log, Run.inbox]⟩
@@ -192,12 +193,12 @@ admissible selection but violates `Credentials`. -/
 def forgedRun : Run family env :=
   Run.mk (fun _ => ∅) monotone_const 5
       [.deliver 0 (.mk (.signed 1 true) (.data ()) []) 0] (pkiFin 2) sel
-      (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
+      (fun _ _ => []) (fun _ _ => []) (fun _ => 0) (fun q => q.2.2.elim) (fun _ _ => false)
 
 theorem forged_role_invalid : forgedRun.SelValid ∧ ¬ forgedRun.Credentials := by
   refine ⟨sel_valid _ rfl, ?_⟩
   intro h
-  have := h 0 0 _ 0 rfl _ (.refl _) 1 true rfl
+  have := h.2 0 0 _ 0 rfl _ (.refl _) 1 true rfl (fun _ _ => rfl)
   simp [forgedRun, sel] at this
 
 /-- Hence a forged role makes the run invalid. -/
@@ -252,7 +253,7 @@ has no idle guard. -/
 theorem conflictsTrue_guard_fires :
     let rho : Run (O := schema) familyC (Env.mk 1 (by decide) 1 (by decide) (fun _ _ => true)) :=
       Run.mk (fun _ => ∅) monotone_const 1 [] (pkiFin 1) (fun _ => Finset.univ)
-        (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
+        (fun _ _ => []) (fun _ _ => []) (fun _ => 0) (fun q => q.2.2.elim) (fun _ _ => false)
     let c := Obj.mk (.signed (0 : Fin 1) false) (.data ()) []
     (rho.dutyStep 0 ⟨(), []⟩ (0 : Time)).2 = [c] ∧
       rho.dutyRefusals 0 ⟨(), []⟩ (0 : Time) = [c] := by
@@ -289,7 +290,7 @@ def seqProto (pub : Public) : Protocol pub Unit where
   selSpec := fun _ => .fixed Finset.univ
   role := id
   duties := fun _ => [false, true]
-  init := fun _ _ => 0
+  init := fun _ _ _ => 0
   clock := fun s _ _ => s
   act := fun s d => (if d then s else s + 1, [(.data s, [])])
   gossip := fun _ _ => []
@@ -297,6 +298,7 @@ def seqProto (pub : Public) : Protocol pub Unit where
   recordOwn := fun s _ _ => s + 10
   durable := fun _ => ()
   restore := fun _ _ _ => 0
+  tokensCover := ⟨⟨fun x => absurd x.2 (by simp), fun x => absurd x.2 (by simp)⟩⟩
   out := fun _ _ => []
   conflicts := fun _ _ => false
 

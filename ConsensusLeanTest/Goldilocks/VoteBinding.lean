@@ -31,27 +31,27 @@ nonempty population). -/
 theorem committeeOne_voteRole (s : Slot) : committeeOne.voteRole s = .duty s .vote := rfl
 
 /-- A poll emission of a vote is signed in the vote's committee role. -/
-theorem committeeOne_candidateRole_vote {n : Nat} (t : Nat) (v : AC.Vote n) :
-    (committeeOne.candidateRole n (.poll t) (.data (.vote (encodeVote v)))).getD .poll =
+theorem committeeOne_candidateRole_vote {n : Nat} (t : Nat) (v : AC.Vote n) (z : Nat) :
+    (committeeOne.candidateRole n (.poll t) (.data (.vote (encodeVote v) z))).getD .poll =
       .duty v.slot .vote :=
-  committeeOne.candidateRole_poll_vote t v
+  committeeOne.candidateRole_poll_vote t v z
 
 /-- A poll emission of an attestation keeps the poll role. -/
 theorem committeeOne_candidateRole_att (n t : Nat) (a : WireAtt) :
     (committeeOne.candidateRole n (.poll t) (.data (.att a))).getD .poll = .poll :=
-  committeeOne.candidateRole_poll_nonvote n t _ fun _ h => by cases h
+  committeeOne.candidateRole_poll_nonvote n t _ fun _ _ h => by cases h
 
 /-- Initialization installs the own membership in the slot's committee as the vote permission. -/
 theorem committeeOne_init_mayVote (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) (key : Fin pub.n)
-    (p : ShapeRole VoteKind → Bool) (s : Slot) :
-    (((goldilocks { S with vote := committeeOne } pub).init key p hn).node.ac).mayVote s =
+    (p : ShapeRole VoteKind → Bool) (io : VoteAuth pub.n committeeOne) (s : Slot) :
+    (((goldilocks { S with vote := committeeOne } pub).init key p io hn).node.ac).mayVote s =
       p (.duty s .vote) :=
   committeeOne.installVote_mayVote (Option.some_ne_none _) p _ s
 
 /-- A node outside the slot-`s` committee emits no slot-`s` vote from its initial AC state, at
 any call, frame and time. -/
 theorem committeeOne_nonmember_silent (S : Setup) (pub : Public) (hn : 1 ≤ pub.n)
-    (key : Fin pub.n) (p : ShapeRole VoteKind → Bool) (s : Slot)
+    (key : Fin pub.n) (p : ShapeRole VoteKind → Bool) (io : VoteAuth pub.n committeeOne) (s : Slot)
     (hp : p (.duty s .vote) = false) (Φ : AC.Frm pub.n (List (FG.Att pub.n))) (t : Time)
     (c : (AC.goldilocksAC (({ S with vote := committeeOne } : Setup).params pub hn)
       (List (FG.Att pub.n))
@@ -59,11 +59,11 @@ theorem committeeOne_nonmember_silent (S : Setup) (pub : Public) (hn : 1 ≤ pub
     ∀ e ∈ ((AC.goldilocksAC (({ S with vote := committeeOne } : Setup).params pub hn)
       (List (FG.Att pub.n))
       (S.ro pub.n)).step key
-        (((goldilocks { S with vote := committeeOne } pub).init key p hn).node.ac) Φ t c).2,
+        (((goldilocks { S with vote := committeeOne } pub).init key p io hn).node.ac) Φ t c).2,
       e.msg.slot ≠ s := by
   intro e he hs
   have h := AC.emits_mayVote (S.ro pub.n) key _ Φ t c e he
-  rw [hs, committeeOne_init_mayVote S pub hn key p s, hp] at h
+  rw [hs, committeeOne_init_mayVote S pub hn key p io s, hp] at h
   exact Bool.false_ne_true h
 
 /-- On a valid engine run, a node outside the slot-`s` committee emits no slot-`s` vote from its
@@ -113,12 +113,13 @@ theorem committeeOne_member_releases_vote {V : Type} [Fintype V] [DecidableEq V]
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks { S with vote := committeeOne })) E))
     (t : Nat)
-    (m : AC.Vote (Fintype.card V))
+    (m : AC.Vote (Fintype.card V)) (z : Nat)
     (hb : (Simulation.pollPre
       (Simulation.shapeOf { S with vote := committeeOne } hn nd)).outbox.head? =
-      some (.vote (encodeVote m)))
+      some (.vote (encodeVote m) z))
     (hs : rho.ownKey v ∈ rho.sel (.duty m.slot .vote)) :
-    (Model.Obj.mk (.signed (rho.ownKey v) (.duty m.slot .vote)) (.data (.vote (encodeVote m))) [] :
+    (Model.Obj.mk (.signed (rho.ownKey v) (.duty m.slot .vote))
+      (.data (.vote (encodeVote m) z)) [] :
       (Model.protoOf (compiled (goldilocks { S with vote := committeeOne })) E).Object) ∈
       (rho.dutyStep v nd (.poll t)).2 := by
   have h := Simulation.dutyStep_poll_rel { S with vote := committeeOne } rho hn v nd t
