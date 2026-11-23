@@ -56,24 +56,24 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {binding : VoteBinding}
 
 /-- A canonical object contributes its group, then the rest from the handler's state. -/
-theorem deliverRecs_cons_some (proposer : Nat → Fin sp.n)
+theorem deliverRecs_cons_some (io : VoteAuth sp.n binding) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) (o : Wire sp.n binding)
     (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
-    (e : Event (goldilocksNode sp ro)) (he : canonEvent sp ro hs o = some e) :
-    deliverRecs proposer dg hs self t i (o :: os) st sub =
+    (e : Event (goldilocksNode sp ro)) (he : canonEvent sp ro io hs o = some e) :
+    deliverRecs io proposer dg hs self t i (o :: os) st sub =
       groupRecs proposer dg self st t (Nat.pair i sub) e ++
-        deliverRecs proposer dg hs self t i os (exec proposer dg self st t e).1 (sub + 1) := by
+        deliverRecs io proposer dg hs self t i os (exec proposer dg self st t e).1 (sub + 1) := by
   rw [deliverRecs_cons, he]
 
 /-- A dropped object contributes no group. -/
-theorem deliverRecs_cons_none (proposer : Nat → Fin sp.n)
+theorem deliverRecs_cons_none (io : VoteAuth sp.n binding) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) (o : Wire sp.n binding)
     (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
-    (he : canonEvent sp ro hs o = none) :
-    deliverRecs proposer dg hs self t i (o :: os) st sub =
-      deliverRecs proposer dg hs self t i os st (sub + 1) := by
+    (he : canonEvent sp ro io hs o = none) :
+    deliverRecs io proposer dg hs self t i (o :: os) st sub =
+      deliverRecs io proposer dg hs self t i os st (sub + 1) := by
   rw [deliverRecs_cons, he]
 
 /-- The cuts of an engine tick at a public time: the node's tick group. -/
@@ -96,10 +96,12 @@ theorem eventCuts_deliver (i : Nat) (v : V)
     (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
     (t : Time) (he : rho.events[i]? = some (.deliver v o t)) :
     eventCuts S rho hn i =
-      deliverRecs (runProposer S rho hn) (digestOf S rho)
+      deliverRecs (sp := S.params (pubOf E) hn) (binding := S.vote)
+        (rho.voteIO v) (runProposer S rho hn) (digestOf S rho)
         (Model.digests rho.hash o) (rho.ownKey v) t i
-        (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o)
-          (stateAt S rho hn v i).node 0 := by
+        (delivered (sp := S.params (pubOf E) hn) (binding := S.vote)
+          (rho.voteIO v) (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+        (stateAt S rho hn v i).node 0 := by
   simp only [eventCuts_eq, he]
 
 /-- The cuts of an engine restart. -/
