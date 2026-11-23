@@ -13,12 +13,10 @@ surface. `GoldilocksRun` takes the nodes' starts `ini` (by default the initial s
 `vstart`: every start is a start up to the vote permission. It carries no committee size.
 
 The Goldilocks node is `goldilocksNode sp ro` (`Spec/Run/Goldilocks`). `GoldilocksRun proposer dg H
-tr` is a run of it: `Node.LocalRun` with the vote's validator as the message signer, plus
-**carried-vote unforgeability**, the instance of the run's unforgeability for votes that travel in a
-block's payload (claims §"Runs"; composition.tex §"Blocks"): a vote of an honest validator that an
-honest node processes in a block (`blockVotes`, the votes the payload carries) was emitted by that
-validator's node at an earlier cut. The generic node cannot state it: the AC interface does not say
-which messages a payload carries.
+tr` is a run of it: `Node.LocalRun` with the vote's validator as the message signer. A block
+carries no vote: its declared head votes are the proposer's statement, not signed votes, so the
+run's unforgeability says nothing about them (a faulty proposer may declare a vote that its
+validator never signed).
 
 A Goldilocks run also takes the genesis root: the genesis block's root is the digest `dg` of
 its content (`genesis_root_ok`). composition.tex §"Blocks" makes every block's root its
@@ -29,7 +27,7 @@ the run; some restate it (`HSShared.genesisRoot`). -/
 
 namespace Consensus.Goldilocks
 
-open SA (SAParams ReplayOrder goldilocksSA Vote blockVotes Payload)
+open SA (SAParams ReplayOrder goldilocksSA Vote Payload)
 
 variable (sp : SAParams)
 
@@ -40,8 +38,8 @@ abbrev GoldilocksTrace (ro : ReplayOrder sp (List (FG.Att sp.n))) :=
 variable {sp} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **A run of the Goldilocks protocol** (claims §"Runs"): a run of the node with the SA, the
-vote's validator as the signer of a message, carried-vote unforgeability, and the genesis
-block's root the digest of its content. -/
+vote's validator as the signer of a message, and the genesis block's root the digest of its
+content. -/
 structure GoldilocksRun (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro)
@@ -51,10 +49,6 @@ structure GoldilocksRun (proposer : Nat → Fin sp.n)
   /-- The genesis block's root is the digest of its content: the premise `FGProjection` and
   C0.3 take over any AC (the Lean genesis root is a parameter). -/
   genesis_root_ok : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg
-  /-- A vote of an honest validator carried by a block that an honest node processes was emitted
-  by that validator's node at an earlier cut. -/
-  carried_vote_unforgeable : ∀ y ∈ H, ∀ i B, tr.BlockCallAt y i B →
-    ∀ v ∈ blockVotes B, v.val ∈ H → ∃ j < i, tr.EmitAt v.val j v
   /-- The AC starts are starts up to the vote permission. -/
   vstart : ∀ y, SA.VoteStart sp.genesisRoot (ini y)
 

@@ -35,8 +35,8 @@ def CommitteeP (K : CommitteeDict sp.n) (tr : SATrace sp FGP ro) (H : Set (Fin s
   (∀ y ∈ H, ∀ i ℓ A, OptimisticPoint tr y i ℓ A → ∀ s : Nat, ∀ v ∈ A.pool s,
     v.val ∈ K.committee s)
 
-/-- **T**: the merged-view votes of an honest vote, block payload votes included, are signed by
-members of their slot's committee. -/
+/-- **T**: the merged-view votes of an honest vote, counted declared head votes included, are
+signed by members of their slot's committee. -/
 def CommitteeT (K : CommitteeDict sp.n) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) : Prop :=
   ∀ y ∈ H, ∀ i ℓ e, CastAt tr y i ℓ e → ∀ m : Nat,
     ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes, v.val ∈ K.committee v.slot
