@@ -38,6 +38,12 @@ def VoteGate {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (st : State sp ro binding) : Prop :=
   ∀ m : AC.Vote sp.n, st.node.ac.mayVote m.slot = true → ∃ z, ownToken st.voteIO m = some z
 
+/-- `VoteGate st`: an own token for every slot the AC may vote in. -/
+theorem voteGate_iff {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+    (st : State sp ro binding) : VoteGate st ↔
+      ∀ m : AC.Vote sp.n, st.node.ac.mayVote m.slot = true → ∃ z, ownToken st.voteIO m = some z :=
+  Iff.rfl
+
 /-- A fresh admission is queued with some object: an own emission with its own token, or a
 received vote with its origin. -/
 private theorem apply_voteForward_exists {sp : AC.ACParams}

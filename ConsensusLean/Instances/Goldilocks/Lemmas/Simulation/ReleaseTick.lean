@@ -240,34 +240,40 @@ theorem leading_polls (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilo
   · rw [hS2]; exact poll_fgDue _ _
 
 omit [DecidableEq V] in
-private theorem fgUpdate_voteIO' (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) :
+/-- The FG update keeps the vote authentication. -/
+theorem fgUpdate_voteIO' (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) :
     (fgUpdate st).voteIO = st.voteIO := by
   rw [fgUpdate_eq]; simp only; split
   · rfl
   · split <;> rfl
 
 omit [DecidableEq V] in
-private theorem recordOwn_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) o hs :
+/-- Recording an own object keeps the vote authentication. -/
+theorem recordOwn_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) o hs :
     (recordOwn st o hs).voteIO = st.voteIO := by
   rw [AsChainShape.recordOwn_eq]; split <;> (try split) <;> rfl
 
 omit [DecidableEq V] in
-private theorem propose_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) s :
+/-- The slot proposal keeps the vote authentication. -/
+theorem propose_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) s :
     (propose st s).1.voteIO = st.voteIO := by
   rw [propose_eq]; dsimp only; split <;> rfl
 
 omit [DecidableEq V] in
-private theorem nodeTick_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) :
+/-- The node's tick keeps the vote authentication. -/
+theorem nodeTick_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) :
     (nodeTick st).voteIO = st.voteIO := by
   rw [nodeTick_eq]; split <;> rfl
 
 omit [DecidableEq V] in
-private theorem poll_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) t :
+/-- A poll step keeps the vote authentication. -/
+theorem poll_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) t :
     (poll st t).1.voteIO = st.voteIO := by
   unfold poll; simp only; split <;> split <;> simp [fgUpdate_voteIO']
 
 omit [DecidableEq V] in
-private theorem process_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) o hs :
+/-- A delivery keeps the vote authentication. -/
+theorem process_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) o hs :
     (process st o hs).voteIO = st.voteIO := by
   rw [AsChainShape.process_eq]
   generalize delivered _ _ _ _ = os
