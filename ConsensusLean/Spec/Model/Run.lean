@@ -115,6 +115,13 @@ structure Run {O : OutputSchema} (F : ProtocolFamily O) (E : Env V) where
   /-- The hash function: arbitrary, possibly with collisions; evaluated only by
   the engine. -/
   hash : (protoOf F E).Item → Nat
+  /-- The deployed vote-authentication mechanism, model-side and never given to a node
+  whole: the evidence issued for a vote claim (signer, role, vote data), and the verifier.
+  Their soundness and completeness is the binding `Run.VoteVerification`. -/
+  issue : Fin (Fintype.card V) × (protoOf F E).Role × (protoOf F E).VoteData →
+    (protoOf F E).Token
+  verify : Fin (Fintype.card V) × (protoOf F E).Role × (protoOf F E).VoteData →
+    (protoOf F E).Token → Bool
 
 variable {O : OutputSchema} {F : ProtocolFamily O} {E : Env V}
 
@@ -195,10 +202,18 @@ def ownKey (v : V) : Fin (Fintype.card V) := rho.key.symm v
 /-- The validator that signed an object, through the PKI. -/
 def signerOf (o : (protoOf F E).Object) : Option V := o.signer?.map rho.key
 
-/-- The initial world: every node starts in `init` of its own key, having
-seen nothing. -/
+/-- The vote authentication a node is installed with: the run's verifier, and the run's
+issuer restricted to the node's own key and the roles that select it. -/
+def voteIO (v : V) : VoteIO (protoOf F E).Token (protoOf F E).Role (protoOf F E).VoteData
+    (Fintype.card V) :=
+  ⟨fun k r d z => rho.verify (k, r, d) z,
+    fun r d => if rho.ownKey v ∈ rho.sel r then some (rho.issue (rho.ownKey v, r, d)) else none⟩
+
+/-- The initial world: every node starts in `init` of its own key, its role membership and its
+vote authentication, having seen nothing. -/
 def initWorld (v : V) : Node (protoOf F E) :=
-  ⟨(protoOf F E).init (rho.ownKey v) (fun r => decide (rho.ownKey v ∈ rho.sel r)), []⟩
+  ⟨(protoOf F E).init (rho.ownKey v) (fun r => decide (rho.ownKey v ∈ rho.sel r))
+    (rho.voteIO v), []⟩
 
 /-- The ordered candidates of duty `d`, signed with the selected node's own key
 in each candidate's signing role. The node must belong to both the duty's selection
