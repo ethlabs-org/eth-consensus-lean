@@ -45,7 +45,12 @@ theorem honest_merged_vote_branchU
     {ℓ : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n} (hb : VoteBranchAt tr y i ℓ R)
     {σ : Nat} {v : Vote sp.n} (hv : v ∈ (mergedVoteView sp R ℓ.frame σ).votes)
     (hvH : v.val ∈ H) : ∃ j ≤ i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v := by
-  rcases hv with hv | ⟨B, hB, -, hv⟩
+  have hpost : ∀ w : Vote sp.n, ∀ τ : Nat, w ∈ R.pool τ → w ∈ (tr.state y (i + 1)).pool τ :=
+    fun w τ hw => by
+      rw [show tr.state y (i + 1) = tr.post i by
+        simp [Trace.state, hb.callAt.1, hb.callAt.2]]
+      exact pool_post_of_voteBranchAtU hrun.localRun hy hb hw
+  rcases hv with hv | ⟨B, hB, -, -, -, hv | ⟨x, hx, x', hx', hne, hxv, hx'v⟩⟩
   · have hv : v ∈ R.poolAt ((σ : Int) - 1) := (List.mem_filter.1 hv).1
     simp only [SAState.poolAt] at hv
     split_ifs at hv
@@ -56,8 +61,21 @@ theorem honest_merged_vote_branchU
       exact pool_post_of_voteBranchAtU hrun.localRun hy hb hv
     obtain ⟨j, hj, h⟩ := hrun.honest.pool_vote y hy _ _ v hpost hvH
     exact ⟨j, Nat.lt_succ_iff.1 hj, h⟩
-  · obtain ⟨j, hj, h⟩ := hrun.honest.carried_vote y hy i ℓ hb.callAt B hB v hv hvH
-    exact ⟨j, hj.le, h⟩
+  · -- a declared vote held exactly: a pool vote of the read point
+    obtain ⟨j, hj, h⟩ := hrun.honest.pool_vote y hy _ _ v
+      (hpost v _ (by simpa [SAState.poolAt] using hv)) hvH
+    exact ⟨j, Nat.lt_succ_iff.1 hj, h⟩
+  · -- a declared vote counted for a pool pair of its honest validator: impossible
+    exfalso
+    have hx₁ := hpost x _ (by simpa [SAState.poolAt] using hx)
+    have hx₂ := hpost x' _ (by simpa [SAState.poolAt] using hx')
+    obtain ⟨j, -, e₁, hv₁, rfl⟩ := hrun.honest.pool_vote y hy _ _ _ hx₁ (hxv ▸ hvH)
+    obtain ⟨j', -, e₂, hv₂, rfl⟩ := hrun.honest.pool_vote y hy _ _ _ hx₂ (hx'v ▸ hvH)
+    rw [hxv] at hv₁
+    rw [hx'v] at hv₂
+    exact hne (congrArg Emission.msg (one_vote_per_slotU sp _ _ _ _ _ hrun.localRun _ hvH _ _ _ _
+      hv₁ hv₂ ((state_pool_slotU sp hrun.localRun hrun.vstart hy _ _ _ hx₁).trans
+        (state_pool_slotU sp hrun.localRun hrun.vstart hy _ _ _ hx₂).symm)).2)
 
 /-- `honest_merged_vote` with the unlock given (`honest_merged_vote_branchU` at the cast's vote
 branch). -/
@@ -88,7 +106,7 @@ theorem honest_not_equivocator_branchU
   have hr := hrun.localRun
   rintro ⟨x, hx, x', hx', hne, rfl, hxx⟩
   obtain _ | s := σ
-  · rcases hx with hx | ⟨B, hB, hBs, hv⟩
+  · rcases hx with hx | ⟨B, hB, hBs, hv, -⟩
     · simpa [SAState.poolAt] using (List.mem_filter.1 hx).1
     · have := (frame_validPayloadU sp hr hy hb.callAt B hB).1 x hv
       omega
