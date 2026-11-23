@@ -130,6 +130,5 @@ theorem simTraceAt_goldilocksRun (hv : rho.ExecutionValid) :
   att_unforgeable := simTraceAt_att_unforgeable S rho hn hv
   msg_unforgeable := simTraceAt_msg_unforgeable S rho hn hv
   genesis_root_ok := simTrace_genesis_root_ok S rho hn
-  carried_vote_unforgeable := simTraceAt_carried_vote_unforgeable S rho hn hv
 
 end Consensus.Goldilocks.Simulation
