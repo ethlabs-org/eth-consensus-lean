@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Binding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.CommitteeVotes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Transport
@@ -11,11 +12,11 @@ public section
 /-! # The committee facts of a run
 
 The gate `voteK_gate`, and, on a run record of the canonical growing trace, P
-(`voteK_committeeP`: the pools and the optimistic-check states) and the frames
-(`voteK_frame_member`) hold for the run's dictionary `voteK` (`GS/CommitteeVotes`, with
-`voteK_bindsSel`). With the committee size `voteK_ncard` they are the committee facts
-`voteK_facts`. `voteK_bounds` gives the committee count shapes from committee sleepy
-participation of the run's selection, at the threshold of a contract with `θ ≥ 1/2`.
+(`voteK_committeeP`: the pools and the optimistic-check states) hold for the run's dictionary
+`voteK` (`GS/CommitteeVotes`, with `voteK_bindsSel`). With the committee size `voteK_ncard` they
+are the committee facts `voteK_facts`. `voteK_bounds` gives the committee count shapes from
+committee sleepy participation of the run's selection, at the threshold of a contract with
+`θ ≥ 1/2`.
 
 `sleepy_committee_at` packages both for a sleepy run: the committee premises
 (`CommitteeFacts`, `CommitteeBoundsFrom`) of the run's committees through every `b ≤ horizon`,
@@ -69,16 +70,7 @@ theorem voteK_committeeP (hv : rho.ExecutionValid)
       fun k hk => hm' (Nat.lt_succ_iff.mp hk)] at hsub
     exact hpool y i s hy v hsub
 
-/-- **The frames of honest nodes carry votes of members.** -/
-theorem voteK_frame_member (hv : rho.ExecutionValid) {ini}
-    (hrun : Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho) (honestKeysAt S rho)
-      (simTraceAt S rho hn) ini) :
-    ∀ w c, w ∈ honestKeysAt S rho ((simTraceAt S rho hn).time c) →
-      ∀ C ∈ (Node.frame ((simTraceAt S rho hn).state w c)).tree,
-        ∀ v ∈ SA.blockVotes C, v.val ∈ (voteK S rho).committee v.slot :=
-  simTraceAt_tree_member S hrun hv (voteK_bindsSel S rho)
-
-/-- **The committee facts of a run**: size, P, frames, and the gate read at every read time
+/-- **The committee facts of a run**: size, P and the gate read at every read time
 `t ≥ 0` (a node honest at `t` is honest at `0`). -/
 theorem voteK_facts (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {ini}
@@ -87,7 +79,6 @@ theorem voteK_facts (hv : rho.ExecutionValid)
     Compose.Growing.CommitteeFacts (simTraceAt S rho hn) (honestKeysAt S rho) (voteK S rho) where
   hsize := voteK_ncard S rho hn hv
   hP := voteK_committeeP S rho hn hv hnc hrun
-  hFrame := voteK_frame_member S rho hn hv hrun
   hGate := fun _ ht x hx i _ s => voteK_gate S rho hn hv x (hrun.antitone ht hx) i s
 
 /-- **The committee count shapes of the run's committees** through `b ≤ horizon`, from committee
