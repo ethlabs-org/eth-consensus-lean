@@ -34,7 +34,7 @@ theorem support_in_tree : SupportInTree sp := by
   intro FGP A Φ hΦ
   refine ⟨fun σ cutoff s' => ⟨fun x hx => voteView_support_inTree hx, opponents_F sp hΦ _ _⟩,
     fun s s' => ⟨fun x hx => ?_, opponents_F sp hΦ _ _⟩⟩
-  rcases hx with hx | ⟨B, -, -, -, -, -, H, hH, hr, -⟩
+  rcases hx with hx | ⟨B, -, -, -, -, -, -, H, hH, hr, -⟩
   · exact voteView_support_inTree hx
   · exact ⟨H, hH, hr⟩
 

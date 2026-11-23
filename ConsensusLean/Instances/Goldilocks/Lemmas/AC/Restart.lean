@@ -132,7 +132,7 @@ theorem restart_state : RestartState sp := by
   obtain ⟨hr2, hr1⟩ := key (ro.order t Φ) (fun B hB => (hl.2.1 B).mp hB) (_, []) rfl h₀
   exact ⟨hr2, hr1.locks, hr1.latestConfirmed, hr1.saved, hr1.fgReported, hr1.votedSlot,
     hr1.restartTime, not_joined_of_restartTime sp ht hr1.restartTime,
-    fun σ x hx => absurd (hr1.pool σ ▸ hx) List.not_mem_nil, hr1.voteStamp,
+    hr1.pool, hr1.voteStamp,
     hr1.blockStamp⟩
 
 end Consensus.Goldilocks.SA
