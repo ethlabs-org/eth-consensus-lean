@@ -3,6 +3,7 @@ public import ConsensusLean.Spec.Shape.Claims
 public import ConsensusLean.Spec.Shape.OnRuns
 public import ConsensusLean.Spec.Shape.ProgressFit
 import ConsensusLean.Lemmas.Model.Adequate
+import ConsensusLean.Lemmas.Model.VoteVerification
 import ConsensusLean.Lemmas.Model.SysLog
 import ConsensusLean.Lemmas.Model.Protection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
@@ -163,10 +164,12 @@ theorem refuted_of_empty (F : ChainShapeFamily schema Unit)
     ¬ ShapeClaimsOnAt F testK (Fin 1) (fun p => p.ConstantFaults) := by
   intro hc
   obtain ⟨relay, es, valid, -⟩ := Model.canonical_run_from schema (compiled F) (Fin 1) env
-    (fun _ => ∅) monotone_const 3 (by decide) (pkiFin 1) sel hsel (fun _ _ => []) goodHash 0
+    (fun _ => ∅) monotone_const 3 (by decide) (pkiFin 1) sel hsel (fun _ _ => []) goodHash
+    (Model.stdIssue (compiled F) env) (Model.stdVerify (compiled F) env sel)
+    (fun _ => Model.Run.voteVerification_std _ rfl rfl) 0
   let r : Model.Run (compiled F) env :=
     Model.Run.mk (fun _ => ∅) monotone_const 3 es (pkiFin 1) sel (fun _ _ => []) relay goodHash
-      (fun q => q.2.2.elim) (fun _ _ => false)
+      (Model.stdIssue (compiled F) env) (Model.stdVerify (compiled F) env sel)
   -- With one always-awake validator every receiver is the sender, which holds its own send
   -- from the send time on: `PSync 0` at `Δ = 1` (deadline `max a 0 + Δ − 1 ≥ a`) needs no
   -- network service (and no eager log, which would need `Δ > 1`).
@@ -259,7 +262,8 @@ theorem fabricated :
   obtain ⟨relay, es, valid, -⟩ := Model.canonical_run_from schema
     (compiled (family false false true)) (Fin 1) env (fun _ => ∅) monotone_const
     0 le_rfl (pkiFin 1) testSel
-    (testSel_admits _ _ _) (fun _ _ => []) goodHash 0
+    (testSel_admits _ _ _) (fun _ _ => []) goodHash (fun q => q.2.2.elim) (fun _ _ => false)
+    (fun _ => ⟨fun q => q.2.2.elim, fun _ _ d => d.elim⟩) 0
   let r : Model.Run (compiled (family false false true)) env :=
     Model.Run.mk (fun _ => ∅) monotone_const 0 es (pkiFin 1) testSel
       (fun _ _ => []) relay goodHash (fun q => q.2.2.elim) (fun _ _ => false)
