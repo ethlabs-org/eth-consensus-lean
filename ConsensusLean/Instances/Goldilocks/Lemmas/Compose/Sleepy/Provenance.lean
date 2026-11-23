@@ -86,14 +86,8 @@ private theorem good_admitVote {A : SA.SAState sp.n} (h : Good R G A) (t : Time)
   exact h.1
 
 private theorem good_blockReceipt {A : SA.SAState sp.n} (h : Good R G A) (t : Time)
-    (B : SA.Blk sp.n FGP) : Good R G (SA.blockReceipt sp A t B) := by
-  unfold SA.blockReceipt
-  generalize SA.blockVotes B = l
-  suffices ∀ A' : SA.SAState sp.n, Good R G A' →
-      Good R G (l.foldl (fun A v => SA.admitVote sp A t v) A') from this _ h
-  induction l with
-  | nil => exact fun _ h => h
-  | cons v l ih => exact fun A' h => ih _ (good_admitVote h t v)
+    (B : SA.Blk sp.n FGP) : Good R G (SA.blockReceipt sp A t B) :=
+  h
 
 private theorem good_optimistic (hΦ : FrameOK Φ) (hD : Down Φ G) {A : SA.SAState sp.n}
     (h : Good R G A) {t : Time}
