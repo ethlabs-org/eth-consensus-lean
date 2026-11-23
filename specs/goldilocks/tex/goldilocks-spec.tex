@@ -507,7 +507,7 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
   \State \Return $(D,D^{+})$
 \EndFunction
 \vspace{1pt}
-\Function{is\_head\_vote\_held}{$\AC,x$}
+\Function{should\_count\_declared\_vote}{$\AC,x$}
   \Comment{the exact vote, or a proof that its validator equivocated}
   \State $(v,s,H)\gets x$
   \State \Return $x\in\AC.\gfPool[s]$ or $\AC.\gfPool[s]$ holds two distinct votes by $v$
@@ -563,10 +563,10 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
     \Comment{the slot-$s$ proposals: their held declarations pass the vote freeze}
     \State $(D,D^{+})\gets\Call{get\_declared\_head\_votes}{B}$
     \State $\mathit{votes}\gets\mathit{votes}\cup
-      \{x\in D:\Call{is\_head\_vote\_held}{\AC,x}\}$
+      \{x\in D:\Call{should\_count\_declared\_vote}{\AC,x}\}$
     \Comment{never admitted: $\AC.\gfPool$ is unchanged}
     \State $\mathit{support\_votes}\gets\mathit{support\_votes}\cup
-      \{(v,s-1,H)\in D^{+}:\Call{is\_head\_vote\_held}{\AC,(v,s-1,H)},\ H\in\Fr.\tree,\
+      \{(v,s-1,H)\in D^{+}:\Call{should\_count\_declared\_vote}{\AC,(v,s-1,H)},\ H\in\Fr.\tree,\
       H.\slot\leq s-1\}$
   \EndFor
   \State \Return $(\mathit{votes},\mathit{support\_votes})$
@@ -1041,7 +1041,7 @@ as the tick can.
   \State \Return $\exists P\in\Fr.\tree$ with $P.\slot=s$ such that every
     $(v,s-1,H)$ in $\Call{get\_declared\_head\_votes}{P}.D^{+}$
   \Statex \hspace{2em}has $H\in\Fr.\tree$ and $H.\slot\leq s-1$, and
-    $\Call{is\_head\_vote\_held}{\AC,x}$ for every $x$ in $\Call{get\_declared\_head\_votes}{B}.D$ of every $B\in\Fr.\tree$ with $B.\slot=s$
+    $\Call{should\_count\_declared\_vote}{\AC,x}$ for every $x$ in $\Call{get\_declared\_head\_votes}{B}.D$ of every $B\in\Fr.\tree$ with $B.\slot=s$
 \EndFunction
 \vspace{1pt}
 \Function{try\_vote}{$\AC,\Fr,t$}
