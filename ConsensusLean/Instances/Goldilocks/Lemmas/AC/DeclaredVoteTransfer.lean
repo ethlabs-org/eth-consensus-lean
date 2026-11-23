@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Views
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVotes
 
 public section
 
@@ -34,15 +35,8 @@ theorem merged_declared_backing_at_vote_slot {v : Vote sp.n}
 theorem merged_declared_at_writer {P : Set (Vote sp.n)}
     (relay : ∀ v ∈ A.pool s, v ∈ P ∨ v.val ∈ equivocators P) {v : Vote sp.n}
     (hs : v.slot = s) (hv : v ∈ (mergedVoteView sp A Φ (s + 1)).votes) :
-    v ∈ P ∨ v.val ∈ equivocators P := by
-  rcases merged_declared_backing hs hv with h | ⟨u, hu, w, hw, ne, eu, ew⟩
-  · exact relay v h
-  · right
-    rcases relay u hu with h | h
-    · rcases relay w hw with h' | h'
-      · exact ⟨u, h, w, h', ne, eu, ew⟩
-      · exact ew ▸ h'
-    · exact eu ▸ h
+    v ∈ P ∨ v.val ∈ equivocators P :=
+  backed_trans (P := {w | w ∈ A.pool s}) relay (merged_declared_backing hs hv)
 
 end Consensus.Goldilocks.AC
 
