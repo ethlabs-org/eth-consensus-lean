@@ -154,6 +154,35 @@ theorem credentials_of_causal (hvv : rho.VoteVerification) (hc : rho.Causal) :
         exact rho.releasesAt_authorized j (fun m hm => ih m (by omega)) o hjo
   exact ⟨hvv, fun i w o t he => D (i + 1) i (by omega) w o t he⟩
 
+omit [DecidableEq V] in
+/-- **The own issuer gate.** A node's own issuer gives evidence for data `d` in role `r` exactly
+when a role that selects its own key, and then the run's issued evidence for its own claim. -/
+theorem voteIO_own_eq_some_iff (v : V) (r : (protoOf F E).Role) (d : (protoOf F E).VoteData)
+    (z : (protoOf F E).Token) :
+    (rho.voteIO v).own r d = some z ↔
+      rho.ownKey v ∈ rho.sel r ∧ z = rho.issue (rho.ownKey v, r, d) := by
+  simp only [voteIO]
+  split_ifs with h <;> simp [h, eq_comm]
+
+omit [DecidableEq V] in
+/-- A selected node's own issuer gives evidence. -/
+theorem voteIO_own_isSome {v : V} {r : (protoOf F E).Role} (h : rho.ownKey v ∈ rho.sel r)
+    (d : (protoOf F E).VoteData) :
+    (rho.voteIO v).own r d = some (rho.issue (rho.ownKey v, r, d)) :=
+  (rho.voteIO_own_eq_some_iff v r d _).2 ⟨h, rfl⟩
+
+omit [DecidableEq V] in
+/-- **Own evidence verifies.** Under `VoteVerification`, evidence the own issuer gives for a
+canonical own claim (the data claims the node's own key in that role) passes every node's
+check. -/
+theorem voteIO_own_check (hvv : rho.VoteVerification) {v : V} {r : (protoOf F E).Role}
+    {d : (protoOf F E).VoteData} {z : (protoOf F E).Token}
+    (hz : (rho.voteIO v).own r d = some z)
+    (hc : (protoOf F E).claim d = some (rho.ownKey v, r)) (w : V) :
+    (rho.voteIO w).check (rho.ownKey v) r d z = true := by
+  obtain ⟨hs, rfl⟩ := (rho.voteIO_own_eq_some_iff v r d z).1 hz
+  exact (hvv.2 _ _ _ _).2 ⟨hc, hs, rfl⟩
+
 end Run
 end Consensus.Model
 end
