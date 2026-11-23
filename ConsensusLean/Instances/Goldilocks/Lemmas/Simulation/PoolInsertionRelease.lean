@@ -201,7 +201,7 @@ variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A fresh envelope's object is the own object with its own token, whose body the same handler
 queues, or the received object of a message call admitting that vote. -/
-private theorem apply_voteForward_obj (st : State sp ro S.vote) origin r (t : Time)
+theorem apply_voteForward_obj (st : State sp ro S.vote) origin r (t : Time)
     (v : AC.Vote sp.n) (w : Wire sp.n S.vote) (h : (t, v, w) ∈ (apply st origin r).voteForwards) :
     (t, v, w) ∈ st.voteForwards ∨
       (∃ z, w = voteObj v z ∧ Body.vote (encodeVote v) z ∈ (apply st origin r).outbox) ∨
