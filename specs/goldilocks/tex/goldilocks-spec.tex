@@ -207,8 +207,8 @@ head.}
 The available chain of Goldilocks is Goldfish with locks on confirmed
 blocks.  It reads the FG frame~$\Fr$, the clock and its
 own state~$\AC$.  Its wire messages are Goldfish votes, the AC payload of
-a block is the list of previous-slot votes with its support subset, and
-its head is the Goldfish head.
+a block is a list of references to previous-slot votes with a support bit
+for each, and its head is the Goldfish head.
 
 \subsection{Schedule}\label{sec:sa-schedule}
 
@@ -387,22 +387,32 @@ signs it with the slot-$s$ seat of~$\valindex$, under a bijection for each
 slot between the seats and $\committee_s$.
 
 \emph{The payload.}  The payload of a block is
-$B.\acp=(B.\mathsf{votes},B.\mathsf{support\_votes})$: a list of
-slot-$(B.\slot-1)$ votes, and a list whose entries occur in
-$B.\mathsf{votes}$.  The payload of~$\genesis$ is two empty lists.  With
+$B.\acp=(B.\mathsf{refs},B.\mathsf{support\_bits})$: a list of
+\emph{references} $(v,H)$, each naming a validator~$v$ and a head~$H$ by
+root, and a list of bits of the same length.  A reference $(v,H)$ of~$B$
+\emph{declares} the slot-$(B.\slot-1)$ vote $(v,B.\slot-1,H)$; the slot is
+implicit.  The block carries no signature of~$v$: a declaration is the
+proposer's statement, not a vote.  The $i$-th bit marks the $i$-th
+reference as support.  The payload of~$\genesis$ is two empty lists.  With
 this payload the digest input of a block is
 \[
  (B.\parent.\rootf,\ B.\slot,\ B.\mathsf{attestations},\
- B.\mathsf{votes},\ B.\mathsf{support\_votes}).
+ B.\mathsf{refs},\ B.\mathsf{support\_bits}).
 \]
-The support list records the proposer's view; it is not a second set of
-votes to process.  A count reads distinct votes.
+[\emph{Decision point: reference format.}  Recommended: the validator
+index and the head root, as above, so that a voter reads the declared
+head without the vote.  Alternative: the digest of the signed vote, which
+a voter can match only against a vote it holds.]
+The support bits record the proposer's view; they are not a second set of
+references to process.  A count reads distinct declared votes.
 
-\emph{The payload check.}  $\Call{ac\_valid\_payload}{B}$ holds when every
-vote in $B.\mathsf{votes}$ has slot $B.\slot-1$ and passes the stateless
-checks of a wire vote (its form, its slot, $\valindex\in\committee_s$, its signature),
-and every entry of $B.\mathsf{support\_votes}$ occurs in
-$B.\mathsf{votes}$.  The check reads neither the clock nor the pool.
+\emph{The payload check.}  $\Call{ac\_valid\_payload}{B}$ holds when
+$B.\slot\geq1$ or the lists are empty, every reference $(v,H)$ has
+$v\in\committee_{B.\slot-1}$, the references are distinct, no validator
+has more than two references, and $B.\mathsf{support\_bits}$ has the
+length of $B.\mathsf{refs}$.  The check reads neither the clock nor the
+pool, and it checks no vote signature.  A reference to a vote that no
+node holds, or that was never signed, passes it.
 
 \emph{Admission.}  $\Call{on\_goldfish\_vote}{}$ accepts a vote at time~$t$
 when four conditions hold: its slot is $\slot(t)-1$ or $\slot(t)$, its
@@ -426,13 +436,34 @@ held vote of the latest slot whose votes are due: slot~$s-1$ before
 $t_s+2\Delta$, and slot~$s$ from then on.  The head and the proposal read
 the latest view.  The vote reads the merged view.
 
+\emph{Held declarations.}  A slot-$s$ voter \emph{holds} a declared vote
+$x=(v,s-1,H)$ when its pool $\AC.\gfPool[s-1]$ holds $x$ itself, or holds
+two distinct votes by~$v$.  In the second case the voter has not seen~$x$;
+two distinct signed votes prove that $v$ equivocated, and the voter takes
+the proposer's declaration for the head of~$v$.  A declaration that the
+voter does not hold is \emph{omitted}: it is neither counted nor waited
+for after the timeout.  [\emph{Decision point: declared-entry rule.}
+Recommended: the exact vote or any two distinct votes by~$v$ in the pool,
+read at the vote time.  Alternatives: the exact vote only (an equivocator
+with a missing vote is then omitted, and the views of the proposer and the
+voter can differ in category); or the declaration always (rejected: a
+proposer could then credit honest validators with votes they never
+signed).]
+
+\emph{Declarations are not votes.}  A declaration is never given to the
+admission test, never enters $\AC.\gfPool$, never gets a stamp, and is
+never forwarded.  It counts only in the merged view of the vote that reads
+it.  The optimistic confirmation and the confirmation update read
+$\AC.\gfPool$, so neither ever counts a declaration.
+
 \emph{The merged view.}  The merged view of a slot-$s$ voter is this view:
 the slot-$(s-1)$ votes held before the previous-slot vote freeze
-$t_{s-1}+3\Delta$, with as support those resolved before it, plus the votes
-and the support entries of the slot-$s$ proposals of $\Fr.\tree$, which
-pass the freeze.  The support that a proposal declares counts only for
-heads in~$\Fr.\tree$ with a slot at most $s-1$.  A proposal outside
-$\Fr.\tree$ contributes nothing.
+$t_{s-1}+3\Delta$, with as support those resolved before it, plus the
+held declarations of the slot-$s$ proposals of $\Fr.\tree$, which pass
+the freeze, and as support the held declarations marked by their support
+bits.  The support that a proposal declares counts only for heads
+in~$\Fr.\tree$ with a slot at most $s-1$.  A proposal outside $\Fr.\tree$
+contributes nothing.
 
 \emph{Counting.}  In a set of votes, an \emph{equivocator} is a validator
 with two distinct votes.  The \emph{supporters} of a block~$B$ are the
@@ -453,9 +484,23 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
 \begin{algorithmic}[1]
 \Function{ac\_valid\_payload}{$B$}
   \Comment{stateless: reads neither the clock nor the pool}
-  \State \Return $\mathsf{true}$ if every entry of $B.\mathsf{votes}$ is a vote $(v,s,H)$ with $s=B.\slot-1\geq0$, $v\in\committee_s$ and a valid
-  \Statex \hspace{2em}signature of the slot-$s$ seat of~$v$, and every entry of $B.\mathsf{support\_votes}$ is in $B.\mathsf{votes}$;
-    else $\mathsf{false}$
+  \State $s\gets B.\slot-1$
+  \State \Return $\mathsf{true}$ if $B.\mathsf{refs}$ is empty or $s\geq0$, every $(v,H)\in B.\mathsf{refs}$ has $v\in\committee_s$, the entries of
+  \Statex \hspace{2em}$B.\mathsf{refs}$ are distinct, no $v$ has more than two, and $|B.\mathsf{support\_bits}|=|B.\mathsf{refs}|$; else $\mathsf{false}$
+  \Comment{no vote signature}
+\EndFunction
+\vspace{1pt}
+\Function{declared}{$B$}
+  \Comment{the declared votes of $B$, and those marked as support}
+  \State $D\gets\{(v,B.\slot-1,H):(v,H)\in B.\mathsf{refs}\}$
+  \State $D^{+}\gets\{(v,B.\slot-1,H):(v,H)\text{ is the $i$-th entry of }B.\mathsf{refs}\text{ and }B.\mathsf{support\_bits}[i]=1\}$
+  \State \Return $(D,D^{+})$
+\EndFunction
+\vspace{1pt}
+\Function{held}{$\AC,x$}
+  \Comment{the exact vote, or a proof that its validator equivocated}
+  \State $(v,s,H)\gets x$
+  \State \Return $x\in\AC.\gfPool[s]$ or $\AC.\gfPool[s]$ holds two distinct votes by $v$
 \EndFunction
 \vspace{1pt}
 \Function{on\_goldfish\_vote}{$\AC,t,\mathit{vote}$}
@@ -505,10 +550,13 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
     \Call{vote\_view}{\AC,\Fr,s-1,\mathit{freeze}}$
     \Comment{received, and resolved, before the vote freeze}
   \ForAll{$B\in\Fr.\tree$ with $B.\slot=s$}
-    \Comment{the slot-$s$ proposals: their lists pass the vote freeze}
-    \State $\mathit{votes}\gets\mathit{votes}\cup B.\mathsf{votes}$
+    \Comment{the slot-$s$ proposals: their held declarations pass the vote freeze}
+    \State $(D,D^{+})\gets\Call{declared}{B}$
+    \State $\mathit{votes}\gets\mathit{votes}\cup
+      \{x\in D:\Call{held}{\AC,x}\}$
+    \Comment{never admitted: $\AC.\gfPool$ is unchanged}
     \State $\mathit{support\_votes}\gets\mathit{support\_votes}\cup
-      \{(v,s-1,H)\in B.\mathsf{support\_votes}:H\in\Fr.\tree,\
+      \{(v,s-1,H)\in D^{+}:\Call{held}{\AC,(v,s-1,H)},\ H\in\Fr.\tree,\
       H.\slot\leq s-1\}$
   \EndFor
   \State \Return $(\mathit{votes},\mathit{support\_votes})$
@@ -920,10 +968,19 @@ such test.
 \emph{When the node votes.}  For $s>0$, a joined node casts its slot-$s$
 vote at the first time $\tau\in[t_s,t_s+\Delta]$ at which it holds a \emph{ready} proposal: a block $P\in\Fr.\tree$
 with $P.\slot=s$ whose support references are resolved, that is, every
-$(v,s-1,H)$ in $P.\mathsf{support\_votes}$ has $H\in\Fr.\tree$ and
-$H.\slot\leq s-1$.  If no such time comes before
-$t_s+\Delta$, the node votes at $t_s+\Delta$ with no test, as it does in
-slot~$0$.  The vote check $\Call{try\_vote}{}$ runs after each receipt and
+declared support vote $(v,s-1,H)$ of~$P$ has $H\in\Fr.\tree$ and
+$H.\slot\leq s-1$, and at which it \emph{holds every declaration} of
+every slot-$s$ proposal of $\Fr.\tree$.  An early vote thus counts every
+declaration, and reads the view the proposer declared.  If no such time
+comes before $t_s+\Delta$, the node votes at $t_s+\Delta$ with no test, as
+it does in slot~$0$, and omits the declarations that it does not hold.
+[\emph{Decision point: early-cast readiness.}  Recommended: every
+declaration of every slot-$s$ proposal held, as above.  Alternatives:
+only the declarations of the ready proposal (a second, faulty proposal
+then cannot delay the vote, but an early vote can omit its declarations);
+or no test on declarations (an early vote can then omit declarations of
+an honest proposal that are still in flight).]
+The vote check $\Call{try\_vote}{}$ runs after each receipt and
 in the tick at $t_s+\Delta$, and it tests that the node is joined at~$\tau$.
 The vote is one sequence: the unlocking against the slot-$(s-1)$ votes
 (Section~\ref{sec:sa-locks}); then the walk; then $\AC.\votedSlot\gets s$;
@@ -931,6 +988,19 @@ then, when the node is in $\committee_s$, the vote, which enters through
 $\Call{ac\_on\_message}{}$ and so runs the optimistic check.  A node that
 is not in $\committee_s$ runs the same sequence and sends no vote.  So a
 node runs the sequence once per slot.
+
+\emph{Why the timeout suffices.}  The proposer declares only votes that it
+admitted by~$t_s$, and an honest node forwards a vote when it admits it
+(Section~\ref{sec:model}).  An honest voter that is awake and joined
+therefore receives each vote declared by an honest proposer, or a second
+vote of its validator that fills the pool, strictly before $t_s+\Delta$,
+so it holds every such declaration at the tick at $t_s+\Delta$.  A
+declaration of a faulty proposal can name a vote that no honest node
+holds; the voter omits it at $t_s+\Delta$.  [\emph{Decision point:
+unheld declarations of a faulty proposal.}  Recommended: omit them at the
+timeout; the block stays valid, since no check can tell a vote not yet
+received from one never signed.  Alternative: none that a stateless
+payload check can enforce.]
 
 \emph{The vote.}  At its vote time~$\tau$ the voter walks a frozen view,
 and it reads the frame, the locks and the proposals at~$\tau$.  It walks
@@ -950,11 +1020,12 @@ as the tick can.
 \nopagebreak
 {\footnotesize
 \begin{algorithmic}[1]
-\Function{vote\_ready}{$\Fr,s$}
-  \Comment{a ready proposal of slot $s$}
+\Function{vote\_ready}{$\AC,\Fr,s$}
+  \Comment{a ready proposal of slot $s$, and every declaration held}
   \State \Return $\exists P\in\Fr.\tree$ with $P.\slot=s$ such that every
-    $(v,s-1,H)\in P.\mathsf{support\_votes}$
-  \Statex \hspace{2em}has $H\in\Fr.\tree$ and $H.\slot\leq s-1$
+    $(v,s-1,H)$ in $\Call{declared}{P}.D^{+}$
+  \Statex \hspace{2em}has $H\in\Fr.\tree$ and $H.\slot\leq s-1$, and
+    $\Call{held}{\AC,x}$ for every $x$ in $\Call{declared}{B}.D$ of every $B\in\Fr.\tree$ with $B.\slot=s$
 \EndFunction
 \vspace{1pt}
 \Function{try\_vote}{$\AC,\Fr,t$}
@@ -964,9 +1035,9 @@ as the tick can.
     \State \Return
     \Comment{one vote per slot}
   \EndIf
-  \If{$t<t_s+\Delta$ and ($s=0$ or not \Call{vote\_ready}{$\Fr,s$})}
+  \If{$t<t_s+\Delta$ and ($s=0$ or not \Call{vote\_ready}{$\AC,\Fr,s$})}
     \State \Return
-    \Comment{wait for a ready proposal or for $t_s+\Delta$}
+    \Comment{wait for a ready proposal and its declarations, or for $t_s+\Delta$}
   \EndIf
   \State $(\mathit{votes},\mathit{support\_votes})\gets
     \Call{merged\_vote\_view}{\AC,\Fr,s}$
@@ -1000,8 +1071,8 @@ as the tick can.
 }
 
 \emph{Blocks.}  When the FG accepts a block~$B$, the node calls
-$\Call{ac\_on\_block}{}$.  It stamps $B$ with the clock and gives each vote
-of $B.\mathsf{votes}$ to the admission test.
+$\Call{ac\_on\_block}{}$.  It stamps $B$ with the clock.  It admits
+nothing: the declarations of~$B$ are read only by the merged view.
 
 \emph{The tick.}  The tick of a node that is not joined does nothing
 (Section~\ref{sec:sa-state}).  For a joined node, at $t_s+\Delta$ the tick
@@ -1013,10 +1084,10 @@ the tick and call $\Call{ac\_proposal}{}$ and $\Call{ac\_to\_fg}{}$.
 Before it proposes, $\Call{ac\_proposal}{}$ unlocks against the
 slot-$(s-1)$ votes.
 
-\emph{The proposal.}  At~$t_s$, for $s>0$, the proposer puts every
-previous-slot vote that it holds in $B.\mathsf{votes}$, in the order of its
-pool, and exactly the members resolved at proposal time in
-$B.\mathsf{support\_votes}$, in the same order.  Its parent is the head of
+\emph{The proposal.}  At~$t_s$, for $s>0$, the proposer puts a reference
+$(v,H)$ in $B.\mathsf{refs}$ for every previous-slot vote $(v,s-1,H)$ that
+it holds, in the order of its pool, and sets the support bit of exactly
+the references whose votes are resolved at proposal time.  Its parent is the head of
 $\Call{ac\_head}{}$ after the unlocking against its whole slot-$(s-1)$
 pool, with the resolved votes as support (Section~\ref{sec:sa-locks}).
 At slot~$0$ the head is genesis.  The proposer processes its own block at
@@ -1037,9 +1108,7 @@ it in $\AC.\fgReported$.
 \begin{algorithmic}[1]
 \Function{ac\_on\_block}{$\AC,\Fr,t,B$}
   \State $\AC.\timestamp[B]\gets t$
-  \ForAll{$\mathit{vote}\in B.\mathsf{votes}$}
-    \State \Call{on\_goldfish\_vote}{$\AC,t,\mathit{vote}$}
-  \EndFor
+  \Comment{its declarations are not admitted}
   \State \Call{optimistic\_confirmation}{$\AC,\Fr,t$}
   \State \Call{try\_vote}{$\AC,\Fr,t$}
   \Comment{can send the vote of the node}
@@ -1072,7 +1141,10 @@ it in $\AC.\fgReported$.
   \State $H\gets\Call{get\_head}{\AC,\Fr,t,\filtered(\Fr,\Fr.\tree),
     \mathit{votes},\mathit{support\_votes},s-1}$
   \Comment{the head of $\Call{ac\_head}{}$}
-  \State \Return $(H,(\mathit{votes},\mathit{support\_votes}))$
+  \State $\mathit{refs}\gets[(v,H'):(v,s-1,H')\in\mathit{votes}]$;\quad
+    $\mathit{bits}\gets[\,[x\in\mathit{support\_votes}]:x\in\mathit{votes}\,]$
+  \Comment{in the order of the pool}
+  \State \Return $(H,(\mathit{refs},\mathit{bits}))$
 \EndFunction
 \vspace{1pt}
 \Function{ac\_to\_fg}{$\AC,\Fr,t$}
@@ -1097,8 +1169,10 @@ every other part of~$\AC$ to its initial value.  It sets
 $\AC.\restartTime$ to the time of the restart, and it calls
 $\Call{ac\_on\_block}{}$ at that time for every block of $\Fr.\tree$ other
 than~$\genesis$, in parent order; the order of siblings is not fixed.
-These blocks get that stamp, and the votes that they carry and that
-admission accepts enter the pools with it.  A lock written before a
+These blocks get that stamp; their declarations are not admitted, so the
+restarted pools hold only votes received after the restart.  A joined
+voter of slot~$s$ restarted by $t_{s-1}$, so it lost no slot-$(s-1)$ vote:
+admission refuses such a vote before~$t_{s-1}$.  A lock written before a
 restart keeps its slot and its expiry.
 
 \captionof{figure}{Goldilocks: restart}\label{alg:sa-restart}
@@ -1114,7 +1188,7 @@ restart keeps its slot and its expiry.
   \State $\AC'.\restartTime\gets t$
   \ForAll{$B\in\Fr.\tree$ with $B\neq\genesis$, in parent order}
     \State \Call{ac\_on\_block}{$\AC',\Fr,t,B$}
-    \Comment{stamps the block and its votes with $t$}
+    \Comment{stamps the block with $t$}
   \EndFor
   \State \Return $\AC'$
 \EndFunction
