@@ -13,7 +13,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Forwa
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTransport
 public import ConsensusLean.Instances.Goldilocks.Results.Spec.NodeCanonicalTrace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Retention
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.DeadlineWake
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnReleaseProcessing
@@ -35,6 +37,35 @@ Contents: `deadline_awake_interval_at`, `deadline_mono_cut_at`, `publication_hel
 `publication_held_syncUntil_at`, `signed_att_wellFormed_at`, `released_att_processAt_at`,
 `held_att_processed_before_at`, the attestation service contract `PSyncFGAttTransportAt` with its
 monotone lift, and its base supplier `signed_row_service_psync_at`. -/
+
+namespace Consensus.Goldilocks.RunTrace
+
+variable {P : Params} {A : NodeAC P} {tr : RunTrace A}
+  {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
+  {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n} {ini : Fin P.n → A.State}
+
+/-- Move the observation back to the processing cut if a restart enlarged its deadline.
+`inScope` carries the prefix bound (or ancestry) needed by the particular reader. -/
+theorem service_at_processing_cut (hr : Growing.LocalRun proposer dg H sg tr ini)
+    {y : Fin P.n} {τ Δ : Time} {inScope processed : Nat → Prop}
+    (earlier : ∀ {k j}, k ≤ j → y ∈ H (tr.time j) → inScope j → inScope k)
+    (step : ∀ j, y ∈ H (tr.time j) → tr.IsCall y j → inScope j →
+      tr.deadline y j τ Δ ≤ tr.time j →
+      ∃ k ≤ j, tr.IsCall y k ∧ processed k ∧ tr.time k < tr.deadline y j τ Δ)
+    {j : Nat} (hy : y ∈ H (tr.time j)) (hj : tr.IsCall y j) (hs : inScope j)
+    (hd : tr.deadline y j τ Δ ≤ tr.time j) :
+    ∃ k ≤ j, processed k ∧ tr.time k < tr.deadline y k τ Δ := by
+  induction j using Nat.strong_induction_on with
+  | h j ih =>
+    obtain ⟨k, hkj, hc, hp, ht⟩ := step j hy hj hs hd
+    by_cases hk : tr.time k < tr.deadline y k τ Δ
+    · exact ⟨k, hkj, hp, hk⟩
+    · have hkj' : k < j := lt_of_le_of_ne hkj (by rintro rfl; exact hk ht)
+      obtain ⟨l, hl, hl', hlt⟩ := ih k hkj' (hr.antitone (hr.time_mono hkj) hy) hc
+        (earlier hkj hy hs) (le_of_not_gt hk)
+      exact ⟨l, hl.trans hkj, hl', hlt⟩
+
+end Consensus.Goldilocks.RunTrace
 
 namespace Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
 
@@ -131,6 +162,91 @@ theorem publication_held_before_psync
   have h := hnet.msgs _ _ _ hrel hx hrow (rho.key y) a ((le_max_left τ g).trans ha) hh' hh' hy' hw'
   change rho.log.Held rho.point (rho.key y) o (max a g + E.ΔAC - 1) at h
   rwa [hga] at h
+
+/-- Signatures of a node honest at the signing cut are well-formed attestations. -/
+theorem signed_att_wellFormed
+    (hr : Growing.LocalRun proposer (digestOf e rho) (honestKeysAt rho) sg (simTrace e rho) ini)
+    {y : Fin (Fintype.card V)} {i : Nat} {a : FG.Att (Fintype.card V)}
+    (hy : y ∈ honestKeysAt rho ((simTrace e rho).time i))
+    (hs : (simTrace e rho).SignAt y i a) : a.WellFormed := by
+  obtain ⟨C, hc⟩ := hs
+  have hsign := (hr.cutLaw y i _ hc hy).1
+  have hst := Trace.upTo_state (simTrace e rho) y (d := (simTrace e rho).time i)
+    (i := i) fun k hk => hr.time_mono hk.le
+  have hreach := Compose.fg_reachable (hr.upTo (hr.time_nonneg i)) hy i
+  rw [hst] at hreach
+  obtain ⟨h1, h2, h3⟩ := Store.entry_input hreach (((simTrace e rho).state y i).fg.σ C.root).Th
+  exact Compose.createAtt_wellFormed h1 h2 h3 hsign
+
+/-- A holding is backed by own processing no later than release, or by processing at receipt. -/
+theorem held_att_processed_before
+    (hr : Growing.LocalRun proposer (digestOf e rho) (honestKeysAt rho) sg (simTrace e rho) ini)
+    {y : Fin (Fintype.card V)} {a : FG.Att (Fintype.card V)}
+    {o : (Model.protoOf (compiled F) E).Object}
+    (hdecode : canonEvent e.codec (Model.digests rho.hash o) (wireOf e o) = some (.attestation a))
+    (hown : ∀ u, rho.releases (rho.key y) o u →
+      ∃ k, (simTrace e rho).ProcessAttAt y k a ∧ (simTrace e rho).time k ≤ u)
+    {j : Nat} {d D : Time} (hh : rho.log.Held rho.point (rho.key y) o d)
+    (hd : d < D) (hj : D ≤ (simTrace e rho).time j) :
+    ∃ k ≤ j, (simTrace e rho).ProcessAttAt y k a ∧ (simTrace e rho).time k < D := by
+  obtain ⟨u, hud, hs, _⟩ := hh
+  have hp : ∃ k, (simTrace e rho).ProcessAttAt y k a ∧ (simTrace e rho).time k ≤ u := by
+    rcases hs with hs | ⟨i, hi⟩
+    · exact hown u hs
+    · obtain ⟨k, _, _, hk, ht⟩ := received_att_processAt e rho hi
+        ⟨wireOf e o, mem_delivered_self e.codec e.adapter _ _ _, hdecode⟩
+      rw [Model.Run.ownKey, Equiv.symm_apply_apply] at hk
+      exact ⟨k, hk, ht.le⟩
+  obtain ⟨k, hk, ht⟩ := hp
+  have hlt := (ht.trans hud).trans_lt hd
+  exact ⟨k, le_of_not_gt fun h => (not_lt_of_ge (hj.trans (hr.time_mono h.le))) hlt, hk, hlt⟩
+
+/-- Supply the `Generic.Service.signedRow` law from FG partial synchrony. -/
+theorem signed_row_service_psync
+    (hr : Growing.LocalRun proposer (digestOf e rho) (honestKeysAt rho) sg (simTrace e rho) ini)
+    {g ΔF : Time} (hnet : rho.log.PSync rho.point g)
+    (attObj : FG.Att (Fintype.card V) → (Model.protoOf (compiled F) E).Object)
+    (hdecode : ∀ a, a.WellFormed →
+      canonEvent e.codec (Model.digests rho.hash (attObj a)) (wireOf e (attObj a)) =
+        some (.attestation a))
+    (hrow : ∀ a, rho.log.fgAtt (attObj a))
+    (hrel : ∀ x i a, x ∈ honestKeysAt rho ((simTrace e rho).time i) →
+      (simTrace e rho).SignAt x i a →
+      rho.releases (rho.key x) (attObj a) ((simTrace e rho).time i))
+    (hhorizon : ∀ x i a, (simTrace e rho).SignAt x i a → (simTrace e rho).time i ≤ rho.horizon)
+    (hown : ∀ y a u, rho.releases (rho.key y) (attObj a) u →
+      ∃ k, (simTrace e rho).ProcessAttAt y k a ∧ (simTrace e rho).time k ≤ u)
+    (hslack : ∀ w : Time, w + E.ΔFG - 1 < w + ΔF) :
+    ∀ x i a, x ∈ honestKeysAt rho ((simTrace e rho).time i) → (simTrace e rho).SignAt x i a →
+      ∀ y j, y ∈ honestKeysAt rho ((simTrace e rho).time j) → (simTrace e rho).IsCall y j →
+        (simTrace e rho).time j ≤ rho.horizon →
+        (simTrace e rho).deadline y j (max ((simTrace e rho).time i) g) ΔF ≤
+          (simTrace e rho).time j →
+        ∃ k ≤ j, (simTrace e rho).ProcessAttAt y k a ∧
+          (simTrace e rho).time k <
+            (simTrace e rho).deadline y k (max ((simTrace e rho).time i) g) ΔF := by
+  intro x i a hx hs y j hy hj hb hd
+  let tr := simTrace e rho
+  have hwf := signed_att_wellFormed hr hx hs
+  apply RunTrace.service_at_processing_cut hr (inScope := fun k => tr.time k ≤ rho.horizon)
+    (processed := fun k => tr.ProcessAttAt y k a) _ _ hy hj hb hd
+  · exact fun hkj _ hb => (hr.time_mono hkj).trans hb
+  · intro j hy hj hb hd
+    obtain ⟨w, hw, heq, haw⟩ := deadline_awake_interval hr hy hj
+      ((hr.time_nonneg i).trans (le_max_left _ g)) ΔF
+    have hgw : max w g = w := max_eq_left ((le_max_right _ g).trans hw)
+    have hbound : w + E.ΔFG - 1 ≤ tr.time j := (hslack w).le.trans (heq ▸ hd)
+    have hh := hbound.trans hb
+    have held := hnet.fgAtts (rho.key x) (attObj a) _ (hrel x i a hx hs)
+      (not_faulty_of_mem_honestKeysAt hx le_rfl (hhorizon x i a hs)) (hrow a)
+      (rho.key y) w ((le_max_left _ g).trans hw) (by rwa [hgw]) (by rwa [hgw])
+      (by rw [hgw]; exact not_faulty_of_mem_honestKeysAt hy hbound hh)
+      (by rw [hgw]; exact fun t hwt htd => haw t hwt (htd.trans hbound))
+    rw [hgw] at held
+    obtain ⟨k, hkj, hp, ht⟩ := held_att_processed_before hr (hdecode a hwf) (hown y a) held
+      (heq ▸ hslack w) hd
+    refine ⟨k, hkj, ?_, hp, ht⟩
+    rcases hp with hp | ⟨B, hp, _⟩ <;> exact ⟨_, hp⟩
 
 end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
 
@@ -265,17 +381,9 @@ theorem signed_att_wellFormed_at {V : Type} [Fintype V] [DecidableEq V] {E : Env
       ((simTraceAt S rho hn).time i))
     {a : FG.Att (Fintype.card V)} (hs : (simTraceAt S rho hn).SignAt y i a) :
     a.WellFormed := by
-  obtain ⟨C, hc⟩ := hs
-  have hrun := simTraceAt_goldilocksRun S rho hn hv
-  have hsign := (hrun.cutLaw y i _ hc hy).1
-  have hst := Trace.upTo_state (simTraceAt S rho hn) y
-      (d := (simTraceAt S rho hn).time i)
-    (i := i) fun k hk => hrun.time_mono hk.le
-  have hr := Compose.fg_reachable (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy i
-  rw [hst] at hr
-  obtain ⟨h1, h2, h3⟩ := Store.entry_input hr
-    (((simTraceAt S rho hn).state y i).fg.σ C.root).Th
-  exact Compose.createAtt_wellFormed h1 h2 h3 hsign
+  rw [network_trace_eq S rho hn, network_honestKeysAt_eq S rho] at hy
+  rw [network_trace_eq S rho hn] at hs
+  exact NodeAsChainShape.CanonicalTrace.signed_att_wellFormed (network_localRun S rho hn hv) hy hs
 
 /-- An actual canonical attestation release includes own processing in that tick. No honesty
 premise: an engine event's node is honest at the event. -/
@@ -290,6 +398,31 @@ theorem released_att_processAt_at (hn : 1 ≤ Fintype.card V) (hv : rho.Executio
     exact tick_attest_processAt S rho hn he hp hc
   · exact (deliver_not_att S rho hn hv he a ho).elim
 
+omit [DecidableEq V] in
+/-- The concrete codec reads the canonical attestation object of a well-formed attestation. -/
+private theorem decode_attObj (hn : 1 ≤ Fintype.card V) (a : FG.Att (Fintype.card V))
+    (hwf : a.WellFormed) :
+    NodeAsChainShape.canonEvent (traceEncoding (E := E) S hn).codec
+      (Model.digests rho.hash (attObj a))
+      (NodeAsChainShape.CanonicalTrace.wireOf (traceEncoding S hn) (attObj a)) =
+        some (.attestation a) := by
+  apply traceEncoding_induction S hn (fun e _ => NodeAsChainShape.canonEvent e.codec
+    (Model.digests rho.hash (attObj a)) (NodeAsChainShape.CanonicalTrace.wireOf e (attObj a)) =
+      some (.attestation a))
+  intro _ _
+  rw (config := { transparency := .default }) [NodeAsChainShape.CanonicalTrace.wireOf_eq]
+  exact canonEvent_attObj (sp := S.params (Model.pubOf E) hn) (ro := S.ro _) _ a hwf
+
+private theorem own_att_process_by (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    {y : Fin (Fintype.card V)} {a : FG.Att (Fintype.card V)} {u : Time}
+    (hs : rho.releases (rho.key y) (attObj a) u) :
+    ∃ k, (NodeAsChainShape.CanonicalTrace.simTrace (traceEncoding S hn) rho).ProcessAttAt y k a ∧
+      (NodeAsChainShape.CanonicalTrace.simTrace (traceEncoding S hn) rho).time k ≤ u := by
+  obtain ⟨k, hk, ht⟩ := released_att_processAt_at S rho hn hv hs
+  rw [network_trace_eq S rho hn, Model.Run.ownKey, Equiv.symm_apply_apply] at hk
+  rw [network_trace_eq S rho hn] at ht
+  exact ⟨k, hk, ht.le⟩
+
 /-- Holdings suffice for processing before an observation deadline, even for an old receipt. No
 honesty premise: the processing is the holder's own release or its receipt. -/
 theorem held_att_processed_before_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
@@ -302,24 +435,9 @@ theorem held_att_processed_before_at {V : Type} [Fintype V] [DecidableEq V] {E :
     ∃ k ≤ j, (simTraceAt S rho hn).ProcessAttAt y k a ∧
       (simTraceAt S rho hn).time
         k < D := by
-  obtain ⟨u, hud, hs, _⟩ := hh
-  have huD := hud.trans_lt hd
-  have hp : ∃ k, (simTraceAt S rho hn).ProcessAttAt
-      (rho.ownKey (rho.key y)) k a ∧
-      (simTraceAt S rho hn).time k = u := by
-    rcases hs with hs | ⟨i, hi⟩
-    · exact released_att_processAt_at S rho hn hv hs
-    · obtain ⟨k, _, hk, ht⟩ := received_att_processAt S rho hn hi hwf (mem_delivered_self _ _ _)
-      rw [simTraceAt_eq S rho hn]
-      exact ⟨k, hk, ht⟩
-  obtain ⟨k, hk, ht⟩ := hp
-  have hlt : (simTraceAt S rho hn).time k < D := ht ▸ huD
-  refine ⟨k, ?_, ?_, hlt⟩
-  · by_contra h
-    exact (not_lt_of_ge (hj.trans
-      ((simTraceAt_goldilocksRun S rho hn hv).time_mono (by omega)))) hlt
-  · have he : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
-    exact he ▸ hk
+  rw [network_trace_eq S rho hn] at hj ⊢
+  apply NodeAsChainShape.CanonicalTrace.held_att_processed_before (network_localRun S rho hn hv)
+    (decode_attObj S rho hn a hwf) (fun _ => own_att_process_by S rho hn hv) hh hd hj
 
 variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (ΔF : Time)
@@ -365,57 +483,23 @@ theorem signed_row_service_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : 
     PSyncFGAttTransportAt S rho (simTraceAt S rho hn)
         (honestKeysAt S rho)
       (protoFGDelay (Model.pubOf E)) := by
-  intro g hnet x i a hx hsign y j hy hj hb hd
+  rw [psyncFGAttTransportAt_iff, network_trace_eq S rho hn, network_honestKeysAt_eq S rho]
+  intro g hnet
   have hsim := simTraceAt_simulates S rho hn hv
-  have run := simTraceAt_goldilocksRun S rho hn hv
-  have hwf := signed_att_wellFormed_at S rho hn hv hx hsign
-  have hrel := hsim.att_released x i a hx hsign
-  have hτ := run.time_nonneg i
-  have hih := signAt_time_le_horizon S rho hn hv hsign
-  have hrowa : rho.log.fgAtt (attObj a) :=
-    (log_fgAtt_iff S rho _).mpr (isFGAtt_attObj a)
-  induction j using Nat.strong_induction_on with
-  | h j ih =>
-    obtain ⟨w, hw, heq₀, haw⟩ := deadline_awake_interval_at S rho hn hv hy hj
-      (hτ.trans (le_max_left _ g))
-    have heq : (simTraceAt S rho hn).deadline y j
-        (max ((simTraceAt S rho hn).time i) g)
-        (protoFGDelay (Model.pubOf E)) = w + protoFGDelay (Model.pubOf E) := by
-      unfold RunTrace.deadline at heq₀ ⊢
-      linarith only [heq₀]
-    have hgw : max w g = w := max_eq_left ((le_max_right _ g).trans hw)
-    have slack : w + E.ΔFG - 1 < w + protoFGDelay (Model.pubOf E) := by
-      rw [protoFGDelay_eq]
-      exact sub_one_lt _
-    have hbound : w + E.ΔFG - 1 ≤ (simTraceAt S rho hn).time j :=
-      slack.le.trans (heq ▸ hd)
-    have held := hnet.fgAtts (rho.key x)
-      (attObj a) _ ((releasedFrom_iff S rho _ _ _).mp hrel)
-      (not_faulty_of_mem_honestKeysAt S rho hx le_rfl hih)
-      hrowa (rho.key y) w
-      ((le_max_left _ g).trans hw) (by rw [hgw]; exact hbound.trans hb)
-      (by rw [hgw]; exact hbound.trans hb)
-      (by
-        rw [hgw]
-        exact not_faulty_of_mem_honestKeysAt
-          S rho hy hbound (hbound.trans hb))
-      (by rw [hgw]; exact fun t hwt htd => haw t hwt (htd.trans hbound))
-    rw [hgw] at held
-    obtain ⟨k, hkj, hp, ht⟩ := held_att_processed_before_at S rho hn hv hwf held
-      (heq ▸ slack) hd
-    by_cases hk : (simTraceAt S rho hn).time k <
-        (simTraceAt S rho hn).deadline y k
-          (max ((simTraceAt S rho hn).time i) g)
-          (protoFGDelay (Model.pubOf E))
-    · exact ⟨k, hkj, hp, hk⟩
-    · have hkj' : k < j := lt_of_le_of_ne hkj (by intro he; subst k; exact hk ht)
-      have hc : (simTraceAt S rho hn).IsCall y k := by
-        rcases hp with hp | ⟨B, hp, _⟩
-        · exact ⟨_, hp⟩
-        · exact ⟨_, hp⟩
-      obtain ⟨l, hl, hp', ht'⟩ := ih k hkj' (run.antitone (run.time_mono hkj) hy) hc
-        ((run.time_mono hkj).trans hb) (le_of_not_gt hk)
-      exact ⟨l, hl.trans hkj, hp', ht'⟩
+  apply NodeAsChainShape.CanonicalTrace.signed_row_service_psync (network_localRun S rho hn hv)
+    hnet (attObj (binding := S.vote)) (decode_attObj S rho hn)
+    (fun a => (log_fgAtt_iff S rho _).mpr (isFGAtt_attObj a))
+  · intro x i a hx hs
+    rw [← network_trace_eq S rho hn, ← network_honestKeysAt_eq S rho] at hx
+    rw [← network_trace_eq S rho hn] at hs ⊢
+    exact (releasedFrom_iff S rho _ _ _).mp (hsim.att_released x i a hx hs)
+  · intro x i a hs
+    rw [← network_trace_eq S rho hn] at hs ⊢
+    exact signAt_time_le_horizon S rho hn hv hs
+  · exact fun _ _ _ => own_att_process_by S rho hn hv
+  · intro w
+    rw [protoFGDelay_eq]
+    exact sub_one_lt _
 
 end Consensus.Goldilocks.Obligations.Growing
 

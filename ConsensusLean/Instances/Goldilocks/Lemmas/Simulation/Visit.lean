@@ -75,9 +75,9 @@ theorem mem_delivered {st : State sp ro binding} {o x : Wire sp.n binding}
 
 /-- The received object itself is delivered. -/
 theorem mem_delivered_self (st : State sp ro binding) (o : Wire sp.n binding) :
-    o ∈ delivered hs st o := by
-  rw [delivered_eq]
-  rcases visit_cases hs st o with ⟨-, h⟩ | ⟨-, h⟩ <;> rw [h] <;> exact List.mem_cons_self
+    o ∈ delivered hs st o :=
+  NodeAsChainShape.CanonicalTrace.mem_delivered_self (wireCodec sp ro binding)
+    (nodeAdapter sp ro binding) hs st o
 
 /-- `visit` of an object whose processing refuses no block: the object, then `visitList` of what
 it carries. -/

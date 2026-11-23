@@ -42,12 +42,13 @@ private theorem visitList_parts (st : S) (os : List (ShapeObj P.n K I B)) :
     · exact List.mem_append_right _ (visitList_parts _ _ hx)
 end
 
-/-- A decoded message in the visit list has its own replay cut. -/
-theorem deliverRecs_message_call (pr : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)
-    (y : Fin P.n) (t : Time) (i : Nat) (m : A.Msg)
+/-- A handler label for a decoded object in the visit list has a replay cut. -/
+theorem deliverRecs_label (pr : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)
+    (y : Fin P.n) (t : Time) (i : Nat) (ev : Event A) (Q : Cut A → Prop)
     (os : List (ShapeObj P.n K I B)) (st : NodeState A) (sub : Nat)
-    (hm : ∃ o ∈ os, canonEvent C hs o = some (.message m)) :
-    ∃ r ∈ deliverRecs C pr dg hs y t i os st sub, ∃ l, r.label = .ac l ∧ l.call = .message m := by
+    (hm : ∃ o ∈ os, canonEvent C hs o = some ev)
+    (hlabel : ∀ s, ∃ l ls, (exec pr dg y s t ev).2 = l :: ls ∧ Q l) :
+    ∃ r ∈ deliverRecs C pr dg hs y t i os st sub, Q r.label := by
   induction os generalizing st sub with
   | nil => simp at hm
   | cons o os ih =>
@@ -55,17 +56,35 @@ theorem deliverRecs_message_call (pr : Nat → Fin P.n) (dg : Digest (List (FG.A
     rw [deliverRecs_cons]
     rcases List.mem_cons.mp hw with rfl | hw
     · rw [hc]
-      simp [groupRecs_eq, exec, onMessage, acCall, cutPosts_cons, cutPosts_nil]
+      obtain ⟨l, ls, hl, hQ⟩ := hlabel st
+      simp only [groupRecs_eq, hl, cutPosts_cons, List.zip_cons_cons, List.mapIdx_cons]
+      exact ⟨_, List.mem_append_left _ List.mem_cons_self, hQ⟩
     · cases he : canonEvent C hs o with
       | none => exact ih st (sub + 1) ⟨w, hw, hc⟩
       | some ev =>
-        obtain ⟨r, hr, l, hl, hm⟩ := ih _ (sub + 1) ⟨w, hw, hc⟩
-        exact ⟨r, List.mem_append_right _ hr, l, hl, hm⟩
+        obtain ⟨r, hr, hQ⟩ := ih _ (sub + 1) ⟨w, hw, hc⟩
+        exact ⟨r, List.mem_append_right _ hr, hQ⟩
+
+/-- A decoded message in the visit list has its own replay cut. -/
+theorem deliverRecs_message_call (pr : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)
+    (y : Fin P.n) (t : Time) (i : Nat) (m : A.Msg)
+    (os : List (ShapeObj P.n K I B)) (st : NodeState A) (sub : Nat)
+    (hm : ∃ o ∈ os, canonEvent C hs o = some (.message m)) :
+    ∃ r ∈ deliverRecs C pr dg hs y t i os st sub, ∃ l, r.label = .ac l ∧ l.call = .message m :=
+  deliverRecs_label C hs pr dg y t i (.message m) (fun c => ∃ l, c = .ac l ∧ l.call = .message m)
+    os st sub hm (by intro s; simp [exec, onMessage, acCall])
 
 /-- Any object visited by a receipt is in the received object's recursive closure. -/
 theorem contains_of_mem_delivered {st : S} {o w : ShapeObj P.n K I B}
     (hw : w ∈ delivered C D hs st o) : Model.Obj.Contains o w :=
   visit_parts C D hs st o hw
+
+/-- The received root itself is visited, even on refusal. -/
+theorem mem_delivered_self (st : S) (o : ShapeObj P.n K I B) : o ∈ delivered C D hs st o := by
+  cases o with
+  | mk a m cs =>
+    rw [delivered, visit]
+    split <;> exact List.mem_cons_self
 
 /-- A delivery cut comes from the handler after replaying the preceding visited objects. -/
 theorem mem_deliverRecs_prefix (pr : Nat → Fin P.n)

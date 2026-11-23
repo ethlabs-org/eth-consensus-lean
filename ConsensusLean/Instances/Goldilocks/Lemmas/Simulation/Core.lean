@@ -30,6 +30,22 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   {hn : 1 ≤ Fintype.card V} {A : NodeAC (paramsAtCount p (Fintype.card V) hN hn)}
   (e : Encoding F E p hN hn A) (rho : Model.Run (compiled F) E)
 
+private theorem delivery_label_cut {i : Nat} {v : V} {o : (Model.protoOf (compiled F) E).Object}
+    {t : Time} (he : rho.events[i]? = some (.deliver v o t)) {r : CutRec A}
+    (hr : r ∈ eventCuts e rho i) :
+    ∃ k, cutMap e rho i ≤ k ∧ k < cutMap e rho (i + 1) ∧
+      (simTrace e rho).CallAt (rho.ownKey v) k r.label ∧ (simTrace e rho).time k = t := by
+  obtain ⟨ht, hy⟩ := eventCut_node_time e rho he hr
+  obtain ⟨j, hj, heq⟩ := List.getElem_of_mem hr
+  have hk : (allCuts e rho)[cutMap e rho i + j]? = some r := by
+    rw [allCuts_getElem?_add e rho i j (List.getElem?_eq_some_iff.mp he).1 hj,
+      List.getElem?_eq_getElem hj, heq]
+  refine ⟨cutMap e rho i + j, Nat.le_add_right _ _, ?_, ⟨?_, ?_⟩, ?_⟩
+  · rw [cutMap_succ]; omega
+  · simpa only [simTrace_node, hk, Option.elim_some, Model.Event.node] using hy
+  · simp only [simTrace_label, hk, Option.map_some]
+  · simpa only [simTrace_time, hk, Option.elim_some, Model.Event.time] using ht
+
 /-- A visited object decoding to a message has an explicit processing cut in its delivery. -/
 theorem received_message_processAt {i : Nat} {v : V} {o : (Model.protoOf (compiled F) E).Object}
     {t : Time} {m : A.Msg} (he : rho.events[i]? = some (.deliver v o t))
@@ -43,17 +59,28 @@ theorem received_message_processAt {i : Nat} {v : V} {o : (Model.protoOf (compil
   have hr' : r ∈ eventCuts e rho i := by
     rw [eventCuts_deliver e rho i v o t he]
     exact hr
-  obtain ⟨ht, hy⟩ := eventCut_node_time e rho he hr'
-  obtain ⟨j, hj, heq⟩ := List.getElem_of_mem hr'
-  have hk : (allCuts e rho)[cutMap e rho i + j]? = some r := by
-    rw [allCuts_getElem?_add e rho i j (List.getElem?_eq_some_iff.mp he).1 hj,
-      List.getElem?_eq_getElem hj, heq]
-  refine ⟨cutMap e rho i + j, Nat.le_add_right _ _, ?_, ?_, ?_⟩
-  · rw [cutMap_succ]; omega
-  · refine ⟨l, Compose.projAC_callAt.mpr ⟨?_, ?_⟩, Or.inl hm⟩
-    · simpa only [simTrace_node, hk, Option.elim_some, Model.Event.node] using hy
-    · simp only [simTrace_label, hk, Option.map_some, hl]
-  · simpa only [simTrace_time, hk, Option.elim_some, Model.Event.time] using ht
+  obtain ⟨k, hlo, hhi, hcall, ht⟩ := delivery_label_cut e rho he hr'
+  rw [hl] at hcall
+  exact ⟨k, hlo, hhi, ⟨l, Compose.projAC_callAt.mpr hcall, Or.inl hm⟩, ht⟩
+
+/-- A visited object decoding to an attestation has a direct processing call at receipt time,
+even if the attestation was already pooled. -/
+theorem received_att_processAt {i : Nat} {v : V} {o : (Model.protoOf (compiled F) E).Object}
+    {t : Time} {a : FG.Att (Fintype.card V)} (he : rho.events[i]? = some (.deliver v o t))
+    (h : ∃ w ∈ delivered e.codec e.adapter (Model.digests rho.hash o)
+        (stateAt e rho v i) (wireOf e o),
+      canonEvent e.codec (Model.digests rho.hash o) w = some (.attestation a)) :
+    ∃ k, cutMap e rho i ≤ k ∧ k < cutMap e rho (i + 1) ∧
+      (simTrace e rho).ProcessAttAt (rho.ownKey v) k a ∧ (simTrace e rho).time k = t := by
+  obtain ⟨r, hr, hl⟩ := deliverRecs_label e.codec _ (runProposer rho hn) (digestOf e rho)
+    (rho.ownKey v) t i (.attestation a) (· = .fg (.attestation a)) _ _ 0 h
+    (by intro s; simp [exec, onAttestation])
+  have hr' : r ∈ eventCuts e rho i := by
+    rw [eventCuts_deliver e rho i v o t he]
+    exact hr
+  obtain ⟨k, hlo, hhi, hcall, ht⟩ := delivery_label_cut e rho he hr'
+  rw [hl] at hcall
+  exact ⟨k, hlo, hhi, Or.inl hcall, ht⟩
 
 /-- A message carried by a non-refused receipt is processed at that same delivery. -/
 theorem received_carried_message_processAt {i : Nat} {v : V}

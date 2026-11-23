@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Source
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Forwarding
@@ -24,35 +25,6 @@ and recipients honest at their reading call:
 * `vote_message_service_other_at`: another recipient processes a first-release vote envelope;
 * `Simulation.sleepyServiceBefore_of_syncUntil_at`: the finite Sleepy service from raw synchrony
   through its deadline bound. -/
-
-namespace Consensus.Goldilocks.RunTrace
-
-variable {P : Params} {A : NodeAC P} {tr : RunTrace A}
-  {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
-  {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n} {ini : Fin P.n → A.State}
-
-/-- Move the observation back to the processing cut if a restart enlarged its deadline.
-`inScope` carries the prefix bound (or ancestry) needed by the particular reader. -/
-theorem service_at_processing_cut (hr : Growing.LocalRun proposer dg H sg tr ini)
-    {y : Fin P.n} {τ : Time} {inScope processed : Nat → Prop}
-    (earlier : ∀ {k j}, k ≤ j → y ∈ H (tr.time j) → inScope j → inScope k)
-    (step : ∀ j, y ∈ H (tr.time j) → tr.IsCall y j → inScope j →
-      tr.deadline y j τ P.Δ ≤ tr.time j →
-      ∃ k ≤ j, tr.IsCall y k ∧ processed k ∧ tr.time k < tr.deadline y j τ P.Δ)
-    {j : Nat} (hy : y ∈ H (tr.time j)) (hj : tr.IsCall y j) (hs : inScope j)
-    (hd : tr.deadline y j τ P.Δ ≤ tr.time j) :
-    ∃ k ≤ j, processed k ∧ tr.time k < tr.deadline y k τ P.Δ := by
-  induction j using Nat.strong_induction_on with
-  | h j ih =>
-    obtain ⟨k, hkj, hc, hp, ht⟩ := step j hy hj hs hd
-    by_cases hk : tr.time k < tr.deadline y k τ P.Δ
-    · exact ⟨k, hkj, hp, hk⟩
-    · have hkj' : k < j := lt_of_le_of_ne hkj (by rintro rfl; exact hk ht)
-      obtain ⟨l, hl, hl', hlt⟩ := ih k hkj' (hr.antitone (hr.time_mono hkj) hy) hc
-        (earlier hkj hy hs) (le_of_not_gt hk)
-      exact ⟨l, hl.trans hkj, hl', hlt⟩
-
-end Consensus.Goldilocks.RunTrace
 
 namespace Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
 

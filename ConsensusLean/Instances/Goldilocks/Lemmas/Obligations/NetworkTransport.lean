@@ -93,61 +93,22 @@ theorem received_att_processAt
     ∃ k < cutMap S rho hn (i + 1),
       (simTrace S rho hn).ProcessAttAt (rho.ownKey v) k a ∧
       (simTrace S rho hn).time k = t := by
-  let proposer := runProposer S rho hn
-  let dg := digestOf S rho
-  let hs : List (Header Info × Nat) := Model.digests rho.hash receipt
-  have find : ∀ (os : List (Wire (Fintype.card V) S.vote))
-      (st : NodeState (goldilocksNode
-        (S.params (Model.pubOf E) hn) (S.ro _)))
-      (sub : Nat),
-      attObj a ∈ os → ∃ r ∈ deliverRecs proposer dg hs (rho.ownKey v) t i os st sub,
-        r.label = .fg (.attestation a) := by
-    intro os
-    induction os with
-    | nil => intro st sub h; simp at h
-    | cons o os ih =>
-      intro st sub hm
-      rcases List.mem_cons.mp hm with rfl | hm
-      · rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _
-          (canonEvent_attObj
-            (sp := S.params (Model.pubOf E) hn)
-            (ro := S.ro _) hs a hwf)]
-        have hlen : 0 < (groupRecs proposer dg (rho.ownKey v) st t
-            (Nat.pair i sub) (.attestation a)).length := by
-          simp [length_groupRecs, Node.exec, Node.onAttestation]
-        refine ⟨_, List.mem_append_left _ (List.getElem_mem hlen), ?_⟩
-        rw [(getElem_groupRecs proposer dg (rho.ownKey v) st t
-          (Nat.pair i sub) (.attestation a) 0 hlen).2.2.2.2]
-        rfl
-      · cases ho : canonEvent
-          (S.params
-            (Model.pubOf E) hn) (S.ro _) hs o with
-        | none =>
-          rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ ho]
-          exact ih st (sub + 1) hm
-        | some e =>
-          rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ ho]
-          obtain ⟨r, hr, hl⟩ := ih (Node.exec proposer dg (rho.ownKey v) st t e).1
-            (sub + 1) hm
-          exact ⟨r, List.mem_append_right _ hr, hl⟩
-  obtain ⟨r, hr, hl⟩ := find _ (stateAt S rho hn v i).node 0 hc
-  obtain ⟨hn', ht, _⟩ := mem_deliverRecs
-    (sp := S.params (Model.pubOf E) hn)
-    (ro := S.ro _) proposer dg (rho.ownKey v) hs t i hr
-  have hr' : r ∈ eventCuts S rho hn i := by
-    rw [eventCuts_deliver S rho hn i v receipt t he]
-    exact hr
-  obtain ⟨j, hj, heq⟩ := List.getElem_of_mem hr'
-  have hk : (allCuts S rho hn)[
-      cutMap S rho hn i + j]? =
-      some r := by
-    rw [allCuts_getElem?_add S rho hn i j
-      (List.getElem?_eq_some_iff.mp he).1 hj,
-      List.getElem?_eq_getElem hj, heq]
-  refine ⟨cutMap S rho hn i + j, ?_, Or.inl ⟨?_, ?_⟩, ?_⟩
-  · rw [cutMap_succ S rho hn]; omega
-  · simp only [simTrace_node S rho hn, hk, Option.elim_some, hn']
-  · simp only [simTrace_label S rho hn, hk, Option.map_some, hl]
-  · simp only [simTrace_time S rho hn, hk, Option.elim_some, ht]
+  obtain ⟨k, _, hk, hp, ht⟩ :=
+    NodeAsChainShape.CanonicalTrace.received_att_processAt (traceEncoding S hn) rho he
+      (by
+        apply traceEncoding_induction S hn (fun e _ =>
+          ∃ w ∈ NodeAsChainShape.delivered e.codec e.adapter (Model.digests rho.hash receipt)
+              (NodeAsChainShape.CanonicalTrace.stateAt e rho v i)
+              (NodeAsChainShape.CanonicalTrace.wireOf e receipt),
+            NodeAsChainShape.canonEvent e.codec (Model.digests rho.hash receipt) w =
+              some (.attestation a))
+        intro _ _
+        refine ⟨attObj (binding := S.vote) a, ?_,
+          canonEvent_attObj (sp := S.params (Model.pubOf E) hn) (ro := S.ro _) _ a hwf⟩
+        rw [NodeAsChainShape.CanonicalTrace.stateAt_eq]
+        rw (config := { transparency := .default }) [NodeAsChainShape.CanonicalTrace.wireOf_eq]
+        rw [stateAt_eq] at hc
+        exact hc)
+  simpa only [(simTrace_encoding S rho hn).1, (simTrace_encoding S rho hn).2] using ⟨k, hk, hp, ht⟩
 
 end Consensus.Goldilocks.Obligations
