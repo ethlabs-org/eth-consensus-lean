@@ -435,10 +435,6 @@ theorem mem_unlock {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {L : S
     l ∈ unlock sp L Φ t s V :=
   ⟨l, h.mem_liveLocks hl h1 h2 hr hlive, blk m, h.mem h1 h2, hr.symm, by rw [ite_eq_right hs]⟩
 
-theorem admitVote_old {A : SAState sp.n} {t : Time} {v : Vote sp.n} (h : v ∈ A.pool v.slot) :
-    admitVote sp A t v = A := by
-  unfold admitVote; rw [ite_eq_left (Or.inr (Or.inr h))]
-
 /-! ## The SA's calls of the tick run -/
 
 theorem delta1 : sp.Δ = 1 := rfl

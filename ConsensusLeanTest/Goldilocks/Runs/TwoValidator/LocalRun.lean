@@ -362,7 +362,7 @@ theorem run_localRun : Node.LocalRun prop dg Set.univ (fun v : Vote sp.n => v.va
     | block B =>
       obtain ⟨s, hs1, rfl⟩ := hB B (normEv_block he.symm)
       obtain ⟨s, rfl⟩ : ∃ s', s = s' + 1 := ⟨s - 1, by omega⟩
-      refine ⟨?_, ?_, ?_, ?_⟩
+      refine ⟨?_, ?_, ?_, ?_, ?_, fun i => ?_⟩
       · unfold Block.RootOk
         rw [blk_root_succ, blk_parent_succ, blk_slot, blk_input]
       · intro a ha
@@ -374,12 +374,15 @@ theorem run_localRun : Node.LocalRun prop dg Set.univ (fun v : Vote sp.n => v.va
         rw [blk_slot]
         simp only [List.mem_cons, List.not_mem_nil, or_false] at hv
         rcases hv with rfl | rfl <;> rfl
-      · intro v hv
-        change v ∈ blockSupport (blk (s + 1)) at hv
-        change v ∈ blockVotes (blk (s + 1))
-        rw [blockSupport_blk] at hv
+      · change (blockSupport (blk (s + 1))).Sublist (blockVotes (blk (s + 1)))
+        rw [blockSupport_blk, blockVotes_blk]
+      · change (blockVotes (blk (s + 1))).Nodup
         rw [blockVotes_blk]
-        exact hv
+        exact List.nodup_cons.2 ⟨fun h => w1_ne (vote_inj (List.mem_singleton.1 h)).1.symm,
+          List.nodup_singleton _⟩
+      · change ((blockVotes (blk (s + 1))).filter _).length ≤ 2
+        rw [blockVotes_blk]
+        exact List.length_filter_le _ _
   proposerCredential y _ j t B h := by
     obtain ⟨s, -, rfl⟩ := group_block h
     exact blk_proposer s
@@ -469,16 +472,6 @@ theorem run_goldilocksRun : GoldilocksRun prop dg Set.univ run where
   toLocalRun := run_localRun
   genesis_root_ok := dg_genesis
   vstart := fun _ => SA.voteStart_initial _
-  carried_vote_unforgeable y _ i B := by
-    rintro ⟨acc, hc⟩ v hv -
-    obtain ⟨t, j, k, p, -, -, rfl, hp, hsk, -⟩ := sk_of_label hc.2
-    obtain ⟨s, hs, rfl, rfl, -⟩ := plan_fgBlock hp hsk
-    obtain ⟨s, rfl⟩ : ∃ s', s = s' + 1 := ⟨s - 1, by omega⟩
-    rw [blockVotes_blk] at hv
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hv
-    rcases hv with rfl | rfl
-    · exact ⟨_, by unfold emitIdx; rw [w0_val]; split_ifs <;> omega, emit_vote w0 s⟩
-    · exact ⟨_, by unfold emitIdx; rw [w1_val]; split_ifs <;> omega, emit_vote w1 s⟩
 
 end Consensus.Goldilocks.Witness.TwoRun
 
