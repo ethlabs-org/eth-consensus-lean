@@ -257,8 +257,10 @@ $n=|V|\geq1$, weights~$1$, $q=\lceil 2n/3\rceil$.  $\Delta>0$, $\Delta_F\geq\Del
 Committees: every node claim of this file assumes the population committee,
 $\mathcal K_s=V$ for every slot~$s$, so $|\mathcal K_s|=n$ and every honest validator that is awake and joined
 at $t_s+\Delta$, the latest time of the slot-$s$ vote, votes in slot~$s$.  The protocol
-(goldilocks-spec \S Schedule) allows any public committees of one common
-size; for those, the claims that count against the committee or rely on
+(goldilocks-spec \S Schedule) allows any committees of one common size,
+given by a public binding: the size and the binding are public, not every
+membership (a node learns another validator's membership only from its
+verified vote); for those, the claims that count against the committee or rely on
 every honest voter voting (for example A0.4 (e) through $e<n/2$, and the
 casts dichotomy of A1.9) are not claimed here, and committee-native forms
 are separate statements.  The certified endpoint (\S\ref{sec:obligations},
