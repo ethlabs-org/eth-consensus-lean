@@ -151,15 +151,16 @@ theorem deliverSeq_of_recs
     (proposer : Nat → Fin (S.params (pubOf E) hn).n)
     (dg : Digest (List (FG.Att (S.params (pubOf E) hn).n)) (Payload (S.params (pubOf E) hn).n))
     {y : Fin (S.params (pubOf E) hn).n} {t : Time} {i : Nat}
+    (io : VoteAuth (S.params (pubOf E) hn).n S.vote)
     (hs : List (Header Info × Nat)) (os : List (Wire (S.params (pubOf E) hn).n S.vote)) :
     ∀ (j0 sub : Nat) (st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _))),
-    (∀ k < (deliverRecs proposer dg hs y t i os st sub).length,
-      (allCuts S rho hn)[j0 + k]? = (deliverRecs proposer dg hs y t i os st sub)[k]?) →
+    (∀ k < (deliverRecs io proposer dg hs y t i os st sub).length,
+      (allCuts S rho hn)[j0 + k]? = (deliverRecs io proposer dg hs y t i os st sub)[k]?) →
     (simTrace S rho hn).state y j0 = st →
     (∀ k s, (simTrace S rho hn).event k = Nat.pair i s → sub ≤ s →
-      j0 ≤ k ∧ k < j0 + (deliverRecs proposer dg hs y t i os st sub).length) →
-    DeliverSeq proposer (simTrace S rho hn) dg hs y t os j0
-      (j0 + (deliverRecs proposer dg hs y t i os st sub).length) := by
+      j0 ≤ k ∧ k < j0 + (deliverRecs io proposer dg hs y t i os st sub).length) →
+    DeliverSeq proposer (simTrace S rho hn) dg io hs y t os j0
+      (j0 + (deliverRecs io proposer dg hs y t i os st sub).length) := by
   induction os with
   | nil =>
     intro j0 sub st _ _ _
@@ -167,12 +168,12 @@ theorem deliverSeq_of_recs
     exact .nil j0
   | cons o os ih =>
     intro j0 sub st hcut h0 huniq
-    cases he : canonEvent (S.params (pubOf E) hn) (S.ro _) hs o with
+    cases he : canonEvent (S.params (pubOf E) hn) (S.ro _) io hs o with
     | none =>
-      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he] at hcut huniq ⊢
+      rw [deliverRecs_cons_none io _ _ _ _ _ _ _ _ _ _ he] at hcut huniq ⊢
       exact .drop he (ih j0 (sub + 1) st hcut h0 fun k s hk hs => huniq k s hk (by omega))
     | some e =>
-      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ e he] at hcut huniq ⊢
+      rw [deliverRecs_cons_some io _ _ _ _ _ _ _ _ _ _ e he] at hcut huniq ⊢
       rcases eq_or_ne (exec proposer dg y st t e).2 [] with hnil | hnil
       · have hg : groupRecs proposer dg y st t (Nat.pair i sub) e = [] :=
           List.length_eq_zero_iff.mp (by rw [length_groupRecs, hnil, List.length_nil])
@@ -190,15 +191,17 @@ theorem deliverSeq_of_recs
         -- a cut with an id of the rest is past the group; one with the group's id is in it
         have hrest : ∀ k, (groupRecs proposer dg y st t (Nat.pair i sub) e).length ≤ k →
             k < (groupRecs proposer dg y st t (Nat.pair i sub) e).length +
-              (deliverRecs proposer dg hs y t i os (exec proposer dg y st t e).1 (sub + 1)).length →
+              (deliverRecs io proposer dg hs y t i os
+                (exec proposer dg y st t e).1 (sub + 1)).length →
             ∃ s, sub + 1 ≤ s ∧ (simTrace S rho hn).event (j0 + k) = Nat.pair i s := by
           intro k hk1 hk2
           have hr := hcut k (by rw [List.length_append]; omega)
           have hlt : k - (groupRecs proposer dg y st t (Nat.pair i sub) e).length <
-              (deliverRecs proposer dg hs y t i os
+              (deliverRecs io proposer dg hs y t i os
                 (exec proposer dg y st t e).1 (sub + 1)).length := by omega
           rw [List.getElem?_append_right hk1, List.getElem?_eq_getElem hlt] at hr
-          obtain ⟨-, -, s, hs1, hs2⟩ := mem_deliverRecs proposer dg y hs t i (List.getElem_mem hlt)
+          obtain ⟨-, -, s, hs1, hs2⟩ :=
+            mem_deliverRecs proposer dg y io hs t i (List.getElem_mem hlt)
           exact ⟨s, hs1, by rw [event_of_getElem? S rho hn hr, hs2]⟩
         have hgrp : ∀ k < (groupRecs proposer dg y st t (Nat.pair i sub) e).length,
             (simTrace S rho hn).event (j0 + k) = Nat.pair i sub := by

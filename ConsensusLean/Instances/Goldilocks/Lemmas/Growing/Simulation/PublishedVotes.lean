@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.PublishedBlocks
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Groups
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EmitRelease
 
 public section
@@ -18,10 +20,19 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 theorem simTraceAt_vote_released (hv : rho.ExecutionValid) :
     ∀ y k m, y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time k) →
       (simTraceAt S rho hn).EmitAt y k m →
-      ReleasedFrom S rho (rho.key y) (voteObj m) ((simTraceAt S rho hn).time k) := by
-  rw [simTraceAt_eq]
+      ∃ z, ReleasedFrom S rho (rho.key y) (voteObj m z) ((simTraceAt S rho hn).time k) := by
   intro y k m _ hc
-  exact emit_released_of S rho hn hv
-    (fun he hp r hr => (tick_block_vote_releases_at S rho hn hv he hp r hr).2) hc
+  obtain ⟨ℓ, hcall, em, hem, rfl⟩ := hc
+  obtain ⟨-, hstep, -, -⟩ := simTraceAt_cutLaw S rho hn hv y k (.ac ℓ) hcall
+  have hgate := AC.emits_mayVote (S.ro _) y _ ℓ.frame _ ℓ.call em (by rw [hstep]; exact hem)
+  rw [simTraceAt_mayVote S rho hn hv y k] at hgate
+  rw [simTraceAt_eq] at hcall ⊢
+  apply emit_released_of S rho hn hv
+    (fun he hp r hr => (tick_block_vote_releases_at S rho hn hv he hp r hr).2)
+    ⟨ℓ, hcall, em, hem, rfl⟩
+  rw [← stateAt_voteIO S rho hn (rho.key y) 0]
+  apply stateAt_ownToken_exists S rho hn hv
+  rw [stateAt_mayVote S rho hn hv, ownKey_key]
+  exact hgate
 
 end Consensus.Goldilocks.Simulation
