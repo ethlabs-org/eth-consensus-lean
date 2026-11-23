@@ -37,11 +37,11 @@ theorem forwardQueueCanonical_iff {sp : AC.ACParams}
 
 /-- The handler's acceptance fold preserves canonical payload shape. -/
 theorem forwardQueueCanonical_apply {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) r
-    (h : ForwardQueueCanonical st) : ForwardQueueCanonical (apply st r) := by
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) origin r
+    (h : ForwardQueueCanonical st) : ForwardQueueCanonical (apply st origin r) := by
   rw [forwardQueueCanonical_iff] at h ⊢
   intro q hq
-  rcases apply_forward_origin st r q hq with hq | ⟨B, p, _, he⟩
+  rcases apply_forward_origin st origin r q hq with hq | ⟨B, p, _, he⟩
   · exact h q hq
   · exact ⟨p, B, congrArg Prod.snd he⟩
 
@@ -64,22 +64,23 @@ private theorem canonical_recordOwn {sp : AC.ACParams}
   split
   · exact h
   · split
-    · exact forwardQueueCanonical_apply st _ h
+    · exact forwardQueueCanonical_apply st _ _ h
     · exact h
   · exact h
 
 private theorem canonical_processOne {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) o hs
-    (h : ForwardQueueCanonical st) : ForwardQueueCanonical (processOne hs st o) := by
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding)
+    (st : State sp ro binding) o hs
+    (h : ForwardQueueCanonical st) : ForwardQueueCanonical (processOne io hs st o) := by
   rw [AsChainShape.processOne_eq]
   split
   · unfold relayIf
     dsimp only
-    split <;> exact forwardQueueCanonical_apply st _ h
-  · exact forwardQueueCanonical_apply st _ h
+    split <;> exact forwardQueueCanonical_apply st none _ h
+  · exact forwardQueueCanonical_apply st _ _ h
   · unfold relayIf
     simp only [↓reduceIte]
-    exact forwardQueueCanonical_apply st _ h
+    exact forwardQueueCanonical_apply st none _ h
   · exact h
 
 private theorem canonical_poll {sp : AC.ACParams}
@@ -112,7 +113,7 @@ theorem stateAt_forwardQueueCanonical {V : Type} [Fintype V] [DecidableEq V] {E 
             (fun st h => by
               rw [nodeTick_eq]
               split
-              · exact forwardQueueCanonical_apply st _ h
+              · exact forwardQueueCanonical_apply st none _ h
               · exact h)
             (fun st t _ => canonical_poll st t)
           rw [stateAt_eq] at ih
@@ -123,15 +124,16 @@ theorem stateAt_forwardQueueCanonical {V : Type} [Fintype V] [DecidableEq V] {E 
           rw [stateAt_deliver S rho hn v he]
           apply deliver_pres S rho hn ForwardQueueCanonical (fun st t _ => canonical_poll st t)
             (fun st m cs hs h => canonical_recordOwn st _ hs h)
-          have hf : ∀ xs : List (Wire (Fintype.card V) S.vote),
+          have hf : ∀ (io : VoteAuth (S.params (pubOf E) hn).n S.vote)
+        (xs : List (Wire (Fintype.card V) S.vote)),
               ∀ st : State (S.params (pubOf E) hn) (S.ro _) S.vote, ForwardQueueCanonical st →
-                ForwardQueueCanonical (xs.foldl (processOne (digests rho.hash o)) st) := by
-            intro xs
+                ForwardQueueCanonical (xs.foldl (processOne io (digests rho.hash o)) st) := by
+            intro io xs
             induction xs with
             | nil => exact fun _ h => h
-            | cons x xs hx => exact fun st h => hx _ (canonical_processOne st x _ h)
+            | cons x xs hx => exact fun st h => hx _ (canonical_processOne io st x _ h)
           rw [stateAt_eq] at ih
-          exact hf _ _ ih
+          exact hf _ _ _ ih
         | restart w t =>
           simp only [Model.Event.node] at hnode
           subst w
@@ -178,7 +180,7 @@ theorem dutyStep_forwardQueueCanonical {V : Type} [Fintype V] {E : Env V} (S : S
     (fun st h => by
       rw [nodeTick_eq]
       split
-      · exact forwardQueueCanonical_apply st _ h
+      · exact forwardQueueCanonical_apply st none _ h
       · exact h)
     (fun st t _ => canonical_poll st t) v nd d hc
 
@@ -339,14 +341,15 @@ theorem deliver_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
       List.mem_flatMap.mpr ⟨o, List.mem_append_right _ (List.mem_singleton_self o), hc⟩)
   have hcanon : ForwardQueueCanonical
       (process (shapeOf S hn nd) o (digests rho.hash o)) := by
-    have hf : ∀ xs : List (Wire (Fintype.card V) S.vote),
+    have hf : ∀ (io : VoteAuth (S.params (pubOf E) hn).n S.vote)
+        (xs : List (Wire (Fintype.card V) S.vote)),
         ∀ st : State (S.params (pubOf E) hn) (S.ro _) S.vote, ForwardQueueCanonical st →
-          ForwardQueueCanonical (xs.foldl (processOne (digests rho.hash o)) st) := by
-      intro xs
+          ForwardQueueCanonical (xs.foldl (processOne io (digests rho.hash o)) st) := by
+      intro io xs
       induction xs with
       | nil => exact fun _ h => h
-      | cons c cs ih => exact fun st h => ih _ (canonical_processOne st c _ h)
-    exact hf _ _ hc
+      | cons c cs ih => exact fun st h => ih _ (canonical_processOne io st c _ h)
+    exact hf _ _ _ hc
   unfold Model.Run.deliver
   apply gossip_forwardInventory S rho hn
   all_goals
@@ -467,14 +470,15 @@ theorem delivery_pending_released {V : Type} [Fintype V] [DecidableEq V] {E : En
   have hself : (shapeOf S hn nd).self = rho.ownKey v :=
     (process_self _ _ _).trans (by simpa only [stateAt_eq] using self_eq_ownKey S rho hn v i)
   have hcanon : ForwardQueueCanonical (shapeOf S hn nd) := by
-    have hf : ∀ xs : List (Wire (Fintype.card V) S.vote),
+    have hf : ∀ (io : VoteAuth (S.params (pubOf E) hn).n S.vote)
+        (xs : List (Wire (Fintype.card V) S.vote)),
         ∀ st : State (S.params (pubOf E) hn) (S.ro _) S.vote, ForwardQueueCanonical st →
-          ForwardQueueCanonical (xs.foldl (processOne (digests rho.hash o)) st) := by
-      intro xs
+          ForwardQueueCanonical (xs.foldl (processOne io (digests rho.hash o)) st) := by
+      intro io xs
       induction xs with
       | nil => exact fun _ h => h
-      | cons a as ih => exact fun st h => ih _ (canonical_processOne st a _ h)
-    exact hf _ _ (by simpa only [stateAt_eq] using stateAt_forwardQueueCanonical S rho hn v i)
+      | cons a as ih => exact fun st h => ih _ (canonical_processOne io st a _ h)
+    exact hf _ _ _ (by simpa only [stateAt_eq] using stateAt_forwardQueueCanonical S rho hn v i)
   have hs := forwardQueueCanonical_pending (shapeOf S hn nd) hcanon
   rw [hself] at hs
   have hp := dutyStep_poll_pending S rho hn v nd t.toNat (poll_selected S rho hv v)
@@ -633,8 +637,8 @@ theorem queueAccepted_forwards_mono {sp : AC.ACParams}
 
 /-- Handler folds retain pending block wrappers even when later calls refuse input. -/
 theorem apply_forwards_mono {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) r :
-    st.forwards ⊆ (apply st r).forwards := by
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) origin r :
+    st.forwards ⊆ (apply st origin r).forwards := by
   have hf : ∀ cs : List (Cut (goldilocksNode sp ro)), ∀ s : State sp ro binding,
       s.forwards ⊆ (cs.foldl (fun s c => match c with
         | .fg (.block B true) => queueAccepted s B | _ => s) s).forwards := by
@@ -658,41 +662,44 @@ theorem apply_forwards_mono {sp : AC.ACParams}
 
 /-- Recursive receipt calls retain every wrapper already queued in this event. -/
 theorem processOne_forwards_mono {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) hs o :
-    st.forwards ⊆ (processOne hs st o).forwards := by
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding)
+    (st : State sp ro binding) hs o :
+    st.forwards ⊆ (processOne io hs st o).forwards := by
   rw [AsChainShape.processOne_eq]
   split
   · unfold relayIf
     dsimp only
-    split <;> exact apply_forwards_mono st _
-  · exact apply_forwards_mono st _
+    split <;> exact apply_forwards_mono st none _
+  · exact apply_forwards_mono st _ _
   · unfold relayIf
     simp only [↓reduceIte]
-    exact apply_forwards_mono st _
+    exact apply_forwards_mono st _ _
   · exact List.Subset.refl _
 
 /-- A wrapper queued at an intermediate receipt cut survives the remaining traversal. -/
 theorem process_fold_forwards_mono {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (hs : List (Header Info × Nat))
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding)
+    (hs : List (Header Info × Nat))
     (xs : List (Wire sp.n binding)) (st : State sp ro binding) :
-    st.forwards ⊆ (xs.foldl (processOne hs) st).forwards := by
+    st.forwards ⊆ (xs.foldl (processOne io hs) st).forwards := by
   induction xs generalizing st with
   | nil => exact List.Subset.refl _
-  | cons o os ih => exact fun q h => ih _ (processOne_forwards_mono st hs o h)
+  | cons o os ih => exact fun q h => ih _ (processOne_forwards_mono io st hs o h)
 
 /-- A successful block call in a receipt leaves its exact stamped child in the final
 queue, even when subsequent calls are refused or queue further children. -/
 theorem processOne_acceptance_pending {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) hs o (B : Blk sp)
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding)
+    (st : State sp ro binding) hs o (B : Blk sp)
     (tail : List (Wire sp.n binding)) (hcover : WrappersCover st)
-    (he : canonEvent sp ro hs o = some (.block B))
+    (he : canonEvent sp ro io hs o = some (.block B))
     (ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2) :
     ∃ p : Option (Wire sp.n binding), (st.now, p.toList ++ [blockObj sp B]) ∈
-      (tail.foldl (processOne hs) (processOne hs st o)).forwards := by
+      (tail.foldl (processOne io hs) (processOne io hs st o)).forwards := by
   obtain ⟨p, hp⟩ := onBlock_queues_acceptance st B hcover ha
-  refine ⟨p, process_fold_forwards_mono hs tail _ ?_⟩
+  refine ⟨p, process_fold_forwards_mono io hs tail _ ?_⟩
   have hm : (st.now, p.toList ++ [blockObj sp B]) ∈
-      (apply st (Node.onBlock st.self st.node st.now B)).forwards := by
+      (apply st none (Node.onBlock st.self st.node st.now B)).forwards := by
     rw [hp]
     exact List.mem_append_right _ (List.mem_singleton_self _)
   simp only [AsChainShape.processOne_eq, he]
@@ -703,22 +710,23 @@ theorem processOne_acceptance_pending {sp : AC.ACParams}
 stamped child in its final queue. Coverage is threaded through actual intermediate states. -/
 theorem deliverRecs_acceptance_pending {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)) (hs : List (Header Info × Nat))
+    (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)) (io : VoteAuth sp.n binding)
+    (hs : List (Header Info × Nat))
     (event : Nat) (xs : List (Wire sp.n binding)) (st : State sp ro binding) (sub : Nat)
     (hcover : WrappersCover st) (r : CutRec sp ro) (B : Blk sp)
-    (hr : r ∈ deliverRecs proposer dg hs st.self st.now event xs st.node sub)
+    (hr : r ∈ deliverRecs io proposer dg hs st.self st.now event xs st.node sub)
     (hb : r.label = .fg (.block B true)) :
     ∃ p : Option (Wire sp.n binding), (st.now, p.toList ++ [blockObj sp B]) ∈
-      (xs.foldl (processOne hs) st).forwards := by
+      (xs.foldl (processOne io hs) st).forwards := by
   induction xs generalizing st sub with
   | nil => simp only [deliverRecs_nil, List.not_mem_nil] at hr
   | cons o os ih =>
-    cases he : canonEvent sp ro hs o with
+    cases he : canonEvent sp ro io hs o with
     | none =>
-      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he] at hr
+      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ _ he] at hr
       simpa only [List.foldl_cons, AsChainShape.processOne_eq, he] using ih st (sub + 1) hcover hr
     | some e =>
-      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ he] at hr
+      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ _ he] at hr
       rcases List.mem_append.mp hr with hr | hr
       · obtain ⟨k, hk, hkr⟩ := List.getElem_of_mem hr
         have hl := (getElem_groupRecs proposer dg st.self st.node st.now
@@ -726,7 +734,7 @@ theorem deliverRecs_acceptance_pending {sp : AC.ACParams}
         have ha : .fg (.block B true) ∈ (Node.exec proposer dg st.self st.node st.now e).2 := by
           rw [hkr, hb] at hl
           exact hl.symm ▸ List.getElem_mem _
-        rcases canonEvent_cases (ro := ro) hs o with hn | ⟨C, hc⟩ | ⟨m, hm⟩ | ⟨a, ha'⟩
+        rcases canonEvent_cases (ro := ro) io hs o with hn | ⟨C, hc⟩ | ⟨m, hm⟩ | ⟨a, ha'⟩
         · rw [hn] at he; cases he
         · have ee := Option.some.inj (he.symm.trans hc)
           subst e
@@ -739,16 +747,16 @@ theorem deliverRecs_acceptance_pending {sp : AC.ACParams}
               · simp at h
               · simpa [Node.acCall] using h
           subst C
-          exact processOne_acceptance_pending st hs o B os hcover hc ha
+          exact processOne_acceptance_pending io st hs o B os hcover hc ha
         · have ee := Option.some.inj (he.symm.trans hm)
           subst e
           simp [Node.exec, Node.onMessage, Node.acCall] at ha
         · have ee := Option.some.inj (he.symm.trans ha')
           subst e
           simp [Node.exec, Node.onAttestation] at ha
-      · have hc := wrappersCover_processOne st o hs hcover
-        have hh : r ∈ deliverRecs proposer dg hs (processOne hs st o).self
-            (processOne hs st o).now event os (processOne hs st o).node (sub + 1) := by
+      · have hc := wrappersCover_processOne io st o hs hcover
+        have hh : r ∈ deliverRecs io proposer dg hs (processOne io hs st o).self
+            (processOne io hs st o).now event os (processOne io hs st o).node (sub + 1) := by
           simpa only [processOne_self, processOne_now, processOne_node proposer dg, he] using hr
         simpa only [List.foldl_cons, processOne_now] using ih _ (sub + 1) hc hh
 
@@ -807,7 +815,7 @@ theorem tick_duty_prefix_poll_released {V : Type} [Fintype V] [DecidableEq V] {E
       (fun st h => by
         rw [nodeTick_eq]
         split
-        · exact forwardQueueCanonical_apply st _ h
+        · exact forwardQueueCanonical_apply st none _ h
         · exact h)
       (fun st t _ => canonical_poll st t)
     have h := stateAt_forwardQueueCanonical S rho hn v i
@@ -977,7 +985,7 @@ theorem recordOwn_canonical_block {V : Type} [Fintype V] {E : Env V}
     (hpar : B.parent ≠ none) (hroot : B.RootOk (digestOf S rho)) :
     recordOwn st (blockObj (S.params (pubOf E) hn) B)
         (digests rho.hash (blockObj (S.params (pubOf E) hn) B)) =
-      apply st (Node.onBlock st.self st.node st.now B) := by
+      apply st none (Node.onBlock st.self st.node st.now B) := by
   have hb : blockOf (S.params (pubOf E) hn)
       (rho.hash (headerOf (S.params (pubOf E) hn) B))
       (headerOf (S.params (pubOf E) hn) B) B.proposer B.fgPayload B.acPayload = B := by
@@ -991,7 +999,7 @@ theorem recordOwn_canonical_block {V : Type} [Fintype V] {E : Env V}
   refine (AsChainShape.recordOwn_eq _ _ _).trans ?_
   simp only [headerOf_eq, decodeInfo_encodeInfo]
   erw [rootOf_digests_item]
-  exact congrArg (fun b => apply st (Node.onBlock st.self st.node st.now b)) hb
+  exact congrArg (fun b => apply st none (Node.onBlock st.self st.node st.now b)) hb
 
 /-- A released canonical proposal accepted by its actual proposal step enters the
 forward queue. Receipt-decoder validity is not a premise of this own-recording bridge. -/
