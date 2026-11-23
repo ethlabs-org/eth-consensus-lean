@@ -37,15 +37,34 @@ def Unforgeable : Prop :=
 /-- The run's selection is admissible for every role. -/
 def SelValid : Prop := (protoOf F E).SelAdmits rho.sel
 
-/-- Credentials: every signed object inside a delivered object is signed by a
-key selected for its role, faulty and compromised signers included (a compromise
-creates no credential the selection did not give). This is the soundness of
-the deployed membership mechanism (a public committee list, VRF proofs, …): a
-model-adequacy binding, not something honest code checks. -/
-def Credentials : Prop :=
+/-- A vote claim `(k, r, d)` is canonical: its data claims signer `k` in role `r`. -/
+def Canonical (q : Fin (Fintype.card V) × (protoOf F E).Role × (protoOf F E).VoteData) :
+    Prop :=
+  (protoOf F E).claim q.2.2 = some (q.1, q.2.1)
+
+/-- **Vote verification**: the deployed vote-authentication mechanism is sound and complete.
+Distinct canonical claims get distinct evidence, and the verifier accepts exactly the evidence
+issued for a canonical claim whose signer the selection gives that role. It says nothing about
+off-canonical claims, and it is not a signature: honest provenance is `Unforgeable`. -/
+def VoteVerification : Prop :=
+  (∀ q q', Canonical q → Canonical q' → rho.issue q = rho.issue q' → q = q') ∧
+    ∀ k r d z, rho.verify (k, r, d) z = true ↔
+      Canonical (k, r, d) ∧ k ∈ rho.sel r ∧ z = rho.issue (k, r, d)
+
+/-- Other credentials: every signed object inside a delivered object, other than a delegated
+vote body (`Protocol.voteBody`, authenticated by evidence that the node verifies), is signed by
+a key selected for its role, faulty and compromised signers included (a compromise creates no
+credential the selection did not give). Each nested object is classified on its own. -/
+def OtherCredentials : Prop :=
   ∀ (i : Nat) (w : V) (o : (protoOf F E).Object) (t : Time),
     rho.events[i]? = some (Event.deliver w o t) →
-    ∀ o', Obj.Contains o o' → ∀ k r, o'.auth = .signed k r → k ∈ rho.sel r
+    ∀ o', Obj.Contains o o' → ∀ k r, o'.auth = .signed k r →
+      (∀ b, o'.msg = .data b → (protoOf F E).voteBody b = false) → k ∈ rho.sel r
+
+/-- Credentials: the soundness of the deployed membership mechanisms (a public committee list,
+VRF proofs, …): vote verification for delegated vote bodies, the selection for every other
+signed object. A model-adequacy binding; honest code checks only the presented vote evidence. -/
+def Credentials : Prop := rho.VoteVerification ∧ rho.OtherCredentials
 
 /-- A valid execution.
 

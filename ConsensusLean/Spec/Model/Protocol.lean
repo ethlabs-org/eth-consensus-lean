@@ -70,6 +70,15 @@ def DependencyPolicy.trivial (Object : Type) : DependencyPolicy Object where
   ready := fun _ _ => true
   mono := fun _ _ _ _ _ => rfl
 
+/-- **Vote authentication available to a node** (installed at `init`, kept across restarts by
+the protocol): `check k r d z` verifies evidence `z` presented with vote data `d` claimed signed
+by key `k` in role `r`; `own r d` issues evidence for the node's *own* vote data `d` in role `r`
+(`none` when its key is not eligible). The node cannot query the eligibility of another key or
+enumerate evidence; it only checks what is presented and copies what it holds. -/
+structure VoteIO (Tok Role Data : Type) (n : Nat) where
+  check : Fin n → Role → Data → Tok → Bool
+  own : Role → Data → Option Tok
+
 /-- A protocol for public parameters `pub`, with output identifiers `Out`. -/
 structure Protocol (pub : Public) (Out : Type) : Type 1 where
   State : Type
@@ -89,6 +98,29 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   decBody : DecidableEq Body
   /-- Items are countable, so an injective hash exists. -/
   cntItem : Countable Item
+  /-- Vote-authentication evidence (an abstract, copyable carrier; infinite, so distinct
+  evidence exists for every canonical vote claim). Default: `Nat`, for protocols with no
+  delegated vote authentication; its decidable equality and infinitude are instance-implicit. -/
+  Token : Type := Nat
+  [decToken : DecidableEq Token]
+  [infToken : Infinite Token]
+  /-- The vote data authenticated by evidence (the signed vote without its evidence);
+  `Empty` for a protocol that delegates no vote authentication. -/
+  VoteData : Type := Empty
+  /-- The signer and role a vote data claims (pure, read off the data). -/
+  claim : VoteData → Option (Fin pub.n × Role) := fun _ => none
+  /-- The evidence carrier can represent every canonical claim: some injection of the vote
+  data that claim a signer and role into `Token`. A canonical claim `(k, r, d)` is determined
+  by `d`, so this is what lets distinct canonical claims get distinct evidence
+  (`VoteVerification`). No default: every protocol supplies it. -/
+  tokensCover : Nonempty ({d : VoteData // (claim d).isSome} ↪ Token)
+  /-- The data bodies whose role membership is authenticated by evidence, not by the
+  credential binding. -/
+  voteBody : Body → Bool := fun _ => false
+  /-- Parse a canonical signed vote object into its claimed signer, role, vote data and
+  presented evidence (a parser, not a membership test); `none` on any other object. -/
+  presented : Obj pub.n Role Item Body → Option ((Fin pub.n × Role × VoteData) × Token) :=
+    fun _ => none
   /-- Who may act in each role: public, closed syntax; the run picks an
   admissible set of keys. -/
   selSpec : Role → SelSpec pub.n
@@ -107,8 +139,9 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   after `process` and before gossip, so that what a receipt makes the node
   emit leaves at the delivery's own time. Default: none. -/
   deliverDuties : Time → List Duty := fun _ => []
-  /-- The initial state, given the own key and its actual role membership. -/
-  init : Key pub → (Role → Bool) → State
+  /-- The initial state, given the own key, its actual role membership, and its vote
+  authentication (`VoteIO`). -/
+  init : Key pub → (Role → Bool) → VoteIO Token Role VoteData pub.n → State
   /-- The clock update at a tick, with the node's cumulative own and relayed transactions
   so far. -/
   clock : State → Time → List Tx → State
@@ -150,6 +183,7 @@ structure Protocol (pub : Public) (Out : Type) : Type 1 where
   isFGAtt : Obj pub.n Role Item Body → Prop := fun _ => False
 
 attribute [instance] Protocol.decRole Protocol.decItem Protocol.decBody Protocol.cntItem
+  Protocol.decToken Protocol.infToken
 
 /-- `sel` is an admissible selection of `P`: admissible for every role. -/
 def Protocol.SelAdmits {pub : Public} {Out : Type} (P : Protocol pub Out)
