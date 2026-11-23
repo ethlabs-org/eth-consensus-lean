@@ -14,7 +14,9 @@ goldilocks-spec.tex §"State" and §"Votes and views".
   validator, and unforgeability is a run premise (claims §"Runs"). The own committee test is the
   vote permission `mayVote` of the state, installed by the execution at init; at the
   population-wide binding it permits every slot (the spec's committee `V`).
-* The payload of a block is `(votes, support_votes)`, two lists.
+* The payload of a block is `(declared_head_votes, support_bits)`: the declared head votes as
+  `Vote` triples (the slot is the implicit `B.slot − 1`; a declaration is not a signed vote and
+  is never admitted), and the support list, the entries the bits mark.
 * The state `𝒜 = (gf_votes[·], timestamp[·], saved_confirmation[·], locks, latest_confirmed,
   fg_reported, voted_slot, restart_time)`, with the vote permission `mayVote`. The AC holds
   blocks only by name (root). Stamps are on the extended time line `ETime` (`⊥ = −∞`,
@@ -34,7 +36,8 @@ structure Vote (n : Nat) where
   head : Nat
   deriving DecidableEq
 
-/-- The AC payload of a block: `(votes, support_votes)`. -/
+/-- The AC payload of a block: its declared head votes and its support list (the entries the
+support bits mark). -/
 abbrev Payload (n : Nat) := List (Vote n) × List (Vote n)
 
 /-- A lock `(B, j, f, e)`: a block (by root), the slot of the confirmation that wrote it, the
