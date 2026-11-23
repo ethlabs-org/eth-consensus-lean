@@ -87,7 +87,7 @@ theorem proposal_cut_lt (hrun : GoldilocksRun proposer dg H tr ini)
   have hU := Compose.honest_blocks_coherent hl hnc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   by_cases hearly : tr.time k < sp.ts s + sp.Δ
-  · obtain ⟨P', hP', hP's, -⟩ := SA.cast_ready hr hy hv (by rw [he]; exact hearly)
+  · obtain ⟨⟨P', hP', hP's, -⟩, -⟩ := SA.cast_ready hr hy hv (by rw [he]; exact hearly)
     rw [he] at hP's
     have hfU := (SA.frameIn_of_callAt hr hy hv.1).2
     have hroot : P'.root ≠ sp.genesisRoot := by
