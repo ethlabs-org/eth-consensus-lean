@@ -8,6 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.AsChainShape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVoteTransfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Family.Identity
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Family.ServiceEquivalence
