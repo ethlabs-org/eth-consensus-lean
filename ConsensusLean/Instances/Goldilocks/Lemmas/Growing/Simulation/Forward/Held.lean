@@ -194,12 +194,12 @@ theorem forward_receipt_held_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x y : Fin sp.n} {j : Nat} {d : Time}
     (hd : 0 ≤ d) (hbj : ∀ k < j, tr.time k ≤ d) (hy : y ∈ H d)
-    {hs : List (Header Info × Nat)} {u : Time} {B : Blk sp}
+    {io : VoteAuth sp.n binding} {hs : List (Header Info × Nat)} {u : Time} {B : Blk sp}
     (hFB : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B) :
     ∀ (A : Blk sp) (o : Wire sp.n binding) (σ : State sp ro binding) (t : Time)
       (p : Option (Wire sp.n binding)) (r e : Nat),
       decodeForward sp hs o = some (x, t, p, A) →
-      DeliverSeq proposer tr dg hs y u (visit hs σ o).1 r e → e ≤ j → t ≤ u →
+      DeliverSeq proposer tr dg io hs y u (visit io hs σ o).1 r e → e ≤ j → t ≤ u →
       Anc (tr.HonestBlocksAt H) A B →
       (∀ q tq pq C, Model.Obj.Contains o q →
         decodeForward sp hs q = some (x, tq, pq, C) →
@@ -214,8 +214,8 @@ theorem forward_receipt_held_at
     have child (m : Nat) (P : Blk sp) (hPe : P ∈ (tr.state y m).fg.tree)
         (hp : A.parent = some P.root)
         (σ' : State sp ro binding)
-        (hchild : DeliverSeq proposer tr dg hs y u
-          (visit hs σ' (blockObj sp A (binding := binding))).1 m e) :
+        (hchild : DeliverSeq proposer tr dg io hs y u
+          (visit io hs σ' (blockObj sp A (binding := binding))).1 m e) :
         A ∈ (tr.state y e).fg.tree := by
       have hme := (deliverSeq_cover hchild).1
       rcases receipt_held_or_transfer_at hrun hnc hd hbj hy (hme.trans hej) hxk ha hAB hFB hp
@@ -226,7 +226,7 @@ theorem forward_receipt_held_at
           apply Nat.le_findGreatest _ htime
           have hcast := (le_slotTime sp.toParams A.slot).trans htime
           exact (Int.le_toNat (le_trans (Int.natCast_nonneg _) hcast)).2 hcast
-        obtain ⟨rest, hrest⟩ := visit_head hs σ' (blockObj sp A (binding := binding))
+        obtain ⟨rest, hrest⟩ := visit_head io hs σ' (blockObj sp A (binding := binding))
         rw [hrest] at hchild
         obtain ⟨hacc, hlt⟩ := deliverSeq_block_accepts (decodeForward_child hd').1 hchild
           (not_lt.mpr hslot') hon

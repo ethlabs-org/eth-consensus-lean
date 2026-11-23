@@ -118,7 +118,7 @@ theorem WrappersHeld.accept {sp : AC.ACParams}
     (ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2)
     (hd : decodeForward sp (tables (forwardObj sp st.self st.now p B))
       (forwardObj sp st.self st.now p B) = some (st.self, st.now, p, B)) :
-    WrappersHeld tables (apply st (Node.onBlock st.self st.node st.now B)) := by
+    WrappersHeld tables (apply st none (Node.onBlock st.self st.node st.now B)) := by
   unfold Node.onBlock at ha ⊢
   split at ha
   · simp at ha
@@ -135,7 +135,7 @@ theorem WrappersHeld.accept {sp : AC.ACParams}
         rw [he]
         exact (Store.updateFinality_spec _ σ).1
       apply h.insert B (forwardObj sp st.self st.now p B) st.now p
-      · exact apply_self _ _
+      · exact apply_self _ _ _
       · exact (queueAccepted_of_parent st B root p hr hp).1
       · exact hb
       · exact hd
@@ -193,10 +193,10 @@ theorem _root_.Consensus.Goldilocks.Simulation.WrappersDecoded.accept {sp : AC.A
     (h : WrappersDecoded tables (queueAccepted st B))
     (hcover : WrappersCover st)
     (ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2) :
-    WrappersDecoded tables (apply st (Node.onBlock st.self st.node st.now B)) := by
+    WrappersDecoded tables (apply st none (Node.onBlock st.self st.node st.now B)) := by
   obtain ⟨root, p, hr, hp, hm, hq⟩ := onBlock_queues_acceptance_parent st B hcover ha
   have hs : (queueAccepted st B).self = st.self := by simp [queueAccepted, hr, hp]
-  exact h.mono ((apply_self _ _).trans hs.symm)
+  exact h.mono ((apply_self _ _ _).trans hs.symm)
     (hm.trans (queueAccepted_of_parent st B root p hr hp).1.symm)
     (hq.trans (queueAccepted_of_parent st B root p hr hp).2.symm)
     (by rw [apply_now, queueAccepted_now])
@@ -257,7 +257,7 @@ theorem decoded_held_accept {V : Type} [Fintype V] {E : Env V}
     (ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2)
     (hb : decodeBlock (S.params (pubOf E) hn) (binding := S.vote) (digests rho.hash (blockObj _ B))
       (blockObj _ B) = some B) (ht : 0 ≤ st.now) :
-    let st' := apply st (Node.onBlock st.self st.node st.now B)
+    let st' := apply st none (Node.onBlock st.self st.node st.now B)
     WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' ∧
     WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' := by
   have hq := decoded_acceptance_enqueue S rho hn st hd hh hc hr B ha hb ht
@@ -292,7 +292,7 @@ theorem decoded_held_onBlock {V : Type} [Fintype V] {E : Env V}
     (hb : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2 →
       decodeBlock (S.params (pubOf E) hn) (binding := S.vote) (digests rho.hash (blockObj _ B))
         (blockObj _ B) = some B) (ht : 0 ≤ st.now) :
-    let st' := apply st (Node.onBlock st.self st.node st.now B)
+    let st' := apply st none (Node.onBlock st.self st.node st.now B)
     WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' ∧
     WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' := by
   by_cases ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2
@@ -308,16 +308,17 @@ theorem decoded_held_onBlock {V : Type} [Fintype V] {E : Env V}
 The decoder guard supplies the child's wire validity in the block branch. -/
 theorem decoded_held_processOne {V : Type} [Fintype V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
+    (io : VoteAuth (S.params (pubOf E) hn).n S.vote)
     (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
     (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
     (hh : WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
     (hc : WrappersCover st)
     (hr : st.node.fg.Reachable (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
     (receipt o : Wire (Fintype.card V) S.vote) (ho : Obj.Contains receipt o) (ht : 0 ≤ st.now) :
-    let st' := processOne (digests rho.hash receipt) st o
+    let st' := processOne io (digests rho.hash receipt) st o
     WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' ∧
     WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' := by
-  rw [AsChainShape.processOne_eq (digests rho.hash receipt) st o]
+  rw [AsChainShape.processOne_eq io (digests rho.hash receipt) st o]
   split
   · rename_i B he
     have h := decoded_held_onBlock S rho hn st hd hh hc hr B
@@ -350,6 +351,9 @@ theorem decoded_held_process {V : Type} [Fintype V] {E : Env V}
     let st' := process st receipt (digests rho.hash receipt)
     WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' ∧
     WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st' := by
+  dsimp only
+  erw [AsChainShape.process_eq st receipt (digests rho.hash receipt)]
+  let io := st.voteIO
   have fold : ∀ (os : List (Wire (Fintype.card V) S.vote)),
       (∀ o ∈ os, Obj.Contains receipt o) → ∀ st,
       WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st →
@@ -357,20 +361,20 @@ theorem decoded_held_process {V : Type} [Fintype V] {E : Env V}
       WrappersCover st → st.node.fg.Reachable
         (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload → 0 ≤ st.now →
       WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash)
-        (os.foldl (processOne (digests rho.hash receipt)) st) ∧
+        (os.foldl (processOne io (digests rho.hash receipt)) st) ∧
       WrappersHeld (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash)
-        (os.foldl (processOne (digests rho.hash receipt)) st) := by
+        (os.foldl (processOne io (digests rho.hash receipt)) st) := by
     intro os
     induction os with
     | nil => exact fun _ _ hd hh _ _ _ => ⟨hd, hh⟩
     | cons o os ih =>
       intro ho st hd hh hc hr ht
-      have h := decoded_held_processOne S rho hn st hd hh hc hr receipt o
+      have h := decoded_held_processOne S rho hn io st hd hh hc hr receipt o
         (ho o (List.mem_cons_self)) ht
       exact ih (fun q hq => ho q (List.mem_cons_of_mem _ hq)) _ h.1 h.2
-        (wrappersCover_processOne _ _ _ hc) (processOne_reachable _ _ _ hr)
-        ((processOne_now (digests rho.hash receipt) st o).symm ▸ ht)
-  exact fold _ (fun _ ho => mem_delivered _ ho) st hd hh hc hr ht
+        (wrappersCover_processOne io _ _ _ hc) (processOne_reachable io _ _ _ hr)
+        ((processOne_now io (digests rho.hash receipt) st o).symm ▸ ht)
+  exact fold _ (fun _ ho => mem_delivered io _ ho) st hd hh hc hr ht
 
 /-- FG attestation work changes neither decoded wrapper inventory nor held blocks. -/
 theorem decoded_held_fgUpdate {sp : AC.ACParams}

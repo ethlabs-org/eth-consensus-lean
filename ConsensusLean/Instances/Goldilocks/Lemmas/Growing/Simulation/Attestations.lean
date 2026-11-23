@@ -32,7 +32,7 @@ theorem att_released_inv_at (hv : rho.ExecutionValid)
       relHead S rho v (stateAt S rho hn v j).outbox.head? := by
     intro h
     obtain ⟨q, hq, hqo⟩ := mem_relHead S rho h
-    obtain ⟨w, rfl⟩ := hvote q (List.mem_of_mem_head? hq)
+    obtain ⟨w, z, rfl⟩ := hvote q (List.mem_of_mem_head? hq)
     exact absurd (attObj_eq_pollObj S rho hqo).1 (by simp)
   by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
   · refine ⟨hp, ?_⟩
@@ -67,7 +67,7 @@ theorem att_released_inv_at (hv : rho.ExecutionValid)
     swap
     · rcases List.mem_append.mp h with h | h
       · exact hQmem _ (by simp) h
-      · rcases hF _ h with ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
+      · rcases hF _ h with ⟨τ, cs, heq⟩ | ⟨τ, m, w, heq⟩
         all_goals have hm := congrArg Model.Obj.msg heq; cases hm
     rcases List.mem_append.mp hb with h | h
     · exact absurd h hnotpend
