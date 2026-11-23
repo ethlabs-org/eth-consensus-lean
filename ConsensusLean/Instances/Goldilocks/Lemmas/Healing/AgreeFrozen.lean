@@ -150,7 +150,7 @@ private theorem frozen_core
       exact absurd (hl.time_mono (not_lt.1 hn)) (not_le.2 hlate)
     · have hearly : tr.time j < sp.ts e.msg.slot + sp.Δ := by
         rw [hes]; rw [hS.time] at hlate; linarith
-      obtain ⟨P', hP', hP's, -⟩ := SA.cast_ready hr hy hcy hearly
+      obtain ⟨⟨P', hP', hP's, -⟩, -⟩ := SA.cast_ready hr hy hcy hearly
       rw [hes] at hP's
       exact proposal_before_holder hS hs1 hPprop hy
         (mem_tree_of_frame hrun hy hcy.1 (hslotP P' hP' hP's ▸ hP'))
@@ -208,7 +208,7 @@ private theorem frozen_core
   -- the voter holds `P`
   have hPy : P ∈ (tr.state y j).fg.tree := by
     by_cases hearly : tr.time j < sp.ts s + sp.Δ
-    · obtain ⟨P', hP', hP's, -⟩ := SA.cast_ready hr hy hcy (by rw [hes]; exact hearly)
+    · obtain ⟨⟨P', hP', hP's, -⟩, -⟩ := SA.cast_ready hr hy hcy (by rw [hes]; exact hearly)
       rw [hes] at hP's
       exact mem_tree_of_frame hrun hy hcy.1 (hslotP P' hP' hP's ▸ hP')
     · push Not at hearly
