@@ -223,18 +223,6 @@ theorem tickRun_goldilocksRun :
   toLocalRun := tickRun_localRun rfl rfl _
   genesis_root_ok := dg1_genesis
   vstart := fun _ => SA.voteStart_initial _
-  carried_vote_unforgeable y _ i B hB v hv _ := by
-    obtain ⟨acc, hc⟩ := hB
-    obtain ⟨d, p, hr, hB⟩ := onTick_block_made N1 dg1 _ _ _ _ (tickRun_label_mem hc.2)
-      (Or.inl ⟨acc, rfl⟩)
-    rw [hB] at hv
-    obtain ⟨σ', h'⟩ := acProposal_payload _ _ hr v hv
-    rw [← tickMid_one, ← show ((tickRun N1 dg1).state v0 (8 * (i / 8) + 1)) =
-      tickMid N1 dg1 (i / 8) 1 by rw [tickRun_state rfl]; congr 1 <;> omega] at h'
-    have hp := pos_of_ne_tick hc.2 (fun ℓ h => by cases h)
-    obtain ⟨j, hj, he⟩ := tickRun_votes (8 * (i / 8) + 1) σ' v h'
-    rw [eq_v0 rfl v.val]
-    exact ⟨j, by omega, he⟩
 
 /-- The pool only grows along the tick run. -/
 theorem tickRun_pool_mono {i i' : Nat} (h : i ≤ i') (σ : Nat) :
@@ -587,7 +575,6 @@ theorem tickRun_hsShared (g : Time) :
   noRestart _ _ k h := absurd h (tickRun_no_restart _ k)
   timeoutDelay := by decide
   committee := ⟨SA.size_binding_full rfl, SA.CommitteePAt.full,
-    fun _ _ _ _ _ v _ => SA.mem_full v.slot _,
     fun _ _ x hx i _ s => ⟨fun _ => SA.mem_full s x,
       fun _ => Compose.mayVote_stock tickRun_goldilocksRun (dg1_noColl _) hx s i⟩⟩
   twoK s _ := by
