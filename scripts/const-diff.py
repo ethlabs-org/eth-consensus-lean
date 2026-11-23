@@ -32,6 +32,8 @@ Usage: python3 -I scripts/const-diff.py <base.tsv> <new.tsv> [--allow-added N]..
        [--allow-type N]... [--allow-value N]... [--allow-axioms N]...
 Make each dump in its own built worktree:
   lake build const-dump && lake exe const-dump <out.tsv> ConsensusLean Solution ConsensusLeanTest
+For a pure rename, dump the base with the rename's map (`const-dump --map`, scripts/rename_sa.py dump-map): the
+renamed tree must then compare equal.
 """
 import argparse
 import sys

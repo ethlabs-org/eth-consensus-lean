@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """Self-test of the constant diff, end to end: each case plants an edit in a compiled Lean module, dumps it with
 the compiled `const-dump` (scripts/ConstDump.lean) and compares it with scripts/const-diff.py against the
-unedited module. Every mutation must fail with its finding; every control (proof-only edits) must pass."""
+unedited module. Every mutation must fail with its finding; every control (proof-only edits) must pass.
+The rename cases dump the base with `--map` (a structure, a private definition and a private inductive
+renamed, with their generated constants): the renamed module must compare equal to it, a change planted in
+the renamed module must still fail, and without the map the rename must fail."""
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -173,7 +177,17 @@ def run(cmd, **kw):
     return subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, **kw)
 
 
-def dump(tmp, name, src, files):
+# The rename cases: (pattern, replacement) on the source and on every constant name of the base dump.
+RENAMES = [(r"\bPair\b", "Duo"), (r"\bsecret\b", "secretR"), (r"\bColour\b", "Hue")]
+
+
+def renamed(text):
+    for pat, rep in RENAMES:
+        text = re.sub(pat, rep, text)
+    return text
+
+
+def dump(tmp, name, src, files, args=()):
     d = Path(tmp) / name
     (d / "CDFix").mkdir(parents=True)
     for rel, text in {**files, "CDFix.lean": src}.items():  # the imported modules first, the root last
@@ -182,7 +196,7 @@ def dump(tmp, name, src, files):
         c = run(["lake", "env", "lean", f"--root={d}", "-o", str(out), str(d / rel)], env={**os.environ, "LEAN_PATH": str(d)})
         if c.returncode:
             return None, f"compile of {rel} failed:\n{c.stdout}{c.stderr}"
-    c = run([str(ROOT / ".lake/build/bin/const-dump"), str(d / "out.tsv"), "CDFix"],
+    c = run([str(ROOT / ".lake/build/bin/const-dump"), *args, str(d / "out.tsv"), "CDFix"],
             env={**os.environ, "LEAN_PATH": str(d)})
     if c.returncode:
         return None, f"const-dump failed:\n{c.stdout}{c.stderr}"
@@ -208,6 +222,35 @@ def check(tmp, base, i, case):
     return ok, f"{name}: {'; '.join(fails) or 'pass'}{detail}"
 
 
+def rename_cases(tmp, base):
+    """A pure rename compares equal through `--map`, a planted change in it does not, nor does the rename
+    without the map."""
+    rows = [l.split("\t") for l in base.read_text().splitlines()]
+    pairs = {n: renamed(n) for r in rows for n in r[:2] if renamed(n) != n}
+    mapf = Path(tmp) / "rename.map"
+    mapf.write_text("".join(f"{a}\t{b}\n" for a, b in sorted(pairs.items())))
+    mapped, err = dump(tmp, "base-mapped", BASE, FILES, ("--map", str(mapf)))
+    if mapped is None:
+        return [(False, f"rename: {err}")]
+    out = []
+    src = renamed(BASE)
+    for name, text, base_dump, want in [
+            (f"rename ({len(pairs)} names) with the map", src, mapped, []),
+            ("rename without the map", src, base, ["removed Pair"]),
+            ("rename with a planted change", src.replace("| .red => 0 | .green", "| .red => 2 | .green"), mapped,
+             [f"value {PRIV}Hue.code"])]:
+        new, err = dump(tmp, "renamed" + str(len(out)), text, FILES)
+        if new is None:
+            out.append((False, f"{name}: {err}"))
+            continue
+        c = run([sys.executable, "-I", str(ROOT / "scripts/const-diff.py"), str(base_dump), str(new)])
+        fails = [l for l in (c.stdout + c.stderr).splitlines() if l.startswith("FAIL ")]
+        ok = (c.returncode == (1 if want else 0)) and all(any(w in l for l in fails) for w in want) \
+            and bool(fails) == bool(want)
+        out.append((ok, f"{name}: {'; '.join(fails[:3]) or 'pass'}" + ("" if ok else "\n    " + c.stdout + c.stderr)))
+    return out
+
+
 def main():
     b = run(["lake", "build", "const-dump"])
     if b.returncode:
@@ -222,6 +265,7 @@ def main():
             return 1
         with ThreadPoolExecutor(4) as pool:
             results = list(pool.map(lambda ic: check(tmp, base, *ic), enumerate(CASES)))
+        results += rename_cases(tmp, base)
         # an inductive's axioms include its constructors' whatever order the walk meets them in (Lean's
         # stored answer lacks them for some of these, depending on hash order)
         rows = {l.split("\t")[0]: l.split("\t") for l in base.read_text().splitlines()}
