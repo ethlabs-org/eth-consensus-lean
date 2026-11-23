@@ -246,20 +246,19 @@ theorem releasable_voteForward {V : Type} [Fintype V] {E : Env V} (S : Setup)
   obtain rfl := List.mem_singleton.mp ho
   exact hv
 
-/-- A raw block with canonical vote/attestation payload has no forwarding dependencies. -/
+/-- A raw block with canonical carried attestations has no forwarding dependencies. -/
 theorem dependencies_item {n : Nat} (held : List (Wire n binding))
     (auth : Model.Auth n (ShapeRole binding.Kind)) (h : Header Info)
     (atts : List (FG.Att n)) (p : Payload n) :
     (dependencies n).ready held (.mk auth (.item h) (payloadObjs atts p)) = true := by
-  simp only [dependencies, forwardParent?, payloadObjs, List.map_append, Model.Obj.parts,
+  simp only [dependencies, forwardParent?, payloadObjs, Model.Obj.parts,
       List.all_cons, Bool.true_and, List.all_eq_true]
   simp only [Model.Obj.partsList_eq]
-  simp only [List.flatMap_append, List.mem_append, List.mem_flatMap, List.mem_map, attObj,
+  simp only [List.mem_flatMap, List.mem_map, attObj,
       exists_exists_and_eq_and, Model.Obj.parts, Model.Obj.parts.partsList, List.mem_cons,
-      List.not_mem_nil, or_false, voteObj]
-  rintro x (⟨a, _, rfl⟩ | ⟨a, _, rfl⟩ | ⟨a, _, rfl⟩)
-  · rfl
-  all_goals cases hp : binding.participationKind <;> simp [VoteBinding.voteRole, hp]
+      List.not_mem_nil, or_false]
+  rintro x ⟨a, _, rfl⟩
+  rfl
 
 /-- A dependency projected from a forwarding shape is a carried object. -/
 theorem forwardParent_contains {n : Nat} (o parent : Wire n binding)
@@ -542,12 +541,11 @@ theorem apply_voteForward_fresh (st : State sp ro binding) r (t : Time) (v : Vot
   have hw := (List.mem_filter.mp hw).2
   exact ⟨rfl, of_decide_eq_true hw⟩
 
-/-- Wire, block-payload and own-emission candidates surviving a fresh handler insertion
+/-- Wire and own-emission candidates surviving a fresh handler insertion
 are queued at that handler's clock. Completeness of these candidates is a separate obligation. -/
 theorem apply_voteForward_of_admission (st : State sp ro binding) r (v : Vote sp.n)
     (ℓ : ACLabel (goldilocksNode sp ro)) (hℓ : .ac ℓ ∈ r.2)
-    (hsource : ℓ.call = .message v ∨
-      (∃ B, ℓ.call = .block B ∧ v ∈ SA.blockVotes B) ∨ ∃ e ∈ ℓ.emits, e.msg = v)
+    (hsource : ℓ.call = .message v ∨ ∃ e ∈ ℓ.emits, e.msg = v)
     (hold : v ∉ st.node.ac.pool v.slot) (hnew : v ∈ r.1.ac.pool v.slot) :
     (st.now, v) ∈ (apply st r).voteForwards := by
   classical
@@ -556,9 +554,8 @@ theorem apply_voteForward_of_admission (st : State sp ro binding) r (v : Vote sp
   refine ⟨v, List.mem_filter.mpr ⟨List.mem_dedup.mpr ?_, by simp [hold, hnew]⟩, rfl⟩
   apply List.mem_flatMap.mpr
   refine ⟨.ac ℓ, hℓ, ?_⟩
-  rcases hsource with hm | ⟨B, hb, hv⟩ | ⟨e, he, hv⟩
+  rcases hsource with hm | ⟨e, he, hv⟩
   · simp only [hm, List.cons_append, List.nil_append, List.mem_cons, List.mem_map, true_or]
-  · exact List.mem_append_left _ (by simpa only [hb] using hv)
   · exact List.mem_append_right _ (List.mem_map.mpr ⟨e, he, hv⟩)
 
 /-- `relayIf` keeps the key. -/
