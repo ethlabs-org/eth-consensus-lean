@@ -1,15 +1,15 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
-import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.VoteBranch
 
 public section
 
 /-! # Goldilocks SA: what an honest vote's call shows
 
 The read point of an honest vote has the block stamps of the state its call leaves
-(`readPoint_blockStamp_eq`), and a vote cast before `t_s + Δ` is ready: its frame holds a block
-of its slot (`cast_ready`, the `vote_ready` branch of `try_vote`). -/
+(`readPoint_blockStamp_eq`), and a vote cast before `t_s + Δ` is ready at its read point
+(`cast_ready`, the `vote_ready` branch of `try_vote`). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -58,64 +58,24 @@ theorem readPoint_blockStamp_lt_of_earlier_frame {ini}
   · rw [h]
     exact WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (hrs r hri hrst))
 
-private theorem tryVote_ready
-    {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    {e : Em sp FGP} (he : e ∈ (tryVoteWithM sp wm x L A Φ t).2)
-    (ht : t < sp.ts (sp.slot t) + sp.Δ) :
-    voteReady sp Φ (sp.slot t) := by
-  unfold tryVoteWithM at he
-  dsimp only at he
-  split_ifs at he with h1 h2
-  · simp at he
-  · simp at he
-  all_goals
-    by_contra hn
-    exact h2 ⟨ht, Or.inr hn⟩
-
-private theorem step_ready
-    {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP} {t : Time}
-    (hΦ : FrameOK Φ) (ht0 : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call) {e : Em sp FGP}
-    (he : e ∈ (stepWithM sp ro wm self L A Φ t c).2)
-    (ht : t < sp.ts (sp.slot t) + sp.Δ) : voteReady sp Φ (sp.slot t) := by
-  cases c with
-  | tick =>
-    change e ∈ (acOnTickWithM sp wm self L A Φ t).2 at he
-    have htt : t = sp.ts (sp.slot t) + sp.Δ := by
-      unfold acOnTickWithM at he
-      dsimp only at he
-      split_ifs at he <;> first | assumption | simp at he
-    linarith
-  | message m => exact tryVote_ready self _ Φ t he ht
-  | block B => exact tryVote_ready self _ Φ t he ht
-  | proposal => simp at he
-  | toFG => simp at he
-  | restart =>
-    change e ∈ (acRestart sp ro self A Φ t).2 at he
-    rw [((restart_state sp) FGP ro self A Φ t hΦ ht0).1] at he
-    simp at he
-
 /-- `cast_ready` with the unlock given. -/
 theorem cast_readyU
     {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (ht : tr.time i < sp.ts e.msg.slot + sp.Δ) :
-    voteReady sp ℓ.frame e.msg.slot := by
-  obtain ⟨hcall, he⟩ := hc
-  have hx := hr.exec i ℓ hcall.2 (hcall.1 ▸ hy)
-  rw [hcall.1] at hx
-  obtain ⟨hΦ, -⟩ := frameIn_of_callAtU hr hy hcall
-  have he' : e ∈ (stepWithM sp ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i)
-      ℓ.call).2 := by rw [hx]; exact he
-  have hs := (castAt_specU hr hy ⟨hcall, he⟩).2.1
-  rw [hs] at ht ⊢
-  exact step_ready (L := u i) y _ hΦ (hr.time_nonneg i) ℓ.call he' ht
+    voteReady sp e.readPoint ℓ.frame e.msg.slot := by
+  have hb := voteBranchAt_iff.1 (voteBranchAt_of_castAtU hr hy hc)
+  rw [(castAt_specU hr hy hc).2.1] at ht ⊢
+  by_contra hn
+  exact hb.2.2.2.2.2.1 ⟨ht, Or.inr hn⟩
 
-/-- **An early vote is ready**: an honest vote cast before `t_s + Δ` has a block of its slot in
-its frame (`vote_ready`). -/
+/-- **An early vote is ready**: an honest vote cast before `t_s + Δ` is ready at its read point:
+its frame holds a block of its slot, and every declaration of a slot-`s` proposal of its frame
+is counted in the pools of the read point (`vote_ready`). -/
 theorem cast_ready {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (ht : tr.time i < sp.ts e.msg.slot + sp.Δ) :
-    voteReady sp ℓ.frame e.msg.slot :=
+    voteReady sp e.readPoint ℓ.frame e.msg.slot :=
   cast_readyU (hr := hr.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc) (ht := ht)
 
 end Consensus.Goldilocks.SA
