@@ -31,18 +31,18 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Every pending admission envelope still has its vote in the stored pool. -/
 private def QueuedInPool (st : State sp ro binding) : Prop :=
-  ∀ tv ∈ st.voteForwards, tv.2 ∈ st.node.ac.pool tv.2.slot
+  ∀ tv ∈ st.voteForwards, tv.2.1 ∈ st.node.ac.pool tv.2.1.slot
 
-private theorem apply_queuedInPool (st : State sp ro binding) r (h : QueuedInPool st)
-    (hg : ∀ σ, st.node.ac.pool σ ⊆ r.1.ac.pool σ) : QueuedInPool (apply st r) := by
+private theorem apply_queuedInPool (st : State sp ro binding) origin r (h : QueuedInPool st)
+    (hg : ∀ σ, st.node.ac.pool σ ⊆ r.1.ac.pool σ) : QueuedInPool (apply st origin r) := by
   intro tv htv
   by_cases hold : tv ∈ st.voteForwards
   · exact hg _ (h tv hold)
-  · exact (apply_voteForward_fresh st r tv.1 tv.2 htv hold).2.2
+  · exact (apply_voteForward_fresh st origin r tv.1 tv.2.1 tv.2.2 htv hold).2.2
 
 private theorem block_queuedInPool (st : State sp ro binding) (B : Blk sp) (h : QueuedInPool st) :
-    QueuedInPool (apply st (Node.onBlock st.self st.node st.now B)) := by
-  apply apply_queuedInPool st _ h
+    QueuedInPool (apply st none (Node.onBlock st.self st.node st.now B)) := by
+  apply apply_queuedInPool st _ _ h
   unfold Node.onBlock
   split_ifs
   · exact fun _ => List.Subset.refl _
@@ -50,26 +50,27 @@ private theorem block_queuedInPool (st : State sp ro binding) (B : Blk sp) (h : 
     · exact fun _ => List.Subset.refl _
     · exact AC.step_pool_subset st.self st.node.ac _ st.now (.block B) (by simp)
 
-private theorem processOne_queuedInPool hs (st : State sp ro binding) o (h : QueuedInPool st) :
-    QueuedInPool (processOne hs st o) := by
+private theorem processOne_queuedInPool io hs (st : State sp ro binding) o
+    (h : QueuedInPool st) : QueuedInPool (processOne io hs st o) := by
   rw [AsChainShape.processOne_eq]
   split
   · dsimp only
     unfold relayIf
     split <;> exact block_queuedInPool st _ h
-  · apply apply_queuedInPool st _ h
+  · apply apply_queuedInPool st _ _ h
     exact AC.step_pool_subset st.self st.node.ac _ st.now (.message _) (by simp)
   · unfold relayIf
-    split <;> apply apply_queuedInPool st _ h <;> exact fun _ => List.Subset.refl _
+    split <;> apply apply_queuedInPool st _ _ h <;> exact fun _ => List.Subset.refl _
   · exact h
 
 private theorem process_queuedInPool (st : State sp ro binding) o hs (h : QueuedInPool st) :
     QueuedInPool (process st o hs) := by
   rw [process_eq]
-  generalize delivered hs st o = os
+  generalize delivered st.voteIO hs st o = os
+  generalize st.voteIO = io
   induction os generalizing st with
   | nil => exact h
-  | cons o os ih => exact ih _ (processOne_queuedInPool hs st o h)
+  | cons o os ih => exact ih _ (processOne_queuedInPool io hs st o h)
 
 private theorem record_queuedInPool (st : State sp ro binding) o hs (h : QueuedInPool st) :
     QueuedInPool (recordOwn st o hs) := by
@@ -95,7 +96,7 @@ private theorem nodeTick_queuedInPool (st : State sp ro binding) (h : QueuedInPo
     QueuedInPool (nodeTick st) := by
   rw [nodeTick_eq]
   split
-  · apply apply_queuedInPool st _ h
+  · apply apply_queuedInPool st _ _ h
     exact AC.step_pool_subset st.self st.node.ac _ st.now .tick (by simp)
   · exact h
 
@@ -105,7 +106,7 @@ private theorem poll_queuedInPool (st : State sp ro binding) t : QueuedInPool (p
   cases htv
 
 private theorem block_pool_subset (st : State sp ro binding) (B : Blk sp) (σ : Nat) :
-    st.node.ac.pool σ ⊆ (apply st (Node.onBlock st.self st.node st.now B)).node.ac.pool σ := by
+    st.node.ac.pool σ ⊆ (apply st none (Node.onBlock st.self st.node st.now B)).node.ac.pool σ := by
   unfold apply Node.onBlock
   dsimp only
   split_ifs
@@ -174,9 +175,9 @@ theorem runDuties_voteForward_in_pool (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
     (h : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
-      tv.2 ∈ (shapeOf S hn nd).node.ac.pool tv.2.slot) :
+      tv.2.1 ∈ (shapeOf S hn nd).node.ac.pool tv.2.1.slot) :
     ∀ tv ∈ (shapeOf S hn (rho.runDuties v nd ds).1).voteForwards,
-      tv.2 ∈ (shapeOf S hn (rho.runDuties v nd ds).1).node.ac.pool tv.2.slot := by
+      tv.2.1 ∈ (shapeOf S hn (rho.runDuties v nd ds).1).node.ac.pool tv.2.1.slot := by
   exact runDuties_pres S rho hn QueuedInPool record_queuedInPool propose_queuedInPool
     nodeTick_queuedInPool (fun st t _ => poll_queuedInPool st t) v nd ds h
 
@@ -186,9 +187,9 @@ theorem dutyStep_voteForward_in_pool (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (d : (Model.protoOf (compiled (goldilocks S)) E).Duty)
     (h : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
-      tv.2 ∈ (shapeOf S hn nd).node.ac.pool tv.2.slot) :
+      tv.2.1 ∈ (shapeOf S hn nd).node.ac.pool tv.2.1.slot) :
     ∀ tv ∈ (shapeOf S hn (rho.dutyStep v nd d).1).voteForwards,
-      tv.2 ∈ (shapeOf S hn (rho.dutyStep v nd d).1).node.ac.pool tv.2.slot := by
+      tv.2.1 ∈ (shapeOf S hn (rho.dutyStep v nd d).1).node.ac.pool tv.2.1.slot := by
   exact dutyStep_pres S rho hn QueuedInPool record_queuedInPool propose_queuedInPool
     nodeTick_queuedInPool (fun st t _ => poll_queuedInPool st t) v nd d h
 
@@ -224,10 +225,10 @@ theorem runDuties_pool_subset (v : V)
 event-boundary queue is empty, and none of the delivery handlers restarts the AC. -/
 theorem delivery_voteForward_in_pool (hv : rho.ExecutionValid) (v : V) (i : Nat)
     (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
-    (tv : Time × Vote (Fintype.card V))
+    (tv : Time × Vote (Fintype.card V) × Wire (Fintype.card V) S.vote)
     (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
-    tv.2 ∈ (process (stateAt S rho hn v i) o
-      (Model.digests rho.hash o)).node.ac.pool tv.2.slot := by
+    tv.2.1 ∈ (process (stateAt S rho hn v i) o
+      (Model.digests rho.hash o)).node.ac.pool tv.2.1.slot := by
   apply process_queuedInPool (stateAt S rho hn v i) o (Model.digests rho.hash o) ?_ tv htv
   intro q hq
   rw [voteForwards_empty S rho hn hv v i] at hq
