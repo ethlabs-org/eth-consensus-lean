@@ -17,6 +17,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVoteTransfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 
@@ -532,36 +533,38 @@ theorem mayVote_stock_at (hrun : Growing.GoldilocksRun proposer dg H tr) (hnc : 
     ∀ i, (∀ k < i, tr.time k ≤ d) → (tr.state y i).ac.mayVote s = true :=
   fun i hb => Trace.upTo_state tr y hb ▸ mayVote_of_start (hrun.upTo hd) (hnc.upTo _) hy rfl i
 
-/-- **The stock committee facts**: at `K = full` with `committeeSize = n`, size, P and the frames
-hold for every signer, and the gate is the default start's permission (`mayVote_stock_at`). -/
+/-- **The stock committee facts**: at `K = full` with `committeeSize = n`, size and P hold for
+every signer, and the gate is the default start's permission (`mayVote_stock_at`). -/
 theorem CommitteeFacts.of_full (hrun : Growing.GoldilocksRun proposer dg H tr)
     (hnc : NoCollRun dg tr) (hstock : sp.committeeSize = sp.n) :
     CommitteeFacts tr H (SA.CommitteeDict.full sp.n) :=
   ⟨SA.size_binding_full hstock, SA.CommitteePAt.full,
-    fun _ _ _ _ _ v _ => SA.mem_full v.slot _,
     fun _ ht _ hx i hi s =>
       ⟨fun _ => SA.mem_full s _, fun _ => mayVote_stock_at hrun hnc ht hx i hi⟩⟩
 
-/-- **T from P and the frames**: the merged view of a cast of a node honest at it holds pool
-votes of its read point, which are in its pool after the cast (`SA.readPoint_pool`, P), and the
-votes of blocks of the call's frame, which is the node's frame (`frame_of_projAC_at`, `hFrame`). -/
+/-- **T from P**: a vote of the merged view of a cast of a node honest at it is backed in the read
+point's pool by itself or by a vote of its validator of its slot
+(`SA.merged_declared_backing_at_vote_slot`), and the read point's pool is in the node's pool after
+the cast (`SA.readPoint_pool`, P). -/
 theorem CommitteeFacts.committeeTAt {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K) {ini}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr) :
     SA.CommitteeTAt K tr.projAC H := by
   intro y i ℓ e hy hc m v hv
-  rcases hv with hvb | ⟨C, hC, -, hvC⟩
-  · have hacr := acRun_upTo hrun hnc (hrun.time_nonneg i)
-    have hb : ∀ k < i + 1, tr.time k ≤ tr.time i := fun k hk =>
-      hrun.time_mono (Nat.lt_succ_iff.mp hk)
-    simp only [SA.voteView, SA.voteViewList, SA.View.ofLists, Set.mem_ofPred_eq, List.mem_filter,
-      decide_eq_true_eq] at hvb
-    have hp := (SA.readPoint_pool hacr.localRun hy (sa_castAt_upTo.mpr ⟨le_rfl, hc⟩)
-      (SA.SAState.mem_poolAt.mp hvb.1).2).1
-    rw [SA.state_pool_slot _ hacr.localRun hacr.vstart hy (i + 1) _ v hp]
+  have hacr := acRun_upTo hrun hnc (hrun.time_nonneg i)
+  have hb : ∀ k < i + 1, tr.time k ≤ tr.time i := fun k hk =>
+    hrun.time_mono (Nat.lt_succ_iff.mp hk)
+  have hcU := sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hpool : ∀ k, ∀ w ∈ e.readPoint.pool k, w.slot = k := fun k w hw =>
+    SA.state_pool_slot _ hacr.localRun hacr.vstart hy (i + 1) k w
+      (SA.readPoint_pool hacr.localRun hy hcU hw).1
+  have hmem : ∀ w ∈ e.readPoint.pool v.slot, w.val = v.val → v.val ∈ K.committee v.slot := by
+    intro w hw hwv
+    have hp := (SA.readPoint_pool hacr.localRun hy hcU hw).1
     rw [Trace.upTo_state tr.projAC y hb] at hp
-    exact hKB.hP.1 (tr.time i) y hy (i + 1) hb _ v hp
-  · rw [frame_of_projAC_at hrun hy hc.1] at hC
-    exact hKB.hFrame y i hy C hC v hvC
+    exact hwv ▸ hKB.hP.1 (tr.time i) y hy (i + 1) hb _ w hp
+  rcases SA.merged_declared_backing_at_vote_slot hpool hv with h | ⟨w, hw, -, -, -, hwv, -⟩
+  · exact hmem v h rfl
+  · exact hmem w hw hwv
 
 /-- **The stock committee bounds**: at `K = full`, CS is the population slot count read at the AC
 projection, and CS2 is the population half bound. -/
