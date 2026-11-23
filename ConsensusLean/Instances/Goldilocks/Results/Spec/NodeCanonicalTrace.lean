@@ -76,17 +76,28 @@ structure Encoding (F : ChainShapeFamily O I) (E : Env V)
   skel : Skeleton (pubOf E).n
   Body : Type
   decBody : DecidableEq Body
+  Tok : Type
+  [decTok : DecidableEq Tok]
+  [infTok : Infinite Tok]
+  Data : Type
+  [countData : Countable Data]
   State : (1 ≤ (pubOf E).n) → Type
   codec : WireCodec A skel.Kind I Body
+  decodeMessage : Model.VoteIO Tok (ShapeRole skel.Kind) Data (pubOf E).n →
+    ShapeObj (pubOf E).n skel.Kind I Body → Option A.Msg
   adapter : Adapter A skel.Kind I Body (State hn)
-  ops : (h : 1 ≤ (pubOf E).n) → Ops (pubOf E).n skel.Kind I Body O.Id (State h)
+  ops : (h : 1 ≤ (pubOf E).n) → Ops (pubOf E).n skel.Kind I Body O.Id (State h) Tok Data
+  claim : Data → Option (Fin (pubOf E).n × ShapeRole skel.Kind)
+  voteBody : Body → Bool
+  presented : ShapeObj (pubOf E).n skel.Kind I Body →
+    Option ((Fin (pubOf E).n × ShapeRole skel.Kind × Data) × Tok)
   role : ShapeDuty skel.Kind → Model.Msg (Header I) Body → Option (ShapeRole skel.Kind)
   dep : Model.DependencyPolicy (ShapeObj (pubOf E).n skel.Kind I Body)
   conflict : ShapeObj (pubOf E).n skel.Kind I Body → ShapeObj (pubOf E).n skel.Kind I Body → Bool
   isFGAtt : ShapeObj (pubOf E).n skel.Kind I Body → Prop
   shape_eq : F (pubOf E) =
     (letI : DecidableEq Body := decBody
-     shape skel (familyOps ops) role dep conflict isFGAtt)
+     shape skel (familyOps ops) claim voteBody presented role dep conflict isFGAtt)
 
 variable {A : NodeAC (paramsAtCount p (Fintype.card V) hN hn)}
 variable (e : Encoding F E p hN hn A)
@@ -162,6 +173,25 @@ theorem engineRole_eq (r : ShapeRole e.skel.Kind) : engineRole e r =
     cast (congrArg (fun s : ChainShape (pubOf E) O.Id I => (compile s).Role) e.shape_eq.symm) r :=
   by rfl
 
+/-- Transport the receiver's authentication operations across the equality of shapes. -/
+def voteIOAt (v : V) : Model.VoteIO e.Tok (ShapeRole e.skel.Kind) e.Data (pubOf E).n :=
+  cast (congrArg (fun s : ChainShape (pubOf E) O.Id I =>
+    Model.VoteIO s.Token (ShapeRole s.skel.Kind) s.VoteData (pubOf E).n) e.shape_eq) (rho.voteIO v)
+
+/-- The authentication transport is induced by the equality of the two assembled shapes. -/
+theorem voteIOAt_eq (v : V) : voteIOAt e rho v =
+  cast (congrArg (fun s : ChainShape (pubOf E) O.Id I =>
+    Model.VoteIO s.Token (ShapeRole s.skel.Kind) s.VoteData (pubOf E).n) e.shape_eq)
+    (rho.voteIO v) := by rfl
+
+/-- Only message decoding depends on the recipient; block framing and hashing do not. -/
+def receiverCodec (v : V) : WireCodec A e.skel.Kind I e.Body :=
+  { e.codec with message := e.decodeMessage (voteIOAt e rho v) }
+
+/-- Replay uses the receiver's authentication operations to decode messages. -/
+theorem receiverCodec_eq (v : V) : receiverCodec e rho v =
+    { e.codec with message := e.decodeMessage (voteIOAt e rho v) } := by rfl
+
 variable [DecidableEq V]
 
 /-- The envelope held by the engine just before the indicated cut. -/
@@ -171,12 +201,14 @@ noncomputable def stateAt (v : V) (i : Nat) : e.State hn :=
 
 /-- The own-role initialization of the compiled shape, projected into the node. -/
 noncomputable def initial (y : Fin (Fintype.card V)) : NodeState A :=
-  e.adapter.node ((e.ops hn).init y (fun r => decide (y ∈ rho.sel (engineRole e r))))
+  e.adapter.node ((e.ops hn).init y (fun r => decide (y ∈ rho.sel (engineRole e r)))
+    (voteIOAt e rho (rho.key y)))
 
 omit [DecidableEq V] in
 /-- The projected trace initialization reads the actual compiled role selections. -/
 theorem initial_eq (y : Fin (Fintype.card V)) : initial e rho y =
-    e.adapter.node ((e.ops hn).init y (fun r => decide (y ∈ rho.sel (engineRole e r)))) := by rfl
+    e.adapter.node ((e.ops hn).init y (fun r => decide (y ∈ rho.sel (engineRole e r)))
+      (voteIOAt e rho (rho.key y))) := by rfl
 
 /-- The keys of validators honest at time zero. -/
 def honestKeys : Set (Fin (Fintype.card V)) := {y | rho.key y ∉ rho.faultyAt 0}
@@ -273,8 +305,9 @@ noncomputable def eventCuts (i : Nat) : List (CutRec A) :=
   | some (.deliver v o t) =>
     let hs := Model.digests rho.hash o
     let st := stateAt e rho v i
-    deliverRecs e.codec (runProposer rho hn) (digestOf e rho) hs (rho.ownKey v) t i
-      (delivered e.codec e.adapter hs st (wireOf e o)) (e.adapter.node st) 0
+    let C := receiverCodec e rho v
+    deliverRecs C (runProposer rho hn) (digestOf e rho) hs (rho.ownKey v) t i
+      (delivered C e.adapter hs st (wireOf e o)) (e.adapter.node st) 0
   | some (.restart v t) =>
     groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
       (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0) .restart
@@ -313,8 +346,9 @@ theorem eventCuts_deliver (i : Nat) (v : V) (o : (Model.protoOf (compiled F) E).
     eventCuts e rho i =
       let hs := Model.digests rho.hash o
       let st := stateAt e rho v i
-      deliverRecs e.codec (runProposer rho hn) (digestOf e rho) hs (rho.ownKey v) t i
-        (delivered e.codec e.adapter hs st (wireOf e o)) (e.adapter.node st) 0 := by
+      let C := receiverCodec e rho v
+      deliverRecs C (runProposer rho hn) (digestOf e rho) hs (rho.ownKey v) t i
+        (delivered C e.adapter hs st (wireOf e o)) (e.adapter.node st) 0 := by
   unfold eventCuts
   rw [he]
 
@@ -352,7 +386,8 @@ theorem cutMap_succ (i : Nat) : cutMap e rho (i + 1) =
 /-- The initial trace state is the node projection of own-role initialization. -/
 theorem simTrace_init_eq (y : Fin (Fintype.card V)) :
     (simTrace e rho).init y =
-      e.adapter.node ((e.ops hn).init y (fun r => decide (y ∈ rho.sel (engineRole e r)))) := by rfl
+      e.adapter.node ((e.ops hn).init y (fun r => decide (y ∈ rho.sel (engineRole e r)))
+        (voteIOAt e rho (rho.key y))) := by rfl
 
 /-- Growing replay has the same cuts as ordinary replay. -/
 theorem simTraceAt_eq : simTraceAt e rho = simTrace e rho := by rfl
