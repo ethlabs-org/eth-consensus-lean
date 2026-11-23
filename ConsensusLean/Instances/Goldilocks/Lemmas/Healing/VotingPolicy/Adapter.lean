@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Instance
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Interface
 
 public section
 
@@ -246,5 +247,89 @@ theorem runCalls_filter_toFG (ro : ReplayOrder sp FGP) (self : Fin sp.n) :
     · simp only [runCalls_cons, List.filter_cons, hn, ite_true, hs, List.map_append, List.map_map]
       rw [h2]
       rfl
+
+/-! ## The calendar as an AC wrapper -/
+
+/-- **The calendar AC**: the Goldilocks AC whose `ac_to_fg` runs only at the signing appointments
+`sign`, and elsewhere returns `⊥` and leaves the state unchanged. Every other operation is the
+Goldilocks AC's. -/
+noncomputable abbrev calendarAC (ro : ReplayOrder sp FGP) (sign : Time → Bool) :
+    ACInterface sp.toParams FGP :=
+  { goldilocksAC sp FGP ro with
+    toFG := fun A Φ t => if sign t then acToFG sp A Φ t else (A, none) }
+
+/-- **Faithfulness at appointments**: at a signing appointment the calendar's `ac_to_fg` is the
+Goldilocks AC's, state and result. -/
+theorem calendarAC_toFG_of_sign (ro : ReplayOrder sp FGP) {sign : Time → Bool} {t : Time}
+    (h : sign t = true) (A : ACState sp.n) (Φ : Frm sp.n FGP) :
+    (calendarAC ro sign).toFG A Φ t = (goldilocksAC sp FGP ro).toFG A Φ t := by
+  simp [calendarAC, h]
+
+/-- Outside the appointments the calendar's `ac_to_fg` is `⊥` and changes nothing. -/
+theorem calendarAC_toFG_of_not_sign (ro : ReplayOrder sp FGP) {sign : Time → Bool} {t : Time}
+    (h : sign t = false) (A : ACState sp.n) (Φ : Frm sp.n FGP) :
+    (calendarAC ro sign).toFG A Φ t = (A, none) := by
+  simp [calendarAC, h]
+
+/-- A calendar AC call as a Goldilocks AC call (the same operation). -/
+def stockCall {ro : ReplayOrder sp FGP} {sign : Time → Bool} :
+    (calendarAC ro sign).Call → (goldilocksAC sp FGP ro).Call
+  | .tick => .tick
+  | .proposal => .proposal
+  | .toFG => .toFG
+  | .message m => .message m
+  | .block B => .block B
+  | .restart => .restart
+
+theorem stockCall_eq_toFG_iff {ro : ReplayOrder sp FGP} {sign : Time → Bool}
+    (c : (calendarAC ro sign).Call) : stockCall c = .toFG ↔ c = .toFG := by
+  cases c <;> simp [stockCall]
+
+/-- Every other call of the calendar AC is the Goldilocks AC's call. -/
+theorem calendarAC_step (ro : ReplayOrder sp FGP) (sign : Time → Bool) (self : Fin sp.n)
+    (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) (c : (calendarAC ro sign).Call)
+    (hc : c ≠ .toFG) :
+    (calendarAC ro sign).step self A Φ t c =
+      (goldilocksAC sp FGP ro).step self A Φ t (stockCall c) := by
+  cases c <;> first | rfl | exact absurd rfl hc
+
+/-- At an appointment the calendar's `ac_to_fg` call is the Goldilocks AC's. -/
+theorem calendarAC_step_toFG_of_sign (ro : ReplayOrder sp FGP) {sign : Time → Bool} {t : Time}
+    (h : sign t = true) (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) :
+    (calendarAC ro sign).step self A Φ t .toFG =
+      (goldilocksAC sp FGP ro).step self A Φ t .toFG := by
+  simp [ACInterface.step, calendarAC, h]
+
+/-- Outside the appointments the calendar's `ac_to_fg` call is a stutter: same state, no
+emission. -/
+theorem calendarAC_step_toFG_of_not_sign (ro : ReplayOrder sp FGP) {sign : Time → Bool}
+    {t : Time} (h : sign t = false) (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) :
+    (calendarAC ro sign).step self A Φ t .toFG = (A, []) := by
+  simp [ACInterface.step, calendarAC, h]
+
+/-- **The call law composes across a dropped `ac_to_fg` cut.** An `ac_to_fg` call keeps the
+frame, so the call after it obeys the call law from the frame before it. -/
+theorem callOK_drop_toFG (ro : ReplayOrder sp FGP) {U : Set (Blk sp.n FGP)}
+    {Φ Φ' Φ'' : Frm sp.n FGP} {t t' : Time} {c : (goldilocksAC sp FGP ro).Call}
+    (h₁ : (goldilocksAC sp FGP ro).CallOK U Φ t .toFG Φ')
+    (h₂ : (goldilocksAC sp FGP ro).CallOK U Φ' t' c Φ'') :
+    (goldilocksAC sp FGP ro).CallOK U Φ t' c Φ'' := by
+  obtain ⟨-, hΦ⟩ := h₁
+  change Φ' = Φ at hΦ
+  subst hΦ
+  exact h₂
+
+/-- The same at the first call: an initial `ac_to_fg` call leaves the initial frame. -/
+theorem callOK_toFG_frame (ro : ReplayOrder sp FGP) {U : Set (Blk sp.n FGP)}
+    {Φ Φ' : Frm sp.n FGP} {t : Time}
+    (h : (goldilocksAC sp FGP ro).CallOK U Φ t .toFG Φ') : Φ' = Φ :=
+  h.2
+
+/-- The calendar AC's call law is the Goldilocks AC's for the same call. -/
+theorem calendarAC_callOK_iff (ro : ReplayOrder sp FGP) (sign : Time → Bool)
+    {U : Set (Blk sp.n FGP)} {Φ Φ' : Frm sp.n FGP} {t : Time} (c : (calendarAC ro sign).Call) :
+    (calendarAC ro sign).CallOK U Φ t c Φ' ↔
+      (goldilocksAC sp FGP ro).CallOK U Φ t (stockCall c) Φ' := by
+  cases c <;> exact Iff.rfl
 
 end Consensus.Goldilocks.VotingPolicy
