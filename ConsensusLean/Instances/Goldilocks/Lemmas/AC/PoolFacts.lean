@@ -96,18 +96,8 @@ theorem admits_tryVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) 
     rfl
 
 theorem admits_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
-    Admits A (blockReceipt sp A t B) t := by
-  unfold blockReceipt
-  generalize blockVotes B = l
-  suffices h : ∀ A' : SAState sp.n, Admits A A' t →
-      Admits A (l.foldl (fun A v => admitVote sp A t v) A') t from
-    h _ (Admits.of_pool_eq rfl)
-  induction l with
-  | nil => exact fun _ h => h
-  | cons v l ih =>
-    intro A' h
-    simp only [List.foldl_cons]
-    exact ih _ (h.trans (admits_admitVote _ _ _))
+    Admits A (blockReceipt sp A t B) t :=
+  Admits.of_pool_eq rfl
 
 theorem admits_acOnBlock (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (B : Blk sp.n FGP) : Admits A (acOnBlock sp self A Φ t B).1 t := by
@@ -207,12 +197,6 @@ theorem grows_tryVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (
     refine Grows.trans (Grows.of_pool_eq ?_) (grows_admitVote _ _ _)
     rfl
 
-theorem grows_fold_admit (t : Time) (l : List (Vote sp.n)) (A : SAState sp.n) :
-    Grows A (l.foldl (fun A v => admitVote sp A t v) A) := by
-  induction l generalizing A with
-  | nil => exact fun _ _ h => h
-  | cons v l ih => exact (grows_admitVote A t v).trans (ih _)
-
 /-- A vote of slot `slot(t) − 1` or `slot(t)` offered to admission at `t` ends up in its pool, or
 its validator then has two distinct votes there. -/
 theorem admitVote_held (A : SAState sp.n) (t : Time) (v : Vote sp.n)
@@ -250,22 +234,6 @@ theorem held_of_grows {A A' : SAState sp.n} (hg : Grows A A') {v : Vote sp.n}
     (h : v ∈ A.pool v.slot ∨ v.val ∈ equivocators {x | x ∈ A.pool v.slot}) :
     v ∈ A'.pool v.slot ∨ v.val ∈ equivocators {x | x ∈ A'.pool v.slot} :=
   h.imp (hg _ _) fun he => equivocators_mono (fun x (hx : x ∈ A.pool v.slot) => hg _ x hx) he
-
-/-- After admitting the votes of `l` at `t`, each of them (of slot `slot(t) − 1` or `slot(t)`) is
-held, or its validator equivocates. -/
-theorem fold_admit_held (t : Time) (l : List (Vote sp.n))
-    (hl : ∀ v ∈ l, (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t) (A : SAState sp.n) :
-    ∀ v ∈ l, v ∈ (l.foldl (fun A v => admitVote sp A t v) A).pool v.slot ∨
-      v.val ∈ equivocators {x | x ∈ (l.foldl (fun A v => admitVote sp A t v) A).pool v.slot} := by
-  induction l generalizing A with
-  | nil => intro v hv; exact absurd hv List.not_mem_nil
-  | cons w l ih =>
-    intro v hv
-    simp only [List.foldl_cons]
-    rcases List.mem_cons.mp hv with rfl | hv
-    · obtain ⟨h₁, h₂⟩ := hl v List.mem_cons_self
-      exact held_of_grows (grows_fold_admit t l _) (admitVote_held A t v h₁ h₂)
-    · exact ih (fun u hu => hl u (List.mem_cons_of_mem _ hu)) _ v hv
 
 end Grows
 
@@ -373,27 +341,15 @@ private theorem tryVote_vok_keep (self : Fin sp.n) {A : SAState sp.n} (h : VOK A
     | exact key _ rfl rfl
     | exact keyNoVote _ rfl rfl
 
-private theorem fold_admit_vok_keep (t : Time) (l : List (Vote sp.n)) {A : SAState sp.n}
-    (h : VOK A) :
-    VOK (l.foldl (fun A v => admitVote sp A t v) A) ∧
-      Keep A (l.foldl (fun A v => admitVote sp A t v) A) := by
-  induction l generalizing A with
-  | nil => exact ⟨h, Keep.of_eq rfl rfl⟩
-  | cons v l ih =>
-    obtain ⟨h₁, k₁⟩ := admitVote_vok_keep h t v
-    obtain ⟨h₂, k₂⟩ := ih h₁
-    exact ⟨h₂, k₁.trans k₂⟩
-
 private theorem acOnBlock_vok_keep (self : Fin sp.n) {A : SAState sp.n} (h : VOK A)
     (Φ : Frm sp.n FGP) (t : Time) (B : Blk sp.n FGP) :
     VOK (acOnBlock sp self A Φ t B).1 ∧ Keep A (acOnBlock sp self A Φ t B).1 := by
   unfold acOnBlock blockReceipt
-  obtain ⟨h₁, k₁⟩ := fold_admit_vok_keep t (blockVotes B)
+  obtain ⟨h₂, k₂⟩ := optimistic_vok_keep
     (A := { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) })
-    (h.of_eq rfl rfl)
-  obtain ⟨h₂, k₂⟩ := optimistic_vok_keep h₁ Φ t
+    (h.of_eq rfl rfl) Φ t
   obtain ⟨h₃, k₃⟩ := tryVote_vok_keep self h₂ Φ t
-  exact ⟨h₃, (Keep.of_eq rfl rfl).trans (k₁.trans (k₂.trans k₃))⟩
+  exact ⟨h₃, (Keep.of_eq rfl rfl).trans (k₂.trans k₃)⟩
 
 private theorem acOnMessage_vok_keep (self : Fin sp.n) {A : SAState sp.n} (h : VOK A)
     (Φ : Frm sp.n FGP) (t : Time) (v : Vote sp.n) :
@@ -503,13 +459,8 @@ theorem VoteClosed.acOnBlock {P : SAState sp.n → Prop} (hP : VoteClosed P) (se
     {A : SAState sp.n} (Φ : Frm sp.n FGP) (t : Time) (B : Blk sp.n FGP) (h : P A) :
     P (SA.acOnBlock sp self A Φ t B).1 := by
   unfold SA.acOnBlock blockReceipt
-  refine hP.tryVote self Φ t (hP.congr _ _ (optimistic_pool_eq _ _ _) (optimistic_vs _ _ _) ?_)
-  have h₀ : P { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) } :=
-    hP.congr A _ rfl rfl h
-  generalize { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) } = A₀ at h₀
-  induction blockVotes B generalizing A₀ with
-  | nil => exact h₀
-  | cons v l ih => exact ih _ (hP.admit _ _ _ h₀)
+  exact hP.tryVote self Φ t (hP.congr _ _ (optimistic_pool_eq _ _ _) (optimistic_vs _ _ _)
+    (hP.congr A _ rfl rfl h))
 
 theorem VoteClosed.step {P : SAState sp.n → Prop} (hP : VoteClosed P) (ro : ReplayOrder sp FGP)
     (self : Fin sp.n) {A : SAState sp.n} (Φ : Frm sp.n FGP) (t : Time)
@@ -569,29 +520,87 @@ theorem admission_slots : AdmissionSlots sp := by
       · split_ifs at hx <;> exact hx
     · exact hx
 
-/-- The votes of a block received at `t`, of slot `slot(t) − 1` or `slot(t)`, are held after
-`ac_on_block`, or their validators equivocate there. -/
-theorem acOnBlock_held {FGP : Type} (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) (B : Blk sp.n FGP)
-    (hrange : ∀ v ∈ blockVotes B, (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t) :
-    ∀ v ∈ blockVotes B, v ∈ (acOnBlock sp self A Φ t B).1.pool v.slot ∨
-      v.val ∈ equivocators {x | x ∈ (acOnBlock sp self A Φ t B).1.pool v.slot} := by
-  intro v hv
-  have hrec := fold_admit_held t (blockVotes B) hrange
-    { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) } v hv
-  have hg : Grows (blockReceipt sp A t B) (acOnBlock sp self A Φ t B).1 := by
-    unfold acOnBlock
-    exact (Grows.of_pool_eq (optimistic_pool_eq _ _ _)).trans (grows_tryVote _ _ _ _)
-  exact held_of_grows hg hrec
+/-- The receipt of a block admits nothing: it keeps the pools and the vote stamps (it only
+stamps the block). -/
+theorem blockReceipt_keeps_votes {FGP : Type} (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
+    (blockReceipt sp A t B).pool = A.pool ∧ (blockReceipt sp A t B).voteStamp = A.voteStamp :=
+  ⟨rfl, rfl⟩
 
-/-- **A0.1, carried votes.** -/
-theorem carried_votes : CarriedVotes sp := by
-  intro FGP self A Φ' t B hpay hBs
+/-- `try_vote` adds to the pools only the node's own vote of the slot of `t`. -/
+private theorem tryVote_adds_only_own {FGP : Type} (self : Fin sp.n) (A : SAState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) :
+    ∀ σ, ∀ x ∈ (tryVote sp self A Φ t).1.pool σ, x ∈ A.pool σ ∨
+      (x.val = self ∧ x.slot = sp.slot t) := by
+  intro σ x hx
+  unfold tryVote at hx
+  dsimp only at hx
+  split_ifs at hx
+  · exact Or.inl hx
+  · exact Or.inl hx
+  all_goals first
+    | exact Or.inl hx
+    | (rw [optimistic_pool_eq] at hx
+       unfold admitVote at hx
+       split_ifs at hx
+       · exact Or.inl hx
+       · exact Or.inl hx
+       · simp only [Function.update_apply] at hx
+         split_ifs at hx with hσ
+         · rcases List.mem_append.mp hx with hx | hx
+           · exact Or.inl (hσ ▸ hx)
+           · rw [List.mem_singleton] at hx
+             subst hx
+             exact Or.inr ⟨rfl, rfl⟩
+         · exact Or.inl hx)
+
+/-- **A0.1, a block adds no vote but the node's own.** -/
+theorem block_adds_only_own_vote : BlockAddsOnlyOwnVote sp := by
+  intro FGP self A Φ' t B
   dsimp only
-  intro v hv hnot
-  refine (acOnBlock_held sp self A Φ' t B (fun v hv => ?_) v hv).resolve_left hnot
-  have := hpay.1 v hv
-  omega
+  intro σ x hx
+  unfold acOnBlock at hx
+  rcases tryVote_adds_only_own sp self _ Φ' t σ x hx with h | h
+  · rw [optimistic_pool_eq] at h
+    exact Or.inl h
+  · exact Or.inr h
+
+/-- Admission keeps every pool free of duplicates (it appends only a vote the pool lacks). -/
+private theorem admitVote_nodup {A : SAState sp.n} (h : ∀ σ, (A.pool σ).Nodup) (t : Time)
+    (v : Vote sp.n) : ∀ σ, ((admitVote sp A t v).pool σ).Nodup := by
+  intro σ
+  unfold admitVote
+  split_ifs with h₁
+  · exact h σ
+  · exact h σ
+  · simp only [Function.update_apply]
+    split_ifs with hσ
+    · subst hσ
+      rw [List.nodup_append_comm]
+      exact List.nodup_cons.2 ⟨fun hv => h₁ (Or.inr (Or.inr hv)), h _⟩
+    · exact h σ
+
+/-- Every pool is free of duplicates at a state reachable from one with empty pools (and the
+time of the last call is not negative). -/
+private theorem pool_nodup_from {FGP : Type} {ro : ReplayOrder sp FGP}
+    {s₀ : (goldilocksSA sp FGP ro).State} (h₀ : ∀ σ, (s₀ : SAState sp.n).pool σ = [])
+    {self : Fin sp.n} {U : Set (Blk sp.n FGP)} {A : (goldilocksSA sp FGP ro).State}
+    {Φ : (goldilocksSA sp FGP ro).Frm} {t₀ : Time}
+    (hr : (goldilocksSA sp FGP ro).ReachableAtFrom s₀ self U A Φ t₀) :
+    0 ≤ t₀ ∧ ∀ σ, ((A : SAState sp.n).pool σ).Nodup := by
+  have hP : VoteClosed (fun A : SAState sp.n => ∀ σ, (A.pool σ).Nodup) :=
+    ⟨fun A t v h => admitVote_nodup sp h t v, fun A A' hp _ h σ => hp ▸ h σ⟩
+  induction hr with
+  | init => exact ⟨le_rfl, fun σ => by simp [h₀]⟩
+  | @step A Φ Φ' t t' c hr ht hok ih =>
+    have h0 : 0 ≤ t' := ih.1.trans ht
+    refine ⟨h0, ?_⟩
+    by_cases hc : c = .restart
+    · subst hc
+      intro σ
+      change ((acRestart sp ro self A Φ' t').1.pool σ).Nodup
+      rw [(restart_state sp FGP ro self A Φ' t' hok.1.1 h0).2.2.2.2.2.2.2.2.1 σ]
+      exact List.nodup_nil
+    · exact hP.step ro self Φ' t' hc ih.2
 
 /-- **A0.9 from a start `s₀` with empty pools** (the initial state, or a start that differs from
 it only in `mayVote`). The payload of a proposal at `t_σ` is the slot-`(σ−1)` vote view of the
@@ -621,14 +630,32 @@ theorem proposal_payload_valid_from {FGP : Type} {ro : ReplayOrder sp FGP}
   split_ifs at hp
   obtain ⟨-, rfl⟩ := Prod.mk.inj (Option.some.inj hp)
   rw [hσ] at *
-  refine ⟨fun v hv => ?_, fun v hv => ?_⟩
-  · simp only [blockVotes, hBp, voteViewList, List.mem_filter, SAState.poolAt] at hv
+  have hnd := (pool_nodup_from sp h₀ hr).2
+  have hvotes : blockVotes B = ((A : SAState sp.n).poolAt ((σ : Int) - 1)).filter
+      (fun v => (A : SAState sp.n).voteStamp v < ⊤) := by
+    simp only [blockVotes, hBp, voteViewList]
+  have hsupp : blockSupport B = (blockVotes B).filter
+      (fun v => resolutionTime (A : SAState sp.n) Φ v < ⊤) := by
+    simp only [blockSupport, blockVotes, hBp, voteViewList]
+  have hsub : (blockVotes B).Sublist ((A : SAState sp.n).pool (σ - 1)) := by
+    rw [hvotes]
+    refine List.filter_sublist.trans ?_
+    simp only [SAState.poolAt]
+    split_ifs with hneg
+    · exact List.nil_sublist _
+    · rw [show ((σ : Int) - 1).toNat = σ - 1 by omega]
+  refine ⟨fun v hv => ?_, hsupp ▸ List.filter_sublist, (hnd _).sublist hsub, fun i => ?_⟩
+  · rw [hvotes] at hv
+    simp only [List.mem_filter, SAState.poolAt] at hv
     split_ifs at hv with hneg
     · simp at hv
     · have := (hpool _).1 v hv.1
       omega
-  · simp only [blockSupport, blockVotes, hBp, voteViewList, List.mem_filter] at hv ⊢
-    exact hv.1
+  · have hl := ((hsub.filter (fun v => decide (v.val = i)))).length_le
+    have hd : (((A : SAState sp.n).pool (σ - 1)).filter (fun v => decide (v.val = i))).dedup =
+        ((A : SAState sp.n).pool (σ - 1)).filter (fun v => decide (v.val = i)) :=
+      ((hnd _).filter _).dedup
+    exact hl.trans (hd ▸ (hpool _).2 i)
 
 /-- **A0.9.** `proposal_payload_valid_from` at the initial state. -/
 theorem proposal_payload_valid : ProposalPayloadValid sp :=

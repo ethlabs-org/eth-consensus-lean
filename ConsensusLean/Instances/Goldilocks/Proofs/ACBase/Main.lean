@@ -19,7 +19,7 @@ theorem acBaseAt (sp : SAParams) : ACBaseAt sp where
   poolCap := pool_cap sp
   admissionSlots := admission_slots sp
   stampStable := stamp_stable sp
-  carriedVotes := carried_votes sp
+  blockAddsOnlyOwnVote := block_adds_only_own_vote sp
   stampParent := stamp_parent sp
   resolutionStable := resolution_stable sp
   supportInTree := support_in_tree sp
