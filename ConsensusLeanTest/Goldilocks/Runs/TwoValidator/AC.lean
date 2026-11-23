@@ -161,14 +161,26 @@ theorem blockSupport_blk (k : Nat) : blockSupport (blk (k + 1)) = [vote w0 k, vo
 theorem blockVotes_blk (k : Nat) : blockVotes (blk (k + 1)) = [vote w0 k, vote w1 k] := by
   change (blk (k + 1)).acPayload.1 = _; rw [blk_acPayload]
 
-theorem voteReady_blk {Φ : N.Frm} {f k : Nat} (h : ChainFrame Φ f (jx (k + 1)) (k + 1))
-    (hf : f ≤ k) : voteReady sp Φ (k + 1) := by
-  refine ⟨blk (k + 1), h.mem (by omega) le_rfl, blk_slot _, fun x hx _ => ?_⟩
-  rw [blockSupport_blk] at hx
-  rcases List.mem_cons.1 hx with rfl | hx
-  · exact ⟨blk k, h.mem hf (by omega), rfl, by rw [blk_slot]⟩
-  · rw [List.mem_singleton] at hx; subst hx
-    exact ⟨blk k, h.mem hf (by omega), rfl, by rw [blk_slot]⟩
+theorem voteReady_blk {A : SAState sp.n} {Φ : N.Frm} {f k : Nat}
+    (h : ChainFrame Φ f (jx (k + 1)) (k + 1)) (hf : f ≤ k)
+    (h0 : vote w0 k ∈ A.pool k) (h1 : vote w1 k ∈ A.pool k) : voteReady sp A Φ (k + 1) := by
+  refine ⟨⟨blk (k + 1), h.mem (by omega) le_rfl, blk_slot _, fun x hx _ _ => ?_⟩, ?_⟩
+  · rw [blockSupport_blk] at hx
+    rcases List.mem_cons.1 hx with rfl | hx
+    · exact ⟨blk k, h.mem hf (by omega), rfl, by rw [blk_slot]⟩
+    · rw [List.mem_singleton] at hx; subst hx
+      exact ⟨blk k, h.mem hf (by omega), rfl, by rw [blk_slot]⟩
+  · intro B hB hBs x hx _
+    obtain ⟨m, -, -, rfl⟩ := h.eq_of_mem hB
+    rw [blk_slot] at hBs
+    subst hBs
+    rw [blockVotes_blk, blockSupport_blk, or_self] at hx
+    left
+    simp only [SAState.poolAt, Int.natCast_nonneg, not_lt.2, ↓reduceIte]
+    rcases List.mem_cons.1 hx with rfl | hx
+    · exact h0
+    · rw [List.mem_singleton] at hx; subst hx
+      exact h1
 
 theorem jx_succ_le (k : Nat) : jx (k + 1) ≤ k := by
   unfold jx ent hgt; split_ifs <;> omega
@@ -177,7 +189,8 @@ theorem jx_succ_le (k : Nat) : jx (k + 1) ≤ k := by
 theorem tryVote_blk {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} {f k : Nat}
     (hperm : A.mayVote (k + 1) = true)
     (h : ChainFrame Φ f (jx (k + 1)) (k + 1)) (hj : A.restartTime = ⊥)
-    (hvs : A.votedSlot = (k : Int)) (hpool : A.pool (k + 1) = []) (hL : LocksLe A.locks k)
+    (hvs : A.votedSlot = (k : Int)) (hpool : A.pool (k + 1) = [])
+    (h0 : vote w0 k ∈ A.pool k) (h1 : vote w1 k ∈ A.pool k) (hL : LocksLe A.locks k)
     (htip : 1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ A.locks) :
     ∃ L₁ d, tryVote sp y A Φ ((4 * (k + 1) : Nat) : Int) =
       (admitVote sp { A with locks := L₁, votedSlot := (k + 1 : Nat) }
@@ -191,7 +204,7 @@ theorem tryVote_blk {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} {f k : Nat}
   rw [hs, ite_eq_right (by
       rw [ts_nat, hvs]; push Not
       exact ⟨joined_of_bot hj _, by push_cast; omega, by rw [delta1]; push_cast; linarith⟩),
-    ite_eq_right (fun hc => hc.2.elim (by omega) (fun hn => hn (voteReady_blk h hf))),
+    ite_eq_right (fun hc => hc.2.elim (by omega) (fun hn => hn (voteReady_blk h hf h0 h1))),
     ite_eq_left (by omega : 0 < k + 1)]
   simp only [hperm, ↓reduceIte]
   set V := mergedVoteView sp A Φ (k + 1)

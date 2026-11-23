@@ -498,22 +498,7 @@ theorem admitVote_pool (A : SAState sp.n) (t : Time) (v : Vote sp.n) (σ : Nat) 
 
 theorem blockReceipt_pool (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) (σ : Nat)
     (w : Vote sp.n) (h : w ∈ (blockReceipt sp A t B).pool σ) : w ∈ A.pool σ ∨ w ∈ blockVotes B := by
-  unfold blockReceipt at h
-  have key : ∀ (l : List (Vote sp.n)) (A' : SAState sp.n),
-      w ∈ (l.foldl (fun A v => admitVote sp A t v) A').pool σ → w ∈ A'.pool σ ∨ w ∈ l := by
-    intro l
-    induction l with
-    | nil => exact fun A' h => Or.inl h
-    | cons v l ih =>
-      intro A' h
-      rcases ih _ h with h | h
-      · rcases admitVote_pool sp A' t v σ w h with h | rfl
-        · exact Or.inl h
-        · exact Or.inr (List.mem_cons_self ..)
-      · exact Or.inr (List.mem_cons_of_mem _ h)
-  rcases key _ _ h with h | h
-  · exact Or.inl h
-  · exact Or.inr h
+  exact Or.inl h
 
 theorem tryVote_pool (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (σ : Nat)
     (w : Vote sp.n) (h : w ∈ (tryVote sp self A Φ t).1.pool σ) :
@@ -580,15 +565,8 @@ theorem admitVote_pool_mono (A : SAState sp.n) (t : Time) (v : Vote sp.n) (σ : 
     · exact hw
 
 theorem blockReceipt_pool_mono (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) (σ : Nat) :
-    A.pool σ ⊆ (blockReceipt sp A t B).pool σ := by
-  unfold blockReceipt
-  have key : ∀ (l : List (Vote sp.n)) (A' : SAState sp.n),
-      A'.pool σ ⊆ (l.foldl (fun A v => admitVote sp A t v) A').pool σ := by
-    intro l
-    induction l with
-    | nil => exact fun _ _ h => h
-    | cons v l ih => exact fun A' => List.Subset.trans (admitVote_pool_mono sp A' t v σ) (ih _)
-  exact fun w hw => key _ _ hw
+    A.pool σ ⊆ (blockReceipt sp A t B).pool σ :=
+  fun _ h => h
 
 theorem tryVote_pool_mono (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (σ : Nat) : A.pool σ ⊆ (tryVote sp self A Φ t).1.pool σ := by
@@ -642,15 +620,8 @@ theorem slot_of_pool_eq {A A' : SAState sp.n} (he : A'.pool = A.pool) (h : SlotO
     SlotOK sp A' := fun σ w hw => h σ w (he ▸ hw)
 
 theorem blockReceipt_slot (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) (h : SlotOK sp A) :
-    SlotOK sp (blockReceipt sp A t B) := by
-  unfold blockReceipt
-  have key : ∀ (l : List (Vote sp.n)) (A' : SAState sp.n), SlotOK sp A' →
-      SlotOK sp (l.foldl (fun A v => admitVote sp A t v) A') := by
-    intro l
-    induction l with
-    | nil => exact fun _ h => h
-    | cons v l ih => exact fun A' h => ih _ (admitVote_slot sp A' t v h)
-  exact key _ _ (fun σ w hw => h σ w hw)
+    SlotOK sp (blockReceipt sp A t B) :=
+  h
 
 theorem tryVote_slot (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (h : SlotOK sp A) : SlotOK sp (tryVote sp self A Φ t).1 := by
