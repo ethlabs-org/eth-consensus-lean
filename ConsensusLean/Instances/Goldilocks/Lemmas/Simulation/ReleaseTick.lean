@@ -240,25 +240,86 @@ theorem leading_polls (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilo
   · rw [hS2]; exact poll_fgDue _ _
 
 omit [DecidableEq V] in
+private theorem fgUpdate_voteIO' (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) :
+    (fgUpdate st).voteIO = st.voteIO := by
+  rw [fgUpdate_eq]; simp only; split
+  · rfl
+  · split <;> rfl
+
+omit [DecidableEq V] in
+private theorem recordOwn_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) o hs :
+    (recordOwn st o hs).voteIO = st.voteIO := by
+  rw [AsChainShape.recordOwn_eq]; split <;> (try split) <;> rfl
+
+omit [DecidableEq V] in
+private theorem propose_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) s :
+    (propose st s).1.voteIO = st.voteIO := by
+  rw [propose_eq]; dsimp only; split <;> rfl
+
+omit [DecidableEq V] in
+private theorem nodeTick_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) :
+    (nodeTick st).voteIO = st.voteIO := by
+  rw [nodeTick_eq]; split <;> rfl
+
+omit [DecidableEq V] in
+private theorem poll_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) t :
+    (poll st t).1.voteIO = st.voteIO := by
+  unfold poll; simp only; split <;> split <;> simp [fgUpdate_voteIO']
+
+omit [DecidableEq V] in
+private theorem process_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) o hs :
+    (process st o hs).voteIO = st.voteIO := by
+  rw [AsChainShape.process_eq]
+  generalize delivered _ _ _ _ = os
+  suffices h : ∀ io σ, (os.foldl (processOne io hs) σ).voteIO = σ.voteIO from h _ _
+  induction os with
+  | nil => exact fun _ _ => rfl
+  | cons x xs ihx => intro io σ; rw [List.foldl_cons, ihx, processOne_voteIO]
+
+omit [DecidableEq V] in
 private theorem dutyStep_voteIO (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) :
-    (shapeOf S hn (rho.dutyStep v nd d).1).voteIO = (shapeOf S hn nd).voteIO := by
-  have hfg (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) :
-      (fgUpdate st).voteIO = st.voteIO := by
-    rw [fgUpdate_eq]; simp only; split
-    · rfl
-    · split <;> rfl
-  refine dutyStep_pres S rho hn (fun st => st.voteIO = (shapeOf S hn nd).voteIO) ?_ ?_ ?_ ?_
-    v nd d rfl
-  · intro st o hs h
-    rw [← h, AsChainShape.recordOwn_eq]; split <;> (try split) <;> rfl
-  · intro st s h
-    rw [← h, propose_eq]; dsimp only; split <;> rfl
-  · intro st h
-    rw [← h, nodeTick_eq]; split <;> rfl
-  · intro st t h
-    rw [← h]; unfold poll; simp only; split <;> split <;> simp [hfg]
+    (shapeOf S hn (rho.dutyStep v nd d).1).voteIO = (shapeOf S hn nd).voteIO :=
+  dutyStep_pres S rho hn (fun st => st.voteIO = (shapeOf S hn nd).voteIO)
+    (fun st o hs h => (recordOwn_voteIO S hn st o hs).trans h)
+    (fun st s h => (propose_voteIO S hn st s).trans h)
+    (fun st h => (nodeTick_voteIO S hn st).trans h)
+    (fun st t h => (poll_voteIO S hn st t).trans h) v nd d rfl
+
+/-- **Every engine state holds the node's own vote authentication.** `init` installs
+`rho.voteIO v` and every handler keeps it. -/
+theorem stateAt_voteIO (v : V) : ∀ i, (stateAt S rho hn v i).voteIO = rho.voteIO v
+  | 0 => by rw [stateAt_zero]; rfl
+  | i + 1 => by
+    match he : rho.events[i]? with
+    | none => rw [stateAt_succ_none S rho hn v he]; exact stateAt_voteIO v i
+    | some e =>
+      by_cases hne : e.node = v
+      · have ih := stateAt_voteIO v i
+        rw [stateAt_eq] at ih
+        cases e with
+        | tick v' t =>
+          simp only [Model.Event.node] at hne; subst hne
+          rw [stateAt_tick S rho hn _ he]
+          exact tick_pres S rho hn (fun st => st.voteIO = rho.voteIO v')
+            (fun st o hs h => (recordOwn_voteIO S hn st o hs).trans h)
+            (fun st s h => (propose_voteIO S hn st s).trans h)
+            (fun st h => (nodeTick_voteIO S hn st).trans h)
+            (fun st t h => (poll_voteIO S hn st t).trans h) v' _ t ih
+        | deliver v' o t =>
+          simp only [Model.Event.node] at hne; subst hne
+          rw [stateAt_deliver S rho hn _ he]
+          refine deliver_pres S rho hn (fun st => st.voteIO = rho.voteIO v')
+            (fun st t h => (poll_voteIO S hn st t).trans h)
+            (fun st _ _ hs h => (recordOwn_voteIO S hn st _ hs).trans h) v' _ o t ?_
+          exact (process_voteIO S hn _ o _).trans ih
+        | restart v' t =>
+          simp only [Model.Event.node] at hne; subst hne
+          rw [stateAt_restart S rho hn _ he]
+          exact (rfl : (restore (rho.ownKey v') (stateAt S rho hn v' i) t).voteIO = _).trans
+            (stateAt_voteIO v' i)
+      · rw [state_of_other S rho hn v i e he hne]; exact stateAt_voteIO v i
 
 omit [DecidableEq V] in
 /-- The node's tick at a public time from a state with nothing queued: the AC's tick, its
