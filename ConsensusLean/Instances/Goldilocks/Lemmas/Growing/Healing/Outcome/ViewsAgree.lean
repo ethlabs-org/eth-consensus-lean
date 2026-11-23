@@ -73,13 +73,13 @@ theorem reset_views_agree_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hci' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hci)
   have hsync := KernelProof.reset_syncACAt hp (lo := sp.ts s) (hi := sp.ts (s + 1 : Nat))
     ((le_max_left g 0).trans hg)
-  apply SA.Growing.view_agree hac hpmax hy hdesignated ⟨hci, hcall, d, hd⟩ hti hcy
+  apply SA.Growing.view_agree hac hpmax hy hdesignated ⟨hci, hcall, d, hd⟩ hti hcy hes
     ⟨P, hPy, hPs, hpay⟩ hsync
   · intro B hB _ hstamp hF
     exact hp.reset_frozen_frame_at hpi hy hci hti hcy hib hgi hjoi hB hstamp hF
   · intro v hv B hB hBr hF
     by_cases hearly : tr.time j < sp.ts (s + 1 : Nat) + sp.Δ
-    · obtain ⟨Q, hQ, hQs, hsup⟩ := SA.cast_ready hr hy hcy' (by rw [hes]; exact hearly)
+    · obtain ⟨Q, hQ, hQs, hsup⟩ := (SA.cast_ready hr hy hcy' (by rw [hes]; exact hearly)).1
       rw [hes] at hQs hsup
       obtain rfl := Outcome.proposal_unique_before_hold hp.run hp.noColl hpH hdesignated
         hactual hPs (by omega) hy hcy.1 htj hQ hQs
@@ -103,6 +103,7 @@ theorem reset_views_agree_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
           Bool.and_eq_true, decide_eq_true_eq] at hv
         rw [SA.state_pool_slot sp hrp hp.run.vstart hpi i s v (hsip.symm ▸ hv.1)]
       obtain ⟨B', hB', hBr', _⟩ := hsup v (by rw [SA.blockSupport, hpay]; exact hv) hvs
+        (by simp [SA.SAParams.committee])
       rwa [hac.localRun.coherent.1 ((SA.frameIn_of_callAt hrp hpi hci').2 hB)
         ((SA.frameIn_of_callAt hr hy hcy'.1).2 hB') (hBr.trans hBr'.symm)]
     · have hframe := Outcome.frame_of_call hp.run hpi hci
