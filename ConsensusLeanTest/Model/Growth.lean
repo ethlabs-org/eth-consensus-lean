@@ -35,7 +35,7 @@ def payload (nested role : Bool) : (protoOf family env).Object :=
 
 def arrival (t : Time) (nested role : Bool) : Run family env :=
   Run.mk faults faults_mono 2 [.deliver 0 (payload nested role) t] (pkiFin 2) sel
-    (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
+    (fun _ _ => []) (fun _ _ => []) (fun _ => 0) (fun q => q.2.2.elim) (fun _ _ => false)
 
 /-- At key exposure, no earlier honest release is required, even for a nested signature. -/
 theorem arrival_at_compromise_unforgeable (nested role : Bool) :
@@ -79,13 +79,14 @@ theorem compromised_wrong_role_rejected (nested : Bool) :
     cases nested
     · exact .refl _
     · exact Obj.Contains.step (by simp [payload, Obj.carried]) (.refl _)
-  have hh := h 0 0 _ 1 rfl _ hc 1 true rfl
+  have hh := h.2 0 0 _ 1 rfl _ hc 1 true rfl (fun _ _ => rfl)
   simp [arrival, sel] at hh
 
 /-- The credentialed object at exposure still satisfies the membership binding. -/
 theorem compromised_selected_role_admitted (nested : Bool) :
     (arrival 1 nested false).Credentials := by
-  intro i w o t he o' hc k r hs
+  refine ⟨⟨fun q _ _ _ _ => q.2.2.elim, fun _ _ d _ => d.elim⟩, ?_⟩
+  intro i w o t he o' hc k r hs _
   have hi : i = 0 := by
     cases i with
     | zero => rfl
@@ -106,6 +107,8 @@ def bitProto (pub : Public) : Protocol pub Unit :=
   { proto pub with
     Body := Bool
     decBody := inferInstance
+    voteBody := fun _ => false
+    presented := fun _ => none
     candidateRole := fun d _ => (proto pub).role d
     act := fun _ _ => ((), [(.data false, [])])
     gossip := fun _ _ => []
@@ -129,7 +132,8 @@ def forgedBit : (protoOf bitFamily bitEnv).Object :=
 def growthRun : Run bitFamily bitEnv :=
   Run.mk faults faults_mono 1
     [.tick 0 0, .tick 1 0, .tick 0 1, .deliver 0 forgedBit 1]
-    (pkiFin 2) sel (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
+    (pkiFin 2) sel (fun _ _ => []) (fun _ _ => []) (fun _ => 0) (fun q => q.2.2.elim)
+    (fun _ _ => false)
 
 /-- Non-vacuity at L1: the honest release and the post-exposure forgery share a valid run. -/
 theorem growth_run_valid : growthRun.ExecutionValid := by
@@ -164,7 +168,8 @@ theorem growth_run_valid : growthRun.ExecutionValid := by
     · rfl
     · change ({0} : Finset (Fin 2)).card = min 1 2
       decide
-  · intro i v o t he q hq k r ha
+  · refine ⟨⟨fun q _ _ _ _ => q.2.2.elim, fun _ _ d _ => d.elim⟩, ?_⟩
+    intro i v o t he q hq k r ha _
     have hi : i < 4 := (List.getElem?_eq_some_iff.mp he).1
     interval_cases i <;> simp [growthRun] at he
     obtain ⟨rfl, rfl, rfl⟩ := he

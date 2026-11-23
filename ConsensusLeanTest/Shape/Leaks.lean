@@ -118,7 +118,7 @@ def family (proposal vote bad : Bool) : ChainShapeFamily schema Unit := fun pub 
   skel := testSkel pub
   State := Unit, Body := Unit, Durable := Unit
   decBody := inferInstance
-  init := fun _ _ => (), clock := fun s _ => s
+  init := fun _ _ _ => (), clock := fun s _ => s
   propose := fun s _ => (s, if proposal then some (.root, (), []) else none)
   act := fun s _ _ => (s, if vote then some ((), []) else none)
   pollPropose := fun s _ => (s, none), poll := fun s _ => (s, none)
@@ -166,6 +166,7 @@ theorem refuted_of_empty (F : ChainShapeFamily schema Unit)
     (fun _ => ∅) monotone_const 3 (by decide) (pkiFin 1) sel hsel (fun _ _ => []) goodHash 0
   let r : Model.Run (compiled F) env :=
     Model.Run.mk (fun _ => ∅) monotone_const 3 es (pkiFin 1) sel (fun _ _ => []) relay goodHash
+      (fun q => q.2.2.elim) (fun _ _ => false)
   -- With one always-awake validator every receiver is the sender, which holds its own send
   -- from the send time on: `PSync 0` at `Δ = 1` (deadline `max a 0 + Δ − 1 ≥ a`) needs no
   -- network service (and no eager log, which would need `Δ > 1`).
@@ -261,7 +262,7 @@ theorem fabricated :
     (testSel_admits _ _ _) (fun _ _ => []) goodHash 0
   let r : Model.Run (compiled (family false false true)) env :=
     Model.Run.mk (fun _ => ∅) monotone_const 0 es (pkiFin 1) testSel
-      (fun _ _ => []) relay goodHash
+      (fun _ _ => []) relay goodHash (fun q => q.2.2.elim) (fun _ _ => false)
   have hv := hc.outputValid ⟨env, r⟩ valid (fun _ => rfl) .available () rfl 0
     0 (Nat.zero_le _) (by simp [EnvPoint.HonestAt, r, Model.Run.point])
   obtain ⟨_, _, _, _, hmem⟩ := hv.2.2 fab (List.mem_singleton_self _)
@@ -276,7 +277,7 @@ def familyC (conf : Bool) : ChainShapeFamily schema Unit := fun pub => {
   skel := testSkel pub
   State := Chain Unit, Body := Unit, Durable := Chain Unit
   decBody := inferInstance
-  init := fun _ _ => [], clock := fun s _ => s
+  init := fun _ _ _ => [], clock := fun s _ => s
   propose := fun s _ => (s, some (.root, (), []))
   act := fun s _ _ => (s, some ((), []))
   pollPropose := fun s _ => (s, none), poll := fun s _ => (s, none)

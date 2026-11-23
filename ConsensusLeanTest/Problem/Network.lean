@@ -307,7 +307,7 @@ open Consensus.Model in
 def deliveredRun (o : (protoOf Model.family Model.env).Object) : Run Model.family Model.env :=
   Run.mk (fun _ => ∅) monotone_const 5 [.deliver 1 o 1] (pkiFin 2) Model.sel
       (fun _ _ => []) (fun _ _ => [])
-      (fun _ => 0)
+      (fun _ => 0) (fun q => q.2.2.elim) (fun _ _ => false)
 
 open Consensus.Model in
 /-- The delivery is a receipt in the system's log, tagged with the run's
@@ -355,6 +355,7 @@ theorem silent_run_valid (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [F
     (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat) :
     ∃ (relay : V → Time → List Tx) (events : List (Event V (protoOf F E).Object)),
       let rho := Run.mk (F := F) (E := E) faultyAt hmono horizon events key sel submit relay hash
+        (stdIssue F E) (stdVerify F E sel)
       rho.ExecutionValid ∧ (∀ w o t, ¬ rho.receives w o t) ∧
         ∀ g' v w o t, v ∉ faultyAt t → rho.releases v o t → ¬ (protoOf F E).isFGAtt o →
           w ∉ faultyAt (max t g' + E.ΔAC - 1) →
@@ -363,7 +364,8 @@ theorem silent_run_valid (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [F
           (∀ t', t' ≤ max t g' + E.ΔAC - 1 → ¬ rho.releases w o t') →
           ¬ CommLog.PSync rho.point rho.log g' := by
   obtain ⟨relay, events, hv, he⟩ :=
-    canonical_run_from O F V E faultyAt hmono horizon hh key sel hsel submit hash (horizon + 1)
+    canonical_run_from O F V E faultyAt hmono horizon hh key sel hsel submit hash (stdIssue F E)
+      (stdVerify F E sel) (fun _ => Run.voteVerification_std _ rfl rfl) (horizon + 1)
   refine ⟨relay, events, hv, ?_, ?_⟩
   · intro w o t hr
     have hq := he.quiet w o t hr
@@ -390,6 +392,7 @@ def tickedRun : Run Model.family Model.env :=
   Run.mk (fun _ => ∅) monotone_const 2
       [.tick 0 0, .tick 1 0, .tick 0 1, .tick 1 1, .tick 0 2, .tick 1 2] (pkiFin 2)
       Model.sel (fun _ _ => []) (fun _ t => if t = 1 then [42] else []) (fun _ => 0)
+      (fun q => q.2.2.elim) (fun _ _ => false)
 
 open Consensus.Model in
 theorem tickedRun_valid : tickedRun.ExecutionValid := by
@@ -419,7 +422,7 @@ theorem tickedRun_valid : tickedRun.ExecutionValid := by
     exact absurd hw.2 (by simp [Model.env])
   · intro i w o t h
     exact absurd h (hnd i w o t)
-  · intro i w o t h
+  · refine ⟨⟨fun q _ _ _ _ => q.2.2.elim, fun _ _ d _ => d.elim⟩, fun i w o t h => ?_⟩
     exact absurd h (hnd i w o t)
 
 open Consensus.Model in
@@ -569,7 +572,7 @@ def run : Run (O := schema) proto env :=
     [.tick 0 0, .tick 1 0, .deliver 0 poison 0,
       .tick 0 1, .tick 1 1, .deliver 1 child 1, .tick 0 2, .tick 1 2]
     (pkiFin 3) (fun (r : Bool) => if r then {2} else Finset.univ)
-    (fun _ _ => []) (fun _ _ => []) (fun _ => 0)
+    (fun _ _ => []) (fun _ _ => []) (fun _ => 0) (fun q => q.2.2.elim) (fun _ _ => false)
 
 private theorem valid : run.ExecutionValid := by
   refine ⟨by decide, ?_, by decide, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
@@ -609,7 +612,8 @@ private theorem valid : run.ExecutionValid := by
     · rfl
     · change ({2} : Finset (Fin 3)).card = min 1 3
       decide
-  · intro i v o t he q hq k r ha
+  · refine ⟨⟨fun q _ _ _ _ => q.2.2.elim, fun _ _ d _ => d.elim⟩, ?_⟩
+    intro i v o t he q hq k r ha _
     have hi : i < 8 := (List.getElem?_eq_some_iff.mp he).1
     interval_cases i <;> simp [run] at he
     · obtain ⟨rfl, rfl, rfl⟩ := he
