@@ -1,7 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ReceiptCover
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVoteTransfer
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -12,9 +13,10 @@ Under `Sync[t_s, τ]`, every slot-`s` vote that an honest voter `y` of slot `s +
 vote at `τ ≤ t_s + 5Δ` was admitted (and so forwarded) at a time in `[t_s, τ]`, and an honest
 writer `X` whose update of slot `s` runs at `t_s + 6Δ` (joined) processed it before: it is in
 `X`'s pool, or `X`'s two-vote cap refused it and the pool holds two distinct votes of its
-validator (`writer_poolU`). A slot-`s` vote of `y`'s merged view is in `y`'s pool, or carried by a
-slot-`(s+1)` block that `y` accepted before its vote, whose receipt admitted the vote or refused
-it for two other held votes of its validator (`writer_merged`, A1.8's condition (d)). -/
+validator (`writer_poolU`). A slot-`s` vote of `y`'s merged view is in `y`'s pool at the read
+point, or is a declared head vote counted there because `y`'s pool holds two distinct votes of its
+validator (`merged_declared_backing`); either way `X`'s pool covers it (`writer_merged`, A1.8's
+condition (d)). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -129,6 +131,22 @@ private theorem cast_time_leU
     exact absurd ((restart_state sp) FGP ro y A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1
       hne
 
+/-- A slot-`s` vote forwarded at a time `τ ∈ [t_s, t_s + 5Δ]` is of the slot of every time of
+`[τ, τ + Δ)` or the previous one. -/
+theorem slot_window_of_forward {s : Nat} {τ τ' : Time} (hτ : 0 ≤ τ) (hsτ : sp.ts s ≤ τ)
+    (hττ' : τ ≤ τ') (hτ' : τ' ≤ sp.ts s + 5 * sp.Δ) :
+    ∀ t, τ ≤ t → t < τ + sp.Δ → (sp.slot t : Int) - 1 ≤ s ∧ s ≤ sp.slot t := by
+  intro t h₁ h₂
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have ht : 0 ≤ t := hτ.trans h₁
+  have ha := (ts_le_iff_le_slot sp ht s).1 (hsτ.trans h₁)
+  have hb : ¬ ((s + 2 : Nat) : Int) ≤ sp.slot t := fun h => by
+    have h' := (ts_le_iff_le_slot sp ht _).2 h
+    have h2 : sp.ts ((s + 2 : Nat) : Int) = sp.ts s + 8 * sp.Δ := by
+      simp only [SAParams.ts]; push_cast; ring
+    rw [h2] at h'; linarith only [h', h₂, hττ', hτ', hΔ]
+  omega
+
 /-- The writer's pool covers the voter's pool from `Sync[t_s, τ]` or from the service window up
 to the update, with the unlock given. -/
 private theorem writer_pool_of_syncU
@@ -216,32 +234,10 @@ private theorem writer_merged_of_syncU
       ServiceWindowBefore H U (sp.ts s) (tr.time i₀) tr) :
     ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ (tr.state X i₀).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} := by
-  have hr := hrun.localRun
-  rintro v (hv | ⟨B, hB, hBs, hvB⟩) hvs
-  · have hv : v ∈ e.readPoint.poolAt ((s + 1 : Nat) - 1 : Int) := (List.mem_filter.1 hv).1
-    simp only [SAState.poolAt] at hv
-    split_ifs at hv with hneg
-    · simp at hv
-    exact writer_pool_of_syncU hrun hX hupd hy hc hs hsync le_rfl v
-      (readPoint_poolU hr hy hc (by simpa using hv)).1
-  -- a vote of a slot-`(s+1)` block of the tree, which `y` accepted at a cut `k ≤ i`
-  obtain ⟨-, hys, -, -⟩ := castAt_specU hr hy hc
-  rcases frame_genesis_or_acceptedU sp hr hy hc.1 B hB with h0 | ⟨k, hki, ℓk, hck, hcall⟩
-  · omega
-  have hBk : B.slot ≤ sp.slot (tr.time k) := by
-    rcases hr.frameLaw y hy k ℓk hck with ⟨-, Φ₀, -, -, hok⟩ | ⟨j, ℓ', -, -, -, hok⟩ <;>
-    · rw [hcall] at hok
-      obtain ⟨-, -, -, h⟩ := hok
-      exact h
-  have hki' := slot_mono sp (hr.time_nonneg k) (hr.time_mono hki)
-  have he := hr.exec k ℓk hck.2 (hck.1 ▸ hy)
-  rw [hck.1, hcall] at he
-  have hpost : tr.post k = (tryVoteWithM sp wm y (u k) (optimisticConfirmationM sp wm
-      (blockReceipt sp (tr.state y k) (tr.time k) B) ℓk.frame (tr.time k)) ℓk.frame
-      (tr.time k)).1 := (congrArg Prod.fst he).symm
-  exact receipt_vote_covered (L := u k) (t := tr.time k) y (tr.state y k) ℓk.frame hvB hvs
-    (by omega) (by omega) fun w hw => writer_pool_of_syncU hrun hX hupd hy hc hs hsync hki w
-      (by rw [state_succ_of_call hck, hpost]; exact hw)
+  intro v hv hvs
+  exact merged_declared_at_writer (P := {w | w ∈ (tr.state X i₀).pool s})
+    (fun w hw => writer_pool_of_syncU hrun hX hupd hy hc hs hsync le_rfl w
+      (readPoint_poolU hrun.localRun hy hc hw).1) hvs hv
 
 private theorem writer_merged_of_sync {ini} (hrun : ACRun proposer tr H U ini) {X : Fin sp.n}
     (hX : X ∈ H) {i₀ s : Nat}

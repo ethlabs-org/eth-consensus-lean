@@ -56,8 +56,7 @@ theorem parentOrder_exists {FGP : Type} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) :
     · subst h; omega
 
 /-- What a restart at `t` from `A₀` leaves in a state, after any part of the replay with frame
-`Φ`: the kept and reset fields, the pools (votes of blocks of the tree, stamped `t`), and the
-stamps. -/
+`Φ`: the kept and reset fields, the empty pools (the replay admits nothing), and the stamps. -/
 structure RestartInv {FGP : Type} (A₀ : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (A : SAState sp.n) : Prop where
   locks : A.locks = A₀.locks
@@ -66,64 +65,21 @@ structure RestartInv {FGP : Type} (A₀ : SAState sp.n) (Φ : Frm sp.n FGP) (t :
   saved : A.saved = (SAState.initial sp.genesisRoot : SAState sp.n).saved
   fgReported : A.fgReported = (SAState.initial sp.genesisRoot : SAState sp.n).fgReported
   votedSlot : A.votedSlot = (SAState.initial sp.genesisRoot : SAState sp.n).votedSlot
-  pool : ∀ σ, ∀ x ∈ A.pool σ, A.voteStamp x = ETime.of t ∧ ∃ B ∈ Φ.tree, x ∈ blockVotes B
+  pool : ∀ σ, A.pool σ = []
   voteStamp : ∀ x, A.voteStamp x = ⊤ ∨ A.voteStamp x = ETime.of t
   blockStamp : ∀ q, A.blockStamp q = (SAState.initial sp.genesisRoot : SAState sp.n).blockStamp q ∨
     (A.blockStamp q = ETime.of t ∧ q ≠ sp.genesisRoot ∧ InTree Φ q)
-
-/-- Admission at `t` of a vote of a block of the tree keeps the restart invariant. -/
-theorem RestartInv.admitVote {FGP : Type} {A₀ A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
-    (h : RestartInv sp A₀ Φ t A) {B : Blk sp.n FGP} (hB : B ∈ Φ.tree) {v : Vote sp.n}
-    (hv : v ∈ blockVotes B) : RestartInv sp A₀ Φ t (SA.admitVote sp A t v) := by
-  unfold SA.admitVote
-  split_ifs
-  · exact h
-  · exact h
-  · refine ⟨h.locks, h.latestConfirmed, h.restartTime, h.saved, h.fgReported, h.votedSlot,
-      fun σ x hx => ?_, fun x => ?_, h.blockStamp⟩
-    · simp only [Function.update_apply] at hx ⊢
-      split_ifs at hx with hσ
-      · rcases List.mem_append.mp hx with hx | hx
-        · split_ifs with hxv
-          · exact ⟨rfl, B, hB, hxv ▸ hv⟩
-          · exact h.pool _ x (hσ ▸ hx)
-        · simp only [List.mem_singleton] at hx
-          subst hx
-          simp only [ite_true]
-          exact ⟨trivial, B, hB, hv⟩
-      · split_ifs with hxv
-        · exact ⟨rfl, B, hB, hxv ▸ hv⟩
-        · exact h.pool σ x hx
-    · simp only [Function.update_apply]
-      split_ifs
-      · exact Or.inr rfl
-      · exact h.voteStamp x
 
 /-- The receipt of a block of the tree other than genesis at `t` keeps the restart invariant. -/
 theorem RestartInv.blockReceipt {FGP : Type} {A₀ A : SAState sp.n} {Φ : Frm sp.n FGP}
     {t : Time} (h : RestartInv sp A₀ Φ t A) {B : Blk sp.n FGP} (hB : B ∈ Φ.tree)
     (hg : B.root ≠ sp.genesisRoot) : RestartInv sp A₀ Φ t (SA.blockReceipt sp A t B) := by
-  unfold SA.blockReceipt
-  have h₀ : RestartInv sp A₀ Φ t
-      { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) } :=
-    ⟨h.locks, h.latestConfirmed, h.restartTime, h.saved, h.fgReported, h.votedSlot, h.pool,
-      h.voteStamp, fun q => by
-        simp only [Function.update_apply]
-        split_ifs with hq
-        · exact Or.inr ⟨rfl, hq ▸ hg, ⟨B, hB, hq.symm⟩⟩
-        · exact h.blockStamp q⟩
-  generalize { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) } = A' at h₀
-  have key : ∀ vs : List (Vote sp.n), (∀ v ∈ vs, v ∈ blockVotes B) → ∀ A',
-      RestartInv sp A₀ Φ t A' →
-        RestartInv sp A₀ Φ t (vs.foldl (fun A v => SA.admitVote sp A t v) A') := by
-    intro vs
-    induction vs with
-    | nil => intro _ A' h; exact h
-    | cons v vs ih =>
-      intro hvs A' h
-      exact ih (fun w hw => hvs w (List.mem_cons_of_mem _ hw)) _
-        (h.admitVote sp hB (hvs v List.mem_cons_self))
-  exact key _ (fun _ h => h) A' h₀
+  exact ⟨h.locks, h.latestConfirmed, h.restartTime, h.saved, h.fgReported, h.votedSlot, h.pool,
+    h.voteStamp, fun q => by
+      simp only [SA.blockReceipt, Function.update_apply]
+      split_ifs with hq
+      · exact Or.inr ⟨rfl, hq ▸ hg, ⟨B, hB, hq.symm⟩⟩
+      · exact h.blockStamp q⟩
 
 /-- A node whose latest restart is at `t ≥ 0` is not joined at `t`. -/
 theorem not_joined_of_restartTime {A : SAState sp.n} {t : Time} (ht : 0 ≤ t)
@@ -155,7 +111,7 @@ theorem restart_state : RestartState sp := by
   have h₀ : RestartInv sp A Φ t { SAState.initial sp.genesisRoot with
       locks := A.locks, latestConfirmed := A.latestConfirmed,
       restartTime := (t : WithBot Time), mayVote := A.mayVote } :=
-    ⟨rfl, rfl, rfl, rfl, rfl, rfl, fun σ x hx => by simp [SAState.initial] at hx,
+    ⟨rfl, rfl, rfl, rfl, rfl, rfl, fun σ => rfl,
       fun x => Or.inl rfl, fun q => Or.inl rfl⟩
   have key : ∀ l : List (Blk sp.n FGP), (∀ B ∈ l, B ∈ Φ.tree ∧ B.root ≠ sp.genesisRoot) →
       ∀ acc : SAState sp.n × List (Em sp FGP), acc.2 = [] → RestartInv sp A Φ t acc.1 →
@@ -175,7 +131,8 @@ theorem restart_state : RestartState sp := by
         exact h₁.blockReceipt sp hB hg
   obtain ⟨hr2, hr1⟩ := key (ro.order t Φ) (fun B hB => (hl.2.1 B).mp hB) (_, []) rfl h₀
   exact ⟨hr2, hr1.locks, hr1.latestConfirmed, hr1.saved, hr1.fgReported, hr1.votedSlot,
-    hr1.restartTime, not_joined_of_restartTime sp ht hr1.restartTime, hr1.pool, hr1.voteStamp,
+    hr1.restartTime, not_joined_of_restartTime sp ht hr1.restartTime,
+    hr1.pool, hr1.voteStamp,
     hr1.blockStamp⟩
 
 end Consensus.Goldilocks.SA

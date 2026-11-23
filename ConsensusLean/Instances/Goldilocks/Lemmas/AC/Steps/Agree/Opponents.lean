@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.MergedOpponents
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -10,15 +11,15 @@ public section
 
 The proposal's view and an honest voter's merged view give the same opponents to every block of
 slot at most `s`, under `Sync[t_s, t_{s+1}]`, when both frames hold the same blocks of slot at
-most `s`.
+most `s`. The same synchrony window ensures that the voter's read point backs each declared vote
+of the honest proposer.
 
 The merged view is the voter's slot-`s` votes held before the freeze `t_s + 3Δ` and the votes of
 the slot-`(s+1)` proposals of its tree; the proposer is honest, so its proposal is the only one
 (`HonestObjects.one_block`), and the proposal view is the proposer's slot-`s` pool. Each early
-vote of the voter was admitted at a time in `[t_s, t_s + 3Δ)` (or put there by a restart from a
-block of slot `s + 1`, which is the proposal), so under `Sync` the proposer, joined at `t_{s+1}`,
-processed it before `t_{s+1}`: it holds the vote, or two other votes of its validator. Heads of
-slot at most `s` are in both trees, ancestry below slot `s` is the same in both, and the
+vote of the voter was admitted at a time in `[t_s, t_s + 3Δ)`; under `Sync` the proposer,
+joined at `t_{s+1}`, processed it before `t_{s+1}`: it holds the vote, or two other votes of its
+validator. Heads of slot at most `s` are in both trees, ancestry below slot `s` is the same, and the
 proposer has stamped the blocks of its tree, so a resolved vote at the voter is resolved at the
 proposer. -/
 
@@ -180,6 +181,8 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
   intro FGP ro H U tr proposer hrun s p y i j ℓp ℓy pay e hp hy hpp hprop hti hc hs
     hPy hsync heq B hB hBs
   have hr := hrun.localRun
+  have hcount := count_declared_of_sync hr (fun _ => voteStart_initial _) hp hy
+    hprop hti hc hs hPy hsync
   obtain ⟨hcp, hcall, d, hpay⟩ := hprop
   obtain ⟨hΦp, hΦpU⟩ := frameIn_of_call hr hp hcp
   obtain ⟨hΦy, -⟩ := frameIn_of_call hr hy hc.1
@@ -203,14 +206,6 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
     intro k hk hrk
     have := ((joined_awake sp) FGP ro H U tr hr p hp i ℓp hcp hj').2 k hk hrk
     rwa [hsi, hcast] at this
-  obtain ⟨-, hys, hyj, -⟩ := castAt_spec hr hy hc
-  have hsj : sp.slot (tr.time j) = s + 1 := by omega
-  have hrsy : ∀ k ≤ j, tr.RestartAt y k → tr.time k ≤ sp.ts s := by
-    have hj' : joined sp (tr.post j) (tr.time j) := by
-      unfold joined; rw [restartTime_of_castAt hr hy hc]; exact hyj
-    intro k hk hrk
-    have := ((joined_awake sp) FGP ro H U tr hr y hy j ℓy hc.1 hj').2 k hk hrk
-    rwa [hsj, hcast] at this
   -- the only slot-`(s+1)` block of the honest frames is the proposal
   obtain ⟨P, hP, hPs, hPpay⟩ := hPy
   have hPv : blockVotes P = (voteViewList (tr.state p i) ℓp.frame (s : Int) ⊤).1 := by
@@ -223,30 +218,25 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
   have hpool : ∀ w ∈ (tr.state p i).pool s, (tr.state p i).voteStamp w < ⊤ := by
     intro w hw
     have hws := state_pool_slot sp hr (fun _ => voteStart_initial _) hp i s w hw
-    rcases pool_origin hr (fun _ => voteStart_initial _) hp i w (hws ▸ hw) with
-      ⟨k, -, -, h, -⟩ | ⟨k, -, ℓ, -, -, h, -⟩ <;>
-      exact h ▸ etime_of_lt_top _
+    obtain ⟨k, -, -, h, -⟩ := pool_origin_sent hr (fun _ => voteStart_initial _) hp i w (hws ▸ hw)
+    exact h ▸ etime_of_lt_top _
   -- **every early vote of the voter reaches the proposer**
   have hstar : ∀ x ∈ e.readPoint.pool s, e.readPoint.voteStamp x < ETime.of (sp.ts s + 3 * sp.Δ) →
       x ∈ (tr.state p i).pool s ∨ x.val ∈ equivocators {w | w ∈ (tr.state p i).pool s} := by
     intro x hx hxt
     obtain ⟨hx1, hx2⟩ := readPoint_pool hr hy hc hx
     have hxs : x.slot = s := state_pool_slot sp hr (fun _ => voteStart_initial _) hy (j + 1) s x hx1
-    rcases pool_origin hr (fun _ => voteStart_initial _) hy (j + 1) x (hxs ▸ hx1) with
-      ⟨k, -, hsend, hst, hsl⟩ | ⟨k, -, ℓk, hck, -, -, X, hX, hxX⟩
-    · rw [hx2 hxs] at hst
-      have htk : tr.time k < sp.ts s + 3 * sp.Δ := etime_of_lt_of.1 (hst ▸ hxt)
-      have hsk : sp.ts s ≤ tr.time k :=
-        (ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by rw [← hxs]; exact_mod_cast hsl)
-      have := sync_forward hr hsync hy hsend hsk (by rw [hts]; linarith) hp hcp
-        (fun k' hk' hr' => (hrsp k' hk' hr').trans hsk) (by rw [hti, hts]; linarith)
-        fun t h₁ h₂ => by
-          rw [slot_of_mem sp s (hsk.trans h₁) (by rw [hts]; linarith), hxs]; omega
-      rwa [hxs] at this
-    · -- a restart put it there, from a block of slot `s + 1`: the proposal
-      have hvp := (frame_validPayload sp hr hy hck X hX).1 x hxX
-      rw [huniq X ⟨y, hy, k, ℓk, hck, hX⟩ (by omega)] at hxX
-      exact Or.inl (mem_voteViewList_fst.1 (hPv ▸ hxX)).1
+    obtain ⟨k, -, hsend, hst, hsl⟩ :=
+      pool_origin_sent hr (fun _ => voteStart_initial _) hy (j + 1) x (hxs ▸ hx1)
+    rw [hx2 hxs] at hst
+    have htk : tr.time k < sp.ts s + 3 * sp.Δ := etime_of_lt_of.1 (hst ▸ hxt)
+    have hsk : sp.ts s ≤ tr.time k :=
+      (ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by rw [← hxs]; exact_mod_cast hsl)
+    have := sync_forward hr hsync hy hsend hsk (by rw [hts]; linarith) hp hcp
+      (fun k' hk' hr' => (hrsp k' hk' hr').trans hsk) (by rw [hti, hts]; linarith)
+      fun t h₁ h₂ => by
+        rw [slot_of_mem sp s (hsk.trans h₁) (by rw [hts]; linarith), hxs]; omega
+    rwa [hxs] at this
   -- the proposer has stamped the blocks of its tree
   have hbs : ∀ Hd ∈ ℓp.frame.tree, (tr.state p i).blockStamp Hd.root ≠ ⊤ := fun Hd hHd =>
     (blockStamp_lt_of_acceptedBefore sp hr (fun _ => voteStart_initial _) hp hcp hHd
@@ -264,7 +254,7 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
     (fun X hX hXs => huniq X ⟨y, hy, j, ℓy, hc.1, hX⟩ hXs) hpool
     (fun x hx Hd hHd hHdr hHds =>
       resolutionTime_ne_top hΦp hHd hHdr hHds (hpool x hx).ne (hHdr ▸ hbs Hd hHd))
-    hstar hBs
+    hstar hcount hBs
 
 end Consensus.Goldilocks.SA
 

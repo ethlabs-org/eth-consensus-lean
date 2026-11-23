@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.MergedOpponents
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Count
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -91,6 +92,7 @@ private theorem view_agree_of_forwardU
       tr.time k < sp.ts s + 3 * sp.Δ → v.slot = s →
       (∀ k' ≤ i, tr.RestartAt p k' → tr.time k' ≤ sp.ts s) →
       v ∈ (tr.state p i).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state p i).pool s})
+    (hcount : ∀ v ∈ (tr.state p i).pool s, ShouldCountDeclaredVote sp e.readPoint v)
     (hyp : ∀ Hd ∈ ℓy.frame.tree, Hd.slot ≤ s →
       e.readPoint.blockStamp Hd.root < ETime.of (freeze sp (s + 1)) → Anc U ℓp.frame.F Hd →
         Hd ∈ ℓp.frame.tree)
@@ -140,9 +142,8 @@ private theorem view_agree_of_forwardU
   have hpool : ∀ w ∈ (tr.state p i).pool s, (tr.state p i).voteStamp w < ⊤ := by
     intro w hw
     have hws := state_pool_slotU sp hr hini hp i s w hw
-    rcases pool_originU hr hini hp i w (hws ▸ hw) with
-      ⟨k, -, -, h, -⟩ | ⟨k, -, ℓ, -, -, h, -⟩ <;>
-      exact h ▸ etime_of_lt_top _
+    obtain ⟨k, -, -, h, -⟩ := pool_origin_sentU hr hini hp i w (hws ▸ hw)
+    exact h ▸ etime_of_lt_top _
   have hset : {w | w ∈ (voteViewList (tr.state p i) ℓp.frame (s : Int) ⊤).1} =
       {w | w ∈ (tr.state p i).pool s} :=
     Set.ext fun w => mem_voteViewList_fst.trans ⟨And.left, fun h => ⟨h, hpool w h⟩⟩
@@ -152,17 +153,12 @@ private theorem view_agree_of_forwardU
     intro x hx hxt
     obtain ⟨hx1, hx2⟩ := readPoint_poolU hr hy hc hx
     have hxs : x.slot = s := state_pool_slotU sp hr hini hy (j + 1) s x hx1
-    rcases pool_originU hr hini hy (j + 1) x (hxs ▸ hx1) with
-      ⟨k, -, hsend, hst, hsl⟩ | ⟨k, -, ℓk, hck, -, -, X, hX, hxX⟩
-    · rw [hx2 hxs] at hst
-      have htk : tr.time k < sp.ts s + 3 * sp.Δ := etime_of_lt_of.1 (hst ▸ hxt)
-      have hsk : sp.ts s ≤ tr.time k :=
-        (ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by rw [← hxs]; exact_mod_cast hsl)
-      exact hforward k x hsend hsk htk hxs hrsp
-    · -- a restart put it there, from a block of slot `s + 1`: the proposal
-      have hvp := (frame_validPayloadU sp hr hy hck X hX).1 x hxX
-      rw [huniq X ⟨y, hy, k, ℓk, hck, hX⟩ (by omega)] at hxX
-      exact Or.inl (mem_voteViewList_fst.1 (hPv ▸ hxX)).1
+    obtain ⟨k, -, hsend, hst, hsl⟩ := pool_origin_sentU hr hini hy (j + 1) x (hxs ▸ hx1)
+    rw [hx2 hxs] at hst
+    have htk : tr.time k < sp.ts s + 3 * sp.Δ := etime_of_lt_of.1 (hst ▸ hxt)
+    have hsk : sp.ts s ≤ tr.time k :=
+      (ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by rw [← hxs]; exact_mod_cast hsl)
+    exact hforward k x hsend hsk htk hxs hrsp
   -- the votes of the merged view are the proposal's or make their validator an equivocator there
   have hblk : ∀ X ∈ ℓy.frame.tree, X.slot = s + 1 → X = P := fun X hX hXs =>
     huniq X ⟨y, hy, j, ℓy, hc.1, hX⟩ hXs
@@ -172,7 +168,8 @@ private theorem view_agree_of_forwardU
   -- the proposal's votes are merged votes
   have hm : ∀ v ∈ (tr.state p i).pool s,
       v ∈ (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes := fun v hv =>
-    Or.inr ⟨P, hP, hPs, hPv ▸ mem_voteViewList_fst.2 ⟨hv, hpool v hv⟩⟩
+    Or.inr ⟨P, hP, hPs, hPv ▸ mem_voteViewList_fst.2 ⟨hv, hpool v hv⟩,
+      by simp [SAParams.committee], hcount v hv⟩
   have hpe : equivocators {w | w ∈ (tr.state p i).pool s} =
       equivocators (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes := by
     ext w
@@ -207,7 +204,8 @@ private theorem view_agree_of_forwardU
     obtain ⟨Hd, hHd, hHdr, hHds, -⟩ := resolved_head hres.ne
     obtain rfl : R = Hd := hΦp.coherent.1 hR hHd (hRr.trans hHdr.symm)
     have hRy := hpy x hx R hR hRr (anc_F hΦy hΦyU hΦpU hXy hXR)
-    exact ⟨heqv ▸ hw, x, Or.inr ⟨P, hP, hPs, hPsup ▸ hx, by omega, R, hRy, hRr, by omega⟩, rfl,
+    exact ⟨heqv ▸ hw, x, Or.inr ⟨P, hP, hPs, hPsup ▸ hx, by simp [SAParams.committee],
+      hcount x (mem_voteViewList_snd.1 hx).1.1, by omega, R, hRy, hRr, by omega⟩, rfl,
       hxs, R, hRy, hRr, anc_tree_of_anc_U hU hΦy hΦyU hXy (hXR.mono hΦpU) hRy⟩
   · rintro ⟨hw, x, hx, rfl, hxs, hXR⟩
     suffices h : x ∈ (voteViewList (tr.state p i) ℓp.frame (s : Int) ⊤).2 by
@@ -258,6 +256,7 @@ private theorem view_agree_of_forward {ini} (hrun : ACRun proposer tr H U ini)
       tr.time k < sp.ts s + 3 * sp.Δ → v.slot = s →
       (∀ k' ≤ i, tr.RestartAt p k' → tr.time k' ≤ sp.ts s) →
       v ∈ (tr.state p i).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state p i).pool s})
+    (hcount : ∀ v ∈ (tr.state p i).pool s, ShouldCountDeclaredVote sp e.readPoint v)
     (hyp : ∀ Hd ∈ ℓy.frame.tree, Hd.slot ≤ s →
       e.readPoint.blockStamp Hd.root < ETime.of (freeze sp (s + 1)) → Anc U ℓp.frame.F Hd →
         Hd ∈ ℓp.frame.tree)
@@ -273,8 +272,8 @@ private theorem view_agree_of_forward {ini} (hrun : ACRun proposer tr H U ini)
   view_agree_of_forwardU (hrun := hrun.toU) (hini := hini)
       (s := s) (p := p) (y := y) (i := i) (j := j)
       (ℓp := ℓp) (ℓy := ℓy) (pay := pay) (e := e) (hp := hp) (hy := hy) (hpp := hpp)
-          (hprop := hprop) (hti := hti) (hc := hc) (hP := hP) (hforward := hforward) (hyp := hyp)
-              (hpy := hpy)
+          (hprop := hprop) (hti := hti) (hc := hc) (hP := hP) (hforward := hforward)
+              (hcount := hcount) (hyp := hyp) (hpy := hpy)
 
 /-- View agreement needs service only from the previous slot through the
 proposal deadline. The two block-delivery premises are exactly the relay/Catch
@@ -285,10 +284,10 @@ theorem view_agree_window_before {ini} (hrun : ACRun proposer tr H U ini)
     {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H) (hpp : p = proposer (s + 1))
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
-    (hc : CastAt tr y j ℓy e)
+    (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
     (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
     {a b : Time} (hsync : ServiceWindowBefore H U a b tr)
-    (ha : a ≤ sp.ts s) (hb : tr.time i ≤ b)
+    (ha : a ≤ sp.ts s) (hb : tr.time i ≤ b) (hjb : tr.time j ≤ b)
     (hyp : ∀ Hd ∈ ℓy.frame.tree, Hd.slot ≤ s →
       e.readPoint.blockStamp Hd.root < ETime.of (freeze sp (s + 1)) → Anc U ℓp.frame.F Hd →
         Hd ∈ ℓp.frame.tree)
@@ -301,7 +300,9 @@ theorem view_agree_window_before {ini} (hrun : ACRun proposer tr H U ini)
       ∀ X ∈ ℓp.frame.tree, X ∈ ℓy.frame.tree →
         supporters ℓp.frame (View.ofLists pay) s X =
           supporters ℓy.frame (mergedVoteView sp e.readPoint ℓy.frame (s + 1)) s X := by
-  refine view_agree_of_forward hrun hini hp hy hpp hprop hti hc hP ?_ hyp hpy
+  refine view_agree_of_forward hrun hini hp hy hpp hprop hti hc hP ?_
+    (count_declared_of_window_before hrun.localRun hini hp hy hprop hti hc hes hP hsync ha hjb)
+    hyp hpy
   intro k v hsend hsk htk hvs hrs
   have hΔ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
@@ -322,7 +323,7 @@ theorem view_agreeU
     {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H) (hpp : p = proposer (s + 1))
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
-    (hc : CastAt tr y j ℓy e)
+    (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
     (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr)
     (hyp : ∀ Hd ∈ ℓy.frame.tree, Hd.slot ≤ s →
@@ -338,7 +339,7 @@ theorem view_agreeU
         supporters ℓp.frame (View.ofLists pay) s X =
           supporters ℓy.frame (mergedVoteView sp e.readPoint ℓy.frame (s + 1)) s X := by
   refine view_agree_of_forwardU hrun hrun.vstart hp hy hpp hprop hti hc hP
-    ?_ hyp hpy
+    ?_ (count_declared_of_syncU hrun.localRun hrun.vstart hp hy hprop hti hc hes hP hsync) hyp hpy
   intro k v hsend hsk htk hvs hrs
   have hΔ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
@@ -357,7 +358,7 @@ theorem view_agree {ini} (hrun : ACRun proposer tr H U ini) {s : Nat} {p y : Fin
     {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H) (hpp : p = proposer (s + 1))
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
-    (hc : CastAt tr y j ℓy e)
+    (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
     (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
     (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr)
     (hyp : ∀ Hd ∈ ℓy.frame.tree, Hd.slot ≤ s →
@@ -374,7 +375,8 @@ theorem view_agree {ini} (hrun : ACRun proposer tr H U ini) {s : Nat} {p y : Fin
           supporters ℓy.frame (mergedVoteView sp e.readPoint ℓy.frame (s + 1)) s X :=
   view_agreeU (hrun := hrun.toU) (s := s) (p := p) (y := y) (i := i) (j := j) (ℓp := ℓp)
       (ℓy := ℓy) (pay := pay) (e := e) (hp := hp) (hy := hy) (hpp := hpp) (hprop := hprop)
-          (hti := hti) (hc := hc) (hP := hP) (hsync := hsync) (hyp := hyp) (hpy := hpy)
+          (hti := hti) (hc := hc) (hes := hes) (hP := hP) (hsync := hsync) (hyp := hyp)
+            (hpy := hpy)
 
 end Consensus.Goldilocks.SA
 

@@ -11,8 +11,9 @@ The committee facts the committee-native AC step statements take, for a slot dic
 
 * **P** (`CommitteeP`): the votes in the pools of honest nodes, and in the states at which an honest
   node runs the optimistic check, are signed by members of their slot's committee.
-* **T** (`CommitteeT`): the votes in the merged vote view of an honest vote are signed by members
-  of their slot's committee.
+* **T** (`CommitteeT`): the votes in the merged vote view of an honest vote, counted declared head
+  votes included, have validators that are members of their slot's committee (membership only: a
+  counted declared head vote need not have been signed by its validator).
 * **CS** (`FaultBoundK`): among the members of the slot-`s` committee, fewer are faulty than are
   honest, awake and joined at `t`.
 
@@ -22,7 +23,7 @@ T for the nodes honest at each time `t`, at the cuts through `t`: on the prefix 
 
 Thresholds stay in `sp.committeeSize`; a caller binds `K` to it by `(K.committee s).ncard =
 sp.committeeSize`. At `K = CommitteeDict.full sp.n` with `sp.committeeSize = sp.n`, P and T hold
-for every signer and CS is `FaultBound tr H t`. -/
+for every validator and CS is `FaultBound tr H t`. -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -35,8 +36,8 @@ def CommitteeP (K : CommitteeDict sp.n) (tr : SATrace sp FGP ro) (H : Set (Fin s
   (∀ y ∈ H, ∀ i ℓ A, OptimisticPoint tr y i ℓ A → ∀ s : Nat, ∀ v ∈ A.pool s,
     v.val ∈ K.committee s)
 
-/-- **T**: the merged-view votes of an honest vote, block payload votes included, are signed by
-members of their slot's committee. -/
+/-- **T**: the merged-view votes of an honest vote, counted declared head votes included, have
+validators that are members of their slot's committee (membership only, not a signature). -/
 def CommitteeT (K : CommitteeDict sp.n) (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) : Prop :=
   ∀ y ∈ H, ∀ i ℓ e, CastAt tr y i ℓ e → ∀ m : Nat,
     ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes, v.val ∈ K.committee v.slot
@@ -57,8 +58,8 @@ def CommitteePAt (K : CommitteeDict sp.n) (tr : SATrace sp FGP ro) (H : Time →
   (∀ y i ℓ A, y ∈ H (tr.time i) → OptimisticPoint tr y i ℓ A → ∀ s : Nat, ∀ v ∈ A.pool s,
     v.val ∈ K.committee s)
 
-/-- **T under growing faults**: the merged-view votes of a vote of a node honest at its cut are
-signed by members of their slot's committee. -/
+/-- **T under growing faults**: the merged-view votes of a vote of a node honest at its cut have
+validators that are members of their slot's committee (membership only, not a signature). -/
 def CommitteeTAt (K : CommitteeDict sp.n) (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n)) :
     Prop :=
   ∀ y i ℓ e, y ∈ H (tr.time i) → CastAt tr y i ℓ e → ∀ m : Nat,

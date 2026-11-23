@@ -113,19 +113,8 @@ private theorem tryVote_fields (self : Fin sp.n) (L : Set Lock) (A : SAState sp.
 
 private theorem blockReceipt_fields (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (PoolOK A.pool → PoolOK (blockReceipt sp A t B).pool) ∧
-      (blockReceipt sp A t B).blockStamp = Function.update A.blockStamp B.root (ETime.of t) := by
-  unfold blockReceipt
-  generalize blockVotes B = l
-  suffices h : ∀ A' : SAState sp.n, (PoolOK A'.pool →
-      PoolOK (l.foldl (fun A v => admitVote sp A t v) A').pool) ∧
-      (l.foldl (fun A v => admitVote sp A t v) A').blockStamp = A'.blockStamp from
-    h { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) }
-  induction l with
-  | nil => exact fun _ => ⟨id, rfl⟩
-  | cons v l ih =>
-    intro A'
-    simp only [List.foldl_cons]
-    exact ⟨fun h => (ih _).1 (admitVote_poolOK h _ _), (ih _).2.trans (admitVote_blockStamp _ _ _)⟩
+      (blockReceipt sp A t B).blockStamp = Function.update A.blockStamp B.root (ETime.of t) :=
+  ⟨id, rfl⟩
 
 private theorem acOnBlockWith_fields (self : Fin sp.n) (L : Set Lock) (A : SAState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) (B : Blk sp.n FGP) :
@@ -280,7 +269,7 @@ private theorem acRestart_blockStamp (ro : ReplayOrder sp FGP) (self : Fin sp.n)
   have h₀ : RestartInv sp A Φ t { SAState.initial sp.genesisRoot with
       locks := A.locks, latestConfirmed := A.latestConfirmed,
       restartTime := (t : WithBot Time), mayVote := A.mayVote } :=
-    ⟨rfl, rfl, rfl, rfl, rfl, rfl, fun σ x hx => by simp [SAState.initial] at hx,
+    ⟨rfl, rfl, rfl, rfl, rfl, rfl, fun σ => rfl,
       fun x => Or.inl rfl, fun q => Or.inl rfl⟩
   exact replay_blockStamp self A ht _ (fun B hB => (hl.2.1 B).mp hB) (_, []) h₀ X.root
     (Or.inr ⟨X, (hl.2.1 X).mpr ⟨hX, hg⟩, rfl⟩)

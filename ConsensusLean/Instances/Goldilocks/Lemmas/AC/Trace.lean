@@ -158,8 +158,7 @@ theorem frame_validPayloadU
     · refine step Φ₀ _ _ _ hok fun B hB => ?_
       rw [htree, Set.mem_singleton_iff] at hB
       subst hB
-      refine ⟨fun v hv => ?_, fun v hv => ?_⟩ <;>
-        simp [blockVotes, blockSupport, hpay] at hv
+      simp [validPayload, blockVotes, blockSupport, hpay]
     · exact step _ _ _ _ hok (ih j hj hc')
 
 /-- Every block of an honest node's frame passes `ac_valid_payload`: the initial frame holds

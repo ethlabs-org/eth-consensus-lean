@@ -20,10 +20,6 @@ structure FamilyRun (F : SA.SAFamily A ro)
     (H : Time → Set (Fin sp.n)) (tr : RunTrace A.toAC) : Prop
     extends LocalRun proposer dg H F.sg tr where
   genesis_root_ok : (sp.toParams.genesisBlock A.genesisPayload).RootOk dg
-  carried_vote_unforgeable : ∀ y i B, y ∈ H (tr.time i) →
-    tr.BlockCallAt y i B → ∀ v ∈ SA.blockVotes B,
-    v.val ∈ H (tr.time i) →
-    ∃ j < i, ∃ e, SA.VoteAt (F.proj tr.projAC) v.val j e ∧ e.msg = v
   agreement : SA.Growing.ObservationAgreement F H tr.projAC
   observation : ACObsRun (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)
     H (tr.HonestBlocksAt H) (F.proj tr.projAC)
