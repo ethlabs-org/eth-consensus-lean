@@ -55,7 +55,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Honest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ReceiptCover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Saved
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Update
