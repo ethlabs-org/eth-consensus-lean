@@ -12,7 +12,8 @@ public section
 The AC projection of a Goldilocks run satisfies the AC trace contract (`ac_projection`, with the
 SA's requirements) and the honest-object facts: honest votes in a pool or received were emitted
 earlier (message unforgeability; a pooled vote was admitted from a message or emitted by the
-node itself: a block admits no vote and a restart empties the pools); a frame block other than genesis was accepted, so it has its slot's proposer; and an
+node itself: a block admits no vote and a restart empties the pools); a frame block other than
+genesis was accepted, so it has its slot's proposer; and an
 honest proposer's frame blocks of one slot are its own proposal at that slot's tick, of which
 there is one. -/
 
@@ -261,8 +262,8 @@ private theorem message_vote (hrun : GoldilocksRun proposer dg H tr ini) {y : Fi
   exact ⟨j, hj, emit_voteAt he⟩
 
 /-- Honest votes in a stored pool have an earlier emission, from starts up to the vote permission
-(whose pools are empty; a restart empties the pools and a block admits no vote). Only individual frame
-well-formedness is needed, not `NoCollRun`. -/
+(whose pools are empty; a restart empties the pools and a block admits no vote). Only individual
+frame well-formedness is needed, not `NoCollRun`. -/
 theorem pool_vote_emitted (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) (i σ : Nat) (v : Vote sp.n)
     (hv : v ∈ (tr.projAC.state y i).pool σ) (hval : v.val ∈ H) :
