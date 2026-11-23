@@ -127,8 +127,7 @@ theorem simTraceAt_vote_forwarded (hv : rho.ExecutionValid) :
     ∀ y k (m : SA.Vote (Fintype.card V)),
     y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time k) →
     ((simTraceAt S rho hn).EmitAt y k m ∨
-      ((((simTraceAt S rho hn).MsgCallAt y k m ∨ ∃ ℓ B,
-        (simTraceAt S rho hn).CallAt y k (.ac ℓ) ∧ ℓ.call = .block B ∧ m ∈ SA.blockVotes B)) ∧
+      ((simTraceAt S rho hn).MsgCallAt y k m ∧
         m ∉ ((simTraceAt S rho hn).state y k).ac.pool m.slot ∧
         m ∈ ((simTraceAt S rho hn).post k).ac.pool m.slot)) →
     let envelope : (Model.protoOf (compiled (goldilocks S)) E).Object :=
@@ -165,9 +164,8 @@ theorem simTraceAt_vote_forwarded (hv : rho.ExecutionValid) :
         have hnil : ℓ.emits = [] := (congrArg Prod.snd hstep).symm.trans hn
         simp only [hnil, List.not_mem_nil] at he
       exact simTrace_call_sending_event S rho hn ((Trace.upTo_callAt _).mp hc).2 hnr
-    · rcases hc with ⟨ℓ, hc, hm⟩ | ⟨ℓ, B, hc, hb, -⟩
-      · exact simTrace_call_sending_event S rho hn hc (by rw [hm]; simp)
-      · exact simTrace_call_sending_event S rho hn hc (by rw [hb]; simp)
+    · obtain ⟨ℓ, hc, hm⟩ := hc
+      exact simTrace_call_sending_event S rho hn hc (by rw [hm]; simp)
   obtain ⟨i, hlo, hhi, hs⟩ := hevent
   have hfresh : m ∉ ((simTrace S rho hn).state y k).ac.pool m.slot := by
     rcases hsource with hem | ⟨-, hf, -⟩
@@ -188,9 +186,7 @@ theorem simTraceAt_vote_forwarded (hv : rho.ExecutionValid) :
       simpa only [Compose.projAC_state hpref.toLocalRun hy, hstate] using hf
     · exact hf
   have hcall : (simTrace S rho hn).IsCall y k := by
-    rcases hsource with ⟨ℓ, hc, -⟩ | ⟨hc, -⟩
-    · exact ⟨_, hc⟩
-    · rcases hc with ⟨ℓ, hc, -⟩ | ⟨ℓ, B, hc, -⟩ <;> exact ⟨_, hc⟩
+    rcases hsource with ⟨ℓ, hc, -⟩ | ⟨⟨ℓ, hc, -⟩, -⟩ <;> exact ⟨_, hc⟩
   have hnew : m ∈ ((simTrace S rho hn).post k).ac.pool m.slot := by
     rcases hsource with hem | ⟨-, -, hnew⟩
     · simpa only [hpost] using
