@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnProposalPool
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
@@ -16,9 +15,7 @@ own cuts only, not the fault model; each fault model supplies the tick group of 
 run, and the release or source facts of its own.
 
 * `tick_attest_processAt`: an attestation signed in a public tick's group is processed by the
-  node at the tick;
-* `acBlock_vote_pooled_in_tick`: in any Goldilocks run, an AC block cut inside a tick group of
-  its node has the block's votes already pooled (the block is the node's own proposal). -/
+  node at the tick. -/
 
 namespace Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
 
@@ -154,30 +151,6 @@ theorem tick_attest_processAt {i : Nat} {v : V} {t : Time}
   exact ⟨_, Or.inl hcall, htime⟩
 
 end Events
-
-variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
-  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-
-/-- **An AC block cut inside a tick group has its votes pooled.** In a Goldilocks run, an honest
-`y`'s AC cut `i` calling the block `B`, inside `y`'s tick group at cut `c` and time `t`, has every
-`m ∈ blockVotes B` in `y`'s pool before the cut: the block is not a delivered one (the tick group
-starts with the tick), so it is `y`'s own proposal (`own_proposal_payload_pooled_run`). -/
-theorem acBlock_vote_pooled_in_tick {ini} (hr : GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n}
-    (hy : y ∈ H) {c i : Nat} {t : Time} {x : Nat} (hg : tr.GroupAt proposer dg y c t (.tick x))
-    (hlo : c ≤ i) (hhi : i < c + (Node.exec proposer dg y (tr.state y c) t (.tick x)).2.length)
-    (ht : tr.time i = t) {ℓ : ACLabel (goldilocksNode sp ro)} {B : Blk sp}
-    {m : SA.Vote sp.n} (hc : tr.CallAt y i (.ac ℓ)) (hb : ℓ.call = .block B)
-    (hm : m ∈ SA.blockVotes B) :
-    m ∈ (tr.state y i).ac.pool m.slot := by
-  obtain ⟨σ, hmem⟩ := Compose.acBlock_vote_pooled_in_tick hr.toLocalRun
-    (pooled := fun a m => ∃ σ, m ∈ a.pool σ) (carries := fun p m => m ∈ p.1)
-    (fun _ _ _ _ _ hd hm => Growing.proposal_pool (ro := ro) hd hm)
-    (Growing.proposal_preserves_pool (ro := ro) y) hy hg hlo hhi ht hc hb hm
-  have hslot := (Compose.state_pool_cap hr hy i σ).1 m
-    (by simpa only [Compose.projAC_state hr.toLocalRun hy] using hmem)
-  rwa [hslot]
 
 end Consensus.Goldilocks.Obligations
 
