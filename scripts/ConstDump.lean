@@ -39,7 +39,13 @@ whose copies' axioms differ is compared (`reached`) even when nothing else refer
 users that see it only through a module not dumped.
 
 Usage (imports built; compiled as `lake exe const-dump`, see the lakefile):
-`lake exe const-dump <out.tsv> <Module>...` -/
+`lake exe const-dump [--map FILE] <out.tsv> <Module>...`
+
+`--map FILE` (lines `old ⇥ new`) dumps the constants as if every listed name (constant or module) were
+renamed: the name and module columns, every constant an expression refers to (`.const`, `.proj`), the
+inductive, constructor and recursor data and the axioms. Dumping the base of a pure rename with the rename's
+map makes it comparable with the renamed tree: `scripts/const-diff.py` then reports only semantic changes
+(`scripts/rename_sa.py`, the Goldilocks AC rename). -/
 
 instance : MonadEnv (StateM Environment) where
   getEnv := get
@@ -54,7 +60,10 @@ def safety : ConstantInfo → String
   | .defnInfo v => toString (repr v.safety)
   | ci => if ci.isUnsafe then "unsafe" else "safe"
 
-def names (ns : List Name) : String := ",".intercalate (ns.map toString)
+/-- The name map of `--map` (identity without it). -/
+abbrev Renaming := Name → Name
+
+def names (m : Renaming) (ns : List Name) : String := ",".intercalate (ns.map (toString ∘ m))
 
 def levelHash : Level → UInt64
   | .zero => 3
@@ -69,7 +78,7 @@ binder kinds (explicit, implicit, instance) and metadata do not count, as for th
 key equality (`Expr.eqv`) ignores them too. A reference to an internal theorem of the dumped modules
 (`irr`: `foo._proof_1`, `_auxLemma`, private) hashes as one tag, by proof irrelevance: such a proof inside
 a definition or statement may change with a proof edit, its type only up to the type its place fixes. -/
-partial def exprHash (irr : NameSet) (e : Expr) : StateM (Std.HashMap Expr UInt64) UInt64 := do
+partial def exprHash (m : Renaming) (irr : NameSet) (e : Expr) : StateM (Std.HashMap Expr UInt64) UInt64 := do
   if let some v := (← get)[e]? then return v
   let mix (tag : UInt64) (xs : List UInt64) := xs.foldl mixHash tag
   let v ← match e with
@@ -77,29 +86,29 @@ partial def exprHash (irr : NameSet) (e : Expr) : StateM (Std.HashMap Expr UInt6
     | .fvar f => pure (mix 23 [hash f.name])
     | .mvar m => pure (mix 29 [hash m.name])
     | .sort l => pure (mix 31 [levelHash l])
-    | .const n ls => pure (if irr.contains n then 71 else mix 37 (hash n :: ls.map levelHash))
-    | .app f a => do pure (mix 41 [← exprHash irr f, ← exprHash irr a])
-    | .lam _ t b _ => do pure (mix 43 [← exprHash irr t, ← exprHash irr b])
-    | .forallE _ t b _ => do pure (mix 47 [← exprHash irr t, ← exprHash irr b])
-    | .letE _ t x b nonDep => do pure (mix 53 [← exprHash irr t, ← exprHash irr x, ← exprHash irr b, hash nonDep])
+    | .const n ls => pure (if irr.contains n then 71 else mix 37 (hash (m n) :: ls.map levelHash))
+    | .app f a => do pure (mix 41 [← exprHash m irr f, ← exprHash m irr a])
+    | .lam _ t b _ => do pure (mix 43 [← exprHash m irr t, ← exprHash m irr b])
+    | .forallE _ t b _ => do pure (mix 47 [← exprHash m irr t, ← exprHash m irr b])
+    | .letE _ t x b nonDep => do pure (mix 53 [← exprHash m irr t, ← exprHash m irr x, ← exprHash m irr b, hash nonDep])
     | .lit (.natVal n) => pure (mix 59 [hash (toString n)])  -- `hash n` is `n` mod 2^64
     | .lit (.strVal s) => pure (mix 61 [hash s])
-    | .mdata _ x => exprHash irr x
-    | .proj s i x => do pure (mix 67 [hash s, hash i, ← exprHash irr x])
+    | .mdata _ x => exprHash m irr x
+    | .proj s i x => do pure (mix 67 [hash (m s), hash i, ← exprHash m irr x])
   modify (·.insert e v)
   return v
 
-def h (irr : NameSet) (e : Expr) : String := toString ((exprHash irr e).run' {}).run
+def h (m : Renaming) (irr : NameSet) (e : Expr) : String := toString ((exprHash m irr e).run' {}).run
 
 /-- What decides the constant beyond its type. Theorems: nothing (proof irrelevance). -/
-def value (irr : NameSet) : ConstantInfo → String
-  | .defnInfo v => h irr v.value
-  | .opaqueInfo v => h irr v.value
-  | .inductInfo v => s!"params {v.numParams} indices {v.numIndices} all {names v.all} ctors {names v.ctors} \
-      nested {v.numNested} rec {v.isRec} reflexive {v.isReflexive}"
-  | .ctorInfo v => s!"{v.induct} {v.cidx} {v.numParams} {v.numFields}"
-  | .recInfo v => s!"all {names v.all} {v.numParams} {v.numIndices} {v.numMotives} {v.numMinors} k {v.k} \
-      rules {",".intercalate (v.rules.map fun r => s!"{r.ctor}:{r.nfields}:{h irr r.rhs}")}"
+def value (m : Renaming) (irr : NameSet) : ConstantInfo → String
+  | .defnInfo v => h m irr v.value
+  | .opaqueInfo v => h m irr v.value
+  | .inductInfo v => s!"params {v.numParams} indices {v.numIndices} all {names m v.all} \
+      ctors {names m v.ctors} nested {v.numNested} rec {v.isRec} reflexive {v.isReflexive}"
+  | .ctorInfo v => s!"{m v.induct} {v.cidx} {v.numParams} {v.numFields}"
+  | .recInfo v => s!"all {names m v.all} {v.numParams} {v.numIndices} {v.numMotives} {v.numMinors} k {v.k} \
+      rules {",".intercalate (v.rules.map fun r => s!"{m r.ctor}:{r.nfields}:{h m irr r.rhs}")}"
   | _ => "-"
 
 /-- Whether `S.f` names a `Prop` field of structure `S`: the projection of the structure that declares `f`
@@ -171,7 +180,18 @@ where
     return s
 
 unsafe def main (args : List String) : IO UInt32 := do
-  let out :: mods@(_ :: _) := args | IO.eprintln "usage: const-dump <out.tsv> <Module>..."; return 2
+  let usage := "usage: const-dump [--map FILE] <out.tsv> <Module>..."
+  let (mapFile, args) := match args with
+    | "--map" :: f :: rest => (some f, rest)
+    | _ => (none, args)
+  let out :: mods@(_ :: _) := args | IO.eprintln usage; return 2
+  let mut tbl : Std.HashMap Name Name := {}
+  if let some f := mapFile then
+    for l in ← IO.FS.lines f do
+      let [a, b] := l.splitOn "\t" | IO.eprintln s!"{f}: malformed line: {l}"; return 2
+      tbl := tbl.insert a.toName b.toName
+  let tbl' := tbl
+  let m : Renaming := fun n => tbl'.getD n n
   initSearchPath (← findSysroot)
   let roots := mods.map String.toName
   -- `loadExts` (with initializers, as in CheckDecls.lean) loads the axiom sets Lean stored for every exported
@@ -232,9 +252,11 @@ unsafe def main (args : List String) : IO UInt32 := do
   for (n, mod, ci) in own do
     let axs := (← ownAxioms env copies cache n).toArray
     -- the default tactic of a `Prop` field (`S.f._autoParam`, syntax) is a proof script
-    let v := match n with | .str field "_autoParam" => if isPropField env field then "-" else value irr ci | _ => value irr ci
-    lines := lines.push <| "\t".intercalate [toString n, toString mod, kind ci, names ci.levelParams,
-      h irr ci.type, v, safety ci, ",".intercalate ((axs.map toString).qsort (· < ·)).toList,
+    let v := match n with
+      | .str field "_autoParam" => if isPropField env field then "-" else value m irr ci
+      | _ => value m irr ci
+    lines := lines.push <| "\t".intercalate [toString (m n), toString (m mod), kind ci, names id ci.levelParams,
+      h m irr ci.type, v, safety ci, ",".intercalate ((axs.map (toString ∘ m)).qsort (· < ·)).toList,
       (scope.find? n).getD "-"]
   IO.FS.writeFile out ("\n".intercalate (lines.qsort (· < ·)).toList ++ "\n")
   let merged := own.filter fun (n, _, _) => ((copies.find? n).getD #[]).size > 1
