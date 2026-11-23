@@ -68,8 +68,7 @@ structure SimulatesAt (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _))
       RelayedFrom S rho (rho.key y) (blockObj (S.params (pubOf E) hn) B) (tr.time k)
   vote_forwarded : ∀ y k (m : Vote (Fintype.card V)), y ∈ honestKeysAt S rho (tr.time k) →
     (tr.EmitAt y k m ∨
-      ((tr.MsgCallAt y k m ∨ ∃ ℓ B, tr.CallAt y k (.ac ℓ) ∧ ℓ.call = .block B ∧
-          m ∈ SA.blockVotes B) ∧
+      (tr.MsgCallAt y k m ∧
         m ∉ (tr.state y k).ac.pool m.slot ∧ m ∈ (tr.post k).ac.pool m.slot)) →
     let envelope : (Model.protoOf (compiled (goldilocks S)) E).Object :=
       .mk (.signed y .poll) (.data (.voteForward (tr.time k) (encodeVote m))) [voteObj m]

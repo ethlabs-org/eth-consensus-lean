@@ -108,8 +108,9 @@ theorem proposal_views_agree_before {K : SA.CommitteeDict sp.n}
   have hPhiY := SA.frameIn_of_callAt hr hy hc.1
   have hPhiP := SA.frameIn_of_callAt hr hz hp.1
   apply SA.view_agree_window_before hS.run hS.run.vstart
-    hz hy hdesignated hp hti hc
+    hz hy hdesignated hp hti hc hes
     ⟨P, hP, hPs, hpay⟩ (SA.serviceWindowBefore_of_sync hS.sync) (by linarith only [hm, hΔ]) hipb
+    hjb
   · intro B hB _ hstamp hFB
     rw [SA.readPoint_blockStamp_eq hr hy hc] at hstamp
     rcases stamp_origin hr hy j elly hc.1 B hB with hg | ⟨q, -, ellq, hq, hBq, hsq⟩
@@ -127,7 +128,7 @@ theorem proposal_views_agree_before {K : SA.CommitteeDict sp.n}
       (by rw [hti, hts]; linarith only [hm, hΔ]) (by rw [hti, hts]; linarith only [hqt]) hipb hFB
   · intro v hv B hB hBr hFB
     by_cases hearly : tr.time j < sp.ts (s + 1 : Nat) + sp.Δ
-    · obtain ⟨P', hP', hPs', hsup⟩ := SA.cast_ready hr hy hc (by rw [hes]; exact hearly)
+    · obtain ⟨⟨P', hP', hPs', hsup⟩, -⟩ := SA.cast_ready hr hy hc (by rw [hes]; exact hearly)
       rw [hes] at hPs' hsup
       obtain rfl := proposal_frame_unique hrun hnc hz hdesignated hactual hPs
         (by clear * -; omega) hy hc.1 hP' hPs'
@@ -147,6 +148,7 @@ theorem proposal_views_agree_before {K : SA.CommitteeDict sp.n}
           Bool.and_eq_true, decide_eq_true_eq] at hv
         rw [SA.state_pool_slot sp hr hS.run.vstart hz ip s v hv.1]
       obtain ⟨B', hB', hBr', -⟩ := hsup v (by rw [SA.blockSupport, hpay]; exact hv) hvs
+        (Set.mem_univ _)
       rwa [hr.coherent.1 (hPhiP.2 hB) (hPhiY.2 hB') (hBr.trans hBr'.symm)]
     · exact frame_relay_before hS hnr hz hy hp.1 hc.1 hB
         (by linarith only [hm, hΔ, hts, hjlo]) (by rw [hti]; exact not_lt.1 hearly) hjb hFB

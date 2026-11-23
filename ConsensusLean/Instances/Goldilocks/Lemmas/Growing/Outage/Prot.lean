@@ -42,40 +42,41 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- A held honest vote across an AC cut was cast by its validator. -/
 private theorem held_vote_cast {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hc : tr.CallAt y j (.ac ℓ)) {v : Vote sp.n}
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {v : Vote sp.n}
     (hv : v ∈ SA.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac (Node.frame (tr.state y j)))
     (hvH : v.val ∈ H) :
     ∃ k e, SA.VoteAt tr.projAC v.val k e ∧ e.msg = v := by
   have hrun' := goldilocks_ac_projection_from hrun hnc
   have hr := hrun'.localRun
-  have hcA : tr.projAC.CallAt y j ℓ := projAC_callAt.2 hc
-  have hfr : ℓ.frame = Node.frame (tr.state y j) := (hrun.cutLaw y hy j _ hc).1
-  rcases SA.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | ⟨C, hC, hv⟩
+  rcases SA.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | hv
   · rw [← projAC_state hrun.toLocalRun hy] at hv
     obtain ⟨k, -, e, he, hm⟩ := hrun'.honest.pool_vote y hy j τ v hv hvH
     exact ⟨k, e, he, hm⟩
   · rw [← projAC_state hrun.toLocalRun hy] at hv
     obtain ⟨k, -, e, he, hm⟩ := hrun'.honest.pool_vote y hy (j + 1) τ v hv hvH
     exact ⟨k, e, he, hm⟩
-  · rw [← hfr] at hC
-    have hvB : v ∈ SA.blockVotes C :=
-      hv.elim id fun h => (SA.frame_validPayload sp hr hy hcA C hC).2 v h
-    obtain ⟨k, -, e, he, hm⟩ := hrun'.honest.carried_vote y hy j ℓ hcA C hC v hvB hvH
-    exact ⟨k, e, he, hm⟩
+  · -- a counted declaration: two distinct pool votes of the honest validator, a contradiction
+    obtain ⟨-, x, hx, x', hx', hne, hxv, hx'v⟩ := hv
+    rw [← projAC_state hrun.toLocalRun hy] at hx hx'
+    have hxs := SA.state_pool_slot sp hr hrun.vstart hy (j + 1) _ x hx
+    have hx's := SA.state_pool_slot sp hr hrun.vstart hy (j + 1) _ x' hx'
+    obtain ⟨k, -, e, he, rfl⟩ := hrun'.honest.pool_vote y hy (j + 1) _ x hx (hxv ▸ hvH)
+    obtain ⟨k', -, e', he', rfl⟩ := hrun'.honest.pool_vote y hy (j + 1) _ x' hx' (hx'v ▸ hvH)
+    rw [hx'v, ← hxv] at he'
+    exact absurd (congrArg (fun e : SA.Em sp (List (FG.Att sp.n)) => e.msg)
+      (SA.one_vote_per_slotU sp _ ro H _ _ hr.toU _ (hxv ▸ hvH) k k' e e' he he'
+        (hxs.trans hx's.symm)).2) hne
 
-/-- **`unlock` keeps `B` against the honest votes outside `W`**: at an AC cut `j`
-of an honest `y`, with `B` in the frame's tree, P and the frame's block votes in the committees
-`K`, and `2·|K σ ∩ (Hᶜ ∪ W)| < committeeSize` at `σ = slot(t_j) − 1`, if every honest vote of
-slot `σ` cast before `j` by a validator outside `W` has a head compatible with `B`, the unlock
-target of `B` at the call's view is `B`. The opposing set is `(H ∖ W) ∪ {i ∉ K σ}`: a
-non-member holds no slot-`σ` vote. -/
+/-- **`unlock` keeps `B` against the honest votes outside `W`**: at an AC cut `j` of an honest
+`y`, with `B` in the frame's tree, P for the committees `K`, and
+`2·|K σ ∩ (Hᶜ ∪ W)| < committeeSize` at `σ = slot(t_j) − 1`, if every honest vote of slot `σ`
+cast before `j` by a validator outside `W` has a head compatible with `B`, the unlock target of
+`B` at the call's view is `B`. The opposing set is `(H ∖ W) ∪ {i ∉ K σ}`: a non-member holds no
+slot-`σ` vote. -/
 theorem unlockKeeps_of_voteCompat {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hP : SA.CommitteeP K tr.projAC H)
     {W : Set (Fin sp.n)} {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     (hf : 2 * (K.committee (sp.slot (tr.time j) - 1) ∩ (Hᶜ ∪ W)).ncard < sp.committeeSize)
-    (hFr : ∀ C ∈ (Node.frame (tr.state y j)).tree, ∀ v ∈ SA.blockVotes C,
-      v.val ∈ K.committee v.slot)
     {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y j).fg.toFrame.tree)
     (hcompat : ∀ x ∈ H, x ∉ W → ∀ k < j, ∀ e, SA.VoteAt tr.projAC x k e →
       (e.msg.slot : Int) = (sp.slot (tr.time j) : Int) - 1 →
@@ -99,14 +100,17 @@ theorem unlockKeeps_of_voteCompat {ini} (hrun : GoldilocksRun proposer dg H tr i
   have hΦU : (Node.frame (tr.state y j)).tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, j, hX.1⟩
   have hmem : ∀ x ∈ SA.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac
       (Node.frame (tr.state y j)), x.val ∈ K.committee x.slot := fun x hx => by
-    rcases SA.mem_heldVotes.1 hx with ⟨τ, hv⟩ | ⟨τ, hv⟩ | ⟨C, hC, hv⟩
+    rcases SA.mem_heldVotes.1 hx with ⟨τ, hv⟩ | ⟨τ, hv⟩ | hv
     · rw [hpool j τ x hv]
       rw [← projAC_state hrun.toLocalRun hy] at hv
       exact hP.1 y hy j τ x hv
     · rw [hpool (j + 1) τ x hv]
       rw [← projAC_state hrun.toLocalRun hy] at hv
       exact hP.1 y hy (j + 1) τ x hv
-    · exact hFr C hC x (hv.elim id fun h => (hpay C hC).2 x h)
+    · obtain ⟨-, w, hw, -, -, -, hwv, -⟩ := hv
+      rw [← hwv]
+      rw [← projAC_state hrun.toLocalRun hy] at hw
+      exact hP.1 y hy (j + 1) _ w hw
   have hHnH : ∀ x ∈ SA.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac
       (Node.frame (tr.state y j)),
       x.val ∈ H \ W ∪ {i | i ∉ K.committee (sp.slot (tr.time j) - 1)} →
@@ -123,11 +127,11 @@ theorem unlockKeeps_of_voteCompat {ini} (hrun : GoldilocksRun proposer dg H tr i
     (Hn := H \ W ∪ {i | i ∉ K.committee (sp.slot (tr.time j) - 1)}) y ℓ.call hA' hΦ _ hB
     (hpool j) (hpool (j + 1)) hpay
     (fun x hx x' hx' hxH hval hs hσ =>
-      heldVotes_honest_unique hrun hnc hy hcall hx hx' (hHnH x hx hxH hσ).1 hval hs)
+      heldVotes_honest_unique hrun hnc hy hx hx' (hHnH x hx hxH hσ).1 hval hs)
     (fun x hx hxH hs Hd hHd hHdr => ?_)
     (by rw [hHn]; exact hf)
   have hxH := hHnH x hx hxH hs
-  obtain ⟨k, e, hve, rfl⟩ := held_vote_cast hrun hnc hy hcall hx hxH.1
+  obtain ⟨k, e, hve, rfl⟩ := held_vote_cast hrun hnc hy hx hxH.1
   obtain ⟨ℓ', hc', he'⟩ := hve
   have hkj : k < j := cast_lt_of_slot hrun hnc hxH.1 ⟨hc', he'⟩ hs
   obtain ⟨Hd', hHd', hHd'r, hcomp⟩ :=
@@ -191,7 +195,6 @@ theorem unlockKeeps_of_voteCompat_at
     rw [RunTrace.upTo_projAC]
     exact SA.CommitteePAt.upTo hrun.time_mono hrun.antitone hKB.hP _
   have h := Compose.unlockKeeps_of_voteCompat (hrun.upTo hd) (hnc.upTo _) hP hy hf'
-    (fun C hC v hv => hKB.hFrame y j hy C (by rw [hst] at hC; exact hC) v hv)
     (by rw [hst]; exact hB) fun x hx hxG k hk e hv hs => by
       have hv' := hv
       rw [RunTrace.upTo_projAC] at hv'

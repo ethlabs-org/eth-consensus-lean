@@ -110,7 +110,7 @@ theorem held_atts_in_view_at (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)
       obtain ⟨j, o, hj, ho, hc⟩ := rho.mem_viewIdx_iff.mp hb
       refine rho.mem_viewIdx_iff.mpr ⟨j, o, hj, ho, hc.trans (.step ?_ (.refl _))⟩
       change attObj a ∈ payloadObjs B.fgPayload B.acPayload
-      exact List.mem_append_left _ (List.mem_map.mpr ⟨a, ha, rfl⟩)
+      exact List.mem_map.mpr ⟨a, ha, rfl⟩
 
 end Consensus.Goldilocks.Simulation
 

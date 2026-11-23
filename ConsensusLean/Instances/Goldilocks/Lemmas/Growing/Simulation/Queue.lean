@@ -24,14 +24,12 @@ section Pools
 
 variable {sp : SAParams} {FGP : Type}
 
-/-- Restart replay only imports votes from its frame and its own emissions. The replay
-enumeration exists for every well-formed frame; no global collision assumption is needed. -/
+/-- Restart replay can only add actual emissions to its cleared pools. -/
 theorem restart_pool_inventory (P : Vote sp.n → Prop) (ro : ReplayOrder sp FGP)
     (self : Fin sp.n) (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time)
-    (hΦ : FrameOK Φ) (hB : ∀ B ∈ Φ.tree, ∀ v ∈ SA.blockVotes B, P v)
     (he : ∀ e ∈ (SA.acRestart sp ro self A Φ t).2, P e.msg) :
     ∀ s, ∀ v ∈ (SA.acRestart sp ro self A Φ t).1.pool s, P v :=
-  Simulation.restart_pool_inventory P ro self A Φ t hΦ hB he
+  Simulation.restart_pool_inventory P ro self A Φ t he
 
 end Pools
 

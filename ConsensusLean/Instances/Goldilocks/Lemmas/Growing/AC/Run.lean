@@ -55,11 +55,8 @@ theorem ACRun.upTo {ini} (h : ACRun proposer tr H U ini) {d : Time} (hd : 0 ≤ 
           rw [hrs] at he
           change acRestart sp ro y ((tr.upTo d).state y i) ℓ.frame ((tr.upTo d).time i) = _ at he
           rw [he] at hR
-          obtain ⟨_, B, hB, hvB⟩ := hR.2.2.2.2.2.2.2.2.1 σ v hv
-          obtain ⟨j, hj, e, hvote, hev⟩ := h.honest.carried_vote y i ℓ hy₀ hc₀ B hB v hvB
-            (anti hid hvH)
-          exact ⟨j, hj.trans (Nat.lt_succ_self i), e,
-            upTo_voteAt.mpr ⟨(hm hj.le).trans hid, hvote⟩, hev⟩
+          rw [hR.2.2.2.2.2.2.2.2.1 σ] at hv
+          simp at hv
         · by_cases hold : v ∈ ((tr.upTo d).state y i).pool v.slot
           · obtain ⟨j, hj, e, hvote, hev⟩ := ih v.slot v hold hvH
             exact ⟨j, hj.trans (Nat.lt_succ_self i), e, hvote, hev⟩
@@ -68,13 +65,9 @@ theorem ACRun.upTo {ini} (h : ACRun proposer tr H U ini) {d : Time} (hd : 0 ≤ 
               rw [he, hslot]
               exact hv
             rcases Compose.step_pool_insertion_source y _ _ _ _ hrs v hold hnew with
-              hm | ⟨B, hb, hvB⟩ | ⟨e, hem, hev⟩
+              hm | ⟨e, hem, hev⟩
             · obtain ⟨j, hj, e, hvote, hev⟩ := h.honest.message_vote y i ℓ v hy₀ hc₀ hm
                 (anti hid hvH)
-              exact ⟨j, hj.trans (Nat.lt_succ_self i), e,
-                upTo_voteAt.mpr ⟨(h.localRun.time_mono hj.le).trans hid, hvote⟩, hev⟩
-            · obtain ⟨j, hj, e, hvote, hev⟩ := h.honest.carried_vote y i ℓ hy₀ hc₀ B
-                ((accept_new sp hr hy ⟨ℓ, hc, hb⟩).1 ℓ hc) v hvB (anti hid hvH)
               exact ⟨j, hj.trans (Nat.lt_succ_self i), e,
                 upTo_voteAt.mpr ⟨(h.localRun.time_mono hj.le).trans hid, hvote⟩, hev⟩
             · rw [he] at hem
@@ -86,15 +79,10 @@ theorem ACRun.upTo {ini} (h : ACRun proposer tr H U ini) {d : Time} (hd : 0 ≤ 
         rw [hs] at hv
         obtain ⟨j, hj, e, hvote, hev⟩ := ih σ v hv hvH
         exact ⟨j, hj.trans (Nat.lt_succ_self i), e, hvote, hev⟩
-  refine ⟨hr, ⟨pool, ?_, ?_, ?_, ?_⟩, h.vstart⟩
+  refine ⟨hr, ⟨pool, ?_, ?_, ?_⟩, h.vstart⟩
   · intro y hy i ℓ v hc hl hvH
     obtain ⟨hid, hc⟩ := (Trace.upTo_callAt tr).mp hc
     obtain ⟨j, hj, e, hvote, hev⟩ := h.honest.message_vote y i ℓ v (anti hid hy) hc hl
-      (anti hid hvH)
-    exact ⟨j, hj, e, upTo_voteAt.mpr ⟨(hm hj.le).trans hid, hvote⟩, hev⟩
-  · intro y hy i ℓ hc B hB v hv hvH
-    obtain ⟨hid, hc⟩ := (Trace.upTo_callAt tr).mp hc
-    obtain ⟨j, hj, e, hvote, hev⟩ := h.honest.carried_vote y i ℓ (anti hid hy) hc B hB v hv
       (anti hid hvH)
     exact ⟨j, hj, e, upTo_voteAt.mpr ⟨(hm hj.le).trans hid, hvote⟩, hev⟩
   · rintro B ⟨y, hy, i, ℓ, hc, hB⟩ hg

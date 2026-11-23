@@ -323,7 +323,7 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled
           simp only [Node.proposeBlock, hself, emitted, List.flatMap_cons, Node.acProposal]
           rfl
       · rename_i h
-        exact False.elim (h (Bool.and_eq_true_iff.2 ⟨hc, dependencies_item _ _ _ _ _⟩))
+        exact False.elim (h (Bool.and_eq_true_iff.2 ⟨hc, dependencies_item _ _ _ _ p⟩))
   · simp only [Node.tickStep, hP.not.2 hp, ite_false]
     have hmem : rho.ownKey v ∉ rho.sel (.proposer s) := by
       rw [hsel, Finset.mem_singleton]

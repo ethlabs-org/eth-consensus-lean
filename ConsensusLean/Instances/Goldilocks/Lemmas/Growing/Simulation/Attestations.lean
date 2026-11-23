@@ -104,7 +104,7 @@ theorem simTraceAt_att_unforgeable (hv : rho.ExecutionValid) :
   rcases hc with hc | ⟨B, hc, ha⟩
   swap
   · have hmem : attObj (binding := S.vote) a ∈ payloadObjs B.fgPayload B.acPayload :=
-      List.mem_append_left _ (List.mem_map.mpr ⟨a, ha, rfl⟩)
+      List.mem_map.mpr ⟨a, ha, rfl⟩
     have hsource := block_payload_source_at S rho hn hv hc hmem hh'
       (show rho.signerOf (attObj a) = some (rho.key a.val) from rfl)
     rw [(simTrace_encoding S rho hn).2] at hsource

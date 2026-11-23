@@ -85,17 +85,9 @@ theorem admitVote_latestConfirmed (A : SA.SAState sp.n) (t : Time) (v : Vote sp.
   unfold SA.admitVote
   split_ifs <;> rfl
 
-theorem foldl_admit_latestConfirmed (t : Time) (l : List (Vote sp.n))
-    (A : SA.SAState sp.n) :
-    (l.foldl (fun A v => SA.admitVote sp A t v) A).latestConfirmed = A.latestConfirmed := by
-  induction l generalizing A with
-  | nil => rfl
-  | cons v l ih => rw [List.foldl_cons, ih, admitVote_latestConfirmed]
-
 theorem blockReceipt_latestConfirmed (A : SA.SAState sp.n) (t : Time)
-    (B : SA.Blk sp.n FGP) : (SA.blockReceipt sp A t B).latestConfirmed = A.latestConfirmed := by
-  unfold SA.blockReceipt
-  rw [foldl_admit_latestConfirmed]
+    (B : SA.Blk sp.n FGP) : (SA.blockReceipt sp A t B).latestConfirmed = A.latestConfirmed :=
+  rfl
 
 theorem writes_optimistic (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time)
     {r : Nat} (hr : A.latestConfirmed = r) :
@@ -125,7 +117,7 @@ theorem writes_tryVote (x : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FG
   · rw [ite_eq_left h₁]
     exact .refl
   rw [ite_eq_right h₁]
-  by_cases h₂ : t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ SA.voteReady sp Φ (sp.slot t))
+  by_cases h₂ : t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ SA.voteReady sp A Φ (sp.slot t))
   · rw [ite_eq_left h₂]
     exact .refl
   rw [ite_eq_right h₂]
@@ -420,7 +412,7 @@ theorem reclock_tryVote {Φ : SA.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r�
   · rw [ite_eq_left h₁]
     exact ⟨KeepAll.of_eq rfl, h.mono (fun _ h => h) fun _ h => Or.inl h⟩
   rw [ite_eq_right h₁]
-  by_cases h₂ : t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ SA.voteReady sp Φ (sp.slot t))
+  by_cases h₂ : t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ SA.voteReady sp A Φ (sp.slot t))
   · rw [ite_eq_left h₂]
     exact ⟨KeepAll.of_eq rfl, h.mono (fun _ h => h) fun _ h => Or.inl h⟩
   rw [ite_eq_right h₂]
