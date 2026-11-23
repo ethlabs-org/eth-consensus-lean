@@ -634,6 +634,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.P
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.PivotWalk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Suffix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Trace.UpTo
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.VotingPolicy.Adapter
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.VotingPolicy.NodeAdapter
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.VotingPolicy.StockTrace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Compat
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ConfirmedBase
@@ -765,7 +768,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.VotingPolicy.Adapter
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.AnchorStepsGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.CoefficientAdapters

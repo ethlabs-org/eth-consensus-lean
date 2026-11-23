@@ -281,6 +281,24 @@ def stockCall {ro : ReplayOrder sp FGP} {sign : Time → Bool} :
   | .block B => .block B
   | .restart => .restart
 
+section StockCall
+variable {ro : ReplayOrder sp FGP} {sign : Time → Bool}
+@[simp] theorem stockCall_tick : stockCall (ro := ro) (sign := sign) .tick = .tick := by rfl
+@[simp] theorem stockCall_proposal :
+    stockCall (ro := ro) (sign := sign) .proposal = .proposal := by rfl
+@[simp] theorem stockCall_toFG : stockCall (ro := ro) (sign := sign) .toFG = .toFG := by rfl
+@[simp] theorem stockCall_message m :
+    stockCall (ro := ro) (sign := sign) (.message m) = .message m := by rfl
+@[simp] theorem stockCall_block B : stockCall (ro := ro) (sign := sign) (.block B) = .block B := by
+  rfl
+@[simp] theorem stockCall_restart :
+    stockCall (ro := ro) (sign := sign) .restart = .restart := by rfl
+end StockCall
+
+theorem stockCall_eq_restart_iff {ro : ReplayOrder sp FGP} {sign : Time → Bool}
+    (c : (calendarAC ro sign).Call) : stockCall c = .restart ↔ c = .restart := by
+  cases c <;> simp [stockCall]
+
 theorem stockCall_eq_toFG_iff {ro : ReplayOrder sp FGP} {sign : Time → Bool}
     (c : (calendarAC ro sign).Call) : stockCall c = .toFG ↔ c = .toFG := by
   cases c <;> simp [stockCall]
