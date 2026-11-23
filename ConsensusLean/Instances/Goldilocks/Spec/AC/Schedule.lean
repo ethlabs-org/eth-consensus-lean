@@ -58,11 +58,6 @@ abbrev slot (t : Time) : Nat := sp.toParams.slotOf t
 /-- The genesis root. -/
 abbrev genesisRoot : Nat := sp.toParams.genesisRoot
 
-/-- The committee `K_s` of slot `s`: the committee of every slot is `V`, the whole population (the
-note at the head of this file). Only the declared head votes of its members are counted or waited
-for (`get_countable_declared_head_votes`); in this model that check is vacuous. -/
-def committee (_s : Nat) : Set (Fin sp.n) := Set.univ
-
 end ACParams
 
 end Consensus.Goldilocks.AC

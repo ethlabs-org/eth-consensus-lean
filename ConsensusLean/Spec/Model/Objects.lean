@@ -47,6 +47,10 @@ def auth : Obj n Role Item Body → Auth n Role
 def carried : Obj n Role Item Body → List (Obj n Role Item Body)
   | mk _ _ cs => cs
 
+/-- What an object says. -/
+def msg : Obj n Role Item Body → Msg Item Body
+  | mk _ m _ => m
+
 /-- The key that signed an object, if any. -/
 def signer? (o : Obj n Role Item Body) : Option (Fin n) :=
   match o.auth with

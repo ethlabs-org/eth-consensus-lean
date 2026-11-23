@@ -100,6 +100,12 @@ def compile (S : ChainShape pub Out Info) : Model.Protocol pub Out where
   decItem := inferInstance
   decBody := inferInstance
   cntItem := inferInstance
+  Token := S.Token
+  VoteData := S.VoteData
+  claim := S.claim
+  tokensCover := S.tokensCover
+  voteBody := S.voteBody
+  presented := S.presented
   selSpec := S.skel.selSpec
   role := S.skel.role
   candidateRole d m := (S.candidateRole d m).getD (S.skel.role d)
@@ -107,7 +113,7 @@ def compile (S : ChainShape pub Out Info) : Model.Protocol pub Out where
     ShapeRole.duty (S.skel.grid.slotOf t) k
   duties := S.skel.duties
   deliverDuties := S.skel.deliverDuties
-  init k p := (S.init k p, [])
+  init k p io := (S.init k p io, [])
   clock st t xs := (S.clock st.1 t, xs)
   act st d := match d with
     | .propose s _ => withMempool st.2 (fun (par, info, cs) =>
