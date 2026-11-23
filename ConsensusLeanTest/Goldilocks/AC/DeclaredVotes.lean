@@ -23,9 +23,7 @@ state `st f l` holds the slot-`1` votes `f` stamped `5` (before the freeze) and 
 * digest and association: `decodeInfo_encodeInfo`, `encodeInfo_seat_head`,
   `encodeInfo_support`, `root_ne_of_support`;
 * rejection and omission: `invalid_duplicate`, `invalid_three_of_one_seat`, `invalid_slot`,
-  `invalid_support`, `valid_unsigned_pair`, `unsigned_omitted_at_timeout`. Entries of validators
-  outside the committee are not tested: the stock committee `sp.committee` is the whole
-  population, so the case is vacuous;
+  `invalid_support`, `valid_unsigned_pair`, `unsigned_omitted_at_timeout`;
 * no pool insertion or replay: `blockReceipt_admits_nothing`, `message_admits`,
   `acRestart_pools_empty`, `payloadObjs_no_vote`;
 * responsive path: `ready_all_counted`, `early_vote_all_counted`;
@@ -55,7 +53,7 @@ abbrev P3 : Params where
   genesisRoot := 0
   δt := 0
 
-/-- The AC parameters: `P3` with `k = c = 2`; the committee is the whole population. -/
+/-- The AC parameters: `P3` with `k = c = 2`. -/
 abbrev sp3 : ACParams where
   toParams := P3
   slotTime_eq := fun s => by change 4 * (s : Int) = 4 * 1 * s; omega
@@ -180,12 +178,12 @@ theorem merged_votes {f l : List (Vote sp3.n)} {ps : List (Blk sp3.n Unit)} {v :
   simp only [mergedVoteView, Set.mem_union, Set.mem_ofPred_eq]
   rw [base_st]
   constructor
-  · rintro (h | ⟨B, hB, hs, hv, -, hc⟩)
+  · rintro (h | ⟨B, hB, hs, hv, hc⟩)
     · exact Or.inl h
     · exact Or.inr ⟨B, slot_two hB hs, hv, hc⟩
   · rintro (h | ⟨B, hB, hv, hc⟩)
     · exact Or.inl h
-    · exact Or.inr ⟨B, mem_frm hB, hps B hB, hv, Set.mem_univ _, hc⟩
+    · exact Or.inr ⟨B, mem_frm hB, hps B hB, hv, hc⟩
 
 /-! ## Digest and association -/
 
@@ -332,7 +330,7 @@ def P : Blk sp3.n Unit := prop 3 ([a, b], [a, b])
 
 /-- `a` and `b` held (after the freeze): ready. -/
 theorem ready_all_counted : voteReady sp3 (st [] [a, b]) (frm [P]) 2 := by
-  refine ⟨⟨P, mem_frm (by simp), rfl, fun x hx _ _ => ?_⟩, fun B hB hs x hx _ => ?_⟩
+  refine ⟨⟨P, mem_frm (by simp), rfl, fun x hx _ => ?_⟩, fun B hB hs x hx => ?_⟩
   · simp [P, prop, declaredSupportVotes] at hx
     rcases hx with rfl | rfl <;> exact ⟨X, X_mem _, rfl, le_rfl⟩
   · have hB' := slot_two hB hs
@@ -351,7 +349,6 @@ theorem early_vote_all_counted : (tryVote sp3 v2 (st [] [a, b]) (frm [P]) 8).2 �
 theorem not_ready_missing : ¬ voteReady sp3 (st [] [a]) (frm [P]) 2 := by
   rintro ⟨-, h⟩
   have := h P (mem_frm (by simp)) rfl b (Or.inl (by simp [P, prop, declaredHeadVotes]))
-    (Set.mem_univ _)
   rw [shouldCount_st rfl] at this
   rcases this with h | ⟨x, hx, y, hy, hne, -, -⟩
   · simp [a, b] at h
@@ -413,8 +410,8 @@ theorem pair_counts_unsigned :
 /-- And the pair makes the proposal ready. -/
 theorem pair_ready : voteReady sp3 (st [] [b, b']) (frm [Pz]) 2 := by
   refine ⟨⟨Pz, mem_frm (by simp), rfl,
-    fun x hx _ _ => by simp [Pz, prop, declaredSupportVotes] at hx⟩,
-    fun B hB hs x hx _ => ?_⟩
+    fun x hx _ => by simp [Pz, prop, declaredSupportVotes] at hx⟩,
+    fun B hB hs x hx => ?_⟩
   have hB' := slot_two hB hs
   simp only [List.mem_singleton] at hB'; subst hB'
   simp [Pz, prop, declaredHeadVotes, declaredSupportVotes] at hx; subst hx
@@ -430,11 +427,11 @@ theorem merged_support {l : List (Vote sp3.n)} {ps : List (Blk sp3.n Unit)} {v :
         v.slot + 1 = 2 ∧ ∃ H ∈ (frm ps).tree, H.root = v.head ∧ H.slot + 1 ≤ 2 := by
   simp only [mergedVoteView, Set.mem_union, Set.mem_ofPred_eq]
   constructor
-  · rintro (h | ⟨B, hB, hs, hv, -, h⟩)
+  · rintro (h | ⟨B, hB, hs, hv, h⟩)
     · exact absurd ((base_st [] l (frm ps) v).1 (List.mem_of_mem_filter h)) (by simp)
     · exact ⟨B, hB, hs, hv, h⟩
   · rintro ⟨B, hB, hs, hv, h⟩
-    exact Or.inr ⟨B, hB, hs, hv, Set.mem_univ _, h⟩
+    exact Or.inr ⟨B, hB, hs, hv, h⟩
 
 /-- The marked `a` counts as support. -/
 theorem support_marked :
@@ -476,7 +473,7 @@ theorem support_unresolved :
 /-- Head readiness of one proposal suffices: `P` is resolved, the other proposal's marked head is
 not, and with every declaration held the voter is ready. -/
 theorem ready_one_resolved : voteReady sp3 (st [] [a, b, c5]) (frm [P, prop 4 ([c5], [c5])]) 2 := by
-  refine ⟨⟨P, mem_frm (by simp), rfl, fun x hx _ _ => ?_⟩, fun B hB hs x hx _ => ?_⟩
+  refine ⟨⟨P, mem_frm (by simp), rfl, fun x hx _ => ?_⟩, fun B hB hs x hx => ?_⟩
   · simp [P, prop, declaredSupportVotes] at hx
     rcases hx with rfl | rfl <;> exact ⟨X, X_mem _, rfl, le_rfl⟩
   · have hB' := slot_two hB hs
@@ -527,7 +524,6 @@ def Pb : Blk sp3.n Unit := prop 4 ([b], [b])
 theorem not_ready_other_proposal : ¬ voteReady sp3 (st [] [a]) (frm [Pa, Pb]) 2 := by
   rintro ⟨-, h⟩
   have := h Pb (mem_frm (by simp)) rfl b (Or.inl (by simp [Pb, prop, declaredHeadVotes]))
-    (Set.mem_univ _)
   rw [shouldCount_st rfl] at this
   rcases this with h | ⟨x, hx, y, hy, hne, -, -⟩
   · simp [a, b] at h

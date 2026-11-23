@@ -255,7 +255,7 @@ theorem rho12_not_hashCollision : ¬ (rho12 S).HashCollision := by
 /-- **Key `1` releases only votes of slots up to `1`**: it is honest until `12`, and an honest
 node's released vote is its emission, of the slot of its time. -/
 theorem key1_vote_slot {i : Nat} {e : Ev S} (he : (rho S).events[i]? = some e) (h1 : e.node = 1)
-    {v : AC.Vote (Fintype.card (Fin 5))} (hv : voteObj v ∈ (rho S).releasesAt i) :
+    {v : AC.Vote (Fintype.card (Fin 5))} {z : Nat} (hv : voteObj v z ∈ (rho S).releasesAt i) :
     v.slot ≤ 1 := by
   obtain ⟨ys, hsplit, hys⟩ := (rho S).truncate_split rho_sorted 12
   have ht : e.time ≤ 12 := by
@@ -317,7 +317,8 @@ theorem key1_vote_slot {i : Nat} {e : Ev S} (he : (rho S).events[i]? = some e) (
 variable (S) in
 /-- `d` is not a vote of key `0` or `1` of a slot after `1`. -/
 def NoLateVote (d : Obj S) : Prop :=
-  ∀ v : AC.Vote (Fintype.card (Fin 5)), d = voteObj v → (v.val = key 0 ∨ v.val = key 1) → v.slot ≤ 1
+  ∀ (v : AC.Vote (Fintype.card (Fin 5))) (z : Nat),
+    d = voteObj v z → (v.val = key 0 ∨ v.val = key 1) → v.slot ≤ 1
 
 /-- **No released object carries a vote of key `0` or `1` of a slot after `1`.** -/
 theorem released_vote : ∀ i, ∀ o ∈ (rho S).releasesAt i, ∀ d, Model.Obj.Contains o d →
@@ -325,11 +326,11 @@ theorem released_vote : ∀ i, ∀ o ∈ (rho S).releasesAt i, ∀ d, Model.Obj.
   intro i
   refine (rho S).closed_of_sources (fun _ d => NoLateVote S d) (fun _ => True) (fun _ h => h)
     (fun _ _ _ _ _ => trivial) ?_ ?_ i trivial
-  · rintro i - o ho v rfl hval
+  · rintro i - o ho v z rfl hval
     cases he : (rho S).events[i]? with
     | none => simp only [Model.Run.releasesAt, he] at ho; cases ho
     | some e =>
-      have hsig : (rho S).signerOf (voteObj v) = some e.node := by
+      have hsig : (rho S).signerOf (voteObj v z) = some e.node := by
         cases e with
         | tick w t =>
           simp only [Model.Run.releasesAt, he] at ho
@@ -355,9 +356,8 @@ theorem released_vote : ∀ i, ∀ o ∈ (rho S).releasesAt i, ∀ d, Model.Obj.
       intro d hd
       obtain ⟨-, rfl⟩ := (mem_inj S).mp hp
       rw [twin_contains S hd]
-      intro v hv
-      injection hv with _ h2
-      cases h2
+      intro v z hv
+      cases congrArg Model.Obj.msg hv
     · exact Or.inr ⟨j, hj, trivial, hjr⟩
 
 /-- **No delivered object carries a vote of key `0` or `1` of a slot after `1`.** -/
@@ -368,9 +368,8 @@ theorem delivered_vote {i : Nat} {w : Fin 5} {o : Obj S} {t : Time}
   · intro d hd
     obtain ⟨-, rfl⟩ := (mem_inj S).mp hp
     rw [twin_contains S hd]
-    intro v hv
-    injection hv with _ h2
-    cases h2
+    intro v z hv
+    cases congrArg Model.Obj.msg hv
   · exact released_vote j o hjr
 
 end Consensus.Goldilocks.Test.ProposerHold

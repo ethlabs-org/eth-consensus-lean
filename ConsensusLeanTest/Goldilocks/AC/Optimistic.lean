@@ -402,7 +402,7 @@ def S1 : ACState sp1.n :=
     latestConfirmed := 1 }
 
 theorem voteReady_1 (A : ACState sp1.n) : voteReady sp1 A Φ₁ 1 := by
-  refine ⟨⟨B1, B1_mem, rfl, fun x hx => by cases hx⟩, fun B hB hs x hx _ => ?_⟩
+  refine ⟨⟨B1, B1_mem, rfl, fun x hx => by cases hx⟩, fun B hB hs x hx => ?_⟩
   rcases hB with rfl | rfl
   · simp [g] at hs
   · rcases hx with hx | hx <;> cases hx

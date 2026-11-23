@@ -55,7 +55,7 @@ def trivialShape (pub : Public) : ChainShape pub Unit Unit where
   Body := Unit
   Durable := Unit
   decBody := inferInstance
-  init := fun _ _ => ()
+  init := fun _ _ _ => ()
   clock := fun s _ => s
   propose := fun s _ => (s, none)
   act := fun s _ _ => (s, none)
@@ -66,6 +66,7 @@ def trivialShape (pub : Public) : ChainShape pub Unit Unit where
   recordOwn := fun s _ _ => s
   durable := fun s => s
   restore := fun _ d _ => d
+  tokensCover := ⟨⟨fun x => absurd x.2 (by simp), fun x => absurd x.2 (by simp)⟩⟩
   out := fun _ _ => []
   conflicts := fun _ _ => false
 
@@ -118,7 +119,7 @@ theorem poll_disabled_forged {V : Type} [Fintype V] {E : Env V}
     (hc : Obj.Contains o o') {k : Fin (Fintype.card V)} (ha : o'.auth = .signed k ShapeRole.poll) :
     ¬ rho.Credentials := by
   intro hcr
-  have hk := hcr i w o t he o' hc k ShapeRole.poll ha
+  have hk := hcr.2 i w o t he o' hc k ShapeRole.poll ha (fun _ _ => rfl)
   have hs : rho.sel ShapeRole.poll = ∅ := hsel ShapeRole.poll
   rw [hs] at hk
   exact Finset.notMem_empty _ hk
@@ -144,7 +145,7 @@ def pollShape (pub : Public) : ChainShape pub Unit Unit where
   Body := Unit
   Durable := Key pub × Nat
   decBody := inferInstance
-  init := fun k _ => (k, 0)
+  init := fun k _ _ => (k, 0)
   clock := fun s _ => s
   propose := fun s _ => (s, none)
   act := fun s _ _ => (s, none)
@@ -156,6 +157,7 @@ def pollShape (pub : Public) : ChainShape pub Unit Unit where
   recordOwn := fun s _ _ => s
   durable := fun s => s
   restore := fun _ d _ => d
+  tokensCover := ⟨⟨fun x => absurd x.2 (by simp), fun x => absurd x.2 (by simp)⟩⟩
   out := fun _ _ => []
   conflicts := fun _ _ => false
 

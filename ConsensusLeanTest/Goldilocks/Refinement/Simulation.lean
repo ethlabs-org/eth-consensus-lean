@@ -125,17 +125,17 @@ theorem declared_vote_no_message_after_accepted_block {sp : AC.ACParams}
     (hs : List (Blocks.Header Info × Nat)) (i : Nat)
     (σ : State sp ro stock) (B : Blk sp) (v : AC.Vote sp.n)
     (ha : B.fgPayload = []) (_hp : B.acPayload = ([v], []))
-    (hc : canonEvent sp ro hs (blockObj sp (binding := stock) B) = some (.block B))
+    (hc : canonEvent sp ro σ.voteIO hs (blockObj sp B) = some (.block B))
     (hslot : ¬ sp.toParams.slotOf σ.now < B.slot) (hfg : σ.node.fg.onBlock B ≠ none) :
-    deliverRecs (binding := stock) proposer dg hs σ.self σ.now i
-        (delivered hs σ (blockObj sp B)) σ.node 0 =
+    deliverRecs σ.voteIO proposer dg hs σ.self σ.now i
+        (delivered σ.voteIO hs σ (blockObj sp B)) σ.node 0 =
       groupRecs proposer dg σ.self σ.node σ.now (Nat.pair i 0) (.block B) := by
-  have hr : ¬ Refuses hs σ (blockObj sp (binding := stock) B) := fun h =>
-    ((refuses_iff_of_canonEvent hs hc).mp h).elim hslot hfg
-  have hd : delivered hs σ (blockObj sp (binding := stock) B) = [blockObj sp B] := by
+  have hr : ¬ Refuses σ.voteIO hs σ (blockObj sp B) := fun h =>
+    ((refuses_iff_of_canonEvent σ.voteIO hs hc).mp h).elim hslot hfg
+  have hd : delivered σ.voteIO hs σ (blockObj sp B) = [blockObj sp B] := by
     have hcar : (blockObj sp (binding := stock) B).carried = [] := by
       simp [blockObj_eq, Model.Obj.carried, payloadObjs, ha]
-    rw [delivered_eq, visit_of_not_refuses hs hr, hcar, visitList]
+    rw [delivered_eq, visit_of_not_refuses σ.voteIO hs hr, hcar, visitList]
     rfl
   rw [hd]
   simp [deliverRecs_cons, deliverRecs_nil, hc]
@@ -149,16 +149,16 @@ theorem payload_skipped_after_refused_block {sp : AC.ACParams}
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (hs : List (Blocks.Header Info × Nat)) (i : Nat)
     (σ : State sp ro stock) (B : Blk sp)
-    (hc : canonEvent sp ro hs (blockObj sp (binding := stock) B) = some (.block B))
+    (hc : canonEvent sp ro σ.voteIO hs (blockObj sp B) = some (.block B))
     (hrefused : sp.toParams.slotOf σ.now < B.slot ∨ σ.node.fg.onBlock B = none) :
-    deliverRecs (binding := stock) proposer dg hs σ.self σ.now i
-        (delivered hs σ (blockObj sp B)) σ.node 0 =
+    deliverRecs σ.voteIO proposer dg hs σ.self σ.now i
+        (delivered σ.voteIO hs σ (blockObj sp B)) σ.node 0 =
       groupRecs proposer dg σ.self σ.node σ.now (Nat.pair i 0) (.block B) := by
-  have hd : delivered hs σ (blockObj sp (binding := stock) B) = [blockObj sp B] := by
+  have hd : delivered σ.voteIO hs σ (blockObj sp B) = [blockObj sp B] := by
     rw [delivered_eq]
-    rcases visit_cases hs σ (blockObj sp (binding := stock) B) with ⟨-, hv⟩ | ⟨hr, -⟩
+    rcases visit_cases σ.voteIO hs σ (blockObj sp B) with ⟨-, hv⟩ | ⟨hr, -⟩
     · rw [hv]
-    · exact absurd ((refuses_iff_of_canonEvent hs hc).mpr hrefused) hr
+    · exact absurd ((refuses_iff_of_canonEvent σ.voteIO hs hc).mpr hrefused) hr
   rw [hd]
   simp [deliverRecs_cons, deliverRecs_nil, hc]
 
@@ -172,21 +172,23 @@ theorem undecoded_block_dropped {sp : AC.ACParams}
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (hs : List (Blocks.Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
     (σ : State sp ro stock) (k : Fin sp.n) (s : Nat) (h : Blocks.Header Info)
-    (v : AC.Vote sp.n)
-    (hc : canonEvent sp ro hs
-      (.mk (.signed k (.proposer s)) (.item h) [voteObj (binding := stock) v]) = none) :
-    deliverRecs (binding := stock) proposer dg hs self t i
-      (delivered hs σ (.mk (.signed k (.proposer s)) (.item h) [voteObj v])) σ.node 0 = [] := by
-  have hr : Refuses hs σ (.mk (.signed k (.proposer s)) (.item h) [voteObj (binding := stock) v]) :=
-    (refuses_iff _ _ _).2 ⟨trivial, fun B hB => by rw [hc] at hB; cases hB⟩
-  have hd : delivered hs σ (.mk (.signed k (.proposer s)) (.item h) [voteObj (binding := stock) v])
-      = [.mk (.signed k (.proposer s)) (.item h) [voteObj v]] := by
+    (v : AC.Vote sp.n) (z : Nat)
+    (hc : canonEvent sp ro σ.voteIO hs
+      (.mk (.signed k (.proposer s)) (.item h) [voteObj v z]) = none) :
+    deliverRecs σ.voteIO proposer dg hs self t i
+      (delivered σ.voteIO hs σ (.mk (.signed k (.proposer s)) (.item h) [voteObj v z]))
+      σ.node 0 = [] := by
+  let o : Wire sp.n stock := .mk (.signed k (.proposer s)) (.item h) [voteObj v z]
+  change canonEvent sp ro σ.voteIO hs o = none at hc
+  have hr : Refuses σ.voteIO hs σ o :=
+    (refuses_iff _ _ _ _).2 ⟨trivial, fun B hB => by rw [hc] at hB; cases hB⟩
+  have hd : delivered σ.voteIO hs σ o = [o] := by
     rw [delivered_eq]
-    rcases visit_cases hs σ (.mk (.signed k (.proposer s)) (.item h) [voteObj (binding := stock) v])
-      with ⟨-, hv⟩ | ⟨hn, -⟩
+    rcases visit_cases σ.voteIO hs σ o with ⟨-, hv⟩ | ⟨hn, -⟩
     · rw [hv]
     · exact absurd hr hn
-  rw [hd, deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ hc, deliverRecs_nil]
+  change deliverRecs σ.voteIO proposer dg hs self t i (delivered σ.voteIO hs σ o) σ.node 0 = []
+  rw [hd, deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ _ hc, deliverRecs_nil]
 
 omit [DecidableEq V] in
 /-- Two nested relay wrappers still execute the carried vote's message handler, with its
@@ -196,27 +198,31 @@ theorem nested_payload_message {sp : AC.ACParams}
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (hs : List (Blocks.Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
-    (σ : State sp ro stock) (v : AC.Vote sp.n) :
-    deliverRecs (binding := stock) proposer dg hs self t i
-      (delivered hs σ (.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v]])) σ.node 0 =
+    (σ : State sp ro stock) (v : AC.Vote sp.n) (z : Nat)
+    (hcheck : σ.voteIO.check v.val (stock.voteRole v.slot) (encodeVote v) z = true) :
+    deliverRecs σ.voteIO proposer dg hs self t i
+      (delivered σ.voteIO hs σ (.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v z]]))
+      σ.node 0 =
       groupRecs proposer dg self σ.node t (Nat.pair i 2) (.message v) := by
-  have hd : delivered hs σ (.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v]]) =
-      [.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v]],
-        .mk .none (.data .relay) [voteObj v], voteObj (binding := stock) v] := by
+  have hd : delivered σ.voteIO hs σ
+      (.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v z]]) =
+      [.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v z]],
+        .mk .none (.data .relay) [voteObj v z], voteObj v z] := by
     rw [delivered_eq]
-    rw [visit_of_not_refuses hs (not_refuses_of_data hs rfl),
+    rw [visit_of_not_refuses σ.voteIO hs (not_refuses_of_data σ.voteIO hs rfl),
       Model.Obj.carried, visitList_cons,
-      visit_of_not_refuses hs (not_refuses_of_data hs rfl),
+      visit_of_not_refuses σ.voteIO hs (not_refuses_of_data σ.voteIO hs rfl),
       Model.Obj.carried, visitList_cons,
-      visit_of_carried_eq_nil hs _ (o := voteObj (binding := stock) v) rfl]
+      visit_of_carried_eq_nil σ.voteIO hs _ (o := voteObj v z) rfl]
     simp [visitList_nil_eq]
-  have hz : ∀ cs, canonEvent sp ro hs (.mk .none (.data .relay) cs : Wire sp.n stock) = none := by
+  have hz : ∀ cs, canonEvent sp ro σ.voteIO hs (.mk .none (.data .relay) cs) = none := by
     intro cs
-    simp [canonEvent_eq, decodeBlock_eq, decodeVoteObj, decodeAttObj, stock]
-  rw [hd, deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ (hz _),
-    deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ (hz _),
-    deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ (canonEvent_voteObj hs v), deliverRecs_nil,
-    List.append_nil]
+    simp [canonEvent_eq, decodeBlock_eq, decodeVoteObj, presented, decodeAttObj, stock]
+  have hv : canonEvent sp ro σ.voteIO hs (voteObj v z) = some (.message v) := by
+    rw [canonEvent_voteObj, ite_eq_left hcheck]
+  rw [hd, deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ _ (hz _),
+    deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ _ (hz _),
+    deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ _ hv, deliverRecs_nil, List.append_nil]
 
 /-- Unsigned timestamps cannot certify forwarding freshness. -/
 theorem unsigned_forward_rejected (sp : AC.ACParams) (hs : List (Blocks.Header Info × Nat))
@@ -361,10 +367,10 @@ theorem acceptance_publication_order {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (A B : Blk sp)
     (ha : A.parent = some sp.genesisRoot) (hb : B.parent = some A.root)
     (hroot : A.root ≠ sp.genesisRoot) (hq : st.forwards = []) :
-    (apply st (st.node, [.fg (.block A true), .fg (.block B true)])).forwards =
+    (apply st none (st.node, [.fg (.block A true), .fg (.block B true)])).forwards =
       [(st.now, [blockObj sp A]),
        (st.now, [forwardObj sp st.self st.now none A, blockObj sp B])] ∧
-    (apply st (st.node, [.fg (.block A false)])).forwards = [] := by
+    (apply st none (st.node, [.fg (.block A false)])).forwards = [] := by
   simp [apply, queueAccepted, ha, hb, hroot, hq, Function.update]
 
 /-- The installed poll drains all timestamped wrappers in order and retains their durable map. -/
@@ -374,7 +380,7 @@ theorem publisher_poll_drain {sp : AC.ACParams}
     (goldilocksShape sp ro).pollBatch st t =
       ({ st with forwards := [], voteForwards := [] },
         st.forwards.map (fun p => (.forward p.1, p.2)) ++
-        st.voteForwards.map (fun p => (.voteForward p.1 (encodeVote p.2), [voteObj p.2]))) := by
+        st.voteForwards.map (fun p => (.voteForward p.1 (encodeVote p.2.1), [p.2.2]))) := by
   change pollBatch st t = _
   simp [pollBatch, poll, hf, ho]
   rfl
@@ -383,7 +389,7 @@ theorem publisher_poll_drain {sp : AC.ACParams}
 theorem duplicate_no_publication {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (B : Blk sp)
     (hs : st.node.fg.blocks B.root = some B) :
-    (apply st (Node.onBlock st.self st.node st.now B)).forwards = st.forwards := by
+    (apply st none (Node.onBlock st.self st.node st.now B)).forwards = st.forwards := by
   unfold Node.onBlock
   split
   · rfl
@@ -398,8 +404,9 @@ relay queue unchanged (composition.tex §"Model": a refused receipt is not forwa
 theorem duplicate_not_relayed {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (hs : List (Blocks.Header Info × Nat))
     (st : State sp ro) (o : Wire sp.n) (B : Blk sp)
-    (hc : canonEvent sp ro hs o = some (.block B)) (hheld : st.node.fg.blocks B.root = some B) :
-    (processOne hs st o).relayBuf = st.relayBuf := by
+    (hc : canonEvent sp ro st.voteIO hs o = some (.block B))
+    (hheld : st.node.fg.blocks B.root = some B) :
+    (processOne st.voteIO hs st o).relayBuf = st.relayBuf := by
   rw [AsChainShape.processOne_eq]
   rw [hc]
   dsimp only
@@ -418,9 +425,9 @@ theorem restart_replay_forwards_nothing {sp : AC.ACParams}
       (restore k d t).relayBuf = d.relayBuf ∧ (restore k d t).outbox = d.outbox := by
   have hnil := restart_emits_nil ro k d.node.ac (Node.frame d.node) t ht
   rw [restore_eq]
-  simp only [apply, Node.restart, Node.acCall, hnil, emitted, List.map_nil,
-    List.flatMap_cons, List.flatMap_nil, List.append_nil, List.dedup_nil, List.filter_nil,
-    List.foldl_cons, List.foldl_nil, and_self]
+  simp only [apply, Node.restart, Node.acCall, hnil, emitted, List.filterMap_nil,
+    List.flatMap_cons, List.flatMap_nil, List.append_nil, List.map_nil,
+    List.dedup_nil, List.filter_nil, List.foldl_cons, List.foldl_nil, and_self]
 
 /-- A vote the restart dropped and the replay did not restore is forwarded again when it is
 re-admitted: processing an object that inserts it into the restored pool queues its envelope,
@@ -428,10 +435,11 @@ stamped with the new admission time `t` (a fresh admission by a call other than 
 theorem readmitted_after_restart_forwarded {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (hs : List (Blocks.Header Info × Nat))
     (k : Fin sp.n) (d : State sp ro) (t : Time) (o : Wire sp.n) (m : AC.Vote sp.n)
+    (hg : VoteGate (restore k d t))
     (hdrop : m ∉ (restore k d t).node.ac.pool m.slot)
-    (hnew : m ∈ (processOne hs (restore k d t) o).node.ac.pool m.slot) :
-    (t, m) ∈ (processOne hs (restore k d t) o).voteForwards :=
-  processOne_pool_insertion_queued hs (restore k d t) o m hdrop hnew
+    (hnew : m ∈ (processOne (restore k d t).voteIO hs (restore k d t) o).node.ac.pool m.slot) :
+    ∃ w, (t, m, w) ∈ (processOne (restore k d t).voteIO hs (restore k d t) o).voteForwards :=
+  processOne_pool_insertion_queued _ hs (restore k d t) hg o m hdrop hnew
 
 /-- Wire equality alone cannot identify an accepted block's root: headers omit that field.
 Publication provenance must use decoding with the engine digest, not only `forwardObj` equality. -/
@@ -447,10 +455,10 @@ theorem forwarding_root_alias (sp : AC.ACParams) (x : Fin sp.n) (t : Time)
 /-- **Row classification** (`isFGAtt`): a standalone attestation and a
 relay wrapper of attestations only are rows (bound `ΔF`); a mixed relay wrapper (an attestation
 with a vote) and the empty relay wrapper are not (bound `Δ`). -/
-theorem isFGAtt_classification {n : Nat} (a : FG.Att n) (v : AC.Vote n) :
+theorem isFGAtt_classification {n : Nat} (a : FG.Att n) (v : AC.Vote n) (z : Nat) :
     isFGAtt (attObj (binding := stock) a) ∧
       isFGAtt (.mk .none (.data .relay) [attObj a] : Wire n) ∧
-      ¬ isFGAtt (.mk .none (.data .relay) [attObj a, voteObj v] : Wire n) ∧
+      ¬ isFGAtt (.mk .none (.data .relay) [attObj a, voteObj v z] : Wire n) ∧
       ¬ isFGAtt (.mk .none (.data .relay) [] : Wire n) := by
   simp [isFGAtt, IsAttObj, attObj, voteObj]
 

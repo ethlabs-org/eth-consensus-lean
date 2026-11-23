@@ -473,11 +473,11 @@ theorem voteReady_blk {A : ACState sp1.n} {Φ : N1.Frm} {f k : Nat}
     (h : ChainFrame Φ f (jexp (k + 1)) (k + 1)) (hcv : cv k ∈ A.pool k) :
     voteReady sp1 A Φ (k + 1) := by
   have hf : f ≤ k := by have := h.fj; have := jexp_le k; unfold jexp at *; split_ifs at * <;> omega
-  refine ⟨⟨blk (k + 1), h.mem (by omega) le_rfl, blk_slot _, fun x hx _ _ => ?_⟩, ?_⟩
+  refine ⟨⟨blk (k + 1), h.mem (by omega) le_rfl, blk_slot _, fun x hx _ => ?_⟩, ?_⟩
   · rw [show declaredSupportVotes (blk (k + 1)) = [cv k] from rfl, List.mem_singleton] at hx
     subst hx
     exact ⟨blk k, h.mem hf (by omega), rfl, by rw [blk_slot]⟩
-  · intro B hB hBs x hx _
+  · intro B hB hBs x hx
     obtain ⟨m, -, -, rfl⟩ := h.eq_of_mem hB
     rw [blk_slot] at hBs
     subst hBs

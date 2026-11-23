@@ -57,10 +57,10 @@ theorem msg_delivered {y : Fin (Fintype.card (Fin 5))} {k : Nat}
     (hc : (tr S).MsgCallAt y k m) :
     ∃ (i : Nat) (w : Fin 5) (o : Obj S) (t : Time),
       (rhoc S).events[i]? = some (Model.Event.deliver w o t) ∧
-        Model.Obj.Contains o (voteObj m) := by
-  obtain ⟨ℓ, ⟨hnode, hlab⟩, hcall⟩ := hc
+        ∃ z, Model.Obj.Contains o (voteObj m z) := by
+  obtain ⟨ℓ, ⟨_, hlab⟩, hcall⟩ := hc
   have hl : (tr S).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, i, ev, _, he, hstart, _, hidx, _, _, _, hlab'⟩ :=
+  obtain ⟨r, i, _, _, he, _, _, hidx, _, _, _, hlab'⟩ :=
     simTrace_cut { S with vote := stock } (rhoc S) one_le_card hl
   have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
   have hmem := List.mem_of_getElem? hidx
@@ -68,7 +68,7 @@ theorem msg_delivered {y : Fin (Fintype.card (Fin 5))} {k : Nat}
     eq_deliver_of_cut { S with vote := stock } (rhoc S) one_le_card he hmem
       (Or.inr ⟨ℓ, m, hrl, hcall⟩)
   rw [eventCuts_deliver { S with vote := stock } (rhoc S) one_le_card i v o t he] at hmem
-  obtain ⟨o', e, st', ho, hce, q, hq, hc, _⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
+  obtain ⟨o', e, _, ho, hce, q, hq, hc, _⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ _ hmem
   have hcut := List.getElem_mem hq
   rw [← hc, hrl] at hcut
   have heq : e = .message m := by
@@ -93,13 +93,13 @@ theorem msg_delivered {y : Fin (Fintype.card (Fin 5))} {k : Nat}
       subst ℓ
       cases hcall
   subst e
-  have ho' : o' = voteObj m := by
-    rcases canonEvent_eq_some hce with ⟨_, h, _⟩ | ⟨m', h, ho⟩ | ⟨_, h, _⟩
+  have ho' : ∃ z, o' = voteObj m z := by
+    rcases canonEvent_eq_some hce with ⟨_, h, _⟩ | ⟨m', z, h, hobj, _⟩ | ⟨_, h, _⟩
     · cases h
-    · cases h; exact ho
+    · cases h; exact ⟨z, hobj⟩
     · cases h
-  subst o'
-  exact ⟨i, v, o, t, he, contains_of_mem_delivered ho⟩
+  obtain ⟨z, rfl⟩ := ho'
+  exact ⟨i, v, o, t, he, z, contains_of_mem_delivered ho⟩
 
 /-- A block event of the retained trace processes a delivered block object. -/
 theorem wire_block {y : Fin (Fintype.card (Fin 5))} {j : Nat} {t : Time}
@@ -320,9 +320,9 @@ theorem pool_vote_slot {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) (c : Na
       rw [← hp] at hpost
       rcases step_pool_new (ro := S.ro _) y ((tr S).projAC.state y k) ℓ.frame ((tr S).projAC.time k)
         ℓ.call hnr hpost hpre with hm | hval
-      · obtain ⟨i, w, o, t, hi, hcont⟩ := msg_delivered ⟨ℓ, Compose.projAC_callAt.mp hc, hm⟩
+      · obtain ⟨i, w, o, t, hi, z, hcont⟩ := msg_delivered ⟨ℓ, Compose.projAC_callAt.mp hc, hm⟩
         obtain ⟨i', hi'⟩ := rhoc_deliver hi
-        exact delivered_vote hi' _ hcont x rfl (val_faulty hxH)
+        exact delivered_vote hi' _ hcont x z rfl (val_faulty hxH)
       · exact absurd (hval ▸ hy) hxH
   · exact absurd ⟨ℓ, Compose.projAC_callAt.mp hc, hrs⟩ no_restart
 
