@@ -519,7 +519,6 @@ theorem reset_support_frame
         Bool.and_eq_true, decide_eq_true_eq] at hv
       rw [AC.state_pool_slot sp hr hp.run.vstart hP.1 i s v hv.1]
     obtain ⟨B', hB', hBr', -⟩ := hsup v (by rw [AC.declaredSupportVotes, hpay]; exact hv) hvs
-      (by simp [AC.ACParams.committee])
     rwa [hr.coherent.1 ((AC.frameIn_of_callAt hr hP.1 hci).2 hB)
       ((AC.frameIn_of_callAt hr hy hcy.1).2 hB') (hBr.trans hBr'.symm)]
   · exact reset_frame_relay hp hc hP.1 hy hci hcy.1 hB hg hjoin
@@ -632,7 +631,6 @@ theorem ResetPremisesUpTo.reset_support_frame {b : Time}
         Bool.and_eq_true, decide_eq_true_eq] at hv
       rw [AC.state_pool_slot sp hr hp.run.vstart hpH i s v hv.1]
     obtain ⟨B', hB', hBr', _⟩ := hsup v (by rw [AC.declaredSupportVotes, hpay]; exact hv) hvs
-      (by simp [AC.ACParams.committee])
     rwa [hr.coherent.1 ((AC.frameIn_of_callAt hr hpH hci).2 hB)
       ((AC.frameIn_of_callAt hr hy hcy.1).2 hB') (hBr.trans hBr'.symm)]
   · exact hp.reset_frame_relay hc hpH hy hci hcy.1 hB hjb hg hjoin

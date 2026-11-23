@@ -121,7 +121,7 @@ private theorem count_declared_coreU {ini} {u : Nat → Set Lock}
     have hrd : voteReady sp e.readPoint ℓy.frame (s + 1) := by
       by_contra h
       exact hready ⟨hearly, Or.inr h⟩
-    refine hrd.2 P hPt hPs v (Or.inl ?_) (by simp [ACParams.committee])
+    refine hrd.2 P hPt hPs v (Or.inl ?_)
     change v ∈ P.acPayload.1
     rw [hPpay]
     exact mem_pay_of_pool hr hini hp hprop hsi hv

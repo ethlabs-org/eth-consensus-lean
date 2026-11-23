@@ -82,7 +82,7 @@ theorem mem_mergedVoteView_votes_of_declared {A : ACState sp.n} {Φ : Frm sp.n F
     {B : Blk sp.n FGP} (hB : B ∈ Φ.tree) (hBs : B.slot = s) {x : Vote sp.n}
     (hx : x ∈ declaredHeadVotes B) (hc : ShouldCountDeclaredVote sp A x) :
     x ∈ (mergedVoteView sp A Φ s).votes :=
-  Or.inr ⟨B, hB, hBs, hx, by simp [ACParams.committee], hc⟩
+  Or.inr ⟨B, hB, hBs, hx, hc⟩
 
 /-- A counted support entry `(v, s−1, H)` of a slot-`s` proposal of the tree, with `H` in the tree
 and of a slot at most `s − 1`, is a merged-view support vote. -/
@@ -91,7 +91,7 @@ theorem mem_mergedVoteView_support_of_declared {A : ACState sp.n} {Φ : Frm sp.n
     (hx : x ∈ declaredSupportVotes B) (hc : ShouldCountDeclaredVote sp A x) (hxs : x.slot + 1 = s)
     {H : Blk sp.n FGP} (hH : H ∈ Φ.tree) (hHr : H.root = x.head) (hHs : H.slot + 1 ≤ s) :
     x ∈ (mergedVoteView sp A Φ s).support :=
-  Or.inr ⟨B, hB, hBs, hx, by simp [ACParams.committee], hc, hxs, H, hH, hHr, hHs⟩
+  Or.inr ⟨B, hB, hBs, hx, hc, hxs, H, hH, hHr, hHs⟩
 
 /-- **An early vote counts every declared vote**: when `try_vote` emits before `t_s + Δ`, every
 declared vote and support entry of every slot-`s` proposal of the frame should be counted at the
