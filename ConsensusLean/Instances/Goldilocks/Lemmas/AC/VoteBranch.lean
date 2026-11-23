@@ -30,12 +30,26 @@ variable {wm : WriteMode} {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
   {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
   {ini : Fin sp.n → SAState sp.n}
 
+/-- `vote_ready` reads the state only through its pools. -/
+theorem voteReady_congr_pool {A A' : SAState sp.n} (h : A'.pool = A.pool) (Φ : Frm sp.n FGP)
+    (s : Nat) : voteReady sp A' Φ s ↔ voteReady sp A Φ s := by
+  have hc : ∀ x, ShouldCountDeclaredVote sp A' x ↔ ShouldCountDeclaredVote sp A x := fun x => by
+    simp only [ShouldCountDeclaredVote, SAState.poolAt, h]
+  simp only [voteReady, AllDeclaredVotesCounted, hc]
+
+/-- The read point of a vote branch has the pools of the branch's input. -/
+private theorem readPoint_pool_eq {P : SAState sp.n} {L : Set Lock} {c : Prop} [Decidable c]
+    {v : Int} : ({ (if c then { P with locks := L } else P) with votedSlot := v } :
+      SAState sp.n).pool = P.pool := by
+  split_ifs <;> rfl
+
 /-- **Call `j` of `y` (label `ℓ`) takes the vote branch of `try_vote`, with read point `R`.** The
 call reaches `try_vote` (a tick at the slot's vote deadline `t_s + Δ`, a message or a block); the
 guard of `try_vote` passes there, as `try_vote` reads it (joined, `voted_slot ≠ s`, by `t_s + Δ`,
 and at `t_s + Δ` or with a ready slot `s > 0`; the receipt before `try_vote` keeps the restart time
-and `voted_slot`, so they are read at the state before the call); and the call emits a vote read
-at `R`, or emits nothing and leaves `R`. -/
+and `voted_slot`, so they are read at the state before the call, and `vote_ready` reads only the
+pools, so it is read at `R`, which has the pools of `try_vote`'s input); and the call emits a vote
+read at `R`, or emits nothing and leaves `R`. -/
 def VoteBranchAt (tr : SATrace sp FGP ro) (y : Fin sp.n) (j : Nat)
     (ℓ : ACLabel (goldilocksSA sp FGP ro)) (R : SAState sp.n) : Prop :=
   tr.CallAt y j ℓ ∧
@@ -44,7 +58,7 @@ def VoteBranchAt (tr : SATrace sp FGP ro) (y : Fin sp.n) (j : Nat)
     joined sp (tr.state y j) (tr.time j) ∧ (tr.state y j).votedSlot ≠ sp.slot (tr.time j) ∧
     tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ ∧
     ¬ (tr.time j < sp.ts (sp.slot (tr.time j)) + sp.Δ ∧
-      (sp.slot (tr.time j) = 0 ∨ ¬ voteReady sp ℓ.frame (sp.slot (tr.time j)))) ∧
+      (sp.slot (tr.time j) = 0 ∨ ¬ voteReady sp R ℓ.frame (sp.slot (tr.time j)))) ∧
     ((∃ e ∈ ℓ.emits, e.readPoint = R) ∨ (ℓ.emits = [] ∧ tr.post j = R))
 
 theorem voteBranchAt_iff {y : Fin sp.n} {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
@@ -55,7 +69,7 @@ theorem voteBranchAt_iff {y : Fin sp.n} {j : Nat} {ℓ : ACLabel (goldilocksSA s
       joined sp (tr.state y j) (tr.time j) ∧ (tr.state y j).votedSlot ≠ sp.slot (tr.time j) ∧
       tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ ∧
       ¬ (tr.time j < sp.ts (sp.slot (tr.time j)) + sp.Δ ∧
-        (sp.slot (tr.time j) = 0 ∨ ¬ voteReady sp ℓ.frame (sp.slot (tr.time j)))) ∧
+        (sp.slot (tr.time j) = 0 ∨ ¬ voteReady sp R ℓ.frame (sp.slot (tr.time j)))) ∧
       ((∃ e ∈ ℓ.emits, e.readPoint = R) ∨ (ℓ.emits = [] ∧ tr.post j = R)) := by
   exact Iff.rfl
 
@@ -73,7 +87,7 @@ receipt; otherwise it emits nothing and leaves the read point. -/
 theorem tryVoteWithM_branch {L : Set Lock} (self : Fin sp.n) {A : SAState sp.n}
     (Φ : Frm sp.n FGP) {t : Time} (hj : joined sp A t) (hv : A.votedSlot ≠ sp.slot t)
     (hlate : t ≤ sp.ts (sp.slot t) + sp.Δ)
-    (hready : ¬ (t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ voteReady sp Φ (sp.slot t)))) :
+    (hready : ¬ (t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ voteReady sp A Φ (sp.slot t)))) :
     (A.mayVote (sp.slot t) = true → ∃ e : Em sp FGP,
       tryVoteWithM sp wm self L A Φ t =
         (optimisticConfirmationM sp wm (admitVote sp e.readPoint t e.msg) Φ t, [e]) ∧
@@ -98,13 +112,13 @@ private theorem tryVoteWithM_cases {L : Set Lock} (self : Fin sp.n) (A : SAState
     (Φ : Frm sp.n FGP) (t : Time) :
     tryVoteWithM sp wm self L A Φ t = (A, []) ∨
       (joined sp A t ∧ A.votedSlot ≠ sp.slot t ∧ t ≤ sp.ts (sp.slot t) + sp.Δ ∧
-        ¬ (t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ voteReady sp Φ (sp.slot t)))) := by
+        ¬ (t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ voteReady sp A Φ (sp.slot t)))) := by
   by_cases h₁ : ¬ joined sp A t ∨ A.votedSlot = sp.slot t ∨ sp.ts (sp.slot t) + sp.Δ < t
   · left
     unfold tryVoteWithM
     dsimp only
     rw [ite_eq_left h₁]
-  by_cases h₂ : t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ voteReady sp Φ (sp.slot t))
+  by_cases h₂ : t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ voteReady sp A Φ (sp.slot t))
   · left
     unfold tryVoteWithM
     dsimp only
@@ -146,7 +160,8 @@ theorem stepWithM_voteBranch {L : Set Lock} (self : Fin sp.n)
       (((c = .tick ∧ t = sp.ts (sp.slot t) + sp.Δ) ∨ (∃ m, c = .message m) ∨
           ∃ B, c = .block B) ∧
         joined sp A t ∧ A.votedSlot ≠ sp.slot t ∧ t ≤ sp.ts (sp.slot t) + sp.Δ ∧
-        ¬ (t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ voteReady sp Φ (sp.slot t))) ∧
+        ¬ (t < sp.ts (sp.slot t) + sp.Δ ∧
+          (sp.slot t = 0 ∨ ¬ voteReady sp (callInputM sp wm A Φ t c) Φ (sp.slot t))) ∧
         callViewM sp wm A Φ t c = mergedVoteView sp (callInputM sp wm A Φ t c) Φ (sp.slot t) ∧
         tryVoteWithM sp wm self L (callInputM sp wm A Φ t c) Φ t = (A', es)) := by
   have hkeep := callInputM_keeps (wm := wm) A Φ t c
@@ -158,7 +173,8 @@ theorem stepWithM_voteBranch {L : Set Lock} (self : Fin sp.n)
         (((c = .tick ∧ t = sp.ts (sp.slot t) + sp.Δ) ∨ (∃ m, c = .message m) ∨
             ∃ B, c = .block B) ∧
           joined sp A t ∧ A.votedSlot ≠ sp.slot t ∧ t ≤ sp.ts (sp.slot t) + sp.Δ ∧
-          ¬ (t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ voteReady sp Φ (sp.slot t))) ∧
+          ¬ (t < sp.ts (sp.slot t) + sp.Δ ∧
+            (sp.slot t = 0 ∨ ¬ voteReady sp (callInputM sp wm A Φ t c) Φ (sp.slot t))) ∧
           callViewM sp wm A Φ t c = mergedVoteView sp (callInputM sp wm A Φ t c) Φ (sp.slot t) ∧
           tryVoteWithM sp wm self L (callInputM sp wm A Φ t c) Φ t = (A', es)) := by
     intro hk htv hV
@@ -227,6 +243,27 @@ private theorem exec_tryVote {u : Nat → Set Lock} (h : ACLocalRunU wm u H U tr
   · rw [hcall] at hexec ⊢
     exact ⟨hexec, rfl⟩
 
+/-- The guard of a vote branch passes at the call's unlock input (the branch reads it at the
+read point, which has the input's pools). -/
+private theorem voteBranchAt_ready_input {u : Nat → Set Lock} (h : ACLocalRunU wm u H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {R : SAState sp.n} (hb : VoteBranchAt tr y j ℓ R) :
+    ¬ (tr.time j < sp.ts (sp.slot (tr.time j)) + sp.Δ ∧ (sp.slot (tr.time j) = 0 ∨
+      ¬ voteReady sp (callInputM sp wm (tr.state y j) ℓ.frame (tr.time j) ℓ.call) ℓ.frame
+        (sp.slot (tr.time j)))) := by
+  obtain ⟨hc, hk, hj, -, -, hready, hR⟩ := voteBranchAt_iff.1 hb
+  obtain ⟨htv, -⟩ := exec_tryVote h hy hc hk hj
+  rcases tryVoteWithM_cases (wm := wm) (L := u j) y
+      (callInputM sp wm (tr.state y j) ℓ.frame (tr.time j) ℓ.call) ℓ.frame (tr.time j) with
+    h' | ⟨-, -, -, h'⟩
+  · obtain ⟨hpost, hem⟩ := Prod.mk.inj (htv.symm.trans h')
+    rcases hR with ⟨e, he, -⟩ | ⟨-, hpR⟩
+    · rw [hem] at he
+      exact absurd he List.not_mem_nil
+    · rw [← hpR, hpost] at hready
+      exact hready
+  · exact h'
+
 /-- A call that reaches `try_vote` and passes its guard, running `try_vote` from `P` (which keeps
 the state's restart time and `voted_slot`), takes the vote branch, to the read point of
 `tryVoteWithM_branch`, and leaves `voted_slot` at the slot of its time. -/
@@ -241,7 +278,7 @@ private theorem voteBranchAt_of_tryVote {y : Fin sp.n} {j : Nat}
     (hv : (tr.state y j).votedSlot ≠ sp.slot (tr.time j))
     (hlate : tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ)
     (hready : ¬ (tr.time j < sp.ts (sp.slot (tr.time j)) + sp.Δ ∧
-      (sp.slot (tr.time j) = 0 ∨ ¬ voteReady sp ℓ.frame (sp.slot (tr.time j)))))
+      (sp.slot (tr.time j) = 0 ∨ ¬ voteReady sp P ℓ.frame (sp.slot (tr.time j)))))
     (htv : tryVoteWithM sp wm y L P ℓ.frame (tr.time j) = (tr.post j, ℓ.emits)) :
     VoteBranchAt tr y j ℓ { (if 0 < sp.slot (tr.time j) then { P with locks := L } else P) with
         votedSlot := (sp.slot (tr.time j) : Int) } ∧
@@ -251,39 +288,24 @@ private theorem voteBranchAt_of_tryVote {y : Fin sp.n} {j : Nat}
     rwa [hPr]
   have hb := tryVoteWithM_branch (wm := wm) (L := L) y ℓ.frame hjP (by rw [hPv]; exact hv)
     hlate hready
+  have hready' : ¬ (tr.time j < sp.ts (sp.slot (tr.time j)) + sp.Δ ∧
+      (sp.slot (tr.time j) = 0 ∨ ¬ voteReady sp
+        { (if 0 < sp.slot (tr.time j) then { P with locks := L } else P) with
+          votedSlot := (sp.slot (tr.time j) : Int) } ℓ.frame (sp.slot (tr.time j)))) := by
+    rwa [voteReady_congr_pool readPoint_pool_eq]
   cases hm : P.mayVote (sp.slot (tr.time j)) with
   | true =>
     obtain ⟨e, he, hR, -, -⟩ := hb.1 hm
     obtain ⟨hpost, hem⟩ := Prod.mk.inj (htv.symm.trans he)
-    refine ⟨voteBranchAt_iff.2 ⟨hc, hk, hj, hv, hlate, hready, Or.inl ⟨e,
+    refine ⟨voteBranchAt_iff.2 ⟨hc, hk, hj, hv, hlate, hready', Or.inl ⟨e,
       by rw [hem]; exact List.mem_singleton_self _, hR⟩⟩, ?_⟩
     rw [hpost, (optimisticM_keeps _ _ _ _).1, (admitVote_keeps _ _ _).1, hR]
   | false =>
     obtain ⟨hpost, hem⟩ := Prod.mk.inj (htv.symm.trans (hb.2 hm))
-    exact ⟨voteBranchAt_iff.2 ⟨hc, hk, hj, hv, hlate, hready, Or.inr ⟨hem, hpost⟩⟩,
+    exact ⟨voteBranchAt_iff.2 ⟨hc, hk, hj, hv, hlate, hready', Or.inr ⟨hem, hpost⟩⟩,
       by rw [hpost]⟩
 
 /-! ## An honest vote branch -/
-
-/-- **A cast is a vote branch**, read at the emission's read point, with the unlock given. -/
-theorem voteBranchAt_of_castAtU {u : Nat → Set Lock} (h : ACLocalRunU wm u H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    {e : Em sp FGP} (hc : CastAt tr y j ℓ e) : VoteBranchAt tr y j ℓ e.readPoint := by
-  have hexec := h.exec j ℓ hc.1.2 (hc.1.1 ▸ hy)
-  rw [hc.1.1] at hexec
-  have hΦ : FrameOK ℓ.frame := by
-    rcases h.frameLaw y hy j ℓ hc.1 with ⟨-, _, -, -, hok⟩ | ⟨_, _, -, -, -, hok⟩ <;>
-      exact hok.1.1
-  rcases stepWithM_voteBranch y hΦ (h.time_nonneg j) ℓ.call hexec with
-    ⟨hn, -⟩ | ⟨hk, hj, hv, hlate, hready, -, -⟩
-  · exact absurd (hn ▸ hc.2) List.not_mem_nil
-  · exact voteBranchAt_iff.2 ⟨hc.1, hk, hj, hv, hlate, hready, Or.inl ⟨e, hc.2, rfl⟩⟩
-
-/-- **A cast is a vote branch**, read at the emission's read point. -/
-theorem voteBranchAt_of_castAt (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    {e : Em sp FGP} (hc : CastAt tr y j ℓ e) : VoteBranchAt tr y j ℓ e.readPoint :=
-  voteBranchAt_of_castAtU h.toU hy hc
 
 /-- **The vote branch of an honest call, characterised**: its unlock reads the merged view of
 its unlock input `P`; its read point `R` is `P` with the locks `u j` when `s > 0` (and `P` itself
@@ -300,7 +322,8 @@ theorem voteBranchAt_inputU {u : Nat → Set Lock} (h : ACLocalRunU wm u H U tr 
         votedSlot := (sp.slot (tr.time j) : Int) } ∧
       tryVoteWithM sp wm y (u j) (callInputM sp wm (tr.state y j) ℓ.frame (tr.time j) ℓ.call)
         ℓ.frame (tr.time j) = (tr.post j, ℓ.emits) := by
-  obtain ⟨hc, hk, hj, hv, hlate, hready, hb⟩ := voteBranchAt_iff.1 hb
+  have hready := voteBranchAt_ready_input h hy hb
+  obtain ⟨hc, hk, hj, hv, hlate, -, hb⟩ := voteBranchAt_iff.1 hb
   obtain ⟨htv, hV⟩ := exec_tryVote h hy hc hk hj
   refine ⟨hV, ?_, htv⟩
   have hkeep := callInputM_keeps (wm := wm) (tr.state y j) ℓ.frame (tr.time j) ℓ.call
@@ -382,7 +405,8 @@ theorem post_of_voteBranchAtU {u : Nat → Set Lock} (h : ACLocalRunU wm u H U t
         e.readPoint = R ∧ e.msg.val = y ∧ e.msg.slot = sp.slot (tr.time j) ∧
         tr.post j = optimisticConfirmationM sp wm (admitVote sp R (tr.time j) e.msg) ℓ.frame
           (tr.time j)) := by
-  obtain ⟨-, -, hj, hv, hlate, hready, -⟩ := voteBranchAt_iff.1 hb
+  have hready := voteBranchAt_ready_input h hy hb
+  obtain ⟨-, -, hj, hv, hlate, -, -⟩ := voteBranchAt_iff.1 hb
   obtain ⟨-, rfl, htv⟩ := voteBranchAt_inputU h hy hb
   have hkeep := callInputM_keeps (wm := wm) (tr.state y j) ℓ.frame (tr.time j) ℓ.call
   have hjP : joined sp (callInputM sp wm (tr.state y j) ℓ.frame (tr.time j) ℓ.call)
@@ -401,6 +425,33 @@ theorem post_of_voteBranchAtU {u : Nat → Set Lock} (h : ACLocalRunU wm u H U t
   | false =>
     obtain ⟨hpost, hem⟩ := Prod.mk.inj (htv.symm.trans (hbr.2 hm))
     exact Or.inl ⟨rfl, hem, hpost⟩
+
+/-- **A cast is a vote branch**, read at the emission's read point, with the unlock given. -/
+theorem voteBranchAt_of_castAtU {u : Nat → Set Lock} (h : ACLocalRunU wm u H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {e : Em sp FGP} (hc : CastAt tr y j ℓ e) : VoteBranchAt tr y j ℓ e.readPoint := by
+  have hexec := h.exec j ℓ hc.1.2 (hc.1.1 ▸ hy)
+  rw [hc.1.1] at hexec
+  have hΦ : FrameOK ℓ.frame := by
+    rcases h.frameLaw y hy j ℓ hc.1 with ⟨-, _, -, -, hok⟩ | ⟨_, _, -, -, -, hok⟩ <;>
+      exact hok.1.1
+  rcases stepWithM_voteBranch y hΦ (h.time_nonneg j) ℓ.call hexec with
+    ⟨hn, -⟩ | ⟨hk, hj, hv, hlate, hready, -, htv⟩
+  · exact absurd (hn ▸ hc.2) List.not_mem_nil
+  have hkeep := callInputM_keeps (wm := wm) (tr.state y j) ℓ.frame (tr.time j) ℓ.call
+  have hb := (voteBranchAt_of_tryVote hc.1 hk hkeep.1 hkeep.2.1 hj hv hlate hready htv).1
+  rcases post_of_voteBranchAtU h hy hb with ⟨-, hn, -⟩ | ⟨-, e', he', hR, -⟩
+  · exact absurd (hn ▸ hc.2) List.not_mem_nil
+  · have he := hc.2
+    rw [he', List.mem_singleton] at he
+    rw [he, hR]
+    exact hb
+
+/-- **A cast is a vote branch**, read at the emission's read point. -/
+theorem voteBranchAt_of_castAt (h : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {e : Em sp FGP} (hc : CastAt tr y j ℓ e) : VoteBranchAt tr y j ℓ e.readPoint :=
+  voteBranchAt_of_castAtU h.toU hy hc
 
 /-- **A vote branch of a node that may vote in the slot is a cast**, read at the branch's read
 point, of the node's own vote of the slot. -/

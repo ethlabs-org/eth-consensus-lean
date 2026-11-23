@@ -7,12 +7,13 @@ public section
 
 /-! # Goldilocks SA: the fields each handler keeps
 
-The SA handlers below write only some fields of the state. `admitVote` and `blockReceipt` keep
-`voted_slot`, `restart_time`, the locks and `latest_confirmed`; `updateLatestConfirmed` keeps
-`voted_slot`, `restart_time` and the locks; `optimisticConfirmation`, `updateConfirmation`,
-`acProposal` and `acToFG` keep `voted_slot` and `restart_time`. Every handler keeps `mayVote`
-(`step_mayVote`), and every emission is of a slot whose `mayVote` holds in the call's input
-state (`tryVote_emits_mayVote`, `emits_mayVote`: the emission gate). -/
+The SA handlers below write only some fields of the state. `admitVote` and `blockReceipt` (a
+stamp only) keep `voted_slot`, `restart_time`, the locks and `latest_confirmed`;
+`updateLatestConfirmed` keeps `voted_slot`, `restart_time` and the locks;
+`optimisticConfirmation`, `updateConfirmation`, `acProposal` and `acToFG` keep `voted_slot` and
+`restart_time`. Every handler keeps `mayVote` (`step_mayVote`), and every emission is of a slot
+whose `mayVote` holds in the call's input state (`tryVote_emits_mayVote`, `emits_mayVote`: the
+emission gate). -/
 
 namespace Consensus.Goldilocks.SA
 
@@ -58,33 +59,15 @@ theorem updateConfirmation_keeps (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Tim
   · exact ⟨rfl, rfl⟩
   · split_ifs <;> first | exact ⟨rfl, rfl⟩ | exact updateLatestConfirmed_keeps _ _ _
 
-/-- Admitting a list of votes keeps every field that `admitVote` keeps. -/
-private theorem foldl_admitVote_keeps (t : Time) (l : List (Vote sp.n)) (A : SAState sp.n) :
-    (l.foldl (fun A v => admitVote sp A t v) A).votedSlot = A.votedSlot ∧
-      (l.foldl (fun A v => admitVote sp A t v) A).restartTime = A.restartTime ∧
-      (l.foldl (fun A v => admitVote sp A t v) A).locks = A.locks ∧
-      (l.foldl (fun A v => admitVote sp A t v) A).latestConfirmed = A.latestConfirmed := by
-  induction l generalizing A with
-  | nil => exact ⟨rfl, rfl, rfl, rfl⟩
-  | cons v l ih =>
-    simp only [List.foldl_cons]
-    obtain ⟨h₁, h₂, h₃, h₄⟩ := ih (admitVote sp A t v)
-    exact ⟨h₁.trans (admitVote_keeps _ _ _).1, h₂.trans (admitVote_keeps _ _ _).2,
-      h₃.trans (admitVote_keeps_locks _ _ _).1, h₄.trans (admitVote_keeps_locks _ _ _).2⟩
-
 theorem blockReceipt_keeps (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (blockReceipt sp A t B).votedSlot = A.votedSlot ∧
       (blockReceipt sp A t B).restartTime = A.restartTime :=
-  have h := foldl_admitVote_keeps t (blockVotes B)
-    { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) }
-  ⟨h.1, h.2.1⟩
+  ⟨rfl, rfl⟩
 
 theorem blockReceipt_keeps_locks (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (blockReceipt sp A t B).locks = A.locks ∧
       (blockReceipt sp A t B).latestConfirmed = A.latestConfirmed :=
-  have h := foldl_admitVote_keeps t (blockVotes B)
-    { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) }
-  ⟨h.2.2.1, h.2.2.2⟩
+  ⟨rfl, rfl⟩
 
 theorem acToFG_keeps (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (acToFG sp A Φ t).1.votedSlot = A.votedSlot ∧
@@ -132,16 +115,10 @@ theorem tryVote_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
   dsimp only
   split_ifs <;> simp only [optimisticConfirmation_mayVote, admitVote_mayVote]
 
-private theorem foldl_admitVote_mayVote (t : Time) (vs : List (Vote sp.n)) (A : SAState sp.n) :
-    (vs.foldl (fun st v => admitVote sp st t v) A).mayVote = A.mayVote := by
-  induction vs generalizing A with
-  | nil => rfl
-  | cons v vs ih => exact (ih _).trans (admitVote_mayVote _ _ _)
-
-/-- Block receipt, which admits the block's votes, keeps the permission `mayVote`. -/
+/-- Block receipt, which only stamps the block, keeps the permission `mayVote`. -/
 theorem blockReceipt_mayVote (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (blockReceipt sp A t B).mayVote = A.mayVote :=
-  foldl_admitVote_mayVote t (blockVotes B) _
+  rfl
 
 /-- The vote handler `ac_on_message` keeps the permission `mayVote`. -/
 private theorem acOnMessage_mayVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP)
