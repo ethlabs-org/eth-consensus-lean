@@ -32,10 +32,10 @@ theorem opponents_subset_compl {V : View sp.n} {s : Int} {B : Blk sp.n FGP}
 
 `opponents_subset_compl` asks that a validator of `Hn` have at most one vote in the view, of any
 slot. An honest validator votes once per slot, and `heldVotes A A' Φ` holds the votes of every
-pool and every block of the tree, so for an honest `Hn` that premise fails on the held votes as
-soon as one of its validators has held votes of two slots. The view that `unlock` reads holds
-only slot-`(slot(t) − 1)` votes (`unlockView_votes_slot`: the pools hold votes of their own slot,
-and a block's votes are of the slot before it), so `hne` of
+pool and the declarations of equivocating validators, so for an honest `Hn` that premise fails
+on the held votes as soon as one of its validators has held votes of two slots. The view that
+`unlock` reads holds only slot-`(slot(t) − 1)` votes (`unlockView_votes_slot`: the pools hold
+votes of their own slot, and a block's votes are of the slot before it), so `hne` of
 `unlockTarget_unlockView_held_of_honest_slot` asks only that a validator of `Hn` have at most one
 held vote of slot `slot(t) − 1`. -/
 
@@ -58,7 +58,7 @@ its own slot and every block of the tree has a valid payload. -/
 theorem mergedVoteView_votes_slot {A : SAState sp.n} (s : Nat)
     (hp : ∀ τ, ∀ v ∈ A.pool τ, v.slot = τ) (hpay : ∀ C ∈ Φ.tree, validPayload C) :
     ∀ v ∈ (mergedVoteView sp A Φ s).votes, (v.slot : Int) = (s : Int) - 1 := by
-  rintro v (hv | ⟨C, hC, hCs, hv⟩)
+  rintro v (hv | ⟨C, hC, hCs, hv, -⟩)
   · exact voteViewList_votes_slot hp v hv
   · have := (hpay C hC).1 v hv
     omega
@@ -104,19 +104,36 @@ theorem unlockTarget_unlockView_held_of_honest_slot {ro : ReplayOrder sp FGP} (s
     (hf : 2 * Hnᶜ.ncard < sp.committeeSize) :
     unlockTarget sp Φ (unlockView A Φ t c) s B = B := by
   subst hA'
-  have hsub := unlockView_subset_post (S := heldVotes A
-    ((goldilocksSA sp FGP ro).step self A Φ t c).1 Φ) self c
-    (fun τ _ hv => mem_heldVotes.2 (Or.inl ⟨τ, hv⟩))
-    (fun τ _ hv => mem_heldVotes.2 (Or.inr (Or.inl ⟨τ, hv⟩)))
-    (fun C hC _ hv => mem_heldVotes.2 (Or.inr (Or.inr ⟨C, hC, hv⟩)))
+  -- the view lies in the held votes, up to declarations of validators outside `Hn`: a counted
+  -- declaration of a validator of `Hn` that equivocates in the pool before the call
+  -- contradicts `hne`
+  let A' := ((goldilocksSA sp FGP ro).step self A Φ t c).1
+  let S : Set (Vote sp.n) := {v | v ∈ heldVotes A A' Φ ∨ v.val ∉ Hn}
+  have hheld : ∀ x ∈ S, x.val ∈ Hn → x ∈ heldVotes A A' Φ := fun x hx hxH =>
+    hx.resolve_right (not_not.2 hxH)
+  have hsub := unlockView_subset_post (S := S) self c
+    (fun τ _ hv => Or.inl (mem_heldVotes.2 (Or.inl ⟨τ, hv⟩)))
+    (fun τ _ hv => Or.inl (mem_heldVotes.2 (Or.inr (Or.inl ⟨τ, hv⟩))))
+    (fun C hC hCs v hv he => by
+      rcases he with ⟨w₁, hw₁, w₂, hw₂, hw, hw₁v, hw₂v⟩ | he
+      · by_cases hvH : v.val ∈ Hn
+        · have hvs : (v.slot : Int) = (sp.slot t : Int) - 1 := by
+            have := (hpay C hC).1 v (hv.elim id fun h => (hpay C hC).2.1.subset h)
+            omega
+          have hs₁ := hpre _ w₁ hw₁
+          have hs₂ := hpre _ w₂ hw₂
+          exact absurd (hne w₁ (mem_heldVotes.2 (Or.inl ⟨_, hw₁⟩))
+            w₂ (mem_heldVotes.2 (Or.inl ⟨_, hw₂⟩)) (hw₁v ▸ hvH) (hw₂v.trans hw₁v.symm)
+            (hs₁.trans hs₂.symm) (by rw [hs₁]; exact hvs)) hw
+        · exact Or.inr hvH
+      · exact Or.inl (mem_heldVotes.2 (Or.inr (Or.inr ⟨⟨C, hC, hv⟩, he⟩))))
   have hsl := unlockView_votes_slot self c hpre hpost hpay
-  let W : Set (Vote sp.n) := {v | v ∈ heldVotes A ((goldilocksSA sp FGP ro).step self A Φ t
-    c).1 Φ ∧ (v.slot : Int) = (sp.slot t : Int) - 1}
-  have hW := opponents_subset_compl (Φ := Φ) (s := s) (B := B)
-    (V := ⟨W, heldVotes A ((goldilocksSA sp FGP ro).step self A Φ t c).1 Φ⟩)
+  let W : Set (Vote sp.n) := {v | v ∈ S ∧ (v.slot : Int) = (sp.slot t : Int) - 1}
+  have hW := opponents_subset_compl (Φ := Φ) (s := s) (B := B) (V := ⟨W, S⟩)
     (fun x hx y hy hxH hyx =>
-      hne x hx.1 y hy.1 hxH hyx (by have := hx.2.trans hy.2.symm; omega) hx.2)
-    hcompat
+      hne x (hheld x hx.1 hxH) y (hheld y hy.1 (hyx ▸ hxH)) hxH hyx
+        (by have := hx.2.trans hy.2.symm; omega) hx.2)
+    (fun x hx hxH => hcompat x (hheld x hx hxH) hxH)
   exact unlockTarget_eq_self_of_subset hΦ _ s hB
     ((opponents_mono_view (W := ⟨W, _⟩) (fun v hv => ⟨hsub.1 hv, hsl v hv⟩) hsub.2 s B).trans
       hW) hf
