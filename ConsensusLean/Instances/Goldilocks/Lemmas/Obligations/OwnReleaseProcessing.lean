@@ -17,8 +17,6 @@ run, and the release or source facts of its own.
 
 * `tick_attest_processAt`: an attestation signed in a public tick's group is processed by the
   node at the tick;
-* `acBlock_cut_cases`: an AC block cut carrying a vote is in a delivery, which processes the vote
-  at the cut's time, or in a public tick of the cut's node;
 * `acBlock_vote_pooled_in_tick`: in any Goldilocks run, an AC block cut inside a tick group of
   its node has the block's votes already pooled (the block is the node's own proposal). -/
 
@@ -154,34 +152,6 @@ theorem tick_attest_processAt {i : Nat} {v : V} {t : Time}
     (traceEncoding S hn) rho he hp hlen (C := C) (a := a) hm
   rw [htrace.1]
   exact ⟨_, Or.inl hcall, htime⟩
-
-/-- **The event of an AC block cut carrying a vote.** An AC cut `i` of `y` calling the block `B`
-with `m ∈ blockVotes B` is in a delivery, which processes `m` at `y` at the cut's time, or in a
-public tick event `n` of the node `v` of `y`, with `i ∈ [cutMap n, cutMap (n + 1))` at the tick's
-time. A restart has no such cut. -/
-theorem acBlock_cut_cases (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {i : Nat}
-    {ℓ : ACLabel (goldilocksNode (S.params (Model.pubOf E) hn) (S.ro _))}
-    {B : Blk (S.params (Model.pubOf E) hn)} {m : SA.Vote (Fintype.card V)}
-    (hc : (simTrace S rho hn).CallAt y i (.ac ℓ)) (hb : ℓ.call = .block B)
-    (hm : m ∈ SA.blockVotes B) :
-    (∃ k, (simTrace S rho hn).projAC.ProcessAt y k m ∧
-        (simTrace S rho hn).time k = (simTrace S rho hn).time i) ∨
-      ∃ n v t, rho.events[n]? = some (.tick v t) ∧
-        (S.params (Model.pubOf E) hn).toParams.IsPublic t ∧ rho.ownKey v = y ∧
-        cutMap S rho hn n ≤ i ∧ i < cutMap S rho hn (n + 1) ∧ (simTrace S rho hn).time i = t := by
-  rw [(simTrace_encoding S rho hn).1] at hc ⊢
-  rw [(simTrace_encoding S rho hn).2]
-  apply NodeAsChainShape.CanonicalTrace.acBlock_cut_cases (traceEncoding S hn) rho
-    (traceEncoding_opLaws S hn) hv hc hb
-  apply traceEncoding_induction S hn (fun e _ =>
-    ∀ o : (Model.protoOf (compiled (goldilocks S)) E).Object,
-      ∃ w ∈ e.codec.carried B.fgPayload B.acPayload,
-        NodeAsChainShape.canonEvent e.codec (Model.digests rho.hash o) w = some (.message m))
-  intro _ _ o
-  exact ⟨voteObj (binding := S.vote) m,
-    List.mem_append_right _ (List.mem_map.mpr ⟨m, List.mem_append_left _ hm, rfl⟩),
-    canonEvent_voteObj (sp := S.params (Model.pubOf E) hn) (ro := S.ro _)
-      (Model.digests rho.hash o) m⟩
 
 end Events
 
