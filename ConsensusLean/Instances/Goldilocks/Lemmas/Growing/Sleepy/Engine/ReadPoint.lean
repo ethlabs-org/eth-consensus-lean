@@ -86,22 +86,24 @@ private theorem groupRecs_head_pos {sp : AC.ACParams} {ro : AC.ReplayOrder sp (L
 /-- The first cut of a delivery is at position `0`. -/
 private theorem deliverRecs_head_pos {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {binding : VoteBinding}
-    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
+    (io : VoteAuth sp.n binding) (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) :
     ∀ (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
-      {r : CutRec sp ro}, (deliverRecs proposer dg hs self t i os st sub)[0]? = some r →
+      {r : CutRec sp ro},
+      (deliverRecs io proposer dg hs self t i os st sub)[0]? = some r →
       r.pos = 0
   | [], st, sub, r, h => by simp [deliverRecs_nil] at h
   | o :: os, st, sub, r, h => by
-    cases he : canonEvent sp ro hs o with
+    cases he : canonEvent sp ro io hs o with
     | none =>
-      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ he] at h
-      exact deliverRecs_head_pos proposer dg hs self t i os st (sub + 1) h
+      rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ _ he] at h
+      exact deliverRecs_head_pos io proposer dg hs self t i os st (sub + 1) h
     | some e =>
-      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ e he] at h
+      rw [deliverRecs_cons_some _ _ _ _ _ _ _ _ _ _ _ e he] at h
       by_cases hg : (groupRecs proposer dg self st t (Nat.pair i sub) e).length = 0
       · rw [List.getElem?_append_right (by omega), hg] at h
-        exact deliverRecs_head_pos proposer dg hs self t i os _ (sub + 1) h
+        exact deliverRecs_head_pos io proposer dg hs self t i os _ (sub + 1) h
       · rw [List.getElem?_append_left (by omega)] at h
         exact groupRecs_head_pos proposer dg self st t _ e h
 
@@ -113,7 +115,7 @@ private theorem eventCuts_head_pos (i : Nat) {r : CutRec (S.params (pubOf E) hn)
   · split at h
     · exact groupRecs_head_pos _ _ _ _ _ _ _ h
     · simp at h
-  · exact deliverRecs_head_pos _ _ _ _ _ _ _ _ _ h
+  · exact deliverRecs_head_pos _ _ _ _ _ _ _ _ _ _ h
   · exact groupRecs_head_pos _ _ _ _ _ _ _ h
   · simp at h
 
