@@ -7,7 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Block
 /-! # Golden cases of declared head votes
 
 A slot-`s` block declares previous-slot head votes, with a support list (the Lean form of the
-support bits). A declaration is not a vote: block receipt and restart replay admit nothing, a
+support bits). A declaration is not a vote: block receipt and restart replay pool nothing, a
 block carries no vote object, and a voter counts a declaration only when its pool holds the exact
 vote or two distinct votes of its validator (`ShouldCountDeclaredVote`). An early vote needs every
 declaration of every slot-`s` proposal counted (`voteReady`); at `t_s + Δ` the voter votes and
@@ -268,7 +268,7 @@ theorem unsigned_omitted_at_timeout :
 
 /-! ## No pool insertion or replay -/
 
-/-- A block receipt admits none of the block's declarations (under the former rule it would admit
+/-- A block receipt pools none of the block's declarations (under the former rule it would pool
 `a`, `b'` and `z`). -/
 theorem blockReceipt_admits_nothing :
     (blockReceipt sp3 (SAState.initial 0) 8 (prop 3 ([a, b', z], [a]))).pool 1 = [] := rfl

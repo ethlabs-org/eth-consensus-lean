@@ -8,6 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.AsChainShape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVoteTransfer
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Family.Identity
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Family.ServiceEquivalence
@@ -35,6 +36,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Resolution
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.MergedOpponents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
@@ -55,7 +57,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Honest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ReceiptCover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Saved
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Update

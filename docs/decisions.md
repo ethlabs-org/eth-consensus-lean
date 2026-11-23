@@ -159,7 +159,7 @@ detail in `TRUST.md`.
     the delivery-time releases at `a` exist, so those are served from `a + 1`. Every regime premise the witness runs
     serve (`PSync`, `SyncUntil`, `OutageNet`) is still implied (`EagerFrom.psync`).
 - **Received payload objects are processed in preorder, except those of a refused block.** A delivery traverses
-  the object closure, processing a canonical block before its carried votes and attestations. Wrappers have no
+  the object closure, processing a canonical block before its carried attestations. Wrappers have no
   canonical node event, and nested wrappers do not hide their contents. A block that the node drops as of a future
   slot, or that the FG refuses, gets no handler for what it carries, and neither does a block-shaped object (a
   header item) that fails the wire checks (composition.tex §"Blocks": the check drops it with no effect); a later
@@ -168,8 +168,8 @@ detail in `TRUST.md`.
   refused by the FG and is not forwarded (composition.tex §"Model"). A vote is forwarded, in a signed envelope
   stamped with its admission time, exactly when a call other than a restart newly inserts it into the pool; the
   restart's replay forwards nothing (`SendOrAdmit`). A vote the restart drops and the replay does not restore is
-  forwarded again when it is re-admitted, as a fresh admission. The payload votes and attestations of an
-  accepted block get actual message and attestation calls. Block-before-payload preserves the block handler's
+  forwarded again when it is re-admitted, as a fresh admission. The attestations of an accepted block get actual
+  attestation calls; its declared head votes are not objects and get no call. Block-before-payload preserves the block handler's
   priority (including any vote it emits); the later message handlers use the resulting state. The one-vote
   invariant applies to arbitrary same-time object lists, so one delivery poll still drains the emitted vote.
 - **Finite observation coverage is separate from labelled action coverage.** `Trace.observationHorizon` defaults to
@@ -532,7 +532,7 @@ detail in `TRUST.md`.
   (`committeeSize ≤ 2·score`), the optimistic test (`3·committeeSize ≤ 4·|voters|`) and the unlock bound
   (`2·|opponents| < committeeSize`). The AC step statements read a slot dictionary `CommitteeDict` of
   `committeeSize` members per slot with three facts: P (`CommitteeP`, honest pools and optimistic-check states hold
-  only committee signatures), T (`CommitteeT`, so do the merged views of honest votes) and CS (`FaultBoundK`, fewer
+  only committee signatures), T (`CommitteeT`, the merged views of honest votes count only committee members; membership, not signatures: a counted declared head vote need not have been signed) and CS (`FaultBoundK`, fewer
   faulty than honest, awake and joined members). `CommitteeDict.BindsSel` is the one link from a dictionary to the
   run's actual selection of `voteRole s`.
 - **Statements at population-sized committees take the size equation as a premise.** The run records
@@ -544,7 +544,9 @@ detail in `TRUST.md`.
   dictionary `K` instead: from its committee start, with its committee facts and its committee support
   `CommitteeSleepy`, and no size equation. So are the static healing statements: the HS shared premises
   `Healing.HSShared` take a slot dictionary `K` and carry its committee facts
-  (`Compose.Growing.CommitteeFacts` at the constant honest set) and CS2 for every slot after the slot of
+  (`Compose.Growing.CommitteeFacts` at the constant honest set: committee sizes, P and the gate; it has no
+  `hFrame` premise on the blocks of frames, since a valid block may declare a non-member, and T follows from P)
+  and CS2 for every slot after the slot of
   `ḡ` (`twoK`; no count at a slot that starts at or before `ḡ`), and the statements that take them
   (node O.1 `PatternRecovery`, C1.3 `FinalizingCoverage`, C1.2 `Compose.OutcomeService`, HR.3, HS.1, HS.2,
   HS.4) run from `K`'s committee start; HR.4 `HeightScopedRetention` takes the same two facts and HR.5

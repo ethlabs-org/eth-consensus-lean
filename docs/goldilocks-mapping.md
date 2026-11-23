@@ -215,13 +215,13 @@ Goldilocks SA, and F.1, A0.1–A0.9. The A1 step lemmas are `ACSteps`.
 | — | not in SPEC (its committee of every slot is `V`); `docs/decisions.md` §"Committee modelling" | the public committee size, the denominator of the fast, optimistic and unlock thresholds (`n` at the population binding); the own vote permission of each slot, installed at `init` and kept by the restart (`true` everywhere at the population binding; `tryVote` admits, emits and optimistically checks its own vote only when it holds, and records `votedSlot` either way) | — | `Consensus.Goldilocks.SA.SAParams.committeeSize`, `Consensus.Goldilocks.SA.SAState.mayVote` |
 | — | CLAIMS `Carry` (before A1.1), `h_t` (§Runs), §Premises fault bound | over SA traces | — | `Consensus.Goldilocks.SA.SATrace`, `Consensus.Goldilocks.SA.CarryAt`, `Consensus.Goldilocks.SA.Carry`, `Consensus.Goldilocks.SA.JoinedAt`, `Consensus.Goldilocks.SA.FaultBound` |
 | F.1 | CLAIMS F.1 (a), (b), (c) | slot arithmetic; lock expiry (the live locks are constant within a slot, since a lock is live while `slot(t) ≤ l.expiry`); joining | `ACBase` | `Consensus.Goldilocks.SA.SlotArithmetic`, `Consensus.Goldilocks.SA.LockExpiry`, `Consensus.Goldilocks.SA.JoinedFrom`, `Consensus.Goldilocks.SA.JoinedAwake` |
-| A0.1 | CLAIMS A0.1 | pool capacity, admission slots, stamps, a block adds no vote but the node's own (its declared head votes are never admitted), stamps along parent edges. **Stronger than CLAIMS**: admission slots holds for every call from every state and frame, and the block statement for every `ac_on_block` from every state and frame; CLAIMS states both for lawful calls from reachable states | `ACBase` | `Consensus.Goldilocks.SA.PoolCap`, `Consensus.Goldilocks.SA.AdmissionSlots`, `Consensus.Goldilocks.SA.StampStable`, `Consensus.Goldilocks.SA.BlockAddsOnlyOwnVote`, `Consensus.Goldilocks.SA.StampParent` |
+| A0.1 | CLAIMS A0.1 | pool capacity, admission slots, stamps, a block adds no vote but the node's own (its declared head votes are never admitted), stamps along parent edges. The block clause replaces the earlier carried-votes statement (a block vote absent from the pool after `ac_on_block` makes its validator an equivocator); it does not imply it and identifies no emitted head. **Stronger than CLAIMS**: admission slots holds for every call from every state and frame, and the block statement for every `ac_on_block` from every state and frame; CLAIMS states both for lawful calls from reachable states | `ACBase` | `Consensus.Goldilocks.SA.PoolCap`, `Consensus.Goldilocks.SA.AdmissionSlots`, `Consensus.Goldilocks.SA.StampStable`, `Consensus.Goldilocks.SA.BlockAddsOnlyOwnVote`, `Consensus.Goldilocks.SA.StampParent` |
 | A0.2 | CLAIMS A0.2 | resolution is stable; support heads in the tree, opponents of `Φ.F` | `ACBase` | `Consensus.Goldilocks.SA.ResolutionStable`, `Consensus.Goldilocks.SA.SupportInTree` |
-| A0.3 | CLAIMS A0.3 | supporters, opponents, majority chain, optimistic chain, merged-view opponents (reading: the claim's "slot-`(s+1)` voter" is a reachable state whose last call is in slot `σ + 1`; its parenthetical "for the carried votes, A0.1 under its timing condition" is the proof route, not a premise, so the statement has no acceptance-time premise; A0.1's condition, a block accepted at `t` with `slot(t) = B.slot`, agrees with the call-time premise for a slot-`(σ+1)` block of the merged view only if that block was not accepted in an earlier slot; the statement is proved as stated) | `ACBase` | `Consensus.Goldilocks.SA.SupportersAntitone`, `Consensus.Goldilocks.SA.OpponentsMonotone`, `Consensus.Goldilocks.SA.MajorityChain`, `Consensus.Goldilocks.SA.OptimisticChain`, `Consensus.Goldilocks.SA.MergedOpponents` |
+| A0.3 | CLAIMS A0.3 | supporters, opponents, majority chain, optimistic chain, merged-view opponents (reading: the claim's "slot-`(s+1)` voter" is a reachable state whose last call is in slot `σ + 1`; a declared head vote counts in the merged view only when the pool holds it or two distinct votes of its validator, so the statement has no acceptance-time premise) | `ACBase` | `Consensus.Goldilocks.SA.SupportersAntitone`, `Consensus.Goldilocks.SA.OpponentsMonotone`, `Consensus.Goldilocks.SA.MajorityChain`, `Consensus.Goldilocks.SA.OptimisticChain`, `Consensus.Goldilocks.SA.MergedOpponents` |
 | A0.4 | CLAIMS A0.4 (a)–(f) | live locks on one chain and viable; locks move back; unlock idempotent; no fallback; FG candidates. **Stronger than CLAIMS**: (a), (b) and (f) hold at a reachable state at every time `t`, also before the state's last call `t₀` (CLAIMS' "at every time" reads the node's state at `t`, so `t₀ ≤ t`, the earlier Lean form; the proofs never used it) | `ACBase` | `Consensus.Goldilocks.SA.LiveLocksChain`, `Consensus.Goldilocks.SA.MovesBack`, `Consensus.Goldilocks.SA.LocksMoveBack`, `Consensus.Goldilocks.SA.UnlockIdempotent`, `Consensus.Goldilocks.SA.UnlockNoFallback`, `Consensus.Goldilocks.SA.CandidatesChain` |
 | A0.5 | CLAIMS A0.5 | lock to tip. **Stronger than CLAIMS**: at a reachable state at every time `t`, also before the state's last call `t₀` (the unused `t₀ ≤ t` is dropped) | `ACBase` | `Consensus.Goldilocks.SA.LockToTip` |
 | A0.6 | CLAIMS A0.6 | requirements 1–4 for the SA | `ACBase` | `Consensus.Goldilocks.SA.InterfaceRequirements` |
-| A0.7 | CLAIMS A0.7 | the restart state; a joined node erased no recent vote | `ACBase` | `Consensus.Goldilocks.SA.RestartState`, `Consensus.Goldilocks.SA.JoinedKeepsVotes` |
+| A0.7 | CLAIMS A0.7 | the restart state (locks, `latest_confirmed` and `mayVote` kept; pools empty); a joined node erased no recent vote | `ACBase` | `Consensus.Goldilocks.SA.RestartState`, `Consensus.Goldilocks.SA.JoinedKeepsVotes` |
 | A0.8 | CLAIMS A0.8 | one vote per slot, across restarts | `ACBase` | `Consensus.Goldilocks.SA.OneVotePerSlot` |
 | A0.9 | CLAIMS A0.9 | requirement 5 for the SA | `ACBase` | `Consensus.Goldilocks.SA.ProposalPayloadValid` |
 | — | not a claims node | the AC trace contract gives reachable states | `ACBase` | `Consensus.Goldilocks.LocalRunReachable` |
@@ -241,17 +241,19 @@ Modelling choices:
   wins a tie; the same rule breaks the walk's score ties.
 - **The walk** is bounded by the size of the frame tree (`FrameOK.finite`).
 - **The restart** replays in a parent order that is a parameter of the SA (`Consensus.Goldilocks.SA.ReplayOrder`).
-  The spec leaves the sibling order open, and the order matters for the two-vote cap and the pool order. Every statement quantifies over all replay orders.
+  The spec leaves the sibling order open; the replay only stamps blocks, so the order does not change the state.
+  Every statement quantifies over all replay orders. A restart keeps the locks, `latest_confirmed` and the vote
+  permission `mayVote`; the pools are empty after it.
 - **The own vote's re-entrant `try_vote`** is not unfolded: it returns at once because `voted_slot = s` is written
   first.
 - **Placement.** The generic interface cannot name votes or joining, so `Carry`, `h_t` and the fault bound are in
   `Spec/SA/Trace`, not `Spec/AC/Trace`.
 - **`Sync` over the AC trace**:
-  - An honest node forwards an AC message when its AC admits it, also from the payload of an accepted block. A
-    refused receipt is not forwarded.
+  - An honest node forwards an AC message when its AC admits it. A block's declared head votes are not admitted
+    and not forwarded. A refused receipt is not forwarded.
   - So the message clause triggers on every honest send or admission in `[a, b]` (`ACInterface.holdsMsg`; for the
     SA, the vote is in its pool after the call and was not before). The restart's replay is excluded, because it
-    re-processes blocks already accepted and sends nothing (A0.7).
+    re-processes blocks already accepted, admits no vote and sends nothing (A0.7).
   - The message must be processed at a time in `[τ, deadline)`. A processing before `τ` does not count.
   - The earlier "first receives … processed before" wording has counterexamples.
 - **Reachability.** It starts at time `0`, with genesis as the slot-0 block with no parent and the AC's genesis
@@ -277,8 +279,8 @@ A1.7 are run-level (Service, retired as milestone statements).
 |---|---|---|---|---|
 | — | SPEC §"Confirmation" (named parts of the update and the optimistic check) | the update's path, fast test, fast selection (the raw test, unfiltered; the update's fast lock is the deepest fast block of the unvetoed part of the path) and counted votes; the optimistic selection; the block receipt | — | `Consensus.Goldilocks.SA.confirmationPath`, `Consensus.Goldilocks.SA.FastTest`, `Consensus.Goldilocks.SA.fastSelect`, `Consensus.Goldilocks.SA.fastCounted`, `Consensus.Goldilocks.SA.optimisticSelect`, `Consensus.Goldilocks.SA.blockReceipt` |
 | — | CLAIMS §"L1 / Available chain" (events of the step lemmas) | votes and their viability; updates, results, fast lock writes of either origin with counted votes; `ac_to_fg` returns; proposals | — | `Consensus.Goldilocks.SA.VoteExtends`, `Consensus.Goldilocks.SA.CastAt`, `Consensus.Goldilocks.SA.ViableAtVote`, `Consensus.Goldilocks.SA.EarlierVotesExtend`, `Consensus.Goldilocks.SA.UpdateAt`, `Consensus.Goldilocks.SA.ResultAt`, `Consensus.Goldilocks.SA.FastUpdateAt`, `Consensus.Goldilocks.SA.OptimisticPoint`, `Consensus.Goldilocks.SA.OptimisticLockAt`, `Consensus.Goldilocks.SA.FastLockAt`, `Consensus.Goldilocks.SA.ToFGAt`, `Consensus.Goldilocks.SA.ProposalAt` |
-| — | CLAIMS §Runs (unforgeable signatures); FG acceptance (slot proposer) | honest objects over an AC trace; the bundle with the trace contract | — | `Consensus.Goldilocks.SA.HonestObjects`, `Consensus.Goldilocks.SA.ACRun` |
-| — | not a claims node (slot committees; `docs/decisions.md` §"Committee modelling") | a slot dictionary and its full form; over an AC trace, P (honest pools and optimistic-check states hold only signatures of the slot's committee), T (so do the merged views of honest votes) and CS (fewer faulty members of the slot's committee than honest, awake and joined ones), with P and T under growing faults | — | `Consensus.Goldilocks.SA.CommitteeDict`, `Consensus.Goldilocks.SA.CommitteeDict.full`, `Consensus.Goldilocks.SA.CommitteeP`, `Consensus.Goldilocks.SA.CommitteeT`, `Consensus.Goldilocks.SA.FaultBoundK`, `Consensus.Goldilocks.SA.CommitteePAt`, `Consensus.Goldilocks.SA.CommitteeTAt` |
+| — | CLAIMS §Runs (unforgeable signatures); FG acceptance (slot proposer) | honest objects over an AC trace (pool and received votes of honest validators were emitted; no fact about a block's declared head votes, which are not signed); the bundle with the trace contract | — | `Consensus.Goldilocks.SA.HonestObjects`, `Consensus.Goldilocks.SA.ACRun` |
+| — | not a claims node (slot committees; `docs/decisions.md` §"Committee modelling") | a slot dictionary and its full form; over an AC trace, P (honest pools and optimistic-check states hold only signatures of the slot's committee), T (the merged-view votes of honest votes, counted declared head votes included, are by members of their slot's committee: membership only, not that a declared head was signed) and CS (fewer faulty members of the slot's committee than honest, awake and joined ones), with P and T under growing faults | — | `Consensus.Goldilocks.SA.CommitteeDict`, `Consensus.Goldilocks.SA.CommitteeDict.full`, `Consensus.Goldilocks.SA.CommitteeP`, `Consensus.Goldilocks.SA.CommitteeT`, `Consensus.Goldilocks.SA.FaultBoundK`, `Consensus.Goldilocks.SA.CommitteePAt`, `Consensus.Goldilocks.SA.CommitteeTAt` |
 | A1.1 | CLAIMS A1.1 | proposer and voters agree on unlocking | `ACSteps` | `Consensus.Goldilocks.SA.ProposerVotersAgree` |
 | A1.2 | CLAIMS A1.2 | first transfer, per vote | `ACSteps` | `Consensus.Goldilocks.SA.FirstTransfer` |
 | A1.3 | CLAIMS A1.3 | next transfer, per vote. **Stronger than CLAIMS**: no `Sync[t_m, τ]` premise | `ACSteps` | `Consensus.Goldilocks.SA.NextTransfer` |
@@ -294,7 +296,8 @@ Modelling choices:
   by their validator's node. Every frame block has its slot's proposer. An honest proposer has at most one block per
   slot. `Spec/Run` discharges them through the projection.
 - **Committees.** A1.2–A1.4 count over a slot dictionary `K` of `committeeSize` members per slot whose
-  members sign the votes the honest nodes hold (`CommitteeP`, `CommitteeT`), with the fault bounds charged to the
+  members cast the votes the honest nodes hold and are the validators their merged views count (`CommitteeP`,
+  `CommitteeT`; T states membership only), with the fault bounds charged to the
   slot committees (`FaultBoundK`, `2·|K s ∖ H| < committeeSize`). At the full dictionary with `committeeSize = n`
   these are the population facts (`FaultBound`, `2f < n`).
 - **Events inside a call** are named through the SA's own functions:
@@ -315,8 +318,8 @@ Modelling choices:
   claims also ask `fc_root`), or (ii) restarted after `t_s`. It is not a vacuous "at each unlocking": that earlier form
   is false. C1.1 discharges the disjunction by C0.4.
 - **A1.2** follows the claims' text without a writer-pool hypothesis. That condition (A1.8 (d)) follows from
-  `Sync`, because votes admitted from a block's payload are forwarded too. Without that forwarding,
-  A1.2 would be false through block-carried votes.
+  `Sync`: a declared head vote counts at the voter only when its pool holds the vote or two distinct votes of
+  its validator, and every vote a node admits is forwarded.
 
 Witness in `ConsensusLeanTest/Goldilocks/AC/Base.lean`, kind (a): `acRun_one_tick` (the hypothesis `ACRun` is
 satisfiable).
@@ -406,7 +409,7 @@ the honest nodes, grouped by top-level event; faulty nodes have no cuts.
 | C0.4, C0.5 | CLAIMS §Runs | a top-level event's cuts as a group of consecutive cuts with the handler's labels in order; membership; a tick group; the phase an event runs in | — | `Consensus.Goldilocks.RunTrace.GroupAt`, `Consensus.Goldilocks.RunTrace.InGroup`, `Consensus.Goldilocks.RunTrace.TickAt`, `Consensus.Goldilocks.Node.Event.phase` |
 | — | CLAIMS §Runs (admissibility); SPEC §Model | **the run law**: initial state, every cut in a group obeying the cut law, wire checks, time order from `0`, finiteness per bounded interval, restart < tick < delivery at one time, an awake node ticks exactly once at every public time, called only while awake, first call after a sleep is a restart and a wake is a restart (sleep = no cuts, wake = restart cut), the awake clamp past the last cut, unforgeability (own blocks, attestations, AC messages via the signer map `sg`) | — | `Consensus.Goldilocks.Node.LocalRun` |
 | Premises | CLAIMS §Premises (`Sync[a,b]`, `GST(g)`, `Sleepy`, `Healthy(g)`; `h_t` awake and joined) | joined at `t`; `h_t`; `f < h_t`; delivery within the deadline (messages, blocks, acceptances, attestations); `Sync` on a window with an effective send time, with acceptance relay; `Sync[a, b]`; `GST(g)`; `Sleepy`; `Healthy(g)` | — | `Consensus.Goldilocks.RunTrace.JoinedAt`, `Consensus.Goldilocks.RunTrace.honestAwakeJoined`, `Consensus.Goldilocks.RunTrace.FaultBound`, `Consensus.Goldilocks.RunTrace.MsgDeliveredBy`, `Consensus.Goldilocks.RunTrace.BlockDeliveredBy`, `Consensus.Goldilocks.RunTrace.BlockAcceptedBy`, `Consensus.Goldilocks.RunTrace.AttDeliveredBy`, `Consensus.Goldilocks.RunTrace.SyncOn`, `Consensus.Goldilocks.RunTrace.SyncRun`, `Consensus.Goldilocks.RunTrace.GSTRun`, `Consensus.Goldilocks.RunTrace.SleepyRun`, `Consensus.Goldilocks.RunTrace.HealthyRun` |
-| — | SPEC §Composition; CLAIMS §Runs (carried votes) | the Goldilocks node (the node with the SA at the FG payload); its traces; a Goldilocks run (`LocalRun` with the vote's validator as signer, plus carried-vote unforgeability and the genesis root the digest of its content, so that C1.1 reaches the FG trace through `FGProjection`) | — | `Consensus.Goldilocks.goldilocksNode`, `Consensus.Goldilocks.GoldilocksTrace`, `Consensus.Goldilocks.GoldilocksRun` |
+| — | SPEC §Composition; CLAIMS §Runs (carried votes) | the Goldilocks node (the node with the SA at the FG payload); its traces; a Goldilocks run (`LocalRun` with the vote's validator as signer, and the genesis root the digest of its content, so that C1.1 reaches the FG trace through `FGProjection`; it has no carried-vote unforgeability: a block's declared head votes are not signed, so the record gives its users no fact about them) | — | `Consensus.Goldilocks.goldilocksNode`, `Consensus.Goldilocks.GoldilocksTrace`, `Consensus.Goldilocks.GoldilocksRun` |
 | C0.5 | CLAIMS C0.5 | the AC and FG labels of a cut; the AC projection (an `ACTrace` over the `𝒜` parts); the FG projection (an `FGTrace` over the `(Σ, Λ)` parts) | — | `Consensus.Goldilocks.RunTrace.acLabel`, `Consensus.Goldilocks.RunTrace.fgLabel`, `Consensus.Goldilocks.RunTrace.projAC`, `Consensus.Goldilocks.RunTrace.projFG` |
 | NoColl | CLAIMS §Premises (`NoColl`) | `NoCollOn` on the objects of the run: the blocks that occur in it and genesis (held from `Store.init`, not necessarily the object of a block call; the claims' `NoColl` is over all objects and C0.3 takes it) | Persist | `Consensus.Goldilocks.Compose.NoCollRun` |
 | F.5 (run) | CLAIMS F.5 (run) | the order facts (by time; restart < tick < delivery at one time; positions inside a tick; a send before its receipts); every run has them | Persist | `Consensus.Goldilocks.Compose.RunOrder`, `Consensus.Goldilocks.Compose.EventOrder` |
@@ -435,8 +438,11 @@ Modelling choices:
 - **`GST(g)`'s "as if sent at `g`"** is read for the deadline only: an object sent at `τ < g` has deadline
   `max(g, w_y) + Δ'`, and its delivery lower bound stays `τ` (it may be delivered before `g`).
 - **Admissibility** (claims §"Runs"): unforgeability is a run law, not a node fact. The AC interface has no signer,
-  so the signer of an AC message is a run parameter `sg`; `GoldilocksRun` fixes it as the vote's validator and adds
-  carried-vote unforgeability (votes in a block's payload), which the generic node cannot state. The slot-key law
+  so the signer of an AC message is a run parameter `sg`; `GoldilocksRun` fixes it as the vote's validator. A
+  block's declared head votes are not signed objects, so no run law covers them (the earlier carried-vote
+  unforgeability is gone: the run records assume less and give less). Likewise `Compose.Growing.CommitteeFacts`
+  has no `hFrame` premise (that the blocks of a frame declare only committee members): a valid block may declare
+  a non-member, and T follows from P. The slot-key law
   on delivered blocks is the run law `LocalRun.proposerCredential`: a block delivered to an honest node names its
   slot's proposer, faulty proposers included (composition.tex §"Blocks": `B.proposer`'s slot key signs `B`; the
   paper's `state_transition` proposer assertion is not in the model's `state_transition`, `docs/decisions.md`
@@ -444,8 +450,8 @@ Modelling choices:
 - **`Δ_F` is a parameter** of `SyncOn`/`SyncRun`/…, not a field of `Params`; its positivity `0 < Δ_F` (`deltaF`) and the
   order `Δ ≤ Δ_F` (`delta_le`; the generic two-bound network stays unordered) are fields of `SyncOn`, so
   every premise built on it has them. `Sync` carries the acceptance-relay clause
-  (`relay`), the own proposal as a send (`block`: accepted or own), and admissions from payloads (`SendOrAdmitAt`,
-  mirroring `ACTrace.SendOrAdmit`). `GST(g)` is `SyncOn` on every time with `eff τ = max τ g`: only the deadline
+  (`relay`), the own proposal as a send (`block`: accepted or own), and admissions (`SendOrAdmitAt`, mirroring
+  `ACTrace.SendOrAdmit`; a block's declared head votes are never admitted). `GST(g)` is `SyncOn` on every time with `eff τ = max τ g`: only the deadline
   moves to `max(τ, g)`; the lower bound of the delivery interval stays the real send time `τ` (attestations have
   no lower bound). Its acceptance relay
   covers only acceptances at `τ ≥ g` (`SyncOn`'s relay window `Wr`): `GST(g)` re-delivers old

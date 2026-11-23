@@ -13,7 +13,10 @@ from the votes and support entries of the blocks of `Φ.tree`. So, for a vote se
 these votes, its votes and its support lie in `S`, and its opponents lie in the opponents of the
 view `⟨S, S⟩` (`opponents` grows with the view).
 `unlockView_subset_post`: `S` holds the pools of `A` and of the state after the call, and the
-votes and support entries of the blocks of `Φ.tree`; `heldVotes A A' Φ` is such an `S`.
+counted declarations of the blocks of `Φ.tree` whose validator equivocates in one of these pools
+(a declaration counts only when its pool holds it or its validator equivocates there).
+`heldVotes A A' Φ` holds these, except the declarations of validators equivocating only in the
+pool of `A`; `unlockTarget_unlockView_held_of_honest_slot` handles those for honest voters.
 
 Then `2 · |O| < n` and `opponents(Φ, ⟨S, S⟩, s, B) ⊆ O` give `unlockTarget = B` (for honest
 voters, `unlockTarget_unlockView_held_of_honest_slot` in `OpponentsHonest`). -/
@@ -50,53 +53,73 @@ theorem voteViewList_subset {A : SAState sp.n} {σ : Int} {cutoff : ETime}
     exact hp v hv.1.1
 
 /-- The votes and the support of the merged vote view lie in a set that holds the pools of `A`
-and the votes and support entries of the blocks of `Φ.tree`. -/
+and the counted declarations of the slot-`s` blocks of `Φ.tree` whose validator equivocates in
+the pool of `A` (a counted declaration that the pool holds is a pool vote). -/
 theorem mergedVoteView_subset {A : SAState sp.n} {s : Nat} {S : Set (Vote sp.n)}
     (hpool : ∀ τ, ∀ v ∈ A.pool τ, v ∈ S)
-    (htree : ∀ C ∈ Φ.tree, ∀ v, v ∈ blockVotes C ∨ v ∈ blockSupport C → v ∈ S) :
+    (htree : ∀ C ∈ Φ.tree, C.slot = s → ∀ v, v ∈ blockVotes C ∨ v ∈ blockSupport C →
+      v.val ∈ equivocators {w | w ∈ A.pool v.slot} → v ∈ S) :
     (mergedVoteView sp A Φ s).votes ⊆ S ∧ (mergedVoteView sp A Φ s).support ⊆ S := by
   have hb := voteViewList_subset (Φ := Φ) (σ := (s : Int) - 1)
     (cutoff := ETime.of (freeze sp s)) hpool
+  have hc : ∀ v : Vote sp.n, ShouldCountDeclaredVote sp A v →
+      v ∈ S ∨ v.val ∈ equivocators {w | w ∈ A.pool v.slot} := by
+    intro v hv
+    have hpa : ∀ k : Nat, A.poolAt k = A.pool k := fun k => by simp [SAState.poolAt]
+    simp only [ShouldCountDeclaredVote, hpa] at hv
+    exact hv.imp (hpool _ v) id
   refine ⟨fun v hv => ?_, fun v hv => ?_⟩
-  · rcases hv with hv | ⟨C, hC, -, hv⟩
+  · rcases hv with hv | ⟨C, hC, hCs, hv, -, hcount⟩
     · exact hb.1 hv
-    · exact htree C hC v (Or.inl hv)
-  · rcases hv with hv | ⟨C, hC, -, hv, -⟩
+    · exact (hc v hcount).elim id (htree C hC hCs v (Or.inl hv))
+  · rcases hv with hv | ⟨C, hC, hCs, hv, -, hcount, -⟩
     · exact hb.2 hv
-    · exact htree C hC v (Or.inr hv)
+    · exact (hc v hcount).elim id (htree C hC hCs v (Or.inr hv))
 
 /-- **The view of a call lies in the votes held before and after it.** The votes and the support
 of `unlockView A Φ t c` lie in a set `S` that holds the pools of `A`, the pools of the state
-after the call, and the votes and support entries of the blocks of `Φ.tree`. -/
+after the call, and the counted declarations of the slot-`slot(t)` blocks of `Φ.tree` whose
+validator equivocates in the pool before or after the call. -/
 theorem unlockView_subset_post {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A : SAState sp.n}
     (c : (goldilocksSA sp FGP ro).Call) {S : Set (Vote sp.n)}
     (hpre : ∀ τ, ∀ v ∈ A.pool τ, v ∈ S)
     (hpost : ∀ τ, ∀ v ∈ ((goldilocksSA sp FGP ro).step self A Φ t c).1.pool τ, v ∈ S)
-    (htree : ∀ C ∈ Φ.tree, ∀ v, v ∈ blockVotes C ∨ v ∈ blockSupport C → v ∈ S) :
+    (htree : ∀ C ∈ Φ.tree, C.slot = sp.slot t → ∀ v, v ∈ blockVotes C ∨ v ∈ blockSupport C →
+      v.val ∈ equivocators {w | w ∈ A.pool v.slot} ∨
+        v.val ∈ equivocators {w | w ∈ ((goldilocksSA sp FGP ro).step self A Φ t c).1.pool v.slot} →
+      v ∈ S) :
     (unlockView A Φ t c).votes ⊆ S ∧ (unlockView A Φ t c).support ⊆ S := by
+  have hpre' := fun C hC hCs v hv he => htree C hC hCs v hv (Or.inl he)
   cases c with
-  | tick => rw [unlockView_tick]; exact mergedVoteView_subset hpre htree
+  | tick => rw [unlockView_tick]; exact mergedVoteView_subset hpre hpre'
   | proposal => rw [unlockView_proposal]; exact voteViewList_subset hpre
-  | toFG => rw [unlockView_toFG]; exact mergedVoteView_subset hpre htree
-  | restart => rw [unlockView_restart]; exact mergedVoteView_subset hpre htree
+  | toFG => rw [unlockView_toFG]; exact mergedVoteView_subset hpre hpre'
+  | restart => rw [unlockView_restart]; exact mergedVoteView_subset hpre hpre'
   | message v =>
     rw [unlockView_message]
     exact mergedVoteView_subset
-      (fun τ x hx => hpost τ x ((grows_tryVote (sp := sp) self _ Φ t).mem hx)) htree
+      (fun τ x hx => hpost τ x ((grows_tryVote (sp := sp) self _ Φ t).mem hx))
+      (fun C hC hCs v hv he => htree C hC hCs v hv
+        (Or.inr (equivocators_mono (fun w hw => (grows_tryVote (sp := sp) self _ Φ t).mem hw) he)))
   | block C =>
     rw [unlockView_block]
     exact mergedVoteView_subset
-      (fun τ x hx => hpost τ x ((grows_tryVote (sp := sp) self _ Φ t).mem hx)) htree
+      (fun τ x hx => hpost τ x ((grows_tryVote (sp := sp) self _ Φ t).mem hx))
+      (fun C hC hCs v hv he => htree C hC hCs v hv
+        (Or.inr (equivocators_mono (fun w hw => (grows_tryVote (sp := sp) self _ Φ t).mem hw) he)))
 
 /-- The votes held across a call from `A` to `A'` with frame `Φ`: the votes of the pools of `A`
-and of `A'`, and the votes and support entries of the blocks of `Φ.tree`. -/
+and of `A'`, and the votes and support entries of the blocks of `Φ.tree` whose validator
+equivocates in the pool of `A'` of the entry's slot. -/
 def heldVotes (A A' : SAState sp.n) (Φ : Frm sp.n FGP) : Set (Vote sp.n) :=
   {v | (∃ τ, v ∈ A.pool τ) ∨ (∃ τ, v ∈ A'.pool τ) ∨
-    ∃ C ∈ Φ.tree, v ∈ blockVotes C ∨ v ∈ blockSupport C}
+    ((∃ C ∈ Φ.tree, v ∈ blockVotes C ∨ v ∈ blockSupport C) ∧
+      v.val ∈ equivocators {w | w ∈ A'.pool v.slot})}
 
 theorem mem_heldVotes {A A' : SAState sp.n} {v : Vote sp.n} : v ∈ heldVotes A A' Φ ↔
     (∃ τ, v ∈ A.pool τ) ∨ (∃ τ, v ∈ A'.pool τ) ∨
-      ∃ C ∈ Φ.tree, v ∈ blockVotes C ∨ v ∈ blockSupport C :=
+      ((∃ C ∈ Φ.tree, v ∈ blockVotes C ∨ v ∈ blockSupport C) ∧
+        v.val ∈ equivocators {w | w ∈ A'.pool v.slot}) :=
   Iff.rfl
 
 end Consensus.Goldilocks.SA

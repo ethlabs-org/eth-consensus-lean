@@ -67,15 +67,14 @@ theorem projAC_state_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   rwa [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC y (fun k hk => hrun.time_mono hk.le),
     RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
 
-/-- A send or fresh admission of a node honest at its cut is an emission, or a received message or
-block-carried vote that the node did not hold before the cut and holds after it. -/
+/-- A send or fresh admission of a node honest at its cut is an emission, or a received message
+that the node did not hold before the cut and holds after it. -/
 theorem sendOrAdmit_forward_source_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) {m : SA.Vote sp.n}
     (h : tr.projAC.SendOrAdmit y k m) :
     tr.EmitAt y k m ∨
-      ((tr.MsgCallAt y k m ∨ ∃ ℓ B, tr.CallAt y k (.ac ℓ) ∧ ℓ.call = .block B ∧
-          m ∈ SA.blockVotes B) ∧
-        m ∉ (tr.state y k).ac.pool m.slot ∧ m ∈ (tr.post k).ac.pool m.slot) := by
+      (tr.MsgCallAt y k m ∧ m ∉ (tr.state y k).ac.pool m.slot ∧
+        m ∈ (tr.post k).ac.pool m.slot) := by
   have hr := hrun.upTo (hrun.time_nonneg k)
   have hs := RunTrace.upTo_state_of_le (y := y) hrun.time_mono (d := tr.time k) le_rfl
   have hsA : (tr.projAC.upTo (tr.time k)).state y k = tr.projAC.state y k :=
@@ -89,10 +88,7 @@ theorem sendOrAdmit_forward_source_at (hrun : Growing.GoldilocksRun proposer dg 
       exact hm
   rcases Compose.sendOrAdmit_forward_source hr hy h' with he | ⟨hc, hn, hp⟩
   · exact Or.inl ((RunTrace.upTo_emitAt tr).mp he).2
-  · refine Or.inr ⟨?_, by rwa [hs] at hn, hp⟩
-    rcases hc with hc | ⟨ℓ, B, hc, hb, hm⟩
-    · exact Or.inl ((RunTrace.upTo_msgCallAt tr).mp hc).2
-    · exact Or.inr ⟨ℓ, B, ((Trace.upTo_callAt _).mp hc).2, hb, hm⟩
+  · exact Or.inr ⟨((RunTrace.upTo_msgCallAt tr).mp hc).2, by rwa [hs] at hn, hp⟩
 
 /-- `Σ.F` of a node honest at cut `i'` moves only to descendants up to `i'`, inside the blocks held
 while honest. -/
