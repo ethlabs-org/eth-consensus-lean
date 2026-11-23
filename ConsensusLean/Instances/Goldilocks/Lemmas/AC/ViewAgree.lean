@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.MergedOpponents
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Count
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVotes
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -172,16 +173,9 @@ private theorem view_agree_of_forwardU
       by simp [ACParams.committee], hcount v hv⟩
   have hpe : equivocators {w | w ∈ (tr.state p i).pool s} =
       equivocators (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes := by
-    ext w
-    constructor
-    · rintro ⟨a, ha, b, hb, hab, rfl, hbv⟩
-      exact ⟨a, hm a ha, b, hm b hb, hab, rfl, hbv⟩
-    · rintro ⟨a, ha, b, hb, hab, rfl, hbv⟩
-      rcases hvotes a ha with ha' | ha'
-      · rcases hvotes b hb with hb' | hb'
-        · exact ⟨a, ha', b, hb', hab, rfl, hbv⟩
-        · exact hbv ▸ hb'
-      · exact ha'
+    exact (equivocators_subset_of_backed (P := {w | w ∈ (tr.state p i).pool s})
+      fun v hv => Or.inl (hm v hv)).antisymm
+      (equivocators_subset_of_backed (Q := {w | w ∈ (tr.state p i).pool s}) hvotes)
   have heqv : equivocators (View.ofLists (voteViewList (tr.state p i) ℓp.frame (s : Int) ⊤)).votes
       = equivocators (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes := by
     change equivocators {w | w ∈ (voteViewList _ _ _ _).1} = _
