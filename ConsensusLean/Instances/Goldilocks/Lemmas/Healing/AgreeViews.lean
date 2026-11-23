@@ -119,7 +119,7 @@ theorem proposal_views_agree
     tr proposer ΔF (sp.ts (s' : Int)) (sp.ts ((s' + 1 : Nat) : Int)) hl
     (syncRun_of_gst hS.shared.healthy.1 hga)
   refine hcast ▸ SA.view_agree hac hpH hy hS.ready.2.1 ⟨hS.call, hS.call_proposal, d, hS.payload⟩
-    hS.time hcy ⟨P, hPy, hPs, hpay⟩ hsync ?_ ?_
+    hS.time hcy hes ⟨P, hPy, hPs, hpay⟩ hsync ?_ ?_
   · -- a voter block stamped before the freeze reaches the proposer by `t_s`
     intro Hd hHd _ hst hFHd
     rw [SA.readPoint_blockStamp_eq hr hy hcy] at hst
