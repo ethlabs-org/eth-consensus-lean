@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVotes
 import Mathlib.Tactic.Ring
 
 public section
@@ -129,11 +130,8 @@ theorem opponents_eq_of_merged {A R : ACState sp.n} {Φp Φy : Frm sp.n FGP} {s 
         hHdr, by omega⟩, rfl, hxs, Hd', (hmem _ hHds).1 hHd, hHdr,
         fun h => hnc ((hcomp _ hHds).2 h)⟩
   · rintro (⟨a, ha, b, hb, hab, rfl, hbv⟩ | ⟨x, hx, rfl, hxs, Hd, hHd, hHdr, hnc⟩)
-    · rcases hvotes a ha with ha' | ha'
-      · rcases hvotes b hb with hb' | hb'
-        · exact Or.inl ⟨a, ha', b, hb', hab, rfl, hbv⟩
-        · exact Or.inl (hbv ▸ hb')
-      · exact Or.inl ha'
+    · exact Or.inl (equivocators_subset_of_backed (Q := {w | w ∈ A.pool s}) hvotes
+        ⟨a, ha, b, hb, hab, rfl, hbv⟩)
     · rcases hx with hx | ⟨X, hX, hXs, hx, -, -, -, Hd', hHd', hHd'r, hHd's⟩
       · -- an early support vote of the voter
         change x ∈ (voteViewList _ _ _ _).2 at hx

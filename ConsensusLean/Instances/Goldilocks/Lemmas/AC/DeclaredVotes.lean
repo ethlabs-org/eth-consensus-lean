@@ -15,11 +15,49 @@ vote counts every declared vote of the slot's proposals.
   declared vote (support entry) of a slot-`s` proposal of the tree is in the merged view;
 * `allDeclaredVotesCounted_of_tryVote_early`: a vote emitted before `t_s + Δ` counts every declared
   vote of every slot-`s` proposal of the frame, at the state the handler received;
-* `tryVote_readPoint_pool`: the read point of an emitted vote has the received state's pool. -/
+* `tryVote_readPoint_pool`: the read point of an emitted vote has the received state's pool;
+* backing, the relation `ShouldCountDeclaredVote` reads on a pool: `x` is backed in a vote set
+  `P` when `P` holds `x` or two distinct votes of its validator (`shouldCountDeclaredVote_iff`).
+  `backed_mono` (a larger set), `equivocators_subset_of_backed` and `backed_trans` (every vote of
+  `P` backed in `Q`). -/
 
 namespace Consensus.Goldilocks.AC
 
 variable {FGP : Type} {sp : ACParams}
+
+section Backing
+
+variable {n : Nat}
+
+/-- **Backing grows with the vote set.** -/
+theorem backed_mono {P Q : Set (Vote n)} (hPQ : P ⊆ Q) {x : Vote n}
+    (h : x ∈ P ∨ x.val ∈ equivocators P) : x ∈ Q ∨ x.val ∈ equivocators Q := by
+  rcases h with h | ⟨a, ha, b, hb, hab, hav, hbv⟩
+  · exact Or.inl (hPQ h)
+  · exact Or.inr ⟨a, hPQ ha, b, hPQ hb, hab, hav, hbv⟩
+
+/-- **An equivocator of `P` is one of `Q`** when every vote of `P` is backed in `Q`. -/
+theorem equivocators_subset_of_backed {P Q : Set (Vote n)}
+    (hrel : ∀ v ∈ P, v ∈ Q ∨ v.val ∈ equivocators Q) : equivocators P ⊆ equivocators Q := by
+  rintro _ ⟨a, ha, b, hb, hab, rfl, hbv⟩
+  rcases hrel a ha with ha' | ha'
+  · rcases hrel b hb with hb' | hb'
+    · exact ⟨a, ha', b, hb', hab, rfl, hbv⟩
+    · exact hbv ▸ hb'
+  · exact ha'
+
+/-- **Backing is transitive**: a vote backed in `P` is backed in `Q` when every vote of `P` is. -/
+theorem backed_trans {P Q : Set (Vote n)} (hrel : ∀ v ∈ P, v ∈ Q ∨ v.val ∈ equivocators Q)
+    {x : Vote n} (h : x ∈ P ∨ x.val ∈ equivocators P) : x ∈ Q ∨ x.val ∈ equivocators Q :=
+  h.elim (hrel x) fun h => Or.inr (equivocators_subset_of_backed hrel h)
+
+end Backing
+
+/-- `ShouldCountDeclaredVote` is backing in the pool of the vote's slot. -/
+theorem shouldCountDeclaredVote_iff {A : ACState sp.n} {x : Vote sp.n} :
+    ShouldCountDeclaredVote sp A x ↔
+      x ∈ {w | w ∈ A.poolAt x.slot} ∨ x.val ∈ equivocators {w | w ∈ A.poolAt x.slot} :=
+  Iff.rfl
 
 /-- A vote of the pool of its slot should be counted. -/
 theorem shouldCountDeclaredVote_of_mem {A : ACState sp.n} {x : Vote sp.n}
@@ -31,14 +69,13 @@ validator stays a pair. -/
 theorem shouldCountDeclaredVote_mono {A A' : ACState sp.n} {x : Vote sp.n}
     (hg : ∀ s, A.pool s ⊆ A'.pool s) (h : ShouldCountDeclaredVote sp A x) :
     ShouldCountDeclaredVote sp A' x := by
-  have hp : ∀ y, y ∈ A.poolAt x.slot → y ∈ A'.poolAt x.slot := fun y hy => by
-    simp only [ACState.poolAt] at hy ⊢
-    split_ifs at hy ⊢ with h0
-    · exact hy
-    · exact hg _ hy
-  rcases h with h | ⟨a, ha, b, hb, hab, hav, hbv⟩
-  · exact Or.inl (hp x h)
-  · exact Or.inr ⟨a, hp a ha, b, hp b hb, hab, hav, hbv⟩
+  refine backed_mono (P := {y | y ∈ A.poolAt x.slot}) (Q := {y | y ∈ A'.poolAt x.slot})
+    (fun y (hy : y ∈ A.poolAt x.slot) => ?_) h
+  change y ∈ A'.poolAt x.slot
+  simp only [ACState.poolAt] at hy ⊢
+  split_ifs at hy ⊢ with h0
+  · exact hy
+  · exact hg _ hy
 
 /-- A counted declared vote of a slot-`s` proposal of the tree is a merged-view vote. -/
 theorem mem_mergedVoteView_votes_of_declared {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
