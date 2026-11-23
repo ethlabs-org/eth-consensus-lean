@@ -195,6 +195,167 @@ theorem delivery_pool_insertion_queued (hv : rho.ExecutionValid) {v : V}
     (show m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool m.slot
       from hnode.symm ▸ hnew)
 
+section QueuedObjects
+
+variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+
+/-- A fresh envelope's object is the own object with its own token, whose body the same handler
+queues, or the received object of a message call admitting that vote. -/
+private theorem apply_voteForward_obj (st : State sp ro S.vote) origin r (t : Time)
+    (v : AC.Vote sp.n) (w : Wire sp.n S.vote) (h : (t, v, w) ∈ (apply st origin r).voteForwards) :
+    (t, v, w) ∈ st.voteForwards ∨
+      (∃ z, w = voteObj v z ∧ Body.vote (encodeVote v) z ∈ (apply st origin r).outbox) ∨
+      (origin = some w ∧ ∃ ℓ, Cut.ac ℓ ∈ r.2 ∧ ℓ.call = .message v) := by
+  classical
+  simp only [apply, List.mem_append] at h
+  obtain h | h := h
+  · exact Or.inl h
+  obtain ⟨u, hu, he⟩ := List.mem_filterMap.mp h
+  obtain ⟨w', hw', heq⟩ := Option.map_eq_some_iff.mp he
+  cases heq
+  right
+  have hcand := (List.mem_dedup.mp (List.mem_filter.mp hu).1)
+  split_ifs at hw' with hown
+  · obtain ⟨z, hz, rfl⟩ := Option.map_eq_some_iff.mp hw'
+    refine Or.inl ⟨z, rfl, List.mem_append_right _ ?_⟩
+    obtain ⟨c, hc, hvc⟩ := List.mem_flatMap.mp hown
+    cases c with
+    | fg _ => cases hvc
+    | ac ℓ =>
+      obtain ⟨e, he', rfl⟩ := List.mem_map.mp hvc
+      exact mem_emitted.mpr ⟨⟨ℓ, hc, e, he', rfl⟩, hz⟩
+  · refine Or.inr ⟨hw', ?_⟩
+    obtain ⟨c, hc, hvc⟩ := List.mem_flatMap.mp hcand
+    cases c with
+    | fg _ => cases hvc
+    | ac ℓ =>
+      rcases List.mem_append.mp hvc with hm | hm
+      · refine ⟨ℓ, hc, ?_⟩
+        revert hm
+        cases hcall : ℓ.call <;> simp
+        intro h; exact h ▸ rfl
+      · exact absurd (List.mem_flatMap.mpr ⟨.ac ℓ, hc, hm⟩) hown
+
+/-- Each envelope a processed object queues carries the canonical object of its vote: the own
+object with the token of a queued own body, or the processed object itself. -/
+private theorem processOne_voteForward_obj (io : VoteAuth sp.n S.vote)
+    (hs : List (Header Info × Nat)) (st : State sp ro S.vote) (o : Wire sp.n S.vote)
+    (t : Time) (v : AC.Vote sp.n) (w : Wire sp.n S.vote)
+    (h : (t, v, w) ∈ (processOne io hs st o).voteForwards) :
+    (t, v, w) ∈ st.voteForwards ∨ ∃ z, w = voteObj v z ∧
+      (Body.vote (encodeVote v) z ∈ (processOne io hs st o).outbox ∨ w = o) := by
+  have hrelay : ∀ (s : State sp ro S.vote) (c : Prop) (_ : Decidable c),
+      (relayIf s c o).voteForwards = s.voteForwards ∧ (relayIf s c o).outbox = s.outbox := by
+    intro s c _
+    unfold relayIf
+    split <;> exact ⟨rfl, rfl⟩
+  rcases canonEvent_cases (ro := ro) io hs o with he | ⟨B, he⟩ | ⟨m, he⟩ | ⟨a, he⟩
+  · simp only [AsChainShape.processOne_eq, he] at h
+    exact Or.inl h
+  · simp only [AsChainShape.processOne_eq, he] at h ⊢
+    rw [(hrelay _ _ _).1] at h
+    rw [(hrelay _ _ _).2]
+    rcases apply_voteForward_obj S st none _ t v w h with h | ⟨z, hz, hb⟩ | ⟨h, -⟩
+    · exact Or.inl h
+    · exact Or.inr ⟨z, hz, Or.inl hb⟩
+    · cases h
+  · simp only [AsChainShape.processOne_eq, he] at h ⊢
+    rcases apply_voteForward_obj S st (some o) _ t v w h with h | ⟨z, hz, hb⟩ | ⟨h, ℓ, hℓ, hc⟩
+    · exact Or.inl h
+    · exact Or.inr ⟨z, hz, Or.inl hb⟩
+    · cases Option.some.inj h
+      simp only [Node.onMessage, Node.acCall, List.mem_singleton] at hℓ
+      cases Cut.ac.inj hℓ
+      cases hc
+      rcases canonEvent_eq_some he with ⟨B, hB, -⟩ | ⟨v', z, hv, ho, -⟩ | ⟨a, ha, -⟩
+      · cases hB
+      · cases hv
+        exact Or.inr ⟨z, ho, Or.inr rfl⟩
+      · cases ha
+  · simp only [AsChainShape.processOne_eq, he] at h ⊢
+    rw [(hrelay _ _ _).1] at h
+    rw [(hrelay _ _ _).2]
+    rcases apply_voteForward_obj S st none _ t v w h with h | ⟨z, hz, hb⟩ | ⟨h, -⟩
+    · exact Or.inl h
+    · exact Or.inr ⟨z, hz, Or.inl hb⟩
+    · cases h
+
+/-- Over a delivery traversal of objects from `L`, every queued object is the canonical object
+of its vote: an object of `L`, or the own object whose same-token body is queued. -/
+private theorem foldl_voteForward_obj (io : VoteAuth sp.n S.vote)
+    (hs : List (Header Info × Nat)) (L : List (Wire sp.n S.vote)) :
+    ∀ (os : List (Wire sp.n S.vote)) (st : State sp ro S.vote), (∀ x ∈ os, x ∈ L) →
+    (∀ q ∈ st.voteForwards, ∃ z, q.2.2 = voteObj q.2.1 z ∧
+      (Body.vote (encodeVote q.2.1) z ∈ st.outbox ∨ q.2.2 ∈ L)) →
+    ∀ q ∈ (os.foldl (processOne io hs) st).voteForwards, ∃ z, q.2.2 = voteObj q.2.1 z ∧
+      (Body.vote (encodeVote q.2.1) z ∈ (os.foldl (processOne io hs) st).outbox ∨ q.2.2 ∈ L) := by
+  intro os
+  induction os with
+  | nil => exact fun _ _ h0 => h0
+  | cons o os ih =>
+    intro st hos h0
+    have hsub : st.outbox ⊆ (processOne io hs st o).outbox := by
+      intro x hx
+      rw [processOne_outbox_eq (fun _ => st.self) (fun _ _ _ _ _ => 0)]
+      exact List.mem_append_left _ hx
+    refine ih (processOne io hs st o) (fun x hx => hos x (List.mem_cons_of_mem _ hx)) ?_
+    rintro ⟨t, v, w⟩ hq
+    rcases processOne_voteForward_obj S io hs st o t v w hq with hq | ⟨z, hz, hb | rfl⟩
+    · obtain ⟨z, hz, hb | hb⟩ := h0 _ hq
+      · exact ⟨z, hz, Or.inl (hsub hb)⟩
+      · exact ⟨z, hz, Or.inr hb⟩
+    · exact ⟨z, hz, Or.inl hb⟩
+    · exact ⟨z, hz, Or.inr (hos _ List.mem_cons_self)⟩
+
+end QueuedObjects
+
+/-- **Every envelope a delivery queues carries the canonical object of its vote, held or
+pending.** Each queued object is `voteObj m z` for its vote `m`: the received object, a part of
+the delivered receipt and so in the seen closure, or the own object, whose body with the same
+token is the head of the ordinary outbox. The queue is empty at every event boundary, so the
+delivery's processing is the whole history. Discharges `hheld` of
+`delivery_voteForward_released_of`. -/
+theorem delivery_voteForward_canonical_held (hv : rho.ExecutionValid) {v : V}
+    {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
+    (he : rho.events[i]? = some (.deliver v o t)) :
+    ∀ tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards,
+      ∃ z, tv.2.2 = voteObj tv.2.1 z ∧
+        (voteObj tv.2.1 z ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
+          (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.head? =
+            some (.vote (encodeVote tv.2.1) z)) := by
+  intro tv htv
+  have hnow : (stateAt S rho hn v i).now = t :=
+    (now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he)
+  have hpre : OneVote t (stateAt S rho hn v i) := by
+    rcases (outbox_inv S rho hn hv v i).2 with h | h
+    · exact absurd h (not_lastRestart_deliver S rho hv he)
+    · rwa [hnow] at h
+  have hproc := process_oneVote (digestOf S rho) (Model.digests rho.hash o)
+    (hv.in_horizon _ (List.mem_of_getElem? he)).1
+    (delivered (stateAt S rho hn v i).voteIO (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+    (stateAt S rho hn v i) hnow hpre
+  have hlen := ((atMostOneVote_iff _).mp hproc.atMost).2
+  change (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.length ≤ 1 at hlen
+  change tv ∈ ((delivered (stateAt S rho hn v i).voteIO (Model.digests rho.hash o)
+    (stateAt S rho hn v i) o).foldl (processOne (stateAt S rho hn v i).voteIO
+      (Model.digests rho.hash o)) (stateAt S rho hn v i)).voteForwards at htv
+  obtain ⟨z, hz, hb | hL⟩ := foldl_voteForward_obj S (stateAt S rho hn v i).voteIO
+    (Model.digests rho.hash o) _ _ (stateAt S rho hn v i) (fun x hx => hx)
+    (fun q hq => by rw [voteForwards_empty S rho hn hv v i] at hq; cases hq) tv htv
+  · refine ⟨z, hz, Or.inr ?_⟩
+    change _ ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox at hb
+    generalize (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox = q at hb hlen ⊢
+    cases q with
+    | nil => cases hb
+    | cons b bs =>
+      cases bs with
+      | nil => exact congrArg some (List.mem_singleton.mp hb).symm
+      | cons c cs => simp at hlen
+  · refine ⟨z, hz, Or.inl ?_⟩
+    rw [← hz]
+    exact List.mem_flatMap.mpr ⟨o, List.mem_append_right _ (List.mem_singleton_self _),
+      mem_delivered _ _ hL⟩
+
 end Consensus.Goldilocks.Simulation
 
 end
