@@ -199,7 +199,7 @@ theorem delivery_origin {v : V} {i : Nat} {t : Time}
     {o : (Model.protoOf (compiled F) E).Object} (he : rho.events[i]? = some (.deliver v o t))
     {r : CutRec A} (hr : r ∈ eventCuts e rho i) :
     ∃ w ev st, (engineObj e w) ∈ o.parts ∧
-      canonEvent e.codec (Model.digests rho.hash o) w = some ev ∧
+      canonEvent (receiverCodec e rho v) (Model.digests rho.hash o) w = some ev ∧
       r.label ∈ (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v) st t ev).2 := by
   rw [eventCuts_deliver e rho i v o t he] at hr
   obtain ⟨w, ev, st, hm, hc, hl⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ _ hr
@@ -214,7 +214,7 @@ theorem msgCall_delivered {v : V} {i : Nat} {t : Time}
     {o : (Model.protoOf (compiled F) E).Object} (he : rho.events[i]? = some (.deliver v o t))
     {r : CutRec A} (hr : r ∈ eventCuts e rho i) {l : ACLabel A} {m : A.Msg}
     (hl : r.label = .ac l) (hm : l.call = .message m) :
-    ∃ w, engineObj e w ∈ o.parts ∧ e.codec.message w = some m ∧
+    ∃ w, engineObj e w ∈ o.parts ∧ (receiverCodec e rho v).message w = some m ∧
       decodeBlock e.codec.decode e.codec.carried A.validPayload (Model.digests rho.hash o) w =
         none := by
   obtain ⟨w, ev, st, hw, hce, hc⟩ := delivery_origin e rho he hr
@@ -240,6 +240,7 @@ theorem msgCall_delivered {v : V} {i : Nat} {t : Time}
   refine ⟨w, hw, ?_⟩
   unfold canonEvent at hce
   split at hce <;> cases hce
+  simp only [receiverCodec_eq] at *
   exact ⟨by assumption, by assumption⟩
 
 /-- A delivery's FG block cut or AC block call comes from a part that decodes to that block. -/
@@ -282,6 +283,7 @@ theorem blockLabel_delivered {v : V} {i : Nat} {t : Time}
   subst ev
   refine ⟨w, hw, ?_⟩
   unfold canonEvent at hce
+  simp only [receiverCodec_eq] at hce
   split at hce <;> cases hce
   assumption
 
@@ -691,7 +693,8 @@ that message. The cut starts no earlier than the engine event's mapped index. -/
 theorem simTraceAt_msgCall_delivered {y : Fin (Fintype.card V)} {k : Nat} {m : A.Msg}
     (hc : (simTraceAt e rho).MsgCallAt y k m) :
     ∃ i v o t w, rho.events[i]? = some (.deliver v o t) ∧ engineObj e w ∈ o.parts ∧
-      e.codec.message w = some m ∧ cutMap e rho i ≤ k ∧ (simTraceAt e rho).time k = t := by
+      (receiverCodec e rho v).message w = some m ∧
+      cutMap e rho i ≤ k ∧ (simTraceAt e rho).time k = t := by
   rw [simTraceAt_eq] at hc ⊢
   obtain ⟨l, ⟨_, hl⟩, hm⟩ := hc
   rw [simTrace_label] at hl
