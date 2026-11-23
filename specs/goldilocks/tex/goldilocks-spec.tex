@@ -42,7 +42,7 @@
 \newcommand{\fcroot}{\mathsf{fc\_root}}
 \newcommand{\allowed}{\mathsf{viable\_heads}}
 \newcommand{\filtered}{\fname{viable\_tree}}
-\newcommand{\gfPool}{\mathsf{gf\_votes}}
+\newcommand{\gfPool}{\mathsf{head\_votes}}
 \newcommand{\attestations}{\mathsf{attestations}}
 \newcommand{\fname}[1]{\text{\textsc{#1}}}
 \newcommand{\latestConfirmed}{\mathsf{latest\_confirmed}}
@@ -207,8 +207,8 @@ head.}
 The available chain of Goldilocks is Goldfish with locks on confirmed
 blocks.  It reads the FG frame~$\Fr$, the clock and its
 own state~$\AC$.  Its wire messages are Goldfish votes, the AC payload of
-a block is a list of references to previous-slot votes with a support bit
-for each, and its head is the Goldfish head.
+a block is a list of unsigned previous-slot Goldfish votes with a support
+bit for each, and its head is the Goldfish head.
 
 \subsection{Schedule}\label{sec:sa-schedule}
 
@@ -387,32 +387,32 @@ signs it with the slot-$s$ seat of~$\valindex$, under a bijection for each
 slot between the seats and $\committee_s$.
 
 \emph{The payload.}  The payload of a block is
-$B.\acp=(B.\mathsf{refs},B.\mathsf{support\_bits})$: a list of
-\emph{references} $(v,H)$, each naming a validator~$v$ and a head~$H$ by
-root, and a list of bits of the same length.  A reference $(v,H)$ of~$B$
-\emph{declares} the slot-$(B.\slot-1)$ vote $(v,B.\slot-1,H)$; the slot is
+$B.\acp=(B.\mathsf{unsigned\_head\_votes},B.\mathsf{support\_bits})$: a
+list of \emph{unsigned votes} $(v,H)$, each naming a validator~$v$ and a
+head~$H$ by root, and a list of bits of the same length.  An unsigned vote
+$(v,H)$ of~$B$ \emph{declares} the slot-$(B.\slot-1)$ vote $(v,B.\slot-1,H)$; the slot is
 implicit.  The block carries no signature of~$v$: a declaration is the
 proposer's statement, not a vote.  The $i$-th bit marks the $i$-th
-reference as support.  The payload of~$\genesis$ is two empty lists.  With
+unsigned vote as support.  The payload of~$\genesis$ is two empty lists.  With
 this payload the digest input of a block is
 \[
  (B.\parent.\rootf,\ B.\slot,\ B.\mathsf{attestations},\
- B.\mathsf{refs},\ B.\mathsf{support\_bits}).
+ B.\mathsf{unsigned\_head\_votes},\ B.\mathsf{support\_bits}).
 \]
-[\emph{Decision point: reference format.}  Recommended: the validator
+[\emph{Decision point: format of an unsigned vote.}  Recommended: the validator
 index and the head root, as above, so that a voter reads the declared
 head without the vote.  Alternative: the digest of the signed vote, which
 a voter can match only against a vote it holds.]
 The support bits record the proposer's view; they are not a second set of
-references to process.  A count reads distinct declared votes.
+unsigned votes to process.  A count reads distinct declared votes.
 
 \emph{The payload check.}  $\Call{ac\_valid\_payload}{B}$ holds when
-$B.\slot\geq1$ or the lists are empty, every reference $(v,H)$ has
-$v\in\committee_{B.\slot-1}$, the references are distinct, no validator
-has more than two references, and $B.\mathsf{support\_bits}$ has the
-length of $B.\mathsf{refs}$.  The check reads neither the clock nor the
-pool, and it checks no vote signature.  A reference to a vote that no
-node holds, or that was never signed, passes it.
+$B.\slot\geq1$ or the lists are empty, every unsigned vote $(v,H)$ has
+$v\in\committee_{B.\slot-1}$, the unsigned votes are distinct, no
+validator has more than two, and $B.\mathsf{support\_bits}$ has the length
+of $B.\mathsf{unsigned\_head\_votes}$.  The check reads neither the clock
+nor the pool, and it checks no vote signature.  An unsigned vote that no
+node holds signed, or that was never signed, passes it.
 
 \emph{Admission.}  $\Call{on\_goldfish\_vote}{}$ accepts a vote at time~$t$
 when four conditions hold: its slot is $\slot(t)-1$ or $\slot(t)$, its
@@ -487,15 +487,15 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
 \Function{ac\_valid\_payload}{$B$}
   \Comment{stateless: reads neither the clock nor the pool}
   \State $s\gets B.\slot-1$
-  \State \Return $\mathsf{true}$ if $B.\mathsf{refs}$ is empty or $s\geq0$, every $(v,H)\in B.\mathsf{refs}$ has $v\in\committee_s$, the entries of
-  \Statex \hspace{2em}$B.\mathsf{refs}$ are distinct, no $v$ has more than two, and $|B.\mathsf{support\_bits}|=|B.\mathsf{refs}|$; else $\mathsf{false}$
+  \State \Return $\mathsf{true}$ if $B.\mathsf{unsigned\_head\_votes}$ is empty or $s\geq0$, every $(v,H)\in B.\mathsf{unsigned\_head\_votes}$ has $v\in\committee_s$,
+  \Statex \hspace{2em}its entries are distinct, no $v$ has more than two, and $|B.\mathsf{support\_bits}|=|B.\mathsf{unsigned\_head\_votes}|$; else $\mathsf{false}$
   \Comment{no vote signature}
 \EndFunction
 \vspace{1pt}
 \Function{declared}{$B$}
   \Comment{the declared votes of $B$, and those marked as support}
-  \State $D\gets\{(v,B.\slot-1,H):(v,H)\in B.\mathsf{refs}\}$
-  \State $D^{+}\gets\{(v,B.\slot-1,H):(v,H)\text{ is the $i$-th entry of }B.\mathsf{refs}\text{ and }B.\mathsf{support\_bits}[i]=1\}$
+  \State $D\gets\{(v,B.\slot-1,H):(v,H)\in B.\mathsf{unsigned\_head\_votes}\}$
+  \State $D^{+}\gets\{(v,B.\slot-1,H):(v,H)\text{ is the $i$-th entry of }B.\mathsf{unsigned\_head\_votes}\text{ and }B.\mathsf{support\_bits}[i]=1\}$
   \State \Return $(D,D^{+})$
 \EndFunction
 \vspace{1pt}
@@ -969,7 +969,7 @@ such test.
 
 \emph{When the node votes.}  For $s>0$, a joined node casts its slot-$s$
 vote at the first time $\tau\in[t_s,t_s+\Delta]$ at which it holds a \emph{ready} proposal: a block $P\in\Fr.\tree$
-with $P.\slot=s$ whose support references are resolved, that is, every
+with $P.\slot=s$ whose declared support heads are resolved, that is, every
 declared support vote $(v,s-1,H)$ of~$P$ has $H\in\Fr.\tree$ and
 $H.\slot\leq s-1$, and at which it \emph{holds every declaration} of
 every slot-$s$ proposal of $\Fr.\tree$.  An early vote thus counts every
@@ -1002,9 +1002,11 @@ joined), processing and retention give the voter, for each vote declared
 by an honest proposer, the exact vote or an already-held pair of its
 validator, so it holds every such declaration at that tick.  A
 declaration of a faulty proposal can name a vote that no honest node
-holds; the voter omits it at $t_s+\Delta$.  [\emph{Decision point:
-unheld declarations of a faulty proposal.}  Recommended: omit them at the
-timeout; the block stays valid, since no check can tell a vote not yet
+holds; the voter omits it at $t_s+\Delta$ only when it holds neither that
+vote nor a genuine pair of its validator.  With a genuine pair the
+declaration counts, even if that vote was never signed.  [\emph{Decision
+point: unheld declarations of a faulty proposal.}  Recommended: omit them
+at the timeout; the block stays valid, since no check can tell a vote not yet
 received from one never signed.  Alternative: none that a stateless
 payload check can enforce.]
 
@@ -1090,10 +1092,10 @@ the tick and call $\Call{ac\_proposal}{}$ and $\Call{ac\_to\_fg}{}$.
 Before it proposes, $\Call{ac\_proposal}{}$ unlocks against the
 slot-$(s-1)$ votes.
 
-\emph{The proposal.}  At~$t_s$, for $s>0$, the proposer puts a reference
-$(v,H)$ in $B.\mathsf{refs}$ for every previous-slot vote $(v,s-1,H)$ that
-it holds, in the order of its pool, and sets the support bit of exactly
-the references whose votes are resolved at proposal time.  Its parent is the head of
+\emph{The proposal.}  At~$t_s$, for $s>0$, the proposer puts an unsigned vote
+$(v,H)$ in $B.\mathsf{unsigned\_head\_votes}$ for every previous-slot vote
+$(v,s-1,H)$ that it holds, in the order of its pool, and sets the support
+bit of exactly the entries whose votes are resolved at proposal time.  Its parent is the head of
 $\Call{ac\_head}{}$ after the unlocking against its whole slot-$(s-1)$
 pool, with the resolved votes as support (Section~\ref{sec:sa-locks}).
 At slot~$0$ the head is genesis.  The proposer processes its own block at
@@ -1147,10 +1149,10 @@ it in $\AC.\fgReported$.
   \State $H\gets\Call{get\_head}{\AC,\Fr,t,\filtered(\Fr,\Fr.\tree),
     \mathit{votes},\mathit{support\_votes},s-1}$
   \Comment{the head of $\Call{ac\_head}{}$}
-  \State $\mathit{refs}\gets[(v,H'):(v,s-1,H')\in\mathit{votes}]$;\quad
+  \State $\mathit{unsigned}\gets[(v,H'):(v,s-1,H')\in\mathit{votes}]$;\quad
     $\mathit{bits}\gets[\,[x\in\mathit{support\_votes}]:x\in\mathit{votes}\,]$
   \Comment{in the order of the pool}
-  \State \Return $(H,(\mathit{refs},\mathit{bits}))$
+  \State \Return $(H,(\mathit{unsigned},\mathit{bits}))$
 \EndFunction
 \vspace{1pt}
 \Function{ac\_to\_fg}{$\AC,\Fr,t$}
