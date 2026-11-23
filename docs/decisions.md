@@ -168,8 +168,8 @@ detail in `TRUST.md`.
   refused by the FG and is not forwarded (composition.tex §"Model"). A vote is forwarded, in a signed envelope
   stamped with its admission time, exactly when a call other than a restart newly inserts it into the pool; the
   restart's replay forwards nothing (`SendOrAdmit`). A vote the restart drops and the replay does not restore is
-  forwarded again when it is re-admitted, as a fresh admission. The payload votes and attestations of an
-  accepted block get actual message and attestation calls. Block-before-payload preserves the block handler's
+  forwarded again when it is re-admitted, as a fresh admission. The attestations of an accepted block get actual
+  attestation calls; its declared head votes are not objects and get no call. Block-before-payload preserves the block handler's
   priority (including any vote it emits); the later message handlers use the resulting state. The one-vote
   invariant applies to arbitrary same-time object lists, so one delivery poll still drains the emitted vote.
 - **Finite observation coverage is separate from labelled action coverage.** `Trace.observationHorizon` defaults to
@@ -544,7 +544,9 @@ detail in `TRUST.md`.
   dictionary `K` instead: from its committee start, with its committee facts and its committee support
   `CommitteeSleepy`, and no size equation. So are the static healing statements: the HS shared premises
   `Healing.HSShared` take a slot dictionary `K` and carry its committee facts
-  (`Compose.Growing.CommitteeFacts` at the constant honest set) and CS2 for every slot after the slot of
+  (`Compose.Growing.CommitteeFacts` at the constant honest set: committee sizes, P and the gate; it has no
+  `hFrame` premise on the blocks of frames, since a valid block may declare a non-member, and T follows from P)
+  and CS2 for every slot after the slot of
   `ḡ` (`twoK`; no count at a slot that starts at or before `ḡ`), and the statements that take them
   (node O.1 `PatternRecovery`, C1.3 `FinalizingCoverage`, C1.2 `Compose.OutcomeService`, HR.3, HS.1, HS.2,
   HS.4) run from `K`'s committee start; HR.4 `HeightScopedRetention` takes the same two facts and HR.5

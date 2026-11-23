@@ -294,7 +294,8 @@ handlers and duties of the protocol.  The protocol's model
 (composition \S``Model'') is taken as it is: continuous time, public times the
 multiples of~$\Delta$, a tick at each public time before the objects of that
 time, relay by honest nodes, an asleep node receives nothing, and a wake is
-a restart that keeps $\Lambda$, $\Sigma$, the clock, the locks and
+a restart that keeps $\Lambda$, $\Sigma$, the clock, the locks, the vote
+permission (Lean \texttt{mayVote}) and
 $\AC.\latestConfirmed$; a node awake at time~$0$ has not restarted
 ($\mathsf{restart\_time}=-\infty$).  A run does \emph{not} assume the delivery
 bounds globally: the premise $\mathsf{Sync}$ below imposes them on a window, so that
@@ -306,7 +307,8 @@ objects: unforgeability says nothing about them, and a faulty proposer may
 declare a vote that its validator never signed.  The Lean run records
 (\texttt{GoldilocksRun}, its growing and family forms, and the honest-object
 facts \texttt{SA.HonestObjects}) therefore no longer carry a fact about the
-votes of a block (the earlier carried-vote unforgeability), nor a premise that
+votes of a block (the earlier carried-vote unforgeability), and
+\texttt{Growing.CommitteeFacts} no longer has the premise \texttt{hFrame} that
 the blocks of a frame declare only committee members: their antecedents are
 broader, and the records give their users less.  A run has finitely many events in every bounded
 interval of time.  Write $h_t$ for the number of honest validators that are
@@ -357,8 +359,8 @@ clauses, are in \S\ref{sec:certified-rows}.
 Premise & Meaning & consensus-lean\\
 \hline
 $\mathsf{Sync}[a,b]$ & every block and AC message that an honest node sends
-  or accepts (for an AC message: admits, also from the payload of an accepted
-  block) at $\tau\in[a,b]$ is processed by
+  or accepts (for an AC message: admits; a block's declared head votes are not
+  admitted) at $\tau\in[a,b]$ is processed by
   every honest node~$y$ at a time in $[\tau,\max(\tau,w_y)+\Delta)$, with $w_y$
   the latest wake of~$y$ at or before its processing time (if $y$ sleeps,
   after its next wake); an earlier processing, such as a receipt that
@@ -789,8 +791,8 @@ the parent of a proposal is a head at that time.}
 \S Node actions.}{M.  The FG side uses only this node of the AC.}
 
 \dagnode{A0.7}{Restart and joining}{After $\fname{ac\_restart}$ at $t$:
-$\AC.\mathsf{locks}$ and $\AC.\latestConfirmed$ are kept, every other field
-is initial except $\mathsf{restart\_time}=t$ and the block stamps
+$\AC.\mathsf{locks}$, $\AC.\latestConfirmed$ and the vote permission (Lean
+\texttt{mayVote}) are kept, every other field is initial except $\mathsf{restart\_time}=t$ and the block stamps
 written by the replay at~$t$ (the replay admits no vote, so every pool is
 empty), and the
 node is not joined at~$t$, so the replay sends nothing and writes no lock.  A
@@ -1108,9 +1110,10 @@ argument is the result's strict majority of the writer's participants together
 with $\mathsf{Sync}$, not the bound $2|S|\geq n$: without $\mathsf{Sync}$ a
 faulty vote seen by the voter and not by the writer splits the walk.  Each
 exclusion has a counterexample.  The writer-pool condition
-A1.8 (d) follows from $\mathsf{Sync}[t_s,\tau]$: every slot-$s$ vote that $y$
-admits by its vote, $\tau\leq t_{s+1}+\Delta=t_s+5\Delta$, also from the payload
-of a block that the writer refuses, is forwarded and processed by the writer
+A1.8 (d) follows from $\mathsf{Sync}[t_s,\tau]$: a declared head vote of a block
+(also one that the writer refuses) counts at~$y$ only when $y$'s pool holds it or
+two distinct votes of its validator, and every slot-$s$ vote that $y$
+admits by its vote, $\tau\leq t_{s+1}+\Delta=t_s+5\Delta$, is forwarded and processed by the writer
 before its fast test at $t_s+6\Delta$, and a vote that $y$'s two-vote cap
 refused leaves two forwarded votes of its validator (composition
 \S``Model''; without that forwarding, an $n=5$ instance
