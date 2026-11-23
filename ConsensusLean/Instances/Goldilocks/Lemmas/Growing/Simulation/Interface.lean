@@ -72,8 +72,9 @@ structure SimulatesAt (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _))
     (tr.EmitAt y k m ∨
       (tr.MsgCallAt y k m ∧
         m ∉ (tr.state y k).ac.pool m.slot ∧ m ∈ (tr.post k).ac.pool m.slot)) →
-    ∃ z, let envelope : (Model.protoOf (compiled (goldilocks S)) E).Object :=
-      .mk (.signed y .poll) (.data (.voteForward (tr.time k) (encodeVote m))) [voteObj m z]
+    ∃ z, rho.verify (m.val, S.vote.voteRole m.slot, encodeVote m) z = true ∧
+      let envelope : (Model.protoOf (compiled (goldilocks S)) E).Object :=
+        .mk (.signed y .poll) (.data (.voteForward (tr.time k) (encodeVote m))) [voteObj m z]
       ∃ i, ι i ≤ k ∧ k < ι (i + 1) ∧ rho.SendsAt (rho.key y) i (tr.time k) ∧
         envelope ∈ rho.releasesAt i ∧ ∀ j < i, envelope ∉ rho.releasesAt j
   att_relayed : ∀ y k a, y ∈ honestKeysAt S rho (tr.time k) →

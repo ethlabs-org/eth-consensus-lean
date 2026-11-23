@@ -29,10 +29,10 @@ omit [DecidableEq V] in
 private theorem ownQueued_apply (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) r
     (h : OwnQueued S hn st) : OwnQueued S hn (apply st none r) := by
   rintro ⟨t, m, w⟩ hq
-  rcases apply_voteForward_obj S st none r t m w hq with hq | hown | ⟨h', -⟩
+  rcases apply_voteForward_obj S st none r t m w hq with hq | ⟨z, hz, hb, -⟩ | ⟨h', -⟩
   · obtain ⟨z, hz, hb⟩ := h _ hq
     exact ⟨z, hz, List.mem_append_left _ hb⟩
-  · exact hown
+  · exact ⟨z, hz, hb⟩
   · cases h'
 
 omit [DecidableEq V] in
@@ -95,6 +95,50 @@ private theorem tick_prefix_forward_poll (hv : rho.ExecutionValid)
   obtain ⟨z, hz, hb⟩ := hown q hq
   exact ⟨z, hz, Or.inr hb⟩
 
+/-- Every envelope a tick's duty prefix queues carries a token that verifies. -/
+private theorem tick_prefix_checked (hv : rho.ExecutionValid) {v : V} {i : Nat} {t : Time}
+    (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty) :
+    let nd := (rho.runDuties v
+      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
+        (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩ ds).1
+    ∀ q ∈ (shapeOf S hn nd).voteForwards, ∃ z, q.2.2 = voteObj q.2.1 z ∧
+      rho.verify (q.2.1.val, S.vote.voteRole q.2.1.slot, encodeVote q.2.1) z = true := by
+  intro nd
+  let Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop := fun st =>
+    st.voteIO = rho.voteIO v ∧ st.self = rho.ownKey v ∧ QueuedChecked S st
+  have hQ : Q (shapeOf S hn nd) := by
+    refine runDuties_pres S rho hn Q ?_ ?_ ?_ ?_ v _ _ ?_
+    · intro st o hs h
+      exact ⟨(recordOwn_voteIO S hn st o hs).trans h.1, (recordOwn_self st o hs).trans h.2.1,
+        queuedChecked_recordOwn S st o hs h.2.2 (ownChecks_of_eq_voteIO S rho hn hv h.1 h.2.1)⟩
+    · intro st s h
+      exact ⟨(propose_voteIO S hn st s).trans h.1, (propose_self st s).trans h.2.1,
+        queuedChecked_propose S st s h.2.2⟩
+    · intro st h
+      exact ⟨(nodeTick_voteIO S hn st).trans h.1, (nodeTick_self st).trans h.2.1,
+        queuedChecked_nodeTick S st h.2.2 (ownChecks_of_eq_voteIO S rho hn hv h.1 h.2.1)⟩
+    · intro st u h
+      exact ⟨(poll_voteIO S hn st u).trans h.1, (poll_self st u).trans h.2.1,
+        queuedChecked_poll S st u⟩
+    · refine ⟨?_, ?_, ?_⟩
+      · change ((rho.stateBefore i v).st.1 hn).voteIO = _
+        rw [← stateAt_eq S rho hn v i]
+        exact stateAt_voteIO S rho hn v i
+      · change ((rho.stateBefore i v).st.1 hn).self = _
+        rw [← stateAt_eq S rho hn v i]
+        exact self_eq_ownKey S rho hn v i
+      · rw [queuedChecked_iff]
+        intro q hq
+        change q ∈ ((rho.stateBefore i v).st.1 hn).voteForwards at hq
+        rw [← stateAt_eq S rho hn v i, voteForwards_empty S rho hn hv v i] at hq
+        cases hq
+  intro q hq
+  obtain ⟨z, hz, hc⟩ := (queuedChecked_iff S _).1 hQ.2.2 q hq
+  refine ⟨z, hz, ?_⟩
+  change (shapeOf S hn nd).voteIO.check _ _ _ _ = _ at hc
+  rw [hQ.1] at hc
+  exact hc
+
 private theorem tick_forward_released (hv : rho.ExecutionValid)
     {v : V} {i : Nat} {t : Time} (he : rho.events[i]? = some (.tick v t)) :
     let pre : List (Model.protoOf (compiled (goldilocks S)) E).Duty :=
@@ -144,12 +188,14 @@ theorem tick_pool_insertion_released_at (hv : rho.ExecutionValid)
     (m : AC.Vote (Fintype.card V))
     (hold : m ∉ (stateAt S rho hn v i).node.ac.pool m.slot)
     (hnew : m ∈ (stateAt S rho hn v (i + 1)).node.ac.pool m.slot) :
-    ∃ z, Model.Obj.mk (.signed (rho.ownKey v) .poll)
-      (.data (.voteForward t (encodeVote m))) [voteObj m z] ∈ rho.releasesAt i := by
+    ∃ z, rho.verify (m.val, S.vote.voteRole m.slot, encodeVote m) z = true ∧
+      Model.Obj.mk (.signed (rho.ownKey v) .poll)
+        (.data (.voteForward t (encodeVote m))) [voteObj m z] ∈ rho.releasesAt i := by
   obtain ⟨w, hw⟩ := tick_pool_insertion_queued S rho hn hv he m hold hnew
-  obtain ⟨⟨z, hz⟩, hrel⟩ := tick_forward_released S rho hn hv he (t, m, w) hw
-  dsimp only at hz hrel
-  exact ⟨z, hz ▸ hrel⟩
+  obtain ⟨-, hrel⟩ := tick_forward_released S rho hn hv he (t, m, w) hw
+  obtain ⟨z, hz, hc⟩ := tick_prefix_checked S rho hn hv (i := i) (t := t) _ (t, m, w) hw
+  dsimp only at hz hrel hc
+  exact ⟨z, hc, hz ▸ hrel⟩
 
 /-- A delivery's aggregate pool insertion is forwarded in that same event. -/
 theorem delivery_pool_insertion_released_at (hv : rho.ExecutionValid) {v : V}
@@ -157,14 +203,15 @@ theorem delivery_pool_insertion_released_at (hv : rho.ExecutionValid) {v : V}
     (he : rho.events[i]? = some (.deliver v o t)) (m : AC.Vote (Fintype.card V))
     (hold : m ∉ (stateAt S rho hn v i).node.ac.pool m.slot)
     (hnew : m ∈ (stateAt S rho hn v (i + 1)).node.ac.pool m.slot) :
-    ∃ z, Model.Obj.mk (.signed (rho.ownKey v) .poll)
-      (.data (.voteForward t (encodeVote m))) [voteObj m z] ∈ rho.releasesAt i := by
+    ∃ z, rho.verify (m.val, S.vote.voteRole m.slot, encodeVote m) z = true ∧
+      Model.Obj.mk (.signed (rho.ownKey v) .poll)
+        (.data (.voteForward t (encodeVote m))) [voteObj m z] ∈ rho.releasesAt i := by
   have hv' := event_honest_zero S rho hv he
   obtain ⟨w, hw⟩ := delivery_pool_insertion_queued S rho hn hv hv' he m hold hnew
   have hheld := delivery_voteForward_canonical_held S rho hn hv he
-  obtain ⟨z, hz, -⟩ := hheld _ hw
-  dsimp only at hz
+  obtain ⟨z, hz, hc⟩ := delivery_voteForward_checked S rho hn hv he _ hw
+  dsimp only at hz hc
   subst hz
-  exact ⟨z, delivery_voteForward_released_of S rho hn hv hv' he hheld (t, m, _) hw⟩
+  exact ⟨z, hc, delivery_voteForward_released_of S rho hn hv hv' he hheld (t, m, _) hw⟩
 
 end Consensus.Goldilocks.Simulation

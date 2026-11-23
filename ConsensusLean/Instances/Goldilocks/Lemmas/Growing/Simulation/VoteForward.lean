@@ -130,7 +130,8 @@ theorem simTraceAt_vote_forwarded (hv : rho.ExecutionValid) :
       ((simTraceAt S rho hn).MsgCallAt y k m ∧
         m ∉ ((simTraceAt S rho hn).state y k).ac.pool m.slot ∧
         m ∈ ((simTraceAt S rho hn).post k).ac.pool m.slot)) →
-    ∃ z, let envelope : (Model.protoOf (compiled (goldilocks S)) E).Object :=
+    ∃ z, rho.verify (m.val, S.vote.voteRole m.slot, encodeVote m) z = true ∧
+      let envelope : (Model.protoOf (compiled (goldilocks S)) E).Object :=
         .mk (.signed y .poll) (.data (.voteForward ((simTraceAt S rho hn).time k) (encodeVote m)))
           [voteObj m z]
       ∃ i, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
@@ -193,13 +194,16 @@ theorem simTraceAt_vote_forwarded (hv : rho.ExecutionValid) :
         Compose.emitted_vote_mem_post hpref hy (hemit hem)
     · exact hnew
   obtain ⟨hold, hnew⟩ := sending_event_insertion_at S rho hn hv hy hs hlo hhi hcall hfresh hnew
-  obtain ⟨z, hrel⟩ : ∃ z, Model.Obj.mk (.signed (rho.ownKey (rho.key y)) .poll)
-      (.data (.voteForward ((simTrace S rho hn).time k) (encodeVote m))) [voteObj m z] ∈
-        rho.releasesAt i := by
+  obtain ⟨z, hck, hrel⟩ : ∃ z,
+      rho.verify (m.val, S.vote.voteRole m.slot, encodeVote m) z = true ∧
+      Model.Obj.mk (.signed (rho.ownKey (rho.key y)) .poll)
+        (.data (.voteForward ((simTrace S rho hn).time k) (encodeVote m))) [voteObj m z] ∈
+          rho.releasesAt i := by
     rcases hs with he | ⟨o, he⟩
     · exact tick_pool_insertion_released_at S rho hn hv he m hold hnew
     · exact delivery_pool_insertion_released_at S rho hn hv he m hold hnew
   rw [ownKey_key] at hrel
-  exact ⟨z, i, hlo, hhi, hs, hrel, admission_forward_first_at S rho hn hv hy hs hlo hhi hfresh z⟩
+  exact ⟨z, hck, i, hlo, hhi, hs, hrel,
+    admission_forward_first_at S rho hn hv hy hs hlo hhi hfresh z⟩
 
 end Consensus.Goldilocks.Simulation

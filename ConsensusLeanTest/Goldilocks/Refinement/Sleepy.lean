@@ -186,11 +186,11 @@ theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
         (m : AC.Vote (Fintype.card (Fin 2))),
         (simTrace { S with vote := stock } rho one_le_card).EmitAt y k m ∧ m.slot = 0 ∧
         (simTrace { S with vote := stock } rho one_le_card).time k ≤ 2 ∧
-        ∃ i, rho.SendsAt (rho.key y) i
+        ∃ i z, rho.SendsAt (rho.key y) i
           ((simTrace { S with vote := stock } rho one_le_card).time k) ∧
           .mk (.signed y .poll) (.data (.voteForward
             ((simTrace { S with vote := stock } rho one_le_card).time k)
-            (encodeVote m))) [voteObj m] ∈ rho.releasesAt i := by
+            (encodeVote m))) [voteObj m z] ∈ rho.releasesAt i := by
   obtain ⟨rho, hp, -, -, hv, hc, -⟩ := Shape.coverage
     (goldilocks { S with vote := AsChainShape.stock }) (point H)
     (le_trans (by decide) hH)
@@ -229,7 +229,7 @@ theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
       ⟨ℓ, Compose.projAC_callAt.mp hcall, e, he, rfl⟩
   have hfw := simTraceAt_vote_forwarded { S with vote := stock } rho hn hv
   rw [simTraceAt_eq, Test.honestKeysAt_const S rho hf] at hfw
-  obtain ⟨i, -, -, hsend, hrel, -⟩ := hfw y k e.msg hy (Or.inl hem)
-  exact ⟨rho, hv, y, hy, k, e.msg, hem, hslot, htime.trans ht.le, i, hsend, hrel⟩
+  obtain ⟨z, -, i, -, -, hsend, hrel, -⟩ := hfw y k e.msg hy (Or.inl hem)
+  exact ⟨rho, hv, y, hy, k, e.msg, hem, hslot, htime.trans ht.le, i, z, hsend, hrel⟩
 
 end Consensus.Goldilocks.Obligations.Test.SleepyWitness

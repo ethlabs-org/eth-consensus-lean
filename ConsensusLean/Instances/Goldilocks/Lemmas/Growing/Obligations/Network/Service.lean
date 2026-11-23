@@ -197,7 +197,8 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 /-- Goldilocks interprets message publication as its first release of the vote envelope. -/
 def VotePublication (x : Fin (Fintype.card V)) (τ : Time) (m : AC.Vote (Fintype.card V))
     (o : Wire (Fintype.card V) S.vote) : Prop :=
-  o = .mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∧
+  (∃ z, rho.verify (m.val, S.vote.voteRole m.slot, encodeVote m) z = true ∧
+    o = .mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m z]) ∧
     ∃ i, rho.SendsAt (rho.key x) i τ ∧ o ∈ rho.releasesAt i ∧
       ∀ j < i, o ∉ rho.releasesAt j
 
@@ -208,25 +209,26 @@ theorem votePublication_process (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionV
     (hx : rho.key x ∉ rho.faultyAt τ) (hh : rho.log.Held rho.point (rho.key y) o d) :
     y = x ∨ ∃ k, (simTraceAt S rho hn).ProcessMsgAt y k m ∧
       τ ≤ (simTraceAt S rho hn).time k ∧ (simTraceAt S rho hn).time k ≤ d := by
-  obtain ⟨rfl, i, hs, _, hf⟩ := hpub
+  obtain ⟨⟨z, hck, rfl⟩, i, hs, _, hf⟩ := hpub
   obtain h | ⟨k, ⟨ℓ, hc, hm⟩, hlo, hhi⟩ :=
-    held_voteForward_source_or_process_at S rho hn hv hx hs hf hh
+    held_voteForward_source_or_process_at S rho hn hv hck hx hs hf hh
   · exact Or.inl h
   · exact Or.inr ⟨k, hm.elim (fun h => Or.inl ⟨ℓ, Compose.projAC_callAt.mp hc, h⟩)
       (fun h => Or.inr ⟨ℓ, Compose.projAC_callAt.mp hc, h⟩), hlo, hhi⟩
 
 /-- Construct the instance's publication witness from the containing event's first release. -/
 theorem votePublication_intro {source : Nat} {x : Fin (Fintype.card V)}
-    {τ : Time} {m : AC.Vote (Fintype.card V)}
+    {τ : Time} {m : AC.Vote (Fintype.card V)} {z : Nat}
+    (hck : rho.verify (m.val, S.vote.voteRole m.slot, encodeVote m) z = true)
     (hs : rho.SendsAt (rho.key x) source τ)
-    (hrel : Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∈
+    (hrel : Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m z] ∈
       rho.releasesAt source)
     (hfirst : ∀ i < source,
-      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉
+      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m z] ∉
         rho.releasesAt i) :
     VotePublication S rho x τ m
-      (.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m]) :=
-  ⟨rfl, source, hs, hrel, hfirst⟩
+      (.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m z]) :=
+  ⟨⟨z, hck, rfl⟩, source, hs, hrel, hfirst⟩
 
 /-- An actual publication by an origin honest at its event is held strictly before a qualifying
 node deadline of a recipient honest at its call. -/
@@ -389,12 +391,13 @@ honest at its release before its processing-cut deadline. -/
 theorem vote_message_service_other_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
     {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : AC.Vote (Fintype.card V)}
+    {z : Nat} (hck : rho.verify (m.val, S.vote.voteRole m.slot, encodeVote m) z = true)
     (hx : rho.key x ∉ rho.faultyAt τ) (hne : y ≠ x)
     (hτ : 0 ≤ τ) (hs : rho.SendsAt (rho.key x) source τ)
-    (hrel : Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∈
+    (hrel : Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m z] ∈
       rho.releasesAt source)
     (hfirst : ∀ i < source,
-      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉
+      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m z] ∉
         rho.releasesAt i)
     {j : Nat} (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time j))
     (hj : (simTraceAt S rho hn).IsCall y j)
@@ -409,7 +412,7 @@ theorem vote_message_service_other_at (hn : 1 ≤ Fintype.card V) (hv : rho.Exec
   rw [htr, network_honestKeysAt_eq] at hy
   rw [htr] at hj hb hd
   have hp := NodeAsChainShape.CanonicalTrace.publication_messageDeliveredBy hrun hx hne
-    (votePublication_intro S rho hs hrel hfirst)
+    (votePublication_intro S rho hck hs hrel hfirst)
     (fun _ hy hj => NodeAsChainShape.CanonicalTrace.publication_held_before_syncUntil
       hrun le_rfl hbh hnet ⟨source, hs, hrel⟩ hx
       (by simp [log_fgAtt_iff, isFGAtt, IsAttObj]) hy hj hτ)
@@ -466,9 +469,9 @@ theorem sleepyServiceBefore_of_syncUntil_at (hv : rho.ExecutionValid)
           (fun h => Or.inr ⟨l, Compose.projAC_callAt.mp hc, h⟩), ht⟩)
       (by
         rw [← htr]
-        obtain ⟨r, -, -, hs, hrel, hf⟩ := hsim.vote_forwarded x i m hx
+        obtain ⟨z, hck, r, -, -, hs, hrel, hf⟩ := hsim.vote_forwarded x i m hx
           (sendOrAdmit_forward_source_at hr hx hsrc)
-        exact ⟨_, votePublication_intro S rho hs hrel hf, ⟨r, hs, hrel⟩,
+        exact ⟨_, votePublication_intro S rho hck hs hrel hf, ⟨r, hs, hrel⟩,
           by simp [log_fgAtt_iff, isFGAtt, IsAttObj]⟩)
       hh (fun _ hrel hrow _ hy hj =>
         NodeAsChainShape.CanonicalTrace.publication_held_before_syncUntil

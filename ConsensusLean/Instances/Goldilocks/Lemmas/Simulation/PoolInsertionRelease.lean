@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.VoteForwardQueue
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Queue
+import ConsensusLean.Lemmas.Model.Credentials
 
 public section
 
@@ -200,11 +201,13 @@ section QueuedObjects
 variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A fresh envelope's object is the own object with its own token, whose body the same handler
-queues, or the received object of a message call admitting that vote. -/
+queues and whose vote a cut of the handler emits, or the received object of a message call
+admitting that vote. -/
 theorem apply_voteForward_obj (st : State sp ro S.vote) origin r (t : Time)
     (v : AC.Vote sp.n) (w : Wire sp.n S.vote) (h : (t, v, w) ∈ (apply st origin r).voteForwards) :
     (t, v, w) ∈ st.voteForwards ∨
-      (∃ z, w = voteObj v z ∧ Body.vote (encodeVote v) z ∈ (apply st origin r).outbox) ∨
+      (∃ z, w = voteObj v z ∧ Body.vote (encodeVote v) z ∈ (apply st origin r).outbox ∧
+        ownToken st.voteIO v = some z ∧ ∃ ℓ, Cut.ac ℓ ∈ r.2 ∧ ∃ em ∈ ℓ.emits, em.msg = v) ∨
       (origin = some w ∧ ∃ ℓ, Cut.ac ℓ ∈ r.2 ∧ ℓ.call = .message v) := by
   classical
   simp only [apply, List.mem_append] at h
@@ -217,13 +220,13 @@ theorem apply_voteForward_obj (st : State sp ro S.vote) origin r (t : Time)
   have hcand := (List.mem_dedup.mp (List.mem_filter.mp hu).1)
   split_ifs at hw' with hown
   · obtain ⟨z, hz, rfl⟩ := Option.map_eq_some_iff.mp hw'
-    refine Or.inl ⟨z, rfl, List.mem_append_right _ ?_⟩
     obtain ⟨c, hc, hvc⟩ := List.mem_flatMap.mp hown
     cases c with
     | fg _ => cases hvc
     | ac ℓ =>
       obtain ⟨e, he', rfl⟩ := List.mem_map.mp hvc
-      exact mem_emitted.mpr ⟨⟨ℓ, hc, e, he', rfl⟩, hz⟩
+      exact Or.inl ⟨z, rfl, List.mem_append_right _ (mem_emitted.mpr ⟨⟨ℓ, hc, e, he', rfl⟩, hz⟩),
+        hz, ℓ, hc, e, he', rfl⟩
   · refine Or.inr ⟨hw', ?_⟩
     obtain ⟨c, hc, hvc⟩ := List.mem_flatMap.mp hcand
     cases c with
@@ -255,12 +258,12 @@ private theorem processOne_voteForward_obj (io : VoteAuth sp.n S.vote)
   · simp only [AsChainShape.processOne_eq, he] at h ⊢
     rw [(hrelay _ _ _).1] at h
     rw [(hrelay _ _ _).2]
-    rcases apply_voteForward_obj S st none _ t v w h with h | ⟨z, hz, hb⟩ | ⟨h, -⟩
+    rcases apply_voteForward_obj S st none _ t v w h with h | ⟨z, hz, hb, -⟩ | ⟨h, -⟩
     · exact Or.inl h
     · exact Or.inr ⟨z, hz, Or.inl hb⟩
     · cases h
   · simp only [AsChainShape.processOne_eq, he] at h ⊢
-    rcases apply_voteForward_obj S st (some o) _ t v w h with h | ⟨z, hz, hb⟩ | ⟨h, ℓ, hℓ, hc⟩
+    rcases apply_voteForward_obj S st (some o) _ t v w h with h | ⟨z, hz, hb, -⟩ | ⟨h, ℓ, hℓ, hc⟩
     · exact Or.inl h
     · exact Or.inr ⟨z, hz, Or.inl hb⟩
     · cases Option.some.inj h
@@ -275,7 +278,7 @@ private theorem processOne_voteForward_obj (io : VoteAuth sp.n S.vote)
   · simp only [AsChainShape.processOne_eq, he] at h ⊢
     rw [(hrelay _ _ _).1] at h
     rw [(hrelay _ _ _).2]
-    rcases apply_voteForward_obj S st none _ t v w h with h | ⟨z, hz, hb⟩ | ⟨h, -⟩
+    rcases apply_voteForward_obj S st none _ t v w h with h | ⟨z, hz, hb, -⟩ | ⟨h, -⟩
     · exact Or.inl h
     · exact Or.inr ⟨z, hz, Or.inl hb⟩
     · cases h
@@ -355,6 +358,194 @@ theorem delivery_voteForward_canonical_held (hv : rho.ExecutionValid) {v : V}
     rw [← hz]
     exact List.mem_flatMap.mpr ⟨o, List.mem_append_right _ (List.mem_singleton_self _),
       mem_delivered _ _ hL⟩
+
+section QueuedChecks
+
+variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+
+/-- Every queued envelope carries the canonical object of its vote with a token the node's own
+verifier accepts. -/
+def QueuedChecked (st : State sp ro S.vote) : Prop :=
+  ∀ q ∈ st.voteForwards, ∃ z, q.2.2 = voteObj q.2.1 z ∧
+    st.voteIO.check q.2.1.val (S.vote.voteRole q.2.1.slot) (encodeVote q.2.1) z = true
+
+omit [DecidableEq V] in
+theorem queuedChecked_iff (st : State sp ro S.vote) : QueuedChecked S st ↔
+    ∀ q ∈ st.voteForwards, ∃ z, q.2.2 = voteObj q.2.1 z ∧
+      st.voteIO.check q.2.1.val (S.vote.voteRole q.2.1.slot) (encodeVote q.2.1) z = true :=
+  Iff.rfl
+
+/-- The node's verifier accepts the token its own issuer gives for a vote of its own key. -/
+def OwnChecks (st : State sp ro S.vote) : Prop :=
+  ∀ (m : AC.Vote sp.n) z, m.val = st.self → ownToken st.voteIO m = some z →
+    st.voteIO.check m.val (S.vote.voteRole m.slot) (encodeVote m) z = true
+
+omit [DecidableEq V] in
+private theorem acCall_val (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time)
+    (c) {ℓ} (h : Cut.ac ℓ = (Node.acCall self st t c).2) : ∀ e ∈ ℓ.emits, e.msg.val = self := by
+  simp only [Node.acCall] at h
+  cases h
+  exact emits_val (ro := ro) self st.ac _ t c
+
+omit [DecidableEq V] in
+private theorem onBlock_val (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time)
+    B {ℓ} (h : Cut.ac ℓ ∈ (Node.onBlock self st t B).2) : ∀ e ∈ ℓ.emits, e.msg.val = self := by
+  unfold Node.onBlock at h
+  split at h
+  · cases h
+  · split at h
+    · simp at h
+    · simp only [List.mem_cons, List.not_mem_nil, or_false] at h
+      rcases h with h | h
+      · cases h
+      · exact acCall_val self _ t _ h
+
+omit [DecidableEq V] in
+private theorem ownChecks_of_eq {st st' : State sp ro S.vote} (h : OwnChecks S st)
+    (hio : st'.voteIO = st.voteIO) (hself : st'.self = st.self) : OwnChecks S st' := by
+  intro m z hm hz
+  rw [hio] at hz ⊢
+  exact h m z (hm.trans hself) hz
+
+omit [DecidableEq V] in
+private theorem queuedChecked_apply (st : State sp ro S.vote) origin
+    (r : NodeState (goldilocksNode sp ro) × List (Cut (goldilocksNode sp ro)))
+    (h : QueuedChecked S st) (hown : OwnChecks S st)
+    (hcuts : ∀ ℓ, Cut.ac ℓ ∈ r.2 → ∀ e ∈ ℓ.emits, e.msg.val = st.self)
+    (horig : ∀ (w : Wire sp.n S.vote) (v : AC.Vote sp.n), origin = some w →
+      (∃ ℓ, Cut.ac ℓ ∈ r.2 ∧ ℓ.call = .message v) →
+      ∃ z, w = voteObj v z ∧
+        st.voteIO.check v.val (S.vote.voteRole v.slot) (encodeVote v) z = true) :
+    QueuedChecked S (apply st origin r) := by
+  rintro ⟨t, v, w⟩ hq
+  rcases apply_voteForward_obj S st origin r t v w hq with
+    hq | ⟨z, hz, -, htok, ℓ, hℓ, em, hem, rfl⟩ | ⟨ho, hc⟩
+  · exact h _ hq
+  · exact ⟨z, hz, hown _ z (hcuts ℓ hℓ em hem) htok⟩
+  · exact horig w v ho hc
+
+omit [DecidableEq V] in
+/-- Processing one object keeps every queued token checked: an own envelope carries the own
+token of an own emission, and a received one is the object whose check admitted the vote. -/
+theorem queuedChecked_processOne (hs : List (Header Info × Nat)) (st : State sp ro S.vote)
+    (o : Wire sp.n S.vote) (h : QueuedChecked S st) (hown : OwnChecks S st) :
+    QueuedChecked S (processOne st.voteIO hs st o) := by
+  have hrelay : ∀ (s : State sp ro S.vote) (c : Prop) (_ : Decidable c),
+      QueuedChecked S s → QueuedChecked S (relayIf s c o) := by
+    intro s c _ hs'
+    unfold relayIf
+    split <;> exact hs'
+  rcases canonEvent_cases (ro := ro) st.voteIO hs o with he | ⟨B, he⟩ | ⟨m, he⟩ | ⟨a, he⟩
+  · simp only [AsChainShape.processOne_eq, he]
+    exact h
+  · simp only [AsChainShape.processOne_eq, he]
+    refine hrelay _ _ _ (queuedChecked_apply S st none _ h hown
+      (fun ℓ hℓ => onBlock_val _ _ _ _ hℓ) (fun _ _ h => by cases h))
+  · simp only [AsChainShape.processOne_eq, he]
+    refine queuedChecked_apply S st (some o) _ h hown ?_ ?_
+    · intro ℓ hℓ
+      simp only [Node.onMessage, List.mem_singleton] at hℓ
+      exact acCall_val _ _ _ _ hℓ
+    · rintro w v hw ⟨ℓ, hℓ, hc⟩
+      cases Option.some.inj hw
+      simp only [Node.onMessage, Node.acCall, List.mem_singleton] at hℓ
+      cases Cut.ac.inj hℓ
+      cases hc
+      rcases canonEvent_eq_some he with ⟨B, hB, -⟩ | ⟨v', z, hv, ho, hck⟩ | ⟨a, ha, -⟩
+      · cases hB
+      · cases hv
+        exact ⟨z, ho, hck⟩
+      · cases ha
+  · simp only [AsChainShape.processOne_eq, he]
+    refine hrelay _ _ _ (queuedChecked_apply S st none _ h hown ?_ (fun _ _ h => by cases h))
+    intro ℓ hℓ
+    simp [Node.onAttestation] at hℓ
+
+omit [DecidableEq V] in
+/-- A delivery traversal keeps every queued token checked. -/
+theorem queuedChecked_foldl (hs : List (Header Info × Nat)) (io : VoteAuth sp.n S.vote) :
+    ∀ (os : List (Wire sp.n S.vote)) (st : State sp ro S.vote), st.voteIO = io →
+      QueuedChecked S st → OwnChecks S st →
+      QueuedChecked S (os.foldl (processOne io hs) st) := by
+  intro os
+  induction os with
+  | nil => exact fun _ _ h _ => h
+  | cons o os ih =>
+    intro st hio h hown
+    subst hio
+    exact ih _ (processOne_voteIO _ _ _ _) (queuedChecked_processOne S hs st o h hown)
+      (ownChecks_of_eq S hown (processOne_voteIO _ _ _ _) (processOne_self _ _ _ _))
+
+omit [DecidableEq V] in
+theorem queuedChecked_recordOwn (st : State sp ro S.vote) o hs (h : QueuedChecked S st)
+    (hown : OwnChecks S st) : QueuedChecked S (recordOwn st o hs) := by
+  rw [AsChainShape.recordOwn_eq]
+  split
+  · exact h
+  · split
+    · exact queuedChecked_apply S st none _ h hown (fun ℓ hℓ => onBlock_val _ _ _ _ hℓ)
+        (fun _ _ h => by cases h)
+    · exact h
+  · exact h
+
+omit [DecidableEq V] in
+theorem queuedChecked_propose (st : State sp ro S.vote) s (h : QueuedChecked S st) :
+    QueuedChecked S (propose st s).1 := by
+  rw [propose_eq]; dsimp only; split <;> exact h
+
+omit [DecidableEq V] in
+theorem queuedChecked_nodeTick (st : State sp ro S.vote) (h : QueuedChecked S st)
+    (hown : OwnChecks S st) : QueuedChecked S (nodeTick st) := by
+  rw [nodeTick_eq]
+  split
+  · refine queuedChecked_apply S st none _ h hown ?_ (fun _ _ h => by cases h)
+    intro ℓ hℓ
+    exact acCall_val _ _ _ _ (List.mem_singleton.mp hℓ)
+  · exact h
+
+omit [DecidableEq V] in
+theorem queuedChecked_poll (st : State sp ro S.vote) u : QueuedChecked S (poll st u).1 := by
+  intro q hq
+  rw [poll_voteForwards] at hq
+  cases hq
+
+end QueuedChecks
+
+/-- A node's own verifier accepts its own tokens on its own votes, under the run's vote
+verification. -/
+theorem ownChecks_of_eq_voteIO (hv : rho.ExecutionValid) {v : V}
+    {st : State (S.params (pubOf E) hn) (S.ro _) S.vote}
+    (hio : st.voteIO = rho.voteIO v) (hself : st.self = rho.ownKey v) : OwnChecks S st := by
+  intro m z hm hz
+  rw [hio] at hz ⊢
+  rw [hm, hself]
+  refine rho.voteIO_own_check hv.credentials.1 hz ?_ v
+  change (decodeVote _ (encodeVote m)).map _ = _
+  rw [decodeVote_encodeVote, ← hself, ← hm]
+  rfl
+
+/-- **Every envelope a delivery queues carries a token that verifies.** -/
+theorem delivery_voteForward_checked (hv : rho.ExecutionValid) {v : V}
+    {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
+    (he : rho.events[i]? = some (.deliver v o t)) :
+    ∀ tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards,
+      ∃ z, tv.2.2 = voteObj tv.2.1 z ∧
+        rho.verify (tv.2.1.val, S.vote.voteRole tv.2.1.slot, encodeVote tv.2.1) z = true := by
+  have _ := he
+  have h := queuedChecked_foldl S (Model.digests rho.hash o) (stateAt S rho hn v i).voteIO
+    (delivered (stateAt S rho hn v i).voteIO (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+    (stateAt S rho hn v i) rfl
+    (fun q hq => by rw [voteForwards_empty S rho hn hv v i] at hq; cases hq)
+    (ownChecks_of_eq_voteIO S rho hn hv (stateAt_voteIO S rho hn v i) (self_eq_ownKey S rho hn v i))
+  intro tv htv
+  obtain ⟨z, hz, hc⟩ := h tv htv
+  refine ⟨z, hz, ?_⟩
+  have hio : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteIO = rho.voteIO v :=
+    (process_voteIO S hn _ _ _).trans (stateAt_voteIO S rho hn v i)
+  change (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteIO.check _ _ _ _ = _
+    at hc
+  rw [hio] at hc
+  exact hc
 
 end Consensus.Goldilocks.Simulation
 
