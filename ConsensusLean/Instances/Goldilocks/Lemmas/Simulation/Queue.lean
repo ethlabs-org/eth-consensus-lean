@@ -7,6 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventory
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 import ConsensusLean.Lemmas.Problem.Constant
+import ConsensusLean.Lemmas.Model.Credentials
 public import Mathlib.Tactic.IntervalCases
 
 public section
@@ -169,23 +170,29 @@ section Inventory
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Inventory before an engine operation. The predicate will be membership in the seen
-closure or in the queue; stored block payloads are needed again by restart replay. -/
-private structure Inventory (P : Wire sp.n binding → Prop)
+closure or in the queue; stored block payloads are needed again by restart replay. Every pool
+vote has a signed object with some token; `gate`: the node's vote authentication `io` holds an
+own token for every slot its AC may vote in, so own emissions are released. -/
+private structure Inventory (io : VoteAuth sp.n binding) (P : Wire sp.n binding → Prop)
     (st : NodeState (goldilocksNode sp ro)) : Prop where
   reachable : st.fg.Reachable ([], [])
   blocks : ∀ B ∈ st.fg.tree, ∀ o ∈ payloadObjs B.fgPayload B.acPayload, P o
-  votes : PoolIn (fun v => P (voteObj v)) st.ac
+  votes : PoolIn (fun v => ∃ z, P (voteObj v z)) st.ac
   atts : ∀ a ∈ st.fg.atts, P (attObj a)
+  gate : ∀ m : Vote sp.n, st.ac.mayVote m.slot = true → ∃ z, ownToken io m = some z
 
-private theorem inventory_init (P : Wire sp.n binding → Prop) (B : VoteBinding)
-    (q : ShapeRole B.Kind → Bool) :
-    Inventory P (Node.initWith (goldilocksNode sp ro)
+private theorem inventory_init (io : VoteAuth sp.n binding) (P : Wire sp.n binding → Prop)
+    (B : VoteBinding) (q : ShapeRole B.Kind → Bool)
+    (hg : ∀ m : Vote sp.n, (Node.initWith (goldilocksNode sp ro)
+      (B.installVote q (goldilocksNode sp ro).initial)).ac.mayVote m.slot = true →
+        ∃ z, ownToken io m = some z) :
+    Inventory io P (Node.initWith (goldilocksNode sp ro)
       (B.installVote q (goldilocksNode sp ro).initial)) := by
   have hpool : (B.installVote q (goldilocksNode sp ro).initial).pool =
       (goldilocksNode sp ro).initial.pool := by
     unfold VoteBinding.installVote
     split <;> rfl
-  refine ⟨Relation.ReflTransGen.refl, ?_, ?_, ?_⟩
+  refine ⟨Relation.ReflTransGen.refl, ?_, ?_, ?_, hg⟩
   · intro B hB o ho
     change (if B.root = sp.genesisRoot then some (sp.toParams.genesisBlock ([], []))
       else none) = some B at hB
@@ -199,52 +206,58 @@ private theorem inventory_init (P : Wire sp.n binding → Prop) (B : VoteBinding
   · intro a ha
     exact False.elim (List.not_mem_nil ha)
 
-private theorem inventory_att {P : Wire sp.n binding → Prop} {st : NodeState (goldilocksNode sp ro)}
-    (h : Inventory P st) (a : FG.Att sp.n) (ha : P (attObj a)) :
-    Inventory P (Node.onAttestation st a).1 := by
-  have hfg := NodeAsChainShape.inventory_att (wireCodec sp ro binding) attObj
+private theorem inventory_att {io : VoteAuth sp.n binding} {P : Wire sp.n binding → Prop}
+  {st : NodeState (goldilocksNode sp ro)}
+    (h : Inventory io P st) (a : FG.Att sp.n) (ha : P (attObj a)) :
+    Inventory io P (Node.onAttestation st a).1 := by
+  have hfg := NodeAsChainShape.inventory_att (wireCodec sp ro binding io) attObj
     ⟨h.reachable, h.blocks, h.atts⟩ a ha
-  exact ⟨hfg.reachable, hfg.blocks, h.votes, hfg.atts⟩
+  exact ⟨hfg.reachable, hfg.blocks, h.votes, hfg.atts, h.gate⟩
 
-private theorem inventory_accept {P : Wire sp.n binding → Prop} {st : NodeState
+private theorem inventory_accept {io : VoteAuth sp.n binding} {P : Wire sp.n binding → Prop}
+  {st : NodeState
     (goldilocksNode sp ro)}
-    (h : Inventory P st) {B : Blk sp} {fg' : Store sp.toParams (Payload sp.n)}
+    (h : Inventory io P st) {B : Blk sp} {fg' : Store sp.toParams (Payload sp.n)}
     (hacc : st.fg.onBlock B = some fg')
     (hB : ∀ o ∈ payloadObjs B.fgPayload B.acPayload, P o) :
-    Inventory P { st with fg := fg' } := by
+    Inventory io P { st with fg := fg' } := by
   have hatt : ∀ a ∈ B.fgPayload,
       attObj a ∈ payloadObjs (binding := binding) B.fgPayload B.acPayload :=
     fun a ha => List.mem_map.mpr ⟨a, ha, rfl⟩
-  have hfg := NodeAsChainShape.inventory_accept (wireCodec sp ro binding) attObj
+  have hfg := NodeAsChainShape.inventory_accept (wireCodec sp ro binding io) attObj
     ⟨h.reachable, h.blocks, h.atts⟩ hacc hB hatt
-  exact ⟨hfg.reachable, hfg.blocks, h.votes, hfg.atts⟩
+  exact ⟨hfg.reachable, hfg.blocks, h.votes, hfg.atts, h.gate⟩
 
-private theorem inventory_call {P : Wire sp.n binding → Prop} {st : NodeState
+private theorem inventory_call {io : VoteAuth sp.n binding} {P : Wire sp.n binding → Prop}
+  {st : NodeState
     (goldilocksNode sp ro)}
-    (h : Inventory P st) (self : Fin sp.n) (t : Time)
+    (h : Inventory io P st) (self : Fin sp.n) (t : Time)
     (c : (goldilocksNode sp ro).Call)
     (hc : match c with
-      | .message v => P (voteObj v)
+      | .message v => ∃ z, P (voteObj v z)
       | _ => True)
     (he : ∀ e ∈ ((goldilocksNode sp ro).step self st.ac (frame st) t c).2,
-      P (voteObj e.msg)) : Inventory P (Node.acCall self st t c).1 := by
+      ∃ z, P (voteObj e.msg z)) : Inventory io P (Node.acCall self st t c).1 := by
   refine ⟨h.reachable, h.blocks, pool_step_inventory _ ro self st.ac (frame st) t c h.votes
-    ?_ he, h.atts⟩
-  cases c <;> exact hc
+    ?_ he, h.atts, fun m hm => h.gate m ?_⟩
+  · cases c <;> exact hc
+  · change ((goldilocksNode sp ro).step self st.ac (frame st) t c).1.mayVote m.slot = true at hm
+    rwa [AC.step_mayVote] at hm
 
-private theorem inventory_mono {P Q : Wire sp.n binding → Prop}
-    {st : NodeState (goldilocksNode sp ro)} (h : Inventory P st) (hPQ : ∀ o, P o → Q o) :
-    Inventory Q st :=
+private theorem inventory_mono {io : VoteAuth sp.n binding} {P Q : Wire sp.n binding → Prop}
+    {st : NodeState (goldilocksNode sp ro)} (h : Inventory io P st) (hPQ : ∀ o, P o → Q o) :
+    Inventory io Q st :=
   ⟨h.reachable, fun B hB o ho => hPQ o (h.blocks B hB o ho),
-    fun s v hv => hPQ _ (h.votes s v hv), fun a ha => hPQ _ (h.atts a ha)⟩
+    fun s v hv => (h.votes s v hv).imp fun _ => hPQ _, fun a ha => hPQ _ (h.atts a ha), h.gate⟩
 
-private theorem inventory_block {P : Wire sp.n binding → Prop} {st : NodeState
+private theorem inventory_block {io : VoteAuth sp.n binding} {P : Wire sp.n binding → Prop}
+  {st : NodeState
     (goldilocksNode sp ro)}
-    (h : Inventory P st) (self : Fin sp.n) (t : Time) (B : Blk sp)
+    (h : Inventory io P st) (self : Fin sp.n) (t : Time) (B : Blk sp)
     (hB : ∀ o ∈ payloadObjs B.fgPayload B.acPayload, P o)
-    (he : ∀ b ∈ emitted (Node.onBlock self st t B).2,
-      ∀ v, b = .vote (encodeVote v) → P (voteObj v)) :
-    Inventory P (Node.onBlock self st t B).1 := by
+    (he : ∀ b ∈ emitted io (Node.onBlock self st t B).2,
+      ∀ v z, b = .vote (encodeVote v) z → P (voteObj v z)) :
+    Inventory io P (Node.onBlock self st t B).1 := by
   unfold Node.onBlock at he ⊢
   split_ifs at he ⊢
   · exact h
@@ -254,33 +267,44 @@ private theorem inventory_block {P : Wire sp.n binding → Prop} {st : NodeState
       rw [hfg] at he
       apply inventory_call (inventory_accept h hfg hB) self t (.block B) trivial
       intro e he'
-      apply he (.vote (encodeVote e.msg)) ?_ e.msg rfl
+      obtain ⟨z, hz⟩ := h.gate e.msg (AC.emits_mayVote ro _ _ _ _ _ e he')
+      refine ⟨z, he (.vote (encodeVote e.msg) z) ?_ e.msg z rfl⟩
       simp only [emitted, acCall, List.flatMap_cons, List.flatMap_nil,
         List.nil_append, List.append_nil]
-      exact List.mem_map.mpr ⟨e, he', rfl⟩
+      exact List.mem_filterMap.mpr ⟨e, he', by rw [hz]; rfl⟩
 
-private theorem inventory_proposal {P : Wire sp.n binding → Prop}
-    {st : NodeState (goldilocksNode sp ro)} (h : Inventory P st) (t : Time) :
-    Inventory P (Node.acProposal st t).1 := by
-  refine ⟨h.reachable, h.blocks, ?_, h.atts⟩
-  change PoolIn _ (AC.acProposal sp st.ac (frame st) t).1
-  unfold AC.acProposal
-  split_ifs <;> exact h.votes
+private theorem inventory_proposal {io : VoteAuth sp.n binding} {P : Wire sp.n binding → Prop}
+    {st : NodeState (goldilocksNode sp ro)} (h : Inventory io P st) (t : Time) :
+    Inventory io P (Node.acProposal st t).1 := by
+  refine ⟨h.reachable, h.blocks, ?_, h.atts, fun m hm => h.gate m ?_⟩
+  · change PoolIn _ (AC.acProposal sp st.ac (frame st) t).1
+    unfold AC.acProposal
+    split_ifs <;> exact h.votes
+  · change (AC.acProposal sp st.ac (frame st) t).1.mayVote m.slot = true at hm
+    unfold AC.acProposal at hm
+    split_ifs at hm <;> exact hm
 
-private theorem inventory_toFG {P : Wire sp.n binding → Prop}
-    {st : NodeState (goldilocksNode sp ro)} (h : Inventory P st) (t : Time) :
-    Inventory P (Node.acToFG st t).1 := by
-  refine ⟨h.reachable, h.blocks, ?_, h.atts⟩
-  change PoolIn _ (AC.acToFG sp st.ac (frame st) t).1
-  unfold AC.acToFG
-  split_ifs
-  · split
+private theorem inventory_toFG {io : VoteAuth sp.n binding} {P : Wire sp.n binding → Prop}
+    {st : NodeState (goldilocksNode sp ro)} (h : Inventory io P st) (t : Time) :
+    Inventory io P (Node.acToFG st t).1 := by
+  refine ⟨h.reachable, h.blocks, ?_, h.atts, fun m hm => h.gate m ?_⟩
+  · change PoolIn _ (AC.acToFG sp st.ac (frame st) t).1
+    unfold AC.acToFG
+    split_ifs
+    · split
+      · exact h.votes
+      · split_ifs <;> exact h.votes
     · exact h.votes
-    · split_ifs <;> exact h.votes
-  · exact h.votes
+  · change (AC.acToFG sp st.ac (frame st) t).1.mayVote m.slot = true at hm
+    unfold AC.acToFG at hm
+    split_ifs at hm
+    · split at hm
+      · exact hm
+      · split_ifs at hm <;> exact hm
+    · exact hm
 
 private theorem proposal_inventory {P : Wire sp.n binding → Prop} (st : State sp ro binding)
-    (h : Inventory P st.node) (s : Slot) {par : ParentRef} {info : Info}
+    (h : Inventory st.voteIO P st.node) (s : Slot) {par : ParentRef} {info : Info}
     {cs : List (Wire sp.n binding)} (hp : (propose st s).2 = some (par, info, cs)) :
     ∀ o ∈ cs, P o := by
   simp only [propose_eq, Node.acProposal] at hp
@@ -301,7 +325,7 @@ section ShapeInventory
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 private def Pending (st : State sp ro binding) (o : Wire sp.n binding) : Prop :=
-  (∃ v, o = voteObj v ∧ .vote (encodeVote v) ∈ st.outbox) ∨
+  (∃ v z, o = voteObj v z ∧ .vote (encodeVote v) z ∈ st.outbox) ∨
     ∃ a, o = attObj a ∧ .att (encodeAtt a) ∈ st.outbox
 
 private def Available (seen : List (Wire sp.n binding)) (st : State sp ro binding)
@@ -322,8 +346,8 @@ private theorem carried_parts {n : Nat} (auth : Model.Auth n (ShapeRole binding.
 
 private theorem pending_mono {st st' : State sp ro binding} (h : st.outbox ⊆ st'.outbox)
     {o : Wire sp.n binding} : Pending st o → Pending st' o := by
-  rintro (⟨v, rfl, hv⟩ | ⟨a, rfl, ha⟩)
-  · exact Or.inl ⟨v, rfl, h hv⟩
+  rintro (⟨v, z, rfl, hv⟩ | ⟨a, rfl, ha⟩)
+  · exact Or.inl ⟨v, z, rfl, h hv⟩
   · exact Or.inr ⟨a, rfl, h ha⟩
 
 private theorem available_mono {seen seen' : List (Wire sp.n binding)}
@@ -334,51 +358,53 @@ private theorem available_mono {seen seen' : List (Wire sp.n binding)}
   Or.imp (fun h => hs h) (pending_mono hq)
 
 private theorem apply_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
-    (r : NodeState (goldilocksNode sp ro) × List (Cut (goldilocksNode sp ro)))
-    (hr : ∀ P : Wire sp.n binding → Prop, Inventory P st.node →
+    origin (r : NodeState (goldilocksNode sp ro) × List (Cut (goldilocksNode sp ro)))
+    (hr : ∀ P : Wire sp.n binding → Prop, Inventory st.voteIO P st.node →
       (∀ o ∈ seen.flatMap Model.Obj.parts, P o) →
-      (∀ b ∈ emitted r.2, ∀ v, b = .vote (encodeVote v) → P (voteObj v)) →
-      Inventory P r.1)
-    (h : Inventory (Available seen st) st.node) :
-    Inventory (Available seen (apply st r)) (apply st r).node := by
+      (∀ b ∈ emitted st.voteIO r.2, ∀ v z, b = .vote (encodeVote v) z → P (voteObj v z)) →
+      Inventory st.voteIO P r.1)
+    (h : Inventory st.voteIO (Available seen st) st.node) :
+    Inventory st.voteIO (Available seen (apply st origin r)) (apply st origin r).node := by
   apply hr
   · exact inventory_mono h (fun _ => available_mono (fun _ h => h)
       (List.subset_append_left _ _))
   · exact fun _ h => Or.inl h
-  · intro b hb v hv
-    exact Or.inr (Or.inl ⟨v, rfl, List.mem_append_right _ (hv ▸ hb)⟩)
+  · intro b hb v z hv
+    exact Or.inr (Or.inl ⟨v, z, rfl, List.mem_append_right _ (hv ▸ hb)⟩)
 
 private theorem tick_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
-    (h : Inventory (Available seen st) st.node) :
-    Inventory (Available seen (nodeTick st)) (nodeTick st).node := by
+    (h : Inventory st.voteIO (Available seen st) st.node) :
+    Inventory (nodeTick st).voteIO (Available seen (nodeTick st)) (nodeTick st).node := by
   rw [nodeTick_eq]
   split
-  · apply apply_inventory seen st
+  · apply apply_inventory seen st none
       ((Node.acCall st.self st.node st.now .tick).1,
         [(Node.acCall st.self st.node st.now .tick).2]) ?_ h
     intro P h _ he
     apply inventory_call h st.self st.now .tick trivial
     intro e he'
-    apply he (.vote (encodeVote e.msg)) ?_ e.msg rfl
+    obtain ⟨z, hz⟩ := h.gate e.msg (AC.emits_mayVote ro _ _ _ _ _ e he')
+    refine ⟨z, he (.vote (encodeVote e.msg) z) ?_ e.msg z rfl⟩
     simp only [emitted, acCall, List.flatMap_cons, List.flatMap_nil, List.append_nil]
-    exact List.mem_map.mpr ⟨e, he', rfl⟩
+    exact List.mem_filterMap.mpr ⟨e, he', by rw [hz]; rfl⟩
   · exact h
 
 private theorem restore_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
-    (k : Fin sp.n) (t : Time) (h : Inventory (Available seen st) st.node) :
-    Inventory (Available seen (restore k st t)) (restore k st t).node := by
-  apply apply_inventory seen { st with self := k, now := t }
+    (k : Fin sp.n) (t : Time) (h : Inventory st.voteIO (Available seen st) st.node) :
+    Inventory (restore k st t).voteIO (Available seen (restore k st t)) (restore k st t).node := by
+  apply apply_inventory seen { st with self := k, now := t } none
     ((Node.acCall k st.node t .restart).1, [(Node.acCall k st.node t .restart).2]) ?_ h
   intro P h _ he
   apply inventory_call h k t .restart trivial
   intro e he'
-  apply he (.vote (encodeVote e.msg)) ?_ e.msg rfl
+  obtain ⟨z, hz⟩ := h.gate e.msg (AC.emits_mayVote ro _ _ _ _ _ e he')
+  refine ⟨z, he (.vote (encodeVote e.msg) z) ?_ e.msg z rfl⟩
   simp only [emitted, acCall, List.flatMap_cons, List.flatMap_nil, List.append_nil]
-  exact List.mem_map.mpr ⟨e, he', rfl⟩
+  exact List.mem_filterMap.mpr ⟨e, he', by rw [hz]; rfl⟩
 
 private theorem fg_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
-    (h : Inventory (Available seen st) st.node) :
-    Inventory (Available seen (fgUpdate st)) (fgUpdate st).node := by
+    (h : Inventory st.voteIO (Available seen st) st.node) :
+    Inventory (fgUpdate st).voteIO (Available seen (fgUpdate st)) (fgUpdate st).node := by
   rw [fgUpdate_eq]
   dsimp only
   split
@@ -388,31 +414,32 @@ private theorem fg_inventory (seen : List (Wire sp.n binding)) (st : State sp ro
     · rename_i C hC a Λ' ha
       apply inventory_att
       · have ht := inventory_toFG h st.now
-        have ht' : Inventory (Available seen st)
+        have ht' : Inventory st.voteIO (Available seen st)
             { (Node.acToFG st.node st.now).1 with record := Λ' } :=
-          ⟨ht.reachable, ht.blocks, ht.votes, ht.atts⟩
+          ⟨ht.reachable, ht.blocks, ht.votes, ht.atts, ht.gate⟩
         apply inventory_mono ht'
         intro o ho
         exact available_mono (fun _ h => h) (List.subset_append_left _ _) ho
       · exact Or.inr (Or.inr ⟨a, rfl, List.mem_append_right _ (List.mem_singleton_self _)⟩)
 
 private theorem processOne_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
-    (hs : List (Header Info × Nat)) (o : Wire sp.n binding)
-    (h : Inventory (Available seen st) st.node)
+    (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat)) (o : Wire sp.n binding)
+    (h : Inventory st.voteIO (Available seen st) st.node)
     (ho : ∀ x ∈ o.parts, x ∈ seen.flatMap Model.Obj.parts) :
-    Inventory (Available seen (processOne hs st o)) (processOne hs st o).node := by
-  rw [AsChainShape.processOne_eq]
+    Inventory (processOne io hs st o).voteIO (Available seen (processOne io hs st o))
+      (processOne io hs st o).node := by
+  rw [processOne_voteIO, AsChainShape.processOne_eq]
   split
   · rename_i B hB
     have hcanon : o = blockObj sp B := by
-      rcases canonEvent_eq_some hB with ⟨B', he, ho⟩ | ⟨v, he, _⟩ | ⟨a, he, _⟩
+      rcases canonEvent_eq_some hB with ⟨B', he, ho⟩ | ⟨v, z, he, _⟩ | ⟨a, he, _⟩
       · cases he; exact ho
       · cases he
       · cases he
     unfold relayIf
     dsimp only
     split_ifs <;>
-      apply apply_inventory seen st (Node.onBlock st.self st.node st.now B) ?_ h
+      apply apply_inventory seen st none (Node.onBlock st.self st.node st.now B) ?_ h
     all_goals
       intro P h hseen he
       apply inventory_block h st.self st.now B ?_ he
@@ -422,32 +449,33 @@ private theorem processOne_inventory (seen : List (Wire sp.n binding)) (st : Sta
       exact List.mem_cons_of_mem _ (List.mem_flatMap.mpr
         ⟨x, hx, by rw [Model.Obj.parts_eq]; exact List.mem_cons_self⟩)
   · rename_i v hv
-    have hcanon : o = voteObj v := by
-      rcases canonEvent_eq_some hv with ⟨B, he, _⟩ | ⟨v', he, ho⟩ | ⟨a, he, _⟩
+    obtain ⟨z₀, hcanon⟩ : ∃ z, o = voteObj v z := by
+      rcases canonEvent_eq_some hv with ⟨B, he, _⟩ | ⟨v', z, he, ho, -⟩ | ⟨a, he, _⟩
       · cases he
-      · cases he; exact ho
+      · cases he; exact ⟨z, ho⟩
       · cases he
-    apply apply_inventory seen st (Node.onMessage st.self st.node st.now v) ?_ h
+    apply apply_inventory seen st (some o) (Node.onMessage st.self st.node st.now v) ?_ h
     all_goals
       intro P h hseen he
       apply inventory_call h st.self st.now (.message v) ?_ ?_
-      · apply hseen _
+      · refine ⟨z₀, hseen _ ?_⟩
         rw [← hcanon]
         apply ho
         rw [Model.Obj.parts_eq]
         exact List.mem_cons_self
       · intro e he'
-        apply he (.vote (encodeVote e.msg)) ?_ e.msg rfl
+        obtain ⟨z, hz⟩ := h.gate e.msg (AC.emits_mayVote ro _ _ _ _ _ e he')
+        refine ⟨z, he (.vote (encodeVote e.msg) z) ?_ e.msg z rfl⟩
         simp only [Node.onMessage, emitted, acCall, List.flatMap_cons,
           List.flatMap_nil, List.append_nil]
-        exact List.mem_map.mpr ⟨e, he', rfl⟩
+        exact List.mem_filterMap.mpr ⟨e, he', by rw [hz]; rfl⟩
   · rename_i a ha
     have hcanon : o = attObj a := by
-      rcases canonEvent_eq_some ha with ⟨B, he, _⟩ | ⟨v, he, _⟩ | ⟨a', he, ho⟩
+      rcases canonEvent_eq_some ha with ⟨B, he, _⟩ | ⟨v, z, he, _⟩ | ⟨a', he, ho⟩
       · cases he
       · cases he
       · cases he; exact ho
-    apply apply_inventory seen st (Node.onAttestation st.node a) ?_ h
+    apply apply_inventory seen st none (Node.onAttestation st.node a) ?_ h
     intro P h hseen _
     apply inventory_att h
     apply hseen _
@@ -459,40 +487,44 @@ private theorem processOne_inventory (seen : List (Wire sp.n binding)) (st : Sta
 
 private theorem process_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
     (hs : List (Header Info × Nat)) (o : Wire sp.n binding)
-    (h : Inventory (Available seen st) st.node)
+    (h : Inventory st.voteIO (Available seen st) st.node)
     (ho : ∀ x ∈ o.parts, x ∈ seen.flatMap Model.Obj.parts) :
-    Inventory (Available seen (process st o hs)) (process st o hs).node := by
+    Inventory (process st o hs).voteIO (Available seen (process st o hs))
+      (process st o hs).node := by
   rw [process_eq]
-  have key : ∀ (l : List (Wire sp.n binding)) (st : State sp ro binding),
-      Inventory (Available seen st) st.node →
+  have key : ∀ (io : VoteAuth sp.n binding) (l : List (Wire sp.n binding))
+      (st : State sp ro binding),
+      Inventory st.voteIO (Available seen st) st.node →
       (∀ x ∈ l, ∀ y ∈ x.parts, y ∈ seen.flatMap Model.Obj.parts) →
-      Inventory (Available seen (l.foldl (processOne hs) st))
-        (l.foldl (processOne hs) st).node := by
-    intro l
+      Inventory (l.foldl (processOne io hs) st).voteIO
+        (Available seen (l.foldl (processOne io hs) st))
+        (l.foldl (processOne io hs) st).node := by
+    intro io l
     induction l with
     | nil => exact fun _ h _ => h
     | cons x l ih =>
       intro st h hl
-      exact ih _ (processOne_inventory seen st hs x h (hl x List.mem_cons_self))
+      exact ih _ (processOne_inventory seen st io hs x h (hl x List.mem_cons_self))
         (fun y hy => hl y (List.mem_cons_of_mem x hy))
-  apply key _ st h
+  apply key _ _ st h
   intro x hx y hy
-  exact ho y (Model.Obj.Contains.trans (mem_delivered hs hx) hy)
+  exact ho y (Model.Obj.Contains.trans (mem_delivered st.voteIO hs hx) hy)
 
 private theorem record_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
     (hs : List (Header Info × Nat)) (o : Wire sp.n binding)
-    (h : Inventory (Available seen st) st.node)
+    (h : Inventory st.voteIO (Available seen st) st.node)
     (hp : ∀ k s hd cs, o = .mk (.signed k (.proposer s)) (.item hd) cs →
       ∀ atts p, decodeInfo sp.n hd.info = some (atts, p) →
       ∀ x ∈ payloadObjs atts p, x ∈ seen.flatMap Model.Obj.parts) :
-    Inventory (Available seen (recordOwn st o hs)) (recordOwn st o hs).node := by
+    Inventory (recordOwn st o hs).voteIO (Available seen (recordOwn st o hs))
+      (recordOwn st o hs).node := by
   rw [AsChainShape.recordOwn_eq]
   split
   · exact h
   · rename_i k s hd cs
     split
     · rename_i atts p d hi hdig
-      apply apply_inventory seen st _ ?_ h
+      apply apply_inventory seen st none _ ?_ h
       intro P h hseen he
       apply inventory_block h st.self st.now _ ?_ he
       intro x hx
@@ -502,14 +534,15 @@ private theorem record_inventory (seen : List (Wire sp.n binding)) (st : State s
   · exact h
 
 private theorem poll_inventory (seen seen' : List (Wire sp.n binding)) (st : State sp ro binding)
-    (t : Time) (h : Inventory (Available seen st) st.node)
+    (t : Time) (h : Inventory st.voteIO (Available seen st) st.node)
     (hs : seen.flatMap Model.Obj.parts ⊆ seen'.flatMap Model.Obj.parts)
-    (hv : ∀ v, (if st.fgDue then fgUpdate st else st).outbox.head? =
-      some (.vote (encodeVote v)) → voteObj v ∈ seen'.flatMap Model.Obj.parts)
+    (hv : ∀ v z, (if st.fgDue then fgUpdate st else st).outbox.head? =
+      some (.vote (encodeVote v) z) → voteObj v z ∈ seen'.flatMap Model.Obj.parts)
     (ha : ∀ a, (if st.fgDue then fgUpdate st else st).outbox.head? =
       some (.att (encodeAtt a)) → attObj a ∈ seen'.flatMap Model.Obj.parts) :
-    Inventory (Available seen' (poll st t).1) (poll st t).1.node := by
-  have hi : Inventory (Available seen (if st.fgDue then fgUpdate st else st))
+    Inventory (poll st t).1.voteIO (Available seen' (poll st t).1) (poll st t).1.node := by
+  have hi : Inventory (if st.fgDue then fgUpdate st else st).voteIO (Available seen
+    (if st.fgDue then fgUpdate st else st))
       (if st.fgDue then fgUpdate st else st).node := by
     split
     · exact fg_inventory seen st h
@@ -526,12 +559,12 @@ private theorem poll_inventory (seen seen' : List (Wire sp.n binding)) (st : Sta
     simp only [hq]
     apply inventory_mono hi
     intro o ho
-    rcases ho with ho | (⟨v, rfl, hv'⟩ | ⟨a, rfl, ha'⟩)
+    rcases ho with ho | (⟨v, z, rfl, hv'⟩ | ⟨a, rfl, ha'⟩)
     · exact Or.inl (hs ho)
     · rw [hq] at hv'
       rcases List.mem_cons.mp hv' with hb | hr
-      · exact Or.inl (hv v (by simp [hq, ← hb]))
-      · exact Or.inr (Or.inl ⟨v, rfl, hr⟩)
+      · exact Or.inl (hv v z (by simp [hq, ← hb]))
+      · exact Or.inr (Or.inl ⟨v, z, rfl, hr⟩)
     · rw [hq] at ha'
       rcases List.mem_cons.mp ha' with hb | hr
       · exact Or.inl (ha a (by simp [hq, ← hb]))
@@ -559,10 +592,10 @@ private theorem cut_member (hv : rho.ExecutionValid) {v : V} {i p : Nat} {nd}
 /-- Pending canonical votes at actual duty boundaries are own votes of a slot whose vote role
 selects the local signer. -/
 theorem duty_cut_vote_member (hv : rho.ExecutionValid) {v : V} (_hv' : v ∉ rho.faultyAt 0)
-    {i p : Nat} {nd} (hc : EngineDutyCut S rho v i p nd) (m : Vote (Fintype.card V))
-    (hm : Body.vote (encodeVote m) ∈ (shapeOf S hn nd).outbox) :
+    {i p : Nat} {nd} (hc : EngineDutyCut S rho v i p nd) (m : Vote (Fintype.card V)) {z : Nat}
+    (hm : Body.vote (encodeVote m) z ∈ (shapeOf S hn nd).outbox) :
     m.val = rho.ownKey v ∧ rho.ownKey v ∈ rho.sel (S.vote.voteRole m.slot) :=
-  have h := ((VoteMember_iff _).1 (cut_member S rho hn hv hc)).2 m hm
+  have h := ((VoteMember_iff _).1 (cut_member S rho hn hv hc)).2 m z hm
   ⟨h.1.trans (cut_self S rho hn hc), of_decide_eq_true h.2⟩
 
 private theorem poll_duty_inventory (hv : rho.ExecutionValid)
@@ -572,8 +605,10 @@ private theorem poll_duty_inventory (hv : rho.ExecutionValid)
         ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
       ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
         ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some (.poll k))
-    (h : Inventory (Available nd.seen (shapeOf S hn nd)) (shapeOf S hn nd).node) :
-    Inventory (Available (rho.dutyStep v nd (.poll k)).1.seen
+    (h : Inventory (shapeOf S hn nd).voteIO (Available nd.seen (shapeOf S hn nd))
+      (shapeOf S hn nd).node) :
+    Inventory (shapeOf S hn (rho.dutyStep v nd (.poll k)).1).voteIO (Available
+      (rho.dutyStep v nd (.poll k)).1.seen
       (shapeOf S hn (rho.dutyStep v nd (.poll k)).1))
       (shapeOf S hn (rho.dutyStep v nd (.poll k)).1).node := by
   have hsel := poll_selected S rho hv v
@@ -588,7 +623,7 @@ private theorem poll_duty_inventory (hv : rho.ExecutionValid)
   apply poll_inventory nd.seen _ _ _ h
   · rw [Simulation.dutyStep_seen S rho v nd (.poll k)]
     exact parts_append _ _
-  · intro w hw
+  · intro w z hw
     rw [← pollPre_eq] at hw
     have hown : VoteMember (fun s => decide (rho.ownKey v ∈ rho.sel (S.vote.voteRole s)))
         (pollPre (shapeOf S hn nd)) := by
@@ -596,12 +631,13 @@ private theorem poll_duty_inventory (hv : rho.ExecutionValid)
       split
       · exact fgUpdate_voteMember _ (cut_member S rho hn hv hc)
       · exact cut_member S rho hn hv hc
-    have hw' := ((VoteMember_iff _).1 hown).2 w (List.mem_of_mem_head? (Option.mem_def.mpr hw))
+    have hw' := ((VoteMember_iff _).1 hown).2 w z
+      (List.mem_of_mem_head? (Option.mem_def.mpr hw))
     have hval := hw'.1.trans
       ((by rw [pollPre_eq]; split <;> simp [fgUpdate_self] :
         (pollPre (shapeOf S hn nd)).self = (shapeOf S hn nd).self).trans
           (cut_self S rho hn hc))
-    rw [voteObj_eq_pollObj S rho hval]
+    rw [voteObj_eq_pollObj S rho z hval]
     exact hmem _ hw (by rw [pollRole_vote]; exact of_decide_eq_true hw'.2)
   · intro a ha
     rw [← pollPre_eq] at ha
@@ -614,7 +650,7 @@ private theorem poll_duty_inventory (hv : rho.ExecutionValid)
     subst a'
     have hav := hval.trans (cut_self S rho hn hc)
     rw [attObj_eq_pollObj_of_val S rho hav]
-    exact hmem _ ha (pollRole_selected_of_not_vote S rho hsel (fun w h => by cases h))
+    exact hmem _ ha (pollRole_selected_of_not_vote S rho hsel (fun w z h => by cases h))
 
 private def PayloadCarried (o : Wire (Fintype.card V) binding) : Prop :=
   ∀ k s hd cs, o = .mk (.signed k (.proposer s)) (.item hd) cs →
@@ -624,16 +660,20 @@ private def PayloadCarried (o : Wire (Fintype.card V) binding) : Prop :=
 omit [DecidableEq V] in
 private theorem release_inventory (k : Fin (Fintype.card V))
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (cs)
-    (h : Inventory (Available nd.seen (shapeOf S hn nd)) (shapeOf S hn nd).node)
+    (h : Inventory (shapeOf S hn nd).voteIO (Available nd.seen (shapeOf S hn nd))
+      (shapeOf S hn nd).node)
     (hp : ∀ o ∈ cs, PayloadCarried o) :
-    Inventory (Available (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
+    Inventory (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
+        rho.hash k nd cs).1).voteIO (Available (Model.releaseAll (Model.protoOf
+          (compiled (goldilocks S)) E)
         rho.hash k nd cs).1.seen
       (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
         rho.hash k nd cs).1))
       (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E)
         rho.hash k nd cs).1).node := by
   refine NodeAsChainShape.CanonicalTrace.release_inventory rho k nd cs
-    (Inv := fun n => Inventory (Available n.seen (shapeOf S hn n)) (shapeOf S hn n).node)
+    (Inv := fun n => Inventory (shapeOf S hn n).voteIO (Available n.seen (shapeOf S hn n))
+      (shapeOf S hn n).node)
     (Admissible := PayloadCarried) ?_ h hp
   intro n c hi hc
   apply record_inventory (n.seen ++ [c]) (shapeOf S hn n) _ c
@@ -670,15 +710,19 @@ private theorem proposal_carried (v : V)
 omit [DecidableEq V] in
 private theorem proposal_duty_inventory (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
-    (h : Inventory (Available nd.seen (shapeOf S hn nd)) (shapeOf S hn nd).node) :
-    Inventory (Available (rho.dutyStep v nd (.propose s hs)).1.seen
+    (h : Inventory (shapeOf S hn nd).voteIO (Available nd.seen (shapeOf S hn nd))
+      (shapeOf S hn nd).node) :
+    Inventory (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1).voteIO (Available
+      (rho.dutyStep v nd (.propose s hs)).1.seen
       (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1))
       (shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1).node := by
   unfold Model.Run.dutyStep
   split
   · apply release_inventory
     · have hact := shapeOf_act_propose S hn nd.st s hs
-      change Inventory (Available nd.seen
+      change Inventory
+        (((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).1.1 hn).voteIO
+        (Available nd.seen
         (((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).1.1 hn))
         (((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.propose s hs)).1.1 hn).node
       rw [hact]
@@ -692,8 +736,10 @@ private theorem proposal_duty_inventory (v : V)
 omit [DecidableEq V] in
 private theorem tick_duty_inventory (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (k : Nat)
-    (h : Inventory (Available nd.seen (shapeOf S hn nd)) (shapeOf S hn nd).node) :
-    Inventory (Available (rho.dutyStep v nd (.pollPropose k)).1.seen
+    (h : Inventory (shapeOf S hn nd).voteIO (Available nd.seen (shapeOf S hn nd))
+      (shapeOf S hn nd).node) :
+    Inventory (shapeOf S hn (rho.dutyStep v nd (.pollPropose k)).1).voteIO (Available
+      (rho.dutyStep v nd (.pollPropose k)).1.seen
       (shapeOf S hn (rho.dutyStep v nd (.pollPropose k)).1))
       (shapeOf S hn (rho.dutyStep v nd (.pollPropose k)).1).node := by
   rw [Simulation.dutyStep_seen S rho v nd (.pollPropose k), dutyStep_pollPropose_snd S rho hn,
@@ -719,12 +765,15 @@ private theorem prefix_inventory (hv : rho.ExecutionValid)
         ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll k)) ∨
       ∃ t o, rho.events[i]? = some (.deliver v o t) ∧
         ((Model.protoOf (compiled (goldilocks S)) E).deliverDuties t)[p]? = some (.poll k))
-    (h : Inventory (Available nd.seen (shapeOf S hn nd)) (shapeOf S hn nd).node) :
+    (h : Inventory (shapeOf S hn nd).voteIO (Available nd.seen (shapeOf S hn nd))
+      (shapeOf S hn nd).node) :
     ∀ p, p ≤ ds.length →
       let out := (rho.runDuties v nd (ds.take p)).1
-      Inventory (Available out.seen (shapeOf S hn out)) (shapeOf S hn out).node := by
+      Inventory (shapeOf S hn out).voteIO (Available out.seen (shapeOf S hn out))
+        (shapeOf S hn out).node := by
   refine NodeAsChainShape.CanonicalTrace.prefix_inventory rho nd ds (EngineDutyCut S rho v i)
-    (Inv := fun n => Inventory (Available n.seen (shapeOf S hn n)) (shapeOf S hn n).node)
+    (Inv := fun n => Inventory (shapeOf S hn n).voteIO (Available n.seen (shapeOf S hn n))
+      (shapeOf S hn n).node)
     hcut ?_ h
   intro j n d hcut hd hi
   cases d with
@@ -735,12 +784,20 @@ private theorem prefix_inventory (hv : rho.ExecutionValid)
 
 private theorem event_inventory (hv : rho.ExecutionValid)
     (v : V) :
-    ∀ i, Inventory (Available (rho.stateBefore i v).seen (stateAt S rho hn v i))
+    ∀ i, Inventory (stateAt S rho hn v i).voteIO (Available (rho.stateBefore i v).seen
+      (stateAt S rho hn v i))
       (stateAt S rho hn v i).node := by
   simp only [stateAt_eq]
   refine NodeAsChainShape.CanonicalTrace.event_inventory rho v hv
-    (Inv := fun n => Inventory (Available n.seen (shapeOf S hn n)) (shapeOf S hn n).node)
-    (Admissible := PayloadCarried) (inventory_init _ _ _) ?_ ?_ ?_ ?_ ?_ ?_
+    (Inv := fun n => Inventory (shapeOf S hn n).voteIO (Available n.seen (shapeOf S hn n))
+      (shapeOf S hn n).node)
+    (Admissible := PayloadCarried) (inventory_init _ _ _ _ ?_) ?_ ?_ ?_ ?_ ?_ ?_
+  · intro m hm
+    have hmv := stateAt_mayVote S rho hn hv v 0
+    rw [stateAt_eq] at hmv
+    have hm' : (shapeOf S hn (rho.stateBefore 0 v)).node.ac.mayVote m.slot = true := hm
+    rw [hmv] at hm'
+    exact ⟨_, rho.voteIO_own_isSome (of_decide_eq_true hm') _⟩
   · intro nd t _ hi
     rw [NodeAsChainShape.CanonicalTrace.afterClock_eq]
     exact hi
@@ -787,9 +844,9 @@ theorem tick_prefix_pool_available (hv : rho.ExecutionValid) {v : V}
       ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
         (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
       (((Model.protoOf (compiled (goldilocks S)) E).duties t).take p)).1
-    m ∈ (shapeOf S hn nd).node.ac.pool σ →
-      voteObj m ∈ Model.closure nd.seen ∨
-        Body.vote (encodeVote m) ∈ (shapeOf S hn nd).outbox := by
+    m ∈ (shapeOf S hn nd).node.ac.pool σ → ∃ z,
+      voteObj m z ∈ Model.closure nd.seen ∨
+        Body.vote (encodeVote m) z ∈ (shapeOf S hn nd).outbox := by
   intro nd hm
   have hi := prefix_inventory S rho hn hv i
     ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
@@ -799,13 +856,16 @@ theorem tick_prefix_pool_available (hv : rho.ExecutionValid) {v : V}
       have hi := event_inventory S rho hn hv v i
       rw [stateAt_eq] at hi
       exact hi) p hp
-  rcases hi.votes σ m hm with h | ⟨w, heq, hw⟩ | ⟨a, heq, _⟩
-  · exact Or.inl h
+  obtain ⟨z, hz⟩ := hi.votes σ m hm
+  rcases hz with h | ⟨w, z', heq, hw⟩ | ⟨a, heq, _⟩
+  · exact ⟨z, Or.inl h⟩
   · have henc := congrArg Model.Obj.msg heq
     simp only [voteObj, Model.Obj.msg] at henc
-    have hdec := congrArg (decodeVote (Fintype.card V)) (Body.vote.inj (Model.Msg.data.inj henc))
+    obtain ⟨hwv, hz'⟩ := Body.vote.inj (Model.Msg.data.inj henc)
+    have hdec := congrArg (decodeVote (Fintype.card V)) hwv
     simp only [decodeVote_encodeVote, Option.some.injEq] at hdec
-    exact Or.inr (hdec ▸ hw)
+    subst hdec hz'
+    exact ⟨z, Or.inr hw⟩
   · have hbad := congrArg Model.Obj.msg heq
     simp only [voteObj, attObj, Model.Obj.msg, Model.Msg.data.injEq] at hbad
     cases hbad
@@ -816,24 +876,28 @@ theorem delivery_pool_available (hv : rho.ExecutionValid)
     {v : V} (i : Nat) (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
     (σ : Nat) (m : Vote (Fintype.card V))
     (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
-    voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
-      Body.vote (encodeVote m) ∈
+    ∃ z, voteObj m z ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
+      Body.vote (encodeVote m) z ∈
         (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox := by
   have hi := event_inventory S rho hn hv v i
-  have hp : Inventory (Available ((rho.stateBefore i v).seen ++ [o])
+  have hp : Inventory (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteIO
+    (Available ((rho.stateBefore i v).seen ++ [o])
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)))
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node := by
     apply process_inventory
     · exact inventory_mono hi (fun _ => available_mono (parts_append _ _) (fun _ h => h))
     · intro x hx
       exact List.mem_flatMap.mpr ⟨o, List.mem_append_right _ (List.mem_singleton_self _), hx⟩
-  rcases hp.votes σ m hm with h | ⟨w, he, hw⟩ | ⟨a, he, _⟩
-  · exact Or.inl h
+  obtain ⟨z, hz⟩ := hp.votes σ m hm
+  rcases hz with h | ⟨w, z', he, hw⟩ | ⟨a, he, _⟩
+  · exact ⟨z, Or.inl h⟩
   · have henc := congrArg Model.Obj.msg he
     simp only [voteObj, Model.Obj.msg] at henc
-    have hdec := congrArg (decodeVote (Fintype.card V)) (Body.vote.inj (Model.Msg.data.inj henc))
+    obtain ⟨hwv, hz'⟩ := Body.vote.inj (Model.Msg.data.inj henc)
+    have hdec := congrArg (decodeVote (Fintype.card V)) hwv
     simp only [decodeVote_encodeVote, Option.some.injEq] at hdec
-    exact Or.inr (hdec ▸ hw)
+    subst hdec hz'
+    exact ⟨z, Or.inr hw⟩
   · have hbad := congrArg Model.Obj.msg he
     simp only [voteObj, attObj, Model.Obj.msg, Model.Msg.data.injEq] at hbad
     cases hbad
@@ -844,10 +908,12 @@ theorem delivery_pool_held_or_head (hv : rho.ExecutionValid) {v : V}
     {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) (σ : Nat) (m : Vote (Fintype.card V))
     (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
-    voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
+    ∃ z, voteObj m z ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.head? =
-        some (.vote (encodeVote m)) := by
-  rcases delivery_pool_available S rho hn hv i o σ m hm with hh | hq
+        some (.vote (encodeVote m) z) := by
+  obtain ⟨z, hz⟩ := delivery_pool_available S rho hn hv i o σ m hm
+  refine ⟨z, ?_⟩
+  rcases hz with hh | hq
   · exact Or.inl hh
   right
   have hnow : (stateAt S rho hn v i).now = t :=
@@ -858,9 +924,10 @@ theorem delivery_pool_held_or_head (hv : rho.ExecutionValid) {v : V}
     · rwa [hnow] at h
   have hproc := process_oneVote (digestOf S rho) (Model.digests rho.hash o)
     (hv.in_horizon _ (List.mem_of_getElem? he)).1
-    (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o) (stateAt S rho hn v i) hnow hpre
+    (delivered (stateAt S rho hn v i).voteIO (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+    (stateAt S rho hn v i) hnow hpre
   have hlen := ((atMostOneVote_iff _).mp hproc.atMost).2
-  change Body.vote (encodeVote m) ∈
+  change Body.vote (encodeVote m) z ∈
     (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox at hq
   change (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.length ≤ 1 at hlen
   generalize (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox = q at hq hlen ⊢
@@ -875,12 +942,13 @@ theorem delivery_pool_held_or_head (hv : rho.ExecutionValid) {v : V}
 the ordinary outbox head. No queue-to-pool or readiness premise is left to the caller. -/
 theorem delivery_voteForward_held_or_head (hv : rho.ExecutionValid) {v : V}
     {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
-    (he : rho.events[i]? = some (.deliver v o t)) (tv : Time × Vote (Fintype.card V))
+    (he : rho.events[i]? = some (.deliver v o t))
+    (tv : Time × Vote (Fintype.card V) × Wire (Fintype.card V) S.vote)
     (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
-    voteObj tv.2 ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
+    ∃ z, voteObj tv.2.1 z ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.head? =
-        some (.vote (encodeVote tv.2)) :=
-  delivery_pool_held_or_head S rho hn hv he tv.2.slot tv.2
+        some (.vote (encodeVote tv.2.1) z) :=
+  delivery_pool_held_or_head S rho hn hv he tv.2.1.slot tv.2.1
     (delivery_voteForward_in_pool S rho hn hv v i o tv htv)
 
 /-- Proposal payloads of actual scheduled honest duties were already released or received.
@@ -935,7 +1003,7 @@ theorem scheduled_proposal_releasable (hv : rho.ExecutionValid)
       exact atProposal_outbox_nil S rho hn hv i s
         (htime.trans (slotTime_eq S hn s).symm)
   intro o ho
-  rcases proposal_inventory _ hi s hprop o ho with hseen | (⟨w, _, hw⟩ | ⟨a, _, ha⟩)
+  rcases proposal_inventory _ hi s hprop o ho with hseen | (⟨w, z, _, hw⟩ | ⟨a, _, ha⟩)
   · exact hseen
   · rw [hout] at hw
     cases hw
