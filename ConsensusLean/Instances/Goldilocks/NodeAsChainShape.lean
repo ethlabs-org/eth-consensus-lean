@@ -96,7 +96,9 @@ structure Adapter (A : NodeAC P) (K I B S : Type) where
   setNode : S → NodeState A → S
   setDue : S → Bool → S
   wake : S → Fin P.n → Time → S
-  applyCuts : S → (NodeState A × List (Cut A)) → S
+  /-- Record a call's result; the optional object is the received wire object the call came
+  from (the message branch of `processOne`), kept for exact relay. -/
+  applyCuts : S → Option (ShapeObj P.n K I B) → (NodeState A × List (Cut A)) → S
   relayIf : S → (c : Prop) → [Decidable c] → ShapeObj P.n K I B → S
   attest : S → NodeState A → FG.Att P.n → S
 
@@ -113,10 +115,12 @@ noncomputable def processOne (hs : List (Header I × Nat)) (st : S) (o : ShapeOb
   match canonEvent C hs o with
   | some (.block b) =>
       let r := Node.onBlock (D.self st) (D.node st) (D.now st) b
-      D.relayIf (D.applyCuts st r)
+      D.relayIf (D.applyCuts st none r)
         ((D.node st).fg.blocks b.root ≠ some b ∧ r.1.fg.blocks b.root = some b) o
-  | some (.message m) => D.applyCuts st (Node.onMessage (D.self st) (D.node st) (D.now st) m)
-  | some (.attestation a) => D.relayIf (D.applyCuts st (Node.onAttestation (D.node st) a)) True o
+  | some (.message m) =>
+      D.applyCuts st (some o) (Node.onMessage (D.self st) (D.node st) (D.now st) m)
+  | some (.attestation a) =>
+      D.relayIf (D.applyCuts st none (Node.onAttestation (D.node st) a)) True o
   | _ => st
 
 /-- Stop descending through a malformed, too early or FG-refused block. -/
@@ -158,7 +162,7 @@ open Classical in
 noncomputable def nodeTick (D : Adapter A K I B S) (st : S) : S :=
   if P.IsPublic (D.now st) then
     let r := Node.acCall (D.self st) (D.node st) (D.now st) .tick
-    D.setDue (D.applyCuts st (r.1, [r.2])) true
+    D.setDue (D.applyCuts st none (r.1, [r.2])) true
   else st
 
 omit [DecidableEq I] in
@@ -178,7 +182,7 @@ noncomputable def recordBlock (st : S) (k : Fin P.n) (h : Header I)
     (hs : List (Header I × Nat)) : S :=
   match C.decode h.info, rootOf hs h with
   | some (atts, p), some d =>
-      D.applyCuts st (Node.onBlock (D.self st) (D.node st) (D.now st) (blockOf d h k atts p))
+      D.applyCuts st none (Node.onBlock (D.self st) (D.node st) (D.now st) (blockOf d h k atts p))
   | _, _ => st
 
 /-- Read the AC source and run the FG attestation duty, queueing a signed attestation. -/
@@ -195,7 +199,7 @@ noncomputable def fgUpdate (D : Adapter A K I B S) (st : S) : S :=
 /-- Restart the node, retaining the instance's durable envelope. -/
 noncomputable def restore (D : Adapter A K I B S) (k : Fin P.n) (d : S) (t : Time) : S :=
   let r := Node.restart k (D.node d) t
-  D.setDue (D.applyCuts (D.wake d k t) r) false
+  D.setDue (D.applyCuts (D.wake d k t) none r) false
 
 /-- Read the headers from genesis (excluded) to a block, with bounded parent walk. -/
 noncomputable def chainTo {Payload : Type} (header : NodeBlock P Payload → Header I)
@@ -208,9 +212,10 @@ noncomputable def chainTo {Payload : Type} (header : NodeBlock P Payload → Hea
           | some bp => chainTo header blocks fuel bp
           | none => []) ++ [header b]
 
-/-- Shape operations with a fixed wire type and an explicit state type. -/
-structure Ops (n : Nat) (K I B O State : Type) where
-  init : Fin n → (ShapeRole K → Bool) → State
+/-- Shape operations with a fixed wire type and an explicit state type; `Tok` and `D` are the
+vote-authentication evidence and vote data (`Model.VoteIO`) given to `init`. -/
+structure Ops (n : Nat) (K I B O State Tok D : Type) where
+  init : Fin n → (ShapeRole K → Bool) → Model.VoteIO Tok (ShapeRole K) D n → State
   clock : State → Time → State
   propose : State → Slot → State × Option (ParentRef × I × List (ShapeObj n K I B))
   pollPropose : State → Time → State × Option (ParentRef × Nat × I × List (ShapeObj n K I B))
@@ -224,7 +229,10 @@ structure Ops (n : Nat) (K I B O State : Type) where
 
 /-- Assemble a polling and slot-proposing chain shape. -/
 def shape {pub : Public} [Countable I] [DecidableEq B] (k : Skeleton pub.n)
-    {S : Type} (g : Ops pub.n k.Kind I B O S)
+    {S Tok D : Type} [DecidableEq Tok] [Infinite Tok] [Countable D]
+    (g : Ops pub.n k.Kind I B O S Tok D)
+    (claim : D → Option (Fin pub.n × ShapeRole k.Kind)) (voteBody : B → Bool)
+    (presented : ShapeObj pub.n k.Kind I B → Option ((Fin pub.n × ShapeRole k.Kind × D) × Tok))
     (role : ShapeDuty k.Kind → Msg (Header I) B → Option (ShapeRole k.Kind))
     (dep : DependencyPolicy (ShapeObj pub.n k.Kind I B))
     (conflict : ShapeObj pub.n k.Kind I B → ShapeObj pub.n k.Kind I B → Bool)
@@ -234,6 +242,14 @@ def shape {pub : Public} [Countable I] [DecidableEq B] (k : Skeleton pub.n)
   Body := B
   Durable := S
   decBody := inferInstance
+  Token := Tok
+  VoteData := D
+  claim := claim
+  tokensCover := by
+    obtain ⟨f, hf⟩ := Countable.exists_injective_nat {d : D // (claim d).isSome}
+    exact ⟨⟨Infinite.natEmbedding Tok ∘ f, (Infinite.natEmbedding Tok).injective.comp hf⟩⟩
+  voteBody := voteBody
+  presented := presented
   candidateRole := role
   init := g.init
   clock := g.clock
@@ -253,9 +269,10 @@ def shape {pub : Public} [Countable I] [DecidableEq B] (k : Skeleton pub.n)
   isFGAtt := fg
 
 /-- Lift nonempty-node operations to a public shape. At zero keys it sends and reads nothing. -/
-def familyOps {n : Nat} {S : (1 ≤ n) → Type} (G : (hn : 1 ≤ n) → Ops n K I B O (S hn)) :
-    Ops n K I B O ((hn : 1 ≤ n) → S hn) where
-  init k p hn := (G hn).init k p
+def familyOps {n : Nat} {Tok D : Type} {S : (1 ≤ n) → Type}
+    (G : (hn : 1 ≤ n) → Ops n K I B O (S hn) Tok D) :
+    Ops n K I B O ((hn : 1 ≤ n) → S hn) Tok D where
+  init k p io hn := (G hn).init k p io
   clock st t hn := (G hn).clock (st hn) t
   propose st s :=
     if hn : 1 ≤ n then (fun _ => ((G hn).propose (st hn) s).1, ((G hn).propose (st hn) s).2)

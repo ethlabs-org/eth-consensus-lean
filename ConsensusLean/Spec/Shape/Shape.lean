@@ -139,11 +139,26 @@ structure ChainShape (pub : Public) (Out : Type) (Info : Type) [DecidableEq Info
   /-- What a restart keeps. -/
   Durable : Type
   decBody : DecidableEq Body
+  /-- Vote-authentication evidence and the vote data it authenticates
+  (`Model.Protocol.Token`, `VoteData`, `claim`, `voteBody`, `presented`); defaults: none. -/
+  Token : Type := Nat
+  decToken : DecidableEq Token := by infer_instance
+  infToken : Infinite Token := by infer_instance
+  VoteData : Type := Empty
+  claim : VoteData → Option (Fin pub.n × ShapeRole skel.Kind) := fun _ => none
+  /-- `Model.Protocol.tokensCover`: `Token` represents every canonical claim. -/
+  tokensCover : Nonempty ({d : VoteData // (claim d).isSome} ↪ Token) := by
+    exact ⟨⟨fun x => absurd x.2 (by simp), fun x => absurd x.2 (by simp)⟩⟩
+  voteBody : Body → Bool := fun _ => false
+  presented : ShapeObj pub.n skel.Kind Info Body →
+    Option ((Fin pub.n × ShapeRole skel.Kind × VoteData) × Token) := fun _ => none
   /-- Override the duty's signing role for a queued historical message. -/
   candidateRole : ShapeDuty skel.Kind → Msg (Header Info) Body →
     Option (ShapeRole skel.Kind) := fun _ _ => none
-  /-- The initial state, given the own key and actual own-role membership. -/
-  init : Key pub → (ShapeRole skel.Kind → Bool) → State
+  /-- The initial state, given the own key, actual own-role membership and the node's vote
+  authentication. -/
+  init : Key pub → (ShapeRole skel.Kind → Bool) →
+    Model.VoteIO Token (ShapeRole skel.Kind) VoteData pub.n → State
   /-- The clock update at every tick. -/
   clock : State → Time → State
   /-- Slot proposal: the new state, and parent, info, carried objects.
@@ -196,7 +211,7 @@ structure ChainShape (pub : Public) (Out : Type) (Info : Type) [DecidableEq Info
   Default: none. -/
   isFGAtt : ShapeObj pub.n skel.Kind Info Body → Prop := fun _ => False
 
-attribute [instance] ChainShape.decBody
+attribute [instance] ChainShape.decBody ChainShape.decToken ChainShape.infToken
 
 /-- A chain shape for every choice of the public parameters, with the outputs
 of schema `O`. -/
