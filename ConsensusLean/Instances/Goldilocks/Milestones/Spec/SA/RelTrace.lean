@@ -32,7 +32,7 @@ noncomputable abbrev tryVoteWith (self : Fin sp.n) (L₁ : Set Lock) (A : SAStat
     (Φ : Frm sp.n FGP) (t : Time) : SAState sp.n × List (Em sp FGP) :=
   let s := sp.slot t
   if ¬ joined sp A t ∨ A.votedSlot = s ∨ sp.ts s + sp.Δ < t then (A, [])
-  else if t < sp.ts s + sp.Δ ∧ (s = 0 ∨ ¬ voteReady sp Φ s) then (A, [])
+  else if t < sp.ts s + sp.Δ ∧ (s = 0 ∨ ¬ voteReady sp A Φ s) then (A, [])
   else
     let V := mergedVoteView sp A Φ s
     let A₁ := if 0 < s then { A with locks := L₁ } else A
@@ -128,7 +128,7 @@ noncomputable abbrev tryVoteWithM (m : WriteMode) (self : Fin sp.n) (L₁ : Set 
     (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) : SAState sp.n × List (Em sp FGP) :=
   let s := sp.slot t
   if ¬ joined sp A t ∨ A.votedSlot = s ∨ sp.ts s + sp.Δ < t then (A, [])
-  else if t < sp.ts s + sp.Δ ∧ (s = 0 ∨ ¬ voteReady sp Φ s) then (A, [])
+  else if t < sp.ts s + sp.Δ ∧ (s = 0 ∨ ¬ voteReady sp A Φ s) then (A, [])
   else
     let V := mergedVoteView sp A Φ s
     let A₁ := if 0 < s then { A with locks := L₁ } else A
