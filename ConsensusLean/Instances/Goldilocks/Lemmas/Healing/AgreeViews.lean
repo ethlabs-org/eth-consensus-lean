@@ -137,7 +137,7 @@ theorem proposal_views_agree
   · -- a support head of `P` reaches the voter by its vote
     intro x hx Hd hHd hHdr hFHd
     by_cases hE : tr.time j < sp.ts ((s' + 1 : Nat) : Int) + sp.Δ
-    · obtain ⟨P', hP't, hP's, hsup⟩ := SA.cast_ready hr hy hcy (by rw [hes]; exact hE)
+    · obtain ⟨⟨P', hP't, hP's, hsup⟩, -⟩ := SA.cast_ready hr hy hcy (by rw [hes]; exact hE)
       rw [hes] at hP's hsup
       obtain rfl := hslotP P' hP't hP's
       have hxs : x.slot + 1 = s' + 1 := by
@@ -146,7 +146,8 @@ theorem proposal_views_agree
           List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
           Bool.and_eq_true, decide_eq_true_eq] at hx
         rw [SA.state_pool_slot sp hr hrun.vstart hpH iP s' x hx.1]
-      obtain ⟨H', hH't, hH'r, -⟩ := hsup x (by rw [SA.blockSupport, hpay]; exact hx) hxs
+      obtain ⟨H', hH't, hH'r, -⟩ :=
+        hsup x (by rw [SA.blockSupport, hpay]; exact hx) hxs (Set.mem_univ _)
       rwa [hU.1 (hΦpU hHd) (hΦyU hH't) (hHdr.trans hH'r.symm)]
     · exact mem_frame_of_relay hS hpH hy (mem_tree_of_frame hrun hpH hS.call hHd)
         (u := sp.ts ((s' + 1 : Nat) : Int) + sp.Δ) (by linarith) (by rw [hS.time]) hcy.1

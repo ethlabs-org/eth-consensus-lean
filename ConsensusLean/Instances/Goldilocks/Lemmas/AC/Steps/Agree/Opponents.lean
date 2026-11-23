@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.MergedOpponents
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -174,27 +175,13 @@ theorem proposal_payload {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
       (acProposal sp A Φ t).1.restartTime = A.restartTime :=
   proposal_payloadWith (A := A) (Φ := Φ) (t := t) (d := d) (pay := pay) (h := h)
 
-/-- Synchrony through proposal time backs the proposer's declarations at the voter. -/
-private theorem count_declared_of_sync_pending
-    (_hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
-    (_hini : ∀ z, VoteStart sp.genesisRoot (ini z))
-    {s : Nat} {p y : Fin sp.n} {i j : Nat}
-    {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
-    (_hp : p ∈ H) (_hy : y ∈ H)
-    (_hprop : ProposalAt tr p i ℓp pay) (_hti : tr.time i = sp.ts (s + 1 : Nat))
-    (_hc : CastAt tr y j ℓy e) (_hes : e.msg.slot = s + 1)
-    (_hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
-    (_hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr) :
-    ∀ v ∈ (tr.state p i).pool s, ShouldCountDeclaredVote sp e.readPoint v := by
-  sorry
-
 variable (sp) in
 /-- **A1.1.** -/
 theorem proposer_voters_agree : ProposerVotersAgree sp := by
   intro FGP ro H U tr proposer hrun s p y i j ℓp ℓy pay e hp hy hpp hprop hti hc hs
     hPy hsync heq B hB hBs
   have hr := hrun.localRun
-  have hcount := count_declared_of_sync_pending hr (fun _ => voteStart_initial _) hp hy
+  have hcount := count_declared_of_sync hr (fun _ => voteStart_initial _) hp hy
     hprop hti hc hs hPy hsync
   obtain ⟨hcp, hcall, d, hpay⟩ := hprop
   obtain ⟨hΦp, hΦpU⟩ := frameIn_of_call hr hp hcp

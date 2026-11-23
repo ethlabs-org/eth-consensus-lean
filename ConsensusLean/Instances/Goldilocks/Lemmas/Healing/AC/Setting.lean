@@ -100,14 +100,8 @@ theorem ts_sub_one (sp : SAParams) (a : Int) : sp.ts (a - 1) = sp.ts a - 4 * sp.
 section RestartTime
 
 private theorem rt_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
-    (blockReceipt sp A t B).restartTime = A.restartTime := by
-  unfold blockReceipt
-  generalize blockVotes B = l
-  suffices h : ∀ A' : SAState sp.n,
-      (l.foldl (fun A v => admitVote sp A t v) A').restartTime = A'.restartTime from h _
-  induction l with
-  | nil => exact fun _ => rfl
-  | cons v l ih => intro A'; simp only [List.foldl_cons]; rw [ih, SA.admitVote_restartTime]
+    (blockReceipt sp A t B).restartTime = A.restartTime :=
+  rfl
 
 /-- A call other than a restart keeps `restart_time`. -/
 private theorem rt_step
@@ -214,14 +208,8 @@ private theorem vs_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) 
   · split_ifs <;> rfl
 
 private theorem vs_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
-    (blockReceipt sp A t B).votedSlot = A.votedSlot := by
-  unfold blockReceipt
-  generalize blockVotes B = l
-  suffices h : ∀ A' : SAState sp.n,
-      (l.foldl (fun A v => admitVote sp A t v) A').votedSlot = A'.votedSlot from h _
-  induction l with
-  | nil => exact fun _ => rfl
-  | cons v l ih => intro A'; simp only [List.foldl_cons]; rw [ih, vs_admitVote]
+    (blockReceipt sp A t B).votedSlot = A.votedSlot :=
+  rfl
 
 /-- `try_vote` keeps `voted_slot` and emits nothing, or emits a vote of slot `slot(t)` and
 leaves `voted_slot = slot(t)`. -/

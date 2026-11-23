@@ -4,6 +4,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.CarryServed
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVoteTransfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
@@ -68,89 +69,6 @@ theorem carryAt_of_delivered {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) 
           SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ))) :
     SA.CarryAt T U y i e s CV :=
   carryAt_of_served hr hini (frame_anc_accepted hr hy) hy hc hs hW
-
-private theorem tryVote_pool (x : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP)
-    (t : Time) (σ : Nat) : A.pool σ ⊆ (SA.tryVote sp x A Φ t).1.pool σ := by
-  unfold SA.tryVote
-  dsimp only
-  split_ifs
-  · exact List.Subset.refl _
-  · exact List.Subset.refl _
-  all_goals
-    first
-    | exact List.Subset.refl _
-    | intro w hw
-      rw [SA.optimistic_pool]
-      exact SA.mem_admitVote_pool hw
-
-private theorem foldl_admit_pool {t : Time} {σ : Nat} :
-    ∀ (l : List (Vote sp.n)) (A : SA.SAState sp.n),
-      A.pool σ ⊆ (l.foldl (fun A v => SA.admitVote sp A t v) A).pool σ
-  | [], _ => List.Subset.refl _
-  | _ :: l, _ => fun _ hw => foldl_admit_pool l _ (SA.mem_admitVote_pool hw)
-
-/-- The receipt of a block admits each of its votes of the slot of `t` or the previous one: the
-node holds it after the receipt, or two other votes of its validator. -/
-private theorem blockReceipt_held (A : SA.SAState sp.n) {t : Time} {B : SA.Blk sp.n FGP}
-    {v : Vote sp.n} (hv : v ∈ SA.blockVotes B) (h₁ : (sp.slot t : Int) - 1 ≤ v.slot)
-    (h₂ : v.slot ≤ sp.slot t) :
-    v ∈ (SA.blockReceipt sp A t B).pool v.slot ∨
-      v.val ∈ SA.equivocators {w | w ∈ (SA.blockReceipt sp A t B).pool v.slot} := by
-  unfold SA.blockReceipt
-  generalize ({ A with blockStamp := Function.update A.blockStamp B.root (SA.ETime.of t) } :
-    SA.SAState sp.n) = A'
-  generalize SA.blockVotes B = l at hv
-  induction l generalizing A' with
-  | nil => simp at hv
-  | cons x l ih =>
-    rw [List.foldl_cons]
-    rcases List.mem_cons.1 hv with rfl | hv
-    · have hs := foldl_admit_pool (t := t) (σ := v.slot) l (SA.admitVote sp A' t v)
-      rcases SA.admitVote_held A' t v h₁ h₂ with h | ⟨a, ha, b, hb, hab, hav, hbv⟩
-      · exact Or.inl (hs h)
-      · exact Or.inr ⟨a, hs ha, b, hs hb, hab, hav, hbv⟩
-    · exact ih _ hv
-
-/-- **A slot-`s` vote of an honest voter's merged view of slot `s + 1`** is in the voter's pool
-after a call at or before its vote, or two other votes of its validator are. -/
-private theorem merged_in_pool {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
-    {e : SA.Em sp FGP} (hc : SA.CastAt T y i ℓ e) {s : Nat} (hs : e.msg.slot = s + 1) :
-    ∀ v ∈ (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
-      ∃ k ≤ i, v ∈ (T.state y (k + 1)).pool s ∨
-        v.val ∈ SA.equivocators {w | w ∈ (T.state y (k + 1)).pool s} := by
-  rintro v (hv | ⟨B, hB, hBs, hvB⟩) hvs
-  · have hv : v ∈ e.readPoint.poolAt ((s + 1 : Nat) - 1 : Int) := (List.mem_filter.1 hv).1
-    simp only [SA.SAState.poolAt] at hv
-    split_ifs at hv with hneg
-    · simp at hv
-    exact ⟨i, le_rfl, Or.inl (SA.readPoint_pool hr hy hc (by simpa using hv)).1⟩
-  -- a vote of a slot-`(s+1)` block of the tree, which `y` accepted at a cut `k ≤ i`
-  obtain ⟨-, hys, -, -⟩ := SA.castAt_spec hr hy hc
-  rcases SA.frame_genesis_or_accepted sp hr hy hc.1 B hB with h0 | ⟨k, hki, ℓk, hck, hcall⟩
-  · omega
-  have hBk : B.slot ≤ sp.slot (T.time k) := by
-    rcases hr.frameLaw y hy k ℓk hck with ⟨-, Φ₀, -, -, hok⟩ | ⟨j, ℓ', -, -, -, hok⟩ <;>
-    · rw [hcall] at hok
-      obtain ⟨-, -, -, h⟩ := hok
-      exact h
-  have hki' := SA.slot_mono sp (hr.time_nonneg k) (hr.time_mono hki)
-  have he := hr.exec k ℓk hck.2 (hck.1 ▸ hy)
-  rw [hck.1, hcall] at he
-  have hpost : T.post k = (SA.tryVote sp y (SA.optimisticConfirmation sp
-      (SA.blockReceipt sp (T.state y k) (T.time k) B) ℓk.frame (T.time k)) ℓk.frame
-      (T.time k)).1 := (congrArg Prod.fst he).symm
-  have hsub : ∀ w ∈ (SA.blockReceipt sp (T.state y k) (T.time k) B).pool s,
-      w ∈ (T.state y (k + 1)).pool s := fun w hw => by
-    rw [Trace.state_succ_of_call T hck, hpost]
-    exact tryVote_pool _ _ _ _ _ (by rw [SA.optimistic_pool]; exact hw)
-  refine ⟨k, hki, ?_⟩
-  rcases blockReceipt_held (T.state y k) hvB (t := T.time k) (by omega) (by omega) with
-    h | ⟨a, ha, b, hb, hab, hav, hbv⟩
-  · rw [hvs] at h
-    exact Or.inl (hsub v h)
-  · rw [hvs] at ha hb
-    exact Or.inr ⟨a, hsub a ha, b, hsub b hb, hab, hav, hbv⟩
 
 end Node
 
@@ -397,13 +315,8 @@ theorem result_writer_pool_at {ini} (hrun : Growing.GoldilocksRun proposer dg H 
       clear * - this hBv hBs hvs
       omega
   intro v hv hvs
-  obtain ⟨k, hki, h | ⟨a, ha, c, hc'', hac, hav, hcv⟩⟩ := merged_in_pool hr hy hc' hs v hv hvs
-  · exact hpool k hki v h
-  · rcases hpool k hki a ha with ha' | ha'
-    · rcases hpool k hki c hc'' with hc' | hc'
-      · exact Or.inr ⟨a, ha', c, hc', hac, hav, hcv⟩
-      · exact Or.inr (hcv ▸ hc')
-    · exact Or.inr (hav ▸ ha')
+  exact SA.merged_declared_at_writer (fun w hw =>
+    hpool i le_rfl w (SA.readPoint_pool hr hy hc' hw).1) hvs hv
 
 end Consensus.Goldilocks.Compose.Growing
 

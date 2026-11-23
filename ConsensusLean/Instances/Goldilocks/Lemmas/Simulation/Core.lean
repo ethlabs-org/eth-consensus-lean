@@ -334,33 +334,6 @@ theorem received_vote_processAt {i : Nat} {v : V}
   rw [stateAt_eq] at hc
   exact hc
 
-/-- An AC block cut in an actual delivery comes from that receipt's canonical block, which the
-delivery accepts. Consequently its payload votes also receive explicit message processing in that
-event. -/
-theorem delivery_block_payload_processAt (hv : rho.ExecutionValid) {i : Nat} {v : V}
-    {receipt : Wire (Fintype.card V) S.vote} {u : Time}
-    {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
-    {ℓ : ACLabel (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
-    {B : Blk (S.params (pubOf E) hn)} {m : SA.Vote (Fintype.card V)}
-    (he : rho.events[i]? = some (.deliver v receipt u))
-    (hr : r ∈ eventCuts S rho hn i) (hl : r.label = .ac ℓ)
-    (hb : ℓ.call = .block B) (hm : m ∈ SA.blockVotes B) :
-    ∃ k, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
-      (simTrace S rho hn).projAC.ProcessAt (rho.ownKey v) k m ∧
-      (simTrace S rho hn).time k = u := by
-  obtain ⟨q, hq, -, hlabel, -⟩ := eventCuts_source S rho hn i hr
-  rw [(simTrace_encoding S rho hn).1, (simTrace_encoding S rho hn).2]
-  have hp : voteObj (binding := S.vote) m ∈ payloadObjs B.fgPayload B.acPayload :=
-    List.mem_append_right _ (List.mem_map.mpr ⟨m, List.mem_append_left _ hm, rfl⟩)
-  apply NodeAsChainShape.CanonicalTrace.delivery_block_payload_processAt (traceEncoding S hn)
-    rho (traceEncoding_opLaws S hn) hv he hq (hlabel.symm.trans hl) hb
-  apply traceEncoding_induction S hn (fun e _ => ∃ w ∈ e.codec.carried B.fgPayload B.acPayload,
-    NodeAsChainShape.canonEvent e.codec (Model.digests rho.hash receipt) w = some (.message m))
-  intro _ _
-  exact ⟨voteObj (binding := S.vote) m, hp,
-      canonEvent_voteObj (sp := S.params (pubOf E) hn) (ro := S.ro _)
-        (Model.digests rho.hash receipt) m⟩
-
 end Consensus.Goldilocks.Simulation
 
 end
