@@ -94,10 +94,11 @@ theorem accepted_in_view_of_releases (hv : rho.ExecutionValid) {v : V}
     rw [eventCuts_deliver S rho hn j v o t he] at hmem
     have hnow := (now_eq_lastClock S rho hn hv v j).trans (lastClock_deliver S rho hv he)
     have hq := ((process_relay (runProposer S rho hn)
-      (digestOf S rho) (Model.digests rho.hash o) t j
-      (delivered (Model.digests rho.hash o) (stateAt S rho hn v j) o)
+      (digestOf S rho) (stateAt S rho hn v j).voteIO (Model.digests rho.hash o) t j
+      (delivered (stateAt S rho hn v j).voteIO (Model.digests rho.hash o)
+        (stateAt S rho hn v j) o)
         (stateAt S rho hn v j) 0 hnow).2.2.2 r
-      (by rw [self_eq_ownKey]; exact hmem)).1 B hrl
+      (by rw [self_eq_ownKey, stateAt_voteIO]; exact hmem)).1 B hrl
     obtain ⟨cs, hx, hrel⟩ := deliver_relays S rho hn he hq
     exact rho.mem_viewIdx_iff.2 ⟨j, _, hji, Or.inl ⟨t, Or.inr ⟨o, he⟩, hrel⟩,
       .step hx (.refl _)⟩

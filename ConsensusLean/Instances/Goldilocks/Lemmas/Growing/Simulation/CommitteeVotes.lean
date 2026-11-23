@@ -5,7 +5,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RoleBinding
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Goldilocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
-import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Unforgeable
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Queue
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.BlockView
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeBlockView
@@ -25,50 +26,10 @@ the canonical trace handles is of a member of its slot's committee:
 
 * the gate (`simTraceAt_gate`): a node may vote in slot `s` iff it is in `K.committee s`;
 * a cast (`simTraceAt_vote_member`) and a received message (`simTraceAt_msgCall_member`),
-  from the credentials of the engine;
+  from the installed permission and the receiver's verification, respectively;
 * on a run record, the pools (`simTraceAt_pool_member`).
 
 None of these needs an honest-set premise beyond the record's, nor the population binding. -/
-
-namespace Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
-
-open Shape Blocks Node
-
-variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
-variable {O : OutputSchema} {I : Type} [DecidableEq I] [Countable I]
-variable {F : ChainShapeFamily O I} {p : Params} {hN : p.n = Fintype.card V}
-variable {hn : 1 ≤ Fintype.card V}
-variable {A : NodeAC (paramsAtCount p (Fintype.card V) hN hn)}
-variable (e : Encoding F E p hN hn A) (rho : Model.Run (compiled F) E)
-
-/-- A signed vote contained in an observed object is from a member of its slot's committee. -/
-theorem observed_vote_member (hv : rho.ExecutionValid)
-    {role : Nat → (Model.protoOf (compiled F) E).Role} {K : AC.CommitteeDict (Fintype.card V)}
-    (hK : K.BindsSel rho role) {o obj : (Model.protoOf (compiled F) E).Object}
-    (ho : o ∈ rho.Observed) {v : AC.Vote (Fintype.card V)} (hc : Model.Obj.Contains o obj)
-    (ha : obj.auth = .signed v.val (role v.slot)) : v.val ∈ K.committee v.slot :=
-  ((K.bindsSel_iff rho role).1 hK v.slot v.val).2 (rho.selected_of_observed hv ho hc ha)
-
-/-- Occurring blocks carry votes from members of the committee for their slots. -/
-theorem simTraceAt_occurs_member (hv : rho.ExecutionValid)
-    (hcodec : ∀ {info atts payload}, e.codec.decode info = some (atts, payload) →
-      e.codec.encode atts payload = info)
-    (hrel : ∀ {j : Nat} {v : V} {t : Time}, rho.events[j]? = some (.tick v t) →
-      (paramsAtCount p (Fintype.card V) hN hn).IsPublic t →
-      ∀ r ∈ eventCuts e rho j, ∀ b acc, r.label = .fg (.block b acc) → r.pos ≠ 0 →
-        engineObj e (blockObj e.codec.encode e.codec.carried b) ∈ rho.releasesAt j)
-    {role : Nat → (Model.protoOf (compiled F) E).Role} {K : AC.CommitteeDict (Fintype.card V)}
-    (hK : K.BindsSel rho role) (votes : A.Blk → List (AC.Vote (Fintype.card V)))
-    (hcontains : ∀ b, ∀ v ∈ votes b, ∃ obj,
-      Model.Obj.Contains (engineObj e (blockObj e.codec.encode e.codec.carried b)) obj ∧
-        obj.auth = .signed v.val (role v.slot))
-    {b : A.Blk} (hb : (simTraceAt e rho).Occurs b) :
-    ∀ v ∈ votes b, v.val ∈ K.committee v.slot := by
-  intro v hvb
-  obtain ⟨obj, hc, ha⟩ := hcontains b v hvb
-  exact observed_vote_member rho hv hK (occurs_blockObj_observed_at e rho hv hcodec hrel hb).2 hc ha
-
-end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
 
 namespace Consensus.Goldilocks.Simulation
 
@@ -113,21 +74,27 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
   {K : AC.CommitteeDict (Fintype.card V)}
 
-/-- **The committee of an observed vote object**: its signer is selected for the vote role of
-its slot. -/
-theorem observed_vote_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.vote.voteRole)
-    {o : Wire (Fintype.card V) (binding := S.vote)} (ho : o ∈ rho.Observed)
-    {m : Vote (Fintype.card V)} (hc : Model.Obj.Contains o (voteObj (binding := S.vote) m)) :
-    m.val ∈ K.committee m.slot :=
-  NodeAsChainShape.CanonicalTrace.observed_vote_member rho hv hK ho hc rfl
-
-/-- **A received vote is of a committee member** (the credentials of its delivery). -/
+/-- **A decoded vote is of a committee member** (the receiver's vote verification). -/
 theorem simTraceAt_msgCall_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.vote.voteRole)
     {y : Fin (Fintype.card V)} {k : Nat} {m : Vote (Fintype.card V)}
     (hc : (simTraceAt S rho hn).MsgCallAt y k m) : m.val ∈ K.committee m.slot := by
-  rw [simTraceAt_eq] at hc
-  obtain ⟨i, v, o, t, he, ho, -, -⟩ := msgCall_delivered S rho hn hc
-  exact ((K.bindsSel_iff rho _).1 hK m.slot m.val).2 (hv.credentials i v o t he _ ho m.val _ rfl)
+  rw [simTraceAt_eq, (simTrace_encoding S rho hn).1,
+    ← NodeAsChainShape.CanonicalTrace.simTraceAt_eq] at hc
+  apply ((K.bindsSel_iff rho _).1 hK m.slot m.val).2
+  revert hc
+  refine traceEncoding_induction S hn (fun e _ =>
+    (NodeAsChainShape.CanonicalTrace.simTraceAt e rho).MsgCallAt y k m →
+      m.val ∈ rho.sel (S.vote.voteRole m.slot)) ?_
+  intro e _ hc
+  obtain ⟨_, v, _, _, w, _, _, hd, _, _⟩ :=
+    NodeAsChainShape.CanonicalTrace.simTraceAt_msgCall_delivered e rho hc
+  rw [NodeAsChainShape.CanonicalTrace.receiverCodec_eq,
+    NodeAsChainShape.CanonicalTrace.voteIOAt_eq] at hd
+  have hd' : decodeVoteObj (S.params (pubOf E) hn) (binding := S.vote) (rho.voteIO v) w =
+      some m := hd
+  obtain ⟨data, token, _, hcheck⟩ := decodeVoteObj_verified
+    (sp := S.params (pubOf E) hn) (binding := S.vote) (rho.voteIO v) hd'
+  exact ((hv.credentials.1.2 m.val (S.vote.voteRole m.slot) data token).mp hcheck).2.1
 
 /-- **The installed permission is the committee**: a node may vote in slot `s` iff it is in
 `K.committee s`, at every cut and for every node. -/
