@@ -107,8 +107,8 @@ theorem restartAt_1 : trJR.RestartAt v0 1 := ⟨ℓ1, trJR_callAt rfl, rfl⟩
 
 /-- Before `t_1 + Δ` and with no slot-`1` proposal in the genesis frame, `try_vote` waits. -/
 theorem tryVote_4 (A : SAState sp1.n) : tryVote sp1 v0 A Φ₀ 4 = (A, []) := by
-  have hr : ¬ voteReady sp1 Φ₀ 1 := by
-    rintro ⟨B, hB, hs, -⟩
+  have hr : ¬ voteReady sp1 A Φ₀ 1 := by
+    rintro ⟨⟨B, hB, hs, -⟩, -⟩
     rw [Set.mem_singleton_iff.mp hB] at hs
     simp [g] at hs
   unfold tryVote
