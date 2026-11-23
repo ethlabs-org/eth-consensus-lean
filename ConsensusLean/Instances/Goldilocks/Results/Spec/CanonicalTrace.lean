@@ -60,10 +60,16 @@ noncomputable def traceEncoding (S : Setup) (hn : 1 ≤ Fintype.card V) :
   skel := skeleton (pubOf E) S.vote
   Body := Body
   decBody := inferInstance
+  Tok := Nat
+  Data := WireVote
   State h := State (S.params (pubOf E) h) (S.ro _) S.vote
-  codec := wireCodec _ _ S.vote
+  codec := wireCodec _ _ S.vote ⟨fun _ _ _ _ => false, fun _ _ => none⟩
+  decodeMessage := decodeVoteObj (S.params (pubOf E) hn) (binding := S.vote)
   adapter := nodeAdapter _ _ S.vote
   ops h := nodeOps (S.params (pubOf E) h) (S.ro _) S.vote
+  claim := AsChainShape.voteClaim (binding := S.vote) _
+  voteBody := voteBody
+  presented := AsChainShape.presented (binding := S.vote)
   role := S.vote.candidateRole _
   dep := dependencies _ (binding := S.vote)
   conflict := conflicts (binding := S.vote)
@@ -106,10 +112,16 @@ theorem traceEncoding_induction {V : Type} [Fintype V] {E : Env V}
            { skel := skeleton (pubOf E) S.vote
              Body := Body
              decBody := inferInstance
+             Tok := Nat
+             Data := WireVote
              State h := State (S.params (pubOf E) h) (S.ro _) S.vote
-             codec := wireCodec _ _ S.vote
+             codec := wireCodec _ _ S.vote ⟨fun _ _ _ _ => false, fun _ _ => none⟩
+             decodeMessage := decodeVoteObj (S.params (pubOf E) hn) (binding := S.vote)
              adapter := nodeAdapter _ _ S.vote
              ops h := nodeOps (S.params (pubOf E) h) (S.ro _) S.vote
+             claim := AsChainShape.voteClaim (binding := S.vote) _
+             voteBody := voteBody
+             presented := AsChainShape.presented (binding := S.vote)
              role := S.vote.candidateRole _
              dep := dependencies _ (binding := S.vote)
              conflict := conflicts (binding := S.vote)
@@ -217,61 +229,61 @@ theorem groupRecs_eq (proposer : Nat → Fin sp.n)
 /-- The groups of a delivery: one group per canonical object it carries, the node state threaded
 through the handlers, each under its own event id `Nat.pair i sub`; a dropped object contributes
 nothing. -/
-noncomputable def deliverRecs (proposer : Nat → Fin sp.n)
+noncomputable def deliverRecs (io : VoteAuth sp.n binding) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) :
     List (Wire sp.n binding) → NodeState (goldilocksNode sp ro) →
       Nat → List (CutRec sp ro) := fun os st sub =>
-  (NodeAsChainShape.CanonicalTrace.deliverRecs (wireCodec sp ro binding) proposer dg hs self t i
+  (NodeAsChainShape.CanonicalTrace.deliverRecs (wireCodec sp ro binding io) proposer dg hs self t i
     os st sub).map goldilocksCut
 
 /-- Delivery replay records preserve the generic cut's label. -/
-theorem deliverRecs_label (proposer : Nat → Fin sp.n)
+theorem deliverRecs_label (io : VoteAuth sp.n binding) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
     (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
     {r : CanonicalTrace.CutRec (goldilocksNode sp ro)}
-    (hr : r ∈ CanonicalTrace.deliverRecs (wireCodec sp ro binding) proposer dg hs self t i
+    (hr : r ∈ CanonicalTrace.deliverRecs (wireCodec sp ro binding io) proposer dg hs self t i
       os st sub) :
-    ∃ q ∈ deliverRecs proposer dg hs self t i os st sub, q.label = r.label := by
+    ∃ q ∈ deliverRecs io proposer dg hs self t i os st sub, q.label = r.label := by
   exact ⟨goldilocksCut r, List.mem_map_of_mem hr, rfl⟩
 
 /-- Each concrete delivery cut has a generic source with the same position and label. -/
-theorem deliverRecs_source (proposer : Nat → Fin sp.n)
+theorem deliverRecs_source (io : VoteAuth sp.n binding) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
     (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
-    {q : CutRec sp ro} (hq : q ∈ deliverRecs proposer dg hs self t i os st sub) :
-    ∃ r ∈ CanonicalTrace.deliverRecs (wireCodec sp ro binding) proposer dg hs self t i os st sub,
+    {q : CutRec sp ro} (hq : q ∈ deliverRecs io proposer dg hs self t i os st sub) :
+    ∃ r ∈ CanonicalTrace.deliverRecs (wireCodec sp ro binding io) proposer dg hs self t i os st sub,
       q.pos = r.pos ∧ q.label = r.label := by
   obtain ⟨r, hr, rfl⟩ := List.mem_map.mp hq
   exact ⟨r, hr, rfl, rfl⟩
 
 /-- `deliverRecs` of no object. -/
-theorem deliverRecs_nil (proposer : Nat → Fin sp.n)
+theorem deliverRecs_nil (io : VoteAuth sp.n binding) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
     (st : NodeState (goldilocksNode sp ro)) (sub : Nat) :
-    deliverRecs (binding := binding) proposer dg hs self t i [] st sub = [] := by
+    deliverRecs io proposer dg hs self t i [] st sub = [] := by
   unfold deliverRecs
   rw [NodeAsChainShape.CanonicalTrace.deliverRecs_nil, List.map_nil]
 
 /-- Receipt of an object, followed by the rest of the delivery. -/
-theorem deliverRecs_cons (proposer : Nat → Fin sp.n)
+theorem deliverRecs_cons (io : VoteAuth sp.n binding) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) (o : Wire sp.n binding)
     (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat) :
-    deliverRecs proposer dg hs self t i (o :: os) st sub =
-      match canonEvent sp ro hs o with
+    deliverRecs io proposer dg hs self t i (o :: os) st sub =
+      match canonEvent sp ro io hs o with
       | some e => groupRecs proposer dg self st t (Nat.pair i sub) e ++
-          deliverRecs proposer dg hs self t i os (exec proposer dg self st t e).1 (sub + 1)
-      | none => deliverRecs proposer dg hs self t i os st (sub + 1) := by
+          deliverRecs io proposer dg hs self t i os (exec proposer dg self st t e).1 (sub + 1)
+      | none => deliverRecs io proposer dg hs self t i os st (sub + 1) := by
   unfold deliverRecs
   rw [NodeAsChainShape.CanonicalTrace.deliverRecs_cons]
-  have h : NodeAsChainShape.canonEvent (wireCodec sp ro binding) hs o = canonEvent sp ro hs o :=
-    rfl
+  have h : NodeAsChainShape.canonEvent (wireCodec sp ro binding io) hs o =
+      canonEvent sp ro io hs o := rfl
   rw [h]
-  cases canonEvent sp ro hs o with
+  cases canonEvent sp ro io hs o with
   | none => rfl
   | some e => rw [List.map_append]; rfl
 
@@ -309,10 +321,10 @@ theorem eventCuts_eq (i : Nat) : eventCuts S rho hn i =
             (.tick (encodeTxs (Model.mempool rho.inbox v t)))
         else []
     | some (.deliver v o t) =>
-        deliverRecs (runProposer S rho hn) (digestOf S rho)
+        deliverRecs (rho.voteIO v) (runProposer S rho hn) (digestOf S rho)
           (Model.digests rho.hash o) (rho.ownKey v) t i
-          (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o)
-            (stateAt S rho hn v i).node 0
+          (AsChainShape.delivered (rho.voteIO v) (Model.digests rho.hash o)
+            (stateAt S rho hn v i) o) (stateAt S rho hn v i).node 0
     | some (.restart v t) =>
         groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
           (stateAt S rho hn v i).node t (Nat.pair i 0) .restart
@@ -335,7 +347,8 @@ theorem eventCuts_eq (i : Nat) : eventCuts S rho hn i =
     | restart v t => rw [CanonicalTrace.eventCuts_restart _ _ _ _ _ he, hd]; rfl
     | deliver v o t =>
       rw [CanonicalTrace.eventCuts_deliver _ _ _ _ _ _ he]
-      simp only [hd, CanonicalTrace.wireOf_eq]
+      simp only [hd, CanonicalTrace.wireOf_eq, CanonicalTrace.receiverCodec_eq,
+        CanonicalTrace.voteIOAt_eq]
       rfl
 
 /-- The cut map `ι`: the number of trace cuts of the engine events before engine cut `i`. -/
