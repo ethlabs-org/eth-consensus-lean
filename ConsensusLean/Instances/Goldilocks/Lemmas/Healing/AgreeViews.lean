@@ -147,7 +147,7 @@ theorem proposal_views_agree
           Bool.and_eq_true, decide_eq_true_eq] at hx
         rw [AC.state_pool_slot sp hr hrun.vstart hpH iP s' x hx.1]
       obtain ⟨H', hH't, hH'r, -⟩ :=
-        hsup x (by rw [AC.declaredSupportVotes, hpay]; exact hx) hxs (Set.mem_univ _)
+        hsup x (by rw [AC.declaredSupportVotes, hpay]; exact hx) hxs
       rwa [hU.1 (hΦpU hHd) (hΦyU hH't) (hHdr.trans hH'r.symm)]
     · exact mem_frame_of_relay hS hpH hy (mem_tree_of_frame hrun hpH hS.call hHd)
         (u := sp.ts ((s' + 1 : Nat) : Int) + sp.Δ) (by linarith) (by rw [hS.time]) hcy.1

@@ -100,9 +100,9 @@ theorem merged_support_subsetU
     (hc : CastAt tr y i ℓ e) (σ : Nat) :
     (mergedVoteView sp e.readPoint ℓ.frame σ).support ⊆
       (mergedVoteView sp e.readPoint ℓ.frame σ).votes := by
-  rintro v (hv | ⟨B, hB, hBs, hv, hK, hc', -⟩)
+  rintro v (hv | ⟨B, hB, hBs, hv, hc', -⟩)
   · exact Or.inl (List.mem_of_mem_filter hv)
-  · exact Or.inr ⟨B, hB, hBs, (frame_validPayloadU sp hr hy hc.1 B hB).2.1.subset hv, hK, hc'⟩
+  · exact Or.inr ⟨B, hB, hBs, (frame_validPayloadU sp hr hy hc.1 B hB).2.1.subset hv, hc'⟩
 
 /-- The support of an honest voter's merged view is among its votes. -/
 theorem merged_support_subset (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)

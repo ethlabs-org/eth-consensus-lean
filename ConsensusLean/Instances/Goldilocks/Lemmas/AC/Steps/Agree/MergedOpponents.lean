@@ -117,7 +117,7 @@ theorem opponents_eq_of_merged {A R : ACState sp.n} {Φp Φy : Frm sp.n FGP} {s 
   constructor
   · rintro (⟨a, ha, b, hb, hab, rfl, hbv⟩ | ⟨x, hx, rfl, hxs, Hd, hHd, hHdr, hnc⟩)
     · have hm : ∀ v ∈ A.pool s, v ∈ (mergedVoteView sp R Φy (s + 1)).votes := fun v hv =>
-        Or.inr ⟨P, hP, hPs, hPv ▸ mem_fst.2 ⟨hv, hpool v hv⟩, by simp [ACParams.committee],
+        Or.inr ⟨P, hP, hPs, hPv ▸ mem_fst.2 ⟨hv, hpool v hv⟩,
           hcount v hv⟩
       exact Or.inl ⟨a, hm a ha, b, hm b hb, hab, rfl, hbv⟩
     · obtain ⟨-, hrt⟩ := mem_snd.1 hx
@@ -125,14 +125,14 @@ theorem opponents_eq_of_merged {A R : ACState sp.n} {Φp Φy : Frm sp.n FGP} {s 
       have hh : Hd' = Hd := hΦp.coherent.1 hHd' hHd (hHd'r.trans hHdr.symm)
       subst hh
       have hHds : Hd'.slot ≤ s := by omega
-      exact Or.inr ⟨x, Or.inr ⟨P, hP, hPs, hPsup ▸ hx, by simp [ACParams.committee],
+      exact Or.inr ⟨x, Or.inr ⟨P, hP, hPs, hPsup ▸ hx,
         hcount x (mem_snd.1 hx).1.1, by omega, Hd', (hmem _ hHds).1 hHd,
         hHdr, by omega⟩, rfl, hxs, Hd', (hmem _ hHds).1 hHd, hHdr,
         fun h => hnc ((hcomp _ hHds).2 h)⟩
   · rintro (⟨a, ha, b, hb, hab, rfl, hbv⟩ | ⟨x, hx, rfl, hxs, Hd, hHd, hHdr, hnc⟩)
     · exact Or.inl (equivocators_subset_of_backed (Q := {w | w ∈ A.pool s}) hvotes
         ⟨a, ha, b, hb, hab, rfl, hbv⟩)
-    · rcases hx with hx | ⟨X, hX, hXs, hx, -, -, -, Hd', hHd', hHd'r, hHd's⟩
+    · rcases hx with hx | ⟨X, hX, hXs, hx, -, -, Hd', hHd', hHd'r, hHd's⟩
       · -- an early support vote of the voter
         change x ∈ (voteViewList _ _ _ _).2 at hx
         rw [hcast, mem_snd] at hx

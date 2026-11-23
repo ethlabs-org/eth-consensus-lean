@@ -103,7 +103,6 @@ theorem reset_views_agree_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
           Bool.and_eq_true, decide_eq_true_eq] at hv
         rw [AC.state_pool_slot sp hrp hp.run.vstart hpi i s v (hsip.symm ▸ hv.1)]
       obtain ⟨B', hB', hBr', _⟩ := hsup v (by rw [AC.declaredSupportVotes, hpay]; exact hv) hvs
-        (by simp [AC.ACParams.committee])
       rwa [hac.localRun.coherent.1 ((AC.frameIn_of_callAt hrp hpi hci').2 hB)
         ((AC.frameIn_of_callAt hr hy hcy'.1).2 hB') (hBr.trans hBr'.symm)]
     · have hframe := Outcome.frame_of_call hp.run hpi hci

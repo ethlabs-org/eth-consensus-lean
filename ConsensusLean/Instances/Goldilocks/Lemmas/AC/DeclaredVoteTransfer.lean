@@ -12,7 +12,7 @@ variable {sp : ACParams} {FGP : Type} {A : ACState sp.n} {Φ : Frm sp.n FGP} {s 
 theorem merged_declared_backing {v : Vote sp.n} (hs : v.slot = s)
     (hv : v ∈ (mergedVoteView sp A Φ (s + 1)).votes) :
     v ∈ A.pool s ∨ v.val ∈ equivocators {w | w ∈ A.pool s} := by
-  rcases hv with base | ⟨_, _, _, _, _, backed⟩
+  rcases hv with base | ⟨_, _, _, _, backed⟩
   · left
     simpa [ACState.poolAt] using (List.mem_filter.mp base).1
   · simpa [ShouldCountDeclaredVote, ACState.poolAt, hs] using backed
@@ -21,7 +21,7 @@ theorem merged_declared_backing {v : Vote sp.n} (hs : v.slot = s)
 theorem merged_declared_backing_at_vote_slot {v : Vote sp.n}
     (hpool : ∀ k, ∀ w ∈ A.pool k, w.slot = k) (hv : v ∈ (mergedVoteView sp A Φ s).votes) :
     v ∈ A.pool v.slot ∨ v.val ∈ equivocators {w | w ∈ A.pool v.slot} := by
-  rcases hv with base | ⟨_, _, _, _, _, backed⟩
+  rcases hv with base | ⟨_, _, _, _, backed⟩
   · left
     have h := (List.mem_filter.mp base).1
     change v ∈ A.poolAt ((s : Int) - 1) at h

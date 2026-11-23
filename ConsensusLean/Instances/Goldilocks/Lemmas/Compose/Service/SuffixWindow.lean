@@ -635,7 +635,6 @@ private theorem views_agree_before {a₀ κ b : Time}
         rw [AC.state_pool_slot sp hr hrun.vstart hp i s' x hx.1]
       obtain ⟨H', hH't, hH'r, -⟩ :=
         hsup x (by rw [AC.declaredSupportVotes, hpay]; exact hx) hxs
-          (by simp [AC.ACParams.committee])
       rwa [hU.1 (hΦpU hHd) (hΦyU hH't) (hHdr.trans hH'r.symm)]
     · refine relay_mem_window_before hrun hnc hsync.window hsync.caught hp hy (hΦpU hHd) hcy.1 hjb
         (hsync.le_time hj1) hrsy ?_ hFHd
