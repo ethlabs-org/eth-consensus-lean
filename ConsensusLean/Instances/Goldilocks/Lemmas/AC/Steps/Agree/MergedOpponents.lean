@@ -9,9 +9,11 @@ public section
 The view step of A1.1, over two frames and two states. The proposal's view is the slot-`s` pool
 of a state `A` (every vote stamped, `hpool`), with its resolved votes as support; the merged view
 of slot `s + 1` at a read point `R` is `R`'s slot-`s` votes held before the freeze `t_s + 3Δ`
-and the votes of the only slot-`(s+1)` block `P` of the voter's tree (`hblk`), whose payload is
-the proposal's view. What the run provides enters as premises: every early vote of `R` is in
-`A`'s pool or makes its validator an equivocator there (`hstar`), a pooled vote whose head is a
+and the counted declared head votes of the only slot-`(s+1)` block `P` of the voter's tree
+(`hblk`), whose payload is the proposal's view. What the run provides enters as premises: every
+early vote of `R` is in `A`'s pool or makes its validator an equivocator there (`hstar`), every
+vote of `A`'s pool should be counted at `R` (`hcount`: `R` holds it or a pair of its validator,
+the exact-or-pair condition at the cast), a pooled vote whose head is a
 block of the proposer's tree of slot at most the vote's is resolved there (`hres`), and the two
 trees hold the same blocks of slot at most `s`. -/
 
@@ -74,12 +76,12 @@ theorem merged_votes_of_early {A R : SAState sp.n} {Φp Φy : Frm sp.n FGP} {s :
     rw [hcast, mem_fst] at hv
     exact hstar v hv.1 (by simpa [freeze, hcast] using hv.2)
   · rw [hblk X hX hXs] at hv
-    exact Or.inl (mem_fst.1 (hPv ▸ hv)).1
+    exact Or.inl (mem_fst.1 (hPv ▸ hv.1)).1
 
 /-- **The proposal's view and the merged view give the same opponents** to every block `B` of
 slot at most `s`, when the proposer's tree (of `Φp`) and the voter's tree (of `Φy`) hold the
 same blocks of slot at most `s`, `P ∈ Φy.tree` (slot `s + 1`, the only one there) carries the
-proposal's view as its payload, and the premises `hpool`, `hres`, `hstar` hold. -/
+proposal's view as its payload, and the premises `hpool`, `hres`, `hstar`, `hcount` hold. -/
 theorem opponents_eq_of_merged {A R : SAState sp.n} {Φp Φy : Frm sp.n FGP} {s : Nat}
     {P B : Blk sp.n FGP} (hΦp : FrameOK Φp) (hΦy : FrameOK Φy)
     (heq : {X | X ∈ Φp.tree ∧ X.slot ≤ s} = {X | X ∈ Φy.tree ∧ X.slot ≤ s})
@@ -92,6 +94,7 @@ theorem opponents_eq_of_merged {A R : SAState sp.n} {Φp Φy : Frm sp.n FGP} {s 
       resolutionTime A Φp x ≠ ⊤)
     (hstar : ∀ x ∈ R.pool s, R.voteStamp x < ETime.of (sp.ts s + 3 * sp.Δ) →
       x ∈ A.pool s ∨ x.val ∈ equivocators {w | w ∈ A.pool s})
+    (hcount : ∀ v ∈ A.pool s, ShouldCountDeclaredVote sp R v)
     (hBs : B.slot ≤ s) :
     opponents sp Φp (View.ofLists (voteViewList A Φp (s : Int) ⊤)) s B =
       opponents sp Φy (mergedVoteView sp R Φy (s + 1)) s B := by
@@ -113,14 +116,16 @@ theorem opponents_eq_of_merged {A R : SAState sp.n} {Φp Φy : Frm sp.n FGP} {s 
   constructor
   · rintro (⟨a, ha, b, hb, hab, rfl, hbv⟩ | ⟨x, hx, rfl, hxs, Hd, hHd, hHdr, hnc⟩)
     · have hm : ∀ v ∈ A.pool s, v ∈ (mergedVoteView sp R Φy (s + 1)).votes := fun v hv =>
-        Or.inr ⟨P, hP, hPs, hPv ▸ mem_fst.2 ⟨hv, hpool v hv⟩⟩
+        Or.inr ⟨P, hP, hPs, hPv ▸ mem_fst.2 ⟨hv, hpool v hv⟩, by simp [SAParams.committee],
+          hcount v hv⟩
       exact Or.inl ⟨a, hm a ha, b, hm b hb, hab, rfl, hbv⟩
     · obtain ⟨-, hrt⟩ := mem_snd.1 hx
       obtain ⟨Hd', hHd', hHd'r, hHd's⟩ := resolved_head hrt.ne
       have hh : Hd' = Hd := hΦp.coherent.1 hHd' hHd (hHd'r.trans hHdr.symm)
       subst hh
       have hHds : Hd'.slot ≤ s := by omega
-      exact Or.inr ⟨x, Or.inr ⟨P, hP, hPs, hPsup ▸ hx, by omega, Hd', (hmem _ hHds).1 hHd,
+      exact Or.inr ⟨x, Or.inr ⟨P, hP, hPs, hPsup ▸ hx, by simp [SAParams.committee],
+        hcount x (mem_snd.1 hx).1.1, by omega, Hd', (hmem _ hHds).1 hHd,
         hHdr, by omega⟩, rfl, hxs, Hd', (hmem _ hHds).1 hHd, hHdr,
         fun h => hnc ((hcomp _ hHds).2 h)⟩
   · rintro (⟨a, ha, b, hb, hab, rfl, hbv⟩ | ⟨x, hx, rfl, hxs, Hd, hHd, hHdr, hnc⟩)
@@ -129,7 +134,7 @@ theorem opponents_eq_of_merged {A R : SAState sp.n} {Φp Φy : Frm sp.n FGP} {s 
         · exact Or.inl ⟨a, ha', b, hb', hab, rfl, hbv⟩
         · exact Or.inl (hbv ▸ hb')
       · exact Or.inl ha'
-    · rcases hx with hx | ⟨X, hX, hXs, hx, -, Hd', hHd', hHd'r, hHd's⟩
+    · rcases hx with hx | ⟨X, hX, hXs, hx, -, -, -, Hd', hHd', hHd'r, hHd's⟩
       · -- an early support vote of the voter
         change x ∈ (voteViewList _ _ _ _).2 at hx
         rw [hcast, mem_snd] at hx
