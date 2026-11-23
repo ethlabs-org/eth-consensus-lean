@@ -46,9 +46,11 @@ structure SimulatesAt (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _))
   tick_other : ∀ v i t, rho.events[i]? = some (.tick v t) →
     ¬ (S.params (pubOf E) hn).toParams.IsPublic t → ι (i + 1) = ι i
   deliver : ∀ v i o t, rho.events[i]? = some (.deliver v o t) →
-    DeliverSeq (runProposer S rho hn) tr (digestOf S rho)
+    DeliverSeq (sp := S.params (pubOf E) hn) (binding := S.vote)
+      (runProposer S rho hn) tr (digestOf S rho) (rho.voteIO v)
       (Model.digests rho.hash o) (rho.ownKey v) t
-      (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o) (ι i) (ι (i + 1))
+      (delivered (rho.voteIO v) (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+      (ι i) (ι (i + 1))
   restart : ∀ v i t, rho.events[i]? = some (.restart v t) →
     tr.GroupAt (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (ι i) t .restart ∧
       ι (i + 1) = ι i + (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
@@ -60,7 +62,7 @@ structure SimulatesAt (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _))
   block_released : ∀ y k B, y ∈ honestKeysAt S rho (tr.time k) → tr.OwnBlockAt y k B →
     rho.releases (rho.key y) (blockObj (S.params (pubOf E) hn) B) (tr.time k)
   vote_released : ∀ y k m, y ∈ honestKeysAt S rho (tr.time k) → tr.EmitAt y k m →
-    ReleasedFrom S rho (rho.key y) (voteObj m) (tr.time k)
+    ∃ z, ReleasedFrom S rho (rho.key y) (voteObj m z) (tr.time k)
   att_released : ∀ y k a, y ∈ honestKeysAt S rho (tr.time k) → tr.SignAt y k a →
     ReleasedFrom S rho (rho.key y) (attObj a) (tr.time k)
   block_relayed : ∀ y k B, y ∈ honestKeysAt S rho (tr.time k) →
@@ -70,10 +72,10 @@ structure SimulatesAt (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _))
     (tr.EmitAt y k m ∨
       (tr.MsgCallAt y k m ∧
         m ∉ (tr.state y k).ac.pool m.slot ∧ m ∈ (tr.post k).ac.pool m.slot)) →
-    let envelope : (Model.protoOf (compiled (goldilocks S)) E).Object :=
-      .mk (.signed y .poll) (.data (.voteForward (tr.time k) (encodeVote m))) [voteObj m]
-    ∃ i, ι i ≤ k ∧ k < ι (i + 1) ∧ rho.SendsAt (rho.key y) i (tr.time k) ∧
-      envelope ∈ rho.releasesAt i ∧ ∀ j < i, envelope ∉ rho.releasesAt j
+    ∃ z, let envelope : (Model.protoOf (compiled (goldilocks S)) E).Object :=
+      .mk (.signed y .poll) (.data (.voteForward (tr.time k) (encodeVote m))) [voteObj m z]
+      ∃ i, ι i ≤ k ∧ k < ι (i + 1) ∧ rho.SendsAt (rho.key y) i (tr.time k) ∧
+        envelope ∈ rho.releasesAt i ∧ ∀ j < i, envelope ∉ rho.releasesAt j
   att_relayed : ∀ y k a, y ∈ honestKeysAt S rho (tr.time k) →
     tr.AttCallAt y k a → tr.pos k = 0 →
       RelayedFrom S rho (rho.key y) (attObj a) (tr.time k)
