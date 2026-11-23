@@ -390,7 +390,8 @@ slot between the seats and $\committee_s$.  A vote travels with its
 \emph{evidence}~$z$, signed with it: $z$ shows that $\valindex$ is in
 $\committee_s$.  A node issues evidence only for its own vote, in a slot
 whose committee holds it; it checks the evidence of a presented vote for the
-vote's validator and slot, and forwards a vote with the evidence it received.
+vote's validator, slot and head at the wire check (below), and forwards a
+vote with the evidence it received.
 Evidence is never part of a block.
 
 \emph{The payload.}  The payload of a block is
@@ -418,10 +419,17 @@ signature.  A declared head vote that no node holds signed, that was never
 signed, or whose validator is not in $\committee_{B.\slot-1}$, passes it;
 the voter decides whether to count it (\emph{held declarations} below).
 
-\emph{Admission.}  $\Call{on\_head\_vote}{}$ accepts a vote at time~$t$
-when four conditions hold: its slot is $\slot(t)-1$ or $\slot(t)$, its
-evidence verifies for its validator and slot (so its validator is in
-$\committee_{\mathit{vote}.\slot}$), the pool does not hold it, and
+\emph{The wire check.}  A head vote passes the AC check of the wire
+(Section~\ref{sec:blocks}) when its evidence verifies for the vote it
+signs: its validator, the vote role of its slot, and its head.  The check
+runs before dispatch.  A vote that fails it is dropped with no effect:
+$\Call{ac\_on\_message}{}$ is not called, so the vote is not admitted, no
+optimistic confirmation or vote check runs, and nothing is forwarded.  A vote
+that passes it is from a member of $\committee_{\mathit{vote}.\slot}$.
+
+\emph{Admission.}  $\Call{on\_head\_vote}{}$ receives only votes that
+passed the wire check.  It accepts a vote at time~$t$ when three conditions
+hold: its slot is $\slot(t)-1$ or $\slot(t)$, the pool does not hold it, and
 the pool holds fewer than two distinct votes of its validator for that
 slot.  An accepted vote enters the pool with the stamp~$t$.  A vote that
 fails a test has no effect.
@@ -517,10 +525,9 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
 \EndFunction
 \vspace{1pt}
 \Function{on\_head\_vote}{$\AC,t,\mathit{vote}$}
-  \Comment{$\mathit{vote}$ arrives with its evidence}
+  \Comment{$\mathit{vote}$ passed the wire check: its evidence verified}
   \State $s\gets\slot(t)$
   \If{$\mathit{vote}.\slot<s-1$ or $\mathit{vote}.\slot>s$ or
-    the evidence of $\mathit{vote}$ does not verify for $\mathit{vote}.\valindex$ and $\mathit{vote}.\slot$ or
     $\mathit{vote}\in\AC.\headVotes[\mathit{vote}.\slot]$}
     \State \Return \EndIf
   \If{$\AC.\headVotes[\mathit{vote}.\slot]$ holds two distinct votes by
@@ -1076,6 +1083,7 @@ as the tick can.
 \EndFunction
 \vspace{1pt}
 \Function{ac\_on\_message}{$\AC,\Fr,t,\mathit{vote}$}
+  \Comment{called only for a vote that passed the wire check}
   \State \Call{on\_head\_vote}{$\AC,t,\mathit{vote}$}
   \State \Call{optimistic\_confirmation}{$\AC,\Fr,t$}
   \State \Call{try\_vote}{$\AC,\Fr,t$}
