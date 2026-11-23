@@ -34,25 +34,25 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A received object standing for a block event decodes to that block. -/
 theorem decodeBlock_of_canonEvent {hs : List (Header Info × Nat)} {o : Wire sp.n binding}
-    {B : Blk sp}
-    (h : canonEvent sp ro hs o = some (.block B)) : decodeBlock sp hs o = some B := by
+    {io : VoteAuth sp.n binding} {B : Blk sp}
+    (h : canonEvent sp ro io hs o = some (.block B)) : decodeBlock sp hs o = some B := by
   cases hb : decodeBlock sp hs o with
   | some B' => simp only [canonEvent_eq, hb, Option.some.injEq, Event.block.injEq] at h; rw [h]
   | none =>
-    cases hv : decodeVoteObj sp o <;> cases ha : decodeAttObj sp o <;>
+    cases hv : decodeVoteObj sp io o <;> cases ha : decodeAttObj sp o <;>
       simp [canonEvent_eq, hb, hv, ha] at h
 
 section Visit
 
-variable (hs : List (Header Info × Nat))
+variable (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
 
 /-- `visit` of a canonical-form object: the object, then nothing when it refuses a block, else
 `visitList` of what it carries from the state after it. -/
 theorem visit_cases (st : State sp ro binding) (o : Wire sp.n binding) :
-    (Refuses hs st o ∧ visit hs st o = ([o], processOne hs st o)) ∨
-      (¬ Refuses hs st o ∧ visit hs st o =
-        (o :: (visitList hs (processOne hs st o) o.carried).1,
-          (visitList hs (processOne hs st o) o.carried).2)) := by
+    (Refuses io hs st o ∧ visit io hs st o = ([o], processOne io hs st o)) ∨
+      (¬ Refuses io hs st o ∧ visit io hs st o =
+        (o :: (visitList io hs (processOne io hs st o) o.carried).1,
+          (visitList io hs (processOne io hs st o) o.carried).2)) := by
   obtain ⟨a, m, cs⟩ := o
   rw [visit_eq]
   split_ifs with h
@@ -62,36 +62,36 @@ theorem visit_cases (st : State sp ro binding) (o : Wire sp.n binding) :
 /-- `visitList` of a list: `visit` of its head, then `visitList` of the rest. -/
 theorem visitList_cons (st : State sp ro binding) (c : Wire sp.n binding)
     (cs : List (Wire sp.n binding)) :
-    visitList hs st (c :: cs) =
-      ((visit hs st c).1 ++ (visitList hs (visit hs st c).2 cs).1,
-        (visitList hs (visit hs st c).2 cs).2) := by
+    visitList io hs st (c :: cs) =
+      ((visit io hs st c).1 ++ (visitList io hs (visit io hs st c).2 cs).1,
+        (visitList io hs (visit io hs st c).2 cs).2) := by
   rw [visitList_cons_eq]
 
 /-- A delivered object belongs to the received object's recursive closure. -/
 theorem mem_delivered {st : State sp ro binding} {o x : Wire sp.n binding}
-    (h : x ∈ delivered hs st o) : x ∈ o.parts :=
+    (h : x ∈ delivered io hs st o) : x ∈ o.parts :=
   NodeAsChainShape.CanonicalTrace.contains_of_mem_delivered
-    (wireCodec sp ro binding) (nodeAdapter sp ro binding) hs h
+    (wireCodec sp ro binding io) (nodeAdapter sp ro binding) hs h
 
 /-- The received object itself is delivered. -/
 theorem mem_delivered_self (st : State sp ro binding) (o : Wire sp.n binding) :
-    o ∈ delivered hs st o :=
-  NodeAsChainShape.CanonicalTrace.mem_delivered_self (wireCodec sp ro binding)
+    o ∈ delivered io hs st o :=
+  NodeAsChainShape.CanonicalTrace.mem_delivered_self (wireCodec sp ro binding io)
     (nodeAdapter sp ro binding) hs st o
 
 /-- `visit` of an object whose processing refuses no block: the object, then `visitList` of what
 it carries. -/
 theorem visit_of_not_refuses {st : State sp ro binding} {o : Wire sp.n binding}
-    (h : ¬ Refuses hs st o) :
-    (visit hs st o).1 = o :: (visitList hs (processOne hs st o) o.carried).1 := by
-  rcases visit_cases hs st o with ⟨hr, -⟩ | ⟨-, hv⟩
+    (h : ¬ Refuses io hs st o) :
+    (visit io hs st o).1 = o :: (visitList io hs (processOne io hs st o) o.carried).1 := by
+  rcases visit_cases io hs st o with ⟨hr, -⟩ | ⟨-, hv⟩
   · exact absurd hr h
   · rw [hv]
 
 /-- Processing an object with a data body (a vote, an attestation or a wrapper) refuses no
 block. -/
 theorem not_refuses_of_data {st : State sp ro binding} {o : Wire sp.n binding} {au b cs}
-    (ho : o = .mk au (.data b) cs) : ¬ Refuses hs st o := by
+    (ho : o = .mk au (.data b) cs) : ¬ Refuses io hs st o := by
   rintro ⟨h, -⟩
   subst ho
   exact h
@@ -99,8 +99,8 @@ theorem not_refuses_of_data {st : State sp ro binding} {o : Wire sp.n binding} {
 /-- Processing a canonical block refuses it exactly when `on_block` does not accept it: it is of
 a future slot or the FG refuses it. -/
 theorem refuses_iff_of_canonEvent {st : State sp ro binding} {o : Wire sp.n binding} {B : Blk sp}
-    (h : canonEvent sp ro hs o = some (.block B)) :
-    Refuses hs st o ↔ sp.toParams.slotOf st.now < B.slot ∨ st.node.fg.onBlock B = none := by
+    (h : canonEvent sp ro io hs o = some (.block B)) :
+    Refuses io hs st o ↔ sp.toParams.slotOf st.now < B.slot ∨ st.node.fg.onBlock B = none := by
   have hshape : BlockShaped o := by
     have hd := decodeBlock_of_canonEvent h
     rw [decodeBlock_eq] at hd
@@ -111,25 +111,25 @@ theorem refuses_iff_of_canonEvent {st : State sp ro binding} {o : Wire sp.n bind
   · exact fun hr => hr.2 B h
   · intro hB
     refine ⟨hshape, fun B' h' => ?_⟩
-    change canonEvent sp ro hs o = some (.block B') at h'
+    change canonEvent sp ro io hs o = some (.block B') at h'
     rw [h, Option.some.injEq, Node.Event.block.injEq] at h'
     exact h' ▸ hB
 
 /-- `visit` of an object that carries nothing is that object. -/
 theorem visit_of_carried_eq_nil (st : State sp ro binding) {o : Wire sp.n binding}
-    (h : o.carried = []) : (visit hs st o).1 = [o] := by
-  rcases visit_cases hs st o with ⟨-, hv⟩ | ⟨-, hv⟩ <;> rw [hv]
+    (h : o.carried = []) : (visit io hs st o).1 = [o] := by
+  rcases visit_cases io hs st o with ⟨-, hv⟩ | ⟨-, hv⟩ <;> rw [hv]
   rw [h, visitList_nil_eq]
 
 /-- A delivery of an object that carries nothing processes that object alone. -/
 theorem delivered_of_carried_eq_nil (st : State sp ro binding) {o : Wire sp.n binding}
-    (h : o.carried = []) : delivered hs st o = [o] :=
-  visit_of_carried_eq_nil hs st h
+    (h : o.carried = []) : delivered io hs st o = [o] :=
+  visit_of_carried_eq_nil io hs st h
 
 /-- `visit` starts with the visited object. -/
 theorem visit_head (st : State sp ro binding) (o : Wire sp.n binding) :
-    ∃ rest, (visit hs st o).1 = o :: rest := by
-  rcases visit_cases hs st o with ⟨-, h⟩ | ⟨-, h⟩ <;> rw [h] <;> exact ⟨_, rfl⟩
+    ∃ rest, (visit io hs st o).1 = o :: rest := by
+  rcases visit_cases io hs st o with ⟨-, h⟩ | ⟨-, h⟩ <;> rw [h] <;> exact ⟨_, rfl⟩
 
 end Visit
 end
@@ -236,29 +236,31 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape Shape Blocks
 open AC (ACParams ReplayOrder)
 variable {binding : VoteBinding} {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (hs : List (Header Info × Nat))
 
 /-- A delivery processes its delivered objects in order (`process`): their fold reaches
 `visit`'s state. -/
-theorem process_eq_visit (st : State sp ro binding) (o : Wire sp.n binding) :
-    process st o hs = (visit hs st o).2 :=
+theorem process_eq_visit (hs : List (Header Info × Nat))
+    (st : State sp ro binding) (o : Wire sp.n binding) :
+    process st o hs = (visit st.voteIO hs st o).2 :=
   NodeAsChainShape.CanonicalTrace.foldl_delivered
-    (wireCodec sp ro binding) (nodeAdapter sp ro binding) hs
+    (wireCodec sp ro binding st.voteIO) (nodeAdapter sp ro binding) hs
+
+variable (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
 
 /-- The objects carried by a delivered object are delivered too, unless processing it, from the
 state the objects delivered before it leave, refuses a block. -/
 theorem carried_subset_delivered {st : State sp ro binding} {o x : Wire sp.n binding}
-    {pre post : List (Wire sp.n binding)} (he : delivered hs st o = pre ++ x :: post)
-    (hr : ¬ Refuses hs (pre.foldl (processOne hs) st) x) :
-    x.carried ⊆ delivered hs st o :=
+    {pre post : List (Wire sp.n binding)} (he : delivered io hs st o = pre ++ x :: post)
+    (hr : ¬ Refuses io hs (pre.foldl (processOne io hs) st) x) :
+    x.carried ⊆ delivered io hs st o :=
   NodeAsChainShape.CanonicalTrace.carried_subset_delivered
-    (wireCodec sp ro binding) (nodeAdapter sp ro binding) hs he hr
+    (wireCodec sp ro binding io) (nodeAdapter sp ro binding) hs he hr
 
 /-- The objects the received object carries are delivered unless processing it refuses a block. -/
 theorem carried_subset_delivered_self {st : State sp ro binding} {o : Wire sp.n binding}
-    (hr : ¬ Refuses hs st o) : o.carried ⊆ delivered hs st o :=
+    (hr : ¬ Refuses io hs st o) : o.carried ⊆ delivered io hs st o :=
   NodeAsChainShape.CanonicalTrace.carried_subset_delivered_self
-    (wireCodec sp ro binding) (nodeAdapter sp ro binding) hs hr
+    (wireCodec sp ro binding io) (nodeAdapter sp ro binding) hs hr
 
 end Consensus.Goldilocks.Simulation
 
