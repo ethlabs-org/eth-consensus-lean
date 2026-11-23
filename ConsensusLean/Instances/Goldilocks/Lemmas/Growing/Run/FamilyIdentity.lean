@@ -29,16 +29,9 @@ variable {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 theorem goldilocksFamilyRun (hr : GoldilocksRun proposer dg H R) (hnc : Compose.NoCollRun dg R) :
     FamilyRun (goldilocksFamily sp (List (FG.Att sp.n)) ro) proposer dg H R := by
-  refine ⟨hr.toLocalRun, hr.genesis_root_ok, ?_, ?_,
+  refine ⟨hr.toLocalRun, hr.genesis_root_ok, ?_,
     goldilocksObservation
       (Compose.Growing.goldilocks_ac_projection sp ro dg H R proposer hr hnc).localRun⟩
-  · intro y i B hy hc v hv hh
-    obtain ⟨j, hj, he⟩ := hr.carried_vote_unforgeable y i B hy hc v hv hh
-    change ∃ j < i, ∃ e, SA.VoteAt
-      ((goldilocksFamily sp (List (FG.Att sp.n)) ro).proj R.projAC) v.val j e ∧ e.msg = v
-    rw [SA.proj_goldilocks]
-    obtain ⟨ℓ, hc, e, he, rfl⟩ := he
-    exact ⟨j, hj, e, ⟨ℓ, Compose.projAC_callAt.mpr hc, he⟩, rfl⟩
   · constructor
     · intro y i hy
       exact congrArg (fun o : SA.SATrace sp (List (FG.Att sp.n)) ro => o.state y i)
