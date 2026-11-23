@@ -107,7 +107,7 @@ def ctrlShape (pub : Public) : ChainShape pub CtrlOut Unit where
   Body := Unit
   Durable := Unit
   decBody := inferInstance
-  init := fun _ _ => ()
+  init := fun _ _ _ => ()
   clock := fun s _ => s
   propose := fun s _ => (s, none)
   act := fun s _ _ => (s, none)

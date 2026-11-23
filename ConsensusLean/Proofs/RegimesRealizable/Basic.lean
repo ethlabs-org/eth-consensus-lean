@@ -83,9 +83,10 @@ theorem coverage (F : ChainShapeFamily O Info) {V : Type} [Fintype V] [Decidable
   obtain ⟨hash, hinj⟩ := Countable.exists_injective_nat (protoOf (compiled F) p.env).Item
   obtain ⟨relay, events, hv, he, -⟩ :=
     Model.canonical_run_from_causal O (compiled F) V p.env p.faultyAt p.faultyAt_mono
-      p.horizon hp key sel hsel p.submit hash g
+      p.horizon hp key sel hsel p.submit hash (Model.stdIssue _ _) (Model.stdVerify _ _ sel)
+      (fun _ => Model.Run.voteVerification_std _ rfl rfl) g
   let rho := Model.Run.mk (F := compiled F) (E := p.env) p.faultyAt p.faultyAt_mono
-      p.horizon events key sel p.submit relay hash
+      p.horizon events key sel p.submit relay hash (Model.stdIssue _ _) (Model.stdVerify _ _ sel)
   exact ⟨rho, rfl, rfl, rfl, hv,
     Model.Run.not_hashCollision_of_injective (Model.Run.injectiveHash_iff.mpr hinj), he⟩
 
@@ -1060,11 +1061,13 @@ theorem real_run_sel (F : ChainShapeFamily O Info) (p : EnvPoint V) (hp : 0 ≤ 
     ∃ hash relay events,
       let rho := Model.Run.mk (F := compiled F) (E := p.env) p.faultyAt p.faultyAt_mono
           p.horizon events key sel p.submit relay hash
+          (Model.stdIssue _ _) (Model.stdVerify _ _ sel)
       rho.ExecutionValid ∧ ¬ rho.HashCollision ∧ CommLog.EagerFrom rho.point rho.log g := by
   obtain ⟨hash, hinj⟩ := Countable.exists_injective_nat (protoOf (compiled F) p.env).Item
   obtain ⟨relay, events, hv, he, -⟩ :=
     Model.canonical_run_from_causal O (compiled F) V p.env p.faultyAt p.faultyAt_mono
-      p.horizon hp key sel hsel p.submit hash g
+      p.horizon hp key sel hsel p.submit hash (Model.stdIssue _ _) (Model.stdVerify _ _ sel)
+      (fun _ => Model.Run.voteVerification_std _ rfl rfl) g
   exact ⟨hash, relay, events, hv,
     Model.Run.not_hashCollision_of_injective (Model.Run.injectiveHash_iff.mpr hinj), he⟩
 
@@ -1073,6 +1076,7 @@ theorem real_run (F : ChainShapeFamily O Info) (p : EnvPoint V) (hp : 0 ≤ p.ho
     ∃ hash relay events,
       let rho := Model.Run.mk (F := compiled F) (E := p.env) p.faultyAt p.faultyAt_mono
           p.horizon events key (extremalSel F p.env) p.submit relay hash
+          (Model.stdIssue _ _) (Model.stdVerify _ _ (extremalSel F p.env))
       rho.ExecutionValid ∧ ¬ rho.HashCollision ∧ CommLog.EagerFrom rho.point rho.log g :=
   real_run_sel key F p hp g _ (extremalSel_admits F p.env)
 
@@ -1101,6 +1105,7 @@ theorem sleepy_witness (ha : K.params.Admissible) (hroom : K.params.Room (Fintyp
   obtain ⟨hash, relay, events, hv, hnc, he⟩ := real_run key' F p hH0 0
   let rho := Model.Run.mk (F := compiled F) (E := p.env) p.faultyAt monotone_const H events key'
     (extremalSel F p.env) p.submit relay hash
+    (Model.stdIssue _ _) (Model.stdVerify _ _ (extremalSel F p.env))
   have hcomm := committee_of_constant_awake p ((extremalCommittee F p.env).map key'.toEmbedding)
     K.params.θ 0 ((Sys F V).cDur K ⟨_, rho⟩) ((Sys F V).committeeAheadDur K ⟨_, rho⟩)
     ha.θ_range.1 (mul_nonneg (by positivity) hΔ.le) (fun _ _ _ => rfl)
@@ -1172,7 +1177,7 @@ theorem healthy_witness_sel (ha : K.params.Admissible) (hroom : K.params.Room (F
   let p := realPoint key hn Δ hΔ ΔF hΔF allAwake H
   obtain ⟨hash, relay, events, hv, hnc, he⟩ := real_run_sel key' F p hH0 g sel hsel
   let rho := Model.Run.mk (F := compiled F) (E := p.env) p.faultyAt monotone_const H events key'
-    sel p.submit relay hash
+    sel p.submit relay hash (Model.stdIssue _ _) (Model.stdVerify _ _ sel)
   have hse := Model.sysOf_eagerFrom (O := O) rho he
   refine ⟨rho, rfl, rfl, rfl, ⟨hv, hnc, fun _ => rfl, ?_, ?_⟩, hse,
     ⟨hse.psync le_rfl hΔ1 hΔF1, ?_, hr, ?_⟩,
@@ -1326,7 +1331,7 @@ theorem sleepyStress_witness (ha : K.params.Admissible) (m : Nat) (hm : 2 ≤ m)
     stress_selection key hn hΔ hΔF H (awakeUpTo key m) ha1 key' q hq hf cap i ht
   obtain ⟨hash, relay, events, hv, hnc, he⟩ := real_run_sel key' F p hH0 0 sel hsel
   let rho := Model.Run.mk (F := compiled F) (E := p.env) p.faultyAt monotone_const H events key'
-    sel p.submit relay hash
+    sel p.submit relay hash (Model.stdIssue _ _) (Model.stdVerify _ _ sel)
   have hcomm := committee_of_constant_awake p ((extremalCommittee F p.env).map key'.toEmbedding)
     K.params.θ 0 ((Sys F V).cDur K ⟨_, rho⟩) ((Sys F V).committeeAheadDur K ⟨_, rho⟩)
     ha.θ_range.1 (mul_nonneg (by positivity) hΔ.le) (fun _ _ _ => rfl) fun d hC => by
@@ -1397,6 +1402,7 @@ theorem outage_witness (ha : K.params.Admissible) (hroom : K.params.Room (Fintyp
       (realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H).faultyAt
       monotone_const H events key' sel
       (realPoint key hn Δ hΔ ΔF hΔF (asleepAlways (kv key hn 2 (by decide))) H).submit relay hash
+      (Model.stdIssue _ _) (Model.stdVerify _ _ sel)
   have hse := Model.sysOf_eagerFrom (O := O) rho he
   have hawake1 :
       ∀ t, asleepAlways (kv key hn 2 (by decide)) (kv key hn 1 (by decide)) t = true := by

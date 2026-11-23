@@ -47,9 +47,10 @@ theorem sysOf_adequateObs {Prog : Type} (Y : Progress (sysOf O F V) Prog)
     obtain ⟨hash, hinj⟩ := Countable.exists_injective_nat (protoOf F p.env).Item
     obtain ⟨relay, events, hvalid, heager⟩ :=
       canonical_run_from O F V p.env p.faultyAt p.faultyAt_mono p.horizon hp
-        key sel hsel p.submit hash g
+        key sel hsel p.submit hash (stdIssue F p.env) (stdVerify F p.env sel)
+        (fun _ => Run.voteVerification_std _ rfl rfl) g
     refine ⟨⟨p.env, Run.mk p.faultyAt p.faultyAt_mono p.horizon
-      events key sel p.submit relay hash⟩,
+      events key sel p.submit relay hash (stdIssue F p.env) (stdVerify F p.env sel)⟩,
       hvalid, ?_, rfl, sysOf_eagerFrom _ heager, fun _ _ _ _ h => h, ?_⟩
     · rintro ⟨x, y, hxy, -, -, hh⟩
       exact hxy (hinj hh)

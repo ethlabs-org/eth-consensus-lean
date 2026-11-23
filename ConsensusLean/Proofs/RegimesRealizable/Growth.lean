@@ -263,6 +263,7 @@ theorem growing_live_witness (F : ChainShapeFamily O Info) (K : Contract Progres
     (show 0 ≤ H from le_trans (by decide : (0 : Time) ≤ 1) hH) g
   let rho := Model.Run.mk (F := compiled F) (E := p.env) p.faultyAt p.faultyAt_mono H
     events key' (extremalSel F p.env) p.submit relay hash
+    (Model.stdIssue _ _) (Model.stdVerify _ _ (extremalSel F p.env))
   have hsel : (shapeProgress F V).selected p.env (key', extremalSel F p.env) =
       fun _ => (extremalCommittee F p.env).map key'.toEmbedding :=
     funext (selected_of_duty F p.env key' _ fun _ _ => rfl)
@@ -334,7 +335,7 @@ theorem growing_outage_witness (F : ChainShapeFamily O Info) (K : Contract Progr
   obtain ⟨key', sel, C, hsel, hselected, hgood⟩ := exists_outage_selection F p.env key hn
   obtain ⟨hash, relay, events, hv, hnc, he⟩ := real_run_sel key' F p hH0 0 sel hsel
   let rho := Model.Run.mk (F := compiled F) (E := p.env) p.faultyAt p.faultyAt_mono H
-    events key' sel p.submit relay hash
+    events key' sel p.submit relay hash (Model.stdIssue _ _) (Model.stdVerify _ _ sel)
   let r : (Sys F V).Run := ⟨p.env, rho⟩
   have haw (j : Nat) (hj : j < 3) (hj2 : j ≠ 2) (t : Time) :
       awake (kv key hn j hj) t = true := by
