@@ -155,7 +155,7 @@ open AsChainShape Shape
 open Model (pubOf)
 
 /-- The FG update keeps the vote authentication. -/
-theorem fgUpdate_voteIO {sp ro binding} (st : State sp ro binding) :
+private theorem fgUpdate_voteIO {sp ro binding} (st : State sp ro binding) :
     (AsChainShape.fgUpdate st).voteIO = st.voteIO := by
   rw [fgUpdate_eq]; simp only; split
   · rfl
@@ -174,8 +174,8 @@ theorem recordOwn_voteIO {sp ro binding} (st : State sp ro binding) o hs :
 /-- Goldilocks' vote authentication laws: the envelope's `voteIO` is the receiver's. -/
 theorem traceEncoding_ioLaws {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (hn : 1 ≤ Fintype.card V) : (traceEncoding (E := E) S hn).IOLaws (traceVoteIO S hn) :=
-  traceVoteIO_induction S hn (fun e io => e.IOLaws io) <| by
-  intro e
+  traceEncoding_induction S hn (fun e _ io => e.IOLaws io) <| by
+  intro e _
   exact {
     init_io := fun _ _ _ => rfl
     setNode_io := fun _ _ => rfl
@@ -195,7 +195,7 @@ theorem traceEncoding_ioLaws {V : Type} [Fintype V] {E : Env V} (S : Setup)
 theorem traceEncoding_opLaws {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (hn : 1 ≤ Fintype.card V) : (traceEncoding (E := E) S hn).OpLaws (traceDue S hn) :=
   traceEncoding_induction S hn
-    (fun e due => ∀ io, e.IOLaws io → e.OpLaws due) (fun _ io hio => {
+    (fun e due io => e.IOLaws io → e.OpLaws due) (fun _ hio => {
     setNode_obs := fun _ _ => ⟨rfl, rfl, rfl, rfl⟩
     setDue_obs := fun _ _ => ⟨rfl, rfl, rfl, rfl⟩
     applyCuts_obs := fun _ _ _ => ⟨rfl, rfl, rfl, rfl⟩
@@ -205,7 +205,7 @@ theorem traceEncoding_opLaws {V : Type} [Fintype V] {E : Env V} (S : Setup)
     wake_obs := fun _ _ _ => ⟨rfl, rfl⟩
     init_obs := fun _ _ _ => ⟨rfl, rfl⟩
     clock_obs := fun _ _ => ⟨rfl, rfl, rfl, rfl⟩
-    voteIO := ⟨io, hio⟩
+    voteIO := ⟨_, hio⟩
     propose_eq := rfl
     restore_eq := rfl
     pollPropose_eq := fun _ _ => rfl
@@ -237,6 +237,6 @@ theorem traceEncoding_opLaws {V : Type} [Fintype V] {E : Env V} (S : Setup)
     grid_time := fun s => (slotTime_eq S hn s).symm
     proposer_role := fun s hs h => congrArg (Option.getD · (.proposer s))
       (candidateRole_item S.vote _ (.propose s hs) h)
-    decode_encode := decodeInfo_encodeInfo }) _ (traceEncoding_ioLaws S hn)
+    decode_encode := decodeInfo_encodeInfo }) (traceEncoding_ioLaws S hn)
 
 end Consensus.Goldilocks.Simulation

@@ -727,7 +727,7 @@ private theorem processOne_io (hio : e.IOLaws io) (C : WireCodec A e.skel.Kind I
   unfold processOne
   split <;> simp only [hio.applyCuts_io, hio.relayIf_io]
 
-private theorem process_io (hio : e.IOLaws io) (st : e.State hn)
+theorem process_io (hio : e.IOLaws io) (st : e.State hn)
     (o : ShapeObj (Fintype.card V) e.skel.Kind I e.Body) (hs : List (Header I × Nat)) :
     io ((e.ops hn).process st o hs) = io st := by
   rw [hio.process_eq, NodeAsChainShape.process]
@@ -738,7 +738,7 @@ private theorem process_io (hio : e.IOLaws io) (st : e.State hn)
   | nil => rfl
   | cons w ws ih => rw [List.foldl_cons, ih, processOne_io hio]
 
-private theorem duty_io (L : e.OpLaws due) (hio : e.IOLaws io) (rho : Model.Run (compiled F) E)
+theorem duty_io (L : e.OpLaws due) (hio : e.IOLaws io) (rho : Model.Run (compiled F) E)
     (v : V) (nd : Model.Node (Model.protoOf (compiled F) E)) (d : ShapeDuty e.skel.Kind) :
     io (envelope e (rho.dutyStep v nd (engineDuty e d)).1) = io (envelope e nd) := by
   rw [rho.dutyStep_eq]

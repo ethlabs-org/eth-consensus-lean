@@ -39,7 +39,7 @@ theorem simTrace_init :
   by
     intro y _
     rw [(simTrace_encoding S rho hn).1]
-    refine traceEncoding_induction S hn (fun e _ =>
+    refine traceEncoding_induction S hn (fun e _ _ =>
       (NodeAsChainShape.CanonicalTrace.simTrace e rho).init y = _) ?_
     intro e _
     have hinit := NodeAsChainShape.CanonicalTrace.initial_eq e rho y

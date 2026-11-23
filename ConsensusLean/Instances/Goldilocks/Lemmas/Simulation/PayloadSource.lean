@@ -103,7 +103,7 @@ theorem block_payload_source_of (hv : rho.ExecutionValid)
   let w := NodeAsChainShape.CanonicalTrace.wireOf enc o
   have hobj := NodeAsChainShape.CanonicalTrace.engineObj_wireOf enc o
   have hmem : w ∈ enc.codec.carried B.fgPayload B.acPayload :=
-    traceEncoding_induction S hn (fun e _ =>
+    traceEncoding_induction S hn (fun e _ _ =>
       NodeAsChainShape.CanonicalTrace.wireOf e o ∈ e.codec.carried B.fgPayload B.acPayload)
       fun _ => by
         rw (config := { transparency := .default })

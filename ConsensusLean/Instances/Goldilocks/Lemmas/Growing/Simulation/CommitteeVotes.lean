@@ -82,7 +82,7 @@ theorem simTraceAt_msgCall_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho
     ← NodeAsChainShape.CanonicalTrace.simTraceAt_eq] at hc
   apply ((K.bindsSel_iff rho _).1 hK m.slot m.val).2
   revert hc
-  refine traceEncoding_induction S hn (fun e _ =>
+  refine traceEncoding_induction S hn (fun e _ _ =>
     (NodeAsChainShape.CanonicalTrace.simTraceAt e rho).MsgCallAt y k m →
       m.val ∈ rho.sel (S.vote.voteRole m.slot)) ?_
   intro e _ hc

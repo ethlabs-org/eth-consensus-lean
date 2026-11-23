@@ -91,34 +91,6 @@ noncomputable def traceVoteIO (S : Setup) (hn : 1 ≤ Fintype.card V) :
   unfold traceEncoding
   exact State.voteIO
 
-/-- Prove a property of the encoding and its vote-authentication observer at their concrete
-assembly. -/
-theorem traceVoteIO_induction (S : Setup) (hn : 1 ≤ Fintype.card V)
-    (P : (e : CanonicalTrace.Encoding (goldilocks S) E (S.params (pubOf E) hn).toParams
-      rfl hn (goldilocksNode (S.params (pubOf E) hn) (S.ro _))) →
-      (e.State hn → Model.VoteIO e.Tok (ShapeRole e.skel.Kind) e.Data (pubOf E).n) → Prop)
-    (h : let e : CanonicalTrace.Encoding (goldilocks S) E (S.params (pubOf E) hn).toParams
-            rfl hn (goldilocksNode (S.params (pubOf E) hn) (S.ro _)) :=
-           { skel := skeleton (pubOf E) S.vote
-             Body := Body
-             decBody := inferInstance
-             Tok := Nat
-             Data := WireVote
-             State h := State (S.params (pubOf E) h) (S.ro _) S.vote
-             codec := wireCodec _ _ S.vote ⟨fun _ _ _ _ => false, fun _ _ => none⟩
-             decodeMessage := decodeVoteObj (S.params (pubOf E) hn) (binding := S.vote)
-             adapter := nodeAdapter _ _ S.vote
-             ops h := nodeOps (S.params (pubOf E) h) (S.ro _) S.vote
-             claim := AsChainShape.voteClaim (binding := S.vote) _
-             voteBody := voteBody
-             presented := AsChainShape.presented (binding := S.vote)
-             role := S.vote.candidateRole _
-             dep := dependencies _ (binding := S.vote)
-             conflict := conflicts (binding := S.vote)
-             isFGAtt := isFGAtt (binding := S.vote)
-             shape_eq := rfl }
-         P e State.voteIO) : P (traceEncoding S hn) (traceVoteIO S hn) := h
-
 end
 
 /-- The node's digest from the engine's hash with genesis root `g`: genesis (no parent) has
@@ -138,12 +110,14 @@ theorem dgOf_eq {n : Nat} (hash : Header Info → Nat) (g : Nat) (par : Option N
       | some r => taggedRoot g (hash ⟨parentRef g (some r), slot, x, encodeInfo atts p⟩) := by
   rfl
 
-/-- Prove a property of the encoding and its dependent observer at their concrete assembly.
-The digest equation identifies the generic digest with Goldilocks' own digest. -/
+/-- Prove a property of the encoding and its dependent observers (the FG-due flag and the vote
+authentication) at their concrete assembly. The digest equation identifies the generic digest
+with Goldilocks' own digest. -/
 theorem traceEncoding_induction {V : Type} [Fintype V] {E : Env V}
     (S : Setup) (hn : 1 ≤ Fintype.card V)
     (P : (e : CanonicalTrace.Encoding (goldilocks S) E (S.params (pubOf E) hn).toParams
-      rfl hn (goldilocksNode (S.params (pubOf E) hn) (S.ro _))) → (e.State hn → Bool) → Prop)
+      rfl hn (goldilocksNode (S.params (pubOf E) hn) (S.ro _))) → (e.State hn → Bool) →
+      (e.State hn → Model.VoteIO e.Tok (ShapeRole e.skel.Kind) e.Data (pubOf E).n) → Prop)
     (h : let e : CanonicalTrace.Encoding (goldilocks S) E (S.params (pubOf E) hn).toParams
             rfl hn (goldilocksNode (S.params (pubOf E) hn) (S.ro _)) :=
            { skel := skeleton (pubOf E) S.vote
@@ -166,7 +140,8 @@ theorem traceEncoding_induction {V : Type} [Fintype V] {E : Env V}
              shape_eq := rfl }
          (∀ rho : Model.Run (compiled (goldilocks S)) E,
            CanonicalTrace.digestOf e rho = dgOf rho.hash S.genesisRoot) →
-         P e State.fgDue) : P (traceEncoding S hn) (traceDue S hn) := by
+         P e State.fgDue State.voteIO) :
+    P (traceEncoding S hn) (traceDue S hn) (traceVoteIO S hn) := by
   apply h
   intro rho
   funext par s x atts pl

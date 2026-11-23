@@ -97,7 +97,7 @@ theorem received_att_processAt
   obtain ⟨k, _, hk, hp, ht⟩ :=
     NodeAsChainShape.CanonicalTrace.received_att_processAt (traceEncoding S hn) rho he
       (by
-        apply traceEncoding_induction S hn (fun e _ =>
+        apply traceEncoding_induction S hn (fun e _ _ =>
           ∃ w ∈ NodeAsChainShape.delivered (NodeAsChainShape.CanonicalTrace.receiverCodec e rho v)
               e.adapter (Model.digests rho.hash receipt)
               (NodeAsChainShape.CanonicalTrace.stateAt e rho v i)

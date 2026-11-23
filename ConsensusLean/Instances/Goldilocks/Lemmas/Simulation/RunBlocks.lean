@@ -34,7 +34,7 @@ theorem simTrace_genesis_root_ok :
       (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload).RootOk
         (digestOf S rho) := by
   have hd : NodeAsChainShape.CanonicalTrace.digestOf (traceEncoding S hn) rho = digestOf S rho := by
-    apply traceEncoding_induction S hn (fun e _ =>
+    apply traceEncoding_induction S hn (fun e _ _ =>
       NodeAsChainShape.CanonicalTrace.digestOf e rho = digestOf S rho)
     intro _ h
     exact (h rho).trans (digestOf_eq S rho).symm

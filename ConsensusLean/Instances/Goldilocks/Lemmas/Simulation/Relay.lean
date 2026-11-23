@@ -97,7 +97,7 @@ theorem blockView_encoding {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (∀ {info atts payload}, e.codec.decode info = some (atts, payload) →
       e.codec.encode atts payload = info) := by
   dsimp only
-  apply traceEncoding_induction S hn (fun e _ =>
+  apply traceEncoding_induction S hn (fun e _ _ =>
     (∀ b : Blk (S.params (Model.pubOf E) hn),
       NodeAsChainShape.CanonicalTrace.engineObj e
         (NodeAsChainShape.blockObj e.codec.encode e.codec.carried b) = blockObj _ b) ∧

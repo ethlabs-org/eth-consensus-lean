@@ -415,7 +415,7 @@ private theorem voteMsg_engineObj {v : V} {m : Vote (Fintype.card V)} {w}
       v).message w = some m) :
     ∃ z, NodeAsChainShape.CanonicalTrace.engineObj (traceEncoding (E := E) S hn) w =
       voteObj (binding := S.vote) m z := by
-  refine traceEncoding_induction S hn (fun e _ => ∀ w,
+  refine traceEncoding_induction S hn (fun e _ _ => ∀ w,
     (NodeAsChainShape.CanonicalTrace.receiverCodec e rho v).message w = some m →
       ∃ z, NodeAsChainShape.CanonicalTrace.engineObj e w = voteObj (binding := S.vote) m z)
     ?_ w hm

@@ -92,7 +92,7 @@ theorem received_voteForward_processAt_at (hv : rho.ExecutionValid)
     · exact h.le
     · exact h.le
   rw [(simTrace_encoding S rho hn).1, (simTrace_encoding S rho hn).2]
-  refine traceEncoding_induction S hn (fun e _ => ∃ k,
+  refine traceEncoding_induction S hn (fun e _ _ => ∃ k,
     NodeAsChainShape.CanonicalTrace.cutMap e rho i ≤ k ∧
     k < NodeAsChainShape.CanonicalTrace.cutMap e rho (i + 1) ∧
     (NodeAsChainShape.CanonicalTrace.simTrace e rho).projAC.ProcessAt (rho.ownKey v) k m ∧

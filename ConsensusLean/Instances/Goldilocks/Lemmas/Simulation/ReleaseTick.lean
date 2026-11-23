@@ -253,26 +253,37 @@ theorem nodeTick_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) :
   rw [nodeTick_eq]; split <;> rfl
 
 omit [DecidableEq V] in
-/-- A delivery keeps the vote authentication. -/
+/-- A delivery keeps the vote authentication: the generic `process_io` at Goldilocks' laws. -/
 theorem process_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) o hs :
-    (process st o hs).voteIO = st.voteIO := by
-  rw [AsChainShape.process_eq]
-  generalize delivered _ _ _ _ = os
-  suffices h : ∀ io σ, (os.foldl (processOne io hs) σ).voteIO = σ.voteIO from h _ _
-  induction os with
-  | nil => exact fun _ _ => rfl
-  | cons x xs ihx => intro io σ; rw [List.foldl_cons, ihx, processOne_voteIO]
+    (process st o hs).voteIO = st.voteIO :=
+  traceEncoding_induction S hn
+    (fun e _ io => (∀ st o hs, io ((e.ops hn).process st o hs) = io st) →
+      ∀ (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) o hs,
+        (process st o hs).voteIO = st.voteIO)
+    (fun _ h => h)
+    (NodeAsChainShape.CanonicalTrace.Encoding.OpLaws.process_io (traceEncoding_ioLaws S hn))
+    st o hs
 
 omit [DecidableEq V] in
+/-- A duty keeps the vote authentication: the generic `duty_io` at Goldilocks' laws. -/
 private theorem dutyStep_voteIO (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) :
     (shapeOf S hn (rho.dutyStep v nd d).1).voteIO = (shapeOf S hn nd).voteIO :=
-  dutyStep_pres S rho hn (fun st => st.voteIO = (shapeOf S hn nd).voteIO)
-    (fun st o hs h => (recordOwn_voteIO st o hs).trans h)
-    (fun st s h => (propose_voteIO S hn st s).trans h)
-    (fun st h => (nodeTick_voteIO S hn st).trans h)
-    (fun st t h => (poll_voteIO st t).trans h) v nd d rfl
+  traceEncoding_induction S hn
+    (fun e _ io => (∀ v nd d, io (NodeAsChainShape.CanonicalTrace.envelope e
+        (rho.dutyStep v nd (NodeAsChainShape.CanonicalTrace.engineDuty e d)).1) =
+          io (NodeAsChainShape.CanonicalTrace.envelope e nd)) →
+      ∀ v nd d, (shapeOf S hn (rho.dutyStep v nd d).1).voteIO = (shapeOf S hn nd).voteIO)
+    (fun _ h v nd d => by
+      have hd := h v nd d
+      rw (config := { transparency := .default }) [NodeAsChainShape.CanonicalTrace.engineDuty_eq,
+        NodeAsChainShape.CanonicalTrace.envelope_eq,
+        NodeAsChainShape.CanonicalTrace.envelope_eq] at hd
+      exact hd)
+    (NodeAsChainShape.CanonicalTrace.Encoding.OpLaws.duty_io (traceEncoding_opLaws S hn)
+      (traceEncoding_ioLaws S hn) rho)
+    v nd d
 
 /-- **Every engine state holds the node's own vote authentication**: the generic `cut_io` at
 Goldilocks' laws (`init` installs `rho.voteIO v` and every handler keeps it). -/

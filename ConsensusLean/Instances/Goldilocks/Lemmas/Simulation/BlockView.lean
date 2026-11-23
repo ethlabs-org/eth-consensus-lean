@@ -119,7 +119,7 @@ theorem noCollRun_of_observed (hnc : ¬ rho.HashCollision)
       B.parent ≠ none ∧ rho.ObservedItem (headerOf (S.params (pubOf E) hn) B)) :
     Compose.NoCollRun (digestOf S rho) (simTrace S rho hn) := by
   rw [digestOf_eq]
-  refine traceEncoding_induction (E := E) S hn (fun _ _ =>
+  refine traceEncoding_induction (E := E) S hn (fun _ _ _ =>
     Compose.NoCollRun (dgOf rho.hash S.genesisRoot) (simTrace S rho hn)) ?_
   intro e hd
   rw [← hd rho]

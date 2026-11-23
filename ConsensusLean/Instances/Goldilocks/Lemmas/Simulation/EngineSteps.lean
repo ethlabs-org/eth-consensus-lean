@@ -256,7 +256,7 @@ theorem selValid_proposer (hsel : rho.SelValid) (s : Nat) :
   rw [(runProposer_digestOf S rho hn).1,
     ← engineRole_proposer (traceEncoding S hn) s]
   exact traceEncoding_induction S hn
-    (fun e _ => rho.sel (NodeAsChainShape.CanonicalTrace.engineRole e (.proposer s)) =
+    (fun e _ _ => rho.sel (NodeAsChainShape.CanonicalTrace.engineRole e (.proposer s)) =
       {NodeAsChainShape.CanonicalTrace.runProposer rho hn s})
     (by
       intro e _

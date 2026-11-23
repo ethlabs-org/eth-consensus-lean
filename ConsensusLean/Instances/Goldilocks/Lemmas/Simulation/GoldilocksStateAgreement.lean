@@ -19,7 +19,7 @@ variable {V : Type} [Fintype V] {E : Env V} [DecidableEq V]
 /-- The Goldilocks proposal guard holds at every selected propose duty of a valid tick. -/
 theorem goldilocks_ready (S : Setup) (hn : 1 ≤ Fintype.card V) :
     (traceEncoding (E := E) S hn).ProposalReady :=
-  traceEncoding_induction S hn (fun e _ => e.ProposalReady) fun _ => by
+  traceEncoding_induction S hn (fun e _ _ => e.ProposalReady) fun _ => by
     rw [Encoding.proposalReady_iff]
     intro rho hv i v t he s hs hone hsel
     simp only [afterClock_eq, engineRole_eq, List.map_cons, List.map_nil, engineDuty_eq,

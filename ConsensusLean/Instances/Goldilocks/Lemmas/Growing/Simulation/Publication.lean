@@ -66,7 +66,7 @@ theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
     have hobj : NodeAsChainShape.CanonicalTrace.engineObj (traceEncoding S hn)
         (NodeAsChainShape.blockObj (traceEncoding S hn).codec.encode
           (traceEncoding S hn).codec.carried B) = blockObj (S.params (pubOf E) hn) B := by
-      apply traceEncoding_induction S hn (fun e _ =>
+      apply traceEncoding_induction S hn (fun e _ _ =>
         NodeAsChainShape.CanonicalTrace.engineObj e
           (NodeAsChainShape.blockObj e.codec.encode e.codec.carried B) = blockObj _ B)
       intro _ _

@@ -42,7 +42,7 @@ theorem simTrace_state_of (hv : rho.ExecutionValid) {v : V}
   intro i hi
   obtain ⟨htrace, hcut⟩ := simTrace_encoding S rho hn
   rw [htrace, hcut, stateAt_eq]
-  refine (traceEncoding_induction S hn (fun e due => e.Lawful due →
+  refine (traceEncoding_induction S hn (fun e due _ => e.Lawful due →
     ((rho.stateBefore i v).st.1 hn).node =
       (NodeAsChainShape.CanonicalTrace.simTrace e rho).state (rho.ownKey v)
         (NodeAsChainShape.CanonicalTrace.cutMap e rho i)) ?_) (traceEncoding_lawful S hn)

@@ -325,7 +325,7 @@ theorem received_vote_processAt {i : Nat} {v : V}
   rw [(simTrace_encoding S rho hn).1, (simTrace_encoding S rho hn).2]
   apply NodeAsChainShape.CanonicalTrace.received_message_processAt (traceEncoding S hn) rho he
   open NodeAsChainShape.CanonicalTrace in
-  apply traceEncoding_induction S hn (fun e _ =>
+  apply traceEncoding_induction S hn (fun e _ _ =>
     ∃ w ∈ NodeAsChainShape.delivered (receiverCodec e rho v) e.adapter
         (Model.digests rho.hash receipt) (NodeAsChainShape.CanonicalTrace.stateAt e rho v i)
         (wireOf e receipt),

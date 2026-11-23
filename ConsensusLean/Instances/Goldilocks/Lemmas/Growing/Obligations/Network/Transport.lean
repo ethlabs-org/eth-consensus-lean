@@ -408,7 +408,7 @@ private theorem decode_attObj (hn : 1 ≤ Fintype.card V) (a : FG.Att (Fintype.c
       (Model.digests rho.hash (attObj a))
       (NodeAsChainShape.CanonicalTrace.wireOf (traceEncoding S hn) (attObj a)) =
         some (.attestation a) := by
-  apply traceEncoding_induction S hn (fun e _ => NodeAsChainShape.canonEvent
+  apply traceEncoding_induction S hn (fun e _ _ => NodeAsChainShape.canonEvent
     (NodeAsChainShape.CanonicalTrace.receiverCodec e rho v)
     (Model.digests rho.hash (attObj a)) (NodeAsChainShape.CanonicalTrace.wireOf e (attObj a)) =
       some (.attestation a))
