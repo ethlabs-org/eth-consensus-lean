@@ -1,10 +1,10 @@
 module
 public import Mathlib.Order.Lattice.Nat
-public import ConsensusLean.Instances.Goldilocks.Spec.SA.Views
+public import ConsensusLean.Instances.Goldilocks.Spec.AC.Views
 
 @[expose] public section
 
-/-! # Goldilocks SA: locks and unlocking
+/-! # Goldilocks AC: locks and unlocking
 
 goldilocks-spec.tex §"Locks" (Figure "Goldilocks: locks and unlocking"). A lock `(B, j, f, e)` is
 live at `t` when `slot(t) ≤ e` and `B ∈ Φ.tree`; its expiry `e` is fixed at its write: `j + k`
@@ -19,9 +19,9 @@ moves each live lock of a slot below `s` back to its deepest ancestor (at or abo
 fewer than half of the committee as opponents, or to `Φ.F`. Moving a lock back keeps its slot,
 fast bit and expiry. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} (sp : SAParams)
+variable {FGP : Type} (sp : ACParams)
 
 /-- A lock is unexpired at `t`: `slot(t) ≤ e` for a lock of expiry `e`. -/
 abbrev Lock.LiveAt (l : Lock) (t : Time) : Prop := sp.slot t ≤ l.expiry
@@ -48,7 +48,7 @@ def conflictsWithLock (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) (C : Blk sp.
   ∃ B ∈ liveLockBlocks sp L Φ t, ¬ Compatible Φ.tree C B
 
 /-- `get_anchor(𝒜, Φ, t)`: the deepest block of the live lock blocks and `fc_root`. -/
-noncomputable def getAnchor (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) : Blk sp.n FGP :=
+noncomputable def getAnchor (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) : Blk sp.n FGP :=
   (deepest Φ (liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot})).getD Φ.fcRoot
 
 /-- `add_locks(locks, Φ, t, s, N)`: the live locks of the stored set with the new locks
@@ -79,6 +79,6 @@ noncomputable def unlock (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) (s : Int)
     l' = if (l.slot : Int) < s then
       { l with block := (unlockTarget sp Φ V s B).root } else l}
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

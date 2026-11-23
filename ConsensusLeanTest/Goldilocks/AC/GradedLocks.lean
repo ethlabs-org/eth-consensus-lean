@@ -8,8 +8,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 
 Every other Goldilocks witness runs at `k = c = 2`, where the floor `s + 2` and the cap `s + k`
 of `fastExpiry` coincide, so the grading, the cap and the per-slot fast deadline are never
-exercised there. These tests compute the trusted definitions (`Spec/SA/Locks`,
-`Spec/SA/Confirmation`) at `k = 6`, `c = 2`, with one validator, `Δ = 1` and `t_s = 4s`; they use
+exercised there. These tests compute the trusted definitions (`Spec/AC/Locks`,
+`Spec/AC/Confirmation`) at `k = 6`, `c = 2`, with one validator, `Δ = 1` and `t_s = 4s`; they use
 no lemma beyond `Lemmas/AC/Basic`. Each value is chosen so that a plausible wrong rule gives a
 different number.
 
@@ -27,7 +27,7 @@ heads; in `Φv` only `B2` is, so a lock on `B3` moves back to `B1` there.
   `X` with `s + k`; vetoed by a live lock on `B3`, the record stays but the locks are still
   written on the part of the path the lock does not veto. -/
 
-namespace Consensus.Goldilocks.SA.Test.Graded
+namespace Consensus.Goldilocks.AC.Test.Graded
 
 /-- The shared parameters: one validator, `Δ = 1`, `t_s = 4s`, genesis root `0`. -/
 abbrev P : Params where
@@ -42,8 +42,8 @@ abbrev P : Params where
   genesisRoot := 0
   δt := 0
 
-/-- The SA parameters: `P` with `k = 6`, `c = 2`. -/
-abbrev sp : SAParams where
+/-- The AC parameters: `P` with `k = 6`, `c = 2`. -/
+abbrev sp : ACParams where
   toParams := P
   slotTime_eq := fun s => by change 4 * (s : Int) = 4 * 1 * s; omega
   k := 6
@@ -386,7 +386,7 @@ theorem unlock_keeps : unlock sp {⟨3, 2, true, 5⟩} Φ 16 3 Vw = {⟨1, 2, tr
 
 /-- The state before the update of slot `3`: the slot-`3` vote `w` (stamped at `0`, as is every
 block), saved results `B1` for the earlier slots, record genesis, and the locks `L`. -/
-def base (L : Set Lock) : SAState sp.n where
+def base (L : Set Lock) : ACState sp.n where
   pool := fun s => if s = 3 then [w] else []
   voteStamp := fun _ => ETime.of 0
   blockStamp := fun _ => ETime.of 0
@@ -411,7 +411,7 @@ theorem resolutionTime_w (L : Set Lock) :
     resolutionTime (base L) Φ w < ETime.of (sp.ts (3 : Nat) + 2 * sp.Δ) := by
   unfold resolutionTime
   rw [show w.head = 2 from rfl, lookup_2]
-  simp [w, B2, base, ETime.of, SAParams.ts, SAParams.Δ]
+  simp [w, B2, base, ETime.of, ACParams.ts, ACParams.Δ]
 
 /-- The early support of the update of slot `3`. -/
 theorem early_eq (L : Set Lock) :
@@ -473,7 +473,7 @@ open Classical in
 /-- The locks after an update of slot `s` with result `C`, `updateConfirmation` read off: the fast
 lock on the deepest fast block `D` and the slow lock on the deepest slow block `X` of the path
 that no live lock vetoes (`updateLatestConfirmed` keeps the locks). -/
-theorem updateConfirmation_locks {A : SAState sp.n} {Ψ : Frm sp.n Unit} {t : Time} {s : Nat}
+theorem updateConfirmation_locks {A : ACState sp.n} {Ψ : Frm sp.n Unit} {t : Time} {s : Nat}
     {C : Blk sp.n Unit} (hC : getConfirmation sp A Ψ s = some C) {D X : Option (Blk sp.n Unit)}
     (hD : deepest Ψ {B | (B ∈ confirmationPath sp Ψ C ∧
       ¬ conflictsWithLock sp A.locks Ψ t B) ∧ FastTest sp A Ψ s B} = D)
@@ -493,7 +493,7 @@ theorem updateConfirmation_locks {A : SAState sp.n} {Ψ : Frm sp.n Unit} {t : Ti
 
 open Classical in
 /-- The record after an update of slot `s` with result `C`: kept when a live lock vetoes `C`. -/
-theorem updateConfirmation_latest {A : SAState sp.n} {Ψ : Frm sp.n Unit} {t : Time} {s : Nat}
+theorem updateConfirmation_latest {A : ACState sp.n} {Ψ : Frm sp.n Unit} {t : Time} {s : Nat}
     {C : Blk sp.n Unit} (hC : getConfirmation sp A Ψ s = some C) :
     (updateConfirmation sp A Ψ t s).latestConfirmed =
       if conflictsWithLock sp A.locks Ψ t C ∨ AncR Ψ C A.latestConfirmed then A.latestConfirmed
@@ -560,11 +560,11 @@ theorem conflicts_v {B : Blk sp.n Unit} :
   · exact fun h => ⟨B3, ⟨B3_mem, ⟨3, 2, true, 5⟩, by rw [hlive]; rfl, rfl⟩, h⟩
 
 /-- The unvetoed update: a live fast lock of slot `2` on `B1` with expiry `6`. -/
-def Au : SAState sp.n := base {⟨1, 2, true, 6⟩}
+def Au : ACState sp.n := base {⟨1, 2, true, 6⟩}
 
 /-- The vetoed update: a live fast lock of slot `2` on `B3` (conflicting with the result `B2`)
 with expiry `5`. -/
-def Av : SAState sp.n := base {⟨3, 2, true, 5⟩}
+def Av : ACState sp.n := base {⟨3, 2, true, 5⟩}
 
 /-- **The unvetoed update of slot `3`, independent writes.** The fast lock goes to the deepest
 fast block `D = B2` with `fastExpiry = 6 + c = 8` (the live fast lock of slot `2` raises it above
@@ -643,4 +643,4 @@ theorem update_vetoed_latest : (updateConfirmation sp Av Φ 18 3).latestConfirme
   rw [updateConfirmation_latest (A := Av) (getConfirmation_base _), ite_eq_left (Or.inl h)]
   rfl
 
-end Consensus.Goldilocks.SA.Test.Graded
+end Consensus.Goldilocks.AC.Test.Graded

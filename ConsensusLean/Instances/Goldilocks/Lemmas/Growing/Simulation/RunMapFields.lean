@@ -126,11 +126,11 @@ namespace Consensus.Goldilocks.Simulation
 
 open AsChainShape Shape Blocks
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
 section Chain
 
-variable {sp : SAParams}
+variable {sp : ACParams}
 
 variable (sp) (ro : ReplayOrder sp (List (FG.Att sp.n)))
 

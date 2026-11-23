@@ -30,7 +30,7 @@ values of all its universally bound variables satisfying `ACRun` (`ACLocalRun` f
 and every hypothesis (copied from
 the statement); `*_on_witness` apply the proved milestones (`acStepsAt`) to the run. -/
 
-namespace Consensus.Goldilocks.SA.Test
+namespace Consensus.Goldilocks.AC.Test
 
 /-! ## The frame -/
 
@@ -117,9 +117,9 @@ theorem slot_12 : sp1.slot 12 = 3 := by decide
 theorem slot_14 : sp1.slot 14 = 3 := by decide
 theorem slot_0 : sp1.slot 0 = 0 := by decide
 
-/-! ## The SA on `Φ₁` -/
+/-! ## The AC on `Φ₁` -/
 
-theorem joined_bot {A : SAState sp1.n} (h : A.restartTime = ⊥) (t : Time) : joined sp1 A t := by
+theorem joined_bot {A : ACState sp1.n} (h : A.restartTime = ⊥) (t : Time) : joined sp1 A t := by
   unfold joined; rw [h]; exact bot_le
 
 theorem lookup_B1 : lookup Φ₁ 1 = some B1 := by
@@ -180,7 +180,7 @@ theorem not_conflicts {L : Set Lock} {t : Time} {B : Blk sp1.n Unit} (hB : B ∈
     ¬ conflictsWithLock sp1 L Φ₁ t B :=
   fun ⟨_, hC, hnc⟩ => hnc (compatible_U₁ hB hC.1)
 
-theorem getAnchor_mem (A : SAState sp1.n) (t : Time) : getAnchor sp1 A Φ₁ t ∈ U₁ := by
+theorem getAnchor_mem (A : ACState sp1.n) (t : Time) : getAnchor sp1 A Φ₁ t ∈ U₁ := by
   unfold getAnchor
   cases h : deepest Φ₁ (liveLockBlocks sp1 A.locks Φ₁ t ∪ {Φ₁.fcRoot}) with
   | none => exact g_mem
@@ -198,7 +198,7 @@ theorem ghost_B1 {T : Set (Blk sp1.n Unit)} (hT : T ⊆ U₁) (sc : Blk sp1.n Un
     rcases hT hC with rfl | rfl <;> simp [g, B1] at hpar
 
 /-- Every head walk of a domain that holds `B1` ends at `B1`. -/
-theorem getHead_eq {T : Set (Blk sp1.n Unit)} (hT : T ⊆ U₁) (hB : B1 ∈ T) (A : SAState sp1.n)
+theorem getHead_eq {T : Set (Blk sp1.n Unit)} (hT : T ⊆ U₁) (hB : B1 ∈ T) (A : ACState sp1.n)
     (t : Time) (V : View sp1.n) (s : Int) : getHead sp1 A Φ₁ t T V s = B1 := by
   unfold getHead
   rcases getAnchor_mem A t with h | h
@@ -232,7 +232,7 @@ theorem unlock_eq {L : Set Lock} {t : Time} {s : Int} (V : View sp1.n)
 theorem ncard_univ_v : (Set.univ : Set (Fin sp1.n)).ncard = 1 := by simp
 
 /-- The optimistic check selects `B1` once the pool of the slot holds a vote on `B1`. -/
-theorem optimisticSelect_B1 {A : SAState sp1.n} {t : Time} (hj : A.restartTime = ⊥)
+theorem optimisticSelect_B1 {A : ACState sp1.n} {t : Time} (hj : A.restartTime = ⊥)
     (hs : sp1.slot t ≠ 0) (ht : t < sp1.ts (sp1.slot t) + 2 * sp1.Δ)
     (hx : ∃ x ∈ A.pool (sp1.slot t), x.head = 1) : optimisticSelect sp1 A Φ₁ t = some B1 := by
   unfold optimisticSelect
@@ -250,7 +250,7 @@ theorem optimisticSelect_B1 {A : SAState sp1.n} {t : Time} (hj : A.restartTime =
   rw [this, ncard_univ_v]
   decide
 
-theorem optimisticSelect_none {A : SAState sp1.n} {t : Time} (h : A.pool (sp1.slot t) = []) :
+theorem optimisticSelect_none {A : ACState sp1.n} {t : Time} (h : A.pool (sp1.slot t) = []) :
     optimisticSelect sp1 A Φ₁ t = none := by
   unfold optimisticSelect
   dsimp only
@@ -265,18 +265,18 @@ theorem optimisticSelect_none {A : SAState sp1.n} {t : Time} (h : A.pool (sp1.sl
     rw [this] at h3
     simp at h3
 
-theorem optimisticConfirmation_none {A : SAState sp1.n} {t : Time}
+theorem optimisticConfirmation_none {A : ACState sp1.n} {t : Time}
     (h : optimisticSelect sp1 A Φ₁ t = none) : optimisticConfirmation sp1 A Φ₁ t = A := by
   unfold optimisticConfirmation; rw [h]
 
-theorem optimisticConfirmation_some {A : SAState sp1.n} {t : Time}
+theorem optimisticConfirmation_some {A : ACState sp1.n} {t : Time}
     (h : optimisticSelect sp1 A Φ₁ t = some B1) : optimisticConfirmation sp1 A Φ₁ t =
       updateLatestConfirmed sp1
         { A with locks := (addLocks sp1 A.locks Φ₁ t (sp1.slot t)
           {(B1.root, true, fastExpiry sp1 A.locks Φ₁ t (sp1.slot t))}) } Φ₁ B1 := by
   unfold optimisticConfirmation; rw [h]
 
-theorem updateLatestConfirmed_new {A : SAState sp1.n} (h : A.latestConfirmed = 0) :
+theorem updateLatestConfirmed_new {A : ACState sp1.n} (h : A.latestConfirmed = 0) :
     updateLatestConfirmed sp1 A Φ₁ B1 = { A with latestConfirmed := 1 } := by
   unfold updateLatestConfirmed
   rw [ite_eq_right]
@@ -286,12 +286,12 @@ theorem updateLatestConfirmed_new {A : SAState sp1.n} (h : A.latestConfirmed = 0
   · exact not_anc_B1_g hanc
   · rw [h] at hr; simp [B1] at hr
 
-theorem updateLatestConfirmed_keep {A : SAState sp1.n} (h : A.latestConfirmed = 1) :
+theorem updateLatestConfirmed_keep {A : ACState sp1.n} (h : A.latestConfirmed = 1) :
     updateLatestConfirmed sp1 A Φ₁ B1 = A := by
   unfold updateLatestConfirmed
   rw [ite_eq_left ⟨B1, B1_mem, h.symm, Relation.ReflTransGen.refl⟩]
 
-theorem admitVote_fresh (A : SAState sp1.n) (t : Time) (v : Vote sp1.n) (hs : sp1.slot t = v.slot)
+theorem admitVote_fresh (A : ACState sp1.n) (t : Time) (v : Vote sp1.n) (hs : sp1.slot t = v.slot)
     (hp : A.pool v.slot = []) : admitVote sp1 A t v = { A with
       pool := Function.update A.pool v.slot [v]
       voteStamp := Function.update A.voteStamp v (ETime.of t) } := by
@@ -323,20 +323,20 @@ theorem fastExpiry_eq (L : Set Lock) (t : Time) (s : Nat) : fastExpiry sp1 L Φ�
   split_ifs <;> omega
 
 /-- Cut 0: `ac_on_block(B1)` at `t_1 = 4`. -/
-noncomputable def r0 : SAState sp1.n × List (Em sp1 Unit) :=
-  acOnBlock sp1 v0 (SAState.initial 0) Φ₁ 4 B1
+noncomputable def r0 : ACState sp1.n × List (Em sp1 Unit) :=
+  acOnBlock sp1 v0 (ACState.initial 0) Φ₁ 4 B1
 
 /-- Cut 1: `ac_on_tick` at `t_2 + Δ = 9`. -/
-noncomputable def r1 : SAState sp1.n × List (Em sp1 Unit) := acOnTick sp1 v0 r0.1 Φ₁ 9
+noncomputable def r1 : ACState sp1.n × List (Em sp1 Unit) := acOnTick sp1 v0 r0.1 Φ₁ 9
 
 /-- Cut 2: `ac_to_fg` at `t_3 = 12`. -/
-noncomputable def r2 : SAState sp1.n × Option (Blk sp1.n Unit) :=
+noncomputable def r2 : ACState sp1.n × Option (Blk sp1.n Unit) :=
   acToFG sp1 r1.1 Φ₁ 12
 
 /-- Cut 3: `ac_on_tick` at `t_3 + 2Δ = 14` (the update of slot `2`). -/
-noncomputable def r3 : SAState sp1.n × List (Em sp1 Unit) := acOnTick sp1 v0 r2.1 Φ₁ 14
+noncomputable def r3 : ACState sp1.n × List (Em sp1 Unit) := acOnTick sp1 v0 r2.1 Φ₁ 14
 
-theorem voteDomain_sub (A : SAState sp1.n) (s : Nat) : voteDomain sp1 A Φ₁ s ⊆ U₁ := by
+theorem voteDomain_sub (A : ACState sp1.n) (s : Nat) : voteDomain sp1 A Φ₁ s ⊆ U₁ := by
   rintro B (⟨h, -⟩ | ⟨h, -⟩)
   · exact h.1
   · exact h
@@ -355,13 +355,13 @@ theorem addLocks_eq {L : Set Lock} {t : Time} {s e : Nat}
       exact ⟨rfl, hs⟩
 
 /-- The state after the unlocking of a vote at `t`. -/
-noncomputable def unlocked (A : SAState sp1.n) (t : Time) : SAState sp1.n :=
+noncomputable def unlocked (A : ACState sp1.n) (t : Time) : ACState sp1.n :=
   { A with
     locks := unlock sp1 A.locks Φ₁ t ((sp1.slot t : Int) - 1)
       (mergedVoteView sp1 A Φ₁ (sp1.slot t)) }
 
 /-- A vote of `v0` in slot `s > 0` at `t`: the head is `B1`. -/
-theorem tryVote_cast (A : SAState sp1.n) (t : Time) (hs0 : 0 < sp1.slot t)
+theorem tryVote_cast (A : ACState sp1.n) (t : Time) (hs0 : 0 < sp1.slot t)
     (hj : A.restartTime = ⊥) (hv : A.votedSlot ≠ sp1.slot t)
     (ht : t ≤ sp1.ts (sp1.slot t) + sp1.Δ)
     (hr : ¬ (t < sp1.ts (sp1.slot t) + sp1.Δ ∧
@@ -386,28 +386,28 @@ theorem tryVote_cast (A : SAState sp1.n) (t : Time) (hs0 : 0 < sp1.slot t)
   exact ⟨_, rfl⟩
 
 /-- The state after the receipt of `B1`. -/
-def Rb : SAState sp1.n :=
-  { SAState.initial 0 with
-    blockStamp := Function.update (SAState.initial 0 : SAState sp1.n).blockStamp 1 (ETime.of 4) }
+def Rb : ACState sp1.n :=
+  { ACState.initial 0 with
+    blockStamp := Function.update (ACState.initial 0 : ACState sp1.n).blockStamp 1 (ETime.of 4) }
 
 /-- The read point of the slot-`1` vote. -/
-def R0 : SAState sp1.n := { Rb with votedSlot := 1 }
+def R0 : ACState sp1.n := { Rb with votedSlot := 1 }
 
 /-- The state after cut 0. -/
-def S1 : SAState sp1.n :=
+def S1 : ACState sp1.n :=
   { R0 with
     pool := Function.update R0.pool 1 [vote1]
     voteStamp := Function.update R0.voteStamp vote1 (ETime.of 4)
     locks := insert lock1 ∅
     latestConfirmed := 1 }
 
-theorem voteReady_1 (A : SAState sp1.n) : voteReady sp1 A Φ₁ 1 := by
+theorem voteReady_1 (A : ACState sp1.n) : voteReady sp1 A Φ₁ 1 := by
   refine ⟨⟨B1, B1_mem, rfl, fun x hx => by cases hx⟩, fun B hB hs x hx _ => ?_⟩
   rcases hB with rfl | rfl
   · simp [g] at hs
   · rcases hx with hx | hx <;> cases hx
 
-theorem B1_mem_voteDomain {A : SAState sp1.n} {s : Nat}
+theorem B1_mem_voteDomain {A : ACState sp1.n} {s : Nat}
     (h : B1 ∈ voterBlockTree sp1 A Φ₁ s) : B1 ∈ voteDomain sp1 A Φ₁ s :=
   Or.inl ⟨h, B1, B1_viable h⟩
 
@@ -417,7 +417,7 @@ theorem unlocked_Rb : unlocked Rb 4 = Rb := by
 
 theorem r0_eq : ∃ d, r0 = (S1, [⟨vote1, R0, some d⟩]) := by
   unfold r0 acOnBlock
-  rw [show blockReceipt sp1 (SAState.initial 0) 4 B1 = Rb from rfl,
+  rw [show blockReceipt sp1 (ACState.initial 0) 4 B1 = Rb from rfl,
     optimisticConfirmation_none (optimisticSelect_none (by rw [slot_4]; rfl))]
   have hr : ¬ ((4 : Time) < sp1.ts (sp1.slot 4) + sp1.Δ ∧
       (sp1.slot 4 = 0 ∨ ¬ voteReady sp1 Rb Φ₁ (sp1.slot 4))) := by
@@ -444,7 +444,7 @@ theorem r0_eq : ∃ d, r0 = (S1, [⟨vote1, R0, some d⟩]) := by
     slot_4]
   rfl
 
-theorem acOnTick_vote {A : SAState sp1.n} {t : Time} (hj : A.restartTime = ⊥)
+theorem acOnTick_vote {A : ACState sp1.n} {t : Time} (hj : A.restartTime = ⊥)
     (h1 : t = sp1.ts (sp1.slot t) + sp1.Δ) : acOnTick sp1 v0 A Φ₁ t = tryVote sp1 v0 A Φ₁ t := by
   have hΔ : sp1.Δ = 1 := rfl
   unfold acOnTick
@@ -452,7 +452,7 @@ theorem acOnTick_vote {A : SAState sp1.n} {t : Time} (hj : A.restartTime = ⊥)
   rw [ite_eq_right (not_not.2 (joined_bot hj t)), ite_eq_left h1,
     ite_eq_right (fun h => by linarith [h.1])]
 
-theorem acOnTick_update {A : SAState sp1.n} {t : Time} (hj : A.restartTime = ⊥)
+theorem acOnTick_update {A : ACState sp1.n} {t : Time} (hj : A.restartTime = ⊥)
     (h1 : t ≠ sp1.ts (sp1.slot t) + sp1.Δ) (h2 : t = sp1.ts (sp1.slot t) + 2 * sp1.Δ)
     (hs : 0 < sp1.slot t) :
     acOnTick sp1 v0 A Φ₁ t = (updateConfirmation sp1 A Φ₁ t (sp1.slot t - 1), []) := by
@@ -460,7 +460,7 @@ theorem acOnTick_update {A : SAState sp1.n} {t : Time} (hj : A.restartTime = ⊥
   dsimp only
   rw [ite_eq_right (not_not.2 (joined_bot hj t)), ite_eq_right h1, ite_eq_left ⟨h2, hs⟩]
 
-theorem updateConfirmation_pool (A : SAState sp1.n) (t : Time) (s : Nat) :
+theorem updateConfirmation_pool (A : ACState sp1.n) (t : Time) (s : Nat) :
     (updateConfirmation sp1 A Φ₁ t s).pool = A.pool := by
   unfold updateConfirmation
   dsimp only
@@ -473,17 +473,17 @@ theorem updateConfirmation_pool (A : SAState sp1.n) (t : Time) (s : Nat) :
       split_ifs <;> rfl
 
 /-- The read point of the slot-`2` vote. -/
-def R1 : SAState sp1.n := { S1 with votedSlot := 2 }
+def R1 : ACState sp1.n := { S1 with votedSlot := 2 }
 
 /-- The state after cut 1. -/
-def S2 : SAState sp1.n :=
+def S2 : ACState sp1.n :=
   { R1 with
     pool := Function.update R1.pool 2 [vote2]
     voteStamp := Function.update R1.voteStamp vote2 (ETime.of 9)
     locks := insert lock2 S1.locks }
 
 /-- The state after cut 2. -/
-def S3 : SAState sp1.n := { S2 with fgReported := 1 }
+def S3 : ACState sp1.n := { S2 with fgReported := 1 }
 
 theorem mem_S1_locks {l : Lock} (hl : l ∈ S1.locks) : l = lock1 := by
   rcases hl with rfl | h
@@ -583,8 +583,8 @@ noncomputable def ℓ3 : ACLabel GA1 := ⟨.tick, Φ₁, r3.2⟩
 /-- The run: `v0` accepts `B1` at `t_1 = 4` (its slot-`1` vote and optimistic lock), ticks at
 `t_2 + Δ = 9` (its slot-`2` vote and optimistic lock), calls `ac_to_fg` at `t_3 = 12` and ticks at
 `t_2 + 6Δ = 14` (the update of slot `2`); every post-state is the call's output. -/
-noncomputable def trW : SATrace sp1 Unit ro1 where
-  init := fun _ => SAState.initial 0
+noncomputable def trW : GTrace sp1 Unit ro1 where
+  init := fun _ => ACState.initial 0
   node := fun _ => v0
   time := fun i => if i = 0 then 4 else if i = 1 then 9 else if i = 2 then 12 else 14
   event := fun i => i
@@ -700,11 +700,11 @@ theorem voteAt_cases {x : Fin sp1.n} {j : Nat} {e : Em sp1 Unit} (h : VoteAt trW
     cases he
 
 theorem mem_S1_pool {σ : Nat} {v : Vote sp1.n} (h : v ∈ S1.pool σ) : v = vote1 := by
-  simp only [S1, R0, Rb, SAState.initial, Function.update_apply] at h
+  simp only [S1, R0, Rb, ACState.initial, Function.update_apply] at h
   split_ifs at h <;> simp_all
 
 theorem mem_S2_pool {σ : Nat} {v : Vote sp1.n} (h : v ∈ S2.pool σ) : v = vote1 ∨ v = vote2 := by
-  simp only [S2, R1, S1, R0, Rb, SAState.initial, Function.update_apply] at h
+  simp only [S2, R1, S1, R0, Rb, ACState.initial, Function.update_apply] at h
   split_ifs at h <;> simp_all
 
 theorem vote1_mem_S1 : vote1 ∈ S1.pool vote1.slot := by simp [S1, vote1]
@@ -777,7 +777,7 @@ theorem acRun_W : ACRun (fun _ => v0) trW Set.univ U₁ where
 /-! ## The premises -/
 
 /-- The state at which the optimistic check after the own slot-`1` vote runs. -/
-noncomputable def A0 : SAState sp1.n := admitVote sp1 R0 4 vote1
+noncomputable def A0 : ACState sp1.n := admitVote sp1 R0 4 vote1
 
 /-- The counted votes of the optimistic lock of slot `1`. -/
 noncomputable def CV1 : Set (Vote sp1.n) := {v | v ∈ A0.pool 1 ∧ AncR Φ₁ B1 v.head}
@@ -799,7 +799,7 @@ theorem optimisticLock_W : OptimisticLockAt trW v0 0 1 B1 CV1 :=
 theorem mem_CV1 {v : Vote sp1.n} (hv : v ∈ CV1) : v = vote1 := by
   have h := hv.1
   rw [A0_eq] at h
-  simpa [R0, Rb, SAState.initial, vote1, Function.update_apply] using h
+  simpa [R0, Rb, ACState.initial, vote1, Function.update_apply] using h
 
 theorem castAt_W : CastAt trW v0 1 ℓ1 e1 := ⟨trW_callAt rfl, e1_mem⟩
 
@@ -889,7 +889,7 @@ theorem participation_W : sp1.n ≤ 2 * {v | v ∈ (Set.univ : Set (Fin sp1.n)) 
   rw [this, ncard_univ_v]
   decide
 
-theorem resolutionTime_B1 (A : SAState sp1.n) {v : Vote sp1.n} (hv : v.head = 1) :
+theorem resolutionTime_B1 (A : ACState sp1.n) {v : Vote sp1.n} (hv : v.head = 1) :
     resolutionTime A Φ₁ v = if v.slot < 1 then ⊤ else max (A.voteStamp v) (A.blockStamp 1) := by
   unfold resolutionTime
   rw [hv, lookup_B1]
@@ -904,7 +904,7 @@ theorem resolved_W : ∀ x' ∈ (trW.state v0 3).pool (1 + 1), x'.val ∈ (Set.u
   subst hx
   change resolutionTime S3 Φ₁ vote2 < _
   rw [resolutionTime_B1 S3 rfl]
-  simp [S3, S2, R1, S1, R0, Rb, SAState.initial, vote1, vote2]
+  simp [S3, S2, R1, S1, R0, Rb, ACState.initial, vote1, vote2]
   decide
 
 theorem toFG_W : ToFGAt trW v0 2 ℓ2 B1 :=
@@ -916,10 +916,10 @@ theorem toFG_W : ToFGAt trW v0 2 ℓ2 B1 :=
 statement holds of the run at `s = 1`, with the full committee: `v0`'s optimistic lock of slot `1`
 on `B1` at cut 0 and its slot-`2` vote at cut 1. -/
 theorem optimisticTransfer_premises_satisfiable :
-    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : SATrace sp1 Unit ro1)
+    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : GTrace sp1 Unit ro1)
       (proposer : Nat → Fin sp1.n) (K : CommitteeDict sp1.n) (s : Nat) (x y : Fin sp1.n)
       (i₀ i : Nat) (B : Blk sp1.n Unit) (CV : Set (Vote sp1.n))
-      (ℓ : ACLabel (goldilocksSA sp1 Unit ro1)) (e : Em sp1 Unit),
+      (ℓ : ACLabel (goldilocksAC sp1 Unit ro1)) (e : Em sp1 Unit),
     ACRun proposer tr H U ∧
     CommitteeP K tr H ∧ CommitteeT K tr H ∧ (∀ σ, (K.committee σ).ncard = sp1.committeeSize) ∧
     x ∈ H ∧ OptimisticLockAt tr x i₀ s B CV ∧
@@ -937,9 +937,9 @@ statement holds of the run at `s = 1`, `B = B1` (not genesis, so the fast-select
 conclusion is in force), with the full committee: the update of slot `2` at cut 3, holding
 `vote2` (stamp `9`, resolved before `t_2 + 2Δ = 10`). -/
 theorem optimisticNextUpdate_premises_satisfiable :
-    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : SATrace sp1 Unit ro1)
+    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : GTrace sp1 Unit ro1)
       (proposer : Nat → Fin sp1.n) (K : CommitteeDict sp1.n) (s : Nat) (z : Fin sp1.n) (k : Nat)
-      (B : Blk sp1.n Unit) (ℓ : ACLabel (goldilocksSA sp1 Unit ro1)),
+      (B : Blk sp1.n Unit) (ℓ : ACLabel (goldilocksAC sp1 Unit ro1)),
     ACRun proposer tr H U ∧
     CommitteeP K tr H ∧ CommitteeT K tr H ∧ (∀ σ, (K.committee σ).ncard = sp1.committeeSize) ∧
     2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp1.committeeSize ∧
@@ -956,10 +956,10 @@ theorem optimisticNextUpdate_premises_satisfiable :
 the run at `τ = 0`: `ac_to_fg` returns `B1` at cut 2, time `12`, and
 `slot(0) + 3 = 3 = slot(12)`. -/
 theorem sourceAge_premises_satisfiable :
-    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : SATrace sp1 Unit ro1)
+    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : GTrace sp1 Unit ro1)
       (τ : Time) (x : Fin sp1.n) (i : Nat)
-      (ℓ : ACLabel (goldilocksSA sp1 Unit ro1)) (C : Blk sp1.n Unit),
-    ACLocalRun (goldilocksSA sp1 Unit ro1) H U tr ∧
+      (ℓ : ACLabel (goldilocksAC sp1 Unit ro1)) (C : Blk sp1.n Unit),
+    ACLocalRun (goldilocksAC sp1 Unit ro1) H U tr ∧
     x ∈ H ∧ ToFGAt tr x i ℓ C ∧ sp1.slot τ + 3 ≤ sp1.slot (tr.time i) :=
   ⟨Set.univ, U₁, trW, 0, v0, 2, ℓ2, B1, acRun_W.localRun, trivial, toFG_W, by decide⟩
 
@@ -991,6 +991,6 @@ theorem sourceAge_on_witness :
   (acStepsAt sp1).sourceAge Unit ro1 Set.univ U₁ trW acRun_W.localRun 0 v0 2 ℓ2 B1 trivial
     toFG_W (by decide)
 
-end Consensus.Goldilocks.SA.Test
+end Consensus.Goldilocks.AC.Test
 
 end

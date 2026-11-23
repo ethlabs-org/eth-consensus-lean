@@ -9,7 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 For any node AC `A` with `n = 1` and `Δ = 1`, the run in which the validator ticks at every time
 `t ≥ 0` and nothing else happens (`tickRun`), its states, groups and cut law, and that it is a
 `Node.LocalRun` (`tickRun_localRun`); the shape of a tick's cuts; the attestation pool and (for the
-Goldilocks SA) the vote pool lemmas. Used by
+Goldilocks AC) the vote pool lemmas. Used by
 `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Premises`; see its docstring. -/
 
 namespace Consensus.Goldilocks.Witness
@@ -452,26 +452,26 @@ theorem cutStep_atts {self : Fin P.n} {t : Time} {st st' : NodeState A} {c : Cut
   | .fg (.attest C none), h => exact Or.inl (h.2 ▸ ha)
   | .fg (.attest C (some a')), h => exact Or.inl (h.2.1 ▸ ha)
 
-/-! ## The SA's vote pool -/
+/-! ## The AC's vote pool -/
 
-namespace SAPool
+namespace ACPool
 
-open SA
+open AC
 
-variable (sp : SAParams) {FGP : Type}
+variable (sp : ACParams) {FGP : Type}
 
-theorem updateLatestConfirmed_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (C : Blk sp.n FGP) :
+theorem updateLatestConfirmed_pool (A : ACState sp.n) (Φ : Frm sp.n FGP) (C : Blk sp.n FGP) :
     (updateLatestConfirmed sp A Φ C).pool = A.pool := by
   unfold updateLatestConfirmed; split_ifs <;> rfl
 
-theorem optimisticConfirmation_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+theorem optimisticConfirmation_pool (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).pool = A.pool := by
   unfold optimisticConfirmation
   split
   · rfl
   · rw [updateLatestConfirmed_pool]
 
-theorem updateConfirmation_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
+theorem updateConfirmation_pool (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
     (updateConfirmation sp A Φ t s).pool = A.pool := by
   unfold updateConfirmation
   dsimp only
@@ -483,7 +483,7 @@ theorem updateConfirmation_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time
       change (updateLatestConfirmed sp _ Φ _).pool = A.pool
       rw [updateLatestConfirmed_pool]
 
-theorem admitVote_pool (A : SAState sp.n) (t : Time) (v : Vote sp.n) (σ : Nat) (w : Vote sp.n)
+theorem admitVote_pool (A : ACState sp.n) (t : Time) (v : Vote sp.n) (σ : Nat) (w : Vote sp.n)
     (h : w ∈ (admitVote sp A t v).pool σ) : w ∈ A.pool σ ∨ w = v := by
   unfold admitVote at h
   split_ifs at h
@@ -496,11 +496,12 @@ theorem admitVote_pool (A : SAState sp.n) (t : Time) (v : Vote sp.n) (σ : Nat) 
       · exact Or.inr (List.mem_singleton.1 h)
     · exact Or.inl h
 
-theorem blockReceipt_pool (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) (σ : Nat)
-    (w : Vote sp.n) (h : w ∈ (blockReceipt sp A t B).pool σ) : w ∈ A.pool σ ∨ w ∈ blockVotes B := by
+theorem blockReceipt_pool (A : ACState sp.n) (t : Time) (B : Blk sp.n FGP) (σ : Nat)
+    (w : Vote sp.n) (h : w ∈ (blockReceipt sp A t B).pool σ) :
+    w ∈ A.pool σ ∨ w ∈ declaredHeadVotes B := by
   exact Or.inl h
 
-theorem tryVote_pool (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (σ : Nat)
+theorem tryVote_pool (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) (σ : Nat)
     (w : Vote sp.n) (h : w ∈ (tryVote sp self A Φ t).1.pool σ) :
     w ∈ A.pool σ ∨ ∃ e ∈ (tryVote sp self A Φ t).2, e.msg = w := by
   unfold tryVote at h ⊢
@@ -516,7 +517,7 @@ theorem tryVote_pool (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t
     · exact Or.inl h
     · exact Or.inr ⟨_, List.mem_singleton_self _, rfl⟩
 
-theorem acOnTick_pool (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+theorem acOnTick_pool (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (σ : Nat) (w : Vote sp.n) (h : w ∈ (acOnTick sp self A Φ t).1.pool σ) :
     w ∈ A.pool σ ∨ ∃ e ∈ (acOnTick sp self A Φ t).2, e.msg = w := by
   unfold acOnTick at h ⊢
@@ -528,22 +529,22 @@ theorem acOnTick_pool (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (
         | exact Or.inl h
         | exact tryVote_pool sp self A Φ t σ w h)
 
-theorem acProposal_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (SA.acProposal sp A Φ t).1.pool = A.pool := by
-  unfold SA.acProposal; split_ifs <;> rfl
+theorem acProposal_pool (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (AC.acProposal sp A Φ t).1.pool = A.pool := by
+  unfold AC.acProposal; split_ifs <;> rfl
 
-theorem acToFG_pool (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (SA.acToFG sp A Φ t).1.pool = A.pool := by
-  unfold SA.acToFG
+theorem acToFG_pool (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    (AC.acToFG sp A Φ t).1.pool = A.pool := by
+  unfold AC.acToFG
   split_ifs
   · split
     · rfl
     · split_ifs <;> rfl
   · rfl
 
-theorem acOnBlock_pool (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+theorem acOnBlock_pool (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (B : Blk sp.n FGP) (σ : Nat) (w : Vote sp.n) (h : w ∈ (acOnBlock sp self A Φ t B).1.pool σ) :
-    w ∈ A.pool σ ∨ w ∈ blockVotes B ∨ ∃ e ∈ (acOnBlock sp self A Φ t B).2, e.msg = w := by
+    w ∈ A.pool σ ∨ w ∈ declaredHeadVotes B ∨ ∃ e ∈ (acOnBlock sp self A Φ t B).2, e.msg = w := by
   unfold acOnBlock at h ⊢
   rcases tryVote_pool sp self _ Φ t σ w h with h | h
   · rw [optimisticConfirmation_pool] at h
@@ -552,7 +553,7 @@ theorem acOnBlock_pool (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) 
     · exact Or.inr (Or.inl h)
   · exact Or.inr (Or.inr h)
 
-theorem admitVote_pool_mono (A : SAState sp.n) (t : Time) (v : Vote sp.n) (σ : Nat) :
+theorem admitVote_pool_mono (A : ACState sp.n) (t : Time) (v : Vote sp.n) (σ : Nat) :
     A.pool σ ⊆ (admitVote sp A t v).pool σ := by
   intro w hw
   unfold admitVote
@@ -564,11 +565,11 @@ theorem admitVote_pool_mono (A : SAState sp.n) (t : Time) (v : Vote sp.n) (σ : 
     · subst hσ; exact List.mem_append_left _ hw
     · exact hw
 
-theorem blockReceipt_pool_mono (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) (σ : Nat) :
+theorem blockReceipt_pool_mono (A : ACState sp.n) (t : Time) (B : Blk sp.n FGP) (σ : Nat) :
     A.pool σ ⊆ (blockReceipt sp A t B).pool σ :=
   fun _ h => h
 
-theorem tryVote_pool_mono (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+theorem tryVote_pool_mono (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (σ : Nat) : A.pool σ ⊆ (tryVote sp self A Φ t).1.pool σ := by
   unfold tryVote
   dsimp only
@@ -582,7 +583,7 @@ theorem tryVote_pool_mono (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FG
     | rw [optimisticConfirmation_pool]
       exact fun w hw => admitVote_pool_mono sp _ t _ σ hw
 
-theorem acOnTick_pool_mono (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+theorem acOnTick_pool_mono (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (σ : Nat) : A.pool σ ⊆ (acOnTick sp self A Φ t).1.pool σ := by
   unfold acOnTick
   dsimp only
@@ -592,7 +593,7 @@ theorem acOnTick_pool_mono (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n F
     | (rw [updateConfirmation_pool]; exact tryVote_pool_mono sp self A Φ t σ)
     | rw [updateConfirmation_pool]
 
-theorem acOnBlock_pool_mono (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+theorem acOnBlock_pool_mono (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (B : Blk sp.n FGP) (σ : Nat) : A.pool σ ⊆ (acOnBlock sp self A Φ t B).1.pool σ := by
   unfold acOnBlock
   refine List.Subset.trans (blockReceipt_pool_mono sp A t B σ) ?_
@@ -600,9 +601,9 @@ theorem acOnBlock_pool_mono (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n 
   exact tryVote_pool_mono sp self _ Φ t σ
 
 /-- Pool `σ` holds votes of slot `σ`. -/
-def SlotOK (A : SAState sp.n) : Prop := ∀ σ, ∀ w ∈ A.pool σ, w.slot = σ
+def SlotOK (A : ACState sp.n) : Prop := ∀ σ, ∀ w ∈ A.pool σ, w.slot = σ
 
-theorem admitVote_slot (A : SAState sp.n) (t : Time) (v : Vote sp.n) (h : SlotOK sp A) :
+theorem admitVote_slot (A : ACState sp.n) (t : Time) (v : Vote sp.n) (h : SlotOK sp A) :
     SlotOK sp (admitVote sp A t v) := by
   intro σ w hw
   unfold admitVote at hw
@@ -616,14 +617,14 @@ theorem admitVote_slot (A : SAState sp.n) (t : Time) (v : Vote sp.n) (h : SlotOK
       · rw [List.mem_singleton.1 hw, hσ]
     · exact h σ w hw
 
-theorem slot_of_pool_eq {A A' : SAState sp.n} (he : A'.pool = A.pool) (h : SlotOK sp A) :
+theorem slot_of_pool_eq {A A' : ACState sp.n} (he : A'.pool = A.pool) (h : SlotOK sp A) :
     SlotOK sp A' := fun σ w hw => h σ w (he ▸ hw)
 
-theorem blockReceipt_slot (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) (h : SlotOK sp A) :
+theorem blockReceipt_slot (A : ACState sp.n) (t : Time) (B : Blk sp.n FGP) (h : SlotOK sp A) :
     SlotOK sp (blockReceipt sp A t B) :=
   h
 
-theorem tryVote_slot (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+theorem tryVote_slot (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (h : SlotOK sp A) : SlotOK sp (tryVote sp self A Φ t).1 := by
   unfold tryVote
   dsimp only
@@ -635,7 +636,7 @@ theorem tryVote_slot (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t
     refine slot_of_pool_eq sp (optimisticConfirmation_pool sp _ Φ t) ?_
     exact admitVote_slot sp _ t _ (fun σ w hw => h σ w hw)
 
-theorem acOnTick_slot (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+theorem acOnTick_slot (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (h : SlotOK sp A) : SlotOK sp (acOnTick sp self A Φ t).1 := by
   unfold acOnTick
   dsimp only
@@ -645,13 +646,13 @@ theorem acOnTick_slot (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (
     | exact slot_of_pool_eq sp (updateConfirmation_pool sp _ Φ t _) (tryVote_slot sp self A Φ t h)
     | exact slot_of_pool_eq sp (updateConfirmation_pool sp _ Φ t _) h
 
-theorem acOnBlock_slot (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+theorem acOnBlock_slot (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (B : Blk sp.n FGP) (h : SlotOK sp A) : SlotOK sp (acOnBlock sp self A Φ t B).1 := by
   unfold acOnBlock
   exact tryVote_slot sp self _ Φ t (slot_of_pool_eq sp (optimisticConfirmation_pool sp _ Φ t)
     (blockReceipt_slot sp A t B h))
 
-end SAPool
+end ACPool
 
 /-! ## The tick run: indices, states, groups -/
 

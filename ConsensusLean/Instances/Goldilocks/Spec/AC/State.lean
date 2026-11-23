@@ -1,15 +1,15 @@
 module
 public import Mathlib.Order.WithBot
 public import Mathlib.Data.Set.Defs
-public import ConsensusLean.Instances.Goldilocks.Spec.SA.Schedule
+public import ConsensusLean.Instances.Goldilocks.Spec.AC.Schedule
 
 @[expose] public section
 
-/-! # Goldilocks SA: votes, payload, state
+/-! # Goldilocks AC: votes, payload, state
 
 goldilocks-spec.tex §"State" and §"Votes and views".
 
-* The wire message is the Goldfish vote `(val_index, s, H)`, which names its head by root.
+* The wire message is the head vote `(val_index, s, H)`, which names its head by root.
   Signatures are not modelled (as for the FG's attestations): the signer of a vote is its
   validator, and unforgeability is a run premise (claims §"Runs"). The own committee test is the
   vote permission `mayVote` of the state, installed by the execution at init; at the
@@ -17,16 +17,16 @@ goldilocks-spec.tex §"State" and §"Votes and views".
 * The payload of a block is `(declared_head_votes, support_bits)`: the declared head votes as
   `Vote` triples (the slot is the implicit `B.slot − 1`; a declaration is not a signed vote and
   is never admitted), and the support list, the entries the bits mark.
-* The state `𝒜 = (gf_votes[·], timestamp[·], saved_confirmation[·], locks, latest_confirmed,
+* The state `𝒜 = (head_votes[·], timestamp[·], saved_confirmation[·], locks, latest_confirmed,
   fg_reported, voted_slot, restart_time)`, with the vote permission `mayVote`. The AC holds
   blocks only by name (root). Stamps are on the extended time line `ETime` (`⊥ = −∞`,
   `⊤ = +∞`): `timestamp[genesis] = −∞`, and a vote or block the AC never accepted reads `+∞` (no
   rule reads such a stamp at a reachable state). `restart_time` is `−∞` before any restart.
   Saved confirmations are kept for every integer slot, negative ones included (`⊥` initially). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-/-- A Goldfish vote `(val_index, s, H)`: validator `val`, slot `slot`, head named by root. -/
+/-- A head vote `(val_index, s, H)`: validator `val`, slot `slot`, head named by root. -/
 structure Vote (n : Nat) where
   /-- The validator (the signer). -/
   val : Fin n
@@ -49,7 +49,7 @@ structure Lock where
   slot : Nat
   /-- The fast bit. -/
   fast : Bool
-  /-- The last slot of its life (inclusive), fixed at its write (for every lock the SA writes,
+  /-- The last slot of its life (inclusive), fixed at its write (for every lock the AC writes,
   `slot + 2 ≤ expiry ≤ slot + k`). -/
   expiry : Nat
   deriving DecidableEq
@@ -61,8 +61,8 @@ abbrev ETime := WithBot (WithTop Time)
 def ETime.of (t : Time) : ETime := ((t : WithTop Time) : WithBot (WithTop Time))
 
 /-- The Goldilocks AC state. -/
-structure SAState (n : Nat) where
-  /-- `gf_votes[s]`: the accepted slot-`s` votes, in the order of acceptance. -/
+structure ACState (n : Nat) where
+  /-- `head_votes[s]`: the accepted slot-`s` votes, in the order of acceptance. -/
   pool : Nat → List (Vote n)
   /-- `timestamp[x]` of a vote: when the AC accepted it (`+∞`: never). -/
   voteStamp : Vote n → ETime
@@ -86,13 +86,13 @@ structure SAState (n : Nat) where
   restarts by `ac_restart` (`acRestart`). The population-wide stock binding permits every slot. -/
   mayVote : Nat → Bool := fun _ => true
 
-namespace SAState
+namespace ACState
 
 variable {n : Nat}
 
 /-- `initial_ac()`: empty pools and locks, `⊥` saved everywhere, `timestamp = {genesis ↦ −∞}`,
 genesis as the confirmed and the reported block, `voted_slot = −1`, `restart_time = −∞`. -/
-def initial (g : Nat) : SAState n where
+def initial (g : Nat) : ACState n where
   pool := fun _ => []
   voteStamp := fun _ => ⊤
   blockStamp := fun r => if r = g then ⊥ else ⊤
@@ -104,15 +104,15 @@ def initial (g : Nat) : SAState n where
   restartTime := ⊥
 
 /-- The slot-`s` pool for an integer slot: empty for a negative slot. -/
-def poolAt (A : SAState n) (s : Int) : List (Vote n) := if s < 0 then [] else A.pool s.toNat
+def poolAt (A : ACState n) (s : Int) : List (Vote n) := if s < 0 then [] else A.pool s.toNat
 
-end SAState
+end ACState
 
 /-- `joined(𝒜, t)`: `restart_time ≤ t_{slot(t)-1}`, awake with no restart since the start of the
 previous slot. -/
-def joined (sp : SAParams) (A : SAState sp.n) (t : Time) : Prop :=
+def joined (sp : ACParams) (A : ACState sp.n) (t : Time) : Prop :=
   A.restartTime ≤ ((sp.ts ((sp.slot t : Int) - 1) : Time) : WithBot Time)
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

@@ -23,9 +23,9 @@ slot `m` on the prefix through `t_m + Δ`; the count is `committee_cs2_at` at `t
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -54,19 +54,19 @@ theorem ResetPremisesUpTo.half_committee_at {cm : Time → Finset (Fin sp.n)} {�
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {m : Nat} (hm : cutZ sp.toParams g ≤ sp.ts m) {t : Time} (hmt : sp.ts m + sp.Δ ≤ t)
     (htb : t ≤ b) :
-    sp.committeeSize ≤ 2 * {z | z ∈ H t ∧ ∃ q e, z ∈ H (tr.time q) ∧ SA.VoteAt tr.projAC z q e ∧
+    sp.committeeSize ≤ 2 * {z | z ∈ H t ∧ ∃ q e, z ∈ H (tr.time q) ∧ AC.VoteAt tr.projAC z q e ∧
       e.msg.slot = m}.ncard := by
   have hΔ := sp.toParams.hΔ
   have hgt : gbar g ≤ sp.ts m + sp.Δ := by have := lt_cutZ sp g; linarith
   have hd0 : 0 ≤ sp.ts m + sp.Δ := (gbar_nonneg g).trans hgt
   have hdb : sp.ts m + sp.Δ ≤ b := hmt.trans htb
   have hsl : sp.slot (sp.ts m + sp.Δ) = m :=
-    SA.slot_of_mem sp m (by linarith) (by simp only [SAParams.ts]; push_cast; linarith)
+    AC.slot_of_mem sp m (by linarith) (by simp only [ACParams.ts]; push_cast; linarith)
   have hm3 : sp.slot (gbar g) + 3 ≤ m := by
-    have h := (SA.ts_le_iff sp).mp ((cutZ_eq sp g) ▸ hm)
+    have h := (AC.ts_le_iff sp).mp ((cutZ_eq sp g) ▸ hm)
     exact_mod_cast h
   have hsub : (Generic.dictOfTime sp cm).committee m ∩ H t ⊆ {z | z ∈ H t ∧ ∃ q e,
-      z ∈ H (tr.time q) ∧ SA.VoteAt tr.projAC z q e ∧ e.msg.slot = m} := by
+      z ∈ H (tr.time q) ∧ AC.VoteAt tr.projAC z q e ∧ e.msg.slot = m} := by
     rintro z ⟨hzK, hz⟩
     have hzd : z ∈ H (sp.ts m + sp.Δ) := hp.run.antitone hmt hz
     have hj : tr.JoinedAt z (sp.ts m + sp.Δ) := fun k hk hkt => by
@@ -75,7 +75,7 @@ theorem ResetPremisesUpTo.half_committee_at {cm : Time → Finset (Fin sp.n)} {�
       rw [hsl, sp.slotTime_eq]
       exact ⟨by omega, (hp.restart_le_before_at
         (hp.run.antitone (hkt.trans hmt) hz) hk (hkt.trans hdb)).trans
-        ((SA.ts_le_iff sp).mpr (by exact_mod_cast (show sp.slot (gbar g) + 1 ≤ m - 1 by
+        ((AC.ts_le_iff sp).mpr (by exact_mod_cast (show sp.slot (gbar g) + 1 ≤ m - 1 by
           clear * - hm3; omega)))⟩
     obtain ⟨q, e, hv, he, -⟩ := Compose.Growing.vote_of_awake_joined_at hp.run hp.noColl hzd
       (Compose.Growing.mayVote_of_committee hp.committeeFacts.hGate hd0 hzd hzK)

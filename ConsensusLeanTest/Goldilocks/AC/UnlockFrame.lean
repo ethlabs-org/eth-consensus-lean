@@ -6,8 +6,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 /-! # Witness: `unlock`'s target depends on the frame
 
 A mechanism witness, not one of the witness kinds (a)–(c) of CONTRIBUTING "Statements" (it
-witnesses no statement's hypotheses): a concrete configuration of the SA lock code
-(`Spec/SA/Locks.lean`: `opponents`, `unlockTarget`), with no trace. It records the mechanism
+witnesses no statement's hypotheses): a concrete configuration of the AC lock code
+(`Spec/AC/Locks.lean`: `opponents`, `unlockTarget`), with no trace. It records the mechanism
 behind the open step of HS.3 (a), the retired `voter_unlock_keeps_lock` (formerly in
 AgreeLater). The proposal walk starts at a live lock `L` that survives the proposer's `unlock`.
 `opponents` counts only support votes whose head is in the frame's tree, so a voter whose `Σ.F` is
@@ -19,7 +19,7 @@ can then move the lock below `L`.
 * `unlockTarget_frame_dependent`: against one view of seven slot-2 votes (no equivocators), the
   target of `L` is `L` in `Φp` and `F ≺ L` in `Φy`. -/
 
-namespace Consensus.Goldilocks.SA.Test.UnlockFrame
+namespace Consensus.Goldilocks.AC.Test.UnlockFrame
 
 /-- The shared parameters: seven validators, `Δ = 1`, `t_s = 4s`, genesis root `0`. -/
 abbrev P7 : Params where
@@ -34,8 +34,8 @@ abbrev P7 : Params where
   genesisRoot := 0
   δt := 0
 
-/-- The SA parameters: `P7` with `k = 2`. -/
-abbrev sp7 : SAParams where
+/-- The AC parameters: `P7` with `k = 2`. -/
+abbrev sp7 : ACParams where
   toParams := P7
   slotTime_eq := fun s => by change 4 * (s : Int) = 4 * 1 * s; omega
   k := 2
@@ -340,6 +340,6 @@ theorem unlockTarget_frame_dependent :
   · rw [hy]; intro h; exact absurd (anc_roots Φy_sub h hFy) (by decide)
   · exact absurd (congrArg Block.root h) (by decide)
 
-end Consensus.Goldilocks.SA.Test.UnlockFrame
+end Consensus.Goldilocks.AC.Test.UnlockFrame
 
 end

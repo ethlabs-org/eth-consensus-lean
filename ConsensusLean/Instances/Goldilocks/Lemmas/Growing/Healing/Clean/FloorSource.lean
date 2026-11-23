@@ -22,9 +22,9 @@ floor entry below `B`, at a height `≤ h(B)` below the floor. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -34,7 +34,7 @@ below `u`, above an entry at or past the floor, signed by the origin's writer af
 theorem high_floor_signed_source_of_row_bound_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x y : Fin sp.n} {i j k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x y : Fin sp.n} {i j k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
     (hy : y ∈ H t) (htb : t ≤ b) {u : Nat}
     (hrow : ∀ W ∈ (tr.state y k).fg.tree, ∀ att ∈ W.fgPayload,
@@ -61,7 +61,7 @@ theorem high_floor_signed_source_of_row_bound_at
   have hcut : ∀ q, ∀ p < q, tr.time p ≤ tr.time q := fun _ _ hp' => hrun.time_mono hp'.le
   -- two earlier origins are below a block held by one of their writers, at its write
   have hupper : ∀ {v₁ v₂ : Fin sp.n} {r₁ l₁ r₂ l₂ : Nat}
-      {O₁ O₂ : SA.Blk sp.n (List (FG.Att sp.n))}, HighOrigin tr H g v₁ r₁ l₁ O₁ → r₁ < k →
+      {O₁ O₂ : AC.Blk sp.n (List (FG.Att sp.n))}, HighOrigin tr H g v₁ r₁ l₁ O₁ → r₁ < k →
       HighOrigin tr H g v₂ r₂ l₂ O₂ → r₂ < k → ∃ z m C, z ∈ H (tr.time m) ∧
         C ∈ (tr.state z m).fg.tree ∧
         Anc (tr.HonestBlocksAt H) O₁ C ∧ Anc (tr.HonestBlocksAt H) O₂ C := by
@@ -107,7 +107,7 @@ theorem high_floor_signed_source_of_row_bound_at
       have hT₁ : ((tr.state z m').fg.σ EC.root).Th = EC.root := by rw [← hσ₁]; exact hECT
       have hT₂ : ((tr.state z m').fg.σ (tr.state y k).fg.J.root).Th =
           (tr.state y k).fg.J.root := by rw [← hσ₂]; exact hJT
-      rcases SA.anc_total hU h₁ h₂ with h | h
+      rcases AC.anc_total hU h₁ h₂ with h | h
       · have := Th_eq_of_anc hrz (store_anc_of_honest_anc_at hrun hnc0 hm0 (hcut m') hz h hJ')
           hh.symm
         rw [← hT₁, ← hT₂, this]

@@ -55,9 +55,9 @@ open AsChainShape Simulation Blocks Shape
 
 section Guarded
 
-variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
-  {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g ΔF a b : Time}
+  {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {g ΔF a b : Time}
 
 /-- **A comparable bounded high seed, held whenever it is above finalization, supplies current
 candidacy**, at a state of a reader honest at a read time `t ≤ b`, every earlier cut at a time
@@ -66,7 +66,7 @@ theorem guarded_seed_ancestor_candidate_at_state_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y v : Fin sp.n} {i q m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ r < i, tr.time r ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) {P S : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hy : y ∈ H t) (htb : t ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ (Node.frame (tr.state y i)).tree)
     (hseed : Healing.Growing.HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b)
     (hhold : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F S →
@@ -81,9 +81,9 @@ end Guarded
 
 section Repair
 
-variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
-  {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g b : Time}
+  {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {g b : Time}
   {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- The reader's frame at a read point of its context is well formed, inside the blocks held while
@@ -93,7 +93,7 @@ private theorem read_frame (D : RepairSchedule tr H proposer dg g b cm βK)
     FrameOK (Node.frame (tr.state y n)) ∧
       (Node.frame (tr.state y n)).tree ⊆ tr.HonestBlocksAt H ∧
       tr.projAC.state y n = (tr.state y n).ac ∧
-      SA.LocksWF sp (tr.state y n).ac.locks := by
+      AC.LocksWF sp (tr.state y n).ac.locks := by
   have hrun := D.reset.run
   have hnc := D.reset.noColl
   have ht := C.time_nonneg
@@ -111,7 +111,7 @@ private theorem read_frame (D : RepairSchedule tr H proposer dg g b cm βK)
 private theorem read_opening (D : RepairSchedule tr H proposer dg g b cm βK)
     {O : RepairOpening D} {y : Fin sp.n} {n : Nat} {t : Time} (C : RepairReadContext D O y n t) :
     Healing.drainTime sp D.resetTime ≤ sp.ts O.slot ∧
-      SA.gbar g + 4 * sp.Δ ≤ sp.ts O.slot ∧
+      AC.gbar g + 4 * sp.Δ ≤ sp.ts O.slot ∧
       sp.ts O.slot + 6 * sp.Δ ≤ t ∧ sp.ts O.slot + 6 * sp.Δ < tr.time n ∧
       Healing.drainTime sp D.resetTime ≤ t := by
   have hΔ := sp.toParams.hΔ
@@ -123,10 +123,10 @@ private theorem read_opening (D : RepairSchedule tr H proposer dg g b cm βK)
 live lock blocks and its fork-choice root, at a read point after the repair window. -/
 theorem healthy_current_live_candidates_at (D : RepairSchedule tr H proposer dg g b cm βK)
     {O : RepairOpening D} {y : Fin sp.n} {n : Nat} {t : Time} (C : RepairReadContext D O y n t)
-    {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hR : SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed =
+    {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hR : AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed =
       some R) :
-    ∀ X ∈ SA.liveLockBlocks sp (tr.state y n).ac.locks (Node.frame (tr.state y n))
+    ∀ X ∈ AC.liveLockBlocks sp (tr.state y n).ac.locks (Node.frame (tr.state y n))
         t ∪ {(Node.frame (tr.state y n)).fcRoot},
       Goldilocks.Compatible (Node.frame (tr.state y n)).tree X R := by
   have hrun := D.reset.run
@@ -134,7 +134,7 @@ theorem healthy_current_live_candidates_at (D : RepairSchedule tr H proposer dg 
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   obtain ⟨hPhi, hsub, hst, hwf⟩ := read_frame D C
   obtain ⟨hdrain, hgu, hbefore, hcut, hdrainNow⟩ := read_opening D C
-  have hRm := (SA.lookup_eq_some hR).1
+  have hRm := (AC.lookup_eq_some hR).1
   have hcover := record_sources_before_now_at D O C.readPoint C.honest C.repaired
     C.repairedCut
   rw [hR, Option.getD_some, recordCover_iff] at hcover
@@ -153,16 +153,16 @@ theorem healthy_current_live_candidates_at (D : RepairSchedule tr H proposer dg 
     rw [← D.cleanLabel_eq]; exact hs
   intro X hX
   rcases hX with hX | hX
-  · obtain ⟨l, hl, E, hE, hEr, hlive, rfl⟩ := SA.mem_liveLockBlocks_of_wf hPhi hwf hX
+  · obtain ⟨l, hl, E, hE, hEr, hlive, rfl⟩ := AC.mem_liveLockBlocks_of_wf hPhi hwf hX
     rw [← hst] at hl
     have hBE := D.reset.clean_source_stored_lock_compatible_at hx C.time_nonneg
       C.readPoint.1 C.honest C.time_bound hsrc hs' hqb hl
       (Healing.drain_stored_lock_label hdrainNow hlive) (hsub hE) hEr
-    have hXE := (SA.viableAncestor_anc hPhi hE).2.mono hsub
+    have hXE := (AC.viableAncestor_anc hPhi hE).2.mono hsub
     have hXR := tips_comparable_of_origin_witnesses_at hU hXE hRB hBE.symm
     rcases hXR with h | h
-    · exact Or.inl (SA.anc_tree_of_anc_U hU hPhi hsub hX.1 h hRm)
-    · exact Or.inr (SA.anc_tree_of_anc_U hU hPhi hsub hRm h hX.1)
+    · exact Or.inl (AC.anc_tree_of_anc_U hU hPhi hsub hX.1 h hRm)
+    · exact Or.inr (AC.anc_tree_of_anc_U hU hPhi hsub hRm h hX.1)
   · obtain rfl := Set.mem_singleton_iff.mp hX
     obtain ⟨z, r, l, S₀, hseed, hrb, -, -, hhold⟩ :=
       D.reset.reset_seed_held_at_read_at C.readPoint C.time_bound C.honest hdrain hgu hbefore hcut
@@ -182,19 +182,19 @@ repair window: the record's clean source and the guarded reset seed make it an a
 candidate. The supplied recent result is not needed. -/
 theorem healthy_current_record_viable_at (D : RepairSchedule tr H proposer dg g b cm βK)
     {O : RepairOpening D} {y : Fin sp.n} {n : Nat} {t : Time} (C : RepairReadContext D O y n t)
-    {R B : SA.Blk sp.n (List (FG.Att sp.n))} {x : Fin sp.n} {r s : Nat}
-    {CV : Set (SA.Vote sp.n)}
-    (hx : x ∈ H (tr.time r)) (hr : SA.ResultAt tr.projAC x r s B CV)
+    {R B : AC.Blk sp.n (List (FG.Att sp.n))} {x : Fin sp.n} {r s : Nat}
+    {CV : Set (AC.Vote sp.n)}
+    (hx : x ∈ H (tr.time r)) (hr : AC.ResultAt tr.projAC x r s B CV)
     (hRB : Anc (tr.HonestBlocksAt H) R B) (hrb : tr.time r ≤ b)
     (hs : Healing.cutZ sp.toParams g ≤ sp.ts s) (hL : s < C.label)
     (hfc : ¬ (Node.frame (tr.state y n)).Anc R (Node.frame (tr.state y n)).fcRoot)
-    (hR : SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed =
+    (hR : AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed =
       some R) :
     R ∈ (Node.frame (tr.state y n)).viableTree (Node.frame (tr.state y n)).tree := by
   have hU := Compose.Growing.honest_blocks_coherent D.reset.run D.reset.noColl
   obtain ⟨hPhi, -, -, -⟩ := read_frame D C
   obtain ⟨hdrain, hgu, hbefore, hcut, -⟩ := read_opening D C
-  have hRm := (SA.lookup_eq_some hR).1
+  have hRm := (AC.lookup_eq_some hR).1
   have hcover := record_sources_before_now_at D O C.readPoint C.honest C.repaired
     C.repairedCut
   rw [hR, Option.getD_some, recordCover_iff] at hcover
@@ -221,17 +221,17 @@ theorem healthy_current_record_viable_at (D : RepairSchedule tr H proposer dg g 
 fork-choice root or in the viable voter tree of every later cast of a node honest at it, given the
 earlier later-label votes extend it. -/
 theorem healthy_current_vote_domain_at (D : RepairSchedule tr H proposer dg g b cm βK)
-    {R B : SA.Blk sp.n (List (FG.Att sp.n))} {x : Fin sp.n} {r s : Nat}
-    {CV : Set (SA.Vote sp.n)}
-    (hx : x ∈ H (tr.time r)) (hr : SA.ResultAt tr.projAC x r s B CV)
+    {R B : AC.Blk sp.n (List (FG.Att sp.n))} {x : Fin sp.n} {r s : Nat}
+    {CV : Set (AC.Vote sp.n)}
+    (hx : x ∈ H (tr.time r)) (hr : AC.ResultAt tr.projAC x r s B CV)
     (hRB : Anc (tr.HonestBlocksAt H) R B) (hrb : tr.time r ≤ b)
     (hs : D.cleanLabel + sp.k + 2 ≤ s) :
-    ∀ z q ell e, z ∈ H (tr.time q) → SA.CastAt tr.projAC z q ell e →
+    ∀ z q ell e, z ∈ H (tr.time q) → AC.CastAt tr.projAC z q ell e →
       tr.time q ≤ b → s < e.msg.slot →
       (∀ w p e', p < q → Compose.Growing.HVoteAt tr H w p e' → s < e'.msg.slot →
-        SA.VoteExtends (tr.HonestBlocksAt H) e'.msg R) →
+        AC.VoteExtends (tr.HonestBlocksAt H) e'.msg R) →
       Anc (tr.HonestBlocksAt H) R ell.frame.fcRoot ∨
-        R ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
+        R ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   intro z q ell e hz he hqb hse hprior
   exact Healing.Growing.ProposalImpl.result_prefix_vote_domain_before_at D.reset hx hz hr hRB
     (by simpa only [D.cleanLabel_eq] using hs) hrb he hse hqb
@@ -241,12 +241,12 @@ theorem healthy_current_vote_domain_at (D : RepairSchedule tr H proposer dg g b 
 /-- **The stored-lock arm of a recent actual result**: the time-live stored locks at a cast of the
 successor label, of a node honest at it, compare with the result's prefix. -/
 theorem healthy_current_stored_locks_at (D : RepairSchedule tr H proposer dg g b cm βK)
-    {R B : SA.Blk sp.n (List (FG.Att sp.n))} {x : Fin sp.n} {r s : Nat}
-    {CV : Set (SA.Vote sp.n)}
-    (hx : x ∈ H (tr.time r)) (hr : SA.ResultAt tr.projAC x r s B CV)
+    {R B : AC.Blk sp.n (List (FG.Att sp.n))} {x : Fin sp.n} {r s : Nat}
+    {CV : Set (AC.Vote sp.n)}
+    (hx : x ∈ H (tr.time r)) (hr : AC.ResultAt tr.projAC x r s B CV)
     (hRB : Anc (tr.HonestBlocksAt H) R B) (hrb : tr.time r ≤ b)
     (hs : D.cleanLabel + 2 * sp.k + 1 ≤ s) :
-    ∀ z q ell e, z ∈ H (tr.time q) → SA.CastAt tr.projAC z q ell e →
+    ∀ z q ell e, z ∈ H (tr.time q) → AC.CastAt tr.projAC z q ell e →
       tr.time q ≤ b → e.msg.slot = s + 1 →
       ∀ l ∈ (tr.projAC.state z q).locks, sp.slot (tr.time q) ≤ l.slot + sp.k →
         l.slot ≤ s → ∀ Y ∈ tr.HonestBlocksAt H, Y.root = l.block →
@@ -257,9 +257,9 @@ theorem healthy_current_stored_locks_at (D : RepairSchedule tr H proposer dg g b
   have hd := hrun.time_nonneg q
   have hac := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)).localRun
   rw [RunTrace.upTo_projAC] at hac
-  have he' : SA.CastAt (tr.projAC.upTo (tr.time q)) z q ell e :=
-    SA.upTo_castAt.mpr ⟨le_rfl, he⟩
-  have hslot := (SA.castAt_spec hac hz he').2.1
+  have he' : AC.CastAt (tr.projAC.upTo (tr.time q)) z q ell e :=
+    AC.upTo_castAt.mpr ⟨le_rfl, he⟩
+  have hslot := (AC.castAt_spec hac hz he').2.1
   exact D.reset.result_prefix_stored_locks_at hx hz hr hRB
     (by simpa only [D.cleanLabel_eq] using hs) hrb hqb (by
       change e.msg.slot = sp.slot (tr.time q) at hslot
@@ -269,9 +269,9 @@ theorem healthy_current_stored_locks_at (D : RepairSchedule tr H proposer dg g b
 repair window, through their clean stored provenance. -/
 theorem healthy_current_live_chain_at (D : RepairSchedule tr H proposer dg g b cm βK)
     {O : RepairOpening D} {y : Fin sp.n} {n : Nat} {t : Time} (C : RepairReadContext D O y n t) :
-    ∀ X ∈ SA.liveLockBlocks sp (tr.state y n).ac.locks
+    ∀ X ∈ AC.liveLockBlocks sp (tr.state y n).ac.locks
         (Node.frame (tr.state y n)) t,
-      ∀ Y ∈ SA.liveLockBlocks sp (tr.state y n).ac.locks
+      ∀ Y ∈ AC.liveLockBlocks sp (tr.state y n).ac.locks
         (Node.frame (tr.state y n)) t,
       Goldilocks.Compatible (Node.frame (tr.state y n)).tree X Y := by
   have hrun := D.reset.run
@@ -282,19 +282,19 @@ theorem healthy_current_live_chain_at (D : RepairSchedule tr H proposer dg g b c
     have h6 : (0 : Time) ≤ 6 * sp.Δ := mul_nonneg (by norm_num) sp.toParams.hΔ.le
     linarith only [O.drain, C.repaired, h6]
   intro X hX Y hY
-  obtain ⟨l, hl, B, hB, hBr, hlive, rfl⟩ := SA.mem_liveLockBlocks_of_wf hPhi hwf hX
-  obtain ⟨m, hm, E, hE, hEr, hmive, rfl⟩ := SA.mem_liveLockBlocks_of_wf hPhi hwf hY
+  obtain ⟨l, hl, B, hB, hBr, hlive, rfl⟩ := AC.mem_liveLockBlocks_of_wf hPhi hwf hX
+  obtain ⟨m, hm, E, hE, hEr, hmive, rfl⟩ := AC.mem_liveLockBlocks_of_wf hPhi hwf hY
   rw [← hst] at hl hm
   have hBE := D.reset.clean_stored_locks_compatible_at
     C.time_nonneg C.readPoint.1 C.honest C.time_bound hl hm
     (Healing.drain_stored_lock_label hdrain hlive) (Healing.drain_stored_lock_label hdrain hmive)
     (hsub hB) hBr (hsub hE) hEr
-  have hXB := (SA.viableAncestor_anc hPhi hB).2.mono hsub
-  have hYE := (SA.viableAncestor_anc hPhi hE).2.mono hsub
+  have hXB := (AC.viableAncestor_anc hPhi hB).2.mono hsub
+  have hYE := (AC.viableAncestor_anc hPhi hE).2.mono hsub
   have hXY := tips_comparable_of_origin_witnesses_at hU hXB hYE hBE
   rcases hXY with h | h
-  · exact Or.inl (SA.anc_tree_of_anc_U hU hPhi hsub hX.1 h hY.1)
-  · exact Or.inr (SA.anc_tree_of_anc_U hU hPhi hsub hY.1 h hX.1)
+  · exact Or.inl (AC.anc_tree_of_anc_U hU hPhi hsub hX.1 h hY.1)
+  · exact Or.inr (AC.anc_tree_of_anc_U hU hPhi hsub hY.1 h hX.1)
 
 end Repair
 

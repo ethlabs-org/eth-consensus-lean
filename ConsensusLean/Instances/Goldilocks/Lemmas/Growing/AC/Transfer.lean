@@ -15,16 +15,16 @@ The writer and voter are honest at their own cuts. The writer-pool premise conne
 views without requiring either node to remain honest at the other's cut.
 -/
 
-namespace Consensus.Goldilocks.SA.Growing
+namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
-  {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
+  {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 /-- Result transfer needs no cross-time honesty or fault count: each node obeys its own cut. -/
 theorem result_transfer {ini} (hrun : ACRun proposer tr H U ini)
     {s : Nat} {X y : Fin sp.n} {i₀ i : Nat} {C : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hX : X ∈ H (tr.time i₀)) (hres : ResultAt tr X i₀ s C CV)
     (hy : y ∈ H (tr.time i)) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
     (hcarry : CarryAt tr U y i e s CV) (hviab : ViableAtVote ℓ e (s + 1) C)
@@ -67,7 +67,7 @@ theorem result_transfer {ini} (hrun : ACRun proposer tr H U ini)
 /-- A result also transfers any viable ancestor compatible with the reader's live locks. -/
 theorem result_transfer_anc {ini} (hrun : ACRun proposer tr H U ini)
     {s : Nat} {X y : Fin sp.n} {i₀ i : Nat} {C D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hX : X ∈ H (tr.time i₀)) (hres : ResultAt tr X i₀ s C CV) (hDC : Anc U D C)
     (hy : y ∈ H (tr.time i)) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
     (hcarry : CarryAt tr U y i e s CV) (hviab : ViableAtVote ℓ e (s + 1) D)
@@ -113,10 +113,10 @@ theorem first_transfer_stored
     (hP : ∀ t, CommitteeP K (tr.upTo t) (H t)) (hT : ∀ t, CommitteeT K (tr.upTo t) (H t))
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hx : x ∈ H (tr.time i₀)) (hfl : FastLockAt tr x i₀ s D CV) (hBD : Anc U B D)
     (hy : y ∈ H (tr.time i)) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hsync : SyncACAt (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr)
+    (hsync : SyncACAt (goldilocksAC sp FGP ro) H U (sp.ts s) (tr.time i) tr)
     (hcarry : CarryAt tr U y i e s CV)
     (hfault : FaultBoundK K s tr (H (tr.time i)) (tr.time i))
     (hf1 : 2 * (K.committee (s + 1) ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
@@ -168,7 +168,7 @@ theorem first_transfer_stored
       (Nat.mul_le_mul_left 2 (Set.ncard_le_ncard ?_))
     rintro w ⟨v, ⟨hv, hneq, hres, R, hR, hRr, hCR⟩, hval⟩
     exact ⟨v, ⟨hv, hneq, hres, R, hR, hRr, hBC.trans hCR⟩, hval⟩
-  have hm : ∀ (Φ' : Frm sp.n FGP) (A' : SAState sp.n) (D' : Blk sp.n FGP), FrameOK Φ' →
+  have hm : ∀ (Φ' : Frm sp.n FGP) (A' : ACState sp.n) (D' : Blk sp.n FGP), FrameOK Φ' →
       Φ'.tree ⊆ U → D' ∈ Φ'.tree →
       3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A' Φ' s D').ncard →
       (∀ v ∈ A'.pool s, v.val ∈ H (tr.time i) → v.slot = s ∧
@@ -217,12 +217,12 @@ theorem first_transfer_stored
   · exact he ▸ hBt
   · exact (Anc.mem hcore he).2
 
-theorem first_transfer (sp : SAParams) : FirstTransfer sp := by
+theorem first_transfer (sp : ACParams) : FirstTransfer sp := by
   intro FGP ro H U tr proposer hrun K hP hT hsize s x y i₀ i B CV ℓ e hx hfl hy hc hs hsync
     hcarry hf hf1 hv he
   exact first_transfer_stored hrun K (hP.upTo hrun.localRun.time_mono hrun.localRun.antitone)
     (hT.upTo hrun.localRun.antitone) hsize hx hfl .refl hy hc hs hsync hcarry hf hf1 hv he
 
-end Consensus.Goldilocks.SA.Growing
+end Consensus.Goldilocks.AC.Growing
 
 end

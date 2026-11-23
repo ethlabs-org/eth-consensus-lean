@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.TransferLater
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.GrowingPremises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
@@ -32,10 +32,10 @@ between its events, ready at `t` (honest at `t`, every cut before `i` at a time 
 
 namespace Consensus.Goldilocks.Regimes.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 open Compose.Growing
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -68,23 +68,23 @@ private theorem read_effective_at
       ((¬ ∃ R ∈ (Node.frame (tr.state y j)).tree,
           R.root = (tr.state y j).ac.latestConfirmed) ∧
         readAfter tr y j u = (tr.state y j).fg.F)) :
-    readAfter tr y j u = (SA.lookup (Node.frame (tr.state y j))
+    readAfter tr y j u = (AC.lookup (Node.frame (tr.state y j))
       (tr.state y j).ac.latestConfirmed).getD (Node.frame (tr.state y j)).F := by
   have hΦ : FrameOK (Node.frame (tr.state y j)) := by
     rw [← Trace.upTo_state tr y hj]
     exact Compose.frameOK_state (hrun.upTo ht0).toLocalRun hy j
   rcases h with ⟨R, hR, hRr, h⟩ | ⟨hn, h⟩
   · rw [h]
-    cases hl : SA.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed with
-    | none => exact absurd ⟨R, hR, hRr⟩ (SA.lookup_eq_none hl)
+    cases hl : AC.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed with
+    | none => exact absurd ⟨R, hR, hRr⟩ (AC.lookup_eq_none hl)
     | some R' =>
-      obtain ⟨hR', hr'⟩ := SA.lookup_eq_some hl
+      obtain ⟨hR', hr'⟩ := AC.lookup_eq_some hl
       exact (hΦ.coherent.1 hR' hR (hr'.trans hRr.symm)).symm
   · rw [h]
-    cases hl : SA.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed with
+    cases hl : AC.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed with
     | none => rfl
     | some R' =>
-      obtain ⟨hR', hr'⟩ := SA.lookup_eq_some hl
+      obtain ⟨hR', hr'⟩ := AC.lookup_eq_some hl
       exact absurd ⟨R', hR', hr'⟩ hn
 
 /-- **Finite ready-reader safety under growing faults** through `b`, from the finite service and
@@ -93,7 +93,7 @@ theorem sleepy_safe_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {ΔF b : Time} (hb : 0 ≤ b)
     (hsync : Compose.Growing.SleepyServiceBefore tr H ΔF b)
-    (hB : Compose.Growing.SleepyBoundsFrom tr H 0 b) {K : SA.CommitteeDict sp.n}
+    (hB : Compose.Growing.SleepyBoundsFrom tr H 0 b) {K : AC.CommitteeDict sp.n}
     (hKB : CommitteeFacts tr H K) (hBK : CommitteeBoundsFrom tr H K 0 b) :
     ReadySafeOn tr H (catchUp sp) 0 b := by
   have hinv := sleepy_invariant_at hrun hnc hKB hb hsync hB hBK

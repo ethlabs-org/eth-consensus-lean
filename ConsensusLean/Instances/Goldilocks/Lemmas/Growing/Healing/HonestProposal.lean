@@ -10,24 +10,24 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 open Regimes.Growing (hold)
 
 /-- The proposal supplier is node-local: retain the execution through the proposal time,
 then transport the proposal and immediate acceptance witnesses back to the full trace. -/
 theorem honestProposalRun_of_proposesAt_at
-    {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    {p : Fin sp.n} {kP s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {p : Fin sp.n} {kP s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hp : p ∈ H (sp.ts s + hold sp)) (hpp : p = proposer s)
     (hP : tr.ProposesAt p kP P) (hPs : P.slot = s) :
     HonestProposalRun tr H proposer s P := by
   have htime : tr.time kP = sp.ts s := by
-    simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hP.2.2
+    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
   have hlocal := hrun.toLocalRun
   have hret := hrun.upTo (hlocal.time_nonneg kP)
   rw [htime] at hret

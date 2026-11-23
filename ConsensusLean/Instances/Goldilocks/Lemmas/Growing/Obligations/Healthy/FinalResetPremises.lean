@@ -35,7 +35,7 @@ static `final_reset_bounds`, the duties of the gap the static `final_query_duty`
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation Obligations
 open Blocks Shape
-open SA (gbar)
+open AC (gbar)
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 

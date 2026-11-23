@@ -14,7 +14,7 @@ engine_outputValid_at and engine_nested_at; lead LeadHeldInView and LeadTipsVali
 
 namespace Consensus.Goldilocks.Generic
 
-open SA (gbar)
+open AC (gbar)
 open Healing.Growing (IsReset)
 
 variable {P : Params} {A : NodeAC P}

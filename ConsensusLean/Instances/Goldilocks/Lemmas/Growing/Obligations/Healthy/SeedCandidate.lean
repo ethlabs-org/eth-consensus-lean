@@ -25,9 +25,9 @@ entry at or past it below an earlier high origin, from a high floor's signed sou
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -36,7 +36,7 @@ is compatible with every block it holds that is compatible with the earlier high
 private theorem high_J_root_at_state {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hy : y ∈ H t) (htb : t ≤ b) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBy : B ∈ (tr.state y k).fg.tree)
     (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
     (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
@@ -85,7 +85,7 @@ private theorem high_J_root_at_state {cm : Time → Finset (Fin sp.n)} {βK : �
     obtain rfl : E₀ = E' := hU.1 (hsub₀ hE₀) (hsub' hE') (hE₀r.trans hE'r.symm)
     have hEO : Anc (tr.HonestBlocksAt H) E₀ O := hE₀O.mono hsub₀
     rcases hcompare _ r l O (by clear * - hi' hrd hdi; omega) ho with hBO | hOB
-    · exact hncE (SA.anc_total hU hEO hBO)
+    · exact hncE (AC.anc_total hU hEO hBO)
     · exact hncE (Or.inl (hEO.trans hOB))
   have hq : (H t)ᶜ.ncard < sp.toParams.fg.q := by
     have hf := hp.faults t ht htb
@@ -98,7 +98,7 @@ private theorem high_J_root_at_state {cm : Time → Finset (Fin sp.n)} {βK : �
     obtain ⟨-, -, hFJ, -⟩ := Store.cache_invariants _ _ _ _ hreach
     rcases hJ with hJB | hBJ
     · exact Or.inl ((hFJ.mono hsub).trans hJB)
-    · exact SA.anc_total hU (hFJ.mono hsub) hBJ
+    · exact AC.anc_total hU (hFJ.mono hsub) hBJ
   unfold Store.fcRoot
   split_ifs <;> assumption
 
@@ -108,7 +108,7 @@ once it is above `Σ.F`. -/
 private theorem low_root_at_state {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y v : Fin sp.n} {i q m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ r < i, tr.time r ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) {B S : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hy : y ∈ H t) (htb : t ≤ b) {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hS : HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b)
     (hSy : S ∈ (tr.state y i).fg.tree) (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
     (hBS : Compatible (tr.HonestBlocksAt H) B S)
@@ -134,7 +134,7 @@ private theorem low_root_at_state {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   unfold Store.fcRoot
   split_ifs with hactive
   · rcases hBS with hBS | hSB
-    · exact SA.anc_total hU
+    · exact AC.anc_total hU
         (hJ S hSy (store_anc_of_honest_anc_at hrun hnc ht hle hy hFS hSy) hSh
           hactive.1 hactive.2) hBS
     · have hFB := hFS.trans hSB
@@ -143,7 +143,7 @@ private theorem low_root_at_state {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       exact Or.inl (hJ B hBy (store_anc_of_honest_anc_at hrun hnc ht hle hy hFB hBy) hBhy
         hactive.1 hactive.2)
   · rcases hBS with hBS | hSB
-    · exact SA.anc_total hU hFS hBS
+    · exact AC.anc_total hU hFS hBS
     · exact Or.inl (hFS.trans hSB)
 
 /-- **A comparable bounded high seed, held whenever it is above finalization, supplies current
@@ -153,7 +153,7 @@ theorem guarded_seed_ancestor_candidate_at_state_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y v : Fin sp.n} {i q m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ r < i, tr.time r ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) {P S : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hy : y ∈ H t) (htb : t ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ (Node.frame (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)
     (hqb : tr.time q ≤ b)
     (hhold : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F S → S ∈ (tr.state y i).fg.tree)
@@ -189,8 +189,8 @@ theorem guarded_seed_ancestor_candidate_at_state_at
           · change tr.time r' = sp.ts l + 6 * sp.Δ at htu
             linarith [sp.toParams.hΔ]
           · change sp.slot (tr.time r') = l at hsl
-            exact (SA.ts_le_iff_le_slot sp (hrun.time_nonneg r') l).2 (by omega)
-        have := (SA.ts_le_iff_le_slot sp ht l).1 (htl.trans (hle r' (by omega)))
+            exact (AC.ts_le_iff_le_slot sp (hrun.time_nonneg r') l).2 (by omega)
+        have := (AC.ts_le_iff_le_slot sp ht l).1 (htl.trans (hle r' (by omega)))
         omega)
       (fun x r l B hri ho x' r' l' B' hr'i ho' => hp.origins_compatible_at ho
         ((hle r hri).trans htb) ho' ((hle r' hr'i).trans htb))

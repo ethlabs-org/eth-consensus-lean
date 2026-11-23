@@ -12,28 +12,28 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 /-- The stored viable ancestor, rather than the raw selected block, supplies the prefix. -/
 theorem FrameWindow.optimistic_write_later_proposal_head_at
-    {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
     {g ΔF b : Time} {s₀ j N floor : Nat} {kindJ : Prop}
-    {J R A D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {J R A D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
-    {K : SA.CommitteeDict sp.n}
+    {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K))
+      (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     (hm : gbar g ≤ sp.ts s₀) (hmb : sp.ts N + sp.Δ ≤ b) (hj : s₀ ≤ j)
-    {y : Fin sp.n} {a : Nat} (hy : y ∈ H (tr.time a)) {CV : Set (SA.Vote sp.n)}
+    {y : Fin sp.n} {a : Nat} (hy : y ∈ H (tr.time a)) {CV : Set (AC.Vote sp.n)}
     {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt y a ellw)
     (halo : sp.ts s₀ ≤ tr.time a) (hat : tr.time a < sp.ts j + 2 * sp.Δ)
-    (hopt : SA.OptimisticLockAt tr.projAC y a j D CV)
+    (hopt : AC.OptimisticLockAt tr.projAC y a j D CV)
     (hRA : Anc (tr.HonestBlocksAt H) R A) (hAD : Anc (tr.HonestBlocksAt H) A D)
     (hsource : ellw.frame.Anc A ellw.frame.fcRoot ∨
       ∃ Q ∈ ellw.frame.tree, floor ≤ ((tr.state y a).fg.σ Q.root).h ∧
@@ -43,14 +43,14 @@ theorem FrameWindow.optimistic_write_later_proposal_head_at
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt z c ell)
     (hcall : ell.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hd : (SA.acProposal sp (tr.projAC.state z c) ell.frame (tr.time c)).2 =
+    (hd : (AC.acProposal sp (tr.projAC.state z c) ell.frame (tr.time c)).2 =
       some (d, pay)) (hK : CommitteeHalfUpTo tr H K g b) :
     Anc (tr.HonestBlocksAt H) R d.head := by
   have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
-    (SA.ts_le_iff sp).2 (by exact_mod_cast hpq)
+    (AC.ts_le_iff sp).2 (by exact_mod_cast hpq)
   have hahi : tr.time a ≤ sp.ts N + sp.Δ := by
     have ht := hts (hrlo.trans hrN)
-    have he := SA.ts_succ j (sp := sp)
+    have he := AC.ts_succ j (sp := sp)
     linarith only [hat, ht, he, sp.toParams.hΔ]
   have hclo : sp.ts s₀ ≤ tr.time c := by rw [hti]; exact hts (by omega)
   have hchi : tr.time c ≤ sp.ts N + sp.Δ := by
@@ -59,7 +59,7 @@ theorem FrameWindow.optimistic_write_later_proposal_head_at
   · have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
     have hr := hac.upTo (hrun.time_nonneg a)
     have hca := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hcw⟩
-    have hrootU := hroot.mono (SA.frameIn_of_callAt hr.localRun hy hca).2
+    have hrootU := hroot.mono (AC.frameIn_of_callAt hr.localRun hy hca).2
     have he : ellw.frame = Node.frame (tr.state y a) :=
       (hrun.cutLaw y a (.ac ellw) (Compose.projAC_callAt.mp hcw) hy).1
     rw [he] at hrootU

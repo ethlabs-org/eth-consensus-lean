@@ -3,15 +3,15 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 
 public section
 
-/-! # Goldilocks SA: lock functions (A0.4 (c)–(e))
+/-! # Goldilocks AC: lock functions (A0.4 (c)–(e))
 
 Facts about `live_locks`, `add_locks` and `unlock` in any well-formed frame: locks only move
 back and keep their slot, fast bit and expiry, unlocking is idempotent, and with fewer than `n/2`
 equivocators `Φ.F` has fewer than half of the committee as opponents. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable (sp : SAParams)
+variable (sp : ACParams)
 
 /-- `live_locks` moves each lock to an ancestor in the tree, with its slot, fast bit and expiry. -/
 theorem liveLocks_movesBack {FGP : Type} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (L : Set Lock)
@@ -48,6 +48,6 @@ theorem unlock_no_fallback : UnlockNoFallback sp := by
   intro FGP Φ V s hΦ he
   rwa [opponents_F sp hΦ]
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

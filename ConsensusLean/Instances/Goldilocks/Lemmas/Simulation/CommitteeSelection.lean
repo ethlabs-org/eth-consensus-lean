@@ -14,7 +14,7 @@ namespace Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
 open Model Shape
 
 /-- Package the compiled run's slot-indexed selection as a committee dictionary. -/
-def voteK {n : Nat} (select : Nat → Finset (Fin n)) : SA.CommitteeDict n :=
+def voteK {n : Nat} (select : Nat → Finset (Fin n)) : AC.CommitteeDict n :=
   ⟨fun s => {k | k ∈ select s}⟩
 
 variable {V : Type} [Fintype V] {E : Env V}

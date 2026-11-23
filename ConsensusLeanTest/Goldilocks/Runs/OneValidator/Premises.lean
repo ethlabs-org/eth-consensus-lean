@@ -50,7 +50,7 @@ open Node
 
 namespace One
 
-open SA
+open AC
 
 /-- The shared parameters: one validator, `Δ = 1`, `t_s = 4s`, genesis root `0`, `δ_t = 2`. -/
 abbrev P1 : Params where
@@ -65,8 +65,8 @@ abbrev P1 : Params where
   genesisRoot := 0
   δt := 2
 
-/-- The SA parameters: `P1` with `k = 2`. -/
-abbrev sp1 : SAParams where
+/-- The AC parameters: `P1` with `k = 2`. -/
+abbrev sp1 : ACParams where
   toParams := P1
   slotTime_eq := fun s => by change 4 * (s : Int) = 4 * 1 * s; omega
   k := 2
@@ -77,7 +77,7 @@ abbrev sp1 : SAParams where
 /-- A replay order (never used: nobody restarts). -/
 noncomputable abbrev ro1 : ReplayOrder sp1 (List (FG.Att sp1.n)) := ReplayOrder.choice sp1
 
-/-- The node: the Goldilocks SA with these parameters. -/
+/-- The node: the Goldilocks AC with these parameters. -/
 noncomputable abbrev N1 : NodeAC sp1.toParams := goldilocksNode sp1 ro1
 
 instance (n : Nat) : Countable (FG.Att n) :=
@@ -127,13 +127,13 @@ theorem acProposal_payload (st : NodeState N1) (t : Time) {d : DutyHead sp1.n _ 
     {p : Payload sp1.n} (h : (Node.acProposal st t).2.2 = some (d, p)) :
     ∀ v ∈ p.1, ∃ σ, v ∈ st.ac.pool σ := by
   intro v hv
-  change (SA.acProposal sp1 st.ac (frame st) t).2 = some (d, p) at h
-  unfold SA.acProposal at h
+  change (AC.acProposal sp1 st.ac (frame st) t).2 = some (d, p) at h
+  unfold AC.acProposal at h
   split_ifs at h
   simp only [Option.some.injEq, Prod.mk.injEq] at h
   obtain ⟨-, rfl⟩ := h
   simp only [voteViewList, List.mem_filter] at hv
-  unfold SAState.poolAt at hv
+  unfold ACState.poolAt at hv
   split_ifs at hv
   · simp at hv
   · exact ⟨_, hv.1⟩
@@ -143,13 +143,13 @@ theorem acProposal_support (st : NodeState N1) (t : Time) {d : DutyHead sp1.n _ 
     {p : Payload sp1.n} (h : (Node.acProposal st t).2.2 = some (d, p)) :
     ∀ v ∈ p.2, ∃ σ, v ∈ st.ac.pool σ := by
   intro v hv
-  change (SA.acProposal sp1 st.ac (frame st) t).2 = some (d, p) at h
-  unfold SA.acProposal at h
+  change (AC.acProposal sp1 st.ac (frame st) t).2 = some (d, p) at h
+  unfold AC.acProposal at h
   split_ifs at h
   simp only [Option.some.injEq, Prod.mk.injEq] at h
   obtain ⟨-, rfl⟩ := h
   simp only [voteViewList, List.mem_filter] at hv
-  unfold SAState.poolAt at hv
+  unfold ACState.poolAt at hv
   split_ifs at hv
   · simp at hv
   · exact ⟨_, hv.1.1⟩
@@ -170,7 +170,7 @@ theorem tickRun_votes :
   | _ i ih =>
     intro σ v hv
     rcases i with _ | i
-    · simp [Trace.state, tickRun, Node.init, SAState.initial] at hv
+    · simp [Trace.state, tickRun, Node.init, ACState.initial] at hv
     simp only [Trace.state] at hv
     split_ifs at hv with hl
     · obtain ⟨c, hc⟩ := Option.ne_none_iff_exists'.1 hl.2
@@ -196,11 +196,11 @@ theorem tickRun_votes :
           fun ⟨e, he, hm⟩ => ⟨i, by omega, ℓ, hcall, e, he, hm⟩
         rcases onTick_ac_call N1 dg1 _ _ _ _ hmem with hcl | hcl | ⟨B, hcl⟩ | hcl <;>
           rw [hcl] at hv hem
-        · rcases SAPool.acOnTick_pool sp1 v0 _ _ _ σ v hv with h | h
+        · rcases ACPool.acOnTick_pool sp1 v0 _ _ _ σ v hv with h | h
           · exact old h
           · exact emitted (by rw [hem]; exact h)
-        · exact old (by rw [ACInterface.step, SAPool.acProposal_pool] at hv; exact hv)
-        · rcases SAPool.acOnBlock_pool sp1 v0 _ _ _ B σ v hv with h | h | h
+        · exact old (by rw [ACInterface.step, ACPool.acProposal_pool] at hv; exact hv)
+        · rcases ACPool.acOnBlock_pool sp1 v0 _ _ _ B σ v hv with h | h | h
           · exact old h
           · obtain ⟨d, p, hr, hB⟩ := onTick_block_made N1 dg1 _ _ _ _ hmem (Or.inr ⟨ℓ, rfl, hcl⟩)
             rw [hB] at h
@@ -213,7 +213,7 @@ theorem tickRun_votes :
             obtain ⟨j, hj, he⟩ := ih (8 * (i / 8) + 1) (by omega) σ' v h'
             exact ⟨j, by omega, he⟩
           · exact emitted (by rw [hem]; exact h)
-        · exact old (by rw [ACInterface.step, SAPool.acToFG_pool] at hv; exact hv)
+        · exact old (by rw [ACInterface.step, ACPool.acToFG_pool] at hv; exact hv)
     · obtain ⟨j, hj, he⟩ := ih i (by omega) σ v hv
       exact ⟨j, by omega, he⟩
 
@@ -222,7 +222,7 @@ theorem tickRun_goldilocksRun :
     GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) where
   toLocalRun := tickRun_localRun rfl rfl _
   genesis_root_ok := dg1_genesis
-  vstart := fun _ => SA.voteStart_initial _
+  vstart := fun _ => AC.voteStart_initial _
 
 /-- The pool only grows along the tick run. -/
 theorem tickRun_pool_mono {i i' : Nat} (h : i ≤ i') (σ : Nat) :
@@ -247,10 +247,10 @@ theorem tickRun_pool_mono {i i' : Nat} (h : i ≤ i') (σ : Nat) :
         rcases onTick_ac_call N1 dg1 _ _ _ _ (tickRun_label_mem hc) with
           hcl | hcl | ⟨B, hcl⟩ | hcl <;>
           rw [hcl]
-        · exact SAPool.acOnTick_pool_mono sp1 v0 _ _ _ σ hv
-        · rw [ACInterface.step, SAPool.acProposal_pool]; exact hv
-        · exact SAPool.acOnBlock_pool_mono sp1 v0 _ _ _ B σ hv
-        · rw [ACInterface.step, SAPool.acToFG_pool]; exact hv
+        · exact ACPool.acOnTick_pool_mono sp1 v0 _ _ _ σ hv
+        · rw [ACInterface.step, ACPool.acProposal_pool]; exact hv
+        · exact ACPool.acOnBlock_pool_mono sp1 v0 _ _ _ B σ hv
+        · rw [ACInterface.step, ACPool.acToFG_pool]; exact hv
     · exact hv
 
 /-- No wake in the tick run. -/
@@ -264,9 +264,9 @@ theorem tickRun_deadline (y : Fin sp1.n) (k : Nat) (τ Δ' : Time) :
   rfl
 
 /-- In the tick run, pool `σ` holds votes of slot `σ`. -/
-theorem tickRun_slotOK (i : Nat) : SAPool.SlotOK sp1 ((tickRun N1 dg1).state v0 i).ac := by
+theorem tickRun_slotOK (i : Nat) : ACPool.SlotOK sp1 ((tickRun N1 dg1).state v0 i).ac := by
   induction i with
-  | zero => intro σ w hw; simp [Trace.state, tickRun, Node.init, SAState.initial] at hw
+  | zero => intro σ w hw; simp [Trace.state, tickRun, Node.init, ACState.initial] at hw
   | succ i ih =>
     simp only [Trace.state]
     split_ifs with hl
@@ -283,10 +283,10 @@ theorem tickRun_slotOK (i : Nat) : SAPool.SlotOK sp1 ((tickRun N1 dg1).state v0 
         rcases onTick_ac_call N1 dg1 _ _ _ _ (tickRun_label_mem hc) with
           hcl | hcl | ⟨B, hcl⟩ | hcl <;>
           rw [hcl]
-        · exact SAPool.acOnTick_slot sp1 v0 _ _ _ ih
-        · exact SAPool.slot_of_pool_eq sp1 (SAPool.acProposal_pool sp1 _ _ _) ih
-        · exact SAPool.acOnBlock_slot sp1 v0 _ _ _ B ih
-        · exact SAPool.slot_of_pool_eq sp1 (SAPool.acToFG_pool sp1 _ _ _) ih
+        · exact ACPool.acOnTick_slot sp1 v0 _ _ _ ih
+        · exact ACPool.slot_of_pool_eq sp1 (ACPool.acProposal_pool sp1 _ _ _) ih
+        · exact ACPool.acOnBlock_slot sp1 v0 _ _ _ B ih
+        · exact ACPool.slot_of_pool_eq sp1 (ACPool.acToFG_pool sp1 _ _ _) ih
     · exact ih
 
 /-- Every AC message the validator sends or admits, it emits at that cut. -/
@@ -307,11 +307,11 @@ theorem tickRun_sendOrAdmit {i : Nat} {m : Vote sp1.n}
   have hmem := tickRun_label_mem hcall.2
   rcases onTick_ac_call N1 dg1 _ _ _ _ hmem with hcl | hcl | ⟨B, hcl⟩ | hcl <;>
     rw [hcl] at hhold hem
-  · rcases SAPool.acOnTick_pool sp1 v0 _ _ _ _ m hhold with h | h
+  · rcases ACPool.acOnTick_pool sp1 v0 _ _ _ _ m hhold with h | h
     · exact absurd h hnot
     · exact ⟨ℓ, hcall, by rw [hem]; exact h⟩
-  · rw [ACInterface.step, SAPool.acProposal_pool] at hhold; exact absurd hhold hnot
-  · rcases SAPool.acOnBlock_pool sp1 v0 _ _ _ B _ m hhold with h | h | h
+  · rw [ACInterface.step, ACPool.acProposal_pool] at hhold; exact absurd hhold hnot
+  · rcases ACPool.acOnBlock_pool sp1 v0 _ _ _ B _ m hhold with h | h | h
     · exact absurd h hnot
     · exfalso
       obtain ⟨d, p, hr, hB⟩ := onTick_block_made N1 dg1 _ _ _ _ hmem (Or.inr ⟨ℓ, rfl, hcl⟩)
@@ -325,7 +325,7 @@ theorem tickRun_sendOrAdmit {i : Nat} {m : Vote sp1.n}
       subst hσ
       exact hnot (tickRun_pool_mono (by omega) _ h')
     · exact ⟨ℓ, hcall, by rw [hem]; exact h⟩
-  · rw [ACInterface.step, SAPool.acToFG_pool] at hhold; exact absurd hhold hnot
+  · rw [ACInterface.step, ACPool.acToFG_pool] at hhold; exact absurd hhold hnot
 
 /-- A signing cut of the tick run is followed by its `on_attestation`, at the same time. -/
 theorem tickRun_sign_next {i : Nat} {a : FG.Att sp1.n} (h : (tickRun N1 dg1).SignAt v0 i a) :
@@ -412,8 +412,8 @@ theorem tickRun_syncOn (W Wr : Time → Prop) (eff : Time → Time) (heff : ∀ 
 
 /-- The Goldilocks node's AC meets requirements 1–5. -/
 theorem n1_requirements : N1.Requirements :=
-  have h := SA.interface_requirements sp1 (List (FG.Att sp1.n)) ro1
-  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp1 _ ro1⟩
+  have h := AC.interface_requirements sp1 (List (FG.Att sp1.n)) ro1
+  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, AC.proposal_payload_valid sp1 _ ro1⟩
 
 /-- The validator never restarts, so its restart time stays `⊥`. -/
 theorem tickRun_restartTime : ∀ i, ((tickRun N1 dg1).state v0 i).ac.restartTime = ⊥
@@ -431,25 +431,25 @@ theorem tickRun_restartTime : ∀ i, ((tickRun N1 dg1).state v0 i).ac.restartTim
             ((tickRun N1 dg1).state v0 i).ac ℓ.frame ((tickRun N1 dg1).time i) ℓ.call).1 :=
           (congrArg Prod.fst (hstep.2 ℓ rfl)).symm
         rw [hac]
-        refine (SA.step_restartTime v0 _ _ _ _ fun hr => ?_).trans (tickRun_restartTime i)
+        refine (AC.step_restartTime v0 _ _ _ _ fun hr => ?_).trans (tickRun_restartTime i)
         exact tickRun_no_restart v0 i ⟨ℓ, hcall, hr⟩
     · exact tickRun_restartTime i
 
 theorem slotOf_ts (s : Nat) : sp1.toParams.slotOf (sp1.ts s) = s :=
-  SA.slot_of_mem sp1 s le_rfl ((SA.ts_lt_iff sp1).2 (by omega))
+  AC.slot_of_mem sp1 s le_rfl ((AC.ts_lt_iff sp1).2 (by omega))
 
 theorem ts_eq (s : Nat) : sp1.ts s = (((4 * s : Nat) : Int)) := by
-  simp only [SAParams.ts]; push_cast; ring
+  simp only [ACParams.ts]; push_cast; ring
 
 /-- A block of the validator's tree before cut `j` has a slot at most `slot(time j)`. -/
-theorem tree_slot_le {j : Nat} {X : SA.Blk sp1.n (List (FG.Att sp1.n))}
+theorem tree_slot_le {j : Nat} {X : AC.Blk sp1.n (List (FG.Att sp1.n))}
     (hX : X ∈ ((tickRun N1 dg1).state v0 j).fg.tree) :
     X.slot ≤ sp1.slot ((tickRun N1 dg1).time j) := by
   rcases Compose.tree_cases (tickRun_goldilocksRun).toLocalRun (Set.mem_univ v0) hX with
     rfl | ⟨k, hk, hacc⟩
   · exact Nat.zero_le _
   · exact ((tickRun_goldilocksRun.cutLaw v0 (Set.mem_univ _) k _ hacc).1).trans
-      (SA.slot_mono sp1 (tickRun_goldilocksRun.time_nonneg k)
+      (AC.slot_mono sp1 (tickRun_goldilocksRun.time_nonneg k)
         (tickRun_goldilocksRun.time_mono hk.le))
 
 /-- **A ready proposal at every slot `s ≥ 1`**: the own block of the tick of `t_s`, at cut
@@ -466,21 +466,21 @@ theorem tickRun_readyProposal (s : Nat) (hs : 1 ≤ s) :
   have hP : Node.Proposes (fun _ => v0) (v0 : Fin sp1.n) ((t : Nat) : Int) :=
     ⟨by rw [hslot]; exact hs, by rw [hslot, hts]; rfl, rfl⟩
   -- `ac_proposal` returns a payload: the validator is joined
-  have hjoin : SA.joined sp1 (Node.tickStep (fun _ => v0) dg1 v0
+  have hjoin : AC.joined sp1 (Node.tickStep (fun _ => v0) dg1 v0
       ((tickRun N1 dg1).state v0 (8 * t))
       ((t : Nat) : Int) 0 .acTick).1.ac ((t : Nat) : Int) := by
-    unfold SA.joined
+    unfold AC.joined
     have : (Node.tickStep (fun _ => v0) dg1 v0
         ((tickRun N1 dg1).state v0 (8 * t)) ((t : Nat) : Int) 0
         .acTick).1.ac.restartTime = ⊥ := by
       change ((N1).step v0 _ _ _ .tick).1.restartTime = ⊥
-      rw [SA.step_restartTime v0 _ _ _ _ (by intro h; cases h), tickRun_restartTime]
+      rw [AC.step_restartTime v0 _ _ _ _ (by intro h; cases h), tickRun_restartTime]
     rw [this]; exact bot_le
   obtain ⟨d, pay, hr⟩ : ∃ d pay, (Node.acProposal (Node.tickStep (fun _ => v0) dg1 v0
       ((tickRun N1 dg1).state v0 (8 * t)) ((t : Nat) : Int) 0 .acTick).1
       ((t : Nat) : Int)).2.2 = some (d, pay) := by
-    change ∃ d pay, (SA.acProposal sp1 _ _ _).2 = some (d, pay)
-    unfold SA.acProposal
+    change ∃ d pay, (AC.acProposal sp1 _ _ _).2 = some (d, pay)
+    unfold AC.acProposal
     simp only [hjoin, not_true_eq_false, ↓reduceIte]
     exact ⟨_, _, rfl⟩
   obtain ⟨hacc, htk⟩ := Healing.own_block_accepted hrun.toLocalRun n1_requirements dg1_genesis
@@ -508,7 +508,7 @@ theorem tickRun_readyProposal (s : Nat) (hs : 1 ≤ s) :
     have hrAC := (Compose.goldilocks_ac_projection sp1 ro1 dg1 Set.univ
       (tickRun N1 dg1) (fun _ => v0) hrun hnc).localRun
     obtain ⟨⟨Hd, hHdt, hHdr, -⟩, hjxt⟩ := Compose.cast_head_fcRoot hrAC
-        (fun _ => SA.voteStart_initial _) (Set.mem_univ v0) ⟨hcAC, he⟩
+        (fun _ => AC.voteStart_initial _) (Set.mem_univ v0) ⟨hcAC, he⟩
     rw [Compose.frame_of_projAC hrun (Set.mem_univ v0) hcAC] at hHdt
     rw [hem] at hHdr hjxt
     have hslotHd := tree_slot_le hHdt.1
@@ -517,13 +517,13 @@ theorem tickRun_readyProposal (s : Nat) (hs : 1 ≤ s) :
     have hxs' : (x.slot : Int) = (s : Int) - 1 := by omega
     have htjx : (tickRun N1 dg1).time jx < sp1.ts (s : Int) := by
       have : sp1.ts (x.slot : Int) = sp1.ts (s : Int) - 4 := by
-        rw [hxs']; simp only [SAParams.ts]; ring
+        rw [hxs']; simp only [ACParams.ts]; ring
       rw [this, hΔ] at hjxt
       change (tickRun N1 dg1).time jx ≤ _ at hjxt
       linarith
     have hsl : sp1.slot ((tickRun N1 dg1).time jx) < s := by
       by_contra hc
-      have := (SA.ts_le_iff_le_slot sp1 (hrun.time_nonneg jx) (s : Int)).2 (by omega)
+      have := (AC.ts_le_iff_le_slot sp1 (hrun.time_nonneg jx) (s : Int)).2 (by omega)
       linarith
     refine ⟨Hd, ?_, hHdr, by omega⟩
     have hj'jx : jx < j' := by
@@ -545,12 +545,12 @@ theorem tickRun_propPlus (g Gp : Time) (hGp : 4 ≤ Gp) :
   obtain ⟨k, B, hB, -⟩ := tickRun_readyProposal s (by omega)
   have hlt : τ < sp1.ts (s : Int) := by
     by_contra hc
-    have := (SA.ts_le_iff_le_slot sp1 h0 (s : Int)).1 (not_lt.1 hc)
+    have := (AC.ts_le_iff_le_slot sp1 h0 (s : Int)).1 (not_lt.1 hc)
     omega
-  have hle : sp1.ts (sp1.slot τ : Int) ≤ τ := (SA.ts_le_iff_le_slot sp1 h0 _).2 le_rfl
+  have hle : sp1.ts (sp1.slot τ : Int) ≤ τ := (AC.ts_le_iff_le_slot sp1 h0 _).2 le_rfl
   refine ⟨s, k, B, by omega, hlt.le, ?_, hB⟩
   have : sp1.ts (s : Int) = sp1.ts (sp1.slot τ : Int) + 4 := by
-    simp only [SAParams.ts, hs]; push_cast; ring
+    simp only [ACParams.ts, hs]; push_cast; ring
   change sp1.ts (s : Int) ≤ τ + Gp
   linarith
 
@@ -568,17 +568,17 @@ theorem tickRun_catch (g κ : Time) (hκ : 0 ≤ κ) :
 
 /-- (a) The HS shared premises hold on the tick run, for every `g` (with `Δ_F = 1`). -/
 theorem tickRun_hsShared (g : Time) :
-    Healing.HSShared (tickRun N1 dg1) Set.univ (SA.CommitteeDict.full sp1.n) dg1 g 1 where
+    Healing.HSShared (tickRun N1 dg1) Set.univ (AC.CommitteeDict.full sp1.n) dg1 g 1 where
   noColl := dg1_noColl _
   genesisRoot := dg1_genesis
   healthy := tickRun_healthy g
   noRestart _ _ k h := absurd h (tickRun_no_restart _ k)
   timeoutDelay := by decide
-  committee := ⟨SA.size_binding_full rfl, SA.CommitteePAt.full,
-    fun _ _ x hx i _ s => ⟨fun _ => SA.mem_full s x,
+  committee := ⟨AC.size_binding_full rfl, AC.CommitteePAt.full,
+    fun _ _ x hx i _ s => ⟨fun _ => AC.mem_full s x,
       fun _ => Compose.mayVote_stock tickRun_goldilocksRun (dg1_noColl _) hx s i⟩⟩
   twoK s _ := by
-    rw [SA.ncard_inter_full, SA.ncard_full, Set.compl_univ, Set.ncard_empty]
+    rw [AC.ncard_inter_full, AC.ncard_full, Set.compl_univ, Set.ncard_empty]
     simp
 
 /-- **Non-vacuity of node O.1's and C1.3's pattern premises, reduced to one fact of one run.**
@@ -590,7 +590,7 @@ and `f = 0` this shows the premises consistent, not met with faults. -/
 theorem tickRun_patternPremises (g Gp : Time) (M : Nat) (hGp : 4 ≤ Gp)
     (hpat : Healing.UPat (tickRun N1 dg1) Set.univ (fun _ => v0) g 1 M 2 0)
     (hM : Healing.Mstar sp1 1 Gp 2 0 ≤ M) :
-    Healing.PatternPremises (tickRun N1 dg1) Set.univ (SA.CommitteeDict.full sp1.n) (fun _ => v0)
+    Healing.PatternPremises (tickRun N1 dg1) Set.univ (AC.CommitteeDict.full sp1.n) (fun _ => v0)
       dg1 g 1 Gp 1 M 2 0 where
   shared := tickRun_hsShared g
   catchPremise := tickRun_catch g _ (by decide)

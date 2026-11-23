@@ -98,7 +98,7 @@ theorem goldilocks_finalReadTransport (S : Setup) {E : Env V}
       have hgrid : ∀ s : Nat, sp.toParams.slotTime s = (s : Time) * (4 * sp.toParams.Δ) :=
         fun s => by rw [sp.slotTime_eq]; ring
       have hyp : y ∈ H (tr.time c + sp.toParams.Δ) := hrun.antitone (hpD.trans hDt) hyt
-      have hgp : SA.gbar gst ≤ tr.time c + sp.toParams.Δ :=
+      have hgp : AC.gbar gst ≤ tr.time c + sp.toParams.Δ :=
         max_le (by linarith) (by linarith)
       have hpub : sp.toParams.IsPublic (tr.time c + sp.toParams.Δ) :=
         ⟨4 * ((W.block 3).slot : Time) + 1, by rw [hts, hgrid]; ring⟩
@@ -114,14 +114,14 @@ theorem goldilocks_finalReadTransport (S : Setup) {E : Env V}
       have hdl : ∀ k ≤ Nat.find hex,
           tr.deadline y k (max (tr.time c) gst) sp.toParams.Δ ≤ tr.time c + sp.toParams.Δ := by
         intro k hk
-        have hrs : ∀ k' ≤ k, tr.RestartAt y k' → tr.time k' ≤ SA.gbar gst := fun k' hk' hr => by
+        have hrs : ∀ k' ≤ k, tr.RestartAt y k' → tr.time k' ≤ AC.gbar gst := fun k' hk' hr => by
           have hk't : tr.time k' ≤ tr.time c + sp.toParams.Δ := (hmono (hk'.trans hk)).trans hjs.le
           exact hP.noRestart y k' ⟨hrun.antitone (hk't.trans (hpD.trans hDt)) hyt,
             hk't.trans hpD⟩ hr
         have h := Compose.deadline_le_of_restarts hrs (max (tr.time c) gst) sp.toParams.Δ
-        have hm : max (max (tr.time c) gst) (SA.gbar gst) = tr.time c := by
+        have hm : max (max (tr.time c) gst) (AC.gbar gst) = tr.time c := by
           rw [max_eq_left hg]
-          exact max_eq_left (max_le hg hc0 : SA.gbar gst ≤ tr.time c)
+          exact max_eq_left (max_le hg hc0 : AC.gbar gst ≤ tr.time c)
         rwa [hm] at h
       have hFs : Anc (tr.HonestBlocksAt (truncH H D)) (tr.state y (Nat.find hex)).fg.F
           (W.block 3) := by
@@ -138,16 +138,16 @@ theorem goldilocks_finalReadTransport (S : Setup) {E : Env V}
       have h2 := hdl k hks
       linarith
     · -- catch-up when the anchor precedes GST
-      have hlt : tr.time c < SA.gbar gst := (not_le.mp hg).trans_le (le_max_left gst 0)
+      have hlt : tr.time c < AC.gbar gst := (not_le.mp hg).trans_le (le_max_left gst 0)
       obtain ⟨ks, ⟨-, hzks⟩, hksD⟩ := hP.snapshot
-      have hu : SA.gbar gst + 2 * sp.toParams.Δ ≤ D := by
+      have hu : AC.gbar gst + 2 * sp.toParams.Δ ≤ D := by
         have := Healing.lt_cutZ (sp := sp) gst
-        change SA.gbar gst + 8 * sp.Δ < Healing.cutZ sp.toParams gst at this
-        change SA.gbar gst + 2 * sp.Δ ≤ D
+        change AC.gbar gst + 8 * sp.Δ < Healing.cutZ sp.toParams gst at this
+        change AC.gbar gst + 2 * sp.Δ ≤ D
         have : (0 : Time) < sp.Δ := hΔ
         linarith
       obtain ⟨k, hk, hak, _⟩ := Healing.accept_before_snapshot (tr := tr)
-        (show SA.gbar gst + 2 * sp.toParams.Δ ≤ tr.time j by linarith) fun q hq hfirst =>
+        (show AC.gbar gst + 2 * sp.toParams.Δ ≤ tr.time j by linarith) fun q hq hfirst =>
           hP.catchUp x c (W.block 3) hx' (hacc 3) hlt y q
             ⟨hrun.antitone (hu.trans hDt) hyt, hu⟩ hfirst (hFm q hq)
       exact ⟨k, hk, hak⟩

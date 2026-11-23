@@ -18,9 +18,9 @@ it, by `t ≤ b`, with a label past the result's. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar Vote)
+open AC (ACParams ReplayOrder Payload gbar Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
@@ -32,22 +32,22 @@ theorem ResetPremisesUpTo.latest_votes_of_recent_result_at {b t : Time}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x : Fin sp.n} {r s L : Nat}
     (hx : x ∈ H (tr.time r))
-    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocksAt H) B C)
+    {B C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hres : AC.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocksAt H) B C)
     (hrb : tr.time r ≤ b) (hts : cutZ sp.toParams g ≤ sp.ts s)
-    (hdomain : ∀ y i ell e, y ∈ H (tr.time i) → SA.CastAt tr.projAC y i ell e →
+    (hdomain : ∀ y i ell e, y ∈ H (tr.time i) → AC.CastAt tr.projAC y i ell e →
       tr.time i ≤ b → s < e.msg.slot →
       (∀ z q e', q < i → Compose.Growing.HVoteAt tr H z q e' →
-        s < e'.msg.slot → SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) →
+        s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) →
       Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
-        B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
-    (hstored : ∀ y i ell e, y ∈ H (tr.time i) → SA.CastAt tr.projAC y i ell e →
+        B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
+    (hstored : ∀ y i ell e, y ∈ H (tr.time i) → AC.CastAt tr.projAC y i ell e →
       tr.time i ≤ b → e.msg.slot = s + 1 → ∀ l ∈ (tr.projAC.state y i).locks,
         sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
         ∀ Y ∈ tr.HonestBlocksAt H, Y.root = l.block → Compatible (tr.HonestBlocksAt H) Y B)
     (htb : t ≤ b) (hsL : s < L) :
     ∀ z q e, Compose.Growing.HVoteAt tr H z q e → tr.time q ≤ t →
-      e.msg.slot = L → SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
+      e.msg.slot = L → AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
   intro z q e hv hqt he
   obtain ⟨hz, ell, hcast⟩ := Compose.Growing.hVoteAt_iff.mp hv
   exact hp.late_result_prefix_votes_before_at hx hres hBC hrb hts hdomain hstored q

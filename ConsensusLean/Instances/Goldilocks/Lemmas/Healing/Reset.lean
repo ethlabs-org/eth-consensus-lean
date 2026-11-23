@@ -53,14 +53,14 @@ only because its proof in `FGChain/Accountable` is private). -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 /-- **HS.0, bounded settling** (`Settle(Δ)`, with `κ = 2Δ`): from `u ≥ ḡ + 8Δ`, by `u + Δ`
 the effective phase after all events at `u` has changed or the run is settled at `u + Δ`. -/
-theorem settle {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+theorem settle {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+    {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
     {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
         (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H K dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ)) (u : Time)
@@ -246,10 +246,10 @@ end Potential
 /-- What every HS proof here starts from: the FG projection is an FG trace (C0.5 (c)), with
 `f < 2q − n` (from `3f ≤ n − 1`), some honest validator, and `0 ≤ D_HS ≤ A_HS` (`Δ_F ≥ Δ > 0`,
 and `G_p ≥ 0` from `Prop⁺(G_p)` at `ḡ`). -/
-private theorem hs_setup {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+private theorem hs_setup {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+    {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
     {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp : Time}
         (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H K dg g ΔF) (hp : PropPlus tr H proposer g Gp) :
@@ -283,11 +283,11 @@ has changed by `w + A_HS` (after all events there). Settled at `w` in the phase 
 state at `w` (cut `j`), HS.4 gives a phase change by `w + D_HS` (which persists to `w + A_HS`,
 `D_HS ≤ A_HS`) or the acquired common path, which HS.5's consumption step (`consume_continue`,
 with HS.1–HS.3) turns into a phase change by `w + A_HS`. -/
-theorem producer {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+theorem producer {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF Gp : Time}
-    (hrun : GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K))
+    {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF Gp : Time}
+    (hrun : GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hs : HSShared tr H K dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
     (hp : PropPlus tr H proposer g Gp)
     (w : Time) (hw : SettledAt tr H g (2 * sp.Δ) w) (j j' : Nat) (hj : tr.FirstCutFrom j w)
@@ -304,11 +304,11 @@ theorem producer {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
       hset hwit hcl j' hj'
 
 /-- **The reset count** (HR.3 (c)): the reset exists by `c_z + 6(Δ + A_HS)`. -/
-theorem reset_count {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+theorem reset_count {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF Gp : Time}
-    (hrun : GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K))
+    {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF Gp : Time}
+    (hrun : GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hs : HSShared tr H K dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
     (hp : PropPlus tr H proposer g Gp) :
     ∃ a, IsReset tr H g a ∧ a ≤ cutZ sp.toParams g + 6 * (sp.Δ + A_HS sp ΔF Gp) := by

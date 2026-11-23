@@ -5,7 +5,7 @@ public import ConsensusLean.Init
 
 @[expose] public section
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
 /-- The validators selected for each slot, independently of an execution engine. -/
 structure CommitteeDict (n : Nat) where
@@ -14,6 +14,6 @@ structure CommitteeDict (n : Nat) where
 /-- Every validator participates in every slot. -/
 def CommitteeDict.full (n : Nat) : CommitteeDict n := ⟨fun _ => Set.univ⟩
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

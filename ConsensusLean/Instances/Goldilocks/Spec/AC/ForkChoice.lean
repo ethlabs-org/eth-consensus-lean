@@ -1,11 +1,11 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Spec.SA.Locks
+public import ConsensusLean.Instances.Goldilocks.Spec.AC.Locks
 
 @[expose] public section
 
-/-! # Goldilocks SA: fork choice
+/-! # Goldilocks AC: fork choice
 
-goldilocks-spec.tex §"Fork choice" (Figure "Goldilocks: fork choice"). The Goldfish score of `B` is
+goldilocks-spec.tex §"Fork choice" (Figure "Goldilocks: fork choice"). The head score of `B` is
 its number of supporters plus the number of equivocators. A walk starts at a block (also when
 it is not in the walked tree) and descends through the eligible children in the walked tree,
 taking the one with the greatest score, ties by root order (the smaller root wins), until no
@@ -17,20 +17,20 @@ finite tree whose slots increase along parent edges (a well-formed frame) ends w
 steps. When the eligible children have no best one (only outside a well-formed frame), the walk
 stops. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} (sp : SAParams)
+variable {FGP : Type} (sp : ACParams)
 
-/-- `goldfish_score(votes, support_votes, s, B)`: equivocators count for every block. -/
-noncomputable def goldfishScore (Φ : Frm sp.n FGP) (V : View sp.n) (s : Int) (B : Blk sp.n FGP) :
+/-- `head_score(votes, support_votes, s, B)`: equivocators count for every block. -/
+noncomputable def headScore (Φ : Frm sp.n FGP) (V : View sp.n) (s : Int) (B : Blk sp.n FGP) :
     Nat :=
   (equivocators V.votes).ncard + (supporters Φ V s B).ncard
 
-/-- `goldfish_eligible(Φ, t, votes, support_votes, s, B)`. -/
-def goldfishEligible (Φ : Frm sp.n FGP) (t : Time) (V : View sp.n) (s : Int) (B : Blk sp.n FGP) :
+/-- `head_eligible(Φ, t, votes, support_votes, s, B)`. -/
+def headEligible (Φ : Frm sp.n FGP) (t : Time) (V : View sp.n) (s : Int) (B : Blk sp.n FGP) :
     Prop :=
   (¬ ∃ W ∈ Φ.viableHeads, B.parent = some W.root) ∨ B.slot = sp.slot t ∨
-    (voters V.votes).ncard < 2 * goldfishScore sp Φ V s B
+    (voters V.votes).ncard < 2 * headScore sp Φ V s B
 
 /-- `C` is the best of `S` by score, ties by root order (the smaller root wins). -/
 def IsBest (score : Blk sp.n FGP → Nat) (S : Set (Blk sp.n FGP)) (C : Blk sp.n FGP) : Prop :=
@@ -46,16 +46,16 @@ noncomputable def ghost (tree : Set (Blk sp.n FGP)) (score : Blk sp.n FGP → Na
     if h : ∃ C, IsBest sp score children C then ghost tree score eligible fuel h.choose else H
 
 /-- `get_head(𝒜, Φ, t, tree, votes, support_votes, s)`: the walk of `tree` from the anchor of
-the full viable tree, with the Goldfish score and eligibility of the view. -/
-noncomputable def getHead (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+the full viable tree, with the head score and eligibility of the view. -/
+noncomputable def getHead (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (tree : Set (Blk sp.n FGP)) (V : View sp.n) (s : Int) : Blk sp.n FGP :=
-  ghost sp tree (goldfishScore sp Φ V s) (goldfishEligible sp Φ t V s) Φ.tree.ncard
+  ghost sp tree (headScore sp Φ V s) (headEligible sp Φ t V s) Φ.tree.ncard
     (getAnchor sp A Φ t)
 
 /-- `ac_head(𝒜, Φ, t)`: the walk of the full viable tree with the latest view. -/
-noncomputable def acHead (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) : Blk sp.n FGP :=
+noncomputable def acHead (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) : Blk sp.n FGP :=
   getHead sp A Φ t (Φ.viableTree Φ.tree) (latestView sp A Φ t).1 (latestView sp A Φ t).2
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

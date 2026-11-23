@@ -1,10 +1,10 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Interface
-public import ConsensusLean.Instances.Goldilocks.Spec.SA.Confirmation
+public import ConsensusLean.Instances.Goldilocks.Spec.AC.Confirmation
 
 @[expose] public section
 
-/-! # Goldilocks SA: node actions
+/-! # Goldilocks AC: node actions
 
 goldilocks-spec.tex §"Node actions" (Figures "Goldilocks: the vote and the vote receipt" and
 "Goldilocks: block, tick, proposal and FG update").
@@ -35,27 +35,27 @@ goldilocks-spec.tex §"Node actions" (Figures "Goldilocks: the vote and the vote
   viable tree under a live fast lock of slot `slot(t) − 2` or later) when it is not at or below
   `fg_reported` (in the tree), which it then records. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} (sp : SAParams)
+variable {FGP : Type} (sp : ACParams)
 
-/-- An emission of the SA. -/
-abbrev Em (sp : SAParams) (FGP : Type) :=
-  Emission sp.n FGP (Payload sp.n) (SAState sp.n) (Vote sp.n)
+/-- An emission of the AC. -/
+abbrev Em (sp : ACParams) (FGP : Type) :=
+  Emission sp.n FGP (Payload sp.n) (ACState sp.n) (Vote sp.n)
 
 /-- `vote_ready(𝒜, Φ, s)`: a slot-`s` proposal of the tree whose slot-`(s−1)` support entries
 `(v, s−1, H)` by committee members (`sp.committee`) all have `H ∈ Φ.tree` and `H.slot ≤ s − 1`,
 and every declared head vote by a committee member of every slot-`s` proposal of the tree should
 be counted (`AllDeclaredVotesCounted`). -/
-def voteReady (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Prop :=
-  (∃ P ∈ Φ.tree, P.slot = s ∧ ∀ x ∈ blockSupport P, x.slot + 1 = s →
+def voteReady (A : ACState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Prop :=
+  (∃ P ∈ Φ.tree, P.slot = s ∧ ∀ x ∈ declaredSupportVotes P, x.slot + 1 = s →
     x.val ∈ sp.committee x.slot → ∃ H ∈ Φ.tree, H.root = x.head ∧ H.slot + 1 ≤ s) ∧
     AllDeclaredVotesCounted sp A Φ s
 
 open Classical in
 /-- `try_vote(𝒜, Φ, t)` at validator `self`, with the own vote's receipt unfolded. -/
-noncomputable def tryVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    SAState sp.n × List (Em sp FGP) :=
+noncomputable def tryVote (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    ACState sp.n × List (Em sp FGP) :=
   let s := sp.slot t
   if ¬ joined sp A t ∨ A.votedSlot = s ∨ sp.ts s + sp.Δ < t then (A, [])
   else if t < sp.ts s + sp.Δ ∧ (s = 0 ∨ ¬ voteReady sp A Φ s) then (A, [])
@@ -72,24 +72,24 @@ noncomputable def tryVote (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FG
          head := some { head := H, start := getAnchor sp A₁ Φ t, dom := dom } }] else [])
 
 /-- `ac_on_message(𝒜, Φ, t, vote)` at validator `self`. -/
-noncomputable def acOnMessage (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (v : Vote sp.n) : SAState sp.n × List (Em sp FGP) :=
+noncomputable def acOnMessage (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    (v : Vote sp.n) : ACState sp.n × List (Em sp FGP) :=
   tryVote sp self (optimisticConfirmation sp (admitVote sp A t v) Φ t) Φ t
 
 /-- The receipt part of `ac_on_block(𝒜, Φ, t, B)`: the stamp of `B`. Its declared head votes are
 not admitted (only the merged view reads them). -/
-def blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) : SAState sp.n :=
+def blockReceipt (A : ACState sp.n) (t : Time) (B : Blk sp.n FGP) : ACState sp.n :=
   { A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) }
 
 /-- `ac_on_block(𝒜, Φ, t, B)` at validator `self`. -/
-noncomputable def acOnBlock (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (B : Blk sp.n FGP) : SAState sp.n × List (Em sp FGP) :=
+noncomputable def acOnBlock (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+    (B : Blk sp.n FGP) : ACState sp.n × List (Em sp FGP) :=
   tryVote sp self (optimisticConfirmation sp (blockReceipt sp A t B) Φ t) Φ t
 
 open Classical in
 /-- `ac_on_tick(𝒜, Φ, t)` at validator `self`. -/
-noncomputable def acOnTick (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    SAState sp.n × List (Em sp FGP) :=
+noncomputable def acOnTick (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    ACState sp.n × List (Em sp FGP) :=
   let s := sp.slot t
   if ¬ joined sp A t then (A, [])
   else
@@ -99,8 +99,8 @@ noncomputable def acOnTick (self : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n F
 
 open Classical in
 /-- `ac_proposal(𝒜, Φ, t)`, at `t_s`: the parent (with its walk) and the payload, or `⊥`. -/
-noncomputable def acProposal (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    SAState sp.n × Option (DutyHead sp.n FGP (Payload sp.n) × Payload sp.n) :=
+noncomputable def acProposal (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    ACState sp.n × Option (DutyHead sp.n FGP (Payload sp.n) × Payload sp.n) :=
   if ¬ joined sp A t then (A, none)
   else
     let s : Int := sp.slot t
@@ -112,14 +112,14 @@ noncomputable def acProposal (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
 
 /-- The candidates of `ac_to_fg`: the blocks of the full viable tree under a live fast lock of
 slot `slot(t) − 2` or later. -/
-def toFGCandidates (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) : Set (Blk sp.n FGP) :=
+def toFGCandidates (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) : Set (Blk sp.n FGP) :=
   {B | B ∈ Φ.viableTree Φ.tree ∧
     ∃ l ∈ liveLocks sp A.locks Φ t, l.block = B.root ∧ l.fast = true ∧ sp.slot t ≤ l.slot + 2}
 
 open Classical in
 /-- `ac_to_fg(𝒜, Φ, t)`: `fg_confirmed` (or `⊥`). -/
-noncomputable def acToFG (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    SAState sp.n × Option (Blk sp.n FGP) :=
+noncomputable def acToFG (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    ACState sp.n × Option (Blk sp.n FGP) :=
   if ¬ joined sp A t then (A, none)
   else
     match deepest Φ (toFGCandidates sp A Φ t) with
@@ -128,6 +128,6 @@ noncomputable def acToFG (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
       if AncR Φ C A.fgReported then (A, none)
       else ({ A with fgReported := C.root }, some C)
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

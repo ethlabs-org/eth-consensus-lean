@@ -22,9 +22,9 @@ In particular this leaf does not import clean source votes or protected-source c
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -33,12 +33,12 @@ theorem result_prefix_vote_domain_before_of_domain_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     (hdomain : ∀ {x y v : Fin sp.n} {r i q m : Nat}
-      {B S : SA.Blk sp.n (List (FG.Att sp.n))},
+      {B S : AC.Blk sp.n (List (FG.Att sp.n))},
       x ∈ H (tr.time r) → y ∈ H (tr.time i) → B ∈ (tr.state x r).fg.tree → tr.time r ≤ b →
-      ∀ {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))},
-      SA.CastAt tr.projAC y i ell e → tr.time i ≤ b →
+      ∀ {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))},
+      AC.CastAt tr.projAC y i ell e → tr.time i ≤ b →
       (Anc (tr.HonestBlocksAt H) ell.frame.F B →
-        B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) →
+        B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) →
       HighOrigin tr H g v q m S → tr.time q ≤ b → m < e.msg.slot →
       Compatible (tr.HonestBlocksAt H) B S →
       (∀ z d n O, d < i → HighOrigin tr H g z d n O → Compatible (tr.HonestBlocksAt H) B O) →
@@ -47,25 +47,25 @@ theorem result_prefix_vote_domain_before_of_domain_at
         ∀ z' d' n' O', d' < i → HighOrigin tr H g z' d' n' O' →
           Compatible (tr.HonestBlocksAt H) O O') →
       Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
-        B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
+        B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
     {x y : Fin sp.n} {r s i : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
-    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocksAt H) B C)
+    {B C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
+    (hres : AC.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocksAt H) B C)
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hcast : SA.CastAt tr.projAC y i ell e) (hsi : s < e.msg.slot) (hib : tr.time i ≤ b)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hcast : AC.CastAt tr.projAC y i ell e) (hsi : s < e.msg.slot) (hib : tr.time i ≤ b)
     (hprior : ∀ z q e', q < i → Compose.Growing.HVoteAt tr H z q e' →
-      s < e'.msg.slot → SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
+      s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
     Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
-      B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
+      B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hcoh := hac.localRun.coherent
   obtain ⟨v, d, m, S, hseed, hda, hm⟩ := hp.reset_seed_at
   have hdb := hda.trans hp.reset_le
   have hms : m < s := by rw [Healing.cleanLabel_eq] at hs; omega
   have hts : cutZ sp.toParams g ≤ sp.ts s :=
-    (hp.cutZ_le_ts_of_highOrigin_at hseed).trans ((SA.ts_le_iff sp).mpr (by omega))
-  have htiming : SA.gbar g + 4 * sp.Δ ≤ sp.ts s := by
+    (hp.cutZ_le_ts_of_highOrigin_at hseed).trans ((AC.ts_le_iff sp).mpr (by omega))
+  have htiming : AC.gbar g + 4 * sp.Δ ≤ sp.ts s := by
     have := lt_cutZ sp g
     have := sp.toParams.hΔ
     linarith
@@ -74,7 +74,7 @@ theorem result_prefix_vote_domain_before_of_domain_at
   have hzq := hp.run.antitone (hp.run.time_mono hqr.le) hz
   have hqb := (hp.run.time_mono hqr.le).trans hrb
   obtain ⟨ellX, hupd, hconf, hCV⟩ := hres
-  have hCx := (frame_tree_subset_at hp.run hp.noColl hx hupd.1).2 (SA.deepest_mem hconf).1.1
+  have hCx := (frame_tree_subset_at hp.run hp.noColl hx hupd.1).2 (AC.deepest_mem hconf).1.1
   have hBx : B ∈ (tr.state x r).fg.tree := by
     have ht := hp.run.time_nonneg r
     exact mem_of_honest_anc_at hp.run hp.noColl ht
@@ -83,8 +83,8 @@ theorem result_prefix_vote_domain_before_of_domain_at
       tr.time c ≤ sp.ts s := by
     intro w c hw hcb hrest
     apply (hp.restart_le_before_at hw (Compose.projAC_restartAt.mp hrest) hcb).trans
-    have hh := (SA.ts_le_iff sp).mp ((Healing.cutZ_eq sp g) ▸ hts)
-    exact (SA.ts_le_iff sp).mpr (by omega)
+    have hh := (AC.ts_le_iff sp).mp ((Healing.cutZ_eq sp g) ▸ hts)
+    exact (AC.ts_le_iff sp).mpr (by omega)
   have hgs : g ≤ sp.ts s := by linarith [le_gbar g, sp.toParams.hΔ]
   apply hdomain hx hy hBx hrb hcast hib
     (raw_writer_voterBlockTree_before_at hp hx hy
@@ -100,19 +100,19 @@ theorem result_prefix_vote_domain_before_of_domain_at
       have hsvc := hp.sync.ac_service_at hp.run (lo := g) (hi := b) le_rfl
       have hcomp : Compatible (tr.HonestBlocksAt H) C D := by
         rcases hfl with ⟨ellD, R, huD, hR, hfast, _⟩ | hop
-        · have hDR := ((SA.deepest_mem hfast).1.1.2.2).mono
-            (SA.frameIn_of_callAt (hac.upTo (hp.run.time_nonneg c)).localRun hw
+        · have hDR := ((AC.deepest_mem hfast).1.1.2.2).mono
+            (AC.frameIn_of_callAt (hac.upTo (hp.run.time_nonneg c)).localRun hw
               ((Trace.upTo_callAt _).mpr ⟨le_rfl, huD.1⟩)).2
-          have hRR := SA.Growing.result_result_compatible_window_before_at hac hsvc hgs hx hw
+          have hRR := AC.Growing.result_result_compatible_window_before_at hac hsvc hgs hx hw
             ⟨ellX, hupd, hconf, hCV⟩ ⟨ellD, huD, hR, rfl⟩ hrb hcb
             (fun k hk hrest => hreset x k (hp.run.antitone (hp.run.time_mono hk) hx)
               ((hp.run.time_mono hk).trans hrb) hrest)
             (fun k hk hrest => hreset w k (hp.run.antitone (hp.run.time_mono hk) hw)
               ((hp.run.time_mono hk).trans hcb) hrest)
           rcases hRR with h | h
-          · exact SA.anc_total hcoh h hDR
+          · exact AC.anc_total hcoh h hDR
           · exact Or.inr (hDR.trans h)
-        · exact SA.Growing.result_optimistic_compatible_window_before_at hac hsvc hgs hx hw
+        · exact AC.Growing.result_optimistic_compatible_window_before_at hac hsvc hgs hx hw
             ⟨ellX, hupd, hconf, hCV⟩ hop hrb hcb
             (fun k hk hrest => hreset x k (hp.run.antitone (hp.run.time_mono hk) hx)
               ((hp.run.time_mono hk).trans hrb) hrest)
@@ -120,8 +120,8 @@ theorem result_prefix_vote_domain_before_of_domain_at
               (fun _ hk => hp.run.time_mono hk.le) _ v hv)
             (hp.committeeFacts.hsize _)
       rcases hcomp with h | h
-      · exact SA.anc_total hcoh (hBC.trans h) hOD
-      · exact SA.anc_total hcoh hBC (hOD.trans h)
+      · exact AC.anc_total hcoh (hBC.trans h) hOD
+      · exact AC.anc_total hcoh hBC (hOD.trans h)
     · exact KernelProof.target_compatible_later_origin_before_at hp ho hci hcb hn hprior
   · intro w c n O hci ho
     exact hp.origins_compatible_at hseed hdb ho ((hp.run.time_mono hci.le).trans hib)
@@ -134,15 +134,15 @@ theorem result_prefix_vote_domain_before_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {r s i : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
-    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
-    (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocksAt H) B C)
+    {B C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
+    (hres : AC.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocksAt H) B C)
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hcast : SA.CastAt tr.projAC y i ell e) (hsi : s < e.msg.slot) (hib : tr.time i ≤ b)
-    (hprior : ∀ z q, z ∈ H (tr.time q) → q < i → ∀ e', SA.VoteAt tr.projAC z q e' →
-      s < e'.msg.slot → SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hcast : AC.CastAt tr.projAC y i ell e) (hsi : s < e.msg.slot) (hib : tr.time i ≤ b)
+    (hprior : ∀ z q, z ∈ H (tr.time q) → q < i → ∀ e', AC.VoteAt tr.projAC z q e' →
+      s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
     Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
-      B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
+      B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   exact result_prefix_vote_domain_before_of_domain_at hp
     (KernelProof.held_target_vote_domain_before_at hp) hx hy hres hBC hs hrb hcast hsi hib
     (fun z q e' hqi hv hslot =>

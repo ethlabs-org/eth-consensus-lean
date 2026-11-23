@@ -20,10 +20,10 @@ high origin is below the proposal's parent (`reset_proposal_passes_at`). -/
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 open Regimes.Growing (hold)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -31,17 +31,17 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem reset_proposal_viable_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p y : Fin sp.n} {k i j u : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : drainTime sp a ≤ sp.ts u)
     {ellp elly : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hd : (AC.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) (hPQ : P.parent = some d.head.root)
-    (hy : y ∈ H (tr.time j)) {e : SA.Em sp (List (FG.Att sp.n))}
-    (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
+    (hy : y ∈ H (tr.time j)) {e : AC.Em sp (List (FG.Att sp.n))}
+    (hcy : AC.CastAt tr.projAC y j elly e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
     (hPy : P ∈ elly.frame.tree) :
-    P ∈ elly.frame.viableTree (SA.voterBlockTree sp e.readPoint elly.frame u) := by
+    P ∈ elly.frame.viableTree (AC.voterBlockTree sp e.readPoint elly.frame u) := by
   have hrun := hp.run
   have hU := Compose.Growing.honest_blocks_coherent hrun hp.noColl
   have hpi : p ∈ H (tr.time i) :=
@@ -52,8 +52,8 @@ theorem reset_proposal_viable_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hPsiU := Outcome.frame_tree_subset hrun hy hcy.1
   have hroot := hp.reset_vote_root_below_proposal_at hpH hactual hPs hR hci hcall hd hti hib hPQ
     hy hcy hes hjb
-  have hroot' := SA.anc_tree_of_anc_U hU hPsi hPsiU hPsi.fcRoot_mem hroot hPy
-  have hPt : P ∈ SA.voterBlockTree sp e.readPoint elly.frame u :=
+  have hroot' := AC.anc_tree_of_anc_U hU hPsi hPsiU hPsi.fcRoot_mem hroot hPy
+  have hPt : P ∈ AC.voterBlockTree sp e.readPoint elly.frame u :=
     ⟨hPy, Or.inr ⟨P, hPy, hPs, .refl⟩⟩
   have hfr := Outcome.frame_of_call hrun hy hcy.1
   have hPyStore : P ∈ (tr.state y j).fg.tree := by

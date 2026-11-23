@@ -47,7 +47,7 @@ consumer apply the bundled leaves on the truncation.
 
 namespace Consensus.Goldilocks.Generic
 
-open SA (gbar)
+open AC (gbar)
 open Healing (cutZ FirstCutAfter riseLen)
 open Healing.Growing (HZ IsReset CatchRun)
 

@@ -34,7 +34,7 @@ the honest-object facts of A1.5 come from `Compose.goldilocks_ac_projection`. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 /-! ## The cut `c_z` and the frontier `H_z` -/
 
@@ -61,7 +61,7 @@ theorem hmax_le_HZ {y : Fin P.n} (hy : y ∈ H) {j : Nat} (hj : FirstCutAfter tr
 
 end Frontier
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
@@ -98,7 +98,7 @@ entry/source witnesses. The report and signing have the same time and FG store. 
 theorem signAt_report_entry {ini} (hrun : GoldilocksRun proposer dg H tr ini) {v : Fin sp.n}
     (hv : v ∈ H) {k : Nat} {a : FG.Att sp.n} (hs : tr.SignAt v k a) :
     ∃ j, k = j + 1 ∧ tr.time j = tr.time k ∧
-      ∃ ℓ C E, SA.ToFGAt tr.projAC v j ℓ C ∧
+      ∃ ℓ C E, AC.ToFGAt tr.projAC v j ℓ C ∧
         C ∈ (tr.state v j).fg.tree ∧ E ∈ (tr.state v j).fg.tree ∧
         E.root = a.T ∧ (tr.state v j).fg.Anc E C ∧
         ((tr.state v j).fg.σ C.root).Th = E.root ∧
@@ -109,15 +109,15 @@ theorem signAt_report_entry {ini} (hrun : GoldilocksRun proposer dg H tr ini) {v
   obtain ⟨j, rfl, ℓ, hj, hcall, ht, hret, hfg⟩ := Compose.attest_source hrun.toLocalRun hv hc
   have hpc : tr.projAC.CallAt v j ℓ := Compose.projAC_callAt.2 hj
   have hC : C ∈ ℓ.frame.tree := by
-    change (SA.acToFG sp _ _ _).2 = some C at hret
-    unfold SA.acToFG at hret
+    change (AC.acToFG sp _ _ _).2 = some C at hret
+    unfold AC.acToFG at hret
     split_ifs at hret
     split at hret
     · cases hret
     · rename_i C' hC'
       split_ifs at hret
       cases hret
-      exact (SA.deepest_mem hC').1.1.1
+      exact (AC.deepest_mem hC').1.1.1
   have hCt : C ∈ (tr.state v j).fg.tree := by
     rw [(hrun.cutLaw v hv j _ hj).1] at hC
     exact hC.1
@@ -135,13 +135,13 @@ theorem cache_ahead_report {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < sp.toParams.fg.q)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {P X : SA.Blk sp.n (List (FG.Att sp.n))}
+    {P X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : X = (tr.state y i).fg.F ∨ X = (tr.state y i).fg.J)
     (hP : P ∈ (tr.state y i).fg.tree)
     (hPX : Anc (tr.HonestBlocks H) P X) (hne : P ≠ X) :
     ∃ v ∈ H, ∃ j < i, ∃ k < i, ∃ a : FG.Att sp.n, ∃ ℓ C,
       tr.SignAt v k a ∧ k = j + 1 ∧ tr.time j = tr.time k ∧ tr.time j ≤ tr.time i ∧
-      SA.ToFGAt tr.projAC v j ℓ C ∧ a.T = X.root ∧
+      AC.ToFGAt tr.projAC v j ℓ C ∧ a.T = X.root ∧
       X ∈ (tr.state v j).fg.tree ∧ Anc (tr.HonestBlocks H) X C ∧
       ((tr.state v j).fg.σ C.root).Th = X.root ∧
       ((tr.state v j).fg.σ C.root).h = ((tr.state y i).fg.σ X.root).h ∧
@@ -231,21 +231,21 @@ returns at an honest node is the block of one of its live fast locks, whose labe
 write at that node after `ḡ`, on a descendant of `C`. -/
 theorem toFG_fastLock (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} (hto : SA.ToFGAt tr.projAC x i ℓ C)
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} (hto : AC.ToFGAt tr.projAC x i ℓ C)
     (hi : cutZ sp.toParams g ≤ tr.time i) :
-    ∃ l ∈ SA.liveLocks sp (tr.state x i).ac.locks ℓ.frame (tr.time i),
+    ∃ l ∈ AC.liveLocks sp (tr.state x i).ac.locks ℓ.frame (tr.time i),
       l.fast = true ∧ l.block = C.root ∧
-      ∃ i' < i, ∃ B CV, SA.FastLockAt tr.projAC x i' l.slot B CV ∧ gbar g < tr.time i' ∧
+      ∃ i' < i, ∃ B CV, AC.FastLockAt tr.projAC x i' l.slot B CV ∧ gbar g < tr.time i' ∧
         Anc (tr.HonestBlocks H) C B := by
   have hacr := Compose.goldilocks_ac_projection_from hrun hnc
   obtain ⟨hc, -, hC⟩ := hto
-  obtain ⟨hCv, l, hl, hlb, hlf, hls⟩ := SA.toFG_candidate hC
+  obtain ⟨hCv, l, hl, hlb, hlf, hls⟩ := AC.toFG_candidate hC
   have hst := Compose.projAC_state hrun.toLocalRun hx i
   rw [hst] at hl
   refine ⟨l, hl, hlf, hlb, ?_⟩
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
   obtain ⟨j, hj, B', CV', hfl, L, hL, hLr, hLB'⟩ :=
-    SA.fast_lock_provenance hacr.localRun hacr.vstart hx i l₀ (hst ▸ hl₀) hlf
+    AC.fast_lock_provenance hacr.localRun hacr.vstart hx i l₀ (hst ▸ hl₀) hlf
   have hU := hacr.localRun.coherent
   obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocks H := by
     rcases hacr.localRun.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
@@ -254,7 +254,7 @@ theorem toFG_fastLock (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose
   · -- the lock was written in a slot after `ḡ`'s
     have hg0 := gbar_nonneg g
     have hcz : (sp.slot (gbar g) : Int) + 3 ≤ sp.slot (tr.time i) := by
-      have h := (SA.ts_le_iff_le_slot sp (hacr.localRun.time_nonneg i) _).1
+      have h := (AC.ts_le_iff_le_slot sp (hacr.localRun.time_nonneg i) _).1
         ((cutZ_eq sp g).symm.le.trans hi)
       push_cast at h
       exact h
@@ -263,8 +263,8 @@ theorem toFG_fastLock (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose
       omega
     have hτ : gbar g < sp.ts (l₀.slot : Int) := by
       refine lt_of_lt_of_le (not_le.1 fun h => ?_)
-        ((SA.ts_le_iff sp (a := (sp.slot (gbar g) : Int) + 1) (b := l₀.slot)).2 (by omega))
-      have := ((SA.ts_le_iff_le_slot sp hg0) _).1 h
+        ((AC.ts_le_iff sp (a := (sp.slot (gbar g) : Int) + 1) (b := l₀.slot)).2 (by omega))
+      have := ((AC.ts_le_iff_le_slot sp hg0) _).1 h
       omega
     rcases hfl with ⟨ℓ', C', ⟨-, -, ht, -⟩, -⟩ | ⟨ℓ', A', -, hs, -⟩
     · have ht' : tr.time j = sp.ts (l₀.slot : Int) + 6 * sp.Δ := ht
@@ -273,10 +273,10 @@ theorem toFG_fastLock (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose
       linarith
     · refine lt_of_lt_of_le hτ ?_
       rw [← hs]
-      exact ((SA.ts_le_iff_le_slot sp (hacr.localRun.time_nonneg j)) _).2 le_rfl
+      exact ((AC.ts_le_iff_le_slot sp (hacr.localRun.time_nonneg j)) _).2 le_rfl
   · -- `C` is the viable ancestor of the lock's block, which is `L`
     have hCt : C ∈ ℓ.frame.tree := hCv.1
-    obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hΦ hB₀
+    obtain ⟨hvat, hva⟩ := AC.viableAncestor_anc hΦ hB₀
     have hCe : C = ℓ.frame.viableAncestor B₀ := hU.1 (hΦU hCt) (hΦU hvat) hlb.symm
     have hLe : L = B₀ := hU.1 hL (hΦU hB₀) (hLr.trans hB₀r.symm)
     subst hCe hLe
@@ -287,7 +287,7 @@ theorem toFG_fastLock (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose
 /-- **HR.1 (b) (G0.2 (f)).** The chain of an honest accepted block of state height `≥ H_z + 2`
 carries an honest attestation of height `H_z + 1`. -/
 theorem honest_row_of_height (hrun : GoldilocksRun proposer dg H tr ini) (hh : tr.HealthyRun H ΔF g)
-    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) {X : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} (hy : y ∈ H) (i : Nat) {X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state y i).fg.tree) (hXh : HZ tr H g + 2 ≤ ((tr.state y i).fg.σ X.root).h) :
     ∃ Y, (tr.state y i).fg.Anc Y X ∧ ∃ att ∈ Y.fgPayload, att.val ∈ H ∧ att.h = HZ tr H g + 1 :=
   Store.exists_honest_att_of_lt (Compose.fg_reachable hrun.toLocalRun hy i) (faulty_lt_q hh) hX _
@@ -316,9 +316,9 @@ reset when that cut is at or before the reset (it was signed before that cut's t
 height is at most `H_z`. -/
 private theorem held_row_lt (hrun : GoldilocksRun proposer dg H tr ini) (hh : tr.HealthyRun H ΔF g)
     {a : Time} (hR : IsReset tr H g a) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {s : Option (FG.Att sp.n)}
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Option (FG.Att sp.n)}
     (hc : tr.CallAt y k (.fg (.attest C s))) (hk : tr.time k ≤ a)
-    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y k).fg.tree) :
+    {X : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y k).fg.tree) :
     ((tr.state y k).fg.σ X.root).h < HZ tr H g + 2 := by
   by_contra hXh
   obtain ⟨Y, hYX, att, hatt, hattH, hatth⟩ :=
@@ -348,7 +348,7 @@ theorem reset_le_of_high (hrun : GoldilocksRun proposer dg H tr ini) (hh : tr.He
 theorem hmax_le_at_reset (hrun : GoldilocksRun proposer dg H tr ini) (hh : tr.HealthyRun H ΔF g)
     {a : Time}
     (hR : IsReset tr H g a) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {src : SA.Blk sp.n (List (FG.Att sp.n))} {signed : Option (FG.Att sp.n)}
+    {src : AC.Blk sp.n (List (FG.Att sp.n))} {signed : Option (FG.Att sp.n)}
     (hc : tr.CallAt y k (.fg (.attest src signed))) (hk : tr.time k = a) :
     (tr.state y k).fg.hmax ≤ HZ tr H g + 1 := by
   obtain ⟨-, -, -, -, -, ⟨X, hX, hXh⟩, -⟩ := Store.cache_invariants _ _ _ _
@@ -365,7 +365,7 @@ theorem signed_le_at_reset (hrun : GoldilocksRun proposer dg H tr ini) (hh : tr.
 
 /-- An entry of a high honest chain has, at the honest node that holds it, a state of height
 `≥ H_z + 1`. -/
-private theorem highEntry_h {E : SA.Blk sp.n (List (FG.Att sp.n))}
+private theorem highEntry_h {E : AC.Blk sp.n (List (FG.Att sp.n))}
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hE : E ∈ HighEntries tr H (HZ tr H g)) :
     ∃ y ∈ H, ∃ i, E ∈ (tr.state y i).fg.tree ∧ HZ tr H g + 1 ≤ ((tr.state y i).fg.σ E.root).h := by
@@ -385,7 +385,7 @@ entry by `a_z − Δ` are the faulty validators: an honest one would have signed
 height `≥ H_z + 1` (the entry's state is the same at every honest node) before `a_z`. -/
 theorem namers_lt_q (hrun : GoldilocksRun proposer dg H tr ini) (hh : tr.HealthyRun H ΔF g)
     (hnc : Compose.NoCollRun dg tr) {a : Time} (hR : IsReset tr H g a)
-    {E : SA.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ HighEntries tr H (HZ tr H g)) :
+    {E : AC.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ HighEntries tr H (HZ tr H g)) :
     (Store.namers sp.toParams (Payload sp.n) H tr.projFG (a - sp.Δ) E).ncard <
       sp.toParams.fg.q := by
   have hinj :=

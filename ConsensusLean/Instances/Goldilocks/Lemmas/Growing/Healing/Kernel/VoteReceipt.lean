@@ -22,10 +22,10 @@ snapshot. This is stronger than honesty of an arbitrary historical holder.
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 open ProposalImpl
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -33,13 +33,13 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem high_origin_frozen_head_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x y : Fin sp.n} {r l k : Nat} {O : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x y : Fin sp.n} {r l k : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) (hrb : tr.time r ≤ b)
     (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ell e) (hl : l < e.msg.slot)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y k ell e) (hl : l < e.msg.slot)
     (hFO : Anc (tr.HonestBlocksAt H) ell.frame.F O) :
-    ∃ D ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
+    ∃ D ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
       Anc (tr.HonestBlocksAt H) O D := by
   have hm := hp.run.time_mono
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
@@ -49,11 +49,11 @@ theorem high_origin_frozen_head_at
   have hf := hp.committee_cs2_at (s := l) (Healing.gbar_le_of_cutZ_le sp hlab)
     ((ProposalImpl.ts_le_of_fastLock_at hp.run hfl).trans hrb) (hp.run.time_nonneg r) hrb
   obtain ⟨z, hz, j, ev, hv, hes, W, hW, hWr, hDW⟩ :=
-    SA.fastLock_honest_vote hr _
-      (SA.CommitteePAt.upTo hm hp.run.antitone hp.committeeFacts.hP _)
+    AC.fastLock_honest_vote hr _
+      (AC.CommitteePAt.upTo hm hp.run.antitone hp.committeeFacts.hP _)
       (hp.run.antitone (le_max_right _ _) ho.1)
-      ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hf
-  obtain ⟨hjr, hv₀⟩ := SA.upTo_voteAt.mp hv
+      ((AC.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hf
+  obtain ⟨hjr, hv₀⟩ := AC.upTo_voteAt.mp hv
   have hzj := hp.run.antitone hjr hz
   obtain ⟨ellZ, hcz, he⟩ := hv₀
   have hrj := (hac.upTo (hp.run.time_nonneg j)).localRun
@@ -61,7 +61,7 @@ theorem high_origin_frozen_head_at
   obtain ⟨⟨W', hW't, hW'r, _⟩, hjt⟩ :=
     Compose.cast_head_fcRoot hrj hp.run.vstart hzj ⟨hcz', he⟩
   have heq : W' = W := hac.localRun.coherent.1
-    ((SA.frameIn_of_callAt hrj hzj hcz').2 hW't) hW (hW'r.trans hWr.symm)
+    ((AC.frameIn_of_callAt hrj hzj hcz').2 hW't) hW (hW'r.trans hWr.symm)
   subst W'
   have hOW := hOD.trans hDW
   have hzZ : z ∈ H (max (tr.time j) (cutZ sp.toParams g)) :=
@@ -86,7 +86,7 @@ theorem high_origin_frozen_head_at
     have hrC := (hac.upTo (hp.run.time_nonneg c)).localRun
     have hcC' := Trace.upTo_callAt tr.projAC |>.mpr (And.intro le_rfl hcC)
     exact (frame_tree_subset_at hp.run hp.noColl hzc₀ hcC).2
-      ((SA.accept_new sp hrC hzc₀ ⟨ellC, hcC', heC⟩).1 ellC hcC')
+      ((AC.accept_new sp hrC hzc₀ ⟨ellC, hcC', heC⟩).1 ellC hcC')
   have hgc : g ≤ tr.time c := by
     have hcZ := cutZ_lt_of_anc_at hp ho hzc hWc hOW
     have := lt_cutZ sp g
@@ -102,16 +102,16 @@ theorem high_origin_frozen_head_at
 theorem raw_target_frozen_witness_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x y : Fin sp.n} {r l k : Nat} {B O E : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x y : Fin sp.n} {r l k : Nat} {B O E : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) (hrb : tr.time r ≤ b)
     (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ell e) (hl : l < e.msg.slot)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y k ell e) (hl : l < e.msg.slot)
     (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B)
     (hBO : Anc (tr.HonestBlocksAt H) B O) (_hE : E ∈ (tr.state y k).fg.tree)
     (hEO : Anc (tr.HonestBlocksAt H) E O)
     (hfloor : (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h) :
-    ∃ D ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
+    ∃ D ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
       Anc (tr.HonestBlocksAt H) B D ∧ (tr.state y k).fg.IsViable D := by
   have hm := hp.run.time_mono
   obtain ⟨W, hWT, hOW⟩ := high_origin_frozen_head_at hp ho hrb hy hc hl (hFB.trans hBO)

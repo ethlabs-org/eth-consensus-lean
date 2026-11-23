@@ -42,7 +42,7 @@ theorem _root_.Consensus.Goldilocks.Generic.RunMap.healthy_awake_at
 theorem healthy_preparation_awake_at (run : (Sys (goldilocks S) V).Run)
     (hn : 1 ≤ Fintype.card V) {β : ℚ} {g b : Time} (hb : b ≤ run.2.horizon)
     (hH : ((Sys (goldilocks S) V).pt run).HealthyOn β g b) :
-    ∀ y t, y ∈ honestKeysAt S run.2 t → SA.gbar g ≤ t → t ≤ b →
+    ∀ y t, y ∈ honestKeysAt S run.2 t → AC.gbar g ≤ t → t ≤ b →
       (simTraceAt S run.2 hn).awake y t := by
   refine healthy_awake_of_bindings (tr := simTraceAt S run.2 hn)
     (H := honestKeysAt S run.2) run.2.key ?_ ?_ hb hH
@@ -106,12 +106,12 @@ healthy wakefulness. -/
 theorem healthy_preparation_noRestart_at (run : (Sys (goldilocks S) V).Run)
     (hn : 1 ≤ Fintype.card V) (hv : (Sys (goldilocks S) V).Valid run) {β : ℚ} {g b : Time}
     (hb : b ≤ run.2.horizon) (hH : ((Sys (goldilocks S) V).pt run).HealthyOn β g b) :
-    Healing.Growing.NoRestartUpTo (simTraceAt S run.2 hn) (honestKeysAt S run.2) (SA.gbar g)
+    Healing.Growing.NoRestartUpTo (simTraceAt S run.2 hn) (honestKeysAt S run.2) (AC.gbar g)
       b := by
   rw [Healing.Growing.noRestartUpTo_iff]
   intro y i hy hr hib
   by_contra h
-  have hgi : SA.gbar g < (simTraceAt S run.2 hn).time i := lt_of_not_ge h
+  have hgi : AC.gbar g < (simTraceAt S run.2 hn).time i := lt_of_not_ge h
   have hrun := simTraceAt_goldilocksRun S run.2 hn hv
   have hy0 : y ∈ honestKeys S run.2 := by
     rw [mem_honestKeys_iff S run.2]

@@ -19,7 +19,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Pre
   `t + (4k + 6)Δ ≤ b ≤ horizon`.
 
 The R.2 rows for a time-indexed honest set `H` (antitone), over `Growing.GoldilocksRun` from the
-committee start of a slot dictionary `K` (`SA.committeeStart`), with the committee facts of `K`
+committee start of a slot dictionary `K` (`AC.committeeStart`), with the committee facts of `K`
 (`CommitteeFacts`) and the committee support `CommitteeSleepy`. Readers, proposers and the sleepy
 look-ahead are those of `Statements/Regimes/Growing`; the margins (`τ + 6Δ`, `D = (4k + 6)Δ`) are
 those of the static rows.
@@ -28,19 +28,19 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Regimes.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
 /-- **R.2, inclusion, under growing faults, at a committee.** From the committee start of a slot
 dictionary `K`, with its committee facts and committee support, under `Sleepy` with look-ahead
 `ahead`, every honest proposal released at `τ` by a proposer ready at `τ` and still honest at
 `τ + hold` is in the confirmed read of every node ready at `t`, for every `t ≥ τ + 6Δ`. -/
 def IncludeSleepy : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time)
-    (K : SA.CommitteeDict sp.n),
+    (K : AC.CommitteeDict sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K) →
+      (AC.committeeStart sp.genesisRoot K) →
     Compose.NoCollRun dg tr → Compose.Growing.CommitteeFacts tr H K →
     tr.SleepyRunAt H ΔF (ahead sp) → CommitteeSleepy tr H K →
     ∀ τ P, ReadyProposalAt tr H (catchUp sp) τ (hold sp) P →
@@ -55,12 +55,12 @@ proposer ready at `τ` and honest through its hold is a new common entry at `t +
 `t + D` of every node ready then, in none of the reads at `t` of the nodes ready then, and each of
 those reads is an ancestor of each ready read at `t + D`. -/
 def GrowSleepy : Prop :=
-  ∀ (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time) (k : Nat)
-    (K : SA.CommitteeDict sp.n),
+    (K : AC.CommitteeDict sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K) →
+      (AC.committeeStart sp.genesisRoot K) →
     Compose.NoCollRun dg tr → Compose.Growing.CommitteeFacts tr H K →
     tr.SleepyRunAt H ΔF (ahead sp) → CommitteeSleepy tr H K → 1 ≤ k →
     let D := (4 * k + 6) * sp.Δ

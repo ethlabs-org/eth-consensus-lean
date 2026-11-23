@@ -7,7 +7,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks SA: proposer and voters agree on unlocking (A1.1)
+/-! # Goldilocks AC: proposer and voters agree on unlocking (A1.1)
 
 The proposal's view and an honest voter's merged view give the same opponents to every block of
 slot at most `s`, under `Sync[t_s, t_{s+1}]`, when both frames hold the same blocks of slot at
@@ -23,23 +23,23 @@ validator. Heads of slot at most `s` are in both trees, ancestry below slot `s` 
 proposer has stamped the blocks of its tree, so a resolved vote at the voter is resolved at the
 proposer. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → SAState sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → ACState sp.n}
 
 /-- `frameIn_of_call` with the unlock given. -/
 theorem frameIn_of_callU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
-    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
+    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
   rcases hr.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
 
-theorem frameIn_of_call (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {x : Fin sp.n}
-    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
+theorem frameIn_of_call (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {x : Fin sp.n}
+    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U :=
   frameIn_of_callU (hr := hr.toU) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc)
 
@@ -47,10 +47,10 @@ theorem frameIn_of_call (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {x
 theorem frame_acceptedU
     {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
-    ∀ {ℓ : ACLabel (goldilocksSA sp FGP ro)}, tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
+    ∀ {ℓ : ACLabel (goldilocksAC sp FGP ro)}, tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
       X.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k X := by
-  have step : ∀ (Φ Φ' : Frm sp.n FGP) (t : Time) (c : (goldilocksSA sp FGP ro).Call),
-      (goldilocksSA sp FGP ro).CallOK U Φ t c Φ' → ∀ X ∈ Φ'.tree, X ∈ Φ.tree ∨ c = .block X := by
+  have step : ∀ (Φ Φ' : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP ro).Call),
+      (goldilocksAC sp FGP ro).CallOK U Φ t c Φ' → ∀ X ∈ Φ'.tree, X ∈ Φ.tree ∨ c = .block X := by
     intro Φ Φ' t c hok X hX
     obtain ⟨-, hc⟩ := hok
     cases c with
@@ -79,9 +79,9 @@ theorem frame_acceptedU
       · exact Or.inr ⟨i, le_rfl, ℓ, hc, h⟩
 
 /-- Every block of an honest node's frame is genesis or was accepted by the node. -/
-theorem frame_accepted (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+theorem frame_accepted (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
-    ∀ {ℓ : ACLabel (goldilocksSA sp FGP ro)}, tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
+    ∀ {ℓ : ACLabel (goldilocksAC sp FGP ro)}, tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
       X.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k X :=
   frame_acceptedU (hr := hr.toU) (y := y) (hy := hy) (i := i)
 
@@ -89,7 +89,7 @@ theorem frame_accepted (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fi
 private theorem genesis_memU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
-    ∀ {ℓ : ACLabel (goldilocksSA sp FGP ro)}, tr.CallAt y i ℓ →
+    ∀ {ℓ : ACLabel (goldilocksAC sp FGP ro)}, tr.CallAt y i ℓ →
       ∃ G ∈ U, G.root = sp.genesisRoot ∧ G.slot = 0 := by
   induction i using Nat.strong_induction_on with
   | _ i ih =>
@@ -122,7 +122,7 @@ theorem frameBlock_unique (hrun : ACRun proposer tr H U) {σ : Nat} (hσ : σ �
 
 /-- A vote with a finite stamp whose head is a stamped block of the tree of slot at most the
 vote's is resolved. -/
-theorem resolutionTime_ne_top {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+theorem resolutionTime_ne_top {A : ACState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     {v : Vote sp.n} {Hd : Blk sp.n FGP} (hHd : Hd ∈ Φ.tree) (hr : Hd.root = v.head)
     (hs : Hd.slot ≤ v.slot) (hv : A.voteStamp v ≠ ⊤) (hb : A.blockStamp v.head ≠ ⊤) :
     resolutionTime A Φ v ≠ ⊤ := by
@@ -138,16 +138,16 @@ theorem resolutionTime_ne_top {A : SAState sp.n} {Φ : Frm sp.n FGP} (hΦ : Fram
     · omega
     · exact (max_lt (lt_top_iff_ne_top.2 hv) (lt_top_iff_ne_top.2 hb)).ne
 
-theorem mem_voteViewList_fst {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
+theorem mem_voteViewList_fst {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
     {c : ETime} {v : Vote sp.n} :
     v ∈ (voteViewList A Φ (s : Int) c).1 ↔ v ∈ A.pool s ∧ A.voteStamp v < c := by
-  simp [voteViewList, SAState.poolAt]
+  simp [voteViewList, ACState.poolAt]
 
-theorem mem_voteViewList_snd {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
+theorem mem_voteViewList_snd {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
     {c : ETime} {v : Vote sp.n} :
     v ∈ (voteViewList A Φ (s : Int) c).2 ↔
       (v ∈ A.pool s ∧ A.voteStamp v < c) ∧ resolutionTime A Φ v < c := by
-  simp [voteViewList, SAState.poolAt]
+  simp [voteViewList, ACState.poolAt]
   tauto
 
 theorem etime_of_lt_top (t : Time) : ETime.of t < ⊤ :=
@@ -155,7 +155,7 @@ theorem etime_of_lt_top (t : Time) : ETime.of t < ⊤ :=
 
 /-- `proposal_payload` with the unlock given. -/
 theorem proposal_payloadWith
-    {L : Set Lock} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+    {L : Set Lock} {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
     (h : (acProposalWith sp L A Φ t).2 = some (d, pay)) :
     joined sp A t ∧ pay = voteViewList A Φ ((sp.slot t : Int) - 1) ⊤ ∧
@@ -168,7 +168,7 @@ theorem proposal_payloadWith
 
 /-- The payload of a proposal is the proposer's view of the previous slot's pool, and the
 proposer is joined. -/
-theorem proposal_payload {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+theorem proposal_payload {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
     (h : (acProposal sp A Φ t).2 = some (d, pay)) :
     joined sp A t ∧ pay = voteViewList A Φ ((sp.slot t : Int) - 1) ⊤ ∧
@@ -188,7 +188,7 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
   obtain ⟨hΦy, -⟩ := frameIn_of_call hr hy hc.1
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hcast : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   have hsi : sp.slot (tr.time i) = s + 1 := by
     rw [hti]; exact slot_of_mem sp (s + 1) le_rfl ((ts_lt_iff sp).2 (by push_cast; omega))
@@ -208,10 +208,10 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
     rwa [hsi, hcast] at this
   -- the only slot-`(s+1)` block of the honest frames is the proposal
   obtain ⟨P, hP, hPs, hPpay⟩ := hPy
-  have hPv : blockVotes P = (voteViewList (tr.state p i) ℓp.frame (s : Int) ⊤).1 := by
-    simp only [blockVotes, hPpay]
-  have hPsup : blockSupport P = (voteViewList (tr.state p i) ℓp.frame (s : Int) ⊤).2 := by
-    simp only [blockSupport, hPpay]
+  have hPv : declaredHeadVotes P = (voteViewList (tr.state p i) ℓp.frame (s : Int) ⊤).1 := by
+    simp only [declaredHeadVotes, hPpay]
+  have hPsup : declaredSupportVotes P = (voteViewList (tr.state p i) ℓp.frame (s : Int) ⊤).2 := by
+    simp only [declaredSupportVotes, hPpay]
   have huniq : ∀ X, HonestFrameBlock tr H X → X.slot = s + 1 → X = P := fun X hX hXs =>
     frameBlock_unique hrun (by omega) (hpp ▸ hp) hX ⟨y, hy, j, ℓy, hc.1, hP⟩ hXs hPs
   -- the proposal's votes are the proposer's slot-`s` pool
@@ -256,6 +256,6 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
       resolutionTime_ne_top hΦp hHd hHdr hHds (hpool x hx).ne (hHdr ▸ hbs Hd hHd))
     hstar hcount hBs
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

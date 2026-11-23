@@ -27,7 +27,7 @@ With `n = 1` and `f = 0` this shows the premises consistent, not met with faults
 
 namespace Consensus.Goldilocks.Witness.One
 
-open SA Node ChainFrame
+open AC Node ChainFrame
 
 /-! ## Ready readers, read points, cuts and proposals -/
 

@@ -25,11 +25,11 @@ delivery is turned into acceptance. -/
 
 namespace Consensus.Goldilocks.Healing.Recovery
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-- **No honest restart after `ḡ`** (`Healthy(g)`): a restart follows a time `u` at which the
 node was asleep, so `u < ḡ`; the wake after `u` is a restart at or before `ḡ`, and it is a call
@@ -64,10 +64,10 @@ theorem deadline_le_of_gbar (hp : ResetPremises tr H K proposer dg g ΔF a) {y :
 
 /-- **C5: a finalizing carrier covers every later honest cache.** -/
 theorem coverage_of_finalizing_carrier (hp : ResetPremises tr H K proposer dg g ΔF a)
-    {q : Fin sp.n} {iP : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {q : Fin sp.n} {iP : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hq : q ∈ H) (hP : tr.AcceptAt q iP P)
     (hPh : HZ tr H g + 1 ≤ ((tr.post iP).fg.σ P.root).h)
-    {x : Fin sp.n} {kX : Nat} {X Fx : SA.Blk sp.n (List (FG.Att sp.n))} {D : Time}
+    {x : Fin sp.n} {kX : Nat} {X Fx : AC.Blk sp.n (List (FG.Att sp.n))} {D : Time}
     (hx : x ∈ H) (hX : tr.AcceptAt x kX X)
     (hFx : Fx ∈ (tr.post kX).fg.tree)
     (hroot : Fx.root = ((tr.post kX).fg.σ X.root).F)

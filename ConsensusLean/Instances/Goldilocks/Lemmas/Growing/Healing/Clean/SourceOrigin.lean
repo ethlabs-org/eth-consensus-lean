@@ -17,9 +17,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -28,10 +28,10 @@ theorem clean_source_compatible_high_origin_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hC : SA.ResultAt tr.projAC x r s C CV ∨ SA.OptimisticLockAt tr.projAC x r s C CV)
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hC : AC.ResultAt tr.projAC x r s C CV ∨ AC.OptimisticLockAt tr.projAC x r s C CV)
     (hs : cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hrb : tr.time r ≤ b)
-    {y : Fin sp.n} {q t : Nat} {D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} {q t : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g y q t D) (hqb : tr.time q ≤ b) :
     Compatible (tr.HonestBlocksAt H) C D := by
   have hyo := hp.run.antitone (le_max_right _ _) ho.1
@@ -42,8 +42,8 @@ theorem clean_source_compatible_high_origin_at
   have hts := hp.clean_window_timing_at hclean s (by have := sp.two_le_k; omega)
   rcases lt_trichotomy t s with h | rfl | h
   · have supporter : ∃ z j, z ∈ H (tr.time r) ∧ j ≤ r ∧ ∃ e,
-        SA.VoteAt tr.projAC z j e ∧ e.msg.slot = s ∧
-          SA.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
+        AC.VoteAt tr.projAC z j e ∧ e.msg.slot = s ∧
+          AC.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
       rcases hC with hC | hC
       · obtain ⟨z, hz, j, hjr, e, hv, _, hes, hCH⟩ :=
           ProposalImpl.result_supporter_at hp hx hC .refl hrb hts
@@ -60,20 +60,20 @@ theorem clean_source_compatible_high_origin_at
       ⟨y, q, tr.time q, hp.run.time_nonneg q, fun _ hk => hm hk.le, hyo, hframe.2 hB⟩
     have hDE : Anc (tr.HonestBlocksAt H) D E := by
       rw [hD]
-      exact (SA.anc_viableAncestor ell.frame E).mono sub
+      exact (AC.anc_viableAncestor ell.frame E).mono sub
     have hCE : Compatible (tr.HonestBlocksAt H) C E := by
       rcases hfl with ⟨ellX, R, hu, hR, hfast, _⟩ | hop
-      · have hER := ((SA.deepest_mem hfast).1.1.2.2).mono
-          ((SA.frameIn_of_callAt (hac.upTo (hp.run.time_nonneg q)).localRun hyo
+      · have hER := ((AC.deepest_mem hfast).1.1.2.2).mono
+          ((AC.frameIn_of_callAt (hac.upTo (hp.run.time_nonneg q)).localRun hyo
             ((Trace.upTo_callAt _).mpr ⟨le_rfl, hu.1⟩)).2)
         have hRC := hp.result_source_compatible_at hyo hx ⟨ellX, hu, hR, rfl⟩ hC
           hqb hrb hts
         rcases hRC with h | h
         · exact Or.inr (hER.trans h)
-        · exact SA.anc_total hU h hER
+        · exact AC.anc_total hU h hER
       · exact hp.sources_same_label_compatible_at hx hyo hC (Or.inr hop) hrb hqb hts
     rcases hCE with h | h
-    · exact SA.anc_total hU h hDE
+    · exact AC.anc_total hU h hDE
     · exact Or.inr (hDE.trans h)
   · obtain ⟨CV', ell, E, hcall, hfl, hD⟩ := ho.2.2.1
     obtain ⟨ell', hc', hE⟩ := Healing.fastLock_mem hfl
@@ -83,16 +83,16 @@ theorem clean_source_compatible_high_origin_at
       ⟨y, q, tr.time q, hp.run.time_nonneg q, fun _ hk => hm hk.le, hyo, hframe.2 hB⟩
     have hDE : Anc (tr.HonestBlocksAt H) D E := by
       rw [hD]
-      exact (SA.anc_viableAncestor ell.frame E).mono sub
-    have hEC := SA.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg q)) _
-      (SA.CommitteePAt.upTo hm hp.run.antitone hp.committeeFacts.hP _) hyo (Nat.lt_succ_self q)
-      ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩)
+      exact (AC.anc_viableAncestor ell.frame E).mono sub
+    have hEC := AC.fastLock_compatible_of_votes (hac.upTo (hp.run.time_nonneg q)) _
+      (AC.CommitteePAt.upTo hm hp.run.antitone hp.committeeFacts.hP _) hyo (Nat.lt_succ_self q)
+      ((AC.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩)
       (hp.committee_cs2_at
         (Healing.gbar_le_of_cutZ_le sp (hp.cutZ_le_ts_of_highOrigin_at ho))
         ((ProposalImpl.ts_le_of_fastLock_at hp.run hfl).trans hqb) (hp.run.time_nonneg q) hqb)
       (B := C) (by
         intro z hz j hj e hv hes
-        obtain ⟨hjq, hv⟩ := SA.upTo_voteAt.mp hv
+        obtain ⟨hjq, hv⟩ := AC.upTo_voteAt.mp hv
         have hzj := hp.run.antitone hjq hz
         obtain ⟨ell, hcast⟩ := hv
         have hjb := hjq.trans hqb
@@ -103,7 +103,7 @@ theorem clean_source_compatible_high_origin_at
             ell e hcast (by omega))
     rcases hEC with h | h
     · exact Or.inr (hDE.trans h)
-    · exact SA.anc_total hU h hDE
+    · exact AC.anc_total hU h hDE
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 

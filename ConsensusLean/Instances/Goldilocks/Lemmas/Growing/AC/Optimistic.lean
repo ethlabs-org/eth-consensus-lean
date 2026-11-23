@@ -14,10 +14,10 @@ The writer may be compromised before the vote. Its historical pool is read at th
 cut, but the shared validator is chosen outside the faulty set at the consuming vote.
 -/
 
-namespace Consensus.Goldilocks.SA.Growing
+namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
-  {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
+  {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 theorem optimistic_transfer_stored
@@ -25,7 +25,7 @@ theorem optimistic_transfer_stored
     (hP : ∀ t, CommitteeP K (tr.upTo t) (H t)) (hT : ∀ t, CommitteeT K (tr.upTo t) (H t))
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hx : x ∈ H (tr.time i₀)) (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D)
     (hf : 2 * (K.committee s ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
     (hf1 : 2 * (K.committee (s + 1) ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
@@ -75,7 +75,7 @@ theorem optimistic_transfer_stored
     have hsv : e.msg.slot = sp.slot (tr.time i) := (castAt_spec hry.localRun hy hc').2.1
     have ht := (ts_le_iff_le_slot sp (hr.time_nonneg i) (s + 1 : Nat)).mpr
       (by rw [← hsv, hs])
-    simp only [SAParams.ts] at ht hslt
+    simp only [ACParams.ts] at ht hslt
     push_cast at ht
     have := sp.toParams.hΔ
     linarith
@@ -83,7 +83,7 @@ theorem optimistic_transfer_stored
     have hsv : e.msg.slot = sp.slot (tr.time i) := (castAt_spec hry.localRun hy hc').2.1
     have ht := (ts_le_iff_le_slot sp (hr.time_nonneg i) (s + 1 : Nat)).mpr
       (by rw [← hsv, hs])
-    simp only [SAParams.ts] at ht ⊢
+    simp only [ACParams.ts] at ht ⊢
     push_cast at ht
     have := sp.toParams.hΔ
     linarith
@@ -105,7 +105,7 @@ theorem optimistic_transfer_stored
     refine ⟨?_, fun hwH => honest_not_equivocator hry hy hc' hwH hw⟩
     obtain ⟨a, ha, -, -, -, rfl, -⟩ := hw
     exact hW ⟨a, ha, rfl⟩
-  have hm : ∀ (Φ' : Frm sp.n FGP) (A' : SAState sp.n) (D' : Blk sp.n FGP), FrameOK Φ' →
+  have hm : ∀ (Φ' : Frm sp.n FGP) (A' : ACState sp.n) (D' : Blk sp.n FGP), FrameOK Φ' →
       Φ'.tree ⊆ U → D' ∈ Φ'.tree →
       3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A' Φ' s D').ncard →
       (∀ v ∈ A'.pool s, v.val ∈ H (tr.time i) → v.slot = s ∧
@@ -124,7 +124,7 @@ theorem optimistic_transfer_stored
     obtain ⟨hs₂, j₂, hj₂, e₂, hvote₂, rfl⟩ := hpool v₂ hv₂ (hv₂w ▸ hwH)
     have hvote₁' := (upTo_voteAt).mp hvote₁
     have hvote₁'' := upTo_voteAt.mpr ⟨hvote₁'.1.trans hxi, hvote₁'.2⟩
-    obtain ⟨_, rfl⟩ := SA.one_vote_per_slotU sp FGP ro (H (tr.time i)) U
+    obtain ⟨_, rfl⟩ := AC.one_vote_per_slotU sp FGP ro (H (tr.time i)) U
       (tr.upTo (tr.time i)) hry.localRun.toU _ hwH j₁ j₂ e₁ e₂ hvote₁''
       (hv₂w ▸ hvote₂)
       (by rw [optimisticPoint_pool_slot hrx.localRun hrx.vstart hx hpt' hv₁, hs₂])
@@ -153,13 +153,13 @@ theorem optimistic_transfer_stored
   · exact he ▸ hBt
   · exact (Anc.mem hcore he).2
 
-theorem optimistic_transfer (sp : SAParams) :
+theorem optimistic_transfer (sp : ACParams) :
     OptimisticTransfer sp := by
   intro FGP ro H U tr proposer hrun K hP hT hsize s x y i₀ i B CV ℓ e hx hopt hf hf1 hy hc hs
     hcarry hv he
   exact optimistic_transfer_stored hrun K (hP.upTo hrun.localRun.time_mono hrun.localRun.antitone)
     (hT.upTo hrun.localRun.antitone) hsize hx hopt .refl hf hf1 hy hc hs hcarry hv he
 
-end Consensus.Goldilocks.SA.Growing
+end Consensus.Goldilocks.AC.Growing
 
 end

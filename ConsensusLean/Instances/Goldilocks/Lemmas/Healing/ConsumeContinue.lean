@@ -30,20 +30,20 @@ from the acquired path's witness (an honest proposal `W` of slot `s`, entry `E` 
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
   {i₀ m : Nat}
-  {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))}
+  {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))}
 
 /-- The slot of an entry is at most the slot of the block it is the entry of. -/
 private theorem entry_slot_le (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {W E : SA.Blk sp.n (List (FG.Att sp.n))} {h : Nat}
+    {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {W E : AC.Blk sp.n (List (FG.Att sp.n))} {h : Nat}
     (hpost : tr.post k = tr.state p (k + 1)) (hE : EntryOf (tr.post k).fg W E h) :
     E.slot ≤ W.slot :=
   slot_le_of_anc (Compose.honest_blocks_coherent hrun.toLocalRun hnc)
@@ -54,7 +54,7 @@ private theorem ts_entry_le {e s : Nat} (h : e ≤ s) :
     sp.ts (e + sp.toParams.δt : Nat) ≤ sp.ts s + 4 * sp.Δ * (sp.toParams.δt : Time) := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have he : (e : Int) ≤ s := by exact_mod_cast h
-  simp only [SAParams.ts]
+  simp only [ACParams.ts]
   push_cast
   linarith [sp.toParams.hΔ, mul_le_mul_of_nonneg_left he sp.toParams.hΔ.le]
 
@@ -62,24 +62,24 @@ private theorem ts_entry_le {e s : Nat} (h : e ≤ s) :
 (`Service`'s `consume_continue` with the acquired path destructured, its attestations from
 `historical_source_rows`, and the phase `(m, c)` through `j_A`): a contradiction. -/
 theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K))
+      (AC.committeeStart sp.genesisRoot K))
     (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hret : ViableWitnessRetention) (hclean : CleanLockDrain)
     (hset : SettledIn tr H g w i₀ m c)
-    (hcl : ∀ y ∈ H, ∀ k (C : SA.Blk sp.n (List (FG.Att sp.n))) (signed : Option (FG.Att sp.n)),
+    (hcl : ∀ y ∈ H, ∀ k (C : AC.Blk sp.n (List (FG.Att sp.n))) (signed : Option (FG.Att sp.n)),
       tr.CallAt y k (.fg (.attest C signed)) → i₀ ≤ k → PhaseOn tr.projFG H i₀ k m c →
       ∀ E h, EntryOf (tr.state y k).fg C E h → ((tr.state y k).fg.σ C.root).h = h →
         phaseFloor m c ≤ h →
         EffAllowed (tr.state y k).fg m c C →
         (∃ att, signed = some att ∧ att.h = h ∧ att.T = E.root) ∨
         ∃ k' < k, ∃ att, tr.SignAt y k' att ∧ att.h = h ∧ att.T = E.root)
-    {s h kW : Nat} {E W : SA.Blk sp.n (List (FG.Att sp.n))} (h1 : h = phaseFloor m c ∨ h = m)
+    {s h kW : Nat} {E W : AC.Blk sp.n (List (FG.Att sp.n))} (h1 : h = phaseFloor m c ∨ h = m)
     (hW : tr.ProposesAt (proposer s) kW W) (hWs : W.slot = s)
     (hpH : proposer s ∈ H) (hE : EntryOf (tr.post kW).fg W E h)
     (hws : w ≤ sp.ts s) (hr : rTime sp w ≤ sp.ts s)
     (hvD : sp.ts s + 6 * sp.Δ ≤ w + D_HS sp Gp)
-    (hparents : ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
+    (hparents : ∀ (s' : Nat) (P' : AC.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), s < s' →
       P'.slot = s' → tr.ProposesAt (proposer s') k' P' →
       proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
       ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) W Pr)
@@ -115,7 +115,7 @@ theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr
       PhaseOn tr.projFG H i₀ j m c :=
     fun T hT j hj k' h₁ h₂ => hOn k' h₁ (h₂.trans (hj.le_of_le hjA hT))
   -- an honest proposal accepted before `w + A` has height at most the frontier `m`
-  have hcap : ∀ {q : Fin sp.n} {kq : Nat} {Q : SA.Blk sp.n (List (FG.Att sp.n))}, q ∈ H →
+  have hcap : ∀ {q : Fin sp.n} {kq : Nat} {Q : AC.Blk sp.n (List (FG.Att sp.n))}, q ∈ H →
       tr.ProposesAt q kq Q → w ≤ tr.time kq → tr.time kq ≤ w + A_HS sp ΔF Gp →
       ((tr.post kq).fg.σ Q.root).h ≤ m := by
     intro q kq Q hq hQ hw₁ hw₂
@@ -124,16 +124,16 @@ theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr
     have := hi₀ kq hw₁
     rw [hpost]
     exact h_le_of_phaseAt hrun hnc hq le_rfl (hOn (kq + 1) (by omega) (by omega)) hQt
-  have htime : ∀ {q : Fin sp.n} {kq z : Nat} {Q : SA.Blk sp.n (List (FG.Att sp.n))},
+  have htime : ∀ {q : Fin sp.n} {kq z : Nat} {Q : AC.Blk sp.n (List (FG.Att sp.n))},
       tr.ProposesAt q kq Q → Q.slot = z → tr.time kq = sp.ts z := fun hQ hQs => by
     rw [hQ.2.2, hQs, sp.slotTime_eq]; rfl
   have hslot : ∀ {a b : Nat}, sp.ts a < sp.ts b → a < b := fun h => by
-    exact_mod_cast (SA.ts_lt_iff sp).1 h
+    exact_mod_cast (AC.ts_lt_iff sp).1 h
   have hpred : ∀ z : Nat, sp.ts ((z : Int) - 1) = sp.ts z - 4 * sp.Δ := fun z => by
-    simp only [SAParams.ts]; ring
+    simp only [ACParams.ts]; ring
   have hsucc : ∀ {a b : Nat}, a < b → sp.ts a + 4 * sp.Δ ≤ sp.ts b := fun {a b} h => by
-    have : sp.ts ((a : Int) + 1) ≤ sp.ts b := (SA.ts_le_iff sp).2 (by omega)
-    simp only [SAParams.ts] at this ⊢
+    have : sp.ts ((a : Int) + 1) ≤ sp.ts b := (AC.ts_le_iff sp).2 (by omega)
+    simp only [ACParams.ts] at this ⊢
     linarith only [this]
   have hfloor : phaseFloor m c ≤ m := by cases c <;> simp only [phaseFloor] <;> omega
   -- the settled cut is at or before `W`'s proposal, at `t_s`
@@ -141,16 +141,16 @@ theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr
     have := hrun.time_mono (hi₀ kW (by rw [htime hW hWs]; exact hws))
     rwa [htime hW hWs] at this
   -- HS.3 (b) at a ready proposal of a slot `z > s` whose votes are before `w + A`
-  have hprot : ∀ {z kZ : Nat} {Z : SA.Blk sp.n (List (FG.Att sp.n))},
+  have hprot : ∀ {z kZ : Nat} {Z : AC.Blk sp.n (List (FG.Att sp.n))},
       ReadyProposal tr H proposer (proposer z) kZ z Z → s < z →
       sp.ts z + sp.Δ ≤ w + A_HS sp ΔF Gp →
-      (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → e.msg.slot = z →
+      (∀ y ∈ H, ∀ k ℓ e, AC.CastAt tr.projAC y k ℓ e → e.msg.slot = z →
         e.msg.head = Z.root ∧
-        (Z ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame z) ∨
+        (Z ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame z) ∨
           Anc (tr.HonestBlocks H) Z ℓ.frame.fcRoot)) ∧
-      (∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → z < e.msg.slot →
-        PhaseOn tr.projFG H i₀ k m c → SA.VoteExtends (tr.HonestBlocks H) e.msg Z) ∧
-      ∀ (s' : Nat) (P' : SA.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), z < s' →
+      (∀ y ∈ H, ∀ k ℓ e, AC.CastAt tr.projAC y k ℓ e → z < e.msg.slot →
+        PhaseOn tr.projFG H i₀ k m c → AC.VoteExtends (tr.HonestBlocks H) e.msg Z) ∧
+      ∀ (s' : Nat) (P' : AC.Blk sp.n (List (FG.Att sp.n))) (k' : Nat), z < s' →
         P'.slot = s' → tr.ProposesAt (proposer s') k' P' →
         proposer s' ∈ H → PhaseOn tr.projFG H i₀ k' m c →
         ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) Z Pr := by

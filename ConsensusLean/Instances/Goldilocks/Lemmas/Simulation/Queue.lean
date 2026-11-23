@@ -25,22 +25,22 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote Payload SAState)
+open AC (ACParams ReplayOrder Vote Payload ACState)
 
 variable {binding : VoteBinding}
 
 section Pools
 
-variable {sp : SAParams} {FGP : Type}
+variable {sp : ACParams} {FGP : Type}
 
-private def PoolIn (P : Vote sp.n → Prop) (A : SAState sp.n) : Prop :=
+private def PoolIn (P : Vote sp.n → Prop) (A : ACState sp.n) : Prop :=
   ∀ s, ∀ v ∈ A.pool s, P v
 
-private theorem pool_admit {P : Vote sp.n → Prop} {A : SAState sp.n}
+private theorem pool_admit {P : Vote sp.n → Prop} {A : ACState sp.n}
     (h : PoolIn P A) (t : Time) (v : Vote sp.n) (hv : P v) :
-    PoolIn P (SA.admitVote sp A t v) := by
+    PoolIn P (AC.admitVote sp A t v) := by
   intro s w hw
-  unfold SA.admitVote at hw
+  unfold AC.admitVote at hw
   split_ifs at hw
   · exact h s w hw
   · exact h s w hw
@@ -52,10 +52,10 @@ private theorem pool_admit {P : Vote sp.n → Prop} {A : SAState sp.n}
     · exact h s w hw
 
 private theorem pool_tryVote {P : Vote sp.n → Prop} (self : Fin sp.n)
-    (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) (h : PoolIn P A)
-    (he : ∀ e ∈ (SA.tryVote sp self A Φ t).2, P e.msg) :
-    PoolIn P (SA.tryVote sp self A Φ t).1 := by
-  unfold SA.tryVote at he ⊢
+    (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time) (h : PoolIn P A)
+    (he : ∀ e ∈ (AC.tryVote sp self A Φ t).2, P e.msg) :
+    PoolIn P (AC.tryVote sp self A Φ t).1 := by
+  unfold AC.tryVote at he ⊢
   dsimp only at he ⊢
   split_ifs at he ⊢
   · exact h
@@ -63,99 +63,99 @@ private theorem pool_tryVote {P : Vote sp.n → Prop} (self : Fin sp.n)
   all_goals try exact h
   all_goals
     intro s v hv
-    rw [SA.optimistic_pool_eq] at hv
+    rw [AC.optimistic_pool_eq] at hv
     apply pool_admit (A := _) (P := P) (t := t) (v := _) ?_ ?_ s v hv
     · exact h
     · exact he _ (List.mem_singleton_self _)
 
 private theorem pool_block {P : Vote sp.n → Prop} (self : Fin sp.n)
-    (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) (B : SA.Blk sp.n FGP)
+    (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time) (B : AC.Blk sp.n FGP)
     (h : PoolIn P A)
-    (he : ∀ e ∈ (SA.acOnBlock sp self A Φ t B).2, P e.msg) :
-    PoolIn P (SA.acOnBlock sp self A Φ t B).1 := by
+    (he : ∀ e ∈ (AC.acOnBlock sp self A Φ t B).2, P e.msg) :
+    PoolIn P (AC.acOnBlock sp self A Φ t B).1 := by
   apply pool_tryVote self _ Φ t _ he
   intro s v hv
-  rw [SA.optimistic_pool_eq] at hv
+  rw [AC.optimistic_pool_eq] at hv
   exact h s v hv
 
 private theorem pool_message {P : Vote sp.n → Prop} (self : Fin sp.n)
-    (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) (m : Vote sp.n)
+    (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time) (m : Vote sp.n)
     (h : PoolIn P A) (hm : P m)
-    (he : ∀ e ∈ (SA.acOnMessage sp self A Φ t m).2, P e.msg) :
-    PoolIn P (SA.acOnMessage sp self A Φ t m).1 := by
+    (he : ∀ e ∈ (AC.acOnMessage sp self A Φ t m).2, P e.msg) :
+    PoolIn P (AC.acOnMessage sp self A Φ t m).1 := by
   apply pool_tryVote self _ Φ t _ he
   intro s v hv
-  rw [SA.optimistic_pool_eq] at hv
+  rw [AC.optimistic_pool_eq] at hv
   exact pool_admit h t m hm s v hv
 
 private theorem pool_tick {P : Vote sp.n → Prop} (self : Fin sp.n)
-    (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) (h : PoolIn P A)
-    (he : ∀ e ∈ (SA.acOnTick sp self A Φ t).2, P e.msg) :
-    PoolIn P (SA.acOnTick sp self A Φ t).1 := by
-  unfold SA.acOnTick at he ⊢
+    (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time) (h : PoolIn P A)
+    (he : ∀ e ∈ (AC.acOnTick sp self A Φ t).2, P e.msg) :
+    PoolIn P (AC.acOnTick sp self A Φ t).1 := by
+  unfold AC.acOnTick at he ⊢
   dsimp only at he ⊢
   split_ifs at he ⊢
   all_goals first
     | exact h
     | exact pool_tryVote self A Φ t h he
     | intro s v hv
-      rw [SA.updateConfirmation_pool_eq] at hv
+      rw [AC.updateConfirmation_pool_eq] at hv
       first | exact h s v hv | exact pool_tryVote self A Φ t h he s v hv
 
 /-- Restart replay can only add actual emissions to its cleared pools. -/
 theorem restart_pool_inventory (P : Vote sp.n → Prop) (ro : ReplayOrder sp FGP)
-    (self : Fin sp.n) (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time)
-    (he : ∀ e ∈ (SA.acRestart sp ro self A Φ t).2, P e.msg) :
-    ∀ s, ∀ v ∈ (SA.acRestart sp ro self A Φ t).1.pool s, P v := by
-  unfold SA.acRestart at he ⊢
+    (self : Fin sp.n) (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time)
+    (he : ∀ e ∈ (AC.acRestart sp ro self A Φ t).2, P e.msg) :
+    ∀ s, ∀ v ∈ (AC.acRestart sp ro self A Φ t).1.pool s, P v := by
+  unfold AC.acRestart at he ⊢
   generalize ro.order t Φ = l at he ⊢
-  have key : ∀ (l : List (SA.Blk sp.n FGP)) (acc : SAState sp.n × List (SA.Em sp FGP)),
+  have key : ∀ (l : List (AC.Blk sp.n FGP)) (acc : ACState sp.n × List (AC.Em sp FGP)),
       PoolIn P acc.1 →
-      (∀ e ∈ (l.foldl (fun acc B => let r := SA.acOnBlock sp self acc.1 Φ t B;
+      (∀ e ∈ (l.foldl (fun acc B => let r := AC.acOnBlock sp self acc.1 Φ t B;
         (r.1, acc.2 ++ r.2)) acc).2, P e.msg) →
-      PoolIn P (l.foldl (fun acc B => let r := SA.acOnBlock sp self acc.1 Φ t B;
+      PoolIn P (l.foldl (fun acc B => let r := AC.acOnBlock sp self acc.1 Φ t B;
         (r.1, acc.2 ++ r.2)) acc).1 := by
     intro l
     induction l with
     | nil => exact fun _ h _ => h
     | cons B l ih =>
       intro acc h he
-      have append_mem : ∀ (l : List (SA.Blk sp.n FGP)) acc,
-          acc.2 ⊆ (l.foldl (fun acc B => let r := SA.acOnBlock sp self acc.1 Φ t B;
+      have append_mem : ∀ (l : List (AC.Blk sp.n FGP)) acc,
+          acc.2 ⊆ (l.foldl (fun acc B => let r := AC.acOnBlock sp self acc.1 Φ t B;
             (r.1, acc.2 ++ r.2)) acc).2 := by
         intro l
         induction l with
         | nil => exact fun _ _ h => h
         | cons B l ih => exact fun acc e he => ih _ (List.mem_append_left _ he)
-      apply ih ((SA.acOnBlock sp self acc.1 Φ t B).1,
-        acc.2 ++ (SA.acOnBlock sp self acc.1 Φ t B).2)
+      apply ih ((AC.acOnBlock sp self acc.1 Φ t B).1,
+        acc.2 ++ (AC.acOnBlock sp self acc.1 Φ t B).2)
         (pool_block self _ Φ t B h ?_) he
       intro e he'
       exact he e (append_mem l _ (List.mem_append_right _ he'))
   exact key l _ (fun s v hv => False.elim (List.not_mem_nil hv)) he
 
-/-- **One SA call keeps a vote predicate on the pool**, given it of its message input
+/-- **One AC call keeps a vote predicate on the pool**, given it of its message input
 (if any) and of its emissions. -/
 theorem pool_step_inventory (P : Vote sp.n → Prop) (ro : ReplayOrder sp FGP) (self : Fin sp.n)
-    (A : SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) (c : (SA.goldilocksSA sp FGP ro).Call)
+    (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time) (c : (AC.goldilocksAC sp FGP ro).Call)
     (h : ∀ s, ∀ v ∈ A.pool s, P v)
     (hc : match c with
       | .message v => P v
       | _ => True)
-    (he : ∀ e ∈ ((SA.goldilocksSA sp FGP ro).step self A Φ t c).2, P e.msg) :
-    ∀ s, ∀ v ∈ ((SA.goldilocksSA sp FGP ro).step self A Φ t c).1.pool s, P v := by
+    (he : ∀ e ∈ ((AC.goldilocksAC sp FGP ro).step self A Φ t c).2, P e.msg) :
+    ∀ s, ∀ v ∈ ((AC.goldilocksAC sp FGP ro).step self A Φ t c).1.pool s, P v := by
   cases c with
   | block B => exact pool_block self A Φ t B h he
   | message v => exact pool_message self A Φ t v h hc he
   | tick => exact pool_tick self A Φ t h he
   | restart => exact restart_pool_inventory P ro self A Φ t he
   | proposal =>
-    change PoolIn P (SA.acProposal sp A Φ t).1
-    unfold SA.acProposal
+    change PoolIn P (AC.acProposal sp A Φ t).1
+    unfold AC.acProposal
     split_ifs <;> exact h
   | toFG =>
-    change PoolIn P (SA.acToFG sp A Φ t).1
-    unfold SA.acToFG
+    change PoolIn P (AC.acToFG sp A Φ t).1
+    unfold AC.acToFG
     split_ifs
     · split
       · exact h
@@ -166,7 +166,7 @@ end Pools
 
 section Inventory
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Inventory before an engine operation. The predicate will be membership in the seen
 closure or in the queue; stored block payloads are needed again by restart replay. -/
@@ -263,16 +263,16 @@ private theorem inventory_proposal {P : Wire sp.n binding → Prop}
     {st : NodeState (goldilocksNode sp ro)} (h : Inventory P st) (t : Time) :
     Inventory P (Node.acProposal st t).1 := by
   refine ⟨h.reachable, h.blocks, ?_, h.atts⟩
-  change PoolIn _ (SA.acProposal sp st.ac (frame st) t).1
-  unfold SA.acProposal
+  change PoolIn _ (AC.acProposal sp st.ac (frame st) t).1
+  unfold AC.acProposal
   split_ifs <;> exact h.votes
 
 private theorem inventory_toFG {P : Wire sp.n binding → Prop}
     {st : NodeState (goldilocksNode sp ro)} (h : Inventory P st) (t : Time) :
     Inventory P (Node.acToFG st t).1 := by
   refine ⟨h.reachable, h.blocks, ?_, h.atts⟩
-  change PoolIn _ (SA.acToFG sp st.ac (frame st) t).1
-  unfold SA.acToFG
+  change PoolIn _ (AC.acToFG sp st.ac (frame st) t).1
+  unfold AC.acToFG
   split_ifs
   · split
     · exact h.votes
@@ -284,8 +284,8 @@ private theorem proposal_inventory {P : Wire sp.n binding → Prop} (st : State 
     {cs : List (Wire sp.n binding)} (hp : (propose st s).2 = some (par, info, cs)) :
     ∀ o ∈ cs, P o := by
   simp only [propose_eq, Node.acProposal] at hp
-  dsimp only [goldilocksNode, SA.goldilocksSA] at hp
-  unfold SA.acProposal at hp
+  dsimp only [goldilocksNode, AC.goldilocksAC] at hp
+  unfold AC.acProposal at hp
   dsimp only at hp
   split_ifs at hp
   · have hcs := (Option.some.inj hp)
@@ -298,7 +298,7 @@ end Inventory
 
 section ShapeInventory
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 private def Pending (st : State sp ro binding) (o : Wire sp.n binding) : Prop :=
   (∃ v, o = voteObj v ∧ .vote (encodeVote v) ∈ st.outbox) ∨

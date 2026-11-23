@@ -5,7 +5,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks SA: what a result carries to a voter (A1.8 (c), (d))
+/-! # Goldilocks AC: what a result carries to a voter (A1.8 (c), (d))
 
 For an update result `C` of an honest `X` in slot `s` with counted votes `CV`, and an honest
 `y`'s slot-`(s+1)` vote with `Carry_y(s, ·, C)` and the writer-pool condition (d):
@@ -19,15 +19,15 @@ For an update result `C` of an honest `X` in slot `s` with counted votes `CV`, a
 * the merged view's voters are participants at `X` (by (d));
 * the counted validators are a strict majority of `X`'s participants (`get_confirmation`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → SAState sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → ACState sp.n}
 
-theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ : Nat}
+theorem mem_admitVote_pool {A : ACState sp.n} {t : Time} {v x : Vote sp.n} {σ : Nat}
     (h : x ∈ A.pool σ) : x ∈ (admitVote sp A t v).pool σ := by
   unfold admitVote
   split_ifs
@@ -42,7 +42,7 @@ theorem mem_admitVote_pool {A : SAState sp.n} {t : Time} {v x : Vote sp.n} {σ :
 point with the own vote admitted and the optimistic check run. -/
 theorem pool_post_of_voteBranchAtU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {R : ACState sp.n}
     (hb : VoteBranchAt tr y i ℓ R) {σ : Nat} {v : Vote sp.n} (hv : v ∈ R.pool σ) :
     v ∈ (tr.post i).pool σ := by
   rcases post_of_voteBranchAtU hr hy hb with ⟨-, -, hpost⟩ | ⟨-, e, -, -, -, -, hpost⟩
@@ -56,12 +56,12 @@ permission: every vote of the read point's merged view of slot `s + 1` has slot 
 theorem merged_vote_slot_branchU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {R : ACState sp.n}
     (hb : VoteBranchAt tr y i ℓ R) {s : Nat} :
     ∀ v ∈ (mergedVoteView sp R ℓ.frame (s + 1)).votes, v.slot = s := by
   rintro v (hv | ⟨B, hB, hBs, hv, -⟩)
   · have hv : v ∈ R.poolAt ((s + 1 : Nat) - 1 : Int) := (List.mem_filter.1 hv).1
-    simp only [SAState.poolAt] at hv
+    simp only [ACState.poolAt] at hv
     split_ifs at hv with hneg
     · simp at hv
     have hpost : v ∈ (tr.post i).pool s :=
@@ -79,16 +79,16 @@ theorem merged_vote_slot_branchU
 theorem merged_vote_slotU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {s : Nat} :
     ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s :=
   merged_vote_slot_branchU hr hini hy (voteBranchAt_of_castAtU hr hy hc)
 
 /-- Every vote of an honest voter's merged view of slot `s + 1` has slot `s`, from starts up to
 the vote permission. -/
-theorem merged_vote_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem merged_vote_slot (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {s : Nat} :
     ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s :=
   merged_vote_slotU hr.toU hini hy hc
@@ -96,7 +96,7 @@ theorem merged_vote_slot (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
 /-- `merged_support_subset` with the unlock given. -/
 theorem merged_support_subsetU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (σ : Nat) :
     (mergedVoteView sp e.readPoint ℓ.frame σ).support ⊆
       (mergedVoteView sp e.readPoint ℓ.frame σ).votes := by
@@ -105,9 +105,9 @@ theorem merged_support_subsetU
   · exact Or.inr ⟨B, hB, hBs, (frame_validPayloadU sp hr hy hc.1 B hB).2.1.subset hv, hK, hc'⟩
 
 /-- The support of an honest voter's merged view is among its votes. -/
-theorem merged_support_subset (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem merged_support_subset (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (σ : Nat) :
     (mergedVoteView sp e.readPoint ℓ.frame σ).support ⊆
       (mergedVoteView sp e.readPoint ℓ.frame σ).votes :=
@@ -129,7 +129,7 @@ theorem result_majority {X : Fin sp.n} {i₀ s : Nat} {C : Blk sp.n FGP} {CV : S
 theorem merged_voters_subsetU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {s : Nat} {P : List (Vote sp.n)}
     (hd : ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ P ∨ v.val ∈ equivocators {w | w ∈ P}) :
@@ -141,9 +141,9 @@ theorem merged_voters_subsetU
 
 /-- Under the writer-pool condition (d), the voters of `y`'s merged view are participants at
 `X`, from starts up to the vote permission. -/
-theorem merged_voters_subset (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem merged_voters_subset (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {s : Nat} {P : List (Vote sp.n)}
     (hd : ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ P ∨ v.val ∈ equivocators {w | w ∈ P}) :
@@ -159,13 +159,13 @@ theorem lookup_of_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {B : Blk sp.n FGP}
     obtain ⟨hB', hr⟩ := lookup_eq_some h
     exact congrArg some (hΦ.coherent.1 hB' hB hr)
 
-private theorem admitVote_fields (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+private theorem admitVote_fields (A : ACState sp.n) (t : Time) (v : Vote sp.n) :
     (admitVote sp A t v).blockStamp = A.blockStamp ∧
       (admitVote sp A t v).restartTime = A.restartTime := by
   unfold admitVote
   split_ifs <;> exact ⟨rfl, rfl⟩
 
-private theorem optimistic_fields (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+private theorem optimistic_fields (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmationM sp wm A Φ t).blockStamp = A.blockStamp ∧
       (optimisticConfirmationM sp wm A Φ t).restartTime = A.restartTime := by
   refine optimisticConfirmationM_of (P := fun X => X.blockStamp = A.blockStamp ∧
@@ -175,7 +175,7 @@ private theorem optimistic_fields (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Ti
   · exact ⟨rfl, rfl⟩
   · split_ifs <;> exact ⟨rfl, rfl⟩
 
-private theorem blockReceipt_blockStamp (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
+private theorem blockReceipt_blockStamp (A : ACState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (blockReceipt sp A t B).blockStamp = Function.update A.blockStamp B.root (ETime.of t) :=
   rfl
 
@@ -183,14 +183,14 @@ private theorem blockReceipt_blockStamp (A : SAState sp.n) (t : Time) (B : Blk s
 except for the block that an `on_block` call receives, with the unlock given. -/
 theorem readPoint_blockStamp_branchU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
-    {R : SAState sp.n} (hb : VoteBranchAt tr y i ℓ R) {r : Nat}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {R : ACState sp.n} (hb : VoteBranchAt tr y i ℓ R) {r : Nat}
     (hrB : ∀ B, ℓ.call = .block B → r ≠ B.root) :
     R.blockStamp r = (tr.state y i).blockStamp r := by
   obtain ⟨-, rfl, -⟩ := voteBranchAt_inputU hr hy hb
-  have hR : ∀ (P : SAState sp.n) (L : Set Lock),
+  have hR : ∀ (P : ACState sp.n) (L : Set Lock),
       ({ (if 0 < sp.slot (tr.time i) then { P with locks := L } else P) with
-        votedSlot := (sp.slot (tr.time i) : Int) } : SAState sp.n).blockStamp = P.blockStamp := by
+        votedSlot := (sp.slot (tr.time i) : Int) } : ACState sp.n).blockStamp = P.blockStamp := by
     intro P L
     split_ifs <;> rfl
   rw [hR]
@@ -212,7 +212,7 @@ theorem readPoint_blockStamp_branchU
 vote branch). -/
 theorem readPoint_blockStampU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {r : Nat}
     (hrB : ∀ B, ℓ.call = .block B → r ≠ B.root) :
     e.readPoint.blockStamp r = (tr.state y i).blockStamp r :=
@@ -220,8 +220,8 @@ theorem readPoint_blockStampU
 
 /-- The read point of an honest vote has the block stamps of the state before its call, except
 for the block that an `on_block` call receives. -/
-theorem readPoint_blockStamp {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+theorem readPoint_blockStamp {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {r : Nat}
     (hrB : ∀ B, ℓ.call = .block B → r ≠ B.root) :
     e.readPoint.blockStamp r = (tr.state y i).blockStamp r :=
@@ -231,9 +231,9 @@ theorem readPoint_blockStamp {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U
 emission read point, including through restart replay. Unique acceptance excludes a
 late `block` call overwriting that stamp. From starts up to the vote permission. -/
 theorem readPoint_blockStamp_lt_of_acceptedBefore
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksSA sp FGP ro)}
+    {ell : ACLabel (goldilocksAC sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ell e) {B : Blk sp.n FGP}
     (hB : B ∈ ell.frame.tree) (hacc : AcceptedBefore tr y B (freeze sp e.msg.slot))
     (hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < freeze sp e.msg.slot)
@@ -258,7 +258,7 @@ theorem readPoint_blockStamp_lt_of_acceptedBefore
 theorem carried_supporter_branchU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n} (hb : VoteBranchAt tr y i ℓ R)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {R : ACState sp.n} (hb : VoteBranchAt tr y i ℓ R)
     {s : Nat} (hs : sp.slot (tr.time i) = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree)
     {v : Vote sp.n} (hvs : v.slot = s) (hheld : HeldBefore R v (sp.ts s + 3 * sp.Δ))
     (hhead : ∃ Hv ∈ U, Hv.root = v.head ∧ Hv.slot ≤ s ∧ Anc U C Hv ∧
@@ -278,7 +278,7 @@ theorem carried_supporter_branchU
   have hT : sp.ts s + 3 * sp.Δ < tr.time i := by
     have h := (ts_le_iff_le_slot sp (hr.time_nonneg i) ((s : Int) + 1)).2
       (by rw [hti]; push_cast; rfl)
-    simp only [SAParams.ts] at h ⊢
+    simp only [ACParams.ts] at h ⊢
     linarith
   obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_callU sp hr hy _ _ hc
   -- the head is in the voter's tree
@@ -309,7 +309,7 @@ theorem carried_supporter_branchU
   -- the head is not the block that this very call receives
   have hne : ∀ B, ℓ.call = .block B → v.head ≠ B.root := by
     intro B₀ hcall hB
-    have key : ∀ Φ, (goldilocksSA sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame →
+    have key : ∀ Φ, (goldilocksAC sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame →
         FrameStep Φ B₀ ℓ.frame := by
       intro Φ hok
       rw [hcall] at hok
@@ -355,7 +355,7 @@ theorem carried_supporter_branchU
   refine ⟨hneq, v, Or.inl ?_, rfl, by simp [hvs], Hv, hHvt, hHvr,
     anc_tree_of_anc_U hU hΦ hΦU hC hCHv hHvt⟩
   refine List.mem_filter.2 ⟨List.mem_filter.2 ⟨?_, ?_⟩, by simpa using hres⟩
-  · simp only [SAState.poolAt, ite_false, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) from
+  · simp only [ACState.poolAt, ite_false, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) from
       not_lt.2 (sub_nonneg.2 (Int.ofNat_le.2 (Nat.le_add_left 1 s)))]
     simpa [hvs] using hheld.1
   · simpa [hfz] using hheld.2
@@ -365,7 +365,7 @@ theorem carried_supporter_branchU
 theorem carried_supporterU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
     (hs : e.msg.slot = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree) {v : Vote sp.n}
     (hvs : v.slot = s) (hheld : HeldBefore e.readPoint v (sp.ts s + 3 * sp.Δ))
     (hhead : ∃ Hv ∈ U, Hv.root = v.head ∧ Hv.slot ≤ s ∧ Anc U C Hv ∧
@@ -384,7 +384,7 @@ and the vote is resolved before the freeze: the node is joined, so its restarts 
 `t_s`). The node need not be able to vote in the slot. From starts up to the vote permission. -/
 theorem carried_supporter_branch (hrun : ACRun proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n} (hb : VoteBranchAt tr y i ℓ R)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {R : ACState sp.n} (hb : VoteBranchAt tr y i ℓ R)
     {s : Nat} (hs : sp.slot (tr.time i) = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree)
     {v : Vote sp.n} (hvs : v.slot = s) (hheld : HeldBefore R v (sp.ts s + 3 * sp.Δ))
     (hhead : ∃ Hv ∈ U, Hv.root = v.head ∧ Hv.slot ≤ s ∧ Anc U C Hv ∧
@@ -401,7 +401,7 @@ validator does not equivocate in the voter's merged view, makes that validator a
 permission. -/
 theorem carried_supporter (hrun : ACRun proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
     (hs : e.msg.slot = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree) {v : Vote sp.n}
     (hvs : v.slot = s) (hheld : HeldBefore e.readPoint v (sp.ts s + 3 * sp.Δ))
     (hhead : ∃ Hv ∈ U, Hv.root = v.head ∧ Hv.slot ≤ s ∧ Anc U C Hv ∧
@@ -414,7 +414,7 @@ theorem carried_supporter (hrun : ACRun proposer tr H U ini)
 theorem carried_coverU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
     (hs : e.msg.slot = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree) {CV : Set (Vote sp.n)}
     (hcarry : CarryAt tr U y i e s CV) {v : Vote sp.n} (hv : v ∈ CV) (hvs : v.slot = s)
     (hhead : ∃ Hv ∈ U, Hv.root = v.head ∧ Hv.slot ≤ s ∧ Anc U C Hv) :
@@ -425,7 +425,7 @@ theorem carried_coverU
       u ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes := by
     intro u hus hu
     refine Or.inl (List.mem_filter.2 ⟨?_, ?_⟩)
-    · simp only [SAState.poolAt, ite_false, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) from
+    · simp only [ACState.poolAt, ite_false, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) from
         not_lt.2 (sub_nonneg.2 (Int.ofNat_le.2 (Nat.le_add_left 1 s)))]
       simpa [hus] using hu.1
     · simpa [freeze] using hu.2
@@ -445,7 +445,7 @@ covers, whose head (of slot at most `s`) extends a block `C` of the voter's tree
 vote beside the held one). From starts up to the vote permission. -/
 theorem carried_cover (hrun : ACRun proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {s : Nat}
     (hs : e.msg.slot = s + 1) {C : Blk sp.n FGP} (hC : C ∈ ℓ.frame.tree) {CV : Set (Vote sp.n)}
     (hcarry : CarryAt tr U y i e s CV) {v : Vote sp.n} (hv : v ∈ CV) (hvs : v.slot = s)
     (hhead : ∃ Hv ∈ U, Hv.root = v.head ∧ Hv.slot ≤ s ∧ Anc U C Hv) :
@@ -458,7 +458,7 @@ theorem counted_supportersU
     {u : Nat → Set Lock} {ini} (hrun : ACRunU wm u proposer tr H U ini) {X y : Fin sp.n}
     (hX : X ∈ H)
         (hy : y ∈ H)
-    {i₀ i s : Nat} {C D : Blk sp.n FGP} {ℓX ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {i₀ i s : Nat} {C D : Blk sp.n FGP} {ℓX ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hcX : tr.CallAt X i₀ ℓX) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) (hCD : Anc U C D)
     (hcarry : CarryAt tr U y i e s (fastCounted sp (tr.state X i₀) ℓX.frame s D))
     (hviab : ViableAtVote ℓ e (s + 1) C)
@@ -519,7 +519,7 @@ theorem counted_supportersU
           u ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes := by
         intro u hus hu
         refine Or.inl (List.mem_filter.2 ⟨?_, ?_⟩)
-        · simp only [SAState.poolAt, ite_false, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) from
+        · simp only [ACState.poolAt, ite_false, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) from
             not_lt.2 (sub_nonneg.2 (Int.ofNat_le.2 (Nat.le_add_left 1 s)))]
           simpa [hus] using hu.1
         · simpa [freeze] using hu.2
@@ -537,7 +537,7 @@ theorem counted_supportersU
 `Carry_y` for the counted votes, `C` viable at the vote, and the writer-pool condition (A1.8 (a),
 (c), (d)). -/
 theorem counted_supporters (hrun : ACRun proposer tr H U) {X y : Fin sp.n} (hX : X ∈ H) (hy : y ∈ H)
-    {i₀ i s : Nat} {C D : Blk sp.n FGP} {ℓX ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {i₀ i s : Nat} {C D : Blk sp.n FGP} {ℓX ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hcX : tr.CallAt X i₀ ℓX) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) (hCD : Anc U C D)
     (hcarry : CarryAt tr U y i e s (fastCounted sp (tr.state X i₀) ℓX.frame s D))
     (hviab : ViableAtVote ℓ e (s + 1) C)
@@ -549,6 +549,6 @@ theorem counted_supporters (hrun : ACRun proposer tr H U) {X y : Fin sp.n} (hX :
       (i := i) (s := s) (C := C) (D := D) (ℓX := ℓX) (ℓ := ℓ) (e := e) (hcX := hcX) (hc := hc)
           (hs := hs) (hCD := hCD) (hcarry := hcarry) (hviab := hviab) (hd := hd)
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

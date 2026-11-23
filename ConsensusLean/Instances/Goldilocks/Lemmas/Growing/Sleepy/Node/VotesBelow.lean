@@ -16,9 +16,9 @@ votes (`hframe`, S3 for a member of label at most `s` with an honest slot-`s` su
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
@@ -29,19 +29,19 @@ every slot-`s` vote (cast before the vote's cut); for `j = s` the first step app
 above the member (a member, as `rO ≤ s`); both with the earlier slot-`(s+1)` votes from the
 induction on the cut. -/
 theorem votes_below_succ_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
     (hBK : CommitteeBoundsFrom tr H K σ₀ b) {g : Time} {rL rO s : Nat} (hs₀ : σ₀ ≤ s)
     (hrO : rO ≤ s)
     (hsa : a + κ ≤ sp.ts s)
-    (hlive : ∀ y i ℓ e, y ∈ H (tr.time i) → SA.CastAt tr.projAC y i ℓ e → e.msg.slot = s + 1 →
-      tr.time i ≤ b → ∀ l ∈ SA.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), l.slot ≤ s →
+    (hlive : ∀ y i ℓ e, y ∈ H (tr.time i) → AC.CastAt tr.projAC y i ℓ e → e.msg.slot = s + 1 →
+      tr.time i ≤ b → ∀ l ∈ AC.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), l.slot ≤ s →
         rL ≤ l.slot)
-    (hframe : ∀ y i ℓ e, y ∈ H (tr.time i) → SA.CastAt tr.projAC y i ℓ e → e.msg.slot = s + 1 →
+    (hframe : ∀ y i ℓ e, y ∈ H (tr.time i) → AC.CastAt tr.projAC y i ℓ e → e.msg.slot = s + 1 →
       tr.time i ≤ b → ∀ B j, HealedOrigin tr H g rL rO B j b → j ≤ s →
       (∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
-        SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B) →
-      B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
+        AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) →
+      B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
         Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot)
     (hP : HealedOriginsBelow tr H g rL rO (s + 1) b) (hV : HealedVotesBelow tr H g rL rO s b) :
     HealedVotesBelow tr H g rL rO (s + 1) b := by
@@ -51,14 +51,14 @@ theorem votes_below_succ_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr
     healedOriginsBelow_iff.1 hP C j C' j' (by omega) (by omega) hC hC'
   have key : ∀ i, ∀ y e, HVoteAt tr H y i e → tr.time i ≤ b → e.msg.slot = s + 1 →
       ∀ C j, HealedOrigin tr H g rL rO C j b → j ≤ s →
-        SA.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
+        AC.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
     intro i
     induction i using Nat.strong_induction_on with
     | _ i ih =>
       intro y e hv hib hs C j hC hj
       obtain ⟨hy, ℓ, hc⟩ := hVoteAt_iff.1 hv
       have hE : ∀ C' j', HealedOrigin tr H g rL rO C' j' b → j' ≤ s →
-          SA.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) C' :=
+          AC.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) C' :=
         fun C' j' hC' hj' x k hk hx e' hv' hs' => ih k hk x e' (hVoteAt_iff.2 ⟨hx, hv'⟩)
           ((hrun.time_mono hk.le).trans hib) hs' C' j' hC' hj'
       have hfr := hframe y i ℓ e hy hc hs hib
@@ -68,7 +68,7 @@ theorem votes_below_succ_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr
           have h := (castAt_spec_at hrun hnc hy ⟨hc.1, hc.2⟩).2.1
           rw [hs] at h
           change s + 1 = sp.slot (tr.time i) at h
-          exact (SA.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by exact_mod_cast h.le)
+          exact (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by exact_mod_cast h.le)
         exact later_transfer_step_at hrun hnc hKB hsync hBK hs₀ hsa hy hc hs hib hlv
           (fun C' j' hC' hj' => hcomp C j hC hj.le C' j' hC' hj') (hfr C j hC hj.le)
           (fun x k e' hv' hs' => healedVotesBelow_iff.1 hV C j hC x k e' hv'

@@ -29,10 +29,10 @@ The operational report supplier is shared within the Healing layer.
 
 namespace Consensus.Goldilocks.Healing.Recovery
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {K : SA.CommitteeDict sp.n}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {K : AC.CommitteeDict sp.n}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 

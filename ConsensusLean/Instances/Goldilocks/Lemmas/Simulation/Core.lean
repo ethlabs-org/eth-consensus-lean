@@ -312,7 +312,7 @@ theorem simTrace_call_sending_event {y : Fin (Fintype.card V)} {k : Nat}
 processed at a cut of that same event. No fresh insertion, honest signer, or pool-cap premise is
 required. -/
 theorem received_vote_processAt {i : Nat} {v : V}
-    {receipt : Wire (Fintype.card V) S.vote} {u : Time} {m : SA.Vote (Fintype.card V)}
+    {receipt : Wire (Fintype.card V) S.vote} {u : Time} {m : AC.Vote (Fintype.card V)}
     (he : rho.events[i]? = some (.deliver v receipt u))
     (hc : voteObj m ∈ delivered (Model.digests rho.hash receipt) (stateAt S rho hn v i) receipt) :
     ∃ k, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧

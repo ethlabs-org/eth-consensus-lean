@@ -14,21 +14,21 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks SA: the step lemmas (A1.1–A1.5, A1.8, A1.9)
+/-! # Goldilocks AC: the step lemmas (A1.1–A1.5, A1.8, A1.9)
 
-The per-vote transfer lemmas over SA traces. -/
+The per-vote transfer lemmas over AC traces. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-variable (sp : SAParams)
+variable (sp : ACParams)
 
 section Stock
 
 /-- **CS2 at the full committee from the stock fault bound**: `f < h ≤ n − f` gives `2f < n`,
 which is CS2 at `K = full` with `committeeSize = n` (the stock callers' `hf1`). -/
-theorem cs2_full_of_faultBound {FGP : Type} {ro : ReplayOrder sp FGP} {tr : SATrace sp FGP ro}
+theorem cs2_full_of_faultBound {FGP : Type} {ro : ReplayOrder sp FGP} {tr : GTrace sp FGP ro}
     {H : Set (Fin sp.n)} {t : Time} (hc : sp.committeeSize = sp.n) (hfault : FaultBound tr H t)
     {s : Nat} : 2 * ((CommitteeDict.full sp.n).committee s ∩ Hᶜ).ncard < sp.committeeSize :=
   cs2_full hc (by
@@ -41,12 +41,12 @@ theorem cs2_full_of_faultBound {FGP : Type} {ro : ReplayOrder sp FGP} {tr : SATr
 /-- `next_transfer_of_carry` with the unlock given. -/
 theorem next_transfer_of_carryU
     {uL : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
     {ini} (hrun : ACRunU wm uL proposer tr H U ini) (K : CommitteeDict sp.n)
     (hP : CommitteeP K tr H)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
     {m : Nat} {y : Fin sp.n} {i : Nat}
-    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hy : y ∈ H) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = m + 1)
     (hall : ∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = m → VoteExtends U e'.msg B)
     (hhalf : sp.committeeSize ≤
@@ -88,7 +88,7 @@ theorem next_transfer_of_carryU
             u ∈ (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes := by
           intro u hus hu
           refine Or.inl (List.mem_filter.2 ⟨?_, ?_⟩)
-          · simp only [SAState.poolAt, show ¬ (((m + 1 : Nat) : Int) - 1 < 0) by omega, ite_false]
+          · simp only [ACState.poolAt, show ¬ (((m + 1 : Nat) : Int) - 1 < 0) by omega, ite_false]
             simpa [hus] using hu.1
           · simpa [freeze] using hu.2
         obtain ⟨j₁, -, e₁, hv₁', he₁⟩ :=
@@ -148,11 +148,11 @@ theorem next_transfer_of_carryU
 /-- The A1.3 transfer after delivery: synchronization is used to obtain CarryAt,
 not by the local transfer itself. -/
 theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
     {ini} (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
     {m : Nat} {y : Fin sp.n} {i : Nat}
-    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hy : y ∈ H) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = m + 1)
     (hall : ∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = m → VoteExtends U e'.msg B)
     (hhalf : sp.committeeSize ≤
@@ -180,11 +180,11 @@ theorem next_transfer : NextTransfer sp :=
 /-- `optimistic_transfer_stored` with the unlock given. -/
 theorem optimistic_transfer_storedU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
     {ini} (hrun : ACRunU wm u proposer tr H U ini) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
     (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D)
     (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize)
     (hf1 : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize)
@@ -241,7 +241,7 @@ theorem optimistic_transfer_storedU
     obtain ⟨a, ha, -, -, -, rfl, -⟩ := hw
     exact hW ⟨a, ha, rfl⟩
   -- an optimistic origin of slot `s` at `y` shares an honest voter with `SX`
-  have hm : ∀ (Φ' : Frm sp.n FGP) (A' : SAState sp.n) (D' : Blk sp.n FGP), FrameOK Φ' →
+  have hm : ∀ (Φ' : Frm sp.n FGP) (A' : ACState sp.n) (D' : Blk sp.n FGP), FrameOK Φ' →
       Φ'.tree ⊆ U → D' ∈ Φ'.tree →
       3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A' Φ' s D').ncard →
       (∀ v ∈ A'.pool s, v.val ∈ H → v.slot = s ∧
@@ -285,11 +285,11 @@ theorem optimistic_transfer_storedU
 `D` (the block the lock stores after moving back): every hypothesis and the conclusion are about
 `B`, with the counted votes `CV` of `D`. -/
 theorem optimistic_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
     (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
     (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D)
     (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize)
     (hf1 : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize)
@@ -313,11 +313,11 @@ theorem optimistic_transfer : OptimisticTransfer sp :=
 /-- The first transfer of a pooled lock into the store, with the unlock given. -/
 theorem first_transfer_stored_of_poolU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
     {ini} (hrun : ACRunU wm u proposer tr H U ini) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
     (hfl : FastLockAt tr x i₀ s D CV) (hBD : Anc U B D) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = s + 1)
     (hmerged : ∀ ℓX, UpdateAt tr x i₀ s ℓX →
@@ -380,7 +380,7 @@ theorem first_transfer_stored_of_poolU
     exact ⟨v, ⟨hv, hneq, hres, R, hR, hRr, hBC.trans hCR⟩, hval⟩
   -- an optimistic origin of slot `s` at `y` shares a counted validator, whose single vote at
   -- `x` is also the one `y` counted (forwarding)
-  have hm : ∀ (Φ' : Frm sp.n FGP) (A' : SAState sp.n) (D' : Blk sp.n FGP), FrameOK Φ' →
+  have hm : ∀ (Φ' : Frm sp.n FGP) (A' : ACState sp.n) (D' : Blk sp.n FGP), FrameOK Φ' →
       Φ'.tree ⊆ U → D' ∈ Φ'.tree →
       3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A' Φ' s D').ncard →
       (∀ v ∈ A'.pool s, v.val ∈ H → v.slot = s ∧
@@ -421,14 +421,14 @@ theorem first_transfer_stored_of_poolU
 /-- `first_transfer_stored` with the unlock given. -/
 theorem first_transfer_storedU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
     {ini} (hrun : ACRunU wm u proposer tr H U ini) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
     (hfl : FastLockAt tr x i₀ s D CV) (hBD : Anc U B D) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = s + 1)
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr)
+    (hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (tr.time i) tr)
     (hcarry : CarryAt tr U y i e s CV) (hfault : FaultBoundK K s tr H (tr.time i))
     (hf1 : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize)
     (hviab : ViableAtVote ℓ e (s + 1) B) (hearlier : EarlierVotesExtend tr H U i (s + 1) B) :
@@ -440,14 +440,14 @@ theorem first_transfer_storedU
 
 /-- A1.2 with source-window service supplying the writer pool interfaces. -/
 theorem first_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
     (hrun : ACRun proposer tr H U) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hx : x ∈ H)
     (hfl : FastLockAt tr x i₀ s D CV) (hBD : Anc U B D) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = s + 1)
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr)
+    (hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (tr.time i) tr)
     (hcarry : CarryAt tr U y i e s CV) (hfault : FaultBoundK K s tr H (tr.time i))
     (hf1 : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize)
     (hviab : ViableAtVote ℓ e (s + 1) B) (hearlier : EarlierVotesExtend tr H U i (s + 1) B) :
@@ -470,7 +470,7 @@ theorem first_transfer : FirstTransfer sp :=
 end Stock
 
 /-- A block that `ac_to_fg` returns is a candidate. -/
-private theorem mem_toFGCandidates {FGP : Type} {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+private theorem mem_toFGCandidates {FGP : Type} {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     {C : Blk sp.n FGP} (h : (acToFG sp A Φ t).2 = some C) : C ∈ toFGCandidates sp A Φ t := by
   unfold acToFG at h
   split_ifs at h
@@ -503,7 +503,7 @@ theorem source_age : SourceAge sp := by
         have := ((ts_le_iff_le_slot sp h0) _).1 h
         omega
       · refine lt_of_lt_of_le h0 ?_
-        simp only [SAParams.ts]
+        simp only [ACParams.ts]
         have := sp.toParams.hΔ
         positivity
     rcases hfl with ⟨ℓ', C', ⟨-, -, ht, -⟩, -⟩ | ⟨ℓ', A', -, hs, -⟩
@@ -555,6 +555,6 @@ theorem result_transfer : ResultTransfer sp := by
   · exact he ▸ hCt
   · exact (Anc.mem hcore he).2
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

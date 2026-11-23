@@ -3,15 +3,15 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.WalkFacts
 
 @[expose] public section
 
-/-! # The SA's walk and restart facts: statements and axioms
+/-! # The AC's walk and restart facts: statements and axioms
 
 Each fact of `Lemmas/AC/WalkFacts` restated as a named theorem, with its axioms pinned. -/
 
 namespace Consensus.Goldilocks.WalkFactsTest
 
-open SA
+open AC
 
-variable {sp : SAParams} {FGP : Type}
+variable {sp : ACParams} {FGP : Type}
 
 /-- The memoryless walk. -/
 theorem ghost_eq_of_visited {S tree : Set (Blk sp.n FGP)} (hS : Coherent S) (hT : tree ⊆ S)
@@ -19,20 +19,20 @@ theorem ghost_eq_of_visited {S tree : Set (Blk sp.n FGP)} (hS : Coherent S) (hT 
     (hN : tree.ncard ≤ N) {a₀ a₁ : Blk sp.n FGP} (h01 : Anc S a₀ a₁)
     (h1H : Anc S a₁ (ghost sp tree sc el N a₀)) :
     ghost sp tree sc el N a₁ = ghost sp tree sc el N a₀ :=
-  SA.ghost_eq_of_visited hS hT hfin hN h01 h1H
+  AC.ghost_eq_of_visited hS hT hfin hN h01 h1H
 
 /-- The empty set has no deepest block. -/
 theorem deepest_empty (Φ : Frm sp.n FGP) : deepest Φ (∅ : Set (Blk sp.n FGP)) = none :=
-  SA.deepest_empty Φ
+  AC.deepest_empty Φ
 
 /-- A block receipt keeps the latest restart. -/
-theorem blockReceipt_restartTime (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
+theorem blockReceipt_restartTime (A : ACState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (blockReceipt sp A t B).restartTime = A.restartTime :=
-  SA.blockReceipt_restartTime A t B
+  AC.blockReceipt_restartTime A t B
 
 /-- A negative time is in slot `0`. -/
 theorem slot_of_neg {t : Time} (ht : t < 0) : sp.slot t = 0 :=
-  SA.slot_of_neg ht
+  AC.slot_of_neg ht
 
 end Consensus.Goldilocks.WalkFactsTest
 

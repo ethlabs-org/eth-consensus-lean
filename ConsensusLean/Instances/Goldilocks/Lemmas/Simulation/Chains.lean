@@ -17,9 +17,9 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape
 
 open Shape
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {st : Store sp.toParams (Payload sp.n)}
+variable {sp : ACParams} {st : Store sp.toParams (Payload sp.n)}
   {acp₀ : Payload sp.n}
 
 variable (V : Type) [Fintype V] [DecidableEq V] (S : Setup) in

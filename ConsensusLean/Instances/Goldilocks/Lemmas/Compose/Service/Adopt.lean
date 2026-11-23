@@ -26,34 +26,34 @@ otherwise. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
 
 open Classical in
 /-- The record after a joined tick at `t_s + 6Δ` whose update of slot `s` has a result `C` that
 no live lock vetoes: the old record when `C` is below it in the tree, else `C`. -/
-theorem acOnTick_update_record (self : Fin sp.n) {A : SA.SAState sp.n}
-    {Φ : SA.Frm sp.n (List (FG.Att sp.n))} {s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    {t : Time} (ht : t = sp.ts s + 6 * sp.Δ) (hj : SA.joined sp A t)
-    (hC : SA.getConfirmation sp A Φ s = some C) (hv : ¬ SA.conflictsWithLock sp A.locks Φ t C) :
-    (SA.acOnTick sp self A Φ t).1.latestConfirmed =
-      if SA.AncR Φ C A.latestConfirmed then A.latestConfirmed else C.root := by
+theorem acOnTick_update_record (self : Fin sp.n) {A : AC.ACState sp.n}
+    {Φ : AC.Frm sp.n (List (FG.Att sp.n))} {s : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {t : Time} (ht : t = sp.ts s + 6 * sp.Δ) (hj : AC.joined sp A t)
+    (hC : AC.getConfirmation sp A Φ s = some C) (hv : ¬ AC.conflictsWithLock sp A.locks Φ t C) :
+    (AC.acOnTick sp self A Φ t).1.latestConfirmed =
+      if AC.AncR Φ C A.latestConfirmed then A.latestConfirmed else C.root := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  have h6 : t = sp.ts ((s + 1 : Nat) : Int) + 2 * sp.Δ := ht.trans (SA.slot_arithmetic sp s).2.2
+  have h6 : t = sp.ts ((s + 1 : Nat) : Int) + 2 * sp.Δ := ht.trans (AC.slot_arithmetic sp s).2.2
   have hsl : sp.slot t = s + 1 := by
-    have := (SA.slot_arithmetic sp (s + 1)).1 2 (by omega)
+    have := (AC.slot_arithmetic sp (s + 1)).1 2 (by omega)
     rw [h6]
     simpa using this
   have hne : ¬ t = sp.ts ((s + 1 : Nat) : Int) + sp.Δ := by rw [h6]; intro h; linarith
-  unfold SA.acOnTick
+  unfold AC.acOnTick
   rw [ite_eq_right (not_not.2 hj)]
   simp only [hsl]
   rw [ite_eq_right hne, ite_eq_left ⟨h6, Nat.succ_pos s⟩, Nat.add_sub_cancel]
-  simp only [SA.updateConfirmation, hC]
+  simp only [AC.updateConfirmation, hC]
   rw [ite_eq_right hv]
-  simp only [SA.updateLatestConfirmed]
+  simp only [AC.updateLatestConfirmed]
   split_ifs <;> rfl
 
 end Consensus.Goldilocks.Compose

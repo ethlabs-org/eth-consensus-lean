@@ -19,10 +19,10 @@ read extends the armed tip (`outage_lock_protected`). -/
 
 namespace Consensus.Goldilocks.Generic
 
-open SA (SAParams ReplayOrder)
+open AC (ACParams ReplayOrder)
 open Compose.Growing
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **L9 at the Goldilocks data equations.** -/
 theorem goldilocks_outageReadPoint (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
@@ -71,7 +71,7 @@ theorem goldilocks_outageReadPoint (C : ACCorrectLocal (goldilocksNode sp ro) (f
     have hne : ∀ s : Nat, (cm (sp.ts s)).Nonempty := by
       intro s
       have hs : (cm (sp.ts s) : Set (Fin sp.n)).ncard = sp.committeeSize := by
-        simpa only [dictOfTime, sp.slotTime_eq, SA.SAParams.ts] using hKB.hsize s
+        simpa only [dictOfTime, sp.slotTime_eq, AC.ACParams.ts] using hKB.hsize s
       exact Finset.card_pos.mp (by simpa using (hpos.trans_eq hs.symm))
     have hKθ : ∀ δ, 0 ≤ δ → δ ≤ C.outageEta →
         p.CommitteeSleepyOn (fun t => cm (max 0 (t - δ))) (1 / 2) C.outageEta c
@@ -87,15 +87,15 @@ theorem goldilocks_outageReadPoint (C : ACCorrectLocal (goldilocksNode sp ro) (f
       intro m h₁ h₂ hq
       obtain ⟨hg₁, hg₂, -, -, -, hj₁, -⟩ := hnum
       have hm₁ : sp.ts (j₀) ≤ sp.ts m :=
-        (SA.ts_le_iff sp).2 (by exact_mod_cast h₁)
+        (AC.ts_le_iff sp).2 (by exact_mod_cast h₁)
       have hm₂ : sp.ts m ≤ sp.ts (j₀) + 4 * sp.k * sp.Δ := by
-        have := (SA.ts_le_iff sp).2
+        have := (AC.ts_le_iff sp).2
           (show (m : Int) ≤ ((j₀ + sp.k : Nat) : Int) by exact_mod_cast h₂)
-        simp only [SA.SAParams.ts] at this ⊢
+        simp only [AC.ACParams.ts] at this ⊢
         push_cast at this
         linarith
       have hts1 : sp.ts (j₀ + 1 : Nat) = sp.ts (j₀) + 4 * sp.Δ := by
-        simp only [SA.SAParams.ts]; push_cast; ring
+        simp only [AC.ACParams.ts]; push_cast; ring
       rw [hts1] at hg₂
       refine outage_opponents_lt_committee hb hη0 hcl hz0 hzh hKθ (hne m) ?_ ?_
       · refine max_le (ts_natCast_nonneg m) ?_

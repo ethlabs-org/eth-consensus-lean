@@ -16,14 +16,14 @@ is its own viable ancestor, the update writes the fast lock `⟨P.root, p, true�
 here without the viable-tree premise). So after the tick the node has the floor of slot `p` on
 every `B₀ ⪯ P` of its frame. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams}
+variable {FGP : Type} {sp : ACParams}
 
 /-- **A fast update writes a fresh fast lock**: result `P`, no veto, fast selection `P`, `t`
 within the new lock's guaranteed life (`slot(t) ≤ u + 2`), and `P` its own viable ancestor. The
 lock's expiry is `fastExpiry ≥ u + 2`. -/
-theorem fastLock_mem_updateConfirmation_floor {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+theorem fastLock_mem_updateConfirmation_floor {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     {u : Nat} {P : Blk sp.n FGP} (hPt : P ∈ Φ.tree) (hva : Φ.viableAncestor P = P)
     (hconf : getConfirmation sp A Φ u = some P) (hnv : ¬ conflictsWithLock sp A.locks Φ t P)
     (hfast : fastSelect sp A Φ u P = some P) (hlive : sp.slot t ≤ u + 2) :
@@ -52,13 +52,13 @@ theorem fastLock_mem_updateConfirmation_floor {A : SAState sp.n} {Φ : Frm sp.n 
     Or.inr ⟨_, Or.inl ⟨P, hD, rfl⟩, rfl⟩, P, hPt, rfl,
     hlive.trans (le_fastExpiry sp _ Φ t u), by rw [hva]⟩
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g : Time}
 

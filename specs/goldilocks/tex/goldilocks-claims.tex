@@ -194,7 +194,7 @@ the hypotheses that an induction over events (F.5 (run)) discharges are about th
 event and strictly earlier ones; fixed run premises may be about later times
 (delivery bounds; a pool read at a later update; the lock of a fast
 confirmation of slot~$s$, written at $t_s+6\Delta$ after the slot-$(s+1)$
-votes).  An AC state is \emph{reachable} when the SA
+votes).  An AC state is \emph{reachable} when the AC
 reaches it from $\fname{initial\_ac}$ by its handlers, duties and restarts, with
 inputs that pass the AC wire checks (votes: form, slot, committee, seat
 signature; blocks: $\fname{ac\_valid\_payload}$), with frames that are well
@@ -221,7 +221,7 @@ Common & F.2 (tree mathematics), F.3, F.5 (schema) & ---\\
 FG, chain level & G0.1 (chain), G0.2, G0.5, G0.7--G0.10 & G1.1--G1.3\\
 Frame & G0.3 (frame), G0.4 (frame) & ---\\
 FG, store level & G0.1 (store), G0.3, G0.4 (height), F.2 (accepted tree), the $\Sigma$ half of C0.2 & G1.4, G1.6--G1.10\\
-AC (interface and SA, over frames) & F.1, A0.1--A0.9 & A1.1--A1.5, A1.8, A1.9\\
+AC (interface and Goldilocks AC, over frames) & F.1, A0.1--A0.9 & A1.1--A1.5, A1.8, A1.9\\
 Node & C0.1, C0.3, C0.4, C0.5, the restart half of C0.2 & ---\\
 Run & F.4, F.5 (run) & C1.1 (Persist), C1.2, C1.3, A1.6, A1.7 (Service), R.*, O.1\\
 Simulation & --- & G1.5; the engine simulates the node (C0.4 kept)\\
@@ -306,7 +306,7 @@ about honest senders).  A block's declared head votes are not signed
 objects: unforgeability says nothing about them, and a faulty proposer may
 declare a vote that its validator never signed.  The Lean run records
 (\texttt{GoldilocksRun}, its growing and family forms, and the honest-object
-facts \texttt{SA.HonestObjects}) therefore no longer carry a fact about the
+facts \texttt{AC.HonestObjects}) therefore no longer carry a fact about the
 votes of a block (the earlier carried-vote unforgeability), and
 \texttt{Growing.CommitteeFacts} no longer has the premise \texttt{hFrame} that
 the blocks of a frame declare only committee members: their antecedents are
@@ -450,7 +450,7 @@ Object & Kind & Defined in & Nodes\\
 \hline
 block $B$, root, payload & wire & composition \S Blocks; AC \S Votes & F.2, F.3, G0.1 (chain), G0.1 (store), C0.3\\
 attestation $(i,h,T,\tau,h_f,T_f)$ & wire & FG \S Attestations & G0.5, G1.*\\
-Goldfish vote $(i,s,H)$ & wire & AC \S Votes & A0.1--A0.3\\
+head vote $(i,s,H)$ & wire & AC \S Votes & A0.1--A0.3\\
 $\Lambda$ (client record) & durable & FG \S Validator client & G0.5\\
 $\Sigma=(\T,\sigma[\cdot],F,J,h_j,\hmax,$ $\mathsf{attestations})$ & durable & composition \S State; FG & G0.1 (store), G0.2, G0.3, G0.4 (height)\\
 $\sigma[B]$ (chain state) & derived, immutable & FG \S Attestations & G0.1 (chain), G0.2\\
@@ -472,10 +472,10 @@ $\mathsf{NoColl}$.  They are independent of each other except where the
 
 \subsection{Shared}
 
-\dagnode{F.1}{Schedule arithmetic (SA)}{The node and the FG read only $\slot(t)$
+\dagnode{F.1}{Schedule arithmetic}{The node and the FG read only $\slot(t)$
 and the slot starts $t_s$, which the AC fixes (composition \S``Model''); the
-facts below are about the Goldilocks SA's slots $t_s=4\Delta s$ and belong to
-the SA module.  (a) $\slot(t_s+i\Delta)=s$ for
+facts below are about the Goldilocks AC's slots $t_s=4\Delta s$ and belong to
+the AC module.  (a) $\slot(t_s+i\Delta)=s$ for
 $0\leq i<4$; $t_s+5\Delta=t_{s+1}+\Delta$ and $t_s+6\Delta=t_{s+1}+2\Delta$.
 (b) For fixed stored locks and a fixed frame, the expiry test
 $\slot(t)\leq e$ of a lock of expiry~$e$ (a slot, at most $j+k$ for a lock
@@ -745,7 +745,7 @@ equivocators.}
 those of a descendant; the opponents of an ancestor are included in those of
 a descendant; the blocks~$B$ with $2\,|\mathit{supporters}(B)|$ greater than
 the number of voters lie on one chain (so $\fname{get\_confirmation}$ is well
-defined; this is false for the Goldfish score, which counts equivocators for
+defined; this is false for the head score, which counts equivocators for
 every block); if fewer than $n/2$
 validators equivocate, the blocks that pass the optimistic test lie on one
 chain; at one frame the opponents in the merged view of a slot-$(s+1)$ voter
@@ -800,7 +800,7 @@ node joined at $t$ has erased no vote of slot $\slot(t)-1$ or later.}
 {F.1, A0.1}{AC \S Joining and restart.}{S.}
 
 \dagnode{A0.8}{One vote per slot}{Under unforgeable signatures, an honest
-validator casts at most one Goldfish vote per slot, also across restarts
+validator casts at most one head vote per slot, also across restarts
 ($\mathsf{voted\_slot}$, and a node that restarts in slot~$s$ is not joined in
 slot~$s$).}
 {F.1, A0.7}{AC \S Node actions ``Why a marker for the one vote''~(29eb7209).}{S.}
@@ -849,7 +849,7 @@ digest excludes the proposer).  Formerly G0.6.}
 
 \dagnode{C0.4}{Tick order}{At an honest node, the steps at a public time~$a$
 are, in this order: a restart, if the node wakes at~$a$; the AC's tick
-($\fname{ac\_on\_tick}$: for the SA the vote check at $t_s+\Delta$ with its
+($\fname{ac\_on\_tick}$: for the AC the vote check at $t_s+\Delta$ with its
 unlocking and the own vote, which is processed at once by
 $\fname{ac\_on\_message}$: admission, optimistic check; and the update of slot
 $s-1$ at $t_s+2\Delta$); at $a=t_s$ with $s>0$, for the slot's proposer,
@@ -2747,8 +2747,8 @@ Lean statement does not prove it.
 Node & Lean statement & Status\\
 \hline
 \endhead
-F.1 (a), (c) & \texttt{SA.SlotArithmetic}, \texttt{SA.JoinedFrom},
-  \texttt{SA.JoinedAwake} & proved (\texttt{acBase})\\
+F.1 (a), (c) & \texttt{AC.SlotArithmetic}, \texttt{AC.JoinedFrom},
+  \texttt{AC.JoinedAwake} & proved (\texttt{acBase})\\
 F.2 & \texttt{AncAntisymm}, \texttt{AncTotal},
   \texttt{DeepestCommonAncestor}; \texttt{Store.AcceptedTree},
   \texttt{Store.TreeGrows} & proved (\texttt{common\_statements},
@@ -2782,25 +2782,25 @@ G0.8 & \texttt{FG.FinalityBeforeGate} & proved (\texttt{fg\_safety})\\
 G0.9 & \texttt{FG.Retention}, \texttt{FG.RetentionThroughAppend} & proved
   (\texttt{fg\_safety})\\
 G0.10 & \texttt{FG.Aggregation} & proved (\texttt{fg\_safety})\\
-A0.1 & \texttt{SA.PoolCap}, \texttt{SA.AdmissionSlots},
-  \texttt{SA.StampStable}, \texttt{SA.BlockAddsOnlyOwnVote},
-  \texttt{SA.StampParent} & proved (\texttt{acBase}); admission slots and
+A0.1 & \texttt{AC.PoolCap}, \texttt{AC.AdmissionSlots},
+  \texttt{AC.StampStable}, \texttt{AC.BlockAddsOnlyOwnVote},
+  \texttt{AC.StampParent} & proved (\texttt{acBase}); admission slots and
   the block clause hold from every state, not only reachable ones\\
-A0.2 & \texttt{SA.ResolutionStable}, \texttt{SA.SupportInTree} & proved
+A0.2 & \texttt{AC.ResolutionStable}, \texttt{AC.SupportInTree} & proved
   (\texttt{acBase})\\
-A0.3 & \texttt{SA.SupportersAntitone}, \texttt{SA.OpponentsMonotone},
-  \texttt{SA.MajorityChain}, \texttt{SA.OptimisticChain},
-  \texttt{SA.MergedOpponents} & proved (\texttt{acBase})\\
-A0.4 (a), (b), (f); A0.5 & \texttt{SA.LiveLocksChain}, \texttt{SA.CandidatesChain},
-  \texttt{SA.LockToTip} & proved (\texttt{acBase}); stronger than A0.4 and
+A0.3 & \texttt{AC.SupportersAntitone}, \texttt{AC.OpponentsMonotone},
+  \texttt{AC.MajorityChain}, \texttt{AC.OptimisticChain},
+  \texttt{AC.MergedOpponents} & proved (\texttt{acBase})\\
+A0.4 (a), (b), (f); A0.5 & \texttt{AC.LiveLocksChain}, \texttt{AC.CandidatesChain},
+  \texttt{AC.LockToTip} & proved (\texttt{acBase}); stronger than A0.4 and
   A0.5: at a reachable state at every time~$t$, also before the state's last
   call~$t_0$ (no $t\geq t_0$)\\
-A0.6 & \texttt{SA.InterfaceRequirements} & proved (\texttt{acBase});
+A0.6 & \texttt{AC.InterfaceRequirements} & proved (\texttt{acBase});
   requirement~5 through A0.9\\
-A0.7 (pool, joining) & \texttt{SA.RestartState}, \texttt{SA.JoinedKeepsVotes}
+A0.7 (pool, joining) & \texttt{AC.RestartState}, \texttt{AC.JoinedKeepsVotes}
   & proved (\texttt{acBase})\\
-A0.8 & \texttt{SA.OneVotePerSlot} & proved (\texttt{acBase})\\
-A0.9 & \texttt{SA.ProposalPayloadValid} & proved (\texttt{acBase})\\
+A0.8 & \texttt{AC.OneVotePerSlot} & proved (\texttt{acBase})\\
+A0.9 & \texttt{AC.ProposalPayloadValid} & proved (\texttt{acBase})\\
 A0.6, A0.9 (interface consequences) & \texttt{Compose.TipsNested},
   \texttt{Compose.ProposalParentHeld}, \texttt{Compose.SourceHeld},
   \texttt{Compose.DutyHeadsHeld} & proved
@@ -2827,23 +2827,23 @@ C0.5 & \texttt{Compose.ACSeesAcceptedBlocks}, \texttt{Compose.ExecIsCutChain},
   projections of \texttt{Milestones/Statements/Compose/Run} & proved
   (\texttt{compose\_node\_statements}, \texttt{ac\_projection}, \texttt{fg\_projection}, \dots); the slot's
   proposer is a run law (C0.5 (b))\\
-A1.3 & \texttt{SA.NextTransfer} & proved (\texttt{acSteps}), per vote under
+A1.3 & \texttt{AC.NextTransfer} & proved (\texttt{acSteps}), per vote under
   its premises, without $\mathsf{Sync}[t_m,\tau]$\\
-A1.4 & \texttt{SA.OptimisticTransfer}, \texttt{SA.OptimisticNextUpdate} &
+A1.4 & \texttt{AC.OptimisticTransfer}, \texttt{AC.OptimisticNextUpdate} &
   proved (\texttt{acSteps}); (a) per vote without $\mathsf{Sync}[t_s,\tau]$;
   (b) without $\mathsf{Sync}[t_s,t_{s+1}+\Delta]$ and without the
   optimistic confirmation of~$B$: it keeps only $f<n/2$, (a)'s conclusion
   (every honest slot-$(s+1)$ vote extends~$B$) and the updating node's
   premises\\
-A1.5 & \texttt{SA.SourceAge} & proved (\texttt{acSteps}); stronger than
+A1.5 & \texttt{AC.SourceAge} & proved (\texttt{acSteps}); stronger than
   A1.5 in form: over every AC trace with the local contract
   (\texttt{ACLocalRun}), without the honest-object facts of
   \texttt{ACRun} (signature provenance, slot proposer)\\
-A1.9 & \texttt{SA.SourceCompatible} & proved (\texttt{acSteps}), per call,
+A1.9 & \texttt{AC.SourceCompatible} & proved (\texttt{acSteps}), per call,
   without the public time, without $\Fr.F$ and $\fcroot$ compatible
   with~$B$ at the call, and in~(i) with only $\Fr.F$ compatible at the
   vote's call\\
-A1.8 & \texttt{SA.ResultTransfer} & proved (\texttt{acSteps}), per vote under
+A1.8 & \texttt{AC.ResultTransfer} & proved (\texttt{acSteps}), per vote under
   its premises\\
 A1.6 & \texttt{Compose.HeadExtendsRecord} & proved
   (\texttt{head\_extends\_record}), with $\mathsf{NoColl}$; the condition

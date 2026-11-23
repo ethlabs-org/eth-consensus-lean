@@ -39,9 +39,9 @@ then, from `OutageLockInv D i` (`k ≤ i`) and receiver service from `b₁`:
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -51,22 +51,22 @@ the prefix through the vote's time). -/
 private theorem accepted_voter_tree_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {s : Nat} {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
-    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hXU : X ∈ tr.HonestBlocksAt H)
-    (hacc : SA.AcceptedBefore tr.projAC y X (sp.ts s + 3 * sp.Δ))
+    {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
+    (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
+    {X : AC.Blk sp.n (List (FG.Att sp.n))} (hXU : X ∈ tr.HonestBlocksAt H)
+    (hacc : AC.AcceptedBefore tr.projAC y X (sp.ts s + 3 * sp.Δ))
     (hFX : Anc (tr.HonestBlocksAt H) ℓ.frame.F X) :
-    X ∈ SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1) := by
+    X ∈ AC.voterBlockTree sp e.readPoint ℓ.frame (s + 1) := by
   have hd := hrun.time_nonneg i
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hU := honestBlocksAt_coherent hrun hnc
   obtain ⟨hΦ, -⟩ := frameIn_at hrun hnc hy hc.1
   obtain ⟨-, hti⟩ := honest_vote_restarts_at hrun hnc hy hc hs
-  have hcT : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hcT : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
   have hXt : X ∈ ℓ.frame.tree := by
     rcases hacc with hg | ⟨k, hk, hkt⟩
     · obtain ⟨G, hGU, hGr, hGp⟩ :=
-        SA.genesis_mem_of_call sp (acRun_upTo hrun hnc hd).localRun hy i ℓ hcT.1
+        AC.genesis_mem_of_call sp (acRun_upTo hrun hnc hd).localRun hy i ℓ hcT.1
       obtain rfl : X = G := hU.1 hXU (upTo_subset hrun hd hGU) (hg.trans hGr.symm)
       obtain h | ⟨c, -, hcp⟩ := (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hFX
       · exact h ▸ hΦ.rooted.1
@@ -79,9 +79,9 @@ private theorem accepted_voter_tree_at
       exact mem_tree_of_acceptAt_at hrun hnc hy hk hki hc.1 hFX
   have hXU' := frame_upTo_at hrun hnc hy hc.1 hXt
   have hFX' := RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hXU' hFX
-  have hc' : SA.CastAt (tr.upTo (tr.time i)).projAC y i ℓ e := by
+  have hc' : AC.CastAt (tr.upTo (tr.time i)).projAC y i ℓ e := by
     rw [RunTrace.upTo_projAC]; exact hcT
-  have hacc' : SA.AcceptedBefore (tr.upTo (tr.time i)).projAC y X (sp.ts s + 3 * sp.Δ) := by
+  have hacc' : AC.AcceptedBefore (tr.upTo (tr.time i)).projAC y X (sp.ts s + 3 * sp.Δ) := by
     rw [RunTrace.upTo_projAC]
     rcases hacc with hg | ⟨k, hk, hkt⟩
     · exact Or.inl hg
@@ -97,18 +97,18 @@ is in the vote's viable tree or below `fc_root`. -/
 private theorem vote_viable_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time k))
-    (hc : SA.CastAt tr.projAC y k ℓ e) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time k))
+    (hc : AC.CastAt tr.projAC y k ℓ e) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hcache : Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F B ∧
       Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.J B)
-    (hK2 : (∃ D ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
+    (hK2 : (∃ D ∈ AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
         Anc (tr.HonestBlocksAt H) B D ∧ (tr.state y k).fg.IsViable D) ∨
       Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot) :
-    B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
+    B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
       Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot := by
   have hd := hrun.time_nonneg k
   have hr := (acRun_upTo hrun hnc hd).localRun
-  have hcT : SA.CastAt (tr.projAC.upTo (tr.time k)) y k ℓ e := sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hcT : AC.CastAt (tr.projAC.upTo (tr.time k)) y k ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
   have hU := honestBlocksAt_coherent hrun hnc
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hy hc.1
   have hfr := frame_of_projAC_at hrun hy hc.1
@@ -123,10 +123,10 @@ private theorem vote_viable_at
   · rcases hcomp with hfB | hBf
     · have hDt : D ∈ ℓ.frame.tree := hD.1
       have hFB := (Anc.mono hΦU hΦ.F_anc_fcRoot).trans hfB
-      have hBt := SA.frame_mem_of_between sp hU hΦ hΦU hDt hBD hFB
-      have hΦBD := SA.anc_tree_of_anc_U hU hΦ hΦU hBt hBD hDt
-      have hΦfB := SA.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
-      refine Or.inl ⟨SA.voterBlockTree_anc hr hrun.vstart hy hcT D hD B
+      have hBt := AC.frame_mem_of_between sp hU hΦ hΦU hDt hBD hFB
+      have hΦBD := AC.anc_tree_of_anc_U hU hΦ hΦU hBt hBD hDt
+      have hΦfB := AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
+      refine Or.inl ⟨AC.voterBlockTree_anc hr hrun.vstart hy hcT D hD B
           hΦBD, hΦfB, D, hD, ?_, hΦBD⟩
       have hfD := hΦfB.trans hΦBD
       rw [hfr] at hDt hfD ⊢
@@ -138,7 +138,7 @@ private theorem vote_viable_at
 `Compose/Sleepy/Frame.lean`'s private `below_entry`.) -/
 private theorem below_entry {H₀ : Set (Fin sp.n)} {tr₀ : GoldilocksTrace sp ro}
     (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H₀ tr₀ ini) (hnc : NoCollRun dg tr₀)
-    {y : Fin sp.n} (hy : y ∈ H₀) {i : Nat} {B Ds E : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} (hy : y ∈ H₀) {i : Nat} {B Ds E : AC.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ (tr₀.state y i).fg.tree) (hE : E ∈ (tr₀.state y i).fg.tree)
     (hD : IsHonestSource tr₀ H₀ Ds E.root) (hDB : Compatible (tr₀.HonestBlocks H₀) Ds B)
     (hlt : ((tr₀.state y i).fg.σ B.root).h < ((tr₀.state y i).fg.σ E.root).h) :
@@ -163,70 +163,70 @@ the merged views of honest casts hold votes of members, `hTK`), with every live 
 with `B`, makes the vote extend `B`. The static counted batch on the prefix through `t_i`. -/
 private theorem vote_extends_of_counted_batch_run
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
-    {K : SA.CommitteeDict sp.n} (hTK : SA.CommitteeTAt K tr.projAC H)
+    {K : AC.CommitteeDict sp.n} (hTK : AC.CommitteeTAt K tr.projAC H)
     {s : Nat} {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hviab : SA.ViableAtVote ℓ e (s + 1) B)
+    {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
+    (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hviab : AC.ViableAtVote ℓ e (s + 1) B)
     {SX W : Set (Fin sp.n)} (hSXH : SX ⊆ H (tr.time i))
     (hSXv : ∀ x ∈ SX, ∃ j e', HVoteAt tr H x j e' ∧ e'.msg.slot = s)
     (hall : ∀ x ∈ SX, ∀ j e', HVoteAt tr H x j e' → e'.msg.slot = s →
-      SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
+      AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
     (hW : ∀ x j e', HVoteAt tr H x j e' → x ∈ H (tr.time i) → e'.msg.slot = s → x ∈ W)
     (hWc : K.committee s ∩ (H (tr.time i))ᶜ ⊆ W) (hcount : W.ncard < 2 * SX.ncard)
-    (hcarry : SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s
+    (hcarry : AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s
       {v | ∃ x ∈ SX, ∃ j e', HVoteAt tr H x j e' ∧ e'.msg = v ∧ v.slot = s})
-    (hlocks : ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
+    (hlocks : ∀ L ∈ AC.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
       Compatible (tr.HonestBlocksAt H) L B) :
-    SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
+    AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
   have hΔ := sp.toParams.hΔ
   have hd := hrun.time_nonneg i
   have hsub := upTo_subset hrun hd
   have hU := honestBlocksAt_coherent hrun hnc
   have hr := acRun_upTo hrun hnc hd
-  have hc' : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hc' : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
   have hts1 : sp.ts ((s + 1 : Nat) : Int) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hti : sp.ts ((s + 1 : Nat) : Int) ≤ tr.time i := by
     have h := (castAt_spec_at hrun hnc hy hc).2.1
     rw [hs] at h
     change s + 1 = sp.slot (tr.time i) at h
-    exact (SA.ts_le_iff_le_slot sp hd _).2 (by exact_mod_cast h.le)
+    exact (AC.ts_le_iff_le_slot sp hd _).2 (by exact_mod_cast h.le)
   have hT : sp.ts s + 3 * sp.Δ ≤ tr.time i := by linarith
   -- a vote of the prefix by a validator honest at `t_i` is one of the run by a node honest at it
-  have hvote : ∀ x j e', x ∈ H (tr.time i) → SA.VoteAt (tr.projAC.upTo (tr.time i)) x j e' →
+  have hvote : ∀ x j e', x ∈ H (tr.time i) → AC.VoteAt (tr.projAC.upTo (tr.time i)) x j e' →
       HVoteAt tr H x j e' := fun x j e' hx hv => by
-    obtain ⟨hjd, hv⟩ := sa_voteAt_upTo.mp hv
+    obtain ⟨hjd, hv⟩ := ac_voteAt_upTo.mp hv
     exact hVoteAt_iff.2 ⟨hrun.antitone hjd hx, hv⟩
   have hΦ := (frameIn_at hrun hnc hy hc.1).1
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
     · exact h.1.1
-    · exact SA.mem_of_anc h hΦ.fcRoot_mem
+    · exact AC.mem_of_anc h hΦ.fcRoot_mem
   have hBU := frame_upTo_at hrun hnc hy hc.1 hBt
   have h := Compose.vote_extends_of_counted_batch hr hy hc' hs hviab (SX := SX) (W := W) hSXH
     (fun x hx => by
       obtain ⟨j, e', hv, hes⟩ := hSXv x hx
-      exact ⟨j, e', sa_voteAt_upTo.mpr ⟨(vote_cut_lt hrun hnc hv hes hti).1.le.trans hti,
+      exact ⟨j, e', ac_voteAt_upTo.mpr ⟨(vote_cut_lt hrun hnc hv hes hti).1.le.trans hti,
         (hVoteAt_iff.1 hv).2⟩, hes⟩)
     (fun x hx j e' hv hes => voteExtends_upTo hrun hnc hd (hSXH hx)
       (by rw [RunTrace.upTo_projAC]; exact hv) (hall x hx j e' (hvote x j e' (hSXH hx) hv) hes))
     (by
       rintro w ⟨v, hv, rfl⟩
       by_cases hw : v.val ∈ H (tr.time i)
-      · obtain ⟨j, -, e', hv', he'⟩ := SA.honest_merged_vote hr hy hc' hv hw
+      · obtain ⟨j, -, e', hv', he'⟩ := AC.honest_merged_vote hr hy hc' hv hw
         exact hW _ j e' (hvote _ j e' hw hv') hw
           (by
             rw [he']
-            exact SA.merged_vote_slot hr.localRun hr.vstart hy hc' v hv)
+            exact AC.merged_vote_slot hr.localRun hr.vstart hy hc' v hv)
       · have hvK := hTK y i ℓ e hy hc s v hv
-        rw [SA.merged_vote_slot hr.localRun hr.vstart hy hc' v hv] at hvK
+        rw [AC.merged_vote_slot hr.localRun hr.vstart hy hc' v hv] at hvK
         exact hWc ⟨hvK, hw⟩)
     hcount
     ⟨⟨hcarry.awake, le_rfl⟩, hcarry.joined, fun v ⟨x, hx, j, e', hv, hev, hvs⟩ => by
       have hv' := hvote x j e' (hSXH hx) hv
       obtain ⟨Hv, hHv, hHvr, hacc⟩ := hcarry.heads v ⟨x, hx, j, e', hv', hev, hvs⟩
-      obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := SA.honest_head hr (hSXH hx) hv
+      obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := AC.honest_head hr (hSXH hx) hv
       obtain rfl : Hv = Hd₂ := hU.1 hHv (hsub hHd₂) (hHvr.trans (hev ▸ hHd₂r.symm))
       refine ⟨Hv, hHd₂, hHvr, fun X hX => ?_⟩
       exact (hacc X (hX.mono hsub)).imp_right fun ⟨k, hk, hkT⟩ =>
@@ -248,13 +248,13 @@ its cast) extends is viable at the vote. The witness head is frozen; below the f
 store of `y` is read on the prefix through `t_i`. -/
 theorem viable_at_vote_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
     (hy : y ∈ H (tr.time i)) (hS : ReceiverServiceAfterAt H (tr.HonestBlocksAt H) D.b₁ y tr.projAC)
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ℓ e) {q : Nat} (hs : e.msg.slot = q + 1) (hrq : D.r ≤ q)
+    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y i ℓ e) {q : Nat} (hs : e.msg.slot = q + 1) (hrq : D.r ≤ q)
     (hLo : ¬ HiAt tr H D.P y i)
     (hFP : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F D.P)
     (hw : ∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = q ∧
-      SA.VoteExtends (tr.HonestBlocksAt H) e'.msg D.P) :
-    SA.ViableAtVote ℓ e (q + 1) D.P := by
+      AC.VoteExtends (tr.HonestBlocksAt H) e'.msg D.P) :
+    AC.ViableAtVote ℓ e (q + 1) D.P := by
   have hrun := D.hrun
   have hU := D.coherent
   have hd := hrun.time_nonneg i
@@ -269,15 +269,15 @@ theorem viable_at_vote_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp
     linarith only [this, D.hr.1]
   -- the head of a vote of a slot `≤ q` above `Σ.F` is frozen at `y`
   have frozen : ∀ x k e', HVoteAt tr H x k e' → e'.msg.slot ≤ q →
-      ∀ Z, SA.VoteExtends (tr.HonestBlocksAt H) e'.msg Z →
+      ∀ Z, AC.VoteExtends (tr.HonestBlocksAt H) e'.msg Z →
       Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F Z →
-      ∃ W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame (q + 1),
+      ∃ W ∈ AC.voterBlockTree sp e.readPoint ℓ.frame (q + 1),
         Anc (tr.HonestBlocksAt H) Z W := by
     intro x k e' hv hs' Z ⟨Hd, hHd, hHdr, hZHd⟩ hFZ
     have hFHd : Anc (tr.HonestBlocksAt H) ℓ.frame.F Hd := hFℓ ▸ hFZ.trans hZHd
     exact ⟨Hd, accepted_voter_tree_at hrun D.hnc hy hc hs hHd
       (honest_head_accepted_after_at hrun D.hnc hS hg hy hc hs hv hs' hHd hHdr hFHd) hFHd, hZHd⟩
-  have hvt : ∀ W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame (q + 1),
+  have hvt : ∀ W ∈ AC.voterBlockTree sp e.readPoint ℓ.frame (q + 1),
       W ∈ (tr.state y i).fg.tree := by
     intro W hW
     have := hW.1
@@ -288,12 +288,12 @@ theorem viable_at_vote_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp
   have hnc' := D.hnc.upTo (tr.time i)
   have hsub := upTo_subset hrun hd
   have hst := Trace.upTo_state tr y ht
-  have toU : ∀ {A W : SA.Blk sp.n (List (FG.Att sp.n))}, W ∈ (tr.state y i).fg.tree →
+  have toU : ∀ {A W : AC.Blk sp.n (List (FG.Att sp.n))}, W ∈ (tr.state y i).fg.tree →
       Anc (tr.HonestBlocksAt H) A W →
       Anc ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) A W := fun hW h =>
     RunTrace.anc_upTo_of_right hrun.toLocalRun D.hnc hd ⟨y, hy, i, by rw [hst]; exact hW⟩ h
   -- (K2): a frozen viable block above `P`
-  have hK2 : ∃ W ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
+  have hK2 : ∃ W ∈ AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
       Anc (tr.HonestBlocksAt H) D.P W ∧ (tr.state y i).fg.IsViable W := by
     rw [hs]
     have hR := reachable_at hrun hd hy ht
@@ -349,8 +349,8 @@ theorem viable_at_vote_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp
     exact Or.inl h
   · right
     have hFP' : Anc (tr.HonestBlocksAt H) ℓ.frame.F D.P := hFℓ ▸ hFP
-    have hPt := SA.frame_mem_of_between sp hU hΦ hΦU hΦ.fcRoot_mem h hFP'
-    exact SA.anc_tree_of_anc_U hU hΦ hΦU hPt h hΦ.fcRoot_mem
+    have hPt := AC.frame_mem_of_between sp hU hΦ hΦU hΦ.fcRoot_mem h hFP'
+    exact AC.anc_tree_of_anc_U hU hΦ hΦU hPt h hΦ.fcRoot_mem
 
 /-- The invariant at the cuts before `i` holds at the cuts before every `k ≤ i`. -/
 theorem OutageLockInv.mono {i k : Nat} (h : OutageLockInv D i) (hk : k ≤ i) :
@@ -373,7 +373,7 @@ theorem outage_s5_inner_at
     (hS : ∀ y, ReceiverServiceAfterAt H (tr.HonestBlocksAt H) D.b₁ y tr.projAC)
     (i : Nat) (hinv : OutageLockInv D i) :
     ∀ k ≤ i, ∀ y e, HVoteAt tr H y k e → D.r < e.msg.slot →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg D.P := by
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg D.P := by
   have hrun := D.hrun
   have hU := D.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -385,7 +385,7 @@ theorem outage_s5_inner_at
   have hrq : D.r ≤ q := by omega
   have hinvk := hinv.mono D hki
   obtain ⟨hy, ℓ, hc⟩ := hVoteAt_iff.1 hv
-  have hcast : SA.CastAt tr.projAC y k ℓ e := hc
+  have hcast : AC.CastAt tr.projAC y k ℓ e := hc
   have hd := hrun.time_nonneg k
   have hcallk : tr.IsCall y k := ⟨_, projAC_callAt.1 hcast.1⟩
   have hsl := (castAt_spec_at hrun D.hnc hy hcast).2.1
@@ -397,7 +397,7 @@ theorem outage_s5_inner_at
   obtain ⟨htk, htk'⟩ := hv.ts_le_cast hrun D.hnc
   rw [hs] at htk htk'
   have hts : sp.ts (q + 1 : Nat) = sp.ts q + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have htk1 : sp.ts ((q + 1 : Nat) : Int) ≤ tr.time k := htk
   have hg : D.b₁ ≤ sp.ts q + sp.Δ := by
     have := ts_le_ts (sp := sp) hrq
@@ -413,8 +413,8 @@ theorem outage_s5_inner_at
   · exact vote_extends_of_hi_at D hinvk hy hcast hHi hL
   -- Lo: a carried batch extending `P`
   have hcarry : ∀ SX : Set (Fin sp.n), (∀ x ∈ SX, ∀ j e', HVoteAt tr H x j e' →
-      e'.msg.slot = q → SA.VoteExtends (tr.HonestBlocksAt H) e'.msg D.P) →
-      SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y k e q
+      e'.msg.slot = q → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg D.P) →
+      AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y k e q
         {v | ∃ x ∈ SX, ∃ j e', HVoteAt tr H x j e' ∧ e'.msg = v ∧ v.slot = q} := by
     intro SX hall
     refine carryAt_after_at hrun D.hnc (hS y) hg hy hcast hs fun v hv' => ?_
@@ -422,12 +422,12 @@ theorem outage_s5_inner_at
     obtain ⟨Hd, hHd, hHdr, hPHd⟩ := hall x hx j e' hve hvs
     exact ⟨x, j, e', hve, rfl, hvs, Hd, hHd, hHdr, hFℓ ▸ hFP.trans hPHd⟩
   have hviab : (∃ x j e', HVoteAt tr H x j e' ∧ e'.msg.slot = q ∧
-      SA.VoteExtends (tr.HonestBlocksAt H) e'.msg D.P) → SA.ViableAtVote ℓ e (q + 1) D.P :=
+      AC.VoteExtends (tr.HonestBlocksAt H) e'.msg D.P) → AC.ViableAtVote ℓ e (q + 1) D.P :=
     viable_at_vote_of_lo_at D hinvk hy (hS y) hcast hs hrq hHi hFP
   rcases hrq.lt_or_eq with hrq' | rfl
   · -- `q > r`: every earlier slot-`q` vote extends `P` (induction), counted at the voter's cut
     have hall : ∀ x j e', j < k → HVoteAt tr H x j e' → e'.msg.slot = q →
-        SA.VoteExtends (tr.HonestBlocksAt H) e'.msg D.P := fun x j e' hjk hve hvs =>
+        AC.VoteExtends (tr.HonestBlocksAt H) e'.msg D.P := fun x j e' hjk hve hvs =>
       ih j hjk (by omega) x e' hve (by omega)
     have hBK := D.hBK (tr.time k) ⟨y, k, hy, hcallk, le_rfl⟩
     have hcount := faults_lt_voters hrun D.hnc D.facts hBK (s := q) (d := tr.time k)
@@ -457,7 +457,7 @@ theorem outage_s5_inner_at
     have hA₀k : D.K.committee D.r ∩ D.A₀ ⊆ H (tr.time k) := fun x hx =>
       hrun.antitone hkz (D.hA₀ hx.2)
     have hall : ∀ x ∈ D.K.committee D.r ∩ D.A₀, ∀ j e', HVoteAt tr H x j e' →
-        e'.msg.slot = D.r → SA.VoteExtends (tr.HonestBlocksAt H) e'.msg D.P :=
+        e'.msg.slot = D.r → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg D.P :=
       fun x hx j e' hve hvs =>
         hinvk.votes x j (vote_cut_lt hrun D.hnc hve hvs htk1).2 e' hve (by omega) (by omega)
           (Or.inr hx.2)
@@ -488,7 +488,7 @@ theorem outage_s5_inner_at
       rw [hvs] at hts'
       have hjr := ts_le_ts (sp := sp) (show D.j₀ + 1 ≤ D.r by omega)
       have hj₁ : sp.ts (D.j₀ + 1 : Nat) = sp.ts D.j₀ + 4 * sp.Δ := by
-        simp only [SAParams.ts]; push_cast; ring
+        simp only [ACParams.ts]; push_cast; ring
       have hjk := (vote_cut_lt hrun D.hnc hve hvs htk1).2
       rcases D.holder_or_opponent hve (by linarith only [D.ha, hts', hjr, hj₁, hΔ])
           ((hrun.time_mono hjk.le).trans hkz) with h | h | h
@@ -530,7 +530,7 @@ theorem restored_votes_extend_at
     (hS : ∀ y, ReceiverServiceAfterAt H (tr.HonestBlocksAt H) D.b₁ y tr.projAC)
     (hinv : ∀ i, OutageLockInv D i) :
     ∀ y k e, HVoteAt tr H y k e → D.r < e.msg.slot →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg D.P :=
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg D.P :=
   fun y k e hv hs => outage_s5_inner_at D hS k (hinv k) k le_rfl y e hv hs
 
 end Consensus.Goldilocks.Compose.Growing

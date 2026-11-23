@@ -17,7 +17,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open SA (Vote)
+open AC (Vote)
 
 section Engine
 

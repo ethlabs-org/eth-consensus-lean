@@ -17,18 +17,18 @@ namespace Consensus.Goldilocks.Obligations.Growing
 
 open AsChainShape Simulation Blocks Shape
 
-variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- One height step, observed at two cuts of a node honest at each observation. -/
 def AnchorStepAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-    (A X : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+    (A X : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∃ z j j', z ∈ H (tr.time j) ∧ z ∈ H (tr.time j') ∧
     A ∈ (tr.state z j).fg.tree ∧ X ∈ (tr.state z j').fg.tree ∧
     ((tr.state z j).fg.σ A.root).h + 1 ≤ ((tr.state z j').fg.σ X.root).h
 
 /-- The observations witnessing an anchor step, without exposing the definition's body. -/
 theorem anchorStepAt_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
-    {A X : SA.Blk sp.n (List (FG.Att sp.n))} :
+    {A X : AC.Blk sp.n (List (FG.Att sp.n))} :
     AnchorStepAt tr H A X ↔
       ∃ z j j', z ∈ H (tr.time j) ∧ z ∈ H (tr.time j') ∧
         A ∈ (tr.state z j).fg.tree ∧ X ∈ (tr.state z j').fg.tree ∧
@@ -50,7 +50,7 @@ structure FinalWindowDataAt (Q : FinalQueryAt S A V) where
   gap : Nat
   gap_two : 2 ≤ gap
   gap_span : 3 * gap ≤ S.δt
-  block : Fin 4 → SA.Blk Q.params.n (List (FG.Att Q.params.n))
+  block : Fin 4 → AC.Blk Q.params.n (List (FG.Att Q.params.n))
   cut : Fin 4 → Nat
   slots : ∀ a, (block a).slot = start + (![0, gap, 2 * gap, 3 * gap] a)
   proposals : ∀ a, Q.trace.ProposesAt (block a).proposer (cut a) (block a)
@@ -71,15 +71,15 @@ namespace FinalWindowDataAt
 variable {S A V} {Q : FinalQueryAt S A V} (W : FinalWindowDataAt S A V Q)
 
 noncomputable abbrev store := (Q.trace.post (W.cut 3)).fg
-noncomputable abbrev state (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) := W.store.σ B.root
+noncomputable abbrev state (B : AC.Blk Q.params.n (List (FG.Att Q.params.n))) := W.store.σ B.root
 abbrev Extends (_W : FinalWindowDataAt S A V Q)
-    (B C : SA.Blk Q.params.n (List (FG.Att Q.params.n))) : Prop :=
+    (B C : AC.Blk Q.params.n (List (FG.Att Q.params.n))) : Prop :=
   Anc (Q.trace.HonestBlocksAt Q.keys) B C
 
 /-- Per-cut reset premises, catch-up, and honest anchors of the same window. -/
 def AnchorRun : Prop :=
   ∃ (proposer : Nat → Fin Q.params.n)
-    (dg : Digest (List (FG.Att Q.params.n)) (SA.Payload Q.params.n)) (g ΔF a b : Time),
+    (dg : Digest (List (FG.Att Q.params.n)) (AC.Payload Q.params.n)) (g ΔF a b : Time),
     Healing.Growing.ResetPremisesUpTo Q.trace Q.keys proposer dg g ΔF a b
         (runCommittee S Q.run.2 Q.hn) (K S A).params.βK ∧
     Healing.Growing.CatchRun Q.trace Q.keys g (2 * Q.params.Δ) ∧
@@ -102,7 +102,7 @@ def CacheCoverage : Prop :=
 
 theorem anchorRun_iff : W.AnchorRun ↔
     ∃ (proposer : Nat → Fin Q.params.n)
-      (dg : Digest (List (FG.Att Q.params.n)) (SA.Payload Q.params.n)) (g ΔF a b : Time),
+      (dg : Digest (List (FG.Att Q.params.n)) (AC.Payload Q.params.n)) (g ΔF a b : Time),
       Healing.Growing.ResetPremisesUpTo Q.trace Q.keys proposer dg g ΔF a b
         (runCommittee S Q.run.2 Q.hn) (K S A).params.βK ∧
       Healing.Growing.CatchRun Q.trace Q.keys g (2 * Q.params.Δ) ∧

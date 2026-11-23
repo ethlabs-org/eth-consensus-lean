@@ -41,9 +41,9 @@ imported publicly. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
@@ -51,18 +51,18 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 participation are needed; historical record recency and anchor compatibility are supplied
 separately. The live-lock arm requires no majority or service before GST. -/
 theorem anchor_compatible_of_live_candidates
-    {A : SA.SAState sp.n} {Φ : SA.Frm sp.n (List (FG.Att sp.n))} (hΦ : FrameOK Φ)
-    {t : Time} {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hcomp : ∀ X ∈ SA.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}, Compatible Φ.tree X R) :
-    Compatible Φ.tree (SA.getAnchor sp A Φ t) R := by
-  have hsub : SA.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} ⊆ Φ.tree := by
+    {A : AC.ACState sp.n} {Φ : AC.Frm sp.n (List (FG.Att sp.n))} (hΦ : FrameOK Φ)
+    {t : Time} {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hcomp : ∀ X ∈ AC.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}, Compatible Φ.tree X R) :
+    Compatible Φ.tree (AC.getAnchor sp A Φ t) R := by
+  have hsub : AC.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} ⊆ Φ.tree := by
     rintro X (hX | hX)
     · exact hX.1
     · exact (Set.mem_singleton_iff.mp hX) ▸ hΦ.fcRoot_mem
-  obtain ⟨D, hD⟩ := SA.exists_deepest hΦ hsub ⟨Φ.fcRoot, Or.inr rfl⟩
-  have ha : SA.getAnchor sp A Φ t = D := by simp only [SA.getAnchor, hD, Option.getD_some]
+  obtain ⟨D, hD⟩ := AC.exists_deepest hΦ hsub ⟨Φ.fcRoot, Or.inr rfl⟩
+  have ha : AC.getAnchor sp A Φ t = D := by simp only [AC.getAnchor, hD, Option.getD_some]
   rw [ha]
-  exact hcomp D (SA.deepest_mem hD).1
+  exact hcomp D (AC.deepest_mem hD).1
 
 end Consensus.Goldilocks.Compose
 

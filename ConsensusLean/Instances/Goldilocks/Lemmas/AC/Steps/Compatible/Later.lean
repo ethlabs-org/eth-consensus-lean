@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
 
 public section
 
-/-! # Goldilocks SA: a fast lock of a later slot is compatible (A1.9, source slot after `s`)
+/-! # Goldilocks AC: a fast lock of a later slot is compatible (A1.9, source slot after `s`)
 
 A fast lock of a slot `s'` that an honest node writes at a cut before `i` needs at least half of
 the committee as non-equivocating supporters of its block (the fast test of the update of `s'`),
@@ -13,10 +13,10 @@ the slot-`s'` committee `K` (P), so with `2|K(s') ∩ Hᶜ| < committeeSize` one
 and its slot-`s'` vote was cast before the write. When every honest vote of slot `s'` before `i`
 extends `B`, the lock's block is compatible with `B`. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-- **A fast lock supported by votes that extend `B` is compatible with `B`.** -/
 theorem fastLock_compatible_of_votes
@@ -59,6 +59,6 @@ theorem fastLock_compatible_of_votes
     obtain ⟨hvs, j', hj', e, hve, rfl⟩ := optimisticPoint_pool_vote hrun hx hpt hv hvH
     exact hvotes _ hvH j' (lt_of_le_of_lt hj' hji) e hve hvs
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

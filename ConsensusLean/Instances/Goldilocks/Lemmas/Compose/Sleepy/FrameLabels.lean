@@ -21,9 +21,9 @@ they establish full-read and vote-frame viability (S3 of `SleepyInvariantUpTo`).
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
@@ -32,10 +32,10 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 at or below `fc_root` or in the full viable tree. -/
 private theorem held_viable_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
-    {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
     (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
     (hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D')
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
     (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
@@ -49,7 +49,7 @@ private theorem held_origin_viable_of {ini} (hrun : GoldilocksRun proposer dg H 
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
     (hP : ∀ C s C' s', OriginBefore tr H C s i → OriginBefore tr H C' s' i →
       Compatible (tr.HonestBlocks H) C C')
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBc : ∀ C s, OriginBefore tr H C s i → Compatible (tr.HonestBlocks H) B C)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
     (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
@@ -71,7 +71,7 @@ private theorem held_origin_viable_of {ini} (hrun : GoldilocksRun proposer dg H 
 theorem held_origin_viable_before {b : Time} {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n)
     (hP : ∀ s, OriginsBelowUpTo tr H s b) {y : Fin sp.n}
-    (hy : y ∈ H) (i : Nat) (hi : ∀ k < i, tr.time k ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hy : y ∈ H) (i : Nat) (hi : ∀ k < i, tr.time k ≤ b) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBc : ∀ C s, OriginBefore tr H C s i → Compatible (tr.HonestBlocks H) B C)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
     (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨

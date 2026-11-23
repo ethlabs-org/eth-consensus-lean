@@ -13,26 +13,26 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 
 public section
 
-/-! # Goldilocks SA: carried heads force the walk towards an anchor
+/-! # Goldilocks AC: carried heads force the walk towards an anchor
 
 Prior-slot honest heads (`honest_isBest_of_carry`, `honest_prefix_of_carry`) force the best child
 towards an anchor once their batch is carried. Split out of `AC/Steps/Nodes`, so that a new carry
 helper does not rebuild Nodes' cone. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable (sp : SAParams)
+variable (sp : ACParams)
 
 /-- Prior-slot honest heads force the child toward a lock anchor once their
 actual batch is carried. This is a local comparison, not current-slot unanimity. The voters
 are members of the slot-`s` committee (T), fewer than half of whose members are faulty. -/
 theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    {proposer : Nat → Fin sp.n} {ini : Fin sp.n → SAState sp.n} (hrun : ACRun proposer tr H U ini)
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+    {proposer : Nat → Fin sp.n} {ini : Fin sp.n → ACState sp.n} (hrun : ACRun proposer tr H U ini)
     (K : CommitteeDict sp.n)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) {B : Blk sp.n FGP}
     (hBt : B ∈ ℓ.frame.tree)
     (hall : ∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = s → VoteExtends U e'.msg B)
@@ -42,10 +42,10 @@ theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
     {X C : Blk sp.n FGP}
     (hC : C ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
     (hp : C.parent = some X.root) (hCB : ℓ.frame.Anc C B) :
-    IsBest sp (goldfishScore sp ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s)
+    IsBest sp (headScore sp ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s)
       {Q | Q ∈ ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)) ∧
         Q.parent = some X.root ∧
-        goldfishEligible sp ℓ.frame (tr.time i) (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s Q}
+        headEligible sp ℓ.frame (tr.time i) (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) s Q}
       C := by
   have hr := hrun.localRun
   have hΦ := frameIn_of_callAt hr hy hc.1
@@ -93,13 +93,13 @@ theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
 /-- A shallower voter walk reaches a lock anchor supported by all actual
 prior-slot honest votes. Only the prefix is asserted. -/
 theorem honest_prefix_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
-    {proposer : Nat → Fin sp.n} {ini : Fin sp.n → SAState sp.n} (hrun : ACRun proposer tr H U ini)
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+    {proposer : Nat → Fin sp.n} {ini : Fin sp.n → ACState sp.n} (hrun : ACRun proposer tr H U ini)
     (K : CommitteeDict sp.n)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) {B : Blk sp.n FGP}
     (hall : ∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = s → VoteExtends U e'.msg B)
     (hex : ∀ x ∈ H, x ∈ K.committee s → ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = s)
@@ -130,6 +130,6 @@ theorem honest_prefix_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
   exact ⟨C, honest_isBest_of_carry sp hrun K hT hsize hf hy hc hs hBt hall hex hcarry hCv eC.2.2
     hCB, hCB⟩
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

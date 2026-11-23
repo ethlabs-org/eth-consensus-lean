@@ -18,23 +18,23 @@ floor witness of the prefix, makes every next-slot vote of a node honest at its 
 prefix. The witness/relay induction is the common `next_votes_of_early_witness_at`; the
 lock-specific step carries the writer's counted votes to the voter (`carry_of_service_senders`
 over the writer's own sends and acceptances, `optimistic_writer_votes_at`) and transfers them at
-the voter's cut (`SA.Growing.optimistic_transfer_stored`, faults charged at the vote). The
+the voter's cut (`AC.Growing.optimistic_transfer_stored`, faults charged at the vote). The
 writer, the witness holder and each voter are honest at their own cuts only. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- An optimistic write propagates an arbitrary viable prefix to next-slot votes, at the slot
 committees `K` of a run from `K`'s committee start. -/
 theorem optimistic_next_votes_of_early_witness_at
-    {K : SA.CommitteeDict sp.n}
+    {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K))
+      (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -42,10 +42,10 @@ theorem optimistic_next_votes_of_early_witness_at
     (hcatch : CatchRun tr H g (2 * sp.Δ))
     {s floor : Nat} (hm : gbar g ≤ sp.ts s)
     (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
-    {kindJ : Prop} {J X Q D : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J X Q D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J)
-    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (SA.Vote sp.n)}
-    (hopt : SA.OptimisticLockAt tr.projAC x c s D CV)
+    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
+    (hopt : AC.OptimisticLockAt tr.projAC x c s D CV)
     (hXD : Anc (tr.HonestBlocksAt H) X D)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (hat : tr.time a < sp.ts s + 2 * sp.Δ)
@@ -53,8 +53,8 @@ theorem optimistic_next_votes_of_early_witness_at
     (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocksAt H) J X)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q) (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
-      e.msg.slot = s + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
+    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
+      e.msg.slot = s + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
   apply next_votes_of_early_witness_at hrun hnc hsvc hawake hf hcatch hm le_rfl hmb hframe hw
     hat hcw hQw hh hJ hXQ
   intro y i ell e hy hcast hs hhi hFX hviab ih
@@ -74,12 +74,12 @@ theorem optimistic_next_votes_of_early_witness_at
         Compose.Growing.optimistic_writer_votes_at hrun hnc hx hopt v hv
       refine ⟨hvs, ⟨x, k, hk, hsend, hlo, hhi'⟩, Hv, hroot, (hFX'.trans hXD).trans hanc, ?_⟩
       exact hacc.imp_right fun ⟨k', hk', hacc', htime⟩ => ⟨x, k', hk', hacc', htime⟩
-  have hss : sp.ts s ≤ sp.ts (s + 1 : Nat) := (SA.ts_le_iff sp).2 (by omega)
+  have hss : sp.ts s ≤ sp.ts (s + 1 : Nat) := (AC.ts_le_iff sp).2 (by omega)
   have hΔ := sp.toParams.hΔ
-  exact SA.Growing.optimistic_transfer_stored
+  exact AC.Growing.optimistic_transfer_stored
     (Compose.Growing.goldilocks_ac_projection_from hrun hnc) K
-    (SA.CommitteePAt.upTo hmono hrun.antitone hK.facts.hP)
-    (SA.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt hrun hnc)) hK.facts.hsize
+    (AC.CommitteePAt.upTo hmono hrun.antitone hK.facts.hP)
+    (AC.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt hrun hnc)) hK.facts.hsize
     hx hopt hXD (hK.cs2 s hm (by linarith) _ ht0 hib)
     (hK.cs2 (s + 1) (hm.trans hss) (by linarith) _ ht0 hib) hy hcast hs hcarry
     hviab

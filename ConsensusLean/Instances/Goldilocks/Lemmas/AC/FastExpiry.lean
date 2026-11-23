@@ -1,17 +1,17 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Confirmation
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Confirmation
 
 public section
 
-/-! # Goldilocks SA: lock expiry facts
+/-! # Goldilocks AC: lock expiry facts
 
 The write-side bounds of a new fast lock's expiry, `s + 2 ≤ fastExpiry ≤ s + k`, on every lock
 set (no run invariant), and the reading of `Lock.LiveAt`. A slow lock gets `s + k`, so every
 written lock of slot `s` has an expiry in `[s + 2, s + k]`. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} (sp : SAParams)
+variable {FGP : Type} (sp : ACParams)
 
 /-- A new fast lock of slot `s` lives at least through `s + 2`. -/
 theorem le_fastExpiry (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
@@ -27,6 +27,6 @@ theorem fastExpiry_le (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
   unfold fastExpiry
   exact min_le_left _ _
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

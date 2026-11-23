@@ -9,9 +9,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.Outcome
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
@@ -76,10 +76,10 @@ theorem local_sources
   have hc' : (tr.upTo (tr.time r)).projAC.CallAt v r ell := by
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩
-  have hPhi := (SA.frameIn_of_callAt hr hv hc').1
+  have hPhi := (AC.frameIn_of_callAt hr hv hc').1
   have hOt : O ∈ (tr.state v r).fg.tree := by
     rw [hO, hframe]
-    have hm := (SA.viableAncestor_anc hPhi (fastLockAt_frame_mem hfl hc)).1
+    have hm := (AC.viableAncestor_anc hPhi (fastLockAt_frame_mem hfl hc)).1
     rw [hframe] at hm
     exact hm.1
   have hsub : (tr.state v r).fg.tree ⊆ tr.HonestBlocksAt H :=

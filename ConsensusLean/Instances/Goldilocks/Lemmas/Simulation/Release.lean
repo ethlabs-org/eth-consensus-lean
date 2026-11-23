@@ -20,7 +20,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote Payload SAState)
+open AC (ACParams ReplayOrder Vote Payload ACState)
 
 variable {binding : VoteBinding}
 
@@ -28,7 +28,7 @@ variable {binding : VoteBinding}
 
 section TickCuts
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The attestation bodies a list of cuts queues: one per signing `fg_attest` cut. -/
 def attBodies (cs : List (Cut (goldilocksNode sp ro))) : List Body :=

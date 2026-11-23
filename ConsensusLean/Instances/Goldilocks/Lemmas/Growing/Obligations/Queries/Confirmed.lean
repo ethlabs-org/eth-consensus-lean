@@ -47,9 +47,9 @@ open Blocks Shape
 
 section Node
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -57,7 +57,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 static `proposal_accepted` on the prefix through the cut). -/
 theorem proposal_accepted_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} {k : Nat} (hp : p ∈ H (tr.time k))
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : tr.ProposesAt p k P) : tr.AcceptAt p k P := by
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : tr.ProposesAt p k P) : tr.AcceptAt p k P := by
   have hP' : (tr.upTo (tr.time k)).ProposesAt p k P :=
     ⟨(RunTrace.upTo_ownBlockAt tr).2 ⟨le_rfl, hP.1⟩, hP.2.1, hP.2.2⟩
   exact ((RunTrace.upTo_acceptAt tr).1
@@ -65,7 +65,7 @@ theorem proposal_accepted_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
 
 /-- **A node honest at its proposal is the designated proposer of its slot.** -/
 theorem proposesAt_designated_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    {p : Fin sp.n} {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hp : p ∈ H (tr.time k))
+    {p : Fin sp.n} {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} (hp : p ∈ H (tr.time k))
     (hP : tr.ProposesAt p k P) : p = proposer P.slot := by
   have hk0 := hrun.time_nonneg k
   obtain ⟨⟨⟨acc, hcB⟩, hpos⟩, hpp, -⟩ := hP
@@ -135,7 +135,7 @@ theorem confirmed_query_slot_at (Q : ConfirmedQueryAt S A V) {ready : Time}
 /-- The selected slot's actual canonical proposal event, at the slot time. -/
 theorem confirmed_slot_event_at (Q : ConfirmedQueryAt S A V)
     (W : ConfirmedProducerSlotAt S A V Q) :
-    ∃ (B : SA.Blk Q.params.n (List (FG.Att Q.params.n))) (k : Nat),
+    ∃ (B : AC.Blk Q.params.n (List (FG.Att Q.params.n))) (k : Nat),
       B.proposer = runProposer S Q.run.2 Q.hn W.slot ∧
       Q.trace.ProposesAt B.proposer k B ∧ Q.trace.time k = Q.params.ts W.slot := by
   obtain ⟨k, B, hp, ht⟩ := Regimes.Growing.ready_proposer_proposes_at

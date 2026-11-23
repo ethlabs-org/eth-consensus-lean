@@ -26,9 +26,9 @@ Case (A) of `window_justifies_or_crossed` is an honest report `C` with `h < σ[C
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -36,20 +36,20 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 cut `r`, then `C` is in the frame and some live fast lock `l` of that call has
 `l.block = C.root` (and slot `≥ slot(t_r) − 2`). -/
 theorem toFG_live_fast_lock {z : Fin sp.n} {r : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} (hto : SA.ToFGAt tr.projAC z r ell C) :
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} (hto : AC.ToFGAt tr.projAC z r ell C) :
     C ∈ ell.frame.tree ∧
-      ∃ l ∈ SA.liveLocks sp (tr.projAC.state z r).locks ell.frame (tr.time r),
+      ∃ l ∈ AC.liveLocks sp (tr.projAC.state z r).locks ell.frame (tr.time r),
         l.block = C.root ∧ l.fast = true ∧ sp.slot (tr.time r) ≤ l.slot + 2 := by
   obtain ⟨-, -, h⟩ := hto
-  have hC : C ∈ SA.toFGCandidates sp (tr.projAC.state z r) ell.frame (tr.projAC.time r) := by
-    unfold SA.acToFG at h
+  have hC : C ∈ AC.toFGCandidates sp (tr.projAC.state z r) ell.frame (tr.projAC.time r) := by
+    unfold AC.acToFG at h
     split_ifs at h
     split at h
     · cases h
     · rename_i C' hC'
       split_ifs at h
       cases h
-      exact (SA.deepest_mem hC').1
+      exact (AC.deepest_mem hC').1
   exact ⟨hC.1.1, hC.2⟩
 
 end Consensus.Goldilocks.Obligations

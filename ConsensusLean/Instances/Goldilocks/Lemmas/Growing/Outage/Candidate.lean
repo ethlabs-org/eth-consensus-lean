@@ -15,9 +15,9 @@ honest at `t`, `IsHonestSourceAt`), and the count is `2 f_t < n`. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -27,8 +27,8 @@ compatible with every `G`-source is at or below `fc_root` or in the full viable 
 premise on the sources. -/
 theorem held_candidate_of_rows {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
-    {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourced tr H G y i)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourced tr H G y i)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
     (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
@@ -43,20 +43,20 @@ end Consensus.Goldilocks.Compose
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
 /-- The attestations of `y`'s tree at cut `i` by validators honest at a time `t` are sourced by
 blocks satisfying `G`, held while honest at `t` (`IsHonestSourceAt`). -/
 def HonestRowsSourcedBy (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-    (G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop) (y : Fin sp.n) (i : Nat) (t : Time) : Prop :=
+    (G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop) (y : Fin sp.n) (i : Nat) (t : Time) : Prop :=
   ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H t →
     ∃ D, G D ∧ IsHonestSourceAt tr H D a.T t
 
-theorem honestRowsSourcedBy_iff {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} {y : Fin sp.n}
+theorem honestRowsSourcedBy_iff {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop} {y : Fin sp.n}
     {i : Nat} {t : Time} : HonestRowsSourcedBy tr H G y i t ↔
       ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H t →
         ∃ D, G D ∧ IsHonestSourceAt tr H D a.T t :=
@@ -66,7 +66,7 @@ theorem honestRowsSourcedBy_iff {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} 
 theorem HonestRowsSourcedAt.by_
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     {i : Nat}
-    {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourcedAt tr H G y i) :
+    {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourcedAt tr H G y i) :
     HonestRowsSourcedBy tr H G y i (tr.time i) := fun X hX a ha hav => by
   obtain ⟨D, hD, x, k, hx, hki, hDt, hDT⟩ := honestRowsSourcedAt_iff.1 hsrc X hX a ha hav
   exact ⟨D, hD, isHonestSourceAt_iff.2
@@ -76,7 +76,7 @@ theorem HonestRowsSourcedAt.by_
 `y`'s tree at `i` sourced at `t` are, in the prefix through `t`, rows sourced by the `G`-blocks held
 in the prefix. -/
 theorem HonestRowsSourcedBy.upTo_held {y : Fin sp.n} {i : Nat} {t : Time}
-    (ht : ∀ k < i, tr.time k ≤ t) {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    (ht : ∀ k < i, tr.time k ≤ t) {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
     (hsrc : HonestRowsSourcedBy tr H G y i t) :
     HonestRowsSourced (tr.upTo t) (H t)
       (fun D => G D ∧ D ∈ (tr.upTo t).HonestBlocks (H t)) y i := by
@@ -96,8 +96,8 @@ theorem held_candidate_of_rows_by
     (hnc : NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (ht : ∀ k < i, tr.time k ≤ t)
     (hy : y ∈ H t) (hf : 2 * (H t)ᶜ.ncard < sp.n)
-    {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourcedBy tr H G y i t)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourcedBy tr H G y i t)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocksAt H) D B)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
     (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨

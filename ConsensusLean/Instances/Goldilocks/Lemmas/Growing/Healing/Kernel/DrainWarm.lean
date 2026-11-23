@@ -14,9 +14,9 @@ call therefore bounds the selected parent, without a vote cohort or a cast-time 
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
@@ -63,7 +63,7 @@ theorem full_frame_viable_witness_at
     refine ⟨Q, hQt, ⟨hQ, hFQs, ?_, ?_⟩, ?_⟩
     · rw [he]; exact hFQs
     · exact (Store.headHeightFloor_bounds _).2.trans_eq hQh.symm
-    · exact SA.anc_tree_of_anc_U
+    · exact AC.anc_tree_of_anc_U
         ((Store.accepted_tree _ _ _ _ hr).2.1) hframe hsub hframe.fcRoot_mem
         (by change (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot Q
             rw [he]; exact hFQs) hQt
@@ -80,12 +80,12 @@ theorem warm_proposal_height_at
     {s₀ u : Nat} (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀)
     (hwarm : s₀ + 2 * sp.k ≤ u) (hub : sp.ts u ≤ b)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
-    {kP : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kP : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : tr.ProposesAt z kP P) (hPs : P.slot = u) :
     HZ tr H g ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + 1 := by
   have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
   have htime : tr.time kP = sp.ts u := by
-    simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hP.2.2
+    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
   have hzk : z ∈ H (tr.time kP) := hrun.antitone (by rw [htime]; linarith) hz
   have hr := hrun.upTo (hrun.time_nonneg kP)
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
@@ -111,14 +111,14 @@ theorem warm_proposal_height_at
   have hac := (Compose.goldilocks_ac_projection_from hr (hnc.upTo _)).localRun
   have hvd := Healing.proposal_head_viable hac hr.vstart hzk hc hcall
     (by rw [sp.slotTime_eq]; exact hti) hd
-    ⟨(SA.frameIn_of_callAt hac hzk hc).1.fcRoot_mem, .refl, Q, hQ, hv, hroot⟩
+    ⟨(AC.frameIn_of_callAt hac hzk hc).1.fcRoot_mem, .refl, Q, hQ, hv, hroot⟩
   rw [hframe] at hvd
   have hfit : cutZ sp.toParams g + sp.Δ + 1 ≤ tr.time ip := by
     have hk := sp.two_le_k
     have h4 : sp.ts (s₀ + 4 : Nat) ≤ sp.ts u :=
-      (SA.ts_le_iff sp).2 (by exact_mod_cast (show s₀ + 4 ≤ u by omega))
+      (AC.ts_le_iff sp).2 (by exact_mod_cast (show s₀ + 4 ≤ u by omega))
     have he : sp.ts (s₀ + 4 : Nat) = sp.ts s₀ + 16 * sp.Δ := by
-      simp only [SAParams.ts]; push_cast; ring
+      simp only [ACParams.ts]; push_cast; ring
     rw [he] at h4
     rw [hip]
     linarith [cutZ_le sp g]
@@ -128,7 +128,7 @@ theorem warm_proposal_height_at
   have hZ := Generic.HZ_le_hmax_at_from hrun.toLocalRun hnc hsvc.toService hcatch
     ⟨z, hrun.antitone hcz hzi⟩ hsnap hzi (by simpa only [max_eq_right hcz] using hfi)
     hcallZ (by
-      have hsu : sp.ts s₀ ≤ sp.ts u := (SA.ts_le_iff sp).2 (by exact_mod_cast (by omega : s₀ ≤ u))
+      have hsu : sp.ts s₀ ≤ sp.ts u := (AC.ts_le_iff sp).2 (by exact_mod_cast (by omega : s₀ ≤ u))
       rw [hip]; linarith)
   have hheight := Store.height_le_of_isViable hvd.2.2.2 hZ
   have hle : ∀ q < kP + 1, tr.time q ≤ tr.time kP := fun q hq => hrun.time_mono (by omega)
@@ -164,7 +164,7 @@ theorem drainOutputs_of_service_at
     obtain ⟨u, hlu, hhu, hz, kP, P, hP, hPs⟩ :=
       proposalGap_iff.mp hgp (s₀ + 2 * sp.k) (by omega) (by omega)
     have huN : u ≤ N := by omega
-    have hts : sp.ts u ≤ sp.ts N := (SA.ts_le_iff sp).2 (by exact_mod_cast huN)
+    have hts : sp.ts u ≤ sp.ts N := (AC.ts_le_iff sp).2 (by exact_mod_cast huN)
     have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
     exact ⟨u, hlu, by omega, proposer u, kP, P, hz, rfl, hP, hPs,
       warm_proposal_height_at hrun hnc hsvc hawake hf hcatch hm hlu

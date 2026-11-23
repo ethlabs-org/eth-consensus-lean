@@ -40,9 +40,9 @@ same time), and ancestry is in the blocks held while honest. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -51,13 +51,13 @@ node honest at the end of the update time, at the first cut after it. -/
 theorem operational_update_read_after_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hhold : p ∈ H (sp.ts u + sp.Δ)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
-    (hR : drainTime sp a ≤ sp.ts u) (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : drainTime sp a ≤ sp.ts u) (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u)
     (hTb : sp.ts u + 6 * sp.Δ ≤ b) {y : Fin sp.n} (hy : y ∈ H (sp.ts u + 6 * sp.Δ))
-    {j : Nat} {ell : ACLabel (goldilocksNode sp ro)} (hup : SA.UpdateAt tr.projAC y j u ell)
-    (hlock : ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : SA.Lock) ∈ (tr.projAC.post j).locks)
+    {j : Nat} {ell : ACLabel (goldilocksNode sp ro)} (hup : AC.UpdateAt tr.projAC y j u ell)
+    (hlock : ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.post j).locks)
     {J : Nat} (hJ : Regimes.CutAfter tr J (sp.ts u + 6 * sp.Δ)) :
     Anc (tr.HonestBlocksAt H) P (Regimes.readAfter tr y J (sp.ts u + 6 * sp.Δ)) := by
   obtain ⟨ex, hex, hlock⟩ := hlock
@@ -80,12 +80,12 @@ theorem operational_update_read_after_at
     intro e hje heJ
     exact le_antisymm (hleJ e heJ) (ht ▸ hm hje)
   have hslot : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 := by
-    apply SA.slot_of_mem sp (u + 1)
-    · simp only [SA.SAParams.ts]; push_cast; linarith [sp.toParams.hΔ]
-    · simp only [SA.SAParams.ts]; push_cast; linarith [sp.toParams.hΔ]
+    apply AC.slot_of_mem sp (u + 1)
+    · simp only [AC.ACParams.ts]; push_cast; linarith [sp.toParams.hΔ]
+    · simp only [AC.ACParams.ts]; push_cast; linarith [sp.toParams.hΔ]
   have hclean : cleanLabel sp a + 2 * sp.k + 1 ≤ u := by
     rw [drainTime_eq] at hR
-    have := (SA.ts_le_iff sp).mp hR
+    have := (AC.ts_le_iff sp).mp hR
     rw [cleanLabel_eq]
     omega
   -- the prefix through the read time, where the reader is honest throughout
@@ -100,8 +100,8 @@ theorem operational_update_read_after_at
     rwa [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC y (hle e he), hst e he] at h
   obtain ⟨hPt, hconf, -, -, -, hrecordEq⟩ :=
     operational_update_selection_at hp hhold hdesignated hactual hPs hR hgu hTb hyj hup
-  have hRaw : SA.ResultAt tr.projAC y j u P
-      (SA.fastCounted sp (tr.projAC.state y j) ell.frame u P) :=
+  have hRaw : AC.ResultAt tr.projAC y j u P
+      (AC.fastCounted sp (tr.projAC.state y j) ell.frame u P) :=
     ⟨ell, hup, hconf, rfl⟩
   have hframes : ∀ e ≤ J, Compatible (tr.HonestBlocksAt H) (tr.state y e).fg.F P :=
     fun e he => hp.finalized_compatible_clean_source_at hyj (Or.inl hRaw) hclean
@@ -109,7 +109,7 @@ theorem operational_update_read_after_at
   -- the effective record after the update
   obtain ⟨hΦj, hΦjU⟩ := Compose.Growing.frameIn_at hrun hnc hyj hup.1
   have heff : Anc (tr.HonestBlocksAt H) P
-      ((SA.lookup ell.frame (tr.projAC.post j).latestConfirmed).getD ell.frame.F) := by
+      ((AC.lookup ell.frame (tr.projAC.post j).latestConfirmed).getD ell.frame.F) := by
     rw [hrecordEq]
     exact (Obligations.effective_record_update_slot_growth (sp := sp) hΦj hPt).1.mono hΦjU
   have hbase := Obligations.Growing.effective_record_after_ac_call_at hrun hyj hup.1 heff
@@ -122,8 +122,8 @@ theorem operational_update_read_after_at
       rcases hsource with ⟨ell', hu', hD, -⟩ | ⟨ell', A', -, -, hsel, -⟩
       · have hsu : s = u := by
           have hs : tr.time q = sp.ts s + 6 * sp.Δ := hu'.2.2.1
-          have := (SA.ts_le_iff sp).mp (show sp.ts s ≤ sp.ts u by linarith)
-          have := (SA.ts_le_iff sp).mp (show sp.ts u ≤ sp.ts s by linarith)
+          have := (AC.ts_le_iff sp).mp (show sp.ts s ≤ sp.ts u by linarith)
+          have := (AC.ts_le_iff sp).mp (show sp.ts u ≤ sp.ts s by linarith)
           omega
         subst s
         have hP := (operational_update_selection_at hp hhold hdesignated hactual hPs
@@ -133,10 +133,10 @@ theorem operational_update_read_after_at
         exact Or.inl .refl
       · have hlate : sp.ts (sp.slot (tr.time q)) + 2 * sp.Δ ≤ tr.time q := by
           simp only [hqt, hslot]
-          simp only [SA.SAParams.ts, Nat.cast_add, Nat.cast_one]
+          simp only [AC.ACParams.ts, Nat.cast_add, Nat.cast_one]
           linarith
-        change SA.optimisticSelect sp A' ell'.frame (tr.time q) = some D at hsel
-        simp only [SA.optimisticSelect, hlate, or_true, ↓reduceIte] at hsel
+        change AC.optimisticSelect sp A' ell'.frame (tr.time q) = some D at hsel
+        simp only [AC.optimisticSelect, hlate, or_true, ↓reduceIte] at hsel
         cases hsel
     · intro q _ hqJ
       exact hframes (q + 1) (by omega)
@@ -149,7 +149,7 @@ theorem operational_update_read_after_at
   have hΦU : (Node.frame (tr.state y J)).tree ⊆ tr.HonestBlocksAt H :=
     fun X hX => ⟨y, J, _, hT0, hleJ, hy, hX.1⟩
   have hhead : Anc (tr.HonestBlocksAt H) P
-      (SA.acHead sp (tr.state y J).ac (Node.frame (tr.state y J)) (sp.ts u + 6 * sp.Δ)) := by
+      (AC.acHead sp (tr.state y J).ac (Node.frame (tr.state y J)) (sp.ts u + 6 * sp.Δ)) := by
     rcases hframes J le_rfl with hFP | hPF
     · have hF : ∀ e ≤ J, Anc (tr.HonestBlocksAt H) (tr.state y e).fg.F P := by
         intro e he
@@ -172,14 +172,14 @@ theorem operational_update_read_after_at
         rwa [hst e heJ] at h
       have hun0 := hp.operational_unanimous_at hhold hdesignated hactual hPs hR
         (show sp.ts u ≤ b by linarith only [hTb, hΔ])
-      have hun : ∀ z q e, z ∈ H (tr.time q) → SA.VoteAt tr.projAC z q e → tr.time q ≤ b →
+      have hun : ∀ z q e, z ∈ H (tr.time q) → AC.VoteAt tr.projAC z q e → tr.time q ≤ b →
           e.msg.slot = u → e.msg.head = P.root :=
         fun z q e hz hv hqb hs => hun0 z q e hz hv hs hqb
-      have hRnext := hR.trans ((SA.ts_le_iff sp).mpr
+      have hRnext := hR.trans ((AC.ts_le_iff sp).mpr
         (show (u : Int) ≤ (u + 1 : Nat) by exact_mod_cast Nat.le_succ u))
       have hu : 0 < u := by
         rw [drainTime_eq] at hR
-        have := (SA.ts_le_iff sp).mp hR
+        have := (AC.ts_le_iff sp).mp hR
         exact (Nat.succ_pos _).trans_le (by exact_mod_cast this)
       obtain ⟨v, r, m, S, hseed, hrb, -, hrt⟩ := hp.reset_seed_before_slot_at hRnext
       have hSP := high_origins_before_next_slot_below_at hp hPU hun hgu hRnext
@@ -190,15 +190,15 @@ theorem operational_update_read_after_at
         have hΦe : FrameOK (Node.frame (tr.state y e)) := by
           have h := Compose.frameOK_state hrT.toLocalRun hy e
           rwa [hst e heJ] at h
-        apply SA.viableAncestor_self hΦe (hPe e hje heJ)
+        apply AC.viableAncestor_self hΦe (hPe e hje heJ)
         exact (hp.held_target_ancestor_candidate_at_state_at hT0 (hle e heJ) hy hTb
           (hPe e hje heJ) hseed hrb hSP (fun x q l B hqe ho =>
             (high_origin_compatible_before_update_at hp hPU hPs hu hun hgu hRnext hTb ho
               (hle e heJ q hqe)).symm)).symm
-      have hlock' : (⟨P.root, u, true, ex⟩ : SA.Lock) ∈ (tr.state y (j + 1)).ac.locks := by
+      have hlock' : (⟨P.root, u, true, ex⟩ : AC.Lock) ∈ (tr.state y (j + 1)).ac.locks := by
         rw [← hstAC (j + 1) (by omega), tr.projAC.state_succ_of_call hup.1]
         exact hlock
-      have hkept : (⟨P.root, u, true, ex⟩ : SA.Lock) ∈ (tr.state y J).ac.locks := by
+      have hkept : (⟨P.root, u, true, ex⟩ : AC.Lock) ∈ (tr.state y J).ac.locks := by
         have h := Compose.lock_keep_interval_view hrT hy (show j + 1 ≤ J by omega)
           (by rw [hst (j + 1) (by omega)]; exact hlock') (B := P) rfl (fun e hje heJ => by
             have he := htime e (by omega) heJ
@@ -210,36 +210,36 @@ theorem operational_update_read_after_at
               change (sp.slot (tr.time e) : Int) - 1 ≤ _
               simp only [he, hslot]; push_cast; omega)
         rwa [hst J le_rfl] at h
-      have hwf : SA.LocksWF sp (tr.state y J).ac.locks := by
+      have hwf : AC.LocksWF sp (tr.state y J).ac.locks := by
         have h := Compose.locksWF_state hrT hncT hy J
         rwa [hst J le_rfl] at h
-      have hlive : P ∈ SA.liveLockBlocks sp (tr.state y J).ac.locks
+      have hlive : P ∈ AC.liveLockBlocks sp (tr.state y J).ac.locks
           (Node.frame (tr.state y J)) (sp.ts u + 6 * sp.Δ) := by
         refine ⟨hPe J hjJ.le le_rfl, ⟨P.root, u, true, ex⟩, ?_, rfl⟩
         refine ⟨⟨P.root, u, true, ex⟩, hkept, P, hPe J hjJ.le le_rfl, rfl, ?_, ?_⟩
-        · simp only [SA.Lock.LiveAt, hslot]; omega
+        · simp only [AC.Lock.LiveAt, hslot]; omega
         · rw [hva J hjJ.le le_rfl]
       apply Anc.mono hΦU
-      apply SA.anc_getHead_of_compat hΦ (Or.inl hlive) ?_ (fun _ h => h.1) _ _ .refl
+      apply AC.anc_getHead_of_compat hΦ (Or.inl hlive) ?_ (fun _ h => h.1) _ _ .refl
       intro L hL
-      obtain ⟨l, hl, B, hB, hBr, hlive, hLB⟩ := SA.mem_liveLockBlocks_of_wf hΦ hwf hL
+      obtain ⟨l, hl, B, hB, hBr, hlive, hLB⟩ := AC.mem_liveLockBlocks_of_wf hΦ hwf hL
       have hPB := hp.clean_source_stored_lock_compatible_at hyj hT0 hleJ hy hTb
         (Or.inl hRaw) hclean (ht ▸ hTb)
         (by rw [hstAC J le_rfl]; exact hl)
         (drain_stored_lock_label (hR.trans (by linarith)) hlive) (hΦU hB) hBr
       have hanc : Anc (tr.HonestBlocksAt H) L B := by
         rw [hLB]
-        exact (SA.viableAncestor_anc hΦ hB).2.mono hΦU
+        exact (AC.viableAncestor_anc hΦ hB).2.mono hΦU
       have hLP : Compatible (tr.HonestBlocksAt H) L P := by
         rcases hPB with h | h
-        · exact SA.anc_total hU hanc h
+        · exact AC.anc_total hU hanc h
         · exact Or.inl (hanc.trans h)
       exact hLP.elim
-        (fun h => Or.inl (SA.anc_tree_of_anc_U hU hΦ hΦU hL.1 h
+        (fun h => Or.inl (AC.anc_tree_of_anc_U hU hΦ hΦU hL.1 h
           (hPe J hjJ.le le_rfl)))
-        (fun h => Or.inr (SA.anc_tree_of_anc_U hU hΦ hΦU
+        (fun h => Or.inr (AC.anc_tree_of_anc_U hU hΦ hΦU
           (hPe J hjJ.le le_rfl) h hL.1))
-    · exact hPF.trans ((hΦ.rooted.2 _ (SA.getHead_mem hΦ
+    · exact hPF.trans ((hΦ.rooted.2 _ (AC.getHead_mem hΦ
         (fun _ h => h.1) _ _ _ _)).mono hΦU)
   exact (Obligations.exposed_prefix_preserved_of_record_head hU hΦ hΦU).mpr
     ⟨hrecord, hhead⟩

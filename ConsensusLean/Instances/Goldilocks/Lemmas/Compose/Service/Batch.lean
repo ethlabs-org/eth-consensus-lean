@@ -31,36 +31,36 @@ public section
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-/-! ### One honest updater over an SA trace -/
+/-! ### One honest updater over an AC trace -/
 
 section Node
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-- Honest votes reach a joined updater using service through `t_s + 2Δ` only: every delivery
 the update counts has its deadline by then, so the update itself may be after `b` (the windowed
 form at `a = κ = 0`). -/
-theorem honest_vote_at_update_early {ini} (hrun : SA.ACRun proposer T H U ini)
+theorem honest_vote_at_update_early {ini} (hrun : AC.ACRun proposer T H U ini)
     {b : Time} {k₀ : Nat}
-    {s : Nat} (hsync : SA.ServiceBefore H U b T) (hsb : sp.ts s + 2 * sp.Δ ≤ b) {y : Fin sp.n}
-    (hy : y ∈ H) {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hu : SA.UpdateAt T y k₀ s ℓ)
-    {P : SA.Blk sp.n FGP} (hPU : P ∈ U) (hFP : Anc U ℓ.frame.F P)
-    {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {e : SA.Em sp FGP} (hv : SA.VoteAt T x j e)
+    {s : Nat} (hsync : AC.ServiceBefore H U b T) (hsb : sp.ts s + 2 * sp.Δ ≤ b) {y : Fin sp.n}
+    (hy : y ∈ H) {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} (hu : AC.UpdateAt T y k₀ s ℓ)
+    {P : AC.Blk sp.n FGP} (hPU : P ∈ U) (hFP : Anc U ℓ.frame.F P)
+    {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {e : AC.Em sp FGP} (hv : AC.VoteAt T x j e)
     (hes : e.msg.slot = s) (hhead : e.msg.head = P.root) :
     P ∈ ℓ.frame.tree ∧ e.msg ∈ (T.state y k₀).pool s ∧
-      SA.resolutionTime (T.state y k₀) ℓ.frame e.msg < SA.ETime.of (sp.ts s + 2 * sp.Δ) := by
+      AC.resolutionTime (T.state y k₀) ℓ.frame e.msg < AC.ETime.of (sp.ts s + 2 * sp.Δ) := by
   have hΔ := sp.toParams.hΔ
   exact honest_vote_at_update_window (κ := 0) (b' := T.time k₀) hrun hsync
     ⟨fun _ _ k _ _ hk => absurd hk (not_lt.2 (hrun.localRun.time_nonneg k))⟩
-    (by simp only [SAParams.ts]; positivity) (by simp only [SAParams.ts]; positivity) hsb le_rfl
+    (by simp only [ACParams.ts]; positivity) (by simp only [ACParams.ts]; positivity) hsb le_rfl
     hy hu hPU hFP hx hv hes hhead
 
 end Node
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
 
 end Consensus.Goldilocks.Compose
 

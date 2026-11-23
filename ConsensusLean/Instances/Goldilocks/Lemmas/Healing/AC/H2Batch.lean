@@ -11,10 +11,10 @@ public section
 `Carry_y` for a set of votes is `Carry_y` for each of them (`carryAt_of_each`), and a block
 between `Φ.F` and a block of a well-formed frame tree is in the tree (`mem_tree_of_between`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g t₀ : Time} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {g t₀ : Time} {proposer : Nat → Fin sp.n}
 
 /-- `Carry_y` for a set of votes is `Carry_y` for each of them (the fields are per vote), at a
 vote where `y` is awake and joined. -/
@@ -43,6 +43,6 @@ theorem mem_tree_of_between {Φ : Frm sp.n FGP} (hU : Coherent U) (hΦ : FrameOK
     subst hqc
     exact ih hq.1
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

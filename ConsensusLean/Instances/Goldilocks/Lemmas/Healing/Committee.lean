@@ -25,16 +25,16 @@ facts of a slot dictionary `K` in the form the growing proofs use,
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {H : Set (Fin sp.n)}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- **P** over the AC projection, from the committee facts. -/
 theorem committeeP_of_facts (hK : Compose.Growing.CommitteeFacts tr (fun _ => H) K)
-    (hrun : GoldilocksRun proposer dg H tr ini) : SA.CommitteeP K tr.projAC H :=
+    (hrun : GoldilocksRun proposer dg H tr ini) : AC.CommitteeP K tr.projAC H :=
   ⟨fun y hy i s v hv => hK.hP.1 (tr.time i) y hy i
       (fun _ hk => hrun.time_mono hk.le) s v hv,
     fun y hy i ℓ A hpt s v hv => hK.hP.2 y i ℓ A hy hpt s v hv⟩
@@ -44,15 +44,15 @@ the pool of its slot at the read point (the vote itself, or two votes of its val
 read point's pool votes are in the node's pool after the cast (P). -/
 theorem committeeT_of_facts (hK : Compose.Growing.CommitteeFacts tr (fun _ => H) K)
     (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr) :
-    SA.CommitteeT K tr.projAC H := by
+    AC.CommitteeT K tr.projAC H := by
   intro y hy i ℓ e hc m v hv
   have hacr := Compose.goldilocks_ac_projection_from hrun hnc
   have hst : ∀ k, ∀ w ∈ e.readPoint.pool k,
       w ∈ (tr.projAC.state y (i + 1)).pool k ∧ w.slot = k := fun k w hw =>
-    have hp := (SA.readPoint_pool hacr.localRun hy hc hw).1
-    ⟨hp, SA.state_pool_slot _ hacr.localRun hacr.vstart hy (i + 1) _ w hp⟩
+    have hp := (AC.readPoint_pool hacr.localRun hy hc hw).1
+    ⟨hp, AC.state_pool_slot _ hacr.localRun hacr.vstart hy (i + 1) _ w hp⟩
   have hP := (committeeP_of_facts hK hrun).1 y hy (i + 1) v.slot
-  rcases SA.merged_declared_backing_at_vote_slot (fun k w hw => (hst k w hw).2) hv with
+  rcases AC.merged_declared_backing_at_vote_slot (fun k w hw => (hst k w hw).2) hv with
     hp | ⟨u, hu, -, -, -, hu', -⟩
   · exact hP v (hst _ v hp).1
   · rw [← hu']
@@ -76,16 +76,16 @@ theorem cs2_of_twoK (hK : Compose.Growing.CommitteeFacts tr (fun _ => H) K) {g :
 /-- **A cast is by a member of its slot's committee** (the gate at the cast). -/
 theorem mem_committee_of_castAt (hK : Compose.Growing.CommitteeFacts tr (fun _ => H) K)
     (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y i ℓ e) : y ∈ K.committee e.msg.slot := by
-  have h := SA.mayVote_of_castAt (Compose.goldilocks_ac_projection_from hrun hnc).localRun hy hc
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y i ℓ e) : y ∈ K.committee e.msg.slot := by
+  have h := AC.mayVote_of_castAt (Compose.goldilocks_ac_projection_from hrun hnc).localRun hy hc
   rw [Compose.projAC_state hrun.toLocalRun hy i] at h
   exact (mayVote_iff_of_facts hK hrun hy i _).1 h
 
 /-- **A vote is by a member of its slot's committee**. -/
 theorem mem_committee_of_voteAt (hK : Compose.Growing.CommitteeFacts tr (fun _ => H) K)
     (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {e : SA.Em sp (List (FG.Att sp.n))} (hv : SA.VoteAt tr.projAC y i e) :
+    (hy : y ∈ H) {i : Nat} {e : AC.Em sp (List (FG.Att sp.n))} (hv : AC.VoteAt tr.projAC y i e) :
     y ∈ K.committee e.msg.slot := by
   obtain ⟨ℓ, hc, he⟩ := hv
   exact mem_committee_of_castAt hK hrun hnc hy ⟨hc, he⟩
@@ -112,7 +112,7 @@ theorem committeeSize_pos_of_twoK (hK : Compose.Growing.CommitteeFacts tr (fun _
 theorem slot_gbar_lt_of_cutZ_le {g : Time} {j : Nat} (h : cutZ sp.toParams g ≤ sp.ts j) :
     sp.slot (gbar g) + 1 ≤ j := by
   rw [cutZ_eq sp g] at h
-  have := (SA.ts_le_iff sp).1 h
+  have := (AC.ts_le_iff sp).1 h
   omega
 
 /-! ### The first slot start after `ḡ`
@@ -124,31 +124,31 @@ healing proofs is read from `g' = t_{slot(ḡ)+1}`, the first slot start strictl
 /-- `ḡ < g'`. -/
 theorem gbar_lt_slotAfter (g : Time) : gbar g < sp.ts (sp.slot (gbar g) + 1 : Nat) := by
   by_contra h
-  have := (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g) _).1 (not_lt.1 h)
+  have := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g) _).1 (not_lt.1 h)
   push_cast at this
   omega
 
 /-- `g' ≤ ḡ + 4Δ`. -/
 theorem slotAfter_le (g : Time) : sp.ts (sp.slot (gbar g) + 1 : Nat) ≤ gbar g + 4 * sp.Δ := by
-  have h := (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g) (sp.slot (gbar g) : Nat)).2 le_rfl
+  have h := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g) (sp.slot (gbar g) : Nat)).2 le_rfl
   have : sp.ts (sp.slot (gbar g) + 1 : Nat) = sp.ts (sp.slot (gbar g) : Nat) + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   linarith
 
 /-- `gbar g' = g'`. -/
 theorem gbar_slotAfter (g : Time) :
     gbar (sp.ts (sp.slot (gbar g) + 1 : Nat)) = sp.ts (sp.slot (gbar g) + 1 : Nat) :=
-  max_eq_left ((SA.gbar_nonneg g).trans (gbar_lt_slotAfter g).le)
+  max_eq_left ((AC.gbar_nonneg g).trans (gbar_lt_slotAfter g).le)
 
 /-- `c_z = g' + 8Δ`. -/
 theorem cutZ_eq_slotAfter (g : Time) :
     cutZ sp.toParams g = sp.ts (sp.slot (gbar g) + 1 : Nat) + 8 * sp.Δ := by
-  rw [cutZ_eq sp g]; simp only [SAParams.ts]; push_cast; ring
+  rw [cutZ_eq sp g]; simp only [ACParams.ts]; push_cast; ring
 
 /-- A slot whose start is at or after `g'` is after the slot of `ḡ`. -/
 theorem slot_gbar_lt_of_slotAfter_le {g : Time} {s : Nat}
     (h : sp.ts (sp.slot (gbar g) + 1 : Nat) ≤ sp.ts s) : sp.slot (gbar g) + 1 ≤ s := by
-  have := (SA.ts_le_iff sp).1 h
+  have := (AC.ts_le_iff sp).1 h
   omega
 
 /-- **Catch-up from a later time**: under `Sync` from `a` (acceptance relay), with every honest
@@ -195,16 +195,16 @@ theorem faultBoundK_of_awake (hK : Compose.Growing.CommitteeFacts tr (fun _ => H
     (hawake : ∀ y ∈ H, tr.awake y t)
     (hrest : ∀ y ∈ H, ∀ k, tr.RestartAt y k → tr.time k ≤ t →
       tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat)) :
-    SA.FaultBoundK K s tr.projAC H t := by
+    AC.FaultBoundK K s tr.projAC H t := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hgt : gbar g ≤ t := by have := lt_cutZ sp g; linarith
   have ht0 : 0 ≤ t := (gbar_nonneg g).trans hgt
   have hst : sp.slot (gbar g) + 3 ≤ sp.slot t := by
-    have h := (SA.ts_le_iff_le_slot sp ht0 ((sp.slot (gbar g) + 3 : Nat) : Int)).mp
+    have h := (AC.ts_le_iff_le_slot sp ht0 ((sp.slot (gbar g) + 3 : Nat) : Int)).mp
       ((cutZ_eq sp g) ▸ ht)
     exact_mod_cast h
   have hsub : K.committee s ∩ H ⊆
-      K.committee s ∩ {y | y ∈ H ∧ tr.projAC.awake y t ∧ SA.JoinedAt tr.projAC y t} := by
+      K.committee s ∩ {y | y ∈ H ∧ tr.projAC.awake y t ∧ AC.JoinedAt tr.projAC y t} := by
     rintro y ⟨hyK, hy⟩
     refine ⟨hyK, hy, hawake y hy, (Compose.joined_projection_from hrun hy t).1.1
       fun k hk hkt => ?_⟩
@@ -213,13 +213,13 @@ theorem faultBoundK_of_awake (hK : Compose.Growing.CommitteeFacts tr (fun _ => H
       sp.slotTime_eq _
     refine ⟨by omega, (hrest y hy k hk hkt).trans ?_⟩
     rw [he]
-    exact (SA.ts_le_iff sp).mpr (by omega)
+    exact (AC.ts_le_iff sp).mpr (by omega)
   have hle := Set.ncard_le_ncard hsub
   have hsplit : (K.committee s ∩ H).ncard + (K.committee s ∩ Hᶜ).ncard = sp.committeeSize := by
     rw [← hK.hsize s]
     exact Set.ncard_inter_add_ncard_sdiff_eq_ncard _ _ (Set.toFinite _)
   have hf := cs2_of_twoK hK htwo hs
-  unfold SA.FaultBoundK
+  unfold AC.FaultBoundK
   omega
 
 namespace ResetPremisesUpTo
@@ -228,10 +228,10 @@ variable {g ΔF a b : Time} (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b
 include hp
 
 /-- P over the AC projection. -/
-theorem hP : SA.CommitteeP K tr.projAC H := committeeP_of_facts hp.committee hp.run
+theorem hP : AC.CommitteeP K tr.projAC H := committeeP_of_facts hp.committee hp.run
 
 /-- T over the AC projection. -/
-theorem hT : SA.CommitteeT K tr.projAC H := committeeT_of_facts hp.committee hp.run hp.noColl
+theorem hT : AC.CommitteeT K tr.projAC H := committeeT_of_facts hp.committee hp.run hp.noColl
 
 /-- Every slot committee has `committeeSize` members. -/
 theorem hsize (s : Nat) : (K.committee s).ncard = sp.committeeSize := hp.committee.hsize s
@@ -253,7 +253,7 @@ theorem committee_pos : 0 < sp.committeeSize := committeeSize_pos_of_twoK hp.com
 slot after the slot of `ḡ` the faulty committee members, fewer than half of it (CS2), are fewer
 than its honest, awake and joined members. -/
 theorem faultBoundK_late {s : Nat} (hs : sp.slot (gbar g) + 1 ≤ s) {t : Time}
-    (ht : cutZ sp.toParams g ≤ t) (htb : t ≤ b) : SA.FaultBoundK K s tr.projAC H t := by
+    (ht : cutZ sp.toParams g ≤ t) (htb : t ≤ b) : AC.FaultBoundK K s tr.projAC H t := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hgt : gbar g ≤ t := by have := lt_cutZ sp g; linarith
   exact faultBoundK_of_awake hp.committee hp.run hp.twoK hs ht
@@ -268,10 +268,10 @@ variable {g ΔF a : Time} (hp : ResetPremises tr H K proposer dg g ΔF a)
 include hp
 
 /-- P over the AC projection. -/
-theorem hP : SA.CommitteeP K tr.projAC H := committeeP_of_facts hp.committee hp.run
+theorem hP : AC.CommitteeP K tr.projAC H := committeeP_of_facts hp.committee hp.run
 
 /-- T over the AC projection. -/
-theorem hT : SA.CommitteeT K tr.projAC H := committeeT_of_facts hp.committee hp.run hp.noColl
+theorem hT : AC.CommitteeT K tr.projAC H := committeeT_of_facts hp.committee hp.run hp.noColl
 
 /-- Every slot committee has `committeeSize` members. -/
 theorem hsize (s : Nat) : (K.committee s).ncard = sp.committeeSize := hp.committee.hsize s
@@ -290,7 +290,7 @@ theorem committee_pos : 0 < sp.committeeSize := committeeSize_pos_of_twoK hp.com
 
 /-- **CS after the cut**, whole-run form of `ResetPremisesUpTo.faultBoundK_late`. -/
 theorem faultBoundK_late {s : Nat} (hs : sp.slot (gbar g) + 1 ≤ s) {t : Time}
-    (ht : cutZ sp.toParams g ≤ t) : SA.FaultBoundK K s tr.projAC H t :=
+    (ht : cutZ sp.toParams g ≤ t) : AC.FaultBoundK K s tr.projAC H t :=
   (hp.toUpTo tr H (le_max_left a t)).faultBoundK_late hs ht (le_max_right _ _)
 
 end ResetPremises
@@ -311,11 +311,11 @@ theorem committee_pos : 0 < sp.committeeSize := committeeSize_pos_of_twoK hs.com
 theorem hsize (s : Nat) : (K.committee s).ncard = sp.committeeSize := hs.committee.hsize s
 
 /-- P over the AC projection of a run. -/
-theorem hP (hrun : GoldilocksRun proposer dg H tr ini) : SA.CommitteeP K tr.projAC H :=
+theorem hP (hrun : GoldilocksRun proposer dg H tr ini) : AC.CommitteeP K tr.projAC H :=
   committeeP_of_facts hs.committee hrun
 
 /-- T over the AC projection of a run. -/
-theorem hT (hrun : GoldilocksRun proposer dg H tr ini) : SA.CommitteeT K tr.projAC H :=
+theorem hT (hrun : GoldilocksRun proposer dg H tr ini) : AC.CommitteeT K tr.projAC H :=
   committeeT_of_facts hs.committee hrun hs.noColl
 
 /-- The gate. -/

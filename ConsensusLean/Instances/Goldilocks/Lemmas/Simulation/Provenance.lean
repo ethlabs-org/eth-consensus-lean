@@ -53,7 +53,7 @@ private theorem onBlock_reachable {P : Params} {A : NodeAC P} (self : Fin P.n)
     · rename_i fg' he
       exact h.tail (Or.inl ⟨B, he⟩)
 
-private theorem processOne_record {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+private theorem processOne_record {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (hs : List (Header Info × Nat)) (st : State sp ro binding) (o : Wire sp.n binding) :
     (processOne hs st o).node.record = st.node.record := by
   rw [processOne_eq]
@@ -64,7 +64,7 @@ private theorem processOne_record {sp : SA.SAParams} {ro : SA.ReplayOrder sp (Li
   · rfl
   · rfl
 
-private theorem recordOwn_record {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+private theorem recordOwn_record {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat)) :
     (recordOwn st o hs).node.record = st.node.record := by
   rw [recordOwn_eq]
@@ -76,8 +76,8 @@ private theorem recordOwn_record {sp : SA.SAParams} {ro : SA.ReplayOrder sp (Lis
   · rfl
 
 /-- Every canonical receipt handler preserves FG-store reachability. -/
-theorem processOne_reachable {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+theorem processOne_reachable {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (hs : List (Header Info × Nat)) (st : State sp ro binding) (o : Wire sp.n binding)
     (h : st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload) :
     (processOne hs st o).node.fg.Reachable (goldilocksNode sp ro).genesisPayload := by
@@ -89,8 +89,8 @@ theorem processOne_reachable {sp : SA.SAParams}
   · exact h.tail (Or.inr ⟨_, rfl⟩)
   · exact h
 
-private theorem recordOwn_reachable {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+private theorem recordOwn_reachable {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat))
     (h : st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload) :
     (recordOwn st o hs).node.fg.Reachable (goldilocksNode sp ro).genesisPayload := by
@@ -121,8 +121,8 @@ private theorem client_run_append {n : Nat} (v : Fin n) (Λ : FG.Record)
       simp only [List.cons_append, FG.Record.run, h, ih]
       split <;> rfl
 
-private theorem fgUpdate_history {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
+private theorem fgUpdate_history {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
     (hreach : st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload)
     (inputs : List (FG.ChainState sp.n)) (hi : FG.EntryInputs sp.toParams.fg inputs)
     (hr : st.node.record = (FG.Record.run st.self FG.Record.empty inputs).1) :
@@ -155,8 +155,8 @@ private theorem fgUpdate_history {sp : SA.SAParams}
         exact List.subset_append_left _ _
       · exact hreach.tail (Or.inr ⟨a, rfl⟩)
 
-private theorem process_record {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+private theorem process_record {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat)) :
     (process st o hs).node.record = st.node.record := by
   rw [process_eq]
@@ -166,8 +166,8 @@ private theorem process_record {sp : SA.SAParams}
   | cons x xs ih =>
     rw [List.foldl_cons, ih, processOne_record]
 
-private theorem process_reachable {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+private theorem process_reachable {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat))
     (h : st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload) :
     (process st o hs).node.fg.Reachable (goldilocksNode sp ro).genesisPayload := by
@@ -177,7 +177,7 @@ private theorem process_reachable {sp : SA.SAParams}
   | nil => exact h
   | cons x xs ih => exact ih _ (processOne_reachable _ _ _ h)
 
-private def HasHistory {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+private def HasHistory {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (key : Fin sp.n) (st : State sp ro binding) (signed : FG.Att sp.n → Prop := fun _
         => False) : Prop :=
   st.self = key ∧ st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload ∧
@@ -185,8 +185,8 @@ private def HasHistory {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att 
       st.node.record = (FG.Record.run key FG.Record.empty inputs).1 ∧
       ∀ a, signed a → a ∈ (FG.Record.run key FG.Record.empty inputs).2
 
-private theorem history_recordOwn {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {key : Fin sp.n}
+private theorem history_recordOwn {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {key : Fin sp.n}
     {st : State sp ro binding} {signed : FG.Att sp.n → Prop} (h : HasHistory key st signed)
         (o : Wire sp.n binding)
     (hs : List (Header Info × Nat)) : HasHistory key (recordOwn st o hs) signed := by
@@ -194,8 +194,8 @@ private theorem history_recordOwn {sp : SA.SAParams}
   exact ⟨(recordOwn_self _ _ _).trans hk, recordOwn_reachable _ _ _ hr,
     ins, hi, (recordOwn_record _ _ _).trans he, hout⟩
 
-private theorem history_poll {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {key : Fin sp.n}
+private theorem history_poll {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {key : Fin sp.n}
     {st : State sp ro binding} {signed : FG.Att sp.n → Prop} (h : HasHistory key st signed)
         (t : Time) :
     HasHistory key (poll st t).1 signed := by
@@ -214,8 +214,8 @@ private theorem history_poll {sp : SA.SAParams}
   · exact hup
   · exact ⟨hk, hr, ins, hi, he, hout⟩
 
-private theorem history_poll_sign {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {key : Fin sp.n}
+private theorem history_poll_sign {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {key : Fin sp.n}
     {st : State sp ro binding} {signed : FG.Att sp.n → Prop} (h : HasHistory key st signed)
     (t : Time) (hdue : st.fgDue = true) {C} {a : FG.Att sp.n} {Λ'}
     (hC : (Node.acToFG st.node st.now).2.2 = some C)
@@ -373,8 +373,8 @@ private theorem history_step (w : V → Model.Node (Model.protoOf (compiled (gol
       simpa only [Model.Run.step, Function.update_self] using history_restore S rho hn (w v) t h
     · simpa only [Model.Run.step, Function.update_of_ne heq] using h
 
-private theorem history_mono {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {key : Fin sp.n} {st : State sp ro binding}
+private theorem history_mono {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {key : Fin sp.n} {st : State sp ro binding}
     {p q : FG.Att sp.n → Prop} (h : HasHistory key st p) (hp : ∀ a, q a → p a) :
     HasHistory key st q := by
   obtain ⟨hk, hr, ins, hi, he, hout⟩ := h
@@ -674,21 +674,21 @@ theorem engine_event_signing_history (_hv : rho.ExecutionValid) {v : V}
   obtain ⟨_, _, ins, hi, hr, hout⟩ := history_events S rho hn v i
   exact ⟨ins, hi, hr, fun j q a hj hs => hout a ⟨j, q, hj, hs⟩⟩
 
-private theorem emitted_no_att {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+private theorem emitted_no_att {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (cs : List (Cut (goldilocksNode sp ro))) (a : WireAtt) :
     Body.att a ∉ emitted cs := by
   simp only [emitted, List.mem_flatMap]
   rintro ⟨c, _, hc⟩
   cases c <;> simp_all
 
-private theorem apply_att {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (r) (a : WireAtt) :
+private theorem apply_att {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (r) (a : WireAtt) :
     Body.att a ∈ (apply st r).outbox ↔ Body.att a ∈ st.outbox := by
   simp only [apply, List.mem_append, emitted_no_att, or_false]
 
-private theorem processOne_att {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (hs) (st : State sp ro binding) (o)
+private theorem processOne_att {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (hs) (st : State sp ro binding) (o)
         (a : WireAtt) :
     Body.att a ∈ (processOne hs st o).outbox ↔ Body.att a ∈ st.outbox := by
   rw [processOne_eq]
@@ -699,8 +699,8 @@ private theorem processOne_att {sp : SA.SAParams}
   · exact apply_att _ _ _
   · rfl
 
-private theorem recordOwn_att {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (o) (hs)
+private theorem recordOwn_att {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (o) (hs)
         (a : WireAtt) :
     Body.att a ∈ (recordOwn st o hs).outbox ↔ Body.att a ∈ st.outbox := by
   rw [recordOwn_eq]
@@ -711,8 +711,8 @@ private theorem recordOwn_att {sp : SA.SAParams}
     · rfl
   · rfl
 
-private theorem process_att {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (o) (hs)
+private theorem process_att {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (o) (hs)
         (a : WireAtt) :
     Body.att a ∈ (process st o hs).outbox ↔ Body.att a ∈ st.outbox := by
   rw [process_eq]
@@ -721,23 +721,23 @@ private theorem process_att {sp : SA.SAParams}
   | nil => rfl
   | cons x xs ih => rw [List.foldl_cons, ih, processOne_att]
 
-private theorem propose_att {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (s) (a : WireAtt) :
+private theorem propose_att {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (s) (a : WireAtt) :
     Body.att a ∈ (propose st s).1.outbox ↔ Body.att a ∈ st.outbox := by
   rw [propose_eq]
   dsimp only
   split <;> rfl
 
-private theorem nodeTick_att {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (a : WireAtt) :
+private theorem nodeTick_att {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (a : WireAtt) :
     Body.att a ∈ (nodeTick st).outbox ↔ Body.att a ∈ st.outbox := by
   rw [nodeTick_eq]
   split
   · exact apply_att _ _ _
   · rfl
 
-private theorem restore_att {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (k t) (a : WireAtt) :
+private theorem restore_att {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (k t) (a : WireAtt) :
     Body.att a ∈ (restore k st t).outbox ↔ Body.att a ∈ st.outbox := by
   exact apply_att _ _ _
 
@@ -750,12 +750,12 @@ theorem createAtt_val {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σ : FG.ChainS
     cases h
     rfl
 
-private def Queued {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+private def Queued {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (st : State sp ro binding) (signed : FG.Att sp.n → Prop) : Prop :=
   ∀ w, Body.att w ∈ st.outbox → ∃ a, w = encodeAtt a ∧ a.val = st.self ∧ signed a
 
-private theorem poll_queued {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (t : Time)
+private theorem poll_queued {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (t : Time)
     {signed : FG.Att sp.n → Prop} (h : Queued st signed) :
     let p := fun a => signed a ∨ st.fgDue = true ∧ ∃ C Λ',
       (Node.acToFG st.node st.now).2.2 = some C ∧
@@ -807,8 +807,8 @@ private theorem poll_queued {sp : SA.SAParams}
       obtain ⟨a, hw, hv, hs⟩ := hpre w (by rw [he]; exact List.mem_cons_self)
       exact ⟨a, hw, hv.trans hself, hs⟩
 
-private theorem queued_mono {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {st : State sp ro binding}
+private theorem queued_mono {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {st : State sp ro binding}
     {p q : FG.Att sp.n → Prop} (h : Queued st p) (hp : ∀ a, p a → q a) : Queued st q := by
   intro w hw
   obtain ⟨a, he, hv, ha⟩ := h w hw

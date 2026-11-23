@@ -9,18 +9,18 @@ This witness isolates the unrestricted existential in `NextTransfer`'s participa
 It is not a counterexample to the full transfer statement: there is no honest voting call.
 -/
 
-namespace Consensus.Goldilocks.SA.Growing.FutureVotes
+namespace Consensus.Goldilocks.AC.Growing.FutureVotes
 
-variable (sp : SAParams) (FGP : Type) (ro : ReplayOrder sp FGP)
+variable (sp : ACParams) (FGP : Type) (ro : ReplayOrder sp FGP)
   (Φ : Frm sp.n FGP)
 
 def H (t : Time) : Set (Fin sp.n) := {x | t < 1 ∧ x = x}
 
 def emission (x : Fin sp.n) : Em sp FGP :=
-  ⟨⟨x, 0, sp.genesisRoot⟩, SAState.initial sp.genesisRoot, none⟩
+  ⟨⟨x, 0, sp.genesisRoot⟩, ACState.initial sp.genesisRoot, none⟩
 
-def trace : SATrace sp FGP ro where
-  init := fun _ => SAState.initial sp.genesisRoot
+def trace : GTrace sp FGP ro where
+  init := fun _ => ACState.initial sp.genesisRoot
   node := fun i => ⟨(i - 1) % sp.n, Nat.mod_lt _ sp.toParams.hn⟩
   time := fun i => if i = 0 then 0 else 2
   event := id
@@ -28,7 +28,7 @@ def trace : SATrace sp FGP ro where
   label := fun i => if i = 0 then none else
     some ⟨.tick, Φ, [emission sp FGP ⟨(i - 1) % sp.n,
       Nat.mod_lt _ sp.toParams.hn⟩]⟩
-  post := fun _ => SAState.initial sp.genesisRoot
+  post := fun _ => ACState.initial sp.genesisRoot
   awake := fun _ _ => True
 
 theorem future_vote (x : Fin sp.n) :
@@ -52,7 +52,7 @@ theorem no_prefix_vote (x : Fin sp.n) (j : Nat) (e : Em sp FGP) :
   · simp [trace, hz] at hj
 
 private theorem no_honest_call {x : Fin sp.n} {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     (hx : x ∈ H sp ((trace sp FGP ro Φ).time i))
     (hc : (trace sp FGP ro Φ).CallAt x i ℓ) : False := by
   by_cases hi : i = 0
@@ -62,7 +62,7 @@ private theorem no_honest_call {x : Fin sp.n} {i : Nat}
 
 /-- The component contract permits the adversarial emissions in this trace. -/
 theorem localRun {U : Set (Blk sp.n FGP)} (hU : Coherent U) :
-    Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) (H sp) U
+    Goldilocks.Growing.ACLocalRun (goldilocksAC sp FGP ro) (H sp) U
       (trace sp FGP ro Φ) where
   antitone := by
     intro a b hab x hx
@@ -86,6 +86,6 @@ theorem localRun {U : Set (Blk sp.n FGP)} (hU : Coherent U) :
   restart_at_wake := by intro y u v hy hu huv hs; exact (hs trivial).elim
   sleep_of_restart := by intro y i ℓ hy hc; exact (no_honest_call sp FGP ro Φ hy hc).elim
 
-end Consensus.Goldilocks.SA.Growing.FutureVotes
+end Consensus.Goldilocks.AC.Growing.FutureVotes
 
 end

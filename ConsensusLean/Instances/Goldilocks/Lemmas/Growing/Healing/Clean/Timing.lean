@@ -14,9 +14,9 @@ of a reset seed. Here `c_z < a` comes directly from the finite reset lower bound
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -29,14 +29,14 @@ theorem clean_window_timing_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hca := hp.cutZ_lt_reset_at
   have ha0 : 0 ≤ a := by
     have := Healing.lt_cutZ sp g
-    have := SA.gbar_nonneg g
+    have := AC.gbar_nonneg g
     have := sp.toParams.hΔ
     linarith
   rw [Healing.cleanLabel_eq] at hs
   have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
-    have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+    have := (AC.ts_le_iff_le_slot sp ha0 _).1 h
     omega
-  have hle : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts j := (SA.ts_le_iff sp).2 (by omega)
+  have hle : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts j := (AC.ts_le_iff sp).2 (by omega)
   linarith
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo

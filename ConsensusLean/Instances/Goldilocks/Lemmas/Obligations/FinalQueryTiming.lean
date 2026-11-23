@@ -30,7 +30,7 @@ namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
 
 open Blocks Shape
-open SA (gbar)
+open AC (gbar)
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
@@ -49,7 +49,7 @@ private theorem grid_slotLen (run : (Sys (goldilocks S) V).Run)
     (goldilocks S (Model.pubOf run.1)).skel.grid.slotLen =
       4 * (S.params (Model.pubOf run.1) hn).Δ := by
   have h1 := grid_slotTime S V run hn 1
-  simp only [TimeGrid.slotTime, SA.SAParams.ts] at h1
+  simp only [TimeGrid.slotTime, AC.ACParams.ts] at h1
   push_cast at h1
   linarith only [h1]
 
@@ -118,14 +118,14 @@ theorem final_query_duty (run : (Sys (goldilocks S) V).Run)
       have hs0 : s₀ = 0 := Nat.eq_zero_of_le_zero (hx₀.trans (hxl.trans h.le))
       subst hs0
       have := le_max_right ((Sys (goldilocks S) V).ready (K S A) gst run) 0
-      simp only [SA.SAParams.ts] at hs
+      simp only [AC.ACParams.ts] at hs
       push_cast at hs
       linarith only [hs, this, hΔ]
     · exact h
   have hxts : (S.params (Model.pubOf run.1) hn).ts x ≤
       (S.params (Model.pubOf run.1) hn).ts
         (N + 3 * c : Nat) :=
-    (SA.ts_le_iff _).2 (by exact_mod_cast
+    (AC.ts_le_iff _).2 (by exact_mod_cast
       (Nat.le_of_lt_succ (hxr.trans_le hxN)).trans (Nat.le_add_right N (3 * c)))
   exact ⟨x, hxl, hxr, hx0, hxts.trans hN, by simpa using hx⟩
 
@@ -214,7 +214,7 @@ theorem final_window_slots (run : (Sys (goldilocks S) V).Run)
   -- the time glue
   have hRu : Healing.drainTime sp a ≤ sp.ts u := by
     rw [Healing.drainTime_eq]
-    exact (SA.ts_le_iff sp).2 (by exact_mod_cast humin)
+    exact (AC.ts_le_iff sp).2 (by exact_mod_cast humin)
   have hgu : gbar gst + 4 * sp.Δ ≤ sp.ts u := by
     have hc := catchUp_le_cDur S A V run hn
     change Regimes.catchUp sp ≤
@@ -231,7 +231,7 @@ theorem final_window_slots (run : (Sys (goldilocks S) V).Run)
     linarith only [hready, h1]
   have hus' : u + sp.toParams.fg.δt ≤ s₀ := hus
   have hts : ∀ m n : Nat, m ≤ n → sp.ts m ≤ sp.ts n := fun m n h =>
-    (SA.ts_le_iff sp).2 (by exact_mod_cast h)
+    (AC.ts_le_iff sp).2 (by exact_mod_cast h)
   have hu₀ : sp.ts u ≤ sp.ts s₀ := hts _ _ ((Nat.le_add_right _ _).trans hus')
   have hb3 : sp.ts (s₀ + 3 * c : Nat) ≤ run.2.horizon := by
     push_cast at hspan hlat ⊢; linarith only [hspan, hlat, hbounded, hΔ]
@@ -353,15 +353,15 @@ theorem final_reset_bounds_within (run : (Sys (goldilocks S) V).Run)
   have hgapN : ∀ N : Nat, sp.ts N + 2 * D < B → sp.ts (N + 3 * c : Nat) ≤ run.2.horizon := by
     intro N hN
     have : sp.ts (N + 3 * c : Nat) = sp.ts N + 12 * (c : Time) * D := by
-      simp only [SA.SAParams.ts]; push_cast; ring
+      simp only [AC.ACParams.ts]; push_cast; ring
     rw [this]; linarith only [hN, hBc]
   refine ⟨hr0, hgr, hcz, h4B, hBh, hgapN, fun a ha0 hab => ?_⟩
   -- the placement (H3)
-  have hsa : sp.ts (sp.slot a : Int) ≤ a := (SA.ts_le_iff_le_slot sp ha0 _).2 le_rfl
+  have hsa : sp.ts (sp.slot a : Int) ≤ a := (AC.ts_le_iff_le_slot sp ha0 _).2 le_rfl
   have hseed : G.slotTime (sp.slot a + 2 * sp.k + 5) ≤ a + 4 * D * (2 * S.k + 5) := by
     rw [show sp.slot a + 2 * sp.k + 5 = sp.slot a + 2 * S.k + 5 from rfl,
       grid_slotTime S V run hn]
-    simp only [SA.SAParams.ts] at hsa ⊢
+    simp only [AC.ACParams.ts] at hsa ⊢
     rw [← hDdef] at hsa ⊢
     push_cast; linarith only [hsa]
   rw [grid_slotLen S V run hn, max_eq_left hr0]

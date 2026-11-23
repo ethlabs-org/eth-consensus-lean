@@ -73,7 +73,7 @@ private theorem pool_mono_same_time_at (hv : rho.ExecutionValid)
   simpa only [Compose.projAC_state hpref.toLocalRun hy, hsk, hsl] using hm
 
 private theorem sending_event_insertion_at (hv : rho.ExecutionValid)
-    {y : Fin (Fintype.card V)} {i k : Nat} {t : Time} {m : SA.Vote (Fintype.card V)}
+    {y : Fin (Fintype.card V)} {i k : Nat} {t : Time} {m : AC.Vote (Fintype.card V)}
     (hy : y ∈ honestKeysAt S rho t) (hs : rho.SendsAt (rho.key y) i t)
     (hlo : cutMap S rho hn i ≤ k) (hhi : k < cutMap S rho hn (i + 1))
     (hc : (simTrace S rho hn).IsCall y k)
@@ -99,7 +99,7 @@ private theorem sending_event_insertion_at (hv : rho.ExecutionValid)
     rwa [(simTrace S rho hn).state_succ_of_call hc]
 
 private theorem admission_forward_first_at (hv : rho.ExecutionValid)
-    {y : Fin (Fintype.card V)} {i k : Nat} {t : Time} {m : SA.Vote (Fintype.card V)}
+    {y : Fin (Fintype.card V)} {i k : Nat} {t : Time} {m : AC.Vote (Fintype.card V)}
     (hy : y ∈ honestKeysAt S rho t) (hs : rho.SendsAt (rho.key y) i t)
     (hlo : cutMap S rho hn i ≤ k) (hhi : k < cutMap S rho hn (i + 1))
     (hf : m ∉ ((simTrace S rho hn).state y k).ac.pool m.slot) :
@@ -124,7 +124,7 @@ private theorem admission_forward_first_at (hv : rho.ExecutionValid)
 /-- The canonical growing trace forwards each emitted or freshly admitted vote at its
 source event, and that exact timestamped envelope has no earlier release. -/
 theorem simTraceAt_vote_forwarded (hv : rho.ExecutionValid) :
-    ∀ y k (m : SA.Vote (Fintype.card V)),
+    ∀ y k (m : AC.Vote (Fintype.card V)),
     y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time k) →
     ((simTraceAt S rho hn).EmitAt y k m ∨
       ((simTraceAt S rho hn).MsgCallAt y k m ∧
@@ -173,7 +173,7 @@ theorem simTraceAt_vote_forwarded (hv : rho.ExecutionValid) :
       obtain ⟨ℓ, hc, e, he, hev⟩ := hem'
       have hΦ : FrameOK ℓ.frame := (hpref.cutLaw y hy k _ hc).1 ▸
         (Store.frame_realization _ _ _ _ (Compose.fg_reachable hpref.toLocalRun hy k)).1
-      have hsign := SA.step_emission_signer y
+      have hsign := AC.step_emission_signer y
         (((simTrace S rho hn).upTo ((simTrace S rho hn).time k)).state y k).ac
         ℓ.frame _ ℓ.call hΦ (hr.time_nonneg k)
         (e := e) (by

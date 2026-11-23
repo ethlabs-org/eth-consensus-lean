@@ -16,9 +16,9 @@ reset-free committee half bound (`committeeHalf_of_committeeFaults`) both take i
 
 namespace Consensus.Goldilocks.Generic
 
-open SA (SAParams gbar)
+open AC (ACParams gbar)
 
-variable {sp : SAParams}
+variable {sp : ACParams}
 
 /-- **CS2 at a slot committee** from the committee fault bound: fewer than half of the slot-`s`
 committee is faulty at any `d ∈ [0, b]`, for a slot starting from `ḡ` by `b`. -/
@@ -30,7 +30,7 @@ theorem CommitteeFaultsUpTo.committee_cs2_at {cm : Time → Finset (Fin sp.n)} {
     (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b) {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
     2 * ((dictOfTime sp cm).committee s ∩ (H d)ᶜ).ncard < sp.committeeSize := by
   have hcard : (cm (sp.toParams.slotTime s)).card = sp.committeeSize := by
-    rwa [dictOfTime, SA.CommitteeDict.committee, Set.ncard_coe_finset] at hsize
+    rwa [dictOfTime, AC.CommitteeDict.committee, Set.ncard_coe_finset] at hsize
   have hne : (cm (sp.toParams.slotTime s)).Nonempty := Finset.card_pos.1 (hcard ▸ hpos)
   have hts : sp.toParams.slotTime s = sp.ts s := sp.slotTime_eq s
   have h := hcf (sp.toParams.slotTime s) d (by rw [hts]; exact hgs)

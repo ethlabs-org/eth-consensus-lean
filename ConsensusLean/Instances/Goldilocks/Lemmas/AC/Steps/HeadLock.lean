@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 
 public section
 
-/-! # Goldilocks SA: an honest vote extends a lock it reads
+/-! # Goldilocks AC: an honest vote extends a lock it reads
 
 The intra-node part of lock keeping. The head walk starts at the
 anchor, the deepest of the live lock blocks and `fc_root`. When a block `C` of that set is
@@ -14,14 +14,14 @@ walk extends every ancestor of `C` (`anc_getHead_of_compat`). The live lock bloc
 need not lie on one chain. At an honest vote
 the walk reads the emission's read point (`castAt_head_anc`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {ini : Fin sp.n → SAState sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {ini : Fin sp.n → ACState sp.n}
 
 /-- **The walk extends a compatible anchor candidate.** If `C` is a live lock block or `fc_root`
 and every live lock block is compatible with `C`, every head extends every ancestor of `C`. -/
-theorem anc_getHead_of_compat {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {A : SAState sp.n}
+theorem anc_getHead_of_compat {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {A : ACState sp.n}
     {t : Time} {C : Blk sp.n FGP} (hC : C ∈ liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot})
     (hcomp : ∀ L ∈ liveLockBlocks sp A.locks Φ t, Compatible Φ.tree L C)
     {tree : Set (Blk sp.n FGP)} (htree : tree ⊆ Φ.tree) (V : View sp.n) (s : Int)
@@ -56,8 +56,8 @@ theorem anc_getHead_of_compat {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {A : SAStat
 /-- **An honest vote extends a lock it reads.** At an honest vote, if `C` is a live lock block
 of the read point or `fc_root`, compatible with every live lock block of the read point, the
 vote's head is a block of the frame that extends every ancestor `B` of `C`. -/
-theorem castAt_head_anc (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+theorem castAt_head_anc (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) {C : Blk sp.n FGP}
     (hC : C ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i) ∪ {ℓ.frame.fcRoot})
     (hcomp : ∀ L ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
@@ -71,6 +71,6 @@ theorem castAt_head_anc (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {y
   exact ⟨_, getHead_mem hΦ hT _ _ _ _, (castAt_spec hr hy hc).2.2.2.symm,
     anc_getHead_of_compat hΦ hC hcomp hT _ _ hBC⟩
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

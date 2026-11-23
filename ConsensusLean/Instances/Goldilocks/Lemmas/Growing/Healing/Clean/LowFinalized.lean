@@ -131,9 +131,9 @@ end Consensus.Goldilocks.Growing
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -151,7 +151,7 @@ theorem low_finalized_below_origin_at {cm : Time → Finset (Fin sp.n)} {βK : �
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < m, tr.time q ≤ t)
     (hy : y ∈ H t) (htb : t ≤ b) (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) {x : Fin sp.n}
-    {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
+    {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
     (hib : tr.time i ≤ b) :
     Anc (tr.HonestBlocksAt H) (tr.state y m).fg.F B := by
   have hrun := hp.run

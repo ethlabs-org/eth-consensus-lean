@@ -19,11 +19,11 @@ The window fields on the canonical growing trace:
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
 section Generic
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -33,7 +33,7 @@ theorem finalWindow_fields_of_honest_anchors_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {s : Fin 4 → Nat}
-    {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
+    {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer (s i) (P i)) (hs : StrictMono s)
     (hR : Healing.drainTime sp a ≤ sp.ts (s 0)) (hb : sp.ts (s 3) ≤ b)
     (hadj : s 3 = s 2 + 1 → sp.ts (s 2) + 6 * sp.Δ ≤ b) :
@@ -56,7 +56,7 @@ theorem finalWindow_fields_of_honest_anchors_at
 
 /-- **`slots`**, for any offset function `off`. -/
 theorem window_slots_of_honest_anchors_at {ι : Type*} {start : Nat} {off : ι → Nat}
-    {P : ι → SA.Blk sp.n (List (FG.Att sp.n))}
+    {P : ι → AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer (start + off i) (P i)) :
     ∀ i, (P i).slot = start + off i := fun i => honestProposalRun_slot_at (hP i)
 
@@ -64,7 +64,7 @@ theorem window_slots_of_honest_anchors_at {ι : Type*} {start : Nat} {off : ι �
 theorem strictMono_cut_of_proposesAt_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {cut : Fin 4 → Nat} {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
+    {cut : Fin 4 → Nat} {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
     (hcut : ∀ i, tr.ProposesAt (P i).proposer (cut i) (P i))
     (hs : StrictMono fun i => (P i).slot) : StrictMono cut := by
   intro i j hij
@@ -79,7 +79,7 @@ theorem finalWindow_cuts_of_honest_anchors_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {s : Fin 4 → Nat}
-    {P : Fin 4 → SA.Blk sp.n (List (FG.Att sp.n))}
+    {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer (s i) (P i)) (hs : StrictMono s)
     (hR : Healing.drainTime sp a ≤ sp.ts (s 0)) (hb : sp.ts (s 3) ≤ b)
     (hadj : s 3 = s 2 + 1 → sp.ts (s 2) + 6 * sp.Δ ≤ b) {q D : Time}
@@ -124,7 +124,7 @@ theorem finalWindow_data_of_honest_anchors_gap_at (Q : FinalQueryAt S A V)
     (hp : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys proposer dg g ΔF a b cm βK)
     {c : Nat}
     (hc2 : 2 ≤ c) (h3c : 3 * c ≤ S.δt) (start : Nat)
-    {P : Fin 4 → SA.Blk Q.params.n (List (FG.Att Q.params.n))}
+    {P : Fin 4 → AC.Blk Q.params.n (List (FG.Att Q.params.n))}
     (hP : ∀ i, Healing.Growing.HonestProposalRun Q.trace Q.keys proposer
       (start + ![0, c, 2 * c, 3 * c] i) (P i))
     (hR : Healing.drainTime Q.params a ≤ Q.params.ts start)

@@ -53,7 +53,7 @@ of height `3`, and its good-window branch is met literally.
 
 namespace Consensus.Goldilocks.Witness.TwoRun
 
-open Node SA
+open Node AC
 
 /-! ## The parameters -/
 
@@ -141,15 +141,15 @@ theorem cF_bounds :
 /-! ## The regime premises -/
 
 /-- **The HS shared premises** at `g = 0`, `Δ_F = 36`. -/
-theorem run_hsShared : Healing.HSShared run Set.univ (SA.CommitteeDict.full sp.n) dg 0 36 :=
+theorem run_hsShared : Healing.HSShared run Set.univ (AC.CommitteeDict.full sp.n) dg 0 36 :=
   ⟨dg_noColl run, dg_genesis, run_healthy run_facts,
     fun y _ k hk => absurd hk (run_facts.noRestart y k),
     by decide,
-    ⟨SA.size_binding_full rfl, SA.CommitteePAt.full,
-      fun _ _ x hx i _ s => ⟨fun _ => SA.mem_full s x,
+    ⟨AC.size_binding_full rfl, AC.CommitteePAt.full,
+      fun _ _ x hx i _ s => ⟨fun _ => AC.mem_full s x,
         fun _ => Compose.mayVote_stock run_goldilocksRun (dg_noColl run) hx s i⟩⟩,
     fun s _ => by
-      rw [SA.ncard_inter_full, SA.ncard_full, Set.compl_univ, Set.ncard_empty]
+      rw [AC.ncard_inter_full, AC.ncard_full, Set.compl_univ, Set.ncard_empty]
       simp⟩
 
 /-- `Catch(2Δ)` at `g = 0`, vacuously: no block is accepted before `ḡ = 0`. -/
@@ -185,7 +185,7 @@ theorem entry_previous :
 /-- **Retained ready inclusion**: the window's slot `32` has the ready proposal `blk 32`, whose
 parent `blk 31` extends the entry. -/
 theorem ready_inclusion :
-    ∃ (w : Fin sp.n) (kw : Nat) (W : SA.Blk sp.n (List (FG.Att sp.n))),
+    ∃ (w : Fin sp.n) (kw : Nat) (W : AC.Blk sp.n (List (FG.Att sp.n))),
       Healing.ReadyProposal run Set.univ prop w kw W.slot W ∧
       21 + 11 ≤ W.slot ∧ W.slot ≤ 21 + 11 + 0 ∧
       ∃ Pr, W.parent = some Pr.root ∧ Anc (run.HonestBlocks Set.univ) (blk 21) Pr :=
@@ -262,7 +262,7 @@ premise discharged; read at the computed values (`h = 3`, previous height justif
 `T₁ = t_33`): a good window before `T₁`, its carrier accepted by both validators before `T₁ + Δ`,
 or an early justification of `E_3` finalizing `E_2`. -/
 theorem twoRun_outcome :
-    (∃ (q : Fin sp.n) (j : Nat) (Bs Pr : SA.Blk sp.n (List (FG.Att sp.n)))
+    (∃ (q : Fin sp.n) (j : Nat) (Bs Pr : AC.Blk sp.n (List (FG.Att sp.n)))
         (R : Finset (FG.Att sp.n)),
         run.projFG.time j < sp.ts ((21 + 11 + 0 + 1 : Nat) : Int) ∧
         Store.GoodWindow sp.toParams (Payload sp.n) Set.univ run.projFG 11 (blk 21) 0 0 q j Bs Pr
@@ -272,8 +272,8 @@ theorem twoRun_outcome :
       Compose.EarlyOutcome run Set.univ (blk 21) 3 true (blk 11).root
         (sp.ts ((21 + 11 + 0 + 1 : Nat) : Int)) := by
   have h := (Healing.Recovery.outcome_service sp ro prop dg Set.univ run
-    (SA.CommitteeDict.full sp.n) 0 36 45 11 0
-    (by rw [SA.committeeStart_full]; exact run_goldilocksRun) (run_hsShared) run_catch
+    (AC.CommitteeDict.full sp.n) 0 36 45 11 0
+    (by rw [AC.committeeStart_full]; exact run_goldilocksRun) (run_hsShared) run_catch
     cF_bounds.2.1 cF_bounds.2.2 (run_isReset) w0 _ _
     (blk 21) 21 (run_ready (by decide))
     (run_runEntry) resetSlot_le (entry_height) (fun _ _ => (entry_previous).2)

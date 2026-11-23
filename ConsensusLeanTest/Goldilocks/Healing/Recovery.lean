@@ -36,7 +36,7 @@ of the statements (`FGGood` bounds it from above only). -/
 
 namespace Consensus.Goldilocks.Witness.One
 
-open SA Node ChainFrame
+open AC Node ChainFrame
 
 /-! ## The constants -/
 
@@ -54,7 +54,7 @@ theorem T_rec_sp1 : Healing.T_rec sp1 1 4 1 24 = 1209 := by decide
 /-- (a) The premises of O.1 and C1.3 on the tick run. -/
 theorem recovery_premises :
     GoldilocksRun (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
-      Healing.PatternPremises (tickRun N1 dg1) Set.univ (SA.CommitteeDict.full sp1.n)
+      Healing.PatternPremises (tickRun N1 dg1) Set.univ (AC.CommitteeDict.full sp1.n)
         (fun _ => v0) dg1 0 1 4 1 24 2 0 :=
   ⟨tickRun_goldilocksRun, patternPremises_tickRun 0 4 24 (by norm_num) (by rw [Mstar_sp1])⟩
 
@@ -85,8 +85,8 @@ theorem tickRun_cacheAcceptance :
     ((tickRun N1 dg1).post 194).fg.Anc (blk 4) ((tickRun N1 dg1).post 194).fg.F := by
   obtain ⟨-, hmem, hroot, -⟩ := blk6_cache_premise
   exact Healing.cache_acceptance_after_reset sp1 ro1 (fun _ => v0) dg1 Set.univ
-    (tickRun N1 dg1) (SA.CommitteeDict.full sp1.n) 0 1
-    (by rw [SA.committeeStart_full]; exact tickRun_goldilocksRun) (tickRun_healthy 0)
+    (tickRun N1 dg1) (AC.CommitteeDict.full sp1.n) 0 1
+    (by rw [AC.committeeStart_full]; exact tickRun_goldilocksRun) (tickRun_healthy 0)
     (dg1_noColl _) v0 trivial 194
     (blk 6) blk6_accept (blk 4) hmem hroot
 
@@ -107,7 +107,7 @@ theorem tickRun_patternRecovery (h : Healing.PatternRecovery) :
         4 ≤ (((tickRun N1 dg1).state v0 k).fg.σ ((tickRun N1 dg1).state v0 k).fg.F.root).h := by
   obtain ⟨hrun, hp⟩ := recovery_premises
   obtain ⟨hR, hF⟩ := h sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1)
-    (SA.CommitteeDict.full sp1.n) 0 1 4 1 24 2 0 (by rw [SA.committeeStart_full]; exact hrun) hp
+    (AC.CommitteeDict.full sp1.n) 0 1 4 1 24 2 0 (by rw [AC.committeeStart_full]; exact hrun) hp
   rw [gbar_zero, T_rec_sp1, zero_add] at hR hF
   refine ⟨hR, fun k hk ht => ?_⟩
   have := hF v0 trivial k hk (by linarith)
@@ -126,8 +126,8 @@ theorem tickRun_finalizingCoverage (h : Healing.FinalizingCoverage) :
       1197 ≤ (tickRun N1 dg1).time k → ∃ f, p ≤ f ∧ ((tickRun N1 dg1).state v0 k).fg.F = blk f := by
   obtain ⟨hrun, hp⟩ := recovery_premises
   obtain ⟨q, kP, P, -, hPr, ht1, ht2, -, hall⟩ :=
-    h sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) (SA.CommitteeDict.full sp1.n)
-      0 1 4 1 24 2 0 (by rw [SA.committeeStart_full]; exact hrun) hp 1092
+    h sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) (AC.CommitteeDict.full sp1.n)
+      0 1 4 1 24 2 0 (by rw [AC.committeeStart_full]; exact hrun) hp 1092
       (by rw [Rstar_sp1])
   obtain ⟨⟨⟨acc, hc⟩, -⟩, -, -⟩ := hPr
   obtain ⟨s, -, -, rfl, -⟩ := blockCall_eq hc.2

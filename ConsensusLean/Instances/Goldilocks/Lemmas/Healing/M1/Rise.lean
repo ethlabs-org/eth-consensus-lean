@@ -21,9 +21,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
@@ -32,7 +32,7 @@ is processed by the honest proposer before its proposal cut when `v + Δ_F ≤ t
 theorem rows_delivered_service {g ΔF b v : Time}
     (hsvc : ResetService tr H g ΔF b) (hnr : NoRestartAfter tr H (gbar g))
     (hv : gbar g ≤ v) {p : Fin sp.n} (hp : p ∈ H) {kX : Nat}
-    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : tr.ProposesAt p kX X)
+    {X : AC.Blk sp.n (List (FG.Att sp.n))} (hX : tr.ProposesAt p kX X)
     (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {att : FG.Att sp.n} (hsig : tr.SignAt y k att) (hk : tr.time k ≤ v) :
     ∃ k' < kX, tr.ProcessAttAt p k' att := by
@@ -60,7 +60,7 @@ is at least one height above `P`. -/
 theorem round_cross (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {g ΔF b v : Time} (hsvc : ResetService tr H g ΔF b) (hnr : NoRestartAfter tr H (gbar g))
     (hf : 3 * Hᶜ.ncard ≤ sp.n - 1)
-    {P D X : SA.Blk sp.n (List (FG.Att sp.n))} (hPH : P ∈ tr.HonestBlocks H)
+    {P D X : AC.Blk sp.n (List (FG.Att sp.n))} (hPH : P ∈ tr.HonestBlocks H)
     (hPD : Anc (tr.HonestBlocks H) P D) (hpar : X.parent = some D.root)
     {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} (hX : tr.ProposesAt p kX X)
     (hv : gbar g ≤ v) (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b)

@@ -32,10 +32,10 @@ The last two read the bundled premises through the finite reset record
 
 namespace Consensus.Goldilocks.Generic
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 open Healing (cutZ)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
@@ -68,7 +68,7 @@ theorem resetPremisesUpTo_of_premises {cm : Time → Finset (Fin sp.n)} {βK : �
 
 /-- `report_in_frame`: an honest report lies in its reporter's tree above the fork-choice root. -/
 theorem goldilocks_report_in_frame {cm : Time → Finset (Fin sp.n)}
-    {y : Fin sp.n} {i : Nat} {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} {i : Nat} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hrun : (goldilocksRunInterface sp ro).Run cm proposer dg H tr)
     (hy : y ∈ H (tr.time i)) (hR : ReportAt tr y i R) :
     R ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot R := by
@@ -83,7 +83,7 @@ theorem goldilocks_report_in_frame {cm : Time → Finset (Fin sp.n)}
 horizon, after a reset by it, are compatible. -/
 theorem goldilocks_origins_comparable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     {g ΔF a b : Time} {x x' : Fin sp.n} {i j i' j' : Nat}
-    {B B' : SA.Blk sp.n (List (FG.Att sp.n))} (hβ : βK ≤ 1 / 2)
+    {B B' : AC.Blk sp.n (List (FG.Att sp.n))} (hβ : βK ≤ 1 / 2)
     (hrun : (goldilocksRunInterface sp ro).Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
@@ -110,8 +110,8 @@ theorem goldilocks_heal_after_reset {cm : Time → Finset (Fin sp.n)} {βK : ℚ
   have hq := resetPremisesUpTo_of_premises hβ hrun hp hr hab
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hts (u : Nat) : sp.toParams.slotTime u = sp.ts u := by
-    rw [sp.slotTime_eq]; simp [SAParams.ts]
-  have hpr {u : Nat} {w : Fin sp.n} {kw : Nat} {Y : SA.Blk sp.n (List (FG.Att sp.n))}
+    rw [sp.slotTime_eq]; simp [ACParams.ts]
+  have hpr {u : Nat} {w : Fin sp.n} {kw : Nat} {Y : AC.Blk sp.n (List (FG.Att sp.n))}
       (hY : HonestProposal tr H proposer u w kw Y) :
       Healing.Growing.HonestProposalRun tr H proposer u Y :=
     Healing.Growing.honestProposalRun_of_proposesAt_at hq.run hq.noColl
@@ -122,13 +122,13 @@ theorem goldilocks_heal_after_reset {cm : Time → Finset (Fin sp.n)} {βK : ℚ
     omega
   have hR : Healing.drainTime sp a ≤ sp.ts s := by
     rw [Healing.drainTime_eq]
-    exact (SA.ts_le_iff sp).2 (by exact_mod_cast hs')
+    exact (AC.ts_le_iff sp).2 (by exact_mod_cast hs')
   rw [hts] at hb
   rcases Nat.lt_or_ge (s + 1) s' with h | h
   · exact Obligations.Growing.honest_proposal_below_later_upTo_at hq (hpr hX) hR (hpr hX')
       (by omega) (by linarith)
   · obtain rfl : s' = s + 1 := by omega
-    have hle : sp.ts s ≤ sp.ts (s + 1 : Nat) := (SA.ts_le_iff sp).2 (by push_cast; omega)
+    have hle : sp.ts s ≤ sp.ts (s + 1 : Nat) := (AC.ts_le_iff sp).2 (by push_cast; omega)
     exact Obligations.Growing.honest_proposal_below_next_upTo_at hq (hpr hX) hR (hpr hX')
       (by linarith)
 

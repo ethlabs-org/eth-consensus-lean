@@ -7,7 +7,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks SA: two fast locks of one slot are compatible (A1.9, source slot `s`)
+/-! # Goldilocks AC: two fast locks of one slot are compatible (A1.9, source slot `s`)
 
 Two honest fast locks of slot `s` (by the fast test of an update at `t_s + 6Δ`, or by an
 optimistic confirmation before `t_s + 2Δ`) are on compatible blocks, under
@@ -20,14 +20,14 @@ optimistic confirmation before `t_s + 2Δ`) are on compatible blocks, under
   counts (three quarters and a half, or the update result's strict majority) then exceed the
   committee, whose members cast every vote of the honest pools (P). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
-theorem rt_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+theorem rt_optimistic (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).restartTime = A.restartTime := by
   unfold optimisticConfirmation updateLatestConfirmed; split
   · rfl
@@ -42,7 +42,7 @@ private theorem update_sideU
     (hY : Y ∈ H)
     {c s : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastUpdateAt tr Y c s D CV) :
-    ∃ (ℓ : ACLabel (goldilocksSA sp FGP ro)) (S : Set (Fin sp.n)),
+    ∃ (ℓ : ACLabel (goldilocksAC sp FGP ro)) (S : Set (Fin sp.n)),
       tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
       (∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) ∧
       sp.committeeSize ≤ 2 * S.ncard ∧
@@ -64,7 +64,7 @@ private theorem update_sideU
       have : tr.post c = (acOnTickWithM sp wm Y (uL c) (tr.state Y c) ℓ.frame (tr.time c)).1 :=
         (congrArg Prod.fst he).symm
       unfold joined at hj ⊢
-      rw [this, SA.onTick_restartTimeWith]
+      rw [this, AC.onTick_restartTimeWith]
       exact hj
     have hsl : sp.slot (tr.time c) = s + 1 :=
       CompatibleSides.slot_of_lt (s := s + 1)
@@ -106,7 +106,7 @@ theorem fastLock_same_slotU
     {w x : Fin sp.n} {i₀ j : Nat}
     {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hw : w ∈ H) (hfl : FastLockAt tr w i₀ s B CV)
     (hx : x ∈ H) (hfl' : FastLockAt tr x j s B' CV')
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
+    (hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
     (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) : Compatible U B B' := by
   have hr := hrun.localRun
   have hU := hr.coherent
@@ -158,12 +158,12 @@ theorem fastLock_same_slot
     {i₀ j : Nat}
     {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hw : w ∈ H) (hfl : FastLockAt tr w i₀ s B CV)
     (hx : x ∈ H) (hfl' : FastLockAt tr x j s B' CV')
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
+    (hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
     (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) : Compatible U B B' :=
   fastLock_same_slotU (hrun := hrun.toU) K hP hsize (s := s) (w := w) (x := x) (i₀ := i₀)
       (j := j) (B := B) (B' := B') (CV := CV) (CV' := CV') (hw := hw) (hfl := hfl) (hx := hx)
           (hfl' := hfl') (hsync := hsync) (hf := hf)
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

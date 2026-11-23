@@ -47,7 +47,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
 variable {binding : VoteBinding}
 
@@ -55,7 +55,7 @@ variable {binding : VoteBinding}
 
 section
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Encoding a successfully decoded vote recovers its wire representation.
 Kept for a downstream consumer. -/
@@ -218,7 +218,7 @@ it has a parent, its attestations are well-formed and its AC payload is valid. -
 theorem decodeBlock_wire {hs : List (Header Info × Nat)} {o : Wire sp.n binding} {B : Blk sp}
     (h : decodeBlock sp hs o = some B) :
     (rootOf hs (headerOf sp B)).map (taggedRoot sp.genesisRoot) = some B.root ∧ B.parent ≠ none ∧
-      (∀ a ∈ B.fgPayload, a.WellFormed) ∧ SA.validPayload B := by
+      (∀ a ∈ B.fgPayload, a.WellFormed) ∧ AC.validPayload B := by
   obtain rfl := eq_blockObj_of_decodeBlock h
   simp only [decodeBlock_eq, blockObj_eq] at h
   split at h
@@ -528,7 +528,7 @@ end
 
 section
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A delivered object is the delivery's object or carried by it. -/
 theorem contains_of_mem_delivered {hs : List (Header Info × Nat)} {st : State sp ro binding}
@@ -1008,11 +1008,11 @@ end
 
 section
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-private theorem tryVote_val {FGP : Type} (self : Fin sp.n) (A : SA.SAState sp.n) (Φ)
-    (t : Time) : ∀ e ∈ (SA.tryVote (FGP := FGP) sp self A Φ t).2, e.msg.val = self := by
-  unfold SA.tryVote
+private theorem tryVote_val {FGP : Type} (self : Fin sp.n) (A : AC.ACState sp.n) (Φ)
+    (t : Time) : ∀ e ∈ (AC.tryVote (FGP := FGP) sp self A Φ t).2, e.msg.val = self := by
+  unfold AC.tryVote
   dsimp only
   split_ifs <;> simp
 
@@ -1032,8 +1032,8 @@ theorem emits_val (self : Fin sp.n) (s : (goldilocksNode sp ro).State)
     ∀ e ∈ ((goldilocksNode sp ro).step self s Φ t c).2, e.msg.val = self := by
   cases c with
   | tick =>
-    change ∀ e ∈ (SA.acOnTick sp self s Φ t).2, _
-    unfold SA.acOnTick
+    change ∀ e ∈ (AC.acOnTick sp self s Φ t).2, _
+    unfold AC.acOnTick
     dsimp only
     split_ifs <;> first | exact tryVote_val _ _ _ _ | simp
   | proposal => simp [ACInterface.step]
@@ -1041,9 +1041,9 @@ theorem emits_val (self : Fin sp.n) (s : (goldilocksNode sp ro).State)
   | message m => exact tryVote_val _ _ _ _
   | block B => exact tryVote_val _ _ _ _
   | restart =>
-    change ∀ e ∈ (SA.acRestart sp ro self s Φ t).2, _
-    unfold SA.acRestart
-    exact foldl_emits_val _ (fun A B => SA.acOnBlock sp self A Φ t B)
+    change ∀ e ∈ (AC.acRestart sp ro self s Φ t).2, _
+    unfold AC.acRestart
+    exact foldl_emits_val _ (fun A B => AC.acOnBlock sp self A Φ t B)
       (fun _ _ => tryVote_val _ _ _ _) _ _ (by simp)
 
 /-- Every emission of an AC cut of a handler of `self` is a vote of `self`. -/

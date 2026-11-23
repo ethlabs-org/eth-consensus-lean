@@ -17,11 +17,11 @@ after `t_q`, an honest slot-`q` vote is pooled, stamped before `t_q + 2Δ`
 
 The proof restates `honest_vote_at_update_of_sync` (`Compose/Service/Batch.lean`) without head
 facts. No voter tree, vote domain or vote head is read: the late-cast arm uses
-`SA.vote_signer_slot` and `SA.one_vote_per_slot` in place of `cast_head_fcRoot`. -/
+`AC.vote_signer_slot` and `AC.one_vote_per_slot` in place of `cast_head_fcRoot`. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
 /-! ### Deadlines -/
 
@@ -40,37 +40,37 @@ private theorem deadline_le_two {y : Fin P.n} {c : Nat} {t g : Time}
 
 end Deadline
 
-/-! ### The delivery halves over an SA trace -/
+/-! ### The delivery halves over an AC trace -/
 
 section Node
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-- D2 (L1, message half). An honest slot-`q` vote is in the receiver's pool, with a stamp
 before `t_q + 2Δ`, at every receiver call from `t_q + 2Δ` with no restart after `t_q`. -/
-theorem vote_pooled_before_early {ini} (hrun : SA.ACRun proposer T H U ini)
+theorem vote_pooled_before_early {ini} (hrun : AC.ACRun proposer T H U ini)
     {g : Time} {y : Fin sp.n} (hy : y ∈ H) (hS : ReceiverServiceAfter H U g y T)
-    {q c : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hc : T.CallAt y c ℓ)
+    {q c : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} (hc : T.CallAt y c ℓ)
     (hct : sp.ts q + 2 * sp.Δ ≤ T.time c) (hg : g ≤ sp.ts q + sp.Δ)
     (hres : ∀ k ≤ c, T.RestartAt y k → T.time k ≤ sp.ts q)
-    {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {e : SA.Em sp FGP} (hv : SA.VoteAt T x j e)
+    {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {e : AC.Em sp FGP} (hv : AC.VoteAt T x j e)
     (hes : e.msg.slot = q) :
     e.msg ∈ (T.state y c).pool q ∧
-      (T.state y c).voteStamp e.msg < SA.ETime.of (sp.ts q + 2 * sp.Δ) := by
+      (T.state y c).voteStamp e.msg < AC.ETime.of (sp.ts q + 2 * sp.Δ) := by
   have hr := hrun.localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hts : sp.ts (q + 1 : Nat) = sp.ts q + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hdl : ∀ k ≤ c, ∀ τ, τ ≤ sp.ts q + sp.Δ →
       T.deadline y k (max τ g) ≤ sp.ts q + 2 * sp.Δ := fun k hk _ hτ =>
     deadline_le_two (fun k' hk' hr' => hres k' (hk'.trans hk) hr') hg hτ
-  obtain ⟨hxv, hxs⟩ := SA.vote_signer_slot hr hx hv
+  obtain ⟨hxv, hxs⟩ := AC.vote_signer_slot hr hx hv
   have htj : T.time j ≤ sp.ts q + sp.Δ := by
-    have h := SA.vote_time_le hr hx hv
+    have h := AC.vote_time_le hr hx hv
     rwa [← hxs, hes] at h
   have hsj : sp.ts q ≤ T.time j :=
-    (SA.ts_le_iff_le_slot sp (hr.time_nonneg j) q).2 (by omega)
+    (AC.ts_le_iff_le_slot sp (hr.time_nonneg j) q).2 (by omega)
   obtain ⟨ℓv, hcv, hev⟩ := id hv
   -- the vote is processed by the receiver before `t_q + 2Δ` (fresh processing only)
   obtain ⟨k', hk'c, hjk', hp, hk'dl⟩ := hS.message x hx j e.msg ⟨ℓv, hcv, Or.inl ⟨e, hev, rfl⟩⟩
@@ -78,7 +78,7 @@ theorem vote_pooled_before_early {ini} (hrun : SA.ACRun proposer T H U ini)
   have hk'lt : T.time k' < sp.ts q + 2 * sp.Δ := hk'dl.trans_le (hdl k' hk'c _ htj)
   have hk'c' : k' < c := lt_of_le_of_ne hk'c (by rintro rfl; exact hk'lt.not_ge hct)
   have hsk' : sp.slot (T.time k') = q :=
-    SA.slot_of_mem sp q (hsj.trans hjk') (by rw [hts]; linarith only [hk'lt, hΔ])
+    AC.slot_of_mem sp q (hsj.trans hjk') (by rw [hts]; linarith only [hk'lt, hΔ])
   have hnr : ∀ r, k' + 1 ≤ r → r < c + 1 → ¬ T.RestartAt y r := by
     rintro r hr1 hr2 ⟨ℓr, hcr, hrr⟩
     obtain ⟨u, -, hu, -, hprev⟩ := hr.sleep_of_restart y hy r ℓr hcr hrr
@@ -87,7 +87,7 @@ theorem vote_pooled_before_early {ini} (hrun : SA.ACRun proposer T H U ini)
     have h₂ := hres r (by omega) ⟨ℓr, hcr, hrr⟩
     exact (hsj.trans hjk').not_gt (h₁.trans (hu.trans_le h₂))
   have hpk' : e.msg ∈ (T.state y (k' + 1)).pool q := by
-    rcases SA.held_of_processAt hr hy hp (by rw [hes, hsk']; omega) (by rw [hes, hsk']) with
+    rcases AC.held_of_processAt hr hy hp (by rw [hes, hsk']; omega) (by rw [hes, hsk']) with
       h | ⟨a, ha, b, hb, hab, hav, hbv⟩
     · rwa [hes] at h
     · rw [hes] at ha hb
@@ -97,30 +97,30 @@ theorem vote_pooled_before_early {ini} (hrun : SA.ACRun proposer T H U ini)
         hrun.honest.pool_vote y hy _ q b hb (by rw [hbv, hxv]; exact hx)
       rw [hav, hxv] at hea
       rw [hbv, hxv] at heb
-      obtain ⟨-, rfl⟩ := SA.one_vote_per_slotU sp FGP ro H U T hr.toU x hx ja jb ea eb hea heb
-        (by rw [hea', heb', SA.state_pool_slot sp hr hrun.vstart hy _ q a ha,
-          SA.state_pool_slot sp hr hrun.vstart hy _ q b hb])
+      obtain ⟨-, rfl⟩ := AC.one_vote_per_slotU sp FGP ro H U T hr.toU x hx ja jb ea eb hea heb
+        (by rw [hea', heb', AC.state_pool_slot sp hr hrun.vstart hy _ q a ha,
+          AC.state_pool_slot sp hr hrun.vstart hy _ q b hb])
       exact absurd (hea'.symm.trans heb') hab
   have hpool : e.msg ∈ (T.state y c).pool q :=
-    SA.pool_mono hr hy (show k' + 1 ≤ c by omega) (fun r h₁ h₂ => hnr r h₁ (by omega)) q hpk'
+    AC.pool_mono hr hy (show k' + 1 ≤ c by omega) (fun r h₁ h₂ => hnr r h₁ (by omega)) q hpk'
   refine ⟨hpool, ?_⟩
-  rcases SA.pool_origin hr hrun.vstart hy c e.msg (by rw [hes]; exact hpool) with
+  rcases AC.pool_origin hr hrun.vstart hy c e.msg (by rw [hes]; exact hpool) with
     ⟨k₁, hk₁, hsend₁, hst₁, -⟩ | ⟨k₁, hk₁, ℓ₁, hc₁, hr₁, hst₁, -⟩
-  · rw [hst₁, SA.etime_of_lt_of]
+  · rw [hst₁, AC.etime_of_lt_of]
     by_cases hk₁k' : k₁ ≤ k'
     · exact lt_of_le_of_lt (hr.time_mono hk₁k') hk'lt
     · obtain ⟨ℓ₁, hc₁, ⟨e₁, he₁, he₁m⟩ | ⟨-, hn₁, -⟩⟩ := hsend₁
       · -- the receiver cast the vote itself: it is the voter, and the cast is the vote at `j`
-        have hv₁ : SA.VoteAt T y k₁ e₁ := ⟨ℓ₁, hc₁, he₁⟩
+        have hv₁ : AC.VoteAt T y k₁ e₁ := ⟨ℓ₁, hc₁, he₁⟩
         have hyx : y = x := by
-          rw [← (SA.vote_signer_slot hr hy hv₁).1, he₁m, hxv]
+          rw [← (AC.vote_signer_slot hr hy hv₁).1, he₁m, hxv]
         rw [hyx] at hv₁
-        obtain ⟨rfl, -⟩ := SA.one_vote_per_slotU sp FGP ro H U T hr.toU x hx k₁ j e₁ e hv₁ hv
+        obtain ⟨rfl, -⟩ := AC.one_vote_per_slotU sp FGP ro H U T hr.toU x hx k₁ j e₁ e hv₁ hv
           (by rw [he₁m])
         linarith only [htj, hΔ]
-      · exact absurd (SA.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
+      · exact absurd (AC.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)
           (fun r h₁ h₂ => hnr r h₁ (by omega)) _ (by rw [hes]; exact hpk')) hn₁
-  · rw [hst₁, SA.etime_of_lt_of]
+  · rw [hst₁, AC.etime_of_lt_of]
     exact (hres k₁ hk₁.le ⟨ℓ₁, hc₁, hr₁⟩).trans_lt
       (lt_add_of_pos_right _ (mul_pos two_pos hΔ))
 

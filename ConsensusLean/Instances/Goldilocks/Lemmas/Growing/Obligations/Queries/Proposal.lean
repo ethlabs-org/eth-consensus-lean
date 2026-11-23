@@ -20,7 +20,7 @@ variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [Decidab
 /-- Actual production at a finite cut by a proposer ready there, not an eligible schedule slot
 alone. Acceptance is explicit: release alone does not imply local acceptance. -/
 structure ConfirmedProposalAt (Q : ConfirmedQueryAt S A V) where
-  block : SA.Blk Q.params.n (List (FG.Att Q.params.n))
+  block : AC.Blk Q.params.n (List (FG.Att Q.params.n))
   cut : Nat
   proposal : Q.trace.ProposesAt block.proposer cut block
   accepted : Q.trace.AcceptAt block.proposer cut block

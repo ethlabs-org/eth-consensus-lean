@@ -7,7 +7,7 @@ public section
 /-! # Finite AC healing premises under growing faults
 
 The growing forms of `SyncACWindowBefore`, `CatchACWindowBefore` (`Lemmas/AC/Trace`) and
-`SA.HealthyBaseUpTo` (`Lemmas/Healing/AC/Setting`): every field is the static one, with each
+`AC.HealthyBaseUpTo` (`Lemmas/Healing/AC/Setting`): every field is the static one, with each
 sender honest at its event cut, each receiver honest at its own call, and the fault bound on
 `[0, b]`. Timing, deadlines and cutoffs are unchanged. -/
 
@@ -40,12 +40,12 @@ structure CatchACWindowBefore {P : Params} {FGP : Type} {A : ACInterface P FGP}
 
 end Consensus.Goldilocks.Growing
 
-namespace Consensus.Goldilocks.SA.Growing
+namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
 
 /-- **The healthy AC premises through `b`** under growing faults. -/
-structure HealthyBaseUpTo (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n))
+structure HealthyBaseUpTo (tr : GTrace sp FGP ro) (H : Time → Set (Fin sp.n))
     (U : Set (Blk sp.n FGP)) (proposer : Nat → Fin sp.n) (g b : Time) : Prop where
   run : ACRun proposer tr H U
   driven : Driven proposer tr H
@@ -54,6 +54,6 @@ structure HealthyBaseUpTo (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n))
   awake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t
   faults : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1
 
-end Consensus.Goldilocks.SA.Growing
+end Consensus.Goldilocks.AC.Growing
 
 end

@@ -4,7 +4,7 @@ import Mathlib.Tactic.Ring
 
 public section
 
-/-! # Goldilocks SA: the proposal's view and a merged view give the same opponents
+/-! # Goldilocks AC: the proposal's view and a merged view give the same opponents
 
 The view step of A1.1, over two frames and two states. The proposal's view is the slot-`s` pool
 of a state `A` (every vote stamped, `hpool`), with its resolved votes as support; the merged view
@@ -17,9 +17,9 @@ the exact-or-pair condition at the cast), a pooled vote whose head is a
 block of the proposer's tree of slot at most the vote's is resolved there (`hres`), and the two
 trees hold the same blocks of slot at most `s`. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams}
+variable {FGP : Type} {sp : ACParams}
 
 /-- Ancestry below a block of slot at most `s` only reads the blocks of slot at most `s`. -/
 private theorem anc_of_slot_le {S S' : Set (Blk sp.n FGP)} (hS : Coherent S) {s : Nat}
@@ -39,7 +39,7 @@ private theorem compatible_of_slot_le {S S' : Set (Blk sp.n FGP)} (hS : Coherent
   h.imp (fun h => anc_of_slot_le hS heq h hY) fun h => anc_of_slot_le hS heq h hX
 
 /-- A resolved vote has its head in the tree, of slot at most the vote's. -/
-private theorem resolved_head {A : SAState sp.n} {Φ : Frm sp.n FGP} {v : Vote sp.n}
+private theorem resolved_head {A : ACState sp.n} {Φ : Frm sp.n FGP} {v : Vote sp.n}
     (h : resolutionTime A Φ v ≠ ⊤) : ∃ Hd ∈ Φ.tree, Hd.root = v.head ∧ Hd.slot ≤ v.slot := by
   unfold resolutionTime at h
   split at h
@@ -50,21 +50,21 @@ private theorem resolved_head {A : SAState sp.n} {Φ : Frm sp.n FGP} {v : Vote s
     · exact absurd rfl h
     · exact ⟨Hd, hHd, hr, by omega⟩
 
-private theorem mem_fst {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat} {c : ETime}
+private theorem mem_fst {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat} {c : ETime}
     {v : Vote sp.n} : v ∈ (voteViewList A Φ (s : Int) c).1 ↔ v ∈ A.pool s ∧ A.voteStamp v < c := by
-  simp [voteViewList, SAState.poolAt]
+  simp [voteViewList, ACState.poolAt]
 
-private theorem mem_snd {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat} {c : ETime}
+private theorem mem_snd {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat} {c : ETime}
     {v : Vote sp.n} : v ∈ (voteViewList A Φ (s : Int) c).2 ↔
       (v ∈ A.pool s ∧ A.voteStamp v < c) ∧ resolutionTime A Φ v < c := by
-  simp [voteViewList, SAState.poolAt]
+  simp [voteViewList, ACState.poolAt]
   tauto
 
 /-- **The votes of the merged view are the pool's, or make their validator an equivocator
 there**: the early votes of the read point `R` are by `hstar`, and the votes of the only
 slot-`(s+1)` block `P` of the tree are the slot-`s` votes of `A`'s pool. -/
-theorem merged_votes_of_early {A R : SAState sp.n} {Φp Φy : Frm sp.n FGP} {s : Nat}
-    {P : Blk sp.n FGP} (hPv : blockVotes P = (voteViewList A Φp (s : Int) ⊤).1)
+theorem merged_votes_of_early {A R : ACState sp.n} {Φp Φy : Frm sp.n FGP} {s : Nat}
+    {P : Blk sp.n FGP} (hPv : declaredHeadVotes P = (voteViewList A Φp (s : Int) ⊤).1)
     (hblk : ∀ X ∈ Φy.tree, X.slot = s + 1 → X = P)
     (hstar : ∀ x ∈ R.pool s, R.voteStamp x < ETime.of (sp.ts s + 3 * sp.Δ) →
       x ∈ A.pool s ∨ x.val ∈ equivocators {w | w ∈ A.pool s}) :
@@ -82,12 +82,12 @@ theorem merged_votes_of_early {A R : SAState sp.n} {Φp Φy : Frm sp.n FGP} {s :
 slot at most `s`, when the proposer's tree (of `Φp`) and the voter's tree (of `Φy`) hold the
 same blocks of slot at most `s`, `P ∈ Φy.tree` (slot `s + 1`, the only one there) carries the
 proposal's view as its payload, and the premises `hpool`, `hres`, `hstar`, `hcount` hold. -/
-theorem opponents_eq_of_merged {A R : SAState sp.n} {Φp Φy : Frm sp.n FGP} {s : Nat}
+theorem opponents_eq_of_merged {A R : ACState sp.n} {Φp Φy : Frm sp.n FGP} {s : Nat}
     {P B : Blk sp.n FGP} (hΦp : FrameOK Φp) (hΦy : FrameOK Φy)
     (heq : {X | X ∈ Φp.tree ∧ X.slot ≤ s} = {X | X ∈ Φy.tree ∧ X.slot ≤ s})
     (hP : P ∈ Φy.tree) (hPs : P.slot = s + 1)
-    (hPv : blockVotes P = (voteViewList A Φp (s : Int) ⊤).1)
-    (hPsup : blockSupport P = (voteViewList A Φp (s : Int) ⊤).2)
+    (hPv : declaredHeadVotes P = (voteViewList A Φp (s : Int) ⊤).1)
+    (hPsup : declaredSupportVotes P = (voteViewList A Φp (s : Int) ⊤).2)
     (hblk : ∀ X ∈ Φy.tree, X.slot = s + 1 → X = P)
     (hpool : ∀ w ∈ A.pool s, A.voteStamp w < ⊤)
     (hres : ∀ x ∈ A.pool s, ∀ Hd ∈ Φp.tree, Hd.root = x.head → Hd.slot ≤ x.slot →
@@ -116,7 +116,7 @@ theorem opponents_eq_of_merged {A R : SAState sp.n} {Φp Φy : Frm sp.n FGP} {s 
   constructor
   · rintro (⟨a, ha, b, hb, hab, rfl, hbv⟩ | ⟨x, hx, rfl, hxs, Hd, hHd, hHdr, hnc⟩)
     · have hm : ∀ v ∈ A.pool s, v ∈ (mergedVoteView sp R Φy (s + 1)).votes := fun v hv =>
-        Or.inr ⟨P, hP, hPs, hPv ▸ mem_fst.2 ⟨hv, hpool v hv⟩, by simp [SAParams.committee],
+        Or.inr ⟨P, hP, hPs, hPv ▸ mem_fst.2 ⟨hv, hpool v hv⟩, by simp [ACParams.committee],
           hcount v hv⟩
       exact Or.inl ⟨a, hm a ha, b, hm b hb, hab, rfl, hbv⟩
     · obtain ⟨-, hrt⟩ := mem_snd.1 hx
@@ -124,7 +124,7 @@ theorem opponents_eq_of_merged {A R : SAState sp.n} {Φp Φy : Frm sp.n FGP} {s 
       have hh : Hd' = Hd := hΦp.coherent.1 hHd' hHd (hHd'r.trans hHdr.symm)
       subst hh
       have hHds : Hd'.slot ≤ s := by omega
-      exact Or.inr ⟨x, Or.inr ⟨P, hP, hPs, hPsup ▸ hx, by simp [SAParams.committee],
+      exact Or.inr ⟨x, Or.inr ⟨P, hP, hPs, hPsup ▸ hx, by simp [ACParams.committee],
         hcount x (mem_snd.1 hx).1.1, by omega, Hd', (hmem _ hHds).1 hHd,
         hHdr, by omega⟩, rfl, hxs, Hd', (hmem _ hHds).1 hHd, hHdr,
         fun h => hnc ((hcomp _ hHds).2 h)⟩
@@ -159,6 +159,6 @@ theorem opponents_eq_of_merged {A R : SAState sp.n} {Φp Φy : Frm sp.n FGP} {s 
         exact Or.inr ⟨x, hPsup ▸ hx, rfl, hxs, Hd', (hmem _ hHds).2 hHd, hHdr,
           fun h => hnc ((hcomp _ hHds).1 h)⟩
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

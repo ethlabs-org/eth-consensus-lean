@@ -1,13 +1,13 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.RelTrace
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Confirmation
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.RelTrace
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Confirmation
 public import Mathlib.Data.Rat.Defs
 
 @[expose] public section
 
 /-! # Support counting in one row (statements)
 
-Three counting facts about the confirmation tests of the Goldilocks SA, transcribed from the
+Three counting facts about the confirmation tests of the Goldilocks AC, transcribed from the
 FT-H paper (dc-autoresearch `docs/notes/ft-h-paper.md`), each pinned to the revision whose
 argument it states. They are standalone: none is a settling statement, none bounds a healing
 coefficient, and none is a step of a proof of short-asynchrony healing.
@@ -38,7 +38,7 @@ Trace premises are mode-generic (`ACLocalRunU m u`), so the candidate runs reach
 their projections; (a) and (c) read no trace. Statements only (Prop definitions): the proofs are
 in `Lemmas/Healing/AC/SupportCounting/`. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
 /-! ### (a) Split capacity -/
 
@@ -68,11 +68,11 @@ def SplitThreeQuarterExcluded : Prop :=
 
 /-! ### (b) Same-row support -/
 
-variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
+variable {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
 
 /-- `Q_j(X)`: the honest validators whose actual row-`j` vote (an emission of their own node)
 has a head that is a block of `U` descending from `X`. -/
-def rowSupport (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (j : Nat)
+def rowSupport (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (j : Nat)
     (X : Blk sp.n FGP) : Set (Fin sp.n) :=
   {x | x ∈ H ∧ ∃ i e, VoteAt tr x i e ∧ e.msg.slot = j ∧
     ∃ Hd ∈ U, Hd.root = e.msg.head ∧ Anc U X Hd}
@@ -85,18 +85,18 @@ inductive Counter where
 
 variable (sp) in
 /-- The identities a counter counts for `X` in row `j` at state `A` and frame `Φ`. -/
-def counted (A : SAState sp.n) (Φ : Frm sp.n FGP) (j : Nat) (X : Blk sp.n FGP) :
+def counted (A : ACState sp.n) (Φ : Frm sp.n FGP) (j : Nat) (X : Blk sp.n FGP) :
     Counter → Set (Fin sp.n)
   | .fast => (fun v : Vote sp.n => v.val) '' fastCounted sp A Φ j X
   | .optimistic => optimisticVoters sp A Φ j X
 
-/-- **(b), per cut** (paper `ae83bd82`, §7): over an AC trace of the SA at any write mode `m`
+/-- **(b), per cut** (paper `ae83bd82`, §7): over an AC trace of the AC at any write mode `m`
 with the unlock given by any oracle `u` (`ACLocalRunU m u`), with honest objects, at
 every call of an honest node, the honest identities that either counter counts for a block `X`
 of the call's frame in row `j` are in `rowSupport`. -/
 def CountedHonestInRowSupport : Prop :=
-  ∀ (sp : SAParams) (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
-    (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n)
+  ∀ (sp : ACParams) (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
+    (U : Set (Blk sp.n FGP)) (tr : GTrace sp FGP ro) (proposer : Nat → Fin sp.n)
     (m : WriteMode) (u : Nat → Set Lock),
     ACLocalRunU m u H U tr → HonestObjects proposer tr H →
     ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ → ∀ (κ : Counter) (j : Nat) (X : Blk sp.n FGP),
@@ -107,13 +107,13 @@ def CountedHonestInRowSupport : Prop :=
 admitted it (`SendOrAdmit`: an emission, or a call other than a restart after which its AC holds the
 vote and before which it did not, as a message or from the payload of an accepted block), or
 replayed it from a block of its frame at a restart. -/
-def HonestAdmittedBefore (tr : SATrace sp FGP ro) (H : Set (Fin sp.n)) (i : Nat)
+def HonestAdmittedBefore (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) (i : Nat)
     (v : Vote sp.n) : Prop :=
   ∃ z ∈ H, ∃ k < i, tr.SendOrAdmit z k v ∨
-    ∃ ℓ, tr.CallAt z k ℓ ∧ ℓ.call = .restart ∧ ∃ B ∈ ℓ.frame.tree, v ∈ blockVotes B
+    ∃ ℓ, tr.CallAt z k ℓ ∧ ℓ.call = .restart ∧ ∃ B ∈ ℓ.frame.tree, v ∈ declaredHeadVotes B
 
 /-- **(b), the faulty part has honest pool provenance** (paper `ae83bd82`, §7, the provenance half
-of `E \ H ⊆ A_i`): over an AC trace of the SA at any write mode and unlock oracle, at every call of
+of `E \ H ⊆ A_i`): over an AC trace of the AC at any write mode and unlock oracle, at every call of
 an honest node (cut `i`), every identity outside `H` that either counter counts for a block `X` of
 the call's frame in row `j` has a row-`j` vote that an honest node sent or admitted before cut `i`,
 or replayed from a block of a restart frame.
@@ -128,29 +128,29 @@ activity window (it may precede it). Discharging the per-count premise of
 content origin of frame blocks and payloads, the first receipt of every counted faulty content
 (nested, rejected and orphan contents included), the duty floor, and membership in the window. -/
 def CountedFaultyAdmitted : Prop :=
-  ∀ (sp : SAParams) (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
-    (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) (m : WriteMode) (u : Nat → Set Lock),
+  ∀ (sp : ACParams) (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
+    (U : Set (Blk sp.n FGP)) (tr : GTrace sp FGP ro) (m : WriteMode) (u : Nat → Set Lock),
     ACLocalRunU m u H U tr →
     ∀ y ∈ H, ∀ i ℓ, tr.CallAt y i ℓ → ∀ (κ : Counter) (j : Nat) (X : Blk sp.n FGP),
       X ∈ ℓ.frame.tree → ∀ x ∈ counted sp (tr.state y i) ℓ.frame j X κ \ H,
         ∃ v : Vote sp.n, v.val = x ∧ v.slot = j ∧ HonestAdmittedBefore tr H i v
 
-/-- **(b), disjointness** (paper `ae83bd82`, §7): over an AC trace of the SA at any write mode and
+/-- **(b), disjointness** (paper `ae83bd82`, §7): over an AC trace of the AC at any write mode and
 unlock oracle, the row-`j` supports of two conflicting blocks of `U` are disjoint. -/
 def RowSupportDisjoint : Prop :=
-  ∀ (sp : SAParams) (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
-    (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) (m : WriteMode) (u : Nat → Set Lock),
+  ∀ (sp : ACParams) (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
+    (U : Set (Blk sp.n FGP)) (tr : GTrace sp FGP ro) (m : WriteMode) (u : Nat → Set Lock),
     ACLocalRunU m u H U tr → ∀ (j : Nat) (X Y : Blk sp.n FGP), X ∈ U → Y ∈ U → ¬ Anc U X Y →
       ¬ Anc U Y X → Disjoint (rowSupport tr H U j X) (rowSupport tr H U j Y)
 
 /-- **(b), no two conflicting half origins in one row** (paper `ae83bd82`, §7): over an AC trace of
-the SA at any write mode and unlock oracle with honest objects, at calls of honest nodes `y` (cut
+the AC at any write mode and unlock oracle with honest objects, at calls of honest nodes `y` (cut
 `i`) and `y'` (cut `i'`), for counters `κ` and `κ'` and conflicting blocks `X` and `Y` of `U` in the
 respective frames, if each count has at most `h` identities outside `H` and `2h < |Hᶜ|`, the two
 counts do not both reach half of the committee (`n ≤ 2·count`). -/
 def NoConflictingHalfOrigins : Prop :=
-  ∀ (sp : SAParams) (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
-    (U : Set (Blk sp.n FGP)) (tr : SATrace sp FGP ro) (proposer : Nat → Fin sp.n)
+  ∀ (sp : ACParams) (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n))
+    (U : Set (Blk sp.n FGP)) (tr : GTrace sp FGP ro) (proposer : Nat → Fin sp.n)
     (m : WriteMode) (u : Nat → Set Lock) (h : ℕ),
     ACLocalRunU m u H U tr → HonestObjects proposer tr H → 2 * h < Hᶜ.ncard →
     ∀ y ∈ H, ∀ y' ∈ H, ∀ i i' ℓ ℓ', tr.CallAt y i ℓ → tr.CallAt y' i' ℓ' →
@@ -165,7 +165,7 @@ def NoConflictingHalfOrigins : Prop :=
 
 /-- The supporters the update of row `j` counts for `B` at state `A` and frame `Φ` (those of
 `confirmationScore`). -/
-def scoreSupporters (A : SAState sp.n) (Φ : Frm sp.n FGP) (j : Nat) (B : Blk sp.n FGP) :
+def scoreSupporters (A : ACState sp.n) (Φ : Frm sp.n FGP) (j : Nat) (B : Blk sp.n FGP) :
     Set (Fin sp.n) :=
   supporters Φ ⟨{v | v ∈ A.pool j},
     {v | v ∈ A.pool j ∧ resolutionTime A Φ v < ETime.of (sp.ts j + 2 * sp.Δ)}⟩ j B
@@ -175,7 +175,7 @@ head map `head` and a coherent block universe `U`: the frame's tree is in `U`; t
 row-`j` pool are exactly `D`; and every counted supporter of a block `B` is in `D` with its head
 `head x`, a block of `U`, descending from `B`. -/
 structure SelectorHyp (U : Set (Blk sp.n FGP)) (D : Set (Fin sp.n))
-    (head : Fin sp.n → Blk sp.n FGP) (A : SAState sp.n) (Φ : Frm sp.n FGP) (j : Nat) : Prop where
+    (head : Fin sp.n → Blk sp.n FGP) (A : ACState sp.n) (Φ : Frm sp.n FGP) (j : Nat) : Prop where
   tree_sub : Φ.tree ⊆ U
   denominator : voters {v | v ∈ A.pool j} = D
   supporters_sub : ∀ B, scoreSupporters A Φ j B ⊆ {x | x ∈ D ∧ head x ∈ U ∧ Anc U B (head x)}
@@ -184,8 +184,8 @@ structure SelectorHyp (U : Set (Blk sp.n FGP)) (D : Set (Fin sp.n))
 update inputs of row `j` with the selector hypotheses for one denominator `D` and one head map,
 the two selected results (`getConfirmation`) are comparable. -/
 def SelectedResultsComparable : Prop :=
-  ∀ (sp : SAParams) (FGP : Type) (U : Set (Blk sp.n FGP)) (D : Set (Fin sp.n))
-    (head : Fin sp.n → Blk sp.n FGP) (A A' : SAState sp.n) (Φ Φ' : Frm sp.n FGP) (j : Nat)
+  ∀ (sp : ACParams) (FGP : Type) (U : Set (Blk sp.n FGP)) (D : Set (Fin sp.n))
+    (head : Fin sp.n → Blk sp.n FGP) (A A' : ACState sp.n) (Φ Φ' : Frm sp.n FGP) (j : Nat)
     (C C' : Blk sp.n FGP), Coherent U → SelectorHyp U D head A Φ j →
     SelectorHyp U D head A' Φ' j → getConfirmation sp A Φ j = some C →
     getConfirmation sp A' Φ' j = some C' → Anc U C C' ∨ Anc U C' C
@@ -195,12 +195,12 @@ coherent `U`, at an update input of row `j` with the selector hypotheses, a bloc
 frame's tree at or above `Φ.F` with a strict majority (`|D| < 2·score`) is an ancestor of the
 selected result. -/
 def EligibleBelowSelected : Prop :=
-  ∀ (sp : SAParams) (FGP : Type) (U : Set (Blk sp.n FGP)) (D : Set (Fin sp.n))
-    (head : Fin sp.n → Blk sp.n FGP) (A : SAState sp.n) (Φ : Frm sp.n FGP) (j : Nat)
+  ∀ (sp : ACParams) (FGP : Type) (U : Set (Blk sp.n FGP)) (D : Set (Fin sp.n))
+    (head : Fin sp.n → Blk sp.n FGP) (A : ACState sp.n) (Φ : Frm sp.n FGP) (j : Nat)
     (R C : Blk sp.n FGP), Coherent U → SelectorHyp U D head A Φ j → R ∈ Φ.tree →
     Φ.Anc Φ.F R → D.ncard < 2 * confirmationScore sp A Φ j R →
     getConfirmation sp A Φ j = some C → Anc U R C
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

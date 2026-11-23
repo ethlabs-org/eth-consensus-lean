@@ -4,18 +4,18 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
 
 public section
 
-/-! # Goldilocks SA: views and counting (A0.2's support clause, A0.3's view facts)
+/-! # Goldilocks AC: views and counting (A0.2's support clause, A0.3's view facts)
 
 Facts about vote views that hold in any well-formed frame, with no reachability: support heads
 are in the tree, supporters shrink and opponents grow along ancestry, and majorities lie on one
 chain. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable (sp : SAParams)
+variable (sp : ACParams)
 
 /-- A support vote of a vote view is resolved before the cutoff, so its head is in the tree. -/
-theorem voteView_support_inTree {n : Nat} {FGP : Type} {A : SAState n} {Φ : Frm n FGP} {σ : Int}
+theorem voteView_support_inTree {n : Nat} {FGP : Type} {A : ACState n} {Φ : Frm n FGP} {σ : Int}
     {cutoff : ETime} {x : Vote n} (hx : x ∈ (voteView A Φ σ cutoff).support) : InTree Φ x.head := by
   simp only [voteView, voteViewList, View.ofLists, Set.mem_ofPred_eq, List.mem_filter,
     decide_eq_true_eq] at hx
@@ -114,13 +114,13 @@ section VoteDomain
 variable {sp} {FGP : Type}
 
 /-- The vote domain is part of the frame tree. -/
-theorem voteDomain_subset_tree {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat} :
+theorem voteDomain_subset_tree {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat} :
     voteDomain sp A Φ s ⊆ Φ.tree := by
   rintro B (⟨hB, -⟩ | ⟨hB, -⟩)
   exacts [hB.1, hB]
 
 /-- The voter block tree is part of the vote domain (in both cases of the fallback). -/
-theorem voterBlockTree_subset_voteDomain {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat} :
+theorem voterBlockTree_subset_voteDomain {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat} :
     voterBlockTree sp A Φ s ⊆ voteDomain sp A Φ s := by
   intro B hB
   by_cases hv : (Φ.viableTree (voterBlockTree sp A Φ s)).Nonempty
@@ -128,14 +128,14 @@ theorem voterBlockTree_subset_voteDomain {A : SAState sp.n} {Φ : Frm sp.n FGP} 
   · exact Or.inr ⟨hB.1, hv⟩
 
 /-- With a viable block in the voter block tree, the vote domain is the voter block tree. -/
-theorem voteDomain_eq_of_viable {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
+theorem voteDomain_eq_of_viable {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
     (h : (Φ.viableTree (voterBlockTree sp A Φ s)).Nonempty) :
     voteDomain sp A Φ s = voterBlockTree sp A Φ s := by
   ext B
   exact ⟨fun hB => hB.elim And.left fun hB' => absurd h hB'.2, fun hB => Or.inl ⟨hB, h⟩⟩
 
 /-- Without a viable block in the voter block tree, the vote domain is the whole tree. -/
-theorem voteDomain_eq_tree_of_not_viable {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
+theorem voteDomain_eq_tree_of_not_viable {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
     (h : ¬ (Φ.viableTree (voterBlockTree sp A Φ s)).Nonempty) :
     voteDomain sp A Φ s = Φ.tree := by
   ext B
@@ -148,25 +148,25 @@ theorem viableTree_mono {Φ : Frm sp.n FGP} {S T : Set (Blk sp.n FGP)} (hST : S 
   exact ⟨hST hB, hf, W, hST hW, hWv, hBW⟩
 
 /-- The viable voter block tree is part of the viable vote domain. -/
-theorem viableTree_voterBlockTree_subset_voteDomain {A : SAState sp.n} {Φ : Frm sp.n FGP}
+theorem viableTree_voterBlockTree_subset_voteDomain {A : ACState sp.n} {Φ : Frm sp.n FGP}
     {s : Nat} :
     Φ.viableTree (voterBlockTree sp A Φ s) ⊆ Φ.viableTree (voteDomain sp A Φ s) :=
   viableTree_mono voterBlockTree_subset_voteDomain
 
 /-- The viable vote domain is part of the viable tree of the frame tree. -/
-theorem viableTree_voteDomain_subset_tree {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat} :
+theorem viableTree_voteDomain_subset_tree {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat} :
     Φ.viableTree (voteDomain sp A Φ s) ⊆ Φ.viableTree Φ.tree :=
   viableTree_mono voteDomain_subset_tree
 
 /-- With a viable block in the voter block tree, the viable vote domain is the viable voter
 block tree. -/
-theorem viableTree_voteDomain_eq_of_viable {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
+theorem viableTree_voteDomain_eq_of_viable {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
     (h : (Φ.viableTree (voterBlockTree sp A Φ s)).Nonempty) :
     Φ.viableTree (voteDomain sp A Φ s) = Φ.viableTree (voterBlockTree sp A Φ s) := by
   rw [voteDomain_eq_of_viable h]
 
 /-- The vote domain is closed under ancestors in the frame when the voter block tree is. -/
-theorem voteDomain_anc_closed {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
+theorem voteDomain_anc_closed {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
     (hfz : ∀ B ∈ voterBlockTree sp A Φ s, ∀ X, Φ.Anc X B → X ∈ voterBlockTree sp A Φ s) :
     ∀ B ∈ voteDomain sp A Φ s, ∀ X, Φ.Anc X B → X ∈ voteDomain sp A Φ s := by
   intro B hB X hX
@@ -178,6 +178,6 @@ theorem voteDomain_anc_closed {A : SAState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
 
 end VoteDomain
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

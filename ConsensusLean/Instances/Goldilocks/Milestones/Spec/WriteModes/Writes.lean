@@ -1,11 +1,11 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Spec.SA.Confirmation
+public import ConsensusLean.Instances.Goldilocks.Spec.AC.Confirmation
 
 @[expose] public section
 
 /-! # Goldilocks lock rules: write modes
 
-A lock rule of the Goldilocks family keeps the SA's confirmation machinery and changes which locks
+A lock rule of the Goldilocks family keeps the AC's confirmation machinery and changes which locks
 it writes. A **write mode** fixes the three write choices:
 
 * `fastArm`: whether the confirmation update of slot `s` writes the fast lock of its path (the
@@ -26,7 +26,7 @@ the parent's selection primitives (`getConfirmation`, `FastTest`, `optimisticSel
 mode is a theorem (`Lemmas/AC/WriteMode`), and it certifies the parent's mode only: each other mode
 is read back against the rule it models on its own. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
 /-- Which locks a lock rule writes: the update's regular fast arm, the optimistic confirmation
 (its lock and its record), and the slow lock's formation width. -/
@@ -40,9 +40,9 @@ structure WriteMode where
   width : Nat
 
 /-- The parent's writes: both fast writes, and slow locks of width `k`. -/
-def WriteMode.parent (sp : SAParams) : WriteMode := ⟨true, true, sp.k⟩
+def WriteMode.parent (sp : ACParams) : WriteMode := ⟨true, true, sp.k⟩
 
-variable {FGP : Type} (sp : SAParams)
+variable {FGP : Type} (sp : ACParams)
 
 open Classical in
 /-- The new locks of the update of slot `s` at mode `m` whose result is `C`, as triples (block,
@@ -51,7 +51,7 @@ the fast lock on the deepest block of the result's path that passes the fast tes
 with no live lock, when `m.fastArm`; the slow lock on the deepest such block that the saved
 results of the previous `m.width − 1` slots extend. The update reads its own saved results (with
 `C` saved at `s`) and its own locks. -/
-noncomputable def newLocksM (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+noncomputable def newLocksM (m : WriteMode) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (s : Nat) (C : Blk sp.n FGP) (sv : Int → Option Nat) (L : Set Lock) :
     Set (Nat × Bool × Nat) :=
   let path := {B | B ∈ confirmationPath sp Φ C ∧ ¬ conflictsWithLock sp A.locks Φ t B}
@@ -67,8 +67,8 @@ noncomputable def newLocksM (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FG
 open Classical in
 /-- `update_confirmation(𝒜, Φ, t, s)` at mode `m`: the result is saved (also when vetoed), the
 record moves to it unless a live lock vetoes it, and the locks get `newLocksM`. -/
-noncomputable def updateConfirmationM (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) (s : Nat) : SAState sp.n :=
+noncomputable def updateConfirmationM (m : WriteMode) (A : ACState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) (s : Nat) : ACState sp.n :=
   let C := getConfirmation sp A Φ s
   let A₁ := { A with saved := Function.update A.saved s (C.map Block.root) }
   match C with
@@ -79,8 +79,8 @@ noncomputable def updateConfirmationM (m : WriteMode) (A : SAState sp.n) (Φ : F
 
 /-- `optimistic_confirmation(𝒜, Φ, t)` at mode `m`: when `m.optimistic`, a fast lock of slot
 `slot(t)` on the block of `optimisticSelect` and the record; otherwise nothing. -/
-noncomputable def optimisticConfirmationM (m : WriteMode) (A : SAState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) : SAState sp.n :=
+noncomputable def optimisticConfirmationM (m : WriteMode) (A : ACState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) : ACState sp.n :=
   match m.optimistic with
   | false => A
   | true =>
@@ -91,6 +91,6 @@ noncomputable def optimisticConfirmationM (m : WriteMode) (A : SAState sp.n) (Φ
         { A with locks := addLocks sp A.locks Φ t (sp.slot t)
                     {(B.root, true, fastExpiry sp A.locks Φ t (sp.slot t))} } Φ B
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

@@ -25,9 +25,9 @@ prefix (`outage_reader_prefix_at`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -37,7 +37,7 @@ block below `P` is below the read of a reader ready at a strict read point from 
 the population count at the read time and the committee counts up to it. -/
 theorem outage_lock_protected (D : OutageLockPremises tr H proposer dg ini)
     (hpost : Consensus.Goldilocks.Generic.PostStopService tr H D.b₁)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : Anc (tr.HonestBlocksAt H) B D.P)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : Anc (tr.HonestBlocksAt H) B D.P)
     {b c t : Time} (hc : Regimes.catchUp sp ≤ c) (hrec : D.b₁ + 9 * sp.Δ ≤ t)
     {y : Fin sp.n} {j : Nat} (hR : Consensus.Goldilocks.Generic.ReadyReadPoint tr H b c y j t)
     (hstrict : t < tr.time j) (hBt : SleepyBoundsFrom tr H 0 t)

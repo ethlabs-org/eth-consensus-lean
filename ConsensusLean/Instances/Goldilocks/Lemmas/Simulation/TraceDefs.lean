@@ -30,7 +30,7 @@ open AsChainShape
 
 open Shape Node
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
 /-- A bound setup's committee is nonempty at every population with a validator: the population
 binding's committee is the population, a committee binding's by `VoteBinding.committeeSize_pos`. -/
@@ -53,7 +53,7 @@ theorem _root_.Consensus.Goldilocks.AsChainShape.Setup.committeeSize_pos (S : Se
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {binding : VoteBinding}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {binding : VoteBinding}
 
 /-- A canonical object contributes its group, then the rest from the handler's state. -/
 theorem deliverRecs_cons_some (proposer : Nat → Fin sp.n)

@@ -24,9 +24,9 @@ seed (`GoldilocksRun.finalized_anc_of_lt_conv` for `Σ.F`, no contest at the see
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
@@ -45,15 +45,15 @@ theorem seeded_vote_frame_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
     (hcv : ChainConvictedBelow tr H) {s : Nat} (hs : σ + 1 ≤ s)
     (hP : HealedOriginsBelow tr H g r (r + sp.k - 1) (s + 1) b) {y : Fin sp.n} {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hes : e.msg.slot = s + 1)
-    (hib : tr.time i ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hy : y ∈ H (tr.time i)) (hc : AC.CastAt tr.projAC y i ℓ e) (hes : e.msg.slot = s + 1)
+    (hib : tr.time i ≤ b) {B : AC.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
     (hBm : HealedOrigin tr H g r (r + sp.k - 1) B j b) (hj : j ≤ s)
     (hw : ∃ x k e', HVoteAt tr H x k e' ∧ e'.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
-    {K : SA.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
+      AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
+    {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :
-    B ∈ ℓ.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
+    B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
       Anc (tr.HonestBlocksAt H) B ℓ.frame.fcRoot :=
   seeded_vote_frame_of hrun hnc hseed hTb hsvc hB hcv hs hP hy hc hes hib
     (fun C l hC hl => healedOriginsBelow_iff.1 hP B j C l (by omega) (by omega) hBm hC) hw hK hKB

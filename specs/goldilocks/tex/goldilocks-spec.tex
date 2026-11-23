@@ -42,7 +42,7 @@
 \newcommand{\fcroot}{\mathsf{fc\_root}}
 \newcommand{\allowed}{\mathsf{viable\_heads}}
 \newcommand{\filtered}{\fname{viable\_tree}}
-\newcommand{\gfPool}{\mathsf{head\_votes}}
+\newcommand{\headVotes}{\mathsf{head\_votes}}
 \newcommand{\attestations}{\mathsf{attestations}}
 \newcommand{\fname}[1]{\text{\textsc{#1}}}
 \newcommand{\latestConfirmed}{\mathsf{latest\_confirmed}}
@@ -73,7 +73,7 @@ reads the FG frame and nothing else.  The \emph{node} keeps the clock and
 the two states, runs the handlers and the duties, and calls the other two
 parts.  Section~\ref{sec:composition} gives the node and the two
 interfaces; it does not depend on the choice of the AC.
-Section~\ref{sec:fg} gives the FG.  Section~\ref{sec:sa} gives the AC of
+Section~\ref{sec:fg} gives the FG.  Section~\ref{sec:ac} gives the AC of
 Goldilocks.  Figure~\ref{fig:system} shows the parts and the data
 that pass between them.
 
@@ -202,15 +202,15 @@ head.}
 
 \input{shared/composition}
 \input{shared/fg}
-\section{Available chain: Goldilocks}\label{sec:sa}
+\section{Available chain: Goldilocks}\label{sec:ac}
 
 The available chain of Goldilocks is Goldfish with locks on confirmed
 blocks.  It reads the FG frame~$\Fr$, the clock and its
-own state~$\AC$.  Its wire messages are Goldfish votes, the AC payload of
+own state~$\AC$.  Its wire messages are head votes, the AC payload of
 a block is a list of declared previous-slot head votes with a support bit
 for each, and its head is the Goldfish head.
 
-\subsection{Schedule}\label{sec:sa-schedule}
+\subsection{Schedule}\label{sec:ac-schedule}
 
 Slot~$s$ starts at $t_s=4\Delta s$, so $\slot(t)=\lfloor t/(4\Delta)\rfloor$.
 Slot~$s$ has the committee $\committee_s\subseteq V$, the validators that
@@ -220,7 +220,7 @@ actions:
 \[
 \begin{array}{c@{\qquad}l}
  t_s             & \text{proposal, for $s>0$},\\
- \text{at the latest at }t_s+\Delta & \text{Goldfish vote},\\
+ \text{at the latest at }t_s+\Delta & \text{head vote},\\
  \text{before }t_s+2\Delta & \text{optimistic confirmation},\\
  t_s+2\Delta     & \text{confirmation freeze},\\
  t_s+3\Delta     & \text{vote freeze},\\
@@ -230,13 +230,13 @@ actions:
 \]
 A node votes in $[t_s,t_s+\Delta]$: as soon as it holds a ready proposal
 of slot~$s$, for $s>0$, and else at
-$t_s+\Delta$ (Section~\ref{sec:sa-actions}).  Each voter unlocks
+$t_s+\Delta$ (Section~\ref{sec:ac-actions}).  Each voter unlocks
 immediately before its vote; the proposer also unlocks before its
 proposal.  The last two actions of slot~$s$ occur in
 slot~$s+1$: the unlocking runs in $[t_{s+1},t_{s+1}+\Delta]$, at the latest
 at $t_s+5\Delta=t_{s+1}+\Delta$, and $t_s+6\Delta=t_{s+1}+2\Delta$ is the
 confirmation freeze of slot~$s+1$.
-Figure~\ref{fig:sa-timeline} shows the two slots.  The formula
+Figure~\ref{fig:ac-timeline} shows the two slots.  The formula
 $t_s=4\Delta s$ also gives the times of negative~$s$; the pools of a
 negative slot are empty.
 
@@ -245,7 +245,7 @@ The parameters are these.
 \item The slow window of $k\geq2$ slots and the fast increment $c\geq2$
   slots.  A lock that the confirmation update or the optimistic
   confirmation of slot~$s$ writes is a lock of slot~$s$.  Its expiry~$e$
-  is fixed when it is written (Section~\ref{sec:sa-locks}): the lock lives
+  is fixed when it is written (Section~\ref{sec:ac-locks}): the lock lives
   until $t_{e+1}$, the start of slot~$e+1$.
 \item The FG window $K_W=2$ and the timeout delay $\delta_{\mathrm{t}}\geq0$
   slots (Section~\ref{sec:fg-state}).
@@ -292,21 +292,21 @@ vote window: a node votes in it, at the latest at its end.  It unlocks
 immediately before its vote; the proposer also unlocks before its
 proposal.  The confirmation update of slot~$s$ runs in the tick of the
 confirmation freeze of slot~$s+1$, before that action
-(Section~\ref{sec:sa-actions}).  A node can lock the proposal before the
-confirmation freeze (Section~\ref{sec:sa-confirmation}).}
-\label{fig:sa-timeline}
+(Section~\ref{sec:ac-actions}).  A node can lock the proposal before the
+confirmation freeze (Section~\ref{sec:ac-confirmation}).}
+\label{fig:ac-timeline}
 \end{figure}
 
-\subsection{State}\label{sec:sa-state}
+\subsection{State}\label{sec:ac-state}
 
 \[
 \begin{split}
- \AC=(&\gfPool[\cdot],\timestamp[\cdot],\savedConfirmation[\cdot],\\
+ \AC=(&\headVotes[\cdot],\timestamp[\cdot],\savedConfirmation[\cdot],\\
  &\locks,\latestConfirmed,\fgReported,\\
  &\votedSlot,\restartTime).
 \end{split}
 \]
-Table~\ref{tab:sa-state} lists the fields.
+Table~\ref{tab:ac-state} lists the fields.
 
 \begin{table}[!ht]
 \centering
@@ -315,12 +315,12 @@ Table~\ref{tab:sa-state} lists the fields.
 \hline
 Field & Holds & Written by & Read by & Restart\\
 \hline
-$\gfPool[s]$ & the accepted slot-$s$ votes, at most two distinct votes
+$\headVotes[s]$ & the accepted slot-$s$ votes, at most two distinct votes
   per validator, in the order of acceptance &
-  \fname{on\_goldfish\_vote} & vote views, unlocking, confirmation & reset\\
+  \fname{on\_head\_vote} & vote views, unlocking, confirmation & reset\\
 $\timestamp[x]$ & the time at which the AC accepted the vote or block~$x$;
   $\timestamp[\genesis]=-\infty$ &
-  \fname{on\_goldfish\_vote}, \fname{ac\_on\_block} &
+  \fname{on\_head\_vote}, \fname{ac\_on\_block} &
   resolution, voter block tree & reset\\
 $\savedConfirmation[s]$ & the result of the slot-$s$ update, a block
   or~$\bot$, also when a lock vetoes it & \textsc{update\_\allowbreak confirmation} &
@@ -339,8 +339,8 @@ $\restartTime$ & the time of the latest restart & \fname{ac\_restart} &
 \hline
 \end{tabular}
 \caption{The fields of the Goldilocks state.  The last column says what a
-restart does to the field (Section~\ref{sec:sa-joining}).}
-\label{tab:sa-state}
+restart does to the field (Section~\ref{sec:ac-joining}).}
+\label{tab:ac-state}
 \end{table}
 
 The other objects of the rules are derived when they are used, from the
@@ -348,7 +348,7 @@ current frame, the AC state and the time tests of their rules: a voter
 block tree, a viable tree, a frozen vote set, a score, a set of
 opponents, the anchor, and $\mathit{fg\_confirmed}$.
 
-The initial state is $\Call{initial\_ac}{}$ (Figure~\ref{alg:sa-initial}):
+The initial state is $\Call{initial\_ac}{}$ (Figure~\ref{alg:ac-initial}):
 empty pools and locks, $\bot$ as the saved confirmation of every integer
 slot, also a negative one, and
 $\genesis$ as $\AC.\latestConfirmed$ and as $\AC.\fgReported$.
@@ -359,12 +359,12 @@ since the start of the previous slot.  A node that wakes at $t_j$ is joined
 from~$t_{j+1}$, and a node that wakes in $(t_j,t_{j+1})$ is joined
 from~$t_{j+2}$.
 
-\captionof{figure}{Goldilocks: initial state and joined}\label{alg:sa-initial}
+\captionof{figure}{Goldilocks: initial state and joined}\label{alg:ac-initial}
 \nopagebreak
 {\footnotesize
 \begin{algorithmic}[1]
 \Function{initial\_ac}{}
-  \State $\AC.\gfPool[s]\gets$ an empty pool, and $\AC.\savedConfirmation[s]\gets\bot$, for every integer $s$
+  \State $\AC.\headVotes[s]\gets$ an empty pool, and $\AC.\savedConfirmation[s]\gets\bot$, for every integer $s$
   \State $\AC.\timestamp\gets\{\genesis\mapsto-\infty\}$;\quad $\AC.\locks\gets\emptyset$
   \State $\AC.\latestConfirmed\gets\genesis$;\quad $\AC.\fgReported\gets\genesis$
   \State $\AC.\votedSlot\gets-1$;\quad $\AC.\restartTime\gets-\infty$
@@ -378,9 +378,9 @@ from~$t_{j+2}$.
 \end{algorithmic}
 }
 
-\subsection{Votes and views}\label{sec:sa-views}
+\subsection{Votes and views}\label{sec:ac-views}
 
-\emph{The vote.}  The wire message is the Goldfish vote, a tuple
+\emph{The vote.}  The wire message is the head vote, a tuple
 $(\valindex,s,B)$ with $s\geq0$, from validator $\valindex\in\committee_s$
 with head~$B$; it names its head by root.  The signer of a slot-$s$ vote
 signs it with the slot-$s$ seat of~$\valindex$, under a bijection for each
@@ -411,7 +411,7 @@ signature.  A declared head vote that no node holds signed, that was never
 signed, or whose validator is not in $\committee_{B.\slot-1}$, passes it;
 the voter decides whether to count it (\emph{held declarations} below).
 
-\emph{Admission.}  $\Call{on\_goldfish\_vote}{}$ accepts a vote at time~$t$
+\emph{Admission.}  $\Call{on\_head\_vote}{}$ accepts a vote at time~$t$
 when four conditions hold: its slot is $\slot(t)-1$ or $\slot(t)$, its
 validator is in $\committee_{\mathit{vote}.\slot}$, the pool does not hold it, and
 the pool holds fewer than two distinct votes of its validator for that
@@ -437,11 +437,11 @@ the latest view.  The vote reads the merged view.
 declares the vote $(v,s-1,H)$.  Only the declarations of members of
 $\committee_{s-1}$ that the voter holds are counted.  An early vote waits on
 every declaration that the voter does not hold, whether or not its validator
-is a member (Section~\ref{sec:sa-actions}); at $t_s+\Delta$ the voter omits
+is a member (Section~\ref{sec:ac-actions}); at $t_s+\Delta$ the voter omits
 the declarations it does not hold.
 
 \emph{Held declarations.}  A slot-$s$ voter \emph{holds} a declared vote
-$x=(v,s-1,H)$ when its pool $\AC.\gfPool[s-1]$ holds $x$ itself, or holds
+$x=(v,s-1,H)$ when its pool $\AC.\headVotes[s-1]$ holds $x$ itself, or holds
 two distinct votes by~$v$.  If the exact vote is absent, two distinct
 signed votes prove that $v$ equivocated, and the voter takes the
 proposer's declaration for the head of~$v$.  A declaration that the
@@ -449,11 +449,11 @@ voter does not hold is \emph{omitted}: it is neither counted nor waited
 for after the timeout.
 
 \emph{Declarations are not votes.}  A declaration is never given to the
-admission test, never enters $\AC.\gfPool$, never gets a stamp, and is
+admission test, never enters $\AC.\headVotes$, never gets a stamp, and is
 never forwarded.  It counts only in the merged view of the vote that reads
 it.  That view drives both the walk and the unlocking before it, and the
 unlocking changes the stored locks also when the node sends no vote.  The
-optimistic confirmation and the confirmation update read $\AC.\gfPool$,
+optimistic confirmation and the confirmation update read $\AC.\headVotes$,
 so neither ever counts a declaration.
 
 \emph{The merged view.}  The merged view of a slot-$s$ voter is this view:
@@ -478,7 +478,7 @@ full viable tree cut to it).  When the voter block tree has no viable
 block in the current frame, the \emph{vote domain} is the whole tree
 $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
 
-\captionof{figure}{Goldilocks: votes and views}\label{alg:sa-views}
+\captionof{figure}{Goldilocks: votes and views}\label{alg:ac-views}
 \nopagebreak
 {\footnotesize
 \begin{algorithmic}[1]
@@ -502,19 +502,19 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
 \Function{should\_count\_declared\_vote}{$\AC,x$}
   \Comment{the exact vote, or a proof that its validator equivocated}
   \State $(v,s,H)\gets x$
-  \State \Return $x\in\AC.\gfPool[s]$ or $\AC.\gfPool[s]$ holds two distinct votes by $v$
+  \State \Return $x\in\AC.\headVotes[s]$ or $\AC.\headVotes[s]$ holds two distinct votes by $v$
 \EndFunction
 \vspace{1pt}
-\Function{on\_goldfish\_vote}{$\AC,t,\mathit{vote}$}
+\Function{on\_head\_vote}{$\AC,t,\mathit{vote}$}
   \State $s\gets\slot(t)$
   \If{$\mathit{vote}.\slot<s-1$ or $\mathit{vote}.\slot>s$ or
     $\mathit{vote}.\valindex\notin\committee_{\mathit{vote}.\slot}$ or
-    $\mathit{vote}\in\AC.\gfPool[\mathit{vote}.\slot]$}
+    $\mathit{vote}\in\AC.\headVotes[\mathit{vote}.\slot]$}
     \State \Return \EndIf
-  \If{$\AC.\gfPool[\mathit{vote}.\slot]$ holds two distinct votes by
+  \If{$\AC.\headVotes[\mathit{vote}.\slot]$ holds two distinct votes by
     $\mathit{vote}.\valindex$}
     \State \Return \EndIf
-  \State add $\mathit{vote}$ to $\AC.\gfPool[\mathit{vote}.\slot]$;
+  \State add $\mathit{vote}$ to $\AC.\headVotes[\mathit{vote}.\slot]$;
     $\AC.\timestamp[\mathit{vote}]\gets t$
 \EndFunction
 \vspace{1pt}
@@ -528,7 +528,7 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
 \vspace{1pt}
 \Function{vote\_view}{$\AC,\Fr,s,\mathit{cutoff}$}
   \Comment{the slot-$s$ votes held before the time $\mathit{cutoff}$, and those resolved before it}
-  \State $\mathit{votes}\gets\{\mathit{vote}\in\AC.\gfPool[s]:
+  \State $\mathit{votes}\gets\{\mathit{vote}\in\AC.\headVotes[s]:
     \AC.\timestamp[\mathit{vote}]<\mathit{cutoff}\}$, in the order of the pool
   \State $\mathit{support\_votes}\gets\{\mathit{vote}\in\mathit{votes}:
     \Call{resolution\_time}{\AC,\Fr,\mathit{vote}}<\mathit{cutoff}\}$
@@ -556,7 +556,7 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
     \State $(D,D^{+})\gets\Call{get\_countable\_declared\_head\_votes}{B}$
     \State $\mathit{votes}\gets\mathit{votes}\cup
       \{x\in D:\Call{should\_count\_declared\_vote}{\AC,x}\}$
-    \Comment{never admitted: $\AC.\gfPool$ is unchanged}
+    \Comment{never admitted: $\AC.\headVotes$ is unchanged}
     \State $\mathit{support\_votes}\gets\mathit{support\_votes}\cup
       \{(v,s-1,H)\in D^{+}:\Call{should\_count\_declared\_vote}{\AC,(v,s-1,H)},\ H\in\Fr.\tree,\
       H.\slot\leq s-1\}$
@@ -588,13 +588,13 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
 \end{algorithmic}
 }
 
-\subsection{Locks}\label{sec:sa-locks}
+\subsection{Locks}\label{sec:ac-locks}
 
 \emph{Locks.}  $\AC.\locks$ is a set of locks $(B,j,f,e)$: a block, the
 slot~$j$ of the confirmation that wrote it, the fast bit~$f$, and the
 expiry~$e$, the last slot of its life.  A lock with $f=\mathsf{true}$ is a
 \emph{fast lock}: the lock of a fast or an optimistic confirmation
-(Section~\ref{sec:sa-confirmation}).  Only $\Call{ac\_to\_fg}{}$ and
+(Section~\ref{sec:ac-confirmation}).  Only $\Call{ac\_to\_fg}{}$ and
 $\Call{fast\_expiry}{}$ read the bit.  A lock is \emph{live} when
 $\slot(t)\leq e$ and $B\in\Fr.\tree$.  This lock
 is not the finality lock $\Lambda.\mathsf{lock}[h]$ of the record.
@@ -602,7 +602,7 @@ is not the finality lock $\Lambda.\mathsf{lock}[h]$ of the record.
 \emph{Lifetimes.}  A \emph{lock of slot~$j$} is a lock with the slot~$j$:
 it lives through slot~$e$, its expiry, and is not live from $t_{e+1}$ on.  The
 optimistic confirmation of slot~$j$ and the confirmation update of
-slot~$j$ write the locks of slot~$j$ (Section~\ref{sec:sa-schedule}).  No
+slot~$j$ write the locks of slot~$j$ (Section~\ref{sec:ac-schedule}).  No
 later step changes the slot or the expiry of a lock.
 
 \emph{Expiries.}  A write fixes the expiry of each new lock of slot~$s$.
@@ -621,15 +621,15 @@ ancestor that is in the viable tree or at or below $\Fr.\fcroot$ (at worst
 $\Fr.F$), and a block is \emph{locked} when it is at or below the block of
 such a lock.
 
-\emph{Effects.}  A live lock has two effects.  Every Goldfish walk of a
-duty (Section~\ref{sec:sa-fc}) starts at the \emph{anchor}: the deepest locked block of the full
+\emph{Effects.}  A live lock has two effects.  Every head walk of a
+duty (Section~\ref{sec:ac-fc}) starts at the \emph{anchor}: the deepest locked block of the full
 viable tree $\filtered(\Fr,\Fr.\tree)$, or $\Fr.\fcroot$ when there is no
 such block.  $\Call{get\_anchor}{}$ computes it.  A live lock vetoes a confirmation
-result~$C$ (Section~\ref{sec:sa-confirmation}) when $C$ conflicts with a
+result~$C$ (Section~\ref{sec:ac-confirmation}) when $C$ conflicts with a
 locked block, that is, with the block of a lock of $\Call{live\_locks}{}$;
 $\Call{conflicts\_with\_lock}{}$ is this test.
 
-\emph{Adding locks.}  The two confirmations (Section~\ref{sec:sa-confirmation})
+\emph{Adding locks.}  The two confirmations (Section~\ref{sec:ac-confirmation})
 add their locks of slot~$s$ through $\Call{add\_locks}{}$.  It returns the
 live locks of the stored set and the new locks together, and the caller
 stores the result.  So the stored locks are moved back at each write, and
@@ -640,7 +640,7 @@ lock.
 
 \emph{Unlocking.}  Unlocking against the slot-$s$ votes runs in
 slot~$s+1$, before each vote and each proposal of that slot
-(Section~\ref{sec:sa-actions}).  In a view, the \emph{opponents} of a
+(Section~\ref{sec:ac-actions}).  In a view, the \emph{opponents} of a
 block~$B'$ are the equivocators of its votes and the validators with a
 support vote whose head conflicts with~$B'$.  Unlocking keeps the locks of
 slot~$s$ and of later slots.  It moves each other live lock $(B,j,f,e)$ back
@@ -649,7 +649,7 @@ half of $\committee_s$ are opponents, or to $\Fr.F$ if there is no such
 block.  It keeps $j$, $f$ and~$e$.  Unlocking drops the locks that are
 not live.
 
-\captionof{figure}{Goldilocks: locks and unlocking}\label{alg:sa-locks}
+\captionof{figure}{Goldilocks: locks and unlocking}\label{alg:ac-locks}
 \nopagebreak
 {\footnotesize
 \begin{algorithmic}[1]
@@ -714,9 +714,9 @@ not live.
 \end{algorithmic}
 }
 
-\subsection{Fork choice}\label{sec:sa-fc}
+\subsection{Fork choice}\label{sec:ac-fc}
 
-\emph{The Goldfish score.}  The Goldfish score of~$B$ is the number of its
+\emph{The head score.}  The head score of~$B$ is the number of its
 supporters plus the number of equivocators: an equivocator counts for
 every block.
 
@@ -731,19 +731,19 @@ tree that it walks.
 \emph{The head.}  $\Call{ac\_head}{}$ computes the head when it is read: a
 walk of the full viable tree with the latest view.  It reads the current
 frame and the current locks.  At~$t_s$ it is the head of the proposal.  The
-vote duty walks its vote domain instead (Section~\ref{sec:sa-actions}).
+vote duty walks its vote domain instead (Section~\ref{sec:ac-actions}).
 
-\captionof{figure}{Goldilocks: fork choice}\label{alg:sa-fc}
+\captionof{figure}{Goldilocks: fork choice}\label{alg:ac-fc}
 \nopagebreak
 {\footnotesize
 \begin{algorithmic}[1]
-\Function{goldfish\_score}{$\mathit{votes},\mathit{support\_votes},s,B$}
+\Function{head\_score}{$\mathit{votes},\mathit{support\_votes},s,B$}
   \State \Return $|\Call{equivocators}{\mathit{votes}}|+
     |\Call{supporters}{\mathit{votes},\mathit{support\_votes},s,B}|$
   \Comment{equivocators count for every block}
 \EndFunction
 \vspace{1pt}
-\Function{goldfish\_eligible}{$\Fr,t,\mathit{votes},
+\Function{head\_eligible}{$\Fr,t,\mathit{votes},
   \mathit{support\_votes},s,B$}
   \If{$B.\parent\notin\Fr.\allowed$} \State \Return $\mathsf{true}$
     \Comment{the walk is not yet on a viable head}
@@ -753,7 +753,7 @@ vote duty walks its vote domain instead (Section~\ref{sec:sa-actions}).
   \EndIf
   \State $\mathit{voters\_count}\gets
     |\{v:\mathit{votes}\text{ holds a vote by }v\}|$
-  \State $\mathit{score}\gets\Call{goldfish\_score}{\mathit{votes},
+  \State $\mathit{score}\gets\Call{head\_score}{\mathit{votes},
     \mathit{support\_votes},s,B}$
   \State \Return $2\,\mathit{score}>\mathit{voters\_count}$
   \Comment{a strict majority of the voters}
@@ -777,10 +777,10 @@ vote duty walks its vote domain instead (Section~\ref{sec:sa-actions}).
   \Comment{of the full viable tree, also when $\mathit{tree}$ is smaller}
   \State define $\mathit{score}(B)$ as
   \Statex \hspace{2em}
-    $\Call{goldfish\_score}{\mathit{votes},\mathit{support\_votes},s,B}$
+    $\Call{head\_score}{\mathit{votes},\mathit{support\_votes},s,B}$
   \State define $\mathit{eligible}(B)$ as
   \Statex \hspace{2em}
-    $\Call{goldfish\_eligible}{\Fr,t,\mathit{votes},
+    $\Call{head\_eligible}{\Fr,t,\mathit{votes},
       \mathit{support\_votes},s,B}$
   \State \Return $\Call{ghost}{\mathit{anchor},\mathit{tree},
     \mathit{score},\mathit{eligible}}$
@@ -796,7 +796,7 @@ vote duty walks its vote domain instead (Section~\ref{sec:sa-actions}).
 \end{algorithmic}
 }
 
-\subsection{Confirmation}\label{sec:sa-confirmation}
+\subsection{Confirmation}\label{sec:ac-confirmation}
 
 At $t_s+6\Delta$ the AC evaluates slot~$s$ once.  The update runs in the
 tick at $t_s+6\Delta$, before the objects of that time, so every vote and
@@ -818,7 +818,7 @@ with a vote.
 \emph{The saved result and the veto.}  The update saves the result in
 $\AC.\savedConfirmation[s]$, also when a live lock vetoes it, for the slow
 test of later slots.  A live lock that conflicts with the result vetoes it
-(Section~\ref{sec:sa-locks}).  An update with no result changes neither
+(Section~\ref{sec:ac-locks}).  An update with no result changes neither
 $\AC.\latestConfirmed$ nor the locks.  The veto stops only the
 confirmation: an update with a vetoed result leaves
 $\AC.\latestConfirmed$ unchanged, and it still writes its locks, on the
@@ -826,7 +826,7 @@ blocks of the result's chain that conflict with no live lock.  Otherwise
 the update updates $\AC.\latestConfirmed$ with the result.
 
 \emph{The locks.}  Then the update writes locks of slot~$s$
-(Section~\ref{sec:sa-locks}) on the \emph{path}: the non-genesis blocks of
+(Section~\ref{sec:ac-locks}) on the \emph{path}: the non-genesis blocks of
 the result's chain in $\Fr.\tree$ that conflict with no live lock.  The update reads
 two tests.  The fast test: half of $\committee_s$ or more supports the
 block.  The slow test: the saved confirmations of the previous $k-1$
@@ -835,16 +835,16 @@ fast lock with the expiry $\Call{fast\_expiry}{}$ on the deepest
 block~$D$ of the path that passes the fast test, and a lock that is not
 fast with the expiry $s+k$ on the deepest block~$X$ of the path that
 passes the slow test, each when there is one.  As every new lock, these
-locks are stored moved back (Section~\ref{sec:sa-locks}).
+locks are stored moved back (Section~\ref{sec:ac-locks}).
 
 \emph{The fast locks for the FG.}  A live fast lock of slot~$j$ is a
 source for the FG in the slots $j$, $j+1$ and~$j+2$
-(Section~\ref{sec:sa-actions}), at its block as $\Call{live\_locks}{}$
+(Section~\ref{sec:ac-actions}), at its block as $\Call{live\_locks}{}$
 reads it.  A lock that is not fast is never a source.
 
 \emph{The optimistic confirmation.}  In a slot $s>0$, before
 $t_s+2\Delta$, a joined node checks after each receipt
-(Section~\ref{sec:sa-actions}) the blocks~$B$ of $\Fr.\tree$.  A
+(Section~\ref{sec:ac-actions}) the blocks~$B$ of $\Fr.\tree$.  A
 block~$B$ passes when at least three quarters of $\committee_s$ have a
 slot-$s$ vote in its pool whose head extends~$B$, equivocators included,
 and $B$ conflicts with no locked block.  For the deepest passing block,
@@ -857,7 +857,7 @@ the update of slot~$s$ still runs at $t_s+6\Delta$.
 $\AC.\latestConfirmed$ when it is in $\Fr.\tree$, and $\Fr.F$ otherwise, and returns the deepest common
 ancestor of that block and the head of $\Call{ac\_head}{}$.
 
-\captionof{figure}{Goldilocks: confirmation}\label{alg:sa-gate}
+\captionof{figure}{Goldilocks: confirmation}\label{alg:ac-gate}
 \nopagebreak
 {\footnotesize
 \begin{algorithmic}[1]
@@ -871,7 +871,7 @@ ancestor of that block and the head of $\Call{ac\_head}{}$.
 \EndFunction
 \vspace{1pt}
 \Function{confirmation\_score}{$\AC,\Fr,s,B$}
-  \State $\mathit{votes}\gets\AC.\gfPool[s]$
+  \State $\mathit{votes}\gets\AC.\headVotes[s]$
   \Comment{the whole pool: it decides who equivocates}
   \State $\mathit{early}\gets\{\mathit{vote}\in\mathit{votes}:
     \Call{resolution\_time}{\AC,\Fr,\mathit{vote}}<t_s+2\Delta\}$
@@ -882,7 +882,7 @@ ancestor of that block and the head of $\Call{ac\_head}{}$.
 \Function{get\_confirmation}{$\AC,\Fr,s$}
   \Comment{at $t_s+6\Delta$; every stamp is below it}
   \State $\mathit{voters\_count}\gets
-    |\{v:\AC.\gfPool[s]\text{ holds a vote by }v\}|$
+    |\{v:\AC.\headVotes[s]\text{ holds a vote by }v\}|$
   \State \Return the deepest $B\in\Fr.\tree$ with $\Fr.F\preceq B$ and
     $2\,\Call{confirmation\_score}{\AC,\Fr,s,B}>\mathit{voters\_count}$,
   \Statex \hspace{2em}or $\bot$ if there is none
@@ -933,7 +933,7 @@ ancestor of that block and the head of $\Call{ac\_head}{}$.
     \State \Return
   \EndIf
   \State define $\mathit{voters}(B)$ as
-    $\{v:(v,s,H)\in\AC.\gfPool[s]\text{ with }H\in\Fr.\tree\text{ and }B\preceq H\}$
+    $\{v:(v,s,H)\in\AC.\headVotes[s]\text{ with }H\in\Fr.\tree\text{ and }B\preceq H\}$
   \Comment{equivocators included}
   \State define $\mathit{passes}(B)$ as $4\,|\mathit{voters}(B)|\geq3\,|\committee_s|$
   \Statex \hspace{4em}and not \Call{conflicts\_with\_lock}{$\AC.\locks,\Fr,t,B$}
@@ -957,11 +957,11 @@ ancestor of that block and the head of $\Call{ac\_head}{}$.
 \end{algorithmic}
 }
 
-\subsection{Node actions}\label{sec:sa-actions}
+\subsection{Node actions}\label{sec:ac-actions}
 
 This section gives the event handlers and the duties of the AC.
 
-\emph{The joined test.}  Only a joined node (Section~\ref{sec:sa-state})
+\emph{The joined test.}  Only a joined node (Section~\ref{sec:ac-state})
 unlocks, votes, confirms optimistically, proposes, runs the confirmation
 update or gives a block to the FG.  A node that is not joined still
 computes a head from the votes that it holds: $\Call{ac\_head}{}$ has no
@@ -983,7 +983,7 @@ it does in slot~$0$, and omits the declarations that it does not hold.
 The vote check $\Call{try\_vote}{}$ runs after each receipt and
 in the tick at $t_s+\Delta$, and it tests that the node is joined at~$\tau$.
 The vote is one sequence: the unlocking against the slot-$(s-1)$ votes
-(Section~\ref{sec:sa-locks}); then the walk; then $\AC.\votedSlot\gets s$;
+(Section~\ref{sec:ac-locks}); then the walk; then $\AC.\votedSlot\gets s$;
 then, when the node is in $\committee_s$, the vote, which enters through
 $\Call{ac\_on\_message}{}$ and so runs the optimistic check.  A node that
 is not in $\committee_s$ runs the same sequence and sends no vote.  So a
@@ -1006,17 +1006,17 @@ declaration counts, even if that vote was never signed.
 and it reads the frame, the locks and the proposals at~$\tau$.  It walks
 the viable tree of its vote domain (its voter block tree, or $\Fr.\tree$
 when the voter block tree has no viable block) with its merged view
-(Section~\ref{sec:sa-views}), from the anchor of the full viable tree, and
+(Section~\ref{sec:ac-views}), from the anchor of the full viable tree, and
 the unlocking before the vote reads the same merged view.  The vote is the
 head of that walk.
 
 \emph{The checks after a receipt.}  After each block and each vote, the
 handlers first check for an optimistic confirmation
-(Section~\ref{sec:sa-confirmation}) and then run the vote check
+(Section~\ref{sec:ac-confirmation}) and then run the vote check
 $\Call{try\_vote}{}$.  So a receipt handler can send the vote of the node,
 as the tick can.
 
-\captionof{figure}{Goldilocks: the vote and the vote receipt}\label{alg:sa-vote}
+\captionof{figure}{Goldilocks: the vote and the vote receipt}\label{alg:ac-vote}
 \nopagebreak
 {\footnotesize
 \begin{algorithmic}[1]
@@ -1063,7 +1063,7 @@ as the tick can.
 \EndFunction
 \vspace{1pt}
 \Function{ac\_on\_message}{$\AC,\Fr,t,\mathit{vote}$}
-  \State \Call{on\_goldfish\_vote}{$\AC,t,\mathit{vote}$}
+  \State \Call{on\_head\_vote}{$\AC,t,\mathit{vote}$}
   \State \Call{optimistic\_confirmation}{$\AC,\Fr,t$}
   \State \Call{try\_vote}{$\AC,\Fr,t$}
   \Comment{can send the vote of the node}
@@ -1076,7 +1076,7 @@ $\Call{ac\_on\_block}{}$.  It stamps $B$ with the clock.  It admits
 nothing: the declarations of~$B$ are read only by the merged view.
 
 \emph{The tick.}  The tick of a node that is not joined does nothing
-(Section~\ref{sec:sa-state}).  For a joined node, at $t_s+\Delta$ the tick
+(Section~\ref{sec:ac-state}).  For a joined node, at $t_s+\Delta$ the tick
 runs the vote check.  At
 $t_s+2\Delta$, for $s>0$, the tick runs the confirmation update of
 slot~$s-1$.  The
@@ -1090,7 +1090,7 @@ vote $(v,H)$ in $B.\mathsf{declared\_head\_votes}$ for every previous-slot vote
 $(v,s-1,H)$ that it holds, in the order of its pool, and sets the support
 bit of exactly the entries whose votes are resolved at proposal time.  Its parent is the head of
 $\Call{ac\_head}{}$ after the unlocking against its whole slot-$(s-1)$
-pool, with the resolved votes as support (Section~\ref{sec:sa-locks}).
+pool, with the resolved votes as support (Section~\ref{sec:ac-locks}).
 At slot~$0$ the head is genesis.  The proposer processes its own block at
 once, so it can vote at~$t_s$; it unlocks again before that vote, with
 the frame and the view of the vote.
@@ -1103,7 +1103,7 @@ ancestor of $\AC.\fgReported$, the block that it gave last, or equal to it
 (a block given earlier that left $\Fr.\tree$ blocks nothing), and records
 it in $\AC.\fgReported$.
 
-\captionof{figure}{Goldilocks: block, tick, proposal and FG update}\label{alg:sa-events}
+\captionof{figure}{Goldilocks: block, tick, proposal and FG update}\label{alg:ac-events}
 \nopagebreak
 {\footnotesize
 \begin{algorithmic}[1]
@@ -1163,7 +1163,7 @@ it in $\AC.\fgReported$.
 \end{algorithmic}
 }
 
-\subsection{Joining and restart}\label{sec:sa-joining}
+\subsection{Joining and restart}\label{sec:ac-joining}
 
 \emph{Restart.}  A restart keeps the locks and $\AC.\latestConfirmed$, and it resets
 every other part of~$\AC$ to its initial value.  It sets
@@ -1176,7 +1176,7 @@ voter of slot~$s$ restarted by $t_{s-1}$, so it lost no slot-$(s-1)$ vote:
 admission refuses such a vote before~$t_{s-1}$.  A lock written before a
 restart keeps its slot and its expiry.
 
-\captionof{figure}{Goldilocks: restart}\label{alg:sa-restart}
+\captionof{figure}{Goldilocks: restart}\label{alg:ac-restart}
 \nopagebreak
 {\footnotesize
 \begin{algorithmic}[1]

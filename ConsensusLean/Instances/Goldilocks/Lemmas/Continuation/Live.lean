@@ -36,11 +36,11 @@ are healthy ones.
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : SA.CommitteeDict sp.n}
+variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : AC.CommitteeDict sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
@@ -51,13 +51,13 @@ so the frame, unchanged, and the effective record is the frame block of the reco
 or `Σ.F`. -/
 private theorem eff_record_of_update (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {k₀ m : Nat} (hy : y ∈ H (tr.time k₀))
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k₀ m ℓ)
-    {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k₀ m ℓ)
+    {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : Anc (tr.HonestBlocksAt H) P (tr.state y (k₀ + 1)).fg.F ∨
       ∃ E ∈ ℓ.frame.tree, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
         Anc (tr.HonestBlocksAt H) P E) :
     Anc (tr.HonestBlocksAt H) P
-      ((SA.lookup (Node.frame (tr.state y (k₀ + 1))) (tr.state y (k₀ + 1)).ac.latestConfirmed).getD
+      ((AC.lookup (Node.frame (tr.state y (k₀ + 1))) (tr.state y (k₀ + 1)).ac.latestConfirmed).getD
         (tr.state y (k₀ + 1)).fg.F) := by
   obtain ⟨c, hc, hcl⟩ := Option.bind_eq_some_iff.1 hu.1.2
   obtain rfl : c = .ac ℓ := by
@@ -76,15 +76,15 @@ private theorem eff_record_of_update (hrun : Growing.GoldilocksRun proposer dg H
     rfl
   obtain ⟨hΦ, hHB⟩ := frameIn_at hrun hnc hy hu.1
   rw [hframe]
-  cases hl : SA.lookup ℓ.frame (tr.state y (k₀ + 1)).ac.latestConfirmed with
+  cases hl : AC.lookup ℓ.frame (tr.state y (k₀ + 1)).ac.latestConfirmed with
   | none =>
     simp only [Option.getD_none]
     rcases h with h | ⟨E, hE, hEr, -⟩
     · exact h
-    · exact absurd ⟨E, hE, hEr⟩ (SA.lookup_eq_none hl)
+    · exact absurd ⟨E, hE, hEr⟩ (AC.lookup_eq_none hl)
   | some R =>
     simp only [Option.getD_some]
-    obtain ⟨hR, hRr⟩ := SA.lookup_eq_some hl
+    obtain ⟨hR, hRr⟩ := AC.lookup_eq_some hl
     rcases h with h | ⟨E, hE, hEr, hPE⟩
     · rw [hFeq] at h
       exact h.trans ((hΦ.rooted.2 R hR).mono hHB)
@@ -107,12 +107,12 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
     (hinv : SeededInvariant tr H g r (r + sp.k - 1) t₁ b)
     (hdt₁ : sp.ts (r + sp.k : Nat) ≤ t₁) {τ : Time}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : Regimes.Growing.ReadyProposalAt tr H (Regimes.catchUp sp) τ (Regimes.Growing.hold sp) P)
     (ht₁ : t₁ + 8 * sp.Δ ≤ τ) (hrτ : sp.ts (r + sp.k + 1 : Nat) ≤ τ) {y : Fin sp.n} {t : Time}
     {j : Nat} (hmargin : τ + 6 * sp.Δ ≤ t) (htb : t ≤ b)
     (hy : Regimes.Growing.ReadyAt tr H (Regimes.catchUp sp) y t) (hj : Regimes.CutAfter tr j t)
-    {K : SA.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
+    {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :
     Anc (tr.HonestBlocksAt H) P (Regimes.readAfter tr y j t) := by
   have hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini) :=
@@ -126,16 +126,16 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   have hpk : pp ∈ H (tr.time kP) :=
     hrun.antitone (by rw [hkP]; change τ ≤ τ + sp.Δ; linarith) hph
   have hrp : r + sp.k + 1 ≤ p := by
-    have := (SA.ts_le_iff sp).1 (hτ ▸ hrτ)
+    have := (AC.ts_le_iff sp).1 (hτ ▸ hrτ)
     exact_mod_cast this
   have ht₁p : t₁ ≤ sp.ts p := by linarith
   have htp : sp.ts p + 6 * sp.Δ ≤ b := by linarith
-  have hga : SA.gbar g + 20 * sp.Δ ≤ sp.ts p := hS.gbar_le (by omega)
+  have hga : AC.gbar g + 20 * sp.Δ ≤ sp.ts p := hS.gbar_le (by omega)
   -- every honest update of slot `p` returns `P`, not vetoed
   have hadopt : ∀ z k₀ (ℓ : ACLabel (goldilocksNode sp ro)), z ∈ H (tr.time k₀) →
-      SA.UpdateAt tr.projAC z k₀ p ℓ → tr.time k₀ ≤ b →
-      SA.getConfirmation sp (tr.state z k₀).ac ℓ.frame p = some P ∧
-        ¬ SA.conflictsWithLock sp (tr.state z k₀).ac.locks ℓ.frame (tr.time k₀) P := by
+      AC.UpdateAt tr.projAC z k₀ p ℓ → tr.time k₀ ≤ b →
+      AC.getConfirmation sp (tr.state z k₀).ac ℓ.frame p = some P ∧
+        ¬ AC.conflictsWithLock sp (tr.state z k₀).ac.locks ℓ.frame (tr.time k₀) P := by
     intro z k₀ ℓ hz hu hk₀
     by_cases hpσ : p ≤ σ
     · obtain ⟨a, hpr, hr⟩ := hseed.reset
@@ -154,7 +154,7 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   -- `P` is a member of the healed family of label `p`
   have hPm : HealedOrigin tr H g r (r + sp.k - 1) P p b := by
     have hT : sp.ts (p + 1 : Nat) + 2 * sp.Δ = sp.ts p + 6 * sp.Δ := by
-      simp only [SAParams.ts]; push_cast; ring
+      simp only [ACParams.ts]; push_cast; ring
     have hf := hB.late (p + 1) (sp.ts (p + 1 : Nat) + 2 * sp.Δ) (by omega) le_rfl
       (by rw [hT]; exact htp) (by linarith)
     rw [hT] at hf
@@ -169,18 +169,18 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   have ht0 : 0 ≤ t - 6 * sp.Δ := by linarith [ts_natCast_nonneg (sp := sp) p]
   set m := sp.slot (t - 6 * sp.Δ)
   have hms : p ≤ m := by
-    have := (SA.ts_le_iff_le_slot sp ht0 (p : Int)).1 (by linarith)
+    have := (AC.ts_le_iff_le_slot sp ht0 (p : Int)).1 (by linarith)
     omega
-  have hm₁ : sp.ts m ≤ t - 6 * sp.Δ := (SA.ts_le_iff_le_slot sp ht0 (m : Int)).2 le_rfl
+  have hm₁ : sp.ts m ≤ t - 6 * sp.Δ := (AC.ts_le_iff_le_slot sp ht0 (m : Int)).2 le_rfl
   have hm₂ : t - 6 * sp.Δ < sp.ts m + 4 * sp.Δ := by
     by_contra hh
-    have := (SA.ts_le_iff_le_slot sp ht0 ((m : Int) + 1)).1 (by
-      simp only [SAParams.ts] at hh ⊢; linarith)
+    have := (AC.ts_le_iff_le_slot sp ht0 ((m : Int) + 1)).1 (by
+      simp only [ACParams.ts] at hh ⊢; linarith)
     omega
   set u := sp.ts m + 6 * sp.Δ with hu_def
   have hut : u ≤ t := by linarith
   have hpu : sp.ts p ≤ sp.ts m := ts_le_ts hms
-  have hu0 : 0 ≤ u := by simp only [u, SAParams.ts]; positivity
+  have hu0 : 0 ≤ u := by simp only [u, ACParams.ts]; positivity
   have hyu : y ∈ H u := hrun.antitone hut hy.1
   have hcu : Regimes.catchUp sp = 18 * sp.Δ := rfl
   obtain ⟨hJw, hJj⟩ : tr.awake y u ∧ tr.JoinedAt y u := by
@@ -209,7 +209,7 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
         (fun C hC => seeded_result_not_vetoed hS hyk₁ hupd ht₁u hk₁b (l := m)
           (.of_origin (by omega) (originWithin_iff.2 ⟨y, k₁, _, hyk₁, hk₁b,
             Or.inl ⟨ℓ₁, hupd, by rw [projAC_state_at hrun hyk₁]; exact hC, rfl⟩⟩))
-          (SA.deepest_mem hC).1.1)
+          (AC.deepest_mem hC).1.1)
       obtain ⟨hx, ℓx, hc, he⟩ := hVoteAt_iff.1 hv
       have h := (cast_head_fcRoot_at hrun hnc hx ⟨hc, he⟩).2
       rw [hes] at h
@@ -319,8 +319,8 @@ theorem continued_proposal_live_at
     rw [Q.params.slotTime_eq] at hpt
     have hlt : Q.params.ts (r + Q.params.k : Nat) < Q.trace.time P.cut := hrq.trans_lt P.fresh
     rw [hpt] at hlt ⊢
-    have := (SA.ts_lt_iff Q.params).1 hlt
-    exact (SA.ts_le_iff Q.params).2 (by push_cast at this ⊢; omega)
+    have := (AC.ts_lt_iff Q.params).1 hlt
+    exact (AC.ts_le_iff Q.params).2 (by push_cast at this ⊢; omega)
   refine confirmed_payload_projection_at S A V Q h0 P fun y j hy hj => ?_
   exact Compose.Growing.continued_include_at hrun hnc hcv hseed hTb hsvc hB hinv hdt₁
     ⟨P.block.proposer, P.cut, confirmed_ready_mono_at S A V Q hd P.ready,

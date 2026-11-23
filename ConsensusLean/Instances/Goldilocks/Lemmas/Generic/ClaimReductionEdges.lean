@@ -514,9 +514,9 @@ theorem healedSafetyReduction (C : ACCorrectLocal A sg)
         ReadyReadPoint M.trace M.honest rho.horizon L.catchUp y i t :=
       fun hr => ⟨hr.1, fun w hw hwt => hr.2 w ((max_le_max le_rfl (by linarith)).trans hw) hwt⟩
     have hg0 : max gst 0 ≤ P.slotTime s₁ := by
-      change SA.gbar gst + 4 * P.Δ ≤ P.slotTime s₁ at hgs₁
+      change AC.gbar gst + 4 * P.Δ ≤ P.slotTime s₁ at hgs₁
       have := P.hΔ
-      unfold SA.gbar at hgs₁
+      unfold AC.gbar at hgs₁
       linarith
     have hcomp := ((hHR.healed _ _ _ _ _ _ _ _ _ _ _ hcf hrun hP ha hab hs₁ hheal₁ hg0).1
       ⟨z, k, X, hX⟩ h6 hgs₁ _ _ _ _ _ _
@@ -665,7 +665,7 @@ theorem healthyLivenessReduction (C : ACCorrectLocal A sg)
   obtain ⟨-, hlt, hp, hbd⟩ := hSR.end_read hv c hc0 w D hD0 htD hwr
   have hanc := hHR.proposal _ _ _ _ _ _ _ _ _ _ heal hcf hrun hP ha hab
     (hfit.healthy_start _ idx gst hcap) X k _ _ D hXr hdX
-    (by change SA.gbar gst + 4 * P.Δ ≤ P.slotTime s₁ at hgs₁; linarith) hk0
+    (by change AC.gbar gst + 4 * P.Δ ≤ P.slotTime s₁ at hgs₁; linarith) hk0
     (by linarith [hkh, L.durations.2.2.2.2]) hkh (by linarith)
     (by linarith [hfit.latency_le_margin]) (hmono hp) hbd hlt
   have hCt := hLR.held _ _ _ _ _ hrun _ _ _ _ hp.1

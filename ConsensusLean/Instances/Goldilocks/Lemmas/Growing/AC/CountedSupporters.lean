@@ -13,18 +13,18 @@ fast count for `C` (slot `s`) is a supporter of every ancestor `B` of `C` in `y`
 slot `s + 1`, when `y` carries the counted votes and every merged vote of slot `s` is in `X`'s
 pool or makes its validator an equivocator there (the writer-pool condition): the carried vote,
 or the two votes of its validator that `y` holds instead, are merged votes, so the validator does
-not equivocate there, and `SA.carried_supporter` on the prefix through `y`'s vote applies. -/
+not equivocate there, and `AC.carried_supporter` on the prefix through `y`'s vote applies. -/
 
-namespace Consensus.Goldilocks.SA.Growing
+namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
-  {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
+  {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 /-- **Carrying a fast count carries its supporters** to each ancestor `B` of the counted block. -/
 theorem carried_counted_supporters {ini} (hrun : ACRun proposer tr H U ini)
     {X y : Fin sp.n} {i₀ i s : Nat} (hX : X ∈ H (tr.time i₀)) (hy : y ∈ H (tr.time i))
-    {B C : Blk sp.n FGP} {ℓX ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {B C : Blk sp.n FGP} {ℓX ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hcX : tr.CallAt X i₀ ℓX) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
     (hBC : Anc U B C)
     (hcarry : CarryAt tr U y i e s (fastCounted sp (tr.state X i₀) ℓX.frame s C))
@@ -84,7 +84,7 @@ theorem carried_counted_supporters {ini} (hrun : ACRun proposer tr H U ini)
           u ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes := by
         intro u hus hu
         refine Or.inl (List.mem_filter.mpr ⟨?_, ?_⟩)
-        · simp only [SAState.poolAt, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) by omega, ite_false]
+        · simp only [ACState.poolAt, show ¬ (((s + 1 : Nat) : Int) - 1 < 0) by omega, ite_false]
           simpa [hus] using hu.1
         · simpa [freeze] using hu.2
       exact h12 (hone _ hvw v₁ v₂ (hm v₁ hs₁ hh₁) (hm v₂ hs₂ hh₂) hv₁ hv₂)
@@ -97,17 +97,17 @@ theorem carried_counted_supporters {ini} (hrun : ACRun proposer tr H U ini)
       have h := (ts_le_iff_le_slot sp (hrun.localRun.time_nonneg i) ((s : Int) + 1)).mpr
         (by rw [← hslot, hs]; push_cast; rfl)
       have hΔ := sp.toParams.hΔ
-      simp only [SAParams.ts] at h ⊢
+      simp only [ACParams.ts] at h ⊢
       linarith
     rcases hacc Hv Relation.ReflTransGen.refl with hg | ⟨k, hk, ht⟩
     · exact Or.inl hg
-    · exact Or.inr ⟨k, (ACTrace.upTo_acceptAt (A := goldilocksSA sp FGP ro)).mpr
+    · exact Or.inr ⟨k, (ACTrace.upTo_acceptAt (A := goldilocksAC sp FGP ro)).mpr
         ⟨ht.le.trans hT.le, hk⟩, ht⟩
   refine carried_supporter hry hy hc' hs hCt hvs hheld
     ⟨Hv, hHv, hHvr, hvs ▸ hHds, hBC.trans hCHd, hacc'⟩ fun hq => ?_
   obtain ⟨x, hx, x', hx', hne, hxv, hx'v⟩ := hq
   exact hne (hone _ hvw x x' hx hx' hxv hx'v)
 
-end Consensus.Goldilocks.SA.Growing
+end Consensus.Goldilocks.AC.Growing
 
 end

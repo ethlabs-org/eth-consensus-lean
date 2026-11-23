@@ -29,7 +29,7 @@ variable {n : Nat} {FGP ACP : Type}
 theorem viable_ancestor_exists : ViableAncestorExists := by
   rw [viableAncestorExists_iff]
   intro n FGP ACP Φ B hΦ hB
-  have hs := SA.viableAncestor_spec hΦ hB
+  have hs := AC.viableAncestor_spec hΦ hB
   refine ⟨hs, fun A hA => ?_⟩
   exact Anc.antisymm hΦ.coherent (hs.2.2 A hA.1 hA.2.1) (hA.2.2 _ hs.1 hs.2.1)
 
@@ -39,8 +39,8 @@ theorem viable_ancestor_self : ViableAncestorSelf := by
   have hB : B ∈ Φ.tree := by
     rcases hc with h | h
     · exact h.1
-    · exact SA.mem_of_anc h hΦ.fcRoot_mem
-  exact SA.viableAncestor_self hΦ hB hc
+    · exact AC.mem_of_anc h hΦ.fcRoot_mem
+  exact AC.viableAncestor_self hΦ hB hc
 
 theorem viable_tree_ancestor_closed : ViableTreeAncestorClosed := by
   rw [viableTreeAncestorClosed_iff]

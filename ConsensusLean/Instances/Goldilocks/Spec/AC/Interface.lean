@@ -27,7 +27,7 @@ namespace Consensus.Goldilocks
 
 /-- The head of a duty with its walk: the head, the block where the walk starts, and the domain
 whose viable tree it walks (the full tree for a proposal; for a vote the vote domain
-`SA.voteDomain`: the voter block tree, or the whole tree when the voter block tree's viable tree
+`AC.voteDomain`: the voter block tree, or the whole tree when the voter block tree's viable tree
 is empty, the full-tree fallback of `docs/decisions.md` §"Goldilocks model choices"). -/
 structure DutyHead (n : Nat) (FGP ACP : Type) where
   /-- The head. -/

@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 
 public section
 
-/-! # SA events in a retained prefix
+/-! # AC events in a retained prefix
 
 Events are unchanged at cuts through the retention horizon. State-reading events additionally
 use the trace's time order. These translations keep the ambient block universe unchanged.
@@ -73,10 +73,10 @@ theorem upTo_deadline (hm : Monotone tr.time) {y : Fin P.n} {i : Nat}
 
 end ACTrace
 
-namespace SA
+namespace AC
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
-  {tr : SATrace sp FGP ro} {d : Time}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
+  {tr : GTrace sp FGP ro} {d : Time}
 
 theorem upTo_voteAt {y : Fin sp.n} {i : Nat} {e : Em sp FGP} :
     VoteAt (tr.upTo d) y i e ↔ tr.time i ≤ d ∧ VoteAt tr y i e := by
@@ -88,7 +88,7 @@ theorem upTo_voteAt {y : Fin sp.n} {i : Nat} {e : Em sp FGP} :
     exact ⟨ℓ, ⟨hi, hc⟩, he⟩
 
 theorem upTo_castAt {y : Fin sp.n} {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} :
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} :
     CastAt (tr.upTo d) y i ℓ e ↔ tr.time i ≤ d ∧ CastAt tr y i ℓ e := by
   simp only [CastAt, Trace.upTo_callAt, and_assoc]
 
@@ -97,7 +97,7 @@ private theorem state_eq (hm : Monotone tr.time) {y : Fin sp.n} {i : Nat}
   Trace.upTo_state tr y fun _ hk => (hm hk.le).trans hi
 
 theorem upTo_updateAt (hm : Monotone tr.time) {y : Fin sp.n} {i s : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} :
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} :
     UpdateAt (tr.upTo d) y i s ℓ ↔ tr.time i ≤ d ∧ UpdateAt tr y i s ℓ := by
   simp only [UpdateAt, Trace.upTo_callAt, Trace.upTo_time]
   constructor
@@ -133,7 +133,7 @@ theorem upTo_fastUpdateAt (hm : Monotone tr.time) {y : Fin sp.n} {i s : Nat}
     exact ⟨ℓ, C, ⟨hi, hu⟩, hC, hB, hCV⟩
 
 theorem upTo_optimisticPoint (hm : Monotone tr.time) {y : Fin sp.n} {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {A : SAState sp.n} :
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {A : ACState sp.n} :
     OptimisticPoint (tr.upTo d) y i ℓ A ↔ tr.time i ≤ d ∧ OptimisticPoint tr y i ℓ A := by
   simp only [OptimisticPoint, Trace.upTo_callAt, Trace.upTo_time]
   by_cases hi : tr.time i ≤ d
@@ -157,7 +157,7 @@ theorem upTo_fastLockAt (hm : Monotone tr.time) {y : Fin sp.n} {i s : Nat}
   simp only [FastLockAt, upTo_fastUpdateAt hm, upTo_optimisticLockAt hm, and_or_left]
 
 theorem upTo_toFGAt (hm : Monotone tr.time) {y : Fin sp.n} {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {B : Blk sp.n FGP} :
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {B : Blk sp.n FGP} :
     ToFGAt (tr.upTo d) y i ℓ B ↔ tr.time i ≤ d ∧ ToFGAt tr y i ℓ B := by
   simp only [ToFGAt, Trace.upTo_callAt, Trace.upTo_time]
   by_cases hi : tr.time i ≤ d
@@ -166,7 +166,7 @@ theorem upTo_toFGAt (hm : Monotone tr.time) {y : Fin sp.n} {i : Nat}
 
 theorem upTo_joinedAt {y : Fin sp.n} {t : Time} (ht : t ≤ d) :
     JoinedAt (tr.upTo d) y t ↔ JoinedAt tr y t := by
-  simp only [JoinedAt, ACTrace.upTo_restartAt (A := goldilocksSA sp FGP ro) (tr := tr),
+  simp only [JoinedAt, ACTrace.upTo_restartAt (A := goldilocksAC sp FGP ro) (tr := tr),
     Trace.upTo_time]
   constructor
   · intro h k hk hkt
@@ -183,13 +183,13 @@ theorem upTo_retainedBefore (hm : Monotone tr.time) {y : Fin sp.n} {i : Nat}
     have hqd := (hm hq).trans hi
     rw [state_eq hm hqd] at hv
     exact ⟨q, hq, hv, fun r hqr hri hr => hnr r hqr hri
-      ((ACTrace.upTo_restartAt (A := goldilocksSA sp FGP ro)).mpr
+      ((ACTrace.upTo_restartAt (A := goldilocksAC sp FGP ro)).mpr
         ⟨(hm hri.le).trans hi, hr⟩)⟩
   · rintro ⟨q, hq, hv, hnr⟩
     have hqd := (hm hq).trans hi
     rw [← state_eq hm hqd] at hv
     exact ⟨q, hq, hv, fun r hqr hri hr => hnr r hqr hri
-      ((ACTrace.upTo_restartAt (A := goldilocksSA sp FGP ro)).mp hr).2⟩
+      ((ACTrace.upTo_restartAt (A := goldilocksAC sp FGP ro)).mp hr).2⟩
 
 /-- Carry only reads acceptances through the voting cut; its retained witnesses survive. -/
 theorem carryAt_upTo {y : Fin sp.n} {i s : Nat}
@@ -202,7 +202,7 @@ theorem carryAt_upTo {y : Fin sp.n} {i s : Nat}
   refine ⟨Hv, hHv, hr, fun X hX => ?_⟩
   rcases ha X hX with hg | ⟨k, hk, ht⟩
   · exact Or.inl hg
-  · exact Or.inr ⟨k, (ACTrace.upTo_acceptAt (A := goldilocksSA sp FGP ro)).mpr
+  · exact Or.inr ⟨k, (ACTrace.upTo_acceptAt (A := goldilocksAC sp FGP ro)).mpr
       ⟨ht.le.trans hbefore, hk⟩, ht⟩
 
 theorem upTo_messageServedBefore (hm : Monotone tr.time) {y : Fin sp.n} {i : Nat}
@@ -213,15 +213,15 @@ theorem upTo_messageServedBefore (hm : Monotone tr.time) {y : Fin sp.n} {i : Nat
   apply or_congr_left
   constructor
   · rintro ⟨k, hk, hτ, hp, hd⟩
-    obtain ⟨hkd, hp⟩ := (ACTrace.upTo_processAt (A := goldilocksSA sp FGP ro)).mp hp
+    obtain ⟨hkd, hp⟩ := (ACTrace.upTo_processAt (A := goldilocksAC sp FGP ro)).mp hp
     rw [ACTrace.upTo_deadline hm hkd] at hd
     exact ⟨k, hk, hτ, hp, hd⟩
   · rintro ⟨k, hk, hτ, hp, hd⟩
     have hkd := (hm hk).trans hi
-    exact ⟨k, hk, hτ, (ACTrace.upTo_processAt (A := goldilocksSA sp FGP ro)).mpr ⟨hkd, hp⟩,
+    exact ⟨k, hk, hτ, (ACTrace.upTo_processAt (A := goldilocksAC sp FGP ro)).mpr ⟨hkd, hp⟩,
       by rwa [ACTrace.upTo_deadline hm hkd]⟩
 
-end SA
+end AC
 
 end Consensus.Goldilocks
 

@@ -32,7 +32,7 @@ pins it only below `jexp`), and the frames' agreement on slots `≤ s` is not es
 
 namespace Consensus.Goldilocks.Witness.One
 
-open SA Node ChainFrame
+open AC Node ChainFrame
 
 /-! ## The proposal of slot `k + 1` -/
 
@@ -52,7 +52,7 @@ theorem proposal_time (k : Nat) :
 
 /-- `ac_proposal` at the tick of `t_{k+1}` returns the payload `([cv k], [cv k])`: the own
 block `blk (k + 1)` is made from its result. -/
-theorem proposal_payload (k : Nat) : ∃ d, (SA.acProposal sp1
+theorem proposal_payload (k : Nat) : ∃ d, (AC.acProposal sp1
     ((tickRun N1 dg1).projAC.state v0 (8 * (4 * (k + 1)) + 1))
     (Node.frame (tickState N1 dg1 (4 * (k + 1))))
     ((tickRun N1 dg1).projAC.time (8 * (4 * (k + 1)) + 1))).2 = some (d, ([cv k], [cv k])) := by
@@ -132,16 +132,16 @@ of slot `2`, and the proposal's frame holds a block of slot at most `s` (`blk 0`
 conclusion is not vacuous. -/
 theorem proposerVotersAgree_premises_satisfiable :
     ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n (List (FG.Att sp1.n))))
-      (tr : SATrace sp1 (List (FG.Att sp1.n)) ro1) (proposer : Nat → Fin sp1.n) (s : Nat)
+      (tr : GTrace sp1 (List (FG.Att sp1.n)) ro1) (proposer : Nat → Fin sp1.n) (s : Nat)
       (p y : Fin sp1.n) (i j : Nat)
-      (ℓp ℓy : ACLabel (goldilocksSA sp1 (List (FG.Att sp1.n)) ro1))
+      (ℓp ℓy : ACLabel (goldilocksAC sp1 (List (FG.Att sp1.n)) ro1))
       (pay : Payload sp1.n) (e : Em sp1 (List (FG.Att sp1.n))),
     ACRun proposer tr H U ∧
     p ∈ H ∧ y ∈ H ∧ p = proposer (s + 1) ∧
     ProposalAt tr p i ℓp pay ∧ tr.time i = sp1.ts (s + 1 : Nat) ∧
     CastAt tr y j ℓy e ∧ e.msg.slot = s + 1 ∧
     (∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay) ∧
-    SyncAC (goldilocksSA sp1 (List (FG.Att sp1.n)) ro1) H U (sp1.ts s) (sp1.ts (s + 1 : Nat))
+    SyncAC (goldilocksAC sp1 (List (FG.Att sp1.n)) ro1) H U (sp1.ts s) (sp1.ts (s + 1 : Nat))
       tr ∧
     {X | X ∈ ℓp.frame.tree ∧ X.slot ≤ s} = {X | X ∈ ℓy.frame.tree ∧ X.slot ≤ s} ∧
     ∃ B ∈ ℓp.frame.tree, B.slot ≤ s := by

@@ -53,7 +53,7 @@ theorem scheduled_proposal_child_decodes_of_step {V : Type} [Fintype V] [Decidab
     -- genesis block is well rooted.
     {s₀ : (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).State}
     (hr : Node.Reachable (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) cfg s₀)
-    (h₀ : SA.VoteStart (S.params (pubOf E) hn).genesisRoot s₀)
+    (h₀ : AC.VoteStart (S.params (pubOf E) hn).genesisRoot s₀)
     (hst : cfg.st = (stateAt S rho hn v i).node)
     (hs : Node.Step (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) cfg
       (.tick (encodeTxs (mempool rho.inbox v t))) t cfg')

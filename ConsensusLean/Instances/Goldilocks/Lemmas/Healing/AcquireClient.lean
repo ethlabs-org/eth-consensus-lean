@@ -27,7 +27,7 @@ or timeout), or it signed one at an earlier cut (`client_progress`):
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 /-! ## The client record -/
 
@@ -312,10 +312,10 @@ theorem signed_fin_justified (hrun : Node.LocalRun proposer dg H sg tr ini) {y :
 
 end AnyAC
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
 
 /-- **No conflicting finality lock at an allowed source's height**:
@@ -323,9 +323,9 @@ at an honest `fg_attest(C)` in the phase `(m, c)`, with `C` allowed, of state he
 `h ≥ ℓ` and entry `E`, the record's lock at `h` is free or `E`. -/
 theorem lock_free_or_entry (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H K dg g ΔF)
-    {i₀ m : Nat} {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} {y : Fin sp.n} (hy : y ∈ H)
+    {i₀ m : Nat} {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))} {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} (hk : i₀ ≤ k) (hon : PhaseOn tr.projFG H i₀ k m c)
-    {C E : SA.Blk sp.n (List (FG.Att sp.n))} {h : Nat} (hE : EntryOf (tr.state y k).fg C E h)
+    {C E : AC.Blk sp.n (List (FG.Att sp.n))} {h : Nat} (hE : EntryOf (tr.state y k).fg C E h)
     (hCh : ((tr.state y k).fg.σ C.root).h = h) (hfl : phaseFloor m c ≤ h)
     (hall : EffAllowed (tr.state y k).fg m c C) :
     (tr.state y k).record.lock h = none ∨ (tr.state y k).record.lock h = some E.root := by
@@ -383,8 +383,8 @@ an honest `fg_attest(C)` in the phase, with `C` allowed, of state height `h ≥ 
 the client signs a matching attestation for `E` at `h`, or signed one at an earlier cut. -/
 theorem client_progress (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H K dg g ΔF) {i₀ m : Nat}
-    {c : PhaseCase (SA.Blk sp.n (List (FG.Att sp.n)))} :
-    ∀ y ∈ H, ∀ k (C : SA.Blk sp.n (List (FG.Att sp.n))) (signed : Option (FG.Att sp.n)),
+    {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))} :
+    ∀ y ∈ H, ∀ k (C : AC.Blk sp.n (List (FG.Att sp.n))) (signed : Option (FG.Att sp.n)),
       tr.CallAt y k (.fg (.attest C signed)) → i₀ ≤ k → PhaseOn tr.projFG H i₀ k m c →
       ∀ E h, EntryOf (tr.state y k).fg C E h → ((tr.state y k).fg.σ C.root).h = h →
         phaseFloor m c ≤ h →

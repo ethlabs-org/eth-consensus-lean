@@ -51,7 +51,7 @@ checks `healMargin` as the rise-round route's heal bound at `λ = 2Δ`.
 namespace Consensus.Goldilocks.Obligations.Test.Contract
 open AsChainShape Simulation
 
-open Blocks Shape SA
+open Blocks Shape AC
 
 open Classical in
 /-- A replay order at genesis root `0`: a chosen parent-order enumeration (`[]` if none). -/
@@ -365,7 +365,7 @@ capability and index, a clean witness whose committee is a proper subset at ever
 (`committeeOne_sleepy_witness`). -/
 
 /-- (a) The committee instance is not the population case: at `committeeOne` the
-family signs votes in the committee role selected `.sized 1`, and the SA committee size (the vote
+family signs votes in the committee role selected `.sized 1`, and the AC committee size (the vote
 threshold denominator) is `1`, a proper subset of every population of at least two validators. -/
 theorem goldilocks_committeeOne (S : Setup) (pub : Model.Public) (hn : 2 ≤ pub.n) :
     (goldilocks { S with vote := Regression.committeeOne } pub).skel.participationKind =

@@ -30,9 +30,9 @@ reset premises (`healthy_base_of_reset_catch_before_at`). No reset is used. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
@@ -143,7 +143,7 @@ facts at `K`, and fewer than half of each slot committee from `ḡ` by `b` fault
 `d ∈ [0, b]`. Finite reset premises give their slot committees
 (`ResetPremisesUpTo.committeeHalf`). -/
 structure CommitteeHalfUpTo (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-    (K : SA.CommitteeDict sp.n) (g b : Time) : Prop where
+    (K : AC.CommitteeDict sp.n) (g b : Time) : Prop where
   facts : Compose.Growing.CommitteeFacts tr H K
   cs2 : ∀ s : Nat, gbar g ≤ sp.ts s → sp.ts s ≤ b → ∀ d, 0 ≤ d → d ≤ b →
     2 * (K.committee s ∩ (H d)ᶜ).ncard < sp.committeeSize
@@ -161,25 +161,25 @@ the static healthy AC base of the validators honest at a read time `d ∈ [0, b]
 through `d`, over the blocks they hold there, at the slot committees `K` of a run from `K`'s
 committee start. Their facts restrict to the prefix, and the committee half bound gives CS2 from
 `ḡ` through `d`. No reset is used. -/
-theorem CommitteeHalfUpTo.healthy_base_before_at {K : SA.CommitteeDict sp.n} {b : Time}
+theorem CommitteeHalfUpTo.healthy_base_before_at {K : AC.CommitteeDict sp.n} {b : Time}
     (hK : CommitteeHalfUpTo tr H K g b)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K))
+      (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hs : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hfaults : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hc : CatchRun tr H g (2 * sp.Δ)) {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
-    SA.HealthyBaseUpTo K (tr.projAC.upTo d) (H d)
+    AC.HealthyBaseUpTo K (tr.projAC.upTo d) (H d)
       ((tr.upTo d).HonestBlocks (H d)) proposer g d := by
   have hpre := hrun.upTo hd0
   have hncp := hnc.upTo d
   have hr := Compose.goldilocks_ac_projection_from hpre hncp
   have hdr := projection_driven_of_run hpre hncp hpre.genesis_root_ok
   rw [RunTrace.upTo_projAC] at hr hdr
-  refine ⟨hr, hdr, sync_window_at_reset_at hrun hs (SA.le_gbar g) hd0,
+  refine ⟨hr, hdr, sync_window_at_reset_at hrun hs (AC.le_gbar g) hd0,
     catch_window_at_gbar_at hrun hc hd0, ?_, hfaults d hd0 hdb, hK.facts.hsize,
-    SA.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP d,
-    SA.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt hrun hnc) d,
+    AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP d,
+    AC.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt hrun hnc) d,
     fun s hgs hsd => hK.cs2 s hgs (hsd.trans hdb) d hd0 hdb⟩
   intro y hy t hgt htd
   exact (Trace.upTo_awake _ y t).mpr
@@ -193,7 +193,7 @@ theorem healthy_base_of_reset_catch_before_at {b : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
-    SA.HealthyBaseUpTo (Generic.dictOfTime sp cm) (tr.projAC.upTo d) (H d)
+    AC.HealthyBaseUpTo (Generic.dictOfTime sp cm) (tr.projAC.upTo d) (H d)
       ((tr.upTo d).HonestBlocks (H d)) proposer g d :=
   hp.committeeHalf.healthy_base_before_at hp.run hp.noColl hp.sync hp.awake hp.faults hp.catchUp
     hd0 hdb

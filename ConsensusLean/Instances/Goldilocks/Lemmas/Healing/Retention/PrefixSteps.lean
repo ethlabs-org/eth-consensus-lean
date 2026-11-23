@@ -26,18 +26,18 @@ growing-fault siblings read them on the honest prefix they need:
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
 /-! ### Pools at a slot start -/
 
 section Pools
 
-variable {FGP : Type} {sp : SA.SAParams} {ro : SA.ReplayOrder sp FGP}
+variable {FGP : Type} {sp : AC.ACParams} {ro : AC.ReplayOrder sp FGP}
 
 /-- A vote in a pool after an admission was there before, or is the admitted vote. -/
-theorem admit_pool_mem {A : SA.SAState sp.n} {t : Time} {m w : SA.Vote sp.n} {s : Nat}
-    (h : w ∈ (SA.admitVote sp A t m).pool s) : w ∈ A.pool s ∨ w = m := by
-  unfold SA.admitVote at h
+theorem admit_pool_mem {A : AC.ACState sp.n} {t : Time} {m w : AC.Vote sp.n} {s : Nat}
+    (h : w ∈ (AC.admitVote sp A t m).pool s) : w ∈ A.pool s ∨ w = m := by
+  unfold AC.admitVote at h
   split_ifs at h
   · exact Or.inl h
   · exact Or.inl h
@@ -51,53 +51,53 @@ theorem admit_pool_mem {A : SA.SAState sp.n} {t : Time} {m w : SA.Vote sp.n} {s 
 
 /-- A vote in a pool after a block's receipt was there before (the receipt only stamps the
 block), or is a vote of the block. -/
-theorem receipt_pool_mem {A : SA.SAState sp.n} {t : Time} {B : SA.Blk sp.n FGP}
-    {w : SA.Vote sp.n} {s : Nat} (h : w ∈ (SA.blockReceipt sp A t B).pool s) :
-    w ∈ A.pool s ∨ w ∈ SA.blockVotes B :=
+theorem receipt_pool_mem {A : AC.ACState sp.n} {t : Time} {B : AC.Blk sp.n FGP}
+    {w : AC.Vote sp.n} {s : Nat} (h : w ∈ (AC.blockReceipt sp A t B).pool s) :
+    w ∈ A.pool s ∨ w ∈ AC.declaredHeadVotes B :=
   Or.inl h
 
-private theorem tryVote_pool_mem (self : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP)
-    (t : Time) {w : SA.Vote sp.n} {s : Nat} (h : w ∈ (SA.tryVote sp self A Φ t).1.pool s) :
+private theorem tryVote_pool_mem (self : Fin sp.n) (A : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP)
+    (t : Time) {w : AC.Vote sp.n} {s : Nat} (h : w ∈ (AC.tryVote sp self A Φ t).1.pool s) :
     w ∈ A.pool s ∨ w.val = self := by
-  unfold SA.tryVote at h
+  unfold AC.tryVote at h
   dsimp only at h
   split_ifs at h
   all_goals first
     | exact Or.inl h
-    | (rw [SA.optimistic_pool] at h
+    | (rw [AC.optimistic_pool] at h
        rcases admit_pool_mem h with h | rfl
        · exact Or.inl h
        · exact Or.inr rfl)
 
 /-- At a slot start, a nondelivery call takes only own votes or votes from its input block. -/
-theorem step_pool_new (self : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP)
-    {t : Time} (ht : t = sp.ts (sp.slot t)) (hΔ : 0 < sp.Δ) (c : (SA.goldilocksSA sp FGP ro).Call)
-    (hm : ∀ m, c ≠ .message m) (hc : c ≠ .restart) {w : SA.Vote sp.n} {s : Nat}
-    (h : w ∈ ((SA.goldilocksSA sp FGP ro).step self A Φ t c).1.pool s) :
-    w ∈ A.pool s ∨ w.val = self ∨ ∃ B, c = .block B ∧ w ∈ SA.blockVotes B := by
+theorem step_pool_new (self : Fin sp.n) (A : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP)
+    {t : Time} (ht : t = sp.ts (sp.slot t)) (hΔ : 0 < sp.Δ) (c : (AC.goldilocksAC sp FGP ro).Call)
+    (hm : ∀ m, c ≠ .message m) (hc : c ≠ .restart) {w : AC.Vote sp.n} {s : Nat}
+    (h : w ∈ ((AC.goldilocksAC sp FGP ro).step self A Φ t c).1.pool s) :
+    w ∈ A.pool s ∨ w.val = self ∨ ∃ B, c = .block B ∧ w ∈ AC.declaredHeadVotes B := by
   cases c with
   | tick =>
-    change w ∈ (SA.acOnTick sp self A Φ t).1.pool s at h
-    unfold SA.acOnTick at h
+    change w ∈ (AC.acOnTick sp self A Φ t).1.pool s at h
+    unfold AC.acOnTick at h
     dsimp only at h
     split_ifs at h <;> first
       | exact Or.inl h
       | (exfalso; linarith)
   | proposal =>
-    change w ∈ (SA.acProposal sp A Φ t).1.pool s at h
-    unfold SA.acProposal at h
+    change w ∈ (AC.acProposal sp A Φ t).1.pool s at h
+    unfold AC.acProposal at h
     dsimp only at h
     split_ifs at h <;> exact Or.inl h
   | toFG =>
-    change w ∈ (SA.acToFG sp A Φ t).1.pool s at h
-    unfold SA.acToFG at h
+    change w ∈ (AC.acToFG sp A Φ t).1.pool s at h
+    unfold AC.acToFG at h
     split_ifs at h <;> (try split at h) <;> (try split_ifs at h) <;> exact Or.inl h
   | message m => exact absurd rfl (hm m)
   | block B =>
-    change w ∈ (SA.tryVote sp self (SA.optimisticConfirmation sp (SA.blockReceipt sp A t B) Φ t)
+    change w ∈ (AC.tryVote sp self (AC.optimisticConfirmation sp (AC.blockReceipt sp A t B) Φ t)
       Φ t).1.pool s at h
     rcases tryVote_pool_mem _ _ _ _ h with h | h
-    · rw [SA.optimistic_pool] at h
+    · rw [AC.optimistic_pool] at h
       rcases receipt_pool_mem h with h | h
       · exact Or.inl h
       · exact Or.inr (Or.inr ⟨B, rfl, h⟩)
@@ -124,7 +124,7 @@ theorem createAtt_spec {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : FG.Chai
     rw [List.any_eq_true]
     exact ⟨b, hb, by simp [hb'.1, hb'.2]⟩
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
@@ -190,11 +190,11 @@ private theorem restart_emits {ini}
     (hc : tr.projAC.CallAt v i ell) (hcl : ell.call = .restart) : ell.emits = [] := by
   have he := hr.exec i ell hc.2 (hc.1 ▸ hv)
   rw [hc.1, hcl] at he
-  have h' : ell.emits = (((SA.goldilocksSA sp (List (FG.Att sp.n)) ro).step v
+  have h' : ell.emits = (((AC.goldilocksAC sp (List (FG.Att sp.n)) ro).step v
       (tr.projAC.state v i) ell.frame (tr.projAC.time i) .restart)).2 := by rw [he]
   rw [h']
-  exact ((SA.restart_state sp) _ ro v (tr.projAC.state v i) ell.frame (tr.projAC.time i)
-    (SA.frameIn_of_callAt hr hv hc).1 (hr.time_nonneg i)).1
+  exact ((AC.restart_state sp) _ ro v (tr.projAC.state v i) ell.frame (tr.projAC.time i)
+    (AC.frameIn_of_callAt hr hv hc).1 (hr.time_nonneg i)).1
 
 /-- **An optimistic write of slot `m` before a signing at `t_m`** (the signing at a slot start).
 The signing is in the signer's tick at `t_m`, so the write is too (before the tick, the node's
@@ -208,19 +208,19 @@ theorem slot_start_optimistic {ini}
     (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {v : Fin sp.n} (hv : v ∈ H) {d : Nat} {att : FG.Att sp.n}
     (hs : tr.SignAt v d att) {m : Nat} (hdt : tr.time d = sp.ts m)
-    {r : Nat} (hrd : r < d) {D : SA.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (SA.Vote sp.n)} (hopt : SA.OptimisticLockAt tr.projAC v r m D CV)
+    {r : Nat} (hrd : r < d) {D : AC.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (AC.Vote sp.n)} (hopt : AC.OptimisticLockAt tr.projAC v r m D CV)
     (hcs : 0 < sp.committeeSize) :
-    sp.committeeSize ≤ 1 ∧ ∃ j' ≤ r, ∃ e', SA.VoteAt tr.projAC v j' e' ∧ e'.msg.slot = m := by
+    sp.committeeSize ≤ 1 ∧ ∃ j' ≤ r, ∃ e', AC.VoteAt tr.projAC v j' e' ∧ e'.msg.slot = m := by
   have hrun' := Compose.goldilocks_ac_projection_from hrun hnc
   have hr := hrun'.localRun
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   obtain ⟨ellv, A, hpt, hsl, hsel, -⟩ := hopt
-  have hslm : sp.slot (sp.ts m) = m := SA.slot_of_mem sp m le_rfl
-    ((SA.ts_lt_iff sp).2 (by push_cast; omega))
+  have hslm : sp.slot (sp.ts m) = m := AC.slot_of_mem sp m le_rfl
+    ((AC.ts_lt_iff sp).2 (by push_cast; omega))
   have hrt : tr.time r = sp.ts m := by
     refine le_antisymm (hdt ▸ hrun.time_mono hrd.le) ?_
-    exact (SA.ts_le_iff_le_slot sp (hr.time_nonneg r) (m : Int)).2 (by rw [hsl])
+    exact (AC.ts_le_iff_le_slot sp (hr.time_nonneg r) (m : Int)).2 (by rw [hsl])
   obtain ⟨C, hcd⟩ := hs
   obtain ⟨j, ev, kk, hg, hdj, hk⟩ := Compose.call_in_group hrun.toLocalRun hv hcd
   obtain ⟨x, rfl⟩ := @Compose.signed_only_in_ticks sp.toParams (goldilocksNode sp ro)
@@ -255,24 +255,24 @@ theorem slot_start_optimistic {ini}
     · rw [restart_emits hr hv hpt.1 hcl] at he₀; cases he₀
   have hQ : ∀ c ≤ d, ∀ w ∈ (tr.projAC.state v c).pool m, w.val = v := by
     intro c hc w hw
-    have hws : w.slot = m := SA.state_pool_slot sp hr hrun.vstart hv c m w hw
+    have hws : w.slot = m := AC.state_pool_slot sp hr hrun.vstart hv c m w hw
     have hle : ∀ k₁, k₁ < c → sp.slot (tr.projAC.time k₁) ≤ m := fun k₁ hk₁ => by
       rw [← hslm, ← hdt]
-      exact SA.slot_mono sp (hr.time_nonneg k₁) (hrun.time_mono (by omega))
-    rcases SA.pool_origin hr hrun.vstart hv c w (by rw [hws]; exact hw) with
+      exact AC.slot_mono sp (hr.time_nonneg k₁) (hrun.time_mono (by omega))
+    rcases AC.pool_origin hr hrun.vstart hv c w (by rw [hws]; exact hw) with
       ⟨k₁, hk₁, hsend, -, hsl₁⟩ | ⟨k₁, hk₁, ell₁, hc₁, -, -, B, hB, hwB⟩
     · have hsk : sp.slot (tr.projAC.time k₁) = m := le_antisymm (hle k₁ hk₁) (by omega)
       have htk : tr.time k₁ = sp.ts m := le_antisymm (hdt ▸ hrun.time_mono (by omega))
-        ((SA.ts_le_iff_le_slot sp (hr.time_nonneg k₁) _).2 (by rw [hsk]))
+        ((AC.ts_le_iff_le_slot sp (hr.time_nonneg k₁) _).2 (by rw [hsk]))
       obtain ⟨ell₁, hc₁, ⟨e₁, he₁, rfl⟩ | ⟨hnr, hn, hh⟩⟩ := hsend
-      · exact (SA.castAt_spec hr hv ⟨hc₁, he₁⟩).1
+      · exact (AC.castAt_spec hr hv ⟨hc₁, he₁⟩).1
       · have hjk : j ≤ k₁ := by
           by_contra h
           exact hnr (hpre k₁ (by omega) ell₁ hc₁ htk)
         have he := hr.exec k₁ ell₁ hc₁.2 (hc₁.1 ▸ hv)
         rw [hc₁.1] at he
         change w ∈ (tr.projAC.post k₁).pool w.slot at hh
-        have hpost : tr.projAC.post k₁ = ((SA.goldilocksSA sp (List (FG.Att sp.n)) ro).step v
+        have hpost : tr.projAC.post k₁ = ((AC.goldilocksAC sp (List (FG.Att sp.n)) ro).step v
             (tr.projAC.state v k₁) ell₁.frame (tr.projAC.time k₁) ell₁.call).1 := by rw [he]
         rw [hpost] at hh
         have hts : tr.projAC.time k₁ = sp.ts (sp.slot (tr.projAC.time k₁)) := by
@@ -282,49 +282,49 @@ theorem slot_start_optimistic {ini}
         · exact absurd h hn
         · exact h
         · exfalso
-          have hBt := (SA.accept_new sp hr hv ⟨ell₁, hc₁, hB⟩).1 ell₁ hc₁
-          have h₁ := (SA.frame_validPayload sp hr hv hc₁ B hBt).1 w hwB
-          have h₂ := SA.frame_slot_le sp hr hv hc₁ B hBt
+          have hBt := (AC.accept_new sp hr hv ⟨ell₁, hc₁, hB⟩).1 ell₁ hc₁
+          have h₁ := (AC.frame_validPayload sp hr hv hc₁ B hBt).1 w hwB
+          have h₂ := AC.frame_slot_le sp hr hv hc₁ B hBt
           omega
     · exfalso
-      have h₁ := (SA.frame_validPayload sp hr hv hc₁ B hB).1 w hwB
-      have h₂ := SA.frame_slot_le sp hr hv hc₁ B hB
+      have h₁ := (AC.frame_validPayload sp hr hv hc₁ B hB).1 w hwB
+      have h₂ := AC.frame_slot_le sp hr hv hc₁ B hB
       have h₃ := hle k₁ hk₁
       omega
   have hP : ∀ w ∈ A.pool m, w.val = v := by
     intro w hw
-    have hws := SA.optimisticPoint_pool_slot hr hrun.vstart hv hpt hw
+    have hws := AC.optimisticPoint_pool_slot hr hrun.vstart hv hpt hw
     obtain ⟨hcv, hcase⟩ := hpt
     rcases hcase with ⟨mm, hmm, -⟩ | ⟨B, hB, rfl⟩ | ⟨e₀, he₀, rfl⟩
     · exact absurd hmm (hnomsg r hjr hrd.le ellv hcv mm)
     · rcases receipt_pool_mem hw with hw | hwB
       · exact hQ r hrd.le w hw
       · exfalso
-        have hBt := (SA.accept_new sp hr hv ⟨ellv, hcv, hB⟩).1 ellv hcv
-        have h₁ := (SA.frame_validPayload sp hr hv hcv B hBt).1 w hwB
-        have h₂ := SA.frame_slot_le sp hr hv hcv B hBt
+        have hBt := (AC.accept_new sp hr hv ⟨ellv, hcv, hB⟩).1 ellv hcv
+        have h₁ := (AC.frame_validPayload sp hr hv hcv B hBt).1 w hwB
+        have h₂ := AC.frame_slot_le sp hr hv hcv B hBt
         have h₃ : sp.slot (tr.projAC.time r) = m := hsl
         omega
     · rcases admit_pool_mem hw with hw | rfl
-      · exact hQ (r + 1) hrd w (SA.readPoint_pool hr hv ⟨hcv, he₀⟩ hw).1
-      · exact (SA.castAt_spec hr hv ⟨hcv, he₀⟩).1
-  have h34 : 3 * sp.committeeSize ≤ 4 * (SA.optimisticVoters sp A ellv.frame m D).ncard := by
+      · exact hQ (r + 1) hrd w (AC.readPoint_pool hr hv ⟨hcv, he₀⟩ hw).1
+      · exact (AC.castAt_spec hr hv ⟨hcv, he₀⟩).1
+  have h34 : 3 * sp.committeeSize ≤ 4 * (AC.optimisticVoters sp A ellv.frame m D).ncard := by
     have h := hsel
-    unfold SA.optimisticSelect at h
+    unfold AC.optimisticSelect at h
     dsimp only at h
     split_ifs at h
-    have := (SA.deepest_mem h).1.2.1
+    have := (AC.deepest_mem h).1.2.1
     rwa [hsl] at this
-  have hsub : SA.optimisticVoters sp A ellv.frame m D ⊆ {v} := by
+  have hsub : AC.optimisticVoters sp A ellv.frame m D ⊆ {v} := by
     rintro i ⟨w, hw, rfl, -⟩
     exact hP w hw
   have hle1 := Set.ncard_le_ncard hsub (Set.toFinite _)
   rw [Set.ncard_singleton] at hle1
   refine ⟨by omega, ?_⟩
   obtain ⟨i, w, hw, rfl, -⟩ :=
-    Set.nonempty_of_ncard_ne_zero (s := SA.optimisticVoters sp A ellv.frame m D) (by omega)
+    Set.nonempty_of_ncard_ne_zero (s := AC.optimisticVoters sp A ellv.frame m D) (by omega)
   have hwv := hP w hw
-  obtain ⟨hws, j', hj', e', hve', he'⟩ := SA.optimisticPoint_pool_vote hrun' hv hpt hw (hwv ▸ hv)
+  obtain ⟨hws, j', hj', e', hve', he'⟩ := AC.optimisticPoint_pool_vote hrun' hv hpt hw (hwv ▸ hv)
   exact ⟨j', hj', e', hwv ▸ hve', by rw [he', hws]⟩
 
 /-- **A delivery at `t_m + Δ` comes after the slot-`m` vote** (the
@@ -335,21 +335,21 @@ theorem vote_before_late_delivery
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y k ell e) {i : Nat} {W : SA.Blk sp.n (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y k ell e) {i : Nat} {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hA : tr.AcceptAt y i W) (hik : i < k) (ht : tr.time i = sp.ts e.msg.slot + sp.Δ) :
     False := by
   have hrun' := Compose.goldilocks_ac_projection_from hrun hnc
   have hr := hrun'.localRun
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   set u := sp.ts e.msg.slot + sp.Δ with hu
-  have hm0 : 0 ≤ sp.ts e.msg.slot := by simp only [SAParams.ts]; positivity
+  have hm0 : 0 ≤ sp.ts e.msg.slot := by simp only [ACParams.ts]; positivity
   have htk : tr.time k = u :=
     le_antisymm (Compose.cast_head_fcRoot hr hrun.vstart hy hc).2 (ht ▸ hrun.time_mono hik.le)
-  have hslot : sp.slot u = e.msg.slot := SA.slot_of_mem sp _ (by linarith)
-    (by simp only [hu, SAParams.ts]; push_cast; linarith)
+  have hslot : sp.slot u = e.msg.slot := AC.slot_of_mem sp _ (by linarith)
+    (by simp only [hu, ACParams.ts]; push_cast; linarith)
   have hpub : sp.toParams.IsPublic u :=
-    ⟨4 * (e.msg.slot : Int) + 1, by simp only [hu, SAParams.ts]; ring⟩
+    ⟨4 * (e.msg.slot : Int) + 1, by simp only [hu, ACParams.ts]; ring⟩
   rcases Compose.blockCall_cases hrun.toLocalRun hy hA with hgW | ⟨j, x, -, -, hP, -⟩
   swap
   · obtain ⟨-, hP2, -⟩ := hP
@@ -357,7 +357,7 @@ theorem vote_before_late_delivery
     change u = sp.toParams.slotTime (sp.slot u) at hP2
     rw [hslot, sp.slotTime_eq] at hP2
     have : u = sp.ts e.msg.slot + sp.Δ := hu
-    simp only [SAParams.ts] at this
+    simp only [ACParams.ts] at this
     linarith only [hΔ, hP2, this]
   rw [ht] at hgW
   obtain ⟨jt, x, hgt⟩ := hrun.tick_of_awake y hy u (by linarith only [hΔ, hm0]) hpub
@@ -374,17 +374,17 @@ theorem vote_before_late_delivery
     have := hc.2
     rw [restart_emits hr hy hc.1 hcl] at this
     cases this
-  have hjk : SA.joined sp (tr.projAC.state y k) u := by
-    obtain ⟨-, -, hyj, -⟩ := SA.castAt_spec hr hy hc
+  have hjk : AC.joined sp (tr.projAC.state y k) u := by
+    obtain ⟨-, -, hyj, -⟩ := AC.castAt_spec hr hy hc
     have he := hr.exec k ell hc.1.2 (hc.1.1 ▸ hy)
     rw [hc.1.1] at he
     have h1 : (tr.projAC.post k).restartTime = (tr.projAC.state y k).restartTime := by
-      have hpost : tr.projAC.post k = ((SA.goldilocksSA sp (List (FG.Att sp.n)) ro).step y
+      have hpost : tr.projAC.post k = ((AC.goldilocksAC sp (List (FG.Att sp.n)) ro).step y
           (tr.projAC.state y k) ell.frame (tr.projAC.time k) ell.call).1 := by rw [he]
       rw [hpost]
-      exact SA.step_restartTime y _ _ _ _ hnrk
-    unfold SA.joined at hyj ⊢
-    rw [← h1, SA.restartTime_of_castAt hr hy hc, ← htk]
+      exact AC.step_restartTime y _ _ _ _ hnrk
+    unfold AC.joined at hyj ⊢
+    rw [← h1, AC.restartTime_of_castAt hr hy hc, ← htk]
     exact hyj
   have hjp := Compose.joined_projection_from hrun hy u
   have hnr_k : ¬ tr.RestartAt y k := fun ⟨ell', hc', hr'⟩ => by
@@ -405,17 +405,17 @@ theorem vote_before_late_delivery
     subst h
     rw [hcall] at hr'
     cases hr'
-  have hjt : SA.joined sp (tr.projAC.state y jt) u := by
+  have hjt : AC.joined sp (tr.projAC.state y jt) u := by
     rw [Compose.projAC_state hrun.toLocalRun hy]
     exact (hjp.2.1 jt ⟨_, hct'⟩ hnrt htt).mp hJ
-  have hve : SA.VoteAt tr.projAC y k e := ⟨ell, hc.1, hc.2⟩
+  have hve : AC.VoteAt tr.projAC y k e := ⟨ell, hc.1, hc.2⟩
   have hmay : (tr.projAC.state y jt).mayVote e.msg.slot = true := by
-    rw [(SA.trace_mayVote hr hy jt).trans (SA.trace_mayVote hr hy k).symm]
-    exact SA.mayVote_of_castAt hr hy hc
+    rw [(AC.trace_mayVote hr hy jt).trans (AC.trace_mayVote hr hy k).symm]
+    exact AC.mayVote_of_castAt hr hy hc
   by_cases hvs : (tr.projAC.state y jt).votedSlot = (e.msg.slot : Int)
-  · rcases SA.cast_of_votedSlot hr hrun.vstart hy jt e.msg.slot hvs with
+  · rcases AC.cast_of_votedSlot hr hrun.vstart hy jt e.msg.slot hvs with
       ⟨j', hj', e', hve', hes⟩ | hmf
-    · have := (SA.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy j' k e' e hve' hve hes).1
+    · have := (AC.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy j' k e' e hve' hve hes).1
       omega
     · exact absurd hmay (by rw [hmf]; decide)
   · have hexec := hr.exec jt ellt hpt.2 (hpt.1 ▸ hy)
@@ -425,8 +425,8 @@ theorem vote_before_late_delivery
     rw [show tr.projAC.time jt = u from htt] at hexec
     rw [hexec] at hne
     obtain ⟨e', he'⟩ := List.exists_mem_of_ne_nil _ hne
-    have hsl' := (SA.castAt_spec hr hy ⟨hpt, he'⟩).2.1
-    have := (SA.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy jt k e' e ⟨ellt, hpt, he'⟩ hve
+    have hsl' := (AC.castAt_spec hr hy ⟨hpt, he'⟩).2.1
+    have := (AC.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy jt k e' e ⟨ellt, hpt, he'⟩ hve
       (by rw [hsl']; change sp.slot (tr.time jt) = _; rw [htt, hslot])).1
     omega
 

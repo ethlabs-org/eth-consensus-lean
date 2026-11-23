@@ -9,14 +9,14 @@ namespace Consensus.Goldilocks.Compose.Growing
 
 /-- Votes retain their honest emission provenance at the reading cut, from starts up to the vote
 permission. -/
-theorem goldilocks_ac_projection_from {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
-    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {H : Time → Set (Fin sp.n)}
+theorem goldilocks_ac_projection_from {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+    {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {H : Time → Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (h : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) :
-    SA.Growing.ACRun proposer tr.projAC H (tr.HonestBlocksAt H) ini := by
+    AC.Growing.ACRun proposer tr.projAC H (tr.HonestBlocksAt H) ini := by
   have retained (i : Nat) :=
     Compose.goldilocks_ac_projection_from (h.upTo (h.time_nonneg i)) (hnc.upTo _)
   have call {y i ℓ} (hc : tr.projAC.CallAt y i ℓ) :
@@ -24,13 +24,13 @@ theorem goldilocks_ac_projection_from {sp : SA.SAParams}
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
   have emission {i v} (hv : ∃ j < i, ∃ e,
-      SA.VoteAt (tr.upTo (tr.time i)).projAC v.val j e ∧ e.msg = v) :
-      ∃ j < i, ∃ e, SA.VoteAt tr.projAC v.val j e ∧ e.msg = v := by
+      AC.VoteAt (tr.upTo (tr.time i)).projAC v.val j e ∧ e.msg = v) :
+      ∃ j < i, ∃ e, AC.VoteAt tr.projAC v.val j e ∧ e.msg = v := by
     obtain ⟨j, hj, e, he, hev⟩ := hv
     rw [RunTrace.upTo_projAC] at he
-    exact ⟨j, hj, e, (SA.upTo_voteAt.mp he).2, hev⟩
+    exact ⟨j, hj, e, (AC.upTo_voteAt.mp he).2, hev⟩
   refine ⟨ac_projection _ _ dg H _ tr proposer
-      (fun y _ U _ s Φ t₀ h' => SA.proposal_payload_valid_from _ (h.vstart y).pool y U s Φ t₀ h')
+      (fun y _ U _ s Φ t₀ h' => AC.proposal_payload_valid_from _ (h.vstart y).pool y U s Φ t₀ h')
       h.toLocalRun hnc,
     { pool_vote := fun y i σ hy v hv hval => ?_
       message_vote := fun y i ℓ v hy hc hm hv =>

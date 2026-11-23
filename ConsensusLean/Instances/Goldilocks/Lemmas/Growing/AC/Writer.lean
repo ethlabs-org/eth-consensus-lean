@@ -11,18 +11,18 @@ public section
 
 /-! # Writer-pool transport between separately honest nodes -/
 
-namespace Consensus.Goldilocks.SA.Growing
+namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
-  {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
+  {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → SAState sp.n}
+  {ini : Fin sp.n → ACState sp.n}
 
 private theorem cast_time_le {K : Set (Fin sp.n)}
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) K U tr ini) {y : Fin sp.n}
-    (hy : y ∈ K) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hr : ACLocalRun (goldilocksAC sp FGP ro) K U tr ini) {y : Fin sp.n}
+    (hy : y ∈ K) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) : tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ := by
-  have hv : ∀ (A : SAState sp.n) (t : Time), (tryVote sp y A ℓ.frame t).2 ≠ [] →
+  have hv : ∀ (A : ACState sp.n) (t : Time), (tryVote sp y A ℓ.frame t).2 ≠ [] →
       t ≤ sp.ts (sp.slot t) + sp.Δ := by
     intro A t h
     by_contra ht
@@ -34,7 +34,7 @@ private theorem cast_time_le {K : Set (Fin sp.n)}
   obtain ⟨hc, he⟩ := hc
   have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
   rw [hc.1] at hx
-  have hne : ((goldilocksSA sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i)
+  have hne : ((goldilocksAC sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i)
       ℓ.call).2 ≠ [] := by rw [hx]; exact List.ne_nil_of_mem he
   generalize tr.state y i = A at hne
   generalize ℓ.call = c at hne
@@ -59,9 +59,9 @@ private theorem cast_time_le {K : Set (Fin sp.n)}
     exact absurd ((restart_state sp) FGP ro y A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1 hne
 
 private theorem update_restarts {K : Set (Fin sp.n)} {c : Nat}
-    (hr : ACLocalRun (goldilocksSA sp FGP ro) K U tr ini)
+    (hr : ACLocalRun (goldilocksAC sp FGP ro) K U tr ini)
     {Y : Fin sp.n} (hY : Y ∈ K) {s : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hu : UpdateAt tr Y c s ℓ) :
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hu : UpdateAt tr Y c s ℓ) :
     ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s := by
   obtain ⟨hc, hcall, ht, hj⟩ := hu
   have hΔ := sp.toParams.hΔ
@@ -74,18 +74,18 @@ private theorem update_restarts {K : Set (Fin sp.n)} {c : Nat}
     exact hj
   have hsl : sp.slot (tr.time c) = s + 1 :=
     CompatibleSides.slot_of_lt (s := s + 1)
-      (by rw [ht]; simp only [SAParams.ts]; push_cast; linarith)
-      (by rw [ht]; simp only [SAParams.ts]; push_cast; linarith)
+      (by rw [ht]; simp only [ACParams.ts]; push_cast; linarith)
+      (by rw [ht]; simp only [ACParams.ts]; push_cast; linarith)
   intro k hk hrk
-  have h := (SA.joined_awakeU sp FGP ro _ U tr hr.toU Y hY c ℓ hc hpost).2 k hk hrk
+  have h := (AC.joined_awakeU sp FGP ro _ U tr hr.toU Y hY c ℓ hc hpost).2 k hk hrk
   rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at h
 
 theorem writer_pool (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} {i₀ s : Nat}
-    (hX : X ∈ H (tr.time i₀)) {ℓX : ACLabel (goldilocksSA sp FGP ro)}
+    (hX : X ∈ H (tr.time i₀)) {ℓX : ACLabel (goldilocksAC sp FGP ro)}
     (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hsync : SyncACAt (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr)
+    (hsync : SyncACAt (goldilocksAC sp FGP ro) H U (sp.ts s) (tr.time i) tr)
     {k : Nat} (hk : k ≤ i) :
     ∀ v ∈ (tr.state y (k + 1)).pool s, v ∈ (tr.state X i₀).pool s ∨
       v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} := by
@@ -97,9 +97,9 @@ theorem writer_pool (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} {i₀ s : 
   have hup' := (upTo_updateAt hm).mpr ⟨le_rfl, hupd⟩
   have hΔ := sp.toParams.hΔ
   have hts : ∀ m : Nat, sp.ts (m + 1 : Nat) = sp.ts m + 4 * sp.Δ := fun m => by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hts₂ : sp.ts (s + 2 : Nat) = sp.ts s + 8 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   obtain ⟨_, hys, hyj, _⟩ := castAt_spec hry.localRun hy hc'
   have hsi : sp.slot (tr.time i) = s + 1 := hys.symm.trans hs
   have hrsy : ∀ j ≤ i, tr.RestartAt y j → tr.time j ≤ sp.ts s := by
@@ -108,13 +108,13 @@ theorem writer_pool (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} {i₀ s : 
       rw [restartTime_of_castAt hry.localRun hy hc']
       exact hyj
     intro j hj hjr
-    have h := (SA.joined_awakeU sp FGP ro _ U _ hry.localRun.toU y hy i ℓ hc'.1 hj').2 j hj
-      ((ACTrace.upTo_restartAt (A := goldilocksSA sp FGP ro)).mpr ⟨hm hj, hjr⟩)
+    have h := (AC.joined_awakeU sp FGP ro _ U _ hry.localRun.toU y hy i ℓ hc'.1 hj').2 j hj
+      ((ACTrace.upTo_restartAt (A := goldilocksAC sp FGP ro)).mpr ⟨hm hj, hjr⟩)
     rwa [Trace.upTo_time, hsi, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at h
   have hrsX : ∀ j ≤ i₀, tr.RestartAt X j → tr.time j ≤ sp.ts s := by
     intro j hj hjr
     exact update_restarts hrX.localRun hX hup' j hj
-      ((ACTrace.upTo_restartAt (A := goldilocksSA sp FGP ro)).mpr ⟨hm hj, hjr⟩)
+      ((ACTrace.upTo_restartAt (A := goldilocksAC sp FGP ro)).mpr ⟨hm hj, hjr⟩)
   intro v hv
   have hstate : (tr.upTo (tr.time i)).state y (k + 1) = tr.state y (k + 1) :=
     Trace.upTo_state tr y fun j hj => hm ((Nat.le_of_lt_succ hj).trans hk)
@@ -158,11 +158,11 @@ theorem writer_pool (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} {i₀ s : 
     omega
 
 theorem writer_merged (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} {i₀ s : Nat}
-    (hX : X ∈ H (tr.time i₀)) {ℓX : ACLabel (goldilocksSA sp FGP ro)}
+    (hX : X ∈ H (tr.time i₀)) {ℓX : ACLabel (goldilocksAC sp FGP ro)}
     (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hsync : SyncACAt (goldilocksSA sp FGP ro) H U (sp.ts s) (tr.time i) tr) :
+    (hsync : SyncACAt (goldilocksAC sp FGP ro) H U (sp.ts s) (tr.time i) tr) :
     ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ (tr.state X i₀).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} := by
   have hr := hrun.localRun
@@ -178,6 +178,6 @@ theorem writer_merged (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} {i₀ s 
   rw [hstate] at hp
   exact writer_pool hrun hX hupd hy hc hs hsync le_rfl w hp
 
-end Consensus.Goldilocks.SA.Growing
+end Consensus.Goldilocks.AC.Growing
 
 end

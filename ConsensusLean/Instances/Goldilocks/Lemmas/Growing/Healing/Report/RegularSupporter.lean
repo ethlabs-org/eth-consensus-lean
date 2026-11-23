@@ -21,19 +21,19 @@ the caller's optimistic step with the write honest at its own cut. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- Supporter classification separates viable, common-root and optimistic-anchor cases. -/
 theorem FrameWindow.next_votes_of_supporter_at {s₀ s floor : Nat}
-    {kindJ : Prop} {J X Q : SA.Blk sp.n (List (FG.Att sp.n))}
+    {kindJ : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
-    {K : SA.CommitteeDict sp.n}
+    {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K))
+      (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -42,50 +42,50 @@ theorem FrameWindow.next_votes_of_supporter_at {s₀ s floor : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts ((s - 1 : Nat) : Int))
     (hmb : sp.ts s + 6 * sp.Δ ≤ b)
     {z : Fin sp.n} {q : Nat} (hz : z ∈ H (tr.time q))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC z q ell e) (hes : e.msg.slot = s)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC z q ell e) (hes : e.msg.slot = s)
     (hQU : Q ∈ tr.HonestBlocksAt H) (hQr : Q.root = e.msg.head)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q)
     (hbase : Q ∈ ell.frame.tree → floor ≤ ((tr.state z q).fg.σ Q.root).h →
       (kindJ → Anc (tr.HonestBlocksAt H) J X) →
-      ∀ y i ev, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
-        SA.VoteExtends (tr.HonestBlocksAt H) ev.msg X)
-    (hoptimistic : Q = SA.getAnchor sp e.readPoint ell.frame (tr.time q) →
-      ∀ a D CV, z ∈ H (tr.time a) → SA.OptimisticLockAt tr.projAC z a s D CV →
+      ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
+        AC.VoteExtends (tr.HonestBlocksAt H) ev.msg X)
+    (hoptimistic : Q = AC.getAnchor sp e.readPoint ell.frame (tr.time q) →
+      ∀ a D CV, z ∈ H (tr.time a) → AC.OptimisticLockAt tr.projAC z a s D CV →
       Anc (tr.HonestBlocksAt H) Q D →
-      ∀ y i ev, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
-        SA.VoteExtends (tr.HonestBlocksAt H) ev.msg Q) (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ y i ev, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
-      SA.VoteExtends (tr.HonestBlocksAt H) ev.msg X := by
+      ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
+        AC.VoteExtends (tr.HonestBlocksAt H) ev.msg Q) (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
+      AC.VoteExtends (tr.HonestBlocksAt H) ev.msg X := by
   have hΔ := sp.toParams.hΔ
   have hU := Compose.Growing.honestBlocksAt_coherent hrun hnc
   have hprev : sp.ts ((s - 1 : Nat) : Int) = sp.ts s - 4 * sp.Δ := by
-    rw [Nat.cast_sub (by omega : 1 ≤ s), Nat.cast_one, SA.ts_sub_one]
+    rw [Nat.cast_sub (by omega : 1 ≤ s), Nat.cast_one, AC.ts_sub_one]
   have hq0 := hrun.time_nonneg q
   have htq := (Compose.Growing.cast_head_fcRoot_at hrun hnc hz hc).2
   rw [hes] at htq
   have hslot := (Compose.Growing.castAt_spec_at hrun hnc hz hc).2.1.symm.trans hes
   have hqt : sp.ts s₀ ≤ tr.time q :=
-    (SA.ts_le_iff_le_slot sp hq0 _).2 (by rw [hslot]; omega)
+    (AC.ts_le_iff_le_slot sp hq0 _).2 (by rw [hslot]; omega)
   have hqhi : tr.time q ≤ sp.ts s + 6 * sp.Δ := by linarith only [hΔ, htq]
   have hrootVotes : kindJ → Anc (tr.HonestBlocksAt H) X J →
-      ∀ y i ev, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
-        SA.VoteExtends (tr.HonestBlocksAt H) ev.msg X := by
+      ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
+        AC.VoteExtends (tr.HonestBlocksAt H) ev.msg X := by
     intro hk hXJ y i ev hy ⟨elly, hcy, hey⟩ hev
     have hi0 := hrun.time_nonneg i
-    have hcast : SA.CastAt tr.projAC y i elly ev := ⟨hcy, hey⟩
+    have hcast : AC.CastAt tr.projAC y i elly ev := ⟨hcy, hey⟩
     obtain ⟨hPhi, hPhiU⟩ := Compose.Growing.frameIn_at hrun hnc hy hcy
     have hsl := (Compose.Growing.castAt_spec_at hrun hnc hy hcast).2.1.symm.trans hev
     have hlo : sp.ts s₀ ≤ tr.time i :=
-      (SA.ts_le_iff_le_slot sp hi0 _).2 (by rw [hsl]; push_cast; omega)
+      (AC.ts_le_iff_le_slot sp hi0 _).2 (by rw [hsl]; push_cast; omega)
     have hhi := (Compose.Growing.cast_head_fcRoot_at hrun hnc hy hcast).2
     rw [hev] at hhi
-    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := SA.ts_succ s
+    have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := AC.ts_succ s
     have hhi' : tr.time i ≤ sp.ts s + 6 * sp.Δ := by linarith only [hΔ, hhi, hts]
     have hr := (Compose.Growing.acRun_upTo hrun hnc hi0).localRun
-    have hcast' := Compose.Growing.sa_castAt_upTo.mpr ⟨le_rfl, hcast⟩
-    obtain ⟨W, hW, hWr, hRW⟩ := SA.castAt_head_anc hr hy hcast' (Or.inr rfl)
-      (fun L hL => (SA.liveLockBlock_candidate hPhi hL).elim
+    have hcast' := Compose.Growing.ac_castAt_upTo.mpr ⟨le_rfl, hcast⟩
+    obtain ⟨W, hW, hWr, hRW⟩ := AC.castAt_head_anc hr hy hcast' (Or.inr rfl)
+      (fun L hL => (AC.liveLockBlock_candidate hPhi hL).elim
         (fun h => Or.inr h.2.1) Or.inl) Relation.ReflTransGen.refl
     have hRW := hRW.mono hPhiU
     rw [Compose.Growing.frame_of_projAC_at hrun hy hcy] at hRW
@@ -98,7 +98,7 @@ theorem FrameWindow.next_votes_of_supporter_at {s₀ s floor : Nat}
   obtain ⟨Hd, hHd, hHdr, hclass⟩ := vote_head_classification_of_service_at hframe
     hrun hnc hsvc hawake hf hcatch hnr hz hc hqhi (hqhi.trans hmb)
     (hes ▸ hwarm) (hes ▸ hpos) (hes ▸ hs₀) (by simpa only [hes] using hm) (by
-      rw [hes]; simp only [SA.freeze]
+      rw [hes]; simp only [AC.freeze]
       have hcast : ((s - 1 : Nat) : Int) = (s : Int) - 1 := by omega
       rw [← hcast]; linarith only [hΔ, hm]) hK
   have hPhi := Compose.Growing.frameIn_at hrun hnc hz hc.1
@@ -122,7 +122,7 @@ theorem FrameWindow.next_votes_of_supporter_at {s₀ s floor : Nat}
       exact hvQ.2.2.2
     · push Not at hJX
       obtain ⟨hk, hn⟩ := hJX
-      exact hrootVotes hk ((SA.anc_total hU hXQ (hJQ hk)).resolve_right hn)
+      exact hrootVotes hk ((AC.anc_total hU hXQ (hJQ hk)).resolve_right hn)
   · exact hrootVotes hj.1 (hj.2 ▸ hXQ)
   · obtain ⟨hA, l, hl, hls, a, hai, D, CV, hza, hop, -, -, -, hQD⟩ := ho
     have hheads := hoptimistic hA a D CV hza (hes ▸ hop) (hQD.mono hPhi.2)

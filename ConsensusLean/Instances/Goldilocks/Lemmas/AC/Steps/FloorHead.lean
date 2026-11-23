@@ -3,16 +3,16 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
 
 public section
 
-/-! # Goldilocks SA: the head walk below a finalized floor
+/-! # Goldilocks AC: the head walk below a finalized floor
 
 Below a common finalized ancestor of all viable heads, the best-child step of the viable-domain
 walk is forced by geometry alone (`isBest_of_viable_floor`), so the head extends that floor
 (`finalized_floor_anc_getHead`). Split out of `AC/Steps/Core` so that a new floor/head helper
 does not rebuild Core's cone. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams}
+variable {FGP : Type} {sp : ACParams}
 
 /-- Below a common finalized ancestor of all viable heads, the viable-domain
 path is forced by geometry alone. No supporter or score bound is needed. -/
@@ -23,12 +23,12 @@ theorem isBest_of_viable_floor {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     (hXF : Φ.Anc X F) (hne : X ≠ F)
     (hC : C ∈ Φ.viableTree dom) (hp : C.parent = some X.root)
     (hCF : Φ.Anc C F) (V : View sp.n) (t : Time) (σ : Int) :
-    IsBest sp (goldfishScore sp Φ V σ)
+    IsBest sp (headScore sp Φ V σ)
       {B | B ∈ Φ.viableTree dom ∧ B.parent = some X.root ∧
-        goldfishEligible sp Φ t V σ B} C := by
+        headEligible sp Φ t V σ B} C := by
   have hCt := hdom hC.1
   have hXt : X ∈ Φ.tree := (Anc.mem hXF hne).1
-  have hel : goldfishEligible sp Φ t V σ C := by
+  have hel : headEligible sp Φ t V σ C := by
     left
     rintro ⟨Q, hQ, hpar⟩
     have he : Q = X := hΦ.coherent.1 (hΦ.viableHeads_subset hQ) hXt
@@ -64,7 +64,7 @@ theorem finalized_floor_anc_getHead {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     (hdomA : ∀ B ∈ dom, ∀ X, Φ.Anc X B → X ∈ dom)
     {F Y : Blk sp.n FGP} (hfloor : ∀ Q ∈ Φ.viableHeads, Φ.Anc F Q)
     (hY : Y ∈ dom) (hvY : Y ∈ Φ.viableHeads) (hFY : Φ.Anc F Y)
-    (A : SAState sp.n) (t : Time) (V : View sp.n) (σ : Int)
+    (A : ACState sp.n) (t : Time) (V : View sp.n) (σ : Int)
     (hfa : Φ.Anc Φ.fcRoot (getAnchor sp A Φ t))
     (haF : Φ.Anc (getAnchor sp A Φ t) F) :
     Φ.Anc F (getHead sp A Φ t (Φ.viableTree dom) V σ) := by
@@ -81,6 +81,6 @@ theorem finalized_floor_anc_getHead {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
       (hfa.trans haX).tail e, Y, hY, hvY, hCF.trans hFY⟩
   exact ⟨C, isBest_of_viable_floor hΦ hdom hfloor hXF hne hCv e.2.2 hCF V t σ, hCF⟩
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

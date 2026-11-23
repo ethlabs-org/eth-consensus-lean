@@ -4,7 +4,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
 
 public section
 
-/-! # Goldilocks SA: the live locks, the anchor and the record (A0.4 (a), (b), (f), A0.5)
+/-! # Goldilocks AC: the live locks, the anchor and the record (A0.4 (a), (b), (f), A0.5)
 
 Under the lock invariant (`LockInv`) every live lock block is the viable ancestor of a stored
 lock block, so it is a candidate of `viable_ancestor` (viable or at or below `fc_root`) and an
@@ -12,9 +12,9 @@ ancestor of the record's block, which is then in the tree: the live lock blocks 
 chain with `fc_root`, the anchor (the deepest of them) extends each, and the effective record
 extends each. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {sp : SAParams} {FGP : Type} {U : Set (Blk sp.n FGP)}
+variable {sp : ACParams} {FGP : Type} {U : Set (Blk sp.n FGP)}
 
 /-- A live lock block is the viable ancestor of the block of a stored live lock. -/
 theorem mem_liveLockBlocks {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {L : Set Lock} {t : Time}
@@ -34,7 +34,7 @@ theorem liveLockBlock_candidate {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {L : Set 
 
 /-- Under the lock invariant, the effective record extends every live lock block. -/
 theorem LockInv.liveBlock_anc (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
-    (hΦU : Φ.tree ⊆ U) {A : SAState sp.n} (h : LockInv U A Φ) {t : Time} {B : Blk sp.n FGP}
+    (hΦU : Φ.tree ⊆ U) {A : ACState sp.n} (h : LockInv U A Φ) {t : Time} {B : Blk sp.n FGP}
     (hB : B ∈ liveLockBlocks sp A.locks Φ t) :
     ∃ E ∈ Φ.tree, E.root = A.latestConfirmed ∧ Φ.Anc B E := by
   obtain ⟨E, hE, hEr, hEt, hlE⟩ := lockInv_iff.1 h
@@ -46,7 +46,7 @@ theorem LockInv.liveBlock_anc (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : Frame
 
 /-- Under the lock invariant, the live lock blocks lie on one chain. -/
 theorem LockInv.liveBlocks_chain (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
-    (hΦU : Φ.tree ⊆ U) {A : SAState sp.n} (h : LockInv U A Φ) {t : Time} :
+    (hΦU : Φ.tree ⊆ U) {A : ACState sp.n} (h : LockInv U A Φ) {t : Time} :
     ∀ B ∈ liveLockBlocks sp A.locks Φ t, ∀ C ∈ liveLockBlocks sp A.locks Φ t,
       Compatible Φ.tree B C := by
   intro B hB C hC
@@ -88,7 +88,7 @@ theorem anc_deepest {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {S : Set (Blk sp.n FG
 
 /-- **The anchor.** When the live lock blocks lie on one chain, the anchor is in the tree and
 extends every live lock block and `fc_root`. -/
-theorem anc_getAnchor {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {A : SAState sp.n} {t : Time}
+theorem anc_getAnchor {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {A : ACState sp.n} {t : Time}
     (hch : ∀ B ∈ liveLockBlocks sp A.locks Φ t, ∀ C ∈ liveLockBlocks sp A.locks Φ t,
       Compatible Φ.tree B C) :
     getAnchor sp A Φ t ∈ Φ.tree ∧
@@ -143,6 +143,6 @@ theorem lock_to_tip : LockToTip sp := by
   rw [this]
   exact hBE
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

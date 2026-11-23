@@ -5,7 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 
 public section
 
-/-! # Goldilocks SA: a voter's walk stops at the honest proposal (the regime-free core)
+/-! # Goldilocks AC: a voter's walk stops at the honest proposal (the regime-free core)
 
 At an honest slot-`s` vote, with `P` a block of slot `s` and parent `Q` of an honest proposer:
 when `P` is in the voter's viable voter block tree and no old child of `Q` (slot below `s`) is
@@ -17,32 +17,32 @@ frame is of a later slot than the vote, `frame_slot_le`). Shared by the growing-
 the two leaves.
 -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-- **The stop at `Q`, from its two leaves.** -/
 theorem stop_core {ini} (hrun : ACRun proposer tr H U ini) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y j ℓ e) {s : Nat}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y j ℓ e) {s : Nat}
     (hes : e.msg.slot = s) {Q P : Blk sp.n FGP} (hPs : P.slot = s)
     (hPQ : P.parent = some Q.root) (hpH : P.proposer ∈ H)
     (hng : ∀ B ∈ ℓ.frame.tree, B.parent ≠ none → B.root ≠ sp.genesisRoot)
     (hPv : P ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame s))
     (hold : ∀ B ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame s),
       B.parent = some Q.root → B.slot < s →
-      ¬ goldfishEligible sp ℓ.frame (tr.time j) (mergedVoteView sp e.readPoint ℓ.frame s)
+      ¬ headEligible sp ℓ.frame (tr.time j) (mergedVoteView sp e.readPoint ℓ.frame s)
         ((s : Int) - 1) B) :
     (P ∈ {B | B ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame s) ∧
-        B.parent = some Q.root ∧ goldfishEligible sp ℓ.frame (tr.time j)
+        B.parent = some Q.root ∧ headEligible sp ℓ.frame (tr.time j)
           (mergedVoteView sp e.readPoint ℓ.frame s) ((s : Int) - 1) B} ∧
       ∀ B ∈ {B | B ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame s) ∧
-          B.parent = some Q.root ∧ goldfishEligible sp ℓ.frame (tr.time j)
+          B.parent = some Q.root ∧ headEligible sp ℓ.frame (tr.time j)
             (mergedVoteView sp e.readPoint ℓ.frame s) ((s : Int) - 1) B}, B = P) ∧
     ¬ ∃ C, IsBest sp
-      (goldfishScore sp ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame s) ((s : Int) - 1))
+      (headScore sp ℓ.frame (mergedVoteView sp e.readPoint ℓ.frame s) ((s : Int) - 1))
       {B | B ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame s) ∧
-        B.parent = some P.root ∧ goldfishEligible sp ℓ.frame (tr.time j)
+        B.parent = some P.root ∧ headEligible sp ℓ.frame (tr.time j)
           (mergedVoteView sp e.readPoint ℓ.frame s) ((s : Int) - 1) B} C := by
   have hr := hrun.localRun
   have hU := hr.coherent
@@ -68,6 +68,6 @@ theorem stop_core {ini} (hrun : ACRun proposer tr H U ini) {y : Fin sp.n} (hy : 
     have h2 : C.slot ≤ sp.slot (tr.time j) := hslot C hCt
     omega
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

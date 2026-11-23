@@ -14,16 +14,16 @@ Each count is charged at its consuming cut; provenance retains the honesty of it
 at the write. Proposer agreement requires honesty through the consuming vote.
 -/
 
-namespace Consensus.Goldilocks.SA.Growing
+namespace Consensus.Goldilocks.AC.Growing
 
 /-- Proposer agreement at the repaired, two-cut honesty premise. -/
-theorem proposer_voters_agree (sp : SAParams) : ProposerVotersAgree sp := by
+theorem proposer_voters_agree (sp : ACParams) : ProposerVotersAgree sp := by
   intro FGP ro H U tr proposer hr s p y i j ℓp ℓy pay e hp hy hpp hprop hti hc hs hP
     hsync heq B hB hBs
   exact proposer_voters_agree_of_honest_max hr hp hy hpp hprop hti hc hs hP hsync heq B hB hBs
 
 /-- The AC step statements for population-sized committees, with growing faults. -/
-theorem acStepsAt (sp : SAParams) : ACStepsAt sp where
+theorem acStepsAt (sp : ACParams) : ACStepsAt sp where
   proposerVotersAgree := proposer_voters_agree sp
   firstTransfer := first_transfer sp
   nextTransfer := next_transfer sp
@@ -37,6 +37,6 @@ theorem acStepsAt (sp : SAParams) : ACStepsAt sp where
 /-- The growing-fault ACSteps milestone. -/
 theorem acSteps : ACSteps := acStepsAt
 
-end Consensus.Goldilocks.SA.Growing
+end Consensus.Goldilocks.AC.Growing
 
 end

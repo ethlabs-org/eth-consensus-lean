@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.GrowingPremises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
@@ -15,10 +15,10 @@ writer's pool and counted voters are read on the prefix through the write; the p
 equivocators and locks on the prefix through the proposal, over the validators honest there,
 which is where the fault count is charged. -/
 
-namespace Consensus.Goldilocks.SA.Growing
+namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
-  {tr : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
+  {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 /-- **The first proposal after an optimistic write**: with every counted vote of the write held at
@@ -26,14 +26,14 @@ the proposal, `B ⪯ D` in the frame, and the high locks compatible, `B` is an a
 head of an honest proposal of the next slot. The counted voters and the proposer's pool are
 members of the slot-`σ` committee (P), fewer than half of whose members are faulty at the
 proposal. -/
-theorem optimistic_first_proposal_stored_at {ini : Fin sp.n → SAState sp.n}
+theorem optimistic_first_proposal_stored_at {ini : Fin sp.n → ACState sp.n}
     (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n) (hPK : CommitteePAt K tr H)
     (hsize : ∀ s, (K.committee s).ncard = sp.committeeSize)
     {X : Fin sp.n} {i₀ σ : Nat} (hX : X ∈ H (tr.time i₀)) {D : Blk sp.n FGP}
     {CV : Set (Vote sp.n)} (hopt : OptimisticLockAt tr X i₀ σ D CV) {B : Blk sp.n FGP}
     (hBD : Anc U B D) {x : Fin sp.n} {i : Nat} (hx : x ∈ H (tr.time i))
     (hf : 2 * (K.committee σ ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ)
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (hslot : sp.slot (tr.time i) = σ + 1) {d : DutyHead sp.n FGP (Payload sp.n)}
     {pay : Payload sp.n}
     (hprop : (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay))
@@ -123,6 +123,6 @@ theorem optimistic_first_proposal_stored_at {ini : Fin sp.n → SAState sp.n}
     fun X' Cx hCx hp hCxD => isBest_of_cover hΦ (ofLists_support_subset _ _ _ _)
       (fun _ h => h.1) hcover (cover_sdiff_lt h3) hCx hp hCxD
 
-end Consensus.Goldilocks.SA.Growing
+end Consensus.Goldilocks.AC.Growing
 
 end

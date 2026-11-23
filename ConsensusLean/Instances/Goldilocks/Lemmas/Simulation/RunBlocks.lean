@@ -17,7 +17,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote Payload blockVotes)
+open AC (ACParams ReplayOrder Vote Payload declaredHeadVotes)
 
 variable {binding : VoteBinding}
 
@@ -49,7 +49,7 @@ ids is a `GroupAt` / `DeliverSeq` of the trace. -/
 
 section
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (proposer : Nat → Fin sp.n)
   (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
 

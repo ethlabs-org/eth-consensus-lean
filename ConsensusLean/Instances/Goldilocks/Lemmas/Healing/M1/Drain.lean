@@ -15,9 +15,9 @@ reset-time or joint coefficient-envelope theorem. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
@@ -26,7 +26,7 @@ kind J with `Σ.J ⪯` the source), including Contest and the equal-height kind-
 theorem report_kind_of_floor
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {R : SA.Blk sp.n (List (FG.Att sp.n))}
+    {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hh : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ R.root).h)
     (hroot : (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot R) :
     (tr.state y i).fg.hj < ((tr.state y i).fg.σ R.root).h ∨

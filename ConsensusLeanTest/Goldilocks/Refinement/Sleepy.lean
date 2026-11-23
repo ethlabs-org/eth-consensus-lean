@@ -183,7 +183,7 @@ theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
     ∃ rho : Model.Run (compiled (goldilocks { S with vote := AsChainShape.stock })) (point H).env,
       rho.ExecutionValid ∧
       ∃ y ∈ honestKeys { S with vote := stock } rho, ∃ (k : Nat)
-        (m : SA.Vote (Fintype.card (Fin 2))),
+        (m : AC.Vote (Fintype.card (Fin 2))),
         (simTrace { S with vote := stock } rho one_le_card).EmitAt y k m ∧ m.slot = 0 ∧
         (simTrace { S with vote := stock } rho one_le_card).time k ≤ 2 ∧
         ∃ i, rho.SendsAt (rho.key y) i

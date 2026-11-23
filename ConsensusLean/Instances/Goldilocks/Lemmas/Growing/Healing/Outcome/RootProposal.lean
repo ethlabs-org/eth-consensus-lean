@@ -21,10 +21,10 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 open Regimes.Growing (hold)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -32,16 +32,16 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem reset_vote_root_below_proposal_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {k u : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hpH : p ∈ H (sp.ts u + hold sp))
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
     (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
     {ellp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hd : (AC.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) (hPQ : P.parent = some d.head.root)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {elly : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hcy : SA.CastAt tr.projAC y j elly e)
+    {e : AC.Em sp (List (FG.Att sp.n))} (hcy : AC.CastAt tr.projAC y j elly e)
     (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) :
     Anc (tr.HonestBlocksAt H) elly.frame.fcRoot P := by
   have hpi : p ∈ H (tr.time i) := hp.run.antitone (by
@@ -49,12 +49,12 @@ theorem reset_vote_root_below_proposal_at {cm : Time → Finset (Fin sp.n)} {βK
     exact le_add_of_nonneg_right sp.toParams.hΔ.le) hpH
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hci' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hci⟩
-  obtain ⟨hPhi, _⟩ := SA.frameIn_of_callAt (hac.localRun.upTo (hp.run.time_nonneg i)) hpi hci'
+  obtain ⟨hPhi, _⟩ := AC.frameIn_of_callAt (hac.localRun.upTo (hp.run.time_nonneg i)) hpi hci'
   obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
   have hsub := Outcome.frame_tree_subset hp.run hpi hci
   have hQU := hsub (Compose.mem_of_anc_left hsQ hst)
   have hk : tr.time k = sp.ts u := by
-    simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hactual.2.2
+    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hactual.2.2
   have hpk : p ∈ H (tr.time k) := hp.run.antitone (by
     rw [hk]
     exact le_add_of_nonneg_right sp.toParams.hΔ.le) hpH

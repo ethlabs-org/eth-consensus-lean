@@ -15,7 +15,7 @@ The state facts are read from the per-time node states (`world_good`) and the cu
 
 namespace Consensus.Goldilocks.Witness.TwoRun
 
-open Node SA
+open Node AC
 
 /-! ## The cuts of a time -/
 
@@ -125,7 +125,7 @@ theorem run_ready
   rw [show sp.ts ((k + 1 : Nat) : Int) + sp.Δ = ((4 * (k + 1) + 1 : Nat) : Int) by
     rw [ts_nat]; push_cast; rfl, firstCutFrom_iff] at hj
   subst hj
-  rw [blockSupport_blk] at hx
+  rw [declaredSupportVotes_blk] at hx
   have hh : x.head = (blk k).root := by
     rcases List.mem_pair.1 hx with rfl | rfl <;> rfl
   exact ⟨blk k, tree_at_vote_deadline y (k + 1) (by omega), hh.symm, by rw [blk_slot]⟩

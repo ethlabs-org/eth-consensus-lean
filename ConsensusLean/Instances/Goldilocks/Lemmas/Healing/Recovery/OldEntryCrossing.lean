@@ -33,19 +33,19 @@ stretch, with `s < U.slot ≤ s + δ_t ≤ s + r_old`, and `U` is an actual run 
 
 namespace Consensus.Goldilocks.Healing.Recovery
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-- **The attestation at a high report** (with the lock clause from high-record uniqueness). An
 honest report `R ⪰ P` at cut `i`, `P` high: `y` signed the attestation `(σ[P].h, σ[P].T_h)` by
 `t_i`, or `σ[R].h > σ[P].h`. -/
 private theorem row_of_high_report (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    {R P : SA.Blk sp.n (List (FG.Att sp.n))} (hR : SA.ToFGAt tr.projAC y i ell R)
+    {R P : AC.Blk sp.n (List (FG.Att sp.n))} (hR : AC.ToFGAt tr.projAC y i ell R)
     (hPR : Anc (tr.HonestBlocks H) P R)
     (hPh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ P.root).h) :
     P ∈ (tr.state y i).fg.tree ∧ R ∈ (tr.state y i).fg.tree ∧
@@ -96,15 +96,15 @@ private theorem row_of_high_report (hp : ResetPremises tr H K proposer dg g ΔF 
 
 /-- **C2: bounded old-entry crossing.** -/
 theorem old_entry_crossing {Gp : Time} {W M cF kF v s : Nat} {p : Fin sp.n} {kP iP : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hpat : PatternPremises tr H K proposer dg g ΔF Gp W M cF kF)
     (hreports : ReadyProposalReportSupply tr H K proposer dg g ΔF a)
     (hwindow : ∀ u, v ≤ u → u < v + M →
-      ∃ (k : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))),
+      ∃ (k : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))),
         ReadyProposal tr H proposer (proposer u) k u B ∧
         ∀ y i, Compose.RunEntry tr H y i B →
-          ∃ (w : Fin sp.n) (kw : Nat) (Q : SA.Blk sp.n (List (FG.Att sp.n))),
+          ∃ (w : Fin sp.n) (kw : Nat) (Q : AC.Blk sp.n (List (FG.Att sp.n))),
             ReadyProposal tr H proposer w kw Q.slot Q ∧
             u + cF ≤ Q.slot ∧ Q.slot ≤ u + cF + kF ∧
             ∃ Pr, Q.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) B Pr)
@@ -113,7 +113,7 @@ theorem old_entry_crossing {Gp : Time} {W M cF kF v s : Nat} {p : Fin sp.n} {kP 
     (haccept : tr.AcceptAt p iP P)
     (hhigh : HZ tr H g + 1 ≤ ((tr.post iP).fg.σ P.root).h)
     (hafter : drainTime sp a ≤ sp.ts s) :
-    ∃ (q : Fin sp.n) (kU iU : Nat) (U : SA.Blk sp.n (List (FG.Att sp.n))),
+    ∃ (q : Fin sp.n) (kU iU : Nat) (U : AC.Blk sp.n (List (FG.Att sp.n))),
       ReadyProposal tr H proposer q kU U.slot U ∧
       Compose.RunEntry tr H q iU U ∧
       Anc (tr.HonestBlocks H) P U ∧
@@ -136,9 +136,9 @@ theorem old_entry_crossing {Gp : Time} {W M cF kF v s : Nat} {p : Fin sp.n} {kP 
     rw [this] at hδt
     linarith
   have hts {a c : Nat} (h : a ≤ c) : sp.ts a ≤ sp.ts c :=
-    (SA.ts_le_iff sp).2 (by exact_mod_cast h)
+    (AC.ts_le_iff sp).2 (by exact_mod_cast h)
   have hts_add (c m : Nat) : sp.ts (c + m : Nat) = sp.ts c + 4 * sp.Δ * (m : Time) := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   obtain ⟨hpH, -, -, hPprop, hPs, -⟩ := id hP
   -- `P` at its acceptance
   have hpostP : tr.post iP = tr.state p (iP + 1) := (tr.state_succ_of_call haccept).symm
@@ -156,7 +156,7 @@ theorem old_entry_crossing {Gp : Time} {W M cF kF v s : Nat} {p : Fin sp.n} {kP 
     have h1 := cutZ_lt_reset hrun hp.healthy hp.reset
     have h2 := lt_cutZ sp g
     have h3 : ¬ sp.ts (sp.slot a + 1 : Nat) ≤ a := fun h => by
-      have := (SA.ts_le_iff_le_slot sp (by linarith [gbar_nonneg g]) _).1 h
+      have := (AC.ts_le_iff_le_slot sp (by linarith [gbar_nonneg g]) _).1 h
       push_cast at this; omega
     have h4 := hts (show sp.slot a + 1 ≤ sp.slot a + 2 * sp.k + 5 by omega)
     rw [drainTime_eq] at hafter
@@ -165,7 +165,7 @@ theorem old_entry_crossing {Gp : Time} {W M cF kF v s : Nat} {p : Fin sp.n} {kP 
   have hslot_rep : ∀ {r : Nat}, tr.time r ≤ sp.ts s + 6 * sp.Δ →
       sp.slot (tr.time r) ≤ s + 1 := fun {r} hr => by
     by_contra h
-    have := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg r) ((s + 2 : Nat) : Int)).2
+    have := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg r) ((s + 2 : Nat) : Int)).2
       (by push_cast; omega)
     rw [hts_add s 2] at this
     push_cast at this
@@ -174,7 +174,7 @@ theorem old_entry_crossing {Gp : Time} {W M cF kF v s : Nat} {p : Fin sp.n} {kP 
   have key : ∃ w ∈ H, ∃ c D, D ∈ (tr.state w c).fg.tree ∧ Anc (tr.HonestBlocks H) P D ∧
       ((tr.state w c).fg.σ P.root).h < ((tr.state w c).fg.σ D.root).h ∧
       D.slot ≤ s + sp.toParams.δt := by
-    have higher : ∀ z ∈ H, ∀ r ℓ C, SA.ToFGAt tr.projAC z r ℓ C →
+    have higher : ∀ z ∈ H, ∀ r ℓ C, AC.ToFGAt tr.projAC z r ℓ C →
         tr.time r ≤ sp.ts s + 6 * sp.Δ → Anc (tr.HonestBlocks H) P C →
         ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h →
         ∃ w ∈ H, ∃ c D, D ∈ (tr.state w c).fg.tree ∧ Anc (tr.HonestBlocks H) P D ∧
@@ -190,7 +190,7 @@ theorem old_entry_crossing {Gp : Time} {W M cF kF v s : Nat} {p : Fin sp.n} {kP 
       hall | ⟨z, hz, r, ℓ, C, hC, hrt, hPC, hlt⟩
     swap
     · exact higher z hz r ℓ C hC hrt hPC hlt
-    by_cases hhi : ∃ z ∈ H, ∃ r ℓ C, SA.ToFGAt tr.projAC z r ℓ C ∧
+    by_cases hhi : ∃ z ∈ H, ∃ r ℓ C, AC.ToFGAt tr.projAC z r ℓ C ∧
         tr.time r ≤ sp.ts s + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C ∧
         ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h
     · obtain ⟨z, hz, r, ℓ, C, hC, hrt, hPC, hlt⟩ := hhi

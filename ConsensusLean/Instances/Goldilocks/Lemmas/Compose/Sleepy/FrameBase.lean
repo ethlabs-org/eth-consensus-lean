@@ -24,7 +24,7 @@ precedes the signing (`attestation_source`). `Frame` imports this module publicl
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
 /-! ### Chain geometry in one honest store -/
 
@@ -46,7 +46,7 @@ theorem step_J {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock 
 
 end Store
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
@@ -72,7 +72,7 @@ theorem fg_tree_subset_honest {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
 /-- Ancestry inside the honest blocks below a held block is ancestry in the holder's store. -/
 theorem honest_held_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {A W : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hy : y ∈ H) {i : Nat} {A W : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : Anc (tr.HonestBlocks H) A W) (hW : W ∈ (tr.state y i).fg.tree) :
     (tr.state y i).fg.Anc A W :=
   FrameGeometry.honest_held_anc hrun.toLocalRun (projFG_localRun hrun hnc) hy h hW
@@ -81,7 +81,7 @@ theorem honest_held_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)
 `Th`. -/
 theorem honest_held_height {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {A W : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hy : y ∈ H) {i : Nat} {A W : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : (tr.state y i).fg.Anc A W) :
     ((tr.state y i).fg.σ A.root).h ≤ ((tr.state y i).fg.σ W.root).h ∧
       (((tr.state y i).fg.σ W.root).h = ((tr.state y i).fg.σ A.root).h →
@@ -91,7 +91,7 @@ theorem honest_held_height {ini} (hrun : GoldilocksRun proposer dg H tr ini)
 /-- Two entries of one state height below one held block are equal. -/
 theorem held_entry_unique {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {E E' W : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {E E' W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y i).fg.tree)
     (hE : (tr.state y i).fg.Anc E W) (hE' : (tr.state y i).fg.Anc E' W)
     (hh : ((tr.state y i).fg.σ E.root).h = ((tr.state y i).fg.σ E'.root).h)
@@ -102,7 +102,7 @@ theorem held_entry_unique {ini} (hrun : GoldilocksRun proposer dg H tr ini)
 /-- The chain invariants of a held block's state. -/
 theorem honest_held_chain {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y i).fg.tree) :
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y i).fg.tree) :
     1 ≤ ((tr.state y i).fg.σ B.root).h ∧
       ((tr.state y i).fg.σ B.root).hj < ((tr.state y i).fg.σ B.root).h ∧
       (((tr.state y i).fg.σ B.root).hj = 0 → ((tr.state y i).fg.σ B.root).J = sp.genesisRoot) :=
@@ -112,7 +112,7 @@ theorem honest_held_chain {ini} (hrun : GoldilocksRun proposer dg H tr ini)
 accepted the block, before the cut. -/
 theorem honest_row_signed_before {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {X : SA.Blk sp.n (List (FG.Att sp.n))}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ (tr.state y i).fg.tree) {a : FG.Att sp.n} (ha : a ∈ X.fgPayload) (hav : a.val ∈ H) :
     ∃ m < i, tr.AcceptAt y m X ∧ ∃ k < m, tr.SignAt a.val k a := by
   rw [← store_eq hrun hy i] at hX
@@ -126,20 +126,20 @@ theorem honest_row_signed_before {ini} (hrun : GoldilocksRun proposer dg H tr in
 /-- `D` is an honest source naming the entry `T`: a block of an honest node's tree whose state
 has the entry `T`. -/
 def IsHonestSource (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
-    (D : SA.Blk sp.n (List (FG.Att sp.n))) (T : Nat) : Prop :=
+    (D : AC.Blk sp.n (List (FG.Att sp.n))) (T : Nat) : Prop :=
   ∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧ ((tr.state x k).fg.σ D.root).Th = T
 
-theorem isHonestSource_iff {D : SA.Blk sp.n (List (FG.Att sp.n))} {T : Nat} :
+theorem isHonestSource_iff {D : AC.Blk sp.n (List (FG.Att sp.n))} {T : Nat} :
     IsHonestSource tr H D T ↔
       ∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧ ((tr.state x k).fg.σ D.root).Th = T :=
   Iff.rfl
 
 /-- Every honest attestation on a block of `y`'s tree before cut `i` has a source satisfying `G`. -/
 def HonestRowsSourced (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
-    (G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop) (y : Fin sp.n) (i : Nat) : Prop :=
+    (G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop) (y : Fin sp.n) (i : Nat) : Prop :=
   ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H → ∃ D, G D ∧ IsHonestSource tr H D a.T
 
-theorem honestRowsSourced_iff {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} {y : Fin sp.n}
+theorem honestRowsSourced_iff {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop} {y : Fin sp.n}
     {i : Nat} : HonestRowsSourced tr H G y i ↔
       ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H →
         ∃ D, G D ∧ IsHonestSource tr H D a.T :=
@@ -151,12 +151,12 @@ attestations the geometry reads at the crossing heights `≥ h₀`. An attestati
 the reader does not hold (a finality-pair attestation of a longer chain); the geometry never
 reads those. -/
 def RowsAbove (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
-    (G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop) (y : Fin sp.n) (i h₀ : Nat) : Prop :=
+    (G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop) (y : Fin sp.n) (i h₀ : Nat) : Prop :=
   ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H →
     (∃ E ∈ (tr.state y i).fg.tree, E.root = a.T) →
     h₀ ≤ ((tr.state y i).fg.σ a.T).h → ∃ D, G D ∧ IsHonestSource tr H D a.T
 
-theorem rowsAbove_iff {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} {y : Fin sp.n}
+theorem rowsAbove_iff {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop} {y : Fin sp.n}
     {i h₀ : Nat} : RowsAbove tr H G y i h₀ ↔
       ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H →
         (∃ E ∈ (tr.state y i).fg.tree, E.root = a.T) →
@@ -164,13 +164,13 @@ theorem rowsAbove_iff {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} {y : Fin s
   Iff.rfl
 
 /-- Concrete source rows supply the AC-independent frame geometry. -/
-theorem RowsAbove.toFrameGeometry {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+theorem RowsAbove.toFrameGeometry {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
     {y : Fin sp.n} {i h₀ : Nat} (h : RowsAbove tr H G y i h₀) :
     FrameGeometry.RowsAbove tr H G y i h₀ := by
   simpa only [rowsAbove_iff, FrameGeometry.rowsAbove_iff,
     isHonestSource_iff, FrameGeometry.isHonestSource_iff] using h
 
-theorem HonestRowsSourced.above {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
+theorem HonestRowsSourced.above {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
     {y : Fin sp.n} {i : Nat} (h : HonestRowsSourced tr H G y i) (h₀ : Nat) :
     RowsAbove tr H G y i h₀ :=
   fun X hX a ha hav _ _ => h X hX a ha hav
@@ -178,8 +178,8 @@ theorem HonestRowsSourced.above {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop}
 /-- The entry an honest source names is its ancestor, an entry block of the source's height. -/
 theorem honest_source_entry {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    {D : SA.Blk sp.n (List (FG.Att sp.n))} {T : Nat} (hD : IsHonestSource tr H D T)
-    {E : SA.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ tr.HonestBlocks H) (hET : E.root = T) :
+    {D : AC.Blk sp.n (List (FG.Att sp.n))} {T : Nat} (hD : IsHonestSource tr H D T)
+    {E : AC.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ tr.HonestBlocks H) (hET : E.root = T) :
     ∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧ E ∈ (tr.state x k).fg.tree ∧
       (tr.state x k).fg.Anc E D ∧
       ((tr.state x k).fg.σ E.root).h = ((tr.state x k).fg.σ D.root).h ∧
@@ -201,23 +201,23 @@ theorem attestation_source {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have hΦ : FrameOK (Node.frame (tr.state x j)) :=
     (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hx j)).1
   -- the source is the deepest candidate: the viable ancestor of a stored fast lock block
-  have hcand : src ∈ SA.toFGCandidates sp (tr.state x j).ac (Node.frame (tr.state x j))
+  have hcand : src ∈ AC.toFGCandidates sp (tr.state x j).ac (Node.frame (tr.state x j))
       (tr.time j) := by
-    have hC' : (SA.acToFG sp (tr.state x j).ac (Node.frame (tr.state x j)) (tr.time j)).2 =
+    have hC' : (AC.acToFG sp (tr.state x j).ac (Node.frame (tr.state x j)) (tr.time j)).2 =
         some src := hC
-    unfold SA.acToFG at hC'
-    rcases hd : SA.deepest (Node.frame (tr.state x j))
-      (SA.toFGCandidates sp (tr.state x j).ac (Node.frame (tr.state x j)) (tr.time j)) with
+    unfold AC.acToFG at hC'
+    rcases hd : AC.deepest (Node.frame (tr.state x j))
+      (AC.toFGCandidates sp (tr.state x j).ac (Node.frame (tr.state x j)) (tr.time j)) with
       _ | D
     · simp only [hd] at hC'
       split_ifs at hC'
     · simp only [hd] at hC'
       split_ifs at hC'
       cases hC'
-      exact (SA.deepest_mem hd).1
+      exact (AC.deepest_mem hd).1
   obtain ⟨hsv, l, hl, hlb, -, -⟩ := hcand
   obtain ⟨l₀, hl₀, B, hB, hBr, -, rfl⟩ := hl
-  obtain ⟨hVt, hVB⟩ := SA.viableAncestor_anc hΦ hB
+  obtain ⟨hVt, hVB⟩ := AC.viableAncestor_anc hΦ hB
   obtain rfl : src = (Node.frame (tr.state x j)).viableAncestor B :=
     hΦ.coherent.1 hsv.1 hVt hlb.symm
   obtain ⟨L, hL, hLr, C, hCo, hLC⟩ := lock_origin hrun hnc hx j l₀ hl₀

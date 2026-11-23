@@ -13,15 +13,15 @@ They do not reconstruct the reset for a terminal honest cohort.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
 
 /-- The frame data shared by the nodes honest at their individual cuts in an interval. -/
 structure FrameWindow (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
     (lo hi : Time) (floor : Nat) (kindJ : Prop)
-    (J : SA.Blk sp.n (List (FG.Att sp.n))) : Prop where
+    (J : AC.Blk sp.n (List (FG.Att sp.n))) : Prop where
   floor_eq : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi →
     (tr.state y i).fg.headHeightFloor = floor
   kind_iff : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi →
@@ -49,7 +49,7 @@ honest at their signing cuts and at `c_z`; the height frontier is the original s
 not a retained one. -/
 structure DrainOutputs (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n)
     (H : Time → Set (Fin sp.n)) (g : Time) (G Ld : Nat) (b : Time) : Prop where
-  warm : ∀ {s₀ N floor : Nat} {kindJ : Prop} {J : SA.Blk sp.n (List (FG.Att sp.n))},
+  warm : ∀ {s₀ N floor : Nat} {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))},
     FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J →
     gbar g + 4 * sp.Δ ≤ sp.ts s₀ → s₀ + Ld ≤ N → sp.ts N + 2 * sp.Δ ≤ b →
     (∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →

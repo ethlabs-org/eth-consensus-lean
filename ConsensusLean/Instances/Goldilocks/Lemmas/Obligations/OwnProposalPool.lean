@@ -15,8 +15,8 @@ proposal. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
-variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
-  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 section Generic
@@ -61,33 +61,33 @@ theorem _root_.Consensus.Goldilocks.Compose.own_proposal_payload_pooled_run
 end Generic
 
 /-- Goldilocks proposal members come from a pool. -/
-theorem proposal_pool {a : SA.SAState sp.n} {φ : (goldilocksNode sp ro).Frm} {t : Time}
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (SA.Payload sp.n)} {p : SA.Payload sp.n}
-    (hd : (SA.acProposal sp a φ t).2 = some (d, p)) {m : SA.Vote sp.n} (hm : m ∈ p.1) :
+theorem proposal_pool {a : AC.ACState sp.n} {φ : (goldilocksNode sp ro).Frm} {t : Time}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (AC.Payload sp.n)} {p : AC.Payload sp.n}
+    (hd : (AC.acProposal sp a φ t).2 = some (d, p)) {m : AC.Vote sp.n} (hm : m ∈ p.1) :
     ∃ σ, m ∈ a.pool σ := by
-  obtain ⟨-, hpay, -⟩ := SA.proposal_payload hd
+  obtain ⟨-, hpay, -⟩ := AC.proposal_payload hd
   rw [hpay] at hm
-  exact ⟨_, (SA.SAState.mem_poolAt.mp (List.mem_filter.mp hm).1).2⟩
+  exact ⟨_, (AC.ACState.mem_poolAt.mp (List.mem_filter.mp hm).1).2⟩
 
 /-- The Goldilocks proposal changes locks without removing pooled votes. -/
-theorem proposal_preserves_pool (y : Fin sp.n) (a : SA.SAState sp.n)
-    (φ : (goldilocksNode sp ro).Frm) (t : Time) (m : SA.Vote sp.n) (hm : ∃ σ, m ∈ a.pool σ) :
-    ∃ σ, m ∈ (SA.acProposal sp a φ t).1.pool σ := by
+theorem proposal_preserves_pool (y : Fin sp.n) (a : AC.ACState sp.n)
+    (φ : (goldilocksNode sp ro).Frm) (t : Time) (m : AC.Vote sp.n) (hm : ∃ σ, m ∈ a.pool σ) :
+    ∃ σ, m ∈ (AC.acProposal sp a φ t).1.pool σ := by
   obtain ⟨σ, hm⟩ := hm
-  have hg : SA.Grows a (SA.acProposal sp a φ t).1 :=
-    (SA.voteClosed_grows a).step ro y φ t (c := .proposal) (by simp) (SA.Grows.refl a)
+  have hg : AC.Grows a (AC.acProposal sp a φ t).1 :=
+    (AC.voteClosed_grows a).step ro y φ t (c := .proposal) (by simp) (AC.Grows.refl a)
   exact ⟨σ, hg.mem hm⟩
 
 /-- Votes in an actual own-proposal payload were already pooled before its AC block cut. -/
 theorem own_proposal_payload_pooled_run {ini} (hr : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {t : Time} {x : Nat}
     (hg : tr.GroupAt proposer dg y j t (.tick x))
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (SA.Payload sp.n)} {p : SA.Payload sp.n}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (AC.Payload sp.n)} {p : AC.Payload sp.n}
     (hd : (Node.acProposal
       (Node.tickStep proposer dg y (tr.state y j) t x .acTick).1 t).2.2 = some (d, p))
     (hprop : ∃ ℓp, tr.CallAt y (j + 1) (.ac ℓp) ∧ ℓp.call = .proposal)
     (hfg : ∃ B, tr.CallAt y (j + 2) (.fg (.block B true)))
-    {m : SA.Vote sp.n} (hm : m ∈ p.1) :
+    {m : AC.Vote sp.n} (hm : m ∈ p.1) :
     m ∈ (tr.state y (j + 3)).ac.pool m.slot := by
   obtain ⟨ℓp, hcp, hpc⟩ := hprop
   obtain ⟨B, hcb⟩ := hfg

@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.GrowingPremises
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Honest
@@ -18,16 +18,16 @@ The prefix of the growing run is a static AC run (`acRun_upTo`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
 /-- A slot-`s` vote of a node honest at it precedes every cut at a time `≥ t_{s+1}`. -/
 theorem vote_cut_lt {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    {x : Fin sp.n} {j : Nat} {e' : SA.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x j e')
+    {x : Fin sp.n} {j : Nat} {e' : AC.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x j e')
     {s : Nat} (hes : e'.msg.slot = s) {i : Nat} (hi : sp.ts ((s + 1 : Nat) : Int) ≤ tr.time i) :
     tr.time j < sp.ts ((s + 1 : Nat) : Int) ∧ j < i := by
   obtain ⟨hx, ℓx, hcx, hex⟩ := hVoteAt_iff.1 hv
@@ -35,7 +35,7 @@ theorem vote_cut_lt {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   rw [hes] at h
   change s = sp.slot (tr.time j) at h
   have hlt : tr.time j < sp.ts ((s + 1 : Nat) : Int) := lt_of_not_ge fun hge => by
-    have := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).1 hge
+    have := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).1 hge
     omega
   exact ⟨hlt, lt_of_not_ge fun hij => absurd (hrun.time_mono hij) (not_le.2 (hlt.trans_le hi))⟩
 
@@ -47,46 +47,46 @@ compromised members of the slot-`s` committee (`faults_lt_voters`, `d ≤ t_s + 
 not honest at `d` is such a member (T); the static counted batch applies on the prefix through
 `d`. -/
 theorem vote_extends_of_batch_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {b : Time} {σ₀ : Nat} (hBK : CommitteeBoundsFrom tr H K σ₀ b) {s : Nat}
     (hs₀ : σ₀ ≤ s) {y : Fin sp.n}
-    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hib : tr.time i ≤ b) {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hviab : SA.ViableAtVote ℓ e (s + 1) B)
+    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hy : y ∈ H (tr.time i)) (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
+    (hib : tr.time i ≤ b) {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hviab : AC.ViableAtVote ℓ e (s + 1) B)
     (hall : ∀ x j e', j < i → HVoteAt tr H x j e' → e'.msg.slot = s →
-      SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
-    (hcarry : SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s
+      AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
+    (hcarry : AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s
       {v | ∃ x j e', HVoteAt tr H x j e' ∧ e'.msg = v ∧ v.slot = s})
-    (hlocks : ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
+    (hlocks : ∀ L ∈ AC.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
       Compatible (tr.HonestBlocksAt H) L B) :
-    SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
+    AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
   have hΔ := sp.toParams.hΔ
   have hm := hrun.time_mono
   have hd := hrun.time_nonneg i
   have hsub := upTo_subset hrun hd
   have hU := honestBlocksAt_coherent hrun hnc
   have hr := acRun_upTo hrun hnc hd
-  have hc' : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  have hc' : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
   have hts1 : sp.ts ((s + 1 : Nat) : Int) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hti : sp.ts ((s + 1 : Nat) : Int) ≤ tr.time i := by
     have h := (castAt_spec_at hrun hnc hy hc).2.1
     rw [hs] at h
     change s + 1 = sp.slot (tr.time i) at h
-    exact (SA.ts_le_iff_le_slot sp hd _).2 (by exact_mod_cast h.le)
+    exact (AC.ts_le_iff_le_slot sp hd _).2 (by exact_mod_cast h.le)
   have hti' : tr.time i ≤ sp.ts ((s + 1 : Nat) : Int) + sp.Δ :=
     hs ▸ (cast_head_fcRoot_at hrun hnc hy hc).2
   -- a vote of the prefix by a validator honest at `d` is one of the run by a node honest at it
-  have hvote : ∀ x j e', x ∈ H (tr.time i) → SA.VoteAt (tr.projAC.upTo (tr.time i)) x j e' →
+  have hvote : ∀ x j e', x ∈ H (tr.time i) → AC.VoteAt (tr.projAC.upTo (tr.time i)) x j e' →
       HVoteAt tr H x j e' := fun x j e' hx hv => by
-    obtain ⟨hjd, hv⟩ := sa_voteAt_upTo.mp hv
+    obtain ⟨hjd, hv⟩ := ac_voteAt_upTo.mp hv
     exact hVoteAt_iff.2 ⟨hrun.antitone hjd hx, hv⟩
   have hΦ := (frameIn_at hrun hnc hy hc.1).1
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
     · exact h.1.1
-    · exact SA.mem_of_anc h hΦ.fcRoot_mem
+    · exact AC.mem_of_anc h hΦ.fcRoot_mem
   have hBU := frame_upTo_at hrun hnc hy hc.1 hBt
   have hT : sp.ts s + 3 * sp.Δ ≤ tr.time i := by linarith
   have h := Compose.vote_extends_of_counted_batch hr hy hc' hs hviab
@@ -95,7 +95,7 @@ theorem vote_extends_of_batch_at {ini} (hrun : Growing.GoldilocksRun proposer dg
     (fun x hx => (votersAt_iff.1 hx).1)
     (fun x hx => by
       obtain ⟨-, j, e', hv, hes⟩ := votersAt_iff.1 hx
-      exact ⟨j, e', sa_voteAt_upTo.mpr ⟨(vote_cut_lt hrun hnc hv hes hti).1.le.trans hti,
+      exact ⟨j, e', ac_voteAt_upTo.mpr ⟨(vote_cut_lt hrun hnc hv hes hti).1.le.trans hti,
         (hVoteAt_iff.1 hv).2⟩, hes⟩)
     (fun x hx j e' hv hes => by
       have hv' := hvote x j e' (votersAt_iff.1 hx).1 hv
@@ -105,12 +105,12 @@ theorem vote_extends_of_batch_at {ini} (hrun : Growing.GoldilocksRun proposer dg
     (by
       rintro w ⟨v, hv, rfl⟩
       by_cases hw : v.val ∈ H (tr.time i)
-      · obtain ⟨j, -, e', hv', he'⟩ := SA.honest_merged_vote hr hy hc' hv hw
+      · obtain ⟨j, -, e', hv', he'⟩ := AC.honest_merged_vote hr hy hc' hv hw
         refine Or.inl (votersAt_iff.2 ⟨hw, j, e', hvote _ j e' hw hv', ?_⟩)
-        rw [he']; exact SA.merged_vote_slot hr.localRun hr.vstart hy hc'
+        rw [he']; exact AC.merged_vote_slot hr.localRun hr.vstart hy hc'
           v hv
       · have hK := hKB.committeeTAt hrun hnc y i ℓ e hy hc s v hv
-        rw [SA.merged_vote_slot hr.localRun hr.vstart hy hc' v hv] at hK
+        rw [AC.merged_vote_slot hr.localRun hr.vstart hy hc' v hv] at hK
         exact Or.inr ⟨hK, hw⟩)
     (by
       have hcount := faults_lt_voters hrun hnc hKB hBK (s := s) (d := tr.time i) hs₀
@@ -121,7 +121,7 @@ theorem vote_extends_of_batch_at {ini} (hrun : Growing.GoldilocksRun proposer dg
     ⟨⟨hcarry.awake, le_rfl⟩, hcarry.joined, fun v ⟨x, hx, j, e', hv, hev, hvs⟩ => by
       have hv' := hvote x j e' (votersAt_iff.1 hx).1 hv
       obtain ⟨Hv, hHv, hHvr, hacc⟩ := hcarry.heads v ⟨x, j, e', hv', hev, hvs⟩
-      obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := SA.honest_head hr (votersAt_iff.1 hx).1 hv
+      obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := AC.honest_head hr (votersAt_iff.1 hx).1 hv
       obtain rfl : Hv = Hd₂ := hU.1 hHv (hsub hHd₂) (hHvr.trans (hev ▸ hHd₂r.symm))
       refine ⟨Hv, hHd₂, hHvr, fun X hX => ?_⟩
       exact (hacc X (hX.mono hsub)).imp_right fun ⟨k, hk, hkT⟩ =>

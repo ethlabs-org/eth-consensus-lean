@@ -17,17 +17,17 @@ finality come from `coverage_of_finalizing_carrier` (C5) at `D = t_{v+M}`, whose
 
 namespace Consensus.Goldilocks.Healing.Recovery
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-- **Final C1.3 glue**: an actual high stretch proposal and an actual finalizing carrier
 before `t_{v+M}` give `HighCoverageAt` at the public duration `4Δ(W + 1 + M)`. -/
 theorem high_coverage_of_stretch_carrier {t : Time} {W M v : Nat} {q : Fin sp.n} {kP iP : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {x : Fin sp.n} {kX : Nat}
-    {X Fx : SA.Blk sp.n (List (FG.Att sp.n))}
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} {x : Fin sp.n} {kX : Nat}
+    {X Fx : AC.Blk sp.n (List (FG.Att sp.n))}
     (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hvtime : t ≤ sp.ts v ∧ sp.ts v ≤ t + 4 * sp.Δ * ((W : Time) + 1))
     (hP : ReadyProposal tr H proposer q kP P.slot P)
@@ -42,9 +42,9 @@ theorem high_coverage_of_stretch_carrier {t : Time} {W M v : Nat} {q : Fin sp.n}
     HighCoverageAt tr H g t (4 * sp.Δ * ((W : Time) + 1 + M)) := by
   obtain ⟨hqH, -, -, hProp, -, -⟩ := hP
   have hts {c d : Nat} (h : c ≤ d) : sp.ts c ≤ sp.ts d :=
-    (SA.ts_le_iff sp).2 (by exact_mod_cast h)
+    (AC.ts_le_iff sp).2 (by exact_mod_cast h)
   have hvM : sp.ts (v + M : Nat) = sp.ts v + 4 * sp.Δ * (M : Time) := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   -- the carrier's deadline is at most the public one
   have hD : sp.ts (v + M : Nat) ≤ t + 4 * sp.Δ * ((W : Time) + 1 + M) := by
     rw [hvM]; linarith [hvtime.2]

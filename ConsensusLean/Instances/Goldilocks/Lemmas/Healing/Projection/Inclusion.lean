@@ -22,19 +22,19 @@ acceptance relay, each FG acceptance followed by its `ac_on_block` at the next c
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 /-- Every block of an honest node's frame at a call is genesis (by root), or the node accepted
 it at that call or an earlier one. -/
-private theorem frame_root_or_accepted {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (SA.Blk sp.n FGP)} {tr : SA.SATrace sp FGP ro}
-    {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hc : tr.CallAt y i ℓ) :
+private theorem frame_root_or_accepted {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
+    {H : Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)} {tr : AC.GTrace sp FGP ro}
+    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H)
+    {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ) :
     ∀ B ∈ ℓ.frame.tree, B.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k B := by
   induction i using Nat.strong_induction_on generalizing ℓ with
   | _ i ih =>
-    have step : ∀ Φ : SA.Frm sp.n FGP,
-        (SA.goldilocksSA sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame →
+    have step : ∀ Φ : AC.Frm sp.n FGP,
+        (AC.goldilocksAC sp FGP ro).CallOK U Φ (tr.time i) ℓ.call ℓ.frame →
         (∀ B ∈ Φ.tree, B.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k B) →
         ∀ B ∈ ℓ.frame.tree, B.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k B := by
       intro Φ hok hv X hX
@@ -60,7 +60,7 @@ private theorem frame_root_or_accepted {sp : SAParams} {FGP : Type} {ro : Replay
     · exact step _ hok fun B hB =>
         (ih j hj hc' B hB).imp_right fun ⟨k, hk, h⟩ => ⟨k, hk.trans hj.le, h⟩
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
@@ -85,7 +85,7 @@ private theorem honest_proposal_of_tick {ini : Fin sp.n → (goldilocksNode sp r
     {pay : Payload sp.n}
     (hr : (Node.acProposal (Node.tickStep proposer dg p (tr.state p j) t x .acTick).1 t).2.2 =
       some (d, pay)) :
-    SA.HonestProposal tr.projAC p (sp.slot t)
+    AC.HonestProposal tr.projAC p (sp.slot t)
       (Node.mkBlock dg p (tr.state p j).fg t x d.head pay) := by
   have h := hrun.toLocalRun
   obtain ⟨hc1, ht1, hst1⟩ := tick_proposal_call h hp hg hP
@@ -107,13 +107,13 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg) :
-    SA.Driven proposer tr.projAC H := by
+    AC.Driven proposer tr.projAC H := by
   have h := hrun.toLocalRun
   have hac := Compose.goldilocks_ac_projection_from hrun hnc
   have hr := hac.localRun
   have blocks : ∀ y ∈ H, ∀ i B, tr.projAC.AcceptAt y i B → B.root ≠ sp.genesisRoot →
       B.proposer = proposer B.slot ∧ B.slot ≤ sp.slot (tr.projAC.time i) ∧
-      ∃ Pb : SA.Blk sp.n (List (FG.Att sp.n)), B.parent = some Pb.root ∧ Pb.slot < B.slot ∧
+      ∃ Pb : AC.Blk sp.n (List (FG.Att sp.n)), B.parent = some Pb.root ∧ Pb.slot < B.slot ∧
         (Pb.root = sp.genesisRoot ∨ ∃ k < i, tr.projAC.AcceptAt y k Pb) := by
     intro y hy i B ha hB
     obtain ⟨ℓ, hc, hcall⟩ := ha
@@ -149,7 +149,7 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
     rcases Compose.blockCall_cases h hp ho with hd | ⟨j, x, rfl, hg, hP, d, pay, hr', rfl, -⟩
     · exact absurd (by simpa using (hd.2.1 0 (List.length_pos_iff.2 hd.1)).2.2.2.1) hpos
     have hps : proposer (sp.slot (tr.time (j + 2))) = p := hP.2.2
-    change SA.HonestProposal tr.projAC (proposer (sp.slot (tr.time (j + 2))))
+    change AC.HonestProposal tr.projAC (proposer (sp.slot (tr.time (j + 2))))
       (sp.slot (tr.time (j + 2))) _
     rw [hps]
     exact honest_proposal_of_tick hrun hnc hroot hp hg hP hr'
@@ -161,11 +161,11 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
   · -- (b) the proposal at `t_s`
     intro s hs p hp hps haw _
     have hΔ := sp.toParams.hΔ
-    have hts0 : 0 ≤ sp.ts s := by unfold SAParams.ts; positivity
-    have hpub : sp.toParams.IsPublic (sp.ts s) := ⟨4 * (s : Int), by unfold SAParams.ts; ring⟩
+    have hts0 : 0 ≤ sp.ts s := by unfold ACParams.ts; positivity
+    have hpub : sp.toParams.IsPublic (sp.ts s) := ⟨4 * (s : Int), by unfold ACParams.ts; ring⟩
     obtain ⟨j, x, hg⟩ := h.tick_of_awake p hp _ hts0 hpub haw
     have hslot : sp.toParams.slotOf (sp.ts s) = s :=
-      SA.slot_of_mem sp s le_rfl ((SA.ts_lt_iff sp).2 (by omega))
+      AC.slot_of_mem sp s le_rfl ((AC.ts_lt_iff sp).2 (by omega))
     have hP : Node.Proposes proposer p (sp.ts s) :=
       ⟨by rw [hslot]; exact hs, by rw [hslot, sp.slotTime_eq]; rfl, by rw [hslot, hps]⟩
     obtain ⟨hc1, ht1, hst1⟩ := tick_proposal_call h hp hg hP
@@ -258,7 +258,7 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
 /-- `Catch(κ)` over a run gives `Catch(κ)` on its AC projection (`Φ.F` is `Σ.F`). -/
 theorem projection_catch_of_run (hrun : GoldilocksRun proposer dg H tr ini)
     (hc : CatchRun tr H g (2 * sp.Δ)) :
-    SA.CatchAC tr.projAC H (tr.HonestBlocks H) g (2 * sp.Δ) := by
+    AC.CatchAC tr.projAC H (tr.HonestBlocks H) g (2 * sp.Δ) := by
   have h := hrun.toLocalRun
   intro x hx i B ha hi y hy j ℓ hcj hj hanc
   obtain ⟨i', rfl, ha', hti⟩ := fg_accept_before h hx ha

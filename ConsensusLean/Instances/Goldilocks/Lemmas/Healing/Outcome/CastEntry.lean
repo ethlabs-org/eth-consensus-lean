@@ -14,19 +14,19 @@ fork-choice root and height floor (`Healing/Outcome/RootFloor`). -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-- A high left entry of a post-drain voter's store lies below a bounded pre-slot high origin: its
 crossing attestation's origin label is below the vote's slot. -/
 theorem ResetPremisesUpTo.cast_entry_below_old {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {u : Nat} {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y j ell e)
-    (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) {E C : SA.Blk sp.n (List (FG.Att sp.n))}
+    {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y j ell e)
+    (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) {E C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hE : E ∈ (tr.state y j).fg.tree) (hET : ((tr.state y j).fg.σ E.root).Th = E.root)
     (hEh : HZ tr H g + 1 ≤ ((tr.state y j).fg.σ E.root).h) (hEC : (tr.state y j).fg.Anc E C)
     (hlt : ((tr.state y j).fg.σ E.root).h < ((tr.state y j).fg.σ C.root).h) :

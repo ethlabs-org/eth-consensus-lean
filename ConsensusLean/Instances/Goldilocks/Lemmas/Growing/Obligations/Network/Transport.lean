@@ -273,7 +273,7 @@ theorem network_trace_eq (hn : 1 ≤ Fintype.card V) :
 theorem network_localRun (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) :
     Growing.LocalRun (runProposer S rho hn)
       (NodeAsChainShape.CanonicalTrace.digestOf (traceEncoding S hn) rho)
-      (NodeAsChainShape.CanonicalTrace.honestKeysAt rho) SA.Vote.val
+      (NodeAsChainShape.CanonicalTrace.honestKeysAt rho) AC.Vote.val
       (NodeAsChainShape.CanonicalTrace.simTrace (traceEncoding S hn) rho) (simIni S rho hn) := by
   obtain ⟨_, hdg⟩ := runProposer_digestOf S rho hn
   rw [← hdg, ← network_trace_eq, ← network_honestKeysAt_eq]
@@ -439,7 +439,7 @@ theorem held_att_processed_before_at {V : Type} [Fintype V] [DecidableEq V] {E :
   apply NodeAsChainShape.CanonicalTrace.held_att_processed_before (network_localRun S rho hn hv)
     (decode_attObj S rho hn a hwf) (fun _ => own_att_process_by S rho hn hv) hh hd hj
 
-variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (ΔF : Time)
 
 /-- Signed FG attestations of a node honest at the signing cut are processed before the

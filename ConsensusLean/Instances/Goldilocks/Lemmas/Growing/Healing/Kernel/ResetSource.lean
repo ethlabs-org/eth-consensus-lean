@@ -18,9 +18,9 @@ the reset below by the snapshot alone: no fault count, service or awake premise.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -92,14 +92,14 @@ clean label's slot after the reset's. -/
 theorem ResetPremisesUpTo.gbar_le_ts_of_clean_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {s : Nat}
-    (hs : cleanLabel sp a ≤ s) : SA.gbar g ≤ sp.ts s := by
+    (hs : cleanLabel sp a ≤ s) : AC.gbar g ≤ sp.ts s := by
   have hca := hp.cutZ_lt_reset_at
   have hlc := lt_cutZ sp g
   have hΔ := sp.toParams.hΔ
   have ha0 : 0 ≤ a := by linarith [gbar_nonneg g]
   rw [cleanLabel_eq] at hs
   by_contra h
-  have hsa := (SA.ts_le_iff_le_slot sp ha0 s).mp (le_trans (not_le.mp h).le (by linarith))
+  have hsa := (AC.ts_le_iff_le_slot sp ha0 s).mp (le_trans (not_le.mp h).le (by linarith))
   omega
 
 end Consensus.Goldilocks.Healing.Growing

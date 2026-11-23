@@ -28,9 +28,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
@@ -38,36 +38,36 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem operational_update_selection_proof_at {b : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hhold : p ∈ H (sp.ts u + sp.Δ)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
-    (hR : drainTime sp a ≤ sp.ts u) (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    (hR : drainTime sp a ≤ sp.ts u) (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u)
     (hTb : sp.ts u + 6 * sp.Δ ≤ b) {y : Fin sp.n} {j : Nat}
     (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
-    (hup : SA.UpdateAt tr.projAC y j u ell) :
+    (hup : AC.UpdateAt tr.projAC y j u ell) :
     P ∈ ell.frame.tree ∧
-      SA.getConfirmation sp (tr.projAC.state y j) ell.frame u = some P ∧
-      ¬ SA.conflictsWithLock sp (tr.projAC.state y j).locks ell.frame (tr.time j) P ∧
-      SA.fastSelect sp (tr.projAC.state y j) ell.frame u P = some P ∧
-      tr.projAC.post j = SA.updateConfirmation sp (tr.projAC.state y j) ell.frame (tr.time j) u ∧
+      AC.getConfirmation sp (tr.projAC.state y j) ell.frame u = some P ∧
+      ¬ AC.conflictsWithLock sp (tr.projAC.state y j).locks ell.frame (tr.time j) P ∧
+      AC.fastSelect sp (tr.projAC.state y j) ell.frame u P = some P ∧
+      tr.projAC.post j = AC.updateConfirmation sp (tr.projAC.state y j) ell.frame (tr.time j) u ∧
       (tr.projAC.post j).latestConfirmed =
-        (SA.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed := by
+        (AC.updateLatestConfirmed sp (tr.projAC.state y j) ell.frame P).latestConfirmed := by
   have hDelta := sp.toParams.hΔ
   have ht : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
   have hjb : tr.time j ≤ b := ht ▸ hTb
   have hub : sp.ts u + sp.Δ ≤ b := by linarith
-  have hun : ∀ z q e, z ∈ H (tr.time q) → SA.VoteAt tr.projAC z q e → tr.time q ≤ b →
+  have hun : ∀ z q e, z ∈ H (tr.time q) → AC.VoteAt tr.projAC z q e → tr.time q ≤ b →
       e.msg.slot = u → e.msg.head = P.root := fun z q e hz hv hqb hs =>
     hp.operational_unanimous_at hhold hdesignated hactual hPs hR (by linarith)
       z q e hz hv hs hqb
-  have hRnext := hR.trans ((SA.ts_le_iff sp).2 (show (u : Int) ≤ (u + 1 : Nat) by omega))
+  have hRnext := hR.trans ((AC.ts_le_iff sp).2 (show (u : Int) ≤ (u + 1 : Nat) by omega))
   have hu : 0 < u := by
     rw [drainTime_eq] at hR
-    have := (SA.ts_le_iff sp).1 hR
+    have := (AC.ts_le_iff sp).1 hR
     push_cast at this
     omega
   have hpk : tr.time k = sp.ts u := by
-    simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hactual.2.2
+    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hactual.2.2
   have hph : p ∈ H (tr.time k) := hp.run.antitone (by rw [hpk]; linarith) hhold
   have hactual' : (tr.upTo (tr.time k)).ProposesAt p k P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hactual.1⟩, hactual.2.1, hactual.2.2⟩
@@ -81,20 +81,20 @@ theorem operational_update_selection_proof_at {b : Time}
   have hca := hp.cutZ_lt_reset_at
   have ha0 : 0 ≤ a := by
     have := Healing.lt_cutZ sp g
-    have := SA.gbar_nonneg g
+    have := AC.gbar_nonneg g
     linarith
   have haR : a ≤ drainTime sp a := by
     have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
-      have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+      have := (AC.ts_le_iff_le_slot sp ha0 _).1 h
       omega
     apply ha'.le.trans
     rw [drainTime_eq]
-    exact (SA.ts_le_iff sp).2 (by push_cast; omega)
+    exact (AC.ts_le_iff sp).2 (by push_cast; omega)
   have hFP := finalized_below_unanimous_at_update_at hp hPU hPs hu hun hgu hRnext hTb hy hup
     (by rw [ht]; linarith [haR.trans hR])
   -- an honest member of the slot-`u` committee votes for `P`, which then reaches `y`
   obtain ⟨w, hwK, hw⟩ := hp.committee_honest_nonempty_at (s := u) (by linarith)
-    (by linarith) (by linarith [SA.gbar_nonneg g]) hub
+    (by linarith) (by linarith [AC.gbar_nonneg g]) hub
   obtain ⟨q, e, ⟨ellv, hv⟩, hs, hq⟩ := honest_votes_in_slot_at hp hgu hRnext hub w hw hwK
   have hwq : w ∈ H (tr.time q) := hp.run.antitone hq hw
   have hfr := (hp.run.cutLaw y j _ (Compose.projAC_callAt.mp hup.1) hy).1
@@ -113,7 +113,7 @@ theorem operational_update_selection_proof_at {b : Time}
   have hpool := unanimous_pool_at hp hun hgu hRnext hy hup.1
     (by rw [ht]; linarith) hjb hPt
   have hts : cutZ sp.toParams g ≤ sp.ts u := hca.le.trans (haR.trans hR)
-  have hvote : ∃ z q ell e, z ∈ H (tr.time q) ∧ SA.CastAt tr.projAC z q ell e ∧
+  have hvote : ∃ z q ell e, z ∈ H (tr.time q) ∧ AC.CastAt tr.projAC z q ell e ∧
       tr.time q ≤ b ∧ e.msg.slot = u := ⟨w, q, ellv, e, hwq, hv, hq.trans hub, hs⟩
   have hlocks := hp.call_locks_compatible_of_unanimous_at hPU hts hun hvote hy hup.1 hjb
     (by rw [ht]; linarith) ht.le (fun r hr B CV ho =>

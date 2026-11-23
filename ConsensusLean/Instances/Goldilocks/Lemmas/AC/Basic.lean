@@ -1,12 +1,12 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Trace
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 import ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry
 public import Mathlib.Order.Preorder.Finite
 
 public section
 
-/-! # Goldilocks SA: shared helpers for the AC proofs
+/-! # Goldilocks AC: shared helpers for the AC proofs
 
 Blocks by root (`lookup`, `InTree`, `AncR`), ancestry in a frame, and the extended time line.
 The viable ancestor of claims G0.4 (frame) (`viableAncestor_spec`, `viableAncestor_self`, for
@@ -14,19 +14,19 @@ every AC payload type) is proved here: `Lemmas.Common` cannot import `Spec.Frame
 optimistic selection is guarded by its slot and time and picks a block of the tree
 (`optimisticSelect_guard`, `optimisticSelect_mem_tree`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
 variable {n : Nat} {FGP : Type} {ACP : Type}
 
 /-- The characterisation of a start up to the vote permission (`VoteStart`,
-`Milestones/Spec/SA/Trace`). The AC invariants of the initial state that do not read `mayVote`
+`Milestones/Spec/AC/Premises`). The AC invariants of the initial state that do not read `mayVote`
 hold at every such start. -/
-theorem voteStart_iff {g : Nat} {s : SAState n} :
-    VoteStart g s ↔ ∃ m, s = { SAState.initial g with mayVote := m } :=
+theorem voteStart_iff {g : Nat} {s : ACState n} :
+    VoteStart g s ↔ ∃ m, s = { ACState.initial g with mayVote := m } :=
   Iff.rfl
 
 /-- The pools of a start up to the vote permission are empty. -/
-theorem VoteStart.pool {g : Nat} {s : SAState n} (h : VoteStart g s) (σ : Nat) :
+theorem VoteStart.pool {g : Nat} {s : ACState n} (h : VoteStart g s) (σ : Nat) :
     s.pool σ = [] := by
   obtain ⟨m, rfl⟩ := h
   rfl
@@ -104,7 +104,7 @@ theorem _root_.Consensus.Goldilocks.ACInterface.step_ofStart {P : Params}
       A.step self s Φ t c.ofStart := by
   cases c <;> rfl
 
-/-- F.2 (b) for blocks of the SA (`Anc.total`). -/
+/-- F.2 (b) for blocks of the AC (`Anc.total`). -/
 theorem anc_total {S : Set (Blk n FGP)} {A A' C : Blk n FGP} (hS : Coherent S)
     (h : Anc S A C) (h' : Anc S A' C) : Anc S A A' ∨ Anc S A' A :=
   h.total hS h'
@@ -188,7 +188,7 @@ theorem lookup_eq_none {Φ : Frm n FGP} {r : Nat} (h : lookup Φ r = none) : ¬ 
   exact hr
 
 /-- A resolved vote (finite resolution time) has its head in the tree. -/
-theorem inTree_of_resolutionTime_ne_top {A : SAState n} {Φ : Frm n FGP} {v : Vote n}
+theorem inTree_of_resolutionTime_ne_top {A : ACState n} {Φ : Frm n FGP} {v : Vote n}
     (h : resolutionTime A Φ v ≠ ⊤) : InTree Φ v.head := by
   unfold resolutionTime at h
   split at h
@@ -218,12 +218,12 @@ theorem depth_lt_of_anc {Φ : Frm n FGP} (hΦ : FrameOK Φ) {A B : Blk n FGP}
 
 section Optimistic
 
-variable {sp : SAParams}
+variable {sp : ACParams}
 
 open Classical in
 /-- A successful optimistic selection at `t` is made by a joined node, in a slot `slot(t) > 0`,
 before `t_{slot(t)} + 2Δ`. -/
-theorem optimisticSelect_guard {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+theorem optimisticSelect_guard {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     {B : Blk sp.n FGP} (h : optimisticSelect sp A Φ t = some B) :
     joined sp A t ∧ sp.slot t ≠ 0 ∧ t < sp.ts (sp.slot t) + 2 * sp.Δ := by
   unfold optimisticSelect at h
@@ -234,7 +234,7 @@ theorem optimisticSelect_guard {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
 
 open Classical in
 /-- The block of a successful optimistic selection is in the frame's tree. -/
-theorem optimisticSelect_mem_tree {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+theorem optimisticSelect_mem_tree {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     {B : Blk sp.n FGP} (h : optimisticSelect sp A Φ t = some B) : B ∈ Φ.tree := by
   unfold optimisticSelect at h
   dsimp only at h
@@ -243,6 +243,6 @@ theorem optimisticSelect_mem_tree {A : SAState sp.n} {Φ : Frm sp.n FGP} {t : Ti
 
 end Optimistic
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

@@ -21,7 +21,7 @@ definitions and auxiliary constants alike), it walks the constants of its type a
 the type and value of every constant reached,
 with the constructors and the inductive of every inductive, constructor and recursor reached, to a
 fixpoint, and fails if a reached constant is a Goldilocks-AC constant: one under
-`Consensus.Goldilocks.SA` or `Consensus.Goldilocks.AsChainShape`, or whose name contains
+`Consensus.Goldilocks.AC` or `Consensus.Goldilocks.AsChainShape`, or whose name contains
 `goldilocksNode`, `GoldilocksTrace` or `GoldilocksRun`, outside `allowed`. It also fails on a
 reached name that is not in the environment, on a module that declares no theorem, and on an
 unused `allowed` entry or one whose own cone holds another Goldilocks-AC constant.
@@ -37,9 +37,9 @@ open Lean Meta
 namespace Consensus.Goldilocks.Generic.Test.HealingLeavesCut
 
 /-- A Goldilocks-AC constant. -/
-meta def goldilocksAC (n : Name) : Bool :=
+meta def isGoldilocksACConst (n : Name) : Bool :=
   let s := n.toString
-  (`Consensus.Goldilocks.SA).isPrefixOf n || (`Consensus.Goldilocks.AsChainShape).isPrefixOf n ||
+  (`Consensus.Goldilocks.AC).isPrefixOf n || (`Consensus.Goldilocks.AsChainShape).isPrefixOf n ||
     (s.splitOn "goldilocksNode").length > 1 ||
     (s.splitOn "GoldilocksTrace").length > 1 || (s.splitOn "GoldilocksRun").length > 1
 
@@ -108,16 +108,16 @@ meta def check (mod : Name) (allowed : List Name) (control : Name × Name) : Met
     for (n, _) in parent.toList do
       unless env.contains n do
         throwError "{t}: reached {n}, which is not in the environment: {path parent t n}"
-      if goldilocksAC n then
+      if isGoldilocksACConst n then
         if allowed.contains n then used := used.insert n
         else throwError "{t} reaches the Goldilocks-AC constant {n}: {path parent t n}"
   for a in allowed do
     unless used.contains a do throwError "allowed entry {a} is reached by no leaf: remove it"
     let parent := cone env a
     for (n, _) in parent.toList do
-      if n != a && goldilocksAC n then
+      if n != a && isGoldilocksACConst n then
         throwError "allowed entry {a} reaches the Goldilocks-AC constant {n}: {path parent a n}"
-  unless (cone env control.2).toList.any (goldilocksAC ·.1) do
+  unless (cone env control.2).toList.any (isGoldilocksACConst ·.1) do
     throwError "control {control.2} reaches no Goldilocks-AC constant: the walk is broken"
   for t in theorems do
     unless (cone env t).size > (cone env t (proofs := false)).size do
@@ -125,8 +125,8 @@ meta def check (mod : Name) (allowed : List Name) (control : Name × Name) : Met
         proofs are not walked"
 
 run_meta do
-  -- `SA.gbar g = max g 0` is in `SA` by placement only; the generic statements open it.
-  let allowed := [``Consensus.Goldilocks.SA.gbar]
+  -- `AC.gbar g = max g 0` is in `AC` by placement only; the generic statements open it.
+  let allowed := [``Consensus.Goldilocks.AC.gbar]
   for mod in [`ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves,
       `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds,
       `ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges,

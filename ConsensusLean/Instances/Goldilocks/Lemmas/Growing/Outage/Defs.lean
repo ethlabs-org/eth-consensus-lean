@@ -39,7 +39,7 @@ The receiver service after GST, `ReceiverServiceAfterAt`, is in `Outage/Service`
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
 
 section VoteCompat
@@ -48,17 +48,17 @@ variable {FGP : Type} {n : Nat}
 
 /-- The head of the vote `v` is a block of `U` compatible with `B` (the form of `OutageS5StepAt`:
 regression votes with head below `B` satisfy it). -/
-def VoteCompat (U : Set (SA.Blk n FGP)) (v : Vote n) (B : SA.Blk n FGP) : Prop :=
+def VoteCompat (U : Set (AC.Blk n FGP)) (v : Vote n) (B : AC.Blk n FGP) : Prop :=
   ∃ Hd ∈ U, Hd.root = v.head ∧ Compatible U Hd B
 
-theorem voteCompat_iff {U : Set (SA.Blk n FGP)} {v : Vote n} {B : SA.Blk n FGP} :
+theorem voteCompat_iff {U : Set (AC.Blk n FGP)} {v : Vote n} {B : AC.Blk n FGP} :
     VoteCompat U v B ↔ ∃ Hd ∈ U, Hd.root = v.head ∧ Compatible U Hd B :=
   Iff.rfl
 
 /-- A vote that extends `B` is compatible with it. -/
-theorem _root_.Consensus.Goldilocks.SA.VoteExtends.voteCompat {sp : SAParams}
-    {U : Set (SA.Blk sp.n FGP)} {v : Vote sp.n} {B : SA.Blk sp.n FGP}
-    (h : SA.VoteExtends U v B) : VoteCompat U v B :=
+theorem _root_.Consensus.Goldilocks.AC.VoteExtends.voteCompat {sp : ACParams}
+    {U : Set (AC.Blk sp.n FGP)} {v : Vote sp.n} {B : AC.Blk sp.n FGP}
+    (h : AC.VoteExtends U v B) : VoteCompat U v B :=
   let ⟨Hd, hHd, hr, hB⟩ := h
   ⟨Hd, hHd, hr, Or.inr hB⟩
 
@@ -68,44 +68,44 @@ end Consensus.Goldilocks.Compose
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The base of the label-`(j₀ − 1)` protection at `x`'s update at cut `c`: root cover, or a
 fresh lock of label `j` and expiry `j + k` on a frame block above `P`. -/
 def PrevBaseAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-    (P : SA.Blk sp.n (List (FG.Att sp.n)))
-    (j : Nat) (x : Fin sp.n) (c : Nat) (ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)) :
+    (P : AC.Blk sp.n (List (FG.Att sp.n)))
+    (j : Nat) (x : Fin sp.n) (c : Nat) (ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)) :
     Prop :=
   Anc (tr.HonestBlocksAt H) P (tr.state x c).fg.F ∨
     ∃ L f, L ∈ ℓ.frame.tree ∧ ℓ.frame.Anc P L ∧
-      (⟨L.root, j, f, j + sp.k⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks
+      (⟨L.root, j, f, j + sp.k⟩ : AC.Lock) ∈ (tr.state x (c + 1)).ac.locks
 
 /-- The base of the label-`j₀` protection at `x`'s first label-`j₀` update at cut `c`: root
 cover, or a fresh label-`j` lock of expiry `j + k` on a frame block above `P`. -/
 def CoverBaseAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-    (P : SA.Blk sp.n (List (FG.Att sp.n)))
-    (j : Nat) (x : Fin sp.n) (c : Nat) (ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)) :
+    (P : AC.Blk sp.n (List (FG.Att sp.n)))
+    (j : Nat) (x : Fin sp.n) (c : Nat) (ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)) :
     Prop :=
   Anc (tr.HonestBlocksAt H) P (tr.state x c).fg.F ∨
     ∃ L f, ℓ.frame.Anc P L ∧
-      (⟨L.root, j, f, j + sp.k⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks
+      (⟨L.root, j, f, j + sp.k⟩ : AC.Lock) ∈ (tr.state x (c + 1)).ac.locks
 
 theorem prevBaseAt_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat} {x : Fin sp.n} {c : Nat}
-    {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)} :
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} {j : Nat} {x : Fin sp.n} {c : Nat}
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)} :
     PrevBaseAt tr H P j x c ℓ ↔ Anc (tr.HonestBlocksAt H) P (tr.state x c).fg.F ∨
       ∃ L f, L ∈ ℓ.frame.tree ∧ ℓ.frame.Anc P L ∧
-        (⟨L.root, j, f, j + sp.k⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks :=
+        (⟨L.root, j, f, j + sp.k⟩ : AC.Lock) ∈ (tr.state x (c + 1)).ac.locks :=
   Iff.rfl
 
 theorem coverBaseAt_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat} {x : Fin sp.n} {c : Nat}
-    {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)} :
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} {j : Nat} {x : Fin sp.n} {c : Nat}
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)} :
     CoverBaseAt tr H P j x c ℓ ↔ Anc (tr.HonestBlocksAt H) P (tr.state x c).fg.F ∨
       ∃ L f, ℓ.frame.Anc P L ∧
-        (⟨L.root, j, f, j + sp.k⟩ : SA.Lock) ∈ (tr.state x (c + 1)).ac.locks :=
+        (⟨L.root, j, f, j + sp.k⟩ : AC.Lock) ∈ (tr.state x (c + 1)).ac.locks :=
   Iff.rfl
 
 /-- **The premise package of the outage lock module under growing faults**, at trace level, from
@@ -121,7 +121,7 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin
   a : Time
   z : Time
   /-- The protected block. -/
-  P : SA.Blk sp.n (List (FG.Att sp.n))
+  P : AC.Blk sp.n (List (FG.Att sp.n))
   /-- The label of `P` as an origin, the last early label `j₀`, the first restored label `r`. -/
   σ : Nat
   j₀ : Nat
@@ -132,7 +132,7 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin
   W : Set (Fin sp.n)
   hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini
   /-- The slot committees: the run's selection for each slot's vote role. -/
-  K : SA.CommitteeDict sp.n
+  K : AC.CommitteeDict sp.n
   /-- Size, P, frames and the gate for `K`. -/
   facts : CommitteeFacts tr H K
   hnc : NoCollRun dg tr
@@ -176,24 +176,24 @@ structure OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin
   gate is reached by an honest call. -/
   lockPrev : ∀ x ∈ A₀, P.root ≠ sp.genesisRoot →
     (∃ y i, y ∈ H (tr.time i) ∧ tr.IsCall y i ∧ sp.ts j₀ + 2 * sp.Δ ≤ tr.time i) →
-    ∃ c ℓ, SA.UpdateAt tr.projAC x c (j₀ - 1) ℓ ∧ PrevBaseAt tr H P (j₀ - 1) x c ℓ
+    ∃ c ℓ, AC.UpdateAt tr.projAC x c (j₀ - 1) ℓ ∧ PrevBaseAt tr H P (j₀ - 1) x c ℓ
   /-- Arming: the label-`j₀` cover at the first label-`j₀` update of every member of `A₀`, given
   (F), (VA) and (N), when `P` is not genesis and the gate is reached by an honest call. -/
   lockCover : ∀ x ∈ A₀, P.root ≠ sp.genesisRoot →
     (∃ y i, y ∈ H (tr.time i) ∧ tr.IsCall y i ∧ sp.ts j₀ + 6 * sp.Δ ≤ tr.time i) →
-    ∃ c ℓ, SA.UpdateAt tr.projAC x c j₀ ℓ ∧
-    (∀ k < c, ∀ ℓ', ¬ SA.UpdateAt tr.projAC x k j₀ ℓ') ∧
+    ∃ c ℓ, AC.UpdateAt tr.projAC x c j₀ ℓ ∧
+    (∀ k < c, ∀ ℓ', ¬ AC.UpdateAt tr.projAC x k j₀ ℓ') ∧
     (Compatible (tr.HonestBlocksAt H) (tr.state x c).fg.F P →
      (Anc (tr.HonestBlocksAt H) (tr.state x c).fg.F P → ℓ.frame.AncestorCandidate P) →
      (∀ y ∈ A₀, ∀ j e, HVoteAt tr H y j e → e.msg.slot = j₀ + 1 → j < c →
-        SA.VoteExtends (tr.HonestBlocksAt H) e.msg P) →
+        AC.VoteExtends (tr.HonestBlocksAt H) e.msg P) →
      CoverBaseAt tr H P j₀ x c ℓ)
   /-- Post-GST pool delivery: an update of a restored label by a node honest at it holds every
   vote of that slot cast by a node honest at its cast, or two other votes of that slot by the
   same validator (which may be compromised after its cast). -/
-  PG : ∀ w c m ℓ, w ∈ H (tr.time c) → SA.UpdateAt tr.projAC w c m ℓ → r ≤ m →
+  PG : ∀ w c m ℓ, w ∈ H (tr.time c) → AC.UpdateAt tr.projAC w c m ℓ → r ≤ m →
     ∀ x i e, HVoteAt tr H x i e → e.msg.slot = m → e.msg ∈ (tr.state w c).ac.pool m ∨
-      e.msg.val ∈ SA.equivocators {v | v ∈ (tr.state w c).ac.pool m}
+      e.msg.val ∈ AC.equivocators {v | v ∈ (tr.state w c).ac.pool m}
 
 variable {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -235,7 +235,7 @@ theorem two_faults_lt_K (D : OutageLockPremises tr H proposer dg ini) {s : Nat} 
 /-- **Holder or opponent**: a vote cast in `[a, z]` by a node honest at its cast is by a
 member of `A₀`, by a member of `W`, or by a validator compromised by `z`. -/
 theorem holder_or_opponent (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n} {k : Nat}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x k e) (hka : D.a ≤ tr.time k)
+    {e : AC.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x k e) (hka : D.a ≤ tr.time k)
     (hkz : tr.time k ≤ D.z) : x ∈ D.A₀ ∨ x ∈ D.W ∨ x ∉ H D.z := by
   by_cases hxz : x ∈ H D.z
   · obtain ⟨hx, ℓ, hc, -⟩ := hVoteAt_iff.1 hv
@@ -262,7 +262,7 @@ structure OutageVoteInv (D : OutageLockPremises tr H proposer dg ini) (i : Nat) 
   /-- (H) votes of slots in `(σ, j₀ + k]` cast at or before `b₀` or by `A₀` extend `P`. -/
   votes : ∀ x k, k < i → ∀ e, HVoteAt tr H x k e → D.σ < e.msg.slot →
     e.msg.slot ≤ D.j₀ + sp.k → (tr.time k ≤ D.b₀ ∨ x ∈ D.A₀) →
-    SA.VoteExtends (tr.HonestBlocksAt H) e.msg D.P
+    AC.VoteExtends (tr.HonestBlocksAt H) e.msg D.P
   /-- S5V at the cuts before `i`: head compatibility with `P` past the lock lifetime. -/
   late : ∀ x k, k < i → ∀ e, HVoteAt tr H x k e → D.j₀ + sp.k < e.msg.slot →
     VoteCompat (tr.HonestBlocksAt H) e.msg D.P
@@ -273,7 +273,7 @@ structure OutageLockInv (D : OutageLockPremises tr H proposer dg ini) (i : Nat) 
     extends OutageVoteInv D i where
   /-- (R) results at unpolluted labels, by nodes honest at their update, are compatible with
   `P`. -/
-  results : ∀ y k, k < i → y ∈ H (tr.time k) → ∀ m C CV, SA.ResultAt tr.projAC y k m C CV →
+  results : ∀ y k, k < i → y ∈ H (tr.time k) → ∀ m C CV, AC.ResultAt tr.projAC y k m C CV →
     (m ≤ D.j₀ ∨ D.r ≤ m) → Compatible (tr.HonestBlocksAt H) C D.P
   /-- (L) every lock stored at a cut `k`, read at a time `t` at which its node is honest and after
   every cut before `k`, names a held block compatible with `P`. -/
@@ -281,7 +281,7 @@ structure OutageLockInv (D : OutageLockPremises tr H proposer dg ini) (i : Nat) 
     ∀ l ∈ (tr.state y k).ac.locks,
       ∃ L ∈ (tr.state y k).fg.tree, L.root = l.block ∧ Compatible (tr.HonestBlocksAt H) L D.P
   /-- (SRC) every FG source of a node honest at its call is compatible with `P`. -/
-  sources : ∀ y k, k < i → y ∈ H (tr.time k) → ∀ ℓ C, SA.ToFGAt tr.projAC y k ℓ C →
+  sources : ∀ y k, k < i → y ∈ H (tr.time k) → ∀ ℓ C, AC.ToFGAt tr.projAC y k ℓ C →
     Compatible (tr.HonestBlocksAt H) C D.P
   /-- (OB-F) the caches at a cut `k`, read at a time `t` at which their node is honest and after
   every cut before `k`, are compatible with `P`. -/
@@ -295,13 +295,13 @@ structure OutageLockInv (D : OutageLockPremises tr H proposer dg ini) (i : Nat) 
     (Node.frame (tr.state y k)).AncestorCandidate D.P
   /-- (Prot) `A₀` keeps its label-`(j₀ − 1)` lock, or root cover, through its lifetime, at the
   cuts at which it is honest. -/
-  protPrev : ∀ x ∈ D.A₀, ∀ c ℓ, SA.UpdateAt tr.projAC x c (D.j₀ - 1) ℓ →
+  protPrev : ∀ x ∈ D.A₀, ∀ c ℓ, AC.UpdateAt tr.projAC x c (D.j₀ - 1) ℓ →
     PrevBaseAt tr H D.P (D.j₀ - 1) x c ℓ →
     ∀ k, c < k → k ≤ i → x ∈ H (tr.time k) → sp.slot (tr.time (k - 1)) ≤ D.j₀ - 1 + sp.k →
       Prot D x k (D.j₀ - 1) (D.j₀ - 1 + sp.k)
   /-- (Prot) `A₀` keeps its label-`j₀` lock, or root cover, through slot `j₀ + k`, after a
   label-`j₀` update with the cover base, at the cuts at which it is honest. -/
-  protCover : ∀ x ∈ D.A₀, ∀ c ℓ, SA.UpdateAt tr.projAC x c D.j₀ ℓ →
+  protCover : ∀ x ∈ D.A₀, ∀ c ℓ, AC.UpdateAt tr.projAC x c D.j₀ ℓ →
     CoverBaseAt tr H D.P D.j₀ x c ℓ →
     ∀ k, c < k → k ≤ i → x ∈ H (tr.time k) → sp.slot (tr.time (k - 1)) ≤ D.j₀ + sp.k →
       Prot D x k D.j₀ (D.j₀ + sp.k)
@@ -345,37 +345,37 @@ theorem outageS5StepAt_iff {D : OutageLockPremises tr H proposer dg ini} :
 
 /-- The slot-`q` casters still honest at `d` (and honest at their cast) whose vote extends `B`. -/
 def ExtendingCastersAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-    (B : SA.Blk sp.n (List (FG.Att sp.n))) (q : Nat) (d : Time) : Set (Fin sp.n) :=
+    (B : AC.Blk sp.n (List (FG.Att sp.n))) (q : Nat) (d : Time) : Set (Fin sp.n) :=
   {x | x ∈ H d ∧ ∃ k e, HVoteAt tr H x k e ∧ e.msg.slot = q ∧
-    SA.VoteExtends (tr.HonestBlocksAt H) e.msg B}
+    AC.VoteExtends (tr.HonestBlocksAt H) e.msg B}
 
 /-- The validators compromised by `d`, and the slot-`q` casters still honest at `d` whose vote
 does not extend `B`. -/
 def OpponentsAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-    (B : SA.Blk sp.n (List (FG.Att sp.n))) (q : Nat) (d : Time) : Set (Fin sp.n) :=
+    (B : AC.Blk sp.n (List (FG.Att sp.n))) (q : Nat) (d : Time) : Set (Fin sp.n) :=
   (H d)ᶜ ∪ {x | x ∈ H d ∧ ∃ k e, HVoteAt tr H x k e ∧ e.msg.slot = q ∧
-    ¬ SA.VoteExtends (tr.HonestBlocksAt H) e.msg B}
+    ¬ AC.VoteExtends (tr.HonestBlocksAt H) e.msg B}
 
 /-- **The extending majority of label `q` charged at `d`**: the extending casters still honest
 at `d` outnumber the opponents at `d` in the slot-`q` committee of `K`. -/
 def ExtendingMajorityAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-    (K : SA.CommitteeDict sp.n) (B : SA.Blk sp.n (List (FG.Att sp.n))) (q : Nat) (d : Time) :
+    (K : AC.CommitteeDict sp.n) (B : AC.Blk sp.n (List (FG.Att sp.n))) (q : Nat) (d : Time) :
     Prop :=
   (K.committee q ∩ OpponentsAt tr H B q d).ncard < (ExtendingCastersAt tr H B q d).ncard
 
-theorem extendingCastersAt_iff {B : SA.Blk sp.n (List (FG.Att sp.n))} {q : Nat} {d : Time}
+theorem extendingCastersAt_iff {B : AC.Blk sp.n (List (FG.Att sp.n))} {q : Nat} {d : Time}
     {x : Fin sp.n} :
     x ∈ ExtendingCastersAt tr H B q d ↔ x ∈ H d ∧ ∃ k e, HVoteAt tr H x k e ∧
-      e.msg.slot = q ∧ SA.VoteExtends (tr.HonestBlocksAt H) e.msg B :=
+      e.msg.slot = q ∧ AC.VoteExtends (tr.HonestBlocksAt H) e.msg B :=
   Iff.rfl
 
-theorem opponentsAt_iff {B : SA.Blk sp.n (List (FG.Att sp.n))} {q : Nat} {d : Time}
+theorem opponentsAt_iff {B : AC.Blk sp.n (List (FG.Att sp.n))} {q : Nat} {d : Time}
     {x : Fin sp.n} :
     x ∈ OpponentsAt tr H B q d ↔ x ∈ (H d)ᶜ ∨ (x ∈ H d ∧ ∃ k e, HVoteAt tr H x k e ∧
-      e.msg.slot = q ∧ ¬ SA.VoteExtends (tr.HonestBlocksAt H) e.msg B) :=
+      e.msg.slot = q ∧ ¬ AC.VoteExtends (tr.HonestBlocksAt H) e.msg B) :=
   Iff.rfl
 
-theorem extendingMajorityAt_iff {K : SA.CommitteeDict sp.n} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+theorem extendingMajorityAt_iff {K : AC.CommitteeDict sp.n} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     {q : Nat} {d : Time} :
     ExtendingMajorityAt tr H K B q d ↔
       (K.committee q ∩ OpponentsAt tr H B q d).ncard < (ExtendingCastersAt tr H B q d).ncard :=

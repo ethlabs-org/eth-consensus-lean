@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Model
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.CommitteeRun
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.CommitteeRun
 
 @[expose] public section
 
@@ -14,9 +14,9 @@ time-indexed honest set `H` (`Spec/Run/Growing/Model`). At `H := fun _ => H₀` 
 
 namespace Consensus.Goldilocks.Growing
 
-open SA (SAParams ReplayOrder goldilocksSA Vote Payload)
+open AC (ACParams ReplayOrder goldilocksAC Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **A run of the Goldilocks protocol under growing faults**: a run of the node for the
 time-indexed honest set `H` and the genesis root premise. -/
@@ -29,15 +29,15 @@ structure GoldilocksRun (proposer : Nat → Fin sp.n)
   /-- The genesis block's root is the digest of its content. -/
   genesis_root_ok : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg
   /-- The AC starts are starts up to the vote permission. -/
-  vstart : ∀ y, SA.VoteStart sp.genesisRoot (ini y)
+  vstart : ∀ y, AC.VoteStart sp.genesisRoot (ini y)
 
 end Consensus.Goldilocks.Growing
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder)
+open AC (ACParams ReplayOrder)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
 
 /-- **The run half of the committee premises** for the slot dictionary `K`: committees of
@@ -46,9 +46,9 @@ slot `s`, before every cut whose earlier cuts are at times `≤ t`, iff it is in
 committee. T (`CommitteeTAt`) follows from P on a run (`CommitteeFacts.committeeTAt`): a declared
 head vote counts only when the pool holds a vote of its validator for its slot. The frames are not
 premised: a valid block may declare a vote of a non-member. -/
-structure CommitteeFacts (K : SA.CommitteeDict sp.n) : Prop where
+structure CommitteeFacts (K : AC.CommitteeDict sp.n) : Prop where
   hsize : ∀ s, (K.committee s).ncard = sp.committeeSize
-  hP : SA.CommitteePAt K tr.projAC H
+  hP : AC.CommitteePAt K tr.projAC H
   hGate : ∀ t, 0 ≤ t → ∀ x, x ∈ H t → ∀ i, (∀ k < i, tr.time k ≤ t) → ∀ s,
     ((tr.state x i).ac.mayVote s = true ↔ x ∈ K.committee s)
 

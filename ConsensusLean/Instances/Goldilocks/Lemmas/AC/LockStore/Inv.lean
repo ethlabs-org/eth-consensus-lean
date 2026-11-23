@@ -4,7 +4,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 
 public section
 
-/-! # Goldilocks SA: the stored locks sit below the record
+/-! # Goldilocks AC: the stored locks sit below the record
 
 The invariant behind A0.4 (a), (b), (f) and A0.5: at a reachable state with frame `Φ` inside
 `U`, the stored record `latest_confirmed` names a block `E` of `U`, the block of every stored
@@ -14,25 +14,25 @@ names, and that block does not conflict with any live lock, so a live lock that 
 leaves behind would put the old record, and with it the new block, below it. Frame steps keep
 the invariant, since a block that extends the new `Φ.F` stays in the tree. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {sp : SAParams} {FGP : Type}
+variable {sp : ACParams} {FGP : Type}
 
 /-- **The lock invariant** of a state `A` with frame `Φ` inside `U`. -/
-def LockInv (U : Set (Blk sp.n FGP)) (A : SAState sp.n) (Φ : Frm sp.n FGP) : Prop :=
+def LockInv (U : Set (Blk sp.n FGP)) (A : ACState sp.n) (Φ : Frm sp.n FGP) : Prop :=
   ∃ E ∈ U, E.root = A.latestConfirmed ∧ (Anc U Φ.F E → E ∈ Φ.tree) ∧
     ∀ l ∈ A.locks, ∀ X ∈ U, X.root = l.block → Anc U X E
 
 variable {U : Set (Blk sp.n FGP)}
 
-theorem lockInv_iff {A : SAState sp.n} {Φ : Frm sp.n FGP} :
+theorem lockInv_iff {A : ACState sp.n} {Φ : Frm sp.n FGP} :
     LockInv U A Φ ↔ ∃ E ∈ U, E.root = A.latestConfirmed ∧ (Anc U Φ.F E → E ∈ Φ.tree) ∧
       ∀ l ∈ A.locks, ∀ X ∈ U, X.root = l.block → Anc U X E :=
   Iff.rfl
 
 /-- Locks that move back stay below the record. -/
 private theorem LockInv.movesBack (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree ⊆ U)
-    {A A' : SAState sp.n} (h : LockInv U A Φ) (hm : MovesBack sp Φ A.locks A'.locks)
+    {A A' : ACState sp.n} (h : LockInv U A Φ) (hm : MovesBack sp Φ A.locks A'.locks)
     (hl : A'.latestConfirmed = A.latestConfirmed) : LockInv U A' Φ := by
   obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
   refine ⟨E, hE, hEr.trans hl.symm, hEt, fun l' hl' X hX hXr => ?_⟩
@@ -45,10 +45,10 @@ open Classical in
 stored locks become the live locks of the old ones with new ones on ancestors of `C`; when `C` is
 in the tree and conflicts with no live lock, the invariant holds after. -/
 theorem LockInv.addLocks (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
-    (hΦU : Φ.tree ⊆ U) {A A' : SAState sp.n} (h : LockInv U A Φ) {t : Time} {s : Nat}
+    (hΦU : Φ.tree ⊆ U) {A A' : ACState sp.n} (h : LockInv U A Φ) {t : Time} {s : Nat}
     {N : Set (Nat × Bool × Nat)} {C : Blk sp.n FGP} (hC : C ∈ Φ.tree)
     (hconf : ¬ conflictsWithLock sp A.locks Φ t C)
-    (hlocks : A'.locks = SA.addLocks sp A.locks Φ t s N)
+    (hlocks : A'.locks = AC.addLocks sp A.locks Φ t s N)
     (hN : ∀ p ∈ N, ∃ Y ∈ Φ.tree, Y.root = p.1 ∧ Φ.Anc Y C)
     (hrec : A'.latestConfirmed =
       if AncR Φ C A.latestConfirmed then A.latestConfirmed else C.root) :
@@ -96,8 +96,8 @@ theorem LockInv.addLocks (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ
 live lock block, and the record does not move, the invariant holds after: the live lock blocks are
 below the record. -/
 private theorem LockInv.addLocks_below (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
-    (hΦU : Φ.tree ⊆ U) {A A' : SAState sp.n} (h : LockInv U A Φ) {t : Time} {s : Nat}
-    {N : Set (Nat × Bool × Nat)} (hlocks : A'.locks = SA.addLocks sp A.locks Φ t s N)
+    (hΦU : Φ.tree ⊆ U) {A A' : ACState sp.n} (h : LockInv U A Φ) {t : Time} {s : Nat}
+    {N : Set (Nat × Bool × Nat)} (hlocks : A'.locks = AC.addLocks sp A.locks Φ t s N)
     (hN : ∀ p ∈ N, ∃ Y ∈ Φ.tree, Y.root = p.1 ∧
       ∃ L ∈ liveLockBlocks sp A.locks Φ t, Φ.Anc Y L)
     (hrec : A'.latestConfirmed = A.latestConfirmed) : LockInv U A' Φ := by
@@ -118,9 +118,9 @@ private theorem LockInv.addLocks_below (hU : Coherent U) {Φ : Frm sp.n FGP} (h�
     obtain rfl : B = Y := hΦ.coherent.1 hB hY (hBr.trans hYr.symm)
     exact (Anc.mono hΦU (hva.trans hYL)).trans (hLE L hL)
 
-/-! ### Each SA function keeps the invariant -/
+/-! ### Each AC function keeps the invariant -/
 
-private theorem LockInv.of_eq {Φ : Frm sp.n FGP} {A A' : SAState sp.n} (h : LockInv U A Φ)
+private theorem LockInv.of_eq {Φ : Frm sp.n FGP} {A A' : ACState sp.n} (h : LockInv U A Φ)
     (hl : A'.locks = A.locks) (hr : A'.latestConfirmed = A.latestConfirmed) : LockInv U A' Φ := by
   obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
   exact ⟨E, hE, hEr.trans hr.symm, hEt, hl ▸ hlE⟩
@@ -128,12 +128,12 @@ private theorem LockInv.of_eq {Φ : Frm sp.n FGP} {A A' : SAState sp.n} (h : Loc
 variable (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
 include hU hΦ hΦU
 
-theorem LockInv.unlock {A : SAState sp.n} (h : LockInv U A Φ) (t : Time) (s : Int)
-    (V : View sp.n) : LockInv U { A with locks := SA.unlock sp A.locks Φ t s V } Φ :=
+theorem LockInv.unlock {A : ACState sp.n} (h : LockInv U A Φ) (t : Time) (s : Int)
+    (V : View sp.n) : LockInv U { A with locks := AC.unlock sp A.locks Φ t s V } Φ :=
   h.movesBack hU hΦU (((locks_move_back sp) FGP Φ A.locks t hΦ).2.2 s V) rfl
 
 open Classical in
-private theorem LockInv.optimistic {A : SAState sp.n} (h : LockInv U A Φ) (t : Time) :
+private theorem LockInv.optimistic {A : ACState sp.n} (h : LockInv U A Φ) (t : Time) :
     LockInv U (optimisticConfirmation sp A Φ t) Φ := by
   unfold optimisticConfirmation
   rcases hsel : optimisticSelect sp A Φ t with _ | B
@@ -150,7 +150,7 @@ private theorem LockInv.optimistic {A : SAState sp.n} (h : LockInv U A Φ) (t : 
     · dsimp only; unfold updateLatestConfirmed; split_ifs <;> rfl
 
 open Classical in
-private theorem LockInv.update {A : SAState sp.n} (h : LockInv U A Φ) (t : Time) (s : Nat) :
+private theorem LockInv.update {A : ACState sp.n} (h : LockInv U A Φ) (t : Time) (s : Nat) :
     LockInv U (updateConfirmation sp A Φ t s) Φ := by
   unfold updateConfirmation
   rcases hC : getConfirmation sp A Φ s with _ | C
@@ -190,9 +190,9 @@ private theorem LockInv.update {A : SAState sp.n} (h : LockInv U A Φ) (t : Time
         exact ⟨Y, hYt, hYr, hYC⟩
       · unfold updateLatestConfirmed; split_ifs <;> rfl
 
-private theorem LockInv.tryVote {A : SAState sp.n} (h : LockInv U A Φ) (x : Fin sp.n)
-    (t : Time) : LockInv U (SA.tryVote sp x A Φ t).1 Φ := by
-  unfold SA.tryVote
+private theorem LockInv.tryVote {A : ACState sp.n} (h : LockInv U A Φ) (x : Fin sp.n)
+    (t : Time) : LockInv U (AC.tryVote sp x A Φ t).1 Φ := by
+  unfold AC.tryVote
   dsimp only
   split_ifs
   · exact h
@@ -206,9 +206,9 @@ private theorem LockInv.tryVote {A : SAState sp.n} (h : LockInv U A Φ) (x : Fin
   · exact LockInv.of_eq (h.unlock hU hΦ hΦU _ _ _) rfl rfl
   · exact LockInv.of_eq h rfl rfl
 
-private theorem LockInv.step {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : LockInv U A Φ)
-    (x : Fin sp.n) (t : Time) (ht : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call) :
-    LockInv U ((goldilocksSA sp FGP ro).step x A Φ t c).1 Φ := by
+private theorem LockInv.step {ro : ReplayOrder sp FGP} {A : ACState sp.n} (h : LockInv U A Φ)
+    (x : Fin sp.n) (t : Time) (ht : 0 ≤ t) (c : (goldilocksAC sp FGP ro).Call) :
+    LockInv U ((goldilocksAC sp FGP ro).step x A Φ t c).1 Φ := by
   cases c with
   | tick =>
     change LockInv U (acOnTick sp x A Φ t).1 Φ
@@ -251,10 +251,10 @@ omit hU hΦ hΦU
 
 /-- **The lock invariant at the states reachable from a start up to the vote permission.** -/
 theorem lockInv_of_reachable {ro : ReplayOrder sp FGP} {x : Fin sp.n} (hU : Coherent U)
-    {s₀ : SAState sp.n} (h₀ : VoteStart sp.genesisRoot s₀)
-    {A : (goldilocksSA sp FGP ro).State} {Φ : (goldilocksSA sp FGP ro).Frm} {t₀ : Time}
-    (hr : (goldilocksSA sp FGP ro).ReachableAtFrom s₀ x U A Φ t₀) :
-    (goldilocksSA sp FGP ro).FrameIn U Φ ∧ 0 ≤ t₀ ∧ LockInv U A Φ := by
+    {s₀ : ACState sp.n} (h₀ : VoteStart sp.genesisRoot s₀)
+    {A : (goldilocksAC sp FGP ro).State} {Φ : (goldilocksAC sp FGP ro).Frm} {t₀ : Time}
+    (hr : (goldilocksAC sp FGP ro).ReachableAtFrom s₀ x U A Φ t₀) :
+    (goldilocksAC sp FGP ro).FrameIn U Φ ∧ 0 ≤ t₀ ∧ LockInv U A Φ := by
   induction hr with
   | init Φ hinit hin =>
     obtain ⟨m, rfl⟩ := voteStart_iff.1 h₀
@@ -268,14 +268,14 @@ theorem lockInv_of_reachable {ro : ReplayOrder sp FGP} {x : Fin sp.n} (hU : Cohe
     refine ⟨hok.1, ht₀.trans ht, LockInv.step hU hok.1.1 hok.1.2 ?_ x _ (ht₀.trans ht) c⟩
     exact ⟨E, hE, hEr, fun h => hX E (hEt (hF.trans h)) h, hlE⟩
 
-private theorem optimistic_blockStamp (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+private theorem optimistic_blockStamp (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).blockStamp = A.blockStamp := by
   unfold optimisticConfirmation updateLatestConfirmed
   split
   · rfl
   · split_ifs <;> rfl
 
-private theorem update_blockStamp (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
+private theorem update_blockStamp (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
     (updateConfirmation sp A Φ t s).blockStamp = A.blockStamp := by
   unfold updateConfirmation updateLatestConfirmed
   dsimp only
@@ -286,18 +286,18 @@ private theorem update_blockStamp (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Ti
 /-- The duty head of a vote that `try_vote` emits: the walk over the viable vote domain from
 the anchor of a state with the lock invariant, whose block stamps are those of the state
 `try_vote` leaves. -/
-private def EmitOK (U : Set (Blk sp.n FGP)) (Φ : Frm sp.n FGP) (t : Time) (post : SAState sp.n)
+private def EmitOK (U : Set (Blk sp.n FGP)) (Φ : Frm sp.n FGP) (t : Time) (post : ACState sp.n)
     (es : List (Em sp FGP)) : Prop :=
-  ∀ e ∈ es, ∀ d, e.head = some d → ∃ (A₁ : SAState sp.n) (V : View sp.n) (σ : Int),
+  ∀ e ∈ es, ∀ d, e.head = some d → ∃ (A₁ : ACState sp.n) (V : View sp.n) (σ : Int),
     LockInv U A₁ Φ ∧ A₁.blockStamp = post.blockStamp ∧
     d = ⟨getHead sp A₁ Φ t (Φ.viableTree (voteDomain sp A₁ Φ (sp.slot t))) V σ,
       getAnchor sp A₁ Φ t, voteDomain sp A₁ Φ (sp.slot t)⟩
 
 include hU hΦ hΦU
 
-private theorem LockInv.tryVote_emits {A : SAState sp.n} (h : LockInv U A Φ) (x : Fin sp.n)
-    (t : Time) : EmitOK U Φ t (SA.tryVote sp x A Φ t).1 (SA.tryVote sp x A Φ t).2 := by
-  unfold SA.tryVote
+private theorem LockInv.tryVote_emits {A : ACState sp.n} (h : LockInv U A Φ) (x : Fin sp.n)
+    (t : Time) : EmitOK U Φ t (AC.tryVote sp x A Φ t).1 (AC.tryVote sp x A Φ t).2 := by
+  unfold AC.tryVote
   dsimp only
   split_ifs with h1 h2 h3
   · simp [EmitOK]
@@ -311,11 +311,11 @@ private theorem LockInv.tryVote_emits {A : SAState sp.n} (h : LockInv U A Φ) (x
 
 /-- **The emitted duty heads of a call** from a state with the lock invariant at the call's
 frame. -/
-theorem LockInv.step_emits {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : LockInv U A Φ)
-    (x : Fin sp.n) (t : Time) (ht : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call) :
-    ∀ e ∈ ((goldilocksSA sp FGP ro).step x A Φ t c).2, ∀ d, e.head = some d →
-      ∃ (A₁ : SAState sp.n) (V : View sp.n) (σ : Int), LockInv U A₁ Φ ∧
-        A₁.blockStamp = ((goldilocksSA sp FGP ro).step x A Φ t c).1.blockStamp ∧
+theorem LockInv.step_emits {ro : ReplayOrder sp FGP} {A : ACState sp.n} (h : LockInv U A Φ)
+    (x : Fin sp.n) (t : Time) (ht : 0 ≤ t) (c : (goldilocksAC sp FGP ro).Call) :
+    ∀ e ∈ ((goldilocksAC sp FGP ro).step x A Φ t c).2, ∀ d, e.head = some d →
+      ∃ (A₁ : ACState sp.n) (V : View sp.n) (σ : Int), LockInv U A₁ Φ ∧
+        A₁.blockStamp = ((goldilocksAC sp FGP ro).step x A Φ t c).1.blockStamp ∧
         d = ⟨getHead sp A₁ Φ t (Φ.viableTree (voteDomain sp A₁ Φ (sp.slot t))) V σ,
           getAnchor sp A₁ Φ t, voteDomain sp A₁ Φ (sp.slot t)⟩ := by
   cases c with
@@ -348,9 +348,9 @@ theorem LockInv.step_emits {ro : ReplayOrder sp FGP} {A : SAState sp.n} (h : Loc
     rw [((restart_state sp) FGP ro x A Φ t hΦ ht).1] at he
     simp at he
 
-private theorem LockInv.tryVote_readPoint {A : SAState sp.n} (h : LockInv U A Φ) (x : Fin sp.n)
-    (t : Time) : ∀ e ∈ (SA.tryVote sp x A Φ t).2, LockInv U e.readPoint Φ := by
-  unfold SA.tryVote
+private theorem LockInv.tryVote_readPoint {A : ACState sp.n} (h : LockInv U A Φ) (x : Fin sp.n)
+    (t : Time) : ∀ e ∈ (AC.tryVote sp x A Φ t).2, LockInv U e.readPoint Φ := by
+  unfold AC.tryVote
   dsimp only
   split_ifs
   · simp
@@ -369,10 +369,10 @@ private theorem LockInv.tryVote_readPoint {A : SAState sp.n} (h : LockInv U A Φ
 a state with the lock invariant at the call's frame reads a state with the invariant: the
 read point is the input of `try_vote`, after the optimistic check of a receipt and the
 unlocking, with the same record. -/
-theorem LockInv.step_readPoint {ro : ReplayOrder sp FGP} {A : SAState sp.n}
+theorem LockInv.step_readPoint {ro : ReplayOrder sp FGP} {A : ACState sp.n}
     (h : LockInv U A Φ) (x : Fin sp.n) (t : Time) (ht : 0 ≤ t)
-    (c : (goldilocksSA sp FGP ro).Call) :
-    ∀ e ∈ ((goldilocksSA sp FGP ro).step x A Φ t c).2, LockInv U e.readPoint Φ := by
+    (c : (goldilocksAC sp FGP ro).Call) :
+    ∀ e ∈ ((goldilocksAC sp FGP ro).step x A Φ t c).2, LockInv U e.readPoint Φ := by
   cases c with
   | tick =>
     change ∀ e ∈ (acOnTick sp x A Φ t).2, LockInv U e.readPoint Φ
@@ -399,15 +399,15 @@ theorem LockInv.step_readPoint {ro : ReplayOrder sp FGP} {A : SAState sp.n}
 omit hU hΦ hΦU
 
 /-- The lock invariant passes to the frame of a lawful next call. -/
-theorem LockInv.callOK {ro : ReplayOrder sp FGP} (hU : Coherent U) {A : SAState sp.n}
-    {Φ Φ' : Frm sp.n FGP} {t : Time} {c : (goldilocksSA sp FGP ro).Call}
-    (hin : (goldilocksSA sp FGP ro).FrameIn U Φ)
-    (hok : (goldilocksSA sp FGP ro).CallOK U Φ t c Φ') (h : LockInv U A Φ) :
+theorem LockInv.callOK {ro : ReplayOrder sp FGP} (hU : Coherent U) {A : ACState sp.n}
+    {Φ Φ' : Frm sp.n FGP} {t : Time} {c : (goldilocksAC sp FGP ro).Call}
+    (hin : (goldilocksAC sp FGP ro).FrameIn U Φ)
+    (hok : (goldilocksAC sp FGP ro).CallOK U Φ t c Φ') (h : LockInv U A Φ) :
     LockInv U A Φ' := by
   obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
   obtain ⟨hF, hX⟩ := callOK_retains sp hU hin hok
   exact ⟨E, hE, hEr, fun h => hX E (hEt (hF.trans h)) h, hlE⟩
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

@@ -25,7 +25,7 @@ target attestations `justify_of_signed_rows'`. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 section Chain
 
@@ -162,7 +162,7 @@ end Chain
 
 section Run
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State}
   {proposer : Nat → Fin sp.n}
@@ -174,7 +174,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 it has its previous height justified exactly when `X` justified `(σ.h, σ.T_h)`, and then, at a
 height whose previous height is justified, `h_F = σ.h_j`. -/
 theorem cross_of_rows (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
-    {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
+    {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
     (hPr : Pr ∈ (tr.state p kX).fg.tree)
     (S : Finset (Fin sp.n)) (hSH : ∀ v ∈ S, v ∈ H) (hS : sp.toParams.fg.q ≤ S.card)

@@ -16,12 +16,12 @@ public section
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
 /-- Among a slow lock's consecutive labels, at least one is outside the outage pollution
 window, under the gap budget `(4k − 5)Δ`: the polluted slot starts lie in the open interval
 `(start − 2Δ, stop − Δ)`, of length at most `(4k − 4)Δ`, so at most `k − 1` of them. -/
-theorem exists_unpolluted_label (sp : SA.SAParams) {start stop : Time}
+theorem exists_unpolluted_label (sp : AC.ACParams) {start stop : Time}
     (hgap : stop - start ≤ (4 * (sp.k : Time) - 5) * sp.Δ) (s : Int) :
     ∃ m : Int, s - (sp.k : Int) < m ∧ m ≤ s ∧
       (sp.ts m + 2 * sp.Δ ≤ start ∨ stop ≤ sp.ts m + sp.Δ) := by
@@ -33,42 +33,42 @@ theorem exists_unpolluted_label (sp : SA.SAParams) {start stop : Time}
   have hlast : sp.ts s + sp.Δ < stop := by
     by_contra h
     exact hn ⟨s, by omega, le_rfl, Or.inr (le_of_not_gt h)⟩
-  simp only [SA.SAParams.ts] at hfirst hlast
+  simp only [AC.ACParams.ts] at hfirst hlast
   linarith
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
 /-- A single compatible result in the slow window suffices to make a stored slow lock
 compatible. The unpolluted-result producer is an explicit hypothesis. -/
 theorem slow_lock_compatible (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
-    {l : SA.Lock} (hl : l ∈ (tr.state x i).ac.locks) (hlf : l.fast = false)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
+    {l : AC.Lock} (hl : l ∈ (tr.state x i).ac.locks) (hlf : l.fast = false)
     (hgood : ∃ m : Int, (l.slot : Int) - sp.k < m ∧ m ≤ l.slot ∧ 0 ≤ m ∧
-      ∀ c C CV, c < i → SA.ResultAt tr.projAC x c m.toNat C CV →
+      ∀ c C CV, c < i → AC.ResultAt tr.projAC x c m.toNat C CV →
         Compatible (tr.HonestBlocks H) C B) :
     ∃ L ∈ tr.HonestBlocks H, L.root = l.block ∧ Compatible (tr.HonestBlocks H) L B := by
   have hr := (goldilocks_ac_projection sp ro dg H tr proposer hrun hnc).localRun
   have hl' : l ∈ (tr.projAC.state x i).locks := by
     rw [projAC_state hrun.toLocalRun hx i]; exact hl
   obtain ⟨c, hci, ℓ, C, CV, hu, hC, Lb, hLb, hLbC, ⟨L, hL, hLr, hLLb⟩, hsave⟩ :=
-    SA.slow_lock_saved hr (fun _ => SA.voteStart_initial _) hx i l hl' hlf
+    AC.slow_lock_saved hr (fun _ => AC.voteStart_initial _) hx i l hl' hlf
   obtain ⟨m, hm, hms, hm0, hgood⟩ := hgood
-  obtain ⟨-, hΦU⟩ := SA.frameIn_of_callAt hr hx hu.1
+  obtain ⟨-, hΦU⟩ := AC.frameIn_of_callAt hr hx hu.1
   have down : ∀ {X Y}, Anc (tr.HonestBlocks H) X Y → Compatible (tr.HonestBlocks H) Y B →
       Compatible (tr.HonestBlocks H) X B := by
     rintro X Y hXY (h | h)
     · exact Or.inl (hXY.trans h)
-    · exact SA.anc_total hr.coherent hXY h
+    · exact AC.anc_total hr.coherent hXY h
   refine ⟨L, hL, hLr, down hLLb ?_⟩
   rcases hms.lt_or_eq with hms | hms
   · obtain ⟨S, hS, hsaved, hLbS⟩ := hsave m hm hms
     have hmn : (m.toNat : Int) = m := Int.toNat_of_nonneg hm0
-    obtain ⟨k, hkc, C', CV', hC', hroot⟩ := SA.saved_result hr (fun _ => SA.voteStart_initial _)
+    obtain ⟨k, hkc, C', CV', hC', hroot⟩ := AC.saved_result hr (fun _ => AC.voteStart_initial _)
       hx c m.toNat (by simpa only [hmn] using hsaved)
     obtain ⟨ℓ', hu', hconf, -⟩ := id hC'
-    have hC'mem := (SA.frameIn_of_callAt hr hx hu'.1).2 (SA.deepest_mem hconf).1.1
+    have hC'mem := (AC.frameIn_of_callAt hr hx hu'.1).2 (AC.deepest_mem hconf).1.1
     have heq : C' = S := hr.coherent.1 hC'mem (hΦU hS) hroot
     exact down (Anc.mono hΦU hLbS) (heq ▸ hgood k C' CV' (hkc.trans hci) hC')
   · have hmn : m.toNat = l.slot := by omega

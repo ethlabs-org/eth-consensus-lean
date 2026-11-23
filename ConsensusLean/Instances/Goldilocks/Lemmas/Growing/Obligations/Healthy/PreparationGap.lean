@@ -43,7 +43,7 @@ theorem duty_proposal_run_at (run : (Sys (goldilocks S) V).Run)
   rw [htime] at hR
   have h0 : (0 : Time) ≤ (S.params (Model.pubOf run.1) hn).ts s := by
     have := (S.params (Model.pubOf run.1) hn).toParams.hΔ
-    simp only [SA.SAParams.ts]
+    simp only [AC.ACParams.ts]
     positivity
   have hnode := ready_transport_at S run.2 hn hv h0 hth hR
   rw [show run.2.ownKey (run.2.key (runProposer S run.2 hn s)) =
@@ -67,7 +67,7 @@ theorem duty_proposal_run_at (run : (Sys (goldilocks S) V).Run)
     exact hh
   · have h := hP.2.2
     rw [ht, (S.params (Model.pubOf run.1) hn).slotTime_eq] at h
-    simp only [SA.SAParams.ts] at h
+    simp only [AC.ACParams.ts] at h
     exact_mod_cast (mul_left_cancel₀
       (mul_pos four_pos (S.params (Model.pubOf run.1) hn).toParams.hΔ).ne' h).symm
 
@@ -105,7 +105,7 @@ theorem healthy_preparation_gap_at (run : (Sys (goldilocks S) V).Run)
     ring
   have hL : (goldilocks S (Model.pubOf run.1)).skel.grid.slotLen = 4 * sp.Δ := by
     have h1 := htime 1
-    simp only [TimeGrid.slotTime, SA.SAParams.ts] at h1
+    simp only [TimeGrid.slotTime, AC.ACParams.ts] at h1
     push_cast at h1
     linarith
   have hspan : (goldilocks S (Model.pubOf run.1)).skel.grid.slotTime N +
@@ -126,13 +126,13 @@ theorem healthy_preparation_gap_at (run : (Sys (goldilocks S) V).Run)
       have hs0 : s₀ = 0 := by omega
       subst hs0
       have := le_max_right ready 0
-      simp only [SA.SAParams.ts] at hs
+      simp only [AC.ACParams.ts] at hs
       push_cast at hs
       linarith
     · exact h
   have hxN : sp.ts x ≤ sp.ts N := by
     have : (x : Time) ≤ (N : Time) := by exact_mod_cast (show x ≤ N by omega)
-    simp only [SA.SAParams.ts]
+    simp only [AC.ACParams.ts]
     exact mul_le_mul_of_nonneg_left this (mul_nonneg zero_le_four hΔ.le)
   exact ⟨x, hxl, hxr, duty_proposal_run_at S A V run hn hv hnc
     hx0 ((hxN.trans hN).trans hb) (by simpa [Model.Run.point] using hx)⟩

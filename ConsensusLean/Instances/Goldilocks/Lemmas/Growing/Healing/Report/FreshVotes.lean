@@ -10,20 +10,20 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- Warm unanimity follows the actual proposal walk, by strict induction on cast cuts. -/
 theorem honest_vote_heads_eq_at
     {g ΔF b : Time} {s₀ u floor : Nat} {kindJ : Prop}
-    {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts u + sp.Δ) floor kindJ J)
-    {K : SA.CommitteeDict sp.n}
+    {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K))
+      (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -33,7 +33,7 @@ theorem honest_vote_heads_eq_at
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ y i e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e → e.msg.slot = u →
+    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = u →
       e.msg.head = P.root := by
   have hk := sp.two_le_k
   have hu : 0 < u := by omega
@@ -42,10 +42,10 @@ theorem honest_vote_heads_eq_at
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hsp : s₀ ≤ s + 1 := by omega
   have hms : gbar g + 2 * sp.Δ ≤ sp.ts s := by
-    have ht : sp.ts s₀ ≤ sp.ts s := (SA.ts_le_iff sp).2 (by omega)
+    have ht : sp.ts s₀ ≤ sp.ts s := (AC.ts_le_iff sp).2 (by omega)
     linarith [sp.toParams.hΔ]
   have htime : tr.time kP = sp.ts (s + 1 : Nat) := by
-    simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hP.2.2
+    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
   have hzk : z ∈ H (tr.time kP) :=
     hr.antitone (by rw [htime]; linarith [sp.toParams.hΔ]) hz
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
@@ -58,13 +58,13 @@ theorem honest_vote_heads_eq_at
   have hcp0 : tr.projAC.CallAt z ip ellp := by
     rw [RunTrace.upTo_projAC] at hcp
     exact ((Trace.upTo_callAt _).mp hcp).2
-  have hpay0 : (SA.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 =
+  have hpay0 : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 =
       some (d, pay) := by
     have hs := Trace.upTo_state tr.projAC z (d := tr.time kP) (i := ip)
       (fun q hq => (hr.time_mono hq.le).trans (by rw [hip, htime]))
     simp only [RunTrace.upTo_projAC, hs, Trace.upTo_time] at hpay
     exact hpay
-  suffices hall : ∀ i y e, y ∈ H (tr.time i) → SA.VoteAt tr.projAC y i e →
+  suffices hall : ∀ i y e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
       e.msg.slot = s + 1 → e.msg.head = P.root by
     exact fun y i e hy hv hs => hall i y e hy hv hs
   intro i
@@ -72,13 +72,13 @@ theorem honest_vote_heads_eq_at
   | _ i ih =>
     intro y e hy hv hes
     obtain ⟨ell, hc, he⟩ := hv
-    have hcast : SA.CastAt tr.projAC y i ell e := ⟨hc, he⟩
+    have hcast : AC.CastAt tr.projAC y i ell e := ⟨hc, he⟩
     have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
       (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
     have hri := (hac.upTo (hr.time_nonneg i)).localRun
-    have hcast' : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ell e := ⟨hci, he⟩
-    have hhigh := SA.vote_time_le hri hy ⟨ell, hcast'⟩
-    have hslot := (SA.castAt_spec hri hy hcast').2.1.symm.trans hes
+    have hcast' : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ell e := ⟨hci, he⟩
+    have hhigh := AC.vote_time_le hri hy ⟨ell, hcast'⟩
+    have hslot := (AC.castAt_spec hri hy hcast').2.1.symm.trans hes
     change sp.slot (tr.time i) = s + 1 at hslot
     change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at hhigh
     rw [hslot] at hhigh

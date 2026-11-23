@@ -13,12 +13,12 @@ open Blocks Shape Node
 
 variable {binding : VoteBinding}
 
-variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A canonical, nonfuture block in a recursive receipt produces an actual block-call
 record even when the store refuses it. -/
 theorem deliverRecs_block_call (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
+    (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
     (B : Blk sp) (hslot : B.slot ≤ sp.toParams.slotOf t) :
     ∀ (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat),

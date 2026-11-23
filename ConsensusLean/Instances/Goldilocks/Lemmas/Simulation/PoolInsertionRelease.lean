@@ -30,7 +30,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 event `i` of `v` at `t` newly inserts into `v`'s pool is the envelope `(t, m)` of the shape after
 the tick's leading polls and proposal duties. -/
 theorem tick_pool_insertion_queued (hv : rho.ExecutionValid) {v : V} {i : Nat} {t : Time}
-    (he : rho.events[i]? = some (.tick v t)) (m : SA.Vote (Fintype.card V))
+    (he : rho.events[i]? = some (.tick v t)) (m : AC.Vote (Fintype.card V))
     (hold : m ∉ (stateAt S rho hn v i).node.ac.pool m.slot)
     (hnew : m ∈ (stateAt S rho hn v (i + 1)).node.ac.pool m.slot) :
     (t, m) ∈ (shapeOf S hn (rho.runDuties v
@@ -80,7 +80,7 @@ theorem delivery_voteForward_released_of (hv : rho.ExecutionValid) {v : V}
       voteObj tv.2 ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
         (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.head? =
           some (.vote (encodeVote tv.2)))
-    (tv : Time × SA.Vote (Fintype.card V))
+    (tv : Time × AC.Vote (Fintype.card V))
     (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
     Model.Obj.mk (.signed (rho.ownKey v) .poll)
       (.data (.voteForward tv.1 (encodeVote tv.2))) [voteObj tv.2] ∈ rho.releasesAt i := by
@@ -137,7 +137,7 @@ of the processed shape. -/
 theorem delivery_pool_insertion_queued (hv : rho.ExecutionValid) {v : V}
     (hv' : v ∉ rho.faultyAt 0)
     {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
-    (he : rho.events[i]? = some (.deliver v o t)) (m : SA.Vote (Fintype.card V))
+    (he : rho.events[i]? = some (.deliver v o t)) (m : AC.Vote (Fintype.card V))
     (hold : m ∉ (stateAt S rho hn v i).node.ac.pool m.slot)
     (hnew : m ∈ (stateAt S rho hn v (i + 1)).node.ac.pool m.slot) :
     (t, m) ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards := by

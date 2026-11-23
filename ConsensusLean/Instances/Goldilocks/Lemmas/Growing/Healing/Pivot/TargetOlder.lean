@@ -11,9 +11,9 @@ The high-origin vote guarantee remains the explicit kernel boundary.
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -21,12 +21,12 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem target_compatible_older_origin_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x z : Fin sp.n} {r m q l : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
-    {e : SA.Em sp (List (FG.Att sp.n))}
+    {x z : Fin sp.n} {r m q l : Nat} {B O : AC.Blk sp.n (List (FG.Att sp.n))}
+    {e : AC.Em sp (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r m O) (hrb : tr.time r ≤ b)
-    (hz : z ∈ H (tr.time q)) (hv : SA.VoteAt tr.projAC z q e)
+    (hz : z ∈ H (tr.time q)) (hv : AC.VoteAt tr.projAC z q e)
     (hqb : tr.time q ≤ b) (hs : e.msg.slot = l) (hml : m < l)
-    (hB : SA.VoteExtends (tr.HonestBlocksAt H) e.msg B) :
+    (hB : AC.VoteExtends (tr.HonestBlocksAt H) e.msg B) :
     Compatible (tr.HonestBlocksAt H) B O := by
   obtain ⟨ell, hc⟩ := hv
   obtain ⟨HO, hHO, hOr, hOO⟩ :=
@@ -34,7 +34,7 @@ theorem target_compatible_older_origin_at
   obtain ⟨HB, hHB, hBr, hBB⟩ := hB
   have hcoh := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
   obtain rfl : HO = HB := hcoh.1 hHO hHB (hOr.trans hBr.symm)
-  exact SA.anc_total hcoh hBB hOO
+  exact AC.anc_total hcoh hBB hOO
 
 end Consensus.Goldilocks.Healing.Growing.ProposalImpl
 

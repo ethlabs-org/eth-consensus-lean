@@ -14,7 +14,7 @@ ticks, so the restart (which follows the sleep with no call between) is not afte
 
 namespace Consensus.Goldilocks.Compose
 
-open SA
+open AC
 
 /-- **F.5 (run).** -/
 theorem event_order : EventOrder := by
@@ -28,7 +28,7 @@ theorem event_order : EventOrder := by
     · exact Or.inr ⟨B, ⟨true, hB⟩, haB⟩
 
 /-- Joining uses only time order and the sleep and public-tick laws through `t`. -/
-theorem ready_implies_joined_of_cuts {sp : SAParams} {A : NodeAC sp.toParams}
+theorem ready_implies_joined_of_cuts {sp : ACParams} {A : NodeAC sp.toParams}
     {tr : RunTrace A} {y : Fin sp.n} {t c : Time}
     (hmono : Monotone tr.time)
     (hsleep : ∀ k, tr.RestartAt y k → tr.time k ≤ t →
@@ -52,7 +52,7 @@ theorem ready_implies_joined_of_cuts {sp : SAParams} {A : NodeAC sp.toParams}
   rw [hmax] at hum
   have hsl : 2 ≤ sp.slot t := by
     have := (ts_le_iff_le_slot sp ht 2).1
-      (by simp only [SAParams.ts]; linarith only [hum, hu, hc])
+      (by simp only [ACParams.ts]; linarith only [hum, hu, hc])
     exact_mod_cast this
   refine ⟨by change 0 < sp.slot t; omega, ?_⟩
   -- `t_{slot(t) − 1}` is a public time of the window, so the restart is not after it
@@ -69,7 +69,7 @@ theorem ready_implies_joined_of_cuts {sp : SAParams} {A : NodeAC sp.toParams}
     have := (ts_le_iff_le_slot sp ht ((sp.slot t : Int) - 1)).2 (by omega)
     rw [hS]; exact this
   have hSw : t - c - 1 < sp.toParams.slotTime (sp.toParams.slotOf t - 1) := by
-    simp only [SAParams.ts] at hup
+    simp only [ACParams.ts] at hup
     rw [hS]
     change t - c - 1 < 4 * sp.toParams.Δ * ((sp.slot t : Int) - 1)
     change t < 4 * sp.toParams.Δ * ((sp.slot t : Int) + 1) at hup
@@ -86,7 +86,7 @@ theorem ready_implies_joined_of_cuts {sp : SAParams} {A : NodeAC sp.toParams}
   exact (not_le_of_gt this) (hjt ▸ (hum.trans hSw).le)
 
 /-- **F.4** from any AC starts `ini`: joining reads only the run's sleep, restart and tick laws. -/
-theorem ready_implies_joined_of {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+theorem ready_implies_joined_of {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
     {ini : Fin sp.n → (goldilocksNode sp ro).State}

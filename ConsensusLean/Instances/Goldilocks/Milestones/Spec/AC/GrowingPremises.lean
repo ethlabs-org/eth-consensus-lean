@@ -1,12 +1,12 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Events
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Events
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Growing
 
 @[expose] public section
 
-/-! # SA traces under growing faults: premises and honest objects
+/-! # AC traces under growing faults: premises and honest objects
 
-The SA premises and honest-object facts (`Spec/SA/Trace`, `Spec/SA/Events`) for a time-indexed
+The AC premises and honest-object facts (`Spec/AC/Premises`, `Spec/AC/Events`) for a time-indexed
 honest set `H`:
 
 * `HonestFrameBlockAt`, `EarlierVotesExtendAt`, `Growing.Carry`: the frame blocks, votes and
@@ -17,17 +17,17 @@ honest set `H`:
   earlier slot, and that block is excluded only while the proposer is honest);
 * `Growing.ACRun`: `Growing.ACLocalRun` with `Growing.HonestObjects`. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
 
 /-- The blocks of the frames of the calls of nodes honest at the call. -/
-def HonestFrameBlockAt (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n)) (B : Blk sp.n FGP) :
+def HonestFrameBlockAt (tr : GTrace sp FGP ro) (H : Time → Set (Fin sp.n)) (B : Blk sp.n FGP) :
     Prop :=
   ∃ y i ℓ, y ∈ H (tr.time i) ∧ tr.CallAt y i ℓ ∧ B ∈ ℓ.frame.tree
 
 /-- Every vote of slot `σ` cast before cut `i` by a node honest at its cast extends `B`. -/
-def EarlierVotesExtendAt (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n))
+def EarlierVotesExtendAt (tr : GTrace sp FGP ro) (H : Time → Set (Fin sp.n))
     (U : Set (Blk sp.n FGP)) (i σ : Nat) (B : Blk sp.n FGP) : Prop :=
   ∀ x j, j < i → x ∈ H (tr.time j) → ∀ e, VoteAt tr x j e → e.msg.slot = σ → VoteExtends U e.msg B
 
@@ -36,7 +36,7 @@ namespace Growing
 /-- **Honest objects under growing faults**: the run facts about signers honest at the reading
 cut. -/
 structure HonestObjects (selectedProposer : Nat → Fin sp.n)
-    (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n)) : Prop where
+    (tr : GTrace sp FGP ro) (H : Time → Set (Fin sp.n)) : Prop where
   /-- A vote whose validator is honest at cut `i`, in the pool of a node honest at cut `i`, was
   emitted by that validator's node at an earlier cut. -/
   pool_vote : ∀ y i σ, y ∈ H (tr.time i) → ∀ v ∈ (tr.state y i).pool σ, v.val ∈ H (tr.time i) →
@@ -56,13 +56,13 @@ structure HonestObjects (selectedProposer : Nat → Fin sp.n)
     B.proposer ∈ H (max (tr.time i) (tr.time i')) → B.proposer = B'.proposer →
     B.slot = B'.slot → B = B'
 
-/-- An AC trace of the SA with its contract, from the AC starts `ini`, and the honest-object
+/-- An AC trace of the AC with its contract, from the AC starts `ini`, and the honest-object
 facts under growing faults. -/
 structure ACRun (selectedProposer : Nat → Fin sp.n)
-    (tr : SATrace sp FGP ro) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
-    (ini : Fin sp.n → SAState sp.n := fun _ => (goldilocksSA sp FGP ro).initial) : Prop where
+    (tr : GTrace sp FGP ro) (H : Time → Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
+    (ini : Fin sp.n → ACState sp.n := fun _ => (goldilocksAC sp FGP ro).initial) : Prop where
   /-- The AC trace contract. -/
-  localRun : Consensus.Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U tr ini
+  localRun : Consensus.Goldilocks.Growing.ACLocalRun (goldilocksAC sp FGP ro) H U tr ini
   /-- The honest-object facts. -/
   honest : HonestObjects selectedProposer tr H
   /-- The AC starts are starts up to the vote permission. -/
@@ -70,6 +70,6 @@ structure ACRun (selectedProposer : Nat → Fin sp.n)
 
 end Growing
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

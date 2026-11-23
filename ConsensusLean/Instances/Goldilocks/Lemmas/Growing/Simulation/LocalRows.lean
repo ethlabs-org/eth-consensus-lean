@@ -48,7 +48,7 @@ theorem goldilocks_outageServiceSupply (S : Setup) (A : ContractAssumptions S) {
   have h := hs.message x i m hx hsrc hi0 y j ℓ hy (Compose.projAC_callAt.mpr hcall)
     (by rw [Compose.projAC_deadline]; exact hdb) (by rw [Compose.projAC_deadline]; exact hdl)
   rw [es, hserved]
-  exact (SA.FamilyFacts.messageServedBefore_iff_old ..).mpr h
+  exact (AC.FamilyFacts.messageServedBefore_iff_old ..).mpr h
 
 /-- The local read deadlines and quorum thresholds fit the endpoint contract. -/
 theorem goldilocks_claimDeadlineFit (S : Setup) (A : ContractAssumptions S) {E : Env V}

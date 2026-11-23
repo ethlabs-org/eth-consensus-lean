@@ -29,9 +29,9 @@ There is no Healing-to-Obligations import. -/
 
 namespace Consensus.Goldilocks.Healing.Recovery
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
 
 /-- Every honest pre-call finalized cache is above the pre-reset height bound from `T` on. -/
@@ -42,14 +42,14 @@ structure HighFinalityFrom (g T : Time) : Prop where
 /-- Actual report coverage of a post-drain ready proposal, with the same disjunction as
 `report_cover_of_compatible_floors` but without its unproved `hcuts` input. Historical reports
 are allowed: the deadline is inclusive and there is deliberately no lower time bound. -/
-structure ReadyProposalReportSupply (K : SA.CommitteeDict sp.n) (proposer : Nat → Fin sp.n)
+structure ReadyProposalReportSupply (K : AC.CommitteeDict sp.n) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF a : Time) : Prop where
   report_cover : ResetPremises tr H K proposer dg g ΔF a → CatchRun tr H g (2 * sp.Δ) →
-    ∀ (p : Fin sp.n) (k u : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))),
+    ∀ (p : Fin sp.n) (k u : Nat) (P : AC.Blk sp.n (List (FG.Att sp.n))),
       ReadyProposal tr H proposer p k u P → drainTime sp a ≤ sp.ts u →
-      (∀ z ∈ H, ∃ r ℓ C, SA.ToFGAt tr.projAC z r ℓ C ∧
+      (∀ z ∈ H, ∃ r ℓ C, AC.ToFGAt tr.projAC z r ℓ C ∧
         tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C) ∨
-      ∃ z ∈ H, ∃ r ℓ C, SA.ToFGAt tr.projAC z r ℓ C ∧
+      ∃ z ∈ H, ∃ r ℓ C, AC.ToFGAt tr.projAC z r ℓ C ∧
         tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C ∧
         ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h
 
@@ -57,7 +57,7 @@ structure ReadyProposalReportSupply (K : SA.CommitteeDict sp.n) (proposer : Nat 
 height and permanent high cached finality. `duration` excludes the final relay allowance `Δ`.
 The carrier is an actual acceptance, not a delivery or an assumed replay of a refused update. -/
 structure HighCoverageAt (g t duration : Time) : Prop where
-  witness : ∃ (q : Fin sp.n) (kP : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))),
+  witness : ∃ (q : Fin sp.n) (kP : Nat) (P : AC.Blk sp.n (List (FG.Att sp.n))),
     q ∈ H ∧ tr.ProposesAt q kP P ∧ t ≤ sp.ts P.slot ∧ sp.ts P.slot ≤ t + duration ∧
     (∃ iP, tr.AcceptAt q iP P ∧
       HZ tr H g + 1 ≤ ((tr.post iP).fg.σ P.root).h) ∧
@@ -69,10 +69,10 @@ structure HighCoverageAt (g t duration : Time) : Prop where
 
 /-- Lane A's bounded coverage obligation under exactly the public pattern premises. The
 four-anchor stronger timeout regime is not substituted for `cF + kF ≤ δt`. -/
-structure PatternCoverageSupply (K : SA.CommitteeDict sp.n) (proposer : Nat → Fin sp.n)
+structure PatternCoverageSupply (K : AC.CommitteeDict sp.n) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF Gp : Time)
     (W M cF kF : Nat) : Prop where
-  coverage : GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K) →
+  coverage : GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K) →
     PatternPremises tr H K proposer dg g ΔF Gp W M cF kF →
     ∀ t, Rstar sp g ΔF Gp ≤ t →
       HighCoverageAt tr H g t (4 * sp.Δ * ((W : Time) + 1 + M))

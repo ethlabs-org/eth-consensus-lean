@@ -16,9 +16,9 @@ first cut and the AC projection's state after it; the run supplies these for an 
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {tr : GoldilocksTrace sp ro}
 
@@ -28,7 +28,7 @@ and payload `pay` of `ac_proposal` after `ac_on_tick`, given the cut law of `p`'
 AC projection's state of `p` at `j + 1`. -/
 theorem proposal_data_of_tick {p : Fin sp.n} {j x s : Nat}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hg : tr.GroupAt proposer dg p j (tr.time (j + 2)) (.tick x))
     (hPr : Node.Proposes proposer p (tr.time (j + 2)))
     (hr : (Node.acProposal (Node.tickStep proposer dg p (tr.state p j) (tr.time (j + 2)) x
@@ -38,7 +38,7 @@ theorem proposal_data_of_tick {p : Fin sp.n} {j x s : Nat}
     (hcut : ∀ c, tr.CallAt p j c → Node.CutStep p (tr.time j) (tr.state p j) c (tr.post j))
     (hproj : tr.projAC.state p (j + 1) = (tr.state p (j + 1)).ac) :
     ∃ i ℓp d pay, tr.projAC.CallAt p i ℓp ∧ ℓp.call = .proposal ∧
-      (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay) ∧
+      (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay) ∧
       tr.time i = sp.ts s ∧ P.parent = some d.head.root ∧ P.acPayload = pay := by
   set t := tr.time (j + 2)
   set st := tr.state p j

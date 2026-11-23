@@ -17,7 +17,7 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 given health through the snapshot node's publication window `[ḡ, ḡ + Δ − 1]`. Both the source and
 the receiver use honesty at their own cuts. -/
 theorem healthy_repair_catch_at (Q : HealthyPreparationQueryAt S A V)
-    (hb : SA.gbar Q.gst + Q.params.Δ ≤ Q.bound) :
+    (hb : AC.gbar Q.gst + Q.params.Δ ≤ Q.bound) :
     Healing.Growing.CatchRun Q.trace Q.keys Q.gst (2 * Q.params.Δ) := by
   have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
     (Model.sysOf_delivers_iff _ _ _ _).mp Q.healthy.1

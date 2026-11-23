@@ -16,9 +16,9 @@ growing honest-block universe, not reconstructed from a terminal cohort.
 
 namespace Consensus.Goldilocks.Healing.Growing.Outcome
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
@@ -62,7 +62,7 @@ theorem proposal_unique_before_hold
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    {p y : Fin sp.n} {k j u : Nat} {P Q : SA.Blk sp.n (List (FG.Att sp.n))}
+    {p y : Fin sp.n} {k j u : Nat} {P Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hp : p ∈ H (sp.ts u + Regimes.Growing.hold sp))
     (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
     (hu : 0 < u) (hy : y ∈ H (tr.time j))
@@ -70,7 +70,7 @@ theorem proposal_unique_before_hold
     (hj : tr.time j ≤ sp.ts u + Regimes.Growing.hold sp)
     (hQ : Q ∈ ell.frame.tree) (hQs : Q.slot = u) : Q = P := by
   have hk : tr.time k = sp.ts u := by
-    simpa only [sp.slotTime_eq, hPs, SAParams.ts] using hactual.2.2
+    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hactual.2.2
   let t := max (sp.ts u) (tr.time j)
   have ht : 0 ≤ t := (hrun.time_nonneg k).trans (hk ▸ le_max_left _ _)
   have htH : t ≤ sp.ts u + Regimes.Growing.hold sp := by
@@ -84,9 +84,9 @@ theorem proposal_unique_before_hold
         rw [RunTrace.upTo_projAC]
         exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩
       have ha := Compose.goldilocks_ac_projection_from hrt (hnc.upTo _)
-      have h := SA.frame_slot_le sp ha.localRun hy hc' Q hQ
+      have h := AC.frame_slot_le sp ha.localRun hy hc' Q hQ
       rw [hQs] at h
-      exact (SA.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).mpr (by exact_mod_cast h)
+      exact (AC.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).mpr (by exact_mod_cast h)
     simpa only [t, max_eq_right hslot] using hy
   have hactual' : (tr.upTo t).ProposesAt p k P := by
     rcases hactual with ⟨⟨⟨acc, hacc⟩, hpos⟩, hprop, htime⟩
@@ -103,20 +103,20 @@ theorem proposal_mem_of_early_cast
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    {p y : Fin sp.n} {k j u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {p y : Fin sp.n} {k j u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hp : p ∈ H (sp.ts u + Regimes.Growing.hold sp))
     (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
     (hu : 0 < u) (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hc : SA.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
     (hj : tr.time j < sp.ts u + sp.Δ) : P ∈ ell.frame.tree := by
   have hc' : (tr.upTo (tr.time j)).projAC.CallAt y j ell := by
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc.1⟩
-  have hcast : SA.CastAt (tr.upTo (tr.time j)).projAC y j ell e := ⟨hc', hc.2⟩
+  have hcast : AC.CastAt (tr.upTo (tr.time j)).projAC y j ell e := ⟨hc', hc.2⟩
   have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg j))
     (hnc.upTo _)).localRun
-  obtain ⟨⟨Q, hQ, hQs, -⟩, -⟩ := SA.cast_ready hr hy hcast (hes ▸ hj)
+  obtain ⟨⟨Q, hQ, hQs, -⟩, -⟩ := AC.cast_ready hr hy hcast (hes ▸ hj)
   have he := proposal_unique_before_hold hrun hnc hp hdesignated hactual hPs hu hy hc.1
     hj.le hQ (hQs.trans hes)
   exact he ▸ hQ

@@ -17,9 +17,9 @@ yielding the exact frozen endpoint without a writer-survival premise.
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -27,13 +27,13 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem held_target_vote_domain_of_row_bound_before_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x y v : Fin sp.n} {r i q m : Nat} {B S : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     (hBx : B ∈ (tr.state x r).fg.tree) (hrb : tr.time r ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hcast : SA.CastAt tr.projAC y i ell e) (hib : tr.time i ≤ b)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hcast : AC.CastAt tr.projAC y i ell e) (hib : tr.time i ≤ b)
     (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B →
-      B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
+      B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
     (hS : HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b) (hm : m < e.msg.slot)
     (hBS : Compatible (tr.HonestBlocksAt H) B S)
     (hcompare : ∀ z d n O, d < i → HighOrigin tr H g z d n O →
@@ -47,7 +47,7 @@ theorem held_target_vote_domain_of_row_bound_before_at
       ∀ z d, z ∈ H (tr.time d) → tr.SignAt z d att → d < i → ∀ c l O,
         c < d → HighOrigin tr H g z c l O → l < e.msg.slot) :
     Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
-      B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
+      B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   have ht := hp.run.time_nonneg i
   have hle : ∀ c < i, tr.time c ≤ tr.time i := fun _ hc => hp.run.time_mono hc.le
   have hroot : Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
@@ -57,7 +57,7 @@ theorem held_target_vote_domain_of_row_bound_before_at
         (by omega) hcompare
   by_cases hcovered : Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot
   · exact Or.inl hcovered
-  have hkeep : ∃ W ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
+  have hkeep : ∃ W ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
       Anc (tr.HonestBlocksAt H) B W ∧ (tr.state y i).fg.IsViable W := by
     obtain ⟨hPhi, -⟩ := frame_tree_subset_at hp.run hp.noColl hy hcast.1
     have hPhiU := Outcome.frame_tree_subset hp.run hy hcast.1
@@ -103,13 +103,13 @@ theorem held_target_vote_domain_of_row_bound_before_at
 theorem held_target_vote_domain_before_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x y v : Fin sp.n} {r i q m : Nat} {B S : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     (hBx : B ∈ (tr.state x r).fg.tree) (hrb : tr.time r ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hcast : SA.CastAt tr.projAC y i ell e) (hib : tr.time i ≤ b)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hcast : AC.CastAt tr.projAC y i ell e) (hib : tr.time i ≤ b)
     (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B →
-      B ∈ SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
+      B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
     (hS : HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b) (hm : m < e.msg.slot)
     (hBS : Compatible (tr.HonestBlocksAt H) B S)
     (hcompare : ∀ z d n O, d < i → HighOrigin tr H g z d n O →
@@ -120,7 +120,7 @@ theorem held_target_vote_domain_before_at
       ∀ z' d' n' O', d' < i → HighOrigin tr H g z' d' n' O' →
       Compatible (tr.HonestBlocksAt H) O O') :
     Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
-      B ∈ ell.frame.viableTree (SA.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
+      B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   apply held_target_vote_domain_of_row_bound_before_at hp hx hy hBx hrb hcast hib hheld
     hS hqb hm hBS hcompare hseedCompare hpair
   intro W hW att ha z d hz hs hdi c l O hcd ho

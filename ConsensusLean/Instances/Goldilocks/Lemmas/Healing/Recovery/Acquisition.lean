@@ -32,10 +32,10 @@ needed. -/
 
 namespace Consensus.Goldilocks.Healing.Recovery
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {H : Set (Fin sp.n)}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF Gp a : Time}
 
@@ -43,7 +43,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 leaves it at state height at least `H_z + 1`. -/
 theorem ready_proposal_high (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hready : ReadyProposal tr H proposer p k u P)
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hready : ReadyProposal tr H proposer p k u P)
     (hR : drainTime sp a ≤ sp.ts u) :
     ∃ iP, tr.AcceptAt p iP P ∧ HZ tr H g + 1 ≤ ((tr.post iP).fg.σ P.root).h := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
@@ -59,15 +59,15 @@ theorem ready_proposal_high (hp : ResetPremises tr H K proposer dg g ΔF a)
     have ha0 : 0 ≤ a := hka ▸ hp.run.time_nonneg k'
     have hlt : a < sp.ts ((sp.slot a : Int) + 1) := by
       by_contra h
-      have := (SA.ts_le_iff_le_slot sp ha0 _).1 (not_lt.1 h)
+      have := (AC.ts_le_iff_le_slot sp ha0 _).1 (not_lt.1 h)
       omega
-    exact hlt.le.trans ((SA.ts_le_iff sp).2 (by push_cast; omega))
+    exact hlt.le.trans ((AC.ts_le_iff sp).2 (by push_cast; omega))
   have hpu := hp.toUpTo tr H hau
   -- the reset seed, a high origin written before the slot, is below the duty head
   obtain ⟨x, r, l, O, ho, -, -, hrt⟩ := hpu.reset_seed_before_slot hR
   have hOd := hpu.reset_proposal_passes hc hpH hR hci hcall hd hti hti.le O ⟨x, r, l, ho, hrt⟩
   -- the parent edge to `P`
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
+  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hpH hci
   obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
   have hQt : d.head ∈ ell.frame.tree := by
     rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hsQ with he | ⟨c, -, hc⟩
@@ -93,10 +93,10 @@ theorem fresh_high_proposal {W M cF kF v : Nat}
     (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hpat : PatternPremises tr H K proposer dg g ΔF Gp W M cF kF)
     (hwindow : ∀ u, v ≤ u → u < v + M →
-      ∃ (k : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))),
+      ∃ (k : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))),
         ReadyProposal tr H proposer (proposer u) k u B)
     (hv : drainTime sp a ≤ sp.ts v) :
-    ∃ (s : Nat) (p : Fin sp.n) (kP iP : Nat) (P : SA.Blk sp.n (List (FG.Att sp.n))),
+    ∃ (s : Nat) (p : Fin sp.n) (kP iP : Nat) (P : AC.Blk sp.n (List (FG.Att sp.n))),
       v ≤ s ∧ s ≤ v + acqSlots sp Gp ∧
       ReadyProposal tr H proposer p kP s P ∧ tr.AcceptAt p iP P ∧
       HZ tr H g + 1 ≤ ((tr.post iP).fg.σ P.root).h := by

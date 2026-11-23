@@ -14,9 +14,9 @@ write, and the result's supporter is transported back only to its actual voting 
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -25,8 +25,8 @@ theorem result_prefix_stored_locks_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {r s i : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
-    {B C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hres : SA.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocksAt H) B C)
+    {B C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hres : AC.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocksAt H) B C)
     (hs : cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hrb : tr.time r ≤ b) (hib : tr.time i ≤ b)
     (hi : s + 1 ≤ sp.slot (tr.time i)) :
     ∀ l ∈ (tr.projAC.state y i).locks,
@@ -48,21 +48,21 @@ theorem result_prefix_stored_locks_at
       Compatible (tr.HonestBlocksAt H) C D → Compatible (tr.HonestBlocksAt H) L B := by
     intro L D hLD hCD
     rcases hCD with h | h
-    · exact SA.anc_total hU hLD (hBC.trans h)
-    · exact SA.anc_total hU (hLD.trans h) hBC
+    · exact AC.anc_total hU hLD (hBC.trans h)
+    · exact AC.anc_total hU (hLD.trans h) hBC
   intro l hl hlive hle Y hY hYr
   rw [← Trace.upTo_state tr.projAC y (d := tr.time i) fun _ hq => hm hq.le] at hl
   rcases hle.lt_or_eq with hls | hls
   · have hclean : cleanLabel sp a + sp.k + 2 ≤ l.slot := by omega
     have compare : ∀ {q D}, y ∈ H (tr.time q) → tr.time q ≤ b →
-        ((∃ CV, SA.FastLockAt tr.projAC y q l.slot D CV) ∨
-          SA.SlowLockAt tr.projAC y q l.slot D) → Compatible (tr.HonestBlocksAt H) C D := by
+        ((∃ CV, AC.FastLockAt tr.projAC y q l.slot D CV) ∨
+          AC.SlowLockAt tr.projAC y q l.slot D) → Compatible (tr.HonestBlocksAt H) C D := by
       intro q D hyq hqb hsource
       obtain ⟨z, hz, j, hjr, e, ⟨ell, hcast⟩, _, hes, Hd, hHd, he, hCH⟩ :=
         ProposalImpl.result_supporter_at hp hx hres .refl hrb hts
       have hzj := hp.run.antitone (hm hjr.le) hz
       have hjb := (hm hjr.le).trans hrb
-      have hv : SA.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
+      have hv : AC.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
         rcases hsource with ⟨CV', hfast⟩ | hslow
         · exact hp.fast_source_votes_before_at hyq hfast hclean hqb j hjb z hzj ell e
             hcast (by omega)
@@ -70,32 +70,32 @@ theorem result_prefix_stored_locks_at
             hcast (by omega)
       obtain ⟨Hd', hHd', he', hDH⟩ := hv
       obtain rfl : Hd' = Hd := hU.1 hHd' hHd (he'.trans he.symm)
-      exact SA.anc_total hU hCH hDH
+      exact AC.anc_total hU hCH hDH
     cases hf : l.fast
     · obtain ⟨q, hqi, D, hsl, L, hL, hLr, hLD⟩ :=
-        SA.slow_lock_provenance hac.localRun hp.run.vstart hy i l hl hf
+        AC.slow_lock_provenance hac.localRun hp.run.vstart hy i l hl hf
       obtain rfl : Y = L := hU.1 hY (sub hL) (hYr.trans hLr.symm)
       obtain ⟨ell, R, hu, hconf, hdeep⟩ := hsl
-      obtain ⟨hqd, hu⟩ := (SA.upTo_updateAt hm).mp hu
+      obtain ⟨hqd, hu⟩ := (AC.upTo_updateAt hm).mp hu
       have hstate := Trace.upTo_state tr.projAC y (d := tr.time i)
         (i := q) fun _ hk => (hm hk.le).trans hqd
-      have hsl' : SA.SlowLockAt tr.projAC y q l.slot D := by
+      have hsl' : AC.SlowLockAt tr.projAC y q l.slot D := by
         refine ⟨ell, R, hu, ?_, ?_⟩
         · rwa [hstate] at hconf
         · simpa only [hstate, Trace.upTo_time] using hdeep
       exact down (hLD.mono sub) (compare (hp.run.antitone (hm hqi.le) hy)
         ((hm hqi.le).trans hib) (Or.inr hsl'))
     · obtain ⟨q, hqi, D, CV', hfl, L, hL, hLr, hLD⟩ :=
-        SA.fast_lock_provenance hac.localRun hp.run.vstart hy i l hl hf
+        AC.fast_lock_provenance hac.localRun hp.run.vstart hy i l hl hf
       obtain rfl : Y = L := hU.1 hY (sub hL) (hYr.trans hLr.symm)
       exact down (hLD.mono sub) (compare (hp.run.antitone (hm hqi.le) hy)
-        ((hm hqi.le).trans hib) (Or.inl ⟨CV', ((SA.upTo_fastLockAt hm).mp hfl).2⟩))
+        ((hm hqi.le).trans hib) (Or.inl ⟨CV', ((AC.upTo_fastLockAt hm).mp hfl).2⟩))
   · obtain ⟨L, hL, hLr, D, hLD, q, hqi, CV', hD⟩ :=
-      SA.lock_below_origin hac.localRun hp.run.vstart hy i l hl
+      AC.lock_below_origin hac.localRun hp.run.vstart hy i l hl
     obtain rfl : Y = L := hU.1 hY (sub hL) (hYr.trans hLr.symm)
     rw [hls] at hD
-    have hD' := hD.imp (fun h => ((SA.upTo_resultAt hm).mp h).2)
-      (fun h => ((SA.upTo_optimisticLockAt hm).mp h).2)
+    have hD' := hD.imp (fun h => ((AC.upTo_resultAt hm).mp h).2)
+      (fun h => ((AC.upTo_optimisticLockAt hm).mp h).2)
     exact down (hLD.mono sub) (hp.result_source_compatible_at hx
       (hp.run.antitone (hm hqi.le) hy) hres hD' hrb ((hm hqi.le).trans hib) hts)
 

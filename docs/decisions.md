@@ -393,7 +393,7 @@ detail in `TRUST.md`.
   could not hold of both, and the refinement could not be stated faithfully. So `Common.Block` has a field
   `input : Nat`, the digest is over `(parent, slot, input, FG payload, AC payload)`, and the node's tick event
   carries the input (`Node.Event.tick x`; `mkBlock` writes it; the AC never reads it). Rejected: the input through
-  the AC payload via `ACInterface.proposal`, which changes the generic AC interface, the SA payload pair and every
+  the AC payload via `ACInterface.proposal`, which changes the generic AC interface, the AC payload pair and every
   proved AC file; the field leaves the AC and FG-store lemmas (generic in the block type) intact. The spec folds the
   input into the AC payload (`specs/goldilocks/tex/shared/composition.tex`: the AC fixes the encoding of its
   payload); the mapping records the field as that encoding.
@@ -429,7 +429,7 @@ detail in `TRUST.md`.
   of slot `s` gets `s + k`. A fast lock of slot `s` gets `fastExpiry`, `min(s + k, max(s + 2, E + c))`, with `E` the
   latest expiry of the node's live fast locks of earlier slots; it gets `s + 2` when no live fast lock of an
   earlier slot remains (a gap in fast confirmations shortens it only once those locks have expired). `c ≥ 2` is a
-  parameter (`SAParams.c`, `Setup.c`, no `c ≤ k`) that no coefficient reads. The cap is at the write; "a live lock
+  parameter (`ACParams.c`, `Setup.c`, no `c ≤ k`) that no coefficient reads. The cap is at the write; "a live lock
   is recent" comes from the run invariant `l.slot + 2 ≤ l.expiry ≤ l.slot + k` (`LocksWF`). The rule's four
   choices:
   - **per-slot `E`**: `E` counts only fast locks of earlier slots (`l.slot < s`). Without it, repeated optimistic
@@ -459,13 +459,13 @@ detail in `TRUST.md`.
   of vetoed updates (their arguments read the counted votes and `Carry`, not the record). No coefficient depends on
   the rule. The LaTeX is `specs/goldilocks/tex/goldilocks-spec.tex` §"Locks" and §"Confirmation" (claims OC1).
   Witnesses at `k = 6`, `c = 2`: `ConsensusLeanTest/Goldilocks/AC/GradedLocks.lean`.
-- **Full-tree fallback for an honest vote's head.** `tryVote` walks the viable tree of `SA.voteDomain`: the voter
+- **Full-tree fallback for an honest vote's head.** `tryVote` walks the viable tree of `AC.voteDomain`: the voter
   block tree when its viable tree in the current frame is nonempty, else the whole frame tree. `voterBlockTree`
   keeps its meaning, so `ViableAtVote` and every trusted statement are unchanged in meaning: the smallest trusted
   diff.
 - **`ac_to_fg` returns only `fg_confirmed`** (or `⊥`). Nothing read the returned head: the node discards it, and
   under loose BJ the finality pair comes from `finality_pair(Λ, σ_e)` on the source's entry state. So
-  `ACInterface.toFG`, `SA.acToFG` and `Node.acToFG` have no head component; requirement 1 (`ReqHeads`) has no
+  `ACInterface.toFG`, `AC.acToFG` and `Node.acToFG` have no head component; requirement 1 (`ReqHeads`) has no
   returned-head clause, requirement 2 (`ReqSource`) has no "the returned head extends it", and `Compose.SourceHeld`
   has no such conjunct. No consumer of either fact existed, so they were dropped rather than restated on `ac_head`.
   The node and the family behave as before (only an unread return value went), and the LaTeX (SPEC requirements 1
@@ -520,14 +520,14 @@ detail in `TRUST.md`.
   faulty ones included, to be selected for the role it claims; poll scheduling and release order stay those of
   the population binding. Restricting `candidateRole` to duty roles was rejected: the population vote role is
   `.poll`, which is not a duty role, and `Credentials` already ties every claimed role to the signer's selection.
-- **The `mayVote` gate.** `SAState.mayVote s` is the node's own permission to vote in slot `s`. For a committee
+- **The `mayVote` gate.** `ACState.mayVote s` is the node's own permission to vote in slot `s`. For a committee
   binding, `installVote` sets it at `init` from the actual own-role membership the engine passes
   (`mayVote s = p (voteRole s)`), and it is kept across restarts (§"Correctness and the review statements");
   `stock` leaves it `true`. `tryVote` runs its guards and records `votedSlot`
   whether or not the permission holds, and admits, emits and optimistically checks its own vote only when it
   holds. Reasons: a non-member never signs a vote, so the honest pools and views hold only committee votes (P and
   T below); the AC reads its permission as state, never a selection; a denied slot is spent as a cast one is.
-- **Thresholds count the committee.** `SAParams.committeeSize` (`VoteBinding.committeeSize`: `n` at `stock`,
+- **Thresholds count the committee.** `ACParams.committeeSize` (`VoteBinding.committeeSize`: `n` at `stock`,
   `min m n` for `.sized m`, `|keys|` for `.fixed keys`) is the denominator of the fast test
   (`committeeSize ≤ 2·score`), the optimistic test (`3·committeeSize ≤ 4·|voters|`) and the unlock bound
   (`2·|opponents| < committeeSize`). The AC step statements read a slot dictionary `CommitteeDict` of
@@ -536,7 +536,7 @@ detail in `TRUST.md`.
   faulty than honest, awake and joined members). `CommitteeDict.BindsSel` is the one link from a dictionary to the
   run's actual selection of `voteRole s`.
 - **Statements at population-sized committees take the size equation as a premise.** The run records
-  `GoldilocksRun`, `Growing.GoldilocksRun`, `SA.ACRun`, `SA.ACRunU` and `SA.Growing.ACRun` state the
+  `GoldilocksRun`, `Growing.GoldilocksRun`, `AC.ACRun`, `AC.ACRunU` and `AC.Growing.ACRun` state the
   run and trace laws only, for every vote binding, and carry no committee size. A milestone statement proved or
   stated for population-sized committees takes `sp.committeeSize = sp.n` as a premise: the growing-fault
   statement over `Growing.GoldilocksRun` `Compose.Growing.OutcomeService`. The growing-fault R.2 rows
@@ -552,7 +552,7 @@ detail in `TRUST.md`.
   HS.4) run from `K`'s committee start; HR.4 `HeightScopedRetention` takes the same two facts and HR.5
   `CacheAcceptanceAfterReset` only the committee start. CS (`FaultBoundK`) is not a premise: the proofs
   derive it where they count, at slots whose previous slot starts after `ḡ`. The AC healing bundle
-  `HealthyBaseU` (`Milestones/Statements/Healing/ACU`) and the proof-side `SA.HealthyBase` built on it
+  `HealthyBaseU` (`Milestones/Statements/Healing/ACU`) and the proof-side `AC.HealthyBase` built on it
   carry the size equation as a field;
   `GoldilocksRunData`, the run conjunct of `GoldilocksHealingData`, does not: its `Run` equation is the
   committee-start run with `0 < committeeSize`, every slot committee of size `committeeSize`, and

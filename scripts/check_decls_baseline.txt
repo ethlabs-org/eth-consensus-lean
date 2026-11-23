@@ -4,7 +4,7 @@ ConsensusLeanTest reaches-opaque Consensus.ReviewGuard.check  # meta code run by
 ConsensusLeanTest reaches-opaque Consensus.ReviewGuard.checkComplete  # likewise (Lean.Meta.whnf, environment hashing)
 ConsensusLeanTest reaches-opaque Consensus.Goldilocks.Generic.Test.HealingLeavesCut.check  # meta code run by `run_meta` in the HealingLeaves cut guard (ConsensusLeanTest/Goldilocks/Generic/HealingLeavesCut.lean); calls Lean's environment API (opaque/extern by design); not a proof or a Spec definition
 ConsensusLeanTest reaches-opaque Consensus.Goldilocks.Generic.Test.HealingLeavesCut.cone  # likewise (Std.HashMap over names: hashing)
-ConsensusLeanTest reaches-opaque Consensus.Goldilocks.Generic.Test.HealingLeavesCut.goldilocksAC  # likewise (String and Name operations)
+ConsensusLeanTest reaches-opaque Consensus.Goldilocks.Generic.Test.HealingLeavesCut.isGoldilocksACConst  # likewise (String and Name operations)
 ConsensusLeanTest reaches-opaque Consensus.Goldilocks.Generic.Test.HealingLeavesCut.ensureSearchPath  # likewise (IO: the search path for importModules)
 ConsensusLeanTest partial Consensus.Goldilocks.Generic.Test.HealingLeavesCut.path  # likewise (the reporting path of a hit through the cone's parent map)
 ConsensusLean reaches-opaque Consensus.Tactic.Linarith.run  # meta code of the `linarith` front end (Lemmas/Tactic/Linarith.lean); calls Mathlib's linarith and Lean's Meta API (opaque/extern by design); not a proof or a Spec definition

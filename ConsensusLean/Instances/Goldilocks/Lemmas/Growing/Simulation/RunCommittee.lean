@@ -57,9 +57,9 @@ theorem dictOfTime_runCommittee :
       ((S.params (pubOf E) hn).toParams.slotTime s) = s := fun s => by
     have hts : (S.params (pubOf E) hn).toParams.slotTime s = (S.params (pubOf E) hn).ts s := by
       rw [(S.params (pubOf E) hn).slotTime_eq]
-      simp [SA.SAParams.ts]
+      simp [AC.ACParams.ts]
     rw [hts]
-    exact SA.slot_of_mem _ s le_rfl ((SA.ts_lt_iff _).2 (by push_cast; omega))
+    exact AC.slot_of_mem _ s le_rfl ((AC.ts_lt_iff _).2 (by push_cast; omega))
   simp only [Generic.dictOfTime, runCommittee, Set.coe_toFinset, hslot]
 
 /-- **Every run committee has `committeeSize` members**, the slot committee of its time. -/

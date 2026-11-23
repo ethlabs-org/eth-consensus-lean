@@ -13,9 +13,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -25,11 +25,11 @@ theorem held_target_proposal_domain_before_of_sources_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x p : Fin sp.n} {r i u : Nat} (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
     {ell : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hd : (AC.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
     (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree)
     (hseed : ∃ v q m S, HighOrigin tr H g v q m S ∧ tr.time q < sp.ts u ∧
@@ -50,7 +50,7 @@ theorem held_target_proposal_domain_before_of_sources_at
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hac.localRun.upTo (hp.run.time_nonneg i)
   have hci' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hci)
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci'
+  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hpH hci'
   have hrootB := hroot.resolve_right hcovered
   have hFB := (hPhi.F_anc_fcRoot.mono hPhiU).trans hrootB
   have hBt := hheld hFB
@@ -105,7 +105,7 @@ theorem held_target_proposal_domain_before_of_sources_at
           have hle' := hp.run.time_mono hqi.le
           rw [hti, htime'] at hle'
           rw [htime']
-          simp only [SAParams.ts] at hle' ⊢
+          simp only [ACParams.ts] at hle' ⊢
           have hΔ := sp.toParams.hΔ
           have hn2 : (n : Int) + 2 ≤ u := by
             by_contra h
@@ -113,7 +113,7 @@ theorem held_target_proposal_domain_before_of_sources_at
             linarith [mul_le_mul_of_nonneg_left hh hΔ.le]
           linarith [mul_le_mul_of_nonneg_left hn2 hΔ.le]
         · by_contra h
-          have hh := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg q') u).mp (not_lt.mp h)
+          have hh := (AC.ts_le_iff_le_slot sp (hp.run.time_nonneg q') u).mp (not_lt.mp h)
           change sp.slot (tr.time q') = n at hsl
           omega
       have hOt := held ho htime hBO
@@ -122,8 +122,8 @@ theorem held_target_proposal_domain_before_of_sources_at
           ((frame_tree_subset_at hp.run hp.noColl hpH hci).2 hOt))
       exact ⟨O, hOt, hBO, hEf.trans hh⟩
   obtain ⟨C, hCt, hBC, hCv⟩ := hdesc
-  have hrootB' := SA.anc_tree_of_anc_U hac.localRun.coherent hPhi hPhiU hPhi.fcRoot_mem hrootB hBt
-  have hBC' := SA.anc_tree_of_anc_U hac.localRun.coherent hPhi hPhiU hBt hBC hCt
+  have hrootB' := AC.anc_tree_of_anc_U hac.localRun.coherent hPhi hPhiU hPhi.fcRoot_mem hrootB hBt
+  have hBC' := AC.anc_tree_of_anc_U hac.localRun.coherent hPhi hPhiU hBt hBC hCt
   refine Or.inr ⟨hBt, hrootB', C, hCt, ?_, hBC'⟩
   have hCf : C ∈ (Node.frame (tr.state p i)).tree := hfr ▸ hCt
   have hrootC := hrootB'.trans hBC'
@@ -136,11 +136,11 @@ theorem held_target_proposal_domain_before_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x p : Fin sp.n} {r i u : Nat} (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
     {ell : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hd : (AC.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
     (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree)
     (hseed : ∃ v q m S, HighOrigin tr H g v q m S ∧ tr.time q < sp.ts u ∧

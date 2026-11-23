@@ -35,9 +35,9 @@ reader of a held state is honest at an observation time after the state's cuts:
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
@@ -48,8 +48,8 @@ theorem proposal_parent_held_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
-    {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : tr.ProposesAt p kX X) :
-    ∃ Pr : SA.Blk sp.n (List (FG.Att sp.n)), X.parent = some Pr.root ∧
+    {X : AC.Blk sp.n (List (FG.Att sp.n))} (hX : tr.ProposesAt p kX X) :
+    ∃ Pr : AC.Blk sp.n (List (FG.Att sp.n)), X.parent = some Pr.root ∧
       Pr ∈ (tr.state p kX).fg.tree := by
   have hX' : (tr.upTo (tr.time kX)).ProposesAt p kX X :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hX.1⟩, hX.2.1, hX.2.2⟩
@@ -67,7 +67,7 @@ theorem anchor_height_step_or_crossed_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g ΔF v b : Time}
     (hs : Healing.Growing.HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
-    {A X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
+    {A X Pr : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b)
     (hpar : X.parent = some Pr.root) (hPr : Pr ∈ (tr.state p kX).fg.tree)
     (hAPr : (tr.state p kX).fg.Anc A Pr)
@@ -112,7 +112,7 @@ theorem anchorStep_of_or_crossed_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g ΔF v b : Time}
     (hs : Healing.Growing.HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
-    {A X Pr : SA.Blk sp.n (List (FG.Att sp.n))}
+    {A X Pr : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b)
     (hpar : X.parent = some Pr.root) (hPr : Pr ∈ (tr.state p kX).fg.tree)
     (hAPr : (tr.state p kX).fg.Anc A Pr)
@@ -142,16 +142,16 @@ theorem report_slot_le_time_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {z : Fin sp.n} {r : Nat} (hz : z ∈ H (tr.time r))
-    {ell : ACLabel (goldilocksNode sp ro)} {P C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hto : SA.ToFGAt tr.projAC z r ell C) (hPC : Anc (tr.HonestBlocksAt H) P C) :
+    {ell : ACLabel (goldilocksNode sp ro)} {P C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hto : AC.ToFGAt tr.projAC z r ell C) (hPC : Anc (tr.HonestBlocksAt H) P C) :
     sp.ts (P.slot : Int) ≤ tr.time r := by
   have hd := hrun.time_nonneg r
   have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)).localRun
   have hto' := (Healing.Growing.toFGAt_upTo_iff hrun.time_mono le_rfl).mpr hto
   have hCs : C.slot ≤ sp.slot (tr.time r) :=
-    SA.frame_slot_le sp hr hz hto'.1 C (toFG_live_fast_lock hto).1
+    AC.frame_slot_le sp hr hz hto'.1 C (toFG_live_fast_lock hto).1
   have hPs := Healing.slot_le_of_anc (Compose.Growing.honest_blocks_coherent hrun hnc) hPC
-  exact (SA.ts_le_iff_le_slot sp hd _).2 (by omega)
+  exact (AC.ts_le_iff_le_slot sp hd _).2 (by omega)
 
 /-- **Parents above a crossing report, through the horizon**, under growing faults. A report
 `C` of a node honest at its report, after the drain, at height above `h`, and an honest proposal
@@ -161,10 +161,10 @@ theorem crossed_parents_above_upTo_at {g ΔF a b : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {z : Fin sp.n} {r : Nat} (hz : z ∈ H (tr.time r)) {ell : ACLabel (goldilocksNode sp ro)}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} (hto : SA.ToFGAt tr.projAC z r ell C)
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} (hto : AC.ToFGAt tr.projAC z r ell C)
     (hR : Healing.drainTime sp a ≤ tr.time r) {h : Nat}
     (hlt : h < ((tr.state z r).fg.σ C.root).h)
-    {s : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : Healing.Growing.HonestProposalRun tr H proposer s P) (hs : tr.time r + sp.Δ ≤ sp.ts s)
     (hsb : sp.ts s ≤ b) :
     ∃ Pr ∈ tr.HonestBlocksAt H, P.parent = some Pr.root ∧ Anc (tr.HonestBlocksAt H) C Pr ∧
@@ -197,11 +197,11 @@ theorem crossed_parents_above_upTo_at {g ΔF a b : Time}
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hto.1
   have hl₀' : l₀ ∈ ((tr.upTo (tr.time r)).projAC.state z r).locks := by rw [hst]; exact hl₀
-  have hwf := SA.locksWF_stateU (hr := hr.toU) hrun.vstart hz r
+  have hwf := AC.locksWF_stateU (hr := hr.toU) hrun.vstart hz r
   rw [hst] at hwf
   have hlive : sp.slot (tr.time r) ≤ l₀.slot + sp.k := le_trans hlive' (hwf.cap hl₀)
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hz hck
-  have hvB := SA.viableAncestor_anc hPhi hB
+  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hz hck
+  have hvB := AC.viableAncestor_anc hPhi hB
   obtain rfl : C = ell.frame.viableAncestor B :=
     hr.coherent.1 (hPhiU hCf) (hPhiU hvB.1) hlb.symm
   obtain ⟨r', hrk, CV, ℓ', D, hcr, hfl, L, hL, hLr, hLD⟩ :=
@@ -209,12 +209,12 @@ theorem crossed_parents_above_upTo_at {g ΔF a b : Time}
   rw [hr.coherent.1 hL (hPhiU hB) (hLr.trans hBr.symm)] at hLD
   obtain ⟨ell', hc', hD⟩ := Healing.fastLock_mem hfl
   obtain rfl : ell' = ℓ' := Option.some.inj (hc'.2.symm.trans hcr.2)
-  obtain ⟨hPhi', hPhiU'⟩ := SA.frameIn_of_callAt hr hz hc'
+  obtain ⟨hPhi', hPhiU'⟩ := AC.frameIn_of_callAt hr hz hc'
   have hXD : Anc (tr.HonestBlocksAt H) (ell.frame.viableAncestor B) D :=
     Anc.mono hU' ((hvB.2.mono hPhiU).trans
-      (hLD.trans ((SA.viableAncestor_anc hPhi' hD).2.mono hPhiU')))
+      (hLD.trans ((AC.viableAncestor_anc hPhi' hD).2.mono hPhiU')))
   have hrt : tr.time r' ≤ tr.time r := hrun.time_mono hrk.le
-  have hflt : SA.FastLockAt tr.projAC z r' l₀.slot D CV :=
+  have hflt : AC.FastLockAt tr.projAC z r' l₀.slot D CV :=
     (Healing.Growing.fastLockAt_upTo_iff hrun.time_mono hrt).mp hfl
   have hzr : z ∈ H (tr.time r') := hrun.antitone hrt hz
   obtain ⟨hpH, i, ell₂, dd, pay, hci, hcall, hdd, hti, hpar, -⟩ := hP
@@ -227,13 +227,13 @@ theorem crossed_parents_above_upTo_at {g ΔF a b : Time}
   -- the slot bounds
   have hRk := hR
   rw [Healing.drainTime_eq] at hRk
-  have hsk := (SA.ts_le_iff_le_slot sp hk0 _).1 hRk
+  have hsk := (AC.ts_le_iff_le_slot sp hk0 _).1 hRk
   have hks' : ¬ sp.ts s ≤ tr.time r := by linarith
-  rw [SA.ts_le_iff_le_slot sp hk0] at hks'
+  rw [AC.ts_le_iff_le_slot sp hk0] at hks'
   have hlab : Healing.cleanLabel sp a + sp.k + 2 ≤ l₀.slot := by
     rw [Healing.cleanLabel_eq]; omega
   have hRs : Healing.drainTime sp a ≤ sp.ts s := by
-    rw [Healing.drainTime_eq]; exact (SA.ts_le_iff sp).2 (by push_cast; omega)
+    rw [Healing.drainTime_eq]; exact (AC.ts_le_iff sp).2 (by push_cast; omega)
   have hQ : Anc (tr.HonestBlocksAt H) D dd.head → ∃ Pr ∈ tr.HonestBlocksAt H,
       P.parent = some Pr.root ∧ Anc (tr.HonestBlocksAt H) (ell.frame.viableAncestor B) Pr := by
     intro hDQ
@@ -242,7 +242,7 @@ theorem crossed_parents_above_upTo_at {g ΔF a b : Time}
     have hci' : (tr.upTo (tr.time i)).projAC.CallAt (proposer s) i ell₂ := by
       rw [RunTrace.upTo_projAC]
       exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hci
-    obtain ⟨hPhiP, hPhiPU⟩ := SA.frameIn_of_callAt hri hpi hci'
+    obtain ⟨hPhiP, hPhiPU⟩ := AC.frameIn_of_callAt hri hpi hci'
     obtain ⟨hst', hsQ⟩ := Compose.acProposal_start_anc_head hPhiP hdd
     have hQt : dd.head ∈ ell₂.frame.tree := by
       rcases eq_or_ne dd.start dd.head with he | he
@@ -259,15 +259,15 @@ theorem crossed_parents_above_upTo_at {g ΔF a b : Time}
     have h2 : l₀.slot + 2 ≤ s := by
       have hlt : sp.ts (l₀.slot + 1 : Nat) < sp.ts s := by
         have : sp.ts (l₀.slot + 1 : Nat) = sp.ts l₀.slot + 4 * sp.Δ := by
-          simp only [SA.SAParams.ts]; push_cast; ring
+          simp only [AC.ACParams.ts]; push_cast; ring
         linarith
-      have := (SA.ts_lt_iff sp).1 hlt
+      have := (AC.ts_lt_iff sp).1 hlt
       omega
     exact hQ (hclean h2)
   · rcases Nat.lt_or_ge (l₀.slot + 1) s with h2 | h1
     · exact hQ (hclean (by omega))
     · have hsl : sp.slot (tr.time r') = l₀.slot := hop.choose_spec.choose_spec.2.1
-      have hsm := SA.slot_mono sp (hrun.time_nonneg r') hrt
+      have hsm := AC.slot_mono sp (hrun.time_nonneg r') hrt
       obtain rfl : s = l₀.slot + 1 := by omega
       exact hQ (hp.clean_optimistic_proposal_parent_at hzr hpi hop hlab hrb hRs hci hcall hdd
         hti hib)

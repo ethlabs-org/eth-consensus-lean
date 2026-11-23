@@ -23,9 +23,9 @@ honest at its actual cast; no global retention induction is used here.
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -33,10 +33,10 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem target_compatible_later_origin_before_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x : Fin sp.n} {r m i l : Nat} {B O : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {r m i l : Nat} {B O : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r m O) (hri : r < i) (hrb : tr.time r ≤ b) (hlm : l < m)
     (hsupport : ∀ z q e, q < i → Compose.Growing.HVoteAt tr H z q e →
-      l < e.msg.slot → SA.VoteExtends (tr.HonestBlocksAt H) e.msg B) :
+      l < e.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e.msg B) :
     Compatible (tr.HonestBlocksAt H) B O := by
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hm := hp.run.time_mono
@@ -49,7 +49,7 @@ theorem target_compatible_later_origin_before_at
     rcases hfl with ⟨ℓ, C, hu, -⟩ | ⟨ℓ, A, -, hslot, -⟩
     · have hu' : tr.time r = sp.ts m + 6 * sp.Δ := hu.2.2.1
       linarith [sp.toParams.hΔ]
-    · exact (SA.ts_le_iff_le_slot sp ht (m : Int)).2
+    · exact (AC.ts_le_iff_le_slot sp ht (m : Int)).2
         (by rw [show sp.slot (tr.time r) = m from hslot])
   have hf := hp.committee_cs2_at (s := m) (by have := lt_cutZ sp g; linarith [sp.toParams.hΔ])
     (hmr.trans hrb) ht hrb
@@ -59,17 +59,17 @@ theorem target_compatible_later_origin_before_at
   obtain ⟨hPhi, htree⟩ := frame_tree_subset_at hp.run hp.noColl hx hcall
   have hsub : ell.frame.tree ⊆ tr.HonestBlocksAt H := fun _ h =>
     ⟨x, r, tr.time r, ht, fun _ hq => hm hq.le, hx, htree h⟩
-  have hOD := (SA.anc_viableAncestor ell.frame D).mono hsub
-  have hcomp := SA.fastLock_compatible_of_votes hr _
-    (SA.CommitteePAt.upTo hm hp.run.antitone hp.committeeFacts.hP (tr.time r)) hx hri
-    ((SA.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hf (B := B) (by
+  have hOD := (AC.anc_viableAncestor ell.frame D).mono hsub
+  have hcomp := AC.fastLock_compatible_of_votes hr _
+    (AC.CommitteePAt.upTo hm hp.run.antitone hp.committeeFacts.hP (tr.time r)) hx hri
+    ((AC.upTo_fastLockAt hm).mpr ⟨le_rfl, hfl⟩) hf (B := B) (by
       intro z hz q hq e hv hs
-      obtain ⟨hqt, hv⟩ := SA.upTo_voteAt.mp hv
+      obtain ⟨hqt, hv⟩ := AC.upTo_voteAt.mp hv
       exact hsupport z q e hq
         (Compose.Growing.hVoteAt_iff.mpr ⟨hp.run.antitone hqt hz, hv⟩) (by omega))
   rcases hcomp with hDB | hBD
   · exact Or.inr (hOD.trans hDB)
-  · exact SA.anc_total hac.localRun.coherent hBD hOD
+  · exact AC.anc_total hac.localRun.coherent hBD hOD
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

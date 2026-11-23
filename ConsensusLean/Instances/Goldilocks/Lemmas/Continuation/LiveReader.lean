@@ -26,11 +26,11 @@ labels below `s` (the classification of each row, `hlab`):
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : SA.CommitteeDict sp.n}
+variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : AC.CommitteeDict sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
@@ -40,7 +40,7 @@ variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : SA.CommitteeDict sp.
 family**: itself for a label `≤ s − 2`; for the label `s − 1`, the origin of its label at its cut
 (`HealedOrigin.below_origin`) is not a result (written at `t_s + 2Δ`), so an optimistic origin. -/
 theorem old_cover (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
-    {s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {l : Nat} {τ : Time}
+    {s : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))} {l : Nat} {τ : Time}
     (hC : HealedOrigin tr H g r (r + sp.k - 1) C l τ) (hl : l + 1 ≤ s)
     (hτ : τ < sp.ts s + 2 * sp.Δ) (hτb : τ ≤ b) :
     ∃ O, SeededOld tr H g r b s O ∧ Anc (tr.HonestBlocksAt H) C O := by
@@ -52,7 +52,7 @@ theorem old_cover (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoC
   · obtain ⟨ℓ, hu, _⟩ := hR
     have ht : tr.time k = sp.ts (s - 1 : Nat) + 6 * sp.Δ := hu.2.2.1
     have : sp.ts (s - 1 : Nat) + 4 * sp.Δ = sp.ts s := by
-      simp only [SAParams.ts]; push_cast [Nat.cast_sub (show 1 ≤ s by omega)]; ring
+      simp only [ACParams.ts]; push_cast [Nat.cast_sub (show 1 ≤ s by omega)]; ring
     linarith
   · exact ⟨O, seededOld_iff.2 (Or.inr ⟨x, k, CV, hx, hOp⟩), hCO⟩
 
@@ -71,7 +71,7 @@ theorem seeded_reader_old
     (hlab : ∀ m < i, ∀ X, tr.AcceptAt y m X → ∀ a ∈ X.fgPayload, a.val ∈ H t →
       ∀ k < m, tr.SignAt a.val k a → ∀ c < k, ∀ C l O OV,
         HealedOrigin tr H g r (r + sp.k - 1) C l (tr.time c) →
-        (SA.ResultAt tr.projAC a.val c l O OV ∨ SA.OptimisticLockAt tr.projAC a.val c l O OV) →
+        (AC.ResultAt tr.projAC a.val c l O OV ∨ AC.OptimisticLockAt tr.projAC a.val c l O OV) →
         l + 1 ≤ s) :
     (∃ O, SeededOld tr H g r b s O ∧
         Anc (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot O) ∧
@@ -101,14 +101,14 @@ theorem seeded_reader_old
       have hct' : tr.time c ≤ t := (hrun.time_mono (show c ≤ m by omega)).trans (hi m hm)
       exact old_cover hrun hnc hC (hlab m hm X hX a ha hav k hkm hsg c hck C l O OV hC hO)
         (by linarith) (hct'.trans htb)
-  set G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop := fun D => ∃ C l,
+  set G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop := fun D => ∃ C l,
     (∃ O, SeededOld tr H g r b s O ∧ Anc (tr.HonestBlocksAt H) C O) ∧
       C ∈ (tr.upTo t).HonestBlocks (H t) ∧ Anc ((tr.upTo t).HonestBlocks (H t)) D C with hG
   have hGO : ∀ D, G D → ∃ O, SeededOld tr H g r b s O ∧ Anc (tr.HonestBlocksAt H) D O := by
     rintro D ⟨C, l, ⟨O, hO, hCO⟩, -, hDC⟩
     exact ⟨O, hO, (hDC.mono hsub).trans hCO⟩
   -- the reset seed of a low reader is a member of the old family
-  have hseedOld : ∀ {x q l} {S : SA.Blk sp.n (List (FG.Att sp.n))},
+  have hseedOld : ∀ {x q l} {S : AC.Blk sp.n (List (FG.Att sp.n))},
       Healing.Growing.HighOrigin tr H g x q l S → tr.time q ≤ T → l < r →
       SeededOld tr H g r b s S := fun hS' hqT hl =>
     seededOld_iff.2 (Or.inl ⟨_, .of_high (hqT.trans hS.horizon) hS', by omega⟩)

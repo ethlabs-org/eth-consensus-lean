@@ -22,7 +22,7 @@ See `docs/decisions.md`, "Trusted surface and Challenge scope". -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 /-- **Healing Recovery**: HR.5 cache acceptance, O.1 pattern recovery and C1.3 finalizing
 coverage, with the actual-report and outcome suppliers discharged. -/

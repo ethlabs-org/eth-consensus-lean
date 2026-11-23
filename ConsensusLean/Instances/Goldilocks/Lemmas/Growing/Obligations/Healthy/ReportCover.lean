@@ -51,9 +51,9 @@ The unanimous-slot selection helpers are imported from their growing proof homes
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -90,11 +90,11 @@ private theorem frame_subset_at {ini : Fin sp.n → (goldilocksNode sp ro).State
 is below the head: the node's own slot-`u` vote names `P`, held from then on. -/
 theorem unanimous_head_held_at_call_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ tr.HonestBlocksAt H)
-    (hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+    (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
-    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
     (hcall : tr.projAC.CallAt y j ell) (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b) (hFP : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F P) :
@@ -105,12 +105,12 @@ theorem unanimous_head_held_at_call_at {cm : Time → Finset (Fin sp.n)} {βK : 
   have hub : sp.ts u + sp.Δ ≤ b := by linarith
   -- an honest member of the slot-`u` committee votes for `P` by `t_u + Δ`
   obtain ⟨w, hwK, hw⟩ := hp.committee_honest_nonempty_at (s := u) (by linarith)
-    (by linarith) (by linarith [SA.gbar_nonneg g]) hub
+    (by linarith) (by linarith [AC.gbar_nonneg g]) hub
   obtain ⟨q, e, ⟨ellv, hv⟩, hs, hq⟩ := honest_votes_in_slot_at hp hgu hR hub w hw hwK
   have hwq : w ∈ H (tr.time q) := hrun.antitone hq hw
   have hd := hrun.time_nonneg q
   have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hp.noColl.upTo _)).localRun
-  have hv' : SA.CastAt (tr.upTo (tr.time q)).projAC w q ellv e := by
+  have hv' : AC.CastAt (tr.upTo (tr.time q)).projAC w q ellv e := by
     rw [RunTrace.upTo_projAC]
     exact ⟨(Trace.upTo_callAt_of_le _ le_rfl).mpr hv.1, hv.2⟩
   obtain ⟨⟨Hd, hHd, he, _⟩, _⟩ :=
@@ -133,14 +133,14 @@ theorem held_target_viable_or_higher_report_at {cm : Time → Finset (Fin sp.n)}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y i ell)
-    (hib : tr.time i ≤ b) {P S : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ ell.frame.tree) (hseed : HighOrigin tr H g v q m S)
     (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocksAt H) S P)
     (hcompare : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
       Compatible (tr.HonestBlocksAt H) P B) :
     P ∈ ell.frame.viableTree ell.frame.tree ∨
       ∃ x r ell' C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
-        SA.ToFGAt tr.projAC x r ell' C ∧ Anc (tr.HonestBlocksAt H) P C ∧
+        AC.ToFGAt tr.projAC x r ell' C ∧ Anc (tr.HonestBlocksAt H) P C ∧
         ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
   have hrun := hp.run
   have hy := hrun.antitone (le_max_right _ _) hyz
@@ -160,7 +160,7 @@ theorem held_target_viable_or_higher_report_at {cm : Time → Finset (Fin sp.n)}
     · exact hp.high_J_root_of_held_at_call_before_at hy hPy hy hib hcall (by omega) hcompare
   by_cases hrootP : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P
   · by_cases hfloor : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ P.root).h
-    · have hrootf := SA.anc_tree_of_anc_U hU hPhi hPhiU hPhi.fcRoot_mem hrootP hPt
+    · have hrootf := AC.anc_tree_of_anc_U hU hPhi hPhiU hPhi.fcRoot_mem hrootP hPt
       refine Or.inl ⟨hPt, hrootf, P, hPt, ?_, .refl⟩
       have hPt' := hPt
       rw [hfr] at hPt' hrootf ⊢
@@ -202,18 +202,18 @@ and compatible with every earlier high origin. -/
 theorem unanimous_viable_or_higher_report_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
+    {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
     (hslot : P.slot = u) (hu : 0 < u)
-    (hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+    (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
-    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
     (hTb : sp.ts u + 6 * sp.Δ ≤ b) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y j ell)
     (ht : tr.time j = sp.ts u + 6 * sp.Δ)
     (hFP : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F P) :
     P ∈ ell.frame.viableTree ell.frame.tree ∨
       ∃ x r e C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < j ∧
-        SA.ToFGAt tr.projAC x r e C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+        AC.ToFGAt tr.projAC x r e C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
         Anc (tr.HonestBlocksAt H) P C ∧
         ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
   have hjb : tr.time j ≤ b := ht ▸ hTb
@@ -222,7 +222,7 @@ theorem unanimous_viable_or_higher_report_at
     have hts := hp.clean_window_timing_at (s := u) (by
       rw [Healing.cleanLabel_eq]
       rw [Healing.drainTime_eq] at hR
-      have := (SA.ts_le_iff sp).1 hR
+      have := (AC.ts_le_iff sp).1 hR
       push_cast at this
       omega) u (by omega)
     rw [ht]
@@ -247,16 +247,16 @@ below `P`, or an earlier report extends `P` with a strictly greater height. -/
 theorem finality_alternative_before_update_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
+    {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
     (hslot : P.slot = u) (hu : 0 < u)
-    (hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+    (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
-    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
     (hTb : sp.ts u + 6 * sp.Δ ≤ b) {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     (ha : a ≤ tr.time k) (ht : tr.time k ≤ sp.ts u + 6 * sp.Δ) :
     Anc (tr.HonestBlocksAt H) (tr.state y k).fg.F P ∨
       ∃ z r ell C, z ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < k ∧
-        SA.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+        AC.ToFGAt tr.projAC z r ell C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
         Anc (tr.HonestBlocksAt H) P C ∧
         ((tr.state z r).fg.σ P.root).h < ((tr.state z r).fg.σ C.root).h := by
   rcases hp.finality_below_or_higher_report_at hy (ht.trans hTb)
@@ -272,24 +272,24 @@ theorem finality_alternative_before_update_at
 theorem report_of_viable_unanimous_pool_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {j u : Nat} (hy : y ∈ H (tr.time j)) (hjb : tr.time j ≤ b)
-    {ell ell' : ACLabel (goldilocksNode sp ro)} {P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hu : SA.UpdateAt tr.projAC y j u ell)
+    {ell ell' : ACLabel (goldilocksNode sp ro)} {P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hu : AC.UpdateAt tr.projAC y j u ell)
     (hc : tr.projAC.CallAt y (j + 1) ell') (hto : ell'.call = .toFG)
     (hframe : ell'.frame = ell.frame) (htime : tr.time (j + 1) = tr.time j)
-    (hjoin : SA.joined sp (tr.projAC.state y (j + 1)) (tr.time (j + 1)))
+    (hjoin : AC.joined sp (tr.projAC.state y (j + 1)) (tr.time (j + 1)))
     (hPg : P.root ≠ sp.genesisRoot) (hPv : P ∈ ell.frame.viableTree ell.frame.tree)
-    (hgu : SA.gbar g ≤ sp.ts u)
+    (hgu : AC.gbar g ≤ sp.ts u)
     (hpool : ∀ v, v ∈ H (tr.time j) → v ∈ (Generic.dictOfTime sp cm).committee u →
       ∃ vote ∈ (tr.projAC.state y j).pool u,
       vote.val = v ∧ vote.head = P.root ∧
-      SA.resolutionTime (tr.projAC.state y j) ell.frame vote < SA.ETime.of (sp.ts u + 2 * sp.Δ) ∧
+      AC.resolutionTime (tr.projAC.state y j) ell.frame vote < AC.ETime.of (sp.ts u + 2 * sp.Δ) ∧
       ∀ vote' ∈ (tr.projAC.state y j).pool u, vote'.val = v → vote' = vote)
-    (hlocks : ∀ L ∈ SA.liveLockBlocks sp (tr.projAC.state y j).locks ell.frame (tr.time j),
+    (hlocks : ∀ L ∈ AC.liveLockBlocks sp (tr.projAC.state y j).locks ell.frame (tr.time j),
       Compatible (tr.HonestBlocksAt H) L P)
-    (hnext : ∀ C ∈ SA.toFGCandidates sp (tr.projAC.state y (j + 1)) ell'.frame (tr.time (j + 1)),
+    (hnext : ∀ C ∈ AC.toFGCandidates sp (tr.projAC.state y (j + 1)) ell'.frame (tr.time (j + 1)),
       Compatible (tr.HonestBlocksAt H) C P)
     (hlive : sp.slot (tr.time j) ≤ u + sp.k) (hage : sp.slot (tr.time j) ≤ u + 2) :
-    ∃ r e R, SA.ToFGAt tr.projAC y r e R ∧ tr.time r ≤ tr.time (j + 1) ∧
+    ∃ r e R, AC.ToFGAt tr.projAC y r e R ∧ tr.time r ≤ tr.time (j + 1) ∧
       Anc (tr.HonestBlocksAt H) P R := by
   obtain ⟨hconf, hnv, hfast, hpost, _⟩ :=
     hp.ready_update_selection_of_pool_at hy hjb hgu hu hPv.1 hPg hpool hlocks
@@ -304,21 +304,21 @@ faults: every node honest at `t_u + 6Δ` reports a descendant of `P` by then, or
 its report and at `c_z` reports a strict height increase above `P`. -/
 theorem report_cover_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ tr.HonestBlocksAt H) (hslot : P.slot = u) (hu : 0 < u)
     (hPg : P.root ≠ sp.genesisRoot)
-    (hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+    (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
-    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
     (hTb : sp.ts u + 6 * sp.Δ ≤ b) :
-    (∀ y, y ∈ H (sp.ts u + 6 * sp.Δ) → ∃ r e R, SA.ToFGAt tr.projAC y r e R ∧
+    (∀ y, y ∈ H (sp.ts u + 6 * sp.Δ) → ∃ r e R, AC.ToFGAt tr.projAC y r e R ∧
       tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P R) ∨
-    (∃ x r e C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ SA.ToFGAt tr.projAC x r e C ∧
+    (∃ x r e C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ AC.ToFGAt tr.projAC x r e C ∧
       tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P C ∧
       ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h) := by
   classical
   by_cases hescape : ∃ x r e C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧
-      SA.ToFGAt tr.projAC x r e C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
+      AC.ToFGAt tr.projAC x r e C ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ ∧
       Anc (tr.HonestBlocksAt H) P C ∧
       ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h
   · exact Or.inr hescape
@@ -327,10 +327,10 @@ theorem report_cover_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : �
   have hrun := hp.run
   have hd := sp.toParams.hΔ
   have hub : sp.ts u + sp.Δ ≤ b := by linarith only [hTb, hd]
-  have hjoin : sp.ts (sp.slot (SA.gbar g) + 1 : Nat) ≤ sp.ts u := by
-    have hbase := (SA.ts_le_iff_le_slot sp (SA.gbar_nonneg g) (sp.slot (SA.gbar g))).2 (by rfl)
-    simp only [SA.SAParams.ts] at hbase ⊢
-    simp only [SA.SAParams.ts] at hgu
+  have hjoin : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) ≤ sp.ts u := by
+    have hbase := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g) (sp.slot (AC.gbar g))).2 (by rfl)
+    simp only [AC.ACParams.ts] at hbase ⊢
+    simp only [AC.ACParams.ts] at hgu
     push_cast at hbase hgu ⊢
     linarith only [hbase, hgu]
   obtain ⟨j, ell, ell', hup, hto, htoeq, hnexttime, hframe, hjoined⟩ :=
@@ -341,21 +341,21 @@ theorem report_cover_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : �
   have hjb : tr.time j ≤ b := hjtime ▸ hTb
   have hnextb : tr.time (j + 1) ≤ b := hnexttime ▸ hTb
   have hRT : drainTime sp a ≤ sp.ts u + 6 * sp.Δ := by
-    simp only [SA.SAParams.ts] at hR ⊢
+    simp only [AC.ACParams.ts] at hR ⊢
     push_cast at hR ⊢
     linarith only [hR, hd]
   have hca := hp.cutZ_lt_reset_at
   have ha0 : 0 ≤ a := by
     have h1 := Healing.lt_cutZ sp g
-    have h2 := SA.gbar_nonneg g
+    have h2 := AC.gbar_nonneg g
     linarith only [h1, h2, hca, hd]
   have haT : a ≤ sp.ts u + 6 * sp.Δ := by
     have hanext : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
-      have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+      have := (AC.ts_le_iff_le_slot sp ha0 _).1 h
       omega
     have hle : sp.ts ((sp.slot a : Int) + 1) ≤ drainTime sp a := by
       rw [Healing.drainTime_eq]
-      exact (SA.ts_le_iff sp).2 (by push_cast; omega)
+      exact (AC.ts_le_iff sp).2 (by push_cast; omega)
     exact (hanext.le.trans hle).trans hRT
   have hFP : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F P := by
     rcases finality_alternative_before_update_at hp hP hslot hu hun hgu hR hTb hyj
@@ -374,14 +374,14 @@ theorem report_cover_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : �
     apply hp.clean_window_timing_at (s := u) ?_ u (by omega)
     rw [Healing.cleanLabel_eq]
     rw [Healing.drainTime_eq] at hR
-    have := (SA.ts_le_iff sp).1 hR
+    have := (AC.ts_le_iff sp).1 hR
     push_cast at this
     omega
   obtain ⟨w, hwK, hw⟩ := hp.committee_honest_nonempty_at (s := u)
     (by linarith [sp.toParams.hΔ]) (by linarith [sp.toParams.hΔ])
-    (by linarith [SA.gbar_nonneg g, sp.toParams.hΔ]) hub
+    (by linarith [AC.gbar_nonneg g, sp.toParams.hΔ]) hub
   obtain ⟨q, e, ⟨ellv, hv⟩, hs, hq⟩ := honest_votes_in_slot_at hp hgu hR hub w hw hwK
-  have hvote : ∃ z q ell e, z ∈ H (tr.time q) ∧ SA.CastAt tr.projAC z q ell e ∧
+  have hvote : ∃ z q ell e, z ∈ H (tr.time q) ∧ AC.CastAt tr.projAC z q ell e ∧
       tr.time q ≤ b ∧ e.msg.slot = u :=
     ⟨w, q, ellv, e, hrun.antitone hq hw, hv, hq.trans hub, hs⟩
   have hlocks := hp.call_locks_compatible_of_unanimous_at hP hts hun hvote hyj hup.1 hjb
@@ -394,9 +394,9 @@ theorem report_cover_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : �
         (hrun.antitone (hrun.time_mono hr.le) hyj') ho ((hrun.time_mono hr.le).trans hnextb))
   have hsl : sp.slot (tr.time j) = u + 1 := by
     rw [hjtime]
-    apply SA.slot_of_mem sp (u + 1)
-    · simp only [SA.SAParams.ts]; push_cast; linarith only [hd]
-    · simp only [SA.SAParams.ts]; push_cast; linarith only [hd]
+    apply AC.slot_of_mem sp (u + 1)
+    · simp only [AC.ACParams.ts]; push_cast; linarith only [hd]
+    · simp only [AC.ACParams.ts]; push_cast; linarith only [hd]
   obtain ⟨r, e, R, hr, ht, hPR⟩ := report_of_viable_unanimous_pool_at hp hyj hjb hup hto htoeq
     hframe (hnexttime.trans hjtime.symm) hjoined hPg hPv (by linarith [sp.toParams.hΔ]) hpool
     hlocks

@@ -132,7 +132,7 @@ theorem carrier_processed_of_honest_at (Q : FinalQueryAt S A V) :
   obtain ⟨hacc, -, -⟩ := accept_of_proposesAt_at hrun hnc hmem hk
   have htk : Q.trace.time k = Q.params.ts s := by
     rw [hk.2.2, honestProposalRun_slot_at hP, Q.params.slotTime_eq]
-    simp [SA.SAParams.ts]
+    simp [AC.ACParams.ts]
   obtain ⟨r, p, hr, horg, _, _, htime, _, hdecode⟩ :=
     (forwardAtAcceptanceAt_iff S Q.run.2 Q.hn _ _ _).mp
       (forwardAtAcceptance_at S Q.run.2 Q.hn Q.valid) _ _ _ hmem hacc

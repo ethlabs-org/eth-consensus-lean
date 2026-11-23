@@ -16,9 +16,9 @@ alone, for constant and growing faults alike:
 
 namespace Consensus.Goldilocks.Obligations
 
-open SA (SAParams gbar)
+open AC (ACParams gbar)
 
-variable {sp : SAParams}
+variable {sp : ACParams}
 
 /-- **The slot of an anchor after the drain.** With the reset after the reset cut,
 `c_z(g) < a`, and the drain of `a` by the anchor's slot time, `drainTime a ≤ t_s`:
@@ -29,18 +29,18 @@ theorem drained_anchor_slot {g a : Time} {s : Nat} (hca : Healing.cutZ sp.toPara
   have hΔ := sp.toParams.hΔ
   have hcz := Healing.lt_cutZ sp g
   have ha0 : 0 ≤ a := by
-    have := SA.gbar_nonneg g
+    have := AC.gbar_nonneg g
     linarith
   have hau : sp.slot a + 2 * sp.k + 5 ≤ s := by
     rw [Healing.drainTime_eq] at hR
-    exact_mod_cast (SA.ts_le_iff sp).1 hR
+    exact_mod_cast (AC.ts_le_iff sp).1 hR
   refine ⟨hau, ?_⟩
   have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
-    have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+    have := (AC.ts_le_iff_le_slot sp ha0 _).1 h
     omega
-  have hle : sp.ts ((sp.slot a : Int) + 2) ≤ sp.ts s := (SA.ts_le_iff sp).2 (by omega)
+  have hle : sp.ts ((sp.slot a : Int) + 2) ≤ sp.ts s := (AC.ts_le_iff sp).2 (by omega)
   have hgap : sp.ts ((sp.slot a : Int) + 2) = sp.ts ((sp.slot a : Int) + 1) + 4 * sp.Δ := by
-    simp only [SAParams.ts]; ring
+    simp only [ACParams.ts]; ring
   rw [hgap] at hle
   linarith
 

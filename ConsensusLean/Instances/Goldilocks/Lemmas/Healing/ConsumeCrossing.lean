@@ -27,7 +27,7 @@ proposal cut, has state height `≥ h + 1` (`crossing_of_rows`).
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 /-! ## One block of the chain (FG traces) -/
 
@@ -190,9 +190,9 @@ end Pool
 
 section Run
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
   {proposer : Nat → Fin sp.n}
 
@@ -207,7 +207,7 @@ proposal `X` on the parent `Pr`, with `E ⪯ Pr` an entry of height `h` (held by
 `Pr` of state height `h`, `E.slot + δ_t ≤ X.slot`, and a matching attestation of every honest
 validator processed by the proposer before its proposal cut: `X` has state height `≥ h + 1`. -/
 theorem crossing_of_rows (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H K dg g ΔF)
-    {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr E : SA.Blk sp.n (List (FG.Att sp.n))}
+    {p : Fin sp.n} (hp : p ∈ H) {kX : Nat} {X Pr E : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
     (hEPr : Anc (tr.HonestBlocks H) E Pr) {q₀ : Fin sp.n} (hq₀ : q₀ ∈ H) {k₀ h : Nat}
     (hEt : E ∈ (tr.state q₀ k₀).fg.tree) (hETh : ((tr.state q₀ k₀).fg.σ E.root).Th = E.root)

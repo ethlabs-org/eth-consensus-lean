@@ -25,10 +25,10 @@ not assumed:
 
 namespace Consensus.Goldilocks.Regimes.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 open Compose.Growing
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
@@ -39,13 +39,13 @@ theorem sleepyBoundsFrom_of_sleepyRunAt (hanti : Antitone H)
   have hΔ := sp.toParams.hΔ
   have hpt : ∀ (s : Nat) (d : Time), d ∈ ({0, sp.Δ, 2 * sp.Δ} : Set Time) →
       tr.FaultBoundAt H (sp.ts s + d) (sp.ts s + d + 5 * sp.Δ) := fun s d hd => by
-    simpa only [sp.slotTime_eq, SA.SAParams.ts] using hsl.2 s d hd
+    simpa only [sp.slotTime_eq, AC.ACParams.ts] using hsl.2 s d hd
   refine ⟨fun d h0 _ => ?_, fun s d _ h1 _ h6 => ?_, fun s d _ h1 _ h7 => ?_⟩
   · set s := sp.slot d
-    have hts : sp.ts s ≤ d := (SA.ts_le_iff_le_slot sp h0 (s : Int)).2 le_rfl
+    have hts : sp.ts s ≤ d := (AC.ts_le_iff_le_slot sp h0 (s : Int)).2 le_rfl
     have hlt : d < sp.ts s + 4 * sp.Δ := by
-      have h := (SA.ts_le_iff_le_slot sp h0 ((s : Int) + 1)).not.2 (by omega)
-      simp only [SA.SAParams.ts] at h hts ⊢
+      have h := (AC.ts_le_iff_le_slot sp h0 ((s : Int) + 1)).not.2 (by omega)
+      simp only [AC.ACParams.ts] at h hts ⊢
       linarith
     have h := RunTrace.FaultBoundAt.mono_right hanti (d' := d) (by linarith)
       (hpt s 0 (by simp))
@@ -60,7 +60,7 @@ theorem sleepyBoundsFrom_of_sleepyRunAt (hanti : Antitone H)
   · exact RunTrace.FaultBoundAt.mono_right hanti (by linarith) (hpt s (2 * sp.Δ) (by simp))
 
 /-- **The finite service from the synchrony of `Sleepy`** (`Sync[0, ∞)`), through every `b`:
-SA message service from the processing of each message before its deadline, and node acceptance
+AC message service from the processing of each message before its deadline, and node acceptance
 relay; the AC acceptance relay follows (`sleepyServiceBefore_of_message_relay_at`). -/
 theorem sleepyServiceBefore_of_syncOnAt {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
@@ -79,7 +79,7 @@ theorem sleepyServiceBefore_of_syncOnAt {ini}
       rwa [hstate] at hmsg⟩
     obtain ⟨k, hkj, htk, hp, hlt⟩ := hs.message x i m hx hsa' hai y j hy
       ⟨_, Compose.projAC_callAt.mp hc⟩ (by rw [← Compose.projAC_deadline]; exact hdl)
-    apply (SA.messageServedBefore_iff _ _ _ _).mpr
+    apply (AC.messageServedBefore_iff _ _ _ _).mpr
     refine Or.inl ⟨k, hkj, htk, ?_, ?_⟩
     · rcases hp with ⟨ell', hc', hm'⟩ | ⟨ell', hc', hm'⟩
       exacts [⟨ell', Compose.projAC_callAt.mpr hc', Or.inl hm'⟩,
@@ -90,7 +90,7 @@ theorem sleepyServiceBefore_of_syncOnAt {ini}
     exact hs.relay x i B hx hB hai y j hy hj hdl hanc
 
 /-- **The committee count shapes from the committee support**, through every `b`. -/
-theorem CommitteeSleepy.boundsFrom {K : SA.CommitteeDict sp.n} (h : CommitteeSleepy tr H K)
+theorem CommitteeSleepy.boundsFrom {K : AC.CommitteeDict sp.n} (h : CommitteeSleepy tr H K)
     (b : Time) : CommitteeBoundsFrom tr H K 0 b :=
   ⟨fun s d _ h1 _ h6 => h.1 s d h1 h6, fun s d _ h0 _ h2 => h.2 s d h0 h2⟩
 

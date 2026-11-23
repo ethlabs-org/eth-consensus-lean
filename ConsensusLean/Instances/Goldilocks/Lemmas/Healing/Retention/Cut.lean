@@ -28,11 +28,11 @@ The cut step (`retention_cut_step`, G1.10 at the height-scoped scope) and (R1)'s
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {H : Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
 /-! ### Run facts -/
@@ -43,14 +43,14 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 induction hypothesis. Activation may precede the target's eventual write. -/
 theorem ResetPremisesUpTo.origins_compatible_prefix {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {k : Nat}
-    (hvote : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : SA.Blk sp.n (List (FG.Att sp.n))},
+    (hvote : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : AC.Blk sp.n (List (FG.Att sp.n))},
       HighOrigin tr H g x₀ i₀ j₀ B₀ → tr.time i₀ ≤ b →
-      ∀ z ∈ H, ∀ c ≤ k, tr.time c ≤ b → ∀ e, SA.VoteAt tr.projAC z c e →
-        j₀ < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B₀)
-    {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+      ∀ z ∈ H, ∀ c ≤ k, tr.time c ≤ b → ∀ e, AC.VoteAt tr.projAC z c e →
+        j₀ < e.msg.slot → AC.VoteExtends (tr.HonestBlocks H) e.msg B₀)
+    {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
     (hact : i ≤ k ∨ sp.ts (j + 1 : Nat) ≤ tr.time k) {x' : Fin sp.n} {r l : Nat}
-    {O : SA.Blk sp.n (List (FG.Att sp.n))} (ho' : HighOrigin tr H g x' r l O)
+    {O : AC.Blk sp.n (List (FG.Att sp.n))} (ho' : HighOrigin tr H g x' r l O)
     (hrk : r ≤ k) (hrb : tr.time r ≤ b) : Compatible (tr.HonestBlocks H) B O := by
   apply hp.origins_compatible_before (k := k + 1)
     (fun ho₀ hi₀ z hz c hc => hvote ho₀ hi₀ z hz c (by omega)) ho
@@ -68,15 +68,15 @@ theorem ResetPremisesUpTo.origins_compatible_prefix {b : Time}
 active bounded origin, using only vote extension through that cut. -/
 theorem ResetPremisesUpTo.row_compatible {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {k : Nat}
-    (hvote : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : SA.Blk sp.n (List (FG.Att sp.n))},
+    (hvote : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : AC.Blk sp.n (List (FG.Att sp.n))},
       HighOrigin tr H g x₀ i₀ j₀ B₀ → tr.time i₀ ≤ b →
-      ∀ z ∈ H, ∀ c ≤ k, tr.time c ≤ b → ∀ e, SA.VoteAt tr.projAC z c e →
-        j₀ < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B₀)
-    {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+      ∀ z ∈ H, ∀ c ≤ k, tr.time c ≤ b → ∀ e, AC.VoteAt tr.projAC z c e →
+        j₀ < e.msg.slot → AC.VoteExtends (tr.HonestBlocks H) e.msg B₀)
+    {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
     (hact : i ≤ k ∨ sp.ts (j + 1 : Nat) ≤ tr.time k) {v : Fin sp.n} (hv : v ∈ H) {d : Nat}
     {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hdk : d ≤ k) (hdb : tr.time d ≤ b)
-    (hh : HZ tr H g + 1 ≤ att.h) {E : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hh : HZ tr H g + 1 ≤ att.h) {E : AC.Blk sp.n (List (FG.Att sp.n))}
     (hEU : E ∈ tr.HonestBlocks H) (hEr : E.root = att.T) :
     Compatible (tr.HonestBlocks H) E B := by
   have hU := hp.honest_coherent
@@ -100,12 +100,12 @@ does not apply, since it assumes (K0) for `Σ.J` and (K1) for every conflicting 
 `Σ.F` at `Ts`, low ones included, which fail at `a_z`. -/
 theorem ResetPremisesUpTo.retention_cut_step {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {k : Nat}
-    (hvote : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : SA.Blk sp.n (List (FG.Att sp.n))},
+    (hvote : ∀ {x₀ : Fin sp.n} {i₀ j₀ : Nat} {B₀ : AC.Blk sp.n (List (FG.Att sp.n))},
       HighOrigin tr H g x₀ i₀ j₀ B₀ → tr.time i₀ ≤ b →
-      ∀ z ∈ H, ∀ c ≤ k, tr.time c ≤ b → ∀ e, SA.VoteAt tr.projAC z c e →
-        j₀ < e.msg.slot → SA.VoteExtends (tr.HonestBlocks H) e.msg B₀)
+      ∀ z ∈ H, ∀ c ≤ k, tr.time c ≤ b → ∀ e, AC.VoteAt tr.projAC z c e →
+        j₀ < e.msg.slot → AC.VoteExtends (tr.HonestBlocks H) e.msg B₀)
     (hkb : tr.time k ≤ b) {y : Fin sp.n} (hy : y ∈ H) (hc : tr.IsCall y k)
-    {x : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
     (hact : i ≤ k ∨ sp.ts (j + 1 : Nat) ≤ tr.time k) :
     Compatible (tr.HonestBlocks H) (tr.post k).fg.F B ∧

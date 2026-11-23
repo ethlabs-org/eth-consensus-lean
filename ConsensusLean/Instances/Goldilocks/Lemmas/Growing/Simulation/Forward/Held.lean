@@ -23,9 +23,9 @@ open Blocks Shape Node
 
 variable {binding : VoteBinding}
 
-variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
-  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Every cut up to an acceptance cut is at a time no later than it. -/
@@ -151,7 +151,7 @@ private theorem receipt_held_or_ancestry_at
     A ∈ (tr.state y r).fg.tree ∨
       Anc (insert A (tr.state y r).fg.tree) (tr.state y r).fg.F A := by
   have hbr : ∀ k < r, tr.time k ≤ d := fun k hk => hbj k (by omega)
-  have hF := (Store.cache_invariants sp.toParams (SA.Payload sp.n) _ _
+  have hF := (Store.cache_invariants sp.toParams (AC.Payload sp.n) _ _
     (reachable_upTo hrun hd hbr hy)).1
   refine receipt_ancestry (Compose.Growing.honest_blocks_coherent hrun hnc) hF hAB
     ((hrun.toLocalRun.finalized_mono_on_prefix hd hy hrj hbj).trans hFB) hparent hP

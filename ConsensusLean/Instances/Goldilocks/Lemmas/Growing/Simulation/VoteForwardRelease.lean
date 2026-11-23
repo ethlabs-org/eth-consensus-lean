@@ -88,7 +88,7 @@ private theorem tick_forward_released (hv : rho.ExecutionValid)
 /-- A tick's aggregate pool insertion is released in its trailing poll. -/
 theorem tick_pool_insertion_released_at (hv : rho.ExecutionValid)
     {v : V} {i : Nat} {t : Time} (he : rho.events[i]? = some (.tick v t))
-    (m : SA.Vote (Fintype.card V))
+    (m : AC.Vote (Fintype.card V))
     (hold : m ∉ (stateAt S rho hn v i).node.ac.pool m.slot)
     (hnew : m ∈ (stateAt S rho hn v (i + 1)).node.ac.pool m.slot) :
     Model.Obj.mk (.signed (rho.ownKey v) .poll)
@@ -99,7 +99,7 @@ theorem tick_pool_insertion_released_at (hv : rho.ExecutionValid)
 /-- A delivery's aggregate pool insertion is forwarded in that same event. -/
 theorem delivery_pool_insertion_released_at (hv : rho.ExecutionValid) {v : V}
     {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
-    (he : rho.events[i]? = some (.deliver v o t)) (m : SA.Vote (Fintype.card V))
+    (he : rho.events[i]? = some (.deliver v o t)) (m : AC.Vote (Fintype.card V))
     (hold : m ∉ (stateAt S rho hn v i).node.ac.pool m.slot)
     (hnew : m ∈ (stateAt S rho hn v (i + 1)).node.ac.pool m.slot) :
     Model.Obj.mk (.signed (rho.ownKey v) .poll)

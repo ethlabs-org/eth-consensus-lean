@@ -7,7 +7,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks SA: the proposal's view and a voter's merged view agree
+/-! # Goldilocks AC: the proposal's view and a voter's merged view agree
 
 For an honest proposer `p` of slot `s + 1` proposing at `t_{s+1}` and an honest voter `y` of slot
 `s + 1` that holds that proposal `P` (the only slot-`(s+1)` block of the honest frames), under
@@ -17,21 +17,21 @@ every block of both trees, provided the blocks that resolve a support vote at on
 other's tree when they extend its `Φ.F`: the voter's blocks stamped before the vote freeze are in
 `p`'s tree, and the heads of `P`'s support entries are in `y`'s tree. The trees may differ
 otherwise (late faulty blocks, different finalized tips).
-This is A1.1's agreement (`proposer_voters_agree`) for the Goldfish score, without its premise
+This is A1.1's agreement (`proposer_voters_agree`) for the head score, without its premise
 that the two trees agree up to slot `s`. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
 
 /-- `genesis_mem` with the unlock given. -/
 theorem genesis_memU
     {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
-    ∀ {ℓ : ACLabel (goldilocksSA sp FGP ro)}, tr.CallAt y i ℓ →
+    ∀ {ℓ : ACLabel (goldilocksAC sp FGP ro)}, tr.CallAt y i ℓ →
       ∃ G ∈ U, G.root = sp.genesisRoot ∧ G.slot = 0 := by
   induction i using Nat.strong_induction_on with
   | _ i ih =>
@@ -42,15 +42,15 @@ theorem genesis_memU
     · exact ih j hj hc'
 
 /-- The genesis block of an honest node's initial frame is in `U`, with slot `0`. -/
-theorem genesis_mem (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr) {y : Fin sp.n}
+theorem genesis_mem (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
-    ∀ {ℓ : ACLabel (goldilocksSA sp FGP ro)}, tr.CallAt y i ℓ →
+    ∀ {ℓ : ACLabel (goldilocksAC sp FGP ro)}, tr.CallAt y i ℓ →
       ∃ G ∈ U, G.root = sp.genesisRoot ∧ G.slot = 0 :=
   genesis_memU (hr := hr.toU) (y := y) (hy := hy) (i := i)
 
 /-- A resolved vote has its head in the tree, of slot at most the vote's, and the head's stamp
 is at most the resolution time. -/
-private theorem resolved_head {A : SAState sp.n} {Φ : Frm sp.n FGP} {v : Vote sp.n}
+private theorem resolved_head {A : ACState sp.n} {Φ : Frm sp.n FGP} {v : Vote sp.n}
     (h : resolutionTime A Φ v ≠ ⊤) : ∃ Hd ∈ Φ.tree, Hd.root = v.head ∧ Hd.slot ≤ v.slot ∧
       A.blockStamp v.head ≤ resolutionTime A Φ v := by
   unfold resolutionTime at h ⊢
@@ -83,7 +83,7 @@ private theorem view_agree_of_forwardU
     {ini} {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {s : Nat} {p y : Fin sp.n} {i j : Nat}
-    {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
+    {ℓp ℓy : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H) (hpp : p = proposer (s + 1))
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hc : CastAt tr y j ℓy e)
@@ -112,7 +112,7 @@ private theorem view_agree_of_forwardU
   obtain ⟨hΦy, hΦyU⟩ := frameIn_of_callU hr hy hc.1
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hcast : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   have hsi : sp.slot (tr.time i) = s + 1 := by
     rw [hti]; exact slot_of_mem sp (s + 1) le_rfl ((ts_lt_iff sp).2 (by push_cast; omega))
@@ -132,10 +132,10 @@ private theorem view_agree_of_forwardU
     rwa [hsi, hcast] at this
   -- the only slot-`(s+1)` block of the honest frames is the proposal
   obtain ⟨P, hP, hPs, hPpay⟩ := hP
-  have hPv : blockVotes P = (voteViewList (tr.state p i) ℓp.frame (s : Int) ⊤).1 := by
-    simp only [blockVotes, hPpay]
-  have hPsup : blockSupport P = (voteViewList (tr.state p i) ℓp.frame (s : Int) ⊤).2 := by
-    simp only [blockSupport, hPpay]
+  have hPv : declaredHeadVotes P = (voteViewList (tr.state p i) ℓp.frame (s : Int) ⊤).1 := by
+    simp only [declaredHeadVotes, hPpay]
+  have hPsup : declaredSupportVotes P = (voteViewList (tr.state p i) ℓp.frame (s : Int) ⊤).2 := by
+    simp only [declaredSupportVotes, hPpay]
   have huniq : ∀ X, HonestFrameBlock tr H X → X.slot = s + 1 → X = P := fun X hX hXs =>
     frameBlock_uniqueU hrun (by omega) (hpp ▸ hp) hX ⟨y, hy, j, ℓy, hc.1, hP⟩ hXs hPs
   -- the proposal's votes are the proposer's slot-`s` pool
@@ -169,7 +169,7 @@ private theorem view_agree_of_forwardU
   have hm : ∀ v ∈ (tr.state p i).pool s,
       v ∈ (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes := fun v hv =>
     Or.inr ⟨P, hP, hPs, hPv ▸ mem_voteViewList_fst.2 ⟨hv, hpool v hv⟩,
-      by simp [SAParams.committee], hcount v hv⟩
+      by simp [ACParams.committee], hcount v hv⟩
   have hpe : equivocators {w | w ∈ (tr.state p i).pool s} =
       equivocators (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes := by
     ext w
@@ -204,7 +204,7 @@ private theorem view_agree_of_forwardU
     obtain ⟨Hd, hHd, hHdr, hHds, -⟩ := resolved_head hres.ne
     obtain rfl : R = Hd := hΦp.coherent.1 hR hHd (hRr.trans hHdr.symm)
     have hRy := hpy x hx R hR hRr (anc_F hΦy hΦyU hΦpU hXy hXR)
-    exact ⟨heqv ▸ hw, x, Or.inr ⟨P, hP, hPs, hPsup ▸ hx, by simp [SAParams.committee],
+    exact ⟨heqv ▸ hw, x, Or.inr ⟨P, hP, hPs, hPsup ▸ hx, by simp [ACParams.committee],
       hcount x (mem_voteViewList_snd.1 hx).1.1, by omega, R, hRy, hRr, by omega⟩, rfl,
       hxs, R, hRy, hRr, anc_tree_of_anc_U hU hΦy hΦyU hXy (hXR.mono hΦpU) hRy⟩
   · rintro ⟨hw, x, hx, rfl, hxs, hXR⟩
@@ -247,7 +247,7 @@ every block of both trees). -/
 private theorem view_agree_of_forward {ini} (hrun : ACRun proposer tr H U ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {s : Nat} {p y : Fin sp.n} {i j : Nat}
-    {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
+    {ℓp ℓy : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H) (hpp : p = proposer (s + 1))
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hc : CastAt tr y j ℓy e)
@@ -281,7 +281,7 @@ obligations; no settled phase or equality of the frame trees is assumed. -/
 theorem view_agree_window_before {ini} (hrun : ACRun proposer tr H U ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {s : Nat} {p y : Fin sp.n} {i j : Nat}
-    {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
+    {ℓp ℓy : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H) (hpp : p = proposer (s + 1))
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
@@ -306,7 +306,7 @@ theorem view_agree_window_before {ini} (hrun : ACRun proposer tr H U ini)
   intro k v hsend hsk htk hvs hrs
   have hΔ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hdl : tr.time k + sp.Δ ≤ tr.time i := by
     rw [hti, hts]; linarith only [htk, hΔ]
   have h := sync_window_before_forward hrun.localRun hsync hy hsend (ha.trans hsk)
@@ -320,12 +320,12 @@ theorem view_agree_window_before {ini} (hrun : ACRun proposer tr H U ini)
 theorem view_agreeU
     {ini} {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini) {s : Nat} {p y : Fin sp.n}
     {i j : Nat}
-    {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
+    {ℓp ℓy : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H) (hpp : p = proposer (s + 1))
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
     (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr)
+    (hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr)
     (hyp : ∀ Hd ∈ ℓy.frame.tree, Hd.slot ≤ s →
       e.readPoint.blockStamp Hd.root < ETime.of (freeze sp (s + 1)) → Anc U ℓp.frame.F Hd →
         Hd ∈ ℓp.frame.tree)
@@ -343,7 +343,7 @@ theorem view_agreeU
   intro k v hsend hsk htk hvs hrs
   have hΔ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have h := sync_forwardU hrun.localRun hsync hy hsend hsk
     (by rw [hts]; linarith only [htk, hΔ]) hp hprop.1
     (fun k' hk' hr' => (hrs k' hk' hr').trans hsk)
@@ -355,12 +355,12 @@ theorem view_agreeU
 
 /-- The original source-window service also suffices for view agreement. -/
 theorem view_agree {ini} (hrun : ACRun proposer tr H U ini) {s : Nat} {p y : Fin sp.n} {i j : Nat}
-    {ℓp ℓy : ACLabel (goldilocksSA sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
+    {ℓp ℓy : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H) (hpp : p = proposer (s + 1))
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
     (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
-    (hsync : SyncAC (goldilocksSA sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr)
+    (hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr)
     (hyp : ∀ Hd ∈ ℓy.frame.tree, Hd.slot ≤ s →
       e.readPoint.blockStamp Hd.root < ETime.of (freeze sp (s + 1)) → Anc U ℓp.frame.F Hd →
         Hd ∈ ℓp.frame.tree)
@@ -378,6 +378,6 @@ theorem view_agree {ini} (hrun : ACRun proposer tr H U ini) {s : Nat} {p y : Fin
           (hti := hti) (hc := hc) (hes := hes) (hP := hP) (hsync := hsync) (hyp := hyp)
             (hpy := hpy)
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.A
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.TransferLater
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.GrowingPremises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
@@ -37,16 +37,16 @@ node honest then, its `Σ.F` is at or below the proposal `P` of slot `s` by a pr
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- The proposal of a proposer honest at its proposal is a block held while honest. -/
 theorem proposal_honest_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    {p : Fin sp.n} {k : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))} (hp : p ∈ H (tr.time k))
+    {p : Fin sp.n} {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} (hp : p ∈ H (tr.time k))
     (hP : tr.ProposesAt p k P) : P ∈ tr.HonestBlocksAt H := by
   have hd := hrun.time_nonneg k
   have hr := hrun.upTo hd
@@ -64,11 +64,11 @@ at a time `≤ b` is `P`. -/
 private theorem origin_anc_proposal_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
     (hinv : SleepyInvariantUpTo tr H b)
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPU : P ∈ tr.HonestBlocksAt H)
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPU : P ∈ tr.HonestBlocksAt H)
     (hsb : sp.ts s + sp.Δ ≤ b)
     (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → tr.time j ≤ b → e.msg.head = P.root)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
-    (hC : OriginWithin tr H C j b) (hj : j ≤ s) {K : SA.CommitteeDict sp.n}
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
+    (hC : OriginWithin tr H C j b) (hj : j ≤ s) {K : AC.CommitteeDict sp.n}
     (hKB : CommitteeFacts tr H K) (hBK : CommitteeBoundsFrom tr H K 0 b) :
     Anc (tr.HonestBlocksAt H) C P := by
   have hU := honestBlocksAt_coherent hrun hnc
@@ -93,13 +93,13 @@ protected block `P`). -/
 private theorem votes_succ_extend_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b)
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPU : P ∈ tr.HonestBlocksAt H)
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPU : P ∈ tr.HonestBlocksAt H)
     (hsb : sp.ts s + sp.Δ ≤ b)
     (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root)
-    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     (hBK : CommitteeBoundsFrom tr H K 0 b) :
     ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s + 1 → tr.time j ≤ b →
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
   have hPb : OriginsBelowUpTo tr H (s + 1) b := originsBelowUpTo_iff.2
     fun C j C' j' _ _ hC hC' => hinv.origins_compatible C j C' j' hC hC'
   intro x j
@@ -127,10 +127,10 @@ most `s + 1`. -/
 private theorem rows_compatible_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b)
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPU : P ∈ tr.HonestBlocksAt H)
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPU : P ∈ tr.HonestBlocksAt H)
     (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root)
     {y : Fin sp.n} {k₀ : Nat} (hy : y ∈ H (tr.time k₀)) (ht : tr.time k₀ = sp.ts s + 6 * sp.Δ)
-    (hb : tr.time k₀ ≤ b) {K : SA.CommitteeDict sp.n}
+    (hb : tr.time k₀ ≤ b) {K : AC.CommitteeDict sp.n}
     (hKB : CommitteeFacts tr H K) (hBK : CommitteeBoundsFrom tr H K 0 b) :
     HonestRowsSourced (tr.upTo (tr.time k₀)) (H (tr.time k₀))
       (fun D => Compatible (tr.HonestBlocksAt H) D P) y k₀ := by
@@ -143,9 +143,9 @@ private theorem rows_compatible_at {ini} (hrun : Growing.GoldilocksRun proposer 
   have hsub := upTo_subset hrun hd
   have hsl₀ : sp.slot (tr.time k₀) = s + 1 := by
     have h6 : sp.ts s + 6 * sp.Δ = sp.ts ((s + 1 : Nat) : Int) + 2 * sp.Δ :=
-      (SA.slot_arithmetic sp s).2.2
+      (AC.slot_arithmetic sp s).2.2
     rw [ht, h6]
-    simpa using (SA.slot_arithmetic sp (s + 1)).1 2 (by omega)
+    simpa using (AC.slot_arithmetic sp (s + 1)).1 2 (by omega)
   refine honestRowsSourced_iff.2 fun X hX a ha hav => ?_
   obtain ⟨m, hm, -, ks, hksm, hsg⟩ := Compose.honest_row_signed_before hr hnc' hy hX ha hav
   obtain ⟨D, -, hDs, C, l, hCo, hDC⟩ := Compose.attestation_source hr hnc' hav hsg
@@ -161,13 +161,13 @@ private theorem rows_compatible_at {ini} (hrun : Growing.GoldilocksRun proposer 
     have htk'' : tr.time k' = sp.ts l + 6 * sp.Δ := htk'
     have hl : l ≤ s := by
       have : sp.ts (l : Int) ≤ sp.ts (s : Int) := by linarith
-      exact_mod_cast (SA.ts_le_iff sp).1 this
+      exact_mod_cast (AC.ts_le_iff sp).1 this
     exact Or.inl (hDC'.trans (origin_anc_proposal_at hrun hnc hsync hinv hPU hsb
       (fun x k e hv hs _ => hall x k e hv hs) hCb hl hKB hBK))
   · -- an optimistic origin, of the slot of its time
     obtain ⟨-, -, -, hslk, -⟩ := hO
     have hl : l ≤ s + 1 := by
-      have := SA.slot_mono sp (hrun.time_nonneg k') (hrun.time_mono (show k' ≤ k₀ by omega))
+      have := AC.slot_mono sp (hrun.time_nonneg k') (hrun.time_mono (show k' ≤ k₀ by omega))
       rw [← hslk]
       change sp.slot (tr.time k') ≤ s + 1
       rw [← hsl₀]
@@ -188,10 +188,10 @@ private theorem rows_compatible_at {ini} (hrun : Growing.GoldilocksRun proposer 
 strictly below a block of the updater's frame, of a slot at most `s + 1`, so of a slot at most `s`,
 and a compatible block of a slot at most that of `P` is below it. -/
 theorem updater_F_anc_of_compatible {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hnc : NoCollRun dg tr) {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hPU : P ∈ tr.HonestBlocksAt H) (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
     (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ)
+    (hu : AC.UpdateAt tr.projAC y k₀ s ℓ)
     (hFR : Compatible (tr.HonestBlocksAt H) (tr.state y k₀).fg.F P) :
     Anc (tr.HonestBlocksAt H) (tr.state y k₀).fg.F P := by
   have hU := honestBlocksAt_coherent hrun hnc
@@ -215,9 +215,9 @@ theorem updater_F_anc_of_compatible {ini} (hrun : Growing.GoldilocksRun proposer
   have hBf : B ∈ ℓ.frame.tree := by rw [hfr]; exact ⟨hBt, hFB⟩
   have hsl₀ : sp.slot (tr.time k₀) = s + 1 := by
     have h6 : sp.ts s + 6 * sp.Δ = sp.ts ((s + 1 : Nat) : Int) + 2 * sp.Δ :=
-      (SA.slot_arithmetic sp s).2.2
+      (AC.slot_arithmetic sp s).2.2
     rw [ht, h6]
-    simpa using (SA.slot_arithmetic sp (s + 1)).1 2 (by omega)
+    simpa using (AC.slot_arithmetic sp (s + 1)).1 2 (by omega)
   have hBs : B.slot ≤ s + 1 := hsl₀ ▸ frame_slot_le_at hrun hnc hy hu.1 B hBf
   have hFs : (tr.state y k₀).fg.F.slot < B.slot := (Anc.slot_le hcoh hFB).2 hne
   rcases hFR with h | hPF
@@ -230,10 +230,10 @@ theorem updater_F_anc_of_compatible {ini} (hrun : Growing.GoldilocksRun proposer
 /-- **The updater's `Σ.F` is at or below `P`**, from rows sourced compatibly with `P`: the static
 justification geometry on the prefix through the update, with `2 f_d < n` at the update. -/
 private theorem updater_F_anc_of_rows_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
+    (hnc : NoCollRun dg tr) {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hPU : P ∈ tr.HonestBlocksAt H) (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
     (hy : y ∈ H (tr.time k₀)) (hf : 2 * (H (tr.time k₀))ᶜ.ncard < sp.n)
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hu : SA.UpdateAt tr.projAC y k₀ s ℓ)
+    {ℓ : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k₀ s ℓ)
     (hsrc : HonestRowsSourced (tr.upTo (tr.time k₀)) (H (tr.time k₀))
       (fun D => Compatible (tr.HonestBlocksAt H) D P) y k₀) :
     Anc (tr.HonestBlocksAt H) (tr.state y k₀).fg.F P := by
@@ -251,7 +251,7 @@ private theorem updater_F_anc_of_rows_at {ini} (hrun : Growing.GoldilocksRun pro
   have hsU : (tr.state y k₀).fg.tree ⊆ tr.HonestBlocksAt H := fun Z hZ =>
     mem_honestBlocksAt hrun hy hZ
   have ht : tr.time k₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
-  set R : SA.Blk sp.n (List (FG.Att sp.n)) → Prop := fun D => Compatible (tr.HonestBlocksAt H) D P
+  set R : AC.Blk sp.n (List (FG.Att sp.n)) → Prop := fun D => Compatible (tr.HonestBlocksAt H) D P
   have hRc : ∀ A B, Anc (tr.HonestBlocksAt H) A B → R B → R A := by
     rintro A B hAB (hBP | hPB)
     · exact Or.inl (hAB.trans hBP)
@@ -283,9 +283,9 @@ theorem honest_votes_eq_proposal_at_update_at {ini}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) (hsb : sp.ts s + 6 * sp.Δ ≤ b)
-    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     (hBK : CommitteeBoundsFrom tr H K 0 b) :
     ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root := by
   have hΔ := sp.toParams.hΔ
@@ -302,11 +302,11 @@ for the proposal `P` of slot `s` by a proposer honest at `t_s + Δ`, through `b`
 theorem updater_F_anc_proposal_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {y : Fin sp.n} {k₀ : Nat}
     (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
-    (hu : SA.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
-    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    (hu : AC.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b)
+    {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     (hBK : CommitteeBoundsFrom tr H K 0 b) :
     Anc (tr.HonestBlocksAt H) (tr.state y k₀).fg.F P := by
   have hΔ := sp.toParams.hΔ

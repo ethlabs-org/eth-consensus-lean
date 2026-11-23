@@ -97,7 +97,7 @@ theorem nonfinal_query_slot (S : Setup) (A : ContractAssumptions S) (V : Type)
   rw [htime] at hR hH
   have hs1 : 1 ≤ s := by
     cases s with
-    | zero => simp [SA.SAParams.ts] at hlo; linarith
+    | zero => simp [AC.ACParams.ts] at hlo; linarith
     | succ s => exact Nat.succ_pos s
   have htsh : (S.params (Model.pubOf run.1) hn).ts s ≤ run.2.horizon := by
     have := (S.params (Model.pubOf run.1) hn).toParams.hΔ

@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Spec.Model.System
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Committee
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Committee
 
 /-! # Instance committee binding to the run's role selection
 
@@ -8,7 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Committee
 supplies neither an engine role plan nor a public reader instance. -/
 
 public section
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 open Model
 
 variable {V : Type} [Fintype V]
@@ -23,4 +23,4 @@ theorem CommitteeDict.bindsSel_iff (K : CommitteeDict (Fintype.card V)) (rho : R
     (voteRole : Nat → (protoOf F E).Role) :
     K.BindsSel rho voteRole ↔ ∀ s k, k ∈ K.committee s ↔ k ∈ rho.sel (voteRole s) := by rfl
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC

@@ -1,11 +1,11 @@
 module
-public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.SA
+public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.ChainAC
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
-/-! # The healthy two-validator run: the SA's calls
+/-! # The healthy two-validator run: the AC's calls
 
-The SA calls of the run on chain frames (`ChainFrame`), for either validator `y`:
+The AC calls of the run on chain frames (`ChainFrame`), for either validator `y`:
 
 * `acOnTick_eq`: the tick by the residue of the time; `tryVote_zero`: the vote of slot `0` at `1`;
   `tryVote_blk`: the vote of slot `k + 1` on the block of that slot, which is ready;
@@ -17,7 +17,7 @@ The SA calls of the run on chain frames (`ChainFrame`), for either validator `y`
 
 namespace Consensus.Goldilocks.Witness.TwoRun
 
-open SA Node ChainFrame
+open AC Node ChainFrame
 
 theorem slot4 (k : Nat) : sp.slot (((4 * (k + 1) : Nat) : Int)) = k + 1 := by
   rw [slot_nat]; omega
@@ -25,7 +25,7 @@ theorem slot4 (k : Nat) : sp.slot (((4 * (k + 1) : Nat) : Int)) = k + 1 := by
 theorem vote_zero (y : Fin sp.n) : vote y 0 = ⟨y, 0, (blk 0).root⟩ := rfl
 
 /-- `ac_on_tick` by the residue of the time modulo a slot. -/
-theorem acOnTick_eq (y : Fin sp.n) (A : SAState sp.n) (Φ : N.Frm) (n : Nat)
+theorem acOnTick_eq (y : Fin sp.n) (A : ACState sp.n) (Φ : N.Frm) (n : Nat)
     (hj : A.restartTime = ⊥) :
     acOnTick sp y A Φ n =
       if n % 4 = 2 ∧ 4 ≤ n then (updateConfirmation sp A Φ n (n / 4 - 1), [])
@@ -48,7 +48,7 @@ theorem acOnTick_eq (y : Fin sp.n) (A : SAState sp.n) (Φ : N.Frm) (n : Nat)
     · rw [ite_eq_left (e2.2 h2), ite_eq_left h2]
     · rw [ite_eq_right (fun h => h2 (e2.1 h)), ite_eq_right h2, ite_eq_right h1]
 
-theorem tryVote_voted {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} {t : Time}
+theorem tryVote_voted {y : Fin sp.n} {A : ACState sp.n} {Φ : N.Frm} {t : Time}
     (h : A.votedSlot = (sp.slot t : Int)) : tryVote sp y A Φ t = (A, []) := by
   unfold tryVote
   dsimp only
@@ -56,7 +56,7 @@ theorem tryVote_voted {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} {t : Time}
 
 /-- Admission of a vote of the current slot that the pool does not hold, with no other vote of
 its validator. -/
-theorem admitVote_fresh {A : SAState sp.n} {t : Time} {v : Vote sp.n}
+theorem admitVote_fresh {A : ACState sp.n} {t : Time} {v : Vote sp.n}
     (hst : sp.slot t = v.slot) (hn : v ∉ A.pool v.slot)
     (hv : ∀ x ∈ A.pool v.slot, x.val ≠ v.val) :
     admitVote sp A t v =
@@ -68,14 +68,14 @@ theorem admitVote_fresh {A : SAState sp.n} {t : Time} {v : Vote sp.n}
     rw [List.filter_eq_nil_iff]; intro x hx; simpa using hv x hx
   rw [hf, ite_eq_right (by simp)]
 
-theorem optimisticSelect_slot_zero {A : SAState sp.n} {Φ : N.Frm} {t : Time}
+theorem optimisticSelect_slot_zero {A : ACState sp.n} {Φ : N.Frm} {t : Time}
     (h : sp.slot t = 0) : optimisticSelect sp A Φ t = none := by
   unfold optimisticSelect
   dsimp only
   rw [ite_eq_left (Or.inr (Or.inl h))]
 
 /-- One validator's vote locks nothing. -/
-theorem optimisticSelect_one {A : SAState sp.n} {Φ : N.Frm} {t : Time} {v : Vote sp.n}
+theorem optimisticSelect_one {A : ACState sp.n} {Φ : N.Frm} {t : Time} {v : Vote sp.n}
     (h : A.pool (sp.slot t) = [v]) : optimisticSelect sp A Φ t = none := by
   unfold optimisticSelect
   dsimp only
@@ -95,7 +95,7 @@ theorem optimisticSelect_one {A : SAState sp.n} {Φ : N.Frm} {t : Time} {v : Vot
 
 /-- Both votes of the slot on its block lock that block. -/
 theorem optimisticSelect_two {Φ : N.Frm} {f j s : Nat} (h : ChainFrame Φ f j s) (hs : 1 ≤ s)
-    {A : SAState sp.n} {t : Time} (hst : sp.slot t = s) (ht : t < sp.ts s + 2 * sp.Δ)
+    {A : ACState sp.n} {t : Time} (hst : sp.slot t = s) (ht : t < sp.ts s + 2 * sp.Δ)
     (hjn : joined sp A t) {y : Fin sp.n} (hpool : A.pool s = [vote y s, vote (other y) s]) :
     optimisticSelect sp A Φ t = some (blk s) := by
   unfold optimisticSelect
@@ -120,7 +120,7 @@ theorem optimisticSelect_two {Φ : N.Frm} {f j s : Nat} (h : ChainFrame Φ f j s
     obtain ⟨m, -, hm, rfl⟩ := h.eq_of_mem hB
     exact ⟨m, hm, rfl⟩
 
-theorem optimisticConfirmation_of_some {A : SAState sp.n} {Φ : N.Frm} {t : Time} {B : N.Blk}
+theorem optimisticConfirmation_of_some {A : ACState sp.n} {Φ : N.Frm} {t : Time} {B : N.Blk}
     (h : optimisticSelect sp A Φ t = some B) :
     optimisticConfirmation sp A Φ t = updateLatestConfirmed sp
       { A with locks := addLocks sp A.locks Φ t (sp.slot t) {(B.root, true, sp.slot t + 2)} }
@@ -131,7 +131,7 @@ theorem optimisticConfirmation_of_some {A : SAState sp.n} {Φ : N.Frm} {t : Time
   rw [fastExpiry_eq]
 
 /-- The vote of slot `0`, at time `1`. -/
-theorem tryVote_zero {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} (h : ChainFrame Φ 0 0 0)
+theorem tryVote_zero {y : Fin sp.n} {A : ACState sp.n} {Φ : N.Frm} (h : ChainFrame Φ 0 0 0)
     (hperm : A.mayVote 0 = true)
     (hj : A.restartTime = ⊥) (hvs : A.votedSlot = -1) (hL : LocksLe A.locks 0) :
     ∃ d, tryVote sp y A Φ 1 = (admitVote sp { A with votedSlot := 0 } 1 (vote y 0),
@@ -155,17 +155,19 @@ theorem tryVote_zero {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} (h : ChainFr
   rw [hhead, optimisticConfirmation_of_none (optimisticSelect_slot_zero hs)]
   exact ⟨_, rfl⟩
 
-theorem blockSupport_blk (k : Nat) : blockSupport (blk (k + 1)) = [vote w0 k, vote w1 k] := by
+theorem declaredSupportVotes_blk (k : Nat) :
+    declaredSupportVotes (blk (k + 1)) = [vote w0 k, vote w1 k] := by
   change (blk (k + 1)).acPayload.2 = _; rw [blk_acPayload]
 
-theorem blockVotes_blk (k : Nat) : blockVotes (blk (k + 1)) = [vote w0 k, vote w1 k] := by
+theorem declaredHeadVotes_blk (k : Nat) :
+    declaredHeadVotes (blk (k + 1)) = [vote w0 k, vote w1 k] := by
   change (blk (k + 1)).acPayload.1 = _; rw [blk_acPayload]
 
-theorem voteReady_blk {A : SAState sp.n} {Φ : N.Frm} {f k : Nat}
+theorem voteReady_blk {A : ACState sp.n} {Φ : N.Frm} {f k : Nat}
     (h : ChainFrame Φ f (jx (k + 1)) (k + 1)) (hf : f ≤ k)
     (h0 : vote w0 k ∈ A.pool k) (h1 : vote w1 k ∈ A.pool k) : voteReady sp A Φ (k + 1) := by
   refine ⟨⟨blk (k + 1), h.mem (by omega) le_rfl, blk_slot _, fun x hx _ _ => ?_⟩, ?_⟩
-  · rw [blockSupport_blk] at hx
+  · rw [declaredSupportVotes_blk] at hx
     rcases List.mem_cons.1 hx with rfl | hx
     · exact ⟨blk k, h.mem hf (by omega), rfl, by rw [blk_slot]⟩
     · rw [List.mem_singleton] at hx; subst hx
@@ -174,9 +176,9 @@ theorem voteReady_blk {A : SAState sp.n} {Φ : N.Frm} {f k : Nat}
     obtain ⟨m, -, -, rfl⟩ := h.eq_of_mem hB
     rw [blk_slot] at hBs
     subst hBs
-    rw [blockVotes_blk, blockSupport_blk, or_self] at hx
+    rw [declaredHeadVotes_blk, declaredSupportVotes_blk, or_self] at hx
     left
-    simp only [SAState.poolAt, Int.natCast_nonneg, not_lt.2, ↓reduceIte]
+    simp only [ACState.poolAt, Int.natCast_nonneg, not_lt.2, ↓reduceIte]
     rcases List.mem_cons.1 hx with rfl | hx
     · exact h0
     · rw [List.mem_singleton] at hx; subst hx
@@ -186,7 +188,7 @@ theorem jx_succ_le (k : Nat) : jx (k + 1) ≤ k := by
   unfold jx ent hgt; split_ifs <;> omega
 
 /-- **The vote of slot `k + 1`**, on the block of that slot, at `t_{k+1}`. -/
-theorem tryVote_blk {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} {f k : Nat}
+theorem tryVote_blk {y : Fin sp.n} {A : ACState sp.n} {Φ : N.Frm} {f k : Nat}
     (hperm : A.mayVote (k + 1) = true)
     (h : ChainFrame Φ f (jx (k + 1)) (k + 1)) (hj : A.restartTime = ⊥)
     (hvs : A.votedSlot = (k : Int)) (hpool : A.pool (k + 1) = [])
@@ -250,7 +252,7 @@ theorem tryVote_blk {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} {f k : Nat}
     Prod.ext (optimisticConfirmation_of_none (optimisticSelect_one hadm)) rfl, hL₁, htip₁⟩
 
 /-- The resolution time of a vote on a chain block of the tree, of the block's slot. -/
-theorem resolutionTime_vote {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {A : SAState sp.n}
+theorem resolutionTime_vote {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {A : ACState sp.n}
     {y : Fin sp.n} {k : Nat} (h1 : f ≤ k) (h2 : k ≤ τ) :
     resolutionTime A Φ (vote y k) = max (A.voteStamp (vote y k)) (A.blockStamp (blk k).root) := by
   unfold resolutionTime
@@ -260,18 +262,18 @@ theorem resolutionTime_vote {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j �
 
 /-- **`ac_proposal` at `t_{k+1}`**: the tip `k` as the parent, both slot-`k` votes as the
 payload. -/
-theorem acProposal_tick {A : SAState sp.n} {Φ : N.Frm} {f k : Nat}
+theorem acProposal_tick {A : ACState sp.n} {Φ : N.Frm} {f k : Nat}
     (h : ChainFrame Φ f (jx k) k) (hj : A.restartTime = ⊥)
     (hpool : A.pool k = [vote w0 k, vote w1 k])
     (hvst : ∀ y, A.voteStamp (vote y k) < ⊤) (hbst : A.blockStamp (blk k).root < ⊤)
     (hL : LocksLe A.locks k) (htip : 1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ A.locks) :
-    ∃ L₁ d, SA.acProposal sp A Φ ((4 * (k + 1) : Nat) : Int) =
+    ∃ L₁ d, AC.acProposal sp A Φ ((4 * (k + 1) : Nat) : Int) =
         ({ A with locks := L₁ },
           some (d, ([vote w0 k, vote w1 k], [vote w0 k, vote w1 k]))) ∧ d.head = blk k ∧
       LocksLe L₁ k ∧ (1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ L₁) := by
   have hs := slot4 k
   have hf : f ≤ k := le_trans h.fj (jx_le k)
-  unfold SA.acProposal
+  unfold AC.acProposal
   rw [ite_eq_right (not_not.2 (joined_of_bot hj _))]
   dsimp only
   rw [hs]
@@ -281,7 +283,7 @@ theorem acProposal_tick {A : SAState sp.n} {Φ : N.Frm} {f k : Nat}
       ([vote w0 k, vote w1 k], [vote w0 k, vote w1 k]) := by
     have hres : ∀ y, resolutionTime A Φ (vote y k) < ⊤ := fun y => by
       rw [resolutionTime_vote h hf le_rfl]; exact max_lt (hvst y) hbst
-    unfold voteViewList SAState.poolAt
+    unfold voteViewList ACState.poolAt
     rw [ite_eq_right (by omega), Int.toNat_natCast, hpool]
     simp [hvst, hres]
   rw [hp]
@@ -307,12 +309,12 @@ theorem acProposal_tick {A : SAState sp.n} {Φ : N.Frm} {f k : Nat}
   exact ⟨m, hm, rfl⟩
 
 /-- `ac_to_fg` with the tip `τ` locked and the previous slot reported: the source is the tip. -/
-theorem acToFG_tick {A : SAState sp.n} {Φ : N.Frm} {f τ : Nat} {t : Time}
+theorem acToFG_tick {A : ACState sp.n} {Φ : N.Frm} {f τ : Nat} {t : Time}
     (h : ChainFrame Φ f (jx τ) τ) (hj : A.restartTime = ⊥) (hst : sp.slot t = τ)
     (htip : (⟨(blk τ).root, τ, true, τ + 2⟩ : Lock) ∈ A.locks)
     {r : Nat} (hr : r < τ) (hrep : A.fgReported = (blk r).root) :
-    (SA.acToFG sp A Φ t).1 = { A with fgReported := (blk τ).root } ∧
-      (SA.acToFG sp A Φ t).2 = some (blk τ) := by
+    (AC.acToFG sp A Φ t).1 = { A with fgReported := (blk τ).root } ∧
+      (AC.acToFG sp A Φ t).2 = some (blk τ) := by
   have hf : f ≤ τ := le_trans h.fj (jx_le _)
   have htip' := h.mem hf (le_refl τ)
   have hd : deepest Φ (toFGCandidates sp A Φ t) = some (blk τ) := by
@@ -328,7 +330,7 @@ theorem acToFG_tick {A : SAState sp.n} {Φ : N.Frm} {f τ : Nat} {t : Time}
     rw [hrep] at hr'
     obtain ⟨rfl, -, -⟩ := h.eq_of_root hR hr'
     have := h.le_of_anc ha; omega
-  unfold SA.acToFG
+  unfold AC.acToFG
   rw [ite_eq_right (not_not.2 (joined_of_bot hj _))]
   dsimp only
   rw [hd]
@@ -337,11 +339,11 @@ theorem acToFG_tick {A : SAState sp.n} {Φ : N.Frm} {f τ : Nat} {t : Time}
   exact ⟨rfl, rfl⟩
 
 /-- `ac_to_fg` returns nothing when every lock is at or below the reported block. -/
-theorem acToFG_none {A : SAState sp.n} {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ)
+theorem acToFG_none {A : ACState sp.n} {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ)
     {b : Nat} (hL : LocksLe A.locks b) (hb : f ≤ b) (hbτ : b ≤ τ)
     (hrep : A.fgReported = (blk b).root) (t : Time) :
-    (SA.acToFG sp A Φ t).1 = A ∧ (SA.acToFG sp A Φ t).2 = none := by
-  unfold SA.acToFG
+    (AC.acToFG sp A Φ t).1 = A ∧ (AC.acToFG sp A Φ t).2 = none := by
+  unfold AC.acToFG
   split_ifs
   all_goals try exact ⟨rfl, rfl⟩
   · split
@@ -386,7 +388,7 @@ theorem ncard_univ_two : (Set.univ : Set (Fin sp.n)).ncard = 2 := by
 
 /-- **The confirmation of slot `σ`** is the block of slot `σ`: both slot-`σ` votes are on it and
 resolved before `t_σ + 2Δ`. -/
-theorem getConfirmation_tick {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {A : SAState sp.n}
+theorem getConfirmation_tick {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {A : ACState sp.n}
     {σ : Nat} (h1 : f ≤ σ) (h2 : σ ≤ τ) {y : Fin sp.n}
     (hpool : A.pool σ = [vote y σ, vote (other y) σ])
     (hres : ∀ x ∈ A.pool σ, resolutionTime A Φ x < ETime.of (sp.ts σ + 2 * sp.Δ)) :
@@ -440,7 +442,7 @@ theorem getConfirmation_tick {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j 
 /-- **The confirmation update** of slot `σ` saves the block of slot `σ`, keeps the record (which
 is at or above it) and the stamps, and adds locks on blocks of the tree. -/
 theorem updateConfirmation_tick {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ)
-    {A : SAState sp.n} {σ : Nat} {t : Time} (hC : getConfirmation sp A Φ σ = some (blk σ))
+    {A : ACState sp.n} {σ : Nat} {t : Time} (hC : getConfirmation sp A Φ σ = some (blk σ))
     {b : Nat} (hσb : σ ≤ b) (hb : b ≤ τ) (hσf : f ≤ σ)
     (hlat : A.latestConfirmed = (blk b).root) :
     Same A (updateConfirmation sp A Φ t σ) ∧

@@ -25,9 +25,9 @@ service) under exactly `PatternPremises`; no stronger timeout or `Δ ≤ Δ_F` i
 
 namespace Consensus.Goldilocks.Healing.Recovery
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams}
+variable {sp : ACParams}
 
 /-! ## Ceilings -/
 
@@ -90,7 +90,7 @@ theorem recovery_slot_budget {ΔF Gp : Time} {cF kF M v s u : Nat}
 /-! ## The pattern premises -/
 
 variable {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
-  {K : SA.CommitteeDict sp.n} {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {K : AC.CommitteeDict sp.n} {ini : Fin sp.n → (goldilocksNode sp ro).State}
   {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF Gp : Time} {W M cF kF : Nat}
 
@@ -117,9 +117,9 @@ private theorem Zreset_nonneg (hp : PatternPremises tr H K proposer dg g ΔF Gp 
 /-- The drain of a reset `a ≥ 0` ends by `a + (8k + 20)Δ`. -/
 private theorem drainTime_le {a : Time} (ha : 0 ≤ a) :
     drainTime sp a ≤ a + (8 * (sp.k : Time) + 20) * sp.Δ := by
-  have hs := (SA.ts_le_iff_le_slot sp ha (sp.slot a : Int)).2 le_rfl
+  have hs := (AC.ts_le_iff_le_slot sp ha (sp.slot a : Int)).2 le_rfl
   rw [drainTime_eq]
-  simp only [SA.SAParams.ts] at hs ⊢
+  simp only [AC.ACParams.ts] at hs ⊢
   push_cast
   linarith
 
@@ -132,7 +132,7 @@ private theorem reset_nonneg (hrun : GoldilocksRun proposer dg H tr ini) {a : Ti
 /-- **The bounded reset of the pattern premises** (HR.3): a reset `a` with its whole-run
 premises, `a ≤ ḡ + Z`, and its drain by `R*`. -/
 theorem pattern_reset
-    (hrun : GoldilocksRun proposer dg H tr (SA.committeeStart sp.genesisRoot K))
+    (hrun : GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hp : PatternPremises tr H K proposer dg g ΔF Gp W M cF kF) :
     ∃ a, ResetPremises tr H K proposer dg g ΔF a ∧
       a ≤ gbar g + Zreset sp ΔF Gp ∧ drainTime sp a ≤ Rstar sp g ΔF Gp := by
@@ -160,10 +160,10 @@ theorem pattern_stretch_after_reset
     ∃ v : Nat, t ≤ sp.ts v ∧ sp.ts v ≤ t + 4 * sp.Δ * ((W : Time) + 1) ∧
       drainTime sp a ≤ sp.ts v ∧
       ∀ s, v ≤ s → s < v + M →
-        ∃ (k : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))),
+        ∃ (k : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))),
           ReadyProposal tr H proposer (proposer s) k s B ∧
           ∀ y i, Compose.RunEntry tr H y i B →
-            ∃ (w : Fin sp.n) (kw : Nat) (Q : SA.Blk sp.n (List (FG.Att sp.n))),
+            ∃ (w : Fin sp.n) (kw : Nat) (Q : AC.Blk sp.n (List (FG.Att sp.n))),
               ReadyProposal tr H proposer w kw Q.slot Q ∧
               s + cF ≤ Q.slot ∧ Q.slot ≤ s + cF + kF ∧
               ∃ Pr, Q.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) B Pr := by

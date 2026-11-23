@@ -4,43 +4,43 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks SA: where a saved result comes from
+/-! # Goldilocks AC: where a saved result comes from
 
 `saved[j]` is written only by the update of slot `j` (`update_confirmation`, at `t_j + 6Δ`, from
 a joined state), with the root of its result, and a restart clears it: a saved root at an honest
 node is the root of the result of that node's update of slot `j` at an earlier cut
 (`saved_result`). -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {ini : Fin sp.n → SAState sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {ini : Fin sp.n → ACState sp.n}
 
-private theorem sv_admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+private theorem sv_admitVote (A : ACState sp.n) (t : Time) (v : Vote sp.n) :
     (admitVote sp A t v).saved = A.saved := by
   unfold admitVote; split_ifs <;> rfl
 
-private theorem sv_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+private theorem sv_optimistic (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).saved = A.saved := by
   unfold optimisticConfirmation updateLatestConfirmed; split
   · rfl
   · split_ifs <;> rfl
 
 private theorem sv_tryVote
-    {L : Set Lock} (x : Fin sp.n) (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    {L : Set Lock} (x : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (tryVoteWithM sp wm x L A Φ t).1.saved = A.saved := by
   unfold tryVoteWithM; dsimp only
   split_ifs <;> simp only [optimisticConfirmationM_keep _ sv_optimistic, sv_admitVote]
 
-private theorem sv_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
+private theorem sv_blockReceipt (A : ACState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (blockReceipt sp A t B).saved = A.saved :=
   rfl
 
 /-- `update_confirmation` of slot `s` writes `saved[s]` with the root of its result and keeps
 the other saved results. -/
-private theorem sv_update (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
+private theorem sv_update (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
     (updateConfirmation sp A Φ t s).saved =
       Function.update A.saved s ((getConfirmation sp A Φ s).map Block.root) := by
   unfold updateConfirmation updateLatestConfirmed; dsimp only
@@ -51,8 +51,8 @@ private theorem sv_update (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) (s :
 /-- One call keeps the saved results, or is a joined tick at `t_{σ} + 6Δ` that writes
 `saved[σ]` with its update's result, or is a restart, which clears them. -/
 private theorem sv_step
-    {L : Set Lock} (self : Fin sp.n) (A : SAState sp.n) {Φ : Frm sp.n FGP} {t : Time}
-    (hΦ : FrameOK Φ) (ht : 0 ≤ t) (c : (goldilocksSA sp FGP ro).Call) :
+    {L : Set Lock} (self : Fin sp.n) (A : ACState sp.n) {Φ : Frm sp.n FGP} {t : Time}
+    (hΦ : FrameOK Φ) (ht : 0 ≤ t) (c : (goldilocksAC sp FGP ro).Call) :
     let A' := (stepWithM sp ro wm self L A Φ t c).1
     A'.saved = A.saved ∨ (c = .restart ∧ ∀ j, A'.saved j = none) ∨
       ∃ σ : Nat, c = .tick ∧ t = sp.ts σ + 6 * sp.Δ ∧ joined sp A t ∧
@@ -76,11 +76,11 @@ private theorem sv_step
       have hc₂ : (t = sp.ts (sp.slot t) + sp.Δ) = False := eq_false hv
       simp only [hc₁, hc₂, ↓reduceIte]
       refine Or.inr (Or.inr ⟨sp.slot t - 1, trivial, ?_, hj,
-        (updateConfirmationM_field SAState.saved (fun _ _ => rfl) _ _ _ _ _).trans
+        (updateConfirmationM_field ACState.saved (fun _ _ => rfl) _ _ _ _ _).trans
           (sv_update _ _ _ _)⟩)
       have hs1 : ((sp.slot t - 1 : Nat) : Int) = (sp.slot t : Int) - 1 := by omega
       have e := hu.1
-      simp only [SAParams.ts] at e ⊢
+      simp only [ACParams.ts] at e ⊢
       rw [hs1]
       linarith
     · have hc₁ : (t = sp.ts (sp.slot t) + 2 * sp.Δ ∧ 0 < sp.slot t) = False := eq_false hu
@@ -160,17 +160,17 @@ theorem saved_resultU
 /-- **A saved result comes from the node's update.** When the state of an honest node before
 cut `i` has `saved[j] = r`, the node's update of slot `j` at an earlier cut had a result with
 root `r`; from starts up to the vote permission. -/
-theorem saved_result (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem saved_result (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
     (hx : x ∈ H) (i j : Nat) {r : Nat} (h : (tr.state x i).saved j = some r) :
     ∃ k < i, ∃ C CV, ResultAt tr x k j C CV ∧ C.root = r :=
   saved_resultU (hr := hr.toU) hini (x := x) (hx := hx) (i := i) (j := j) (r := r) (h := h)
 
 /-- The state after a call of an honest node. -/
-private theorem post_step (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {x : Fin sp.n}
-    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hc : tr.CallAt x i ℓ) :
+private theorem post_step (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {x : Fin sp.n}
+    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     tr.state x (i + 1) =
-      ((goldilocksSA sp FGP ro).step x (tr.state x i) ℓ.frame (tr.time i) ℓ.call).1 := by
+      ((goldilocksAC sp FGP ro).step x (tr.state x i) ℓ.frame (tr.time i) ℓ.call).1 := by
   have hst : tr.state x (i + 1) = tr.post i := by
     simp only [Trace.state]; exact ite_eq_left ⟨hc.1, by rw [hc.2]; exact Option.some_ne_none _⟩
   have he := hr.exec i ℓ hc.2 (hc.1 ▸ hx)
@@ -179,15 +179,15 @@ private theorem post_step (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) 
 
 /-- **The state after an update** of slot `j` at cut `i` is `update_confirmation` of slot `j` on
 the state before it. -/
-theorem state_after_update (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {x : Fin sp.n}
-    (hx : x ∈ H) {i j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hu : UpdateAt tr x i j ℓ) :
+theorem state_after_update (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {x : Fin sp.n}
+    (hx : x ∈ H) {i j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hu : UpdateAt tr x i j ℓ) :
     tr.state x (i + 1) = updateConfirmation sp (tr.state x i) ℓ.frame (tr.time i) j := by
   obtain ⟨hc, hcall, ht, hj⟩ := hu
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have h6 : tr.time i = sp.ts ((j + 1 : Nat) : Int) + 2 * sp.Δ := by
-    rw [ht]; simp only [SAParams.ts]; push_cast; ring
+    rw [ht]; simp only [ACParams.ts]; push_cast; ring
   have hsl : sp.slot (tr.time i) = j + 1 := slot_of_mem sp (j + 1) (by rw [h6]; linarith)
-    (by rw [h6]; simp only [SAParams.ts]; push_cast; linarith)
+    (by rw [h6]; simp only [ACParams.ts]; push_cast; linarith)
   have hne : ¬ tr.time i = sp.ts ((j + 1 : Nat) : Int) + sp.Δ := by rw [h6]; intro h; linarith
   rw [post_step hr hx hc, hcall]
   change (acOnTick sp x (tr.state x i) ℓ.frame (tr.time i)).1 = _
@@ -198,15 +198,15 @@ theorem state_after_update (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
 
 /-- **The update writes its slot's saved result.** After the update of slot `j` at cut `i`,
 `saved[j]` is the root of its result, the other saved results unchanged. -/
-theorem saved_after_update (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini) {x : Fin sp.n}
-    (hx : x ∈ H) {i j : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} (hu : UpdateAt tr x i j ℓ) :
+theorem saved_after_update (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {x : Fin sp.n}
+    (hx : x ∈ H) {i j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hu : UpdateAt tr x i j ℓ) :
     (tr.state x (i + 1)).saved =
       Function.update (tr.state x i).saved j
         ((getConfirmation sp (tr.state x i) ℓ.frame j).map Block.root) := by
   rw [state_after_update hr hx hu, sv_update]
 
 /-- **Without a restart, `saved[j]` changes only at an update of slot `j`.** -/
-theorem saved_step_of_not_restart (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem saved_step_of_not_restart (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     {x : Fin sp.n} (hx : x ∈ H) (i j : Nat) (hnr : ¬ tr.RestartAt x i) :
     (tr.state x (i + 1)).saved j = (tr.state x i).saved j ∨
       ∃ ℓ, UpdateAt tr x i j ℓ ∧ (tr.state x (i + 1)).saved j =
@@ -230,6 +230,6 @@ theorem saved_step_of_not_restart (hr : ACLocalRun (goldilocksSA sp FGP ro) H U 
       simp only [Trace.state]; exact ite_eq_right hn
     rw [hst]
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

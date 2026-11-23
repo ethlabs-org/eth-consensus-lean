@@ -15,9 +15,9 @@ client execution is read through the report time, including its same-time attest
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
@@ -32,8 +32,8 @@ theorem row_or_high_of_report_at
     (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
       tr.time k < T → att.h ≤ HZ tr H g)
     {y : Fin sp.n} {i : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
-    {ell : ACLabel (goldilocksNode sp ro)} {R P : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hR : SA.ToFGAt tr.projAC y i ell R) (hiT : tr.time i < T)
+    {ell : ACLabel (goldilocksNode sp ro)} {R P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hR : AC.ToFGAt tr.projAC y i ell R) (hiT : tr.time i < T)
     (hPR : Anc (tr.HonestBlocksAt H) P R)
     (hkind : ((tr.state y i).fg.σ R.root).h = ((tr.state y i).fg.σ P.root).h →
       ((tr.state y i).fg.σ P.root).h = HZ tr H g ∨
@@ -53,7 +53,7 @@ theorem row_or_high_of_report_at
     rw [RunTrace.upTo_projAC]
     exact Trace.upTo_state tr.projAC y hle
   have hRm : R ∈ (tr.state y i).fg.tree := by
-    have hreport : SA.ToFGAt (tr.upTo (tr.time i)).projAC y i ell R :=
+    have hreport : AC.ToFGAt (tr.upTo (tr.time i)).projAC y i ell R :=
       ⟨Compose.projAC_callAt.mpr ((Trace.upTo_callAt tr).mpr ⟨le_rfl,
         Compose.projAC_callAt.mp hc⟩), hto, by rw [hacstate]; exact hres⟩
     simpa only [Trace.upTo_state tr y hle] using Healing.toFG_mem_tree hr hy hreport

@@ -14,7 +14,7 @@ service and delivery arguments. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder)
+open AC (ACParams ReplayOrder)
 
 /-! ### Deadlines -/
 
@@ -54,11 +54,11 @@ end Deadline
 
 section Node
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP ro}
 
 private theorem state_succ_call {y : Fin sp.n} {k : Nat}
-    {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)} (hc : T.CallAt y k ℓ) :
+    {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} (hc : T.CallAt y k ℓ) :
     T.state y (k + 1) = T.post k := by
   simp [Trace.state, hc.1, hc.2]
 
@@ -73,25 +73,25 @@ private theorem state_succ_not {y : Fin sp.n} {k : Nat} (hn : ∀ ℓ, ¬ T.Call
 /-- **A stamp is not earlier than the acceptance**: after an honest node accepts a block other
 than genesis at cut `k`, its stamp is at least the time of `k` (a later receipt or a restart
 writes a later time, or a restart resets it to `+∞`). -/
-theorem blockStamp_ge_of_accept {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {B : SA.Blk sp.n FGP} (hk : T.AcceptAt y k B)
+theorem blockStamp_ge_of_accept {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {B : AC.Blk sp.n FGP} (hk : T.AcceptAt y k B)
     (hB : B.root ≠ sp.genesisRoot) :
-    ∀ c, k + 1 ≤ c → SA.ETime.of (T.time k) ≤ (T.state y c).blockStamp B.root := by
-  have hpost : ∀ c (ℓ : ACLabel (SA.goldilocksSA sp FGP ro)), T.CallAt y c ℓ → k ≤ c →
-      (ℓ.call = .block B ∨ SA.ETime.of (T.time k) ≤ (T.state y c).blockStamp B.root) →
-      SA.ETime.of (T.time k) ≤ (T.post c).blockStamp B.root := by
+    ∀ c, k + 1 ≤ c → AC.ETime.of (T.time k) ≤ (T.state y c).blockStamp B.root := by
+  have hpost : ∀ c (ℓ : ACLabel (AC.goldilocksAC sp FGP ro)), T.CallAt y c ℓ → k ≤ c →
+      (ℓ.call = .block B ∨ AC.ETime.of (T.time k) ≤ (T.state y c).blockStamp B.root) →
+      AC.ETime.of (T.time k) ≤ (T.post c).blockStamp B.root := by
     intro c ℓ hc hkc hpre
     have hΦ : FrameOK ℓ.frame := by
       rcases hr.frameLaw y hy c ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.1
     have he := hr.exec c ℓ hc.2 (hc.1 ▸ hy)
     rw [hc.1] at he
     have hp : T.post c =
-        ((SA.goldilocksSA sp FGP ro).step y (T.state y c) ℓ.frame (T.time c) ℓ.call).1 := by
+        ((AC.goldilocksAC sp FGP ro).step y (T.state y c) ℓ.frame (T.time c) ℓ.call).1 := by
       rw [he]
-    have htk : SA.ETime.of (T.time k) ≤ SA.ETime.of (T.time c) :=
-      SA.etime_of_le_of.2 (hr.time_mono hkc)
+    have htk : AC.ETime.of (T.time k) ≤ AC.ETime.of (T.time c) :=
+      AC.etime_of_le_of.2 (hr.time_mono hkc)
     obtain ⟨hblk, -, hoth⟩ :=
-      SA.step_blockStamp_eq ro y (T.state y c) hΦ (hr.time_nonneg c) ℓ.call
+      AC.step_blockStamp_eq ro y (T.state y c) hΦ (hr.time_nonneg c) ℓ.call
     rw [hp]
     generalize ℓ.call = cl at hpre hblk hoth ⊢
     cases cl with
@@ -104,10 +104,10 @@ theorem blockStamp_ge_of_accept {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP r
           exact absurd rfl h
         · exact hpre
     | restart =>
-      change _ ≤ (SA.acRestart sp ro y (T.state y c) ℓ.frame (T.time c)).1.blockStamp B.root
-      rcases ((SA.restart_state sp) FGP ro y (T.state y c) ℓ.frame (T.time c) hΦ
+      change _ ≤ (AC.acRestart sp ro y (T.state y c) ℓ.frame (T.time c)).1.blockStamp B.root
+      rcases ((AC.restart_state sp) FGP ro y (T.state y c) ℓ.frame (T.time c) hΦ
         (hr.time_nonneg c)).2.2.2.2.2.2.2.2.2.2 B.root with h | ⟨h, -⟩
-      · rw [h]; simp [SA.SAState.initial, hB]
+      · rw [h]; simp [AC.ACState.initial, hB]
       · rw [h]; exact htk
     | tick => rw [hoth (fun _ => by simp) (by simp)]; exact hpre.resolve_left (by simp)
     | message m => rw [hoth (fun _ => by simp) (by simp)]; exact hpre.resolve_left (by simp)
@@ -128,7 +128,7 @@ theorem blockStamp_ge_of_accept {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP r
       exact ih
 
 /-- **Between restarts, a finite block stamp stays finite** (a receipt writes a finite time). -/
-theorem blockStamp_finite {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
+theorem blockStamp_finite {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
     {y : Fin sp.n}
     (hy : y ∈ H) {a b : Nat} (hab : a ≤ b) (hnr : ∀ k, a ≤ k → k < b → ¬ T.RestartAt y k)
     {q : Nat} (h : (T.state y a).blockStamp q < ⊤) : (T.state y b).blockStamp q < ⊤ := by
@@ -145,10 +145,10 @@ theorem blockStamp_finite {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U
       have he := hr.exec b ℓ hc.2 (hc.1 ▸ hy)
       rw [hc.1] at he
       have hp : T.post b =
-          ((SA.goldilocksSA sp FGP ro).step y (T.state y b) ℓ.frame (T.time b) ℓ.call).1 := by
+          ((AC.goldilocksAC sp FGP ro).step y (T.state y b) ℓ.frame (T.time b) ℓ.call).1 := by
         rw [he]
       rw [hp]
-      obtain ⟨hblk, -, hoth⟩ := SA.step_blockStamp_eq ro y (T.state y b) hΦ (hr.time_nonneg b)
+      obtain ⟨hblk, -, hoth⟩ := AC.step_blockStamp_eq ro y (T.state y b) hΦ (hr.time_nonneg b)
         ℓ.call
       generalize hcl : ℓ.call = cl at hblk hoth
       cases cl with

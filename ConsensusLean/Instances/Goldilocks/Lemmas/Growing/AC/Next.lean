@@ -12,15 +12,15 @@ The counted votes must have been cast while honest. Their earlier slot then puts
 the consuming vote, and retention preserves the participation count exactly.
 -/
 
-namespace Consensus.Goldilocks.SA.Growing
+namespace Consensus.Goldilocks.AC.Growing
 
 /-- `next_transfer` at any node start. -/
-theorem next_transfer_from {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
-    {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro}
+theorem next_transfer_from {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
+    {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     {proposer : Nat → Fin sp.n} {ini} (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n)
     (hP : CommitteePAt K tr H) (hT : CommitteeTAt K tr H)
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {m : Nat} {y : Fin sp.n} {i : Nat}
-    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hy : y ∈ H (tr.time i)) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = m + 1)
     (hall : ∀ x j e', x ∈ H (tr.time j) → VoteAt tr x j e' → e'.msg.slot = m →
       VoteExtends U e'.msg B)
@@ -49,7 +49,7 @@ theorem next_transfer_from {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP
   have hbefore : sp.ts m + 3 * sp.Δ ≤ tr.time i := by
     have h := (ts_le_iff_le_slot sp (hr.time_nonneg i) (m + 1 : Nat)).mpr
       (by rw [← hslot, hs])
-    simp only [SAParams.ts] at h ⊢
+    simp only [ACParams.ts] at h ⊢
     push_cast at h
     have := sp.toParams.hΔ
     linarith
@@ -65,7 +65,7 @@ theorem next_transfer_from {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP
       obtain ⟨hji, hv⟩ := upTo_voteAt.mp hv
       exact ⟨hx, j, e', hr.antitone hji hx, hv, hvs⟩
   rw [hbatch] at hhalf
-  apply SA.next_transfer_of_carry sp hry K (hP.upTo hm hr.antitone (tr.time i))
+  apply AC.next_transfer_of_carry sp hry K (hP.upTo hm hr.antitone (tr.time i))
     (hT.upTo hr.antitone (tr.time i)) hsize hy hc' hs
   · intro x hx j e' hv hvs
     obtain ⟨hji, hv⟩ := upTo_voteAt.mp hv
@@ -95,10 +95,10 @@ theorem next_transfer_from {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP
     obtain ⟨hjt, hv⟩ := upTo_voteAt.mp hv
     exact hearlier x j hji (hr.antitone hjt hx) e' hv hvs
 
-theorem next_transfer (sp : SAParams) : NextTransfer sp :=
+theorem next_transfer (sp : ACParams) : NextTransfer sp :=
   fun _ _ _ _ _ _ hrun K hP hT hsize _ _ _ _ _ _ hy hc hs hall hhalf hcarry hf hf1 hviab hearlier =>
     next_transfer_from hrun K hP hT hsize hy hc hs hall hhalf hcarry hf hf1 hviab hearlier
 
-end Consensus.Goldilocks.SA.Growing
+end Consensus.Goldilocks.AC.Growing
 
 end

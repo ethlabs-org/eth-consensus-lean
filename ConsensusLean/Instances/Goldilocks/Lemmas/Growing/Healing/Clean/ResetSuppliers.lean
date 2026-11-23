@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.SA.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.GrowingPremises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
@@ -56,9 +56,9 @@ acceptance relay and catch-up use the growing run's shared lifts. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
 
@@ -70,18 +70,18 @@ theorem faultBoundK_late_at {b : Time} {cm : Time → Finset (Fin sp.n)} {βK : 
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {s : Nat}
     (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b)
     {t d : Time} (ht : cutZ sp.toParams g ≤ t) (htd : t ≤ d) (hdb : d ≤ b) :
-    SA.FaultBoundK (Generic.dictOfTime sp cm) s tr.projAC (H d) t := by
+    AC.FaultBoundK (Generic.dictOfTime sp cm) s tr.projAC (H d) t := by
   have htb := htd.trans hdb
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hgt : gbar g ≤ t := by have := lt_cutZ sp g; linarith
   have ht0 : 0 ≤ t := (gbar_nonneg g).trans hgt
   have hst : sp.slot (gbar g) + 3 ≤ sp.slot t := by
-    have h := (SA.ts_le_iff_le_slot sp ht0 ((sp.slot (gbar g) + 3 : Nat) : Int)).mp
+    have h := (AC.ts_le_iff_le_slot sp ht0 ((sp.slot (gbar g) + 3 : Nat) : Int)).mp
       ((cutZ_eq sp g) ▸ ht)
     exact_mod_cast h
   have hsub : (Generic.dictOfTime sp cm).committee s ∩ H d ⊆
       (Generic.dictOfTime sp cm).committee s ∩
-        {y | y ∈ H d ∧ tr.projAC.awake y t ∧ SA.JoinedAt tr.projAC y t} := by
+        {y | y ∈ H d ∧ tr.projAC.awake y t ∧ AC.JoinedAt tr.projAC y t} := by
     rintro z ⟨hzK, hzd⟩
     have hz := hp.run.antitone htd hzd
     refine ⟨hzK, hzd, hp.awake z t hz hgt htb, ?_⟩
@@ -92,7 +92,7 @@ theorem faultBoundK_late_at {b : Time} {cm : Time → Finset (Fin sp.n)} {βK : 
       refine ⟨by omega, (hp.restart_le_before_at (hp.run.antitone hkt hz) hk
         (hkt.trans htb)).trans ?_⟩
       rw [he]
-      exact (SA.ts_le_iff sp).mpr (by omega)
+      exact (AC.ts_le_iff sp).mpr (by omega)
     have hjp := (Compose.joined_projection_from (hp.run.upTo ht0) hz t).1
     have hjpre : (tr.upTo t).JoinedAt z t := fun k hk hkt =>
       hj k ((RunTrace.upTo_restartAt tr).mp hk).2 hkt
@@ -106,16 +106,16 @@ theorem faultBoundK_late_at {b : Time} {cm : Time → Finset (Fin sp.n)} {βK : 
       ((Generic.dictOfTime sp cm).committee s ∩ (H d)ᶜ).ncard = sp.committeeSize := by
     rw [← hp.committeeFacts.hsize s]
     exact Set.ncard_inter_add_ncard_sdiff_eq_ncard _ _ (Set.toFinite _)
-  unfold SA.FaultBoundK
+  unfold AC.FaultBoundK
   exact lt_of_lt_of_le (by omega) (Set.ncard_le_ncard hsub)
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload Vote gbar)
+open AC (ACParams ReplayOrder Payload Vote gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -157,19 +157,19 @@ cut's. -/
 theorem castAt_facts_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hcast : SA.CastAt tr.projAC y i ℓ e) :
+    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hcast : AC.CastAt tr.projAC y i ℓ e) :
     (FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocksAt H) ∧
       ((∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.fcRoot Hd) ∧
         tr.time i ≤ sp.ts e.msg.slot + sp.Δ) ∧
       e.msg.slot = sp.slot (tr.time i) := by
   have hd := hrun.time_nonneg i
   have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)).localRun
-  have hcT : SA.CastAt (tr.upTo (tr.time i)).projAC y i ℓ e :=
+  have hcT : AC.CastAt (tr.upTo (tr.time i)).projAC y i ℓ e :=
     ⟨projAC_callAt_upTo le_rfl hcast.1, hcast.2⟩
-  obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hcT.1
+  obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hy hcT.1
   exact ⟨⟨hΦ, hΦU.trans (RunTrace.honestBlocks_upTo_subset hrun.time_mono hd)⟩,
-    Compose.cast_head_fcRoot hr hrun.vstart hy hcT, (SA.castAt_spec hr hy hcT).2.1⟩
+    Compose.cast_head_fcRoot hr hrun.vstart hy hcT, (AC.castAt_spec hr hy hcT).2.1⟩
 
 /-! ### The reset service on the AC projection -/
 
@@ -211,7 +211,7 @@ before `ḡ` is accepted before `ḡ + 2Δ` by a node honest at a later call who
 private theorem reset_catch_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {w : Fin sp.n} {kw : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hw : w ∈ H (tr.time kw))
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hw : w ∈ H (tr.time kw))
     (ha : tr.projAC.AcceptAt w kw B) (hkw : tr.time kw < gbar g) {y : Fin sp.n} {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time i))
     (hcy : tr.projAC.CallAt y i ℓ) (hi : gbar g + 2 * sp.Δ ≤ tr.time i)
@@ -230,32 +230,32 @@ theorem carry_of_senders {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {s : Nat} (hts : cutZ sp.toParams g ≤ sp.ts s)
     {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
-    (hcast : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
+    {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
+    (hcast : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
     (hW : ∀ v ∈ CV, v.slot = s ∧
       (∃ w k, w ∈ H (tr.time k) ∧ tr.projAC.SendOrAdmit w k v ∧ sp.ts s ≤ tr.time k ∧
         tr.time k < sp.ts s + 2 * sp.Δ) ∧
-      ∃ Hv : SA.Blk sp.n (List (FG.Att sp.n)), Hv.root = v.head ∧
+      ∃ Hv : AC.Blk sp.n (List (FG.Att sp.n)), Hv.root = v.head ∧
         Anc (tr.HonestBlocksAt H) ℓ.frame.F Hv ∧
         (Hv.root = sp.genesisRoot ∨ ∃ w k, w ∈ H (tr.time k) ∧ tr.projAC.AcceptAt w k Hv ∧
           tr.time k < sp.ts s + 2 * sp.Δ)) :
-    SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
+    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
   have hrun := hp.run
   have hm := hrun.time_mono
   have hΔ : (0 : Time) < sp.Δ := sp.toParams.hΔ
   have hd := hrun.time_nonneg i
   have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hp.noColl.upTo _)).localRun
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hm hd
-  have hc' : SA.CastAt (tr.upTo (tr.time i)).projAC y i ℓ e :=
+  have hc' : AC.CastAt (tr.upTo (tr.time i)).projAC y i ℓ e :=
     ⟨projAC_callAt_upTo le_rfl hcast.1, hcast.2⟩
   have hsync := reset_syncACAt hp (lo := g) (hi := sp.ts s + 2 * sp.Δ) le_rfl
   have hgs : gbar g + 8 * sp.Δ < sp.ts s := (lt_cutZ sp g).trans_le hts
   have hgg := le_gbar g
   have hti : sp.ts s + 4 * sp.Δ ≤ tr.time i := by
     have hsl := (castAt_facts_at hrun hp.noColl hy hcast).2.2
-    have h := (SA.ts_le_iff_le_slot sp hd ((s + 1 : Nat) : Int)).2 (by rw [← hsl, hs])
+    have h := (AC.ts_le_iff_le_slot sp hd ((s + 1 : Nat) : Int)).2 (by rw [← hsl, hs])
     have hts1 : sp.ts ((s + 1 : Nat) : Int) = sp.ts s + 4 * sp.Δ := by
-      simp only [SAParams.ts]; push_cast; ring
+      simp only [ACParams.ts]; push_cast; ring
     linarith only [h, hts1]
   have hcarry := Compose.Growing.carryAt_of_delivered hr hrun.vstart hy hc'
       hs (CV := CV) fun v hv => by
@@ -265,7 +265,7 @@ theorem carry_of_senders {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       obtain ⟨k', hk'i, hk'1, ⟨ℓp, hcp, hpm⟩, hk'2⟩ := hsync.1 w k v hwk hsend
         (show g ≤ tr.time k by linarith only [hk1, hgs, hgg, hΔ]) hk2.le y i ℓ hy hcast.1 hdl
       have hk'd : tr.time k' ≤ tr.time i := hm hk'i
-      exact (SA.messageServedBefore_iff _ _ _ _).mpr (Or.inl ⟨k', hk'i, hk'1,
+      exact (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl ⟨k', hk'i, hk'1,
         ⟨ℓp, projAC_callAt_upTo hk'd hcp, hpm⟩, by rw [projAC_deadline_upTo hrun hk'd]; exact hk'2⟩)
     rcases hacc with hg | ⟨w', kw, hwkw, hkw, hkwt⟩
     · exact Or.inr (Or.inl hg)
@@ -296,13 +296,13 @@ below the result. -/
 theorem result_carry_reset_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x : Fin sp.n} {r s : Nat}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (hx : x ∈ H (tr.time r))
-    (hres : SA.ResultAt tr.projAC x r s C CV) (hts : cutZ sp.toParams g ≤ sp.ts s)
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (hx : x ∈ H (tr.time r))
+    (hres : AC.ResultAt tr.projAC x r s C CV) (hts : cutZ sp.toParams g ≤ sp.ts s)
     {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
-    (hcast : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
+    {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
+    (hcast : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     (hFC : Anc (tr.HonestBlocksAt H) ℓ.frame.F C) :
-    SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV :=
+    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV :=
   carry_of_senders hp hts hy hcast hs fun v hv => by
     obtain ⟨h₁, ⟨k, hk⟩, Hv, -, hHvr, hCHv, h₃⟩ :=
       Compose.Growing.result_writer_at hp.run hp.noColl hx hres v hv
@@ -314,14 +314,14 @@ within `Δ` of `t_m`, with its head in its frame, accepted by its voter while ho
 theorem honest_votes_carry_reset_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {i m : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hy : y ∈ H (tr.time i)) (hcast : SA.CastAt tr.projAC y i ℓ e) (hm : e.msg.slot = m + 1)
-    (hts : cutZ sp.toParams g ≤ sp.ts m) {B : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hall : ∀ z q e', z ∈ H (tr.time q) → SA.VoteAt tr.projAC z q e' → e'.msg.slot = m →
-      SA.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
+    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hy : y ∈ H (tr.time i)) (hcast : AC.CastAt tr.projAC y i ℓ e) (hm : e.msg.slot = m + 1)
+    (hts : cutZ sp.toParams g ≤ sp.ts m) {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hall : ∀ z q e', z ∈ H (tr.time q) → AC.VoteAt tr.projAC z q e' → e'.msg.slot = m →
+      AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
     (hFB : Anc (tr.HonestBlocksAt H) ℓ.frame.F B) :
-    SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e m
-      {v | ∃ z q e', z ∈ H (tr.time q) ∧ SA.VoteAt tr.projAC z q e' ∧ e'.msg = v ∧
+    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e m
+      {v | ∃ z q e', z ∈ H (tr.time q) ∧ AC.VoteAt tr.projAC z q e' ∧ e'.msg = v ∧
         v.slot = m} := by
   have hrun := hp.run
   have hΔ : (0 : Time) < sp.Δ := sp.toParams.hΔ
@@ -333,7 +333,7 @@ theorem honest_votes_carry_reset_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ
     (Compose.Growing.honest_blocks_coherent hrun hp.noColl).1 (hΦU hHd) hHv (hHdr.trans hHvr.symm)
   have hq0 := hrun.time_nonneg q
   have htq : sp.ts m ≤ tr.time q :=
-    (SA.ts_le_iff_le_slot sp hq0 m).mpr (by rw [← hsl, hslot])
+    (AC.ts_le_iff_le_slot sp hq0 m).mpr (by rw [← hsl, hslot])
   have hqt' : tr.time q < sp.ts m + 2 * sp.Δ := by
     rw [hslot] at hqt
     linarith only [hqt, hΔ]
@@ -353,51 +353,51 @@ equivocator of it, after the reset's cut: the writer-pool merge under the AC syn
 `t_s` that the reset service gives. -/
 theorem writer_merged_reset_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x : Fin sp.n} {r s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hx : x ∈ H (tr.time r)) (hres : SA.ResultAt tr.projAC x r s C CV)
+    {x : Fin sp.n} {r s : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hx : x ∈ H (tr.time r)) (hres : AC.ResultAt tr.projAC x r s C CV)
     (hts : cutZ sp.toParams g ≤ sp.ts s) {y : Fin sp.n} {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hy : y ∈ H (tr.time i)) (hcast : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) :
-    ∀ v ∈ (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
+    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hy : y ∈ H (tr.time i)) (hcast : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) :
+    ∀ v ∈ (AC.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ (tr.projAC.state x r).pool s ∨
-        v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state x r).pool s} := by
+        v.val ∈ AC.equivocators {w | w ∈ (tr.projAC.state x r).pool s} := by
   have hΔ : (0 : Time) < sp.Δ := sp.toParams.hΔ
   obtain ⟨ellX, hupd, -⟩ := hres
   have hg : g ≤ sp.ts s := by
     have := lt_cutZ sp g
     have := le_gbar g
     linarith
-  exact SA.Growing.writer_merged
+  exact AC.Growing.writer_merged
     (Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl) hx hupd
     hy hcast hs (reset_syncACAt hp hg)
 
 /-- **The live locks at a first-successor vote are compatible with `B`**, from the stored-lock
 comparisons at the cut, the fault bound at the voter's cut and the earlier votes of nodes honest
 at them: the static argument on the prefix through the vote (the growing form of
-`SA.live_locks_of_stored_before`). -/
+`AC.live_locks_of_stored_before`). -/
 theorem live_locks_of_stored_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) (K : SA.CommitteeDict sp.n) (hP : SA.CommitteePAt K tr.projAC H)
-    {s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hnc : Compose.NoCollRun dg tr) (K : AC.CommitteeDict sp.n) (hP : AC.CommitteePAt K tr.projAC H)
+    {s : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))}
+    {e : AC.Em sp (List (FG.Att sp.n))}
     (hf : 2 * (K.committee (s + 1) ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
-    (hy : y ∈ H (tr.time i)) (hcast : SA.CastAt tr.projAC y i ℓ e)
+    (hy : y ∈ H (tr.time i)) (hcast : AC.CastAt tr.projAC y i ℓ e)
     (hes : e.msg.slot = s + 1) (hB : B ∈ ℓ.frame.tree)
     (hstored : ∀ l ∈ (tr.projAC.state y i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k →
       l.slot ≤ s → ∀ Y ∈ tr.HonestBlocksAt H, Y.root = l.block →
         Compatible (tr.HonestBlocksAt H) Y B)
-    (hE : SA.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B) :
-    ∀ L ∈ SA.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
+    (hE : AC.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B) :
+    ∀ L ∈ AC.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
       Compatible (tr.HonestBlocksAt H) L B := by
   have hd := hrun.time_nonneg i
   have hm := hrun.time_mono
   have hR := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)
   have hr := hR.localRun
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hm hd
-  have hc' : SA.CastAt (tr.upTo (tr.time i)).projAC y i ℓ e :=
+  have hc' : AC.CastAt (tr.upTo (tr.time i)).projAC y i ℓ e :=
     ⟨projAC_callAt_upTo le_rfl hcast.1, hcast.2⟩
-  have hBU := (SA.frameIn_of_callAt hr hy hc'.1).2 hB
+  have hBU := (AC.frameIn_of_callAt hr hy hc'.1).2 hB
   have hanc : ∀ {X C}, C ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) →
       Anc (tr.HonestBlocksAt H) X C →
         Anc ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) X C :=
@@ -405,8 +405,8 @@ theorem live_locks_of_stored_at {ini}
   have hstate : (tr.upTo (tr.time i)).projAC.state y i = tr.projAC.state y i := by
     rw [RunTrace.upTo_projAC]
     exact Trace.upTo_state tr.projAC y fun k hk => hm hk.le
-  have h := SA.live_locks_of_stored_before hR K
-    (by rw [RunTrace.upTo_projAC]; exact SA.CommitteePAt.upTo hm hrun.antitone hP _) hf hy hc' hes
+  have h := AC.live_locks_of_stored_before hR K
+    (by rw [RunTrace.upTo_projAC]; exact AC.CommitteePAt.upTo hm hrun.antitone hP _) hf hy hc' hes
     (fun l hl hl1 hl2 Y hY hYr => (hstored l (hstate ▸ hl) hl1 hl2 Y (hsub hY) hYr).imp
       (hanc hBU) (hanc hY))
     (fun x hx j hj e' hv hslot => by
@@ -415,7 +415,7 @@ theorem live_locks_of_stored_at {ini}
       obtain ⟨Hv, hHv, hHvr, hBHv⟩ :=
         hE x j hj (hrun.antitone hjd hx) e' ⟨ℓ', hcj, hc''.2⟩ hslot
       obtain ⟨⟨Hd, hHd, hHdr, -⟩, -⟩ := Compose.cast_head_fcRoot hr hrun.vstart hx hc''
-      have hHdU := (SA.frameIn_of_callAt hr hx hc''.1).2 hHd
+      have hHdU := (AC.frameIn_of_callAt hr hx hc''.1).2 hHd
       obtain rfl : Hd = Hv :=
         (Compose.Growing.honest_blocks_coherent hrun hnc).1 (hsub hHdU) hHv (hHdr.trans hHvr.symm)
       exact ⟨Hd, hHdU, hHdr, hanc hHdU hBHv⟩)

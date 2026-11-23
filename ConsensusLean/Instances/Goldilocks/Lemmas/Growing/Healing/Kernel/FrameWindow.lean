@@ -37,9 +37,9 @@ used. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -55,7 +55,7 @@ theorem finalized_anc_obs
     (hu : 0 ≤ u) (hytime : ∀ k < m, tr.time k ≤ u) (hy : y ∈ H u)
     (ht : 0 ≤ t) (hxtime : ∀ k < i, tr.time k ≤ t) (hx : x ∈ H t)
     (hf : (H (max u t))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {X F W : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y m).fg.tree)
+    {X F W : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y m).fg.tree)
     (hFt : F ∈ (tr.state y m).fg.tree) (hFr : F.root = ((tr.state y m).fg.σ X.root).F)
     (hW : W ∈ (tr.state x i).fg.tree)
     (hlt : ((tr.state y m).fg.σ X.root).hF < ((tr.state x i).fg.σ W.root).h) :
@@ -72,7 +72,7 @@ theorem finalized_anc_obs
 /-- A generic frame window (`Generic.FrameWindow`) of a Goldilocks run is its frame window, field
 for field. -/
 theorem FrameWindow.of_generic {lo hi : Time} {floor : Nat} {kindJ : Prop}
-    {J : SA.Blk sp.n (List (FG.Att sp.n))} (h : Generic.FrameWindow tr H lo hi floor kindJ J) :
+    {J : AC.Blk sp.n (List (FG.Att sp.n))} (h : Generic.FrameWindow tr H lo hi floor kindJ J) :
     FrameWindow tr H lo hi floor kindJ J :=
   ⟨h.floor_eq, h.kind_iff, h.root_eq⟩
 

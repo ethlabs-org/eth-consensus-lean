@@ -11,20 +11,20 @@ Service remains owed after the sender is compromised. Only the recipient's local
 laws are read on the proposal prefix; the sender is honest at each release.
 -/
 
-namespace Consensus.Goldilocks.SA.Growing
+namespace Consensus.Goldilocks.AC.Growing
 
-variable {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
-  {T : SATrace sp FGP ro} {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
+variable {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
+  {T : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
 
 /-- A historically honest release and head acceptance reach an honest proposal reader.
 Equivocation is retained as an alternative to membership, even if the voter is compromised. -/
 theorem heldAtProposal_of_writer_at {ini}
-    (hr : Goldilocks.Growing.ACLocalRun (goldilocksSA sp FGP ro) H U T ini)
+    (hr : Goldilocks.Growing.ACLocalRun (goldilocksAC sp FGP ro) H U T ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {a₀ b : Time}
       (hsvc : ServiceWindowBefore H U a₀ b T) {s : Nat}
     (ha₀ : a₀ ≤ sp.ts s) (hb : sp.ts s + 3 * sp.Δ ≤ b)
     {w x : Fin sp.n} {i : Nat} (hx : x ∈ H (T.time i))
-    {ell : ACLabel (goldilocksSA sp FGP ro)} (hc : T.CallAt x i ell)
+    {ell : ACLabel (goldilocksAC sp FGP ro)} (hc : T.CallAt x i ell)
     (ht : T.time i = sp.ts (s + 1 : Nat))
     (hrs : ∀ k ≤ i, T.RestartAt x k → T.time k < sp.ts s)
     {v : Vote sp.n} (hvs : v.slot = s)
@@ -92,6 +92,6 @@ theorem heldAtProposal_of_writer_at {ini}
       (Or.inl (by change _ ≤ T.time i; rw [ht, hts]; linarith))).trans
         (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_top _))
 
-end Consensus.Goldilocks.SA.Growing
+end Consensus.Goldilocks.AC.Growing
 
 end

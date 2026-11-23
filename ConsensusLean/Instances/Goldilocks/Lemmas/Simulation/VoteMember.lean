@@ -6,8 +6,8 @@ public section
 
 /-! # Goldilocks Simulation: own member votes in the outbox
 
-Every handler keeps the node's installed vote permission (`SA.step_mayVote`) and emits only
-through the gate (`SA.emits_mayVote`), so every queued vote is an own vote of a slot whose vote
+Every handler keeps the node's installed vote permission (`AC.step_mayVote`) and emits only
+through the gate (`AC.emits_mayVote`), so every queued vote is an own vote of a slot whose vote
 role selects the node (`VoteMember`, `stateAt_voteMember`, `delivery_outbox_vote_member`); every
 emission of an AC cut passes the gate of its handler's start state
 (`emits_mayVote_of_mem_exec`). -/
@@ -17,13 +17,13 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open SA (SAParams ReplayOrder Vote Payload SAState)
+open AC (ACParams ReplayOrder Vote Payload ACState)
 
 variable {binding : VoteBinding}
 
 section MemberVotes
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {p : Nat → Bool}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {p : Nat → Bool}
 
 /-- The node's permission is `p`, and every queued vote is an own vote of a slot `p` admits. -/
 def VoteMember (p : Nat → Bool) (st : State sp ro binding) : Prop :=
@@ -62,13 +62,13 @@ private theorem acCall_voteMember (st : State sp ro binding) (c : (goldilocksNod
     VoteMember p (apply st ((Node.acCall st.self st.node st.now c).1,
       [(Node.acCall st.self st.node st.now c).2])) :=
   apply_voteMember st _ h
-    ((SA.step_mayVote ro st.self st.node.ac (frame st.node) st.now c).trans h.1)
+    ((AC.step_mayVote ro st.self st.node.ac (frame st.node) st.now c).trans h.1)
     (emitted_voteMember st.self _ fun ℓ hℓ e he => by
       have hℓ := Cut.ac.inj (List.mem_singleton.mp hℓ)
       subst ℓ
       refine ⟨emits_val st.self st.node.ac (frame st.node) st.now c e he, ?_⟩
       rw [← h.1]
-      exact SA.emits_mayVote ro st.self st.node.ac (frame st.node) st.now c e he)
+      exact AC.emits_mayVote ro st.self st.node.ac (frame st.node) st.now c e he)
 
 private theorem tick_voteMember (st : State sp ro binding) (h : VoteMember p st) :
     VoteMember p (nodeTick st) := by
@@ -85,7 +85,7 @@ private theorem block_voteMember (st : State sp ro binding) (B : Blk sp) (h : Vo
   · split
     · exact apply_voteMember st _ h h.1 (fun _ hm => absurd hm (by simp [emitted]))
     · exact apply_voteMember st _ h
-        ((SA.step_mayVote ro st.self st.node.ac _ st.now (.block B)).trans h.1)
+        ((AC.step_mayVote ro st.self st.node.ac _ st.now (.block B)).trans h.1)
         (emitted_voteMember st.self _ fun ℓ hℓ e he => by
           simp only [List.mem_cons, List.not_mem_nil, or_false] at hℓ
           rcases hℓ with hℓ | hℓ
@@ -94,7 +94,7 @@ private theorem block_voteMember (st : State sp ro binding) (B : Blk sp) (h : Vo
             subst ℓ
             refine ⟨emits_val _ _ _ _ _ e he, ?_⟩
             rw [← h.1]
-            exact SA.emits_mayVote ro _ _ _ _ _ e he)
+            exact AC.emits_mayVote ro _ _ _ _ _ e he)
 
 private theorem processOne_voteMember hs (st : State sp ro binding) o (h : VoteMember p st) :
     VoteMember p (processOne hs st o) := by
@@ -131,7 +131,7 @@ private theorem record_voteMember (st : State sp ro binding) o hs (h : VoteMembe
 theorem fgUpdate_voteMember (st : State sp ro binding) (h : VoteMember p st) :
     VoteMember p (fgUpdate st) := by
   have hac : (Node.acToFG st.node st.now).1.ac.mayVote = p :=
-    (SA.step_mayVote ro st.self st.node.ac (frame st.node) st.now .toFG).trans h.1
+    (AC.step_mayVote ro st.self st.node.ac (frame st.node) st.now .toFG).trans h.1
   rw [fgUpdate_eq]
   dsimp only
   split
@@ -164,7 +164,7 @@ private theorem propose_voteMember (st : State sp ro binding) (s : Slot) (h : Vo
   · rw [propose_eq]
     dsimp only
     split <;>
-      exact (SA.step_mayVote ro st.self st.node.ac (frame st.node) st.now .proposal).trans h.1
+      exact (AC.step_mayVote ro st.self st.node.ac (frame st.node) st.now .proposal).trans h.1
   · rw [ho] at hm
     rw [hs]
     exact h.2 m hm
@@ -173,16 +173,16 @@ private theorem restore_voteMember (k : Fin sp.n) (d : State sp ro binding) (t :
     (hk : d.self = k) (h : VoteMember p d) : VoteMember p (restore k d t) :=
   apply_voteMember { d with self := k, now := t } _
     ⟨h.1, fun m hm => ⟨(h.2 m hm).1.trans hk, (h.2 m hm).2⟩⟩
-    ((SA.step_mayVote ro k d.node.ac (frame d.node) t .restart).trans h.1)
+    ((AC.step_mayVote ro k d.node.ac (frame d.node) t .restart).trans h.1)
     (emitted_voteMember k _ fun ℓ hℓ e he => by
       have hℓ := Cut.ac.inj (List.mem_singleton.mp hℓ)
       subst ℓ
       refine ⟨emits_val k d.node.ac (frame d.node) t .restart e he, ?_⟩
       rw [← h.1]
-      exact SA.emits_mayVote ro k d.node.ac (frame d.node) t .restart e he)
+      exact AC.emits_mayVote ro k d.node.ac (frame d.node) t .restart e he)
 
 /-- Every emission of an AC cut of a handler passes the gate of the handler's
-start state: the AC cuts before it keep `mayVote` (`SA.step_mayVote`), FG cuts keep `𝒜`. -/
+start state: the AC cuts before it keep `mayVote` (`AC.step_mayVote`), FG cuts keep `𝒜`. -/
 theorem emits_mayVote_of_mem_exec (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time)
@@ -202,13 +202,13 @@ theorem emits_mayVote_of_mem_exec (proposer : Nat → Fin sp.n)
         obtain ⟨-, he, -, -⟩ := hstep
         intro m hm'
         rw [← hp]
-        exact SA.emits_mayVote ro self st₀.ac ℓ.frame t ℓ.call m (by rw [he]; exact hm')
+        exact AC.emits_mayVote ro self st₀.ac ℓ.frame t ℓ.call m (by rw [he]; exact hm')
       · refine ih ?_ hm
         rw [← hp]
         cases c with
         | ac ℓ' =>
           obtain ⟨-, he, -, -⟩ := hstep
-          have h₁ := SA.step_mayVote ro self st₀.ac ℓ'.frame t ℓ'.call
+          have h₁ := AC.step_mayVote ro self st₀.ac ℓ'.frame t ℓ'.call
           rw [he] at h₁
           exact h₁
         | fg f =>

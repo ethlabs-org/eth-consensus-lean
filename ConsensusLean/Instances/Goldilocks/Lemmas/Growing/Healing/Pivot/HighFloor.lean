@@ -15,9 +15,9 @@ signed floor source as explicit inputs; `high_floor_source_at_proposal_at` suppl
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -25,7 +25,7 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem high_floor_source_at_proposal_of_sources_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x p : Fin sp.n} {r l i u : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x p : Fin sp.n} {r l i u : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l B) (hpH : p ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
@@ -66,7 +66,7 @@ theorem high_floor_source_at_proposal_of_sources_at
 theorem high_floor_source_at_proposal_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x p : Fin sp.n} {r l i u : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x p : Fin sp.n} {r l i u : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l B) (hpH : p ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)

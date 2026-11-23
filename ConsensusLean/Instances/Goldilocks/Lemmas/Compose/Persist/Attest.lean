@@ -16,16 +16,16 @@ right before it), so its target names an ancestor of the source
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder goldilocksSA Vote Payload)
+open AC (ACParams ReplayOrder goldilocksAC Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
   {H : Set (Fin sp.n)} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {proposer : Nat → Fin sp.n}
 
 /-- An honest signing is at a public time (it is a cut of a tick, C0.5 (c)). -/
 theorem sign_public {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
     (hc : tr.CallAt y j (.fg (.attest C (some a)))) : sp.toParams.IsPublic (tr.time j) := by
   obtain ⟨j₀, e, k, hg, -, hk⟩ := call_in_group hrun.toLocalRun hy hc
   have hm : Cut.fg (.attest C (some a)) ∈
@@ -36,22 +36,22 @@ theorem sign_public {ini : Fin sp.n → (goldilocksNode sp ro).State}
   subst he
   exact hrun.tick_public y hy j₀ (tr.time j) ⟨xt, hg⟩
 
-variable {ΔF : Time} {x : Fin sp.n} {i₀ s m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+variable {ΔF : Time} {x : Fin sp.n} {i₀ s m : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
   {CV : Set (Vote sp.n)}
 
 /-- At `t = t_{slot(t)} + Δ`, `ac_on_tick` of a joined node that has not voted in the slot
 casts a vote. -/
 theorem acOnTick_votes {FGP : Type} {ro' : ReplayOrder sp FGP} (self : Fin sp.n)
-    (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) {t : Time} (hj : SA.joined sp A t)
+    (A : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP) {t : Time} (hj : AC.joined sp A t)
     (hv : A.votedSlot ≠ sp.slot t) (hm : A.mayVote (sp.slot t) = true)
     (ht : t = sp.ts (sp.slot t) + sp.Δ) :
-    ((goldilocksSA sp FGP ro').step self A Φ t .tick).2 ≠ [] := by
-  change (SA.acOnTick sp self A Φ t).2 ≠ []
-  unfold SA.acOnTick
+    ((goldilocksAC sp FGP ro').step self A Φ t .tick).2 ≠ [] := by
+  change (AC.acOnTick sp self A Φ t).2 ≠ []
+  unfold AC.acOnTick
   dsimp only
   have hc : (t = sp.ts (sp.slot t) + sp.Δ) = True := eq_true ht
   simp only [hj, not_true_eq_false, hc, ↓reduceIte]
-  unfold SA.tryVote
+  unfold AC.tryVote
   dsimp only
   simp only [hm, ↓reduceIte]
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ

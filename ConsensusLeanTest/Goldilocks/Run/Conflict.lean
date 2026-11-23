@@ -47,7 +47,7 @@ theorem ite_neg {α : Type*} {p : Prop} {d : Decidable p} (h : ¬ p) (a b : α) 
 /-! ## The honest nodes' states -/
 
 /-- The stores after `k` blocks of chain `c`. -/
-def sF (c : Bool) : Nat → Store P6 (SA.Payload 6)
+def sF (c : Bool) : Nat → Store P6 (AC.Payload 6)
   | 0 => s₀
   | 1 => s₁ c
   | 2 => s₂ c
@@ -628,7 +628,7 @@ theorem atts_wellFormed (c : Bool) {k : Nat} (hk : k < 3) :
 /-! ## The run law -/
 
 theorem conflictRun_localRun :
-    Node.LocalRun (fun _ => v0) dg6 H (fun v : SA.Vote sp6.n => v.val) conflictRun where
+    Node.LocalRun (fun _ => v0) dg6 H (fun v : AC.Vote sp6.n => v.val) conflictRun where
   init _ _ := rfl
   grouped _ _ _ _ h := grouped h
   cutLaw _ _ _ _ h := cutLaw h
@@ -726,7 +726,7 @@ theorem conflictRun_localRun :
 theorem conflictRun_goldilocksRun : GoldilocksRun (fun _ => v0) dg6 H conflictRun where
   toLocalRun := conflictRun_localRun
   genesis_root_ok := (dg6_none _ _ _ _).symm
-  vstart := fun _ => SA.voteStart_initial _
+  vstart := fun _ => AC.voteStart_initial _
 
 /-! ## Collision freedom -/
 
@@ -849,8 +849,8 @@ theorem conflictRun_faults :
 /-- (r) **`FinalizedSafe` needs its fault bound**: with the premise `f < 2q − n` dropped and every
 other premise kept (a `GoldilocksRun` with `NoCollRun`), two honest finalized tips can conflict. -/
 theorem finalizedSafe_needs_fault_bound :
-    ¬ ∀ (sp : SA.SAParams) (ro : SA.ReplayOrder sp (List (Att sp.n)))
-      (dg : Digest (List (Att sp.n)) (SA.Payload sp.n)) (H : Set (Fin sp.n))
+    ¬ ∀ (sp : AC.ACParams) (ro : AC.ReplayOrder sp (List (Att sp.n)))
+      (dg : Digest (List (Att sp.n)) (AC.Payload sp.n)) (H : Set (Fin sp.n))
       (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
       GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
       ∀ y ∈ H, ∀ z ∈ H, ∀ i j,

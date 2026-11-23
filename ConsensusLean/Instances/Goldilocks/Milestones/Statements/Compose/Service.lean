@@ -16,14 +16,14 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
 
 /-- The block of `y`'s record `𝒜.latest_confirmed` before cut `i`, if it is in the frame's
 tree. -/
-def RecordAt (y : Fin sp.n) (i : Nat) (R : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+def RecordAt (y : Fin sp.n) (i : Nat) (R : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   R ∈ (Node.frame (tr.state y i)).tree ∧ R.root = (tr.state y i).ac.latestConfirmed
 
 end Consensus.Goldilocks.Compose

@@ -64,10 +64,10 @@ theorem canon_twin :
     (taggedRoot_ne _ _)
     (by rw [twinBlk_header]; simp [rootOf_eq, twinBlk, blockOf_eq, rawRoot_taggedRoot])
     (by simp [twinBlk, blockOf_eq])
-    ⟨by simp [twinBlk, blockOf_eq, SA.blockVotes],
-      by simp [twinBlk, blockOf_eq, SA.blockSupport, SA.blockVotes],
-      by simp [twinBlk, blockOf_eq, SA.blockVotes],
-      fun _ => by simp [twinBlk, blockOf_eq, SA.blockVotes]⟩
+    ⟨by simp [twinBlk, blockOf_eq, AC.declaredHeadVotes],
+      by simp [twinBlk, blockOf_eq, AC.declaredSupportVotes, AC.declaredHeadVotes],
+      by simp [twinBlk, blockOf_eq, AC.declaredHeadVotes],
+      fun _ => by simp [twinBlk, blockOf_eq, AC.declaredHeadVotes]⟩
   rw [twinBlk_obj] at h
   refine (canonEvent_eq _ _).trans ?_
   rw [twin_digests, h]
@@ -91,7 +91,8 @@ theorem of_twin
     {X : Blk (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)}
     (h : blockObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
       X = twin S) :
-    X.slot = 1 ∧ SA.blockVotes X = [] ∧ SA.blockSupport X = [] ∧ X.proposer = key 1 := by
+    X.slot = 1 ∧ AC.declaredHeadVotes X = [] ∧ AC.declaredSupportVotes X = [] ∧
+      X.proposer = key 1 := by
   have ha := congrArg Model.Obj.auth h
   simp only [blockObj_eq, twin, Model.Obj.auth] at ha
   injection ha with h1 h2
@@ -221,25 +222,25 @@ theorem group_accept {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
 /-! ### The vote on a ready receipt -/
 
 section Receipt
-open SA
-variable {sp : SAParams} {FGP : Type}
+open AC
+variable {sp : ACParams} {FGP : Type}
 
-theorem rt_admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+theorem rt_admitVote (A : ACState sp.n) (t : Time) (v : Vote sp.n) :
     (admitVote sp A t v).restartTime = A.restartTime := by
   unfold admitVote; split_ifs <;> rfl
 
-theorem rt_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+theorem rt_optimistic (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).restartTime = A.restartTime := by
   unfold optimisticConfirmation updateLatestConfirmed; split
   · rfl
   · split_ifs <;> rfl
 
-theorem rt_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
+theorem rt_blockReceipt (A : ACState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (blockReceipt sp A t B).restartTime = A.restartTime := rfl
 
 /-- `try_vote` on a receipt by `t_s + Δ` of a joined node that has not voted in slot `s > 0` and
 holds a ready proposal of slot `s` casts a vote of slot `s`. -/
-theorem tryVote_ready (x : Fin sp.n) {A : SAState sp.n} (Φ : Frm sp.n FGP) {t : Time}
+theorem tryVote_ready (x : Fin sp.n) {A : ACState sp.n} (Φ : Frm sp.n FGP) {t : Time}
     (hp : A.mayVote (sp.slot t) = true)
     (hj : joined sp A t) (hv : A.votedSlot ≠ sp.slot t) (ht : t ≤ sp.ts (sp.slot t) + sp.Δ)
     (hs : 0 < sp.slot t) (hr : voteReady sp A Φ (sp.slot t)) :
@@ -265,7 +266,7 @@ theorem slot_int {t : Time} (ht : 0 ≤ t) :
     ((({ S with vote := AsChainShape.stock } : Setup).params
       (pubOf env) one_le_card).slot t : Int) =
       t / 12 := by
-  rw [SA.slot_eq _ ht]; rfl
+  rw [AC.slot_eq _ ht]; rfl
 
 theorem slot_one {t : Time} (h12 : 12 ≤ t) (h13 : t ≤ 13) :
     (({ S with vote := AsChainShape.stock } : Setup).params
@@ -285,7 +286,7 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
     (hacc : (tr S).AcceptAt y k X)
     (hX : blockObj (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
       X = twin S) (hk : (tr S).time k ≤ 13) :
-    ∃ j e, SA.VoteAt (tr S).projAC y j e ∧ e.msg.slot = 1 ∧ (tr S).time j ≤ 13 := by
+    ∃ j e, AC.VoteAt (tr S).projAC y j e ∧ e.msg.slot = 1 ∧ (tr S).time j ≤ 13 := by
   have hac :=
     (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
   obtain ⟨hXs, -, hX1, hXp⟩ := of_twin hX
@@ -317,13 +318,13 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
   have hAC := Compose.projAC_state rhoc_run.toLocalRun hy (k + 1)
   by_cases hv : ((tr S).state y (k + 1)).ac.votedSlot = 1
   · obtain ⟨j, hj, e, he, hes⟩ :=
-      (SA.cast_of_votedSlot hac (fun _ => SA.voteStart_initial _) hy (k + 1) 1
+      (AC.cast_of_votedSlot hac (fun _ => AC.voteStart_initial _) hy (k + 1) 1
         (by rw [hAC]; exact hv)).resolve_right
-        (by rw [SA.trace_mayVote_stock hac hy (k + 1)]; decide)
+        (by rw [AC.trace_mayVote_stock hac hy (k + 1)]; decide)
     exact ⟨j, e, he, hes, ((rhoc_run (S := S)).time_mono hj.le).trans (ht ▸ hk)⟩
   -- the frame holds a ready proposal of slot `1`: the twin's block, or `Σ.F`; no slot-`1` block
   -- of the frame declares a vote
-  have hready : ∀ A, SA.voteReady (({ S with vote := AsChainShape.stock } : Setup).params
+  have hready : ∀ A, AC.voteReady (({ S with vote := AsChainShape.stock } : Setup).params
       (pubOf env) one_le_card) A
       (Node.frame ((tr S).state y (k + 1))) 1 := by
     intro A
@@ -349,7 +350,7 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
         exact absurd hx List.not_mem_nil
   have hrt : ((tr S).state y (k + 1)).ac.restartTime = ⊥ := by
     rw [← hAC]
-    rcases SA.restartTime_state hac (fun _ => SA.voteStart_initial _) hy (k + 1) with
+    rcases AC.restartTime_state hac (fun _ => AC.voteStart_initial _) hy (k + 1) with
       h | ⟨c, -, hrc, -⟩
     · exact h
     · exact absurd (Compose.projAC_restartAt.mp hrc) no_restart
@@ -357,12 +358,12 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
   have hem := congrArg Prod.snd hstep
   dsimp only at hem
   obtain ⟨e, he, hes⟩ := tryVote_ready y ℓ.frame (t := (tr S).time (k + 1))
-    (A := SA.optimisticConfirmation _ (SA.blockReceipt _ ((tr S).state y (k + 1)).ac
+    (A := AC.optimisticConfirmation _ (AC.blockReceipt _ ((tr S).state y (k + 1)).ac
       ((tr S).time (k + 1)) X) ℓ.frame ((tr S).time (k + 1)))
-    (by rw [SA.optimisticConfirmation_mayVote, SA.blockReceipt_mayVote, ← hAC]
-        exact SA.trace_mayVote_stock hac hy _ _)
-    (by unfold SA.joined; rw [rt_optimistic, rt_blockReceipt, hrt]; exact bot_le)
-    (by rw [SA.vs_optimistic, SA.vs_blockReceipt, hs1]; exact_mod_cast hv)
+    (by rw [AC.optimisticConfirmation_mayVote, AC.blockReceipt_mayVote, ← hAC]
+        exact AC.trace_mayVote_stock hac hy _ _)
+    (by unfold AC.joined; rw [rt_optimistic, rt_blockReceipt, hrt]; exact bot_le)
+    (by rw [AC.vs_optimistic, AC.vs_blockReceipt, hs1]; exact_mod_cast hv)
     (by rw [hs1, ht]; change _ ≤ (4 * 3 * 1 + 3 : Int); dsimp only [Time] at hk ⊢; omega)
     (by rw [hs1]; exact Nat.one_pos) (by rw [hs1, hfr]; exact hready _)
   refine ⟨k + 1, e, ⟨ℓ, hcAC, ?_⟩, hes.trans hs1, ht ▸ hk⟩
@@ -370,9 +371,9 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
   exact he
 
 /-- A delivery of one object is its event's group, or nothing (no event, or no cut). -/
-theorem deliverSeq_single {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+theorem deliverSeq_single {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp ro}
-    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {hs : List (Header Info × Nat)}
+    {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {hs : List (Header Info × Nat)}
     {y : Fin sp.n} {t : Time} {o : Wire sp.n} {j j' : Nat}
     (h : DeliverSeq proposer tr dg hs y t [o] j j') :
     (∃ e, canonEvent sp ro hs o = some e ∧ tr.GroupAt proposer dg y j t e) ∨
@@ -386,7 +387,7 @@ theorem deliverSeq_single {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.A
 
 /-- **Every honest node votes in slot `1` by `13`**, on receiving the twin. -/
 theorem twin_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) :
-    ∃ j e, SA.VoteAt (tr S).projAC y j e ∧ e.msg.slot = 1 ∧ (tr S).time j ≤ 13 := by
+    ∃ j e, AC.VoteAt (tr S).projAC y j e ∧ e.msg.slot = 1 ∧ (tr S).time j ≤ 13 := by
   obtain ⟨i, hi⟩ := twin_event hy
   have hd := (simTraceAt_simulates { S with vote := stock } (rhoc S) one_le_card rhoc_valid).deliver
     _ i _ _ hi
@@ -416,16 +417,16 @@ theorem twin_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) :
 /-- **Every honest vote of a slot `≤ 1` is cast by `13`**: one of slot `0` before `12`, the one of
 slot `1` is the vote on the twin (one vote per slot). -/
 theorem vote_time {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
-    {e : SA.Em (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+    {e : AC.Em (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
       (List (FG.Att (({ S with vote := AsChainShape.stock } : Setup).params
         (pubOf env) one_le_card).n))}
-    (hv : SA.VoteAt (tr S).projAC y j e) (hs : e.msg.slot ≤ 1) : (tr S).time j ≤ 13 := by
+    (hv : AC.VoteAt (tr S).projAC y j e) (hs : e.msg.slot ≤ 1) : (tr S).time j ≤ 13 := by
   have hac :=
     (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
   obtain ⟨ℓ, hc, he⟩ := hv
   have hsl : e.msg.slot = (({ S with vote := AsChainShape.stock } : Setup).params
       (pubOf env) one_le_card).slot ((tr S).time j) :=
-    (SA.castAt_spec hac hy ⟨hc, he⟩).2.1
+    (AC.castAt_spec hac hy ⟨hc, he⟩).2.1
   rcases Nat.le_one_iff_eq_zero_or_eq_one.mp hs with h0 | h1
   · have h0' := slot_int (S := S) ((rhoc_run (S := S)).time_nonneg j)
     rw [← hsl, h0] at h0'
@@ -433,17 +434,17 @@ theorem vote_time {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
     dsimp only [Time] at *
     omega
   · obtain ⟨j', e', hv', hs', hj'⟩ := twin_vote hy
-    obtain ⟨rfl, -⟩ := SA.one_vote_per_slot _ _ _ _ _ _ hac y hy j j' e e' ⟨ℓ, hc, he⟩ hv'
+    obtain ⟨rfl, -⟩ := AC.one_vote_per_slot _ _ _ _ _ _ hac y hy j j' e e' ⟨ℓ, hc, he⟩ hv'
       (h1.trans hs'.symm)
     exact hj'
 
 /-- **Every honest vote of a slot `≤ 1` has the head genesis or the twin's block**, a block of the
 voter's tree. -/
 theorem vote_head {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
-    {e : SA.Em (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+    {e : AC.Em (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
       (List (FG.Att (({ S with vote := AsChainShape.stock } : Setup).params
         (pubOf env) one_le_card).n))}
-    (hv : SA.VoteAt (tr S).projAC y j e) (hs : e.msg.slot ≤ 1) :
+    (hv : AC.VoteAt (tr S).projAC y j e) (hs : e.msg.slot ≤ 1) :
     ∃ Hd ∈ ((tr S).state y j).fg.tree, Hd.root = e.msg.head ∧
       (Hd.root = (({ S with vote := AsChainShape.stock } : Setup).params
         (pubOf env) one_le_card).genesisRoot ∨
@@ -454,7 +455,7 @@ theorem vote_head {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
   have hj := vote_time hy hv hs
   obtain ⟨ℓ, hc, he⟩ := hv
   obtain ⟨⟨Hd, hHd, hr, -⟩, -⟩ := Compose.cast_head_fcRoot hac
-      (fun _ => SA.voteStart_initial _) hy ⟨hc, he⟩
+      (fun _ => AC.voteStart_initial _) hy ⟨hc, he⟩
   rw [Compose.frame_of_projAC rhoc_run hy hc] at hHd
   refine ⟨Hd, hHd.1, hr, ?_⟩
   by_cases hg : Hd.root = (({ S with vote := AsChainShape.stock } : Setup).params

@@ -31,7 +31,7 @@ which the existing fixtures do not give. -/
 
 namespace Consensus.Goldilocks.Witness.One.Settled
 
-open SA Node ChainFrame Healing
+open AC Node ChainFrame Healing
 
 /-- The FG part of the projection is the node's FG state. -/
 theorem store_eq (y : Fin sp1.n) (j : Nat) :
@@ -49,7 +49,7 @@ theorem hmax_attained (j : Nat) :
   exact ⟨(mem_tree_iff hg.blocks).2 ⟨_, le_rfl, rfl⟩, by rw [(hg.sigma _ le_rfl).h, hg.hmax]⟩
 
 /-- At every cut, the validator holds the evidence of every effective phase there. -/
-theorem holdsEvidence_all (j m : Nat) (c : PhaseCase (SA.Blk sp1.n (List (FG.Att sp1.n))))
+theorem holdsEvidence_all (j m : Nat) (c : PhaseCase (AC.Blk sp1.n (List (FG.Att sp1.n))))
     (h : PhaseAt (tickRun N1 dg1).projFG Set.univ j m c) (y : Fin sp1.n) :
     HoldsEvidence ((tickRun N1 dg1).projFG.store y j) m c := by
   have hfront : ∃ B ∈ ((tickRun N1 dg1).projFG.store y j).tree,
@@ -111,7 +111,7 @@ theorem settledIn_tickRun :
 /-- (a) **The premises of `CommonPathAcquisition` hold together**, with a settled phase. -/
 theorem acquisition_premises :
     GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
-      HSShared (tickRun N1 dg1) Set.univ (SA.CommitteeDict.full sp1.n) dg1 0 1 ∧
+      HSShared (tickRun N1 dg1) Set.univ (AC.CommitteeDict.full sp1.n) dg1 0 1 ∧
       CatchRun (tickRun N1 dg1) Set.univ 0 (2 * sp1.Δ) ∧
       PropPlus (tickRun N1 dg1) Set.univ (fun _ => v0) 0 4 ∧
       SettledIn (tickRun N1 dg1) Set.univ 0 20 160 4 (.top (blk 3)) :=
@@ -150,7 +150,7 @@ common path or a phase change by `w + D_HS`. -/
 theorem acquisition_applies :
     (∀ j', FirstCutAfter (tickRun N1 dg1) j' (20 + D_HS sp1 4) →
         PhaseChanged (tickRun N1 dg1).projFG Set.univ 160 j') ∨
-      ∃ (s h : Nat) (E W : SA.Blk sp1.n (List (FG.Att sp1.n))) (kW : Nat),
+      ∃ (s h : Nat) (E W : AC.Blk sp1.n (List (FG.Att sp1.n))) (kW : Nat),
         (h = phaseFloor 4 (PhaseCase.top (blk 3)) ∨ h = 4) ∧ 1 ≤ h ∧
         (tickRun N1 dg1).ProposesAt v0 kW W ∧ W.slot = s ∧ v0 ∈ (Set.univ : Set (Fin sp1.n)) ∧
         EntryOf ((tickRun N1 dg1).post kW).fg W E h ∧
@@ -158,11 +158,11 @@ theorem acquisition_applies :
         20 ≤ sp1.ts s ∧ rTime sp1 20 ≤ sp1.ts s ∧ sp1.ts s + 6 * sp1.Δ ≤ 20 + D_HS sp1 4 ∧
         (∀ jv, FirstCutAfter (tickRun N1 dg1) jv (sp1.ts s + 6 * sp1.Δ) →
           PhaseOn (tickRun N1 dg1).projFG Set.univ 160 jv 4 (.top (blk 3))) ∧
-        (∀ y ∈ (Set.univ : Set (Fin sp1.n)), ∀ k ℓ e, SA.CastAt (tickRun N1 dg1).projAC y k ℓ e →
+        (∀ y ∈ (Set.univ : Set (Fin sp1.n)), ∀ k ℓ e, AC.CastAt (tickRun N1 dg1).projAC y k ℓ e →
           e.msg.slot = s → e.msg.head = W.root ∧
-          (W ∈ ℓ.frame.viableTree (SA.voterBlockTree sp1 e.readPoint ℓ.frame s) ∨
+          (W ∈ ℓ.frame.viableTree (AC.voterBlockTree sp1 e.readPoint ℓ.frame s) ∨
             Anc ((tickRun N1 dg1).HonestBlocks Set.univ) W ℓ.frame.fcRoot)) ∧
-        (∀ y ∈ (Set.univ : Set (Fin sp1.n)), (∃ k ℓ C, SA.ToFGAt (tickRun N1 dg1).projAC y k ℓ C ∧
+        (∀ y ∈ (Set.univ : Set (Fin sp1.n)), (∃ k ℓ C, AC.ToFGAt (tickRun N1 dg1).projAC y k ℓ C ∧
             sp1.ts s ≤ (tickRun N1 dg1).time k ∧
             (tickRun N1 dg1).time k ≤ sp1.ts s + 6 * sp1.Δ ∧
             ((tickRun N1 dg1).state y k).fg.Anc W C ∧
@@ -171,18 +171,18 @@ theorem acquisition_applies :
             EffAllowed ((tickRun N1 dg1).state y k).fg 4 (.top (blk 3)) C) ∨
           ∃ k att, (tickRun N1 dg1).SignAt y k att ∧
             (tickRun N1 dg1).time k ≤ sp1.ts s + 6 * sp1.Δ ∧ att.h = h ∧ att.T = E.root) ∧
-        (∀ y ∈ (Set.univ : Set (Fin sp1.n)), ∀ k ℓ e, SA.CastAt (tickRun N1 dg1).projAC y k ℓ e →
+        (∀ y ∈ (Set.univ : Set (Fin sp1.n)), ∀ k ℓ e, AC.CastAt (tickRun N1 dg1).projAC y k ℓ e →
           s < e.msg.slot → PhaseOn (tickRun N1 dg1).projFG Set.univ 160 k 4 (.top (blk 3)) →
-          SA.VoteExtends ((tickRun N1 dg1).HonestBlocks Set.univ) e.msg W) ∧
-        ∀ (s' : Nat) (P' : SA.Blk sp1.n (List (FG.Att sp1.n))) (k' : Nat), s < s' →
+          AC.VoteExtends ((tickRun N1 dg1).HonestBlocks Set.univ) e.msg W) ∧
+        ∀ (s' : Nat) (P' : AC.Blk sp1.n (List (FG.Att sp1.n))) (k' : Nat), s < s' →
           P'.slot = s' → (tickRun N1 dg1).ProposesAt v0 k' P' →
           v0 ∈ (Set.univ : Set (Fin sp1.n)) →
           PhaseOn (tickRun N1 dg1).projFG Set.univ 160 k' 4 (.top (blk 3)) →
           ∃ Pr, P'.parent = some Pr.root ∧ Anc ((tickRun N1 dg1).HonestBlocks Set.univ) W Pr := by
   obtain ⟨h₁, h₂, h₃, h₄, h₅⟩ := acquisition_premises
   exact (common_path_acquisition sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1)
-    (SA.CommitteeDict.full sp1.n) 0 1 4 20 160 4 (.top (blk 3))
-    (by rw [SA.committeeStart_full]; exact h₁) h₂ h₃ h₄ h₅).1
+    (AC.CommitteeDict.full sp1.n) 0 1 4 20 160 4 (.top (blk 3))
+    (by rw [AC.committeeStart_full]; exact h₁) h₂ h₃ h₄ h₅).1
 
 end Consensus.Goldilocks.Witness.One.Settled
 

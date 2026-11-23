@@ -74,9 +74,9 @@ theorem honest_blocks_coherent_local
     (Compose.tree_mono hr hy hki.le hZt) X hXi hp
 
 /-- Blocks held while honest in a Goldilocks run form a coherent tree universe. -/
-theorem honest_blocks_coherent {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
-    {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {H : Time → Set (Fin sp.n)}
+theorem honest_blocks_coherent {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {H : Time → Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (h : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) : Coherent (tr.HonestBlocksAt H) :=

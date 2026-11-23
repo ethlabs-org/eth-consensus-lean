@@ -13,7 +13,7 @@ The growing-fault form of `Compose/Service/Agree`. For the proposal `P` of slot 
 still honest at `t_s + Δ` (the hold), every slot-`s` vote of a node honest at its vote is `P`
 (`honest_votes_eq_proposal_at`). The hold is what the stop at `P.parent` consumes: a vote is cast
 by `t_s + Δ`, so the proposer is honest at the vote, and a second slot-`s` block in the voter's
-frame would be a second block of a proposer honest then (`SA.stop_core` on the prefix through the
+frame would be a second block of a proposer honest then (`AC.stop_core` on the prefix through the
 vote).
 
 * `proposal_data_at`: the run's proposal of `P` is `ac_proposal`'s at `t_s` (the static
@@ -23,9 +23,9 @@ vote).
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
@@ -34,10 +34,10 @@ with the payload `pay`, for a proposer honest at its proposal (the static `propo
 prefix through it). -/
 theorem proposal_data_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {p : Fin sp.n} {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (tr.time k))
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (tr.time k))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) :
     ∃ i ℓp d pay, tr.projAC.CallAt p i ℓp ∧ ℓp.call = .proposal ∧
-      (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay) ∧
+      (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay) ∧
       tr.time i = sp.ts s ∧ P.parent = some d.head.root ∧ P.acPayload = pay := by
   have hd := hrun.time_nonneg k
   have hP' : (tr.upTo (tr.time k)).ProposesAt p k P :=
@@ -52,33 +52,33 @@ theorem proposal_data_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr in
 /-- **The stop at `P.parent`** under growing faults, from `P` in the voter's viable voter block
 tree and no old child of `Q = P.parent` eligible there: at `Q` the voter's only eligible child is
 `P`, and its walk has no best child at `P`. The proposer is honest at the vote (cast by
-`t_s + Δ`), so `SA.stop_core` applies on the prefix through the vote. -/
+`t_s + Δ`), so `AC.stop_core` applies on the prefix through the vote. -/
 theorem stop_at_parent_of {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {p : Fin sp.n} {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} (hPQ : P.parent = some d.head.root)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
-    (hvt : P ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
-    (hold : ∀ B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s),
+    {ℓy : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hcy : AC.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
+    (hvt : P ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s))
+    (hold : ∀ B ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s),
       B.parent = some d.head.root → B.slot < s →
-      ¬ SA.goldfishEligible sp ℓy.frame (tr.time j)
-        (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B) :
-    (P ∈ {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
-        B.parent = some d.head.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
-          (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} ∧
-      ∀ B ∈ {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
-          B.parent = some d.head.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
-            (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B}, B = P) ∧
-    ¬ ∃ C, SA.IsBest sp
-      (SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s)
+      ¬ AC.headEligible sp ℓy.frame (tr.time j)
+        (AC.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B) :
+    (P ∈ {B | B ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s) ∧
+        B.parent = some d.head.root ∧ AC.headEligible sp ℓy.frame (tr.time j)
+          (AC.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} ∧
+      ∀ B ∈ {B | B ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s) ∧
+          B.parent = some d.head.root ∧ AC.headEligible sp ℓy.frame (tr.time j)
+            (AC.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B}, B = P) ∧
+    ¬ ∃ C, AC.IsBest sp
+      (AC.headScore sp ℓy.frame (AC.mergedVoteView sp e.readPoint ℓy.frame s)
         ((s : Int) - 1))
-      {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
-        B.parent = some P.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
-          (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C := by
+      {B | B ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s) ∧
+        B.parent = some P.root ∧ AC.headEligible sp ℓy.frame (tr.time j)
+          (AC.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C := by
   have hU := honestBlocksAt_coherent hrun hnc
   have hΦU := (frameIn_at hrun hnc hy hcy.1).2
   have hng : ∀ B ∈ ℓy.frame.tree, B.parent ≠ none → B.root ≠ sp.genesisRoot := by
@@ -89,8 +89,8 @@ theorem stop_at_parent_of {ini} (hrun : Growing.GoldilocksRun proposer dg H tr i
   have hpj : P.proposer ∈ H (tr.time j) := by
     rw [hP.2.1]
     exact hrun.antitone htj hp
-  exact SA.stop_core (acRun_upTo hrun hnc (hrun.time_nonneg j)) hy
-    (sa_castAt_upTo.2 ⟨le_rfl, hcy⟩) hes hPs hPQ hpj hng hvt (fun X hX hXQ hXs => hold X hX hXQ hXs)
+  exact AC.stop_core (acRun_upTo hrun hnc (hrun.time_nonneg j)) hy
+    (ac_castAt_upTo.2 ⟨le_rfl, hcy⟩) hes hPs hPQ hpj hng hvt (fun X hX hXQ hXs => hold X hX hXQ hXs)
 
 /-- **Every slot-`s` vote of a node honest at its vote is the proposal `P` of slot `s`**, from a
 pivot `D` of the proposal walk (`hvot`, as in `pivot_of`), the suffix agreement from `D` at every
@@ -100,46 +100,46 @@ voter's walk reaches a block of the path from `D` through `Q` to `P`, follows th
 `Q`, steps to `P` and stops there. -/
 theorem honest_votes_eq_proposal_of {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} {p : Fin sp.n} {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) {i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) (hPQ : P.parent = some d.head.root)
-    {D : SA.Blk sp.n (List (FG.Att sp.n))} (hsD : ℓp.frame.Anc d.start D)
+    {D : AC.Blk sp.n (List (FG.Att sp.n))} (hsD : ℓp.frame.Anc d.start D)
     (hDQ : ℓp.frame.Anc D d.head)
-    (hvot : ∀ y j ℓy e, y ∈ H (tr.time j) → SA.CastAt tr.projAC y j ℓy e → tr.time j ≤ b →
+    (hvot : ∀ y j ℓy e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ℓy e → tr.time j ≤ b →
         e.msg.slot = s →
         (∀ x j' e', j' < j → HVoteAt tr H x j' e' → e'.msg.slot = s → e'.msg.head = P.root) →
         ∃ X, (X = P ∨ (ℓp.frame.Anc D X ∧ ℓp.frame.Anc X d.head)) ∧
-          ℓy.frame.Anc (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X ∧
-          ℓy.frame.Anc X (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-            (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame s))
-            (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)))
-    (hsuf : ∀ y j ℓy e, y ∈ H (tr.time j) → SA.CastAt tr.projAC y j ℓy e → e.msg.slot = s →
+          ℓy.frame.Anc (AC.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X ∧
+          ℓy.frame.Anc X (AC.getHead sp e.readPoint ℓy.frame (tr.time j)
+            (ℓy.frame.viableTree (AC.voteDomain sp e.readPoint ℓy.frame s))
+            (AC.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1)))
+    (hsuf : ∀ y j ℓy e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ℓy e → e.msg.slot = s →
       tr.time j ≤ b →
       ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head →
-        Anc (tr.HonestBlocksAt H) (SA.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X →
+        Anc (tr.HonestBlocksAt H) (AC.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X →
         X ≠ d.head →
-        ∀ C, SA.IsBest sp (SA.goldfishScore sp ℓp.frame (SA.View.ofLists pay) ((s : Int) - 1))
+        ∀ C, AC.IsBest sp (AC.headScore sp ℓp.frame (AC.View.ofLists pay) ((s : Int) - 1))
             {B | B ∈ ℓp.frame.viableTree ℓp.frame.tree ∧ B.parent = some X.root ∧
-              SA.goldfishEligible sp ℓp.frame (tr.time i) (SA.View.ofLists pay)
+              AC.headEligible sp ℓp.frame (tr.time i) (AC.View.ofLists pay)
                 ((s : Int) - 1) B} C →
-          SA.IsBest sp
-            (SA.goldfishScore sp ℓy.frame (SA.mergedVoteView sp e.readPoint ℓy.frame s)
+          AC.IsBest sp
+            (AC.headScore sp ℓy.frame (AC.mergedVoteView sp e.readPoint ℓy.frame s)
               ((s : Int) - 1))
-            {B | B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s) ∧
-              B.parent = some X.root ∧ SA.goldfishEligible sp ℓy.frame (tr.time j)
-                (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C)
-    (hvt : ∀ y j ℓy e, y ∈ H (tr.time j) → SA.CastAt tr.projAC y j ℓy e → e.msg.slot = s →
+            {B | B ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s) ∧
+              B.parent = some X.root ∧ AC.headEligible sp ℓy.frame (tr.time j)
+                (AC.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B} C)
+    (hvt : ∀ y j ℓy e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ℓy e → e.msg.slot = s →
       tr.time j ≤ b →
-      P ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s))
-    (hold : ∀ y j ℓy e, y ∈ H (tr.time j) → SA.CastAt tr.projAC y j ℓy e → e.msg.slot = s →
+      P ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s))
+    (hold : ∀ y j ℓy e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ℓy e → e.msg.slot = s →
       tr.time j ≤ b →
-      ∀ B ∈ ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s),
+      ∀ B ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s),
         B.parent = some d.head.root → B.slot < s →
-        ¬ SA.goldfishEligible sp ℓy.frame (tr.time j)
-          (SA.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B) :
+        ¬ AC.headEligible sp ℓy.frame (tr.time j)
+          (AC.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) B) :
     ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → tr.time j ≤ b → e.msg.head = P.root := by
   have hpi : p ∈ H (tr.time i) := hrun.antitone (by rw [hti]; linarith [sp.toParams.hΔ]) hp
   suffices main : ∀ j, (∀ x j' e', j' < j → HVoteAt tr H x j' e' → e'.msg.slot = s →
@@ -153,10 +153,10 @@ theorem honest_votes_eq_proposal_of {ini} (hrun : Growing.GoldilocksRun proposer
         ih j' hj' x' e' hv' hs' ((hrun.time_mono hj'.le).trans hjb)) x e hv hs hjb
   intro j hIH y e hv hes hjb
   obtain ⟨hy, ℓy, hcy, hey⟩ := hVoteAt_iff.1 hv
-  have hcast : SA.CastAt tr.projAC y j ℓy e := ⟨hcy, hey⟩
+  have hcast : AC.CastAt tr.projAC y j ℓy e := ⟨hcy, hey⟩
   have hsl_i : sp.slot (tr.time i) = s := by
     rw [hti]
-    have := (SA.slot_arithmetic sp s).1 0 (by omega)
+    have := (AC.slot_arithmetic sp s).1 0 (by omega)
     simpa using this
   -- the voter's walk passes a block `X` of the path from `D` through `Q` to `P`
   obtain ⟨hstep₀, hP₀⟩ := stop_at_parent_of hrun hnc hp hP hPs hPQ hy hcast hes
@@ -165,11 +165,11 @@ theorem honest_votes_eq_proposal_of {ini} (hrun : Growing.GoldilocksRun proposer
   obtain ⟨hΦy, hΦyU⟩ := frameIn_at hrun hnc hy hcy
   obtain ⟨X, hXc, haX, hXend⟩ := hvot y j ℓy e hy hcast hjb hes hIH
   -- the voter block tree has a viable block: `P` itself
-  have hne : (ℓy.frame.viableTree (SA.voterBlockTree sp e.readPoint ℓy.frame s)).Nonempty :=
+  have hne : (ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s)).Nonempty :=
     ⟨P, hstep₀.1.1⟩
-  rw [SA.viableTree_voteDomain_eq_of_viable hne] at hXend
-  have hspec := SA.castAt_head_of_viable (acRun_upTo hrun hnc (hrun.time_nonneg j)).localRun hy
-    (sa_castAt_upTo.2 ⟨le_rfl, hcast⟩) (hes ▸ hne)
+  rw [AC.viableTree_voteDomain_eq_of_viable hne] at hXend
+  have hspec := AC.castAt_head_of_viable (acRun_upTo hrun hnc (hrun.time_nonneg j)).localRun hy
+    (ac_castAt_upTo.2 ⟨le_rfl, hcast⟩) (hes ▸ hne)
   rw [hes] at hspec
   rw [hspec]
   congr 1
@@ -184,9 +184,9 @@ from the pivot `D` to `P`, follows the proposal walk to `Q`, steps to `P` and st
 theorem honest_votes_eq_proposal_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) (hsb : sp.ts s ≤ b)
-    {K : SA.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
+    {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     (hBK : CommitteeBoundsFrom tr H K 0 b) :
     ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → tr.time j ≤ b → e.msg.head = P.root := by
   have hk : tr.time k = sp.ts s := by rw [hP.2.2, sp.slotTime_eq, hPs]; rfl

@@ -21,12 +21,12 @@ compatibility), which extends `D` (`slow_window_results`: the saved results of t
 the result `C` itself for `j = s`); one of label `s + 1` is optimistic over earlier honest
 slot-`(s+1)` votes. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {wm : SA.WriteMode}
+variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {g : Time}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {g : Time}
   {proposer : Nat → Fin sp.n}
 
 /-- Compatibility of `L ⪯ O` with `D ⪯ R` when `O` and `R` are compatible. -/
@@ -39,7 +39,7 @@ private theorem compat_of_below (hU : Coherent U) {L O D R : Blk sp.n FGP} (hLO 
 /-- `slow_window_results` with the unlock given. -/
 theorem slow_window_resultsU
     {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
-    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
     (hx : x ∈ H) {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D) :
     ∀ j : Nat, (s : Int) - sp.k < j → j ≤ s →
       ∃ k R CV, ResultAt tr x k j R CV ∧ Anc U D R := by
@@ -61,7 +61,7 @@ theorem slow_window_resultsU
 
 /-- **The writer's results over a slow lock's window**: for an honest slow lock of slot `s` on
 `D`, the writer's update of every slot `j` with `s − k < j ≤ s` has a result extending `D`. -/
-theorem slow_window_results {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
+theorem slow_window_results {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
     (hx : x ∈ H) {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D) :
     ∀ j : Nat, (s : Int) - sp.k < j → j ≤ s →
@@ -72,7 +72,7 @@ theorem slow_window_results {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U 
 /-- `lock_below_origin` with the unlock given. -/
 theorem lock_below_originU
     {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
-    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state y i).locks, ∃ L ∈ U, L.root = l.block ∧ ∃ O, Anc U L O ∧
       ∃ k < i, ∃ CV, ResultAt tr y k l.slot O CV ∨ OptimisticLockAt tr y k l.slot O CV := by
@@ -95,8 +95,8 @@ theorem lock_below_originU
 
 /-- Every stored lock of an honest node sits below an origin of its slot, written at an earlier
 cut: a result or an optimistic confirmation of the node. -/
-theorem lock_below_origin {ini} (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
-    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
+theorem lock_below_origin {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state y i).locks, ∃ L ∈ U, L.root = l.block ∧ ∃ O, Anc U L O ∧
       ∃ k < i, ∃ CV, ResultAt tr y k l.slot O CV ∨ OptimisticLockAt tr y k l.slot O CV :=
@@ -110,7 +110,7 @@ optimistic confirmation of `y` there is compatible with every result of the writ
 `j`. -/
 theorem slow_stored_locks_of_compatible
     {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
-    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n} (hx : x ∈ H)
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n} (hx : x ∈ H)
     {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat} (hi : s + 1 ≤ sp.slot (tr.time i))
     (hRR : ∀ j : Nat, (s : Int) - sp.k < j → j ≤ s → ∀ k < i, ∀ kx O R CV CVx,
@@ -204,7 +204,7 @@ theorem live_locks_of_stored_before {ini}
     (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
     {s : Nat} (hf : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize) {D : Blk sp.n FGP}
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksSA sp FGP ro)} {e : Em sp FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hes : e.msg.slot = s + 1)
     (hstored : ∀ l ∈ (tr.state y i).locks,
       sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
@@ -250,6 +250,6 @@ theorem live_locks_of_stored_before {ini}
       slot_mono sp (hr.time_nonneg j) (hr.time_mono hj.le)
     exact hE _ hvH j hj e' hvote (by omega)
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

@@ -26,19 +26,19 @@ R.7 and R.8 (`Outputs`) are `Challenge` statements, each proved by its own theor
 
 namespace Consensus.Goldilocks.Regimes
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 open Compose
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
 /-- The FG projection of a Goldilocks run under `NoColl` is an FG trace with its contract. -/
 private theorem fg_run (hrun : GoldilocksRun proposer dg H tr) (hnc : NoCollRun dg tr) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG :=
-  have h := SA.interface_requirements sp (List (FG.Att sp.n)) ro
+  have h := AC.interface_requirements sp (List (FG.Att sp.n)) ro
   fg_projection _ _ dg H _ tr proposer
-    ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, SA.proposal_payload_valid sp _ ro⟩
+    ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, AC.proposal_payload_valid sp _ ro⟩
     hrun.genesis_root_ok hrun.toLocalRun hnc
 
 private theorem store_eq (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}

@@ -4,7 +4,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVoteTransfer
 
 public section
 
-/-! # Goldilocks SA: stable resolution and the merged view's opponents (A0.2, A0.3)
+/-! # Goldilocks AC: stable resolution and the merged view's opponents (A0.2, A0.3)
 
 Stable resolution follows from stable stamps (A0.1) and root injectivity in `U`. The merged
 view's opponents rest on a reachable-state invariant (every pool vote has a finite stamp, the
@@ -12,9 +12,9 @@ tree blocks have valid payloads and are not of a later slot than the last call) 
 view counting a declared head vote only when it is held in its pool or its validator equivocates
 there. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable (sp : SAParams)
+variable (sp : ACParams)
 
 /-- A finite stamp is below `+∞`. -/
 private theorem etime_lt_top (t : Time) : ETime.of t < ⊤ :=
@@ -25,7 +25,7 @@ section Invariant
 variable {sp} {FGP : Type}
 
 /-- Every pool vote has a finite stamp. -/
-private def PoolStamped (A : SAState sp.n) : Prop := ∀ σ, ∀ x ∈ A.pool σ, A.voteStamp x ≠ ⊤
+private def PoolStamped (A : ACState sp.n) : Prop := ∀ σ, ∀ x ∈ A.pool σ, A.voteStamp x ≠ ⊤
 
 private theorem voteClosed_poolStamped : VoteClosed (PoolStamped (sp := sp)) := by
   refine ⟨fun A t v h σ x hx => ?_, fun A A' hp hv h σ x hx => ?_⟩
@@ -47,10 +47,10 @@ private theorem voteClosed_poolStamped : VoteClosed (PoolStamped (sp := sp)) := 
     exact h σ x (hp ▸ hx)
 
 /-- The invariant of a reachable state `A` with frame `Φ` and last time `t₀` inside `U`. -/
-private structure MInv (U : Set (Blk sp.n FGP)) (A : SAState sp.n) (Φ : Frm sp.n FGP)
+private structure MInv (U : Set (Blk sp.n FGP)) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     (t₀ : Time) : Prop where
   frame : FrameOK Φ ∧ Φ.tree ⊆ U
-  genesis : ∃ G ∈ U, G.root = sp.genesisRoot ∧ blockVotes G = []
+  genesis : ∃ G ∈ U, G.root = sp.genesisRoot ∧ declaredHeadVotes G = []
   time : 0 ≤ t₀
   stamped : PoolStamped A
   slot_le : ∀ B ∈ Φ.tree, B.slot ≤ sp.slot t₀
@@ -59,19 +59,19 @@ private structure MInv (U : Set (Blk sp.n FGP)) (A : SAState sp.n) (Φ : Frm sp.
 end Invariant
 
 private theorem minv_of_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp.n}
-    {U : Set (Blk sp.n FGP)} {A : (goldilocksSA sp FGP ro).State}
-    {Φ : (goldilocksSA sp FGP ro).Frm} {t₀ : Time}
-    (h : (goldilocksSA sp FGP ro).ReachableAt self U A Φ t₀) : MInv U A Φ t₀ := by
+    {U : Set (Blk sp.n FGP)} {A : (goldilocksAC sp FGP ro).State}
+    {Φ : (goldilocksAC sp FGP ro).Frm} {t₀ : Time}
+    (h : (goldilocksAC sp FGP ro).ReachableAt self U A Φ t₀) : MInv U A Φ t₀ := by
   induction h with
   | init Φ hi hf =>
     obtain ⟨htree, hroot, hs0, -, hpay⟩ := hi
     have hF : ∀ B ∈ Φ.tree, B = Φ.F := fun B hB => by rw [htree] at hB; exact hB
-    have hnil : blockVotes Φ.F = [] ∧ blockSupport Φ.F = [] := by
-      simp [blockVotes, blockSupport, hpay]
+    have hnil : declaredHeadVotes Φ.F = [] ∧ declaredSupportVotes Φ.F = [] := by
+      simp [declaredHeadVotes, declaredSupportVotes, hpay]
     refine ⟨hf, ⟨Φ.F, hf.2 (htree ▸ rfl), hroot, hnil.1⟩, le_rfl, fun σ x hx => ?_,
       fun B hB => by rw [hF B hB, hs0]; exact Nat.zero_le _, fun B hB => ?_⟩
-    · change x ∈ (SAState.initial sp.genesisRoot : SAState sp.n).pool σ at hx
-      simp [SAState.initial] at hx
+    · change x ∈ (ACState.initial sp.genesisRoot : ACState sp.n).pool σ at hx
+      simp [ACState.initial] at hx
     · rw [hF B hB]
       simp [validPayload, hnil.1, hnil.2]
   | @step A Φ Φ' t t' c hr ht hok ih =>
@@ -135,10 +135,10 @@ theorem resolution_stable : ResolutionStable sp := by
     · exact ⟨fun h => hv (top_le_iff.mp (h ▸ le_max_left _ _)),
         fun h => hv (top_le_iff.mp (h ▸ le_max_right _ _))⟩
   -- along the path: reachable, and the two stamps unchanged
-  have key : ∀ q : SAState sp.n × Frm sp.n FGP × Time, Relation.ReflTransGen
+  have key : ∀ q : ACState sp.n × Frm sp.n FGP × Time, Relation.ReflTransGen
       (fun p q => ∃ c, c ≠ ACInterface.Call.restart ∧
-        (goldilocksSA sp FGP ro).CallStep self U p c q) (A, Φ, t₀) q →
-      (goldilocksSA sp FGP ro).ReachableAt self U q.1 q.2.1 q.2.2 ∧
+        (goldilocksAC sp FGP ro).CallStep self U p c q) (A, Φ, t₀) q →
+      (goldilocksAC sp FGP ro).ReachableAt self U q.1 q.2.1 q.2.2 ∧
         q.1.voteStamp v = A.voteStamp v ∧ q.1.blockStamp v.head = A.blockStamp v.head := by
     intro q hq
     induction hq with
@@ -151,8 +151,8 @@ theorem resolution_stable : ResolutionStable sp := by
       exact ⟨hb.step c ht hok, ((hs.1 v (hbv ▸ hfin.1)).trans hbv),
         (hs.2 v.head (hbb ▸ hfin.2)).trans hbb⟩
   obtain ⟨hreach, hvs, hbs⟩ := key _ hpath
-  have hΦU : ∀ {A₁ : (goldilocksSA sp FGP ro).State} {Φ₁ : (goldilocksSA sp FGP ro).Frm} {t₁},
-      (goldilocksSA sp FGP ro).ReachableAt self U A₁ Φ₁ t₁ → Φ₁.tree ⊆ U := by
+  have hΦU : ∀ {A₁ : (goldilocksAC sp FGP ro).State} {Φ₁ : (goldilocksAC sp FGP ro).Frm} {t₁},
+      (goldilocksAC sp FGP ro).ReachableAt self U A₁ Φ₁ t₁ → Φ₁.tree ⊆ U := by
     intro A₁ Φ₁ t₁ h
     cases h with
     | init _ _ hf => exact hf.2
@@ -168,9 +168,9 @@ theorem merged_opponents : MergedOpponents sp := by
   have h := minv_of_reachable sp hr
   have hle := tree_blockStamp_le sp hU hr
   have hpool : ∀ x, x ∈ A.poolAt (σ : Int) ↔ x ∈ A.pool σ := fun x => by
-    simp [SAState.poolAt]
+    simp [ACState.poolAt]
   have hpool' : ∀ x, x ∈ A.poolAt (((σ + 1 : Nat) : Int) - 1) ↔ x ∈ A.pool σ := fun x => by
-    simp [SAState.poolAt]
+    simp [ACState.poolAt]
   -- the full view holds every pool vote, and its support every resolved one
   have hfull : ∀ x ∈ A.pool σ, x ∈ (voteView A Φ σ ⊤).votes := fun x hx => by
     simp only [voteView, voteViewList, View.ofLists, Set.mem_ofPred_eq, List.mem_filter,
@@ -221,6 +221,6 @@ theorem merged_opponents : MergedOpponents sp := by
         (hH'r ▸ (hle H' hH').trans_lt (etime_lt_top _))
   · exact Or.inl (heq (hxi ▸ hx'))
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

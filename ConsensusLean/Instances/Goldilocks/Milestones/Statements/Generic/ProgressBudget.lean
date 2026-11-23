@@ -15,7 +15,7 @@ set_option autoImplicit false
 namespace Consensus.Goldilocks.Generic
 
 open Shape Blocks
-open SA (gbar)
+open AC (gbar)
 open Healing (cutZ)
 
 variable {P : Params} {A : NodeAC P} {O : OutputSchema} {Info : Type}

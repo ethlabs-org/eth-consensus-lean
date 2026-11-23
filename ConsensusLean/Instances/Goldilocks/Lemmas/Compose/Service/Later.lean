@@ -15,9 +15,9 @@ slot `s` there; its tick at that public time starts with `ac_on_tick`, joined. -
 
 namespace Consensus.Goldilocks.Compose
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
 
 /-- The cuts of a tick: the AC's tick, the proposal step, the FG update. -/
@@ -38,14 +38,14 @@ theorem update_of_awake_joined {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     (hrun : GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n} (hx : x ∈ H) {s : Nat} (hw : tr.awake x (sp.ts s + 6 * sp.Δ))
     (hj : tr.JoinedAt x (sp.ts s + 6 * sp.Δ)) :
-    ∃ k ℓ, SA.UpdateAt tr.projAC x k s ℓ := by
+    ∃ k ℓ, AC.UpdateAt tr.projAC x k s ℓ := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have h0 : (0 : Time) ≤ sp.ts s := by
-    simp only [SAParams.ts]
+    simp only [ACParams.ts]
     exact mul_nonneg (by linarith) (Int.natCast_nonneg s)
   obtain ⟨j, c, hj'⟩ := hrun.tick_of_awake x hx _ (by linarith)
     (show sp.toParams.IsPublic _ from Dvd.intro (4 * (s : Int) + 6)
-      (by simp only [SAParams.ts]; ring)) hw
+      (by simp only [ACParams.ts]; ring)) hw
   obtain ⟨-, hk, -⟩ := hj'
   have hlen :
       0 < (Node.exec proposer dg x (tr.state x j) (sp.ts s + 6 * sp.Δ) (.tick c)).2.length := by

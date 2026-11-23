@@ -25,9 +25,9 @@ node's run, so `S` is in the tree at `c`, and the frame there holds every tree b
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
@@ -57,21 +57,21 @@ theorem seed_held_through_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   set u := sp.ts (r - sp.k - 3 : Nat) with hu_def
   have hca := hp.cutZ_lt_reset_at
   have hgz := Healing.lt_cutZ sp g
-  have ha0 : 0 ≤ a := by linarith [SA.gbar_nonneg g]
+  have ha0 : 0 ≤ a := by linarith [AC.gbar_nonneg g]
   have hsa : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
-    have := (SA.ts_le_iff_le_slot sp ha0 _).1 h
+    have := (AC.ts_le_iff_le_slot sp ha0 _).1 h
     omega
-  have hgu : SA.gbar g ≤ u := by
+  have hgu : AC.gbar g ≤ u := by
     have hu : u = sp.ts ((sp.slot a : Int) + 1) + 4 * sp.Δ := by
       rw [hu_def, show r - sp.k - 3 = sp.slot a + 1 + 1 by rw [hr, Healing.cleanLabel_eq]; omega]
-      simp only [SAParams.ts]; push_cast; ring
+      simp only [ACParams.ts]; push_cast; ring
     linarith
   have huT : u ≤ T := by
     have h := ts_le_ts (sp := sp) (show r - sp.k - 3 ≤ σ by omega)
     linarith
   have hu0 : 0 ≤ u := ts_natCast_nonneg _
   have hpub : sp.toParams.IsPublic u :=
-    ⟨4 * ((r - sp.k - 3 : Nat) : Int), by simp only [hu_def, SAParams.ts]; ring⟩
+    ⟨4 * ((r - sp.k - 3 : Nat) : Int), by simp only [hu_def, ACParams.ts]; ring⟩
   -- the caller ticks at `u`, an earlier call
   have hyu : y ∈ H u := hrun.antitone (huT.trans hTc.le) hy
   obtain ⟨c₀, z, hg⟩ := hrun.tick_of_awake y u hyu hu0 hpub (hp.awake y u hyu hgu huT)

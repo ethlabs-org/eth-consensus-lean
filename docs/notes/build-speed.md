@@ -127,7 +127,7 @@ a calling module without the import that is not exempt, and on an exemption that
 
 ## The critical path is the proof structure
 
-On 8 or more cores the build waits on one chain of about 65 modules, from `Spec.SA` through
+On 8 or more cores the build waits on one chain of about 65 modules, from `Spec.AC` through
 `Compose.Sleepy`, `Healing.Outcome.{Foundation,Pivot,Supplier,Service}` and
 `Refinement.{HealthyEffective,…,Exposure*,RowsSupply,Window*}`. Modelled on per-module times
 (`/tmp`-only script, the import graph plus `time-modules.py` output): removing any single module's

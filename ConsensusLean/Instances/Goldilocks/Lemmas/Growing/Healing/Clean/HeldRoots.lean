@@ -33,9 +33,9 @@ the charge of a high origin's writer.
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -86,7 +86,7 @@ compatible with every held block compatible with the earlier high origins. The c
 `c_z` (`cutZ_le_of_high_hj_at`). -/
 theorem high_J_root_of_held_at_call_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x y : Fin sp.n} {i k : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x y : Fin sp.n} {i k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H (tr.time k))
     (hkb : tr.time k ≤ b) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y k ell)
@@ -126,7 +126,7 @@ theorem high_J_root_of_held_at_call_before_at {cm : Time → Finset (Fin sp.n)} 
 finalized-chain root compatible with every held block compatible with the seed. -/
 theorem low_root_of_held_seed_at_call_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x y v : Fin sp.n} {r i q m : Nat} {B S : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (_hx : x ∈ H (tr.time r)) (_hBx : B ∈ (tr.state x r).fg.tree) (_hrb : tr.time r ≤ b)
     (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
     (hS : HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b)
@@ -161,7 +161,7 @@ theorem low_root_of_held_seed_at_call_at {cm : Time → Finset (Fin sp.n)} {βK 
   unfold Store.fcRoot
   split_ifs with hactive
   · rcases hBS with hBS | hSB
-    · exact SA.anc_total hU
+    · exact AC.anc_total hU
         (hJ S hSy (store_anc_of_honest_anc_at hrun hnc hi0 hlei hy hFS hSy) hSh
           hactive.1 hactive.2) hBS
     · have hFB := hFS.trans hSB
@@ -170,7 +170,7 @@ theorem low_root_of_held_seed_at_call_at {cm : Time → Finset (Fin sp.n)} {βK 
       exact Or.inl (hJ B hBy (store_anc_of_honest_anc_at hrun hnc hi0 hlei hy hFB hBy) hBhy
         hactive.1 hactive.2)
   · rcases hBS with hBS | hSB
-    · exact SA.anc_total hU hFS hBS
+    · exact AC.anc_total hU hFS hBS
     · exact Or.inl (hFS.trans hSB)
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo

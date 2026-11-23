@@ -38,9 +38,9 @@ namespace Consensus.Goldilocks.Obligations.Growing
 
 open AsChainShape Simulation Blocks Shape
 
-variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
-  {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)} {g b : Time}
+  {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {g b : Time}
   {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- The fault bound of the reset schedule is below the FG quorum excess at every time up to the
@@ -115,9 +115,9 @@ private theorem finalized_safe_read (D : RepairSchedule tr H proposer dg g b cm 
 writer honest at its write. -/
 private theorem finalized_compatible_source (D : RepairSchedule tr H proposer dg g b cm βK)
     {y : Fin sp.n} {n : Nat} {t : Time} (ht : 0 ≤ t) (hrp : Regimes.ReadPoint tr n t)
-    (htb : t ≤ b) (hy : y ∈ H t) {x : Fin sp.n} {r s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (SA.Vote sp.n)} (hx : x ∈ H (tr.time r))
-    (hC : SA.ResultAt tr.projAC x r s C CV ∨ SA.OptimisticLockAt tr.projAC x r s C CV)
+    (htb : t ≤ b) (hy : y ∈ H t) {x : Fin sp.n} {r s : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (AC.Vote sp.n)} (hx : x ∈ H (tr.time r))
+    (hC : AC.ResultAt tr.projAC x r s C CV ∨ AC.OptimisticLockAt tr.projAC x r s C CV)
     (hs : D.cleanLabel + 2 * sp.k + 1 ≤ s) (hrb : tr.time r ≤ b) :
     Goldilocks.Compatible (tr.HonestBlocksAt H) (tr.state y n).fg.F C := by
   exact D.reset.finalized_compatible_clean_source_at hx hC
@@ -130,7 +130,7 @@ theorem healthy_current_sources_compatible_at (D : RepairSchedule tr H proposer 
     {y z : Fin sp.n} {n n' : Nat} {t t' : Time} (ht : 0 ≤ t)
     (hrp : Regimes.ReadPoint tr n t) (htb : t ≤ b) (hy : y ∈ H t) (ht' : 0 ≤ t')
     (hrp' : Regimes.ReadPoint tr n' t') (ht'b : t' ≤ b) (hz : z ∈ H t')
-    {R R' : SA.Blk sp.n (List (FG.Att sp.n))}
+    {R R' : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : RecordCover tr H D.cleanLabel y n t R)
     (hR' : RecordCover tr H D.cleanLabel z n' t' R') :
     Goldilocks.Compatible (tr.HonestBlocksAt H) R R' := by
@@ -159,7 +159,7 @@ theorem healthy_current_record_interval_at (D : RepairSchedule tr H proposer dg 
     (htt : t ≤ t') (ht'b : t' ≤ b) (hy : y ∈ H t')
     (hrep : sp.ts O.slot + 6 * sp.Δ ≤ t) (hcut : sp.ts O.slot + 6 * sp.Δ < tr.time n) :
     EffectiveRecordIntervalAt tr H y n n'
-      ((SA.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
+      ((AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
         (tr.state y n).fg.F) := by
   have hrun := D.reset.run
   have hnc := D.reset.noColl
@@ -168,7 +168,7 @@ theorem healthy_current_record_interval_at (D : RepairSchedule tr H proposer dg 
   have htb : t ≤ b := htt.trans ht'b
   have hyt : y ∈ H t := hrun.antitone htt hy
   have hlo : sp.ts D.oldLabel ≤ sp.ts O.slot :=
-    (SA.ts_le_iff sp).mpr (by exact_mod_cast O.old_lt.le)
+    (AC.ts_le_iff sp).mpr (by exact_mod_cast O.old_lt.le)
   have h6 : (0 : Time) ≤ 6 * sp.Δ := mul_nonneg (by norm_num) hΔ.le
   have ht0 : 0 ≤ t := by
     linarith only [Compose.Growing.ts_natCast_nonneg (sp := sp) O.slot, h6, hrep]
@@ -187,10 +187,10 @@ theorem healthy_current_record_interval_at (D : RepairSchedule tr H proposer dg 
       apply D.old_bound.trans
       rcases hB with ⟨ell, hu, _⟩ | ⟨ell, A, ho, hslot, _⟩
       · have htime : tr.time q = sp.ts s + 6 * sp.Δ := hu.2.2.1
-        have hlt := (SA.ts_lt_iff sp).mp (show sp.ts D.oldLabel < sp.ts s by
+        have hlt := (AC.ts_lt_iff sp).mp (show sp.ts D.oldLabel < sp.ts s by
           linarith only [htime, hbudget])
         exact_mod_cast hlt.le
-      · have hh := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg q) D.oldLabel).mp
+      · have hh := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg q) D.oldLabel).mp
           (show sp.ts D.oldLabel ≤ tr.time q by linarith only [hbudget, hΔ])
         change sp.slot (tr.time q) = s at hslot
         rw [← hslot]

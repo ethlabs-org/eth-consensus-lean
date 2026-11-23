@@ -14,48 +14,48 @@ Participation is counted at that cast, never at a fixed honest cohort.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- Warm full-frame persistence discharges the service core's root and floor
 premises for every next-slot cast, at the slot committees `K` of a run from `K`'s committee
 start. -/
-theorem FrameWindow.unanimous_next_votes_at {K : SA.CommitteeDict sp.n}
+theorem FrameWindow.unanimous_next_votes_at {K : AC.CommitteeDict sp.n}
     {g ΔF b : Time} {u floor : Nat} {kindJ : Prop}
-    {J P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (SA.committeeStart sp.genesisRoot K))
+      (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
-    (hjoin : ∀ x, x ∈ H (sp.ts u + sp.Δ) → SA.JoinedAt tr.projAC x (sp.ts u + sp.Δ))
+    (hjoin : ∀ x, x ∈ H (sp.ts u + sp.Δ) → AC.JoinedAt tr.projAC x (sp.ts u + sp.Δ))
     (hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hun : ∀ x i e, x ∈ H (tr.time i) → SA.VoteAt tr.projAC x i e →
+    (hun : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e →
       e.msg.slot = u → e.msg.head = P.root) (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
-      e.msg.slot = u + 1 → SA.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
+    ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
   have hΔ := sp.toParams.hΔ
   have hgu : gbar g ≤ sp.ts u := by linarith
   have hu0 : 0 < u := by
     by_contra hn
     have he : u = 0 := by omega
     rw [he] at hmargin
-    simp only [SAParams.ts, Nat.cast_zero, mul_zero] at hmargin
-    linarith [SA.gbar_nonneg g]
+    simp only [ACParams.ts, Nat.cast_zero, mul_zero] at hmargin
+    linarith [AC.gbar_nonneg g]
   have hshort : sp.ts u + sp.Δ ≤ sp.ts (u + 1 : Nat) := by
-    simp only [SAParams.ts]; push_cast; linarith
+    simp only [ACParams.ts]; push_cast; linarith
   have hdeadline : sp.ts u + sp.Δ ≤ b := by linarith
   have hnextb : sp.ts (u + 1 : Nat) ≤ b := by linarith
   have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch
-    (show 0 ≤ sp.ts u + sp.Δ by linarith [SA.gbar_nonneg g]) hdeadline
+    (show 0 ≤ sp.ts u + sp.Δ by linarith [AC.gbar_nonneg g]) hdeadline
   have hvotes := honest_votes_of_joined_before_at hS hgu hjoin
   have hPh : P ∈ tr.HonestBlocksAt H := by
     obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, a, _, ha, hta⟩ :=
@@ -69,11 +69,11 @@ theorem FrameWindow.unanimous_next_votes_at {K : SA.CommitteeDict sp.n}
     have ha' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time a)) (proposer u) a P := by
       obtain ⟨ella, hca, hea⟩ := ha
       exact ⟨ella, (Trace.upTo_callAt _).mpr ⟨le_rfl, hca⟩, hea⟩
-    have hnew := SA.accept_new sp hr hza ha'
+    have hnew := AC.accept_new sp hr hza ha'
     obtain ⟨ella, hca, _⟩ := ha'
     exact RunTrace.honestBlocks_upTo_subset hrun.time_mono (hrun.time_nonneg a)
-      ((SA.frameIn_of_callAt hr hza hca).2 (hnew.1 ella hca))
-  have geometry : ∀ y j ell e, y ∈ H (tr.time j) → SA.CastAt tr.projAC y j ell e →
+      ((AC.frameIn_of_callAt hr hza hca).2 (hnew.1 ella hca))
+  have geometry : ∀ y j ell e, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j ell e →
       e.msg.slot = u + 1 → tr.time j ≤ b →
       Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P ∧
       (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ P.root).h := by
@@ -81,27 +81,27 @@ theorem FrameWindow.unanimous_next_votes_at {K : SA.CommitteeDict sp.n}
     have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg j))
       (hnc.upTo (tr.time j))).localRun
     rw [RunTrace.upTo_projAC] at hr
-    have hc' : SA.CastAt (tr.projAC.upTo (tr.time j)) y j ell e :=
+    have hc' : AC.CastAt (tr.projAC.upTo (tr.time j)) y j ell e :=
       ⟨(Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩, hc.2⟩
-    have hslot := (SA.castAt_spec hr hy hc').2.1
+    have hslot := (AC.castAt_spec hr hy hc').2.1
     change e.msg.slot = sp.slot (tr.time j) at hslot
     have hlo : sp.ts (u + 1 : Nat) ≤ tr.time j :=
-      (SA.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).2 (by rw [← hslot, hes])
+      (AC.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).2 (by rw [← hslot, hes])
     have hhi : tr.time j ≤ sp.ts (u + 1 : Nat) + sp.Δ := by
-      have hv := SA.vote_time_le hr hy ⟨ell, hc'⟩
+      have hv := AC.vote_time_le hr hy ⟨ell, hc'⟩
       change tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ at hv
       rwa [← hslot, hes] at hv
     obtain ⟨hvi, _, hv⟩ := hframe.proposal_viable_after_votes_at hrun hnc hsvc hf hnr hgu hTb
       hz hdes hP hPs hy hc.1
-      (by simp only [SAParams.ts] at hlo ⊢; push_cast at hlo; linarith) (by linarith)
+      (by simp only [ACParams.ts] at hlo ⊢; push_cast at hlo; linarith) (by linarith)
     have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono (hrun.time_nonneg j)
-    refine ⟨hvi.2.1.mono (fun Q hQ => hsub ((SA.frameIn_of_callAt hr hy hc'.1).2 hQ)), ?_⟩
+    refine ⟨hvi.2.1.mono (fun Q hQ => hsub ((AC.frameIn_of_callAt hr hy hc'.1).2 hQ)), ?_⟩
     have hframeeq : ell.frame = Node.frame (tr.state y j) := by
       exact (hrun.cutLaw y j _ (Compose.projAC_callAt.mp hc.1) hy).1
     rw [hframeeq] at hv
     exact hv.2.2.2
   -- an honest member of the slot-`u` committee witnesses `P` by the slot's vote deadline
-  have hnext0 : 0 ≤ sp.ts (u + 1 : Nat) := (SA.gbar_nonneg g).trans (hgu.trans (by linarith))
+  have hnext0 : 0 ≤ sp.ts (u + 1 : Nat) := (AC.gbar_nonneg g).trans (hgu.trans (by linarith))
   obtain ⟨w, hwK, hw⟩ : (K.committee u ∩ H (sp.ts (u + 1 : Nat))).Nonempty := by
     have hcs := hK.cs2 u hgu (by linarith) _ hnext0 hnextb
     have hsplit := Set.ncard_inter_add_ncard_sdiff_eq_ncard (K.committee u)
@@ -117,9 +117,9 @@ theorem FrameWindow.unanimous_next_votes_at {K : SA.CommitteeDict sp.n}
     (fun x hx hxK => hvotes x (hrun.antitone hshort hx) hxK) ?_ ?_ ?_ ?_
   · intro i hlo hib
     have hslot : u + 1 ≤ sp.slot (tr.time i) := by
-      exact_mod_cast (SA.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).1 hlo
+      exact_mod_cast (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).1 hlo
     exact KernelProof.faultBoundK_of_service_at hK hrun hawake hnr hgu (by linarith)
-      (hrun.time_nonneg i) (hgu.trans ((SA.ts_le_iff sp).2 (by omega))) hib
+      (hrun.time_nonneg i) (hgu.trans ((AC.ts_le_iff sp).2 (by omega))) hib
   · intro i hlo hib
     exact hK.cs2 (u + 1) (hgu.trans (by linarith)) hnextb _ (hrun.time_nonneg i) hib
   · intro y j ell e hy hc hs hjb

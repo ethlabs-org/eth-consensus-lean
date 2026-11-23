@@ -40,14 +40,14 @@
 \newcommand{\fcroot}{\mathsf{fc\_root}}
 \newcommand{\allowed}{\mathsf{viable\_heads}}
 \newcommand{\filtered}{\fname{viable\_tree}}
-\newcommand{\gfPool}{\mathsf{head\_votes}}
+\newcommand{\headVotes}{\mathsf{head\_votes}}
 \newcommand{\attestations}{\mathsf{attestations}}
 \newcommand{\fname}[1]{\text{\textsc{#1}}}
 \newcommand{\latestConfirmed}{\mathsf{latest\_confirmed}}
 \newcommand{\timestamp}{\mathsf{timestamp}}
 \newcommand{\resolutionTime}{\mathsf{resolution\_time}}
 
-% SA state.
+% AC state.
 \newcommand{\savedConfirmation}{\mathsf{saved\_confirmation}}
 \newcommand{\lockEntries}{\mathsf{locks}}
 \newcommand{\lockDeadline}{\mathsf{lock\_deadline}}
@@ -65,14 +65,14 @@ differences between that specification and the Lean model, and the
 continuation claims that are proved for the Lean model.  Its section
 numbers refer to this note; the names of functions and fields are those
 of the specification.  The specification is titled Goldilocks, and it uses that name
-also for its available chain; this note calls the available chain SA (the
+also for its available chain; this note calls the available chain AC (the
 old Lean model's names use FGSA for the protocol).
 
 \section{Relation to the Lean model}\label{sec:lean}
 
 The Lean model follows the earlier round-model protocol text (not in this
 repository).  It keeps two stores,
-one for the FG and one for SA, and a per-block lock map.  This section
+one for the FG and one for AC, and a per-block lock map.  This section
 lists the differences.  Items (a)--(g) change no output and no message
 of an honest node.  Items (h)--(k) change the behaviour.
 Section~\ref{sec:fast-path} lists the later changes of the specification

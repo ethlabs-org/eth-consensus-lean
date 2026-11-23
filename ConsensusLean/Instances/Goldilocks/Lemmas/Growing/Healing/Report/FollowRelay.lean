@@ -11,12 +11,12 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
 /-- An early frame witness has a pre-freeze stamp at a later honest cast.
 The historical holder can already be compromised when the receiver casts. -/
 theorem frame_witness_readPoint_stamp_at
-    {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -28,28 +28,28 @@ theorem frame_witness_readPoint_stamp_at
     (hy : y ∈ H (tr.time i))
     {ellx ell : ACLabel (goldilocksNode sp ro)}
     (hcx : tr.projAC.CallAt x a ellx)
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y i ell e)
+    {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ell e)
     (hes : e.msg.slot = s + 1) (hm : gbar g + 4 * sp.Δ ≤ sp.ts s)
     (ha : tr.time a < sp.ts s + 2 * sp.Δ)
-    {Q : SA.Blk sp.n (List (FG.Att sp.n))} (hQ : Q ∈ ellx.frame.tree)
+    {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hQ : Q ∈ ellx.frame.tree)
     (hFQ : Anc (tr.HonestBlocksAt H) ell.frame.F Q) :
     Q ∈ (tr.state y i).fg.tree ∧
-      e.readPoint.blockStamp Q.root < SA.ETime.of (SA.freeze sp (s + 1)) := by
+      e.readPoint.blockStamp Q.root < AC.ETime.of (AC.freeze sp (s + 1)) := by
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo (hrun.time_nonneg i)).localRun
-  have hc' := SA.upTo_castAt.mpr ⟨le_rfl, hc⟩
-  have hs : sp.slot (tr.time i) = s + 1 := (SA.castAt_spec hr hy hc').2.1.symm.trans hes
+  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
+  have hs : sp.slot (tr.time i) = s + 1 := (AC.castAt_spec hr hy hc').2.1.symm.trans hes
   have hti : sp.ts (s + 1 : Nat) ≤ tr.time i :=
-    (SA.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by rw [hs])
-  have hts := SA.ts_succ s (sp := sp)
-  have hfz : SA.freeze sp (s + 1) = sp.ts s + 3 * sp.Δ := by
-    simp only [SA.freeze, show ((s + 1 : Nat) : Int) - 1 = s by omega]
+    (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by rw [hs])
+  have hts := AC.ts_succ s (sp := sp)
+  have hfz : AC.freeze sp (s + 1) = sp.ts s + 3 * sp.Δ := by
+    simp only [AC.freeze, show ((s + 1 : Nat) : Int) - 1 = s by omega]
   have hQt := frame_relay_before_at hrun hnc hsvc hcatch hx hy
     (fun r hr' hrs => hnr _ r (hrun.antitone (hrun.time_mono hr') hy) hrs) hcx hc.1 hQ
     (by linarith only [hm, hti, hts, sp.toParams.hΔ])
     (by linarith only [ha, hti, hts, sp.toParams.hΔ]) hFQ
-  have hacc : SA.AcceptedBefore (tr.projAC.upTo (tr.time i)) y Q
-      (SA.freeze sp (s + 1)) := by
+  have hacc : AC.AcceptedBefore (tr.projAC.upTo (tr.time i)) y Q
+      (AC.freeze sp (s + 1)) := by
     rcases frame_block_acceptance_at hrun hx hcx hQ with hg | ⟨k, hka, hxk, hk⟩
     · exact Or.inl (congrArg Block.root hg)
     have hkt := (hrun.time_mono hka.le).trans_lt ha
@@ -57,17 +57,17 @@ theorem frame_witness_readPoint_stamp_at
       rw [(hrun.cutLaw y i (.ac ell) (Compose.projAC_callAt.mp hc.1) hy).1]
       rfl
     have hp := hrun.upTo (hrun.time_nonneg i)
-    have accepted : ∃ q < i, tr.AcceptAt y q Q ∧ tr.time q < SA.freeze sp (s + 1) := by
+    have accepted : ∃ q < i, tr.AcceptAt y q Q ∧ tr.time q < AC.freeze sp (s + 1) := by
       by_cases hnew : gbar g ≤ tr.time k
       · have hdl : tr.deadline y i (max (tr.time k) g) sp.Δ ≤ tr.time i := by
-          rw [max_eq_left ((SA.le_gbar g).trans hnew), ← Compose.projAC_deadline]
+          rw [max_eq_left ((AC.le_gbar g).trans hnew), ← Compose.projAC_deadline]
           have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := i)
             (fun r hri hrs => hnr y r (hrun.antitone (hrun.time_mono hri) hy)
               (Compose.projAC_restartAt.mp hrs)) (tr.time k)
           change _ ≤ max (tr.time k) (gbar g) + sp.Δ at h
           rw [max_eq_left hnew] at h
           exact h.trans (by linarith only [hkt, hti, hts, sp.toParams.hΔ])
-        obtain ⟨q, hqi, hq, hqd⟩ := hsvc.relay x k Q hxk hk ((SA.le_gbar g).trans hnew)
+        obtain ⟨q, hqi, hq, hqd⟩ := hsvc.relay x k Q hxk hk ((AC.le_gbar g).trans hnew)
           y i hy ⟨_, Compose.projAC_callAt.mp hc.1⟩ hdl (hfr ▸ hFQ)
         have hqi' : q < i := by
           refine lt_of_le_of_ne hqi ?_
@@ -78,7 +78,7 @@ theorem frame_witness_readPoint_stamp_at
             (Compose.projAC_restartAt.mp hrs)) (tr.time k)
         change _ ≤ max (tr.time k) (gbar g) + sp.Δ at hdead
         rw [max_eq_left hnew, Compose.projAC_deadline] at hdead
-        rw [max_eq_left ((SA.le_gbar g).trans hnew)] at hqd
+        rw [max_eq_left ((AC.le_gbar g).trans hnew)] at hqd
         exact ⟨q, hqi', hq, by rw [hfz]; linarith only [hqd, hdead, hkt]⟩
       · obtain ⟨q, hq, hacc, hqt⟩ := hrun.toLocalRun.fgCatchAt hcatch hxk hk (not_le.mp hnew)
           hy (by linarith only [hm, hti, hts, sp.toParams.hΔ]) (hfr ▸ hFQ)
@@ -91,7 +91,7 @@ theorem frame_witness_readPoint_stamp_at
   refine ⟨?_, ?_⟩
   · rw [(hrun.cutLaw y i (.ac ell) (Compose.projAC_callAt.mp hc.1) hy).1] at hQt
     exact hQt.1
-  · have h := SA.readPoint_blockStamp_lt_of_acceptedBefore hr hrun.vstart hy hc' hQt
+  · have h := AC.readPoint_blockStamp_lt_of_acceptedBefore hr hrun.vstart hy hc' hQt
       (by simpa only [hes] using hacc)
       (fun k hki hrs => by
         have h := hnr y k (hrun.antitone (hrun.time_mono hki) hy)
@@ -99,7 +99,7 @@ theorem frame_witness_readPoint_stamp_at
         change tr.time k < _
         rw [hes, hfz]
         linarith only [h, hm, sp.toParams.hΔ])
-      (by change SA.freeze sp e.msg.slot ≤ tr.time i; rw [hes, hfz];
+      (by change AC.freeze sp e.msg.slot ≤ tr.time i; rw [hes, hfz];
           linarith only [hti, hts, sp.toParams.hΔ])
     simpa only [hes] using h
 

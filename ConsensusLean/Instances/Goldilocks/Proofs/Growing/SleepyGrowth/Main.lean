@@ -25,7 +25,7 @@ public section
 
 namespace Consensus.Goldilocks.Regimes.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
 /-- **R.2, `includeSleepy`, at a committee**, from `include_sleepy_at` through `b = t`. -/
 theorem include_sleepy : IncludeSleepy := by

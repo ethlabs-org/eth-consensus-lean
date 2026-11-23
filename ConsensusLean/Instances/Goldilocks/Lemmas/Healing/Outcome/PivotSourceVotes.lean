@@ -48,12 +48,12 @@ Prerequisites for the post-reset proposal pivot. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-- Actual bounded casts extend the start of a drained operational proposal. -/
 theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
@@ -62,34 +62,34 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
     {ellp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
+    (hd : (AC.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {elly : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hcy : SA.CastAt tr.projAC y j elly e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) :
+    {elly : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hcy : AC.CastAt tr.projAC y j elly e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) :
     Anc (tr.HonestBlocks H) d.start
-      (SA.getHead sp e.readPoint elly.frame (tr.time j)
-        (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
-        (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
+      (AC.getHead sp e.readPoint elly.frame (tr.time j)
+        (elly.frame.viableTree (AC.voteDomain sp e.readPoint elly.frame u))
+        (AC.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
-  obtain ⟨hPsi, hPsiU⟩ := SA.frameIn_of_callAt hr hy hcy.1
-  have hhead := SA.getHead_mem hPsi
-    (T := elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
-    (fun _ h => (SA.voteDomain_subset_tree h.1)) e.readPoint (tr.time j)
-    (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)
-  have hheadr := (SA.castAt_spec hr hy hcy).2.2.2
+  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hpH hci
+  obtain ⟨hPsi, hPsiU⟩ := AC.frameIn_of_callAt hr hy hcy.1
+  have hhead := AC.getHead_mem hPsi
+    (T := elly.frame.viableTree (AC.voteDomain sp e.readPoint elly.frame u))
+    (fun _ h => (AC.voteDomain_subset_tree h.1)) e.readPoint (tr.time j)
+    (AC.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)
+  have hheadr := (AC.castAt_spec hr hy hcy).2.2.2
   rw [hes] at hheadr
-  have extend : ∀ B, SA.VoteExtends (tr.HonestBlocks H) e.msg B →
+  have extend : ∀ B, AC.VoteExtends (tr.HonestBlocks H) e.msg B →
       Anc (tr.HonestBlocks H) B
-        (SA.getHead sp e.readPoint elly.frame (tr.time j)
-          (elly.frame.viableTree (SA.voteDomain sp e.readPoint elly.frame u))
-          (SA.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
+        (AC.getHead sp e.readPoint elly.frame (tr.time j)
+          (elly.frame.viableTree (AC.voteDomain sp e.readPoint elly.frame u))
+          (AC.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)) := by
     rintro B ⟨W, hW, hWr, hBW⟩
     obtain rfl := hr.coherent.1 hW (hPsiU hhead) (hWr.trans hheadr)
     exact hBW
   rcases proposal_start_root_or_clean_lock hPhi
-    (SA.locksWF_state hr hp.run.vstart hpH i) hR hti hd with
+    (AC.locksWF_state hr hp.run.vstart hpH i) hR hti hd with
     hroot | ⟨l₁, hl₁, hlo, B₁, hB₁, hB₁r, hsB₁⟩
   · rw [hroot]
     rcases hp.reset_proposal_root_source hpH hR hci hcall hd hti hib with
@@ -104,23 +104,23 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
         clear * - hes hlu; omega)
   obtain ⟨r, hri, D, horig, L, hLU, hLr, hLD⟩ :
       ∃ r < i, ∃ D,
-        ((∃ CV, SA.FastLockAt tr.projAC p r l₁.slot D CV) ∨
-          SA.SlowLockAt tr.projAC p r l₁.slot D) ∧
+        ((∃ CV, AC.FastLockAt tr.projAC p r l₁.slot D CV) ∨
+          AC.SlowLockAt tr.projAC p r l₁.slot D) ∧
         ∃ L ∈ tr.HonestBlocks H, L.root = l₁.block ∧ Anc (tr.HonestBlocks H) L D := by
     cases hf : l₁.fast with
     | false =>
-      obtain ⟨r, hri, D, hsl, hL⟩ := SA.slow_lock_provenance hr
+      obtain ⟨r, hri, D, hsl, hL⟩ := AC.slow_lock_provenance hr
           hp.run.vstart hpH i l₁ hl₁ hf
       exact ⟨r, hri, D, Or.inr hsl, hL⟩
     | true =>
-      obtain ⟨r, hri, D, CV, hfl, hL⟩ := SA.fast_lock_provenance hr
+      obtain ⟨r, hri, D, CV, hfl, hL⟩ := AC.fast_lock_provenance hr
         hp.run.vstart hpH i l₁ hl₁ hf
       exact ⟨r, hri, D, Or.inl ⟨CV, hfl⟩, hL⟩
   obtain rfl : L = B₁ := hr.coherent.1 hLU (hPhiU hB₁) (hLr.trans hB₁r.symm)
-  have hu1 : sp.slot (SA.gbar g) + 1 ≤ u := slot_gbar_lt_of_cutZ_le
+  have hu1 : sp.slot (AC.gbar g) + 1 ≤ u := slot_gbar_lt_of_cutZ_le
     (hp.clean_window_timing (s := u) (by
       rw [drainTime_eq] at hR
-      have := (SA.ts_le_iff sp).mp hR
+      have := (AC.ts_le_iff sp).mp hR
       rw [cleanLabel_eq]
       omega) u (by have := sp.two_le_k; omega))
   have hlt : l₁.slot < u := Compose.proposal_locks_slot_of hp.run hp.noColl
@@ -137,17 +137,17 @@ section SourceVotes
 
 variable (hp : ResetPremises tr H K proposer dg g ΔF a)
   (hc : CatchRun tr H g (2 * sp.Δ))
-  {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+  {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
   (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
   {i : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
   {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
   (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-  (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+  (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
   (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
   {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-  {ℓy : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-  (hcy : SA.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = u)
-  (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', SA.VoteAt tr.projAC x j' e' →
+  {ℓy : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+  (hcy : AC.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = u)
+  (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', AC.VoteAt tr.projAC x j' e' →
     e'.msg.slot = u → e'.msg.head = P.root)
 
 set_option linter.unusedSectionVars false in
@@ -155,9 +155,9 @@ include hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE in
 /-- The proposal start is supported through clean raw-source vote induction. -/
 theorem proposal_start_supported :
     Anc (tr.HonestBlocks H) d.start
-      (SA.getHead sp e.readPoint ℓy.frame (tr.time j)
-        (ℓy.frame.viableTree (SA.voteDomain sp e.readPoint ℓy.frame u))
-        (SA.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) :=
+      (AC.getHead sp e.readPoint ℓy.frame (tr.time j)
+        (ℓy.frame.viableTree (AC.voteDomain sp e.readPoint ℓy.frame u))
+        (AC.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) :=
   (hp.toUpTo tr H (le_max_left a (max (tr.time i) (tr.time j)))).proposal_start_supported hc hP.1
     hR hci hcall hd hti ((le_max_left _ _).trans (le_max_right _ _)) hy hcy hes
     ((le_max_right _ _).trans (le_max_right _ _))
@@ -171,15 +171,15 @@ theorem ResetPremisesUpTo.reset_suffix_viable {b : Time}
     {ell : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hd : (AC.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
-    (D : SA.Blk sp.n (List (FG.Att sp.n))) (hDt : D ∈ ell.frame.tree)
+    (D : AC.Blk sp.n (List (FG.Att sp.n))) (hDt : D ∈ ell.frame.tree)
     (hsD : ell.frame.Anc d.start D)
     (hDold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
       Anc (tr.HonestBlocks H) O D) :
     ∀ X, ell.frame.Anc D X → ell.frame.Anc X d.head → X ∈ ell.frame.viableHeads := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hpH hci
+  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hpH hci
   exact proposal_suffix_viable_of_floor hPhi hPhiU (Compose.frame_of_projAC hp.run hpH hci) hd
     hDt hsD fun _ hX hDX => hp.proposal_floor_above_old hpH hR hci hcall hti hib hX
       fun x r l O ho hrt hrb => (hDold x r l O ho hrt hrb).trans hDX
@@ -189,13 +189,13 @@ the suffix high; a higher floor would produce a high crossing below an old sourc
 its height. Together with `fc_root ⪯ start ⪯ D`, this proves viability. -/
 theorem reset_suffix_viable (hp : ResetPremises tr H K proposer dg g ΔF a)
     (_hc : CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (_hPQ : P.parent = some d.head.root)
-    (D : SA.Blk sp.n (List (FG.Att sp.n))) (hDt : D ∈ ℓp.frame.tree)
+    (D : AC.Blk sp.n (List (FG.Att sp.n))) (hDt : D ∈ ℓp.frame.tree)
     (hsD : ℓp.frame.Anc d.start D) (hDold : ∀ O, OldSrc tr H g u O → Anc (tr.HonestBlocks H) O D) :
     ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads :=
   (hp.toUpTo tr H (le_max_left a (tr.time i))).reset_suffix_viable hP.1 hR hci hcall hd hti
@@ -207,7 +207,7 @@ theorem ResetPremisesUpTo.reset_vote_root_source {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y j ell e)
+    {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y j ell e)
     (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) :
     ell.frame.fcRoot.root = sp.genesisRoot ∨
       ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b ∧
@@ -231,16 +231,16 @@ theorem ResetPremisesUpTo.reset_vote_root_source {b : Time}
 theorem ResetPremisesUpTo.reset_vote_root_below_bound {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {u : Nat} (hR : drainTime sp a ≤ sp.ts u)
-    {P : SA.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocks H)
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocks H)
     (hbound : ∀ x r l B, HighOrigin tr H g x r l B → tr.time r < sp.ts u → tr.time r ≤ b →
       Anc (tr.HonestBlocks H) B P)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hc : SA.CastAt tr.projAC y j ell e)
+    {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y j ell e)
     (hs : e.msg.slot = u) (hjb : tr.time j ≤ b) :
     Anc (tr.HonestBlocks H) ell.frame.fcRoot P := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   rcases hp.reset_vote_root_source hR hy hc hs hjb with hg | ⟨x, r, l, B, ho, ht, hrb, hroot⟩
-  · obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hy hc.1
+  · obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hc.1
     exact Compose.honest_genesis_root_anc hp.run hr.coherent (hPhiU hPhi.fcRoot_mem) hg hP
   · exact hroot.trans (hbound x r l B ho ht hrb)
 

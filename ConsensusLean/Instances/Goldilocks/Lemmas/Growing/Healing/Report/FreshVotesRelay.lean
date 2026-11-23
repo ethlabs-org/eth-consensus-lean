@@ -16,9 +16,9 @@ Only the receiver's execution is retained through the receiving call.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -28,7 +28,7 @@ theorem frame_block_acceptance_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n} {q : Nat}
     (hx : x ∈ H (tr.time q)) {ell : ACLabel (goldilocksNode sp ro)}
-    (hc : tr.projAC.CallAt x q ell) {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hc : tr.projAC.CallAt x q ell) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ ell.frame.tree) :
     B = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload ∨
       ∃ k < q, x ∈ H (tr.time k) ∧ tr.AcceptAt x k B := by
@@ -48,7 +48,7 @@ theorem accepted_relay_before_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b) (hnr : NoRestartAfter tr H (gbar g))
-    {x y : Fin sp.n} {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x y : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (ha : tr.projAC.AcceptAt x i B)
     (hgi : gbar g ≤ tr.time i) (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
@@ -65,7 +65,7 @@ theorem accepted_relay_before_at
     rwa [max_eq_left hgi] at h
   obtain ⟨k, hkj, hak, hkt⟩ := hr.acRelayAt (σ := tr.time i) hx ha hy hc hFB
     fun q hqi hx' hq hj hF => by
-      have hgq : g ≤ tr.time q := hqi ▸ (SA.le_gbar g).trans hgi
+      have hgq : g ≤ tr.time q := hqi ▸ (AC.le_gbar g).trans hgi
       have he : max (tr.time q) g = tr.time i := (max_eq_left hgq).trans hqi
       simpa only [he] using hsvc.relay x q B hx' hq hgq y j hy hj
         (by rw [he, ← Compose.projAC_deadline]; exact (hbound j le_rfl).trans hij) hF
@@ -77,7 +77,7 @@ honest. Only the caller's own restarts before its call are bounded. -/
 private theorem relayed_accept_before_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g (2 * sp.Δ))
-    {x y : Fin sp.n} {k j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x y : Fin sp.n} {k j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hxk : x ∈ H (tr.time k)) (ha : tr.AcceptAt x k B) (hy : y ∈ H (tr.time j))
     (hnr : ∀ r ≤ j, tr.RestartAt y r → tr.time r ≤ gbar g)
     {elly : ACLabel (goldilocksNode sp ro)} (hcy : tr.projAC.CallAt y j elly)
@@ -88,12 +88,12 @@ private theorem relayed_accept_before_at {ini}
   by_cases hnew : gbar g ≤ tr.time k
   · have hdl' : ∀ c ≤ j, tr.deadline y c (max (tr.time k) g) sp.Δ ≤ tr.time k + sp.Δ := by
       intro c hc
-      rw [max_eq_left ((SA.le_gbar g).trans hnew), ← Compose.projAC_deadline]
+      rw [max_eq_left ((AC.le_gbar g).trans hnew), ← Compose.projAC_deadline]
       have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := c)
         (fun r hrc hrs => hnr r (hrc.trans hc) (Compose.projAC_restartAt.mp hrs)) (tr.time k)
       change _ ≤ max (tr.time k) (gbar g) + sp.Δ at h
       rwa [max_eq_left hnew] at h
-    obtain ⟨a, haj, ha, hat⟩ := hsvc.relay x k B hxk ha ((SA.le_gbar g).trans hnew)
+    obtain ⟨a, haj, ha, hat⟩ := hsvc.relay x k B hxk ha ((AC.le_gbar g).trans hnew)
       y j hy ⟨_, Compose.projAC_callAt.mp hcy⟩ ((hdl' j le_rfl).trans hkt) hF
     refine ⟨a, lt_of_le_of_ne haj ?_, ha,
       lt_max_of_lt_left (hat.trans_le (hdl' a haj))⟩
@@ -113,7 +113,7 @@ theorem frame_relay_before_at {ini}
     (hnr : ∀ r ≤ j, tr.RestartAt y r → tr.time r ≤ gbar g)
     {ellx elly : ACLabel (goldilocksNode sp ro)}
     (hcx : tr.projAC.CallAt x q ellx) (hcy : tr.projAC.CallAt y j elly)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ellx.frame.tree)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ellx.frame.tree)
     (hg : gbar g + 2 * sp.Δ ≤ tr.time j)
     (hq : tr.time q + sp.Δ ≤ tr.time j)
     (hF : Anc (tr.HonestBlocksAt H) elly.frame.F B) : B ∈ elly.frame.tree := by
@@ -124,15 +124,15 @@ theorem frame_relay_before_at {ini}
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hcy⟩
   have hac := Compose.goldilocks_ac_projection_from hp (hnc.upTo _)
-  have hPh := SA.frameIn_of_callAt hac.localRun hy hc'
+  have hPh := AC.frameIn_of_callAt hac.localRun hy hc'
   have hFstate : elly.frame.F = (tr.state y j).fg.F := by
     rw [Compose.frame_of_projAC hp hy hc', RunTrace.upTo_state_of_le hr.time_mono le_rfl]
     rfl
   rcases frame_block_acceptance_at hrun hx hcx hB with hgB | ⟨k, hk, hxk, ha⟩
-  · obtain ⟨G, hG, hGr, hGp⟩ := SA.genesis_mem_of_call sp hac.localRun hy j elly hc'
+  · obtain ⟨G, hG, hGr, hGp⟩ := AC.genesis_mem_of_call sp hac.localRun hy j elly hc'
     have hBU : B ∈ tr.HonestBlocksAt H := by
       have hs := Compose.Growing.goldilocks_ac_projection_from hrun hnc
-      exact (SA.frameIn_of_callAt (hs.upTo (hr.time_nonneg q)).localRun hx
+      exact (AC.frameIn_of_callAt (hs.upTo (hr.time_nonneg q)).localRun hx
         ((Trace.upTo_callAt _).mpr ⟨le_rfl, hcx⟩)).2 hB
     have hcoh := Compose.Growing.honest_blocks_coherent_local hr hnc
     have he : B = G := hcoh.1 hBU
@@ -153,10 +153,10 @@ theorem frame_relay_before_at {ini}
   obtain ⟨hacc, _, _⟩ := Healing.ac_block_after hp.toLocalRun hy ha'
   have hBF : Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) elly.frame.F B := by
     obtain ⟨ella, hca, hba⟩ := hacc
-    have ht := (SA.frameIn_of_callAt hac.localRun hy hca).2
-      ((SA.accept_new sp hac.localRun hy ⟨ella, hca, hba⟩).1 ella hca)
+    have ht := (AC.frameIn_of_callAt hac.localRun hy hca).2
+      ((AC.accept_new sp hac.localRun hy ⟨ella, hca, hba⟩).1 ella hca)
     exact RunTrace.anc_upTo_of_right hr hnc hd ht hF
-  exact SA.mem_tree_of_acceptAt sp hac.localRun hy hacc (by omega) hc' hBF
+  exact AC.mem_tree_of_acceptAt sp hac.localRun hy hacc (by omega) hc' hBF
 
 end Consensus.Goldilocks.Healing.Growing
 

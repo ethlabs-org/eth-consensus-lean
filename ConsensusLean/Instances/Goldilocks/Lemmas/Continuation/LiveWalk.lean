@@ -29,17 +29,17 @@ The setting of the seeded service lemmas and the family of blocks the proposal w
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : SA.CommitteeDict sp.n}
+variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : AC.CommitteeDict sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
 
 /-- `RowsAbove` at a height passes to every greater height. -/
-theorem rowsAbove_height_mono {G : SA.Blk sp.n (List (FG.Att sp.n)) → Prop} {Hs : Set (Fin sp.n)}
+theorem rowsAbove_height_mono {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop} {Hs : Set (Fin sp.n)}
     {tr₀ : GoldilocksTrace sp ro} {y : Fin sp.n} {i h₀ h₁ : Nat}
     (h : Compose.RowsAbove tr₀ Hs G y i h₀) (hle : h₀ ≤ h₁) : Compose.RowsAbove tr₀ Hs G y i h₁ :=
   Compose.rowsAbove_iff.2 fun X hX a ha hav hE hh =>
@@ -50,7 +50,7 @@ service, the slot counts from `r`, the seeded invariant from `t₁ ≥ t_{r+k}` 
 a third. -/
 structure SeededRun (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (g ΔF T : Time) (r σ : Nat) (t₁ b : Time) (K : SA.CommitteeDict sp.n)
+    (g ΔF T : Time) (r σ : Nat) (t₁ b : Time) (K : AC.CommitteeDict sp.n)
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {ini : Fin sp.n → (goldilocksNode sp ro).State} :
     Prop where
   run : Growing.GoldilocksRun proposer dg H tr ini
@@ -71,14 +71,14 @@ variable {T : Time} {r σ : Nat} {t₁ b : Time}
 /-- The reset service with its catch-up is the sleepy service from `ḡ`, with catch-up `2Δ`. -/
 theorem SeededRun.sync
     (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini)) :
-    SleepyServiceFrom tr H ΔF (SA.gbar g) (2 * sp.Δ) b :=
+    SleepyServiceFrom tr H ΔF (AC.gbar g) (2 * sp.Δ) b :=
   sleepyServiceFrom_of_reset hS.run hS.service hS.seed.catchRun (by linarith [sp.toParams.hΔ])
 
 /-- `ḡ + 20Δ ≤ t_l` for every label `l ≥ r`. -/
 theorem SeededRun.gbar_le
     (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     {l : Nat}
-    (hl : r ≤ l) : SA.gbar g + 20 * sp.Δ ≤ sp.ts l :=
+    (hl : r ≤ l) : AC.gbar g + 20 * sp.Δ ≤ sp.ts l :=
   hS.seed.timing.2.2.trans (ts_le_ts hl)
 
 /-- A node honest at a time `t ≥ t_{r+k}`, read at or before cut `i` with `t ≤ time i`, has an AC
@@ -98,14 +98,14 @@ theorem SeededRun.live_label
     (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     {y : Fin sp.n}
     {i : Nat} (hy : y ∈ H (tr.time i)) (hdt : sp.ts (r + sp.k : Nat) ≤ tr.time i)
-    {l : SA.Lock} (hl : l ∈ (tr.state y i).ac.locks) (hlive : l.LiveAt sp (tr.time i)) :
+    {l : AC.Lock} (hl : l ∈ (tr.state y i).ac.locks) (hlive : l.LiveAt sp (tr.time i)) :
     r ≤ l.slot := by
   have hd := hS.run.time_nonneg i
-  have hwf : SA.LocksWF sp (tr.state y i).ac.locks := by
+  have hwf : AC.LocksWF sp (tr.state y i).ac.locks := by
     have h := Compose.locksWF_state (hS.run.upTo hd) (hS.noColl.upTo _) hy i
     rwa [RunTrace.upTo_state_of_le hS.run.time_mono le_rfl] at h
   have hcap := hwf.cap hl
-  have hsl := (SA.ts_le_iff_le_slot sp hd _).1 hdt
+  have hsl := (AC.ts_le_iff_le_slot sp hd _).1 hdt
   change sp.slot (tr.time i) ≤ l.expiry at hlive
   push_cast at hsl
   omega
@@ -113,23 +113,23 @@ theorem SeededRun.live_label
 /-- **The old family of slot `s` after a hand-over**: the members of the healed family of labels
 at most `s − 2`, and the optimistic origins of label `s − 1`. -/
 def SeededOld (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (g : Time) (r : Nat)
-    (b : Time) (s : Nat) (C : SA.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+    (b : Time) (s : Nat) (C : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   (∃ l, HealedOrigin tr H g r (r + sp.k - 1) C l b ∧ l + 2 ≤ s) ∨
-    ∃ x k CV, x ∈ H (tr.time k) ∧ SA.OptimisticLockAt tr.projAC x k (s - 1) C CV
+    ∃ x k CV, x ∈ H (tr.time k) ∧ AC.OptimisticLockAt tr.projAC x k (s - 1) C CV
 
-theorem seededOld_iff {s : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} :
+theorem seededOld_iff {s : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))} :
     SeededOld tr H g r b s C ↔ (∃ l, HealedOrigin tr H g r (r + sp.k - 1) C l b ∧ l + 2 ≤ s) ∨
-      ∃ x k CV, x ∈ H (tr.time k) ∧ SA.OptimisticLockAt tr.projAC x k (s - 1) C CV :=
+      ∃ x k CV, x ∈ H (tr.time k) ∧ AC.OptimisticLockAt tr.projAC x k (s - 1) C CV :=
   Iff.rfl
 
 /-- An optimistic origin of a label `m` has its event before `t_{m+1}`. -/
 theorem optimistic_time_lt (hrun : Growing.GoldilocksRun proposer dg H tr ini) {x : Fin sp.n}
-    {k m : Nat} {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (h : SA.OptimisticLockAt tr.projAC x k m C CV) : tr.time k < sp.ts (m + 1 : Nat) := by
+    {k m : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (h : AC.OptimisticLockAt tr.projAC x k m C CV) : tr.time k < sp.ts (m + 1 : Nat) := by
   obtain ⟨ℓ, A, _, hs, _⟩ := h
   change sp.slot (tr.time k) = m at hs
   by_contra ht
-  have hle := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg k) ((m + 1 : Nat) : Int)).1
+  have hle := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg k) ((m + 1 : Nat) : Int)).1
     (le_of_not_gt ht)
   rw [hs] at hle
   omega
@@ -137,7 +137,7 @@ theorem optimistic_time_lt (hrun : Growing.GoldilocksRun proposer dg H tr ini) {
 /-- **Every member of the old family is a member of the healed family**, of a label below `s`,
 given `t_s ≤ b` and `r + k ≤ s` (an optimistic origin of label `s − 1 ≥ r + k − 1`). -/
 theorem SeededOld.member (hrun : Growing.GoldilocksRun proposer dg H tr ini) {s : Nat}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} (h : SeededOld tr H g r b s C) (hsb : sp.ts s ≤ b)
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} (h : SeededOld tr H g r b s C) (hsb : sp.ts s ≤ b)
     (hrs : r + sp.k ≤ s) : ∃ l < s, HealedOrigin tr H g r (r + sp.k - 1) C l b := by
   have hk := sp.two_le_k
   rcases h with ⟨l, hC, hl⟩ | ⟨x, k, CV, hx, hO⟩
@@ -160,8 +160,8 @@ by `t_{s−1}`. -/
 theorem SeededRun.slot_timing
     (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini)) {s : Nat}
     (hs : σ + 1 ≤ s) :
-    0 < s ∧ r + sp.k ≤ s ∧ SA.gbar g + 2 * sp.Δ ≤ sp.ts ((s : Int) - 1) ∧
-      SA.gbar g + 2 * sp.Δ ≤ max (sp.ts ((s : Int) - 1) + 3 * sp.Δ) 0 := by
+    0 < s ∧ r + sp.k ≤ s ∧ AC.gbar g + 2 * sp.Δ ≤ sp.ts ((s : Int) - 1) ∧
+      AC.gbar g + 2 * sp.Δ ≤ max (sp.ts ((s : Int) - 1) + 3 * sp.Δ) 0 := by
   have hΔ := sp.toParams.hΔ
   have hrσ := hS.seed.timing.2.1
   have hk := sp.two_le_k
@@ -194,9 +194,9 @@ theorem seeded_proposer_holds
     (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hs : σ + 1 ≤ s) (hp : p ∈ H (tr.time i)) (hc : tr.projAC.CallAt p i ℓp)
     (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) (ht₁ : t₁ ≤ tr.time i) (hb : tr.time i ≤ b)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} (hC : SeededOld tr H g r b s C) :
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} (hC : SeededOld tr H g r b s C) :
     C ∈ ℓp.frame.tree ∨ Anc (tr.HonestBlocksAt H) C ℓp.frame.F := by
   have hΔ := sp.toParams.hΔ
   have hk := sp.two_le_k
@@ -212,7 +212,7 @@ theorem seeded_proposer_holds
     -- an honest slot-`(s−1)` voter, honest at `t_{s−1} + Δ`
     have hsb : sp.ts (s - 1 : Nat) + sp.Δ ≤ b := by
       have : sp.ts (s - 1 : Nat) + 4 * sp.Δ = sp.ts s := by
-        simp only [SAParams.ts]; push_cast [Nat.cast_sub (show 1 ≤ s by omega)]; ring
+        simp only [ACParams.ts]; push_cast [Nat.cast_sub (show 1 ≤ s by omega)]; ring
       linarith
     have hcount := faults_lt_voters hS.run hS.noColl hS.facts hS.committee (s := s - 1)
       (d := sp.ts (s - 1 : Nat) + sp.Δ) (by omega) le_rfl hsb (by linarith)
@@ -228,7 +228,7 @@ theorem seeded_proposer_holds
       (by omega) hHd hHdr (hFC.trans hCHd)).1
     exact mem_between hU hΦ hΦU hΦ.rooted.1 hHdt hFC hCHd
   · obtain ⟨-, -, hga, -⟩ := hS.slot_timing hs
-    have hρ : SA.gbar g ≤ sp.ts (r + sp.k - 1 : Nat) := by
+    have hρ : AC.gbar g ≤ sp.ts (r + sp.k - 1 : Nat) := by
       have := hS.gbar_le (show r ≤ r + sp.k - 1 by omega)
       linarith
     refine proposal_holds_old_from hS.run hS.noColl hS.sync
@@ -247,9 +247,9 @@ theorem seeded_walk_passes
     (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hs : σ + 1 ≤ s) (hp : p ∈ H (tr.time i)) (hc : tr.projAC.CallAt p i ℓp)
     (hcall : ℓp.call = .proposal)
-    (hd : (SA.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
+    (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) (ht₁ : t₁ ≤ tr.time i) (hb : tr.time i ≤ b)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} (hC : SeededOld tr H g r b s C) :
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} (hC : SeededOld tr H g r b s C) :
     Anc (tr.HonestBlocksAt H) C d.head := by
   have hΔ := sp.toParams.hΔ
   have hk := sp.two_le_k

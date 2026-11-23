@@ -28,9 +28,9 @@ prefix through it.
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -38,8 +38,8 @@ variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 private theorem acRun_prefix {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {d : Time}
     (hd : 0 ≤ d) :
-    SA.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d))
-      (SA.committeeStart sp.genesisRoot (Generic.dictOfTime sp cm)) := by
+    AC.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d))
+      (AC.committeeStart sp.genesisRoot (Generic.dictOfTime sp cm)) := by
   have h := Compose.goldilocks_ac_projection_from (hp.run.upTo hd) (hp.noColl.upTo d)
   rwa [RunTrace.upTo_projAC] at h
 
@@ -48,10 +48,10 @@ by `b`. The quorum intersection is charged at the later write. -/
 theorem optimistic_sources_compatible_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {r q s : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time q))
-    (hrb : tr.time r ≤ b) (hqb : tr.time q ≤ b) (hgs : SA.gbar g ≤ sp.ts s)
-    {C D : SA.Blk sp.n (List (FG.Att sp.n))} {CV DV : Set (Vote sp.n)}
-    (hC : SA.OptimisticLockAt tr.projAC x r s C CV)
-    (hD : SA.OptimisticLockAt tr.projAC y q s D DV) :
+    (hrb : tr.time r ≤ b) (hqb : tr.time q ≤ b) (hgs : AC.gbar g ≤ sp.ts s)
+    {C D : AC.Blk sp.n (List (FG.Att sp.n))} {CV DV : Set (Vote sp.n)}
+    (hC : AC.OptimisticLockAt tr.projAC x r s C CV)
+    (hD : AC.OptimisticLockAt tr.projAC y q s D DV) :
     Compatible (tr.HonestBlocksAt H) C D := by
   have hm := hp.run.time_mono
   have hr0 := hp.run.time_nonneg r
@@ -62,96 +62,96 @@ theorem optimistic_sources_compatible_at {cm : Time → Finset (Fin sp.n)} {βK 
   have hrunR := acRun_prefix hp hr0
   have hrunQ := acRun_prefix hp hq0
   have hrunD := acRun_prefix hp hd0
-  have hC' := (SA.upTo_optimisticLockAt hm).mpr ⟨le_rfl, hC⟩
-  have hD' := (SA.upTo_optimisticLockAt hm).mpr ⟨le_rfl, hD⟩
+  have hC' := (AC.upTo_optimisticLockAt hm).mpr ⟨le_rfl, hC⟩
+  have hD' := (AC.upTo_optimisticLockAt hm).mpr ⟨le_rfl, hD⟩
   obtain ⟨ell, A, hpt, hsl, hsel, _⟩ := hC'
   obtain ⟨ell', A', hpt', hsl', hsel', _⟩ := hD'
-  have hU := (SA.frameIn_of_callAt hrunR.localRun hx hpt.1).2
-  have hU' := (SA.frameIn_of_callAt hrunQ.localRun hy hpt'.1).2
+  have hU := (AC.frameIn_of_callAt hrunR.localRun hx hpt.1).2
+  have hU' := (AC.frameIn_of_callAt hrunQ.localRun hy hpt'.1).2
   have hsubR := RunTrace.honestBlocks_upTo_subset hm (H := H) hr0
   have hsubQ := RunTrace.honestBlocks_upTo_subset hm (H := H) hq0
-  unfold SA.optimisticSelect at hsel hsel'
+  unfold AC.optimisticSelect at hsel hsel'
   dsimp only at hsel hsel'
   split_ifs at hsel
   split_ifs at hsel'
-  have h34 := (SA.deepest_mem hsel).1.2.1
-  have h34' := (SA.deepest_mem hsel').1.2.1
+  have h34 := (AC.deepest_mem hsel).1.2.1
+  have h34' := (AC.deepest_mem hsel').1.2.1
   rw [hsl] at h34
   rw [hsl'] at h34'
   -- both quorums are of slot-`s` committee members, half of whom are honest at the later write
-  have hPK := fun t => SA.CommitteePAt.upTo hm hp.run.antitone hp.committeeFacts.hP t
-  have hOK : SA.optimisticVoters sp A ell.frame s C ⊆ (Generic.dictOfTime sp cm).committee s :=
+  have hPK := fun t => AC.CommitteePAt.upTo hm hp.run.antitone hp.committeeFacts.hP t
+  have hOK : AC.optimisticVoters sp A ell.frame s C ⊆ (Generic.dictOfTime sp cm).committee s :=
     fun _ ⟨v, hv, hvu, _⟩ => hvu ▸ (hPK (tr.time r)).2 x hx r ell A hpt s v hv
-  have hOK' : SA.optimisticVoters sp A' ell'.frame s D ⊆
+  have hOK' : AC.optimisticVoters sp A' ell'.frame s D ⊆
       (Generic.dictOfTime sp cm).committee s :=
     fun _ ⟨v, hv, hvu, _⟩ => hvu ▸ (hPK (tr.time q)).2 y hy q ell' A' hpt' s v hv
   have hsr : sp.ts s ≤ tr.time r :=
-    (SA.ts_le_iff_le_slot sp hr0 s).2 (by rw [show sp.slot (tr.time r) = s from hsl])
+    (AC.ts_le_iff_le_slot sp hr0 s).2 (by rw [show sp.slot (tr.time r) = s from hsl])
   have hf := hp.committee_cs2_at hgs (hsr.trans hrb) hd0 hdb
   rw [← hp.committeeFacts.hsize s] at hf
   obtain ⟨z, ⟨⟨v, hv, rfl, R, hR, hRr, hCR⟩,
       ⟨v', hv', hvz, R', hR', hRr', hDR⟩⟩, hz⟩ :=
-    SA.quorums_meet _ (hp.committeeFacts.hsize s) hOK hOK' h34 h34' hf
+    AC.quorums_meet _ (hp.committeeFacts.hsize s) hOK hOK' h34 h34' hf
   have hz := not_not.mp hz
   have hzr : v.val ∈ H (tr.time r) := hp.run.antitone (le_max_left _ _) hz
   have hzq : v'.val ∈ H (tr.time q) := hp.run.antitone (le_max_right _ _) (hvz ▸ hz)
-  obtain ⟨hvs, i, _, e, he, rfl⟩ := SA.optimisticPoint_pool_vote hrunR hx hpt hv hzr
-  obtain ⟨hvs', i', _, e', he', rfl⟩ := SA.optimisticPoint_pool_vote hrunQ hy hpt' hv' hzq
+  obtain ⟨hvs, i, _, e, he, rfl⟩ := AC.optimisticPoint_pool_vote hrunR hx hpt hv hzr
+  obtain ⟨hvs', i', _, e', he', rfl⟩ := AC.optimisticPoint_pool_vote hrunQ hy hpt' hv' hzq
   rw [hvz] at he'
-  obtain ⟨hit, he₀⟩ := SA.upTo_voteAt.mp he
-  obtain ⟨hit', he₀'⟩ := SA.upTo_voteAt.mp he'
-  have heD := (SA.upTo_voteAt (d := max (tr.time r) (tr.time q))).mpr
+  obtain ⟨hit, he₀⟩ := AC.upTo_voteAt.mp he
+  obtain ⟨hit', he₀'⟩ := AC.upTo_voteAt.mp he'
+  have heD := (AC.upTo_voteAt (d := max (tr.time r) (tr.time q))).mpr
     ⟨hit.trans (le_max_left _ _), he₀⟩
-  have heD' := (SA.upTo_voteAt (d := max (tr.time r) (tr.time q))).mpr
+  have heD' := (AC.upTo_voteAt (d := max (tr.time r) (tr.time q))).mpr
     ⟨hit'.trans (le_max_right _ _), he₀'⟩
-  obtain ⟨_, rfl⟩ := SA.one_vote_per_slotU sp _ ro _ _ _ hrunD.localRun.toU _ hz i i' e e' heD
+  obtain ⟨_, rfl⟩ := AC.one_vote_per_slotU sp _ ro _ _ _ hrunD.localRun.toU _ hz i i' e e' heD
     heD' (hvs.trans hvs'.symm)
   obtain rfl : R = R' := hUc.1 (hsubR (hU hR)) (hsubQ (hU' hR')) (hRr.trans hRr'.symm)
-  exact SA.anc_total hUc ((hCR.mono hU).mono hsubR) ((hDR.mono hU').mono hsubQ)
+  exact AC.anc_total hUc ((hCR.mono hU).mono hsubR) ((hDR.mono hU').mono hsubQ)
 
 /-- **An optimistic source has an honest supporting vote no later than its write**, for a
 writer honest at its write by `b`. The supporter is honest at the write. -/
 theorem optimistic_supporter_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r)) (hrb : tr.time r ≤ b)
-    (hgs : SA.gbar g ≤ sp.ts s)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hop : SA.OptimisticLockAt tr.projAC x r s B CV) :
+    (hgs : AC.gbar g ≤ sp.ts s)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hop : AC.OptimisticLockAt tr.projAC x r s B CV) :
     B ∈ (tr.state x r).fg.tree ∧ ∃ z q, z ∈ H (tr.time r) ∧ q ≤ r ∧ ∃ e,
-      SA.VoteAt tr.projAC z q e ∧ e.msg.slot = s ∧
-      SA.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
+      AC.VoteAt tr.projAC z q e ∧ e.msg.slot = s ∧
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
   have hm := hp.run.time_mono
   have hr0 := hp.run.time_nonneg r
   have hrun := acRun_prefix hp hr0
   have hsub := RunTrace.honestBlocks_upTo_subset hm (H := H) hr0
-  have hop' := (SA.upTo_optimisticLockAt hm).mpr ⟨le_rfl, hop⟩
+  have hop' := (AC.upTo_optimisticLockAt hm).mpr ⟨le_rfl, hop⟩
   obtain ⟨ell, A, hpt, hsl, hsel, _⟩ := hop'
-  have hU := (SA.frameIn_of_callAt hrun.localRun hx hpt.1).2
+  have hU := (AC.frameIn_of_callAt hrun.localRun hx hpt.1).2
   have hpt₀ : tr.projAC.CallAt x r ell := ((Trace.upTo_callAt _).mp hpt.1).2
-  unfold SA.optimisticSelect at hsel
+  unfold AC.optimisticSelect at hsel
   dsimp only at hsel
   split_ifs at hsel
-  refine ⟨(frame_tree_subset_at hp.run hp.noColl hx hpt₀).2 (SA.deepest_mem hsel).1.1, ?_⟩
-  have h34 := (SA.deepest_mem hsel).1.2.1
+  refine ⟨(frame_tree_subset_at hp.run hp.noColl hx hpt₀).2 (AC.deepest_mem hsel).1.1, ?_⟩
+  have h34 := (AC.deepest_mem hsel).1.2.1
   rw [hsl] at h34
   -- the quorum is of slot-`s` committee members, fewer than half of whom are faulty at the write
-  have hOK : SA.optimisticVoters sp A ell.frame s B ⊆ (Generic.dictOfTime sp cm).committee s :=
+  have hOK : AC.optimisticVoters sp A ell.frame s B ⊆ (Generic.dictOfTime sp cm).committee s :=
     fun _ ⟨v, hv, hvu, _⟩ => hvu ▸
-      (SA.CommitteePAt.upTo hm hp.run.antitone hp.committeeFacts.hP (tr.time r)).2 x hx r ell A
+      (AC.CommitteePAt.upTo hm hp.run.antitone hp.committeeFacts.hP (tr.time r)).2 x hx r ell A
         hpt s v hv
   have hsr : sp.ts s ≤ tr.time r :=
-    (SA.ts_le_iff_le_slot sp hr0 s).2 (by rw [show sp.slot (tr.time r) = s from hsl])
+    (AC.ts_le_iff_le_slot sp hr0 s).2 (by rw [show sp.slot (tr.time r) = s from hsl])
   have hf := hp.committee_cs2_at hgs (hsr.trans hrb) hr0 hrb
   have hpos := hp.committee_pos
   obtain ⟨z, hzO, hz⟩ :=
     Set.exists_mem_notMem_of_ncard_lt_ncard
       (s := (Generic.dictOfTime sp cm).committee s ∩ (H (tr.time r))ᶜ)
-      (t := SA.optimisticVoters sp A ell.frame s B) (by omega)
+      (t := AC.optimisticVoters sp A ell.frame s B) (by omega)
   have hzH : z ∈ H (tr.time r) := by_contra fun h => hz ⟨hOK hzO, h⟩
   rw [← hsl] at hzO
   obtain ⟨v, hv, rfl, R, hR, hRr, hBR⟩ := hzO
-  obtain ⟨hvs, q, hqr, e, he, rfl⟩ := SA.optimisticPoint_pool_vote hrun hx hpt hv hzH
-  exact ⟨_, q, hzH, hqr, e, (SA.upTo_voteAt.mp he).2, hvs.trans hsl, R,
+  obtain ⟨hvs, q, hqr, e, he, rfl⟩ := AC.optimisticPoint_pool_vote hrun hx hpt hv hzH
+  exact ⟨_, q, hzH, hqr, e, (AC.upTo_voteAt.mp he).2, hvs.trans hsl, R,
     hsub (hU hR), hRr, (hBR.mono hU).mono hsub⟩
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo

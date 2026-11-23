@@ -75,7 +75,7 @@ theorem healthy_preparation_timing (run : (Sys (goldilocks S) V).Run)
         a ≤ ready + (healthyResetCoeff S index : Time) * sp.Δ + (healthyResetSlack S index : Time) →
         l ≤ sp.slot a →
         max ready (max (Healing.drainTime sp a) (max (sp.ts w)
-            (max (SA.gbar gst + 4 * sp.Δ) (max 0 (sp.ts (l + 1 : Nat)))))) ≤
+            (max (AC.gbar gst + 4 * sp.Δ) (max 0 (sp.ts (l + 1 : Nat)))))) ≤
           ready + ((healthyResetCoeff S index : Time) + 8 * (S.k : Time) + 20) * sp.Δ := by
   intro sp ready heal
   have hd : (1 : Time) ≤ run.1.ΔAC := run.1.ΔAC_pos
@@ -95,18 +95,18 @@ theorem healthy_preparation_timing (run : (Sys (goldilocks S) V).Run)
     rw [hready]
     exact add_nonneg (add_nonneg (le_max_right _ _) (mul_nonneg (Nat.cast_nonneg _) hD0))
       zero_le_one
-  have hgr : SA.gbar gst + 4 * sp.Δ ≤ ready := by
+  have hgr : AC.gbar gst + 4 * sp.Δ ≤ ready := by
     change max gst 0 + _ ≤ _
     rw [hready, hΔ]
     linarith only [mul_le_mul_of_nonneg_right hC (zero_le_one.trans hd), hd]
   -- the base slot `w = slot(ready) + 1`: `ready < t_w ≤ ready + 4Δ`
   have hts (s j : Nat) : sp.ts (s + j : Nat) = sp.ts s + 4 * sp.Δ * j := by
-    simp only [SA.SAParams.ts]; push_cast; ring
+    simp only [AC.ACParams.ts]; push_cast; ring
   set w : Nat := sp.slot ready + 1 with hw
   have hw0 : sp.ts (sp.slot ready : Nat) ≤ ready :=
-    (SA.ts_le_iff_le_slot sp hr0 _).mpr le_rfl
+    (AC.ts_le_iff_le_slot sp hr0 _).mpr le_rfl
   have hw1 : ready < sp.ts w := by
-    have h := (SA.ts_le_iff_le_slot sp hr0 (w : Int)).not.mpr (by rw [hw]; push_cast; omega)
+    have h := (AC.ts_le_iff_le_slot sp hr0 (w : Int)).not.mpr (by rw [hw]; push_cast; omega)
     exact lt_of_not_ge h
   have hw2 : sp.ts w ≤ ready + 4 * sp.Δ := by
     rw [hw, hts]; push_cast; linarith only [hw0]
@@ -121,7 +121,7 @@ theorem healthy_preparation_timing (run : (Sys (goldilocks S) V).Run)
   -- the reset, its drain and its seed
   rw [healthyResetSlack_val] at ha
   push_cast at ha
-  have hsa : sp.ts (sp.slot a : Nat) ≤ a := (SA.ts_le_iff_le_slot sp ha0 _).mpr le_rfl
+  have hsa : sp.ts (sp.slot a : Nat) ≤ a := (AC.ts_le_iff_le_slot sp ha0 _).mpr le_rfl
   have hdrain : Healing.drainTime sp a ≤ a + (8 * (S.k : Time) + 20) * sp.Δ := by
     rw [Healing.drainTime_eq, show sp.slot a + 2 * sp.k + 5 = sp.slot a + (2 * S.k + 5) from rfl,
       hts]
@@ -129,7 +129,7 @@ theorem healthy_preparation_timing (run : (Sys (goldilocks S) V).Run)
   have hseed : sp.ts (l + 1 : Nat) ≤ a + 4 * sp.Δ := by
     have hl : ((l + 1 : Nat) : Int) ≤ (sp.slot a : Int) + 1 := by push_cast; omega
     have := mul_le_mul_of_nonneg_left hl (mul_nonneg zero_le_four hD0)
-    simp only [SA.SAParams.ts] at hsa ⊢
+    simp only [AC.ACParams.ts] at hsa ⊢
     linarith only [this, hsa]
   exact max_le (by linarith only [hRD, hkD, hD0]) (max_le (by linarith only [hdrain, ha])
     (max_le (by linarith only [hw2, hRD, hkD, hD0])

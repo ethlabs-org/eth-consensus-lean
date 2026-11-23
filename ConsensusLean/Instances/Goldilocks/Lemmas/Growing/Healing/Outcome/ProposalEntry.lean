@@ -15,9 +15,9 @@ crossing supplier of the proposer's fork-choice root and height floor
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -28,7 +28,7 @@ theorem proposal_entry_below_old_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts u)
-    (hib : tr.time i ≤ b) {E C : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hib : tr.time i ≤ b) {E C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hE : E ∈ (tr.state p i).fg.tree) (hET : ((tr.state p i).fg.σ E.root).Th = E.root)
     (hEh : HZ tr H g + 1 ≤ ((tr.state p i).fg.σ E.root).h) (hEC : (tr.state p i).fg.Anc E C)
     (hlt : ((tr.state p i).fg.σ E.root).h < ((tr.state p i).fg.σ C.root).h) :

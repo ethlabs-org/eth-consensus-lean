@@ -13,9 +13,9 @@ requiring a block's original holder to remain honest at another observation.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
@@ -24,7 +24,7 @@ theorem store_anc_of_honest_anc_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
-    {A C : SA.Blk sp.n (List (FG.Att sp.n))}
+    {A C : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : Anc (tr.HonestBlocksAt H) A C) (hC : C ∈ (tr.state y k).fg.tree) :
     (tr.state y k).fg.Anc A C :=
   Generic.store_anc_of_honest_anc_at_from hrun.toLocalRun hnc ht hle hy h hC
@@ -32,7 +32,7 @@ theorem store_anc_of_honest_anc_at
 /-- Ancestry in a tree observed while honest lies in the historical honest universe. -/
 theorem honest_anc_of_store_anc_at {y : Fin sp.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
-    {A C : SA.Blk sp.n (List (FG.Att sp.n))} (h : (tr.state y k).fg.Anc A C) :
+    {A C : AC.Blk sp.n (List (FG.Att sp.n))} (h : (tr.state y k).fg.Anc A C) :
     Anc (tr.HonestBlocksAt H) A C :=
   Generic.honest_anc_of_store_anc_at_from ht hle hy h
 
@@ -42,7 +42,7 @@ theorem mem_of_honest_anc_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
-    {A C : SA.Blk sp.n (List (FG.Att sp.n))}
+    {A C : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : Anc (tr.HonestBlocksAt H) A C) (hC : C ∈ (tr.state y k).fg.tree) :
     A ∈ (tr.state y k).fg.tree :=
   Generic.mem_of_honest_anc_at_from hrun.toLocalRun hnc ht hle hy h hC
@@ -54,7 +54,7 @@ theorem σ_eq_honest_at
     (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {i j : Nat} {t u : Time}
     (ht : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t) (hy : y ∈ H t)
     (hu : 0 ≤ u) (hle' : ∀ q < j, tr.time q ≤ u) (hz : z ∈ H u)
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBy : B ∈ (tr.state y i).fg.tree) (hBz : B ∈ (tr.state z j).fg.tree) :
     (tr.state y i).fg.σ B.root = (tr.state z j).fg.σ B.root :=
   Generic.σ_eq_honest_at_from hrun.toLocalRun hnc ht hle hy hu hle' hz hBy hBz

@@ -30,9 +30,9 @@ own cut:
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
@@ -47,14 +47,14 @@ theorem restart_before_unanimous_slot_at
   have hca := hp.cutZ_lt_reset_at
   have ha0 : 0 ≤ a := by
     have := Healing.lt_cutZ sp g
-    have := SA.gbar_nonneg g
+    have := AC.gbar_nonneg g
     linarith [sp.toParams.hΔ]
   rw [Healing.cutZ_eq] at hca
-  have hqa := (SA.ts_le_iff_le_slot sp ha0 _).1 hca.le
+  have hqa := (AC.ts_le_iff_le_slot sp ha0 _).1 hca.le
   rw [Healing.drainTime_eq] at hR
-  have hAu := (SA.ts_le_iff sp).1 hR
+  have hAu := (AC.ts_le_iff sp).1 hR
   apply (hp.restart_le_before_at hy hr hrb).trans
-  apply (SA.ts_le_iff sp).2
+  apply (AC.ts_le_iff sp).2
   push_cast at hqa hAu ⊢
   omega
 
@@ -63,15 +63,15 @@ slot votes in it by then. -/
 theorem honest_votes_in_slot_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {u : Nat} (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u)
+    {u : Nat} (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u)
     (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat)) (hub : sp.ts u + sp.Δ ≤ b) :
     ∀ y, y ∈ H (sp.ts u + sp.Δ) → y ∈ (Generic.dictOfTime sp cm).committee u →
-      ∃ j e, SA.VoteAt tr.projAC y j e ∧ e.msg.slot = u ∧ tr.time j ≤ sp.ts u + sp.Δ := by
+      ∃ j e, AC.VoteAt tr.projAC y j e ∧ e.msg.slot = u ∧ tr.time j ≤ sp.ts u + sp.Δ := by
   intro y hy hyK
   have hΔ := sp.toParams.hΔ
-  have hd0 : 0 ≤ sp.ts u + sp.Δ := by have := SA.gbar_nonneg g; linarith
+  have hd0 : 0 ≤ sp.ts u + sp.Δ := by have := AC.gbar_nonneg g; linarith
   have hS := healthy_base_of_reset_catch_before_at hp hd0 hub
-  obtain ⟨j, e, ⟨ℓ, hcj, hej⟩, hs, hjt⟩ := SA.honest_votes_in_slot_before hS hgu le_rfl
+  obtain ⟨j, e, ⟨ℓ, hcj, hej⟩, hs, hjt⟩ := AC.honest_votes_in_slot_before hS hgu le_rfl
     (fun x hx r hr hrs => by
       obtain ⟨ℓ, hcr, hrl⟩ := hrs
       have hcr' := ((Trace.upTo_callAt _).mp hcr).2
@@ -83,12 +83,12 @@ theorem honest_votes_in_slot_at
 /-- A high origin before a unanimous post-drain slot `u` is below its proposal `P`. -/
 theorem old_origin_below_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ tr.HonestBlocksAt H)
-    (hun : ∀ y j e, y ∈ H (tr.time j) → SA.VoteAt tr.projAC y j e → tr.time j ≤ b →
+    (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
-    (hgu : SA.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    (hub : sp.ts u + sp.Δ ≤ b) {x : Fin sp.n} {r m : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hub : sp.ts u + sp.Δ ≤ b) {x : Fin sp.n} {r m : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r m B) (ht : tr.time r < sp.ts u) :
     Anc (tr.HonestBlocksAt H) B P := by
   have hΔ := sp.toParams.hΔ
@@ -97,14 +97,14 @@ theorem old_origin_below_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : �
     rcases hfl with ⟨ell, C, hu, _⟩ | ⟨ell, A, _, hs, _⟩
     · have htime : tr.time r = sp.ts m + 6 * sp.Δ := hu.2.2.1
       have hts : sp.ts m < sp.ts u := by linarith
-      have := (SA.ts_lt_iff sp).1 hts
+      have := (AC.ts_lt_iff sp).1 hts
       omega
     · have hs' : sp.slot (tr.time r) = m := hs
-      have hlt := (SA.ts_le_iff_le_slot sp (hp.run.time_nonneg r) (u : Int)).not.mp
+      have hlt := (AC.ts_le_iff_le_slot sp (hp.run.time_nonneg r) (u : Int)).not.mp
         (not_le.mpr ht)
       omega
   have hT0 : 0 ≤ sp.ts u + sp.Δ := by
-    have := SA.gbar_nonneg g; linarith
+    have := AC.gbar_nonneg g; linarith
   obtain ⟨w, hwK, hw⟩ := hp.committee_honest_nonempty_at (s := u) (by linarith)
     (by linarith) hT0 hub
   obtain ⟨q, e, hv, hs, hq⟩ := honest_votes_in_slot_at hp hgu hR hub w hw hwK

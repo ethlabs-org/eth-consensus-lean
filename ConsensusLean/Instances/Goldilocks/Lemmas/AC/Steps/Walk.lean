@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 
 public section
 
-/-! # Goldilocks SA: the head walk
+/-! # Goldilocks AC: the head walk
 
 Facts about `ghost`, the walk behind every head: it only descends (each step goes to a child in
 the walked tree), and it passes a block `C` when, at every block between its start and `C`, the
@@ -13,9 +13,9 @@ enough steps (one per slot between the start and `C`, since slots increase along
 in a coherent set). The vote-transfer lemmas (A1.2–A1.4, A1.8) supply the best-child condition
 from their counting arguments. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams}
+variable {FGP : Type} {sp : ACParams}
 
 /-- The best of a set by score (ties by root) is unique. -/
 theorem IsBest.unique {score : Blk sp.n FGP → Nat} {S : Set (Blk sp.n FGP)} {C D : Blk sp.n FGP}
@@ -272,6 +272,6 @@ theorem ghost_visits {S tree : Set (Blk sp.n FGP)} (hS : Coherent S) (hT : tree 
       exact hg
     · exact absurd (Anc.antisymm hS haX hX) (Ne.symm hXa)
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

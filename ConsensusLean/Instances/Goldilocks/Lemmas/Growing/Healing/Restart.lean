@@ -10,9 +10,9 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
@@ -24,7 +24,7 @@ theorem ResetPremisesUpTo.restart_le_before_at
   by_contra hlt
   obtain ⟨u, -, huk, hu, hprev⟩ := hp.run.sleep_of_restart y k hy hk
   have hp₀ : gbar g ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
-    have h := (SA.ts_le_iff_le_slot sp (gbar_nonneg g)
+    have h := (AC.ts_le_iff_le_slot sp (gbar_nonneg g)
       ((sp.slot (gbar g) + 1 : Nat) : Int)).not.mpr (by push_cast; omega)
     exact (not_le.mp h).le
   by_cases hgu : gbar g ≤ u
@@ -33,7 +33,7 @@ theorem ResetPremisesUpTo.restart_le_before_at
     have hy' := hp.run.antitone htk hy
     obtain ⟨j, _x, hne, hcs, -⟩ := hp.run.tick_of_awake y _ hy'
       ((gbar_nonneg g).trans hp₀)
-      ⟨4 * ((sp.slot (gbar g) + 1 : Nat) : Int), by simp only [SAParams.ts]; ring⟩
+      ⟨4 * ((sp.slot (gbar g) + 1 : Nat) : Int), by simp only [ACParams.ts]; ring⟩
       (hp.awake y _ hy' hp₀ (htk.trans hkb))
     obtain ⟨hn, ht, -, -, hl⟩ := hcs 0 (List.length_pos_of_ne_nil hne)
     simp only [Nat.add_zero] at hn ht hl

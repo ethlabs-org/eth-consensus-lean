@@ -32,7 +32,7 @@ and fails after the reset, so this file gives no range after the reset. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open SA (gbar)
+open AC (gbar)
 
 variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n}

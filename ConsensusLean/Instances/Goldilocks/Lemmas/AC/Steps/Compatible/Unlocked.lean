@@ -6,7 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 
 public section
 
-/-! # Goldilocks SA: the locks of a node after its slot-`(s+1)` unlocking (A1.9, case (i))
+/-! # Goldilocks AC: the locks of a node after its slot-`(s+1)` unlocking (A1.9, case (i))
 
 Let an honest node write a fast lock of slot `s` on `D ⪰ B` with counted votes `CV`, under
 `Carry(s, S, B)`. At an honest `x`'s slot-`(s+1)` vote, the counted validators (at least half of
@@ -16,11 +16,11 @@ moves every lock of a slot below `s` to a block compatible with `B` (`unlock_com
 and the fast locks written after the vote are of slot `s` or later: every lock of a slot below
 `s` that `x` holds after the vote is on a block compatible with `B`. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : SATrace sp FGP ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → SAState sp.n}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → ACState sp.n}
 
 /-- The counted votes of an honest fast lock of slot `s` on `B`: their validators are at least
 half of the committee, and each is a slot-`s` vote whose head, of slot at most `s`, extends `B`
@@ -70,6 +70,6 @@ theorem fastLock_counted (hrun : ACRun proposer tr H U ini)
       have := frame_slot_le sp hr hw hpt.1 R hR
       omega
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

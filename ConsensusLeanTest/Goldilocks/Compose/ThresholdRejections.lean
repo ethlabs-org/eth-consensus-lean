@@ -27,7 +27,7 @@ conflicting children `B`, `C` of `g`:
 
 namespace Consensus.Goldilocks.Test.ThresholdRejections
 
-open SA
+open AC
 
 /-- `n` validators, `Δ = 1`, slot `s` starts at `4s`, genesis root `0`. -/
 abbrev Pn (n : Nat) (hn : 1 ≤ n) : Params where
@@ -42,8 +42,8 @@ abbrev Pn (n : Nat) (hn : 1 ≤ n) : Params where
   genesisRoot := 0
   δt := 2
 
-/-- The SA parameters on `Pn n`, `k = c = 2`. -/
-abbrev spn (n : Nat) (hn : 1 ≤ n) : SAParams where
+/-- The AC parameters on `Pn n`, `k = c = 2`. -/
+abbrev spn (n : Nat) (hn : 1 ≤ n) : ACParams where
   toParams := Pn n hn
   slotTime_eq := fun s => by change 4 * (s : Int) = 4 * 1 * s; ring
   k := 2
@@ -129,7 +129,7 @@ end Frame
 /-! ## MajorityChain -/
 
 /-- Two validators. -/
-abbrev sp2 : SAParams := spn 2 (by norm_num)
+abbrev sp2 : ACParams := spn 2 (by norm_num)
 
 /-- One slot-`0` vote for `B` (validator `0`) and one for `C` (validator `1`), all support. -/
 def V2 : View sp2.n :=
@@ -168,11 +168,11 @@ theorem majorityChain_needs_strict_majority :
 /-! ## OptimisticChain -/
 
 /-- Three validators. -/
-abbrev sp3 : SAParams := spn 3 (by norm_num)
+abbrev sp3 : ACParams := spn 3 (by norm_num)
 
 /-- The slot-`0` pool: `0` votes `B`, `1` votes `B` and `C`, `2` votes `C`. -/
-def A3 : SAState sp3.n :=
-  { SAState.initial 0 with pool := fun _ => [⟨0, 0, 1⟩, ⟨1, 0, 1⟩, ⟨1, 0, 2⟩, ⟨2, 0, 2⟩] }
+def A3 : ACState sp3.n :=
+  { ACState.initial 0 with pool := fun _ => [⟨0, 0, 1⟩, ⟨1, 0, 1⟩, ⟨1, 0, 2⟩, ⟨2, 0, 2⟩] }
 
 theorem equivocators_A3 : equivocators {x | x ∈ A3.pool 0} ⊆ {1} := by
   rintro i ⟨x, hx, y, hy, hne, rfl, hyi⟩

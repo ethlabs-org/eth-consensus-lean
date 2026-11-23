@@ -23,9 +23,9 @@ Each compatibility comes into the prefix from the blocks held while honest (`com
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Payload Vote)
+open AC (ACParams ReplayOrder Payload Vote)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -52,8 +52,8 @@ private theorem record_interval_upTo (hinv : ∀ i, OutageLockInv D i) {y : Fin 
   refine ⟨fun q hiq hqj => Or.inl ?_⟩
   have hqt : tr.time q ≤ t := hjt q hqj
   have hyq : y ∈ H (tr.time q) := D.hrun.antitone hqt hy
-  refine ⟨(fun C => ∃ s CV, SA.ResultAt (tr.upTo t).projAC y q s C CV ∨
-    SA.OptimisticLockAt (tr.upTo t).projAC y q s C CV), ?_, ?_, ?_⟩
+  refine ⟨(fun C => ∃ s CV, AC.ResultAt (tr.upTo t).projAC y q s C CV ∨
+    AC.OptimisticLockAt (tr.upTo t).projAC y q s C CV), ?_, ?_, ?_⟩
   · by_cases hcall : ∃ ell, (tr.upTo t).projAC.CallAt y q ell
     · obtain ⟨ell, hcall⟩ := hcall
       have hw := call_writes hac.localRun hy hcall
@@ -67,7 +67,7 @@ private theorem record_interval_upTo (hinv : ∀ i, OutageLockInv D i) {y : Fin 
       exact writes_iff.mpr .refl
   · rintro C ⟨s, CV, hR | hO⟩
     · rw [hprojT] at hR
-      obtain ⟨-, hR⟩ := (sa_resultAt_upTo hm).1 hR
+      obtain ⟨-, hR⟩ := (ac_resultAt_upTo hm).1 hR
       obtain ⟨ℓ, hu, hC, -⟩ := id hR
       have ht : tr.time q = sp.ts s + 6 * sp.Δ := hu.2.2.1
       have hqi := hm hiq
@@ -75,20 +75,20 @@ private theorem record_interval_upTo (hinv : ∀ i, OutageLockInv D i) {y : Fin 
         by_contra h
         have := ts_le_ts (sp := sp) (show s + 1 ≤ D.r by omega)
         have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-          simp only [SAParams.ts]; push_cast; ring
+          simp only [ACParams.ts]; push_cast; ring
         linarith
-      exact down C (mem_upTo_of_frame D.hrun hy hqt hu.1 (SA.deepest_mem hC).1.1)
+      exact down C (mem_upTo_of_frame D.hrun hy hqt hu.1 (AC.deepest_mem hC).1.1)
         ((hinv (q + 1)).results y q (Nat.lt_succ_self q) hyq s C CV hR (Or.inr hrs))
     · rw [hprojT] at hO
-      obtain ⟨-, hO⟩ := (sa_optimisticLockAt_upTo hm).1 hO
-      have hfl : SA.FastLockAt tr.projAC y q s C CV := Or.inr hO
+      obtain ⟨-, hO⟩ := (ac_optimisticLockAt_upTo hm).1 hO
+      have hfl : AC.FastLockAt tr.projAC y q s C CV := Or.inr hO
       have hCt : ∃ ℓ, tr.projAC.CallAt y q ℓ ∧ C ∈ ℓ.frame.tree := by
         obtain ⟨ℓ, A, hpt, -, hsel, -⟩ := id hO
         refine ⟨ℓ, hpt.1, ?_⟩
-        unfold SA.optimisticSelect at hsel
+        unfold AC.optimisticSelect at hsel
         dsimp only at hsel
         split_ifs at hsel
-        exact (SA.deepest_mem hsel).1.1
+        exact (AC.deepest_mem hsel).1.1
       obtain ⟨ℓ, hcq, hCt⟩ := hCt
       refine down C (mem_upTo_of_frame D.hrun hy hqt hcq hCt)
         (fastLock_compatible_at (hinv (q + 1)).toOutageVoteInv hyq hfl (fun v hv hvH => ?_)
@@ -110,12 +110,12 @@ whose result `C` extends `P`, the effective record of the updater extends `P` at
 `i` read at a time `t` at which it is honest (every cut before `i` at a time `≤ t`), whether the
 result is accepted or vetoed. -/
 theorem record_above_from_at (hinv : ∀ i, OutageLockInv D i) {w : Fin sp.n} {c m : Nat}
-    {ℓ : ACLabel (SA.goldilocksSA sp (List (FG.Att sp.n)) ro)}
-    (hu : SA.UpdateAt tr.projAC w c m ℓ) {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (Vote sp.n)} (hR : SA.ResultAt tr.projAC w c m C CV) (hrm : D.r ≤ m)
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    (hu : AC.UpdateAt tr.projAC w c m ℓ) {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (Vote sp.n)} (hR : AC.ResultAt tr.projAC w c m C CV) (hrm : D.r ≤ m)
     (hPC : Anc (tr.HonestBlocksAt H) D.P C) :
     ∀ i t, c < i → 0 ≤ t → (∀ k < i, tr.time k ≤ t) → w ∈ H t →
-      Anc (tr.HonestBlocksAt H) D.P ((SA.lookup (Node.frame (tr.state w i))
+      Anc (tr.HonestBlocksAt H) D.P ((AC.lookup (Node.frame (tr.state w i))
         (tr.state w i).ac.latestConfirmed).getD (tr.state w i).fg.F) := by
   intro i t hci ht0 hit hw
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -131,18 +131,18 @@ theorem record_above_from_at (hinv : ∀ i, OutageLockInv D i) {w : Fin sp.n} {c
   have hCU : C ∈ (tr.upTo t).HonestBlocks (H t) := by
     obtain ⟨ℓ', hu', hC, -⟩ := id hR
     obtain rfl : ℓ' = ℓ := Option.some.inj (hu'.1.2.symm.trans hu.1.2)
-    exact mem_upTo_of_frame D.hrun hw hct hu.1 (SA.deepest_mem hC).1.1
+    exact mem_upTo_of_frame D.hrun hw hct hu.1 (AC.deepest_mem hC).1.1
   have hPC' := RunTrace.anc_upTo_of_right D.hrun.toLocalRun D.hnc ht0 hCU hPC
   have hPU : D.P ∈ (tr.upTo t).HonestBlocks (H t) := by
     by_cases hPCe : D.P = C
     · exact hPCe ▸ hCU
     · exact (Anc.mem hPC' hPCe).1
-  have hu' : SA.UpdateAt (tr.upTo t).projAC w c m ℓ := by
-    rw [hprojT]; exact (sa_updateAt_upTo hm).2 ⟨hct, hu⟩
-  have hR' : SA.ResultAt (tr.upTo t).projAC w c m C CV := by
-    rw [hprojT]; exact (sa_resultAt_upTo hm).2 ⟨hct, hR⟩
+  have hu' : AC.UpdateAt (tr.upTo t).projAC w c m ℓ := by
+    rw [hprojT]; exact (ac_updateAt_upTo hm).2 ⟨hct, hu⟩
+  have hR' : AC.ResultAt (tr.upTo t).projAC w c m C CV := by
+    rw [hprojT]; exact (ac_resultAt_upTo hm).2 ⟨hct, hR⟩
   -- the live locks at the update are compatible with `P`, in the prefix
-  have hlocks : ∀ L ∈ SA.liveLockBlocks sp ((tr.upTo t).state w c).ac.locks ℓ.frame
+  have hlocks : ∀ L ∈ AC.liveLockBlocks sp ((tr.upTo t).state w c).ac.locks ℓ.frame
       ((tr.upTo t).time c), Compatible ((tr.upTo t).HonestBlocks (H t)) L D.P := by
     intro L hL
     rw [Trace.upTo_state tr w hcut, frame_of_projAC_at D.hrun hwc hu.1] at hL

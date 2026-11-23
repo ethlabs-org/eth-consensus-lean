@@ -25,9 +25,9 @@ The restart bound reads each node's honesty at its own time (`restart_le_before_
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
@@ -53,7 +53,7 @@ theorem catch_window_at_reset_at
   have hra : sp.ts (sp.slot (gbar g) + 1 : Nat) ≤ a := by
     apply le_trans _ hca.le
     rw [cutZ_eq]
-    exact (SA.ts_le_iff sp).mpr (by omega)
+    exact (AC.ts_le_iff sp).mpr (by omega)
   rw [← RunTrace.upTo_projAC]
   constructor
   intro x hx i B ha hi y hy j ell hj ht hjt hF
@@ -73,7 +73,7 @@ theorem catch_window_at_reset_at
     exact ⟨k, hkj, hak, by change tr.time k < _; change tr.time k < _ at hkt; linarith⟩
   · have hia : tr.time i' < a := by simpa only [hti] using hi
     have hgg : g ≤ tr.time i' :=
-      (SA.le_gbar g).trans (by simpa only [hti] using le_of_not_gt hgi)
+      (AC.le_gbar g).trans (by simpa only [hti] using le_of_not_gt hgi)
     have hmax : max ((tr.upTo t).time i') g = (tr.upTo t).time i' := max_eq_left hgg
     have hdeadline : ∀ k ≤ j, (tr.upTo t).deadline y k (tr.time i') sp.Δ ≤ a + sp.Δ := by
       intro k hkj
@@ -102,7 +102,7 @@ theorem ResetPremisesUpTo.windows_at_reset_at {b : Time}
       CatchACWindowBefore (tr.projAC.upTo t) (H t) ((tr.upTo t).HonestBlocks (H t)) a
         (2 * sp.Δ) t := by
   have hca := hp.cutZ_lt_reset_at
-  have hga : g ≤ a := by linarith [SA.le_gbar g, lt_cutZ sp g, sp.toParams.hΔ]
+  have hga : g ≤ a := by linarith [AC.le_gbar g, lt_cutZ sp g, sp.toParams.hΔ]
   exact ⟨sync_window_at_reset_at hp.run hp.sync hga ht0,
     catch_window_at_reset_at hp.run hp.sync hp.catchUp ht0 hca
       fun y k hy hk hkt => restart_le_before_at hp hy hk (hkt.trans htb)⟩

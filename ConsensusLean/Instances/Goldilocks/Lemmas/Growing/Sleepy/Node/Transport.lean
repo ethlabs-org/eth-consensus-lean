@@ -39,14 +39,14 @@ premises (`carryAt_of_delivered`); the deliveries come from the service. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Vote Payload)
+open AC (ACParams ReplayOrder Vote Payload)
 
-/-! ### One honest voter over an SA trace, with the deliveries given -/
+/-! ### One honest voter over an AC trace, with the deliveries given -/
 
 section Node
 
-variable {FGP : Type} {sp : SAParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (SA.Blk sp.n FGP)} {T : SA.SATrace sp FGP ro}
+variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP ro}
 
 /-- **`Carry_y` from deliveries.** For an honest `y` casting its slot-`(s+1)` vote: if each
 counted vote is of slot `s`, has a release time `τ ∈ [t_s, t_s + 2Δ)` at which it is served to
@@ -55,24 +55,24 @@ relayed to `y` from a time before `t_s + 2Δ` (likewise) or that `y` accepted be
 `t_s + 3Δ`, then `Carry_y(s, ·, ·)` holds for the counted votes: `carryAt_of_served`, with the
 frames closed under acceptance by `frame_anc_accepted`. This is the voter's side of
 `carryAt_of_writer_heads`, without the sender. -/
-theorem carryAt_of_delivered {ini} (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H U T ini)
-    (hini : ∀ y, SA.VoteStart sp.genesisRoot (ini y)) {s : Nat}
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (SA.goldilocksSA sp FGP ro)}
-    {e : SA.Em sp FGP} (hc : SA.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1)
+theorem carryAt_of_delivered {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {s : Nat}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)}
+    {e : AC.Em sp FGP} (hc : AC.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1)
     {CV : Set (Vote sp.n)}
     (hW : ∀ v ∈ CV, v.slot = s ∧
       (∃ τ, sp.ts s ≤ τ ∧ τ < sp.ts s + 2 * sp.Δ ∧
-        (T.deadline y i τ ≤ T.time i → SA.MessageServedBefore T y i τ v)) ∧
-      ∃ Hv : SA.Blk sp.n FGP, Hv.root = v.head ∧
+        (T.deadline y i τ ≤ T.time i → AC.MessageServedBefore T y i τ v)) ∧
+      ∃ Hv : AC.Blk sp.n FGP, Hv.root = v.head ∧
         ((∃ τ, τ < sp.ts s + 2 * sp.Δ ∧ (T.deadline y i τ ≤ T.time i →
             ∃ k ≤ i, T.AcceptAt y k Hv ∧ T.time k < T.deadline y k τ)) ∨
-          SA.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ))) :
-    SA.CarryAt T U y i e s CV :=
+          AC.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ))) :
+    AC.CarryAt T U y i e s CV :=
   carryAt_of_served hr hini (frame_anc_accepted hr hy) hy hc hs hW
 
 end Node
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
@@ -86,8 +86,8 @@ heads are above the voter's `Σ.F` and are genesis or accepted by `w` while hone
 theorem carryAt_of_writer_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {s : Nat}
     (hsa : a + κ ≤ sp.ts s) {w y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hi : tr.time i ≤ b)
+    {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
+    (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hi : tr.time i ≤ b)
     {CV : Set (Vote sp.n)}
     (hW : ∀ v ∈ CV, v.slot = s ∧
       (∃ k, w ∈ H (tr.time k) ∧ tr.projAC.SendOrAdmit w k v ∧ sp.ts s ≤ tr.time k ∧
@@ -95,7 +95,7 @@ theorem carryAt_of_writer_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
       ∃ Hv, Hv.root = v.head ∧ Anc (tr.HonestBlocksAt H) ℓ.frame.F Hv ∧
         (Hv.root = sp.genesisRoot ∨ ∃ k, w ∈ H (tr.time k) ∧ tr.projAC.AcceptAt w k Hv ∧
           tr.time k < sp.ts s + 2 * sp.Δ)) :
-    SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
+    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
   have hm := hrun.time_mono
   have hd := hrun.time_nonneg i
   have hra := acRun_upTo hrun hnc hd
@@ -106,13 +106,13 @@ theorem carryAt_of_writer_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
   have hti : sp.ts s ≤ tr.time i := by
     have h := (castAt_spec_at hrun hnc hy hc).2.1
     rw [hs] at h
-    exact (SA.ts_le_iff_le_slot sp hd (s : Int)).2 (by omega)
-  have hc' : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
+    exact (AC.ts_le_iff_le_slot sp hd (s : Int)).2 (by omega)
+  have hc' : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
   have hcarry := carryAt_of_delivered hr hra.vstart hy hc' hs (CV := CV) fun v hv => by
     obtain ⟨hvs, ⟨k, hwk, hsend, hk1, hk2⟩, Hv, hHvr, hFHv, hacc⟩ := hW v hv
     refine ⟨hvs, ⟨tr.time k, hk1, hk2, fun hdl => ?_⟩, Hv, hHvr, ?_⟩
     · rw [ac_deadline_upTo (trA := tr.projAC) (d := tr.time i) hm (le_refl _)] at hdl
-      exact sa_messageServedBefore_upTo hm le_rfl (hsync.message w k v hwk hsend
+      exact ac_messageServedBefore_upTo hm le_rfl (hsync.message w k v hwk hsend
         (ha.trans hk1) y i ℓ hy hc.1 (hdl.trans hi) hdl)
     rcases hacc with hg | ⟨kw, hwkw, hkw, hkwt⟩
     · exact Or.inr (Or.inl hg)
@@ -143,8 +143,8 @@ while honest, extends the result and is genesis or was accepted by the writer wh
 `t_s + 2Δ`. -/
 theorem result_writer_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {X : Fin sp.n} {i₀ s : Nat} (hX : X ∈ H (tr.time i₀))
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hR : SA.ResultAt tr.projAC X i₀ s C CV) :
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hR : AC.ResultAt tr.projAC X i₀ s C CV) :
     ∀ v ∈ CV, v.slot = s ∧
       (∃ k, X ∈ H (tr.time k) ∧ tr.projAC.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧
         tr.time k < sp.ts s + 2 * sp.Δ) ∧
@@ -156,7 +156,7 @@ theorem result_writer_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr in
   intro v hv
   obtain ⟨hvs, ⟨k, hk, hk1, hk2⟩, Hv, hHv, hHvr, hCHv, hacc⟩ :=
     result_writer (acRun_upTo hrun hnc hd).localRun (acRun_upTo hrun hnc hd).vstart hX
-      ((sa_resultAt_upTo hrun.time_mono).mpr ⟨le_rfl, hR⟩) v hv
+      ((ac_resultAt_upTo hrun.time_mono).mpr ⟨le_rfl, hR⟩) v hv
   obtain ⟨hkd, hk⟩ := (ac_sendOrAdmit_upTo hrun.time_mono).mp hk
   refine ⟨hvs, ⟨k, hrun.antitone hkd hX, hk, hk1, hk2⟩, Hv, hsub hHv, hHvr, hCHv.mono hsub,
     hacc.imp_right fun ⟨k', hk', hk't⟩ => ?_⟩
@@ -170,12 +170,12 @@ theorem result_carry_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini
     (hnc : NoCollRun dg tr)
     {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {X : Fin sp.n} {i₀ s : Nat}
     (hsa : a + κ ≤ sp.ts s)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (hX : X ∈ H (tr.time i₀))
-    (hR : SA.ResultAt tr.projAC X i₀ s C CV) {y : Fin sp.n} {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (hX : X ∈ H (tr.time i₀))
+    (hR : AC.ResultAt tr.projAC X i₀ s C CV) {y : Fin sp.n} {i : Nat}
+    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hy : y ∈ H (tr.time i)) (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) (hF : Anc (tr.HonestBlocksAt H) ℓ.frame.F C) :
-    SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV :=
+    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV :=
   carryAt_of_writer_at hrun hnc hsync hsa hy hc hs hib fun v hv => by
     obtain ⟨h₁, h₂, Hv, -, hHvr, hCHv, h₃⟩ := result_writer_at hrun hnc hX hR v hv
     exact ⟨h₁, h₂, Hv, hHvr, hF.trans hCHv, h₃⟩
@@ -185,12 +185,12 @@ faults, as `result_carry_at`, the checker honest at its check. -/
 theorem optimistic_carry_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {X : Fin sp.n} {i₀ s : Nat} (hsa : a + κ ≤ sp.ts s)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hX : X ∈ H (tr.time i₀)) (hO : SA.OptimisticLockAt tr.projAC X i₀ s C CV) {y : Fin sp.n}
-    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : SA.Em sp (List (FG.Att sp.n))}
-    (hy : y ∈ H (tr.time i)) (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hX : X ∈ H (tr.time i₀)) (hO : AC.OptimisticLockAt tr.projAC X i₀ s C CV) {y : Fin sp.n}
+    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hy : y ∈ H (tr.time i)) (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) (hF : Anc (tr.HonestBlocksAt H) ℓ.frame.F C) :
-    SA.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV :=
+    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV :=
   carryAt_of_writer_at hrun hnc hsync hsa hy hc hs hib fun v hv => by
     obtain ⟨h₁, h₂, Hv, -, hHvr, hCHv, h₃⟩ := optimistic_writer_votes_at hrun hnc hX hO v hv
     exact ⟨h₁, h₂, Hv, hHvr, hF.trans hCHv, h₃⟩
@@ -210,12 +210,12 @@ private theorem served_held_at {ini} (hrun : Growing.GoldilocksRun proposer dg H
     (hvs : v.slot = s) {k : Nat} (hx : x ∈ H (tr.time k)) (hsend : tr.projAC.SendOrAdmit x k v)
     (h1 : sp.ts s ≤ tr.time k) (h2 : tr.time k ≤ sp.ts s + 5 * sp.Δ) :
     v ∈ (tr.projAC.state X c).pool s ∨
-      v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state X c).pool s} := by
+      v.val ∈ AC.equivocators {w | w ∈ (tr.projAC.state X c).pool s} := by
   have hΔ := sp.toParams.hΔ
   have hd := hrun.time_nonneg c
   have hr := acRun_upTo hrun hnc hd
   have hts₂ : sp.ts (s + 2 : Nat) = sp.ts s + 8 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hrs' : ∀ k' ≤ c, tr.projAC.RestartAt X k' → tr.projAC.time k' ≤ tr.time k :=
     fun k' hk' hr' => (hrs k' hk' hr').trans h1
   have hdl := ac_deadline_le_of_restarts (T := tr.projAC) hrs' (tr.time k)
@@ -223,17 +223,17 @@ private theorem served_held_at {ini} (hrun : Growing.GoldilocksRun proposer dg H
   rw [max_self] at hdl
   have hserv := hsync.message x k v hx hsend (ha.trans h1) X c ℓ hX hc
     (by linarith) (by linarith)
-  have hserv' := sa_messageServedBefore_upTo (d := tr.time c) hrun.time_mono le_rfl hserv
-  have h := SA.held_of_deadline_service hr.localRun hX
+  have hserv' := ac_messageServedBefore_upTo (d := tr.time c) hrun.time_mono le_rfl hserv
+  have h := AC.held_of_deadline_service hr.localRun hX
     (fun k' hk' hr' => hrs' k' hk' ((ac_restartAt_upTo tr.projAC).1 hr').2)
     (by change tr.time k + sp.Δ ≤ tr.time c; linarith)
     (fun t ht₁ ht₂ => by
       change tr.time k ≤ t at ht₁
       change t < tr.time k + sp.Δ at ht₂
       have ht0 : 0 ≤ t := (hrun.time_nonneg k).trans ht₁
-      have hsl := (SA.ts_le_iff_le_slot sp ht0 s).1 (h1.trans ht₁)
+      have hsl := (AC.ts_le_iff_le_slot sp ht0 s).1 (h1.trans ht₁)
       have hb : ¬ ((s + 2 : Nat) : Int) ≤ sp.slot t := fun h => by
-        have := (SA.ts_le_iff_le_slot sp ht0 _).2 h
+        have := (AC.ts_le_iff_le_slot sp ht0 _).2 h
         rw [hts₂] at this; linarith only [this, ht₂, h2, hΔ]
       rw [hvs]
       clear * - hsl hb
@@ -248,75 +248,75 @@ honest; the writer receives it before its update (`t_s + 6Δ`). -/
 theorem result_writer_pool_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {X : Fin sp.n} {i₀ s : Nat} (ha : a ≤ sp.ts s)
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hX : X ∈ H (tr.time i₀)) (hR : SA.ResultAt tr.projAC X i₀ s C CV) (hi₀ : tr.time i₀ ≤ b)
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hX : X ∈ H (tr.time i₀)) (hR : AC.ResultAt tr.projAC X i₀ s C CV) (hi₀ : tr.time i₀ ≤ b)
     {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    {e : SA.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
-    (hc : SA.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) :
-    ∀ v ∈ (SA.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
+    {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
+    (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) :
+    ∀ v ∈ (AC.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ (tr.projAC.state X i₀).pool s ∨
-        v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state X i₀).pool s} := by
+        v.val ∈ AC.equivocators {w | w ∈ (tr.projAC.state X i₀).pool s} := by
   have hΔ := sp.toParams.hΔ
   have hm := hrun.time_mono
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   obtain ⟨ℓX, hupd, -, -⟩ := hR
   have hd₀ := hrun.time_nonneg i₀
   have hrX := (acRun_upTo hrun hnc hd₀).localRun
   have hrsX : ∀ k ≤ i₀, tr.projAC.RestartAt X k → tr.time k ≤ sp.ts s := fun k hk hrk =>
-    Compose.update_restarts hrX hX ((sa_updateAt_upTo hm).2 ⟨le_rfl, hupd⟩) k hk
+    Compose.update_restarts hrX hX ((ac_updateAt_upTo hm).2 ⟨le_rfl, hupd⟩) k hk
       ((ac_restartAt_upTo tr.projAC).2 ⟨hm hk, hrk⟩)
   have ht₀ : tr.time i₀ = sp.ts s + 6 * sp.Δ := hupd.2.2.1
   -- the voter's side, on the prefix through its vote
   have hd := hrun.time_nonneg i
   have hr := (acRun_upTo hrun hnc hd).localRun
-  have hc' : SA.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := sa_castAt_upTo.mpr ⟨le_rfl, hc⟩
-  obtain ⟨-, hys, hyj, -⟩ := SA.castAt_spec hr hy hc'
+  have hc' : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
+  obtain ⟨-, hys, hyj, -⟩ := AC.castAt_spec hr hy hc'
   change e.msg.slot = sp.slot (tr.time i) at hys
-  change SA.joined sp e.readPoint (tr.time i) at hyj
+  change AC.joined sp e.readPoint (tr.time i) at hyj
   have hsi : sp.slot (tr.time i) = s + 1 := by omega
   have hti : tr.time i ≤ sp.ts s + 5 * sp.Δ := by
     have h := (cast_head_fcRoot_at hrun hnc hy hc).2
     rw [hs] at h
-    simp only [SAParams.ts] at h ⊢
+    simp only [ACParams.ts] at h ⊢
     push_cast at h
     linarith only [h]
   have hrsy : ∀ k ≤ i, ACTrace.RestartAt (tr.projAC.upTo (tr.time i)) y k →
       tr.time k ≤ sp.ts s := by
-    have hj' : SA.joined sp ((tr.projAC.upTo (tr.time i)).post i) (tr.time i) := by
-      unfold SA.joined; rw [SA.restartTime_of_castAt hr hy hc']; exact hyj
+    have hj' : AC.joined sp ((tr.projAC.upTo (tr.time i)).post i) (tr.time i) := by
+      unfold AC.joined; rw [AC.restartTime_of_castAt hr hy hc']; exact hyj
     intro k hk hrk
-    have := (SA.joined_awakeU sp _ ro _ _ _ hr.toU y hy i ℓ hc'.1 hj').2 k hk hrk
+    have := (AC.joined_awakeU sp _ ro _ _ _ hr.toU y hy i ℓ hc'.1 hj').2 k hk hrk
     change tr.time k ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) at this
     rwa [hsi, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by push_cast; ring] at this
   -- every slot-`s` vote of the voter's pool up to its vote reaches the writer
   have hpool : ∀ k ≤ i, ∀ v ∈ ((tr.projAC.upTo (tr.time i)).state y (k + 1)).pool s,
       v ∈ (tr.projAC.state X i₀).pool s ∨
-        v.val ∈ SA.equivocators {w | w ∈ (tr.projAC.state X i₀).pool s} := by
+        v.val ∈ AC.equivocators {w | w ∈ (tr.projAC.state X i₀).pool s} := by
     intro k hk v hv
-    have hvs : v.slot = s := SA.state_pool_slot sp hr hrun.vstart hy (k + 1) s v hv
-    rcases SA.pool_origin hr hrun.vstart hy (k + 1) v (hvs ▸ hv) with
+    have hvs : v.slot = s := AC.state_pool_slot sp hr hrun.vstart hy (k + 1) s v hv
+    rcases AC.pool_origin hr hrun.vstart hy (k + 1) v (hvs ▸ hv) with
       ⟨k', hk', hsend, -, hsl⟩ | ⟨k', hk', ℓk, hck, hrk, -, B, hB, hvB⟩
     · have hsk : sp.ts s ≤ tr.time k' :=
-        (SA.ts_le_iff_le_slot sp (hrun.time_nonneg k') s).2 (by rw [← hvs]; exact_mod_cast hsl)
+        (AC.ts_le_iff_le_slot sp (hrun.time_nonneg k') s).2 (by rw [← hvs]; exact_mod_cast hsl)
       have hki : tr.time k' ≤ tr.time i := hm ((Nat.le_of_lt_succ hk').trans hk)
       obtain ⟨-, hsend⟩ := (ac_sendOrAdmit_upTo hm).mp hsend
       exact served_held_at hrun hnc hsync ha hX hupd.1 ht₀ hi₀ hrsX hvs (hrun.antitone hki hy)
         hsend hsk (hki.trans hti)
     · -- a restart's vote is of a block of slot at most `slot(t_{k'})`, so of slot below `s`
       exfalso
-      have hBv := (SA.frame_validPayload sp hr hy hck B hB).1 v hvB
-      have hBs := SA.frame_slot_le sp hr hy hck B hB
+      have hBv := (AC.frame_validPayload sp hr hy hck B hB).1 v hvB
+      have hBs := AC.frame_slot_le sp hr hy hck B hB
       change B.slot ≤ sp.slot (tr.time k') at hBs
       have htk := hrsy k' ((Nat.le_of_lt_succ hk').trans hk) ⟨ℓk, hck, hrk⟩
       have : ¬ ((s + 1 : Nat) : Int) ≤ sp.slot (tr.time k') := fun h => by
-        have := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg k') _).2 h
+        have := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg k') _).2 h
         rw [hts] at this; linarith only [this, htk, hΔ]
       clear * - this hBv hBs hvs
       omega
   intro v hv hvs
-  exact SA.merged_declared_at_writer (fun w hw =>
-    hpool i le_rfl w (SA.readPoint_pool hr hy hc' hw).1) hvs hv
+  exact AC.merged_declared_at_writer (fun w hw =>
+    hpool i le_rfl w (AC.readPoint_pool hr hy hc' hw).1) hvs hv
 
 end Consensus.Goldilocks.Compose.Growing
 

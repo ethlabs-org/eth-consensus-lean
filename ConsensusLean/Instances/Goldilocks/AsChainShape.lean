@@ -8,7 +8,7 @@ public import Mathlib.Tactic.Ring
 
 /-! # The Goldilocks node as a chain shape (definitions)
 
-The Goldilocks protocol of `Spec/Run/Goldilocks` (the node of `Spec/Node` over `goldilocksSA`),
+The Goldilocks protocol of `Spec/Run/Goldilocks` (the node of `Spec/Node` over `goldilocksAC`),
 written as a generic `ChainShape` so that the engine (`Spec/Model/Run`) runs it and the generic
 L1 theorems (`System.NonFraming`, …) apply to it. The simulation statements
 (`Lemmas/Simulation/Interface`) say that every engine run of `compile (goldilocksShape sp ro)` is
@@ -77,7 +77,7 @@ namespace Consensus.Goldilocks.AsChainShape
 
 open Blocks Shape
 open Consensus.Model (Public Key SelSpec Obj Msg)
-open SA (SAParams ReplayOrder goldilocksSA Vote Payload)
+open AC (ACParams ReplayOrder goldilocksAC Vote Payload)
 
 /-! ## Wire types -/
 
@@ -114,7 +114,7 @@ def WireAtt.equiv : WireAtt ≃ Nat × Nat × Nat × Bool × Option (Nat × Nat)
 /-- `WireAtt` is countable through `WireAtt.equiv`. -/
 instance : Countable WireAtt := WireAtt.equiv.injective.countable
 
-/-- A vote on the wire: `SA.Vote` with the validator index as a number. -/
+/-- A vote on the wire: `AC.Vote` with the validator index as a number. -/
 structure WireVote where
   val : Nat
   slot : Nat
@@ -162,7 +162,7 @@ def decodeInfo (n : Nat) (i : Info) : Option (List (FG.Att n) × Payload n) := d
 /-- The protocol data a node signs in the `.poll` role, or relays unsigned (`n`-independent, as
 `Info`: the family fixes one body type for every parameter set). -/
 inductive Body where
-  /-- A Goldfish vote (an AC message). -/
+  /-- A head vote (an AC message). -/
   | vote (v : WireVote)
   /-- An FG attestation. -/
   | att (a : WireAtt)
@@ -247,14 +247,14 @@ def VoteBinding.candidateRole (B : VoteBinding) (n : Nat)
 /-- Install historical own-role permission only for the committee binding.
 Restart keeps this stored permission through `acRestart`. -/
 def VoteBinding.installVote (B : VoteBinding) {n : Nat}
-    (p : ShapeRole B.Kind → Bool) (a : SA.SAState n) : SA.SAState n :=
+    (p : ShapeRole B.Kind → Bool) (a : AC.ACState n) : AC.ACState n :=
   match B.participationKind with
   | none => a
   | some _ => { a with mayVote := fun s => p (B.voteRole s) }
 
 /-- Installing the own-role vote permission changes no field of the state other than `mayVote`. -/
 theorem VoteBinding.installVote_eq_mayVote (B : VoteBinding) {n : Nat}
-    (p : ShapeRole B.Kind → Bool) (a : SA.SAState n) :
+    (p : ShapeRole B.Kind → Bool) (a : AC.ACState n) :
     B.installVote p a = { a with mayVote := (B.installVote p a).mayVote } := by
   unfold VoteBinding.installVote
   cases B.participationKind <;> rfl
@@ -281,7 +281,7 @@ theorem VoteBinding.candidateRole_poll_nonvote (B : VoteBinding) (n t : Nat) (b 
 
 /-- Committee initialization installs the supplied own-role permission. -/
 theorem VoteBinding.installVote_mayVote (B : VoteBinding) (h : B.participationKind ≠ none)
-    {n : Nat} (p : ShapeRole B.Kind → Bool) (a : SA.SAState n) (s : Slot) :
+    {n : Nat} (p : ShapeRole B.Kind → Bool) (a : AC.ACState n) (s : Slot) :
     (B.installVote p a).mayVote s = p (B.voteRole s) := by
   cases hp : B.participationKind with
   | none => exact False.elim (h hp)
@@ -290,7 +290,7 @@ theorem VoteBinding.installVote_mayVote (B : VoteBinding) (h : B.participationKi
 /-- The single wire carrier, parameterised by the vote binding. -/
 abbrev Wire (n : Nat) (binding : VoteBinding := stock) := ShapeObj n binding.Kind Info Body
 
-variable (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+variable (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
   {binding : optParam VoteBinding stock}
 
 /-- The exact dependency reference of a parent-bearing forwarding shape. This computable
@@ -373,7 +373,7 @@ def rootOf (hs : List (Header Info × Nat)) (h : Header Info) : Option Nat :=
 objects) and `ΔAC` (`skeleton`'s grid, overridden by `goldilocksShape`) are read from it; its FG
 delay is set to `sp.Δ` only to fill the field and is read by no definition. The run's FG delay
 is the family's `Public.ΔFG`. -/
-abbrev _root_.Consensus.Goldilocks.SA.SAParams.pub : Public :=
+abbrev _root_.Consensus.Goldilocks.AC.ACParams.pub : Public :=
   ⟨sp.n, sp.Δ, sp.toParams.hΔ, sp.Δ, sp.toParams.hΔ⟩
 
 /-- A node block of the Goldilocks node. -/
@@ -461,7 +461,7 @@ noncomputable def decodeBlock
     (hs : List (Header Info × Nat)) :
     Wire sp.n (binding := binding) → Option (Blk sp) :=
   NodeAsChainShape.decodeBlock (P := sp.toParams) (decodeInfo sp.n)
-    (payloadObjs (binding := binding)) SA.validPayload hs
+    (payloadObjs (binding := binding)) AC.validPayload hs
 
 variable (sp) in
 /-- A signed forwarding wrapper. The optional exact parent wrapper precedes the canonical
@@ -541,7 +541,7 @@ def decodeAttObj :
   | _ => none
 
 /-- The Goldilocks header payload and carried objects, with vote and attestation decoding. -/
-def wireCodec (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) (binding : VoteBinding) :
+def wireCodec (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) (binding : VoteBinding) :
     NodeAsChainShape.WireCodec (goldilocksNode sp ro) binding.Kind Info Body where
   encode := encodeInfo
   decode := decodeInfo sp.n
@@ -550,7 +550,7 @@ def wireCodec (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) (bindin
   attestation := decodeAttObj sp (binding := binding)
 
 /-- Connect node handlers to the Goldilocks clock, duty flag and publication queues. -/
-def nodeAdapter (sp : SAParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) (binding : VoteBinding) :
+def nodeAdapter (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) (binding : VoteBinding) :
     NodeAsChainShape.Adapter (goldilocksNode sp ro) binding.Kind Info Body
       (State sp ro binding) where
   self := State.self
@@ -772,19 +772,19 @@ structure Setup where
   /-- The lock window `k ≥ 2`. -/
   k : Nat
   two_le_k : 2 ≤ k
-  /-- The fast increment `c ≥ 2` (`SAParams.c`). -/
+  /-- The fast increment `c ≥ 2` (`ACParams.c`). -/
   c : Nat
   two_le_c : 2 ≤ c
   /-- The restart replay order depends on the validator count and fixed genesis root,
   not on a proposer schedule or timing parameters. -/
-  ro : (n : Nat) → SA.ReplayOrderData n genesisRoot (List (FG.Att n))
+  ro : (n : Nat) → AC.ReplayOrderData n genesisRoot (List (FG.Att n))
   /-- Historical vote authentication, permission and threshold denominator. -/
   vote : VoteBinding
 
-/-- The SA parameters use protocol delay `pub.ΔAC` and slots of four protocol delays: L0 delivers
+/-- The AC parameters use protocol delay `pub.ΔAC` and slots of four protocol delays: L0 delivers
 strictly before the bound (`CommLog.PSync`), which is the node's deadline `[τ, max(τ, w) + Δ)`.
 The run's proposer selection is independent of these runtime parameters. -/
-abbrev Setup.params (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) : SAParams where
+abbrev Setup.params (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) : ACParams where
   toParams :=
     { n := pub.n
       hn := hn
@@ -913,7 +913,7 @@ theorem decodeBlock_eq (hs : List (Header Info × Nat)) (o : Wire sp.n binding) 
       | some (atts, p), some d =>
         let B := blockOf sp d h k atts p
         if h.pos = s ∧ cs = payloadObjs (binding := binding) atts p ∧
-            (∀ a ∈ atts, a.WellFormed) ∧ SA.validPayload B then some B else none
+            (∀ a ∈ atts, a.WellFormed) ∧ AC.validPayload B then some B else none
       | _, _ => none
     | _ => none) := by
   obtain ⟨a, m, cs⟩ := o

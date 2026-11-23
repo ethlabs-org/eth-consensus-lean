@@ -520,7 +520,7 @@ honest at its call under PSync. The release time is the lower bound; GST changes
 deadline. -/
 theorem vote_message_service_psync_other_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {g : Time} (hnet : rho.log.PSync rho.point g)
-    {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : SA.Vote (Fintype.card V)}
+    {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : AC.Vote (Fintype.card V)}
     (hx : rho.key x ∉ rho.faultyAt τ) (hne : y ≠ x)
     (hτ : 0 ≤ τ) (hs : rho.SendsAt (rho.key x) source τ)
     (hrel : Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∈
@@ -553,14 +553,14 @@ theorem vote_message_service_psync_other_at (hn : 1 ≤ Fintype.card V) (hv : rh
   exact hm.elim (fun ⟨ℓ, hc, h⟩ => ⟨ℓ, Compose.projAC_callAt.mpr hc, Or.inl h⟩)
     (fun ⟨ℓ, hc, h⟩ => ⟨ℓ, Compose.projAC_callAt.mpr hc, Or.inr h⟩)
 
-/-- SA sends and fresh admissions by a node honest at its cut are processed within the PSync
+/-- AC sends and fresh admissions by a node honest at its cut are processed within the PSync
 deadline by every recipient honest at its call within the horizon. The sender processes at the
 source time; other nodes use the first-release envelope. -/
 theorem message_service_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {g : Time} (hnet : rho.log.PSync rho.point g)
     {x : Fin (Fintype.card V)} {i : Nat}
     (hx : x ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i))
-    {m : SA.Vote (Fintype.card V)} (hi : (simTraceAt S rho hn).SendOrAdmitAt x i m)
+    {m : AC.Vote (Fintype.card V)} (hi : (simTraceAt S rho hn).SendOrAdmitAt x i m)
     {y : Fin (Fintype.card V)} {j : Nat}
     (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time j))
     (hj : (simTraceAt S rho hn).IsCall y j) (hb : (simTraceAt S rho hn).time j ≤ rho.horizon)

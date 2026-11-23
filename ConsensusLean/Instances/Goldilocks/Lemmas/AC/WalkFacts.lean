@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 
 public section
 
-/-! # Facts of the SA: the memoryless walk, the empty deepest set, the restart time
+/-! # Facts of the AC: the memoryless walk, the empty deepest set, the restart time
 
 A leaf module: no module of the library imports it except where a proof uses one of its facts.
 
@@ -14,9 +14,9 @@ A leaf module: no module of the library imports it except where a proof uses one
 * `blockReceipt_restartTime`: a block receipt keeps the latest restart;
 * `slot_of_neg`: a negative time is in slot `0`. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {sp : SAParams} {FGP : Type}
+variable {sp : ACParams} {FGP : Type}
 
 /-- **The memoryless walk**: a long enough walk from a block `a₁` on the walk from `a₀` that extends
 `a₀` ends where the walk from `a₀` ends. -/
@@ -41,14 +41,14 @@ theorem deepest_empty (Φ : Frm sp.n FGP) : deepest Φ (∅ : Set (Blk sp.n FGP)
   · rfl
 
 /-- A block receipt keeps the latest restart. -/
-theorem blockReceipt_restartTime (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
+theorem blockReceipt_restartTime (A : ACState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (blockReceipt sp A t B).restartTime = A.restartTime :=
   rfl
 
 /-- A negative time is in slot `0`. -/
 theorem slot_of_neg {t : Time} (ht : t < 0) : sp.slot t = 0 := by
-  simp [SAParams.slot, Params.slotOf, Int.toNat_of_nonpos ht.le]
+  simp [ACParams.slot, Params.slotOf, Int.toNat_of_nonpos ht.le]
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

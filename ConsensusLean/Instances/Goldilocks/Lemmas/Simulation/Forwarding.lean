@@ -300,8 +300,8 @@ theorem dutyStep_poll_pending {V : Type} [Fintype V] {E : Env V} (S : Setup)
   exact List.mem_append_right _ ho
 
 /-- Poll's block map is durable while the pending queue is cleared. -/
-theorem poll_wrappers {sp : SA.SAParams}
-    {ro : SA.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (t : Time) :
+theorem poll_wrappers {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (t : Time) :
     (poll st t).1.wrappers = st.wrappers ∧ (poll st t).1.forwards = [] := by
   unfold poll
   have hf : (fgUpdate st).wrappers = st.wrappers := by

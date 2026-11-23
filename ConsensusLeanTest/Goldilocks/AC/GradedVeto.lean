@@ -38,7 +38,7 @@ and the saved results `Bc` of the earlier slots, so the slot-`8` update is slow-
 nothing", which the spec no longer has. In the same run, it leaves the lock on `Bv` alone, so at
 slot `14` the node has no live lock and its anchor is genesis. -/
 
-namespace Consensus.Goldilocks.SA.Test.GradedVeto
+namespace Consensus.Goldilocks.AC.Test.GradedVeto
 
 /-- The shared parameters: four validators, `Δ = 1`, `t_s = 4s`, genesis root `0`. -/
 abbrev P : Params where
@@ -53,8 +53,8 @@ abbrev P : Params where
   genesisRoot := 0
   δt := 0
 
-/-- The SA parameters: `P` with `k = 6`, `c = 2`. -/
-abbrev sp : SAParams where
+/-- The AC parameters: `P` with `k = 6`, `c = 2`. -/
+abbrev sp : ACParams where
   toParams := P
   slotTime_eq := fun s => by change 4 * (s : Int) = 4 * 1 * s; omega
   k := 6
@@ -231,7 +231,7 @@ def slowB1 : Lock := ⟨1, 8, false, 14⟩
 /-- The state of `v0` at `t_9 = 36`: the slot-`8` votes received at `32` (before `t_8 + 2Δ`),
 every block received at `0`, the saved results `Bc` of the earlier slots (so the update of slot
 `8` is slow-qualified on `Bc`), no locks, record genesis, voted in slot `8`, never restarted. -/
-def S0 : SAState sp.n where
+def S0 : ACState sp.n where
   pool := fun s => if s = 8 then P8 else []
   voteStamp := fun x => if x ∈ P8 then ETime.of 32 else ⊤
   blockStamp := fun r => if r = 0 then ⊥ else ETime.of 0
@@ -243,7 +243,7 @@ def S0 : SAState sp.n where
   restartTime := ⊥
 
 /-- The fields the run does not change before the update and that the update reads. -/
-structure Fixed (A : SAState sp.n) : Prop where
+structure Fixed (A : ACState sp.n) : Prop where
   pool8 : A.pool 8 = P8
   stamp : ∀ x ∈ P8, A.voteStamp x = ETime.of 32
   block : A.blockStamp = S0.blockStamp
@@ -253,7 +253,7 @@ structure Fixed (A : SAState sp.n) : Prop where
 theorem fixed_S0 : Fixed S0 :=
   ⟨rfl, fun x hx => by simp [S0, hx], rfl, rfl, rfl⟩
 
-theorem fixed_with {A : SAState sp.n} (h : Fixed A) (L : Set Lock) (r : Nat) (vs : Int) :
+theorem fixed_with {A : ACState sp.n} (h : Fixed A) (L : Set Lock) (r : Nat) (vs : Int) :
     Fixed { A with locks := L, latestConfirmed := r, votedSlot := vs } :=
   ⟨h.1, h.2, h.3, h.4, h.5⟩
 
@@ -264,7 +264,7 @@ theorem slot_of_mem_P8 {x : Vote sp.n} (hx : x ∈ P8) : x.slot = 8 := by
 /-! ## Generic facts about the handlers -/
 
 /-- Admission writes only the pool and the stamps. -/
-theorem admitVote_eq (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+theorem admitVote_eq (A : ACState sp.n) (t : Time) (v : Vote sp.n) :
     admitVote sp A t v = A ∨ admitVote sp A t v = { A with
       pool := Function.update A.pool v.slot (A.pool v.slot ++ [v])
       voteStamp := Function.update A.voteStamp v (ETime.of t) } := by
@@ -274,16 +274,16 @@ theorem admitVote_eq (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
   · exact Or.inl rfl
   · exact Or.inr rfl
 
-theorem admitVote_locks (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+theorem admitVote_locks (A : ACState sp.n) (t : Time) (v : Vote sp.n) :
     (admitVote sp A t v).locks = A.locks := by
   rcases admitVote_eq A t v with h | h <;> rw [h]
 
-theorem admitVote_restartTime (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+theorem admitVote_restartTime (A : ACState sp.n) (t : Time) (v : Vote sp.n) :
     (admitVote sp A t v).restartTime = A.restartTime := by
   rcases admitVote_eq A t v with h | h <;> rw [h]
 
 /-- A slot-`9` vote's admission keeps `Fixed`. -/
-theorem fixed_admitVote {A : SAState sp.n} (h : Fixed A) (t : Time) {v : Vote sp.n}
+theorem fixed_admitVote {A : ACState sp.n} (h : Fixed A) (t : Time) {v : Vote sp.n}
     (hv : v.slot = 9) : Fixed (admitVote sp A t v) := by
   rcases admitVote_eq A t v with he | he
   · rw [he]; exact h
@@ -298,7 +298,7 @@ theorem fixed_admitVote {A : SAState sp.n} (h : Fixed A) (t : Time) {v : Vote sp
       exact h.2 x hx
 
 /-- A fresh vote of slot `slot(t)` under the cap enters the pool. -/
-theorem admitVote_pool {A : SAState sp.n} {t : Time} {v : Vote sp.n} (hs : v.slot = sp.slot t)
+theorem admitVote_pool {A : ACState sp.n} {t : Time} {v : Vote sp.n} (hs : v.slot = sp.slot t)
     (hn : v ∉ A.pool v.slot)
     (hc : ((A.pool v.slot).filter (fun x => x.val = v.val)).dedup.length < 2) :
     (admitVote sp A t v).pool v.slot = A.pool v.slot ++ [v] := by
@@ -307,7 +307,7 @@ theorem admitVote_pool {A : SAState sp.n} {t : Time} {v : Vote sp.n} (hs : v.slo
   exact Function.update_self _ _ _
 
 /-- The optimistic confirmation writes only the locks and the record. -/
-theorem optimisticConfirmation_eq (A : SAState sp.n) (Ψ : Frm sp.n Unit) (t : Time) :
+theorem optimisticConfirmation_eq (A : ACState sp.n) (Ψ : Frm sp.n Unit) (t : Time) :
     ∃ L r, optimisticConfirmation sp A Ψ t = { A with locks := L, latestConfirmed := r } := by
   unfold optimisticConfirmation
   split
@@ -317,19 +317,19 @@ theorem optimisticConfirmation_eq (A : SAState sp.n) (Ψ : Frm sp.n Unit) (t : T
     · exact ⟨_, A.latestConfirmed, rfl⟩
     · exact ⟨_, _, rfl⟩
 
-theorem updateLatestConfirmed_locks (A : SAState sp.n) (Ψ : Frm sp.n Unit) (C : Blk sp.n Unit) :
+theorem updateLatestConfirmed_locks (A : ACState sp.n) (Ψ : Frm sp.n Unit) (C : Blk sp.n Unit) :
     (updateLatestConfirmed sp A Ψ C).locks = A.locks := by
   unfold updateLatestConfirmed
   split_ifs <;> rfl
 
 /-- With an empty candidate set, the optimistic confirmation writes nothing. -/
-theorem optimisticConfirmation_none {A : SAState sp.n} {t : Time}
+theorem optimisticConfirmation_none {A : ACState sp.n} {t : Time}
     (h : optimisticSelect sp A Φ t = none) : optimisticConfirmation sp A Φ t = A := by
   unfold optimisticConfirmation
   rw [h]
 
 /-- The optimistic voters are at most the pool's length. -/
-theorem ncard_optimisticVoters_le (A : SAState sp.n) (s : Nat) (B : Blk sp.n Unit) :
+theorem ncard_optimisticVoters_le (A : ACState sp.n) (s : Nat) (B : Blk sp.n Unit) :
     (optimisticVoters sp A Φ s B).ncard ≤ (A.pool s).length := by
   calc (optimisticVoters sp A Φ s B).ncard
       ≤ (((A.pool s).map Vote.val).toFinset : Set (Fin sp.n)).ncard :=
@@ -341,14 +341,14 @@ theorem ncard_optimisticVoters_le (A : SAState sp.n) (s : Nat) (B : Blk sp.n Uni
     _ = (A.pool s).length := List.length_map _
 
 /-- A block with an optimistic voter, when every slot-`9` head is `Bv`, is an ancestor of `Bv`. -/
-theorem anc_Bv_of_voters {A : SAState sp.n} (hh : ∀ x ∈ A.pool 9, x.head = 3)
+theorem anc_Bv_of_voters {A : ACState sp.n} (hh : ∀ x ∈ A.pool 9, x.head = 3)
     {B : Blk sp.n Unit} (hB : (optimisticVoters sp A Φ 9 B).Nonempty) : Φ.Anc B Bv := by
   obtain ⟨i, x, hx, -, hanc⟩ := hB
   rw [hh x hx] at hanc
   exact (ancR_iff Bv_mem).1 hanc
 
 /-- Three slot-`9` voters on `Bv` count for every ancestor of `Bv`. -/
-theorem three_le_optimisticVoters {A : SAState sp.n}
+theorem three_le_optimisticVoters {A : ACState sp.n}
     (h1 : vv v1 ∈ A.pool 9) (h2 : vv v2 ∈ A.pool 9) (h3 : vv v3 ∈ A.pool 9)
     {B : Blk sp.n Unit} (hB : Φ.Anc B Bv) : 3 ≤ (optimisticVoters sp A Φ 9 B).ncard := by
   have hsub : (({v1, v2, v3} : Finset (Fin sp.n)) : Set (Fin sp.n)) ⊆
@@ -365,7 +365,7 @@ theorem three_le_optimisticVoters {A : SAState sp.n}
 
 /-- With the slot-`9` votes of `v1`, `v2`, `v3` (and only votes on `Bv`), the optimistic check
 selects `Bv` when no live lock conflicts with it. -/
-theorem optimisticSelect_Bv {A : SAState sp.n} {t : Time} (hj : joined sp A t)
+theorem optimisticSelect_Bv {A : ACState sp.n} {t : Time} (hj : joined sp A t)
     (hs : sp.slot t = 9) (ht : t < 38) (hh : ∀ x ∈ A.pool 9, x.head = 3)
     (h1 : vv v1 ∈ A.pool 9) (h2 : vv v2 ∈ A.pool 9) (h3 : vv v3 ∈ A.pool 9)
     (hc : ¬ conflictsWithLock sp A.locks Φ t Bv) : optimisticSelect sp A Φ t = some Bv := by
@@ -406,7 +406,7 @@ theorem fastExpiry_floor {L : Set Lock} {t : Time} {s : Nat}
 
 /-- The first and second slot-`9` messages enter the pool and lock nothing; the node does not
 vote before `t_9 + Δ` without a slot-`9` proposal. -/
-theorem tryVote_36 (A : SAState sp.n) : tryVote sp v0 A Φ 36 = (A, []) := by
+theorem tryVote_36 (A : ACState sp.n) : tryVote sp v0 A Φ 36 = (A, []) := by
   unfold tryVote
   dsimp only
   rw [slot_36]
@@ -417,7 +417,7 @@ theorem tryVote_36 (A : SAState sp.n) : tryVote sp v0 A Φ 36 = (A, []) := by
   all_goals first | rfl | exact absurd ⟨by rw [ts_9]; decide, Or.inr hr⟩ h2
 
 /-- The tick at `t_9 = 36` does nothing. -/
-theorem tick_36 (A : SAState sp.n) : acOnTick sp v0 A Φ 36 = (A, []) := by
+theorem tick_36 (A : ACState sp.n) : acOnTick sp v0 A Φ 36 = (A, []) := by
   unfold acOnTick
   dsimp only
   rw [slot_36, ite_eq_right (show ¬ ((36 : Time) = sp.ts ((9 : Nat) : Int) + sp.Δ) by decide),
@@ -425,13 +425,13 @@ theorem tick_36 (A : SAState sp.n) : acOnTick sp v0 A Φ 36 = (A, []) := by
   split_ifs <;> rfl
 
 /-- After the first message. -/
-def S1 : SAState sp.n := admitVote sp S0 36 (vv v1)
+def S1 : ACState sp.n := admitVote sp S0 36 (vv v1)
 /-- After the second message. -/
-def S2 : SAState sp.n := admitVote sp S1 36 (vv v2)
+def S2 : ACState sp.n := admitVote sp S1 36 (vv v2)
 /-- The third vote admitted, before the optimistic check. -/
-def S3' : SAState sp.n := admitVote sp S2 36 (vv v3)
+def S3' : ACState sp.n := admitVote sp S2 36 (vv v3)
 /-- After the third message: the optimistic check has run. -/
-noncomputable def S3 : SAState sp.n := optimisticConfirmation sp S3' Φ 36
+noncomputable def S3 : ACState sp.n := optimisticConfirmation sp S3' Φ 36
 
 theorem S0_pool9 : S0.pool 9 = [] := by simp [S0]
 
@@ -463,7 +463,7 @@ theorem S2_locks : S2.locks = ∅ := by
   rw [S2, admitVote_locks, S1, admitVote_locks]; rfl
 
 /-- Two voters are fewer than three quarters of four: the check selects nothing. -/
-theorem optimisticSelect_few {A : SAState sp.n} {t : Time} (h : (A.pool 9).length ≤ 2)
+theorem optimisticSelect_few {A : ACState sp.n} {t : Time} (h : (A.pool 9).length ≤ 2)
     (hs : sp.slot t = 9) : optimisticSelect sp A Φ t = none := by
   unfold optimisticSelect
   dsimp only
@@ -553,7 +553,7 @@ theorem unlock_lockV (W : View sp.n) :
     exact ⟨lockV, by rw [hlive]; rfl, Bv, Bv_mem, rfl, by rw [ite_eq_right (by decide)]⟩
 
 /-- The anchor of a node whose only lock is the one on `Bv` is `Bv`. -/
-theorem getAnchor_lockV {A : SAState sp.n} {t : Time} (hA : A.locks = {lockV})
+theorem getAnchor_lockV {A : ACState sp.n} {t : Time} (hA : A.locks = {lockV})
     (ht : sp.slot t ≤ 11) : getAnchor sp A Φ t = Bv := by
   have hL : ∀ l ∈ ({lockV} : Set Lock), l.block ≤ 3 ∧ sp.slot t ≤ l.expiry := by
     rintro l rfl; exact ⟨by decide, ht⟩
@@ -569,12 +569,12 @@ theorem getAnchor_lockV {A : SAState sp.n} {t : Time} (hA : A.locks = {lockV})
   · exact anc_g _ Bv_mem
 
 /-- The state after the own vote at `t_9 + Δ = 37`. -/
-noncomputable def S4 : SAState sp.n :=
+noncomputable def S4 : ACState sp.n :=
   optimisticConfirmation sp (admitVote sp { S3 with votedSlot := 9 } 37 (vv v0)) Φ 37
 
 /-- **`t = 37`, the tick votes**: the anchor is the lock block `Bv`, a leaf, so the own vote is
 on `Bv`; it is admitted and the optimistic check runs again. -/
-theorem admitVote_votedSlot (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
+theorem admitVote_votedSlot (A : ACState sp.n) (t : Time) (v : Vote sp.n) :
     (admitVote sp A t v).votedSlot = A.votedSlot := by
   rcases admitVote_eq A t v with h | h <;> rw [h]
 
@@ -588,7 +588,7 @@ theorem S3_votedSlot : S3.votedSlot = 8 := by
 theorem tick_37 : (acOnTick sp v0 S3 Φ 37).1 = S4 := by
   have hj : joined sp S3 37 := by rw [joined, fixed_S3.rt]; exact bot_le
   have hA1 : ∀ W : View sp.n,
-      ({ S3 with locks := unlock sp S3.locks Φ 37 ((9 : Nat) - 1 : Int) W } : SAState sp.n) =
+      ({ S3 with locks := unlock sp S3.locks Φ 37 ((9 : Nat) - 1 : Int) W } : ACState sp.n) =
         S3 := by
     intro W
     rw [S3_locks, unlock_lockV, ← S3_locks]
@@ -626,9 +626,9 @@ theorem fixed_S4 : Fixed S4 := by
 /-- After its own vote the node still holds the one lock on `Bv`: the check selects `Bv` again
 and writes the same lock (the slot-`9` lock does not raise a slot-`9` expiry). -/
 theorem S4_locks : S4.locks = {lockV} := by
-  set A : SAState sp.n := admitVote sp { S3 with votedSlot := 9 } 37 (vv v0) with hA
+  set A : ACState sp.n := admitVote sp { S3 with votedSlot := 9 } 37 (vv v0) with hA
   have hpool : A.pool 9 = [vv v1, vv v2, vv v3, vv v0] := by
-    have h3 : ({ S3 with votedSlot := 9 } : SAState sp.n).pool 9 = [vv v1, vv v2, vv v3] := by
+    have h3 : ({ S3 with votedSlot := 9 } : ACState sp.n).pool 9 = [vv v1, vv v2, vv v3] := by
       obtain ⟨L, r, he⟩ := optimisticConfirmation_eq S3' Φ 36
       change S3.pool 9 = _
       rw [S3, he]
@@ -659,7 +659,7 @@ theorem S4_locks : S4.locks = {lockV} := by
 /-! ## The run: the update of slot `8` at `t_9 + 2Δ = 38` -/
 
 /-- **`t = 38`, the tick runs the update of slot `8`.** -/
-theorem tick_38 {A : SAState sp.n} (h : Fixed A) :
+theorem tick_38 {A : ACState sp.n} (h : Fixed A) :
     acOnTick sp v0 A Φ 38 = (updateConfirmation sp A Φ 38 8, []) := by
   have hj : joined sp A 38 := by rw [joined, h.rt]; exact bot_le
   unfold acOnTick
@@ -682,7 +682,7 @@ theorem no_equivocators (i : Fin sp.n) : i ∉ equivocators {v | v ∈ P8} := by
   exact hne (this x hx y hy (hxi.trans hyi.symm))
 
 /-- Every slot-`8` vote is resolved before `t_8 + 2Δ = 34`. -/
-theorem early_eq {A : SAState sp.n} (h : Fixed A) :
+theorem early_eq {A : ACState sp.n} (h : Fixed A) :
     {v | v ∈ A.pool 8 ∧ resolutionTime A Φ v < ETime.of (sp.ts (8 : Nat) + 2 * sp.Δ)} =
       {v | v ∈ P8} := by
   ext x
@@ -708,7 +708,7 @@ theorem ncard_univ_4 : (Set.univ : Set (Fin sp.n)).ncard = 4 := by
 
 open Classical in
 /-- The slot-`8` score: all four validators for the ancestors of `Bc`, nobody otherwise. -/
-theorem score_eq {A : SAState sp.n} (h : Fixed A) (B : Blk sp.n Unit) :
+theorem score_eq {A : ACState sp.n} (h : Fixed A) (B : Blk sp.n Unit) :
     confirmationScore sp A Φ 8 B = if Φ.Anc B Bc then 4 else 0 := by
   unfold confirmationScore
   dsimp only
@@ -730,7 +730,7 @@ theorem voters_P8 : (voters {v | v ∈ P8}).ncard = 4 := by
     ncard_univ_4]
 
 /-- The result of the update of slot `8` is `Bc`. -/
-theorem getConfirmation_8 {A : SAState sp.n} (h : Fixed A) :
+theorem getConfirmation_8 {A : ACState sp.n} (h : Fixed A) :
     getConfirmation sp A Φ 8 = some Bc := by
   unfold getConfirmation
   rw [h.pool8, voters_P8]
@@ -741,7 +741,7 @@ theorem getConfirmation_8 {A : SAState sp.n} (h : Fixed A) :
     rw [score_eq h, ite_eq_right (show ¬ Φ.Anc C Bc from hC)] at hlt
     omega
 
-theorem fastTest_8 {A : SAState sp.n} (h : Fixed A) {B : Blk sp.n Unit} :
+theorem fastTest_8 {A : ACState sp.n} (h : Fixed A) {B : Blk sp.n Unit} :
     FastTest sp A Φ 8 B ↔ Φ.Anc B Bc := by
   unfold FastTest
   rw [score_eq h]
@@ -772,7 +772,7 @@ theorem path_unvetoed {B : Blk sp.n Unit} (hB : B ∈ confirmationPath sp Φ Bc)
   · exact ⟨fun h => absurd h not_compatible_Bc_Bv, fun h => by simp [Bc, B1] at h⟩
 
 /-- The slow test (saved results `Bc` in the previous `k − 1` slots) passes below `Bc`. -/
-theorem slow_iff {A : SAState sp.n} (h : Fixed A) {B : Blk sp.n Unit} :
+theorem slow_iff {A : ACState sp.n} (h : Fixed A) {B : Blk sp.n Unit} :
     (∀ j : Int, ((8 : Nat) : Int) - sp.k < j → j < (8 : Nat) → ∃ S ∈ Φ.tree,
       Function.update A.saved ((8 : Nat) : Int) (some Bc.root) j = some S.root ∧ Φ.Anc B S) ↔
         Φ.Anc B Bc := by
@@ -787,7 +787,7 @@ theorem slow_iff {A : SAState sp.n} (h : Fixed A) {B : Blk sp.n Unit} :
 open Classical in
 /-- The locks after an update of slot `s` with result `C` (the `updateConfirmation` body read
 off; `updateLatestConfirmed` keeps the locks). -/
-theorem updateConfirmation_locks {A : SAState sp.n} {Ψ : Frm sp.n Unit} {t : Time} {s : Nat}
+theorem updateConfirmation_locks {A : ACState sp.n} {Ψ : Frm sp.n Unit} {t : Time} {s : Nat}
     {C : Blk sp.n Unit} (hC : getConfirmation sp A Ψ s = some C) {D X : Option (Blk sp.n Unit)}
     (hD : deepest Ψ {B | (B ∈ confirmationPath sp Ψ C ∧
       ¬ conflictsWithLock sp A.locks Ψ t B) ∧ FastTest sp A Ψ s B} = D)
@@ -806,7 +806,7 @@ theorem updateConfirmation_locks {A : SAState sp.n} {Ψ : Frm sp.n Unit} {t : Ti
     split_ifs <;> rfl
 
 /-- The state after the update of slot `8`. -/
-noncomputable def S5 : SAState sp.n := updateConfirmation sp S4 Φ 38 8
+noncomputable def S5 : ACState sp.n := updateConfirmation sp S4 Φ 38 8
 
 /-- **The update of slot `8` is vetoed by the node's own newer lock on `Bv`**: its result `Bc`
 conflicts with it. -/
@@ -857,17 +857,17 @@ theorem S5_locks : S5.locks = {lockV, fastB1, slowB1} := by
 
 /-! ## Sleep and the restart at `t_{j₀+k} = 56` -/
 
-theorem not_joined_56 {A : SAState sp.n} (h : A.restartTime = ((56 : Time) : WithBot Time)) :
+theorem not_joined_56 {A : ACState sp.n} (h : A.restartTime = ((56 : Time) : WithBot Time)) :
     ¬ joined sp A 56 := by
   rw [joined, h, slot_56, show sp.ts (((14 : Nat) : Int) - 1) = 52 by decide]
   exact fun h' => absurd (WithBot.coe_le_coe.1 h') (by decide)
 
-theorem blockReceipt_locks_rt (A : SAState sp.n) (t : Time) (B : Blk sp.n Unit) :
+theorem blockReceipt_locks_rt (A : ACState sp.n) (t : Time) (B : Blk sp.n Unit) :
     (blockReceipt sp A t B).locks = A.locks ∧
       (blockReceipt sp A t B).restartTime = A.restartTime := ⟨rfl, rfl⟩
 
 /-- A block replayed by a restart at `56` changes no lock: the node is not joined. -/
-theorem acOnBlock_56 {A : SAState sp.n} (h : A.restartTime = ((56 : Time) : WithBot Time))
+theorem acOnBlock_56 {A : ACState sp.n} (h : A.restartTime = ((56 : Time) : WithBot Time))
     (B : Blk sp.n Unit) : (acOnBlock sp v0 A Φ 56 B).1.locks = A.locks ∧
       (acOnBlock sp v0 A Φ 56 B).1.restartTime = A.restartTime := by
   obtain ⟨hl, hr⟩ := blockReceipt_locks_rt A 56 B
@@ -884,11 +884,11 @@ theorem acOnBlock_56 {A : SAState sp.n} (h : A.restartTime = ((56 : Time) : With
   exact ⟨hl, hr⟩
 
 /-- **The restart keeps the locks**, for every replay order. -/
-theorem restart_locks (ro : ReplayOrder sp Unit) (A : SAState sp.n) :
+theorem restart_locks (ro : ReplayOrder sp Unit) (A : ACState sp.n) :
     (acRestart sp ro v0 A Φ 56).1.locks = A.locks := by
   unfold acRestart
   dsimp only
-  suffices ∀ (l : List (Blk sp.n Unit)) (acc : SAState sp.n × List (Em sp Unit)),
+  suffices ∀ (l : List (Blk sp.n Unit)) (acc : ACState sp.n × List (Em sp Unit)),
       acc.1.restartTime = ((56 : Time) : WithBot Time) →
       (l.foldl (fun acc B => let r := acOnBlock sp v0 acc.1 Φ 56 B; (r.1, acc.2 ++ r.2))
         acc).1.locks = acc.1.locks from this _ _ rfl
@@ -959,8 +959,8 @@ theorem none_live_after (ro : ReplayOrder sp Unit) :
 open Classical in
 /-- A local copy of the rule before 2(a): a vetoed update saves its result and writes nothing
 else; otherwise it is the current update. (Not the spec; used only as a control.) -/
-noncomputable def updateConfirmationOld (A : SAState sp.n) (Ψ : Frm sp.n Unit) (t : Time)
-    (s : Nat) : SAState sp.n :=
+noncomputable def updateConfirmationOld (A : ACState sp.n) (Ψ : Frm sp.n Unit) (t : Time)
+    (s : Nat) : ACState sp.n :=
   let C := getConfirmation sp A Ψ s
   let A₁ := { A with saved := Function.update A.saved s (C.map Block.root) }
   match C with
@@ -1014,4 +1014,4 @@ theorem veto_run (ro : ReplayOrder sp Unit) :
   ⟨tick_36 S0, msg_1, msg_2, msg_3, S3_locks, tick_37, tick_38 fixed_S4, update_vetoed.2,
     S5_locks, live_at_j0k ro, anchor_at_j0k ro⟩
 
-end Consensus.Goldilocks.SA.Test.GradedVeto
+end Consensus.Goldilocks.AC.Test.GradedVeto

@@ -16,9 +16,9 @@ node is honest throughout, and is read back on the run. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 
@@ -31,9 +31,9 @@ theorem record_lookup_of_later_at
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i j : Nat} {t : Time} (ht : 0 ≤ t)
     (hjt : ∀ k < j, tr.time k ≤ t) (hy : y ∈ H t) (hij : i ≤ j)
     (heq : (tr.state y j).ac.latestConfirmed = (tr.state y i).ac.latestConfirmed)
-    {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hR : SA.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed = some R) :
-    SA.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed = some R := by
+    {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hR : AC.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed = some R) :
+    AC.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed = some R := by
   have hj := Trace.upTo_state tr y hjt
   have hi := Trace.upTo_state tr y fun k hk => hjt k (hk.trans_le hij)
   have h := record_lookup_of_later (hrun.upTo ht) (hnc.upTo t) hy hij
@@ -48,8 +48,8 @@ theorem record_step_origin_at
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) :
     (tr.state y (i + 1)).ac.latestConfirmed = (tr.state y i).ac.latestConfirmed ∨
       ∃ C ∈ (tr.state y i).fg.tree, C.root = (tr.state y (i + 1)).ac.latestConfirmed ∧
-        ∃ s CV, SA.ResultAt tr.projAC y i s C CV ∨
-          SA.OptimisticLockAt tr.projAC y i s C CV := by
+        ∃ s CV, AC.ResultAt tr.projAC y i s C CV ∨
+          AC.OptimisticLockAt tr.projAC y i s C CV := by
   have hle : ∀ k < i + 1, tr.time k ≤ tr.time i :=
     fun k hk => hrun.time_mono (Nat.le_of_lt_succ hk)
   have h1 := Trace.upTo_state tr y hle
@@ -63,8 +63,8 @@ theorem record_step_origin_at
     rw [RunTrace.upTo_projAC] at hs
     refine Or.inr ⟨C, hC, hCr, s, CV, ?_⟩
     rcases hs with hs | hs
-    · exact Or.inl ((Compose.Growing.sa_resultAt_upTo hrun.time_mono).mp hs).2
-    · exact Or.inr ((Compose.Growing.sa_optimisticLockAt_upTo hrun.time_mono).mp hs).2
+    · exact Or.inl ((Compose.Growing.ac_resultAt_upTo hrun.time_mono).mp hs).2
+    · exact Or.inr ((Compose.Growing.ac_optimisticLockAt_upTo hrun.time_mono).mp hs).2
 
 end Consensus.Goldilocks.Obligations.Growing
 

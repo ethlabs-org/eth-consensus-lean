@@ -114,9 +114,9 @@ theorem sync_projection : SyncProjection := by
 
 section
 
-open SA
+open AC
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
 
 private theorem joined_iff {τ t : Time} (hτ : 0 ≤ τ) :
@@ -124,15 +124,15 @@ private theorem joined_iff {τ t : Time} (hτ : 0 ≤ τ) :
       τ ≤ sp.ts ((sp.slot t : Int) - 1) := by
   have hΔ := sp.toParams.hΔ
   rcases Nat.eq_zero_or_pos (sp.toParams.slotOf t) with h0 | hpos
-  · simp only [SAParams.slot, h0, lt_irrefl, false_and, false_iff, not_le, SAParams.ts]
+  · simp only [ACParams.slot, h0, lt_irrefl, false_and, false_iff, not_le, ACParams.ts]
     push_cast
     linarith
   · rw [sp.slotTime_eq]
-    simp only [hpos, true_and, SAParams.ts, SAParams.slot]
+    simp only [hpos, true_and, ACParams.ts, ACParams.slot]
     push_cast [Nat.one_le_iff_ne_zero.2 hpos.ne']
     rfl
 
-/-- On the SA slot grid, joining is the previous-slot bound on nonnegative restart cuts. -/
+/-- On the AC slot grid, joining is the previous-slot bound on nonnegative restart cuts. -/
 theorem joinedAt_iff_restartCuts {A : NodeAC sp.toParams} {tr : RunTrace A}
     (y : Fin sp.n) (t : Time) (htime : ∀ k, tr.RestartAt y k → 0 ≤ tr.time k) :
     tr.JoinedAt y t ↔
@@ -143,9 +143,9 @@ theorem joinedAt_iff_restartCuts {A : NodeAC sp.toParams} {tr : RunTrace A}
 
 /-- **The run's joined test is the AC projection's**, on a trace whose cuts are at times `≥ 0`. -/
 theorem projAC_joinedAt_iff {tr : GoldilocksTrace sp ro} (htime : ∀ k, 0 ≤ tr.time k)
-    (y : Fin sp.n) (t : Time) : tr.JoinedAt y t ↔ SA.JoinedAt tr.projAC y t := by
+    (y : Fin sp.n) (t : Time) : tr.JoinedAt y t ↔ AC.JoinedAt tr.projAC y t := by
   rw [joinedAt_iff_restartCuts y t (fun k _ => htime k)]
-  simp only [SA.JoinedAt, projAC_restartAt]
+  simp only [AC.JoinedAt, projAC_restartAt]
   rfl
 
 /-- The latest restart time before cut `i`. -/
@@ -183,7 +183,7 @@ private theorem restartTime_eq {dg} {H} {tr : GoldilocksTrace sp ro}
   intro i
   induction i with
   | zero =>
-    obtain ⟨m, hm⟩ := SA.voteStart_iff.1 (h.vstart y)
+    obtain ⟨m, hm⟩ := AC.voteStart_iff.1 (h.vstart y)
     rw [Trace.state, h.init y hy]
     simp only [Node.initWith, hm]
     rfl
@@ -229,7 +229,7 @@ private theorem restartTime_eq {dg} {H} {tr : GoldilocksTrace sp ro}
       · rfl
 
 /-- **Joining and participation project**: a restart of the run is a restart of the AC
-projection, and the run's joined test (with `0 < slot(t)`) is the SA's on restart times `≥ 0`;
+projection, and the run's joined test (with `0 < slot(t)`) is the AC's on restart times `≥ 0`;
 the AC state's `restart_time` at a call is the time of the latest restart before it (a restart
 sets it, every other call keeps it), and the restarts at or before the time of a call other than
 a restart are the ones before it (restarts come first at a time). From starts up to the vote
@@ -237,11 +237,11 @@ permission. -/
 theorem joined_projection_from {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini} (h : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) (t : Time) :
-    (tr.JoinedAt y t ↔ SA.JoinedAt tr.projAC y t) ∧
+    (tr.JoinedAt y t ↔ AC.JoinedAt tr.projAC y t) ∧
       (∀ i, tr.IsCall y i → ¬ tr.RestartAt y i → tr.time i = t →
-        (tr.JoinedAt y t ↔ SA.joined sp (tr.state y i).ac t)) ∧
-      tr.honestAwakeJoined H t = SA.honestAwakeJoined tr.projAC H t := by
-  have hpt : ∀ z, (tr.JoinedAt z t ↔ SA.JoinedAt tr.projAC z t) := fun z =>
+        (tr.JoinedAt y t ↔ AC.joined sp (tr.state y i).ac t)) ∧
+      tr.honestAwakeJoined H t = AC.honestAwakeJoined tr.projAC H t := by
+  have hpt : ∀ z, (tr.JoinedAt z t ↔ AC.JoinedAt tr.projAC z t) := fun z =>
     projAC_joinedAt_iff h.time_nonneg z t
   refine ⟨hpt y, fun i hi hnr hit => ?_, ?_⟩
   · -- the restarts at or before `t` are the restarts before `i`
@@ -258,12 +258,12 @@ theorem joined_projection_from {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
         have : e.phase ≤ 0 := h.phase_order y hy y hy j k t e .restart hg hgk (by omega)
         omega
       · exact hnr hk
-    unfold SA.joined
+    unfold AC.joined
     rw [joinedAt_iff_restartCuts y t (fun k _ => h.time_nonneg k), restartTime_eq h hy,
       lastBefore_le h]
     exact ⟨fun hj k hki hk => hj k hk ((hset k hk).2 hki),
       fun hj k hk hkt => hj k ((hset k hk).1 hkt) hk⟩
-  · unfold RunTrace.honestAwakeJoined SA.honestAwakeJoined
+  · unfold RunTrace.honestAwakeJoined AC.honestAwakeJoined
     congr 1
     ext z
     exact Iff.rfl.and (Iff.rfl.and (hpt z))

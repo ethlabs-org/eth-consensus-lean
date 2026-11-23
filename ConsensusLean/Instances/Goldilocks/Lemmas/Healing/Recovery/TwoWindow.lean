@@ -47,11 +47,11 @@ Replay states are transported between honest stores explicitly (`σ_eq_honest`).
 
 namespace Consensus.Goldilocks.Healing.Recovery
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-- The first crossing above `A` on a held `A ⪯ B` (as `Store.first_crossing_of_anc` in
 `Obligations/WindowAnchors`, structural part, local to avoid a Healing-to-Obligations edge). -/
@@ -99,15 +99,15 @@ private theorem justifier_entry {P : Params} {ACP : Type} {acp₀ : ACP} {st : S
 
 /-- **Two-window finalization.** -/
 theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {kU iU : Nat}
-    {U : SA.Blk sp.n (List (FG.Att sp.n))}
+    {U : AC.Blk sp.n (List (FG.Att sp.n))}
     (houtcome : Compose.OutcomeService)
     (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hpat : PatternPremises tr H K proposer dg g ΔF Gp W M cF kF)
     (hwindow : ∀ u, v ≤ u → u < v + M →
-      ∃ (k : Nat) (B : SA.Blk sp.n (List (FG.Att sp.n))),
+      ∃ (k : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))),
         ReadyProposal tr H proposer (proposer u) k u B ∧
         ∀ y i, Compose.RunEntry tr H y i B →
-          ∃ (w : Fin sp.n) (kw : Nat) (Q : SA.Blk sp.n (List (FG.Att sp.n))),
+          ∃ (w : Fin sp.n) (kw : Nat) (Q : AC.Blk sp.n (List (FG.Att sp.n))),
             ReadyProposal tr H proposer w kw Q.slot Q ∧
             u + cF ≤ Q.slot ∧ Q.slot ≤ u + cF + kF ∧
             ∃ Pr, Q.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) B Pr)
@@ -129,11 +129,11 @@ theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {
   have hsub (y : Fin sp.n) (hy : y ∈ H) (c : Nat) :
       (tr.state y c).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, c, hX⟩
   have hts {m n : Nat} (h : m ≤ n) : sp.ts m ≤ sp.ts n :=
-    (SA.ts_le_iff sp).2 (by exact_mod_cast h)
+    (AC.ts_le_iff sp).2 (by exact_mod_cast h)
   -- a cut before `t_{n+1}` has slot `≤ n`; a block accepted at it has slot `≤ n`
   have hslot_lt {k n : Nat} (hk : tr.time k < sp.ts (n + 1 : Nat)) : sp.slot (tr.time k) ≤ n := by
     by_contra hc
-    have := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg k) ((n + 1 : Nat) : Int)).2
+    have := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg k) ((n + 1 : Nat) : Int)).2
       (by push_cast; omega)
     linarith
   -- `g ≤ R_z ≤ t_{U.slot}`
@@ -143,7 +143,7 @@ theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {
     have h0 := le_gbar g
     have hΔ := sp.toParams.hΔ
     have h3 : a < sp.ts (sp.slot a + 1 : Nat) := not_le.1 fun h => by
-      have := (SA.ts_le_iff_le_slot sp (by linarith [gbar_nonneg g]) _).1 h
+      have := (AC.ts_le_iff_le_slot sp (by linarith [gbar_nonneg g]) _).1 h
       push_cast at this
       omega
     have h4 := hts (show sp.slot a + 1 ≤ sp.slot a + 2 * sp.k + 5 by omega)
@@ -228,7 +228,7 @@ theorem two_window_finalization {Gp : Time} {W M cF kF v : Nat} {q : Fin sp.n} {
     refine ⟨x, hx, k, Z, hacc, ?_, hkt.trans_le hT1, U, ?_, ?_, .refl⟩
     · have hZs : Z.slot ≤ sp.slot (tr.time k) := (hrun.cutLaw x hx k _ hacc).1
       have hVZs := (Anc.slot_le hcoh hVZ).1
-      have := (SA.ts_le_iff_le_slot sp (hrun.time_nonneg k) (U.slot : Int)).2
+      have := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg k) (U.slot : Int)).2
         (by exact_mod_cast (show U.slot ≤ sp.slot (tr.time k) by omega))
       linarith
     · rw [← tr.state_succ_of_call hacc]

@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
 
 public section
 
-/-! # Goldilocks SA: where a walk stops
+/-! # Goldilocks AC: where a walk stops
 
 `WalkEnd T sc el a E`: the walk of `T` (scores `sc`, eligibility `el`) from `a` stops at `E`,
 some number of steps in, with no best eligible child at `E`. The end of a walk does not
@@ -12,9 +12,9 @@ from `X` ends (`WalkEnd.of_anc`); a walk with at least one step per block of `T`
 (`walkEnd_ghost`). Built on `Steps/Walk`'s `ghost_stopped`, `ghost_visits`,
 `ghost_add` and `ghost_succ_of_best`. -/
 
-namespace Consensus.Goldilocks.SA
+namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : SAParams}
+variable {FGP : Type} {sp : ACParams}
 
 /-- The eligible children of `X` in `T`: the set `ghost` takes the best of (an `abbrev`, so that
 it matches that set after `rw [ghost]`). -/
@@ -62,6 +62,6 @@ theorem walkEnd_ghost (hS : Coherent S) (hT : T ⊆ S) (hfin : T.Finite) {f : Na
     WalkEnd (sp := sp) T sc el a (ghost sp T sc el f a) :=
   ⟨f, rfl, ghost_stopped hS hT hfin hf a⟩
 
-end Consensus.Goldilocks.SA
+end Consensus.Goldilocks.AC
 
 end

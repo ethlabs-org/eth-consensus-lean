@@ -39,9 +39,9 @@ on the two chains, which `ChainConvictedBelow` excludes. The crossing sets come 
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -88,7 +88,7 @@ active case `h_max = h_j + 1` puts `Σ.J` below the reset seed). -/
 theorem J_eq_of_hj_eq_conv (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hcv : ChainConvictedBelow tr H) {y z : Fin sp.n} {i j : Nat} {t t' : Time} (ht : 0 ≤ t)
     (hi : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) (ht' : 0 ≤ t') (hj : ∀ k < j, tr.time k ≤ t')
-    (hz : z ∈ H t') {B B' : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hz : z ∈ H t') {B B' : AC.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ (tr.state y i).fg.tree) (hB' : B' ∈ (tr.state z j).fg.tree)
     (he : ((tr.state y i).fg.σ B.root).hj = ((tr.state z j).fg.σ B'.root).hj) :
     ((tr.state y i).fg.σ B.root).J = ((tr.state z j).fg.σ B'.root).J := by
@@ -106,9 +106,9 @@ end Consensus.Goldilocks.Compose.Growing
 
 namespace Consensus.Goldilocks.Growing.GoldilocksRun
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -125,7 +125,7 @@ theorem finalized_anc_of_lt_conv (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hcv : Compose.Growing.ChainConvictedBelow tr H)
     {y z : Fin sp.n} {k m : Nat} {t u : Time} (ht : 0 ≤ t) (hk : ∀ q < k, tr.time q ≤ t)
     (hy : y ∈ H t) (hu : 0 ≤ u) (hm : ∀ q < m, tr.time q ≤ u) (hz : z ∈ H u)
-    {X F W : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y k).fg.tree)
+    {X F W : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y k).fg.tree)
     (hF : F ∈ (tr.state y k).fg.tree) (hFr : F.root = ((tr.state y k).fg.σ X.root).F)
     (hW : W ∈ (tr.state z m).fg.tree)
     (hlt : ((tr.state y k).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h) :

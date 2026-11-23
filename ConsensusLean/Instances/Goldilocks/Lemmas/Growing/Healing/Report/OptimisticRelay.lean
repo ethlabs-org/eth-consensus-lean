@@ -21,9 +21,9 @@ restarts are bounded by the caller (from the proposal's joinedness), not by a wh
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -33,7 +33,7 @@ acceptance before `ḡ + 2Δ`. -/
 private theorem catch_accept_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g : Time} (hcatch : CatchRun tr H g (2 * sp.Δ)) {w : Fin sp.n} {kw : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (hw : w ∈ H (tr.time kw))
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hw : w ∈ H (tr.time kw))
     (ha : tr.projAC.AcceptAt w kw B) (hkw : tr.time kw < gbar g) {y : Fin sp.n} {i : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time i))
     (hcy : tr.projAC.CallAt y i ell) (hi : gbar g + 2 * sp.Δ ≤ tr.time i)
@@ -49,7 +49,7 @@ theorem relay_source_at_proposal_at
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y i ell) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hrs : ∀ k ≤ i, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts s)
-    {Q : SA.Blk sp.n (List (FG.Att sp.n))} (hQU : Q ∈ tr.HonestBlocksAt H)
+    {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hQU : Q ∈ tr.HonestBlocksAt H)
     (hsource : Q.root = sp.genesisRoot ∨ ∃ z q, z ∈ H (tr.time q) ∧
       tr.projAC.AcceptAt z q Q ∧ tr.time q < sp.ts s + 2 * sp.Δ)
     (hFQ : Anc (tr.HonestBlocksAt H) ell.frame.F Q) :
@@ -57,10 +57,10 @@ theorem relay_source_at_proposal_at
   have hmono := hrun.time_mono
   have hΔ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
-    simp only [SAParams.ts]; push_cast; ring
+    simp only [ACParams.ts]; push_cast; ring
   have hi : tr.time i = sp.ts s + 4 * sp.Δ := hti.trans hts
   have ht0 := hrun.time_nonneg i
-  have hgg := SA.le_gbar g
+  have hgg := AC.le_gbar g
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have subU := RunTrace.honestBlocks_upTo_subset hmono (H := H) ht0
   -- the proposer's deadlines before the proposal end before `t_s + 3Δ`
@@ -99,24 +99,24 @@ theorem relay_source_at_proposal_at
     Trace.upTo_state tr.projAC y fun _ hk => hmono hk.le
   have hQt : Q ∈ ell.frame.tree := by
     rcases ha with hg | ⟨k, hki, hk, -⟩
-    · obtain ⟨G, hGU, hGr, hGp⟩ := SA.genesis_mem_of_call sp hr hy i ell hc'
+    · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hy i ell hc'
       obtain rfl : Q = G := hU.1 hQU (subU hGU) (hg.trans hGr.symm)
-      obtain ⟨hPhi, -⟩ := SA.frameIn_of_callAt hr hy hc'
+      obtain ⟨hPhi, -⟩ := AC.frameIn_of_callAt hr hy hc'
       rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hFQ with heq | ⟨P, -, hP⟩
       · exact heq ▸ hPhi.rooted.1
       · exact False.elim (Option.some_ne_none _ (hP.2.2.symm.trans hGp))
     · have hk' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time i)) y k Q :=
         ACTrace.upTo_acceptAt.mpr ⟨hmono hki, hk⟩
       obtain ⟨ella, hca, hba⟩ := hk'
-      have hQp := (SA.frameIn_of_callAt hr hy hca).2
-        ((SA.accept_new sp hr hy ⟨ella, hca, hba⟩).1 ella hca)
-      exact SA.mem_tree_of_acceptAt sp hr hy ⟨ella, hca, hba⟩ hki hc'
+      have hQp := (AC.frameIn_of_callAt hr hy hca).2
+        ((AC.accept_new sp hr hy ⟨ella, hca, hba⟩).1 ella hca)
+      exact AC.mem_tree_of_acceptAt sp hr hy ⟨ella, hca, hba⟩ hki hc'
         (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 hQp hFQ)
-  have hacc : SA.AcceptedBefore (tr.projAC.upTo (tr.time i)) y Q (sp.ts s + 3 * sp.Δ) := by
+  have hacc : AC.AcceptedBefore (tr.projAC.upTo (tr.time i)) y Q (sp.ts s + 3 * sp.Δ) := by
     rcases ha with hg | ⟨k, hki, hk, hkt⟩
     · exact Or.inl hg
     · exact Or.inr ⟨k, ACTrace.upTo_acceptAt.mpr ⟨hmono hki, hk⟩, hkt⟩
-  have hbs := SA.blockStamp_lt_of_acceptedBefore sp hr hrun.vstart hy hc' hQt hacc
+  have hbs := AC.blockStamp_lt_of_acceptedBefore sp hr hrun.vstart hy hc' hQt hacc
     (fun k hk hrk => by
       obtain ⟨-, hrk⟩ := ACTrace.upTo_restartAt.mp hrk
       change tr.time k < _

@@ -26,10 +26,10 @@ updater is honest throughout (`Compose.record_origin_before`, lifted by `originB
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 open Compose.Growing (originBefore_iff)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
@@ -39,18 +39,18 @@ update and with a label at least the update's. -/
 theorem operational_update_recent_source_at {b : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {p : Fin sp.n} {k u : Nat} {P : SA.Blk sp.n (List (FG.Att sp.n))}
+    {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hhold : p ∈ H (sp.ts u + sp.Δ)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P)
     (hPs : P.slot = u) (hR : drainTime sp a ≤ sp.ts u)
     (hgu : gbar g + 4 * sp.Δ ≤ sp.ts u) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
-    (hup : SA.UpdateAt tr.projAC y j u ell)
-    {R : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hlookup : SA.lookup (Node.frame (tr.state y (j + 1)))
+    (hup : AC.UpdateAt tr.projAC y j u ell)
+    {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hlookup : AC.lookup (Node.frame (tr.state y (j + 1)))
       (tr.state y (j + 1)).ac.latestConfirmed = some R) :
     ∃ x q s CV, x ∈ H (tr.time q) ∧ q ≤ j ∧ tr.time q ≤ tr.time j ∧ u ≤ s ∧
-      (SA.ResultAt tr.projAC x q s R CV ∨ SA.OptimisticLockAt tr.projAC x q s R CV) := by
+      (AC.ResultAt tr.projAC x q s R CV ∨ AC.OptimisticLockAt tr.projAC x q s R CV) := by
   obtain ⟨hPt, hconf, _, _, _, hrecord⟩ :=
     operational_update_selection_at hp hhold hdesignated hactual hPs hR hgu hTb hy hup
   have hrun := hp.run
@@ -76,7 +76,7 @@ theorem operational_update_recent_source_at {b : Time}
     Trace.upTo_state tr y fun k hk => hrun.time_mono (Nat.le_of_lt_succ hk)
   obtain ⟨C, hC, hCr, hsource⟩ := Compose.record_origin_before hpre hncp hy (j + 1)
   have hU := Compose.honest_blocks_coherent hpre.toLocalRun hncp
-  obtain ⟨hRm, hRr⟩ := SA.lookup_eq_some hlookup
+  obtain ⟨hRm, hRr⟩ := AC.lookup_eq_some hlookup
   rw [← hst] at hRm hRr
   have heq : C = R := hU.1 ⟨y, hy, j + 1, hC⟩ ⟨y, hy, j + 1, hRm.1⟩ (hCr.trans hRr.symm)
   subst C
@@ -91,19 +91,19 @@ theorem operational_update_recent_source_at {b : Time}
   rw [hPs] at hlt
   rcases hsrc with ⟨e, hu, hsel, _⟩ | ⟨e, A, ho, hslot, hsel, _⟩
   · have hRs := Compose.Growing.frame_slot_le_at hrun hp.noColl hx hu.1 R
-      (SA.deepest_mem hsel).1.1
+      (AC.deepest_mem hsel).1.1
     have hsl : sp.slot (tr.projAC.time q) = s + 1 := by
       rw [hu.2.2.1]
-      apply SA.slot_of_mem sp (s + 1) <;>
-        simp only [SAParams.ts] <;> push_cast <;> linarith [sp.toParams.hΔ]
+      apply AC.slot_of_mem sp (s + 1) <;>
+        simp only [ACParams.ts] <;> push_cast <;> linarith [sp.toParams.hΔ]
     change sp.slot (tr.time q) = s + 1 at hsl
     rw [hsl] at hRs
     omega
   · have hm : R ∈ e.frame.tree := by
-      unfold SA.optimisticSelect at hsel
+      unfold AC.optimisticSelect at hsel
       dsimp only at hsel
       split_ifs at hsel
-      exact (SA.deepest_mem hsel).1.1
+      exact (AC.deepest_mem hsel).1.1
     have hRs := Compose.Growing.frame_slot_le_at hrun hp.noColl hx ho.1 R hm
     change sp.slot (tr.time q) = s at hslot
     omega

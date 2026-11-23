@@ -22,35 +22,35 @@ its own cut and a held-state reader honest at an observation time after the stat
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open SA (SAParams ReplayOrder Payload)
+open AC (ACParams ReplayOrder Payload)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a : Time}
 
-/-! ### Prefix transport of call-local SA events -/
+/-! ### Prefix transport of call-local AC events -/
 
 /-- A fast-lock write at a cut by `d` is one of the prefix through `d`. -/
 theorem fastLockAt_upTo_iff (hmono : Monotone tr.time) {d : Time} {x : Fin sp.n} {i s : Nat}
-    (hi : tr.time i ≤ d) {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)} :
-    SA.FastLockAt (tr.upTo d).projAC x i s B CV ↔ SA.FastLockAt tr.projAC x i s B CV := by
+    (hi : tr.time i ≤ d) {B : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)} :
+    AC.FastLockAt (tr.upTo d).projAC x i s B CV ↔ AC.FastLockAt tr.projAC x i s B CV := by
   have hs : (tr.projAC.upTo d).state x i = tr.projAC.state x i :=
     Trace.upTo_state tr.projAC x (fun k hk => (hmono hk.le).trans hi)
   have hc : ∀ ℓ, (tr.projAC.upTo d).CallAt x i ℓ ↔ tr.projAC.CallAt x i ℓ := fun _ =>
     Trace.upTo_callAt_of_le tr.projAC hi
   rw [RunTrace.upTo_projAC]
-  simp only [SA.FastLockAt, SA.FastUpdateAt, SA.OptimisticLockAt, SA.OptimisticPoint,
-    SA.UpdateAt, hs, hc, Trace.upTo_time]
+  simp only [AC.FastLockAt, AC.FastUpdateAt, AC.OptimisticLockAt, AC.OptimisticPoint,
+    AC.UpdateAt, hs, hc, Trace.upTo_time]
 
 /-- An `ac_to_fg` call at a cut by `d` is one of the prefix through `d`. -/
 theorem toFGAt_upTo_iff (hmono : Monotone tr.time) {d : Time} {x : Fin sp.n} {i : Nat}
     (hi : tr.time i ≤ d) {ℓ : ACLabel (goldilocksNode sp ro)}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} :
-    SA.ToFGAt (tr.upTo d).projAC x i ℓ C ↔ SA.ToFGAt tr.projAC x i ℓ C := by
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} :
+    AC.ToFGAt (tr.upTo d).projAC x i ℓ C ↔ AC.ToFGAt tr.projAC x i ℓ C := by
   have hs : (tr.projAC.upTo d).state x i = tr.projAC.state x i :=
     Trace.upTo_state tr.projAC x (fun k hk => (hmono hk.le).trans hi)
   rw [RunTrace.upTo_projAC]
-  simp only [SA.ToFGAt, hs, Trace.upTo_callAt_of_le tr.projAC hi, Trace.upTo_time]
+  simp only [AC.ToFGAt, hs, Trace.upTo_callAt_of_le tr.projAC hi, Trace.upTo_time]
 
 /-- Joinedness at a time `t ≤ d` reads only restarts by `t`, which the prefix through `d` keeps. -/
 theorem joinedAt_upTo_iff {d t : Time} (htd : t ≤ d) {y : Fin sp.n} :
@@ -71,7 +71,7 @@ theorem frame_tree_subset_at
   have hc' : (tr.upTo (tr.time k)).projAC.CallAt y k ℓ := by
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hc
-  refine ⟨(SA.frameIn_of_callAt hr hy hc').1, ?_⟩
+  refine ⟨(AC.frameIn_of_callAt hr hy hc').1, ?_⟩
   rw [Compose.frame_of_projAC (hrun.upTo hd) hy hc',
     RunTrace.upTo_state_of_le hrun.time_mono le_rfl]
   exact fun B hB => hB.1
@@ -80,13 +80,13 @@ theorem frame_tree_subset_at
 theorem highOrigin_mem_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {i j : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
     B ∈ (tr.state x i).fg.tree := by
   obtain ⟨hx, -, ⟨CV, ℓ, D, hc, hfl, rfl⟩, -⟩ := ho
   obtain ⟨ℓ', hc', hD⟩ := Healing.fastLock_mem hfl
   obtain rfl : ℓ = ℓ' := Option.some.inj (hc.2.symm.trans hc'.2)
   obtain ⟨hok, hsub⟩ := frame_tree_subset_at hrun hnc (hrun.antitone (le_max_right _ _) hx) hc
-  exact hsub (SA.viableAncestor_anc hok hD).1
+  exact hsub (AC.viableAncestor_anc hok hD).1
 
 /-- A report's block is held in the reporter's tree, for a reporter honest at the report (the
 static `toFG_mem_tree` on the prefix through the report). -/
@@ -94,7 +94,7 @@ theorem toFG_mem_tree_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {k : Nat}
     (hy : y ∈ H (tr.time k)) {ℓ : ACLabel (goldilocksNode sp ro)}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))} (hto : SA.ToFGAt tr.projAC y k ℓ C) :
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} (hto : AC.ToFGAt tr.projAC y k ℓ C) :
     C ∈ (tr.state y k).fg.tree := by
   have h := Healing.toFG_mem_tree (hrun.upTo (hrun.time_nonneg k)) hy
     ((toFGAt_upTo_iff hrun.time_mono le_rfl).mpr hto)
@@ -108,9 +108,9 @@ variable {b : Time}
 observation time after the held state's cuts. -/
 theorem high_of_anc_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {x : Fin sp.n}
-    {i j : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
+    {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
     {z : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
-    (hz : z ∈ H t) {W : SA.Blk sp.n (List (FG.Att sp.n))}
+    (hz : z ∈ H t) {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state z k).fg.tree) (hBW : Anc (tr.HonestBlocksAt H) B W) :
     HZ tr H g + 1 ≤ ((tr.state z k).fg.σ W.root).h := by
   have hBx := highOrigin_mem_at hp.run hp.noColl ho
@@ -129,11 +129,11 @@ theorem high_report_origin_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {z : Fin sp.n} {r : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time r)))
     {ell : ACLabel (goldilocksNode sp ro)}
-    {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hrep : SA.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
+    {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hrep : AC.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
     (hhC : HZ tr H g + 1 ≤ ((tr.state z r).fg.σ C.root).h) :
     ∃ io < r, ∃ jo O D CV, HighOrigin tr H g z io jo O ∧ tr.time io ≤ b ∧
-      SA.FastLockAt tr.projAC z io jo D CV ∧ Anc (tr.HonestBlocksAt H) C O ∧
+      AC.FastLockAt tr.projAC z io jo D CV ∧ Anc (tr.HonestBlocksAt H) C O ∧
       Anc (tr.HonestBlocksAt H) O D := by
   have hrun := hp.run
   have hnc := hp.noColl
@@ -144,13 +144,13 @@ theorem high_report_origin_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hr := (Compose.goldilocks_ac_projection_from hrun' (hnc.upTo _)).localRun
   have hrep' := (toFGAt_upTo_iff hrun.time_mono le_rfl).mpr hrep
   obtain ⟨hpc, _, hC'⟩ := hrep'
-  obtain ⟨hCv, l, hl, hlb, hlf, _⟩ := SA.toFG_candidate hC'
+  obtain ⟨hCv, l, hl, hlb, hlf, _⟩ := AC.toFG_candidate hC'
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, _, rfl⟩ := hl
   obtain ⟨io, hio, CV, ellw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
     Healing.stored_fast_lock_provenance hr hrun.vstart hz r l₀ hl₀ hlf
-  obtain ⟨hPhi, hPhiU⟩ := SA.frameIn_of_callAt hr hz hpc
-  obtain ⟨hPhiw, hPhiwU⟩ := SA.frameIn_of_callAt hr hz hcw
-  obtain ⟨hvat, hva⟩ := SA.viableAncestor_anc hPhi hB₀
+  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hz hpc
+  obtain ⟨hPhiw, hPhiwU⟩ := AC.frameIn_of_callAt hr hz hcw
+  obtain ⟨hvat, hva⟩ := AC.viableAncestor_anc hPhi hB₀
   obtain rfl : C = ell.frame.viableAncestor B₀ :=
     hr.coherent.1 (hPhiU hCv.1) (hPhiU hvat) hlb.symm
   obtain rfl : L = B₀ := hr.coherent.1 hL (hPhiU hB₀) (hLr.trans hB₀r.symm)
@@ -158,7 +158,7 @@ theorem high_report_origin_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hcwt : tr.projAC.CallAt z io ellw := by
     rw [RunTrace.upTo_projAC] at hcw
     exact ((Trace.upTo_callAt _).mp hcw).2
-  have hflt : SA.FastLockAt tr.projAC z io l₀.slot D CV :=
+  have hflt : AC.FastLockAt tr.projAC z io l₀.slot D CV :=
     (fastLockAt_upTo_iff hrun.time_mono hior).mp hfl
   let O := ellw.frame.viableAncestor D
   have hCO : Anc (tr.HonestBlocksAt H) (ell.frame.viableAncestor L) O :=
@@ -168,7 +168,7 @@ theorem high_report_origin_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     obtain ⟨ℓ', hc', hD⟩ := Healing.fastLock_mem hflt
     obtain rfl : ellw = ℓ' := Option.some.inj (hcwt.2.symm.trans hc'.2)
     exact hD
-  have hOD := SA.viableAncestor_anc hPhiw hDw
+  have hOD := AC.viableAncestor_anc hPhiw hDw
   have hOt : O ∈ (tr.state z io).fg.tree :=
     (frame_tree_subset_at hrun hnc hzi hcwt).2 hOD.1
   have hle : ∀ q < r, tr.time q ≤ tr.time r := fun _ hq => hrun.time_mono hq.le

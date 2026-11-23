@@ -34,11 +34,11 @@ pre-call `Σ.F` has state height `≥ H_z + 1` from `T ≥ ḡ` on), `Rec` holds
 
 namespace Consensus.Goldilocks.Healing.Recovery
 
-open SA (SAParams ReplayOrder Payload gbar)
+open AC (ACParams ReplayOrder Payload gbar)
 
-variable {sp : SAParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : SA.CommitteeDict sp.n} {g ΔF a T : Time}
+  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF a T : Time}
 
 /-- The state before a cut equals the state before the node's next call. -/
 theorem state_eq_next_call {y : Fin sp.n} {j k : Nat} (hjk : j ≤ k)
@@ -57,8 +57,8 @@ theorem high_F_firstCut (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : g
     (hF : HighFinalityFrom tr H g T) {y : Fin sp.n} (hy : y ∈ H) {s j : Nat} (hs : T < sp.ts s)
     (hj : tr.FirstCutFrom j (sp.ts s)) :
     HZ tr H g + 1 ≤ ((tr.state y j).fg.σ (tr.state y j).fg.F.root).h := by
-  have h0 : 0 ≤ sp.ts s := le_trans (le_trans (SA.gbar_nonneg g) hgT) hs.le
-  have hpub : sp.toParams.IsPublic (sp.ts s) := ⟨4 * (s : Int), by unfold SAParams.ts; ring⟩
+  have h0 : 0 ≤ sp.ts s := le_trans (le_trans (AC.gbar_nonneg g) hgT) hs.le
+  have hpub : sp.toParams.IsPublic (sp.ts s) := ⟨4 * (s : Int), by unfold ACParams.ts; ring⟩
   have haw : tr.awake y (sp.ts s) := hp.healthy.2.1 y hy _ (max_le
     (le_trans (le_trans (le_gbar g) hgT) hs.le) h0)
   obtain ⟨j', x, hg⟩ := hp.run.tick_of_awake y hy _ h0 hpub haw
@@ -82,9 +82,9 @@ theorem high_F_firstCut (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : g
 a high attestation names an entry below a high origin, and every high origin is comparable with `B`.
 -/
 theorem no_honest_row_conflicting (hp : ResetPremises tr H K proposer dg g ΔF a)
-    {x : Fin sp.n} {i s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {i s : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i s B) {z : Fin sp.n} (hz : z ∈ H) {m : Nat}
-    {E : SA.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ (tr.state z m).fg.tree)
+    {E : AC.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ (tr.state z m).fg.tree)
     (hEh : HZ tr H g + 1 ≤ ((tr.state z m).fg.σ E.root).h)
     (hnc : ¬ Compatible (tr.HonestBlocks H) E B)
     {v : Fin sp.n} (hv : v ∈ H) {d : Nat} {att : FG.Att sp.n} (hsd : tr.SignAt v d att)
@@ -101,12 +101,12 @@ theorem no_honest_row_conflicting (hp : ResetPremises tr H K proposer dg g ΔF a
   rcases (height_scoped_retention sp ro proposer dg H tr K g ΔF hp.run hp.healthy
     hp.noColl hp.committee hp.twoK a hp.reset).comparable xo io jo O x i s B hoO ho with hOB | hBO
   · exact hnc (Or.inl (hEO.trans hOB))
-  · exact hnc (SA.anc_total hU hEO hBO)
+  · exact hnc (AC.anc_total hU hEO hBO)
 
 /-- **(K0) at `t_s` for a high origin of a slot after `T`.** -/
 theorem clean_caches (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : gbar g ≤ T)
     (hF : HighFinalityFrom tr H g T) {x : Fin sp.n} {i s : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i s B) (hs : T < sp.ts s) :
     ∀ y ∈ H, ∀ j, tr.FirstCutFrom j (sp.ts s) →
       Compatible (tr.HonestBlocks H) (tr.state y j).fg.F B ∧
@@ -145,7 +145,7 @@ theorem clean_caches (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : gbar
 `Σ.F`, so it is high, and no honest validator names it. -/
 theorem clean_fgAttCut (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : gbar g ≤ T)
     (hF : HighFinalityFrom tr H g T) {x : Fin sp.n} {i s : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i s B) (hs : T < sp.ts s) (T₀ : Time) :
     ∀ E' ∈ Compose.excludedEntries tr H s B,
       (Store.namers sp.toParams (Payload sp.n) H tr.projFG T₀ E').ncard <
@@ -175,10 +175,10 @@ theorem clean_fgAttCut (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : gb
 
 /-- **(K2) for a high origin**: `vote_height_lead` at every honest vote of a later slot. -/
 theorem clean_heightLead (hp : ResetPremises tr H K proposer dg g ΔF a)
-    {x : Fin sp.n} {i s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {i s : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i s B) (m : Nat) :
-    ∀ y ∈ H, ∀ k ℓ e, SA.CastAt tr.projAC y k ℓ e → s < e.msg.slot → e.msg.slot ≤ m →
-      (∃ D ∈ SA.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
+    ∀ y ∈ H, ∀ k ℓ e, AC.CastAt tr.projAC y k ℓ e → s < e.msg.slot → e.msg.slot ≤ m →
+      (∃ D ∈ AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot,
         Anc (tr.HonestBlocks H) B D ∧ (tr.state y k).fg.IsViable D) ∨
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot :=
   fun _ hy k _ _ hc hj _ => vote_height_lead hp k (fun k' _ => retention_inv hp k') ho hy hc hj
@@ -186,7 +186,7 @@ theorem clean_heightLead (hp : ResetPremises tr H K proposer dg g ΔF a)
 /-- **R2: a high origin of a slot after `T` is clean** for every later slot. -/
 theorem high_origin_clean (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : gbar g ≤ T)
     (hF : HighFinalityFrom tr H g T) {x : Fin sp.n} {i s : Nat}
-    {B : SA.Blk sp.n (List (FG.Att sp.n))}
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i s B) (hs : T < sp.ts s) :
     ∀ m, s < m → Compose.Clean tr H s m B := fun m _ =>
   ⟨clean_caches hp hgT hF ho hs, clean_fgAttCut hp hgT hF ho hs _, clean_heightLead hp ho m⟩
@@ -195,10 +195,10 @@ theorem high_origin_clean (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT :
 /-- **R1: a late stored fast write is a high origin of a slot after `T`.** -/
 theorem late_write_high (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : gbar g ≤ T)
     (hnr : NoRestartAfter tr H (gbar g)) (hF : HighFinalityFrom tr H g T)
-    {x : Fin sp.n} {i s : Nat} {B : SA.Blk sp.n (List (FG.Att sp.n))} {CV : Set (SA.Vote sp.n)}
+    {x : Fin sp.n} {i s : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (hwrite : Compose.StoredFastLockAt tr x i s B CV) (hx : x ∈ H)
     (ht : T + 12 * sp.Δ < tr.time i)
-    (hjoin : SA.joined sp (tr.state x i).ac (tr.time i)) :
+    (hjoin : AC.joined sp (tr.state x i).ac (tr.time i)) :
     T < sp.ts s ∧ HighOrigin tr H g x i s B := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
@@ -212,23 +212,23 @@ theorem late_write_high (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : g
       linarith
     · have hlt : tr.time i < sp.ts ((s + 1 : Nat) : Int) := by
         by_contra hle
-        have := (SA.ts_le_iff_le_slot sp h0 _).1 (not_lt.1 hle)
+        have := (AC.ts_le_iff_le_slot sp h0 _).1 (not_lt.1 hle)
         change sp.slot (tr.time i) = s at hsl
         omega
       have : sp.ts ((s + 1 : Nat) : Int) = sp.ts s + 4 * sp.Δ := by
-        unfold SAParams.ts; push_cast; ring
+        unfold ACParams.ts; push_cast; ring
       linarith
   refine ⟨hts, hx, ?_, ⟨CV, ℓ, D, hc, hfl, rfl⟩, ?_⟩
   · -- joined at the write
     have hnrx : ¬ tr.RestartAt x i := fun h => by
       have := hnr x hx i h
-      linarith [SA.gbar_nonneg g]
+      linarith [AC.gbar_nonneg g]
     exact ((Compose.joined_projection_from hp.run hx (tr.time i)).2.1 i
       hcall hnrx rfl).2 hjoin
   · -- the stored block is above the high `Σ.F` of the writer
     obtain ⟨ℓ', hc', hD⟩ := fastLock_mem hfl
     obtain rfl : ℓ = ℓ' := Option.some.inj (hc.2.symm.trans hc'.2)
-    obtain ⟨hB, -⟩ := SA.viableAncestor_anc (SA.frameIn_of_callAt hr hx hc).1 hD
+    obtain ⟨hB, -⟩ := AC.viableAncestor_anc (AC.frameIn_of_callAt hr hx hc).1 hD
     rw [Compose.frame_of_projAC hp.run hx hc] at hB
     obtain ⟨hBt, hFB⟩ := hB
     have h1 := hF.at_call x hx i hcall (by linarith)
@@ -240,8 +240,8 @@ theorem late_write_high (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : g
 /-- A source at an honest call from `T` on is high and below a high origin. -/
 theorem late_source_origin (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hF : HighFinalityFrom tr H g T) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {C : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hC : SA.ToFGAt tr.projAC y k ell C) (ht : T ≤ tr.time k) :
+    {ell : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hC : AC.ToFGAt tr.projAC y k ell C) (ht : T ≤ tr.time k) :
     HZ tr H g + 1 ≤ ((tr.state y k).fg.σ C.root).h ∧
       ∃ io < k, ∃ jo B, HighOrigin tr H g y io jo B ∧ Anc (tr.HonestBlocks H) C B := by
   have hCm := Healing.toFG_mem_frame hC.2.2
@@ -253,8 +253,8 @@ theorem late_source_origin (hp : ResetPremises tr H K proposer dg g ΔF a)
 /-- **R3: late sources are compatible.** -/
 theorem late_sources_compatible (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hF : HighFinalityFrom tr H g T) {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {k j : Nat}
-    {ell ell' : ACLabel (goldilocksNode sp ro)} {C D : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hC : SA.ToFGAt tr.projAC y k ell C) (hD : SA.ToFGAt tr.projAC z j ell' D)
+    {ell ell' : ACLabel (goldilocksNode sp ro)} {C D : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hC : AC.ToFGAt tr.projAC y k ell C) (hD : AC.ToFGAt tr.projAC z j ell' D)
     (htC : T ≤ tr.time k) (htD : T ≤ tr.time j) :
     Compatible (tr.HonestBlocks H) C D := by
   have hU := honest_coherent hp
@@ -262,18 +262,18 @@ theorem late_sources_compatible (hp : ResetPremises tr H K proposer dg g ΔF a)
   obtain ⟨_, _, _, _, B', hoB', hDB'⟩ := late_source_origin hp hF hz hD htD
   rcases (height_scoped_retention sp ro proposer dg H tr K g ΔF hp.run hp.healthy
     hp.noColl hp.committee hp.twoK a hp.reset).comparable _ _ _ B _ _ _ B' hoB hoB' with hBB' | hB'B
-  · exact SA.anc_total hU (hCB.trans hBB') hDB'
-  · exact SA.anc_total hU hCB (hDB'.trans hB'B)
+  · exact AC.anc_total hU (hCB.trans hBB') hDB'
+  · exact AC.anc_total hU hCB (hDB'.trans hB'B)
 
 
 /-- A block of an honest tree before cut `j` is not of a later slot than `j`'s time. -/
 theorem tree_slot_le (hp : ResetPremises tr H K proposer dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
-    {j : Nat} {X : SA.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y j).fg.tree) :
+    {j : Nat} {X : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y j).fg.tree) :
     X.slot ≤ sp.slot (tr.time j) := by
   rcases Compose.tree_cases hp.run.toLocalRun hy hX with rfl | ⟨k, hk, hacc⟩
   · exact Nat.zero_le _
   · exact ((hp.run.cutLaw y hy k _ hacc).1).trans
-      (SA.slot_mono sp (hp.run.time_nonneg k) (hp.run.time_mono hk.le))
+      (AC.slot_mono sp (hp.run.time_nonneg k) (hp.run.time_mono hk.le))
 
 /-- An honest node has a call with a high `Σ.F` in `(T, T + 4Δ]`: its tick at the next slot
 start. -/
@@ -282,20 +282,20 @@ theorem high_F_call_soon (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : 
     ∃ j, tr.IsCall y j ∧ T < tr.time j ∧ tr.time j ≤ T + 4 * sp.Δ ∧
       tr.time j = sp.ts (sp.slot T + 1 : Nat) ∧
       HZ tr H g + 1 ≤ ((tr.state y j).fg.σ (tr.state y j).fg.F.root).h := by
-  have hT0 : 0 ≤ T := le_trans (SA.gbar_nonneg g) hgT
+  have hT0 : 0 ≤ T := le_trans (AC.gbar_nonneg g) hgT
   set t₀ := sp.ts (sp.slot T + 1 : Nat) with ht₀
   have hlt : T < t₀ := by
     by_contra hle
-    have := (SA.ts_le_iff_le_slot sp hT0 _).1 (not_lt.1 hle)
+    have := (AC.ts_le_iff_le_slot sp hT0 _).1 (not_lt.1 hle)
     push_cast at this; omega
   have hle : t₀ ≤ T + 4 * sp.Δ := by
-    have h1 := (SA.ts_le_iff_le_slot sp hT0 (sp.slot T : Int)).2 le_rfl
+    have h1 := (AC.ts_le_iff_le_slot sp hT0 (sp.slot T : Int)).2 le_rfl
     have : t₀ = sp.ts (sp.slot T : Int) + 4 * sp.Δ := by
-      rw [ht₀]; unfold SAParams.ts; push_cast; ring
+      rw [ht₀]; unfold ACParams.ts; push_cast; ring
     linarith
   have h0 : 0 ≤ t₀ := by linarith
   have hpub : sp.toParams.IsPublic t₀ := ⟨4 * ((sp.slot T + 1 : Nat) : Int), by
-    rw [ht₀]; unfold SAParams.ts; ring⟩
+    rw [ht₀]; unfold ACParams.ts; ring⟩
   have haw : tr.awake y t₀ := hp.healthy.2.1 y hy _ (max_le
     (by linarith [le_gbar g]) h0)
   obtain ⟨j, x, hne, hk, -⟩ := hp.run.tick_of_awake y hy _ h0 hpub haw
@@ -309,8 +309,8 @@ at its tick in `(T, T + 4Δ]`, which is below the source and of a slot before th
 entry is above `F₀`. -/
 theorem late_entry_high (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : gbar g ≤ T)
     (hF : HighFinalityFrom tr H g T) {y : Fin sp.n} (hy : y ∈ H) {k h : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {C E : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hC : SA.ToFGAt tr.projAC y k ell C) (ht : T + 4 * sp.Δ < tr.time k)
+    {ell : ACLabel (goldilocksNode sp ro)} {C E : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hC : AC.ToFGAt tr.projAC y k ell C) (ht : T + 4 * sp.Δ < tr.time k)
     (hE : EntryOf (tr.state y k).fg C E h) (hslot : T + 4 * sp.Δ < sp.ts E.slot) :
     HZ tr H g + 1 ≤ h := by
   have hU := honest_coherent hp
@@ -329,15 +329,15 @@ theorem late_entry_high (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : g
   set F₀ := (tr.state y j₀).fg.F
   have hF₀m : F₀ ∈ (tr.state y j₀).fg.tree :=
     (Store.cache_invariants _ _ _ _ (Compose.fg_reachable hp.run.toLocalRun hy j₀)).1
-  rcases SA.anc_total hU (hEC.mono hsub) hF₀C with hEF | hFE
+  rcases AC.anc_total hU (hEC.mono hsub) hF₀C with hEF | hFE
   · -- `E ⪯ F₀` is impossible: `F₀`'s slot starts by `T + 4Δ`, before `E`'s
     exfalso
     have h1 := Anc.slot_le hU hEF
     have h2 := tree_slot_le hp hy hF₀m
     have h0 : 0 ≤ tr.time j₀ := hp.run.time_nonneg j₀
-    have h3 := (SA.ts_le_iff_le_slot sp h0 (sp.slot (tr.time j₀) : Int)).2 le_rfl
+    have h3 := (AC.ts_le_iff_le_slot sp h0 (sp.slot (tr.time j₀) : Int)).2 le_rfl
     have h4 : sp.ts E.slot ≤ sp.ts (sp.slot (tr.time j₀) : Int) :=
-      (SA.ts_le_iff sp).2 (by exact_mod_cast h1.1.trans h2)
+      (AC.ts_le_iff sp).2 (by exact_mod_cast h1.1.trans h2)
     linarith
   · have hF₀y := mem_tree_of_anc hp hy hFE hEt
     have hh := h_le_of_store_anc hreach (anc_tree_of_anc hp hy hFE hEt)
@@ -348,8 +348,8 @@ theorem late_entry_high (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : g
 /-- **R5: the record at a new high entry names only that entry.** -/
 theorem late_entry_records (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : gbar g ≤ T)
     (hF : HighFinalityFrom tr H g T) {y : Fin sp.n} (hy : y ∈ H) {k h : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {C E : SA.Blk sp.n (List (FG.Att sp.n))}
-    (hC : SA.ToFGAt tr.projAC y k ell C) (ht : T + 4 * sp.Δ < tr.time k)
+    {ell : ACLabel (goldilocksNode sp ro)} {C E : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hC : AC.ToFGAt tr.projAC y k ell C) (ht : T + 4 * sp.Δ < tr.time k)
     (hE : EntryOf (tr.state y k).fg C E h) (hslot : T + 4 * sp.Δ < sp.ts E.slot) :
     ((tr.state y k).record.target h = none ∨ (tr.state y k).record.target h = some E.root) ∧
       (∀ r ∈ (tr.state y k).record.timeout h, r = E.root) ∧

@@ -18,7 +18,7 @@ open Blocks Shape Node
 
 variable {binding : VoteBinding}
 
-variable {sp : SA.SAParams} {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- On one coherent ancestor chain, an unheld child above the receiver's finalized
 tip can be attached to its held parent. No agreement between receivers is used. -/
@@ -46,7 +46,7 @@ theorem receipt_ancestry {n : Nat} {FGP ACP : Type}
 /-- A successful store transfer at the exact canonical receipt position yields
 acceptance there; a future-slot empty handler is excluded explicitly. -/
 theorem deliverSeq_block_accepts {proposer : Nat → Fin sp.n}
-    {tr : GoldilocksTrace sp ro} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    {tr : GoldilocksTrace sp ro} {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
     {hs : List (Header Info × Nat)} {y : Fin sp.n} {u : Time} {B : Blk sp}
     {os : List (Wire sp.n binding)} {r e : Nat}
     (hd : decodeBlock sp (binding := binding) hs (blockObj sp B) = some B)
@@ -77,7 +77,7 @@ theorem deliverSeq_block_accepts {proposer : Nat → Fin sp.n}
 
 /-- The leaf wrapper processes its genesis-parent child at the same starting cut. -/
 theorem deliverSeq_forward_genesis {proposer : Nat → Fin sp.n}
-    {tr : GoldilocksTrace sp ro} {dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n)}
+    {tr : GoldilocksTrace sp ro} {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
     {hs : List (Header Info × Nat)} {y x : Fin sp.n} {u t : Time} {B : Blk sp} {j j' : Nat}
     {σ : State sp ro binding}
     (h : DeliverSeq proposer tr dg hs y u (visit hs σ (forwardObj sp (binding

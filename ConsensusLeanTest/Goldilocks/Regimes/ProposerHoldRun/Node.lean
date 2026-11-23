@@ -53,7 +53,7 @@ theorem rhoc_release {i : Nat} {v : Fin 5} {o : Obj S} {t : Time} (hs : (rhoc S)
 
 /-- An AC message call of the retained trace processes a delivered vote object. -/
 theorem msg_delivered {y : Fin (Fintype.card (Fin 5))} {k : Nat}
-    {m : SA.Vote (Fintype.card (Fin 5))}
+    {m : AC.Vote (Fintype.card (Fin 5))}
     (hc : (tr S).MsgCallAt y k m) :
     ∃ (i : Nat) (w : Fin 5) (o : Obj S) (t : Time),
       (rhoc S).events[i]? = some (Model.Event.deliver w o t) ∧
@@ -200,11 +200,11 @@ theorem headerOf_of_twin
 /-! ### Votes of the faulty keys in honest pools -/
 
 section ACStep
-variable {sp : SA.SAParams} {FGP : Type} {ro : SA.ReplayOrder sp FGP}
+variable {sp : AC.ACParams} {FGP : Type} {ro : AC.ReplayOrder sp FGP}
 
-theorem admitVote_pool_sub {A : SA.SAState sp.n} {t : Time} {v x : SA.Vote sp.n} {σ : Nat}
-    (h : x ∈ (SA.admitVote sp A t v).pool σ) : x ∈ A.pool σ ∨ x = v := by
-  unfold SA.admitVote at h
+theorem admitVote_pool_sub {A : AC.ACState sp.n} {t : Time} {v x : AC.Vote sp.n} {σ : Nat}
+    (h : x ∈ (AC.admitVote sp A t v).pool σ) : x ∈ A.pool σ ∨ x = v := by
+  unfold AC.admitVote at h
   split_ifs at h
   · exact Or.inl h
   · exact Or.inl h
@@ -215,10 +215,10 @@ theorem admitVote_pool_sub {A : SA.SAState sp.n} {t : Time} {v x : SA.Vote sp.n}
       · exact Or.inr (List.mem_singleton.mp h)
     · exact Or.inl h
 
-theorem tryVote_pool_sub (self : Fin sp.n) {A : SA.SAState sp.n} {Φ : SA.Frm sp.n FGP} {t : Time}
-    {x : SA.Vote sp.n} {σ : Nat} (h : x ∈ (SA.tryVote sp self A Φ t).1.pool σ) :
+theorem tryVote_pool_sub (self : Fin sp.n) {A : AC.ACState sp.n} {Φ : AC.Frm sp.n FGP} {t : Time}
+    {x : AC.Vote sp.n} {σ : Nat} (h : x ∈ (AC.tryVote sp self A Φ t).1.pool σ) :
     x ∈ A.pool σ ∨ x.val = self := by
-  unfold SA.tryVote at h
+  unfold AC.tryVote at h
   dsimp only at h
   split_ifs at h
   · exact Or.inl h
@@ -226,59 +226,59 @@ theorem tryVote_pool_sub (self : Fin sp.n) {A : SA.SAState sp.n} {Φ : SA.Frm sp
   all_goals
     first
     | exact Or.inl h
-    | rw [SA.optimistic_pool_eq] at h
+    | rw [AC.optimistic_pool_eq] at h
       rcases admitVote_pool_sub h with h | h
       · exact Or.inl h
       · exact Or.inr (by rw [h])
 
 /-- **A vote new in a pool after a call** is the received vote or the node's own (a block call
 only stamps the block). -/
-theorem step_pool_new (self : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time)
-    (c : (SA.goldilocksSA sp FGP ro).Call) (hc : c ≠ .restart) {x : SA.Vote sp.n} {σ : Nat}
-    (h : x ∈ ((SA.goldilocksSA sp FGP ro).step self A Φ t c).1.pool σ) (hn : x ∉ A.pool σ) :
+theorem step_pool_new (self : Fin sp.n) (A : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time)
+    (c : (AC.goldilocksAC sp FGP ro).Call) (hc : c ≠ .restart) {x : AC.Vote sp.n} {σ : Nat}
+    (h : x ∈ ((AC.goldilocksAC sp FGP ro).step self A Φ t c).1.pool σ) (hn : x ∉ A.pool σ) :
     c = .message x ∨ x.val = self := by
   cases c with
   | tick =>
-    change x ∈ (SA.acOnTick sp self A Φ t).1.pool σ at h
-    unfold SA.acOnTick at h
+    change x ∈ (AC.acOnTick sp self A Φ t).1.pool σ at h
+    unfold AC.acOnTick at h
     dsimp only at h
     split_ifs at h
     all_goals first
       | exact absurd h hn
-      | (rw [SA.updateConfirmation_pool_eq] at h
+      | (rw [AC.updateConfirmation_pool_eq] at h
          rcases tryVote_pool_sub self h with h | h
          · exact absurd h hn
          · exact Or.inr h)
       | (rcases tryVote_pool_sub self h with h | h
          · exact absurd h hn
          · exact Or.inr h)
-      | (rw [SA.updateConfirmation_pool_eq] at h; exact absurd h hn)
+      | (rw [AC.updateConfirmation_pool_eq] at h; exact absurd h hn)
   | proposal =>
-    change x ∈ (SA.acProposal sp A Φ t).1.pool σ at h
-    unfold SA.acProposal at h
+    change x ∈ (AC.acProposal sp A Φ t).1.pool σ at h
+    unfold AC.acProposal at h
     split_ifs at h <;> exact absurd h hn
   | toFG =>
-    change x ∈ (SA.acToFG sp A Φ t).1.pool σ at h
-    unfold SA.acToFG at h
+    change x ∈ (AC.acToFG sp A Φ t).1.pool σ at h
+    unfold AC.acToFG at h
     split_ifs at h
     · split at h
       · exact absurd h hn
       · split_ifs at h <;> exact absurd h hn
     · exact absurd h hn
   | message m =>
-    change x ∈ (SA.tryVote sp self (SA.optimisticConfirmation sp (SA.admitVote sp A t m) Φ t) Φ
+    change x ∈ (AC.tryVote sp self (AC.optimisticConfirmation sp (AC.admitVote sp A t m) Φ t) Φ
       t).1.pool σ at h
     rcases tryVote_pool_sub self h with h | h
-    · rw [SA.optimistic_pool_eq] at h
+    · rw [AC.optimistic_pool_eq] at h
       rcases admitVote_pool_sub h with h | rfl
       · exact absurd h hn
       · exact Or.inl rfl
     · exact Or.inr h
   | block B =>
-    change x ∈ (SA.tryVote sp self (SA.optimisticConfirmation sp (SA.blockReceipt sp A t B) Φ t) Φ
+    change x ∈ (AC.tryVote sp self (AC.optimisticConfirmation sp (AC.blockReceipt sp A t B) Φ t) Φ
       t).1.pool σ at h
     rcases tryVote_pool_sub self h with h | h
-    · rw [SA.optimistic_pool_eq] at h
+    · rw [AC.optimistic_pool_eq] at h
       exact absurd h hn
     · exact Or.inr h
   | restart => exact absurd rfl hc
@@ -292,7 +292,7 @@ theorem no_restart {y : Fin (Fintype.card (Fin 5))} {k : Nat} : ¬ (tr S).Restar
   have := (rhoc_valid.restart_at_wake _ _ (List.mem_of_getElem? he)).2
   simp [Wakes, env] at this
 
-theorem val_faulty {x : SA.Vote (Fintype.card (Fin 5))} (h : x.val ∉ H S) :
+theorem val_faulty {x : AC.Vote (Fintype.card (Fin 5))} (h : x.val ∉ H S) :
     x.val = key 0 ∨ x.val = key 1 := by
   rw [mem_H] at h
   by_cases h0 : x.val.val = 0
@@ -302,15 +302,15 @@ theorem val_faulty {x : SA.Vote (Fintype.card (Fin 5))} (h : x.val ∉ H S) :
 /-- **The faulty keys' votes in honest pools**: a vote of key `0` or `1` in an honest pool is of
 a slot up to `1`. -/
 theorem pool_vote_slot {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) (c : Nat)
-    {x : SA.Vote (Fintype.card (Fin 5))} (hx : x ∈ ((tr S).state y c).ac.pool x.slot)
+    {x : AC.Vote (Fintype.card (Fin 5))} (hx : x ∈ ((tr S).state y c).ac.pool x.slot)
     (hxH : x.val ∉ H S) : x.slot ≤ 1 := by
   have hac :=
     (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
   rw [← Compose.projAC_state rhoc_run.toLocalRun hy] at hx
-  rcases SA.pool_origin hac (fun _ => SA.voteStart_initial _) hy c x hx with
+  rcases AC.pool_origin hac (fun _ => AC.voteStart_initial _) hy c x hx with
     ⟨k, -, ⟨ℓ, hc, hsa⟩, -, -⟩ | ⟨k, -, ℓ, hc, hrs, -⟩
   · rcases hsa with ⟨e, he, rfl⟩ | ⟨hnr, hpre, hpost⟩
-    · exact absurd ((SA.castAt_spec hac hy ⟨hc, he⟩).1 ▸ hy) hxH
+    · exact absurd ((AC.castAt_spec hac hy ⟨hc, he⟩).1 ▸ hy) hxH
     · have hex := hac.exec k ℓ hc.2 (hc.1 ▸ hy)
       rw [hc.1] at hex
       change x ∈ ((tr S).projAC.post k).pool x.slot at hpost
