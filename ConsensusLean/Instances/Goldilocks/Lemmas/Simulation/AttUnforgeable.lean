@@ -87,7 +87,8 @@ theorem attCall_sign_of_released (hv : rho.ExecutionValid) {y : Fin (Fintype.car
     have ha : e.codec.attestation w = some a := by
       unfold canonEvent at hcanon
       split at hcanon <;> cases hcanon
-      assumption
+      rename_i h
+      rwa [receiverCodec_eq] at h
     rw [hcodec w ha] at hw
     rw [ht] at hhon
     obtain ⟨j, t', hj, hs, hb⟩ := hv.unforgeable i v o t he obj hw _ hsign hhon
