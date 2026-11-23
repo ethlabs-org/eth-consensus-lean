@@ -76,16 +76,8 @@ private theorem tryVote_fgr (self : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm
   split_ifs <;> first | rfl | exact (optimistic_fgr _ _ _).trans (admitVote_fgr _ _ _)
 
 private theorem blockReceipt_fgr (A : SA.SAState sp.n) (t : Time) (B : SA.Blk sp.n FGP) :
-    (SA.blockReceipt sp A t B).fgReported = A.fgReported := by
-  unfold SA.blockReceipt
-  generalize hA' : ({ A with blockStamp := Function.update A.blockStamp B.root (SA.ETime.of t) } :
-    SA.SAState sp.n) = A'
-  have : A'.fgReported = A.fgReported := by rw [← hA']
-  rw [← this]
-  clear hA' this
-  induction (SA.blockVotes B) generalizing A' with
-  | nil => rfl
-  | cons v l ih => rw [List.foldl_cons, ih, admitVote_fgr]
+    (SA.blockReceipt sp A t B).fgReported = A.fgReported :=
+  rfl
 
 /-- `ac_to_fg` keeps the report record, or sets it to the block it returns. -/
 private theorem acToFG_fgr (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP) (t : Time) :
