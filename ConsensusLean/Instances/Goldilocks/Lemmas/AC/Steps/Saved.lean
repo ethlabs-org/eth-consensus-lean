@@ -35,14 +35,8 @@ private theorem sv_tryVote
   split_ifs <;> simp only [optimisticConfirmationM_keep _ sv_optimistic, sv_admitVote]
 
 private theorem sv_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
-    (blockReceipt sp A t B).saved = A.saved := by
-  unfold blockReceipt
-  generalize blockVotes B = l
-  suffices h : ∀ A' : SAState sp.n,
-      (l.foldl (fun A v => admitVote sp A t v) A').saved = A'.saved from h _
-  induction l with
-  | nil => exact fun _ => rfl
-  | cons v l ih => intro A'; simp only [List.foldl_cons]; rw [ih, sv_admitVote]
+    (blockReceipt sp A t B).saved = A.saved :=
+  rfl
 
 /-- `update_confirmation` of slot `s` writes `saved[s]` with the root of its result and keeps
 the other saved results. -/
