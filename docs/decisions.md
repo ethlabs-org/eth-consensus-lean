@@ -159,7 +159,7 @@ detail in `TRUST.md`.
     the delivery-time releases at `a` exist, so those are served from `a + 1`. Every regime premise the witness runs
     serve (`PSync`, `SyncUntil`, `OutageNet`) is still implied (`EagerFrom.psync`).
 - **Received payload objects are processed in preorder, except those of a refused block.** A delivery traverses
-  the object closure, processing a canonical block before its carried votes and attestations. Wrappers have no
+  the object closure, processing a canonical block before its carried attestations. Wrappers have no
   canonical node event, and nested wrappers do not hide their contents. A block that the node drops as of a future
   slot, or that the FG refuses, gets no handler for what it carries, and neither does a block-shaped object (a
   header item) that fails the wire checks (composition.tex §"Blocks": the check drops it with no effect); a later
