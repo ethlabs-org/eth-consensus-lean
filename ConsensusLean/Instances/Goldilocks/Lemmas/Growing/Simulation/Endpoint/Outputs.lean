@@ -11,7 +11,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.BlockView
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReadTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Core
-import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 
 public section
@@ -109,7 +108,7 @@ theorem held_att_in_view_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
     obtain ⟨j, o, hj, ho, hc⟩ := rho.mem_viewIdx_iff.mp hb
     refine rho.mem_viewIdx_iff.mpr ⟨j, o, hj, ho, hc.trans (.step ?_ (.refl _))⟩
     change attObj a ∈ payloadObjs B.fgPayload B.acPayload
-    exact List.mem_append_left _ (List.mem_map.mpr ⟨a, ha, rfl⟩)
+    exact List.mem_map.mpr ⟨a, ha, rfl⟩
 
 /-- **R.8 output validity under growing faults.** Every read of a node honest at its engine cut
 is linked, has increasing positions and proposal-role provenance, by the static argument on the
