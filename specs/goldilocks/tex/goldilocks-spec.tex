@@ -438,9 +438,9 @@ the latest view.  The vote reads the merged view.
 
 \emph{Held declarations.}  A slot-$s$ voter \emph{holds} a declared vote
 $x=(v,s-1,H)$ when its pool $\AC.\gfPool[s-1]$ holds $x$ itself, or holds
-two distinct votes by~$v$.  In the second case the voter has not seen~$x$;
-two distinct signed votes prove that $v$ equivocated, and the voter takes
-the proposer's declaration for the head of~$v$.  A declaration that the
+two distinct votes by~$v$.  If the exact vote is absent, two distinct
+signed votes prove that $v$ equivocated, and the voter takes the
+proposer's declaration for the head of~$v$.  A declaration that the
 voter does not hold is \emph{omitted}: it is neither counted nor waited
 for after the timeout.  [\emph{Decision point: declared-entry rule.}
 Recommended: the exact vote or any two distinct votes by~$v$ in the pool,
@@ -453,8 +453,10 @@ signed).]
 \emph{Declarations are not votes.}  A declaration is never given to the
 admission test, never enters $\AC.\gfPool$, never gets a stamp, and is
 never forwarded.  It counts only in the merged view of the vote that reads
-it.  The optimistic confirmation and the confirmation update read
-$\AC.\gfPool$, so neither ever counts a declaration.
+it.  That view drives both the walk and the unlocking before it, and the
+unlocking changes the stored locks also when the node sends no vote.  The
+optimistic confirmation and the confirmation update read $\AC.\gfPool$,
+so neither ever counts a declaration.
 
 \emph{The merged view.}  The merged view of a slot-$s$ voter is this view:
 the slot-$(s-1)$ votes held before the previous-slot vote freeze
@@ -971,7 +973,9 @@ with $P.\slot=s$ whose support references are resolved, that is, every
 declared support vote $(v,s-1,H)$ of~$P$ has $H\in\Fr.\tree$ and
 $H.\slot\leq s-1$, and at which it \emph{holds every declaration} of
 every slot-$s$ proposal of $\Fr.\tree$.  An early vote thus counts every
-declaration, and reads the view the proposer declared.  If no such time
+declaration of every slot-$s$ proposal.  Head readiness is required of one
+proposal only: a marked declaration of another proposal whose head is not
+yet in $\Fr.\tree$ counts as a vote but not as support.  If no such time
 comes before $t_s+\Delta$, the node votes at $t_s+\Delta$ with no test, as
 it does in slot~$0$, and omits the declarations that it does not hold.
 [\emph{Decision point: early-cast readiness.}  Recommended: every
@@ -991,10 +995,12 @@ node runs the sequence once per slot.
 
 \emph{Why the timeout suffices.}  The proposer declares only votes that it
 admitted by~$t_s$, and an honest node forwards a vote when it admits it
-(Section~\ref{sec:model}).  An honest voter that is awake and joined
-therefore receives each vote declared by an honest proposer, or a second
-vote of its validator that fills the pool, strictly before $t_s+\Delta$,
-so it holds every such declaration at the tick at $t_s+\Delta$.  A
+(Section~\ref{sec:model}).  When the delivery bound holds from the
+proposer's admission to the voter's tick at $t_s+\Delta$ (in the
+synchronous periods of the network model, for a voter that is awake and
+joined), processing and retention give the voter, for each vote declared
+by an honest proposer, the exact vote or an already-held pair of its
+validator, so it holds every such declaration at that tick.  A
 declaration of a faulty proposal can name a vote that no honest node
 holds; the voter omits it at $t_s+\Delta$.  [\emph{Decision point:
 unheld declarations of a faulty proposal.}  Recommended: omit them at the
