@@ -559,16 +559,6 @@ theorem tick_report_old {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s) (h10 :
 
 /-! ## The blocks of the chain -/
 
-theorem blockReceipt_blk {A : SAState sp.n} {t : Time} {k : Nat}
-    (h0 : vote w0 k ∈ A.pool k) (h1 : vote w1 k ∈ A.pool k) :
-    blockReceipt sp A t (blk (k + 1)) =
-      { A with blockStamp := Function.update A.blockStamp (blk (k + 1)).root (ETime.of t) } := by
-  unfold blockReceipt
-  rw [blockVotes_blk, List.foldl_cons, List.foldl_cons, List.foldl_nil]
-  generalize Function.update A.blockStamp (blk (k + 1)).root (ETime.of t) = bs
-  rw [admitVote_old (A := { A with blockStamp := bs }) h0,
-    admitVote_old (A := { A with blockStamp := bs }) h1]
-
 /-- **`ac_on_block` of the block of slot `k + 1`** at `t_{k+1}`: its stamp, and the vote of slot
 `k + 1` on it. -/
 theorem acOnBlock_blk {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} {f k : Nat}
@@ -587,12 +577,11 @@ theorem acOnBlock_blk {y : Fin sp.n} {A : SAState sp.n} {Φ : N.Frm} {f k : Nat}
       e.msg = vote y (k + 1) ∧ LocksLe L₁ k ∧
       (1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ L₁) := by
   have hs := slot4 k
-  unfold acOnBlock
-  rw [blockReceipt_blk h0 h1,
-    optimisticConfirmation_of_none (optimisticSelect_of_pool_nil (by rw [hs]; exact hpool))]
+  unfold acOnBlock blockReceipt
+  rw [optimisticConfirmation_of_none (optimisticSelect_of_pool_nil (by rw [hs]; exact hpool))]
   obtain ⟨L₁, d, he, hL₁, htip₁⟩ := tryVote_blk (y := y)
     (A := { A with blockStamp := Function.update A.blockStamp (blk (k + 1)).root
-                    (ETime.of ((4 * (k + 1) : Nat) : Int)) }) hperm h hj hvs hpool hL htip
+                    (ETime.of ((4 * (k + 1) : Nat) : Int)) }) hperm h hj hvs hpool h0 h1 hL htip
   rw [he, admitVote_fresh (by rw [hs]; rfl) (by change _ ∉ A.pool (k + 1); rw [hpool]; simp)
       (by change ∀ x ∈ A.pool (k + 1), _; rw [hpool]; simp)]
   generalize Function.update A.blockStamp (blk (k + 1)).root

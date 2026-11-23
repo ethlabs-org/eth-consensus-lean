@@ -338,10 +338,6 @@ theorem mem_unlock {Φ : N1.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {L : 
     l ∈ unlock sp1 L Φ t s V :=
   ⟨l, h.mem_liveLocks hl h1 h2 hr hlive, blk m, h.mem h1 h2, hr.symm, by rw [ite_neg hs]⟩
 
-theorem admitVote_old {A : SAState sp1.n} {t : Time} {v : Vote sp1.n} (h : v ∈ A.pool v.slot) :
-    admitVote sp1 A t v = A := by
-  unfold admitVote; rw [ite_pos (Or.inr (Or.inr h))]
-
 theorem admitVote_cv {A : SAState sp1.n} {t : Time} {s : Nat} (hst : sp1.slot t = s)
     (h : A.pool s = []) :
     admitVote sp1 A t (cv s) =
@@ -354,14 +350,6 @@ theorem admitVote_cv {A : SAState sp1.n} {t : Time} {s : Nat} (hst : sp1.slot t 
                   voteStamp := Function.update A.voteStamp (cv s) (ETime.of t) }) = _
   rw [h, hst, ite_neg (by simp), ite_neg (by simp)]
   rfl
-
-theorem blockReceipt_blk {A : SAState sp1.n} {t : Time} {s : Nat}
-    (h : cv s ∈ A.pool s) :
-    blockReceipt sp1 A t (blk (s + 1)) =
-      { A with blockStamp := Function.update A.blockStamp (blk (s + 1)).root (ETime.of t) } := by
-  unfold blockReceipt
-  rw [show blockVotes (blk (s + 1)) = [cv s] from rfl, List.foldl_cons, List.foldl_nil]
-  exact admitVote_old h
 
 /-! ## The SA's calls of the tick run -/
 
@@ -481,13 +469,24 @@ theorem tryVote_zero {A : SAState sp1.n} {Φ : N1.Frm} (h : ChainFrame Φ 0 0 0)
   rw [hhead, optimisticConfirmation_of_none (optimisticSelect_slot_zero hs)]
   exact ⟨_, rfl⟩
 
-theorem voteReady_blk {Φ : N1.Frm} {f k : Nat} (h : ChainFrame Φ f (jexp (k + 1)) (k + 1)) :
-    voteReady sp1 Φ (k + 1) := by
+theorem voteReady_blk {A : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
+    (h : ChainFrame Φ f (jexp (k + 1)) (k + 1)) (hcv : cv k ∈ A.pool k) :
+    voteReady sp1 A Φ (k + 1) := by
   have hf : f ≤ k := by have := h.fj; have := jexp_le k; unfold jexp at *; split_ifs at * <;> omega
-  refine ⟨blk (k + 1), h.mem (by omega) le_rfl, blk_slot _, fun x hx _ => ?_⟩
-  rw [show blockSupport (blk (k + 1)) = [cv k] from rfl, List.mem_singleton] at hx
-  subst hx
-  exact ⟨blk k, h.mem hf (by omega), rfl, by rw [blk_slot]⟩
+  refine ⟨⟨blk (k + 1), h.mem (by omega) le_rfl, blk_slot _, fun x hx _ _ => ?_⟩, ?_⟩
+  · rw [show blockSupport (blk (k + 1)) = [cv k] from rfl, List.mem_singleton] at hx
+    subst hx
+    exact ⟨blk k, h.mem hf (by omega), rfl, by rw [blk_slot]⟩
+  · intro B hB hBs x hx _
+    obtain ⟨m, -, -, rfl⟩ := h.eq_of_mem hB
+    rw [blk_slot] at hBs
+    subst hBs
+    rw [show blockVotes (blk (k + 1)) = [cv k] from rfl,
+      show blockSupport (blk (k + 1)) = [cv k] from rfl, or_self, List.mem_singleton] at hx
+    subst hx
+    left
+    simp only [SAState.poolAt, Int.natCast_nonneg, not_lt.2, ↓reduceIte]
+    exact hcv
 
 theorem jexp_succ_le (k : Nat) : jexp (k + 1) ≤ k := by unfold jexp; split_ifs <;> omega
 
@@ -495,7 +494,8 @@ theorem jexp_succ_le (k : Nat) : jexp (k + 1) ≤ k := by unfold jexp; split_ifs
 theorem tryVote_blk {A : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
     (hperm : A.mayVote (k + 1) = true)
     (h : ChainFrame Φ f (jexp (k + 1)) (k + 1)) (hj : A.restartTime = ⊥)
-    (hvs : A.votedSlot = (k : Int)) (hpool : A.pool (k + 1) = []) (hL : LocksLe A.locks k)
+    (hvs : A.votedSlot = (k : Int)) (hpool : A.pool (k + 1) = []) (hcv : cv k ∈ A.pool k)
+    (hL : LocksLe A.locks k)
     (htip : 1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ A.locks) :
     ∃ L₁ d, tryVote sp1 v0 A Φ ((4 * (k + 1) : Nat) : Int) =
       (optimisticConfirmation sp1 (admitVote sp1 { A with locks := L₁, votedSlot := (k + 1 : Nat) }
@@ -509,7 +509,7 @@ theorem tryVote_blk {A : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
   rw [hs, ite_neg (by
       rw [ts_nat, hvs]; push Not
       exact ⟨joined_of_bot hj _, by push_cast; omega, by rw [delta1]; push_cast; linarith⟩),
-    ite_neg (fun hc => hc.2.elim (by omega) (fun hn => hn (voteReady_blk h))),
+    ite_neg (fun hc => hc.2.elim (by omega) (fun hn => hn (voteReady_blk h hcv))),
     ite_pos (by omega : 0 < k + 1)]
   simp only [hperm, ↓reduceIte]
   set V := mergedVoteView sp1 A Φ (k + 1)
@@ -652,12 +652,11 @@ theorem acOnBlock_tick {A : SAState sp1.n} {Φ : N1.Frm} {f k : Nat}
       A₃.fgReported = A.fgReported ∧ LocksLe A₃.locks (k + 1) ∧
       (⟨(blk (k + 1)).root, k + 1, true, k + 1 + 2⟩ : Lock) ∈ A₃.locks := by
   have hs : sp1.slot (((4 * (k + 1) : Nat) : Int)) = k + 1 := by rw [slot_nat]; omega
-  unfold acOnBlock
-  rw [blockReceipt_blk hcv]
+  unfold acOnBlock blockReceipt
   rw [optimisticConfirmation_of_none (optimisticSelect_of_pool_nil (by rw [hs]; exact hpool))]
   obtain ⟨L₁, d, he, hL₁, htip₁⟩ := tryVote_blk
     (A := { A with blockStamp := Function.update A.blockStamp (blk (k + 1)).root
-                    (ETime.of ((4 * (k + 1) : Nat) : Int)) }) hperm h hj hvs hpool hL htip
+                    (ETime.of ((4 * (k + 1) : Nat) : Int)) }) hperm h hj hvs hpool hcv hL htip
   rw [he]
   exact ⟨_, _, rfl, rfl, rfl, hj, vote_admitted h hj hpool hL₁⟩
 

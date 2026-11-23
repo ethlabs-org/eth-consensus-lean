@@ -637,7 +637,8 @@ theorem conflictRun_localRun :
     rcases he with ⟨-, rfl⟩ | ⟨k, hk, rfl⟩
     · trivial
     · refine ⟨blk_rootOk _ (by simp; omega), atts_wellFormed _ hk, ?_⟩
-      exact ⟨fun v hv => absurd hv List.not_mem_nil, fun v hv => absurd hv List.not_mem_nil⟩
+      exact ⟨fun v hv => absurd hv List.not_mem_nil, List.Sublist.slnil, List.nodup_nil,
+        fun _ => Nat.zero_le _⟩
   proposerCredential y _ j t B hg := by
     obtain ⟨-, -, -, he⟩ := group_side hg
     rcases he with ⟨-, h⟩ | ⟨k, -, h⟩
@@ -726,10 +727,6 @@ theorem conflictRun_goldilocksRun : GoldilocksRun (fun _ => v0) dg6 H conflictRu
   toLocalRun := conflictRun_localRun
   genesis_root_ok := (dg6_none _ _ _ _).symm
   vstart := fun _ => SA.voteStart_initial _
-  carried_vote_unforgeable y _ i B h v hv := by
-    obtain ⟨acc, hc⟩ := h
-    obtain ⟨k, -, rfl, -⟩ := blockCall_blk hc
-    exact absurd hv List.not_mem_nil
 
 /-! ## Collision freedom -/
 
