@@ -42,15 +42,8 @@ theorem deepest_empty (Φ : Frm sp.n FGP) : deepest Φ (∅ : Set (Blk sp.n FGP)
 
 /-- A block receipt keeps the latest restart. -/
 theorem blockReceipt_restartTime (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
-    (blockReceipt sp A t B).restartTime = A.restartTime := by
-  unfold blockReceipt
-  have key : ∀ (l : List (Vote sp.n)) (A₀ : SAState sp.n),
-      (l.foldl (fun A v => admitVote sp A t v) A₀).restartTime = A₀.restartTime := by
-    intro l
-    induction l with
-    | nil => exact fun _ => rfl
-    | cons v l ih => exact fun A₀ => (ih _).trans (admitVote_restartTime A₀ t v)
-  exact key _ _
+    (blockReceipt sp A t B).restartTime = A.restartTime :=
+  rfl
 
 /-- A negative time is in slot `0`. -/
 theorem slot_of_neg {t : Time} (ht : t < 0) : sp.slot t = 0 := by
