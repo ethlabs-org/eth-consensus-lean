@@ -288,7 +288,8 @@ theorem reachable_init : (GA).ReachableAt v0 U (GA).initial Φ₀ 0 :=
 /-- `ac_on_block(B1)` at `6` obeys the call law: `Φ₀ ⊑_{B1} Φ₁`, a valid payload, slot `1`. -/
 theorem callOK_B1 : (GA).CallOK U Φ₀ 6 (.block B1) Φ₁ :=
   ⟨⟨frameOK_Φ₁, tree₁_sub⟩, frameStep_B1,
-    ⟨fun v hv => by simp [blockVotes, B1] at hv, fun v hv => by simp [blockSupport, B1] at hv⟩,
+    ⟨fun v hv => by simp [blockVotes, B1] at hv, by simp [blockSupport, blockVotes, B1],
+      by simp [blockVotes, B1], fun i => by simp [blockVotes, B1]⟩,
     by decide⟩
 
 /-- The vote message at `8` obeys the call law (same frame). -/
@@ -374,8 +375,8 @@ theorem updateLatestConfirmed_locks (A : SAState sp.n) (Ψ : Frm sp.n Unit) (C :
 
 /-- At `8 < t_2 + Δ` there is no slot-`2` proposal, so `try_vote` waits. -/
 theorem tryVote_8 (A : SAState sp.n) : tryVote sp v0 A Φ₁ 8 = (A, []) := by
-  have hr : ¬ voteReady sp Φ₁ 2 := by
-    rintro ⟨B, hB, hs, -⟩
+  have hr : ¬ voteReady sp A Φ₁ 2 := by
+    rintro ⟨⟨B, hB, hs, -⟩, -⟩
     rcases hB with rfl | rfl <;> simp [B1, g] at hs
   unfold tryVote
   dsimp only
