@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVoteTransfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -15,8 +16,8 @@ facts of a slot dictionary `K` in the form the growing proofs use,
 `Compose.Growing.CommitteeFacts tr (fun _ => H) K`, and CS2 for the slots after the slot of `ḡ`
 (`twoK`). This module reads them at the constant honest set:
 
-* `committeeP_of_facts`, `committeeT_of_facts`: P and T over the AC projection (T from P and the
-  frames, `CommitteeFacts.committeeTAt`);
+* `committeeP_of_facts`, `committeeT_of_facts`: P and T over the AC projection (T from P: a
+  counted declared head vote is backed in the read point's pool);
 * `mayVote_iff_of_facts`: an honest node may vote in exactly its committees' slots (the gate);
 * `cs2_of_twoK`: CS2 against `committeeSize`;
 * `faultBoundK_of_twoK`: CS at a slot after the slot of `ḡ`, read at a time whose previous slot
@@ -38,22 +39,24 @@ theorem committeeP_of_facts (hK : Compose.Growing.CommitteeFacts tr (fun _ => H)
       (fun _ hk => hrun.time_mono hk.le) s v hv,
     fun y hy i ℓ A hpt s v hv => hK.hP.2 y i ℓ A hy hpt s v hv⟩
 
-/-- **T** over the AC projection, from P and the frames: the merged view of an honest cast holds
-pool votes of its read point, which are in the node's pool after the cast (P), and the votes of
-blocks of the call's frame, which is the node's frame (`hFrame`). -/
+/-- **T** over the AC projection, from P: every merged-view vote of an honest cast is backed in
+the pool of its slot at the read point (the vote itself, or two votes of its validator), and the
+read point's pool votes are in the node's pool after the cast (P). -/
 theorem committeeT_of_facts (hK : Compose.Growing.CommitteeFacts tr (fun _ => H) K)
     (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr) :
     SA.CommitteeT K tr.projAC H := by
   intro y hy i ℓ e hc m v hv
-  rcases hv with hvb | ⟨C, hC, -, hvC⟩
-  · have hacr := Compose.goldilocks_ac_projection_from hrun hnc
-    simp only [SA.voteView, SA.voteViewList, SA.View.ofLists, Set.mem_ofPred_eq, List.mem_filter,
-      decide_eq_true_eq] at hvb
-    have hp := (SA.readPoint_pool hacr.localRun hy hc (SA.SAState.mem_poolAt.mp hvb.1).2).1
-    rw [SA.state_pool_slot _ hacr.localRun hacr.vstart hy (i + 1) _ v hp]
-    exact (committeeP_of_facts hK hrun).1 y hy (i + 1) _ v hp
-  · rw [Compose.frame_of_projAC hrun hy hc.1] at hC
-    exact hK.hFrame y i hy C hC v hvC
+  have hacr := Compose.goldilocks_ac_projection_from hrun hnc
+  have hst : ∀ k, ∀ w ∈ e.readPoint.pool k,
+      w ∈ (tr.projAC.state y (i + 1)).pool k ∧ w.slot = k := fun k w hw =>
+    have hp := (SA.readPoint_pool hacr.localRun hy hc hw).1
+    ⟨hp, SA.state_pool_slot _ hacr.localRun hacr.vstart hy (i + 1) _ w hp⟩
+  have hP := (committeeP_of_facts hK hrun).1 y hy (i + 1) v.slot
+  rcases SA.merged_declared_backing_at_vote_slot (fun k w hw => (hst k w hw).2) hv with
+    hp | ⟨u, hu, -, -, -, hu', -⟩
+  · exact hP v (hst _ v hp).1
+  · rw [← hu']
+    exact hP u (hst _ u hu).1
 
 /-- **The gate**: an honest node may vote in slot `s`, at every cut, iff it is in the slot-`s`
 committee. -/

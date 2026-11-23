@@ -1,8 +1,10 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Groups
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RoleBinding
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Goldilocks
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Unforgeable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Queue
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.BlockView
@@ -22,10 +24,9 @@ For a dictionary `K` that binds the run's role selection (`K.BindsSel rho voteRo
 the canonical trace handles is of a member of its slot's committee:
 
 * the gate (`simTraceAt_gate`): a node may vote in slot `s` iff it is in `K.committee s`;
-* a cast (`simTraceAt_vote_member`), a received message (`simTraceAt_msgCall_member`) and the
-  votes of an occurring block (`simTraceAt_occurs_member`), from the credentials of the engine;
-* on a run record, the blocks held while honest (`simTraceAt_honestBlock_member`), the frames
-  (`simTraceAt_tree_member`) and the pools (`simTraceAt_pool_member`).
+* a cast (`simTraceAt_vote_member`) and a received message (`simTraceAt_msgCall_member`),
+  from the credentials of the engine;
+* on a run record, the pools (`simTraceAt_pool_member`).
 
 None of these needs an honest-set premise beyond the record's, nor the population binding. -/
 
@@ -75,13 +76,13 @@ open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
 open SA (SAParams ReplayOrder Vote)
 
-/-- **The pool of an AC run keeps a vote predicate** that holds of the votes of the blocks of
-`U`, of the node's received messages and of its own emissions. -/
+/-- **The pool of an AC run keeps a vote predicate** that holds of the node's received
+messages and its own emissions. A block's declared references do not enter the pool. -/
 theorem pool_mem_of_run {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
     {H₀ : Set (Fin sp.n)} {U : Set (SA.Blk sp.n FGP)} {trA : SA.SATrace sp FGP ro} {ini} {g : Nat}
     (hr : ACLocalRun (SA.goldilocksSA sp FGP ro) H₀ U trA ini) (hini : ∀ y, SA.VoteStart g (ini y))
     {y : Fin sp.n} (hy : y ∈ H₀)
-    (P : Vote sp.n → Prop) (hU : ∀ B ∈ U, ∀ v ∈ SA.blockVotes B, P v)
+    (P : Vote sp.n → Prop)
     (hmsg : ∀ i ℓ v, trA.CallAt y i ℓ → ℓ.call = .message v → P v)
     (hem : ∀ i ℓ e, trA.CallAt y i ℓ → e ∈ ℓ.emits → P e.msg) :
     ∀ i σ, ∀ v ∈ (trA.state y i).pool σ, P v := by
@@ -98,27 +99,12 @@ theorem pool_mem_of_run {sp : SAParams} {FGP : Type} {ro : ReplayOrder sp FGP}
       rw [trA.state_succ_of_call hc]
       have he := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
       rw [hc.1] at he
-      obtain ⟨hΦ, hΦU⟩ := SA.frameIn_of_callAt hr hy hc
-      have hB : ∀ B, ℓ.call = .block B → B ∈ ℓ.frame.tree := by
-        intro B hcl
-        have key : ∀ Φ, (SA.goldilocksSA sp FGP ro).CallOK U Φ (trA.time i) ℓ.call ℓ.frame →
-            B ∈ ℓ.frame.tree := by
-          intro Φ h
-          rw [hcl] at h
-          obtain ⟨-, hst, -, -⟩ := h
-          rw [hst.tree_eq]
-          exact ⟨Set.mem_insert _ _, hst.F'_anc_B⟩
-        rcases hr.frameLaw y hy i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨-, ℓ', -, -, -, h⟩ <;>
-          exact key _ h
-      have key := pool_step_inventory P ro y (trA.state y i) ℓ.frame (trA.time i) ℓ.call ih hΦ
+      have key := pool_step_inventory P ro y (trA.state y i) ℓ.frame (trA.time i) ℓ.call ih
         ?_ (by rw [he]; exact fun e he' => hem i ℓ e hc he')
       · rwa [he] at key
       · split
-        · rename_i B hcl
-          exact fun v hv => hU B (hΦU (hB B hcl)) v hv
         · rename_i v hcl
           exact hmsg i ℓ v hc hcl
-        · exact fun B hB' v hv => hU B (hΦU hB') v hv
         · trivial
     · rw [trA.state_succ_of_not fun ℓ h => hc ⟨ℓ, h⟩]
       exact ih
@@ -134,20 +120,6 @@ theorem observed_vote_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.vo
     {m : Vote (Fintype.card V)} (hc : Model.Obj.Contains o (voteObj (binding := S.vote) m)) :
     m.val ∈ K.committee m.slot :=
   NodeAsChainShape.CanonicalTrace.observed_vote_member rho hv hK ho hc rfl
-
-/-- **The votes of an occurring block are of committee members** (its object is observed). -/
-theorem simTraceAt_occurs_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.vote.voteRole)
-    {C : Blk (S.params (pubOf E) hn)} (hC : (simTraceAt S rho hn).Occurs C) :
-    ∀ v ∈ SA.blockVotes C, v.val ∈ K.committee v.slot := by
-  obtain ⟨hobj, hcodec⟩ := blockView_encoding (E := E) S hn
-  exact NodeAsChainShape.CanonicalTrace.simTraceAt_occurs_member (traceEncoding S hn) rho hv
-    hcodec (fun he hp _ hr _ _ hl hpos => tick_block_release_encoding S rho hn hv he hp hr hl hpos)
-    hK SA.blockVotes (fun b v hvb => by
-      rw [hobj]
-      exact ⟨voteObj v, .step (List.mem_append_right _
-        (List.mem_map.mpr ⟨v, List.mem_append_left _ hvb, rfl⟩)) (.refl _), rfl⟩)
-    (by rwa [NodeAsChainShape.CanonicalTrace.simTraceAt_eq, ← (simTrace_encoding S rho hn).1,
-      ← simTraceAt_eq])
 
 /-- **A received vote is of a committee member** (the credentials of its delivery). -/
 theorem simTraceAt_msgCall_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.vote.voteRole)
@@ -188,38 +160,16 @@ variable {rho hn} {ini}
     (simTraceAt S rho hn) ini)
 include hrun
 
-/-- **The blocks held while honest by `d ≥ 0` carry votes of members**: genesis carries none,
-and an accepted block occurs. -/
-theorem simTraceAt_honestBlock_member (hv : rho.ExecutionValid)
-    (hK : K.BindsSel rho S.vote.voteRole) {d : Time} (hd : 0 ≤ d) :
-    ∀ C ∈ ((simTraceAt S rho hn).upTo d).HonestBlocks (honestKeysAt S rho d),
-      ∀ v ∈ SA.blockVotes C, v.val ∈ K.committee v.slot := by
-  rintro C ⟨y, hy, i, hC⟩
-  rcases Compose.tree_cases (hrun.upTo hd).toLocalRun hy hC with rfl | ⟨k, -, hk⟩
-  · intro v hv'
-    simp [SA.blockVotes, Params.genesisBlock] at hv'
-  · exact simTraceAt_occurs_member S rho hn hv hK ⟨y, k, true, ((Trace.upTo_callAt _).mp hk).2⟩
-
-/-- **The frames of the nodes honest then carry votes of members** (`hT`). -/
-theorem simTraceAt_tree_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.vote.voteRole) :
-    ∀ w c, w ∈ honestKeysAt S rho ((simTraceAt S rho hn).time c) →
-      ∀ C ∈ (Node.frame ((simTraceAt S rho hn).state w c)).tree,
-        ∀ v ∈ SA.blockVotes C, v.val ∈ K.committee v.slot := by
-  intro w c hw C hC
-  refine simTraceAt_honestBlock_member S hrun hv hK (hrun.time_nonneg c) C ⟨w, hw, c, ?_⟩
-  rw [RunTrace.upTo_state_of_le hrun.time_mono le_rfl]
-  exact hC.1
-
 /-- The pools of the prefix through `d ≥ 0` of a node honest at `d` hold votes of members. -/
 private theorem upTo_pool_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.vote.voteRole)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {d : Time} (hd : 0 ≤ d)
     {w : Fin (Fintype.card V)} (hw : w ∈ honestKeysAt S rho d) :
     ∀ i σ, ∀ v ∈ (((simTraceAt S rho hn).projAC.upTo d).state w i).pool σ,
       v.val ∈ K.committee v.slot := by
-  have hacr := Compose.Growing.acRun_upTo hrun hnc hd
+  have hacr := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d)
+  rw [RunTrace.upTo_projAC] at hacr
   have hr := hacr.localRun
   refine pool_mem_of_run hr hacr.vstart hw (fun v => v.val ∈ K.committee v.slot)
-    (simTraceAt_honestBlock_member S hrun hv hK hd)
     (fun _ ℓ v hci hcl => simTraceAt_msgCall_member S rho hn hv hK
       ⟨ℓ, Compose.projAC_callAt.1 ((Trace.upTo_callAt _).mp hci).2, hcl⟩)
     (fun i ℓ e hci he => ?_)
@@ -239,7 +189,8 @@ theorem simTraceAt_pool_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.
     Trace.upTo_state _ w fun k hk => hrun.time_mono (Nat.lt_succ_iff.mp hk)
   rw [← hst] at hvp
   have hm := upTo_pool_member S hrun hv hK hnc hd hw (c + 1) m v hvp
-  have hacr := Compose.Growing.acRun_upTo hrun hnc hd
+  have hacr := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)
+  rw [RunTrace.upTo_projAC] at hacr
   rwa [SA.state_pool_slot _ hacr.localRun hacr.vstart hw (c + 1) m v hvp] at hm
 
 end Consensus.Goldilocks.Simulation

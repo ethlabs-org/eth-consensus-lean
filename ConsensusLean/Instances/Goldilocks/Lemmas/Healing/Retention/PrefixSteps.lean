@@ -49,25 +49,12 @@ theorem admit_pool_mem {A : SA.SAState sp.n} {t : Time} {m w : SA.Vote sp.n} {s 
       · exact Or.inr (List.mem_singleton.1 h)
     · exact Or.inl h
 
-/-- A vote in a pool after a block's receipt was there before, or is a vote of the block. -/
+/-- A vote in a pool after a block's receipt was there before (the receipt only stamps the
+block), or is a vote of the block. -/
 theorem receipt_pool_mem {A : SA.SAState sp.n} {t : Time} {B : SA.Blk sp.n FGP}
     {w : SA.Vote sp.n} {s : Nat} (h : w ∈ (SA.blockReceipt sp A t B).pool s) :
-    w ∈ A.pool s ∨ w ∈ SA.blockVotes B := by
-  have key : ∀ (l : List (SA.Vote sp.n)) (A₀ : SA.SAState sp.n),
-      w ∈ (l.foldl (fun A v => SA.admitVote sp A t v) A₀).pool s → w ∈ A₀.pool s ∨ w ∈ l := by
-    intro l
-    induction l with
-    | nil => exact fun _ h => Or.inl h
-    | cons x l ih =>
-      intro A₀ h
-      rcases ih _ h with h | h
-      · rcases admit_pool_mem h with h | rfl
-        · exact Or.inl h
-        · exact Or.inr List.mem_cons_self
-      · exact Or.inr (List.mem_cons_of_mem _ h)
-  unfold SA.blockReceipt at h
-  have h' := key _ _ h
-  exact h'
+    w ∈ A.pool s ∨ w ∈ SA.blockVotes B :=
+  Or.inl h
 
 private theorem tryVote_pool_mem (self : Fin sp.n) (A : SA.SAState sp.n) (Φ : SA.Frm sp.n FGP)
     (t : Time) {w : SA.Vote sp.n} {s : Nat} (h : w ∈ (SA.tryVote sp self A Φ t).1.pool s) :
