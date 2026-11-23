@@ -11,9 +11,10 @@ public section
 `heldVotes_honest_unique`: at an AC cut `j` of an honest node `y`,
 two votes held across the cut (`SA.heldVotes`) of one honest validator and one slot are equal
 (each was emitted by its validator, `one_vote_per_slot`; a declared head vote counts only when its
-validator has two distinct pooled votes of its slot, impossible for an honest validator). With the fault bound `2 · |Hᶜ| < n`
-this keeps the unlock target (`SA.unlockTarget_unlockView_held_of_honest_slot`). It assumes
-`NoCollRun`, for the AC projection of the run (`goldilocks_ac_projection`). -/
+validator has two distinct pooled votes of its slot, impossible for an honest validator). With
+the fault bound `2 · |Hᶜ| < n` this keeps the unlock target
+(`SA.unlockTarget_unlockView_held_of_honest_slot`). It assumes `NoCollRun`, for the AC projection
+of the run (`goldilocks_ac_projection`). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -50,7 +51,7 @@ theorem heldVotes_honest_unique {ini} (hrun : GoldilocksRun proposer dg H tr ini
       -- distinct pooled votes of an honest validator in one slot contradict one vote per slot
       exfalso
       obtain ⟨w₁, hw₁, w₂, hw₂, hne, hw₁v, hw₂v⟩ := hv
-      simp only [Set.mem_setOf_eq] at hw₁ hw₂
+      simp only [Set.mem_ofPred_eq] at hw₁ hw₂
       rw [← projAC_state hrun.toLocalRun hy] at hw₁ hw₂
       have hs₁ := (state_pool_cap hrun hy (j + 1) v.slot).1 w₁ hw₁
       have hs₂ := (state_pool_cap hrun hy (j + 1) v.slot).1 w₂ hw₂
