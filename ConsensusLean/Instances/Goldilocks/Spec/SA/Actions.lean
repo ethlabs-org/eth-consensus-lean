@@ -44,11 +44,13 @@ abbrev Em (sp : SAParams) (FGP : Type) :=
   Emission sp.n FGP (Payload sp.n) (SAState sp.n) (Vote sp.n)
 
 /-- `vote_ready(𝒜, Φ, s)`: a slot-`s` proposal of the tree whose slot-`(s−1)` support entries
-`(v, s−1, H)` all have `H ∈ Φ.tree` and `H.slot ≤ s − 1`, and every declared head vote of every
-slot-`s` proposal of the tree should be counted (`AllDeclaredVotesCounted`). -/
+`(v, s−1, H)` by committee members (`sp.committee`) all have `H ∈ Φ.tree` and `H.slot ≤ s − 1`,
+and every declared head vote by a committee member of every slot-`s` proposal of the tree should
+be counted (`AllDeclaredVotesCounted`). -/
 def voteReady (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Prop :=
   (∃ P ∈ Φ.tree, P.slot = s ∧ ∀ x ∈ blockSupport P, x.slot + 1 = s →
-    ∃ H ∈ Φ.tree, H.root = x.head ∧ H.slot + 1 ≤ s) ∧ AllDeclaredVotesCounted sp A Φ s
+    x.val ∈ sp.committee x.slot → ∃ H ∈ Φ.tree, H.root = x.head ∧ H.slot + 1 ≤ s) ∧
+    AllDeclaredVotesCounted sp A Φ s
 
 open Classical in
 /-- `try_vote(𝒜, Φ, t)` at validator `self`, with the own vote's receipt unfolded. -/

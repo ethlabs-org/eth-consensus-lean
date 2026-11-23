@@ -79,11 +79,12 @@ def View.ofLists (l : List (Vote n) × List (Vote n)) : View n := ⟨{v | v ∈ 
 variable (sp : SAParams)
 
 /-- `ac_valid_payload(B)`: the declared head votes of `B` (`B.declared_head_votes`, with the
-implicit slot `B.slot − 1 ≥ 0`) are distinct, no validator has more than two, and every support
-entry is one of them (the support list is the Lean form of `B.support_bits`). Neither committee
-membership nor a signature is checked (a declaration is not a signed vote; see `Vote`). -/
+implicit slot `B.slot − 1 ≥ 0`) are distinct, no validator has more than two, and the support
+list is an ordered sublist of them (the Lean form of `B.support_bits`: the marked entries, in
+order). Neither committee membership nor a signature is checked (a declaration is not a signed
+vote; see `Vote`). -/
 def validPayload (B : Blk n FGP) : Prop :=
-  (∀ v ∈ blockVotes B, v.slot + 1 = B.slot) ∧ (∀ v ∈ blockSupport B, v ∈ blockVotes B) ∧
+  (∀ v ∈ blockVotes B, v.slot + 1 = B.slot) ∧ (blockSupport B).Sublist (blockVotes B) ∧
     (blockVotes B).Nodup ∧ ∀ i : Fin n, ((blockVotes B).filter (fun v => v.val = i)).length ≤ 2
 
 /-- `on_goldfish_vote(𝒜, t, vote)`: admission. The vote enters the pool of its slot with the
@@ -137,23 +138,26 @@ population (`Vote`). -/
 def ShouldCountDeclaredVote (A : SAState sp.n) (x : Vote sp.n) : Prop :=
   x ∈ A.poolAt x.slot ∨ x.val ∈ equivocators {y | y ∈ A.poolAt x.slot}
 
-/-- Every declared head vote and support entry of every slot-`s` proposal of `Φ.tree` should be
-counted: the readiness condition of an early vote (`vote_ready`). -/
+/-- Every declared head vote and support entry by a committee member (`sp.committee`, the
+entries `get_countable_declared_head_votes` keeps) of every slot-`s` proposal of `Φ.tree` should
+be counted: the readiness condition of an early vote (`vote_ready`). -/
 def AllDeclaredVotesCounted (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : Prop :=
   ∀ B ∈ Φ.tree, B.slot = s → ∀ x, x ∈ blockVotes B ∨ x ∈ blockSupport B →
-    ShouldCountDeclaredVote sp A x
+    x.val ∈ sp.committee x.slot → ShouldCountDeclaredVote sp A x
 
 /-- `merged_vote_view(𝒜, Φ, s)`: the slot-`(s−1)` votes held before the vote freeze
-`t_{s−1} + 3Δ`, with those resolved before it as support, plus the declared head votes of the
-slot-`s` proposals of `Φ.tree` that should be counted and, as support, their support entries
-`(v, s−1, H)` that should be counted with `H ∈ Φ.tree` and `H.slot ≤ s − 1`. A declaration is
-never admitted: the pool is unchanged. -/
+`t_{s−1} + 3Δ`, with those resolved before it as support, plus the declared head votes by
+committee members (`sp.committee`) of the slot-`s` proposals of `Φ.tree` that should be counted
+and, as support, their support entries `(v, s−1, H)` by committee members that should be counted
+with `H ∈ Φ.tree` and `H.slot ≤ s − 1`. A declaration is never admitted: the pool is
+unchanged. -/
 noncomputable def mergedVoteView (A : SAState sp.n) (Φ : Frm sp.n FGP) (s : Nat) : View sp.n :=
   let base := voteView A Φ ((s : Int) - 1) (ETime.of (freeze sp s))
   { votes := base.votes ∪
-      {v | ∃ B ∈ Φ.tree, B.slot = s ∧ v ∈ blockVotes B ∧ ShouldCountDeclaredVote sp A v}
+      {v | ∃ B ∈ Φ.tree, B.slot = s ∧ v ∈ blockVotes B ∧ v.val ∈ sp.committee v.slot ∧
+        ShouldCountDeclaredVote sp A v}
     support := base.support ∪ {v | ∃ B ∈ Φ.tree, B.slot = s ∧ v ∈ blockSupport B ∧
-      ShouldCountDeclaredVote sp A v ∧ v.slot + 1 = s ∧
+      v.val ∈ sp.committee v.slot ∧ ShouldCountDeclaredVote sp A v ∧ v.slot + 1 = s ∧
       ∃ H ∈ Φ.tree, H.root = v.head ∧ H.slot + 1 ≤ s} }
 
 /-- The voters of a vote set: the validators with a vote in it. -/
