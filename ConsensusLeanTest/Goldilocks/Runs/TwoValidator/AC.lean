@@ -166,13 +166,13 @@ theorem declaredHeadVotes_blk (k : Nat) :
 theorem voteReady_blk {A : ACState sp.n} {Φ : N.Frm} {f k : Nat}
     (h : ChainFrame Φ f (jx (k + 1)) (k + 1)) (hf : f ≤ k)
     (h0 : vote w0 k ∈ A.pool k) (h1 : vote w1 k ∈ A.pool k) : voteReady sp A Φ (k + 1) := by
-  refine ⟨⟨blk (k + 1), h.mem (by omega) le_rfl, blk_slot _, fun x hx _ _ => ?_⟩, ?_⟩
+  refine ⟨⟨blk (k + 1), h.mem (by omega) le_rfl, blk_slot _, fun x hx _ => ?_⟩, ?_⟩
   · rw [declaredSupportVotes_blk] at hx
     rcases List.mem_cons.1 hx with rfl | hx
     · exact ⟨blk k, h.mem hf (by omega), rfl, by rw [blk_slot]⟩
     · rw [List.mem_singleton] at hx; subst hx
       exact ⟨blk k, h.mem hf (by omega), rfl, by rw [blk_slot]⟩
-  · intro B hB hBs x hx _
+  · intro B hB hBs x hx
     obtain ⟨m, -, -, rfl⟩ := h.eq_of_mem hB
     rw [blk_slot] at hBs
     subst hBs
