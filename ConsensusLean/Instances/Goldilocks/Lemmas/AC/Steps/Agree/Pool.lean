@@ -68,15 +68,8 @@ private theorem grow_admitVote (A : SAState sp.n) (t : Time) (v : Vote sp.n) :
         · exact hx
 
 private theorem grow_blockReceipt (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
-    Grow t A (blockReceipt sp A t B) := by
-  unfold blockReceipt
-  generalize hA' : ({ A with blockStamp := Function.update A.blockStamp B.root (ETime.of t) } :
-    SAState sp.n) = A'
-  have h₀ : Grow t A A' := Grow.of_eq (by rw [← hA']) (by rw [← hA'])
-  clear hA'
-  induction (blockVotes B) generalizing A' with
-  | nil => exact h₀
-  | cons v l ih => exact ih _ (h₀.trans (grow_admitVote _ _ _))
+    Grow t A (blockReceipt sp A t B) :=
+  Grow.of_eq rfl rfl
 
 private theorem grow_optimistic (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Grow t A (optimisticConfirmationM sp wm A Φ t) := by
@@ -225,8 +218,8 @@ theorem pool_originU
           (frameOK_of_callU hr hy hc) (hr.time_nonneg c)
         change (acRestart sp ro y (tr.state y c) ℓ.frame (tr.time c)) = _ at he
         rw [he] at hR
-        obtain ⟨hs, B, hB, hxB⟩ := hR.2.2.2.2.2.2.2.2.1 _ x hx
-        exact Or.inr ⟨c, Nat.lt_succ_self c, ℓ, hc, hrs, hs, B, hB, hxB⟩
+        rw [hR.2.2.2.2.2.2.2.2.1] at hx
+        exact absurd hx List.not_mem_nil
       · have hg := grow_callU hr hy hc hrs
         by_cases hx' : x ∈ (tr.state y c).pool x.slot
         · rw [(hg.2 x).1 hx']
