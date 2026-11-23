@@ -60,7 +60,7 @@ theorem dutyStep_att_poll {v : V} (nd : Model.Node (Model.protoOf (compiled (gol
           (.data (.att (encodeAtt a))) = .proposer s := by
         change (S.vote.candidateRole _ (.propose s hs) (.data (.att (encodeAtt a)))).getD
           (.proposer s) = .proposer s
-        rw [candidateRole_of_not_vote _ _ _ _ fun _ h => by cases h]
+        rw [candidateRole_of_not_vote _ _ _ _ fun _ _ h => by cases h]
         rfl
       have hh : (ShapeRole.poll : ShapeRole S.vote.Kind) = .proposer s := by
         injection hauth with _ h
