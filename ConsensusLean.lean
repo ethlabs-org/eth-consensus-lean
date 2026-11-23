@@ -765,6 +765,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.VotingPolicy.Adapter
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.AnchorStepsGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.CoefficientAdapters
