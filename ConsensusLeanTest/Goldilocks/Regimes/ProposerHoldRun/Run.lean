@@ -107,9 +107,11 @@ theorem hash_injective : Function.Injective hash := by
   · simp only [ha, hb, ↓reduceIte, add_left_inj] at hab
     exact enc_injective hab
 
-/-- The base run: the point, the PKI, the selection and the hash; no events. -/
+/-- The base run: the point, the PKI, the selection, the hash and the standard lawful vote
+issuer and verifier for that selection; no events. -/
 noncomputable def base : Model.Run (compiled (goldilocks { S with vote := stock })) env :=
-  ⟨faulty, faulty_mono, 41, [], Equiv.refl _, sel S, fun _ _ => [], fun _ _ => [], hash⟩
+  ⟨faulty, faulty_mono, 41, [], Equiv.refl _, sel S, fun _ _ => [], fun _ _ => [], hash,
+    Model.stdIssue _ _, Model.stdVerify _ _ (sel S)⟩
 
 /-- Key `1`'s releases at time `12` are held back by `2`. -/
 def delay (e : Ev S) : Time := if e.node = 1 ∧ e.time = 12 then 2 else 0
@@ -157,7 +159,7 @@ theorem twin_contains {d : Obj S} (h : Model.Obj.Contains (twin S) d) : d = twin
 selection gives it. -/
 theorem rho_valid : (rho S).ExecutionValid := by
   apply (base S).injectEvents_valid (delay S) (inj S) (by simp [base]) (sel_admits S)
-    (delay_nonneg S)
+    (Model.Run.voteVerification_std _ rfl rfl) (delay_nonneg S)
   · intro t v o ho d hd u hu
     obtain ⟨rfl, rfl⟩ := (mem_inj S).mp ho
     obtain rfl := twin_contains S hd

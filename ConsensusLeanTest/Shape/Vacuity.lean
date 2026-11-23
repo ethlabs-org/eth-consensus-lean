@@ -258,15 +258,17 @@ variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
 
 /-- Credential forgery (L2 form): a delivered object containing a
 proposal signed by a key not selected as the slot's proposer makes the run
-invalid, for every family. -/
+invalid, for every family. The signed object must not be a delegated vote body
+(`voteBody`): those are authenticated by verified evidence, not by the selection. -/
 theorem credential_forgery_excluded {F : ChainShapeFamily O Info} {V : Type} [Fintype V]
     [DecidableEq V] {E : Env V} (rho : Model.Run (compiled F) E) {i : Nat} {w : V}
     {o : (protoOf (compiled F) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver w o t)) {o' : (protoOf (compiled F) E).Object}
     (hc : Obj.Contains o o') {k : Fin (Fintype.card V)} {s : Nat}
     (ha : o'.auth = .signed k (ShapeRole.proposer s))
+    (hb : ∀ b, o'.msg = .data b → (protoOf (compiled F) E).voteBody b = false)
     (hk : k ∉ rho.sel (ShapeRole.proposer s)) : ¬ rho.ExecutionValid := fun hv =>
-  hk (hv.credentials i w o t he o' hc k _ ha)
+  hk (hv.credentials.2 i w o t he o' hc k _ ha hb)
 
 open Consensus.Shape.Tests.Shapes (trivialFamily)
 open Consensus.Shape.Tests.Realizable (point3 sel3 sel3_admits)
@@ -279,10 +281,12 @@ def forgedProposal : Model.Run (compiled trivialFamily) point3.env :=
       [.deliver 1 (.mk (.signed ⟨1, by simp⟩ (ShapeRole.proposer 0))
         (.item ⟨.root, 0, 0, ()⟩) []) 0]
       (pkiFin 3) sel3 (fun _ _ => []) (fun _ _ => []) (fun _ => 1)
+      (fun q => q.2.2.elim) (fun _ _ => false)
 
 /-- The forged run has an admissible selection, and is invalid. -/
 theorem forgedProposal_invalid : forgedProposal.SelValid ∧ ¬ forgedProposal.ExecutionValid := by
-  refine ⟨sel3_admits, credential_forgery_excluded forgedProposal (i := 0) rfl (.refl _) rfl ?_⟩
+  refine ⟨sel3_admits, credential_forgery_excluded forgedProposal (i := 0) rfl (.refl _) rfl
+    (fun _ h => by cases h) ?_⟩
   change (⟨1, by simp⟩ : Fin (Fintype.card (Fin 3))) ∉ ({⟨2, by simp⟩} : Finset _)
   simp
 
