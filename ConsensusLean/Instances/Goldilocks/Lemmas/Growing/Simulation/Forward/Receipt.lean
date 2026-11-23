@@ -59,20 +59,21 @@ theorem received_forward_stamp_le_at (hv : rho.ExecutionValid)
 the delivery's group, no earlier than the stamp. -/
 theorem received_voteForward_processAt_at (hv : rho.ExecutionValid)
     {source i : Nat} {x : Fin (Fintype.card V)} {v : V} {τ u : Time}
-    {receipt : Wire (Fintype.card V) S.vote} {m : AC.Vote (Fintype.card V)}
+    {receipt : Wire (Fintype.card V) S.vote} {m : AC.Vote (Fintype.card V)} {z : Nat}
+    (hcheck : rho.verify (m.val, S.vote.voteRole m.slot, encodeVote m) z = true)
     (hx : rho.key x ∉ rho.faultyAt τ) (hs : rho.SendsAt (rho.key x) source τ)
     (hfirst : ∀ j < source,
-      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉
+      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m z] ∉
         rho.releasesAt j)
     (he : rho.events[i]? = some (.deliver v receipt u))
     (hro : receipt =
-      .mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m]) :
+      .mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m z]) :
     ∃ k, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
       (simTraceAt S rho hn).projAC.ProcessAt (rho.ownKey v) k m ∧
       (simTraceAt S rho hn).time k = u ∧ τ ≤ u := by
   rw [simTraceAt_eq]
   have hc : Model.Obj.Contains receipt
-      (.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m]) :=
+      (.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m z]) :=
     hro ▸ .refl _
   have htime : τ ≤ u := by
     by_contra hlt
@@ -99,13 +100,22 @@ theorem received_voteForward_processAt_at (hv : rho.ExecutionValid)
   intro e _
   have hw : NodeAsChainShape.CanonicalTrace.wireOf e receipt = receipt :=
     NodeAsChainShape.CanonicalTrace.wireOf_eq e receipt
+  have hcan := canonEvent_voteObj (sp := S.params (pubOf E) hn) (ro := S.ro _)
+    (binding := S.vote) (rho.voteIO v) (Model.digests rho.hash receipt) m z
+  rw [ite_eq_left (show (rho.voteIO v).check m.val (S.vote.voteRole m.slot) (encodeVote m) z = true
+    from hcheck)] at hcan
   obtain ⟨k, hlo, hhi, hp, ht⟩ :=
     NodeAsChainShape.CanonicalTrace.received_carried_message_processAt e rho he
-      (w := voteObj (binding := S.vote) m)
-      (hw.symm ▸ not_refuses_of_data _ hro)
+      (w := voteObj (binding := S.vote) m z)
+      (by
+        rintro ⟨h, -⟩
+        rw [hw, hro] at h
+        exact h)
       (hw.symm ▸ (by rw [hro]; exact List.mem_singleton_self _))
-      (canonEvent_voteObj (sp := S.params (pubOf E) hn) (ro := S.ro _)
-        (Model.digests rho.hash receipt) m)
+      (by
+        rw [NodeAsChainShape.CanonicalTrace.receiverCodec_eq,
+          NodeAsChainShape.CanonicalTrace.voteIOAt_eq]
+        exact hcan)
   exact ⟨k, hlo, hhi, hp, ht, htime⟩
 
 /-- Holdings of a first-release vote envelope whose signer is honest at its stamp either belong
@@ -113,13 +123,14 @@ to its source or give an actual recipient processing cut between the stamp and t
 The source alternative is not itself a fresh-processing claim. -/
 theorem held_voteForward_source_or_process_at (hv : rho.ExecutionValid)
     {source : Nat} {x y : Fin (Fintype.card V)} {τ d : Time}
-    {m : AC.Vote (Fintype.card V)}
+    {m : AC.Vote (Fintype.card V)} {z : Nat}
+    (hcheck : rho.verify (m.val, S.vote.voteRole m.slot, encodeVote m) z = true)
     (hx : rho.key x ∉ rho.faultyAt τ) (hs : rho.SendsAt (rho.key x) source τ)
     (hfirst : ∀ j < source,
-      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m] ∉
+      Model.Obj.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m z] ∉
         rho.releasesAt j)
     (hh : rho.log.Held rho.point (rho.key y)
-      (.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m]) d) :
+      (.mk (.signed x .poll) (.data (.voteForward τ (encodeVote m))) [voteObj m z]) d) :
     y = x ∨ ∃ k, (simTraceAt S rho hn).projAC.ProcessAt y k m ∧
       τ ≤ (simTraceAt S rho hn).time k ∧ (simTraceAt S rho hn).time k ≤ d := by
   obtain ⟨u, hud, hsend | hrecv, _⟩ := hh
@@ -136,7 +147,7 @@ theorem held_voteForward_source_or_process_at (hv : rho.ExecutionValid)
         · exact (Model.Auth.signed.inj h).1
     exact Or.inl (hxy.trans (rho.key.symm_apply_apply y)).symm
   · obtain ⟨i, hi⟩ := hrecv
-    obtain ⟨k, _, _, hp, ht, hτ⟩ := received_voteForward_processAt_at S rho hn hv hx hs
+    obtain ⟨k, _, _, hp, ht, hτ⟩ := received_voteForward_processAt_at S rho hn hv hcheck hx hs
       hfirst hi rfl
     have hkey : rho.ownKey (rho.key y) = y := rho.key.symm_apply_apply y
     rw [hkey] at hp
