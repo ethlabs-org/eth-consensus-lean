@@ -365,7 +365,7 @@ theorem tryVote_cast (A : SAState sp1.n) (t : Time) (hs0 : 0 < sp1.slot t)
     (hj : A.restartTime = ⊥) (hv : A.votedSlot ≠ sp1.slot t)
     (ht : t ≤ sp1.ts (sp1.slot t) + sp1.Δ)
     (hr : ¬ (t < sp1.ts (sp1.slot t) + sp1.Δ ∧
-      (sp1.slot t = 0 ∨ ¬ voteReady sp1 Φ₁ (sp1.slot t))))
+      (sp1.slot t = 0 ∨ ¬ voteReady sp1 A Φ₁ (sp1.slot t))))
     (hdom : B1 ∈ voteDomain sp1 (unlocked A t) Φ₁ (sp1.slot t))
     (hp : A.mayVote (sp1.slot t) = true) :
     ∃ d, tryVote sp1 v0 A Φ₁ t =
@@ -401,8 +401,11 @@ def S1 : SAState sp1.n :=
     locks := insert lock1 ∅
     latestConfirmed := 1 }
 
-theorem voteReady_1 : voteReady sp1 Φ₁ 1 :=
-  ⟨B1, B1_mem, rfl, fun x hx => by cases hx⟩
+theorem voteReady_1 (A : SAState sp1.n) : voteReady sp1 A Φ₁ 1 := by
+  refine ⟨⟨B1, B1_mem, rfl, fun x hx => by cases hx⟩, fun B hB hs x hx _ => ?_⟩
+  rcases hB with rfl | rfl
+  · simp [g] at hs
+  · rcases hx with hx | hx <;> cases hx
 
 theorem B1_mem_voteDomain {A : SAState sp1.n} {s : Nat}
     (h : B1 ∈ voterBlockTree sp1 A Φ₁ s) : B1 ∈ voteDomain sp1 A Φ₁ s :=
@@ -417,11 +420,11 @@ theorem r0_eq : ∃ d, r0 = (S1, [⟨vote1, R0, some d⟩]) := by
   rw [show blockReceipt sp1 (SAState.initial 0) 4 B1 = Rb from rfl,
     optimisticConfirmation_none (optimisticSelect_none (by rw [slot_4]; rfl))]
   have hr : ¬ ((4 : Time) < sp1.ts (sp1.slot 4) + sp1.Δ ∧
-      (sp1.slot 4 = 0 ∨ ¬ voteReady sp1 Φ₁ (sp1.slot 4))) := by
+      (sp1.slot 4 = 0 ∨ ¬ voteReady sp1 Rb Φ₁ (sp1.slot 4))) := by
     rw [slot_4]
     rintro ⟨-, h | h⟩
     · exact absurd h (by decide)
-    · exact h voteReady_1
+    · exact h (voteReady_1 Rb)
   have hdom : B1 ∈ voteDomain sp1 (unlocked Rb 4) Φ₁ (sp1.slot 4) := by
     rw [slot_4]
     exact B1_mem_voteDomain ⟨B1_mem, Or.inr ⟨B1, B1_mem, rfl, Relation.ReflTransGen.refl⟩⟩
@@ -501,7 +504,7 @@ theorem r1_eq : ∃ d, r1 = (S2, [⟨vote2, R1, some d⟩]) := by
   dsimp only
   rw [acOnTick_vote rfl (by rw [slot_9]; decide)]
   have hr : ¬ ((9 : Time) < sp1.ts (sp1.slot 9) + sp1.Δ ∧
-      (sp1.slot 9 = 0 ∨ ¬ voteReady sp1 Φ₁ (sp1.slot 9))) := by
+      (sp1.slot 9 = 0 ∨ ¬ voteReady sp1 S1 Φ₁ (sp1.slot 9))) := by
     rw [slot_9]
     rintro ⟨h, -⟩
     exact absurd h (by decide)
@@ -708,7 +711,8 @@ theorem vote1_mem_S1 : vote1 ∈ S1.pool vote1.slot := by simp [S1, vote1]
 
 theorem vote2_mem_S2 : vote2 ∈ S2.pool 2 := by simp [S2, vote2]
 
-theorem validPayload_B1 : validPayload B1 := ⟨fun _ hv => (by cases hv), fun _ hv => (by cases hv)⟩
+theorem validPayload_B1 : validPayload B1 :=
+  ⟨fun _ hv => (by cases hv), List.Sublist.slnil, List.nodup_nil, fun _ => Nat.zero_le _⟩
 
 theorem frameIn_Φ₁ : GA1.FrameIn U₁ Φ₁ := ⟨frameOK_Φ₁, subset_rfl⟩
 
@@ -758,9 +762,6 @@ theorem honest_W : HonestObjects (fun _ => v0) trW Set.univ where
       · exact ⟨1, by omega, e1, voteAt_1 _, rfl⟩
   message_vote := fun y _ i ℓ v h hc _ => by
     rcases trW_label h.2 with ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, rfl⟩ | ⟨-, rfl⟩ <;> cases hc
-  carried_vote := fun y _ i ℓ h B hB v hv _ => by
-    rw [trW_frame h.2] at hB
-    rcases hB with rfl | rfl <;> cases hv
   proposer := fun _ _ _ => Subsingleton.elim _ _
   one_block := fun B B' ⟨_, _, i, ℓ, h, hB⟩ ⟨_, _, i', ℓ', h', hB'⟩ _ _ hs => by
     rw [trW_frame h.2] at hB
