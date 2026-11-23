@@ -70,11 +70,13 @@ theorem eagerRelay_txs {O : OutputSchema} {F : ProtocolFamily O} {V : Type} [Fin
 /-- The canonical schedule with GST `g` is a valid execution. -/
 theorem Run.canonical_valid {O : OutputSchema} {F : ProtocolFamily O} {V : Type} [Fintype V]
     [DecidableEq V] {E : Env V} (base : Run F E) (hh : 0 ≤ base.horizon) (hsel : base.SelValid)
-    (g : Time) : (base.withEvents (base.canonicalEvents g)).ExecutionValid :=
+    (hvv : base.VoteVerification) (g : Time) :
+    (base.withEvents (base.canonicalEvents g)).ExecutionValid :=
   base.canonical_valid_of g hh
     ((base.withEvents (base.canonicalEvents g)).unforgeable_of_causal (base.canonical_causal g))
     (by rw [Run.withEvents_eq]; exact hsel)
-    ((base.withEvents (base.canonicalEvents g)).credentials_of_causal (base.canonical_causal g))
+    ((base.withEvents (base.canonicalEvents g)).credentials_of_causal
+      (by rw [Run.withEvents_eq]; exact hvv) (base.canonical_causal g))
 
 /-- `canonical_run_from` with one more fact about the schedule: its network
 is causal (every delivery is an earlier release), so it carries no object
@@ -84,28 +86,36 @@ theorem canonical_run_from_causal (O : OutputSchema) (F : ProtocolFamily O) (V :
     (horizon : Time) (hh : 0 ≤ horizon)
     (key : Fin (Fintype.card V) ≃ V) (sel : (protoOf F E).Role → Finset (Fin (Fintype.card V)))
     (hsel : (protoOf F E).SelAdmits sel)
-    (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat) (g : Time) :
+    (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat)
+    (issue : Fin (Fintype.card V) × (protoOf F E).Role × (protoOf F E).VoteData →
+      (protoOf F E).Token)
+    (verify : Fin (Fintype.card V) × (protoOf F E).Role × (protoOf F E).VoteData →
+      (protoOf F E).Token → Bool)
+    (hvv : ∀ relay, (Run.mk (F := F) (E := E) faultyAt hmono horizon [] key sel submit relay hash
+      issue verify).VoteVerification) (g : Time) :
     ∃ (relay : V → Time → List Tx) (events : List (Event V (protoOf F E).Object)),
       let rho := Run.mk (F := F) (E := E) faultyAt hmono horizon events key sel submit relay hash
+        issue verify
       rho.ExecutionValid ∧ CommLog.EagerFrom rho.point rho.log g ∧ rho.Causal := by
   classical
   let relay := eagerRelay E faultyAt submit
   let base := Run.mk (F := F) (E := E) faultyAt hmono horizon [] key sel submit relay hash
+    issue verify
   refine ⟨relay, base.canonicalEvents g, ?_⟩
   have hb : Run.mk (F := F) (E := E) faultyAt hmono horizon (base.canonicalEvents g)
-      key sel submit relay hash = base.withEvents (base.canonicalEvents g) := by
+      key sel submit relay hash issue verify = base.withEvents (base.canonicalEvents g) := by
     rw [Run.withEvents_eq]
   simp only [hb]
-  exact ⟨base.canonical_valid hh hsel g,
+  exact ⟨base.canonical_valid hh hsel (hvv relay) g,
     ⟨by rw [Run.withEvents_point]; exact base.canonical_eagerFrom g hh, base.canonical_quiet g,
     Run.eagerTxDelivery_iff.mp <|
       eagerRelay_txs (base.withEvents (base.canonicalEvents g)) (by rw [Run.withEvents_eq])⟩,
     base.canonical_causal g⟩
 
-/-- Every PKI, admissible selection, submission function, hash and GST `g`
-admits a valid run whose log is eager from `g` (L0 `CommLog.EagerFrom`): no
-message is received before `g`, and from `g` on every honest send is received
-by every awake honest node. `g ≤ 0` is a synchronous run; `g` past the horizon
+/-- Every PKI, admissible selection, submission function, hash, lawful vote issuer and
+verifier (`VoteVerification`) and GST `g` admits a valid run whose log is eager from `g`
+(L0 `CommLog.EagerFrom`): no message is received before `g`, and from `g` on every honest send
+is received by every awake honest node. `g ≤ 0` is a synchronous run; `g` past the horizon
 is a silent run (no receipts at all); in between, the network is asynchronous
 before `g`. -/
 theorem canonical_run_from (O : OutputSchema) (F : ProtocolFamily O) (V : Type) [Fintype V]
@@ -113,12 +123,20 @@ theorem canonical_run_from (O : OutputSchema) (F : ProtocolFamily O) (V : Type) 
     (horizon : Time) (hh : 0 ≤ horizon)
     (key : Fin (Fintype.card V) ≃ V) (sel : (protoOf F E).Role → Finset (Fin (Fintype.card V)))
     (hsel : (protoOf F E).SelAdmits sel)
-    (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat) (g : Time) :
+    (submit : V → Time → List Tx) (hash : (protoOf F E).Item → Nat)
+    (issue : Fin (Fintype.card V) × (protoOf F E).Role × (protoOf F E).VoteData →
+      (protoOf F E).Token)
+    (verify : Fin (Fintype.card V) × (protoOf F E).Role × (protoOf F E).VoteData →
+      (protoOf F E).Token → Bool)
+    (hvv : ∀ relay, (Run.mk (F := F) (E := E) faultyAt hmono horizon [] key sel submit relay hash
+      issue verify).VoteVerification) (g : Time) :
     ∃ (relay : V → Time → List Tx) (events : List (Event V (protoOf F E).Object)),
       let rho := Run.mk (F := F) (E := E) faultyAt hmono horizon events key sel submit relay hash
+        issue verify
       rho.ExecutionValid ∧ CommLog.EagerFrom rho.point rho.log g := by
   obtain ⟨relay, events, hv, he, -⟩ :=
-    canonical_run_from_causal O F V E faultyAt hmono horizon hh key sel hsel submit hash g
+    canonical_run_from_causal O F V E faultyAt hmono horizon hh key sel hsel submit hash issue
+      verify hvv g
   exact ⟨relay, events, hv, he⟩
 
 end Consensus.Model
