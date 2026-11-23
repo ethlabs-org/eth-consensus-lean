@@ -169,8 +169,7 @@ private theorem view_agree_of_forwardU
   -- the proposal's votes are merged votes
   have hm : ∀ v ∈ (tr.state p i).pool s,
       v ∈ (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes := fun v hv =>
-    Or.inr ⟨P, hP, hPs, hPv ▸ mem_voteViewList_fst.2 ⟨hv, hpool v hv⟩,
-      by simp [ACParams.committee], hcount v hv⟩
+    Or.inr ⟨P, hP, hPs, hPv ▸ mem_voteViewList_fst.2 ⟨hv, hpool v hv⟩, hcount v hv⟩
   have hpe : equivocators {w | w ∈ (tr.state p i).pool s} =
       equivocators (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes := by
     exact (equivocators_subset_of_backed (P := {w | w ∈ (tr.state p i).pool s})
@@ -198,7 +197,7 @@ private theorem view_agree_of_forwardU
     obtain ⟨Hd, hHd, hHdr, hHds, -⟩ := resolved_head hres.ne
     obtain rfl : R = Hd := hΦp.coherent.1 hR hHd (hRr.trans hHdr.symm)
     have hRy := hpy x hx R hR hRr (anc_F hΦy hΦyU hΦpU hXy hXR)
-    exact ⟨heqv ▸ hw, x, Or.inr ⟨P, hP, hPs, hPsup ▸ hx, by simp [ACParams.committee],
+    exact ⟨heqv ▸ hw, x, Or.inr ⟨P, hP, hPs, hPsup ▸ hx,
       hcount x (mem_voteViewList_snd.1 hx).1.1, by omega, R, hRy, hRr, by omega⟩, rfl,
       hxs, R, hRy, hRr, anc_tree_of_anc_U hU hΦy hΦyU hXy (hXR.mono hΦpU) hRy⟩
   · rintro ⟨hw, x, hx, rfl, hxs, hXR⟩
