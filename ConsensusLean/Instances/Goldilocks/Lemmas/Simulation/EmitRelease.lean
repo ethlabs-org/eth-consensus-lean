@@ -19,18 +19,21 @@ open Consensus.Model (pubOf)
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- A vote emitted at cut `k` by `y` is released by `y`'s engine node at the cut's time.
-Premise `htick`: a public tick releases the votes its cuts emit
-(`tick_block_vote_releases_at`). -/
+/-- A vote emitted at cut `k` by `y` is released, with some token, by `y`'s engine node at the
+cut's time. Premise `htick`: a public tick releases the votes its cuts emit
+(`tick_block_vote_releases_at`). Premise `htok`: `y` holds its own token for the vote (the
+own-token gate; an emission of an installed member's slot). -/
 theorem emit_released_of (hv : rho.ExecutionValid)
     (htick : ∀ {i v t}, rho.events[i]? = some (.tick v t) →
       (S.params (pubOf E) hn).toParams.IsPublic t → ∀ r ∈ eventCuts S rho hn i,
-      ∀ ℓ, r.label = .ac ℓ → ∀ m ∈ ℓ.emits, voteObj m.msg ∈ rho.releasesAt i)
+      ∀ ℓ, r.label = .ac ℓ → ∀ m ∈ ℓ.emits, ∃ z, voteObj m.msg z ∈ rho.releasesAt i)
     {y : Fin (Fintype.card V)} {k : Nat} {m : AC.Vote (Fintype.card V)}
-    (hc : (simTrace S rho hn).EmitAt y k m) :
-    ReleasedFrom S rho (rho.key y) (voteObj m) ((simTrace S rho hn).time k) := by
+    (hc : (simTrace S rho hn).EmitAt y k m)
+    (htok : ∃ z, ownToken (sp := S.params (pubOf E) hn) (binding := S.vote)
+      (rho.voteIO (rho.key y)) m = some z) :
+    ∃ z, ReleasedFrom S rho (rho.key y) (voteObj m z) ((simTrace S rho hn).time k) := by
   obtain ⟨ℓ, ⟨hnode, hlab⟩, em, hem, rfl⟩ := hc
-  erw [releasedFrom_iff]
+  obtain ⟨z, hz⟩ := htok
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, i, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ := simTrace_cut S rho hn hl
   have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
@@ -43,27 +46,31 @@ theorem emit_released_of (hv : rho.ExecutionValid)
       by_contra hp
       rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
       simp at hmem
-    exact ⟨i, Or.inl he, htick he hp r hmem ℓ hrl em hem⟩
+    obtain ⟨z', hz'⟩ := htick he hp r hmem ℓ hrl em hem
+    exact ⟨z', (releasedFrom_iff S rho _ _ _).mpr ⟨i, Or.inl he, hz'⟩⟩
   | deliver v o t =>
+    simp only [Model.Event.node] at hkey
+    rw [← hkey, ← stateAt_voteIO S rho hn v i] at hz
     have hm := List.mem_of_getElem? he
     have ht0 := (hv.in_horizon _ hm).1
     have hnow : (stateAt S rho hn v i).now = t :=
       (now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he)
     rw [eventCuts_deliver S rho hn i v o t he] at hmem
     have hmem' := hmem
-    rw [← self_eq_ownKey S rho hn v i] at hmem'
+    rw [← self_eq_ownKey S rho hn v i, ← stateAt_voteIO S rho hn v i] at hmem'
     obtain ⟨hb, hval⟩ := (process_outbox (runProposer S rho hn) (digestOf S rho)
-      (Model.digests rho.hash o) t i _ (stateAt S rho hn v i) 0 hnow).2
-      r hmem' ℓ hrl em hem
+      (stateAt S rho hn v i).voteIO (Model.digests rho.hash o) t i _ (stateAt S rho hn v i) 0
+      hnow).2 r hmem' ℓ hrl em hem
+    have hb := hb z hz
     have hpre : OneVote t (stateAt S rho hn v i) := by
       rcases (outbox_inv S rho hn hv v i).2 with h | h
       · exact absurd h (not_lastRestart_deliver S rho hv he)
       · rwa [hnow] at h
     have hproc := process_oneVote (digestOf S rho) (Model.digests rho.hash o) ht0
-      (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+      (delivered (stateAt S rho hn v i).voteIO (Model.digests rho.hash o) (stateAt S rho hn v i) o)
         (stateAt S rho hn v i) hnow hpre
     have hone : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox =
-        [Body.vote (encodeVote em.msg)] := by
+        [Body.vote (encodeVote em.msg) z] := by
       have hlen := ((atMostOneVote_iff _).mp hproc.atMost).2
       match hq : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox with
       | [] => change _ ∈ (process _ _ _).outbox at hb; rw [hq] at hb; cases hb
@@ -75,9 +82,9 @@ theorem emit_released_of (hv : rho.ExecutionValid)
         change (process _ _ _).outbox.length ≤ 1 at hlen
         rw [hq] at hlen
         simp at hlen
-    have hobj := voteObj_eq_pollObj S rho (hval.trans (self_eq_ownKey S rho hn v i))
+    have hobj := voteObj_eq_pollObj S rho z (hval.trans (self_eq_ownKey S rho hn v i))
+    refine ⟨z, (releasedFrom_iff S rho _ _ _).mpr ⟨i, Or.inr ⟨o, he⟩, ?_⟩⟩
     rw [hobj]
-    refine ⟨i, Or.inr ⟨o, he⟩, ?_⟩
     simp only [Model.Run.releasesAt, he]
     unfold Model.Run.deliver
     rw [deliverDuties_eq S t ht0]
@@ -95,13 +102,13 @@ theorem emit_released_of (hv : rho.ExecutionValid)
       simp only [Bool.false_eq_true, ite_false, hone]
       rfl
     · rw [pollRole_vote]
-      have hbody : Body.vote (encodeVote em.msg) ∈
+      have hbody : Body.vote (encodeVote em.msg) z ∈
           (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox := by
         rw [hone]
         exact List.mem_singleton_self _
       exact of_decide_eq_true
         (((VoteMember_iff _).1 (process_voteMember _ o _ (stateAt_voteMember S rho hn hv v i))).2
-          em.msg hbody).2
+          em.msg z hbody).2
   | restart v t =>
     rw [eventCuts_restart S rho hn i v t he] at hmem
     obtain ⟨kk, hk, rfl⟩ := List.getElem_of_mem hmem
@@ -109,12 +116,17 @@ theorem emit_released_of (hv : rho.ExecutionValid)
     have hk' := lt_of_lt_of_eq hk (length_groupRecs _ _ _ _ _ _ _)
     have hcut := List.getElem_mem hk'
     rw [← hlabk, hrl] at hcut
-    have hb : Body.vote (encodeVote em.msg) ∈ (stateAt S rho hn v (i + 1)).outbox := by
+    simp only [Model.Event.node] at hkey
+    rw [← hkey, ← stateAt_voteIO S rho hn v i] at hz
+    have hb : Body.vote (encodeVote em.msg) z ∈ (stateAt S rho hn v (i + 1)).outbox := by
       rw [stateAt_succ_restart S rho hn he]
       exact List.mem_append_right _
-        (List.mem_flatMap.mpr ⟨_, hcut, by simpa using ⟨em, hem, rfl⟩⟩)
+        (List.mem_flatMap.mpr ⟨_, hcut, List.mem_filterMap.mpr ⟨em, hem, by
+          change Option.map _ (ownToken (stateAt S rho hn v i).voteIO em.msg) = _
+          rw [hz]; rfl⟩⟩)
     have hval : em.msg.val = rho.ownKey v := emits_val_of_mem_exec _ _ _ _ _ _ hcut em hem
-    rw [voteObj_eq_pollObj S rho hval]
-    exact (releasedFrom_iff S rho _ _ _).mp (releasedFrom_of_pending S rho hn hv he hb)
+    refine ⟨z, ?_⟩
+    rw [voteObj_eq_pollObj S rho z hval]
+    exact releasedFrom_of_pending S rho hn hv he hb
 
 end Consensus.Goldilocks.Simulation
