@@ -58,52 +58,6 @@ theorem _root_.Consensus.Goldilocks.Compose.own_proposal_payload_pooled_run
     show j + 2 = (j + 1) + 1 by omega, tr.state_succ_of_call hcp, ← he]
   exact hpres _ _ _ _ (hstate ▸ hm)
 
-/-- A block inside a tick group is the node's own proposal. Its payload members are pooled at
-the AC block cut if the instance pools them at proposal input and preserves them on proposal. -/
-theorem _root_.Consensus.Goldilocks.Compose.acBlock_vote_pooled_in_tick
-    {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
-    {M : Type} {pooled : A.State → M → Prop} {carries : A.Payload → M → Prop}
-    (hpool : ∀ st τ d p m, (Node.acProposal st τ).2.2 = some (d, p) →
-      carries p m → pooled st.ac m)
-    (hpres : ∀ a φ τ m, pooled a m → pooled (A.proposal a φ τ).1 m)
-    {y : Fin P.n} (hy : y ∈ H) {c i : Nat} {t : Time} {x : Nat}
-    (hg : tr.GroupAt proposer dg y c t (.tick x))
-    (hlo : c ≤ i) (hhi : i < c + (Node.exec proposer dg y (tr.state y c) t (.tick x)).2.length)
-    (ht : tr.time i = t) {ℓ : ACLabel A} {B : A.Blk}
-    {m : M} (hc : tr.CallAt y i (.ac ℓ)) (hb : ℓ.call = .block B)
-    (hm : carries B.acPayload m) : pooled (tr.state y i).ac m := by
-  obtain ⟨i', hi, hacc, htime⟩ := Compose.acBlock_prev hr hy hc hb
-  rcases Compose.blockCall_cases hr hy hacc with hg' |
-      ⟨j, x', hij, hg', hproposes, d, p, hd, hB, _, -, -, -⟩
-  · exfalso
-    have hib : i' < c + (Node.exec proposer dg y (tr.state y c) t (.tick x)).2.length := by
-      omega
-    have hstart : i' = c := by
-      by_cases hle : c ≤ i'
-      · exact Compose.group_start hg hg' hle hib
-      · obtain ⟨l, heq, _⟩ := Compose.before_tick hr hy ⟨_, hg⟩ hacc
-          (by omega) (htime.trans ht)
-        cases heq
-    subst i'
-    have hf := Compose.group_phase hg hg'
-    cases hf
-  · have hd' := hd
-    simp only [Node.tickStep, Node.acCall] at hd'
-    have hlen :
-        1 < (Node.exec proposer dg y (tr.state y j) (tr.time i') (.tick x')).2.length := by
-      simp only [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, List.foldl_cons,
-        List.foldl_nil, Node.tickStep, Node.acCall, hproposes, ↓reduceIte, hd']
-      simp
-    obtain ⟨hnode, _, _, _, hl⟩ := hg'.2.1 1 hlen
-    simp only [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, List.foldl_cons,
-      List.foldl_nil, Node.tickStep, Node.acCall, hproposes, ↓reduceIte, hd', List.nil_append,
-      List.cons_append, List.getElem_cons_succ, List.getElem_cons_zero] at hl
-    have him : i = j + 3 := by omega
-    rw [him]
-    exact Compose.own_proposal_payload_pooled_run hr hpres hy hg' ⟨hnode, hl⟩ rfl
-      (by simpa only [hij] using hacc)
-      (hpool _ _ _ _ _ hd (by simpa only [hB, Node.mkBlock] using hm))
-
 end Generic
 
 /-- Goldilocks proposal members come from a pool. -/
