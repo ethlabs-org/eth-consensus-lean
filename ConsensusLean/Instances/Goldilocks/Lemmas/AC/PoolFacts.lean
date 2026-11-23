@@ -520,12 +520,6 @@ theorem admission_slots : AdmissionSlots sp := by
       · split_ifs at hx <;> exact hx
     · exact hx
 
-/-- The receipt of a block admits nothing: it keeps the pools and the vote stamps (it only
-stamps the block). -/
-theorem blockReceipt_keeps_votes {FGP : Type} (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
-    (blockReceipt sp A t B).pool = A.pool ∧ (blockReceipt sp A t B).voteStamp = A.voteStamp :=
-  ⟨rfl, rfl⟩
-
 /-- `try_vote` adds to the pools only the node's own vote of the slot of `t`. -/
 private theorem tryVote_adds_only_own {FGP : Type} (self : Fin sp.n) (A : SAState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) :

@@ -44,19 +44,6 @@ theorem merged_declared_at_writer {P : Set (Vote sp.n)}
       · exact ew ▸ h'
     · exact eu ▸ h
 
-/-- Adding declarations cannot erase frozen coverage in the same frame. -/
-theorem merged_declared_frozen_cover (B : Blk sp.n FGP) :
-    let F := voteView A Φ ((s : Int) - 1) (ETime.of (freeze sp s))
-    let M := mergedVoteView sp A Φ s
-    supporters Φ F ((s : Int) - 1) B ∪ equivocators F.votes ⊆
-      supporters Φ M ((s : Int) - 1) B ∪ equivocators M.votes := by
-  dsimp only
-  rintro i (⟨_, v, hv, hi, hs, hb⟩ | ⟨u, hu, v, hv, ne, hi, hj⟩)
-  · by_cases eq : i ∈ equivocators (mergedVoteView sp A Φ s).votes
-    · exact Or.inr eq
-    · exact Or.inl ⟨eq, v, Or.inl hv, hi, hs, hb⟩
-  · exact Or.inr ⟨u, Or.inl hu, v, Or.inl hv, ne, hi, hj⟩
-
 end Consensus.Goldilocks.SA
 
 end

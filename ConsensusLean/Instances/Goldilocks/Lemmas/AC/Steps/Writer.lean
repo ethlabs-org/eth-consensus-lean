@@ -133,7 +133,7 @@ private theorem cast_time_leU
 
 /-- A slot-`s` vote forwarded at a time `τ ∈ [t_s, t_s + 5Δ]` is of the slot of every time of
 `[τ, τ + Δ)` or the previous one. -/
-private theorem slot_window_of_forward {s : Nat} {τ τ' : Time} (hτ : 0 ≤ τ) (hsτ : sp.ts s ≤ τ)
+theorem slot_window_of_forward {s : Nat} {τ τ' : Time} (hτ : 0 ≤ τ) (hsτ : sp.ts s ≤ τ)
     (hττ' : τ ≤ τ') (hτ' : τ' ≤ sp.ts s + 5 * sp.Δ) :
     ∀ t, τ ≤ t → t < τ + sp.Δ → (sp.slot t : Int) - 1 ≤ s ∧ s ≤ sp.slot t := by
   intro t h₁ h₂
