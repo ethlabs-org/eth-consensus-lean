@@ -407,12 +407,13 @@ The support bits record the proposer's view; they are not a second set of
 unsigned votes to process.  A count reads distinct declared votes.
 
 \emph{The payload check.}  $\Call{ac\_valid\_payload}{B}$ holds when
-$B.\slot\geq1$ or the lists are empty, every unsigned vote $(v,H)$ has
-$v\in\committee_{B.\slot-1}$, the unsigned votes are distinct, no
-validator has more than two, and $B.\mathsf{support\_bits}$ has the length
+$B.\slot\geq1$ or the lists are empty, the unsigned votes are distinct,
+no validator has more than two, and $B.\mathsf{support\_bits}$ has the length
 of $B.\mathsf{unsigned\_head\_votes}$.  The check reads neither the clock
-nor the pool, and it checks no vote signature.  An unsigned vote that no
-node holds signed, or that was never signed, passes it.
+nor the pool, and it checks neither committee membership nor a vote
+signature.  An unsigned vote that no node holds signed, that was never
+signed, or whose validator is not in $\committee_{B.\slot-1}$, passes it;
+the voter decides whether to count it (\emph{held declarations} below).
 
 \emph{Admission.}  $\Call{on\_goldfish\_vote}{}$ accepts a vote at time~$t$
 when four conditions hold: its slot is $\slot(t)-1$ or $\slot(t)$, its
@@ -435,6 +436,11 @@ support the members resolved before it.  $\Call{latest\_view}{}$ takes every
 held vote of the latest slot whose votes are due: slot~$s-1$ before
 $t_s+2\Delta$, and slot~$s$ from then on.  The head and the proposal read
 the latest view.  The vote reads the merged view.
+
+\emph{Declared votes.}  An unsigned vote $(v,H)$ of a slot-$s$ block
+declares the vote $(v,s-1,H)$ only when $v\in\committee_{s-1}$.  An entry
+for any other validator declares nothing: it is not counted, and no vote
+waits for it.
 
 \emph{Held declarations.}  A slot-$s$ voter \emph{holds} a declared vote
 $x=(v,s-1,H)$ when its pool $\AC.\gfPool[s-1]$ holds $x$ itself, or holds
@@ -487,19 +493,21 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
 \Function{ac\_valid\_payload}{$B$}
   \Comment{stateless: reads neither the clock nor the pool}
   \State $s\gets B.\slot-1$
-  \State \Return $\mathsf{true}$ if $B.\mathsf{unsigned\_head\_votes}$ is empty or $s\geq0$, every $(v,H)\in B.\mathsf{unsigned\_head\_votes}$ has $v\in\committee_s$,
-  \Statex \hspace{2em}its entries are distinct, no $v$ has more than two, and $|B.\mathsf{support\_bits}|=|B.\mathsf{unsigned\_head\_votes}|$; else $\mathsf{false}$
-  \Comment{no vote signature}
+  \State \Return $\mathsf{true}$ if $B.\mathsf{unsigned\_head\_votes}$ is empty or $s\geq0$, its entries are distinct, no $v$ has more than two,
+  \Statex \hspace{2em}and $|B.\mathsf{support\_bits}|=|B.\mathsf{unsigned\_head\_votes}|$; else $\mathsf{false}$
+  \Comment{no committee or signature check}
 \EndFunction
 \vspace{1pt}
-\Function{declared}{$B$}
-  \Comment{the declared votes of $B$, and those marked as support}
-  \State $D\gets\{(v,B.\slot-1,H):(v,H)\in B.\mathsf{unsigned\_head\_votes}\}$
-  \State $D^{+}\gets\{(v,B.\slot-1,H):(v,H)\text{ is the $i$-th entry of }B.\mathsf{unsigned\_head\_votes}\text{ and }B.\mathsf{support\_bits}[i]=1\}$
+\Function{get\_declared\_head\_votes}{$B$}
+  \Comment{the declared votes of $B$ by committee members, and those marked as support}
+  \State $s\gets B.\slot-1$
+  \State $D\gets\{(v,s,H):(v,H)\in B.\mathsf{unsigned\_head\_votes},\ v\in\committee_s\}$
+  \Comment{other entries declare nothing}
+  \State $D^{+}\gets\{(v,s,H)\in D:(v,H)\text{ is the $i$-th entry of }B.\mathsf{unsigned\_head\_votes}\text{ and }B.\mathsf{support\_bits}[i]=1\}$
   \State \Return $(D,D^{+})$
 \EndFunction
 \vspace{1pt}
-\Function{held}{$\AC,x$}
+\Function{is\_head\_vote\_held}{$\AC,x$}
   \Comment{the exact vote, or a proof that its validator equivocated}
   \State $(v,s,H)\gets x$
   \State \Return $x\in\AC.\gfPool[s]$ or $\AC.\gfPool[s]$ holds two distinct votes by $v$
@@ -553,12 +561,12 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
     \Comment{received, and resolved, before the vote freeze}
   \ForAll{$B\in\Fr.\tree$ with $B.\slot=s$}
     \Comment{the slot-$s$ proposals: their held declarations pass the vote freeze}
-    \State $(D,D^{+})\gets\Call{declared}{B}$
+    \State $(D,D^{+})\gets\Call{get\_declared\_head\_votes}{B}$
     \State $\mathit{votes}\gets\mathit{votes}\cup
-      \{x\in D:\Call{held}{\AC,x}\}$
+      \{x\in D:\Call{is\_head\_vote\_held}{\AC,x}\}$
     \Comment{never admitted: $\AC.\gfPool$ is unchanged}
     \State $\mathit{support\_votes}\gets\mathit{support\_votes}\cup
-      \{(v,s-1,H)\in D^{+}:\Call{held}{\AC,(v,s-1,H)},\ H\in\Fr.\tree,\
+      \{(v,s-1,H)\in D^{+}:\Call{is\_head\_vote\_held}{\AC,(v,s-1,H)},\ H\in\Fr.\tree,\
       H.\slot\leq s-1\}$
   \EndFor
   \State \Return $(\mathit{votes},\mathit{support\_votes})$
@@ -1031,9 +1039,9 @@ as the tick can.
 \Function{vote\_ready}{$\AC,\Fr,s$}
   \Comment{a ready proposal of slot $s$, and every declaration held}
   \State \Return $\exists P\in\Fr.\tree$ with $P.\slot=s$ such that every
-    $(v,s-1,H)$ in $\Call{declared}{P}.D^{+}$
+    $(v,s-1,H)$ in $\Call{get\_declared\_head\_votes}{P}.D^{+}$
   \Statex \hspace{2em}has $H\in\Fr.\tree$ and $H.\slot\leq s-1$, and
-    $\Call{held}{\AC,x}$ for every $x$ in $\Call{declared}{B}.D$ of every $B\in\Fr.\tree$ with $B.\slot=s$
+    $\Call{is\_head\_vote\_held}{\AC,x}$ for every $x$ in $\Call{get\_declared\_head\_votes}{B}.D$ of every $B\in\Fr.\tree$ with $B.\slot=s$
 \EndFunction
 \vspace{1pt}
 \Function{try\_vote}{$\AC,\Fr,t$}
