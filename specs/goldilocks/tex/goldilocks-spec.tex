@@ -434,9 +434,9 @@ $t_s+2\Delta$, and slot~$s$ from then on.  The head and the proposal read
 the latest view.  The vote reads the merged view.
 
 \emph{Declared votes.}  A declared head vote $(v,H)$ of a slot-$s$ block
-declares the vote $(v,s-1,H)$.  Only the declarations of members of
-$\committee_{s-1}$ are counted; an early vote waits on every declaration
-(Section~\ref{sec:sa-actions}).
+declares the vote $(v,s-1,H)$ only when $v\in\committee_{s-1}$.  An entry
+for any other validator declares nothing: it is not counted, and no vote
+waits for it.
 
 \emph{Held declarations.}  A slot-$s$ voter \emph{holds} a declared vote
 $x=(v,s-1,H)$ when its pool $\AC.\gfPool[s-1]$ holds $x$ itself, or holds
@@ -970,9 +970,7 @@ vote at the first time $\tau\in[t_s,t_s+\Delta]$ at which it holds a \emph{ready
 with $P.\slot=s$ whose declared support heads are resolved, that is, every
 declared support vote $(v,s-1,H)$ of~$P$ has $H\in\Fr.\tree$ and
 $H.\slot\leq s-1$, and at which it \emph{holds every declaration} of
-every slot-$s$ proposal of $\Fr.\tree$, a declaration of a validator outside
-$\committee_{s-1}$ included (the node never holds one, so a proposal that
-carries one delays the vote to $t_s+\Delta$).  An early vote thus counts every
+every slot-$s$ proposal of $\Fr.\tree$.  An early vote thus counts every
 declaration of every slot-$s$ proposal.  Head readiness is required of one
 proposal only: a marked declaration of another proposal whose head is not
 yet in $\Fr.\tree$ counts as a vote but not as support.  If no such time
@@ -1020,11 +1018,10 @@ as the tick can.
 \begin{algorithmic}[1]
 \Function{vote\_ready}{$\AC,\Fr,s$}
   \Comment{a ready proposal of slot $s$, and every declaration held}
-  \State \Return $\exists P\in\Fr.\tree$ with $P.\slot=s$ such that every $(v,H)$, the $i$-th entry of $P.\mathsf{declared\_head\_votes}$,
-  \Statex \hspace{2em}with $P.\mathsf{support\_bits}[i]=1$ has $H\in\Fr.\tree$ and $H.\slot\leq s-1$;
-  \Statex \hspace{1em}and $\Call{should\_count\_declared\_vote}{\AC,(v,s-1,H)}$ for every $(v,H)\in B.\mathsf{declared\_head\_votes}$
-  \Statex \hspace{2em}of every $B\in\Fr.\tree$ with $B.\slot=s$
-    \Comment{every entry, members or not}
+  \State \Return $\exists P\in\Fr.\tree$ with $P.\slot=s$ such that every
+    $(v,s-1,H)$ in $\Call{get\_countable\_declared\_head\_votes}{P}.D^{+}$
+  \Statex \hspace{2em}has $H\in\Fr.\tree$ and $H.\slot\leq s-1$, and
+    $\Call{should\_count\_declared\_vote}{\AC,x}$ for every $x$ in $\Call{get\_countable\_declared\_head\_votes}{B}.D$ of every $B\in\Fr.\tree$ with $B.\slot=s$
 \EndFunction
 \vspace{1pt}
 \Function{try\_vote}{$\AC,\Fr,t$}
