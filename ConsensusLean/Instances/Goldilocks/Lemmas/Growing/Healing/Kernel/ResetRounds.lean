@@ -760,25 +760,22 @@ open Generic (truncH truncH_eq_of_le honestBlocksAt_truncH_subset catchRun_trunc
   HZ_truncH isReset_truncH_iff)
 
 /-- The local run laws transfer by `LocalRun.truncH`; the Goldilocks-specific laws preserve the
-same starts and project any honesty premises from the truncation. -/
+same starts and the genesis root. -/
 theorem goldilocksRun_truncH {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (b : Time) :
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg (truncH H b) tr ini where
   toLocalRun := hrun.toLocalRun.truncH b
   vstart := hrun.vstart
   genesis_root_ok := hrun.genesis_root_ok
-  carried_vote_unforgeable y i B hy hB v hv hs :=
-    hrun.carried_vote_unforgeable y i B hy.1 hB v hv hs.1
 
-/-- Committee facts survive truncating honesty after `b`: the sizes do not read honesty, and P,
-the frames and the gate read it only in hypotheses, where the truncation is a subset of `H`. -/
+/-- Committee facts survive truncating honesty after `b`: the sizes do not read honesty, and P
+and the gate read it only in hypotheses, where the truncation is a subset of `H`. -/
 theorem _root_.Consensus.Goldilocks.Compose.Growing.CommitteeFacts.truncH
     {K : SA.CommitteeDict sp.n} (hK : Compose.Growing.CommitteeFacts tr H K) (b : Time) :
     Compose.Growing.CommitteeFacts tr (truncH H b) K where
   hsize := hK.hsize
   hP := ⟨fun t y hy i hi s v hv => hK.hP.1 t y hy.1 i hi s v hv,
     fun y i ℓ A hy hO s v hv => hK.hP.2 y i ℓ A hy.1 hO s v hv⟩
-  hFrame w c hw := hK.hFrame w c hw.1
   hGate t ht x hx := hK.hGate t ht x hx.1
 
 /-- The committee half bound through `b` survives truncating honesty after `b`: CS2 reads honesty
