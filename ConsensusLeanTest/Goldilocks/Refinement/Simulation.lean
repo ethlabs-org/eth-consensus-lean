@@ -88,8 +88,6 @@ theorem goldilocksRun_of_at (hf : rho.point.ConstantFaults) (hv : rho.ExecutionV
   exact
     { toLocalRun := Growing.LocalRun.const_iff.1 h.toLocalRun
       genesis_root_ok := h.genesis_root_ok
-      carried_vote_unforgeable := fun y hy i B hB v hv' hvH =>
-        h.carried_vote_unforgeable y i B hy hB v hv' hvH
       vstart := h.vstart }
 
 /-- Exact-time release cannot be satisfied solely by a later send, even at the horizon. -/
@@ -117,37 +115,34 @@ theorem releasedFrom_of_pending_stock (hv : rho.ExecutionValid) {i : Nat}
   releasedFrom_of_pending { S with vote := stock } rho hn hv he hb
 
 omit [DecidableEq V] in
-/-- A canonical block carrying one vote, which `on_block` accepts, runs the block handler first
-and then the actual message handler on its resulting state. -/
-theorem payload_message_after_accepted_block {sp : SA.SAParams}
+/-- A canonical block declaring one head vote, which `on_block` accepts, runs only the block
+handler: its declaration is header data, not a carried vote object, so no message handler runs
+for it (goldilocks-spec.tex §"Declarations are not votes"). -/
+theorem declared_vote_no_message_after_accepted_block {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (SA.Payload sp.n))
     (hs : List (Blocks.Header Info × Nat)) (i : Nat)
     (σ : State sp ro stock) (B : Blk sp) (v : SA.Vote sp.n)
-    (ha : B.fgPayload = []) (hp : B.acPayload = ([v], []))
+    (ha : B.fgPayload = []) (_hp : B.acPayload = ([v], []))
     (hc : canonEvent sp ro hs (blockObj sp (binding := stock) B) = some (.block B))
     (hslot : ¬ sp.toParams.slotOf σ.now < B.slot) (hfg : σ.node.fg.onBlock B ≠ none) :
     deliverRecs (binding := stock) proposer dg hs σ.self σ.now i
         (delivered hs σ (blockObj sp B)) σ.node 0 =
-      groupRecs proposer dg σ.self σ.node σ.now (Nat.pair i 0) (.block B) ++
-      groupRecs proposer dg σ.self (Node.onBlock σ.self σ.node σ.now B).1 σ.now (Nat.pair i 1)
-        (.message v) := by
+      groupRecs proposer dg σ.self σ.node σ.now (Nat.pair i 0) (.block B) := by
   have hr : ¬ Refuses hs σ (blockObj sp (binding := stock) B) := fun h =>
     ((refuses_iff_of_canonEvent hs hc).mp h).elim hslot hfg
-  have hd : delivered hs σ (blockObj sp (binding := stock) B) = [blockObj sp B, voteObj v] := by
-    have hcar : (blockObj sp (binding := stock) B).carried = [voteObj v] := by
-      simp [blockObj_eq, Model.Obj.carried, payloadObjs, ha, hp]
-    rw [delivered_eq]
-    rw [visit_of_not_refuses hs hr, hcar, visitList_cons,
-      visit_of_carried_eq_nil hs _ (o := voteObj (binding := stock) v) rfl, visitList]
+  have hd : delivered hs σ (blockObj sp (binding := stock) B) = [blockObj sp B] := by
+    have hcar : (blockObj sp (binding := stock) B).carried = [] := by
+      simp [blockObj_eq, Model.Obj.carried, payloadObjs, ha]
+    rw [delivered_eq, visit_of_not_refuses hs hr, hcar, visitList]
     rfl
   rw [hd]
-  simp [deliverRecs_cons, deliverRecs_nil, hc, canonEvent_voteObj, Node.exec]
+  simp [deliverRecs_cons, deliverRecs_nil, hc]
 
 omit [DecidableEq V] in
 /-- A canonical block that `on_block` drops as of a future slot, or that the FG refuses, is
-delivered alone: no handler runs for the vote it carries (composition.tex §"Blocks"). -/
+delivered alone: no handler runs for it (composition.tex §"Blocks"). -/
 theorem payload_skipped_after_refused_block {sp : SA.SAParams}
     {ro : SA.ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n)
