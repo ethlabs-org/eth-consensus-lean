@@ -335,8 +335,9 @@ theorem deliver_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop
 
 /-- The shape's state before the first event is its initial state at the own key. -/
 theorem stateAt_zero (v : V) :
-    stateAt S rho hn v 0 = (goldilocksShape _ _ S.vote).init (rho.ownKey v)
-      (fun r => decide (rho.ownKey v ∈ rho.sel r)) := by
+    stateAt S rho hn v 0 =
+      (goldilocksShape (S.params (pubOf E) hn) (S.ro _) S.vote).init (rho.ownKey v)
+        (fun r => decide (rho.ownKey v ∈ rho.sel r)) (rho.voteIO v) := by
   rw [stateAt_eq]
   rfl
 
