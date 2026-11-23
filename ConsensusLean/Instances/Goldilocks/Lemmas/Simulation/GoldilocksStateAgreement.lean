@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeStateAgreement
 public import ConsensusLean.Instances.Goldilocks.AsChainShape
 public import ConsensusLean.Instances.Goldilocks.Results.Spec.CanonicalTrace
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLaws
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLawsInstance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 
 public section

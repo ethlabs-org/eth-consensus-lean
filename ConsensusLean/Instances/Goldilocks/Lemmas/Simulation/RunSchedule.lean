@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Unforgeable
-import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLaws
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLawsInstance
 import ConsensusLean.Lemmas.Model.Constant
 import ConsensusLean.Lemmas.Tactic.Linarith
 

@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Release
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.GoldilocksStateAgreement
-import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLaws
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLawsInstance
 
 public section
 
