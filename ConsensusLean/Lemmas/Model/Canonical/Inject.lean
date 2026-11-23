@@ -518,9 +518,11 @@ theorem time_le_of_lt (hs : rho.events.Pairwise Event.keyLe) {i j : Nat}
   · exact h.le
   · exact h.le
 
-/-- **The schedule is a valid execution** when the selection is admissible and every injected
-object is signed only by keys compromised at its delivery time, each selected for its role. -/
+/-- **The schedule is a valid execution** when the selection is admissible, the issuer and
+verifier are lawful, and every injected object is signed only by keys compromised at its delivery
+time, each selected for its role. -/
 theorem injectEvents_valid (h0 : 0 ≤ rho.horizon) (hsel : rho.SelValid)
+    (hvv : rho.VoteVerification)
     (hdelay : ∀ e, 0 ≤ delay e)
     (hfaulty : ∀ t v o, o ∈ inj t v → ∀ d, Obj.Contains o d → ∀ u, rho.signerOf d = some u →
       u ∈ rho.faultyAt t)
@@ -589,7 +591,8 @@ theorem injectEvents_valid (h0 : 0 ≤ rho.horizon) (hsel : rho.SelValid)
         o hjr o' hc u hh hu
       exact ⟨k, t', by omega, hks, hko⟩
   have hcr : r.Credentials := by
-    intro i w o t hi o' hc k ρ ha
+    refine ⟨by simpa only [VoteVerification, Canonical, r, injectRun, withEvents_eq] using hvv,
+      fun i w o t hi o' hc k ρ ha _ => ?_⟩
     have hcl := r.closed_of_sources (fun _ d => ∀ k ρ, d.auth = .signed k ρ → k ∈ r.sel ρ)
       (fun _ => True) (fun _ h => h) (fun _ _ _ _ _ => trivial)
       (by

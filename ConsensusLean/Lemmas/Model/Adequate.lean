@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Lemmas.Model.Canonical.Construction
 public import ConsensusLean.Lemmas.Model.Truncate
+public import ConsensusLean.Lemmas.Model.VoteVerification
 
 public section
 
@@ -13,12 +14,14 @@ meets the L0 acceptance interface `System.Adequate`:
 * admissible external data in every environment: the PKI
   `Fintype.equivFin` and, per role, a selection from `SelSpec.admits_exists`;
 * coverage, from `canonical_run_from`: every point with `0 ≤ horizon`, PKI,
-  admissible selection and GST `g` has a valid run whose log is eager from `g`;
+  admissible selection and GST `g` has a valid run whose log is eager from `g`,
+  with the standard lawful vote issuer and verifier (`stdIssue`, `stdVerify`, from the
+  protocol's token cover) for that same selection;
   with an injective hash (items are countable, so one exists) it has no hash
   collision, hence no excuse; its point and external data are the given ones,
   so progress carries over unchanged;
 * prefix closure, from `Run.truncate`: the truncation at `b` is valid, is the
-  L0 prefix of the run, and has the same PKI and selection; progress carries
+  L0 prefix of the run, and has the same PKI, selection, issuer and verifier; progress carries
   over by `Progress.shrink` (the horizon shrinks to `b`). -/
 
 namespace Consensus.Model
@@ -61,11 +64,13 @@ theorem sysOf_adequate {Prog : Type} (Y : Progress (sysOf O F V) Prog)
       ((protoOf F E).selSpec ρ).admits_exists⟩
   · rintro p hp ⟨key, sel⟩ hsel g
     obtain ⟨hash, hinj⟩ := Countable.exists_injective_nat (protoOf F p.env).Item
+    -- the standard lawful vote issuer and verifier, for this selection
     obtain ⟨relay, events, hvalid, heager⟩ :=
       canonical_run_from O F V p.env p.faultyAt p.faultyAt_mono p.horizon hp
-        key sel hsel p.submit hash g
+        key sel hsel p.submit hash (stdIssue F p.env) (stdVerify F p.env sel)
+        (fun _ => Run.voteVerification_std _ rfl rfl) g
     refine ⟨⟨p.env, Run.mk p.faultyAt p.faultyAt_mono p.horizon
-      events key sel p.submit relay hash⟩,
+      events key sel p.submit relay hash (stdIssue F p.env) (stdVerify F p.env sel)⟩,
       hvalid, ?_, rfl, sysOf_eagerFrom _ heager, (fun _ _ _ _ h => h), fun _ => rfl⟩
     rintro ⟨x, y, hxy, -, -, hh⟩
     exact hxy (hinj hh)

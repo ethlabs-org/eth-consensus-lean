@@ -312,9 +312,9 @@ theorem retain_valid (hv : rho.ExecutionValid) (hd : rho.horizon ≤ d) :
     refine ⟨rho.retainIdx d k, t', retainIdx_lt_of_kept hk he (hn ▸ hsg),
       retain_sendsAt (rho := rho) hsg hks, ?_⟩
     rwa [retain_releasesAt he (hn ▸ hsg)]
-  · intro j w o t hj o' hc k r ha
+  · refine ⟨hv.credentials.1, fun j w o t hj o' hc k r ha hb => ?_⟩
     obtain ⟨i, hi, -, -⟩ := retain_getElem?_preimage hj
-    exact hv.credentials i w o t hi o' hc k r ha
+    exact hv.credentials.2 i w o t hi o' hc k r ha hb
 
 /-! ### The end of a time -/
 
