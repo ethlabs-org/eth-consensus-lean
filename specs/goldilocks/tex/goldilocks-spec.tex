@@ -214,8 +214,10 @@ for each, and its head is the Goldfish head.
 
 Slot~$s$ starts at $t_s=4\Delta s$, so $\slot(t)=\lfloor t/(4\Delta)\rfloor$.
 Slot~$s$ has the committee $\committee_s\subseteq V$, the validators that
-vote in slot~$s$.  The committees are public, and every committee has the
-same size.  Slot~$s$ has these public
+vote in slot~$s$.  Every committee has the same size.  A node knows its own
+membership; it learns that another validator is in $\committee_s$ only from
+a slot-$s$ vote of that validator whose evidence it has verified
+(Section~\ref{sec:ac-views}), and it never reads a committee list.  Slot~$s$ has these public
 actions:
 \[
 \begin{array}{c@{\qquad}l}
@@ -384,7 +386,13 @@ from~$t_{j+2}$.
 $(\valindex,s,B)$ with $s\geq0$, from validator $\valindex\in\committee_s$
 with head~$B$; it names its head by root.  The signer of a slot-$s$ vote
 signs it with the slot-$s$ seat of~$\valindex$, under a bijection for each
-slot between the seats and $\committee_s$.
+slot between the seats and $\committee_s$.  A vote travels with its
+\emph{evidence}~$z$, signed with it: $z$ shows that $\valindex$ is in
+$\committee_s$.  A node issues evidence only for its own vote, in a slot
+whose committee holds it; it checks the evidence of a presented vote for the
+vote's validator, slot and head at the wire check (below), and forwards a
+vote with the evidence it received.
+Evidence is never part of a block.
 
 \emph{The payload.}  The payload of a block is
 $B.\acp=(B.\mathsf{declared\_head\_votes},B.\mathsf{support\_bits})$: a
@@ -411,9 +419,17 @@ signature.  A declared head vote that no node holds signed, that was never
 signed, or whose validator is not in $\committee_{B.\slot-1}$, passes it;
 the voter decides whether to count it (\emph{held declarations} below).
 
-\emph{Admission.}  $\Call{on\_head\_vote}{}$ accepts a vote at time~$t$
-when four conditions hold: its slot is $\slot(t)-1$ or $\slot(t)$, its
-validator is in $\committee_{\mathit{vote}.\slot}$, the pool does not hold it, and
+\emph{The wire check.}  A head vote passes the AC check of the wire
+(Section~\ref{sec:blocks}) when its evidence verifies for the vote it
+signs: its validator, the vote role of its slot, and its head.  The check
+runs before dispatch.  A vote that fails it is dropped with no effect:
+$\Call{ac\_on\_message}{}$ is not called, so the vote is not admitted, no
+optimistic confirmation or vote check runs, and nothing is forwarded.  A vote
+that passes it is from a member of $\committee_{\mathit{vote}.\slot}$.
+
+\emph{Admission.}  $\Call{on\_head\_vote}{}$ receives only votes that
+passed the wire check.  It accepts a vote at time~$t$ when three conditions
+hold: its slot is $\slot(t)-1$ or $\slot(t)$, the pool does not hold it, and
 the pool holds fewer than two distinct votes of its validator for that
 slot.  An accepted vote enters the pool with the stamp~$t$.  A vote that
 fails a test has no effect.
@@ -434,8 +450,11 @@ $t_s+2\Delta$, and slot~$s$ from then on.  The head and the proposal read
 the latest view.  The vote reads the merged view.
 
 \emph{Declared votes.}  A declared head vote $(v,H)$ of a slot-$s$ block
-declares the vote $(v,s-1,H)$.  Only the declarations of members of
-$\committee_{s-1}$ that the voter holds are counted.  An early vote waits on
+declares the vote $(v,s-1,H)$.  Only the declarations that the voter holds
+are counted.  A held declaration is backed by verified votes of its
+validator in the pool (the exact vote, or two), so its validator is a member
+of $\committee_{s-1}$: membership is never tested on a declaration, which
+carries no evidence.  An early vote waits on
 every declaration that the voter does not hold, whether or not its validator
 is a member (Section~\ref{sec:ac-actions}); at $t_s+\Delta$ the voter omits
 the declarations it does not hold.
@@ -491,10 +510,10 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
 \EndFunction
 \vspace{1pt}
 \Function{get\_countable\_declared\_head\_votes}{$B$}
-  \Comment{the declared votes of $B$ by committee members, and those marked as support}
+  \Comment{the declared votes of $B$, and those marked as support}
   \State $s\gets B.\slot-1$
-  \State $D\gets\{(v,s,H):(v,H)\in B.\mathsf{declared\_head\_votes},\ v\in\committee_s\}$
-  \Comment{other entries declare nothing}
+  \State $D\gets\{(v,s,H):(v,H)\in B.\mathsf{declared\_head\_votes}\}$
+  \Comment{no membership filter: only a held declaration counts, backed by verified votes}
   \State $D^{+}\gets\{(v,s,H)\in D:(v,H)\text{ is the $i$-th entry of }B.\mathsf{declared\_head\_votes}\text{ and }B.\mathsf{support\_bits}[i]=1\}$
   \State \Return $(D,D^{+})$
 \EndFunction
@@ -506,9 +525,9 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
 \EndFunction
 \vspace{1pt}
 \Function{on\_head\_vote}{$\AC,t,\mathit{vote}$}
+  \Comment{$\mathit{vote}$ passed the wire check: its evidence verified}
   \State $s\gets\slot(t)$
   \If{$\mathit{vote}.\slot<s-1$ or $\mathit{vote}.\slot>s$ or
-    $\mathit{vote}.\valindex\notin\committee_{\mathit{vote}.\slot}$ or
     $\mathit{vote}\in\AC.\headVotes[\mathit{vote}.\slot]$}
     \State \Return \EndIf
   \If{$\AC.\headVotes[\mathit{vote}.\slot]$ holds two distinct votes by
@@ -1056,13 +1075,15 @@ as the tick can.
   \State $\AC.\votedSlot\gets s$
   \Comment{before the own vote, which re-enters this check}
   \If{$\valindex\in\committee_s$}
-    \State $\mathit{vote}\gets(\valindex,s,H)$; broadcast $\mathit{vote}$;
+    \Comment{own membership: then the node issues its evidence}
+    \State $\mathit{vote}\gets(\valindex,s,H)$; broadcast $\mathit{vote}$ with its evidence;
       \Call{ac\_on\_message}{$\AC,\Fr,t,\mathit{vote}$}
     \Comment{the own vote is a receipt}
   \EndIf
 \EndFunction
 \vspace{1pt}
 \Function{ac\_on\_message}{$\AC,\Fr,t,\mathit{vote}$}
+  \Comment{called only for a vote that passed the wire check}
   \State \Call{on\_head\_vote}{$\AC,t,\mathit{vote}$}
   \State \Call{optimistic\_confirmation}{$\AC,\Fr,t$}
   \State \Call{try\_vote}{$\AC,\Fr,t$}
