@@ -532,7 +532,7 @@ detail in `TRUST.md`.
   (`committeeSize ≤ 2·score`), the optimistic test (`3·committeeSize ≤ 4·|voters|`) and the unlock bound
   (`2·|opponents| < committeeSize`). The AC step statements read a slot dictionary `CommitteeDict` of
   `committeeSize` members per slot with three facts: P (`CommitteeP`, honest pools and optimistic-check states hold
-  only committee signatures), T (`CommitteeT`, so do the merged views of honest votes) and CS (`FaultBoundK`, fewer
+  only committee signatures), T (`CommitteeT`, the merged views of honest votes count only committee members; membership, not signatures: a counted declared head vote need not have been signed) and CS (`FaultBoundK`, fewer
   faulty than honest, awake and joined members). `CommitteeDict.BindsSel` is the one link from a dictionary to the
   run's actual selection of `voteRole s`.
 - **Statements at population-sized committees take the size equation as a premise.** The run records

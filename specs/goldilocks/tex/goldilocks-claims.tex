@@ -301,7 +301,14 @@ bounds globally: the premise $\mathsf{Sync}$ below imposes them on a window, so 
 $\mathsf{GST}$ and $\mathsf{Outage}$ have content.  Signatures are
 unforgeable: an object signed with an honest validator's identity, its slot
 key or its slot-$s$ seat key was made by that validator's node (the premise of every node that reasons
-about honest senders).  A run has finitely many events in every bounded
+about honest senders).  A block's declared head votes are not signed
+objects: unforgeability says nothing about them, and a faulty proposer may
+declare a vote that its validator never signed.  The Lean run records
+(\texttt{GoldilocksRun}, its growing and family forms, and the honest-object
+facts \texttt{SA.HonestObjects}) therefore no longer carry a fact about the
+votes of a block (the earlier carried-vote unforgeability), nor a premise that
+the blocks of a frame declare only committee members: their antecedents are
+broader, and the records give their users less.  A run has finitely many events in every bounded
 interval of time.  Write $h_t$ for the number of honest validators that are
 awake and joined at~$t$.
 
@@ -713,11 +720,15 @@ G0.5, since each honest record is the record of a client run.}
 
 \dagnode{A0.1}{Pool}{A pool holds at most two distinct votes per validator
 and slot; admission accepts only slots $\slot(t)-1$ and $\slot(t)$; a stamp
-never changes between two restarts; if a block~$B$ is accepted at a time~$t$
-with $\slot(t)=B.\slot$, a vote of $B.\mathsf{votes}$ that is not in the pool
-after $\fname{ac\_on\_block}$ makes its validator an equivocator in that pool;
+never changes between two restarts; after $\fname{ac\_on\_block}$ at~$t$
+every vote of a pool was in that pool before, or is the node's own vote of
+slot~$\slot(t)$ (a block's declared head votes are never admitted);
 the stamp of an accepted block is at least the stamp of its parent (so a voter
-block tree is closed under ancestors).}
+block tree is closed under ancestors).  The block clause replaces the
+earlier claim that a carried vote absent from the pool after
+$\fname{ac\_on\_block}$ makes its validator an equivocator; it does not
+imply that claim (an absent declaration may be a vote that was never signed),
+and it identifies no emitted head.}
 {none}{AC \S Votes ``Admission''; \S Locks ``The opponents of the merged view''~(29eb7209).}{S.}
 
 \dagnode{A0.2}{Resolution}{If a vote is resolved before $c$ at frame $\Fr$ and
@@ -736,8 +747,9 @@ defined; this is false for the Goldfish score, which counts equivocators for
 every block); if fewer than $n/2$
 validators equivocate, the blocks that pass the optimistic test lie on one
 chain; at one frame the opponents in the merged view of a slot-$(s+1)$ voter
-are opponents in $\fname{vote\_view}(\AC,\Fr,s,+\infty)$ (for the carried
-votes, A0.1 under its timing condition).}
+are opponents in $\fname{vote\_view}(\AC,\Fr,s,+\infty)$ (a declared head
+vote counts in the merged view only when the pool holds it or two distinct
+votes of its validator; no timing condition).}
 {A0.1}{AC \S Confirmation ``The result'', ``The optimistic confirmation'';
 \S Locks.}{S.}
 
@@ -778,8 +790,9 @@ the parent of a proposal is a head at that time.}
 
 \dagnode{A0.7}{Restart and joining}{After $\fname{ac\_restart}$ at $t$:
 $\AC.\mathsf{locks}$ and $\AC.\latestConfirmed$ are kept, every other field
-is initial except $\mathsf{restart\_time}=t$ and the stamps and pools
-written by the replay at~$t$, and the
+is initial except $\mathsf{restart\_time}=t$ and the block stamps
+written by the replay at~$t$ (the replay admits no vote, so every pool is
+empty), and the
 node is not joined at~$t$, so the replay sends nothing and writes no lock.  A
 node joined at $t$ has erased no vote of slot $\slot(t)-1$ or later.}
 {F.1, A0.1}{AC \S Joining and restart.}{S.}
@@ -792,10 +805,10 @@ slot~$s$).}
 
 \dagnode{A0.9}{Proposal payload is valid (requirement 5)}{If
 $\fname{ac\_proposal}(\AC,\Fr,t_s)=(H,p)$ at a reachable AC state, then a block of
-slot~$s$ with AC payload~$p$ passes $\fname{ac\_valid\_payload}$: every vote of
-$p$ has slot $s-1$, a committee member and a valid seat signature (reachability
-admits only votes that passed the wire checks, and admission checks the slot),
-and the support list is a sublist of the votes.  Requirements 1--4 do not give
+slot~$s$ with AC payload~$p$ passes $\fname{ac\_valid\_payload}$: its declared
+head votes are the slot-$(s-1)$ votes of the proposer's pool (admission checks
+the slot), distinct, at most two per validator (the pool's cap), with the
+support bits marking an ordered sublist of them.  Requirements 1--4 do not give
 this; it is a fifth interface requirement, which every AC must meet (a proposed
 addition to composition \S``The available chain''), and for
 Goldilocks this node.  Requirement 5 is about the payload only: that the parent
@@ -840,8 +853,8 @@ $\fname{ac\_on\_message}$: admission, optimistic check; and the update of slot
 $s-1$ at $t_s+2\Delta$); at $a=t_s$ with $s>0$, for the slot's proposer,
 $\fname{ac\_proposal}$ (with its unlocking), then, when it returns a proposal,
 $\fname{propose\_block}$, which processes the own block at once
-($\fname{fg\_on\_block}$, then $\fname{ac\_on\_block}$: stamps, admission of the
-carried votes, optimistic check, vote check with its unlocking and the own vote,
+($\fname{fg\_on\_block}$, then $\fname{ac\_on\_block}$: the block's stamp (its
+declared head votes are not admitted), optimistic check, vote check with its unlocking and the own vote,
 which is processed at once by $\fname{ac\_on\_message}$: admission, optimistic
 check); the FG update (with the frame recomputed: $\fname{ac\_to\_fg}$, then, for a block other
 than~$\bot$, $\fname{fg\_attest}$ with the record and the own attestation); then
@@ -1149,8 +1162,9 @@ $y$ accepted the heads of the votes that $X$ counted for~$C$ and their
 ancestors, and holds each counted vote or two other slot-$s$ votes of its
 validator; (d) every slot-$s$ vote of $y$'s merged view is in $X$'s pool at
 $t_s+6\Delta$, or $X$'s pool then holds two distinct votes of its validator.
-(Under $\mathsf{Sync}[t_s,t_{s+1}+\Delta]$, (d) holds: every vote that $y$
-admits before its vote, also from a block's payload, is forwarded and reaches
+(Under $\mathsf{Sync}[t_s,t_{s+1}+\Delta]$, (d) holds: a declared head vote
+counts at~$y$ only when $y$'s pool holds it or two distinct votes of its
+validator, and every vote that $y$ admits before its vote is forwarded and reaches
 $X$ before $t_s+6\Delta$; a validator with three votes can make $X$ and $y$
 admit different pairs, and then $X$ holds two.  (c) also needs the counted heads
 accepted at or after~$t_s$, or synchrony from earlier.)  Then $y$'s vote extends~$C$.  (No
@@ -2646,9 +2660,10 @@ wait~$W$ and C1.2's retained inclusion and acceptance, of
 $T_{\mathrm{rec}}=Z+(8k+20)\Delta+4\Delta(W+1+M)+13\Delta$ with
 $M=b_0+r_{\mathrm{old}}+2(\cF+k_F)+1$ (in that argument's symbols).  It is node O.1's
 proof; it does not discharge O.1's target.  Its first transfers
-need the writer-pool condition A1.8 (d) for votes carried by blocks the writer
-refused; the composition model forwards the votes a node admits from a
-block's payload (\S``Model''), so that
+need the writer-pool condition A1.8 (d) for the declared head votes that a
+voter counts from blocks the writer refused; a voter counts one only when its
+pool holds that vote or two distinct votes of its validator, and the
+composition model forwards every vote a node admits (\S``Model''), so that
 condition follows from $\mathsf{Sync}$ (A1.2) and is not a premise.  The
 assembly stays conditional and paper-only, and uniform~$W$ and C1.2 alone do
 not discharge O.1's target.  Eventual proposer
@@ -2765,9 +2780,9 @@ G0.9 & \texttt{FG.Retention}, \texttt{FG.RetentionThroughAppend} & proved
   (\texttt{fg\_safety})\\
 G0.10 & \texttt{FG.Aggregation} & proved (\texttt{fg\_safety})\\
 A0.1 & \texttt{SA.PoolCap}, \texttt{SA.AdmissionSlots},
-  \texttt{SA.StampStable}, \texttt{SA.CarriedVotes},
+  \texttt{SA.StampStable}, \texttt{SA.BlockAddsOnlyOwnVote},
   \texttt{SA.StampParent} & proved (\texttt{acBase}); admission slots and
-  carried votes hold from every state, not only reachable ones\\
+  the block clause hold from every state, not only reachable ones\\
 A0.2 & \texttt{SA.ResolutionStable}, \texttt{SA.SupportInTree} & proved
   (\texttt{acBase})\\
 A0.3 & \texttt{SA.SupportersAntitone}, \texttt{SA.OpponentsMonotone},
