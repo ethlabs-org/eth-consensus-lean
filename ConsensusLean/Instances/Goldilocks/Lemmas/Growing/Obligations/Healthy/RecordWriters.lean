@@ -310,16 +310,17 @@ private theorem optimistic_unlock_keeps_at
   have hmemK : ∀ v ∈ SA.heldVotes ((tr.upTo t).state y j).ac ((tr.upTo t).state y (j + 1)).ac
       (Node.frame ((tr.upTo t).state y j)), v.val ∈ K.committee v.slot := by
     intro v hv
-    rcases SA.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | ⟨C, hC, hv⟩
+    rcases SA.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | ⟨-, w, hw, -, -, -, hwv, -⟩
     · rw [(hpool j τ v hv)]
       rw [← Compose.projAC_state hrT.toLocalRun hy, RunTrace.upTo_projAC] at hv
       exact hPK.1 y hy j τ v hv
     · rw [(hpool (j + 1) τ v hv)]
       rw [← Compose.projAC_state hrT.toLocalRun hy, RunTrace.upTo_projAC] at hv
       exact hPK.1 y hy (j + 1) τ v hv
-    · have hvB : v ∈ SA.blockVotes C := hv.elim id fun hv => (hpay C hC).2 v hv
-      rw [Trace.upTo_state tr y fun k hk => (hm hk.le).trans hjt] at hC
-      exact hp.committeeFacts.hFrame y j (hrun.antitone hjt hy) C hC v hvB
+    · -- a counted declaration: a pool vote of its validator and slot, P
+      rw [← hwv]
+      rw [← Compose.projAC_state hrT.toLocalRun hy, RunTrace.upTo_projAC] at hw
+      exact hPK.1 y hy (j + 1) _ w hw
   have hon : ∀ v ∈ SA.heldVotes ((tr.upTo t).state y j).ac ((tr.upTo t).state y (j + 1)).ac
       (Node.frame ((tr.upTo t).state y j)), v.val ∈ H t ∪ (K.committee (s + 1))ᶜ →
       (v.slot : Int) = (sp.slot (tr.time j) : Int) - 1 → v.val ∈ H t := by
@@ -333,23 +334,29 @@ private theorem optimistic_unlock_keeps_at
   apply SA.unlockTarget_unlockView_held_of_honest_slot y ell.call hA' hΦ _ hR (hpool j)
     (hpool (j + 1)) hpay
     (fun v hv w hw hvH hval hsl hsl' =>
-      Compose.heldVotes_honest_unique hrT hncT hy hcall hv hw (hon v hv hvH hsl') hval hsl) ?_
+      Compose.heldVotes_honest_unique hrT hncT hy hv hw (hon v hv hvH hsl') hval hsl) ?_
     hf
   intro v hv hvH hvs Hd hHd hHdr
   replace hvH := hon v hv hvH hvs
   obtain ⟨k, e, ⟨ell', hcast⟩, hmsg⟩ :
       ∃ k e, SA.VoteAt (tr.upTo t).projAC v.val k e ∧ e.msg = v := by
-    rcases SA.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | ⟨C, hC, hv⟩
+    rcases SA.mem_heldVotes.1 hv with ⟨τ, hv⟩ | ⟨τ, hv⟩ | ⟨-, x, hx, x', hx', hne, hxv, hx'v⟩
     · rw [← Compose.projAC_state hrT.toLocalRun hy] at hv
       obtain ⟨k, _, e, he, hm⟩ := hrunT.honest.pool_vote y hy j τ v hv hvH
       exact ⟨k, e, he, hm⟩
     · rw [← Compose.projAC_state hrT.toLocalRun hy] at hv
       obtain ⟨k, _, e, he, hm⟩ := hrunT.honest.pool_vote y hy (j + 1) τ v hv hvH
       exact ⟨k, e, he, hm⟩
-    · have hvB : v ∈ SA.blockVotes C := hv.elim id fun hv => (hpay C hC).2 v hv
-      obtain ⟨k, _, e, he, hm⟩ := hrunT.honest.carried_vote y hy j ell hcallA C
-        (hfr.symm ▸ hC) v hvB hvH
-      exact ⟨k, e, he, hm⟩
+    · -- a counted declaration: two distinct pool votes of an honest validator, a contradiction
+      have hxs := hpool (j + 1) _ x hx
+      have hx's := hpool (j + 1) _ x' hx'
+      rw [← Compose.projAC_state hrT.toLocalRun hy] at hx hx'
+      obtain ⟨k, _, e, he, rfl⟩ := hrunT.honest.pool_vote y hy (j + 1) _ x hx (hxv ▸ hvH)
+      obtain ⟨k', _, e', he', rfl⟩ := hrunT.honest.pool_vote y hy (j + 1) _ x' hx' (hx'v ▸ hvH)
+      rw [hx'v, ← hxv] at he'
+      exact absurd (congrArg (fun e : SA.Em sp (List (FG.Att sp.n)) => e.msg)
+        (SA.one_vote_per_slotU sp _ ro (H t) _ _ hrunT.localRun.toU _ (hxv ▸ hvH) k k' e e' he he'
+          (hxs.trans hx's.symm)).2) hne
   have hkj : k < j :=
     Compose.cast_lt_of_slot hrT hncT hvH hcast (by simpa [hmsg] using hvs)
   have hcastR : SA.CastAt tr.projAC v.val k ell' e := by
