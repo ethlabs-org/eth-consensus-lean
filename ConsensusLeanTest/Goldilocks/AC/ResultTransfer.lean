@@ -57,7 +57,7 @@ theorem mergedView_slot_cv {s : Nat} {fg' : Store sp1.toParams N1.Payload} {e : 
     obtain ⟨m, -, -, rfl⟩ := hf.eq_of_mem hB
     rw [blk_slot] at hBs
     subst hBs
-    exact List.mem_singleton.1 hv
+    exact List.mem_singleton.1 hv.1
 
 /-- (a) **Every live lock block of a frame of the run is compatible with every chain block**:
 it is a block of the frame, which is a chain. -/
