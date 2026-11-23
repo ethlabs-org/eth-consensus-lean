@@ -89,25 +89,29 @@ theorem received_att_processAt
     {i : Nat} {v : V} {receipt : Wire (Fintype.card V) S.vote} {t : Time}
     (he : rho.events[i]? = some (.deliver v receipt t)) {a : FG.Att (Fintype.card V)}
     (hwf : a.WellFormed)
-    (hc : attObj a ∈ delivered (Model.digests rho.hash receipt) (stateAt S rho hn v i) receipt) :
+    (hc : attObj a ∈ delivered (stateAt S rho hn v i).voteIO (Model.digests rho.hash receipt)
+      (stateAt S rho hn v i) receipt) :
     ∃ k < cutMap S rho hn (i + 1),
       (simTrace S rho hn).ProcessAttAt (rho.ownKey v) k a ∧
       (simTrace S rho hn).time k = t := by
   obtain ⟨k, _, hk, hp, ht⟩ :=
     NodeAsChainShape.CanonicalTrace.received_att_processAt (traceEncoding S hn) rho he
       (by
-        apply traceEncoding_induction S hn (fun e _ =>
-          ∃ w ∈ NodeAsChainShape.delivered e.codec e.adapter (Model.digests rho.hash receipt)
+        apply traceEncoding_induction S hn (fun e _ _ =>
+          ∃ w ∈ NodeAsChainShape.delivered (NodeAsChainShape.CanonicalTrace.receiverCodec e rho v)
+              e.adapter (Model.digests rho.hash receipt)
               (NodeAsChainShape.CanonicalTrace.stateAt e rho v i)
               (NodeAsChainShape.CanonicalTrace.wireOf e receipt),
-            NodeAsChainShape.canonEvent e.codec (Model.digests rho.hash receipt) w =
-              some (.attestation a))
+            NodeAsChainShape.canonEvent (NodeAsChainShape.CanonicalTrace.receiverCodec e rho v)
+              (Model.digests rho.hash receipt) w = some (.attestation a))
         intro _ _
+        rw [NodeAsChainShape.CanonicalTrace.receiverCodec_eq,
+          NodeAsChainShape.CanonicalTrace.voteIOAt_eq]
         refine ⟨attObj (binding := S.vote) a, ?_,
-          canonEvent_attObj (sp := S.params (Model.pubOf E) hn) (ro := S.ro _) _ a hwf⟩
+          canonEvent_attObj (sp := S.params (Model.pubOf E) hn) (ro := S.ro _) _ _ a hwf⟩
         rw [NodeAsChainShape.CanonicalTrace.stateAt_eq]
         rw (config := { transparency := .default }) [NodeAsChainShape.CanonicalTrace.wireOf_eq]
-        rw [stateAt_eq] at hc
+        rw [stateAt_voteIO S rho hn, stateAt_eq] at hc
         exact hc)
   simpa only [(simTrace_encoding S rho hn).1, (simTrace_encoding S rho hn).2] using ⟨k, hk, hp, ht⟩
 

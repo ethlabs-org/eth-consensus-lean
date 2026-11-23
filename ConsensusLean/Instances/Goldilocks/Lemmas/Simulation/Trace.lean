@@ -135,18 +135,18 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A canonical message in a recursive receipt has an actual AC message cut,
 even when its vote is already present or rejected by the pool cap. -/
-theorem deliverRecs_message_call (proposer : Nat → Fin sp.n)
+theorem deliverRecs_message_call (io : VoteAuth sp.n binding) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
     (m : Vote sp.n) :
     ∀ (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat),
-    (∃ o ∈ os, canonEvent sp ro hs o = some (.message m)) →
-    ∃ r ∈ deliverRecs proposer dg hs self t i os st sub,
+    (∃ o ∈ os, canonEvent sp ro io hs o = some (.message m)) →
+    ∃ r ∈ deliverRecs io proposer dg hs self t i os st sub,
       ∃ ℓ, r.label = .ac ℓ ∧ ℓ.call = .message m := by
   intro os st sub hm
   obtain ⟨r, hr, l, hl, hm⟩ := NodeAsChainShape.CanonicalTrace.deliverRecs_message_call
-    (wireCodec sp ro binding) hs proposer dg self t i m os st sub hm
-  obtain ⟨q, hq, hlabel⟩ := deliverRecs_label proposer dg hs self t i os st sub hr
+    (wireCodec sp ro binding io) hs proposer dg self t i m os st sub hm
+  obtain ⟨q, hq, hlabel⟩ := deliverRecs_label io proposer dg hs self t i os st sub hr
   exact ⟨q, hq, l, hlabel.trans hl, hm⟩
 
 end Simulation

@@ -132,19 +132,19 @@ theorem blockCall_ownBlock_of_released (hv : rho.ExecutionValid) {y : Fin (Finty
 /-- A decoded message with an honest signer comes from an earlier emission by that signer. -/
 theorem msgCall_emit_of_released (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} {k : Nat} {m : A.Msg} {signer : Fin (Fintype.card V)}
-    {obj : (Model.protoOf (compiled F) E).Object}
+    {R : (Model.protoOf (compiled F) E).Object → Prop}
     (hc : (simTraceAt e rho).MsgCallAt y k m)
     (hhon : rho.key signer ∉ rho.faultyAt ((simTraceAt e rho).time k))
-    (hcodec : ∀ w, e.codec.message w = some m → engineObj e w = obj)
-    (hsign : rho.signerOf obj = some (rho.key signer))
-    (hrel : ∀ {j t}, rho.SendsAt (rho.key signer) j t → obj ∈ rho.releasesAt j →
+    (hcodec : ∀ v w, (receiverCodec e rho v).message w = some m → R (engineObj e w))
+    (hsign : ∀ obj, R obj → rho.signerOf obj = some (rho.key signer))
+    (hrel : ∀ {j t obj}, R obj → rho.SendsAt (rho.key signer) j t → obj ∈ rho.releasesAt j →
       ∃ q < cutMap e rho (j + 1), (simTraceAt e rho).EmitAt signer q m) :
     ∃ j < k, (simTraceAt e rho).EmitAt signer j m := by
   obtain ⟨i, v, o, t, w, he, hw, hm, hstart, htime⟩ := simTraceAt_msgCall_delivered e rho hc
   rw [htime] at hhon
-  rw [hcodec w hm] at hw
-  obtain ⟨j, t', hj, hs, hb⟩ := hv.unforgeable i v o t he obj hw _ hsign hhon
-  obtain ⟨q, hq, hem⟩ := hrel hs hb
+  have hR := hcodec v w hm
+  obtain ⟨j, t', hj, hs, hb⟩ := hv.unforgeable i v o t he _ hw _ (hsign _ hR) hhon
+  obtain ⟨q, hq, hem⟩ := hrel hR hs hb
   exact ⟨q, hq.trans_le ((cutMap_mono e rho (Nat.succ_le_of_lt hj)).trans hstart), hem⟩
 
 end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
@@ -241,7 +241,7 @@ theorem released_block_cut_of (hv : rho.ExecutionValid)
               · exact hb
             · rcases List.mem_append.mp hb with hb | hb
               · exact False.elim (hhead _ hb)
-              · rcases hF _ hb with ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
+              · rcases hF _ hb with ⟨τ, cs, heq⟩ | ⟨τ, m, w, heq⟩
                 all_goals have hh := congrArg Model.Obj.msg heq; cases hh
           · exact False.elim (hhead _ hb)
         · have hh := hG _ hb
@@ -263,7 +263,7 @@ theorem released_block_cut_of (hv : rho.ExecutionValid)
       erw [Model.Run.runDuties_cons, Model.Run.runDuties_nil] at hb
       simp only [List.append_nil] at hb
       rcases dutyStep_poll_sub S rho hn v _ _ _ hb with
-        ⟨b, _, heq⟩ | ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
+        ⟨b, _, heq⟩ | ⟨τ, cs, heq⟩ | ⟨τ, m, w, -, heq⟩
       all_goals have hh := congrArg Model.Obj.msg heq; cases hh
     · have hh := gossip_unsigned S rho _ _ _ _ hb
       cases hh
@@ -303,12 +303,13 @@ private theorem emit_of_record {i : Nat} {ev}
 
 private theorem emit_of_tick_body {i : Nat} {v : V} {t : Time}
     (he : rho.events[i]? = some (.tick v t))
-    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) {m : Vote (Fintype.card V)}
-    (hm : Body.vote (encodeVote m) ∈ emitted (exec (runProposer S rho hn) (digestOf S rho)
+    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) {m : Vote (Fintype.card V)} {z : Nat}
+    (hm : Body.vote (encodeVote m) z ∈ emitted (stateAt S rho hn v i).voteIO
+      (exec (runProposer S rho hn) (digestOf S rho)
       (rho.ownKey v) (stateAt S rho hn v i).node t
       (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2) :
     ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).EmitAt (rho.ownKey v) k m := by
-  obtain ⟨ℓ, hc, em, hem, rfl⟩ := mem_emitted.mp hm
+  obtain ⟨⟨ℓ, hc, em, hem, rfl⟩, -⟩ := mem_emitted.mp hm
   obtain ⟨q, hq, hcq⟩ := List.getElem_of_mem hc
   have hq' : q < (groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
       (stateAt S rho hn v i).node t (Nat.pair i 0)
@@ -331,9 +332,9 @@ theorem released_vote_cut_of (hv : rho.ExecutionValid)
         (propose (shapeOf S hn (preNode S rho v (rho.stateBefore i v) t)) s).2 =
           some (par, info, cs) →
         ∀ o ∈ cs, o ∈ Model.closure (preNode S rho v (rho.stateBefore i v) t).seen)
-    {m : Vote (Fintype.card V)} (hb : voteObj m ∈ rho.releasesAt i) :
+    {m : Vote (Fintype.card V)} {z : Nat} (hb : voteObj m z ∈ rho.releasesAt i) :
     ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).EmitAt (rho.ownKey v) k m := by
-  have hbody : ∀ b, voteObj m = pollObj S rho v b → b = Body.vote (encodeVote m) := by
+  have hbody : ∀ b, voteObj m z = pollObj S rho v b → b = Body.vote (encodeVote m) z := by
     intro b heq
     exact (Model.Msg.data.inj (congrArg Model.Obj.msg heq)).symm
   rcases hs with he | ⟨o, he⟩
@@ -342,7 +343,7 @@ theorem released_vote_cut_of (hv : rho.ExecutionValid)
     · obtain ⟨N4, N5, Q, R4, F, G, hr, _, _, hF, hG, _, hQ, hR4, _⟩ :=
         tick_public_analysis S rho hn hv (hv' he) he hp (hpre he)
       have hq : ∀ ob, (∀ b, ob = some b → b ∈ Q) →
-          voteObj m ∈ relHead S rho v ob →
+          voteObj m z ∈ relHead S rho v ob →
           ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).EmitAt (rho.ownKey v) k m := by
         intro ob hmem hb
         obtain ⟨b, hob, heq⟩ := mem_relHead S rho hb
@@ -350,7 +351,7 @@ theorem released_vote_cut_of (hv : rho.ExecutionValid)
         rw [hbody b heq, hQ] at hbq
         rcases List.mem_append.mp hbq with hbq | hbq
         · exact emit_of_tick_body S rho hn he hp hbq
-        · exact False.elim (vote_not_mem_attBodies _ _ hbq)
+        · exact False.elim (vote_not_mem_attBodies _ _ _ hbq)
       rw [hr] at hb
       rcases List.mem_append.mp hb with hb | hb
       · rcases List.mem_append.mp hb with hb | hb
@@ -364,7 +365,7 @@ theorem released_vote_cut_of (hv : rho.ExecutionValid)
               cases hh
           · rcases List.mem_append.mp hb with hb | hb
             · exact hq _ (fun _ h => List.mem_of_mem_head? h) hb
-            · rcases hF _ hb with ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
+            · rcases hF _ hb with ⟨τ, cs, heq⟩ | ⟨τ, m', w, heq⟩
               all_goals have hh := congrArg Model.Obj.msg heq; cases hh
         · exact hq _ (fun _ h => List.mem_of_mem_tail (List.mem_of_mem_head? h)) hb
       · have hh := hG _ hb; cases hh
@@ -381,7 +382,7 @@ theorem released_vote_cut_of (hv : rho.ExecutionValid)
       erw [Model.Run.runDuties_cons, Model.Run.runDuties_nil] at hb
       simp only [List.append_nil] at hb
       rcases dutyStep_poll_sub S rho hn v _ _ _ hb with
-        ⟨b, hb, heq⟩ | ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
+        ⟨b, hb, heq⟩ | ⟨τ, cs, heq⟩ | ⟨τ, m', w, -, heq⟩
       · have hf : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).fgDue = false :=
           (process_fgDue _ _ _).trans (fgDue_eq_false S rho hn v i)
         change (pollPre (process ((rho.stateBefore i v).st.1 hn) o
@@ -391,25 +392,46 @@ theorem released_vote_cut_of (hv : rho.ExecutionValid)
         have hb' := List.mem_of_mem_head? hb
         rw [hbody b heq] at hb'
         rcases process_outbox_source (runProposer S rho hn) (digestOf S rho)
-          (Model.digests rho.hash o) t i _ (stateAt S rho hn v i) 0 hnow _ hb' with
-          hb | ⟨r, hr, ℓ, hl, em, hem, heq⟩
+          (stateAt S rho hn v i).voteIO (Model.digests rho.hash o) t i _ (stateAt S rho hn v i) 0
+          hnow _ hb' with
+          hb | ⟨r, hr, ℓ, hl, em, hem, z', heq⟩
         · rw [outbox_empty S rho hn hv v i] at hb; cases hb
-        · have hm := congrArg (decodeVote (Fintype.card V)) (Body.vote.inj heq)
+        · have hm := congrArg (decodeVote (Fintype.card V)) (Body.vote.inj heq).1
           rw [decodeVote_encodeVote, decodeVote_encodeVote] at hm
           have hm := Option.some.inj hm
           rw [hm]
           apply emit_of_record S rho hn he (r := r) ?_ hl hem
-          rw [eventCuts_deliver S rho hn i v o t he, ← self_eq_ownKey S rho hn v i]
+          rw [eventCuts_deliver S rho hn i v o t he, ← self_eq_ownKey S rho hn v i,
+            ← stateAt_voteIO S rho hn v i]
           exact hr
       · have hh := congrArg Model.Obj.msg heq; cases hh
       · have hh := congrArg Model.Obj.msg heq; cases hh
     · have hh := gossip_unsigned S rho _ _ _ _ hb; cases hh
 
+omit [DecidableEq V] in
+/-- A message a receiver decodes is the canonical object of its vote with some token. -/
+private theorem voteMsg_engineObj {v : V} {m : Vote (Fintype.card V)} {w}
+    (hm : (NodeAsChainShape.CanonicalTrace.receiverCodec (traceEncoding (E := E) S hn) rho
+      v).message w = some m) :
+    ∃ z, NodeAsChainShape.CanonicalTrace.engineObj (traceEncoding (E := E) S hn) w =
+      voteObj (binding := S.vote) m z := by
+  refine traceEncoding_induction S hn (fun e _ _ => ∀ w,
+    (NodeAsChainShape.CanonicalTrace.receiverCodec e rho v).message w = some m →
+      ∃ z, NodeAsChainShape.CanonicalTrace.engineObj e w = voteObj (binding := S.vote) m z)
+    ?_ w hm
+  intro _ _ w h
+  rw [NodeAsChainShape.CanonicalTrace.receiverCodec_eq] at h
+  obtain ⟨z, rfl, -⟩ := eq_voteObj_of_decodeVoteObj h
+  refine ⟨z, ?_⟩
+  rw (config := { transparency := .default })
+    [NodeAsChainShape.CanonicalTrace.engineObj_eq, cast_eq]
+
 /-- **A received AC message was delivered**: the cut `k` of a message call is a cut of a
 delivery event `i` at the cut's time, whose delivered object contains the vote. -/
 theorem msgCall_delivered {y : Fin (Fintype.card V)} {k : Nat} {m : Vote (Fintype.card V)}
     (hc : (simTrace S rho hn).MsgCallAt y k m) :
-    ∃ i v o t, rho.events[i]? = some (.deliver v o t) ∧ Model.Obj.Contains o (voteObj m) ∧
+    ∃ i v o t, rho.events[i]? = some (.deliver v o t) ∧
+      (∃ z, Model.Obj.Contains o (voteObj m z)) ∧
       cutMap S rho hn i ≤ k ∧ (simTrace S rho hn).time k = t := by
   let enc := traceEncoding (E := E) S hn
   rw [(simTrace_encoding S rho hn).1] at hc ⊢
@@ -417,17 +439,10 @@ theorem msgCall_delivered {y : Fin (Fintype.card V)} {k : Nat} {m : Vote (Fintyp
   obtain ⟨i, v, o, t, w, he, hw, hm, hstart, htime⟩ :=
     NodeAsChainShape.CanonicalTrace.simTraceAt_msgCall_delivered enc rho
       (by rwa [NodeAsChainShape.CanonicalTrace.simTraceAt_eq])
-  have hobj : ∀ w, enc.codec.message w = some m →
-      NodeAsChainShape.CanonicalTrace.engineObj enc w = voteObj (binding := S.vote) m :=
-    traceEncoding_induction S hn (fun e _ => ∀ w, e.codec.message w = some m →
-      NodeAsChainShape.CanonicalTrace.engineObj e w = voteObj (binding := S.vote) m) fun _ w h => by
-        have hwire := eq_voteObj_of_decodeVoteObj h
-        subst w
-        rw (config := { transparency := .default })
-          [NodeAsChainShape.CanonicalTrace.engineObj_eq, cast_eq]
-  rw [hobj w hm] at hw
+  obtain ⟨z, hz⟩ := voteMsg_engineObj S rho hn hm
+  rw [hz] at hw
   rw [NodeAsChainShape.CanonicalTrace.simTraceAt_eq] at htime
-  exact ⟨i, v, o, t, he, hw, hstart, htime⟩
+  exact ⟨i, v, o, t, he, ⟨z, hw⟩, hstart, htime⟩
 
 /-- An AC message that a node receives at cut `k`, while its signer is honest at the cut's
 time, was emitted by the signer at an earlier cut. Premise `hrel`: a release of the vote at an
@@ -436,20 +451,16 @@ engine event of the signer comes from an own emission cut of that event
 theorem msgCall_emit_of_released (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)}
     {k : Nat} {m : Vote (Fintype.card V)} (hc : (simTrace S rho hn).MsgCallAt y k m)
     (hhon : rho.key m.val ∉ rho.faultyAt ((simTrace S rho hn).time k))
-    (hrel : ∀ {j t}, rho.SendsAt (rho.key m.val) j t → voteObj m ∈ rho.releasesAt j →
+    (hrel : ∀ {j t} z, rho.SendsAt (rho.key m.val) j t → voteObj m z ∈ rho.releasesAt j →
       ∃ q < cutMap S rho hn (j + 1), (simTrace S rho hn).EmitAt m.val q m) :
     ∃ j < k, (simTrace S rho hn).EmitAt m.val j m := by
   let enc := traceEncoding (E := E) S hn
   rw [(simTrace_encoding S rho hn).1] at hc hhon hrel ⊢
   rw [(simTrace_encoding S rho hn).2] at hrel
   simp only [← NodeAsChainShape.CanonicalTrace.simTraceAt_eq] at hc hhon hrel ⊢
-  refine NodeAsChainShape.CanonicalTrace.msgCall_emit_of_released enc rho hv hc hhon ?_ rfl hrel
-  exact traceEncoding_induction S hn
-    (fun e _ => ∀ w, e.codec.message w = some m →
-      NodeAsChainShape.CanonicalTrace.engineObj e w = voteObj (binding := S.vote) m)
-    fun _ w hw => by
-      obtain rfl := eq_voteObj_of_decodeVoteObj hw
-      rw (config := { transparency := .default })
-        [NodeAsChainShape.CanonicalTrace.engineObj_eq, cast_eq]
+  refine NodeAsChainShape.CanonicalTrace.msgCall_emit_of_released enc rho hv hc hhon
+    (R := fun obj => ∃ z, obj = voteObj (binding := S.vote) m z)
+    (fun _ _ hm => voteMsg_engineObj S rho hn hm) (fun _ ⟨_, h⟩ => h ▸ rfl)
+    (fun ⟨z, h⟩ hs hb => hrel z hs (h ▸ hb))
 
 end Consensus.Goldilocks.Simulation

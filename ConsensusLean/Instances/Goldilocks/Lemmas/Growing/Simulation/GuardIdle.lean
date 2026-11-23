@@ -117,7 +117,7 @@ private theorem dutyRefusals_eq_nil (hv : rho.ExecutionValid) {v : V} {i p : Nat
           ((poll (nd.st.1 hn) (k : Time)).2.toList.map fun bc => (Model.Msg.data bc.1, bc.2)) ++
             ((((nd.st.1 hn).forwards.map fun p => (Body.forward p.1, p.2)) ++
               ((nd.st.1 hn).voteForwards.map fun p =>
-                (Body.voteForward p.1 (encodeVote p.2), [voteObj (binding := S.vote) p.2]))).map
+                (Body.voteForward p.1 (encodeVote p.2.1), [p.2.2]))).map
               fun bc => (Model.Msg.data bc.1, bc.2)) := by
         change (((goldilocks S (pubOf E)).pollBatch nd.st.1 (k : Time)).2.map _) = _
         rw [goldilocks_pollBatch_eq S _ nd.st.1 (k : Time), dite_eq_left hn]
@@ -141,7 +141,7 @@ private theorem dutyRefusals_eq_nil (hv : rho.ExecutionValid) {v : V} {i p : Nat
         · obtain ⟨w, rfl, rfl⟩ := hatt
           have hr : (Model.protoOf (compiled (goldilocks S)) E).candidateRole (.poll k)
               (.data (.att w)) = .poll :=
-            VoteBinding.candidateRole_poll_nonvote S.vote _ k (.att w) fun _ h => by cases h
+            VoteBinding.candidateRole_poll_nonvote S.vote _ k (.att w) fun _ _ h => by cases h
           exact (congrArg (fun r => Model.protects _ (rho.ownKey v) nd.seen
             (.mk (.signed (rho.ownKey v) r) (.data (.att w)) [])) hr).trans
             (engine_poll_att_protected_at S rho hn hv hc hd hsel hp)

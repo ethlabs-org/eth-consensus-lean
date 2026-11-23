@@ -272,8 +272,8 @@ theorem signedCandidate_poll_eq {V : Type} [Fintype V] {E : Env V} (S : Setup)
           (pollOrdinary S rho v (poll (shapeOf S hn nd) t).2)
           (pendingWrappers (shapeOf S hn nd)))
         ((shapeOf S hn nd).voteForwards.map fun q =>
-          Obj.mk (.signed (rho.ownKey v) .poll) (.data (.voteForward q.1 (encodeVote q.2)))
-            [voteObj q.2]) := by
+          Obj.mk (.signed (rho.ownKey v) .poll) (.data (.voteForward q.1 (encodeVote q.2.1)))
+            [q.2.2]) := by
   rw [signedCandidate_poll S rho hn v nd t hsel, pendingWrappers_eq, hself]
   rfl
 

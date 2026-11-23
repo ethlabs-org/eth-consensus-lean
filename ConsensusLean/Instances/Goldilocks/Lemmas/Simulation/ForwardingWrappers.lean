@@ -235,7 +235,8 @@ theorem pendingReady_onBlock {sp : AC.ACParams}
     (ha : WrappersAccounted (fun o => o ∈ seen.flatMap Obj.parts) st)
     (hr : PendingReady seen (pendingWrappers st))
     (hb : blockObj sp B ∈ seen.flatMap Obj.parts) :
-    PendingReady seen (pendingWrappers (apply st (Node.onBlock st.self st.node st.now B))) := by
+    PendingReady seen
+      (pendingWrappers (apply st none (Node.onBlock st.self st.node st.now B))) := by
   unfold Node.onBlock
   split
   · exact hr
@@ -283,8 +284,9 @@ theorem pendingReady_mono {n : Nat} {seen seen' cs : List (Wire n binding)}
 theorem wrappersAccounted_apply {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n binding → Prop)
     (st : State sp ro binding)
+    (origin : Option (Wire sp.n binding))
     (r : NodeState (goldilocksNode sp ro) × List (Cut (goldilocksNode sp ro)))
-    (h : WrappersAccounted prior st) : WrappersAccounted prior (apply st r) := by
+    (h : WrappersAccounted prior st) : WrappersAccounted prior (apply st origin r) := by
   let step := fun (s : State sp ro binding) (c : Cut (goldilocksNode sp ro)) => match c with
     | .fg (.block B true) => queueAccepted s B
     | _ => s
@@ -333,15 +335,16 @@ theorem wrappersAccounted_apply {sp : AC.ACParams}
 /-- A receipt's canonical child is held independently of whether its handler accepts it. -/
 theorem pendingReady_processOne {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n binding))
-    (st : State sp ro binding) (hs : List (Header Info × Nat)) (o : Wire sp.n binding)
+    (io : VoteAuth sp.n binding) (st : State sp ro binding) (hs : List (Header Info × Nat))
+    (o : Wire sp.n binding)
     (ha : WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) st)
     (hr : PendingReady seen (pendingWrappers st)) (ho : o ∈ seen.flatMap Obj.parts) :
-    PendingReady seen (pendingWrappers (processOne hs st o)) := by
+    PendingReady seen (pendingWrappers (processOne io hs st o)) := by
   rw [AsChainShape.processOne_eq]
   split
   · rename_i B hB
     have he : o = blockObj sp B := by
-      rcases canonEvent_eq_some hB with ⟨C, he, ho⟩ | ⟨v, he, _⟩ | ⟨a, he, _⟩
+      rcases canonEvent_eq_some hB with ⟨C, he, ho⟩ | ⟨v, z, he, _⟩ | ⟨a, he, _⟩
       · cases he; exact ho
       · cases he
       · cases he
@@ -360,20 +363,21 @@ theorem pendingReady_processOne {sp : AC.ACParams}
 /-- Receipt handlers retain exact map accounting; relay-buffer updates do not affect it. -/
 theorem wrappersAccounted_processOne {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n binding → Prop)
-    (st : State sp ro binding) (hs : List (Header Info × Nat)) (o : Wire sp.n binding)
-    (ha : WrappersAccounted prior st) : WrappersAccounted prior (processOne hs st o) := by
+    (io : VoteAuth sp.n binding) (st : State sp ro binding) (hs : List (Header Info × Nat))
+    (o : Wire sp.n binding)
+    (ha : WrappersAccounted prior st) : WrappersAccounted prior (processOne io hs st o) := by
   rw [AsChainShape.processOne_eq]
   split
   · rename_i B hB
-    have h := wrappersAccounted_apply prior st (Node.onBlock st.self st.node st.now B) ha
+    have h := wrappersAccounted_apply prior st none (Node.onBlock st.self st.node st.now B) ha
     unfold relayIf
     dsimp only
     split <;> exact h
   · rename_i v hv
-    have h := wrappersAccounted_apply prior st (Node.onMessage st.self st.node st.now v) ha
+    have h := wrappersAccounted_apply prior st (some o) (Node.onMessage st.self st.node st.now v) ha
     exact h
   · rename_i a ha'
-    have h := wrappersAccounted_apply prior st (Node.onAttestation st.node a) ha
+    have h := wrappersAccounted_apply prior st none (Node.onAttestation st.node a) ha
     unfold relayIf
     simp only [↓reduceIte]
     exact h
@@ -389,21 +393,22 @@ theorem pendingReady_process {sp : AC.ACParams}
     (ho : ∀ c ∈ o.parts, c ∈ seen.flatMap Obj.parts) :
     WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) (process st o hs) ∧
       PendingReady seen (pendingWrappers (process st o hs)) := by
-  have hf (xs : List (Wire sp.n binding)) : ∀ st : State sp ro binding,
+  have hf (io : VoteAuth sp.n binding) (xs : List (Wire sp.n binding)) :
+      ∀ st : State sp ro binding,
       WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) st →
       PendingReady seen (pendingWrappers st) →
       (∀ c ∈ xs, c ∈ seen.flatMap Obj.parts) →
       WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts)
-          (xs.foldl (processOne hs) st) ∧
-        PendingReady seen (pendingWrappers (xs.foldl (processOne hs) st)) := by
+          (xs.foldl (processOne io hs) st) ∧
+        PendingReady seen (pendingWrappers (xs.foldl (processOne io hs) st)) := by
     induction xs with
     | nil => intro st ha hr _; exact ⟨ha, hr⟩
     | cons c cs ih =>
       intro st ha hr hh
-      exact ih _ (wrappersAccounted_processOne _ st hs c ha)
-        (pendingReady_processOne seen st hs c ha hr (hh c List.mem_cons_self))
+      exact ih _ (wrappersAccounted_processOne _ io st hs c ha)
+        (pendingReady_processOne seen io st hs c ha hr (hh c List.mem_cons_self))
         (fun d hd => hh d (List.mem_cons_of_mem c hd))
-  exact hf _ st ha hr fun c hc => ho c (mem_delivered hs hc)
+  exact hf st.voteIO _ st ha hr fun c hc => ho c (mem_delivered st.voteIO hs hc)
 
 /-- Own recording preserves readiness provided the actual decoded own block is held.
 The caller must identify the generated canonical block; arbitrary signed headers do not
@@ -480,7 +485,7 @@ theorem wrappersAccounted_recordOwn {sp : AC.ACParams}
   split
   · exact ha
   · split
-    · exact wrappersAccounted_apply prior st _ ha
+    · exact wrappersAccounted_apply prior st _ _ ha
     · exact ha
   · exact ha
 
@@ -578,8 +583,9 @@ in that very result, with the handler's clock. Fold induction preserves the orig
 clock and retains list membership, including multiple accepts within one event. -/
 theorem apply_forward_origin {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
+    (origin : Option (Wire sp.n binding))
     (r : NodeState (goldilocksNode sp ro) × List (Cut (goldilocksNode sp ro)))
-    (q : Time × List (Wire sp.n binding)) (hq : q ∈ (apply st r).forwards) :
+    (q : Time × List (Wire sp.n binding)) (hq : q ∈ (apply st origin r).forwards) :
     q ∈ st.forwards ∨ ∃ B, ∃ p : Option (Wire sp.n binding), .fg (.block B true) ∈ r.2 ∧
       q = (st.now, p.toList ++ [blockObj sp B]) := by
   have hfold : ∀ (cs : List (Cut (goldilocksNode sp ro))) (s : State sp ro binding),
@@ -645,7 +651,7 @@ theorem onBlock_queues_acceptance {sp : AC.ACParams}
     (hcover : WrappersCover st)
     (hacc : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2) :
     ∃ p : Option (Wire sp.n binding),
-      (apply st (Node.onBlock st.self st.node st.now B)).forwards =
+      (apply st none (Node.onBlock st.self st.node st.now B)).forwards =
         st.forwards ++ [(st.now, p.toList ++ [blockObj sp B])] := by
   unfold Node.onBlock at hacc ⊢
   split at hacc
@@ -678,9 +684,9 @@ theorem onBlock_queues_acceptance_parent {sp : AC.ACParams}
     (hacc : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2) :
     ∃ root p, B.parent = some root ∧
       (if root = sp.genesisRoot then some none else (st.wrappers root).map some) = some p ∧
-      (apply st (Node.onBlock st.self st.node st.now B)).wrappers =
+      (apply st none (Node.onBlock st.self st.node st.now B)).wrappers =
         Function.update st.wrappers B.root (some (forwardObj sp st.self st.now p B)) ∧
-      (apply st (Node.onBlock st.self st.node st.now B)).forwards =
+      (apply st none (Node.onBlock st.self st.node st.now B)).forwards =
         st.forwards ++ [(st.now, p.toList ++ [blockObj sp B])] := by
   unfold Node.onBlock at hacc ⊢
   split at hacc
@@ -707,7 +713,7 @@ All other roots keep their existing wrappers; refusal leaves both maps unchanged
 theorem wrappersCover_onBlock {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (B : Blk sp)
     (hcover : WrappersCover st) :
-    WrappersCover (apply st (Node.onBlock st.self st.node st.now B)) := by
+    WrappersCover (apply st none (Node.onBlock st.self st.node st.now B)) := by
   unfold Node.onBlock
   split
   · exact hcover
@@ -753,8 +759,9 @@ private theorem wrappersCover_recordOwn {sp : AC.ACParams}
 
 /-- Each receipt call preserves coverage of held non-genesis roots by own wrappers. -/
 theorem wrappersCover_processOne {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) o hs
-    (h : WrappersCover st) : WrappersCover (processOne hs st o) := by
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding)
+    (st : State sp ro binding) o hs
+    (h : WrappersCover st) : WrappersCover (processOne io hs st o) := by
   rw [AsChainShape.processOne_eq]
   split
   · unfold relayIf
@@ -845,15 +852,15 @@ theorem stateAt_wrappersCover {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
           rw [stateAt_eq] at ih
           apply deliver_pres S rho hn WrappersCover wrappersCover_poll
             (fun st m cs hs h => wrappersCover_recordOwn st _ hs h)
-          have hf : ∀ (xs : List (Wire (Fintype.card V) S.vote))
+          have hf : ∀ io (xs : List (Wire (Fintype.card V) S.vote))
               (st : State (S.params (pubOf E) hn) (S.ro _) S.vote),
               WrappersCover st →
-                WrappersCover (xs.foldl (processOne (digests rho.hash o)) st) := by
-            intro xs
+                WrappersCover (xs.foldl (processOne io (digests rho.hash o)) st) := by
+            intro io xs
             induction xs with
             | nil => exact fun _ h => h
-            | cons x xs hx => exact fun st h => hx _ (wrappersCover_processOne st x _ h)
-          exact hf _ _ ih
+            | cons x xs hx => exact fun st h => hx _ (wrappersCover_processOne io st x _ h)
+          exact hf _ _ _ ih
         | restart w t =>
           simp only [Model.Event.node] at hnode
           subst w

@@ -32,12 +32,56 @@ private def VoteQueueStamped {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (F
     (t : Time) (st : State sp ro binding) : Prop :=
   st.now = t ∧ ∀ q ∈ st.voteForwards, q.1 = t
 
-/-- Every fresh block-handler insertion passes the forwarding candidate filter. -/
+/-- The own-token gate of a node state: the envelope's vote authentication holds an own token
+for every slot its AC may vote in. -/
+def VoteGate {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+    (st : State sp ro binding) : Prop :=
+  ∀ m : AC.Vote sp.n, st.node.ac.mayVote m.slot = true → ∃ z, ownToken st.voteIO m = some z
+
+/-- `VoteGate st`: an own token for every slot the AC may vote in. -/
+theorem voteGate_iff {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+    (st : State sp ro binding) : VoteGate st ↔
+      ∀ m : AC.Vote sp.n, st.node.ac.mayVote m.slot = true → ∃ z, ownToken st.voteIO m = some z :=
+  Iff.rfl
+
+/-- A fresh admission is queued with some object: an own emission with its own token, or a
+received vote with its origin. -/
+private theorem apply_voteForward_exists {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) origin r
+    (v : AC.Vote sp.n) (ℓ : ACLabel (goldilocksNode sp ro)) (hℓ : .ac ℓ ∈ r.2)
+    (hsource : ℓ.call = .message v ∨ ∃ e ∈ ℓ.emits, e.msg = v)
+    (hold : v ∉ st.node.ac.pool v.slot) (hnew : v ∈ r.1.ac.pool v.slot)
+    (hown : ∀ ℓ', Cut.ac ℓ' ∈ r.2 → ∀ e ∈ ℓ'.emits, ∃ z, ownToken st.voteIO e.msg = some z)
+    (horig : (∃ e ∈ ℓ.emits, e.msg = v) ∨ ∃ o, origin = some o) :
+    ∃ w, (st.now, v, w) ∈ (apply st origin r).voteForwards := by
+  by_cases hv : v ∈ r.2.flatMap (fun
+      | .fg _ => []
+      | .ac l => l.emits.map (·.msg))
+  · obtain ⟨c, hc, hvc⟩ := List.mem_flatMap.mp hv
+    cases c with
+    | fg _ => cases hvc
+    | ac ℓ' =>
+      obtain ⟨e, he, rfl⟩ := List.mem_map.mp hvc
+      obtain ⟨z, hz⟩ := hown ℓ' hc e he
+      exact ⟨voteObj e.msg z, apply_voteForward_of_admission st origin r e.msg ℓ hℓ hsource
+        hold hnew (by
+        split
+        · rw [hz]; rfl
+        · rename_i h; exact absurd hv h)⟩
+  · rcases horig with ⟨e, he, rfl⟩ | ⟨o, ho⟩
+    · exact absurd (List.mem_flatMap.mpr ⟨_, hℓ, List.mem_map.mpr ⟨e, he, rfl⟩⟩) hv
+    · exact ⟨o, apply_voteForward_of_admission st origin r v ℓ hℓ hsource hold hnew
+        (by
+          split
+          · rename_i h; exact absurd h hv
+          · exact ho)⟩
+
+/-- Every fresh block-handler insertion is queued, given the own-token gate. -/
 theorem onBlock_pool_insertion_queued {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (hg : VoteGate st)
     (B : Blk sp) (m : AC.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
     (hnew : m ∈ (Node.onBlock st.self st.node st.now B).1.ac.pool m.slot) :
-    (st.now, m) ∈ (apply st (Node.onBlock st.self st.node st.now B)).voteForwards := by
+    ∃ w, (st.now, m, w) ∈ (apply st none (Node.onBlock st.self st.node st.now B)).voteForwards := by
   unfold Node.onBlock at hnew ⊢
   split_ifs at hnew ⊢ with ht
   · exact False.elim (hold hnew)
@@ -45,95 +89,199 @@ theorem onBlock_pool_insertion_queued {sp : AC.ACParams}
     | none => simp only [hf] at hnew; exact False.elim (hold hnew)
     | some fg =>
       simp only [hf] at hnew ⊢
-      refine apply_voteForward_of_admission st _ m
+      have hsrc := Compose.step_pool_insertion_source st.self st.node.ac
+          (Node.frame { st.node with fg := fg }) st.now (.block B) (by simp) m hold hnew
+      refine apply_voteForward_exists st none _ m
         ⟨.block B, Node.frame { st.node with fg := fg },
           ((goldilocksNode sp ro).step st.self st.node.ac
             (Node.frame { st.node with fg := fg }) st.now (.block B)).2⟩
-        (by simp [Node.acCall]) ?_ hold hnew
-      · exact Compose.step_pool_insertion_source st.self st.node.ac
-          (Node.frame { st.node with fg := fg }) st.now (.block B) (by simp) m hold hnew
+        (by simp [Node.acCall]) hsrc hold hnew ?_ ?_
+      · intro ℓ' hℓ' e he
+        simp only [Node.acCall, List.mem_cons, List.not_mem_nil, or_false] at hℓ'
+        rcases hℓ' with h | h
+        · cases h
+        · cases Cut.ac.inj h
+          exact hg e.msg (AC.emits_mayVote ro _ _ _ _ _ e he)
+      · rcases hsrc with h | h
+        · cases h
+        · exact Or.inl h
 
-/-- Every fresh message-handler insertion passes the forwarding candidate filter. -/
+/-- Every fresh message-handler insertion is queued, given the own-token gate. -/
 theorem onMessage_pool_insertion_queued {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
-    (v m : AC.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (hg : VoteGate st)
+    (o : Wire sp.n binding) (v m : AC.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
     (hnew : m ∈ (Node.onMessage st.self st.node st.now v).1.ac.pool m.slot) :
-    (st.now, m) ∈ (apply st (Node.onMessage st.self st.node st.now v)).voteForwards := by
-  refine apply_voteForward_of_admission st _ m ⟨.message v, Node.frame st.node,
-    ((goldilocksNode sp ro).step st.self st.node.ac (Node.frame st.node) st.now (.message v)).2⟩
-    (by simp [Node.onMessage, Node.acCall]) ?_ hold hnew
-  · exact Compose.step_pool_insertion_source st.self st.node.ac (Node.frame st.node)
+    ∃ w, (st.now, m, w) ∈
+      (apply st (some o) (Node.onMessage st.self st.node st.now v)).voteForwards := by
+  have hsrc := Compose.step_pool_insertion_source st.self st.node.ac (Node.frame st.node)
       st.now (.message v) (by simp) m hold hnew
+  refine apply_voteForward_exists st (some o) _ m ⟨.message v, Node.frame st.node,
+    ((goldilocksNode sp ro).step st.self st.node.ac (Node.frame st.node) st.now (.message v)).2⟩
+    (by simp [Node.onMessage, Node.acCall]) ?_ hold hnew ?_ (Or.inr ⟨o, rfl⟩)
+  · rcases hsrc with h | h
+    · exact Or.inl (by rw [h])
+    · exact Or.inr h
+  · intro ℓ' hℓ' e he
+    simp only [Node.onMessage, Node.acCall, List.mem_singleton] at hℓ'
+    cases Cut.ac.inj hℓ'
+    exact hg e.msg (AC.emits_mayVote ro _ _ _ _ _ e he)
+
+/-- Processing keeps the AC's vote permission. -/
+private theorem processOne_mayVote {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding) hs
+    (st : State sp ro binding) o :
+    (processOne io hs st o).node.ac.mayVote = st.node.ac.mayVote := by
+  rw [AsChainShape.processOne_eq]
+  split
+  · unfold relayIf
+    dsimp only
+    split <;>
+    · change (Node.onBlock st.self st.node st.now _).1.ac.mayVote = _
+      unfold Node.onBlock
+      split_ifs
+      · rfl
+      · split
+        · rfl
+        · exact AC.step_mayVote ro _ _ _ _ _
+  · exact AC.step_mayVote ro _ _ _ _ _
+  · unfold relayIf
+    simp only [↓reduceIte]
+    rfl
+  · rfl
+
+/-- Processing keeps the own-token gate. -/
+theorem processOne_voteGate {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding) hs
+    (st : State sp ro binding) o (hg : VoteGate st) : VoteGate (processOne io hs st o) := by
+  intro m hm
+  rw [processOne_mayVote] at hm
+  rw [processOne_voteIO]
+  exact hg m hm
+
+/-- Recording an own object keeps the own-token gate. -/
+theorem recordOwn_voteGate {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) o hs
+    (hg : VoteGate st) : VoteGate (recordOwn st o hs) := by
+  have hmv : (recordOwn st o hs).node.ac.mayVote = st.node.ac.mayVote := by
+    rw [AsChainShape.recordOwn_eq]
+    split
+    · rfl
+    · split
+      · change (Node.onBlock st.self st.node st.now _).1.ac.mayVote = _
+        unfold Node.onBlock
+        split_ifs
+        · rfl
+        · split
+          · rfl
+          · exact AC.step_mayVote ro _ _ _ _ _
+      · rfl
+    · rfl
+  have hio : (recordOwn st o hs).voteIO = st.voteIO := by
+    rw [AsChainShape.recordOwn_eq]; split <;> (try split) <;> rfl
+  intro m hm
+  rw [hmv] at hm
+  rw [hio]
+  exact hg m hm
+
+/-- The slot proposal keeps the own-token gate. -/
+theorem propose_voteGate {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) s
+    (hg : VoteGate st) : VoteGate (propose st s).1 := by
+  have hmv : (propose st s).1.node.ac.mayVote = st.node.ac.mayVote := by
+    have hp : (Node.acProposal st.node st.now).1.ac.mayVote = st.node.ac.mayVote := by
+      change (AC.acProposal _ st.node.ac (Node.frame st.node) st.now).1.mayVote = _
+      unfold AC.acProposal
+      split_ifs <;> rfl
+    rw [propose_eq]
+    dsimp only
+    split <;> exact hp
+  have hio : (propose st s).1.voteIO = st.voteIO := by
+    rw [propose_eq]; dsimp only; split <;> rfl
+  intro m hm
+  rw [hmv] at hm
+  rw [hio]
+  exact hg m hm
 
 /-- Processing any canonical object queues every newly inserted pool vote. -/
 theorem processOne_pool_insertion_queued {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} hs (st : State sp ro binding) o
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding) hs
+    (st : State sp ro binding) (hg : VoteGate st) o
     (m : AC.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
-    (hnew : m ∈ (processOne hs st o).node.ac.pool m.slot) :
-    (st.now, m) ∈ (processOne hs st o).voteForwards := by
-  rcases canonEvent_cases (ro := ro) hs o with h | ⟨B, h⟩ | ⟨v, h⟩ | ⟨a, h⟩
+    (hnew : m ∈ (processOne io hs st o).node.ac.pool m.slot) :
+    ∃ w, (st.now, m, w) ∈ (processOne io hs st o).voteForwards := by
+  rcases canonEvent_cases (ro := ro) io hs o with h | ⟨B, h⟩ | ⟨v, h⟩ | ⟨a, h⟩
   · simp only [AsChainShape.processOne_eq, h] at hnew
     exact False.elim (hold hnew)
   · simp only [AsChainShape.processOne_eq, h] at hnew ⊢
     unfold relayIf at hnew ⊢
-    split_ifs at hnew ⊢ <;> exact onBlock_pool_insertion_queued st B m hold hnew
+    split_ifs at hnew ⊢ <;> exact onBlock_pool_insertion_queued st hg B m hold hnew
   · simp only [AsChainShape.processOne_eq, h] at hnew ⊢
-    exact onMessage_pool_insertion_queued st v m hold hnew
+    exact onMessage_pool_insertion_queued st hg o v m hold hnew
   · simp only [AsChainShape.processOne_eq, h, relayIf, ↓reduceIte] at hnew
     exact False.elim (hold hnew)
 
 /-- Recursive delivery processing cannot insert a vote without queueing its envelope. -/
 theorem foldl_processOne_pool_insertion_queued {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} hs (os : List (Wire sp.n binding))
-    (st : State sp ro binding) (m : AC.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
-    (hnew : m ∈ (os.foldl (processOne hs) st).node.ac.pool m.slot) :
-    (st.now, m) ∈ (os.foldl (processOne hs) st).voteForwards := by
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding) hs
+    (os : List (Wire sp.n binding))
+    (st : State sp ro binding) (hg : VoteGate st) (m : AC.Vote sp.n)
+    (hold : m ∉ st.node.ac.pool m.slot)
+    (hnew : m ∈ (os.foldl (processOne io hs) st).node.ac.pool m.slot) :
+    ∃ w, (st.now, m, w) ∈ (os.foldl (processOne io hs) st).voteForwards := by
   induction os generalizing st with
   | nil => exact False.elim (hold hnew)
   | cons o os ih =>
-    by_cases hm : m ∈ (processOne hs st o).node.ac.pool m.slot
-    · exact foldl_processOne_voteForwards_subset hs os _
-        (processOne_pool_insertion_queued hs st o m hold hm)
-    · have hq := ih (processOne hs st o) hm hnew
-      rwa [processOne_now] at hq
+    by_cases hm : m ∈ (processOne io hs st o).node.ac.pool m.slot
+    · obtain ⟨w, hw⟩ := processOne_pool_insertion_queued io hs st hg o m hold hm
+      exact ⟨w, foldl_processOne_voteForwards_subset io hs os _ hw⟩
+    · obtain ⟨w, hq⟩ := ih (processOne io hs st o) (processOne_voteGate io hs st o hg) hm hnew
+      rw [processOne_now] at hq
+      exact ⟨w, hq⟩
 
 /-- Recording an own block queues every fresh pool insertion as well. -/
 theorem recordOwn_pool_insertion_queued {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) o hs
-    (m : AC.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (hg : VoteGate st)
+    o hs (m : AC.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
     (hnew : m ∈ (recordOwn st o hs).node.ac.pool m.slot) :
-    (st.now, m) ∈ (recordOwn st o hs).voteForwards := by
+    ∃ w, (st.now, m, w) ∈ (recordOwn st o hs).voteForwards := by
   rw [AsChainShape.recordOwn_eq] at hnew ⊢
   split at hnew
   · exact False.elim (hold hnew)
   · split at hnew
-    · exact onBlock_pool_insertion_queued st _ m hold hnew
+    · exact onBlock_pool_insertion_queued st hg _ m hold hnew
     · exact False.elim (hold hnew)
   · exact False.elim (hold hnew)
 
 /-- Every fresh public AC-tick insertion belongs to its forwarding queue. -/
 theorem nodeTick_pool_insertion_queued {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (hg : VoteGate st)
     (m : AC.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
     (hnew : m ∈ (nodeTick st).node.ac.pool m.slot) :
-    (st.now, m) ∈ (nodeTick st).voteForwards := by
+    ∃ w, (st.now, m, w) ∈ (nodeTick st).voteForwards := by
   rw [nodeTick_eq] at hnew ⊢
   split_ifs at hnew ⊢
-  · refine apply_voteForward_of_admission st _ m ⟨.tick, Node.frame st.node,
-      ((goldilocksNode sp ro).step st.self st.node.ac (Node.frame st.node) st.now .tick).2⟩
-      (by simp [Node.acCall]) ?_ hold hnew
-    exact Compose.step_pool_insertion_source st.self st.node.ac (Node.frame st.node)
+  · have hsrc := Compose.step_pool_insertion_source st.self st.node.ac (Node.frame st.node)
       st.now .tick (by simp) m hold hnew
+    refine apply_voteForward_exists st none _ m ⟨.tick, Node.frame st.node,
+      ((goldilocksNode sp ro).step st.self st.node.ac (Node.frame st.node) st.now .tick).2⟩
+      (by simp [Node.acCall]) hsrc hold hnew ?_ ?_
+    · intro ℓ' hℓ' e he
+      simp only [Node.acCall, List.mem_singleton] at hℓ'
+      cases Cut.ac.inj hℓ'
+      exact hg e.msg (AC.emits_mayVote ro _ _ _ _ _ e he)
+    · rcases hsrc with h | h
+      · cases h
+      · exact Or.inl h
   · exact False.elim (hold hnew)
 
 private theorem voteStamped_apply {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (t : Time) (st : State sp ro binding) r
-    (h : VoteQueueStamped t st) : VoteQueueStamped t (apply st r) := by
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (t : Time) (st : State sp ro binding) origin r
+    (h : VoteQueueStamped t st) : VoteQueueStamped t (apply st origin r) := by
   refine ⟨h.1, ?_⟩
   intro q hq
   by_cases hold : q ∈ st.voteForwards
   · exact h.2 q hold
-  · exact ((apply_voteForward_fresh st r q.1 q.2 hq hold).1).trans h.1
+  · exact ((apply_voteForward_fresh st origin r q.1 q.2.1 q.2.2 hq hold).1).trans h.1
 
 private theorem voteStamped_recordOwn {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (t : Time) (st : State sp ro binding) o hs
@@ -142,7 +290,7 @@ private theorem voteStamped_recordOwn {sp : AC.ACParams}
   split
   · exact h
   · split
-    · exact voteStamped_apply t st _ h
+    · exact voteStamped_apply t st none _ h
     · exact h
   · exact h
 
@@ -158,7 +306,7 @@ private theorem voteStamped_nodeTick {sp : AC.ACParams}
     (h : VoteQueueStamped t st) : VoteQueueStamped t (nodeTick st) := by
   rw [nodeTick_eq]
   split
-  · exact voteStamped_apply t st _ h
+  · exact voteStamped_apply t st none _ h
   · exact h
 
 private theorem voteStamped_poll {sp : AC.ACParams}
@@ -174,18 +322,19 @@ private theorem voteStamped_process {sp : AC.ACParams}
     (h : VoteQueueStamped t st) : VoteQueueStamped t (process st o hs) := by
   refine ⟨(process_now st o hs).trans h.1, ?_⟩
   intro q hq
-  rcases foldl_processOne_voteForward_stamp hs (delivered hs st o) st q.1 q.2 hq with hq | ht
+  rcases foldl_processOne_voteForward_stamp st.voteIO hs (delivered st.voteIO hs st o) st q.1
+      q.2.1 q.2.2 hq with hq | ht
   · exact h.2 q hq
   · exact ht.trans h.1
 
 omit [DecidableEq V] in
 private theorem poll_candidate_vote_stamp (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (u : Nat)
-    {t : Time} {m : AC.Vote (Fintype.card V)}
+    {t : Time} {m : AC.Vote (Fintype.card V)} {w : Wire (Fintype.card V) S.vote}
     (ho : Model.Obj.mk (.signed (rho.ownKey v) .poll)
-      (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ rho.signedCandidate v (.poll u)
+      (.data (.voteForward t (encodeVote m))) [w] ∈ rho.signedCandidate v (.poll u)
         ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.poll u)).2) :
-    ∃ q ∈ (shapeOf S hn nd).voteForwards, q.1 = t ∧ q.2 = m := by
+    ∃ q ∈ (shapeOf S hn nd).voteForwards, q.1 = t ∧ q.2.1 = m ∧ q.2.2 = w := by
   obtain ⟨body, cs, hm, _, _, he⟩ := rho.mem_signedCandidate.mp ho
   have hmsg := congrArg Model.Obj.msg he
   have hcar := congrArg Model.Obj.carried he
@@ -209,20 +358,21 @@ private theorem poll_candidate_vote_stamp (v : V)
     have heq := Body.voteForward.inj (Model.Msg.data.inj hmsg)
     have hm := congrArg (decodeVote (Fintype.card V)) heq.2
     simp only [decodeVote_encodeVote] at hm
-    exact ⟨q, hq, heq.1.symm, Option.some.inj hm.symm⟩
+    exact ⟨q, hq, heq.1.symm, Option.some.inj hm.symm, (List.cons.inj hcar).1.symm⟩
 
 omit [DecidableEq V] in
 private theorem duty_vote_stamp (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) (u : Time)
     (hs : VoteQueueStamped u (shapeOf S hn nd)) {t : Time} {m : AC.Vote (Fintype.card V)}
+    {w : Wire (Fintype.card V) S.vote}
     (ho : Model.Obj.mk (.signed (rho.ownKey v) .poll)
-      (.data (.voteForward t (encodeVote m))) [voteObj m] ∈
+      (.data (.voteForward t (encodeVote m))) [w] ∈
         rho.signedCandidate v d ((Model.protoOf (compiled (goldilocks S)) E).act nd.st d).2) :
     t = u := by
   cases d with
   | poll n =>
-    obtain ⟨q, hq, ht, -⟩ := poll_candidate_vote_stamp S rho hn v nd n ho
+    obtain ⟨q, hq, ht, -, -⟩ := poll_candidate_vote_stamp S rho hn v nd n ho
     exact ht.symm.trans (hs.2 q hq)
   | act s k =>
     obtain ⟨_, _, hm, _⟩ := rho.mem_signedCandidate.mp ho
@@ -233,7 +383,7 @@ private theorem duty_vote_stamp (v : V)
     subst hmsg
     have hh : (ShapeRole.poll : ShapeRole S.vote.Kind) = .proposer s := by
       injection hauth with _ h
-      exact h.trans (propose_candidateRole_of_not_vote S s hpos fun _ h => by cases h)
+      exact h.trans (propose_candidateRole_of_not_vote S s hpos fun _ _ h => by cases h)
     cases hh
   | pollPropose n =>
     have hempty : ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose n)).2 =
@@ -250,15 +400,15 @@ private theorem duty_vote_pool (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (d : (Model.protoOf (compiled (goldilocks S)) E).Duty)
     (hp : ∀ q ∈ (shapeOf S hn nd).voteForwards,
-      q.2 ∈ (shapeOf S hn nd).node.ac.pool q.2.slot)
-    {t : Time} {m : AC.Vote (Fintype.card V)}
+      q.2.1 ∈ (shapeOf S hn nd).node.ac.pool q.2.1.slot)
+    {t : Time} {m : AC.Vote (Fintype.card V)} {w : Wire (Fintype.card V) S.vote}
     (ho : Model.Obj.mk (.signed (rho.ownKey v) .poll)
-      (.data (.voteForward t (encodeVote m))) [voteObj m] ∈
+      (.data (.voteForward t (encodeVote m))) [w] ∈
         rho.signedCandidate v d ((Model.protoOf (compiled (goldilocks S)) E).act nd.st d).2) :
     m ∈ (shapeOf S hn nd).node.ac.pool m.slot := by
   cases d with
   | poll n =>
-    obtain ⟨q, hq, -, hqm⟩ := poll_candidate_vote_stamp S rho hn v nd n ho
+    obtain ⟨q, hq, -, hqm, -⟩ := poll_candidate_vote_stamp S rho hn v nd n ho
     exact hqm ▸ hp q hq
   | act s k =>
     obtain ⟨_, _, hm, _⟩ := rho.mem_signedCandidate.mp ho
@@ -269,7 +419,7 @@ private theorem duty_vote_pool (v : V)
     subst hmsg
     have hh : (ShapeRole.poll : ShapeRole S.vote.Kind) = .proposer s := by
       injection hauth with _ h
-      exact h.trans (propose_candidateRole_of_not_vote S s hpos fun _ h => by cases h)
+      exact h.trans (propose_candidateRole_of_not_vote S s hpos fun _ _ h => by cases h)
     cases hh
   | pollPropose n =>
     have hempty : ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose n)).2 =
@@ -285,14 +435,15 @@ private theorem dutyBatches_vote_stamp (v : V) (u : Time) :
     ∀ (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
       (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)),
     VoteQueueStamped u (shapeOf S hn nd) →
-    ∀ b ∈ dutyBatches rho v nd ds, ∀ t (m : AC.Vote (Fintype.card V)),
+    ∀ b ∈ dutyBatches rho v nd ds, ∀ t (m : AC.Vote (Fintype.card V))
+      (w : Wire (Fintype.card V) S.vote),
       Model.Obj.mk (.signed (rho.ownKey v) .poll)
-        (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ b.candidates → t = u := by
+        (.data (.voteForward t (encodeVote m))) [w] ∈ b.candidates → t = u := by
   intro ds
   induction ds with
   | nil => intro nd hs b hb; rw [dutyBatches_nil] at hb; cases hb
   | cons d ds ih =>
-    intro nd hs b hb t m ho
+    intro nd hs b hb t m w ho
     rw [dutyBatches_cons] at hb
     rcases List.mem_cons.mp hb with rfl | hb
     · split at ho
@@ -300,22 +451,23 @@ private theorem dutyBatches_vote_stamp (v : V) (u : Time) :
       · cases ho
     · exact ih _ (dutyStep_pres S rho hn (VoteQueueStamped u)
         (voteStamped_recordOwn u) (voteStamped_propose u) (voteStamped_nodeTick u)
-        (voteStamped_poll u) v nd d hs) b hb t m ho
+        (voteStamped_poll u) v nd d hs) b hb t m w ho
 
 private theorem dutyBatches_vote_pool (v : V) :
     ∀ (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
       (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)),
     (∀ q ∈ (shapeOf S hn nd).voteForwards,
-      q.2 ∈ (shapeOf S hn nd).node.ac.pool q.2.slot) →
-    ∀ b ∈ dutyBatches rho v nd ds, ∀ t (m : AC.Vote (Fintype.card V)),
+      q.2.1 ∈ (shapeOf S hn nd).node.ac.pool q.2.1.slot) →
+    ∀ b ∈ dutyBatches rho v nd ds, ∀ t (m : AC.Vote (Fintype.card V))
+      (w : Wire (Fintype.card V) S.vote),
       Model.Obj.mk (.signed (rho.ownKey v) .poll)
-        (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ b.candidates →
+        (.data (.voteForward t (encodeVote m))) [w] ∈ b.candidates →
       m ∈ (shapeOf S hn (rho.runDuties v nd ds).1).node.ac.pool m.slot := by
   intro ds
   induction ds with
   | nil => intro nd hp b hb; rw [dutyBatches_nil] at hb; cases hb
   | cons d ds ih =>
-    intro nd hp b hb t m ho
+    intro nd hp b hb t m w ho
     rw [dutyBatches_cons] at hb
     rw [rho.runDuties_cons]
     rcases List.mem_cons.mp hb with rfl | hb
@@ -325,18 +477,18 @@ private theorem dutyBatches_vote_pool (v : V) :
         · cases ho
       exact runDuties_pool_subset S rho hn v _ ds m.slot
         (dutyStep_pool_subset S rho hn v nd d m.slot hm)
-    · exact ih _ (dutyStep_voteForward_in_pool S rho hn v nd d hp) b hb t m ho
+    · exact ih _ (dutyStep_voteForward_in_pool S rho hn v nd d hp) b hb t m w ho
 
 include hn in
 /-- Every released vote envelope carries the actual sending event's time, including
 ticks and recursively processed deliveries. No first-release premise is used. -/
 theorem released_voteForward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V} {u t : Time}
-    (he : rho.SendsAt v i u) (m : AC.Vote (Fintype.card V))
+    (he : rho.SendsAt v i u) (m : AC.Vote (Fintype.card V)) {w : Wire (Fintype.card V) S.vote}
     (ho : Model.Obj.mk (.signed (rho.ownKey v) .poll)
-      (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ rho.releasesAt i) : t = u := by
+      (.data (.voteForward t (encodeVote m))) [w] ∈ rho.releasesAt i) : t = u := by
   obtain ⟨b, hb, ho⟩ := released_candidate_batch S rho he ho
   have hg : ∀ nd, Model.Obj.mk (.signed (rho.ownKey v) .poll)
-      (.data (.voteForward t (encodeVote m))) [voteObj m] ∉
+      (.data (.voteForward t (encodeVote m))) [w] ∉
         Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) nd u := by
     intro nd h
     obtain ⟨mc, _, heq⟩ := Model.mem_gossipCandidates.mp h
@@ -347,7 +499,7 @@ theorem released_voteForward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V} {
     simp only at hb
     split at hb
     · rcases List.mem_append.mp hb with hb | hb
-      · apply dutyBatches_vote_stamp S rho hn v u _ _ ?_ b hb t m ho
+      · apply dutyBatches_vote_stamp S rho hn v u _ _ ?_ b hb t m w ho
         change VoteQueueStamped u { (rho.stateBefore i v).st.1 hn with now := u }
         rw [← stateAt_eq S rho hn v i]
         refine ⟨rfl, ?_⟩
@@ -360,7 +512,7 @@ theorem released_voteForward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V} {
     · cases hb
   · rw [eventBatches_eq, he] at hb
     rcases List.mem_append.mp hb with hb | hb
-    · apply dutyBatches_vote_stamp S rho hn v u _ _ ?_ b hb t m ho
+    · apply dutyBatches_vote_stamp S rho hn v u _ _ ?_ b hb t m w ho
       change VoteQueueStamped u
         (process ((rho.stateBefore i v).st.1 hn) receipt (Model.digests rho.hash receipt))
       rw [← stateAt_eq S rho hn v i]
@@ -376,13 +528,13 @@ include hn in
 /-- Every released vote envelope is backed by its sender's pool at the end of
 the sending event, for ticks as well as recursive deliveries. -/
 theorem released_voteForward_pool (hv : rho.ExecutionValid) {i : Nat} {v : V} {u t : Time}
-    (he : rho.SendsAt v i u) (m : AC.Vote (Fintype.card V))
+    (he : rho.SendsAt v i u) (m : AC.Vote (Fintype.card V)) {w : Wire (Fintype.card V) S.vote}
     (ho : Model.Obj.mk (.signed (rho.ownKey v) .poll)
-      (.data (.voteForward t (encodeVote m))) [voteObj m] ∈ rho.releasesAt i) :
+      (.data (.voteForward t (encodeVote m))) [w] ∈ rho.releasesAt i) :
     m ∈ (stateAt S rho hn v (i + 1)).node.ac.pool m.slot := by
   obtain ⟨b, hb, ho⟩ := released_candidate_batch S rho he ho
   have hg : ∀ nd, Model.Obj.mk (.signed (rho.ownKey v) .poll)
-      (.data (.voteForward t (encodeVote m))) [voteObj m] ∉
+      (.data (.voteForward t (encodeVote m))) [w] ∉
         Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) nd u := by
     intro nd h
     obtain ⟨mc, _, heq⟩ := Model.mem_gossipCandidates.mp h
@@ -397,7 +549,7 @@ theorem released_voteForward_pool (hv : rho.ExecutionValid) {i : Nat} {v : V} {u
       · rw [stateAt_tick S rho hn v he]
         simp only [Model.Run.tick, hawake, ↓reduceIte]
         rw [gossip_node_eq]
-        apply dutyBatches_vote_pool S rho hn v _ _ ?_ b hb t m ho
+        apply dutyBatches_vote_pool S rho hn v _ _ ?_ b hb t m w ho
         intro q hq
         change q ∈ ((rho.stateBefore i v).st.1 hn).voteForwards at hq
         rw [← stateAt_eq S rho hn v i] at hq
@@ -411,7 +563,7 @@ theorem released_voteForward_pool (hv : rho.ExecutionValid) {i : Nat} {v : V} {u
     · rw [stateAt_deliver S rho hn v he]
       simp only [Model.Run.deliver]
       rw [gossip_node_eq]
-      apply dutyBatches_vote_pool S rho hn v _ _ ?_ b hb t m ho
+      apply dutyBatches_vote_pool S rho hn v _ _ ?_ b hb t m w ho
       have h := delivery_voteForward_in_pool S rho hn hv v i receipt
       rw [stateAt_eq] at h
       exact h
@@ -419,17 +571,18 @@ theorem released_voteForward_pool (hv : rho.ExecutionValid) {i : Nat} {v : V} {u
       exact False.elim (hg _ ho)
 
 omit [DecidableEq V] in
-/-- Vote envelopes drain after the actual ordinary/block release prefix when their canonical
-votes are held there. No success assumption is imposed on the prefix candidates themselves. -/
+/-- Vote envelopes drain after the actual ordinary/block release prefix when each carries a
+canonical vote object that is held there. No success assumption is imposed on the prefix
+candidates themselves. -/
 theorem releaseAll_voteForward_suffix (hash : Blocks.Header Info → Nat)
     (x : Fin (Fintype.card V))
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (pre : List (Model.protoOf (compiled (goldilocks S)) E).Object)
-    (vs : List (Time × AC.Vote (Fintype.card V)))
-    (hheld : ∀ tv ∈ vs, voteObj tv.2 ∈ Model.closure
+    (vs : List (Time × AC.Vote (Fintype.card V) × Wire (Fintype.card V) S.vote))
+    (hheld : ∀ tv ∈ vs, ∃ z, tv.2.2 = voteObj tv.2.1 z ∧ voteObj tv.2.1 z ∈ Model.closure
       (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) hash x nd pre).1.seen) :
     let cs : List (Model.protoOf (compiled (goldilocks S)) E).Object := vs.map fun tv =>
-      .mk (.signed x .poll) (.data (.voteForward tv.1 (encodeVote tv.2))) [voteObj tv.2]
+      .mk (.signed x .poll) (.data (.voteForward tv.1 (encodeVote tv.2.1))) [tv.2.2]
     (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) hash x nd (pre ++ cs)).2 =
       (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) hash x nd pre).2 ++ cs := by
   dsimp only
@@ -440,18 +593,21 @@ theorem releaseAll_voteForward_suffix (hash : Blocks.Header Info → Nat)
     hash x _ _ ?_).1
   intro i o hi
   obtain ⟨tv, htv, rfl⟩ := List.mem_map.mp (List.mem_of_getElem? hi)
-  refine ⟨releasable_voteForward S x _ tv.1 tv.2 ?_, dependencies_voteForward _ x tv.1 tv.2⟩
-  exact Model.closure_mono (fun _ h => List.mem_append_left _ h) (hheld tv htv)
+  obtain ⟨z, hz, hh⟩ := hheld tv htv
+  rw [hz]
+  refine ⟨releasable_voteForward S x _ tv.1 tv.2.1 z ?_,
+    dependencies_voteForward _ x tv.1 tv.2.1 z⟩
+  exact Model.closure_mono (fun _ h => List.mem_append_left _ h) hh
 
 omit [DecidableEq V] in
-/-- The actual poll releases its vote envelopes when their canonical votes are held after
-the ordinary/block prefix. This permits an own vote first released by this very poll. -/
+/-- The actual poll releases its vote envelopes when each carries a canonical vote object held
+after the ordinary/block prefix. This permits an own vote first released by this very poll. -/
 theorem dutyStep_poll_voteForward_of_prefix (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Nat)
     (hsel : rho.ownKey v ∈ rho.sel .poll)
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
-    (hheld : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
-      voteObj tv.2 ∈ Model.closure
+    (hheld : ∀ tv ∈ (shapeOf S hn nd).voteForwards, ∃ z, tv.2.2 = voteObj tv.2.1 z ∧
+      voteObj tv.2.1 z ∈ Model.closure
         (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash (rho.ownKey v)
           ⟨((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.poll t)).1, nd.seen⟩
           (@HAppend.hAppend _ (List (Model.protoOf (compiled (goldilocks S)) E).Object) _ _
@@ -459,7 +615,7 @@ theorem dutyStep_poll_voteForward_of_prefix (v : V)
             (pendingWrappers (shapeOf S hn nd)))).1.seen) :
     ∀ tv ∈ (shapeOf S hn nd).voteForwards,
       Model.Obj.mk (.signed (rho.ownKey v) .poll)
-        (.data (.voteForward tv.1 (encodeVote tv.2))) [voteObj tv.2] ∈
+        (.data (.voteForward tv.1 (encodeVote tv.2.1))) [tv.2.2] ∈
           (rho.dutyStep v nd (.poll t)).2 := by
   intro tv htv
   unfold Model.Run.dutyStep
@@ -471,48 +627,53 @@ theorem dutyStep_poll_voteForward_of_prefix (v : V)
   exact List.mem_append_right _ (List.mem_map.mpr ⟨tv, htv, rfl⟩)
 
 omit [DecidableEq V] in
-/-- A selected poll publishes every queued envelope whose canonical vote is already held.
-The intervening ordinary/block candidates preserve these holdings even if their guards fail. -/
+/-- A selected poll publishes every queued envelope whose canonical vote object is already
+held. The intervening ordinary/block candidates preserve these holdings even if their guards
+fail. -/
 theorem dutyStep_poll_voteForward (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Nat)
     (hsel : rho.ownKey v ∈ rho.sel .poll)
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
-    (hheld : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
-      voteObj tv.2 ∈ Model.closure nd.seen) :
+    (hheld : ∀ tv ∈ (shapeOf S hn nd).voteForwards, ∃ z, tv.2.2 = voteObj tv.2.1 z ∧
+      voteObj tv.2.1 z ∈ Model.closure nd.seen) :
     ∀ tv ∈ (shapeOf S hn nd).voteForwards,
       Model.Obj.mk (.signed (rho.ownKey v) .poll)
-        (.data (.voteForward tv.1 (encodeVote tv.2))) [voteObj tv.2] ∈
+        (.data (.voteForward tv.1 (encodeVote tv.2.1))) [tv.2.2] ∈
           (rho.dutyStep v nd (.poll t)).2 := by
   apply dutyStep_poll_voteForward_of_prefix S rho hn v nd t hsel hself
   intro q hq
+  obtain ⟨z, hz, hh⟩ := hheld q hq
+  refine ⟨z, hz, ?_⟩
   erw [Model.releaseAll_seen]
-  exact Model.closure_mono (fun _ h => List.mem_append_left _ h) (hheld q hq)
+  exact Model.closure_mono (fun _ h => List.mem_append_left _ h) hh
 
 omit [DecidableEq V] in
-/-- A canonical vote at the head of the actual ordinary poll output supplies its own
+/-- A canonical own vote at the head of the actual ordinary poll output supplies its own
 envelope's dependency. Other queued votes need only be held already; block guards may fail. -/
 theorem dutyStep_poll_voteForward_of_own_vote (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Nat)
     (hsel : rho.ownKey v ∈ rho.sel .poll)
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
-    (m : AC.Vote (Fintype.card V)) (hm : m.val = rho.ownKey v)
+    (m : AC.Vote (Fintype.card V)) (z : Nat) (hm : m.val = rho.ownKey v)
     (hmem : rho.ownKey v ∈ rho.sel (S.vote.voteRole m.slot))
-    (hout : (pollPre (shapeOf S hn nd)).outbox.head? = some (.vote (encodeVote m)))
-    (hheld : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
-      tv.2 = m ∨ voteObj tv.2 ∈ Model.closure nd.seen) :
+    (hout : (pollPre (shapeOf S hn nd)).outbox.head? = some (.vote (encodeVote m) z))
+    (hheld : ∀ tv ∈ (shapeOf S hn nd).voteForwards, ∃ z', tv.2.2 = voteObj tv.2.1 z' ∧
+      ((tv.2.1 = m ∧ z' = z) ∨ voteObj tv.2.1 z' ∈ Model.closure nd.seen)) :
     ∀ tv ∈ (shapeOf S hn nd).voteForwards,
       Model.Obj.mk (.signed (rho.ownKey v) .poll)
-        (.data (.voteForward tv.1 (encodeVote tv.2))) [voteObj tv.2] ∈
+        (.data (.voteForward tv.1 (encodeVote tv.2.1))) [tv.2.2] ∈
           (rho.dutyStep v nd (.poll t)).2 := by
   apply dutyStep_poll_voteForward_of_prefix S rho hn v nd t hsel hself
   intro tv htv
-  rcases hheld tv htv with he | he
-  · rw [he, voteObj_eq_pollObj S rho hm]
+  obtain ⟨z', hz', he | he⟩ := hheld tv htv
+  · obtain ⟨hm', rfl⟩ := he
+    refine ⟨z', hz', ?_⟩
+    rw [hm', voteObj_eq_pollObj S rho z' hm]
     erw [Model.releaseAll_seen]
     apply Model.mem_closure_of_mem
     apply List.mem_append_right
     rw [(poll_outbox _ _).2, hout, Option.map_some]
-    erw [pollOrdinary_some_pos S rho (v := v) (b := .vote (encodeVote m))
+    erw [pollOrdinary_some_pos S rho (v := v) (b := .vote (encodeVote m) z')
       (by rw [pollRole_vote]; exact hmem)]
     erw [List.singleton_append, Model.releaseAll.eq_def]
     dsimp only
@@ -525,31 +686,34 @@ theorem dutyStep_poll_voteForward_of_own_vote (v : V)
       refine ⟨?_, ?_⟩
       · rfl
       · exact pollObj_ready S rho v _ _
-  · erw [Model.releaseAll_seen]
+  · refine ⟨z', hz', ?_⟩
+    erw [Model.releaseAll_seen]
     exact Model.closure_mono (fun _ h => List.mem_append_left _ h) he
 
-/-- A poll with at most one ordinary pending body releases its vote queue when
-each dependency is held or pending. The FG update appends only an attestation. -/
+/-- A poll with at most one ordinary pending body releases its vote queue when each queued
+object is a canonical vote object that is held or is the pending own vote with that token.
+The FG update appends only an attestation. -/
 theorem dutyStep_poll_voteForward_of_available (hv : rho.ExecutionValid) {v : V}
     (hv' : v ∉ rho.faultyAt 0) {i p : Nat}
     {nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)}
     (hc : EngineDutyCut S rho v i p nd) (t : Nat)
     (hlen : (shapeOf S hn nd).outbox.length ≤ 1)
-    (hav : ∀ q ∈ (shapeOf S hn nd).voteForwards,
-      voteObj q.2 ∈ Model.closure nd.seen ∨
-        Body.vote (encodeVote q.2) ∈ (shapeOf S hn nd).outbox) :
+    (hav : ∀ q ∈ (shapeOf S hn nd).voteForwards, ∃ z, q.2.2 = voteObj q.2.1 z ∧
+      (voteObj q.2.1 z ∈ Model.closure nd.seen ∨
+        Body.vote (encodeVote q.2.1) z ∈ (shapeOf S hn nd).outbox)) :
     ∀ q ∈ (shapeOf S hn nd).voteForwards,
       Model.Obj.mk (.signed (rho.ownKey v) .poll)
-        (.data (.voteForward q.1 (encodeVote q.2))) [voteObj q.2] ∈
+        (.data (.voteForward q.1 (encodeVote q.2.1))) [q.2.2] ∈
           (rho.dutyStep v nd (.poll t)).2 := by
   have hself := cut_self S rho hn hc
-  by_cases hh : ∀ q ∈ (shapeOf S hn nd).voteForwards,
-      voteObj q.2 ∈ Model.closure nd.seen
+  by_cases hh : ∀ q ∈ (shapeOf S hn nd).voteForwards, ∃ z, q.2.2 = voteObj q.2.1 z ∧
+      voteObj q.2.1 z ∈ Model.closure nd.seen
   · exact dutyStep_poll_voteForward S rho hn v nd t (poll_selected S rho hv v) hself hh
   · push Not at hh
     obtain ⟨q, hq, hnot⟩ := hh
-    have hmem := (hav q hq).resolve_left hnot
-    have hlist : (shapeOf S hn nd).outbox = [.vote (encodeVote q.2)] := by
+    obtain ⟨z, hz, hq'⟩ := hav q hq
+    have hmem := hq'.resolve_left (hnot z hz)
+    have hlist : (shapeOf S hn nd).outbox = [.vote (encodeVote q.2.1) z] := by
       cases ho : (shapeOf S hn nd).outbox with
       | nil => simp [ho] at hmem
       | cons b bs =>
@@ -560,42 +724,48 @@ theorem dutyStep_poll_voteForward_of_available (hv : rho.ExecutionValid) {v : V}
         subst bs
         have hb := List.mem_singleton.mp (ho ▸ hmem)
         exact congrArg (fun b => [b]) hb.symm
-    have hhead : (pollPre (shapeOf S hn nd)).outbox.head? = some (.vote (encodeVote q.2)) := by
+    have hhead : (pollPre (shapeOf S hn nd)).outbox.head? =
+        some (.vote (encodeVote q.2.1) z) := by
       rw [pollPre_eq]
       split
       · rcases fgUpdate_outbox (shapeOf S hn nd) with h | ⟨a, h⟩ <;> rw [h, hlist] <;> rfl
       · rw [hlist]; rfl
-    obtain ⟨hval, hk⟩ := duty_cut_vote_member S rho hn hv hv' hc q.2 hmem
+    obtain ⟨hval, hk⟩ := duty_cut_vote_member S rho hn hv hv' hc q.2.1 hmem
     apply dutyStep_poll_voteForward_of_own_vote S rho hn v nd t
-      (poll_selected S rho hv v) hself q.2 hval hk hhead
+      (poll_selected S rho hv v) hself q.2.1 z hval hk hhead
     intro r hr
-    rcases hav r hr with h | h
-    · exact Or.inr h
+    obtain ⟨z', hz', h | h⟩ := hav r hr
+    · exact ⟨z', hz', Or.inr h⟩
     · rw [hlist, List.mem_singleton] at h
-      have hd := congrArg (decodeVote (Fintype.card V)) (Body.vote.inj h)
-      exact Or.inl (by simpa only [decodeVote_encodeVote, Option.some.injEq] using hd)
+      obtain ⟨hw, hzz⟩ := Body.vote.inj h
+      have hd := congrArg (decodeVote (Fintype.card V)) hw
+      simp only [decodeVote_encodeVote, Option.some.injEq] at hd
+      exact ⟨z', hz', Or.inl ⟨hd, hzz⟩⟩
 
 omit [DecidableEq V] in
-/-- Through the optional proposal, every newly pooled vote is queued at the unchanged clock. -/
+/-- Through the optional proposal, every newly pooled vote is queued at the unchanged clock,
+given the own-token gate. -/
 theorem proposal_pool_insertion_queued (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time)
+    (hg : VoteGate (shapeOf S hn nd))
     (m : AC.Vote (Fintype.card V))
     (hbase : m ∈ (shapeOf S hn nd).node.ac.pool m.slot →
-      ((shapeOf S hn nd).now, m) ∈ (shapeOf S hn nd).voteForwards) :
+      ∃ w, ((shapeOf S hn nd).now, m, w) ∈ (shapeOf S hn nd).voteForwards) :
     let out := (rho.runDuties v nd ((skeleton (pubOf E) S.vote).proposeAt t)).1
     m ∈ (shapeOf S hn out).node.ac.pool m.slot →
-      ((shapeOf S hn nd).now, m) ∈ (shapeOf S hn out).voteForwards := by
+      ∃ w, ((shapeOf S hn nd).now, m, w) ∈ (shapeOf S hn out).voteForwards := by
   let Q := fun st : State (S.params (pubOf E) hn) (S.ro _) S.vote =>
-    st.now = (shapeOf S hn nd).now ∧
-      (m ∈ st.node.ac.pool m.slot → ((shapeOf S hn nd).now, m) ∈ st.voteForwards)
+    st.now = (shapeOf S hn nd).now ∧ VoteGate st ∧
+      (m ∈ st.node.ac.pool m.slot → ∃ w, ((shapeOf S hn nd).now, m, w) ∈ st.voteForwards)
   have hrec : ∀ st o hs, Q st → Q (recordOwn st o hs) := by
     intro st o hs h
-    refine ⟨(recordOwn_now st o hs).trans h.1, ?_⟩
+    refine ⟨(recordOwn_now st o hs).trans h.1, recordOwn_voteGate st o hs h.2.1, ?_⟩
     intro hm
     by_cases hold : m ∈ st.node.ac.pool m.slot
-    · exact recordOwn_voteForwards_subset st o hs (h.2 hold)
+    · obtain ⟨w, hw⟩ := h.2.2 hold
+      exact ⟨w, recordOwn_voteForwards_subset st o hs hw⟩
     · rw [← h.1]
-      exact recordOwn_pool_insertion_queued st o hs m hold hm
+      exact recordOwn_pool_insertion_queued st h.2.1 o hs m hold hm
   have hprop : ∀ st s, Q st → Q (propose st s).1 := by
     intro st s h
     have hp : (propose st s).1.node.ac.pool = st.node.ac.pool := by
@@ -606,13 +776,13 @@ theorem proposal_pool_insertion_queued (v : V)
       rw [propose_eq]
       dsimp only
       split <;> exact hp
-    refine ⟨(propose_now st s).trans h.1, ?_⟩
+    refine ⟨(propose_now st s).trans h.1, propose_voteGate st s h.2.1, ?_⟩
     rw [hp, propose_voteForwards]
-    exact h.2
+    exact h.2.2
   rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.vote) t with ⟨h, -⟩ | ⟨s, hs, h, -⟩
   · rw [h]; exact hbase
   · rw [h]
-    exact (dutyStep_propose_pres S rho hn Q hrec hprop v nd s hs ⟨rfl, hbase⟩).2
+    exact (dutyStep_propose_pres S rho hn Q hrec hprop v nd s hs ⟨rfl, hg, hbase⟩).2.2
 
 end Consensus.Goldilocks.Simulation
 

@@ -137,7 +137,7 @@ theorem tick_attest_processAt {i : Nat} {v : V} {t : Time}
       (traceEncoding S hn).adapter.node
         (NodeAsChainShape.CanonicalTrace.stateAt (traceEncoding S hn) rho v i) := by
     rw [stateAt_eq]
-    exact traceEncoding_induction S hn (fun e _ =>
+    exact traceEncoding_induction S hn (fun e _ _ =>
       ((rho.stateBefore i v).st.1 hn).node =
         e.adapter.node (NodeAsChainShape.CanonicalTrace.stateAt e rho v i)) fun _ => by
       rw (config := { transparency := .default })

@@ -87,7 +87,8 @@ theorem attCall_sign_of_released (hv : rho.ExecutionValid) {y : Fin (Fintype.car
     have ha : e.codec.attestation w = some a := by
       unfold canonEvent at hcanon
       split at hcanon <;> cases hcanon
-      assumption
+      rename_i h
+      rwa [receiverCodec_eq] at h
     rw [hcodec w ha] at hw
     rw [ht] at hhon
     obtain ⟨j, t', hj, hs, hb⟩ := hv.unforgeable i v o t he obj hw _ hsign hhon
@@ -123,7 +124,7 @@ theorem attCall_sign_of_released (hv : rho.ExecutionValid) {y : Fin (Fintype.car
   rw [(simTrace_encoding S rho hn).1] at hc hhon hrel ⊢
   rw [(simTrace_encoding S rho hn).2] at hrel
   refine NodeAsChainShape.CanonicalTrace.attCall_sign_of_released enc rho hv hc hhon ?_ rfl hrel
-  exact traceEncoding_induction S hn (fun e _ => ∀ w, e.codec.attestation w = some a →
+  exact traceEncoding_induction S hn (fun e _ _ => ∀ w, e.codec.attestation w = some a →
     NodeAsChainShape.CanonicalTrace.engineObj e w = attObj (binding := S.vote) a) fun _ w hw => by
     obtain rfl := eq_attObj_of_decodeAttObj hw
     rw (config := { transparency := .default })

@@ -54,8 +54,9 @@ private theorem onBlock_reachable {P : Params} {A : NodeAC P} (self : Fin P.n)
       exact h.tail (Or.inl ⟨B, he⟩)
 
 private theorem processOne_record {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-    (hs : List (Header Info × Nat)) (st : State sp ro binding) (o : Wire sp.n binding) :
-    (processOne hs st o).node.record = st.node.record := by
+    (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
+    (st : State sp ro binding) (o : Wire sp.n binding) :
+    (processOne io hs st o).node.record = st.node.record := by
   rw [processOne_eq]
   split
   · simp only [relayIf, apply]
@@ -78,9 +79,10 @@ private theorem recordOwn_record {sp : AC.ACParams} {ro : AC.ReplayOrder sp (Lis
 /-- Every canonical receipt handler preserves FG-store reachability. -/
 theorem processOne_reachable {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-    (hs : List (Header Info × Nat)) (st : State sp ro binding) (o : Wire sp.n binding)
+    (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
+    (st : State sp ro binding) (o : Wire sp.n binding)
     (h : st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload) :
-    (processOne hs st o).node.fg.Reachable (goldilocksNode sp ro).genesisPayload := by
+    (processOne io hs st o).node.fg.Reachable (goldilocksNode sp ro).genesisPayload := by
   rw [processOne_eq]
   split
   · simp only [relayIf, apply]
@@ -160,7 +162,8 @@ private theorem process_record {sp : AC.ACParams}
     (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat)) :
     (process st o hs).node.record = st.node.record := by
   rw [process_eq]
-  generalize delivered hs st o = os
+  generalize st.voteIO = io
+  generalize delivered io hs st o = os
   induction os generalizing st with
   | nil => rfl
   | cons x xs ih =>
@@ -172,10 +175,11 @@ private theorem process_reachable {sp : AC.ACParams}
     (h : st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload) :
     (process st o hs).node.fg.Reachable (goldilocksNode sp ro).genesisPayload := by
   rw [process_eq]
-  generalize delivered hs st o = os
+  generalize st.voteIO = io
+  generalize delivered io hs st o = os
   induction os generalizing st with
   | nil => exact h
-  | cons x xs ih => exact ih _ (processOne_reachable _ _ _ h)
+  | cons x xs ih => exact ih _ (processOne_reachable io hs st x h)
 
 private def HasHistory {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (key : Fin sp.n) (st : State sp ro binding) (signed : FG.Att sp.n → Prop := fun _
@@ -675,28 +679,33 @@ theorem engine_event_signing_history (_hv : rho.ExecutionValid) {v : V}
   exact ⟨ins, hi, hr, fun j q a hj hs => hout a ⟨j, q, hj, hs⟩⟩
 
 private theorem emitted_no_att {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding)
     (cs : List (Cut (goldilocksNode sp ro))) (a : WireAtt) :
-    Body.att a ∉ emitted cs := by
+    Body.att a ∉ emitted io cs := by
   simp only [emitted, List.mem_flatMap]
   rintro ⟨c, _, hc⟩
-  cases c <;> simp_all
+  cases c with
+  | fg _ => exact List.not_mem_nil hc
+  | ac l =>
+    obtain ⟨e, _, he⟩ := List.mem_filterMap.mp hc
+    cases ownToken io e.msg <;> simp at he
 
 private theorem apply_att {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (r) (a : WireAtt) :
-    Body.att a ∈ (apply st r).outbox ↔ Body.att a ∈ st.outbox := by
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
+    (origin) (r) (a : WireAtt) :
+    Body.att a ∈ (apply st origin r).outbox ↔ Body.att a ∈ st.outbox := by
   simp only [apply, List.mem_append, emitted_no_att, or_false]
 
 private theorem processOne_att {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (hs) (st : State sp ro binding) (o)
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io) (hs) (st : State sp ro binding) (o)
         (a : WireAtt) :
-    Body.att a ∈ (processOne hs st o).outbox ↔ Body.att a ∈ st.outbox := by
+    Body.att a ∈ (processOne io hs st o).outbox ↔ Body.att a ∈ st.outbox := by
   rw [processOne_eq]
   split
   · simp only [relayIf]
-    split <;> exact apply_att _ _ _
-  · exact apply_att _ _ _
-  · exact apply_att _ _ _
+    split <;> exact apply_att st none _ a
+  · exact apply_att st (some o) _ a
+  · exact apply_att st none _ a
   · rfl
 
 private theorem recordOwn_att {sp : AC.ACParams}
@@ -707,7 +716,7 @@ private theorem recordOwn_att {sp : AC.ACParams}
   split
   · rfl
   · split
-    · exact apply_att _ _ _
+    · exact apply_att _ _ _ _
     · rfl
   · rfl
 
@@ -716,7 +725,8 @@ private theorem process_att {sp : AC.ACParams}
         (a : WireAtt) :
     Body.att a ∈ (process st o hs).outbox ↔ Body.att a ∈ st.outbox := by
   rw [process_eq]
-  generalize delivered hs st o = os
+  generalize st.voteIO = io
+  generalize delivered io hs st o = os
   induction os generalizing st with
   | nil => rfl
   | cons x xs ih => rw [List.foldl_cons, ih, processOne_att]
@@ -733,13 +743,14 @@ private theorem nodeTick_att {sp : AC.ACParams}
     Body.att a ∈ (nodeTick st).outbox ↔ Body.att a ∈ st.outbox := by
   rw [nodeTick_eq]
   split
-  · exact apply_att _ _ _
+  · exact apply_att st none _ a
   · rfl
 
 private theorem restore_att {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (k t) (a : WireAtt) :
     Body.att a ∈ (restore k st t).outbox ↔ Body.att a ∈ st.outbox := by
-  exact apply_att _ _ _
+  rw [restore_eq]
+  exact apply_att { st with self := k, now := t } none _ a
 
 theorem createAtt_val {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σ : FG.ChainState n}
     {a : FG.Att n} (h : Λ.createAtt v σ = some (a, Λ')) : a.val = v := by

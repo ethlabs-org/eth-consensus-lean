@@ -29,9 +29,9 @@ theorem decodeAtt_encodeAtt {n : Nat} (a : FG.Att n) : decodeAtt n (encodeAtt a)
 
 /-- A non-vote data body names no signing-role override, at every vote binding. -/
 theorem candidateRole_of_not_vote (B : VoteBinding) (n : Nat) (d : ShapeDuty B.Kind) (b : Body)
-    (h : ∀ w, b ≠ .vote w) : B.candidateRole n d (.data b) = none := by
+    (h : ∀ w z, b ≠ .vote w z) : B.candidateRole n d (.data b) = none := by
   cases b with
-  | vote w => exact absurd rfl (h w)
+  | vote w z => exact absurd rfl (h w z)
   | _ => cases hp : B.participationKind <;> simp [VoteBinding.candidateRole, hp]
 
 /-- An item names no signing-role override, at every vote binding. -/
@@ -51,12 +51,12 @@ theorem pollRole_eq (B : VoteBinding) (n : Nat) (b : Body) :
   rfl
 
 /-- A poll signs a canonical vote body in the vote's role. -/
-theorem pollRole_vote (B : VoteBinding) {n : Nat} (m : Vote n) :
-    pollRole B n (.vote (encodeVote m)) = B.voteRole m.slot :=
-  B.candidateRole_poll_vote 0 m
+theorem pollRole_vote (B : VoteBinding) {n : Nat} (m : Vote n) (z : Nat) :
+    pollRole B n (.vote (encodeVote m) z) = B.voteRole m.slot :=
+  B.candidateRole_poll_vote 0 m z
 
 /-- A poll signs every non-vote body in the poll role. -/
-theorem pollRole_of_not_vote (B : VoteBinding) (n : Nat) {b : Body} (hb : ∀ w, b ≠ .vote w) :
+theorem pollRole_of_not_vote (B : VoteBinding) (n : Nat) {b : Body} (hb : ∀ w z, b ≠ .vote w z) :
     pollRole B n b = .poll :=
   B.candidateRole_poll_nonvote n 0 b hb
 
@@ -127,35 +127,66 @@ theorem decodeBlock_blockObj (hs : List (Header Info × Nat)) (B : Blk sp)
   rw [hB]
   rw [ite_eq_left ⟨by trivial, by trivial, hwf, hval⟩]
 
-/-- The canonical object of a vote decodes to the vote. -/
-theorem decodeVoteObj_voteObj (v : Vote sp.n) :
-    decodeVoteObj sp (binding := binding) (voteObj (binding := binding) v) = some v := by
-  cases hp : binding.participationKind <;>
-    simp [decodeVoteObj, voteObj, VoteBinding.voteRole, hp, decodeVote_encodeVote]
+/-- A canonical vote object decodes exactly when its presented evidence passes the check. -/
+theorem decodeVoteObj_voteObj (io : VoteAuth sp.n binding) (v : Vote sp.n) (z : Nat) :
+    decodeVoteObj sp io (voteObj (binding := binding) v z) =
+      if io.check v.val (binding.voteRole v.slot) (encodeVote v) z then some v else none := by
+  simp [decodeVoteObj, presented, voteObj, decodeVote_encodeVote]
+
+/-- A decoded vote has the signer and slot role checked by the receiver. -/
+theorem decodeVoteObj_verified (io : VoteAuth sp.n binding) {o : Wire sp.n binding}
+    {v : Vote sp.n} (h : decodeVoteObj sp io o = some v) :
+    ∃ w z, decodeVote sp.n w = some v ∧
+      io.check v.val (binding.voteRole v.slot) w z = true := by
+  unfold decodeVoteObj at h
+  split at h
+  next k r w z hp =>
+    split at h
+    next hc =>
+      have he : k = v.val ∧ r = binding.voteRole v.slot := by
+        cases o with
+        | mk a m cs =>
+          unfold presented at hp
+          split at hp
+          · split at hp <;> try contradiction
+            split at hp <;> try contradiction
+            simp only [Option.some.injEq, Prod.mk.injEq] at hp
+            obtain ⟨⟨rfl, rfl, rfl⟩, rfl⟩ := hp
+            grind
+          · contradiction
+      exact ⟨w, z, h, by simpa only [he.1, he.2] using hc⟩
+    next => contradiction
+  next => contradiction
 
 /-- The canonical object of a well-formed attestation decodes to the attestation. -/
 theorem decodeAttObj_attObj (a : FG.Att sp.n) (hwf : a.WellFormed) :
     decodeAttObj sp (binding := binding) (attObj (binding := binding) a) = some a := by
   simp [decodeAttObj, attObj, decodeAtt_encodeAtt, hwf]
 
-/-- The canonical object of a vote stands for the node's `message` event. -/
-theorem canonEvent_voteObj (hs : List (Header Info × Nat)) (v : Vote sp.n) :
-    canonEvent sp ro (binding := binding) hs (voteObj (binding := binding) v) =
-      some (.message v) := by
-  have h1 : decodeBlock sp (binding := binding) hs (voteObj (binding := binding) v) = none := by
+/-- A canonical vote object calls the message handler exactly when its evidence passes. -/
+theorem canonEvent_voteObj (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
+    (v : Vote sp.n) (z : Nat) :
+    canonEvent sp ro io hs (voteObj (binding := binding) v z) =
+      if io.check v.val (binding.voteRole v.slot) (encodeVote v) z then some (.message v)
+      else none := by
+  have h1 : decodeBlock sp (binding := binding) hs (voteObj v z) = none := by
     simp [decodeBlock_eq, voteObj]
-  simp only [canonEvent_eq, h1, decodeVoteObj_voteObj]
+  have h2 : decodeAttObj sp (binding := binding) (voteObj v z) = none := by
+    simp [decodeAttObj, voteObj]
+  by_cases h : io.check v.val (binding.voteRole v.slot) (encodeVote v) z = true <;>
+    simp [canonEvent_eq, h1, decodeVoteObj_voteObj, h, h2]
 
 /-- The canonical object of a well-formed attestation stands for the node's `attestation`
 event. -/
-theorem canonEvent_attObj (hs : List (Header Info × Nat)) (a : FG.Att sp.n)
+theorem canonEvent_attObj (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
+    (a : FG.Att sp.n)
     (hwf : a.WellFormed) :
-    canonEvent sp ro (binding := binding) hs (attObj (binding := binding) a) =
+    canonEvent sp ro io hs (attObj (binding := binding) a) =
       some (.attestation a) := by
   have h1 : decodeBlock sp (binding := binding) hs (attObj (binding := binding) a) = none := by
     simp [decodeBlock_eq, attObj]
-  have h2 : decodeVoteObj sp (binding := binding) (attObj (binding := binding) a) = none := by
-    cases hp : binding.participationKind <;> simp [decodeVoteObj, attObj, hp]
+  have h2 : decodeVoteObj sp io (attObj (binding := binding) a) = none := by
+    simp [decodeVoteObj, presented, attObj]
   simp only [canonEvent_eq, h1, h2, decodeAttObj_attObj a hwf]
 
 /-! ## The slashing rule and the own-object guard -/
@@ -225,9 +256,9 @@ theorem protects_of_not_att {V : Type} [Fintype V] {E : Env V} (S : Setup)
 
 /-- A vote-forward envelope has no parent dependency, including in its carried canonical vote. -/
 theorem dependencies_voteForward {n : Nat} (held : List (Wire n binding))
-    (x : Fin n) (t : Time) (v : Vote n) :
+    (x : Fin n) (t : Time) (v : Vote n) (z : Nat) :
     (dependencies n).ready held
-      (.mk (.signed x .poll) (.data (.voteForward t (encodeVote v))) [voteObj v]) = true := by
+      (.mk (.signed x .poll) (.data (.voteForward t (encodeVote v))) [voteObj v z]) = true := by
   cases hp : binding.participationKind <;>
     simp only [dependencies, forwardParent?, voteObj, VoteBinding.voteRole, hp,
       Model.Obj.parts, Model.Obj.parts.partsList,
@@ -237,9 +268,9 @@ theorem dependencies_voteForward {n : Nat} (held : List (Wire n binding))
 theorem releasable_voteForward {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (x : Fin (Fintype.card V))
     (seen : List (Model.protoOf (compiled (goldilocks S)) E).Object)
-    (t : Time) (v : Vote (Fintype.card V)) (hv : voteObj v ∈ Model.closure seen) :
+    (t : Time) (v : Vote (Fintype.card V)) (z : Nat) (hv : voteObj v z ∈ Model.closure seen) :
     Model.releasable (P := Model.protoOf (compiled (goldilocks S)) E) seen
-      (.mk (.signed x .poll) (.data (.voteForward t (encodeVote v))) [voteObj v]) = true := by
+      (.mk (.signed x .poll) (.data (.voteForward t (encodeVote v))) [voteObj v z]) = true := by
   classical
   simp only [Model.releasable, Model.Obj.carried, List.all_eq_true, decide_eq_true_eq]
   intro o ho
@@ -518,40 +549,47 @@ theorem decoded_forward_fields {sp : AC.ACParams} (hs : List (Header Info × Nat
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- `apply` keeps the key. -/
-theorem apply_self (st : State sp ro binding) r : (apply st r).self = st.self := rfl
+theorem apply_self (st : State sp ro binding) origin r : (apply st origin r).self = st.self := rfl
 /-- `apply` keeps the clock. -/
-theorem apply_now (st : State sp ro binding) r : (apply st r).now = st.now := rfl
+theorem apply_now (st : State sp ro binding) origin r : (apply st origin r).now = st.now := rfl
 /-- `apply` keeps the FG-due flag. -/
-theorem apply_fgDue (st : State sp ro binding) r : (apply st r).fgDue = st.fgDue := rfl
+theorem apply_fgDue (st : State sp ro binding) origin r : (apply st origin r).fgDue = st.fgDue :=
+  rfl
 /-- `apply` installs the node state of its handler result. -/
-theorem apply_node (st : State sp ro binding) r : (apply st r).node = r.1 := rfl
+theorem apply_node (st : State sp ro binding) origin r : (apply st origin r).node = r.1 := rfl
 
 /-- A newly queued envelope has the handler's clock and an actual fresh pool insertion.
 This is local queue provenance, not a release or service theorem. -/
-theorem apply_voteForward_fresh (st : State sp ro binding) r (t : Time) (v : Vote sp.n)
-    (h : (t, v) ∈ (apply st r).voteForwards)
-    (hold : (t, v) ∉ st.voteForwards) :
+theorem apply_voteForward_fresh (st : State sp ro binding) origin r (t : Time) (v : Vote sp.n)
+    (o : Wire sp.n binding) (h : (t, v, o) ∈ (apply st origin r).voteForwards)
+    (hold : (t, v, o) ∉ st.voteForwards) :
     t = st.now ∧ v ∉ st.node.ac.pool v.slot ∧ v ∈ r.1.ac.pool v.slot := by
   classical
   simp only [apply, List.mem_append] at h
   obtain h | h := h
   · exact False.elim (hold h)
-  obtain ⟨w, hw, he⟩ := List.mem_map.mp h
+  obtain ⟨w, hw, he⟩ := List.mem_filterMap.mp h
+  obtain ⟨_, _, he⟩ := Option.map_eq_some_iff.mp he
   cases he
-  have hw := (List.mem_filter.mp hw).2
-  exact ⟨rfl, of_decide_eq_true hw⟩
+  exact ⟨rfl, of_decide_eq_true (List.mem_filter.mp hw).2⟩
 
 /-- Wire and own-emission candidates surviving a fresh handler insertion
 are queued at that handler's clock. Completeness of these candidates is a separate obligation. -/
-theorem apply_voteForward_of_admission (st : State sp ro binding) r (v : Vote sp.n)
+theorem apply_voteForward_of_admission (st : State sp ro binding) origin r (v : Vote sp.n)
     (ℓ : ACLabel (goldilocksNode sp ro)) (hℓ : .ac ℓ ∈ r.2)
     (hsource : ℓ.call = .message v ∨ ∃ e ∈ ℓ.emits, e.msg = v)
-    (hold : v ∉ st.node.ac.pool v.slot) (hnew : v ∈ r.1.ac.pool v.slot) :
-    (st.now, v) ∈ (apply st r).voteForwards := by
-  classical
+    (hold : v ∉ st.node.ac.pool v.slot) (hnew : v ∈ r.1.ac.pool v.slot)
+    {o : Wire sp.n binding}
+    (hobj : (if v ∈ r.2.flatMap (fun
+        | .fg _ => []
+        | .ac l => l.emits.map (·.msg)) then
+        (ownToken st.voteIO v).map (voteObj v) else origin) = some o) :
+    (st.now, v, o) ∈ (apply st origin r).voteForwards := by
   apply List.mem_append_right
-  apply List.mem_map.mpr
-  refine ⟨v, List.mem_filter.mpr ⟨List.mem_dedup.mpr ?_, by simp [hold, hnew]⟩, rfl⟩
+  apply List.mem_filterMap.mpr
+  refine ⟨v, List.mem_filter.mpr ⟨List.mem_dedup.mpr ?_, by simp [hold, hnew]⟩, ?_⟩
+  swap
+  · exact congrArg (Option.map fun x => (st.now, v, x)) hobj
   apply List.mem_flatMap.mpr
   refine ⟨.ac ℓ, hℓ, ?_⟩
   rcases hsource with hm | ⟨e, he, hv⟩
@@ -572,19 +610,21 @@ theorem relayIf_node (st : State sp ro binding) (c : Prop) [Decidable c] o :
     (relayIf st c o).node = st.node := by unfold relayIf; split <;> rfl
 
 /-- Processing one delivered object keeps the key. -/
-theorem processOne_self hs (st : State sp ro binding) o : (processOne hs st o).self = st.self := by
+theorem processOne_self io hs (st : State sp ro binding) o :
+    (processOne io hs st o).self = st.self := by
   rw [processOne_eq]; split <;> simp [relayIf_self, apply_self]
 /-- Processing one delivered object keeps the clock. -/
-theorem processOne_now hs (st : State sp ro binding) o : (processOne hs st o).now = st.now := by
+theorem processOne_now io hs (st : State sp ro binding) o :
+    (processOne io hs st o).now = st.now := by
   rw [processOne_eq]; split <;> simp [relayIf_now, apply_now]
 /-- Processing one delivered object keeps the FG-due flag. -/
-theorem processOne_fgDue hs (st : State sp ro binding) o : (processOne hs st o).fgDue = st.fgDue
-    := by
+theorem processOne_fgDue io hs (st : State sp ro binding) o :
+    (processOne io hs st o).fgDue = st.fgDue := by
   rw [processOne_eq]; split <;> simp [relayIf_fgDue, apply_fgDue]
 
 /-- Processing one object preserves all previously queued admission envelopes. -/
-theorem processOne_voteForwards_subset hs (st : State sp ro binding) o :
-    st.voteForwards ⊆ (processOne hs st o).voteForwards := by
+theorem processOne_voteForwards_subset io hs (st : State sp ro binding) o :
+    st.voteForwards ⊆ (processOne io hs st o).voteForwards := by
   rw [processOne_eq]
   split
   · dsimp only
@@ -597,74 +637,75 @@ theorem processOne_voteForwards_subset hs (st : State sp ro binding) o :
 
 /-- A delivery handler either preserves an old queue entry or stamps a new one
 with its actual clock. This does not assume first release or pool freshness. -/
-theorem processOne_voteForward_stamp hs (st : State sp ro binding) o (t : Time) (m : Vote sp.n)
-    (h : (t, m) ∈ (processOne hs st o).voteForwards) :
-    (t, m) ∈ st.voteForwards ∨ t = st.now := by
-  by_cases hold : (t, m) ∈ st.voteForwards
+theorem processOne_voteForward_stamp io hs (st : State sp ro binding) o (t : Time)
+    (m : Vote sp.n) (w : Wire sp.n binding)
+    (h : (t, m, w) ∈ (processOne io hs st o).voteForwards) :
+    (t, m, w) ∈ st.voteForwards ∨ t = st.now := by
+  by_cases hold : (t, m, w) ∈ st.voteForwards
   · exact Or.inl hold
   right
   rw [processOne_eq] at h
   split at h
   · dsimp only at h
     unfold relayIf at h
-    split at h <;> exact (apply_voteForward_fresh st _ t m h hold).1
-  · exact (apply_voteForward_fresh st _ t m h hold).1
+    split at h <;> exact (apply_voteForward_fresh st _ _ t m w h hold).1
+  · exact (apply_voteForward_fresh st _ _ t m w h hold).1
   · unfold relayIf at h
-    split at h <;> exact (apply_voteForward_fresh st _ t m h hold).1
+    split at h <;> exact (apply_voteForward_fresh st _ _ t m w h hold).1
   · exact False.elim (hold h)
 
 /-- Recursive receipt processing cannot introduce a vote stamp from a different
 clock, including when several objects admit votes during the same delivery. -/
-theorem foldl_processOne_voteForward_stamp hs (os : List (Wire sp.n binding))
-    (st : State sp ro binding) (t : Time) (m : Vote sp.n)
-    (h : (t, m) ∈ (os.foldl (processOne hs) st).voteForwards) :
-    (t, m) ∈ st.voteForwards ∨ t = st.now := by
+theorem foldl_processOne_voteForward_stamp io hs (os : List (Wire sp.n binding))
+    (st : State sp ro binding) (t : Time) (m : Vote sp.n) (w : Wire sp.n binding)
+    (h : (t, m, w) ∈ (os.foldl (processOne io hs) st).voteForwards) :
+    (t, m, w) ∈ st.voteForwards ∨ t = st.now := by
   induction os generalizing st with
   | nil => exact Or.inl h
   | cons o os ih =>
     rcases ih _ h with h | h
-    · exact processOne_voteForward_stamp hs st o t m h
-    · exact Or.inr (h.trans (processOne_now hs st o))
+    · exact processOne_voteForward_stamp io hs st o t m w h
+    · exact Or.inr (h.trans (processOne_now io hs st o))
 
 /-- Later objects in a delivery cannot remove an already queued admission envelope. -/
-theorem foldl_processOne_voteForwards_subset hs (os : List (Wire sp.n binding))
+theorem foldl_processOne_voteForwards_subset io hs (os : List (Wire sp.n binding))
     (st : State sp ro binding) :
-    st.voteForwards ⊆ (os.foldl (processOne hs) st).voteForwards := by
+    st.voteForwards ⊆ (os.foldl (processOne io hs) st).voteForwards := by
   induction os generalizing st with
   | nil => exact List.Subset.refl _
   | cons o os ih =>
     intro q hq
-    exact ih _ (processOne_voteForwards_subset hs st o hq)
+    exact ih _ (processOne_voteForwards_subset io hs st o hq)
 
 /-- Processing a list of delivered objects keeps the key. -/
-theorem foldl_processOne_self hs (os : List (Wire sp.n binding)) (st : State sp ro binding) :
-    (os.foldl (processOne hs) st).self = st.self := by
+theorem foldl_processOne_self io hs (os : List (Wire sp.n binding)) (st : State sp ro binding) :
+    (os.foldl (processOne io hs) st).self = st.self := by
   induction os generalizing st with
   | nil => rfl
   | cons o os ih => simp [List.foldl_cons, ih, processOne_self]
 /-- Processing a list of delivered objects keeps the clock. -/
-theorem foldl_processOne_now hs (os : List (Wire sp.n binding)) (st : State sp ro binding) :
-    (os.foldl (processOne hs) st).now = st.now := by
+theorem foldl_processOne_now io hs (os : List (Wire sp.n binding)) (st : State sp ro binding) :
+    (os.foldl (processOne io hs) st).now = st.now := by
   induction os generalizing st with
   | nil => rfl
   | cons o os ih => simp [List.foldl_cons, ih, processOne_now]
 
 /-- Processing a list of delivered objects keeps the FG-due flag. -/
-theorem foldl_processOne_fgDue hs (os : List (Wire sp.n binding)) (st : State sp ro binding) :
-    (os.foldl (processOne hs) st).fgDue = st.fgDue := by
+theorem foldl_processOne_fgDue io hs (os : List (Wire sp.n binding)) (st : State sp ro binding) :
+    (os.foldl (processOne io hs) st).fgDue = st.fgDue := by
   induction os generalizing st with
   | nil => rfl
   | cons o os ih => simp [List.foldl_cons, ih, processOne_fgDue]
 
 /-- A delivery keeps the key. -/
 theorem process_self (st : State sp ro binding) o hs : (process st o hs).self = st.self :=
-  foldl_processOne_self hs _ st
+  foldl_processOne_self st.voteIO hs _ st
 /-- A delivery keeps the clock. -/
 theorem process_now (st : State sp ro binding) o hs : (process st o hs).now = st.now :=
-  foldl_processOne_now hs _ st
+  foldl_processOne_now st.voteIO hs _ st
 /-- A delivery keeps the FG-due flag. -/
 theorem process_fgDue (st : State sp ro binding) o hs : (process st o hs).fgDue = st.fgDue :=
-  foldl_processOne_fgDue hs _ st
+  foldl_processOne_fgDue st.voteIO hs _ st
 
 /-- Recording an own object keeps the key. -/
 theorem recordOwn_self (st : State sp ro binding) o hs : (recordOwn st o hs).self = st.self := by

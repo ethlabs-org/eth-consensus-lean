@@ -200,11 +200,13 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- The votes a handler's cuts queue: its AC cut's emissions. -/
 private theorem handler_voteStep (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (io : VoteAuth sp.n binding)
     (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (ht : 0 ≤ t)
     (e : Event (goldilocksNode sp ro)) (hne : ∀ x, e ≠ .tick x) (hnr : e ≠ .restart) :
     ∃ (A' : ACState sp.n) (es : List (AC.Em sp (List (FG.Att sp.n)))),
       VoteStep st.ac A' es t ∧ (exec proposer dg self st t e).1.ac = A' ∧
-        emitted (exec proposer dg self st t e).2 = es.map fun e => .vote (encodeVote e.msg) := by
+        emitted io (exec proposer dg self st t e).2 = es.filterMap fun e =>
+          (ownToken (binding := binding) io e.msg).map fun z => .vote (encodeVote e.msg) z := by
   have hstep : ∀ (st' : NodeState (goldilocksNode sp ro)) (c : (goldilocksNode sp ro).Call),
       st'.ac = st.ac → c ≠ .restart →
       VoteStep st.ac ((goldilocksNode sp ro).step self st'.ac (frame st') t c).1
@@ -236,16 +238,16 @@ private theorem handler_voteStep (proposer : Nat → Fin sp.n)
 
 /-- At most one queued vote, of a state that has voted in the slot of `t`. -/
 def OneVote (t : Time) (σ : State sp ro binding) : Prop :=
-  (∀ b ∈ σ.outbox, ∃ w, b = .vote w) ∧
+  (∀ b ∈ σ.outbox, ∃ w z, b = .vote w z) ∧
     (σ.outbox = [] ∨ ∃ b, σ.outbox = [b] ∧ σ.node.ac.votedSlot = sp.slot t)
 
 /-- At most one vote queued, all votes. -/
 def AtMostOneVote (σ : State sp ro binding) : Prop :=
-  (∀ b ∈ σ.outbox, ∃ w, b = .vote w) ∧ σ.outbox.length ≤ 1
+  (∀ b ∈ σ.outbox, ∃ w z, b = .vote w z) ∧ σ.outbox.length ≤ 1
 
 /-- `AtMostOneVote` unfolded. -/
 theorem atMostOneVote_iff (σ : State sp ro binding) :
-    AtMostOneVote σ ↔ (∀ b ∈ σ.outbox, ∃ w, b = .vote w) ∧ σ.outbox.length ≤ 1 := Iff.rfl
+    AtMostOneVote σ ↔ (∀ b ∈ σ.outbox, ∃ w z, b = .vote w z) ∧ σ.outbox.length ≤ 1 := Iff.rfl
 
 theorem OneVote.atMost {t : Time} {σ : State sp ro binding} (h : OneVote t σ) : AtMostOneVote σ
     := by
@@ -256,10 +258,10 @@ theorem OneVote.atMost {t : Time} {σ : State sp ro binding} (h : OneVote t σ) 
 theorem processOne_oneVote (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) {t : Time} (ht : 0 ≤ t) (σ : State sp ro binding)
         (o : Wire sp.n binding)
-    (hnow : σ.now = t) (h : OneVote t σ) : OneVote t (processOne hs σ o) := by
-  obtain ⟨-, -, -, -, -, hnode⟩ := processOne_eq (fun _ => σ.self) dg hs σ o
-  have hout := processOne_outbox_eq (fun _ => σ.self) dg hs σ o
-  cases he : canonEvent sp ro hs o with
+    (hnow : σ.now = t) (h : OneVote t σ) : OneVote t (processOne σ.voteIO hs σ o) := by
+  obtain ⟨-, -, -, -, -, hnode⟩ := processOne_eq (fun _ => σ.self) dg σ.voteIO hs σ o
+  have hout := processOne_outbox_eq (fun _ => σ.self) dg σ.voteIO hs σ o
+  cases he : canonEvent sp ro σ.voteIO hs o with
   | none =>
     rw [he] at hnode hout
     simp only [Option.elim_none, List.append_nil] at hnode hout
@@ -270,10 +272,10 @@ theorem processOne_oneVote (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     rw [he] at hnode hout
     simp only [Option.elim_some] at hnode hout
     obtain ⟨A', es, hvs, hac, hem⟩ := handler_voteStep (fun _ => σ.self)
-      dg σ.self σ.node σ.now (hnow ▸ ht) e
+      dg σ.voteIO σ.self σ.node σ.now (hnow ▸ ht) e
       (canonEvent_ne_tick he) (by
         rintro rfl
-        rcases canonEvent_eq_some he with ⟨_, h, -⟩ | ⟨_, h, -⟩ | ⟨_, h, -⟩ <;> cases h)
+        rcases canonEvent_eq_some he with ⟨_, h, -⟩ | ⟨_, _, h, -⟩ | ⟨_, h, -⟩ <;> cases h)
     rw [hnow] at hvs
     obtain ⟨-, hv₁, hlen, hv₂⟩ := hvs
     unfold OneVote
@@ -281,15 +283,20 @@ theorem processOne_oneVote (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     refine ⟨fun b hb => ?_, ?_⟩
     · rcases List.mem_append.mp hb with hb | hb
       · exact h.1 b hb
-      · obtain ⟨e, -, rfl⟩ := List.mem_map.mp hb
-        exact ⟨_, rfl⟩
+      · obtain ⟨e, -, he⟩ := List.mem_filterMap.mp hb
+        obtain ⟨z, -, rfl⟩ := Option.map_eq_some_iff.mp he
+        exact ⟨_, _, rfl⟩
     rcases h.2 with h0 | ⟨b, hb, hvs⟩
     · rw [h0, List.nil_append]
       cases es with
       | nil => exact Or.inl rfl
       | cons e es =>
         cases es with
-        | nil => exact Or.inr ⟨_, rfl, (hv₂ e List.mem_cons_self).2.2⟩
+        | nil =>
+          cases hz : ownToken (binding := binding) σ.voteIO e.msg with
+          | none => exact Or.inl (by simp [hz])
+          | some z => exact Or.inr ⟨Body.vote (encodeVote e.msg) z, by simp [hz],
+              (hv₂ e List.mem_cons_self).2.2⟩
         | cons => simp at hlen
     · have hnil : es = [] := by
         cases es with
@@ -305,13 +312,14 @@ theorem processOne_oneVote (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
 theorem process_oneVote (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) {t : Time} (ht : 0 ≤ t) :
     ∀ (os : List (Wire sp.n binding)) (σ : State sp ro binding), σ.now = t → OneVote t σ →
-      OneVote t (os.foldl (processOne hs) σ)
+      OneVote t (os.foldl (processOne σ.voteIO hs) σ)
   | [], _, _, h => h
   | o :: os, σ, hnow, h => by
     rw [List.foldl_cons]
-    obtain ⟨-, -, -, hnow₁, -, -⟩ := processOne_eq (fun _ => σ.self) dg hs σ o
-    exact process_oneVote dg hs ht os _ (hnow₁.trans hnow)
+    obtain ⟨-, -, -, hnow₁, -, -⟩ := processOne_eq (fun _ => σ.self) dg σ.voteIO hs σ o
+    have h₁ := process_oneVote dg hs ht os _ (hnow₁.trans hnow)
       (processOne_oneVote dg hs ht σ o hnow h)
+    rwa [processOne_voteIO] at h₁
 
 end Deliver
 
@@ -406,7 +414,7 @@ theorem effRole_poll (t : Nat) (b : Body) :
 
 omit [DecidableEq V] in
 /-- A poll signs every non-vote body in the poll role. -/
-theorem poll_candidateRole_of_not_vote (t : Nat) {b : Body} (hb : ∀ w, b ≠ .vote w) :
+theorem poll_candidateRole_of_not_vote (t : Nat) {b : Body} (hb : ∀ w z, b ≠ .vote w z) :
     (Model.protoOf (compiled (goldilocks S)) E).candidateRole (.poll t) (.data b) = .poll :=
   (effRole_poll S t b).trans (pollRole_of_not_vote _ _ hb)
 
@@ -448,9 +456,10 @@ theorem pollOrdinary_some_neg {v : V} {b : Body}
 
 omit [DecidableEq V] in
 /-- An own canonical vote is the poll object of its body. -/
-theorem voteObj_eq_pollObj {v : V} {m : Vote (Fintype.card V)} (hm : m.val = rho.ownKey v) :
-    (voteObj m : (Model.protoOf (compiled (goldilocks S)) E).Object) = pollObj S rho v (.vote
-        (encodeVote m)) := by
+theorem voteObj_eq_pollObj {v : V} {m : Vote (Fintype.card V)} (z : Nat)
+    (hm : m.val = rho.ownKey v) :
+    (voteObj m z : (Model.protoOf (compiled (goldilocks S)) E).Object) = pollObj S rho v (.vote
+        (encodeVote m) z) := by
   unfold voteObj pollObj
   rw [hm, pollRole_vote]
   rfl
@@ -462,13 +471,13 @@ theorem attObj_eq_pollObj_of_val {v : V} {a : FG.Att (Fintype.card V)}
     (attObj a : (Model.protoOf (compiled (goldilocks S)) E).Object) = pollObj S rho v (.att
         (encodeAtt a)) := by
   unfold attObj pollObj
-  rw [ha, pollRole_of_not_vote _ _ (fun w h => by cases h)]
+  rw [ha, pollRole_of_not_vote _ _ (fun w z h => by cases h)]
   rfl
 
 omit [DecidableEq V] in
 /-- A node selected in the poll role is selected in the poll role of every non-vote body. -/
 theorem pollRole_selected_of_not_vote {v : V} {b : Body} (hsel : rho.ownKey v ∈ rho.sel .poll)
-    (hb : ∀ w, b ≠ .vote w) : rho.ownKey v ∈ rho.sel (pollRole S.vote (pubOf E).n b) := by
+    (hb : ∀ w z, b ≠ .vote w z) : rho.ownKey v ∈ rho.sel (pollRole S.vote (pubOf E).n b) := by
   rw [pollRole_of_not_vote _ _ hb]
   exact hsel
 
@@ -490,7 +499,7 @@ theorem act_poll_snd (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E
       ((poll (shapeOf S hn nd) t).2.map (fun bc => (.data bc.1, bc.2))).toList ++
         (shapeOf S hn nd).forwards.map (fun p => (.data (.forward p.1), p.2)) ++
         (shapeOf S hn nd).voteForwards.map
-          (fun p => (.data (.voteForward p.1 (encodeVote p.2)), [voteObj p.2])) := by
+          (fun p => (.data (.voteForward p.1 (encodeVote p.2.1)), [p.2.2])) := by
   change (((goldilocks S (pubOf E)).pollBatch nd.st.1 t).2.map _) = _
   rw [goldilocks_pollBatch_eq S _ nd.st.1 t, dite_eq_left hn]
   change List.map _ ((poll (nd.st.1 hn) t).2.toList ++
@@ -524,7 +533,7 @@ theorem propose_candidateRole_item (s : Nat) (hs : 0 < s) (h : Header Info) :
 omit [DecidableEq V] in
 /-- A proposal signs every non-vote body in the slot's proposer role. -/
 theorem propose_candidateRole_of_not_vote (s : Nat) (hs : 0 < s) {b : Body}
-    (hb : ∀ w, b ≠ .vote w) :
+    (hb : ∀ w z, b ≠ .vote w z) :
     (Model.protoOf (compiled (goldilocks S)) E).candidateRole (.propose s hs) (.data b)
         = .proposer s :=
   congrArg (Option.getD · _) (candidateRole_of_not_vote _ _ (.propose s hs) b hb)
@@ -572,7 +581,7 @@ theorem signedCandidate_poll (v : V) (nd : Model.Node (Model.protoOf (compiled
         (shapeOf S hn nd).forwards.map
           (fun p => .mk (.signed (rho.ownKey v) .poll) (.data (.forward p.1)) p.2) ++
         (shapeOf S hn nd).voteForwards.map (fun p => .mk (.signed (rho.ownKey v) .poll)
-          (.data (.voteForward p.1 (encodeVote p.2))) [voteObj p.2]) := by
+          (.data (.voteForward p.1 (encodeVote p.2.1))) [p.2.2]) := by
   rw [act_poll_snd S hn]
   unfold Model.Run.signedCandidate
   rw [ite_eq_left (show rho.ownKey v ∈ rho.sel
@@ -587,14 +596,14 @@ theorem signedCandidate_poll (v : V) (nd : Model.Node (Model.protoOf (compiled
     rw [effRole_poll S (E := E) t b]
   · apply filterMap_eq_map_of
     rintro ⟨τ, cs⟩ -
-    have hf := poll_candidateRole_of_not_vote S (E := E) t (b := .forward τ) fun _ h => by cases h
+    have hf := poll_candidateRole_of_not_vote S (E := E) t (b := .forward τ) fun _ _ h => by cases h
     dsimp only [Function.comp]
     rw [hf, ite_eq_left hsel]
   · apply filterMap_eq_map_of
-    rintro ⟨τ, m⟩ -
+    rintro ⟨τ, m, w⟩ -
     have hf := poll_candidateRole_of_not_vote S (E := E) t
       (b := .voteForward τ (encodeVote m))
-      fun _ h => by cases h
+      fun _ _ h => by cases h
     dsimp only [Function.comp]
     rw [hf, ite_eq_left hsel]
     rfl
@@ -659,8 +668,8 @@ theorem dutyStep_poll_sub (v : V) (nd : Model.Node (Model.protoOf (compiled (gol
     (t : Nat) : ∀ o ∈ (rho.dutyStep v nd (.poll t)).2,
       (∃ b, (pollPre (shapeOf S hn nd)).outbox.head? = some b ∧ o = pollObj S rho v b) ∨
       (∃ τ cs, o = .mk (.signed (rho.ownKey v) .poll) (.data (.forward τ)) cs) ∨
-      ∃ τ m, o = .mk (.signed (rho.ownKey v) .poll)
-        (.data (.voteForward τ (encodeVote m))) [voteObj m] := by
+      ∃ τ m w, (τ, m, w) ∈ (shapeOf S hn nd).voteForwards ∧ o = .mk (.signed (rho.ownKey v) .poll)
+        (.data (.voteForward τ (encodeVote m))) [w] := by
   intro o ho
   unfold Model.Run.dutyStep at ho
   split at ho
@@ -683,8 +692,8 @@ theorem dutyStep_poll_sub (v : V) (nd : Model.Node (Model.protoOf (compiled (gol
             exact absurd ho List.not_mem_nil
       · obtain ⟨⟨τ, cs'⟩, _, rfl⟩ := List.mem_map.mp ho
         exact Or.inr (Or.inl ⟨τ, cs', rfl⟩)
-    · obtain ⟨⟨τ, m⟩, _, rfl⟩ := List.mem_map.mp ho
-      exact Or.inr (Or.inr ⟨τ, m, rfl⟩)
+    · obtain ⟨⟨τ, m, w⟩, hq, rfl⟩ := List.mem_map.mp ho
+      exact Or.inr (Or.inr ⟨τ, m, w, hq, rfl⟩)
   · simp at ho
 
 omit [DecidableEq V] in
@@ -809,7 +818,7 @@ theorem recordOwn_outbox (st : State sp ro binding) (o : Wire sp.n binding) (hs 
     (Header Info × Nat)) :
     (recordOwn st o hs).outbox = st.outbox ∨ ∃ B,
       (recordOwn st o hs).outbox =
-        st.outbox ++ emitted (Node.onBlock st.self st.node st.now B).2 := by
+        st.outbox ++ emitted st.voteIO (Node.onBlock st.self st.node st.now B).2 := by
   rw [AsChainShape.recordOwn_eq]
   split
   · exact Or.inl rfl
@@ -904,15 +913,16 @@ theorem outbox_after_pre (v : V) (σ : State (S.params (pubOf E) hn) (S.ro _) S.
     rw [nodeTick_eq]
     split_ifs
     · simp only [apply, h2, List.nil_append, emitted, acCall, List.flatMap_cons,
-        List.flatMap_nil, List.append_nil, List.length_map]
+        List.flatMap_nil, List.append_nil]
       rw [h2s]
       constructor
-      · rcases step_voteStep (sp := S.params (pubOf E) hn) (S.ro _) _ _ _ t ht .tick with
+      · refine (List.length_filterMap_le _ _).trans ?_
+        rcases step_voteStep (sp := S.params (pubOf E) hn) (S.ro _) _ _ _ t ht .tick with
           ⟨h, -⟩ | ⟨-, -, h, -⟩
         · cases h
         · exact h
       · intro hne
-        exact acOnTick_emits (S.ro _) _ _ _ t (fun h => hne (by rw [h]; rfl))
+        exact acOnTick_emits (S.ro _) _ _ _ t (fun h => hne (by rw [h]; simp))
     · rw [h2]; simp
   have hnow : (shapeOf S hn N3).now = t := by rw [hN3, nodeTick_now, h2s]
   rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.vote) t with
@@ -937,12 +947,12 @@ theorem outbox_after_pre (v : V) (σ : State (S.params (pubOf E) hn) (S.ro _) S.
       · rw [h', (propose_keeps' _ _).1, h30]; simp
       · rw [h', (propose_keeps' _ _).1, h30, List.nil_append, (propose_keeps' _ _).2.2, hnow]
         obtain ⟨A', es, hvs, -, hem⟩ := handler_voteStep (runProposer S rho hn)
-          (digestOf S rho) _ _ t ht (.block B)
+          (digestOf S rho) (propose (shapeOf S hn N3) s).1.voteIO _ _ t ht (.block B)
           (fun x h => by cases h) (fun h => by cases h)
-        change (emitted
+        change (emitted (propose (shapeOf S hn N3) s).1.voteIO
           (exec (runProposer S rho hn) (digestOf S rho) _ _ t (.block B)).2).length ≤ 1
-        rw [hem, List.length_map]
-        exact hvs.2.2.1
+        rw [hem]
+        exact (List.length_filterMap_le _ _).trans hvs.2.2.1
 
 omit [DecidableEq V] in
 /-- The outbox after an awake tick at `t ≥ 0` from a state with no FG update due and at most one
@@ -1033,8 +1043,8 @@ theorem outbox_inv (hv : rho.ExecutionValid) (v : V) :
             · rwa [hnow] at h
           rw [stateAt_deliver S rho hn w he]
           have h2 := process_oneVote (digestOf S rho) (Model.digests rho.hash o) ht
-            (delivered (Model.digests rho.hash o) (stateAt S rho hn w i) o)
-              (stateAt S rho hn w i) hnow h1
+            (delivered (stateAt S rho hn w i).voteIO (Model.digests rho.hash o)
+              (stateAt S rho hn w i) o) (stateAt S rho hn w i) hnow h1
           have hnow' : (process (stateAt S rho hn w i) o (Model.digests rho.hash o)).now = t :=
             (process_now _ _ _).trans hnow
           have hd := deliver_pres S rho hn
@@ -1068,7 +1078,7 @@ theorem outbox_inv (hv : rho.ExecutionValid) (v : V) :
           rw [stateAt_restart S rho hn w he]
           have hout : (restore (rho.ownKey w) (stateAt S rho hn w i) t).outbox =
               (stateAt S rho hn w i).outbox := by
-            change (stateAt S rho hn w i).outbox ++ emitted [Cut.ac ⟨.restart, _,
+            change (stateAt S rho hn w i).outbox ++ emitted _ [Cut.ac ⟨.restart, _,
               ((goldilocksNode _ _).step _ _ _ t .restart).2⟩] = _
             have h0 : ((goldilocksNode (S.params (pubOf E) hn) (S.ro _)).step (rho.ownKey w)
                 (stateAt S rho hn w i).node.ac (frame (stateAt S rho hn w i).node) t .restart).2 =
@@ -1104,7 +1114,8 @@ theorem deliver_not_att (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     · exact absurd h (not_lastRestart_deliver S rho hv he)
     · rwa [hnow] at h
   have hproc := process_oneVote (digestOf S rho) (Model.digests rho.hash o) ht
-    (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o) (stateAt S rho hn v i) hnow hpre
+    (delivered (stateAt S rho hn v i).voteIO (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+    (stateAt S rho hn v i) hnow hpre
   intro h
   simp only [Model.Run.releasesAt, he] at h
   unfold Model.Run.deliver at h
@@ -1113,7 +1124,8 @@ theorem deliver_not_att (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
   · rw [deliverDuties_eq S t ht] at h
     erw [Model.Run.runDuties_cons, Model.Run.runDuties_nil] at h
     simp only [List.append_nil] at h
-    rcases dutyStep_poll_sub S rho hn v _ _ _ h with ⟨b, hb, heq⟩ | ⟨τ, cs, heq⟩ | ⟨τ, m, heq⟩
+    rcases dutyStep_poll_sub S rho hn v _ _ _ h with ⟨b, hb, heq⟩ | ⟨τ, cs, heq⟩ |
+      ⟨τ, m, w, -, heq⟩
     case inr.inl =>
       have hmsg := congrArg Model.Obj.msg heq
       change Model.Msg.data (Body.att (encodeAtt a)) = Model.Msg.data (Body.forward τ) at hmsg
@@ -1130,7 +1142,7 @@ theorem deliver_not_att (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
       some b at hb
     rw [← stateAt_eq S rho hn v i] at hb
     rw [pollPre_eq, hf] at hb
-    obtain ⟨w, rfl⟩ := hproc.1 b (List.mem_of_mem_head? hb)
+    obtain ⟨w, z, rfl⟩ := hproc.1 b (List.mem_of_mem_head? hb)
     have hmsg := congrArg Model.Obj.msg heq
     simp only [attObj, Model.Obj.msg] at hmsg
     cases hmsg
@@ -1165,7 +1177,8 @@ private theorem outbox_after_deliver (hv : rho.ExecutionValid) {i : Nat} {v : V}
     · exact absurd h (not_lastRestart_deliver S rho hv he)
     · rwa [hnow] at h
   have hproc := process_oneVote (digestOf S rho) (Model.digests rho.hash o) ht
-    (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o) (stateAt S rho hn v i) hnow hpre
+    (delivered (stateAt S rho hn v i).voteIO (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+    (stateAt S rho hn v i) hnow hpre
   have hf : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).fgDue = false :=
     (process_fgDue _ _ _).trans (fgDue_eq_false S rho hn v i)
   rw [stateAt_deliver S rho hn v he]
@@ -1213,7 +1226,7 @@ theorem outbox_empty (hv : rho.ExecutionValid) (v : V) :
           have hnil := restart_emits_nil (S.ro _) (rho.ownKey v)
             (stateAt S rho hn v i).node.ac (frame (stateAt S rho hn v i).node) t
             (hv.in_horizon _ (List.mem_of_getElem? he)).1
-          change (stateAt S rho hn v i).outbox ++ emitted [Cut.ac ⟨.restart, _, _⟩] = []
+          change (stateAt S rho hn v i).outbox ++ emitted _ [Cut.ac ⟨.restart, _, _⟩] = []
           simp only [nodeAdapter, hnil, ih]
           simp [emitted]
       · rw [state_of_other S rho hn v i ev he hnode]; exact ih
@@ -1240,11 +1253,11 @@ theorem atProposal_outbox_nil (hv : rho.ExecutionValid) (i : Nat) {v : V} {t : T
   rw [nodeTick_eq]
   split_ifs
   · simp only [apply, hout2, List.nil_append, emitted, acCall, List.flatMap_cons,
-      List.flatMap_nil, List.append_nil, List.map_eq_nil_iff]
+      List.flatMap_nil, List.append_nil]
     by_contra hne
     rw [hnow2] at hne
     exact slotStart_ne_tickVote S hn t s (hts.trans (slotTime_eq S hn s))
-      (acOnTick_emits (S.ro _) _ _ _ t hne)
+      (acOnTick_emits (S.ro _) _ _ _ t fun h => hne (by rw [h]; simp))
   · exact hout2
 
 /-- **A body pending after an event was released at that event's time.** In this engine
@@ -1409,7 +1422,7 @@ theorem voteForwards_empty (hv : rho.ExecutionValid) (v : V) :
           rw [restore_eq]
           simp only [apply, Node.restart, acCall, hnil, List.map_nil,
             List.flatMap_cons, List.flatMap_nil, List.append_nil,
-            List.dedup_nil, List.filter_nil, ih]
+            List.dedup_nil, List.filter_nil, ih, List.filterMap_nil]
       · rw [state_of_other S rho hn v i ev he hnode]; exact ih
 
 end ForwardingQueue

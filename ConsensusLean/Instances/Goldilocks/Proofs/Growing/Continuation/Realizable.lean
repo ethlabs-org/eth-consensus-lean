@@ -393,9 +393,10 @@ theorem handover_realizable (F : ChainShapeFamily O Info) (K : Contract Progress
   obtain ⟨hash, hinj⟩ := Countable.exists_injective_nat (protoOf (compiled F) p.env).Item
   obtain ⟨relay, events, hv, he, hc⟩ :=
     Model.canonical_run_from_causal O (compiled F) V p.env p.faultyAt p.faultyAt_mono H hH key
-      sel (handoverSel_admits F p.env q) p.submit hash g
+      sel (handoverSel_admits F p.env q) p.submit hash (Model.stdIssue _ _)
+      (Model.stdVerify _ _ sel) (fun _ => Model.Run.voteVerification_std _ rfl rfl) g
   let rho := Model.Run.mk (F := compiled F) (E := p.env) p.faultyAt p.faultyAt_mono H events key
-    sel p.submit relay hash
+    sel p.submit relay hash (Model.stdIssue _ _) (Model.stdVerify _ _ sel)
   let r : (Sys F V).Run := ⟨p.env, rho⟩
   have hnc : ¬ rho.HashCollision :=
     Model.Run.not_hashCollision_of_injective (Model.Run.injectiveHash_iff.mpr hinj)

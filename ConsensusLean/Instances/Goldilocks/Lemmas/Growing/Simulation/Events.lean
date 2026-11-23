@@ -54,8 +54,8 @@ theorem simTraceAt_tick_of_awake (hv : rho.ExecutionValid)
 theorem simTraceAt_deliver (hv : rho.ExecutionValid)
     {v : V} {i : Nat} {o} {t : Time} (he : rho.events[i]? = some (.deliver v o t)) :
     DeliverSeq (runProposer S rho hn) (simTraceAt S rho hn) (digestOf S rho)
-      (Model.digests rho.hash o) (rho.ownKey v) t
-      (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+      (rho.voteIO v) (Model.digests rho.hash o) (rho.ownKey v) t
+      (delivered (rho.voteIO v) (Model.digests rho.hash o) (stateAt S rho hn v i) o)
         (cutMap S rho hn i) (cutMap S rho hn (i + 1)) := by
   have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
   have h0 := simTraceAt_state_all S rho hn hv v i hi.le

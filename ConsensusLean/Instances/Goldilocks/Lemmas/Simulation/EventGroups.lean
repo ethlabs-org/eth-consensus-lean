@@ -42,7 +42,7 @@ theorem simTrace_state_of (hv : rho.ExecutionValid) {v : V}
   intro i hi
   obtain ⟨htrace, hcut⟩ := simTrace_encoding S rho hn
   rw [htrace, hcut, stateAt_eq]
-  refine (traceEncoding_induction S hn (fun e due => e.Lawful due →
+  refine (traceEncoding_induction S hn (fun e due _ => e.Lawful due →
     ((rho.stateBefore i v).st.1 hn).node =
       (NodeAsChainShape.CanonicalTrace.simTrace e rho).state (rho.ownKey v)
         (NodeAsChainShape.CanonicalTrace.cutMap e rho i)) ?_) (traceEncoding_lawful S hn)
@@ -58,13 +58,13 @@ theorem deliver_seq_of_state {v : V} {i : Nat} {o} {t : Time}
     (hstate : (stateAt S rho hn v i).node =
       (simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) :
     DeliverSeq (runProposer S rho hn) (simTrace S rho hn) (digestOf S rho)
-      (Model.digests rho.hash o) (rho.ownKey v) t
-      (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+      (rho.voteIO v) (Model.digests rho.hash o) (rho.ownKey v) t
+      (delivered (rho.voteIO v) (Model.digests rho.hash o) (stateAt S rho hn v i) o)
         (cutMap S rho hn i) (cutMap S rho hn (i + 1)) := by
   have hi : i < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
   rw [cutMap_succ, eventCuts_deliver S rho hn i v o t he]
   refine deliverSeq_of_recs S rho hn (runProposer S rho hn) (digestOf S rho)
-    _ _ _ 0 _ (fun k hk => ?_) hstate.symm (fun k s hk _ => ?_)
+    (rho.voteIO v) _ _ _ 0 _ (fun k hk => ?_) hstate.symm (fun k s hk _ => ?_)
   · rw [← eventCuts_deliver S rho hn i v o t he] at hk ⊢
     exact allCuts_getElem?_add S rho hn i k hi hk
   · have := range_of_event S rho hn hi hk
@@ -133,7 +133,7 @@ theorem own_block_released_of (hrel : ∀ {i : Nat} {v : V} {t : Time},
     exfalso
     rw [eventCuts_deliver S rho hn i v o t he] at hmem
     obtain ⟨o', e, st', _, hce, kk, hk, hlabk, hposk⟩ :=
-      mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ hmem
+      mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ _ hmem
     exact hpos' (hposk.trans
       (pos_of_block_cut _ _ _ _ _ (canonEvent_ne_tick hce) hk (hlabk.symm.trans hrl)))
   | restart v t =>

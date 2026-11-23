@@ -310,13 +310,14 @@ theorem delivery_acceptance_decoded_publication_of_held {V : Type} [Fintype V] [
   have ht : (stateAt S rho hn v i).now = t :=
     (now_eq_lastClock S rho hn hv v i).trans (lastClock_deliver S rho hv he)
   rw [eventCuts_deliver S rho hn i v o t he] at hr
-  have hr' : r ∈ deliverRecs (runProposer S rho hn) (digestOf S rho)
+  let io := (stateAt S rho hn v i).voteIO
+  have hr' : r ∈ deliverRecs io (runProposer S rho hn) (digestOf S rho)
       (digests rho.hash o) (stateAt S rho hn v i).self (stateAt S rho hn v i).now i
-      (delivered (Model.digests rho.hash o) (stateAt S rho hn v i) o)
+      (delivered io (Model.digests rho.hash o) (stateAt S rho hn v i) o)
         (stateAt S rho hn v i).node 0 := by
-    simpa only [self_eq_ownKey, ht] using hr
+    simpa only [io, stateAt_voteIO, self_eq_ownKey, ht] using hr
   obtain ⟨p, hp⟩ := deliverRecs_acceptance_pending (runProposer S rho hn) (digestOf S rho)
-    (digests rho.hash o) i _ _ 0 (stateAt_wrappersCover S rho hn v i) r B hr' hb
+    io (digests rho.hash o) i _ _ 0 (stateAt_wrappersCover S rho hn v i) r B hr' hb
   have hself : (process (stateAt S rho hn v i) o (digests rho.hash o)).self =
       rho.ownKey v := (process_self _ _ _).trans (self_eq_ownKey S rho hn v i)
   have hc : forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B ∈

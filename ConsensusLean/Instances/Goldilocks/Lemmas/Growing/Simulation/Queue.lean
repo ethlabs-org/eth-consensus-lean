@@ -57,9 +57,9 @@ theorem runDuties_voteForward_in_pool (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
     (h : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
-      tv.2 ∈ (shapeOf S hn nd).node.ac.pool tv.2.slot) :
+      tv.2.1 ∈ (shapeOf S hn nd).node.ac.pool tv.2.1.slot) :
     ∀ tv ∈ (shapeOf S hn (rho.runDuties v nd ds).1).voteForwards,
-      tv.2 ∈ (shapeOf S hn (rho.runDuties v nd ds).1).node.ac.pool tv.2.slot :=
+      tv.2.1 ∈ (shapeOf S hn (rho.runDuties v nd ds).1).node.ac.pool tv.2.1.slot :=
   Simulation.runDuties_voteForward_in_pool S rho hn v nd ds h
 
 omit [DecidableEq V] in
@@ -68,9 +68,9 @@ theorem dutyStep_voteForward_in_pool (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (d : (Model.protoOf (compiled (goldilocks S)) E).Duty)
     (h : ∀ tv ∈ (shapeOf S hn nd).voteForwards,
-      tv.2 ∈ (shapeOf S hn nd).node.ac.pool tv.2.slot) :
+      tv.2.1 ∈ (shapeOf S hn nd).node.ac.pool tv.2.1.slot) :
     ∀ tv ∈ (shapeOf S hn (rho.dutyStep v nd d).1).voteForwards,
-      tv.2 ∈ (shapeOf S hn (rho.dutyStep v nd d).1).node.ac.pool tv.2.slot :=
+      tv.2.1 ∈ (shapeOf S hn (rho.dutyStep v nd d).1).node.ac.pool tv.2.1.slot :=
   Simulation.dutyStep_voteForward_in_pool S rho hn v nd d h
 
 omit [DecidableEq V] in
@@ -94,8 +94,8 @@ theorem runDuties_pool_subset (v : V)
 /-- Pending canonical votes at actual duty boundaries are own votes of a slot whose vote role
 selects the local signer. -/
 theorem duty_cut_vote_member (hv : rho.ExecutionValid) {v : V} (hv' : v ∉ rho.faultyAt 0)
-    {i p : Nat} {nd} (hc : EngineDutyCut S rho v i p nd) (m : Vote (Fintype.card V))
-    (hm : Body.vote (encodeVote m) ∈ (shapeOf S hn nd).outbox) :
+    {i p : Nat} {nd} (hc : EngineDutyCut S rho v i p nd) (m : Vote (Fintype.card V)) {z : Nat}
+    (hm : Body.vote (encodeVote m) z ∈ (shapeOf S hn nd).outbox) :
     m.val = rho.ownKey v ∧ rho.ownKey v ∈ rho.sel (S.vote.voteRole m.slot) :=
   Simulation.duty_cut_vote_member S rho hn hv hv' hc m hm
 
@@ -111,18 +111,18 @@ theorem tick_prefix_pool_available (hv : rho.ExecutionValid) {v : V}
         (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
       (((Model.protoOf (compiled (goldilocks S)) E).duties t).take p)).1
     m ∈ (shapeOf S hn nd).node.ac.pool σ →
-      voteObj m ∈ Model.closure nd.seen ∨
-        Body.vote (encodeVote m) ∈ (shapeOf S hn nd).outbox :=
+      ∃ z, voteObj m z ∈ Model.closure nd.seen ∨
+        Body.vote (encodeVote m) z ∈ (shapeOf S hn nd).outbox :=
   Simulation.tick_prefix_pool_available S rho hn hv he hw hp σ m
 
 /-- Delivery processing keeps every queued admission's vote in the final pool. The actual
 event-boundary queue is empty, and none of the delivery handlers restarts the AC. -/
 theorem delivery_voteForward_in_pool (hv : rho.ExecutionValid) (v : V) (i : Nat)
     (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
-    (tv : Time × Vote (Fintype.card V))
+    (tv : Time × Vote (Fintype.card V) × Wire (Fintype.card V) S.vote)
     (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
-    tv.2 ∈ (process (stateAt S rho hn v i) o
-      (Model.digests rho.hash o)).node.ac.pool tv.2.slot :=
+    tv.2.1 ∈ (process (stateAt S rho hn v i) o
+      (Model.digests rho.hash o)).node.ac.pool tv.2.1.slot :=
   Simulation.delivery_voteForward_in_pool S rho hn hv v i o tv htv
 
 /-- After processing a delivery, every stored vote is either actually held (including in
@@ -131,8 +131,8 @@ theorem delivery_pool_available (hv : rho.ExecutionValid)
     {v : V} (i : Nat) (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
     (σ : Nat) (m : Vote (Fintype.card V))
     (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
-    voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
-      Body.vote (encodeVote m) ∈
+    ∃ z, voteObj m z ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
+      Body.vote (encodeVote m) z ∈
         (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox :=
   Simulation.delivery_pool_available S rho hn hv i o σ m hm
 
@@ -142,9 +142,9 @@ theorem delivery_pool_held_or_head (hv : rho.ExecutionValid) {v : V}
     {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t)) (σ : Nat) (m : Vote (Fintype.card V))
     (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
-    voteObj m ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
+    ∃ z, voteObj m z ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.head? =
-        some (.vote (encodeVote m)) :=
+        some (.vote (encodeVote m) z) :=
   Simulation.delivery_pool_held_or_head S rho hn hv he
     σ m hm
 
@@ -153,7 +153,7 @@ selects the receiving node. -/
 theorem delivery_outbox_vote_member (hv : rho.ExecutionValid) {v : V}
     (_hv' : v ∉ rho.faultyAt 0) (i : Nat)
     (o : (Model.protoOf (compiled (goldilocks S)) E).Object) (m : Vote (Fintype.card V))
-    (hm : Body.vote (encodeVote m) ∈
+    {z : Nat} (hm : Body.vote (encodeVote m) z ∈
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox) :
     m.val = rho.ownKey v ∧ rho.ownKey v ∈ rho.sel (S.vote.voteRole m.slot) :=
   Simulation.delivery_outbox_vote_member S rho hn hv _hv' i o m hm
@@ -162,11 +162,12 @@ theorem delivery_outbox_vote_member (hv : rho.ExecutionValid) {v : V}
 the ordinary outbox head. No queue-to-pool or readiness premise is left to the caller. -/
 theorem delivery_voteForward_held_or_head (hv : rho.ExecutionValid) {v : V}
     {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
-    (he : rho.events[i]? = some (.deliver v o t)) (tv : Time × Vote (Fintype.card V))
+    (he : rho.events[i]? = some (.deliver v o t))
+    (tv : Time × Vote (Fintype.card V) × Wire (Fintype.card V) S.vote)
     (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
-    voteObj tv.2 ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
+    ∃ z, voteObj tv.2.1 z ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.head? =
-        some (.vote (encodeVote tv.2)) :=
+        some (.vote (encodeVote tv.2.1) z) :=
   Simulation.delivery_voteForward_held_or_head S rho hn
     hv he tv htv
 
