@@ -55,13 +55,6 @@ theorem Run.voteVerification_of_lawful (rho : Run F E)
   · rw [hv, hi]
     simp [lawfulVerify, Run.Canonical]
 
-/-- Every run's issuer and verifier can be replaced by lawful ones, keeping everything else. -/
-theorem Run.voteVerification_withLawful (rho : Run F E)
-    (emb : {d : (protoOf F E).VoteData // ((protoOf F E).claim d).isSome} ↪ (protoOf F E).Token) :
-    ({ rho with issue := lawfulIssue emb, verify := lawfulVerify emb rho.sel } :
-      Run F E).VoteVerification :=
-  Run.voteVerification_of_lawful _ emb rfl rfl
-
 /-- The standard lawful issuer of a protocol: `lawfulIssue` at the embedding its token cover
 gives (`Protocol.tokensCover`). -/
 noncomputable def stdIssue (F : ProtocolFamily O) (E : Env V) :

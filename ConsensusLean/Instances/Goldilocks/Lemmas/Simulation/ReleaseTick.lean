@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Release
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.VoteMember
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLawsInstance
 import ConsensusLean.Lemmas.Model.Constant
 
 public section
@@ -240,20 +241,6 @@ theorem leading_polls (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilo
   · rw [hS2]; exact poll_fgDue _ _
 
 omit [DecidableEq V] in
-/-- The FG update keeps the vote authentication. -/
-theorem fgUpdate_voteIO' (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) :
-    (fgUpdate st).voteIO = st.voteIO := by
-  rw [fgUpdate_eq]; simp only; split
-  · rfl
-  · split <;> rfl
-
-omit [DecidableEq V] in
-/-- Recording an own object keeps the vote authentication. -/
-theorem recordOwn_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) o hs :
-    (recordOwn st o hs).voteIO = st.voteIO := by
-  rw [AsChainShape.recordOwn_eq]; split <;> (try split) <;> rfl
-
-omit [DecidableEq V] in
 /-- The slot proposal keeps the vote authentication. -/
 theorem propose_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) s :
     (propose st s).1.voteIO = st.voteIO := by
@@ -264,12 +251,6 @@ omit [DecidableEq V] in
 theorem nodeTick_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) :
     (nodeTick st).voteIO = st.voteIO := by
   rw [nodeTick_eq]; split <;> rfl
-
-omit [DecidableEq V] in
-/-- A poll step keeps the vote authentication. -/
-theorem poll_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) t :
-    (poll st t).1.voteIO = st.voteIO := by
-  unfold poll; simp only; split <;> split <;> simp [fgUpdate_voteIO']
 
 omit [DecidableEq V] in
 /-- A delivery keeps the vote authentication. -/
@@ -288,44 +269,16 @@ private theorem dutyStep_voteIO (v : V)
     (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) :
     (shapeOf S hn (rho.dutyStep v nd d).1).voteIO = (shapeOf S hn nd).voteIO :=
   dutyStep_pres S rho hn (fun st => st.voteIO = (shapeOf S hn nd).voteIO)
-    (fun st o hs h => (recordOwn_voteIO S hn st o hs).trans h)
+    (fun st o hs h => (recordOwn_voteIO st o hs).trans h)
     (fun st s h => (propose_voteIO S hn st s).trans h)
     (fun st h => (nodeTick_voteIO S hn st).trans h)
-    (fun st t h => (poll_voteIO S hn st t).trans h) v nd d rfl
+    (fun st t h => (poll_voteIO st t).trans h) v nd d rfl
 
-/-- **Every engine state holds the node's own vote authentication.** `init` installs
-`rho.voteIO v` and every handler keeps it. -/
-theorem stateAt_voteIO (v : V) : ∀ i, (stateAt S rho hn v i).voteIO = rho.voteIO v
-  | 0 => by rw [stateAt_zero]; rfl
-  | i + 1 => by
-    match he : rho.events[i]? with
-    | none => rw [stateAt_succ_none S rho hn v he]; exact stateAt_voteIO v i
-    | some e =>
-      by_cases hne : e.node = v
-      · have ih := stateAt_voteIO v i
-        rw [stateAt_eq] at ih
-        cases e with
-        | tick v' t =>
-          simp only [Model.Event.node] at hne; subst hne
-          rw [stateAt_tick S rho hn _ he]
-          exact tick_pres S rho hn (fun st => st.voteIO = rho.voteIO v')
-            (fun st o hs h => (recordOwn_voteIO S hn st o hs).trans h)
-            (fun st s h => (propose_voteIO S hn st s).trans h)
-            (fun st h => (nodeTick_voteIO S hn st).trans h)
-            (fun st t h => (poll_voteIO S hn st t).trans h) v' _ t ih
-        | deliver v' o t =>
-          simp only [Model.Event.node] at hne; subst hne
-          rw [stateAt_deliver S rho hn _ he]
-          refine deliver_pres S rho hn (fun st => st.voteIO = rho.voteIO v')
-            (fun st t h => (poll_voteIO S hn st t).trans h)
-            (fun st _ _ hs h => (recordOwn_voteIO S hn st _ hs).trans h) v' _ o t ?_
-          exact (process_voteIO S hn _ o _).trans ih
-        | restart v' t =>
-          simp only [Model.Event.node] at hne; subst hne
-          rw [stateAt_restart S rho hn _ he]
-          exact (rfl : (restore (rho.ownKey v') (stateAt S rho hn v' i) t).voteIO = _).trans
-            (stateAt_voteIO v' i)
-      · rw [state_of_other S rho hn v i e he hne]; exact stateAt_voteIO v i
+/-- **Every engine state holds the node's own vote authentication**: the generic `cut_io` at
+Goldilocks' laws (`init` installs `rho.voteIO v` and every handler keeps it). -/
+theorem stateAt_voteIO (v : V) (i : Nat) : (stateAt S rho hn v i).voteIO = rho.voteIO v :=
+  stateAt_voteIO_of_trace S rho hn (NodeAsChainShape.CanonicalTrace.Encoding.OpLaws.cut_io
+    (traceEncoding_opLaws S hn) (traceEncoding_ioLaws S hn) rho) v i
 
 omit [DecidableEq V] in
 /-- The node's tick at a public time from a state with nothing queued: the AC's tick, its

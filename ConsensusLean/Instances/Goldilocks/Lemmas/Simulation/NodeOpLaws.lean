@@ -805,7 +805,7 @@ private theorem deliver_io (L : e.OpLaws due) (hio : e.IOLaws io)
   exact process_io hio _ _ _
 
 /-- The envelope at every cut holds the node's own vote authentication. -/
-private theorem cut_io [DecidableEq V] (L : e.OpLaws due) (hio : e.IOLaws io)
+theorem cut_io [DecidableEq V] (L : e.OpLaws due) (hio : e.IOLaws io)
     (rho : Model.Run (compiled F) E) (v : V) (i : Nat) :
     io (stateAt e rho v i) = voteIOAt e rho v := by
   rw [cut_envelope]

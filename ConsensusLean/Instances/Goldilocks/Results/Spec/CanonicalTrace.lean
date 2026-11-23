@@ -82,6 +82,43 @@ noncomputable def traceDue (S : Setup) (hn : 1 ≤ Fintype.card V) :
   unfold traceEncoding
   exact State.fgDue
 
+/-- The envelope's vote authentication: the Goldilocks state's own `voteIO`. -/
+noncomputable def traceVoteIO (S : Setup) (hn : 1 ≤ Fintype.card V) :
+    (traceEncoding (E := E) S hn).State hn →
+      Model.VoteIO (traceEncoding (E := E) S hn).Tok
+        (ShapeRole (traceEncoding (E := E) S hn).skel.Kind) (traceEncoding (E := E) S hn).Data
+        (pubOf E).n := by
+  unfold traceEncoding
+  exact State.voteIO
+
+/-- Prove a property of the encoding and its vote-authentication observer at their concrete
+assembly. -/
+theorem traceVoteIO_induction (S : Setup) (hn : 1 ≤ Fintype.card V)
+    (P : (e : CanonicalTrace.Encoding (goldilocks S) E (S.params (pubOf E) hn).toParams
+      rfl hn (goldilocksNode (S.params (pubOf E) hn) (S.ro _))) →
+      (e.State hn → Model.VoteIO e.Tok (ShapeRole e.skel.Kind) e.Data (pubOf E).n) → Prop)
+    (h : let e : CanonicalTrace.Encoding (goldilocks S) E (S.params (pubOf E) hn).toParams
+            rfl hn (goldilocksNode (S.params (pubOf E) hn) (S.ro _)) :=
+           { skel := skeleton (pubOf E) S.vote
+             Body := Body
+             decBody := inferInstance
+             Tok := Nat
+             Data := WireVote
+             State h := State (S.params (pubOf E) h) (S.ro _) S.vote
+             codec := wireCodec _ _ S.vote ⟨fun _ _ _ _ => false, fun _ _ => none⟩
+             decodeMessage := decodeVoteObj (S.params (pubOf E) hn) (binding := S.vote)
+             adapter := nodeAdapter _ _ S.vote
+             ops h := nodeOps (S.params (pubOf E) h) (S.ro _) S.vote
+             claim := AsChainShape.voteClaim (binding := S.vote) _
+             voteBody := voteBody
+             presented := AsChainShape.presented (binding := S.vote)
+             role := S.vote.candidateRole _
+             dep := dependencies _ (binding := S.vote)
+             conflict := conflicts (binding := S.vote)
+             isFGAtt := isFGAtt (binding := S.vote)
+             shape_eq := rfl }
+         P e State.voteIO) : P (traceEncoding S hn) (traceVoteIO S hn) := h
+
 end
 
 /-- The node's digest from the engine's hash with genesis root `g`: genesis (no parent) has
@@ -181,6 +218,16 @@ omit [DecidableEq V] in
 theorem runProposer_eq (s : Nat) : runProposer S rho hn s =
     if h : (rho.sel (.proposer s)).Nonempty then (rho.sel (.proposer s)).min' h
     else ⟨0, hn⟩ := CanonicalTrace.runProposer_eq rho s
+
+/-- The node state's own vote authentication is the run's at every cut, given the generic
+statement for the envelope (`Encoding.OpLaws.cut_io` at Goldilocks' laws). -/
+theorem stateAt_voteIO_of_trace
+    (h : ∀ v i, traceVoteIO S hn (CanonicalTrace.stateAt (traceEncoding S hn) rho v i) =
+      CanonicalTrace.voteIOAt (traceEncoding S hn) rho v) (v : V) (i : Nat) :
+    (stateAt S rho hn v i).voteIO = rho.voteIO v := by
+  have hv := h v i
+  rw [CanonicalTrace.voteIOAt_eq] at hv
+  exact hv
 
 /-- The state embedded by the engine before a cut. -/
 theorem stateAt_eq (v : V) (i : Nat) :

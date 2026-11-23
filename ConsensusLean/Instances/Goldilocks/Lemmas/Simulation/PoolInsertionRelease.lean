@@ -73,7 +73,7 @@ theorem tick_pool_insertion_queued (hv : rho.ExecutionValid) {v : V} {i : Nat} {
     exact poll_node_of_fgDue { stateAt S rho hn v i with now := t } _
       (fgDue_eq_false S rho hn v i)
   have hg : VoteGate st := voteGate_of_eq S hn (stateAt_voteGate S rho hn hv v i)
-    (by rw [hn']) (by dsimp only [st]; rw [poll_voteIO S hn, poll_voteIO S hn])
+    (by rw [hn']) (by dsimp only [st]; rw [poll_voteIO, poll_voteIO])
   have hshape : shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t) = nodeTick st := by
     rw [atProposal_shape S rho hn v _ t hsel, ← stateAt_eq S rho hn v i]
   have hbase :

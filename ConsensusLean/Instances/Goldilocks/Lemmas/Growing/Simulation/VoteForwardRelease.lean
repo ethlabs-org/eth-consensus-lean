@@ -109,7 +109,7 @@ private theorem tick_prefix_checked (hv : rho.ExecutionValid) {v : V} {i : Nat} 
   have hQ : Q (shapeOf S hn nd) := by
     refine runDuties_pres S rho hn Q ?_ ?_ ?_ ?_ v _ _ ?_
     · intro st o hs h
-      exact ⟨(recordOwn_voteIO S hn st o hs).trans h.1, (recordOwn_self st o hs).trans h.2.1,
+      exact ⟨(recordOwn_voteIO st o hs).trans h.1, (recordOwn_self st o hs).trans h.2.1,
         queuedChecked_recordOwn S st o hs h.2.2 (ownChecks_of_eq_voteIO S rho hn hv h.1 h.2.1)⟩
     · intro st s h
       exact ⟨(propose_voteIO S hn st s).trans h.1, (propose_self st s).trans h.2.1,
@@ -118,7 +118,7 @@ private theorem tick_prefix_checked (hv : rho.ExecutionValid) {v : V} {i : Nat} 
       exact ⟨(nodeTick_voteIO S hn st).trans h.1, (nodeTick_self st).trans h.2.1,
         queuedChecked_nodeTick S st h.2.2 (ownChecks_of_eq_voteIO S rho hn hv h.1 h.2.1)⟩
     · intro st u h
-      exact ⟨(poll_voteIO S hn st u).trans h.1, (poll_self st u).trans h.2.1,
+      exact ⟨(poll_voteIO st u).trans h.1, (poll_self st u).trans h.2.1,
         queuedChecked_poll S st u⟩
     · refine ⟨?_, ?_, ?_⟩
       · change ((rho.stateBefore i v).st.1 hn).voteIO = _

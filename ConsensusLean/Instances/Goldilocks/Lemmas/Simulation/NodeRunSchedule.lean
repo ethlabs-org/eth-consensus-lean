@@ -469,7 +469,7 @@ theorem wire
   | restart => trivial
   | message m =>
     obtain ⟨_, v, _, _, w, _, _, hc⟩ := delivery_group_source e rho hg rfl
-    apply hmsg (w := w)
+    apply hmsg (io := voteIOAt e rho v) (w := w)
     rw [receiverCodec_eq] at hc
     unfold canonEvent at hc
     split at hc <;> cases hc
