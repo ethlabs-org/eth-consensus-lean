@@ -42,25 +42,6 @@ private theorem admit_pool_mem {A : SAState sp.n} {t : Time} {m v : Vote sp.n} {
       · exact Or.inr ⟨List.mem_singleton.1 h, rfl⟩
     · exact Or.inl h
 
-private theorem receipt_pool_mem {A : SAState sp.n} {t : Time} {B : Blk sp.n FGP} {v : Vote sp.n}
-    {σ : Nat} (h : v ∈ (blockReceipt sp A t B).pool σ) :
-    v ∈ A.pool σ ∨ v ∈ blockVotes B ∧ v.slot = σ := by
-  have key : ∀ (l : List (Vote sp.n)) (A₀ : SAState sp.n),
-      v ∈ (l.foldl (fun A v => admitVote sp A t v) A₀).pool σ →
-        v ∈ A₀.pool σ ∨ v ∈ l ∧ v.slot = σ := by
-    intro l
-    induction l with
-    | nil => exact fun _ h => Or.inl h
-    | cons x l ih =>
-      intro A₀ h
-      rcases ih _ h with h | h
-      · rcases admit_pool_mem h with h | ⟨rfl, hs⟩
-        · exact Or.inl h
-        · exact Or.inr ⟨List.mem_cons_self, hs⟩
-      · exact Or.inr ⟨List.mem_cons_of_mem _ h.1, h.2⟩
-  unfold blockReceipt at h
-  exact (key _ _ h :)
-
 /-- The emission of `try_vote`: its slot is the call's, it is cast by `t_s + Δ`, its read point
 holds the input's pool and the input's locks unlocked against the merged view (for `s > 0`),
 whose view is the input's. -/
@@ -196,9 +177,7 @@ theorem optimisticPoint_pool_slotU
   · rcases admit_pool_mem hv with hv | ⟨rfl, hs⟩
     · exact state_pool_slotU sp hr hini hx j σ v hv
     · exact hs
-  · rcases receipt_pool_mem hv with hv | ⟨-, hs⟩
-    · exact state_pool_slotU sp hr hini hx j σ v hv
-    · exact hs
+  · exact state_pool_slotU sp hr hini hx j σ v hv
   · rw [← point_postU hr hx hc he] at hv
     exact state_pool_slotU sp hr hini hx _ σ v hv
 
@@ -225,10 +204,7 @@ private theorem receipt_poolOKU
   · rcases admit_pool_mem hv with hv | ⟨rfl, -⟩
     · exact hrun.honest.pool_vote y hy j σ v hv hvH
     · exact hrun.honest.message_vote y hy j ℓ _ hc hm hvH
-  · rcases receipt_pool_mem hv with hv | ⟨hv, -⟩
-    · exact hrun.honest.pool_vote y hy j σ v hv hvH
-    · exact hrun.honest.carried_vote y hy j ℓ hc B
-        ((accept_newU sp hrun.localRun hy ⟨ℓ, hc, hB⟩).1 ℓ hc) v hv hvH
+  · exact hrun.honest.pool_vote y hy j σ v hv hvH
 
 /-- The honest votes after the receipt of a message or a block at cut `j` were emitted before
 `j`. -/

@@ -59,7 +59,7 @@ theorem merged_vote_slot_branchU
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksSA sp FGP ro)} {R : SAState sp.n}
     (hb : VoteBranchAt tr y i ℓ R) {s : Nat} :
     ∀ v ∈ (mergedVoteView sp R ℓ.frame (s + 1)).votes, v.slot = s := by
-  rintro v (hv | ⟨B, hB, hBs, hv⟩)
+  rintro v (hv | ⟨B, hB, hBs, hv, -⟩)
   · have hv : v ∈ R.poolAt ((s + 1 : Nat) - 1 : Int) := (List.mem_filter.1 hv).1
     simp only [SAState.poolAt] at hv
     split_ifs at hv with hneg
@@ -100,9 +100,9 @@ theorem merged_support_subsetU
     (hc : CastAt tr y i ℓ e) (σ : Nat) :
     (mergedVoteView sp e.readPoint ℓ.frame σ).support ⊆
       (mergedVoteView sp e.readPoint ℓ.frame σ).votes := by
-  rintro v (hv | ⟨B, hB, hBs, hv, -⟩)
+  rintro v (hv | ⟨B, hB, hBs, hv, hK, hc', -⟩)
   · exact Or.inl (List.mem_of_mem_filter hv)
-  · exact Or.inr ⟨B, hB, hBs, (frame_validPayloadU sp hr hy hc.1 B hB).2 v hv⟩
+  · exact Or.inr ⟨B, hB, hBs, (frame_validPayloadU sp hr hy hc.1 B hB).2.1.subset hv, hK, hc'⟩
 
 /-- The support of an honest voter's merged view is among its votes. -/
 theorem merged_support_subset (hr : ACLocalRun (goldilocksSA sp FGP ro) H U tr ini)
@@ -176,14 +176,8 @@ private theorem optimistic_fields (A : SAState sp.n) (Φ : Frm sp.n FGP) (t : Ti
   · split_ifs <;> exact ⟨rfl, rfl⟩
 
 private theorem blockReceipt_blockStamp (A : SAState sp.n) (t : Time) (B : Blk sp.n FGP) :
-    (blockReceipt sp A t B).blockStamp = Function.update A.blockStamp B.root (ETime.of t) := by
-  unfold blockReceipt
-  generalize blockVotes B = l
-  suffices h : ∀ A' : SAState sp.n,
-      (l.foldl (fun A v => admitVote sp A t v) A').blockStamp = A'.blockStamp from h _
-  induction l with
-  | nil => exact fun _ => rfl
-  | cons v l ih => exact fun A' => (ih _).trans (admitVote_fields _ _ _).1
+    (blockReceipt sp A t B).blockStamp = Function.update A.blockStamp B.root (ETime.of t) :=
+  rfl
 
 /-- **The read point of a vote branch has the block stamps of the state before its call**,
 except for the block that an `on_block` call receives, with the unlock given. -/
