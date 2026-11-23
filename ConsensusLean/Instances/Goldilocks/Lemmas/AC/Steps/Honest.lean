@@ -50,7 +50,7 @@ theorem honest_merged_vote_branchU
       rw [show tr.state y (i + 1) = tr.post i by
         simp [Trace.state, hb.callAt.1, hb.callAt.2]]
       exact pool_post_of_voteBranchAtU hrun.localRun hy hb hw
-  rcases hv with hv | ⟨B, hB, -, -, -, hv | ⟨x, hx, x', hx', hne, hxv, hx'v⟩⟩
+  rcases hv with hv | ⟨B, hB, -, -, hv | ⟨x, hx, x', hx', hne, hxv, hx'v⟩⟩
   · have hv : v ∈ R.poolAt ((σ : Int) - 1) := (List.mem_filter.1 hv).1
     simp only [ACState.poolAt] at hv
     split_ifs at hv
