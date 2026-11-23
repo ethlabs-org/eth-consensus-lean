@@ -34,7 +34,7 @@ theorem simTraceAt_wire (hv : rho.ExecutionValid) :
     dsimp only
     intro _ _ _ _ h
     exact encodeInfo_of_decodeInfo h
-  · intro w m _
+  · intro _ w m _
     trivial
   · apply traceEncoding_induction (E := E) S hn (fun enc _ =>
       ∀ {w a}, enc.codec.attestation w = some a → a.WellFormed)

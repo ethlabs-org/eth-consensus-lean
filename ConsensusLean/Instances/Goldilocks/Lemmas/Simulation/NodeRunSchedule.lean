@@ -340,7 +340,7 @@ private theorem delivery_group_source {y : Fin (Fintype.card V)} {j : Nat} {t : 
       y j t ev) (hp : ev.phase = 2) :
     ∃ (i : Nat) (v : V), ∃ o u w, rho.events[i]? = some (.deliver v o u) ∧
       engineObj e w ∈ o.parts ∧
-      canonEvent e.codec (Model.digests rho.hash o) w = some ev := by
+      canonEvent (receiverCodec e rho v) (Model.digests rho.hash o) w = some ev := by
   obtain ⟨i, source, he, hstart, _, _, _, hphase, r, hr, _⟩ := group_origin e rho hg
   have hrec := allCuts_getElem?_add e rho i (j - cutMap e rho i)
     (List.getElem?_eq_some_iff.mp he).1 (List.getElem?_eq_some_iff.mp hr).1
@@ -450,6 +450,7 @@ private theorem block_source {y : Fin (Fintype.card V)} {j : Nat} {t : Time} {b 
         (Model.digests rho.hash o) w = some b := by
   obtain ⟨i, v, o, u, w, he, hw, hc⟩ := delivery_group_source e rho hg rfl
   refine ⟨i, v, o, u, w, he, hw, ?_⟩
+  rw [receiverCodec_eq] at hc
   unfold canonEvent at hc
   split at hc <;> cases hc
   assumption
@@ -458,7 +459,7 @@ private theorem block_source {y : Fin (Fintype.card V)} {j : Nat} {t : Time} {b 
 theorem wire
     (hcodec : ∀ {h atts payload}, e.codec.decode h = some (atts, payload) →
       e.codec.encode atts payload = h)
-    (hmsg : ∀ {w m}, e.codec.message w = some m → A.validMsg m)
+    (hmsg : ∀ {io w m}, e.decodeMessage io w = some m → A.validMsg m)
     (hatt : ∀ {w a}, e.codec.attestation w = some a → a.WellFormed)
     {y : Fin (Fintype.card V)} {j : Nat} {t : Time} {ev : Node.Event A}
     (hg : (simTrace e rho).GroupAt (runProposer rho hn) (digestOf e rho) y j t ev) :
@@ -467,14 +468,16 @@ theorem wire
   | tick x => trivial
   | restart => trivial
   | message m =>
-    obtain ⟨_, _, _, _, w, _, _, hc⟩ := delivery_group_source e rho hg rfl
+    obtain ⟨_, v, _, _, w, _, _, hc⟩ := delivery_group_source e rho hg rfl
     apply hmsg (w := w)
+    rw [receiverCodec_eq] at hc
     unfold canonEvent at hc
     split at hc <;> cases hc
     assumption
   | attestation a =>
     obtain ⟨_, _, _, _, w, _, _, hc⟩ := delivery_group_source e rho hg rfl
     apply hatt (w := w)
+    rw [receiverCodec_eq] at hc
     unfold canonEvent at hc
     split at hc <;> cases hc
     assumption
@@ -518,6 +521,17 @@ private theorem cast_signed_proposer {s q : ChainShape (Model.pubOf E) O.Id I}
   cases h
   rfl
 
+omit [DecidableEq V] in
+private theorem cast_item_ne_data {s q : ChainShape (Model.pubOf E) O.Id I}
+    (h : s = q) (k : Fin (Fintype.card V)) (slot : Nat) (header : Header I)
+    (cs : List (compile q).Object) (x : (compile s).Body) :
+    (cast (congrArg (fun x => (compile x).Object) h.symm)
+      (.mk (.signed k (.proposer slot)) (.item header) cs) : (compile s).Object).msg ≠
+      .data x := by
+  cases h
+  intro hm
+  cases hm
+
 /-- Every replayed block group carries the credential of the selected proposer. -/
 theorem proposerCredential (hv : rho.ExecutionValid)
     (hsel : ∀ s : Nat, rho.sel (.proposer s) = {runProposer rho hn s})
@@ -526,9 +540,11 @@ theorem proposerCredential (hv : rho.ExecutionValid)
     b.proposer = runProposer rho hn b.slot := by
   obtain ⟨i, v, o, u, w, he, hw, hd⟩ := block_source e rho hg
   obtain ⟨header, cs, rfl, _, _, _, _⟩ := decoded_block e rho hw hd
-  have ha := hv.credentials i v o u he _ hw b.proposer (.proposer b.slot) (by
+  have ha := hv.credentials.2 i v o u he _ hw b.proposer (.proposer b.slot) (by
     rw [engineObj_eq]
-    exact cast_signed_proposer e.shape_eq _ _ _ _)
+    exact cast_signed_proposer e.shape_eq _ _ _ _) (fun x hb => by
+    rw [engineObj_eq] at hb
+    exact absurd hb (cast_item_ne_data e.shape_eq _ _ _ _ x))
   rw [hsel] at ha
   exact Finset.mem_singleton.mp ha
 
@@ -771,24 +787,25 @@ private theorem state_after_group {y : Fin (Fintype.card V)} {j id : Nat} {t : T
     List.take_length, foldl_cutPost_exec]
 
 private theorem indexed_delivery_group {y : Fin (Fintype.card V)} {t : Time} {i : Nat}
+    (C : WireCodec A e.skel.Kind I e.Body)
     (hs : List (Header I × Nat))
     (os : List (ShapeObj (Fintype.card V) e.skel.Kind I e.Body)) :
     ∀ (j sub : Nat) (st : NodeState A),
-    (∀ k < (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+    (∀ k < (deliverRecs C (runProposer rho hn) (digestOf e rho)
         hs y t i os st sub).length,
-      (allCuts e rho)[j + k]? = (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+      (allCuts e rho)[j + k]? = (deliverRecs C (runProposer rho hn) (digestOf e rho)
         hs y t i os st sub)[k]?) →
     (simTrace e rho).state y j = st →
-    ∀ k < (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+    ∀ k < (deliverRecs C (runProposer rho hn) (digestOf e rho)
         hs y t i os st sub).length,
-      ∃ pre w post ev j' s, os = pre ++ w :: post ∧ canonEvent e.codec hs w = some ev ∧
-        let st' := pre.foldl (fun a o => ((canonEvent e.codec hs o).map
+      ∃ pre w post ev j' s, os = pre ++ w :: post ∧ canonEvent C hs w = some ev ∧
+        let st' := pre.foldl (fun a o => ((canonEvent C hs o).map
           (fun ev => (exec (runProposer rho hn) (digestOf e rho) y a t ev).1)).getD a) st
         let grp := groupRecs (runProposer rho hn) (digestOf e rho) y st' t (Nat.pair i s) ev
         (∀ m < grp.length, (allCuts e rho)[j' + m]? = grp[m]?) ∧
         (simTrace e rho).state y j' = st' ∧ j' ≤ j + k ∧ j + k < j' + grp.length ∧
         ((∀ l s', (simTrace e rho).event l = Nat.pair i s' → sub ≤ s' → j ≤ l ∧
-          l < j + (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+          l < j + (deliverRecs C (runProposer rho hn) (digestOf e rho)
             hs y t i os st sub).length) →
           ∀ l, (simTrace e rho).event l = Nat.pair i s → j' ≤ l ∧ l < j' + grp.length) := by
   induction os with
@@ -799,7 +816,7 @@ private theorem indexed_delivery_group {y : Fin (Fintype.card V)} {t : Time} {i 
   | cons o os ih =>
     intro j sub st hcut hstate k hk
     rw [deliverRecs_cons] at hcut hk
-    cases he : canonEvent e.codec hs o with
+    cases he : canonEvent C hs o with
     | none =>
       simp only [he] at hcut hk
       obtain ⟨pre, w, post, ev, j', s, hsplit, hc, hrec, hst, hlo, hhi, hu⟩ :=
@@ -814,7 +831,7 @@ private theorem indexed_delivery_group {y : Fin (Fintype.card V)} {t : Time} {i 
       set grp := groupRecs (runProposer rho hn) (digestOf e rho) y st t (Nat.pair i sub) ev
       set next := (exec (runProposer rho hn) (digestOf e rho) y st t ev).1
       set rest :=
-        deliverRecs e.codec (runProposer rho hn) (digestOf e rho) hs y t i os next (sub + 1)
+        deliverRecs C (runProposer rho hn) (digestOf e rho) hs y t i os next (sub + 1)
       change k < grp.length + rest.length at hk
       change ∀ m < grp.length + rest.length, (allCuts e rho)[j + m]? = (grp ++ rest)[m]? at hcut
       have hg : ∀ m < grp.length, (allCuts e rho)[j + m]? = grp[m]? := fun m hm => by
@@ -872,23 +889,24 @@ private theorem indexed_delivery_group {y : Fin (Fintype.card V)} {t : Time} {i 
 /-- At an indexed delivery cut, expose the node replay prefix and the selected handler's
 label and pre-state. This does not require global uniqueness of the group's event id. -/
 theorem indexed_receipt_state {y : Fin (Fintype.card V)} {t : Time} {i j sub k : Nat}
+    (C : WireCodec A e.skel.Kind I e.Body)
     (hs : List (Header I × Nat))
     (os : List (ShapeObj (Fintype.card V) e.skel.Kind I e.Body)) (st : NodeState A)
-    (hcut : ∀ m < (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+    (hcut : ∀ m < (deliverRecs C (runProposer rho hn) (digestOf e rho)
         hs y t i os st sub).length,
-      (allCuts e rho)[j + m]? = (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+      (allCuts e rho)[j + m]? = (deliverRecs C (runProposer rho hn) (digestOf e rho)
         hs y t i os st sub)[m]?)
     (hstate : (simTrace e rho).state y j = st) {r : CutRec A}
-    (hr : (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+    (hr : (deliverRecs C (runProposer rho hn) (digestOf e rho)
       hs y t i os st sub)[k]? = some r) :
-    ∃ pre w post ev, os = pre ++ w :: post ∧ canonEvent e.codec hs w = some ev ∧
-      let st' := pre.foldl (fun a o => ((canonEvent e.codec hs o).map
+    ∃ pre w post ev, os = pre ++ w :: post ∧ canonEvent C hs w = some ev ∧
+      let st' := pre.foldl (fun a o => ((canonEvent C hs o).map
         (fun ev => (exec (runProposer rho hn) (digestOf e rho) y a t ev).1)).getD a) st
       let cs := (exec (runProposer rho hn) (digestOf e rho) y st' t ev).2
       cs[r.pos]? = some r.label ∧
         (simTrace e rho).state y (j + k) = (cs.take r.pos).foldl (cutPost y t) st' := by
   obtain ⟨pre, w, post, ev, j', s, hm, hc, hrec, hst, hlo, hhi, _⟩ :=
-    indexed_delivery_group e rho hs os j sub st hcut hstate k (List.getElem?_eq_some_iff.mp hr).1
+    indexed_delivery_group e rho C hs os j sub st hcut hstate k (List.getElem?_eq_some_iff.mp hr).1
   have hidx : j' + (j + k - j') = j + k := Nat.add_sub_cancel' hlo
   have hpos := hrec (j + k - j') (by omega)
   rw [hidx, hcut _ (List.getElem?_eq_some_iff.mp hr).1, hr] at hpos
@@ -902,18 +920,19 @@ theorem indexed_receipt_state {y : Fin (Fintype.card V)} {t : Time} {i j sub k :
   exact ⟨pre, w, post, ev, hm, hc, List.getElem?_eq_getElem _, hstep⟩
 
 private theorem delivery_group {y : Fin (Fintype.card V)} {t : Time} {i : Nat}
+    (C : WireCodec A e.skel.Kind I e.Body)
     (hs : List (Header I × Nat))
     (os : List (ShapeObj (Fintype.card V) e.skel.Kind I e.Body)) :
     ∀ (j sub : Nat) (st : NodeState A),
-    (∀ k < (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+    (∀ k < (deliverRecs C (runProposer rho hn) (digestOf e rho)
         hs y t i os st sub).length,
-      (allCuts e rho)[j + k]? = (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+      (allCuts e rho)[j + k]? = (deliverRecs C (runProposer rho hn) (digestOf e rho)
         hs y t i os st sub)[k]?) →
     (simTrace e rho).state y j = st →
     (∀ k s, (simTrace e rho).event k = Nat.pair i s → sub ≤ s → j ≤ k ∧
-      k < j + (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+      k < j + (deliverRecs C (runProposer rho hn) (digestOf e rho)
         hs y t i os st sub).length) →
-    ∀ k < (deliverRecs e.codec (runProposer rho hn) (digestOf e rho)
+    ∀ k < (deliverRecs C (runProposer rho hn) (digestOf e rho)
         hs y t i os st sub).length,
       ∃ j' st' id ev, (∀ m < (groupRecs (runProposer rho hn) (digestOf e rho)
           y st' t id ev).length,
@@ -925,7 +944,7 @@ private theorem delivery_group {y : Fin (Fintype.card V)} {t : Time} {i : Nat}
           l < j' + (groupRecs (runProposer rho hn) (digestOf e rho) y st' t id ev).length) := by
   intro j sub st hcut hstate huniq k hk
   obtain ⟨_, _, _, ev, j', s, _, _, hrec, hst, hlo, hhi, hu⟩ :=
-    indexed_delivery_group e rho hs os j sub st hcut hstate k hk
+    indexed_delivery_group e rho C hs os j sub st hcut hstate k hk
   exact ⟨j', _, Nat.pair i s, ev, hrec, hst, hlo, hhi, hu huniq⟩
 
 private theorem records_of_call {due : e.State hn → Bool} (laws : e.Lawful due)
@@ -964,7 +983,7 @@ private theorem records_of_call {due : e.State hn → Bool} (laws : e.Lawful due
     rw [eventCuts_deliver e rho i v o t he] at hcut hlen
     dsimp only at hlen
     obtain ⟨j, st, id, ev, hrec, hst, hj, hk, hu⟩ :=
-      delivery_group e rho _ _ _ 0 _ hcut hstate
+      delivery_group e rho _ _ _ _ 0 _ hcut hstate
         (fun l _ hl _ => hlen ▸ range_of_id e rho hi hl) (k - cutMap e rho i) (by omega)
     exact ⟨j, st, t, id, ev, hrec, hst, by omega, by omega, hu⟩
   | restart v t =>
