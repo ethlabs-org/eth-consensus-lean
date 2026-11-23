@@ -184,9 +184,6 @@ theorem acRun_one_tick : ACRun (fun _ => 0) oneTick Set.univ ({g} : Set (Blk sp1
       message_vote := fun y _ i ℓ v h hc _ => by
         obtain ⟨rfl, rfl⟩ := oneTick_label h.2
         cases hc
-      carried_vote := fun y _ i ℓ h B hB v hv => by
-        obtain ⟨rfl, rfl⟩ := oneTick_label h.2
-        rw [Set.mem_singleton_iff.mp hB] at hv; simp [g, blockVotes] at hv
       proposer := fun B ⟨y, _, i, ℓ, h, hB⟩ hg => by
         obtain ⟨rfl, rfl⟩ := oneTick_label h.2
         rw [Set.mem_singleton_iff.mp hB] at hg; exact absurd rfl hg
