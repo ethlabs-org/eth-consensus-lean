@@ -27,16 +27,18 @@ theorem simTraceAt_tick_public_group (hv : rho.ExecutionValid)
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
     (simTraceAt S rho hn).GroupAt (runProposer S rho hn) (digestOf S rho)
         (rho.ownKey v) (cutMap S rho hn i) t
-        (.tick (encodeTxs (Model.mempool rho.inbox v t))) ∧
+        (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t)) ∧
       cutMap S rho hn (i + 1) = cutMap S rho hn i +
         (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
         ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) t
-        (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2.length := by
+        (.tick (encodeTxs (Model.mempool rho.inbox v t))
+          (S.sign (pubOf E) (rho.ownKey v) t))).2.length := by
   obtain ⟨htrace, hcut⟩ := simTrace_encoding S rho hn
   obtain ⟨hpr, hdg⟩ := runProposer_digestOf S rho hn
   rw [simTraceAt_eq, htrace, hcut, hpr, hdg]
-  exact NodeAsChainShape.CanonicalTrace.tick_public_group (traceEncoding S hn) rho
-    (traceEncoding_lawful S hn) hv he hp
+  simpa only [traceEncoding_adapter_sign] using
+    NodeAsChainShape.CanonicalTrace.tick_public_group (traceEncoding S hn) rho
+      (traceEncoding_lawful S hn) hv he hp
 
 /-- A node honest and awake at a public time ticks there. -/
 theorem simTraceAt_tick_of_awake (hv : rho.ExecutionValid)

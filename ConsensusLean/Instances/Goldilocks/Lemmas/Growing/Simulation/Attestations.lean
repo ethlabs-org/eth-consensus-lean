@@ -24,7 +24,9 @@ theorem att_released_inv_at (hv : rho.ExecutionValid)
     (hb : (attObj b : (Model.protoOf (compiled (goldilocks S)) E).Object) ∈ rho.releasesAt j) :
     (S.params (pubOf E) hn).toParams.IsPublic t ∧ ∃ C,
       Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
-        (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 := by
+        (stateAt S rho hn v j).node t
+        (.tick (encodeTxs (Model.mempool rho.inbox v t))
+          (S.sign (pubOf E) (rho.ownKey v) t))).2 := by
   have hv' : v ∉ rho.faultyAt 0 := event_honest_zero S rho hv he
   obtain ⟨hamo, -⟩ := outbox_inv S rho hn hv v j
   obtain ⟨hvote, -⟩ := (atMostOneVote_iff _).1 hamo
@@ -44,7 +46,9 @@ theorem att_released_inv_at (hv : rho.ExecutionValid)
             (goldilocks S)) E).Object) ∈ relHead S rho v ob →
         ∃ C, Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn)
           (digestOf S rho) (rho.ownKey v)
-          (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 := by
+          (stateAt S rho hn v j).node t
+          (.tick (encodeTxs (Model.mempool rho.inbox v t))
+            (S.sign (pubOf E) (rho.ownKey v) t))).2 := by
       intro ob hob h
       obtain ⟨q, rfl, hqo⟩ := mem_relHead S rho h
       obtain ⟨hq, -⟩ := attObj_eq_pollObj S rho hqo

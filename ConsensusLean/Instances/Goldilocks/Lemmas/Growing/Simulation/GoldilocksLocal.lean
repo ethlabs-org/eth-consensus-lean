@@ -29,6 +29,7 @@ namespace Consensus.Goldilocks.Generic
 open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {sign : Fin sp.n → Time → Bool} {G : Nat}
 
 /-- `served_of_delivered`: a message processed before its recipient deadline is served. -/
 theorem goldilocks_served_of_delivered {tr : GoldilocksTrace sp ro} {y : Fin sp.n} {j : Nat}
@@ -45,7 +46,8 @@ time: the reader's store is reachable (`fg_reachable_at`), so its frame is well 
 (`Store.frame_realization`) and the AC's tips lie in it (`Regimes.ac_tips`). -/
 theorem goldilocks_tips_at {cm : Time → Finset (Fin sp.n)} {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} (hrun : (goldilocksRunInterface sp ro).Run cm proposer dg H tr)
+    {tr : GoldilocksTrace sp ro}
+    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hle : ∀ k < i, tr.time k ≤ t)
     (hy : y ∈ H t) (s : Time) :
     (goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) s ∈
@@ -64,7 +66,7 @@ theorem goldilocks_tips_at {cm : Time → Finset (Fin sp.n)} {proposer : Nat →
 /-- The local read-point row: at an honest read point, the confirmed read is held in the frame
 between the finalized root and the head (`goldilocks_tips_at`), hence in the FG tree. -/
 theorem goldilocks_localReadPoint (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
-    (hrun : GoldilocksRunData sp ro C.run) : LocalReadPoint C where
+    (hrun : GoldilocksRunData sp ro C.run sign G) : LocalReadPoint C where
   tips cm proposer dg H tr h b y i t hr := by
     rw [hrun.1] at h
     exact goldilocks_tips_at (cm := cm) ((goldilocksRunInterface_run_iff cm).mpr h) hr.2.2.1
@@ -80,7 +82,7 @@ interface. `served` is retained-evidence service (`goldilocks_served_of_delivere
 is `goldilocks_tips_at` at the reader's own cut time, and the durations are the data
 equations'. -/
 theorem goldilocksACCorrectLocal_of_healing
-    (h : goldilocksACHealing sp ro) : goldilocksACCorrectLocal sp ro := by
+    (h : goldilocksACHealing sp ro sign G) : goldilocksACCorrectLocal sp ro sign G := by
   obtain ⟨R, O, hO⟩ := h
   have hΔ := sp.toParams.hΔ
   refine ⟨{

@@ -81,19 +81,18 @@ theorem cutZ_le_of_high_hj_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have := hp.cutZ_lt_reset_at
   linarith
 
-/-- A call of a node honest at it, with a high justified height, has its finalized-chain root
-compatible with every held block compatible with the earlier high origins. The call is after
+/-- A cut of a node honest at it, with a high justified height, has its store's finalized-chain
+root compatible with every held block compatible with the earlier high origins. The cut is after
 `c_z` (`cutZ_le_of_high_hj_at`). -/
-theorem high_J_root_of_held_at_call_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+theorem high_J_root_of_held_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {x y : Fin sp.n} {i k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H (tr.time k))
-    (hkb : tr.time k ≤ b) {ell : ACLabel (goldilocksNode sp ro)}
-    (hc : tr.projAC.CallAt y k ell)
+    (hkb : tr.time k ≤ b)
     (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
     (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
       Compatible (tr.HonestBlocksAt H) B O) :
-    Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
+    Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y k)).fcRoot B := by
   have hrun := hp.run
   have hnc := hp.noColl
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
@@ -119,27 +118,38 @@ theorem high_J_root_of_held_at_call_before_at {cm : Time → Finset (Fin sp.n)} 
     (fun v i hv _ X hX => ⟨v, i, tr.time i, hrun.time_nonneg i,
       fun q hq => hrun.time_mono hq.le, hrun.antitone (le_max_right _ _) hv, hX⟩)
     (Outcome.local_observations hrun hnc _ _ b) (Outcome.local_sources hrun hnc g b)
-    y k B ell.frame hyz hkb hreach hgB hq hhigh
-    (fun v r l O hrk _ ho => hcompare v r l O hrk ho) (Outcome.frame_of_call hrun hy hc)
+    y k B (Node.frame (tr.state y k)) hyz hkb hreach hgB hq hhigh
+    (fun v r l O hrk _ ho => hcompare v r l O hrk ho) rfl
 
-/-- A call of a node honest at it, with a low justified height and a held high seed, has its
-finalized-chain root compatible with every held block compatible with the seed. -/
-theorem low_root_of_held_seed_at_call_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+/-- `high_J_root_of_held_before_at` at an AC call, whose frame is the store's. -/
+theorem high_J_root_of_held_at_call_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
-    {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
-    (_hx : x ∈ H (tr.time r)) (_hBx : B ∈ (tr.state x r).fg.tree) (_hrb : tr.time r ≤ b)
+    {x y : Fin sp.n} {i k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hx : x ∈ H (tr.time i)) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H (tr.time k))
+    (hkb : tr.time k ≤ b) {ell : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y k ell)
+    (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
+    (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
+      Compatible (tr.HonestBlocksAt H) B O) :
+    Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
+  rw [Outcome.frame_of_call hp.run hy hc]
+  exact hp.high_J_root_of_held_before_at hx hBx hy hkb hhigh hcompare
+
+/-- A cut of a node honest at it, with a low justified height and a held high seed, has its
+finalized-chain root compatible with every held block compatible with the seed. -/
+theorem low_root_of_held_seed_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {y v : Fin sp.n} {i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
     (hS : HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)}
-    (hc : tr.projAC.CallAt y i ell) (hSy : S ∈ (tr.state y i).fg.tree)
+    (hSy : S ∈ (tr.state y i).fg.tree)
     (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
     (hBS : Compatible (tr.HonestBlocksAt H) B S)
-    (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree) :
-    Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
+    (hheld : Anc (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).F B →
+      B ∈ (Node.frame (tr.state y i)).tree) :
+    Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).fcRoot B := by
   have hrun := hp.run
   have hnc := hp.noColl
-  have hfr := Outcome.frame_of_call hrun hy hc
-  rw [hfr] at hheld ⊢
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hi0 := hrun.time_nonneg i
   have hlei : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
@@ -172,6 +182,22 @@ theorem low_root_of_held_seed_at_call_at {cm : Time → Finset (Fin sp.n)} {βK 
   · rcases hBS with hBS | hSB
     · exact AC.anc_total hU hFS hBS
     · exact Or.inl (hFS.trans hSB)
+
+/-- `low_root_of_held_seed_at` at an AC call, whose frame is the store's. -/
+theorem low_root_of_held_seed_at_call_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
+    (_hx : x ∈ H (tr.time r)) (_hBx : B ∈ (tr.state x r).fg.tree) (_hrb : tr.time r ≤ b)
+    (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
+    (hS : HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b)
+    {ell : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y i ell) (hSy : S ∈ (tr.state y i).fg.tree)
+    (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
+    (hBS : Compatible (tr.HonestBlocksAt H) B S)
+    (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree) :
+    Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
+  rw [Outcome.frame_of_call hp.run hy hc] at hheld ⊢
+  exact hp.low_root_of_held_seed_at hy hib hS hqb hSy hlow hBS hheld
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 

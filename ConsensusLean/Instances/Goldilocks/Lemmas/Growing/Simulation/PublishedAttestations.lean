@@ -23,7 +23,7 @@ theorem tick_att_releases_at (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
   have hEC := eventCuts_tick_public S rho hn i v t he hp
   have hlab : r.label ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
       (stateAt S rho hn v i).node t
-      (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 := by
+      (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t))).2 := by
     rw [hEC] at hr
     obtain ⟨m, hm, rfl⟩ := List.getElem_of_mem hr
     obtain ⟨-, -, -, -, hl⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm
@@ -91,7 +91,7 @@ theorem simTraceAt_att_released (hv : rho.ExecutionValid) :
     have hcut := List.getElem_mem hk
     rw [← hlabk, hrl] at hcut
     obtain ⟨x, rfl⟩ := Compose.signed_only_in_ticks _ _ _ st' t e src a hcut
-    exact canonEvent_ne_tick hce x rfl
+    exact canonEvent_ne_tick hce x true rfl
   | restart v t =>
     exfalso
     rw [eventCuts_restart S rho hn i v t he] at hmem

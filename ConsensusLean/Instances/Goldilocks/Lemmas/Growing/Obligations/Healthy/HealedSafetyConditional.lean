@@ -190,9 +190,18 @@ theorem healthy_repair_schedule_at
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V)
       (K S A) Q.cap Q.index
-      Q.ready Q.heal Q.run) :
+      Q.ready Q.heal Q.run)
+    {sign : Fin Q.params.n → Time → Bool}
+    (hcal : Q.trace.SignCalendarAt (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.keys sign)
+    {Gs : Nat} (hgap : SignGapAt Q.params.toParams sign Gs 0)
+    (hδG : 3 + (Gs + 3) / 4 ≤ Q.params.toParams.fg.δt)
+    (hGs : (contract_catchUp S A : Nat) +
+      (healthyResetCoeff S Q.index + 8 * S.k + 4 * (Q.index : Nat) + 34) + 3 + 5 * Gs ≤
+        contract_heal S A Q.cap Q.index)
+    (hGsT : 4 * A.fgSlots + Gs ≤ 4 * S.δt) :
     Nonempty (HealthyRepairScheduleAt S A V Q) := by
-  obtain ⟨W', ⟨Dprep⟩⟩ := healthy_preparation_initialize_at S A V Q h0 hb hp
+  obtain ⟨W', ⟨Dprep⟩⟩ := healthy_preparation_initialize_at S A V Q h0 hb hp hcal hgap hδG hGs
+    hGsT
   obtain ⟨D, -⟩ := healthy_repair_schedule_of_preparation_at S A V Q W' Dprep
   exact ⟨D⟩
 
@@ -232,7 +241,7 @@ theorem receiver_repair_of_opening_at (D : RepairSchedule tr H proposer dg g b c
   rw [receiverRepair_iff]
   have hTb := O.service
   intro y hy
-  obtain ⟨j, ell, _, hu, _⟩ := D.reset.update_toFG_calls_at hy (repair_opening_join D O) hTb
+  obtain ⟨j, ell, hu⟩ := D.reset.update_call_of_awake hy (repair_opening_join D O) hTb
   have ht : tr.time j = sp.ts O.slot + 6 * sp.Δ := hu.2.2.1
   refine ⟨j, ell, hu, ht, ht ▸ hTb, ?_⟩
   intro R hlookup

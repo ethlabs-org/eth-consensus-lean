@@ -31,7 +31,7 @@ theorem ResetPremisesUpTo.restart_le_before_at
   · exact hu (hp.awake y u (hp.run.antitone huk.le hy) hgu (huk.le.trans hkb))
   · have htk : sp.ts (sp.slot (gbar g) + 1 : Nat) ≤ tr.time k := (lt_of_not_ge hlt).le
     have hy' := hp.run.antitone htk hy
-    obtain ⟨j, _x, hne, hcs, -⟩ := hp.run.tick_of_awake y _ hy'
+    obtain ⟨j, _x, fgDue, hne, hcs, -⟩ := hp.run.tick_of_awake y _ hy'
       ((gbar_nonneg g).trans hp₀)
       ⟨4 * ((sp.slot (gbar g) + 1 : Nat) : Int), by simp only [ACParams.ts]; ring⟩
       (hp.awake y _ hy' hp₀ (htk.trans hkb))

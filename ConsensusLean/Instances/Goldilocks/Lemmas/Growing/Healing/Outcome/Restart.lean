@@ -36,7 +36,7 @@ theorem restart_le_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     exact (not_le.mp h).le
   by_cases hgu : gbar g ≤ u
   · exact hu ⟨hp.awake y u (hp.run.antitone huk.le hy) hgu (huk.le.trans hkb), huk.le⟩
-  · obtain ⟨j, _x, hne, hcs, -⟩ := hr.tick_of_awake y hy _
+  · obtain ⟨j, _x, fgDue, hne, hcs, -⟩ := hr.tick_of_awake y hy _
       ((Healing.gbar_nonneg g).trans hp₀)
       ⟨4 * ((sp.slot (gbar g) + 1 : Nat) : Int), by simp only [ACParams.ts]; ring⟩
       ⟨hp.awake y _ (hp.run.antitone (lt_of_not_ge hlt).le hy) hp₀

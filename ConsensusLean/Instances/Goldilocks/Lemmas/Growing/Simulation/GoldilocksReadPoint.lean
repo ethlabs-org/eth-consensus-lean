@@ -125,7 +125,7 @@ private theorem ready_read_record {D : RepairSchedule tr H proposer dg g b cm β
   obtain ⟨Cx⟩ := repair_read_context_at D O hrp hτ0 hτb hxτ (by linarith only [hΔ]) hawake hτ
     hτn
   refine ⟨⟨Cx⟩, current_record_read_of_context_at D Cx fun v hv hvτ hvn => ?_⟩
-  obtain ⟨c, ell, -, hup, -⟩ := D.reset.update_toFG_calls_at (D.reset.run.antitone hvτ hxτ) hv
+  obtain ⟨c, ell, hup⟩ := D.reset.update_call_of_awake (D.reset.run.antitone hvτ hxτ) hv
     (by linarith only [hvτ, hτb])
   refine ⟨c, ell, hup, ?_⟩
   by_contra hc
@@ -179,12 +179,13 @@ private theorem proposal_below_ready_read {D : RepairSchedule tr H proposer dg g
 /-- The supplier's data equations give the interface run, the drain `2k + 5`, the catch-up `18Δ`,
 the hold `Δ`, the margin and the latency `6Δ`. -/
 private theorem localData_eqs {C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val)}
-    (hdata : GoldilocksLocalData sp ro C) :
+    {sign : Fin sp.n → Time → Bool} {G : Nat}
+    (hdata : GoldilocksLocalData sp ro C sign G) :
     (∀ cm proposer dg H (tr : GoldilocksTrace sp ro), C.run.Run cm proposer dg H tr →
-      (goldilocksRunInterface sp ro).Run cm proposer dg H tr) ∧
+      (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr) ∧
     C.healing.drain = 2 * sp.k + 5 ∧ C.catchUp = 18 * sp.Δ ∧ C.hold = sp.Δ ∧
     C.margin = 6 * sp.Δ ∧ C.latency = 6 * sp.Δ := by
-  obtain ⟨⟨⟨hrunEq, -⟩, -, -, hdrain, -⟩, -, hcatch, -, -, hhold, hmargin, hlat, -⟩ := hdata
+  obtain ⟨⟨⟨hrunEq, -⟩, -, -, -, hdrain, -⟩, -, hcatch, -, -, hhold, hmargin, hlat, -⟩ := hdata
   refine ⟨fun cm proposer dg H tr hrun => ?_, hdrain, hcatch, hhold, hmargin, hlat⟩
   rw [hrunEq] at hrun
   exact (goldilocksRunInterface_run_iff cm).mpr hrun
@@ -194,7 +195,8 @@ proposal at `s₁` with its update by the horizon and `ḡ + 4Δ ≤ t_{s₁}` m
 strictly after `t_{s₁} + 6Δ` compatible in the blocks held while honest. -/
 theorem goldilocks_healed_compatible
     (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
-    (hdata : GoldilocksLocalData sp ro C) {s₁ : Nat}
+    {sign : Fin sp.n → Time → Bool} {G : Nat}
+    (hdata : GoldilocksLocalData sp ro C sign G) {s₁ : Nat}
     (hβ : βK ≤ 1 / 2) (hrun : C.run.Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
@@ -233,7 +235,8 @@ proposal at `s₁` by the horizon is an ancestor of every ready read at or after
 `t_{s₁} + 6Δ`, strictly before the read cut. -/
 theorem goldilocks_healed_proposal
     (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
-    (hdata : GoldilocksLocalData sp ro C) {s₁ : Nat}
+    {sign : Fin sp.n → Time → Bool} {G : Nat}
+    (hdata : GoldilocksLocalData sp ro C sign G) {s₁ : Nat}
     (hβ : βK ≤ 1 / 2) (hrun : C.run.Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
@@ -268,7 +271,8 @@ theorem goldilocks_healed_proposal
 or after `t_s + 6Δ`, strictly before the read cut. -/
 theorem goldilocks_proposal_read
     (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
-    (hdata : GoldilocksLocalData sp ro C)
+    {sign : Fin sp.n → Time → Bool} {G : Nat}
+    (hdata : GoldilocksLocalData sp ro C sign G)
     (hβ : βK ≤ 1 / 2) (hrun : C.run.Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
@@ -303,7 +307,8 @@ theorem goldilocks_proposal_read
 /-- **The healthy read points of the Goldilocks supplier** (L6 and L7) at its data equations. -/
 theorem goldilocks_healthyReadPoint
     (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
-    (hdata : GoldilocksLocalData sp ro C) : HealthyReadPoint C where
+    {sign : Fin sp.n → Time → Bool} {G : Nat}
+    (hdata : GoldilocksLocalData sp ro C sign G) : HealthyReadPoint C where
   healed := fun _ _ _ _ _ _ _ _ _ _ _ hβ hrun hp hr hab hs₁ _ _ =>
     ⟨fun hX hTb hgu _ _ _ _ _ _ ht hu hy hz _ _ =>
       goldilocks_healed_compatible C hdata hβ hrun hp hr hab hs₁ hX hTb hgu ht hu hy hz,

@@ -70,14 +70,14 @@ theorem goldilocks_ac_projection_from {sp : AC.ACParams}
       obtain ⟨j, hjk, ⟨acc, hj⟩, hpos⟩ :=
         (h.upTo (h.time_nonneg i)).block_unforgeable y hy k B ⟨true, ha'⟩ hp
       rcases Compose.blockCall_cases (h.upTo (h.time_nonneg i)).toLocalRun hp hj with
-        hg | ⟨j₀, x, rfl, ht, hP, d, p, _, hBdef, _⟩
+        hg | ⟨j₀, x, f, rfl, ht, hP, d, p, _, hBdef, _⟩
       · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_of_ne_nil hg.1)).2.2.2.1) hpos
       · have hs : B.slot = sp.toParams.slotOf (tr.time (j₀ + 2)) := by rw [hBdef]; rfl
         have htime : sp.toParams.slotTime B.slot = tr.time (j₀ + 2) := hs ▸ hP.2.1.symm
         refine ⟨j₀ + 2, acc, ((Trace.upTo_callAt _).mp hj).2, j₀, ?_, rfl, hs ▸ hP.1,
           htime ▸ (h.time_mono (hjk.trans hk.le))⟩
         have ht' := (RunTrace.upTo_tickAt h.time_mono).mp (show
-          (tr.upTo (tr.time i)).TickAt proposer dg B.proposer j₀ (tr.time (j₀ + 2)) from ⟨x, ht⟩)
+          (tr.upTo (tr.time i)).TickAt proposer dg B.proposer j₀ (tr.time (j₀ + 2)) from ⟨x, f, ht⟩)
         rw [← htime] at ht'
         exact ht'.2
     by_cases hg : B = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload

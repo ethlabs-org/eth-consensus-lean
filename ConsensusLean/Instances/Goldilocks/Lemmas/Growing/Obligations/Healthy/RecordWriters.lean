@@ -526,7 +526,8 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b :
   have hcall : (simTraceAt S rho hn).CallAt (rho.ownKey v) (cutMap S rho hn p)
       (Node.acCall (rho.ownKey v) ((simTraceAt S rho hn).state (rho.ownKey v)
         (cutMap S rho hn p)) T .tick).2 := by
-    exact ⟨hnode, hlabel⟩
+    refine ⟨hnode, ?_⟩
+    simpa [Node.exec, Healing.onTick_eq, Node.tickStep] using hlabel
   have htime : (simTraceAt S rho hn).time (cutMap S rho hn p) = T := by
     simpa only [Nat.add_zero] using htime
   obtain ⟨ell, hcallA, hcalltick⟩ : ∃ ell,

@@ -102,7 +102,7 @@ theorem goldilocks_finalReadTransport (S : Setup) {E : Env V}
         max_le (by linarith) (by linarith)
       have hpub : sp.toParams.IsPublic (tr.time c + sp.toParams.Δ) :=
         ⟨4 * ((W.block 3).slot : Time) + 1, by rw [hts, hgrid]; ring⟩
-      obtain ⟨j₀, xt, hj₀⟩ := hrun.tick_of_awake y _ hyp (by linarith) hpub
+      obtain ⟨j₀, xt, fgDue, hj₀⟩ := hrun.tick_of_awake y _ hyp (by linarith) hpub
         (hP.awake y _ ⟨hyp, hpD⟩ hgp hpD)
       obtain ⟨hn₀, ht₀, -, -, hl₀⟩ := hj₀.2.1 0 (List.length_pos_iff.mpr hj₀.1)
       simp only [Nat.add_zero] at hn₀ ht₀ hl₀

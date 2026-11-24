@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.F
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowEndpoint
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowSigned
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.Row
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
@@ -27,16 +28,6 @@ open AC (ACParams ReplayOrder)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-/-- No restart in `(t, b]` of a node honest at its restart: `NoRestartAfter` for the restarts up
-to `b`. -/
-def NoRestartUpTo (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (t b : Time) : Prop :=
-  ∀ y k, y ∈ H (tr.time k) → tr.RestartAt y k → tr.time k ≤ b → tr.time k ≤ t
-
-/-- The bounded no-restart premise, without exposing the definition's body. -/
-theorem noRestartUpTo_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {t b : Time} :
-    NoRestartUpTo tr H t b ↔
-      ∀ y k, y ∈ H (tr.time k) → tr.RestartAt y k → tr.time k ≤ b → tr.time k ≤ t :=
-  Iff.rfl
 
 end Consensus.Goldilocks.Healing.Growing
 
@@ -51,6 +42,13 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 private theorem faults_lt_quorums {f n : Nat} (hn : 0 < n) (hf : 3 * f ≤ n - 1) :
     f < (2 * n + 2) / 3 ∧ f < 2 * ((2 * n + 2) / 3) - n := by
   omega
+
+private theorem frameWindow_mono {lo hi hi' : Time} {floor : Nat} {kindJ : Prop}
+    {J : AC.Blk sp.n (List (FG.Att sp.n))} (hw : FrameWindow tr H lo hi floor kindJ J)
+    (hh : hi' ≤ hi) : FrameWindow tr H lo hi' floor kindJ J :=
+  ⟨fun y i hy hl hhi => hw.floor_eq y i hy hl (hhi.trans hh),
+    fun y i hy hl hhi => hw.kind_iff y i hy hl (hhi.trans hh),
+    fun y i hy hl hhi => hw.root_eq y i hy hl (hhi.trans hh)⟩
 
 /-- The proposal's own full frame already bounds its parent by the common floor. -/
 theorem floor_le_warm_proposal_at {ini}
@@ -177,9 +175,11 @@ theorem report_root_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
   exact ⟨hroot.1.1, hroot.2.mono (fun _ h => h.1)⟩
 
 /-- A warm proposal crosses one height when delayed signing and delivery fit before the next
-sufficiently old honest proposal. -/
+sufficiently old honest proposal. The report is the delayed one of a reader signing within
+`Gs · Δ` of its appointment (`proposal_report_follow_delayed_at`), so the vote latency `D` is
+widened by `Gs · Δ`. -/
 theorem round_of_warm_within_at
-    {g ΔF b T D : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
+    {g ΔF b T D t₀ : Time} {s₀ u x N floor Gs : Nat} {kindJ : Prop}
     {J P X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
@@ -192,20 +192,26 @@ theorem round_of_warm_within_at
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (hδ : 3 ≤ sp.toParams.fg.δt)
     (hlat : Generic.VoteLatencyAt tr H D) (hD : 0 ≤ D)
-    (hΔF : 6 * sp.Δ + D + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
+    (hΔF : 6 * sp.Δ + (D + (Gs : Time) * sp.Δ) + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
     (hux : u + sp.toParams.fg.δt ≤ x) (hxN : x ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
     (hTb : T ≤ b)
     (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
       tr.time k < T → att.h ≤ HZ tr H g)
-    (hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ + D < T)
+    (hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) < T)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX)) (hdx : p = proposer x)
-    (hX : tr.ProposesAt p kX X) (hXs : X.slot = x) (hK : CommitteeHalfUpTo tr H K g b) :
+    (hX : tr.ProposesAt p kX X) (hXs : X.slot = x)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
+    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
+    (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
+    (hK : CommitteeHalfUpTo tr H K g b) :
     P ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
       ((tr.state p (kX + 1)).fg.σ P.root).h + 1 ≤
         ((tr.state p (kX + 1)).fg.σ X.root).h := by
   have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
+  have hGs0 : (0 : Time) ≤ (Gs : Time) * sp.Δ :=
+    mul_nonneg (Nat.cast_nonneg _) (zero_le_one.trans sp.toParams.hΔ)
   have hts {a c : Nat} (h : a ≤ c) : sp.ts a ≤ sp.ts c :=
     (AC.ts_le_iff sp).2 (by exact_mod_cast h)
   have htX : tr.time kX = sp.ts x := by
@@ -217,18 +223,21 @@ theorem round_of_warm_within_at
     have he : sp.ts (s₀ + 4 : Nat) = sp.ts s₀ + 16 * sp.Δ := by
       simp only [ACParams.ts]; push_cast; ring
     linarith [cutZ_le sp g]
-  have hv : gbar g ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ + D := by
+  have hv : gbar g ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) := by
     have := hts (show s₀ ≤ u + 1 by omega)
     linarith
-  have hvx : sp.ts (u + 1 : Nat) + 2 * sp.Δ + D + ΔF ≤ tr.time kX := by
+  have hvx : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) + ΔF ≤ tr.time kX := by
     have h1 := hts hux
     have h2 : sp.ts (u + sp.toParams.fg.δt : Nat) =
         sp.ts (u + 1 : Nat) + 4 * sp.Δ * (sp.toParams.fg.δt : Time) - 4 * sp.Δ := by
       simp only [ACParams.ts]; push_cast; ring
     rw [htX]
     linarith
-  have hvc : sp.ts (u + 1 : Nat) + 2 * sp.Δ + D < tr.time kX := by
+  have hvc : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) < tr.time kX := by
     linarith [hsvc.deltaF]
+  have hTx : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (Gs : Time) * sp.Δ ≤ tr.time kX := by linarith
+  have hTN : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (Gs : Time) * sp.Δ ≤ sp.ts N + 2 * sp.Δ := by
+    linarith [hts hxN]
   have hfi : (H (sp.ts u))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
     have hf' := hf (sp.ts u) (by simp only [ACParams.ts]; positivity)
       (by linarith [hts (show u ≤ N by omega)])
@@ -259,8 +268,9 @@ theorem round_of_warm_within_at
       (fun q hq => (hrun.time_mono hq.le).trans (by rw [hct, htX]))] at hd
     exact hd
   have hfol := fun y (hy : y ∈ H (tr.time kX)) =>
-    proposal_report_follow_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm huN hmb
-      hz hdes hP hPs (hrun.antitone (by linarith) hy) hK
+    proposal_report_follow_delayed_at (frameWindow_mono hframe (max_le le_rfl hTN)) hrun hnc
+      hsvc hawake hf hcatch hnr hm hwarm huN (max_le hmb (hTN.trans hmb)) hz hdes hP hPs hcal
+      hgap (by linarith [hts (show s₀ ≤ u + 1 by omega)]) (hrun.antitone hTx hy) hK
   obtain ⟨i₀, ell₀, R₀, _, _, _, _, hPR₀, hR₀d⟩ := hfol p hp
   refine round_cross_at hrun hnc hsvc hnr hPH
     (hPR₀.trans (hR₀d x (by omega) hxN p c ellp hpc hc' hcall hct d pay hd')) hpar hp hX
@@ -334,9 +344,7 @@ theorem round_of_warm_within_at
   rcases hor with ⟨l, att, hyl, hs, hlk, hah, haT⟩ | hh
   · exact Or.inl ⟨y, k, hyk, hPy, l, att, hyl, hs, by linarith, hah, haT⟩
   · have hshort : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J :=
-      ⟨fun w l hw hlo hhi => hframe.floor_eq w l hw hlo (by linarith),
-       fun w l hw hlo hhi => hframe.kind_iff w l hw hlo (by linarith),
-       fun w l hw hlo hhi => hframe.root_eq w l hw hlo (by linarith)⟩
+      frameWindow_mono hframe (by linarith)
     have hChead := hshort.toFG_later_proposal_head_after_at hrun hnc hsvc hawake hf hcatch hnr
       hm hwarm (by linarith) hyj hC hPs hPC (by linarith [hts hxN])
       (htjk.trans_lt htkx) hxN hpc hc' hcall hct hd' hK
@@ -344,7 +352,7 @@ theorem round_of_warm_within_at
 
 /-- The same-tick warm round is the delayed round with latency `0`. -/
 theorem round_of_warm_at
-    {g ΔF b T : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
+    {g ΔF b T t₀ : Time} {s₀ u x N floor Gs : Nat} {kindJ : Prop}
     {J P X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
@@ -356,31 +364,38 @@ theorem round_of_warm_at
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (hδ : 3 ≤ sp.toParams.fg.δt)
-    (hΔF : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
+    (hΔF : 6 * sp.Δ + (Gs : Time) * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
     (hux : u + sp.toParams.fg.δt ≤ x) (hxN : x ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
     (hTb : T ≤ b)
     (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
       tr.time k < T → att.h ≤ HZ tr H g)
-    (hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ < T)
+    (hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (Gs : Time) * sp.Δ < T)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX)) (hdx : p = proposer x)
-    (hX : tr.ProposesAt p kX X) (hXs : X.slot = x) (hK : CommitteeHalfUpTo tr H K g b) :
+    (hX : tr.ProposesAt p kX X) (hXs : X.slot = x)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
+    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
+    (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
+    (hK : CommitteeHalfUpTo tr H K g b) :
     P ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
       ((tr.state p (kX + 1)).fg.σ P.root).h + 1 ≤
         ((tr.state p (kX + 1)).fg.σ X.root).h :=
   round_of_warm_within_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm hδ
-    (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl (by simpa using hΔF)
-    hux hxN hmb hTb hna (by simpa using hT) hz hdes hP hPs hp hdx hX hXs hK
+    (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl (by simpa only [zero_add] using hΔF)
+    hux hxN hmb hTb hna (by simpa only [zero_add] using hT) hz hdes hP hPs hp hdx hX hXs hcal
+    hgap ht₀ hδG hK
 
 /-- **The zero-rise reset under vote latency `D`**: with the premises of
-`reset_of_high_proposal_at`, the latency `D` and a service horizon covering `t_{u+1} + 2Δ + D`,
-a high warm proposal yields a reset by `t_{u+1} + 2Δ + D`. The frame window and the report are
-those of the same-tick case; only the signing moves. -/
+`reset_of_high_proposal_at`, the latency `D` and a service horizon covering
+`t_{u+1} + 2Δ + D + Gs · Δ`, a high warm proposal yields a reset by `t_{u+1} + 2Δ + D + Gs · Δ`.
+The report is the delayed one of a reader signing within `Gs · Δ` of `t_{u+1} + 2Δ`, so the frame
+window and the service horizon extend by `Gs · Δ`. -/
 theorem reset_of_high_proposal_within_at
-    {g ΔF b D : Time} {s₀ u N floor : Nat} {kindJ : Prop}
+    {g ΔF b D t₀ : Time} {s₀ u N floor Gs : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
+    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) floor
+      kindJ J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -389,20 +404,30 @@ theorem reset_of_high_proposal_within_at
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
-    (hN : u + 1 ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b) (hH : (H b).Nonempty)
+    (hN : u + 1 ≤ N) (hmb : sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ ≤ b)
+    (hH : (H b).Nonempty)
     (hlat : Generic.VoteLatencyAt tr H D) (hD : 0 ≤ D)
-    (hDb : sp.ts (u + 1 : Nat) + 2 * sp.Δ + D ≤ b)
+    (hDb : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) ≤ b)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hh : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
+    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
     (hK : CommitteeHalfUpTo tr H K g b) :
-    ∃ a, IsReset tr H g a ∧ a ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ + D := by
+    ∃ a, IsReset tr H g a ∧ a ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) := by
   have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
+  have hGs0 : (0 : Time) ≤ (Gs : Time) * sp.Δ :=
+    mul_nonneg (Nat.cast_nonneg _) (zero_le_one.trans sp.toParams.hΔ)
   have hts : sp.ts (u + 1 : Nat) ≤ sp.ts N := (AC.ts_le_iff sp).2 (by exact_mod_cast hN)
+  have hs₀ : sp.ts s₀ ≤ sp.ts (u + 1 : Nat) :=
+    (AC.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ u + 1 by omega))
+  have hmax : max (sp.ts N + 2 * sp.Δ) (sp.ts (u + 1 : Nat) + 2 * sp.Δ + (Gs : Time) * sp.Δ) ≤
+      sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ := max_le (by linarith) (by linarith)
   obtain ⟨y, hy⟩ := hH
   obtain ⟨i, ell, R, hyi, hR, htil, hti, hPR, _⟩ :=
-    proposal_report_follow_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm hN hmb
-      hz hdes hP hPs (hrun.antitone (by linarith) hy) hK
+    proposal_report_follow_delayed_at (frameWindow_mono hframe hmax) hrun hnc hsvc hawake hf
+      hcatch hnr hm hwarm hN (hmax.trans hmb) hz hdes hP hPs hcal hgap (by linarith)
+      (hrun.antitone (by linarith) hy) hK
   have hcz : cutZ sp.toParams g ≤ tr.time i := by
     have h4 : sp.ts (s₀ + 4 : Nat) ≤ sp.ts u :=
       (AC.ts_le_iff sp).2 (by exact_mod_cast (show s₀ + 4 ≤ u by have := sp.two_le_k; omega))
@@ -439,9 +464,10 @@ theorem reset_of_high_proposal_within_at
 /-- A high warm proposal yields a reset via a reader honest at the report deadline
 (`reset_of_high_proposal_within_at` at latency `0`). -/
 theorem reset_of_high_proposal_at
-    {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop}
+    {g ΔF b t₀ : Time} {s₀ u N floor Gs : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
+    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) floor
+      kindJ J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -450,23 +476,28 @@ theorem reset_of_high_proposal_at
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
-    (hN : u + 1 ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b) (hH : (H b).Nonempty)
+    (hN : u + 1 ≤ N) (hmb : sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ ≤ b)
+    (hH : (H b).Nonempty)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hh : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
+    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
     (hK : CommitteeHalfUpTo tr H K g b) :
-    ∃ a, IsReset tr H g a ∧ a ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
+    ∃ a, IsReset tr H g a ∧ a ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ + (Gs : Time) * sp.Δ := by
   have hts : sp.ts (u + 1 : Nat) ≤ sp.ts N := (AC.ts_le_iff sp).2 (by exact_mod_cast hN)
-  simpa using reset_of_high_proposal_within_at hframe hrun hnc hsvc hawake hf hcatch hnr hm
-    hwarm hN hmb hH (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl (by linarith) hz hdes
-    hP hPs hh hK
+  simpa only [zero_add] using reset_of_high_proposal_within_at hframe hrun hnc hsvc hawake hf
+    hcatch hnr hm hwarm hN hmb hH (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl
+    (by linarith) hz hdes hP hPs hh hcal hgap ht₀ hK
 
-/-- Each round consumes one unit of height deficit. The latency `D` is covered by the timeout
-between consecutive proposals and added once to the terminal deadline. -/
+/-- Each round consumes one unit of height deficit. The latency `D` and the signing gap `Gs · Δ`
+are covered by the timeout between consecutive proposals and added once to the terminal
+deadline. -/
 theorem rise_reset_rounds_within_at
-    {g ΔF b T D : Time} {s₀ N G floor : Nat} {kindJ : Prop}
+    {g ΔF b T D t₀ : Time} {s₀ N G floor Gs : Nat} {kindJ : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
+    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) floor
+      kindJ J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -477,40 +508,49 @@ theorem rise_reset_rounds_within_at
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀)
     (hδ : 3 ≤ sp.toParams.fg.δt) (hG : 1 ≤ G)
     (hlat : Generic.VoteLatencyAt tr H D) (hD : 0 ≤ D)
-    (hΔF : 6 * sp.Δ + D + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
+    (hΔF : 6 * sp.Δ + (D + (Gs : Time) * sp.Δ) + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
     (hgp : ProposalGap tr H proposer G s₀ N)
-    (hmb : sp.ts N + 2 * sp.Δ ≤ b) (hH : (H b).Nonempty) (hTb : T ≤ b)
+    (hmb : sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ ≤ b) (hH : (H b).Nonempty) (hTb : T ≤ b)
     (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
       tr.time k < T → att.h ≤ HZ tr H g)
     (r : Nat) {u : Nat} (hwarm : s₀ + 2 * sp.k ≤ u)
     (hN : u + r * (sp.toParams.fg.δt + G - 1) + 1 ≤ N)
-    (hT : sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ + D ≤ T)
+    (hT : sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ +
+      (D + (Gs : Time) * sp.Δ) ≤ T)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hrise : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + r)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
+    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
+    (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ a, IsReset tr H g a ∧
-      a ≤ sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ + D := by
+      a ≤ sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ +
+        (D + (Gs : Time) * sp.Δ) := by
+  have hGs0 : (0 : Time) ≤ (Gs : Time) * sp.Δ :=
+    mul_nonneg (Nat.cast_nonneg _) (zero_le_one.trans sp.toParams.hΔ)
   induction r generalizing u z kP P with
   | zero =>
     simpa only [Nat.zero_mul, Nat.add_zero] using
       reset_of_high_proposal_within_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm
-        (by simpa using hN) hmb hH hlat hD (by simpa using hT.trans hTb)
-        hz hdes hP hPs (by simpa using hrise) hK
+        (by simpa using hN) hmb hH hlat hD
+        (by simpa only [Nat.zero_mul, Nat.add_zero] using hT.trans hTb)
+        hz hdes hP hPs (by simpa using hrise) hcal hgap ht₀ hK
   | succ r ih =>
     let ρ := sp.toParams.fg.δt + G - 1
     have hρ : 3 ≤ ρ := by dsimp [ρ]; omega
     have hmul : (r + 1) * ρ = r * ρ + ρ := Nat.succ_mul r ρ
     change u + (r + 1) * ρ + 1 ≤ N at hN
-    change sp.ts (u + (r + 1) * ρ + 1 : Nat) + 2 * sp.Δ + D ≤ T at hT
+    change sp.ts (u + (r + 1) * ρ + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) ≤ T at hT
     have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
     have hts {a c : Nat} (h : a ≤ c) : sp.ts a ≤ sp.ts c :=
       (AC.ts_le_iff sp).2 (by exact_mod_cast h)
     by_cases hh : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h
     · have hle := hts (show u + 1 ≤ u + (r + 1) * ρ + 1 by omega)
       obtain ⟨a, ha, hat⟩ := reset_of_high_proposal_within_at hframe hrun hnc hsvc hawake hf
-        hcatch hnr hm hwarm (by omega) hmb hH hlat hD (by linarith) hz hdes hP hPs hh hK
+        hcatch hnr hm hwarm (by omega) hmb hH hlat hD (by linarith) hz hdes hP hPs hh hcal hgap
+        ht₀ hK
       exact ⟨a, ha, hat.trans (by linarith)⟩
     obtain ⟨x, hxl, hxr, hpx, kX, X, hX, hXs⟩ := proposalGap_iff.mp hgp
       (u + sp.toParams.fg.δt) (by omega) (by
@@ -522,12 +562,14 @@ theorem rise_reset_rounds_within_at
     have hnext : x + r * ρ + 1 ≤ u + (r + 1) * ρ + 1 := by
       have hδρ : sp.toParams.fg.δt + G ≤ ρ + 1 := by dsimp [ρ]; omega
       omega
-    have hstrict : sp.ts (u + 1 : Nat) + 2 * sp.Δ + D < T := by
+    have hstrict : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) < T := by
       have hlt : sp.ts (u + 1 : Nat) < sp.ts (u + (r + 1) * ρ + 1 : Nat) :=
         (AC.ts_lt_iff sp).2 (by exact_mod_cast (show u + 1 < u + (r + 1) * ρ + 1 by omega))
       linarith
-    obtain ⟨hPX, _, hcross⟩ := round_of_warm_within_at hframe hrun hnc hsvc hawake hf hcatch hnr
-      hm hwarm hδ hlat hD hΔF hxl (by omega) hmb hTb hna hstrict hz hdes hP hPs hpx0 rfl hX hXs hK
+    obtain ⟨hPX, _, hcross⟩ := round_of_warm_within_at (N := N)
+      (frameWindow_mono hframe (by linarith)) hrun hnc hsvc hawake hf hcatch hnr hm hwarm hδ hlat
+      hD hΔF hxl (by omega) (by linarith) hTb hna hstrict hz hdes hP hPs hpx0 rfl hX hXs hcal
+      hgap ht₀ hδG hK
     have htP : tr.time kP = sp.ts u := by
       simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
     have hz0 : z ∈ H (tr.time kP) := hrun.antitone (by rw [htP]; linarith) hz
@@ -543,9 +585,10 @@ theorem rise_reset_rounds_within_at
 
 /-- The same-tick reset rounds are the delayed reset rounds with latency `0`. -/
 theorem rise_reset_rounds_at
-    {g ΔF b T : Time} {s₀ N G floor : Nat} {kindJ : Prop}
+    {g ΔF b T t₀ : Time} {s₀ N G floor Gs : Nat} {kindJ : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
+    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) floor
+      kindJ J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -555,24 +598,30 @@ theorem rise_reset_rounds_at
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀)
     (hδ : 3 ≤ sp.toParams.fg.δt) (hG : 1 ≤ G)
-    (hΔF : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
+    (hΔF : 6 * sp.Δ + (Gs : Time) * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
     (hgp : ProposalGap tr H proposer G s₀ N)
-    (hmb : sp.ts N + 2 * sp.Δ ≤ b) (hH : (H b).Nonempty) (hTb : T ≤ b)
+    (hmb : sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ ≤ b) (hH : (H b).Nonempty) (hTb : T ≤ b)
     (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
       tr.time k < T → att.h ≤ HZ tr H g)
     (r : Nat) {u : Nat} (hwarm : s₀ + 2 * sp.k ≤ u)
     (hN : u + r * (sp.toParams.fg.δt + G - 1) + 1 ≤ N)
-    (hT : sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ ≤ T)
+    (hT : sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ + (Gs : Time) * sp.Δ ≤
+      T)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hrise : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + r)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
+    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
+    (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ a, IsReset tr H g a ∧
-      a ≤ sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ := by
-  simpa only [add_zero] using rise_reset_rounds_within_at hframe hrun hnc hsvc hawake hf hcatch
-    hnr hm hδ hG (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl (by simpa using hΔF)
-    hgp hmb hH hTb hna r hwarm hN (by simpa using hT) hz hdes hP hPs hrise hK
+      a ≤ sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ +
+        (Gs : Time) * sp.Δ := by
+  simpa only [zero_add] using rise_reset_rounds_within_at hframe hrun hnc hsvc hawake hf hcatch
+    hnr hm hδ hG (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl
+    (by simpa only [zero_add] using hΔF) hgp hmb hH hTb hna r hwarm hN
+    (by simpa only [zero_add] using hT) hz hdes hP hPs hrise hcal hgap ht₀ hδG hK
 
 /-- The merged key bounds the deficit at the proposal cut itself. -/
 theorem rounds_le_warm_proposal_at
@@ -607,32 +656,42 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b r latency : Time} {G Ld : Nat}
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b r latency t₀ : Time} {G Ld Gs : Nat}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     (hH : (H b).Nonempty) (hδ : 3 ≤ sp.toParams.fg.δt)
     (hlat : Generic.VoteLatencyAt tr H latency) (hlat0 : 0 ≤ latency)
-    (hΔF : 6 * sp.Δ + latency + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
+    (hΔF : 6 * sp.Δ + (latency + (Gs : Time) * sp.Δ) + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
     (hr : 0 ≤ r) (hgr : gbar g ≤ r) (hG : 1 ≤ G)
     (hcz : cutZ sp.toParams g + sp.Δ + 1 ≤ r + 4 * sp.Δ)
-    (hb : Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld + 5 * latency ≤ b)
+    (hb : Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld +
+      5 * (latency + (Gs : Time) * sp.Δ) ≤ b)
     (hgp : ∀ s₀ N : Nat, r + 4 * sp.Δ ≤ sp.ts s₀ →
       sp.ts N + 2 * sp.Δ <
-        Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld + 5 * latency →
+        Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld +
+          5 * (latency + (Gs : Time) * sp.Δ) →
       ProposalGap tr H proposer G s₀ N)
-    (hdrain : DrainOutputs tr proposer H g G Ld b) (hK : CommitteeHalfUpTo tr H K g b) :
+    (hdrain : DrainOutputs tr proposer H g G Ld b)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
+    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ r)
+    (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
+    (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ a, IsReset tr H g a ∧
-      a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld + 5 * latency := by
+      a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld +
+        5 * (latency + (Gs : Time) * sp.Δ) := by
   classical
   let D := sp.Δ
   let ρ : Nat := sp.toParams.fg.δt + G - 1
   let lo := r + 4 * D
   let d := 4 * D * ((Ld : Time) + 2)
   let rt := 4 * D * (ρ : Time)
-  let B := Obligations.resetBoundRounds r D (2 * D) sp.toParams.fg.δt G Ld + 5 * latency
+  let B := Obligations.resetBoundRounds r D (2 * D) sp.toParams.fg.δt G Ld +
+    5 * (latency + (Gs : Time) * sp.Δ)
   have hD : 1 ≤ D := sp.toParams.hΔ
+  have hGs0 : (0 : Time) ≤ (Gs : Time) * sp.Δ :=
+    mul_nonneg (Nat.cast_nonneg _) (zero_le_one.trans sp.toParams.hΔ)
   have hρ : (ρ : Time) = (sp.toParams.fg.δt : Time) + G - 1 := by
     dsimp [ρ]
     rw [Nat.cast_sub (by omega), Nat.cast_add, Nat.cast_one]
@@ -647,7 +706,7 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
     have hprod := mul_nonneg (show (0 : Time) ≤ 20 * Ld + 24 * (sp.toParams.fg.δt + G - 1) by
       linarith) (show (0 : Time) ≤ D by linarith)
     have hB : B = r + (20 * Ld + 24 * (sp.toParams.fg.δt + G - 1) + 54) * D + 5 * (2 * D)
-        + 5 * latency := by dsimp [B]; rw [Obligations.resetBoundRounds_eq]
+        + 5 * (latency + (Gs : Time) * sp.Δ) := by dsimp [B]; rw [Obligations.resetBoundRounds_eq]
     linarith
   by_cases hadv : ∃ y k att, y ∈ H (max (cutZ sp.toParams g) (tr.time k)) ∧
       tr.SignAt y k att ∧ tr.time k ≤ B ∧ HZ tr H g + 1 ≤ att.h
@@ -681,7 +740,7 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
     exact (hfq (hrun.time_nonneg i) hib).2
   have hd : 0 ≤ d := by dsimp [d]; positivity
   have hrt : 0 ≤ rt := by dsimp [rt]; positivity
-  let slack := 2 * D - 1 + latency
+  let slack := 2 * D - 1 + (latency + (Gs : Time) * sp.Δ)
   have hlen := riseLen_nonneg hd hrt (show 0 ≤ slack by dsimp [slack]; linarith) (HZ tr H g)
   have hsum : lo + ∑ j ∈ Finset.range 5,
       (riseLen d rt slack (HZ tr H g) (2 * HZ tr H g + j) + 2 * D) = B - 5 := by
@@ -718,7 +777,7 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
     rw [riseLen_eq]
     dsimp [d, rt]
     ring
-  have hfit : sp.ts N + 2 * D + latency ≤ af + len := by
+  have hfit : sp.ts N + 2 * D + (latency + (Gs : Time) * sp.Δ) ≤ af + len := by
     rw [hNtime, hlenEq]
     change 4 * D * (s₀ : Time) < af + 4 * D at hshi
     have halign := Int.le_sub_one_of_lt hshi
@@ -726,16 +785,18 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
     linarith only [halign]
   have hts {x y : Nat} (h : x ≤ y) : sp.ts x ≤ sp.ts y :=
     (AC.ts_le_iff sp).2 (by exact_mod_cast h)
-  have hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * D) floor kindJ J :=
+  have hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * D + (Gs : Time) * sp.Δ) floor
+      kindJ J :=
     ⟨fun y i hy hi hj => hwin.floor_eq y i hy (hslo.trans hi) (by linarith),
       fun y i hy hi hj => hwin.kind_iff y i hy (hslo.trans hi) (by linarith),
       fun y i hy hi hj => hwin.root_eq y i hy (hslo.trans hi) (by linarith)⟩
   have hsready : r + 4 * D ≤ sp.ts s₀ := by dsimp [lo] at haf; linarith
   have hm : gbar g + 4 * D ≤ sp.ts s₀ := by linarith
-  have hmb : sp.ts N + 2 * D ≤ b := by linarith
+  have hmb : sp.ts N + 2 * D + (Gs : Time) * sp.Δ ≤ b := by linarith
   have hgpN := hgp s₀ N hsready (by linarith)
   have hLdN : s₀ + Ld ≤ N := by dsimp [N]; omega
-  obtain ⟨u, hwarm, huLd, z, kP, P, hz, hdes, hP, hPs, _⟩ := hdrain.warm hframe hm hLdN hmb
+  obtain ⟨u, hwarm, huLd, z, kP, P, hz, hdes, hP, hPs, _⟩ := hdrain.warm
+    (frameWindow_mono hframe (by linarith)) hm hLdN (by linarith)
     (fun y k att hy hs hk => hna y k att hy hs (by linarith)) hgpN
   have huN : u + rr * ρ + 1 ≤ N := by dsimp [N]; omega
   have hu0 : s₀ ≤ u := by omega
@@ -747,7 +808,7 @@ private theorem exists_reset_of_drain_rounds_noRestartAfter_at
     (hfq (by change 0 ≤ 4 * sp.Δ * (u : Time); positivity) (by linarith)).2
   obtain ⟨a, ha, hat⟩ := rise_reset_rounds_within_at hframe hrun hnc hsvc hawake hf hcatch hnr hm
     hδ hG hlat hlat0 hΔF hgpN hmb hH hb hna rr hwarm huN
-    (by linarith [hts huN]) hz hdes hP hPs hrise hK
+    (by linarith [hts huN]) hz hdes hP hPs hrise hcal hgap (by linarith) hδG hK
   exact ⟨a, ha, hat.trans (by linarith [hts huN])⟩
 
 /-! ### Truncation after `b`
@@ -843,24 +904,31 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.exists_reset_of_drain_rounds
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b r latency : Time} {G Ld : Nat}
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b r latency t₀ : Time} {G Ld Gs : Nat}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartUpTo tr H (gbar g) b)
     (hH : (H b).Nonempty) (hδ : 3 ≤ sp.toParams.fg.δt)
     (hlat : Generic.VoteLatencyAt tr H latency) (hlat0 : 0 ≤ latency)
-    (hΔF : 6 * sp.Δ + latency + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
+    (hΔF : 6 * sp.Δ + (latency + (Gs : Time) * sp.Δ) + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
     (hr : 0 ≤ r) (hgr : gbar g ≤ r) (hG : 1 ≤ G)
     (hcz : cutZ sp.toParams g + sp.Δ + 1 ≤ r + 4 * sp.Δ)
-    (hb : Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld + 5 * latency ≤ b)
+    (hb : Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld +
+      5 * (latency + (Gs : Time) * sp.Δ) ≤ b)
     (hgp : ∀ s₀ N : Nat, r + 4 * sp.Δ ≤ sp.ts s₀ →
       sp.ts N + 2 * sp.Δ <
-        Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld + 5 * latency →
+        Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld +
+          5 * (latency + (Gs : Time) * sp.Δ) →
       ProposalGap tr H proposer G s₀ N)
-    (hdrain : DrainOutputs tr proposer H g G Ld b) (hK : CommitteeHalfUpTo tr H K g b) :
+    (hdrain : DrainOutputs tr proposer H g G Ld b)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
+    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ r)
+    (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
+    (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ a, IsReset tr H g a ∧
-      a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld + 5 * latency := by
+      a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld +
+        5 * (latency + (Gs : Time) * sp.Δ) := by
   have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
   have hlo : r + 4 * sp.Δ ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ)
       sp.toParams.fg.δt G Ld := by
@@ -871,6 +939,8 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.exists_reset_of_drain_rounds
       have h3 : (1 : Time) ≤ G := by exact_mod_cast hG
       linarith
     linarith [mul_nonneg hc (show (0 : Time) ≤ sp.Δ by linarith)]
+  have hGs0 : (0 : Time) ≤ (Gs : Time) * sp.Δ :=
+    mul_nonneg (Nat.cast_nonneg _) (zero_le_one.trans sp.toParams.hΔ)
   have hczb : cutZ sp.toParams g ≤ b := by linarith
   have hlat' : Generic.VoteLatencyAt tr (truncH H b) latency := by
     refine ⟨fun y i R hR hy => ?_⟩
@@ -897,36 +967,45 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.exists_reset_of_drain_rounds
     (fun y k hy hk => noRestartUpTo_iff.mp hnr y k hy.1 hk hy.2)
     (hH.mono fun _ hy => ⟨hy, le_rfl⟩) hδ hlat' hlat0 hΔF hr hgr hG hcz hb
     (fun s₀ N hs₀ hN => proposalGap_truncH (hgp s₀ N hs₀ hN) (by linarith))
-    (drainOutputs_truncH hdrain hczb) hK.truncH
+    (drainOutputs_truncH hdrain hczb)
+    (sign := sign) (fun y j t x fgDue hy hg => hcal y j t x fgDue hy.1 hg)
+    hgap ht₀ hδG hK.truncH
   exact ⟨a, (isReset_truncH_iff hczb (hab.trans hb)).mp ha, hab⟩
 
-/-- Finite-service reset with same-tick signing. -/
+/-- Finite-service reset with same-tick vote latency: the bound keeps the five signing gaps. -/
 theorem _root_.Consensus.Goldilocks.Healing.Growing.exists_reset_of_drain_rounds_awake_at
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b r : Time} {G Ld : Nat}
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b r t₀ : Time} {G Ld Gs : Nat}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hsvc : ResetService tr H g ΔF b)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartUpTo tr H (gbar g) b)
     (hH : (H b).Nonempty) (hδ : 3 ≤ sp.toParams.fg.δt)
-    (hΔF : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
+    (hΔF : 6 * sp.Δ + (Gs : Time) * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
     (hr : 0 ≤ r) (hgr : gbar g ≤ r) (hG : 1 ≤ G)
     (hcz : cutZ sp.toParams g + sp.Δ + 1 ≤ r + 4 * sp.Δ)
-    (hb : Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld ≤ b)
+    (hb : Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld +
+      5 * ((Gs : Time) * sp.Δ) ≤ b)
     (hgp : ∀ s₀ N : Nat, r + 4 * sp.Δ ≤ sp.ts s₀ →
       sp.ts N + 2 * sp.Δ <
-        Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld →
+        Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld +
+          5 * ((Gs : Time) * sp.Δ) →
       ProposalGap tr H proposer G s₀ N)
-    (hdrain : DrainOutputs tr proposer H g G Ld b) (hK : CommitteeHalfUpTo tr H K g b) :
+    (hdrain : DrainOutputs tr proposer H g G Ld b)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
+    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ r)
+    (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
+    (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ a, IsReset tr H g a ∧
-      a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld := by
-  simpa only [mul_zero, add_zero] using exists_reset_of_drain_rounds_awake_within_at hrun hnc
+      a ≤ Obligations.resetBoundRounds r sp.Δ (2 * sp.Δ) sp.toParams.fg.δt G Ld +
+        5 * ((Gs : Time) * sp.Δ) := by
+  simpa only [zero_add] using exists_reset_of_drain_rounds_awake_within_at hrun hnc
     hf hsvc hawake hcatch hnr hH hδ (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl
-    (by simpa only [add_zero] using hΔF) hr hgr hG hcz
-    (by simpa only [mul_zero, add_zero] using hb)
-    (by simpa only [mul_zero, add_zero] using hgp) hdrain hK
+    (by simpa only [zero_add] using hΔF) hr hgr hG hcz
+    (by simpa only [zero_add] using hb)
+    (by simpa only [zero_add] using hgp) hdrain hcal hgap ht₀ hδG hK
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

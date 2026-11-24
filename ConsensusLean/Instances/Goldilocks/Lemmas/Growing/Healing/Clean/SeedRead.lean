@@ -67,7 +67,7 @@ theorem reset_seed_held_at_read_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     simp only [ACParams.ts] at hslot hgst ⊢
     push_cast
     linarith
-  obtain ⟨j, ell, ell', hup, rest⟩ := Healing.update_toFG_calls_of_awake hr hy
+  obtain ⟨j, ell, hup⟩ := Healing.update_call_of_awake hr hy
     ((Trace.upTo_awake _ _ _).mpr ⟨hp.awake y _ (hp.run.antitone htime hy)
       (by linarith [AC.le_gbar g]) (htime.trans htb), htime⟩) (by
       intro i hi

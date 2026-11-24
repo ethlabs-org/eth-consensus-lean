@@ -33,7 +33,9 @@ theorem proposal_report_follow_at
     (hN : u + 1 ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     {y : Fin sp.n} (hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ))
+    (hsign : sign y (sp.ts (u + 1 : Nat) + 2 * sp.Δ) = true)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ i ell R, y ∈ H (tr.time i) ∧ AC.ToFGAt tr.projAC y i ell R ∧
       sp.ts u ≤ tr.time i ∧ tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ ∧
@@ -67,7 +69,7 @@ theorem proposal_report_follow_at
     linarith only [hm, this, hΔ]
   obtain ⟨k, ell, ell', hu, hc, hto, ht, _, _, _, _, hva, hv, e, he, _, hl⟩ :=
     fresh_fast_lock_update_toFG_at hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin
-      (hT.trans hmb) hshort hz hdes hP hPs hun hy hK
+      (hT.trans hmb) hshort hz hdes hP hPs hun hcal hy hsign hK
   have hyc : y ∈ H (tr.time (k + 1)) := ht ▸ hy
   have hPc := Healing.fresh_lock_toFG_candidate hv hva hl he ht
   have hr := (Compose.Growing.goldilocks_ac_projection_from hrun hnc).upTo

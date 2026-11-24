@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Supply.F
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.EngineBinding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GuardIdle
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.SignGap
 
 public section
 
@@ -40,7 +41,7 @@ suppliers at every valid run. -/
 private theorem local_binding (V : Type) [Fintype V] [DecidableEq V]
     (pub : Model.Public) (hn : 1 ≤ pub.n)
     (C : ACCorrectLocal (goldilocksNode (S.params pub hn) (S.ro _)) (fun v => v.val))
-    (hC : GoldilocksLocalData (S.params pub hn) (S.ro _) C) :
+    (hC : GoldilocksLocalData (S.params pub hn) (S.ro _) C (S.sign pub) A.signGap) :
     ∃ B : EngineBinding (F := goldilocks S) (V := V) pub C.payload (fun v => v.val) C.run,
       ∃ D : ∀ E hE rho hv, OutagePolicy (B.map E hE rho hv),
       ∃ R : ∀ E hE rho hv, StoredReadContext (B.map E hE rho hv),
@@ -51,14 +52,15 @@ private theorem local_binding (V : Type) [Fintype V] [DecidableEq V]
     funext B
     exact payloadOf_eq S B
   have hd := goldilocksRunInterface_data (sp := S.params pub hn) (ro := S.ro _)
+    (sign := S.sign pub) (G := A.signGap)
   rw [← hpl, ← acRun_ext (hd.1.trans hC.healing.1.1.symm) (hd.2.trans hC.healing.1.2.symm)]
-  refine ⟨goldilocksEngineBinding S pub hn,
+  refine ⟨goldilocksEngineBinding S A pub hn,
     fun E hE rho hv => by
       subst hE
-      exact (goldilocksEngineBinding_map S E hn rho hv).symm ▸ goldilocksOutagePolicy S rho hn hv,
+      exact (goldilocksEngineBinding_map S A E hn rho hv).symm ▸ goldilocksOutagePolicy S rho hn hv,
     fun E hE rho hv => by
       subst hE
-      exact (goldilocksEngineBinding_map S E hn rho hv).symm ▸
+      exact (goldilocksEngineBinding_map S A E hn rho hv).symm ▸
         goldilocksStoredReadContext S rho hn hv,
     fun E hE rho hv => ?_⟩
   subst hE
@@ -68,19 +70,17 @@ private theorem local_binding (V : Type) [Fintype V] [DecidableEq V]
         (SleepyLayer1.goldilocksEvents _ _) := by
     rintro M rfl hsg
     exact goldilocks_localClaimSuppliers S A rho hn hv C hC
-  exact aux _ (goldilocksEngineBinding_map S E hn rho hv) _
+  exact aux _ (goldilocksEngineBinding_map S A E hn rho hv) _
 
 /-- **The growing-fault endpoint** of `goldilocks S` at the coefficients `contract_coefficients
 S A`, at every vote binding. -/
 theorem meetsObligations_growing : ShapeObligations (goldilocks S) (K S A) := by
   have hδ : ∀ pub : {pub : Model.Public // 1 ≤ pub.n},
-      3 ≤ (S.params pub.1 pub.2).toParams.δt := fun _ => by
-    have := A.timeout
-    have := A.two_le_fgSlots
-    change 3 ≤ S.δt
-    omega
+      3 + (A.signGap + 3) / 4 ≤ (S.params pub.1 pub.2).toParams.δt := fun _ =>
+    signGap_δt A
   choose C hC using fun pub : {pub : Model.Public // 1 ≤ pub.n} =>
-    goldilocksACCorrectLocal_of_healing (goldilocks_ac_healing (ro := S.ro _) (hδ pub))
+    goldilocksACCorrectLocal_of_healing
+      (goldilocks_ac_healing (ro := S.ro _) (sign := S.sign pub.1) (G := A.signGap) (hδ pub))
   choose B D R hL using fun (V : Type) (_ : Fintype V) (_ : DecidableEq V) pub =>
     local_binding S A V pub.1 pub.2 (C pub) (hC pub)
   exact (meetsObligations_of_local_iff _ _).1 (meetsObligations_of_local_proof _ _) _ _ _ C

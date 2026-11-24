@@ -484,7 +484,8 @@ theorem restart_le_of_awakeOn_at
   have hua : u < a := by
     by_contra hle
     exact hs (haw u (not_lt.1 hle) (by linarith))
-  obtain ⟨j, x, hj⟩ := hrun.tick_of_awake y τ (hrun.antitone hτz hy) hτ0 hpub (haw τ haτ hτz)
+  obtain ⟨j, x, fgDue, hj⟩ :=
+    hrun.tick_of_awake y τ (hrun.antitone hτz hy) hτ0 hpub (haw τ haτ hτz)
   obtain ⟨hjc, hjt⟩ := group_call hj
   have hjk : j < k := by
     by_contra hkj

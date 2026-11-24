@@ -54,7 +54,8 @@ theorem proposesAt_of_honestProposalRun_at
   obtain ⟨j₀, -, ha, -⟩ := Healing.fg_accept_before hl hp hacc'
   obtain ⟨j', -, ⟨acc, hc⟩, hpos⟩ := hl.block_unforgeable _ hp j₀ P ⟨true, ha⟩ (hPp ▸ hp)
   rw [hPp] at hc
-  rcases Compose.blockCall_cases hl hp hc with hg | ⟨j₁, x, rfl, -, hpr, d', pay', -, hB, -⟩
+  rcases Compose.blockCall_cases hl hp hc with hg |
+    ⟨j₁, x, fgDue, rfl, -, hpr, d', pay', -, hB, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   · have hs : P.slot = sp.toParams.slotOf (tr.time (j₁ + 2)) := by rw [hB]; rfl
     have hown : (tr.upTo (tr.time j)).OwnBlockAt (proposer s) (j₁ + 2) P := ⟨⟨acc, hc⟩, hpos⟩

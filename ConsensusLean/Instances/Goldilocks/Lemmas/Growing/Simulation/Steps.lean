@@ -42,7 +42,7 @@ theorem node_of_tick_public_at (hv : rho.ExecutionValid)
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
     (stateAt S rho hn v (i + 1)).node =
       (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
-        (.tick (encodeTxs (Model.mempool rho.inbox v t)))).1 :=
+        (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t))).1 :=
   node_of_tick_public S rho hn hv v i t he hp
 
 end Engine

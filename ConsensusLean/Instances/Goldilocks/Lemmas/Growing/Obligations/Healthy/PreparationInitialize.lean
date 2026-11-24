@@ -23,7 +23,9 @@ private theorem contract_heal_ge_reset_late_within (cap : Capability) (X : ℕ+)
   have := A.six_le_δt
   omega
 
-private theorem contract_heal_ge_reset_late (cap : Capability) (X : ℕ+) :
+/-- The heal margin covers the reset reserve `R + 8k + 4X + 34` (the `Gs = 0` form of the
+signing-gap fit of `healthy_preparation_initialize_late_at`). -/
+theorem contract_heal_ge_reset_late (cap : Capability) (X : ℕ+) :
     (contract_catchUp S A : Nat) + (healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 34) + 3 ≤
       contract_heal S A cap X := by
   simpa only [mul_zero, add_zero] using contract_heal_ge_reset_late_within S A cap X 0
@@ -37,12 +39,20 @@ theorem healthy_preparation_initialize_late_at
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog
       (shapeProgress (goldilocks S) V)
-      (K S A) Q.cap Q.index Q.ready Q.heal Q.run) :
+      (K S A) Q.cap Q.index Q.ready Q.heal Q.run)
+    {sign : Fin Q.params.n → Time → Bool}
+    (hcal : Q.trace.SignCalendarAt (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.keys sign)
+    {Gs : Nat} (hgap : SignGapAt Q.params.toParams sign Gs 0)
+    (hδG : 3 + (Gs + 3) / 4 ≤ Q.params.toParams.fg.δt)
+    (hGs : (contract_catchUp S A : Nat) +
+        (healthyResetCoeff S Q.index + 8 * S.k + 4 * (Q.index : Nat) + 34) + 3 + 5 * Gs ≤
+      contract_heal S A Q.cap Q.index)
+    (hGsT : 4 * A.fgSlots + Gs ≤ 4 * S.δt) :
     ∃ W : HealthyBaseTimingAt S A V Q,
         ∃ D : HealthyPreparationScheduleAt
         S A V Q W,
       D.query + (4 * (Q.index : Time) + 14) * Q.params.Δ + 2 ≤ Q.heal := by
-  obtain ⟨ΔF, a, hreset, ha⟩ := healthy_preparation_reset_at S A V Q hb hp
+  obtain ⟨ΔF, a, hreset, ha⟩ := healthy_preparation_reset_at S A V Q hb hp hcal hgap hδG hGs hGsT
   obtain ⟨v, r, l, O, hO, hra, hla⟩ := hreset.reset_seed_at
   obtain ⟨⟨_, k, _, _, _, _, hka⟩, _⟩ := hreset.reset
   have ha0 : 0 ≤ a := hka ▸ hreset.run.time_nonneg k
@@ -52,9 +62,12 @@ theorem healthy_preparation_initialize_late_at
   have hready : (Sys (goldilocks S) V).ready (K S A) Q.gst Q.run =
       Q.ready := rfl
   have hB' := healthy_heal_margin S A V Q.run Q.hn Q.cap Q.index Q.gst
-    (contract_heal_ge_reset_late S A Q.cap Q.index)
+    (M := healthyResetCoeff S Q.index + 8 * S.k + 4 * (Q.index : Nat) + 34 + 5 * Gs)
+    (by omega)
   push_cast at hB'
-  obtain ⟨w, hw, hq⟩ := healthy_preparation_timing S A V Q.run Q.hn Q.cap Q.index Q.gst
+  have hGD : (0 : Time) ≤ (Gs : Time) * Q.params.Δ := mul_nonneg (Nat.cast_nonneg _) hD0
+  obtain ⟨w, hw, hq⟩ := healthy_preparation_timing_within S A V Q.run Q.hn Q.cap Q.index Q.gst
+    (5 * ((Gs : Time) * Q.params.Δ)) (by linarith only [hGD])
     (by linarith only [hB', hD0])
   simp only [hheal, hready] at hB' hq
   refine ⟨⟨w, hw.2.2.1, hw.2.2.2.1, hw.2.2.2.2⟩,
@@ -70,11 +83,20 @@ theorem healthy_preparation_initialize_at
     (h0 : 0 ≤ Q.heal) (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog
       (shapeProgress (goldilocks S) V)
-      (K S A) Q.cap Q.index Q.ready Q.heal Q.run) :
+      (K S A) Q.cap Q.index Q.ready Q.heal Q.run)
+    {sign : Fin Q.params.n → Time → Bool}
+    (hcal : Q.trace.SignCalendarAt (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.keys sign)
+    {Gs : Nat} (hgap : SignGapAt Q.params.toParams sign Gs 0)
+    (hδG : 3 + (Gs + 3) / 4 ≤ Q.params.toParams.fg.δt)
+    (hGs : (contract_catchUp S A : Nat) +
+        (healthyResetCoeff S Q.index + 8 * S.k + 4 * (Q.index : Nat) + 34) + 3 + 5 * Gs ≤
+      contract_heal S A Q.cap Q.index)
+    (hGsT : 4 * A.fgSlots + Gs ≤ 4 * S.δt) :
     ∃ W : HealthyBaseTimingAt S A V Q,
         Nonempty (HealthyPreparationScheduleAt
         S A V Q W) :=
-  let ⟨W, D, _⟩ := healthy_preparation_initialize_late_at S A V Q h0 hb hp
+  let ⟨W, D, _⟩ := healthy_preparation_initialize_late_at S A V Q h0 hb hp hcal hgap hδG hGs
+    hGsT
   ⟨W, ⟨D⟩⟩
 
 end Consensus.Goldilocks.Obligations.Growing

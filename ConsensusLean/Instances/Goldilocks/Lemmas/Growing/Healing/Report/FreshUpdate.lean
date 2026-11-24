@@ -3,6 +3,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.F
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesRelay
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedTick
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -245,9 +248,9 @@ theorem unanimous_early_pool_of_acceptance_at {K : AC.CommitteeDict sp.n}
       obtain ⟨i, e, hv, hes, hit⟩ := hvotes x (hrun.antitone hshort hx) hxK
       exact ⟨i, e, hv, hes, hit.trans hshort⟩) hK
 
-/-- Wakefulness and the receiver's restart cutoff produce the actual adjacent calls, from any
-vote-permitted start. -/
-theorem update_toFG_calls_of_awake_at
+/-- Wakefulness and the receiver's restart cutoff produce the actual joined update, whether or
+not its tick signs, from any vote-permitted start. -/
+theorem update_call_of_awake_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
@@ -257,10 +260,7 @@ theorem update_toFG_calls_of_awake_at
     (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
     (hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
     {y : Fin sp.n} (hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ)) :
-    ∃ k ell ell', AC.UpdateAt tr.projAC y k u ell ∧
-      tr.projAC.CallAt y (k + 1) ell' ∧ ell'.call = .toFG ∧
-      tr.time (k + 1) = sp.ts (u + 1 : Nat) + 2 * sp.Δ ∧
-      ell'.frame = ell.frame := by
+    ∃ k ell, AC.UpdateAt tr.projAC y k u ell := by
   let T := sp.ts (u + 1 : Nat) + 2 * sp.Δ
   have hT : T = sp.ts u + 6 * sp.Δ := by
     dsimp only [T, ACParams.ts]
@@ -293,20 +293,54 @@ theorem update_toFG_calls_of_awake_at
       have hbound := hnr y r (hrun.antitone hrt hy) hrestart
       change tr.time r ≤ _
       linarith
-  obtain ⟨k, ell, ell', hu, hc, hto, ht, hf, _⟩ :=
-    Healing.update_toFG_calls_of_awake hr hy
+  obtain ⟨k, ell, hu⟩ :=
+    Healing.update_call_of_awake hr hy
       ⟨hT ▸ hawake y T hy (by rw [hT]; linarith) hTb, hT.symm.le⟩ hjoin
   have hkt : tr.time k ≤ T := by
     have h := hu.2.2.1
     change tr.time k = sp.ts u + 6 * sp.Δ at h
     exact (h.trans hT.symm).le
-  rw [RunTrace.upTo_projAC] at hu hc
+  rw [RunTrace.upTo_projAC] at hu
   have hs := Trace.upTo_state tr.projAC y (i := k)
     (fun q hq => (hrun.time_mono hq.le).trans hkt)
-  refine ⟨k, ell, ell', ?_, ((Trace.upTo_callAt _).mp hc).2, hto,
-    ht.trans hT.symm, hf⟩
+  refine ⟨k, ell, ?_⟩
   refine ⟨((Trace.upTo_callAt _).mp hu.1).2, hu.2.1, hu.2.2.1, ?_⟩
   simpa only [hs, Trace.upTo_time] using hu.2.2.2
+
+/-- The joined update and the adjacent to-FG call of a node whose calendar lets it sign at the
+update's time `t_{u+1} + 2Δ`, from any vote-permitted start.
+
+The tick at a signing time runs the FG update (the calendar fixes its `fgDue`), and at the
+update's time, which is not a proposal time, its to-FG call is the cut right after the update. -/
+theorem update_toFG_calls_of_awake_at
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr)
+    {g b : Time}
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hnr : NoRestartAfter tr H (gbar g)) {u : Nat}
+    (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
+    (hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
+    {y : Fin sp.n} (hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ))
+    (hsign : sign y (sp.ts (u + 1 : Nat) + 2 * sp.Δ) = true) :
+    ∃ k ell ell', AC.UpdateAt tr.projAC y k u ell ∧
+      tr.projAC.CallAt y (k + 1) ell' ∧ ell'.call = .toFG ∧
+      tr.time (k + 1) = sp.ts (u + 1 : Nat) + 2 * sp.Δ ∧
+      ell'.frame = ell.frame := by
+  have hΔ := sp.toParams.hΔ
+  have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ = sp.ts u + 6 * sp.Δ := by
+    simp only [ACParams.ts]; push_cast; ring
+  rw [hT] at hTb hy hsign ⊢
+  have hu0 : 0 ≤ sp.ts u := by simp only [ACParams.ts]; positivity
+  have hpub : sp.toParams.IsPublic (sp.ts u + 6 * sp.Δ) :=
+    ⟨4 * (u : Int) + 6, by simp only [ACParams.ts]; ring⟩
+  obtain ⟨j, hsj⟩ := signTickAt_of_calendar_at hrun hcal hy (by linarith) hpub
+    (hawake y _ hy (by linarith) hTb) hsign
+  obtain ⟨ell, ell', hup, hc, hcall, ht, hfr, -⟩ := update_toFG_of_signTick_at hrun hy hsj
+    fun i hi => joined_of_restart_le_at hrun hnc (u := u) hy (by linarith)
+      (fun r _ hyr hrs => by linarith [hnr y r hyr hrs]) hi
+  exact ⟨j, ell, ell', hup, hc, hcall, ht, hfr⟩
 
 /-- Once selection and no-veto are known, local execution inserts the fresh fast lock.
 The conclusion keeps its two-slot lifetime independently of the service proof. From any start. -/

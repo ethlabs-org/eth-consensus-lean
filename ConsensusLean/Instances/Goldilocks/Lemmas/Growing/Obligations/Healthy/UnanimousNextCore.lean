@@ -55,7 +55,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-! ### Prefix tools -/
 
 /-- The static AC run of the prefix through `tr.time i`, for the validators honest then. -/
-private theorem acRun_prefix {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem acRun_upTo_time {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (i : Nat) :
     AC.ACRun proposer (tr.upTo (tr.time i)).projAC (H (tr.time i))
@@ -63,7 +63,7 @@ private theorem acRun_prefix {ini : Fin sp.n → (goldilocksNode sp ro).State}
   Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg i)) (hnc.upTo _)
 
 /-- A cast at a cut at or before `d` is one of the prefix through `d`. -/
-private theorem castAt_prefix {d : Time} {y : Fin sp.n} {j : Nat}
+theorem castAt_upTo_of_le {d : Time} {y : Fin sp.n} {j : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))} (hjd : tr.time j ≤ d)
     (hc : AC.CastAt tr.projAC y j ell e) : AC.CastAt (tr.upTo d).projAC y j ell e := by
   rw [RunTrace.upTo_projAC]
@@ -73,7 +73,7 @@ private theorem castAt_prefix {d : Time} {y : Fin sp.n} {j : Nat}
 
 /-- A vote cast at or after `g` by a node honest at its cast is served to every node honest at
 a later call whose deadline for it has passed. -/
-private theorem served_of_service
+theorem served_of_resetService
     (hsvc : ResetService tr H g ΔF b) {z : Fin sp.n} {q : Nat}
     {ell' : ACLabel (goldilocksNode sp ro)} {e' : AC.Em sp (List (FG.Att sp.n))}
     (hz : z ∈ H (tr.time q)) (hcz : AC.CastAt tr.projAC z q ell' e') (hgq : g ≤ tr.time q)
@@ -94,7 +94,7 @@ private theorem served_of_service
 
 /-- An AC acceptance at or after `g` of a node honest at it is relayed to every node honest at
 a later call whose deadline for it has passed, once the block is above that node's `Σ.F`. -/
-private theorem relayed_of_service
+theorem relayed_of_resetService
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hsvc : ResetService tr H g ΔF b) {z : Fin sp.n} {k : Nat}
@@ -113,7 +113,7 @@ private theorem relayed_of_service
 
 /-- An AC acceptance before `ḡ` of a node honest at it is caught up before `ḡ + 2Δ` by every node
 honest at a call from `ḡ + 2Δ` on, once the block is above that node's `Σ.F`. -/
-private theorem caught_of_catch {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem caught_of_catchRun {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hc : CatchRun tr H g (2 * sp.Δ)) {z : Fin sp.n} {k : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hz : z ∈ H (tr.time k))
@@ -151,7 +151,7 @@ theorem unanimous_carry_votes_core_at
   have hgg := AC.le_gbar g
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hm hd
-  have hr := (acRun_prefix hrun hnc i).localRun
+  have hr := (acRun_upTo_time hrun hnc i).localRun
   rw [RunTrace.upTo_projAC] at hr
   have hc' : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ell e := AC.upTo_castAt.mpr ⟨le_rfl, hcast⟩
   have hts1 : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
@@ -161,16 +161,16 @@ theorem unanimous_carry_votes_core_at
     change e.msg.slot = sp.slot (tr.time i) at h
     exact (AC.ts_le_iff_le_slot sp hd _).2 (by omega)
   have hcarry := Compose.carryAt_of_served hr
-    (acRun_prefix hrun hnc i).vstart (Compose.frame_anc_accepted hr hy) hy hc' hs
+    (acRun_upTo_time hrun hnc i).vstart (Compose.frame_anc_accepted hr hy) hy hc' hs
     (CV := Compose.Growing.honestVotes tr H u) fun v hv => by
     obtain ⟨z, q, e', hz, ⟨ell', hcz⟩, rfl, hsl⟩ := hv
     have hdq := hrun.time_nonneg q
-    have hrq := (acRun_prefix hrun hnc q).localRun
-    have hcz' := castAt_prefix le_rfl hcz
+    have hrq := (acRun_upTo_time hrun hnc q).localRun
+    have hcz' := castAt_upTo_of_le le_rfl hcz
     have hslq := (AC.castAt_spec hrq hz hcz').2.1
     change e'.msg.slot = sp.slot (tr.time q) at hslq
     have hqts : sp.ts u ≤ tr.time q := (AC.ts_le_iff_le_slot sp hdq _).2 (by omega)
-    obtain ⟨⟨Hd, hHd, hHdr, _⟩, hqt⟩ := Compose.cast_head_fcRoot hrq (acRun_prefix hrun
+    obtain ⟨⟨Hd, hHd, hHdr, _⟩, hqt⟩ := Compose.cast_head_fcRoot hrq (acRun_upTo_time hrun
       hnc q).vstart hz hcz'
     rw [hsl] at hqt
     change tr.time q ≤ _ at hqt
@@ -182,7 +182,7 @@ theorem unanimous_carry_votes_core_at
     refine ⟨hsl, ⟨tr.time q, hqts, by linarith, fun hdl => ?_⟩, Hd, hHdr, ?_⟩
     · rw [ACTrace.upTo_deadline (d := tr.time i) hmA le_rfl] at hdl
       exact (AC.upTo_messageServedBefore hmA le_rfl).mpr
-        (served_of_service hsvc hz hcz (hgg.trans (hg.trans hqts)) hy hcast.1 hdl)
+        (served_of_resetService hsvc hz hcz (hgg.trans (hg.trans hqts)) hy hcast.1 hdl)
     rcases Compose.frame_anc_accepted hrq hz q ell' hcz'.1 Hd hHd Hd .refl with h0 | ⟨k, hk, ha⟩
     · exact Or.inr (Or.inl h0)
     rw [RunTrace.upTo_projAC] at ha
@@ -192,12 +192,12 @@ theorem unanimous_carry_votes_core_at
     by_cases hkg : AC.gbar g ≤ tr.time k
     · refine Or.inl ⟨tr.time k, by linarith, fun hdl => ?_⟩
       rw [ACTrace.upTo_deadline (d := tr.time i) hmA le_rfl] at hdl
-      obtain ⟨ky, hky, hacc, hkyt⟩ := relayed_of_service hrun hsvc hzk ha (hgg.trans hkg) hy
+      obtain ⟨ky, hky, hacc, hkyt⟩ := relayed_of_resetService hrun hsvc hzk ha (hgg.trans hkg) hy
         hcast.1 hdl hFP
       have hkyd : tr.time ky ≤ tr.time i := hm hky
       exact ⟨ky, hky, (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mpr ⟨hkyd, hacc⟩,
         by rw [ACTrace.upTo_deadline hmA hkyd]; exact hkyt⟩
-    · obtain ⟨ky, hky, hacc, hkyt⟩ := caught_of_catch hrun hc hzk ha (not_le.mp hkg) hy
+    · obtain ⟨ky, hky, hacc, hkyt⟩ := caught_of_catchRun hrun hc hzk ha (not_le.mp hkg) hy
         hcast.1 (by linarith) hFP
       exact Or.inr (Or.inr ⟨ky, (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mpr
         ⟨hm hky, hacc⟩, by change tr.time ky < _; linarith⟩)
@@ -209,11 +209,64 @@ theorem unanimous_carry_votes_core_at
 
 /-! ### The frozen viable tree of the next slot -/
 
+/-- **A later caller accepts the unanimous proposal before `t_u + 3Δ`**: a node honest at a call
+from `t_u + 2Δ` on, with `P` above the call's `Σ.F`, accepted `P` before `t_u + 3Δ`, given a
+slot-`u` vote by `t_u + Δ` of some node honest at it. The voter's acceptance of `P` reaches the
+caller by relay from `g` on and by catch-up before `ḡ`. Only the caller's own restarts before the
+call are bounded. -/
+theorem unanimous_head_accepted_core_at
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
+    (hc : CatchRun tr H g (2 * sp.Δ)) {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocksAt H) (hslot : P.slot = u) (hu : 0 < u)
+    (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hg : AC.gbar g ≤ sp.ts u)
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hcall : tr.projAC.CallAt y j ell) (hti : sp.ts u + 2 * sp.Δ ≤ tr.time j)
+    (hjb : tr.time j ≤ b) (hnr : ∀ r ≤ j, tr.RestartAt y r → tr.time r ≤ AC.gbar g)
+    (hvote : ∃ w q e', w ∈ H (tr.time q) ∧ AC.VoteAt tr.projAC w q e' ∧ e'.msg.slot = u ∧
+      tr.time q ≤ sp.ts u + sp.Δ)
+    (hanc : Anc (tr.HonestBlocksAt H) ell.frame.F P) :
+    ∃ k' ≤ j, tr.projAC.AcceptAt y k' P ∧ tr.time k' < sp.ts u + 3 * sp.Δ := by
+  have hm := hrun.time_mono
+  have hΔ := sp.toParams.hΔ
+  have hU := Compose.Growing.honest_blocks_coherent hrun hnc
+  -- the voter's slot-`u` vote names `P`, which it accepted by its vote
+  obtain ⟨w, q, e', hwq, ⟨ellv, hv⟩, hvs, hq⟩ := hvote
+  have hqj : tr.time q ≤ tr.time j := by linarith
+  have hrq := acRun_upTo_time hrun hnc q
+  have hvq := castAt_upTo_of_le le_rfl hv
+  obtain ⟨⟨Hd, hHd, he, _⟩, _⟩ := Compose.cast_head_fcRoot hrq.localRun hrq.vstart hwq hvq
+  have hHdq := (AC.frameIn_of_callAt hrq.localRun hwq hvq.1).2 hHd
+  obtain rfl : Hd = P := hU.1 (RunTrace.honestBlocks_upTo_subset (H := H) hm
+    (hrun.time_nonneg q) hHdq) hP (he.trans (hun w q e' hwq ⟨ellv, hv⟩ (hqj.trans hjb) hvs))
+  obtain hz | ⟨k, hk, ha⟩ := AC.frame_genesis_or_accepted sp hrq.localRun hwq hvq.1 Hd hHd
+  · omega
+  rw [RunTrace.upTo_projAC] at ha
+  obtain ⟨hkq, ha⟩ := (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mp ha
+  change tr.time k ≤ tr.time q at hkq
+  have hwk := hrun.antitone hkq hwq
+  have hdl : ∀ c ≤ j, tr.projAC.deadline y c (tr.time k) ≤ max (tr.time k) (AC.gbar g) + sp.Δ :=
+    fun c hcj => Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := c)
+      (fun r hrc hrs => hnr r (hrc.trans hcj) (Compose.projAC_restartAt.mp hrs)) (tr.time k)
+  by_cases hkg : AC.gbar g ≤ tr.time k
+  · obtain ⟨k', hk'j, ha', hlt⟩ := relayed_of_resetService hrun hsvc hwk ha
+      ((AC.le_gbar g).trans hkg) hy hcall
+      ((hdl j le_rfl).trans (by rw [max_eq_left hkg]; linarith)) hanc
+    have := hdl k' hk'j
+    rw [max_eq_left hkg] at this
+    exact ⟨k', hk'j, ha', by linarith⟩
+  · obtain ⟨k', hk'j, ha', hlt⟩ := caught_of_catchRun hrun hc hwk ha (not_le.mp hkg) hy
+      hcall (by linarith) hanc
+    exact ⟨k', hk'j, ha', by linarith⟩
+
 /-- **The unanimous proposal is in the frozen viable tree of a slot-`(u+1)` cast** of a node
 honest at it, given a slot-`u` vote by `t_u + Δ` of some node honest at it, the caster's
-fork-choice root below `P`, and its head-height floor at or below `P` once `P` is held. The voter's
-acceptance of `P` reaches the caster before the freeze `t_u + 3Δ`: by relay from `g` on, by
-catch-up before `ḡ`. Only the caster's own restarts before the cast are bounded. -/
+fork-choice root below `P`, and its head-height floor at or below `P` once `P` is held. The
+caster accepts `P` before the freeze `t_u + 3Δ` (`unanimous_head_accepted_core_at`). Only the
+caster's own restarts before the cast are bounded. -/
 theorem unanimous_next_vote_viable_core_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
@@ -239,8 +292,8 @@ theorem unanimous_next_vote_viable_core_at
   have hΔ := sp.toParams.hΔ
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hm hd
-  have hr := (acRun_prefix hrun hnc j).localRun
-  have hc' := castAt_prefix le_rfl hcast
+  have hr := (acRun_upTo_time hrun hnc j).localRun
+  have hc' := castAt_upTo_of_le le_rfl hcast
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hc'.1
   -- the cast is at `t_{u+1}` or later
   have hti : sp.ts (u + 1 : Nat) ≤ tr.time j := by
@@ -249,60 +302,32 @@ theorem unanimous_next_vote_viable_core_at
     exact (AC.ts_le_iff_le_slot sp hd _).2 (by omega)
   have hts1 : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
     simp only [ACParams.ts]; push_cast; ring
-  -- the voter's slot-`u` vote names `P`, which it accepted by its vote
-  obtain ⟨w, q, e', hwq, ⟨ellv, hv⟩, hvs, hq⟩ := hvote
-  have hqj : tr.time q ≤ tr.time j := by linarith
-  have hrq := acRun_prefix hrun hnc q
-  have hvq := castAt_prefix le_rfl hv
-  obtain ⟨⟨Hd, hHd, he, _⟩, _⟩ := Compose.cast_head_fcRoot hrq.localRun hrq.vstart hwq hvq
-  have hHdq := (AC.frameIn_of_callAt hrq.localRun hwq hvq.1).2 hHd
-  obtain rfl : Hd = P := hU.1 (RunTrace.honestBlocks_upTo_subset (H := H) hm
-    (hrun.time_nonneg q) hHdq) hP (he.trans (hun w q e' hwq ⟨ellv, hv⟩ (hqj.trans hjb) hvs))
-  obtain hz | ⟨k, hk, ha⟩ := AC.frame_genesis_or_accepted sp hrq.localRun hwq hvq.1 Hd hHd
-  · omega
-  rw [RunTrace.upTo_projAC] at ha
-  obtain ⟨hkq, ha⟩ := (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mp ha
-  change tr.time k ≤ tr.time q at hkq
-  have hwk := hrun.antitone hkq hwq
-  have hanc : Anc (tr.HonestBlocksAt H) ell.frame.F Hd :=
+  have hanc : Anc (tr.HonestBlocksAt H) ell.frame.F P :=
     (((hPhi.F_anc_fcRoot.mono hPhiU).mono hsub).trans hroot)
-  have hdl : ∀ c ≤ j, tr.projAC.deadline y c (tr.time k) ≤ max (tr.time k) (AC.gbar g) + sp.Δ :=
-    fun c hcj => Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := c)
-      (fun r hrc hrs => hnr r (hrc.trans hcj) (Compose.projAC_restartAt.mp hrs)) (tr.time k)
   -- the caster accepts `P` before the freeze
-  obtain ⟨k', hk'j, ha', hk't⟩ : ∃ k' ≤ j, tr.projAC.AcceptAt y k' Hd ∧
-      tr.time k' < sp.ts u + 3 * sp.Δ := by
-    by_cases hkg : AC.gbar g ≤ tr.time k
-    · obtain ⟨k', hk'j, ha', hlt⟩ := relayed_of_service hrun hsvc hwk ha
-        ((AC.le_gbar g).trans hkg) hy hcast.1
-        ((hdl j le_rfl).trans (by rw [max_eq_left hkg]; linarith)) hanc
-      have := hdl k' hk'j
-      rw [max_eq_left hkg] at this
-      exact ⟨k', hk'j, ha', by linarith⟩
-    · obtain ⟨k', hk'j, ha', hlt⟩ := caught_of_catch hrun hc hwk ha (not_le.mp hkg) hy
-        hcast.1 (by linarith) hanc
-      exact ⟨k', hk'j, ha', by linarith⟩
-  have ha'' : (tr.upTo (tr.time j)).projAC.AcceptAt y k' Hd := by
+  obtain ⟨k', hk'j, ha', hk't⟩ := unanimous_head_accepted_core_at hrun hnc hsvc hc hP hslot hu
+    hun hg hy hcast.1 (by linarith) hjb hnr hvote hanc
+  have ha'' : (tr.upTo (tr.time j)).projAC.AcceptAt y k' P := by
     rw [RunTrace.upTo_projAC]
     exact (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mpr ⟨hm hk'j, ha'⟩
-  have hHdp : Hd ∈ (tr.upTo (tr.time j)).HonestBlocks (H (tr.time j)) := by
+  have hHdp : P ∈ (tr.upTo (tr.time j)).HonestBlocks (H (tr.time j)) := by
     obtain ⟨ella, hca, hba⟩ := ha''
     exact (AC.frameIn_of_callAt hr hy hca).2
       ((AC.accept_new sp hr hy ⟨ella, hca, hba⟩).1 ella hca)
   have hrootp := RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hHdp hroot
   have hFP := (hPhi.F_anc_fcRoot.mono hPhiU).trans hrootp
-  have hacc : AC.AcceptedBefore (tr.upTo (tr.time j)).projAC y Hd (sp.ts u + 3 * sp.Δ) :=
+  have hacc : AC.AcceptedBefore (tr.upTo (tr.time j)).projAC y P (sp.ts u + 3 * sp.Δ) :=
     Or.inr ⟨k', ha'', hk't⟩
   have hPt := Compose.accepted_voter_tree (hrun.upTo hd) (hnc.upTo _) hy hc' hs hHdp hacc hFP
   have hfr := Compose.frame_of_projAC (hrun.upTo hd) hy hc'.1
   have hst := RunTrace.upTo_state_of_le (y := y) hm (le_refl (tr.time j))
-  have hstore : Hd ∈ (tr.state y j).fg.tree := by
+  have hstore : P ∈ (tr.state y j).fg.tree := by
     have hmem := hPt.1
     rw [hfr, hst] at hmem
     exact hmem.1
   have hfl := hfloor hstore
   have hroot' := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hrootp hPt.1
-  refine ⟨Anc.mono hsub hFP, hPt, hroot', Hd, hPt, ?_, .refl⟩
+  refine ⟨Anc.mono hsub hFP, hPt, hroot', P, hPt, ?_, .refl⟩
   have hmem := hPt.1
   rw [hfr, hst] at hmem hroot' ⊢
   exact ⟨hmem.1, hmem.2, hroot'.mono (fun X hX => hX.1), hfl⟩
@@ -312,18 +337,18 @@ theorem unanimous_next_vote_viable_core_at
 
 /-- A cast of a node honest at it is no earlier than the start of its slot and at most `Δ` after
 it. -/
-private theorem cast_time {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem castAt_time_bounds {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcast : AC.CastAt tr.projAC y j ell e) :
     sp.ts e.msg.slot ≤ tr.time j ∧ tr.time j ≤ sp.ts e.msg.slot + sp.Δ := by
-  have hr := (acRun_prefix hrun hnc j).localRun
-  have hc' := castAt_prefix le_rfl hcast
+  have hr := (acRun_upTo_time hrun hnc j).localRun
+  have hc' := castAt_upTo_of_le le_rfl hcast
   have h := (AC.castAt_spec hr hy hc').2.1
   change e.msg.slot = sp.slot (tr.time j) at h
   refine ⟨(AC.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).2 (by omega), ?_⟩
-  exact (Compose.cast_head_fcRoot hr (acRun_prefix hrun hnc j).vstart hy hc').2
+  exact (Compose.cast_head_fcRoot hr (acRun_upTo_time hrun hnc j).vstart hy hc').2
 
 /-- **Every slot-`(u+1)` vote of a node honest at it extends the unanimous proposal `P`**, by
 strong induction on the vote's cut. The batch is counted at the voter's cut among the slot-`u`
@@ -371,7 +396,7 @@ theorem unanimous_next_votes_extend_core_at
     | h j ih =>
       rintro hjb y e hy ⟨ell, hcast⟩ hs
       have htime : sp.ts (u + 1 : Nat) ≤ tr.time j := by
-        have := (cast_time hrun hnc hy hcast).1
+        have := (castAt_time_bounds hrun hnc hy hcast).1
         rwa [hs] at this
       obtain ⟨hFP, hvi⟩ := unanimous_next_vote_viable_core_at hrun hnc hsvc hc hP hslot hu hun
         hg hy hcast hs hjb
@@ -399,7 +424,7 @@ theorem unanimous_next_votes_extend_core_at
       refine AC.Growing.next_transfer_from hacr K hPK hTK hsize hy hcast hs ?_ hhalf hcarry hf
         (hcs2 j htime hjb) (Or.inl hvi) ?_
       · intro x q e' hx hv hvs
-        have hq := (cast_time hrun hnc hx hv.choose_spec).2
+        have hq := (castAt_time_bounds hrun hnc hx hv.choose_spec).2
         rw [hvs] at hq
         exact ⟨P, hP, (hun x q e' hx hv (by linarith) hvs).symm, .refl⟩
       · intro x q hq hx e' hv hvs
@@ -425,7 +450,7 @@ private theorem optimistic_supporter_at {ini : Fin sp.n → (goldilocksNode sp r
   have hmA : Monotone tr.projAC.time := hm
   have hd := hrun.time_nonneg j
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hm hd
-  have hacr := acRun_prefix hrun hnc j
+  have hacr := acRun_upTo_time hrun hnc j
   rw [RunTrace.upTo_projAC] at hacr
   obtain ⟨ell, A, hpt, hsl, hsel, _⟩ :=
     ((AC.upTo_optimisticLockAt (d := tr.time j) hmA).mpr ⟨le_rfl, hopt⟩)

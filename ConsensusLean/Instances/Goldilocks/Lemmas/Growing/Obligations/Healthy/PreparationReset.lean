@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ResetCoefficients
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunTransport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HSSharedRun
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyPreparationTiming
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ResetOfDrainRounds
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Supply.Fields
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -48,13 +49,21 @@ theorem healthy_preparation_reset_at
     (hb : Q.heal ≤ Q.bound)
     (hp : (Sys (goldilocks S) V).prog
       (shapeProgress (goldilocks S) V)
-      (K S A) Q.cap Q.index Q.ready Q.heal Q.run) :
+      (K S A) Q.cap Q.index Q.ready Q.heal Q.run)
+    {sign : Fin Q.params.n → Time → Bool}
+    (hcal : Q.trace.SignCalendarAt (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.keys sign)
+    {Gs : Nat} (hgap : SignGapAt Q.params.toParams sign Gs 0)
+    (hδG : 3 + (Gs + 3) / 4 ≤ Q.params.toParams.fg.δt)
+    (hGs : (contract_catchUp S A : Nat) +
+        (healthyResetCoeff S Q.index + 8 * S.k + 4 * (Q.index : Nat) + 34) + 3 + 5 * Gs ≤
+      contract_heal S A Q.cap Q.index)
+    (hGsT : 4 * A.fgSlots + Gs ≤ 4 * S.δt) :
     ∃ ΔF a, Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
         (runProposer S Q.run.2 Q.hn)
         (digestOf S Q.run.2) Q.gst ΔF a Q.bound
         (runCommittee S Q.run.2 Q.hn) (K S A).params.βK ∧
       a ≤ Q.ready + (healthyResetCoeff S Q.index : Time) * Q.params.Δ +
-        (healthyResetSlack S Q.index : Time) := by
+        (healthyResetSlack S Q.index : Time) + 5 * ((Gs : Time) * Q.params.Δ) := by
   classical
   have hΔ : 0 < Q.params.Δ := Q.params.toParams.hΔ
   have hδeq : Q.params.toParams.fg.δt = S.δt := rfl
@@ -62,7 +71,7 @@ theorem healthy_preparation_reset_at
   have hnc := noCollRun_simTraceAt S Q.run.2 Q.hn Q.valid Q.noCollision
   have hstart := simIni_eq_runStart S Q.run.2 Q.hn Q.valid ▸ hrun
   have hcf := committeeFaultsUpTo_of_healthyOn S Q.run.2 Q.hn Q.valid Q.committeeHealthy
-  have hinterface := goldilocksRunInterface_run_at S Q.run.2 Q.hn Q.valid
+  have hinterface := goldilocksRunInterface_run_at S Q.run.2 Q.hn A Q.valid
   have hhalf := Generic.committeeHalf_of_committeeFaults
     (by rw [goldilocksContract_params_eq]; exact le_rfl) hinterface hnc hcf
   have hs := healthy_preparation_service_at Q.run Q.hn Q.valid Q.noCollision Q.bound_le
@@ -105,9 +114,20 @@ theorem healthy_preparation_reset_at
     rw [healthyResetCoeff_val]; push_cast
     linarith only [Nat.cast_nonneg (α := Time) (healthyDrainLen S Q.index)]
   have hr : (0 : Time) ≤ healthyResetSlack S Q.index := Nat.cast_nonneg _
+  have hGD : (0 : Time) ≤ (Gs : Time) * Q.params.Δ := mul_nonneg (Nat.cast_nonneg _) hΔ.le
+  have hBGh : resetBoundRounds Q.ready Q.params.Δ (2 * Q.params.Δ) Q.params.toParams.fg.δt
+      (Q.index : Nat) (healthyDrainLen S Q.index) + 5 * ((Gs : Time) * Q.params.Δ) ≤ Q.heal := by
+    have hm := healthy_heal_margin S A V Q.run Q.hn Q.cap Q.index Q.gst
+      (M := healthyResetCoeff S Q.index + 8 * S.k + 4 * (Q.index : Nat) + 34 + 5 * Gs)
+      (by omega)
+    have hk0 : (0 : Time) ≤ (S.k : Time) * Q.params.Δ := mul_nonneg (Nat.cast_nonneg _) hΔ.le
+    have hX0 : (0 : Time) ≤ ((Q.index : Nat) : Time) * Q.params.Δ :=
+      mul_nonneg (Nat.cast_nonneg _) hΔ.le
+    change Q.ready + _ * Q.params.Δ + 2 ≤ Q.heal at hm
+    push_cast at hm
+    rw [hBeq]; nlinarith only [hm, hk0, hX0, hΔ, hGD]
   have hBh : resetBoundRounds Q.ready Q.params.Δ (2 * Q.params.Δ) Q.params.toParams.fg.δt
-      (Q.index : Nat) (healthyDrainLen S Q.index) ≤ Q.heal := by
-    rw [hBeq]; linarith only [hfit, hr]
+      (Q.index : Nat) (healthyDrainLen S Q.index) ≤ Q.heal := by linarith only [hBGh, hGD]
   have h4B : Q.ready + 4 * Q.params.Δ ≤ Q.heal := by
     have := mul_le_mul_of_nonneg_right hR hΔ.le
     linarith only [this, hfit, hr, hΔ]
@@ -121,16 +141,21 @@ theorem healthy_preparation_reset_at
   obtain ⟨a, ha, hab⟩ := Healing.Growing.exists_reset_of_drain_rounds_awake_at
     hstart hnc hf hs
     haw hcatch hnr hH (by rw [hδeq]; have := A.six_le_δt; omega)
-    (protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2)
-    hr0 hgr Q.index.pos hcz (hBh.trans hb) (fun s₀ N hs₀ hN => by
+    (by
+      have hd := protoFGDelay_delivery_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2
+      have hc : (4 : Time) * A.fgSlots + Gs ≤ 4 * S.δt := by exact_mod_cast hGsT
+      change 6 * Q.params.Δ + _ ≤ 4 * Q.params.Δ * (A.fgSlots : Time) at hd
+      change _ ≤ 4 * Q.params.Δ * (S.δt : Time)
+      nlinarith only [hd, hc, hΔ])
+    hr0 hgr Q.index.pos hcz (hBGh.trans hb) (fun s₀ N hs₀ hN => by
       apply Healing.Growing.proposalGap_iff.mpr
       intro c hc hcN
       obtain ⟨x, hxl, hxr, k, P, hx, hP, _, hPs⟩ := healthy_preparation_gap_at S A V
         Q.run Q.hn Q.valid Q.noCollision Q.nonfinal
         (hb.trans Q.bound_le) hp
-        (by rw [max_eq_left hr0]; exact hs₀) (by linarith only [hN, hBh, hΔ]) c hc hcN
+        (by rw [max_eq_left hr0]; exact hs₀) (by linarith only [hN, hBGh, hΔ]) c hc hcN
       exact ⟨x, hxl, hxr, hx, k, P, hP, hPs⟩) hdrain
-    hhalf
+    hcal hgap hr0 hδG hhalf
   have haw' : ∀ y ∈ Q.keys Q.bound, ∀ t, AC.gbar Q.gst ≤ t →
       t ≤ Q.bound → (Q.trace.upTo Q.bound).awake y t := by
     intro y hy t ht htb
@@ -139,7 +164,7 @@ theorem healthy_preparation_reset_at
     (by linarith only [hcz, h4B, hb])
   refine ⟨_, a, Healing.Growing.resetPremisesUpTo_of_reset_at
     hstart hnc hs haw hf ha
-    (hab.trans (hBh.trans hb)) ⟨j, hj, hjt⟩ hcatch hnr
+    (hab.trans (hBGh.trans hb)) ⟨j, hj, hjt⟩ hcatch hnr
     (protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2) hH
     (runCommittee_facts S Q.run.2 Q.hn Q.valid hnc)
     (by rw [goldilocksContract_params_eq]; exact le_rfl)

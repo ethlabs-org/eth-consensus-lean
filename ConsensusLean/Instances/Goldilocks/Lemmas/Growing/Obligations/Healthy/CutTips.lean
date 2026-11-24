@@ -33,6 +33,14 @@ theorem healthy_cut_tips_ancestor_at
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V)
       (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run)
+    {sign : Fin Q.params.n → Time → Bool}
+    (hcal : Q.trace.SignCalendarAt (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.keys sign)
+    {Gs : Nat} (hgap : SignGapAt Q.params.toParams sign Gs 0)
+    (hδG : 3 + (Gs + 3) / 4 ≤ Q.params.toParams.fg.δt)
+    (hGs : (contract_catchUp S A : Nat) +
+      (healthyResetCoeff S Q.index + 8 * S.k + 4 * (Q.index : Nat) + 34) + 3 + 5 * Gs ≤
+        contract_heal S A Q.cap Q.index)
+    (hGsT : 4 * A.fgSlots + Gs ≤ 4 * S.δt)
     (v : V) (i j : Nat)
     (hi : (chainTrace Q.run.2).InCuts Q.heal i) (hij : i ≤ j)
     (hj : (chainTrace Q.run.2).InCuts Q.heal j)
@@ -46,7 +54,7 @@ theorem healthy_cut_tips_ancestor_at
         (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v i)) (stateAt S Q.run.2 Q.hn v i).now)
       (Regimes.readAfter Q.trace (Q.run.2.ownKey v)
         (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v j)) (stateAt S Q.run.2 Q.hn v j).now) := by
-  obtain ⟨D⟩ := healthy_repair_schedule_at S A V Q h0 hb hp
+  obtain ⟨D⟩ := healthy_repair_schedule_at S A V Q h0 hb hp hcal hgap hδG hGs hGsT
   obtain ⟨O⟩ := healthy_bounded_repairing_opening_at S A V Q hb hp D
   have hnn := cutMap_mono S Q.run.2 Q.hn (lastOwn_mono S Q.run.2 v hij)
   have htt := now_mono S Q.run.2 Q.hn Q.valid v hij

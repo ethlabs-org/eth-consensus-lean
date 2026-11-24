@@ -187,7 +187,7 @@ theorem ready_implies_joined_at {A : NodeAC sp.toParams} {tr : RunTrace A}
   refine Compose.ready_implies_joined_of_cuts hrun.time_mono
     (fun k hk hkt => hrun.sleep_of_restart y k (hrun.antitone hkt hy) hk) ?_ ht hc hawake
   intro u hu hut hpub hw
-  obtain ⟨j, x, hj⟩ := hrun.tick_of_awake y u (hrun.antitone hut hy) hu hpub hw
+  obtain ⟨j, x, fgDue, hj⟩ := hrun.tick_of_awake y u (hrun.antitone hut hy) hu hpub hw
   exact ⟨j, Compose.group_call hj⟩
 
 /-- `2 f_d < n` from the count at `d`, with `h_t ≤ |H d|`. -/

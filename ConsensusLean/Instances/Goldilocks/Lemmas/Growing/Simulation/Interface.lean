@@ -39,10 +39,11 @@ structure SimulatesAt (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _))
   tick_public : ∀ v i t, rho.events[i]? = some (.tick v t) →
     (S.params (pubOf E) hn).toParams.IsPublic t →
       tr.GroupAt (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (ι i) t
-          (.tick (encodeTxs (Model.mempool rho.inbox v t))) ∧
+          (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t)) ∧
         ι (i + 1) = ι i + (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
           (tr.state (rho.ownKey v) (ι i)) t
-          (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2.length
+          (.tick (encodeTxs (Model.mempool rho.inbox v t))
+            (S.sign (pubOf E) (rho.ownKey v) t))).2.length
   tick_other : ∀ v i t, rho.events[i]? = some (.tick v t) →
     ¬ (S.params (pubOf E) hn).toParams.IsPublic t → ι (i + 1) = ι i
   deliver : ∀ v i o t, rho.events[i]? = some (.deliver v o t) →

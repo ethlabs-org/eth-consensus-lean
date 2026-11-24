@@ -41,7 +41,8 @@ theorem goldilocks_localClaimSuppliers (S : Setup) (A : ContractAssumptions S) {
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (fun v => v.val))
-    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C) :
+    {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
+    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G) :
     LocalClaimSuppliers (goldilocksRunMap S rho hn hv)
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C) (K S A)
       (goldilocksOutagePolicy S rho hn hv) (goldilocksStoredReadContext S rho hn hv)

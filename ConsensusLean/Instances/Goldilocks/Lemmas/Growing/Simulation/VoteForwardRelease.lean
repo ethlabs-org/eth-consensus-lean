@@ -53,8 +53,8 @@ private theorem ownQueued_propose (st : State (S.params (pubOf E) hn) (S.ro _) S
 
 omit [DecidableEq V] in
 private theorem ownQueued_nodeTick (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
-    (h : OwnQueued S hn st) : OwnQueued S hn (nodeTick st) := by
-  rw [nodeTick_eq]
+    (h : OwnQueued S hn st) : OwnQueued S hn (nodeTick st (S.sign (pubOf E))) := by
+  rw [nodeTick_eq (sign := _)]
   split
   · exact ownQueued_apply S hn st _ h
   · exact h
@@ -115,8 +115,10 @@ private theorem tick_prefix_checked (hv : rho.ExecutionValid) {v : V} {i : Nat} 
       exact ⟨(propose_voteIO S hn st s).trans h.1, (propose_self st s).trans h.2.1,
         queuedChecked_propose S st s h.2.2⟩
     · intro st h
-      exact ⟨(nodeTick_voteIO S hn st).trans h.1, (nodeTick_self st).trans h.2.1,
-        queuedChecked_nodeTick S st h.2.2 (ownChecks_of_eq_voteIO S rho hn hv h.1 h.2.1)⟩
+      exact ⟨(nodeTick_voteIO S hn st).trans h.1,
+        (nodeTick_self (sign := S.sign (pubOf E)) st).trans h.2.1,
+        queuedChecked_nodeTick S st h.2.2
+          (ownChecks_of_eq_voteIO S rho hn hv h.1 h.2.1)⟩
     · intro st u h
       exact ⟨(poll_voteIO st u).trans h.1, (poll_self st u).trans h.2.1,
         queuedChecked_poll S st u⟩

@@ -133,7 +133,7 @@ theorem operational_proposal_read_after_at
       simp only [AC.ACParams.ts]; push_cast; ring
     rw [hbound]
     linarith
-  obtain ⟨j, ell, -, hup, -⟩ := hp.update_toFG_calls_at hy hstart hTb
+  obtain ⟨j, ell, hup⟩ := hp.update_call_of_awake hy hstart hTb
   have ht : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
   exact operational_update_read_after_at hp hhold hdesignated hactual hPs hR hgu hTb hy hup
     (hlocks y j ell (ht ▸ hy) hup) hJ

@@ -434,7 +434,8 @@ theorem goldilocks_outageRecoveryBinding (S : Setup) (A : ContractAssumptions S)
     {payload : Blk (S.params (pubOf E) hn) → Set Nat}
     (M : RunMap (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) rho payload)
     (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (fun v => v.val))
-    (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C)
+    {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
+    (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G)
     (hsg : (fun v => v.val) = M.signer) :
     OutageRecoveryBinding M (goldilocksContract A (contract_coefficients S A)) (hsg ▸ C) := by
   obtain ⟨-, hθ, hc, hl, hcl, -, -, -, hr, hη, hlag, hb, -, -⟩ := hC
@@ -482,7 +483,8 @@ the local data equations supply the numerical fits, not an existential supplier.
 private theorem canonical_window_premises
     (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
       (fun v => v.val))
-    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C)
+    {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
+    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G)
     {p : EnvPoint (Fin (Fintype.card V))} {ΔF b : Time}
     (hb : b ≤ rho.horizon)
     (hbind : RunPointBinding (goldilocksRunMap S rho hn hv).trace
@@ -519,7 +521,8 @@ private theorem canonical_window_premises
 theorem goldilocksRunMap_event_safety
     (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
       (fun v => v.val))
-    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C) :
+    {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
+    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G) :
     EventSafety (goldilocksRunMap S rho hn hv)
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
       (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
@@ -532,7 +535,7 @@ theorem goldilocksRunMap_event_safety
   rw [hr] at hrun
   rw [hl] at hpre
   simp only [CommitteeWindow, PopulationWindow, hl, hc, hcl, hθ] at hK hpop
-  have hrun' : (goldilocksRunInterface (S.params (pubOf E) hn) (S.ro _)).Run
+  have hrun' : (goldilocksRunInterface (S.params (pubOf E) hn) (S.ro _) sign G).Run
       (goldilocksRunMap S rho hn hv).committee (goldilocksRunMap S rho hn hv).proposer
       (goldilocksRunMap S rho hn hv).digest (goldilocksRunMap S rho hn hv).honest
       (goldilocksRunMap S rho hn hv).trace := by
@@ -540,7 +543,7 @@ theorem goldilocksRunMap_event_safety
     exact (goldilocksRunInterface_run_iff _).mpr hrun
   exact (goldilocksEventSafety_iff.mp goldilocks_event_safety)
     _ _ _ _ _ p C.catchUp C.look C.committeeLook ΔF b hrun' hnc
-    (((goldilocksRunInterface_run_iff _).mp hrun').2.2.2 hnc)
+    (((goldilocksRunInterface_run_iff _).mp hrun').2.2.2.1 hnc)
     (canonical_window_premises S rho hn hv C hdata hb hbind
       (hsv.trans hdata.served) hpre hK hpop)
     hframes B B' hB hB'
@@ -549,7 +552,8 @@ theorem goldilocksRunMap_event_safety
 theorem goldilocksRunMap_extension
     (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
       (fun v => v.val))
-    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C) :
+    {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
+    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G) :
     Extension (goldilocksRunMap S rho hn hv)
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
       (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
@@ -566,7 +570,7 @@ theorem goldilocksRunMap_extension
   have hr' := (goldilocksRunInterface_run_iff _).mpr hrun
   exact (goldilocksExtension_iff.mp goldilocks_extension)
     _ _ _ _ _ p C.catchUp C.look C.committeeLook ΔF b hr' hnc
-    (hrun.2.2.2 hnc)
+    (hrun.2.2.2.1 hnc)
     (canonical_window_premises S rho hn hv C hdata hb hbind
       (hsv.trans hdata.served) hpre hK hpop)
     hframes y i j t u hi hj hbi hbj hij htu
@@ -575,7 +579,8 @@ theorem goldilocksRunMap_extension
 theorem goldilocksRunMap_proposal_coverage
     (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
       (fun v => v.val))
-    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C) :
+    {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
+    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G) :
     ProposalCoverage (goldilocksRunMap S rho hn hv)
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
       (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
@@ -596,7 +601,7 @@ theorem goldilocksRunMap_proposal_coverage
   have hr' := (goldilocksRunInterface_run_iff _).mpr hrun
   exact (goldilocksProposalCoverage_iff.mp goldilocks_proposal_coverage)
     _ _ _ _ _ p C.catchUp C.look C.committeeLook ΔF b C.hold C.margin hr' hnc
-    (hrun.2.2.2 hnc)
+    (hrun.2.2.2.1 hnc)
     (canonical_window_premises S rho hn hv C hdata hb hbind
       (hsv.trans hdata.served) hpre hK hpop)
     (by rw [hdata.hold])

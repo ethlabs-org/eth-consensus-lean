@@ -14,8 +14,9 @@ node honest at it. The second branch is where a delayed vote may use a newer, hi
 The signing deadline `d + D` and the signers' honesty cutoff are read here; delivery is not. A
 consumer pairs the rows with its own delivery premise (`v + ΔF ≤` the serving proposal).
 
-* `ResetPremisesUpTo.rowSupplyWithin_zero`: the same-tick FG update supplies rows with `D = 0`
-  (`row_signers_of_reports_at`). -/
+An actual report already supplies its signature, so `ResetPremisesUpTo.rowSupplyWithin` holds
+for every nonnegative delay. The calendar wait is needed to produce the reports, not to turn
+existing reports into rows. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
@@ -44,6 +45,21 @@ namespace ResetPremisesUpTo
 
 variable {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+
+/-- Actual same-height reports supply exact rows within any nonnegative delay. The quorum is
+chosen among nodes still honest at the deadline, whose earlier reports remain usable. -/
+theorem rowSupplyWithin {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {D : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) (hD : 0 ≤ D) :
+    RowSupplyWithin tr H g b D := by
+  refine ⟨?_⟩
+  intro T y m t ht hle hy hT σT hσ hTe hhT hhj d hd hdb hrep
+  left
+  apply hp.row_signers_of_reports_at ht hle hy hT hσ hTe hhT hhj
+    (hd.trans (le_add_of_nonneg_right hD)) hdb
+  intro z hz
+  obtain ⟨r, ell, C, hr, hrd, hTC, hh⟩ :=
+    hrep z (hp.run.antitone (max_le_max le_rfl (le_add_of_nonneg_right hD)) hz)
+  exact ⟨r, ell, C, hr, hrd.trans (le_add_of_nonneg_right hD), hTC, hh⟩
 
 /-- The same-tick FG update supplies rows with no delay. -/
 theorem rowSupplyWithin_zero {cm : Time → Finset (Fin sp.n)} {βK : ℚ}

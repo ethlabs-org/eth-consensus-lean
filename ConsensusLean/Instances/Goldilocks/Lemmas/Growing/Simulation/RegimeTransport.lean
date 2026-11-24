@@ -43,7 +43,8 @@ theorem goldilocks_regimeTransport (S : Setup) (A : ContractAssumptions S) {E : 
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (fun v => v.val))
-    (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C)
+    {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
+    (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G)
     (hsg : (fun v => v.val) = (goldilocksRunMap S rho hn hv).signer) :
     RegimeTransport (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C) := by
   classical

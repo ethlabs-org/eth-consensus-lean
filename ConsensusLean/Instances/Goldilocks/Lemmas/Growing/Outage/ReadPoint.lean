@@ -26,7 +26,8 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **L9 at the Goldilocks data equations.** -/
 theorem goldilocks_outageReadPoint (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
-    (hC : GoldilocksLocalData sp ro C) : OutageReadPoint C where
+    {sign : Fin sp.n → Time → Bool} {G : Nat}
+    (hC : GoldilocksLocalData sp ro C sign G) : OutageReadPoint C where
   protection cm proposer dg H tr p ΔF T b₀ b₁ R hrun hnc hb hT hlag hb01 hbud hb1R hrec hs hpost
       hp hK x i y j t hRx _ _ hRt hRy _ htj := by
     classical

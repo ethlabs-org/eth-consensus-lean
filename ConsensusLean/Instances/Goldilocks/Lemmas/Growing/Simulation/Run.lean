@@ -101,7 +101,7 @@ theorem simTraceAt_goldilocksRun (hv : rho.ExecutionValid) :
   tick_public := by
     intro y j t hy hg
     have ht : 0 ≤ t := by
-      obtain ⟨x, hg⟩ := hg
+      obtain ⟨x, fgDue, hg⟩ := hg
       have ht := (hg.2.1 0 (List.length_pos_of_ne_nil hg.1)).2.1
       rw [Nat.add_zero] at ht
       exact ht ▸ simTraceAt_time_nonneg S rho hn hv j
@@ -110,7 +110,7 @@ theorem simTraceAt_goldilocksRun (hv : rho.ExecutionValid) :
   tick_unique := by
     intro y j j' t hy hg hg'
     have ht : 0 ≤ t := by
-      obtain ⟨x, hg⟩ := hg
+      obtain ⟨x, fgDue, hg⟩ := hg
       have ht := (hg.2.1 0 (List.length_pos_of_ne_nil hg.1)).2.1
       rw [Nat.add_zero] at ht
       exact ht ▸ simTraceAt_time_nonneg S rho hn hv j

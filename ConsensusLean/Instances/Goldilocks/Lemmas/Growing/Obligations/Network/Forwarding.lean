@@ -61,7 +61,7 @@ theorem accepted_child_decodes_at {V : Type} [Fintype V] [DecidableEq V] {E : En
   have run := hrun.upTo (hrun.time_nonneg i)
   have hc' := (Trace.upTo_callAt_of_le _ le_rfl).mpr hc
   rcases Compose.blockCall_cases run.toLocalRun hy hc' with hg |
-    ⟨j, x, _, hg, hp, d, p, hdp, hB, _, _, _, _⟩
+    ⟨j, x, fgDue, _, hg, hp, d, p, hdp, hB, _, _, _, _⟩
   · have hw := run.wire y hy i _ _ hg
     have ha := (run.cutLaw y hy i _ hc').2.1
     obtain ⟨root, _, hr, _, _, _, _, _⟩ := Store.onBlock_eq_some ha

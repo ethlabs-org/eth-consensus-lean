@@ -31,7 +31,7 @@ theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
   have hEC := eventCuts_tick_public S rho hn i v t he hp
   have hlab : r.label ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
       (stateAt S rho hn v i).node t
-      (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 := by
+      (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t))).2 := by
     rw [hEC] at hr
     obtain ⟨m, hm, rfl⟩ := List.getElem_of_mem hr
     obtain ⟨-, -, -, -, hl⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm

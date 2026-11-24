@@ -78,7 +78,7 @@ private theorem old_origins_below {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   fun _ _ _ _ ho ht hrb => high_origins_before_next_slot_below_at hp hP hun hgu hR hub ho ht hrb
 
 /-- The members of the slot-`u` committee honest at `t_{u+1}` voted in slot `u` by `t_u + Δ`. -/
-private theorem next_voters {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+theorem committee_voted_in_slot_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {u : Nat} (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u)
     (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat)) (hub : sp.ts u + sp.Δ ≤ b) :
@@ -91,7 +91,7 @@ private theorem next_voters {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp.run.antitone (by linarith [sp.toParams.hΔ]) hx) hxK
 
 /-- A member of the slot-`u` committee honest at its vote casts a slot-`u` vote by `t_u + Δ`. -/
-private theorem slot_witness {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+theorem exists_honest_slot_vote_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {u : Nat} (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u)
     (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat)) (hub : sp.ts u + sp.Δ ≤ b) :
@@ -104,7 +104,7 @@ private theorem slot_witness {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   exact ⟨w, q, e, hp.run.antitone hq hw, hv, hs, hq⟩
 
 /-- After the drain, CS at the slot-`u` committee holds at every cut from `t_{u+1}` through `b`. -/
-private theorem next_fault_bound {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+theorem faultBoundK_after_slot_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {u : Nat}
     (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat)) :
     ∀ i, sp.ts (u + 1 : Nat) ≤ tr.time i → tr.time i ≤ b →
@@ -140,7 +140,8 @@ theorem unanimous_next_optimistic_compatible_at
   unanimous_next_optimistic_compatible_core_at hp.run hp.noColl hp.sync hp.catchUp hP hslot hu hun
     (by linarith [sp.toParams.hΔ]) hp.committeeFacts.hP
     (hp.committeeFacts.committeeTAt hp.run hp.noColl) hp.committeeFacts.hsize hp.noRestart
-    (slot_witness hp hgu hR hub) (next_voters hp hgu hR hub) (next_fault_bound hp hgu hR)
+    (exists_honest_slot_vote_at hp hgu hR hub) (committee_voted_in_slot_at hp hgu hR hub)
+    (faultBoundK_after_slot_at hp hgu hR)
     (fun i hti hib => hp.committee_cs2_at
       (by have := (AC.ts_le_iff sp).2 (show (u : Int) ≤ (u + 1 : Nat) by omega)
           linarith [sp.toParams.hΔ]) (hti.trans hib)

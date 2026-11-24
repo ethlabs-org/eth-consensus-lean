@@ -167,7 +167,7 @@ theorem confirmed_inBy_at (hv : rho.ExecutionValid)
     · have h0 : (simTraceAt S rho hn).pos k = 0 :=
         (hg.2.1 0 (List.length_pos_iff.mpr hg.1)).2.2.2.1
       exact False.elim (hpos (by simpa using h0))
-    · obtain ⟨j, x, _, _, _, d, p', _, hB, _⟩ := hg
+    · obtain ⟨j, x, fgDue, _, _, _, d, p', _, hB, _⟩ := hg
       rw [hB, digestOf_eq S rho]
       simp only [Node.mkBlock]
       erw [dgOf_eq]

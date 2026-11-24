@@ -43,13 +43,13 @@ theorem ownBlockAt_accept (hrun : LocalRun proposer dg H sg tr ini)
   obtain ⟨⟨acc, hc⟩, hpos⟩ := hown
   have hc' := (Trace.upTo_callAt_of_le _ le_rfl).mpr hc
   rcases Compose.blockCall_cases run hy hc' with hg |
-    ⟨j, x, rfl, hg, hp, dd, pay, hdp, hB, hacc, _, _, _⟩
+    ⟨j, x, fgDue, rfl, hg, hp, dd, pay, hdp, hB, hacc, _, _, _⟩
   · have h0 := (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1
     simp only [Nat.add_zero] at h0
     exact False.elim (hpos h0)
   · obtain ⟨cfg, hr, hst, hs⟩ := Compose.group_step run hy hg
     have h := Compose.honest_block_accepted_from proposer dg y (hreq y)
-      hroot cfg _ _ x hr hs hp dd pay (by rw [hst]; exact hdp)
+      hroot cfg _ _ x fgDue hr hs hp dd pay (by rw [hst]; exact hdp)
     simp only [hst] at h
     have key : Compose.NoCollOn dg (insert B ((tr.upTo d).state y j).fg.tree) →
         ∃ fg', ((tr.upTo d).state y j).fg.onBlock B = some fg' := by

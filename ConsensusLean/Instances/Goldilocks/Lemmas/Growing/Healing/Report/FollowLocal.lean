@@ -40,6 +40,38 @@ theorem joined_voteTime_of_warm_frame_at
   have ht := (AC.ts_le_iff sp).2 (show (s₀ : Int) ≤ (u : Int) - 1 by omega)
   exact hrestart.trans (by linarith)
 
+/-- No restart in `(t, b]` of a node honest at its restart: `NoRestartAfter` for the restarts up
+to `b`. -/
+def NoRestartUpTo (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (t b : Time) : Prop :=
+  ∀ y k, y ∈ H (tr.time k) → tr.RestartAt y k → tr.time k ≤ b → tr.time k ≤ t
+
+/-- The bounded no-restart premise, without exposing the definition's body. -/
+theorem noRestartUpTo_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {t b : Time} :
+    NoRestartUpTo tr H t b ↔
+      ∀ y k, y ∈ H (tr.time k) → tr.RestartAt y k → tr.time k ≤ b → tr.time k ≤ t :=
+  Iff.rfl
+
+/-- `joined_voteTime_of_warm_frame_at` with restarts bounded only up to `b`, for a vote deadline
+`t_u + Δ ≤ b`. -/
+theorem joined_voteTime_of_warm_frame_upTo_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    {g b : Time} {s₀ u : Nat} (hnr : NoRestartUpTo tr H (gbar g) b)
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hs : s₀ + 1 ≤ u) (hb : sp.ts u + sp.Δ ≤ b)
+    {y : Fin sp.n} (hy : y ∈ H (sp.ts u + sp.Δ)) :
+    AC.JoinedAt tr.projAC y (sp.ts u + sp.Δ) := by
+  have hΔ := sp.toParams.hΔ
+  have hslot : sp.slot (sp.ts u + sp.Δ) = u := by
+    apply AC.slot_of_mem sp u
+    all_goals simp only [ACParams.ts]; push_cast; linarith
+  intro i hi hit
+  change tr.time i ≤ sp.ts ((sp.slot (sp.ts u + sp.Δ) : Int) - 1)
+  rw [hslot]
+  have hiy : y ∈ H (tr.time i) := hrun.toLocalRun.antitone hit hy
+  have hrestart := noRestartUpTo_iff.mp hnr y i hiy (Compose.projAC_restartAt.mp hi)
+    (hit.trans hb)
+  have ht := (AC.ts_le_iff sp).2 (show (s₀ : Int) ≤ (u : Int) - 1 by omega)
+  exact hrestart.trans (by linarith)
+
 /-- Candidates at one honest call are compatible in the historical block universe. -/
 theorem toFG_candidates_compatible_at_call_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)

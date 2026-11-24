@@ -71,7 +71,7 @@ theorem proposesAt_designated_at {ini} (hrun : Growing.GoldilocksRun proposer dg
   obtain ⟨⟨⟨acc, hcB⟩, hpos⟩, hpp, -⟩ := hP
   rcases Compose.blockCall_cases (hrun.upTo hk0).toLocalRun hp
       ((Trace.upTo_callAt_of_le _ le_rfl).mpr hcB) with
-    hg | ⟨j, x, rfl, -, hPr, d', pay', -, hB, -⟩
+    hg | ⟨j, x, fgDue, rfl, -, hPr, d', pay', -, hB, -⟩
   · have h := (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1
     simp only [Nat.add_zero] at h
     exact absurd h hpos

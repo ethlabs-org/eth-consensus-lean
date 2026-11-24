@@ -1,6 +1,10 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMapReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CutTips
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.SignCalendar
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.SignGap
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationInitialize
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.SignGap
 
 public section
 
@@ -27,7 +31,9 @@ theorem goldilocks_healedReadAncestry (S : Setup) (A : ContractAssumptions S) {E
   simp only [goldilocksRunMap_trace, goldilocksRunMap_honest, goldilocksStoredReadContext_tip]
   rw [goldilocksStoredReadContext_now] at hjb
   exact Obligations.Growing.healthy_cut_tips_ancestor_at S A V Q h0 hb hp
-    v i j hi hij hj hvi hvj hjb
+    (simTraceAt_signCalendar S rho hn _) (Obligations.signGapAt_of_assumptions A _ _)
+    (Obligations.signGap_δt A) (Obligations.contract_heal_ge_reset_signGap A Q.cap Q.index)
+    (Obligations.fgSlots_signGap_le A) v i j hi hij hj hvi hvj hjb
 
 end Consensus.Goldilocks.Simulation
 

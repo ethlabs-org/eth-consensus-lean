@@ -29,32 +29,37 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The shared Goldilocks run interface, starting each node with its committee permission. -/
 noncomputable def goldilocksRunInterface (sp : ACParams)
-    (ro : ReplayOrder sp (List (FG.Att sp.n))) :
+    (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (sign : Fin sp.n → Time → Bool := fun _ _ => true) (G : Nat := 0) :
     ACRun (goldilocksNode sp ro) (fun v => v.val) where
   Run cm proposer dg H tr := Growing.GoldilocksRun proposer dg H tr
     (AC.committeeStart sp.genesisRoot (dictOfTime sp cm)) ∧
     0 < sp.committeeSize ∧
     (∀ s, ((dictOfTime sp cm).committee s).ncard = sp.committeeSize) ∧
-    (Compose.NoCollRun dg tr → Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm))
+    (Compose.NoCollRun dg tr → Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm)) ∧
+    tr.SignCalendarAt proposer dg H sign ∧ SignGapAt sp.toParams sign G 0
   start cm := AC.committeeStart sp.genesisRoot (dictOfTime sp cm)
   run_local h := h.1.toLocalRun
   run_requirements h y := Compose.requirements_from sp ro (h.1.vstart y)
   run_root h := h.1.genesis_root_ok
   run_truncH h b := ⟨KernelProof.goldilocksRun_truncH h.1 b, h.2.1, h.2.2.1,
-    fun hnc => (h.2.2.2 hnc).truncH b⟩
+    (fun hnc => (h.2.2.2.1 hnc).truncH b),
+    (fun y j t x fgDue hy hg => h.2.2.2.2.1 y j t x fgDue hy.1 hg), h.2.2.2.2.2⟩
 
 /-- The run projection uses the committee-indexed initial AC states. -/
-theorem goldilocksRunInterface_run_iff (cm : Time → Finset (Fin sp.n)) :
-    (goldilocksRunInterface sp ro).Run cm proposer dg H tr ↔
+theorem goldilocksRunInterface_run_iff (cm : Time → Finset (Fin sp.n))
+    {sign : Fin sp.n → Time → Bool} {G : Nat} :
+    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr ↔
       Growing.GoldilocksRun proposer dg H tr
         (AC.committeeStart sp.genesisRoot (dictOfTime sp cm)) ∧
       0 < sp.committeeSize ∧
       (∀ s, ((dictOfTime sp cm).committee s).ncard = sp.committeeSize) ∧
-      (Compose.NoCollRun dg tr → Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm)) := by rfl
+      (Compose.NoCollRun dg tr → Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm)) ∧
+      tr.SignCalendarAt proposer dg H sign ∧ SignGapAt sp.toParams sign G 0 := by rfl
 
 /-- The shared run interface has the exact Goldilocks run and start equations. -/
-theorem goldilocksRunInterface_data :
-    GoldilocksRunData sp ro (goldilocksRunInterface sp ro) := by
+theorem goldilocksRunInterface_data {sign : Fin sp.n → Time → Bool} {G : Nat} :
+    GoldilocksRunData sp ro (goldilocksRunInterface sp ro sign G) sign G := by
   exact ⟨rfl, rfl⟩
 
 end Consensus.Goldilocks.Generic

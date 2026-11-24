@@ -6,7 +6,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Adjacent update and to-FG calls while honest at their time -/
+/-! # Update calls while honest at their time -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
@@ -16,17 +16,13 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 
-theorem ResetPremisesUpTo.update_toFG_calls_at
+theorem ResetPremisesUpTo.update_call_of_awake
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
     {y : Fin sp.n} {u : Nat} (hy : y ∈ H (sp.ts u + 6 * sp.Δ))
     (hu : sp.ts (sp.slot (gbar g) + 1 : Nat) ≤ sp.ts u)
     (hub : sp.ts u + 6 * sp.Δ ≤ b) :
-    ∃ j ell ell', AC.UpdateAt tr.projAC y j u ell ∧
-      tr.projAC.CallAt y (j + 1) ell' ∧ ell'.call = .toFG ∧
-      tr.time (j + 1) = sp.ts u + 6 * sp.Δ ∧
-      ell'.frame = ell.frame ∧
-      AC.joined sp (tr.projAC.state y (j + 1)) (tr.time (j + 1)) := by
+    ∃ j ell, AC.UpdateAt tr.projAC y j u ell := by
   let d := sp.ts u + 6 * sp.Δ
   have hDelta := sp.toParams.hΔ
   have hd : 0 ≤ d := by dsimp [d]; simp only [ACParams.ts]; positivity
@@ -59,13 +55,9 @@ theorem ResetPremisesUpTo.update_toFG_calls_at
       change tr.time r ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1)
       rw [hi', hslot]
       simpa using hrestart.trans hu
-  obtain ⟨j, ell, ell', huj, hc, he, ht, hf, hjoin⟩ :=
-    Healing.update_toFG_calls_of_awake hr hy ha hj
-  have hstate : (tr.projAC.upTo d).state y (j + 1) = tr.projAC.state y (j + 1) :=
-    Trace.upTo_state tr.projAC y (fun q hq => (hm hq.le).trans ht.le)
-  rw [RunTrace.upTo_projAC] at huj hc hjoin
-  exact ⟨j, ell, ell', (AC.upTo_updateAt hm).mp huj |>.2,
-    (Trace.upTo_callAt tr.projAC).mp hc |>.2, he, ht, hf, hstate ▸ hjoin⟩
+  obtain ⟨j, ell, huj⟩ := Healing.update_call_of_awake hr hy ha hj
+  rw [RunTrace.upTo_projAC] at huj
+  exact ⟨j, ell, (AC.upTo_updateAt hm).mp huj |>.2⟩
 
 end Consensus.Goldilocks.Healing.Growing
 

@@ -112,7 +112,7 @@ theorem outage_reader_gate_at
     exact hR.2 v (le_trans (max_le_max le_rfl (by rw [hcu] at hc; linarith)) h₁)
       (by linarith)
   have hyuw := hwin u (max_le hu0 (by linarith)) le_rfl
-  obtain ⟨c₁, x, hg⟩ := hrun.tick_of_awake y u hyu hu0 hpub hyuw
+  obtain ⟨c₁, x, fgDue, hg⟩ := hrun.tick_of_awake y u hyu hu0 hpub hyuw
   obtain ⟨hc₁, ht₁⟩ := Healing.tick_first_cut hg
   have hJu := joined_of_ready hrun hyu hu0 (by linarith) hwin
   have hj₁ : AC.joined sp (tr.state y c₁).ac u := by

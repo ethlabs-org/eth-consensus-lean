@@ -6,6 +6,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportCover
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OperationalReports
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -101,38 +103,99 @@ theorem UpTo.operational_proposal_below_later_parent_at
       omega
     have hle : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts u := (AC.ts_le_iff sp).2 (by omega)
     linarith [sp.toParams.hΔ]
-  obtain ⟨z, r, ellr, C, hzz, hrep, hrt, hPC⟩ :
-      ∃ z r ellr C, z ∈ H (max (Healing.cutZ sp.toParams g) (tr.time r)) ∧
-        AC.ToFGAt tr.projAC z r ellr C ∧
-        tr.time r ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P C := by
-    rcases Healing.Growing.report_cover_of_unanimous_at hp hPU hPs hu hPg hun hgu hRnext hTb
-      with hall | hsome
-    · obtain ⟨w, hw⟩ : (H (sp.ts u + 6 * sp.Δ)).Nonempty := by
-        by_contra hne
-        rw [Set.not_nonempty_iff_eq_empty] at hne
-        have hf := hp.faults _ hT0 hTb
-        rw [hne, Set.compl_empty, Set.ncard_univ, Nat.card_eq_fintype_card,
-          Fintype.card_fin] at hf
-        have := Fin.pos p
-        omega
-      obtain ⟨r, ellr, C, hrep, ht, hPC⟩ := hall w hw
-      exact ⟨w, r, ellr, C, hrun.antitone (max_le hczT ht) hw, hrep, ht, hPC⟩
-    · obtain ⟨z, r, ellr, C, hz, hrep, ht, hPC, _⟩ := hsome
-      exact ⟨z, r, ellr, C, hz, hrep, ht, hPC⟩
-  have hz := hrun.antitone (le_max_right _ _) hzz
-  have hCt : C ∈ (tr.state z r).fg.tree := Healing.Growing.toFG_mem_tree_at hrun hz hrep
-  have hhigh := hp.high_of_anc_at ho (hrun.time_nonneg r) (fun _ hq => hrun.time_mono hq.le) hz
-    hCt (hSP.trans hPC)
-  obtain ⟨io, hior, jo, O, D, CV, hO, _, _, hCO, _⟩ :=
-    hp.high_report_origin_at hzz hrep (hrt.trans hTb) hhigh
+  obtain ⟨w, hw⟩ : (H (sp.ts u + 6 * sp.Δ)).Nonempty := by
+    by_contra hne
+    rw [Set.not_nonempty_iff_eq_empty] at hne
+    have hf := hp.faults _ hT0 hTb
+    rw [hne, Set.compl_empty, Set.ncard_univ, Nat.card_eq_fintype_card,
+      Fintype.card_fin] at hf
+    have := Fin.pos p
+    omega
+  have hjoin : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) ≤ sp.ts u := by
+    have hbase := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g)
+      (sp.slot (AC.gbar g))).2 le_rfl
+    simp only [ACParams.ts] at hbase hgu ⊢
+    push_cast at hbase hgu ⊢
+    linarith
+  obtain ⟨j, ellj, hup⟩ := hp.update_call_of_awake hw hjoin hTb
+  have htj : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
+  have hwj : w ∈ H (tr.time j) := htj ▸ hw
+  have hjb : tr.time j ≤ b := htj ▸ hTb
+  have hafter : a ≤ tr.time j := by
+    have ha' : a < sp.ts ((sp.slot a : Int) + 1) := not_le.1 fun h => by
+      have := (AC.ts_le_iff_le_slot sp ha0 _).1 h
+      omega
+    have hle : sp.ts ((sp.slot a : Int) + 1) ≤ sp.ts u :=
+      (AC.ts_le_iff sp).2 (by omega)
+    rw [htj]
+    linarith
+  have escape : ∀ z r ellr C,
+      z ∈ H (max (Healing.cutZ sp.toParams g) (tr.time r)) →
+      AC.ToFGAt tr.projAC z r ellr C → tr.time r ≤ sp.ts u + 6 * sp.Δ →
+      Anc (tr.HonestBlocksAt H) P C →
+      ∃ z io jo O, Healing.Growing.HighOrigin tr H g z io jo O ∧
+        tr.time io ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P O := by
+    intro z r ellr C hzz hrep hrt hPC
+    have hz := hrun.antitone (le_max_right _ _) hzz
+    have hCt := Healing.Growing.toFG_mem_tree_at hrun hz hrep
+    have hhigh := hp.high_of_anc_at ho (hrun.time_nonneg r)
+      (fun _ hq => hrun.time_mono hq.le) hz hCt (hSP.trans hPC)
+    obtain ⟨io, hior, jo, O, _, _, hO, _, _, hCO, _⟩ :=
+      hp.high_report_origin_at hzz hrep (hrt.trans hTb) hhigh
+    exact ⟨z, io, jo, O, hO, (hrun.time_mono hior.le).trans hrt, hPC.trans hCO⟩
+  obtain ⟨z, io, jo, O, hO, hOt, hPO⟩ :
+      ∃ z io jo O, Healing.Growing.HighOrigin tr H g z io jo O ∧
+        tr.time io ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P O := by
+    rcases Healing.Growing.finality_alternative_before_update_at hp hPU hPs hu hun hgu
+        hRnext hTb hwj hafter htj.le with hFP | ⟨z, r, ellr, C, hz, _, hr, ht, hPC, _⟩
+    swap
+    · exact escape z r ellr C hz hr ht hPC
+    rcases Healing.Growing.unanimous_viable_or_higher_report_at hp hPU hPs hu hun hgu
+        hRnext hTb hwj hup.1 htj hFP with hPv | ⟨z, r, ellr, C, hz, _, hr, ht, hPC, _⟩
+    swap
+    · exact escape z r ellr C hz hr ht hPC
+    obtain ⟨hPt, hconf, hnv, hfast, _, _⟩ :=
+      Healing.Growing.operational_update_selection_at hp hpH hdesignated hactual hPs hR hgu
+        hTb hwj hup
+    have hPhi := (Healing.Growing.frame_tree_subset_at hrun hnc hwj hup.1).1
+    have hD := Obligations.UpTo.deepest_of_subset
+      (S := {X | X ∈ {X | X ∈ AC.confirmationPath sp ellj.frame P ∧
+        ¬ AC.conflictsWithLock sp (tr.projAC.state w j).locks ellj.frame (tr.time j) X} ∧
+        AC.FastTest sp (tr.projAC.state w j) ellj.frame u X}) hfast
+      (fun X hX => ⟨hX.1.1, hX.2⟩)
+      ⟨⟨(AC.deepest_mem hfast).1.1, hnv⟩, (AC.deepest_mem hfast).1.2⟩
+    have hfl : AC.FastLockAt tr.projAC w j u P
+        (AC.fastCounted sp (tr.projAC.state w j) ellj.frame u P) :=
+      Or.inl ⟨ellj, P, hup, hconf, by
+        simpa only [Set.mem_ofPred_eq, and_assoc, RunTrace.projAC] using hD, rfl⟩
+    have hwz : w ∈ H (max (Healing.cutZ sp.toParams g) (tr.time j)) := by
+      rw [htj, max_eq_right hczT]; exact hw
+    have hjoined : tr.JoinedAt w (tr.time j) := by
+      intro r hrs hrt
+      have hbound := hp.restart_le_before_at (hrun.antitone hrt hwj) hrs (hrt.trans hjb)
+      have hslot : sp.slot (tr.time j) = u + 1 := by
+        rw [htj]
+        apply AC.slot_of_mem sp (u + 1) <;>
+          simp only [ACParams.ts] <;> push_cast <;> linarith
+      change 0 < sp.slot (tr.time j) ∧ _
+      refine ⟨by rw [hslot]; omega, ?_⟩
+      change tr.time r ≤ sp.toParams.slotTime (sp.slot (tr.time j) - 1)
+      rw [hslot, Nat.add_sub_cancel, sp.slotTime_eq]
+      exact hbound.trans hjoin
+    have hPm := (Healing.Growing.frame_tree_subset_at hrun hnc hwj hup.1).2 hPt
+    have hhigh := hp.high_of_anc_at ho (hrun.time_nonneg j)
+      (fun _ hq => hrun.time_mono hq.le) hwj hPm hSP
+    exact ⟨w, j, u, P, ⟨hwz, hjoined,
+      ⟨_, ellj, P, hup.1, hfl, (AC.viableAncestor_self hPhi hPt (Or.inl hPv)).symm⟩,
+      hhigh⟩, htj.le, .refl⟩
   have hTv : sp.ts u + 6 * sp.Δ < sp.ts v := by
     have hle : sp.ts (u + 2 : Nat) ≤ sp.ts v := (AC.ts_le_iff sp).2 (by omega)
     simp only [ACParams.ts] at hle ⊢
     push_cast at hle
     linarith
   have hRv := hR.trans ((AC.ts_le_iff sp).2 (show (u : Int) ≤ v by omega))
-  exact hPC.trans (hCO.trans (hp.reset_proposal_passes_at hy hRv hci hcall hd hti hib O
-    ⟨z, io, jo, hO, ((hrun.time_mono hior.le).trans hrt).trans_lt hTv⟩))
+  exact hPO.trans (hp.reset_proposal_passes_at hy hRv hci hcall hd hti hib O
+    ⟨z, io, jo, hO, hOt.trans_lt hTv⟩)
 
 /-- **No reorg two slots on, through the horizon**, under growing faults. -/
 theorem honest_proposal_below_later_upTo_at

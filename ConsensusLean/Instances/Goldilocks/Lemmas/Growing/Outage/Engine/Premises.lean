@@ -47,8 +47,9 @@ theorem restart_le_of_awake_at
   have hm1 : (-a) % sp.Δ < sp.Δ := Int.emod_lt_of_pos _ hΔ
   have hpub : sp.toParams.IsPublic p :=
     ⟨-((-a) / sp.Δ), by rw [hp, Int.emod_def]; ring⟩
-  obtain ⟨j, y, hg⟩ := hrun.tick_of_awake x p (hrun.antitone (by linarith) hx) (by linarith) hpub
-    (haw p (by linarith) (by linarith))
+  obtain ⟨j, y, fgDue, hg⟩ :=
+    hrun.tick_of_awake x p (hrun.antitone (by linarith) hx) (by linarith) hpub
+      (haw p (by linarith) (by linarith))
   obtain ⟨hne, hks, -⟩ := hg
   obtain ⟨hn0, ht0, -, -, hl0⟩ := hks 0 (List.length_pos_of_ne_nil hne)
   simp only [Nat.add_zero] at hn0 ht0 hl0

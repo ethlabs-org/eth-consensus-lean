@@ -7,7 +7,10 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Hea
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Opening
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.SignCalendar
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.SignGap
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.SignGap
 
 public section
 
@@ -35,13 +38,15 @@ theorem goldilocks_resetHealBudgetSupply (S : Setup) (A : ContractAssumptions S)
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (fun v => v.val))
-    (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C)
+    {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
+    (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G)
     (hsg : (fun v => v.val) = (goldilocksRunMap S rho hn hv).signer) :
     ResetHealBudgetSupply (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C) := by
   classical
   obtain ⟨hmargin, hdrainC⟩ := Generic.ACCorrectLocal.cast_signer hsg C
     (fun _ C' => C'.margin = C.margin ∧ C'.healing.drain = C.healing.drain) ⟨rfl, rfl⟩
-  obtain ⟨⟨-, -, -, hdrain, -⟩, -, -, -, -, -, hm, -⟩ := hC
+  obtain ⟨-, -, -, -, hdrain, -⟩ := hC.healing
+  have hm := hC.margin
   intro hv' hnc cap idx gst hcap hH hp hhb
   rw [goldilocksRunMap_trace, goldilocksRunMap_honest, goldilocksRunMap_proposer]
   obtain ⟨hps, hon, hΔF, hcom⟩ := hH
@@ -65,6 +70,9 @@ theorem goldilocks_resetHealBudgetSupply (S : Setup) (A : ContractAssumptions S)
     have := E.ΔAC_pos
     positivity
   obtain ⟨W, Dprep, hlate⟩ := healthy_preparation_initialize_late_at S A V Q hheal0 hhb hp
+    (simTraceAt_signCalendar S rho hn _) (Obligations.signGapAt_of_assumptions A _ _)
+    (Obligations.signGap_δt A) (Obligations.contract_heal_ge_reset_signGap A Q.cap Q.index)
+    (Obligations.fgSlots_signGap_le A)
   obtain ⟨D, -, -, hDq⟩ := healthy_repair_schedule_of_preparation_at S A V Q W Dprep
   obtain ⟨O⟩ := healthy_bounded_repairing_opening_at S A V Q hhb hp D
   have hts : ∀ s : Nat, sp.toParams.slotTime s = sp.ts s := fun s => by
