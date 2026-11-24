@@ -51,7 +51,7 @@ theorem exists_call_of_public (hrun : Node.LocalRun proposer dg H sg tr ini) {g 
     {z : Fin P.n} (hz : z ∈ H) {q : Time} (hq : P.IsPublic q)
     (hgq : gbar g ≤ q) (hqb : q ≤ b) :
     ∃ j, tr.IsCall z j ∧ tr.time j = q := by
-  obtain ⟨j, _, hne, hcs, -⟩ :=
+  obtain ⟨j, _, fgDue, hne, hcs, -⟩ :=
     hrun.tick_of_awake z hz q ((gbar_nonneg g).trans hgq) hq (hawake z hz q hgq hqb)
   obtain ⟨hn, ht, -, -, hl⟩ := hcs 0 (List.length_pos_of_ne_nil hne)
   simp only [Nat.add_zero] at hn ht hl

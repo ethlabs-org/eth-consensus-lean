@@ -27,10 +27,11 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- C0–C5 supply bounded high coverage under precisely the public pattern premises. -/
 theorem pattern_coverage_supply (houtcome : Compose.OutcomeService)
-    (hreports : ∀ a, ReadyProposalReportSupply tr H K proposer dg g ΔF a) :
+    (hreports : tr.AllTicksSign proposer dg H →
+      ∀ a, ReadyProposalReportSupply tr H K proposer dg g ΔF a) :
     PatternCoverageSupply tr H K proposer dg g ΔF Gp W M cF kF := by
-  refine ⟨fun hrun hpat t ht => ?_⟩
-  obtain ⟨a, hp, hab, -⟩ := pattern_reset hrun hpat
+  refine ⟨fun hrun hsign hpat t ht => ?_⟩
+  obtain ⟨a, hp, hab, -⟩ := pattern_reset hrun hsign hpat
   obtain ⟨v, htv, hvt, hv, hwindow⟩ :=
     pattern_stretch_after_reset hrun hpat hp.reset hab ht
   obtain ⟨s, p, kP, iP, P, hvs, hs, hP, hacc, hhigh⟩ := fresh_high_proposal hp hpat
@@ -42,12 +43,12 @@ theorem pattern_coverage_supply (houtcome : Compose.OutcomeService)
   have hroom := (recovery_slot_budget hpat.long hs
     (show s + oldSlots sp ΔF Gp ≤ s + oldSlots sp ΔF Gp from le_rfl)).1
   obtain ⟨q, kU, iU, U, hU, hentry, hPU, hsU, hUbound, hheight⟩ :=
-    old_entry_crossing hp hpat (hreports a) hwindow hvs hroom hP hacc hhigh hafter
+    old_entry_crossing hp hpat (hreports hsign a) hwindow hvs hroom hP hacc hhigh hafter
   have hUhigh : HZ tr H g + 2 ≤ ((tr.post iU).fg.σ U.root).h := by omega
   have hUR : drainTime sp a ≤ sp.ts U.slot :=
     hafter.trans ((AC.ts_le_iff sp).2 (by exact_mod_cast hsU.le))
   obtain ⟨x, hx, kX, X, hX, hgX, hXD, Fx, hFx, hroot, hUF⟩ :=
-    two_window_finalization houtcome hp hpat hwindow hU hentry hUhigh (hvs.trans hsU.le)
+    two_window_finalization houtcome hp hsign hpat hwindow hU hentry hUhigh (hvs.trans hsU.le)
       hUR (recovery_slot_budget hpat.long hs hUbound).2
   have hPs : P.slot = s := hP.2.2.2.2.1
   exact high_coverage_of_stretch_carrier hp ⟨htv, hvt⟩

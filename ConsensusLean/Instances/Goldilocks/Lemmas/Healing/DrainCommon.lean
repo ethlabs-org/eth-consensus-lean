@@ -113,7 +113,8 @@ theorem restart_le_of_healthy (hrun : GoldilocksRun proposer dg H tr ini)
     exact (not_le.mp h).le
   by_cases hgu : gbar g ≤ u
   · exact hu (hs.healthy.2.1 y hy u hgu)
-  · obtain ⟨j, _x, hne, hcs, -⟩ := hrun.tick_of_awake y hy _ ((gbar_nonneg g).trans hp₀)
+  · obtain ⟨j, _x, fgDue, hne, hcs, -⟩ :=
+      hrun.tick_of_awake y hy _ ((gbar_nonneg g).trans hp₀)
       ⟨4 * ((sp.slot (gbar g) + 1 : Nat) : Int), by simp only [ACParams.ts]; ring⟩
       (hs.healthy.2.1 y hy _ hp₀)
     obtain ⟨hn, ht, -, -, hl⟩ := hcs 0 (List.length_pos_of_ne_nil hne)

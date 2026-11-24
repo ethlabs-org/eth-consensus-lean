@@ -61,13 +61,13 @@ private theorem proposal_before_holder (hrun : GoldilocksRun proposer dg H tr in
   rw [hPprop] at hown
   obtain ⟨⟨acc, hc⟩, hpos⟩ := hown
   rcases Compose.blockCall_cases hl hpH hc with hg |
-    ⟨j'', x, rfl, hg, hpr, d', pay', -, hB, -, -, -, -⟩
+    ⟨j'', x, fgDue, rfl, hg, hpr, d', pay', -, hB, -, -, -, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   obtain ⟨j₀, rfl, h₀⟩ := proposal_call_tick hl hpH (Compose.projAC_callAt.1 hcP) hcall
   have hslot : P.slot = sp.toParams.slotOf (tr.time (j'' + 2)) := by rw [hB]; rfl
   have ht : tr.time (j'' + 2) = tr.time (j₀ + 1) := by
     rw [htP, hpr.2.1, ← hslot, hPs, sp.slotTime_eq]; rfl
-  have := hl.tick_unique p hpH j₀ j'' _ h₀ (by rw [← ht]; exact ⟨x, hg⟩)
+  have := hl.tick_unique p hpH j₀ j'' _ h₀ (by rw [← ht]; exact ⟨x, fgDue, hg⟩)
   omega
 
 /-- **The proposal's cut precedes every honest vote of its slot**: a vote after `t_s` is at a

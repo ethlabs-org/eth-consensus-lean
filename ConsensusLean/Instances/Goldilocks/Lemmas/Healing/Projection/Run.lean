@@ -82,24 +82,25 @@ theorem fg_accept_before (h : Node.LocalRun proposer dg H sg tr ini)
 /-! ### The cuts of ticks and deliveries -/
 
 /-- The cuts of a tick: the AC's tick, the proposal step's cuts, the FG update's cuts. -/
-theorem onTick_eq (y : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) :
-    (onTick proposer dg y st t x).2 = (tickStep proposer dg y st t x .acTick).2 ++
+theorem onTick_eq (y : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) (fgDue : Bool) :
+    (onTick proposer dg y st t x fgDue).2 = (tickStep proposer dg y st t x .acTick).2 ++
       (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal).2 ++
-      (tickStep proposer dg y
+      (if fgDue then (tickStep proposer dg y
         (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal).1 t x
-        .fgUpdate).2 := by
-  simp [onTick, runSteps, tickSteps]
+        .fgUpdate).2 else []) := by
+  cases fgDue <;> simp [onTick, runSteps, tickSteps]
 
 /-- In the cuts of an event, an `ac_on_tick` cut is a tick's and an `ac_on_message(m)` cut is the
 delivery of `m`'s. -/
 theorem exec_ac_call (y : Fin P.n) (st : NodeState A) (t : Time) (e : Event A) {ℓ : ACLabel A}
     (hm : Cut.ac ℓ ∈ (exec proposer dg y st t e).2) :
-    (ℓ.call = .tick → ∃ x, e = .tick x) ∧ ∀ m, ℓ.call = .message m → e = .message m := by
+    (ℓ.call = .tick → ∃ x fgDue, e = .tick x fgDue) ∧
+      ∀ m, ℓ.call = .message m → e = .message m := by
   cases e with
-  | tick x =>
-    refine ⟨fun _ => ⟨x, rfl⟩, fun m hc => ?_⟩
+  | tick x fgDue =>
+    refine ⟨fun _ => ⟨x, fgDue, rfl⟩, fun m hc => ?_⟩
     exfalso
-    change Cut.ac ℓ ∈ (onTick proposer dg y st t x).2 at hm
+    change Cut.ac ℓ ∈ (onTick proposer dg y st t x fgDue).2 at hm
     rw [onTick_eq] at hm
     simp only [List.mem_append] at hm
     rcases hm with (hm | hm) | hm
@@ -120,13 +121,16 @@ theorem exec_ac_call (y : Fin P.n) (st : NodeState A) (t : Time) (e : Event A) {
                   List.not_mem_nil, or_false] at hm
                 subst hm; cases hc
       · simp at hm
-    · simp only [Node.tickStep] at hm
-      split at hm
-      · simp only [Node.acToFG, List.mem_singleton, Cut.ac.injEq] at hm; subst hm; cases hc
-      · rcases List.mem_cons.1 hm with hm | hm
-        · simp only [Node.acToFG, Cut.ac.injEq] at hm; subst hm; cases hc
-        · simp only [Node.attest] at hm
-          split at hm <;> simp [Node.onAttestation] at hm
+    · split at hm
+      next h =>
+        simp only [Node.tickStep] at hm
+        split at hm
+        · simp only [Node.acToFG, List.mem_singleton, Cut.ac.injEq] at hm; subst hm; cases hc
+        · rcases List.mem_cons.1 hm with hm | hm
+          · simp only [Node.acToFG, Cut.ac.injEq] at hm; subst hm; cases hc
+          · simp only [Node.attest] at hm
+            split at hm <;> simp [Node.onAttestation] at hm
+      next h => simp at hm
   | block B =>
     have : ℓ.call = .block B := by
       simp only [exec, Node.onBlock] at hm
@@ -151,9 +155,9 @@ theorem exec_ac_call (y : Fin P.n) (st : NodeState A) (t : Time) (e : Event A) {
 /-- In the cuts of an event, an `ac_proposal` cut is a tick's. -/
 theorem exec_ac_proposal (y : Fin P.n) (st : NodeState A) (t : Time) (e : Event A)
     {ℓ : ACLabel A} (hm : Cut.ac ℓ ∈ (exec proposer dg y st t e).2) (hc : ℓ.call = .proposal) :
-    ∃ x, e = .tick x := by
+    ∃ x fgDue, e = .tick x fgDue := by
   cases e with
-  | tick x => exact ⟨x, rfl⟩
+  | tick x fgDue => exact ⟨x, fgDue, rfl⟩
   | block B =>
     exfalso
     simp only [exec, Node.onBlock] at hm
@@ -176,8 +180,9 @@ theorem exec_ac_proposal (y : Fin P.n) (st : NodeState A) (t : Time) (e : Event 
 
 /-- The AC cuts of a tick by position: its `ac_proposal` cut is its second cut, and its first
 two cuts are not `ac_on_block` cuts. -/
-theorem onTick_ac_index (y : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) {k : Nat}
-    {ℓ : ACLabel A} (hk : (onTick proposer dg y st t x).2[k]? = some (Cut.ac ℓ)) :
+theorem onTick_ac_index (y : Fin P.n) (st : NodeState A) (t : Time) (x : Nat)
+    (fgDue : Bool) {k : Nat}
+    {ℓ : ACLabel A} (hk : (onTick proposer dg y st t x fgDue).2[k]? = some (Cut.ac ℓ)) :
     (ℓ.call = .proposal → k = 1) ∧ (k ≤ 1 → ∀ B, ℓ.call ≠ .block B) := by
   -- the proposal step: no cuts, or the `ac_proposal` cut and then `ac_on_block` or FG cuts
   have h2 : ∀ st' : NodeState A, (tickStep proposer dg y st' t x .proposal).2 = [] ∨
@@ -210,7 +215,34 @@ theorem onTick_ac_index (y : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) {k
       simp only [Node.attest] at hm
       split at hm <;> simp [Node.onAttestation] at hm
   have h0 : (tickStep proposer dg y st t x .acTick).2 = [(acCall y st t .tick).2] := rfl
+  cases fgDue
+  case false =>
+    rw [onTick_eq, h0] at hk
+    simp only [Bool.false_eq_true, ↓reduceIte, List.append_nil] at hk
+    rcases h2 (tickStep proposer dg y st t x .acTick).1 with h2e | ⟨ℓp, Lb, hℓp, h2e, hLb⟩
+    · rw [h2e] at hk
+      cases k with
+      | zero =>
+        simp only [List.append_nil, List.getElem?_cons_zero, Option.some.injEq,
+          Node.acCall, Cut.ac.injEq] at hk
+        subst hk
+        exact ⟨fun h => (by cases h), fun _ B h => (by cases h)⟩
+      | succ k => simp at hk
+    · rw [h2e] at hk
+      rcases k with _ | _ | k
+      · simp only [List.cons_append, List.nil_append, List.getElem?_cons_zero,
+          Option.some.injEq, Node.acCall, Cut.ac.injEq] at hk
+        subst hk
+        exact ⟨fun h => (by cases h), fun _ B h => (by cases h)⟩
+      · simp only [List.cons_append, List.nil_append, List.getElem?_cons_succ,
+          List.getElem?_cons_zero, Option.some.injEq, Cut.ac.injEq] at hk
+        subst hk
+        exact ⟨fun _ => rfl, fun _ B h => by rw [hℓp] at h; cases h⟩
+      · simp only [List.cons_append, List.nil_append, List.getElem?_cons_succ] at hk
+        obtain ⟨B, hB⟩ := hLb ℓ (List.mem_of_getElem? hk)
+        exact ⟨fun h => (by rw [hB] at h; cases h), fun h => (by omega)⟩
   rw [onTick_eq, h0] at hk
+  simp only [↓reduceIte] at hk
   obtain ⟨ℓt, La, hℓt, h3e, hLa⟩ :=
     h3 (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal).1
   rw [h3e] at hk
@@ -250,12 +282,12 @@ theorem onTick_ac_index (y : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) {k
       · exact absurd hm (hLa ℓ)
 
 /-- The first cut of a tick is its `ac_on_tick`. -/
-theorem tick_first_cut {y : Fin P.n} {j : Nat} {t : Time} {x : Nat}
-    (hg : tr.GroupAt proposer dg y j t (.tick x)) :
+theorem tick_first_cut {y : Fin P.n} {j : Nat} {t : Time} {x : Nat} {fgDue : Bool}
+    (hg : tr.GroupAt proposer dg y j t (.tick x fgDue)) :
     tr.CallAt y j (acCall y (tr.state y j) t .tick).2 ∧ tr.time j = t := by
-  have : (exec proposer dg y (tr.state y j) t (.tick x)).2[0]? =
+  have : (exec proposer dg y (tr.state y j) t (.tick x fgDue)).2[0]? =
       some (acCall y (tr.state y j) t .tick).2 := by
-    change (onTick proposer dg y (tr.state y j) t x).2[0]? = _
+    change (onTick proposer dg y (tr.state y j) t x fgDue).2[0]? = _
     rw [onTick_eq]; simp [Node.tickStep]
   obtain ⟨hc, ht, -⟩ := group_get? hg this
   exact ⟨hc, ht⟩
@@ -275,15 +307,16 @@ theorem proposal_cuts_some {y : Fin P.n} {st : NodeState A} {t : Time} {x : Nat}
 tick left. -/
 theorem tick_proposal_call (h : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) {j : Nat}
-    {t : Time} {x : Nat} (hg : tr.GroupAt proposer dg y j t (.tick x))
+    {t : Time} {x : Nat} {fgDue : Bool}
+    (hg : tr.GroupAt proposer dg y j t (.tick x fgDue))
     (hP : Proposes proposer y t) :
     tr.CallAt y (j + 1)
         (Node.acProposal (tickStep proposer dg y (tr.state y j) t x .acTick).1 t).2.1 ∧
       tr.time (j + 1) = t ∧
       (tr.state y (j + 1)).ac = (tickStep proposer dg y (tr.state y j) t x .acTick).1.ac := by
-  have h1 : (exec proposer dg y (tr.state y j) t (.tick x)).2[1]? =
+  have h1 : (exec proposer dg y (tr.state y j) t (.tick x fgDue)).2[1]? =
       some (Node.acProposal (tickStep proposer dg y (tr.state y j) t x .acTick).1 t).2.1 := by
-    change (onTick proposer dg y (tr.state y j) t x).2[1]? = _
+    change (onTick proposer dg y (tr.state y j) t x fgDue).2[1]? = _
     rw [onTick_eq]
     simp only [Node.tickStep, hP, ↓reduceIte]
     split <;> simp [Node.acProposal]
@@ -302,8 +335,8 @@ theorem tick_proposal_call (h : Node.LocalRun proposer dg H sg tr ini)
 theorem own_block_accepted (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hq : ({ A with initial := ini y } : NodeAC P).Requirements)
     (hroot : (P.genesisBlock A.genesisPayload).RootOk dg) (hnc : Compose.NoCollRun dg tr)
-    (hy : y ∈ H) {j : Nat} {t : Time} {x : Nat}
-    (hg : tr.GroupAt proposer dg y j t (.tick x)) (hP : Proposes proposer y t)
+    (hy : y ∈ H) {j : Nat} {t : Time} {x : Nat} {fgDue : Bool}
+    (hg : tr.GroupAt proposer dg y j t (.tick x fgDue)) (hP : Proposes proposer y t)
     {d : DutyHead P.n (List (FG.Att P.n)) A.Payload} {pay : A.Payload}
     (hr : (Node.acProposal (tickStep proposer dg y (tr.state y j) t x .acTick).1 t).2.2 =
       some (d, pay)) :
@@ -315,9 +348,9 @@ theorem own_block_accepted (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin 
       (Node.acProposal (tickStep proposer dg y (tr.state y j) t x .acTick).1 t).1 t
       (mkBlock dg y (Node.acProposal (tickStep proposer dg y (tr.state y j) t x .acTick).1 t).1.fg
         t x d.head pay)).2[0]? = some l →
-      (exec proposer dg y (tr.state y j) t (.tick x)).2[2]? = some l := by
+      (exec proposer dg y (tr.state y j) t (.tick x fgDue)).2[2]? = some l := by
     intro l hl
-    change (onTick proposer dg y (tr.state y j) t x).2[2]? = _
+    change (onTick proposer dg y (tr.state y j) t x fgDue).2[2]? = _
     have h0 : (tickStep proposer dg y (tr.state y j) t x .acTick).2 =
         [(acCall y (tr.state y j) t .tick).2] := rfl
     rw [onTick_eq, proposal_cuts_some hP hr, h0]
@@ -344,7 +377,7 @@ theorem own_block_accepted (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin 
   simp only at hst
   subst hst
   obtain ⟨-, -, -, -, -, -, hacc⟩ :=
-    Compose.honest_block_accepted_from proposer dg y hq hroot _ _ t x hR hS hP d pay hr
+    Compose.honest_block_accepted_from proposer dg y hq hroot _ _ t x fgDue hR hS hP d pay hr
   have hsub : insert (mkBlock dg y
       (Node.acProposal (tickStep proposer dg y (tr.state y j) t x .acTick).1 t).1.fg t x d.head pay)
       (tr.state y j).fg.tree ⊆ insert (P.genesisBlock A.genesisPayload) {B | tr.Occurs B} :=

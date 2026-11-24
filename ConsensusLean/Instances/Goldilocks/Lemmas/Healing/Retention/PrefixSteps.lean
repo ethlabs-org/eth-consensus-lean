@@ -225,7 +225,7 @@ theorem slot_start_optimistic {ini}
   obtain ⟨j, ev, kk, hg, hdj, hk⟩ := Compose.call_in_group hrun.toLocalRun hv hcd
   obtain ⟨x, rfl⟩ := @Compose.signed_only_in_ticks sp.toParams (goldilocksNode sp ro)
     proposer dg v _ _ _ C att (List.mem_of_getElem? hk)
-  have hkk : kk < (Node.exec proposer dg v (tr.state v j) (tr.time d) (.tick x)).2.length := by
+  have hkk : kk < (Node.exec proposer dg v (tr.state v j) (tr.time d) (.tick x true)).2.length := by
     by_contra h
     rw [List.getElem?_eq_none (not_lt.mp h)] at hk
     cases hk
@@ -235,14 +235,14 @@ theorem slot_start_optimistic {ini}
     have hl := (hg.2.1 (i - j) (by omega)).2.2.2.2
     rw [Nat.add_sub_cancel' h1, (Compose.projAC_callAt.mp hc).2] at hl
     have hmem := List.getElem_mem
-      (l := (Node.exec proposer dg v (tr.state v j) (tr.time d) (.tick x)).2)
+      (l := (Node.exec proposer dg v (tr.state v j) (tr.time d) (.tick x true)).2)
       (n := i - j) (by omega)
     rw [← Option.some.inj hl] at hmem
     cases (exec_ac_call v _ _ _ hmem).2 mm hmm
   have hpre : ∀ i < j, ∀ ell, tr.projAC.CallAt v i ell →
       tr.time i = sp.ts m → ell.call = .restart := by
     intro i hi ell hc ht
-    obtain ⟨ell', he, hr'⟩ := Compose.before_tick hrun.toLocalRun hv ⟨x, hg⟩
+    obtain ⟨ell', he, hr'⟩ := Compose.before_tick hrun.toLocalRun hv ⟨x, true, hg⟩
       (Compose.projAC_callAt.mp hc) hi (by rw [ht, hdt])
     cases he
     exact hr'
@@ -350,7 +350,7 @@ theorem vote_before_late_delivery
     (by simp only [hu, ACParams.ts]; push_cast; linarith)
   have hpub : sp.toParams.IsPublic u :=
     ⟨4 * (e.msg.slot : Int) + 1, by simp only [hu, ACParams.ts]; ring⟩
-  rcases Compose.blockCall_cases hrun.toLocalRun hy hA with hgW | ⟨j, x, -, -, hP, -⟩
+  rcases Compose.blockCall_cases hrun.toLocalRun hy hA with hgW | ⟨j, x, fgDue, -, -, hP, -⟩
   swap
   · obtain ⟨-, hP2, -⟩ := hP
     rw [ht] at hP2
@@ -360,7 +360,7 @@ theorem vote_before_late_delivery
     simp only [ACParams.ts] at this
     linarith only [hΔ, hP2, this]
   rw [ht] at hgW
-  obtain ⟨jt, x, hgt⟩ := hrun.tick_of_awake y hy u (by linarith only [hΔ, hm0]) hpub
+  obtain ⟨jt, x, fgDue, hgt⟩ := hrun.tick_of_awake y hy u (by linarith only [hΔ, hm0]) hpub
     (htk ▸ hrun.awake_of_call y hy k ⟨_, Compose.projAC_callAt.mp hc.1⟩)
   obtain ⟨hct, htt⟩ := tick_first_cut hgt
   have hjti : jt < i := by
@@ -368,7 +368,7 @@ theorem vote_before_late_delivery
     · exact h
     · have := hct.2.symm.trans hA.2
       simp [Node.acCall] at this
-    · have := hrun.phase_order y hy y hy i jt u (.block W) (.tick x) hgW hgt h
+    · have := hrun.phase_order y hy y hy i jt u (.block W) (.tick x fgDue) hgW hgt h
       simp [Node.Event.phase] at this
   have hnrk : ell.call ≠ .restart := fun hcl => by
     have := hc.2

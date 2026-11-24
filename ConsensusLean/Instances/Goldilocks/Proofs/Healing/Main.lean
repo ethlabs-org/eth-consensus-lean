@@ -30,7 +30,7 @@ theorem recovery_statements : RecoveryStatements := by
   apply Recovery.recovery_statements_of_coverage
   intro sp ro proposer dg H tr K g ΔF Gp W M cF kF
   exact Recovery.pattern_coverage_supply Recovery.outcome_service
-    (fun _ => Recovery.ready_proposal_report_supply)
+    (fun hsign _ => Recovery.ready_proposal_report_supply hsign)
 
 end Consensus.Goldilocks.Healing
 

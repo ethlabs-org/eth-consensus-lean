@@ -17,7 +17,10 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HSSharedRun
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.SignCalendar
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.SignGap
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.SignGap
 
 public section
 
@@ -353,6 +356,9 @@ theorem handover_seed_cover_at
               (Q.trace.state y n).ac.latestConfirmed).getD (Q.trace.state y n).fg.F) := by
   obtain ⟨W, Dprep, hlate⟩ := healthy_preparation_initialize_late_at
     S A V Q h0 hb hp
+    (simTraceAt_signCalendar S Q.run.2 Q.hn _) (Obligations.signGapAt_of_assumptions A _ _)
+    (Obligations.signGap_δt A) (Obligations.contract_heal_ge_reset_signGap A Q.cap Q.index)
+    (Obligations.fgSlots_signGap_le A)
   obtain ⟨D, -, -, hDq⟩ := healthy_repair_schedule_of_preparation_at
     S A V Q W Dprep
   obtain ⟨O⟩ := healthy_bounded_repairing_opening_at

@@ -36,8 +36,9 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
-/-- Actual report coverage, with no extra entry, height, timeout or report-freshness premise. -/
-theorem ready_proposal_report_supply :
+/-- Actual report coverage for an all-signing run, with no extra entry, height, timeout or
+report-freshness premise. -/
+theorem ready_proposal_report_supply (hsign : tr.AllTicksSign proposer dg H) :
     ReadyProposalReportSupply tr H K proposer dg g ΔF a where
   report_cover := by
     intro hp hc p k u P hP hR
@@ -58,12 +59,12 @@ theorem ready_proposal_report_supply :
       omega
     have hbounded := hp.toUpTo tr H
       (show a ≤ sp.ts u + 6 * sp.Δ by linarith)
-    exact Obligations.UpTo.report_cover_of_proposal hbounded hc hpH hdesignated hactual
+    exact Obligations.UpTo.report_cover_of_proposal hbounded hsign hc hpH hdesignated hactual
       hPU hslot hu hPg hgu hR le_rfl
 
 /-- **C1.2:** exact outcome service, with the actual-report supplier discharged. -/
 theorem outcome_service : Compose.OutcomeService :=
-  outcome_service_of_reports fun _ _ _ _ _ _ _ _ _ _ => ready_proposal_report_supply
+  outcome_service_of_reports fun _ _ _ _ _ _ _ _ _ _ hsign => ready_proposal_report_supply hsign
 
 end Consensus.Goldilocks.Healing.Recovery
 

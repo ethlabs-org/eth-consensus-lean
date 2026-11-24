@@ -52,7 +52,7 @@ theorem ready_proposer_proposes {ini} (hrun : GoldilocksRun proposer dg H tr ini
   have hpub : sp.toParams.IsPublic (sp.ts s) := ⟨4 * s, by simp only [ACParams.ts]; ring⟩
   have hc : (8 : Time) * sp.Δ ≤ catchUp sp + 1 := by simp only [catchUp]; linarith
   have hJ := ready_implies_joined_of hrun hp ht0 hc hready.2
-  obtain ⟨j, x, hg⟩ := hrun.tick_of_awake p hp _ ht0 hpub hJ.1
+  obtain ⟨j, x, fgDue, hg⟩ := hrun.tick_of_awake p hp _ ht0 hpub hJ.1
   have hP : Node.Proposes proposer p (sp.ts s) :=
     ⟨by rw [hslot]; exact hs, by rw [hslot, sp.slotTime_eq]; simp only [ACParams.ts],
       by rw [hslot]⟩
@@ -87,9 +87,10 @@ theorem ready_proposer_proposes {ini} (hrun : GoldilocksRun proposer dg H tr ini
     (requirements_from sp ro (hrun.vstart p)) hrun.genesis_root_ok hnc hp hg hP hr
   refine ⟨j + 2, _, ⟨⟨⟨true, hacc⟩, ?_⟩, rfl, ?_⟩, ht₂⟩
   · -- the own block is the third cut of the tick, so not the first of a group
-    have hlen : 2 < (Node.exec proposer dg p (tr.state p j) (sp.ts s) (.tick x)).2.length := by
+    have hlen : 2 <
+        (Node.exec proposer dg p (tr.state p j) (sp.ts s) (.tick x fgDue)).2.length := by
       have h1 : (Node.tickStep proposer dg p (tr.state p j) (sp.ts s) x .acTick).2.length = 1 := rfl
-      change 2 < (Node.onTick proposer dg p (tr.state p j) (sp.ts s) x).2.length
+      change 2 < (Node.onTick proposer dg p (tr.state p j) (sp.ts s) x fgDue).2.length
       rw [Healing.onTick_eq, Healing.proposal_cuts_some hP hr]
       simp only [List.length_append, List.length_cons, Node.onBlock, Node.mkBlock, lt_irrefl,
         ↓reduceIte]

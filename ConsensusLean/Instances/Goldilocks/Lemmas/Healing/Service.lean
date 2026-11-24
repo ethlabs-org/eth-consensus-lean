@@ -64,8 +64,8 @@ theorem clean_lock_drain : CleanLockDrain := by
 /-- **HS.4, bounded common path and actual-report acquisition** (first
 proposal, actual reports, and the one extra wait). -/
 theorem common_path_acquisition : CommonPathAcquisition :=
-  fun _ _ _ _ _ _ _ _ _ _ _ _ _ _ hrun hs hc hp hset =>
-    ⟨acquired_or_changed hrun hs hc hp hset clean_lock_drain,
+  fun _ _ _ _ _ _ _ _ _ _ _ _ _ _ hrun hsign hs hc hp hset =>
+    ⟨acquired_or_changed hrun hsign hs hc hp hset clean_lock_drain,
       client_progress hrun hs⟩
 
 section Contract
@@ -195,12 +195,13 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
 `w + D_HS` or the common path is acquired (`AcquiredPath`), and the client subclaim holds. -/
 theorem common_path_acquisition' (hrun : GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
+    (hsign : tr.AllTicksSign proposer dg H)
     (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) :
     ((∀ j', FirstCutAfter tr j' (w + D_HS sp Gp) → PhaseChanged tr.projFG H i₀ j') ∨
       AcquiredPath tr H proposer Gp w i₀ m c) ∧ ClientProgress tr H i₀ m c :=
-  common_path_acquisition sp ro proposer dg H tr K g ΔF Gp w i₀ m c hrun hs hc hp hset
+  common_path_acquisition sp ro proposer dg H tr K g ΔF Gp w i₀ m c hrun hsign hs hc hp hset
 
 /-! ### HS.5's consumption, one level down (proposed contract)
 
@@ -279,7 +280,8 @@ proposal of height `m + 1` accepted in the phase is a frontier rise; `ht(Y) = m`
 HS.3's timing premises for `X` and `Y`; the time arithmetic, with index inclusion of first cuts)
 is proved in `ConsumeContinue` (`consume_continue_of`). -/
 theorem consume_continue (hrun : GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
+      (AC.committeeStart sp.genesisRoot K)) (hsign : tr.AllTicksSign proposer dg H)
+    (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hret : ViableWitnessRetention) (hclean : CleanLockDrain)
     (hset : SettledIn tr H g w i₀ m c) (hwit : AcquiredPath tr H proposer Gp w i₀ m c)
@@ -290,7 +292,7 @@ theorem consume_continue (hrun : GoldilocksRun proposer dg H tr
   have hrows := historical_source_rows hrun hs hc hp hset hcl hpath hrep
   obtain ⟨h1, -, hW, hWs, hpH, hE, -, hws, hr, hvD, -, hbr⟩ := hpath
   by_contra hnc
-  exact consume_continue_of hrun hs hc hp hret hclean hset hcl h1 hW hWs hpH hE hws hr hvD
+  exact consume_continue_of hrun hsign hs hc hp hret hclean hset hcl h1 hW hWs hpH hE hws hr hvD
     hbr.2.2 hrows hjA (phaseOn_of_not_changed hrun hs hset hnc)
 
 end Contract

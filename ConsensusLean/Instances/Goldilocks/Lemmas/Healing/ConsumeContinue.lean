@@ -63,6 +63,7 @@ private theorem ts_entry_le {e s : Nat} (h : e ≤ s) :
 `historical_source_rows`, and the phase `(m, c)` through `j_A`): a contradiction. -/
 theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
+    (hsign : tr.AllTicksSign proposer dg H)
     (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hret : ViableWitnessRetention) (hclean : CleanLockDrain)
@@ -227,7 +228,7 @@ theorem consume_continue_of (hrun : GoldilocksRun proposer dg H tr
     omega
   obtain ⟨hYv, hYl, hYp⟩ := hprot hYr (hsx.trans hxy) (by
       linarith only [hΔ, hΔF, hδ, hkΔ, hGp, hC, hA, hD, hb₁, hx₂, hy₂])
-  obtain ⟨E₂, hE₂, hrows₂⟩ := fixed_upper_rows_of hrun hs hc hset hclean hcl hpropY hYs hpY
+  obtain ⟨E₂, hE₂, hrows₂⟩ := fixed_upper_rows_of hrun hsign hs hc hset hclean hcl hpropY hYs hpY
     hYm (by linarith only [hr, hX₁, hy₁, hΔ, hΔF]) hYv hYl hYp (hupto _ (by
         linarith only [hΔ, hΔF, hδ, hkΔ, hGp, hC, hA, hD, hb₁, hx₂, hy₂]))
   have hE₂s := entry_slot_le hrun hnc hpY (accept_of_proposesAt hrun hnc hpY hpropY).2.2 hE₂

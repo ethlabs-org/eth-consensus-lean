@@ -355,9 +355,10 @@ theorem outcome_service_of_reports
       (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (K : AC.CommitteeDict sp.n)
       (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
       (g ΔF a : Time),
+      tr.AllTicksSign proposer dg H →
       ReadyProposalReportSupply tr H K proposer dg g ΔF a) :
     Compose.OutcomeService := by
-  intro sp ro proposer dg H tr K g ΔF a cF kF hrun hs hc hcf hto hreset
+  intro sp ro proposer dg H tr K g ΔF a cF kF hrun hsign hs hc hcf hto hreset
     p k i T u hP hentry hR hhigh hhj hretained
   classical
   have hp : ResetPremises tr H K proposer dg g ΔF a :=
@@ -380,7 +381,7 @@ theorem outcome_service_of_reports
     exact fun h => hhj h.1 h.2
   obtain ⟨hu, _, hgu⟩ := drain_margins hp hR
   have hΔ := sp.toParams.hΔ
-  rcases rows_or_early_outcome (supply sp ro tr H K proposer dg g ΔF a) hp hs hc hP hR
+  rcases rows_or_early_outcome (supply sp ro tr H K proposer dg g ΔF a hsign) hp hs hc hP hR
       hentry.1 hT he hhT hhJ hcf (kF := kF) with ⟨ids, hq, hrows⟩ | hearly
   swap
   · rw [hpost] at hearly

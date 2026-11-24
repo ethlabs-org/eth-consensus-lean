@@ -226,12 +226,12 @@ theorem add_le_rTime (sp : ACParams) (w : Time) : w + 4 * sp.Δ ≤ rTime sp w :
 /-- **The cut after a tick's `ac_on_tick` is its `ac_to_fg`** when the tick is not a proposal
 duty (the proposal step makes no cut). -/
 private theorem tick_toFG_call {y : Fin sp.n} {j : Nat} {t : Time} {x : Nat}
-    (hg : tr.GroupAt proposer dg y j t (.tick x)) (hP : ¬ Node.Proposes proposer y t) :
+    (hg : tr.GroupAt proposer dg y j t (.tick x true)) (hP : ¬ Node.Proposes proposer y t) :
     ∃ ℓ' : ACLabel (goldilocksNode sp ro), tr.CallAt y (j + 1) (.ac ℓ') ∧ ℓ'.call = .toFG ∧
       tr.time (j + 1) = t := by
-  have h1 : (Node.exec proposer dg y (tr.state y j) t (.tick x)).2[1]? =
+  have h1 : (Node.exec proposer dg y (tr.state y j) t (.tick x true)).2[1]? =
       some (Node.acToFG (Node.tickStep proposer dg y (tr.state y j) t x .acTick).1 t).2.1 := by
-    change (Node.onTick proposer dg y (tr.state y j) t x).2[1]? = _
+    change (Node.onTick proposer dg y (tr.state y j) t x true).2[1]? = _
     rw [onTick_eq]
     simp only [Node.tickStep, hP, ↓reduceIte]
     split <;> simp [Node.acToFG, Node.acCall]
@@ -259,12 +259,12 @@ theorem proposal_allowed (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSSha
   -- the `ac_proposal` cut is the cut before the tick's own block call
   have hiPk : iP + 1 = kP := by
     obtain ⟨⟨⟨acc, hcB⟩, hpos⟩, -, htk⟩ := hprop
-    rcases Compose.blockCall_cases hl hpH hcB with hg | ⟨j, x, rfl, hg, -, -⟩
+    rcases Compose.blockCall_cases hl hpH hcB with hg | ⟨j, x, fgDue, rfl, hg, -, -⟩
     · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
     obtain ⟨j₀, rfl, h₀⟩ := proposal_call_tick hl hpH (Compose.projAC_callAt.1 hcP) hcall
     have htt : tr.time (j + 2) = tr.time (j₀ + 1) := by
       rw [htk, ht, hPs, sp.slotTime_eq]; rfl
-    have := hl.tick_unique p hpH j₀ j _ h₀ (by rw [← htt]; exact ⟨x, hg⟩)
+    have := hl.tick_unique p hpH j₀ j _ h₀ (by rw [← htt]; exact ⟨x, fgDue, hg⟩)
     omega
   have hiP0 : i₀ ≤ iP := le_of_settledIn hset (by rw [ht]; exact hws)
   have hphP := hon iP hiP0 (by omega)
@@ -483,7 +483,8 @@ in the phase through `v = t_s + 6Δ`, every honest `y` has an `ac_to_fg` return 
 `ac_to_fg`, whose deepest candidate `C` extends `Y`; `C` is returned, or the report record names a
 block `R ⪰ C` that an earlier `ac_to_fg` returned (`fgReported_origin`), at a time `≥ t_s`. -/
 theorem protected_sources (hrun : GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
+      (AC.committeeStart sp.genesisRoot K)) (hsign : tr.AllTicksSign proposer dg H)
+    (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ))
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain) {s kY : Nat}
     {Y : AC.Blk sp.n (List (FG.Att sp.n))} (hY : tr.ProposesAt (proposer s) kY Y)
@@ -535,10 +536,11 @@ theorem protected_sources (hrun : GoldilocksRun proposer dg H tr
     (fun k' h1 h2 => hphv k' h1 (h2.trans hkYjv.le))
   rw [hpost] at hall
   -- `y`'s tick at `v`, not a proposal duty: `ac_on_tick`, then `ac_to_fg`
-  obtain ⟨j, x, hg⟩ := hrun.tick_of_awake y hy (sp.ts s + 6 * sp.Δ) (by
+  obtain ⟨j, x, fgDue, hg⟩ := hrun.tick_of_awake y hy (sp.ts s + 6 * sp.Δ) (by
       linarith only [hΔ, hts, hgb0])
     ⟨4 * (s : Int) + 6, by simp only [ACParams.ts]; ring⟩
     (hs.healthy.2.1 y hy _ (by change gbar g ≤ _; linarith only [hΔ, hts]))
+  obtain ⟨x, hg⟩ := hsign y hy j _ ⟨x, fgDue, hg⟩
   have hnP : ¬ Node.Proposes proposer y (sp.ts s + 6 * sp.Δ) := by
     rintro ⟨-, h, -⟩
     rw [show sp.toParams.slotOf (sp.ts s + 6 * sp.Δ) = s + 1 from hslot, sp.slotTime_eq] at h

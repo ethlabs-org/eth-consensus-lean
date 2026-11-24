@@ -73,6 +73,7 @@ structure PatternCoverageSupply (K : AC.CommitteeDict sp.n) (proposer : Nat → 
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF Gp : Time)
     (W M cF kF : Nat) : Prop where
   coverage : GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K) →
+    tr.AllTicksSign proposer dg H →
     PatternPremises tr H K proposer dg g ΔF Gp W M cF kF →
     ∀ t, Rstar sp g ΔF Gp ≤ t →
       HighCoverageAt tr H g t (4 * sp.Δ * ((W : Time) + 1 + M))

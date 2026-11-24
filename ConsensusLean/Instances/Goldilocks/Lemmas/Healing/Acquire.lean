@@ -146,7 +146,7 @@ theorem ready_protected (hrun : GoldilocksRun proposer dg H tr
     simp only [ACParams.ts]; ring
   have htime : tr.time i₀ ≤ sp.ts ((s : Int) - 1) + 3 * sp.Δ := by
     have hgt : gbar g ≤ sp.ts ((s : Int) - 1) := by linarith only [hg8, hts, hts1, hΔ]
-    obtain ⟨j, _x, hne, hcs, -⟩ := hrun.tick_of_awake _ hpH _ (hgb0.trans hgt)
+    obtain ⟨j, _x, fgDue, hne, hcs, -⟩ := hrun.tick_of_awake _ hpH _ (hgb0.trans hgt)
       ⟨4 * ((s : Int) - 1), by simp only [ACParams.ts]; ring⟩ (hs.healthy.2.1 _ hpH _ hgt)
     obtain ⟨-, ht, -, -, -⟩ := hcs 0 (List.length_pos_of_ne_nil hne)
     simp only [Nat.add_zero] at ht
@@ -184,7 +184,8 @@ theorem ready_allowed (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared
 /-- **Every honest node receives a current source above a protected ready proposal**
 (`AcquireSources.protected_sources` for the ready proposal). -/
 theorem ready_sources (hrun : GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
+      (AC.committeeStart sp.genesisRoot K)) (hsign : tr.AllTicksSign proposer dg H)
+    (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ))
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain) {s kP : Nat}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -202,7 +203,7 @@ theorem ready_sources (hrun : GoldilocksRun proposer dg H tr
       ∃ Pr, P'.parent = some Pr.root ∧ Anc (tr.HonestBlocks H) P Pr) :
     ∀ y ∈ H, ∃ k ℓ C, AC.ToFGAt tr.projAC y k ℓ C ∧ sp.ts s ≤ tr.time k ∧
       tr.time k ≤ sp.ts s + 6 * sp.Δ ∧ Anc (tr.HonestBlocks H) P C :=
-  protected_sources hrun hs hc hset hclean hP.2.2.2.1 hP.2.2.2.2.1 hP.1 hr hvotes hlater
+  protected_sources hrun hsign hs hc hset hclean hP.2.2.2.1 hP.2.2.2.2.1 hP.1 hr hvotes hlater
     hparents hon
 
 /-- **A higher source above a protected proposal is below a later proposal's parent**
@@ -432,7 +433,8 @@ private theorem acquired_of_sources (hrun : GoldilocksRun proposer dg H tr ini)
 HS.2 and HS.3 as opaque hypotheses, the phase has changed after all events at `w + D`, or the
 common path is acquired (HS.4 (a)'s second branch, with its current-source arm). -/
 theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
+      (AC.committeeStart sp.genesisRoot K)) (hsign : tr.AllTicksSign proposer dg H)
+    (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hp : PropPlus tr H proposer g Gp)
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain) :
     (∀ j', FirstCutAfter tr j' (w + D_HS sp Gp) → PhaseChanged tr.projFG H i₀ j') ∨
@@ -537,7 +539,7 @@ theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr
     rw [hD]; linarith only [hΔ, ha', hrr, hGp, hs₂]
   obtain ⟨hkP, hkPD, hPt, hpostP, hPm, hallP, hvP, hlP, hpP⟩ := ready hP hs₁ hsD
   have honP := hafter _ hsD
-  have hsrc := ready_sources hrun hs hc hset hclean hP hs₁ honP hvP hlP hpP
+  have hsrc := ready_sources hrun hsign hs hc hset hclean hP hs₁ honP hvP hlP hpP
   have hpH : proposer s ∈ H := hP.1
   have hPfl : phaseFloor m c ≤ ((tr.post kP).fg.σ P.root).h := hallP.2.1
   rw [hpostP] at hPm hPfl
@@ -579,8 +581,8 @@ theorem acquired_or_changed (hrun : GoldilocksRun proposer dg H tr
       have := h_le_of_anc_run hrun hnc hpQH hy₀ hC₀Q hQt hC₀t
       rw [hpostQ] at hQm ⊢
       omega
-    have hsrcQ := ready_sources hrun hs hc hset hclean hQ (by linarith only [ha, ha', hs₁, hq₁])
-      (hafter _ hQD) hvQ hlQ hpQ
+    have hsrcQ := ready_sources hrun hsign hs hc hset hclean hQ
+      (by linarith only [ha, ha', hs₁, hq₁]) (hafter _ hQD) hvQ hlQ hpQ
     refine acquired_of_sources hrun hs hQ hvQ hlQ hpQ hallQ (fun y hy => ?_) (Or.inr hQm')
       (by linarith only [ha, ha', hrr, hs₁, hq₁, hkΔ]) (by
           linarith only [ha, ha', hs₁, hq₁]) hQD (hafter _ hQD)

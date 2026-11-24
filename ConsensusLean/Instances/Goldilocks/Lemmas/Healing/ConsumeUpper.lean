@@ -40,7 +40,8 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 fixed-upper-proposal step of `Service`'s `consume_continue`, with `ProtectedBranch`,
 `ClientProgress` and `RowsBy` spelled out, and HS.2 as the hypothesis `hclean`). -/
 theorem fixed_upper_rows_of (hrun : GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
+      (AC.committeeStart sp.genesisRoot K)) (hsign : tr.AllTicksSign proposer dg H)
+    (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ))
     (hset : SettledIn tr H g w i₀ m c) (hclean : CleanLockDrain)
     (hcl : ∀ y ∈ H, ∀ k (C : AC.Blk sp.n (List (FG.Att sp.n))) (signed : Option (FG.Att sp.n)),
@@ -69,7 +70,7 @@ theorem fixed_upper_rows_of (hrun : GoldilocksRun proposer dg H tr
       ∀ y ∈ H, ∃ k att, tr.SignAt y k att ∧ tr.time k ≤ sp.ts s + 6 * sp.Δ ∧ att.h = m ∧
         att.T = E.root := by
   have hnc := hs.noColl
-  have hsrc := protected_sources hrun hs hc hset hclean hY hYs hpH hr hvotes hlater hparents
+  have hsrc := protected_sources hrun hsign hs hc hset hclean hY hYs hpH hr hvotes hlater hparents
     hon
   obtain ⟨-, hYt, hpost⟩ := accept_of_proposesAt hrun hnc hpH hY
   rw [hpost] at hYh ⊢

@@ -195,18 +195,18 @@ private theorem seed_time_call (hrun : Growing.GoldilocksRun proposer dg H tr in
   have hpub : sp.toParams.IsPublic q :=
     ⟨4 * ((r - sp.k - 3 : Nat) : Int), by rw [hq]; simp only [ACParams.ts]; ring⟩
   have hawake := hp.awake y q hy (by linarith) (by linarith)
-  obtain ⟨j₀, xt, hj₀⟩ := hrun.tick_of_awake y q hy hq0 hpub hawake
+  obtain ⟨j₀, xt, fgDue, hj₀⟩ := hrun.tick_of_awake y q hy hq0 hpub hawake
   obtain ⟨ℓt, pc, uc, hlt, hcs, -, -⟩ :=
-    @tick_order sp.toParams (goldilocksNode sp ro) proposer dg y (tr.state y j₀) q xt
-  have hlen : 0 < (Node.exec proposer dg y (tr.state y j₀) q (.tick xt)).2.length := by
-    change 0 < (Node.onTick proposer dg y (tr.state y j₀) q xt).2.length
+    @tick_order sp.toParams (goldilocksNode sp ro) proposer dg y (tr.state y j₀) q xt fgDue
+  have hlen : 0 < (Node.exec proposer dg y (tr.state y j₀) q (.tick xt fgDue)).2.length := by
+    change 0 < (Node.onTick proposer dg y (tr.state y j₀) q xt fgDue).2.length
     rw [hcs]; simp
   obtain ⟨hn₀, ht₀, -, -, hl₀⟩ := hj₀.2.1 0 hlen
   have hct : tr.CallAt y j₀ (.ac ℓt) := by
     refine ⟨hn₀, ?_⟩
     simp only [Nat.add_zero] at hl₀
     rw [hl₀]
-    change some (Node.onTick proposer dg y (tr.state y j₀) q xt).2[0] = _
+    change some (Node.onTick proposer dg y (tr.state y j₀) q xt fgDue).2[0] = _
     simp [hcs]
   simp only [Nat.add_zero] at ht₀
   exact ⟨j₀, ℓt, Compose.projAC_callAt.mpr hct, ht₀⟩

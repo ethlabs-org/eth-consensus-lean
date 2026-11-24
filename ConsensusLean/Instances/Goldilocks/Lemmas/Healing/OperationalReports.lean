@@ -751,6 +751,7 @@ theorem unanimous_viable_or_higher_report {b : Time}
 by the update deadline, unless an honest strict-higher report already exists. -/
 theorem report_cover_of_unanimous {b : Time}
     (hp : Healing.ResetPremisesUpTo tr H K proposer dg g ΔF a b)
+    (hsign : tr.AllTicksSign proposer dg H)
     (hc : Healing.CatchRun tr H g (2 * sp.Δ))
     {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ tr.HonestBlocks H) (hslot : P.slot = u) (hu : 0 < u)
@@ -781,7 +782,7 @@ theorem report_cover_of_unanimous {b : Time}
     push_cast at hbase hgu ⊢
     linarith only [hbase, hgu]
   obtain ⟨j, ell, ell', hup, hto, htoeq, hnexttime, hframe, hjoined⟩ :=
-    hp.update_toFG_calls hy hjoin hTb
+    hp.update_toFG_calls hsign hy hjoin hTb
   have hjtime : tr.time j = sp.ts u + 6 * sp.Δ := hup.2.2.1
   have hjb : tr.time j ≤ b := hjtime ▸ hTb
   have hnextb : tr.time (j + 1) ≤ b := hnexttime ▸ hTb
@@ -851,6 +852,7 @@ theorem report_cover_of_unanimous {b : Time}
 /-- Operational C2 discharges the unanimous-vote input of finite report coverage. -/
 theorem report_cover_of_proposal {b : Time}
     (hp : Healing.ResetPremisesUpTo tr H K proposer dg g ΔF a b)
+    (hsign : tr.AllTicksSign proposer dg H)
     (hc : Healing.CatchRun tr H g (2 * sp.Δ))
     {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
@@ -866,7 +868,7 @@ theorem report_cover_of_proposal {b : Time}
       ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h) := by
   have hun := hp.operational_unanimous hc hpH hdesignated hactual hslot hR
     (show sp.ts u ≤ b by linarith [sp.toParams.hΔ])
-  exact report_cover_of_unanimous hp hc hP hslot hu hPg
+  exact report_cover_of_unanimous hp hsign hc hP hslot hu hPg
     (fun y hy j e hv hjb hs => hun y hy j e hv hs hjb) hgu
     (hR.trans ((AC.ts_le_iff sp).2 (by push_cast; omega))) hTb
 

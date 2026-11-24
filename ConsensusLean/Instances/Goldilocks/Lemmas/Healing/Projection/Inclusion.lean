@@ -79,8 +79,8 @@ private theorem honest_proposal_of_tick {ini : Fin sp.n → (goldilocksNode sp r
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg)
-    {p : Fin sp.n} (hp : p ∈ H) {j : Nat} {t : Time} {x : Nat}
-    (hg : tr.GroupAt proposer dg p j t (.tick x))
+    {p : Fin sp.n} (hp : p ∈ H) {j : Nat} {t : Time} {x : Nat} {fgDue : Bool}
+    (hg : tr.GroupAt proposer dg p j t (.tick x fgDue))
     (hP : Node.Proposes proposer p t) {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n}
     (hr : (Node.acProposal (Node.tickStep proposer dg p (tr.state p j) t x .acTick).1 t).2.2 =
@@ -146,7 +146,7 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
     obtain ⟨j', -, ⟨acc, ho⟩, hpos⟩ := h.block_unforgeable y hy k B ⟨true, hk⟩ (hprop ▸ hpH)
     generalize hpB : B.proposer = p at ho hpos
     have hp : p ∈ H := hpB ▸ hprop ▸ hpH
-    rcases Compose.blockCall_cases h hp ho with hd | ⟨j, x, rfl, hg, hP, d, pay, hr', rfl, -⟩
+    rcases Compose.blockCall_cases h hp ho with hd | ⟨j, x, fgDue, rfl, hg, hP, d, pay, hr', rfl, -⟩
     · exact absurd (by simpa using (hd.2.1 0 (List.length_pos_iff.2 hd.1)).2.2.2.1) hpos
     have hps : proposer (sp.slot (tr.time (j + 2))) = p := hP.2.2
     change AC.HonestProposal tr.projAC (proposer (sp.slot (tr.time (j + 2))))
@@ -155,7 +155,7 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
     exact honest_proposal_of_tick hrun hnc hroot hp hg hP hr'
   · -- (b) the tick at every public time
     intro y hy t ht hpub haw
-    obtain ⟨j, x, hg⟩ := h.tick_of_awake y hy t ht hpub haw
+    obtain ⟨j, x, fgDue, hg⟩ := h.tick_of_awake y hy t ht hpub haw
     obtain ⟨hc, htj⟩ := tick_first_cut hg
     exact ⟨j, ⟨.tick, Node.frame (tr.state y j), _⟩, Compose.projAC_callAt.2 hc, rfl, htj⟩
   · -- (b) the proposal at `t_s`
@@ -163,7 +163,7 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
     have hΔ := sp.toParams.hΔ
     have hts0 : 0 ≤ sp.ts s := by unfold ACParams.ts; positivity
     have hpub : sp.toParams.IsPublic (sp.ts s) := ⟨4 * (s : Int), by unfold ACParams.ts; ring⟩
-    obtain ⟨j, x, hg⟩ := h.tick_of_awake p hp _ hts0 hpub haw
+    obtain ⟨j, x, fgDue, hg⟩ := h.tick_of_awake p hp _ hts0 hpub haw
     have hslot : sp.toParams.slotOf (sp.ts s) = s :=
       AC.slot_of_mem sp s le_rfl ((AC.ts_lt_iff sp).2 (by omega))
     have hP : Node.Proposes proposer p (sp.ts s) :=
@@ -182,7 +182,7 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
     obtain ⟨ji, ei, qi, hgi, rfl, hqi⟩ := Compose.call_in_group h hy (Compose.projAC_callAt.1 hci)
     obtain ⟨jj, ej, qj, hgj, rfl, hqj⟩ := Compose.call_in_group h hy (Compose.projAC_callAt.1 hcj)
     have hei := (exec_ac_call _ _ _ _ (List.mem_of_getElem? hqi)).2 m hm
-    obtain ⟨x, hej⟩ := (exec_ac_call _ _ _ _ (List.mem_of_getElem? hqj)).1 htick
+    obtain ⟨x, fgDue, hej⟩ := (exec_ac_call _ _ _ _ (List.mem_of_getElem? hqj)).1 htick
     subst hei hej
     have htime' : tr.time (ji + qi) = tr.time (jj + qj) := htime
     rw [htime'] at hgi
@@ -206,10 +206,10 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
     rintro y hy i j ℓ ℓ' hci hcj hprop htime hobj
     obtain ⟨ji, ei, qi, hgi, rfl, hqi⟩ := Compose.call_in_group h hy (Compose.projAC_callAt.1 hci)
     obtain ⟨jj, ej, qj, hgj, rfl, hqj⟩ := Compose.call_in_group h hy (Compose.projAC_callAt.1 hcj)
-    obtain ⟨x, rfl⟩ := exec_ac_proposal _ _ _ _ (List.mem_of_getElem? hqj) hprop
-    have hqj1 : qj = 1 := (onTick_ac_index _ _ _ _
+    obtain ⟨x, fgDue, rfl⟩ := exec_ac_proposal _ _ _ _ (List.mem_of_getElem? hqj) hprop
+    have hqj1 : qj = 1 := (onTick_ac_index _ _ _ _ _
       (show (Node.onTick proposer dg y (tr.state y jj)
-        (tr.time (jj + qj)) x).2[qj]? = _ from hqj)).1 hprop
+        (tr.time (jj + qj)) x fgDue).2[qj]? = _ from hqj)).1 hprop
     have htime' : tr.time (ji + qi) = tr.time (jj + qj) := htime
     rw [htime'] at hgi hqi
     -- a delivery's group at that time starts after the tick's
@@ -231,12 +231,12 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
       have := (hgi.2.2 jj hev.symm).1
       omega
     cases ei with
-    | tick x' =>
-      have hji : ji = jj := h.tick_unique y hy ji jj _ ⟨x', hgi⟩ ⟨x, hgj⟩
+    | tick x' fgDue' =>
+      have hji : ji = jj := h.tick_unique y hy ji jj _ ⟨x', fgDue', hgi⟩ ⟨x, fgDue, hgj⟩
       subst hji
-      have hidx := (onTick_ac_index _ _ _ _
+      have hidx := (onTick_ac_index _ _ _ _ _
         (show (Node.onTick proposer dg y (tr.state y ji)
-          (tr.time (ji + qj)) x').2[qi]? = _ from hqi)).2
+          (tr.time (ji + qj)) x' fgDue').2[qi]? = _ from hqi)).2
       rcases hobj with ⟨m, hm⟩ | ⟨B, hB⟩
       · exact absurd ((exec_ac_call _ _ _ _ (List.mem_of_getElem? hqi)).2 m hm) (by simp)
       · have : ¬ qi ≤ 1 := fun hle => hidx hle B hB

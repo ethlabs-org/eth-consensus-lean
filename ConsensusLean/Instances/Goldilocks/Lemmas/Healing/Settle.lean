@@ -242,7 +242,7 @@ theorem relay_held {ΔF g κ : Time} {ini} (hrun : Node.LocalRun proposer dg H s
       have : (0 : Int) < P.Δ := hΔ
       omega)
   -- the first call of `y` at or after `j`
-  obtain ⟨i, xx, hg⟩ := hrun.tick_of_awake y hy (P.Δ * (tr.time j + 1)) (by linarith)
+  obtain ⟨i, xx, _fgDue, hg⟩ := hrun.tick_of_awake y hy (P.Δ * (tr.time j + 1)) (by linarith)
     ⟨_, rfl⟩ (hh.2.1 y hy _ (by change gbar g ≤ _; linarith [hj.1]))
   obtain ⟨hn, ht, -, -, hl⟩ := hg.2.1 0 (List.length_pos_of_ne_nil hg.1)
   simp only [Nat.add_zero] at hn ht hl

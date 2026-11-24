@@ -183,7 +183,7 @@ theorem honestProposalRun_of_proposesAt {ini} (hrun : GoldilocksRun proposer dg 
   obtain ⟨⟨⟨acc, hc⟩, hpos⟩, -, htk⟩ := hP
   refine ⟨hp, ?_⟩
   rcases Compose.blockCall_cases h hp hc with hg |
-    ⟨j, x, rfl, hg, hpr, d, pay, hdp, hB, -, -, -, -⟩
+    ⟨j, x, fgDue, rfl, hg, hpr, d, pay, hdp, hB, -, -, -, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   have hreq : ({ goldilocksNode sp ro with initial := ini (proposer s) } :
       NodeAC sp.toParams).Requirements :=

@@ -170,9 +170,9 @@ theorem signAt_of_projFG {v : Fin P.n} {j : Nat} {a : FG.Att P.n} (hs : tr.projF
 /-- Only a tick makes an `fg_attest` cut. -/
 theorem eq_tick_of_attest_mem {st : NodeState A} {t : Time} {e : Event A} {C : A.Blk}
     {s : Option (FG.Att P.n)} (h : Cut.fg (.attest C s) ∈ (exec proposer dg y st t e).2) :
-    ∃ x, e = .tick x := by
+    ∃ x fgDue, e = .tick x fgDue := by
   cases e with
-  | tick x => exact ⟨x, rfl⟩
+  | tick x fgDue => exact ⟨x, fgDue, rfl⟩
   | block B =>
     simp only [exec, Node.onBlock] at h
     split_ifs at h
@@ -192,11 +192,27 @@ private theorem onBlock_cuts {st : NodeState A} {t : Time} {B B' : A.Blk} {acc :
 
 /-- The only block a tick processes is the own proposal, whose attestations come from the pool
 at the start of the tick. -/
-theorem tick_block_payload {st : NodeState A} {t : Time} {x : Nat} {B : A.Blk} {acc : Bool}
-    (h : Cut.fg (.block B acc) ∈ (onTick proposer dg y st t x).2) :
+theorem tick_block_payload {st : NodeState A} {t : Time} {x : Nat} {fgDue : Bool}
+    {B : A.Blk} {acc : Bool}
+    (h : Cut.fg (.block B acc) ∈ (onTick proposer dg y st t x fgDue).2) :
     ∀ a ∈ B.fgPayload, a ∈ st.fg.atts := by
-  simp only [onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil, List.nil_append,
-    List.mem_append] at h
+  cases fgDue
+  case false =>
+    simp only [onTick, runSteps, tickSteps, Bool.false_eq_true, ↓reduceIte,
+      List.foldl_cons, List.foldl_nil, List.nil_append, List.mem_append] at h
+    rcases h with h | h
+    · simp [tickStep, acCall] at h
+    · simp only [tickStep] at h
+      split_ifs at h
+      · split at h
+        · simp [acProposal] at h
+        · simp only [acProposal, List.mem_cons, reduceCtorEq, false_or, proposeBlock] at h
+          rw [onBlock_cuts h]
+          intro a ha
+          exact (List.mem_filter.1 ha).1
+      · simp at h
+  simp only [onTick, runSteps, tickSteps, ↓reduceIte, List.foldl_cons, List.foldl_nil,
+    List.nil_append, List.mem_append] at h
   rcases h with (h | h) | h
   · simp [tickStep, acCall] at h
   · simp only [tickStep] at h
@@ -217,8 +233,10 @@ theorem tick_block_payload {st : NodeState A} {t : Time} {x : Nat} {B : A.Blk} {
 /-- An `fg_attest` cut lies in a tick, after the earlier cuts of that tick. -/
 theorem tick_of_attest (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) {k : Nat} {C : A.Blk}
     {s : Option (FG.Att P.n)} (hc : tr.CallAt y k (.fg (.attest C s))) :
-    ∃ j₀ ≤ k, ∃ x, tr.GroupAt proposer dg y j₀ (tr.time k) (.tick x) ∧ ∀ i, j₀ ≤ i → i ≤ k →
-      ∃ c ∈ (onTick proposer dg y (tr.state y j₀) (tr.time k) x).2, tr.label i = some c := by
+    ∃ j₀ ≤ k, ∃ x fgDue, tr.GroupAt proposer dg y j₀ (tr.time k) (.tick x fgDue) ∧
+      ∀ i, j₀ ≤ i → i ≤ k →
+        ∃ c ∈ (onTick proposer dg y (tr.state y j₀) (tr.time k) x fgDue).2,
+          tr.label i = some c := by
   obtain ⟨j₀, e, hg, hjk, hkj⟩ := h.grouped y hy k _ hc
   have hl : ∀ i, j₀ ≤ i → i ≤ k →
       ∃ c ∈ (exec proposer dg y (tr.state y j₀) (tr.time k) e).2, tr.label i = some c := by
@@ -229,8 +247,8 @@ theorem tick_of_attest (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) {k 
   obtain ⟨c, hcm, hck⟩ := hl k hjk le_rfl
   rw [hc.2] at hck
   cases hck
-  obtain ⟨x, rfl⟩ := eq_tick_of_attest_mem hcm
-  exact ⟨j₀, hjk, x, hg, hl⟩
+  obtain ⟨x, fgDue, rfl⟩ := eq_tick_of_attest_mem hcm
+  exact ⟨j₀, hjk, x, fgDue, hg, hl⟩
 
 /-- **The honest attestations on a block held at an `fg_attest` cut were signed before its
 time.** -/
@@ -245,10 +263,10 @@ theorem signed_before_attest (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ 
   by_cases hlt : tr.time i < tr.time k
   · exact ⟨j, hj, lt_of_le_of_lt (h.time_mono hji.le) hlt⟩
   have hti : tr.time i = tr.time k := le_antisymm (h.time_mono hik.le) (not_lt.1 hlt)
-  obtain ⟨j₀, hj₀k, x, ht, hl⟩ := tick_of_attest h hy hc
+  obtain ⟨j₀, hj₀k, x, fgDue, ht, hl⟩ := tick_of_attest h hy hc
   have nfg : ∀ m < j₀, ∀ ℓ, tr.CallAt y m (.fg ℓ) → tr.time m = tr.time k → False :=
     fun m hm ℓ hcm htm => by
-      obtain ⟨ℓ', he, -⟩ := Compose.before_tick h hy ⟨x, ht⟩ hcm hm htm
+      obtain ⟨ℓ', he, -⟩ := Compose.before_tick h hy ⟨x, fgDue, ht⟩ hcm hm htm
       cases he
   rcases lt_or_ge i j₀ with hij₀ | hij₀
   · exact (nfg i hij₀ _ hA hti).elim

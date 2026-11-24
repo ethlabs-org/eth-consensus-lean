@@ -74,7 +74,7 @@ theorem seed_held_through_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     ⟨4 * ((r - sp.k - 3 : Nat) : Int), by simp only [hu_def, ACParams.ts]; ring⟩
   -- the caller ticks at `u`, an earlier call
   have hyu : y ∈ H u := hrun.antitone (huT.trans hTc.le) hy
-  obtain ⟨c₀, z, hg⟩ := hrun.tick_of_awake y u hyu hu0 hpub (hp.awake y u hyu hgu huT)
+  obtain ⟨c₀, z, fgDue, hg⟩ := hrun.tick_of_awake y u hyu hu0 hpub (hp.awake y u hyu hgu huT)
   obtain ⟨hc₀, htc₀⟩ := Healing.tick_first_cut hg
   have hcall₀ := Compose.projAC_callAt.2 hc₀
   have hy₀ : y ∈ H (tr.time c₀) := by rw [htc₀]; exact hyu

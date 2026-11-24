@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierViews
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.UnanimityWalk
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.SignTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
@@ -146,10 +147,26 @@ theorem ResetPremisesUpTo.operational_unanimous {b : Time}
         hgj (hti ▸ hjoin) (hjoin.trans hjt) hQt hBQ hne (hviab _ hDB hBQ) hCQ
         ((haX.mono hPsiU).trans (hXB.mono hPhiU)) hC))
 
+/-- Every awake honest node executes the joined update, whether or not its tick signs. -/
+theorem update_call_of_awake {ini}
+    (hrun : GoldilocksRun proposer dg H tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {u : Nat}
+    (hawake : tr.awake y (sp.ts u + 6 * sp.Δ))
+    (hjoin : ∀ i, tr.time i = sp.ts u + 6 * sp.Δ →
+      AC.joined sp (tr.projAC.state y i) (tr.time i)) :
+    ∃ j ell, AC.UpdateAt tr.projAC y j u ell := by
+  have hDelta := sp.toParams.hΔ
+  have hts : 0 ≤ sp.ts u := by simp only [ACParams.ts]; positivity
+  obtain ⟨j, x, fgDue, hg⟩ := hrun.tick_of_awake y hy (sp.ts u + 6 * sp.Δ)
+    (by linarith) ⟨4 * (u : Int) + 6, by simp only [ACParams.ts]; ring⟩ hawake
+  obtain ⟨hc, ht⟩ := tick_first_cut hg
+  exact ⟨j, _, Compose.projAC_callAt.2 hc, rfl, ht, hjoin j ht⟩
+
 /-- Every honest node executes the joined update and immediately following joined to-FG call
 at the coverage deadline. This supplies calls, not a nonempty returned report. -/
-theorem update_toFG_calls_of_awake {ini}
+theorem toFG_call_after_update_of_sign {ini}
     (hrun : GoldilocksRun proposer dg H tr ini)
+    (hsign : tr.AllTicksSign proposer dg H)
     {y : Fin sp.n} (hy : y ∈ H) {u : Nat}
     (hawake : tr.awake y (sp.ts u + 6 * sp.Δ))
     (hjoin : ∀ i, tr.time i = sp.ts u + 6 * sp.Δ →
@@ -161,48 +178,21 @@ theorem update_toFG_calls_of_awake {ini}
       AC.joined sp (tr.projAC.state y (j + 1)) (tr.time (j + 1)) := by
   have hDelta := sp.toParams.hΔ
   have hts : 0 ≤ sp.ts u := by simp only [ACParams.ts]; positivity
-  obtain ⟨j, x, hg⟩ := hrun.tick_of_awake y hy (sp.ts u + 6 * sp.Δ)
+  obtain ⟨j, x, fgDue, hg⟩ := hrun.tick_of_awake y hy (sp.ts u + 6 * sp.Δ)
     (by linarith) ⟨4 * (u : Int) + 6, by simp only [ACParams.ts]; ring⟩ hawake
-  have hslot : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=
-    AC.slot_of_mem sp (u + 1) (by simp only [ACParams.ts]; push_cast; linarith)
-      (by simp only [ACParams.ts]; push_cast; linarith)
-  have hnP : ¬ Node.Proposes proposer y (sp.ts u + 6 * sp.Δ) := by
-    rintro ⟨-, h, -⟩
-    rw [show sp.toParams.slotOf (sp.ts u + 6 * sp.Δ) = u + 1 from hslot,
-      sp.slotTime_eq] at h
-    simp only [ACParams.ts] at h
-    push_cast at h
-    linarith
-  obtain ⟨hcj, htj⟩ := tick_first_cut hg
-  have h1 : (Node.exec proposer dg y (tr.state y j) (sp.ts u + 6 * sp.Δ) (.tick x)).2[1]? =
-      some (Node.acToFG
-        (Node.tickStep proposer dg y (tr.state y j) (sp.ts u + 6 * sp.Δ) x .acTick).1
-        (sp.ts u + 6 * sp.Δ)).2.1 := by
-    change (Node.onTick proposer dg y (tr.state y j) (sp.ts u + 6 * sp.Δ) x).2[1]? = _
-    rw [onTick_eq]
-    simp only [Node.tickStep, hnP, ↓reduceIte]
-    split <;> simp [Node.acToFG, Node.acCall]
-  obtain ⟨hk', hlabel⟩ := List.getElem?_eq_some_iff.1 h1
-  obtain ⟨hn, ht, -, -, hl⟩ := hg.2.1 1 hk'
-  obtain ⟨ell', hcj1, hcall', htj1⟩ : ∃ ell' : ACLabel (goldilocksNode sp ro),
-      tr.CallAt y (j + 1) (.ac ell') ∧ ell'.call = .toFG ∧
-      tr.time (j + 1) = sp.ts u + 6 * sp.Δ :=
-    ⟨_, ⟨hn, hl.trans (congrArg some hlabel)⟩, rfl, ht⟩
-  obtain ⟨ell, hcjAC, hcall⟩ : ∃ ell : ACLabel (goldilocksNode sp ro),
-      tr.projAC.CallAt y j ell ∧ ell.call = .tick :=
-    ⟨_, Compose.projAC_callAt.2 hcj, rfl⟩
-  refine ⟨j, ell, ell', ⟨hcjAC, hcall, htj, hjoin j htj⟩,
-    Compose.projAC_callAt.2 hcj1, hcall', htj1, ?_, hjoin (j + 1) htj1⟩
-  rw [(hrun.cutLaw y hy (j + 1) _ hcj1).1,
-    Compose.frame_of_projAC hrun hy hcjAC, tr.state_succ_of_call hcj]
-  unfold Node.frame
-  rw [(hrun.cutLaw y hy j _ hcj).2.2.1]
+  obtain ⟨x, hg⟩ := hsign y hy j _ ⟨x, fgDue, hg⟩
+  obtain ⟨ell, ell', hcj, hcall, htj, hcj1, hcall', htj1, hfr⟩ :=
+    toFG_second_cut_of_signing_tick hg (not_proposes_update_time y u)
+      fun i c hc _ => hrun.cutLaw y hy i c hc
+  exact ⟨j, ell, ell', ⟨hcj, hcall, htj, hjoin j htj⟩, hcj1, hcall', htj1, hfr,
+    hjoin (j + 1) htj1⟩
 
 /-- Bounded wakefulness and the causal restart bound supply the actual adjacent
 update and report call. The slot bound follows from the ready-slot initial margin;
 no Catch or service premise is needed to produce these calls. -/
 theorem ResetPremisesUpTo.update_toFG_calls {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
+    (hsign : tr.AllTicksSign proposer dg H)
     {y : Fin sp.n} (hy : y ∈ H) {u : Nat}
     (hu : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) ≤ sp.ts u)
     (hub : sp.ts u + 6 * sp.Δ ≤ b) :
@@ -215,7 +205,7 @@ theorem ResetPremisesUpTo.update_toFG_calls {b : Time}
     have hnext := (AC.ts_le_iff_le_slot sp (AC.gbar_nonneg g)
       ((sp.slot (AC.gbar g) + 1 : Nat) : Int)).not.mpr (by push_cast; omega)
     exact (not_le.mp hnext).le.trans hu
-  apply update_toFG_calls_of_awake hp.run hy
+  apply toFG_call_after_update_of_sign hp.run hsign hy
     (hp.awake y hy _ (by linarith [sp.toParams.hΔ]) hub)
   intro i hi
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun

@@ -109,7 +109,7 @@ theorem proposal_rows_placed_from (h : Node.LocalRun proposer dg H sg tr ini)
   have hXU : X ∈ tr.HonestBlocks H := ⟨p, hp, kX + 1, hXt⟩
   -- `X` is `propose_block`'s block on `d.head`, with the pool before the tick
   rcases Compose.blockCall_cases h hp hacc with hg |
-    ⟨j, x, -, -, -, d, pay, -, hB, -, -, -, hfgj⟩
+    ⟨j, x, fgDue, -, -, -, d, pay, -, hB, -, -, -, hfgj⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hX.1.2
   have hpay : X.fgPayload = (tr.state p kX).fg.proposalAttestations d.head := by
     rw [hfgj, hB]; rfl

@@ -133,10 +133,11 @@ private theorem reset_nonneg (hrun : GoldilocksRun proposer dg H tr ini) {a : Ti
 premises, `a ≤ ḡ + Z`, and its drain by `R*`. -/
 theorem pattern_reset
     (hrun : GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hsign : tr.AllTicksSign proposer dg H)
     (hp : PatternPremises tr H K proposer dg g ΔF Gp W M cF kF) :
     ∃ a, ResetPremises tr H K proposer dg g ΔF a ∧
       a ≤ gbar g + Zreset sp ΔF Gp ∧ drainTime sp a ≤ Rstar sp g ΔF Gp := by
-  have hr := reset_existence sp ro proposer dg H tr K g ΔF Gp hrun hp.shared hp.catchPremise
+  have hr := reset_existence sp ro proposer dg H tr K g ΔF Gp hrun hsign hp.shared hp.catchPremise
     hp.prop
   obtain ⟨a, ha⟩ := hr.2.2.1
   have hab : a ≤ gbar g + Zreset sp ΔF Gp := by

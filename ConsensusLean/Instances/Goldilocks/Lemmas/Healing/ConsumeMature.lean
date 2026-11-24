@@ -145,7 +145,7 @@ theorem mature_progress_of (hrun : GoldilocksRun proposer dg H tr
   have hall := effAllowed_of_floor_lt hrun hnc hpX (hon (kX + 1) (by omega) (by omega)) hXt
     (by omega)
   have hgx : gbar g ≤ sp.ts x := by linarith
-  obtain ⟨j, _x, hne, hcs, -⟩ := hrun.tick_of_awake y hy (sp.ts x + sp.Δ)
+  obtain ⟨j, _x, fgDue, hne, hcs, -⟩ := hrun.tick_of_awake y hy (sp.ts x + sp.Δ)
     (by linarith [gbar_nonneg g]) ⟨4 * (x : Int) + 1, by simp only [ACParams.ts]; ring⟩
     (hs.healthy.2.1 y hy _ (by change gbar g ≤ _; linarith))
   obtain ⟨hn, ht, -, -, hl⟩ := hcs 0 (List.length_pos_of_ne_nil hne)

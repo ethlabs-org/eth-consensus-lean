@@ -61,7 +61,7 @@ the state after the AC's tick and the proposal step. -/
 private theorem toFG_next (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
     (st : NodeState A) (t : Time) (e : Event A) {k : Nat} {ℓ : ACLabel A}
     (hk : (exec proposer dg y st t e).2[k]? = some (.ac ℓ)) (hc : ℓ.call = .toFG) :
-    ∃ st₁, (∃ x, e = .tick x ∧
+    ∃ st₁, (∃ x, e = .tick x true ∧
         st₁ = (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal).1) ∧
       CutChain y t st ((exec proposer dg y st t e).2.take k) st₁ ∧ ℓ.frame = frame st₁ ∧
       ∀ C, (A.toFG st₁.ac (frame st₁) t).2 = some C →
@@ -92,8 +92,16 @@ private theorem toFG_next (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P
     simp only [exec, restart, acCall, List.mem_singleton, Cut.ac.injEq] at h
     rw [h] at hc
     cases hc
-  | tick x =>
-    have hcuts : (exec proposer dg y st t (.tick x)).2 =
+  | tick x fgDue =>
+    have hsign : fgDue = true := by
+      cases fgDue with
+      | false =>
+        have hm := List.mem_of_getElem? hk
+        apply False.elim (toFG_not_mem proposer dg y st t x hc ?_)
+        simpa [exec, onTick, runSteps, tickSteps] using hm
+      | true => rfl
+    subst fgDue
+    have hcuts : (exec proposer dg y st t (.tick x true)).2 =
         (tickStep proposer dg y st t x .acTick).2 ++
         (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal).2 ++
         (tickStep proposer dg y

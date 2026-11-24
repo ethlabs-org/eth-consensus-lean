@@ -98,7 +98,7 @@ private theorem proposal_includes_pool (hp : ResetPremises tr H K proposer dg g 
         att ∈ W.fgPayload := by
   obtain ⟨hacc, _, _⟩ := accept_of_proposesAt hp.run hp.noColl hw hW
   rcases Compose.blockCall_cases hp.run.toLocalRun hw hacc with hg |
-    ⟨j, x, _, _, _, d, pay, _, hB, _, _, _, hfg⟩
+    ⟨j, x, fgDue, _, _, _, d, pay, _, hB, _, _, _, hfg⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hW.1.2
   have hpay : W.fgPayload = (tr.state w k).fg.proposalAttestations d.head := by
     rw [hfg, hB]; rfl

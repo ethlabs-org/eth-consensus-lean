@@ -188,7 +188,8 @@ theorem restart_le_before {b : Time} (hp : ResetPremisesUpTo tr H K proposer dg 
     exact (not_le.mp h).le
   by_cases hgu : gbar g ≤ u
   · exact hu (hp.awake y hy u hgu (huk.le.trans hkb))
-  · obtain ⟨j, _x, hne, hcs, -⟩ := hp.run.tick_of_awake y hy _ ((gbar_nonneg g).trans hp₀)
+  · obtain ⟨j, _x, _fgDue, hne, hcs, -⟩ :=
+      hp.run.tick_of_awake y hy _ ((gbar_nonneg g).trans hp₀)
       ⟨4 * ((sp.slot (gbar g) + 1 : Nat) : Int), by simp only [ACParams.ts]; ring⟩
       (hp.awake y hy _ hp₀ ((lt_of_not_ge hlt).le.trans hkb))
     obtain ⟨hn, ht, -, -, hl⟩ := hcs 0 (List.length_pos_of_ne_nil hne)

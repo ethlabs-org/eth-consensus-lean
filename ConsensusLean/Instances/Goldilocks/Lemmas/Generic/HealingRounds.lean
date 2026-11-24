@@ -158,6 +158,18 @@ theorem faults_lt_q {H : Time → Set (Fin P.n)} {b : Time}
   change _ < (2 * P.n + 2) / 3
   omega
 
+/-- Arithmetic form of the report-time shift, including its zero case. -/
+theorem shiftDelay_eq_add (P : Params) (d : Nat) (t : Time) :
+    shiftDelay P d t = t + (d : Time) * P.Δ := by
+  cases d with
+  | zero => simp [shiftDelay]
+  | succ d => rfl
+
+/-- Shifting both deadline endpoints preserves their order. -/
+theorem shiftDelay_le {P : Params} (d : Nat) {t t' : Time} (h : t ≤ t') :
+    shiftDelay P d t ≤ shiftDelay P d t' := by
+  simp only [shiftDelay_eq_add, add_le_add_iff_right, h]
+
 /-- Leaf 10: a warm high honest proposal forces a reset by the next slot's report deadline. The
 leaf's premises are `Premises`; `ACHealing.report_follow` gives a report above the proposal by an
 observer honest at the horizon, which is honest at `c_z` and at the report, and the report is at
@@ -172,8 +184,9 @@ theorem reset_of_high_proposal_at_of_healing (O : ACHealing A sg runs) :
   have hP : Premises tr H cm βK proposer dg sg g ΔF b :=
     ⟨hcom, hnc, hsvc, hawake, hf, hcatch, hnr, htd, hsl, hsnap, ⟨y, hy⟩⟩
   have hu1N : P.slotTime (u + 1) ≤ P.slotTime N := P.slotTime_strictMono.monotone hN
+  have hdeadline := shiftDelay_le (P := P) O.reportDelay (add_le_add_left hu1N (2 * P.Δ))
   obtain ⟨i, R, hyi, hR, -, hti, hBR, -⟩ := O.report_follow hβ hrun hP hframe hm hwarm hN hmb
-    ⟨hz, hdes, hB, hBs⟩ y (hrl.antitone (by linarith) hy)
+    ⟨hz, hdes, hB, hBs⟩ y (hrl.antitone (hdeadline.trans hmb) hy)
   have hzk : z ∈ H (tr.time kB) := hrl.antitone (by rw [hB.2.2, hBs]; linarith) hz
   obtain ⟨-, hBRs, hσ⟩ :=
     proposal_below_held_at hrun hnc hzk hB hyi hBR (O.report_in_frame hrun hyi hR).1
@@ -181,7 +194,8 @@ theorem reset_of_high_proposal_at_of_healing (O : ACHealing A sg runs) :
     (fg_reachable_at_from hrl (hrl.time_nonneg i) (fun q hq => hrl.time_mono hq.le) hyi) hBRs
   rw [← hσ] at hBR'
   obtain ⟨k, hk, hkb⟩ := hsnap
-  have hmaxb : max (cutZ P g) (tr.time i) ≤ b := max_le (hk.2.le.trans hkb) (by linarith)
+  have hmaxb : max (cutZ P g) (tr.time i) ≤ b :=
+    max_le (hk.2.le.trans hkb) (hti.trans (hdeadline.trans hmb))
   obtain ⟨a, ha, hat⟩ := reset_of_high_report_at_from hrl (hrl.antitone hmaxb hy)
     (faults_lt_q hf ((hrl.time_nonneg i).trans (le_max_right _ _)) hmaxb) hR (hh.trans hBR')
   exact ⟨a, ha, hat.trans hti⟩
@@ -204,23 +218,27 @@ private theorem proposalHead_of_proposesAt {P : Params} {A : NodeAC P} {sg : A.M
       X.parent = some d.head.root := by
   obtain ⟨⟨⟨acc, hc⟩, hpos⟩, -, -⟩ := hX
   rcases Compose.blockCall_cases h hp hc with hg |
-    ⟨j, x, rfl, hg, hpr, d, p', hdp, rfl, -, -, -, -⟩
+    ⟨j, x, fgDue, rfl, hg, hpr, d, p', hdp, rfl, -, -, -, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
-  have hcs : (exec proposer dg p (tr.state p j) (tr.time (j + 2)) (.tick x)).2 =
+  have hcs : (exec proposer dg p (tr.state p j) (tr.time (j + 2)) (.tick x fgDue)).2 =
       [(acCall p (tr.state p j) (tr.time (j + 2)) .tick).2] ++
         ((acProposal (tickStep proposer dg p (tr.state p j) (tr.time (j + 2)) x .acTick).1
           (tr.time (j + 2))).2.1 ::
           (proposeBlock dg p (acProposal (tickStep proposer dg p (tr.state p j)
             (tr.time (j + 2)) x .acTick).1 (tr.time (j + 2))).1 (tr.time (j + 2)) x d.head p').2) ++
-        (tickStep proposer dg p (proposeBlock dg p (acProposal (tickStep proposer dg p
+        (if fgDue then (tickStep proposer dg p (proposeBlock dg p
+          (acProposal (tickStep proposer dg p
           (tr.state p j) (tr.time (j + 2)) x .acTick).1 (tr.time (j + 2))).1 (tr.time (j + 2)) x
-          d.head p').1 (tr.time (j + 2)) x .fgUpdate).2 := by
+          d.head p').1 (tr.time (j + 2)) x .fgUpdate).2 else []) := by
+    cases fgDue <;>
     simp only [exec, onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil,
-      List.nil_append]
-    have hdp' := hdp
-    simp only [tickStep] at hdp'
-    simp only [tickStep, ite_eq_left hpr, hdp']
-  have hl1 : 1 < (exec proposer dg p (tr.state p j) (tr.time (j + 2)) (.tick x)).2.length := by
+      Bool.false_eq_true, ↓reduceIte, List.nil_append, List.append_nil]
+    all_goals
+      have hdp' := hdp
+      simp only [tickStep] at hdp'
+      simp only [tickStep, ite_eq_left hpr, hdp']
+  have hl1 : 1 < (exec proposer dg p (tr.state p j)
+      (tr.time (j + 2)) (.tick x fgDue)).2.length := by
     rw [hcs]; simp
   obtain ⟨hn0, ht0, -, -, hl0⟩ := hg.2.1 0 (by omega)
   obtain ⟨hn1, ht1, -, -, hl1'⟩ := hg.2.1 1 hl1
@@ -263,13 +281,20 @@ theorem round_of_warm_at_of_healing (O : ACHealing A sg runs) : round_of_warm_at
   have hΔ := P.hΔ
   have hdF := hsvc.deltaF
   have hmono := P.slotTime_strictMono.monotone
+  have hbudget : 0 ≤ (O.reportDelay : Time) * P.Δ := by positivity
   have hδ2 : 2 ≤ P.δt := by
     by_contra h1
     have h := hrd 0
     have := hmono (show 0 + P.δt ≤ 0 + 1 by omega)
+    rw [shiftDelay_eq_add] at h
     linarith
   have hu1N : u + 1 ≤ N := by omega
-  have hvx : P.slotTime (u + 1) + 2 * P.Δ + ΔF ≤ P.slotTime x := (hrd u).trans (hmono hux)
+  have hvx := (hrd u).trans (hmono hux)
+  have hdeadline := shiftDelay_le (P := P) O.reportDelay
+    (add_le_add_left (hmono hu1N) (2 * P.Δ))
+  have hbase : P.slotTime N + 2 * P.Δ ≤ b := by
+    rw [shiftDelay_eq_add] at hmb
+    linarith
   have hczx : cutZ P g ≤ P.slotTime x := by
     have hg := ((slotOfSpec_iff.mp slotOf_spec) P (gbar g) (Healing.gbar_nonneg g)).1
     have hs₀ : P.slotOf (gbar g) + 1 ≤ s₀ := by
@@ -281,7 +306,8 @@ theorem round_of_warm_at_of_healing (O : ACHealing A sg runs) : round_of_warm_at
     ⟨hcom, hnc, hsvc, hawake, hf, hcatch, hnr, htd, hsl, hsnap, hHb⟩
   have htX : tr.time kX = P.slotTime x := by rw [hX.2.2, hXs]
   have htB : tr.time kB = P.slotTime u := by rw [hB.2.2, hBs]
-  have hvle : P.slotTime (u + 1) + 2 * P.Δ ≤ tr.time kX := by rw [htX]; linarith
+  have hvle : shiftDelay P O.reportDelay (P.slotTime (u + 1) + 2 * P.Δ) ≤ tr.time kX := by
+    rw [htX]; linarith
   have hxb : tr.time kX ≤ b := by rw [htX]; linarith [hmono hxN]
   have hfol' := fun y (hy : y ∈ H (tr.time kX)) =>
     O.report_follow hβ hrun hP hframe hm hwarm hu1N hmb ⟨hz, hdes, hB, hBs⟩ y
@@ -308,15 +334,18 @@ theorem round_of_warm_at_of_healing (O : ACHealing A sg runs) : round_of_warm_at
       proposal_mem_at_from hrl (runs.run_requirements hrun) (runs.run_root hrun) hnc hzk hB⟩
   refine round_cross_at_from hrl (runs.run_requirements hrun) (runs.run_root hrun) hnc
     hsvc.signedRow hnr hBH (hBRp.trans (hhx Rp hRpd)) hpar hp hX
-    (hf _ (hrl.time_nonneg kX) hxb) (v := P.slotTime (u + 1) + 2 * P.Δ)
-    (by linarith [hmono (show s₀ ≤ u + 1 by omega)]) (by rw [htX]; exact hvx) hxb
+    (hf _ (hrl.time_nonneg kX) hxb)
+    (v := shiftDelay P O.reportDelay (P.slotTime (u + 1) + 2 * P.Δ))
+    (by rw [shiftDelay_eq_add]; linarith [hmono (show s₀ ≤ u + 1 by omega)])
+    (by rw [htX]; exact hvx) hxb
     (by rw [hBs, hXs]; exact hux) ?_
   intro y hy
   obtain ⟨i, R, hyi, hR, htil, hti, hBR, hRd⟩ := hfol' y hy
   have hyz : y ∈ H (max (cutZ P g) (tr.time i)) :=
     hrl.antitone (max_le (htX ▸ hczx) (hti.trans hvle)) hy
   have hlo : P.slotTime s₀ ≤ P.slotTime u := hmono hs₀u
-  have hhi : P.slotTime u ≤ P.slotTime N + 2 * P.Δ := by linarith [hmono (show u ≤ N by omega)]
+  have hhi : P.slotTime u ≤ shiftDelay P O.reportDelay (P.slotTime N + 2 * P.Δ) := by
+    rw [shiftDelay_eq_add]; linarith [hmono (show u ≤ N by omega)]
   obtain ⟨hBy, hRy, hor⟩ := row_or_high_of_report_at_from hrl hnc
     (fun t ht htT => hf t ht (htT.le.trans hTb)) hna hyz hR (hti.trans_lt hT)
     (O.report_in_frame hrun hyi hR).1 hBR
@@ -325,7 +354,7 @@ theorem round_of_warm_at_of_healing (O : ACHealing A sg runs) : round_of_warm_at
         hB hBs hlo hhi
         (P.fg.faults_lt_quorum_margin
           (hf _ (by linarith [hmono (Nat.zero_le u), P.slotTime_zero]) (by linarith)))
-        hyi hR hBR (hlo.trans htil) (by linarith [hmono hu1N]) heq))
+        hyi hR hBR (hlo.trans htil) (hti.trans hdeadline) heq))
   rcases hor with ⟨k, att, hyk, hs, hk, hah, haT⟩ | hh
   · exact Or.inl ⟨y, i, hyi, hBy, k, att, hyk, hs, hk.trans hti, hah, haT⟩
   · exact Or.inr ⟨R, hhx R hRd, y, i, hyi, hBy, hRy, hh⟩

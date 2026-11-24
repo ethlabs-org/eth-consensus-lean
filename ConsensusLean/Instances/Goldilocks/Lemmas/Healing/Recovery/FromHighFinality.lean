@@ -61,7 +61,7 @@ theorem high_F_firstCut (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : g
   have hpub : sp.toParams.IsPublic (sp.ts s) := ⟨4 * (s : Int), by unfold ACParams.ts; ring⟩
   have haw : tr.awake y (sp.ts s) := hp.healthy.2.1 y hy _ (max_le
     (le_trans (le_trans (le_gbar g) hgT) hs.le) h0)
-  obtain ⟨j', x, hg⟩ := hp.run.tick_of_awake y hy _ h0 hpub haw
+  obtain ⟨j', x, fgDue, hg⟩ := hp.run.tick_of_awake y hy _ h0 hpub haw
   obtain ⟨hne, hk, -⟩ := hg
   obtain ⟨hn, ht, -, -, hl⟩ := hk 0 (List.length_pos_of_ne_nil hne)
   rw [Nat.add_zero] at hn ht hl
@@ -298,7 +298,7 @@ theorem high_F_call_soon (hp : ResetPremises tr H K proposer dg g ΔF a) (hgT : 
     rw [ht₀]; unfold ACParams.ts; ring⟩
   have haw : tr.awake y t₀ := hp.healthy.2.1 y hy _ (max_le
     (by linarith [le_gbar g]) h0)
-  obtain ⟨j, x, hne, hk, -⟩ := hp.run.tick_of_awake y hy _ h0 hpub haw
+  obtain ⟨j, x, fgDue, hne, hk, -⟩ := hp.run.tick_of_awake y hy _ h0 hpub haw
   obtain ⟨hn, ht, -, -, hl⟩ := hk 0 (List.length_pos_of_ne_nil hne)
   rw [Nat.add_zero] at hn ht hl
   exact ⟨j, ⟨_, hn, hl⟩, by rw [ht]; exact hlt, by rw [ht]; exact hle, ht,

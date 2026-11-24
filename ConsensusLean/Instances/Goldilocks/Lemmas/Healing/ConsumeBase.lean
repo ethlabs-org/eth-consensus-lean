@@ -80,7 +80,7 @@ theorem accept_of_proposesAt_from {P : Params} {A : NodeAC P}
     tr.AcceptAt p k W ∧ W ∈ (tr.state p (k + 1)).fg.tree ∧ tr.post k = tr.state p (k + 1) := by
   obtain ⟨⟨⟨acc, hc⟩, hpos⟩, -, -⟩ := hW
   rcases Compose.blockCall_cases h hp hc with hg |
-    ⟨j, x, rfl, hg, hpr, d, p', hdp, rfl, -, -, -, -⟩
+    ⟨j, x, fgDue, rfl, hg, hpr, d, p', hdp, rfl, -, -, -, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   obtain ⟨hacc, -⟩ := own_block_accepted h hq hroot hnc hp hg hpr hdp
   have he := hc.2.symm.trans hacc.2

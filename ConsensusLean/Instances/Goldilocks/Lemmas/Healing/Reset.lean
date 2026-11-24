@@ -288,6 +288,7 @@ theorem producer {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF Gp : Time}
     (hrun : GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hsign : tr.AllTicksSign proposer dg H)
     (hs : HSShared tr H K dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
     (hp : PropPlus tr H proposer g Gp)
     (w : Time) (hw : SettledAt tr H g (2 * sp.Δ) w) (j j' : Nat) (hj : tr.FirstCutFrom j w)
@@ -295,12 +296,12 @@ theorem producer {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   obtain ⟨hfg, hq, ⟨y₀, hy₀⟩, hD, hDA⟩ := hs_setup hrun hs hp
   obtain ⟨⟨m, c⟩, hph⟩ := exists_phase (tr := tr.projFG) ⟨y₀, hy₀⟩ j
   have hset : SettledIn tr H g w j m c := ⟨hw, hj, hph⟩
-  obtain ⟨hch | hwit, hcl⟩ := common_path_acquisition' hrun hs hc hp hset
+  obtain ⟨hch | hwit, hcl⟩ := common_path_acquisition' hrun hsign hs hc hp hset
   · obtain ⟨j₁, hj₁⟩ := (exists_cuts hrun.toLocalRun hy₀ (hs.healthy.2.1 y₀ hy₀)
       (w + D_HS sp Gp)).1
     exact (hch j₁ hj₁).mono hfg hq (from_le_after hj hj₁ (by linarith))
       (after_le_after hj₁ hj' (by linarith))
-  · exact consume_continue hrun hs hc hp viable_witness_retention clean_lock_drain
+  · exact consume_continue hrun hsign hs hc hp viable_witness_retention clean_lock_drain
       hset hwit hcl j' hj'
 
 /-- **The reset count** (HR.3 (c)): the reset exists by `c_z + 6(Δ + A_HS)`. -/
@@ -309,6 +310,7 @@ theorem reset_count {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF Gp : Time}
     (hrun : GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hsign : tr.AllTicksSign proposer dg H)
     (hs : HSShared tr H K dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
     (hp : PropPlus tr H proposer g Gp) :
     ∃ a, IsReset tr H g a ∧ a ≤ cutZ sp.toParams g + 6 * (sp.Δ + A_HS sp ΔF Gp) := by
@@ -346,7 +348,7 @@ theorem reset_count {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
       from_le_after (hff _) (hfa _) (by rw [hu1]; linarith)
     rcases settle hrun hs hc (u n) hun _ _ (hfa _) (hff _) with hch | hset
     · exact (hlt _ _ h1 hch).trans_le (hle _ _ h2)
-    · have hch := producer hrun hs hc hp _ hset _ _ (hff _)
+    · have hch := producer hrun hsign hs hc hp _ hset _ _ (hff _)
         (Eq.subst (motive := fun t => FirstCutAfter tr (fa (u (n + 1))) t) hu1 (hfa _))
       exact (hle _ _ h1).trans_lt (hlt _ _ h2 hch)
   have hsix : ∀ n, φ (fa (u 0)) + n ≤ φ (fa (u n)) := by
@@ -410,11 +412,11 @@ theorem IsReset.eq {P : Params} {A : NodeAC P} {tr : RunTrace A} {H : Set (Fin P
 
 /-- **HR.3, reset existence.** -/
 theorem reset_existence : ResetExistence := by
-  intro sp ro proposer dg H tr K g ΔF Gp hrun hs hc hp
-  obtain ⟨a, ha, hle⟩ := reset_count hrun hs hc hp
+  intro sp ro proposer dg H tr K g ΔF Gp hrun hsign hs hc hp
+  obtain ⟨a, ha, hle⟩ := reset_count hrun hsign hs hc hp
   refine ⟨⟨lt_cutZ sp g, fun u hu j j' hj hj' =>
       settle hrun hs hc u (by linarith [lt_cutZ sp g]) j j' hj hj'⟩,
-    fun w hw j j' hj hj' => producer hrun hs hc hp w hw j j' hj hj', ⟨a, ha⟩,
+    fun w hw j j' hj hj' => producer hrun hsign hs hc hp w hw j j' hj hj', ⟨a, ha⟩,
     fun a' ha' => ha'.eq ha ▸ hle, cutZ_add_le sp g ΔF Gp, reset_bound_eq sp g ΔF Gp,
     C_HS_eq sp ΔF Gp⟩
 
