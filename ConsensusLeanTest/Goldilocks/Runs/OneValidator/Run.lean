@@ -34,11 +34,11 @@ open AC Node ChainFrame
 
 theorem tickState_succ (t : Nat) :
     tickState N1 dg1 (t + 1) =
-      (Node.onTick (fun _ => v0) dg1 v0 (tickState N1 dg1 t) (t : Int) 0).1 := rfl
+      (Node.onTick (fun _ => v0) dg1 v0 (tickState N1 dg1 t) (t : Int) 0 true).1 := rfl
 
 theorem tickCuts_eq (t : Nat) :
     tickCuts N1 dg1 t =
-      (Node.onTick (fun _ => v0) dg1 v0 (tickState N1 dg1 t) (t : Int) 0).2 := rfl
+      (Node.onTick (fun _ => v0) dg1 v0 (tickState N1 dg1 t) (t : Int) 0 true).2 := rfl
 
 theorem tick_cases (t : Nat) : t = 1 ∨ (∃ k, t = 4 * (k + 1)) ∨ (t % 4 = 2 ∧ 4 ≤ t) ∨
     (t ≠ 1 ∧ ¬ (t % 4 = 0 ∧ 4 ≤ t) ∧ ¬ (t % 4 = 2 ∧ 4 ≤ t)) := by

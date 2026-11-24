@@ -177,16 +177,16 @@ abbrev World := Wld × (Nat → List (FG.Att sp.n))
 /-- The events of time `t` from the world `W`: the two ticks, the deliveries to `v1`, the
 deliveries to `v0`; the world at the start of `t + 1` and the segments. -/
 noncomputable def stepT (t : Nat) (W : World) : World × List Seg :=
-  let e0 := ex W.1 w0 t (.tick 0)
+  let e0 := ex W.1 w0 t (.tick 0 true)
   let w1' := Function.update W.1 w0 e0.1
-  let e1 := ex w1' w1 t (.tick 0)
+  let e1 := ex w1' w1 t (.tick 0 true)
   let w2 := Function.update w1' w1 e1.1
   let r2 := runEvs t w2 ((e0.2.filterMap toW1).map (w1, ·))
   let c3 := r2.2.flatMap Seg.cuts
   let qa := (if 35 ≤ t then W.2 (t - 35) else []).map fun a => (w0, Node.Event.attestation a)
   let r3 := runEvs t r2.1 (((e1.2 ++ c3).filterMap voteOf).map (w0, ·) ++ qa)
   ((r3.1, Function.update W.2 t (e1.2.filterMap attOf)),
-    ⟨w0, .tick 0, W.1, e0.2⟩ :: ⟨w1, .tick 0, w1', e1.2⟩ :: (r2.2 ++ r3.2))
+    ⟨w0, .tick 0 true, W.1, e0.2⟩ :: ⟨w1, .tick 0 true, w1', e1.2⟩ :: (r2.2 ++ r3.2))
 
 /-- The world at the start of time `t`. -/
 noncomputable def world : Nat → World
@@ -221,7 +221,13 @@ noncomputable def run : RunTrace N where
 theorem ex_length (w : Wld) (y : Fin sp.n) (t : Nat) (e : Node.Event N) :
     (ex w y t e).2.length ≤ 7 := by
   cases e with
-  | tick x => exact onTick_length N dg y _ _ x
+  | tick x fgDue =>
+    have h := onTick_length N dg y (w y) (t : Int) x
+    change (onTick prop dg y (w y) (t : Int) x true).2.length ≤ 7 at h
+    cases fgDue
+    · simp [ex, exec, onTick, runSteps, tickSteps] at h ⊢
+      omega
+    · exact h
   | block B => exact le_trans (onBlock_length N y _ _ B) (by decide)
   | message m => simp [ex, exec, onMessage]
   | attestation a => simp [ex, exec, onAttestation]
@@ -272,10 +278,10 @@ theorem stepT_length (t : Nat) (W : World) (hq : ∀ t', (W.2 t').length ≤ 7) 
     (stepT t W).2.length ≤ 72 := by
   unfold stepT
   dsimp only
-  have l0 := ex_length W.1 w0 t (.tick 0)
-  generalize ex W.1 w0 t (.tick 0) = e0 at *
-  have l1 := ex_length (Function.update W.1 w0 e0.1) w1 t (.tick 0)
-  generalize ex (Function.update W.1 w0 e0.1) w1 t (.tick 0) = e1 at *
+  have l0 := ex_length W.1 w0 t (.tick 0 true)
+  generalize ex W.1 w0 t (.tick 0 true) = e0 at *
+  have l1 := ex_length (Function.update W.1 w0 e0.1) w1 t (.tick 0 true)
+  generalize ex (Function.update W.1 w0 e0.1) w1 t (.tick 0 true) = e1 at *
   generalize Function.update (Function.update W.1 w0 e0.1) w1 e1.1 = w2
   have h0 := le_trans (filterMap_length_le toW1 e0.2) l0
   have hr2 := flatMap_cuts_length (runEvs_cuts t w2 ((e0.2.filterMap toW1).map (w1, ·)))
@@ -381,14 +387,15 @@ theorem Chain.get_succ {t : Nat} {w w' : Wld} {l : List Seg} (h : Chain t w l w'
 
 /-- The `0`-th segment of time `t` is `v0`'s tick, from the world of `t`. -/
 theorem segs_zero (t : Nat) :
-    (segs t)[0]? = some ⟨w0, .tick 0, (world t).1, (ex (world t).1 w0 t (.tick 0)).2⟩ := by
+    (segs t)[0]? =
+      some ⟨w0, .tick 0 true, (world t).1, (ex (world t).1 w0 t (.tick 0 true)).2⟩ := by
   rfl
 
 /-- The `1`-st segment of time `t` is `v1`'s tick. -/
 theorem segs_one (t : Nat) :
-    (segs t)[1]? = some ⟨w1, .tick 0, Function.update (world t).1 w0
-      (ex (world t).1 w0 t (.tick 0)).1, (ex (Function.update (world t).1 w0
-        (ex (world t).1 w0 t (.tick 0)).1) w1 t (.tick 0)).2⟩ := by
+    (segs t)[1]? = some ⟨w1, .tick 0 true, Function.update (world t).1 w0
+      (ex (world t).1 w0 t (.tick 0 true)).1, (ex (Function.update (world t).1 w0
+        (ex (world t).1 w0 t (.tick 0 true)).1) w1 t (.tick 0 true)).2⟩ := by
   rfl
 
 theorem runEvs_get (t : Nat) : ∀ (w : Wld) (es : List (Fin sp.n × Node.Event N)) {j : Nat}
@@ -402,13 +409,13 @@ theorem runEvs_get (t : Nat) : ∀ (w : Wld) (es : List (Fin sp.n × Node.Event 
       exact runEvs_get t _ es h
 
 /-- `v0`'s tick at time `t`. -/
-noncomputable abbrev tk0 (t : Nat) : St × List (Cut N) := ex (world t).1 w0 t (.tick 0)
+noncomputable abbrev tk0 (t : Nat) : St × List (Cut N) := ex (world t).1 w0 t (.tick 0 true)
 
 /-- The world after `v0`'s tick. -/
 noncomputable abbrev wA (t : Nat) : Wld := Function.update (world t).1 w0 (tk0 t).1
 
 /-- `v1`'s tick at time `t`. -/
-noncomputable abbrev tk1 (t : Nat) : St × List (Cut N) := ex (wA t) w1 t (.tick 0)
+noncomputable abbrev tk1 (t : Nat) : St × List (Cut N) := ex (wA t) w1 t (.tick 0 true)
 
 /-- The world after both ticks. -/
 noncomputable abbrev wB (t : Nat) : Wld := Function.update (wA t) w1 (tk1 t).1
@@ -431,7 +438,7 @@ noncomputable abbrev evs0 (t : Nat) : List (Fin sp.n × Node.Event N) :=
 
 /-- The events of time `t`, unfolded. -/
 theorem segs_eq (t : Nat) : segs t =
-    ⟨w0, .tick 0, (world t).1, (tk0 t).2⟩ :: ⟨w1, .tick 0, wA t, (tk1 t).2⟩ ::
+    ⟨w0, .tick 0 true, (world t).1, (tk0 t).2⟩ :: ⟨w1, .tick 0 true, wA t, (tk1 t).2⟩ ::
       ((run1 t).2 ++ (runEvs t (run1 t).1 (evs0 t)).2) := rfl
 
 theorem world_succ (t : Nat) :
@@ -762,21 +769,21 @@ theorem groupAt_inv {y : Fin sp.n} {j0 : Nat} {tt : Time} {e : Node.Event N}
 
 /-! ## The event of a group -/
 
-/-- The key of a handler's first cut: the event, up to the input of a tick. -/
+/-- The key of a handler's first cut: the event, ignoring a tick's input and signing flag. -/
 def headKey : Cut N → Option (Node.Event N)
   | .fg (.block B _) => some (.block B)
   | .fg (.attestation a) => some (.attestation a)
   | .fg (.attest _ _) => none
   | .ac ℓ =>
     match ℓ.call with
-    | .tick => some (.tick 0)
+    | .tick => some (.tick 0 true)
     | .message m => some (.message m)
     | .restart => some .restart
     | _ => none
 
-/-- An event up to the input of a tick. -/
+/-- An event ignoring a tick's input and signing flag, which its first cut cannot distinguish. -/
 def normEv : Node.Event N → Node.Event N
-  | .tick _ => .tick 0
+  | .tick _ _ => .tick 0 true
   | e => e
 
 /-- A handler's first cut has the key of its event. -/
@@ -784,9 +791,9 @@ theorem headKey_exec (self : Fin sp.n) (st : St) (t : Time) (e : Node.Event N) {
     {cs : List (Cut N)} (h : (exec prop dg self st t e).2 = c :: cs) :
     headKey c = some (normEv e) := by
   cases e with
-  | tick x =>
-    obtain ⟨ℓ, pc, uc, hℓ, hcs, -, -⟩ := Compose.tick_order prop dg self st t x
-    change (onTick prop dg self st t x).2 = _ at h
+  | tick x fgDue =>
+    obtain ⟨ℓ, pc, uc, hℓ, hcs, -, -⟩ := Compose.tick_order prop dg self st t x fgDue
+    change (onTick prop dg self st t x fgDue).2 = _ at h
     rw [hcs] at h
     obtain ⟨rfl, -⟩ := List.cons.inj h
     simp [headKey, hℓ, normEv]
@@ -806,7 +813,7 @@ theorem headKey_exec (self : Fin sp.n) (st : St) (t : Time) (e : Node.Event N) {
     obtain ⟨rfl, -⟩ := List.cons.inj h
     rfl
 
-/-- **The event of a group** is its segment's, up to a tick's input. -/
+/-- **The event of a group** is its segment's, ignoring a tick's input and signing flag. -/
 theorem groupAt_seg {y : Fin sp.n} {j0 : Nat} {tt : Time} {e : Node.Event N}
     (h : run.GroupAt prop dg y j0 tt e) :
     ∃ t j sg, j < 128 ∧ j0 = 1024 * t + 8 * j ∧ (segs t)[j]? = some sg ∧ sg.node = y ∧

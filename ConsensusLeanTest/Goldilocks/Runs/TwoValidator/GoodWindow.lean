@@ -55,6 +55,19 @@ namespace Consensus.Goldilocks.Witness.TwoRun
 
 open Node AC
 
+/-- Every tick in the constructed two-validator run has its signing tag set. -/
+theorem run_allTicksSign : run.AllTicksSign prop dg Set.univ := by
+  intro y hy j t htick
+  obtain ⟨x, fgDue, hg⟩ := htick
+  obtain ⟨n, a, sg, _, _, _, _, ht, _⟩ := groupAt_seg hg
+  subst t
+  have hj := run_localRun.tick_unique y hy j (1024 * n + 8 * y.val) _
+    ⟨x, fgDue, hg⟩ (tick_group n y)
+  rw [hj]
+  rcases eq_w0_or_w1 y with rfl | rfl
+  · exact ⟨0, group_seg (by omega) (segs_zero n) (seg_ne (segs_zero n))⟩
+  · exact ⟨0, group_seg (by omega) (segs_one n) (seg_ne (segs_one n))⟩
+
 /-! ## The parameters -/
 
 theorem gbar_zero : gbar 0 = 0 := max_self 0
@@ -273,7 +286,8 @@ theorem twoRun_outcome :
         (sp.ts ((21 + 11 + 0 + 1 : Nat) : Int)) := by
   have h := (Healing.Recovery.outcome_service sp ro prop dg Set.univ run
     (AC.CommitteeDict.full sp.n) 0 36 45 11 0
-    (by rw [AC.committeeStart_full]; exact run_goldilocksRun) (run_hsShared) run_catch
+    (by rw [AC.committeeStart_full]; exact run_goldilocksRun) run_allTicksSign
+    (run_hsShared) run_catch
     cF_bounds.2.1 cF_bounds.2.2 (run_isReset) w0 _ _
     (blk 21) 21 (run_ready (by decide))
     (run_runEntry) resetSlot_le (entry_height) (fun _ _ => (entry_previous).2)

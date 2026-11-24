@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 public import ConsensusLean.Proofs.RegimesRealizable.Main
 public import Solution
 public import ConsensusLeanTest.Goldilocks.VoteBinding
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.SignGap
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
@@ -12,7 +13,9 @@ Labelled by kind (CONTRIBUTING "Statements"):
 
 * (a) `assumptions_small`, `assumptions_large`: `ContractAssumptions` is satisfiable at two
   concrete setups, `k = 2, δt = 6` and `k = 6, δt = 8`; `assumptions_iff` gives its exact range
-  and `assumptions_empty_of_timeout` rejects `δt = 5`.
+  for the stock calendar, and `assumptions_iff_calendar` characterises arbitrary calendars.
+  `assumptions_empty_of_timeout` rejects `δt = 5`; `assumptions_empty_of_never_sign` rejects
+  an always-false signing calendar.
 * (b) The coefficients at those setups (phase 2, `Δp = Δe`): `contract_catchUp` is `19`
   (`catchUp_small`, `catchUp_large`; at every `k`, `contract_catchUp_val`); the outage look-back
   `12k + 7` is the proof window `budget + 2·lag` and covers catch-up + 1 at every `k`
@@ -81,11 +84,30 @@ noncomputable def setupLarge : Setup where
   ro := replayOrder
   vote := stock
 
+/-- The stock calendar's signing appointment from `t ≥ 0`: `signGapAt_true` at the node
+parameters of `pub`, whose delay is `ΔAC` and whose public times are its multiples. -/
+private theorem stock_sign_liveness (pub : Model.Public) (y : Fin pub.n) (t : Time) (ht : 0 ≤ t) :
+    ∃ t', t ≤ t' ∧ t' < t + ((0 : Time) + 1) * pub.ΔAC ∧ pub.ΔAC ∣ t' := by
+  obtain ⟨t', h1, h2, h3, -⟩ := signGapAt_true (setupSmall.params pub y.pos).toParams 0 y t ht
+  exact ⟨t', h1, h2, h3⟩
+
 /-- The assumptions at `setupSmall`, with FG gap `2`. -/
-def assumptionsSmall : ContractAssumptions setupSmall := ⟨2, le_rfl, by decide⟩
+def assumptionsSmall : ContractAssumptions setupSmall where
+  fgSlots := 2
+  two_le_fgSlots := le_rfl
+  sign_liveness pub y t ht := by
+    obtain ⟨t', h1, h2, h3⟩ := stock_sign_liveness pub y t ht
+    exact ⟨t', h1, h2, h3, rfl⟩
+  timeout := by decide
 
 /-- The assumptions at `setupLarge`, with FG gap `2`. -/
-def assumptionsLarge : ContractAssumptions setupLarge := ⟨2, le_rfl, by decide⟩
+def assumptionsLarge : ContractAssumptions setupLarge where
+  fgSlots := 2
+  two_le_fgSlots := le_rfl
+  sign_liveness pub y t ht := by
+    obtain ⟨t', h1, h2, h3⟩ := stock_sign_liveness pub y t ht
+    exact ⟨t', h1, h2, h3, rfl⟩
+  timeout := by decide
 
 /-- (a) The acceptance assumptions are satisfiable at `k = 2, δt = 6`. -/
 theorem assumptions_small : Nonempty (ContractAssumptions setupSmall) := ⟨assumptionsSmall⟩
@@ -93,9 +115,39 @@ theorem assumptions_small : Nonempty (ContractAssumptions setupSmall) := ⟨assu
 /-- (a) The acceptance assumptions are satisfiable at `k = 6, δt = 8`. -/
 theorem assumptions_large : Nonempty (ContractAssumptions setupLarge) := ⟨assumptionsLarge⟩
 
-/-- (a) The assumptions hold exactly at the setups with `6 ≤ δt`. -/
-theorem assumptions_iff (S : Setup) : Nonempty (ContractAssumptions S) ↔ 6 ≤ S.δt :=
-  ⟨fun ⟨A⟩ => A.six_le_δt, fun h => ⟨⟨2, le_rfl, by omega⟩⟩⟩
+/-- (a) With the stock signing calendar, the assumptions hold exactly when `6 ≤ δt`. -/
+theorem assumptions_iff (S : Setup) : S.sign = (fun _ _ _ => true) →
+    (Nonempty (ContractAssumptions S) ↔ 6 ≤ S.δt) := by
+  intro hsign
+  refine ⟨fun ⟨A⟩ => A.six_le_δt, fun h => ⟨?_⟩⟩
+  exact {
+    fgSlots := 2
+    two_le_fgSlots := le_rfl
+    sign_liveness := fun pub y t ht => by
+      obtain ⟨t', h1, h2, h3⟩ := stock_sign_liveness pub y t ht
+      exact ⟨t', h1, h2, h3, by rw [hsign]⟩
+    timeout := by simpa using h }
+
+/-- (a) Rejection: an always-false signing calendar admits no contract assumptions. -/
+theorem assumptions_empty_of_never_sign :
+    ¬ Nonempty (ContractAssumptions { setupSmall with sign := fun _ _ _ => false }) := by
+  rintro ⟨A⟩
+  let pub : Model.Public := ⟨1, 1, by decide, 1, by decide⟩
+  obtain ⟨t', -, -, -, hs⟩ := A.sign_liveness pub ⟨0, by decide⟩ 0 le_rfl
+  cases hs
+
+/-- (a) General realizability is exactly a finite signing gap and its admitted timeout. -/
+theorem assumptions_iff_calendar (S : Setup) : Nonempty (ContractAssumptions S) ↔
+    ∃ c G : Nat, 2 ≤ c ∧
+      (∀ (pub : Model.Public) (y : Fin pub.n) (t : Time), 0 ≤ t →
+        ∃ t', t ≤ t' ∧ t' < t + ((G : Time) + 1) * pub.ΔAC ∧
+          pub.ΔAC ∣ t' ∧ S.sign pub y t' = true) ∧
+      3 * ((6 + (4 * c - 6) + G + 3) / 4) ≤ S.δt := by
+  constructor
+  · rintro ⟨A⟩
+    exact ⟨A.fgSlots, A.signGap, A.two_le_fgSlots, A.sign_liveness, A.timeout⟩
+  · rintro ⟨c, G, hc, hs, ht⟩
+    exact ⟨⟨c, hc, G, hs, ht⟩⟩
 
 /-- (a) Rejection: a timeout of five is not admitted. -/
 theorem assumptions_empty_of_timeout (S : Setup) (h : S.δt = 5) :
@@ -153,14 +205,15 @@ theorem outage_lag_recovery_budget :
 /-- (b) The heal coefficient is `catchUp + M_f` at every capability, `387` at `k = 2`, `δt = 6`,
 `X = 1` (`M_f = 368`, rise-round route). `M_f = healMargin` is the rise-round route's heal bound at
 `λ = 2Δ`: the route's coefficient `20L + 8k + 28δ_t + 28X + 46` (`L = healthyDrainLen`, without its
-`5λ − 2` term), with the lag `5λ = 10Δ` added, is `healMargin·Δ − 2`. -/
+`5λ − 2` term), with the lag `5λ = 10Δ` and signing reserve `5GΔ` added, is
+`healMargin·Δ − 2`, where `G = A.signGap`. -/
 theorem heal_val (S : Setup) (A : ContractAssumptions S) (cap : Capability) (X : ℕ+) :
-    contract_heal S A cap X = 19 + healMargin S X ∧
+    contract_heal S A cap X = 19 + healMargin S A X ∧
       contract_heal setupSmall assumptionsSmall cap 1 = 387 ∧
       ∀ D : ℤ,
         ((20 * healthyDrainLen S X + 8 * S.k + 28 * S.δt + 28 * (X : Nat) + 46 : Nat) : ℤ) * D +
-            5 * (2 * D) - 2 =
-          (healMargin S X : ℤ) * D - 2 := by
+            5 * (2 * D) + 5 * (A.signGap : ℤ) * D - 2 =
+          (healMargin S A X : ℤ) * D - 2 := by
   refine ⟨by rw [contract_heal_val, contract_catchUp_val], by rw [contract_heal_val]; rfl,
     fun D => ?_⟩
   rw [healMargin_val]
@@ -176,7 +229,8 @@ theorem latency_small (X : ℕ+) :
     contract_latency setupSmall assumptionsSmall .available X = 4 * (X : Nat) + 6 ∧
       contract_latency setupSmall assumptionsSmall .stable X = 4 * (X : Nat) + 6 ∧
       contract_latency setupSmall assumptionsSmall .final X = 4 * (X : Nat) + 25 := by
-  rw [contract_latency_available, contract_latency_stable, contract_latency_final, gap_two]
+  rw [contract_latency_available, contract_latency_stable, contract_latency_final]
+  change _ ∧ _ ∧ 4 * ((X : Nat) + 3 * 2) + 1 = _
   refine ⟨rfl, rfl, ?_⟩
   omega
 
@@ -186,7 +240,8 @@ theorem latency_large (X : ℕ+) :
     contract_latency setupLarge assumptionsLarge .available X = 4 * (X : Nat) + 6 ∧
       contract_latency setupLarge assumptionsLarge .stable X = 4 * (X : Nat) + 6 ∧
       contract_latency setupLarge assumptionsLarge .final X = 4 * (X : Nat) + 25 := by
-  rw [contract_latency_available, contract_latency_stable, contract_latency_final, gap_two]
+  rw [contract_latency_available, contract_latency_stable, contract_latency_final]
+  change _ ∧ _ ∧ 4 * ((X : Nat) + 3 * 2) + 1 = _
   refine ⟨rfl, rfl, ?_⟩
   omega
 
@@ -197,7 +252,7 @@ theorem latency_one :
       contract_latency setupLarge assumptionsLarge .stable 1 = 10 ∧
       contract_latency setupLarge assumptionsLarge .final 1 = 29 := by
   rw [contract_latency_available, contract_latency_final, contract_latency_stable,
-    contract_latency_final, gap_two, gap_two]
+    contract_latency_final]
   exact ⟨rfl, rfl, rfl, rfl⟩
 
 /-- (b) Both Sleepy margins hold at `k = 2, δt = 6`; catch-up meets the margin exactly. -/
@@ -245,10 +300,22 @@ theorem outage_eta_budget :
       (K setupSmall assumptionsSmall).params.budget = 3 := ⟨rfl, rfl⟩
 
 /-- The assumptions at `setupRow` with FG gap `3` (`9 ≤ 30`). -/
-def assumptionsGapThree : ContractAssumptions setupRow := ⟨3, by decide, by decide⟩
+def assumptionsGapThree : ContractAssumptions setupRow where
+  fgSlots := 3
+  two_le_fgSlots := by decide
+  sign_liveness pub y t ht := by
+    obtain ⟨t', h1, h2, h3⟩ := stock_sign_liveness pub y t ht
+    exact ⟨t', h1, h2, h3, rfl⟩
+  timeout := by decide
 
 /-- The assumptions at `setupRow` with FG gap `10` (`30 ≤ 30`). -/
-def assumptionsGapTen : ContractAssumptions setupRow := ⟨10, by decide, by decide⟩
+def assumptionsGapTen : ContractAssumptions setupRow where
+  fgSlots := 10
+  two_le_fgSlots := by decide
+  sign_liveness pub y t ht := by
+    obtain ⟨t', h1, h2, h3⟩ := stock_sign_liveness pub y t ht
+    exact ⟨t', h1, h2, h3, rfl⟩
+  timeout := by decide
 
 /-- (b) FG gap `3`: the window `[0, 3, 6, 9]`, final latency `4(X + 9) + 1`, FG delay bound `6`. -/
 theorem fgSlots_three (X : ℕ+) :

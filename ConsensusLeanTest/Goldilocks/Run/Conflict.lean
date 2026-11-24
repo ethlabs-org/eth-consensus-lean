@@ -198,7 +198,7 @@ theorem state_z : ∀ i, conflictRun.state 5 i =
 theorem exec_head (v : Fin 6) (st : NodeState Nd) (t : Time) (e : Node.Event Nd) :
     ∀ c ∈ (Node.exec (fun _ => v0) dg6 v st t e).2.head?,
       (e = .restart ∧ ∃ ℓ : ACLabel Nd, c = .ac ℓ ∧ ℓ.call = .restart) ∨
-      (∃ x, e = .tick x ∧ ∃ ℓ : ACLabel Nd, c = .ac ℓ ∧ ℓ.call = .tick) ∨
+      (∃ x fgDue, e = .tick x fgDue ∧ ∃ ℓ : ACLabel Nd, c = .ac ℓ ∧ ℓ.call = .tick) ∨
       (∃ m, e = .message m ∧ ∃ ℓ : ACLabel Nd, c = .ac ℓ ∧ ℓ.call = .message m) ∨
       (∃ a, e = .attestation a ∧ c = .fg (.attestation a)) ∨
       (∃ B acc, e = .block B ∧ c = .fg (.block B acc)) := by
@@ -211,11 +211,13 @@ theorem exec_head (v : Fin 6) (st : NodeState Nd) (t : Time) (e : Node.Event Nd)
     · refine Or.inr (Or.inr (Or.inr (Or.inr ⟨B, ?_⟩)))
       cases h : st.fg.onBlock B <;> simp only [h, List.head?_cons, Option.mem_def,
         Option.some.injEq] at hc <;> exact ⟨_, rfl, hc.symm⟩
-  | tick x =>
-    refine Or.inr (Or.inl ⟨x, rfl, ?_⟩)
+  | tick x fgDue =>
+    refine Or.inr (Or.inl ⟨x, fgDue, rfl, ?_⟩)
+    cases fgDue <;>
     simp only [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, Node.tickStep,
-      Node.acCall, List.foldl_cons, List.foldl_nil, List.nil_append, List.cons_append,
-      List.head?_cons, Option.mem_def, Option.some.injEq] at hc
+      Node.acCall, Bool.false_eq_true, ↓reduceIte, List.foldl_cons, List.foldl_nil,
+      List.nil_append, List.cons_append, List.head?_cons, Option.mem_def,
+      Option.some.injEq] at hc <;>
     exact ⟨_, hc.symm, rfl⟩
   | message m =>
     refine Or.inr (Or.inr (Or.inl ⟨m, rfl, ?_⟩))
@@ -269,7 +271,7 @@ theorem group_cases {v : Fin 6} {j : Nat} {t : Time} {e : Node.Event Nd}
     rw [List.head?_eq_getElem?, List.getElem?_eq_getElem hlen]; rfl
   obtain ⟨h14, h7, hc⟩ := label_cases hl
   refine ⟨h14, h7, hn.symm, ht.symm, ?_⟩
-  rcases exec_head v _ t e _ hmem with ⟨rfl, ℓ, hℓ, hcall⟩ | ⟨x, rfl, ℓ, hℓ, hcall⟩ |
+  rcases exec_head v _ t e _ hmem with ⟨rfl, ℓ, hℓ, hcall⟩ | ⟨x, f, rfl, ℓ, hℓ, hcall⟩ |
       ⟨m, rfl, ℓ, hℓ, hcall⟩ | ⟨a, rfl, hℓ⟩ | ⟨B, acc, rfl, hℓ⟩ <;> rw [hℓ] at hc
   · rcases hc with ⟨h0, -⟩ | ⟨-, hc⟩ | ⟨-, -, hc⟩
     · exact Or.inl ⟨h0, rfl⟩
@@ -661,11 +663,11 @@ theorem conflictRun_localRun :
     · exfalso; rw [hs] at hj; omega
     · rcases he with ⟨-, rfl⟩ | ⟨k', -, rfl⟩ <;> simp [Node.Event.phase]
   tick_public y _ j t h := by
-    obtain ⟨x, hg⟩ := h
+    obtain ⟨x, f, hg⟩ := h
     obtain ⟨-, -, -, he⟩ := group_side hg
     rcases he with ⟨-, h⟩ | ⟨k, -, h⟩ <;> cases h
   tick_unique y _ j j' t h := by
-    obtain ⟨x, hg⟩ := h
+    obtain ⟨x, f, hg⟩ := h
     obtain ⟨-, -, -, he⟩ := group_side hg
     rcases he with ⟨-, h⟩ | ⟨k, -, h⟩ <;> cases h
   tick_of_awake y _ t _ hp ha := by

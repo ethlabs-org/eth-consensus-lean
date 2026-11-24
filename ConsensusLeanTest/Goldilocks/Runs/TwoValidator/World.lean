@@ -54,13 +54,13 @@ def tickSk (es : List (Vote sp.n)) : List Sk := [.ac .tick es, .ac .toFG []]
 * otherwise: both ticks do nothing but `ac_on_tick` and `ac_to_fg`. -/
 noncomputable def plan (t : Nat) : List (Fin sp.n × Node.Event N × List Sk) :=
   if t = 1 then
-    [(w0, .tick 0, tickSk [vote w0 0]), (w1, .tick 0, tickSk [vote w1 0]),
+    [(w0, .tick 0 true, tickSk [vote w0 0]), (w1, .tick 0 true, tickSk [vote w1 0]),
       (w1, .message (vote w0 0), [.ac (.message (vote w0 0)) []]),
       (w0, .message (vote w1 0), [.ac (.message (vote w1 0)) []])]
   else if t % 4 = 0 ∧ 4 ≤ t then
-    [(w0, .tick 0, [.ac .tick [], .ac .proposal [], .fg (.block (blk (t / 4)) true),
+    [(w0, .tick 0 true, [.ac .tick [], .ac .proposal [], .fg (.block (blk (t / 4)) true),
         .ac (.block (blk (t / 4))) [vote w0 (t / 4)], .ac .toFG []]),
-      (w1, .tick 0, tickSk []),
+      (w1, .tick 0 true, tickSk []),
       (w1, .block (blk (t / 4)), [.fg (.block (blk (t / 4)) true),
         .ac (.block (blk (t / 4))) [vote w1 (t / 4)]]),
       (w1, .message (vote w0 (t / 4)), [.ac (.message (vote w0 (t / 4))) []]),
@@ -68,16 +68,16 @@ noncomputable def plan (t : Nat) : List (Fin sp.n × Node.Event N × List Sk) :=
     (if (t / 4) % 10 = 0 then
       [(w0, .attestation (row w1 (t / 40)), [.fg (.attestation (row w1 (t / 40)))])] else [])
   else if t % 4 = 1 ∧ 4 ≤ t ∧ (t / 4) % 10 = 1 then
-    [(w0, .tick 0, tickSk [] ++ [.fg (.attest (blk (t / 4)) (some (row w0 (hgt (t / 4))))),
+    [(w0, .tick 0 true, tickSk [] ++ [.fg (.attest (blk (t / 4)) (some (row w0 (hgt (t / 4))))),
         .fg (.attestation (row w0 (hgt (t / 4))))]),
-      (w1, .tick 0, tickSk [] ++ [.fg (.attest (blk (t / 4)) (some (row w1 (hgt (t / 4))))),
+      (w1, .tick 0 true, tickSk [] ++ [.fg (.attest (blk (t / 4)) (some (row w1 (hgt (t / 4))))),
         .fg (.attestation (row w1 (hgt (t / 4))))]),
       (w1, .attestation (row w0 (hgt (t / 4))), [.fg (.attestation (row w0 (hgt (t / 4))))])]
   else if t % 4 = 1 ∧ 4 ≤ t then
-    [(w0, .tick 0, tickSk [] ++ [.fg (.attest (blk (t / 4)) none)]),
-      (w1, .tick 0, tickSk [] ++ [.fg (.attest (blk (t / 4)) none)])]
+    [(w0, .tick 0 true, tickSk [] ++ [.fg (.attest (blk (t / 4)) none)]),
+      (w1, .tick 0 true, tickSk [] ++ [.fg (.attest (blk (t / 4)) none)])]
   else
-    [(w0, .tick 0, tickSk []), (w1, .tick 0, tickSk [])]
+    [(w0, .tick 0 true, tickSk []), (w1, .tick 0 true, tickSk [])]
 
 /-! ## The queue of `v1`'s rows -/
 
@@ -89,15 +89,15 @@ noncomputable def qOf (t' : Nat) : List (FG.Att sp.n) :=
 /-! ## The shape at each residue -/
 
 theorem plan_one : plan 1 =
-    [(w0, .tick 0, tickSk [vote w0 0]), (w1, .tick 0, tickSk [vote w1 0]),
+    [(w0, .tick 0 true, tickSk [vote w0 0]), (w1, .tick 0 true, tickSk [vote w1 0]),
       (w1, .message (vote w0 0), [.ac (.message (vote w0 0)) []]),
       (w0, .message (vote w1 0), [.ac (.message (vote w1 0)) []])] := by
   unfold plan; rw [ite_eq_left rfl]
 
 theorem plan_four {s : Nat} (hs : 1 ≤ s) : plan (4 * s) =
-    [(w0, .tick 0, [.ac .tick [], .ac .proposal [], .fg (.block (blk s) true),
+    [(w0, .tick 0 true, [.ac .tick [], .ac .proposal [], .fg (.block (blk s) true),
         .ac (.block (blk s)) [vote w0 s], .ac .toFG []]),
-      (w1, .tick 0, tickSk []),
+      (w1, .tick 0 true, tickSk []),
       (w1, .block (blk s), [.fg (.block (blk s) true), .ac (.block (blk s)) [vote w1 s]]),
       (w1, .message (vote w0 s), [.ac (.message (vote w0 s)) []]),
       (w0, .message (vote w1 s), [.ac (.message (vote w1 s)) []])] ++
@@ -108,9 +108,9 @@ theorem plan_four {s : Nat} (hs : 1 ≤ s) : plan (4 * s) =
     show 4 * s / 4 = s by omega, show 4 * s / 40 = s / 10 by omega]
 
 theorem plan_four1_row {s : Nat} (hs : 1 ≤ s) (h10 : s % 10 = 1) : plan (4 * s + 1) =
-    [(w0, .tick 0, tickSk [] ++ [.fg (.attest (blk s) (some (row w0 (hgt s)))),
+    [(w0, .tick 0 true, tickSk [] ++ [.fg (.attest (blk s) (some (row w0 (hgt s)))),
         .fg (.attestation (row w0 (hgt s)))]),
-      (w1, .tick 0, tickSk [] ++ [.fg (.attest (blk s) (some (row w1 (hgt s)))),
+      (w1, .tick 0 true, tickSk [] ++ [.fg (.attest (blk s) (some (row w1 (hgt s)))),
         .fg (.attestation (row w1 (hgt s)))]),
       (w1, .attestation (row w0 (hgt s)), [.fg (.attestation (row w0 (hgt s)))])] := by
   unfold plan
@@ -118,8 +118,8 @@ theorem plan_four1_row {s : Nat} (hs : 1 ≤ s) (h10 : s % 10 = 1) : plan (4 * s
     ite_eq_left ⟨by omega, by omega, h10⟩]
 
 theorem plan_four1 {s : Nat} (hs : 1 ≤ s) (h10 : s % 10 ≠ 1) : plan (4 * s + 1) =
-    [(w0, .tick 0, tickSk [] ++ [.fg (.attest (blk s) none)]),
-      (w1, .tick 0, tickSk [] ++ [.fg (.attest (blk s) none)])] := by
+    [(w0, .tick 0 true, tickSk [] ++ [.fg (.attest (blk s) none)]),
+      (w1, .tick 0 true, tickSk [] ++ [.fg (.attest (blk s) none)])] := by
   unfold plan
   rw [ite_eq_right (by omega), ite_eq_right (by omega), show (4 * s + 1) / 4 = s by omega,
     ite_eq_right (by omega), ite_eq_left ⟨by omega, by omega⟩]
@@ -127,7 +127,7 @@ theorem plan_four1 {s : Nat} (hs : 1 ≤ s) (h10 : s % 10 ≠ 1) : plan (4 * s +
 /-- The other times (`0`, `2`, `3`, `t_s + 2`, `t_s + 3`): two quiet ticks. -/
 theorem plan_quiet {t : Nat} (h1 : t ≠ 1) (h0 : ¬ (t % 4 = 0 ∧ 4 ≤ t))
     (h4 : ¬ (t % 4 = 1 ∧ 4 ≤ t)) :
-    plan t = [(w0, .tick 0, tickSk []), (w1, .tick 0, tickSk [])] := by
+    plan t = [(w0, .tick 0 true, tickSk []), (w1, .tick 0 true, tickSk [])] := by
   unfold plan
   rw [ite_eq_right h1, ite_eq_right h0, ite_eq_right (fun h => h4 ⟨h.1, h.2.1⟩), ite_eq_right h4]
 
@@ -191,20 +191,21 @@ theorem good_congr {st : St} {y : Fin sp.n} {t t' : Nat} (h1 : tip t = tip t')
 
 /-- **Two ticks with nothing to deliver**: the worlds and the shape of the time. -/
 theorem step_ticks {t : Nat} {s0 s1 : St} {Φ0 Φ0' Φ1 Φ1' : N.Frm} {l0 l1 : List (Cut N)}
-    (h0 : Node.onTick prop dg w0 ((world t).1 w0) (t : Int) 0 =
+    (h0 : Node.onTick prop dg w0 ((world t).1 w0) (t : Int) 0 true =
       (s0, [.ac ⟨.tick, Φ0, []⟩, .ac ⟨.toFG, Φ0', []⟩] ++ l0))
-    (h1 : Node.onTick prop dg w1 ((world t).1 w1) (t : Int) 0 =
+    (h1 : Node.onTick prop dg w1 ((world t).1 w1) (t : Int) 0 true =
       (s1, [.ac ⟨.tick, Φ1, []⟩, .ac ⟨.toFG, Φ1', []⟩] ++ l1))
     (hl0 : l0.filterMap toW1 = []) (hl1 : l1.filterMap voteOf = [])
     (hq : QueueGood t) (hqa : qa t = []) (hatt : l1.filterMap attOf = qOf t) :
     (world (t + 1)).1 = Function.update (Function.update (world t).1 w0 s0) w1 s1 ∧
       QueueGood (t + 1) ∧
       segsSk t =
-        [(w0, .tick 0, tickSk [] ++ l0.map sk), (w1, .tick 0, tickSk [] ++ l1.map sk)] := by
+        [(w0, .tick 0 true, tickSk [] ++ l0.map sk),
+          (w1, .tick 0 true, tickSk [] ++ l1.map sk)] := by
   have htk0 : tk0 t = (s0, [.ac ⟨.tick, Φ0, []⟩, .ac ⟨.toFG, Φ0', []⟩] ++ l0) := h0
   have hwA : wA t w1 = (world t).1 w1 := Function.update_of_ne w1_ne _ _
   have htk1 : tk1 t = (s1, [.ac ⟨.tick, Φ1, []⟩, .ac ⟨.toFG, Φ1', []⟩] ++ l1) := by
-    change exec prop dg w1 (wA t w1) (t : Int) (.tick 0) = _; rw [hwA]; exact h1
+    change exec prop dg w1 (wA t w1) (t : Int) (.tick 0 true) = _; rw [hwA]; exact h1
   have hevs1 : evs1 t = [] := by
     unfold evs1; rw [htk0, List.filterMap_append, hl0]; rfl
   have hrun1 : run1 t = (wB t, []) := by unfold run1; rw [hevs1]; rfl
@@ -233,7 +234,7 @@ theorem forall_y {p : Fin sp.n → Prop} (h0 : p w0) (h1 : p w1) : ∀ y, p y :=
 theorem quiet_tick {st : St} {y : Fin sp.n} {t : Nat} (h : Good st y t)
     (hnp : ¬ (y = w0 ∧ t % 4 = 0 ∧ 4 ≤ t)) (h2 : ¬ (t % 4 = 2 ∧ 4 ≤ t)) (h1 : t % 4 ≠ 1)
     (hlk : tip t ≤ rep t) (hrp : rep t ≤ tip t) :
-    Node.onTick prop dg y st (t : Int) 0 =
+    Node.onTick prop dg y st (t : Int) 0 true =
       (st, [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩] ++ []) := by
   rw [List.append_nil]
   exact tick_noop h hnp (by rw [acOnTick_eq _ _ _ _ h.ac.restart, ite_eq_right h2,
@@ -245,7 +246,7 @@ theorem step_quiet {t : Nat} (hw : WorldGood t) (hq : QueueGood t)
     (hlk : tip t ≤ rep t) (hrp : rep t ≤ tip t) (hqa : qa t = []) (hqo : qOf t = [])
     (hg : ∀ y st, Good st y t → Good st y (t + 1)) :
     WorldGood (t + 1) ∧ QueueGood (t + 1) ∧
-      segsSk t = [(w0, .tick 0, tickSk []), (w1, .tick 0, tickSk [])] := by
+      segsSk t = [(w0, .tick 0 true, tickSk []), (w1, .tick 0 true, tickSk [])] := by
   obtain ⟨hW, hQ, hS⟩ := step_ticks
     (quiet_tick (hw w0) (fun h => hnp h.2) h2 h1 hlk hrp)
     (quiet_tick (hw w1) (fun h => hnp h.2) h2 h1 hlk hrp) rfl rfl hq hqa (by rw [hqo]; rfl)
@@ -316,7 +317,7 @@ theorem other_w1 : other w1 = w0 := by decide
 /-- **The step of times `0, 2, 3`**: two ticks with nothing to do. -/
 theorem step_small {t : Nat} (ht : t = 0 ∨ t = 2 ∨ t = 3) (hw : WorldGood t) (hq : QueueGood t) :
     WorldGood (t + 1) ∧ QueueGood (t + 1) ∧ segsSk t = plan t := by
-  have hp : plan t = [(w0, .tick 0, tickSk []), (w1, .tick 0, tickSk [])] :=
+  have hp : plan t = [(w0, .tick 0 true, tickSk []), (w1, .tick 0 true, tickSk [])] :=
     plan_quiet (by omega) (by omega) (by omega)
   rw [hp]
   refine step_quiet hw hq (by omega) (by omega) (by omega) ?_ ?_
@@ -343,7 +344,7 @@ theorem step_one (hw : WorldGood 1) (hq : QueueGood 1) :
   have hwA : wA 1 w1 = W w1 := Function.update_of_ne w1_ne _ _
   have htk1 : tk1 1 = (st1, [.ac ⟨.tick, Node.frame (W w1), [e1]⟩,
       .ac ⟨.toFG, Node.frame (W w1), []⟩]) := by
-    change exec prop dg w1 (wA _ w1) _ (.tick 0) = _; rw [hwA]; exact h1
+    change exec prop dg w1 (wA _ w1) _ (.tick 0 true) = _; rw [hwA]; exact h1
   have hwB : wB 1 = Function.update (Function.update W w0 st0) w1 st1 := by
     unfold wB wA; rw [htk0, htk1]
   have hevs1 : evs1 1 = [(w1, .message (vote w0 0))] := by
@@ -400,7 +401,7 @@ theorem step_four {s : Nat} (hs : 1 ≤ s) (hw : WorldGood (4 * s)) (hq : QueueG
   have hwA : wA (4 * s) w1 = W w1 := Function.update_of_ne w1_ne _ _
   have htk1 : tk1 (4 * s) = (W w1, [.ac ⟨.tick, Node.frame (W w1), []⟩,
       .ac ⟨.toFG, Node.frame (W w1), []⟩]) := by
-    change exec prop dg w1 (wA _ w1) _ (.tick 0) = _; rw [hwA]; exact h1
+    change exec prop dg w1 (wA _ w1) _ (.tick 0 true) = _; rw [hwA]; exact h1
   have hwB : wB (4 * s) = Function.update (Function.update W w0 st0) w1 (W w1) := by
     unfold wB wA; rw [htk0, htk1]
   have hevs1 : evs1 (4 * s) = [(w1, .block (blk s)), (w1, .message (vote w0 s))] := by
@@ -504,7 +505,7 @@ theorem step_four1 {s : Nat} (hs : 1 ≤ s) (hw : WorldGood (4 * s + 1))
     have htk1 : tk1 (4 * s + 1) = (st1, [.ac ⟨.tick, Node.frame ((world (4 * s + 1)).1 w1), []⟩,
         .ac ⟨.toFG, Node.frame ((world (4 * s + 1)).1 w1), []⟩,
         .fg (.attest (blk s) (some (row w1 (hgt s)))), .fg (.attestation (row w1 (hgt s)))]) := by
-      change exec prop dg w1 (wA _ w1) _ (.tick 0) = _; rw [hwA]; exact h1
+      change exec prop dg w1 (wA _ w1) _ (.tick 0 true) = _; rw [hwA]; exact h1
     have hevs1 : evs1 (4 * s + 1) = [(w1, .attestation (row w0 (hgt s)))] := by
       unfold evs1; rw [htk0]; rfl
     have hwB : wB (4 * s + 1) = Function.update (Function.update (world (4 * s + 1)).1 w0 st0)

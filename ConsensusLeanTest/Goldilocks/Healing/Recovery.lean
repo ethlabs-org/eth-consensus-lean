@@ -107,7 +107,8 @@ theorem tickRun_patternRecovery (h : Healing.PatternRecovery) :
         4 ≤ (((tickRun N1 dg1).state v0 k).fg.σ ((tickRun N1 dg1).state v0 k).fg.F.root).h := by
   obtain ⟨hrun, hp⟩ := recovery_premises
   obtain ⟨hR, hF⟩ := h sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1)
-    (AC.CommitteeDict.full sp1.n) 0 1 4 1 24 2 0 (by rw [AC.committeeStart_full]; exact hrun) hp
+    (AC.CommitteeDict.full sp1.n) 0 1 4 1 24 2 0 (by rw [AC.committeeStart_full]; exact hrun)
+    tickRun_allTicksSign hp
   rw [gbar_zero, T_rec_sp1, zero_add] at hR hF
   refine ⟨hR, fun k hk ht => ?_⟩
   have := hF v0 trivial k hk (by linarith)
@@ -127,7 +128,7 @@ theorem tickRun_finalizingCoverage (h : Healing.FinalizingCoverage) :
   obtain ⟨hrun, hp⟩ := recovery_premises
   obtain ⟨q, kP, P, -, hPr, ht1, ht2, -, hall⟩ :=
     h sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) (AC.CommitteeDict.full sp1.n)
-      0 1 4 1 24 2 0 (by rw [AC.committeeStart_full]; exact hrun) hp 1092
+      0 1 4 1 24 2 0 (by rw [AC.committeeStart_full]; exact hrun) tickRun_allTicksSign hp 1092
       (by rw [Rstar_sp1])
   obtain ⟨⟨⟨acc, hc⟩, -⟩, -, -⟩ := hPr
   obtain ⟨s, -, -, rfl, -⟩ := blockCall_eq hc.2

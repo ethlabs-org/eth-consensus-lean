@@ -48,11 +48,11 @@ theorem firstCutFrom_iff {j t : Nat} : run.FirstCutFrom j (t : Int) ↔ j = 1024
 
 /-- The cuts of `v0`'s tick at `t` are the cuts `1024 t + k` of the run, at time `t`. -/
 theorem tick0_callAt {t : Nat} {st' : St} {cs : List (Cut N)}
-    (hex : Node.onTick prop dg w0 ((world t).1 w0) (t : Int) 0 = (st', cs)) {k : Nat}
+    (hex : Node.onTick prop dg w0 ((world t).1 w0) (t : Int) 0 true = (st', cs)) {k : Nat}
     (hk : k < 8) {c : Cut N} (hc : cs[k]? = some c) :
     run.CallAt w0 (1024 * t + k) c ∧ run.time (1024 * t + k) = t := by
   have hs0 := segs_zero t
-  rw [show ex (world t).1 w0 t (.tick 0) = (st', cs) from hex] at hs0
+  rw [show ex (world t).1 w0 t (.tick 0 true) = (st', cs) from hex] at hs0
   have hi : 1024 * t + k = 1024 * t + 8 * 0 + k := rfl
   refine ⟨⟨?_, ?_⟩, ?_⟩
   · rw [hi, run_node (by decide) hk hs0]
@@ -80,7 +80,7 @@ theorem propose_cut {s : Nat} (hs : 1 ≤ s) :
       (run.state w0 (1024 * (4 * s) + 2)).fg = ((world (4 * s)).1 w0).fg ∧
       FGGood (run.post (1024 * (4 * s) + 2)).fg s := by
   obtain ⟨st', e, hex, -, hv⟩ := tick_propose hs (world_good (4 * s) w0)
-  have hc : (ex (world (4 * s)).1 w0 (4 * s) (.tick 0)) = (st', _) := hex
+  have hc : (ex (world (4 * s)).1 w0 (4 * s) (.tick 0 true)) = (st', _) := hex
   have hs0 := segs_zero (4 * s)
   rw [hc] at hs0
   have hi : 1024 * (4 * s) + 2 = 1024 * (4 * s) + 8 * 0 + 2 := rfl

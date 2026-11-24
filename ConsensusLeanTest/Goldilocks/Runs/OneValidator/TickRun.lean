@@ -24,11 +24,11 @@ def v0 : Fin P.n := ⟨0, P.hn⟩
 /-- The node state before the tick of time `t`. -/
 noncomputable def tickState : Nat → NodeState A
   | 0 => Node.init A
-  | t + 1 => (exec (fun _ => v0) dg v0 (tickState t) (t : Int) (.tick 0)).1
+  | t + 1 => (exec (fun _ => v0) dg v0 (tickState t) (t : Int) (.tick 0 true)).1
 
 /-- The cuts of the tick of time `t`. -/
 noncomputable def tickCuts (t : Nat) : List (Cut A) :=
-  (exec (fun _ => v0) dg v0 (tickState A dg t) (t : Int) (.tick 0)).2
+  (exec (fun _ => v0) dg v0 (tickState A dg t) (t : Int) (.tick 0 true)).2
 
 /-- The node state after the first `k` cuts of the tick of time `t`. -/
 noncomputable def tickMid (t k : Nat) : NodeState A :=
@@ -63,7 +63,7 @@ theorem onBlock_length (self : Fin P.n) (st : NodeState A) (t : Time) (B : A.Blk
 
 /-- A tick makes at most seven cuts. -/
 theorem onTick_length (self : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) :
-    (onTick (fun _ => v0) dg self st t x).2.length ≤ 7 := by
+    (onTick (fun _ => v0) dg self st t x true).2.length ≤ 7 := by
   have h1 : ∀ st', (tickStep (fun _ => v0) dg self st' t x .acTick).2.length = 1 := fun _ => rfl
   have h2 : ∀ st', (tickStep (fun _ => v0) dg self st' t x .proposal).2.length ≤ 3 := by
     intro st'
@@ -81,8 +81,8 @@ theorem onTick_length (self : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) :
     · simp
     · simp only [List.length_cons]
       exact le_trans (Nat.add_le_add_right (attest_length A _ _ _) 1) (by norm_num)
-  simp only [onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil, List.nil_append,
-    List.length_append]
+  simp only [onTick, runSteps, tickSteps, ↓reduceIte, List.foldl_cons, List.foldl_nil,
+    List.nil_append, List.length_append]
   have := h1 st
   have := h2 (tickStep (fun _ => v0) dg self st t x .acTick).1
   have := h3 (tickStep (fun _ => v0) dg self
@@ -108,9 +108,10 @@ theorem tickCuts_ne_nil (t : Nat) : tickCuts A dg t ≠ [] := by
 /-- The AC calls of a tick: `ac_on_tick`, `ac_proposal`, the own block's `ac_on_block`,
 `ac_to_fg`. -/
 theorem onTick_ac_call (self : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) {ℓ : ACLabel A}
-    (hm : Cut.ac ℓ ∈ (onTick (fun _ => v0) dg self st t x).2) :
+    (hm : Cut.ac ℓ ∈ (onTick (fun _ => v0) dg self st t x true).2) :
     ℓ.call = .tick ∨ ℓ.call = .proposal ∨ (∃ B, ℓ.call = .block B) ∨ ℓ.call = .toFG := by
   rw [Healing.onTick_eq] at hm
+  simp only [↓reduceIte] at hm
   simp only [List.mem_append] at hm
   rcases hm with (hm | hm) | hm
   · simp only [tickStep, acCall, List.mem_singleton, Cut.ac.injEq] at hm
@@ -147,7 +148,7 @@ signing and no attestation cut; an own block carries attestations of the pool at
 start), the `ac_to_fg` cut, then nothing, a silent `attest`, or a signing `attest` followed by its
 `on_attestation`. -/
 theorem onTick_shape (self : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) :
-    ∃ L2 ct L3, (onTick (fun _ => v0) dg self st t x).2 =
+    ∃ L2 ct L3, (onTick (fun _ => v0) dg self st t x true).2 =
       (acCall self st t .tick).2 :: (L2 ++ ct :: L3) ∧
       L2 = (tickStep (fun _ => v0) dg self (acCall self st t .tick).1 t x .proposal).2 ∧
       (∃ ℓ : ACLabel A, ct = Cut.ac ℓ ∧ ℓ.call = .toFG) ∧
@@ -215,13 +216,15 @@ theorem onTick_shape (self : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) :
   refine ⟨(tickStep (fun _ => v0) dg self
     (tickStep (fun _ => v0) dg self st t x .acTick).1 t x .proposal).2, ct, L3, ?_, rfl,
     hct, h2 _ rfl, hL3⟩
-  rw [Healing.onTick_eq, h0, h3e]
+  rw [Healing.onTick_eq]
+  simp only [↓reduceIte]
+  rw [h0, h3e]
   rfl
 
 /-- In a tick's cuts, an FG cut is not the first. -/
 theorem onTick_fg_pos (self : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) {k : Nat}
     {ℓ : FGLabel P A.Payload}
-    (hk : (onTick (fun _ => v0) dg self st t x).2[k]? = some (.fg ℓ)) : 1 ≤ k := by
+    (hk : (onTick (fun _ => v0) dg self st t x true).2[k]? = some (.fg ℓ)) : 1 ≤ k := by
   obtain ⟨L2, ct, L3, he, -⟩ := onTick_shape A dg self st t x
   rw [he] at hk
   rcases k with _ | k
@@ -232,9 +235,9 @@ theorem onTick_fg_pos (self : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) {
 `a`. -/
 theorem onTick_att_pos (self : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) {k : Nat}
     {a : FG.Att P.n}
-    (hk : (onTick (fun _ => v0) dg self st t x).2[k]? = some (.fg (.attestation a))) :
+    (hk : (onTick (fun _ => v0) dg self st t x true).2[k]? = some (.fg (.attestation a))) :
     ∃ k' C, k = k' + 1 ∧
-      (onTick (fun _ => v0) dg self st t x).2[k']? = some (.fg (.attest C (some a))) := by
+      (onTick (fun _ => v0) dg self st t x true).2[k']? = some (.fg (.attest C (some a))) := by
   obtain ⟨L2, ct, L3, he, -, ⟨ℓ, rfl, -⟩, hL2, hL3⟩ := onTick_shape A dg self st t x
   rw [he] at hk ⊢
   rcases k with _ | k
@@ -263,7 +266,7 @@ theorem onTick_att_pos (self : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) 
 /-- An own block of a tick carries attestations of the pool at the tick's start. -/
 theorem onTick_block_payload (self : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) {k : Nat}
     {B : A.Blk} {acc : Bool}
-    (hk : (onTick (fun _ => v0) dg self st t x).2[k]? = some (.fg (.block B acc))) :
+    (hk : (onTick (fun _ => v0) dg self st t x true).2[k]? = some (.fg (.block B acc))) :
     ∀ a ∈ B.fgPayload, a ∈ st.fg.atts := by
   obtain ⟨L2, ct, L3, he, -, ⟨ℓ, rfl, -⟩, hL2, hL3⟩ := onTick_shape A dg self st t x
   rw [he] at hk
@@ -288,7 +291,7 @@ theorem onBlock_tick_payload_aux (t k : Nat) {B : A.Blk} {acc : Bool}
 /-- A block named by a cut of a tick (its FG `on_block` or its `ac_on_block`) is the tick's own
 proposal, made from `ac_proposal`'s result on the state after `ac_on_tick`. -/
 theorem onTick_block_made (self : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) {c : Cut A}
-    (hc : c ∈ (onTick (fun _ => v0) dg self st t x).2) {B : A.Blk}
+    (hc : c ∈ (onTick (fun _ => v0) dg self st t x true).2) {B : A.Blk}
     (hB : (∃ acc, c = .fg (.block B acc)) ∨ ∃ ℓ : ACLabel A, c = .ac ℓ ∧ ℓ.call = .block B) :
     ∃ d p, (Node.acProposal (acCall self st t .tick).1 t).2.2 = some (d, p) ∧
       B = mkBlock dg self (Node.acProposal (acCall self st t .tick).1 t).1.fg t x d.head p := by
@@ -349,8 +352,8 @@ theorem onTick_block_made (self : Fin P.n) (st : NodeState A) (t : Time) (x : Na
 /-- In a tick's cuts, a signing `attest` cut is directly followed by its `on_attestation`. -/
 theorem onTick_sign_next (self : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) {k : Nat}
     {C : A.Blk} {a : FG.Att P.n}
-    (hk : (onTick (fun _ => v0) dg self st t x).2[k]? = some (.fg (.attest C (some a)))) :
-    (onTick (fun _ => v0) dg self st t x).2[k + 1]? = some (.fg (.attestation a)) := by
+    (hk : (onTick (fun _ => v0) dg self st t x true).2[k]? = some (.fg (.attest C (some a)))) :
+    (onTick (fun _ => v0) dg self st t x true).2[k + 1]? = some (.fg (.attestation a)) := by
   obtain ⟨L2, ct, L3, he, -, ⟨ℓ, rfl, -⟩, hL2, hL3⟩ := onTick_shape A dg self st t x
   rw [he] at hk ⊢
   rcases k with _ | k
@@ -705,9 +708,9 @@ theorem tickRun_state_tick (h1 : P.n = 1) (y : Fin P.n) (t : Nat) :
 
 /-- The tick of time `t` is a group at cut `8t`. -/
 theorem tickRun_groupAt (h1 : P.n = 1) (t : Nat) :
-    (tickRun A dg).GroupAt (fun _ => v0) dg v0 (8 * t) (t : Int) (.tick 0) := by
+    (tickRun A dg).GroupAt (fun _ => v0) dg v0 (8 * t) (t : Int) (.tick 0 true) := by
   have hcs : (exec (fun _ => v0) dg v0
-      ((tickRun A dg).state v0 (8 * t)) (t : Int) (.tick 0)).2 =
+      ((tickRun A dg).state v0 (8 * t)) (t : Int) (.tick 0 true)).2 =
       tickCuts A dg t := by rw [tickRun_state_tick h1]; rfl
   have hlen := tickCuts_length A dg t
   have hpos := List.length_pos_of_ne_nil (tickCuts_ne_nil A dg t)
@@ -741,9 +744,9 @@ theorem tickRun_groupAt (h1 : P.n = 1) (t : Nat) :
 /-- An event whose first cut is an `ac_on_tick` is a tick. -/
 theorem exec_head_tick (y : Fin P.n) (st : NodeState A) (t : Time) (e : Event A) {ℓ : ACLabel A}
     (hh : (exec (fun _ => v0) dg y st t e).2.head? = some (.ac ℓ))
-    (hc : ℓ.call = .tick) : ∃ x, e = .tick x := by
+    (hc : ℓ.call = .tick) : ∃ x fgDue, e = .tick x fgDue := by
   cases e with
-  | tick x => exact ⟨x, rfl⟩
+  | tick x fgDue => exact ⟨x, fgDue, rfl⟩
   | block B =>
     exfalso
     simp only [exec, onBlock] at hh
@@ -763,7 +766,7 @@ theorem exec_head_tick (y : Fin P.n) (st : NodeState A) (t : Time) (e : Event A)
 /-- A group of the tick run is a tick, at a cut `8t'` and time `t'`. -/
 theorem tickRun_groupAt_inv {y : Fin P.n} {j : Nat} {t : Time} {e : Event A}
     (h : (tickRun A dg).GroupAt (fun _ => v0) dg y j t e) :
-    j % 8 = 0 ∧ t = ((j / 8 : Nat) : Int) ∧ ∃ x, e = .tick x := by
+    j % 8 = 0 ∧ t = ((j / 8 : Nat) : Int) ∧ ∃ x fgDue, e = .tick x fgDue := by
   obtain ⟨hne, hk, hev⟩ := h
   have hlen : 0 < (exec (fun _ => v0) dg y ((tickRun A dg).state y j) t e).2.length :=
     List.length_pos_of_ne_nil hne
@@ -839,7 +842,7 @@ theorem tickRun_cutStep (h1 : P.n = 1) {y : Fin P.n} {i : Nat} {c : Cut A}
   obtain ⟨hk, rfl⟩ := tickRun_label_get hc.2
   rw [tickRun_state h1, eq_v0 h1 y]
   exact chain_step
-    (Compose.exec_is_cut_chain (fun _ => v0) dg v0 (tickState A dg (i / 8)) _ (.tick 0)) _ hk
+    (Compose.exec_is_cut_chain (fun _ => v0) dg v0 (tickState A dg (i / 8)) _ (.tick 0 true)) _ hk
 
 /-- Every attestation in the pool before cut `i` was signed by the validator at an earlier
 cut. -/
@@ -902,14 +905,14 @@ theorem tickRun_localRun (h1 : P.n = 1) (hΔ : P.Δ = 1) (sg : A.Msg → Fin P.n
   init _ _ := rfl
   grouped y _ i c hc := by
     obtain ⟨hk, -⟩ := tickRun_label_get hc.2
-    refine ⟨8 * (i / 8), .tick 0, ?_, by omega, ?_⟩
+    refine ⟨8 * (i / 8), .tick 0 true, ?_, by omega, ?_⟩
     · rw [eq_v0 h1 y, tickRun_time]; exact tickRun_groupAt h1 (i / 8)
     · rw [eq_v0 h1 y, tickRun_state_tick h1]
       change i < 8 * (i / 8) + (tickCuts A dg (i / 8)).length
       omega
   cutLaw y _ i c hc := tickRun_cutStep h1 hc
   wire y _ j t e h := by
-    obtain ⟨-, -, x, rfl⟩ := tickRun_groupAt_inv h
+    obtain ⟨-, -, x, f, rfl⟩ := tickRun_groupAt_inv h
     trivial
   proposerCredential _ _ _ _ B _ := eq_v0 h1 B.proposer
   time_nonneg _ := Int.natCast_nonneg _
@@ -924,17 +927,17 @@ theorem tickRun_localRun (h1 : P.n = 1) (hΔ : P.Δ = 1) (sg : A.Msg → Fin P.n
   phase_order y _ y' _ j j' t e e' h h' hlt :=
     absurd (tickRun_groupAt_unique h h') (Nat.ne_of_lt hlt)
   tick_public y _ j t h := by
-    obtain ⟨_, h⟩ := h
+    obtain ⟨_, _, h⟩ := h
     obtain ⟨-, rfl, -⟩ := tickRun_groupAt_inv h
     change P.Δ ∣ _
     rw [hΔ]; exact one_dvd _
   tick_unique y _ j j' t h h' := by
-    obtain ⟨_, h⟩ := h
-    obtain ⟨_, h'⟩ := h'
+    obtain ⟨_, _, h⟩ := h
+    obtain ⟨_, _, h'⟩ := h'
     exact tickRun_groupAt_unique h h'
   tick_of_awake y _ t h0 _ _ := by
     have htt : ((t.toNat : Nat) : Int) = t := Int.toNat_of_nonneg h0
-    refine ⟨8 * t.toNat, 0, ?_⟩
+    refine ⟨8 * t.toNat, 0, true, ?_⟩
     rw [eq_v0 h1 y, ← htt]
     exact tickRun_groupAt h1 t.toNat
   awake_in_horizon y _ t ht := by
@@ -978,7 +981,7 @@ theorem tickMid_one (t : Nat) :
   have hs : CutStep v0 (t : Int) (tickState A dg t) (acCall v0 (tickState A dg t) (t : Int) .tick).2
       (tickMid A dg t 1) := by
     have := chain_step
-      (Compose.exec_is_cut_chain (fun _ => v0) dg v0 (tickState A dg t) (t : Int) (.tick 0))
+      (Compose.exec_is_cut_chain (fun _ => v0) dg v0 (tickState A dg t) (t : Int) (.tick 0 true))
       0 hpos
     simp only [List.take_zero, List.foldl_nil] at this
     change CutStep v0 (t : Int) (tickState A dg t) (tickCuts A dg t)[0] (tickMid A dg t 1) at this

@@ -34,6 +34,17 @@ namespace Consensus.Goldilocks.Witness.One
 
 open AC Node ChainFrame
 
+/-- Every tick in the constructed run has its signing tag set. -/
+theorem tickRun_allTicksSign :
+    (tickRun N1 dg1).AllTicksSign (fun _ => v0) dg1 Set.univ := by
+  intro y _ j t htick
+  obtain ⟨x, fgDue, hg⟩ := htick
+  obtain ⟨hj, ht, _⟩ := tickRun_groupAt_inv hg
+  rw [eq_v0 rfl y, ht]
+  have hj' : j = 8 * (j / 8) := by omega
+  refine ⟨0, ?_⟩
+  convert tickRun_groupAt (A := N1) (dg := dg1) rfl (j / 8) using 1
+
 /-! ## The parameters -/
 
 /-- `ḡ = 0` at `g = 0`. -/
@@ -146,7 +157,8 @@ theorem tickRun_resetExistence :
     Healing.C_HS sp1 1 4 = 86 := by
   obtain ⟨⟨h1, h2⟩, h3, h4, h5, h6, -, h8⟩ := Healing.reset_existence sp1 ro1 (fun _ => v0) dg1
     Set.univ (tickRun N1 dg1) (AC.CommitteeDict.full sp1.n) 0 1 4
-    (by rw [AC.committeeStart_full]; exact tickRun_goldilocksRun) (tickRun_hsShared 0)
+    (by rw [AC.committeeStart_full]; exact tickRun_goldilocksRun) tickRun_allTicksSign
+    (tickRun_hsShared 0)
     (tickRun_catch 0 _ (by decide)) (tickRun_propPlus 0 4 le_rfl)
   rw [cutZ_zero] at h1 h2 h5 h6
   simp only [gbar_zero, A_HS_sp1, C_HS_sp1] at h1 h3 h5 h6

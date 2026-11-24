@@ -93,7 +93,7 @@ theorem ns_frame {st : St} {y : Fin sp.n} {τ k nr : Nat} {vs : Int}
 /-! ## Ticks, generically -/
 
 theorem onTick_eq' (y : Fin sp.n) (st : St) (t : Time) (x : Nat) :
-    Node.onTick prop dg y st t x =
+    Node.onTick prop dg y st t x true =
       ((tickStep prop dg y (tickStep prop dg y
         (tickStep prop dg y st t x .acTick).1 t x .proposal).1 t x
         .fgUpdate).1,
@@ -152,7 +152,7 @@ theorem tick_noop {st : St} {y : Fin sp.n} {τ k nr : Nat} {vs : Int}
     (hnp : ¬ (y = w0 ∧ n % 4 = 0 ∧ 4 ≤ n))
     (hac : acOnTick sp y st.ac (Node.frame st) n = (st.ac, []))
     (hlk : lk ≤ rp) (hrp : rp ≤ τ) (hrp' : τ ≤ rp + 1) :
-    Node.onTick prop dg y st (n : Int) 0 =
+    Node.onTick prop dg y st (n : Int) 0 true =
       (st, [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩]) := by
   obtain ⟨f, hf⟩ := ns_frame h
   have hfr : f ≤ rp := by
@@ -215,7 +215,7 @@ theorem saved_succ {S : Int → Option Nat} {u : Nat}
 /-- **The tick of `t_s + 2Δ`**: the confirmation update of slot `s − 1`. -/
 theorem tick_update {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s)
     (h : Good st y (4 * s + 2)) :
-    ∃ A', Node.onTick prop dg y st ((4 * s + 2 : Nat) : Int) 0 =
+    ∃ A', Node.onTick prop dg y st ((4 * s + 2 : Nat) : Int) 0 true =
       ({ st with ac := A' }, [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩]) ∧
       Good { st with ac := A' } y (4 * s + 3) := by
   have ht := tip_four2 s
@@ -316,7 +316,7 @@ theorem vstamp_update {A : ACState sp.n} {pl : Nat → List (Vote sp.n)}
 
 /-- **The tick of time `1`**: the vote of slot `0`. -/
 theorem tick_vote0 {st : St} {y : Fin sp.n} (h : Good st y 1) :
-    ∃ A' e, Node.onTick prop dg y st ((1 : Nat) : Int) 0 =
+    ∃ A' e, Node.onTick prop dg y st ((1 : Nat) : Int) 0 true =
       ({ st with ac := A' }, [.ac ⟨.tick, Node.frame st, [e]⟩, .ac ⟨.toFG, Node.frame st, []⟩]) ∧
       e.msg = vote y 0 ∧
       NS { st with ac := A' } y 0 (cnt y 1) (nrw 1) 0
@@ -479,7 +479,7 @@ slot `s`, the entry of its height (or genesis's height for `s = 1`), and the nod
 processes its row of that height. -/
 theorem tick_report_new {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s) (h10 : s % 10 = 1)
     (h : Good st y (4 * s + 1)) :
-    ∃ st', Node.onTick prop dg y st ((4 * s + 1 : Nat) : Int) 0 =
+    ∃ st', Node.onTick prop dg y st ((4 * s + 1 : Nat) : Int) 0 true =
       (st', [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩,
         .fg (.attest (blk s) (some (row y (hgt s)))), .fg (.attestation (row y (hgt s)))]) ∧
       NS st' y s (cnt y (4 * s + 1) + 1) (hgt s) (vsT (4 * s + 1)) (poolT y (4 * s + 1)) s s s s
@@ -521,7 +521,7 @@ theorem tick_report_new {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s) (h10 :
 height's row the node has signed already. -/
 theorem tick_report_old {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s) (h10 : s % 10 ≠ 1)
     (h : Good st y (4 * s + 1)) :
-    Node.onTick prop dg y st ((4 * s + 1 : Nat) : Int) 0 =
+    Node.onTick prop dg y st ((4 * s + 1 : Nat) : Int) 0 true =
       ({ st with ac := { st.ac with fgReported := (blk s).root } },
         [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩,
           .fg (.attest (blk s) none)]) ∧
@@ -777,7 +777,7 @@ theorem proposalAttestations_blk {fg : Store sp.toParams N.Payload} {k : Nat} (h
 /-- **`v0`'s tick at `t_s`**: the proposal of the block of slot `s` on the tip, its acceptance
 and the vote for it. -/
 theorem tick_propose {st : St} {s : Nat} (hs : 1 ≤ s) (h : Good st w0 (4 * s)) :
-    ∃ st' e, Node.onTick prop dg w0 st ((4 * s : Nat) : Int) 0 =
+    ∃ st' e, Node.onTick prop dg w0 st ((4 * s : Nat) : Int) 0 true =
       (st', [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.proposal, Node.frame st, []⟩,
         .fg (.block (blk s) true), .ac ⟨.block (blk s), Node.frame st', [e]⟩,
         .ac ⟨.toFG, Node.frame st', []⟩]) ∧

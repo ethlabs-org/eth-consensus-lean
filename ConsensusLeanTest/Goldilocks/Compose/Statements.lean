@@ -120,8 +120,8 @@ theorem public_zero : P₁.IsPublic 0 := ⟨0, rfl⟩
 
 /-- (a) The tick of time `0` is a step from the initial configuration. -/
 theorem tick_at_zero :
-    Node.Step (fun _ => v₀) dg₁ v₀ (Node.Config.init rootAC) (.tick 0) 0
-      ⟨(Node.exec (fun _ => v₀) dg₁ v₀ (Node.init rootAC) 0 (.tick 0)).1, 0, .post⟩ :=
+    Node.Step (fun _ => v₀) dg₁ v₀ (Node.Config.init rootAC) (.tick 0 true) 0
+      ⟨(Node.exec (fun _ => v₀) dg₁ v₀ (Node.init rootAC) 0 (.tick 0 true)).1, 0, .post⟩ :=
   ⟨le_rfl, ⟨public_zero, by simp [Node.Phase.at, Node.Config.init]⟩, trivial, rfl, rfl, rfl⟩
 
 /-- The slot of time `1` is `1`. -/
@@ -137,8 +137,8 @@ there, `ac_proposal` returns a proposal after the AC's tick step, and genesis's 
 digest: the hypotheses of `HonestBlockAccepted` hold together. -/
 theorem proposer_tick :
     (P₁.genesisBlock rootAC.genesisPayload).RootOk dg₁ ∧
-    Node.Step (fun _ => v₀) dg₁ v₀ (Node.Config.init rootAC) (.tick 0) 1
-      ⟨(Node.exec (fun _ => v₀) dg₁ v₀ (Node.init rootAC) 1 (.tick 0)).1, 1, .post⟩ ∧
+    Node.Step (fun _ => v₀) dg₁ v₀ (Node.Config.init rootAC) (.tick 0 true) 1
+      ⟨(Node.exec (fun _ => v₀) dg₁ v₀ (Node.init rootAC) 1 (.tick 0 true)).1, 1, .post⟩ ∧
     Node.Proposes (P := P₁) (fun _ => v₀) v₀ 1 ∧
     ∃ d p, (Node.acProposal
       (Node.tickStep (fun _ => v₀) dg₁ v₀ (Node.init rootAC) 1 0 .acTick).1 1).2.2 =
@@ -149,8 +149,8 @@ theorem proposer_tick :
 /-- (b) The configuration after the tick of time `1` is reachable. -/
 theorem reachable_after_tick :
     Node.Reachable (fun _ => v₀) dg₁ v₀
-      ⟨(Node.exec (fun _ => v₀) dg₁ v₀ (Node.init rootAC) 1 (.tick 0)).1, 1, .post⟩ :=
-  Relation.ReflTransGen.single ⟨.tick 0, 1, proposer_tick.2.1⟩
+      ⟨(Node.exec (fun _ => v₀) dg₁ v₀ (Node.init rootAC) 1 (.tick 0 true)).1, 1, .post⟩ :=
+  Relation.ReflTransGen.single ⟨.tick 0 true, 1, proposer_tick.2.1⟩
 
 end Consensus.Goldilocks.Compose.Test
 

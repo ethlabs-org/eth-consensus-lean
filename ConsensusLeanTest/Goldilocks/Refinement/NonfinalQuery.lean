@@ -48,7 +48,8 @@ variable (S : Setup) (A : ContractAssumptions S)
 abbrev Ss : Setup := { S with vote := AsChainShape.stock }
 
 /-- The contract assumptions of `S`, at its population binding. -/
-abbrev As : ContractAssumptions (Ss S) := ⟨A.fgSlots, A.two_le_fgSlots, A.timeout⟩
+abbrev As : ContractAssumptions (Ss S) :=
+  ⟨A.fgSlots, A.two_le_fgSlots, A.signGap, A.sign_liveness, A.timeout⟩
 
 /-! ## Fidelity: the endpoint hypotheses build the queries -/
 

@@ -746,7 +746,7 @@ theorem good_frame {st : NodeState N1} {t : Nat} (h : Good st t) :
     ∃ f, ChainFrame (Node.frame st) f (jexp (tip t)) (tip t) := fgGood_frame h.fg
 
 theorem onTick_eq' (st : NodeState N1) (t : Time) (x : Nat) :
-    Node.onTick (fun _ => v0) dg1 v0 st t x =
+    Node.onTick (fun _ => v0) dg1 v0 st t x true =
       ((tickStep (fun _ => v0) dg1 v0 (tickStep (fun _ => v0) dg1 v0
         (tickStep (fun _ => v0) dg1 v0 st t x .acTick).1 t x .proposal).1 t x
         .fgUpdate).1,
@@ -824,7 +824,7 @@ theorem tip_of_mod1 {n : Nat} (h : n % 4 = 1) : tip n = n / 4 := by unfold tip; 
 /-- A tick with nothing to do. -/
 theorem tick_noop {st : NodeState N1} {n : Nat} (hg : Good st n) (h1 : n ≠ 1)
     (hA : ¬ (n % 4 = 0 ∧ 4 ≤ n)) (hC : ¬ (n % 4 = 2 ∧ 4 ≤ n)) :
-    Node.onTick (fun _ => v0) dg1 v0 st (n : Int) 0 =
+    Node.onTick (fun _ => v0) dg1 v0 st (n : Int) 0 true =
       (st, [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩]) ∧ Good st (n + 1) := by
   obtain ⟨f, hf⟩ := good_frame hg
   have hstep : acOnTick sp1 v0 st.ac (Node.frame st) n = (st.ac, []) := by
@@ -842,7 +842,7 @@ theorem tick_noop {st : NodeState N1} {n : Nat} (hg : Good st n) (h1 : n ≠ 1)
 
 /-- The tick of `t_s + 2Δ`: the confirmation update of slot `s − 1`. -/
 theorem tick_C {st : NodeState N1} {n : Nat} (hg : Good st n) (hC : n % 4 = 2 ∧ 4 ≤ n) :
-    ∃ A', Node.onTick (fun _ => v0) dg1 v0 st (n : Int) 0 =
+    ∃ A', Node.onTick (fun _ => v0) dg1 v0 st (n : Int) 0 true =
       ({ st with ac := A' }, [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩]) ∧
       Good { st with ac := A' } (n + 1) := by
   obtain ⟨f, hf⟩ := good_frame hg
@@ -872,7 +872,7 @@ theorem tick_C {st : NodeState N1} {n : Nat} (hg : Good st n) (hC : n % 4 = 2 �
 
 /-- The tick of time `1`: the vote of slot `0`. -/
 theorem tick_B0 {st : NodeState N1} (hg : Good st 1) :
-    ∃ A' e, Node.onTick (fun _ => v0) dg1 v0 st ((1 : Nat) : Int) 0 =
+    ∃ A' e, Node.onTick (fun _ => v0) dg1 v0 st ((1 : Nat) : Int) 0 true =
       ({ st with ac := A' }, [.ac ⟨.tick, Node.frame st, [e]⟩, .ac ⟨.toFG, Node.frame st, []⟩]) ∧
       e.msg = cv 0 ∧ e.readPoint.pool = st.ac.pool ∧ Good { st with ac := A' } 2 := by
   obtain ⟨f, hf⟩ := good_frame hg
@@ -936,7 +936,7 @@ theorem tip_A1 (k : Nat) : tip (4 * (k + 1) + 1) = k + 1 := by unfold tip; omega
 vote of slot `k + 1` with its fast lock, and the attestation of slot `k + 1`. -/
 theorem tick_A {st : NodeState N1} {k : Nat} (hg : Good st (4 * (k + 1))) :
     ∃ fg' e st', st.fg.onBlock (blk (k + 1)) = some fg' ∧ FGGood fg' (k + 1) ∧
-      Node.onTick (fun _ => v0) dg1 v0 st ((4 * (k + 1) : Nat) : Int) 0 =
+      Node.onTick (fun _ => v0) dg1 v0 st ((4 * (k + 1) : Nat) : Int) 0 true =
         (st', [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.proposal, Node.frame st, []⟩,
           .fg (.block (blk (k + 1)) true), .ac ⟨.block (blk (k + 1)), fg'.toFrame, [e]⟩,
           .ac ⟨.toFG, fg'.toFrame, []⟩, .fg (.attest (blk (k + 1)) (some (att (k + 1)))),

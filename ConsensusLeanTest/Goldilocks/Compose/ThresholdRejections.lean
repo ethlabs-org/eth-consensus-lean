@@ -241,9 +241,9 @@ requirements hold, genesis's root is not its digest, and the conclusion of
 the digest is collision free on the tree with the new block, but its root `0` is held. -/
 theorem honestBlockAccepted_needs_genesisRoot :
     rootAC.Requirements ∧ ¬ (P₁.genesisBlock rootAC.genesisPayload).RootOk dg₂ ∧
-      ¬ (∀ (cfg cfg' : Node.Config rootAC) (t : Time) (x : Nat),
+      ¬ (∀ (cfg cfg' : Node.Config rootAC) (t : Time) (x : Nat) (fgDue : Bool),
           Node.Reachable (fun _ => v₀) dg₂ v₀ cfg →
-          Node.Step (fun _ => v₀) dg₂ v₀ cfg (.tick x) t cfg' →
+          Node.Step (fun _ => v₀) dg₂ v₀ cfg (.tick x fgDue) t cfg' →
           Node.Proposes (P := P₁) (fun _ => v₀) v₀ t →
           let st₁ := (Node.tickStep (fun _ => v₀) dg₂ v₀ cfg.st t x .acTick).1
           let r := Node.acProposal st₁ t
@@ -256,10 +256,10 @@ theorem honestBlockAccepted_needs_genesisRoot :
               ∃ fg', r.1.fg.onBlock B = some fg')) := by
   refine ⟨rootAC_requirements,
     fun h => by simp [Block.RootOk, dg₂, Params.genesisBlock, P₁] at h, fun h => ?_⟩
-  have hstep : Node.Step (fun _ => v₀) dg₂ v₀ (Node.Config.init rootAC) (.tick 0) 1
-      ⟨(Node.exec (fun _ => v₀) dg₂ v₀ (Node.init rootAC) 1 (.tick 0)).1, 1, .post⟩ :=
+  have hstep : Node.Step (fun _ => v₀) dg₂ v₀ (Node.Config.init rootAC) (.tick 0 true) 1
+      ⟨(Node.exec (fun _ => v₀) dg₂ v₀ (Node.init rootAC) 1 (.tick 0 true)).1, 1, .post⟩ :=
     ⟨by decide, ⟨one_dvd _, by simp [Node.Phase.at, Node.Config.init]⟩, trivial, rfl, rfl, rfl⟩
-  have hc := h _ _ 1 0 Relation.ReflTransGen.refl hstep proposes_at_one _ () rfl
+  have hc := h _ _ 1 0 true Relation.ReflTransGen.refl hstep proposes_at_one _ () rfl
   have hfg : (Node.acProposal (Node.tickStep (fun _ => v₀) dg₂ v₀ (Node.Config.init rootAC).st 1 0
       .acTick).1 1).1.fg = Store.init () := rfl
   simp only [hfg] at hc

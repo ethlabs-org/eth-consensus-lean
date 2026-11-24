@@ -29,7 +29,8 @@ open AC Node
 theorem plan_cases (Q : Nat → Prop) (h1 : Q 1) (h4 : ∀ s, 1 ≤ s → Q (4 * s))
     (h4r : ∀ s, 1 ≤ s → s % 10 = 1 → Q (4 * s + 1))
     (h41 : ∀ s, 1 ≤ s → s % 10 ≠ 1 → Q (4 * s + 1))
-    (hq : ∀ t, plan t = [(w0, .tick 0, tickSk []), (w1, .tick 0, tickSk [])] → Q t) (t : Nat) :
+    (hq : ∀ t, plan t = [(w0, .tick 0 true, tickSk []), (w1, .tick 0 true, tickSk [])] → Q t)
+    (t : Nat) :
     Q t := by
   by_cases t1 : t = 1
   · exact t1 ▸ h1
@@ -231,7 +232,7 @@ theorem emit_of_plan {t j k i : Nat} (hj : j < 128) (hk : k < 8) (hi : i = 1024 
 
 /-- `v0`'s tick at `t_s`. -/
 theorem plan_four_zero {s : Nat} (hs : 1 ≤ s) : (plan (4 * s))[0]? =
-    some (w0, .tick 0, [.ac .tick [], .ac .proposal [], .fg (.block (blk s) true),
+    some (w0, .tick 0 true, [.ac .tick [], .ac .proposal [], .fg (.block (blk s) true),
       .ac (.block (blk s)) [vote w0 s], .ac .toFG []]) := by
   rw [plan_four hs]; simp
 
@@ -244,9 +245,9 @@ theorem plan_four_two {s : Nat} (hs : 1 ≤ s) : (plan (4 * s))[2]? =
 theorem emit_vote (z : Fin sp.n) (σ : Nat) : run.EmitAt z (emitIdx z σ) (vote z σ) := by
   rcases Nat.eq_zero_or_pos σ with rfl | hσ
   · rcases eq_w0_or_w1 z with rfl | rfl
-    · exact emit_of_plan (t := 1) (j := 0) (k := 0) (p := (w0, .tick 0, tickSk [vote w0 0]))
+    · exact emit_of_plan (t := 1) (j := 0) (k := 0) (p := (w0, .tick 0 true, tickSk [vote w0 0]))
         (by omega) (by omega) rfl (by rw [plan_one]; rfl) rfl (List.mem_singleton_self _)
-    · exact emit_of_plan (t := 1) (j := 1) (k := 0) (p := (w1, .tick 0, tickSk [vote w1 0]))
+    · exact emit_of_plan (t := 1) (j := 1) (k := 0) (p := (w1, .tick 0 true, tickSk [vote w1 0]))
         (by omega) (by omega) rfl (by rw [plan_one]; rfl) rfl (List.mem_singleton_self _)
   · rcases eq_w0_or_w1 z with rfl | rfl
     · exact emit_of_plan (i := emitIdx w0 σ) (k := 3) (by omega) (by omega)
@@ -258,7 +259,7 @@ theorem emit_vote (z : Fin sp.n) (σ : Nat) : run.EmitAt z (emitIdx z σ) (vote 
 
 /-- `z`'s tick at `rt q`, `q ≥ 1`: it signs `row z q` at position `2`. -/
 theorem plan_sign (z : Fin sp.n) {q : Nat} (hq : 1 ≤ q) : ∃ s, rt q = 4 * s + 1 ∧
-    (plan (4 * s + 1))[z.val]? = some (z, .tick 0, tickSk [] ++
+    (plan (4 * s + 1))[z.val]? = some (z, .tick 0 true, tickSk [] ++
       [.fg (.attest (blk s) (some (row z q))), .fg (.attestation (row z q))]) := by
   have hh : hgt (10 * (q - 1) + 1) = q := by rw [hgt, ite_eq_right (by omega)]; omega
   refine ⟨10 * (q - 1) + 1, by unfold rt; omega, ?_⟩
@@ -322,8 +323,8 @@ theorem seg_node {t a : Nat} {sg : Seg} (hs : (segs t)[a]? = some sg) (ha : a < 
 theorem tick_group (n : Nat) (y : Fin sp.n) :
     run.TickAt prop dg y (1024 * n + 8 * y.val) (n : Int) := by
   rcases eq_w0_or_w1 y with rfl | rfl
-  · exact ⟨0, group_seg (by omega) (segs_zero n) (seg_ne (segs_zero n))⟩
-  · exact ⟨0, group_seg (by omega) (segs_one n) (seg_ne (segs_one n))⟩
+  · exact ⟨0, true, group_seg (by omega) (segs_zero n) (seg_ne (segs_zero n))⟩
+  · exact ⟨0, true, group_seg (by omega) (segs_one n) (seg_ne (segs_one n))⟩
 
 /-- A delivered block is a chain block `blk s`, `s ≥ 1`. -/
 theorem group_block {y : Fin sp.n} {j0 : Nat} {tt : Time} {B : N.Blk}
@@ -353,7 +354,7 @@ theorem run_localRun : Node.LocalRun prop dg Set.univ (fun v : Vote sp.n => v.va
     obtain ⟨t', a, sg, -, -, hs, -, -, he⟩ := groupAt_seg h
     obtain ⟨-, hB, hA⟩ := plan_ev (segs_get_plan hs)
     cases e with
-    | tick x => trivial
+    | tick x fgDue => trivial
     | restart => trivial
     | message m => trivial
     | attestation a =>
@@ -405,7 +406,7 @@ theorem run_localRun : Node.LocalRun prop dg Set.univ (fun v : Vote sp.n => v.va
     split_ifs <;> omega
   tick_public _ _ _ _ _ := one_dvd _
   tick_unique y _ j j' t := by
-    rintro ⟨x, h⟩ ⟨x', h'⟩
+    rintro ⟨x, fgDue, h⟩ ⟨x', fgDue', h'⟩
     obtain ⟨t1, a, sg, -, rfl, hs, hny, ht1, he⟩ := groupAt_seg h
     obtain ⟨t2, b, sg', -, rfl, hs', hny', ht2, he'⟩ := groupAt_seg h'
     have : t1 = t2 := by exact_mod_cast ht1.symm.trans ht2
@@ -426,7 +427,7 @@ theorem run_localRun : Node.LocalRun prop dg Set.univ (fun v : Vote sp.n => v.va
     exact ⟨_, tick_group n y⟩
   awake_in_horizon y _ t ht := by
     obtain ⟨n, rfl⟩ := Int.eq_ofNat_of_zero_le ht
-    obtain ⟨x, hne, hk, -⟩ := tick_group n w0
+    obtain ⟨x, fgDue, hne, hk, -⟩ := tick_group n w0
     obtain ⟨-, htm, -, -, hl⟩ := hk 0 (List.length_pos_of_ne_nil hne)
     exact ⟨_, Or.inl (by rw [hl]; exact Option.some_ne_none _), le_of_eq htm.symm⟩
   awake_of_call _ _ i _ := by change (0 : Int) ≤ ((i / 1024 : Nat) : Int); omega

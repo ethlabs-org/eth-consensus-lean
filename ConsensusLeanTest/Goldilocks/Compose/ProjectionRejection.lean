@@ -119,7 +119,7 @@ theorem tickState_one : tickState payloadAC dgP 1 = Node.init payloadAC := by
   have hnp : ¬ Node.Proposes (P := P₁) (fun _ => v0) v0 ((0 : Nat) : Int) := fun h => by
     have := h.1; rw [show P₁.slotOf ((0 : Nat) : Int) = 0 by decide] at this; omega
   simp only [tickState, Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, Node.tickStep, hnp,
-    Node.acCall, Node.acToFG, ite_false, List.foldl]
+    Node.acCall, Node.acToFG, ite_false]
   rfl
 
 /-- The fork-choice root of the initial FG state is genesis. -/

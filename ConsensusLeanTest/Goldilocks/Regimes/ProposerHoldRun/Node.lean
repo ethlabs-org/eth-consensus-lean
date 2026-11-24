@@ -73,7 +73,7 @@ theorem msg_delivered {y : Fin (Fintype.card (Fin 5))} {k : Nat}
   rw [← hc, hrl] at hcut
   have heq : e = .message m := by
     cases e with
-    | tick x => exact False.elim (canonEvent_ne_tick hce x rfl)
+    | tick x fgDue => exact False.elim (canonEvent_ne_tick hce x fgDue rfl)
     | message m' =>
       simp only [exec, onMessage, acCall, List.mem_singleton, Cut.ac.injEq]
         at hcut
@@ -152,7 +152,7 @@ theorem block_source {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
         B ∈ (rhoc S).releasesAt i) := by
   obtain ⟨acc, hcall⟩ := hc
   obtain ⟨j, e, k', hg, rfl, hk⟩ := Compose.call_in_group rhoc_run.toLocalRun hy hcall
-  rcases Compose.exec_block _ _ _ _ _ _ hk with ⟨rfl, rfl⟩ | ⟨x, rfl, rfl, -⟩
+  rcases Compose.exec_block _ _ _ _ _ _ hk with ⟨rfl, rfl⟩ | ⟨x, fgDue, rfl, rfl, -⟩
   · exact Or.inl (wire_block hg)
   have hpos : (tr S).pos (j + 2) ≠ 0 := by
     rw [(hg.2.1 2 (List.getElem?_eq_some_iff.mp hk).1).2.2.2.1]; omega

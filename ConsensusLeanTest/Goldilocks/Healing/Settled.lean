@@ -182,7 +182,7 @@ theorem acquisition_applies :
   obtain ⟨h₁, h₂, h₃, h₄, h₅⟩ := acquisition_premises
   exact (common_path_acquisition sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1)
     (AC.CommitteeDict.full sp1.n) 0 1 4 20 160 4 (.top (blk 3))
-    (by rw [AC.committeeStart_full]; exact h₁) h₂ h₃ h₄ h₅).1
+    (by rw [AC.committeeStart_full]; exact h₁) tickRun_allTicksSign h₂ h₃ h₄ h₅).1
 
 end Consensus.Goldilocks.Witness.One.Settled
 
