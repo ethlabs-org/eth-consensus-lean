@@ -280,7 +280,7 @@ window $K_W=2$; FG slack $k_F\geq0$ (distinct from~$k$); source delay
 $x\geq0$; timeout delay $\delta_{\mathrm t}\geq x+\cF+k_F$, default $x=0$
 (goldilocks-spec \S Schedule fixes only $\delta_{\mathrm t}\geq0$; $R$ and these
 bounds are this file's).  The certified endpoint takes its own timeout
-bound: $\delta_{\mathrm t}\geq3c$ for its FG delay in slots $c\geq2$, so
+bound: $\delta_{\mathrm t}\geq3c'$ for its final anchor spacing $c'\geq2$, so
 $\delta_{\mathrm t}\geq6$ (\S\ref{sec:obligations}); it says nothing about
 a setup with $\delta_{\mathrm t}<6$, and its healthy rows say nothing when
 $\cF\leq\delta_{\mathrm t}<3\cF$, which the bound above allows.  The endpoint
@@ -860,7 +860,8 @@ $\fname{propose\_block}$, which processes the own block at once
 ($\fname{fg\_on\_block}$, then $\fname{ac\_on\_block}$: the block's stamp (its
 declared head votes are not admitted), optimistic check, vote check with its unlocking and the own vote,
 which is processed at once by $\fname{ac\_on\_message}$: admission, optimistic
-check); the FG update (with the frame recomputed: $\fname{ac\_to\_fg}$, then, for a block other
+check); if the signing calendar allows it, the FG update (with the frame
+recomputed: $\fname{ac\_to\_fg}$, then, for a block other
 than~$\bot$, $\fname{fg\_attest}$ with the record and the own attestation); then
 the objects received at~$a$, each by its handler (whose AC part can again
 vote).  Every own object is processed at once.  This is a definition of the
@@ -1431,6 +1432,10 @@ from its own first update of a slot $\geq s$.)}
 
 \section{Healing: phase service}\label{sec:healing-service}
 
+The legacy phase-service timing bounds in this section, including HS.4,
+are for the stock calendar, which allows every honest tick's FG update.
+For the contract with a finite signing gap, see \S\ref{sec:obligations}.
+
 The nodes of this section are the phase-service nodes, in the run-level
 Healing module.  They are
 additions to the Healing module, not changes to A1.2--A1.4, A1.8, C1.1 or the
@@ -1912,7 +1917,7 @@ be the first public time at which an honest validator signs one.  Then:
 \begin{itemize}[itemsep=0pt,topsep=2pt]
 \item $a_z>c_z$, and no honest height pair of height $\geq H_z+1$ is signed
   before $a_z$;
-\item at the FG update in each honest node's tick at~$a_z$, the accepted
+\item at each FG update that actually occurs in an honest node's tick at~$a_z$, the accepted
   frontier is at most $H_z+1$, so every honest attestation signed at~$a_z$ has height
   at most $H_z+1$;
 \item for every set $\mathcal E$ of entries of heights $\geq H_z+1$, the
@@ -2189,10 +2194,14 @@ Goldilocks family meets \texttt{ShapeObligations} at the contract
 coefficient of~$\Delta$, the node and engine delay alike ($\Delta_p=\Delta_e$);
 all are fixed before the run, but heal and latency depend on the contract's
 outer gap~$X$, the index of its progress requirement.  The assumption set
-requires $c\geq2$ and $3c\leq\delta_{\mathrm t}$, so the endpoint and the
-headline cover only setups with $\delta_{\mathrm t}\geq6$, and their
-healthy rows apply to an FG delay of $\cF$ slots only when
-$\delta_{\mathrm t}\geq3\max(2,\cF)$; they hold at every vote binding (\S\ref{sec:model}).
+requires $c\geq2$ and a finite signing gap $G\in\mathbb{N}$: for every public
+configuration, validator~$y$ and time $t\geq0$, there is a public time~$t'$
+(a multiple of~$\Delta$) with $t\leq t'<t+(G+1)\Delta$ and
+$\mathsf{sign}(y,t')=\mathrm{true}$.  Set $F=4c-6$ and
+$c'=\lceil(6+F+G)/4\rceil$.  The timeout must satisfy
+$3c'\leq\delta_{\mathrm t}$, so the endpoint and headline still require
+$\delta_{\mathrm t}\geq6$; they hold at every vote binding (\S\ref{sec:model}).
+With the always-allow calendar and $G=0$, $c'=c$ and the stock numbers return.
 \end{sloppypar}
 \begin{center}\footnotesize
 \begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.6cm}>{\raggedright\arraybackslash}p{8.4cm}@{}}
@@ -2200,17 +2209,17 @@ $\delta_{\mathrm t}\geq3\max(2,\cF)$; they hold at every vote binding (\S\ref{se
 Quantity & Value\\
 \hline
 FG delay in slots & $c=\texttt{fgSlots}\geq2$; healthy runs have $6\Delta+\Delta_F\leq4c\Delta$, i.e.\ $\cF\leq c$ (FG delay bound $\Delta_F\leq(4c-6)\Delta$)\\
-Timeout & $3c\leq\delta_{\mathrm t}$\\
+Timeout & $3c'\leq\delta_{\mathrm t}$\\
 Final progress & in every window of the outer gap~$X$, the four-anchor
-  pattern $[0,c,2c,3c]$\\
+  pattern $[0,c',2c',3c']$\\
 Available and stable progress & one honest ready proposer in every window of
   the outer gap~$X$\\
 Catch-up & $19$\\
 Drain length & $L=2k+X$\\
-Heal margin $M_f$ & $20L+8k+28\delta_{\mathrm t}+28X+56=48k+28\delta_{\mathrm t}+48X+56$\\
-Heal, every capability & $19+M_f=48k+28\delta_{\mathrm t}+48X+75$\\
+Heal margin $M_f$ & $20L+8k+28\delta_{\mathrm t}+28X+56+5G$\\
+Heal, every capability & $19+M_f=48k+28\delta_{\mathrm t}+48X+75+5G$\\
 Latency, available and stable & $4X+6$\\
-Latency, final & $4(X+3c)+1$\\
+Latency, final & $4(X+3c')+1$\\
 Arming lag & $4k+6$\\
 Outage budget; recovery delay & $4k-5$; $9$\\
 Outage look-back $\eta$ & $12k+7$\\
@@ -2239,8 +2248,8 @@ look-back without requiring every honest participant to remain awake.
 The headline \texttt{GoldilocksCorrect} (consensus-lean
 \texttt{Statements/Obligations}) states, for every setup~$S$ (genesis root,
 $\delta_{\mathrm t}$, lock window $k\geq2$, fast increment $c_{\mathrm{fast}}\geq2$,
-restart replay order and vote binding), every assumption set (FG delay in
-slots $c\geq2$ with $3c\leq\delta_{\mathrm t}$) and every finite validator
+restart replay order, vote binding and signing calendar), every assumption set
+of \S\ref{sec:obligations} and every finite validator
 set, that the Goldilocks family run by the general execution model is an L0
 \texttt{CorrectProtocol} (consensus-lean
 \texttt{Spec/Problem/CorrectProtocol}) at the contract of
@@ -2301,15 +2310,15 @@ requires being honest at~$d$.
 \emph{Progress.}  $\mathsf{prog}_X[a,b]$: every window
 $(\tau,\tau+4\Delta X]$ with $\tau\geq\max(a,0)$ and
 $\tau+4\Delta(X+\mathit{span})\leq\min(b,\mathit{horizon})$, where
-$\mathit{span}$ is the largest offset of the pattern ($0$ or $3c$), contains
+$\mathit{span}$ is the largest offset of the pattern ($0$ or $3c'$), contains
 a slot~$s$ with $\tau<t_s\leq\tau+4\Delta X$ such that, for every offset~$j$
 of the pattern, the proposer of slot $s+j$ is ready at $t_{s+j}$ and honest
 at $\min(t_{s+j}+\Delta,\mathit{horizon})$.  The pattern is $\{0\}$ for the
-confirmed output and the four anchors $\{0,c,2c,3c\}$ for the finalized
+confirmed output and the four anchors $\{0,c',2c',3c'\}$ for the finalized
 output.  With $\mathit{ready}(g)=\max(g,0)+C+1$,
-$\mathit{heal}(g)=\max(g,0)+(48k+28\delta_{\mathrm t}+48X+75)\Delta$, and
+$\mathit{heal}(g)=\max(g,0)+(19+M_f)\Delta$, and
 latency $\ell=(4X+6)\Delta$ for the confirmed and
-$\ell=(4(X+3c)+1)\Delta$ for the finalized output, \emph{transaction
+$\ell=(4(X+3c')+1)\Delta$ for the finalized output, \emph{transaction
 liveness from~$a$} says: a transaction submitted by time~$\tau$ to a node
 honest and awake at its submission (compromised later or not) is in the
 read of every node ready at every
@@ -2656,7 +2665,7 @@ corollary~C (G1.8) gives a conditional upper bound after bad entries, not a
 uniform recovery bound.  \texttt{MeetsObligations} does not depend on O.1: the L0
 contract's final healthy liveness, with a heal point fixed before the run,
 is proved for the endpoint by another route, its four-anchor final pattern
-with the timeout $3c\leq\delta_{\mathrm t}$ (\S\ref{sec:obligations}).  The
+with the timeout $3c'\leq\delta_{\mathrm t}$ (\S\ref{sec:obligations}).  The
 earlier dependency (the archived R.4 node statement, and with it \texttt{MeetsObligations}, on O.1) is history.  O.1 stays a separate research target.
 The FG safety milestone (G0, G1.1--G1.5) does not
 depend on O.1.  A paper argument (not in this repository)

@@ -190,7 +190,8 @@ received at that time.  It stamps an object with the time at which it
 processes it, so an object received at a public time~$\tau$ counts as
 received after the tick at~$\tau$.  A tick runs the schedule of the AC,
 then the proposal duty at~$t_s$,
-then the FG update.  A node processes its own block, its own AC
+then the FG update if its signing calendar allows it at that time.
+A node processes its own block, its own AC
 message and its own attestation at once.
 
 The node drops a block of a future slot.  The FG then accepts the block
@@ -204,8 +205,10 @@ payload from the AC; when the AC returns~$\bot$, it makes no proposal.  It inclu
 valid against the state of the parent and is not already on the parent's
 chain, in the order of its pool.
 
-\emph{The FG update.}  After each tick the node asks the AC for an FG
-update.  The AC returns a block $\mathit{fg\_confirmed}$, or~$\bot$ when
+\emph{The FG update.}  If the validator's calendar $\mathsf{sign}(y,t)$
+does not allow signing, the tick skips the whole FG update.  Otherwise the
+node asks the AC for an FG update.  The AC returns a block
+$\mathit{fg\_confirmed}$, or~$\bot$ when
 it has no new block to vouch for.
 $\mathit{fg\_confirmed}$ is the block up to which the AC vouches for its
 chain, for the FG.  The node gives the FG each such block, the
@@ -233,12 +236,14 @@ the clock~$t$ and pass $\Sigma$, $\AC$ and~$\Lambda$ to the two parts.
     \Comment{$\bot$: the AC makes no proposal}
     \If{$P\neq\bot$} \State \Call{propose\_block}{$P$} \EndIf
   \EndIf
-  \State $\Fr\gets\Call{fg\_to\_ac}{\Sigma}$;\quad
-    $\mathit{fg\_confirmed}\gets\Call{ac\_to\_fg}{\AC,\Fr,t}$
-  \Comment{$\bot$: no new block for the FG}
-  \If{$\mathit{fg\_confirmed}\neq\bot$}
-    \State \Call{attest}{$\mathit{fg\_confirmed}$}
-    \Comment{the source}
+  \If{$\mathsf{sign}(\valindex,t)$}
+    \State $\Fr\gets\Call{fg\_to\_ac}{\Sigma}$;\quad
+      $\mathit{fg\_confirmed}\gets\Call{ac\_to\_fg}{\AC,\Fr,t}$
+    \Comment{$\bot$: no new block for the FG}
+    \If{$\mathit{fg\_confirmed}\neq\bot$}
+      \State \Call{attest}{$\mathit{fg\_confirmed}$}
+      \Comment{the source}
+    \EndIf
   \EndIf
 \EndFunction
 \vspace{1pt}
