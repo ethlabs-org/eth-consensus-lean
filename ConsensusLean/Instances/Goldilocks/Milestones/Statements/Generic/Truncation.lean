@@ -26,26 +26,28 @@ def NoRestartUpTo (tr : RunTrace A) (H : Time → Set (Fin P.n)) (t b : Time) : 
 supplier by `rise_reset_rounds_at_of` (Lemmas/Generic/HealingEdges). -/
 def rise_reset_rounds_at (O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b T : Time}
-    {s₀ N G floor : Nat} {kindJ : Prop} {J : A.Blk},
+    {s₀ N Gp floor : Nat} {kindJ : Prop} {J : A.Blk},
     βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
-    SlotWindow tr H s₀ N floor kindJ J →
+    SlotWindowWithin tr H O.reportDelay s₀ N floor kindJ J →
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → Service tr H g ΔF b →
     (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
     CatchRun tr H g (2 * P.Δ) → NoRestartAfter tr H (gbar g) →
     (∀ s, P.slotTime s + 4 * P.Δ ≤ P.slotTime (s + 1)) →
-    (∀ s, P.slotTime (s + 1) + 2 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) →
+    (∀ s, shiftDelay P O.reportDelay (P.slotTime (s + 1) + 2 * P.Δ) + ΔF ≤
+      P.slotTime (s + P.δt)) →
     (∃ k, FirstCutAfter tr k (cutZ P g) ∧ tr.time k ≤ b) →
-    gbar g + 4 * P.Δ ≤ P.slotTime s₀ → O.follow ≤ P.δt → 1 ≤ G →
+    gbar g + 4 * P.Δ ≤ P.slotTime s₀ → O.follow ≤ P.δt → 1 ≤ Gp →
     (∀ s, P.slotTime s + 6 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) →
-    ProposalGap tr H proposer G s₀ N → P.slotTime N + 2 * P.Δ ≤ b →
+    ProposalGap tr H proposer Gp s₀ N → shiftDelay P O.reportDelay (P.slotTime N + 2 * P.Δ) ≤ b →
     (H b).Nonempty → T ≤ b → NoAdvance tr H g T →
     ∀ (r : Nat) {u : Nat} {z : Fin P.n} {kB : Nat} {B : A.Blk},
-      s₀ ≤ u → s₀ + O.warmup ≤ u → u + r * (P.δt + G - 1) + 1 ≤ N →
-      P.slotTime (u + r * (P.δt + G - 1) + 1) + 2 * P.Δ ≤ T →
+      s₀ ≤ u → s₀ + O.warmup ≤ u → u + r * (P.δt + Gp - 1) + 1 ≤ N →
+      shiftDelay P O.reportDelay (P.slotTime (u + r * (P.δt + Gp - 1) + 1) + 2 * P.Δ) ≤ T →
       z ∈ H (P.slotTime u + P.Δ) → z = proposer u → tr.ProposesAt z kB B → B.slot = u →
       HZ tr H g + 1 ≤ ((tr.state z (kB + 1)).fg.σ B.root).h + r →
-      ∃ a, IsReset tr H g a ∧ a ≤ P.slotTime (u + r * (P.δt + G - 1) + 1) + 2 * P.Δ
+      ∃ a, IsReset tr H g a ∧
+        a ≤ shiftDelay P O.reportDelay (P.slotTime (u + r * (P.δt + Gp - 1) + 1) + 2 * P.Δ)
 
 end Consensus.Goldilocks.Generic
 

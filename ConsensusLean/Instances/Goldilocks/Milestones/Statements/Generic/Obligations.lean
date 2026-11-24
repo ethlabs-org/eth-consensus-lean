@@ -163,10 +163,22 @@ structure HighCanonical
     ((tr.state y₁ m₁).fg.σ Z₁.root).Th = Z₁.root →
     ((tr.state y₂ m₂).fg.σ Z₂.root).Th = Z₂.root → Z₁.root = Z₂.root
 
+/-- Shift a time by `d` delays; definitionally `t` at `d = 0`. -/
+def shiftDelay (P : Params) (d : Nat) (t : Time) : Time :=
+  match d with
+  | 0 => t
+  | d' + 1 => t + ((d' + 1 : Nat) : Time) * P.Δ
+
+/-- A constant frame through the delayed report deadline. -/
+abbrev SlotWindowWithin (tr : RunTrace A) (H : Time → Set (Fin P.n))
+    (d s₀ N floor : Nat) (kindJ : Prop) (J : A.Blk) : Prop :=
+  FrameWindow tr H (P.slotTime s₀) (shiftDelay P d (P.slotTime N + 2 * P.Δ)) floor kindJ J
+
 /-- Protocol obligations for growing runs. New source and warmth laws require genuine suppliers. -/
 structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg) where
   warmup : Nat
   follow : Nat
+  reportDelay : Nat
   drain : Nat
   Origin : RunTrace A → Fin P.n → Nat → Nat → A.Blk → Prop
   follow_le : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time},
@@ -182,20 +194,22 @@ structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg) 
     lo ≤ P.slotTime u → P.slotTime u ≤ hi →
     (H (P.slotTime u))ᶜ.ncard < 2 * P.fg.q - P.n →
     floor ≤ ((tr.state z (kB + 1)).fg.σ B.root).h
-  /-- After warmup, an honest proposal is reported within one slot plus two delays,
+  /-- After warmup, an honest proposal is reported within one slot plus `2 + reportDelay` delays,
   and later honest proposal heads extend the report. Certificate: cert obligation open:
   honest committee members support an honest proposal after healing. -/
   report_follow : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time}
     {s₀ N u floor : Nat} {kindJ : Prop} {J B : A.Blk} {z : Fin P.n} {kB : Nat},
     βK ≤ 1 / 2 →
     runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
-    FrameWindow tr H (P.slotTime s₀) (P.slotTime N + 2 * P.Δ) floor kindJ J →
+    FrameWindow tr H (P.slotTime s₀)
+      (shiftDelay P reportDelay (P.slotTime N + 2 * P.Δ)) floor kindJ J →
     gbar g + 4 * P.Δ ≤ P.slotTime s₀ → s₀ + warmup ≤ u →
-    u + 1 ≤ N → P.slotTime N + 2 * P.Δ ≤ b →
+    u + 1 ≤ N → shiftDelay P reportDelay (P.slotTime N + 2 * P.Δ) ≤ b →
     HonestProposal tr H proposer u z kB B →
-    ∀ y, y ∈ H (P.slotTime (u + 1) + 2 * P.Δ) →
+    ∀ y, y ∈ H (shiftDelay P reportDelay (P.slotTime (u + 1) + 2 * P.Δ)) →
       ∃ i R, y ∈ H (tr.time i) ∧ ReportAt tr y i R ∧ P.slotTime u ≤ tr.time i ∧
-        tr.time i ≤ P.slotTime (u + 1) + 2 * P.Δ ∧ Anc (tr.HonestBlocksAt H) B R ∧
+        tr.time i ≤ shiftDelay P reportDelay (P.slotTime (u + 1) + 2 * P.Δ) ∧
+        Anc (tr.HonestBlocksAt H) B R ∧
         ∀ x, u + follow ≤ x → x ≤ N → ∀ w c d, w ∈ H (tr.time c) →
           ProposalHeadAt tr w c d → tr.time c = P.slotTime x → Anc (tr.HonestBlocksAt H) R d.head
   /-- A high honest report after a reset has an earlier origin extending it.

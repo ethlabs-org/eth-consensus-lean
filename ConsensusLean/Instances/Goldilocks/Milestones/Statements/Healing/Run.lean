@@ -377,6 +377,7 @@ def ResetExistence : Prop :=
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (K : AC.CommitteeDict sp.n) (g ΔF Gp : Time),
     GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K) →
+    tr.AllTicksSign proposer dg H →
     HSShared tr H K dg g ΔF → CatchRun tr H g (2 * sp.Δ) → PropPlus tr H proposer g Gp →
     (gbar g + 8 * sp.Δ < cutZ sp.toParams g ∧
       ∀ u, cutZ sp.toParams g ≤ u → ∀ j j', FirstCutAfter tr j u →

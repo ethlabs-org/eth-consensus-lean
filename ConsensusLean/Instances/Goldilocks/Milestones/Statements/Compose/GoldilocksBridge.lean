@@ -27,33 +27,38 @@ def dictOfTime (sp : ACParams) (cm : Time → Finset (Fin sp.n)) : AC.CommitteeD
 Committee sizes are positive and match the threshold parameter. Membership facts are required
 under collision freedom, so engine execution validity alone still transports to `Run`. -/
 def GoldilocksRunData (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (R : ACRun (goldilocksNode sp ro) (fun v => v.val)) : Prop :=
+    (R : ACRun (goldilocksNode sp ro) (fun v => v.val))
+    (sign : Fin sp.n → Time → Bool := fun _ _ => true) (G : Nat := 0) : Prop :=
   R.Run = (fun cm proposer dg H tr => Growing.GoldilocksRun proposer dg H tr
     (AC.committeeStart sp.genesisRoot (dictOfTime sp cm)) ∧
     0 < sp.committeeSize ∧
     (∀ s, ((dictOfTime sp cm).committee s).ncard = sp.committeeSize) ∧
-    (Compose.NoCollRun dg tr → Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm))) ∧
+    (Compose.NoCollRun dg tr → Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm)) ∧
+    tr.SignCalendarAt proposer dg H sign ∧ SignGapAt sp.toParams sign G 0) ∧
   R.start = (fun cm => AC.committeeStart sp.genesisRoot (dictOfTime sp cm))
 
 /-- Exact data equations for the intended Goldilocks supplier, not its field evidence. -/
 def GoldilocksHealingData (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     {R : ACRun (goldilocksNode sp ro) (fun v => v.val)}
-    (O : ACHealing (goldilocksNode sp ro) (fun v => v.val) R) : Prop :=
-  GoldilocksRunData sp ro R ∧
-    O.warmup = 2 * sp.k ∧ O.follow = 3 ∧ O.drain = 2 * sp.k + 5 ∧
+    (O : ACHealing (goldilocksNode sp ro) (fun v => v.val) R)
+    (sign : Fin sp.n → Time → Bool := fun _ _ => true) (G : Nat := 0) : Prop :=
+  GoldilocksRunData sp ro R sign G ∧
+    O.warmup = 2 * sp.k ∧ O.follow = 3 + (G + 3) / 4 ∧ O.reportDelay = G ∧ O.drain = 2 * sp.k + 5 ∧
     O.Origin = (fun tr x i j B => tr.JoinedAt x (tr.time i) ∧
       ∃ CV, Compose.StoredFastLockAt tr x i j B CV)
 
 /-- Committee-indexed Goldilocks healing supplier, proved for the canonical committee-start
 interface by `goldilocks_ac_healing` in `Lemmas/Growing/Healing/Supply/Fields.lean`.
-Its witness has `warmup = 2 * sp.k`, `follow = 3`, `drain = 2 * sp.k + 5` and the
+Its witness has `warmup = 2 * sp.k`, `follow = 3 + (G + 3) / 4`, `reportDelay = G`,
+`drain = 2 * sp.k + 5` and the
 joined stored-fast-lock origin. This supplies healing only, not `ACCorrectLocal` or
-the endpoint. The theorem takes the timeout bound `3 ≤ δ_t`, which `follow = 3` needs; the
+the endpoint. The theorem takes the timeout bound `follow ≤ δ_t`; the
 service-delay inequality alone does not imply it. -/
-def goldilocksACHealing (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) : Prop :=
+def goldilocksACHealing (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (sign : Fin sp.n → Time → Bool := fun _ _ => true) (G : Nat := 0) : Prop :=
   ∃ R : ACRun (goldilocksNode sp ro) (fun v => v.val),
     ∃ O : ACHealing (goldilocksNode sp ro) (fun v => v.val) R,
-    GoldilocksHealingData sp ro O
+    GoldilocksHealingData sp ro O sign G
 
 /-- Exact local data equations for the intended Goldilocks local supplier, not its field evidence.
 The durations are the contract's at `ΔAC = Δ`: catch-up `18Δ`, satisfying `18Δ + 1 ≤ 19Δ`
@@ -64,8 +69,9 @@ against the contract's `19Δ`, look-aheads `5Δ`, proposer hold `Δ`, margin and
 before the deadline or retained timestamped pool evidence
 (`AC.FamilyFacts.MessageServedBefore` on the AC projection). -/
 structure GoldilocksLocalData (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val)) : Prop where
-  healing : GoldilocksHealingData sp ro C.healing
+    (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
+    (sign : Fin sp.n → Time → Bool := fun _ _ => true) (G : Nat := 0) : Prop where
+  healing : GoldilocksHealingData sp ro C.healing sign G
   θ : C.θ = 1 / 2
   catchUp : C.catchUp = 18 * sp.Δ
   look : C.look = 5 * sp.Δ
@@ -83,8 +89,9 @@ structure GoldilocksLocalData (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att
 /-- Goldilocks local supplier with its exact data equations (`GoldilocksLocalData`), proved by
 `goldilocksACCorrectLocal_of_healing` from `goldilocks_ac_healing`. The data equations alone supply
 no field evidence; the healing witness and the local read-point proofs supply that evidence. -/
-def goldilocksACCorrectLocal (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) : Prop :=
-  ∃ C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val), GoldilocksLocalData sp ro C
+def goldilocksACCorrectLocal (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (sign : Fin sp.n → Time → Bool := fun _ _ => true) (G : Nat := 0) : Prop :=
+  ∃ C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val), GoldilocksLocalData sp ro C sign G
 
 end Consensus.Goldilocks.Generic
 

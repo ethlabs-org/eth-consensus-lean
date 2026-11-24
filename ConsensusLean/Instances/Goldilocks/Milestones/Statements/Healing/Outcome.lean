@@ -71,6 +71,7 @@ def OutcomeService : Prop :=
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (K : AC.CommitteeDict sp.n) (g ΔF a : Time) (cF kF : Nat),
     GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K) →
+    tr.AllTicksSign proposer dg H →
     Healing.HSShared tr H K dg g ΔF →
     Healing.CatchRun tr H g (2 * sp.Δ) → 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (cF : Time) →
     cF + kF ≤ sp.toParams.δt →

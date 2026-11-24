@@ -29,10 +29,12 @@ noncomputable def frameKey' (st : Store P A.Payload) : Nat :=
 def riseRounds (hz v : Nat) : Nat := 2 - (v - 2 * hz) / 2
 
 /-- Attempt length in slots, including the final report slot. -/
-def windowSlots (W G δt j : Nat) : Nat := W + G + riseRounds 0 j * (δt + G - 1) + 1
+def windowSlots (W Gp δt j : Nat) (d : Nat := 0) : Nat :=
+  W + Gp + riseRounds 0 j * (δt + Gp - 1) + 1 + (d + 3) / 4
 
 /-- Slot-based assembly budget for five merged keys. -/
-def resetSlots (W G δt : Nat) : Nat := ∑ j ∈ Finset.range 5, (windowSlots W G δt j + 2)
+def resetSlots (W Gp δt : Nat) (d : Nat := 0) : Nat :=
+  ∑ j ∈ Finset.range 5, (windowSlots W Gp δt j d + 2)
 
 /-- Grid alignment contract, not a chosen alignment witness. Proved by `exists_slot_align_of_grid`
 (Lemmas/Generic/HealingLeaves). -/
@@ -109,7 +111,8 @@ def reset_of_high_proposal_at (O : ACHealing A sg runs) : Prop :=
     {kindJ : Prop} {J B : A.Blk}
     {z : Fin P.n} {kB : Nat},
     βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
-    SlotWindow tr H s₀ N floor kindJ J → runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
+    SlotWindowWithin tr H O.reportDelay s₀ N floor kindJ J →
+    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     Service tr H g ΔF b → (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
     CatchRun tr H g (2 * P.Δ) → NoRestartAfter tr H (gbar g) →
@@ -117,10 +120,10 @@ def reset_of_high_proposal_at (O : ACHealing A sg runs) : Prop :=
     (∀ s, P.slotTime s + 6 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) →
     (∃ k, FirstCutAfter tr k (cutZ P g) ∧ tr.time k ≤ b) →
     gbar g + 4 * P.Δ ≤ P.slotTime s₀ → s₀ ≤ u → s₀ + O.warmup ≤ u →
-    u + 1 ≤ N → P.slotTime N + 2 * P.Δ ≤ b → (H b).Nonempty →
+    u + 1 ≤ N → shiftDelay P O.reportDelay (P.slotTime N + 2 * P.Δ) ≤ b → (H b).Nonempty →
     z ∈ H (P.slotTime u + P.Δ) → z = proposer u → tr.ProposesAt z kB B → B.slot = u →
     HZ tr H g + 1 ≤ ((tr.state z (kB + 1)).fg.σ B.root).h →
-    ∃ a, IsReset tr H g a ∧ a ≤ P.slotTime (u + 1) + 2 * P.Δ
+    ∃ a, IsReset tr H g a ∧ a ≤ shiftDelay P O.reportDelay (P.slotTime (u + 1) + 2 * P.Δ)
 
 /-- Leaf 11: both compared heights are read in the later proposer's store. Proved over any
 supplier by `round_of_warm_at_of_healing` (Lemmas/Generic/HealingRounds). -/
@@ -128,17 +131,20 @@ def round_of_warm_at (O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b T : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
     {J B X : A.Blk} {z : Fin P.n} {kB : Nat} {p : Fin P.n} {kX : Nat},
     βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
-    SlotWindow tr H s₀ N floor kindJ J → runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
+    SlotWindowWithin tr H O.reportDelay s₀ N floor kindJ J →
+    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     Service tr H g ΔF b → (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
     CatchRun tr H g (2 * P.Δ) → NoRestartAfter tr H (gbar g) →
     (∀ s, P.slotTime s + 4 * P.Δ ≤ P.slotTime (s + 1)) →
-    (∀ s, P.slotTime (s + 1) + 2 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) →
+    (∀ s, shiftDelay P O.reportDelay (P.slotTime (s + 1) + 2 * P.Δ) + ΔF ≤
+      P.slotTime (s + P.δt)) →
     (∃ k, FirstCutAfter tr k (cutZ P g) ∧ tr.time k ≤ b) →
     gbar g + 4 * P.Δ ≤ P.slotTime s₀ → s₀ ≤ u → s₀ + O.warmup ≤ u → O.follow ≤ P.δt →
     (∀ s, P.slotTime s + 6 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) →
-    u + P.δt ≤ x → x ≤ N → P.slotTime N + 2 * P.Δ ≤ b → (H b).Nonempty → T ≤ b →
-    NoAdvance tr H g T → P.slotTime (u + 1) + 2 * P.Δ < T →
+    u + P.δt ≤ x → x ≤ N → shiftDelay P O.reportDelay (P.slotTime N + 2 * P.Δ) ≤ b →
+    (H b).Nonempty → T ≤ b →
+    NoAdvance tr H g T → shiftDelay P O.reportDelay (P.slotTime (u + 1) + 2 * P.Δ) < T →
     z ∈ H (P.slotTime u + P.Δ) → z = proposer u → tr.ProposesAt z kB B → B.slot = u →
     p ∈ H (tr.time kX) → p = proposer x → tr.ProposesAt p kX X → X.slot = x →
     B ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧

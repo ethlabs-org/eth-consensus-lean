@@ -216,6 +216,7 @@ def CommonPathAcquisition : Prop :=
     (tr : GoldilocksTrace sp ro) (K : AC.CommitteeDict sp.n) (g ΔF Gp w : Time) (i₀ m : Nat)
     (c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))),
     GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K) →
+    tr.AllTicksSign proposer dg H →
     HSShared tr H K dg g ΔF → CatchRun tr H g (2 * sp.Δ) →
     PropPlus tr H proposer g Gp → SettledIn tr H g w i₀ m c →
     ((∀ j', FirstCutAfter tr j' (w + D_HS sp Gp) → PhaseChanged tr.projFG H i₀ j') ∨

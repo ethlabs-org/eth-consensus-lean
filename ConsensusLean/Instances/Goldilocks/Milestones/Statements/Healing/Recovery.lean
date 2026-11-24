@@ -147,6 +147,7 @@ def PatternRecovery : Prop :=
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (K : AC.CommitteeDict sp.n) (g ΔF Gp : Time) (W M cF kF : Nat),
     GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K) →
+    tr.AllTicksSign proposer dg H →
     PatternPremises tr H K proposer dg g ΔF Gp W M cF kF →
     Rec tr H (gbar g + T_rec sp ΔF Gp W M) ∧
     ∀ y ∈ H, ∀ k, tr.IsCall y k → gbar g + T_rec sp ΔF Gp W M - 12 * sp.Δ ≤ tr.time k →
@@ -166,6 +167,7 @@ def FinalizingCoverage : Prop :=
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
     (tr : GoldilocksTrace sp ro) (K : AC.CommitteeDict sp.n) (g ΔF Gp : Time) (W M cF kF : Nat),
     GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K) →
+    tr.AllTicksSign proposer dg H →
     PatternPremises tr H K proposer dg g ΔF Gp W M cF kF →
     ∀ t, Rstar sp g ΔF Gp ≤ t →
       ∃ (q : Fin sp.n) (kP : Nat) (P : AC.Blk sp.n (List (FG.Att sp.n))),
