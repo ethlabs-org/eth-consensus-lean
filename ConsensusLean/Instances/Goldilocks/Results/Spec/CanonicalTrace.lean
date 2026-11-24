@@ -65,8 +65,8 @@ noncomputable def traceEncoding (S : Setup) (hn : 1 ≤ Fintype.card V) :
   State h := State (S.params (pubOf E) h) (S.ro _) S.vote
   codec := wireCodec _ _ S.vote ⟨fun _ _ _ _ => false, fun _ _ => none⟩
   decodeMessage := decodeVoteObj (S.params (pubOf E) hn) (binding := S.vote)
-  adapter := nodeAdapter _ _ S.vote
-  ops h := nodeOps (S.params (pubOf E) h) (S.ro _) S.vote
+  adapter := nodeAdapter _ _ S.vote (S.sign (pubOf E))
+  ops h := nodeOps (S.params (pubOf E) h) (S.ro _) S.vote (S.sign (pubOf E))
   claim := AsChainShape.voteClaim (binding := S.vote) _
   voteBody := voteBody
   presented := AsChainShape.presented (binding := S.vote)
@@ -75,6 +75,10 @@ noncomputable def traceEncoding (S : Setup) (hn : 1 ≤ Fintype.card V) :
   conflict := conflicts (binding := S.vote)
   isFGAtt := isFGAtt (binding := S.vote)
   shape_eq := rfl
+
+/-- The trace's signing calendar is the setup's. -/
+theorem traceEncoding_adapter_sign (S : Setup) (hn : 1 ≤ Fintype.card V) :
+    (traceEncoding (E := E) S hn).adapter.sign = S.sign (pubOf E) := by rfl
 
 /-- The proof-side observer reads the Goldilocks envelope's FG-due flag, not a replay input. -/
 noncomputable def traceDue (S : Setup) (hn : 1 ≤ Fintype.card V) :
@@ -128,8 +132,8 @@ theorem traceEncoding_induction {V : Type} [Fintype V] {E : Env V}
              State h := State (S.params (pubOf E) h) (S.ro _) S.vote
              codec := wireCodec _ _ S.vote ⟨fun _ _ _ _ => false, fun _ _ => none⟩
              decodeMessage := decodeVoteObj (S.params (pubOf E) hn) (binding := S.vote)
-             adapter := nodeAdapter _ _ S.vote
-             ops h := nodeOps (S.params (pubOf E) h) (S.ro _) S.vote
+             adapter := nodeAdapter _ _ S.vote (S.sign (pubOf E))
+             ops h := nodeOps (S.params (pubOf E) h) (S.ro _) S.vote (S.sign (pubOf E))
              claim := AsChainShape.voteClaim (binding := S.vote) _
              voteBody := voteBody
              presented := AsChainShape.presented (binding := S.vote)
@@ -332,6 +336,59 @@ theorem eventCuts_source (i : Nat)
   obtain ⟨r, hr, rfl⟩ := List.mem_map.mp hq
   exact ⟨r, hr, rfl, rfl, rfl, rfl, rfl⟩
 
+mutual
+/-- Visiting a receipt does not read the adapter's signing calendar. -/
+theorem visit_nodeAdapter_sign {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {binding : VoteBinding}
+    (C : NodeAsChainShape.WireCodec (goldilocksNode sp ro) binding.Kind Info Body)
+    (sign : Fin sp.n → Time → Bool) (hs : List (Header Info × Nat)) :
+    ∀ (st : State sp ro binding) (o : Wire sp.n binding),
+      NodeAsChainShape.visit C (nodeAdapter sp ro binding sign) hs st o =
+        NodeAsChainShape.visit C (nodeAdapter sp ro binding) hs st o
+  | st, .mk a m cs => by
+    rw [NodeAsChainShape.visit, NodeAsChainShape.visit]
+    have hp : NodeAsChainShape.processOne C (nodeAdapter sp ro binding sign) hs =
+        NodeAsChainShape.processOne C (nodeAdapter sp ro binding) hs := rfl
+    simp only [hp, visitList_nodeAdapter_sign C sign hs]
+    rfl
+
+/-- Visiting carried objects does not read the adapter's signing calendar. -/
+theorem visitList_nodeAdapter_sign {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {binding : VoteBinding}
+    (C : NodeAsChainShape.WireCodec (goldilocksNode sp ro) binding.Kind Info Body)
+    (sign : Fin sp.n → Time → Bool) (hs : List (Header Info × Nat)) :
+    ∀ (st : State sp ro binding) (cs : List (Wire sp.n binding)),
+      NodeAsChainShape.visitList C (nodeAdapter sp ro binding sign) hs st cs =
+        NodeAsChainShape.visitList C (nodeAdapter sp ro binding) hs st cs
+  | st, [] => by rw [NodeAsChainShape.visitList, NodeAsChainShape.visitList]
+  | st, c :: cs => by
+    rw [NodeAsChainShape.visitList, NodeAsChainShape.visitList,
+      visit_nodeAdapter_sign C sign hs st c, visitList_nodeAdapter_sign C sign hs]
+end
+
+/-- The objects delivered for a receipt do not depend on the adapter's signing calendar. -/
+theorem delivered_nodeAdapter_sign {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {binding : VoteBinding}
+    (C : NodeAsChainShape.WireCodec (goldilocksNode sp ro) binding.Kind Info Body)
+    (sign : Fin sp.n → Time → Bool) (hs : List (Header Info × Nat)) (st : State sp ro binding)
+    (o : Wire sp.n binding) :
+    NodeAsChainShape.delivered C (nodeAdapter sp ro binding sign) hs st o =
+      NodeAsChainShape.delivered C (nodeAdapter sp ro binding) hs st o := by
+  unfold NodeAsChainShape.delivered
+  rw [visit_nodeAdapter_sign]
+
+/-- Processing a receipt does not read the adapter's signing calendar. -/
+theorem process_nodeAdapter_sign {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {binding : VoteBinding}
+    (C : NodeAsChainShape.WireCodec (goldilocksNode sp ro) binding.Kind Info Body)
+    (sign : Fin sp.n → Time → Bool) (st : State sp ro binding) (o : Wire sp.n binding)
+    (hs : List (Header Info × Nat)) :
+    NodeAsChainShape.process C (nodeAdapter sp ro binding sign) st o hs =
+      NodeAsChainShape.process C (nodeAdapter sp ro binding) st o hs := by
+  unfold NodeAsChainShape.process NodeAsChainShape.delivered
+  rw [visit_nodeAdapter_sign]
+  rfl
+
 open Classical in
 /-- Each engine event contributes exactly its handler groups. -/
 theorem eventCuts_eq (i : Nat) : eventCuts S rho hn i =
@@ -340,7 +397,7 @@ theorem eventCuts_eq (i : Nat) : eventCuts S rho hn i =
         if (S.params (pubOf E) hn).toParams.IsPublic t then
           groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
             (stateAt S rho hn v i).node t (Nat.pair i 0)
-            (.tick (encodeTxs (Model.mempool rho.inbox v t)))
+            (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t))
         else []
     | some (.deliver v o t) =>
         deliverRecs (rho.voteIO v) (runProposer S rho hn) (digestOf S rho)
@@ -371,7 +428,12 @@ theorem eventCuts_eq (i : Nat) : eventCuts S rho hn i =
       rw [CanonicalTrace.eventCuts_deliver _ _ _ _ _ _ he]
       simp only [hd, CanonicalTrace.wireOf_eq, CanonicalTrace.receiverCodec_eq,
         CanonicalTrace.voteIOAt_eq]
-      rfl
+      exact congrArg (fun l => deliverRecs (sp := S.params (pubOf E) hn) (ro := S.ro _)
+          (rho.voteIO v) (runProposer S rho hn) (digestOf S rho)
+          (Model.digests rho.hash o) (rho.ownKey v) t i l (stateAt S rho hn v i).node 0)
+        (delivered_nodeAdapter_sign
+          (wireCodec (S.params (pubOf E) hn) (S.ro _) S.vote (rho.voteIO v)) (S.sign (pubOf E))
+          (Model.digests rho.hash o) (stateAt S rho hn v i) o)
 
 /-- The cut map `ι`: the number of trace cuts of the engine events before engine cut `i`. -/
 noncomputable def cutMap : Nat → Nat := CanonicalTrace.cutMap (traceEncoding S hn) rho

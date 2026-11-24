@@ -63,8 +63,10 @@ inductive TickStep where
   | fgUpdate
 
 /-- The order of the steps of a tick: the AC's tick, the proposal duty, the FG update
-(composition.tex §"Node"; claims C0.4). -/
-def tickSteps : List TickStep := [.acTick, .proposal, .fgUpdate]
+(composition.tex §"Node"; claims C0.4). The FG update runs only when the tick's signing calendar
+allows it (`fgDue`); otherwise the tick has no FG step. -/
+def tickSteps (fgDue : Bool) : List TickStep :=
+  if fgDue then [.acTick, .proposal, .fgUpdate] else [.acTick, .proposal]
 
 /-- Whether validator `self` proposes at time `t`: `t = t_s` for a slot `s > 0` whose proposer
 is `self`. -/
@@ -111,17 +113,17 @@ noncomputable def runSteps (proposer : Nat → Fin P.n)
     let r := tickStep proposer dg self acc.1 t x step
     (r.1, acc.2 ++ r.2)) (st, [])
 
-/-- `on_tick(t)` at validator `self` with the input `x`: `tickSteps` in order. -/
+/-- `on_tick(t)` at validator `self` with the input `x`: `tickSteps fgDue` in order. -/
 noncomputable def onTick (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
-    (st : NodeState A) (t : Time) (x : Nat) : NodeState A × List (Cut A) :=
-  runSteps proposer dg self st t x tickSteps
+    (st : NodeState A) (t : Time) (x : Nat) (fgDue : Bool) : NodeState A × List (Cut A) :=
+  runSteps proposer dg self st t x (tickSteps fgDue)
 
 /-- The handler of an event at validator `self` and time `t`. -/
 noncomputable def exec (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
     (st : NodeState A) (t : Time) : Event A → NodeState A × List (Cut A)
-  | .tick x => onTick proposer dg self st t x
+  | .tick x fgDue => onTick proposer dg self st t x fgDue
   | .block B => onBlock self st t B
   | .message m => onMessage self st t m
   | .attestation a => onAttestation st a
@@ -135,7 +137,7 @@ def WireOK (dg : Digest (List (FG.Att P.n)) A.Payload) : Event A → Prop
   | .block B => B.RootOk dg ∧ (∀ a ∈ B.fgPayload, a.WellFormed) ∧ A.validPayload B
   | .message m => A.validMsg m
   | .attestation a => a.WellFormed
-  | .tick _ => True
+  | .tick _ _ => True
   | .restart => True
 
 end Consensus.Goldilocks.Node

@@ -40,7 +40,21 @@ from the start contributes nothing, not even its initial tree). -/
 def HonestBlocksAt (H : Time → Set (Fin P.n)) : Set A.Blk :=
   {B | ∃ y i t, 0 ≤ t ∧ (∀ k < i, tr.time k ≤ t) ∧ y ∈ H t ∧ B ∈ (tr.state y i).fg.tree}
 
+/-- **The signing calendar** `sign`: each tick of a node honest at its time runs the FG update
+exactly when the calendar allows it then. -/
+def SignCalendarAt (proposer : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)
+    (H : Time → Set (Fin P.n)) (sign : Fin P.n → Time → Bool) : Prop :=
+  ∀ y j t x fgDue, y ∈ H t → tr.GroupAt proposer dg y j t (.tick x fgDue) → fgDue = sign y t
+
 end RunTrace
+
+/-- **The signing gap** `G` of a calendar from `t₀` on: from every time `t ≥ t₀`, the calendar
+allows each validator to sign at a public time in `[t, t + (G + 1) · Δ)`, that is at most `G · Δ`
+after the next public time. `G = 0` is responsive signing (every public time). The calendar is a
+function of the validator and the time only. -/
+def SignGapAt (P : Params) (sign : Fin P.n → Time → Bool) (G : Nat) (t₀ : Time) : Prop :=
+  ∀ y t, t₀ ≤ t →
+    ∃ t', t ≤ t' ∧ t' < t + ((G : Time) + 1) * P.Δ ∧ P.IsPublic t' ∧ sign y t' = true
 
 namespace Growing
 

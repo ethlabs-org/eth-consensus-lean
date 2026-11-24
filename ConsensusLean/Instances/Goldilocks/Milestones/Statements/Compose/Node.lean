@@ -65,8 +65,8 @@ the digest is collision free on the tree with `B`, no held block has its root an
 `fg_on_block(Σ, B)` accepts `B`. -/
 def HonestBlockAccepted : Prop :=
   A.Requirements → (P.genesisBlock A.genesisPayload).RootOk dg →
-    ∀ (cfg cfg' : Config A) (t : Time) (x : Nat), Reachable proposer dg self cfg →
-      Step proposer dg self cfg (.tick x) t cfg' → Proposes proposer self t →
+    ∀ (cfg cfg' : Config A) (t : Time) (x : Nat) (fgDue : Bool), Reachable proposer dg self cfg →
+      Step proposer dg self cfg (.tick x fgDue) t cfg' → Proposes proposer self t →
       let st₁ := (tickStep proposer dg self cfg.st t x .acTick).1
       let r := acProposal st₁ t
       ∀ d p, r.2.2 = some (d, p) →
@@ -96,26 +96,28 @@ def UpdateCuts (uc : List (Cut A)) : Prop :=
       ∃ (C : A.Blk) (a : FG.Att P.n), uc = [.ac ℓ, .fg (.attest C (some a)), .fg (.attestation a)])
 
 /-- The shape of a tick's cuts (claims C0.4): `ac_on_tick`, the proposal cuts, the FG update
-cuts, in this order. -/
-def TickShape (t : Time) (cs : List (Cut A)) : Prop :=
+cuts, in this order; no FG update cuts when the tick does not sign (`fgDue = false`). -/
+def TickShape (fgDue : Bool) (t : Time) (cs : List (Cut A)) : Prop :=
   ∃ (ℓ : ACLabel A) (pc uc : List (Cut A)),
-    ℓ.call = .tick ∧ cs = .ac ℓ :: (pc ++ uc) ∧ ProposalCuts proposer self t pc ∧ UpdateCuts uc
+    ℓ.call = .tick ∧ cs = .ac ℓ :: (pc ++ uc) ∧ ProposalCuts proposer self t pc ∧
+      (if fgDue then UpdateCuts uc else uc = [])
 
 /-- **C0.4, tick order.** The cuts of `on_tick(t)` at every state have the shape `TickShape`:
 the AC's tick; at `t = t_s` with `s > 0`, for the slot's proposer, `ac_proposal` and then,
 when it returns a proposal, the own block, processed at once (`fg_on_block`, then
 `ac_on_block`); the FG update (`ac_to_fg`, then `fg_attest` with the own attestation
 processed at once). That a restart precedes the tick and the tick precedes the objects
-received at its time is `Node.Step` (`EventOK`). -/
+received at its time is `Node.Step` (`EventOK`). A tick that does not sign has no FG update. -/
 def TickOrder : Prop :=
-  ∀ (st : NodeState A) (t : Time) (x : Nat),
-    TickShape proposer self t (onTick proposer dg self st t x).2
+  ∀ (st : NodeState A) (t : Time) (x : Nat) (fgDue : Bool),
+    TickShape proposer self fgDue t (onTick proposer dg self st t x fgDue).2
 
 /-- **C0.5 (c), honest attestations are signed only in ticks.** An `fg_attest` cut that signs
-appears only in the cuts of a tick (so, by `Node.Step`, at a public time). -/
+appears only in the cuts of a tick that runs the FG update (so, by `Node.Step`, at a public
+time). -/
 def SignedOnlyInTicks : Prop :=
   ∀ (st : NodeState A) (t : Time) (e : Event A) (C : A.Blk) (a : FG.Att P.n),
-    Cut.fg (.attest C (some a)) ∈ (exec proposer dg self st t e).2 → ∃ x, e = .tick x
+    Cut.fg (.attest C (some a)) ∈ (exec proposer dg self st t e).2 → ∃ x, e = .tick x true
 
 /-- **C0.5 (b), the AC sees only blocks the FG accepted** (claims C0.5 (b)). In
 the cuts of every event at every state, an AC cut with the call `ac_on_block(B)` comes right
@@ -180,10 +182,10 @@ def RecordIsClientRun : Prop :=
 configuration, the source `C` given to `fg_attest` is a block of the tree of the frame after
 the tick that extends `Σ.F` (the FG input contract: `Σ.σ[C]` is the state of a held block). -/
 def SourcesHeld : Prop :=
-  A.Requirements → ∀ (cfg cfg' : Config A) (t : Time) (x : Nat),
+  A.Requirements → ∀ (cfg cfg' : Config A) (t : Time) (x : Nat) (fgDue : Bool),
     Reachable proposer dg self cfg →
-    Step proposer dg self cfg (.tick x) t cfg' → ∀ (C : A.Blk) (s : Option (FG.Att P.n)),
-      Cut.fg (.attest C s) ∈ (exec proposer dg self cfg.st t (.tick x)).2 →
+    Step proposer dg self cfg (.tick x fgDue) t cfg' → ∀ (C : A.Blk) (s : Option (FG.Att P.n)),
+      Cut.fg (.attest C s) ∈ (exec proposer dg self cfg.st t (.tick x fgDue)).2 →
         C ∈ cfg'.st.fg.tree ∧ cfg'.st.fg.Anc cfg'.st.fg.F C
 
 /-- The Compose/AnyAC node statements, for one node (one AC, digest and validator). -/

@@ -293,14 +293,16 @@ theorem deliverRecs_cons (C : WireCodec N K I B) (pr : Nat → Fin Q.n)
 end Replay
 
 open Classical in
-/-- Replay one engine event on the node state held by the engine before the event. -/
-noncomputable def eventCuts (i : Nat) : List (CutRec A) :=
+/-- Replay one engine event on the node state held by the engine before the event; a tick of
+`y` at `t` runs the FG update exactly when `due y t` (the signing calendar). -/
+noncomputable def eventCutsWith (due : Fin (Fintype.card V) → Time → Bool) (i : Nat) :
+    List (CutRec A) :=
   match rho.events[i]? with
   | some (.tick v t) =>
     if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
       groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
         (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0)
-        (.tick (encodeTxs (Model.mempool rho.inbox v t)))
+        (.tick (encodeTxs (Model.mempool rho.inbox v t)) (due (rho.ownKey v) t))
     else []
   | some (.deliver v o t) =>
     let hs := Model.digests rho.hash o
@@ -313,9 +315,12 @@ noncomputable def eventCuts (i : Nat) : List (CutRec A) :=
       (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0) .restart
   | none => []
 
+/-- Replay one engine event; a tick runs the FG update on the adapter's signing calendar. -/
+noncomputable def eventCuts (i : Nat) : List (CutRec A) := eventCutsWith e rho e.adapter.sign i
+
 /-- An absent engine event contributes no replay cuts. -/
 theorem eventCuts_none (i : Nat) (he : rho.events[i]? = none) : eventCuts e rho i = [] := by
-  unfold eventCuts
+  unfold eventCuts eventCutsWith
   rw [he]
 
 open Classical in
@@ -326,9 +331,9 @@ theorem eventCuts_tick (i : Nat) (v : V) (t : Time)
       if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
         groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
           (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0)
-          (.tick (encodeTxs (Model.mempool rho.inbox v t)))
+          (.tick (encodeTxs (Model.mempool rho.inbox v t)) (e.adapter.sign (rho.ownKey v) t))
       else [] := by
-  unfold eventCuts
+  unfold eventCuts eventCutsWith
   rw [he]
 
 /-- A restart replays the restart handler on the engine's current node state. -/
@@ -336,7 +341,7 @@ theorem eventCuts_restart (i : Nat) (v : V) (t : Time)
     (he : rho.events[i]? = some (.restart v t)) :
     eventCuts e rho i = groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
       (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0) .restart := by
-  unfold eventCuts
+  unfold eventCuts eventCutsWith
   rw [he]
 
 open Classical in
@@ -349,29 +354,110 @@ theorem eventCuts_deliver (i : Nat) (v : V) (o : (Model.protoOf (compiled F) E).
       let C := receiverCodec e rho v
       deliverRecs C (runProposer rho hn) (digestOf e rho) hs (rho.ownKey v) t i
         (delivered C e.adapter hs st (wireOf e o)) (e.adapter.node st) 0 := by
-  unfold eventCuts
+  unfold eventCuts eventCutsWith
   rw [he]
 
-/-- Number of replay cuts strictly before an engine cut. -/
-noncomputable def cutMap : Nat → Nat
+/-- Number of replay cuts strictly before an engine cut, under the signing calendar `due`. -/
+noncomputable def cutMapWith (due : Fin (Fintype.card V) → Time → Bool) : Nat → Nat
   | 0 => 0
-  | i + 1 => cutMap i + (eventCuts e rho i).length
+  | i + 1 => cutMapWith due i + (eventCutsWith e rho due i).length
 
-/-- All replay cuts in engine event order. -/
-noncomputable def allCuts : List (CutRec A) :=
-  (List.range rho.events.length).flatMap (eventCuts e rho)
+/-- All replay cuts in engine event order, under the signing calendar `due`. -/
+noncomputable def allCutsWith (due : Fin (Fintype.card V) → Time → Bool) : List (CutRec A) :=
+  (List.range rho.events.length).flatMap (eventCutsWith e rho due)
 
-/-- The replay trace stutters beyond its final labelled cut. -/
-noncomputable def simTrace : RunTrace A where
+/-- The replay trace under the signing calendar `due`; it stutters beyond its final labelled
+cut. -/
+noncomputable def simTraceWith (due : Fin (Fintype.card V) → Time → Bool) : RunTrace A where
   init := initial e rho
-  node k := ((allCuts e rho)[k]?).elim ⟨0, hn⟩ CutRec.node
-  time k := ((allCuts e rho)[k]?).elim (rho.horizon + 1) CutRec.time
-  event k := ((allCuts e rho)[k]?).elim (Nat.pair rho.events.length k) CutRec.event
-  pos k := ((allCuts e rho)[k]?).elim 0 CutRec.pos
-  label k := ((allCuts e rho)[k]?).map CutRec.label
-  post k := ((allCuts e rho)[k]?).elim (Node.init A) CutRec.post
+  node k := ((allCutsWith e rho due)[k]?).elim ⟨0, hn⟩ CutRec.node
+  time k := ((allCutsWith e rho due)[k]?).elim (rho.horizon + 1) CutRec.time
+  event k := ((allCutsWith e rho due)[k]?).elim (Nat.pair rho.events.length k) CutRec.event
+  pos k := ((allCutsWith e rho due)[k]?).elim 0 CutRec.pos
+  label k := ((allCutsWith e rho due)[k]?).map CutRec.label
+  post k := ((allCutsWith e rho due)[k]?).elim (Node.init A) CutRec.post
   awake y t := E.awake (rho.key y) t = true ∧ 0 ≤ t ∧ t ≤ rho.horizon
   observationHorizon := some rho.horizon
+
+/-- Number of replay cuts strictly before an engine cut. -/
+noncomputable def cutMap : Nat → Nat := cutMapWith e rho e.adapter.sign
+
+/-- All replay cuts in engine event order. -/
+noncomputable def allCuts : List (CutRec A) := allCutsWith e rho e.adapter.sign
+
+/-- The replay trace on the adapter's signing calendar; it stutters beyond its final labelled
+cut. -/
+noncomputable def simTrace : RunTrace A := simTraceWith e rho e.adapter.sign
+
+/-- The replay is the calendar replay at the adapter's signing calendar. -/
+theorem simTrace_eq_with : simTrace e rho = simTraceWith e rho e.adapter.sign := by rfl
+
+/-- The event cuts are the calendar event cuts at the adapter's signing calendar. -/
+theorem eventCuts_eq_with (i : Nat) : eventCuts e rho i = eventCutsWith e rho e.adapter.sign i :=
+  by rfl
+
+open Classical in
+/-- Under a calendar, a tick replays the node handler at public times with the calendar's flag. -/
+theorem eventCutsWith_tick (due : Fin (Fintype.card V) → Time → Bool) (i : Nat) (v : V)
+    (t : Time) (he : rho.events[i]? = some (.tick v t)) :
+    eventCutsWith e rho due i =
+      if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
+        groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
+          (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0)
+          (.tick (encodeTxs (Model.mempool rho.inbox v t)) (due (rho.ownKey v) t))
+      else [] := by
+  unfold eventCutsWith
+  rw [he]
+
+/-- Under a calendar, a restart replays the restart handler. -/
+theorem eventCutsWith_restart (due : Fin (Fintype.card V) → Time → Bool) (i : Nat) (v : V)
+    (t : Time) (he : rho.events[i]? = some (.restart v t)) :
+    eventCutsWith e rho due i = groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
+      (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0) .restart := by
+  unfold eventCutsWith
+  rw [he]
+
+open Classical in
+/-- Under a calendar, a delivery replays the objects the encoder visits. -/
+theorem eventCutsWith_deliver (due : Fin (Fintype.card V) → Time → Bool) (i : Nat) (v : V)
+    (o : (Model.protoOf (compiled F) E).Object) (t : Time)
+    (he : rho.events[i]? = some (.deliver v o t)) :
+    eventCutsWith e rho due i =
+      deliverRecs (receiverCodec e rho v) (runProposer rho hn) (digestOf e rho)
+        (Model.digests rho.hash o) (rho.ownKey v) t i
+        (delivered (receiverCodec e rho v) e.adapter (Model.digests rho.hash o) (stateAt e rho v i)
+          (wireOf e o)) (e.adapter.node (stateAt e rho v i)) 0 := by
+  unfold eventCutsWith
+  rw [he]
+
+/-- Under a calendar, an absent engine event contributes no replay cuts. -/
+theorem eventCutsWith_none (due : Fin (Fintype.card V) → Time → Bool) (i : Nat)
+    (he : rho.events[i]? = none) : eventCutsWith e rho due i = [] := by
+  unfold eventCutsWith
+  rw [he]
+
+/-- The calendar prefix map advances by the length of the next event's replay. -/
+theorem cutMapWith_succ (due : Fin (Fintype.card V) → Time → Bool) (i : Nat) :
+    cutMapWith e rho due (i + 1) = cutMapWith e rho due i + (eventCutsWith e rho due i).length :=
+  by rfl
+
+/-- The calendar prefix map starts at zero. -/
+theorem cutMapWith_zero (due : Fin (Fintype.card V) → Time → Bool) : cutMapWith e rho due 0 = 0 :=
+  by rfl
+
+/-- The calendar replay's cuts, in engine event order. -/
+theorem allCutsWith_eq (due : Fin (Fintype.card V) → Time → Bool) : allCutsWith e rho due =
+    (List.range rho.events.length).flatMap (eventCutsWith e rho due) := by rfl
+
+/-- The calendar trace's node, time, event id and label at a cut are its record's. -/
+theorem simTraceWith_fields (due : Fin (Fintype.card V) → Time → Bool) (k : Nat) :
+    (simTraceWith e rho due).node k = ((allCutsWith e rho due)[k]?).elim ⟨0, hn⟩ CutRec.node ∧
+    (simTraceWith e rho due).time k =
+      ((allCutsWith e rho due)[k]?).elim (rho.horizon + 1) CutRec.time ∧
+    (simTraceWith e rho due).event k =
+      ((allCutsWith e rho due)[k]?).elim (Nat.pair rho.events.length k) CutRec.event ∧
+    (simTraceWith e rho due).label k = ((allCutsWith e rho due)[k]?).map CutRec.label :=
+  ⟨by rfl, by rfl, by rfl, by rfl⟩
 
 /-- Growing faults change the honest keys at observation time, not the replay trace. -/
 noncomputable def simTraceAt : RunTrace A := simTrace e rho

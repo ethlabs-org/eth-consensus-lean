@@ -191,11 +191,22 @@ def InGroup (proposer : Nat → Fin P.n)
   tr.GroupAt proposer dg y j t e ∧ j ≤ i ∧
     i < j + (Node.exec proposer dg y (tr.state y j) t e).2.length
 
-/-- The tick of `y` at time `t` starts at cut `j` (with some input). -/
+/-- The tick of `y` at time `t` starts at cut `j` (with some input, whether or not it signs). -/
 def TickAt (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n) (j : Nat) (t : Time) :
     Prop :=
-  ∃ x, tr.GroupAt proposer dg y j t (.tick x)
+  ∃ x fgDue, tr.GroupAt proposer dg y j t (.tick x fgDue)
+
+/-- The tick of `y` at time `t` starts at cut `j` and runs the FG update (`fgDue = true`). -/
+def SignTickAt (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n) (j : Nat) (t : Time) :
+    Prop :=
+  ∃ x, tr.GroupAt proposer dg y j t (.tick x true)
+
+/-- Every tick of a node of `H` runs the FG update (responsive signing). -/
+def AllTicksSign (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n)) : Prop :=
+  ∀ y ∈ H, ∀ j t, tr.TickAt proposer dg y j t → tr.SignTickAt proposer dg y j t
 
 end RunTrace
 
@@ -205,7 +216,7 @@ namespace Node
 restarts first, then ticks, then deliveries. -/
 def Event.phase {A : NodeAC P} : Event A → Nat
   | .restart => 0
-  | .tick _ => 1
+  | .tick _ _ => 1
   | _ => 2
 
 /-- **A run of the node** (claims §"Runs"; `Node.LocalRun`), for the honest

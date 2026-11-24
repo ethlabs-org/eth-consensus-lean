@@ -36,9 +36,9 @@ structure RunOrder (proposer : Nat → Fin P.n)
     j < j' → e.phase ≤ e'.phase
   /-- (c) The cuts of an honest tick at `t` with the input `x` from `j` are `on_tick`'s cuts, in
   C0.4's order, at `j, j + 1, …`. -/
-  tick_steps : ∀ y ∈ H, ∀ j t x, tr.GroupAt proposer dg y j t (.tick x) →
-    ∀ k, (hk : k < (Node.onTick proposer dg y (tr.state y j) t x).2.length) →
-      tr.label (j + k) = some (Node.onTick proposer dg y (tr.state y j) t x).2[k]
+  tick_steps : ∀ y ∈ H, ∀ j t x fgDue, tr.GroupAt proposer dg y j t (.tick x fgDue) →
+    ∀ k, (hk : k < (Node.onTick proposer dg y (tr.state y j) t x fgDue).2.length) →
+      tr.label (j + k) = some (Node.onTick proposer dg y (tr.state y j) t x fgDue).2[k]
   /-- (d) A block of an honest proposer processed by an honest node was processed by its proposer
   at or before, inside a tick. -/
   block_before : ∀ y ∈ H, ∀ i B, tr.BlockCallAt y i B → B.proposer ∈ H →
