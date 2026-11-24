@@ -101,6 +101,8 @@ structure Adapter (A : NodeAC P) (K I B S : Type) where
   applyCuts : S → Option (ShapeObj P.n K I B) → (NodeState A × List (Cut A)) → S
   relayIf : S → (c : Prop) → [Decidable c] → ShapeObj P.n K I B → S
   attest : S → NodeState A → FG.Att P.n → S
+  /-- Whether this validator runs the FG update at this public time. -/
+  sign : Fin P.n → Time → Bool := fun _ _ => true
 
 /-- A block-shaped object may refuse delivery of the objects it carries. -/
 def BlockShaped : ShapeObj P.n K I B → Prop
@@ -158,11 +160,11 @@ noncomputable def process (st : S) (o : ShapeObj P.n K I B) (hs : List (Header I
   (delivered C D hs st o).foldl (processOne C D hs) st
 
 open Classical in
-/-- Call the node's public tick and make the FG update due. -/
+/-- Call the node's public tick and set the FG duty from the signing calendar. -/
 noncomputable def nodeTick (D : Adapter A K I B S) (st : S) : S :=
   if P.IsPublic (D.now st) then
     let r := Node.acCall (D.self st) (D.node st) (D.now st) .tick
-    D.setDue (D.applyCuts st none (r.1, [r.2])) true
+    D.setDue (D.applyCuts st none (r.1, [r.2])) (D.sign (D.self st) (D.now st))
   else st
 
 omit [DecidableEq I] in

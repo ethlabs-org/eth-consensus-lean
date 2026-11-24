@@ -590,7 +590,8 @@ def wireCodec (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) (bindin
   attestation := decodeAttObj sp (binding := binding)
 
 /-- Connect node handlers to the Goldilocks clock, duty flag and publication queues. -/
-def nodeAdapter (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) (binding : VoteBinding) :
+def nodeAdapter (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) (binding : VoteBinding)
+    (sign : Fin sp.n → Time → Bool := fun _ _ => true) :
     NodeAsChainShape.Adapter (goldilocksNode sp ro) binding.Kind Info Body
       (State sp ro binding) where
   self := State.self
@@ -602,6 +603,7 @@ def nodeAdapter (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) (bind
   applyCuts := apply
   relayIf := relayIf
   attest st node a := { st with node, outbox := st.outbox ++ [.att (encodeAtt a)] }
+  sign := sign
 
 variable (sp ro) in
 /-- The node's top-level event a received object stands for, given the digests `hs`: the block,
@@ -703,11 +705,11 @@ noncomputable def recordOwn
         st k h hs
   | _ => st
 
-/-- The node's tick at a public time: `ac_on_tick`, its votes queued, the FG update made due. -/
+/-- The public tick queues `ac_on_tick` votes and sets the FG duty from the signing calendar. -/
 noncomputable def nodeTick
-    (st : State sp ro (binding := binding)) :
+    (st : State sp ro (binding := binding)) (sign : Fin sp.n → Time → Bool := fun _ _ => true) :
     State sp ro (binding := binding) :=
-  NodeAsChainShape.nodeTick (nodeAdapter sp ro binding) st
+  NodeAsChainShape.nodeTick (nodeAdapter sp ro binding sign) st
 
 /-- The slot proposal of the slot's proposer: `ac_proposal`; the header names the head and
 carries the proposal's attestations (`proposal_attestations`) and the AC payload. The engine
@@ -771,14 +773,15 @@ noncomputable def restore (k : Fin sp.n)
 
 variable (sp ro) in
 /-- The Goldilocks engine operations at fixed protocol parameters and voting roles. -/
-noncomputable def nodeOps (binding : VoteBinding) :
+noncomputable def nodeOps (binding : VoteBinding)
+    (sign : Fin sp.n → Time → Bool := fun _ _ => true) :
     NodeAsChainShape.Ops sp.n binding.Kind Info Body Out (State sp ro binding) Nat WireVote where
   init k p io := ⟨k, Node.initWith (goldilocksNode sp ro)
     (binding.installVote p (goldilocksNode sp ro).initial),
     0, [], [], false, fun _ => none, [], [], io⟩
   clock st t := { st with now := t }
   propose := propose
-  pollPropose st _ := (nodeTick st, none)
+  pollPropose st _ := (nodeTick st sign, none)
   poll := poll
   pollBatch := pollBatch
   gossip st _ :=
@@ -823,6 +826,9 @@ structure Setup where
   ro : (n : Nat) → AC.ReplayOrderData n genesisRoot (List (FG.Att n))
   /-- Historical vote authentication, permission and threshold denominator. -/
   vote : VoteBinding
+  /-- Whether a validator may run `ac_to_fg` and `fg_attest` at a public time.
+  By default every public tick may sign. -/
+  sign : (pub : Public) → Fin pub.n → Time → Bool := fun _ _ _ => true
 
 /-- The AC parameters use protocol delay `pub.ΔAC` and slots of four protocol delays: L0 delivers
 strictly before the bound (`CommLog.PSync`), which is the node's deadline `[τ, max(τ, w) + Δ)`.
@@ -862,7 +868,7 @@ noncomputable def goldilocks (S : Setup) :
     ChainShapeFamily schema Info := fun pub =>
   let binding := S.vote
   NodeAsChainShape.shape (skeleton pub (binding := binding))
-    (NodeAsChainShape.familyOps fun hn => nodeOps (S.params pub hn) (S.ro _) binding)
+    (NodeAsChainShape.familyOps fun hn => nodeOps (S.params pub hn) (S.ro _) binding (S.sign pub))
     (voteClaim (binding := binding) pub.n) voteBody (presented (binding := binding))
     (binding.candidateRole pub.n) (dependencies pub.n (binding := binding))
     (conflicts (binding := binding)) (isFGAtt (binding := binding))
@@ -882,7 +888,8 @@ theorem goldilocks_propose_eq (S : Setup) (pub : Public) (st : PubState S pub) (
 /-- The proposal poll runs the node tick but emits no proposal directly. -/
 theorem goldilocks_pollPropose_eq (S : Setup) (pub : Public) (st : PubState S pub) (t : Time) :
     (goldilocks S pub).pollPropose st t =
-      if hn : 1 ≤ pub.n then (fun _ => nodeTick (st hn), none) else (st, none) := by rfl
+      if hn : 1 ≤ pub.n then (fun _ => nodeTick (st hn) (S.sign pub), none)
+      else (st, none) := by rfl
 
 /-- The batch poll runs the Goldilocks poll, or emits nothing with no keys. -/
 theorem goldilocks_pollBatch_eq (S : Setup) (pub : Public) (st : PubState S pub) (t : Time) :
@@ -1087,11 +1094,12 @@ theorem recordOwn_eq (st : State sp ro binding) (o : Wire sp.n binding)
     | some ap => rcases ap with ⟨a, p⟩; cases rootOf hs h <;> rfl
 
 open Classical in
-/-- At a public time, queue AC tick emissions and mark the FG duty due. -/
-theorem nodeTick_eq (st : State sp ro binding) : nodeTick st =
+/-- At a public time, queue AC tick emissions and set the FG duty from the calendar. -/
+theorem nodeTick_eq (st : State sp ro binding)
+    (sign : Fin sp.n → Time → Bool := fun _ _ => true) : nodeTick st sign =
     if sp.toParams.IsPublic st.now then
       let r := Node.acCall st.self st.node st.now .tick
-      { apply st none (r.1, [r.2]) with fgDue := true }
+      { apply st none (r.1, [r.2]) with fgDue := sign st.self st.now }
     else st := by rfl
 
 /-- A proposal updates node state and, if present, encodes the head and payloads. -/

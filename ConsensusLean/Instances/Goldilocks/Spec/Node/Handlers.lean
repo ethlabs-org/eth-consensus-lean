@@ -58,8 +58,9 @@ noncomputable def restart (self : Fin P.n) (st : NodeState A) (t : Time) :
 a restart. -/
 inductive Event (A : NodeAC P) where
   /-- The tick at a public time, with the input `x` (the encoded transactions the node's engine
-  supplies for a proposal at this time; `Block.input`). -/
-  | tick (x : Nat)
+  supplies for a proposal at this time; `Block.input`) and whether the node's signing calendar
+  allows the FG update (`ac_to_fg` and `fg_attest`) at this time (`fgDue`). -/
+  | tick (x : Nat) (fgDue : Bool)
   /-- A block is received. -/
   | block (B : A.Blk)
   /-- An AC message is received. -/
