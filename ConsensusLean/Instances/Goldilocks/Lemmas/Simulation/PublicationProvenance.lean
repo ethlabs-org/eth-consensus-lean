@@ -112,7 +112,8 @@ private theorem tick_forward_acceptance_wire (hv : rho.ExecutionValid) {i : Nat}
     ∃ C, ∃ parent : Option (Wire (Fintype.card V) S.vote),
       .fg (.block C true) ∈ (exec (runProposer S rho hn) (digestOf S rho)
         (rho.ownKey v) (stateAt S rho hn v i).node u
-        (.tick (encodeTxs (Model.mempool rho.inbox v u)))).2 ∧
+        (.tick (encodeTxs (Model.mempool rho.inbox v u)) (S.sign (Model.pubOf E)
+          (rho.ownKey v) u))).2 ∧
       (t, p.toList ++ [blockObj (S.params (Model.pubOf E) hn) B]) =
         (u, parent.toList ++ [blockObj (S.params (Model.pubOf E) hn) C]) ∧
       (S.params (Model.pubOf E) hn).toParams.IsPublic u := by
@@ -150,18 +151,18 @@ private theorem tick_forward_acceptance_wire (hv : rho.ExecutionValid) {i : Nat}
       exact congrArg (fun k => (Node.acCall k _ u .tick).1) (self_eq_ownKey S rho hn v i)
     rw [hnode] at hc
     refine ⟨C, parent, ?_, hq, hpub⟩
-    change _ ∈ (Node.onTick _ _ _ _ _ _).2
+    change _ ∈ (Node.onTick _ _ _ _ _ _ _).2
     rw [onTick_cuts (sp := S.params (Model.pubOf E) hn) (ro := S.ro _)]
     exact List.mem_append_left _ (List.mem_append_right _ hc)
 
 private theorem tick_accepted_root {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
-    (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
+    (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) {fgDue : Bool}
     {B : Blk sp}
-    (hm : .fg (.block B true) ∈ (exec proposer dg self st t (.tick x)).2) :
+    (hm : .fg (.block B true) ∈ (exec proposer dg self st t (.tick x fgDue)).2) :
     B.RootOk dg ∧ B.parent ≠ none := by
-  change _ ∈ (onTick (A := goldilocksNode sp ro) proposer dg self st t x).2 at hm
+  change _ ∈ (onTick (A := goldilocksNode sp ro) proposer dg self st t x fgDue).2 at hm
   rw [onTick_cuts (sp := sp) (ro := ro)] at hm
   rcases List.mem_append.mp hm with hm | hm
   · rcases List.mem_append.mp hm with hm | hm
@@ -177,11 +178,13 @@ private theorem tick_accepted_root {sp : AC.ACParams}
             obtain ⟨rfl, _⟩ := hm
             exact ⟨rfl, by simp [mkBlock]⟩
       · simp at hm
-  · simp only [tickStep] at hm
-    split at hm
-    · simp [acToFG] at hm
-    · simp only [attest, List.mem_cons, acToFG, reduceCtorEq, false_or] at hm
-      split at hm <;> simp [onAttestation] at hm
+  · cases fgDue
+    · simp at hm
+    · simp only [ite_true, tickStep] at hm
+      split at hm
+      · simp [acToFG] at hm
+      · simp only [attest, List.mem_cons, acToFG, reduceCtorEq, false_or] at hm
+        split at hm <;> simp [onAttestation] at hm
 
 omit [DecidableEq V] in
 private theorem decoded_block_root {o : Wire (Fintype.card V) S.vote}
@@ -230,16 +233,19 @@ theorem tick_released_forward_acceptance (hv : rho.ExecutionValid) {i : Nat} {v 
   obtain ⟨m, hm, hcm⟩ := List.getElem_of_mem hc
   have hm' : m < (groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
       (stateAt S rho hn v i).node u (Nat.pair i 0)
-      (.tick (encodeTxs (Model.mempool rho.inbox v u)))).length := by
+      (.tick (encodeTxs (Model.mempool rho.inbox v u)) (S.sign (Model.pubOf E)
+        (rho.ownKey v) u))).length := by
     rw [length_groupRecs]; exact hm
   have hf := getElem_groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
     (stateAt S rho hn v i).node u (Nat.pair i 0)
-    (.tick (encodeTxs (Model.mempool rho.inbox v u))) m hm'
+    (.tick (encodeTxs (Model.mempool rho.inbox v u)) (S.sign (Model.pubOf E)
+      (rho.ownKey v) u)) m hm'
   have hmrec := List.getElem_mem hm'
   have hr := (congrArg (fun rs =>
     (groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
       (stateAt S rho hn v i).node u (Nat.pair i 0)
-      (.tick (encodeTxs (Model.mempool rho.inbox v u))))[m]'hm' ∈ rs)
+      (.tick (encodeTxs (Model.mempool rho.inbox v u)) (S.sign (Model.pubOf E)
+        (rho.ownKey v) u)))[m]'hm' ∈ rs)
     (eventCuts_tick_public S rho hn i v u he hpub)).mpr hmrec
   obtain ⟨k, hk, ha, htime⟩ := acceptAt_of_eventCuts S rho hn
     (List.getElem?_eq_some_iff.mp he).1 hr (hf.2.2.2.2.trans hcm)

@@ -372,10 +372,12 @@ private theorem apply_inventory (seen : List (Wire sp.n binding)) (st : State sp
   · intro b hb v z hv
     exact Or.inr (Or.inl ⟨v, z, rfl, List.mem_append_right _ (hv ▸ hb)⟩)
 
-private theorem tick_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
+private theorem tick_inventory (seen : List (Wire sp.n binding)) {sign : Fin sp.n → Time → Bool}
+    (st : State sp ro binding)
     (h : Inventory st.voteIO (Available seen st) st.node) :
-    Inventory (nodeTick st).voteIO (Available seen (nodeTick st)) (nodeTick st).node := by
-  rw [nodeTick_eq]
+    Inventory (nodeTick st sign).voteIO (Available seen (nodeTick st sign))
+      (nodeTick st sign).node := by
+  rw [nodeTick_eq (sign := _)]
   split
   · apply apply_inventory seen st none
       ((Node.acCall st.self st.node st.now .tick).1,

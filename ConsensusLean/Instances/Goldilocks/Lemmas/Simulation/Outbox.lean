@@ -202,7 +202,7 @@ private theorem handler_voteStep (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (io : VoteAuth sp.n binding)
     (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (ht : 0 ≤ t)
-    (e : Event (goldilocksNode sp ro)) (hne : ∀ x, e ≠ .tick x) (hnr : e ≠ .restart) :
+    (e : Event (goldilocksNode sp ro)) (hne : ∀ x fgDue, e ≠ .tick x fgDue) (hnr : e ≠ .restart) :
     ∃ (A' : ACState sp.n) (es : List (AC.Em sp (List (FG.Att sp.n)))),
       VoteStep st.ac A' es t ∧ (exec proposer dg self st t e).1.ac = A' ∧
         emitted io (exec proposer dg self st t e).2 = es.filterMap fun e =>
@@ -217,7 +217,7 @@ private theorem handler_voteStep (proposer : Nat → Fin sp.n)
     · exact absurd h hc
     · exact h
   cases e with
-  | tick x => exact absurd rfl (hne x)
+  | tick x fgDue => exact absurd rfl (hne x fgDue)
   | restart => exact absurd rfl hnr
   | attestation a => exact ⟨st.ac, [], VoteStep.refl _ _, rfl, rfl⟩
   | message m =>
@@ -877,7 +877,8 @@ theorem pre_shape (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks 
       (Model.mempool rho.inbox v t), nd.seen⟩
       ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] :
         List (Model.protoOf (compiled (goldilocks S)) E).Duty)).1 =
-      nodeTick (poll (poll { nd.st.1 hn with now := t } t.toNat).1 t.toNat).1 := by
+      nodeTick (poll (poll { nd.st.1 hn with now := t } t.toNat).1 t.toNat).1 (S.sign
+        (pubOf E)) := by
   erw [runDuties_fst_cons, runDuties_fst_cons, runDuties_fst_cons, runDuties_fst_nil]
   rw [dutyStep_pollPropose _ _ _ _ _ _ hsel, dutyStep_poll _ _ _ _ _ _ hsel,
     dutyStep_poll _ _ _ _ _ _ hsel]
@@ -889,7 +890,8 @@ with at most one body queued before the tick and no FG update due) at most one b
 theorem outbox_after_pre (v : V) (σ : State (S.params (pubOf E) hn) (S.ro _) S.vote) (t : Time)
     (ht : 0 ≤ t) (hf : σ.fgDue = false) (hb : σ.outbox.length ≤ 1)
     (N3 : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
-    (hN3 : shapeOf S hn N3 = nodeTick (poll (poll { σ with now := t } t.toNat).1 t.toNat).1) :
+    (hN3 : shapeOf S hn N3 = nodeTick (poll (poll { σ with now := t } t.toNat).1 t.toNat).1
+      (S.sign (pubOf E))) :
     (shapeOf S hn (rho.runDuties v N3
       ((skeleton (pubOf E) S.vote).proposeAt t)).1).outbox.length ≤ 1 := by
   set σc : State (S.params (pubOf E) hn) (S.ro _) S.vote := { σ with now := t }
@@ -910,7 +912,7 @@ theorem outbox_after_pre (v : V) (σ : State (S.params (pubOf E) hn) (S.ro _) S.
         t = (S.params (pubOf E) hn).ts ((S.params (pubOf E) hn).slot t) +
           (S.params (pubOf E) hn).Δ) := by
     rw [hN3]
-    rw [nodeTick_eq]
+    rw [nodeTick_eq (sign := _)]
     split_ifs
     · simp only [apply, h2, List.nil_append, emitted, acCall, List.flatMap_cons,
         List.flatMap_nil, List.append_nil]
@@ -948,7 +950,7 @@ theorem outbox_after_pre (v : V) (σ : State (S.params (pubOf E) hn) (S.ro _) S.
       · rw [h', (propose_keeps' _ _).1, h30, List.nil_append, (propose_keeps' _ _).2.2, hnow]
         obtain ⟨A', es, hvs, -, hem⟩ := handler_voteStep (runProposer S rho hn)
           (digestOf S rho) (propose (shapeOf S hn N3) s).1.voteIO _ _ t ht (.block B)
-          (fun x h => by cases h) (fun h => by cases h)
+          (fun _ _ h => by cases h) (fun h => by cases h)
         change (emitted (propose (shapeOf S hn N3) s).1.voteIO
           (exec (runProposer S rho hn) (digestOf S rho) _ _ t (.block B)).2).length ≤ 1
         rw [hem]
@@ -1249,8 +1251,8 @@ theorem atProposal_outbox_nil (hv : rho.ExecutionValid) (i : Nat) {v : V} {t : T
     rfl
   have hnow2 : (poll (poll σ t.toNat).1 t.toNat).1.now = t := by
     rw [poll_now, poll_now]
-  change (nodeTick (poll (poll σ t.toNat).1 t.toNat).1).outbox = []
-  rw [nodeTick_eq]
+  change (nodeTick (poll (poll σ t.toNat).1 t.toNat).1 (S.sign (pubOf E))).outbox = []
+  rw [nodeTick_eq (sign := _)]
   split_ifs
   · simp only [apply, hout2, List.nil_append, emitted, acCall, List.flatMap_cons,
       List.flatMap_nil, List.append_nil]

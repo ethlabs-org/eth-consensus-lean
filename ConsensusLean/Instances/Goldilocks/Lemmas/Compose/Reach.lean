@@ -408,10 +408,15 @@ private theorem NInv.tickStep {st : NodeState A} {t : Time} (h : NInv dg self s�
 private theorem NInv.exec {st : NodeState A} {t : Time} (h : NInv dg self s₀ st t) (e : Event A)
     (hw : WireOK dg e) : NInv dg self s₀ (exec proposer dg self st t e).1 t := by
   cases e with
-  | tick x =>
-    simp only [Node.exec, onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil]
-    exact ((h.tickStep proposer dg self x _).tickStep proposer dg self x _).tickStep
-      proposer dg self x _
+  | tick x fgDue =>
+    cases fgDue
+    · simp only [Node.exec, onTick, runSteps, tickSteps, Bool.false_eq_true, ↓reduceIte,
+        List.foldl_cons, List.foldl_nil]
+      exact (h.tickStep proposer dg self x _).tickStep proposer dg self x _
+    · simp only [Node.exec, onTick, runSteps, tickSteps, ↓reduceIte, List.foldl_cons,
+        List.foldl_nil]
+      exact ((h.tickStep proposer dg self x _).tickStep proposer dg self x _).tickStep
+        proposer dg self x _
   | block B => exact h.onBlock dg self B (fun _ => hw.2.2) hw.1
   | message m => exact h.acCall dg self _ ⟨frameIn_store h.fg, rfl, hw⟩
   | attestation a => exact h.onAttestation dg self a fun _ => hw
@@ -527,11 +532,18 @@ theorem tick_source_held_from (hq : ({ A with initial := s₀ } : NodeAC P).Requ
 
 /-- **C0.5 (c), the sources.** -/
 theorem sources_held : SourcesHeld proposer dg self := by
-  intro hq cfg cfg' t x h hs C s hC
+  intro hq cfg cfg' t x fgDue h hs C s hC
+  cases fgDue
+  · exfalso
+    simp only [Node.exec, onTick, runSteps, tickSteps, Bool.false_eq_true, ↓reduceIte,
+      List.foldl_cons, List.foldl_nil, List.nil_append, List.mem_append] at hC
+    rcases hC with hC | hC
+    · simp [Node.tickStep, acCall] at hC
+    · exact proposal_no_attest proposer dg self _ t x C s hC
   obtain ⟨ht, -, -, hst, -, -⟩ := hs
   have hI := (nInv_of_reachable proposer dg self h).mono dg self ht
   have h₂ := (hI.tickStep proposer dg self x .acTick).tickStep proposer dg self x .proposal
-  have hcuts : exec proposer dg self cfg.st t (.tick x) =
+  have hcuts : exec proposer dg self cfg.st t (.tick x true) =
       ((tickStep proposer dg self
           (tickStep proposer dg self
             (tickStep proposer dg self cfg.st t x .acTick).1 t x .proposal).1
@@ -638,8 +650,9 @@ private theorem slotInv_of_reachable {cfg : Config A} (h : Reachable proposer dg
 
 /-- At the tick of a slot start that the node proposes in, every held block is of an earlier
 slot (genesis, or accepted before that time: the tick runs before the objects of its time). -/
-private theorem slot_lt_of_tick {cfg cfg' : Config A} {t : Time} {x : Nat}
-    (h : Reachable proposer dg self cfg s₀) (hs : Step proposer dg self cfg (.tick x) t cfg')
+private theorem slot_lt_of_tick {cfg cfg' : Config A} {t : Time} {x : Nat} {fgDue : Bool}
+    (h : Reachable proposer dg self cfg s₀)
+    (hs : Step proposer dg self cfg (.tick x fgDue) t cfg')
     (hp : Proposes proposer self t) :
     ∀ X ∈ cfg.st.fg.tree, X.slot < P.slotOf t := by
   intro X hX
@@ -676,7 +689,8 @@ meeting the requirements. -/
 theorem honest_block_accepted_from {s₀ : A.State}
     (hq : ({ A with initial := s₀ } : NodeAC P).Requirements)
     (hg : (P.genesisBlock A.genesisPayload).RootOk dg) (cfg cfg' : Config A) (t : Time) (x : Nat)
-    (hR : Reachable proposer dg self cfg s₀) (hs : Step proposer dg self cfg (.tick x) t cfg')
+    (fgDue : Bool) (hR : Reachable proposer dg self cfg s₀)
+    (hs : Step proposer dg self cfg (.tick x fgDue) t cfg')
     (hp : Proposes proposer self t) :
     let st₁ := (tickStep proposer dg self cfg.st t x .acTick).1
     let r := acProposal st₁ t
@@ -751,8 +765,8 @@ theorem honest_block_accepted_from {s₀ : A.State}
 
 /-- **C0.3**: `honest_block_accepted_from` at the AC's initial state. -/
 theorem honest_block_accepted : HonestBlockAccepted proposer dg self :=
-  fun hq hg cfg cfg' t x hR hs hp => honest_block_accepted_from proposer dg self (s₀ := A.initial)
-    hq hg cfg cfg' t x hR hs hp
+  fun hq hg cfg cfg' t x fgDue hR hs hp => honest_block_accepted_from proposer dg self
+    (s₀ := A.initial) hq hg cfg cfg' t x fgDue hR hs hp
 
 end Consensus.Goldilocks.Compose
 

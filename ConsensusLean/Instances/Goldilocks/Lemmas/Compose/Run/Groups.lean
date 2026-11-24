@@ -96,8 +96,9 @@ private theorem exec_head (proposer : Nat → Fin P.n)
     split_ifs
     · simp
     · cases st.fg.onBlock B <;> simp [Cut.phase, Event.phase]
-  | _ => simp [exec, onTick, runSteps, tickSteps, tickStep, onMessage, onAttestation, restart,
-      acCall, Cut.phase, Event.phase]
+  | tick x fgDue => cases fgDue <;> simp [exec, onTick, runSteps, tickSteps, tickStep, acCall,
+      Cut.phase, Event.phase]
+  | _ => simp [exec, onMessage, onAttestation, restart, acCall, Cut.phase, Event.phase]
 
 variable {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {proposer : Nat → Fin P.n} {ini : Fin P.n → A.State}
@@ -233,14 +234,14 @@ private theorem eventOK (h : Node.LocalRun proposer dg H sg tr ini)
     have := h.phase_order y hy y hy j₀ j t e₀ e hg₀ hg hj₀
     cases e <;> cases e₀ <;>
       simp only [Event.phase, Nat.reduceLeDiff, Nat.reduceLT] at hp hp₀ this
-    exact absurd (h.tick_unique y hy j₀ j t ⟨_, hg₀⟩ ⟨_, hg⟩) (by omega)
+    exact absurd (h.tick_unique y hy j₀ j t ⟨_, _, hg₀⟩ ⟨_, _, hg⟩) (by omega)
   cases e with
-  | tick x => exact ⟨h.tick_public y hy j t ⟨x, hg⟩, hpre (by simp [Event.phase])⟩
+  | tick x fgDue => exact ⟨h.tick_public y hy j t ⟨x, fgDue, hg⟩, hpre (by simp [Event.phase])⟩
   | restart => exact hpre (by simp [Event.phase])
   | _ =>
     -- a delivery at a public time: the tick of `t` ran before
     intro hpub
-    obtain ⟨j₀, x₀, hg₀⟩ := h.tick_of_awake y hy t (ht ▸ h.time_nonneg j) hpub
+    obtain ⟨j₀, x₀, f₀, hg₀⟩ := h.tick_of_awake y hy t (ht ▸ h.time_nonneg j) hpub
       (ht ▸ h.awake_of_call y hy j hc)
     have hj₀ : j₀ < j := by
       rcases lt_trichotomy j₀ j with hlt | rfl | hgt
@@ -250,7 +251,7 @@ private theorem eventOK (h : Node.LocalRun proposer dg H sg tr ini)
     have htc : cfg.time = t :=
       le_antisymm hle ((group_call hg₀).2 ▸ hi.calls j₀ hj₀ (group_call hg₀).1)
     simp only [htc, Phase.at, lt_self_iff_false, ↓reduceIte]
-    exact hi.phase.2 ⟨j₀, hj₀, .tick x₀, htc ▸ hg₀, by simp [Event.phase]⟩
+    exact hi.phase.2 ⟨j₀, hj₀, .tick x₀ f₀, htc ▸ hg₀, by simp [Event.phase]⟩
 
 private theorem gInv_init (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) : GInv proposer dg tr y (ini y) 0 (Config.init A (ini y)) where

@@ -287,8 +287,8 @@ private theorem history_duty {v : V} {signed : FG.Att (Fintype.card V) → Prop}
     | pollPropose t =>
       change HasHistory _ (((goldilocks S (pubOf E)).pollPropose nd.st.1 t).1 hn) signed
       rw [goldilocks_pollPropose_eq S _ nd.st.1 t, dite_eq_left hn]
-      change HasHistory _ (nodeTick (nd.st.1 hn)) signed
-      rw [nodeTick_eq]
+      change HasHistory _ (nodeTick (nd.st.1 hn) (S.sign (pubOf E))) signed
+      rw [nodeTick_eq (sign := _)]
       by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic (nd.st.1 hn).now
       · rw [ite_eq_left hp]; exact h
       · rw [ite_eq_right hp]; exact h
@@ -739,9 +739,10 @@ private theorem propose_att {sp : AC.ACParams}
   split <;> rfl
 
 private theorem nodeTick_att {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (a : WireAtt) :
-    Body.att a ∈ (nodeTick st).outbox ↔ Body.att a ∈ st.outbox := by
-  rw [nodeTick_eq]
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (a : WireAtt)
+    {sign : Fin sp.n → Time → Bool} :
+    Body.att a ∈ (nodeTick st sign).outbox ↔ Body.att a ∈ st.outbox := by
+  rw [nodeTick_eq (sign := _)]
   split
   · exact apply_att st none _ a
   · rfl

@@ -18,7 +18,7 @@ here.
   `a ≤ ready + R·Δ + r`. It is the rise-round route's `resetBoundRounds` coefficient
   `20 L_drain + 24(δ_t + X − 1) + 54` plus the lag `5λ = 10Δ` at `λ = 2Δ`.
 * `healthyResetSlack S X = 0`: `r`.
-* `healMargin S X = 20 L_drain + 8k + 28δ_t + 28X + 56`: the margin `M_f` of the heal coefficient
+* `healMargin S A X = 20 L_drain + 8k + 28δ_t + 28X + 56 + 5G`: the heal margin, `G = A.signGap`,
   `contract_heal = catchUp + M_f`, the final route's heal-bound margin on the key-dependent
   rise-round route at `λ = 2Δ` (the test `Obligations.Test.Contract.heal_val`). It covers
   the nonfinal reset reserve `R + 8k + 4X + 29 + r` when `δ_t ≥ 6` (`healMargin_ge_reset`, slack
@@ -41,20 +41,22 @@ theorem healthyResetCoeff_val (S : Setup) (X : ℕ+) :
 
 theorem healthyResetSlack_val (S : Setup) (X : ℕ+) : healthyResetSlack S X = 0 := by rfl
 
-theorem healMargin_val (S : Setup) (X : ℕ+) :
-    healMargin S X = 20 * healthyDrainLen S X + 8 * S.k + 28 * S.δt + 28 * X + 56 := by rfl
+theorem healMargin_val (S : Setup) (A : ContractAssumptions S) (X : ℕ+) :
+    healMargin S A X =
+      20 * healthyDrainLen S X + 8 * S.k + 28 * S.δt + 28 * X + 56 + 5 * A.signGap := by rfl
 
 /-- `M_f` covers the nonfinal reset reserve `R + 8k + 4X + 29` when `δ_t ≥ 6` (slack
 `4δ_t − 13`), also when both sides pay `5L` for vote latency. -/
-theorem healMargin_ge_reset_within (S : Setup) (X : ℕ+) (hδ : 6 ≤ S.δt) (L : Nat) :
-    healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 29 + 5 * L ≤ healMargin S X + 5 * L := by
+theorem healMargin_ge_reset_within (S : Setup) (A : ContractAssumptions S) (X : ℕ+)
+    (hδ : 6 ≤ S.δt) (L : Nat) :
+    healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 29 + 5 * L ≤ healMargin S A X + 5 * L := by
   rw [healMargin_val, healthyResetCoeff_val]
   omega
 
 /-- The same-tick nonfinal reset reserve. -/
-theorem healMargin_ge_reset (S : Setup) (X : ℕ+) (hδ : 6 ≤ S.δt) :
-    healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 29 ≤ healMargin S X := by
-  simpa only [mul_zero, add_zero] using healMargin_ge_reset_within S X hδ 0
+theorem healMargin_ge_reset (S : Setup) (A : ContractAssumptions S) (X : ℕ+) (hδ : 6 ≤ S.δt) :
+    healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 29 ≤ healMargin S A X := by
+  simpa only [mul_zero, add_zero] using healMargin_ge_reset_within S A X hδ 0
 
 end Consensus.Goldilocks.Obligations
 

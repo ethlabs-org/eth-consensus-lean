@@ -55,10 +55,16 @@ private theorem update_cuts (st : NodeState A) (t : Time) (x : Nat) :
 
 /-- **C0.4.** -/
 theorem tick_order : TickOrder proposer dg self := by
-  intro st t x
-  simp only [onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil, List.nil_append]
-  exact ⟨⟨.tick, frame st, _⟩, _, _, rfl, rfl, proposal_cuts proposer dg self _ t x,
-    update_cuts proposer dg self _ t x⟩
+  intro st t x fgDue
+  cases fgDue
+  · simp only [onTick, runSteps, tickSteps, Bool.false_eq_true, ↓reduceIte, List.foldl_cons,
+      List.foldl_nil, List.nil_append]
+    exact ⟨⟨.tick, frame st, _⟩, _, [], rfl, by rw [List.append_nil]; rfl,
+      proposal_cuts proposer dg self _ t x, rfl⟩
+  · simp only [onTick, runSteps, tickSteps, ↓reduceIte, List.foldl_cons, List.foldl_nil,
+      List.nil_append]
+    exact ⟨⟨.tick, frame st, _⟩, _, _, rfl, rfl, proposal_cuts proposer dg self _ t x,
+      update_cuts proposer dg self _ t x⟩
 
 /-! ### C0.5 (c), signing -/
 
@@ -66,7 +72,23 @@ theorem tick_order : TickOrder proposer dg self := by
 theorem signed_only_in_ticks : SignedOnlyInTicks proposer dg self := by
   intro st t e C a h
   cases e with
-  | tick x => exact ⟨x, rfl⟩
+  | tick x fgDue =>
+    cases fgDue
+    · exfalso
+      simp only [exec, onTick, runSteps, tickSteps, Bool.false_eq_true, ↓reduceIte,
+        List.foldl_cons, List.foldl_nil, List.nil_append, List.mem_append] at h
+      rcases h with h | h
+      · simp [tickStep, acCall] at h
+      · simp only [tickStep] at h
+        split_ifs at h
+        · split at h
+          · simp [Node.acProposal] at h
+          · simp only [proposeBlock, onBlock] at h
+            split_ifs at h
+            · simp [Node.acProposal] at h
+            · split at h <;> simp [acCall, Node.acProposal] at h
+        · simp at h
+    · exact ⟨x, rfl⟩
   | block B =>
     simp only [exec, onBlock, acCall] at h
     split_ifs at h
@@ -160,37 +182,49 @@ private theorem runSteps_chain (st : NodeState A) (t : Time) (x : Nat) (steps : 
 theorem exec_is_cut_chain : ExecIsCutChain proposer dg self := by
   intro st t e
   cases e with
-  | tick x => exact runSteps_chain proposer dg self st t x _
+  | tick x _ => exact runSteps_chain proposer dg self st t x _
   | block B => exact onBlock_chain self st t B
   | message m => exact acCall_chain self st t _
   | attestation a => exact chain_single self ⟨rfl, rfl, rfl⟩
   | restart => exact acCall_chain self st t _
 
 /-- A block cut of a tick is a rooted, non-genesis proposal by the ticking key, after the AC cut. -/
-theorem tick_block_cut_fields (st : NodeState A) (t : Time) (x : Nat)
+theorem tick_block_cut_fields (st : NodeState A) (t : Time) (x : Nat) (fgDue : Bool)
     {b : A.Blk} {acc : Bool} {k : Nat}
-    (hc : (exec proposer dg self st t (.tick x)).2[k]? = some (.fg (.block b acc))) :
+    (hc : (exec proposer dg self st t (.tick x fgDue)).2[k]? = some (.fg (.block b acc))) :
     b.proposer = self ∧ b.RootOk dg ∧ b.parent ≠ none ∧ k ≠ 0 := by
   have hzero : k ≠ 0 := by
     intro h
     subst k
-    simp [exec, onTick, runSteps, tickSteps, tickStep, acCall] at hc
+    cases fgDue <;> simp [exec, onTick, runSteps, tickSteps, tickStep, acCall] at hc
   have hm := List.mem_of_getElem? hc
-  change Cut.fg (.block b acc) ∈ (onTick proposer dg self st t x).2 at hm
-  simp only [onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil, List.nil_append] at hm
+  change Cut.fg (.block b acc) ∈ (onTick proposer dg self st t x fgDue).2 at hm
+  have hprop : Cut.fg (.block b acc) ∈ (tickStep proposer dg self
+      (tickStep proposer dg self st t x .acTick).1 t x .proposal).2 →
+      b.proposer = self ∧ b.RootOk dg ∧ b.parent ≠ none ∧ k ≠ 0 := by
+    intro hm
+    simp only [tickStep] at hm
+    split_ifs at hm
+    · split at hm
+      · simp [acProposal] at hm
+      · simp only [proposeBlock, onBlock] at hm
+        split_ifs at hm
+        · simp [acProposal] at hm
+        · split at hm <;> simp [acCall, acProposal] at hm <;>
+            obtain ⟨rfl, _⟩ := hm <;> exact ⟨rfl, rfl, by simp [mkBlock], hzero⟩
+    · simp at hm
+  cases fgDue
+  · simp only [onTick, runSteps, tickSteps, Bool.false_eq_true, ↓reduceIte, List.foldl_cons,
+      List.foldl_nil, List.nil_append] at hm
+    rcases List.mem_append.mp hm with hm | hm
+    · simp [tickStep, acCall] at hm
+    · exact hprop hm
+  simp only [onTick, runSteps, tickSteps, ↓reduceIte, List.foldl_cons, List.foldl_nil,
+    List.nil_append] at hm
   rcases List.mem_append.mp hm with hm | hm
   · rcases List.mem_append.mp hm with hm | hm
     · simp [tickStep, acCall] at hm
-    · simp only [tickStep] at hm
-      split_ifs at hm
-      · split at hm
-        · simp [acProposal] at hm
-        · simp only [proposeBlock, onBlock] at hm
-          split_ifs at hm
-          · simp [acProposal] at hm
-          · split at hm <;> simp [acCall, acProposal] at hm <;>
-              obtain ⟨rfl, _⟩ := hm <;> exact ⟨rfl, rfl, by simp [mkBlock], hzero⟩
-      · simp at hm
+    · exact hprop hm
   · simp only [tickStep] at hm
     split at hm
     · simp [acToFG] at hm

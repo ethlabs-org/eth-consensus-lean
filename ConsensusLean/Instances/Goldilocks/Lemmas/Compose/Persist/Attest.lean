@@ -34,7 +34,7 @@ theorem sign_public {ini : Fin sp.n → (goldilocksNode sp ro).State}
   obtain ⟨xt, he⟩ := @signed_only_in_ticks sp.toParams (goldilocksNode sp ro) proposer dg y
     (tr.state y j₀) (tr.time j) e C a hm
   subst he
-  exact hrun.tick_public y hy j₀ (tr.time j) ⟨xt, hg⟩
+  exact hrun.tick_public y hy j₀ (tr.time j) ⟨xt, true, hg⟩
 
 variable {ΔF : Time} {x : Fin sp.n} {i₀ s m : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
   {CV : Set (Vote sp.n)}

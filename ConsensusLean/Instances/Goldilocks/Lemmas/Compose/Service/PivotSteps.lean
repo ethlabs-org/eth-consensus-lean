@@ -56,7 +56,8 @@ theorem honest_eq_proposal_of_root {ini} (hrun : GoldilocksRun proposer dg H tr 
     (hP : tr.ProposesAt p k P) {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : R ∈ tr.HonestBlocks H) (hr : R.root = P.root) : R = P := by
   obtain ⟨⟨⟨acc, hcB⟩, hpos⟩, hpp, -⟩ := hP
-  rcases blockCall_cases hrun.toLocalRun hp hcB with hg | ⟨j, x, rfl, -, hPr, d, pay, -, hB, -⟩
+  rcases blockCall_cases hrun.toLocalRun hp hcB with hg |
+    ⟨j, x, fgDue, rfl, -, hPr, d, pay, -, hB, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   have hok : P.RootOk dg := by rw [hB]; rfl
   have hpr : P.proposer = proposer P.slot := by

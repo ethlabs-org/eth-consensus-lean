@@ -221,7 +221,7 @@ theorem msgCall_delivered {v : V} {i : Nat} {t : Time}
   rw [hl] at hc
   have hcanon : ev = .message m := by
     cases ev with
-    | tick x => unfold canonEvent at hce; split at hce <;> cases hce
+    | tick x fgDue => unfold canonEvent at hce; split at hce <;> cases hce
     | restart => unfold canonEvent at hce; split at hce <;> cases hce
     | attestation a => simp [exec, onAttestation] at hc
     | message m' =>
@@ -255,7 +255,7 @@ theorem blockLabel_delivered {v : V} {i : Nat} {t : Time}
   have hcanon : ev = .block b := by
     rcases hl with ⟨acc, hl⟩ | ⟨l, hl, hb⟩ <;> rw [hl] at hc
     · cases ev with
-      | tick x => unfold canonEvent at hce; split at hce <;> cases hce
+      | tick x fgDue => unfold canonEvent at hce; split at hce <;> cases hce
       | restart => simp [exec, Node.restart, acCall] at hc
       | attestation a => simp [exec, onAttestation] at hc
       | message m => simp [exec, onMessage, acCall] at hc
@@ -265,7 +265,7 @@ theorem blockLabel_delivered {v : V} {i : Nat} {t : Time}
         · cases hc
         · split at hc <;> simp [acCall] at hc <;> simp [hc.1]
     cases ev with
-    | tick x => unfold canonEvent at hce; split at hce <;> cases hce
+    | tick x fgDue => unfold canonEvent at hce; split at hce <;> cases hce
     | restart => unfold canonEvent at hce; split at hce <;> cases hce
     | attestation a => simp [exec, onAttestation] at hc
     | message m =>
@@ -528,9 +528,9 @@ private theorem cutPhase_exec {Q : Params} {N : NodeAC Q}
     {cs : List (Cut N)} (hc : (exec pr dg y st t ev).2 = c :: cs) :
     cutPhase c = ev.phase := by
   cases ev with
-  | tick x =>
-    obtain ⟨l, _, _, hl, hs, _, _⟩ := Compose.tick_order pr dg y st t x
-    change (onTick pr dg y st t x).2 = _ at hc
+  | tick x fgDue =>
+    obtain ⟨l, _, _, hl, hs, _, _⟩ := Compose.tick_order pr dg y st t x fgDue
+    change (onTick pr dg y st t x fgDue).2 = _ at hc
     rw [hs] at hc
     obtain ⟨rfl, -⟩ := List.cons.inj hc
     simp [cutPhase, hl, Node.Event.phase]
@@ -601,9 +601,9 @@ private theorem restart_of_mem_exec {Q : Params} {N : NodeAC Q}
     (y : Fin Q.n) (st : NodeState N) (t : Time) (ev : Node.Event N) {l : ACLabel N}
     (hc : Cut.ac l ∈ (exec pr dg y st t ev).2) (hl : l.call = .restart) : ev = .restart := by
   cases ev with
-  | tick x =>
-    obtain ⟨l₀, pc, uc, hl₀, hcs, hp, ⟨l₁, hl₁, hu⟩⟩ := Compose.tick_order pr dg y st t x
-    change _ ∈ (onTick pr dg y st t x).2 at hc
+  | tick x fgDue =>
+    obtain ⟨l₀, pc, uc, hl₀, hcs, hp, hu⟩ := Compose.tick_order pr dg y st t x fgDue
+    change _ ∈ (onTick pr dg y st t x fgDue).2 at hc
     rw [hcs] at hc
     exfalso
     rcases List.mem_cons.mp hc with h | h
@@ -620,7 +620,11 @@ private theorem restart_of_mem_exec {Q : Params} {N : NodeAC Q}
         rcases h with rfl | rfl
         · simp [hl] at hl₂
         · simp [hl] at hl₃
-    · rcases hu with rfl | ⟨C, rfl⟩ | ⟨C, a, rfl⟩ <;>
+    · cases fgDue
+      · change uc = [] at hu
+        simp [hu] at h
+      · obtain ⟨l₁, hl₁, hu⟩ := (show Compose.UpdateCuts uc from hu)
+        rcases hu with rfl | ⟨C, rfl⟩ | ⟨C, a, rfl⟩ <;>
         simp only [List.mem_cons, Cut.ac.injEq, reduceCtorEq, List.not_mem_nil, or_false] at h <;>
         (subst h; simp [hl] at hl₁)
   | block B =>
@@ -664,10 +668,11 @@ theorem restart_of_mem_eventCuts {i : Nat}
 
 private theorem tick_no_message {Q : Params} {N : NodeAC Q}
     (pr : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)
-    (y : Fin Q.n) (st : NodeState N) (t : Time) (x : Nat) {l : ACLabel N} {m : N.Msg}
-    (hc : Cut.ac l ∈ (exec pr dg y st t (.tick x)).2) (hm : l.call = .message m) : False := by
-  obtain ⟨l₀, pc, uc, hl₀, hcs, hp, ⟨l₁, hl₁, hu⟩⟩ := Compose.tick_order pr dg y st t x
-  change Cut.ac l ∈ (onTick pr dg y st t x).2 at hc
+    (y : Fin Q.n) (st : NodeState N) (t : Time) (x : Nat) {fgDue : Bool}
+    {l : ACLabel N} {m : N.Msg}
+    (hc : Cut.ac l ∈ (exec pr dg y st t (.tick x fgDue)).2) (hm : l.call = .message m) : False := by
+  obtain ⟨l₀, pc, uc, hl₀, hcs, hp, hu⟩ := Compose.tick_order pr dg y st t x fgDue
+  change Cut.ac l ∈ (onTick pr dg y st t x fgDue).2 at hc
   rw [hcs] at hc
   rcases List.mem_cons.mp hc with h | h
   · cases h; rw [hm] at hl₀; cases hl₀
@@ -684,7 +689,11 @@ private theorem tick_no_message {Q : Params} {N : NodeAC Q}
       rcases h with rfl | rfl
       · rw [hm] at hl₂; cases hl₂
       · rw [hm] at hl₃; cases hl₃
-  · rcases hu with rfl | ⟨_, rfl⟩ | ⟨_, _, rfl⟩ <;>
+  · cases fgDue
+    · change uc = [] at hu
+      simp [hu] at h
+    · obtain ⟨l₁, hl₁, hu⟩ := (show Compose.UpdateCuts uc from hu)
+      rcases hu with rfl | ⟨_, rfl⟩ | ⟨_, _, rfl⟩ <;>
       simp only [List.mem_cons, Cut.ac.injEq, reduceCtorEq, List.not_mem_nil, or_false] at h <;>
       (subst h; rw [hm] at hl₁; cases hl₁)
 

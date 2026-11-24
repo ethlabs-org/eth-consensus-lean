@@ -240,16 +240,21 @@ private theorem head_mem {A : AC.ACState sp.n} {Φ : AC.Frm sp.n (List (FG.Att s
 /-- In a tick, the `ac_proposal` cut is at position `1` (C0.4). -/
 private theorem tick_proposal_pos {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {y : Fin sp.n} {st : NodeState (goldilocksNode sp ro)}
-    {t : Time} {x c : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (h : (Node.exec proposer dg y st t (.tick x)).2[c]? = some (Cut.ac ℓ))
+    {t : Time} {x c : Nat} {fgDue : Bool} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (h : (Node.exec proposer dg y st t (.tick x fgDue)).2[c]? = some (Cut.ac ℓ))
     (hm : ℓ.call = .proposal) :
     c = 1 := by
-  obtain ⟨ℓt, pc, uc, hlt, hcs, hpc, ℓu, hlu, huc⟩ :=
-    @tick_order sp.toParams (goldilocksNode sp ro) proposer dg y st t x
+  obtain ⟨ℓt, pc, uc, hlt, hcs, hpc, hupdate⟩ :=
+    @tick_order sp.toParams (goldilocksNode sp ro) proposer dg y st t x fgDue
   have huc' : ∀ ℓ', Cut.ac ℓ' ∈ uc → ℓ'.call = .toFG := by
+    cases fgDue
+    · simp only [Bool.false_eq_true, ↓reduceIte] at hupdate
+      simp [hupdate]
+    simp only [↓reduceIte] at hupdate
+    obtain ⟨ℓu, hlu, huc⟩ := hupdate
     intro ℓ' hm
     rcases huc with rfl | ⟨C, rfl⟩ | ⟨C, a, rfl⟩ <;> simp at hm <;> (rw [hm]; exact hlu)
-  change (Node.onTick proposer dg y st t x).2[c]? = _ at h
+  change (Node.onTick proposer dg y st t x fgDue).2[c]? = _ at h
   rw [hcs] at h
   rcases c with _ | c
   · simp only [List.getElem?_cons_zero, Option.some.injEq, Cut.ac.injEq] at h
@@ -289,10 +294,10 @@ private theorem proposal_cut_unique {ini} (hrun : GoldilocksRun proposer dg H tr
   have hl := hrun.toLocalRun
   obtain ⟨g, e, k, hg, rfl, hk⟩ := call_in_group hl hp (projAC_callAt.1 hc)
   obtain ⟨g', e', k', hg', rfl, hk'⟩ := call_in_group hl hp (projAC_callAt.1 hc')
-  obtain ⟨x, rfl⟩ := acProposal_in_tick (List.mem_of_getElem? hk) hm
-  obtain ⟨x', rfl⟩ := acProposal_in_tick (List.mem_of_getElem? hk') hm'
+  obtain ⟨x, fgDue, rfl⟩ := acProposal_in_tick (List.mem_of_getElem? hk) hm
+  obtain ⟨x', fgDue', rfl⟩ := acProposal_in_tick (List.mem_of_getElem? hk') hm'
   rw [ht] at hg
-  obtain rfl := hl.tick_unique p hp g g' _ ⟨x, hg⟩ ⟨x', hg'⟩
+  obtain rfl := hl.tick_unique p hp g g' _ ⟨x, fgDue, hg⟩ ⟨x', fgDue', hg'⟩
   rw [ht] at hk
   rw [tick_proposal_pos hk hm, tick_proposal_pos hk' hm']
 
@@ -306,7 +311,7 @@ private theorem proposal_data {ini} (hrun : GoldilocksRun proposer dg H tr ini)
       tr.time i = sp.ts s ∧ P.parent = some d.head.root ∧ P.acPayload = pay := by
   have h := hrun.toLocalRun
   obtain ⟨⟨⟨acc, hcB⟩, hpos⟩, -, htk⟩ := hP
-  rcases blockCall_cases h hp hcB with hg | ⟨j, x, rfl, hg, hPr, d, pay, hr, hB, -, -, -, -⟩
+  rcases blockCall_cases h hp hcB with hg | ⟨j, x, fgDue, rfl, hg, hPr, d, pay, hr, hB, -, -, -, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   exact proposal_data_of_tick hg hPr hr hB (by rw [htk, sp.slotTime_eq, hPs]; rfl)
     (hrun.cutLaw p hp j) (projAC_state h hp (j + 1))

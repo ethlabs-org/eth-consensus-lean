@@ -48,7 +48,7 @@ theorem blockCall_origin {y : Fin (Fintype.card V)} {k : Nat} {b : A.Blk}
       obtain ⟨h, rfl⟩ := hr
       have hl' := hlabel
       simp only [List.getElem_mapIdx, List.getElem_zip] at hlabel hpos
-      obtain ⟨hp, _, _, hk⟩ := Compose.tick_block_cut_fields _ _ _ _ _ _
+      obtain ⟨hp, _, _, hk⟩ := Compose.tick_block_cut_fields _ _ _ _ _ _ _
         ((List.getElem?_eq_getElem _).trans (congrArg some hlabel))
       exact Or.inl ⟨i, v, t, _, he, hstart, hm, ⟨acc, hl'⟩, ht,
         ⟨acc, hnode.trans hp.symm, hl⟩, hpos ▸ hk⟩
@@ -162,12 +162,12 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 private theorem tick_block_fields {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
-    {B : Blk sp} {acc : Bool} {k : Nat}
-    (hk : k < (exec proposer dg self st t (.tick x)).2.length)
-    (hc : (exec proposer dg self st t (.tick x)).2[k] = .fg (.block B acc)) :
+    {fgDue : Bool} {B : Blk sp} {acc : Bool} {k : Nat}
+    (hk : k < (exec proposer dg self st t (.tick x fgDue)).2.length)
+    (hc : (exec proposer dg self st t (.tick x fgDue)).2[k] = .fg (.block B acc)) :
     B.proposer = self ∧ B.RootOk dg ∧ B.parent ≠ none ∧ k ≠ 0 :=
   Compose.tick_block_cut_fields (P := sp.toParams) (A := goldilocksNode sp ro)
-    proposer dg self st t x ((List.getElem?_eq_getElem hk).trans (congrArg some hc))
+    proposer dg self st t x fgDue ((List.getElem?_eq_getElem hk).trans (congrArg some hc))
 
 private theorem ownBlock_of_tick_cut {i : Nat} {v : V} {t : Time}
     (he : rho.events[i]? = some (.tick v t))
@@ -175,7 +175,7 @@ private theorem ownBlock_of_tick_cut {i : Nat} {v : V} {t : Time}
     {B : Blk (S.params (pubOf E) hn)} {acc : Bool}
     (hc : Cut.fg (.block B acc) ∈ (exec (runProposer S rho hn) (digestOf S rho)
       (rho.ownKey v) (stateAt S rho hn v i).node t
-      (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2) :
+      (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t))).2) :
     ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).OwnBlockAt B.proposer k B := by
   obtain ⟨m, hm, hcm⟩ := List.getElem_of_mem hc
   obtain ⟨hself, _, _, hm0⟩ := tick_block_fields _ _ _ _ _ _ hm hcm
@@ -186,12 +186,12 @@ private theorem ownBlock_of_tick_cut {i : Nat} {v : V} {t : Time}
   rw [List.getElem?_eq_getElem hm'] at hr
   have hgr := getElem_groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
     (stateAt S rho hn v i).node t (Nat.pair i 0)
-    (.tick (encodeTxs (Model.mempool rho.inbox v t))) m
+    (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t)) m
     (show m < _ from by rw [length_groupRecs]; exact hm)
   have hr' : (allCuts S rho hn)[cutMap S rho hn i + m]? = some
       ((groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
         (stateAt S rho hn v i).node t (Nat.pair i 0)
-        (.tick (encodeTxs (Model.mempool rho.inbox v t))))[m]'
+        (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t)))[m]'
           (by rw [length_groupRecs]; exact hm)) :=
     by simpa only [hEC] using hr
   refine ⟨cutMap S rho hn i + m, ?_, ⟨acc, ?_, ?_⟩, ?_⟩
@@ -307,17 +307,19 @@ private theorem emit_of_tick_body {i : Nat} {v : V} {t : Time}
     (hm : Body.vote (encodeVote m) z ∈ emitted (stateAt S rho hn v i).voteIO
       (exec (runProposer S rho hn) (digestOf S rho)
       (rho.ownKey v) (stateAt S rho hn v i).node t
-      (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2) :
+      (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t))).2) :
     ∃ k < cutMap S rho hn (i + 1), (simTrace S rho hn).EmitAt (rho.ownKey v) k m := by
   obtain ⟨⟨ℓ, hc, em, hem, rfl⟩, -⟩ := mem_emitted.mp hm
   obtain ⟨q, hq, hcq⟩ := List.getElem_of_mem hc
   have hq' : q < (groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
       (stateAt S rho hn v i).node t (Nat.pair i 0)
-      (.tick (encodeTxs (Model.mempool rho.inbox v t)))).length := by
+      (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E)
+        (rho.ownKey v) t))).length := by
     rwa [length_groupRecs]
   apply emit_of_record S rho hn he (r := (groupRecs (runProposer S rho hn) (digestOf S rho)
     (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
-    (.tick (encodeTxs (Model.mempool rho.inbox v t))))[q]) ?_ ?_ hem
+    (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E)
+      (rho.ownKey v) t)))[q]) ?_ ?_ hem
   · rw [eventCuts_tick_public S rho hn i v t he hp]; exact List.getElem_mem hq'
   · exact (getElem_groupRecs _ _ _ _ _ _ _ q hq').2.2.2.2.trans hcq
 

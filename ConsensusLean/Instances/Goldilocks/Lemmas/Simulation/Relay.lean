@@ -569,9 +569,9 @@ theorem propose_keeps (st : State sp ro binding) (s : Slot) :
   split <;> exact ⟨rfl, rfl⟩
 
 /-- The node's tick keeps the relay queue and the own index. -/
-theorem nodeTick_keeps (st : State sp ro binding) :
-    (nodeTick st).relayBuf = st.relayBuf ∧ (nodeTick st).self = st.self := by
-  rw [nodeTick_eq]
+theorem nodeTick_keeps {sign : Fin sp.n → Time → Bool} (st : State sp ro binding) :
+    (nodeTick st sign).relayBuf = st.relayBuf ∧ (nodeTick st sign).self = st.self := by
+  rw [nodeTick_eq (sign := _)]
   split_ifs <;> exact ⟨rfl, rfl⟩
 
 /-- The FG update keeps the relay queue and the own index. -/
@@ -636,7 +636,8 @@ omit [DecidableEq V] in
 /-- A property of Goldilocks states kept by the slot proposal, the node's tick and a poll step
 is kept by every duty of the compiled family. -/
 theorem act_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
-    (hprop : ∀ st s, Q st → Q (propose st s).1) (hnt : ∀ st, Q st → Q (nodeTick st))
+    (hprop : ∀ st s, Q st → Q (propose st s).1)
+    (hnt : ∀ st, Q st → Q (nodeTick st (S.sign (pubOf E))))
     (hpoll : ∀ st t, Q st → Q (poll st t).1)
     (st : (Model.protoOf (compiled (goldilocks S)) E).State)
     (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) (h : Q (st.1 hn)) :
@@ -695,7 +696,8 @@ omit [DecidableEq V] in
 is kept by a tick. -/
 theorem tick_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hclock : ∀ st t, Q st → Q { st with now := t })
-    (hprop : ∀ st s, Q st → Q (propose st s).1) (hnt : ∀ st, Q st → Q (nodeTick st))
+    (hprop : ∀ st s, Q st → Q (propose st s).1)
+    (hnt : ∀ st, Q st → Q (nodeTick st (S.sign (pubOf E))))
     (hpoll : ∀ st t, Q st → Q (poll st t).1) (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (v : V) (t : Time)
     (h : Q (nd.st.1 hn)) : Q ((rho.tick nd v t).1.st.1 hn) :=
@@ -979,13 +981,14 @@ theorem eq_deliver_of_cut {i : Nat}
     · rw [eventCuts_tick_public S rho hn i v t he hp] at hr
       obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
       obtain ⟨-, -, -, hpos, hlab⟩ := getElem_groupRecs _ _ _ _ _ _ _ k hk
-      obtain ⟨ℓ₀, pc, uc, hℓ₀, hcs, hpc, ⟨ℓ₁, hℓ₁, huc⟩⟩ :=
+      obtain ⟨ℓ₀, pc, uc, hℓ₀, hcs, hpc, huc'⟩ :=
         Compose.tick_order (runProposer S rho hn) (digestOf S rho)
           (rho.ownKey v) (stateAt S rho hn v i).node t
-          (encodeTxs (Model.mempool rho.inbox v t))
+          (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t)
       have hcs' : (exec (runProposer S rho hn) (digestOf S rho)
           (rho.ownKey v) (stateAt S rho hn v i).node t
-          (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 = .ac ℓ₀ :: (pc ++ uc) := hcs
+          (.tick (encodeTxs (Model.mempool rho.inbox v t))
+            (S.sign (pubOf E) (rho.ownKey v) t))).2 = .ac ℓ₀ :: (pc ++ uc) := hcs
       rw [List.getElem_of_eq hcs'] at hlab
       rcases h with ⟨h0, ℓ, hl⟩ | ⟨ℓ, m, hl, hc⟩
       · rw [hpos] at h0
@@ -1010,10 +1013,13 @@ theorem eq_deliver_of_cut {i : Nat}
             rcases h with rfl | rfl
             · rw [hc] at hℓ₂; cases hℓ₂
             · rw [hc] at hℓ₃; cases hℓ₃
-        · rcases huc with rfl | ⟨C, rfl⟩ | ⟨C, a, rfl⟩ <;>
-            simp only [List.mem_cons, Cut.ac.injEq, reduceCtorEq, List.not_mem_nil,
-              or_false] at h <;>
-            (subst h; rw [hc] at hℓ₁; cases hℓ₁)
+        · split at huc'
+          · obtain ⟨ℓ₁, hℓ₁, huc⟩ := huc'
+            rcases huc with rfl | ⟨C, rfl⟩ | ⟨C, a, rfl⟩ <;>
+              simp only [List.mem_cons, Cut.ac.injEq, reduceCtorEq, List.not_mem_nil,
+                or_false] at h <;>
+              (subst h; rw [hc] at hℓ₁; cases hℓ₁)
+          · subst huc'; simp at h
     · rw [eventCuts_tick_other S rho hn i v t he hp] at hr
       simp at hr
   | restart v t =>
@@ -1102,10 +1108,11 @@ theorem emits_val_of_mem_exec (proposer : Nat → Fin sp.n)
 theorem pos_of_block_cut (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
     (st : NodeState (goldilocksNode sp ro)) (t : Time) {e : Event (goldilocksNode sp ro)}
-    (hne : ∀ x, e ≠ .tick x) {k : Nat} (hk : k < (exec proposer dg self st t e).2.length) {B acc}
+    (hne : ∀ x fgDue, e ≠ .tick x fgDue) {k : Nat}
+    (hk : k < (exec proposer dg self st t e).2.length) {B acc}
     (h : (exec proposer dg self st t e).2[k] = .fg (.block B acc)) : k = 0 := by
   cases e with
-  | tick x => exact absurd rfl (hne x)
+  | tick x fgDue => exact absurd rfl (hne x fgDue)
   | block B' =>
     by_cases hf : sp.toParams.slotOf t < B'.slot
     · simp [exec, onBlock, hf] at hk
@@ -1156,8 +1163,8 @@ theorem mem_deliverRecs_exec (proposer : Nat → Fin sp.n)
 theorem canonEvent_ne_tick {io : VoteAuth sp.n binding} {hs : List (Header Info × Nat)}
     {o : Wire sp.n binding}
     {e : Event (goldilocksNode sp ro)} (he : canonEvent sp ro io hs o = some e) :
-    ∀ x, e ≠ .tick x := by
-  rintro x rfl
+    ∀ x fgDue, e ≠ .tick x fgDue := by
+  rintro x fgDue rfl
   rcases canonEvent_eq_some he with ⟨_, h, -⟩ | ⟨_, _, h, -⟩ | ⟨_, h, -⟩ <;> cases h
 
 /-- The outbox after one received object: its handler's emissions queued. -/

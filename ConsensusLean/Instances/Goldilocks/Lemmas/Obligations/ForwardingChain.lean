@@ -55,8 +55,9 @@ theorem scheduled_proposal_child_decodes_of_step {V : Type} [Fintype V] [Decidab
     (hr : Node.Reachable (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) cfg s₀)
     (h₀ : AC.VoteStart (S.params (pubOf E) hn).genesisRoot s₀)
     (hst : cfg.st = (stateAt S rho hn v i).node)
+    {fgDue : Bool}
     (hs : Node.Step (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) cfg
-      (.tick (encodeTxs (mempool rho.inbox v t))) t cfg')
+      (.tick (encodeTxs (mempool rho.inbox v t)) fgDue) t cfg')
     (hg : ((S.params (pubOf E) hn).toParams.genesisBlock
       (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload).RootOk (digestOf S rho)) :
     let nd := atProposal S rho v (rho.stateBefore i v) t
@@ -429,7 +430,7 @@ theorem tick_acceptance_decoded_publication_of_queued {V : Type} [Fintype V] [De
   obtain ⟨k, hk, hkr⟩ := List.getElem_of_mem hr
   have hl := (getElem_groupRecs (runProposer S rho hn) (digestOf S rho)
     (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
-    (.tick (encodeTxs (mempool rho.inbox v t))) k hk).2.2.2.2
+    (.tick (encodeTxs (mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t)) k hk).2.2.2.2
   rw [hkr, hb] at hl
   have ha := tick_acceptance_proposal (runProposer S rho hn) (digestOf S rho)
     (rho.ownKey v) (stateAt S rho hn v i).node t (encodeTxs (mempool rho.inbox v t)) B

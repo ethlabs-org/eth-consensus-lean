@@ -57,9 +57,9 @@ theorem deliverRecs_block_call (io : VoteAuth sp.n binding) (proposer : Nat → 
 private def QueueStamped (t : Time) (st : State sp ro binding) : Prop :=
   st.now = t ∧ ∀ q ∈ st.forwards, q.1 = t
 
-private theorem nodeTick_forwards (st : State sp ro binding) :
-    (nodeTick st).forwards = st.forwards := by
-  rw [nodeTick_eq]
+private theorem nodeTick_forwards {sign : Fin sp.n → Time → Bool} (st : State sp ro binding) :
+    (nodeTick st sign).forwards = st.forwards := by
+  rw [nodeTick_eq (sign := _)]
   split
   · simp only [apply, acCall, List.foldl_cons, List.foldl_nil, List.flatMap_cons, List.nil_append,
       List.flatMap_nil, List.append_nil]
@@ -89,9 +89,10 @@ private theorem stamped_propose (t : Time) (st : State sp ro binding) s
   dsimp only
   split <;> exact h
 
-private theorem stamped_nodeTick (t : Time) (st : State sp ro binding)
-    (h : QueueStamped t st) : QueueStamped t (nodeTick st) := by
-  rw [nodeTick_eq]
+private theorem stamped_nodeTick (t : Time) {sign : Fin sp.n → Time → Bool}
+    (st : State sp ro binding)
+    (h : QueueStamped t st) : QueueStamped t (nodeTick st sign) := by
+  rw [nodeTick_eq (sign := _)]
   split
   · exact stamped_apply t st none _ h
   · exact h

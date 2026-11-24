@@ -19,7 +19,7 @@ open AC
 /-- **F.5 (run).** -/
 theorem event_order : EventOrder := by
   intro P A proposer dg H sg tr h
-  refine ⟨fun i j hij => h.time_mono hij, h.phase_order, fun y hy j t x ht k hk => ?_,
+  refine ⟨fun i j hij => h.time_mono hij, h.phase_order, fun y hy j t x f ht k hk => ?_,
     h.block_unforgeable, fun y hy i a ha haH => ?_, h.msg_unforgeable, h.finite⟩
   · exact (ht.2.1 k hk).2.2.2.2
   · refine h.att_unforgeable y hy i a ?_ haH
@@ -98,7 +98,7 @@ theorem ready_implies_joined_of {sp : ACParams} {ro : ReplayOrder sp (List (FG.A
   refine ready_implies_joined_of_cuts h.time_mono
     (fun k hk _ => h.sleep_of_restart y hy k hk) ?_ ht hc hawake
   intro u hu _ hpub hw
-  obtain ⟨j, x, hj⟩ := h.tick_of_awake y hy u hu hpub hw
+  obtain ⟨j, x, f, hj⟩ := h.tick_of_awake y hy u hu hpub hw
   exact ⟨j, group_call hj⟩
 
 /-- **F.4.** -/

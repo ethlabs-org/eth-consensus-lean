@@ -73,9 +73,10 @@ private theorem acCall_voteMember (st : State sp ro binding) origin
       rw [← h.1]
       exact AC.emits_mayVote ro st.self st.node.ac (frame st.node) st.now c e he)
 
-private theorem tick_voteMember (st : State sp ro binding) (h : VoteMember p st) :
-    VoteMember p (nodeTick st) := by
-  rw [nodeTick_eq]
+private theorem tick_voteMember {sign : Fin sp.n → Time → Bool} (st : State sp ro binding)
+    (h : VoteMember p st) :
+    VoteMember p (nodeTick st sign) := by
+  rw [nodeTick_eq (sign := _)]
   split
   · exact acCall_voteMember st none .tick h
   · exact h

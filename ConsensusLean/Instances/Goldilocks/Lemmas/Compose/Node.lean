@@ -95,8 +95,29 @@ theorem ac_sees_accepted_blocks : ACSeesAcceptedBlocks proposer dg self := by
   | restart =>
     simp only [Node.exec, Node.restart, acCall, List.mem_singleton, Cut.ac.injEq] at h
     subst h; cases hc
-  | tick x =>
-    have hcuts : exec proposer dg self st t (.tick x) =
+  | tick x fgDue =>
+    cases fgDue
+    · have hcuts : exec proposer dg self st t (.tick x false) =
+          ((tickStep proposer dg self (tickStep proposer dg self st t x .acTick).1 t x .proposal).1,
+            (tickStep proposer dg self st t x .acTick).2 ++
+              (tickStep proposer dg self (tickStep proposer dg self st t x .acTick).1
+                t x .proposal).2) := by
+        simp [Node.exec, onTick, runSteps, tickSteps]
+      rw [hcuts] at h ⊢
+      simp only [List.mem_append] at h
+      rcases h with h | h
+      · simp only [Node.tickStep, acCall, List.mem_singleton, Cut.ac.injEq] at h
+        subst h; cases hc
+      · obtain ⟨heq, hs, fg', hb⟩ := proposal_ac proposer dg self h hc
+        refine ⟨(tickStep proposer dg self st t x .acTick).2 ++
+            [(Node.acProposal (tickStep proposer dg self st t x .acTick).1 t).2.1], [],
+          (Node.acProposal (tickStep proposer dg self st t x .acTick).1 t).1, ?_,
+          .cons (st₁ := (tickStep proposer dg self st t x .acTick).1) ⟨rfl, rfl, rfl, rfl⟩
+            (.cons (st₁ := (Node.acProposal (tickStep proposer dg self st t x .acTick).1 t).1)
+              ⟨rfl, rfl, rfl, rfl⟩ (.nil _)), hs, accepted_facts hb⟩
+        rw [heq]
+        simp
+    have hcuts : exec proposer dg self st t (.tick x true) =
         ((tickStep proposer dg self
           (tickStep proposer dg self (tickStep proposer dg self st t x .acTick).1 t x .proposal).1
             t x .fgUpdate).1,

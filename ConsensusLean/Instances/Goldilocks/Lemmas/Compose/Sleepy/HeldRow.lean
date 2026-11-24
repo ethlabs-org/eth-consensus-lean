@@ -37,7 +37,7 @@ private theorem sign_at_public {A : NodeAC sp.toParams}
   obtain ⟨j₀, e, k, hg, -, hk⟩ := call_in_group hl hy hc
   obtain ⟨xt, rfl⟩ := @signed_only_in_ticks sp.toParams A proposer dg y
     (tr.state y j₀) (tr.time j) e C a (List.mem_of_getElem? hk)
-  exact hl.tick_public y hy j₀ (tr.time j) ⟨xt, hg⟩
+  exact hl.tick_public y hy j₀ (tr.time j) ⟨xt, true, hg⟩
 
 /-- At `t = t_{slot(t)} + Δ`, `ac_on_tick` of a joined node that has not voted in the slot casts
 a vote. (As `Persist/Attest`'s `acOnTick_votes`.) -/
@@ -66,12 +66,12 @@ private theorem tick_votes (self : Fin sp.n) (A : AC.ACState sp.n)
 block's `ac_on_block` when the node proposes. -/
 private theorem tick_ac_call {A : NodeAC sp.toParams}
     {dg : Digest (List (FG.Att sp.n)) A.Payload} {y : Fin sp.n} {st : NodeState A} {t : Time}
-    {x : Nat} {ℓ : ACLabel A}
-    (h : Cut.ac ℓ ∈ (Node.exec proposer dg y st t (.tick x)).2) :
+    {x : Nat} {fgDue : Bool} {ℓ : ACLabel A}
+    (h : Cut.ac ℓ ∈ (Node.exec proposer dg y st t (.tick x fgDue)).2) :
     ℓ.call = .tick ∨ ℓ.call = .proposal ∨ ℓ.call = .toFG ∨ Node.Proposes proposer y t := by
-  obtain ⟨ℓt, pc, uc, hlt, hcs, hpc, ℓu, hlu, huc⟩ :=
-    @tick_order sp.toParams A proposer dg y st t x
-  have h' : Cut.ac ℓ ∈ (Node.onTick proposer dg y st t x).2 := h
+  obtain ⟨ℓt, pc, uc, hlt, hcs, hpc, hupdate⟩ :=
+    @tick_order sp.toParams A proposer dg y st t x fgDue
+  have h' : Cut.ac ℓ ∈ (Node.onTick proposer dg y st t x fgDue).2 := h
   rw [hcs] at h'
   rcases List.mem_cons.1 h' with h' | h'
   · rw [Cut.ac.inj h']
@@ -81,6 +81,11 @@ private theorem tick_ac_call {A : NodeAC sp.toParams}
     · exact absurd h' List.not_mem_nil
     · exact Or.inr (Or.inr (Or.inr hp))
   · right; right; left
+    cases fgDue
+    · simp only [Bool.false_eq_true, ↓reduceIte] at hupdate
+      simp [hupdate] at h'
+    simp only [↓reduceIte] at hupdate
+    obtain ⟨ℓu, hlu, huc⟩ := hupdate
     rcases huc with rfl | ⟨C, rfl⟩ | ⟨C, a, rfl⟩ <;> rcases List.mem_cons.1 h' with h' | h'
     all_goals first
       | (rw [Cut.ac.inj h']; exact hlu)
@@ -167,7 +172,7 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have htm : tr.time m = sp.ts s + 5 * sp.Δ := le_antisymm (hmi'.trans hti') (hT ▸ hkm')
   have hti5 : tr.time i = tr.time m := le_antisymm (hti'.trans htm.ge) hmi'
   have hslm : sp.slot (tr.time m) = s + 1 := hti5 ▸ hsi
-  rcases blockCall_cases hl hy hm with hgm | ⟨-, -, -, -, hp, -⟩
+  rcases blockCall_cases hl hy hm with hgm | ⟨-, -, -, -, -, hp, -⟩
   swap
   · obtain ⟨-, hpt', -⟩ := hp
     have h1 : sp.toParams.slotOf (tr.time m) = s + 1 := hslm
@@ -175,7 +180,7 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     simp only [ACParams.ts] at hpt'
     push_cast at hpt'
     linarith only [hpt', hΔ]
-  obtain ⟨jt, xt, hgt⟩ := hl.tick_of_awake y hy (tr.time m) (hl.time_nonneg m)
+  obtain ⟨jt, xt, fgDue, hgt⟩ := hl.tick_of_awake y hy (tr.time m) (hl.time_nonneg m)
     ⟨4 * (s : Int) + 5, by rw [htm]; simp only [ACParams.ts]; ring⟩
     (hl.awake_of_call y hy m ⟨_, hm⟩)
   have hjm : jt < m := by
@@ -187,16 +192,18 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
       simp [Node.Event.phase] at this
   -- the tick's first cut is `ac_on_tick`
   obtain ⟨ℓt, pc, uc, hlt, hcs, -, -⟩ :=
-    @tick_order sp.toParams (goldilocksNode sp ro) proposer dg y (tr.state y jt) (tr.time m) xt
-  have hlen : 0 < (Node.exec proposer dg y (tr.state y jt) (tr.time m) (.tick xt)).2.length := by
-    change 0 < (Node.onTick proposer dg y (tr.state y jt) (tr.time m) xt).2.length
+    @tick_order sp.toParams (goldilocksNode sp ro) proposer dg y
+      (tr.state y jt) (tr.time m) xt fgDue
+  have hlen : 0 < (Node.exec proposer dg y (tr.state y jt)
+      (tr.time m) (.tick xt fgDue)).2.length := by
+    change 0 < (Node.onTick proposer dg y (tr.state y jt) (tr.time m) xt fgDue).2.length
     rw [hcs]; simp
   obtain ⟨hn₀, ht₀, -, -, hl₀⟩ := hgt.2.1 0 hlen
   have hct : tr.CallAt y jt (.ac ℓt) := by
     refine ⟨hn₀, ?_⟩
     simp only [Nat.add_zero] at hl₀
     rw [hl₀]
-    change some (Node.onTick proposer dg y (tr.state y jt) (tr.time m) xt).2[0] = _
+    change some (Node.onTick proposer dg y (tr.state y jt) (tr.time m) xt fgDue).2[0] = _
     simp [hcs]
   simp only [Nat.add_zero] at ht₀
   have hpt0 : tr.projAC.CallAt y jt ℓt := projAC_callAt.2 hct
@@ -316,7 +323,7 @@ theorem held_row_early_count
     have hmem := List.mem_of_getElem? hk₁
     obtain ⟨htick, hnp, hnt, hnr⟩ := honest_vote_call hrun hnc huH ⟨hc', he'⟩
     cases eu with
-    | tick xu =>
+    | tick xu fgDueu =>
       rcases tick_ac_call hmem with h | h | h | hp
       · have h5 := htick h
         rw [hsl', htj, hT0] at h5

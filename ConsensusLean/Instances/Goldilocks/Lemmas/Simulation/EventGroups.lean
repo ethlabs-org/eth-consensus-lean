@@ -36,7 +36,8 @@ theorem simTrace_state_of (hv : rho.ExecutionValid) {v : V}
       (S.params (pubOf E) hn).toParams.IsPublic t →
       (stateAt S rho hn v (i + 1)).node =
         (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
-          (.tick (encodeTxs (Model.mempool rho.inbox v t)))).1) :
+          (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E)
+            (rho.ownKey v) t))).1) :
     ∀ i ≤ rho.events.length, (stateAt S rho hn v i).node =
       (simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i) := by
   intro i hi
@@ -142,8 +143,8 @@ theorem own_block_released_of (hrel : ∀ {i : Nat} {v : V} {t : Time},
     obtain ⟨kk, hk, rfl⟩ := List.getElem_of_mem hmem
     obtain ⟨-, -, -, hposk, hlabk⟩ := getElem_groupRecs _ _ _ _ _ _ _ kk hk
     have hk' := lt_of_lt_of_eq hk (length_groupRecs _ _ _ _ _ _ _)
-    exact hpos' (hposk.trans (pos_of_block_cut _ _ _ _ _ (e := .restart) (fun x h => by cases h)
-      hk' (hlabk.symm.trans hrl)))
+    exact hpos' (hposk.trans (pos_of_block_cut _ _ _ _ _ (e := .restart)
+      (fun _ _ h => by cases h) hk' (hlabk.symm.trans hrl)))
 
 end Consensus.Goldilocks.Simulation
 

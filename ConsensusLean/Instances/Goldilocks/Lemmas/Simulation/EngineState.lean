@@ -73,7 +73,7 @@ omit [DecidableEq V] in
 theorem shapeOf_act_pollPropose (st : (Model.protoOf (compiled (goldilocks S)) E).State)
     (t : Nat) :
     ((Model.protoOf (compiled (goldilocks S)) E).act st (.pollPropose t)).1.1 hn =
-      nodeTick (st.1 hn) := by
+      nodeTick (st.1 hn) (S.sign (pubOf E)) := by
   change ((goldilocks S (pubOf E)).pollPropose st.1 t).1 hn = _
   rw [goldilocks_pollPropose_eq S _ st.1 t, dite_eq_left hn]
 
@@ -91,7 +91,8 @@ omit [DecidableEq V] in
 preserved by every duty step of the engine. -/
 theorem dutyStep_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
-    (hprop : ∀ st s, Q st → Q (propose st s).1) (htick : ∀ st, Q st → Q (nodeTick st))
+    (hprop : ∀ st s, Q st → Q (propose st s).1)
+    (htick : ∀ st, Q st → Q (nodeTick st (S.sign (pubOf E))))
     (hpoll : ∀ st t, Q st → Q (poll st t).1) (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) (h : Q (shapeOf S hn nd)) :
@@ -120,7 +121,8 @@ omit [DecidableEq V] in
 preserved by running a list of duties. -/
 theorem runDuties_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
-    (hprop : ∀ st s, Q st → Q (propose st s).1) (htick : ∀ st, Q st → Q (nodeTick st))
+    (hprop : ∀ st s, Q st → Q (propose st s).1)
+    (htick : ∀ st, Q st → Q (nodeTick st (S.sign (pubOf E))))
     (hpoll : ∀ st t, Q st → Q (poll st t).1) (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty) (h : Q (shapeOf S hn nd)) :
@@ -150,7 +152,8 @@ after an engine tick if it holds for the clocked state before it: an asleep node
 state clocked, an awake node's runs the duties and the gossip. -/
 theorem tick_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
-    (hprop : ∀ st s, Q st → Q (propose st s).1) (htick : ∀ st, Q st → Q (nodeTick st))
+    (hprop : ∀ st s, Q st → Q (propose st s).1)
+    (htick : ∀ st, Q st → Q (nodeTick st (S.sign (pubOf E))))
     (hpoll : ∀ st t, Q st → Q (poll st t).1) (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time)
     (h : Q { nd.st.1 hn with now := t }) :
@@ -224,7 +227,8 @@ omit [DecidableEq V] in
 theorem dutyStep_pollPropose (v : V) (nd : Model.Node (Model.protoOf (compiled
     (goldilocks S)) E))
     (t : Nat) (hsel : rho.ownKey v ∈ rho.sel .poll) :
-    shapeOf S hn (rho.dutyStep v nd (.pollPropose t)).1 = nodeTick (shapeOf S hn nd) := by
+    shapeOf S hn (rho.dutyStep v nd (.pollPropose t)).1 =
+      nodeTick (shapeOf S hn nd) (S.sign (pubOf E)) := by
   unfold Model.Run.dutyStep
   simp only
       [show (Model.protoOf (compiled (goldilocks S)) E).role (.pollPropose t) = .poll from rfl,

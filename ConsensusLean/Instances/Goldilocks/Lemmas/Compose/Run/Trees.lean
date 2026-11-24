@@ -83,10 +83,10 @@ theorem accept_facts (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (
       X.root ≠ P.genesisRoot := by
   obtain ⟨pr, σ', -, hnew, -, -, hσ, -⟩ := Store.onBlock_eq_some (h.cutLaw y hy k _ hk).2.1
   refine ⟨?_, ?_, hnew, fun hg => ?_⟩
-  · rcases blockCall_cases h hy hk with hg | ⟨j, x, -, -, -, d, p, -, rfl, -⟩
+  · rcases blockCall_cases h hy hk with hg | ⟨j, x, -, -, -, -, d, p, -, rfl, -⟩
     · exact (h.wire y hy k _ _ hg).1
     · rfl
-  · rcases blockCall_cases h hy hk with hg | ⟨j, x, -, -, hp, d, p, -, rfl, -⟩
+  · rcases blockCall_cases h hy hk with hg | ⟨j, x, -, -, -, hp, d, p, -, rfl, -⟩
     · exact h.proposerCredential y hy k _ _ hg
     · exact hp.2.2.symm
   · have hG := (Store.accepted_tree P _ _ _ (fg_reachable h hy k)).2.2.1

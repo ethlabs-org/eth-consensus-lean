@@ -81,18 +81,18 @@ private theorem not_tick_step (dg : Digest (List (FG.Att P.n)) A.Payload) (y : F
 private theorem exec_tick (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
     (st : NodeState A) (t : Time) (e : Event A) {k : Nat} {ℓ : ACLabel A}
     (hk : (exec proposer dg y st t e).2[k]? = some (.ac ℓ)) (hℓ : ℓ.call = .tick) :
-    (∃ x, e = .tick x) ∧ k = 0 := by
+    (∃ x fgDue, e = .tick x fgDue) ∧ k = 0 := by
   have hmem := List.mem_of_getElem? hk
   cases e with
-  | tick x =>
-    refine ⟨⟨x, rfl⟩, ?_⟩
-    have hcuts : (exec proposer dg y st t (.tick x)).2 =
+  | tick x fgDue =>
+    refine ⟨⟨x, fgDue, rfl⟩, ?_⟩
+    have hcuts : (exec proposer dg y st t (.tick x fgDue)).2 =
         (tickStep proposer dg y st t x .acTick).2 ++
         ((tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal).2 ++
-        (tickStep proposer dg y
+        (if fgDue then (tickStep proposer dg y
           (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal).1
-          t x .fgUpdate).2) := by
-      simp [exec, onTick, runSteps, tickSteps]
+          t x .fgUpdate).2 else [])) := by
+      cases fgDue <;> simp [exec, onTick, runSteps, tickSteps]
     rw [hcuts] at hk
     rcases k with _ | k
     · rfl
@@ -103,7 +103,9 @@ private theorem exec_tick (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P
       have hm := List.mem_of_getElem? hk
       rcases List.mem_append.1 hm with hm | hm
       · exact not_tick_step proposer dg y _ t x .proposal (by simp) _ hm ⟨ℓ, rfl, hℓ⟩
-      · exact not_tick_step proposer dg y _ t x .fgUpdate (by simp) _ hm ⟨ℓ, rfl, hℓ⟩
+      · cases fgDue
+        · simp at hm
+        · exact not_tick_step proposer dg y _ t x .fgUpdate (by simp) _ hm ⟨ℓ, rfl, hℓ⟩
   | block B =>
     exact absurd ⟨ℓ, rfl, hℓ⟩ (not_tick_onBlock y st t B _ (by simpa [exec] using hmem))
   | message m =>
@@ -127,11 +129,11 @@ theorem acTick_unique (h : Node.LocalRun proposer dg H sg tr) :
   intro y hy i j ℓ ℓ' hc hc' hℓ hℓ' ht
   obtain ⟨g, e, k, hg, rfl, hk⟩ := call_in_group h hy (projAC_callAt.1 hc)
   obtain ⟨g', e', k', hg', rfl, hk'⟩ := call_in_group h hy (projAC_callAt.1 hc')
-  obtain ⟨⟨x, rfl⟩, rfl⟩ := exec_tick proposer dg y _ _ e hk hℓ
-  obtain ⟨⟨x', rfl⟩, rfl⟩ := exec_tick proposer dg y _ _ e' hk' hℓ'
+  obtain ⟨⟨x, f, rfl⟩, rfl⟩ := exec_tick proposer dg y _ _ e hk hℓ
+  obtain ⟨⟨x', f', rfl⟩, rfl⟩ := exec_tick proposer dg y _ _ e' hk' hℓ'
   change tr.time (g + 0) = tr.time (g' + 0) at ht
   rw [ht] at hg
-  rw [h.tick_unique y hy g g' _ ⟨x, hg⟩ ⟨x', hg'⟩]
+  rw [h.tick_unique y hy g g' _ ⟨x, f, hg⟩ ⟨x', f', hg'⟩]
 
 end Consensus.Goldilocks.Compose
 

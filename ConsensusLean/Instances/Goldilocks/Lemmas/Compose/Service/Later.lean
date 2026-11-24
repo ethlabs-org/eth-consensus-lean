@@ -22,14 +22,15 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The cuts of a tick: the AC's tick, the proposal step, the FG update. -/
 private theorem tick_cuts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} (y : Fin sp.n)
-    (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) :
-    (Node.exec proposer dg y st t (.tick x)).2 = (Node.tickStep proposer dg y st t x .acTick).2 ++
+    (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) (fgDue : Bool) :
+    (Node.exec proposer dg y st t (.tick x fgDue)).2 =
+      (Node.tickStep proposer dg y st t x .acTick).2 ++
       (Node.tickStep proposer dg y
         (Node.tickStep proposer dg y st t x .acTick).1 t x .proposal).2 ++
-      (Node.tickStep proposer dg y (Node.tickStep proposer dg y
+      (if fgDue then (Node.tickStep proposer dg y (Node.tickStep proposer dg y
         (Node.tickStep proposer dg y st t x .acTick).1 t x
-        .proposal).1 t x .fgUpdate).2 := by
-  simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps]
+        .proposal).1 t x .fgUpdate).2 else []) := by
+  cases fgDue <;> simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps]
 
 /-- **An honest validator awake and joined at `t_s + 6Δ` runs the update of slot `s`** there: its
 tick at that public time starts with `ac_on_tick`, joined. -/
@@ -43,15 +44,17 @@ theorem update_of_awake_joined {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   have h0 : (0 : Time) ≤ sp.ts s := by
     simp only [ACParams.ts]
     exact mul_nonneg (by linarith) (Int.natCast_nonneg s)
-  obtain ⟨j, c, hj'⟩ := hrun.tick_of_awake x hx _ (by linarith)
+  obtain ⟨j, c, fgDue, hj'⟩ := hrun.tick_of_awake x hx _ (by linarith)
     (show sp.toParams.IsPublic _ from Dvd.intro (4 * (s : Int) + 6)
       (by simp only [ACParams.ts]; ring)) hw
   obtain ⟨-, hk, -⟩ := hj'
   have hlen :
-      0 < (Node.exec proposer dg x (tr.state x j) (sp.ts s + 6 * sp.Δ) (.tick c)).2.length := by
+      0 < (Node.exec proposer dg x (tr.state x j)
+        (sp.ts s + 6 * sp.Δ) (.tick c fgDue)).2.length := by
     rw [tick_cuts]; simp [Node.tickStep]
   obtain ⟨hn0, ht0, -, -, hl0⟩ := hk 0 hlen
-  have hget : (Node.exec proposer dg x (tr.state x j) (sp.ts s + 6 * sp.Δ) (.tick c)).2[0]'hlen =
+  have hget : (Node.exec proposer dg x (tr.state x j)
+      (sp.ts s + 6 * sp.Δ) (.tick c fgDue)).2[0]'hlen =
       (Node.acCall x (tr.state x j) (sp.ts s + 6 * sp.Δ) .tick).2 := by
     simp only [tick_cuts]; rfl
   rw [hget] at hl0

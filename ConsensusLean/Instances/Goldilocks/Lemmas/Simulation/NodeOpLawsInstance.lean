@@ -67,7 +67,7 @@ theorem tick_block_released [DecidableEq V] (e : Encoding F E p hN hn A)
   have hcut : Cut.fg (.block b acc) ∈
       (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
         (e.adapter.node (stateAt e rho v j)) t
-        (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2 :=
+        (.tick (encodeTxs (Model.mempool rho.inbox v t)) (e.adapter.sign (rho.ownKey v) t))).2 :=
     hl ▸ List.getElem_mem _
   let clk := afterClock rho (rho.stateBefore j v) v t
   let ds : List (ShapeDuty e.skel.Kind) := [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat]
@@ -80,12 +80,19 @@ theorem tick_block_released [DecidableEq V] (e : Encoding F E p hN hn A)
   have hpref := (L.toLawful ready).tick_prefix rho hv he
   rw [ite_eq_left hp] at hpref
   have hpre : e.adapter.node (envelope e pre) = (acCall y st t .tick).1 := hpref.1
-  change Cut.fg (.block b acc) ∈ (onTick pr dg y st t x).2 at hcut
+  change Cut.fg (.block b acc) ∈ (onTick pr dg y st t x (e.adapter.sign y t)).2 at hcut
   have hprop : Cut.fg (.block b acc) ∈
       (tickStep pr dg y (e.adapter.node (envelope e pre)) t x .proposal).2 := by
-    simp only [onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil,
-      List.nil_append] at hcut
     rw [hpre]
+    generalize e.adapter.sign y t = sg at hcut
+    cases sg
+    · simp only [onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil,
+        Bool.false_eq_true, ite_false, List.nil_append] at hcut
+      rcases List.mem_append.mp hcut with h | h
+      · simp [tickStep, acCall] at h
+      · exact h
+    simp only [onTick, runSteps, tickSteps, List.foldl_cons, List.foldl_nil,
+      ite_true, List.nil_append] at hcut
     rcases List.mem_append.mp hcut with h | h
     · rcases List.mem_append.mp h with h | h
       · simp [tickStep, acCall] at h
@@ -189,7 +196,9 @@ theorem traceEncoding_ioLaws {V : Type} [Fintype V] {E : Env V} (S : Setup)
     clock_io := fun _ _ => rfl
     pollBatch_io := fun st t => poll_voteIO st t
     recordOwn_io := fun st o hs => recordOwn_voteIO st o hs
-    process_eq := fun _ => rfl }
+    process_eq := fun st => by
+      funext o hs
+      exact (process_nodeAdapter_sign _ _ st o hs).symm }
 
 /-- Goldilocks' local replay equations. Candidate readiness is proved separately on the run. -/
 theorem traceEncoding_opLaws {V : Type} [Fintype V] {E : Env V} (S : Setup)

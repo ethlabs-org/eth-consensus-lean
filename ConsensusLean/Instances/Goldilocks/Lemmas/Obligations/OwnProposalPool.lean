@@ -30,17 +30,18 @@ theorem _root_.Consensus.Goldilocks.Compose.own_proposal_payload_pooled_run
     {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     {M : Type} {pooled : A.State → M → Prop}
     (hpres : ∀ a φ τ m, pooled a m → pooled (A.proposal a φ τ).1 m)
-    {y : Fin P.n} (hy : y ∈ H) {j : Nat} {t : Time} {x : Nat}
-    (hg : tr.GroupAt proposer dg y j t (.tick x))
+    {y : Fin P.n} (hy : y ∈ H) {j : Nat} {t : Time} {x : Nat} {fgDue : Bool}
+    (hg : tr.GroupAt proposer dg y j t (.tick x fgDue))
     {ℓp : ACLabel A} (hcp : tr.CallAt y (j + 1) (.ac ℓp)) (hpc : ℓp.call = .proposal)
     {B : A.Blk} (hcb : tr.CallAt y (j + 2) (.fg (.block B true))) {m : M}
     (hm : pooled (Node.tickStep proposer dg y (tr.state y j) t x .acTick).1.ac m) :
     pooled (tr.state y (j + 3)).ac m := by
-  have htick := hg.2.1 0 (by simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps,
-    Node.tickStep, Node.acCall])
+  have htick := hg.2.1 0 (by
+    cases fgDue <;> simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps,
+      Node.tickStep, Node.acCall])
   have hct : tr.CallAt y j (Node.acCall y (tr.state y j) t .tick).2 := by
     exact ⟨by simpa using htick.1, by
-      simpa [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, Node.tickStep,
+      cases fgDue <;> simpa [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, Node.tickStep,
         Node.acCall] using htick.2.2.2.2⟩
   have ht : tr.time j = t := by simpa using htick.2.1
   have hl := hr.cutLaw y hy j _ hct
@@ -80,8 +81,8 @@ theorem proposal_preserves_pool (y : Fin sp.n) (a : AC.ACState sp.n)
 
 /-- Votes in an actual own-proposal payload were already pooled before its AC block cut. -/
 theorem own_proposal_payload_pooled_run {ini} (hr : GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {t : Time} {x : Nat}
-    (hg : tr.GroupAt proposer dg y j t (.tick x))
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {t : Time} {x : Nat} {fgDue : Bool}
+    (hg : tr.GroupAt proposer dg y j t (.tick x fgDue))
     {d : DutyHead sp.n (List (FG.Att sp.n)) (AC.Payload sp.n)} {p : AC.Payload sp.n}
     (hd : (Node.acProposal
       (Node.tickStep proposer dg y (tr.state y j) t x .acTick).1 t).2.2 = some (d, p))

@@ -391,7 +391,7 @@ private theorem nodeTick_obs (L : e.OpLaws due) (st : e.State hn) :
       if (paramsAtCount p (Fintype.card V) hN hn).IsPublic (e.adapter.now st) then
         e.adapter.node r =
           (acCall (e.adapter.self st) (e.adapter.node st) (e.adapter.now st) .tick).1 ∧
-          due r = true
+          due r = e.adapter.sign (e.adapter.self st) (e.adapter.now st)
       else e.adapter.node r = e.adapter.node st ∧ due r = due st := by
   dsimp only
   by_cases hp : (paramsAtCount p (Fintype.card V) hN hn).IsPublic (e.adapter.now st) <;>
@@ -862,7 +862,8 @@ private theorem tick_prefix [DecidableEq V] (L : e.OpLaws due)
       ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat].map (engineDuty e))).1
     (if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
       e.adapter.node (envelope e pre) = (acCall (rho.ownKey v)
-        (e.adapter.node (stateAt e rho v i)) t .tick).1 ∧ due (envelope e pre) = true
+        (e.adapter.node (stateAt e rho v i)) t .tick).1 ∧
+        due (envelope e pre) = e.adapter.sign (rho.ownKey v) t
     else e.adapter.node (envelope e pre) = e.adapter.node (stateAt e rho v i) ∧
       due (envelope e pre) = false) := by
   let clk := afterClock rho (rho.stateBefore i v) v t
@@ -1067,7 +1068,7 @@ theorem replay_cut_in_applyCuts [DecidableEq V] (L : e.OpLaws due)
     | message m => exact Or.inl rfl
     | block b => exact Or.inr ⟨_, _, rfl⟩
     | attestation a => exact Or.inr ⟨True, _, rfl⟩
-    | tick x => unfold canonEvent at hc; split at hc <;> cases hc
+    | tick x fgDue => unfold canonEvent at hc; split at hc <;> cases hc
     | restart => unfold canonEvent at hc; split at hc <;> cases hc
 
 private theorem receipt_cut_state [DecidableEq V] (L : e.OpLaws due)

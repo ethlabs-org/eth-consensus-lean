@@ -39,12 +39,12 @@ theorem proposal_accepted {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc
     (hP : tr.ProposesAt p k P) : tr.AcceptAt p k P := by
   have h := hrun.toLocalRun
   obtain ⟨⟨⟨acc, hcall⟩, hpos⟩, -, -⟩ := hP
-  rcases blockCall_cases h hp hcall with hg | ⟨j, x, rfl, hg, hpr, d, pay, hdp, hB, hacc, -⟩
+  rcases blockCall_cases h hp hcall with hg | ⟨j, x, fgDue, rfl, hg, hpr, d, pay, hdp, hB, hacc, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   obtain ⟨cfg, hreach, hst, hstep⟩ := group_step h hp hg
   have hC03 := honest_block_accepted_from proposer dg p
     (requirements_from sp ro (hrun.vstart p)) hrun.genesis_root_ok cfg _
-    (tr.time (j + 2)) x hreach hstep hpr d pay (by rw [hst]; exact hdp)
+    (tr.time (j + 2)) x fgDue hreach hstep hpr d pay (by rw [hst]; exact hdp)
   simp only [hst] at hC03
   have key : NoCollOn dg (insert P (tr.state p j).fg.tree) →
       (tr.state p j).fg.blocks P.root = none ∧ ∃ fg', (tr.state p j).fg.onBlock P = some fg' := by
@@ -62,7 +62,7 @@ theorem eq_of_slot {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     R = P := by
   have h := hrun.toLocalRun
   obtain ⟨⟨⟨acc, hcB⟩, hpos⟩, hpp, htk⟩ := hP
-  rcases blockCall_cases h hp hcB with hg | ⟨j, x, rfl, hg, hPr, d, pay, -, hB, -⟩
+  rcases blockCall_cases h hp hcB with hg | ⟨j, x, fgDue, rfl, hg, hPr, d, pay, -, hB, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   have hpr : P.proposer = proposer P.slot := by
     rw [hpp, hB]
@@ -76,14 +76,14 @@ theorem eq_of_slot {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have hRp : R.proposer = p := by rw [hRpr, hRs, ← hpr, hpp]
   obtain ⟨j', -, ⟨acc', hc'⟩, hpos'⟩ := hrun.block_unforgeable y hy k' R ⟨true, hk'⟩ (hRp ▸ hp)
   rw [hRp] at hc'
-  rcases blockCall_cases h hp hc' with hg' | ⟨j₀, x', rfl, hg', hPr', d₀, pay₀, -, hB', -⟩
+  rcases blockCall_cases h hp hc' with hg' | ⟨j₀, x', fgDue', rfl, hg', hPr', d₀, pay₀, -, hB', -⟩
   · exact absurd (by simpa using (hg'.2.1 0 (List.length_pos_iff.2 hg'.1)).2.2.2.1) hpos'
   have ht' : tr.time (j₀ + 2) = sp.toParams.slotTime R.slot := by
     have hs : R.slot = sp.toParams.slotOf (tr.time (j₀ + 2)) := by rw [hB']; rfl
     exact hs ▸ hPr'.2.1
   have htt : tr.time (j₀ + 2) = tr.time (j + 2) := by rw [ht', htk, hRs]
   rw [htt] at hg'
-  obtain rfl := hrun.tick_unique p hp j₀ j _ ⟨x', hg'⟩ ⟨x, hg⟩
+  obtain rfl := hrun.tick_unique p hp j₀ j _ ⟨x', fgDue', hg'⟩ ⟨x, fgDue, hg⟩
   have := hc'.2.symm.trans hcB.2
   simp only [Option.some.injEq, Cut.fg.injEq, FGLabel.block.injEq] at this
   exact this.1

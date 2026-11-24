@@ -118,7 +118,8 @@ structure Encoding.Lawful (e : Encoding F E p hN hn A) (due : e.State hn → Boo
         ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat].map (engineDuty e))).1
       (if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
         e.adapter.node (envelope e pre) = (acCall (rho.ownKey v)
-          (e.adapter.node (stateAt e rho v i)) t .tick).1 ∧ due (envelope e pre) = true
+          (e.adapter.node (stateAt e rho v i)) t .tick).1 ∧
+          due (envelope e pre) = e.adapter.sign (rho.ownKey v) t
       else e.adapter.node (envelope e pre) = e.adapter.node (stateAt e rho v i) ∧
         due (envelope e pre) = false)
   tick_proposal : ∀ (rho : Model.Run (compiled F) E), rho.ExecutionValid →
@@ -317,7 +318,7 @@ private theorem tick_node {due : e.State hn → Bool} (laws : e.Lawful due)
       if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
         (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
           (e.adapter.node (stateAt e rho v i)) t
-          (.tick (encodeTxs (Model.mempool rho.inbox v t)))).1
+          (.tick (encodeTxs (Model.mempool rho.inbox v t)) (e.adapter.sign (rho.ownKey v) t))).1
       else e.adapter.node (stateAt e rho v i) := by
   have hm := List.mem_of_getElem? he
   rw [stateAt_eq _ _ v (i + 1), rho.stateBefore_succ he]
@@ -333,8 +334,8 @@ private theorem tick_node {due : e.State hn → Bool} (laws : e.Lawful due)
   rw [hfinish, hprop.1]
   by_cases hpub : (paramsAtCount p (Fintype.card V) hN hn).IsPublic t
   · rw [ite_eq_left hpub] at hpre
-    simp only [ite_eq_left hpub, hpre.2, ↓reduceIte, hprop.2.1, hpre.1]
-    rfl
+    simp only [ite_eq_left hpub, hpre.2, hprop.2.1, hpre.1]
+    cases e.adapter.sign (rho.ownKey v) t <;> rfl
   · rw [ite_eq_right hpub] at hpre
     simp only [ite_eq_right hpub, hpre.2, Bool.false_eq_true, ↓reduceIte, hprop.2.2 hpub, hpre.1]
 

@@ -34,16 +34,19 @@ private theorem tick_attest_next {i : Nat} {v : V} {t : Time}
     (hlenEq : cutMap e rho (i + 1) = cutMap e rho i +
       (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
         (e.adapter.node (stateAt e rho v i)) t
-        (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2.length)
+        (.tick (encodeTxs (Model.mempool rho.inbox v t))
+          (e.adapter.sign (rho.ownKey v) t))).2.length)
     {m : Nat} {C : A.Blk} {a : FG.Att (Fintype.card V)}
     (hc : (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
       (e.adapter.node (stateAt e rho v i)) t
-      (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2[m]? = some (.fg (.attest C (some a)))) :
+      (.tick (encodeTxs (Model.mempool rho.inbox v t)) (e.adapter.sign (rho.ownKey v) t))).2[m]? =
+        some (.fg (.attest C (some a)))) :
     (simTrace e rho).AttCallAt (rho.ownKey v) (cutMap e rho i + (m + 1)) a ∧
       (simTrace e rho).time (cutMap e rho i + (m + 1)) = t ∧
       cutMap e rho i + (m + 1) < cutMap e rho (i + 1) := by
   let st := e.adapter.node (stateAt e rho v i)
-  let ev : Node.Event A := .tick (encodeTxs (Model.mempool rho.inbox v t))
+  let ev : Node.Event A :=
+    .tick (encodeTxs (Model.mempool rho.inbox v t)) (e.adapter.sign (rho.ownKey v) t)
   let cs := (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v) st t ev).2
   have hnxt := Compose.exec_attest_next (A := A) (C := C) (a := a)
     (runProposer rho hn) (digestOf e rho) (rho.ownKey v) st t ev hc
@@ -125,7 +128,8 @@ theorem tick_attest_processAt {i : Nat} {v : V} {t : Time}
     {a : FG.Att (Fintype.card V)} {C : Blk (S.params (Model.pubOf E) hn)}
     (hc : Cut.fg (.attest C (some a)) ∈ (Node.exec (runProposer S rho hn) (digestOf S rho)
       (rho.ownKey v) (stateAt S rho hn v i).node t
-      (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2) :
+      (.tick (encodeTxs (Model.mempool rho.inbox v t))
+        (S.sign (Model.pubOf E) (rho.ownKey v) t))).2) :
     ∃ k, (simTrace S rho hn).ProcessAttAt (rho.ownKey v) k a ∧
       (simTrace S rho hn).time k = t := by
   have hlen := cutMap_succ S rho hn i
@@ -144,7 +148,9 @@ theorem tick_attest_processAt {i : Nat} {v : V} {t : Time}
         [NodeAsChainShape.CanonicalTrace.stateAt_eq, cast_eq]
       rfl
   rw [hpr, hdg, hstate] at hm
+  rw [← traceEncoding_adapter_sign S hn] at hm
   rw [htrace.2, hpr, hdg, hstate] at hlen
+  rw [← traceEncoding_adapter_sign S hn] at hlen
   obtain ⟨hcall, htime, _⟩ := NodeAsChainShape.CanonicalTrace.tick_attest_next
     (traceEncoding S hn) rho he hp hlen (C := C) (a := a) hm
   rw [htrace.1]

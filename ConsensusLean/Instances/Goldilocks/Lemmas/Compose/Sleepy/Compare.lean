@@ -183,15 +183,15 @@ variable {b : Time} {s₀ : Nat}
 
 /-- The cuts of a tick: the AC's tick, the proposal step, the FG update. -/
 private theorem tick_cuts (y : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time)
-    (x : Nat) :
-    (Node.exec proposer dg y st t (.tick x)).2 =
+    (x : Nat) (fgDue : Bool) :
+    (Node.exec proposer dg y st t (.tick x fgDue)).2 =
       (Node.tickStep proposer dg y st t x .acTick).2 ++
       (Node.tickStep proposer dg y
         (Node.tickStep proposer dg y st t x .acTick).1 t x .proposal).2 ++
-      (Node.tickStep proposer dg y
+      (if fgDue then (Node.tickStep proposer dg y
         (Node.tickStep proposer dg y (Node.tickStep proposer dg y st t x .acTick).1 t x
-          .proposal).1 t x .fgUpdate).2 := by
-  simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps]
+          .proposal).1 t x .fgUpdate).2 else []) := by
+  cases fgDue <;> simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps]
 
 /-- **An honest validator awake and joined at `t_s + Δ` votes in slot `s`**, at or before
 `t_s + Δ`: its tick there runs `try_vote` unless it voted in slot `s` already. -/
@@ -206,14 +206,15 @@ theorem vote_of_awake_joined {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have hslot : sp.slot (sp.ts s + sp.Δ) = s :=
     AC.slot_of_mem sp s (le_add_of_nonneg_right hΔ.le)
       (by simp only [ACParams.ts]; push_cast; linarith)
-  obtain ⟨j, x, hj'⟩ := hrun.tick_of_awake y hy _ (add_nonneg h0 hΔ.le)
+  obtain ⟨j, x, fgDue, hj'⟩ := hrun.tick_of_awake y hy _ (add_nonneg h0 hΔ.le)
     (show sp.toParams.IsPublic _ from Dvd.intro (4 * (s : Int) + 1)
       (by simp only [ACParams.ts]; ring)) hw
   obtain ⟨-, hk, -⟩ := hj'
-  have hlen : 0 < (Node.exec proposer dg y (tr.state y j) (sp.ts s + sp.Δ) (.tick x)).2.length := by
+  have hlen : 0 < (Node.exec proposer dg y (tr.state y j)
+      (sp.ts s + sp.Δ) (.tick x fgDue)).2.length := by
     rw [tick_cuts]; simp [Node.tickStep]
   obtain ⟨hn0, ht0, -, -, hl0⟩ := hk 0 hlen
-  have hget : (Node.exec proposer dg y (tr.state y j) (sp.ts s + sp.Δ) (.tick x)).2[0]'hlen =
+  have hget : (Node.exec proposer dg y (tr.state y j) (sp.ts s + sp.Δ) (.tick x fgDue)).2[0]'hlen =
       (Node.acCall y (tr.state y j) (sp.ts s + sp.Δ) .tick).2 := by
     simp only [tick_cuts]; rfl
   rw [hget] at hl0

@@ -254,11 +254,12 @@ theorem recordOwn_pool_insertion_queued {sp : AC.ACParams}
 
 /-- Every fresh public AC-tick insertion belongs to its forwarding queue. -/
 theorem nodeTick_pool_insertion_queued {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (hg : VoteGate st)
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {sign : Fin sp.n → Time → Bool}
+      (st : State sp ro binding) (hg : VoteGate st)
     (m : AC.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
-    (hnew : m ∈ (nodeTick st).node.ac.pool m.slot) :
-    ∃ w, (st.now, m, w) ∈ (nodeTick st).voteForwards := by
-  rw [nodeTick_eq] at hnew ⊢
+    (hnew : m ∈ (nodeTick st sign).node.ac.pool m.slot) :
+    ∃ w, (st.now, m, w) ∈ (nodeTick st sign).voteForwards := by
+  rw [nodeTick_eq (sign := _)] at hnew ⊢
   split_ifs at hnew ⊢
   · have hsrc := Compose.step_pool_insertion_source st.self st.node.ac (Node.frame st.node)
       st.now .tick (by simp) m hold hnew
@@ -302,9 +303,10 @@ private theorem voteStamped_propose {sp : AC.ACParams}
   split <;> exact h
 
 private theorem voteStamped_nodeTick {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (t : Time) (st : State sp ro binding)
-    (h : VoteQueueStamped t st) : VoteQueueStamped t (nodeTick st) := by
-  rw [nodeTick_eq]
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (t : Time) {sign : Fin sp.n → Time → Bool}
+      (st : State sp ro binding)
+    (h : VoteQueueStamped t st) : VoteQueueStamped t (nodeTick st sign) := by
+  rw [nodeTick_eq (sign := _)]
   split
   · exact voteStamped_apply t st none _ h
   · exact h

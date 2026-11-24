@@ -45,12 +45,13 @@ theorem attCall_sign_of_released (hv : rho.ExecutionValid) {y : Fin (Fintype.car
       rw [groupRecs_eq, List.getElem?_eq_some_iff] at hr
       obtain ⟨hm, rfl⟩ := hr
       simp only [List.getElem_mapIdx, List.getElem_zip] at hlabel
-      obtain ⟨q, hq, C, hC⟩ := Compose.tick_attestation_prev _ _ _ _ _ _
+      obtain ⟨q, hq, C, hC⟩ := Compose.tick_attestation_prev _ _ _ _ _ _ _
         ((List.getElem?_eq_getElem _).trans (congrArg some hlabel))
       have hval : a.val = rho.ownKey v := Simulation.attest_val_of_mem_node_exec
         (A := A) (C := C) (a := a)
         (runProposer rho hn) (digestOf e rho) (rho.ownKey v) (e.adapter.node (stateAt e rho v i)) t
-        (.tick (encodeTxs (Model.mempool rho.inbox v t))) (List.mem_of_getElem? hC)
+        (.tick (encodeTxs (Model.mempool rho.inbox v t)) (e.adapter.sign (rho.ownKey v) t))
+          (List.mem_of_getElem? hC)
       have hq' : q < (eventCuts e rho i).length := by
         rw [eventCuts_tick e rho i v t he, ite_eq_left hp, groupRecs_eq]
         simp only [List.length_mapIdx, List.length_zip, Nat.lt_min] at hm ⊢

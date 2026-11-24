@@ -46,7 +46,7 @@ theorem proposal_data {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set
       tr.time i = sp.ts s ∧ P.parent = some d.head.root ∧ P.acPayload = pay := by
   have h := hrun.toLocalRun
   obtain ⟨⟨⟨acc, hcB⟩, hpos⟩, -, htk⟩ := hP
-  rcases blockCall_cases h hp hcB with hg | ⟨j, x, rfl, hg, hPr, d, pay, hr, hB, -, -, -, -⟩
+  rcases blockCall_cases h hp hcB with hg | ⟨j, x, fgDue, rfl, hg, hPr, d, pay, hr, hB, -, -, -, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   exact proposal_data_of_tick hg hPr hr hB (by rw [htk, sp.slotTime_eq, hPs]; rfl)
     (hrun.cutLaw p hp j) (projAC_state h hp (j + 1))

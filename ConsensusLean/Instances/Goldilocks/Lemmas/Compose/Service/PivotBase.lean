@@ -183,9 +183,9 @@ theorem proposal_call_restarts {ini} (hrun : GoldilocksRun proposer dg H tr ini)
 theorem acProposal_in_tick {y : Fin sp.n} {st : NodeState (goldilocksNode sp ro)}
     {t : Time} {e : Node.Event (goldilocksNode sp ro)} {ℓ : ACLabel (goldilocksNode sp ro)}
     (h : Cut.ac ℓ ∈ (Node.exec proposer dg y st t e).2) (hm : ℓ.call = .proposal) :
-    ∃ x, e = .tick x := by
+    ∃ x fgDue, e = .tick x fgDue := by
   cases e with
-  | tick x => exact ⟨x, rfl⟩
+  | tick x fgDue => exact ⟨x, fgDue, rfl⟩
   | message m =>
     simp only [Node.exec, Node.onMessage, Node.acCall, List.mem_singleton, Cut.ac.injEq] at h
     subst h
@@ -206,17 +206,22 @@ theorem acProposal_in_tick {y : Fin sp.n} {st : NodeState (goldilocksNode sp ro)
 /-- **The AC cuts of a tick by position** (C0.4): `ac_on_tick` first, then for the slot's
 proposer `ac_proposal` second and its own block's `ac_on_block` later, and `ac_to_fg`. -/
 private theorem tick_ac_positions {y : Fin sp.n} {st : NodeState (goldilocksNode sp ro)}
-    {t : Time} {x c : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
-    (h : (Node.exec proposer dg y st t (.tick x)).2[c]? = some (Cut.ac ℓ)) :
+    {t : Time} {x c : Nat} {fgDue : Bool} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (h : (Node.exec proposer dg y st t (.tick x fgDue)).2[c]? = some (Cut.ac ℓ)) :
     (ℓ.call = .tick ∧ c = 0) ∨ ℓ.call = .toFG ∨
       (Node.Proposes proposer y t ∧
         ((ℓ.call = .proposal ∧ c = 1) ∨ (ℓ.call ≠ .proposal ∧ 2 ≤ c))) := by
-  obtain ⟨ℓt, pc, uc, hlt, hcs, hpc, ℓu, hlu, huc⟩ :=
-    @tick_order sp.toParams (goldilocksNode sp ro) proposer dg y st t x
+  obtain ⟨ℓt, pc, uc, hlt, hcs, hpc, hupdate⟩ :=
+    @tick_order sp.toParams (goldilocksNode sp ro) proposer dg y st t x fgDue
   have huc' : ∀ ℓ', Cut.ac ℓ' ∈ uc → ℓ'.call = .toFG := by
+    cases fgDue
+    · simp only [Bool.false_eq_true, ↓reduceIte] at hupdate
+      simp [hupdate]
+    simp only [↓reduceIte] at hupdate
+    obtain ⟨ℓu, hlu, huc⟩ := hupdate
     intro ℓ' hm
     rcases huc with rfl | ⟨C, rfl⟩ | ⟨C, a, rfl⟩ <;> simp at hm <;> (rw [hm]; exact hlu)
-  change (Node.onTick proposer dg y st t x).2[c]? = _ at h
+  change (Node.onTick proposer dg y st t x fgDue).2[c]? = _ at h
   rw [hcs] at h
   rcases c with _ | c
   · simp only [List.getElem?_cons_zero, Option.some.injEq, Cut.ac.injEq] at h
@@ -264,7 +269,7 @@ theorem proposal_no_optimistic_of {ini} (hrun : GoldilocksRun proposer dg H tr i
   -- the proposal call is the second cut of the proposer's tick at `t_s`
   obtain ⟨gi, ei, ki, hgi, rfl, hki⟩ := call_in_group hl hp (projAC_callAt.1 hc)
   rw [hti] at hgi hki
-  obtain ⟨xi, rfl⟩ := acProposal_in_tick (List.mem_of_getElem? hki) hcall
+  obtain ⟨xi, fgDuei, rfl⟩ := acProposal_in_tick (List.mem_of_getElem? hki) hcall
   obtain ⟨hpr, hki1⟩ : Node.Proposes proposer p (sp.ts s) ∧ ki = 1 := by
     rcases tick_ac_positions hki with ⟨h, -⟩ | h | ⟨hpr, ⟨-, h⟩ | ⟨h, -⟩⟩
     · rw [hcall] at h; cases h
@@ -304,7 +309,7 @@ theorem proposal_no_optimistic_of {ini} (hrun : GoldilocksRun proposer dg H tr i
         simp [Node.Event.phase]
       · exact absurd (group_start hgi hg h.le (by omega)) h.ne'
     cases eu with
-    | tick xu =>
+    | tick xu fgDueu =>
       rcases tick_ac_positions hk₁ with ⟨h, -⟩ | h | ⟨hpu, ⟨h, -⟩ | ⟨-, hk₁2⟩⟩
       · have h5 := htick h
         have hslts : sp.slot (sp.ts s) = s := by
@@ -315,7 +320,7 @@ theorem proposal_no_optimistic_of {ini} (hrun : GoldilocksRun proposer dg H tr i
       · exact hnp h
       have hup : e'.msg.val = p := hpu.2.2.symm.trans hpr.2.2
       rw [hup] at hg
-      have := hl.tick_unique p hp g gi (sp.ts s) ⟨xu, hg⟩ ⟨xi, hgi⟩
+      have := hl.tick_unique p hp g gi (sp.ts s) ⟨xu, fgDueu, hg⟩ ⟨xi, fgDuei, hgi⟩
       omega
     | restart =>
       have hmem := List.mem_of_getElem? hk₁

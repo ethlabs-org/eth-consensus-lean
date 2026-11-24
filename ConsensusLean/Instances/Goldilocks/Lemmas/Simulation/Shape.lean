@@ -729,11 +729,13 @@ theorem recordOwn_voteForwards_subset (st : State sp ro binding) o hs :
   · exact List.Subset.refl _
 
 /-- The node's tick keeps the key. -/
-theorem nodeTick_self (st : State sp ro binding) : (nodeTick st).self = st.self := by
-  rw [nodeTick_eq]; split <;> rfl
+theorem nodeTick_self {sign : Fin sp.n → Time → Bool} (st : State sp ro binding) :
+    (nodeTick st sign).self = st.self := by
+  rw [nodeTick_eq (sign := _)]; split <;> rfl
 /-- The node's tick keeps the clock. -/
-theorem nodeTick_now (st : State sp ro binding) : (nodeTick st).now = st.now := by
-  rw [nodeTick_eq]; split <;> rfl
+theorem nodeTick_now {sign : Fin sp.n → Time → Bool} (st : State sp ro binding) :
+    (nodeTick st sign).now = st.now := by
+  rw [nodeTick_eq (sign := _)]; split <;> rfl
 
 /-- The slot proposal keeps the key. -/
 theorem propose_self (st : State sp ro binding) s : (propose st s).1.self = st.self := by

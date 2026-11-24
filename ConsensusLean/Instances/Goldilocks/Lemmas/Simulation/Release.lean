@@ -130,18 +130,18 @@ theorem blockObjs_ac (ℓ : ACLabel (goldilocksNode sp ro)) :
     blockObjs (binding := binding) [Cut.ac ℓ] = [] := by
   simp only [blockObjs_cons, blockObjs_nil, List.append_nil]
 
-/-- The cuts of the node's tick: the AC's tick, the proposal step, the FG update. -/
+/-- The cuts of the node's tick: the AC tick, the proposal, then the FG update when due. -/
 theorem onTick_cuts (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
-    (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) :
-    (Node.onTick proposer dg self st t x).2 =
+    (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) (fgDue : Bool) :
+    (Node.onTick proposer dg self st t x fgDue).2 =
       (Node.tickStep proposer dg self st t x .acTick).2 ++
         (Node.tickStep proposer dg self
           (Node.tickStep proposer dg self st t x .acTick).1 t x .proposal).2 ++
-          (Node.tickStep proposer dg self (Node.tickStep proposer dg self
+          (if fgDue then (Node.tickStep proposer dg self (Node.tickStep proposer dg self
             (Node.tickStep proposer dg self st t x .acTick).1
-            t x .proposal).1 t x .fgUpdate).2 := by
-  simp [Node.onTick, Node.runSteps, Node.tickSteps]
+            t x .proposal).1 t x .fgUpdate).2 else []) := by
+  cases fgDue <;> simp [Node.onTick, Node.runSteps, Node.tickSteps]
 
 /-- The FG update queues the attestation of the node's FG-update step's signing cut, and that
 step emits no vote and processes no block. -/

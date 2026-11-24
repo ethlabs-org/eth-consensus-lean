@@ -382,6 +382,15 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled
 
 /-! ## The node state across a tick -/
 
+/-- The poll runs the FG update exactly when it is due. -/
+theorem poll_node_eq (st : State sp ro binding) (t : Time) :
+    (poll st t).1.node = if st.fgDue then (fgUpdate st).node else st.node := by
+  cases h : st.fgDue
+  · exact poll_node_of_fgDue st t h
+  · unfold poll
+    simp only [h, ite_true]
+    split <;> rfl
+
 /-- A poll step with the FG update due runs it on the node state. -/
 theorem poll_node_of_fgDue_true (st : State sp ro binding) (t : Time) (h : st.fgDue = true) :
     (poll st t).1.node = (fgUpdate st).node := by
@@ -390,9 +399,10 @@ theorem poll_node_of_fgDue_true (st : State sp ro binding) (t : Time) (h : st.fg
   split <;> rfl
 
 /-- The node's tick at a public time runs the AC's tick on the node state. -/
-theorem nodeTick_node_public (st : State sp ro binding) (h : sp.toParams.IsPublic st.now) :
-    (nodeTick st).node = (Node.acCall st.self st.node st.now .tick).1 := by
-  rw [nodeTick_eq]
+theorem nodeTick_node_public (st : State sp ro binding) (h : sp.toParams.IsPublic st.now)
+    {sign : Fin sp.n → Time → Bool} :
+    (nodeTick st sign).node = (Node.acCall st.self st.node st.now .tick).1 := by
+  rw [nodeTick_eq (sign := _)]
   rw [ite_eq_left h]
   rfl
 
@@ -524,7 +534,8 @@ omit [DecidableEq V] in
 theorem atProposal_shape (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (t : Time) (hsel : rho.ownKey v ∈ rho.sel .poll) :
     shapeOf S hn (atProposal S rho v nd t) =
-      nodeTick (poll (poll { nd.st.1 hn with now := t } t.toNat).1 t.toNat).1 := by
+      nodeTick (poll (poll { nd.st.1 hn with now := t } t.toNat).1 t.toNat).1
+        (S.sign (pubOf E)) := by
   change shapeOf S hn (rho.dutyStep v (rho.dutyStep v (rho.dutyStep v _ (.poll t.toNat)).1
     (.poll t.toNat)).1 (.pollPropose t.toNat)).1 = _
   rw [dutyStep_pollPropose _ _ _ _ _ _ hsel, dutyStep_poll _ _ _ _ _ _ hsel,
@@ -546,14 +557,16 @@ theorem atProposal_now (v : V) (nd : Model.Node (Model.protoOf (compiled (goldil
   rw [atProposal_shape _ _ _ _ _ _ hsel, nodeTick_now, poll_now, poll_now]
 
 omit [DecidableEq V] in
-/-- At a public time the FG update is due at the proposal duty: the node's tick set it. -/
+/-- At a public time the node's tick sets the FG duty from the signing calendar. -/
 theorem atProposal_fgDue (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (t : Time) (hp : (S.params (pubOf E) hn).toParams.IsPublic t)
     (hsel : rho.ownKey v ∈ rho.sel .poll) :
-    (shapeOf S hn (atProposal S rho v nd t)).fgDue = true := by
+    (shapeOf S hn (atProposal S rho v nd t)).fgDue = S.sign (pubOf E) (nd.st.1 hn).self t := by
   rw [atProposal_shape _ _ _ _ _ _ hsel]
-  rw [nodeTick_eq]
+  rw [nodeTick_eq (sign := _)]
   rw [ite_eq_left (by rw [poll_now, poll_now]; exact hp)]
+  dsimp only
+  rw [poll_self, poll_self, poll_now, poll_now]
 
 omit [DecidableEq V] in
 /-- The mempool at the proposal duty is the tick's mempool. -/
@@ -570,7 +583,7 @@ theorem atProposal_node (v : V) (nd : Model.Node (Model.protoOf (compiled (goldi
     (t : Time) (hf : (nd.st.1 hn).fgDue = false)
     (hsel : rho.ownKey v ∈ rho.sel .poll) :
     (shapeOf S hn (atProposal S rho v nd t)).node =
-      (nodeTick { nd.st.1 hn with now := t }).node := by
+      (nodeTick { nd.st.1 hn with now := t } (S.sign (pubOf E))).node := by
   rw [atProposal_shape _ _ _ _ _ _ hsel]
   have h1 : (poll (poll { nd.st.1 hn with now := t } t.toNat).1 t.toNat).1.node =
       (nd.st.1 hn).node := by
@@ -580,14 +593,14 @@ theorem atProposal_node (v : V) (nd : Model.Node (Model.protoOf (compiled (goldi
       (nd.st.1 hn).self := by rw [poll_self, poll_self]
   have h3 : (poll (poll { nd.st.1 hn with now := t } t.toNat).1 t.toNat).1.now = t := by
     rw [poll_now, poll_now]
-  rw [nodeTick_eq]
+  rw [nodeTick_eq (sign := _)]
   rw [h3]
   by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
   · simp only [hp, ite_true, apply_node, h1, h2]
-    rw [nodeTick_eq]
+    rw [nodeTick_eq (sign := _)]
     simp [hp, apply_node]
   · simp only [hp, ite_false, h1]
-    rw [nodeTick_eq]
+    rw [nodeTick_eq (sign := _)]
     simp [hp]
 
 omit [DecidableEq V] in
@@ -619,15 +632,16 @@ theorem tick_node_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (goldiloc
     hinit, hpoll]
   rfl
 
-/-- The node's `onTick` is its three tick steps in order: the AC's tick, the proposal, the FG
-update. -/
+/-- The node's `onTick` runs the AC tick and the proposal, followed by the FG update when due. -/
 theorem onTick_node (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
-    (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) :
-    (Node.onTick proposer dg self st t x).1 =
-      (Node.tickStep proposer dg self
-        (Node.tickStep proposer dg self (Node.tickStep proposer dg self st t x .acTick).1 t x
-          .proposal).1 t x .fgUpdate).1 := rfl
+    (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) (fgDue : Bool) :
+    (Node.onTick proposer dg self st t x fgDue).1 =
+      let afterProposal := (Node.tickStep proposer dg self
+        (Node.tickStep proposer dg self st t x .acTick).1 t x .proposal).1
+      if fgDue then (Node.tickStep proposer dg self afterProposal t x .fgUpdate).1
+      else afterProposal := by
+  cases fgDue <;> rfl
 
 /-- The AC-tick step is the AC's tick. -/
 theorem tickStep_acTick (proposer : Nat → Fin sp.n)

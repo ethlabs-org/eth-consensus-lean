@@ -130,23 +130,24 @@ theorem record_step_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : 
 
 /-- The cuts of a tick: the AC's tick, the proposal step, the FG update. -/
 theorem exec_tick_cuts (y : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time)
-    (x : Nat) :
-    (Node.exec proposer dg y st t (.tick x)).2 = (Node.tickStep proposer dg y st t x .acTick).2 ++
+    (x : Nat) (fgDue : Bool) :
+    (Node.exec proposer dg y st t (.tick x fgDue)).2 =
+      (Node.tickStep proposer dg y st t x .acTick).2 ++
       (Node.tickStep proposer dg y
         (Node.tickStep proposer dg y st t x .acTick).1 t x .proposal).2 ++
-      (Node.tickStep proposer dg y
+      (if fgDue then (Node.tickStep proposer dg y
         (Node.tickStep proposer dg y (Node.tickStep proposer dg y st t x .acTick).1 t x .proposal).1
-        t x .fgUpdate).2 := by
-  simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps]
+        t x .fgUpdate).2 else []) := by
+  cases fgDue <;> simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps]
 
 /-- The first cut of a tick is the AC's tick call. -/
 theorem tickAt_acCall {y : Fin sp.n} {j : Nat} {T : Time} (hT : tr.TickAt proposer dg y j T) :
     ∃ ℓ, tr.projAC.CallAt y j ℓ ∧ ℓ.call = .tick ∧ tr.time j = T := by
-  obtain ⟨x, -, hk, -⟩ := hT
-  have hlen : 0 < (Node.exec proposer dg y (tr.state y j) T (.tick x)).2.length := by
+  obtain ⟨x, fgDue, -, hk, -⟩ := hT
+  have hlen : 0 < (Node.exec proposer dg y (tr.state y j) T (.tick x fgDue)).2.length := by
     rw [exec_tick_cuts]; simp [Node.tickStep]
   obtain ⟨hn0, ht0, -, -, hl0⟩ := hk 0 hlen
-  have hget : (Node.exec proposer dg y (tr.state y j) T (.tick x)).2[0]'hlen =
+  have hget : (Node.exec proposer dg y (tr.state y j) T (.tick x fgDue)).2[0]'hlen =
       (Node.acCall y (tr.state y j) T .tick).2 := by
     simp only [exec_tick_cuts]; rfl
   rw [hget] at hl0
@@ -161,12 +162,13 @@ theorem not_before_tick {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H)
     {i j₁ : Nat} (hc : tr.IsCall y i) (hj : tr.JoinedAt y (tr.time i))
     (hT : tr.TickAt proposer dg y j₁ (tr.time i)) (hij : i < j₁) : False := by
-  obtain ⟨x₁, hj₁⟩ := hT
+  obtain ⟨x₁, fgDue₁, hj₁⟩ := hT
   obtain ⟨c, hcc⟩ := hc
   obtain ⟨j₀, e, hg, hj₀i, hij₀⟩ := hrun.grouped y hy i c hcc
-  have hph := hrun.phase_order y hy y hy j₀ j₁ _ e (.tick x₁) hg hj₁ (by omega)
+  have hph := hrun.phase_order y hy y hy j₀ j₁ _ e (.tick x₁ fgDue₁) hg hj₁ (by omega)
   cases e with
-  | tick x => exact absurd (hrun.tick_unique y hy j₀ j₁ _ ⟨x, hg⟩ ⟨x₁, hj₁⟩) (by omega)
+  | tick x fgDue =>
+    exact absurd (hrun.tick_unique y hy j₀ j₁ _ ⟨x, fgDue, hg⟩ ⟨x₁, fgDue₁, hj₁⟩) (by omega)
   | restart =>
     have hlen : (Node.exec proposer dg y (tr.state y j₀) (tr.time i) .restart).2.length = 1 := rfl
     obtain ⟨hn0, -, -, -, hl0⟩ := hg.2.1 0 (by rw [hlen]; omega)
@@ -271,16 +273,16 @@ theorem latest_slot_tick_at_read {ini} (hrun : GoldilocksRun proposer dg H tr in
       exact absurd (hres k hk hk2)
         (not_le.2 ((lt_add_of_pos_right _ (mul_pos two_pos hΔ)).trans hk1))
     · rw [heq]; exact hrd.awake
-  obtain ⟨j₁, x₁, hj₁⟩ := hrun.tick_of_awake y hy _ hT0
+  obtain ⟨j₁, x₁, fgDue₁, hj₁⟩ := hrun.tick_of_awake y hy _ hT0
     (Dvd.intro (4 * (L : Int) + 2) (by simp only [ACParams.ts]; ring)) hwT
-  obtain ⟨ℓ₁, hc₁, -, ht₁⟩ := tickAt_acCall ⟨x₁, hj₁⟩
+  obtain ⟨ℓ₁, hc₁, -, ht₁⟩ := tickAt_acCall ⟨x₁, fgDue₁, hj₁⟩
   refine ⟨hLσ.2, hres, j₁, ?_, ℓ₁, hc₁, ht₁⟩
   rcases hLσ.2.lt_or_eq with hlt | heq
   · by_contra hji
     have := hrun.time_mono (not_le.1 hji).le
     linarith [hrd.after]
   · rw [heq] at hj₁
-    exact hrd.tick j₁ ⟨x₁, hj₁⟩
+    exact hrd.tick j₁ ⟨x₁, fgDue₁, hj₁⟩
 
 /-- **An honest head reaches a read node** (acceptance relay): at a read at `t`, with `l` the
 latest view's slot, the head `Hd` of an honest slot-`l` vote that extends the node's `Σ.F` is in

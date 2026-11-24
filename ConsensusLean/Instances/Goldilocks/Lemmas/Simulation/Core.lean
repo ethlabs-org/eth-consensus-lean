@@ -116,7 +116,7 @@ theorem delivery_block_payload_processAt {due : e.State hn → Bool} (L : e.OpLa
   have hadmit : ev = .block b ∧ ¬ (paramsAtCount p (Fintype.card V) hN hn).slotOf t < b.slot ∧
       (e.adapter.node σ).fg.onBlock b ≠ none := by
     cases ev with
-    | tick x => unfold canonEvent at hc; split at hc <;> cases hc
+    | tick x fgDue => unfold canonEvent at hc; split at hc <;> cases hc
     | restart => unfold canonEvent at hc; split at hc <;> cases hc
     | attestation a => simp [exec, onAttestation] at hcut
     | message m' =>
@@ -338,7 +338,10 @@ theorem received_vote_processAt {i : Nat} {v : V}
     rw [NodeAsChainShape.CanonicalTrace.receiverCodec_eq,
       NodeAsChainShape.CanonicalTrace.voteIOAt_eq]
     rw [stateAt_voteIO S rho hn, stateAt_eq] at hc
-    exact hc
+    exact (congrArg (voteObj (binding := S.vote) m z ∈ ·)
+      (delivered_nodeAdapter_sign
+        (wireCodec (S.params (pubOf E) hn) (S.ro _) S.vote (rho.voteIO v)) (S.sign (pubOf E))
+        (Model.digests rho.hash receipt) ((rho.stateBefore i v).st.1 hn) receipt)).mpr hc
   · rw [NodeAsChainShape.CanonicalTrace.receiverCodec_eq,
       NodeAsChainShape.CanonicalTrace.voteIOAt_eq]
     have h := canonEvent_voteObj (sp := S.params (pubOf E) hn) (ro := S.ro _)

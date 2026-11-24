@@ -269,7 +269,7 @@ theorem final_reset_bounds_within (run : (Sys (goldilocks S) V).Run)
     (hd0 : 0 ≤ d) (hdL : d ≤ (L : Time) * run.1.ΔAC)
     (hmature :
       (Sys (goldilocks S) V).heal (K S A) .final index gst run +
-        5 * (L : Time) * run.1.ΔAC ≤ query)
+        5 * (L : Time) * run.1.ΔAC ≤ query + 5 * (A.signGap : Time) * run.1.ΔAC)
     (hbounded : query + ((K S A).params.latency .final index : Time) * run.1.ΔAC ≤
       run.2.horizon)
     {c : Nat} (hc2 : 2 ≤ c) (h3c : 3 * c ≤ S.δt) :
@@ -313,11 +313,14 @@ theorem final_reset_bounds_within (run : (Sys (goldilocks S) V).Run)
   rw [max_eq_left hr0] at hcz
   -- heal and the coefficient budget, in node delays `D = Δe`
   have hheal : max gst 0 + ((K S A).params.heal .final index : Time) * run.1.ΔAC +
-      5 * (L : Time) * run.1.ΔAC ≤ query := hmature
+      5 * (L : Time) * run.1.ΔAC ≤ query + 5 * (A.signGap : Time) * run.1.ΔAC := hmature
   have hbud : ((contract_catchUp S A : Nat) : Time) +
-      (20 * (Ld : Time) + 8 * S.k + 28 * S.δt + 28 * X + 56) ≤
+      (20 * (Ld : Time) + 8 * S.k + 28 * S.δt + 28 * X + 56) + 5 * (A.signGap : Time) ≤
       ((K S A).params.heal .final index : Time) := by
-    have h := contract_heal_ge_final S A index
+    have h : (contract_catchUp S A : Nat) +
+        (20 * healthyDrainLen S index + 8 * S.k + 28 * S.δt + 28 * (index : Nat) + 56) +
+        5 * A.signGap ≤ contract_heal S A .final index := by
+      rw [contract_heal_val, healMargin_val]; omega
     have he : (K S A).params.heal .final index = contract_heal S A .final index := by
       simp only [Params.standard, contract_coefficients_heal]
     rw [he]
@@ -404,7 +407,9 @@ theorem final_reset_bounds (run : (Sys (goldilocks S) V).Run)
           ((((index : Nat) + S.δt : Nat) : Time)) * G.slotLen ≤ query + G.slotLen := by
   simpa only [mul_zero, add_zero] using
     final_reset_bounds_within S A V run hn index gst query (d := 0) (L := 0) le_rfl (by simp)
-      (by simpa using hmature) hbounded hc2 h3c
+      (by have : (0 : Time) ≤ 5 * (A.signGap : Time) * run.1.ΔAC := by
+            have := run.1.ΔAC_pos; positivity
+          simpa using hmature.trans (le_add_of_nonneg_right this)) hbounded hc2 h3c
 
 end Consensus.Goldilocks.Obligations
 

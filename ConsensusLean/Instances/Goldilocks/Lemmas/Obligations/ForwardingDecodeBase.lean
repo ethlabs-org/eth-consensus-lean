@@ -228,7 +228,8 @@ theorem own_proposal_decodes {V : Type} [Fintype V] {E : Env V}
     {s₀ : (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).State}
     (hr : Node.Reachable proposer (digestOf S rho) self cfg s₀)
     (h₀ : AC.VoteStart (S.params (pubOf E) hn).genesisRoot s₀)
-    (hs : Node.Step proposer (digestOf S rho) self cfg (.tick x) t cfg')
+    {fgDue : Bool}
+    (hs : Node.Step proposer (digestOf S rho) self cfg (.tick x fgDue) t cfg')
     (hp : Node.Proposes (P := (S.params (pubOf E) hn).toParams) proposer self t) :
     let r := Node.acProposal
       (Node.tickStep proposer (digestOf S rho) self cfg.st t x .acTick).1 t
@@ -240,7 +241,7 @@ theorem own_proposal_decodes {V : Type} [Fintype V] {E : Env V}
   intro d p hdp
   have h := Compose.honest_block_accepted_from
     (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) proposer (digestOf S rho) self
-    (Compose.requirements_from _ _ h₀) hg cfg cfg' t x hr hs hp d p hdp
+    (Compose.requirements_from _ _ h₀) hg cfg cfg' t x fgDue hr hs hp d p hdp
   exact canonical_block_decodes S rho hn _ (by simp only [Node.mkBlock, ne_eq,
       reduceCtorEq, not_false_eq_true]) h.2.2.2.2.2.1
     (fun a ha => (h.2.2.2.1 a ha).1) h.2.2.2.2.1
@@ -415,9 +416,10 @@ theorem decoded_held_poll {sp : AC.ACParams}
 theorem decoded_held_nodeTick {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} (st : State sp ro binding)
-    (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st) :
-    WrappersDecoded tables (nodeTick st) ∧ WrappersHeld tables (nodeTick st) := by
-  rw [nodeTick_eq]
+    (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st)
+    (sign : Fin sp.n → Time → Bool := fun _ _ => true) :
+    WrappersDecoded tables (nodeTick st sign) ∧ WrappersHeld tables (nodeTick st sign) := by
+  rw [nodeTick_eq st sign]
   split
   · exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
   · exact ⟨hd, hh⟩
@@ -482,7 +484,7 @@ theorem decoded_held_atProposal {V : Type} [Fintype V] {E : Env V}
     ⟨hd.mono rfl rfl rfl ht, hh.preserve rfl rfl rfl⟩
   have h1 := decoded_held_poll _ t.toNat hc.1 hc.2
   have h2 := decoded_held_poll _ t.toNat h1.1 h1.2
-  exact decoded_held_nodeTick _ h2.1 h2.2
+  exact decoded_held_nodeTick _ h2.1 h2.2 (S.sign (pubOf E))
 
 /-- Recording a valid canonical own block preserves the joint wrapper invariant. -/
 theorem decoded_held_recordOwn_block {V : Type} [Fintype V] {E : Env V}

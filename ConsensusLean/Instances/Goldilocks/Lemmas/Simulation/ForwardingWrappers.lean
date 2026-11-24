@@ -803,9 +803,10 @@ private theorem wrappersCover_propose {sp : AC.ACParams}
   split <;> exact h
 
 private theorem wrappersCover_nodeTick {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
-    (h : WrappersCover st) : WrappersCover (nodeTick st) := by
-  rw [nodeTick_eq]
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {sign : Fin sp.n → Time → Bool}
+      (st : State sp ro binding)
+    (h : WrappersCover st) : WrappersCover (nodeTick st sign) := by
+  rw [nodeTick_eq (sign := _)]
   split <;> exact h
 
 /-- Every actual duty prefix preserves coverage, including an own block's recording. -/

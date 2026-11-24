@@ -434,10 +434,10 @@ private theorem own_tick (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp
       tr.CallAt B.proposer (j₀ + 2) (.fg (.block B acc)) ∧ 0 < B.slot ∧
       tr.time (j₀ + 2) = sp.toParams.slotTime B.slot := by
   obtain ⟨j, -, ⟨acc, hc⟩, hpos⟩ := hrun.block_unforgeable y hy k B ⟨true, hk⟩ hp
-  rcases blockCall_cases hrun.toLocalRun hp hc with hg | ⟨j₀, x, rfl, ht, hP, d, p, -, hB, -⟩
+  rcases blockCall_cases hrun.toLocalRun hp hc with hg | ⟨j₀, x, f, rfl, ht, hP, d, p, -, hB, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_of_ne_nil hg.1)).2.2.2.1) hpos
   · have hs : B.slot = sp.toParams.slotOf (tr.time (j₀ + 2)) := by rw [hB]; rfl
-    exact ⟨j₀, acc, ⟨x, ht⟩, hc, hs ▸ hP.1, hs ▸ hP.2.1⟩
+    exact ⟨j₀, acc, ⟨x, f, ht⟩, hc, hs ▸ hP.1, hs ▸ hP.2.1⟩
 
 private theorem one_block (hrun : GoldilocksRun proposer dg H tr ini)
     {B B' : Blk sp.n (List (FG.Att sp.n))}

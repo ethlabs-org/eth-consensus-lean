@@ -111,7 +111,7 @@ theorem stateAt_forwardQueueCanonical {V : Type} [Fintype V] [DecidableEq V] {E 
           apply tick_pres S rho hn ForwardQueueCanonical canonical_recordOwn
             (fun st s h => by rw [propose_eq]; dsimp only; split <;> exact h)
             (fun st h => by
-              rw [nodeTick_eq]
+              rw [nodeTick_eq (sign := _)]
               split
               · exact forwardQueueCanonical_apply st none _ h
               · exact h)
@@ -178,7 +178,7 @@ theorem dutyStep_forwardQueueCanonical {V : Type} [Fintype V] {E : Env V} (S : S
   apply dutyStep_pres S rho hn ForwardQueueCanonical canonical_recordOwn
     (fun st s h => by rw [propose_eq]; dsimp only; split <;> exact h)
     (fun st h => by
-      rw [nodeTick_eq]
+      rw [nodeTick_eq (sign := _)]
       split
       · exact forwardQueueCanonical_apply st none _ h
       · exact h)
@@ -224,9 +224,9 @@ theorem dutyStep_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
         (.pollPropose t)).1.1 hn) ∧ PendingReady _ (pendingWrappers
           (((protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).1.1 hn))
       rw [shapeOf_act_pollPropose S hn]
-      change WrappersAccounted _ (nodeTick (shapeOf S hn nd)) ∧
-        PendingReady _ (pendingWrappers (nodeTick (shapeOf S hn nd)))
-      rw [nodeTick_eq]
+      change WrappersAccounted _ (nodeTick (shapeOf S hn nd) (S.sign (pubOf E))) ∧
+        PendingReady _ (pendingWrappers (nodeTick (shapeOf S hn nd) (S.sign (pubOf E))))
+      rw [nodeTick_eq (sign := _)]
       by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic (shapeOf S hn nd).now
       · rw [ite_eq_left hp]
         rw [wrappersAccounted_iff, pendingWrappers_eq] at ha
@@ -813,7 +813,7 @@ theorem tick_duty_prefix_poll_released {V : Type} [Fintype V] [DecidableEq V] {E
     apply runDuties_pres S rho hn ForwardQueueCanonical canonical_recordOwn
       (fun st s h => by rw [propose_eq]; dsimp only; split <;> exact h)
       (fun st h => by
-        rw [nodeTick_eq]
+        rw [nodeTick_eq (sign := _)]
         split
         · exact forwardQueueCanonical_apply st none _ h
         · exact h)
@@ -1084,22 +1084,24 @@ theorem dutyStep_propose_acceptance_queued {V : Type} [Fintype V] {E : Env V}
 theorem tick_acceptance_proposal {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
-    (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
+    (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) {fgDue : Bool}
     (B : Blk sp)
-    (ha : .fg (.block B true) ∈ (Node.exec proposer dg self st t (.tick x)).2) :
+    (ha : .fg (.block B true) ∈ (Node.exec proposer dg self st t (.tick x fgDue)).2) :
     .fg (.block B true) ∈
       (Node.tickStep proposer dg self (Node.acCall self st t .tick).1 t x .proposal).2 := by
-  change _ ∈ (Node.onTick _ _ _ _ _ _).2 at ha
+  change _ ∈ (Node.onTick _ _ _ _ _ _ fgDue).2 at ha
   rw [onTick_cuts] at ha
   rcases List.mem_append.mp ha with ha | ha
   · rcases List.mem_append.mp ha with ha | ha
     · simp [Node.tickStep, Node.acCall] at ha
     · simpa only [tickStep_acTick] using ha
-  · simp only [Node.tickStep] at ha
-    split at ha
-    · simp [Node.acToFG] at ha
-    · simp only [Node.attest, List.mem_cons, Node.acToFG, reduceCtorEq, false_or] at ha
-      split at ha <;> simp [Node.onAttestation] at ha
+  · cases fgDue
+    · simp at ha
+    · simp only [ite_true, Node.tickStep] at ha
+      split at ha
+      · simp [Node.acToFG] at ha
+      · simp only [Node.attest, List.mem_cons, Node.acToFG, reduceCtorEq, false_or] at ha
+        split at ha <;> simp [Node.onAttestation] at ha
 
 /-- A valid non-genesis block with the engine's root decodes from its own canonical object.
 This separates the payload checks from the digest bookkeeping needed by forwarding. -/

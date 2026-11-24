@@ -45,8 +45,8 @@ private theorem voteGate_of_eq {st σ : State (S.params (pubOf E) hn) (S.ro _) S
 
 omit [DecidableEq V] in
 private theorem nodeTick_mayVote (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) :
-    (nodeTick st).node.ac.mayVote = st.node.ac.mayVote := by
-  rw [nodeTick_eq]
+    (nodeTick st (S.sign (pubOf E))).node.ac.mayVote = st.node.ac.mayVote := by
+  rw [nodeTick_eq (sign := _)]
   split
   · exact AC.step_mayVote _ _ _ _ _ _
   · rfl
@@ -74,7 +74,8 @@ theorem tick_pool_insertion_queued (hv : rho.ExecutionValid) {v : V} {i : Nat} {
       (fgDue_eq_false S rho hn v i)
   have hg : VoteGate st := voteGate_of_eq S hn (stateAt_voteGate S rho hn hv v i)
     (by rw [hn']) (by dsimp only [st]; rw [poll_voteIO, poll_voteIO])
-  have hshape : shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t) = nodeTick st := by
+  have hshape : shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t) = nodeTick st (S.sign
+    (pubOf E)) := by
     rw [atProposal_shape S rho hn v _ t hsel, ← stateAt_eq S rho hn v i]
   have hbase :
       m ∈ (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node.ac.pool m.slot →
@@ -494,9 +495,10 @@ theorem queuedChecked_propose (st : State sp ro S.vote) s (h : QueuedChecked S s
   rw [propose_eq]; dsimp only; split <;> exact h
 
 omit [DecidableEq V] in
-theorem queuedChecked_nodeTick (st : State sp ro S.vote) (h : QueuedChecked S st)
-    (hown : OwnChecks S st) : QueuedChecked S (nodeTick st) := by
-  rw [nodeTick_eq]
+theorem queuedChecked_nodeTick {sign : Fin sp.n → Time → Bool} (st : State sp ro S.vote)
+    (h : QueuedChecked S st)
+    (hown : OwnChecks S st) : QueuedChecked S (nodeTick st sign) := by
+  rw [nodeTick_eq (sign := _)]
   split
   · refine queuedChecked_apply S st none _ h hown ?_ (fun _ _ h => by cases h)
     intro ℓ hℓ

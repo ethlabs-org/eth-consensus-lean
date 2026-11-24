@@ -26,10 +26,10 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 the time `t_s` of cut `j + 2`) whose proposal step proposes `P`, made from the duty head `d.head`
 and payload `pay` of `ac_proposal` after `ac_on_tick`, given the cut law of `p`'s cut `j` and the
 AC projection's state of `p` at `j + 1`. -/
-theorem proposal_data_of_tick {p : Fin sp.n} {j x s : Nat}
+theorem proposal_data_of_tick {p : Fin sp.n} {j x s : Nat} {fgDue : Bool}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hg : tr.GroupAt proposer dg p j (tr.time (j + 2)) (.tick x))
+    (hg : tr.GroupAt proposer dg p j (tr.time (j + 2)) (.tick x fgDue))
     (hPr : Node.Proposes proposer p (tr.time (j + 2)))
     (hr : (Node.acProposal (Node.tickStep proposer dg p (tr.state p j) (tr.time (j + 2)) x
       .acTick).1 (tr.time (j + 2))).2.2 = some (d, pay))
@@ -43,15 +43,17 @@ theorem proposal_data_of_tick {p : Fin sp.n} {j x s : Nat}
   set t := tr.time (j + 2)
   set st := tr.state p j
   set st1 := (Node.tickStep proposer dg p st t x .acTick).1
-  have hcuts : (Node.exec proposer dg p st t (.tick x)).2 =
+  have hcuts : (Node.exec proposer dg p st t (.tick x fgDue)).2 =
       (Node.tickStep proposer dg p st t x .acTick).2 ++
       (Node.tickStep proposer dg p st1 t x .proposal).2 ++
-      (Node.tickStep proposer dg p
-        (Node.tickStep proposer dg p st1 t x .proposal).1 t x .fgUpdate).2 := by
-    simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, st1]
-  have h0 : (Node.exec proposer dg p st t (.tick x)).2[0]? = some (Node.acCall p st t .tick).2 := by
+      (if fgDue then (Node.tickStep proposer dg p
+        (Node.tickStep proposer dg p st1 t x .proposal).1 t x .fgUpdate).2 else []) := by
+    cases fgDue <;> simp [Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, st1]
+  have h0 : (Node.exec proposer dg p st t (.tick x fgDue)).2[0]? =
+      some (Node.acCall p st t .tick).2 := by
     rw [hcuts]; simp [Node.tickStep]
-  have h1 : (Node.exec proposer dg p st t (.tick x)).2[1]? = some (Node.acProposal st1 t).2.1 := by
+  have h1 : (Node.exec proposer dg p st t (.tick x fgDue)).2[1]? =
+      some (Node.acProposal st1 t).2.1 := by
     rw [hcuts]
     simp only [Node.tickStep, hPr, ↓reduceIte]
     split <;> simp [Node.acProposal, Node.acCall]

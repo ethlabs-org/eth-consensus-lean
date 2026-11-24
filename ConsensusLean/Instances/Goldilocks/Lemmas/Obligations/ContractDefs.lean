@@ -13,7 +13,7 @@ public section
 
 The characterising lemmas of the fixed assumptions (`ContractAssumptions`: the FG delay in slots
 `fgSlots`, its FG delay bound `fgDelay = 4·fgSlots − 6`, and the timeout), the final pattern
-(`finalWindow`, gap `fgSlots`), the coefficients (`contract_catchUp`,
+(`finalWindow`, gap `finalSlots`, including the signing wait), the coefficients (`contract_catchUp`,
 `contract_heal`, `contract_latency`) and the contract `goldilocksContract`, all defined in the
 statement module `Statements/Obligations`, and the abbreviation `K`. The FG transport is
 instantiated at the actual protocol FG delay `protoFGDelay` (HSSharedRun). -/
@@ -47,13 +47,14 @@ theorem _root_.Consensus.Goldilocks.ContractAssumptions.six_le_δt {S : Setup}
     6 ≤ S.δt := by
   have := A.timeout
   have := A.two_le_fgSlots
+  have : 4 * A.fgSlots - 6 + 6 = 4 * A.fgSlots := by omega
   omega
 
 theorem finalWindow_offsets {S : Setup} (A : ContractAssumptions S) :
-    (finalWindow A).offsets = [0, A.fgSlots, 2 * A.fgSlots, 3 * A.fgSlots] := by rfl
+    (finalWindow A).offsets = [0, A.finalSlots, 2 * A.finalSlots, 3 * A.finalSlots] := by rfl
 
 theorem finalWindow_span {S : Setup} (A : ContractAssumptions S) :
-    (finalWindow A).span = 3 * A.fgSlots := by
+    (finalWindow A).span = 3 * A.finalSlots := by
   unfold Pattern.span
   rw [finalWindow_offsets]
   simp only [List.foldr_cons, List.foldr_nil]
@@ -63,7 +64,7 @@ theorem contract_catchUp_val (S : Setup) (A : ContractAssumptions S) :
     (contract_catchUp S A : Nat) = 19 := by rfl
 
 theorem contract_heal_val (S : Setup) (A : ContractAssumptions S) (cap : Capability) (X : ℕ+) :
-    contract_heal S A cap X = (contract_catchUp S A : Nat) + healMargin S X := by rfl
+    contract_heal S A cap X = (contract_catchUp S A : Nat) + healMargin S A X := by rfl
 
 /-- **The coefficient inequality (★)** of the nonfinal reset envelope, at every capability: the
 heal budget of `healthy_preparation_reset_fit_at` (`Growing/Obligations/Healthy/PreparationReset`)
@@ -73,7 +74,7 @@ theorem contract_heal_ge_reset (S : Setup) (A : ContractAssumptions S) (cap : Ca
     (contract_catchUp S A : Nat) + (healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 26) +
       healthyResetSlack S X + 3 ≤ contract_heal S A cap X := by
   rw [contract_heal_val, healthyResetSlack_val]
-  have := healMargin_ge_reset S X A.six_le_δt
+  have := healMargin_ge_reset S A X A.six_le_δt
   omega
 
 /-- The final route's coefficient form `contract_heal(final, X) ≥ C + M_f`,
@@ -85,6 +86,7 @@ theorem contract_heal_ge_final (S : Setup) (A : ContractAssumptions S) (X : ℕ+
         (20 * healthyDrainLen S X + 8 * S.k + 28 * S.δt + 28 * (X : Nat) + 56) ≤
       contract_heal S A .final X := by
   rw [contract_heal_val, healMargin_val]
+  omega
 
 theorem contract_latency_available (S : Setup) (A : ContractAssumptions S) (X : ℕ+) :
     contract_latency S A .available X = 4 * (X : Nat) + 6 := by rfl
@@ -93,7 +95,7 @@ theorem contract_latency_stable (S : Setup) (A : ContractAssumptions S) (X : ℕ
     contract_latency S A .stable X = 4 * (X : Nat) + 6 := by rfl
 
 theorem contract_latency_final (S : Setup) (A : ContractAssumptions S) (X : ℕ+) :
-    contract_latency S A .final X = 4 * ((X : Nat) + 3 * A.fgSlots) + 1 := by rfl
+    contract_latency S A .final X = 4 * ((X : Nat) + 3 * A.finalSlots) + 1 := by rfl
 
 /-- For `Δ ≥ 1`, `19Δ` covers `18Δ + 1`, including safety's literal `+1`. -/
 theorem contract_catchUp_ge_sleepy (S : Setup) (A : ContractAssumptions S) :

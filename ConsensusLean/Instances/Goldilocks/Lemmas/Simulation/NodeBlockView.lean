@@ -96,7 +96,7 @@ theorem block_call_in_view_of_releases
         rw [groupRecs_eq] at hg
         obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem hg
         simp only [List.getElem_mapIdx, List.getElem_zip] at hrl hm ⊢
-        obtain ⟨_, _, hparent, hnz⟩ := Compose.tick_block_cut_fields _ _ _ _ _ _
+        obtain ⟨_, _, hparent, hnz⟩ := Compose.tick_block_cut_fields _ _ _ _ _ _ _
           ((List.getElem?_eq_getElem _).trans (congrArg some hrl))
         refine ⟨hparent, i, _, het, ?_⟩
         exact rho.mem_viewIdx_iff.2 ⟨i, _, by omega,

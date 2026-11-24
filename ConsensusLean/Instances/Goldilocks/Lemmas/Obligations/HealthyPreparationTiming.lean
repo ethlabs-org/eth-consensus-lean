@@ -58,13 +58,14 @@ theorem healthy_heal_margin {S' : Setup} (run : (Sys (goldilocks S') V).Run)
 `w = slot(ready) + 1` has `ready ≤ t_w`, `t_w + 6Δ ≤ heal`, `t_{w+2} ≤ heal`, `t_{w+k} ≤ heal`
 and `t_{w+2} + 6Δ ≤ heal`; and every reset `0 ≤ a ≤ ready + R·Δ + r` (`r = healthyResetSlack`)
 with a seed label `l ≤ slot a` has
-`max(ready, drainTime a, t_w, ḡ + 4Δ, 0, t_{l+1}) ≤ ready + (R + 8k + 20)·Δ`. -/
-theorem healthy_preparation_timing (run : (Sys (goldilocks S) V).Run)
+`max(ready, drainTime a, t_w, ḡ + 4Δ, 0, t_{l+1}) ≤ ready + (R + 8k + 20)·Δ`.
+With `e ≥ 0` more of the heal budget, a reset up to `e` later still fits, `e` later. -/
+theorem healthy_preparation_timing_within (run : (Sys (goldilocks S) V).Run)
     (hn : 1 ≤ Fintype.card V)
-    (cap : Capability) (index : (K S A).Idx) (gst : Time)
+    (cap : Capability) (index : (K S A).Idx) (gst : Time) (e : Time) (he : 0 ≤ e)
     (hB : (Sys (goldilocks S) V).ready (K S A) gst run +
         ((healthyResetCoeff S index : Time) + 8 * (S.k : Time) + 4 * ((index : Nat) : Time) + 26) *
-          (S.params (Model.pubOf run.1) hn).Δ + 2 ≤
+          (S.params (Model.pubOf run.1) hn).Δ + 2 + e ≤
       (Sys (goldilocks S) V).heal (K S A) cap index gst run) :
     let sp := S.params (Model.pubOf run.1) hn
     let ready := (Sys (goldilocks S) V).ready (K S A) gst run
@@ -72,11 +73,12 @@ theorem healthy_preparation_timing (run : (Sys (goldilocks S) V).Run)
     ∃ w : Nat, (ready ≤ sp.ts w ∧ sp.ts w + 6 * sp.Δ ≤ heal ∧ sp.ts (w + 2 : Nat) ≤ heal ∧
         sp.ts (w + sp.k : Nat) ≤ heal ∧ sp.ts (w + 2 : Nat) + 6 * sp.Δ ≤ heal) ∧
       ∀ (a : Time) (l : Nat), 0 ≤ a →
-        a ≤ ready + (healthyResetCoeff S index : Time) * sp.Δ + (healthyResetSlack S index : Time) →
+        a ≤ ready + (healthyResetCoeff S index : Time) * sp.Δ + (healthyResetSlack S index : Time) +
+          e →
         l ≤ sp.slot a →
         max ready (max (Healing.drainTime sp a) (max (sp.ts w)
             (max (AC.gbar gst + 4 * sp.Δ) (max 0 (sp.ts (l + 1 : Nat)))))) ≤
-          ready + ((healthyResetCoeff S index : Time) + 8 * (S.k : Time) + 20) * sp.Δ := by
+          ready + ((healthyResetCoeff S index : Time) + 8 * (S.k : Time) + 20) * sp.Δ + e := by
   intro sp ready heal
   have hd : (1 : Time) ≤ run.1.ΔAC := run.1.ΔAC_pos
   have hD0 : (0 : Time) ≤ sp.Δ := zero_le_one.trans hd
@@ -113,10 +115,10 @@ theorem healthy_preparation_timing (run : (Sys (goldilocks S) V).Run)
   have hkD : (0 : Time) ≤ (S.k : Time) * sp.Δ := mul_nonneg (Nat.cast_nonneg _) hD0
   have hRD := mul_le_mul_of_nonneg_right hR0 hD0
   have hXD : (0 : Time) ≤ ((index : Nat) : Time) * sp.Δ := mul_nonneg hX0 hD0
-  refine ⟨w, ⟨hw1.le, by linarith only [hw2, hB, hRD, hkD, hXD, hD0],
-    by rw [hts]; push_cast; linarith only [hw2, hB, hRD, hkD, hXD, hD0],
-    by rw [hts, hkk]; linarith only [hw2, hB, hRD, hkD, hXD, hD0],
-    by rw [hts]; push_cast; linarith only [hw2, hB, hRD, hkD, hXD, hD0]⟩,
+  refine ⟨w, ⟨hw1.le, by linarith only [hw2, hB, hRD, hkD, hXD, hD0, he],
+    by rw [hts]; push_cast; linarith only [hw2, hB, hRD, hkD, hXD, hD0, he],
+    by rw [hts, hkk]; linarith only [hw2, hB, hRD, hkD, hXD, hD0, he],
+    by rw [hts]; push_cast; linarith only [hw2, hB, hRD, hkD, hXD, hD0, he]⟩,
     fun a l ha0 ha hla => ?_⟩
   -- the reset, its drain and its seed
   rw [healthyResetSlack_val] at ha
@@ -131,11 +133,39 @@ theorem healthy_preparation_timing (run : (Sys (goldilocks S) V).Run)
     have := mul_le_mul_of_nonneg_left hl (mul_nonneg zero_le_four hD0)
     simp only [AC.ACParams.ts] at hsa ⊢
     linarith only [this, hsa]
-  exact max_le (by linarith only [hRD, hkD, hD0]) (max_le (by linarith only [hdrain, ha])
-    (max_le (by linarith only [hw2, hRD, hkD, hD0])
-      (max_le (by linarith only [hgr, hRD, hkD, hD0])
-        (max_le (by linarith only [hr0, hRD, hkD, hD0])
+  exact max_le (by linarith only [hRD, hkD, hD0, he]) (max_le (by linarith only [hdrain, ha])
+    (max_le (by linarith only [hw2, hRD, hkD, hD0, he])
+      (max_le (by linarith only [hgr, hRD, hkD, hD0, he])
+        (max_le (by linarith only [hr0, hRD, hkD, hD0, he])
           (by linarith only [hseed, ha, hkD, hD0])))))
+
+
+/-- **The base slot and the query bound of a healthy preparation.** With the reserve
+`ready + (R + 8k + 4X + 26)·Δ + 2 ≤ heal` (`R = healthyResetCoeff`, `X` the index): the base slot
+`w = slot(ready) + 1` has `ready ≤ t_w`, `t_w + 6Δ ≤ heal`, `t_{w+2} ≤ heal`, `t_{w+k} ≤ heal`
+and `t_{w+2} + 6Δ ≤ heal`; and every reset `0 ≤ a ≤ ready + R·Δ + r` (`r = healthyResetSlack`)
+with a seed label `l ≤ slot a` has
+`max(ready, drainTime a, t_w, ḡ + 4Δ, 0, t_{l+1}) ≤ ready + (R + 8k + 20)·Δ`. -/
+theorem healthy_preparation_timing (run : (Sys (goldilocks S) V).Run)
+    (hn : 1 ≤ Fintype.card V)
+    (cap : Capability) (index : (K S A).Idx) (gst : Time)
+    (hB : (Sys (goldilocks S) V).ready (K S A) gst run +
+        ((healthyResetCoeff S index : Time) + 8 * (S.k : Time) + 4 * ((index : Nat) : Time) + 26) *
+          (S.params (Model.pubOf run.1) hn).Δ + 2 ≤
+      (Sys (goldilocks S) V).heal (K S A) cap index gst run) :
+    let sp := S.params (Model.pubOf run.1) hn
+    let ready := (Sys (goldilocks S) V).ready (K S A) gst run
+    let heal := (Sys (goldilocks S) V).heal (K S A) cap index gst run
+    ∃ w : Nat, (ready ≤ sp.ts w ∧ sp.ts w + 6 * sp.Δ ≤ heal ∧ sp.ts (w + 2 : Nat) ≤ heal ∧
+        sp.ts (w + sp.k : Nat) ≤ heal ∧ sp.ts (w + 2 : Nat) + 6 * sp.Δ ≤ heal) ∧
+      ∀ (a : Time) (l : Nat), 0 ≤ a →
+        a ≤ ready + (healthyResetCoeff S index : Time) * sp.Δ + (healthyResetSlack S index : Time) →
+        l ≤ sp.slot a →
+        max ready (max (Healing.drainTime sp a) (max (sp.ts w)
+            (max (AC.gbar gst + 4 * sp.Δ) (max 0 (sp.ts (l + 1 : Nat)))))) ≤
+          ready + ((healthyResetCoeff S index : Time) + 8 * (S.k : Time) + 20) * sp.Δ := by
+  simpa only [add_zero] using healthy_preparation_timing_within S A V run hn cap index gst 0
+    le_rfl (by simpa only [add_zero] using hB)
 
 end Consensus.Goldilocks.Obligations
 

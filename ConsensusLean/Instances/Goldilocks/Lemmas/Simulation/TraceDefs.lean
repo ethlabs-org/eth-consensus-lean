@@ -82,7 +82,7 @@ theorem eventCuts_tick_public (i : Nat) (v : V) (t : Time)
     eventCuts S rho hn i =
       groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
         (stateAt S rho hn v i).node t (Nat.pair i 0)
-        (.tick (encodeTxs (Model.mempool rho.inbox v t))) := by
+        (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t)) := by
   simp only [eventCuts_eq, he, hp, ↓reduceIte]
 
 /-- An engine tick at a non-public time has no cut. -/

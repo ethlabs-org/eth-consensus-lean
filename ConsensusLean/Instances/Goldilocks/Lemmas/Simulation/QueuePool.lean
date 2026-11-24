@@ -92,9 +92,10 @@ private theorem propose_queuedInPool (st : State sp ro binding) s (h : QueuedInP
   dsimp only
   split <;> intro tv htv <;> rw [hp] <;> exact h tv htv
 
-private theorem nodeTick_queuedInPool (st : State sp ro binding) (h : QueuedInPool st) :
-    QueuedInPool (nodeTick st) := by
-  rw [nodeTick_eq]
+private theorem nodeTick_queuedInPool {sign : Fin sp.n → Time → Bool} (st : State sp ro binding)
+    (h : QueuedInPool st) :
+    QueuedInPool (nodeTick st sign) := by
+  rw [nodeTick_eq (sign := _)]
   split
   · apply apply_queuedInPool st _ _ h
     exact AC.step_pool_subset st.self st.node.ac _ st.now .tick (by simp)
@@ -135,9 +136,10 @@ private theorem propose_pool_eq (st : State sp ro binding) s :
   dsimp only
   split <;> exact hp
 
-private theorem nodeTick_pool_subset (st : State sp ro binding) (σ : Nat) :
-    st.node.ac.pool σ ⊆ (nodeTick st).node.ac.pool σ := by
-  rw [nodeTick_eq]
+private theorem nodeTick_pool_subset {sign : Fin sp.n → Time → Bool} (st : State sp ro binding)
+    (σ : Nat) :
+    st.node.ac.pool σ ⊆ (nodeTick st sign).node.ac.pool σ := by
+  rw [nodeTick_eq (sign := _)]
   split
   · exact AC.step_pool_subset st.self st.node.ac _ st.now .tick (by simp) σ
   · exact List.Subset.refl _

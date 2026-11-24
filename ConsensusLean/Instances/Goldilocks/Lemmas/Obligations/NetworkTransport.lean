@@ -112,7 +112,11 @@ theorem received_att_processAt
         rw [NodeAsChainShape.CanonicalTrace.stateAt_eq]
         rw (config := { transparency := .default }) [NodeAsChainShape.CanonicalTrace.wireOf_eq]
         rw [stateAt_voteIO S rho hn, stateAt_eq] at hc
-        exact hc)
+        exact (congrArg (attObj (binding := S.vote) a ∈ ·)
+          (delivered_nodeAdapter_sign
+            (wireCodec (S.params (Model.pubOf E) hn) (S.ro _) S.vote (rho.voteIO v))
+            (S.sign (Model.pubOf E)) (Model.digests rho.hash receipt)
+            ((rho.stateBefore i v).st.1 hn) receipt)).mpr hc)
   simpa only [(simTrace_encoding S rho hn).1, (simTrace_encoding S rho hn).2] using ⟨k, hk, hp, ht⟩
 
 end Consensus.Goldilocks.Obligations

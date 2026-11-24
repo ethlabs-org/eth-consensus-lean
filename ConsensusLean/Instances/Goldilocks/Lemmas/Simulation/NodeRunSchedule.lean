@@ -360,13 +360,13 @@ private theorem delivery_group_source {y : Fin (Fintype.card V)} {j : Nat} {t : 
     refine ⟨i, v, o, u, w, he, hw, ?_⟩
     suffices ev' = ev by rwa [this] at hcanon
     cases ev with
-    | tick x => simp [Node.Event.phase] at hp
+    | tick x fgDue => simp [Node.Event.phase] at hp
     | restart => simp [Node.Event.phase] at hp
     | block b =>
       obtain ⟨acc, hl⟩ := Simulation.exec_block_head _ _ _ _ _ b hcs
       rw [hl] at hc
       cases ev' with
-      | tick x => unfold canonEvent at hcanon; split at hcanon <;> cases hcanon
+      | tick x fgDue => unfold canonEvent at hcanon; split at hcanon <;> cases hcanon
       | restart => simp [exec, Node.restart, acCall] at hc
       | message m => simp [exec, onMessage, acCall] at hc
       | attestation a => simp [exec, onAttestation] at hc
@@ -380,7 +380,7 @@ private theorem delivery_group_source {y : Fin (Fintype.card V)} {j : Nat} {t : 
         simpa only [exec, onAttestation, List.cons.injEq] using (List.cons.inj hcs).1.symm
       rw [hl] at hc
       cases ev' with
-      | tick x => unfold canonEvent at hcanon; split at hcanon <;> cases hcanon
+      | tick x fgDue => unfold canonEvent at hcanon; split at hcanon <;> cases hcanon
       | restart => simp [exec, Node.restart, acCall] at hc
       | message m => simp [exec, onMessage, acCall] at hc
       | block b =>
@@ -399,7 +399,7 @@ private theorem delivery_group_source {y : Fin (Fintype.card V)} {j : Nat} {t : 
       obtain ⟨l, hl, hm⟩ := hl
       rw [hl] at hc
       cases ev' with
-      | tick x => unfold canonEvent at hcanon; split at hcanon <;> cases hcanon
+      | tick x fgDue => unfold canonEvent at hcanon; split at hcanon <;> cases hcanon
       | restart => simp [exec, Node.restart, acCall] at hc; subst l; cases hm
       | attestation a => simp [exec, onAttestation] at hc
       | message m' =>
@@ -465,7 +465,7 @@ theorem wire
     (hg : (simTrace e rho).GroupAt (runProposer rho hn) (digestOf e rho) y j t ev) :
     WireOK (digestOf e rho) ev := by
   cases ev with
-  | tick x => trivial
+  | tick x fgDue => trivial
   | restart => trivial
   | message m =>
     obtain ⟨_, v, _, _, w, _, _, hc⟩ := delivery_group_source e rho hg rfl
@@ -573,7 +573,7 @@ private theorem tick_origin {y : Fin (Fintype.card V)} {j : Nat} {t : Time}
     (hg : (simTrace e rho).TickAt (runProposer rho hn) (digestOf e rho) y j t) :
     ∃ i, rho.events[i]? = some (.tick (rho.key y) t) ∧ j = cutMap e rho i ∧
       (paramsAtCount p (Fintype.card V) hN hn).IsPublic t := by
-  obtain ⟨x, hg⟩ := hg
+  obtain ⟨x, fgDue, hg⟩ := hg
   obtain ⟨i, ev, he, h1, _, hy, ht, hp, r, hr, hpos⟩ := group_origin e rho hg
   cases ev with
   | restart => simp [Node.Event.phase, Model.Event.phase] at hp
@@ -1039,17 +1039,20 @@ theorem tick_public_group {due : e.State hn → Bool} (laws : e.Lawful due)
     (he : rho.events[i]? = some (.tick v t))
     (hp : (paramsAtCount p (Fintype.card V) hN hn).IsPublic t) :
     (simTrace e rho).GroupAt (runProposer rho hn) (digestOf e rho)
-      (rho.ownKey v) (cutMap e rho i) t (.tick (encodeTxs (Model.mempool rho.inbox v t))) ∧
+      (rho.ownKey v) (cutMap e rho i) t
+      (.tick (encodeTxs (Model.mempool rho.inbox v t)) (e.adapter.sign (rho.ownKey v) t)) ∧
     cutMap e rho (i + 1) = cutMap e rho i +
       (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
         ((simTrace e rho).state (rho.ownKey v) (cutMap e rho i)) t
-        (.tick (encodeTxs (Model.mempool rho.inbox v t)))).2.length := by
+        (.tick (encodeTxs (Model.mempool rho.inbox v t))
+          (e.adapter.sign (rho.ownKey v) t))).2.length := by
   have hi := (List.getElem?_eq_some_iff.mp he).1
   have hst := stateAgreement_all laws hv v i hi.le
   have hcuts := eventCuts_tick e rho i v t he
   rw [ite_eq_left hp] at hcuts
   refine ⟨groupAt_of_recs e rho _ _ (id := Nat.pair i 0) hst.symm ?_ ?_ ?_, ?_⟩
-  · simp [exec, onTick, runSteps, tickSteps, Node.tickStep]
+  · cases e.adapter.sign (rho.ownKey v) t <;>
+      simp [exec, onTick, runSteps, tickSteps, Node.tickStep]
   · intro k hk
     rw [← hcuts] at hk ⊢
     exact allCuts_getElem?_add e rho i k hi hk
@@ -1070,6 +1073,6 @@ theorem tick_of_awake {due : e.State hn → Bool} (laws : e.Lawful due)
   obtain ⟨i, he⟩ := List.mem_iff_getElem?.mp (hv.tick_total (rho.key y) t ht hth hy hw)
   have hg := (tick_public_group e rho laws hv he hp).1
   rw [Model.Run.ownKey, Equiv.symm_apply_apply] at hg
-  exact ⟨_, _, hg⟩
+  exact ⟨_, _, _, hg⟩
 
 end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
