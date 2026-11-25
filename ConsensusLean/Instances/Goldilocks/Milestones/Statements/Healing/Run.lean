@@ -449,7 +449,8 @@ def BridgeAt (proposer : Nat → Fin sp.n) (g a Tb : Time) : Prop :=
 end Top
 
 /-- `T_heal = ḡ + 24Δ + 12C_HS + T_b + 2Θ + 8Δ` (claims H.4), that is
-`ḡ + (104k + 628 + 48δ_t)Δ + 12Δ_F + 36G_p + T_b`. -/
+`ḡ + (104k + 628 + 48δ_t)Δ + 12Δ_F + 36G_p + T_b` with the optimistic confirmation on and
+`ḡ + (104k + 616 + 48δ_t)Δ + 12Δ_F + 36G_p + T_b` with it off. -/
 def T_heal (sp : ACParams) (g ΔF Gp Tb : Time) : Time :=
   gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF Gp + Tb + 2 * AC.Θ sp + 8 * sp.Δ
 

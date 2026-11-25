@@ -7,7 +7,8 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Events
 
 Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"Healing: top-level statements":
 the healing vocabulary read on an AC trace of the Goldilocks AC. `ḡ = max(g, 0)`, the lock
-lifetime bound `Θ = 4(k + 1)Δ`, `Healthy(g)` (`GST(g)`, every honest validator awake from `ḡ`,
+lifetime bound `Θ` (`4(k + 1)Δ` with the optimistic confirmation on, `(4k − 2)Δ` with it off),
+`Healthy(g)` (`GST(g)`, every honest validator awake from `ḡ`,
 `3f ≤ n − 1`), `Catch(κ)` (accepted-old-block catch-up), **trivial frames**, **driven** AC traces,
 the proposer premise `Prop(G_p)`, slow locks (`SlowLockAt`), the protected blocks (`Protected`),
 the retention premise `Inv` and the proposal geometry `Geo`. The run-level healing nodes
@@ -26,9 +27,12 @@ variable (sp : ACParams)
 /-- `ḡ = max(g, 0)`. -/
 def gbar (g : Time) : Time := max g 0
 
-/-- `Θ = 4(k + 1)Δ`, the time from a lock write to its expiry (claims §"Healing: top-level
-statements", "Healing notation"). -/
-def Θ : Time := 4 * ((sp.k : Time) + 1) * sp.Δ
+/-- `Θ`, the time from a lock write to its expiry (claims §"Healing: top-level statements",
+"Healing notation"): `4(k + 1)Δ` when the optimistic confirmation runs (an optimistic lock can be
+written at `t_j`), `(4k − 2)Δ` otherwise (a lock of the confirmation update, written at
+`t_j + 6Δ`, is dead at `t_{j+k+1}`). -/
+def Θ : Time :=
+  if sp.optimistic then 4 * ((sp.k : Time) + 1) * sp.Δ else (4 * (sp.k : Time) - 2) * sp.Δ
 
 variable {sp} {FGP : Type} {ro : ReplayOrder sp FGP}
 
