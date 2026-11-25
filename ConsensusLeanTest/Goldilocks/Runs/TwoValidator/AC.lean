@@ -99,7 +99,7 @@ theorem optimisticSelect_two {Φ : N.Frm} {f j s : Nat} (h : ChainFrame Φ f j s
     (hjn : joined sp A t) {y : Fin sp.n} (hpool : A.pool s = [vote y s, vote (other y) s]) :
     optimisticSelect sp A Φ t = some (blk s) := by
   unfold optimisticSelect
-  rw [ite_eq_right (by rw [hst]; push Not; exact ⟨hjn, by omega, ht⟩)]
+  rw [ite_eq_right (by rw [hst]; push Not; exact ⟨hjn, by omega, ht, by decide⟩)]
   have htip := h.mem (le_trans h.fj h.jτ) le_rfl
   apply h.deepest_eq (fun B hB => hB.1)
   · refine ⟨htip, ?_, ?_⟩

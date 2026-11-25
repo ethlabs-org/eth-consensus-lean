@@ -745,6 +745,7 @@ example := ``Consensus.Goldilocks.Regimes.ProposerRecurrence
 example := ``Consensus.Goldilocks.Regimes.Growing.CommitteeSleepy
 example := ``Consensus.Goldilocks.Regimes.Growing.IncludeSleepy
 example := ``Consensus.Goldilocks.Regimes.Growing.GrowSleepy
+example := ``Consensus.Goldilocks.Regimes.Growing.OptimisticInclusion
 example := ``Consensus.Goldilocks.Obligations.Growing.SleepyGrowFinite
 example := ``Consensus.Goldilocks.RunTrace.SyncBefore
 example := ``Consensus.Goldilocks.Test.ProposerHold.sleepyLive_hold_zero_false

@@ -258,7 +258,7 @@ theorem optimisticSelect_vote {Φ : N1.Frm} {f j s : Nat} (h : ChainFrame Φ f j
     (hjn : joined sp1 A t) (hpool : A.pool s = [cv s]) :
     optimisticSelect sp1 A Φ t = some (blk s) := by
   unfold optimisticSelect
-  rw [ite_neg (by rw [hst]; push Not; exact ⟨hjn, by omega, ht⟩)]
+  rw [ite_neg (by rw [hst]; push Not; exact ⟨hjn, by omega, ht, by decide⟩)]
   have htip := h.mem (le_trans h.fj h.jτ) le_rfl
   apply h.deepest_eq (fun B hB => hB.1)
   · refine ⟨htip, ?_, ?_⟩
@@ -401,7 +401,7 @@ theorem optimisticSelect_slot_zero {A : ACState sp1.n} {Φ : N1.Frm} {t : Time}
     (h : sp1.slot t = 0) : optimisticSelect sp1 A Φ t = none := by
   unfold optimisticSelect
   dsimp only
-  rw [ite_pos (Or.inr (Or.inl h))]
+  simp only [h, eq_self, true_or, or_true, ↓reduceIte]
 
 theorem optimisticConfirmation_of_some {A : ACState sp1.n} {Φ : N1.Frm} {t : Time} {B : N1.Blk}
     (h : optimisticSelect sp1 A Φ t = some B) :

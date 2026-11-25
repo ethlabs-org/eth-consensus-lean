@@ -24,9 +24,11 @@ Labelled by kind (CONTRIBUTING "Statements"):
   acceptance) and `NoRestartAfter` with the run laws: the generic `RunTrace` premises hold together
   on an infinite run over `idleAC`; `GoldilocksRun`, `HSShared` and `PropPlus` are witnessed on the
   Goldilocks tick run instead (`ConsensusLeanTest/Goldilocks/Runs/OneValidator/Premises`).
-* Arithmetic check (no witness kind): `C_HS_closed_form`, `bound_closed_form` and
-  `T_heal_closed_form`, the closed forms of `C_HS`, of `ḡ + 24Δ + 12C_HS` (HR.3 (c)) and of `T_heal`
-  (H.4), hold at every parameter (a check of the transcription of the constants).
+* Arithmetic check (no witness kind): `C_HS_closed_form`, `bound_closed_form`,
+  `T_heal_closed_form` and `T_heal_closed_form_off`, the closed forms of `C_HS`, of
+  `ḡ + 24Δ + 12C_HS` (HR.3 (c)) and of `T_heal` (H.4) with the optimistic confirmation on and
+  off, hold at every parameter (a check of the transcription of the constants);
+  `theta_of_optimistic` and `theta_of_not_optimistic` give `Θ` in each case.
 
 **Elsewhere.** The premise witnesses over a Goldilocks trace are on the one-validator tick run:
 `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Premises` gives `GoldilocksRun`, `Healthy(g)`,
@@ -144,12 +146,33 @@ theorem bound_closed_form (sp : AC.ACParams) (g ΔF G : Time) :
         36 * G := by
   simp only [C_HS, D_HS]; ring
 
-/-- Arithmetic check: `T_heal = ḡ + (104k + 628 + 48δ_t)Δ + 12Δ_F + 36G + T_b` (claims H.4). -/
-theorem T_heal_closed_form (sp : AC.ACParams) (g ΔF G Tb : Time) :
+/-- With the optimistic confirmation on, `Θ = 4(k + 1)Δ`. -/
+theorem theta_of_optimistic (sp : AC.ACParams) (h : sp.optimistic = true) :
+    AC.Θ sp = 4 * ((sp.k : Time) + 1) * sp.Δ := by
+  simp only [AC.Θ, h, ↓reduceIte]
+
+/-- With the optimistic confirmation off, `Θ = (4k − 2)Δ`. -/
+theorem theta_of_not_optimistic (sp : AC.ACParams) (h : sp.optimistic = false) :
+    AC.Θ sp = (4 * (sp.k : Time) - 2) * sp.Δ := by
+  simp only [AC.Θ, h, Bool.false_eq_true, ↓reduceIte]
+
+/-- Arithmetic check, optimistic confirmation on:
+`T_heal = ḡ + (104k + 628 + 48δ_t)Δ + 12Δ_F + 36G + T_b` (claims H.4). -/
+theorem T_heal_closed_form (sp : AC.ACParams) (h : sp.optimistic = true)
+    (g ΔF G Tb : Time) :
     T_heal sp g ΔF G Tb =
       AC.gbar g + (104 * (sp.k : Time) + 628 + 48 * (sp.toParams.δt : Time)) * sp.Δ + 12 * ΔF +
         36 * G + Tb := by
-  simp only [T_heal, C_HS, D_HS, AC.Θ]; ring
+  simp only [T_heal, C_HS, D_HS, theta_of_optimistic sp h]; ring
+
+/-- Arithmetic check, optimistic confirmation off:
+`T_heal = ḡ + (104k + 616 + 48δ_t)Δ + 12Δ_F + 36G + T_b` (claims H.4). -/
+theorem T_heal_closed_form_off (sp : AC.ACParams) (h : sp.optimistic = false)
+    (g ΔF G Tb : Time) :
+    T_heal sp g ΔF G Tb =
+      AC.gbar g + (104 * (sp.k : Time) + 616 + 48 * (sp.toParams.δt : Time)) * sp.Δ + 12 * ΔF +
+        36 * G + Tb := by
+  simp only [T_heal, C_HS, D_HS, theta_of_not_optimistic sp h]; ring
 
 end Consensus.Goldilocks.Healing.Test
 

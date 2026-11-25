@@ -312,7 +312,7 @@ theorem S1_eq : S1 = blockReceipt sp (ACState.initial 0) 6 B1 := by
   change (acOnBlock sp v0 (ACState.initial 0) Φ₁ 6 B1).1 = _
   unfold acOnBlock optimisticConfirmation optimisticSelect
   dsimp only
-  rw [slot_6, ite_eq_left (Or.inr (Or.inr (by decide)))]
+  rw [slot_6, ite_eq_left (Or.inr (Or.inr (Or.inl (by decide))))]
   dsimp only
   unfold tryVote
   dsimp only
@@ -401,8 +401,9 @@ theorem optimisticSelect_A2 : optimisticSelect sp A2 Φ₁ 8 = some B1 := by
   unfold optimisticSelect
   dsimp only
   rw [slot_8, ite_eq_right (by
-    rintro (h | h | h)
+    rintro (h | h | h | h)
     · exact h hj
+    · exact absurd h (by decide)
     · exact absurd h (by decide)
     · exact absurd h (by decide))]
   refine deepest_top₁ ⟨B1_mem₁, ?_, ?_⟩ fun B hB => hB.1

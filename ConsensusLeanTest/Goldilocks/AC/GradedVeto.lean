@@ -372,10 +372,11 @@ theorem optimisticSelect_Bv {A : ACState sp.n} {t : Time} (hj : joined sp A t)
   unfold optimisticSelect
   dsimp only
   rw [hs, ite_eq_right (by
-    rintro (h | h | h)
+    rintro (h | h | h | h)
     · exact h hj
     · exact absurd h (by decide)
-    · exact absurd (lt_of_le_of_lt h ht) (by decide))]
+    · exact absurd (lt_of_le_of_lt h ht) (by decide)
+    · exact absurd h (by decide))]
   refine deepest_top ⟨Bv_mem, ?_, hc⟩ Bv_mem fun C ⟨_, hC, _⟩ => ?_
   · have := three_le_optimisticVoters h1 h2 h3 (B := Bv) Relation.ReflTransGen.refl
     change 12 ≤ 4 * _; omega

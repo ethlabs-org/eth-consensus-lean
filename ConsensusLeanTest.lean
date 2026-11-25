@@ -68,6 +68,7 @@ public import ConsensusLeanTest.Goldilocks.Refinement.Obligations
 public import ConsensusLeanTest.Goldilocks.Refinement.Simulation
 public import ConsensusLeanTest.Goldilocks.Refinement.Sleepy
 public import ConsensusLeanTest.Goldilocks.Regimes.BudgetTightness
+public import ConsensusLeanTest.Goldilocks.Regimes.OptimisticInclusionRun
 public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHold
 public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Cast
 public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHoldRun.Engine

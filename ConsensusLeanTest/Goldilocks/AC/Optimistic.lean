@@ -238,10 +238,11 @@ theorem optimisticSelect_B1 {A : ACState sp1.n} {t : Time} (hj : A.restartTime =
   unfold optimisticSelect
   dsimp only
   rw [ite_eq_right fun h => by
-    rcases h with h | h | h
+    rcases h with h | h | h | h
     · exact h (joined_bot hj t)
     · exact hs h
-    · exact absurd h (not_le.2 ht)]
+    · exact absurd h (not_le.2 ht)
+    · exact absurd h (by decide)]
   refine deepest_B1 (fun B hB => hB.1) ⟨B1_mem, ?_, not_conflicts B1_mem⟩
   have : optimisticVoters sp1 A Φ₁ (sp1.slot t) B1 = Set.univ := by
     obtain ⟨x, hx, hh⟩ := hx

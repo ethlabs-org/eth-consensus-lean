@@ -69,7 +69,7 @@ theorem hz_zero : Healing.HZ (tickRun N1 dg1) Set.univ 0 = 3 := by
 theorem aZ_zero : aZ 0 = 16 := by
   unfold aZ; rw [zN_zero]; rfl
 
-/-- `Θ = 4(k + 1)Δ = 12`. -/
+/-- `Θ = 4(k + 1)Δ = 12` (the optimistic confirmation is on by default). -/
 theorem theta_sp1 : AC.Θ sp1 = 12 := by decide
 
 /-- `C_HS = (8k + 49 + 4δ_t)Δ + Δ_F + 3G_p = 86` at `Δ_F = 1`, `G_p = 4`. -/
