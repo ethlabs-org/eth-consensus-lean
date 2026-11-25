@@ -152,7 +152,8 @@ private theorem optimistic_seats
   refine ⟨ℓ, A, hpt, hΦU, h34, ?_⟩
   rintro u ⟨v, hv, rfl, R, hR, hRr, hDR⟩
   have hvs := optimisticPoint_pool_slot hr (fun _ => voteStart_initial _) hX hpt hv
-  have htk : tr.time k < sp.ts s + 2 * sp.Δ := not_le.1 (not_or.1 (not_or.1 hcond).2).2
+  have htk : tr.time k < sp.ts s + 2 * sp.Δ :=
+    not_le.1 (not_or.1 (not_or.1 (not_or.1 hcond).2).2).1
   refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, ?_⟩
   exact admitted_of_held hr (fun _ => voteStart_initial _) hX hvs
     (optimisticPoint_pool_post hr hX hpt s hv) le_rfl

@@ -46,7 +46,7 @@ theorem optimistic_time_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr 
   obtain ⟨ℓ, A, -, hsl, hsel, -⟩ := h
   subst hsl
   exact ⟨(AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 le_rfl,
-    (AC.optimisticSelect_guard hsel).2.2⟩
+    (AC.optimisticSelect_guard hsel).2.2.1⟩
 
 /-- A cast of a node honest then is in `[t_σ, t_σ + Δ]` of its slot `σ`. -/
 theorem cast_time_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)

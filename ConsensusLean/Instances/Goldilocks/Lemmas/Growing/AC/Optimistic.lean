@@ -71,7 +71,7 @@ theorem optimistic_transfer_stored
       dsimp only at h
       split_ifs at h with hh
       · rw [hslx] at hh
-        exact not_le.mp (not_or.mp (not_or.mp hh).2).2
+        exact not_le.mp (not_or.mp (not_or.mp (not_or.mp hh).2).2).1
     have hsv : e.msg.slot = sp.slot (tr.time i) := (castAt_spec hry.localRun hy hc').2.1
     have ht := (ts_le_iff_le_slot sp (hr.time_nonneg i) (s + 1 : Nat)).mpr
       (by rw [← hsv, hs])

@@ -351,7 +351,7 @@ theorem fastLock_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T
       split_ifs at hsel with h
       all_goals first
         | cases hsel
-        | exact not_le.1 fun h' => h (Or.inr (Or.inr h'))
+        | exact not_le.1 fun h' => h (Or.inr (Or.inr (Or.inl h')))
     rw [hsl] at hti
     have hΦU : ℓx.frame.tree ⊆ U := (AC.frameIn_of_callAt hr hx hc).2
     rintro v ⟨hvA, R, hR, hRr, hCR⟩

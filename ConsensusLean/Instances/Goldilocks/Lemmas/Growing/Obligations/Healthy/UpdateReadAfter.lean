@@ -137,7 +137,7 @@ theorem operational_update_read_after_at
           simp only [AC.ACParams.ts, Nat.cast_add, Nat.cast_one]
           linarith
         change AC.optimisticSelect sp A' ell'.frame (tr.time q) = some D at hsel
-        simp only [AC.optimisticSelect, hlate, or_true, ↓reduceIte] at hsel
+        simp only [AC.optimisticSelect, hlate, true_or, or_true, ↓reduceIte] at hsel
         cases hsel
     · intro q _ hqJ
       exact hframes (q + 1) (by omega)

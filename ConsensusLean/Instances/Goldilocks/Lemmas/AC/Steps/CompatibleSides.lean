@@ -98,7 +98,7 @@ theorem optimistic_sideU
   rintro u ⟨v, hv, rfl, R, hR, hRr, hDR⟩
   have hvs := optimisticPoint_pool_slotU hr hrun.vstart hX hpt hv
   have htk : tr.time k < sp.ts s + 2 * sp.Δ := by
-    exact not_le.1 (not_or.1 (not_or.1 hcond).2).2
+    exact not_le.1 (not_or.1 (not_or.1 (not_or.1 hcond).2).2).1
   rw [fwd_iff]
   refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, ?_⟩
   exact admitted_of_heldU hr hrun.vstart hX hvs (optimisticPoint_pool_postU hr hX hpt s hv) le_rfl

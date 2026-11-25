@@ -74,7 +74,7 @@ theorem callInputM_cases (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     callInputM sp wm A Φ t c = A ∨
       ∃ A', ((∃ m, c = .message m ∧ A' = admitVote sp A t m) ∨
           ∃ B, c = .block B ∧ A' = blockReceipt sp A t B) ∧
-        callInputM sp wm A Φ t c = optimisticConfirmationM sp wm A' Φ t ∧ A'.locks = A.locks := by
+        callInputM sp wm A Φ t c = optimisticConfirmation sp A' Φ t ∧ A'.locks = A.locks := by
   cases c with
   | message m => exact Or.inr ⟨_, Or.inl ⟨m, rfl, rfl⟩, rfl, admitVote_locks_eq _ _ _⟩
   | block B => exact Or.inr ⟨_, Or.inr ⟨B, rfl, rfl⟩, rfl, blockReceipt_locks _ _ _⟩
@@ -94,7 +94,7 @@ private theorem emits_tryVoteU
         mergedVoteView sp P ℓ.frame (sp.slot (tr.time i)) ∧ (P = tr.state y i ∨
       ∃ A, ((∃ m, ℓ.call = .message m ∧ A = admitVote sp (tr.state y i) (tr.time i) m) ∨
           ∃ B, ℓ.call = .block B ∧ A = blockReceipt sp (tr.state y i) (tr.time i) B) ∧
-        P = optimisticConfirmationM sp wm A ℓ.frame (tr.time i) ∧
+        P = optimisticConfirmation sp A ℓ.frame (tr.time i) ∧
           A.locks = (tr.state y i).locks) := by
   obtain ⟨hV, -, htv⟩ := voteBranchAt_inputU hr hy (voteBranchAt_of_castAtU hr hy hc)
   exact ⟨_, by rw [htv]; exact hc.2, rfl, hV, callInputM_cases _ _ _ _⟩
@@ -164,7 +164,7 @@ private theorem point_postU
     {e : Em sp FGP} (he : e ∈ ℓ.emits) :
     (tr.state x (j + 1)).pool = (admitVote sp e.readPoint (tr.time j) e.msg).pool := by
   rw [show tr.state x (j + 1) = tr.post j by simp [Trace.state, hc.1, hc.2],
-    post_of_castAtU hr hx ⟨hc, he⟩, optimisticConfirmationM_keep _ optimistic_pool]
+    post_of_castAtU hr hx ⟨hc, he⟩, optimistic_pool]
 
 /-- `optimisticPoint_pool_slot` with the unlock given. From starts up to the vote permission. -/
 theorem optimisticPoint_pool_slotU
@@ -368,7 +368,7 @@ theorem optimisticLockAt_spec (hrun : ACRun proposer tr H U ini)
     · rintro ⟨v, ⟨hv, ha⟩, he⟩; exact ⟨v, hv, he, ha⟩
     · rintro ⟨v, hv, he, ha⟩; exact ⟨v, ⟨hv, ha⟩, he⟩
   refine ⟨?_, ?_, ell, A, hp, hD, ?_, ?_, ?_⟩
-  · exact lt_of_not_ge (fun ht => hn (Or.inr (Or.inr (hs ▸ ht))))
+  · exact lt_of_not_ge (fun ht => hn (Or.inr (Or.inr (Or.inl (hs ▸ ht)))))
   · rw [hv]; exact hs ▸ hcount
   · intro v hv
     exact ⟨hv.1, (optimisticPoint_pool_slot hrun.localRun hrun.vstart hy hp hv.1), hv.2⟩
@@ -426,9 +426,7 @@ private theorem good_optimistic (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : Fra
     (h : ∀ l ∈ A.locks, s ≤ l.slot → Good tr H U y i l)
     (hnew : ∀ D, optimisticSelect sp A Φ t = some D →
       ∀ e, Good tr H U y i ⟨D.root, sp.slot t, true, e⟩) :
-    ∀ l ∈ (optimisticConfirmationM sp wm A Φ t).locks, s ≤ l.slot → Good tr H U y i l := by
-  refine optimisticConfirmationM_of
-    (P := fun X : ACState sp.n => ∀ l ∈ X.locks, s ≤ l.slot → Good tr H U y i l) ?_ h
+    ∀ l ∈ (optimisticConfirmation sp A Φ t).locks, s ≤ l.slot → Good tr H U y i l := by
   unfold optimisticConfirmation
   rcases hD : optimisticSelect sp A Φ t with _ | D
   · exact h
@@ -540,10 +538,7 @@ theorem readPoint_lock_slot_leU
   have hPl : ∀ l ∈ P.locks, l.slot ≤ sp.slot (tr.time i) := by
     rcases hP with rfl | ⟨A, -, rfl, hAl⟩
     · exact hS
-    · refine optimisticConfirmationM_of
-        (P := fun X : ACState sp.n => ∀ l ∈ X.locks, l.slot ≤ sp.slot (tr.time i)) ?_
-        (hAl ▸ hS)
-      unfold optimisticConfirmation
+    · unfold optimisticConfirmation
       rcases optimisticSelect sp A ℓ.frame (tr.time i) with _ | D
       · exact hAl ▸ hS
       · rw [updateLatestConfirmed_keeps_locks]

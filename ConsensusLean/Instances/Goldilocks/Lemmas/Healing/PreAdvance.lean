@@ -224,7 +224,7 @@ theorem FrameWindow.old_lock_witness {s₀ floor : Nat} {hi : Time}
         unfold AC.optimisticSelect at hsel
         dsimp only at hsel
         split_ifs at hsel with hn
-        exact lt_of_not_ge (fun ht => hn (Or.inr (Or.inr (hs ▸ ht))))
+        exact lt_of_not_ge (fun ht => hn (Or.inr (Or.inr (Or.inl (hs ▸ ht)))))
       have hts := (AC.ts_le_iff sp).mpr (show (l.slot : Int) ≤ (e.msg.slot : Int) - 1 by omega)
       refine ⟨hlo, ?_⟩
       unfold AC.freeze

@@ -262,7 +262,7 @@ theorem optimistic_writer_votes {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP r
     split_ifs at hsel with h
     all_goals first
       | cases hsel
-      | exact not_le.1 fun h' => h (Or.inr (Or.inr h'))
+      | exact not_le.1 fun h' => h (Or.inr (Or.inr (Or.inl h')))
   rw [hsl] at hti
   have hΦU : ℓx.frame.tree ⊆ U := by
     rcases hr.frameLaw x hx i₀ ℓx hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.2

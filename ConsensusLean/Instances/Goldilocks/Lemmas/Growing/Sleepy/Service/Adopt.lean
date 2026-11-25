@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Adopt
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Confirmation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.LockVeto
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 
 public section
@@ -182,30 +183,9 @@ theorem result_not_vetoed_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
     {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hC : AC.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some C) :
     ¬ AC.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) C := by
-  have hcoh := honestBlocksAt_coherent hrun hnc
-  obtain ⟨hΦ, hHB⟩ := frameIn_at hrun hnc hy hu.1
-  have hfr := frame_of_projAC_at hrun hy hu.1
-  have hCt : C ∈ ℓ.frame.tree := (AC.deepest_mem hC).1.1
   have hCo : OriginWithin tr H C s b := originWithin_iff.2
     ⟨y, k₀, _, hy, hb, Or.inl ⟨ℓ, hu, by rw [projAC_state_at hrun hy]; exact hC, rfl⟩⟩
-  rintro ⟨V, hV, hconf⟩
-  obtain ⟨l, hl, B₀, hB₀, hB₀r, -, rfl⟩ := AC.mem_liveLockBlocks hΦ hV
-  obtain ⟨L, hL, hLr, hch⟩ := hinv.locks_at_cut hrun hb0 hy
-    (fun k hk => (hrun.time_mono hk.le).trans hb) l hl
-  obtain rfl : L = B₀ := hcoh.1 (mem_honestBlocksAt hrun hy hL) (hHB hB₀) (hLr.trans hB₀r.symm)
-  have hcomp := OnOriginChainWithin.compatible hrun hnc hinv.origins_compatible
-    (hHB hCt) (hHB hB₀)
-    (onOriginChainWithin_iff.2 (Or.inr ⟨C, s, hCo, Relation.ReflTransGen.refl⟩)) hch
-  obtain ⟨hVt, hVB⟩ := AC.viableAncestor_anc hΦ hB₀
-  have hVB' := hVB.mono hHB
-  have hCV : Compatible (tr.HonestBlocksAt H) C (ℓ.frame.viableAncestor L) := by
-    rcases hcomp with h | h
-    · exact AC.anc_total hcoh h hVB'
-    · exact Or.inr (hVB'.trans h)
-  apply hconf
-  rcases hCV with h | h
-  · exact Or.inl (AC.anc_tree_of_anc_U hcoh hΦ hHB hCt h hVt)
-  · exact Or.inr (AC.anc_tree_of_anc_U hcoh hΦ hHB hVt h hCt)
+  exact origin_not_conflicts_at hrun hnc hb0 hinv hy hu.1 hb hCo (AC.deepest_mem hC).1.1 _
 
 /-- **The update of slot `s` returns exactly `P`** when `P` is held above `Σ.F` with a strict
 majority at the update's test: every block with a strict majority is on one chain with it, and no

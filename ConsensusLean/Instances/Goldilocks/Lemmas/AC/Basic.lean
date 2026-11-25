@@ -222,14 +222,15 @@ variable {sp : ACParams}
 
 open Classical in
 /-- A successful optimistic selection at `t` is made by a joined node, in a slot `slot(t) > 0`,
-before `t_{slot(t)} + 2Δ`. -/
+before `t_{slot(t)} + 2Δ`, with optimistic confirmation enabled. -/
 theorem optimisticSelect_guard {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     {B : Blk sp.n FGP} (h : optimisticSelect sp A Φ t = some B) :
-    joined sp A t ∧ sp.slot t ≠ 0 ∧ t < sp.ts (sp.slot t) + 2 * sp.Δ := by
+    joined sp A t ∧ sp.slot t ≠ 0 ∧ t < sp.ts (sp.slot t) + 2 * sp.Δ ∧
+      sp.optimistic = true := by
   unfold optimisticSelect at h
   dsimp only at h
   split_ifs at h with hc
-  simp only [not_or, not_not, not_le] at hc
+  simp only [not_or, not_not, not_le, Bool.not_eq_false] at hc
   exact hc
 
 open Classical in

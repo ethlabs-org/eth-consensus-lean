@@ -506,6 +506,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Quer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Sleepy
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic.Check
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic.Delivery
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic.Locks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic.Record
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic.Select
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic.Votes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Candidate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Defs
@@ -641,6 +647,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.G
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Held
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Later
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.LockVeto
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.PivotOld
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.PivotWalk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Suffix
@@ -984,12 +991,14 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Rea
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Safe
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Obligations.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.OptimisticInclusion.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.SleepyGrowth.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
 public import ConsensusLean.Instances.Goldilocks.Results.Spec.CanonicalTrace
 public import ConsensusLean.Instances.Goldilocks.Results.Spec.NodeCanonicalTrace
 public import ConsensusLean.Instances.Goldilocks.Results.Spec.SleepyGrowth
+public import ConsensusLean.Instances.Goldilocks.Results.Statements.OptimisticInclusion
 public import ConsensusLean.Instances.Goldilocks.Results.Statements.SleepyGrowth
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Actions
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Confirmation
