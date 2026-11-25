@@ -584,6 +584,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Queue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.ReceiverService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RegimeTransport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Release
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.ReleaseZeroPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.ReleasedPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.ResetHealBudget
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Restart

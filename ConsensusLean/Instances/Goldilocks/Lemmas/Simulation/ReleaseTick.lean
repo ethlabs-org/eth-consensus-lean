@@ -955,14 +955,15 @@ theorem attest_val_of_mem_exec {sp : ACParams} {ro : ReplayOrder sp (List (FG.At
     proposer dg self st t e h
 
 /-- A signing cut of an honest node's tick at a public time is a signing of the simulating
-trace before the end of that engine event. -/
-theorem signAt_before_tick_end {j : Nat} {v : V} {t : Time}
+trace among the cuts of that engine event. -/
+theorem signAt_in_tick {j : Nat} {v : V} {t : Time}
     (he : rho.events[j]? = some (.tick v t))
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t) {C} {b : FG.Att (Fintype.card V)}
     (hc : Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
       (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign
         (pubOf E) (rho.ownKey v) t))).2) :
-    ∃ k < cutMap S rho hn (j + 1), (simTrace S rho hn).SignAt (rho.ownKey v) k b := by
+    ∃ k, cutMap S rho hn j ≤ k ∧ k < cutMap S rho hn (j + 1) ∧
+      (simTrace S rho hn).SignAt (rho.ownKey v) k b := by
   have hj : j < rho.events.length := (List.getElem?_eq_some_iff.mp he).1
   have hEC := eventCuts_tick_public S rho hn j v t he hp
   obtain ⟨m, hm, hcm⟩ := List.getElem_of_mem hc
@@ -983,7 +984,7 @@ theorem signAt_before_tick_end {j : Nat} {v : V} {t : Time}
   have hk := allCuts_getElem?_add S rho hn j m hj hm'
   rw [List.getElem?_eq_getElem hm'] at hk
   obtain ⟨hnode, -, -, -, hlab⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm''
-  refine ⟨cutMap S rho hn j + m, ?_, C, ?_, ?_⟩
+  refine ⟨cutMap S rho hn j + m, by omega, ?_, C, ?_, ?_⟩
   · rw [cutMap_succ]; omega
   · rw [simTrace_node, hk]
     simp only [Option.elim_some]
@@ -992,6 +993,18 @@ theorem signAt_before_tick_end {j : Nat} {v : V} {t : Time}
   · rw [simTrace_label, hk]
     simp only [Option.map_some]
     rw [hget, hlab, hcm]
+
+/-- A signing cut of an honest node's tick at a public time is a signing of the simulating
+trace before the end of that engine event. -/
+theorem signAt_before_tick_end {j : Nat} {v : V} {t : Time}
+    (he : rho.events[j]? = some (.tick v t))
+    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) {C} {b : FG.Att (Fintype.card V)}
+    (hc : Cut.fg (.attest C (some b)) ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
+      (stateAt S rho hn v j).node t (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign
+        (pubOf E) (rho.ownKey v) t))).2) :
+    ∃ k < cutMap S rho hn (j + 1), (simTrace S rho hn).SignAt (rho.ownKey v) k b :=
+  let ⟨k, _, hk, hs⟩ := signAt_in_tick S rho hn he hp hc
+  ⟨k, hk, hs⟩
 
 /-- A vote emitted by a cut of `v`'s handler run from its engine state is of a slot whose vote
 role selects `v` (the emission gate at the state's installed permission). -/

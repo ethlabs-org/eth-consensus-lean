@@ -437,10 +437,15 @@ detail in `TRUST.md`.
   - *`R = 0` is a relation, not an equality.* With the schedule that always releases nothing is ever held, and a
     tick admits to the pool only the attestation its FG update signs (`admitsAt_tick_of_release`, `⊆`), exactly
     that attestation when it is new to the pool (`admitsAt_tick_of_release_eq`, `=`; for a tick whose group signs
-    `a`, `admitsAt_tick_of_signing`). In the canonical trace that admission is its own `.attestation` group right
-    after the tick group of the same engine event (`pool_release_zero_relation_tick`), and a tick that signs
-    nothing new has only its tick group (`pool_release_zero_relation_tick_none`). So the run at `R = 0` relates to
-    the run without a release schedule by this placement of the own admission; it is not the same run.
+    `a`, `admitsAt_tick_of_signing`). On a valid run the condition always holds: an own attestation enters the
+    pool at its release, so one in a node's pool was signed by the node earlier (`pool_own_signAt`), and a node signs
+    an attestation once, so the attestation a tick actually signs is not yet in its pool (`fgSigned_not_mem_pool`).
+    A tick therefore admits exactly the attestation its FG update signs, with no filter on the pool
+    (`admitsAt_tick_of_release_signed`). In the canonical trace that admission is its own
+    `.attestation` group right after the tick group of the same engine event (`pool_release_zero_relation_tick`),
+    and a tick that signs nothing new has only its tick group (`pool_release_zero_relation_tick_none`). So the run
+    at `R = 0` relates to the run without a release schedule by this placement of the own admission; it is not the
+    same run.
   - *Own publications are exempt from the cross-validator phase order.* The three phase-order clauses
     (`Node.LocalRun.phase_order`, `Growing.LocalRun.phase_order`, `RunOrder.phase`) order two groups of one time
     by phase unless the earlier one is another node's own publication (`RunTrace.OwnPublicationAt`). So the trace

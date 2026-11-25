@@ -114,14 +114,12 @@ theorem mem_admitsAt_rel_tick (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : T
     (traceEncoding_opLaws S hn) (goldilocks_ready S hn) rho hv he _ (trailing_rel S rho hn)
     (by rw [← admitsAt_trace]; exact ha)
 
-/-- **An attestation the engine admits to a node's pool during a tick is released by the tick's
-first trailing poll** (duty `p`, at the engine node `nd` before it): a held attestation that poll
-flushes, or the attestation that poll's FG update signs at a time the schedule allows. -/
-theorem mem_admitsAt_tick (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
-    (he : rho.events[i]? = some (.tick v t)) {a : FG.Att (Fintype.card V)}
-    (ha : a ∈ admitsAt S rho hn v i) :
-    ∃ p nd, EngineDutyCut S rho v i p nd ∧
-      (a ∈ (nd.st.1 hn).held ∨ EngineSignsAt S rho hn v i p a) := by
+/-- The engine node before a tick's first trailing poll is the engine duty cut of that poll
+(duty `p`, a `.poll` of an awake node). -/
+theorem beforeTrailing_dutyCut (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
+    (he : rho.events[i]? = some (.tick v t)) :
+    ∃ p, EngineDutyCut S rho v i p (beforeTrailing S rho v i t) ∧ E.awake v t = true ∧
+      ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll t.toNat) := by
   have hm := List.mem_of_getElem? he
   have ht := (hv.in_horizon _ hm).1
   have hw := hv.tick_awake v t hm
@@ -154,6 +152,33 @@ theorem mem_admitsAt_tick (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
       ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
         (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
       [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat] pa)) h
+  exact ⟨p, hcut, hw, hpoll⟩
+
+/-- The attestation that the FG update of a tick's first trailing poll signs, when it is due, is
+an engine signing of that poll. -/
+theorem engineSignsAt_of_fgSigned (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
+    (he : rho.events[i]? = some (.tick v t)) {p : Nat}
+    (hcut : EngineDutyCut S rho v i p (beforeTrailing S rho v i t)) (hw : E.awake v t = true)
+    (hpoll : ((Model.protoOf (compiled (goldilocks S)) E).duties t)[p]? = some (.poll t.toNat))
+    (hdue : (shapeOf S hn (beforeTrailing S rho v i t)).fgDue = true)
+    {a : FG.Att (Fintype.card V)}
+    (ha : fgSigned (shapeOf S hn (beforeTrailing S rho v i t)) = some a) :
+    EngineSignsAt S rho hn v i p a := by
+  rw [fgSigned_eq] at ha
+  simp only [Option.bind_eq_some_iff, Option.map_eq_some_iff] at ha
+  obtain ⟨C, hC, ⟨a', Λ'⟩, hatt, rfl⟩ := ha
+  exact (engineSignsAt_iff S rho hn v i p _).2 ⟨_, hcut, t.toNat, Or.inl ⟨t, he, hw, hpoll⟩,
+    poll_selected S rho hv v, hdue, C, Λ', hC, hatt⟩
+
+/-- **An attestation the engine admits to a node's pool during a tick is released by the tick's
+first trailing poll** (duty `p`, at the engine node `nd` before it): a held attestation that poll
+flushes, or the attestation that poll's FG update signs at a time the schedule allows. -/
+theorem mem_admitsAt_tick (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
+    (he : rho.events[i]? = some (.tick v t)) {a : FG.Att (Fintype.card V)}
+    (ha : a ∈ admitsAt S rho hn v i) :
+    ∃ p nd, EngineDutyCut S rho v i p nd ∧
+      (a ∈ (nd.st.1 hn).held ∨ EngineSignsAt S rho hn v i p a) := by
+  obtain ⟨p, hcut, hw, hpoll⟩ := beforeTrailing_dutyCut S rho hv he
   refine ⟨p, beforeTrailing S rho v i t, hcut, ?_⟩
   rcases List.mem_append.1 (mem_admitsAt_rel_tick S rho hn hv he ha) with h | h
   · left
@@ -165,12 +190,8 @@ theorem mem_admitsAt_tick (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     split at h
     · rename_i hc
       obtain ⟨hdue, -⟩ := Bool.and_eq_true_iff.1 hc
-      rw [fgSigned_eq] at h
-      simp only [Option.mem_toList, Option.bind_eq_some_iff,
-        Option.map_eq_some_iff] at h
-      obtain ⟨C, hC, ⟨a', Λ'⟩, hatt, rfl⟩ := h
-      exact (engineSignsAt_iff S rho hn v i p _).2 ⟨_, hcut, t.toNat, Or.inl ⟨t, he, hw, hpoll⟩,
-        poll_selected S rho hv v, hdue, C, Λ', hC, hatt⟩
+      exact engineSignsAt_of_fgSigned S rho hn hv he hcut hw hpoll hdue
+        (Option.mem_toList.1 h)
     · cases h
 
 /-- **An attestation admitted during a tick was signed by the engine** at that tick or earlier. -/
