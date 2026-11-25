@@ -1680,11 +1680,12 @@ the Healing module; HR.2 is an FG store node.  No HS node uses an H or HR
 node, and no H or HR node uses C1.1, C1.2, C1.3, O.1 or an R node.  They do
 not discharge O.1 (a), the time-scoped O.1 (b), or $T_{\mathrm{rec}}$.
 
-\paragraph{Healing notation.}  $\bar g=\max(g,0)$.  $\Theta=4(k+1)\Delta$
-bounds the time from a lock write to its expiry: a regular write lives
-at most $(4k-2)\Delta$, an optimistic one at most $4(k+1)\Delta$ (with $n=1$ the
+\paragraph{Healing notation.}  $\bar g=\max(g,0)$.  $\Theta$ bounds the
+time from a lock write to its expiry: a regular write lives at most
+$(4k-2)\Delta$, an optimistic one at most $4(k+1)\Delta$ (with $n=1$ the
 proposer's own vote can make an optimistic write at~$t_j$, which expires at
-the latest at $t_{j+k+1}$; AC \S Locks).
+the latest at $t_{j+k+1}$; AC \S Locks).  So $\Theta=4(k+1)\Delta$ when the
+optimistic switch is on and $\Theta=(4k-2)\Delta$ when it is off.
 $\Theta$ is not the client record~$\Lambda$.  For a time~$t$,
 $r_{\mathrm{AC}}(t)$ is the least slot with $t_{r_{\mathrm{AC}}(t)}\geq
 t+4\Delta$ and $s_{\mathrm{AC}}(t)$ the least slot with
@@ -1811,7 +1812,8 @@ extend~$P$ then).
 $t\geq\bar g+2\Theta+8\Delta$, an honest proposal released in
 $[t,t+G_{\mathrm p}]$ is in every honest confirmed tip from
 $t+G_{\mathrm p}+6\Delta$ on.  In particular there is one from
-$\bar g+2\Theta+14\Delta+G_{\mathrm p}=\bar g+(8k+22)\Delta+G_{\mathrm p}$ on.
+$\bar g+2\Theta+14\Delta+G_{\mathrm p}$ on, that is $\bar g+(8k+22)\Delta+G_{\mathrm p}$
+with the optimistic switch on and $\bar g+(8k+10)\Delta+G_{\mathrm p}$ with it off.
 
 (Proof shape.  Let $r=r_{\mathrm{AC}}(\bar g)$.
 Results of one slot $\geq r$ are compatible: regular with regular, regular
@@ -1821,7 +1823,7 @@ to every later one (A1.2, A1.4, then A1.3).  So does a slow origin whose
 window is $\geq r$: same-label compatibility gives A1.8's premise~(b) for the
 ancestor target.
 Viability and Carry come from relay and $\mathsf{Catch}$.  Every other lock
-expires by $t_r+(8k-4)\Delta<t_r+2\Theta$.
+expires by $t_r+(8k-4)\Delta\leq t_r+2\Theta$.
 At~$P$, the voter's tree is contained in the proposer's tree and the scores
 are equal, so the walks agree.  By (a) of the driven trace, $P$ is the only
 block of slot~$p$.
@@ -2112,8 +2114,9 @@ Assume the premises of H.3, and let
 \[
 T_{\mathrm{heal}}=\bar g+24\Delta+12C_{\mathrm{HS}}+T_{\mathrm b}+2\Theta+8\Delta
 =\bar g+(104k+628+48\delta_{\mathrm t})\Delta+12\Delta_F+36G_{\mathrm p}
-+T_{\mathrm b}.
++T_{\mathrm b}
 \]
+with the optimistic switch on, and $104k+616$ in place of $104k+628$ with it off.
 (i) Let $P$ be an honest proposal with $t_p\geq T_{\mathrm{heal}}$ whose
 honest votes of slot~$p$ are all~$P$ (in particular, one with
 $\mathsf{Geo}(P)$).  Then $P$ is in every honest confirmed tip at every
@@ -2418,6 +2421,7 @@ R.1 & \texttt{sleepySafe}, \texttt{confirmed\_safe\_sleepy(\_prefix)} (the
   A1.2, A1.3, A1.4, A1.6, C1.1, F.4 & blueprint 02\\
 R.2 & \texttt{sleepyLive}, \texttt{includeSleepy}, \texttt{growSleepy},
   \texttt{confirmed\_txLive\_sleepy} & A1.7, F.4 & blueprint 03\\
+OI & none (internal; below) & R.2, A0.3, A1.4 & ---\\
 R.3$^\dagger$ & \texttt{healedSafe}, \texttt{healthyLive} (available),
   \texttt{includeHealed}, \texttt{growHealed},
   \texttt{confirmed\_txLive\_healed} & R.1, R.2, C1.1, H.4; heal point (D1) &
@@ -2448,6 +2452,27 @@ endpoint's premises and numbers; \texttt{includeHealed},
 \texttt{liveDC}, \texttt{outageWindow} and \texttt{outage\_final\_compatible}
 are not, and R.6 has no certified row; the certified ones are not proved through the uses listed
 here.
+\end{sloppypar}
+
+\begin{sloppypar}
+\emph{OI (optimistic inclusion).}  An internal result on confirmation speed,
+not a target row, outside the challenge, the solution and the obligations.
+In R.2's setting (a growing-fault run from the committee start of a slot
+dictionary~$K$, with its committee facts and committee support, under
+$\mathsf{Sleepy}$ with look-ahead $5\Delta$), with the optimistic switch on:
+let $P$ be an honest proposal released at~$t_p$ by a proposer ready then and
+honest through its hold, such that every slot-$p$ vote of a node honest at
+$t_p+\Delta$ has head~$P$, and such that
+$3\,|K(p)|\leq4\,|\{x\in K(p): x\text{ awake and joined at }t_p+\Delta,\ \text{honest at }t_p+2\Delta\}|$
+(an adversary of at most a quarter of the committee, honest through the
+optimistic window).  Then $P$ is in the confirmed read of every node ready at~$t$
+and awake and joined throughout $[t_p,t_p+2\Delta]$, for every
+$t\geq t_p+2\Delta$; R.2 gives $t_p+6\Delta$.  Counting members honest only
+at $t_p+\Delta$ is not enough: a member corrupted just after $t_p+\Delta$ can
+have two adversarial votes reach the reader before its honest one, which
+admission then refuses.  Lean: \texttt{Regimes.Growing.OptimisticInclusion}
+(\texttt{Results/Statements/OptimisticInclusion}), proved by
+\texttt{optimistic\_inclusion} (\texttt{Proofs/Growing/OptimisticInclusion/Main}).
 \end{sloppypar}
 
 History, for the archived R.3: it was also open at the post-cut transfer of the available record: an unmoved
@@ -2972,6 +2997,8 @@ R.2 & \texttt{Regimes.Growing.IncludeSleepy}, \texttt{Regimes.Growing.GrowSleepy
   \texttt{GrowSleepy} assumes no node ready at $t+(4k+6)\Delta$; transaction
   liveness is generic, from
   \texttt{ShapeObligations}\\
+OI & \texttt{Regimes.Growing.OptimisticInclusion} & proved
+  (\texttt{optimistic\_inclusion}; internal, not a target row)\\
 R.3--R.6 & archived \texttt{Regimes.Healed*}, \texttt{Final*},
   \texttt{Outage*}, \texttt{Weak*} & node statements retired, never
   proved; \texttt{healedSafe}, \texttt{healthyLive} and \texttt{persists}
