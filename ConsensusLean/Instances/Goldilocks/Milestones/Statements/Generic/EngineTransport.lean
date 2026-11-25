@@ -17,15 +17,18 @@ variable {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
 /-- Regime transport to the run map. The healthy leg supplies the generic `Service` consumed by
 `Premises.sync` (message, block and relay service from GST, signed-row service through the
 horizon), and the sleepy leg the service form `SleepyServicePrefix` at the local look-ahead;
-neither asks an order between `ΔAC` and `ΔFG`. -/
+neither asks an order between `ΔAC` and `ΔFG`. With a release hold `hold` (own signed
+attestations published up to `hold` after the effective signing time), the healthy leg serves
+signed rows at the FG delay `ΔFG + hold`, for signers still honest when their release falls due;
+at `hold = 0` this is service at `ΔFG`. -/
 structure RegimeTransport (M : RunMap rho payload) (K : Contract ProgressReq)
-    (C : ACCorrectLocal A M.signer) : Prop where
+    {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold) (hold : Time := 0) : Prop where
   sleepy : rho.ExecutionValid → ¬ rho.HashCollision →
     (Sys F V).Sleepy (shapeProgress F V).toExternal K ⟨E, rho⟩ →
     SleepyServicePrefix C M.trace M.honest E.ΔFG C.look rho.horizon
   healthy : rho.ExecutionValid → ¬ rho.HashCollision → ∀ g,
     (Sys F V).Healthy (shapeProgress F V).toExternal K g ⟨E, rho⟩ →
-    Service M.trace M.honest g E.ΔFG rho.horizon ∧
+    Service M.trace M.honest g (E.ΔFG + hold) rho.horizon hold ∧
     (∀ y t, max g 0 ≤ t → t ≤ rho.horizon → y ∈ M.honest t → M.trace.awake y t) ∧
     (∀ d, 0 ≤ d → d ≤ rho.horizon → ((M.honest d)ᶜ.ncard : ℚ) < K.params.β * P.n) ∧
     (∀ t d, max g 0 ≤ t → t ≤ rho.horizon → 0 ≤ d → d ≤ rho.horizon →

@@ -17,7 +17,7 @@ open Healing (FirstCutAfter cutZ)
 open Healing.Growing (HZ IsReset CatchRun NoRestartAfter)
 
 variable {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
-variable {runs : ACRun A sg}
+variable {runs : ACRun A sg} {hold : Time}
 
 open Classical in
 /-- The merged frame key, restated without importing its proof module. -/
@@ -76,7 +76,7 @@ def reset_of_high_report_at (runs : ACRun A sg) : Prop :=
 /-- Leaf 8: deficit at a fixed key. The Prop is parameterized by a healing supplier whose value does
 not occur in its body; its proof uses the supplier's `proposal_floor`. Proved over any supplier by
 `rounds_le_warm_proposal_at_of_healing` (Lemmas/Generic/HealingRounds). -/
-def rounds_le_warm_proposal_at (_O : ACHealing A sg runs) : Prop :=
+def rounds_le_warm_proposal_at (_O : ACHealing A sg runs hold) : Prop :=
   ∀ {cm proposer dg H tr} {g af len : Time} {u floor v : Nat} {kindJ : Prop} {J B : A.Blk}
     {z : Fin P.n} {kB : Nat},
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
@@ -91,7 +91,7 @@ def rounds_le_warm_proposal_at (_O : ACHealing A sg runs) : Prop :=
 /-- Leaf 9: report kind. The Prop is parameterized by a healing supplier whose value does not occur
 in its body; its proof uses the supplier's `proposal_floor` and `report_in_frame`. Proved over any
 supplier by `report_kind_of_warm_at_of_healing` (Lemmas/Generic/HealingRounds). -/
-def report_kind_of_warm_at (_O : ACHealing A sg runs) : Prop :=
+def report_kind_of_warm_at (_O : ACHealing A sg runs hold) : Prop :=
   ∀ {cm proposer dg H tr} {lo hi : Time} {floor u : Nat} {kindJ : Prop} {J B R : A.Blk}
     {z : Fin P.n} {kB : Nat} {y : Fin P.n} {i : Nat},
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → FrameWindow tr H lo hi floor kindJ J →
@@ -106,14 +106,14 @@ def report_kind_of_warm_at (_O : ACHealing A sg runs) : Prop :=
 
 /-- Leaf 10: a warm high proposal forces the next reset. Proved over any supplier by
 `reset_of_high_proposal_at_of_healing` (Lemmas/Generic/HealingRounds). -/
-def reset_of_high_proposal_at (O : ACHealing A sg runs) : Prop :=
+def reset_of_high_proposal_at (O : ACHealing A sg runs hold) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time} {s₀ u N floor : Nat}
     {kindJ : Prop} {J B : A.Blk}
     {z : Fin P.n} {kB : Nat},
     βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
     SlotWindowWithin tr H O.reportDelay s₀ N floor kindJ J →
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    Service tr H g ΔF b → (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
+    Service tr H g ΔF b hold → (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
     CatchRun tr H g (2 * P.Δ) → NoRestartAfter tr H (gbar g) →
     (∀ s, P.slotTime s + 4 * P.Δ ≤ P.slotTime (s + 1)) →
@@ -127,13 +127,13 @@ def reset_of_high_proposal_at (O : ACHealing A sg runs) : Prop :=
 
 /-- Leaf 11: both compared heights are read in the later proposer's store. Proved over any
 supplier by `round_of_warm_at_of_healing` (Lemmas/Generic/HealingRounds). -/
-def round_of_warm_at (O : ACHealing A sg runs) : Prop :=
+def round_of_warm_at (O : ACHealing A sg runs hold) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b T : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
     {J B X : A.Blk} {z : Fin P.n} {kB : Nat} {p : Fin P.n} {kX : Nat},
     βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
     SlotWindowWithin tr H O.reportDelay s₀ N floor kindJ J →
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    Service tr H g ΔF b → (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
+    Service tr H g ΔF b hold → (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
     CatchRun tr H g (2 * P.Δ) → NoRestartAfter tr H (gbar g) →
     (∀ s, P.slotTime s + 4 * P.Δ ≤ P.slotTime (s + 1)) →
@@ -151,19 +151,19 @@ def round_of_warm_at (O : ACHealing A sg runs) : Prop :=
       ((tr.state p (kX + 1)).fg.σ B.root).h + 1 ≤ ((tr.state p (kX + 1)).fg.σ X.root).h
 
 /-- A high origin combines own-write honesty, protocol origin, and the exact height bound. -/
-def HighOrigin (O : ACHealing A sg runs) (tr : RunTrace A) (H : Time → Set (Fin P.n)) (g : Time)
-    (x : Fin P.n) (i j : Nat) (B : A.Blk) : Prop :=
+def HighOrigin (O : ACHealing A sg runs hold) (tr : RunTrace A) (H : Time → Set (Fin P.n))
+    (g : Time) (x : Fin P.n) (i j : Nat) (B : A.Blk) : Prop :=
   x ∈ H (max (cutZ P g) (tr.time i)) ∧ O.Origin tr x i j B ∧
     HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h
 
 /-- Leaf 12: strict source cut, original entry identities and ancestry.
 The reset premises are required by the abstract origin producer `report_origin`. Proved over any
 supplier by `high_row_source_at_of_healing` (Lemmas/Generic/HealingRounds). -/
-def high_row_source_at (O : ACHealing A sg runs) : Prop :=
+def high_row_source_at (O : ACHealing A sg runs hold) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time}
     {v : Fin P.n} {d : Nat} {att : FG.Att P.n},
     βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
-    Premises tr H cm βK proposer dg sg g ΔF b → IsReset tr H g a → a ≤ b →
+    Premises tr H cm βK proposer dg sg g ΔF b hold → IsReset tr H g a → a ≤ b →
     v ∈ H (max (cutZ P g) (tr.time d)) → tr.time d ≤ b →
     tr.SignAt v d att → HZ tr H g + 1 ≤ att.h →
     ∃ r < d, ∃ l Og, HighOrigin A sg O tr H g v r l Og ∧
@@ -175,20 +175,20 @@ def high_row_source_at (O : ACHealing A sg runs) : Prop :=
 occur in its body; its proof uses the supplier's `report_origin`, `report_in_frame` and
 `origins_comparable`. Proved over any supplier by `no_high_contest_at_of_healing`
 (Lemmas/Generic/HealingRounds). -/
-def no_high_contest_at (_O : ACHealing A sg runs) : Prop :=
+def no_high_contest_at (_O : ACHealing A sg runs hold) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {p : Fin P.n} {i : Nat},
     βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
-    Premises tr H cm βK proposer dg sg g ΔF b → IsReset tr H g a → a ≤ b →
+    Premises tr H cm βK proposer dg sg g ΔF b hold → IsReset tr H g a → a ≤ b →
     p ∈ H (tr.time i) → tr.time i ≤ b →
     ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax)
 
 /-- Leaf 14: independently bounded historical readers, not event-only readers. Proved over any
 supplier by `high_entry_eq_at_of_healing` (Lemmas/Generic/HealingRounds). -/
-def high_entry_eq_at (O : ACHealing A sg runs) : Prop :=
+def high_entry_eq_at (O : ACHealing A sg runs hold) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {x x' : Fin P.n} {i j i' j' : Nat}
     {B B' Z₁ Z₂ : A.Blk} {y₁ y₂ : Fin P.n} {m₁ m₂ : Nat} {t₁ t₂ : Time},
     βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
-    Premises tr H cm βK proposer dg sg g ΔF b → IsReset tr H g a → a ≤ b →
+    Premises tr H cm βK proposer dg sg g ΔF b hold → IsReset tr H g a → a ≤ b →
     HighOrigin A sg O tr H g x i j B → tr.time i ≤ b →
     HighOrigin A sg O tr H g x' i' j' B' → tr.time i' ≤ b →
     Anc (tr.HonestBlocksAt H) Z₁ B → Anc (tr.HonestBlocksAt H) Z₂ B' →

@@ -32,7 +32,7 @@ def PopulationQuorumSupply (M : RunMap rho payload) (K : Contract ProgressReq) :
 /-- One point on the mapped validator indices, with independent look-ahead fits.
 The population and committee transports retain their own charge times. -/
 def SleepyWindowSupply (M : RunMap rho payload) (K : Contract ProgressReq)
-    (C : ACCorrectLocal A M.signer) : Prop :=
+    {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold) : Prop :=
   ∃ p : EnvPoint (Fin P.n), RunPointBinding M.trace M.honest p ∧
     p.horizon = rho.horizon ∧ C.θ = K.params.θ ∧ 0 ≤ C.θ ∧ C.θ ≤ 1 ∧
     C.look = (Sys F V).aheadDur K ⟨E, rho⟩ ∧
@@ -47,7 +47,7 @@ def SleepyWindowSupply (M : RunMap rho payload) (K : Contract ProgressReq)
 catch-up/heal/latency equations in `Lemmas/Obligations/ContractDefs`.
 The chosen local parameters and FG threshold arithmetic must satisfy every field. -/
 structure ClaimDeadlineFit (M : RunMap rho payload) (K : Contract ProgressReq)
-    (C : ACCorrectLocal A M.signer) : Prop where
+    {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold) : Prop where
   /-- One unit of readiness slack permits the local read at the stored clock. -/
   catchUp : C.catchUp + 1 ≤ (Sys F V).cDur K ⟨E, rho⟩
   latency_le_margin : C.latency ≤ C.margin
@@ -62,7 +62,7 @@ structure ClaimDeadlineFit (M : RunMap rho payload) (K : Contract ProgressReq)
 `confirmed_slot_event_at`, as consumed by `confirmed_payload_projection_at`.
 ReadyProposal alone has neither the engine cDur awake interval nor a surviving hold. -/
 def AdmissibleProposal (M : RunMap rho payload) (K : Contract ProgressReq)
-    (C : ACCorrectLocal A M.signer) (B : A.Blk) (k : Nat) : Prop :=
+    {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold) (B : A.Blk) (k : Nat) : Prop :=
   B.root ≠ P.genesisRoot ∧
     0 ≤ M.trace.time k ∧ M.trace.time k + C.hold ≤ rho.horizon ∧
     rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩)
@@ -73,7 +73,7 @@ regime. Advertised readiness is retained jointly with the
 selected proposal; arbitrary locally ready proposals need not be admissible.
 Collision freedom is used only in the collision-excused liveness reductions. -/
 structure ProposalWitnessRefinement (M : RunMap rho payload) (K : Contract ProgressReq)
-    (C : ACCorrectLocal A M.signer) : Prop where
+    {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold) : Prop where
   sleepy : rho.ExecutionValid → ¬ rho.HashCollision → ∀ cap idx t,
     (cap = .available ∨ cap = .stable) →
     (Sys F V).Sleepy (shapeProgress F V).toExternal K ⟨E, rho⟩ →
@@ -103,8 +103,10 @@ service transport, on the honest sets truncated after this exact deadline
 `NoRestartAfter` is required of a finite healthy query. The chosen forwarding delay and
 snapshot must fit this exact deadline; truncation discharges neither. Every `Premises`
 field, including committee counts, remains required; this is not obtained from the
-final-window conclusion. -/
-def DeadlinePremisesSupply (M : RunMap rho payload) (K : Contract ProgressReq) : Prop :=
+final-window conclusion. The premises are at release hold `hold` and FG delay `ΔF` (defaults `0`
+and `E.ΔFG`). -/
+def DeadlinePremisesSupply (M : RunMap rho payload) (K : Contract ProgressReq) (hold : Time := 0)
+    (ΔF : Time := E.ΔFG) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ idx gst query,
     (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
     (Sys F V).prog (shapeProgress F V) K .final idx ((Sys F V).ready K gst ⟨E, rho⟩)
@@ -114,8 +116,8 @@ def DeadlinePremisesSupply (M : RunMap rho payload) (K : Contract ProgressReq) :
     (∃ v, rho.point.Ready ((Sys F V).cDur K ⟨E, rho⟩) v
       (query + (K.params.latency .final idx : Time) * E.ΔAC)) →
     Premises M.trace (truncH M.honest (query + (K.params.latency .final idx : Time) * E.ΔAC))
-      M.committee K.params.βK M.proposer M.digest M.signer gst E.ΔFG
-      (query + (K.params.latency .final idx : Time) * E.ΔAC)
+      M.committee K.params.βK M.proposer M.digest M.signer gst ΔF
+      (query + (K.params.latency .final idx : Time) * E.ΔAC) hold
 
 /-- Actual-read cache bridge: the first anchor of a selected final window, with its acceptance,
 chaining and height evidence, is below the finalized block of every ready reader from the
@@ -125,14 +127,16 @@ The cache's `Premises` are on the honest sets truncated after `deadline`, as
 deadline, since `truncH H b t = H t ∩ {t ≤ b}`, so a reader at `deadline ≤ t` keeps its
 honesty, its run and the population threshold at `t` on `M.honest`, and the window ancestry
 and the conclusion stay over `M.honest`'s honest blocks; ancestry over the truncated honest
-blocks is ancestry over `M.honest`'s, as `honestBlocksAt_truncH_subset` gives. -/
-structure FinalReadTransport (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) : Prop where
+blocks is ancestry over `M.honest`'s, as `honestBlocksAt_truncH_subset` gives. The premises are
+at `C`'s release hold and FG delay `ΔF` (default `E.ΔFG`). -/
+structure FinalReadTransport (M : RunMap rho payload) {fgHold : Time}
+    (C : ACCorrectLocal A M.signer fgHold) (ΔF : Time := E.ΔFG) : Prop where
   cache : ∀ (βK : ℚ) gst query deadline
     (W : FinalProductionWindow M C.catchUp C.hold query deadline),
     βK ≤ 1 / 2 →
     C.run.Run M.committee M.proposer M.digest M.honest M.trace →
     Premises M.trace (truncH M.honest deadline) M.committee βK M.proposer M.digest M.signer gst
-      E.ΔFG deadline →
+      ΔF deadline fgHold →
     (∀ a, M.trace.AcceptAt (W.block a).proposer (W.cut a) (W.block a)) →
     (∀ a b, a ≤ b → Anc (M.trace.HonestBlocksAt M.honest) (W.block a) (W.block b)) →
     (∀ a : Fin 3, ∃ z i j, z ∈ M.honest (M.trace.time i) ∧
@@ -169,14 +173,15 @@ def ActualReadAccountability (M : RunMap rho payload) (runs : ACRun A M.signer) 
 
 /-- Canonical-high assembly from `high_row_source_at`, `no_high_contest_at`
 and `high_entry_eq_at`, with reset premises at the same horizon. This supplies
-prerequisites of `heal_after_reset`, never by invoking that field itself. -/
-def HighCanonicalSupply (M : RunMap rho payload) (K : Contract ProgressReq)
-    (C : ACCorrectLocal A M.signer) : Prop :=
+prerequisites of `heal_after_reset`, never by invoking that field itself. The premises are at `C`'s
+release hold and FG delay `ΔF` (default `E.ΔFG`). -/
+def HighCanonicalSupply (M : RunMap rho payload) (K : Contract ProgressReq) {fgHold : Time}
+    (C : ACCorrectLocal A M.signer fgHold) (ΔF : Time := E.ΔFG) : Prop :=
   CommitteeHalfFit K → rho.ExecutionValid → ¬ rho.HashCollision → ∀ gst a,
   (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
   C.run.Run M.committee M.proposer M.digest M.honest M.trace →
   Premises M.trace M.honest M.committee K.params.βK M.proposer M.digest M.signer
-    gst E.ΔFG rho.horizon →
+    gst ΔF rho.horizon fgHold →
   Healing.Growing.IsReset M.trace M.honest gst a → a ≤ rho.horizon →
   HighCanonical C.healing.Origin M.trace M.honest gst rho.horizon
 
@@ -184,8 +189,10 @@ def HighCanonicalSupply (M : RunMap rho payload) (K : Contract ProgressReq)
 `healthy_preparation_awake_at`, `healthy_preparation_faults_at`,
 `healthy_preparation_noRestart_at` and the snapshot/catch-up assembly in
 `healthy_preparation_reset_at`. Committee transport and delay fit remain required;
-the final-query deadline supplier is not this full-horizon assembly. -/
-def PreparationPremisesSupply (M : RunMap rho payload) (K : Contract ProgressReq) : Prop :=
+the final-query deadline supplier is not this full-horizon assembly. The premises are at release
+hold `hold` and FG delay `ΔF` (defaults `0` and `E.ΔFG`). -/
+def PreparationPremisesSupply (M : RunMap rho payload) (K : Contract ProgressReq)
+    (hold : Time := 0) (ΔF : Time := E.ΔFG) : Prop :=
   HealthyBetaFit K → rho.ExecutionValid → ¬ rho.HashCollision → ∀ cap idx gst,
   (cap = .available ∨ cap = .stable) →
   (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
@@ -193,7 +200,7 @@ def PreparationPremisesSupply (M : RunMap rho payload) (K : Contract ProgressReq
     ((Sys F V).heal K cap idx gst ⟨E, rho⟩) ⟨E, rho⟩ →
   (Sys F V).heal K cap idx gst ⟨E, rho⟩ ≤ rho.horizon →
   Premises M.trace M.honest M.committee K.params.βK M.proposer M.digest M.signer
-    gst E.ΔFG rho.horizon
+    gst ΔF rho.horizon hold
 
 /-- Selected-reset existence and drain/slot budget. Source:
 `healthy_preparation_initialize_late_at`, using `healthy_preparation_reset_at`.
@@ -208,7 +215,7 @@ strictly after the opening's margin (source:
 `HealthyReadPoint.healed` requires.
 The local drain/margin arithmetic remains an instance proof obligation. -/
 def ResetHealBudgetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
-    (C : ACCorrectLocal A M.signer) : Prop :=
+    {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ cap idx gst,
   (cap = .available ∨ cap = .stable) →
   (Sys F V).Healthy (shapeProgress F V).toExternal K gst ⟨E, rho⟩ →
@@ -229,7 +236,7 @@ Catch-up has one unit of slack; readiness and sleepy counts transport monotonica
 The remaining equations supply numerical rewriting, not the protection obligation OC-K.
 `RunMap.delta_eq` fixes the delay across all environments covered by one local record. -/
 structure OutageRecoveryBinding (M : RunMap rho payload) (K : Contract ProgressReq)
-    (C : ACCorrectLocal A M.signer) : Prop where
+    {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold) : Prop where
   /-- One fixed local duration matches the same run's advertised recovery duration. -/
   duration : C.recovery = (K.params.recovery : Time) * E.ΔAC
   threshold : C.θ = K.params.θ
@@ -245,7 +252,7 @@ service and the unguarded acceptance relay the recovery consumes). Concrete supp
 `outage_pre_service_at`, whose message interpretation permits fresh processing or retained
 evidence, and `goldilocks_postStopService`. Instance transport remains an obligation. -/
 def OutageServiceSupply (M : RunMap rho payload) (K : Contract ProgressReq)
-    (C : ACCorrectLocal A M.signer) : Prop :=
+    {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold) : Prop :=
   rho.ExecutionValid → ¬ rho.HashCollision → ∀ T b₀ b₁,
   (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ ⟨E, rho⟩ →
   ACServiceBefore C M.trace M.honest E.ΔFG b₀ ∧ PostStopService M.trace M.honest b₁

@@ -50,7 +50,7 @@ def RunPointBinding {A : NodeAC P} (tr : RunTrace A) (H : Time → Set (Fin P.n)
 /-- The local supplier for a generic AC. Constructing its type supplies no evidence.
 The first row states membership and the finalized-to-confirmed-to-head ancestry at honest cuts.
 The assembly record lives separately and cannot be used as a premise of this field. -/
-structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
+structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) (fgHold : Time := 0) where
   /-- Protocol-supplied durations, not fixed instance coefficients. -/
   look : Time
   catchUp : Time
@@ -74,7 +74,7 @@ structure ACCorrectLocal (A : NodeAC P) (sg : A.Msg → Fin P.n) where
   served_of_delivered : ∀ {cm proposer dg H tr} {y j τ m}, run.Run cm proposer dg H tr →
     tr.MsgDeliveredBy y j τ τ m → served tr y j τ m
   /-- Healing is a separate protocol obligation, not implied by this record's endpoint claims. -/
-  healing : ACHealing A sg run
+  healing : ACHealing A sg run fgHold
   /-- The transaction/input projection of a block, supplied as data. -/
   payload : A.Blk → Set Nat
   /-- Durations cannot make readiness or deadlines negative. -/
@@ -98,7 +98,7 @@ theorem ACRun.cast_run {A : NodeAC P} {sg sg' : A.Msg → Fin P.n} (h : sg = sg'
 Message service is AC-owned; node acceptance relay retains its processing bounds.
 Certificate: part of the open OC-K obligation. -/
 structure ACServiceBefore {A : NodeAC P} {sg : A.Msg → Fin P.n}
-    (C : ACCorrectLocal A sg) (tr : RunTrace A) (H : Time → Set (Fin P.n))
+    {fgHold : Time} (C : ACCorrectLocal A sg fgHold) (tr : RunTrace A) (H : Time → Set (Fin P.n))
     (ΔF b : Time) : Prop where
   deltaF : 0 < ΔF
   message : ∀ x i m, x ∈ H (tr.time i) → tr.SendOrAdmitAt x i m → 0 ≤ tr.time i →
@@ -131,7 +131,8 @@ structure PostStopService {A : NodeAC P} (tr : RunTrace A) (H : Time → Set (Fi
 the AC-owned message service and node acceptance relay up to recipient deadlines `≤ b`, and the
 slot-point fault counts charged at the look-ahead clamped at `b`. The service form of the
 finite sleepy premises; unlike `RunTrace.SyncRunAt` it asks no order `Δ ≤ ΔF`. -/
-def SleepyServicePrefix {A : NodeAC P} {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg)
+def SleepyServicePrefix {A : NodeAC P} {sg : A.Msg → Fin P.n}
+    {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
     (tr : RunTrace A) (H : Time → Set (Fin P.n)) (ΔF look b : Time) : Prop :=
   0 ≤ b ∧ ACServiceBefore C tr H ΔF b ∧
     ∀ s : Nat, ∀ d ∈ ({0, P.Δ, 2 * P.Δ} : Set Time), P.slotTime s + d ≤ b →

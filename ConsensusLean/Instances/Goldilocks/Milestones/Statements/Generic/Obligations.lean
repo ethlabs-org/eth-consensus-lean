@@ -55,8 +55,12 @@ def ProposalGap (tr : RunTrace A) (H : Time → Set (Fin P.n))
   ∀ a, s₀ ≤ a → a + G ≤ N + 1 → ∃ x, a ≤ x ∧ x < a + G ∧
     proposer x ∈ H (P.slotTime x + P.Δ) ∧ ∃ k Q, tr.ProposesAt (proposer x) k Q ∧ Q.slot = x
 
-/-- Population message, block, relay and signed-row service. -/
-structure Service (tr : RunTrace A) (H : Time → Set (Fin P.n)) (g ΔF b : Time) : Prop where
+/-- Population message, block, relay and signed-row service. With a release hold `hold > 0`
+(own signed attestations published up to `hold` after the effective signing time), a signing is
+served only when its signer is still honest at `max (time i) g + hold`, in the form of
+`SyncOnAt.attestation`, and the hold is within `ΔF`; at `hold = 0` both are implied. -/
+structure Service (tr : RunTrace A) (H : Time → Set (Fin P.n)) (g ΔF b : Time)
+    (hold : Time := 0) : Prop where
   deltaF : 0 < ΔF
   message : ∀ x i m, x ∈ H (tr.time i) → tr.SendOrAdmitAt x i m →
     ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j →
@@ -72,9 +76,13 @@ structure Service (tr : RunTrace A) (H : Time → Set (Fin P.n)) (g ΔF b : Time
       Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B →
       tr.BlockAcceptedBy y j (max (tr.time i) g) B
   signedRow : ∀ x i att, x ∈ H (tr.time i) → tr.SignAt x i att →
+    (∀ k ≤ i, tr.SignAt x k att → tr.time k = tr.time i → hold ≠ 0 →
+      x ∈ H (max (tr.time i) g + hold)) →
     ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j → tr.time j ≤ b →
       tr.deadline y j (max (tr.time i) g) ΔF ≤ tr.time j →
       ∃ k ≤ j, tr.ProcessAttAt y k att ∧ tr.time k < tr.deadline y k (max (tr.time i) g) ΔF
+  /-- The release hold is within the attestation delay (at `hold = 0`, `deltaF`). -/
+  hold_le : hold ≤ ΔF
 
 /-- Nonempty committees selected from GST onward obey the contract fraction at
 every charge time up to the horizon. No pre-GST selection count is assumed. -/
@@ -84,14 +92,15 @@ def CommitteeFaultsUpTo (βK : ℚ) (cm : Time → Finset (Fin P.n))
     (cm t).Nonempty →
       (((↑(cm t) : Set (Fin P.n)) ∩ (H d)ᶜ).ncard : ℚ) < βK * (cm t).card
 
-/-- Strong bundled premises for corollary forms, never a replacement for old-premise leaves. -/
+/-- Strong bundled premises for corollary forms, never a replacement for old-premise leaves; the
+service at release hold `hold` (default `0`). -/
 structure Premises (tr : RunTrace A) (H : Time → Set (Fin P.n))
     (cm : Time → Finset (Fin P.n)) (βK : ℚ)
     (proposer : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)
-    (sg : A.Msg → Fin P.n) (g ΔF b : Time) : Prop where
+    (sg : A.Msg → Fin P.n) (g ΔF b : Time) (hold : Time := 0) : Prop where
   committee : CommitteeFaultsUpTo βK cm H g b
   noColl : Compose.NoCollRun dg tr
-  sync : Service tr H g ΔF b
+  sync : Service tr H g ΔF b hold
   awake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t
   faults : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1
   catchUp : CatchRun tr H g (2 * P.Δ)
@@ -174,15 +183,17 @@ abbrev SlotWindowWithin (tr : RunTrace A) (H : Time → Set (Fin P.n))
     (d s₀ N floor : Nat) (kindJ : Prop) (J : A.Blk) : Prop :=
   FrameWindow tr H (P.slotTime s₀) (shiftDelay P d (P.slotTime N + 2 * P.Δ)) floor kindJ J
 
-/-- Protocol obligations for growing runs. New source and warmth laws require genuine suppliers. -/
-structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg) where
+/-- Protocol obligations for growing runs. New source and warmth laws require genuine suppliers.
+The premises are read at release hold `hold` (default `0`). -/
+structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg)
+    (hold : Time := 0) where
   warmup : Nat
   follow : Nat
   reportDelay : Nat
   drain : Nat
   Origin : RunTrace A → Fin P.n → Nat → Nat → A.Blk → Prop
   follow_le : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time},
-    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b → follow ≤ P.δt
+    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold → follow ≤ P.δt
   report_in_frame : ∀ {cm proposer dg H tr} {y : Fin P.n} {i : Nat} {R : A.Blk},
     runs.Run cm proposer dg H tr → y ∈ H (tr.time i) → ReportAt tr y i R →
     R ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot R
@@ -200,7 +211,7 @@ structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg) 
   report_follow : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time}
     {s₀ N u floor : Nat} {kindJ : Prop} {J B : A.Blk} {z : Fin P.n} {kB : Nat},
     βK ≤ 1 / 2 →
-    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
+    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold →
     FrameWindow tr H (P.slotTime s₀)
       (shiftDelay P reportDelay (P.slotTime N + 2 * P.Δ)) floor kindJ J →
     gbar g + 4 * P.Δ ≤ P.slotTime s₀ → s₀ + warmup ≤ u →
@@ -217,7 +228,7 @@ structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg) 
   report_origin : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time}
     {y : Fin P.n} {i : Nat} {R : A.Blk},
     βK ≤ 1 / 2 →
-    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
+    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold →
     IsReset tr H g a → a ≤ b → y ∈ H (tr.time i) → tr.time i ≤ b → ReportAt tr y i R →
     HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h →
     ∃ r ≤ i, ∃ j B, y ∈ H (tr.time r) ∧ Origin tr y r j B ∧
@@ -228,7 +239,7 @@ structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg) 
   origins_comparable : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {x x' : Fin P.n}
     {i j i' j' : Nat} {B B' : A.Blk},
     βK ≤ 1 / 2 →
-    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
+    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold →
     IsReset tr H g a → a ≤ b →
     x ∈ H (max (cutZ P g) (tr.time i)) → Origin tr x i j B → tr.time i ≤ b →
     HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h →
@@ -239,7 +250,7 @@ structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg) 
   Certificate: cert obligation open: the certificate healing bound. -/
   heal_after_reset : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time},
     βK ≤ 1 / 2 →
-    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
+    runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold →
     IsReset tr H g a → a ≤ b →
     HighCanonical Origin tr H g b → HealedFrom tr H proposer (P.slotOf a + drain) b
 

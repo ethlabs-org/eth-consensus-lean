@@ -16,7 +16,7 @@ open Healing (FirstCutAfter cutZ)
 open Healing.Growing (HZ IsReset CatchRun NoRestartAfter)
 
 variable {P : Params} (A : NodeAC P) (sg : A.Msg → Fin P.n)
-variable {runs : ACRun A sg}
+variable {runs : ACRun A sg} {hold : Time}
 
 /-- Honest restarts are bounded only through the finite horizon. -/
 def NoRestartUpTo (tr : RunTrace A) (H : Time → Set (Fin P.n)) (t b : Time) : Prop :=
@@ -24,12 +24,12 @@ def NoRestartUpTo (tr : RunTrace A) (H : Time → Set (Fin P.n)) (t b : Time) : 
 
 /-- Old-premise rise contract, retaining the timeout and strict no-advance cutoff. Proved over any
 supplier by `rise_reset_rounds_at_of` (Lemmas/Generic/HealingEdges). -/
-def rise_reset_rounds_at (O : ACHealing A sg runs) : Prop :=
+def rise_reset_rounds_at (O : ACHealing A sg runs hold) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b T : Time}
     {s₀ N Gp floor : Nat} {kindJ : Prop} {J : A.Blk},
     βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
     SlotWindowWithin tr H O.reportDelay s₀ N floor kindJ J →
-    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → Service tr H g ΔF b →
+    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → Service tr H g ΔF b hold →
     (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
     CatchRun tr H g (2 * P.Δ) → NoRestartAfter tr H (gbar g) →

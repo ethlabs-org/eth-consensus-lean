@@ -50,7 +50,8 @@ noncomputable def headRead (tr : RunTrace A) (y : Fin P.n) (i : Nat)
 Sources: CorrectLocal.tipsValid; lead LeadTipsValid/LeadHeldInView;
 Growing/Simulation/Endpoint/Outputs.engine_outputValid_at and engine_nested_at.
 The held-tree-to-view, root, chain and codec suppliers remain separate E1 contracts. -/
-structure LocalReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where
+structure LocalReadPoint {sg : A.Msg → Fin P.n}
+    {fgHold : Time} (C : ACCorrectLocal A sg fgHold) : Prop where
   tips : ∀ cm proposer dg H (tr : RunTrace A),
     C.run.Run cm proposer dg H tr → ∀ b y i t,
     HonestReadPoint tr H b y i t →
@@ -62,11 +63,12 @@ structure LocalReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Pr
     HonestReadPoint tr H b y i t → confirmedRead tr y i t ∈ (tr.state y i).fg.tree
 
 /-- L6/L7 use the shared finite healthy regime, never an all-future schedule. -/
-structure HealthyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where
+structure HealthyReadPoint {sg : A.Msg → Fin P.n} {fgHold : Time} (C : ACCorrectLocal A sg fgHold) :
+    Prop where
   /-- L6: healed agreement requires an honest opening proposal; reads use actual times. -/
   healed : ∀ cm βK proposer dg H (tr : RunTrace A) ΔF g a b s₁,
     βK ≤ 1 / 2 →
-    C.run.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
+    C.run.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b fgHold →
     IsReset tr H g a → a ≤ b → P.slotOf a + C.healing.drain ≤ s₁ →
     HealedFrom tr H proposer s₁ b →
     max g 0 ≤ P.slotTime s₁ →
@@ -84,7 +86,7 @@ structure HealthyReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : 
   /-- L7: a ready proposal after the reset drain is confirmed within the latency. -/
   proposal : ∀ cm βK proposer dg H (tr : RunTrace A) ΔF g a b healed,
     βK ≤ 1 / 2 →
-    C.run.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
+    C.run.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b fgHold →
     IsReset tr H g a → a ≤ b → max g 0 + C.margin ≤ healed →
     ∀ B k y j t, ReadyProposal tr H C.catchUp C.hold B k →
     P.slotOf a + C.healing.drain ≤ B.slot → gbar g + 4 * P.Δ ≤ P.slotTime B.slot →
@@ -99,7 +101,8 @@ read time precedes the read cut (as at the end-of-time cuts of `StoredReadTransp
 so a reader's last gate update is in its state. After the stop
 it reads only `PostStopService`; `ΔF` is the pre-stop service bound.
 Certificate: cert obligation open: OC-K. -/
-structure OutageReadPoint {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A sg) : Prop where
+structure OutageReadPoint {sg : A.Msg → Fin P.n}
+    {fgHold : Time} (C : ACCorrectLocal A sg fgHold) : Prop where
   protection : ∀ cm proposer dg H (tr : RunTrace A) (p : EnvPoint (Fin P.n))
     ΔF T b₀ b₁ recoveryTime,
     C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →

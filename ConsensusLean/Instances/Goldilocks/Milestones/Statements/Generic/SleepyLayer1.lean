@@ -62,7 +62,7 @@ def AnchoredFrames (D : Data A) (tr : RunTrace A) (H : Time → Set (Fin P.n))
 /-- Committee counts at every time `t ≥ 0`, using the committee look-ahead: in each nonempty
 committee `cm t`, the ready members exceed fraction `θ` of the ready and faulty members, counted
 on the view retained through each `d` with `t ≤ d ≤ min b (p.lookAhead C.committeeLook t)`. -/
-def CommitteeWindow (C : ACCorrectLocal A sg) (p : EnvPoint (Fin P.n))
+def CommitteeWindow {fgHold : Time} (C : ACCorrectLocal A sg fgHold) (p : EnvPoint (Fin P.n))
     (cm : Time → Finset (Fin P.n)) (b : Time) : Prop :=
   ∀ t d, 0 ≤ t → t ≤ d → d ≤ min b (p.lookAhead C.committeeLook t) →
     (cm t).Nonempty →
@@ -73,14 +73,15 @@ def CommitteeWindow (C : ACCorrectLocal A sg) (p : EnvPoint (Fin P.n))
 
 /-- Population counts at every time `t ≥ 0`, using the population look-ahead: the view retained
 through each `d` with `t ≤ d ≤ min b (p.lookAhead C.look t)` is ready above fraction `θ` at `t`. -/
-def PopulationWindow (C : ACCorrectLocal A sg) (p : EnvPoint (Fin P.n))
+def PopulationWindow {fgHold : Time} (C : ACCorrectLocal A sg fgHold) (p : EnvPoint (Fin P.n))
     (b : Time) : Prop :=
   ∀ t d, 0 ≤ t → t ≤ d → d ≤ min b (p.lookAhead C.look t) →
     (p.retain d).ReadyAbove C.θ C.catchUp t
 
 /-- Safety on the mapped run up to its horizon. Internal induction and gadget facts stay in
 the instance proof; no claim is made about other traces or committee functions. -/
-def EventSafety (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) (D : Data A) : Prop :=
+def EventSafety (M : RunMap rho payload)
+    {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold) (D : Data A) : Prop :=
   ∀ ΔF b p, b ≤ rho.horizon →
     C.run.Run M.committee M.proposer M.digest M.honest M.trace →
     Compose.NoCollRun M.digest M.trace → RunPointBinding M.trace M.honest p →
@@ -93,7 +94,7 @@ def EventSafety (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) (D : Da
 /-- At a read boundary, the output is held at the explicit evaluation time.
 Its ancestry uses the effective record or the frame floor. Held membership
 makes the genesis-root case meaningful under honest-store coherence. -/
-def OutputProvenance (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
+def OutputProvenance {fgHold : Time} (C : ACCorrectLocal A sg fgHold) (D : Data A) : Prop :=
   ∀ cm proposer dg H tr b,
     C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     ∀ y i t, HonestReadPoint tr H b y i t → ReadBoundary tr y i →
@@ -103,7 +104,8 @@ def OutputProvenance (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
 
 /-- Required separately for ReadySafe; event compatibility alone does not give
 same-reader extension. Certificate discharge remains an instance obligation. -/
-def Extension (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) (D : Data A) : Prop :=
+def Extension (M : RunMap rho payload)
+    {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold) (D : Data A) : Prop :=
   ∀ ΔF b p, b ≤ rho.horizon →
     C.run.Run M.committee M.proposer M.digest M.honest M.trace →
     Compose.NoCollRun M.digest M.trace → RunPointBinding M.trace M.honest p →
@@ -119,7 +121,7 @@ def Extension (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) (D : Data
 
 /-- Proposal coverage at an actual read, with both retention windows and anchored frames.
 Coverage does not produce the proposal witness. -/
-def ProposalCoverage (M : RunMap rho payload) (C : ACCorrectLocal A M.signer)
+def ProposalCoverage (M : RunMap rho payload) {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold)
     (D : Data A) : Prop :=
   ∀ ΔF b p, b ≤ rho.horizon →
     C.run.Run M.committee M.proposer M.digest M.honest M.trace →
@@ -135,7 +137,7 @@ def ProposalCoverage (M : RunMap rho payload) (C : ACCorrectLocal A M.signer)
 
 /-- Route-1 source provenance without an invariant. The source is an ancestor
 of a same-reporter event, possibly at the same cut, not necessarily that event's block. -/
-def SourceProvenance (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
+def SourceProvenance {fgHold : Time} (C : ACCorrectLocal A sg fgHold) (D : Data A) : Prop :=
   ∀ cm proposer dg H tr b,
     C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr → ∀ y i B,
     y ∈ H (tr.time i) → tr.time i ≤ b → ReportAt tr y i B →
@@ -150,7 +152,7 @@ def SourcedRows (D : Data A) (tr : RunTrace A) (H : Time → Set (Fin P.n))
 
 /-- F1 target. The population quorum is an explicit premise, independent of the
 committee window. This proposition is not a supplied theorem. -/
-def CacheProvenance (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
+def CacheProvenance {fgHold : Time} (C : ACCorrectLocal A sg fgHold) (D : Data A) : Prop :=
   ∀ cm proposer dg H tr b,
     C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     ∀ y i t, HonestReadPoint tr H b y i t →
@@ -161,7 +163,7 @@ def CacheProvenance (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
 /-- F2 target. The signed target is the entry ancestor of the actual toFG source,
 not necessarily the source itself. The report precedes signing at the same time.
 Source provenance then anchors that entry at the signing time. -/
-def RowProvenance (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
+def RowProvenance {fgHold : Time} (C : ACCorrectLocal A sg fgHold) (D : Data A) : Prop :=
   SourceProvenance C D →
   ∀ cm proposer dg H tr b,
     C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
@@ -174,7 +176,7 @@ def RowProvenance (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
 
 /-- F3 target. Sourced rows and the population quorum feed FG geometry;
 compatibility remains conditional inside ViableAt. -/
-def ConditionalViability (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
+def ConditionalViability {fgHold : Time} (C : ACCorrectLocal A sg fgHold) (D : Data A) : Prop :=
   ∀ cm proposer dg H tr b,
     C.run.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     ∀ y i t, HonestReadPoint tr H b y i t →
@@ -182,7 +184,7 @@ def ConditionalViability (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
 
 /-- G1 target. No AC induction hypothesis: F1--F3 and route-1 provenance
 anchor the actual frames, given the population quorum at each honest read. -/
-def FramesFromSources (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
+def FramesFromSources {fgHold : Time} (C : ACCorrectLocal A sg fgHold) (D : Data A) : Prop :=
   CacheProvenance C D → RowProvenance C D → ConditionalViability C D →
   SourceProvenance C D →
   ∀ cm proposer dg H tr b,
@@ -192,7 +194,7 @@ def FramesFromSources (C : ACCorrectLocal A sg) (D : Data A) : Prop :=
 
 /-- G2 target. Agreement follows from event safety, output ancestry and anchored
 frames. Extension is deliberately separate, for the ReadySafe assembly. -/
-def ReadAgreement (M : RunMap rho payload) (C : ACCorrectLocal A M.signer)
+def ReadAgreement (M : RunMap rho payload) {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold)
     (D : Data A) : Prop :=
   EventSafety M C D → OutputProvenance C D →
   ∀ ΔF b p, b ≤ rho.horizon →
@@ -209,14 +211,16 @@ def ReadAgreement (M : RunMap rho payload) (C : ACCorrectLocal A M.signer)
 
 /-- The committee count transports to every earlier retention charge. Its
 look-ahead is independent of the population look-ahead. -/
-def CommitteeTransport (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) : Prop :=
+def CommitteeTransport (M : RunMap rho payload)
+    {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold) : Prop :=
   ∀ (p : EnvPoint (Fin P.n)) b c W,
     b ≤ p.horizon → C.catchUp ≤ c → C.committeeLook = W →
     0 ≤ C.θ → C.θ ≤ 1 →
     p.CommitteeSleepyOn M.committee C.θ 0 c W 0 b → CommitteeWindow C p M.committee b
 
 /-- Population counts transport independently to every earlier retention charge. -/
-def PopulationTransport (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) : Prop :=
+def PopulationTransport (M : RunMap rho payload)
+    {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold) : Prop :=
   ∀ (p : EnvPoint (Fin P.n)) b c W,
     b ≤ p.horizon → C.catchUp ≤ c → C.look = W →
     0 ≤ C.θ → C.θ ≤ 1 →
@@ -224,7 +228,7 @@ def PopulationTransport (M : RunMap rho payload) (C : ACCorrectLocal A M.signer)
 
 /-- Ready-read safety assembly: G2 supplies cross-reader agreement and the
 separate extension row supplies monotonicity. No proposal or inclusion row is used. -/
-def ReadyReadSafety (M : RunMap rho payload) (C : ACCorrectLocal A M.signer)
+def ReadyReadSafety (M : RunMap rho payload) {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold)
     (D : Data A) : Prop :=
   ReadAgreement M C D → EventSafety M C D → OutputProvenance C D → Extension M C D →
   ∀ ΔF b p, b ≤ rho.horizon →
