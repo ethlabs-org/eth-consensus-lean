@@ -88,14 +88,16 @@ def ReadyProposal (proposer : Nat → Fin sp.n)
       tr.FirstCutFrom j (sp.ts s + sp.Δ) →
       ∃ R ∈ (tr.state y j).fg.tree, R.root = x.head ∧ R.slot + 1 ≤ s
 
-/-- **The HS shared premises** under growing faults, with `Healthy(g)` as `HealthyRunAt`. -/
-structure HSShared (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF : Time) : Prop where
+/-- **The HS shared premises** under growing faults, with `Healthy(g)` as `HealthyRunAt` at the
+release hold `fgHold` (default `0`: no hold). -/
+structure HSShared (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF : Time)
+    (fgHold : Time := 0) : Prop where
   /-- `NoColl` on the blocks of the run. -/
   noColl : Compose.NoCollRun dg tr
   /-- Genesis's root is its digest. -/
   genesisRoot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg
   /-- `Healthy(g)` under growing faults. -/
-  healthy : tr.HealthyRunAt H ΔF g
+  healthy : tr.HealthyRunAt H ΔF g fgHold
   /-- No restart after `ḡ` of a node honest at its restart. -/
   noRestart : NoRestartAfter tr H (gbar g)
   /-- `δ_t ≥ ⌈(6Δ + Δ_F)/(4Δ)⌉`. -/
