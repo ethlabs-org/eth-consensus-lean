@@ -840,8 +840,8 @@ noncomputable def goldilocksShape (binding : VoteBinding := stock) :
 /-! ## The family -/
 
 /-- The parameters of the Goldilocks node not fixed by the public parameters:
-the genesis root, the FG timeout `δ_t`, the lock window `k`, the fast increment `c`, and
-the restart replay order and vote binding at every parameter set. -/
+the genesis root, the FG timeout `δ_t`, the lock window `k`, the fast increment `c`, the
+optimistic switch, and the restart replay order and vote binding at every parameter set. -/
 structure Setup where
   /-- The genesis root. -/
   genesisRoot : Nat
@@ -864,6 +864,9 @@ structure Setup where
   /-- Whether a validator may release its held signed FG attestations at a time.
   By default every time releases, so nothing is ever held. -/
   release : (pub : Public) → Fin pub.n → Time → Bool := fun _ _ _ => true
+  /-- Whether the optimistic confirmation runs, one value for the whole protocol.
+  By default it runs (the stock node). -/
+  optimistic : Bool := true
 
 /-- The AC parameters use protocol delay `pub.ΔAC` and slots of four protocol delays: L0 delivers
 strictly before the bound (`CommLog.PSync`), which is the node's deadline `[τ, max(τ, w) + Δ)`.
@@ -887,6 +890,7 @@ abbrev Setup.params (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) : ACParams whe
   c := S.c
   two_le_c := S.two_le_c
   committeeSize := S.vote.committeeSize pub
+  optimistic := S.optimistic
 
 /-- The shape's state at the public parameters `pub`: a Goldilocks state at every proof that
 `pub` has a validator. The dependence on `1 ≤ n` (which `Params` needs) is thus in the state's

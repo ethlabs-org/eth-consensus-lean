@@ -12,9 +12,10 @@ votes resolved before `t_s + 2Δ` of validators with no second vote; saved also 
 veto stops only the record: over the blocks of the result's chain that conflict with no live
 lock, a fast lock on the deepest one with half of the committee or more, and a slow lock on the
 deepest one that the saved results of the previous `k − 1` slots extend, both written when they
-exist); the optimistic confirmation of the current slot before `t_s + 2Δ` (three quarters of
-the committee with a slot-`s` vote whose head extends the block, equivocators included, and no
-conflicting live lock); and the confirmed tip. A slow lock of slot `s` lives through `s + k`; a
+exist); when the protocol's switch `optimistic` is on (the default), the optimistic
+confirmation of the current slot before `t_s + 2Δ` (three quarters of the committee with a
+slot-`s` vote whose head extends the block, equivocators included, and no conflicting live
+lock); and the confirmed tip. A slow lock of slot `s` lives through `s + k`; a
 fast lock gets `fastExpiry`.
 
 This module holds only what the Challenge statements reach; the fast test's selections `fastSelect`
@@ -86,13 +87,14 @@ def optimisticVoters (A : ACState sp.n) (Φ : Frm sp.n FGP) (s : Nat) (B : Blk s
   {i | ∃ x ∈ A.pool s, x.val = i ∧ AncR Φ B x.head}
 
 open Classical in
-/-- The block the optimistic check at `(𝒜, Φ, t)` locks, if any: for a joined node in a slot
-`s > 0` before `t_s + 2Δ`, the deepest block of the tree with three quarters of the committee as
-`optimisticVoters` and no conflicting live lock. -/
+/-- The block the optimistic check at `(𝒜, Φ, t)` locks, if any: when the switch
+`sp.optimistic` is on, for a joined node in a slot `s > 0` before `t_s + 2Δ`, the deepest block
+of the tree with three quarters of the committee as `optimisticVoters` and no conflicting live
+lock; with the switch off, none. -/
 noncomputable def optimisticSelect (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Option (Blk sp.n FGP) :=
   let s := sp.slot t
-  if ¬ joined sp A t ∨ s = 0 ∨ sp.ts s + 2 * sp.Δ ≤ t then none
+  if ¬ joined sp A t ∨ s = 0 ∨ sp.ts s + 2 * sp.Δ ≤ t ∨ sp.optimistic = false then none
   else deepest Φ {B | B ∈ Φ.tree ∧ 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ s B).ncard ∧
     ¬ conflictsWithLock sp A.locks Φ t B}
 

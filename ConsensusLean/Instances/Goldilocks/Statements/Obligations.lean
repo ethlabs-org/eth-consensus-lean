@@ -24,8 +24,9 @@ release gap `R`, and the outer gap `X`.
   `6·ΔAC + ΔFG ≤ 4·fgSlots·ΔAC` (the contract's FG delay
   bound is `fgDelay = 4·fgSlots − 6`): the FG attestations of a round reach every node within
   `fgSlots` slots, the paper's `c_F = ⌈(6Δ + Δ_F)/(4Δ)⌉ ≤ fgSlots`. `Setup` fixes the genesis root,
-  `δ_t`, the lock window `k ≥ 2`, the fast increment `c ≥ 2` (read by no coefficient) and the
-  restart replay order, vote binding, signing calendar and release schedule.
+  `δ_t`, the lock window `k ≥ 2`, the fast increment `c ≥ 2` (read by no coefficient), the
+  optimistic switch (on by default; read by no coefficient) and the restart replay order, vote
+  binding, signing calendar and release schedule.
   The endpoint and headlines hold at every vote binding for calendars and schedules satisfying
   the gap bounds.
 * **Contract** (`goldilocksContract`): the standard thresholds, the FG delay bound, the outage

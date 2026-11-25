@@ -14,14 +14,16 @@ slots and the fast increment `c ≥ 2` slots.
 `ACParams` extends the shared parameters (`Params`) by the lock window, the fast increment, the
 hypothesis that the shared slot times are the AC's, and the public committee size
 `committeeSize`, the denominator of the fixed vote thresholds (fast, optimistic, unlock). The
-spec's all-of-`V` committee is the specialization `committeeSize = n` (the default). `R`, `K_W`,
-`δ_t`'s lower bound and the source delay are the FG's and the regimes' (goldilocks-spec
-§"Schedule"); no AC rule reads them. -/
+spec's all-of-`V` committee is the specialization `committeeSize = n` (the default). The switch
+`optimistic`, one value for the whole protocol, says whether the optimistic confirmation runs;
+the spec's protocol runs it (the default). `R`, `K_W`, `δ_t`'s lower bound and the source delay
+are the FG's and the regimes' (goldilocks-spec §"Schedule"); no AC rule reads them. -/
 
 namespace Consensus.Goldilocks.AC
 
 /-- The AC's parameters: the shared parameters, whose slot times are `t_s = 4Δs`, the lock
-window `k ≥ 2`, the fast increment `c ≥ 2` and the public committee size. -/
+window `k ≥ 2`, the fast increment `c ≥ 2`, the public committee size and the optimistic
+switch. -/
 structure ACParams where
   /-- The shared parameters. -/
   toParams : Params
@@ -38,6 +40,8 @@ structure ACParams where
   two_le_c : 2 ≤ c
   /-- Public size of the voting committee; stock uses the whole population. -/
   committeeSize : Nat := toParams.n
+  /-- Whether the optimistic confirmation runs, for the whole protocol; stock runs it. -/
+  optimistic : Bool := true
 
 namespace ACParams
 

@@ -223,7 +223,7 @@ actions:
 \begin{array}{c@{\qquad}l}
  t_s             & \text{proposal, for $s>0$},\\
  \text{at the latest at }t_s+\Delta & \text{head vote},\\
- \text{before }t_s+2\Delta & \text{optimistic confirmation},\\
+ \text{before }t_s+2\Delta & \text{optimistic confirmation, when on},\\
  t_s+2\Delta     & \text{confirmation freeze},\\
  t_s+3\Delta     & \text{vote freeze},\\
  \text{before each vote and proposal of slot $s+1$} & \text{unlocking against slot-$s$ votes},\\
@@ -249,6 +249,12 @@ The parameters are these.
   confirmation of slot~$s$ writes is a lock of slot~$s$.  Its expiry~$e$
   is fixed when it is written (Section~\ref{sec:ac-locks}): the lock lives
   until $t_{e+1}$, the start of slot~$e+1$.
+\item The optimistic switch $\mathit{optimistic}\in\{\mathsf{true},\mathsf{false}\}$,
+  one value for the whole protocol, $\mathsf{true}$ by default.  When it is
+  $\mathsf{false}$, no node runs the optimistic confirmation, so every fast lock
+  is a lock of a confirmation update.  A single validator may still evaluate the
+  optimistic test as a local observation: it writes no lock and no record and
+  changes no vote and no FG source.
 \item The FG window $K_W=2$ and the timeout delay $\delta_{\mathrm{t}}\geq0$
   slots (Section~\ref{sec:fg-state}).
 \end{itemize}
@@ -612,8 +618,8 @@ $\Fr.\tree$ instead; otherwise the vote domain is the voter block tree.
 \emph{Locks.}  $\AC.\locks$ is a set of locks $(B,j,f,e)$: a block, the
 slot~$j$ of the confirmation that wrote it, the fast bit~$f$, and the
 expiry~$e$, the last slot of its life.  A lock with $f=\mathsf{true}$ is a
-\emph{fast lock}: the lock of a fast or an optimistic confirmation
-(Section~\ref{sec:ac-confirmation}).  Only $\Call{ac\_to\_fg}{}$ and
+\emph{fast lock}: the lock of a fast or, when the optimistic switch is on,
+an optimistic confirmation (Section~\ref{sec:ac-confirmation}).  Only $\Call{ac\_to\_fg}{}$ and
 $\Call{fast\_expiry}{}$ read the bit.  A lock is \emph{live} when
 $\slot(t)\leq e$ and $B\in\Fr.\tree$.  This lock
 is not the finality lock $\Lambda.\mathsf{lock}[h]$ of the record.
@@ -861,8 +867,8 @@ source for the FG in the slots $j$, $j+1$ and~$j+2$
 (Section~\ref{sec:ac-actions}), at its block as $\Call{live\_locks}{}$
 reads it.  A lock that is not fast is never a source.
 
-\emph{The optimistic confirmation.}  In a slot $s>0$, before
-$t_s+2\Delta$, a joined node checks after each receipt
+\emph{The optimistic confirmation.}  When the optimistic switch is on, in a
+slot $s>0$, before $t_s+2\Delta$, a joined node checks after each receipt
 (Section~\ref{sec:ac-actions}) the blocks~$B$ of $\Fr.\tree$.  A
 block~$B$ passes when at least three quarters of $\committee_s$ have a
 slot-$s$ vote in its pool whose head extends~$B$, equivocators included,
@@ -948,7 +954,7 @@ ancestor of that block and the head of $\Call{ac\_head}{}$.
 \Function{optimistic\_confirmation}{$\AC,\Fr,t$}
   \Comment{after each receipt}
   \State $s\gets\slot(t)$
-  \If{not \Call{joined}{$\AC,t$} or $s=0$ or $t\geq t_s+2\Delta$}
+  \If{not \Call{joined}{$\AC,t$} or $s=0$ or $t\geq t_s+2\Delta$ or not $\mathit{optimistic}$}
     \State \Return
   \EndIf
   \State define $\mathit{voters}(B)$ as
@@ -981,7 +987,7 @@ ancestor of that block and the head of $\Call{ac\_head}{}$.
 This section gives the event handlers and the duties of the AC.
 
 \emph{The joined test.}  Only a joined node (Section~\ref{sec:ac-state})
-unlocks, votes, confirms optimistically, proposes, runs the confirmation
+unlocks, votes, confirms optimistically (when the switch is on), proposes, runs the confirmation
 update or gives a block to the FG.  A node that is not joined still
 computes a head from the votes that it holds: $\Call{ac\_head}{}$ has no
 such test.
