@@ -112,8 +112,15 @@ theorem updateConfirmation_mayVote (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : T
 theorem tryVote_mayVote (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (tryVote sp self A Φ t).1.mayVote = A.mayVote := by
   unfold tryVote
-  dsimp only
-  split_ifs <;> simp only [optimisticConfirmation_mayVote, admitVote_mayVote]
+  lift_lets
+  extract_lets s V A₁ dom H A₂ vote A₃
+  have hA₂ : A₂.mayVote = A.mayVote := by simp only [A₂, A₁]; split <;> rfl
+  split_ifs with h₁ h₂ h₃
+  · rfl
+  · rfl
+  · simp only [A₃, h₃, ↓reduceIte, optimisticConfirmation_mayVote, admitVote_mayVote]
+    exact hA₂
+  · simpa only [A₃, h₃, Bool.false_eq_true, ↓reduceIte] using hA₂
 
 /-- Block receipt, which only stamps the block, keeps the permission `mayVote`. -/
 theorem blockReceipt_mayVote (A : ACState sp.n) (t : Time) (B : Blk sp.n FGP) :
@@ -232,8 +239,16 @@ theorem trace_mayVote_stock {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
 theorem tryVote_emits_mayVote (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : ∀ e ∈ (tryVote sp self A Φ t).2, A.mayVote e.msg.slot = true := by
   unfold tryVote
-  dsimp only
-  split_ifs <;> simp_all
+  lift_lets
+  extract_lets s V A₁ dom H A₂ vote A₃
+  split_ifs with h₁ h₂ h₃
+  · simp
+  · simp
+  · intro e he
+    rw [List.mem_singleton] at he
+    subst he
+    exact h₃
+  · simp
 
 /-- Every vote emitted by `ac_on_block` is of a slot that the input state may vote in. -/
 private theorem acOnBlock_emits_mayVote (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP)

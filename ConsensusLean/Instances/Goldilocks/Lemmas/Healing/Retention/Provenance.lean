@@ -122,23 +122,28 @@ private theorem StoredFrom.of_tryVote (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU
         optimisticSelect sp (admitVote sp e.readPoint t e.msg) Φ t = some D ∧
         O = Φ.viableAncestor D) := by
   unfold tryVote
-  dsimp only
+  lift_lets
+  extract_lets s V A₁ dom H A₂ vote A₃
   split_ifs with h1 h2 h3
   · exact StoredFrom.of_eq rfl
   · exact StoredFrom.of_eq rfl
-  · refine StoredFrom.trans hU (StoredFrom.of_movesBack hΦU
-      (((locks_move_back sp) FGP Φ A.locks t hΦ).2.2 ((sp.slot t : Int) - 1)
-        (mergedVoteView sp A Φ (sp.slot t))))
-      (StoredFrom.mono (StoredFrom.of_optimistic_admit hU hΦ hΦU _ ?_ t _) ?_)
-    · rfl
-    · exact fun s f B h => ⟨_, List.mem_singleton_self _, h⟩
-  · refine StoredFrom.mono (StoredFrom.of_optimistic_admit hU hΦ hΦU _ ?_ t _) ?_
-    · rfl
-    · exact fun s f B h => ⟨_, List.mem_singleton_self _, h⟩
-  · exact StoredFrom.of_movesBack hΦU
-      (((locks_move_back sp) FGP Φ A.locks t hΦ).2.2 ((sp.slot t : Int) - 1)
-        (mergedVoteView sp A Φ (sp.slot t)))
-  · exact StoredFrom.of_eq rfl
+  · simp only [A₃, A₂, A₁, s, h3, ↓reduceIte]
+    split
+    · refine StoredFrom.trans hU (StoredFrom.of_movesBack hΦU
+        (((locks_move_back sp) FGP Φ A.locks t hΦ).2.2 ((sp.slot t : Int) - 1)
+          (mergedVoteView sp A Φ (sp.slot t))))
+        (StoredFrom.mono (StoredFrom.of_optimistic_admit hU hΦ hΦU _ ?_ t _) ?_)
+      · rfl
+      · exact fun s f B h => ⟨_, List.mem_singleton_self _, h⟩
+    · refine StoredFrom.mono (StoredFrom.of_optimistic_admit hU hΦ hΦU _ ?_ t _) ?_
+      · rfl
+      · exact fun s f B h => ⟨_, List.mem_singleton_self _, h⟩
+  · simp only [A₃, A₂, A₁, s, h3, Bool.false_eq_true, ↓reduceIte]
+    split
+    · exact StoredFrom.of_movesBack hΦU
+        (((locks_move_back sp) FGP Φ A.locks t hΦ).2.2 ((sp.slot t : Int) - 1)
+          (mergedVoteView sp A Φ (sp.slot t)))
+    · exact StoredFrom.of_eq rfl
 
 private theorem StoredFrom.of_updateConfirmation (hU : Coherent U) (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) (A : ACState sp.n) (t : Time) (s : Nat) :

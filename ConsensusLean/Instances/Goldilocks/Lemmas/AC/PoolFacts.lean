@@ -84,16 +84,17 @@ theorem updateConfirmation_pool_eq (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : T
 theorem admits_tryVote (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Admits A (tryVote sp self A Φ t).1 t := by
   unfold tryVote
-  dsimp only
-  split_ifs
+  lift_lets
+  extract_lets s V A₁ dom H A₂ vote A₃
+  have hp : A₂.pool = A.pool := by simp only [A₂, A₁]; split <;> rfl
+  split_ifs with h₁ h₂ h₃
   · exact Admits.refl _ _
   · exact Admits.refl _ _
-  all_goals try exact Admits.of_pool_eq rfl
-  all_goals
-    refine Admits.trans ?_ (Admits.of_pool_eq (optimistic_pool_eq _ _ _))
-  all_goals
-    refine Admits.trans (Admits.of_pool_eq ?_) (admits_admitVote _ _ _)
-    rfl
+  · simp only [A₃, h₃, ↓reduceIte]
+    exact Admits.trans (Admits.trans (Admits.of_pool_eq hp) (admits_admitVote _ _ _))
+      (Admits.of_pool_eq (optimistic_pool_eq _ _ _))
+  · simp only [A₃, h₃, Bool.false_eq_true, ↓reduceIte]
+    exact Admits.of_pool_eq hp
 
 theorem admits_blockReceipt (A : ACState sp.n) (t : Time) (B : Blk sp.n FGP) :
     Admits A (blockReceipt sp A t B) t :=
@@ -186,16 +187,17 @@ theorem grows_admitVote (A : ACState sp.n) (t : Time) (v : Vote sp.n) :
 theorem grows_tryVote (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Grows A (tryVote sp self A Φ t).1 := by
   unfold tryVote
-  dsimp only
-  split_ifs
+  lift_lets
+  extract_lets s V A₁ dom H A₂ vote A₃
+  have hp : A₂.pool = A.pool := by simp only [A₂, A₁]; split <;> rfl
+  split_ifs with h₁ h₂ h₃
   · exact fun _ _ h => h
   · exact fun _ _ h => h
-  all_goals try exact Grows.of_pool_eq rfl
-  all_goals
-    refine Grows.trans ?_ (Grows.of_pool_eq (optimistic_pool_eq _ _ _))
-  all_goals
-    refine Grows.trans (Grows.of_pool_eq ?_) (grows_admitVote _ _ _)
-    rfl
+  · simp only [A₃, h₃, ↓reduceIte]
+    exact Grows.trans (Grows.trans (Grows.of_pool_eq hp) (grows_admitVote _ _ _))
+      (Grows.of_pool_eq (optimistic_pool_eq _ _ _))
+  · simp only [A₃, h₃, Bool.false_eq_true, ↓reduceIte]
+    exact Grows.of_pool_eq hp
 
 /-- A vote of slot `slot(t) − 1` or `slot(t)` offered to admission at `t` ends up in its pool, or
 its validator then has two distinct votes there. -/
@@ -322,7 +324,6 @@ private theorem optimistic_vok_keep {A : ACState sp.n} (h : VOK A) (Φ : Frm sp.
 private theorem tryVote_vok_keep (self : Fin sp.n) {A : ACState sp.n} (h : VOK A) (Φ : Frm sp.n FGP)
     (t : Time) : VOK (tryVote sp self A Φ t).1 ∧ Keep A (tryVote sp self A Φ t).1 := by
   unfold tryVote
-  dsimp only
   have key : ∀ {A₂ : ACState sp.n} (v : Vote sp.n), A₂.pool = A.pool →
       A₂.voteStamp = A.voteStamp → VOK (optimisticConfirmation sp (admitVote sp A₂ t v) Φ t) ∧
         Keep A (optimisticConfirmation sp (admitVote sp A₂ t v) Φ t) := fun v hp hv =>
@@ -333,13 +334,17 @@ private theorem tryVote_vok_keep (self : Fin sp.n) {A : ACState sp.n} (h : VOK A
       VOK A₂ ∧ Keep A A₂ := by
     intro A₂ hp hv
     exact ⟨h.of_eq hp hv, Keep.of_eq hp hv⟩
-  split_ifs
+  lift_lets
+  extract_lets s V A₁ dom H A₂ vote A₃
+  have hp : A₂.pool = A.pool := by simp only [A₂, A₁]; split <;> rfl
+  have hv : A₂.voteStamp = A.voteStamp := by simp only [A₂, A₁]; split <;> rfl
+  split_ifs with h₁ h₂ h₃
   · exact ⟨h, Keep.refl _⟩
   · exact ⟨h, Keep.refl _⟩
-  all_goals
-    first
-    | exact key _ rfl rfl
-    | exact keyNoVote _ rfl rfl
+  · simp only [A₃, h₃, ↓reduceIte]
+    exact key _ hp hv
+  · simp only [A₃, h₃, Bool.false_eq_true, ↓reduceIte]
+    exact keyNoVote _ hp hv
 
 private theorem acOnBlock_vok_keep (self : Fin sp.n) {A : ACState sp.n} (h : VOK A)
     (Φ : Frm sp.n FGP) (t : Time) (B : Blk sp.n FGP) :
@@ -446,14 +451,17 @@ theorem VoteClosed.tryVote {P : ACState sp.n → Prop} (hP : VoteClosed P) (self
     fun v hp hv => hP.congr _ _ (optimistic_pool_eq _ _ _) (optimistic_vs _ _ _)
       (hP.admit _ _ _ (hP.congr _ _ hp hv h))
   unfold AC.tryVote
-  dsimp only
-  split_ifs
+  lift_lets
+  extract_lets s V A₁ dom H A₂ vote A₃
+  have hp : A₂.pool = A.pool := by simp only [A₂, A₁]; split <;> rfl
+  have hv : A₂.voteStamp = A.voteStamp := by simp only [A₂, A₁]; split <;> rfl
+  split_ifs with h₁ h₂ h₃
   · exact h
   · exact h
-  all_goals
-    first
-    | exact key _ rfl rfl
-    | exact hP.congr A _ rfl rfl h
+  · simp only [A₃, h₃, ↓reduceIte]
+    exact key _ hp hv
+  · simp only [A₃, h₃, Bool.false_eq_true, ↓reduceIte]
+    exact hP.congr A _ hp hv h
 
 theorem VoteClosed.acOnBlock {P : ACState sp.n → Prop} (hP : VoteClosed P) (self : Fin sp.n)
     {A : ACState sp.n} (Φ : Frm sp.n FGP) (t : Time) (B : Blk sp.n FGP) (h : P A) :
@@ -525,27 +533,30 @@ private theorem tryVote_adds_only_own {FGP : Type} (self : Fin sp.n) (A : ACStat
     (Φ : Frm sp.n FGP) (t : Time) :
     ∀ σ, ∀ x ∈ (tryVote sp self A Φ t).1.pool σ, x ∈ A.pool σ ∨
       (x.val = self ∧ x.slot = sp.slot t) := by
-  intro σ x hx
-  unfold tryVote at hx
-  dsimp only at hx
-  split_ifs at hx
+  intro σ x
+  unfold tryVote
+  lift_lets
+  extract_lets s V A₁ dom H A₂ vote A₃
+  have hp : A₂.pool = A.pool := by simp only [A₂, A₁]; split <;> rfl
+  split_ifs with h₁ h₂ h₃ <;> intro hx
   · exact Or.inl hx
   · exact Or.inl hx
-  all_goals first
-    | exact Or.inl hx
-    | (rw [optimistic_pool_eq] at hx
-       unfold admitVote at hx
-       split_ifs at hx
-       · exact Or.inl hx
-       · exact Or.inl hx
-       · simp only [Function.update_apply] at hx
-         split_ifs at hx with hσ
-         · rcases List.mem_append.mp hx with hx | hx
-           · exact Or.inl (hσ ▸ hx)
-           · rw [List.mem_singleton] at hx
-             subst hx
-             exact Or.inr ⟨rfl, rfl⟩
-         · exact Or.inl hx)
+  · simp only [A₃, h₃, ↓reduceIte, optimistic_pool_eq] at hx
+    unfold admitVote at hx
+    rw [← hp]
+    split_ifs at hx
+    · exact Or.inl hx
+    · exact Or.inl hx
+    · simp only [Function.update_apply] at hx
+      split_ifs at hx with hσ
+      · rcases List.mem_append.mp hx with hx | hx
+        · exact Or.inl (hσ ▸ hx)
+        · rw [List.mem_singleton] at hx
+          subst hx
+          exact Or.inr ⟨rfl, rfl⟩
+      · exact Or.inl hx
+  · simp only [A₃, h₃, Bool.false_eq_true, ↓reduceIte] at hx
+    exact Or.inl (hp ▸ hx)
 
 /-- **A0.1, a block adds no vote but the node's own.** -/
 theorem block_adds_only_own_vote : BlockAddsOnlyOwnVote sp := by
