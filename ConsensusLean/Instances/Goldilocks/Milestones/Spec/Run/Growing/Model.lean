@@ -21,7 +21,9 @@ tr` is `Node.LocalRun proposer dg H sg tr` (`Growing.LocalRun.const_iff`, `Lemma
 * `RunTrace.upTo tr d`: the prefix of a run trace through `d` (`Trace.upTo`).
 * `RunTrace.HonestBlocksAt tr H`: the blocks of the trees that nodes hold at times at which they
   are honest (the reads made while honest; a later compromise removes nothing).
-* `Growing.LocalRun`: the laws of `Node.LocalRun`, each at the time of its cut. -/
+* `Growing.LocalRun`: the laws of `Node.LocalRun`, each at the time of its cut.
+* `RunTrace.SignCalendarAt`, `SignGapAt`: the signing calendar of the honest ticks and its gap;
+  `ReleaseGapAt`: the gap of a release schedule. -/
 
 namespace Consensus.Goldilocks
 
@@ -56,6 +58,13 @@ def SignGapAt (P : Params) (sign : Fin P.n → Time → Bool) (G : Nat) (t₀ : 
   ∀ y t, t₀ ≤ t →
     ∃ t', t ≤ t' ∧ t' < t + ((G : Time) + 1) * P.Δ ∧ P.IsPublic t' ∧ sign y t' = true
 
+/-- **The release gap** `R` of a release schedule from `t₀` on: from every time `t ≥ t₀`, the
+schedule allows each validator to release at a time in `[t, t + R · Δ]`, at any unit time, not
+only a public one. `R = 0` releases at every time from `t₀` on. The schedule is a function of the
+validator and the time only. -/
+def ReleaseGapAt (P : Params) (release : Fin P.n → Time → Bool) (R : Nat) (t₀ : Time) : Prop :=
+  ∀ y t, t₀ ≤ t → ∃ t', t ≤ t' ∧ t' ≤ t + (R : Time) * P.Δ ∧ release y t' = true
+
 namespace Growing
 
 /-- **A run of the node under growing faults**, for the time-indexed honest set `H`, the digest
@@ -88,9 +97,11 @@ structure LocalRun {A : NodeAC P} (proposer : Nat → Fin P.n)
   /-- Finitely many labelled cuts in every bounded interval. -/
   finite : ∀ T : Time, {i | tr.label i ≠ none ∧ tr.time i ≤ T}.Finite
   /-- At one time, across the nodes honest then, restarts come before ticks and ticks before
-  deliveries. -/
+  deliveries, except that a node's own publications may come before another node's tick at that
+  time. -/
   phase_order : ∀ y y' j j' t e e', y ∈ H t → y' ∈ H t → tr.GroupAt proposer dg y j t e →
-    tr.GroupAt proposer dg y' j' t e' → j < j' → e.phase ≤ e'.phase
+    tr.GroupAt proposer dg y' j' t e' → j < j' →
+    (y = y' ∨ ¬ tr.OwnPublicationAt proposer dg y j t) → e.phase ≤ e'.phase
   /-- A tick of a node honest at its time is at a public time. -/
   tick_public : ∀ y j t, y ∈ H t → tr.TickAt proposer dg y j t → P.IsPublic t
   /-- One tick per node and time, for a node honest at that time. -/

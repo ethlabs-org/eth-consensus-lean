@@ -13,8 +13,8 @@ surface. Names and bodies are unchanged.
 * `propose_block(H, p)`: the block with parent `H`, slot `slot(t)`, proposer `self`, the
   attestations `proposal_attestations(Σ, H)` and the AC payload `p`, its root the digest of its
   content; then the own `on_block(B)` (the broadcast is the acceptance, which a run observes);
-* `attest(C)`: `fg_attest(Σ, Λ, C)`; when it signs, the record is replaced and the own
-  attestation is processed at once by `on_attestation`;
+* `attest(C)`: `fg_attest(Σ, Λ, C)`; when it signs, only the record is replaced: the own
+  `on_attestation` runs when the attestation is released (composition.tex), a group of its own;
 * `on_tick(t)`, with the tick's input (the encoded transactions of a proposal): the tick steps
   `tickSteps` in order (claims C0.4): the AC's tick; at `t_s` with `s > 0`, for the slot's
   proposer, `ac_proposal`, then `propose_block` when it returns a proposal; the FG update,
@@ -45,13 +45,11 @@ noncomputable def proposeBlock (dg : Digest (List (FG.Att P.n)) A.Payload) (self
   onBlock self st t (mkBlock dg self st.fg t x H p)
 
 /-- `attest(C)` at validator `self`: `fg_attest(Σ, Λ, C)`; when it signs `a`, the new record
-and the own `on_attestation(a)`. -/
+only (the own `on_attestation(a)` runs at the release of `a`). -/
 def attest (self : Fin P.n) (st : NodeState A) (C : A.Blk) : NodeState A × List (Cut A) :=
   match st.fg.attest st.record self C with
   | none => (st, [.fg (.attest C none)])
-  | some (a, Λ') =>
-      let r := onAttestation { st with record := Λ' } a
-      (r.1, .fg (.attest C (some a)) :: r.2)
+  | some (a, Λ') => ({ st with record := Λ' }, [.fg (.attest C (some a))])
 
 /-- The steps of a tick (claims C0.4). -/
 inductive TickStep where

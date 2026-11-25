@@ -203,6 +203,22 @@ def SignTickAt (proposer : Nat → Fin P.n)
     Prop :=
   ∃ x, tr.GroupAt proposer dg y j t (.tick x true)
 
+/-- The group of `y` at cut `j` and time `t` is an **own publication**, a structural condition on
+the trace: an `.attestation a` group of `y` with the signer field `a.val = y` that adds a new entry
+to `y`'s pool (`a ∉ (tr.state y j).fg.atts`), placed after `y`'s tick group at `t` with only
+`.attestation` cuts of `y`'s own attestations in between. It reads only the trace, so on an
+arbitrary run trace it does not certify that `a` came from `y`'s own release rather than a wire
+receipt. -/
+def OwnPublicationAt (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n) (j : Nat) (t : Time) : Prop :=
+  ∃ a, tr.GroupAt proposer dg y j t (.attestation a) ∧ a.val = y ∧
+    a ∉ (tr.state y j).fg.atts ∧
+    ∃ j₀ x fgDue, tr.GroupAt proposer dg y j₀ t (.tick x fgDue) ∧
+      j₀ + (Node.exec proposer dg y (tr.state y j₀) t (.tick x fgDue)).2.length ≤ j ∧
+      ∀ k, j₀ + (Node.exec proposer dg y (tr.state y j₀) t (.tick x fgDue)).2.length ≤ k →
+        k < j → tr.node k = y ∧ ∃ b : FG.Att P.n, b.val = y ∧
+          tr.label k = some (.fg (.attestation b))
+
 /-- Every tick of a node of `H` runs the FG update (responsive signing). -/
 def AllTicksSign (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (H : Set (Fin P.n)) : Prop :=
@@ -248,9 +264,11 @@ structure LocalRun {A : NodeAC P} (proposer : Nat → Fin P.n)
   /-- Finitely many labelled cuts in every bounded interval. -/
   finite : ∀ T : Time, {i | tr.label i ≠ none ∧ tr.time i ≤ T}.Finite
   /-- At one time, across the honest nodes, restarts come before ticks and ticks before
-  deliveries: the groups of one time are in phase order. -/
+  deliveries: the groups of one time are in phase order, except that a node's own publications
+  may come before another node's tick at that time. -/
   phase_order : ∀ y ∈ H, ∀ y' ∈ H, ∀ j j' t e e', tr.GroupAt proposer dg y j t e →
-    tr.GroupAt proposer dg y' j' t e' → j < j' → e.phase ≤ e'.phase
+    tr.GroupAt proposer dg y' j' t e' → j < j' →
+    (y = y' ∨ ¬ tr.OwnPublicationAt proposer dg y j t) → e.phase ≤ e'.phase
   /-- A tick is at a public time. -/
   tick_public : ∀ y ∈ H, ∀ j t, tr.TickAt proposer dg y j t → P.IsPublic t
   /-- One tick per node and time. -/
