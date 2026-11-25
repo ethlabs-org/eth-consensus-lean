@@ -34,11 +34,11 @@ open AC Node ChainFrame
 
 theorem tickState_succ (t : Nat) :
     tickState N1 dg1 (t + 1) =
-      (Node.onTick (fun _ => v0) dg1 v0 (tickState N1 dg1 t) (t : Int) 0 true).1 := rfl
+      (stockTick N1 dg1 v0 (tickState N1 dg1 t) (t : Int) 0).1 := rfl
 
 theorem tickCuts_eq (t : Nat) :
     tickCuts N1 dg1 t =
-      (Node.onTick (fun _ => v0) dg1 v0 (tickState N1 dg1 t) (t : Int) 0 true).2 := rfl
+      (stockTick N1 dg1 v0 (tickState N1 dg1 t) (t : Int) 0).2 := rfl
 
 theorem tick_cases (t : Nat) : t = 1 ∨ (∃ k, t = 4 * (k + 1)) ∨ (t % 4 = 2 ∧ 4 ≤ t) ∨
     (t ≠ 1 ∧ ¬ (t % 4 = 0 ∧ 4 ≤ t) ∧ ¬ (t % 4 = 2 ∧ 4 ≤ t)) := by
@@ -58,12 +58,12 @@ theorem good_tick : ∀ t, Good (tickState N1 dg1 t) t
     rw [tickState_succ]
     rcases tick_cases t with rfl | ⟨k, rfl⟩ | hC | ⟨h1, hA, hC⟩
     · obtain ⟨A', e, he, -, -, hg⟩ := tick_B0 ih
-      rw [he]; exact hg
+      rw [stockTick, he]; exact hg
     · obtain ⟨fg', e, st', -, -, he, -, -, hg⟩ := tick_A ih
       rw [he]; exact hg
     · obtain ⟨A', he, hg⟩ := tick_C ih hC
-      rw [he]; exact hg
-    · rw [(tick_noop ih h1 hA hC).1]; exact (tick_noop ih h1 hA hC).2
+      rw [stockTick, he]; exact hg
+    · rw [stockTick, (tick_noop ih h1 hA hC).1]; exact (tick_noop ih h1 hA hC).2
 
 /-! ## The cuts of the run -/
 
@@ -84,16 +84,16 @@ theorem tickCuts_B0 : ∃ e, tickCuts N1 dg1 1 =
       .ac ⟨.toFG, Node.frame (tickState N1 dg1 1), []⟩] ∧
     e.msg = cv 0 ∧ e.readPoint.pool = (tickState N1 dg1 1).ac.pool := by
   obtain ⟨A', e, he, hm, hp, -⟩ := tick_B0 (good_tick 1)
-  exact ⟨e, by rw [tickCuts_eq]; exact congrArg Prod.snd he, hm, hp⟩
+  exact ⟨e, by rw [tickCuts_eq, stockTick, he]; rfl, hm, hp⟩
 
 theorem tickCuts_other {t : Nat} (h1 : t ≠ 1) (hA : ¬ (t % 4 = 0 ∧ 4 ≤ t)) :
     tickCuts N1 dg1 t = [.ac ⟨.tick, Node.frame (tickState N1 dg1 t), []⟩,
       .ac ⟨.toFG, Node.frame (tickState N1 dg1 t), []⟩] := by
-  rw [tickCuts_eq]
+  rw [tickCuts_eq, stockTick]
   by_cases hC : t % 4 = 2 ∧ 4 ≤ t
   · obtain ⟨A', he, -⟩ := tick_C (good_tick t) hC
-    rw [he]
-  · rw [(tick_noop (good_tick t) h1 hA hC).1]
+    rw [he]; rfl
+  · rw [(tick_noop (good_tick t) h1 hA hC).1]; rfl
 
 theorem get7 {α : Type} {a0 a1 a2 a3 a4 a5 a6 c : α} {k : Nat}
     (h : [a0, a1, a2, a3, a4, a5, a6][k]? = some c) :

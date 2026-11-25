@@ -217,10 +217,58 @@ theorem tickRun_votes :
     · obtain ⟨j, hj, he⟩ := ih i (by omega) σ v hv
       exact ⟨j, by omega, he⟩
 
+/-- A signing cut of a cut chain from a reachable FG state signs a well-formed attestation. -/
+private theorem chain_attest_wf {t : Time} {st st' : NodeState N1} {cs : List (Cut N1)}
+    (h : CutChain v0 t st cs st') (hr : st.fg.Reachable N1.genesisPayload)
+    {C : N1.Blk} {a : FG.Att sp1.n} (hm : Cut.fg (.attest C (some a)) ∈ cs) : a.WellFormed := by
+  induction h with
+  | nil => cases hm
+  | @cons st₀ st₁ _ c cs hs _ ih =>
+    rcases List.mem_cons.mp hm with heq | hm
+    · subst heq
+      have hsign := hs.1
+      change st₀.record.createAtt v0 (st₀.fg.σ (st₀.fg.σ C.root).Th) = some (a, st₁.record)
+        at hsign
+      obtain ⟨h1, h2, h3⟩ := Store.entry_input hr (st₀.fg.σ C.root).Th
+      exact Compose.createAtt_wellFormed h1 h2 h3 hsign
+    · exact ih (Compose.chain_fg v0 (.cons hs (.nil _)) hr).1 hm
+
+/-- The FG state before every tick of the run is reachable. -/
+private theorem tickState_reachable :
+    ∀ t, (tickState N1 dg1 t).fg.Reachable N1.genesisPayload
+  | 0 => .refl
+  | t + 1 => (Compose.chain_fg v0 (stockTick_chain N1 dg1 t) (tickState_reachable t)).1
+
+/-- An own admission names an attestation the cut list signs. -/
+private theorem mem_of_ownAdmission {cs : List (Cut N1)} {a : FG.Att sp1.n}
+    (h : ownAdmission cs = some a) : ∃ C, Cut.fg (.attest C (some a)) ∈ cs := by
+  unfold ownAdmission at h
+  split at h
+  · rename_i C a' hl
+    cases h
+    exact ⟨C, List.mem_of_getLast? hl⟩
+  · cases h
+
+/-- The tick's cuts are its signing cuts, then its own admission. -/
+private theorem tickCuts_eq_append' (t : Nat) :
+    tickCuts N1 dg1 t = signingTickCuts N1 dg1 t ++
+      ((ownAdmission (signingTickCuts N1 dg1 t)).toList.map fun a => .fg (.attestation a)) := by
+  unfold tickCuts signingTickCuts stockTick admitOwn exec
+  split <;> simp_all [onAttestation]
+
+/-- The own admission of a tick admits a well-formed attestation: it is the tick's signing. -/
+theorem tickRun_ownAdmission_wf (t : Nat) (a : FG.Att sp1.n)
+    (h : ownAdmission (signingTickCuts N1 dg1 t) = some a) : a.WellFormed := by
+  obtain ⟨C, hm⟩ := mem_of_ownAdmission h
+  unfold signingTickCuts at hm
+  have hc := Compose.exec_is_cut_chain (fun _ => v0) dg1 v0 (tickState N1 dg1 t)
+    (t : Int) (.tick 0 true)
+  exact chain_attest_wf hc (tickState_reachable t) hm
+
 /-- **The one-validator tick run is a Goldilocks run.** -/
 theorem tickRun_goldilocksRun :
     GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) where
-  toLocalRun := tickRun_localRun rfl rfl _
+  toLocalRun := tickRun_localRun rfl rfl _ tickRun_ownAdmission_wf
   genesis_root_ok := dg1_genesis
   vstart := fun _ => AC.voteStart_initial _
 
@@ -491,7 +539,17 @@ theorem tickRun_readyProposal (s : Nat) (hs : 1 ≤ s) :
   have hBslot : B.slot = s := hslot
   refine ⟨8 * t + 2, B, ⟨Set.mem_univ _, rfl, ?_, ⟨⟨⟨true, hacc⟩, ?_⟩, rfl, ?_⟩, hBslot, ?_⟩, rfl⟩
   · intro k hk; exact absurd hk (tickRun_no_restart _ k)
-  · change (8 * t + 2) % 8 ≠ 0; omega
+  · have hlen : 2 < (signingTickCuts N1 dg1 t).length := by
+      by_contra hle
+      have hl := hacc.2
+      rw [tickRun_label, show (8 * t + 2) / 8 = t by omega, show (8 * t + 2) % 8 = 2 by omega,
+        tickCuts_eq_append', List.getElem?_append_right (by omega)] at hl
+      cases ownAdmission (signingTickCuts N1 dg1 t) <;> simp at hl
+    change (if (8 * t + 2) % 8 < (signingTickCuts N1 dg1 ((8 * t + 2) / 8)).length then
+      (8 * t + 2) % 8 else 0) ≠ 0
+    rw [show (8 * t + 2) / 8 = t by omega, show (8 * t + 2) % 8 = 2 by omega,
+      ite_eq_left_iff.mpr (fun h => absurd hlen h)]
+    omega
   · rw [htk, hBslot]; exact hts
   · intro x hx hxs y _ j' hj'
     have hpool := acProposal_support _ _ hr x hx

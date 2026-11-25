@@ -6,6 +6,7 @@ public import ConsensusLeanTest.Gaps
 public import ConsensusLeanTest.Goldilocks.Refinement.Obligations
 public import ConsensusLeanTest.Goldilocks.Refinement.Simulation
 public import ConsensusLeanTest.Goldilocks.Regimes.ProposerHold
+public import ConsensusLeanTest.Goldilocks.Run.LateRelease
 public import ConsensusLeanTest.Problem.Continuation
 public import ConsensusLeanTest.Problem.CorrectProtocol
 public import ConsensusLeanTest.Shape.Leaks
@@ -567,6 +568,10 @@ example := ``Consensus.Goldilocks.Compose.NodeStatements
 example := ``Consensus.Goldilocks.Compose.ComposeNodeStatements
 
 /-! ## Goldilocks Persist (a milestone PR appends here only) -/
+
+example := ``Consensus.Goldilocks.Witness.LateRelease.release_gap_one
+example := ``Consensus.Goldilocks.Witness.LateRelease.denied_proposal_omits_held
+example := ``Consensus.Goldilocks.Witness.LateRelease.stock_signing_batch
 
 example := ``Consensus.Goldilocks.RunTrace
 example := ``Consensus.Goldilocks.RunTrace.IsCall

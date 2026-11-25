@@ -13,7 +13,7 @@ Labelled by kind (CONTRIBUTING "Statements"):
 
 * (a) `assumptions_small`, `assumptions_large`: `ContractAssumptions` is satisfiable at two
   concrete setups, `k = 2, δt = 6` and `k = 6, δt = 8`; `assumptions_iff` gives its exact range
-  for the stock calendar, and `assumptions_iff_calendar` characterises arbitrary calendars.
+  for stock signing and release, and `assumptions_iff_calendar` characterises arbitrary schedules.
   `assumptions_empty_of_timeout` rejects `δt = 5`; `assumptions_empty_of_never_sign` rejects
   an always-false signing calendar.
 * (b) The coefficients at those setups (phase 2, `Δp = Δe`): `contract_catchUp` is `19`
@@ -98,6 +98,7 @@ def assumptionsSmall : ContractAssumptions setupSmall where
   sign_liveness pub y t ht := by
     obtain ⟨t', h1, h2, h3⟩ := stock_sign_liveness pub y t ht
     exact ⟨t', h1, h2, h3, rfl⟩
+  release_liveness _ _ t _ := ⟨t, le_rfl, by simp, rfl⟩
   timeout := by decide
 
 /-- The assumptions at `setupLarge`, with FG gap `2`. -/
@@ -107,6 +108,7 @@ def assumptionsLarge : ContractAssumptions setupLarge where
   sign_liveness pub y t ht := by
     obtain ⟨t', h1, h2, h3⟩ := stock_sign_liveness pub y t ht
     exact ⟨t', h1, h2, h3, rfl⟩
+  release_liveness _ _ t _ := ⟨t, le_rfl, by simp, rfl⟩
   timeout := by decide
 
 /-- (a) The acceptance assumptions are satisfiable at `k = 2, δt = 6`. -/
@@ -115,10 +117,11 @@ theorem assumptions_small : Nonempty (ContractAssumptions setupSmall) := ⟨assu
 /-- (a) The acceptance assumptions are satisfiable at `k = 6, δt = 8`. -/
 theorem assumptions_large : Nonempty (ContractAssumptions setupLarge) := ⟨assumptionsLarge⟩
 
-/-- (a) With the stock signing calendar, the assumptions hold exactly when `6 ≤ δt`. -/
+/-- (a) With stock signing and release, the assumptions hold exactly when `6 ≤ δt`. -/
 theorem assumptions_iff (S : Setup) : S.sign = (fun _ _ _ => true) →
+    S.release = (fun _ _ _ => true) →
     (Nonempty (ContractAssumptions S) ↔ 6 ≤ S.δt) := by
-  intro hsign
+  intro hsign hrelease
   refine ⟨fun ⟨A⟩ => A.six_le_δt, fun h => ⟨?_⟩⟩
   exact {
     fgSlots := 2
@@ -126,6 +129,7 @@ theorem assumptions_iff (S : Setup) : S.sign = (fun _ _ _ => true) →
     sign_liveness := fun pub y t ht => by
       obtain ⟨t', h1, h2, h3⟩ := stock_sign_liveness pub y t ht
       exact ⟨t', h1, h2, h3, by rw [hsign]⟩
+    release_liveness := fun pub y t _ => ⟨t, le_rfl, by simp, by rw [hrelease]⟩
     timeout := by simpa using h }
 
 /-- (a) Rejection: an always-false signing calendar admits no contract assumptions. -/
@@ -136,18 +140,21 @@ theorem assumptions_empty_of_never_sign :
   obtain ⟨t', -, -, -, hs⟩ := A.sign_liveness pub ⟨0, by decide⟩ 0 le_rfl
   cases hs
 
-/-- (a) General realizability is exactly a finite signing gap and its admitted timeout. -/
+/-- (a) General realizability requires finite signing and release gaps and an admitted timeout. -/
 theorem assumptions_iff_calendar (S : Setup) : Nonempty (ContractAssumptions S) ↔
-    ∃ c G : Nat, 2 ≤ c ∧
+    ∃ c G R : Nat, 2 ≤ c ∧
       (∀ (pub : Model.Public) (y : Fin pub.n) (t : Time), 0 ≤ t →
         ∃ t', t ≤ t' ∧ t' < t + ((G : Time) + 1) * pub.ΔAC ∧
           pub.ΔAC ∣ t' ∧ S.sign pub y t' = true) ∧
-      3 * ((6 + (4 * c - 6) + G + 3) / 4) ≤ S.δt := by
+      (∀ (pub : Model.Public) (y : Fin pub.n) (t : Time), 0 ≤ t →
+        ∃ t', t ≤ t' ∧ t' ≤ t + (R : Time) * pub.ΔAC ∧ S.release pub y t' = true) ∧
+      3 * ((6 + (4 * c - 6) + R + G + 3) / 4) ≤ S.δt := by
   constructor
   · rintro ⟨A⟩
-    exact ⟨A.fgSlots, A.signGap, A.two_le_fgSlots, A.sign_liveness, A.timeout⟩
-  · rintro ⟨c, G, hc, hs, ht⟩
-    exact ⟨⟨c, hc, G, hs, ht⟩⟩
+    exact ⟨A.fgSlots, A.signGap, A.releaseGap, A.two_le_fgSlots, A.sign_liveness,
+      A.release_liveness, A.timeout⟩
+  · rintro ⟨c, G, R, hc, hs, hr, ht⟩
+    exact ⟨⟨c, hc, G, hs, R, hr, ht⟩⟩
 
 /-- (a) Rejection: a timeout of five is not admitted. -/
 theorem assumptions_empty_of_timeout (S : Setup) (h : S.δt = 5) :
@@ -306,6 +313,7 @@ def assumptionsGapThree : ContractAssumptions setupRow where
   sign_liveness pub y t ht := by
     obtain ⟨t', h1, h2, h3⟩ := stock_sign_liveness pub y t ht
     exact ⟨t', h1, h2, h3, rfl⟩
+  release_liveness _ _ t _ := ⟨t, le_rfl, by simp, rfl⟩
   timeout := by decide
 
 /-- The assumptions at `setupRow` with FG gap `10` (`30 ≤ 30`). -/
@@ -315,6 +323,7 @@ def assumptionsGapTen : ContractAssumptions setupRow where
   sign_liveness pub y t ht := by
     obtain ⟨t', h1, h2, h3⟩ := stock_sign_liveness pub y t ht
     exact ⟨t', h1, h2, h3, rfl⟩
+  release_liveness _ _ t _ := ⟨t, le_rfl, by simp, rfl⟩
   timeout := by decide
 
 /-- (b) FG gap `3`: the window `[0, 3, 6, 9]`, final latency `4(X + 9) + 1`, FG delay bound `6`. -/

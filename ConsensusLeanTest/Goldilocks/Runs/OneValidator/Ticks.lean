@@ -936,7 +936,7 @@ theorem tip_A1 (k : Nat) : tip (4 * (k + 1) + 1) = k + 1 := by unfold tip; omega
 vote of slot `k + 1` with its fast lock, and the attestation of slot `k + 1`. -/
 theorem tick_A {st : NodeState N1} {k : Nat} (hg : Good st (4 * (k + 1))) :
     ∃ fg' e st', st.fg.onBlock (blk (k + 1)) = some fg' ∧ FGGood fg' (k + 1) ∧
-      Node.onTick (fun _ => v0) dg1 v0 st ((4 * (k + 1) : Nat) : Int) 0 true =
+      stockTick N1 dg1 v0 st ((4 * (k + 1) : Nat) : Int) 0 =
         (st', [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.proposal, Node.frame st, []⟩,
           .fg (.block (blk (k + 1)) true), .ac ⟨.block (blk (k + 1)), fg'.toFrame, [e]⟩,
           .ac ⟨.toFG, fg'.toFrame, []⟩, .fg (.attest (blk (k + 1)) (some (att (k + 1)))),
@@ -996,9 +996,8 @@ theorem tick_A {st : NodeState N1} {k : Nat} (hg : Good st (4 * (k + 1))) :
     dsimp only [ACInterface.step]
     rw [hblk]
   have s3 : tickStep (fun _ => v0) dg1 v0 ⟨fg', A₃, st.record⟩ (t : Int) 0 .fgUpdate =
-      (⟨fg'.onAttestation (att (k + 1)), { A₃ with fgReported := (blk (k + 1)).root }, Λ'⟩,
-        [.ac ⟨.toFG, fg'.toFrame, []⟩, .fg (.attest (blk (k + 1)) (some (att (k + 1)))),
-          .fg (.attestation (att (k + 1)))]) := by
+      (⟨fg', { A₃ with fgReported := (blk (k + 1)).root }, Λ'⟩,
+        [.ac ⟨.toFG, fg'.toFrame, []⟩, .fg (.attest (blk (k + 1)) (some (att (k + 1))))]) := by
     simp only [tickStep, Node.acToFG, Node.frame]
     rw [hto2]
     dsimp only
@@ -1006,11 +1005,10 @@ theorem tick_A {st : NodeState N1} {k : Nat} (hg : Good st (4 * (k + 1))) :
     rw [hto1]
     dsimp only
     rw [hatt]
-    rfl
   refine ⟨fg', e,
     ⟨fg'.onAttestation (att (k + 1)), { A₃ with fgReported := (blk (k + 1)).root }, Λ'⟩,
     hob, hfg', ?_, he, hrp, ?_⟩
-  · rw [onTick_eq', tickStep_acTick, hstep]
+  · rw [stockTick, onTick_eq', tickStep_acTick, hstep]
     dsimp only
     rw [show ({ fg := st.fg, ac := st.ac, record := st.record } : NodeState N1) = st from rfl,
       s2, s3]

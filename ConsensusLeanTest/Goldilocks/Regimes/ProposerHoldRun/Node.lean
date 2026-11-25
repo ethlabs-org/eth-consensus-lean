@@ -62,11 +62,15 @@ theorem msg_delivered {y : Fin (Fintype.card (Fin 5))} {k : Nat}
   have hl : (tr S).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, i, _, _, he, _, _, hidx, _, _, _, hlab'⟩ :=
     simTrace_cut { S with vote := stock } (rhoc S) one_le_card hl
+      fun a h => by rw [hlab] at h; cases h
   have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
   have hmem := List.mem_of_getElem? hidx
-  obtain ⟨v, o, t, rfl⟩ :=
-    eq_deliver_of_cut { S with vote := stock } (rhoc S) one_le_card he hmem
-      (Or.inr ⟨ℓ, m, hrl, hcall⟩)
+  rcases eq_deliver_of_cut { S with vote := stock } (rhoc S) one_le_card he hmem
+      (Or.inr ⟨ℓ, m, hrl, hcall⟩) with ⟨v, o, t, rfl⟩ | ⟨v, t, -, htail⟩
+  swap
+  · obtain ⟨-, a, ha⟩ := tickTail_label { S with vote := stock } (rhoc S) one_le_card htail
+    rw [hrl] at ha
+    cases ha
   rw [eventCuts_deliver { S with vote := stock } (rhoc S) one_le_card i v o t he] at hmem
   obtain ⟨o', e, _, ho, hce, q, hq, hc, _⟩ := mem_deliverRecs_exec _ _ _ _ _ _ _ _ _ _ hmem
   have hcut := List.getElem_mem hq
@@ -117,8 +121,12 @@ theorem wire_block {y : Fin (Fintype.card (Fin 5))} {j : Nat} {t : Time}
   change (simTrace S' (rhoc S) one_le_card).GroupAt
     (runProposer S' (rhoc S) one_le_card) (digestOf S' (rhoc S)) y j t (.block B) at hg
   rw [htrace, hpr, hdg] at hg
-  obtain ⟨i, ev, he, hlo, _, _, ht, hphase, r, hr, _⟩ :=
+  obtain ⟨i, ev, he, hlo, _, ht, r, hr, -, hnormal | hown⟩ :=
     NodeAsChainShape.CanonicalTrace.group_origin e (rhoc S) hg
+  swap
+  · obtain ⟨_, _, _, _, a, ha, -⟩ := hown.1
+    cases ha
+  have hphase := hnormal.2.1
   obtain ⟨hne, hcuts, _⟩ := hg
   obtain ⟨c, cs, hcs⟩ := List.exists_cons_of_ne_nil hne
   obtain ⟨acc, hc⟩ := exec_block_head _ _ _ _ _ _ hcs

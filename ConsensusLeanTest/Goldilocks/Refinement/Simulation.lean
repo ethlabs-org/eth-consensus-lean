@@ -376,14 +376,13 @@ theorem acceptance_publication_order {sp : AC.ACParams}
 /-- The installed poll drains all timestamped wrappers in order and retains their durable map. -/
 theorem publisher_poll_drain {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (t : Time)
-    (hf : st.fgDue = false) (ho : st.outbox = []) :
+    (hf : st.fgDue = false) (ho : st.outbox = []) (hh : st.held = []) :
     (goldilocksShape sp ro).pollBatch st t =
       ({ st with forwards := [], voteForwards := [] },
         st.forwards.map (fun p => (.forward p.1, p.2)) ++
         st.voteForwards.map (fun p => (.voteForward p.1 (encodeVote p.2.1), [p.2.2]))) := by
   change pollBatch st t = _
-  simp [pollBatch, poll, hf, ho]
-  rfl
+  cases ht : st.ticked <;> simp [pollBatch, poll, hf, ho, hh, ht] <;> rfl
 
 /-- A duplicate block is refused by the actual node handler and creates no fresh candidate. -/
 theorem duplicate_no_publication {sp : AC.ACParams}

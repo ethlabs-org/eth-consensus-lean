@@ -57,8 +57,8 @@ theorem proposal_payload (k : Nat) : ∃ d, (AC.acProposal sp1
     (Node.frame (tickState N1 dg1 (4 * (k + 1))))
     ((tickRun N1 dg1).projAC.time (8 * (4 * (k + 1)) + 1))).2 = some (d, ([cv k], [cv k])) := by
   obtain ⟨fg', e, -, -, he, -, -⟩ := tickCuts_A k
-  have hc : Cut.fg (.block (blk (k + 1)) true) ∈ (Node.onTick (fun _ => v0) dg1 v0
-      (tickState N1 dg1 (4 * (k + 1))) ((4 * (k + 1) : Nat) : Int) 0 true).2 := by
+  have hc : Cut.fg (.block (blk (k + 1)) true) ∈ (stockTick N1 dg1 v0
+      (tickState N1 dg1 (4 * (k + 1))) ((4 * (k + 1) : Nat) : Int) 0).2 := by
     rw [← tickCuts_eq, he]
     simp
   obtain ⟨d, p, hr, hB⟩ := onTick_block_made N1 dg1 v0 _ _ 0 hc (Or.inl ⟨true, rfl⟩)

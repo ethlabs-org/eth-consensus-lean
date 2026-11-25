@@ -118,7 +118,8 @@ theorem dgP_noColl (tr : RunTrace payloadAC) : NoCollRun dgP tr := by
 theorem tickState_one : tickState payloadAC dgP 1 = Node.init payloadAC := by
   have hnp : ¬ Node.Proposes (P := P₁) (fun _ => v0) v0 ((0 : Nat) : Int) := fun h => by
     have := h.1; rw [show P₁.slotOf ((0 : Nat) : Int) = 0 by decide] at this; omega
-  simp only [tickState, Node.exec, Node.onTick, Node.runSteps, Node.tickSteps, Node.tickStep, hnp,
+  simp only [tickState, stockTick, admitOwn, ownAdmission, Node.onTick, Node.runSteps,
+    Node.tickSteps, Node.tickStep, hnp,
     Node.acCall, Node.acToFG, ite_false]
   rfl
 
@@ -187,11 +188,39 @@ theorem tickCuts_one :
     · next fg'' h =>
       obtain rfl : fg'' = fg' := Option.some.inj (h.symm.trans hon)
       simp only [acCall, payloadAC_step_emits]
-  simp only [tickCuts, tickState_one, Nat.cast_one, Node.exec, Node.onTick, Node.runSteps,
-    Node.tickSteps, Node.tickStep, hp, ite_true, List.foldl, Node.acProposal, hprop,
-    Node.proposeBlock, hfr, hfg]
+  have hpre : ∀ r : NodeState payloadAC × List (Cut payloadAC), ∃ l, (admitOwn r).2 = r.2 ++ l := by
+    intro r
+    unfold admitOwn
+    split
+    · exact ⟨[], (List.append_nil _).symm⟩
+    · exact ⟨_, rfl⟩
+  obtain ⟨l, hl⟩ := hpre (Node.onTick (fun _ => v0) dgP v0 (Node.init payloadAC) 1 0 true)
+  have e : tickCuts payloadAC dgP 1 =
+      (admitOwn (Node.onTick (fun _ => v0) dgP v0 (Node.init payloadAC) 1 0 true)).2 := by
+    rw [tickCuts, tickState_one]; rfl
+  rw [e, hl]
+  simp only [Node.onTick, Node.runSteps, Node.tickSteps, Node.tickStep, hp, ite_true, List.foldl,
+    Node.acProposal, hprop, Node.proposeBlock, hfr, hfg]
   erw [hob _ rfl]
   exact ⟨_, rfl⟩
+
+/-- The tick run admits no own attestation: `payloadAC` reports no FG source, so no tick signs. -/
+theorem ownAdmission_none (t : Nat) (a : FG.Att P₁.n)
+    (h : ownAdmission (signingTickCuts payloadAC dgP t) = some a) : a.WellFormed := by
+  exfalso
+  have hf : ∀ (st : NodeState payloadAC) (τ : Time),
+      (Node.tickStep (fun _ => v0) dgP v0 st τ 0 .fgUpdate).2 = [(Node.acToFG st τ).2.1] :=
+    fun _ _ => rfl
+  have hc : ∀ (st : NodeState payloadAC) (τ : Time), ∃ ℓ, (Node.acToFG st τ).2.1 = .ac ℓ :=
+    fun _ _ => ⟨_, rfl⟩
+  simp only [ownAdmission, signingTickCuts, Node.exec, Node.onTick, Node.runSteps,
+    Node.tickSteps, ↓reduceIte, List.foldl_cons, List.foldl_nil, hf, List.getLast?_append,
+    List.getLast?_singleton] at h
+  generalize hx : Node.acToFG _ _ = x at h
+  obtain ⟨ℓ, hℓ⟩ := hc _ _
+  rw [hx] at hℓ
+  rw [hℓ] at h
+  cases h
 
 /-- The AC projection of the tick run is not an `ACLocalRun`: the `ac_on_block` call of the own
 block of time `1` (cut `8 + 3`) breaks the frame law's input contract, `validPayload`. -/
@@ -218,14 +247,15 @@ theorem acProjection_needs_payload (sg : payloadAC.Msg → Fin P₁.n) :
       ¬ ACLocalRun payloadAC Set.univ ((tickRun payloadAC dgP).HonestBlocks Set.univ)
         (tickRun payloadAC dgP).projAC :=
   ⟨payloadAC_reqHeads, payloadAC_reqSource, payloadAC_reqOutputs, payloadAC_reqParent,
-    tickRun_localRun (A := payloadAC) (dg := dgP) rfl rfl sg, dgP_noColl _, not_acLocalRun⟩
+    tickRun_localRun (A := payloadAC) (dg := dgP) rfl rfl sg
+      ownAdmission_none, dgP_noColl _, not_acLocalRun⟩
 
 /-- Requirement 5 is what fails: with it, `Compose.ac_projection` would make the projection an
 `ACLocalRun`. -/
 theorem payloadAC_not_reqPayload : ¬ payloadAC.ReqPayload := fun h5 =>
   not_acLocalRun (ac_projection P₁ payloadAC dgP Set.univ (fun m => (m : Empty).elim)
     (tickRun payloadAC dgP) (fun _ => v0) (fun y _ => h5 y)
-    (tickRun_localRun (A := payloadAC) (dg := dgP) rfl rfl _) (dgP_noColl _))
+    (tickRun_localRun (A := payloadAC) (dg := dgP) rfl rfl _ ownAdmission_none) (dgP_noColl _))
 
 end Consensus.Goldilocks.Compose.Test.ProjectionRejection
 

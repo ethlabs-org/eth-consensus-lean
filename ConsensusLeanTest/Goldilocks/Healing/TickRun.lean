@@ -39,7 +39,7 @@ theorem tickRun_allTicksSign :
     (tickRun N1 dg1).AllTicksSign (fun _ => v0) dg1 Set.univ := by
   intro y _ j t htick
   obtain ⟨x, fgDue, hg⟩ := htick
-  obtain ⟨hj, ht, _⟩ := tickRun_groupAt_inv hg
+  obtain ⟨hj, ht⟩ := tickRun_groupAt_inv hg
   rw [eq_v0 rfl y, ht]
   have hj' : j = 8 * (j / 8) := by omega
   refine ⟨0, ?_⟩

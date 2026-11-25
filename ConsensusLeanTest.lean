@@ -45,12 +45,16 @@ public import ConsensusLeanTest.Goldilocks.FGStore.TimeoutEntry
 public import ConsensusLeanTest.Goldilocks.Frame.Rejection
 public import ConsensusLeanTest.Goldilocks.Frame.Seq
 public import ConsensusLeanTest.Goldilocks.Frame.Statements
+public import ConsensusLeanTest.Goldilocks.Generic.BridgeHoldIff
 public import ConsensusLeanTest.Goldilocks.Generic.HealingLeavesCut
 public import ConsensusLeanTest.Goldilocks.Generic.OutageTransport
+public import ConsensusLeanTest.Goldilocks.Generic.ReaderHoldIff
 public import ConsensusLeanTest.Goldilocks.Generic.SleepyCut
 public import ConsensusLeanTest.Goldilocks.Growing.Compose
 public import ConsensusLeanTest.Goldilocks.Growing.FG
+public import ConsensusLeanTest.Goldilocks.Growing.Hold
 public import ConsensusLeanTest.Goldilocks.Growing.ReportCover
+public import ConsensusLeanTest.Goldilocks.Growing.ServiceHold
 public import ConsensusLeanTest.Goldilocks.Healing.PhaseCount
 public import ConsensusLeanTest.Goldilocks.Healing.Recovery
 public import ConsensusLeanTest.Goldilocks.Healing.Settled
@@ -76,6 +80,7 @@ public import ConsensusLeanTest.Goldilocks.Regimes.SleepyCommittee
 public import ConsensusLeanTest.Goldilocks.Run.AttestationPremise
 public import ConsensusLeanTest.Goldilocks.Run.Conflict
 public import ConsensusLeanTest.Goldilocks.Run.Faulty
+public import ConsensusLeanTest.Goldilocks.Run.LateRelease
 public import ConsensusLeanTest.Goldilocks.Run.Statements
 public import ConsensusLeanTest.Goldilocks.Run.TickOnce
 public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Chain

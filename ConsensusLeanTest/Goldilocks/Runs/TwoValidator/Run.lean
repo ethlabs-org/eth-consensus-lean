@@ -1,6 +1,5 @@
 module
-public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Premises
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
+public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.TickRun
 @[expose] public section
 
 /-! # A healthy infinite two-validator run: the schedule
@@ -92,6 +91,14 @@ abbrev prop : Nat → Fin sp.n := fun _ => w0
 /-- The content of a block (what its root digests). -/
 abbrev Content := Option Nat × Nat × Nat × List (FG.Att sp.n) × Payload sp.n
 
+local instance : Countable (FG.Att sp.n) :=
+  Function.Injective.countable (f := fun a : FG.Att sp.n => (a.val, a.h, a.T, a.timeout, a.fin))
+    (by rintro ⟨⟩ ⟨⟩ h; simp_all)
+
+local instance : Countable (Vote sp.n) :=
+  Function.Injective.countable (f := fun v : Vote sp.n => (v.val, v.slot, v.head))
+    (by rintro ⟨⟩ ⟨⟩ h; simp_all)
+
 /-- An injective code of block contents. -/
 noncomputable def code : Content → Nat := (Countable.exists_injective_nat Content).choose
 
@@ -174,14 +181,16 @@ def attOf : Cut N → Option (FG.Att sp.n)
 each earlier time (delivered to `v0` thirty-five time units later). -/
 abbrev World := Wld × (Nat → List (FG.Att sp.n))
 
-/-- The events of time `t` from the world `W`: the two ticks, the deliveries to `v1`, the
-deliveries to `v0`; the world at the start of `t + 1` and the segments. -/
+/-- The events of time `t` from the world `W`: both ticks, both own admissions, the
+deliveries to `v1`, then the deliveries to `v0`; the world and segments after those events. -/
 noncomputable def stepT (t : Nat) (W : World) : World × List Seg :=
   let e0 := ex W.1 w0 t (.tick 0 true)
   let w1' := Function.update W.1 w0 e0.1
   let e1 := ex w1' w1 t (.tick 0 true)
   let w2 := Function.update w1' w1 e1.1
-  let r2 := runEvs t w2 ((e0.2.filterMap toW1).map (w1, ·))
+  let r2 := runEvs t w2 ((e0.2.filterMap attOf).map (fun a => (w0, .attestation a)) ++
+    (e1.2.filterMap attOf).map (fun a => (w1, .attestation a)) ++
+    (e0.2.filterMap toW1).map (w1, ·))
   let c3 := r2.2.flatMap Seg.cuts
   let qa := (if 35 ≤ t then W.2 (t - 35) else []).map fun a => (w0, Node.Event.attestation a)
   let r3 := runEvs t r2.1 (((e1.2 ++ c3).filterMap voteOf).map (w0, ·) ++ qa)
@@ -217,13 +226,13 @@ noncomputable def run : RunTrace N where
 
 /-! ## Bounds -/
 
-/-- Every handler makes at most seven cuts. -/
+/-- Every handler makes at most six cuts. -/
 theorem ex_length (w : Wld) (y : Fin sp.n) (t : Nat) (e : Node.Event N) :
-    (ex w y t e).2.length ≤ 7 := by
+    (ex w y t e).2.length ≤ 6 := by
   cases e with
   | tick x fgDue =>
     have h := onTick_length N dg y (w y) (t : Int) x
-    change (onTick prop dg y (w y) (t : Int) x true).2.length ≤ 7 at h
+    change (onTick prop dg y (w y) (t : Int) x true).2.length ≤ 6 at h
     cases fgDue
     · simp [ex, exec, onTick, runSteps, tickSteps] at h ⊢
       omega
@@ -239,7 +248,7 @@ theorem runEvs_length (t : Nat) : ∀ (w : Wld) (es : List (Fin sp.n × Node.Eve
   | w, (y, e) :: es => by simp only [runEvs, List.length_cons, runEvs_length t _ es]
 
 theorem runEvs_cuts (t : Nat) : ∀ (w : Wld) (es : List (Fin sp.n × Node.Event N)),
-    ∀ sg ∈ (runEvs t w es).2, sg.cuts.length ≤ 7
+    ∀ sg ∈ (runEvs t w es).2, sg.cuts.length ≤ 6
   | _, [] => by simp [runEvs]
   | w, (y, e) :: es => by
     intro sg hsg
@@ -248,8 +257,8 @@ theorem runEvs_cuts (t : Nat) : ∀ (w : Wld) (es : List (Fin sp.n × Node.Event
     · exact ex_length w y t e
     · exact runEvs_cuts t _ es sg hsg
 
-theorem flatMap_cuts_length {l : List Seg} (h : ∀ sg ∈ l, sg.cuts.length ≤ 7) :
-    (l.flatMap Seg.cuts).length ≤ 7 * l.length := by
+theorem flatMap_cuts_length {l : List Seg} (h : ∀ sg ∈ l, sg.cuts.length ≤ 6) :
+    (l.flatMap Seg.cuts).length ≤ 6 * l.length := by
   induction l with
   | nil => simp
   | cons sg l ih =>
@@ -264,6 +273,15 @@ theorem filterMap_length_le {α β : Type} (f : α → Option β) (l : List α) 
   | nil => simp
   | cons a l ih => simp only [List.filterMap_cons]; split <;> simp <;> omega
 
+private theorem ex_tick_att_length (w : Wld) (y : Fin sp.n) (t : Nat) :
+    ((ex w y t (.tick 0 true)).2.filterMap attOf).length ≤ 1 := by
+  obtain ⟨ℓ, pc, uc, _, hc, hp, hu⟩ := Compose.tick_order prop dg y (w y) (t : Int) 0 true
+  change (ex w y t (.tick 0 true)).2 = _ at hc
+  change Compose.UpdateCuts uc at hu
+  obtain ⟨_, _, rfl | ⟨_, rfl⟩ | ⟨_, _, rfl⟩⟩ := hu <;>
+    rcases hp with ⟨_, rfl⟩ | ⟨_, _, _, rfl | ⟨_, _, _, rfl | ⟨_, _, rfl⟩⟩⟩ <;>
+    rw [hc] <;> simp [List.filterMap_cons, attOf]
+
 /-- `v1`'s signed attestations per time: at most seven. -/
 theorem world_queue : ∀ t t', ((world t).2 t').length ≤ 7
   | 0, _ => by simp [world]
@@ -271,7 +289,7 @@ theorem world_queue : ∀ t t', ((world t).2 t').length ≤ 7
     change (Function.update (world t).2 t _ t').length ≤ 7
     by_cases h : t' = t
     · subst h; rw [Function.update_self]
-      exact le_trans (filterMap_length_le _ _) (ex_length _ _ _ _)
+      exact le_trans (filterMap_length_le _ _) (le_trans (ex_length _ _ _ _) (by decide))
     · rw [Function.update_of_ne h]; exact world_queue t t'
 
 theorem stepT_length (t : Nat) (W : World) (hq : ∀ t', (W.2 t').length ≤ 7) :
@@ -279,16 +297,22 @@ theorem stepT_length (t : Nat) (W : World) (hq : ∀ t', (W.2 t').length ≤ 7) 
   unfold stepT
   dsimp only
   have l0 := ex_length W.1 w0 t (.tick 0 true)
+  have h1 := ex_tick_att_length W.1 w0 t
   generalize ex W.1 w0 t (.tick 0 true) = e0 at *
   have l1 := ex_length (Function.update W.1 w0 e0.1) w1 t (.tick 0 true)
+  have h2 := ex_tick_att_length (Function.update W.1 w0 e0.1) w1 t
   generalize ex (Function.update W.1 w0 e0.1) w1 t (.tick 0 true) = e1 at *
   generalize Function.update (Function.update W.1 w0 e0.1) w1 e1.1 = w2
   have h0 := le_trans (filterMap_length_le toW1 e0.2) l0
-  have hr2 := flatMap_cuts_length (runEvs_cuts t w2 ((e0.2.filterMap toW1).map (w1, ·)))
-  rw [runEvs_length, List.length_map] at hr2
-  have hl2 := runEvs_length t w2 ((e0.2.filterMap toW1).map (w1, ·))
-  rw [List.length_map] at hl2
-  generalize (runEvs t w2 ((e0.2.filterMap toW1).map (w1, ·))) = r2 at *
+  let es : List (Fin sp.n × Node.Event N) :=
+    (e0.2.filterMap attOf).map (fun a => (w0, .attestation a)) ++
+    (e1.2.filterMap attOf).map (fun a => (w1, .attestation a)) ++
+    (e0.2.filterMap toW1).map (w1, ·)
+  have hr2 := flatMap_cuts_length (runEvs_cuts t w2 es)
+  rw [runEvs_length] at hr2
+  have hl2 := runEvs_length t w2 es
+  generalize (runEvs t w2 es) = r2 at *
+  simp only [es, List.length_append, List.length_map] at hr2 hl2
   have hv := filterMap_length_le voteOf (e1.2 ++ r2.2.flatMap Seg.cuts)
   have hqa : (if 35 ≤ t then W.2 (t - 35) else []).length ≤ 7 := by
     split_ifs
@@ -301,8 +325,8 @@ theorem stepT_length (t : Nat) (W : World) (hq : ∀ t', (W.2 t').length ≤ 7) 
 /-- At most `72` events per time. -/
 theorem segs_length (t : Nat) : (segs t).length ≤ 72 := stepT_length t _ (world_queue t)
 
-/-- Every event of the run makes at most seven cuts. -/
-theorem segs_cuts (t : Nat) : ∀ sg ∈ segs t, sg.cuts.length ≤ 7 := by
+/-- Every event of the run makes at most six cuts. -/
+theorem segs_cuts (t : Nat) : ∀ sg ∈ segs t, sg.cuts.length ≤ 6 := by
   intro sg hsg
   unfold segs stepT at hsg
   dsimp only at hsg
@@ -420,8 +444,10 @@ noncomputable abbrev tk1 (t : Nat) : St × List (Cut N) := ex (wA t) w1 t (.tick
 /-- The world after both ticks. -/
 noncomputable abbrev wB (t : Nat) : Wld := Function.update (wA t) w1 (tk1 t).1
 
-/-- The deliveries to `v1` at time `t`. -/
+/-- The own admissions at time `t`, followed by deliveries to `v1`. -/
 noncomputable abbrev evs1 (t : Nat) : List (Fin sp.n × Node.Event N) :=
+  ((tk0 t).2.filterMap attOf).map (fun a => (w0, .attestation a)) ++
+  ((tk1 t).2.filterMap attOf).map (fun a => (w1, .attestation a)) ++
   ((tk0 t).2.filterMap toW1).map (w1, ·)
 
 /-- Their run. -/
@@ -445,12 +471,9 @@ theorem world_succ (t : Nat) :
     world (t + 1) = ((runEvs t (run1 t).1 (evs0 t)).1,
       Function.update (world t).2 t ((tk1 t).2.filterMap attOf)) := rfl
 
-/-- A delivery segment (index `≥ 2`) of time `t`: to `v1`, an event of `toW1` of a cut of
-`v0`'s tick; or to `v0`, a vote of a cut of `v1` at time `t` before it, or an attestation of
-`qa t`. -/
+/-- A delivery segment belongs to one of the two delivery batches, including own admissions. -/
 theorem segs_delivery {t j : Nat} {sg : Seg} (h : (segs t)[j + 2]? = some sg) :
-    (j < (evs1 t).length ∧ sg.node = w1 ∧
-      ∃ (k : Nat) (c : Cut N), (tk0 t).2[k]? = some c ∧ toW1 c = some sg.ev) ∨
+    (j < (evs1 t).length ∧ (sg.node, sg.ev) ∈ evs1 t) ∨
     ((evs1 t).length ≤ j ∧ sg.node = w0 ∧
       ((∃ c, c ∈ (tk1 t).2 ++ (run1 t).2.flatMap Seg.cuts ∧ voteOf c = some sg.ev) ∨
         ∃ a ∈ qa t, sg.ev = .attestation a)) := by
@@ -460,14 +483,7 @@ theorem segs_delivery {t j : Nat} {sg : Seg} (h : (segs t)[j + 2]? = some sg) :
   · rw [List.getElem?_append_left hj] at h
     have he := runEvs_get t _ _ h
     have hl : (run1 t).2.length = (evs1 t).length := runEvs_length _ _ _
-    refine Or.inl ⟨by omega, ?_⟩
-    rw [List.getElem?_map] at he
-    obtain ⟨e, he1, he2⟩ := Option.map_eq_some_iff.1 he
-    simp only [Prod.mk.injEq] at he2
-    refine ⟨he2.1.symm, ?_⟩
-    obtain ⟨c, hc, hce⟩ := List.mem_filterMap.1 (List.mem_of_getElem? he1)
-    obtain ⟨k, hk⟩ := List.mem_iff_getElem?.1 hc
-    exact ⟨k, c, hk, by rw [hce, he2.2]⟩
+    exact Or.inl ⟨by omega, List.mem_of_getElem? he⟩
   · rw [List.getElem?_append_right (by omega)] at h
     have he := runEvs_get t _ _ h
     have hl : (run1 t).2.length = (evs1 t).length := runEvs_length _ _ _
@@ -510,7 +526,8 @@ theorem segs_cuts_eq {t j : Nat} {sg : Seg} (h : (segs t)[j]? = some sg) :
 theorem foldl_seg {t j : Nat} {sg : Seg} (h : (segs t)[j]? = some sg) {k : Nat}
     (hk : 7 ≤ k) : (sg.cuts.take k).foldl (cutPost sg.node (t : Int)) (sg.pre sg.node) =
       (ex sg.pre sg.node t sg.ev).1 := by
-  rw [List.take_of_length_le (le_trans (segs_cuts t sg (mem_segs h)) hk), segs_cuts_eq h]
+  have hc := segs_cuts t sg (mem_segs h)
+  rw [List.take_of_length_le (show sg.cuts.length ≤ k by omega), segs_cuts_eq h]
   exact foldl_cutPost_exec _ _ _ _ _ _
 
 theorem nextW_apply {t j : Nat} {sg : Seg} (h : (segs t)[j]? = some sg) (y : Fin sp.n) :
@@ -591,7 +608,8 @@ theorem run_state (y : Fin sp.n) : ∀ i, run.state y i = preState y i
         have hlab : run.label (1024 * t + 8 * j + 7) = none := by
           change (segOf _).bind _ = _; rw [segOf_eq t j 7 hj hk, hs]
           simp only [Option.bind_some, hki]
-          exact List.getElem?_eq_none (segs_cuts t sg (mem_segs hs))
+          have hc := segs_cuts t sg (mem_segs hs)
+          exact List.getElem?_eq_none (by omega)
         rw [hlab]
         simp only [ne_eq, not_true_eq_false, and_false, ite_false, hti, hki]
         have hnw := nextW_apply hs y
@@ -798,8 +816,10 @@ theorem headKey_exec (self : Fin sp.n) (st : St) (t : Time) (e : Node.Event N) {
     obtain ⟨rfl, -⟩ := List.cons.inj h
     simp [headKey, hℓ, normEv]
   | block B =>
-    obtain ⟨acc, rfl⟩ := Simulation.exec_block_head prop dg self st t B h
-    rfl
+    simp only [exec, onBlock] at h
+    split_ifs at h
+    cases hfg : st.fg.onBlock B <;> simp only [hfg, List.cons.injEq] at h <;>
+      rw [← h.1] <;> rfl
   | message m =>
     simp only [exec, onMessage, acCall] at h
     obtain ⟨rfl, -⟩ := List.cons.inj h

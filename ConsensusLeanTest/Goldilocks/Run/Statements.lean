@@ -187,7 +187,7 @@ theorem oneTickRun_localRun (sg : rootAC.Msg → Fin P₁.n) :
   time_nonneg _ := le_rfl
   time_mono _ _ _ := le_rfl
   finite _ := (Set.finite_Iio 2).subset fun i hi => oneTickRun_label_lt hi.1
-  phase_order y _ y' _ j j' t e e' h h' hlt := by
+  phase_order y _ y' _ j j' t e e' h h' hlt _ := by
     obtain ⟨rfl, -, -⟩ := oneTickRun_groupAt h
     obtain ⟨rfl, -, -⟩ := oneTickRun_groupAt h'
     exact absurd hlt (lt_irrefl 0)
@@ -527,7 +527,7 @@ theorem periodicRun_localRun (sg : idleAC.Msg → Fin P₁.n) :
     have : i / 3 ≤ T.toNat := (Int.le_toNat h0).mpr hT
     change i < 3 * (T.toNat + 1)
     omega
-  phase_order y _ y' _ j j' t e e' h h' hlt :=
+  phase_order y _ y' _ j j' t e e' h h' hlt _ :=
     absurd (periodicRun_groupAt_unique h h') (Nat.ne_of_lt hlt)
   tick_public y _ j t h := by
     obtain ⟨_, _, h⟩ := h

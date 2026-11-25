@@ -136,8 +136,8 @@ theorem tickRun_sleepyAt :
       hs.block x (Set.mem_univ _) i B hB hw y (Set.mem_univ _) j hj hd,
     fun x i B _ hB hw y j _ hj hd hanc => hs.relay x (Set.mem_univ _) i B hB hw y (Set.mem_univ _)
       j hj hd (tickRun_honestBlocksAt ▸ hanc),
-    fun x i a _ ha hw y j _ hj hd =>
-      hs.attestation x (Set.mem_univ _) i a ha hw y (Set.mem_univ _) j hj hd⟩, ?_⟩
+    fun x i a _ ha hw _ y j _ hj hd =>
+      hs.attestation x (Set.mem_univ _) i a ha hw y (Set.mem_univ _) j hj hd, hs.deltaF.le⟩, ?_⟩
   intro s d hd
   have hb : ∀ t e : Time, (tickRun N1 dg1).FaultBound Set.univ t →
       (tickRun N1 dg1).FaultBoundAt (fun _ => Set.univ) t e := fun _ _ h => h

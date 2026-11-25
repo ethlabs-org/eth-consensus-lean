@@ -120,7 +120,7 @@ theorem hz_zero : Healing.HZ run Set.univ 0 = 1 := by
 theorem sign45 :
     run.SignAt w0 (1024 * (4 * 11 + 1) + 2) (row w0 2) ∧
       run.time (1024 * (4 * 11 + 1) + 2) = 45 := by
-  obtain ⟨st', hex, -⟩ := tick_report_new (s := 11) (by decide) (by decide)
+  obtain ⟨_, _, hex, -, -⟩ := tick_report_new (s := 11) (by decide) (by decide)
     (world_good (4 * 11 + 1) w0)
   obtain ⟨hc, ht⟩ := tick0_callAt hex (k := 2) (by decide) rfl
   exact ⟨⟨_, hc⟩, ht⟩

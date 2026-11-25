@@ -652,7 +652,7 @@ theorem conflictRun_localRun :
   finite T := (Set.finite_Iio 14).subset fun i hi => by
     by_contra h
     exact hi.1 (label_none (by simpa using h))
-  phase_order y _ y' _ j j' t e e' hg hg' hlt := by
+  phase_order y _ y' _ j j' t e e' hg hg' hlt _ := by
     obtain ⟨-, ht, hj, he⟩ := group_side hg
     obtain ⟨-, ht', hj', he'⟩ := group_side hg'
     have hs : sd j = sd j' := by

@@ -21,7 +21,7 @@ committee has one key, the committee size, a proper subset of every population o
 
 namespace Consensus.Goldilocks.AsChainShape.Regression
 open Blocks Shape
-open Consensus.Model (Public)
+open Consensus.Model (Public pubOf)
 
 /-- A committee binding selecting one key per slot (`VoteBinding.committee`, nonempty at every
 nonempty population). -/
@@ -115,7 +115,8 @@ theorem committeeOne_member_releases_vote {V : Type} [Fintype V] [DecidableEq V]
     (t : Nat)
     (m : AC.Vote (Fintype.card V)) (z : Nat)
     (hb : (Simulation.pollPre
-      (Simulation.shapeOf { S with vote := committeeOne } hn nd)).outbox.head? =
+      (Simulation.shapeOf { S with vote := committeeOne } hn nd)
+      (S.release (pubOf E))).outbox.head? =
       some (.vote (encodeVote m) z))
     (hs : rho.ownKey v ∈ rho.sel (.duty m.slot .vote)) :
     (Model.Obj.mk (.signed (rho.ownKey v) (.duty m.slot .vote))

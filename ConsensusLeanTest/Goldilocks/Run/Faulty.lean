@@ -185,14 +185,12 @@ theorem not_callAt_of_not_honest (hp : rho.point = point) (hv : rho.ExecutionVal
     {y : Fin (Fintype.card (Fin 4))}
     (hy : y ∉ honestKeys { S with vote := stock } rho) (k : Nat) (ℓ) : ¬
         (simTrace { S with vote := stock } rho one_le_card).CallAt y k ℓ := by
-  rintro ⟨hnode, hl⟩
-  obtain ⟨_, _, ev, _, he, -, -, -, hn, -⟩ :=
-    simTrace_cut { S with vote := stock } rho one_le_card (hl ▸ Option.some_ne_none ℓ)
+  intro hc
+  have h := simTraceAt_call_honest { S with vote := stock } rho one_le_card hv
+    (y := y) (k := k) (c := ℓ) (by simpa only [simTraceAt_eq] using hc)
   apply hy
   rw [mem_honestKeys_iff { S with vote := stock } rho]
-  rw [← hnode, hn, show rho.key (rho.ownKey ev.node) = ev.node from rho.key.apply_symm_apply _]
-  have h := hv.honest_only ev (List.mem_of_getElem? he)
-  simp only [rho.faultyAt_eq_zero (point_constant hp)] at h ⊢
+  rw [mem_honestKeysAt_iff, rho.faultyAt_eq_zero (point_constant hp)] at h
   exact h
 
 /-- The faulty key is silent: it has no engine event, and it makes no call in `simTrace`, so

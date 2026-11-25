@@ -1,5 +1,6 @@
 module
 public import ConsensusLeanTest.Goldilocks.Runs.TwoValidator.Step
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 @[expose] public section
 
 /-! # The healthy two-validator run: the events of every time
@@ -68,10 +69,10 @@ noncomputable def plan (t : Nat) : List (Fin sp.n × Node.Event N × List Sk) :=
     (if (t / 4) % 10 = 0 then
       [(w0, .attestation (row w1 (t / 40)), [.fg (.attestation (row w1 (t / 40)))])] else [])
   else if t % 4 = 1 ∧ 4 ≤ t ∧ (t / 4) % 10 = 1 then
-    [(w0, .tick 0 true, tickSk [] ++ [.fg (.attest (blk (t / 4)) (some (row w0 (hgt (t / 4))))),
-        .fg (.attestation (row w0 (hgt (t / 4))))]),
-      (w1, .tick 0 true, tickSk [] ++ [.fg (.attest (blk (t / 4)) (some (row w1 (hgt (t / 4))))),
-        .fg (.attestation (row w1 (hgt (t / 4))))]),
+    [(w0, .tick 0 true, tickSk [] ++ [.fg (.attest (blk (t / 4)) (some (row w0 (hgt (t / 4)))))]),
+      (w1, .tick 0 true, tickSk [] ++ [.fg (.attest (blk (t / 4)) (some (row w1 (hgt (t / 4)))))]),
+      (w0, .attestation (row w0 (hgt (t / 4))), [.fg (.attestation (row w0 (hgt (t / 4))))]),
+      (w1, .attestation (row w1 (hgt (t / 4))), [.fg (.attestation (row w1 (hgt (t / 4))))]),
       (w1, .attestation (row w0 (hgt (t / 4))), [.fg (.attestation (row w0 (hgt (t / 4))))])]
   else if t % 4 = 1 ∧ 4 ≤ t then
     [(w0, .tick 0 true, tickSk [] ++ [.fg (.attest (blk (t / 4)) none)]),
@@ -108,10 +109,10 @@ theorem plan_four {s : Nat} (hs : 1 ≤ s) : plan (4 * s) =
     show 4 * s / 4 = s by omega, show 4 * s / 40 = s / 10 by omega]
 
 theorem plan_four1_row {s : Nat} (hs : 1 ≤ s) (h10 : s % 10 = 1) : plan (4 * s + 1) =
-    [(w0, .tick 0 true, tickSk [] ++ [.fg (.attest (blk s) (some (row w0 (hgt s)))),
-        .fg (.attestation (row w0 (hgt s)))]),
-      (w1, .tick 0 true, tickSk [] ++ [.fg (.attest (blk s) (some (row w1 (hgt s)))),
-        .fg (.attestation (row w1 (hgt s)))]),
+    [(w0, .tick 0 true, tickSk [] ++ [.fg (.attest (blk s) (some (row w0 (hgt s))))]),
+      (w1, .tick 0 true, tickSk [] ++ [.fg (.attest (blk s) (some (row w1 (hgt s))))]),
+      (w0, .attestation (row w0 (hgt s)), [.fg (.attestation (row w0 (hgt s)))]),
+      (w1, .attestation (row w1 (hgt s)), [.fg (.attestation (row w1 (hgt s)))]),
       (w1, .attestation (row w0 (hgt s)), [.fg (.attestation (row w0 (hgt s)))])] := by
   unfold plan
   rw [ite_eq_right (by omega), ite_eq_right (by omega), show (4 * s + 1) / 4 = s by omega,
@@ -196,7 +197,8 @@ theorem step_ticks {t : Nat} {s0 s1 : St} {Φ0 Φ0' Φ1 Φ1' : N.Frm} {l0 l1 : L
     (h1 : Node.onTick prop dg w1 ((world t).1 w1) (t : Int) 0 true =
       (s1, [.ac ⟨.tick, Φ1, []⟩, .ac ⟨.toFG, Φ1', []⟩] ++ l1))
     (hl0 : l0.filterMap toW1 = []) (hl1 : l1.filterMap voteOf = [])
-    (hq : QueueGood t) (hqa : qa t = []) (hatt : l1.filterMap attOf = qOf t) :
+    (hown0 : l0.filterMap attOf = []) (hown1 : l1.filterMap attOf = [])
+    (hq : QueueGood t) (hqa : qa t = []) (hatt : qOf t = []) :
     (world (t + 1)).1 = Function.update (Function.update (world t).1 w0 s0) w1 s1 ∧
       QueueGood (t + 1) ∧
       segsSk t =
@@ -207,12 +209,14 @@ theorem step_ticks {t : Nat} {s0 s1 : St} {Φ0 Φ0' Φ1 Φ1' : N.Frm} {l0 l1 : L
   have htk1 : tk1 t = (s1, [.ac ⟨.tick, Φ1, []⟩, .ac ⟨.toFG, Φ1', []⟩] ++ l1) := by
     change exec prop dg w1 (wA t w1) (t : Int) (.tick 0 true) = _; rw [hwA]; exact h1
   have hevs1 : evs1 t = [] := by
-    unfold evs1; rw [htk0, List.filterMap_append, hl0]; rfl
+    unfold evs1; rw [htk0, htk1]
+    simp only [List.filterMap_append, hl0, hown0, hown1]
+    rfl
   have hrun1 : run1 t = (wB t, []) := by unfold run1; rw [hevs1]; rfl
   have hevs0 : evs0 t = [] := by
     unfold evs0; rw [hrun1, htk1, hqa]
     simp only [List.flatMap_nil, List.append_nil, List.filterMap_append, hl1]; rfl
-  refine ⟨?_, queue_step hq (by rw [htk1, List.filterMap_append, hatt]; rfl), ?_⟩
+  refine ⟨?_, queue_step hq (by rw [htk1, List.filterMap_append, hown1, hatt]; rfl), ?_⟩
   · rw [world_succ, hrun1, hevs0]
     change wB t = _
     unfold wB wA; rw [htk0, htk1]
@@ -249,7 +253,7 @@ theorem step_quiet {t : Nat} (hw : WorldGood t) (hq : QueueGood t)
       segsSk t = [(w0, .tick 0 true, tickSk []), (w1, .tick 0 true, tickSk [])] := by
   obtain ⟨hW, hQ, hS⟩ := step_ticks
     (quiet_tick (hw w0) (fun h => hnp h.2) h2 h1 hlk hrp)
-    (quiet_tick (hw w1) (fun h => hnp h.2) h2 h1 hlk hrp) rfl rfl hq hqa (by rw [hqo]; rfl)
+    (quiet_tick (hw w1) (fun h => hnp h.2) h2 h1 hlk hrp) rfl rfl rfl rfl hq hqa hqo
   refine ⟨forall_y ?_ ?_, hQ, by rw [hS]; rfl⟩
   · rw [hW, upd2_w0]; exact hg _ _ (hw w0)
   · rw [hW, upd2_w1]; exact hg _ _ (hw w1)
@@ -348,7 +352,7 @@ theorem step_one (hw : WorldGood 1) (hq : QueueGood 1) :
   have hwB : wB 1 = Function.update (Function.update W w0 st0) w1 st1 := by
     unfold wB wA; rw [htk0, htk1]
   have hevs1 : evs1 1 = [(w1, .message (vote w0 0))] := by
-    unfold evs1; rw [htk0]; change [(w1, Node.Event.message e0.msg)] = _; rw [he0]
+    unfold evs1; rw [htk0, htk1]; change [(w1, Node.Event.message e0.msg)] = _; rw [he0]
   have hrun1 : run1 1 = (Function.update (wB 1) w1 { st1 with ac := B1 },
       [⟨w1, .message (vote w0 0), wB 1,
         [.ac ⟨.message (vote w0 0), Node.frame st1, []⟩]⟩]) := by
@@ -405,7 +409,7 @@ theorem step_four {s : Nat} (hs : 1 ≤ s) (hw : WorldGood (4 * s)) (hq : QueueG
   have hwB : wB (4 * s) = Function.update (Function.update W w0 st0) w1 (W w1) := by
     unfold wB wA; rw [htk0, htk1]
   have hevs1 : evs1 (4 * s) = [(w1, .block (blk s)), (w1, .message (vote w0 s))] := by
-    unfold evs1; rw [htk0]
+    unfold evs1; rw [htk0, htk1]
     change [(w1, Node.Event.block (blk s)), (w1, Node.Event.message e0.msg)] = _; rw [he0]
   have hrun1 : run1 (4 * s) = (Function.update (Function.update (wB (4 * s)) w1 st1) w1
         { st1 with ac := B1 },
@@ -491,35 +495,53 @@ theorem step_four1 {s : Nat} (hs : 1 ≤ s) (hw : WorldGood (4 * s + 1))
     WorldGood (4 * s + 2) ∧ QueueGood (4 * s + 2) ∧ segsSk (4 * s + 1) = plan (4 * s + 1) := by
   have hqa : qa (4 * s + 1) = [] := qa_nil hq (by omega)
   by_cases h10 : s % 10 = 1
-  · obtain ⟨st0, h0, hn0⟩ := tick_report_new hs h10 (hw w0)
-    obtain ⟨st1, h1, hn1⟩ := tick_report_new hs h10 (hw w1)
+  · obtain ⟨sig0, st0, h0, hown0, hn0⟩ := tick_report_new hs h10 (hw w0)
+    obtain ⟨sig1, st1, h1, hown1, hn1⟩ := tick_report_new hs h10 (hw w1)
     obtain ⟨st1', hd, hn1'⟩ : ∃ st1', Node.onAttestation st1 (row w0 (hgt s)) =
         (st1', [.fg (.attestation (row w0 (hgt s)))]) ∧
         NS st1' w1 s (cnt w1 (4 * s + 1) + 1 + 1) (hgt s) (vsT (4 * s + 1)) (poolT w1 (4 * s + 1))
           s s s s (nsv (4 * s + 1)) := by
       have := deliver_att hn1; rw [poolAt_report1 hs h10] at this; exact ⟨_, this⟩
-    have htk0 : tk0 (4 * s + 1) = (st0, [.ac ⟨.tick, Node.frame ((world (4 * s + 1)).1 w0), []⟩,
+    have htk0 : tk0 (4 * s + 1) = (sig0, [.ac ⟨.tick, Node.frame ((world (4 * s + 1)).1 w0), []⟩,
         .ac ⟨.toFG, Node.frame ((world (4 * s + 1)).1 w0), []⟩,
-        .fg (.attest (blk s) (some (row w0 (hgt s)))), .fg (.attestation (row w0 (hgt s)))]) := h0
+        .fg (.attest (blk s) (some (row w0 (hgt s))))]) := h0
     have hwA : wA (4 * s + 1) w1 = (world (4 * s + 1)).1 w1 := Function.update_of_ne w1_ne _ _
-    have htk1 : tk1 (4 * s + 1) = (st1, [.ac ⟨.tick, Node.frame ((world (4 * s + 1)).1 w1), []⟩,
+    have htk1 : tk1 (4 * s + 1) = (sig1, [.ac ⟨.tick, Node.frame ((world (4 * s + 1)).1 w1), []⟩,
         .ac ⟨.toFG, Node.frame ((world (4 * s + 1)).1 w1), []⟩,
-        .fg (.attest (blk s) (some (row w1 (hgt s)))), .fg (.attestation (row w1 (hgt s)))]) := by
+        .fg (.attest (blk s) (some (row w1 (hgt s))))]) := by
       change exec prop dg w1 (wA _ w1) _ (.tick 0 true) = _; rw [hwA]; exact h1
-    have hevs1 : evs1 (4 * s + 1) = [(w1, .attestation (row w0 (hgt s)))] := by
-      unfold evs1; rw [htk0]; rfl
-    have hwB : wB (4 * s + 1) = Function.update (Function.update (world (4 * s + 1)).1 w0 st0)
-        w1 st1 := by unfold wB wA; rw [htk0, htk1]
-    have hrun1 : run1 (4 * s + 1) = (Function.update (wB (4 * s + 1)) w1 st1',
-        [⟨w1, .attestation (row w0 (hgt s)), wB (4 * s + 1),
+    have hevs1 : evs1 (4 * s + 1) = [(w0, .attestation (row w0 (hgt s))),
+        (w1, .attestation (row w1 (hgt s))), (w1, .attestation (row w0 (hgt s)))] := by
+      unfold evs1; rw [htk0, htk1]; rfl
+    have hwB : wB (4 * s + 1) = Function.update (Function.update (world (4 * s + 1)).1 w0 sig0)
+        w1 sig1 := by unfold wB wA; rw [htk0, htk1]
+    let wa := Function.update (wB (4 * s + 1)) w0 st0
+    let wb := Function.update wa w1 st1
+    have hrun1 : run1 (4 * s + 1) = (Function.update wb w1 st1',
+        [⟨w0, .attestation (row w0 (hgt s)), wB (4 * s + 1), [.fg (.attestation (row w0 (hgt s)))]⟩,
+         ⟨w1, .attestation (row w1 (hgt s)), wa, [.fg (.attestation (row w1 (hgt s)))]⟩,
+         ⟨w1, .attestation (row w0 (hgt s)), wb,
           [.fg (.attestation (row w0 (hgt s)))]⟩]) := by
       unfold run1
-      rw [hevs1, runEvs_cons_eq (st := st1') (cs := [.fg (.attestation (row w0 (hgt s)))])
-        (by rw [hwB, upd2_w1]; exact hd)]; rfl
+      rw [hevs1, runEvs_cons_eq (st := st0) (cs := [.fg (.attestation (row w0 (hgt s)))])
+        (by change Node.onAttestation (wB _ w0) _ = _; rw [hwB, upd2_w0]; exact hown0),
+        runEvs_cons_eq (st := st1) (cs := [.fg (.attestation (row w1 (hgt s)))])
+        (by change Node.onAttestation (wa w1) _ = _; dsimp only [wa]
+            rw [Function.update_of_ne w1_ne, hwB, upd2_w1]; exact hown1),
+        runEvs_cons_eq (st := st1') (cs := [.fg (.attestation (row w0 (hgt s)))])
+        (by change Node.onAttestation (wb w1) _ = _; dsimp only [wb]
+            rw [Function.update_self]; exact hd)]
+      rfl
     have hevs0 : evs0 (4 * s + 1) = [] := by unfold evs0; rw [hrun1, htk1, hqa]; rfl
     have hW : (world (4 * s + 2)).1 = Function.update (Function.update
         (world (4 * s + 1)).1 w0 st0) w1 st1' := by
-      rw [world_succ, hevs0]; change (run1 _).1 = _; rw [hrun1, hwB, Function.update_idem]
+      rw [world_succ, hevs0]; change (run1 _).1 = _; rw [hrun1]
+      funext y
+      rcases eq_w0_or_w1 y with rfl | rfl
+      · dsimp only [wb, wa]
+        rw [upd2_w0, Function.update_of_ne (Ne.symm w1_ne), upd2_w0]
+      · dsimp only
+        rw [Function.update_self, upd2_w1]
     refine ⟨forall_y ?_ ?_, queue_step hq (by rw [htk1, qOf_report hs h10]; rfl), ?_⟩
     · rw [hW, upd2_w0]
       exact good_of_report hs hn0 (cnt_report0 hs h10)
@@ -529,8 +551,8 @@ theorem step_four1 {s : Nat} (hs : 1 ≤ s) (hw : WorldGood (4 * s + 1))
   · have h0 := (tick_report_old hs h10 (hw w0))
     have h1 := (tick_report_old hs h10 (hw w1))
     obtain ⟨hW, hQ, hS⟩ := step_ticks (l0 := [.fg (.attest (blk s) none)])
-      (l1 := [.fg (.attest (blk s) none)]) h0.1 h1.1 rfl rfl hq hqa
-      (by rw [qOf_of (by omega)]; rfl)
+      (l1 := [.fg (.attest (blk s) none)]) h0.1 h1.1 rfl rfl rfl rfl hq hqa
+      (qOf_of (by omega))
     refine ⟨forall_y ?_ ?_, hQ, by rw [hS, plan_four1 hs h10]; rfl⟩
     · rw [hW, upd2_w0]; exact h0.2
     · rw [hW, upd2_w1]; exact h1.2
@@ -542,8 +564,8 @@ theorem step_four2 {s : Nat} (hs : 1 ≤ s) (hw : WorldGood (4 * s + 2))
   obtain ⟨A0, h0, hg0⟩ := tick_update hs (hw w0)
   obtain ⟨A1, h1, hg1⟩ := tick_update hs (hw w1)
   rw [← List.append_nil [Cut.ac _, Cut.ac _]] at h0 h1
-  obtain ⟨hW, hQ, hS⟩ := step_ticks h0 h1 rfl rfl hq
-    (qa_nil hq (by omega)) (by rw [qOf_of (by omega)]; rfl)
+  obtain ⟨hW, hQ, hS⟩ := step_ticks h0 h1 rfl rfl rfl rfl hq
+    (qa_nil hq (by omega)) (qOf_of (by omega))
   refine ⟨forall_y ?_ ?_, hQ, by rw [hS, plan_quiet (by omega) (by omega) (by omega)]; rfl⟩
   · rw [hW, upd2_w0]; exact hg0
   · rw [hW, upd2_w1]; exact hg1

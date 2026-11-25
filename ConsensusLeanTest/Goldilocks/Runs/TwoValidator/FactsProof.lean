@@ -193,7 +193,7 @@ theorem run_facts : RunFacts where
     have h1 : 1 ≤ 10 * (q - 1) + 1 := by omega
     have h10 : (10 * (q - 1) + 1) % 10 = 1 := by omega
     rcases eq_w0_or_w1 z with rfl | rfl <;> rcases eq_w0_or_w1 y with rfl | rfl
-    · obtain ⟨i, h, ht⟩ := fg_at (t := 4 * (10 * (q - 1) + 1) + 1) (j := 0) (k := 3)
+    · obtain ⟨i, h, ht⟩ := fg_at (t := 4 * (10 * (q - 1) + 1) + 1) (j := 2) (k := 0)
         (by omega) (by omega) (by rw [plan_four1_row h1 h10]; rfl) (by rfl)
       rw [hgt_rt q hq] at h
       exact ⟨i, h, by rw [ht, rowRecv_self, rt]; congr 1; omega⟩
@@ -204,14 +204,14 @@ theorem run_facts : RunFacts where
       rw [ht, rowRecv, ite_eq_left ⟨rfl, rfl⟩, rt]
       congr 1
       omega
-    · obtain ⟨i, h, ht⟩ := fg_at (t := 4 * (10 * (q - 1) + 1) + 1) (j := 2) (k := 0)
+    · obtain ⟨i, h, ht⟩ := fg_at (t := 4 * (10 * (q - 1) + 1) + 1) (j := 4) (k := 0)
         (by omega) (by omega) (by rw [plan_four1_row h1 h10]; rfl) (by rfl)
       rw [hgt_rt q hq] at h
       refine ⟨i, h, ?_⟩
       rw [ht, rowRecv, ite_eq_right (fun h => w1_ne h.1), rt]
       congr 1
       omega
-    · obtain ⟨i, h, ht⟩ := fg_at (t := 4 * (10 * (q - 1) + 1) + 1) (j := 1) (k := 3)
+    · obtain ⟨i, h, ht⟩ := fg_at (t := 4 * (10 * (q - 1) + 1) + 1) (j := 3) (k := 0)
         (by omega) (by omega) (by rw [plan_four1_row h1 h10]; rfl) (by rfl)
       rw [hgt_rt q hq] at h
       exact ⟨i, h, by rw [ht, rowRecv_self, rt]; congr 1; omega⟩

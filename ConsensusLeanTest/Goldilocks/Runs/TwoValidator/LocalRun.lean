@@ -57,7 +57,7 @@ theorem plan_ne {t j : Nat} {p : Fin sp.n × Node.Event N × List Sk}
     rcases j with _ | _ | _ | _ | _ | _ | j <;> simp at hp <;> subst hp <;> simp [tickSk]
   | h4r s hs h10 =>
     rw [plan_four1_row hs h10] at hp
-    rcases j with _ | _ | _ | j <;> simp at hp <;> subst hp <;> simp [tickSk]
+    rcases j with _ | _ | _ | _ | _ | j <;> simp at hp <;> subst hp <;> simp [tickSk]
   | h41 s hs h10 =>
     rw [plan_four1 hs h10] at hp
     rcases j with _ | _ | j <;> simp at hp <;> subst hp <;> simp [tickSk]
@@ -85,8 +85,8 @@ theorem plan_ev {t j : Nat} {p : Fin sp.n × Node.Event N × List Sk}
       simp [Event.phase] <;> first | exact ⟨s, hs, rfl⟩ | exact ⟨w1, s / 10, by omega, rfl⟩
   | h4r s hs h10 =>
     rw [plan_four1_row hs h10] at hp
-    rcases j with _ | _ | _ | j <;> simp at hp <;> subst hp <;> simp [Event.phase]
-    exact ⟨w0, hgt s, hgt_pos s, rfl⟩
+    rcases j with _ | _ | _ | _ | _ | j <;> simp at hp <;> subst hp <;> simp [Event.phase]
+    all_goals first | exact ⟨w0, hgt s, hgt_pos s, rfl⟩ | exact ⟨w1, hgt s, hgt_pos s, rfl⟩
   | h41 s hs h10 =>
     rw [plan_four1 hs h10] at hp
     rcases j with _ | _ | j <;> simp at hp <;> subst hp <;> simp [Event.phase]
@@ -112,7 +112,7 @@ theorem plan_fgBlock {t j k : Nat} {p : Fin sp.n × Node.Event N × List Sk}
       exact ⟨s, hs, rfl, hc.1.symm, by omega⟩
   | h4r s hs h10 =>
     rw [plan_four1_row hs h10] at hp
-    rcases j with _ | _ | _ | j <;> simp at hp <;> subst hp <;>
+    rcases j with _ | _ | _ | _ | _ | j <;> simp at hp <;> subst hp <;>
       rcases k with _ | _ | _ | _ | _ | _ | k <;> simp [tickSk] at hc
   | h41 s hs h10 =>
     rw [plan_four1 hs h10] at hp
@@ -141,7 +141,7 @@ theorem plan_fgAtt {t j k : Nat} {p : Fin sp.n × Node.Event N × List Sk}
     exact ⟨w1, s / 10, by omega, hc.symm, by rw [w1_val]; unfold rt; omega⟩
   | h4r s hs h10 =>
     rw [plan_four1_row hs h10] at hp
-    rcases j with _ | _ | _ | j <;> simp at hp <;> subst hp <;>
+    rcases j with _ | _ | _ | _ | _ | j <;> simp at hp <;> subst hp <;>
       rcases k with _ | _ | _ | _ | _ | _ | k <;> simp [tickSk] at hc
     all_goals first
       | exact ⟨w0, hgt s, hgt_pos s, hc.symm, by rw [w0_val]; unfold rt hgt; split_ifs <;> omega⟩
@@ -183,7 +183,7 @@ theorem plan_msg {t j k : Nat} {p : Fin sp.n × Node.Event N × List Sk}
       | exact ⟨w1, s, hc.1.symm, by unfold emitIdx; rw [w1_val]; split_ifs <;> omega⟩
   | h4r s hs h10 =>
     rw [plan_four1_row hs h10] at hp
-    rcases j with _ | _ | _ | j <;> simp at hp <;> subst hp <;>
+    rcases j with _ | _ | _ | _ | _ | j <;> simp at hp <;> subst hp <;>
       rcases k with _ | _ | _ | _ | _ | _ | k <;> simp [tickSk] at hc
   | h41 s hs h10 =>
     rw [plan_four1 hs h10] at hp
@@ -260,7 +260,7 @@ theorem emit_vote (z : Fin sp.n) (σ : Nat) : run.EmitAt z (emitIdx z σ) (vote 
 /-- `z`'s tick at `rt q`, `q ≥ 1`: it signs `row z q` at position `2`. -/
 theorem plan_sign (z : Fin sp.n) {q : Nat} (hq : 1 ≤ q) : ∃ s, rt q = 4 * s + 1 ∧
     (plan (4 * s + 1))[z.val]? = some (z, .tick 0 true, tickSk [] ++
-      [.fg (.attest (blk s) (some (row z q))), .fg (.attestation (row z q))]) := by
+      [.fg (.attest (blk s) (some (row z q)))]) := by
   have hh : hgt (10 * (q - 1) + 1) = q := by rw [hgt, ite_eq_right (by omega)]; omega
   refine ⟨10 * (q - 1) + 1, by unfold rt; omega, ?_⟩
   rw [plan_four1_row (by omega) (by omega), hh]
@@ -397,7 +397,7 @@ theorem run_localRun : Node.LocalRun prop dg Set.univ (fun v : Vote sp.n => v.va
     have h2 := Int.self_le_toNat T
     simp only [Set.mem_Iio]
     omega
-  phase_order y _ y' _ j j' t e e' h h' hlt := by
+  phase_order y _ y' _ j j' t e e' h h' hlt _ := by
     obtain ⟨t1, a, sg, -, rfl, hs, -, ht1, he⟩ := groupAt_seg h
     obtain ⟨t2, b, sg', -, rfl, hs', -, ht2, he'⟩ := groupAt_seg h'
     have : t1 = t2 := by exact_mod_cast ht1.symm.trans ht2

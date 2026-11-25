@@ -475,13 +475,14 @@ theorem ac_reported {A : ACState sp.n} {vs : Int} {τ : Nat} {pl : Nat → List 
     h.saved, h.locks, h.tipLock, h.latest, rfl⟩
 
 /-- **The tick of `t_s + Δ` at a row slot** (`s ≡ 1 mod 10`): `ac_to_fg` returns the block of
-slot `s`, the entry of its height (or genesis's height for `s = 1`), and the node signs and
-processes its row of that height. -/
+slot `s` and the node signs its row. A separate delivery admits it to the pool. -/
 theorem tick_report_new {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s) (h10 : s % 10 = 1)
     (h : Good st y (4 * s + 1)) :
-    ∃ st', Node.onTick prop dg y st ((4 * s + 1 : Nat) : Int) 0 true =
-      (st', [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩,
-        .fg (.attest (blk s) (some (row y (hgt s)))), .fg (.attestation (row y (hgt s)))]) ∧
+    ∃ signed st', Node.onTick prop dg y st ((4 * s + 1 : Nat) : Int) 0 true =
+      (signed, [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩,
+        .fg (.attest (blk s) (some (row y (hgt s))))]) ∧
+      Node.onAttestation signed (row y (hgt s)) =
+        (st', [.fg (.attestation (row y (hgt s)))]) ∧
       NS st' y s (cnt y (4 * s + 1) + 1) (hgt s) (vsT (4 * s + 1)) (poolT y (4 * s + 1)) s s s s
         (nsv (4 * s + 1)) := by
   obtain ⟨hfg, hatts, hrec, hac⟩ := h
@@ -505,7 +506,7 @@ theorem tick_report_new {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s) (h10 :
     ⟨hfg, hatts, hrec', ac_reported hac s⟩
   obtain ⟨hda, hns'⟩ := deliver_att hns
   rw [hk] at hda hns'
-  refine ⟨_, ?_, hns'⟩
+  refine ⟨_, _, ?_, hda, hns'⟩
   rw [onTick_eq', tickStep_acTick, tick_report_ac hs hac]
   dsimp only
   rw [show ({ fg := st.fg, ac := st.ac, record := st.record } : St) = st from rfl,
@@ -513,8 +514,6 @@ theorem tick_report_new {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s) (h10 :
   dsimp only
   unfold Node.attest
   rw [hatt']
-  dsimp only
-  rw [hda]
   rfl
 
 /-- **The tick of `t_s + Δ` at another slot**: `ac_to_fg` returns the block of slot `s`, whose
