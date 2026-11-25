@@ -89,11 +89,13 @@ def ProposalCuts (t : Time) (pc : List (Cut A)) : Prop :=
           ∃ ℓ' : ACLabel A, ℓ'.call = .block B ∧ pc = [.ac ℓ, .fg (.block B true), .ac ℓ'])))
 
 /-- The cuts of the FG update: `ac_to_fg`, then nothing (`⊥`), or `fg_attest` on the source
-`C`, which signs nothing, or signs `a` and the own `fg_on_attestation(a)` follows. -/
+`C`, which signs nothing or signs `a`; only the record changes at the signing (the own
+`fg_on_attestation(a)` is the node's processing of the attestation at its release, a group of
+its own). -/
 def UpdateCuts (uc : List (Cut A)) : Prop :=
   ∃ ℓ : ACLabel A, ℓ.call = .toFG ∧
     (uc = [.ac ℓ] ∨ (∃ C : A.Blk, uc = [.ac ℓ, .fg (.attest C none)]) ∨
-      ∃ (C : A.Blk) (a : FG.Att P.n), uc = [.ac ℓ, .fg (.attest C (some a)), .fg (.attestation a)])
+      ∃ (C : A.Blk) (a : FG.Att P.n), uc = [.ac ℓ, .fg (.attest C (some a))])
 
 /-- The shape of a tick's cuts (claims C0.4): `ac_on_tick`, the proposal cuts, the FG update
 cuts, in this order; no FG update cuts when the tick does not sign (`fgDue = false`). -/
@@ -105,9 +107,9 @@ def TickShape (fgDue : Bool) (t : Time) (cs : List (Cut A)) : Prop :=
 /-- **C0.4, tick order.** The cuts of `on_tick(t)` at every state have the shape `TickShape`:
 the AC's tick; at `t = t_s` with `s > 0`, for the slot's proposer, `ac_proposal` and then,
 when it returns a proposal, the own block, processed at once (`fg_on_block`, then
-`ac_on_block`); the FG update (`ac_to_fg`, then `fg_attest` with the own attestation
-processed at once). That a restart precedes the tick and the tick precedes the objects
-received at its time is `Node.Step` (`EventOK`). A tick that does not sign has no FG update. -/
+`ac_on_block`); the FG update (`ac_to_fg`, then `fg_attest`, which changes the record only).
+That a restart precedes the tick and the tick precedes the objects received at its time is
+`Node.Step` (`EventOK`). A tick that does not sign has no FG update. -/
 def TickOrder : Prop :=
   ∀ (st : NodeState A) (t : Time) (x : Nat) (fgDue : Bool),
     TickShape proposer self fgDue t (onTick proposer dg self st t x fgDue).2
@@ -170,13 +172,12 @@ def FGStatesReachable : Prop :=
 
 /-- **C0.5 (c), the record is a client run.** At a reachable configuration of an honest node,
 the record is the record of the client run (`FG.Record.run`) over the entry states of the
-sources given to `fg_attest`, in order, and every attestation that run signed is in the
-pool. -/
+sources given to `fg_attest`, in order. (A signed attestation enters the pool only at its
+release, so the pool need not hold it.) -/
 def RecordIsClientRun : Prop :=
   ∀ cfg : Config A, Reachable proposer dg self cfg →
     ∃ σes : List (FG.ChainState P.n),
-      cfg.st.record = (FG.Record.run self FG.Record.empty σes).1 ∧
-        ∀ a ∈ (FG.Record.run self FG.Record.empty σes).2, a ∈ cfg.st.fg.atts
+      cfg.st.record = (FG.Record.run self FG.Record.empty σes).1
 
 /-- **C0.5 (c), the sources are held.** In the tick of an honest node at a reachable
 configuration, the source `C` given to `fg_attest` is a block of the tree of the frame after

@@ -21,7 +21,8 @@ def NoCollRun (dg : Digest (List (FG.Att P.n)) A.Payload) (tr : RunTrace A) : Pr
 
 /-- The order facts of F.5 (run) over a run, for the honest validators `H`: (a) the cut index
 respects time; (b) at one time, the groups are in phase order (restarts, ticks, deliveries)
-across the honest nodes; (c) the cuts of a tick are its steps in C0.4's order, at consecutive
+across the honest nodes, except that a node's own publications may come before another node's
+tick at that time; (c) the cuts of a tick are its steps in C0.4's order, at consecutive
 indices; (d) every honest object that an honest node processes was made by its honest maker at
 an earlier cut (or, for a block, at or before: the maker processes its own block at the same
 cut), so the send precedes the receipt; (e) finitely many cuts in every bounded interval. -/
@@ -30,10 +31,11 @@ structure RunOrder (proposer : Nat → Fin P.n)
     (sg : A.Msg → Fin P.n) (tr : RunTrace A) : Prop where
   /-- (a) The cut index respects time. -/
   time_of_lt : ∀ i j, i ≤ j → tr.time i ≤ tr.time j
-  /-- (b) At one time, the honest groups are in phase order. -/
+  /-- (b) At one time, the honest groups are in phase order, except that a node's own
+  publications may come before another node's tick at that time. -/
   phase : ∀ y ∈ H, ∀ y' ∈ H, ∀ j j' t e e',
     tr.GroupAt proposer dg y j t e → tr.GroupAt proposer dg y' j' t e' →
-    j < j' → e.phase ≤ e'.phase
+    j < j' → (y = y' ∨ ¬ tr.OwnPublicationAt proposer dg y j t) → e.phase ≤ e'.phase
   /-- (c) The cuts of an honest tick at `t` with the input `x` from `j` are `on_tick`'s cuts, in
   C0.4's order, at `j, j + 1, …`. -/
   tick_steps : ∀ y ∈ H, ∀ j t x fgDue, tr.GroupAt proposer dg y j t (.tick x fgDue) →
