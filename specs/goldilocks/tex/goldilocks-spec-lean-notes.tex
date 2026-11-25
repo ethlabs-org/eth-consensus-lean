@@ -228,6 +228,21 @@ claims covers these changes.
   that allows every tick's FG update, the node
   asks the AC for a new pair; the FG client record decides whether an
   attestation follows.
+\item[(P2$'$)] \emph{Late release.}  A signed attestation is broadcast at
+  once when the release schedule allows it, and otherwise held and broadcast
+  at the first allowed time at which the node is awake, after the tick of
+  that time.  The record changes at the signing; the node's own
+  $\fname{on\_attestation}$ runs at the signing when the schedule allows
+  release then, and otherwise when it publishes the held attestations, so a
+  held attestation is not in its pool; a proposal carries every eligible
+  attestation of the pool ($\fname{proposal\_attestations}$), in admission
+  order.
+  With the schedule that always releases (R = 0) the engine states are the
+  stock ones, and the run differs only in that the own admission is its own
+  group, immediately after the tick at the same time.  In the proofs a held attestation is extra FG delay
+  $R\Delta$; the run-level delivery premise asks the signer to be honest when
+  its release falls due, for its own signing and the self-admission that
+  follows it, and for no other admission.
 \item[(P3)] \emph{Responsive voting.}  A node votes at the first ready
   proposal in $[t_s,t_s+\Delta]$, after an unlocking on the merged view.
   The proposer unlocks before it proposes, on its whole pool, and again

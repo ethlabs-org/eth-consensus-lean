@@ -102,7 +102,9 @@ durable: it persists through a restart.  A restart keeps~$\Lambda$,
 $\Sigma$ and the clock, and it replaces~$\AC$ by
 $\Call{ac\_restart}{\AC,\Fr,t}$, with $\Fr=\Call{fg\_to\_ac}{\Sigma}$
 and $t$ the time of the restart.  The AC decides which part of its state
-persists.
+persists.  The validator also keeps the list~$\mathit{held}$ of its own
+signed attestations that it has not yet published, oldest first; a restart
+keeps it.  A held attestation is in the record but not in the pool.
 
 At initialization, $t=0$,
 \[
@@ -192,7 +194,20 @@ received after the tick at~$\tau$.  A tick runs the schedule of the AC,
 then the proposal duty at~$t_s$,
 then the FG update if its signing calendar allows it at that time.
 A node processes its own block, its own AC
-message and its own attestation at once.
+message and its own attestation at once.  It publishes its own block and AC
+messages at once.  It publishes its own attestation at once when its release
+schedule $\mathsf{release}(y,t)$ allows it at the signing time; otherwise it
+holds the attestation, and at the first later time at which it is awake and
+the schedule allows release it publishes every held attestation, oldest
+first: at the first selected poll after the tick step of that time while it
+is awake, which may be at a unit time that is not public, at the end of that
+poll's batch, after its ordinary body and its block and vote forwards.  The
+record changes at the signing.  The node processes its own attestation
+($\Call{on\_attestation}{}$) at the signing when the schedule allows release
+then, and otherwise at the time it publishes the held attestations, before
+that time's later FG update; a held attestation is not in its pool and no
+proposal carries it.  The pool is in admission order, which can differ from
+signing order and from the order of publication.
 
 The node drops a block of a future slot.  The FG then accepts the block
 only when its full parent is held, no held block has its root, it
@@ -276,7 +291,20 @@ the clock~$t$ and pass $\Sigma$, $\AC$ and~$\Lambda$ to the two parts.
 \Function{attest}{$\mathit{fg\_confirmed}$}
   \State $a\gets\Call{fg\_attest}{\Sigma,\Lambda,\mathit{fg\_confirmed}}$
   \If{$a=\bot$} \State \Return \EndIf
-  \State broadcast $a$; \Call{on\_attestation}{$a$}
+  \If{$\mathsf{release}(\valindex,t)$}
+    \State broadcast $a$; \Call{on\_attestation}{$a$}
+  \Else \State append $a$ to $\mathit{held}$
+    \Comment{only $\Lambda$ has changed}
+  \EndIf
+\EndFunction
+\vspace{1pt}
+\Function{on\_release}{$t$}
+  \Comment{at each selected awake poll after the tick step, at every unit time}
+  \If{$\mathsf{release}(\valindex,t)$}
+    \State for every $a\in\mathit{held}$, oldest first: broadcast $a$;
+      \Call{on\_attestation}{$a$}
+    \State $\mathit{held}\gets[\,]$
+  \EndIf
 \EndFunction
 \end{algorithmic}
 }

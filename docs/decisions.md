@@ -378,8 +378,9 @@ detail in `TRUST.md`.
 - **Step order** `[poll, poll, pollPropose, propose, poll, poll]`. The node's tick is the poll proposal step at the
   public times (a duty, so it runs only awake; putting it in `clock` was rejected since `clock` runs asleep). Two
   leading polls release the bodies queued since the last tick, so that a proposal carries only released objects
-  (filtering own objects out of the proposal was rejected); the trailing polls run the FG update and drain the
-  tick's vote and attestation.
+  (filtering own objects out of the proposal was rejected; a held own attestation needs no filter either, since it
+  is not in the pool, see the late-release entry below); the trailing polls run the FG update and drain the tick's
+  vote and attestation.
 - **State.** The family's state is a Goldilocks state at every proof of `1 ≤ n` (`PubState`; a `dite`/cast family
   was rejected).
 - **Simulation.** `SimulatesAt` maps engine cuts to node cuts with a monotone `ι` and relates ticks, deliveries
@@ -417,6 +418,59 @@ detail in `TRUST.md`.
   case. Candidate construction is not successful publication: the publication contracts need their own
   prefix-guard and provenance proofs, and release analyses must account for the forwarding releases and their
   additions to `seen`.
+- **Late release of signed FG attestations.** A validator may sign an FG attestation and publish it later, on a
+  per-validator release schedule (`Setup.release`), with a release gap `R` in the contract next to the signing gap
+  `G`. Choices:
+  - *The own attestation is admitted at release.* `fg_attest` and the record `Λ` change at the
+    signing tick. The node's own `on_attestation`, which admits the attestation to its pool, runs at the signing
+    when the schedule allows release then, and otherwise when it publishes its held attestations, before that
+    time's later FG update. So a held attestation is in the record but not in the pool, and the proposal carries
+    every eligible attestation of the pool (`proposal_attestations`) with no filter; the tick event is
+    `Node.Event.tick x fgDue`. Rejected: admitting the own attestation at the signing and filtering held
+    attestations out of the own proposal (the filter needs a list of held attestations on the tick event, an omission law in
+    the run model and a kept-rows premise in the healing statements); a contract premise that every slot start
+    allows release (it restricts every schedule); publishing held attestations inside the block (it would deliver
+    them within `ΔAC` and undo the hold).
+  - *The pool is in admission order.* An own attestation enters the pool at its release, after attestations of
+    other validators admitted meanwhile, so the pool order can differ from signing order and from publication
+    order. Nothing reads the pool order beyond `proposal_attestations` keeping it.
+  - *`R = 0` is a relation, not an equality.* With the schedule that always releases nothing is ever held, and a
+    tick admits to the pool only the attestation its FG update signs (`admitsAt_tick_of_release`, `⊆`), exactly
+    that attestation when it is new to the pool (`admitsAt_tick_of_release_eq`, `=`; for a tick whose group signs
+    `a`, `admitsAt_tick_of_signing`). In the canonical trace that admission is its own `.attestation` group right
+    after the tick group of the same engine event (`pool_release_zero_relation_tick`), and a tick that signs
+    nothing new has only its tick group (`pool_release_zero_relation_tick_none`). So the run at `R = 0` relates to
+    the run without a release schedule by this placement of the own admission; it is not the same run.
+  - *Own publications are exempt from the cross-validator phase order.* The three phase-order clauses
+    (`Node.LocalRun.phase_order`, `Growing.LocalRun.phase_order`, `RunOrder.phase`) order two groups of one time
+    by phase unless the earlier one is another node's own publication (`RunTrace.OwnPublicationAt`). So the trace
+    emits a node's own admissions right after its own tick, where the engine has them, and the engine state agrees
+    with the trace state at every cut. `OwnPublicationAt` is structural: an `.attestation` group with the node's
+    own signer field that adds a new pool entry, in a contiguous tail of such groups of that node right after its
+    tick. On an arbitrary run trace it does not certify that the attestation came from the node's own release
+    rather than a wire receipt, and no such converse is claimed. The canonical trace's phase-order proof
+    (`Lemmas/Simulation/NodeRunSchedule`) is narrower: it locates each group in its engine event and uses the
+    engine's event order to isolate the actual tick-admission tail, which it then shows is an own publication; a
+    wire delivery cannot produce the exempted inversion there, and order within one node is kept unconditionally.
+    Rejected: emitting the admissions after the time's last tick, which needed either a premise on
+    `RunMap.state_eq` ("the cut is not inside a tick phase after the node's own tick"), an artifact of the trace
+    layout, or a representative-cut index on `RunMap` (`repIdx`; it loses the joint-state equality of the nodes at
+    one engine cut).
+  - *A separate queue.* Held attestations wait in `held`, never in the vote outbox, so a held attestation never
+    delays an AC vote. AC votes are never held: the sleepy and confirmation arguments count honest votes by their
+    deadlines.
+  - *Release all at once.* The first selected poll after the tick step of a time at which the node is awake and the
+    schedule allows release publishes every held attestation, oldest first, at the end of its batch. Moving them
+    into the outbox (one body per poll) was rejected: a backlog could push a release past the gap bound.
+  - *Contract form.* `R` is charged like `G`: the final anchor spacing becomes `⌈(6 + F + R + G)/4⌉` and the FG
+    delay bound `F` is unchanged. Rejected: folding `R` into the FG delay bound (it narrows the networks the
+    contract covers and is never tighter), and merging `R` into `G` (it would charge the heal margin for waits
+    that delay no report).
+  - *Proofs.* A held attestation is extra FG delay `RΔ`. L0 delivers only from a sender honest at release, so the
+    run-level delivery premise under growing faults asks the signer to be honest when its release falls due, for
+    its own signing and the self-admission that follows it, and for no other admission. The release gap enters
+    the proofs only through `Obligations.releaseGapAt_of_assumptions` (`release_liveness`), so the supplier run data
+    (`GoldilocksRunData`) carries no release conjunct.
 - **Collision transport targets the constructed trace.** It targets the canonical trace constructed from the
   engine run, not every simulation witness: simulation coverage alone does not identify all block calls with
   engine objects. Tagged genesis roots make freshness unconditional, so neither transport nor finalized

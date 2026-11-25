@@ -1103,6 +1103,10 @@ $t_s+2\Delta$, for $s>0$, the tick runs the confirmation update of
 slot~$s-1$.  After the AC tick the proposal duty at~$t_s$ calls
 $\Call{ac\_proposal}{}$ as before.  The FG update calls
 $\Call{ac\_to\_fg}{}$ only when the node's calendar allows the update.
+Signing and publication are separate: the signing calendar decides when the
+FG update runs, and the release schedule decides when the signed attestation
+is broadcast (Section~\ref{sec:node}); the record~$\Lambda$ changes at the
+signing, and the own pool only at the broadcast.
 Before it proposes, $\Call{ac\_proposal}{}$ unlocks against the
 slot-$(s-1)$ votes.
 

@@ -862,9 +862,13 @@ declared head votes are not admitted), optimistic check, vote check with its unl
 which is processed at once by $\fname{ac\_on\_message}$: admission, optimistic
 check); if the signing calendar allows it, the FG update (with the frame
 recomputed: $\fname{ac\_to\_fg}$, then, for a block other
-than~$\bot$, $\fname{fg\_attest}$ with the record and the own attestation); then
+than~$\bot$, $\fname{fg\_attest}$ with the record, and, when the release
+schedule allows release then, the own attestation, broadcast at once;
+otherwise it is held and processed when it is broadcast, after the tick of
+that time); then
 the objects received at~$a$, each by its handler (whose AC part can again
-vote).  Every own object is processed at once.  This is a definition of the
+vote).  Every own object is processed at once, except a held attestation,
+which is processed at its publication.  This is a definition of the
 node, and the order that A1.9, G1.10 and C1.1 read.}
 {none}{composition \S``Node''; goldilocks-spec \S``Node actions''.}{S.  Definitional in
 the node; its preservation by the generic engine is a refinement obligation.}
@@ -1433,7 +1437,8 @@ from its own first update of a slot $\geq s$.)}
 \section{Healing: phase service}\label{sec:healing-service}
 
 The legacy phase-service timing bounds in this section, including HS.4,
-are for the stock calendar, which allows every honest tick's FG update.
+are for the stock calendar and release schedule, which allow every honest
+tick's FG update and publish every attestation at its signing.
 For the contract with a finite signing gap, see \S\ref{sec:obligations}.
 
 The nodes of this section are the phase-service nodes, in the run-level
@@ -2197,11 +2202,15 @@ outer gap~$X$, the index of its progress requirement.  The assumption set
 requires $c\geq2$ and a finite signing gap $G\in\mathbb{N}$: for every public
 configuration, validator~$y$ and time $t\geq0$, there is a public time~$t'$
 (a multiple of~$\Delta$) with $t\leq t'<t+(G+1)\Delta$ and
-$\mathsf{sign}(y,t')=\mathrm{true}$.  Set $F=4c-6$ and
-$c'=\lceil(6+F+G)/4\rceil$.  The timeout must satisfy
+$\mathsf{sign}(y,t')=\mathrm{true}$, and a finite release gap
+$R\in\mathbb{N}$: for every public configuration, validator~$y$ and time
+$t\geq0$, there is a time~$t'$ with $t\leq t'\leq t+R\Delta$ and
+$\mathsf{release}(y,t')=\mathrm{true}$.  Set $F=4c-6$ and
+$c'=\lceil(6+F+R+G)/4\rceil$.  The timeout must satisfy
 $3c'\leq\delta_{\mathrm t}$, so the endpoint and headline still require
 $\delta_{\mathrm t}\geq6$; they hold at every vote binding (\S\ref{sec:model}).
-With the always-allow calendar and $G=0$, $c'=c$ and the stock numbers return.
+With the always-allow calendar and schedule and $G=R=0$, $c'=c$ and the
+stock numbers return.
 \end{sloppypar}
 \begin{center}\footnotesize
 \begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.6cm}>{\raggedright\arraybackslash}p{8.4cm}@{}}
@@ -2218,6 +2227,8 @@ Catch-up & $19$\\
 Drain length & $L=2k+X$\\
 Heal margin $M_f$ & $20L+8k+28\delta_{\mathrm t}+28X+56+5G$\\
 Heal, every capability & $19+M_f=48k+28\delta_{\mathrm t}+48X+75+5G$\\
+Release gap & $R\geq0$; no heal term: a held attestation delays delivery,
+  which $3c'\leq\delta_{\mathrm t}$ pays\\
 Latency, available and stable & $4X+6$\\
 Latency, final & $4(X+3c')+1$\\
 Arming lag & $4k+6$\\
@@ -2248,7 +2259,8 @@ look-back without requiring every honest participant to remain awake.
 The headline \texttt{GoldilocksCorrect} (consensus-lean
 \texttt{Statements/Obligations}) states, for every setup~$S$ (genesis root,
 $\delta_{\mathrm t}$, lock window $k\geq2$, fast increment $c_{\mathrm{fast}}\geq2$,
-restart replay order, vote binding and signing calendar), every assumption set
+restart replay order, vote binding, signing calendar and release schedule),
+every assumption set
 of \S\ref{sec:obligations} and every finite validator
 set, that the Goldilocks family run by the general execution model is an L0
 \texttt{CorrectProtocol} (consensus-lean
