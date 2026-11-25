@@ -52,11 +52,7 @@ variable {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
 /-- An optimistic confirmation writes only fast locks. -/
 private theorem FromP.of_optimistic (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     (A : ACState sp.n) (t : Time) :
-    FromP U A.locks (optimisticConfirmationM sp wm A Φ t).locks (fun _ f _ => f = true) := by
-  rw [optimisticConfirmationM_eq]
-  split_ifs
-  swap
-  · exact FromP.of_eq rfl
+    FromP U A.locks (optimisticConfirmation sp A Φ t).locks (fun _ f _ => f = true) := by
   unfold optimisticConfirmation
   rcases h : optimisticSelect sp A Φ t with _ | B
   · exact FromP.of_eq rfl
@@ -76,9 +72,9 @@ private theorem FromP.of_tryVote
     (hL : UnlockRel sp A.locks Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp A Φ (sp.slot t)) L) :
     FromP U A.locks (tryVoteWithM sp wm x L A Φ t).1.locks (fun _ f _ => f = true) := by
   have hopt : ∀ (A' : ACState sp.n) (v : Vote sp.n) (L : Set Lock), A'.locks = L →
-      FromP U L (optimisticConfirmationM sp wm (admitVote sp A' t v) Φ t).locks
+      FromP U L (optimisticConfirmation sp (admitVote sp A' t v) Φ t).locks
         (fun _ f _ => f = true) := fun A' v L hL => by
-    have := FromP.of_optimistic (wm := wm) hU hΦ hΦU (admitVote sp A' t v) t
+    have := FromP.of_optimistic hU hΦ hΦU (admitVote sp A' t v) t
     rwa [admitVote_locks_eq, hL] at this
   unfold tryVoteWithM
   dsimp only
@@ -117,7 +113,7 @@ private theorem FromP.of_onTick
   · refine (FromP.of_updateConfirmation hU hΦ hΦU A t _).mono fun s f B h => ?_
     obtain ⟨D, _, hB, rfl, _, _, hslow⟩ := h
     exact Or.inr ⟨ht.1, ht.2, hj, rfl, fun hf => ⟨D, hslow hf, hB⟩⟩
-  · exact (FromP.of_tryVote hU hΦ hΦU x A t hL).mono fun s f B h => Or.inl h
+  · exact (FromP.of_tryVote (wm := wm) hU hΦ hΦU x A t hL).mono fun s f B h => Or.inl h
   · exact FromP.of_eq rfl
   · exact FromP.of_eq rfl
 
@@ -162,16 +158,16 @@ private theorem call_fromPU
   | toFG => exact FromP.of_eq (toFG_locks A _)
   | message m =>
     rw [hcall] at hlaw
-    have h₁ := FromP.of_optimistic (wm := wm) hU hΦ hΦU (admitVote sp A (tr.time i) m) (tr.time i)
+    have h₁ := FromP.of_optimistic hU hΦ hΦU (admitVote sp A (tr.time i) m) (tr.time i)
     rw [admitVote_locks_eq] at h₁
-    exact (FromP.trans hU h₁ (FromP.of_tryVote (L := u i) hU hΦ hΦU x _ _ hlaw)).mono
+    exact (FromP.trans hU h₁ (FromP.of_tryVote (wm := wm) (L := u i) hU hΦ hΦU x _ _ hlaw)).mono
       fun s f B h hf => fast s f B h hf
   | block B =>
     rw [hcall] at hlaw
-    have h₁ := FromP.of_optimistic (wm := wm) hU hΦ hΦU (blockReceipt sp A (tr.time i) B)
+    have h₁ := FromP.of_optimistic hU hΦ hΦU (blockReceipt sp A (tr.time i) B)
         (tr.time i)
     rw [blockReceipt_locks] at h₁
-    exact (FromP.trans hU h₁ (FromP.of_tryVote (L := u i) hU hΦ hΦU x _ _ hlaw)).mono
+    exact (FromP.trans hU h₁ (FromP.of_tryVote (wm := wm) (L := u i) hU hΦ hΦU x _ _ hlaw)).mono
       fun s f B h hf => fast s f B h hf
   | restart =>
     exact FromP.of_eq ((restart_state sp) FGP ro x A ℓ.frame (tr.time i) hΦ

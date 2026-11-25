@@ -24,7 +24,7 @@ theorem readPoint_blockStamp_eqU
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     e.readPoint.blockStamp = (tr.post i).blockStamp := by
-  rw [post_of_castAtU hr hy hc, optimisticConfirmationM_keep _ AC.optimistic_blockStamp,
+  rw [post_of_castAtU hr hy hc, AC.optimistic_blockStamp,
     AC.admitVote_blockStamp]
 
 /-- The read point of an honest vote has the block stamps of the state its call leaves. -/

@@ -98,7 +98,7 @@ theorem post_of_castAtU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
-    tr.post i = optimisticConfirmationM sp wm (admitVote sp e.readPoint (tr.time i) e.msg)
+    tr.post i = optimisticConfirmation sp (admitVote sp e.readPoint (tr.time i) e.msg)
       ℓ.frame (tr.time i) := by
   rcases post_of_voteBranchAtU hr hy (voteBranchAt_of_castAtU hr hy hc) with
     ⟨-, hn, -⟩ | ⟨-, e', he', -, -, -, hpost⟩
@@ -145,7 +145,7 @@ theorem voterBlockTree_ancU
     induction hX with
     | refl => exact le_rfl
     | tail _ hp ih => exact ih.trans (hsp _ hp.2.1 _ hp.1 hp.2.2)
-  rw [post_of_castAtU hr hy hc, optimisticConfirmationM_keep _ optimistic_blockStamp,
+  rw [post_of_castAtU hr hy hc, optimistic_blockStamp,
     admitVote_blockStamp] at hle
   exact ⟨mem_of_anc hX hB.1, hB.2.imp hle.trans_lt
     fun ⟨P, hP, hPs, hBP⟩ => ⟨P, hP, hPs, hX.trans hBP⟩⟩

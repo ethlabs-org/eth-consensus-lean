@@ -97,11 +97,6 @@ theorem LocksWF.optimisticConfirmation {A : ACState sp.n} (h : LocksWF sp A.lock
     subst hp
     exact ⟨le_fastExpiry sp _ Φ t _, fastExpiry_le sp _ Φ t _⟩
 
-/-- `LocksWF.optimisticConfirmation` at the write mode `wm`. -/
-theorem LocksWF.optimisticConfirmationM {A : ACState sp.n} (h : LocksWF sp A.locks)
-    (Φ : Frm sp.n FGP) (t : Time) : LocksWF sp (AC.optimisticConfirmationM sp wm A Φ t).locks :=
-  optimisticConfirmationM_of (P := fun X => LocksWF sp X.locks) (h.optimisticConfirmation Φ t) h
-
 /-- The confirmation update at the write mode `wm` keeps `LocksWF`: its fast lock on `D` has
 expiry `s + k` when the path has a slow-test block (B′) and `fastExpiry` otherwise, its slow
 lock `s + k`. -/
@@ -136,8 +131,8 @@ theorem LocksWF.tryVoteWith
   split_ifs <;> first
     | exact h
     | exact h.unlockRel hL
-    | (apply LocksWF.optimisticConfirmationM; rw [admitVote_locks_eq]; exact h.unlockRel hL)
-    | (apply LocksWF.optimisticConfirmationM; rw [admitVote_locks_eq]; exact h)
+    | (apply LocksWF.optimisticConfirmation; rw [admitVote_locks_eq]; exact h.unlockRel hL)
+    | (apply LocksWF.optimisticConfirmation; rw [admitVote_locks_eq]; exact h)
 
 /-- **One AC call with the unlock given keeps `LocksWF`**, in its post-state and in every
 emission's read point (a well-formed frame and `t ≥ 0` for the restart). -/
@@ -150,8 +145,8 @@ theorem LocksWF.stepWith
     LocksWF sp (stepWithM sp ro wm x L A Φ t c).1.locks ∧
       ∀ e ∈ (stepWithM sp ro wm x L A Φ t c).2, LocksWF sp e.readPoint.locks := by
   have hopt : ∀ {A' : ACState sp.n}, A'.locks = A.locks →
-      LocksWF sp (AC.optimisticConfirmationM sp wm A' Φ t).locks := fun hA =>
-    LocksWF.optimisticConfirmationM (hA ▸ h) Φ t
+      LocksWF sp (AC.optimisticConfirmation sp A' Φ t).locks := fun hA =>
+    LocksWF.optimisticConfirmation (hA ▸ h) Φ t
   cases c with
   | tick =>
     change LocksWF sp (acOnTickWithM sp wm x L A Φ t).1.locks ∧
@@ -177,9 +172,9 @@ theorem LocksWF.stepWith
     rw [acToFG_locks_eq]
     exact h
   | message v =>
-    exact (hopt (admitVote_locks_eq A t v)).tryVoteWith x Φ t hL
+    exact (hopt (admitVote_locks_eq A t v)).tryVoteWith (wm := wm) x Φ t hL
   | block B =>
-    exact (hopt (blockReceipt_locks A t B)).tryVoteWith x Φ t hL
+    exact (hopt (blockReceipt_locks A t B)).tryVoteWith (wm := wm) x Φ t hL
   | restart =>
     obtain ⟨he, hl, -⟩ := (restart_state sp) FGP ro x A Φ t hΦ ht
     change LocksWF sp (acRestart sp ro x A Φ t).1.locks ∧

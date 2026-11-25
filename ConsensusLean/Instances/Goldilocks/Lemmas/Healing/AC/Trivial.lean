@@ -124,10 +124,8 @@ private theorem admitVote_stamp_ne {A : ACState sp.n} {t : Time} {v w : Vote sp.
   · exact Function.update_of_ne h _ _
 
 private theorem optimistic_pool_stamp (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (optimisticConfirmationM sp wm A Φ t).pool = A.pool ∧
-      (optimisticConfirmationM sp wm A Φ t).voteStamp = A.voteStamp := by
-  refine optimisticConfirmationM_of (P := fun X => X.pool = A.pool ∧
-    X.voteStamp = A.voteStamp) ?_ ⟨rfl, rfl⟩
+    (optimisticConfirmation sp A Φ t).pool = A.pool ∧
+      (optimisticConfirmation sp A Φ t).voteStamp = A.voteStamp := by
   unfold optimisticConfirmation updateLatestConfirmed; split
   · exact ⟨rfl, rfl⟩
   · split_ifs <;> exact ⟨rfl, rfl⟩

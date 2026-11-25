@@ -69,13 +69,9 @@ variable {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
 
 private theorem FromP.of_optimistic (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     (A : ACState sp.n) (t : Time) :
-    FromP U A.locks (optimisticConfirmationM sp wm A Φ t).locks
+    FromP U A.locks (optimisticConfirmation sp A Φ t).locks
       (fun s f B => ∃ D ∈ Φ.tree, B = Φ.viableAncestor D ∧
         f = true ∧ s = sp.slot t ∧ optimisticSelect sp A Φ t = some D) := by
-  rw [optimisticConfirmationM_eq]
-  split_ifs
-  swap
-  · exact FromP.of_eq rfl
   unfold optimisticConfirmation
   rcases h : optimisticSelect sp A Φ t with _ | B
   · exact FromP.of_eq rfl
@@ -92,11 +88,11 @@ private theorem FromP.of_optimistic (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU :
 private theorem FromP.of_optimistic_admit (hU : Coherent U) (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) {L : Set Lock} (A : ACState sp.n) (hL : A.locks = L) (t : Time)
     (v : Vote sp.n) :
-    FromP U L (optimisticConfirmationM sp wm (admitVote sp A t v) Φ t).locks
+    FromP U L (optimisticConfirmation sp (admitVote sp A t v) Φ t).locks
       (fun s f B => ∃ D ∈ Φ.tree, B = Φ.viableAncestor D ∧ f = true ∧ s = sp.slot t ∧
         optimisticSelect sp (admitVote sp A t v) Φ t = some D) :=
     by
-  have := FromP.of_optimistic (wm := wm) hU hΦ hΦU (admitVote sp A t v) t
+  have := FromP.of_optimistic hU hΦ hΦU (admitVote sp A t v) t
   rwa [admitVote_locks_eq, hL] at this
 
 private theorem FromP.of_tryVote
@@ -219,7 +215,7 @@ private theorem FromP.of_onTick
         have hΔ := sp.toParams.hΔ
         linarith only [ht.1.symm.trans hu, hΔ]
       · rw [ite_eq_right ht]
-        exact (FromP.of_tryVote hU hΦ hΦU x A t hL).mono
+        exact (FromP.of_tryVote (wm := wm) hU hΦ hΦU x A t hL).mono
           fun s f B ⟨D, hD, heq, h⟩ => ⟨D, hD, heq, Or.inl h⟩
     · rw [ite_eq_right hu]
       by_cases ht : t = sp.ts (sp.slot t) + 2 * sp.Δ ∧ 0 < sp.slot t
@@ -328,7 +324,7 @@ private theorem call_candidate_fromPU
   | message m =>
     rw [hcall] at hemits hlaw
     refine FromP.trans hU ((FromP.of_optimistic_admit hU hΦ hΦU A rfl _ m).mono
-      fun s f B h => ?_) ((FromP.of_tryVote (L := u i) hU hΦ hΦU x _ _ hlaw).mono
+      fun s f B h => ?_) ((FromP.of_tryVote (wm := wm) (L := u i) hU hΦ hΦU x _ _ hlaw).mono
           fun s f B h => ?_)
     · obtain ⟨D, hD, rfl, hf, hs, hsel⟩ := h
       refine ⟨D, hD, rfl, ?_, ?_, ?_⟩
@@ -346,11 +342,11 @@ private theorem call_candidate_fromPU
       · intro hf'; exact Bool.false_ne_true (hf'.symm.trans hf) |>.elim
   | block B =>
     rw [hcall] at hemits hlaw
-    have h₁ := FromP.of_optimistic (wm := wm) hU hΦ hΦU (blockReceipt sp A (tr.time i) B)
+    have h₁ := FromP.of_optimistic hU hΦ hΦU (blockReceipt sp A (tr.time i) B)
       (tr.time i)
     rw [blockReceipt_locks] at h₁
     refine FromP.trans hU (h₁.mono fun s f B' h => ?_)
-      ((FromP.of_tryVote (L := u i) hU hΦ hΦU x _ _ hlaw).mono
+      ((FromP.of_tryVote (wm := wm) (L := u i) hU hΦ hΦU x _ _ hlaw).mono
           fun s f B' h => ?_)
     · obtain ⟨D, hD, rfl, hf, hs, hsel⟩ := h
       refine ⟨D, hD, rfl, ?_, ?_, ?_⟩

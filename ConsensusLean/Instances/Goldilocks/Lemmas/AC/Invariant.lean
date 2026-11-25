@@ -35,10 +35,8 @@ private theorem updateLatestConfirmed_fields (A : ACState sp.n) (Φ : Frm sp.n F
   split_ifs <;> exact ⟨rfl, rfl⟩
 
 private theorem optimistic_fields (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (optimisticConfirmationM sp wm A Φ t).pool = A.pool ∧
-      (optimisticConfirmationM sp wm A Φ t).blockStamp = A.blockStamp := by
-  refine optimisticConfirmationM_of (P := fun X => X.pool = A.pool ∧
-    X.blockStamp = A.blockStamp) ?_ ⟨rfl, rfl⟩
+    (optimisticConfirmation sp A Φ t).pool = A.pool ∧
+      (optimisticConfirmation sp A Φ t).blockStamp = A.blockStamp := by
   unfold optimisticConfirmation
   split
   · exact ⟨rfl, rfl⟩
@@ -143,7 +141,7 @@ private theorem acOnTick_fields (self : Fin sp.n) (L : Set Lock) (A : ACState sp
   split_ifs
   all_goals
     try rw [(updateConfirmation_fields _ _ _ _).1, (updateConfirmation_fields _ _ _ _).2]
-  all_goals first | exact ⟨id, rfl⟩ | exact tryVote_fields _ _ _ _ _
+  all_goals first | exact ⟨id, rfl⟩ | exact tryVote_fields (wm := wm) _ _ _ _ _
 
 
 private theorem acProposal_fields (L : Set Lock) (A : ACState sp.n) (Φ : Frm sp.n FGP)

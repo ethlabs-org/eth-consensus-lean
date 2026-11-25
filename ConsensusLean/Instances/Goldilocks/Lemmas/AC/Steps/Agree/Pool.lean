@@ -72,8 +72,7 @@ private theorem grow_blockReceipt (A : ACState sp.n) (t : Time) (B : Blk sp.n FG
   Grow.of_eq rfl rfl
 
 private theorem grow_optimistic (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    Grow t A (optimisticConfirmationM sp wm A Φ t) := by
-  refine optimisticConfirmationM_of (P := Grow t A) ?_ (Grow.of_eq rfl rfl)
+    Grow t A (optimisticConfirmation sp A Φ t) := by
   unfold optimisticConfirmation updateLatestConfirmed
   split
   · exact Grow.of_eq rfl rfl
@@ -114,9 +113,9 @@ private theorem grow_step
     unfold acOnTickWithM
     dsimp only
     split_ifs
-    · exact (grow_tryVote _ _ _ _).trans (grow_updateConfirmation _ _ _ _)
+    · exact (grow_tryVote (wm := wm) _ _ _ _).trans (grow_updateConfirmation _ _ _ _)
     · exact grow_updateConfirmation _ _ _ _
-    · exact grow_tryVote _ _ _ _
+    · exact grow_tryVote (wm := wm) _ _ _ _
     · exact Grow.of_eq rfl rfl
     · exact Grow.of_eq rfl rfl
   | proposal =>
@@ -133,9 +132,11 @@ private theorem grow_step
       · split_ifs <;> exact Grow.of_eq rfl rfl
     · exact Grow.of_eq rfl rfl
   | message m =>
-    exact ((grow_admitVote _ _ _).trans (grow_optimistic _ _ _)).trans (grow_tryVote _ _ _ _)
+    exact ((grow_admitVote _ _ _).trans (grow_optimistic _ _ _)).trans
+      (grow_tryVote (wm := wm) _ _ _ _)
   | block B =>
-    exact ((grow_blockReceipt _ _ _).trans (grow_optimistic _ _ _)).trans (grow_tryVote _ _ _ _)
+    exact ((grow_blockReceipt _ _ _).trans (grow_optimistic _ _ _)).trans
+      (grow_tryVote (wm := wm) _ _ _ _)
   | restart => exact absurd rfl hc
 
 /-- A single non-restart call preserves every stored vote, without reachability or a
@@ -436,7 +437,7 @@ theorem held_of_processAtU
   · rw [state_succ_of_call hc]
     have he := hr.exec k ℓ hc.2 (hc.1 ▸ hy)
     rw [hc.1, hm] at he
-    have h := (grow_optimistic (wm := wm) (admitVote sp (tr.state y k) (tr.time k) v) ℓ.frame
+    have h := (grow_optimistic (admitVote sp (tr.state y k) (tr.time k) v) ℓ.frame
       (tr.time k)).trans (grow_tryVote (wm := wm) (L := u k) y _ ℓ.frame (tr.time k))
     change Grow _ _ (acOnMessageWithM sp wm y (u k) (tr.state y k) ℓ.frame (tr.time k) v).1 at h
     change acOnMessageWithM sp wm y (u k) (tr.state y k) ℓ.frame (tr.time k) v = _ at he
@@ -628,7 +629,7 @@ theorem readPoint_poolU
       (x.slot = σ → (tr.state y (j + 1)).voteStamp x = e.readPoint.voteStamp x) := by
   rw [state_succ_of_call hc.1, post_of_castAtU hr hy hc]
   have hg := (grow_admitVote e.readPoint (tr.time j) e.msg).trans
-    (grow_optimistic (wm := wm) _ ℓ.frame (tr.time j))
+    (grow_optimistic _ ℓ.frame (tr.time j))
   exact ⟨hg.1 _ hx, fun h => (hg.2 x).1 (h ▸ hx)⟩
 
 /-- The state a cast leaves holds the votes of the vote's read point, with their stamps. -/
@@ -652,7 +653,7 @@ theorem restartTime_of_castAtU
     intro A Φ t; unfold optimisticConfirmation updateLatestConfirmed; split
     · rfl
     · split_ifs <;> rfl
-  rw [post_of_castAtU hr hy hc, optimisticConfirmationM_keep _ h₂, h₁]
+  rw [post_of_castAtU hr hy hc, h₂, h₁]
 
 /-- A cast leaves the restart time of its read point. -/
 theorem restartTime_of_castAt (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n}
@@ -670,7 +671,7 @@ theorem optimisticPoint_pool_postU
   · rw [state_succ_of_call hc]
     have he := hr.exec k ℓ hc.2 (hc.1 ▸ hy)
     rw [hc.1, hm] at he
-    have h := (grow_optimistic (wm := wm) (admitVote sp (tr.state y k) (tr.time k) m) ℓ.frame
+    have h := (grow_optimistic (admitVote sp (tr.state y k) (tr.time k) m) ℓ.frame
       (tr.time k)).trans (grow_tryVote (wm := wm) (L := u k) y _ ℓ.frame (tr.time k))
     change Grow _ _ (acOnMessageWithM sp wm y (u k) (tr.state y k) ℓ.frame (tr.time k) m).1 at h
     change acOnMessageWithM sp wm y (u k) (tr.state y k) ℓ.frame (tr.time k) m = _ at he
@@ -679,7 +680,7 @@ theorem optimisticPoint_pool_postU
   · rw [state_succ_of_call hc]
     have he := hr.exec k ℓ hc.2 (hc.1 ▸ hy)
     rw [hc.1, hB] at he
-    have h := (grow_optimistic (wm := wm) (blockReceipt sp (tr.state y k) (tr.time k) B) ℓ.frame
+    have h := (grow_optimistic (blockReceipt sp (tr.state y k) (tr.time k) B) ℓ.frame
       (tr.time k)).trans (grow_tryVote (wm := wm) (L := u k) y _ ℓ.frame (tr.time k))
     change Grow _ _ (acOnBlockWithM sp wm y (u k) (tr.state y k) ℓ.frame (tr.time k) B).1 at h
     change acOnBlockWithM sp wm y (u k) (tr.state y k) ℓ.frame (tr.time k) B = _ at he

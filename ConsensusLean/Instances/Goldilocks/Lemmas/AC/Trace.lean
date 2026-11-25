@@ -812,9 +812,9 @@ private theorem tryVote_voteStep {L : Set Lock} (self : Fin sp.n) (A : ACState s
   all_goals
     simp only [not_or, not_not, not_lt] at h₁
     obtain ⟨hj, hv, -⟩ := h₁
-    have k₁ := fun A₁ v => ((optimisticM_keeps wm (admitVote sp A₁ t v) Φ t).1.trans
+    have k₁ := fun A₁ v => ((optimistic_keeps (admitVote sp A₁ t v) Φ t).1.trans
       (admitVote_keeps A₁ t v).1)
-    have k₂ := fun A₁ v => ((optimisticM_keeps wm (admitVote sp A₁ t v) Φ t).2.trans
+    have k₂ := fun A₁ v => ((optimistic_keeps (admitVote sp A₁ t v) Φ t).2.trans
       (admitVote_keeps A₁ t v).2)
     refine ⟨k₂ _ _, Or.inr (k₁ _ _), by simp, fun e he => ?_⟩
     rw [List.mem_singleton] at he
@@ -827,16 +827,16 @@ private theorem acOnMessage_voteStep {L : Set Lock} (self : Fin sp.n) (A : ACSta
     VoteStep A (acOnMessageWithM sp wm self L A Φ t v).1
       (acOnMessageWithM sp wm self L A Φ t v).2 t :=
   (tryVote_voteStep _ _ _ _).pre
-    ((optimisticM_keeps _ _ _ _).1.trans (admitVote_keeps _ _ _).1)
-    ((optimisticM_keeps _ _ _ _).2.trans (admitVote_keeps _ _ _).2)
+    ((optimistic_keeps _ _ _).1.trans (admitVote_keeps _ _ _).1)
+    ((optimistic_keeps _ _ _).2.trans (admitVote_keeps _ _ _).2)
 
 private theorem acOnBlock_voteStep {L : Set Lock} (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm
     sp.n FGP)
     (t : Time) (B : Blk sp.n FGP) :
     VoteStep A (acOnBlockWithM sp wm self L A Φ t B).1 (acOnBlockWithM sp wm self L A Φ t B).2 t :=
   (tryVote_voteStep _ _ _ _).pre
-    ((optimisticM_keeps _ _ _ _).1.trans (blockReceipt_keeps _ _ _).1)
-    ((optimisticM_keeps _ _ _ _).2.trans (blockReceipt_keeps _ _ _).2)
+    ((optimistic_keeps _ _ _).1.trans (blockReceipt_keeps _ _ _).1)
+    ((optimistic_keeps _ _ _).2.trans (blockReceipt_keeps _ _ _).2)
 
 private theorem acOnTick_voteStep {L : Set Lock} (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm
     sp.n FGP)

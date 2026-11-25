@@ -67,7 +67,7 @@ theorem vote_tryVote_inputU
       P = callInputM sp wm (tr.state y i) ℓ.frame (tr.time i) ℓ.call ∧
       callViewM sp wm (tr.state y i) ℓ.frame (tr.time i) ℓ.call =
         mergedVoteView sp P ℓ.frame (sp.slot (tr.time i)) ∧ (P = tr.state y i ∨
-      ∃ A : ACState sp.n, P = optimisticConfirmationM sp wm A ℓ.frame (tr.time i) ∧
+      ∃ A : ACState sp.n, P = optimisticConfirmation sp A ℓ.frame (tr.time i) ∧
         A.locks = (tr.state y i).locks) := by
   obtain ⟨hV, -, htv⟩ := voteBranchAt_inputU hr hy (voteBranchAt_of_castAtU hr hy hc)
   refine ⟨_, by rw [htv]; exact hc.2, rfl, hV, ?_⟩
@@ -109,10 +109,6 @@ theorem readPoint_locks_below_storedU
   obtain ⟨l₁, hl₁, hs₁, -, -, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩ := hlaw.movesBack hΦ l' hl'
   rcases hP with rfl | ⟨A, rfl, hAl⟩
   · exact ⟨l₁, hl₁, hs₁, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩
-  rw [optimisticConfirmationM_eq] at hl₁
-  split_ifs at hl₁
-  swap
-  · exact ⟨l₁, hAl ▸ hl₁, hs₁, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩
   unfold optimisticConfirmation at hl₁
   split at hl₁
   · exact ⟨l₁, hAl ▸ hl₁, hs₁, B₁, hB₁, hB₁r, B', hB', hB'r, hA⟩

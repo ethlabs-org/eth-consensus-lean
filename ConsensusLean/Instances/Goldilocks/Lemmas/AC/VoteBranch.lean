@@ -90,7 +90,7 @@ theorem tryVoteWithM_branch {L : Set Lock} (self : Fin sp.n) {A : ACState sp.n}
     (hready : ¬ (t < sp.ts (sp.slot t) + sp.Δ ∧ (sp.slot t = 0 ∨ ¬ voteReady sp A Φ (sp.slot t)))) :
     (A.mayVote (sp.slot t) = true → ∃ e : Em sp FGP,
       tryVoteWithM sp wm self L A Φ t =
-        (optimisticConfirmationM sp wm (admitVote sp e.readPoint t e.msg) Φ t, [e]) ∧
+        (optimisticConfirmation sp (admitVote sp e.readPoint t e.msg) Φ t, [e]) ∧
       e.readPoint = { (if 0 < sp.slot t then { A with locks := L } else A) with
         votedSlot := (sp.slot t : Int) } ∧ e.msg.val = self ∧ e.msg.slot = sp.slot t) ∧
     (A.mayVote (sp.slot t) = false → tryVoteWithM sp wm self L A Φ t =
@@ -134,13 +134,13 @@ private theorem callInputM_keeps (A : ACState sp.n) (Φ : Frm sp.n FGP)
       (callInputM sp wm A Φ t c).mayVote = A.mayVote := by
   cases c with
   | message v =>
-    exact ⟨(optimisticM_keeps _ _ _ _).1.trans (admitVote_keeps _ _ _).1,
-      (optimisticM_keeps _ _ _ _).2.trans (admitVote_keeps _ _ _).2,
-      (optimisticM_mayVote _ _ _ _).trans (admitVote_mayVote _ _ _)⟩
+    exact ⟨(optimistic_keeps _ _ _).1.trans (admitVote_keeps _ _ _).1,
+      (optimistic_keeps _ _ _).2.trans (admitVote_keeps _ _ _).2,
+      (optimisticConfirmation_mayVote _ _ _).trans (admitVote_mayVote _ _ _)⟩
   | block B =>
-    exact ⟨(optimisticM_keeps _ _ _ _).1.trans (blockReceipt_keeps _ _ _).1,
-      (optimisticM_keeps _ _ _ _).2.trans (blockReceipt_keeps _ _ _).2,
-      (optimisticM_mayVote _ _ _ _).trans (blockReceipt_mayVote _ _ _)⟩
+    exact ⟨(optimistic_keeps _ _ _).1.trans (blockReceipt_keeps _ _ _).1,
+      (optimistic_keeps _ _ _).2.trans (blockReceipt_keeps _ _ _).2,
+      (optimisticConfirmation_mayVote _ _ _).trans (blockReceipt_mayVote _ _ _)⟩
   | tick => exact ⟨rfl, rfl, rfl⟩
   | proposal => exact ⟨rfl, rfl, rfl⟩
   | toFG => exact ⟨rfl, rfl, rfl⟩
@@ -299,7 +299,7 @@ private theorem voteBranchAt_of_tryVote {y : Fin sp.n} {j : Nat}
     obtain ⟨hpost, hem⟩ := Prod.mk.inj (htv.symm.trans he)
     refine ⟨voteBranchAt_iff.2 ⟨hc, hk, hj, hv, hlate, hready', Or.inl ⟨e,
       by rw [hem]; exact List.mem_singleton_self _, hR⟩⟩, ?_⟩
-    rw [hpost, (optimisticM_keeps _ _ _ _).1, (admitVote_keeps _ _ _).1, hR]
+    rw [hpost, (optimistic_keeps _ _ _).1, (admitVote_keeps _ _ _).1, hR]
   | false =>
     obtain ⟨hpost, hem⟩ := Prod.mk.inj (htv.symm.trans (hb.2 hm))
     exact ⟨voteBranchAt_iff.2 ⟨hc, hk, hj, hv, hlate, hready', Or.inr ⟨hem, hpost⟩⟩,
@@ -403,7 +403,7 @@ theorem post_of_voteBranchAtU {u : Nat → Set Lock} (h : ACLocalRunU wm u H U t
     ((tr.state y j).mayVote (sp.slot (tr.time j)) = false ∧ ℓ.emits = [] ∧ tr.post j = R) ∨
       ((tr.state y j).mayVote (sp.slot (tr.time j)) = true ∧ ∃ e, ℓ.emits = [e] ∧
         e.readPoint = R ∧ e.msg.val = y ∧ e.msg.slot = sp.slot (tr.time j) ∧
-        tr.post j = optimisticConfirmationM sp wm (admitVote sp R (tr.time j) e.msg) ℓ.frame
+        tr.post j = optimisticConfirmation sp (admitVote sp R (tr.time j) e.msg) ℓ.frame
           (tr.time j)) := by
   have hready := voteBranchAt_ready_input h hy hb
   obtain ⟨-, -, hj, hv, hlate, -, -⟩ := voteBranchAt_iff.1 hb

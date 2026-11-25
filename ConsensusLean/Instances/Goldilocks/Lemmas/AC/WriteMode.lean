@@ -11,68 +11,20 @@ a write mode `m` (`Milestones/Spec/WriteModes/Writes`): `tryVoteWithM`, `acOnTic
 `acOnMessageWithM`, `acOnBlockWithM`, the call `stepWithM`, and the unlock input `callInputM` and
 view `callViewM` of a call. The proposal writes nothing and is `acProposalWith`; `ac_to_fg` and
 the restart are the parent's (the restart's replay runs while the node is not joined, so its
-optimistic confirmations select nothing at any mode).
+optimistic confirmations select nothing).
+The optimistic confirmation is the parent's at every mode.
 
 The laws:
 
 * **the parent's mode**: at `WriteMode.parent sp` each handler is the parent's
   (`stepWithM_parent`, `callInputM_parent`, `callViewM_parent`);
-  more generally `optimisticConfirmationM_on` at every mode with the optimistic write;
 * **the update at any mode** changes only the parent's fields and its locks
   (`updateConfirmationM_eq`), with `updateConfirmationM_locks_of_none`/`_of_some`, and its new
-  locks are exactly its two arms (`mem_newLocksM`);
-* **the optimistic confirmation off** is the identity (`optimisticConfirmationM_off`), so a
-  property of the parent's optimistic result and of its input holds at every mode
-  (`optimisticConfirmationM_of`), and a field the parent's keeps is kept
-  (`optimisticConfirmationM_keep`). -/
+  locks are exactly its two arms (`mem_newLocksM`). -/
 
 namespace Consensus.Goldilocks.AC
 
 variable {sp : ACParams} {FGP : Type}
-
-/-! ### The parent's mode -/
-
-theorem optimisticConfirmationM_on {m : WriteMode} (h : m.optimistic = true) :
-    optimisticConfirmationM (FGP := FGP) sp m = optimisticConfirmation sp := by
-  funext A Φ t
-  unfold optimisticConfirmationM optimisticConfirmation
-  rw [h]
-  rfl
-
-/-- **The optimistic write off** writes nothing. -/
-theorem optimisticConfirmationM_off {m : WriteMode} (h : m.optimistic = false) (A : ACState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) : optimisticConfirmationM sp m A Φ t = A := by
-  unfold optimisticConfirmationM
-  rw [h]
-
-theorem optimisticConfirmationM_eq (m : WriteMode) (A : ACState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) : optimisticConfirmationM sp m A Φ t =
-      if m.optimistic then optimisticConfirmation sp A Φ t else A := by
-  cases h : m.optimistic
-  · exact optimisticConfirmationM_off h A Φ t
-  · rw [optimisticConfirmationM_on h]; rfl
-
-/-- A property of the parent's optimistic confirmation and of its input holds at every mode. -/
-theorem optimisticConfirmationM_of {P : ACState sp.n → Prop} {m : WriteMode} {A : ACState sp.n}
-    {Φ : Frm sp.n FGP} {t : Time} (h₁ : P (optimisticConfirmation sp A Φ t)) (h₂ : P A) :
-    P (optimisticConfirmationM sp m A Φ t) := by
-  rw [optimisticConfirmationM_eq]
-  split_ifs
-  exacts [h₁, h₂]
-
-/-- A field that the parent's optimistic confirmation keeps is kept at every mode. -/
-theorem optimisticConfirmationM_keep {α : Sort _} (f : ACState sp.n → α)
-    (hf : ∀ (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time),
-      f (optimisticConfirmation sp A Φ t) = f A)
-    (m : WriteMode) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    f (optimisticConfirmationM sp m A Φ t) = f A :=
-  optimisticConfirmationM_of (P := fun X => f X = f A) (hf A Φ t) rfl
-
-theorem optimisticM_keeps (m : WriteMode) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (optimisticConfirmationM sp m A Φ t).votedSlot = A.votedSlot ∧
-      (optimisticConfirmationM sp m A Φ t).restartTime = A.restartTime :=
-  optimisticConfirmationM_of (P := fun X => X.votedSlot = A.votedSlot ∧
-    X.restartTime = A.restartTime) (optimistic_keeps A Φ t) ⟨rfl, rfl⟩
 
 /-! ### The update at a mode -/
 

@@ -46,7 +46,7 @@ theorem tryVote_restartTimeWith
   unfold tryVoteWithM
   dsimp only
   split_ifs <;>
-    simp only [optimisticConfirmationM_keep _ optimistic_restartTime,
+    simp only [optimistic_restartTime,
       admitVote_restartTime]
 
 theorem updateConfirmation_restartTime (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
@@ -68,8 +68,8 @@ theorem onTick_restartTimeWith
   · split
     · rw [updateConfirmationM_field ACState.restartTime (fun _ _ => rfl),
         updateConfirmation_restartTime]
-      split <;> first | exact tryVote_restartTimeWith _ _ _ _ | rfl
-    · split <;> first | exact tryVote_restartTimeWith _ _ _ _ | rfl
+      split <;> first | exact tryVote_restartTimeWith (wm := wm) _ _ _ _ | rfl
+    · split <;> first | exact tryVote_restartTimeWith (wm := wm) _ _ _ _ | rfl
 
 /-- A tick leaves the restart time. -/
 theorem onTick_restartTime (x : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP)

@@ -6,41 +6,36 @@ public import ConsensusLean.Instances.Goldilocks.Spec.AC.Confirmation
 /-! # Goldilocks lock rules: write modes
 
 A lock rule of the Goldilocks family keeps the AC's confirmation machinery and changes which locks
-it writes. A **write mode** fixes the three write choices:
+its confirmation update writes. A **write mode** fixes the update's two write choices:
 
 * `fastArm`: whether the confirmation update of slot `s` writes the fast lock of its path (the
   deepest unvetoed block with half of the committee or more);
-* `optimistic`: whether the optimistic confirmation of the current slot runs (its fast lock and its
-  record);
 * `width`: the formation width of the update's slow lock, which is written on the deepest unvetoed
   block of the path that the saved results of the previous `width − 1` slots extend.
 
 The slow lock of slot `s` still lives through `s + k` and the fast expiry is `fastExpiry` at
-every mode. The parent's writes are the mode `WriteMode.parent sp = ⟨true, true, k⟩`;
-`WriteMode.slowOnly w opt` writes no fast lock at the update, with the optimistic write on or off.
+every mode. The optimistic confirmation is the parent's `optimisticConfirmation` at every mode.
+The parent's writes are the mode `WriteMode.parent sp = ⟨true, k⟩`.
 
-`updateConfirmationM` and `optimisticConfirmationM` are written once, uniformly in the mode, from
-the parent's selection primitives (`getConfirmation`, `FastTest`, `optimisticSelect`, `deepest`,
-`addLocks`, `fastExpiry`, `updateLatestConfirmed`); neither calls `updateConfirmation` or
-`optimisticConfirmation`, which are unchanged. That they agree with the parent's at the parent's
-mode is a theorem (`Lemmas/AC/WriteMode`), and it certifies the parent's mode only: each other mode
-is read back against the rule it models on its own. -/
+`updateConfirmationM` is written once, uniformly in the mode, from the parent's selection
+primitives (`getConfirmation`, `FastTest`, `deepest`, `addLocks`, `fastExpiry`,
+`updateLatestConfirmed`); it does not call `updateConfirmation`, which is unchanged. That it agrees
+with the parent's at the parent's mode is a theorem (`Lemmas/AC/WriteMode`), and it certifies the
+parent's mode only: each other mode is read back against the rule it models on its own. -/
 
 namespace Consensus.Goldilocks.AC
 
-/-- Which locks a lock rule writes: the update's regular fast arm, the optimistic confirmation
-(its lock and its record), and the slow lock's formation width. -/
+/-- Which locks a lock rule's confirmation update writes: its regular fast arm and the slow lock's
+formation width. -/
 structure WriteMode where
   /-- The confirmation update writes its fast lock. -/
   fastArm : Bool
-  /-- The optimistic confirmation runs. -/
-  optimistic : Bool
   /-- The slow lock's formation width (the update of slot `s` reads the saved results of the
   slots `s − width + 1, …, s − 1`). -/
   width : Nat
 
-/-- The parent's writes: both fast writes, and slow locks of width `k`. -/
-def WriteMode.parent (sp : ACParams) : WriteMode := ⟨true, true, sp.k⟩
+/-- The parent's writes: the update's fast lock, and slow locks of width `k`. -/
+def WriteMode.parent (sp : ACParams) : WriteMode := ⟨true, sp.k⟩
 
 variable {FGP : Type} (sp : ACParams)
 
@@ -76,20 +71,6 @@ noncomputable def updateConfirmationM (m : WriteMode) (A : ACState sp.n) (Φ : F
   | some C =>
     let A₂ := if conflictsWithLock sp A₁.locks Φ t C then A₁ else updateLatestConfirmed sp A₁ Φ C
     { A₂ with locks := addLocks sp A₂.locks Φ t s (newLocksM sp m A Φ t s C A₁.saved A₂.locks) }
-
-/-- `optimistic_confirmation(𝒜, Φ, t)` at mode `m`: when `m.optimistic`, a fast lock of slot
-`slot(t)` on the block of `optimisticSelect` and the record; otherwise nothing. -/
-noncomputable def optimisticConfirmationM (m : WriteMode) (A : ACState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) : ACState sp.n :=
-  match m.optimistic with
-  | false => A
-  | true =>
-    match optimisticSelect sp A Φ t with
-    | none => A
-    | some B =>
-      updateLatestConfirmed sp
-        { A with locks := addLocks sp A.locks Φ t (sp.slot t)
-                    {(B.root, true, fastExpiry sp A.locks Φ t (sp.slot t))} } Φ B
 
 end Consensus.Goldilocks.AC
 

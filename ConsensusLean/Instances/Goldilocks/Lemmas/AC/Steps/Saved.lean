@@ -32,7 +32,7 @@ private theorem sv_tryVote
     {L : Set Lock} (x : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (tryVoteWithM sp wm x L A Φ t).1.saved = A.saved := by
   unfold tryVoteWithM; dsimp only
-  split_ifs <;> simp only [optimisticConfirmationM_keep _ sv_optimistic, sv_admitVote]
+  split_ifs <;> simp only [sv_optimistic, sv_admitVote]
 
 private theorem sv_blockReceipt (A : ACState sp.n) (t : Time) (B : Blk sp.n FGP) :
     (blockReceipt sp A t B).saved = A.saved :=
@@ -102,11 +102,11 @@ private theorem sv_step
   | message m =>
     left
     change (tryVoteWithM sp wm self L _ Φ t).1.saved = _
-    rw [sv_tryVote, optimisticConfirmationM_keep _ sv_optimistic, sv_admitVote]
+    rw [sv_tryVote, sv_optimistic, sv_admitVote]
   | block B =>
     left
     change (tryVoteWithM sp wm self L _ Φ t).1.saved = _
-    rw [sv_tryVote, optimisticConfirmationM_keep _ sv_optimistic, sv_blockReceipt]
+    rw [sv_tryVote, sv_optimistic, sv_blockReceipt]
   | restart =>
     refine Or.inr (Or.inl ⟨rfl, fun j => ?_⟩)
     change (acRestart sp ro self A Φ t).1.saved j = none

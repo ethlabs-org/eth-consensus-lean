@@ -124,11 +124,11 @@ private theorem rt_step
     all_goals first | rfl | (split <;> (try split_ifs) <;> rfl)
   | message m =>
     change (tryVoteWithM sp wm self L _ Φ t).1.restartTime = _
-    rw [AC.tryVote_restartTimeWith, optimisticConfirmationM_keep _ rt_optimistic,
+    rw [AC.tryVote_restartTimeWith, rt_optimistic,
       AC.admitVote_restartTime]
   | block B =>
     change (tryVoteWithM sp wm self L _ Φ t).1.restartTime = _
-    rw [AC.tryVote_restartTimeWith, optimisticConfirmationM_keep _ rt_optimistic, rt_blockReceipt]
+    rw [AC.tryVote_restartTimeWith, rt_optimistic, rt_blockReceipt]
   | restart => exact absurd rfl hc
 
 /-- `restartTime_state` with the unlock given. -/
@@ -225,7 +225,7 @@ private theorem vs_tryVoteWith
   split_ifs
   · exact Or.inl ⟨rfl, rfl⟩
   · exact Or.inl ⟨rfl, rfl⟩
-  all_goals exact Or.inr ⟨by rw [optimisticConfirmationM_keep _ vs_optimistic, vs_admitVote], _,
+  all_goals exact Or.inr ⟨by rw [vs_optimistic, vs_admitVote], _,
       List.mem_singleton_self _, rfl⟩
 
 private theorem vs_tryVote (x : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)

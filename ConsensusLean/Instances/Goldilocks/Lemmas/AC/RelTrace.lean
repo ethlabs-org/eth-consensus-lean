@@ -23,11 +23,6 @@ namespace Consensus.Goldilocks.AC
 variable {sp : ACParams} {FGP : Type}
   {ini : Fin sp.n → ACState sp.n}
 
-/-- `optimistic_confirmation` at any write mode keeps the permission `mayVote`. -/
-theorem optimisticM_mayVote (m : WriteMode) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (optimisticConfirmationM sp m A Φ t).mayVote = A.mayVote :=
-  optimisticConfirmationM_keep _ optimisticConfirmation_mayVote m A Φ t
-
 /-- `update_confirmation` at any write mode keeps the permission `mayVote`. -/
 private theorem updateM_mayVote (m : WriteMode) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) (s : Nat) : (updateConfirmationM sp m A Φ t s).mayVote = A.mayVote := by
@@ -41,7 +36,7 @@ private theorem tryVoteWithM_mayVote (m : WriteMode) (self : Fin sp.n) (L : Set 
     (tryVoteWithM sp m self L A Φ t).1.mayVote = A.mayVote := by
   unfold tryVoteWithM
   dsimp only
-  split_ifs <;> simp only [optimisticM_mayVote, admitVote_mayVote]
+  split_ifs <;> simp only [optimisticConfirmation_mayVote, admitVote_mayVote]
 
 /-- Every call with the locks after a given unlock, at any write mode, keeps the permission
 `mayVote`. -/
@@ -61,10 +56,10 @@ theorem stepWithM_mayVote (ro : ReplayOrder sp FGP) (m : WriteMode) (self : Fin 
     split_ifs <;> rfl
   | toFG => exact acToFG_mayVote A Φ t
   | message v =>
-    simp only [stepWithM, acOnMessageWithM, tryVoteWithM_mayVote, optimisticM_mayVote,
+    simp only [stepWithM, acOnMessageWithM, tryVoteWithM_mayVote, optimisticConfirmation_mayVote,
       admitVote_mayVote]
   | block B =>
-    simp only [stepWithM, acOnBlockWithM, tryVoteWithM_mayVote, optimisticM_mayVote,
+    simp only [stepWithM, acOnBlockWithM, tryVoteWithM_mayVote, optimisticConfirmation_mayVote,
       blockReceipt_mayVote]
   | restart => exact acRestart_mayVote ro self A Φ t
 

@@ -48,7 +48,7 @@ theorem pool_post_of_voteBranchAtU
   rcases post_of_voteBranchAtU hr hy hb with ⟨-, -, hpost⟩ | ⟨-, e, -, -, -, -, hpost⟩
   · rw [hpost]
     exact hv
-  · rw [hpost, optimisticConfirmationM_keep _ optimistic_pool]
+  · rw [hpost, optimistic_pool]
     exact mem_admitVote_pool hv
 
 /-- `merged_vote_slot` at a vote branch, with the unlock given, from starts up to the vote
@@ -166,10 +166,8 @@ private theorem admitVote_fields (A : ACState sp.n) (t : Time) (v : Vote sp.n) :
   split_ifs <;> exact ⟨rfl, rfl⟩
 
 private theorem optimistic_fields (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (optimisticConfirmationM sp wm A Φ t).blockStamp = A.blockStamp ∧
-      (optimisticConfirmationM sp wm A Φ t).restartTime = A.restartTime := by
-  refine optimisticConfirmationM_of (P := fun X => X.blockStamp = A.blockStamp ∧
-    X.restartTime = A.restartTime) ?_ ⟨rfl, rfl⟩
+    (optimisticConfirmation sp A Φ t).blockStamp = A.blockStamp ∧
+      (optimisticConfirmation sp A Φ t).restartTime = A.restartTime := by
   unfold optimisticConfirmation updateLatestConfirmed
   split
   · exact ⟨rfl, rfl⟩

@@ -55,15 +55,14 @@ private theorem state_pool_sub_readPointU {ini} {u : Nat → Set Lock}
     rw [hR]
     split_ifs <;> exact fun _ h => h
   refine fun x hx => hin ?_
-  have hopt := optimisticConfirmationM_keep (sp := sp) (FGP := FGP) (fun A => A.pool)
-    optimistic_pool_eq wm
+  have hopt := optimistic_pool_eq (sp := sp) (FGP := FGP)
   cases ℓ.call with
   | message m =>
-    change x ∈ (optimisticConfirmationM sp wm _ ℓ.frame (tr.time j)).pool σ
+    change x ∈ (optimisticConfirmation sp _ ℓ.frame (tr.time j)).pool σ
     rw [hopt]
     exact admitVote_pool_sub _ _ _ σ hx
   | block B =>
-    change x ∈ (optimisticConfirmationM sp wm _ ℓ.frame (tr.time j)).pool σ
+    change x ∈ (optimisticConfirmation sp _ ℓ.frame (tr.time j)).pool σ
     rw [hopt]
     exact hx
   | _ => exact hx

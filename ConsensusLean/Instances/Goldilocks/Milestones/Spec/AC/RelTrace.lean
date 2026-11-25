@@ -123,8 +123,8 @@ noncomputable abbrev parentUnlock {ro : ReplayOrder sp FGP} (A : ACState sp.n) (
 
 variable (sp) in
 open Classical in
-/-- `tryVoteWith` with the optimistic confirmation of mode `m`. -/
-noncomputable abbrev tryVoteWithM (m : WriteMode) (self : Fin sp.n) (L₁ : Set Lock)
+/-- `tryVoteWith` at a mode (its optimistic confirmation is the parent's). -/
+noncomputable abbrev tryVoteWithM (_m : WriteMode) (self : Fin sp.n) (L₁ : Set Lock)
     (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) : ACState sp.n × List (Em sp FGP) :=
   let s := sp.slot t
   if ¬ joined sp A t ∨ A.votedSlot = s ∨ sp.ts s + sp.Δ < t then (A, [])
@@ -136,7 +136,7 @@ noncomputable abbrev tryVoteWithM (m : WriteMode) (self : Fin sp.n) (L₁ : Set 
     let H := getHead sp A₁ Φ t (Φ.viableTree dom) V ((s : Int) - 1)
     let A₂ := { A₁ with votedSlot := s }
     let vote : Vote sp.n := { val := self, slot := s, head := H.root }
-    let A₃ := if A.mayVote s then optimisticConfirmationM sp m (admitVote sp A₂ t vote) Φ t else A₂
+    let A₃ := if A.mayVote s then optimisticConfirmation sp (admitVote sp A₂ t vote) Φ t else A₂
     (A₃, if A.mayVote s then
       [{ msg := vote, readPoint := A₂,
          head := some { head := H, start := getAnchor sp A₁ Φ t, dom := dom } }] else [])
@@ -159,14 +159,14 @@ variable (sp) in
 noncomputable abbrev acOnMessageWithM (m : WriteMode) (self : Fin sp.n) (L₁ : Set Lock)
     (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) (v : Vote sp.n) :
     ACState sp.n × List (Em sp FGP) :=
-  tryVoteWithM sp m self L₁ (optimisticConfirmationM sp m (admitVote sp A t v) Φ t) Φ t
+  tryVoteWithM sp m self L₁ (optimisticConfirmation sp (admitVote sp A t v) Φ t) Φ t
 
 variable (sp) in
 /-- `acOnBlockWith` with the writes of mode `m`. -/
 noncomputable abbrev acOnBlockWithM (m : WriteMode) (self : Fin sp.n) (L₁ : Set Lock)
     (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) (B : Blk sp.n FGP) :
     ACState sp.n × List (Em sp FGP) :=
-  tryVoteWithM sp m self L₁ (optimisticConfirmationM sp m (blockReceipt sp A t B) Φ t) Φ t
+  tryVoteWithM sp m self L₁ (optimisticConfirmation sp (blockReceipt sp A t B) Φ t) Φ t
 
 variable (sp) in
 /-- A call of the AC at `self` with `L₁` as the locks after its unlock and the writes of mode `m`
@@ -182,11 +182,11 @@ noncomputable abbrev stepWithM (ro : ReplayOrder sp FGP) (m : WriteMode) (self :
   | .restart => acRestart sp ro self A Φ t
 
 variable (sp) in
-/-- The state whose locks the unlock of the call `c` reads at mode `m` (`callInput`). -/
-noncomputable abbrev callInputM {ro : ReplayOrder sp FGP} (m : WriteMode) (A : ACState sp.n)
+/-- The state whose locks the unlock of the call `c` reads at a mode (`callInput`). -/
+noncomputable abbrev callInputM {ro : ReplayOrder sp FGP} (_m : WriteMode) (A : ACState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) : (goldilocksAC sp FGP ro).Call → ACState sp.n
-  | .message v => optimisticConfirmationM sp m (admitVote sp A t v) Φ t
-  | .block C => optimisticConfirmationM sp m (blockReceipt sp A t C) Φ t
+  | .message v => optimisticConfirmation sp (admitVote sp A t v) Φ t
+  | .block C => optimisticConfirmation sp (blockReceipt sp A t C) Φ t
   | _ => A
 
 variable (sp) in
