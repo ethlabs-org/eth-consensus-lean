@@ -5,6 +5,7 @@ import ConsensusLean.Lemmas.Model.DutyFold
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeRunSchedule
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventorySchedule
 
 public section
 
@@ -164,6 +165,7 @@ structure Encoding.IOLaws (e : Encoding F E p hN hn A)
   wake_io : ∀ st k t, io (e.adapter.wake st k t) = io st
   clock_io : ∀ st t, io ((e.ops hn).clock st t) = io st
   pollBatch_io : ∀ st t, io ((e.ops hn).pollBatch st t).1 = io st
+  pollPropose_io : ∀ st t, io ((e.ops hn).pollPropose st t).1 = io st
   recordOwn_io : ∀ st o hs, io ((e.ops hn).recordOwn st o hs) = io st
   process_eq : ∀ st, (e.ops hn).process st =
     NodeAsChainShape.process { e.codec with message := e.decodeMessage (io st) } e.adapter st
@@ -179,8 +181,12 @@ structure Encoding.OpLaws (e : Encoding F E p hN hn A) (due : e.State hn → Boo
     d.node r = cuts.1 ∧ d.self r = d.self st ∧ d.now r = d.now st ∧ due r = due st
   relayIf_obs : ∀ st c [Decidable c] o, let d := e.adapter; let r := d.relayIf st c o
     d.node r = d.node st ∧ d.self r = d.self st ∧ d.now r = d.now st ∧ due r = due st
+  /-- Signing records the new node state, then possibly runs the own `on_attestation`s of
+  what it releases. -/
   attest_obs : ∀ st n a, let d := e.adapter; let r := d.attest st n a
-    d.node r = n ∧ d.self r = d.self st ∧ d.now r = d.now st
+    (∃ l : List (FG.Att (Fintype.card V)),
+      d.node r = l.foldl (fun n a => (Node.onAttestation n a).1) n) ∧
+    d.self r = d.self st ∧ d.now r = d.now st
   wake_obs : ∀ st k t, let d := e.adapter; let r := d.wake st k t
     d.self r = k ∧ d.now r = t
   init_obs : ∀ k select x, let r := (e.ops hn).init k select x
@@ -190,10 +196,28 @@ structure Encoding.OpLaws (e : Encoding F E p hN hn A) (due : e.State hn → Boo
     d.node r = d.node st ∧ d.self r = d.self st ∧ d.now r = t ∧ due r = due st
   propose_eq : (e.ops hn).propose = NodeAsChainShape.propose e.codec e.adapter
   restore_eq : (e.ops hn).restore = NodeAsChainShape.restore e.adapter
-  pollPropose_eq : ∀ st t, (e.ops hn).pollPropose st t = (nodeTick e.adapter st, none)
+  pollPropose_obs : ∀ st t, ((e.ops hn).pollPropose st t).2 = none ∧
+    let d := e.adapter; let r := ((e.ops hn).pollPropose st t).1; let u := nodeTick d st
+    d.node r = d.node u ∧ d.self r = d.self u ∧ d.now r = d.now u ∧ due r = due u
   pollBatch_obs : ∀ st t, let d := e.adapter; let r := ((e.ops hn).pollBatch st t).1
     let u := if due st then fgUpdate d st else st
-    d.node r = d.node u ∧ d.self r = d.self u ∧ d.now r = d.now u ∧ due r = false
+    d.self r = d.self u ∧ d.now r = d.now u ∧ due r = false
+  /-- A batch poll runs the node's FG update when due, then the own `on_attestation`s of the
+  attestations it releases (`R st`: a flush, then the signed attestation). -/
+  released : ∃ R : e.State hn → List (FG.Att (Fintype.card V)), ∀ st t pr dg x,
+    let d := e.adapter
+    d.node ((e.ops hn).pollBatch st t).1 = (R st).foldl (fun n a => (Node.onAttestation n a).1)
+      (if due st then (tickStep pr dg (d.self st) (d.node st) (d.now st) x .fgUpdate).1
+        else d.node st)
+  /-- A quiet state's batch poll flushes nothing. The clock, every batch poll and the initial
+  state are quiet, and recording an own object and processing a delivery keep it. -/
+  quiet : ∃ Q : e.State hn → Prop,
+    (∀ k select x, Q ((e.ops hn).init k select x)) ∧ (∀ st t, Q ((e.ops hn).clock st t)) ∧
+    (∀ st t, Q ((e.ops hn).pollBatch st t).1) ∧
+    (∀ st o hs, Q st → Q ((e.ops hn).recordOwn st o hs)) ∧
+    (∀ st o hs, Q st → Q ((e.ops hn).process st o hs)) ∧
+    ∀ st t, Q st → e.adapter.node ((e.ops hn).pollBatch st t).1 =
+      e.adapter.node (if due st then fgUpdate e.adapter st else st)
   recordOwn_obs : ∀ st o hs,
     let d := e.adapter
     let r := (e.ops hn).recordOwn st o hs
@@ -213,6 +237,30 @@ structure Encoding.OpLaws (e : Encoding F E p hN hn A) (due : e.State hn → Boo
     e.codec.decode (e.codec.encode atts payload) = some (atts, payload)
 
 namespace Encoding.OpLaws
+
+/-- The quiet states of `quiet`: their batch poll flushes nothing. -/
+def quietOf (L : e.OpLaws due) : e.State hn → Prop := L.quiet.choose
+
+theorem quietOf_spec (L : e.OpLaws due) :
+    (∀ k select x, L.quietOf ((e.ops hn).init k select x)) ∧
+    (∀ st t, L.quietOf ((e.ops hn).clock st t)) ∧
+    (∀ st t, L.quietOf ((e.ops hn).pollBatch st t).1) ∧
+    (∀ st o hs, L.quietOf st → L.quietOf ((e.ops hn).recordOwn st o hs)) ∧
+    (∀ st o hs, L.quietOf st → L.quietOf ((e.ops hn).process st o hs)) ∧
+    ∀ st t, L.quietOf st → e.adapter.node ((e.ops hn).pollBatch st t).1 =
+      e.adapter.node (if due st then fgUpdate e.adapter st else st) :=
+  L.quiet.choose_spec
+
+/-- The attestations a batch poll releases, by `released`. -/
+noncomputable def relOf (L : e.OpLaws due) : e.State hn → List (FG.Att (Fintype.card V)) :=
+  L.released.choose
+
+theorem relOf_spec (L : e.OpLaws due) : ∀ st t pr dg x,
+    e.adapter.node ((e.ops hn).pollBatch st t).1 =
+      (L.relOf st).foldl (fun n a => (Node.onAttestation n a).1)
+        (if due st then (tickStep pr dg (e.adapter.self st) (e.adapter.node st)
+          (e.adapter.now st) x .fgUpdate).1 else e.adapter.node st) :=
+  L.released.choose_spec
 
 /-- The tick duty order at a nonnegative time. Kept for a downstream consumer. -/
 theorem tick_schedule (L : e.OpLaws due) (t : Time) (ht : 0 ≤ t) :
@@ -239,7 +287,7 @@ theorem poll_selected [DecidableEq V] (L : e.OpLaws due) (rho : Model.Run (compi
   rw [h]
   exact Finset.mem_univ _
 
-private theorem recordOwn_pres (L : e.OpLaws due) (st : e.State hn)
+theorem recordOwn_pres (L : e.OpLaws due) (st : e.State hn)
     (o : ShapeObj (Fintype.card V) e.skel.Kind I e.Body) (hs : List (Header I × Nat)) :
     let r := (e.ops hn).recordOwn st o hs
     e.adapter.self r = e.adapter.self st ∧ e.adapter.now r = e.adapter.now st ∧ due r = due st := by
@@ -297,7 +345,7 @@ private theorem releaseAll_plain (L : e.OpLaws due) (rho : Model.Run (compiled F
     exact ⟨hn'.trans h.1, hk.trans h.2.1, ht.trans h.2.2.1, hd.trans h.2.2.2⟩
   · exact ⟨rfl, rfl, rfl, rfl⟩
 
-private theorem gossip_obs (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
+theorem gossip_obs (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
     (v : V) (nd : Model.Node (Model.protoOf (compiled F) E)) (t : Time) :
     let a := envelope e nd
     let b := envelope e (Model.releaseAll (Model.protoOf (compiled F) E) rho.hash
@@ -315,8 +363,9 @@ private theorem duty_poll_obs (L : e.OpLaws due) (rho : Model.Run (compiled F) E
     let a := envelope e nd
     let b := envelope e (rho.dutyStep v nd (engineDuty e (.poll t))).1
     let u := if due a then fgUpdate e.adapter a else a
-    e.adapter.node b = e.adapter.node u ∧ e.adapter.self b = e.adapter.self u ∧
-      e.adapter.now b = e.adapter.now u ∧ due b = false := by
+    e.adapter.node b = e.adapter.node ((e.ops hn).pollBatch a t).1 ∧
+      e.adapter.self b = e.adapter.self u ∧ e.adapter.now b = e.adapter.now u ∧ due b = false ∧
+      (L.quietOf a → e.adapter.node b = e.adapter.node u) ∧ L.quietOf b := by
   dsimp only
   rw [rho.dutyStep_eq, role_engineDuty, Skeleton.role, ite_eq_left hsel]
   let d := engineDuty e (.poll t)
@@ -329,32 +378,44 @@ private theorem duty_poll_obs (L : e.OpLaws due) (rho : Model.Run (compiled F) E
       rw [engineDuty_eq] at hm
       obtain ⟨b, rfl⟩ := cast_poll_items e.shape_eq nd.st t hm
       exact Or.inr rfl)
+  have hq : L.quietOf (envelope e (Model.releaseAll (Model.protoOf (compiled F) E) rho.hash
+      (rho.ownKey v) ⟨act.1, nd.seen⟩ (rho.signedCandidate v d act.2)).1) := by
+    refine releaseAll_pres rho L.quietOf _ _ _
+      (fun _ _ st hs hq => (quietOf_spec L).2.2.2.1 st _ hs hq) ?_
+    dsimp only [act, d]
+    rw [envelope_act]
+    exact (quietOf_spec L).2.2.1 _ t
   dsimp only at h
-  dsimp only [act, d] at h
+  dsimp only [act, d] at h hq
   simp only [envelope_act] at h
-  obtain ⟨hn', hk, ht, hd⟩ := L.pollBatch_obs (envelope e nd) t
-  exact ⟨h.1.trans hn', h.2.1.trans hk, h.2.2.1.trans ht, h.2.2.2.trans hd⟩
+  obtain ⟨hk, ht, hd⟩ := L.pollBatch_obs (envelope e nd) t
+  exact ⟨h.1, h.2.1.trans hk, h.2.2.1.trans ht,
+    h.2.2.2.trans hd, fun ha => h.1.trans ((quietOf_spec L).2.2.2.2.2 _ t ha), hq⟩
 
-/-- A selected proposal poll has the envelope effect of a node tick.
+/-- A selected proposal poll has the observable effect of a node tick.
 Kept for a downstream consumer. -/
 theorem duty_pollPropose (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
     (v : V) (nd : Model.Node (Model.protoOf (compiled F) E)) (t : Nat)
     (hsel : rho.ownKey v ∈ rho.sel (engineRole e .poll)) :
-    envelope e (rho.dutyStep v nd (engineDuty e (.pollPropose t))).1 =
-      nodeTick e.adapter (envelope e nd) := by
+    let b := envelope e (rho.dutyStep v nd (engineDuty e (.pollPropose t))).1
+    let u := nodeTick e.adapter (envelope e nd)
+    e.adapter.node b = e.adapter.node u ∧ e.adapter.self b = e.adapter.self u ∧
+      e.adapter.now b = e.adapter.now u ∧ due b = due u := by
   have hnone : ((Model.protoOf (compiled F) E).act nd.st (engineDuty e (.pollPropose t))).2 =
       [] := by
     rw [engineDuty_eq]
     apply cast_pollPropose_candidates e.shape_eq
-    simp only [shape, familyOps, dite_eq_left hn, L.pollPropose_eq]
+    simp only [shape, familyOps, dite_eq_left hn, (L.pollPropose_obs _ _).1]
   have hs : rho.signedCandidate v (engineDuty e (.pollPropose t)) [] = [] := by
     apply List.eq_nil_iff_forall_not_mem.mpr
     intro o ho
     obtain ⟨m, cs, hm, _, _, _⟩ := rho.mem_signedCandidate.mp ho
     exact List.not_mem_nil hm
+  dsimp only
   rw [rho.dutyStep_eq, role_engineDuty, Skeleton.role, ite_eq_left hsel, hnone, hs,
     Model.releaseAll]
-  simp only [envelope_act, L.pollPropose_eq]
+  simp only [envelope_act]
+  exact (L.pollPropose_obs _ _).2
 
 private theorem fgUpdate_clock (L : e.OpLaws due) (st : e.State hn) :
     e.adapter.self (fgUpdate e.adapter st) = e.adapter.self st ∧
@@ -362,27 +423,32 @@ private theorem fgUpdate_clock (L : e.OpLaws due) (st : e.State hn) :
   simp only [fgUpdate]
   split
   · simp only [L.setDue_obs, L.setNode_obs, and_self]
-  · split <;> simp only [L.attest_obs, L.setDue_obs, L.setNode_obs, and_self]
+  · split
+    · simp only [L.setDue_obs, L.setNode_obs, and_self]
+    · exact ⟨(L.attest_obs _ _ _).2.1.trans (L.setDue_obs _ _).2.1 |>.trans
+        (L.setNode_obs _ _).2.1, (L.attest_obs _ _ _).2.2.trans (L.setDue_obs _ _).2.2.1 |>.trans
+        (L.setNode_obs _ _).2.2.1⟩
 
 private theorem poll_clock (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
     (v : V) (nd : Model.Node (Model.protoOf (compiled F) E)) (t : Nat) :
     let a := envelope e nd
     let b := envelope e (rho.dutyStep v nd (engineDuty e (.poll t))).1
     e.adapter.self b = e.adapter.self a ∧ e.adapter.now b = e.adapter.now a ∧
-      (due a = false → e.adapter.node b = e.adapter.node a ∧ due b = false) := by
+      (due a = false → due b = false) ∧ (L.quietOf a → L.quietOf b) ∧
+      (due a = false → L.quietOf a → e.adapter.node b = e.adapter.node a) := by
   dsimp only
   by_cases hs : rho.ownKey v ∈ rho.sel (engineRole e .poll)
-  · obtain ⟨hn', hk, ht, hd⟩ := duty_poll_obs L rho v nd t hs
-    refine ⟨hk.trans ?_, ht.trans ?_, fun ha => ⟨?_, hd⟩⟩
+  · obtain ⟨-, hk, ht, hd, hq, hqb⟩ := duty_poll_obs L rho v nd t hs
+    refine ⟨hk.trans ?_, ht.trans ?_, fun _ => hd, fun _ => hqb, fun ha hqa => ?_⟩
     · split
       · exact (fgUpdate_clock L _).1
       · rfl
     · split
       · exact (fgUpdate_clock L _).2
       · rfl
-    · simpa only [ha, Bool.false_eq_true, ↓reduceIte] using hn'
+    · simpa only [ha, Bool.false_eq_true, ↓reduceIte] using hq hqa
   · rw [rho.dutyStep_eq, role_engineDuty, Skeleton.role, ite_eq_right hs]
-    exact ⟨rfl, rfl, fun hd => ⟨rfl, hd⟩⟩
+    exact ⟨rfl, rfl, id, id, fun _ _ => rfl⟩
 
 open Classical in
 private theorem nodeTick_obs (L : e.OpLaws due) (st : e.State hn) :
@@ -433,7 +499,7 @@ private theorem process_fold_obs (L : e.OpLaws due) (pr : Nat → Fin (Fintype.c
     refine ⟨?_, hs'.trans hself, ht'.trans hnow, hd'.trans hdue⟩
     rw [List.foldl_cons, List.foldl_cons, hn', hself, hnow, hnode]
 
-private theorem restore_obs (L : e.OpLaws due) (k : Fin (Fintype.card V))
+theorem restore_obs (L : e.OpLaws due) (k : Fin (Fintype.card V))
     (st : e.State hn) (t : Time) :
     let d := e.adapter
     let r := (e.ops hn).restore k st t
@@ -459,7 +525,7 @@ theorem envelope_process (nd : Model.Node (Model.protoOf (compiled F) E))
   rw [envelope_eq, envelope_eq, wireOf_eq]
   exact congrArg (fun f : ∀ h, e.State h => f hn) (cast_process e.shape_eq nd.st.1 o hs)
 
-private theorem process_pres (L : e.OpLaws due) (st : e.State hn)
+theorem process_pres (L : e.OpLaws due) (st : e.State hn)
     (o : ShapeObj (Fintype.card V) e.skel.Kind I e.Body) (hs : List (Header I × Nat)) :
     let r := (e.ops hn).process st o hs
     e.adapter.self r = e.adapter.self st ∧ e.adapter.now r = e.adapter.now st ∧
@@ -470,7 +536,7 @@ private theorem process_pres (L : e.OpLaws due) (st : e.State hn)
   exact (process_fold_obs L (fun _ => e.adapter.self st) (fun _ _ _ _ _ => 0) _
     hs (delivered _ e.adapter hs st o) st).2
 
-private theorem propose_pres (L : e.OpLaws due) (st : e.State hn) (s : Slot) :
+theorem propose_pres (L : e.OpLaws due) (st : e.State hn) (s : Slot) :
     let r := ((e.ops hn).propose st s).1
     e.adapter.self r = e.adapter.self st ∧ e.adapter.now r = e.adapter.now st ∧
       due r = due st := by
@@ -494,12 +560,13 @@ private theorem duty_pres (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
   dsimp only
   cases d with
   | poll t =>
-    obtain ⟨hk, ht, hd⟩ := poll_clock L rho v nd t
-    exact ⟨hk, ht, fun h _ => (hd h).2⟩
+    obtain ⟨hk, ht, hd, -⟩ := poll_clock L rho v nd t
+    exact ⟨hk, ht, fun h _ => hd h⟩
   | pollPropose t =>
     by_cases hs : rho.ownKey v ∈ rho.sel (engineRole e .poll)
-    · rw [duty_pollPropose L rho v nd t hs]
-      exact ⟨(nodeTick_obs L _).1, (nodeTick_obs L _).2.1, fun _ h => (h t rfl hs).elim⟩
+    · obtain ⟨-, hk, ht, -⟩ := duty_pollPropose L rho v nd t hs
+      exact ⟨hk.trans (nodeTick_obs L _).1, ht.trans (nodeTick_obs L _).2.1,
+        fun _ h => (h t rfl hs).elim⟩
     · rw [rho.dutyStep_eq, role_engineDuty, Skeleton.role, ite_eq_right hs]
       exact ⟨rfl, rfl, fun h _ => h⟩
   | propose s hs =>
@@ -582,7 +649,7 @@ private theorem tick_pres (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
       by_cases hs : rho.ownKey v ∈ rho.sel (engineRole e .poll)
       · rw [List.map_append, rho.runDuties_append_fst, List.map_cons, List.map_cons, List.map_nil,
           rho.runDuties_cons, rho.runDuties_cons, rho.runDuties_nil]
-        exact (duty_poll_obs L rho v _ t.toNat hs).2.2.2
+        exact (duty_poll_obs L rho v _ t.toNat hs).2.2.2.1
       · exact hdd (hclk.2.2.trans h) (fun _ _ => hs)
     · dsimp only [r]
       rw [(engine_duties (e := e) t).1]
@@ -597,7 +664,8 @@ private theorem deliver_obs (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
     let a := (e.ops hn).process (envelope e nd) (wireOf e o) (Model.digests rho.hash o)
     let b := envelope e (rho.deliver nd v o t).1
     e.adapter.self b = e.adapter.self a ∧ e.adapter.now b = e.adapter.now a ∧
-      (due a = false → e.adapter.node b = e.adapter.node a ∧ due b = false) := by
+      (due a = false → due b = false) ∧
+      (due a = false → L.quietOf a → e.adapter.node b = e.adapter.node a) := by
   let post : Model.Node (Model.protoOf (compiled F) E) :=
     ⟨(Model.protoOf (compiled F) E).process nd.st o (Model.digests rho.hash o), nd.seen ++ [o]⟩
   let ds := (Model.protoOf (compiled F) E).deliverDuties t
@@ -607,7 +675,8 @@ private theorem deliver_obs (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
   let a := (e.ops hn).process (envelope e nd) (wireOf e o) (Model.digests rho.hash o)
   dsimp only
   change e.adapter.self b = e.adapter.self a ∧ e.adapter.now b = e.adapter.now a ∧
-    (due a = false → e.adapter.node b = e.adapter.node a ∧ due b = false)
+    (due a = false → due b = false) ∧
+    (due a = false → L.quietOf a → e.adapter.node b = e.adapter.node a)
   have ⟨hn', hk, ht, hd⟩ := gossip_obs L rho v (rho.runDuties v post ds).1 t
   dsimp only at hn' hk ht hd
   have hp := envelope_process (e := e) nd o (Model.digests rho.hash o)
@@ -618,9 +687,10 @@ private theorem deliver_obs (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
   rw [deliver_schedule L]
   split
   · rw [rho.runDuties_cons, rho.runDuties_nil]
-    exact poll_clock L rho v post t.toNat
+    obtain ⟨hk, ht, hd, -, hq⟩ := poll_clock L rho v post t.toNat
+    exact ⟨hk, ht, hd, hq⟩
   · rw [rho.runDuties_nil]
-    exact ⟨rfl, rfl, fun h => ⟨rfl, h⟩⟩
+    exact ⟨rfl, rfl, id, fun _ _ => rfl⟩
 
 private theorem cast_init {s q : ChainShape (pubOf E) O.Id I} (h : s = q)
     (k : Fin (Fintype.card V)) (sel : (compile s).Role → Bool)
@@ -698,10 +768,10 @@ theorem cut_obs [DecidableEq V] (L : e.OpLaws due) (rho : Model.Run (compiled F)
         by_cases h : u = v
         · subst u
           simp only [Model.Run.step, Function.update_self]
-          have ⟨hk, _, hd⟩ := deliver_obs L rho v (rho.stateBefore i v) o t
+          obtain ⟨hk, _, hd, -⟩ := deliver_obs L rho v (rho.stateBefore i v) o t
           have ⟨hpk, _, hpd⟩ := process_pres L (envelope e (rho.stateBefore i v))
             (wireOf e o) (Model.digests rho.hash o)
-          exact ⟨hk.trans (hpk.trans ih.1), (hd (hpd.trans ih.2)).2⟩
+          exact ⟨hk.trans (hpk.trans ih.1), hd (hpd.trans ih.2)⟩
         · simpa only [Model.Run.step, Function.update_of_ne (Ne.symm h)] using ih
       | restart u t =>
         by_cases h : u = v
@@ -710,15 +780,102 @@ theorem cut_obs [DecidableEq V] (L : e.OpLaws due) (rho : Model.Run (compiled F)
           exact ⟨(restore_obs L _ _ _).2.1, (restore_obs L _ _ _).2.2.2⟩
         · simpa only [Model.Run.step, Function.update_of_ne (Ne.symm h)] using ih
 
+private theorem tick_quiet (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
+    (v : V) (nd : Model.Node (Model.protoOf (compiled F) E)) (t : Time)
+    (hsel : rho.ownKey v ∈ rho.sel (engineRole e .poll)) :
+    L.quietOf (envelope e (rho.tick nd v t).1) := by
+  have hclk : L.quietOf (envelope e (afterClock rho nd v t)) := by
+    rw [envelope_clock]; exact (quietOf_spec L).2.1 _ t
+  cases haw : E.awake v t with
+  | false =>
+    simp only [Model.Run.tick, haw, Bool.false_eq_true, ↓reduceIte, ← afterClock_eq]
+    exact hclk
+  | true =>
+    rw [rho.tick_of_awake nd v t haw, ← afterClock_eq]
+    refine releaseAll_pres rho L.quietOf _ _ _
+      (fun _ _ st hs hq => (quietOf_spec L).2.2.2.1 st _ hs hq) ?_
+    by_cases htime : 0 ≤ t
+    · rw [tick_schedule L t htime, List.map_append, rho.runDuties_append_fst, List.map_cons,
+        List.map_cons, List.map_nil, rho.runDuties_cons, rho.runDuties_cons, rho.runDuties_nil]
+      exact (duty_poll_obs L rho v _ t.toNat hsel).2.2.2.2.2
+    · rw [(engine_duties (e := e) t).1]
+      simp only [Skeleton.duties, L.tick_order, Skeleton.stepAt, htime, ↓reduceIte,
+        Skeleton.proposeAt, TimeGrid.slotAt?, sub_zero, false_and, List.flatMap_cons,
+        List.flatMap_nil, List.nil_append, List.map_nil, rho.runDuties_nil]
+      exact hclk
+
+private theorem deliver_quiet (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
+    (v : V) (nd : Model.Node (Model.protoOf (compiled F) E))
+    (o : (Model.protoOf (compiled F) E).Object) (t : Time)
+    (h : L.quietOf ((e.ops hn).process (envelope e nd) (wireOf e o) (Model.digests rho.hash o))) :
+    L.quietOf (envelope e (rho.deliver nd v o t).1) := by
+  let post : Model.Node (Model.protoOf (compiled F) E) :=
+    ⟨(Model.protoOf (compiled F) E).process nd.st o (Model.digests rho.hash o), nd.seen ++ [o]⟩
+  let ds := (Model.protoOf (compiled F) E).deliverDuties t
+  change L.quietOf (envelope e (Model.releaseAll (Model.protoOf (compiled F) E)
+    rho.hash (rho.ownKey v) (rho.runDuties v post ds).1
+    (Model.gossipCandidates (Model.protoOf (compiled F) E) (rho.runDuties v post ds).1.st t)).1)
+  refine releaseAll_pres rho L.quietOf _ _ _
+    (fun _ _ st hs hq => (quietOf_spec L).2.2.2.1 st _ hs hq) ?_
+  have hp := envelope_process (e := e) nd o (Model.digests rho.hash o)
+  change envelope e post = _ at hp
+  rw [← hp] at h
+  dsimp only [ds]
+  rw [deliver_schedule L]
+  split
+  · rw [rho.runDuties_cons, rho.runDuties_nil]
+    exact (poll_clock L rho v post t.toNat).2.2.2.1 h
+  · rw [rho.runDuties_nil]
+    exact h
+
+/-- At every cut of a valid run a node's state is quiet unless its last event was a restart. -/
+theorem cut_quiet [DecidableEq V] (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
+    (hv : rho.ExecutionValid) (v : V) :
+    ∀ i, LastRestart rho v i ∨ L.quietOf (stateAt e rho v i)
+  | 0 => by
+    rw [cut_envelope, show rho.stateBefore 0 v = rho.initWorld v from rfl, envelope_init]
+    exact Or.inr ((quietOf_spec L).1 _ _ _)
+  | i + 1 => by
+    have ih := cut_quiet L rho hv v i
+    rw [cut_envelope] at ih ⊢
+    have hext : LastRestart rho v i → (∀ ev, rho.events[i]? = some ev → ev.node ≠ v) →
+        LastRestart rho v (i + 1) := fun h hi => lastRestart_other rho hi h
+    cases he : rho.events[i]? with
+    | none =>
+      have ht : rho.events.take (i + 1) = rho.events.take i := by
+        have hl := List.getElem?_eq_none_iff.1 he
+        rw [List.take_of_length_le hl, List.take_of_length_le (by omega)]
+      simp only [Model.Run.stateBefore, ht] at ih ⊢
+      exact ih.imp_left fun h => hext h fun ev he' => by rw [he] at he'; cases he'
+    | some ev =>
+      by_cases hne : ev.node = v
+      · rw [rho.stateBefore_succ he]
+        cases ev with
+        | tick u t =>
+          simp only [Model.Event.node] at hne
+          subst hne
+          simp only [Model.Run.step, Function.update_self]
+          exact Or.inr (tick_quiet L rho u _ t (poll_selected L rho hv u))
+        | deliver u o t =>
+          simp only [Model.Event.node] at hne
+          subst hne
+          simp only [Model.Run.step, Function.update_self]
+          refine Or.inr (deliver_quiet L rho u _ o t ((quietOf_spec L).2.2.2.2.1 _ _ _ ?_))
+          exact ih.resolve_left (not_lastRestart_deliver rho hv he)
+        | restart u t =>
+          simp only [Model.Event.node] at hne
+          subst hne
+          exact Or.inl ((lastRestart_iff rho u (i + 1)).2
+            ⟨i, by omega, t, he, fun l h1 h2 => absurd h2 (by omega)⟩)
+      · have h' := ih.imp_left fun h => hext h fun ev' he' => by
+          rw [he] at he'; cases he'; exact hne
+        rw [rho.stateBefore_succ he]
+        cases ev <;> simp only [Model.Event.node] at hne <;>
+          simpa only [Model.Run.step, Function.update_of_ne (Ne.symm hne)] using h'
+
 section VoteIO
 
 variable {io : e.State hn → Model.VoteIO e.Tok (ShapeRole e.skel.Kind) e.Data (pubOf E).n}
-
-open Classical in
-private theorem nodeTick_io (hio : e.IOLaws io) (st : e.State hn) :
-    io (nodeTick e.adapter st) = io st := by
-  unfold nodeTick
-  split <;> simp only [hio.setDue_io, hio.applyCuts_io]
 
 private theorem processOne_io (hio : e.IOLaws io) (C : WireCodec A e.skel.Kind I e.Body)
     (hs : List (Header I × Nat)) (st : e.State hn)
@@ -749,7 +906,7 @@ theorem duty_io (L : e.OpLaws due) (hio : e.IOLaws io) (rho : Model.Run (compile
     · rw [envelope_act]
       cases d with
       | poll t => exact hio.pollBatch_io _ t
-      | pollPropose t => dsimp only; rw [L.pollPropose_eq]; exact nodeTick_io hio _
+      | pollPropose t => exact hio.pollPropose_io _ t
       | propose s _ =>
         dsimp only
         rw [L.propose_eq]
@@ -855,7 +1012,7 @@ theorem process_stateAt [DecidableEq V] (L : e.OpLaws due) (rho : Model.Run (com
   rw [hio.process_eq, cut_io L hio rho v i, receiverCodec_eq]
 
 open Classical in
-private theorem tick_prefix [DecidableEq V] (L : e.OpLaws due)
+theorem tick_prefix [DecidableEq V] (L : e.OpLaws due)
     (rho : Model.Run (compiled F) E) (hv : rho.ExecutionValid) {i v t}
     (_he : rho.events[i]? = some (.tick v t)) :
     let pre := (rho.runDuties v (afterClock rho (rho.stateBefore i v) v t)
@@ -875,17 +1032,20 @@ private theorem tick_prefix [DecidableEq V] (L : e.OpLaws due)
   have ⟨hnc, hkc, htc, hdc⟩ := L.clock_obs (envelope e (rho.stateBefore i v)) t
   dsimp only at hnc hkc htc hdc
   rw [← envelope_clock rho (rho.stateBefore i v) v t] at hnc hkc htc hdc
-  obtain ⟨hka, hta, hda⟩ := poll_clock L rho v clk t.toNat
-  obtain ⟨hkb, htb, hdb⟩ := poll_clock L rho v a t.toNat
-  have ha := hda (hdc.trans hm.2)
-  have hb := hdb ha.2
+  have hqc : L.quietOf (envelope e clk) := by
+    rw [envelope_clock]; exact (quietOf_spec L).2.1 _ t
+  obtain ⟨hka, hta, hda, hqa, hna⟩ := poll_clock L rho v clk t.toNat
+  obtain ⟨hkb, htb, hdb, -, hnb⟩ := poll_clock L rho v a t.toNat
+  have hd0 := hdc.trans hm.2
+  have ha := hna hd0 hqc
+  have hb := hnb (hda hd0) (hqa hqc)
   have hN' : e.adapter.node (envelope e b) = e.adapter.node (stateAt e rho v i) := by
     rw [cut_envelope]
-    exact hb.1.trans (ha.1.trans hnc)
+    exact hb.trans (ha.trans hnc)
   have hK' : e.adapter.self (envelope e b) = rho.ownKey v := hkb.trans (hka.trans (hkc.trans hm.1))
   have hT' : e.adapter.now (envelope e b) = t := htb.trans (hta.trans htc)
   have h := (nodeTick_obs L (envelope e b)).2.2
-  rw [hK', hT', hN', hb.2] at h
+  rw [hK', hT', hN', hdb (hda hd0)] at h
   dsimp only
   rw [List.map_cons, List.map_cons, List.map_cons, List.map_nil, rho.runDuties_cons,
     rho.runDuties_cons, rho.runDuties_cons, rho.runDuties_nil]
@@ -893,43 +1053,35 @@ private theorem tick_prefix [DecidableEq V] (L : e.OpLaws due)
     (rho.dutyStep v b (engineDuty e (.pollPropose t.toNat))).1) = _ ∧ _
     else e.adapter.node
       (envelope e (rho.dutyStep v b (engineDuty e (.pollPropose t.toNat))).1) = _ ∧ _)
-  rw [duty_pollPropose L rho v b t.toNat hsel]
+  obtain ⟨hn1, -, -, hd1⟩ := duty_pollPropose L rho v b t.toNat hsel
+  rw [hn1, hd1]
   exact h
 
-private theorem fgUpdate_node (L : e.OpLaws due) (st : e.State hn)
-    (pr : Nat → Fin (Fintype.card V))
-    (dg : Digest (List (FG.Att (Fintype.card V))) A.Payload) (x : Nat) :
-    e.adapter.node (fgUpdate e.adapter st) =
-      (tickStep pr dg (e.adapter.self st) (e.adapter.node st) (e.adapter.now st)
-        x .fgUpdate).1 := by
-  simp only [fgUpdate, tickStep]
-  cases hr : (acToFG (e.adapter.node st) (e.adapter.now st)).2.2 with
-  | none => simp only [L.setDue_obs, L.setNode_obs]
-  | some b =>
-    cases ha : (acToFG (e.adapter.node st) (e.adapter.now st)).1.fg.attest
-        (acToFG (e.adapter.node st) (e.adapter.now st)).1.record (e.adapter.self st) b with
-    | none => simp only [Node.attest, ha, L.setDue_obs, L.setNode_obs]
-    | some a => rcases a with ⟨a, rec⟩; simp only [Node.attest, ha, L.attest_obs]
-
-private theorem tick_finish_at (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
+/-- The node after a tick's two trailing polls: the FG update when due, then the own
+`on_attestation`s of what they release, in some order. -/
+theorem tick_finish_at (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
     (v : V) (nd : Model.Node (Model.protoOf (compiled F) E)) (t : Time)
     (hsel : rho.ownKey v ∈ rho.sel (engineRole e .poll))
-    (hk : e.adapter.self (envelope e nd) = rho.ownKey v) (ht : e.adapter.now (envelope e nd) = t) :
+    (hk : e.adapter.self (envelope e nd) = rho.ownKey v) (ht : e.adapter.now (envelope e nd) = t)
+    (l : List (FG.Att (Fintype.card V)))
+    (hl : e.adapter.node ((e.ops hn).pollBatch (envelope e nd) t.toNat).1 =
+      l.foldl (fun n a => (Node.onAttestation n a).1) (if due (envelope e nd) then
+        (tickStep (runProposer rho hn) (digestOf e rho) (e.adapter.self (envelope e nd))
+          (e.adapter.node (envelope e nd)) (e.adapter.now (envelope e nd))
+          (encodeTxs (Model.mempool rho.inbox v t)) .fgUpdate).1
+      else e.adapter.node (envelope e nd))) :
     e.adapter.node (envelope e (rho.runDuties v nd
       (([.poll t.toNat, .poll t.toNat] : List (ShapeDuty e.skel.Kind)).map (engineDuty e))).1) =
-      if due (envelope e nd) then
+      l.foldl (fun n a => (Node.onAttestation n a).1)
+        (if due (envelope e nd) then
         (tickStep (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
           (e.adapter.node (envelope e nd)) t (encodeTxs (Model.mempool rho.inbox v t)) .fgUpdate).1
-      else e.adapter.node (envelope e nd) := by
+      else e.adapter.node (envelope e nd)) := by
   rw [List.map_cons, List.map_cons, List.map_nil, rho.runDuties_cons, rho.runDuties_cons,
     rho.runDuties_nil]
-  have hd := duty_poll_obs L rho v nd t.toNat hsel
-  dsimp only at hd ⊢
-  rw [((poll_clock L rho v _ t.toNat).2.2 hd.2.2.2).1, hd.1]
-  split
-  · rw [fgUpdate_node L _ (runProposer rho hn) (digestOf e rho)
-      (encodeTxs (Model.mempool rho.inbox v t)), hk, ht]
-  · rfl
+  obtain ⟨h₁, -, -, hd, -, hq⟩ := duty_poll_obs L rho v nd t.toNat hsel
+  dsimp only at h₁ hd hq ⊢
+  rw [(poll_clock L rho v _ t.toNat).2.2.2.2 hd hq, h₁, hl, hk, ht]
 
 private theorem cut_now_between [DecidableEq V] (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
     (v : V) (t : Time) (j : Nat) (hj : rho.events[j]? = some (.tick v t)) :
@@ -1125,11 +1277,12 @@ theorem simTrace_state_at_cut [DecidableEq V] (L : e.OpLaws due) (laws : e.Lawfu
   have hcuts := allCuts_getElem?_add e rho i
   rw [eventCuts_deliver e rho i v o t he] at hr hcuts
   have h := receipt_cut_state L rho _ _ _ _ i _ _ _ 0 _ (cut_obs L rho v i).1
-    (delivery_now L rho hv he) (stateAgreement_all laws hv v i hi.le).symm
+    (delivery_now L rho hv he)
+    (stateAgreement_all laws hv v i hi.le).symm
     (fun n hn' => hcuts n hi hn') hr
   rwa [Nat.add_sub_cancel' hlo] at h
 
-private theorem delivery_process [DecidableEq V] (L : e.OpLaws due)
+theorem delivery_process [DecidableEq V] (L : e.OpLaws due)
     (rho : Model.Run (compiled F) E) (hv : rho.ExecutionValid) {i v o t}
     (he : rho.events[i]? = some (.deliver v o t)) :
     e.adapter.node ((e.ops hn).process (stateAt e rho v i) (wireOf e o)
@@ -1145,8 +1298,9 @@ private theorem delivery_process [DecidableEq V] (L : e.OpLaws due)
   rw [(cut_obs L rho v i).1, delivery_now L rho hv he] at h
   exact h
 
-private theorem delivery_publish [DecidableEq V] (L : e.OpLaws due)
-    (rho : Model.Run (compiled F) E) {i v o t} (he : rho.events[i]? = some (.deliver v o t))
+theorem delivery_publish [DecidableEq V] (L : e.OpLaws due)
+    (rho : Model.Run (compiled F) E) (hv : rho.ExecutionValid) {i v o t}
+    (he : rho.events[i]? = some (.deliver v o t))
     (hd : due ((e.ops hn).process (stateAt e rho v i) (wireOf e o) (Model.digests rho.hash o)) =
       false) :
     e.adapter.node (stateAt e rho v (i + 1)) =
@@ -1155,8 +1309,10 @@ private theorem delivery_publish [DecidableEq V] (L : e.OpLaws due)
   rw [cut_envelope rho v (i + 1), cut_envelope]
   rw [rho.stateBefore_succ he]
   simp only [Model.Run.step, Function.update_self]
-  rw [cut_envelope] at hd
-  exact ((deliver_obs L rho v (rho.stateBefore i v) o t).2.2 hd).1
+  have hq := (quietOf_spec L).2.2.2.2.1 _ (wireOf e o) (Model.digests rho.hash o)
+    ((cut_quiet L rho hv v i).resolve_left (not_lastRestart_deliver rho hv he))
+  rw [cut_envelope] at hd hq
+  exact (deliver_obs L rho v (rho.stateBefore i v) o t).2.2.2 hd hq
 
 private theorem cast_proposal_candidates {s q : ChainShape (pubOf E) O.Id I} (h : s = q)
     (st : (compile s).State) (j : Slot) (hj : 0 < j)
@@ -1279,7 +1435,7 @@ theorem proposal_clock [DecidableEq V] (L : e.OpLaws due)
   rw [cut_envelope] at hself
   exact ⟨h.2.1.trans hself, h.2.2.1⟩
 
-private theorem proposal_finish [DecidableEq V] (L : e.OpLaws due)
+theorem proposal_finish [DecidableEq V] (L : e.OpLaws due)
     (rho : Model.Run (compiled F) E) (v : V) (i : Nat) (t : Time) :
     let pre := (rho.runDuties v (afterClock rho (rho.stateBefore i v) v t)
       ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat].map (engineDuty e))).1
@@ -1288,200 +1444,6 @@ private theorem proposal_finish [DecidableEq V] (L : e.OpLaws due)
   dsimp only
   rw [← rho.runDuties_append_fst, ← List.map_append]
   exact proposal_clock L rho v i t _
-
-open Classical in
-/-- The envelope effect of a selected slot proposal. Kept for a downstream consumer. -/
-theorem proposal_step (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
-    (v : V) (nd : Model.Node (Model.protoOf (compiled F) E)) (s : Slot) (hs : 0 < s)
-    (hk : e.adapter.self (envelope e nd) = rho.ownKey v)
-    (ht : e.adapter.now (envelope e nd) = (paramsAtCount p (Fintype.card V) hN hn).slotTime s)
-    (hsel : rho.sel (engineRole e (.proposer s)) = {runProposer rho hn s})
-    (hready : rho.ownKey v ∈ rho.sel (engineRole e (.proposer s)) →
-      ∀ par info cs, ((e.ops hn).propose (envelope e nd) s).2 = some (par, info, cs) →
-      let o := engineObj e (.mk (.signed (rho.ownKey v) (.proposer s))
-        (.item ⟨par, s, encodeTxs nd.st.2, info⟩) cs)
-      Model.releasable nd.seen o = true ∧
-        (Model.protoOf (compiled F) E).dependencies.ready (Model.closure nd.seen) o = true) :
-    e.adapter.node (envelope e (rho.dutyStep v nd (engineDuty e (.propose s hs))).1) =
-      (tickStep (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
-        (e.adapter.node (envelope e nd)) (e.adapter.now (envelope e nd))
-        (encodeTxs nd.st.2) .proposal).1 ∧
-    ∀ b acc, Cut.fg (.block b acc) ∈ (tickStep (runProposer rho hn) (digestOf e rho)
-        (rho.ownKey v) (e.adapter.node (envelope e nd)) (e.adapter.now (envelope e nd))
-        (encodeTxs nd.st.2) .proposal).2 →
-      engineObj e (blockObj e.codec.encode e.codec.carried b) ∈
-        (rho.dutyStep v nd (engineDuty e (.propose s hs))).2 := by
-  let st := envelope e nd
-  let t := e.adapter.now st
-  let r := acProposal (e.adapter.node st) t
-  let d := engineDuty e (.propose s hs)
-  change e.adapter.self st = rho.ownKey v at hk
-  have hslot : (paramsAtCount p (Fintype.card V) hN hn).slotOf t = s := by
-    change (paramsAtCount p (Fintype.card V) hN hn).slotOf (e.adapter.now st) = s
-    rw [ht, Simulation.slotOf_slotTime]
-  have hrole : (Model.protoOf (compiled F) E).role d = engineRole e (.proposer s) :=
-    role_engineDuty (.propose s hs)
-  have hiff : Proposes (P := paramsAtCount p (Fintype.card V) hN hn)
-        (runProposer rho hn) (rho.ownKey v) t ↔
-      rho.ownKey v ∈ rho.sel (engineRole e (.proposer s)) := by
-    unfold Proposes
-    rw [hslot, hsel, Finset.mem_singleton]
-    exact ⟨fun h => h.2.2.symm, fun h => ⟨hs, ht, h.symm⟩⟩
-  by_cases hmem : rho.ownKey v ∈ rho.sel (engineRole e (.proposer s))
-  · have hact : envelope e ⟨((Model.protoOf (compiled F) E).act nd.st d).1, nd.seen⟩ =
-        ((e.ops hn).propose st s).1 := envelope_act nd (.propose s hs)
-    have hcand := proposal_candidates L rho v nd s hs hmem
-    dsimp only at hcand
-    change rho.signedCandidate v d ((Model.protoOf (compiled F) E).act nd.st d).2 = _ at hcand
-    have hyes : Proposes (P := paramsAtCount p (Fintype.card V) hN hn)
-        (runProposer rho hn) (rho.ownKey v) (e.adapter.now (envelope e nd)) :=
-      hiff.mpr hmem
-    change e.adapter.node (envelope e (rho.dutyStep v nd d).1) = _ ∧ _
-    simp only [tickStep, ite_eq_left hyes]
-    generalize hr : (acProposal (e.adapter.node (envelope e nd))
-      (e.adapter.now (envelope e nd))).2.2 = q
-    change r.2.2 = q at hr
-    cases q with
-    | none =>
-      have hp : (e.ops hn).propose st s = (e.adapter.setNode st r.1, none) := by
-        rw [L.propose_eq]
-        unfold NodeAsChainShape.propose
-        dsimp only
-        rw (config := { transparency := .default }) [hr]
-      rw [rho.dutyStep_eq, hrole, ite_eq_left hmem, hcand, hp]
-      refine ⟨?_, by simp [acProposal]⟩
-      change e.adapter.node (envelope e ⟨((Model.protoOf (compiled F) E).act nd.st d).1,
-        nd.seen⟩) = r.1
-      rw [hact, hp]
-      exact (L.setNode_obs _ _).1
-    | some ab =>
-      obtain ⟨head, payload⟩ := ab
-      let atts := r.1.fg.proposalAttestations head.head
-      let par := parentRef (paramsAtCount p (Fintype.card V) hN hn).genesisRoot
-        (some head.head.root)
-      let info := e.codec.encode atts payload
-      let cs := e.codec.carried atts payload
-      let header : Header I := ⟨par, s, encodeTxs nd.st.2, info⟩
-      let o := engineObj e (.mk (.signed (rho.ownKey v) (.proposer s)) (.item header) cs)
-      have hp : (e.ops hn).propose st s = (e.adapter.setNode st r.1, some (par, info, cs)) := by
-        rw [L.propose_eq]
-        unfold NodeAsChainShape.propose
-        dsimp only
-        rw (config := { transparency := .default }) [hr]
-      have hguards := hready hmem par info cs (congrArg Prod.snd hp)
-      have hsign : rho.signedCandidate v d ((Model.protoOf (compiled F) E).act nd.st d).2 =
-          [o] := by
-        rw [hcand, hp]; rfl
-      rw [dutyStep_release_singleton rho v nd d o (hrole ▸ hmem) hsign hguards.1 hguards.2]
-      have hrw := envelope_recordOwn (e := e)
-        ⟨((Model.protoOf (compiled F) E).act nd.st d).1, nd.seen⟩ o (Model.digests rho.hash o)
-      rw [hrw, hact, hp, wireOf_engineObj]
-      -- The first digest is for the candidate itself, even if it carries another copy.
-      have hdigest : rootOf (Model.digests rho.hash o) header = some (rho.hash header) := by
-        unfold rootOf Model.digests
-        have hi : o.item? = some header := engineObj_item e _
-        cases ho : o with
-        | mk auth msg carried =>
-          have hitem : (Model.Obj.mk auth msg carried).item? = some header := ho ▸ hi
-          rw [Model.Obj.parts, List.filterMap_cons, hitem]
-          dsimp only
-          rw (config := { transparency := .default }) [List.map_cons,
-            List.find?_cons_of_pos (by simp)]
-          rfl
-      have hb : blockOf (P := paramsAtCount p (Fintype.card V) hN hn) (rho.hash header)
-          header (rho.ownKey v) atts payload =
-          mkBlock (digestOf e rho) (rho.ownKey v) r.1.fg t (encodeTxs nd.st.2)
-            head.head payload := by
-        simp only [blockOf, mkBlock, hslot, digestOf_eq, header, info, par, atts]
-        have hp : parentRoot p.genesisRoot (parentRef p.genesisRoot (some head.head.root)) =
-            some head.head.root := Simulation.parentRoot_parentRef _ _
-        rw (config := { transparency := .default }) [hp]
-      have hrec := (L.recordOwn_obs (e.adapter.setNode st r.1)
-        (.mk (.signed (rho.ownKey v) (.proposer s)) (.item header) cs) (Model.digests rho.hash o)).1
-      refine ⟨?_, ?_⟩
-      swap
-      · intro b acc h
-        simp only [List.mem_cons] at h
-        rcases h with h | h
-        · simp [acProposal] at h
-        · simp only [proposeBlock, onBlock] at h
-          split at h
-          · simp at h
-          · split at h <;> simp [acCall] at h <;> rw [h.1] <;>
-              simp [o, blockObj, header, headerOf, mkBlock, atts, info, par, cs] <;>
-              exact congrArg (fun k => engineObj e (.mk (.signed (rho.ownKey v) (.proposer k))
-                (.item ⟨par, k, encodeTxs nd.st.2, info⟩) cs)) hslot
-      refine hrec.trans ?_
-      change e.adapter.node (recordBlock e.codec e.adapter (e.adapter.setNode st r.1)
-        (rho.ownKey v) header (Model.digests rho.hash o)) = _
-      have hdec := L.decode_encode atts payload
-      change e.codec.decode header.info = some (atts, payload) at hdec
-      simp only [recordBlock, hdec, hdigest, L.applyCuts_obs, L.setNode_obs, hk, hb, proposeBlock]
-      rfl
-  · rw [rho.dutyStep_eq, hrole, ite_eq_right hmem]
-    have hno : ¬ Proposes (P := paramsAtCount p (Fintype.card V) hN hn)
-        (runProposer rho hn) (rho.ownKey v) (e.adapter.now (envelope e nd)) :=
-      hiff.not.mpr hmem
-    simp [tickStep, hno]
-
-open Classical in
-/-- Derive the frozen replay equations from local observations and the instance's two guards
-for its actual proposal candidate. -/
-theorem toLawful [DecidableEq V] (L : e.OpLaws due) (ready : e.ProposalReady) : e.Lawful due where
-  init_due k sel x := (L.init_obs k sel x).2
-  set_due st b := (L.setDue_obs st b).2.2.2
-  clock_due st t := (L.clock_obs st t).2.2.2
-  process_due st o hs := (process_pres L st o hs).2.2
-  restore_due k st t := (restore_obs L k st t).2.2.2
-  cut_due rho v i := (cut_obs L rho v i).2
-  tick_schedule := tick_schedule L
-  tick_prefix := fun rho hv _ _ _ he => tick_prefix L rho hv he
-  tick_proposal rho hv i v t he := by
-    let clk := afterClock rho (rho.stateBefore i v) v t
-    let ds : List (ShapeDuty e.skel.Kind) := [.poll t.toNat, .poll t.toNat, .pollPropose t.toNat]
-    let pre := (rho.runDuties v clk (ds.map (engineDuty e))).1
-    let post := (rho.runDuties v pre ((e.skel.proposeAt t).map (engineDuty e))).1
-    let P := paramsAtCount p (Fintype.card V) hN hn
-    change due (envelope e post) = due (envelope e pre) ∧
-      e.adapter.node (envelope e post) = (tickStep (runProposer rho hn) (digestOf e rho)
-        (rho.ownKey v) (e.adapter.node (envelope e pre)) t
-        (encodeTxs (Model.mempool rho.inbox v t)) .proposal).1 ∧
-      (¬ P.IsPublic t → e.adapter.node (envelope e post) = e.adapter.node (envelope e pre))
-    dsimp only [post]
-    rcases Simulation.Skeleton.proposeAt_cases e.skel t with ⟨hnil, hno⟩ | ⟨s, hs, hone, htime⟩
-    · rw [hnil, List.map_nil, rho.runDuties_nil]
-      have hp : ¬ Proposes (P := P) (runProposer rho hn) (rho.ownKey v) t :=
-        fun h => hno _ h.1 (h.2.1.trans (L.grid_time _).symm)
-      simp only [tickStep, ite_eq_right hp, and_self, implies_true]
-    · rw [hone, List.map_cons, List.map_nil, rho.runDuties_cons, rho.runDuties_nil]
-      have ht : t = P.slotTime s := htime.trans (L.grid_time s)
-      have ⟨hk, hclock⟩ := proposal_clock L rho v i t ds
-      have hm : pre.st.2 = Model.mempool rho.inbox v t := by
-        dsimp only [pre, clk]
-        rw [duties_mempool, afterClock_eq]
-        rfl
-      refine ⟨?_, ?_, fun h => (h (ht ▸ P.slotTime_public s)).elim⟩
-      · rw [rho.dutyStep_eq]
-        split
-        · apply releaseAll_pres rho (fun st => due st = due (envelope e pre))
-          · intro o _ st digests h
-            exact (recordOwn_pres L st (wireOf e o) digests).2.2.trans h
-          · rw [envelope_act]
-            exact (propose_pres L (envelope e pre) s).2.2
-        · rfl
-      · have step := proposal_step L rho v pre s hs hk (hclock.trans ht)
-          (selValid_proposer e rho hv.selValid s (L.proposer_selection s))
-          (fun h => ready rho hv he s hs hone h)
-        change e.adapter.now (envelope e pre) = t at hclock
-        rw [hclock, hm] at step
-        exact step.1
-  tick_finish rho hv i v t _ := by
-    have ⟨hk, ht⟩ := proposal_finish L rho v i t
-    exact tick_finish_at L rho v _ t (poll_selected L rho hv v) hk ht
-  gossip_node rho v nd t := (gossip_obs L rho v nd t).1
-  delivery_process := fun rho hv _ _ _ _ he => delivery_process L rho hv he
-  delivery_publish := fun rho _ _ _ _ he hd => delivery_publish L rho he hd
-  restore_node k st t := (restore_obs L k st t).1
 
 end Encoding.OpLaws
 

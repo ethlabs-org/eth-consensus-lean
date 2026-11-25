@@ -33,7 +33,9 @@ and an old label at least `2k + 1` past it. -/
 structure RepairSchedule where
   resetTime : Time
   deltaF : Time
-  reset : Healing.Growing.ResetPremisesUpTo tr H proposer dg g deltaF resetTime b cm βK
+  /-- The release hold of the reset's service. -/
+  hold : Time := 0
+  reset : Healing.Growing.ResetPremisesUpTo tr H proposer dg g deltaF resetTime b cm βK hold
   cleanLabel : Nat
   cleanLabel_eq : cleanLabel = Healing.cleanLabel sp resetTime
   oldLabel : Nat

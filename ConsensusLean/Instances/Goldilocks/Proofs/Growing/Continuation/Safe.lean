@@ -12,6 +12,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSuppliers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HSSharedRun
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.SignGap
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 import ConsensusLean.Proofs.Behaviour.Main
 import ConsensusLean.Lemmas.Problem.Facts.Transfer
@@ -31,7 +32,7 @@ and the stable output are safe from the heal point, or the run has a hash collis
 * Before the horizon the run is a healed-safety query bounded at `T` (`handoverQuery`). Its seed
   and seeded invariant (`handover_invariant_at`) start reading at `t₁` with `t₁ + 8Δ + 1 ≤ heal`.
   The invariant's premises through the horizon come from the run: the reset service from partial
-  synchrony (`resetService_of_psync_at`), the slot counts from `r` from the sleepy budget, which
+  synchrony (`acResetService_of_psync_at`), the slot counts from `r` from the sleepy budget, which
   full participation on `[ḡ, T]` extends back to `ready` (`Handover.sleepyOn_from_ready`,
   `sleepy_bounds_at`, with `ready ≤ t_r + Δ` by the seed's timing), the committee counts of the
   run's committees `voteK` from `r`, from the committee budget, which the cross-boundary bound
@@ -88,16 +89,15 @@ theorem continued_safe_growing (hc : GoldilocksCorrect) (S : Setup) (A : Contrac
     norm_num
   -- the query bounded at `T`, its seed and seeded invariant
   obtain ⟨h0, hb, hp'⟩ := Obligations.Growing.handover_query_at hn hv hx hcap hh hT hhT hp
-  obtain ⟨r', σ, hseed, t₁, -, hdt, hlate, hinv⟩ :=
+  obtain ⟨r', σ, ΔF, hΔF, hseed, t₁, -, hdt, hlate, hinv⟩ :=
     Obligations.Growing.handover_invariant_at
       (Obligations.Growing.handoverQuery S A V hn hv hx hcap i hh hT) h0 hb hp'
   have hnc := noCollRun_simTraceAt S rho hn hv hx
   have hrun := simTraceAt_goldilocksRun S rho hn hv
   -- the reset service through the horizon, from partial synchrony
-  have hsvc := Obligations.Growing.resetService_of_psync_at S rho hn hv hnc
+  have hsvc := Obligations.Growing.acResetService_of_psync_at S rho hn hv hnc
     ((Model.sysOf_delivers_iff _ _ _ _).mp hh.1)
-    (Obligations.Growing.signed_row_service_psync_at S rho hn hv)
-    (Obligations.protoFGDelay_pos _)
+    (Obligations.releaseGapAt_of_assumptions A _ hn) hΔF
   -- the slot counts from `r'` through the horizon, from the sleepy budget from `ready`
   let sp := (S : Setup).params (Model.pubOf E) hn
   obtain ⟨hσT, hrσ, hgr⟩ : sp.ts σ + 8 * sp.Δ ≤ T ∧ r' + sp.k ≤ σ + 1 ∧

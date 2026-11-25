@@ -97,12 +97,24 @@ private theorem stamped_nodeTick (t : Time) {sign : Fin sp.n → Time → Bool}
   · exact stamped_apply t st none _ h
   · exact h
 
-private theorem stamped_poll (t : Time) (st : State sp ro binding) u
-    (h : QueueStamped t st) : QueueStamped t (poll st u).1 := by
+private theorem stamped_poll {release : Fin sp.n → Time → Bool} (t : Time)
+    (st : State sp ro binding) u (h : QueueStamped t st) :
+    QueueStamped t (poll st u release).1 := by
   refine ⟨(poll_now st u).trans h.1, ?_⟩
   intro q hq
   rw [poll_forwards] at hq
   exact False.elim (List.not_mem_nil hq)
+
+private theorem stamped_pollBatch {release : Fin sp.n → Time → Bool} (t : Time)
+    (st : State sp ro binding) u (h : QueueStamped t st) :
+    QueueStamped t (pollBatch st u release).1 := by
+  rw [pollBatch_fst]
+  refine stamped_poll t _ u ?_
+  split
+  · obtain ⟨_, hd⟩ := heldDrain_eq st
+    rw [hd]
+    exact h
+  · exact h
 
 private theorem stamped_process (t : Time) (st : State sp ro binding) o hs
     (h : QueueStamped t st) : QueueStamped t (process st o hs) := by
@@ -124,7 +136,7 @@ theorem atProposal_forwards_nil (hv : rho.ExecutionValid) (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time) :
     (shapeOf S hn (atProposal S rho v nd t)).forwards = [] := by
   rw [atProposal_shape S rho hn v nd t (poll_selected S rho hv v), nodeTick_forwards,
-    poll_forwards]
+    pollBatch_fst, poll_forwards]
 
 omit [DecidableEq V] in
 /-- A proposal duty creates forwarding entries only for successful cuts of the
@@ -240,7 +252,14 @@ theorem poll_candidate_forward_queue (v : V)
     (t, p.toList ++ [blockObj (S.params (Model.pubOf E) hn) B]) ∈
       (shapeOf S hn nd).forwards := by
   obtain ⟨m, cs, hm, _, _, rfl⟩ := rho.mem_signedCandidate.mp ho
-  rw [act_poll_snd S hn, (poll_outbox _ _).2] at hm
+  rw [act_poll_snd S hn] at hm
+  rcases List.mem_append.mp hm with hm | hm
+  swap
+  · obtain ⟨a, _, he⟩ := List.mem_map.mp hm
+    cases he
+    have heq := forwardObj_of_decodeForward _ _ _ _ _ _ hd
+    have hmsg := congrArg Model.Obj.msg heq
+    cases hmsg
   rcases List.mem_append.mp hm with hm | hm
   swap
   · obtain ⟨⟨stamp, vote⟩, _, he⟩ := List.mem_map.mp hm
@@ -249,7 +268,7 @@ theorem poll_candidate_forward_queue (v : V)
     have hmsg := congrArg Model.Obj.msg heq
     cases hmsg
   rcases List.mem_append.mp hm with hm | hm
-  · cases hh : (pollPre (shapeOf S hn nd)).outbox.head? with
+  · cases hh : (pollPre (shapeOf S hn nd) (S.release (Model.pubOf E))).outbox.head? with
     | none =>
       simp only [hh, Option.map_none, Option.toList_none] at hm
       exact False.elim (List.not_mem_nil hm)
@@ -353,7 +372,7 @@ private theorem dutyBatches_forward_stamp (v : V) (u : Time) :
       · exact duty_forward_stamp S rho hn v nd d u hs ho hd
       · exact False.elim (List.not_mem_nil ho)
     · exact ih _ (dutyStep_pres S rho hn (QueueStamped u)
-        (stamped_recordOwn u) (stamped_propose u) (stamped_nodeTick u) (stamped_poll u)
+        (stamped_recordOwn u) (stamped_propose u) (stamped_nodeTick u) (stamped_pollBatch u)
         v nd d hs) b hb o ho t p B hd
 
 private theorem runDuties_candidate_batch (v : V) :

@@ -56,6 +56,7 @@ open AC (ACParams ReplayOrder Payload Vote)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+variable {hold : Time}
 
 /-- The writer shape of a cut of the prefix through `d`, read back on the run. -/
 private theorem writer_shape_of_upTo
@@ -132,7 +133,7 @@ honest at `t ≤ b` is an ancestor candidate at creation and every intervening c
 terminal cut. -/
 theorem clean_optimistic_writer_candidate_interval_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {q s n : Nat} {t : Time} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (AC.Vote sp.n)} (ht0 : 0 ≤ t) (hnt : ∀ j < n, tr.time j ≤ t) (htb : t ≤ b)
     (hy : y ∈ H t) (hop : AC.OptimisticLockAt tr.projAC y q s R CV)
@@ -197,7 +198,7 @@ its held block extends the operational proposal. A writer after the update satis
 bound directly by time monotonicity. -/
 theorem retained_writer_slot_after_update_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hhold : p ∈ H (sp.ts u + sp.Δ)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
@@ -266,7 +267,7 @@ of the actual unlock view held from validators honest at `t` extend a clean opti
 slot `s` by a writer honest at its write; only validators faulty at `t` can oppose it. -/
 private theorem optimistic_unlock_keeps_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {q s j : Nat} {t : Time} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (Vote sp.n)} (hx : x ∈ H (tr.time q))
     (hop : AC.OptimisticLockAt tr.projAC x q s R CV)
@@ -379,7 +380,7 @@ open Healing.Growing in
 `t ≤ b` until the next-result deadline, provided the held source remains a candidate. -/
 theorem young_optimistic_lock_persists_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {q s i n : Nat} {t : Time}
     {R : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} {e : Nat}
     (hx : x ∈ H (tr.time q)) (hop : AC.OptimisticLockAt tr.projAC x q s R CV)
@@ -425,7 +426,7 @@ open Healing.Growing in
 known to precede their stored-clock observation. -/
 theorem optimistic_result_or_finalized_at_update_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {r s j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (Vote sp.n)} {ell : ACLabel (goldilocksNode sp ro)}
     (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time j))
@@ -465,7 +466,7 @@ comparison. Honesty is at the stored clock only, which is within the reset premi
 theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b : Time}
     {cm : Time → Finset (Fin (Fintype.card V))} {βK : ℚ}
     (hp : ResetPremisesUpTo (simTraceAt S rho hn)
-      (honestKeysAt S rho) (runProposer S rho hn) (digestOf S rho) g ΔF a b cm βK)
+      (honestKeysAt S rho) (runProposer S rho hn) (digestOf S rho) g ΔF a b cm βK hold)
     (hbh : b ≤ rho.horizon)
     {v : V} {i u : Nat} (hv : v ∉ rho.faultyAt (stateAt S rho hn v i).now)
     (hslot : (S.params (Model.pubOf E) hn).ts

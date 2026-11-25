@@ -382,9 +382,10 @@ theorem decoded_held_process {V : Type} [Fintype V] {E : Env V}
 theorem decoded_held_fgUpdate {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} (st : State sp ro binding)
-    (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st) :
-    WrappersDecoded tables (fgUpdate st) ∧ WrappersHeld tables (fgUpdate st) := by
-  rw [fgUpdate_eq]
+    (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st)
+    (release : Fin sp.n → Time → Bool := fun _ _ => true) :
+    WrappersDecoded tables (fgUpdate st release) ∧ WrappersHeld tables (fgUpdate st release) := by
+  rw [fgUpdate_eq st release]
   dsimp only
   split
   · exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
@@ -392,15 +393,20 @@ theorem decoded_held_fgUpdate {sp : AC.ACParams}
     · exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
     · rename_i a record _
       obtain ⟨atts, he⟩ := Store.onAttestation_eq st.node.fg a
-      refine ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl ?_⟩
-      simpa only [Node.acToFG, Node.onAttestation] using congrArg Store.blocks he
+      have hb : (Node.onAttestation { (Node.acToFG st.node st.now).1 with record := record }
+          a).1.fg.blocks = st.node.fg.blocks := by
+        simpa only [Node.acToFG, Node.onAttestation] using congrArg Store.blocks he
+      split
+      · exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl hb⟩
+      · exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
 
 /-- Polling drains pending wrappers without losing durable decoding or held correspondence. -/
 theorem decoded_held_poll {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} (st : State sp ro binding) (t : Time)
-    (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st) :
-    WrappersDecoded tables (poll st t).1 ∧ WrappersHeld tables (poll st t).1 := by
+    (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st)
+    (release : Fin sp.n → Time → Bool := fun _ _ => true) :
+    WrappersDecoded tables (poll st t release).1 ∧ WrappersHeld tables (poll st t release).1 := by
   have clear (s : State sp ro binding) (h : WrappersDecoded tables s) (g : WrappersHeld tables s)
       (outbox : List Body) :
       WrappersDecoded tables { s with outbox := outbox, forwards := [], voteForwards := [] } ∧
@@ -410,7 +416,23 @@ theorem decoded_held_poll {sp : AC.ACParams}
   split <;> dsimp only <;> split
   all_goals first
     | exact clear _ hd hh _
-    | exact clear _ (decoded_held_fgUpdate st hd hh).1 (decoded_held_fgUpdate st hd hh).2 _
+    | exact clear _ (decoded_held_fgUpdate st hd hh release).1
+        (decoded_held_fgUpdate st hd hh release).2 _
+
+/-- The batch poll preserves both wrapper invariants (emptying `held` touches neither). -/
+theorem decoded_held_pollBatch {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+    {tables : Wire sp.n binding → List (Header Info × Nat)} (st : State sp ro binding) (t : Time)
+    (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st)
+    (release : Fin sp.n → Time → Bool) :
+    WrappersDecoded tables (pollBatch st t release).1 ∧
+      WrappersHeld tables (pollBatch st t release).1 :=
+  pollBatch_pres (Q := fun s => WrappersDecoded tables s ∧ WrappersHeld tables s)
+    (fun s h => decoded_held_poll s t h.1 h.2 release)
+    (fun x h => by
+      obtain ⟨_, hx⟩ := heldDrain_eq x
+      rw [hx]
+      exact ⟨h.1.mono rfl rfl rfl le_rfl, h.2.preserve rfl rfl rfl⟩) ⟨hd, hh⟩
 
 /-- AC tick preparation preserves both wrapper invariants. -/
 theorem decoded_held_nodeTick {sp : AC.ACParams}
@@ -458,9 +480,9 @@ theorem decoded_held_deliver {V : Type} [Fintype V] {E : Env V}
     WrappersDecoded (digests rho.hash) st' ∧ WrappersHeld (digests rho.hash) st' := by
   apply deliver_pres S rho hn
     (fun st => WrappersDecoded (digests rho.hash) st ∧ WrappersHeld (digests rho.hash) st)
-  · exact fun st t h => decoded_held_poll st t h.1 h.2
+  · exact fun st t h => decoded_held_pollBatch st t h.1 h.2 _
   · intro st m cs hs h
-    rw [recordOwn_eq]
+    rw [AsChainShape.recordOwn_eq]
     split
     · exact ⟨h.1.mono rfl rfl rfl le_rfl, h.2.preserve rfl rfl rfl⟩
     · rename_i k s header carried heq
@@ -479,12 +501,13 @@ theorem decoded_held_atProposal {V : Type} [Fintype V] {E : Env V}
     WrappersDecoded (digests rho.hash) st' ∧ WrappersHeld (digests rho.hash) st' := by
   dsimp only
   rw [atProposal_shape S rho hn v nd t hsel]
-  have hc : WrappersDecoded (digests rho.hash) { shapeOf S hn nd with now := t } ∧
-      WrappersHeld (digests rho.hash) { shapeOf S hn nd with now := t } :=
+  have hc : WrappersDecoded (digests rho.hash) { shapeOf S hn nd with now := t, ticked := false } ∧
+      WrappersHeld (digests rho.hash) { shapeOf S hn nd with now := t, ticked := false } :=
     ⟨hd.mono rfl rfl rfl ht, hh.preserve rfl rfl rfl⟩
-  have h1 := decoded_held_poll _ t.toNat hc.1 hc.2
-  have h2 := decoded_held_poll _ t.toNat h1.1 h1.2
-  exact decoded_held_nodeTick _ h2.1 h2.2 (S.sign (pubOf E))
+  have h1 := decoded_held_pollBatch _ t.toNat hc.1 hc.2 (S.release (pubOf E))
+  have h2 := decoded_held_pollBatch _ t.toNat h1.1 h1.2 (S.release (pubOf E))
+  have h3 := decoded_held_nodeTick _ h2.1 h2.2 (S.sign (pubOf E))
+  exact ⟨h3.1.mono rfl rfl rfl le_rfl, h3.2.preserve rfl rfl rfl⟩
 
 /-- Recording a valid canonical own block preserves the joint wrapper invariant. -/
 theorem decoded_held_recordOwn_block {V : Type} [Fintype V] {E : Env V}

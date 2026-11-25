@@ -101,9 +101,10 @@ private theorem nodeTick_queuedInPool {sign : Fin sp.n → Time → Bool} (st : 
     exact AC.step_pool_subset st.self st.node.ac _ st.now .tick (by simp)
   · exact h
 
-private theorem poll_queuedInPool (st : State sp ro binding) t : QueuedInPool (poll st t).1 := by
+private theorem poll_queuedInPool {release : Fin sp.n → Time → Bool} (st : State sp ro binding) t :
+    QueuedInPool (pollBatch st t release).1 := by
   intro tv htv
-  rw [poll_voteForwards] at htv
+  rw [pollBatch_voteForwards] at htv
   cases htv
 
 private theorem block_pool_subset (st : State sp ro binding) (B : Blk sp) (σ : Nat) :
@@ -145,8 +146,13 @@ private theorem nodeTick_pool_subset {sign : Fin sp.n → Time → Bool} (st : S
   · exact List.Subset.refl _
 
 /-- Polling, including the due FG update, leaves vote pools unchanged. -/
-theorem poll_pool_eq (st : State sp ro binding) t :
-    (poll st t).1.node.ac.pool = st.node.ac.pool := by
+theorem poll_pool_eq {release : Fin sp.n → Time → Bool} (st : State sp ro binding) t :
+    (pollBatch st t release).1.node.ac.pool = st.node.ac.pool := by
+  refine pollBatch_pres (Q := fun x => x.node.ac.pool = st.node.ac.pool) (fun x hx => ?_)
+    (fun x h => by obtain ⟨_, hd⟩ := heldDrain_eq x; rw [hd]; exact h) rfl
+  refine Eq.trans ?_ hx
+  clear hx
+  generalize x = st
   have hp : (Node.acToFG st.node st.now).1.ac.pool = st.node.ac.pool := by
     change (AC.acToFG sp st.node.ac (frame st.node) st.now).1.pool = _
     unfold AC.acToFG
@@ -155,12 +161,14 @@ theorem poll_pool_eq (st : State sp ro binding) t :
       · rfl
       · split_ifs <;> rfl
     · rfl
-  have hg : (fgUpdate st).node.ac.pool = st.node.ac.pool := by
-    rw [fgUpdate_eq]
+  have hg : (fgUpdate st release).node.ac.pool = st.node.ac.pool := by
+    rw [fgUpdate_eq st release]
     dsimp only
     split
     · exact hp
-    · split <;> exact hp
+    · split
+      · exact hp
+      · split <;> exact hp
   unfold poll
   split_ifs <;> dsimp only <;> split <;> first | exact hg | rfl
 end ShapeInventory

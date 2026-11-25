@@ -132,7 +132,7 @@ private theorem toFG_next (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P
       · simp only [attest] at hk
         split at hk
         · rcases m with _ | _ | m <;> simp_all
-        · rcases m with _ | _ | _ | m <;> simp_all [onAttestation]
+        · rcases m with _ | _ | _ | m <;> simp_all
     subst hm
     refine ⟨st₁, ⟨x, rfl, rfl⟩, by rw [Nat.add_zero, List.take_left' rfl]; exact hch, ?_,
       fun C hC => ?_⟩

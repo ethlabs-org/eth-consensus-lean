@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Groups
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Provenance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AdmitsAtTick
 
 public section
 
@@ -27,7 +29,7 @@ theorem simTraceAt_wire (hv : rho.ExecutionValid) :
   obtain ⟨hpr, hdg⟩ := runProposer_digestOf S rho hn
   rw [simTraceAt_eq, (simTrace_encoding S rho hn).1, hpr, hdg]
   intro y j t e hg
-  apply NodeAsChainShape.CanonicalTrace.wire (traceEncoding S hn) rho _ _ _ hg
+  apply NodeAsChainShape.CanonicalTrace.wire (traceEncoding S hn) rho _ _ _ _ hg
   · apply traceEncoding_induction (E := E) S hn (fun enc _ _ =>
       ∀ {h atts payload}, enc.codec.decode h = some (atts, payload) →
         enc.codec.encode atts payload = h)
@@ -41,5 +43,11 @@ theorem simTraceAt_wire (hv : rho.ExecutionValid) :
     dsimp only
     intro _ _ _ h
     exact wellFormed_of_decodeAttObj h
+  · intro v i t he a ha
+    have ha' : a ∈ admitsAt S rho hn v i := by
+      rw [admitsAt_trace]
+      exact ha
+    obtain ⟨j, -, q, hs⟩ := admitsAt_tick_signed S rho hn hv he ha'
+    exact engineSignsAt_wellFormed S rho hn hs
 
 end Consensus.Goldilocks.Simulation

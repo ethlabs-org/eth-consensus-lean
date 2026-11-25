@@ -19,10 +19,11 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- A clean-label bound places the whole slow window after the high-origin cutoff. -/
 theorem clean_window_timing_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {s : Nat}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {s : Nat}
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) :
     ∀ j : Nat, (s : Int) - sp.k < j → cutZ sp.toParams g ≤ sp.ts j := by
   intro j hj

@@ -136,6 +136,22 @@ theorem group_start {y y' : Fin P.n} {j j' : Nat} {t t' : Time} {e e' : Event A}
   rw [Nat.add_sub_cancel' h₁] at this
   exact le_antisymm (hg'.2.2 j this.symm).1 h₁
 
+/-- An own-publication group has only its one FG cut, so it cannot contain an AC call. -/
+theorem not_ownPublicationAt_of_ac_cut {y : Fin P.n} {j k : Nat} {t : Time}
+    {e : Event A} {ℓ : ACLabel A} (hg : tr.GroupAt proposer dg y j t e)
+    (hk : (exec proposer dg y (tr.state y j) t e).2[k]? = some (.ac ℓ)) :
+    ¬ tr.OwnPublicationAt proposer dg y j t := by
+  rintro ⟨a, ha, -⟩
+  have hlen := (List.getElem?_eq_some_iff.mp hk).1
+  obtain ⟨-, -, hev, -, hl⟩ := hg.2.1 k hlen
+  have hbound := (ha.2.2 (j + k) hev).2
+  simp only [exec, onAttestation, List.length_singleton] at hbound
+  have hzero : k = 0 := by omega
+  subst k
+  have hlabel := (ha.2.1 0 (by simp [exec, onAttestation])).2.2.2.2
+  rw [(List.getElem?_eq_some_iff.mp hk).2] at hl
+  simpa [exec, onAttestation] using hl.symm.trans hlabel
+
 /-- A cut chain recorded at consecutive cuts of `y` from `j` ends, in the run, at its last
 state. -/
 theorem cutChain_run (h : Node.LocalRun proposer dg H sg tr ini)
@@ -231,7 +247,7 @@ private theorem eventOK (h : Node.LocalRun proposer dg H sg tr ini)
     · rfl
     obtain ⟨j₀, hj₀, e₀, hg₀, hp₀⟩ := hi.phase.1 hph
     rw [le_antisymm hle (not_lt.1 hlt)] at hg₀
-    have := h.phase_order y hy y hy j₀ j t e₀ e hg₀ hg hj₀
+    have := h.phase_order y hy y hy j₀ j t e₀ e hg₀ hg hj₀ (.inl rfl)
     cases e <;> cases e₀ <;>
       simp only [Event.phase, Nat.reduceLeDiff, Nat.reduceLT] at hp hp₀ this
     exact absurd (h.tick_unique y hy j₀ j t ⟨_, _, hg₀⟩ ⟨_, _, hg⟩) (by omega)
@@ -247,7 +263,8 @@ private theorem eventOK (h : Node.LocalRun proposer dg H sg tr ini)
       rcases lt_trichotomy j₀ j with hlt | rfl | hgt
       · exact hlt
       · exact absurd (group_phase hg₀ hg) (by simp [Event.phase])
-      · exact absurd (h.phase_order y hy y hy j j₀ t _ _ hg hg₀ hgt) (by simp [Event.phase])
+      · exact absurd (h.phase_order y hy y hy j j₀ t _ _ hg hg₀ hgt (.inl rfl))
+          (by simp [Event.phase])
     have htc : cfg.time = t :=
       le_antisymm hle ((group_call hg₀).2 ▸ hi.calls j₀ hj₀ (group_call hg₀).1)
     simp only [htc, Phase.at, lt_self_iff_false, ↓reduceIte]
@@ -292,7 +309,7 @@ private theorem gInv_step (h : Node.LocalRun proposer dg H sg tr ini)
     refine ⟨fun hp => ⟨j, Nat.lt_add_of_pos_right (List.length_pos_iff.2 hg.1), e, hg, hp⟩, ?_⟩
     rintro ⟨j₀, hj₀, e₀, hg₀, hp₀⟩
     by_cases hlt : j₀ < j
-    · exact lt_of_lt_of_le hp₀ (h.phase_order y hy y hy j₀ j t e₀ e hg₀ hg hlt)
+    · exact lt_of_lt_of_le hp₀ (h.phase_order y hy y hy j₀ j t e₀ e hg₀ hg hlt (.inl rfl))
     · obtain rfl := group_start hg hg₀ (not_lt.1 hlt) hj₀
       exact group_phase hg₀ hg ▸ hp₀
 

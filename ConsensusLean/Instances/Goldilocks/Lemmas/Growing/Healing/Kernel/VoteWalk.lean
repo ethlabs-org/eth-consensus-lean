@@ -21,12 +21,13 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- A noncurrent live voter lock is below the actual parent when the two clean
 source parent contracts hold. No source writer is assumed honest at the proposal. -/
 theorem vote_old_live_lock_below_parent_of_sources_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     (hparent : ∀ {x r s B}, x ∈ H (tr.time r) →

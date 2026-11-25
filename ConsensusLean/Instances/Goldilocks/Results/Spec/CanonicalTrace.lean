@@ -25,8 +25,10 @@ event, and the handler's cuts, with their post-states (`cutPost`, the unique suc
 law), become the trace's cuts. The cut map `ι` (`cutMap`) counts the cuts of the events before an
 engine cut.
 
-* A tick at a public time is the node's tick with the engine's input (the encoded mempool), a
-  tick at a non-public time contributes no cut (`eventCuts`).
+* A tick at a public time emits the node's tick group with the engine's input (the encoded
+  mempool), then the own attestations the engine admits to the node's pool during the tick
+  (`admitsAt`), each as its own `.attestation` group (`admitRecs`); a tick at a non-public time
+  emits no tick group, only those admission groups (of a release flush), if any (`eventCuts`).
 * A delivery is one group per canonical object it carries (`deliverRecs`), with the node state
   threaded through the handlers; a dropped object, or a canonical object whose handler makes no
   cut, contributes nothing. The sub-event index gives each group its own event id (`Nat.pair`).
@@ -65,8 +67,9 @@ noncomputable def traceEncoding (S : Setup) (hn : 1 ≤ Fintype.card V) :
   State h := State (S.params (pubOf E) h) (S.ro _) S.vote
   codec := wireCodec _ _ S.vote ⟨fun _ _ _ _ => false, fun _ _ => none⟩
   decodeMessage := decodeVoteObj (S.params (pubOf E) hn) (binding := S.vote)
-  adapter := nodeAdapter _ _ S.vote (S.sign (pubOf E))
+  adapter := nodeAdapter _ _ S.vote (S.sign (pubOf E)) (S.release (pubOf E))
   ops h := nodeOps (S.params (pubOf E) h) (S.ro _) S.vote (S.sign (pubOf E))
+    (S.release (pubOf E))
   claim := AsChainShape.voteClaim (binding := S.vote) _
   voteBody := voteBody
   presented := AsChainShape.presented (binding := S.vote)
@@ -132,8 +135,9 @@ theorem traceEncoding_induction {V : Type} [Fintype V] {E : Env V}
              State h := State (S.params (pubOf E) h) (S.ro _) S.vote
              codec := wireCodec _ _ S.vote ⟨fun _ _ _ _ => false, fun _ _ => none⟩
              decodeMessage := decodeVoteObj (S.params (pubOf E) hn) (binding := S.vote)
-             adapter := nodeAdapter _ _ S.vote (S.sign (pubOf E))
+             adapter := nodeAdapter _ _ S.vote (S.sign (pubOf E)) (S.release (pubOf E))
              ops h := nodeOps (S.params (pubOf E) h) (S.ro _) S.vote (S.sign (pubOf E))
+               (S.release (pubOf E))
              claim := AsChainShape.voteClaim (binding := S.vote) _
              voteBody := voteBody
              presented := AsChainShape.presented (binding := S.vote)
@@ -313,10 +317,40 @@ theorem deliverRecs_cons (io : VoteAuth sp.n binding) (proposer : Nat → Fin sp
   | none => rfl
   | some e => rw [List.map_append]; rfl
 
+/-- The groups of own admissions: one `.attestation` group per admitted attestation, in order,
+the node state threaded through the handlers, each under its own event id `Nat.pair i sub`. -/
+noncomputable def admitRecs (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n) (t : Time) (i : Nat) :
+    List (FG.Att sp.n) → NodeState (goldilocksNode sp ro) → Nat → List (CutRec sp ro) :=
+  fun as st sub =>
+    (NodeAsChainShape.CanonicalTrace.admitRecs proposer dg self t i as st sub).map goldilocksCut
+
+/-- `admitRecs` of no attestation. -/
+theorem admitRecs_nil (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n) (t : Time) (i : Nat)
+    (st : NodeState (goldilocksNode sp ro)) (sub : Nat) :
+    admitRecs proposer dg self t i [] st sub = [] := by
+  unfold admitRecs
+  rw [NodeAsChainShape.CanonicalTrace.admitRecs_nil, List.map_nil]
+
+/-- An own admission's group, followed by the rest. -/
+theorem admitRecs_cons (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n) (t : Time) (i : Nat)
+    (a : FG.Att sp.n) (as : List (FG.Att sp.n)) (st : NodeState (goldilocksNode sp ro))
+    (sub : Nat) :
+    admitRecs proposer dg self t i (a :: as) st sub =
+      groupRecs proposer dg self st t (Nat.pair i sub) (.attestation a) ++
+        admitRecs proposer dg self t i as (exec proposer dg self st t (.attestation a)).1
+          (sub + 1) := by
+  unfold admitRecs
+  rw [NodeAsChainShape.CanonicalTrace.admitRecs_cons, List.map_append]
+  rfl
+
 open Classical in
-/-- The trace cuts of engine event `i`: the node's group for a tick at a public time (none at a
-non-public time), the groups of a delivery's canonical objects (`deliverRecs`), the restart group
-for a restart. -/
+/-- The trace cuts of engine event `i`: for a tick, the node's group at a public time (none at a
+non-public time), then the groups of the own attestations the engine admits to the pool during
+the tick (`admitsAt`, `admitRecs`); the groups of a delivery's canonical objects
+(`deliverRecs`); the restart group for a restart. -/
 noncomputable def eventCuts (i : Nat) : List (CutRec (S.params (pubOf E) hn) (S.ro _)) :=
   (CanonicalTrace.eventCuts (traceEncoding S hn) rho i).map goldilocksCut
 
@@ -336,29 +370,74 @@ theorem eventCuts_source (i : Nat)
   obtain ⟨r, hr, rfl⟩ := List.mem_map.mp hq
   exact ⟨r, hr, rfl, rfl, rfl, rfl, rfl⟩
 
+/-- The own attestations the engine admits to `v`'s pool during engine event `i`: the pool after
+the event beyond the pool before it. -/
+noncomputable def admitsAt (v : V) (i : Nat) : List (FG.Att (S.params (pubOf E) hn).n) :=
+  CanonicalTrace.admitsAt (traceEncoding S hn) rho v i
+
+/-- The own admissions are those of the generic canonical trace at Goldilocks' encoding. -/
+theorem admitsAt_trace (v : V) (i : Nat) :
+    admitsAt S rho hn v i = CanonicalTrace.admitsAt (traceEncoding S hn) rho v i := by rfl
+
+/-- The generic canonical trace's node at Goldilocks' encoding is the engine node. -/
+theorem node_stateAt_trace (v : V) (i : Nat) :
+    (traceEncoding S hn).adapter.node (CanonicalTrace.stateAt (traceEncoding S hn) rho v i) =
+      (stateAt S rho hn v i).node := by rfl
+
+/-- The own admissions are the growth of the engine node's pool across the event. -/
+theorem admitsAt_eq (v : V) (i : Nat) : admitsAt S rho hn v i =
+    (stateAt S rho hn v (i + 1)).node.fg.atts.drop (stateAt S rho hn v i).node.fg.atts.length :=
+  CanonicalTrace.admitsAt_eq (traceEncoding S hn) rho v i
+
+open Classical in
+/-- The node of `v` after its tick at `t` (engine event `i`): the node's tick at a public time
+(with the FG update on the signing calendar), from the engine's node before the event; that node
+at a time that is not public. -/
+noncomputable def postTick (v : V) (i : Nat) (t : Time) :
+    NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _)) :=
+  CanonicalTrace.postTick (traceEncoding S hn) rho (S.sign (pubOf E)) v i t
+
+open Classical in
+/-- `postTick` unfolded. -/
+theorem postTick_eq (v : V) (i : Nat) (t : Time) : postTick S rho hn v i t =
+    if (S.params (pubOf E) hn).toParams.IsPublic t then
+      (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
+        (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t))).1
+    else (stateAt S rho hn v i).node := by
+  unfold postTick
+  rw [CanonicalTrace.postTick_eq]
+  have hd : CanonicalTrace.digestOf (traceEncoding S hn) rho = digestOf S rho := by
+    funext par slot x atts p
+    rw [CanonicalTrace.digestOf_eq]
+    rfl
+  rw [hd]
+  rfl
+
 mutual
-/-- Visiting a receipt does not read the adapter's signing calendar. -/
+/-- Visiting a receipt does not read the adapter's signing calendar or release schedule. -/
 theorem visit_nodeAdapter_sign {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {binding : VoteBinding}
     (C : NodeAsChainShape.WireCodec (goldilocksNode sp ro) binding.Kind Info Body)
-    (sign : Fin sp.n → Time → Bool) (hs : List (Header Info × Nat)) :
+    (sign : Fin sp.n → Time → Bool) {release : Fin sp.n → Time → Bool}
+    (hs : List (Header Info × Nat)) :
     ∀ (st : State sp ro binding) (o : Wire sp.n binding),
-      NodeAsChainShape.visit C (nodeAdapter sp ro binding sign) hs st o =
+      NodeAsChainShape.visit C (nodeAdapter sp ro binding sign release) hs st o =
         NodeAsChainShape.visit C (nodeAdapter sp ro binding) hs st o
   | st, .mk a m cs => by
     rw [NodeAsChainShape.visit, NodeAsChainShape.visit]
-    have hp : NodeAsChainShape.processOne C (nodeAdapter sp ro binding sign) hs =
+    have hp : NodeAsChainShape.processOne C (nodeAdapter sp ro binding sign release) hs =
         NodeAsChainShape.processOne C (nodeAdapter sp ro binding) hs := rfl
     simp only [hp, visitList_nodeAdapter_sign C sign hs]
     rfl
 
-/-- Visiting carried objects does not read the adapter's signing calendar. -/
+/-- Visiting carried objects does not read the adapter's signing calendar or release schedule. -/
 theorem visitList_nodeAdapter_sign {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {binding : VoteBinding}
     (C : NodeAsChainShape.WireCodec (goldilocksNode sp ro) binding.Kind Info Body)
-    (sign : Fin sp.n → Time → Bool) (hs : List (Header Info × Nat)) :
+    (sign : Fin sp.n → Time → Bool) {release : Fin sp.n → Time → Bool}
+    (hs : List (Header Info × Nat)) :
     ∀ (st : State sp ro binding) (cs : List (Wire sp.n binding)),
-      NodeAsChainShape.visitList C (nodeAdapter sp ro binding sign) hs st cs =
+      NodeAsChainShape.visitList C (nodeAdapter sp ro binding sign release) hs st cs =
         NodeAsChainShape.visitList C (nodeAdapter sp ro binding) hs st cs
   | st, [] => by rw [NodeAsChainShape.visitList, NodeAsChainShape.visitList]
   | st, c :: cs => by
@@ -366,39 +445,43 @@ theorem visitList_nodeAdapter_sign {sp : ACParams} {ro : ReplayOrder sp (List (F
       visit_nodeAdapter_sign C sign hs st c, visitList_nodeAdapter_sign C sign hs]
 end
 
-/-- The objects delivered for a receipt do not depend on the adapter's signing calendar. -/
+/-- The objects delivered for a receipt do not depend on the adapter's signing calendar or release
+schedule. -/
 theorem delivered_nodeAdapter_sign {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {binding : VoteBinding}
     (C : NodeAsChainShape.WireCodec (goldilocksNode sp ro) binding.Kind Info Body)
-    (sign : Fin sp.n → Time → Bool) (hs : List (Header Info × Nat)) (st : State sp ro binding)
-    (o : Wire sp.n binding) :
-    NodeAsChainShape.delivered C (nodeAdapter sp ro binding sign) hs st o =
+    (sign : Fin sp.n → Time → Bool) {release : Fin sp.n → Time → Bool}
+    (hs : List (Header Info × Nat)) (st : State sp ro binding) (o : Wire sp.n binding) :
+    NodeAsChainShape.delivered C (nodeAdapter sp ro binding sign release) hs st o =
       NodeAsChainShape.delivered C (nodeAdapter sp ro binding) hs st o := by
   unfold NodeAsChainShape.delivered
   rw [visit_nodeAdapter_sign]
 
-/-- Processing a receipt does not read the adapter's signing calendar. -/
+/-- Processing a receipt does not read the adapter's signing calendar or release schedule. -/
 theorem process_nodeAdapter_sign {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {binding : VoteBinding}
     (C : NodeAsChainShape.WireCodec (goldilocksNode sp ro) binding.Kind Info Body)
-    (sign : Fin sp.n → Time → Bool) (st : State sp ro binding) (o : Wire sp.n binding)
-    (hs : List (Header Info × Nat)) :
-    NodeAsChainShape.process C (nodeAdapter sp ro binding sign) st o hs =
+    (sign : Fin sp.n → Time → Bool) {release : Fin sp.n → Time → Bool}
+    (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat)) :
+    NodeAsChainShape.process C (nodeAdapter sp ro binding sign release) st o hs =
       NodeAsChainShape.process C (nodeAdapter sp ro binding) st o hs := by
   unfold NodeAsChainShape.process NodeAsChainShape.delivered
   rw [visit_nodeAdapter_sign]
   rfl
 
 open Classical in
-/-- Each engine event contributes exactly its handler groups. -/
+/-- Each engine event contributes exactly its handler groups; a tick, its public tick group, then
+its own admissions. -/
 theorem eventCuts_eq (i : Nat) : eventCuts S rho hn i =
     match rho.events[i]? with
     | some (.tick v t) =>
-        if (S.params (pubOf E) hn).toParams.IsPublic t then
+        (if (S.params (pubOf E) hn).toParams.IsPublic t then
           groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
             (stateAt S rho hn v i).node t (Nat.pair i 0)
             (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t))
-        else []
+        else []) ++
+        admitRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) t i
+          (admitsAt S rho hn v i) (postTick S rho hn v i t) 1
     | some (.deliver v o t) =>
         deliverRecs (rho.voteIO v) (runProposer S rho hn) (digestOf S rho)
           (Model.digests rho.hash o) (rho.ownKey v) t i
@@ -419,10 +502,14 @@ theorem eventCuts_eq (i : Nat) : eventCuts S rho hn i =
     cases ev with
     | tick v t =>
       rw [CanonicalTrace.eventCuts_tick _ _ _ _ _ he]
-      dsimp only
-      by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
-      · simp only [ite_eq_left hp, hd]; rfl
-      · simp only [ite_eq_right hp, List.map_nil]
+      rw [List.map_append]
+      congr 1
+      · by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
+        · simp only [ite_eq_left hp, hd]; rfl
+        · simp only [ite_eq_right hp, List.map_nil]
+      · unfold admitRecs postTick admitsAt
+        rw [hd]
+        rfl
     | restart v t => rw [CanonicalTrace.eventCuts_restart _ _ _ _ _ he, hd]; rfl
     | deliver v o t =>
       rw [CanonicalTrace.eventCuts_deliver _ _ _ _ _ _ he]

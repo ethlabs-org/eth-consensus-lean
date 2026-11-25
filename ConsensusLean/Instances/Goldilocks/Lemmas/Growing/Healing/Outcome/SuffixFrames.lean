@@ -34,11 +34,12 @@ open Regimes.Growing (hold)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+variable {fgHold : Time}
 
 /-- Any ancestor of a viable current proposal above the voter's anchor is in the voter's viable
 tree, for a voter honest at its cast. -/
 theorem reset_winner_voter_tree_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK fgHold)
     {y : Fin sp.n} {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time j))
     (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
@@ -71,7 +72,7 @@ theorem reset_winner_voter_tree_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 viable head below the proposal's parent, is in the viable tree of the proposer, honest through
 `t_{s+1} + hold`. -/
 theorem reset_competitor_reflect_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK fgHold)
     {p y : Fin sp.n} {k i j s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H (sp.ts (s + 1 : Nat) + hold sp)) (hdesignated : p = proposer (s + 1))
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = s + 1)

@@ -17,12 +17,13 @@ open AC (ACParams ReplayOrder Payload gbar)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+variable {hold : Time}
 
 /-- Step 3: delivered rows cross one height at a sufficiently old honest proposal. -/
 theorem round_cross_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b v : Time}
-    (hsvc : ResetService tr H g ΔF b) (hnr : NoRestartAfter tr H (gbar g))
+    (hsvc : ResetService tr H g ΔF b hold) (hnr : NoRestartAfter tr H (gbar g))
     {P D X : AC.Blk sp.n (List (FG.Att sp.n))} (hPH : P ∈ tr.HonestBlocksAt H)
     (hPD : Anc (tr.HonestBlocksAt H) P D) (hpar : X.parent = some D.root)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))

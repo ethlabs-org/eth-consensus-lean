@@ -133,29 +133,33 @@ private theorem record_voteMember (st : State sp ro binding) o hs (h : VoteMembe
     · exact h
   · exact h
 
-theorem fgUpdate_voteMember (st : State sp ro binding) (h : VoteMember p st) :
-    VoteMember p (fgUpdate st) := by
+theorem fgUpdate_voteMember {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
+    (h : VoteMember p st) : VoteMember p (fgUpdate st release) := by
   have hac : (Node.acToFG st.node st.now).1.ac.mayVote = p :=
     (AC.step_mayVote ro st.self st.node.ac (frame st.node) st.now .toFG).trans h.1
-  rw [fgUpdate_eq]
+  rw [fgUpdate_eq st release]
   dsimp only
   split
   · exact ⟨hac, h.2⟩
   · split
     · exact ⟨hac, h.2⟩
-    · refine ⟨hac, fun m z hm => ?_⟩
-      rcases List.mem_append.mp hm with hm | hm
-      · exact h.2 m z hm
-      · cases List.mem_singleton.mp hm
+    · split
+      · refine ⟨hac, fun m z hm => ?_⟩
+        rcases List.mem_append.mp hm with hm | hm
+        · exact h.2 m z hm
+        · cases List.mem_singleton.mp hm
+      · exact ⟨hac, h.2⟩
 
-private theorem poll_voteMember (st : State sp ro binding) (t : Time) (h : VoteMember p st) :
-    VoteMember p (poll st t).1 := by
-  have hi : VoteMember p (if st.fgDue then fgUpdate st else st) := by
+private theorem poll_voteMember {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
+    (t : Time) (h : VoteMember p st) : VoteMember p (pollBatch st t release).1 := by
+  refine pollBatch_pres (fun st h => ?_)
+    (fun x h => by obtain ⟨_, hd⟩ := heldDrain_eq x; rw [hd]; exact h) h
+  have hi : VoteMember p (if st.fgDue then fgUpdate st release else st) := by
     split
     · exact fgUpdate_voteMember st h
     · exact h
   unfold poll
-  generalize (if st.fgDue then fgUpdate st else st) = pre at hi ⊢
+  generalize (if st.fgDue then fgUpdate st release else st) = pre at hi ⊢
   dsimp only
   split
   · exact hi

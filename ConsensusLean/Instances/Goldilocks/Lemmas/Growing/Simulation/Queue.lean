@@ -37,9 +37,10 @@ section ShapeInventory
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-/-- Polling, including the due FG update, leaves vote pools unchanged. -/
-theorem poll_pool_eq (st : State sp ro binding) t :
-    (poll st t).1.node.ac.pool = st.node.ac.pool :=
+/-- A batch poll, including the due FG update and any flush of held attestations, leaves vote
+pools unchanged, at every release schedule. -/
+theorem poll_pool_eq {release : Fin sp.n → Time → Bool} (st : State sp ro binding) t :
+    (pollBatch st t release).1.node.ac.pool = st.node.ac.pool :=
   Simulation.poll_pool_eq st t
 
 end ShapeInventory

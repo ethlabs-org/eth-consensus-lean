@@ -53,11 +53,12 @@ open AC (ACParams ReplayOrder Payload Vote)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- **The finite predecessor batch extends every clean source at least two labels earlier**,
 under growing faults. -/
 theorem clean_source_proposal_parent_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x p : Fin sp.n} {r s i u : Nat}
     (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
     {B : AC.Blk sp.n (List (FG.Att sp.n))}

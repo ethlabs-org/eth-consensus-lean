@@ -2,7 +2,8 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionCompatibility
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UnanimousPool
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalReports
+public import
+    ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CandidateReport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HigherReports
@@ -60,6 +61,7 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-! ### Calls of a node honest at them -/
 
@@ -93,7 +95,7 @@ private theorem frame_subset_at {ini : Fin sp.n → (goldilocksNode sp ro).State
 /-- **The unanimous head is held at a later call** of a node honest at it, when the call's finality
 is below the head: the node's own slot-`u` vote names `P`, held from then on. -/
 theorem unanimous_head_held_at_call_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ tr.HonestBlocksAt H)
     (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
@@ -134,7 +136,7 @@ extends it**, at any cut of a node honest at it and at `c_z` by the horizon, whe
 compatible with every earlier high origin. The reporter is honest at its report and at `c_z`:
 the call is after `c_z`, as the caller holds the target above the seed. -/
 theorem held_target_viableHeads_or_higher_report_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ (Node.frame (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)
@@ -200,7 +202,7 @@ theorem held_target_viableHeads_or_higher_report_at {cm : Time → Finset (Fin s
 
 /-- The any-cut viability alternative read through the frame of an AC call. -/
 theorem held_target_viable_or_higher_report_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y i ell)
     (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -223,7 +225,7 @@ earlier higher report**: the update of a node honest at `t_u + 6Δ` holds `P`, a
 and compatible with every earlier high origin. -/
 theorem unanimous_viable_or_higher_report_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
     (hslot : P.slot = u) (hu : 0 < u)
     (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
@@ -268,7 +270,7 @@ theorem unanimous_viable_or_higher_report_at
 below `P`, or an earlier report extends `P` with a strictly greater height. -/
 theorem finality_alternative_before_update_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
     (hslot : P.slot = u) (hu : 0 < u)
     (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
@@ -292,7 +294,7 @@ theorem finality_alternative_before_update_at
 /-- **A full viable unanimous pool at an update gives a report** at or before the adjacent
 `ac_to_fg` call, for a node honest at the update. -/
 theorem report_of_viable_unanimous_pool_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {j u : Nat} (hy : y ∈ H (tr.time j)) (hjb : tr.time j ≤ b)
     {ell ell' : ACLabel (goldilocksNode sp ro)} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hu : AC.UpdateAt tr.projAC y j u ell)
@@ -325,7 +327,7 @@ theorem report_of_viable_unanimous_pool_at {cm : Time → Finset (Fin sp.n)} {β
 and `ac_to_fg` calls: it reports a descendant of `P` by `t_u + 6Δ`, or a node honest at its
 report and at `c_z` reports a strictly higher descendant of `P` by then. -/
 theorem report_at_update_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ tr.HonestBlocksAt H) (hslot : P.slot = u) (hu : 0 < u)
     (hPg : P.root ≠ sp.genesisRoot)
@@ -428,7 +430,7 @@ honest at its report and at `c_z` reports a strict height increase above `P` by 
 adjacent update and `ac_to_fg` cuts are the shared ones (`update_toFG_of_signTick_at`); only this
 tick need sign. -/
 theorem report_of_signTick_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ tr.HonestBlocksAt H) (hslot : P.slot = u) (hu : 0 < u)
     (hPg : P.root ≠ sp.genesisRoot)
@@ -460,7 +462,7 @@ its report and at `c_z` reports a strict height increase above `P`. This is the 
 calendar's case of `report_of_signTick_unanimous_at`: under `GrowingAllTicksSign` the tick of every
 honest awake node at `t_u + 6Δ` signs. -/
 theorem report_cover_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     (hsign : tr.GrowingAllTicksSign proposer dg H)
     {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ tr.HonestBlocksAt H) (hslot : P.slot = u) (hu : 0 < u)

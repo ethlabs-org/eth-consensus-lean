@@ -89,11 +89,8 @@ theorem block_call_in_view_of_releases
     cases he : rho.events[i] with
     | tick v t =>
       have het := (List.getElem?_eq_getElem hi).trans (congrArg some he)
-      have hg := hm
-      rw [eventCuts_tick e rho i v t het] at hg
-      split at hg
-      · rename_i hp
-        rw [groupRecs_eq] at hg
+      rcases mem_eventCuts_tick e rho het hm with ⟨hp, hg⟩ | ⟨_, -, w, -, a, -, st, s, -, hg⟩
+      · rw [groupRecs_eq] at hg
         obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem hg
         simp only [List.getElem_mapIdx, List.getElem_zip] at hrl hm ⊢
         obtain ⟨_, _, hparent, hnz⟩ := Compose.tick_block_cut_fields _ _ _ _ _ _ _
@@ -101,7 +98,16 @@ theorem block_call_in_view_of_releases
         refine ⟨hparent, i, _, het, ?_⟩
         exact rho.mem_viewIdx_iff.2 ⟨i, _, by omega,
           Or.inl ⟨t, Or.inl het, hrel het hp _ hm _ _ hrl hnz⟩, .refl _⟩
-      · cases hg
+      · rw [groupRecs_eq] at hg
+        obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem hg
+        simp only [List.getElem_mapIdx, List.getElem_zip] at hrl
+        have hj' : j < (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey w) st t
+            (.attestation a)).2.length := by simp at hj; exact hj.1
+        have hc := List.getElem_mem hj'
+        simp only [exec, onAttestation, List.mem_singleton] at hc
+        rw [show (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey w) st t
+            (.attestation a)).2[j] = _ from hc] at hrl
+        cases hrl
     | deliver v o t =>
       have het := (List.getElem?_eq_getElem hi).trans (congrArg some he)
       obtain ⟨w, _, hd⟩ := blockCall_delivered e rho het hm hrl

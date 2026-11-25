@@ -107,14 +107,41 @@ private theorem deliverRecs_head_pos {sp : AC.ACParams}
       · rw [List.getElem?_append_left (by omega)] at h
         exact groupRecs_head_pos proposer dg self st t _ e h
 
+/-- The first cut of a concatenation of runs whose first cuts are at position `0`. -/
+private theorem head_pos_append {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+    {l₁ l₂ : List (CutRec sp ro)} (h₁ : ∀ r, l₁[0]? = some r → r.pos = 0)
+    (h₂ : ∀ r, l₂[0]? = some r → r.pos = 0) {r : CutRec sp ro}
+    (h : (l₁ ++ l₂)[0]? = some r) : r.pos = 0 := by
+  cases l₁ with
+  | nil => exact h₂ r h
+  | cons x xs => exact h₁ r h
+
+/-- The first cut of a run of own admissions is at position `0`. -/
+private theorem admitRecs_head_pos {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
+    (self : Fin sp.n) (t : Time) (i : Nat) :
+    ∀ (as : List (FG.Att sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
+      {r : CutRec sp ro}, (admitRecs proposer dg self t i as st sub)[0]? = some r → r.pos = 0
+  | [], st, sub, r, h => by simp [admitRecs_nil] at h
+  | a :: as, st, sub, r, h => by
+    rw [admitRecs_cons] at h
+    by_cases hg : (groupRecs proposer dg self st t (Nat.pair i sub) (.attestation a)).length = 0
+    · rw [List.getElem?_append_right (by omega), hg] at h
+      exact admitRecs_head_pos proposer dg self t i as _ (sub + 1) h
+    · rw [List.getElem?_append_left (by omega)] at h
+      exact groupRecs_head_pos proposer dg self st t _ _ h
+
 /-- The first cut of an engine event is at position `0`. -/
 private theorem eventCuts_head_pos (i : Nat) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
     (h : (eventCuts S rho hn i)[0]? = some r) : r.pos = 0 := by
   rw [eventCuts_eq S rho hn] at h
   split at h
   · split at h
-    · exact groupRecs_head_pos _ _ _ _ _ _ _ h
-    · simp at h
+    · exact head_pos_append (fun _ h => groupRecs_head_pos _ _ _ _ _ _ _ h)
+        (fun _ h => admitRecs_head_pos _ _ _ _ _ _ _ _ h) h
+    · rw [List.nil_append] at h
+      exact admitRecs_head_pos _ _ _ _ _ _ _ _ h
   · exact deliverRecs_head_pos _ _ _ _ _ _ _ _ _ _ h
   · exact groupRecs_head_pos _ _ _ _ _ _ _ h
   · simp at h
@@ -126,7 +153,7 @@ theorem cutMap_boundary (y : Fin (Fintype.card V)) (q : Nat) :
   rintro ⟨c, hc⟩
   rw [simTraceAt_eq S rho hn] at hc ⊢
   obtain ⟨r, i, ev, hr, _, hlo, hhi, hri, _, _, hpos, _⟩ :=
-    simTrace_cut S rho hn (k := cutMap S rho hn q) (by rw [hc.2]; simp)
+    simTrace_cut_origin S rho hn (k := cutMap S rho hn q) (by rw [hc.2]; simp)
   have hiq : cutMap S rho hn i = cutMap S rho hn q := by
     rcases Nat.lt_or_ge i q with h | h
     · have := cutMap_mono S rho hn (show i + 1 ≤ q by omega)

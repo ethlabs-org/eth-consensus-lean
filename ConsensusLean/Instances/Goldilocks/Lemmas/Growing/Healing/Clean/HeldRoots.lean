@@ -38,13 +38,14 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- **A high justified height is read after the snapshot**: at a state of a reader honest at
 `t`, every earlier cut at a time `≤ t`, a justified height `≥ H_z + 1` gives `c_z ≤ t`. Otherwise
 the replay quorum at `c_z` has an attester of height `H_z + 1` honest at `c_z`, which signed
 before `t < c_z`, against the reset's minimality and `c_z < a`. -/
 theorem cutZ_le_of_high_hj_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
     (hy : y ∈ H t) (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj) :
     cutZ sp.toParams g ≤ t := by
@@ -85,7 +86,7 @@ theorem cutZ_le_of_high_hj_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 root compatible with every held block compatible with the earlier high origins. The cut is after
 `c_z` (`cutZ_le_of_high_hj_at`). -/
 theorem high_J_root_of_held_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {i k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H (tr.time k))
     (hkb : tr.time k ≤ b)
@@ -123,7 +124,7 @@ theorem high_J_root_of_held_before_at {cm : Time → Finset (Fin sp.n)} {βK : �
 
 /-- `high_J_root_of_held_before_at` at an AC call, whose frame is the store's. -/
 theorem high_J_root_of_held_at_call_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {i k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H (tr.time k))
     (hkb : tr.time k ≤ b) {ell : ACLabel (goldilocksNode sp ro)}
@@ -138,7 +139,7 @@ theorem high_J_root_of_held_at_call_before_at {cm : Time → Finset (Fin sp.n)} 
 /-- A cut of a node honest at it, with a low justified height and a held high seed, has its
 finalized-chain root compatible with every held block compatible with the seed. -/
 theorem low_root_of_held_seed_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
     (hS : HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b)
@@ -185,7 +186,7 @@ theorem low_root_of_held_seed_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- `low_root_of_held_seed_at` at an AC call, whose frame is the store's. -/
 theorem low_root_of_held_seed_at_call_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (_hx : x ∈ H (tr.time r)) (_hBx : B ∈ (tr.state x r).fg.tree) (_hrb : tr.time r ≤ b)
     (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)

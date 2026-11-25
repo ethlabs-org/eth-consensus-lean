@@ -1,9 +1,11 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Results.Spec.NodeCanonicalTrace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeTickTail
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventorySchedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeStateAgreement
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodePool
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -60,7 +62,10 @@ private theorem event_of_cut {k : Nat} {r : CutRec A}
     (hr : (allCuts e rho)[k]? = some r) :
     ∃ i ev, rho.events[i]? = some ev ∧ cutMap e rho i ≤ k ∧
       k < cutMap e rho (i + 1) ∧ (simTrace e rho).time k = ev.time ∧
-      (simTrace e rho).node k = rho.ownKey ev.node ∧ r ∈ eventCuts e rho i := by
+      ((simTrace e rho).node k = rho.ownKey ev.node ∨ (∃ v, ev = .tick v ev.time) ∧
+        ∃ j ≤ i, ∃ w : V, rho.events[j]? = some (.tick w ev.time) ∧
+          (simTrace e rho).node k = rho.ownKey w ∧ ∃ a, r.label = .fg (.attestation a)) ∧
+      r ∈ eventCuts e rho i := by
   rw [allCuts_eq] at hr
   obtain ⟨i, hi, hlo, hhi, hmem⟩ := cut_event_range e rho _ _ _ hr
   have hm := List.mem_of_getElem? hmem
@@ -111,17 +116,24 @@ theorem eventOf_time {k : Nat} {ev} (hk : (simTrace e rho).label k ≠ none)
 private theorem call_origin {y : Fin (Fintype.card V)} {k : Nat} {c : Cut A}
     (hc : (simTrace e rho).CallAt y k c) :
     ∃ i ev, rho.events[i]? = some ev ∧ cutMap e rho i ≤ k ∧ k < cutMap e rho (i + 1) ∧
-      (simTrace e rho).time k = ev.time ∧ ev.node = rho.key y ∧
+      (simTrace e rho).time k = ev.time ∧ (ev.node = rho.key y ∨
+        (∃ v, ev = .tick v ev.time) ∧ ∃ j ≤ i, ∃ w : V,
+          rho.events[j]? = some (.tick w ev.time) ∧ w = rho.key y ∧
+          ∃ a, c = .fg (.attestation a)) ∧
       ∃ r ∈ eventCuts e rho i, r.label = c := by
   obtain ⟨hn, hl⟩ := hc
   cases hr : (allCuts e rho)[k]? with
   | none => simp [simTrace_label, hr] at hl
   | some r =>
     obtain ⟨i, ev, he, h1, h2, ht, hy, hm⟩ := event_of_cut e rho hr
-    have hkey := congrArg rho.key (hy.symm.trans hn)
-    rw [Model.Run.ownKey, Equiv.apply_symm_apply] at hkey
     rw [simTrace_label, hr, Option.map_some, Option.some.injEq] at hl
-    exact ⟨i, ev, he, h1, h2, ht, hkey, r, hm, hl⟩
+    have hkey : ∀ x : V, (simTrace e rho).node k = rho.ownKey x → x = rho.key y := fun x hx => by
+      have h := congrArg rho.key (hx.symm.trans hn)
+      rwa [Model.Run.ownKey, Equiv.apply_symm_apply] at h
+    refine ⟨i, ev, he, h1, h2, ht, ?_, r, hm, hl⟩
+    rcases hy with hy | ⟨hev, j, hj, w, hw, hy, a, ha⟩
+    · exact Or.inl (hkey _ hy)
+    · exact Or.inr ⟨hev, j, hj, w, hw, hkey _ hy, a, hl ▸ ha⟩
 
 private theorem time_bounds (hv : rho.ExecutionValid) (k : Nat) :
     0 ≤ (simTrace e rho).time k ∧ (simTrace e rho).time k ≤ rho.horizon + 1 := by
@@ -229,6 +241,12 @@ theorem awake_of_call (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : 
   obtain ⟨c, hc⟩ := hc
   obtain ⟨_, ev, he, _, _, ht, hkey, _⟩ := call_origin e rho hc
   have hm := List.mem_of_getElem? he
+  rcases hkey with hkey | ⟨-, j, -, w, hw, rfl, -⟩
+  swap
+  · have hmw := List.mem_of_getElem? hw
+    rw [simTrace_awake_iff, ht]
+    have hh := hv.in_horizon _ hmw
+    exact ⟨hv.tick_awake _ _ hmw, hh⟩
   rw [simTrace_awake_iff, ht, ← hkey]
   refine ⟨?_, hv.in_horizon ev hm⟩
   cases ev with
@@ -304,44 +322,97 @@ private theorem index_eq (hv : rho.ExecutionValid)
   obtain ⟨_, hj'⟩ := List.getElem?_eq_some_iff.mp hj
   exact hv.nodup.getElem_inj_iff.mp (hi'.trans hj'.symm)
 
-/-- The first cut of a replay group identifies its enclosing engine event and phase. -/
+/-- The first cut of a replay group identifies its enclosing engine event and phase: a group of
+the event's node with the event's phase (a tick group starts its event's range at a public time),
+or an own-admission group, an `.attestation` of the delivery phase, right after the node's own
+tick group in the same engine event. -/
 theorem group_origin {y : Fin (Fintype.card V)} {j : Nat} {t : Time} {ev : Node.Event A}
     (hg : (simTrace e rho).GroupAt (runProposer rho hn) (digestOf e rho) y j t ev) :
     ∃ i ev', rho.events[i]? = some ev' ∧ cutMap e rho i ≤ j ∧ j < cutMap e rho (i + 1) ∧
-      ev'.node = rho.key y ∧ ev'.time = t ∧ ev.phase = ev'.phase ∧
-      ∃ r, (eventCuts e rho i)[j - cutMap e rho i]? = some r ∧ r.pos = 0 := by
+      ev'.time = t ∧ ∃ r, (eventCuts e rho i)[j - cutMap e rho i]? = some r ∧ r.pos = 0 ∧
+      ((ev'.node = rho.key y ∧ ev.phase = ev'.phase ∧
+          ∀ v, ev' = .tick v t → j = cutMap e rho i ∧
+            (paramsAtCount p (Fintype.card V) hN hn).IsPublic t) ∨
+        (∃ w : V, ev' = .tick w t ∧ w = rho.key y ∧
+          cutMap e rho i + (tickGroup e rho i w t).length ≤ j ∧
+          ∃ a, ev = .attestation a ∧ a ∈ admitsAt e rho w i) ∧ ev.phase = 2) := by
   obtain ⟨hne, hg, -⟩ := hg
   obtain ⟨hy, ht, _, hpos, hl⟩ := hg 0 (List.length_pos_of_ne_nil hne)
   rw [Nat.add_zero] at hy ht hpos hl
   cases hr : (allCuts e rho)[j]? with
   | none => simp [simTrace_label, hr] at hl
   | some r =>
-    have hr' := hr
-    rw [allCuts_eq] at hr'
-    obtain ⟨i, hi, h1, h2, hidx⟩ := cut_event_range e rho _ _ _ hr'
-    have he := List.getElem?_eq_getElem hi
-    have hm := List.mem_of_getElem? hidx
-    obtain ⟨ht', hy'⟩ := eventCut_node_time e rho he hm
+    obtain ⟨i, ev', he, h1, h2, hidx, hcl⟩ := cut_classify e rho hr
     rw [simTrace_pos, hr, Option.elim_some] at hpos
     rw [simTrace_label, hr, Option.map_some, Option.some.injEq] at hl
-    rw [simTrace_node, hr, Option.elim_some, hy'] at hy
-    rw [simTrace_time, hr, Option.elim_some, ht'] at ht
-    have hk := congrArg rho.key hy
-    rw [Model.Run.ownKey, Equiv.apply_symm_apply] at hk
+    rw [simTrace_node, hr, Option.elim_some] at hy
+    rw [simTrace_time, hr, Option.elim_some] at ht
     obtain ⟨c, cs, hcs⟩ := List.exists_cons_of_ne_nil hne
     rw [List.getElem_of_eq hcs] at hl
     change r.label = c at hl
     subst c
-    have hp := phase_of_pos_zero e rho he hm hpos hcs
-    exact ⟨i, rho.events[i], he, h1, h2, hk, ht, hp, r, hidx, hpos⟩
+    have hm := List.mem_of_getElem? hidx
+    have ht' := (eventCut_node_time e rho he hm).1
+    have hkey : ∀ x : V, r.node = rho.ownKey x → x = rho.key y := fun x hx => by
+      have h := congrArg rho.key (hx.symm.trans hy)
+      rwa [Model.Run.ownKey, Equiv.apply_symm_apply] at h
+    refine ⟨i, ev', he, h1, h2, ht'.symm.trans ht, r, hidx, hpos, ?_⟩
+    rcases hcl with ⟨hnt, -, -, hnd⟩ | ⟨v, t', rfl, -, hgr⟩ | ⟨v, t', rfl, hge, htl⟩
+    · left
+      refine ⟨hkey _ hnd, ?_, fun v h => absurd h (hnt v t)⟩
+      rcases phase_of_pos_zero e rho he hm hpos hcs with h | ⟨⟨v, t', h⟩, -⟩
+      · exact h
+      · exact absurd h (hnt v t')
+    · have htt : t' = t := ht'.symm.trans ht
+      subst htt
+      left
+      rw [tickGroup_eq] at hgr
+      split at hgr
+      · rename_i hpub
+        have hmg := List.mem_of_getElem? hgr
+        obtain ⟨-, -, hnode, -⟩ := mem_groupRecs_fields _ _ _ _ _ _ _ hmg
+        refine ⟨hkey _ hnode, groupRecs_phase_of_pos_zero _ _ _ _ _ _ _ hmg hpos hcs,
+          fun _ _ => ⟨?_, hpub⟩⟩
+        obtain ⟨hm', hrec⟩ := List.getElem?_eq_some_iff.mp hgr
+        have hidx' := congrArg CutRec.pos hrec
+        rw [List.getElem_of_eq (groupRecs_eq _ _ _ _ _ _ _), List.getElem_mapIdx] at hidx'
+        change j - cutMap e rho i = r.pos at hidx'
+        omega
+      · simp at hgr
+    · have htt : t' = t := ht'.symm.trans ht
+      subst htt
+      right
+      obtain ⟨a, ha, st, s, -, hgm⟩ := mem_tickTail e rho (List.mem_of_getElem? htl)
+      have hph := groupRecs_phase_of_pos_zero _ _ _ _ _ _ _ hgm hpos hcs
+      obtain ⟨hlab, -, hnode, -⟩ := mem_groupRecs_fields _ _ _ _ _ _ _ hgm
+      have hla : r.label = .fg (.attestation a) := by simpa [exec, onAttestation] using hlab
+      refine ⟨⟨v, rfl, hkey _ hnode, by omega, a, ?_, ha⟩, hph⟩
+      rw [hla] at hcs
+      cases ev with
+      | tick x f => simp [Node.Event.phase] at hph
+      | restart => simp [Node.Event.phase] at hph
+      | block b =>
+        obtain ⟨acc, hb⟩ := Simulation.exec_block_head _ _ _ _ _ b hcs
+        cases hb
+      | message m => simp [exec, onMessage, acCall] at hcs
+      | attestation a' =>
+        simp only [exec, onAttestation, List.cons.injEq, Cut.fg.injEq,
+          FGLabel.attestation.injEq] at hcs
+        rw [hcs.1]
 
 private theorem delivery_group_source {y : Fin (Fintype.card V)} {j : Nat} {t : Time}
     {ev : Node.Event A} (hg : (simTrace e rho).GroupAt (runProposer rho hn) (digestOf e rho)
       y j t ev) (hp : ev.phase = 2) :
-    ∃ (i : Nat) (v : V), ∃ o u w, rho.events[i]? = some (.deliver v o u) ∧
+    (∃ (i : Nat) (v : V), ∃ o u w, rho.events[i]? = some (.deliver v o u) ∧
       engineObj e w ∈ o.parts ∧
-      canonEvent (receiverCodec e rho v) (Model.digests rho.hash o) w = some ev := by
-  obtain ⟨i, source, he, hstart, _, _, _, hphase, r, hr, _⟩ := group_origin e rho hg
+      canonEvent (receiverCodec e rho v) (Model.digests rho.hash o) w = some ev) ∨
+    ∃ a, ev = .attestation a ∧ ∃ n, ∃ w : V, rho.events[n]? = some (.tick w t) ∧
+      a ∈ admitsAt e rho w n := by
+  obtain ⟨i, source, he, hstart, _, _, r, hr, _, hcase⟩ := group_origin e rho hg
+  rcases hcase with ⟨_, hphase, _⟩ | ⟨⟨w, hw, -, -, a, ha, hadm⟩, -⟩
+  swap
+  · exact Or.inr ⟨a, ha, i, w, hw ▸ he, hadm⟩
+  refine Or.inl ?_
   have hrec := allCuts_getElem?_add e rho i (j - cutMap e rho i)
     (List.getElem?_eq_some_iff.mp he).1 (List.getElem?_eq_some_iff.mp hr).1
   rw [Nat.add_sub_cancel' hstart, hr] at hrec
@@ -448,7 +519,9 @@ private theorem block_source {y : Fin (Fintype.card V)} {j : Nat} {t : Time} {b 
       engineObj e w ∈ o.parts ∧
       decodeBlock e.codec.decode e.codec.carried A.validPayload
         (Model.digests rho.hash o) w = some b := by
-  obtain ⟨i, v, o, u, w, he, hw, hc⟩ := delivery_group_source e rho hg rfl
+  obtain ⟨i, v, o, u, w, he, hw, hc⟩ | ⟨a, h, -⟩ := delivery_group_source e rho hg rfl
+  swap
+  · cases h
   refine ⟨i, v, o, u, w, he, hw, ?_⟩
   rw [receiverCodec_eq] at hc
   unfold canonEvent at hc
@@ -461,6 +534,8 @@ theorem wire
       e.codec.encode atts payload = h)
     (hmsg : ∀ {io w m}, e.decodeMessage io w = some m → A.validMsg m)
     (hatt : ∀ {w a}, e.codec.attestation w = some a → a.WellFormed)
+    (hown : ∀ (v : V) i t, rho.events[i]? = some (.tick v t) →
+      ∀ a ∈ admitsAt e rho v i, a.WellFormed)
     {y : Fin (Fintype.card V)} {j : Nat} {t : Time} {ev : Node.Event A}
     (hg : (simTrace e rho).GroupAt (runProposer rho hn) (digestOf e rho) y j t ev) :
     WireOK (digestOf e rho) ev := by
@@ -468,14 +543,20 @@ theorem wire
   | tick x fgDue => trivial
   | restart => trivial
   | message m =>
-    obtain ⟨_, v, _, _, w, _, _, hc⟩ := delivery_group_source e rho hg rfl
+    obtain ⟨_, v, _, _, w, _, _, hc⟩ | ⟨a, h, -⟩ := delivery_group_source e rho hg rfl
+    swap
+    · cases h
     apply hmsg (io := voteIOAt e rho v) (w := w)
     rw [receiverCodec_eq] at hc
     unfold canonEvent at hc
     split at hc <;> cases hc
     assumption
   | attestation a =>
-    obtain ⟨_, _, _, _, w, _, _, hc⟩ := delivery_group_source e rho hg rfl
+    obtain ⟨_, _, _, _, w, _, _, hc⟩ | ⟨a', h, n, v, hn', ha⟩ :=
+      delivery_group_source e rho hg rfl
+    swap
+    · cases h
+      exact hown v n _ hn' _ ha
     apply hatt (w := w)
     rw [receiverCodec_eq] at hc
     unfold canonEvent at hc
@@ -548,33 +629,15 @@ theorem proposerCredential (hv : rho.ExecutionValid)
   rw [hsel] at ha
   exact Finset.mem_singleton.mp ha
 
-/-- At a fixed time, replay groups preserve the engine's phase order. -/
-theorem phase_order (hv : rho.ExecutionValid) {y y' : Fin (Fintype.card V)} {j j' : Nat}
-    {t : Time} {ev ev' : Node.Event A}
-    (hg : (simTrace e rho).GroupAt (runProposer rho hn) (digestOf e rho) y j t ev)
-    (hg' : (simTrace e rho).GroupAt (runProposer rho hn) (digestOf e rho) y' j' t ev')
-    (hj : j < j') : ev.phase ≤ ev'.phase := by
-  obtain ⟨i, ei, hi, h1, _, _, ht, hp, _⟩ := group_origin e rho hg
-  obtain ⟨i', ei', hi', _, h2, _, ht', hp', _⟩ := group_origin e rho hg'
-  have hle : i ≤ i' := by
-    by_contra! h
-    have : cutMap e rho (i' + 1) ≤ cutMap e rho i := cutMap_mono e rho (Nat.succ_le_of_lt h)
-    omega
-  rw [hp, hp']
-  rcases hle.lt_or_eq with h | rfl
-  · rcases keyLe_of_lt rho hv hi hi' h with h | h
-    · rw [ht, ht'] at h
-      exact (lt_irrefl _ h).elim
-    · exact h.2
-  · cases hi.symm.trans hi'
-    exact le_rfl
-
 private theorem tick_origin {y : Fin (Fintype.card V)} {j : Nat} {t : Time}
     (hg : (simTrace e rho).TickAt (runProposer rho hn) (digestOf e rho) y j t) :
     ∃ i, rho.events[i]? = some (.tick (rho.key y) t) ∧ j = cutMap e rho i ∧
       (paramsAtCount p (Fintype.card V) hN hn).IsPublic t := by
   obtain ⟨x, fgDue, hg⟩ := hg
-  obtain ⟨i, ev, he, h1, _, hy, ht, hp, r, hr, hpos⟩ := group_origin e rho hg
+  obtain ⟨i, ev, he, -, -, ht, -, -, -, hc⟩ := group_origin e rho hg
+  rcases hc with ⟨hy, hp, htk⟩ | ⟨-, hp⟩
+  swap
+  · simp [Node.Event.phase] at hp
   cases ev with
   | restart => simp [Node.Event.phase, Model.Event.phase] at hp
   | deliver => simp [Node.Event.phase, Model.Event.phase] at hp
@@ -582,15 +645,8 @@ private theorem tick_origin {y : Fin (Fintype.card V)} {j : Nat} {t : Time}
     change v = rho.key y at hy
     change s = t at ht
     subst v s
-    rw [eventCuts_tick e rho i _ t he] at hr
-    split at hr
-    · rename_i hpublic
-      obtain ⟨hm, hrec⟩ := List.getElem?_eq_some_iff.mp hr
-      have hidx := congrArg CutRec.pos hrec
-      rw [List.getElem_of_eq (groupRecs_eq _ _ _ _ _ _ _), List.getElem_mapIdx] at hidx
-      change j - cutMap e rho i = r.pos at hidx
-      exact ⟨i, he, by omega, hpublic⟩
-    · simp at hr
+    obtain ⟨hj, hpub⟩ := htk _ rfl
+    exact ⟨i, he, hj, hpub⟩
 
 /-- A tick group starts only at a public time. -/
 theorem tick_public {y : Fin (Fintype.card V)} {j : Nat} {t : Time}
@@ -613,6 +669,9 @@ private theorem restart_origin {y : Fin (Fintype.card V)} {k : Nat}
   obtain ⟨l, hc, hl⟩ := hr
   obtain ⟨i, ev, he, h1, h2, ht, hy, r, hm, hlab⟩ := call_origin e rho hc
   obtain ⟨v, t, rfl⟩ := restart_of_mem_eventCuts e rho he hm hlab hl
+  rcases hy with hy | ⟨⟨_, h⟩, -⟩
+  swap
+  · cases h
   change v = rho.key y at hy
   subst v
   have hs := (restart_at e rho he).2.2
@@ -635,6 +694,9 @@ private theorem earlier_call_before_restart (hv : rho.ExecutionValid)
     | tick => simp [Model.Event.phase] at hp
     | deliver => simp [Model.Event.phase] at hp
     | restart v s =>
+      rcases hy with hy | ⟨⟨_, h⟩, -⟩
+      swap
+      · cases h
       change v = rho.key y at hy
       change s = t at hs
       subst v s
@@ -688,19 +750,6 @@ private theorem length_posts {Q : Params} {N : NodeAC Q} (y : Fin Q.n) (t : Time
   induction cs generalizing st with
   | nil => rw [cutPosts_nil]; rfl
   | cons c cs ih => simp only [cutPosts_cons, List.length_cons, ih]
-
-private theorem range_of_id {i s k : Nat} (hi : i < rho.events.length)
-    (hk : (simTrace e rho).event k = Nat.pair i s) :
-    cutMap e rho i ≤ k ∧ k < cutMap e rho (i + 1) := by
-  cases hr : (allCuts e rho)[k]? with
-  | none =>
-    rw [simTrace_event, hr, Option.elim_none, Nat.pair_eq_pair] at hk
-    omega
-  | some r =>
-    obtain ⟨j, ev, he, h1, h2, _, _, hm⟩ := event_of_cut e rho hr
-    obtain ⟨s', hs⟩ := eventCut_id e rho he hm
-    rw [simTrace_event, hr, Option.elim_some, hs, Nat.pair_eq_pair] at hk
-    exact hk.1 ▸ ⟨h1, h2⟩
 
 omit [DecidableEq V] in
 private theorem length_group {y : Fin (Fintype.card V)} {t : Time} {id : Nat}
@@ -947,6 +996,78 @@ private theorem delivery_group {y : Fin (Fintype.card V)} {t : Time} {i : Nat}
     indexed_delivery_group e rho C hs os j sub st hcut hstate k hk
   exact ⟨j', _, Nat.pair i s, ev, hrec, hst, hlo, hhi, hu huniq⟩
 
+/-- **The indexed own-admission replay.** Own-admission records laid out in the trace from `base`,
+with the trace state `st` there: one record per admitted attestation, the `m`-th being the single
+cut of the `.attestation L[m]` group under the id `Nat.pair i (sub + m)`, from the `on_attestation`
+fold of the first `m` attestations, which is the trace state before it. -/
+private theorem admitRecs_indexed {y : Fin (Fintype.card V)} {t : Time} {i : Nat} :
+    ∀ (L : List (FG.Att (Fintype.card V))) (st : NodeState A) (sub base : Nat),
+    (∀ k < (admitRecs (runProposer rho hn) (digestOf e rho) y t i L st sub).length,
+      (allCuts e rho)[base + k]? =
+        (admitRecs (runProposer rho hn) (digestOf e rho) y t i L st sub)[k]?) →
+    (simTrace e rho).state y base = st →
+    (admitRecs (runProposer rho hn) (digestOf e rho) y t i L st sub).length = L.length ∧
+    ∀ m (hm : m < L.length),
+      (groupRecs (runProposer rho hn) (digestOf e rho) y
+        ((L.take m).foldl (fun n a => (exec (runProposer rho hn) (digestOf e rho) y n t
+          (.attestation a)).1) st) t (Nat.pair i (sub + m)) (.attestation L[m])).length = 1 ∧
+      (allCuts e rho)[base + m]? =
+        (groupRecs (runProposer rho hn) (digestOf e rho) y
+          ((L.take m).foldl (fun n a => (exec (runProposer rho hn) (digestOf e rho) y n t
+            (.attestation a)).1) st) t (Nat.pair i (sub + m)) (.attestation L[m]))[0]? ∧
+      (simTrace e rho).state y (base + m) =
+        (L.take m).foldl (fun n a => (exec (runProposer rho hn) (digestOf e rho) y n t
+          (.attestation a)).1) st := by
+  intro L st sub base hcut hstate
+  obtain ⟨hlen, hget⟩ := admitRecs_getElem? (runProposer rho hn) (digestOf e rho) y t i L st sub
+  have hcut' : ∀ m (hm : m < L.length), (allCuts e rho)[base + m]? =
+      (groupRecs (runProposer rho hn) (digestOf e rho) y
+        ((L.take m).foldl (fun n a => (exec (runProposer rho hn) (digestOf e rho) y n t
+          (.attestation a)).1) st) t (Nat.pair i (sub + m)) (.attestation L[m]))[0]? :=
+    fun m hm => (hcut m (by omega)).trans (hget m hm)
+  have hstm : ∀ m, m ≤ L.length → (simTrace e rho).state y (base + m) =
+      (L.take m).foldl (fun n a => (exec (runProposer rho hn) (digestOf e rho) y n t
+        (.attestation a)).1) st := by
+    intro m
+    induction m with
+    | zero => intro _; simpa using hstate
+    | succ m ih =>
+      intro hm
+      have h1 := groupRecs_attestation_length (runProposer rho hn) (digestOf e rho) y
+        ((L.take m).foldl (fun n a => (exec (runProposer rho hn) (digestOf e rho) y n t
+          (.attestation a)).1) st) t (Nat.pair i (sub + m)) L[m]
+      have h := state_after_group e rho (j := base + m) (id := Nat.pair i (sub + m))
+        (ev := .attestation L[m]) (fun k hk => by
+          rw [groupRecs_attestation_length] at hk
+          obtain rfl : k = 0 := by omega
+          simpa using hcut' m (by omega)) (ih (by omega))
+      rw [h1, Nat.add_assoc] at h
+      rw [h, List.take_add_one, List.getElem?_eq_getElem (by omega), Option.toList_some,
+        List.foldl_append, List.foldl_cons, List.foldl_nil]
+  exact ⟨hlen, fun m hm => ⟨groupRecs_attestation_length _ _ _ _ _ _ _, hcut' m hm,
+    hstm m hm.le⟩⟩
+
+/-- The `m`-th record of an indexed own-admission replay: the node's `.attestation L[m]` cut. -/
+private theorem admitRecs_indexed_cut {y : Fin (Fintype.card V)} {t : Time} {i : Nat}
+    {L : List (FG.Att (Fintype.card V))} {st : NodeState A} {sub base m : Nat}
+    (hm : m < L.length)
+    (h : (groupRecs (runProposer rho hn) (digestOf e rho) y
+        ((L.take m).foldl (fun n a => (exec (runProposer rho hn) (digestOf e rho) y n t
+          (.attestation a)).1) st) t (Nat.pair i (sub + m)) (.attestation L[m])).length = 1 ∧
+      (allCuts e rho)[base + m]? =
+        (groupRecs (runProposer rho hn) (digestOf e rho) y
+          ((L.take m).foldl (fun n a => (exec (runProposer rho hn) (digestOf e rho) y n t
+            (.attestation a)).1) st) t (Nat.pair i (sub + m)) (.attestation L[m]))[0]?) :
+    ∃ r, (allCuts e rho)[base + m]? = some r ∧ r.node = y ∧
+      r.label = .fg (.attestation L[m]) ∧ r.event = Nat.pair i (sub + m) := by
+  obtain ⟨h1, h2⟩ := h
+  have h0 : 0 < (groupRecs (runProposer rho hn) (digestOf e rho) y
+      ((L.take m).foldl (fun n a => (exec (runProposer rho hn) (digestOf e rho) y n t
+        (.attestation a)).1) st) t (Nat.pair i (sub + m)) (.attestation L[m])).length := by omega
+  obtain ⟨hl, -, hn', hid⟩ := mem_groupRecs_fields _ _ _ _ _ _ _ (List.getElem_mem h0)
+  exact ⟨_, h2.trans (List.getElem?_eq_getElem h0), hn', by simpa [exec, onAttestation] using hl,
+    hid⟩
+
 private theorem records_of_call {due : e.State hn → Bool} (laws : e.Lawful due)
     (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : Nat} {c : Cut A}
     (hc : (simTrace e rho).CallAt y k c) :
@@ -958,40 +1079,112 @@ private theorem records_of_call {due : e.State hn → Bool} (laws : e.Lawful due
       k < j + (groupRecs (runProposer rho hn) (digestOf e rho) y st t id ev).length ∧
       (∀ l, (simTrace e rho).event l = id → j ≤ l ∧
         l < j + (groupRecs (runProposer rho hn) (digestOf e rho) y st t id ev).length) := by
-  obtain ⟨i, ev, he, h1, h2, _, hy, _⟩ := call_origin e rho hc
+  obtain ⟨hnode, hlab⟩ := hc
+  cases hr : (allCuts e rho)[k]? with
+  | none => simp [simTrace_label, hr] at hlab
+  | some r =>
+  have hry : r.node = y := by rw [simTrace_node, hr] at hnode; exact hnode
+  clear hnode
+  obtain ⟨i, ev, he, h1, h2, hidx, hcl⟩ := cut_classify e rho hr
   have hi := (List.getElem?_eq_some_iff.mp he).1
   have hcut : ∀ m < (eventCuts e rho i).length,
       (allCuts e rho)[cutMap e rho i + m]? = (eventCuts e rho i)[m]? :=
     fun m hm => allCuts_getElem?_add e rho i m hi hm
   have hlen := cutMap_succ e rho i
-  have hstate := (stateAgreement_all laws hv ev.node i hi.le).symm
-  have hy' : rho.ownKey ev.node = y := by rw [hy, Model.Run.ownKey, Equiv.symm_apply_apply]
-  cases ev with
-  | tick v t =>
-    change rho.ownKey v = y at hy'
-    subst y
-    rw [eventCuts_tick e rho i v t he] at hcut hlen
-    by_cases hp : (paramsAtCount p (Fintype.card V) hN hn).IsPublic t
-    · rw [ite_eq_left hp] at hcut hlen
+  rcases hcl with ⟨hnt, -, -, hnd⟩ | ⟨v, t, rfl, hm, hg⟩ | ⟨v, t, rfl, hge, htl⟩
+  · have hstate := (stateAgreement_all laws hv ev.node i hi.le).symm
+    have hy' : rho.ownKey ev.node = y := hnd ▸ hry
+    cases ev with
+    | tick v t => exact absurd rfl (hnt v t)
+    | deliver v o t =>
+      change rho.ownKey v = y at hy'
+      subst hy'
+      rw [eventCuts_deliver e rho i v o t he] at hcut hlen
+      dsimp only at hlen
+      obtain ⟨j, st, id, ev, hrec, hst, hj, hk, hu⟩ :=
+        delivery_group e rho _ _ _ _ 0 _ hcut hstate
+          (fun l _ hl _ => hlen ▸ range_of_id_other e rho he hnt hl) (k - cutMap e rho i)
+          (by omega)
+      exact ⟨j, st, t, id, ev, hrec, hst, by omega, by omega, hu⟩
+    | restart v t =>
+      change rho.ownKey v = y at hy'
+      subst hy'
+      rw [eventCuts_restart e rho i v t he] at hcut hlen
       exact ⟨_, _, t, Nat.pair i 0, _, hcut, hstate, h1, by omega,
-        fun l hl => hlen ▸ range_of_id e rho hi hl⟩
-    · rw [ite_eq_right hp, List.length_nil] at hlen
+        fun l hl => hlen ▸ range_of_id_other e rho he hnt hl⟩
+  · have hm0 := List.mem_of_getElem? hg
+    rw [tickGroup_eq] at hm0 hm hg
+    split at hm0
+    · rename_i hpub
+      rw [ite_eq_left hpub] at hm hg
+      have hyv : rho.ownKey v = y := (mem_groupRecs_fields _ _ _ _ _ _ _ hm0).2.2.1 ▸ hry
+      subst hyv
+      have hstate := (stateAgreement_all laws hv v i hi.le).symm
+      have hsplit := eventCuts_tick_split e rho he
+      rw [tickGroup_eq] at hsplit
+      rw [ite_eq_left hpub] at hsplit
+      refine ⟨_, _, t, Nat.pair i 0,
+        .tick (encodeTxs (Model.mempool rho.inbox v t)) (e.adapter.sign (rho.ownKey v) t),
+        fun m hm' => ?_, hstate, h1, by omega, fun l hl => ?_⟩
+      · have hlt : m < (eventCuts e rho i).length := by
+          rw [hsplit, List.length_append]; omega
+        rw [hcut m hlt, hsplit, List.getElem?_append_left hm']
+      · have h := range_of_id_tick e rho he hl
+        rw [tickGroup_eq] at h
+        rwa [ite_eq_left hpub] at h
+    · cases hm0
+  · obtain ⟨a, -, st, s, -, hgm⟩ := mem_tickTail e rho (List.mem_of_getElem? htl)
+    have hyv : rho.ownKey v = y := (mem_groupRecs_fields _ _ _ _ _ _ _ hgm).2.2.1 ▸ hry
+    subst hyv
+    have hsplit := eventCuts_tick_split e rho he
+    rw [hsplit, List.length_append] at hlen
+    have hstate := (stateAgreement_all laws hv v i hi.le).symm
+    have hstart : (simTrace e rho).state (rho.ownKey v)
+        (cutMap e rho i + (tickGroup e rho i v t).length) =
+          postTick e rho e.adapter.sign v i t := by
+      rw [postTick_eq, tickGroup_eq]
+      by_cases hpub : (paramsAtCount p (Fintype.card V) hN hn).IsPublic t
+      · have hsp := hsplit
+        rw [tickGroup_eq] at hsp
+        simp only [hpub, ↓reduceIte] at hsp ⊢
+        exact state_after_group e rho (fun m hm' => by
+          have hlt : m < (eventCuts e rho i).length := by
+            rw [hsp, List.length_append]; omega
+          rw [hcut m hlt, hsp, List.getElem?_append_left hm']) hstate
+      · simp only [hpub, ↓reduceIte, List.length_nil, Nat.add_zero]
+        exact hstate
+    have hcutT : ∀ m < (tickTail e rho v i t).length,
+        (allCuts e rho)[cutMap e rho i + (tickGroup e rho i v t).length + m]? =
+          (tickTail e rho v i t)[m]? := by
+      intro m hm'
+      have hlt : (tickGroup e rho i v t).length + m < (eventCuts e rho i).length := by
+        rw [hsplit, List.length_append]; omega
+      rw [Nat.add_assoc, hcut _ hlt, hsplit, List.getElem?_append_right (by omega),
+        Nat.add_sub_cancel_left]
+    rw [tickTail_eq] at hcutT htl hlen
+    have hk' : k - cutMap e rho i - (tickGroup e rho i v t).length <
+        (admitRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v) t i (admitsAt e rho v i)
+          (postTick e rho e.adapter.sign v i t) 1).length :=
+      (List.getElem?_eq_some_iff.1 htl).1
+    obtain ⟨hlenT, htrav⟩ := admitRecs_indexed e rho (admitsAt e rho v i) _ 1 _ hcutT hstart
+    rw [hlenT] at hk' hlen
+    obtain ⟨hlen1, hc0, hs⟩ := htrav _ hk'
+    refine ⟨(cutMap e rho i + (tickGroup e rho i v t).length) +
+        (k - cutMap e rho i - (tickGroup e rho i v t).length), _, t,
+      Nat.pair i (1 + (k - cutMap e rho i - (tickGroup e rho i v t).length)),
+      .attestation (admitsAt e rho v i)[k - cutMap e rho i - (tickGroup e rho i v t).length],
+      fun m hm' => ?_, hs, by omega, by rw [hlen1]; omega, fun l hl => ?_⟩
+    · obtain rfl : m = 0 := by omega
+      simpa using hc0
+    · obtain ⟨hlo, hhi⟩ := range_of_id_admit e rho he (by omega) hl
+      have hml : l - (cutMap e rho i + (tickGroup e rho i v t).length) <
+          (admitsAt e rho v i).length := by omega
+      obtain ⟨r, hr, -, -, hid⟩ :=
+        admitRecs_indexed_cut e rho hml ⟨(htrav _ hml).1, (htrav _ hml).2.1⟩
+      rw [Nat.add_sub_cancel' hlo] at hr
+      rw [simTrace_event, hr, Option.elim_some, hid, Nat.pair_eq_pair] at hl
+      rw [hlen1]
       omega
-  | deliver v o t =>
-    change rho.ownKey v = y at hy'
-    subst y
-    rw [eventCuts_deliver e rho i v o t he] at hcut hlen
-    dsimp only at hlen
-    obtain ⟨j, st, id, ev, hrec, hst, hj, hk, hu⟩ :=
-      delivery_group e rho _ _ _ _ 0 _ hcut hstate
-        (fun l _ hl _ => hlen ▸ range_of_id e rho hi hl) (k - cutMap e rho i) (by omega)
-    exact ⟨j, st, t, id, ev, hrec, hst, by omega, by omega, hu⟩
-  | restart v t =>
-    change rho.ownKey v = y at hy'
-    subst y
-    rw [eventCuts_restart e rho i v t he] at hcut hlen
-    exact ⟨_, _, t, Nat.pair i 0, _, hcut, hstate, h1, by omega,
-      fun l hl => hlen ▸ range_of_id e rho hi hl⟩
 
 /-- The recorded cuts follow the node's handler law at every actual call. -/
 theorem cutLaw {due : e.State hn → Bool} (laws : e.Lawful due) (hv : rho.ExecutionValid)
@@ -1032,7 +1225,8 @@ theorem grouped {due : e.State hn → Bool} (laws : e.Lawful due) (hv : rho.Exec
   rw [ht]
   exact ⟨j, ev, hg, h1, h2⟩
 
-/-- A public engine tick gives one trace group at the prefix cut map.
+/-- A public engine tick gives one trace group at the prefix cut map, followed in the event's cut
+range by the own-admission tail when the tick is the last one of its time.
 Kept for a downstream consumer. -/
 theorem tick_public_group {due : e.State hn → Bool} (laws : e.Lawful due)
     (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
@@ -1045,21 +1239,205 @@ theorem tick_public_group {due : e.State hn → Bool} (laws : e.Lawful due)
       (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
         ((simTrace e rho).state (rho.ownKey v) (cutMap e rho i)) t
         (.tick (encodeTxs (Model.mempool rho.inbox v t))
-          (e.adapter.sign (rho.ownKey v) t))).2.length := by
+          (e.adapter.sign (rho.ownKey v) t))).2.length +
+      (admitRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v) t i (admitsAt e rho v i)
+        (postTick e rho e.adapter.sign v i t) 1).length := by
   have hi := (List.getElem?_eq_some_iff.mp he).1
   have hst := stateAgreement_all laws hv v i hi.le
-  have hcuts := eventCuts_tick e rho i v t he
-  rw [ite_eq_left hp] at hcuts
+  have hsplit := eventCuts_tick_split e rho he
+  have hTG : tickGroup e rho i v t = groupRecs (runProposer rho hn) (digestOf e rho)
+      (rho.ownKey v) (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0)
+      (.tick (encodeTxs (Model.mempool rho.inbox v t)) (e.adapter.sign (rho.ownKey v) t)) := by
+    rw [tickGroup_eq]
+    exact ite_eq_left hp
   refine ⟨groupAt_of_recs e rho _ _ (id := Nat.pair i 0) hst.symm ?_ ?_ ?_, ?_⟩
   · cases e.adapter.sign (rho.ownKey v) t <;>
       simp [exec, onTick, runSteps, tickSteps, Node.tickStep]
   · intro k hk
-    rw [← hcuts] at hk ⊢
-    exact allCuts_getElem?_add e rho i k hi hk
+    have hlt : k < (eventCuts e rho i).length := by
+      rw [hsplit, List.length_append, hTG]
+      omega
+    rw [allCuts_getElem?_add e rho i k hi hlt, hsplit, hTG, List.getElem?_append_left hk]
   · intro k hk
-    rw [← hcuts, ← cutMap_succ]
-    exact range_of_id e rho hi hk
-  · rw [cutMap_succ, hcuts, ← hst, length_group]
+    have h := range_of_id_tick e rho he hk
+    rwa [hTG] at h
+  · rw [cutMap_succ, hsplit, List.length_append, hTG, ← hst, length_group]
+    rw [tickTail_eq]
+    omega
+
+/-- An own admission of a public tick is an own publication of its node. -/
+private theorem ownPublication_of_admit {due : e.State hn → Bool} (laws : e.Lawful due)
+    (hv : rho.ExecutionValid) {i : Nat} {w : V} {t : Time}
+    (he : rho.events[i]? = some (.tick w t))
+    (hpub : (paramsAtCount p (Fintype.card V) hN hn).IsPublic t) {j : Nat}
+    {a : FG.Att (Fintype.card V)}
+    (hg : (simTrace e rho).GroupAt (runProposer rho hn) (digestOf e rho) (rho.ownKey w) j t
+      (.attestation a))
+    (hj : cutMap e rho i + (tickGroup e rho i w t).length ≤ j) (hj2 : j < cutMap e rho (i + 1)) :
+    (simTrace e rho).OwnPublicationAt (runProposer rho hn) (digestOf e rho) (rho.ownKey w) j t := by
+  have hi := (List.getElem?_eq_some_iff.mp he).1
+  have hcut : ∀ m < (eventCuts e rho i).length,
+      (allCuts e rho)[cutMap e rho i + m]? = (eventCuts e rho i)[m]? :=
+    fun m hm => allCuts_getElem?_add e rho i m hi hm
+  have hsplit := eventCuts_tick_split e rho he
+  have hlen := cutMap_succ e rho i
+  rw [hsplit, List.length_append] at hlen
+  have hst := stateAgreement_all laws hv w i hi.le
+  -- the trace state at the start of the admissions is `postTick`
+  have hTG : tickGroup e rho i w t = groupRecs (runProposer rho hn) (digestOf e rho)
+      (rho.ownKey w) (e.adapter.node (stateAt e rho w i)) t (Nat.pair i 0)
+      (.tick (encodeTxs (Model.mempool rho.inbox w t)) (e.adapter.sign (rho.ownKey w) t)) := by
+    rw [tickGroup_eq]
+    exact ite_eq_left hpub
+  have hcutG : ∀ m < (tickGroup e rho i w t).length,
+      (allCuts e rho)[cutMap e rho i + m]? = (tickGroup e rho i w t)[m]? := fun m hm => by
+    rw [hcut m (by rw [hsplit, List.length_append]; omega), hsplit,
+      List.getElem?_append_left hm]
+  have hstart : (simTrace e rho).state (rho.ownKey w)
+      (cutMap e rho i + (tickGroup e rho i w t).length) = postTick e rho e.adapter.sign w i t := by
+    rw [postTick_eq, ite_eq_left hpub, hTG]
+    rw [hTG] at hcutG
+    exact state_after_group e rho hcutG hst.symm
+  set L := admitsAt e rho w i
+  have hcutT : ∀ k < (admitRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey w) t i L
+      (postTick e rho e.adapter.sign w i t) 1).length,
+      (allCuts e rho)[cutMap e rho i + (tickGroup e rho i w t).length + k]? =
+        (admitRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey w) t i L
+          (postTick e rho e.adapter.sign w i t) 1)[k]? := by
+    intro k hk
+    have hlt : (tickGroup e rho i w t).length + k < (eventCuts e rho i).length := by
+      rw [hsplit, List.length_append, tickTail_eq]
+      exact Nat.add_lt_add_left hk _
+    rw [Nat.add_assoc, hcut _ hlt, hsplit, List.getElem?_append_right (by omega),
+      Nat.add_sub_cancel_left, tickTail_eq]
+  obtain ⟨hlenL, htrav⟩ := admitRecs_indexed e rho L _ 1 _ hcutT hstart
+  have hcuts : ∀ m (hm : m < L.length), (∃ r, (allCuts e rho)[cutMap e rho i +
+      (tickGroup e rho i w t).length + m]? = some r ∧ r.node = rho.ownKey w ∧
+        r.label = .fg (.attestation L[m])) ∧
+      (simTrace e rho).state (rho.ownKey w) (cutMap e rho i + (tickGroup e rho i w t).length + m) =
+        (L.take m).foldl (fun n a => (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey w) n t
+          (.attestation a)).1) (postTick e rho e.adapter.sign w i t) := fun m hm => by
+    obtain ⟨r, hr, hn', hl', -⟩ :=
+      admitRecs_indexed_cut e rho hm ⟨(htrav m hm).1, (htrav m hm).2.1⟩
+    exact ⟨⟨r, hr, hn', hl'⟩, (htrav m hm).2.2⟩
+  rw [tickTail_eq, hlenL] at hlen
+  obtain ⟨m, rfl⟩ : ∃ m, j = cutMap e rho i + (tickGroup e rho i w t).length + m :=
+    ⟨j - (cutMap e rho i + (tickGroup e rho i w t).length), by omega⟩
+  have hm : m < L.length := by omega
+  obtain ⟨⟨r, hr, -, hrl⟩, hstm⟩ := hcuts m hm
+  -- the group's attestation is `L[m]`
+  have haL : a = L[m] := by
+    obtain ⟨-, hgc, -⟩ := hg
+    have h0 := (hgc 0 (by simp [exec, onAttestation])).2.2.2.2
+    rw [Nat.add_zero, simTrace_label, hr, Option.map_some, Option.some.injEq, hrl] at h0
+    simpa [exec, onAttestation] using h0.symm
+  subst haL
+  -- the admitted attestations are fresh and distinct
+  have hfresh : (∀ b ∈ L, b ∉ (postTick e rho e.adapter.sign w i t).fg.atts) ∧ L.Nodup := by
+    obtain ⟨d, -, hd, hnd, hfold⟩ :=
+      foldl_onAttestation_new L (postTick e rho e.adapter.sign w i t)
+    have hadm := laws.tick_admits rho hv he
+    have hL : L = d := by
+      have h1 := admitsAt_eq e rho w i
+      change L = _ at h1
+      rw [h1, hadm]
+      change ((L.foldl (fun n a => (Node.onAttestation n a).1) _).fg.atts.drop _) = d
+      rw [hfold, ← postTick_atts rho w i t]
+      simp
+    rw [hL]
+    exact ⟨hd, hnd⟩
+  have hown : ∀ b ∈ L, b.val = rho.ownKey w := laws.admits_own rho hv he
+  have hlenTG : (tickGroup e rho i w t).length =
+      (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey w)
+        (e.adapter.node (stateAt e rho w i)) t
+        (.tick (encodeTxs (Model.mempool rho.inbox w t))
+          (e.adapter.sign (rho.ownKey w) t))).2.length := by
+    rw [hTG, length_group e rho]
+  refine ⟨L[m], hg, hown _ (List.getElem_mem _), ?_, cutMap e rho i,
+    encodeTxs (Model.mempool rho.inbox w t), e.adapter.sign (rho.ownKey w) t, ?_, ?_, ?_⟩
+  · rw [hstm]
+    have hfold := foldl_onAttestation_fresh (L.take m) (postTick e rho e.adapter.sign w i t)
+      (fun b hb => hfresh.1 b (List.mem_of_mem_take hb)) (hfresh.2.sublist (List.take_sublist _ _))
+    change L[m] ∉ ((L.take m).foldl (fun n a => (Node.onAttestation n a).1) _).fg.atts
+    rw [hfold]
+    simp only [List.mem_append, not_or]
+    refine ⟨hfresh.1 _ (List.getElem_mem _), fun hmem => ?_⟩
+    obtain ⟨k, hk, hkeq⟩ := List.getElem_of_mem hmem
+    rw [List.length_take] at hk
+    rw [List.getElem_take] at hkeq
+    exact absurd ((hfresh.2.getElem_inj_iff).1 hkeq) (by omega)
+  · exact (tick_public_group e rho laws hv he hpub).1
+  · rw [← hst, ← hlenTG]
+    omega
+  · intro k hk1 hk2
+    rw [← hst, ← hlenTG] at hk1
+    obtain ⟨m', rfl⟩ : ∃ m', k = cutMap e rho i + (tickGroup e rho i w t).length + m' :=
+      ⟨k - (cutMap e rho i + (tickGroup e rho i w t).length), by omega⟩
+    obtain ⟨⟨r', hr', hn', hl'⟩, -⟩ := hcuts m' (by omega)
+    refine ⟨by rw [simTrace_node, hr']; exact hn', L[m'], hown _ (List.getElem_mem _), ?_⟩
+    rw [simTrace_label, hr', Option.map_some, hl']
+
+/-- At a fixed time, replay groups preserve the engine's phase order. -/
+theorem phase_order {due : e.State hn → Bool} (laws : e.Lawful due) (hv : rho.ExecutionValid)
+    {y y' : Fin (Fintype.card V)} {j j' : Nat} {t : Time} {ev ev' : Node.Event A}
+    (hg : (simTrace e rho).GroupAt (runProposer rho hn) (digestOf e rho) y j t ev)
+    (hg' : (simTrace e rho).GroupAt (runProposer rho hn) (digestOf e rho) y' j' t ev')
+    (hj : j < j')
+    (hown : y = y' ∨
+      ¬ (simTrace e rho).OwnPublicationAt (runProposer rho hn) (digestOf e rho) y j t) :
+    ev.phase ≤ ev'.phase := by
+  obtain ⟨i, ei, hi, h1, h2, ht, -, -, -, hc⟩ := group_origin e rho hg
+  obtain ⟨i', ei', hi', h1', h2', ht', -, -, -, hc'⟩ := group_origin e rho hg'
+  have hle : i ≤ i' := by
+    by_contra! h
+    have : cutMap e rho (i' + 1) ≤ cutMap e rho i := cutMap_mono e rho (Nat.succ_le_of_lt h)
+    omega
+  have hmax : ev.phase ≤ 2 := by cases ev <;> simp [Node.Event.phase]
+  rcases hc' with ⟨hn', hp', htk'⟩ | ⟨-, hp'⟩
+  swap
+  · rw [hp']
+    exact hmax
+  rw [hp']
+  rcases hc with ⟨-, hp, -⟩ | ⟨⟨w, rfl, hwy, hjge, a, rfl, -⟩, hp⟩
+  · rw [hp]
+    rcases hle.lt_or_eq with h | rfl
+    · rcases keyLe_of_lt rho hv hi hi' h with h | h
+      · rw [ht, ht'] at h
+        exact (lt_irrefl _ h).elim
+      · exact h.2
+    · cases hi.symm.trans hi'
+      exact le_rfl
+  · rw [hp]
+    rcases hle.lt_or_eq with h | rfl
+    · have hk := keyLe_of_lt rho hv hi hi' h
+      cases ei' with
+      | deliver => exact le_rfl
+      | restart w' s =>
+        exfalso
+        change s = t at ht'
+        subst ht'
+        simp only [Model.Event.keyLe, Model.Event.time, Model.Event.phase] at hk
+        rcases hk with hk | ⟨-, hk⟩
+        · exact lt_irrefl _ hk
+        · omega
+      | tick w' s =>
+        exfalso
+        change s = t at ht'
+        subst ht'
+        obtain ⟨hj', hpub⟩ := htk' w' rfl
+        change w' = rho.key y' at hn'
+        rcases hown with rfl | hnot
+        · have hww : w = w' := hwy.trans hn'.symm
+          subst hww
+          exact Nat.ne_of_lt h (index_eq rho hv hi hi')
+        · apply hnot
+          have hyw : y = rho.ownKey w := by rw [hwy, Model.Run.ownKey, Equiv.symm_apply_apply]
+          subst hyw
+          exact ownPublication_of_admit e rho laws hv hi hpub hg hjge h2
+    · exfalso
+      obtain ⟨hj', -⟩ := htk' w (Option.some.inj (hi'.symm.trans hi))
+      have := (tickGroup e rho i w t).length
+      omega
 
 /-- A node honest and awake at a public time has a tick group there. -/
 theorem tick_of_awake {due : e.State hn → Bool} (laws : e.Lawful due)

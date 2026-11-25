@@ -33,11 +33,12 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- A bounded clean source, written by a node honest at its write, is below the head of an actual
 later-label cast of a node honest at it. The cast's head is supplied explicitly. -/
 theorem clean_source_below_cast_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {r s i : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     {B P : AC.Blk sp.n (List (FG.Att sp.n))}
     (horig : (∃ CV, AC.FastLockAt tr.projAC x r s B CV) ∨ AC.SlowLockAt tr.projAC x r s B)
@@ -60,7 +61,7 @@ theorem clean_source_below_cast_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 call of a node honest at it. Older and same-label source ancestry are derived from actual bounded
 votes. -/
 theorem call_locks_compatible_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPU : P ∈ tr.HonestBlocksAt H) (hts : cutZ sp.toParams g ≤ sp.ts u)
     (hun : ∀ z q e, z ∈ H (tr.time q) → AC.VoteAt tr.projAC z q e → tr.time q ≤ b →

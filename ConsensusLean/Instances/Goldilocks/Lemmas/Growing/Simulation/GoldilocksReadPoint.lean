@@ -45,11 +45,12 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {cm : Time → Finset (Fin sp.n)}
   {βK : ℚ} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- A slot after the reset's drain starts `24Δ` after `ḡ`: the reset is after the snapshot cut
 `c_z > ḡ + 8Δ`, and its drain slot is `2k + 4` slots past the slot after it. -/
 private theorem gbar_lt_of_drain (hq : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF
-      a b cm βK) {u : Nat} (hu : Healing.drainTime sp a ≤ sp.ts u) :
+      a b cm βK hold) {u : Nat} (hu : Healing.drainTime sp a ≤ sp.ts u) :
     gbar g + 24 * sp.Δ ≤ sp.ts u := by
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hca := hq.cutZ_lt_reset_at
@@ -75,7 +76,7 @@ proposer of a slot `u` after the reset's drain, honest `Δ` after the slot start
 the horizon and `ḡ + 4Δ ≤ t_u`, is an opening of the reset's repair schedule (old label
 `slot a + 2k + 4`). -/
 private theorem exists_repair_opening
-    (hq : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {u : Nat}
+    (hq : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {u : Nat}
     (hslot : sp.slot a + 2 * sp.k + 5 ≤ u) {k : Nat} {X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hheld : proposer u ∈ H (sp.ts u + sp.Δ)) (hP : tr.ProposesAt (proposer u) k X)
     (hXs : X.slot = u) (hgu : gbar g + 4 * sp.Δ ≤ sp.ts u) (hTb : sp.ts u + 6 * sp.Δ ≤ b) :
@@ -178,9 +179,10 @@ private theorem proposal_below_ready_read {D : RepairSchedule tr H proposer dg g
 
 /-- The supplier's data equations give the interface run, the drain `2k + 5`, the catch-up `18Δ`,
 the hold `Δ`, the margin and the latency `6Δ`. -/
-private theorem localData_eqs {C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val)}
+private theorem localData_eqs
+      {fgHold : Time} {C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold}
     {sign : Fin sp.n → Time → Bool} {G : Nat}
-    (hdata : GoldilocksLocalData sp ro C sign G) :
+    {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg) :
     (∀ cm proposer dg H (tr : GoldilocksTrace sp ro), C.run.Run cm proposer dg H tr →
       (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr) ∧
     C.healing.drain = 2 * sp.k + 5 ∧ C.catchUp = 18 * sp.Δ ∧ C.hold = sp.Δ ∧
@@ -194,11 +196,11 @@ private theorem localData_eqs {C : ACCorrectLocal (goldilocksNode sp ro) (fun v 
 proposal at `s₁` with its update by the horizon and `ḡ + 4Δ ≤ t_{s₁}` makes any two ready reads
 strictly after `t_{s₁} + 6Δ` compatible in the blocks held while honest. -/
 theorem goldilocks_healed_compatible
-    (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
     {sign : Fin sp.n → Time → Bool} {G : Nat}
-    (hdata : GoldilocksLocalData sp ro C sign G) {s₁ : Nat}
+    {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg) {s₁ : Nat}
     (hβ : βK ≤ 1 / 2) (hrun : C.run.Run cm proposer dg H tr)
-    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b)
+    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b fgHold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
     (hs₁ : sp.toParams.slotOf a + C.healing.drain ≤ s₁)
     (hX : ∃ z k X, HonestProposal tr H proposer s₁ z k X)
@@ -234,11 +236,11 @@ theorem goldilocks_healed_compatible
 proposal at `s₁` by the horizon is an ancestor of every ready read at or after its update
 `t_{s₁} + 6Δ`, strictly before the read cut. -/
 theorem goldilocks_healed_proposal
-    (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
     {sign : Fin sp.n → Time → Bool} {G : Nat}
-    (hdata : GoldilocksLocalData sp ro C sign G) {s₁ : Nat}
+    {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg) {s₁ : Nat}
     (hβ : βK ≤ 1 / 2) (hrun : C.run.Run cm proposer dg H tr)
-    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b)
+    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b fgHold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
     (hs₁ : sp.toParams.slotOf a + C.healing.drain ≤ s₁)
     {z : Fin sp.n} {k : Nat} {X : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -270,11 +272,11 @@ theorem goldilocks_healed_proposal
 `Δ` after it, at a slot after the drain with `ḡ + 4Δ ≤ t_s`, is an ancestor of every ready read at
 or after `t_s + 6Δ`, strictly before the read cut. -/
 theorem goldilocks_proposal_read
-    (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
     {sign : Fin sp.n → Time → Bool} {G : Nat}
-    (hdata : GoldilocksLocalData sp ro C sign G)
+    {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg)
     (hβ : βK ≤ 1 / 2) (hrun : C.run.Run cm proposer dg H tr)
-    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b)
+    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b fgHold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} {k : Nat} {y : Fin sp.n} {j : Nat} {t : Time}
     (hB : ReadyProposal tr H C.catchUp C.hold B k)
@@ -306,9 +308,9 @@ theorem goldilocks_proposal_read
 
 /-- **The healthy read points of the Goldilocks supplier** (L6 and L7) at its data equations. -/
 theorem goldilocks_healthyReadPoint
-    (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
     {sign : Fin sp.n → Time → Bool} {G : Nat}
-    (hdata : GoldilocksLocalData sp ro C sign G) : HealthyReadPoint C where
+    {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg) : HealthyReadPoint C where
   healed := fun _ _ _ _ _ _ _ _ _ _ _ hβ hrun hp hr hab hs₁ _ _ =>
     ⟨fun hX hTb hgu _ _ _ _ _ _ ht hu hy hz _ _ =>
       goldilocks_healed_compatible C hdata hβ hrun hp hr hab hs₁ hX hTb hgu ht hu hy hz,

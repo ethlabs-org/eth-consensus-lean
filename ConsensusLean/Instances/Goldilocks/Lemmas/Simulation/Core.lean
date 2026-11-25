@@ -42,7 +42,8 @@ private theorem delivery_label_cut {i : Nat} {v : V} {o : (Model.protoOf (compil
       List.getElem?_eq_getElem hj, heq]
   refine ⟨cutMap e rho i + j, Nat.le_add_right _ _, ?_, ⟨?_, ?_⟩, ?_⟩
   · rw [cutMap_succ]; omega
-  · simpa only [simTrace_node, hk, Option.elim_some, Model.Event.node] using hy
+  · simpa only [simTrace_node, hk, Option.elim_some, Model.Event.node] using
+      hy.resolve_right fun ⟨⟨_, h⟩, _⟩ => by cases h
   · simp only [simTrace_label, hk, Option.map_some]
   · simpa only [simTrace_time, hk, Option.elim_some, Model.Event.time] using ht
 
@@ -181,6 +182,8 @@ theorem acBlock_cut_cases {due : e.State hn → Bool} (L : e.OpLaws due)
     have he := List.getElem?_eq_getElem hi
     have hmem := List.mem_of_getElem? hm
     have ⟨ht, hy⟩ := eventCut_node_time e rho he hmem
+    have hy : r.node = rho.ownKey rho.events[i].node :=
+      hy.resolve_right fun ⟨_, _, _, _, _, _, _, h⟩ => by rw [hlabel] at h; cases h
     have hkey := hy.symm.trans (show r.node = y by simpa only [simTrace_node, hr,
       Option.elim_some] using hc.1)
     rw [simTrace_time, hr, Option.elim_some, ht]
@@ -193,10 +196,11 @@ theorem acBlock_cut_cases {due : e.State hn → Bool} (L : e.OpLaws due)
     | tick v t =>
       have he' := he.trans (congrArg some hev)
       have hpublic : (paramsAtCount p (Fintype.card V) hN hn).IsPublic t := by
-        rw [eventCuts_tick e rho i v t he'] at hmem
-        split at hmem
-        · assumption
-        · cases hmem
+        rcases mem_eventCuts_tick e rho he' hmem with ⟨hp, -⟩ | ⟨_, _, _, _, a, _, _, _, _, hg⟩
+        · exact hp
+        · have hl' := (mem_groupRecs_fields _ _ _ _ _ _ _ hg).1
+          rw [hlabel] at hl'
+          simp [exec, onAttestation] at hl'
       exact Or.inr ⟨i, v, t, he', hpublic, by simpa only [hev, Model.Event.node] using hkey,
         hlo, hhi, rfl⟩
     | restart v t =>
@@ -228,7 +232,7 @@ theorem simTrace_restart_event {y : Fin (Fintype.card V)} {k : Nat}
   obtain ⟨ℓ, ⟨hnode, hlab⟩, hcall⟩ := hr
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, i, ev, -, he, hlo, hhi, hidx, hn', ht, -, hlab'⟩ :=
-    simTrace_cut S rho hn hl
+    simTrace_cut S rho hn hl fun a h => by rw [hlab] at h; cases h
   have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
   obtain ⟨v, t, rfl⟩ :=
     restart_of_mem_eventCuts S rho hn he (List.mem_of_getElem? hidx) hrl hcall
@@ -286,7 +290,7 @@ theorem simTrace_call_sending_event {y : Fin (Fintype.card V)} {k : Nat}
       rho.SendsAt (rho.key y) i ((simTrace S rho hn).time k) := by
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hc.2]; simp
   obtain ⟨r, i, ev, -, he, hlo, hhi, hidx, hnode, ht, -, hlabel⟩ :=
-    simTrace_cut S rho hn hl
+    simTrace_cut S rho hn hl fun a h => by rw [hc.2] at h; cases h
   have hkey : rho.key y = ev.node := by
     rw [← hc.1, hnode]
     exact rho.key.apply_symm_apply ev.node

@@ -61,9 +61,9 @@ private theorem ownQueued_nodeTick (st : State (S.params (pubOf E) hn) (S.ro _) 
 
 omit [DecidableEq V] in
 private theorem ownQueued_poll (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) u :
-    OwnQueued S hn (poll st u).1 := by
+    OwnQueued S hn (pollBatch st u (S.release (pubOf E))).1 := by
   intro q hq
-  rw [poll_voteForwards] at hq
+  rw [pollBatch_fst, poll_voteForwards] at hq
   cases hq
 
 private theorem tick_prefix_forward_poll (hv : rho.ExecutionValid)
@@ -115,12 +115,13 @@ private theorem tick_prefix_checked (hv : rho.ExecutionValid) {v : V} {i : Nat} 
       exact ⟨(propose_voteIO S hn st s).trans h.1, (propose_self st s).trans h.2.1,
         queuedChecked_propose S st s h.2.2⟩
     · intro st h
+      have hq : QueuedChecked S (nodeTick st (S.sign (pubOf E))) :=
+        queuedChecked_nodeTick S st h.2.2 (ownChecks_of_eq_voteIO S rho hn hv h.1 h.2.1)
       exact ⟨(nodeTick_voteIO S hn st).trans h.1,
         (nodeTick_self (sign := S.sign (pubOf E)) st).trans h.2.1,
-        queuedChecked_nodeTick S st h.2.2
-          (ownChecks_of_eq_voteIO S rho hn hv h.1 h.2.1)⟩
+        by rw [queuedChecked_iff] at hq ⊢; exact hq⟩
     · intro st u h
-      exact ⟨(poll_voteIO st u).trans h.1, (poll_self st u).trans h.2.1,
+      exact ⟨(poll_voteIO st u).trans h.1, (pollBatch_self st u).trans h.2.1,
         queuedChecked_poll S st u⟩
     · refine ⟨?_, ?_, ?_⟩
       · change ((rho.stateBefore i v).st.1 hn).voteIO = _

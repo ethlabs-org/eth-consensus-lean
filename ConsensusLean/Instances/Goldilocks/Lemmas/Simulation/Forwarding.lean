@@ -269,12 +269,15 @@ theorem signedCandidate_poll_eq {V : Type} [Fintype V] {E : Env V} (S : Setup)
         (.poll t)).2 =
       @HAppend.hAppend _ (List (protoOf (compiled (goldilocks S)) E).Object) _ _
         (@HAppend.hAppend _ (List (protoOf (compiled (goldilocks S)) E).Object) _ _
-          (pollOrdinary S rho v (poll (shapeOf S hn nd) t).2)
+          (pollOrdinary S rho v
+            ((pollPre (shapeOf S hn nd) (S.release (pubOf E))).outbox.head?.map fun b => (b, [])))
           (pendingWrappers (shapeOf S hn nd)))
-        ((shapeOf S hn nd).voteForwards.map fun q =>
+        (((shapeOf S hn nd).voteForwards.map fun q =>
           Obj.mk (.signed (rho.ownKey v) .poll) (.data (.voteForward q.1 (encodeVote q.2.1)))
-            [q.2.2]) := by
-  rw [signedCandidate_poll S rho hn v nd t hsel, pendingWrappers_eq, hself]
+            [q.2.2]) ++
+          (pollFlush (shapeOf S hn nd) (S.release (pubOf E))).map fun a =>
+            Obj.mk (.signed (rho.ownKey v) .poll) (.data (.att (encodeAtt a))) []) := by
+  rw [signedCandidate_poll S rho hn v nd t hsel, pendingWrappers_eq, hself, List.append_assoc]
   rfl
 
 /-- A selected actual poll releases every ready canonical pending block wrapper. The ordinary
@@ -301,21 +304,33 @@ theorem dutyStep_poll_pending {V : Type} [Fintype V] {E : Env V} (S : Setup)
 
 /-- Poll's block map is durable while the pending queue is cleared. -/
 theorem poll_wrappers {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (t : Time) :
-    (poll st t).1.wrappers = st.wrappers ∧ (poll st t).1.forwards = [] := by
-  unfold poll
-  have hf : (fgUpdate st).wrappers = st.wrappers := by
-    rw [fgUpdate_eq]
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {release : Fin sp.n → Time → Bool}
+    (st : State sp ro binding) (t : Time) :
+    (pollBatch st t release).1.wrappers = st.wrappers ∧
+      (pollBatch st t release).1.forwards = [] := by
+  have key : ∀ st : State sp ro binding, (poll st t release).1.wrappers = st.wrappers ∧
+      (poll st t release).1.forwards = [] := by
+    intro st
+    unfold poll
+    have hf : (fgUpdate st release).wrappers = st.wrappers := by
+      rw [fgUpdate_eq st release]
+      dsimp only
+      split
+      · rfl
+      · split
+        · rfl
+        · split <;> rfl
     dsimp only
-    split
+    split <;> constructor
+    · dsimp only; split <;> first | exact hf | rfl
     · rfl
-    · split <;> rfl
-  dsimp only
-  split <;> constructor
-  · dsimp only; split <;> first | exact hf | rfl
-  · rfl
-  · dsimp only; split <;> first | exact hf | rfl
-  · rfl
+    · dsimp only; split <;> first | exact hf | rfl
+    · rfl
+  rw [pollBatch_fst]
+  split
+  · obtain ⟨atts, h⟩ := heldDrain_eq st
+    rw [h]; exact key _
+  · exact key _
 
 /-- After the real poll, every durable wrapper is held, not merely pending. -/
 theorem dutyStep_poll_wrappers_held {V : Type} [Fintype V] {E : Env V} (S : Setup)

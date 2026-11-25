@@ -37,9 +37,10 @@ schedule. -/
 theorem goldilocks_resetHealBudgetSupply (S : Setup) (A : ContractAssumptions S) {E : Env V}
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (fun v => v.val))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G)
+    {Rg : Nat} (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G Rg)
     (hsg : (fun v => v.val) = (goldilocksRunMap S rho hn hv).signer) :
     ResetHealBudgetSupply (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C) := by
   classical
@@ -72,7 +73,7 @@ theorem goldilocks_resetHealBudgetSupply (S : Setup) (A : ContractAssumptions S)
   obtain ⟨W, Dprep, hlate⟩ := healthy_preparation_initialize_late_at S A V Q hheal0 hhb hp
     (simTraceAt_signCalendar S rho hn _) (Obligations.signGapAt_of_assumptions A _ _)
     (Obligations.signGap_δt A) (Obligations.contract_heal_ge_reset_signGap A Q.cap Q.index)
-    (Obligations.fgSlots_signGap_le A)
+    A.fgSlots_releaseGap_signGap_le
   obtain ⟨D, -, -, hDq⟩ := healthy_repair_schedule_of_preparation_at S A V Q W Dprep
   obtain ⟨O⟩ := healthy_bounded_repairing_opening_at S A V Q hhb hp D
   have hts : ∀ s : Nat, sp.toParams.slotTime s = sp.ts s := fun s => by

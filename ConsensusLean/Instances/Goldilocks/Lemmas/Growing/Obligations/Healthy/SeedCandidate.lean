@@ -30,11 +30,12 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- With a high justified height, the fork-choice root of a state of a reader honest at `t ≤ b`
 is compatible with every block it holds that is compatible with the earlier high origins. -/
 private theorem high_J_root_at_state {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
     (hy : y ∈ H t) (htb : t ≤ b) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBy : B ∈ (tr.state y k).fg.tree)
@@ -106,7 +107,7 @@ private theorem high_J_root_at_state {cm : Time → Finset (Fin sp.n)} {βK : �
 honest at `t ≤ b` is compatible with every block compatible with the seed that the reader holds
 once it is above `Σ.F`. -/
 private theorem low_root_at_state {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ r < i, tr.time r ≤ t)
     (hy : y ∈ H t) (htb : t ≤ b) {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hS : HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b)
@@ -151,7 +152,7 @@ candidacy**, at a state of a reader honest at a read time `t ≤ b`, every earli
 `≤ t`. A local signed entry witnesses any higher floor. -/
 theorem guarded_seed_ancestor_candidate_at_state_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ r < i, tr.time r ≤ t)
     (hy : y ∈ H t) (htb : t ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ (Node.frame (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)

@@ -19,6 +19,7 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g : Time}
+variable {hold : Time}
 
 /-- Every fast-lock write is at or after its label's slot start. -/
 theorem ts_le_of_fastLock_at
@@ -68,7 +69,7 @@ variable {ΔF a b : Time}
 Honesty only at the earlier read would not suffice: that holder can disappear from HZ. -/
 theorem cutZ_lt_of_anc_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) {z : Fin sp.n} {k : Nat}
     (hz : z ∈ H (max (tr.time k) (cutZ sp.toParams g)))

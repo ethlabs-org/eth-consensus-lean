@@ -124,7 +124,7 @@ advertised clauses of `OutageTransport` and the policy matching of `OutageRecove
 every participation threshold: each advertised count itself forces `θ < 1`. -/
 theorem OutageTransport.participation_local {P : Params} {A : NodeAC P}
     {payload : A.Blk → Set Nat} {M : RunMap rho payload} {D : OutagePolicy M}
-    {K : Contract ProgressReq} {C : ACCorrectLocal A M.signer}
+    {K : Contract ProgressReq} {fgHold : Time} {C : ACCorrectLocal A M.signer fgHold}
     (hT : OutageTransport M D K) (hB : OutageRecoveryBinding M K C) (hv : rho.ExecutionValid)
     {T b₀ b₁ : Time}
     (h : (Sys F V).Outage (shapeProgress F V).toExternal K T b₀ b₁ ⟨E, rho⟩) :

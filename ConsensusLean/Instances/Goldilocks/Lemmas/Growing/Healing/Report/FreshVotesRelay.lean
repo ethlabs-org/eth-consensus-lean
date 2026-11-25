@@ -22,6 +22,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
+variable {hold : Time}
 
 /-- A block in an honest frame has a genuine earlier honest FG acceptance, or is genesis. -/
 theorem frame_block_acceptance_at {ini}
@@ -47,7 +48,7 @@ theorem frame_block_acceptance_at {ini}
 theorem accepted_relay_before_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g ΔF b : Time}
-    (hsvc : ResetService tr H g ΔF b) (hnr : NoRestartAfter tr H (gbar g))
+    (hsvc : ResetService tr H g ΔF b hold) (hnr : NoRestartAfter tr H (gbar g))
     {x y : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (ha : tr.projAC.AcceptAt x i B)
     (hgi : gbar g ≤ tr.time i) (hy : y ∈ H (tr.time j))
@@ -76,7 +77,7 @@ the acceptance and before it by catch-up by `ḡ + 2Δ`, without requiring the s
 honest. Only the caller's own restarts before its call are bounded. -/
 private theorem relayed_accept_before_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold) (hcatch : CatchRun tr H g (2 * sp.Δ))
     {x y : Fin sp.n} {k j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hxk : x ∈ H (tr.time k)) (ha : tr.AcceptAt x k B) (hy : y ∈ H (tr.time j))
     (hnr : ∀ r ≤ j, tr.RestartAt y r → tr.time r ≤ gbar g)
@@ -107,7 +108,7 @@ private theorem relayed_accept_before_at {ini}
 theorem frame_relay_before_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : ResetService tr H g ΔF b)
+    (hsvc : ResetService tr H g ΔF b hold)
     (hcatch : CatchRun tr H g (2 * sp.Δ))
     {x y : Fin sp.n} {q j : Nat} (hx : x ∈ H (tr.time q)) (hy : y ∈ H (tr.time j))
     (hnr : ∀ r ≤ j, tr.RestartAt y r → tr.time r ≤ gbar g)

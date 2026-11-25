@@ -26,12 +26,13 @@ section Generic
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- **Window fields from four honest anchors**: proposal cuts with the proposals, the proposer's
 acceptances, the post-store as the proposer's next state, and the chain. -/
 theorem finalWindow_fields_of_honest_anchors_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {s : Fin 4 → Nat}
     {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer (s i) (P i)) (hs : StrictMono s)
@@ -77,7 +78,7 @@ theorem strictMono_cut_of_proposesAt_at
 `hq`) and `bounded` (from `hD`). -/
 theorem finalWindow_cuts_of_honest_anchors_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {s : Fin 4 → Nat}
     {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer (s i) (P i)) (hs : StrictMono s)
@@ -112,6 +113,7 @@ section Final
 open Blocks Shape
 
 variable {S : Setup} {A : ContractAssumptions S} {V : Type} [Fintype V] [DecidableEq V]
+variable {hold : Time}
 
 /-- **`FinalWindowDataAt` from four honest anchors at gap `c`**, at the slots
 `start + [0, c, 2c, 3c]`, with `2 ≤ c` and `3c ≤ δt`. Derived: `slots`, `proposals`, `accepted`,
@@ -121,7 +123,7 @@ theorem finalWindow_data_of_honest_anchors_gap_at (Q : FinalQueryAt S A V)
     {proposer : Nat → Fin Q.params.n}
     {dg : Digest (List (FG.Att Q.params.n)) (Payload Q.params.n)} {g ΔF a b : Time}
     {cm : Time → Finset (Fin Q.params.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys proposer dg g ΔF a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys proposer dg g ΔF a b cm βK hold)
     {c : Nat}
     (hc2 : 2 ≤ c) (h3c : 3 * c ≤ S.δt) (start : Nat)
     {P : Fin 4 → AC.Blk Q.params.n (List (FG.Att Q.params.n))}

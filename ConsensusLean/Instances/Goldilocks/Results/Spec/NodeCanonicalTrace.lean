@@ -292,18 +292,105 @@ theorem deliverRecs_cons (C : WireCodec N K I B) (pr : Nat → Fin Q.n)
 
 end Replay
 
+/-- The own attestations the engine admits to the node's pool during engine event `i` of `v`:
+the pool after the event beyond the pool before it (the pool only grows, by appending). For a
+tick these are the attestation the tick signs, when the release schedule allows its release at
+once, and the held attestations a poll of the tick flushes; the replay processes each as its own
+`.attestation` group after the tick's group (`eventCutsWith`). -/
+noncomputable def admitsAt (v : V) (i : Nat) :
+    List (FG.Att (paramsAtCount p (Fintype.card V) hN hn).n) :=
+  (e.adapter.node (stateAt e rho v (i + 1))).fg.atts.drop
+    (e.adapter.node (stateAt e rho v i)).fg.atts.length
+
+/-- The own admissions of an event are the pool's growth across it. -/
+theorem admitsAt_eq (v : V) (i : Nat) : admitsAt e rho v i =
+    (e.adapter.node (stateAt e rho v (i + 1))).fg.atts.drop
+      (e.adapter.node (stateAt e rho v i)).fg.atts.length := by rfl
+
+section Admits
+
+variable {Q : Params} {N : NodeAC Q}
+
+/-- The replay of own admissions: one `.attestation` group per admitted attestation, in order,
+with the group indices `Nat.pair i sub`, `Nat.pair i (sub + 1)`, …. -/
+noncomputable def admitRecs (proposer : Nat → Fin Q.n)
+    (dg : Digest (List (FG.Att Q.n)) N.Payload) (self : Fin Q.n) (t : Time) (i : Nat) :
+    List (FG.Att Q.n) → NodeState N → Nat → List (CutRec N)
+  | [], _, _ => []
+  | a :: as, st, sub => groupRecs proposer dg self st t (Nat.pair i sub) (.attestation a) ++
+      admitRecs proposer dg self t i as (exec proposer dg self st t (.attestation a)).1 (sub + 1)
+
+/-- No admissions replay no cuts. -/
+theorem admitRecs_nil (pr : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)
+    (self : Fin Q.n) (t : Time) (i : Nat) (st : NodeState N) (sub : Nat) :
+    admitRecs pr dg self t i [] st sub = [] := by rfl
+
+/-- An admission replays its `.attestation` group, then the rest. -/
+theorem admitRecs_cons (pr : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)
+    (self : Fin Q.n) (t : Time) (i : Nat) (a : FG.Att Q.n) (as : List (FG.Att Q.n))
+    (st : NodeState N) (sub : Nat) :
+    admitRecs pr dg self t i (a :: as) st sub =
+      groupRecs pr dg self st t (Nat.pair i sub) (.attestation a) ++
+        admitRecs pr dg self t i as (exec pr dg self st t (.attestation a)).1 (sub + 1) := by rfl
+
+omit [Countable I] in
+/-- A cut of the admission replay is a cut of the `.attestation` group of one of the admitted
+attestations, under an event id `Nat.pair i s` with `sub ≤ s`. -/
+theorem mem_admitRecs (pr : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)
+    (self : Fin Q.n) (t : Time) (i : Nat) :
+    ∀ (as : List (FG.Att Q.n)) (st : NodeState N) (sub : Nat) (r : CutRec N),
+      r ∈ admitRecs pr dg self t i as st sub →
+      ∃ a ∈ as, ∃ (st' : NodeState N) (s : Nat), sub ≤ s ∧
+        r ∈ groupRecs pr dg self st' t (Nat.pair i s) (.attestation a)
+  | [], _, _, _, h => absurd h List.not_mem_nil
+  | a :: as, st, sub, r, h => by
+    rw [admitRecs_cons] at h
+    rcases List.mem_append.mp h with h | h
+    · exact ⟨a, List.mem_cons_self, st, sub, le_rfl, h⟩
+    · obtain ⟨b, hb, st', s, hs, hr⟩ := mem_admitRecs pr dg self t i as _ (sub + 1) r h
+      exact ⟨b, List.mem_cons_of_mem _ hb, st', s, by omega, hr⟩
+
+end Admits
+
+open Classical in
+/-- The node of `v` after its tick at `t` (engine event `j`): the node's tick at a public time, with
+the FG update exactly when `due` allows it, from the engine's node before the event; the engine's
+node before the event at a time that is not public. -/
+noncomputable def postTick (due : Fin (Fintype.card V) → Time → Bool) (v : V) (j : Nat)
+    (t : Time) : NodeState A :=
+  if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
+    (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v) (e.adapter.node (stateAt e rho v j))
+      t (.tick (encodeTxs (Model.mempool rho.inbox v t)) (due (rho.ownKey v) t))).1
+  else e.adapter.node (stateAt e rho v j)
+
+open Classical in
+/-- `postTick` unfolded. -/
+theorem postTick_eq (due : Fin (Fintype.card V) → Time → Bool) (v : V) (j : Nat) (t : Time) :
+    postTick e rho due v j t =
+      if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
+        (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
+          (e.adapter.node (stateAt e rho v j)) t
+          (.tick (encodeTxs (Model.mempool rho.inbox v t)) (due (rho.ownKey v) t))).1
+      else e.adapter.node (stateAt e rho v j) := by rfl
+
 open Classical in
 /-- Replay one engine event on the node state held by the engine before the event; a tick of
-`y` at `t` runs the FG update exactly when `due y t` (the signing calendar). -/
+`y` at `t` runs the node's tick at public times, with the FG update exactly when `due y t` (the
+signing calendar). The own attestations the engine admits to the node's pool during the tick
+(`admitsAt`) follow the tick group directly, each as its own `.attestation` group from the node
+after its tick (`postTick`), under the event ids `Nat.pair i 1`, `Nat.pair i 2`, …: the node's
+own publications, which the run's phase order allows before another node's tick at that time. -/
 noncomputable def eventCutsWith (due : Fin (Fintype.card V) → Time → Bool) (i : Nat) :
     List (CutRec A) :=
   match rho.events[i]? with
   | some (.tick v t) =>
-    if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
+    (if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
       groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
         (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0)
         (.tick (encodeTxs (Model.mempool rho.inbox v t)) (due (rho.ownKey v) t))
-    else []
+    else []) ++
+    admitRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v) t i (admitsAt e rho v i)
+      (postTick e rho due v i t) 1
   | some (.deliver v o t) =>
     let hs := Model.digests rho.hash o
     let st := stateAt e rho v i
@@ -324,15 +411,17 @@ theorem eventCuts_none (i : Nat) (he : rho.events[i]? = none) : eventCuts e rho 
   rw [he]
 
 open Classical in
-/-- A tick replays the node handler exactly at public times. -/
+/-- A tick replays the node handler exactly at public times, then the node's own admissions. -/
 theorem eventCuts_tick (i : Nat) (v : V) (t : Time)
     (he : rho.events[i]? = some (.tick v t)) :
     eventCuts e rho i =
-      if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
+      (if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
         groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
           (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0)
           (.tick (encodeTxs (Model.mempool rho.inbox v t)) (e.adapter.sign (rho.ownKey v) t))
-      else [] := by
+      else []) ++
+      admitRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v) t i (admitsAt e rho v i)
+        (postTick e rho e.adapter.sign v i t) 1 := by
   unfold eventCuts eventCutsWith
   rw [he]
 
@@ -397,15 +486,18 @@ theorem eventCuts_eq_with (i : Nat) : eventCuts e rho i = eventCutsWith e rho e.
   by rfl
 
 open Classical in
-/-- Under a calendar, a tick replays the node handler at public times with the calendar's flag. -/
+/-- Under a calendar, a tick replays the node handler at public times with the calendar's flag,
+then the node's own admissions. -/
 theorem eventCutsWith_tick (due : Fin (Fintype.card V) → Time → Bool) (i : Nat) (v : V)
     (t : Time) (he : rho.events[i]? = some (.tick v t)) :
     eventCutsWith e rho due i =
-      if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
+      (if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
         groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
           (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0)
           (.tick (encodeTxs (Model.mempool rho.inbox v t)) (due (rho.ownKey v) t))
-      else [] := by
+      else []) ++
+      admitRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v) t i (admitsAt e rho v i)
+        (postTick e rho due v i t) 1 := by
   unfold eventCutsWith
   rw [he]
 

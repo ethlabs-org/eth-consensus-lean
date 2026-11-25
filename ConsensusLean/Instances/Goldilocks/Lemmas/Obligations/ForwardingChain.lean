@@ -227,7 +227,8 @@ theorem decoded_held_tick_of_own {V : Type} [Fintype V] [DecidableEq V] {E : Env
   · -- The duty steps stated on the goal's own `ShapeDuty` lists, so plain `rw` applies (as in
     -- `tick_node_eq`); `erw [← atProposal_eq …]` tried every projection at default transparency.
     have hpoll : ∀ (nd' : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (x : Nat),
-        shapeOf S hn (rho.runDuties v nd' [.poll x]).1 = (poll (shapeOf S hn nd') x).1 :=
+        shapeOf S hn (rho.runDuties v nd' [.poll x]).1 =
+          (pollBatch (shapeOf S hn nd') x (S.release (pubOf E))).1 :=
       fun nd' x => dutyStep_poll S rho hn v nd' x hsel
     have hinit : ∀ nd' : Model.Node (Model.protoOf (compiled (goldilocks S)) E),
         (rho.runDuties v nd' (dutiesInit S t)).1 =
@@ -240,8 +241,8 @@ theorem decoded_held_tick_of_own {V : Type} [Fintype V] [DecidableEq V] {E : Env
           (runDuties_fst_append S rho v nd' _ _))
     rw [duties_eq S t ht, runDuties_fst_append, hpoll, hinit, hpoll,
       ← atProposal_eq S rho v (rho.stateBefore i v) t]
-    exact decoded_held_poll _ _ (decoded_held_poll _ _ hprop.1 hprop.2).1
-      (decoded_held_poll _ _ hprop.1 hprop.2).2
+    exact decoded_held_pollBatch _ _ (decoded_held_pollBatch _ _ hprop.1 hprop.2 _).1
+      (decoded_held_pollBatch _ _ hprop.1 hprop.2 _).2 _
 
 /-- Every engine state of `v` has decoded wrappers corresponding to held blocks. No decoder,
 parent-slot, payload-validity or clock premise is assumed. -/
@@ -375,7 +376,7 @@ theorem tick_proposal_acceptance_decoded_publication_of_queued {V : Type} [Finty
       (fun st o hs h => (recordOwn_self st o hs).trans h)
       (fun st s h => (propose_self st s).trans h)
       (fun st h => (nodeTick_self st).trans h)
-      (fun st t h => (poll_self st t).trans h)
+      (fun st t h => (pollBatch_self st t).trans h)
     exact (atProposal_self S rho hn v _ t (poll_selected S rho hv v)).trans
       (by simpa only [stateAt_eq] using self_eq_ownKey S rho hn v i)
   have hd := pending_forward_decodes S rho hn _ hprop.1 t p B
@@ -422,12 +423,17 @@ theorem tick_acceptance_decoded_publication_of_queued {V : Type} [Fintype V] [De
       q.object = forwardObj (S.params (pubOf E) hn) (rho.ownKey v) t p B ∧
       decodeForward (S.params (pubOf E) hn) (digests rho.hash q.object) q.object =
         some (rho.ownKey v, t, p, B) := by
+  have hnotTail : r ∉ tickTail S rho hn v i t := by
+    intro htail
+    obtain ⟨_, a, ha⟩ := tickTail_label S rho hn htail
+    rw [hb] at ha
+    cases ha
   have hpub : (S.params (pubOf E) hn).toParams.IsPublic t := by
     by_contra h
     rw [eventCuts_tick_other S rho hn i v t he h] at hr
-    exact List.not_mem_nil hr
+    exact hnotTail hr
   rw [eventCuts_tick_public S rho hn i v t he hpub] at hr
-  obtain ⟨k, hk, hkr⟩ := List.getElem_of_mem hr
+  obtain ⟨k, hk, hkr⟩ := List.getElem_of_mem ((List.mem_append.mp hr).resolve_right hnotTail)
   have hl := (getElem_groupRecs (runProposer S rho hn) (digestOf S rho)
     (rho.ownKey v) (stateAt S rho hn v i).node t (Nat.pair i 0)
     (.tick (encodeTxs (mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t)) k hk).2.2.2.2
@@ -484,7 +490,7 @@ theorem forward_publication_of_events {V : Type} [Fintype V] [DecidableEq V] {E 
   obtain ⟨hxk, hlab⟩ := ha
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, i, ev, _, he, hlo, hhi, hidx, hnode, htime, _, hlabel⟩ :=
-    simTrace_cut S rho hn hl
+    simTrace_cut S rho hn hl fun a h => by rw [hlab] at h; cases h
   have hb : r.label = .fg (.block B true) := Option.some.inj (hlabel.symm.trans hlab)
   have hr := List.mem_of_getElem? hidx
   have hxev : rho.ownKey ev.node = x := hnode.symm.trans hxk

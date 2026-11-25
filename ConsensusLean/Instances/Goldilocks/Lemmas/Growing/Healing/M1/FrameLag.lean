@@ -20,9 +20,9 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The reset service of a Goldilocks run is the generic service (`Generic.Service`), field for
 field. -/
-theorem ResetService.toService {g ΔF b : Time} (h : ResetService tr H g ΔF b) :
-    Generic.Service tr H g ΔF b :=
-  ⟨h.deltaF, h.message, h.block, h.relay, h.signedRow⟩
+theorem ResetService.toService {g ΔF b hold : Time} (h : ResetService tr H g ΔF b hold) :
+    Generic.Service tr H g ΔF b hold :=
+  ⟨h.deltaF, h.message, h.block, h.relay, h.signedRow, h.hold_le⟩
 
 end Consensus.Goldilocks.Healing.Growing
 

@@ -23,13 +23,14 @@ open AC (ACParams ReplayOrder Payload gbar Vote)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
+variable {hold : Time}
 
 /-- A recent result of a node honest at its cut, whose later honest casts keep it in their
 domain and whose next-slot casts hold no conflicting stored lock, is extended by every vote of
 label `L > s`, by `t ≤ b`, of a node honest at its vote. -/
 theorem ResetPremisesUpTo.latest_votes_of_recent_result_at {b t : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {r s L : Nat}
     (hx : x ∈ H (tr.time r))
     {B C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}

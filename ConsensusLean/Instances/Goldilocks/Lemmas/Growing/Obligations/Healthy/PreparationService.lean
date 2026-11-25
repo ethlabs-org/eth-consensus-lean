@@ -87,19 +87,20 @@ theorem healthy_preparation_faults_at (run : (Sys (goldilocks S) V).Run)
   omega
 
 /-- Service follows the actual signed messages, even after their sender is compromised; signed
-rows are consumed up to the bound `b ≤ horizon`. -/
+rows at the release hold `hold` are consumed up to the bound `b ≤ horizon`, reading the run's
+participation only through `b` (`hawake`, needed only when `hold ≠ 0`). -/
 theorem healthy_preparation_service_at (run : (Sys (goldilocks S) V).Run)
     (hn : 1 ≤ Fintype.card V) (hv : (Sys (goldilocks S) V).Valid run)
     (hnc : ¬ run.2.HashCollision) {g b : Time} (hb : b ≤ run.2.horizon)
-    (hps : ((Sys (goldilocks S) V).log run).PSync ((Sys (goldilocks S) V).pt run) g) :
-    Healing.Growing.ResetService (simTraceAt S run.2 hn) (honestKeysAt S run.2) g
-      (protoFGDelay (Model.pubOf run.1)) b := by
-  have hs := resetService_of_psync_at S run.2 hn hv
-    (noCollRun_simTraceAt S run.2 hn hv hnc)
-    ((Model.sysOf_delivers_iff _ _ _ _).mp hps)
-    (signed_row_service_psync_at S run.2 hn hv) (protoFGDelay_pos _)
-  exact ⟨hs.deltaF, hs.message, hs.block, hs.relay,
-    fun x i att hx hsg y j hy hj hjb => hs.signedRow x i att hx hsg y j hy hj (hjb.trans hb)⟩
+    (hps : ((Sys (goldilocks S) V).log run).PSync ((Sys (goldilocks S) V).pt run) g)
+    {ΔF hold : Time}
+    (hrow : PSyncFGAttTransportAt S run.2 (simTraceAt S run.2 hn) (honestKeysAt S run.2) ΔF hold)
+    (hawake : hold ≠ 0 → ∀ v t, max g 0 ≤ t → t ≤ b → run.2.point.HonestAt v t →
+      run.2.point.env.awake v t = true)
+    (hΔF : 0 < ΔF) (hhold : hold ≤ ΔF) :
+    Healing.Growing.ResetService (simTraceAt S run.2 hn) (honestKeysAt S run.2) g ΔF b hold :=
+  resetService_of_psync_upTo S run.2 hn hv (noCollRun_simTraceAt S run.2 hn hv hnc)
+    ((Model.sysOf_delivers_iff _ _ _ _).mp hps) hrow hb hawake hΔF hhold
 
 /-- An honest restart up to a healthy bound cannot follow GST: its preceding sleep contradicts
 healthy wakefulness. -/

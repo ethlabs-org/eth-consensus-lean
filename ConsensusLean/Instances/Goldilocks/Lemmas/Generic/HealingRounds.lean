@@ -85,7 +85,7 @@ private theorem proposal_below_held_at {cm proposer dg H tr}
 /-- Leaf 8: a warm proposal at a constant merged key `v ≥ 2HZ` is at most `r(v)` rounds below
 `HZ + 1`. The supplier's `proposal_floor` puts it at or above the window floor, and the proposer's
 store has `HZ + 1 ≤ floor + r(v)` (`Healing.le_floor_add_riseRounds`). -/
-theorem rounds_le_warm_proposal_at_of_healing (O : ACHealing A sg runs) :
+theorem rounds_le_warm_proposal_at_of_healing {hold : Time} (O : ACHealing A sg runs hold) :
     rounds_le_warm_proposal_at A sg O := by
   intro cm proposer dg H tr g af len u floor v kindJ J B z kB hrun hnc hwin hK hv hlo hhi hz
     hdes hB hBs hf
@@ -110,7 +110,7 @@ theorem rounds_le_warm_proposal_at_of_healing (O : ACHealing A sg runs) :
 reader's `h_j`, or at it with `J` below the report. The supplier's `proposal_floor`, read in the
 reader's store, puts the report at or above the head-height floor; the root kind and
 `ACHealing.report_in_frame` decide the case. -/
-theorem report_kind_of_warm_at_of_healing (O : ACHealing A sg runs) :
+theorem report_kind_of_warm_at_of_healing {hold : Time} (O : ACHealing A sg runs hold) :
     report_kind_of_warm_at A sg O := by
   intro cm proposer dg H tr lo hi floor u kindJ J B R z kB y i hrun hnc hframe hz hdes hB hBs
     hlo hhi hf hy hR hBR hil hih heq
@@ -174,14 +174,14 @@ theorem shiftDelay_le {P : Params} (d : Nat) {t t' : Time} (h : t ≤ t') :
 leaf's premises are `Premises`; `ACHealing.report_follow` gives a report above the proposal by an
 observer honest at the horizon, which is honest at `c_z` and at the report, and the report is at
 least as high as the proposal in the reader's store; leaf 6 gives the reset. -/
-theorem reset_of_high_proposal_at_of_healing (O : ACHealing A sg runs) :
+theorem reset_of_high_proposal_at_of_healing {hold : Time} (O : ACHealing A sg runs hold) :
     reset_of_high_proposal_at A sg O := by
   intro cm proposer dg H tr βK g ΔF b s₀ u N floor kindJ J B z kB hβ hcom hframe hrun hnc hsvc
     hawake hf hcatch hnr hsl htd hsnap hm hs₀ hwarm hN hmb hH hz hdes hB hBs hh
   have hrl := runs.run_local hrun
   have hΔ := P.hΔ
   obtain ⟨y, hy⟩ := hH
-  have hP : Premises tr H cm βK proposer dg sg g ΔF b :=
+  have hP : Premises tr H cm βK proposer dg sg g ΔF b hold :=
     ⟨hcom, hnc, hsvc, hawake, hf, hcatch, hnr, htd, hsl, hsnap, ⟨y, hy⟩⟩
   have hu1N : P.slotTime (u + 1) ≤ P.slotTime N := P.slotTime_strictMono.monotone hN
   have hdeadline := shiftDelay_le (P := P) O.reportDelay (add_le_add_left hu1N (2 * P.Δ))
@@ -273,9 +273,31 @@ the later proposal a report above the earlier proposal and below the later propo
 the earlier proposal or strictly higher, and leaf 5 crosses one height. The report-delivery
 spacing `t_{s+1} + 2Δ + ΔF ≤ t_{s+δt}` gives the row deadline and `δt ≥ 2`, so the later proposal
 is at or after `c_z`. -/
-theorem round_of_warm_at_of_healing (O : ACHealing A sg runs) : round_of_warm_at A sg O := by
-  intro cm proposer dg H tr βK g ΔF b T s₀ u x N floor kindJ J B X z kB p kX hβ hcom hframe hrun
-    hnc hsvc hawake hf hcatch hnr hsl hrd hsnap hm hs₀u hwarm hfol htd hux hxN hmb hHb hTb hna
+theorem round_of_warm_at_of_healing {hold : Time} (O : ACHealing A sg runs hold) :
+    ∀ {cm proposer dg H} {tr : RunTrace A} {βK : ℚ} {g ΔF b T : Time} {s₀ u x N floor : Nat}
+      {kindJ : Prop} {J B X : A.Blk} {z : Fin P.n} {kB : Nat} {p : Fin P.n} {kX : Nat},
+    βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
+    SlotWindowWithin tr H O.reportDelay s₀ N floor kindJ J →
+    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
+    Service tr H g ΔF b hold → (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
+    (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
+    Healing.Growing.CatchRun tr H g (2 * P.Δ) →
+    Healing.Growing.NoRestartAfter tr H (gbar g) →
+    (∀ s, P.slotTime s + 4 * P.Δ ≤ P.slotTime (s + 1)) →
+    (∀ s, shiftDelay P O.reportDelay (P.slotTime (s + 1) + 2 * P.Δ) + ΔF ≤
+      P.slotTime (s + P.δt)) →
+    (∃ k, Healing.FirstCutAfter tr k (cutZ P g) ∧ tr.time k ≤ b) →
+    gbar g + 4 * P.Δ ≤ P.slotTime s₀ → s₀ ≤ u → s₀ + O.warmup ≤ u → O.follow ≤ P.δt →
+    (∀ s, P.slotTime s + 6 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) →
+    u + P.δt ≤ x → x ≤ N → shiftDelay P O.reportDelay (P.slotTime N + 2 * P.Δ) ≤ b →
+    (H b).Nonempty → T ≤ b →
+    NoAdvance tr H g T → shiftDelay P O.reportDelay (P.slotTime (u + 1) + 2 * P.Δ) < T →
+    z ∈ H (P.slotTime u + P.Δ) → z = proposer u → tr.ProposesAt z kB B → B.slot = u →
+    p ∈ H (tr.time kX) → p = proposer x → tr.ProposesAt p kX X → X.slot = x →
+    B ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
+      ((tr.state p (kX + 1)).fg.σ B.root).h + 1 ≤ ((tr.state p (kX + 1)).fg.σ X.root).h := by
+  intro cm proposer dg H tr βK g ΔF b T s₀ u x N floor kindJ J B X z kB p kX hβ hcom hframe
+    hrun hnc hsvc hawake hf hcatch hnr hsl hrd hsnap hm hs₀u hwarm hfol htd hux hxN hmb hHb hTb hna
     hT hz hdes hB hBs hp hdx hX hXs
   have hrl := runs.run_local hrun
   have hΔ := P.hΔ
@@ -302,7 +324,7 @@ theorem round_of_warm_at_of_healing (O : ACHealing A sg runs) : round_of_warm_at
       have := hmono (show s₀ ≤ P.slotOf (gbar g) by omega)
       linarith
     exact hmono (show P.slotOf (gbar g) + 3 ≤ x by omega)
-  have hP : Premises tr H cm βK proposer dg sg g ΔF b :=
+  have hP : Premises tr H cm βK proposer dg sg g ΔF b hold :=
     ⟨hcom, hnc, hsvc, hawake, hf, hcatch, hnr, htd, hsl, hsnap, hHb⟩
   have htX : tr.time kX = P.slotTime x := by rw [hX.2.2, hXs]
   have htB : tr.time kB = P.slotTime u := by rw [hB.2.2, hBs]
@@ -333,7 +355,7 @@ theorem round_of_warm_at_of_healing (O : ACHealing A sg runs) : round_of_warm_at
     ⟨z, kB + 1, tr.time kB, hrl.time_nonneg kB, fun q hq => hrl.time_mono (by omega), hzk,
       proposal_mem_at_from hrl (runs.run_requirements hrun) (runs.run_root hrun) hnc hzk hB⟩
   refine round_cross_at_from hrl (runs.run_requirements hrun) (runs.run_root hrun) hnc
-    hsvc.signedRow hnr hBH (hBRp.trans (hhx Rp hRpd)) hpar hp hX
+    hsvc.signedRow hsvc.hold_le hnr hBH (hBRp.trans (hhx Rp hRpd)) hpar hp hX
     (hf _ (hrl.time_nonneg kX) hxb)
     (v := shiftDelay P O.reportDelay (P.slotTime (u + 1) + 2 * P.Δ))
     (by rw [shiftDelay_eq_add]; linarith [hmono (show s₀ ≤ u + 1 by omega)])
@@ -373,9 +395,10 @@ open Healing.Growing (HZ IsReset)
 /-- A high report, by a reader honest at it and at `c_z`, by the horizon of a premised reset, has
 a high origin no later (`ACHealing.report_origin`); every entry below the report in the reader's
 store is below the origin in the origin's store, with the same replay state. -/
-private theorem origin_below_report (O : ACHealing A sg runs) {cm proposer dg H tr} {βK : ℚ}
+private theorem origin_below_report {hold : Time}
+    (O : ACHealing A sg runs hold) {cm proposer dg H tr} {βK : ℚ}
     {g ΔF a b : Time} (hβ : βK ≤ 1 / 2) (hrun : runs.Run cm proposer dg H tr)
-    (hp : Premises tr H cm βK proposer dg sg g ΔF b) (hres : IsReset tr H g a) (hab : a ≤ b)
+    (hp : Premises tr H cm βK proposer dg sg g ΔF b hold) (hres : IsReset tr H g a) (hab : a ≤ b)
     {y : Fin P.n} {i : Nat} {R E : A.Blk} (hyz : y ∈ H (max (cutZ P g) (tr.time i)))
     (hib : tr.time i ≤ b) (hR : ReportAt tr y i R)
     (hh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) (hE : E ∈ (tr.state y i).fg.tree)
@@ -405,7 +428,8 @@ private theorem origin_below_report (O : ACHealing A sg runs) {cm proposer dg H 
 /-- Leaf 12: a high signing, by a signer honest at it and at `c_z`, by the horizon of a premised
 reset, has a high origin strictly before it holding the signed entry. The signing comes from a
 report at the same time (leaf 7), whose origin `ACHealing.report_origin` supplies. -/
-theorem high_row_source_at_of_healing (O : ACHealing A sg runs) : high_row_source_at A sg O := by
+theorem high_row_source_at_of_healing {hold : Time}
+    (O : ACHealing A sg runs hold) : high_row_source_at A sg O := by
   intro cm proposer dg H tr βK g ΔF a b v d att hβ hrun hp hres hab hvz hdb hs hh
   have hl := runs.run_local hrun
   obtain ⟨i, hid, R, hR, hti, hhR, E, hE, hER, hEr, hEh, hETh⟩ :=
@@ -430,9 +454,10 @@ open Healing.Growing (HZ IsReset)
 by a held block, lies below a high origin. A held attestation on it by a signer honest at `c_z`
 and at the observation (`Healing.honest_att_of_left`) was signed before the cut, from a report
 (leaf 7) whose origin holds the entry (`origin_below_report`). -/
-private theorem origin_of_left_entry (O : ACHealing A sg runs) {cm proposer dg H tr} {βK : ℚ}
+private theorem origin_of_left_entry {hold : Time}
+    (O : ACHealing A sg runs hold) {cm proposer dg H tr} {βK : ℚ}
     {g ΔF a b : Time} (hβ : βK ≤ 1 / 2) (hrun : runs.Run cm proposer dg H tr)
-    (hp : Premises tr H cm βK proposer dg sg g ΔF b) (hres : IsReset tr H g a) (hab : a ≤ b)
+    (hp : Premises tr H cm βK proposer dg sg g ΔF b hold) (hres : IsReset tr H g a) (hab : a ≤ b)
     {y : Fin P.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
     (hyt : y ∈ H t) (htb : t ≤ b) (hq : (H (max (cutZ P g) t))ᶜ.ncard < P.fg.q)
     {E C : A.Blk} (hE : E ∈ (tr.state y k).fg.tree)
@@ -470,7 +495,8 @@ In a contest, `J` is a self-entry at `h_j ≥ HZ + 1` not below the contested ch
 of `C` at `h_j` is another. Both are left by held blocks, so both lie below high origins
 (`origin_of_left_entry`), which `ACHealing.origins_comparable` makes compatible; leaf 14 makes the
 two entries equal, so `J` is below `C`. -/
-theorem no_high_contest_at_of_healing (O : ACHealing A sg runs) : no_high_contest_at A sg O := by
+theorem no_high_contest_at_of_healing {hold : Time}
+    (O : ACHealing A sg runs hold) : no_high_contest_at A sg O := by
   intro cm proposer dg H tr βK g ΔF a b p i hβ hrun hp ha hab hpH hib
   rintro ⟨⟨hmj, C, hC, -, hCh, hJC⟩, hmax⟩
   have hrl := runs.run_local hrun
@@ -512,7 +538,8 @@ variable {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n}
 
 /-- Leaf 14 over any healing supplier: the two high origins are compatible by
 `ACHealing.origins_comparable`, and `high_entry_eq_at_from` applies on the run. -/
-theorem high_entry_eq_at_of_healing {runs : ACRun A sg} (O : ACHealing A sg runs) :
+theorem high_entry_eq_at_of_healing {runs : ACRun A sg} {hold : Time}
+    (O : ACHealing A sg runs hold) :
     high_entry_eq_at A sg O := by
   intro cm proposer dg H tr βK g ΔF a b x x' i j i' j' B B' Z₁ Z₂ y₁ y₂ m₁ m₂ t₁ t₂ hβ hrun hP
     hr hab ho hib ho' hi'b h₁ h₂ ht₁ hle₁ hy₁ ht₂ hle₂ hy₂ hZ₁ hZ₂ hh hT₁ hT₂

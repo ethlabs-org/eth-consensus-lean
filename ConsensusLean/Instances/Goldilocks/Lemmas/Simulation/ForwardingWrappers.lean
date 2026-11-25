@@ -776,9 +776,9 @@ theorem wrappersCover_processOne {sp : AC.ACParams}
   · exact h
 
 private theorem wrappersCover_fgUpdate {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
-    (h : WrappersCover st) : WrappersCover (fgUpdate st) := by
-  rw [fgUpdate_eq]
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {release : Fin sp.n → Time → Bool}
+    (st : State sp ro binding) (h : WrappersCover st) : WrappersCover (fgUpdate st release) := by
+  rw [fgUpdate_eq st release]
   dsimp only
   split
   · exact h
@@ -786,11 +786,14 @@ private theorem wrappersCover_fgUpdate {sp : AC.ACParams}
     · exact h
     · rename_i a record _
       obtain ⟨atts, he⟩ := Store.onAttestation_eq st.node.fg a
-      simpa only [WrappersCover, ne_eq, Node.onAttestation, Node.acToFG, he] using h
+      split <;> simpa only [WrappersCover, ne_eq, Node.onAttestation, Node.acToFG, he] using h
 
 private theorem wrappersCover_poll {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) t
-    (h : WrappersCover st) : WrappersCover (poll st t).1 := by
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {release : Fin sp.n → Time → Bool}
+    (st : State sp ro binding) t (h : WrappersCover st) :
+    WrappersCover (pollBatch st t release).1 := by
+  refine pollBatch_pres (fun st h => ?_)
+    (fun x h => by obtain ⟨atts, he⟩ := heldDrain_eq x; rw [he]; exact h) h
   unfold poll
   split <;> dsimp only <;> split
   all_goals first | exact h | exact wrappersCover_fgUpdate st h

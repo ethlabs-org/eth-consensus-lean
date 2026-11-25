@@ -84,8 +84,9 @@ private theorem canonical_processOne {sp : AC.ACParams}
   · exact h
 
 private theorem canonical_poll {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) t :
-    ForwardQueueCanonical (poll st t).1 := by
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {release : Fin sp.n → Time → Bool}
+    (st : State sp ro binding) t :
+    ForwardQueueCanonical (pollBatch st t release).1 := by
   rw [forwardQueueCanonical_iff, (poll_wrappers st t).2]
   exact fun q h => False.elim (List.not_mem_nil h)
 
@@ -224,15 +225,16 @@ theorem dutyStep_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
         (.pollPropose t)).1.1 hn) ∧ PendingReady _ (pendingWrappers
           (((protoOf (compiled (goldilocks S)) E).act nd.st (.pollPropose t)).1.1 hn))
       rw [shapeOf_act_pollPropose S hn]
-      change WrappersAccounted _ (nodeTick (shapeOf S hn nd) (S.sign (pubOf E))) ∧
-        PendingReady _ (pendingWrappers (nodeTick (shapeOf S hn nd) (S.sign (pubOf E))))
+      change WrappersAccounted _ { nodeTick (shapeOf S hn nd) (S.sign (pubOf E)) with
+          ticked := true } ∧
+        PendingReady _ (pendingWrappers { nodeTick (shapeOf S hn nd) (S.sign (pubOf E)) with
+          ticked := true })
+      rw [wrappersAccounted_iff, pendingWrappers_eq] at ha ⊢
+      rw [pendingWrappers_eq] at hr
       rw [nodeTick_eq (sign := _)]
       by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic (shapeOf S hn nd).now
       · rw [ite_eq_left hp]
-        rw [wrappersAccounted_iff, pendingWrappers_eq] at ha
-        rw [pendingWrappers_eq] at hr
-        simpa only [wrappersAccounted_iff, pendingWrappers_eq, Node.acCall, apply,
-          List.foldl_cons, List.foldl_nil] using And.intro ha hr
+        simpa only [Node.acCall, apply, List.foldl_cons, List.foldl_nil] using And.intro ha hr
       · rw [ite_eq_right hp]
         exact ⟨ha, hr⟩
     · exact ⟨ha, hr⟩
@@ -261,7 +263,7 @@ theorem runDuties_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup
       (fun st o hs h => (recordOwn_self st o hs).trans h)
       (fun st s h => (propose_self st s).trans h)
       (fun st h => (nodeTick_self st).trans h)
-      (fun st t h => (poll_self st t).trans h) v nd d hself
+      (fun st t h => (pollBatch_self st t).trans h) v nd d hself
 
 /-- Unsigned gossip cannot record a proposer item, so it preserves both components. -/
 theorem gossip_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
@@ -805,7 +807,7 @@ theorem tick_duty_prefix_poll_released {V : Type} [Fintype V] [DecidableEq V] {E
       (fun st o hs h => (recordOwn_self st o hs).trans h)
       (fun st s h => (propose_self st s).trans h)
       (fun st h => (nodeTick_self st).trans h)
-      (fun st t h => (poll_self st t).trans h)
+      (fun st t h => (pollBatch_self st t).trans h)
     have h := self_eq_ownKey S rho hn v i
     rw [stateAt_eq] at h
     exact h
@@ -1101,7 +1103,7 @@ theorem tick_acceptance_proposal {sp : AC.ACParams}
       split at ha
       · simp [Node.acToFG] at ha
       · simp only [Node.attest, List.mem_cons, Node.acToFG, reduceCtorEq, false_or] at ha
-        split at ha <;> simp [Node.onAttestation] at ha
+        split at ha <;> simp at ha
 
 /-- A valid non-genesis block with the engine's root decodes from its own canonical object.
 This separates the payload checks from the digest bookkeeping needed by forwarding. -/

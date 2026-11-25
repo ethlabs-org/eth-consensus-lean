@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Unforgeable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLawsInstance
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.GoldilocksStateAgreement
 import ConsensusLean.Lemmas.Model.Constant
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -70,7 +71,7 @@ theorem key_of_ownKey {v : V} {y : Fin (Fintype.card V)} (h : rho.ownKey v = y) 
 theorem simTrace_labelled_time_le (hv : rho.ExecutionValid) {k : Nat}
     (hl : (simTrace S rho hn).label k ≠ none) :
     (simTrace S rho hn).time k ≤ rho.horizon := by
-  obtain ⟨_, _, ev, _, he, _, _, _, _, ht, _⟩ := simTrace_cut S rho hn hl
+  obtain ⟨_, _, ev, _, he, _, _, _, _, ht, _⟩ := simTrace_cut_origin S rho hn hl
   rw [ht]
   exact (hv.in_horizon ev (List.mem_of_getElem? he)).2
 
@@ -103,16 +104,20 @@ theorem simTrace_finite (_hv : rho.ExecutionValid) :
   rw [(simTrace_encoding S rho hn).1]
   exact NodeAsChainShape.CanonicalTrace.finite (traceEncoding S hn) rho
 
-/-- At one time, across the honest nodes, the groups are in phase order. -/
+/-- At one time, across the honest nodes, the groups are in phase order, except that a node's
+own publications may come before another node's tick. -/
 theorem simTrace_phase_order (hv : rho.ExecutionValid) :
     ∀ y ∈ honestKeys S rho, ∀ y' ∈ honestKeys S rho, ∀ j j' t e e',
       (simTrace S rho hn).GroupAt (runProposer S rho hn) (digestOf S rho) y j t e →
       (simTrace S rho hn).GroupAt (runProposer S rho hn) (digestOf S rho) y' j' t e' → j < j' →
+      (y = y' ∨
+        ¬ (simTrace S rho hn).OwnPublicationAt (runProposer S rho hn) (digestOf S rho) y j t) →
         e.phase ≤ e'.phase := by
-  intro y _ y' _ j j' t e e' hg hg' hjj'
+  intro y _ y' _ j j' t e e' hg hg' hjj' hown
   obtain ⟨hp, hd⟩ := runProposer_digestOf S rho hn
-  simp only [(simTrace_encoding S rho hn).1, hp, hd] at hg hg'
-  exact NodeAsChainShape.CanonicalTrace.phase_order (traceEncoding S hn) rho hv hg hg' hjj'
+  simp only [(simTrace_encoding S rho hn).1, hp, hd] at hg hg' hown
+  exact NodeAsChainShape.CanonicalTrace.phase_order (traceEncoding S hn) rho
+    (traceEncoding_lawful S hn) hv hg hg' hjj' hown
 
 /-- A tick is at a public time. -/
 theorem simTrace_tick_public (_hv : rho.ExecutionValid) :
@@ -157,7 +162,8 @@ theorem simTrace_asleep_before_restart (hv : rho.ExecutionValid) :
       ¬ (simTrace S rho hn).awake y ((simTrace S rho hn).time i - 1) := by
   rintro y hy i ⟨ℓ, ⟨hnode, hlab⟩, hcall⟩ h
   have hl : (simTrace S rho hn).label i ≠ none := by rw [hlab]; simp
-  obtain ⟨r, i₀, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ := simTrace_cut S rho hn hl
+  obtain ⟨r, i₀, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ :=
+    simTrace_cut S rho hn hl fun a h => by rw [hlab] at h; cases h
   have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
   obtain ⟨v, t, rfl⟩ :=
     restart_of_mem_eventCuts S rho hn he (List.mem_of_getElem? hidx) hrl hcall

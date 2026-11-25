@@ -33,7 +33,7 @@ theorem LocalRun.upTo_of_subset {P : Params} {A : NodeAC P} {proposer : Nat → 
       time_mono := hm
       finite := fun T => (h.finite T).subset fun i ⟨hl, hT⟩ => ⟨fun hn => hl (by
         simp [Trace.upTo_label, hn]), hT⟩
-      phase_order := fun y y' j j' t e e' hy hy' he he' hjj => ?_
+      phase_order := fun y y' j j' t e e' hy hy' he he' hjj hop => ?_
       tick_public := fun y j t hy ht => ?_
       tick_unique := fun y j j' t hy ht ht' => ?_
       tick_of_awake := fun y t hy ht hp ha => ?_
@@ -58,6 +58,7 @@ theorem LocalRun.upTo_of_subset {P : Params} {A : NodeAC P} {proposer : Nat → 
   · obtain ⟨htd, he⟩ := (RunTrace.upTo_groupAt hm).mp he
     obtain ⟨-, he'⟩ := (RunTrace.upTo_groupAt hm).mp he'
     exact h.phase_order y y' j j' t e e' (hsub _ htd hy) (hsub _ htd hy') he he' hjj
+      (hop.imp_right fun hn hp => hn (RunTrace.upTo_ownPublicationAt hm htd hp))
   · obtain ⟨htd, ht⟩ := (RunTrace.upTo_tickAt hm).mp ht
     exact h.tick_public y j t (hsub _ htd hy) ht
   · obtain ⟨htd, ht⟩ := (RunTrace.upTo_tickAt hm).mp ht

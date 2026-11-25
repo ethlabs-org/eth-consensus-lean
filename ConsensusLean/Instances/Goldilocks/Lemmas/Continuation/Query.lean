@@ -89,24 +89,25 @@ theorem handover_invariant_at
       (shapeProgress (goldilocks S) V)
       (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
-    ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys
+    ∃ r σ ΔF, 0 < ΔF ∧ Compose.Growing.HandoverSeed Q.trace Q.keys
         (runProposer S Q.run.2 Q.hn)
-        (digestOf S Q.run.2) Q.gst
-        (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ
+        (digestOf S Q.run.2) Q.gst ΔF Q.bound r σ
         (cm := runCommittee S Q.run.2 Q.hn)
         (βK := (K S A).params.βK) ∧
       ∃ t₁, t₁ ≤ Q.bound ∧ Q.params.ts (r + Q.params.k : Nat) ≤ t₁ ∧
         t₁ + 8 * Q.params.Δ + 1 ≤ Q.heal ∧
         ∀ b, Q.bound ≤ b →
-          Healing.Growing.ResetService Q.trace Q.keys Q.gst (protoFGDelay (Model.pubOf Q.run.1)) b →
+          Healing.Growing.ACResetService Q.trace Q.keys Q.gst ΔF →
           Compose.Growing.SleepyBoundsFrom Q.trace Q.keys r b →
           Compose.Growing.CommitteeBoundsFrom Q.trace Q.keys (voteK S Q.run.2) r b →
           Compose.Growing.ChainConvictedBelow Q.trace Q.keys →
           Compose.Growing.SeededInvariant Q.trace Q.keys Q.gst r (r + Q.params.k - 1) t₁ b := by
-  obtain ⟨r, σ, hseed, t₀, ht₀T, hdt₀, hlate, hcov⟩ := handover_seed_cover_at S A V Q h0 hb hp
-  obtain ⟨a, hpr, -⟩ := hseed.reset
+  obtain ⟨r, σ, ΔF, hΔF, hseed, t₀, ht₀T, hdt₀, hlate, hcov⟩ :=
+    handover_seed_cover_at S A V Q h0 hb hp
+  obtain ⟨a, _, hpr, -⟩ := hseed.reset
   have hΔ := Q.params.toParams.hΔ
-  refine ⟨r, σ, hseed, max t₀ (Q.params.ts (r + Q.params.k : Nat)), max_le ht₀T (hdt₀.trans ht₀T),
+  refine ⟨r, σ, ΔF, hΔF, hseed, max t₀ (Q.params.ts (r + Q.params.k : Nat)),
+    max_le ht₀T (hdt₀.trans ht₀T),
     le_max_right _ _, ?_, fun b hTb hsvc hB hKB hcv =>
       Compose.Growing.seeded_invariant_of_cover_at
         (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid) hpr.noColl hseed

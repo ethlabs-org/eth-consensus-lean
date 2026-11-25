@@ -129,7 +129,7 @@ theorem exec_ac_call (y : Fin P.n) (st : NodeState A) (t : Time) (e : Event A) {
         · rcases List.mem_cons.1 hm with hm | hm
           · simp only [Node.acToFG, Cut.ac.injEq] at hm; subst hm; cases hc
           · simp only [Node.attest] at hm
-            split at hm <;> simp [Node.onAttestation] at hm
+            split at hm <;> simp at hm
       next h => simp at hm
   | block B =>
     have : ℓ.call = .block B := by
@@ -213,7 +213,7 @@ theorem onTick_ac_index (y : Fin P.n) (st : NodeState A) (t : Time) (x : Nat)
     · exact ⟨_, [], rfl, rfl, by simp⟩
     · refine ⟨_, _, rfl, rfl, fun ℓ' hm => ?_⟩
       simp only [Node.attest] at hm
-      split at hm <;> simp [Node.onAttestation] at hm
+      split at hm <;> simp at hm
   have h0 : (tickStep proposer dg y st t x .acTick).2 = [(acCall y st t .tick).2] := rfl
   cases fgDue
   case false =>

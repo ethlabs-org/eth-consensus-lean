@@ -50,7 +50,7 @@ private theorem tick_forward_queue (hv : rho.ExecutionValid) {i : Nat} {v : V}
     exact h
   have hpoll (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) :
       (shapeOf S hn (rho.dutyStep v nd (.poll u.toNat)).1).forwards = [] := by
-    rw [dutyStep_poll S rho hn v nd u.toNat hsel, poll_forwards]
+    rw [dutyStep_poll S rho hn v nd u.toNat hsel, pollBatch_fst, poll_forwards]
   simp only [Model.Run.releasesAt, he] at ho
   rcases Skeleton.proposeAt_cases (skeleton (Model.pubOf E) S.vote) u with
     ⟨hnil, _⟩ | ⟨s, hs, hone, _⟩
@@ -184,7 +184,7 @@ private theorem tick_accepted_root {sp : AC.ACParams}
       split at hm
       · simp [acToFG] at hm
       · simp only [attest, List.mem_cons, acToFG, reduceCtorEq, false_or] at hm
-        split at hm <;> simp [onAttestation] at hm
+        split at hm <;> simp at hm
 
 omit [DecidableEq V] in
 private theorem decoded_block_root {o : Wire (Fintype.card V) S.vote}
@@ -240,7 +240,7 @@ theorem tick_released_forward_acceptance (hv : rho.ExecutionValid) {i : Nat} {v 
     (stateAt S rho hn v i).node u (Nat.pair i 0)
     (.tick (encodeTxs (Model.mempool rho.inbox v u)) (S.sign (Model.pubOf E)
       (rho.ownKey v) u)) m hm'
-  have hmrec := List.getElem_mem hm'
+  have hmrec := List.mem_append_left (tickTail S rho hn v i u) (List.getElem_mem hm')
   have hr := (congrArg (fun rs =>
     (groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
       (stateAt S rho hn v i).node u (Nat.pair i 0)

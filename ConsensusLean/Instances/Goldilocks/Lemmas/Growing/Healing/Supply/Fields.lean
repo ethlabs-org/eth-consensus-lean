@@ -75,10 +75,12 @@ theorem goldilocks_proposal_floor {cm : Time → Finset (Fin sp.n)} {lo hi : Tim
 /-- **The `report_origin` field** at the Goldilocks run interface: a high report of a node honest
 at it extends the stored block of an earlier joined fast-lock write of the same node, held by it
 at the write. Only collision freedom is read from the premises. -/
-theorem goldilocks_report_origin {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {g ΔF a b : Time}
+theorem goldilocks_report_origin {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    {hold : Time} {g ΔF a b : Time}
     {y : Fin sp.n} {i : Nat} {R : AC.Blk sp.n (List (FG.Att sp.n))}
-    (_hβ : βK ≤ 1 / 2) (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
-    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b)
+    (_hβ : βK ≤ 1 / 2)
+    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (_hr : IsReset tr H g a) (_hab : a ≤ b) (hy : y ∈ H (tr.time i)) (_hib : tr.time i ≤ b)
     (hR : ReportAt tr y i R) (_hh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
     ∃ r ≤ i, ∃ j B, y ∈ H (tr.time r) ∧
@@ -97,27 +99,38 @@ theorem goldilocks_report_origin {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {
   exact ⟨r, hri.le, j, ellw.frame.viableAncestor D, hyr, ⟨hj, CV, ellw, D, hcw, hfl, rfl⟩,
     hsub (AC.viableAncestor_anc hok hD).1, hRB⟩
 
+/-- `committeeHalf_of_committeeFaults` from the committee size, positivity and facts alone, without
+the rest of the run interface (its calendar and release laws). -/
+theorem committeeHalf_of_facts {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {g b : Time}
+    (hβ : βK ≤ 1 / 2) (hpos : 0 < sp.committeeSize)
+    (hsize : ∀ s, ((dictOfTime sp cm).committee s).ncard = sp.committeeSize)
+    (hfacts : Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm))
+    (hcf : CommitteeFaultsUpTo (P := sp.toParams) βK cm H g b) :
+    Healing.Growing.CommitteeHalfUpTo tr H (dictOfTime sp cm) g b :=
+  ⟨hfacts, fun s hgs hsb _ hd0 hdb => hcf.committee_cs2_at hβ hpos (hsize s) hgs hsb hd0 hdb⟩
+
 /-- **The committee half bound from the committee fault bound** at the run's slot committees:
 with `βK ≤ 1/2`, the committee fault bound leaves fewer than half of each slot committee from `ḡ`
 by `b` faulty at every read time in `[0, b]` (`CommitteeFaultsUpTo.committee_cs2_at`). The
 committee facts, sizes and positivity are the run's, under collision freedom. No reset and no
 other premise is read. -/
 theorem committeeHalf_of_committeeFaults {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {g b : Time}
-    (hβ : βK ≤ 1 / 2) (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    (hβ : βK ≤ 1 / 2)
+    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hcf : CommitteeFaultsUpTo (P := sp.toParams) βK cm H g b) :
     Healing.Growing.CommitteeHalfUpTo tr H (dictOfTime sp cm) g b := by
   obtain ⟨-, hpos, hsize, hfacts, -, -⟩ := (goldilocksRunInterface_run_iff cm).mp hrun
-  exact ⟨hfacts hnc, fun s hgs hsb _ hd0 hdb =>
-    hcf.committee_cs2_at hβ hpos (hsize s) hgs hsb hd0 hdb⟩
+  exact committeeHalf_of_facts hβ hpos hsize (hfacts hnc) hcf
 
 /-- **The `report_follow` field** at the Goldilocks run interface: after warmup the proposal is
 reported by nodes honest at the delayed report deadline, and the same report is an ancestor of
 later honest proposal heads. -/
-theorem goldilocks_report_follow {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {g ΔF b : Time}
+theorem goldilocks_report_follow {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    {hold : Time} {g ΔF b : Time}
     {s₀ N u floor : Nat} {kindJ : Prop} {J B : AC.Blk sp.n (List (FG.Att sp.n))} {z : Fin sp.n}
     {kB : Nat} (hβ : βK ≤ 1 / 2)
     (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
-    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b)
+    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (hframe : FrameWindow tr H (sp.toParams.slotTime s₀)
       (shiftDelay sp.toParams G (sp.toParams.slotTime N + 2 * sp.toParams.Δ)) floor kindJ J)
     (hm : gbar g + 4 * sp.toParams.Δ ≤ sp.toParams.slotTime s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
@@ -158,7 +171,8 @@ theorem goldilocks_report_follow {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {
       ⟨fun w j hw hl hh => hframe.floor_eq w j hw hl (hh.trans hmax),
         fun w j hw hl hh => hframe.kind_iff w j hw hl (hh.trans hmax),
         fun w j hw hl hh => hframe.root_eq w j hw hl (hh.trans hmax)⟩ hr hp.noColl
-      ⟨hp.sync.deltaF, hp.sync.message, hp.sync.block, hp.sync.relay, hp.sync.signedRow⟩
+      ⟨hp.sync.deltaF, hp.sync.message, hp.sync.block, hp.sync.relay, hp.sync.signedRow,
+      hp.sync.hold_le⟩
       hp.awake hp.faults hp.catchUp hp.noRestart hm hwarm hN (hmax.trans hmb) hz hdes hP hPs
       hcal hgap ht₀ hy
       (committeeHalf_of_committeeFaults hβ hrun hp.noColl hp.committee)
@@ -170,10 +184,10 @@ theorem goldilocks_report_follow {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {
 
 /-- The Goldilocks healing witness, with the committee-start run interface and the exact
 warmup, follow, drain and joined stored-fast-lock origin equations. -/
-theorem goldilocks_ac_healing (hδ : 3 + (G + 3) / 4 ≤ sp.toParams.δt) :
-    goldilocksACHealing sp ro sign G := by
+theorem goldilocks_ac_healing {Rg : Nat} (hδ : 3 + (G + 3) / 4 ≤ sp.toParams.δt) :
+    goldilocksACHealing sp ro sign G Rg := by
   let O : ACHealing (goldilocksNode sp ro) (fun v => v.val)
-      (goldilocksRunInterface sp ro sign G) :=
+      (goldilocksRunInterface sp ro sign G) ((Rg : Time) * sp.Δ) :=
     { warmup := 2 * sp.k
       follow := 3 + (G + 3) / 4
       reportDelay := G

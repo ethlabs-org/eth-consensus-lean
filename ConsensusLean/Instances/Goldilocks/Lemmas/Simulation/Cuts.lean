@@ -141,18 +141,60 @@ theorem exists_event_of_getElem? {k : Nat} {r : CutRec (S.params (pubOf E) hn) (
     allCuts_getElem? S rho hn k (List.getElem?_eq_some_iff.mp hr).1
   exact ⟨i, rho.events[i], List.getElem?_eq_getElem hi, h1, h2, h3 ▸ hr⟩
 
-/-- A cut of engine event `i` is at the event's node (its own key) and time, under an event id
-`Nat.pair i s`. -/
+/-- An own admission of the tick phase of `ev`'s time in the cuts of engine event `i`: `ev` is a
+tick, the cut is an `.attestation` cut of the node `w` of a tick event `j ≤ i` at the same time,
+under an id `Nat.pair j s` with `1 ≤ s`. -/
+def OwnAdmitCut (i : Nat) (ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object)
+    (r : CutRec (S.params (pubOf E) hn) (S.ro _)) : Prop :=
+  (∃ v, ev = .tick v ev.time) ∧ (∃ a, r.label = .fg (.attestation a)) ∧
+    ∃ j ≤ i, ∃ w : V, rho.events[j]? = some (.tick w ev.time) ∧ r.node = rho.ownKey w ∧
+      ∃ s, 1 ≤ s ∧ r.event = Nat.pair j s
+
+omit [DecidableEq V] in
+/-- An own admission cut is an `.attestation` cut. -/
+theorem OwnAdmitCut.label {i : Nat}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {r : CutRec (S.params (pubOf E) hn) (S.ro _)} (h : OwnAdmitCut S rho hn i ev r) :
+    ∃ a, r.label = .fg (.attestation a) := h.2.1
+
+omit [DecidableEq V] in
+/-- `OwnAdmitCut` unfolded. -/
+theorem ownAdmitCut_iff {i : Nat}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    {r : CutRec (S.params (pubOf E) hn) (S.ro _)} : OwnAdmitCut S rho hn i ev r ↔
+      (∃ v, ev = .tick v ev.time) ∧ (∃ a, r.label = .fg (.attestation a)) ∧
+        ∃ j ≤ i, ∃ w : V, rho.events[j]? = some (.tick w ev.time) ∧ r.node = rho.ownKey w ∧
+          ∃ s, 1 ≤ s ∧ r.event = Nat.pair j s := Iff.rfl
+
+/-- A cut of engine event `i` is at the event's time, and at the event's node (its own key)
+under an event id `Nat.pair i s`, or an own admission of the event's tick phase
+(`OwnAdmitCut`). -/
 theorem mem_eventCuts {i : Nat}
     {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
     (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
     (hr : r ∈ eventCuts S rho hn i) :
-    r.node = rho.ownKey ev.node ∧ r.time = ev.time ∧ ∃ s, r.event = Nat.pair i s := by
-  obtain ⟨q, hq, _, _, hn', ht, hid⟩ := eventCuts_source S rho hn i hr
-  obtain ⟨hqt, hqn⟩ := NodeAsChainShape.CanonicalTrace.eventCut_node_time
+    r.time = ev.time ∧ ((r.node = rho.ownKey ev.node ∧ ∃ s, r.event = Nat.pair i s) ∨
+      OwnAdmitCut S rho hn i ev r) := by
+  obtain ⟨q, hq, _, hl, hn', ht, hid⟩ := eventCuts_source S rho hn i hr
+  obtain ⟨hqt, hq'⟩ := NodeAsChainShape.CanonicalTrace.eventCut_origin
     (traceEncoding S hn) rho he hq
-  rw [hn', ht, hid]
-  exact ⟨hqn, hqt, NodeAsChainShape.CanonicalTrace.eventCut_id (traceEncoding S hn) rho he hq⟩
+  refine ⟨ht.trans hqt, ?_⟩
+  rcases hq' with h | ⟨h1, ⟨a, ha⟩, h3⟩
+  · exact Or.inl ⟨hn'.trans h.1, by obtain ⟨s, hs⟩ := h.2; exact ⟨s, hid.trans hs⟩⟩
+  · obtain ⟨j, hj, w, hw, hn₂, s, hs, hid₂⟩ := h3
+    exact Or.inr ⟨h1, ⟨a, hl.trans ha⟩, j, hj, w, hw, hn'.trans hn₂, s, hs, hid.trans hid₂⟩
+
+/-- A cut of engine event `i` that is no `.attestation` cut is at the event's node and time,
+under an event id `Nat.pair i s`. -/
+theorem mem_eventCuts_of_not_att {i : Nat}
+    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
+    (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
+    (hr : r ∈ eventCuts S rho hn i) (hna : ∀ a, r.label ≠ .fg (.attestation a)) :
+    r.node = rho.ownKey ev.node ∧ r.time = ev.time ∧ ∃ s, r.event = Nat.pair i s := by
+  obtain ⟨ht, h | h⟩ := mem_eventCuts S rho hn he hr
+  · exact ⟨h.1, ht, h.2⟩
+  · obtain ⟨a, ha⟩ := h.label
+    exact absurd ha (hna a)
 
 /-- A cut at position `0` of engine event `i` starts a group whose handler is of the engine
 event's phase: if its label is the first cut of the handler of `e` (at any state), `e` has the
@@ -166,7 +208,8 @@ theorem phase_of_pos_zero {i : Nat}
     {t : Time} {e : Event (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
     {cs : List (Cut (goldilocksNode (S.params (pubOf E) hn) (S.ro _)))}
     {proposer : Nat → Fin (Fintype.card V)}
-    (hcs : (exec proposer dg y st t e).2 = r.label :: cs) : e.phase = ev.phase := by
+    (hcs : (exec proposer dg y st t e).2 = r.label :: cs) :
+    e.phase = ev.phase ∨ ((∃ v t, ev = .tick v t) ∧ e.phase = 2) := by
   obtain ⟨q, hq, hpos, hlabel, _⟩ := eventCuts_source S rho hn i hr
   exact NodeAsChainShape.CanonicalTrace.phase_of_pos_zero (traceEncoding S hn) rho he hq
     (hpos ▸ h0) (hlabel ▸ hcs)
@@ -181,18 +224,12 @@ theorem restart_of_mem_eventCuts {i : Nat}
   exact NodeAsChainShape.CanonicalTrace.restart_of_mem_eventCuts (traceEncoding S hn) rho he hq
     (hlabel ▸ hl) hℓ
 
-/-- The cuts of a group-shaped engine event (a tick at a public time, a restart) are at the
-positions `0, 1, …`. -/
+/-- The cuts of an engine restart are at the positions `0, 1, …`. -/
 theorem pos_getElem_eventCuts_of_group {i : Nat} {v : V} {t : Time}
-    (he : rho.events[i]? = some (.tick v t) ∨ rho.events[i]? = some (.restart v t)) (m : Nat)
+    (he : rho.events[i]? = some (.restart v t)) (m : Nat)
     (hm : m < (eventCuts S rho hn i).length) : (eventCuts S rho hn i)[m].pos = m := by
-  rcases he with he | he
-  · by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
-    · simp only [eventCuts_tick_public S rho hn i v t he hp] at hm ⊢
-      exact (getElem_groupRecs _ _ _ _ _ _ _ m hm).2.2.2.1
-    · simp [eventCuts_tick_other S rho hn i v t he hp] at hm
-  · simp only [eventCuts_restart S rho hn i v t he] at hm ⊢
-    exact (getElem_groupRecs _ _ _ _ _ _ _ m hm).2.2.2.1
+  simp only [eventCuts_restart S rho hn i v t he] at hm ⊢
+  exact (getElem_groupRecs _ _ _ _ _ _ _ m hm).2.2.2.1
 
 /-- An engine restart has exactly one cut, the restart's `ac_restart`. -/
 theorem eventCuts_restart_length {i : Nat} {v : V} {t : Time}
@@ -221,28 +258,49 @@ theorem restart_getElem? {i : Nat} {v : V} {t : Time}
   refine ⟨h1, h2, _, h5.trans rfl, rfl⟩
 
 /-- **A labelled cut of the trace is a cut of an engine event**: the event `i` at whose cuts
-`[cutMap i, cutMap (i + 1))` it lies, with the cut's node (the event node's key), time (the
-event's), position and label. -/
-theorem simTrace_cut {k : Nat} (hk : (simTrace S rho hn).label k ≠ none) :
+`[cutMap i, cutMap (i + 1))` it lies, with the cut's time (the event's), position and label, and
+node: the event node's key, or the cut is an own admission of the event's tick phase
+(`OwnAdmitCut`). -/
+theorem simTrace_cut_origin {k : Nat} (hk : (simTrace S rho hn).label k ≠ none) :
+    ∃ r i ev, (allCuts S rho hn)[k]? = some r ∧ rho.events[i]? = some ev ∧
+      cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
+      (eventCuts S rho hn i)[k - cutMap S rho hn i]? = some r ∧
+      ((simTrace S rho hn).node k = rho.ownKey ev.node ∨ OwnAdmitCut S rho hn i ev r) ∧
+      (simTrace S rho hn).time k = ev.time ∧
+      (simTrace S rho hn).pos k = r.pos ∧ (simTrace S rho hn).label k = some r.label := by
+  obtain ⟨r, hr⟩ : ∃ r, (allCuts S rho hn)[k]? = some r := by
+    rw [simTrace_label] at hk
+    cases h : (allCuts S rho hn)[k]? with
+    | none => rw [h] at hk; exact absurd rfl hk
+    | some r => exact ⟨r, rfl⟩
+  have hlen := (List.getElem?_eq_some_iff.mp hr).1
+  obtain ⟨i, hi, hlo, hhi, hix⟩ := allCuts_getElem? S rho hn k hlen
+  have he := List.getElem?_eq_getElem hi
+  have hmem : r ∈ eventCuts S rho hn i := List.mem_of_getElem? (hix ▸ hr)
+  obtain ⟨ht, h⟩ := mem_eventCuts S rho hn he hmem
+  refine ⟨r, i, _, hr, he, hlo, hhi, hix ▸ hr, ?_, ?_, ?_, ?_⟩
+  · rcases h with h | h
+    · left; rw [simTrace_node, hr]; exact h.1
+    · exact Or.inr h
+  · rw [simTrace_time, hr]; exact ht
+  · rw [simTrace_pos, hr]; rfl
+  · rw [simTrace_label, hr]; rfl
+
+/-- **A labelled cut of the trace that is no `.attestation` cut is a cut of an engine event**:
+`simTrace_cut_origin`, with the cut's node the event node's key. -/
+theorem simTrace_cut {k : Nat} (hk : (simTrace S rho hn).label k ≠ none)
+    (hna : ∀ a, (simTrace S rho hn).label k ≠ some (.fg (.attestation a))) :
     ∃ r i ev, (allCuts S rho hn)[k]? = some r ∧ rho.events[i]? = some ev ∧
       cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
       (eventCuts S rho hn i)[k - cutMap S rho hn i]? = some r ∧
       (simTrace S rho hn).node k = rho.ownKey ev.node ∧ (simTrace S rho hn).time k = ev.time ∧
       (simTrace S rho hn).pos k = r.pos ∧ (simTrace S rho hn).label k = some r.label := by
-  obtain ⟨l, hl⟩ := Option.ne_none_iff_exists'.mp hk
-  obtain ⟨f, hall, hevent⟩ := cutRecords_map S rho hn
-  have hl' := hl
-  rw [(simTrace_encoding S rho hn).1] at hl'
-  obtain ⟨i, ev, r, he, hlo, hix, _, ht, hn', _, hglobal, hhi⟩ :=
-    NodeAsChainShape.CanonicalTrace.labelled_cut_origin (traceEncoding S hn) rho hl'
-  have hg : (allCuts S rho hn)[k]? = some (f r) := by rw [hall, List.getElem?_map, hglobal]; rfl
-  rw [← (simTrace_encoding S rho hn).2] at hlo hix hhi
-  refine ⟨f r, i, ev, hg, he, hlo, hhi, ?_, ?_, ?_, ?_, ?_⟩
-  · rw [hevent, List.getElem?_map, hix]; rfl
-  · rwa [(simTrace_encoding S rho hn).1]
-  · rwa [(simTrace_encoding S rho hn).1]
-  · rw [simTrace_pos, hg]; rfl
-  · rw [simTrace_label, hg]; rfl
+  obtain ⟨r, i, ev, hr, he, hlo, hhi, hix, hn', ht, hp, hl⟩ := simTrace_cut_origin S rho hn hk
+  refine ⟨r, i, ev, hr, he, hlo, hhi, hix, ?_, ht, hp, hl⟩
+  rcases hn' with h | h
+  · exact h
+  · obtain ⟨a, ha⟩ := h.label
+    exact absurd (hl.trans (congrArg some ha)) (hna a)
 
 /-- Past the last node cut the trace is unlabelled, strictly after the observation horizon. -/
 theorem simTrace_of_getElem?_none {k : Nat} (hk : (allCuts S rho hn)[k]? = none) :

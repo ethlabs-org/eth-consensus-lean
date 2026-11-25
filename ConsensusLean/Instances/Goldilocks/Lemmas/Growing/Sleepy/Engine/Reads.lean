@@ -77,7 +77,7 @@ theorem ready_read_cut_at (hv : rho.ExecutionValid)
       have hl : (simTrace S rho hn).label k ≠ none := by
         rw [simTrace_label, List.getElem?_eq_getElem hlen]
         simp
-      obtain ⟨_, i, e, _, he, hi, _, _, _, htime, _⟩ := simTrace_cut S rho hn hl
+      obtain ⟨_, i, e, _, he, hi, _, _, _, htime, _⟩ := simTrace_cut_origin S rho hn hl
       have hin : i < n := by
         by_contra h
         have := cutMap_mono S rho hn (Nat.le_of_not_gt h)
@@ -91,7 +91,7 @@ theorem ready_read_cut_at (hv : rho.ExecutionValid)
       | some r =>
         have hl : (simTrace S rho hn).label j ≠ none := by
           rw [simTrace_label, hrj]; simp
-        obtain ⟨_, i, e, _, he, _, hi, _, _, htime, _⟩ := simTrace_cut S rho hn hl
+        obtain ⟨_, i, e, _, he, _, hi, _, _, htime, _⟩ := simTrace_cut_origin S rho hn hl
         have hni : n ≤ i := by
           by_contra h
           have := cutMap_mono S rho hn (show i + 1 ≤ n by omega)

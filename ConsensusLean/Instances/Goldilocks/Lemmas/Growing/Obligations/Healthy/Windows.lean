@@ -18,7 +18,7 @@ public section
 
 The AC catch-up window at the reset on the prefix through a read time
 (`catch_window_at_reset_at`) and the reset's windows (`ResetPremisesUpTo.windows_at_reset_at`).
-The finite reset service on the prefix (`ResetService.upTo_at`), the synchrony and catch windows
+The finite reset service on the prefix (`ResetService.upTo_ac_at`), the synchrony and catch windows
 it gives (`sync_window_at_reset_at`, `catch_window_at_gbar_at`) and the healthy AC base
 (`healthy_base_of_reset_catch_before_at`) are proved in `Healthy/PrefixBase`, re-exported here.
 The restart bound reads each node's honesty at its own time (`restart_le_before_at`). -/
@@ -30,6 +30,7 @@ open AC (ACParams ReplayOrder Payload gbar)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
+variable {hold : Time}
 
 /-- **Catch at the reset on the prefix through `t`**: an acceptance before the reset `a` by a
 validator honest at `t` is accepted before `a + 2Δ` by every validator honest at `t` whose
@@ -39,7 +40,7 @@ restarts no later than the reset. -/
 theorem catch_window_at_reset_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {b : Time} (hs : ResetService tr H g ΔF b) (hc : CatchRun tr H g (2 * sp.Δ))
+    {b : Time} (hs : ResetService tr H g ΔF b hold) (hc : CatchRun tr H g (2 * sp.Δ))
     {t : Time} (ht0 : 0 ≤ t) (hca : cutZ sp.toParams g < a)
     (hrestart : ∀ y k, y ∈ H (tr.time k) → tr.RestartAt y k → tr.time k ≤ t →
       tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat)) :
@@ -47,7 +48,7 @@ theorem catch_window_at_reset_at
       (2 * sp.Δ) t := by
   have hm := hrun.time_mono
   have hpre := hrun.upTo ht0
-  have hss := hs.upTo_at hrun (d := t)
+  have hss := hs.upTo_ac_at hrun (d := t)
   have hΔ := sp.toParams.hΔ
   have hga : gbar g < a := by linarith [lt_cutZ sp g]
   have hra : sp.ts (sp.slot (gbar g) + 1 : Nat) ≤ a := by
@@ -96,14 +97,14 @@ theorem catch_window_at_reset_at
 premises. -/
 theorem ResetPremisesUpTo.windows_at_reset_at {b : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {t : Time} (ht0 : 0 ≤ t) (htb : t ≤ b) :
     SyncACWindowBefore (H t) ((tr.upTo t).HonestBlocks (H t)) a t (tr.projAC.upTo t) ∧
       CatchACWindowBefore (tr.projAC.upTo t) (H t) ((tr.upTo t).HonestBlocks (H t)) a
         (2 * sp.Δ) t := by
   have hca := hp.cutZ_lt_reset_at
   have hga : g ≤ a := by linarith [AC.le_gbar g, lt_cutZ sp g, sp.toParams.hΔ]
-  exact ⟨sync_window_at_reset_at hp.run hp.sync hga ht0,
+  exact ⟨sync_window_at_reset_at hp.run hp.sync.toAC hga ht0,
     catch_window_at_reset_at hp.run hp.sync hp.catchUp ht0 hca
       fun y k hy hk hkt => restart_le_before_at hp hy hk (hkt.trans htb)⟩
 

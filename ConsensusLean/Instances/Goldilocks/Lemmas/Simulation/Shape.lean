@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Interface
 public import ConsensusLean.Lemmas.Model.Objects
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.HeldQueue
 
 public section
 
@@ -751,32 +752,6 @@ theorem propose_fgDue (st : State sp ro binding) s : (propose st s).1.fgDue = st
 theorem propose_voteForwards (st : State sp ro binding) s :
     (propose st s).1.voteForwards = st.voteForwards := by
   rw [propose_eq]; dsimp only; split <;> rfl
-
-/-- The FG update keeps the key. -/
-theorem fgUpdate_self (st : State sp ro binding) : (fgUpdate st).self = st.self := by
-  rw [fgUpdate_eq]; simp only; split
-  · rfl
-  · split <;> rfl
-/-- The FG update keeps the clock. -/
-theorem fgUpdate_now (st : State sp ro binding) : (fgUpdate st).now = st.now := by
-  rw [fgUpdate_eq]; simp only; split
-  · rfl
-  · split <;> rfl
-/-- The FG update clears the FG-due flag. -/
-theorem fgUpdate_fgDue (st : State sp ro binding) : (fgUpdate st).fgDue = false := by
-  rw [fgUpdate_eq]; simp only; split
-  · rfl
-  · split <;> rfl
-
-/-- A poll step keeps the key. -/
-theorem poll_self (st : State sp ro binding) t : (poll st t).1.self = st.self := by
-  unfold poll; simp only; split <;> split <;> simp [fgUpdate_self]
-/-- A poll step keeps the clock. -/
-theorem poll_now (st : State sp ro binding) t : (poll st t).1.now = st.now := by
-  unfold poll; simp only; split <;> split <;> simp [fgUpdate_now]
-/-- After a poll step the FG update is not due: the step ran it if it was. -/
-theorem poll_fgDue (st : State sp ro binding) t : (poll st t).1.fgDue = false := by
-  unfold poll; simp only; split <;> split <;> simp_all [fgUpdate_fgDue]
 
 end Consensus.Goldilocks.Simulation
 

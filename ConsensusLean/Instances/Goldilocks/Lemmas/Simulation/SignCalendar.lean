@@ -198,12 +198,16 @@ private theorem getElem?_add {i m : Nat} (hi : i < rho.events.length)
     · rw [List.getElem?_append_right (by rw [prefix_length]; omega), prefix_length,
         Nat.add_sub_cancel_left]
 
-/-- A replayed `ac_on_tick` or `ac_to_fg` cut comes from a public engine tick, whose cuts are the
-node's tick with the calendar's flag, under the id `⟨i, 0⟩`. -/
+/-- A replayed `ac_on_tick` or `ac_to_fg` cut comes from a public engine tick: it is a cut of the
+node's tick with the calendar's flag, under the id `⟨i, 0⟩`, the group the event's cuts begin
+with. -/
 private theorem tick_source {i : Nat} {r : CutRec A} (hr : r ∈ eventCutsWith e rho due i)
     (hc : TickOrUpdate r.label) :
-    ∃ v t, rho.events[i]? = some (.tick v t) ∧
+    ∃ v t T, rho.events[i]? = some (.tick v t) ∧
       eventCutsWith e rho due i = groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
+        (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0)
+        (.tick (encodeTxs (Model.mempool rho.inbox v t)) (due (rho.ownKey v) t)) ++ T ∧
+      r ∈ groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
         (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0)
         (.tick (encodeTxs (Model.mempool rho.inbox v t)) (due (rho.ownKey v) t)) := by
   cases he : rho.events[i]? with
@@ -211,10 +215,21 @@ private theorem tick_source {i : Nat} {r : CutRec A} (hr : r ∈ eventCutsWith e
   | some ev =>
     cases ev with
     | tick v t =>
-      rw [eventCutsWith_tick e rho due i v t he] at hr ⊢
-      split_ifs at hr ⊢
-      · exact ⟨v, t, rfl, rfl⟩
-      · cases hr
+      have hE := eventCutsWith_tick e rho due i v t he
+      rw [hE] at hr
+      rcases List.mem_append.mp hr with hr | hr
+      · by_cases hp : (paramsAtCount p (Fintype.card V) hN hn).IsPublic t
+        · simp only [hp, ↓reduceIte] at hr
+          refine ⟨v, t, admitRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v) t i
+            (admitsAt e rho v i) (postTick e rho due v i t) 1, rfl, ?_, hr⟩
+          rw [hE]
+          simp only [hp, ↓reduceIte]
+        · simp only [hp, ↓reduceIte] at hr
+          exact absurd hr List.not_mem_nil
+      · obtain ⟨a, -, st, s, -, hg⟩ := mem_admitRecs _ _ _ _ _ _ _ _ _ hr
+        obtain ⟨-, -, -, hl⟩ := mem_groupRecs _ _ _ _ _ _ _ hg
+        obtain ⟨x, b, h⟩ := tick_of_tickOrUpdate _ _ _ _ _ _ hl hc
+        cases h
     | restart v t =>
       rw [eventCutsWith_restart e rho due i v t he] at hr
       obtain ⟨-, -, -, hl⟩ := mem_groupRecs _ _ _ _ _ _ _ hr
@@ -246,9 +261,8 @@ theorem simTraceWith_signCalendar (H : Time → Set (Fin (Fintype.card V))) :
   have hrm := List.mem_of_getElem? hri
   have hlab : r.label = .ac ℓ := by
     rw [hrl]; simp only [hcs, List.getElem_cons_zero]
-  obtain ⟨v, t', he, hEC⟩ := tick_source e rho due hrm ⟨ℓ, hlab, Or.inl hℓ⟩
-  rw [hEC] at hrm
-  obtain ⟨hrn, hrt, hre, -⟩ := mem_groupRecs _ _ _ _ _ _ _ hrm
+  obtain ⟨v, t', T, he, hEC, hrG⟩ := tick_source e rho due hrm ⟨ℓ, hlab, Or.inl hℓ⟩
+  obtain ⟨hrn, hrt, hre, -⟩ := mem_groupRecs _ _ _ _ _ _ _ hrG
   rw [(simTraceWith_fields e rho due j).1] at hy
   rw [(simTraceWith_fields e rho due j).2.1] at ht
   rw [hr, Option.elim_some, hrn] at hy
@@ -264,14 +278,19 @@ theorem simTraceWith_signCalendar (H : Time → Set (Fin (Fintype.card V))) :
   · -- the group does not sign, but the engine tick's cuts contain `ac_to_fg`
     obtain ⟨ℓu, hmu, hℓu⟩ := hiff'.mpr hd
     obtain ⟨m, hm, hmeq⟩ := List.getElem_of_mem hmu
+    have hmG : m < (groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
+        (e.adapter.node (stateAt e rho v i)) t' (Nat.pair i 0)
+        (.tick (encodeTxs (Model.mempool rho.inbox v t')) (due (rho.ownKey v) t'))).length := by
+      rw [groupRecs_eq]; simpa [cutPosts_length] using hm
     have hlen : m < (eventCutsWith e rho due i).length := by
-      rw [hEC, groupRecs_eq]; simpa [cutPosts_length] using hm
+      rw [hEC, List.length_append]; omega
     have hk := getElem?_add e rho due hi hlen
     obtain ⟨r', hr'⟩ : ∃ r', (allCutsWith e rho due)[cutMapWith e rho due i + m]? = some r' :=
       ⟨_, hk.trans (List.getElem?_eq_getElem hlen)⟩
-    have hr'm : r' ∈ eventCutsWith e rho due i := by
-      rw [hk] at hr'; exact List.mem_of_getElem? hr'
-    rw [hEC] at hr'm
+    have hr'm : r' ∈ groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
+        (e.adapter.node (stateAt e rho v i)) t' (Nat.pair i 0)
+        (.tick (encodeTxs (Model.mempool rho.inbox v t')) (due (rho.ownKey v) t')) := by
+      rw [hk, hEC, List.getElem?_append_left hmG] at hr'; exact List.mem_of_getElem? hr'
     have hevk : (simTraceWith e rho due).event (cutMapWith e rho due i + m) =
         (simTraceWith e rho due).event j := by
       rw [hej, (simTraceWith_fields e rho due _).2.2.1, hr', Option.elim_some,
@@ -282,7 +301,8 @@ theorem simTraceWith_signCalendar (H : Time → Set (Fin (Fintype.card V))) :
     rw [(simTraceWith_fields e rho due _).2.2.2] at hlk
     have hlab' : ((allCutsWith e rho due)[cutMapWith e rho due i + m]?).map CutRec.label =
         some (.ac ℓu) := by
-      rw [hk, hEC, groupRecs_getElem?, List.getElem?_eq_getElem hm, hmeq]
+      rw [hk, hEC, List.getElem?_append_left hmG, groupRecs_getElem?,
+        List.getElem?_eq_getElem hm, hmeq]
     rw [hlab', Option.some.injEq] at hlk
     have := hiff.mp ⟨ℓu, hlk ▸ List.getElem_mem _, hℓu⟩
     rw [hb] at this
@@ -296,9 +316,8 @@ theorem simTraceWith_signCalendar (H : Time → Set (Fin (Fintype.card V))) :
     obtain ⟨i', -, -, hri'⟩ := cut_range e rho due hr'
     have hr'm := List.mem_of_getElem? hri'
     have hr'lab : r'.label = .ac ℓu := by rw [hr'l]; exact hmeq
-    obtain ⟨v', t'', he', hEC'⟩ := tick_source e rho due hr'm ⟨ℓu, hr'lab, Or.inr hℓu⟩
-    rw [hEC'] at hr'm
-    obtain ⟨-, -, hre', hl'⟩ := mem_groupRecs _ _ _ _ _ _ _ hr'm
+    obtain ⟨v', t'', T', he', -, hr'G⟩ := tick_source e rho due hr'm ⟨ℓu, hr'lab, Or.inr hℓu⟩
+    obtain ⟨-, -, hre', hl'⟩ := mem_groupRecs _ _ _ _ _ _ _ hr'G
     have hii : i' = i := by
       have h1 : (simTraceWith e rho due).event (j + m) = Nat.pair i' 0 := by
         rw [(simTraceWith_fields e rho due _).2.2.1, hr', Option.elim_some, hre']

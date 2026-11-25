@@ -27,9 +27,11 @@ structure LocalClaimSuppliers {P : Params} {A : NodeAC P} {O : OutputSchema} {In
     [DecidableEq Info] [Countable Info] {F : ChainShapeFamily O Info}
     {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
-    (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) (K : Contract ProgressReq)
+    (M : RunMap rho payload) {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold)
+    (K : Contract ProgressReq)
     (D : OutagePolicy M) (R : StoredReadContext M) (events : SleepyLayer1.Data A) : Prop where
-  regime : RegimeTransport M K C
+  /-- Regime transport at some release hold. -/
+  regime : ∃ hold, RegimeTransport M K C hold
   /-- Output validity on valid executions, without a readiness or regime premise. -/
   outputValidity : OutputValidityEdge M
   reads : ReadRepresentation M
@@ -51,16 +53,16 @@ structure LocalClaimSuppliers {P : Params} {A : NodeAC P} {O : OutputSchema} {In
   deadlines : ClaimDeadlineFit M K C
   progress : ProposalProgressTransport M
   proposalWitness : ProposalWitnessRefinement M K C
-  deadlinePremises : DeadlinePremisesSupply M K
+  deadlinePremises : DeadlinePremisesSupply M K fgHold (E.ΔFG + fgHold)
   finalWindow : FinalWindowSupply M K C.catchUp C.hold
-  finalReads : FinalReadTransport M C
+  finalReads : FinalReadTransport M C (E.ΔFG + fgHold)
   accountability : ActualReadAccountability M C.run
   outage : OutageTransport M D K
   recovery : OutageRecoveryBinding M K C
   outageService : OutageServiceSupply M K C
   resilience : ResilienceTipTransport M
-  preparation : PreparationPremisesSupply M K
-  highCanonical : HighCanonicalSupply M K C
+  preparation : PreparationPremisesSupply M K fgHold (E.ΔFG + fgHold)
+  highCanonical : HighCanonicalSupply M K C (E.ΔFG + fgHold)
   resetBudget : ResetHealBudgetSupply M K C
   storedRead : StoredReadTransport M R
   healedAncestry : HealedReadAncestry M K R
@@ -101,7 +103,8 @@ def meetsObligations_of_local {O : OutputSchema} {Info : Type}
     (K : Contract ProgressReq) : Prop :=
   ∀ (P : {pub : Model.Public // 1 ≤ pub.n} → Params) (A : ∀ pub, NodeAC (P pub))
     (sg : ∀ pub, (A pub).Msg → Fin (P pub).n)
-    (C : ∀ pub, ACCorrectLocal (A pub) (sg pub))
+    {fgHold : {pub : Model.Public // 1 ≤ pub.n} → Time}
+    (C : ∀ pub, ACCorrectLocal (A pub) (sg pub) (fgHold pub))
     (events : ∀ pub, SleepyLayer1.Data (A pub))
     (B : ∀ (V : Type) [Fintype V] [DecidableEq V] pub,
       EngineBinding (F := F) (V := V) pub.val (C pub).payload (sg pub) (C pub).run)
@@ -124,7 +127,8 @@ theorem meetsObligations_of_local_iff {O : OutputSchema} {Info : Type}
     meetsObligations_of_local F K ↔
     ∀ (P : {pub : Model.Public // 1 ≤ pub.n} → Params) (A : ∀ pub, NodeAC (P pub))
       (sg : ∀ pub, (A pub).Msg → Fin (P pub).n)
-      (C : ∀ pub, ACCorrectLocal (A pub) (sg pub))
+      {fgHold : {pub : Model.Public // 1 ≤ pub.n} → Time}
+    (C : ∀ pub, ACCorrectLocal (A pub) (sg pub) (fgHold pub))
       (events : ∀ pub, SleepyLayer1.Data (A pub))
       (B : ∀ (V : Type) [Fintype V] [DecidableEq V] pub,
         EngineBinding (F := F) (V := V) pub.val (C pub).payload (sg pub) (C pub).run)
@@ -144,7 +148,8 @@ theorem meetsObligations_of_local_iff {O : OutputSchema} {Info : Type}
 signer equality. In particular, every field whose type does not mention the signer is unchanged:
 take `Q s C' := C'.f = C.f`. -/
 theorem ACCorrectLocal.cast_signer {P : Params} {A : NodeAC P} {sg sg' : A.Msg → Fin P.n}
-    (h : sg = sg') (C : ACCorrectLocal A sg) (Q : ∀ s, ACCorrectLocal A s → Prop)
+    (h : sg = sg') {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
+    (Q : ∀ s, ACCorrectLocal A s fgHold → Prop)
     (hC : Q sg C) : Q sg' (h ▸ C) := by
   subst h
   exact hC

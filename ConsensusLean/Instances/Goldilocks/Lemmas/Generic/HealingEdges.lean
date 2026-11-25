@@ -86,9 +86,9 @@ variable {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n} {runs : ACRun A sg
 no signer honest at its signing and at `c_z` signs above `HZ` before `T`. A high signing gives
 the reset by leaf 1, with fewer than `q` faulty nodes at `max c_z t_k ≤ b` (`Premises.faults`,
 `Premises.snapshot`). -/
-theorem reset_or_noAdvance :
+theorem reset_or_noAdvance {hold : Time} :
     ∀ {cm βK tr H proposer dg g ΔF b T},
-      runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b → T ≤ b →
+      runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold → T ≤ b →
       (∃ a, IsReset tr H g a ∧ a ≤ T) ∨ NoAdvance tr H g T := by
   intro cm βK tr H proposer dg g ΔF b T hrun hP hTb
   by_cases hadv : ∃ v k att, v ∈ H (max (cutZ P g) (tr.time k)) ∧ tr.SignAt v k att ∧
@@ -106,9 +106,9 @@ theorem reset_or_noAdvance :
 
 /-- Canonical high entries by the horizon of a premised reset, field by field from leaves 13, 12
 and 14 over the supplier `O`. -/
-theorem highCanonical (O : ACHealing A sg runs) :
+theorem highCanonical {hold : Time} (O : ACHealing A sg runs hold) :
     ∀ {cm βK tr H proposer dg g ΔF b a}, βK ≤ 1 / 2 →
-      runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b →
+      runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold →
       IsReset tr H g a → a ≤ b → HighCanonical O.Origin tr H g b := by
   intro cm βK tr H proposer dg g ΔF b a hβ hrun hP hr hab
   refine ⟨fun _ _ hp hib => no_high_contest_at_of_healing O hβ hrun hP hr hab hp hib,
@@ -127,7 +127,30 @@ honest proposal `x` in `[u + δt, u + δt + G - 1]`; leaf 11 puts it one height 
 proposal in its proposer's store, which has the warm proposal's replay state
 (`proposal_mem_at_from`, `σ_eq_honest_at_from`), and the induction hypothesis applies at `x`.
 The spacing gives `δt ≥ 2` with `ΔF > 0`, and every slot time is read from `ProposesAt`. -/
-theorem rise_reset_rounds_at_of (O : ACHealing A sg runs) : rise_reset_rounds_at A sg O := by
+theorem rise_reset_rounds_at_of {hold : Time} (O : ACHealing A sg runs hold) :
+    ∀ {cm proposer dg H} {tr : RunTrace A} {βK : ℚ} {g ΔF b T : Time}
+      {s₀ N Gp floor : Nat} {kindJ : Prop} {J : A.Blk},
+    βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
+    SlotWindowWithin tr H O.reportDelay s₀ N floor kindJ J →
+    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → Service tr H g ΔF b hold →
+    (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
+    (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
+    CatchRun tr H g (2 * P.Δ) → Healing.Growing.NoRestartAfter tr H (gbar g) →
+    (∀ s, P.slotTime s + 4 * P.Δ ≤ P.slotTime (s + 1)) →
+    (∀ s, shiftDelay P O.reportDelay (P.slotTime (s + 1) + 2 * P.Δ) + ΔF ≤
+      P.slotTime (s + P.δt)) →
+    (∃ k, FirstCutAfter tr k (cutZ P g) ∧ tr.time k ≤ b) →
+    gbar g + 4 * P.Δ ≤ P.slotTime s₀ → O.follow ≤ P.δt → 1 ≤ Gp →
+    (∀ s, P.slotTime s + 6 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)) →
+    ProposalGap tr H proposer Gp s₀ N → shiftDelay P O.reportDelay (P.slotTime N + 2 * P.Δ) ≤ b →
+    (H b).Nonempty → T ≤ b → NoAdvance tr H g T →
+    ∀ (r : Nat) {u : Nat} {z : Fin P.n} {kB : Nat} {B : A.Blk},
+      s₀ ≤ u → s₀ + O.warmup ≤ u → u + r * (P.δt + Gp - 1) + 1 ≤ N →
+      shiftDelay P O.reportDelay (P.slotTime (u + r * (P.δt + Gp - 1) + 1) + 2 * P.Δ) ≤ T →
+      z ∈ H (P.slotTime u + P.Δ) → z = proposer u → tr.ProposesAt z kB B → B.slot = u →
+      HZ tr H g + 1 ≤ ((tr.state z (kB + 1)).fg.σ B.root).h + r →
+      ∃ a, IsReset tr H g a ∧
+        a ≤ shiftDelay P O.reportDelay (P.slotTime (u + r * (P.δt + Gp - 1) + 1) + 2 * P.Δ) := by
   intro cm proposer dg H tr βK g ΔF b T s₀ N G floor kindJ J hβ hcom hframe hrun hnc hsvc
     hawake hf hcatch hnr hsl hsp hsnap hm hfol hG htd hgp hmb hHb hTb hna r
   have hrl := runs.run_local hrun
@@ -165,9 +188,9 @@ theorem rise_reset_rounds_at_of (O : ACHealing A sg runs) : rise_reset_rounds_at
       have := P.slotTime_strictMono (show u + 1 < u + (r + 1) * (P.δt + G - 1) + 1 by omega)
       rw [shiftDelay_eq_add] at hT ⊢
       linarith
-    obtain ⟨hBp, -, hcross⟩ := round_of_warm_at_of_healing O hβ hcom hframe hrun hnc hsvc hawake
-      hf hcatch hnr hsl hsp hsnap hm hs₀u hwarm hfol htd hxl (by omega) hmb hHb hTb hna hstrict
-      hz hdes hB hBs hpx0 rfl hX hXs
+    obtain ⟨hBp, -, hcross⟩ := round_of_warm_at_of_healing O hβ hcom hframe hrun hnc hsvc
+      hawake hf hcatch hnr hsl hsp hsnap hm hs₀u hwarm hfol htd hxl (by omega) hmb hHb hTb hna
+      hstrict hz hdes hB hBs hpx0 rfl hX hXs
     have htB : tr.time kB = P.slotTime u := by rw [hB.2.2, hBs]
     have hz0 : z ∈ H (tr.time kB) := hrl.antitone (by rw [htB]; linarith) hz
     have hBm := proposal_mem_at_from hrl (runs.run_requirements hrun) (runs.run_root hrun) hnc
@@ -188,8 +211,8 @@ slots. Before `t_S` there is no advance, so the merged key is in `[2HZ, 2HZ + 4]
 bounds); two slots apart, a later cut is more than `4Δ` after an earlier one (relay calls,
 `frameKey'_lag_obs_from`). A constant slot window `[s₀, s₀ + len v]` covers the time window
 `[t_{s₀}, t_{s₀ + len v} + 2Δ]`, which is a `SlotWindow`. -/
-private theorem exists_slotWindow_seq {cm βK tr H proposer dg g ΔF b}
-    (hrun : runs.Run cm proposer dg H tr) (hP : Premises tr H cm βK proposer dg sg g ΔF b)
+private theorem exists_slotWindow_seq {cm βK tr H proposer dg g ΔF b hold}
+    (hrun : runs.Run cm proposer dg H tr) (hP : Premises tr H cm βK proposer dg sg g ΔF b hold)
     {s S : Nat} (hgs : gbar g ≤ P.slotTime s) (hcs : cutZ P g ≤ P.slotTime s)
     (hSb : P.slotTime S ≤ b) (hna : NoAdvance tr H g (P.slotTime S)) (len : Nat → Nat)
     (hS : s + 1 + ∑ j ∈ Finset.range 5, (len (2 * HZ tr H g + j) + 2) < S) :
@@ -313,11 +336,13 @@ The five padded attempts fit in `resetSlots`. The proposal gap gives an honest p
 `[s₀ + W, s₀ + W + Gp - 1]`, at most `r(v)` rounds below `HZ + 1` (leaf 8). The rise
 (`rise_reset_rounds_at_of`) resets by `t_{u + r(v)·(δt + Gp - 1) + 1} + 2Δ + dΔ`,
 which is at most `t_N + 2Δ + dΔ ≤ t_{N + ⌈d/4⌉} + 2Δ < T`. -/
-theorem exists_reset (O : ACHealing A sg runs) :
-    ∀ {cm βK tr H proposer dg g ΔF b Gp s}, βK ≤ 1 / 2 →
+theorem exists_reset {hold : Time} (O : ACHealing A sg runs hold) :
+    ∀ {cm βK tr H proposer dg g ΔF b Gp s},
+      βK ≤ 1 / 2 →
       (∀ u, shiftDelay P O.reportDelay (P.slotTime (u + 1) + 2 * P.Δ) + ΔF ≤
         P.slotTime (u + P.δt)) →
-      runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b → 1 ≤ Gp →
+      runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold →
+      1 ≤ Gp →
       gbar g ≤ P.slotTime s → cutZ P g ≤ P.slotTime s →
       ProposalGap tr H proposer Gp s (s + resetSlots O.warmup Gp P.δt O.reportDelay) →
       P.slotTime (s + resetSlots O.warmup Gp P.δt O.reportDelay) ≤ b →
@@ -376,8 +401,8 @@ theorem exists_reset (O : ACHealing A sg runs) :
     (hrl.antitone (by linarith) hpu) rfl hB hBs
     (P.fg.faults_lt_quorum_margin (hP.faults _ hu0 (by linarith)))
   have hend := shiftDelay_le (P := P) O.reportDelay (add_le_add_left (hmono huN) (2 * P.Δ))
-  obtain ⟨a, ha, hat⟩ := rise_reset_rounds_at_of O hβ hP.committee hwithin hrun hP.noColl hP.sync
-    hP.awake hP.faults hP.catchUp hP.noRestart hP.slotLen hsp hP.snapshot hm
+  obtain ⟨a, ha, hat⟩ := rise_reset_rounds_at_of O hβ hP.committee hwithin hrun hP.noColl
+    hP.sync hP.awake hP.faults hP.catchUp hP.noRestart hP.slotLen hsp hP.snapshot hm
     (O.follow_le hrun hP) hGp hP.timeoutDelay (fun a h1 h2 => hgp a (by omega) (by omega)) hmb
     hP.nonempty hb hna _ hs₀u hul huN (by linarith) hpu rfl hB hBs hrise
   exact ⟨a, ha, hat.trans (by linarith)⟩
@@ -386,11 +411,13 @@ theorem exists_reset (O : ACHealing A sg runs) :
 budget's end, `highCanonical` the canonical high entries by the horizon, and
 `ACHealing.heal_after_reset` chains honest proposals from `slot(a) + drain`. No confirmed-tip
 guarantee is asserted. -/
-theorem generic_healing (O : ACHealing A sg runs) :
-    ∀ {cm βK tr H proposer dg g ΔF b Gp s}, βK ≤ 1 / 2 →
+theorem generic_healing {hold : Time} (O : ACHealing A sg runs hold) :
+    ∀ {cm βK tr H proposer dg g ΔF b Gp s},
+      βK ≤ 1 / 2 →
       (∀ u, shiftDelay P O.reportDelay (P.slotTime (u + 1) + 2 * P.Δ) + ΔF ≤
         P.slotTime (u + P.δt)) →
-      runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b → 1 ≤ Gp →
+      runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold →
+      1 ≤ Gp →
       gbar g ≤ P.slotTime s → cutZ P g ≤ P.slotTime s →
       ProposalGap tr H proposer Gp s (s + resetSlots O.warmup Gp P.δt O.reportDelay) →
       P.slotTime (s + resetSlots O.warmup Gp P.δt O.reportDelay) ≤ b →
@@ -415,14 +442,16 @@ private theorem faults_truncH {H : Time → Set (Fin P.n)} {b : Time}
 
 /-- Service is read only at honest cuts, which the truncation projects; relay ancestry over the
 truncated honest blocks is ancestry over `H`'s. -/
-private theorem service_truncH {tr : RunTrace A} {H : Time → Set (Fin P.n)} {g ΔF b' : Time}
-    (hs : Service tr H g ΔF b') (b : Time) : Service tr (truncH H b) g ΔF b' where
+private theorem service_truncH {tr : RunTrace A} {H : Time → Set (Fin P.n)} {g ΔF b' hold : Time}
+    (hs : Service tr H g ΔF b' hold) (b : Time) : Service tr (truncH H b) g ΔF b' hold where
   deltaF := hs.deltaF
   message x i m hx hm y j hy := hs.message x i m hx.1 hm y j hy.1
   block x i B hx hB y j hy := hs.block x i B hx.1 hB y j hy.1
   relay x i B hx hB hg y j hy hj hd hF :=
     hs.relay x i B hx.1 hB hg y j hy.1 hj hd (Anc.mono (honestBlocksAt_truncH_subset b) hF)
-  signedRow x i att hx hsg y j hy := hs.signedRow x i att hx.1 hsg y j hy.1
+  signedRow x i att hx hsg hxh y j hy :=
+    hs.signedRow x i att hx.1 hsg (fun k hk hs' ht h0 => (hxh k hk hs' ht h0).1) y j hy.1
+  hold_le := hs.hold_le
 
 /-- **The premises on the honest sets truncated after `b`**, with restarts bounded only up to
 `b`. Committee faults, faults, service, wakefulness and catch-up read honesty up to `b`, or only
@@ -431,14 +460,14 @@ is at a time `≤ b`, so `NoRestartUpTo` bounds it. The run on the truncation is
 `ACRun.run_truncH`. -/
 theorem premises_truncH {cm : Time → Finset (Fin P.n)} {βK : ℚ} {proposer : Nat → Fin P.n}
     {dg : Digest (List (FG.Att P.n)) A.Payload} {tr : RunTrace A} {H : Time → Set (Fin P.n)}
-    {g ΔF b : Time} (hcom : CommitteeFaultsUpTo βK cm H g b) (hnc : Compose.NoCollRun dg tr)
-    (hsvc : Service tr H g ΔF b) (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    {g ΔF b hold : Time} (hcom : CommitteeFaultsUpTo βK cm H g b) (hnc : Compose.NoCollRun dg tr)
+    (hsvc : Service tr H g ΔF b hold) (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) (hcatch : CatchRun tr H g (2 * P.Δ))
     (hnr : NoRestartUpTo A tr H (gbar g) b)
     (htd : ∀ s, P.slotTime s + 6 * P.Δ + ΔF ≤ P.slotTime (s + P.δt))
     (hsl : ∀ s, P.slotTime s + 4 * P.Δ ≤ P.slotTime (s + 1))
     (hsnap : ∃ k, FirstCutAfter tr k (cutZ P g) ∧ tr.time k ≤ b) (hH : (H b).Nonempty) :
-    Premises tr (truncH H b) cm βK proposer dg sg g ΔF b where
+    Premises tr (truncH H b) cm βK proposer dg sg g ΔF b hold where
   committee := committeeFaultsUpTo_truncH hcom
   noColl := hnc
   sync := service_truncH hsvc b
@@ -456,9 +485,9 @@ field reads the truncation where it reads `H` up to `b`, and its restarts are bo
 whole-run bound. -/
 theorem premises_restrict_truncH {cm : Time → Finset (Fin P.n)} {βK : ℚ}
     {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload} {tr : RunTrace A}
-    {H : Time → Set (Fin P.n)} {g ΔF b : Time}
-    (h : Premises tr H cm βK proposer dg sg g ΔF b) :
-    Premises tr (truncH H b) cm βK proposer dg sg g ΔF b :=
+    {H : Time → Set (Fin P.n)} {g ΔF b hold : Time}
+    (h : Premises tr H cm βK proposer dg sg g ΔF b hold) :
+    Premises tr (truncH H b) cm βK proposer dg sg g ΔF b hold :=
   premises_truncH h.committee h.noColl h.sync h.awake h.faults h.catchUp
     (fun y k hy hk _ => h.noRestart y k hy hk) h.timeoutDelay h.slotLen h.snapshot h.nonempty
 

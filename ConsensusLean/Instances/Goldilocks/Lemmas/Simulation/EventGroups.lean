@@ -31,15 +31,9 @@ set_option linter.unusedVariables false in
 /-- **The engine node's state is the trace's state at every mapped cut.** The concrete interface
 retains the event-local premises; the encoded-node replay now derives agreement from validity. -/
 theorem simTrace_state_of (hv : rho.ExecutionValid) {v : V}
-    (hv0 : ∀ {i : Nat} {ev}, rho.events[i]? = some ev → ev.node = v → v ∉ rho.faultyAt 0)
-    (htick : ∀ {i : Nat} {t : Time}, rho.events[i]? = some (.tick v t) →
-      (S.params (pubOf E) hn).toParams.IsPublic t →
-      (stateAt S rho hn v (i + 1)).node =
-        (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
-          (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E)
-            (rho.ownKey v) t))).1) :
+    (hv0 : ∀ {i : Nat} {ev}, rho.events[i]? = some ev → ev.node = v → v ∉ rho.faultyAt 0) :
     ∀ i ≤ rho.events.length, (stateAt S rho hn v i).node =
-      (simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i) := by
+        (simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i) := by
   intro i hi
   obtain ⟨htrace, hcut⟩ := simTrace_encoding S rho hn
   rw [htrace, hcut, stateAt_eq]
@@ -68,7 +62,7 @@ theorem deliver_seq_of_state {v : V} {i : Nat} {o} {t : Time}
     (rho.voteIO v) _ _ _ 0 _ (fun k hk => ?_) hstate.symm (fun k s hk _ => ?_)
   · rw [← eventCuts_deliver S rho hn i v o t he] at hk ⊢
     exact allCuts_getElem?_add S rho hn i k hi hk
-  · have := range_of_event S rho hn hi hk
+  · have := range_of_event S rho hn hi (fun _ _ h => by rw [he] at h; cases h) hk
     rwa [cutMap_succ, eventCuts_deliver S rho hn i v o t he] at this
 
 /-- **An engine restart is the node's restart group** at the event's first cut, given that the
@@ -98,7 +92,7 @@ theorem restart_group_of_state {v : V} {i : Nat} {t : Time}
   have huniq : ∀ k, (simTrace S rho hn).event k = Nat.pair i 0 → cutMap S rho hn i ≤ k ∧
       k < cutMap S rho hn i + (groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
         (stateAt S rho hn v i).node t (Nat.pair i 0) .restart).length := fun k hk => by
-    have := range_of_event S rho hn hi hk
+    have := range_of_event S rho hn hi (fun _ _ h => by rw [he] at h; cases h) hk
     rwa [cutMap_succ, eventCuts_restart S rho hn i v t he] at this
   obtain ⟨hG, hlen⟩ :=
     groupAt_of_group S rho hn (runProposer S rho hn) (digestOf S rho) hcut h0 hne huniq
@@ -117,7 +111,8 @@ theorem own_block_released_of (hrel : ∀ {i : Nat} {v : V} {t : Time},
       ((simTrace S rho hn).time k) := by
   obtain ⟨⟨acc, hnode, hlab⟩, hpos⟩ := hB
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, i, ev, -, he, -, -, hidx, hn', ht, hp', hlab'⟩ := simTrace_cut S rho hn hl
+  obtain ⟨r, i, ev, -, he, -, -, hidx, hn', ht, hp', hlab'⟩ :=
+    simTrace_cut S rho hn hl fun a h => by rw [hlab] at h; cases h
   have hrl : r.label = .fg (.block B acc) := Option.some.inj (hlab'.symm.trans hlab)
   have hpos' : r.pos ≠ 0 := hp' ▸ hpos
   have hmem := List.mem_of_getElem? hidx
@@ -128,7 +123,11 @@ theorem own_block_released_of (hrel : ∀ {i : Nat} {v : V} {t : Time},
     have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
       by_contra hp
       rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
-      simp at hmem
+      obtain ⟨a, _, st, s, _, hg⟩ := mem_tickTail S rho hn v i t hmem
+      obtain ⟨k', hk', rfl⟩ := List.getElem_of_mem hg
+      have h := (getElem_groupRecs _ _ _ st t _ _ k' hk').2.2.2.2
+      rw [hrl] at h
+      simp [exec, onAttestation] at h
     exact ⟨i, Or.inl he, hrel he hp r hmem B acc hrl hpos'⟩
   | deliver v o t =>
     exfalso

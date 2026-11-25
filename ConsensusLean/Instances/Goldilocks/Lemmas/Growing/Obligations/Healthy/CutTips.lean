@@ -40,7 +40,7 @@ theorem healthy_cut_tips_ancestor_at
     (hGs : (contract_catchUp S A : Nat) +
       (healthyResetCoeff S Q.index + 8 * S.k + 4 * (Q.index : Nat) + 34) + 3 + 5 * Gs ≤
         contract_heal S A Q.cap Q.index)
-    (hGsT : 4 * A.fgSlots + Gs ≤ 4 * S.δt)
+    (hGsT : 4 * A.fgSlots + A.releaseGap + Gs ≤ 4 * S.δt)
     (v : V) (i j : Nat)
     (hi : (chainTrace Q.run.2).InCuts Q.heal i) (hij : i ≤ j)
     (hj : (chainTrace Q.run.2).InCuts Q.heal j)

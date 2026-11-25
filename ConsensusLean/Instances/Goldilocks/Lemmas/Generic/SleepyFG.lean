@@ -19,7 +19,7 @@ remains conditional on compatibility of the supplied confirmation events.
 namespace Consensus.Goldilocks.Generic.SleepyLayer1
 
 theorem cache_provenance {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n}
-    (C : ACCorrectLocal A sg) (D : Data A) : CacheProvenance C D := by
+    {fgHold : Time} (C : ACCorrectLocal A sg fgHold) (D : Data A) : CacheProvenance C D := by
   intro cm proposer dg H tr b hrun hnc y i t hread hf hrows
   obtain ⟨hy, ⟨hi, -⟩, ht0, htb⟩ := hread
   have hr := C.run.run_local hrun
@@ -71,7 +71,7 @@ theorem cache_provenance {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n}
   exact ⟨hcache _ (Or.inr rfl) hF, hcache _ (Or.inl rfl) hJ⟩
 
 theorem row_provenance {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n}
-    (C : ACCorrectLocal A sg) (D : Data A) : RowProvenance C D := by
+    {fgHold : Time} (C : ACCorrectLocal A sg fgHold) (D : Data A) : RowProvenance C D := by
   intro hsource cm proposer dg H tr b hrun hnc x k a hx hs hkb
   have hr := C.run.run_local hrun
   have hd := hr.time_nonneg k
@@ -119,7 +119,7 @@ theorem row_provenance {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n}
       hECU.trans hsrcB⟩
 
 theorem conditional_viability {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n}
-    (C : ACCorrectLocal A sg) (D : Data A) : ConditionalViability C D := by
+    {fgHold : Time} (C : ACCorrectLocal A sg fgHold) (D : Data A) : ConditionalViability C D := by
   intro cm proposer dg H tr b hrun hnc y i t hread hf hrows hcompare B hB hBc
   obtain ⟨hy, ⟨hi, -⟩, ht0, htb⟩ := hread
   have hr := C.run.run_local hrun

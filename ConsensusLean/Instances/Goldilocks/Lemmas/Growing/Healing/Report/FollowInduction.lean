@@ -11,6 +11,7 @@ public section
 /-! # Later-label propagation from an early historical witness -/
 
 namespace Consensus.Goldilocks.Healing.Growing
+variable {hold : Time}
 
 open AC (ACParams ReplayOrder Payload gbar)
 
@@ -23,7 +24,7 @@ theorem later_heads_of_early_witness_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : ResetService tr H g ΔF b)
+    (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))

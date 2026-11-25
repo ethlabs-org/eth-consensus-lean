@@ -312,9 +312,12 @@ private theorem voteStamped_nodeTick {sp : AC.ACParams}
   · exact h
 
 private theorem voteStamped_poll {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (t : Time) (st : State sp ro binding) u
-    (h : VoteQueueStamped t st) : VoteQueueStamped t (poll st u).1 := by
-  refine ⟨(poll_now st u).trans h.1, ?_⟩
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {release : Fin sp.n → Time → Bool} (t : Time)
+    (st : State sp ro binding) u (h : VoteQueueStamped t st) :
+    VoteQueueStamped t (pollBatch st u release).1 := by
+  rw [pollBatch_fst]
+  refine ⟨(poll_now _ u).trans (by split <;> [exact (heldDrain_now st).trans h.1; exact h.1]),
+    ?_⟩
   intro q hq
   rw [poll_voteForwards] at hq
   cases hq
@@ -340,10 +343,15 @@ private theorem poll_candidate_vote_stamp (v : V)
   obtain ⟨body, cs, hm, _, _, he⟩ := rho.mem_signedCandidate.mp ho
   have hmsg := congrArg Model.Obj.msg he
   have hcar := congrArg Model.Obj.carried he
-  rw [act_poll_snd S hn, (poll_outbox _ _).2] at hm
+  rw [act_poll_snd S hn] at hm
+  rcases List.mem_append.mp hm with hm | hflush
+  swap
+  · obtain ⟨a, _, heq⟩ := List.mem_map.mp hflush
+    cases heq
+    cases hmsg
   rcases List.mem_append.mp hm with hpre | hvote
   · rcases List.mem_append.mp hpre with hbody | hblock
-    · cases hh : (pollPre (shapeOf S hn nd)).outbox.head? with
+    · cases hh : (pollPre (shapeOf S hn nd) (S.release (pubOf E))).outbox.head? with
       | none =>
         rw [hh] at hbody
         exact False.elim (List.not_mem_nil hbody)
@@ -602,6 +610,25 @@ theorem releaseAll_voteForward_suffix (hash : Blocks.Header Info → Nat)
   exact Model.closure_mono (fun _ h => List.mem_append_left _ h) hh
 
 omit [DecidableEq V] in
+/-- A middle segment that `releaseAll` releases whole after `pre` is released whatever follows. -/
+private theorem mem_releaseAll_middle (hash : Blocks.Header Info → Nat)
+    (x : Fin (Fintype.card V)) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+    (pre cs fl : List (Model.protoOf (compiled (goldilocks S)) E).Object)
+    (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
+    (h : (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) hash x nd (pre ++ cs)).2 =
+      (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) hash x nd pre).2 ++ cs)
+    (ho : o ∈ cs) :
+    o ∈ (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) hash x nd
+      (pre ++ (cs ++ fl))).2 := by
+  rw [Model.releaseAll_append (P := Model.protoOf (compiled (goldilocks S)) E) hash x nd pre]
+    at h ⊢
+  rw [Model.releaseAll_append (P := Model.protoOf (compiled (goldilocks S)) E) hash x _ cs fl]
+  have hc := List.append_cancel_left h
+  dsimp only at hc ⊢
+  rw [hc]
+  exact List.mem_append_right _ (List.mem_append_left _ ho)
+
+omit [DecidableEq V] in
 /-- The actual poll releases its vote envelopes when each carries a canonical vote object held
 after the ordinary/block prefix. This permits an own vote first released by this very poll. -/
 theorem dutyStep_poll_voteForward_of_prefix (v : V)
@@ -613,7 +640,9 @@ theorem dutyStep_poll_voteForward_of_prefix (v : V)
         (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash (rho.ownKey v)
           ⟨((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.poll t)).1, nd.seen⟩
           (@HAppend.hAppend _ (List (Model.protoOf (compiled (goldilocks S)) E).Object) _ _
-            (pollOrdinary S rho v (poll (shapeOf S hn nd) t).2)
+            (pollOrdinary S rho v
+              ((pollPre (shapeOf S hn nd) (S.release (pubOf E))).outbox.head?.map
+                fun b => (b, [])))
             (pendingWrappers (shapeOf S hn nd)))).1.seen) :
     ∀ tv ∈ (shapeOf S hn nd).voteForwards,
       Model.Obj.mk (.signed (rho.ownKey v) .poll)
@@ -624,9 +653,10 @@ theorem dutyStep_poll_voteForward_of_prefix (v : V)
   simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.poll t) = .poll from rfl,
     hsel, ↓reduceIte]
   rw [signedCandidate_poll_eq S rho hn v nd t hsel hself]
-  erw [releaseAll_voteForward_suffix S rho.hash (rho.ownKey v)
-    ⟨((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.poll t)).1, nd.seen⟩ _ _ hheld]
-  exact List.mem_append_right _ (List.mem_map.mpr ⟨tv, htv, rfl⟩)
+  have hsuf := releaseAll_voteForward_suffix S rho.hash (rho.ownKey v)
+    ⟨((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.poll t)).1, nd.seen⟩ _ _ hheld
+  dsimp only at hsuf
+  exact mem_releaseAll_middle S _ _ _ _ _ _ _ hsuf (List.mem_map.mpr ⟨tv, htv, rfl⟩)
 
 omit [DecidableEq V] in
 /-- A selected poll publishes every queued envelope whose canonical vote object is already
@@ -658,7 +688,8 @@ theorem dutyStep_poll_voteForward_of_own_vote (v : V)
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
     (m : AC.Vote (Fintype.card V)) (z : Nat) (hm : m.val = rho.ownKey v)
     (hmem : rho.ownKey v ∈ rho.sel (S.vote.voteRole m.slot))
-    (hout : (pollPre (shapeOf S hn nd)).outbox.head? = some (.vote (encodeVote m) z))
+    (hout : (pollPre (shapeOf S hn nd) (S.release (pubOf E))).outbox.head? =
+      some (.vote (encodeVote m) z))
     (hheld : ∀ tv ∈ (shapeOf S hn nd).voteForwards, ∃ z', tv.2.2 = voteObj tv.2.1 z' ∧
       ((tv.2.1 = m ∧ z' = z) ∨ voteObj tv.2.1 z' ∈ Model.closure nd.seen)) :
     ∀ tv ∈ (shapeOf S hn nd).voteForwards,
@@ -674,7 +705,7 @@ theorem dutyStep_poll_voteForward_of_own_vote (v : V)
     erw [Model.releaseAll_seen]
     apply Model.mem_closure_of_mem
     apply List.mem_append_right
-    rw [(poll_outbox _ _).2, hout, Option.map_some]
+    rw [hout, Option.map_some]
     erw [pollOrdinary_some_pos S rho (v := v) (b := .vote (encodeVote m) z')
       (by rw [pollRole_vote]; exact hmem)]
     erw [List.singleton_append, Model.releaseAll.eq_def]
@@ -726,11 +757,12 @@ theorem dutyStep_poll_voteForward_of_available (hv : rho.ExecutionValid) {v : V}
         subst bs
         have hb := List.mem_singleton.mp (ho ▸ hmem)
         exact congrArg (fun b => [b]) hb.symm
-    have hhead : (pollPre (shapeOf S hn nd)).outbox.head? =
+    have hhead : (pollPre (shapeOf S hn nd) (S.release (pubOf E))).outbox.head? =
         some (.vote (encodeVote q.2.1) z) := by
       rw [pollPre_eq]
       split
-      · rcases fgUpdate_outbox (shapeOf S hn nd) with h | ⟨a, h⟩ <;> rw [h, hlist] <;> rfl
+      · rcases fgUpdate_outbox_cases (release := S.release (pubOf E)) (shapeOf S hn nd) with
+          h | ⟨a, h⟩ <;> rw [h, hlist] <;> rfl
       · rw [hlist]; rfl
     obtain ⟨hval, hk⟩ := duty_cut_vote_member S rho hn hv hv' hc q.2.1 hmem
     apply dutyStep_poll_voteForward_of_own_vote S rho hn v nd t

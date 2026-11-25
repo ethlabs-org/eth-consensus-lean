@@ -368,7 +368,7 @@ theorem vote_before_late_delivery
     · exact h
     · have := hct.2.symm.trans hA.2
       simp [Node.acCall] at this
-    · have := hrun.phase_order y hy y hy i jt u (.block W) (.tick x fgDue) hgW hgt h
+    · have := hrun.phase_order y hy y hy i jt u (.block W) (.tick x fgDue) hgW hgt h (.inl rfl)
       simp [Node.Event.phase] at this
   have hnrk : ell.call ≠ .restart := fun hcl => by
     have := hc.2

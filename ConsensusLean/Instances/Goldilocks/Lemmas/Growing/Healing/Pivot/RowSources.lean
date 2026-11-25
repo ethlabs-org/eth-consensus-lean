@@ -29,12 +29,13 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- The older, same-label and later cases of protected-source compatibility, with the source
 votes as explicit inputs. -/
 theorem protected_source_compatible_high_origin_of_sources_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hsource : (∃ CV, AC.FastLockAt tr.projAC x r s B CV) ∨ AC.SlowLockAt tr.projAC x r s B)
@@ -113,7 +114,7 @@ theorem protected_source_compatible_high_origin_of_sources_at
 /-- A clean protected source compares with every bounded high origin at its own honest cut. -/
 theorem protected_source_compatible_high_origin_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hsource : (∃ CV, AC.FastLockAt tr.projAC x r s B CV) ∨ AC.SlowLockAt tr.projAC x r s B)

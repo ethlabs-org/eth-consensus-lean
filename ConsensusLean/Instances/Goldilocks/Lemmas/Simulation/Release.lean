@@ -143,24 +143,26 @@ theorem onTick_cuts (proposer : Nat → Fin sp.n)
             t x .proposal).1 t x .fgUpdate).2 else []) := by
   cases fgDue <;> simp [Node.onTick, Node.runSteps, Node.tickSteps]
 
-/-- The FG update queues the attestation of the node's FG-update step's signing cut, and that
-step emits no vote and processes no block. -/
-theorem fgUpdate_outbox_eq (proposer : Nat → Fin sp.n)
+/-- The FG update queues the attestation of the node's FG-update step's signing cut when the
+release schedule allows release at the node's time (and holds it otherwise), and that step emits
+no vote and processes no block. -/
+theorem fgUpdate_outbox_eq {release : Fin sp.n → Time → Bool} (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (x : Nat)
     (st : State sp ro binding) :
-    (fgUpdate st).outbox =
-        st.outbox ++ attBodies (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 ∧
+    (fgUpdate st release).outbox =
+        st.outbox ++ (if release st.self st.now then
+          attBodies (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 else []) ∧
       emitted st.voteIO (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 = [] ∧
       blockObjs (binding := binding)
         (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 = [] ∧
       ∀ C a, Cut.fg (.attest C (some a)) ∈ (Node.tickStep proposer dg st.self st.node st.now x
         .fgUpdate).2 → a.val = st.self := by
-  simp only [fgUpdate_eq, Node.tickStep]
+  simp only [fgUpdate_eq st release, Node.tickStep]
   rcases h : (Node.acToFG st.node st.now).2.2 with _ | C
   · simp only [attBodies_cons, attBodies_nil, acToFG, List.flatMap_cons, List.flatMap_nil,
       List.append_nil, emitted, List.filterMap_nil, blockObjs_cons, blockObjs_nil,
       List.mem_cons, reduceCtorEq, List.not_mem_nil, or_self,
-      IsEmpty.forall_iff, implies_true, and_self]
+      IsEmpty.forall_iff, implies_true, and_self, ite_self]
   · unfold Node.attest
     rcases h' : (Node.acToFG st.node st.now).1.fg.attest (Node.acToFG st.node st.now).1.record
       st.self C with _ | ⟨a, Λ'⟩
@@ -169,14 +171,14 @@ theorem fgUpdate_outbox_eq (proposer : Nat → Fin sp.n)
         List.append_nil, emitted, List.filterMap_nil, blockObjs_cons, blockObjs_nil,
         List.mem_cons, reduceCtorEq, Cut.fg.injEq,
         FGLabel.attest.injEq, and_false, List.not_mem_nil, or_self, IsEmpty.forall_iff,
-        implies_true, and_self]
+        implies_true, and_self, ite_self]
     · simp only [Node.acToFG] at h'
       simp only [h', Node.onAttestation, attBodies_cons, attBodies_nil, emitted,
         blockObjs_cons, blockObjs_nil, Node.acToFG,
         List.flatMap_cons, List.flatMap_nil, List.append_nil, List.mem_cons,
         reduceCtorEq, Cut.fg.injEq, FGLabel.attest.injEq, Option.some.injEq, false_or,
         List.nil_append, true_and]
-      refine ⟨rfl, ?_⟩
+      refine ⟨by split <;> simp_all, rfl, ?_⟩
       intro C' a' hm
       rcases hm with ⟨-, rfl⟩ | hm
       · exact createAtt_val h'

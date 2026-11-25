@@ -19,11 +19,12 @@ open AC (ACParams ReplayOrder Payload Vote)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- The reset signing supplies a high origin written by the reset time. -/
 theorem ResetPremisesUpTo.reset_seed_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) :
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) :
     ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ a ∧ l ≤ sp.slot a := by
   obtain ⟨⟨y, k, att, hyz, hs, hh, hka⟩, -⟩ := hp.reset
   have hy := hp.run.antitone (le_max_right _ _) hyz
@@ -54,7 +55,7 @@ theorem ResetPremisesUpTo.reset_seed_at
 /-- Every post-drain slot has a reset seed strictly before its start. -/
 theorem ResetPremisesUpTo.reset_seed_before_slot_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {u : Nat}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {u : Nat}
     (hR : drainTime sp a ≤ sp.ts u) :
     ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ b ∧ l < u ∧
       tr.time r < sp.ts u := by

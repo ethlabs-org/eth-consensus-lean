@@ -27,8 +27,7 @@ theorem simTraceAt_simulates (hv : rho.ExecutionValid) :
   tick_public := fun _ _ _ he hp => simTraceAt_tick_public_group S rho hn hv he hp
   tick_other := by
     intro v i t he hp
-    rw [cutMap_succ, eventCuts_tick_other S rho hn i v t he hp,
-      List.length_nil, Nat.add_zero]
+    rw [cutMap_succ, eventCuts_tick_other S rho hn i v t he hp]
   deliver := fun _ _ _ _ he => simTraceAt_deliver S rho hn hv he
   restart := fun _ _ _ he => simTraceAt_restart S rho hn hv he
   awake_of := fun y t _ hw => (simTraceAt_awake_bounds S rho hn y t).mp hw
@@ -38,6 +37,5 @@ theorem simTraceAt_simulates (hv : rho.ExecutionValid) :
   att_released := simTraceAt_att_released S rho hn hv
   block_relayed := simTraceAt_block_relayed S rho hn hv
   vote_forwarded := simTraceAt_vote_forwarded S rho hn hv
-  att_relayed := simTraceAt_att_relayed S rho hn hv
 
 end Consensus.Goldilocks.Simulation

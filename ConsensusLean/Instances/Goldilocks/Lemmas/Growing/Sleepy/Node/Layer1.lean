@@ -25,6 +25,7 @@ def goldilocksEvents (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {sign : Fin sp.n → Time → Bool} {G : Nat}
 
+
 /-- The event projection records results and optimistic locks, without exposing the data body. -/
 theorem goldilocksEvents_confirmedEvent_iff {tr : GoldilocksTrace sp ro} {x k s B} :
     (goldilocksEvents sp ro).ConfirmedEvent tr x k s B ↔
@@ -33,9 +34,11 @@ theorem goldilocksEvents_confirmedEvent_iff {tr : GoldilocksTrace sp ro} {x k s 
 
 /-- Output provenance at the reader's actual evaluation time. -/
 def GoldilocksOutputProvenance (sign : Fin sp.n → Time → Bool := fun _ _ => true)
-    (G : Nat := 0) : Prop :=
+    (G : Nat := 0) :
+    Prop :=
   ∀ cm proposer dg H tr b,
-    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr → Compose.NoCollRun dg tr →
+    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+      Compose.NoCollRun dg tr →
     ∀ y i t, HonestReadPoint tr H b y i t → ReadBoundary tr y i →
       confirmedRead tr y i t ∈ (tr.state y i).fg.tree ∧
       (Anchored (goldilocksEvents sp ro) tr H b t (confirmedRead tr y i t) ∨
@@ -45,7 +48,8 @@ def GoldilocksOutputProvenance (sign : Fin sp.n → Time → Bool := fun _ _ => 
 theorem goldilocksOutputProvenance_iff :
     GoldilocksOutputProvenance (sp := sp) (ro := ro) sign G ↔
       ∀ cm proposer dg H tr b,
-        (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr → Compose.NoCollRun dg tr →
+        (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+          Compose.NoCollRun dg tr →
         ∀ y i t, HonestReadPoint tr H b y i t → ReadBoundary tr y i →
           confirmedRead tr y i t ∈ (tr.state y i).fg.tree ∧
           (Anchored (goldilocksEvents sp ro) tr H b t (confirmedRead tr y i t) ∨
@@ -54,9 +58,11 @@ theorem goldilocksOutputProvenance_iff :
 
 /-- A report's source is an ancestor of a same-reporter event, possibly at the same cut. -/
 def GoldilocksSourceProvenance (sign : Fin sp.n → Time → Bool := fun _ _ => true)
-    (G : Nat := 0) : Prop :=
+    (G : Nat := 0) :
+    Prop :=
   ∀ cm proposer dg H tr b,
-    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr → Compose.NoCollRun dg tr →
+    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+      Compose.NoCollRun dg tr →
     ∀ y i B, y ∈ H (tr.time i) → tr.time i ≤ b → ReportAt tr y i B →
     B.root = sp.genesisRoot ∨ ∃ k s B', k ≤ i ∧ y ∈ H (tr.time k) ∧ tr.time k ≤ b ∧
       (goldilocksEvents sp ro).ConfirmedEvent tr y k s B' ∧ Anc (tr.HonestBlocksAt H) B B'
@@ -65,7 +71,8 @@ def GoldilocksSourceProvenance (sign : Fin sp.n → Time → Bool := fun _ _ => 
 theorem goldilocksSourceProvenance_iff :
     GoldilocksSourceProvenance (sp := sp) (ro := ro) sign G ↔
       ∀ cm proposer dg H tr b,
-        (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr → Compose.NoCollRun dg tr →
+        (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+          Compose.NoCollRun dg tr →
         ∀ y i B, y ∈ H (tr.time i) → tr.time i ≤ b → ReportAt tr y i B →
         B.root = sp.genesisRoot ∨ ∃ k s B', k ≤ i ∧ y ∈ H (tr.time k) ∧ tr.time k ≤ b ∧
           (goldilocksEvents sp ro).ConfirmedEvent tr y k s B' ∧
@@ -110,9 +117,11 @@ theorem goldilocksWindowPremises_iff {tr : GoldilocksTrace sp ro}
 
 /-- Adapt the two count windows to `sleepy_invariant_at`; keep the existing induction. -/
 def GoldilocksInvariantAdapter (sign : Fin sp.n → Time → Bool := fun _ _ => true)
-    (G : Nat := 0) : Prop :=
+    (G : Nat := 0) :
+    Prop :=
   ∀ cm proposer dg H tr p c look committeeLook ΔF b,
-    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr → Compose.NoCollRun dg tr →
+    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+      Compose.NoCollRun dg tr →
     Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
     GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
     Compose.Growing.SleepyInvariantUpTo tr H b
@@ -121,7 +130,8 @@ def GoldilocksInvariantAdapter (sign : Fin sp.n → Time → Bool := fun _ _ => 
 theorem goldilocksInvariantAdapter_iff :
     GoldilocksInvariantAdapter (sp := sp) (ro := ro) sign G ↔
       ∀ cm proposer dg H tr p c look committeeLook ΔF b,
-        (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr → Compose.NoCollRun dg tr →
+        (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+          Compose.NoCollRun dg tr →
         Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
         GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
         Compose.Growing.SleepyInvariantUpTo tr H b := by
@@ -129,9 +139,11 @@ theorem goldilocksInvariantAdapter_iff :
 
 /-- Event compatibility on the actual run, not on arbitrary frame sequences. -/
 def GoldilocksEventSafety (sign : Fin sp.n → Time → Bool := fun _ _ => true)
-    (G : Nat := 0) : Prop :=
+    (G : Nat := 0) :
+    Prop :=
   ∀ cm proposer dg H tr p c look committeeLook ΔF b,
-    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr → Compose.NoCollRun dg tr →
+    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+      Compose.NoCollRun dg tr →
     Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
     GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
     AnchoredFrames (goldilocksEvents sp ro) tr H b →
@@ -141,7 +153,8 @@ def GoldilocksEventSafety (sign : Fin sp.n → Time → Bool := fun _ _ => true)
 /-- Event safety compares events on the supplied run and windows. -/
 theorem goldilocksEventSafety_iff : GoldilocksEventSafety (sp := sp) (ro := ro) sign G ↔
     ∀ cm proposer dg H tr p c look committeeLook ΔF b,
-      (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr → Compose.NoCollRun dg tr →
+      (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+        Compose.NoCollRun dg tr →
       Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
       GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
       AnchoredFrames (goldilocksEvents sp ro) tr H b →
@@ -152,9 +165,11 @@ theorem goldilocksEventSafety_iff : GoldilocksEventSafety (sp := sp) (ro := ro) 
 
 /-- Same-reader extension is a separate obligation, not a consequence of compatibility. -/
 def GoldilocksExtension (sign : Fin sp.n → Time → Bool := fun _ _ => true)
-    (G : Nat := 0) : Prop :=
+    (G : Nat := 0) :
+    Prop :=
   ∀ cm proposer dg H tr p c look committeeLook ΔF b,
-    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr → Compose.NoCollRun dg tr →
+    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+      Compose.NoCollRun dg tr →
     Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
     GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
     AnchoredFrames (goldilocksEvents sp ro) tr H b →
@@ -165,7 +180,8 @@ def GoldilocksExtension (sign : Fin sp.n → Time → Bool := fun _ _ => true)
 /-- Extension keeps both actual read points and their ordering. -/
 theorem goldilocksExtension_iff : GoldilocksExtension (sp := sp) (ro := ro) sign G ↔
     ∀ cm proposer dg H tr p c look committeeLook ΔF b,
-      (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr → Compose.NoCollRun dg tr →
+      (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+        Compose.NoCollRun dg tr →
       Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
       GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
       AnchoredFrames (goldilocksEvents sp ro) tr H b →
@@ -179,9 +195,11 @@ theorem goldilocksExtension_iff : GoldilocksExtension (sp := sp) (ro := ro) sign
 remain explicit as in the other adapters. Catch-up and hold dominate the concrete
 durations, and the margin covers six delays. No proposal witness is selected here. -/
 def GoldilocksProposalCoverage (sign : Fin sp.n → Time → Bool := fun _ _ => true)
-    (G : Nat := 0) : Prop :=
+    (G : Nat := 0) :
+    Prop :=
   ∀ cm proposer dg H tr p c look committeeLook ΔF b hold margin,
-    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr → Compose.NoCollRun dg tr →
+    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+      Compose.NoCollRun dg tr →
     Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
     GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
     sp.Δ ≤ hold → 6 * sp.Δ ≤ margin →
@@ -192,9 +210,11 @@ def GoldilocksProposalCoverage (sign : Fin sp.n → Time → Bool := fun _ _ => 
       Anc (tr.HonestBlocksAt H) B (confirmedRead tr y j t)
 
 /-- Proposal coverage preserves the proposal, hold, margin and actual read. -/
-theorem goldilocksProposalCoverage_iff : GoldilocksProposalCoverage (sp := sp) (ro := ro) sign G ↔
+theorem goldilocksProposalCoverage_iff :
+    GoldilocksProposalCoverage (sp := sp) (ro := ro) sign G ↔
     ∀ cm proposer dg H tr p c look committeeLook ΔF b hold margin,
-      (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr → Compose.NoCollRun dg tr →
+      (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+        Compose.NoCollRun dg tr →
       Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
       GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
       sp.Δ ≤ hold → 6 * sp.Δ ≤ margin →

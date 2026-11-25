@@ -3,14 +3,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Queue
 
 public section
 
-/-! # Engine events realize node steps
+/-! # Engine proposals are releasable
 
-Uses `Queue`'s inventories to prove proposal releasability and identify the node transition
-inside honest engine ticks, deliveries and restarts. Public-time ticks execute the node duty;
-non-public ticks leave the node unchanged. These event-local facts support the simulating
-trace's run laws and cut-map assembly.
-
--/
+Uses `Queue`'s inventories to prove proposal releasability (`proposal_releasable`): the selected
+proposal at its scheduled slot start carries only objects the node has seen. The engine and trace
+states agree through `CanonicalTrace.stateAgreement_all` (`EventGroups`). -/
 
 namespace Consensus.Goldilocks.Simulation
 open AsChainShape
@@ -45,113 +42,6 @@ theorem proposal_releasable (hv : rho.ExecutionValid)
   · rw [duties_eq S t (hv.in_horizon _ (List.mem_of_getElem? he)).1, atProposal_eq]
     simp only [dutiesInit, hone]
     rfl
-
-/-- **`SimulatesAt.tick_public`'s node step.** An engine tick of an honest node at a public
-time runs the node's tick with the encoded mempool on the node state before it. -/
-theorem node_of_tick_public (hv : rho.ExecutionValid)
-    (v : V) (i : Nat)
-    (t : Time) (he : rho.events[i]? = some (.tick v t))
-    (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
-    (stateAt S rho hn v (i + 1)).node =
-      (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) (stateAt S rho hn v i).node t
-        (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E)
-          (rho.ownKey v) t))).1 := by
-  have hw := hv.tick_awake v t (List.mem_of_getElem? he)
-  have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
-  have hsel := poll_selected S rho hv v
-  rw [stateAt_tick S rho hn v he, tick_node_eq S rho hn v _ t ht hw hsel]
-  have hPself : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).self =
-      rho.ownKey v := by
-    rw [atProposal_self _ _ _ _ _ _ hsel, ← stateAt_eq S rho hn v i]
-    exact self_eq_ownKey S rho hn v i
-  have hPnow : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).now = t :=
-    atProposal_now S rho hn v _ t hsel
-  have hPfg : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).fgDue =
-      S.sign (pubOf E) (rho.ownKey v) t := by
-    rw [atProposal_fgDue S rho hn v _ t hp hsel, ← stateAt_eq S rho hn v i,
-      self_eq_ownKey S rho hn v i]
-  have hPnode : (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node =
-      (Node.acCall (rho.ownKey v) (stateAt S rho hn v i).node t .tick).1 := by
-    rw [atProposal_node S rho hn v _ t
-      (by simpa only [stateAt_eq] using fgDue_eq_false S rho hn v i) hsel,
-      nodeTick_node_public _ (by exact hp), ← stateAt_eq S rho hn v i]
-    exact congrArg (fun k => (Node.acCall k _ t _).1) (self_eq_ownKey S rho hn v i)
-  have hPmem : (atProposal S rho v (rho.stateBefore i v) t).st.2 =
-      Model.mempool rho.inbox v t := atProposal_mempool S rho v _ t
-  change _ = (Node.onTick _ _ _ _ _ _ (S.sign (pubOf E) (rho.ownKey v) t)).1
-  erw [onTick_node (sp := S.params (pubOf E) hn)
-    (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) _ t
-    (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t),
-    tickStep_acTick (sp := S.params (pubOf E) hn)
-    (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) _ t
-    (encodeTxs (Model.mempool rho.inbox v t))]
-  rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.vote) t with
-    ⟨hnil, hno⟩ | ⟨s, hs, hone, hts⟩
-  · rw [hnil]
-    erw [runDuties_fst_nil]
-    have hnp : ¬ Proposes (P := (S.params (pubOf E) hn).toParams)
-        (runProposer S rho hn) (rho.ownKey v) t :=
-      not_proposes S hn _ _ t (fun s hs h => hno s hs (h.trans (slotTime_eq S hn s)))
-    rw [poll_node_of_fgDue _ _ (poll_fgDue _ _), poll_node_eq, hPfg]
-    cases S.sign (pubOf E) (rho.ownKey v) t
-    · simp only [Bool.false_eq_true, ite_false]
-      rw [hPnode]
-      rw [tickStep_proposal_not (sp := S.params (pubOf E) hn)
-        (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) _ t
-        (encodeTxs (Model.mempool rho.inbox v t)) hnp]
-    · simp only [ite_true]
-      rw [fgUpdate_node_digestOf S rho hn _ (encodeTxs (Model.mempool rho.inbox v t)),
-        hPself, hPnow, hPnode]
-      rw [tickStep_proposal_not (sp := S.params (pubOf E) hn)
-        (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) _ t
-        (encodeTxs (Model.mempool rho.inbox v t)) hnp]
-  · rw [hone]
-    erw [runDuties_fst_cons, runDuties_fst_nil]
-    have hts' : t = (S.params (pubOf E) hn).toParams.slotTime s :=
-      hts.trans (slotTime_eq S hn s).symm
-    have hfg' : (shapeOf S hn (rho.dutyStep v (atProposal S rho v (rho.stateBefore i v) t)
-        (.propose s hs)).1).fgDue = S.sign (pubOf E) (rho.ownKey v) t :=
-      dutyStep_propose_pres S rho hn (fun st => st.fgDue = S.sign (pubOf E) (rho.ownKey v) t)
-        (fun st o hs h => (recordOwn_fgDue st o hs).trans h)
-        (fun st s h => (propose_fgDue st s).trans h) v _ s hs hPfg
-    have hself' : (shapeOf S hn (rho.dutyStep v (atProposal S rho v (rho.stateBefore i v) t)
-        (.propose s hs)).1).self = rho.ownKey v :=
-      dutyStep_propose_pres S rho hn (fun st => st.self = rho.ownKey v)
-        (fun st o hs h => (recordOwn_self st o hs).trans h)
-        (fun st s h => (propose_self st s).trans h) v _ s hs hPself
-    have hnow' : (shapeOf S hn (rho.dutyStep v (atProposal S rho v (rho.stateBefore i v) t)
-        (.propose s hs)).1).now = t :=
-      dutyStep_propose_pres S rho hn (fun st => st.now = t)
-        (fun st o hs h => (recordOwn_now st o hs).trans h)
-        (fun st s h => (propose_now st s).trans h) v _ s hs hPnow
-    have hnode' := dutyStep_propose_node S rho hn v _ s hs
-      (selValid_proposer S rho hn hv.selValid s) hPself
-      (by rw [hPnow, hts']; exact slotOf_slotTime _ s) (hPnow.trans hts')
-      (fun hselected par info cs hprop =>
-        proposal_releasable S rho hn hv v i t he s par info cs hs hone hselected hprop)
-    rw [poll_node_of_fgDue _ _ (poll_fgDue _ _), poll_node_eq]
-    split
-    · rename_i h
-      have hsg : S.sign (pubOf E) (rho.ownKey v) t = true := hfg'.symm.trans h
-      simp only [hsg, ite_true]
-      rw [fgUpdate_node_digestOf S rho hn _ (encodeTxs (Model.mempool rho.inbox v t))]
-      change (Node.tickStep (runProposer S rho hn) (digestOf S rho)
-        (shapeOf S hn (rho.dutyStep v (atProposal S rho v (rho.stateBefore i v) t)
-          (.propose s hs)).1).self
-        (shapeOf S hn (rho.dutyStep v (atProposal S rho v (rho.stateBefore i v) t)
-          (.propose s hs)).1).node
-        (shapeOf S hn (rho.dutyStep v (atProposal S rho v (rho.stateBefore i v) t)
-          (.propose s hs)).1).now
-        (encodeTxs (Model.mempool rho.inbox v t)) .fgUpdate).1 = _
-      rw [hself', hnow', hnode', hPnode, hPnow, hPmem]
-    · rename_i h
-      have hsg : S.sign (pubOf E) (rho.ownKey v) t = false :=
-        Bool.eq_false_iff.mpr fun h' => h (hfg'.trans h')
-      simp only [hsg, Bool.false_eq_true, ite_false]
-      change (shapeOf S hn (rho.dutyStep v (atProposal S rho v (rho.stateBefore i v) t)
-        (.propose s hs)).1).node = _
-      rw [hnode', hPnode, hPnow, hPmem]
-
 
 end Engine
 

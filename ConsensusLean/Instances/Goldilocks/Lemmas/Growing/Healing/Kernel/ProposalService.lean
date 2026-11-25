@@ -20,9 +20,11 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF b lo hi : Time}
+variable {hold : Time}
 
-/-- Reset service projected with source honesty at release and reader honesty at its call. -/
-theorem ResetService.ac_service_at (hs : ResetService tr H g ΔF b)
+/-- The AC part of the reset service projected with source honesty at release and reader
+honesty at its call. -/
+theorem ACResetService.ac_service_at (hs : ACResetService tr H g ΔF)
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hg : g ≤ lo) :
     AC.Growing.ServiceWindowBefore H (tr.HonestBlocksAt H) lo hi tr.projAC := by
   have hm := hrun.time_mono
@@ -54,6 +56,12 @@ theorem ResetService.ac_service_at (hs : ResetService tr H g ΔF b)
     have he : max (tr.time k) g = tr.time i := (max_eq_left hgi).trans hki
     simpa only [he] using hs.relay x k B hx' hk hgi y j hy hj
       (by rw [he, ← Compose.projAC_deadline]; exact hdl) hF
+
+/-- Reset service projected with source honesty at release and reader honesty at its call. -/
+theorem ResetService.ac_service_at (hs : ResetService tr H g ΔF b hold)
+    {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hg : g ≤ lo) :
+    AC.Growing.ServiceWindowBefore H (tr.HonestBlocksAt H) lo hi tr.projAC :=
+  hs.toAC.ac_service_at hrun hg
 
 end Consensus.Goldilocks.Healing.Growing
 

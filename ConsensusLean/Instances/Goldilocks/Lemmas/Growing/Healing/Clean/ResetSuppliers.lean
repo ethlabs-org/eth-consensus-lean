@@ -61,13 +61,14 @@ open AC (ACParams ReplayOrder Payload gbar)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a : Time}
+variable {hold : Time}
 
 /-- **CS at a slot committee on the AC projection**: from the reset's cut on, at `t ≤ b`, the
 faulty members at `d ∈ [t, b]` of a slot committee from `ḡ` are fewer than its members honest at
 `d` and awake and joined at `t` (every validator honest at `d` is honest, awake and joined at `t`,
 and `committee_cs2_at`). -/
 theorem faultBoundK_late_at {b : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {s : Nat}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {s : Nat}
     (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b)
     {t d : Time} (ht : cutZ sp.toParams g ≤ t) (htd : t ≤ d) (hdb : d ≤ b) :
     AC.FaultBoundK (Generic.dictOfTime sp cm) s tr.projAC (H d) t := by
@@ -118,6 +119,7 @@ open AC (ACParams ReplayOrder Payload Vote gbar)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-! ### Node-local facts at a cut, on the prefix through its time -/
 
@@ -177,7 +179,7 @@ theorem castAt_facts_at {ini}
 sender honest at its send or acceptance and each recipient at its call (the growing form of
 `Healing.ResetService.syncAC`). -/
 theorem reset_syncACAt {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {lo hi : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {lo hi : Time}
     (hg : g ≤ lo) :
     SyncACAt (goldilocksNode sp ro) H (tr.HonestBlocksAt H) lo hi tr.projAC := by
   have hrun := hp.run
@@ -227,7 +229,7 @@ a node honest then, with heads above the voter's `Σ.F` that are genesis or acce
 before `t_s + 2Δ`. Each delivery comes from the reset service, a pre-GST acceptance from the
 catch-up; the voter's side is read on the prefix through its vote. -/
 theorem carry_of_senders {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {s : Nat} (hts : cutZ sp.toParams g ≤ sp.ts s)
     {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
@@ -294,7 +296,7 @@ theorem carry_of_senders {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 writer honest at its update, the voter at its slot-`(s+1)` vote, with the voter's `Σ.F` at or
 below the result. -/
 theorem result_carry_reset_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {r s : Nat}
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (hx : x ∈ H (tr.time r))
     (hres : AC.ResultAt tr.projAC x r s C CV) (hts : cutZ sp.toParams g ≤ sp.ts s)
@@ -312,7 +314,7 @@ theorem result_carry_reset_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 above `B`** after the reset's cut (`Carry_y`): each vote is its own voter's, sent at its cast
 within `Δ` of `t_m`, with its head in its frame, accepted by its voter while honest. -/
 theorem honest_votes_carry_reset_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {i m : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hcast : AC.CastAt tr.projAC y i ℓ e) (hm : e.msg.slot = m + 1)
@@ -352,7 +354,7 @@ theorem honest_votes_carry_reset_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ
 equivocator of it, after the reset's cut: the writer-pool merge under the AC synchrony from
 `t_s` that the reset service gives. -/
 theorem writer_merged_reset_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {r s : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hx : x ∈ H (tr.time r)) (hres : AC.ResultAt tr.projAC x r s C CV)
     (hts : cutZ sp.toParams g ≤ sp.ts s) {y : Fin sp.n} {i : Nat}

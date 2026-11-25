@@ -197,6 +197,22 @@ theorem upTo_tickAt (hmono : Monotone tr.time) {proposer : Nat → Fin P.n}
     (tr.upTo d).TickAt proposer dg y j t ↔ t ≤ d ∧ tr.TickAt proposer dg y j t := by
   simp only [TickAt, upTo_groupAt hmono, exists_and_left]
 
+/-- An own publication of the run at a time `≤ d` is one of the prefix. -/
+theorem upTo_ownPublicationAt (hmono : Monotone tr.time) {proposer : Nat → Fin P.n}
+    {dg : Digest (List (FG.Att P.n)) A.Payload} {y : Fin P.n} {j : Nat} {t : Time}
+    (htd : t ≤ d) (h : tr.OwnPublicationAt proposer dg y j t) :
+    (tr.upTo d).OwnPublicationAt proposer dg y j t := by
+  obtain ⟨a, hg, hav, hn, j₀, x, f, hg₀, hle, hk⟩ := h
+  have hj : tr.time j = t := (hg.2.1 0 (List.length_pos_of_ne_nil hg.1)).2.1
+  have hj₀ : tr.time j₀ = t := (hg₀.2.1 0 (List.length_pos_of_ne_nil hg₀.1)).2.1
+  have hs := upTo_state_of_le (y := y) hmono (d := d) (hj ▸ htd)
+  have hs₀ := upTo_state_of_le (y := y) hmono (d := d) (hj₀ ▸ htd)
+  refine ⟨a, (upTo_groupAt hmono).mpr ⟨htd, hg⟩, hav, hs ▸ hn, j₀, x, f,
+    (upTo_groupAt hmono).mpr ⟨htd, hg₀⟩, hs₀ ▸ hle, fun k hk₁ hk₂ => ?_⟩
+  obtain ⟨hnk, b, hb, hl⟩ := hk k (hs₀ ▸ hk₁) hk₂
+  exact ⟨hnk, b, hb, (Trace.upTo_label_eq_some _).mpr
+    ⟨(hmono hk₂.le).trans (hj ▸ htd), hl⟩⟩
+
 theorem upTo_inHorizon {t : Time} (htd : t ≤ d) (h : tr.InHorizon t) :
     (tr.upTo d).InHorizon t := by
   obtain ⟨i, _, hi⟩ := h
@@ -264,7 +280,8 @@ theorem SyncOnAt.upTo (hmono : Monotone tr.time) {H : Time → Set (Fin P.n)} (h
   · obtain ⟨hid, hs⟩ := (upTo_sendOrAdmitAttAt hmono).mp hs
     obtain ⟨hjd, hc⟩ := (upTo_isCall _).mp hc
     rw [upTo_deadline hmono hjd] at hd
-    obtain ⟨k, hkj, hk, hkd⟩ := h.attestation x i a (anti hid hx) hs hw y j (anti hjd hy) hc hd
+    obtain ⟨k, hkj, hk, hkd⟩ := h.attestation x i a (anti hid hx) hs hw
+      (fun _ _ _ _ h0 => (h0 rfl).elim) y j (anti hjd hy) hc hd
     have hkd' : tr.time k ≤ d := (hmono hkj).trans hjd
     exact ⟨k, hkj, (upTo_processAttAt _).mpr ⟨hkd', hk⟩, by rwa [upTo_deadline hmono hkd']⟩
 
@@ -301,7 +318,7 @@ theorem GoldilocksRun.upTo {ini : Fin sp.n → (goldilocksNode sp ro).State}
       time_mono := hm
       finite := fun T => (h.finite T).subset fun i ⟨hl, hT⟩ => ⟨fun hn => hl (by
         simp [Trace.upTo_label, hn]), hT⟩
-      phase_order := fun y hy y' hy' j j' t e e' he he' hjj => ?_
+      phase_order := fun y hy y' hy' j j' t e e' he he' hjj hop => ?_
       tick_public := fun y hy j t ht => ?_
       tick_unique := fun y hy j j' t ht ht' => ?_
       tick_of_awake := fun y hy t ht hp ha => ?_
@@ -328,6 +345,7 @@ theorem GoldilocksRun.upTo {ini : Fin sp.n → (goldilocksNode sp ro).State}
   · obtain ⟨htd, he⟩ := (RunTrace.upTo_groupAt hm).mp he
     obtain ⟨-, he'⟩ := (RunTrace.upTo_groupAt hm).mp he'
     exact h.phase_order y y' j j' t e e' (anti htd hy) (anti htd hy') he he' hjj
+      (hop.imp_right fun hn hp => hn (RunTrace.upTo_ownPublicationAt hm htd hp))
   · obtain ⟨htd, ht⟩ := (RunTrace.upTo_tickAt hm).mp ht
     exact h.tick_public y j t (anti htd hy) ht
   · obtain ⟨htd, ht⟩ := (RunTrace.upTo_tickAt hm).mp ht

@@ -46,6 +46,7 @@ namespace Consensus.Goldilocks.Compose.Growing
 open AC (ACParams ReplayOrder Vote Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {hold : Time}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
@@ -122,10 +123,10 @@ variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fi
 private theorem HandoverSeed.drainTime_eq {T : Time} {r σ : Nat}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) :
-    ∃ a, Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a T cm βK ∧
+    ∃ a hold, Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a T cm βK hold ∧
       r = Healing.cleanLabel sp a + sp.k + 2 ∧ Healing.drainTime sp a = sp.ts (r + sp.k : Nat) := by
-  obtain ⟨a, hp, hr⟩ := hseed.reset
-  refine ⟨a, hp, hr, ?_⟩
+  obtain ⟨a, _, hp, hr⟩ := hseed.reset
+  refine ⟨a, _, hp, hr, ?_⟩
   rw [Healing.drainTime_eq, hr, Healing.cleanLabel_eq]
   congr 2
   omega
@@ -141,7 +142,7 @@ theorem seeded_locks_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc
     (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t) :
     ∀ L ∈ AC.liveLockBlocks sp (tr.state y i).ac.locks (Node.frame (tr.state y i)) t,
       OnHealedChain tr H g r (r + sp.k - 1) L b := by
-  obtain ⟨a, -, hr, hdrain⟩ := hseed.drainTime_eq
+  obtain ⟨a, _, -, hr, hdrain⟩ := hseed.drainTime_eq
   have ht0 : 0 ≤ t := (ts_natCast_nonneg _).trans hdt
   have hst := Trace.upTo_state tr y (d := t) hi
   have hU := honestBlocksAt_coherent hrun hnc
@@ -175,7 +176,7 @@ theorem seeded_sources_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hib : tr.time i ≤ b) {ℓ : ACLabel (goldilocksNode sp ro)}
     {C : AC.Blk sp.n (List (FG.Att sp.n))} (h : AC.ToFGAt tr.projAC y i ℓ C) :
     OnHealedChain tr H g r (r + sp.k - 1) C b := by
-  obtain ⟨a, -, hr, hdrain⟩ := hseed.drainTime_eq
+  obtain ⟨a, _, -, hr, hdrain⟩ := hseed.drainTime_eq
   have hd := hrun.time_nonneg i
   have hU := honestBlocksAt_coherent hrun hnc
   obtain ⟨hpc, -, hC⟩ := h
@@ -205,7 +206,7 @@ is the reader's own result or selection, of label `≥ σ` (`seeded_record_cover
 theorem seeded_record_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {T : Time} {r σ : Nat} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {t₁ b : Time}
-    (hTb : T ≤ b) (hsvc : Healing.Growing.ResetService tr H g ΔF b)
+    (hTb : T ≤ b) (hsvc : Healing.Growing.ACResetService tr H g ΔF)
     (hB : SleepyBoundsFrom tr H r b) (hcv : ChainConvictedBelow tr H)
     (hdt : sp.ts (r + sp.k : Nat) ≤ t₁)
     (hcov : ∀ y n t, t₁ ≤ t → t ≤ T → y ∈ H t → Regimes.ReadPoint tr n t →
@@ -224,7 +225,7 @@ private theorem seeded_members_compatible (hrun : Growing.GoldilocksRun proposer
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
       (hTb : T ≤ b)
-    (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
+    (hsvc : Healing.Growing.ACResetService tr H g ΔF) (hB : SleepyBoundsFrom tr H r b)
     (hcv : ChainConvictedBelow tr H)
     {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :
@@ -241,7 +242,7 @@ every family member held in the frame (`seeded_caches_of`: a low reader holds th
 theorem seeded_caches_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {T : Time} {r σ : Nat} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {t₁ b : Time}
-    (hTb : T ≤ b) (hsvc : Healing.Growing.ResetService tr H g ΔF b)
+    (hTb : T ≤ b) (hsvc : Healing.Growing.ACResetService tr H g ΔF)
     (hB : SleepyBoundsFrom tr H r b) (hcv : ChainConvictedBelow tr H)
     (hdt : sp.ts (r + sp.k : Nat) ≤ t₁) {y : Fin sp.n} {i : Nat} {t : Time} (ht₁ : t₁ ≤ t)
     (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t)
@@ -265,7 +266,7 @@ below the crossing of the floor, a high row, or below the low reader's held seed
 theorem seeded_viable_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {T : Time} {r σ : Nat} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {t₁ b : Time}
-    (hTb : T ≤ b) (hsvc : Healing.Growing.ResetService tr H g ΔF b)
+    (hTb : T ≤ b) (hsvc : Healing.Growing.ACResetService tr H g ΔF)
     (hB : SleepyBoundsFrom tr H r b) (hcv : ChainConvictedBelow tr H)
     (hdt : sp.ts (r + sp.k : Nat) ≤ t₁) {y : Fin sp.n} {i : Nat} {t : Time} (ht₁ : t₁ ≤ t)
     (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b) (hy : y ∈ H t)
@@ -307,7 +308,7 @@ theorem seeded_invariant_of_cover_at (hrun : Growing.GoldilocksRun proposer dg H
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
       (hTb : T ≤ b)
-    (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
+    (hsvc : Healing.Growing.ACResetService tr H g ΔF) (hB : SleepyBoundsFrom tr H r b)
     (hcv : ChainConvictedBelow tr H) {tc : Time}
     (hcov : ∀ y n t, tc ≤ t → t ≤ T → y ∈ H t → Regimes.ReadPoint tr n t →
       HealedRecordCoverAt tr H (r + sp.k - 1) y n t
@@ -340,7 +341,7 @@ theorem seeded_invariant_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
       (hTb : T ≤ b)
-    (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
+    (hsvc : Healing.Growing.ACResetService tr H g ΔF) (hB : SleepyBoundsFrom tr H r b)
     (hcv : ChainConvictedBelow tr H)
     {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :

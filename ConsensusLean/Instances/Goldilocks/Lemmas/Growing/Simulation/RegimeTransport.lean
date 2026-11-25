@@ -14,6 +14,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Pre
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.M1.FrameLag
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunCommittee
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.SignGap
 
 public section
 
@@ -25,7 +26,8 @@ canonical run map transports the three regime rows.
 * **sleepy**: the finite sleepy service from `SyncUntil` (`sleepyServiceBefore_of_syncUntil_at`),
   read as the AC-owned retained-evidence service of the local supplier, and the slot counts at
   the look-ahead `5Δ` (`sleepy_faultBoundAt`);
-* **healthy**: the generic `Service` from partial synchrony (`healthy_preparation_service_at`),
+* **healthy**: the generic `Service` from partial synchrony (`healthy_preparation_service_at`)
+  at the release hold `releaseGap·Δ_AC` of the setup's release schedule,
   full participation (`healthy_preparation_awake_at`), the population bound through the
   validator map, and the committee bound (`committeeFaultsUpTo_of_healthyOn`);
 * **ready**: engine readiness at a cut is a ready read at its mapped cut.
@@ -38,15 +40,18 @@ open Consensus.Model (pubOf)
 
 variable {V : Type} [Fintype V] [DecidableEq V]
 
-/-- The regime rows of the canonical run map at the local data equations and `K S A`. -/
+/-- The regime rows of the canonical run map at the local data equations and `K S A`, at the
+release hold `A.releaseGap·Δ_AC`. -/
 theorem goldilocks_regimeTransport (S : Setup) (A : ContractAssumptions S) {E : Env V}
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (fun v => v.val))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G)
+    {Rg : Nat} (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G Rg)
     (hsg : (fun v => v.val) = (goldilocksRunMap S rho hn hv).signer) :
-    RegimeTransport (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C) := by
+    RegimeTransport (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C)
+      ((A.releaseGap : Time) * E.ΔAC) := by
   classical
   obtain ⟨es, el⟩ := Generic.ACCorrectLocal.cast_signer hsg C
     (fun _ C' => C'.served = C.served ∧ C'.look = C.look) ⟨rfl, rfl⟩
@@ -105,12 +110,17 @@ theorem goldilocks_regimeTransport (S : Setup) (A : ContractAssumptions S) {E : 
     intro hv' hc g hh
     obtain ⟨hnet, hon, -, hcom⟩ := hh
     have hs := Obligations.Growing.healthy_preparation_service_at (S := S) ⟨E, rho⟩ hn hv' hc
-      le_rfl hnet
+      le_rfl hnet (Obligations.Growing.signed_row_service_psync_at S rho hn hv'
+        (releaseGapAt_of_assumptions A (pubOf E) hn))
+      (fun _ v t h₁ h₂ h₃ => hon.2 v t h₁ h₂ h₃)
+      (by rw [protoFGDelay_eq]
+          exact add_pos_of_pos_of_nonneg E.ΔFG_pos (mul_nonneg (Nat.cast_nonneg _) E.ΔAC_pos.le))
+      (by rw [protoFGDelay_eq]; exact le_add_of_nonneg_left E.ΔFG_pos.le)
     rw [protoFGDelay_eq] at hs
     let M := goldilocksRunMap S rho hn hv
     refine ⟨?_, fun y t hgt htb hy => M.healthy_awake_at le_rfl hon y t hy hgt htb,
       fun _ _ hdb => M.healthy_population_at le_rfl hon hdb, M.committeeFaultsUpTo hcom⟩
-    simpa only [M, goldilocksRunMap_trace, goldilocksRunMap_honest] using hs.toService
+    simpa only [M, goldilocksRunMap_trace, goldilocksRunMap_honest, add_zero] using hs.toService
   · -- ready
     exact fun _ _ _ hi hr => (goldilocksRunMap S rho hn hv).readyReadAtCut hv hi hr
 

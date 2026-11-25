@@ -40,8 +40,10 @@ its payload and run interface, an outage policy and a stored read context, and t
 suppliers at every valid run. -/
 private theorem local_binding (V : Type) [Fintype V] [DecidableEq V]
     (pub : Model.Public) (hn : 1 ≤ pub.n)
-    (C : ACCorrectLocal (goldilocksNode (S.params pub hn) (S.ro _)) (fun v => v.val))
-    (hC : GoldilocksLocalData (S.params pub hn) (S.ro _) C (S.sign pub) A.signGap) :
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params pub hn) (S.ro _))
+      (fun v => v.val) fgHold)
+    (hC : GoldilocksLocalData (S.params pub hn) (S.ro _) C (S.sign pub) A.signGap
+      A.releaseGap) :
     ∃ B : EngineBinding (F := goldilocks S) (V := V) pub C.payload (fun v => v.val) C.run,
       ∃ D : ∀ E hE rho hv, OutagePolicy (B.map E hE rho hv),
       ∃ R : ∀ E hE rho hv, StoredReadContext (B.map E hE rho hv),
@@ -57,14 +59,17 @@ private theorem local_binding (V : Type) [Fintype V] [DecidableEq V]
   refine ⟨goldilocksEngineBinding S A pub hn,
     fun E hE rho hv => by
       subst hE
-      exact (goldilocksEngineBinding_map S A E hn rho hv).symm ▸ goldilocksOutagePolicy S rho hn hv,
+      exact (goldilocksEngineBinding_map S A E hn rho hv).symm ▸
+        goldilocksOutagePolicy S rho hn hv,
     fun E hE rho hv => by
       subst hE
       exact (goldilocksEngineBinding_map S A E hn rho hv).symm ▸
         goldilocksStoredReadContext S rho hn hv,
     fun E hE rho hv => ?_⟩
   subst hE
-  have aux : ∀ M (hM : M = goldilocksRunMap S rho hn hv) (hsg : _ = M.signer),
+  have aux : ∀ M (hM : M = goldilocksRunMap S rho hn hv)
+      (hsg : (fun v => v.val : (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).Msg →
+        Fin (Fintype.card V)) = M.signer),
       LocalClaimSuppliers M (hsg ▸ C) (K S A) (hM.symm ▸ goldilocksOutagePolicy S rho hn hv)
         (hM.symm ▸ goldilocksStoredReadContext S rho hn hv)
         (SleepyLayer1.goldilocksEvents _ _) := by
@@ -80,7 +85,8 @@ theorem meetsObligations_growing : ShapeObligations (goldilocks S) (K S A) := by
     signGap_δt A
   choose C hC using fun pub : {pub : Model.Public // 1 ≤ pub.n} =>
     goldilocksACCorrectLocal_of_healing
-      (goldilocks_ac_healing (ro := S.ro _) (sign := S.sign pub.1) (G := A.signGap) (hδ pub))
+      (goldilocks_ac_healing (ro := S.ro _) (sign := S.sign pub.1) (G := A.signGap)
+        (Rg := A.releaseGap) (hδ pub))
   choose B D R hL using fun (V : Type) (_ : Fintype V) (_ : DecidableEq V) pub =>
     local_binding S A V pub.1 pub.2 (C pub) (hC pub)
   exact (meetsObligations_of_local_iff _ _).1 (meetsObligations_of_local_proof _ _) _ _ _ C

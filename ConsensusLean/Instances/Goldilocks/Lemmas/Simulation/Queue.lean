@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.VoteMember
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventory
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttGuard
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 import ConsensusLean.Lemmas.Problem.Constant
 import ConsensusLean.Lemmas.Model.Credentials
@@ -214,6 +215,17 @@ private theorem inventory_att {io : VoteAuth sp.n binding} {P : Wire sp.n bindin
     ⟨h.reachable, h.blocks, h.atts⟩ a ha
   exact ⟨hfg.reachable, hfg.blocks, h.votes, hfg.atts, h.gate⟩
 
+/-- Processing a list of attestations, each of which satisfies `P`, keeps the inventory. -/
+private theorem inventory_foldl_att {io : VoteAuth sp.n binding} {P : Wire sp.n binding → Prop}
+    {st : NodeState (goldilocksNode sp ro)} (h : Inventory io P st) (l : List (FG.Att sp.n))
+    (hl : ∀ a ∈ l, P (attObj a)) :
+    Inventory io P (l.foldl (fun n a => (Node.onAttestation n a).1) st) := by
+  induction l generalizing st with
+  | nil => exact h
+  | cons a l ih =>
+    exact ih (inventory_att h a (hl a List.mem_cons_self))
+      fun b hb => hl b (List.mem_cons_of_mem _ hb)
+
 private theorem inventory_accept {io : VoteAuth sp.n binding} {P : Wire sp.n binding → Prop}
   {st : NodeState
     (goldilocksNode sp ro)}
@@ -306,7 +318,7 @@ private theorem inventory_toFG {io : VoteAuth sp.n binding} {P : Wire sp.n bindi
 private theorem proposal_inventory {P : Wire sp.n binding → Prop} (st : State sp ro binding)
     (h : Inventory st.voteIO P st.node) (s : Slot) {par : ParentRef} {info : Info}
     {cs : List (Wire sp.n binding)} (hp : (propose st s).2 = some (par, info, cs)) :
-    ∀ o ∈ cs, P o := by
+    ∀ o ∈ cs, P o ∧ ∃ a, o = attObj a := by
   simp only [propose_eq, Node.acProposal] at hp
   dsimp only [goldilocksNode, AC.goldilocksAC] at hp
   unfold AC.acProposal at hp
@@ -316,7 +328,7 @@ private theorem proposal_inventory {P : Wire sp.n binding → Prop} (st : State 
     cases hcs
     intro o ho
     obtain ⟨a, ha, rfl⟩ := List.mem_map.mp ho
-    exact h.atts a (List.mem_filter.mp ha).1
+    exact ⟨h.atts a (List.mem_filter.mp ha).1, a, rfl⟩
 
 end Inventory
 
@@ -324,6 +336,8 @@ section ShapeInventory
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
+/-- Own material not yet released: a vote or attestation queued in the outbox. (A held
+attestation is not in the node's pool: it enters the pool when it is released.) -/
 private def Pending (st : State sp ro binding) (o : Wire sp.n binding) : Prop :=
   (∃ v z, o = voteObj v z ∧ .vote (encodeVote v) z ∈ st.outbox) ∨
     ∃ a, o = attObj a ∧ .att (encodeAtt a) ∈ st.outbox
@@ -366,8 +380,8 @@ private theorem apply_inventory (seen : List (Wire sp.n binding)) (st : State sp
     (h : Inventory st.voteIO (Available seen st) st.node) :
     Inventory st.voteIO (Available seen (apply st origin r)) (apply st origin r).node := by
   apply hr
-  · exact inventory_mono h (fun _ => available_mono (fun _ h => h)
-      (List.subset_append_left _ _))
+  · exact inventory_mono h (fun _ => available_mono (st := st) (st' := apply st origin r)
+      (fun _ h => h) (List.subset_append_left _ _))
   · exact fun _ h => Or.inl h
   · intro b hb v z hv
     exact Or.inr (Or.inl ⟨v, z, rfl, List.mem_append_right _ (hv ▸ hb)⟩)
@@ -404,25 +418,32 @@ private theorem restore_inventory (seen : List (Wire sp.n binding)) (st : State 
   simp only [emitted, acCall, List.flatMap_cons, List.flatMap_nil, List.append_nil]
   exact List.mem_filterMap.mpr ⟨e, he', by rw [hz]; rfl⟩
 
-private theorem fg_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
-    (h : Inventory st.voteIO (Available seen st) st.node) :
-    Inventory (fgUpdate st).voteIO (Available seen (fgUpdate st)) (fgUpdate st).node := by
-  rw [fgUpdate_eq]
+/-- The FG update keeps the inventory: its attestation is queued in the outbox when the schedule
+releases at the node's time, and held otherwise. -/
+private theorem fg_inventory (release : Fin sp.n → Time → Bool) (seen : List (Wire sp.n binding))
+    (st : State sp ro binding) (h : Inventory st.voteIO (Available seen st) st.node) :
+    Inventory (fgUpdate st release).voteIO (Available seen (fgUpdate st release))
+      (fgUpdate st release).node := by
+  rw [fgUpdate_eq st release]
   dsimp only
   split
   · exact inventory_toFG h st.now
   · split
     · exact inventory_toFG h st.now
     · rename_i C hC a Λ' ha
-      apply inventory_att
-      · have ht := inventory_toFG h st.now
-        have ht' : Inventory st.voteIO (Available seen st)
-            { (Node.acToFG st.node st.now).1 with record := Λ' } :=
-          ⟨ht.reachable, ht.blocks, ht.votes, ht.atts, ht.gate⟩
-        apply inventory_mono ht'
-        intro o ho
-        exact available_mono (fun _ h => h) (List.subset_append_left _ _) ho
-      · exact Or.inr (Or.inr ⟨a, rfl, List.mem_append_right _ (List.mem_singleton_self _)⟩)
+      have ht := inventory_toFG h st.now
+      have ht' : Inventory st.voteIO (Available seen st)
+          { (Node.acToFG st.node st.now).1 with record := Λ' } :=
+        ⟨ht.reachable, ht.blocks, ht.votes, ht.atts, ht.gate⟩
+      split
+      · apply inventory_att
+        · refine inventory_mono ht' fun o ho => ?_
+          rcases ho with ho | ⟨v, z, rfl, hv⟩ | ⟨b, rfl, hb⟩
+          · exact Or.inl ho
+          · exact Or.inr (Or.inl ⟨v, z, rfl, List.mem_append_left _ hv⟩)
+          · exact Or.inr (Or.inr ⟨b, rfl, List.mem_append_left _ hb⟩)
+        · exact Or.inr (Or.inr ⟨a, rfl, List.mem_append_right _ (List.mem_singleton_self _)⟩)
+      · exact inventory_mono ht' fun o ho => ho
 
 private theorem processOne_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
     (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat)) (o : Wire sp.n binding)
@@ -535,34 +556,40 @@ private theorem record_inventory (seen : List (Wire sp.n binding)) (st : State s
     · exact h
   · exact h
 
-private theorem poll_inventory (seen seen' : List (Wire sp.n binding)) (st : State sp ro binding)
+private theorem poll_inventory_core (release : Fin sp.n → Time → Bool)
+    (seen : List (Wire sp.n binding)) (st : State sp ro binding)
     (t : Time) (h : Inventory st.voteIO (Available seen st) st.node)
-    (hs : seen.flatMap Model.Obj.parts ⊆ seen'.flatMap Model.Obj.parts)
-    (hv : ∀ v z, (if st.fgDue then fgUpdate st else st).outbox.head? =
-      some (.vote (encodeVote v) z) → voteObj v z ∈ seen'.flatMap Model.Obj.parts)
-    (ha : ∀ a, (if st.fgDue then fgUpdate st else st).outbox.head? =
-      some (.att (encodeAtt a)) → attObj a ∈ seen'.flatMap Model.Obj.parts) :
-    Inventory (poll st t).1.voteIO (Available seen' (poll st t).1) (poll st t).1.node := by
-  have hi : Inventory (if st.fgDue then fgUpdate st else st).voteIO (Available seen
-    (if st.fgDue then fgUpdate st else st))
-      (if st.fgDue then fgUpdate st else st).node := by
+    (hv : ∀ v z, (pollPre st release).outbox.head? =
+      some (.vote (encodeVote v) z) → voteObj v z ∈ seen.flatMap Model.Obj.parts)
+    (ha : ∀ a, (pollPre st release).outbox.head? =
+      some (.att (encodeAtt a)) → attObj a ∈ seen.flatMap Model.Obj.parts) :
+    Inventory (poll st t release).1.voteIO (Available seen (poll st t release).1)
+      (poll st t release).1.node := by
+  have hi : Inventory (pollPre st release).voteIO (Available seen (pollPre st release))
+      (pollPre st release).node := by
+    rw [pollPre_eq]
     split
-    · exact fg_inventory seen st h
+    · exact fg_inventory release seen st h
     · exact h
-  generalize he : (if st.fgDue then fgUpdate st else st) = pre at hi hv ha
+  rw [pollPre_eq] at hi hv ha
+  generalize he : (if st.fgDue then fgUpdate st release else st) = pre at hi hv ha
   unfold poll
   rw [he]
   cases hq : pre.outbox with
   | nil =>
     simp only [hq]
     apply inventory_mono hi
-    exact fun _ => available_mono hs (by simp [hq])
+    intro o ho
+    rcases ho with ho | ⟨v, z, rfl, hv'⟩ | ⟨a, rfl, ha'⟩
+    · exact Or.inl ho
+    · rw [hq] at hv'; cases hv'
+    · rw [hq] at ha'; cases ha'
   | cons b rest =>
     simp only [hq]
     apply inventory_mono hi
     intro o ho
     rcases ho with ho | (⟨v, z, rfl, hv'⟩ | ⟨a, rfl, ha'⟩)
-    · exact Or.inl (hs ho)
+    · exact Or.inl ho
     · rw [hq] at hv'
       rcases List.mem_cons.mp hv' with hb | hr
       · exact Or.inl (hv v z (by simp [hq, ← hb]))
@@ -571,6 +598,45 @@ private theorem poll_inventory (seen seen' : List (Wire sp.n binding)) (st : Sta
       rcases List.mem_cons.mp ha' with hb | hr
       · exact Or.inl (ha a (by simp [hq, ← hb]))
       · exact Or.inr (Or.inr ⟨a, rfl, hr⟩)
+
+/-- A batch poll keeps the inventory, given that its ordinary emission and the held
+attestations it flushes are in the new `seen` log. -/
+private theorem poll_inventory (release : Fin sp.n → Time → Bool)
+    (seen seen' : List (Wire sp.n binding)) (st : State sp ro binding)
+    (t : Time) (h : Inventory st.voteIO (Available seen st) st.node)
+    (hs : seen.flatMap Model.Obj.parts ⊆ seen'.flatMap Model.Obj.parts)
+    (hv : ∀ v z, (pollPre st release).outbox.head? =
+      some (.vote (encodeVote v) z) → voteObj v z ∈ seen'.flatMap Model.Obj.parts)
+    (ha : ∀ a, (pollPre st release).outbox.head? =
+      some (.att (encodeAtt a)) → attObj a ∈ seen'.flatMap Model.Obj.parts)
+    (hf : ∀ a ∈ pollFlush st release, attObj a ∈ seen'.flatMap Model.Obj.parts) :
+    Inventory (pollBatch st t release).1.voteIO (Available seen' (pollBatch st t release).1)
+      (pollBatch st t release).1.node := by
+  have hcore : ∀ st₀ : State sp ro binding,
+      (pollPre st₀ release).outbox = (pollPre st release).outbox →
+      Inventory st₀.voteIO (Available seen' st₀) st₀.node →
+      Inventory (poll st₀ t release).1.voteIO (Available seen' (poll st₀ t release).1)
+        (poll st₀ t release).1.node := fun st₀ ho h₀ =>
+    poll_inventory_core release seen' st₀ t h₀ (ho ▸ hv) (ho ▸ ha)
+  have h' : Inventory st.voteIO (Available seen' st) st.node :=
+    inventory_mono h fun _ => available_mono hs (fun _ h => h)
+  rw [pollBatch_fst]
+  split
+  · rename_i hr
+    refine hcore _ (by rw [pollPre_heldDrain_outbox]) ?_
+    have hio : (heldDrain st).voteIO = st.voteIO := by
+      obtain ⟨atts, he⟩ := heldDrain_eq st; rw [he]
+    rw [heldDrain_node, hio]
+    have hfl : ∀ a ∈ st.held, attObj a ∈ seen'.flatMap Model.Obj.parts := fun a ha' =>
+      hf a (by rw [pollFlush_eq, ite_eq_left hr]; exact ha')
+    have hmono : Inventory st.voteIO (Available seen' (heldDrain st)) st.node :=
+      inventory_mono h' fun o ho => by
+        rcases ho with ho | ⟨v, z, rfl, hv'⟩ | ⟨b, rfl, hb⟩
+        · exact Or.inl ho
+        · exact Or.inr (Or.inl ⟨v, z, rfl, by rw [heldDrain_outbox]; exact hv'⟩)
+        · exact Or.inr (Or.inr ⟨b, rfl, by rw [heldDrain_outbox]; exact hb⟩)
+    exact inventory_foldl_att hmono st.held fun a ha' => Or.inl (hfl a ha')
+  · exact hcore _ rfl h'
 
 end ShapeInventory
 
@@ -600,6 +666,24 @@ theorem duty_cut_vote_member (hv : rho.ExecutionValid) {v : V} (_hv' : v ∉ rho
   have h := ((VoteMember_iff _).1 (cut_member S rho hn hv hc)).2 m z hm
   ⟨h.1.trans (cut_self S rho hn hc), of_decide_eq_true h.2⟩
 
+omit [DecidableEq V] in
+/-- A candidate that carries nothing and whose dependencies are always ready is released. -/
+private theorem mem_releaseAll_free {pub : Model.Public} {Out : Type} {P : Model.Protocol pub Out}
+    (hash : P.Item → Nat) (k : Model.Key pub) :
+    ∀ (nd : Model.Node P) (cs : List P.Object) {c : P.Object}, c ∈ cs → c.carried = [] →
+      (∀ held, P.dependencies.ready held c = true) → c ∈ (Model.releaseAll P hash k nd cs).2
+  | _, [], _, hc, _, _ => absurd hc List.not_mem_nil
+  | nd, d :: cs, c, hc, hcar, hready => by
+    unfold Model.releaseAll
+    split
+    · rcases List.mem_cons.mp hc with rfl | hc
+      · exact List.mem_cons_self
+      · exact List.mem_cons_of_mem _ (mem_releaseAll_free hash k _ cs hc hcar hready)
+    · rename_i hf
+      rcases List.mem_cons.mp hc with rfl | hc
+      · exact absurd (by simp [Model.releasable, hcar, hready]) hf
+      · exact mem_releaseAll_free hash k nd cs hc hcar hready
+
 private theorem poll_duty_inventory (hv : rho.ExecutionValid)
     {v : V} {i p : Nat} {nd} {k : Nat}
     (hc : EngineDutyCut S rho v i p nd)
@@ -615,20 +699,19 @@ private theorem poll_duty_inventory (hv : rho.ExecutionValid)
       (shapeOf S hn (rho.dutyStep v nd (.poll k)).1).node := by
   have hsel := poll_selected S rho hv v
   rw [dutyStep_poll S rho hn v nd k hsel]
-  have hmem : ∀ b, (pollPre (shapeOf S hn nd)).outbox.head? = some b →
+  have hmem : ∀ b, (pollPre (shapeOf S hn nd) (S.release (pubOf E))).outbox.head? = some b →
       rho.ownKey v ∈ rho.sel (pollRole S.vote (pubOf E).n b) →
       pollObj S rho v b ∈ (rho.dutyStep v nd (.poll k)).1.seen.flatMap Model.Obj.parts := by
     intro b hb hk
     apply Model.mem_closure_of_mem
     rw [Simulation.dutyStep_seen S rho v nd (.poll k)]
     exact List.mem_append_right _ (dutyStep_poll_rel S rho hn v nd k hsel hb hk)
-  apply poll_inventory nd.seen _ _ _ h
+  apply poll_inventory _ nd.seen _ _ _ h
   · rw [Simulation.dutyStep_seen S rho v nd (.poll k)]
     exact parts_append _ _
   · intro w z hw
-    rw [← pollPre_eq] at hw
     have hown : VoteMember (fun s => decide (rho.ownKey v ∈ rho.sel (S.vote.voteRole s)))
-        (pollPre (shapeOf S hn nd)) := by
+        (pollPre (shapeOf S hn nd) (S.release (pubOf E))) := by
       rw [pollPre_eq]
       split
       · exact fgUpdate_voteMember _ (cut_member S rho hn hv hc)
@@ -637,13 +720,13 @@ private theorem poll_duty_inventory (hv : rho.ExecutionValid)
       (List.mem_of_mem_head? (Option.mem_def.mpr hw))
     have hval := hw'.1.trans
       ((by rw [pollPre_eq]; split <;> simp [fgUpdate_self] :
-        (pollPre (shapeOf S hn nd)).self = (shapeOf S hn nd).self).trans
-          (cut_self S rho hn hc))
+        (pollPre (shapeOf S hn nd) (S.release (pubOf E))).self =
+          (shapeOf S hn nd).self).trans (cut_self S rho hn hc))
     rw [voteObj_eq_pollObj S rho z hval]
     exact hmem _ hw (by rw [pollRole_vote]; exact of_decide_eq_true hw'.2)
   · intro a ha
-    rw [← pollPre_eq] at ha
-    have hpoll : (poll (nd.st.1 hn) k).2 = some (.att (encodeAtt a), []) := by
+    have hpoll : (poll (nd.st.1 hn) k (S.release (pubOf E))).2 =
+        some (.att (encodeAtt a), []) := by
       rw [(poll_outbox _ _).2, ha]
       rfl
     obtain ⟨a', j, q, he, hval, -⟩ := engine_poll_att_signed S rho hn hc hd hsel hpoll
@@ -653,6 +736,28 @@ private theorem poll_duty_inventory (hv : rho.ExecutionValid)
     have hav := hval.trans (cut_self S rho hn hc)
     rw [attObj_eq_pollObj_of_val S rho hav]
     exact hmem _ ha (pollRole_selected_of_not_vote S rho hsel (fun w z h => by cases h))
+  · -- a held attestation the batch flushes is released by it
+    intro a ha
+    have hah : a ∈ (shapeOf S hn nd).held := by
+      rw [pollFlush_eq] at ha
+      split at ha
+      · exact ha
+      · cases ha
+    have hav := (engine_held_att_signed S rho hn hc hah).1.trans (cut_self S rho hn hc)
+    rw [attObj_eq_pollObj_of_val S rho hav]
+    apply Model.mem_closure_of_mem
+    rw [Simulation.dutyStep_seen S rho v nd (.poll k)]
+    refine List.mem_append_right _ ?_
+    unfold Model.Run.dutyStep
+    simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.poll k) = .poll from rfl,
+      hsel, ↓reduceIte]
+    rw [signedCandidate_poll S rho hn v nd k hsel]
+    refine mem_releaseAll_free _ _ _ _ (List.mem_append_right _
+      (List.mem_map.mpr ⟨a, ha, ?_⟩)) rfl fun held => pollObj_ready S rho v held _
+    rw [← attObj_eq_pollObj_of_val S rho hav]
+    unfold attObj
+    rw [hav]
+    rfl
 
 private def PayloadCarried (o : Wire (Fintype.card V) binding) : Prop :=
   ∀ k s hd cs, o = .mk (.signed k (.proposer s)) (.item hd) cs →
@@ -679,7 +784,8 @@ private theorem release_inventory (k : Fin (Fintype.card V))
     (Admissible := PayloadCarried) ?_ h hp
   intro n c hi hc
   apply record_inventory (n.seen ++ [c]) (shapeOf S hn n) _ c
-  · exact inventory_mono hi (fun _ => available_mono (parts_append _ _) (fun _ h => h))
+  · exact inventory_mono hi (fun _ =>
+      available_mono (parts_append _ _) (fun _ h => h))
   · intro key s hd os he atts p hi x hx
     exact List.mem_flatMap.mpr ⟨c, List.mem_append_right _ (List.mem_singleton_self _),
       hc key s hd os he atts p hi x hx⟩
@@ -805,14 +911,16 @@ private theorem event_inventory (hv : rho.ExecutionValid)
     exact hi
   · intro nd o hi
     apply process_inventory
-    · exact inventory_mono hi (fun _ => available_mono (parts_append _ _) (fun _ h => h))
+    · exact inventory_mono hi (fun _ =>
+        available_mono (parts_append _ _) (fun _ h => h))
     · intro x hx
       exact List.mem_flatMap.mpr ⟨o, List.mem_append_right _ (List.mem_singleton_self _), hx⟩
   · intro nd t _ hi
     exact restore_inventory _ _ _ _ hi
   · intro nd c hi hc
     apply record_inventory (nd.seen ++ [c]) (shapeOf S hn nd) _ c
-    · exact inventory_mono hi (fun _ => available_mono (parts_append _ _) (fun _ h => h))
+    · exact inventory_mono hi (fun _ =>
+        available_mono (parts_append _ _) (fun _ h => h))
     · intro key s hd os he atts p hi x hx
       exact List.mem_flatMap.mpr ⟨c, List.mem_append_right _ (List.mem_singleton_self _),
         hc key s hd os he atts p hi x hx⟩
@@ -875,7 +983,8 @@ theorem tick_prefix_pool_available (hv : rho.ExecutionValid) {v : V}
     simp only [decodeVote_encodeVote, Option.some.injEq] at hdec
     subst hdec hz'
     exact ⟨z, Or.inr hw⟩
-  · have hbad := congrArg Model.Obj.msg heq
+  all_goals
+    have hbad := congrArg Model.Obj.msg heq
     simp only [voteObj, attObj, Model.Obj.msg, Model.Msg.data.injEq] at hbad
     cases hbad
 
@@ -894,7 +1003,8 @@ theorem delivery_pool_available (hv : rho.ExecutionValid)
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)))
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node := by
     apply process_inventory
-    · exact inventory_mono hi (fun _ => available_mono (parts_append _ _) (fun _ h => h))
+    · exact inventory_mono hi (fun _ =>
+        available_mono (parts_append _ _) (fun _ h => h))
     · intro x hx
       exact List.mem_flatMap.mpr ⟨o, List.mem_append_right _ (List.mem_singleton_self _), hx⟩
   obtain ⟨z, hz⟩ := hp.votes σ m hm
@@ -907,7 +1017,8 @@ theorem delivery_pool_available (hv : rho.ExecutionValid)
     simp only [decodeVote_encodeVote, Option.some.injEq] at hdec
     subst hdec hz'
     exact ⟨z, Or.inr hw⟩
-  · have hbad := congrArg Model.Obj.msg he
+  all_goals
+    have hbad := congrArg Model.Obj.msg he
     simp only [voteObj, attObj, Model.Obj.msg, Model.Msg.data.injEq] at hbad
     cases hbad
 
@@ -1012,12 +1123,13 @@ theorem scheduled_proposal_releasable (hv : rho.ExecutionValid)
       exact atProposal_outbox_nil S rho hn hv i s
         (htime.trans (slotTime_eq S hn s).symm)
   intro o ho
-  rcases proposal_inventory _ hi s hprop o ho with hseen | (⟨w, z, _, hw⟩ | ⟨a, _, ha⟩)
+  obtain ⟨hav, a, rfl⟩ := proposal_inventory _ hi s hprop o ho
+  rcases hav with hseen | ⟨w, z, _, hw⟩ | ⟨b, _, hb⟩
   · exact hseen
   · rw [hout] at hw
     cases hw
-  · rw [hout] at ha
-    cases ha
+  · rw [hout] at hb
+    cases hb
 
 end EngineInventory
 

@@ -44,6 +44,8 @@ honest (`HonestBlocksAt`). The pure AC lemmas `result_label_lt_latest_of_time` a
   (the record cover at a read point after the opening's update). -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
+
+variable {hold : Time}
 open AsChainShape Simulation
 open Blocks Shape
 
@@ -103,7 +105,7 @@ theorem read_source_of_recent_result_at
     {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {g ΔF a b t : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {i L : Nat}
     {R : AC.Blk sp.n (List (FG.Att sp.n))} (htb : t ≤ b)
     (hsource : (Node.frame (tr.state y i)).Anc R
@@ -144,7 +146,7 @@ theorem healthy_repair_schedule_of_reset_at
       (runProposer S Q.run.2 Q.hn)
       (digestOf S Q.run.2)
       Q.gst ΔF a Q.bound
-        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK)
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK hold)
     (hreserve : max Q.ready (Healing.drainTime Q.params a) +
       (4 * (Q.index : Time) + 6) * Q.params.Δ < Q.heal - 1) :
     ∃ D : HealthyRepairScheduleAt S A V Q,
@@ -155,6 +157,7 @@ theorem healthy_repair_schedule_of_reset_at
   exact ⟨{
     resetTime := a
     deltaF := ΔF
+    hold := hold
     reset := hreset
     cleanLabel := Healing.cleanLabel Q.params a
     cleanLabel_eq := rfl
@@ -198,7 +201,7 @@ theorem healthy_repair_schedule_at
     (hGs : (contract_catchUp S A : Nat) +
       (healthyResetCoeff S Q.index + 8 * S.k + 4 * (Q.index : Nat) + 34) + 3 + 5 * Gs ≤
         contract_heal S A Q.cap Q.index)
-    (hGsT : 4 * A.fgSlots + Gs ≤ 4 * S.δt) :
+    (hGsT : 4 * A.fgSlots + A.releaseGap + Gs ≤ 4 * S.δt) :
     Nonempty (HealthyRepairScheduleAt S A V Q) := by
   obtain ⟨W', ⟨Dprep⟩⟩ := healthy_preparation_initialize_at S A V Q h0 hb hp hcal hgap hδG hGs
     hGsT

@@ -28,7 +28,7 @@ private theorem time_before_event_end (hv : rho.ExecutionValid) {b : Nat}
     exact hk.trans_le (cutMap_mono S rho hn (List.getElem?_eq_some_iff.mp he).1)
   have hl : (simTrace S rho hn).label k ≠ none := by
     rw [simTrace_label, List.getElem?_eq_getElem hlen]; simp
-  obtain ⟨r, a, e, -, ha, hlo, -, -, -, ht, -⟩ := simTrace_cut S rho hn hl
+  obtain ⟨-, a, e, -, ha, hlo, -, -, -, ht, -, -⟩ := simTrace_cut_origin S rho hn hl
   have hab : a ≤ b := by
     by_contra h
     have := cutMap_mono S rho hn (show b + 1 ≤ a by omega)
@@ -86,8 +86,7 @@ private theorem sending_event_insertion_at (hv : rho.ExecutionValid)
   have hstate (j : Nat) (hj : j ≤ rho.events.length) :
       (stateAt S rho hn (rho.key y) j).node =
         (simTrace S rho hn).state y (cutMap S rho hn j) := by
-    simpa only [simTraceAt_eq, Model.Run.ownKey, Equiv.symm_apply_apply] using
-      simTraceAt_state_all S rho hn hv (rho.key y) j hj
+    simpa only [simTraceAt_eq, ownKey_key] using simTraceAt_state_all S rho hn hv (rho.key y) j hj
   constructor
   · rw [hstate i hi.le]
     intro hm

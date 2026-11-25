@@ -66,6 +66,7 @@ namespace Consensus.Goldilocks.Compose.Growing
 open AC (ACParams ReplayOrder Vote Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {hold : Time}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
@@ -372,7 +373,7 @@ at or below `fc_root` and not genesis (which is below `Σ.F`), has a last writer
 theorem seeded_ready_read_record_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {t₁ b : Time}
-    (hsvc : Healing.Growing.ResetService tr H g ΔF b)
+    (hsvc : Healing.Growing.ACResetService tr H g ΔF)
     {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K) (hKB : CommitteeBoundsFrom tr H K r b)
     (hinv : SeededInvariant tr H g r (r + sp.k - 1) t₁ b)
     {y : Fin sp.n} {j : Nat} {t : Time} (hrp : Regimes.ReadPoint tr j t)
@@ -564,7 +565,7 @@ compatible (`seeded_records_compatible_at`), and one reader's only extends
 theorem continued_safe_on_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {t₁ t₀ b : Time}
-    (hsvc : Healing.Growing.ResetService tr H g ΔF b)
+    (hsvc : Healing.Growing.ACResetService tr H g ΔF)
     {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K) (hKB : CommitteeBoundsFrom tr H K r b)
     (hinv : SeededInvariant tr H g r (r + sp.k - 1) t₁ b)
     (hdt₁ : sp.ts (r + sp.k : Nat) ≤ t₁) (ht₁₈ : t₁ + 8 * sp.Δ ≤ t₀) {c : Time}

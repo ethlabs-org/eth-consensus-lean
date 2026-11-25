@@ -40,15 +40,16 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {sign : Fin sp.n → Time → Bool} {G : Nat}
 
+
 /-- The bundled premises of an interface run with a reset by its horizon form the finite reset
 record: the committee facts come from the run under collision freedom, the service fields are the
 same, and restarts after `ḡ` are excluded at every cut, so also at those by the horizon. -/
 theorem resetPremisesUpTo_of_premises {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    {g ΔF a b : Time} (hβ : βK ≤ 1 / 2)
+    {g ΔF a b hold : Time} (hβ : βK ≤ 1 / 2)
     (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
-    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b)
+    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b) :
-    Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK :=
+    Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold :=
   have hrun := (goldilocksRunInterface_run_iff cm).mp hrun
   { beta_le := hβ
     run := hrun.1
@@ -56,7 +57,8 @@ theorem resetPremisesUpTo_of_premises {cm : Time → Finset (Fin sp.n)} {βK : �
     committeeFacts := hrun.2.2.2.1 hp.noColl
     committeeFaults := hp.committee
     noColl := hp.noColl
-    sync := ⟨hp.sync.deltaF, hp.sync.message, hp.sync.block, hp.sync.relay, hp.sync.signedRow⟩
+    sync := ⟨hp.sync.deltaF, hp.sync.message, hp.sync.block, hp.sync.relay, hp.sync.signedRow,
+      hp.sync.hold_le⟩
     awake := hp.awake
     faults := hp.faults
     reset := hr
@@ -82,11 +84,11 @@ theorem goldilocks_report_in_frame {cm : Time → Finset (Fin sp.n)}
 
 /-- `origins_comparable` at the joined stored-fast-lock origin: two high honest origins by the
 horizon, after a reset by it, are compatible. -/
-theorem goldilocks_origins_comparable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+theorem goldilocks_origins_comparable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {hold : Time}
     {g ΔF a b : Time} {x x' : Fin sp.n} {i j i' j' : Nat}
     {B B' : AC.Blk sp.n (List (FG.Att sp.n))} (hβ : βK ≤ 1 / 2)
     (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
-    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b)
+    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
     (hx : x ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     (ho : tr.JoinedAt x (tr.time i) ∧ ∃ CV, Compose.StoredFastLockAt tr x i j B CV)
@@ -103,9 +105,9 @@ theorem goldilocks_origins_comparable {cm : Time → Finset (Fin sp.n)} {βK : �
 reset's slot are chained through the horizon, one slot on with the service reserve and two or
 more slots on. -/
 theorem goldilocks_heal_after_reset {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    {g ΔF a b : Time} (hβ : βK ≤ 1 / 2)
+    {g ΔF a b hold : Time} (hβ : βK ≤ 1 / 2)
     (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
-    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b)
+    (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b) :
     HealedFrom tr H proposer (sp.toParams.slotOf a + (2 * sp.k + 5)) b := by
   have hq := resetPremisesUpTo_of_premises hβ hrun hp hr hab

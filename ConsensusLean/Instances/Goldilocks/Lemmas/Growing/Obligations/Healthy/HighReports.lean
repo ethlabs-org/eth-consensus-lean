@@ -103,11 +103,12 @@ theorem toFG_mem_tree_at
 namespace ResetPremisesUpTo
 
 variable {b : Time}
+variable {hold : Time}
 
 /-- A held descendant of a high origin has high state height, at a holder honest at an
 observation time after the held state's cuts. -/
 theorem high_of_anc_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {x : Fin sp.n}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {x : Fin sp.n}
     {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
     {z : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
     (hz : z ∈ H t) {W : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -126,7 +127,7 @@ theorem high_of_anc_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 report's block `C` of a node honest at its report and at `c_z` is below the stored viable image
 `O` of an earlier fast-lock write of the same node, and `O` is high as `C ⪯ O` is. -/
 theorem high_report_origin_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {z : Fin sp.n} {r : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time r)))
     {ell : ACLabel (goldilocksNode sp ro)}
     {C : AC.Blk sp.n (List (FG.Att sp.n))}

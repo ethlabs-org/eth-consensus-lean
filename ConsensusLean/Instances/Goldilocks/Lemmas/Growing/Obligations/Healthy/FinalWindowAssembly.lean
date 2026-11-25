@@ -32,6 +32,7 @@ open Blocks Shape
 open AC (gbar)
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
+variable {hold : Time}
 
 /-- The grid's slot time is the protocol slot time. -/
 theorem finalGridAt_slotTime (Q : FinalQueryAt S A V) (s : Nat) :
@@ -60,10 +61,11 @@ theorem final_window_extract_of_gap_within_at
     (Q : FinalQueryAt S A V)
     {c : Nat} (hc2 : 2 ≤ c)
     (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c])
-    {ΔR a ΔF d : Time}
+    {ΔR a ΔF d hold : Time}
     (hs : Healing.Growing.HSSharedUpTo Q.trace Q.keys
       (digestOf S Q.run.2) Q.gst ΔF
-      Q.run.2.horizon)
+      Q.run.2.horizon hold)
+    (hhold : 0 ≤ hold)
     (hd : 0 ≤ d)
     (hdel : 6 * Q.params.Δ + d + ΔF ≤ 4 * Q.params.Δ * (c : Nat))
     (hrelay : 7 * Q.params.Δ + d ≤ 4 * Q.params.Δ * (c : Nat))
@@ -72,10 +74,10 @@ theorem final_window_extract_of_gap_within_at
       (runProposer S Q.run.2 Q.hn)
         (digestOf S Q.run.2) Q.gst ΔR a
           Q.run.2.horizon
-        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK)
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK hold)
     (hsign : RunTrace.GrowingAllTicksSign Q.trace (runProposer S Q.run.2 Q.hn)
       (digestOf S Q.run.2) Q.keys)
-    (hsup : Healing.Growing.RowSupplyWithin Q.trace Q.keys Q.gst Q.run.2.horizon d)
+    (hsup : Healing.Growing.RowSupplyWithin Q.trace Q.keys Q.gst Q.run.2.horizon d hold)
     (hpropose : ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
       HonestReadyIn Q.run.2.point Q.run.2.key
       (fun s => Q.run.2.sel (.proposer s)) s
@@ -122,8 +124,8 @@ theorem final_window_extract_of_gap_within_at
   choose P hP using fun i : Fin 4 => hpropose _ (hanc i).1 (hanc i).2.1 (hanc i).2.2
   have hδ2 : 2 ≤ Q.params.toParams.fg.δt :=
     hc2.trans ((Nat.le_mul_of_pos_left c (by decide)).trans h3c)
-  have hh₀ := seed_height_held_at hreset hsign hs hδ2 hPs hu0 hRu hgu (hP 0) hus' hb₀ hgSu
-  have hsteps := anchorSteps_gap_within_at hreset hsign hs hc2 hsup hd hdel hrelay
+  have hh₀ := seed_height_held_at hreset hsign hs hhold hδ2 hPs hu0 hRu hgu (hP 0) hus' hb₀ hgSu
+  have hsteps := anchorSteps_gap_within_at hreset hsign hs hhold hc2 hsup hd hdel hrelay
     (s₀ := s₀) (P := P) hP
     hR hb3 hgS₀ hh₀
   -- the window fields
@@ -160,7 +162,7 @@ theorem final_window_extract_of_gap_within_at
   subst hWs hWb hWg
   refine ⟨W, rfl, ?_, W.anchorRun_iff.mpr
       ⟨runProposer S Q.run.2 Q.hn, digestOf S Q.run.2,
-    Q.gst, ΔR, a, Q.run.2.horizon, hreset, hc, hP, hR, hb3⟩, W.anchorSteps_iff.mpr hsteps⟩
+    Q.gst, ΔR, a, Q.run.2.horizon, _, hreset, hc, hP, hR, hb3⟩, W.anchorSteps_iff.mpr hsteps⟩
   have ht3 : Q.trace.time (W.cut 3) = Q.params.ts (W.start + 3 * W.gap : Nat) := by
     rw [(W.proposals 3).2.2, W.slots 3, Q.params.slotTime_eq]
     rfl
@@ -172,17 +174,18 @@ theorem final_window_extract_of_gap_at
     (Q : FinalQueryAt S A V)
     {c : Nat} (hc2 : 2 ≤ c)
     (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c])
-    {ΔR a ΔF : Time}
+    {ΔR a ΔF hold : Time}
     (hs : Healing.Growing.HSSharedUpTo Q.trace Q.keys
       (digestOf S Q.run.2) Q.gst ΔF
-      Q.run.2.horizon)
+      Q.run.2.horizon hold)
+    (hhold : 0 ≤ hold)
     (hdel : 6 * Q.params.Δ + ΔF ≤ 4 * Q.params.Δ * (c : Nat))
     (hlat : Q.query + 4 * ((Q.index : Nat) + 3 * c) * Q.params.Δ + Q.params.Δ ≤ Q.deadline)
     (hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
       (runProposer S Q.run.2 Q.hn)
         (digestOf S Q.run.2) Q.gst ΔR a
           Q.run.2.horizon
-        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK)
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK hold)
     (hsign : RunTrace.GrowingAllTicksSign Q.trace (runProposer S Q.run.2 Q.hn)
       (digestOf S Q.run.2) Q.keys)
     (hpropose : ∀ s : Nat, 0 < s → Q.params.ts s ≤ Q.run.2.horizon →
@@ -214,10 +217,10 @@ theorem final_window_extract_of_gap_at
       Q.trace.time (W.cut 3) + Q.params.Δ ≤ Q.deadline ∧ W.AnchorRun ∧ W.AnchorSteps := by
   have hc : (2 : Time) ≤ c := by exact_mod_cast hc2
   have hΔ := Q.params.toParams.hΔ
-  exact final_window_extract_of_gap_within_at S A V Q hc2 h3c hpat hs (d := 0) le_rfl
+  exact final_window_extract_of_gap_within_at S A V Q hc2 h3c hpat hs hhold (d := 0) le_rfl
     (by simpa only [add_zero] using hdel)
     (by linarith [mul_le_mul_of_nonneg_left hc (show 0 ≤ 4 * Q.params.Δ by linarith)])
-    hlat hreset hsign hreset.rowSupplyWithin_zero hpropose hplace hcarrier
+    hlat hreset hsign (hreset.rowSupplyWithin_zero hhold) hpropose hplace hcarrier
 
 /-- Final-window extraction with calendar-delayed reports. The gap is paid once, at the report
 deadline; report-to-row supply has delay zero. -/
@@ -225,15 +228,16 @@ theorem final_window_extract_of_gap_delayed_at
     (Q : FinalQueryAt S A V)
     {c G : Nat} (hc2 : 2 ≤ c)
     (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c])
-    {ΔR a ΔF : Time}
+    {ΔR a ΔF hold : Time}
     (hs : Healing.Growing.HSSharedUpTo Q.trace Q.keys
-      (digestOf S Q.run.2) Q.gst ΔF Q.run.2.horizon)
+      (digestOf S Q.run.2) Q.gst ΔF Q.run.2.horizon hold)
+    (hhold : 0 ≤ hold)
     (hdel : 6 * Q.params.Δ + G * Q.params.Δ + ΔF ≤ 4 * Q.params.Δ * c)
     (hrelay : 7 * Q.params.Δ + G * Q.params.Δ ≤ 4 * Q.params.Δ * c)
     (hlat : Q.query + 4 * ((Q.index : Nat) + 3 * c) * Q.params.Δ + Q.params.Δ ≤ Q.deadline)
     (hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
       (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon
-      (runCommittee S Q.run.2 Q.hn) (K S A).params.βK)
+      (runCommittee S Q.run.2 Q.hn) (K S A).params.βK hold)
     {sign : Fin Q.params.n → Time → Bool}
     (hcal : RunTrace.SignCalendarAt Q.trace (runProposer S Q.run.2 Q.hn)
       (digestOf S Q.run.2) Q.keys sign)
@@ -279,11 +283,11 @@ theorem final_window_extract_of_gap_delayed_at
     exact_mod_cast this
   have hbudget : 4 * Q.params.Δ * c ≤ 4 * Q.params.Δ * Q.params.toParams.fg.δt :=
     mul_le_mul_of_nonneg_left hcδ (by linarith)
-  have hh₀ := seed_height_held_delayed_at hreset hcal hs hδ2 (hgap u hRu huh)
+  have hh₀ := seed_height_held_delayed_at hreset hcal hs hhold hδ2 (hgap u hRu huh)
     (hdel.trans hbudget) (hrelay.trans hbudget) hPs hu0 hRu hgu (hP 0) hus' hb₀ hgSu
   have hmono : ∀ m n : Nat, m ≤ n → Q.params.ts m ≤ Q.params.ts n := fun m n h =>
     (AC.ts_le_iff Q.params).2 (by exact_mod_cast h)
-  have hsteps := anchorSteps_gap_delayed_at hreset hcal hs hc2 hdel hrelay
+  have hsteps := anchorSteps_gap_delayed_at hreset hcal hs hhold hc2 hdel hrelay
     (s₀ := s₀) (fun s hlo hhi => hgap s (hR.trans (hmono _ _ hlo))
       ((hmono _ _ (by omega)).trans hb3)) (P := P) hP hR hb3 hgS₀ hh₀
   have hready : ∀ i, Regimes.Growing.ReadyAt Q.trace H
@@ -317,7 +321,7 @@ theorem final_window_extract_of_gap_delayed_at
   subst hWs hWb hWg
   refine ⟨W, rfl, ?_, W.anchorRun_iff.mpr
     ⟨runProposer S Q.run.2 Q.hn, digestOf S Q.run.2, Q.gst, ΔR, a, Q.run.2.horizon,
-      hreset, hc, hP, hR, hb3⟩, W.anchorSteps_iff.mpr hsteps⟩
+      _, hreset, hc, hP, hR, hb3⟩, W.anchorSteps_iff.mpr hsteps⟩
   have ht3 : Q.trace.time (W.cut 3) = Q.params.ts (W.start + 3 * W.gap : Nat) := by
     rw [(W.proposals 3).2.2, W.slots 3, Q.params.slotTime_eq]
     rfl

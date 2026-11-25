@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Results.Spec.NodeCanonicalTrace
 public import ConsensusLean.Lemmas.Model.Objects
 import ConsensusLean.Lemmas.Model.DutyFold
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Trace
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventorySchedule
 
 public section
 
@@ -133,18 +134,20 @@ structure Encoding.Lawful (e : Encoding F E p hN hn A) (due : e.State hn → Boo
         (encodeTxs (Model.mempool rho.inbox v t)) .proposal).1 ∧
       (¬ (paramsAtCount p (Fintype.card V) hN hn).IsPublic t →
         e.adapter.node (envelope e post) = e.adapter.node (envelope e pre))
-  tick_finish : ∀ (rho : Model.Run (compiled F) E), rho.ExecutionValid →
+  /-- The node after an engine tick is the node's tick (`postTick`) followed by the own
+  `on_attestation` of every attestation the engine admitted to the pool during the event, in
+  order (`admitsAt`). -/
+  tick_admits : ∀ (rho : Model.Run (compiled F) E), rho.ExecutionValid →
     ∀ {i v t}, rho.events[i]? = some (.tick v t) →
-      let pre := (rho.runDuties v (afterClock rho (rho.stateBefore i v) v t)
-        ([.poll t.toNat, .poll t.toNat, .pollPropose t.toNat].map (engineDuty e))).1
-      let post := (rho.runDuties v pre ((e.skel.proposeAt t).map (engineDuty e))).1
-      let polled := (rho.runDuties v post ([.poll t.toNat, .poll t.toNat].map (engineDuty e))).1
-      e.adapter.node (envelope e polled) =
-        if due (envelope e post) then
-          (Node.tickStep (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
-            (e.adapter.node (envelope e post)) t
-            (encodeTxs (Model.mempool rho.inbox v t)) .fgUpdate).1
-        else e.adapter.node (envelope e post)
+      e.adapter.node (stateAt e rho v (i + 1)) =
+        (admitsAt e rho v i).foldl
+          (fun n a => (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v) n t
+            (.attestation a)).1)
+          (postTick e rho e.adapter.sign v i t)
+  /-- Every attestation the engine admits to a node's pool during its tick is the node's own. -/
+  admits_own : ∀ (rho : Model.Run (compiled F) E), rho.ExecutionValid →
+    ∀ {i v t}, rho.events[i]? = some (.tick v t) →
+      ∀ a ∈ admitsAt e rho v i, a.val = rho.ownKey v
   gossip_node : ∀ (rho : Model.Run (compiled F) E) v nd t,
     e.adapter.node (envelope e (Model.releaseAll (Model.protoOf (compiled F) E) rho.hash
       (rho.ownKey v) nd (Model.gossipCandidates (Model.protoOf (compiled F) E) nd.st t)).1) =
@@ -153,7 +156,7 @@ structure Encoding.Lawful (e : Encoding F E p hN hn A) (due : e.State hn → Boo
     ∀ {i v o t}, rho.events[i]? = some (.deliver v o t) →
       e.adapter.node ((e.ops hn).process (stateAt e rho v i) (wireOf e o)
         (Model.digests rho.hash o)) = deliveryPost e rho v t i o
-  delivery_publish : ∀ (rho : Model.Run (compiled F) E),
+  delivery_publish : ∀ (rho : Model.Run (compiled F) E), rho.ExecutionValid →
     ∀ {i v o t}, rho.events[i]? = some (.deliver v o t) →
       due ((e.ops hn).process (stateAt e rho v i) (wireOf e o) (Model.digests rho.hash o)) = false →
       e.adapter.node (stateAt e rho v (i + 1)) =
@@ -268,6 +271,20 @@ private theorem replay_deliver {K B : Type} (C : WireCodec N K I B)
       rw [ih _ _ _ (fun hz => ite_eq_left hz.symm)]
       split <;> simp_all
 
+private theorem replay_admit (pr : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)
+    (y z : Fin Q.n) (t : Time) (i : Nat) (as : List (FG.Att Q.n)) (s st : NodeState N)
+    (sub : Nat) (h : y = z → s = st) :
+    replay y s (admitRecs pr dg z t i as st sub) =
+      if z = y then as.foldl (fun n a => (exec pr dg z n t (.attestation a)).1) st else s := by
+  induction as generalizing s st sub with
+  | nil =>
+    rw [admitRecs_nil]
+    by_cases hz : z = y <;> simp [replay, hz, h]
+  | cons a as ih =>
+    rw [admitRecs_cons, List.foldl_cons, replay_append, replay_group _ _ _ _ _ _ _ _ _ h]
+    rw [ih _ _ _ (fun hz => ite_eq_left hz.symm)]
+    split <;> simp_all
+
 end Replay
 
 private theorem replay_prefix (v : V) (i : Nat) (hi : i ≤ rho.events.length) :
@@ -311,33 +328,32 @@ theorem stateAt_other (v : V) {j : Nat}
   cases ev <;> simp only [Model.Event.node] at hne <;>
     simp only [Model.Run.step, Function.update_of_ne (Ne.symm hne)]
 
-open Classical in
-private theorem tick_node {due : e.State hn → Bool} (laws : e.Lawful due)
-    (hv : rho.ExecutionValid) {i v t} (he : rho.events[i]? = some (.tick v t)) :
-    e.adapter.node (stateAt e rho v (i + 1)) =
-      if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
-        (exec (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
-          (e.adapter.node (stateAt e rho v i)) t
-          (.tick (encodeTxs (Model.mempool rho.inbox v t)) (e.adapter.sign (rho.ownKey v) t))).1
-      else e.adapter.node (stateAt e rho v i) := by
-  have hm := List.mem_of_getElem? he
-  rw [stateAt_eq _ _ v (i + 1), rho.stateBefore_succ he]
-  simp only [Model.Run.step, Function.update_self]
-  change e.adapter.node (envelope e (rho.tick (rho.stateBefore i v) v t).1) = _
-  rw [rho.tick_of_awake _ _ _ (hv.tick_awake v t hm), laws.gossip_node,
-    laws.tick_schedule t (hv.in_horizon _ hm).1]
-  simp only [List.map_append, rho.runDuties_append_fst, ← afterClock_eq]
-  have hpre := laws.tick_prefix rho hv he
-  have hprop := laws.tick_proposal rho hv he
-  have hfinish := laws.tick_finish rho hv he
-  dsimp only at hpre hprop hfinish
-  rw [hfinish, hprop.1]
-  by_cases hpub : (paramsAtCount p (Fintype.card V) hN hn).IsPublic t
-  · rw [ite_eq_left hpub] at hpre
-    simp only [ite_eq_left hpub, hpre.2, hprop.2.1, hpre.1]
-    cases e.adapter.sign (rho.ownKey v) t <;> rfl
-  · rw [ite_eq_right hpub] at hpre
-    simp only [ite_eq_right hpub, hpre.2, Bool.false_eq_true, ↓reduceIte, hprop.2.2 hpub, hpre.1]
+private theorem keyLe_between {V' O' : Type} {x y z : Model.Event V' O'} (h1 : x.keyLe y)
+    (h2 : y.keyLe z) (ht : x.time = z.time) (hp : x.phase = z.phase) :
+    y.time = x.time ∧ y.phase = x.phase := by
+  have a1 : @LT.lt Int _ x.time y.time ∨ (@Eq Int x.time y.time ∧ x.phase ≤ y.phase) := h1
+  have a2 : @LT.lt Int _ y.time z.time ∨ (@Eq Int y.time z.time ∧ y.phase ≤ z.phase) := h2
+  have a3 : @Eq Int x.time z.time := ht
+  have : @Eq Int y.time x.time ∧ y.phase = x.phase := by omega
+  exact this
+
+/-- An engine event between two ticks at the same time is a tick at that time. -/
+theorem tick_between (hv : rho.ExecutionValid) {j i k : Nat} {a b : V} {t : Time}
+    {ev : Model.Event V (Model.protoOf (compiled F) E).Object}
+    (hj : rho.events[j]? = some (.tick a t)) (hk : rho.events[k]? = some (.tick b t))
+    (hji : j ≤ i) (hik : i ≤ k) (hi : rho.events[i]? = some ev) : ∃ c, ev = .tick c t := by
+  rcases Nat.eq_or_lt_of_le hji with rfl | hji
+  · exact ⟨a, Option.some.inj (hi.symm.trans hj)⟩
+  rcases Nat.eq_or_lt_of_le hik with rfl | hik
+  · exact ⟨b, Option.some.inj (hi.symm.trans hk)⟩
+  obtain ⟨ht, hp⟩ := keyLe_between (keyLe_of_lt rho hv hj hi hji) (keyLe_of_lt rho hv hi hk hik)
+    rfl rfl
+  cases ev with
+  | tick c t' =>
+    simp only [Model.Event.time] at ht
+    exact ⟨c, by rw [ht]⟩
+  | deliver c o t' => simp [Model.Event.phase] at hp
+  | restart c t' => simp [Model.Event.phase] at hp
 
 open Classical in
 /-- Every bounded engine prefix agrees with its replay, including at cuts after compromise:
@@ -357,17 +373,24 @@ theorem stateAgreement_all {due : e.State hn → Bool} (laws : e.Lawful due)
     cases hev : rho.events[j] with
     | tick w t =>
       rw [hev] at he
-      rw [eventCuts_tick e rho j w t he]
+      rw [eventCuts_tick e rho j w t he, replay_append]
       by_cases heq : w = v
       · subst w
-        split
-        · rename_i hpub
-          rw [replay_group _ _ _ _ _ _ _ _ _ (fun _ => rfl), ite_eq_left rfl]
-          exact (tick_node laws hv he).trans (ite_eq_left hpub)
-        · rename_i hpub
-          exact (tick_node laws hv he).trans (ite_eq_right hpub)
+        have hG : replay (rho.ownKey v) (e.adapter.node (stateAt e rho v j))
+            (if (paramsAtCount p (Fintype.card V) hN hn).IsPublic t then
+              groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
+                (e.adapter.node (stateAt e rho v j)) t (Nat.pair j 0)
+                (.tick (encodeTxs (Model.mempool rho.inbox v t)) (e.adapter.sign (rho.ownKey v) t))
+            else []) = postTick e rho e.adapter.sign v j t := by
+          rw [postTick_eq]
+          split
+          · rw [replay_group _ _ _ _ _ _ _ _ _ (fun _ => rfl), ite_eq_left rfl]
+          · rfl
+        rw [hG, replay_admit _ _ _ _ _ _ _ _ _ _ (fun _ => rfl), ite_eq_left rfl,
+          laws.tick_admits rho hv he]
       · have hk : rho.ownKey w ≠ rho.ownKey v := fun h => heq (rho.key.symm.injective h)
-        rw [stateAt_other v he heq]
+        rw [stateAt_other v he heq, replay_admit _ _ _ _ _ _ _ _ _ _ (fun h => (hk h.symm).elim),
+          ite_eq_right hk]
         split
         · rw [replay_group _ _ _ _ _ _ _ _ _ (fun h => (hk h.symm).elim), ite_eq_right hk]
         · rfl
@@ -390,7 +413,7 @@ theorem stateAgreement_all {due : e.State hn → Bool} (laws : e.Lawful due)
       · subst w
         have hd := (laws.process_due (stateAt e rho v j) (wireOf e o)
           (Model.digests rho.hash o)).trans (laws.cut_due rho v j)
-        rw [laws.delivery_publish rho he hd, laws.delivery_process rho hv he]
+        rw [laws.delivery_publish rho hv he hd, laws.delivery_process rho hv he]
         rw [deliveryPost_eq]
         apply Eq.symm
         simpa only [ite_true] using

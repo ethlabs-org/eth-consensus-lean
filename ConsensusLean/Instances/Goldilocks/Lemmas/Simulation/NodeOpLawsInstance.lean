@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLaws
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLawsLawful
 import ConsensusLean.Lemmas.Model.DutyFold
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EngineSteps
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
@@ -61,7 +61,16 @@ theorem tick_block_released [DecidableEq V] (e : Encoding F E p hN hn A)
       engineObj e (blockObj e.codec.encode e.codec.carried b) ∈ rho.releasesAt j := by
   open Encoding.OpLaws in
   intro r hr b acc hl _
-  rw [eventCuts_tick e rho j v t he, ite_eq_left hp, groupRecs_eq] at hr
+  rw [eventCuts_tick e rho j v t he, ite_eq_left hp] at hr
+  rcases List.mem_append.1 hr with hr | hr
+  swap
+  · -- a tail cut is an own admission, labelled by its attestation
+    obtain ⟨a, _, st', _, _, hm⟩ := mem_admitRecs _ _ _ _ _ _ _ _ _ hr
+    rw [groupRecs_eq] at hm
+    obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hm
+    rw [List.getElem_mapIdx, List.getElem_zip] at hl
+    simp [exec, onAttestation] at hl
+  rw [groupRecs_eq] at hr
   obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
   rw [List.getElem_mapIdx, List.getElem_zip] at hl
   have hcut : Cut.fg (.block b acc) ∈
@@ -77,7 +86,7 @@ theorem tick_block_released [DecidableEq V] (e : Encoding F E p hN hn A)
   let y := rho.ownKey v
   let x := encodeTxs (Model.mempool rho.inbox v t)
   let st := e.adapter.node (stateAt e rho v j)
-  have hpref := (L.toLawful ready).tick_prefix rho hv he
+  have hpref := tick_prefix L rho hv he
   rw [ite_eq_left hp] at hpref
   have hpre : e.adapter.node (envelope e pre) = (acCall y st t .tick).1 := hpref.1
   change Cut.fg (.block b acc) ∈ (onTick pr dg y st t x (e.adapter.sign y t)).2 at hcut
@@ -101,7 +110,7 @@ theorem tick_block_released [DecidableEq V] (e : Encoding F E p hN hn A)
       split at h
       · simp [acToFG] at h
       · unfold attest at h
-        split at h <;> simp [acToFG, onAttestation] at h
+        split at h <;> simp [acToFG] at h
   rcases Simulation.Skeleton.proposeAt_cases e.skel t with ⟨_, hno⟩ | ⟨s, hs, hone, htime⟩
   · have hnop : ¬ Proposes pr y t := fun h => hno _ h.1 (h.2.1.trans (L.grid_time _).symm)
     simp [tickStep, hnop] at hprop
@@ -162,21 +171,69 @@ open AsChainShape Shape
 open Model (pubOf)
 
 /-- The FG update keeps the vote authentication. -/
-private theorem fgUpdate_voteIO {sp ro binding} (st : State sp ro binding) :
-    (AsChainShape.fgUpdate st).voteIO = st.voteIO := by
-  rw [fgUpdate_eq]; simp only; split
+private theorem fgUpdate_voteIO {sp ro binding} {release} (st : State sp ro binding) :
+    (AsChainShape.fgUpdate st release).voteIO = st.voteIO := by
+  rw [fgUpdate_eq st release]; simp only; split
   · rfl
-  · split <;> rfl
+  · split
+    · rfl
+    · split <;> rfl
 
-/-- A poll step keeps the vote authentication. -/
-theorem poll_voteIO {sp ro binding} (st : State sp ro binding) t :
-    (AsChainShape.poll st t).1.voteIO = st.voteIO := by
+/-- A batch poll keeps the vote authentication. -/
+theorem poll_voteIO {sp ro binding} {release} (st : State sp ro binding) t :
+    (AsChainShape.pollBatch st t release).1.voteIO = st.voteIO := by
+  refine pollBatch_pres (Q := fun x => x.voteIO = st.voteIO) (fun x hx => ?_)
+    (fun x h => by obtain ⟨atts, he⟩ := heldDrain_eq x; rw [he]; exact h) rfl
+  refine Eq.trans ?_ hx
   unfold AsChainShape.poll; simp only; split <;> split <;> simp [fgUpdate_voteIO]
 
 /-- Recording an own object keeps the vote authentication. -/
 theorem recordOwn_voteIO {sp ro binding} (st : State sp ro binding) o hs :
     (AsChainShape.recordOwn st o hs).voteIO = st.voteIO := by
   rw [AsChainShape.recordOwn_eq]; split <;> (try split) <;> rfl
+
+/-- The proposal poll keeps the vote authentication. -/
+private theorem pollPropose_voteIO {sp ro binding} {sign} (st : State sp ro binding) :
+    ({ AsChainShape.nodeTick st sign with ticked := true } : State sp ro binding).voteIO =
+      st.voteIO := by
+  change (AsChainShape.nodeTick st sign).voteIO = _
+  rw [nodeTick_eq (sign := _)]; split <;> rfl
+
+/-- Processing a delivery keeps the tick flag. -/
+private theorem process_ticked {sp ro binding} (st : State sp ro binding) o hs :
+    (AsChainShape.process st o hs).ticked = st.ticked := by
+  rw [process_eq]
+  generalize delivered st.voteIO hs st o = os
+  suffices ∀ st', st'.ticked = st.ticked →
+      (os.foldl (processOne st.voteIO hs) st').ticked = st.ticked from this st rfl
+  induction os with
+  | nil => exact fun _ h => h
+  | cons o os ih =>
+    refine fun st' h => ih _ (Eq.trans ?_ h)
+    rw [processOne_eq]
+    split <;> (try dsimp only) <;> (try unfold AsChainShape.relayIf) <;> (try split) <;> rfl
+
+/-- A state with the key, clock, held queue and tick flag of another flushes the same. -/
+private theorem pollFlush_congr {sp ro binding} {release} {st st' : State sp ro binding}
+    (hs : st'.self = st.self) (hn : st'.now = st.now) (hh : st'.held = st.held)
+    (hk : st'.ticked = st.ticked) : pollFlush st' release = pollFlush st release := by
+  rw [pollFlush_eq, pollFlush_eq, hs, hn, hh, hk]
+
+/-- After a batch poll, the next batch poll flushes nothing. -/
+private theorem pollFlush_pollBatch {sp ro binding} {release} (st : State sp ro binding) t :
+    pollFlush (AsChainShape.pollBatch st t release).1 release = [] := by
+  rw [pollFlush_eq, pollBatch_ticked, pollBatch_self, pollBatch_now, pollBatch_held]
+  cases hr : release st.self st.now <;> cases hk : st.ticked <;> simp
+
+/-- A batch poll that flushes nothing runs the FG update when due. -/
+private theorem pollBatch_node_quiet {sp ro binding} {release} (st : State sp ro binding) t
+    (h : pollFlush st release = []) : (AsChainShape.pollBatch st t release).1.node =
+      (if st.fgDue then AsChainShape.fgUpdate st release else st).node := by
+  rw [pollBatch_node_eq (fun _ => st.self) (fun _ _ _ _ _ => 0) 0, h, List.nil_append]
+  cases hd : st.fgDue
+  · simp
+  · simp only [Bool.true_and, ↓reduceIte]
+    rw [fgUpdate_node (fun _ => st.self) (fun _ _ _ _ _ => 0) 0]
 
 /-- Goldilocks' vote authentication laws: the envelope's `voteIO` is the receiver's. -/
 theorem traceEncoding_ioLaws {V : Type} [Fintype V] {E : Env V} (S : Setup)
@@ -191,10 +248,13 @@ theorem traceEncoding_ioLaws {V : Type} [Fintype V] {E : Env V} (S : Setup)
     relayIf_io := fun st c _ o => by
       change (AsChainShape.relayIf st c o).voteIO = _
       unfold AsChainShape.relayIf; split <;> rfl
-    attest_io := fun _ _ _ => rfl
+    attest_io := fun st _ _ => by
+      change (if _ then _ else _ : State _ _ _).voteIO = st.voteIO
+      split <;> rfl
     wake_io := fun _ _ _ => rfl
     clock_io := fun _ _ => rfl
     pollBatch_io := fun st t => poll_voteIO st t
+    pollPropose_io := fun st _ => pollPropose_voteIO st
     recordOwn_io := fun st o hs => recordOwn_voteIO st o hs
     process_eq := fun st => by
       funext o hs
@@ -210,28 +270,44 @@ theorem traceEncoding_opLaws {V : Type} [Fintype V] {E : Env V} (S : Setup)
     applyCuts_obs := fun _ _ _ => ⟨rfl, rfl, rfl, rfl⟩
     relayIf_obs := fun st c _ o => by
       exact ⟨relayIf_node st c o, relayIf_self st c o, relayIf_now st c o, relayIf_fgDue st c o⟩
-    attest_obs := fun _ _ _ => ⟨rfl, rfl, rfl⟩
+    attest_obs := fun st _ _ => by
+      change let r := (if _ then _ else _ : State _ _ _)
+        (∃ l : List (FG.Att _), r.node = l.foldl (fun n a => (Node.onAttestation n a).1) _) ∧
+          r.self = st.self ∧ r.now = st.now
+      dsimp only
+      split <;> first | exact ⟨⟨[], rfl⟩, rfl, rfl⟩ | exact ⟨⟨[_], rfl⟩, rfl, rfl⟩
     wake_obs := fun _ _ _ => ⟨rfl, rfl⟩
     init_obs := fun _ _ _ => ⟨rfl, rfl⟩
     clock_obs := fun _ _ => ⟨rfl, rfl, rfl, rfl⟩
     voteIO := ⟨_, hio⟩
     propose_eq := rfl
     restore_eq := rfl
-    pollPropose_eq := fun _ _ => rfl
+    pollPropose_obs := fun _ _ => ⟨rfl, rfl, rfl, rfl, rfl⟩
     pollBatch_obs := fun st t => by
-      change let u := if st.fgDue then fgUpdate st else st
-        (poll st t).1.node = u.node ∧ (poll st t).1.self = u.self ∧
-          (poll st t).1.now = u.now ∧ (poll st t).1.fgDue = false
-      refine ⟨?_, ?_, ?_, poll_fgDue st t⟩
-      · cases h : st.fgDue
-        · exact poll_node_of_fgDue st t h
-        · exact poll_node_of_fgDue_true st t h
-      · cases h : st.fgDue
-        · exact poll_self st t
-        · exact (poll_self st t).trans (fgUpdate_self st).symm
-      · cases h : st.fgDue
-        · exact poll_now st t
-        · exact (poll_now st t).trans (fgUpdate_now st).symm
+      refine ⟨?_, ?_, pollBatch_fgDue st t⟩
+      · change (pollBatch st t (S.release (pubOf E))).1.self =
+          (if st.fgDue then fgUpdate st (S.release (pubOf E)) else st).self
+        rw [pollBatch_self]
+        split
+        · exact (fgUpdate_self st).symm
+        · rfl
+      · change (pollBatch st t (S.release (pubOf E))).1.now =
+          (if st.fgDue then fgUpdate st (S.release (pubOf E)) else st).now
+        rw [pollBatch_now]
+        split
+        · exact (fgUpdate_now st).symm
+        · rfl
+    released := ⟨fun st => pollFlush st (S.release (pubOf E)) ++
+        if (st.fgDue && S.release (pubOf E) st.self st.now) = true then (fgSigned st).toList
+        else [], fun st t pr dg x => pollBatch_node_eq pr dg x st t⟩
+    quiet := ⟨fun st => pollFlush st (S.release (pubOf E)) = [],
+      fun _ _ _ => pollFlush_of_unticked _ rfl, fun _ _ => pollFlush_of_unticked _ rfl,
+      fun st t => pollFlush_pollBatch st t,
+      fun st o hs h => (pollFlush_congr (recordOwn_self st o hs) (recordOwn_now st o hs)
+        (recordOwn_held st o hs) (recordOwn_ticked st o hs)).trans h,
+      fun st o hs h => (pollFlush_congr (process_self st o hs) (process_now st o hs)
+        (process_held st o hs) (process_ticked st o hs)).trans h,
+      fun st t h => pollBatch_node_quiet st t h⟩
     recordOwn_obs := fun st o hs => by
       obtain ⟨auth, msg, cs⟩ := o
       cases auth with

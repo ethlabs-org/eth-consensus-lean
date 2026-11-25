@@ -34,9 +34,9 @@ variable {V : Type} [Fintype V] [DecidableEq V]
 theorem goldilocks_finalReadTransport (S : Setup) {E : Env V}
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
-      (goldilocksRunMap S rho hn hv).signer) :
-    FinalReadTransport (goldilocksRunMap S rho hn hv) C := by
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      (goldilocksRunMap S rho hn hv).signer fgHold) {ΔF : Time} :
+    FinalReadTransport (goldilocksRunMap S rho hn hv) C ΔF := by
   classical
   let sp := S.params (pubOf E) hn
   have hrun := simTraceAt_goldilocksRun S rho hn hv
@@ -102,9 +102,9 @@ theorem goldilocks_finalReadTransport (S : Setup) {E : Env V}
         max_le (by linarith) (by linarith)
       have hpub : sp.toParams.IsPublic (tr.time c + sp.toParams.Δ) :=
         ⟨4 * ((W.block 3).slot : Time) + 1, by rw [hts, hgrid]; ring⟩
-      obtain ⟨j₀, xt, fgDue, hj₀⟩ := hrun.tick_of_awake y _ hyp (by linarith) hpub
+      obtain ⟨j₀, xt, fgDue, hne₀, hj₀, -⟩ := hrun.tick_of_awake y _ hyp (by linarith) hpub
         (hP.awake y _ ⟨hyp, hpD⟩ hgp hpD)
-      obtain ⟨hn₀, ht₀, -, -, hl₀⟩ := hj₀.2.1 0 (List.length_pos_iff.mpr hj₀.1)
+      obtain ⟨hn₀, ht₀, -, -, hl₀⟩ := hj₀ 0 (List.length_pos_iff.mpr hne₀)
       simp only [Nat.add_zero] at hn₀ ht₀ hl₀
       have hex : ∃ i, tr.IsCall y i ∧ tr.time c + sp.toParams.Δ ≤ tr.time i :=
         ⟨j₀, ⟨_, hn₀, hl₀⟩, ht₀.ge⟩

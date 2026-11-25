@@ -24,10 +24,12 @@ structure HealthyPreparationScheduleAt (Q : HealthyPreparationQueryAt S A V)
     (W : HealthyBaseTimingAt S A V Q) where
   resetTime : Time
   deltaF : Time
+  /-- The release hold of the reset's service. -/
+  hold : Time := 0
   reset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
     (runProposer S Q.run.2 Q.hn)
     (digestOf S Q.run.2) Q.gst deltaF resetTime Q.bound
-        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK hold
   seedNode : Fin Q.params.n
   seedCut : Nat
   seedLabel : Nat

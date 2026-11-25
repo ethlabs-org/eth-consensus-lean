@@ -9,8 +9,10 @@ public section
 /-! # Signed rows at an honest proposal, under growing faults
 
 The justification from signed attestations under growing faults. The proposer is honest at its
-proposal cut and read on the prefix through it; each signer is honest at its signing, which is all
-the delivery of its row (`ResetService.signedRow`) and its validity need:
+proposal cut and read on the prefix through it; each signer is honest at `v + hold`, where `v`
+bounds its signing and `hold ≥ 0` is the release hold of the signed-row service: so it is honest at
+its signing and, after it, through `max (time i) g + hold ≤ v + hold`, which is all the delivery of
+its row (`ResetService.signedRow`) and its validity need:
 
 * `justify_of_signed_rows'_upTo_at`: a quorum of target rows signed by `v` justifies the height
   of the parent's state at the proposal;
@@ -25,20 +27,22 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-- A row signed by `v` by a signer honest at its signing is processed by an honest proposer
-before a proposal at `t ≥ v + ΔF` within the horizon (no restart of the proposer after `ḡ`). -/
+/-- A row signed by `v` by a signer honest at `v + hold` (so at its signing) is processed by an
+honest proposer before a proposal at `t ≥ v + ΔF` within the horizon (no restart of the proposer
+after `ḡ`), under the signed-row service with release hold `hold ≥ 0`. -/
 private theorem rows_delivered_upTo_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g ΔF b : Time}
-    (hsvc : ResetService tr H g ΔF b) {v : Time}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g ΔF b hold : Time}
+    (hsvc : ResetService tr H g ΔF b hold) (hhold : 0 ≤ hold) {v : Time}
     (hv : gbar g ≤ v) {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
     (hnr : ∀ r ≤ kX, tr.RestartAt p r → tr.time r ≤ gbar g)
     {X : AC.Blk sp.n (List (FG.Att sp.n))} (hX : tr.ProposesAt p kX X)
     (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) {att : FG.Att sp.n}
+    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (v + hold)) {att : FG.Att sp.n}
     (hsig : tr.SignAt y k att) (hk : tr.time k ≤ v) :
     ∃ k' < kX, tr.ProcessAttAt p k' att ∧ tr.time k' < tr.time kX := by
   have hg : max (tr.time k) g ≤ v := max_le hk ((le_gbar g).trans hv)
+  have hyk : y ∈ H (tr.time k) := hrun.antitone (by linarith) hy
   have hdl : ∀ j ≤ kX, tr.deadline p j (max (tr.time k) g) ΔF ≤ v + ΔF := fun j hj => by
     have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := j)
       (fun r hr hrs => hnr r (hr.trans hj) (Compose.projAC_restartAt.1 hrs)) (max (tr.time k) g)
@@ -46,15 +50,17 @@ private theorem rows_delivered_upTo_at
     have := max_le hg hv
     linarith
   obtain ⟨acc, hcall⟩ := hX.1.1
-  obtain ⟨k', hk', hproc, hlt⟩ := hsvc.signedRow y k att hy hsig p kX hp ⟨_, hcall⟩ hkb
+  obtain ⟨k', hk', hproc, hlt⟩ :=
+    hsvc.signedRow y k att hyk hsig
+      (fun _ _ _ _ _ => hrun.antitone (by linarith) hy) p kX hp ⟨_, hcall⟩ hkb
     (by linarith [hdl kX le_rfl])
   have htime : tr.time k' < tr.time kX := hlt.trans_le ((hdl k' hk').trans hvx)
   exact ⟨k', lt_of_not_ge (fun h => (not_lt_of_ge (hrun.time_mono h)) htime), hproc, htime⟩
 
 /-- The proposer's side of an honest proposal on the prefix through its cut: the FG projection
 of the prefix is a local run, the store after the cut holds `X` and its parent `Pr` with their
-states, and every row the proposer processed before the cut that names `Pr`'s entry is in `X`'s
-payload or on `Pr`'s chain. -/
+states, and every row the proposer processed before the cut that names
+`Pr`'s entry is in `X`'s payload or on `Pr`'s chain. -/
 private theorem proposal_rows_placed_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
@@ -78,8 +84,8 @@ private theorem proposal_rows_placed_at
     RunTrace.upTo_state_of_le hrun.time_mono le_rfl
   have hX' : (tr.upTo (tr.time kX)).ProposesAt p kX X :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hX.1⟩, hX.2.1, hX.2.2⟩
-  obtain ⟨hfg, hXt, hPrt, hσX, hσPr, hplace⟩ := Healing.proposal_rows_placed (hrun.upTo hd)
-    (hnc.upTo _) hp hX' hpar (by rw [hst]; exact hPr)
+  obtain ⟨hfg, hXt, hPrt, hσX, hσPr, hplace⟩ :=
+    Healing.proposal_rows_placed (hrun.upTo hd) (hnc.upTo _) hp hX' hpar (by rw [hst]; exact hPr)
   rw [hst] at hσPr hplace
   refine ⟨hfg, hXt, hPrt, hσX, hσPr, fun att ⟨k', hk', hproc⟩ hah haT => ?_⟩
   exact hplace att ⟨k', hk', (RunTrace.upTo_processAttAt _).mpr
@@ -94,7 +100,7 @@ private theorem signAt_val_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
     ((RunTrace.upTo_signAt _).mpr ⟨le_rfl, hs⟩)
 
 /-- No restart of a node honest at a proposal cut within the horizon after `ḡ`. -/
-private theorem no_restart_before {g ΔF b : Time} {hs : HSSharedUpTo tr H dg g ΔF b}
+private theorem no_restart_before {g ΔF b hold : Time} {hs : HSSharedUpTo tr H dg g ΔF b hold}
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX)) (hkb : tr.time kX ≤ b) :
@@ -102,18 +108,18 @@ private theorem no_restart_before {g ΔF b : Time} {hs : HSSharedUpTo tr H dg g 
   hs.noRestart p r (hrun.antitone (hrun.time_mono hr) hp) hrs ((hrun.time_mono hr).trans hkb)
 
 /-- **An honest proposal justifies the height of its parent's state** from a quorum of target
-attestations signed by `v`, each by a signer honest at its signing, delivered by the HS premises
-through the horizon. -/
+attestations signed by `v`, each by a signer honest at `v + hold` (so at its signing), delivered
+by the HS premises with release hold `hold ≥ 0` through the horizon. -/
 theorem justify_of_signed_rows'_upTo_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g ΔF v b : Time}
-    (hs : HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g ΔF v b hold : Time}
+    (hs : HSSharedUpTo tr H dg g ΔF b hold) (hhold : 0 ≤ hold) (hv : gbar g ≤ v)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
     {X Pr : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b)
     (hpar : X.parent = some Pr.root)
     (S : Finset (Fin sp.n)) (hS : sp.toParams.fg.q ≤ S.card)
-    (hsig : ∀ y ∈ S, ∃ k att, y ∈ H (tr.time k) ∧ tr.SignAt y k att ∧ tr.time k ≤ v ∧
+    (hsig : ∀ y ∈ S, ∃ k att, y ∈ H (v + hold) ∧ tr.SignAt y k att ∧ tr.time k ≤ v ∧
       att.h = ((tr.state p kX).fg.σ Pr.root).h ∧
       att.T = ((tr.state p kX).fg.σ Pr.root).Th ∧ att.timeout = false ∧
       (((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
@@ -136,28 +142,29 @@ theorem justify_of_signed_rows'_upTo_at
     proposal_rows_placed_at hrun hs.noColl hp hX hpar' hPr'
   have := Healing.justify_step' hfg hp hXt hPrt hpar' S hS fun y hy => by
     obtain ⟨k, att, hyk, hsg, hk, hah, haT, hto, hfin⟩ := hsig y hy
+    have hyk' : y ∈ H (tr.time k) := hrun.antitone (by linarith) hyk
     obtain ⟨k', hk', hproc, _⟩ :=
-      rows_delivered_upTo_at hrun hs.sync hv hp hnr hX hvx hkb hyk hsg hk
+      rows_delivered_upTo_at hrun hs.sync hhold hv hp hnr hX hvx hkb hyk hsg hk
     rw [← hσPr]
-    refine ⟨att, signAt_val_at hrun hyk hsg, by rw [hr]; exact hah, by rw [hr]; exact haT, hto,
-      by rw [hr]; exact hfin, hplace att ⟨k', hk', hproc⟩ (by rw [hr]; exact hah)
-        (by rw [hr]; exact haT)⟩
+    refine ⟨att, signAt_val_at hrun hyk' hsg, by rw [hr]; exact hah, by rw [hr]; exact haT, hto,
+      by rw [hr]; exact hfin, hplace att ⟨k', hk', hproc⟩
+        (by rw [hr]; exact hah) (by rw [hr]; exact haT)⟩
   rw [← hσX, ← hσPr, hr] at this
   exact this
 
 /-- **An honest proposal crosses by timeout** from a quorum of target attestations for its
-parent's entry signed by `v`, each by a signer honest at its signing, once the entry is `δt`
+parent's entry signed by `v`, each by a signer honest at `v + hold`, once the entry is `δt`
 slots old. -/
 theorem cross_of_signed_rows_upTo_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g ΔF v b : Time}
-    (hs : HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g ΔF v b hold : Time}
+    (hs : HSSharedUpTo tr H dg g ΔF b hold) (hhold : 0 ≤ hold) (hv : gbar g ≤ v)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
     {X Pr : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b)
     (hpar : X.parent = some Pr.root)
     (S : Finset (Fin sp.n)) (hS : sp.toParams.fg.q ≤ S.card)
-    (hsig : ∀ y ∈ S, ∃ k att, y ∈ H (tr.time k) ∧ tr.SignAt y k att ∧ tr.time k ≤ v ∧
+    (hsig : ∀ y ∈ S, ∃ k att, y ∈ H (v + hold) ∧ tr.SignAt y k att ∧ tr.time k ≤ v ∧
       att.h = ((tr.state p kX).fg.σ Pr.root).h ∧ att.T = ((tr.state p kX).fg.σ Pr.root).Th)
     (hage : ((tr.state p kX).fg.σ Pr.root).ThSlot + sp.toParams.fg.δt ≤ X.slot) :
     ((tr.post kX).fg.σ X.root).h = ((tr.state p kX).fg.σ Pr.root).h + 1 ∧
@@ -179,11 +186,13 @@ theorem cross_of_signed_rows_upTo_at
     proposal_rows_placed_at hrun hs.noColl hp hX hpar' hPr'
   have := Healing.cross_step hfg hp hXt hPrt hpar' S hS (fun y hy => by
       obtain ⟨k, att, hyk, hsg, hk, hah, haT⟩ := hsig y hy
+      have hyk' : y ∈ H (tr.time k) := hrun.antitone (by linarith) hyk
       obtain ⟨k', hk', hproc, _⟩ :=
-        rows_delivered_upTo_at hrun hs.sync hv hp hnr hX hvx hkb hyk hsg hk
+        rows_delivered_upTo_at hrun hs.sync hhold hv hp hnr hX hvx hkb hyk hsg hk
       rw [← hσPr]
-      exact ⟨att, signAt_val_at hrun hyk hsg, by rw [hr]; exact hah, by rw [hr]; exact haT,
-        hplace att ⟨k', hk', hproc⟩ (by rw [hr]; exact hah) (by rw [hr]; exact haT)⟩)
+      exact ⟨att, signAt_val_at hrun hyk' hsg, by rw [hr]; exact hah, by rw [hr]; exact haT,
+        hplace att ⟨k', hk', hproc⟩ (by rw [hr]; exact hah)
+          (by rw [hr]; exact haT)⟩)
     (by rw [← hσPr, hr]; exact hage)
   rw [← hσX, ← hσPr, hr] at this
   exact this

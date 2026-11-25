@@ -43,6 +43,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
+variable {hold : Time}
 
 /-! ### Cross-node facts at two independently honest observations -/
 
@@ -83,7 +84,7 @@ theorem exists_frameWindow_seq_of_service_proof_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
     (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)
+    (hsvc : ResetService tr H g ΔF b hold) (hcatch : CatchRun tr H g κ)
     {lo lam T : Time} {hz : Nat} (len : Nat → Time)
     (hlen : ∀ v, 0 ≤ len v) (hlam : 0 ≤ lam) (hlo : gbar g + κ ≤ lo) (hTb : T ≤ b)
     (hrange : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i < T →

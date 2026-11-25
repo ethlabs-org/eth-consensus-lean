@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunMa
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.ClaimTransports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Concrete.Final
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealedReadAncestry
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -26,15 +27,14 @@ theorem goldilocks_finalWindowSupply (S : Setup) (A : ContractAssumptions S) {E 
     { run := ⟨E, rho⟩, hn := hn, index := idx, gst := gst, query := t,
       valid := hv', noCollision := hc, healthy := hhealthy, progress := hp,
       mature := hm, bounded := hb, reader := hr }
-  obtain ⟨W, hslack, hrunW, hsteps⟩ :=
-    Growing.final_window_extract_at S A V Q
+  obtain ⟨W, hslack, hrunW, hsteps⟩ := Growing.final_window_extract_at S A V Q
   have hrun := simTraceAt_goldilocksRun S rho hn hv'
   have htime (i : Fin 4) : Q.trace.time (W.cut i) = Q.params.ts (W.block i).slot := by
     rw [(W.proposals i).2.2, Q.params.slotTime_eq]
     rfl
   have hhold (i : Fin 4) : (W.block i).proposer ∈ Q.keys
       (Q.trace.time (W.cut i) + E.ΔAC) := by
-    obtain ⟨p, dg, g, d, a, b, _, _, hP, _, _⟩ := W.anchorRun_iff.mp hrunW
+    obtain ⟨p, dg, g, d, a, b, -, _, _, hP, _, _⟩ := W.anchorRun_iff.mp hrunW
     obtain ⟨hh, _, _, _, _, _, _, _, _, _, hs, hpr, _⟩ := hP i
     rw [htime i, hs, hpr]
     exact hh

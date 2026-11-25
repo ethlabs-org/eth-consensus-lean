@@ -37,7 +37,7 @@ theorem cutMap_succ_le_of_time_lt (hn : 1 ≤ Fintype.card V) (hv : rho.Executio
   have hl : (simTrace S rho hn).label j ≠ none := by
     rw [simTrace_label, List.getElem?_eq_getElem hlen]
     simp
-  obtain ⟨_, q, e, _, hq, hstart, _, _, _, htime, _⟩ := simTrace_cut S rho hn hl
+  obtain ⟨_, q, e, _, hq, hstart, _, _, _, htime, _, _⟩ := simTrace_cut_origin S rho hn hl
   have hqi : q ≤ i := by
     by_contra hq'
     have := cutMap_mono S rho hn (show i + 1 ≤ q by omega)

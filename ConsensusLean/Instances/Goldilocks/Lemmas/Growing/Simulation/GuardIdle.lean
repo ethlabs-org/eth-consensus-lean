@@ -4,6 +4,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Signi
 import ConsensusLean.Lemmas.Model.Candidates
 import ConsensusLean.Lemmas.Model.Protection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttGuard
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ProvenanceGuard
 
 public section
 
@@ -12,11 +14,13 @@ public section
 On every valid execution of the compiled Goldilocks family, no event has a candidate that
 slashing protection would refuse (`guardIdle`): Goldilocks' non-framing. Only an attestation
 body signed in the poll role and carrying nothing can conflict (`protects_of_not_att`). Such a
-candidate comes only from the ordinary emission of a scheduled poll, the first candidate of its
-batch, so it is checked against the `seen` log of the poll's duty prefix, where the node's own FG
-record admits it (`engine_poll_att_protected_at`: no two engine signings of an honest node are
-slashable, `FG.client_safety`). Every other candidate (proposals, forwarding and vote-forward
-envelopes, unsigned gossip) passes against any `seen` log. -/
+candidate comes only from a scheduled poll's batch: its ordinary emission, or a held attestation
+the batch flushes at a time the release schedule allows. Each is an engine signing
+(`batch_att_candidate`) and is checked against the `seen` log at its own turn: the poll's duty
+prefix plus the batch's earlier releases, whose own attestations are engine signings too
+(`guardRefusals_eq_nil_of_preserves`). The node's own FG record admits it there: no two engine
+signings of an honest node are slashable (`FG.client_safety`). Every other candidate (proposals,
+forwarding and vote-forward envelopes, unsigned gossip) passes against any `seen` log. -/
 
 namespace Consensus.Goldilocks.Simulation
 
@@ -37,14 +41,6 @@ private theorem guardRefusals_eq_nil (hash : P.Item → Nat) (k : Model.Key pub)
     intro nd
     simp only [Model.guardRefusals, h c List.mem_cons_self, ↓reduceIte, List.nil_append]
     exact ih (fun x hx => h x (List.mem_cons_of_mem _ hx)) _
-
-/-- At most one candidate, which the guard passes against the starting `seen`, is never refused. -/
-private theorem guardRefusals_short (hash : P.Item → Nat) (k : Model.Key pub) {nd : Model.Node P}
-    {cs : List P.Object} (hl : cs.length ≤ 1) (h : ∀ c ∈ cs, Model.protects P k nd.seen c = true) :
-    Model.guardRefusals P hash k nd cs = [] := by
-  match cs, hl with
-  | [], _ => rfl
-  | [c], _ => simp [Model.guardRefusals, h c List.mem_cons_self]
 
 end Release
 
@@ -96,10 +92,10 @@ private theorem signedCandidate_length_le (v : V)
   · exact List.length_filterMap_le _ _
   · simp
 
-/-- **No duty of an actual event prefix has a refused candidate.** A poll's ordinary emission is
-the first candidate of its batch, checked against the prefix's `seen`; an attestation there is an
-engine signing, which the guard admits (`engine_poll_att_protected_at`). Every other candidate
-of every duty is not an attestation body. -/
+/-- **No duty of an actual event prefix has a refused candidate.** Every attestation candidate of a
+poll's batch, its ordinary emission or a flushed held attestation, is an engine signing, checked
+against the prefix's `seen` plus the batch's earlier releases, where the guard admits it. Every
+other candidate of every duty is not an attestation body. -/
 private theorem dutyRefusals_eq_nil (hv : rho.ExecutionValid) {v : V} {i p : Nat} {nd}
     (hc : EngineDutyCut S rho v i p nd) {d}
     (hd : (∃ t, rho.events[i]? = some (.tick v t) ∧ E.awake v t = true ∧
@@ -114,47 +110,40 @@ private theorem dutyRefusals_eq_nil (hv : rho.ExecutionValid) {v : V} {i p : Nat
     cases d with
     | poll k =>
       have hact : ((Model.protoOf (compiled (goldilocks S)) E).act nd.st (.poll k)).2 =
-          ((poll (nd.st.1 hn) (k : Time)).2.toList.map fun bc => (Model.Msg.data bc.1, bc.2)) ++
-            ((((nd.st.1 hn).forwards.map fun p => (Body.forward p.1, p.2)) ++
-              ((nd.st.1 hn).voteForwards.map fun p =>
-                (Body.voteForward p.1 (encodeVote p.2.1), [p.2.2]))).map
-              fun bc => (Model.Msg.data bc.1, bc.2)) := by
+          (pollBatch (nd.st.1 hn) (k : Time) (S.release (pubOf E))).2.map
+            fun bc => (Model.Msg.data bc.1, bc.2) := by
         change (((goldilocks S (pubOf E)).pollBatch nd.st.1 (k : Time)).2.map _) = _
         rw [goldilocks_pollBatch_eq S _ nd.st.1 (k : Time), dite_eq_left hn]
-        change ((pollBatch (nd.st.1 hn) (k : Time)).2.map _) = _
-        exact (congrArg (List.map _) (List.append_assoc _ _ _)).trans (List.map_append ..)
+        rfl
+      have hv0 : v ∉ rho.faultyAt 0 := by
+        cases hc with
+        | tick he _ _ => exact event_honest_zero S rho hv he
+        | deliver he _ => exact event_honest_zero S rho hv he
       dsimp only
-      refine (congrArg (Model.guardRefusals _ rho.hash (rho.ownKey v) _)
-        ((congrArg (rho.signedCandidate v (.poll k)) hact).trans
-          (signedCandidate_append S rho v _ _ _))).trans ?_
-      refine (Model.guardRefusals_append _ _ _ _ _).trans ?_
-      refine List.append_eq_nil_iff.mpr ⟨guardRefusals_short _ _ ?_ fun c hc' => ?_,
-        guardRefusals_eq_nil _ _ (fun c hc' seen => ?_) _⟩
-      · refine ((signedCandidate_length_le S rho v _ _).trans_eq (List.length_map ..)).trans ?_
-        cases (poll (nd.st.1 hn) (k : Time)).2 <;> simp
-      · -- the poll's ordinary emission, checked against the prefix's `seen`
-        obtain ⟨m, cs, hm, -, -, rfl⟩ := rho.mem_signedCandidate.mp hc'
-        obtain ⟨⟨b, cs'⟩, hb, he⟩ := List.mem_map.mp hm
-        obtain ⟨rfl, rfl⟩ := Prod.mk.inj he
-        have hp := Option.mem_toList.mp hb
-        by_cases hatt : ∃ w, b = .att w ∧ cs' = []
-        · obtain ⟨w, rfl, rfl⟩ := hatt
-          have hr : (Model.protoOf (compiled (goldilocks S)) E).candidateRole (.poll k)
-              (.data (.att w)) = .poll :=
-            VoteBinding.candidateRole_poll_nonvote S.vote _ k (.att w) fun _ _ h => by cases h
-          exact (congrArg (fun r => Model.protects _ (rho.ownKey v) nd.seen
-            (.mk (.signed (rho.ownKey v) r) (.data (.att w)) [])) hr).trans
-            (engine_poll_att_protected_at S rho hn hv hc hd hsel hp)
-        · exact protects_of_not_att S _ _ _ fun _ w he => hatt
-            ⟨w, Model.Msg.data.inj (Model.Obj.mk.inj he).2.1, (Model.Obj.mk.inj he).2.2⟩
-      · -- forwarding and vote-forward envelopes
-        obtain ⟨m, cs, hm, -, -, rfl⟩ := rho.mem_signedCandidate.mp hc'
-        apply protects_of_msg
-        intro w hw
-        subst hw
-        obtain ⟨x, hx, he⟩ := List.mem_map.mp hm
-        rcases List.mem_append.mp hx with hx | hx <;> obtain ⟨y, -, rfl⟩ := List.mem_map.mp hx <;>
-          exact Body.noConfusion (Model.Msg.data.inj (Prod.mk.inj he).1)
+      rw [hact]
+      -- every own attestation object at any depth of the log is an engine signing
+      refine guardRefusals_eq_nil_of_preserves _ _
+        (fun x => ∀ a : FG.Att (Fintype.card V), a.val = rho.ownKey v → x = attObj a →
+          ∃ j q, EngineSignsAt S rho hn v j q a) _
+        (fun c hc' a hav he => ?_) (fun c hc' seen hseen => ?_) _ (fun o ho d hd a hav he => ?_)
+      · -- a batch candidate: the ordinary emission or a flushed held attestation
+        obtain ⟨b, j, q, hb, -, hs⟩ := batch_att_candidate S rho hn hc hd hsel hc' he
+        cases attObj_inj S (he.symm.trans hb)
+        exact ⟨j, q, hs⟩
+      · -- checked against the log at its own turn, which holds the earlier releases
+        by_cases hatt : ∃ x w, c = .mk (.signed x .poll) (.data (.att w)) []
+        · obtain ⟨x, w, he⟩ := hatt
+          obtain ⟨a, j, q, rfl, -, ha⟩ := batch_att_candidate S rho hn hc hd hsel hc' he
+          exact att_protected_of_signings S rho hn (nd := ⟨nd.st, seen⟩)
+            (engine_signings_nonFraming S rho hn hv hv0)
+            (fun {b} hbv hm => by
+              obtain ⟨o, ho, hco⟩ := (Model.mem_closure_iff _ _).mp hm
+              exact hseen o ho _ hco b hbv rfl) ha
+        · exact protects_of_not_att S _ _ _ fun x w he => hatt ⟨x, w, he⟩
+      · -- the duty prefix's log
+        subst he
+        exact engine_seen_att_signed_at S rho hn hv hc (duty_honest_at S rho hv hc) hav
+          ((Model.mem_closure_iff _ _).mpr ⟨o, ho, hd⟩)
     | propose s hs =>
       apply guardRefusals_eq_nil
       intro c hc' seen

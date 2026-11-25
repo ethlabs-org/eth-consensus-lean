@@ -25,13 +25,14 @@ open AC (ACParams ReplayOrder Payload gbar)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+variable {hold : Time}
 
 /-- Step 2: per-cut range and relay service produce a frame window for the warm/rise steps. -/
 theorem exists_frameWindow_seq_of_service_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
     (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g κ)
+    (hsvc : ResetService tr H g ΔF b hold) (hcatch : CatchRun tr H g κ)
     {lo lam T : Time} {hz : Nat} (len : Nat → Time)
     (hlen : ∀ v, 0 ≤ len v) (hlam : 0 ≤ lam) (hlo : gbar g + κ ≤ lo) (hTb : T ≤ b)
     (hrange : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i < T →
@@ -52,7 +53,7 @@ theorem exists_frameWindow_seq_of_service_at
 theorem drainOutputs_of_service_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ))
@@ -68,7 +69,7 @@ theorem resetPremisesUpTo_of_reset_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot (Generic.dictOfTime sp cm)))
     (hnc : Compose.NoCollRun dg tr) {g ΔF a b : Time}
-    (hsvc : ResetService tr H g ΔF b)
+    (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hreset : IsReset tr H g a) (hab : a ≤ b)
@@ -78,7 +79,7 @@ theorem resetPremisesUpTo_of_reset_at
     (hfacts : Compose.Growing.CommitteeFacts tr H (Generic.dictOfTime sp cm))
     (hβ : βK ≤ 1 / 2) (hpos : 0 < sp.committeeSize)
     (hcf : Generic.CommitteeFaultsUpTo βK cm H g b) :
-    ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK := by
+    ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold := by
   refine ⟨hβ, hrun, hpos, hfacts, hcf, hnc, hsvc, hawake, hf, hreset, hab,
     hsnapshot, hcatch, noRestartUpTo_iff.mp hnr, fun s => ?_, hH⟩
   have hδ : (sp.toParams.δt : Time) = sp.toParams.fg.δt := rfl

@@ -32,16 +32,18 @@ open AC (ACParams ReplayOrder Payload gbar)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+variable {hold : Time}
 
 /-- **The seed height** under growing faults. With the finite reset premises, Catch(2Δ), the HS
 premises through `b` (`ḡ_S ≤ t_u + 6Δ`), an honest seed proposal `Q` at slot `u > 0` with
 `drainTime a ≤ t_u` and `ḡ + 4Δ ≤ t_u`, and an honest proposal `P₀` at slot `s₀ ≥ u + δt` with
 `t_{s₀} ≤ b` (`2 ≤ δt`): every holder of `P₀` honest at an observation time `t` after its earlier
 cuts has `H_z + 2 ≤ σ[P₀].h`. -/
-private theorem seed_height_of_reports_at {g ΔR a b gS ΔF : Time}
+private theorem seed_height_of_reports_at {g ΔR a b gS ΔF hold : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
+    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
+    (hhold : 0 ≤ hold)
     (hδ : 2 ≤ sp.toParams.fg.δt) {u s₀ : Nat} {Q P₀ : AC.Blk sp.n (List (FG.Att sp.n))}
     {G : Nat}
     (hcover : ∀ (_ : Q ∈ tr.HonestBlocksAt H) (_ : Q.slot = u)
@@ -201,24 +203,28 @@ private theorem seed_height_of_reports_at {g ΔR a b gS ΔF : Time}
   have hThS : ((tr.state (proposer s₀) kX).fg.σ Pr.root).ThSlot ≤ u := by
     rw [Healing.ThSlot_eq_of_anc hr hQPrs hPr1, ← hQs]
     exact Healing.ThSlot_le_slot hr hQst
-  let S : Finset (Fin sp.n) := Finset.univ.filter (· ∈ H (sp.ts u + 6 * sp.Δ + G * sp.Δ))
+  -- the quorum: the nodes still honest when a row signed by `t_u + 6Δ + GΔ` is released
+  have hubGh : sp.ts u + 6 * sp.Δ + G * sp.Δ + hold ≤ b := by linarith [hs.sync.hold_le]
+  let S : Finset (Fin sp.n) :=
+    Finset.univ.filter (· ∈ H (sp.ts u + 6 * sp.Δ + G * sp.Δ + hold))
   have hScard : sp.toParams.fg.q ≤ S.card := by
-    have hcard : S.card = (H (sp.ts u + 6 * sp.Δ + G * sp.Δ)).ncard := by
+    have hcard : S.card = (H (sp.ts u + 6 * sp.Δ + G * sp.Δ + hold)).ncard := by
       rw [← Set.ncard_coe_finset]
       congr 1
       ext z
       simp [S]
     rw [hcard]
-    have hn : (H (sp.ts u + 6 * sp.Δ + G * sp.Δ)).ncard +
-        (H (sp.ts u + 6 * sp.Δ + G * sp.Δ))ᶜ.ncard = sp.n := by
+    have hn : (H (sp.ts u + 6 * sp.Δ + G * sp.Δ + hold)).ncard +
+        (H (sp.ts u + 6 * sp.Δ + G * sp.Δ + hold))ᶜ.ncard = sp.n := by
       rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-    have hf := hp.faults _ (show 0 ≤ sp.ts u + 6 * sp.Δ + G * sp.Δ by linarith) hubG
+    have hf := hp.faults _ (show 0 ≤ sp.ts u + 6 * sp.Δ + G * sp.Δ + hold by linarith) hubGh
     change (2 * sp.n + 2) / 3 ≤ _
     omega
-  have hcross := Healing.Growing.cross_of_signed_rows_upTo_at hrun hs
+  have hcross := Healing.Growing.cross_of_signed_rows_upTo_at hrun hs hhold
     (v := sp.ts u + 6 * sp.Δ + G * sp.Δ) (by linarith) hpH hkX
     (by rw [htk]; linarith) (by rw [htk]; exact hb) hpar S
-    hScard ?_ (by rw [hP₀s]; omega)
+    hScard ?_
+    (by rw [hP₀s]; omega)
   · rw [hcross.1]
     omega
   have hczu : Healing.cutZ sp.toParams g ≤ sp.ts u + 6 * sp.Δ := by
@@ -231,7 +237,8 @@ private theorem seed_height_of_reports_at {g ΔR a b gS ΔF : Time}
       omega) u (by omega)
     linarith [sp.toParams.hΔ]
   intro z hz
-  have hzH : z ∈ H (sp.ts u + 6 * sp.Δ + G * sp.Δ) := (Finset.mem_filter.1 hz).2
+  have hzH' : z ∈ H (sp.ts u + 6 * sp.Δ + G * sp.Δ + hold) := (Finset.mem_filter.1 hz).2
+  have hzH : z ∈ H (sp.ts u + 6 * sp.Δ + G * sp.Δ) := hrun.antitone (by linarith) hzH'
   obtain ⟨r, ell, R, hrep, hrt', hQR⟩ := hall z hzH
   have hzrz : z ∈ H (max (Healing.cutZ sp.toParams g) (tr.time r)) :=
     hrun.antitone (max_le (by linarith [hczu]) hrt') hzH
@@ -255,19 +262,19 @@ private theorem seed_height_of_reports_at {g ΔR a b gS ΔF : Time}
   have hEO := hER.trans hCO
   obtain ⟨j, att, hsg, hjt, hah⟩ :=
     hp.sign_of_report_at hzrz hrep hrb h0 hle0 hpH hE rfl hETe hEhT hER hRh ho' hiob hEO
-  have hzj : z ∈ H (tr.time j) := hrun.antitone hjt hzr
   obtain ⟨-, haT, -⟩ :=
     hp.row_target_of_sign_at (hrun.antitone (max_le_max le_rfl hjt) hzrz) hsg (hjt.trans hrb) h0
       hle0 hpH hE rfl hETe hEhT ho' hiob hEO hah
-  exact ⟨j, att, hzj, hsg, hjt.trans hrt', hah.trans (hEh.trans hPr1.symm),
+  exact ⟨j, att, hzH', hsg, hjt.trans hrt', hah.trans (hEh.trans hPr1.symm),
     haT.trans hPrTh.symm⟩
 
 /-- Seed height from a calendar whose reports arrive within the timeout budget. -/
-theorem seed_height_delayed_at {g ΔR a b gS ΔF : Time}
+theorem seed_height_delayed_at {g ΔR a b gS ΔF hold : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
     {sign : Fin sp.n → Time → Bool} (hcal : RunTrace.SignCalendarAt tr proposer dg H sign)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
+    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
+    (hhold : 0 ≤ hold)
     (hδ : 2 ≤ sp.toParams.fg.δt) {u s₀ G : Nat}
     (hgap : SignGapAt sp.toParams sign G (sp.ts u + 6 * sp.Δ))
     (htd : 6 * sp.Δ + G * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
@@ -280,17 +287,18 @@ theorem seed_height_delayed_at {g ΔR a b gS ΔF : Time}
     (hgS : gbar gS ≤ sp.ts u + 6 * sp.Δ) :
     ∀ y k t, 0 ≤ t → (∀ q < k, tr.time q ≤ t) → y ∈ H t → P₀ ∈ (tr.state y k).fg.tree →
       Healing.Growing.HZ tr H g + 2 ≤ ((tr.state y k).fg.σ P₀.root).h :=
-  seed_height_of_reports_at hp hs hδ
+  seed_height_of_reports_at hp hs hhold hδ
     (fun hQH hQs hu hQg hun hgu hR hb =>
       Healing.Growing.report_cover_delayed_of_unanimous_at hp hcal hgap
         hQH hQs hu hQg hun hgu hR hb) htd hcr hQ hu hR hgu hP₀ hus hb hgS
 
 /-- The responsive seed-height statement, with its original assumptions. -/
-theorem seed_height_at {g ΔR a b gS ΔF : Time}
+theorem seed_height_at {g ΔR a b gS ΔF hold : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
     (hsign : RunTrace.GrowingAllTicksSign tr proposer dg H)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
+    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
+    (hhold : 0 ≤ hold)
     (hδ : 2 ≤ sp.toParams.fg.δt) {u s₀ : Nat} {Q P₀ : AC.Blk sp.n (List (FG.Att sp.n))}
     (hQ : Healing.Growing.HonestProposalRun tr H proposer u Q) (hu : 0 < u)
     (hR : Healing.drainTime sp a ≤ sp.ts u) (hgu : gbar g + 4 * sp.Δ ≤ sp.ts u)
@@ -301,7 +309,7 @@ theorem seed_height_at {g ΔR a b gS ΔF : Time}
       Healing.Growing.HZ tr H g + 2 ≤ ((tr.state y k).fg.σ P₀.root).h := by
   have hδ' : (2 : Time) ≤ sp.toParams.fg.δt := by exact_mod_cast hδ
   have hΔ := sp.toParams.hΔ
-  apply seed_height_of_reports_at hp hs hδ (G := 0) _
+  apply seed_height_of_reports_at hp hs hhold hδ (G := 0) _
     (by simpa [Params.fg] using hs.timeoutDelay)
     (by simp only [Nat.cast_zero, zero_mul, add_zero]; nlinarith) hQ hu hR hgu hP₀ hus hb hgS
   intro hQH hQs hu hQg hun hgu hR hb
@@ -311,11 +319,12 @@ theorem seed_height_at {g ΔR a b gS ΔF : Time}
 
 /-- `seed_height_at` in the form of the height premise of `anchorSteps_gap_at`: the proposer of
 `P₀` holds `P₀` just after its proposal cut, honest at that cut, at height at least `H_z + 2`. -/
-theorem seed_height_held_at {g ΔR a b gS ΔF : Time}
+theorem seed_height_held_at {g ΔR a b gS ΔF hold : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
     (hsign : RunTrace.GrowingAllTicksSign tr proposer dg H)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
+    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
+    (hhold : 0 ≤ hold)
     (hδ : 2 ≤ sp.toParams.fg.δt) {u s₀ : Nat} {Q P₀ : AC.Blk sp.n (List (FG.Att sp.n))}
     (hQ : Healing.Growing.HonestProposalRun tr H proposer u Q) (hu : 0 < u)
     (hR : Healing.drainTime sp a ≤ sp.ts u) (hgu : gbar g + 4 * sp.Δ ≤ sp.ts u)
@@ -325,16 +334,18 @@ theorem seed_height_held_at {g ΔR a b gS ΔF : Time}
     ∃ y k, y ∈ H (tr.time k) ∧ P₀ ∈ (tr.state y k).fg.tree ∧
       Healing.Growing.HZ tr H g + 2 ≤ ((tr.state y k).fg.σ P₀.root).h := by
   obtain ⟨kX, -, hm, ht, hXm⟩ := proposal_held_at hp.run hp.noColl hP₀
-  refine ⟨_, kX + 1, ht ▸ hm, hXm, seed_height_at hp hsign hs hδ hQ hu hR hgu hP₀ hus hb hgS _
+  refine ⟨_, kX + 1, ht ▸ hm, hXm,
+    seed_height_at hp hsign hs hhold hδ hQ hu hR hgu hP₀ hus hb hgS _
     (kX + 1) (tr.time kX) (hp.run.time_nonneg kX)
     (fun _ hq => hp.run.time_mono (by omega)) hm hXm⟩
 
 /-- The delayed seed-height bound at an honest holder just after its proposal cut. -/
-theorem seed_height_held_delayed_at {g ΔR a b gS ΔF : Time}
+theorem seed_height_held_delayed_at {g ΔR a b gS ΔF hold : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
     {sign : Fin sp.n → Time → Bool} (hcal : RunTrace.SignCalendarAt tr proposer dg H sign)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
+    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
+    (hhold : 0 ≤ hold)
     (hδ : 2 ≤ sp.toParams.fg.δt) {u s₀ G : Nat}
     (hgap : SignGapAt sp.toParams sign G (sp.ts u + 6 * sp.Δ))
     (htd : 6 * sp.Δ + G * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
@@ -349,7 +360,7 @@ theorem seed_height_held_delayed_at {g ΔR a b gS ΔF : Time}
       Healing.Growing.HZ tr H g + 2 ≤ ((tr.state y k).fg.σ P₀.root).h := by
   obtain ⟨kX, -, hm, ht, hXm⟩ := proposal_held_at hp.run hp.noColl hP₀
   refine ⟨_, kX + 1, ht ▸ hm, hXm,
-    seed_height_delayed_at hp hcal hs hδ hgap htd hcr hQ hu hR hgu hP₀ hus hb hgS _
+    seed_height_delayed_at hp hcal hs hhold hδ hgap htd hcr hQ hu hR hgu hP₀ hus hb hgS _
       (kX + 1) (tr.time kX) (hp.run.time_nonneg kX)
       (fun _ hq => hp.run.time_mono (by omega)) hm hXm⟩
 

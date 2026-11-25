@@ -35,7 +35,8 @@ theorem emit_released_of (hv : rho.ExecutionValid)
   obtain ⟨ℓ, ⟨hnode, hlab⟩, em, hem, rfl⟩ := hc
   obtain ⟨z, hz⟩ := htok
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, i, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ := simTrace_cut S rho hn hl
+  obtain ⟨r, i, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ :=
+    simTrace_cut S rho hn hl fun a h => by rw [hlab] at h; cases h
   have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
   have hmem := List.mem_of_getElem? hidx
   have hkey : ev.node = rho.key y := key_of_ownKey S rho (hn'.symm.trans hnode)
@@ -45,7 +46,11 @@ theorem emit_released_of (hv : rho.ExecutionValid)
     have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
       by_contra hp
       rw [eventCuts_tick_other S rho hn i v t he hp] at hmem
-      simp at hmem
+      obtain ⟨a, _, st, s, _, hg⟩ := mem_tickTail S rho hn v i t hmem
+      obtain ⟨k', hk', rfl⟩ := List.getElem_of_mem hg
+      have h := (getElem_groupRecs _ _ _ st t _ _ k' hk').2.2.2.2
+      rw [hrl] at h
+      simp [exec, onAttestation] at h
     obtain ⟨z', hz'⟩ := htick he hp r hmem ℓ hrl em hem
     exact ⟨z', (releasedFrom_iff S rho _ _ _).mpr ⟨i, Or.inl he, hz'⟩⟩
   | deliver v o t =>
@@ -93,7 +98,7 @@ theorem emit_released_of (hv : rho.ExecutionValid)
     refine List.mem_append_left _ ?_
     apply dutyStep_poll_rel S rho hn v _ _ (poll_selected S rho hv v)
     · change (pollPre (process ((rho.stateBefore i v).st.1 hn) o
-        (Model.digests rho.hash o))).outbox.head? = some _
+        (Model.digests rho.hash o)) (S.release (pubOf E))).outbox.head? = some _
       rw [← stateAt_eq S rho hn v i]
       rw [pollPre_eq]
       have hf : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).fgDue = false :=

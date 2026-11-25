@@ -39,7 +39,7 @@ private theorem not_tick_attest (y : Fin P.n) (st : NodeState A) (C : A.Blk) :
     ∀ c ∈ (attest y st C).2, ¬ IsTickCut c := by
   rintro c hc ⟨ℓ, rfl, -⟩
   unfold attest at hc
-  split at hc <;> simp [onAttestation] at hc
+  split at hc <;> simp at hc
 
 /-- The proposal and FG-update steps of a tick call no `ac_on_tick`. -/
 private theorem not_tick_step (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)

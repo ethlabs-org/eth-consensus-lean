@@ -36,10 +36,11 @@ open AC (ACParams ReplayOrder Payload Vote)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- The static AC run of the prefix through `d` of the nodes honest at `d`. -/
 private theorem acRun_prefix {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {d : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {d : Time}
     (hd : 0 ≤ d) :
     AC.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d))
       (AC.committeeStart sp.genesisRoot (Generic.dictOfTime sp cm)) := by
@@ -60,7 +61,7 @@ private theorem slowLockAt_upTo (hm : Monotone tr.time) {x : Fin sp.n} {r s : Na
 /-- **A result and a result or optimistic source of one label are compatible**, for writers
 honest at their writes by `b`, past `c_z`. -/
 theorem result_source_compatible_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {r q s : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time q))
     {C D : AC.Blk sp.n (List (FG.Att sp.n))} {CV DV : Set (Vote sp.n)}
     (hR : AC.ResultAt tr.projAC x r s C CV)
@@ -94,7 +95,7 @@ theorem result_source_compatible_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ
 /-- **Two result or optimistic sources of one label are compatible**, for writers honest at their
 writes by `b`, past `c_z`. -/
 theorem sources_same_label_compatible_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {r q s : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time q))
     {C D : AC.Blk sp.n (List (FG.Att sp.n))} {CV DV : Set (Vote sp.n)}
     (hC : AC.ResultAt tr.projAC x r s C CV ∨ AC.OptimisticLockAt tr.projAC x r s C CV)
@@ -111,7 +112,7 @@ theorem sources_same_label_compatible_at {cm : Time → Finset (Fin sp.n)} {βK 
 /-- **A bounded slow write compares with every older live stored lock** of a later voter honest
 at its cut, within the horizon. -/
 theorem slow_stored_locks_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {r s i : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     {D : AC.Blk sp.n (List (FG.Att sp.n))} (hsl : AC.SlowLockAt tr.projAC x r s D)
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b) (hib : tr.time i ≤ b)
@@ -151,7 +152,7 @@ theorem slow_stored_locks_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 /-- **A clean slow source is extended by every later vote** of a node honest at it, through the
 horizon: the latest-result induction on the source's result. -/
 theorem slow_source_votes_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hslow : AC.SlowLockAt tr.projAC x r s B)
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b) :

@@ -16,11 +16,12 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- An own-cut honest supporter compares its target with an older bounded origin. -/
 theorem target_compatible_older_origin_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x z : Fin sp.n} {r m q l : Nat} {B O : AC.Blk sp.n (List (FG.Att sp.n))}
     {e : AC.Em sp (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r m O) (hrb : tr.time r ≤ b)

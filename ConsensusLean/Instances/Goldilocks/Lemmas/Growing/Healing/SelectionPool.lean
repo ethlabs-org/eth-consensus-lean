@@ -21,6 +21,7 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+variable {hold : Time}
 
 /-- The update handler's post-state conclusions follow from its selected confirmation.
 This is local execution, independent of the historical source of the pool or locks. -/
@@ -189,7 +190,7 @@ theorem ready_update_selection_of_pool_core_at
 its pool membership (P), size and CS2 at the reading cut (`committee_cs2_at`). -/
 theorem ResetPremisesUpTo.ready_update_selection_of_pool_at {g ΔF a b : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time j)) (hjb : tr.time j ≤ b) (hgu : AC.gbar g ≤ sp.ts u)

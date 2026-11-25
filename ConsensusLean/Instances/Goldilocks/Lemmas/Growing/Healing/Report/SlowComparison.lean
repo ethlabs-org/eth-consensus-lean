@@ -23,6 +23,7 @@ open Compose.Growing
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+variable {hold : Time}
 
 private def Released (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
     (X : Fin sp.n) (s : Nat) (D : AC.Blk sp.n (List (FG.Att sp.n))) : Set (Fin sp.n) :=
@@ -104,7 +105,7 @@ private theorem optimistic_side
 private theorem released_held
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     {X Y : Fin sp.n} {c s : Nat} (hm : gbar g ≤ sp.ts s)
     {ell : ACLabel (goldilocksNode sp ro)} (hY : Y ∈ H (tr.time c))
     (hc : tr.projAC.CallAt Y c ell) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
@@ -146,7 +147,7 @@ private theorem released_held
 private theorem against_update
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     {X Y : Fin sp.n} {c s : Nat} (hm : gbar g ≤ sp.ts s)
     {ell : ACLabel (goldilocksNode sp ro)} (hY : Y ∈ H (tr.time c))
     (hc : tr.projAC.CallAt Y c ell) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
@@ -184,7 +185,7 @@ private theorem against_update
 theorem result_result_compatible_service_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     {s : Nat} (hm : gbar g ≤ sp.ts s) {x y : Fin sp.n} {c i : Nat}
     (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
     {C D : AC.Blk sp.n (List (FG.Att sp.n))} {CV DV : Set (Vote sp.n)}
@@ -202,7 +203,7 @@ theorem result_optimistic_compatible_service_at
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     {s : Nat} (hm : gbar g ≤ sp.ts s) {x y : Fin sp.n} {c i : Nat}
     (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
     {C D : AC.Blk sp.n (List (FG.Att sp.n))} {CV DV : Set (Vote sp.n)}

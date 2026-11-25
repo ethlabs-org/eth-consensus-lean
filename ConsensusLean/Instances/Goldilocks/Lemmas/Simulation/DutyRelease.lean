@@ -36,13 +36,15 @@ theorem runDuties_append (v : V)
   rho.runDuties_append v nd ds ds'
 
 omit [DecidableEq V] in
-/-- An attestation that a duty releases is the ordinary attestation candidate of a selected
-poll. -/
+/-- An attestation that a duty releases is a selected poll's: its ordinary attestation
+candidate, or a held attestation the batch poll flushes at a time the release schedule allows. -/
 theorem dutyStep_att_poll {v : V} (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) {a : FG.Att (Fintype.card V)}
     (ha : attObj a ∈ (rho.dutyStep v nd d).2) :
     ∃ t, d = .poll t ∧ rho.ownKey v ∈ rho.sel .poll ∧
-      (poll (nd.st.1 hn) t).2 = some (.att (encodeAtt a), []) := by
+      ((poll (nd.st.1 hn) t (S.release (pubOf E))).2 = some (.att (encodeAtt a), []) ∨
+        S.release (pubOf E) (nd.st.1 hn).self (nd.st.1 hn).now = true ∧
+          a ∈ (nd.st.1 hn).held) := by
   unfold Model.Run.dutyStep at ha
   split at ha
   · rename_i hsel
@@ -71,25 +73,39 @@ theorem dutyStep_att_poll {v : V} (nd : Model.Node (Model.protoOf (compiled (gol
       rw [goldilocks_pollPropose_eq S _ nd.st.1 t, dite_eq_left hn] at hm
       cases hm
     | poll t =>
-      have hp : (poll (nd.st.1 hn) t).2 = some (.att (encodeAtt a), []) := by
-        change _ ∈ (((goldilocks S (pubOf E)).pollBatch nd.st.1 t).2.map
-          (fun (b, cs) => (Model.Msg.data b, cs))) at hm
-        rw [goldilocks_pollBatch_eq S _ nd.st.1 t, dite_eq_left hn] at hm
-        change _ ∈ ((pollBatch (nd.st.1 hn) t).2.map
-          (fun (b, cs) => (Model.Msg.data b, cs))) at hm
-        obtain ⟨⟨b, cs⟩, hb, heq⟩ := List.mem_map.mp hm
-        have hp := Prod.mk.inj heq
-        have hb' := Model.Msg.data.inj hp.1
-        have hcs' := hp.2
-        subst b cs
-        simp only [pollBatch, List.mem_append] at hb
-        rcases hb with (hb | hb) | hb
+      refine ⟨t, rfl, hsel, ?_⟩
+      change _ ∈ (((goldilocks S (pubOf E)).pollBatch nd.st.1 t).2.map
+        (fun (b, cs) => (Model.Msg.data b, cs))) at hm
+      rw [goldilocks_pollBatch_eq S _ nd.st.1 t, dite_eq_left hn] at hm
+      change _ ∈ ((pollBatch (nd.st.1 hn) t (S.release (pubOf E))).2.map
+        (fun (b, cs) => (Model.Msg.data b, cs))) at hm
+      obtain ⟨⟨b, cs⟩, hb, heq⟩ := List.mem_map.mp hm
+      have hp := Prod.mk.inj heq
+      have hb' := Model.Msg.data.inj hp.1
+      have hcs' := hp.2
+      subst b cs
+      rw [pollBatch_snd] at hb
+      simp only [List.mem_append] at hb
+      rcases hb with ((hb | hb) | hb) | hb
+      · left
+        split at hb
+        · rw [poll_snd_heldDrain] at hb
+          exact Option.mem_toList.mp hb
         · exact Option.mem_toList.mp hb
-        · obtain ⟨p, _, heq⟩ := List.mem_map.mp hb
-          cases heq
-        · obtain ⟨p, _, heq⟩ := List.mem_map.mp hb
-          cases heq
-      exact ⟨t, rfl, hsel, hp⟩
+      · obtain ⟨p, _, heq⟩ := List.mem_map.mp hb
+        cases heq
+      · obtain ⟨p, _, heq⟩ := List.mem_map.mp hb
+        cases heq
+      · right
+        split at hb
+        · rename_i hr
+          obtain ⟨b, hb, heq⟩ := List.mem_map.mp hb
+          have hab : b = a := by
+            have hh := congrArg (decodeAtt (Fintype.card V))
+              (Body.att.inj (Prod.mk.inj heq).1)
+            simpa only [decodeAtt_encodeAtt, Option.some.injEq] using hh
+          exact ⟨(Bool.and_eq_true _ _).mp hr |>.1, hab ▸ hb⟩
+        · cases hb
   · cases ha
 
 omit [DecidableEq V] in

@@ -29,7 +29,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 private theorem lt_cutMap_length {k : Nat}
     (hk : (simTrace S rho hn).label k ≠ none) :
     k < cutMap S rho hn rho.events.length := by
-  obtain ⟨_, i, _, _, he, _, hki, -⟩ := simTrace_cut S rho hn hk
+  obtain ⟨_, i, _, _, he, _, hki, -⟩ := simTrace_cut_origin S rho hn hk
   exact hki.trans_le (cutMap_mono S rho hn
     (List.getElem?_eq_some_iff.mp he).1)
 
@@ -45,7 +45,7 @@ private theorem cutTime_succ_eq {q : Nat}
     rw [simTrace_label S rho hn, List.getElem?_eq_getElem
         (by rw [length_allCuts]; exact hlen)]
     simp
-  obtain ⟨_, i, ev, _, he, hlo, hhi, -, -, ht, -⟩ := simTrace_cut S rho hn hl
+  obtain ⟨_, i, ev, _, he, hlo, hhi, -, -, ht, -⟩ := simTrace_cut_origin S rho hn hl
   obtain rfl : i = q := by
     rcases lt_trichotomy i q with h | rfl | h
     · have := cutMap_mono S rho hn (show i + 1 ≤ q by omega)

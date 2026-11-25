@@ -255,7 +255,7 @@ theorem joined_projection_from {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
         have hgk := restartCall_group h.toLocalRun hy hk
         rw [htk] at hgk
         rw [hit] at hg
-        have : e.phase ≤ 0 := h.phase_order y hy y hy j k t e .restart hg hgk (by omega)
+        have : e.phase ≤ 0 := h.phase_order y hy y hy j k t e .restart hg hgk (by omega) (.inl rfl)
         omega
       · exact hnr hk
     unfold AC.joined

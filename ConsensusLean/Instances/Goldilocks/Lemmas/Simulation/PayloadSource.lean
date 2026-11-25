@@ -24,27 +24,34 @@ variable {hn : 1 ≤ Fintype.card V}
 variable {A : NodeAC (paramsAtCount p (Fintype.card V) hN hn)}
 variable (e : Encoding F E p hN hn A) (rho : Model.Run (compiled F) E)
 
-/-- A carried object with an honest signer has a release before the containing call's event.
-For own proposals, availability is required before the event, not just before its proposal duty. -/
+/-- A carried object with an honest signer has a release before the containing call's event,
+or, for an own proposal, satisfies the tick's alternative `Q` (in the Goldilocks run: an own held
+attestation that the tick flushes before its proposal). For own proposals, availability is
+required before the event, not just before its proposal duty. -/
 theorem block_payload_source_of (hv : rho.ExecutionValid)
     {k : Nat} {y} {b : A.Blk} (hc : (simTrace e rho).BlockCallAt y k b)
     {w : ShapeObj (Fintype.card V) e.skel.Kind I e.Body}
     (hw : w ∈ e.codec.carried b.fgPayload b.acPayload)
     {u : V} (hu : u ∉ rho.faultyAt ((simTrace e rho).time k))
-    (hsign : rho.signerOf (engineObj e w) = some u)
+    (hsign : rho.signerOf (engineObj e w) = some u) {Q : Nat → V → Time → Prop}
     (hpre : ∀ {i v t r acc}, rho.events[i]? = some (.tick v t) →
       r ∈ eventCuts e rho i → r.label = .fg (.block b acc) →
-      engineObj e w ∈ Model.closure (rho.stateBefore i v).seen) :
-    ∃ i t, cutMap e rho (i + 1) ≤ k ∧ rho.SendsAt u i t ∧ engineObj e w ∈ rho.releasesAt i := by
+      engineObj e w ∈ Model.closure (rho.stateBefore i v).seen ∨ Q i v t) :
+    (∃ i t, cutMap e rho (i + 1) ≤ k ∧ rho.SendsAt u i t ∧ engineObj e w ∈ rho.releasesAt i) ∨
+      ∃ i v t, cutMap e rho i ≤ k ∧ rho.events[i]? = some (.tick v t) ∧ Q i v t := by
   rcases blockCall_origin e rho hc with
     ⟨i, v, t, r, he, hk, hr, ⟨acc, hl⟩, ht, _⟩ | ⟨i, v, o, t, w', he, hk, ht, hpart, hd⟩
-  · have hi := (List.getElem?_eq_some_iff.mp he).1
+  · rcases hpre he hr hl with hseen | hQ
+    swap
+    · exact Or.inr ⟨i, v, t, hk, he, hQ⟩
+    refine Or.inl ?_
+    have hi := (List.getElem?_eq_some_iff.mp he).1
     have hle := ((Model.sysOf_laws O (compiled F) V).trace ⟨E, rho⟩ hv).cutTime_mono i (i + 1)
       (Nat.le_succ i) (Nat.succ_le_of_lt hi)
     change rho.cutTime i ≤ rho.cutTime (i + 1) at hle
     simp only [Model.Run.cutTime, he] at hle
     rw [ht] at hu
-    obtain ⟨j, hj, t', hs, hr'⟩ := rho.signed_seen_released hv hi.le (hpre he hr hl)
+    obtain ⟨j, hj, t', hs, hr'⟩ := rho.signed_seen_released hv hi.le hseen
       (fun hf => hu (rho.faultyAt_mono hle hf)) hsign
     exact ⟨j, t', (cutMap_mono e rho (Nat.succ_le_of_lt hj)).trans hk, hs, hr'⟩
   · have hcar : engineObj e w ∈ (engineObj e w').carried := by
@@ -60,7 +67,7 @@ theorem block_payload_source_of (hv : rho.ExecutionValid)
     rw [ht] at hu
     obtain ⟨j, t', hj, hs, hr⟩ := hv.unforgeable i v o t he _
       (Model.Obj.Contains.trans hpart (.step hcar (.refl _))) u hsign hu
-    exact ⟨j, t', (cutMap_mono e rho (Nat.succ_le_of_lt hj)).trans hk, hs, hr⟩
+    exact Or.inl ⟨j, t', (cutMap_mono e rho (Nat.succ_le_of_lt hj)).trans hk, hs, hr⟩
 
 /-- Combine a carried object's release source with its attestation signing law. -/
 theorem carried_att_sign_of_released {k : Nat} {a : FG.Att (Fintype.card V)}
@@ -85,8 +92,10 @@ open Consensus.Model (pubOf)
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- **A payload object signed by a key honest at processing has an earlier genuine release.**
-`hpre`: the objects a tick's proposal carries are in the proposer's view before the tick. -/
+/-- **A payload object signed by a key honest at processing has an earlier genuine release**, or
+satisfies the held-attestation alternative. The pool discipline rules out that alternative for
+own proposals: the tick flushes held attestations after proposing. `hpre`: the objects a tick's
+proposal carries are in the proposer's view before its proposal duty. -/
 theorem block_payload_source_of (hv : rho.ExecutionValid)
     (hpre : ∀ {i : Nat} {v : V} {t : Time}, rho.events[i]? = some (.tick v t) →
       ∀ s (hs : 0 < s), (skeleton (pubOf E) S.vote).proposeAt t = [.propose s hs] →
@@ -98,7 +107,9 @@ theorem block_payload_source_of (hv : rho.ExecutionValid)
     {o : Wire (Fintype.card V) S.vote} (ho : o ∈ payloadObjs B.fgPayload B.acPayload)
     {u : V} (hu : u ∉ rho.faultyAt ((simTrace S rho hn).time k))
     (hsign : rho.signerOf o = some u) :
-    ∃ i t, cutMap S rho hn (i + 1) ≤ k ∧ rho.SendsAt u i t ∧ o ∈ rho.releasesAt i := by
+    (∃ i t, cutMap S rho hn (i + 1) ≤ k ∧ rho.SendsAt u i t ∧ o ∈ rho.releasesAt i) ∨
+      ∃ i v t, cutMap S rho hn i ≤ k ∧ rho.events[i]? = some (.tick v t) ∧
+        ∃ a ∈ (stateAt S rho hn v i).held, o = heldObj S rho v a := by
   let enc := traceEncoding (E := E) S hn
   let w := NodeAsChainShape.CanonicalTrace.wireOf enc o
   have hobj := NodeAsChainShape.CanonicalTrace.engineObj_wireOf enc o
@@ -111,8 +122,10 @@ theorem block_payload_source_of (hv : rho.ExecutionValid)
         exact ho
   rw [(simTrace_encoding S rho hn).1] at hc hu
   rw [(simTrace_encoding S rho hn).2]
-  obtain ⟨i, t, hik, hs, hr⟩ := NodeAsChainShape.CanonicalTrace.block_payload_source_of enc rho hv
-    hc hmem hu (by rwa [hobj]) (fun {i v t r acc} he hr hl => by
+  rcases NodeAsChainShape.CanonicalTrace.block_payload_source_of enc rho hv
+    hc hmem hu (by rwa [hobj])
+    (Q := fun i v _ => ∃ a ∈ (stateAt S rho hn v i).held, o = heldObj S rho v a)
+    (fun {i v t r acc} he hr hl => by
     rw [hobj]
     obtain ⟨q, hq, _, hql⟩ := eventCuts_label_pos S rho hn i r hr
     have hv' : v ∉ rho.faultyAt 0 := by
@@ -121,13 +134,19 @@ theorem block_payload_source_of (hv : rho.ExecutionValid)
     have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
       by_contra hp
       rw [eventCuts_tick_other S rho hn i v t he hp] at hq
-      simp at hq
+      obtain ⟨_, a, ha⟩ := tickTail_label S rho hn hq
+      rw [hql, hl] at ha
+      cases ha
     rw [eventCuts_tick_public S rho hn i v t he hp] at hq
-    obtain ⟨m, hm, rfl⟩ := List.getElem_of_mem hq
+    have hmain := (List.mem_append.mp hq).resolve_right (fun htail => by
+      obtain ⟨_, a, ha⟩ := tickTail_label S rho hn htail
+      rw [hql, hl] at ha
+      cases ha)
+    obtain ⟨m, hm, rfl⟩ := List.getElem_of_mem hmain
     obtain ⟨_, _, _, _, hc⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm
     have hcut := List.getElem_mem (lt_of_lt_of_eq hm (length_groupRecs _ _ _ _ _ _ _))
     rw [← hc, hql, hl] at hcut
-    obtain ⟨N4, N5, Q, R4, F, G, _, _, _, _, _, _, _, hR4, hcar, _⟩ :=
+    obtain ⟨_, _, _, R4, _, _, _, _, _, _, _, _, _, hR4, hcar, _⟩ :=
       tick_public_analysis S rho hn hv hv' he hp (hpre he)
     have hB : blockObj (S.params (pubOf E) hn) B ∈ R4 := by
       rw [hR4]; exact mem_blockObjs.mpr ⟨B, acc, hcut, rfl⟩
@@ -139,8 +158,11 @@ theorem block_payload_source_of (hv : rho.ExecutionValid)
       intro x hx
       obtain ⟨b, hb, _⟩ := mem_relHead S rho hx
       simp [hnil] at hb
-    simpa only [hrel, List.append_nil] using ho')
-  exact ⟨i, t, hik, hs, hobj ▸ hr⟩
+    rw [hrel, List.append_nil] at ho'
+    exact Or.inl ho') with
+    ⟨i, t, hik, hs, hr⟩ | h
+  · exact Or.inl ⟨i, t, hik, hs, hobj ▸ hr⟩
+  · exact Or.inr h
 
 end Consensus.Goldilocks.Simulation
 

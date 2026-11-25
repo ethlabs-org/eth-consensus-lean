@@ -47,7 +47,7 @@ theorem healthy_preparation_initialize_late_at
     (hGs : (contract_catchUp S A : Nat) +
         (healthyResetCoeff S Q.index + 8 * S.k + 4 * (Q.index : Nat) + 34) + 3 + 5 * Gs ≤
       contract_heal S A Q.cap Q.index)
-    (hGsT : 4 * A.fgSlots + Gs ≤ 4 * S.δt) :
+    (hGsT : 4 * A.fgSlots + A.releaseGap + Gs ≤ 4 * S.δt) :
     ∃ W : HealthyBaseTimingAt S A V Q,
         ∃ D : HealthyPreparationScheduleAt
         S A V Q W,
@@ -71,7 +71,7 @@ theorem healthy_preparation_initialize_late_at
     (by linarith only [hB', hD0])
   simp only [hheal, hready] at hB' hq
   refine ⟨⟨w, hw.2.2.1, hw.2.2.2.1, hw.2.2.2.2⟩,
-    ⟨a, ΔF, hreset, v, r, l, O, hO, hra, hla, _, le_rfl,
+    ⟨a, ΔF, _, hreset, v, r, l, O, hO, hra, hla, _, le_rfl,
       by linarith only [hq a l ha0 ha hla, hB', hD0]⟩, ?_⟩
   dsimp only
   linarith only [hq a l ha0 ha hla, hB']
@@ -91,7 +91,7 @@ theorem healthy_preparation_initialize_at
     (hGs : (contract_catchUp S A : Nat) +
         (healthyResetCoeff S Q.index + 8 * S.k + 4 * (Q.index : Nat) + 34) + 3 + 5 * Gs ≤
       contract_heal S A Q.cap Q.index)
-    (hGsT : 4 * A.fgSlots + Gs ≤ 4 * S.δt) :
+    (hGsT : 4 * A.fgSlots + A.releaseGap + Gs ≤ 4 * S.δt) :
     ∃ W : HealthyBaseTimingAt S A V Q,
         Nonempty (HealthyPreparationScheduleAt
         S A V Q W) :=

@@ -37,25 +37,13 @@ theorem simTraceAt_block_relayed (hv : rho.ExecutionValid) :
   rintro y k B _ ⟨hnode, hlab⟩ hpos
   erw [relayedFrom_iff]
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, hrl, -, hrel⟩ := relays_of_cut S rho hn hv hnode hl fun r hr => Or.inl
+  obtain ⟨r, hrl, -, hrel⟩ := relays_of_cut S rho hn hv hnode hl (fun r hr => Or.inl
     ⟨by rw [simTrace_pos, hr] at hpos; exact hpos, _,
-      Option.some.inj ((by rw [simTrace_label, hr]; rfl : _ = some r.label).symm.trans hlab)⟩
+      Option.some.inj ((by rw [simTrace_label, hr]; rfl : _ = some r.label).symm.trans hlab)⟩)
+    fun r hr a ha _ _ _ _ => by
+      have h := (by rw [simTrace_label, hr]; rfl : (simTrace S rho hn).label k = some r.label)
+      rw [hlab, ha] at h; cases h
   obtain ⟨cs, hx, hcs⟩ := hrel _ (Or.inl ⟨B, Option.some.inj (hrl.symm.trans hlab), rfl⟩)
-  exact ⟨cs, hx, hcs⟩
-
-/-- A wire attestation at position zero is relayed at the delivery's time. -/
-theorem simTraceAt_att_relayed (hv : rho.ExecutionValid) :
-    ∀ y k a, y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time k) →
-      (simTraceAt S rho hn).AttCallAt y k a → (simTraceAt S rho hn).pos k = 0 →
-        RelayedFrom S rho (rho.key y) (attObj a) ((simTraceAt S rho hn).time k) := by
-  rw [simTraceAt_eq]
-  rintro y k a _ ⟨hnode, hlab⟩ hpos
-  erw [relayedFrom_iff]
-  have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, hrl, -, hrel⟩ := relays_of_cut S rho hn hv hnode hl fun r hr => Or.inl
-    ⟨by rw [simTrace_pos, hr] at hpos; exact hpos, _,
-      Option.some.inj ((by rw [simTrace_label, hr]; rfl : _ = some r.label).symm.trans hlab)⟩
-  obtain ⟨cs, hx, hcs⟩ := hrel _ (Or.inr ⟨a, Option.some.inj (hrl.symm.trans hlab), rfl⟩)
   exact ⟨cs, hx, hcs⟩
 
 end Consensus.Goldilocks.Simulation

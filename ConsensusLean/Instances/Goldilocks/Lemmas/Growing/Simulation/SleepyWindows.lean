@@ -274,7 +274,7 @@ variable {P : Params} {A : NodeAC P} {O : OutputSchema} {I : Type} [DecidableEq 
 The same point witnesses both windows; their look-aheads remain independent.
 Catch-up domination belongs to `ClaimDeadlineFit`, not to this head. -/
 theorem _root_.Consensus.Goldilocks.Generic.RunMap.sleepy_window_supply
-    (K : Contract ProgressReq) (C : ACCorrectLocal A M.signer)
+    (K : Contract ProgressReq) {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold)
     (hθ : C.θ = K.params.θ) (h0 : 0 ≤ C.θ) (h1 : C.θ ≤ 1)
     (hlook : C.look = (Sys F V).aheadDur K ⟨E, rho⟩)
     (hcommitteeLook : C.committeeLook = (Sys F V).committeeAheadDur K ⟨E, rho⟩) :
@@ -321,8 +321,8 @@ end MapWindows
 theorem goldilocks_sleepy_window_supply :
     ∀ (S : Setup) (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E)
       (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (K : Contract ProgressReq)
-      (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
-        (goldilocksRunMap S rho hn hv).signer),
+      {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+        (goldilocksRunMap S rho hn hv).signer fgHold),
       C.θ = K.params.θ → 0 ≤ C.θ → C.θ ≤ 1 →
       C.look = (Sys (goldilocks S) V).aheadDur K ⟨E, rho⟩ →
       C.committeeLook = (Sys (goldilocks S) V).committeeAheadDur K ⟨E, rho⟩ →
@@ -433,9 +433,10 @@ theorem goldilocks_outageRecoveryBinding (S : Setup) (A : ContractAssumptions S)
     {rho : Model.Run (compiled (goldilocks S)) E} (hn : 1 ≤ Fintype.card V)
     {payload : Blk (S.params (pubOf E) hn) → Set Nat}
     (M : RunMap (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) rho payload)
-    (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (fun v => v.val))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G)
+    {Rg : Nat} (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G Rg)
     (hsg : (fun v => v.val) = M.signer) :
     OutageRecoveryBinding M (goldilocksContract A (contract_coefficients S A)) (hsg ▸ C) := by
   obtain ⟨-, hθ, hc, hl, hcl, -, -, -, hr, hη, hlag, hb, -, -⟩ := hC
@@ -481,16 +482,16 @@ variable {V : Type} [Fintype V] [DecidableEq V] (S : Setup) {E : Env V}
 /-- The canonical map supplies the slot-constant committee and the horizon binding;
 the local data equations supply the numerical fits, not an existential supplier. -/
 private theorem canonical_window_premises
-    (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
-      (fun v => v.val))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G)
+    {Rg : Nat} (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G Rg)
     {p : EnvPoint (Fin (Fintype.card V))} {ΔF b : Time}
     (hb : b ≤ rho.horizon)
     (hbind : RunPointBinding (goldilocksRunMap S rho hn hv).trace
       (goldilocksRunMap S rho hn hv).honest p)
     {C' : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
-      (goldilocksRunMap S rho hn hv).signer}
+      (goldilocksRunMap S rho hn hv).signer fgHold}
     (hserved : C'.served = fun tr y j τ m => AC.FamilyFacts.MessageServedBefore tr.projAC y j τ m)
     (hpre : SleepyServicePrefix C' (goldilocksRunMap S rho hn hv).trace
       (goldilocksRunMap S rho hn hv).honest ΔF C.look b)
@@ -519,10 +520,10 @@ private theorem canonical_window_premises
 
 /-- The fixed concrete event proof supplies the generic map-bound event-safety row. -/
 theorem goldilocksRunMap_event_safety
-    (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
-      (fun v => v.val))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G) :
+    {Rg : Nat} (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G Rg) :
     EventSafety (goldilocksRunMap S rho hn hv)
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
       (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
@@ -550,10 +551,10 @@ theorem goldilocksRunMap_event_safety
 
 /-- The concrete extension proof keeps the canonical map's two read boundaries. -/
 theorem goldilocksRunMap_extension
-    (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
-      (fun v => v.val))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G) :
+    {Rg : Nat} (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G Rg) :
     Extension (goldilocksRunMap S rho hn hv)
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
       (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
@@ -577,10 +578,10 @@ theorem goldilocksRunMap_extension
 
 /-- The proposal adapter retains the local hold and margin equations. -/
 theorem goldilocksRunMap_proposal_coverage
-    (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
-      (fun v => v.val))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G) :
+    {Rg : Nat} (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G Rg) :
     ProposalCoverage (goldilocksRunMap S rho hn hv)
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
       (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by

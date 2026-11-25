@@ -33,7 +33,7 @@ theorem goldilocks_healedReadAncestry (S : Setup) (A : ContractAssumptions S) {E
   exact Obligations.Growing.healthy_cut_tips_ancestor_at S A V Q h0 hb hp
     (simTraceAt_signCalendar S rho hn _) (Obligations.signGapAt_of_assumptions A _ _)
     (Obligations.signGap_δt A) (Obligations.contract_heal_ge_reset_signGap A Q.cap Q.index)
-    (Obligations.fgSlots_signGap_le A) v i j hi hij hj hvi hvj hjb
+    A.fgSlots_releaseGap_signGap_le v i j hi hij hj hvi hvj hjb
 
 end Consensus.Goldilocks.Simulation
 

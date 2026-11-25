@@ -47,15 +47,16 @@ the later member's origin; two of one label through their underlying origins.
   `σ` has label at least `r` (the drain: the vote is at or after `drainTime a = t_{r+k}`, and a
   live lock expires at most `k` slots after its label).
 * `Obligations.Growing.handover_seed_cover_at`: a healed-safety query healthy up to its bound,
-  with `heal ≤ bound` and progress on `[ready, heal]`, gives a seed at `T = bound` with the FG
-  service delay `protoFGDelay`, and its record cover from a start `t₀ ∈ [t_{r+k}, T]` with
-  `t₀ + 8Δ + 1 ≤ heal`. -/
+  with `heal ≤ bound` and progress on `[ready, heal]`, gives a seed at
+  `T = bound` at the preparation reset's FG delay and release hold, and its record cover from a
+  start `t₀ ∈ [t_{r+k}, T]` with `t₀ + 8Δ + 1 ≤ heal`. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
 open AC (ACParams ReplayOrder Vote Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {hold : Time}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
@@ -78,7 +79,7 @@ structure HandoverSeed (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (g ΔF T : Time) (r σ : Nat)
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ} : Prop where
-  reset : ∃ a, Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a T cm βK ∧
+  reset : ∃ a hold, Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a T cm βK hold ∧
     r = Healing.cleanLabel sp a + sp.k + 2
   catchRun : Healing.Growing.CatchRun tr H g (2 * sp.Δ)
   timing : sp.ts σ + 8 * sp.Δ ≤ T ∧ r + sp.k ≤ σ + 1 ∧ AC.gbar g + 20 * sp.Δ ≤ sp.ts r
@@ -130,7 +131,7 @@ private theorem member_below_origin {ini : Fin sp.n → (goldilocksNode sp ro).S
 of that slot, cast no later than the origin's cut. -/
 private theorem origin_supporter
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {i s : Nat}
     {O C : AC.Blk sp.n (List (FG.Att sp.n))} {OV : Set (Vote sp.n)} (hx : x ∈ H (tr.time i))
     (hib : tr.time i ≤ b)
@@ -154,7 +155,7 @@ a time `≤ b` of a later slot extends each member. Origins from `cleanLabel + 2
 `cleanLabel + k + 2` (`fast_source_votes_before_at`, `slow_source_votes_before_at`), high origins
 at every label (`high_origin_votes_before_at`). -/
 private theorem member_votes {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {r : Nat}
     (hr : r = Healing.cleanLabel sp a + sp.k + 2) {C : AC.Blk sp.n (List (FG.Att sp.n))}
     {s : Nat} (hC : HealedOrigin tr H g r (r + sp.k - 1) C s b) :
@@ -181,7 +182,7 @@ label the two underlying origins compare (`sources_same_label_compatible_at`) an
 below its origin. -/
 private theorem member_compatible
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {r : Nat}
     (hr : r = Healing.cleanLabel sp a + sp.k + 2) {C C' : AC.Blk sp.n (List (FG.Att sp.n))}
     {s s' : Nat} (hC : HealedOrigin tr H g r (r + sp.k - 1) C s b)
@@ -240,7 +241,7 @@ the split-slot timing and the record cover give the seed: the frontier is the re
 `c_z < a`. -/
 theorem HandoverSeed.of_reset {T : Time} {r σ : Nat}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a T cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a T cm βK hold)
     (hr : r = Healing.cleanLabel sp a + sp.k + 2)
     (hσ : sp.ts σ + 8 * sp.Δ ≤ T) (hrσ : r + sp.k ≤ σ + 1)
     (hcov : ∃ t₁, t₁ ≤ T ∧ ∀ y n t, t₁ ≤ t → t ≤ T → y ∈ H t → Regimes.ReadPoint tr n t →
@@ -259,7 +260,7 @@ theorem HandoverSeed.of_reset {T : Time} {r σ : Nat}
   have hts (s j : Nat) : sp.ts (s + j : Nat) = sp.ts ((sp.slot a : Int) + 1) +
       4 * sp.Δ * ((s : Int) + j - (sp.slot a + 1)) := by
     simp only [ACParams.ts]; push_cast; ring
-  refine ⟨⟨a, hp, hr⟩, hp.catchUp, ⟨hσ, hrσ, ?_⟩, ⟨?_, ?_⟩, ?_, ?_, hcov⟩
+  refine ⟨⟨a, _, hp, hr⟩, hp.catchUp, ⟨hσ, hrσ, ?_⟩, ⟨?_, ?_⟩, ?_, ?_, hcov⟩
   · have h := hts (sp.slot a + 1) (sp.k + 4)
     rw [show sp.slot a + 1 + (sp.k + 4) = r by rw [hr, Healing.cleanLabel_eq]; omega] at h
     rw [h]
@@ -300,7 +301,7 @@ theorem handover_live_lock_label_at {T : Time} {r σ : Nat}
     {e : AC.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : AC.CastAt tr.projAC y i ℓ e) (hs : σ < e.msg.slot) :
     ∀ l ∈ AC.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), r ≤ l.slot := by
-  obtain ⟨a, hp, hr⟩ := hseed.reset
+  obtain ⟨a, _, hp, hr⟩ := hseed.reset
   have hrσ := hseed.timing.2.1
   have hrun := hp.run
   have hnc := hp.noColl
@@ -328,9 +329,10 @@ variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [Decidab
 
 /-- **The hand-over seed of a healed-safety query, with its record cover** healthy up to its bound
 `T`, with `0 ≤ heal ≤ T` and progress on `[ready, heal]`. The repair schedule supplies the reset `a`
-and the record cover from `t₀ = query + (4i + 6)Δ + 1` on; its reset premises take the run's FG
-service at `protoFGDelay`. The lock floor is `r = cleanLabel a + k + 2` and the split slot is
-`σ = slot T − 2`, so `t_σ + 8Δ = t_{slot T} ≤ T`. The schedule puts `drainTime a = t_{r+k}` at or
+and the record cover from `t₀ = query + (4i + 6)Δ + 1` on; its reset premises are the
+preparation's, at its FG delay and release hold. The lock floor
+is `r = cleanLabel a + k + 2` and the split slot is `σ = slot T − 2`, so
+`t_σ + 8Δ = t_{slot T} ≤ T`. The schedule puts `drainTime a = t_{r+k}` at or
 before the query, so `t_{r+k+2} < T`, `r + k ≤ σ` and `t_{r+k} ≤ t₀`. The canonical preparation
 query is at most `ready + (R + 8k + 20)Δ`, and the heal margin leaves `8Δ + 1` after the cover
 start: `t₀ + 8Δ + 1 ≤ heal`. -/
@@ -342,10 +344,9 @@ theorem handover_seed_cover_at
       (shapeProgress (goldilocks S) V)
       (K S A) Q.cap Q.index
       Q.ready Q.heal Q.run) :
-    ∃ r σ, Compose.Growing.HandoverSeed Q.trace Q.keys
+    ∃ r σ ΔF, 0 < ΔF ∧ Compose.Growing.HandoverSeed Q.trace Q.keys
         (runProposer S Q.run.2 Q.hn)
-        (digestOf S Q.run.2) Q.gst
-        (protoFGDelay (Model.pubOf Q.run.1)) Q.bound r σ
+        (digestOf S Q.run.2) Q.gst ΔF Q.bound r σ
         (cm := runCommittee S Q.run.2 Q.hn)
         (βK := (K S A).params.βK) ∧
       ∃ t₀, t₀ ≤ Q.bound ∧ Q.params.ts (r + Q.params.k : Nat) ≤ t₀ ∧
@@ -358,27 +359,12 @@ theorem handover_seed_cover_at
     S A V Q h0 hb hp
     (simTraceAt_signCalendar S Q.run.2 Q.hn _) (Obligations.signGapAt_of_assumptions A _ _)
     (Obligations.signGap_δt A) (Obligations.contract_heal_ge_reset_signGap A Q.cap Q.index)
-    (Obligations.fgSlots_signGap_le A)
+    A.fgSlots_releaseGap_signGap_le
   obtain ⟨D, -, -, hDq⟩ := healthy_repair_schedule_of_preparation_at
     S A V Q W Dprep
   obtain ⟨O⟩ := healthy_bounded_repairing_opening_at
       S A V Q hb hp D
-  have hreset : Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
-      (runProposer S Q.run.2 Q.hn)
-      (digestOf S Q.run.2) Q.gst
-        (protoFGDelay (Model.pubOf Q.run.1)) D.resetTime
-          Q.bound
-        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK :=
-    { D.reset with
-      sync := healthy_preparation_service_at Q.run Q.hn Q.valid Q.noCollision Q.bound_le
-        Q.healthy.1
-      timeoutDelay := fun s => by
-        have h := protoFGDelay_timeout_of_fgDelay S A V Q.run Q.hn Q.healthy.2.2
-        have hδ : (Q.params.toParams.δt : Time) = S.δt := rfl
-        rw [Q.params.slotTime_eq, Q.params.slotTime_eq]
-        push_cast
-        rw [hδ, mul_add]
-        linarith }
+  have hreset := D.reset
   have hΔ := Q.params.toParams.hΔ
   have hX : (1 : Time) ≤ (Q.index : Time) := by exact_mod_cast Q.index.pos
   have hdrain : Healing.drainTime Q.params D.resetTime ≤ D.query :=
@@ -421,7 +407,7 @@ theorem handover_seed_cover_at
     omega
   have hkk : Q.params.k = (S.params (Model.pubOf Q.run.fst) Q.hn).k := rfl
   refine ⟨Healing.cleanLabel Q.params D.resetTime + Q.params.k + 2, Q.params.slot Q.bound - 2,
-    Compose.Growing.HandoverSeed.of_reset hreset rfl ?_
+    D.deltaF, hreset.sync.deltaF, Compose.Growing.HandoverSeed.of_reset hreset rfl ?_
       (by omega) ⟨_, by linarith, hcov⟩,
     _, by linarith, by rw [hdr]; linarith [mul_le_mul_of_nonneg_right hX hΔ.le],
     by rw [hDq]; linarith, hcov⟩

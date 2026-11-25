@@ -39,14 +39,13 @@ theorem simTrace_covered :
   exact ⟨i, hi, h1, h2⟩
 
 /-- The node state inside the shape's state is the trace's state at the mapped cut
-(`simTrace_state_of`, with `node_of_tick_public` at the public ticks). -/
+(`simTrace_state_of`). -/
 theorem simTrace_state (_hf : rho.point.ConstantFaults) (hv : rho.ExecutionValid) :
     ∀ v, v ∉ rho.faultyAt 0 → ∀ i ≤ rho.events.length,
       (stateAt S rho hn v i).node =
         (simTrace S rho hn).state (rho.ownKey v) (cutMap S rho hn i) := by
   intro v hv'
   exact simTrace_state_of S rho hn hv (fun _ _ => hv')
-    (fun he hp => node_of_tick_public S rho hn hv v _ _ he hp)
 
 /-- The engine's Goldilocks state at a delivery: at the delivery's time, with the own key. -/
 private theorem deliver_state (hv : rho.ExecutionValid) {i : Nat} {v : V}
@@ -56,23 +55,38 @@ private theorem deliver_state (hv : rho.ExecutionValid) {i : Nat} {v : V}
   ⟨(now_eq_lastClock S rho hn hv v i).trans (lastClock_deliver S rho hv he),
     self_eq_ownKey S rho hn v i⟩
 
-/-- A cut of a delivery to an honest node: its delivered object is queued by the delivery's
-`process` (`process_relay`) and relayed by the delivery's gossip at its own time
+/-- A cut of a delivery to an honest node, not an own admission: its delivered object is queued
+by the delivery's `process` (`process_relay`) and relayed by the delivery's gossip at its own time
 (`deliver_relays`), as a carried object of a released relay wrapper. -/
 theorem relays_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : Nat}
     (hnode : (simTrace S rho hn).node k = y) (hl : (simTrace S rho hn).label k ≠ none)
     (hdel : ∀ r : CutRec (S.params (pubOf E) hn) (S.ro _), (allCuts S rho hn)[k]? = some r →
-      (r.pos = 0 ∧ ∃ ℓ, r.label = .fg ℓ) ∨ ∃ ℓ m, r.label = .ac ℓ ∧ ℓ.call = .message m) :
+      (r.pos = 0 ∧ ∃ ℓ, r.label = .fg ℓ) ∨ ∃ ℓ m, r.label = .ac ℓ ∧ ℓ.call = .message m)
+    (hown : ∀ r : CutRec (S.params (pubOf E) hn) (S.ro _), (allCuts S rho hn)[k]? = some r →
+      ∀ a, r.label = .fg (.attestation a) → ∀ v i t, r ∉ tickTail S rho hn v i t) :
     ∃ r : CutRec (S.params (pubOf E) hn) (S.ro _),
       (simTrace S rho hn).label k = some r.label ∧ (simTrace S rho hn).post k = r.post ∧
       ∀ x, ((∃ B, r.label = .fg (.block B true) ∧ x = blockObj (S.params (pubOf E) hn) B) ∨
           (∃ a, r.label = .fg (.attestation a) ∧ x = attObj a)) →
         ∃ cs, x ∈ cs ∧ rho.releases (rho.key y) (.mk .none (.data .relay) cs)
           ((simTrace S rho hn).time k) := by
-  obtain ⟨r, i, ev, hr, he, -, -, hidx, hn', ht, -, hlab⟩ := simTrace_cut S rho hn hl
+  obtain ⟨r, i, ev, hr, he, -, -, hidx, hn', ht, -, hlab⟩ := simTrace_cut_origin S rho hn hl
   have hmem := List.mem_of_getElem? hidx
-  obtain ⟨v, o, t, rfl⟩ := eq_deliver_of_cut S rho hn he hmem (hdel r hr)
-  simp only [Model.Event.node, Model.Event.time] at hn' ht
+  obtain ⟨v, o, t, rfl⟩ | ⟨w, τ, rfl, htl⟩ := eq_deliver_of_cut S rho hn he hmem (hdel r hr)
+  swap
+  · -- an own admission carries an attestation label, which `hown` excludes
+    refine ⟨r, hlab, by rw [simTrace_post, hr]; rfl, fun x hx => absurd htl ?_⟩
+    obtain ⟨-, a, ha⟩ := tickTail_label S rho hn htl
+    rcases hx with ⟨B, hB, -⟩ | ⟨a', ha', -⟩
+    · rw [ha] at hB; cases hB
+    · exact hown r hr a' ha' w i τ
+  -- a delivery's cuts are not own admissions (those belong to a tick)
+  replace hn' : (simTrace S rho hn).node k = rho.ownKey v := by
+    rcases hn' with h | h
+    · exact h
+    · obtain ⟨⟨_, hw⟩, _⟩ := (ownAdmitCut_iff S rho hn).mp h
+      cases hw
+  simp only [Model.Event.time] at ht
   have hkey : v = rho.key y := key_of_ownKey S rho (hn'.symm.trans hnode)
   subst hkey
   refine ⟨r, hlab, by rw [simTrace_post, hr]; rfl, fun x hx => ?_⟩

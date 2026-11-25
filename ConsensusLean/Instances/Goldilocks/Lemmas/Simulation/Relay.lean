@@ -575,27 +575,37 @@ theorem nodeTick_keeps {sign : Fin sp.n → Time → Bool} (st : State sp ro bin
   split_ifs <;> exact ⟨rfl, rfl⟩
 
 /-- The FG update keeps the relay queue and the own index. -/
-theorem fgUpdate_keeps (st : State sp ro binding) :
-    (fgUpdate st).relayBuf = st.relayBuf ∧ (fgUpdate st).self = st.self := by
-  rw [fgUpdate_eq]
+theorem fgUpdate_keeps {release : Fin sp.n → Time → Bool} (st : State sp ro binding) :
+    (fgUpdate st release).relayBuf = st.relayBuf ∧ (fgUpdate st release).self = st.self := by
+  rw [fgUpdate_eq st release]
   dsimp only
   split
   · exact ⟨rfl, rfl⟩
-  · split <;> exact ⟨rfl, rfl⟩
-
-/-- A poll step keeps the relay queue and the own index. -/
-theorem poll_keeps (st : State sp ro binding) (t : Time) :
-    (poll st t).1.relayBuf = st.relayBuf ∧ (poll st t).1.self = st.self := by
-  have h₁ : (if st.fgDue then fgUpdate st else st).relayBuf = st.relayBuf ∧
-      (if st.fgDue then fgUpdate st else st).self = st.self := by
-    split_ifs
-    · exact fgUpdate_keeps st
+  · split
     · exact ⟨rfl, rfl⟩
-  unfold poll
-  dsimp only
+    · split <;> exact ⟨rfl, rfl⟩
+
+/-- A batch poll keeps the relay queue and the own index. -/
+theorem poll_keeps {release : Fin sp.n → Time → Bool} (st : State sp ro binding) (t : Time) :
+    (pollBatch st t release).1.relayBuf = st.relayBuf ∧
+      (pollBatch st t release).1.self = st.self := by
+  have key : ∀ st' : State sp ro binding, (poll st' t release).1.relayBuf = st'.relayBuf ∧
+      (poll st' t release).1.self = st'.self := by
+    intro st'
+    have h₁ : (if st'.fgDue then fgUpdate st' release else st').relayBuf = st'.relayBuf ∧
+        (if st'.fgDue then fgUpdate st' release else st').self = st'.self := by
+      split_ifs
+      · exact fgUpdate_keeps st'
+      · exact ⟨rfl, rfl⟩
+    unfold poll
+    dsimp only
+    split
+    · exact h₁
+    · exact h₁
+  rw [pollBatch_fst]
   split
-  · exact h₁
-  · exact h₁
+  · rw [(key _).1, (key _).2, heldDrain_relayBuf, heldDrain_self]; exact ⟨rfl, rfl⟩
+  · exact key _
 
 /-- `recordOwn` keeps the own index; it keeps the relay queue unless the object is a relay
 wrapper, which empties it. -/
@@ -637,8 +647,8 @@ omit [DecidableEq V] in
 is kept by every duty of the compiled family. -/
 theorem act_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hprop : ∀ st s, Q st → Q (propose st s).1)
-    (hnt : ∀ st, Q st → Q (nodeTick st (S.sign (pubOf E))))
-    (hpoll : ∀ st t, Q st → Q (poll st t).1)
+    (hnt : ∀ st, Q st → Q { nodeTick st (S.sign (pubOf E)) with ticked := true })
+    (hpoll : ∀ st t, Q st → Q (pollBatch st t (S.release (pubOf E))).1)
     (st : (Model.protoOf (compiled (goldilocks S)) E).State)
     (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) (h : Q (st.1 hn)) :
     Q (((Model.protoOf (compiled (goldilocks S)) E).act st d).1.1 hn) := by
@@ -695,10 +705,11 @@ omit [DecidableEq V] in
 /-- A property of Goldilocks states kept by the clock, every duty step and every `recordOwn`
 is kept by a tick. -/
 theorem tick_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
-    (hclock : ∀ st t, Q st → Q { st with now := t })
+    (hclock : ∀ st t, Q st → Q { st with now := t, ticked := false })
     (hprop : ∀ st s, Q st → Q (propose st s).1)
-    (hnt : ∀ st, Q st → Q (nodeTick st (S.sign (pubOf E))))
-    (hpoll : ∀ st t, Q st → Q (poll st t).1) (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
+    (hnt : ∀ st, Q st → Q { nodeTick st (S.sign (pubOf E)) with ticked := true })
+    (hpoll : ∀ st t, Q st → Q (pollBatch st t (S.release (pubOf E))).1)
+    (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (v : V) (t : Time)
     (h : Q (nd.st.1 hn)) : Q ((rho.tick nd v t).1.st.1 hn) :=
   rho.tick_invariant (fun s => Q (s.1 hn)) nd v t
@@ -750,7 +761,7 @@ theorem stateAt_relay_seen (v : V) : ∀ i, ∀ x ∈ (stateAt S rho hn v i).rel
             (fun st => ∀ x ∈ st.relayBuf, x ∈ Model.closure (rho.stateBefore i w).seen)
             (fun _ _ h => h)
             (fun st s h => by rw [(propose_keeps st s).1]; exact h)
-            (fun st h => by rw [(nodeTick_keeps st).1]; exact h)
+            (fun st h => by dsimp only; rw [(nodeTick_keeps st).1]; exact h)
             (fun st t h => by rw [(poll_keeps st t).1]; exact h)
             (fun st o hs h => by
               rcases (recordOwn_keeps st o hs).1 with h' | h' <;> rw [h']
@@ -915,7 +926,7 @@ theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled
     rho.runDuties_invariant (fun s => x ∈ (s.1 hn).relayBuf) v _ _
       (fun s d _ hs => act_preserves S hn (fun st => x ∈ st.relayBuf)
         (fun st s h => by rw [(propose_keeps st s).1]; exact h)
-        (fun st h => by rw [(nodeTick_keeps st).1]; exact h)
+        (fun st h => by dsimp only; rw [(nodeTick_keeps st).1]; exact h)
         (fun st t h => by rw [(poll_keeps st t).1]; exact h) s d hs)
       (fun s o hs ho hq => by
         obtain ⟨k, r, m, cs, rfl⟩ := runDuties_signed S rho v _ _ o ho
@@ -930,7 +941,7 @@ theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled
         (fun s d _ hs => act_preserves S hn
           (fun st => ∀ y ∈ st.relayBuf, y ∈ Model.closure (nd.seen ++ [o]))
           (fun st s h => by rw [(propose_keeps st s).1]; exact h)
-          (fun st h => by rw [(nodeTick_keeps st).1]; exact h)
+          (fun st h => by dsimp only; rw [(nodeTick_keeps st).1]; exact h)
           (fun st t h => by rw [(poll_keeps st t).1]; exact h) s d hs)
         (fun s o hs _ hq => by
           change ∀ y ∈ (recordOwn (s.1 hn) o hs).relayBuf, _
@@ -964,21 +975,35 @@ theorem deliver_relays {j : Nat} {v : V} {o : (Model.protoOf (compiled
   · rename_i h
     exact False.elim (h (Bool.and_eq_true_iff.2 ⟨hc, dependencies_relay _ _ hseen⟩))
 
+/-- A cut of a tick tail is the one cut, at position `0`, of an own admission. -/
+theorem tickTail_label {v : V} {i : Nat} {t : Time} {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
+    (hr : r ∈ tickTail S rho hn v i t) : r.pos = 0 ∧ ∃ a, r.label = .fg (.attestation a) := by
+  obtain ⟨a, _ha, st, _s, _hs, hm⟩ := mem_tickTail S rho hn v i t hr
+  obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hm
+  obtain ⟨-, -, -, hpos, hlab⟩ := getElem_groupRecs _ _ _ _ _ _ _ k hk
+  have hk1 : k = 0 :=
+    Nat.lt_one_iff.mp (lt_of_lt_of_eq hk ((length_groupRecs _ _ _ _ _ _ _).trans rfl))
+  subst hk1
+  exact ⟨hpos, a, by rw [hlab]; rfl⟩
+
 /-- A cut of an engine event that is an FG cut at position `0`, or an `ac_on_message` cut, is a
-cut of a delivery. -/
+cut of a delivery or of a tick's tail (an own admission). -/
 theorem eq_deliver_of_cut {i : Nat}
     {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
     (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
     (hr : r ∈ eventCuts S rho hn i)
     (h : (r.pos = 0 ∧ ∃ ℓ, r.label = .fg ℓ) ∨
       ∃ ℓ m, r.label = .ac ℓ ∧ ℓ.call = .message m) :
-    ∃ v o t, ev = .deliver v o t := by
+    (∃ v o t, ev = .deliver v o t) ∨ ∃ v t, ev = .tick v t ∧ r ∈ tickTail S rho hn v i t := by
   cases ev with
-  | deliver v o t => exact ⟨v, o, t, rfl⟩
+  | deliver v o t => exact Or.inl ⟨v, o, t, rfl⟩
   | tick v t =>
-    exfalso
     by_cases hp : (S.params (pubOf E) hn).toParams.IsPublic t
     · rw [eventCuts_tick_public S rho hn i v t he hp] at hr
+      rcases List.mem_append.1 hr with hr | hr
+      swap
+      · exact Or.inr ⟨v, t, rfl, hr⟩
+      exfalso
       obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
       obtain ⟨-, -, -, hpos, hlab⟩ := getElem_groupRecs _ _ _ _ _ _ _ k hk
       obtain ⟨ℓ₀, pc, uc, hℓ₀, hcs, hpc, huc'⟩ :=
@@ -1021,7 +1046,7 @@ theorem eq_deliver_of_cut {i : Nat}
               (subst h; rw [hc] at hℓ₁; cases hℓ₁)
           · subst huc'; simp at h
     · rw [eventCuts_tick_other S rho hn i v t he hp] at hr
-      simp at hr
+      exact Or.inr ⟨v, t, rfl, hr⟩
   | restart v t =>
     exfalso
     rw [eventCuts_restart S rho hn i v t he] at hr

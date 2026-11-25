@@ -21,6 +21,7 @@ open AC (ACParams ReplayOrder Payload gbar)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+variable {hold : Time}
 
 /-- Delivered historical rows cross one height; honesty is read separately at every cut
 (`Generic.round_cross_at_from` at the Goldilocks requirements from the run's starts). -/
@@ -28,7 +29,7 @@ theorem round_cross_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b v : Time}
-    (hsvc : ResetService tr H g ΔF b) (hnr : NoRestartAfter tr H (gbar g))
+    (hsvc : ResetService tr H g ΔF b hold) (hnr : NoRestartAfter tr H (gbar g))
     {P D X : AC.Blk sp.n (List (FG.Att sp.n))} (hPH : P ∈ tr.HonestBlocksAt H)
     (hPD : Anc (tr.HonestBlocksAt H) P D) (hpar : X.parent = some D.root)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
@@ -48,7 +49,7 @@ theorem round_cross_at
         ((tr.state p (kX + 1)).fg.σ X.root).h :=
   Generic.round_cross_at_from hrun.toLocalRun
     (fun y => Compose.requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok hnc
-    hsvc.signedRow hnr hPH hPD hpar hp hX hf hv hvx hkb hage hrow
+    hsvc.signedRow hsvc.hold_le hnr hPH hPD hpar hp hX hf hv hvx hkb hage hrow
 
 end KernelProof
 

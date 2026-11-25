@@ -50,7 +50,7 @@ theorem seed_held_through_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   refine ⟨x, i, j, B, hB, hiT.trans hTb, fun y c ell hy hcall hc0 _ hF => ?_⟩
   rcases le_or_gt (tr.time c) T with hcT | hTc
   · exact hheld y c ell hy hcall hc0 hcT hF
-  obtain ⟨a, hp, hr⟩ := hseed.reset
+  obtain ⟨a, _, hp, hr⟩ := hseed.reset
   obtain ⟨hσT, hrσ, -⟩ := hseed.timing
   have hΔ := sp.toParams.hΔ
   -- the tick time `u = t_{r−k−3} = t_{slot a + 2}` is after `ḡ` and at most `T`

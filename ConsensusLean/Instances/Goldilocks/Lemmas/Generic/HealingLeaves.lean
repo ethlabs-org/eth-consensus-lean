@@ -516,7 +516,7 @@ section HZLowerBound
 
 variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
-  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State} {hold : Time}
 
 open AC (gbar)
 open Healing (FirstCutAfter cutZ)
@@ -570,7 +570,7 @@ theorem F_anc_of_hmax_le_at_from
 theorem held_of_relay_le_at_from
     (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b κ τ : Time}
-    (hsvc : Service tr H g ΔF b) (hcatch : CatchRun tr H g κ)
+    (hsvc : Service tr H g ΔF b hold) (hcatch : CatchRun tr H g κ)
     {x z : Fin P.n} {i m : Nat} (hτ0 : 0 ≤ τ) (hx : x ∈ H τ)
     (hz : z ∈ H (tr.time m))
     (hf : (H (max τ (tr.time m)))ᶜ.ncard < 2 * P.fg.q - P.n)
@@ -637,7 +637,7 @@ theorem exists_HZ_holder_at_from {g : Time} (hH : (H (cutZ P g)).Nonempty) {j : 
 has at least the snapshot height, for any node run under growing faults from any starts `ini`. -/
 theorem HZ_le_hmax_at_from (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
-    (hsvc : Service tr H g ΔF b) (hcatch : CatchRun tr H g κ)
+    (hsvc : Service tr H g ΔF b hold) (hcatch : CatchRun tr H g κ)
     (hH : (H (cutZ P g)).Nonempty) (hsnap : ∃ j, FirstCutAfter tr j (cutZ P g))
     {z : Fin P.n} {m : Nat} (hz : z ∈ H (tr.time m))
     (hf : (H (max (cutZ P g) (tr.time m)))ᶜ.ncard < 2 * P.fg.q - P.n)
@@ -694,7 +694,7 @@ section FrameWindowLeaf
 
 variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
-  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State} {hold : Time}
 
 open AC (gbar)
 open Healing.Growing (CatchRun)
@@ -732,7 +732,7 @@ theorem frameKey_lag_obs_from
     (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
     (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * P.fg.q - P.n)
-    (hsvc : Service tr H g ΔF b) (hcatch : CatchRun tr H g κ)
+    (hsvc : Service tr H g ΔF b hold) (hcatch : CatchRun tr H g κ)
     {x z : Fin P.n} {i m : Nat} (hx : x ∈ H (tr.time i)) (hz : z ∈ H (tr.time m))
     (him : tr.time i ≤ tr.time m) (hmb : tr.time m ≤ b)
     (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) P.Δ ≤ tr.time j)
@@ -761,7 +761,7 @@ theorem frameKey'_lag_obs_from
     (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
     (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * P.fg.q - P.n)
-    (hsvc : Service tr H g ΔF b) (hcatch : CatchRun tr H g κ)
+    (hsvc : Service tr H g ΔF b hold) (hcatch : CatchRun tr H g κ)
     {x z : Fin P.n} {i m : Nat} (hx : x ∈ H (tr.time i)) (hz : z ∈ H (tr.time m))
     (him : tr.time i ≤ tr.time m) (hmb : tr.time m ≤ b)
     (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) P.Δ ≤ tr.time j)
@@ -799,7 +799,7 @@ theorem exists_frameWindow_seq_of_service_at_from
     (h : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
     (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * P.fg.q - P.n)
-    (hsvc : Service tr H g ΔF b) (hcatch : CatchRun tr H g κ)
+    (hsvc : Service tr H g ΔF b hold) (hcatch : CatchRun tr H g κ)
     {lo lam T : Time} {hz : Nat} (len : Nat → Time)
     (hlen : ∀ v, 0 ≤ len v) (hlam : 0 ≤ lam) (hlo : gbar g + κ ≤ lo) (hTb : T ≤ b)
     (hrange : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i < T →
@@ -852,20 +852,22 @@ open Healing.Growing (NoRestartAfter)
 
 /-- An honestly signed row is processed strictly before a sufficiently late honest proposal,
 even if the signer has been compromised by then, under the signed-row service clause
-(`Service.signedRow`, `Healing.Growing.ResetService.signedRow`). -/
-theorem rows_delivered_service_at_from {g ΔF b v : Time}
+(`Service.signedRow`, `Healing.Growing.ResetService.signedRow`) at a hold within `ΔF`. -/
+theorem rows_delivered_service_at_from {g ΔF b v hold : Time}
     (hrows : ∀ x i att, x ∈ H (tr.time i) → tr.SignAt x i att →
+      (∀ k ≤ i, tr.SignAt x k att → tr.time k = tr.time i → hold ≠ 0 →
+        x ∈ H (max (tr.time i) g + hold)) →
       ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j → tr.time j ≤ b →
         tr.deadline y j (max (tr.time i) g) ΔF ≤ tr.time j →
         ∃ k ≤ j, tr.ProcessAttAt y k att ∧
           tr.time k < tr.deadline y k (max (tr.time i) g) ΔF)
-    (hnr : NoRestartAfter tr H (gbar g))
+    (hhold : hold ≤ ΔF) (hnr : NoRestartAfter tr H (gbar g))
     (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
     (hv : gbar g ≤ v) {p : Fin P.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
     {X : A.Blk} (hX : tr.ProposesAt p kX X)
     (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b) {y : Fin P.n} {k : Nat}
     (hy : y ∈ H (tr.time k)) {att : FG.Att P.n} (hsig : tr.SignAt y k att)
-    (hk : tr.time k ≤ v) : ∃ k' < kX, tr.ProcessAttAt p k' att := by
+    (hk : tr.time k ≤ v) (hyX : y ∈ H (tr.time kX)) : ∃ k' < kX, tr.ProcessAttAt p k' att := by
   have hdl0 : ∀ j ≤ kX, ∀ τ : Time,
       tr.deadline p j τ ΔF ≤ max τ (gbar g) + ΔF := fun j hj τ =>
     Compose.deadline_le_of_restarts
@@ -878,8 +880,8 @@ theorem rows_delivered_service_at_from {g ΔF b v : Time}
     have := max_le hg hv
     linarith
   obtain ⟨acc, hcall⟩ := hX.1.1
-  obtain ⟨k', hk', hproc, hlt⟩ := hrows y k att hy hsig p kX hp
-    ⟨_, hcall⟩ hkb (by linarith [hdl kX le_rfl])
+  obtain ⟨k', hk', hproc, hlt⟩ := hrows y k att hy hsig (fun _ _ _ _ _ =>
+    hrun.antitone (by linarith) hyX) p kX hp ⟨_, hcall⟩ hkb (by linarith [hdl kX le_rfl])
   refine ⟨k', lt_of_le_of_ne hk' fun h => ?_, hproc⟩
   subst h
   linarith only [hdl k' le_rfl, hlt, hvx]
@@ -900,20 +902,21 @@ theorem proposal_mem_at_from
   have hm := (Healing.accept_of_proposesAt_from hr hroot (hnc.upTo _) hp (hq p) hB').2.1
   rwa [Trace.upTo_state tr p (fun q hq => hrun.time_mono (by omega))] at hm
 
-/-- Leaf 5: delivered historical rows cross one height; honesty is read separately at every cut.
-For a run from starts `ini` at which the AC meets the requirements, with the genesis root and the
-signed-row service clause (`Service.signedRow`). -/
+/-- Leaf 5: delivered historical rows cross one height; honesty is read separately at every cut,
+from starts `ini` meeting the requirements, the genesis root, `Service.signedRow` and kept rows. -/
 theorem round_cross_at_from
     (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
     (hq : ∀ y, ({ A with initial := ini y } : NodeAC P).Requirements)
     (hroot : (P.genesisBlock A.genesisPayload).RootOk dg)
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b v : Time}
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b v hold : Time}
     (hrows : ∀ x i att, x ∈ H (tr.time i) → tr.SignAt x i att →
+      (∀ k ≤ i, tr.SignAt x k att → tr.time k = tr.time i → hold ≠ 0 →
+        x ∈ H (max (tr.time i) g + hold)) →
       ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j → tr.time j ≤ b →
         tr.deadline y j (max (tr.time i) g) ΔF ≤ tr.time j →
         ∃ k ≤ j, tr.ProcessAttAt y k att ∧
           tr.time k < tr.deadline y k (max (tr.time i) g) ΔF)
-    (hnr : NoRestartAfter tr H (gbar g))
+    (hhold : hold ≤ ΔF) (hnr : NoRestartAfter tr H (gbar g))
     {B D X : A.Blk} (hBH : B ∈ tr.HonestBlocksAt H)
     (hBD : Anc (tr.HonestBlocksAt H) B D) (hpar : X.parent = some D.root)
     {p : Fin P.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
@@ -1006,7 +1009,8 @@ theorem round_cross_at_from
     · have hσ := σ_eq_honest_at_from hrun hnc (hrun.time_nonneg c)
         (fun q hq => hrun.time_mono hq.le) hw hd hle hp hBw hBst
       rw [hσ] at hah haT
-      have hproc := rows_delivered_service_at_from hrows hnr hrun hv hp hX hvx hkb hyk hsig hk
+      have hproc :=
+        rows_delivered_service_at_from hrows hhold hnr hrun hv hp hX hvx hkb hyk hsig hk hy
       have hval := Healing.signAt_val (hrun.upTo (hrun.time_nonneg k)) hyk
         ((RunTrace.upTo_signAt _).mpr ⟨le_rfl, hsig⟩)
       rw [← hσD', hs]

@@ -165,7 +165,7 @@ theorem not_before_tick {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   obtain ⟨x₁, fgDue₁, hj₁⟩ := hT
   obtain ⟨c, hcc⟩ := hc
   obtain ⟨j₀, e, hg, hj₀i, hij₀⟩ := hrun.grouped y hy i c hcc
-  have hph := hrun.phase_order y hy y hy j₀ j₁ _ e (.tick x₁ fgDue₁) hg hj₁ (by omega)
+  have hph := hrun.phase_order y hy y hy j₀ j₁ _ e (.tick x₁ fgDue₁) hg hj₁ (by omega) (.inl rfl)
   cases e with
   | tick x fgDue =>
     exact absurd (hrun.tick_unique y hy j₀ j₁ _ ⟨x, fgDue, hg⟩ ⟨x₁, fgDue₁, hj₁⟩) (by omega)

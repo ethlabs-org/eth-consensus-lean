@@ -66,7 +66,8 @@ theorem accepted_in_view_of_releases (hv : rho.ExecutionValid) {v : V}
     blockObj (S.params (pubOf E) hn) B ∈ rho.ViewIdx v i := by
   obtain ⟨hnode, hlab⟩ := hacc
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, j, ev, _, he, hjk, _, hidx, hn', _, _, hlab'⟩ := simTrace_cut S rho hn hl
+  obtain ⟨r, j, ev, _, he, hjk, _, hidx, hn', _, _, hlab'⟩ :=
+    simTrace_cut S rho hn hl fun a h => by rw [hlab] at h; cases h
   have hji : j < i := by
     by_contra h
     have := cutMap_mono S rho hn (not_lt.1 h)
@@ -81,11 +82,16 @@ theorem accepted_in_view_of_releases (hv : rho.ExecutionValid) {v : V}
     have hp : (S.params (pubOf E) hn).toParams.IsPublic t := by
       by_contra hp
       rw [eventCuts_tick_other S rho hn j v t he hp] at hmem
-      simp at hmem
+      obtain ⟨-, a, ha⟩ := tickTail_label S rho hn hmem
+      rw [hrl] at ha
+      cases ha
     have hr0 : r.pos ≠ 0 := by
       intro hr0
-      obtain ⟨_, _, _, h⟩ := eq_deliver_of_cut S rho hn he hmem (Or.inl ⟨hr0, _, hrl⟩)
-      cases h
+      rcases eq_deliver_of_cut S rho hn he hmem (Or.inl ⟨hr0, _, hrl⟩) with
+        ⟨_, _, _, h⟩ | ⟨_, _, _, htl⟩
+      · cases h
+      · obtain ⟨-, a, ha⟩ := tickTail_label S rho hn htl
+        rw [hrl] at ha; cases ha
     exact rho.mem_viewIdx_iff.2 ⟨j, _, hji,
       Or.inl ⟨t, Or.inl he, hrel he hp r hmem B true hrl hr0⟩, .refl _⟩
   | deliver w o t =>

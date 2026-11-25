@@ -31,6 +31,7 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {sign : Fin sp.n → Time → Bool} {G : Nat}
 
+
 /-- `served_of_delivered`: a message processed before its recipient deadline is served. -/
 theorem goldilocks_served_of_delivered {tr : GoldilocksTrace sp ro} {y : Fin sp.n} {j : Nat}
     {τ : Time} {m : (goldilocksNode sp ro).Msg} (h : tr.MsgDeliveredBy y j τ τ m) :
@@ -65,7 +66,8 @@ theorem goldilocks_tips_at {cm : Time → Finset (Fin sp.n)} {proposer : Nat →
 
 /-- The local read-point row: at an honest read point, the confirmed read is held in the frame
 between the finalized root and the head (`goldilocks_tips_at`), hence in the FG tree. -/
-theorem goldilocks_localReadPoint (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val))
+theorem goldilocks_localReadPoint
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
     (hrun : GoldilocksRunData sp ro C.run sign G) : LocalReadPoint C where
   tips cm proposer dg H tr h b y i t hr := by
     rw [hrun.1] at h
@@ -82,7 +84,8 @@ interface. `served` is retained-evidence service (`goldilocks_served_of_delivere
 is `goldilocks_tips_at` at the reader's own cut time, and the durations are the data
 equations'. -/
 theorem goldilocksACCorrectLocal_of_healing
-    (h : goldilocksACHealing sp ro sign G) : goldilocksACCorrectLocal sp ro sign G := by
+    {Rg : Nat} (h : goldilocksACHealing sp ro sign G Rg) :
+    goldilocksACCorrectLocal sp ro sign G Rg := by
   obtain ⟨R, O, hO⟩ := h
   have hΔ := sp.toParams.hΔ
   refine ⟨{
@@ -109,7 +112,7 @@ theorem goldilocksACCorrectLocal_of_healing
         have hg := hr.1
         exact goldilocks_tips_at (cm := cm) ((goldilocksRunInterface_run_iff cm).mpr hr)
           (hg.time_nonneg i) (fun k hk => hg.time_mono hk.le) hy (tr.time i) },
-    hO, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+    hO, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 end Consensus.Goldilocks.Generic
 

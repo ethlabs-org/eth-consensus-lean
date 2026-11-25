@@ -37,11 +37,12 @@ open AC (ACParams ReplayOrder Payload gbar)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- A node honest at a public signing time has a signing tick there
 (`signTickAt_of_calendar_at` from the premises' run). -/
 theorem signTickAt_of_calendar {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     {y : Fin sp.n} {t : Time} (hy : y ∈ H t) (ht : 0 ≤ t)
     (hpub : sp.toParams.IsPublic t) (hawake : tr.awake y t) (hsign : sign y t = true) :
@@ -52,7 +53,7 @@ theorem signTickAt_of_calendar {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 its restarts are before `ḡ`, before the slot preceding that time (`joined_of_restart_le_at`). -/
 theorem ResetPremisesUpTo.joined_at_of_ready
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {t : Time} {u : Nat} (hy : y ∈ H t)
     (hu : sp.ts (sp.slot (gbar g) + 1 : Nat) ≤ sp.ts u)
     (ht : sp.ts u + 6 * sp.Δ ≤ t) (htb : t ≤ b) {i : Nat} (htime : tr.time i = t) :
@@ -64,7 +65,7 @@ theorem ResetPremisesUpTo.joined_at_of_ready
 a joined `ac_to_fg` call. Proposal cuts may occur before this call in the same tick. -/
 theorem ResetPremisesUpTo.toFG_call_of_sign
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     {y : Fin sp.n} {t : Time} {u : Nat} (hy : y ∈ H t)
     (hu : sp.ts (sp.slot (gbar g) + 1 : Nat) ≤ sp.ts u)

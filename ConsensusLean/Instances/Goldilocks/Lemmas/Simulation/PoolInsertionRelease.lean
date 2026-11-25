@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.VoteForwardQueue
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Queue
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.HeldRefusal
 import ConsensusLean.Lemmas.Model.Credentials
 
 public section
@@ -66,23 +67,26 @@ theorem tick_pool_insertion_queued (hv : rho.ExecutionValid) {v : V} {i : Nat} {
   have hsel := poll_selected S rho hv v
   have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
   have hw := hv.tick_awake v t (List.mem_of_getElem? he)
-  let st := (poll (poll { stateAt S rho hn v i with now := t } t.toNat).1 t.toNat).1
+  let st₀ : State (S.params (pubOf E) hn) (S.ro _) S.vote :=
+    { stateAt S rho hn v i with now := t, ticked := false }
+  let st := (pollBatch (pollBatch st₀ t.toNat (S.release (pubOf E))).1 t.toNat
+    (S.release (pubOf E))).1
   have hn' : st.node = (stateAt S rho hn v i).node := by
     dsimp only [st]
-    rw [poll_node_of_fgDue _ _ (poll_fgDue _ _)]
-    exact poll_node_of_fgDue { stateAt S rho hn v i with now := t } _
-      (fgDue_eq_false S rho hn v i)
+    rw [pollBatch_node_of_fgDue _ _ (pollBatch_fgDue _ _)
+      (pollFlush_of_unticked _ (by rw [pollBatch_ticked]))]
+    exact pollBatch_node_of_fgDue st₀ _ (fgDue_eq_false S rho hn v i) (pollFlush_of_unticked _ rfl)
   have hg : VoteGate st := voteGate_of_eq S hn (stateAt_voteGate S rho hn hv v i)
     (by rw [hn']) (by dsimp only [st]; rw [poll_voteIO, poll_voteIO])
-  have hshape : shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t) = nodeTick st (S.sign
-    (pubOf E)) := by
+  have hshape : shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t) =
+      { nodeTick st (S.sign (pubOf E)) with ticked := true } := by
     rw [atProposal_shape S rho hn v _ t hsel, ← stateAt_eq S rho hn v i]
   have hbase :
       m ∈ (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).node.ac.pool m.slot →
       ∃ w, (t, m, w) ∈
         (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).voteForwards := by
     rw [hshape]
-    have ht' : st.now = t := by dsimp only [st]; rw [poll_now, poll_now]
+    have ht' : st.now = t := by dsimp only [st]; rw [pollBatch_now, pollBatch_now]
     intro hm
     have hq := nodeTick_pool_insertion_queued st hg m (hn' ▸ hold) hm
     rwa [ht'] at hq
@@ -131,7 +135,7 @@ theorem delivery_voteForward_released_of (hv : rho.ExecutionValid) {v : V}
     rw [hshape]; exact (process_self _ _ _).trans (self_eq_ownKey S rho hn v i)
   have hfg : (shapeOf S hn nd).fgDue = false := by
     rw [hshape]; exact (process_fgDue _ _ _).trans (fgDue_eq_false S rho hn v i)
-  have hpre : pollPre (shapeOf S hn nd) = shapeOf S hn nd := by
+  have hpre : pollPre (shapeOf S hn nd) (S.release (pubOf E)) = shapeOf S hn nd := by
     rw [pollPre_eq, hfg]; rfl
   have hav : ∀ q ∈ (shapeOf S hn nd).voteForwards, ∃ z, q.2.2 = voteObj q.2.1 z ∧
       (voteObj q.2.1 z ∈ Model.closure nd.seen ∨
@@ -184,7 +188,8 @@ theorem delivery_pool_insertion_queued (hv : rho.ExecutionValid) {v : V}
     (now_eq_lastClock S rho hn hv v i).trans (lastClock_of_deliver S rho hv v he)
   have hnode : (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node =
       (stateAt S rho hn v (i + 1)).node := by
-    rw [node_of_deliver S rho hn hv v hv' i o t he]
+    rw [node_of_deliver S rho hn hv v hv' i o t he
+      ((heldRefused_inv S rho hn hv v i).resolve_left (not_lastRestart_deliver S rho hv he))]
     rw [process_eq (stateAt S rho hn v i) o (Model.digests rho.hash o)]
     erw [foldl_processOne_node (sp := S.params (pubOf E) hn) (ro := S.ro _)
       (runProposer S rho hn) (digestOf S rho)]
@@ -506,9 +511,10 @@ theorem queuedChecked_nodeTick {sign : Fin sp.n → Time → Bool} (st : State s
   · exact h
 
 omit [DecidableEq V] in
-theorem queuedChecked_poll (st : State sp ro S.vote) u : QueuedChecked S (poll st u).1 := by
+theorem queuedChecked_poll {release : Fin sp.n → Time → Bool} (st : State sp ro S.vote) u :
+    QueuedChecked S (pollBatch st u release).1 := by
   intro q hq
-  rw [poll_voteForwards] at hq
+  rw [pollBatch_fst, poll_voteForwards] at hq
   cases hq
 
 end QueuedChecks

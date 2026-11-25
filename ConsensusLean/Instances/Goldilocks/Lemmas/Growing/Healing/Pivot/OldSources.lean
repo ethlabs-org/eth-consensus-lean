@@ -24,6 +24,7 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g : Time}
+variable {hold : Time}
 
 /-- A historically held block with the genesis root is below every historically held block. -/
 theorem genesis_root_anc_at
@@ -49,7 +50,7 @@ variable {ΔF a b : Time}
 /-- The finalized cache compares with a high origin at independently honest cuts. -/
 theorem finalized_compatible_high_origin_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c)) (hcb : tr.time c ≤ b)
     {x : Fin sp.n} {i j : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j O) (hib : tr.time i ≤ b) :
@@ -82,7 +83,7 @@ theorem finalized_compatible_high_origin_at
 /-- After the reset, a finalized cache is below an actual high origin written by the horizon. -/
 theorem finalized_below_high_origin_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     (ha : a ≤ tr.time k) (hkb : tr.time k ≤ b) :
     ∃ x r l B, HighOrigin tr H g x r l B ∧ tr.time r ≤ tr.time k ∧ tr.time r ≤ b ∧

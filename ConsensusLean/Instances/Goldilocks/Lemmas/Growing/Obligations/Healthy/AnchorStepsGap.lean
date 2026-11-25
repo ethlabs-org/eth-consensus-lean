@@ -38,11 +38,12 @@ open AC (ACParams ReplayOrder Payload gbar)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+variable {hold : Time}
 
 /-- The facts of a post-drain honest anchor that `report_cover_of_unanimous_at` reads. -/
 private theorem anchor_facts_at {g ΔR a b : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK) {s : Nat}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold) {s : Nat}
     {A : AC.Blk sp.n (List (FG.Att sp.n))}
     (hA : Healing.Growing.HonestProposalRun tr H proposer s A)
     (hR : Healing.drainTime sp a ≤ sp.ts s) :
@@ -65,14 +66,16 @@ private theorem anchor_facts_at {g ΔR a b : Time}
 /-- **One route-A anchor step (gap `c`) under a signing delay `D`.** Honest proposals `A` at
 slot `s` and `X` at slot `s + c`, `2 ≤ c`, after the drain and by the horizon, with
 `H_z + 2 ≤ σ[A].h` at a holder honest at its cut, rows supplied within `D` of the reports
-(`RowSupplyWithin`), rows signed by `t_s + 6Δ + D` delivered to `X`'s proposer (`hdel`) and a
-higher report by then seen by it (`hcr`): `AnchorStepAt tr H A X`. -/
-private theorem anchorStep_of_reports_within_at {g ΔR a b gS ΔF D : Time}
+by signers honest a hold later (`RowSupplyWithin`), rows signed by `t_s + 6Δ + D` delivered to
+`X`'s proposer (`hdel`), and a higher report by then seen by it
+(`hcr`): `AnchorStepAt tr H A X`. -/
+private theorem anchorStep_of_reports_within_at {g ΔR a b gS ΔF D hold : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
+    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
+    (hhold : 0 ≤ hold)
     {s c s' : Nat} (hc2 : 2 ≤ c) (hs' : s' = s + c)
-    (hsup : Healing.Growing.RowSupplyWithin tr H g b D) (hD : 0 ≤ D)
+    (hsup : Healing.Growing.RowSupplyWithin tr H g b D hold) (hD : 0 ≤ D)
     {G : Nat}
     (hdel : sp.ts s + 6 * sp.Δ + G * sp.Δ + D + ΔF ≤ sp.ts s')
     (hcr : sp.ts s + 6 * sp.Δ + G * sp.Δ + D + sp.Δ ≤ sp.ts s')
@@ -129,8 +132,9 @@ private theorem anchorStep_of_reports_within_at {g ΔR a b gS ΔF D : Time}
       (fun _ hq => hrun.time_mono hq.le) hy hAp hAy]
     exact hy2
   have hTb : sp.ts s + 6 * sp.Δ + G * sp.Δ ≤ b := by linarith
-  have hTDb : sp.ts s + 6 * sp.Δ + G * sp.Δ + D ≤ b := by linarith
-  refine anchorStep_of_or_crossed_at hrun hs
+  have hTDb : sp.ts s + 6 * sp.Δ + G * sp.Δ + D + hold ≤ b := by
+    linarith [hs.sync.hold_le]
+  refine anchorStep_of_or_crossed_at hrun hs hhold
     (v := sp.ts s + 6 * sp.Δ + G * sp.Δ + D) (by linarith) hpX
     hpropX (by rw [htX]; linarith) (by rw [htX]; exact hb) hpar hPr hAPr ?_
   intro heq
@@ -208,7 +212,7 @@ private theorem anchorStep_of_reports_within_at {g ΔR a b gS ΔF D : Time}
   obtain ⟨hPrJ, hPrhj⟩ := Healing.J_hj_eq_of_anc hr hAPr heq
   refine ⟨ids, hcard, fun z hz => ?_⟩
   obtain ⟨hzd, att, j, hsig, -, hah, haT, hato, hjt, hfin⟩ := hids z hz
-  refine ⟨j, att, hrun.antitone (hjt.trans (le_max_right _ _)) hzd, hsig, hjt, ?_, ?_, hato,
+  refine ⟨j, att, hrun.antitone (le_max_right _ _) hzd, hsig, hjt, ?_, ?_, hato,
     fun hbd _ => ?_⟩
   · rw [hah, hEh, heq]
   · rw [haT, hEr, hPrTh]
@@ -218,13 +222,14 @@ private theorem anchorStep_of_reports_within_at {g ΔR a b gS ΔF D : Time}
     rw [hfin hbE, hEJ, hEhj, hPrJ, hPrhj]
 
 /-- One anchor step with responsive reports and rows supplied within `D`. -/
-theorem anchorStep_gap_within_at {g ΔR a b gS ΔF D : Time}
+theorem anchorStep_gap_within_at {g ΔR a b gS ΔF D hold : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
     (hsign : RunTrace.GrowingAllTicksSign tr proposer dg H)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
+    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
+    (hhold : 0 ≤ hold)
     {s c s' : Nat} (hc2 : 2 ≤ c) (hs' : s' = s + c)
-    (hsup : Healing.Growing.RowSupplyWithin tr H g b D) (hD : 0 ≤ D)
+    (hsup : Healing.Growing.RowSupplyWithin tr H g b D hold) (hD : 0 ≤ D)
     (hdel : sp.ts s + 6 * sp.Δ + D + ΔF ≤ sp.ts s')
     (hcr : sp.ts s + 6 * sp.Δ + D + sp.Δ ≤ sp.ts s')
     {A X : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -235,7 +240,7 @@ theorem anchorStep_gap_within_at {g ΔR a b gS ΔF D : Time}
     (hh : ∃ y k, y ∈ H (tr.time k) ∧ A ∈ (tr.state y k).fg.tree ∧
       Healing.Growing.HZ tr H g + 2 ≤ ((tr.state y k).fg.σ A.root).h) :
     AnchorStepAt tr H A X := by
-  apply anchorStep_of_reports_within_at hp hs hc2 hs' hsup hD (G := 0)
+  apply anchorStep_of_reports_within_at hp hs hhold hc2 hs' hsup hD (G := 0)
     (by simpa using hdel) (by simpa using hcr) _ hA hX hR hb hgS hh
   intro hAH hAs hu hAg hun hgu hR hb
   simpa only [Nat.cast_zero, zero_mul, add_zero] using
@@ -243,11 +248,12 @@ theorem anchorStep_gap_within_at {g ΔR a b gS ΔF D : Time}
       (by simpa using hb)
 
 /-- One anchor step using reports delayed by the signing calendar, with no additional row delay. -/
-theorem anchorStep_gap_delayed_at {g ΔR a b gS ΔF : Time}
+theorem anchorStep_gap_delayed_at {g ΔR a b gS ΔF hold : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
     {sign : Fin sp.n → Time → Bool} (hcal : RunTrace.SignCalendarAt tr proposer dg H sign)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
+    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
+    (hhold : 0 ≤ hold)
     {s c s' G : Nat} (hc2 : 2 ≤ c) (hs' : s' = s + c)
     (hgap : SignGapAt sp.toParams sign G (sp.ts s + 6 * sp.Δ))
     (hdel : sp.ts s + 6 * sp.Δ + G * sp.Δ + ΔF ≤ sp.ts s')
@@ -260,7 +266,8 @@ theorem anchorStep_gap_delayed_at {g ΔR a b gS ΔF : Time}
     (hh : ∃ y k, y ∈ H (tr.time k) ∧ A ∈ (tr.state y k).fg.tree ∧
       Healing.Growing.HZ tr H g + 2 ≤ ((tr.state y k).fg.σ A.root).h) :
     AnchorStepAt tr H A X := by
-  apply anchorStep_of_reports_within_at hp hs hc2 hs' hp.rowSupplyWithin_zero le_rfl
+  apply anchorStep_of_reports_within_at hp hs hhold hc2 hs' (hp.rowSupplyWithin_zero hhold)
+    le_rfl
     (G := G) (by simpa using hdel) (by linarith) _ hA hX hR hb hgS hh
   intro hAH hAs hu hAg hun hgu hR hb
   exact Healing.Growing.report_cover_delayed_of_unanimous_at hp hcal hgap
@@ -270,11 +277,12 @@ theorem anchorStep_gap_delayed_at {g ΔR a b gS ΔF : Time}
 and `X` at slot `s + c`, `2 ≤ c`, after the drain and by the horizon, with `H_z + 2 ≤ σ[A].h` at
 a holder honest at its cut: `AnchorStepAt tr H A X`. The same-tick FG update supplies the rows
 (`anchorStep_gap_within_at` at `D = 0`). -/
-theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
+theorem anchorStep_gap_at {g ΔR a b gS ΔF hold : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
     (hsign : RunTrace.GrowingAllTicksSign tr proposer dg H)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b)
+    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
+    (hhold : 0 ≤ hold)
     {s c s' : Nat} (hc2 : 2 ≤ c) (hs' : s' = s + c)
     (hdel : sp.ts s + 6 * sp.Δ + ΔF ≤ sp.ts s')
     {A X : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -290,7 +298,8 @@ theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
     rw [hs', ts_add_gap (sp := sp)]
     have : (2 : Time) ≤ c := by exact_mod_cast hc2
     linarith [mul_le_mul_of_nonneg_left this (mul_nonneg zero_le_four hΔ.le)]
-  exact anchorStep_gap_within_at hp hsign hs hc2 hs' hp.rowSupplyWithin_zero le_rfl
+  exact anchorStep_gap_within_at hp hsign hs hhold hc2 hs' (hp.rowSupplyWithin_zero hhold)
+    le_rfl
     (by simpa using hdel)
     (by linarith) hA hX hR hb hgS hh
 
@@ -298,7 +307,7 @@ theorem anchorStep_gap_at {g ΔR a b gS ΔF : Time}
 read at its proposer just after the proposal cut. -/
 private theorem height_next_at {g ΔR a b : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
     {s s' : Nat}
     {A X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hA : Healing.Growing.HonestProposalRun tr H proposer s A)
@@ -327,12 +336,14 @@ private theorem height_next_at {g ΔR a b : Time}
 `P i` at the slots `s₀ + [0, c, 2c, 3c]`, `2 ≤ c`, after the drain, `t_{s₀+3c} ≤ b`, the HS
 premises with `6Δ + ΔF ≤ 4Δ·c` and `ḡ_S ≤ t_{s₀} + 6Δ`, and `H_z + 2 ≤ σ[P₀].h` at a holder
 honest at its cut: `AnchorStepAt tr H (P i) (P (i+1))` for `i < 3`. -/
-theorem anchorSteps_gap_within_at {g ΔR a b gS ΔF d : Time}
+theorem anchorSteps_gap_within_at {g ΔR a b gS ΔF d hold : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
     (hsign : RunTrace.GrowingAllTicksSign tr proposer dg H)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b) {c : Nat} (hc2 : 2 ≤ c)
-    (hsup : Healing.Growing.RowSupplyWithin tr H g b d) (hd : 0 ≤ d)
+    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
+    (hhold : 0 ≤ hold)
+    {c : Nat} (hc2 : 2 ≤ c)
+    (hsup : Healing.Growing.RowSupplyWithin tr H g b d hold) (hd : 0 ≤ d)
     (hdel : 6 * sp.Δ + d + ΔF ≤ 4 * sp.Δ * c)
     (hrelay : 7 * sp.Δ + d ≤ 4 * sp.Δ * c) {s₀ : Nat}
     {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
@@ -360,16 +371,16 @@ theorem anchorSteps_gap_within_at {g ΔR a b gS ΔF d : Time}
         sp.ts s + 6 * sp.Δ + d + sp.Δ ≤ sp.ts t := by
     rw [ht, ts_add_gap (sp := sp)]
     exact ⟨by linarith, by linarith⟩
-  have st0 := anchorStep_gap_within_at hp hsign hs hc2 rfl hsup hd
+  have st0 := anchorStep_gap_within_at hp hsign hs hhold hc2 rfl hsup hd
     (hbudget (s := s₀) rfl).1 (hbudget (s := s₀) rfl).2 hP0 hP1 hR
     ((hmono _ _ (by omega)).trans hb) hgS hh₀
   have e1 : s₀ + 2 * c = (s₀ + c) + c := by omega
-  have st1 := anchorStep_gap_within_at hp hsign hs hc2 e1 hsup hd
+  have st1 := anchorStep_gap_within_at hp hsign hs hhold hc2 e1 hsup hd
     (hbudget e1).1 (hbudget e1).2 hP1 hP2
     (hR.trans (hmono _ _ (by omega))) ((hmono _ _ (by omega)).trans hb)
     (by linarith [hmono s₀ (s₀ + c) (by omega)]) h1
   have e2 : s₀ + 3 * c = (s₀ + 2 * c) + c := by omega
-  have st2 := anchorStep_gap_within_at hp hsign hs hc2 e2 hsup hd
+  have st2 := anchorStep_gap_within_at hp hsign hs hhold hc2 e2 hsup hd
     (hbudget e2).1 (hbudget e2).2 hP2 hP3
     (hR.trans (hmono _ _ (by omega))) hb
     (by linarith [hmono s₀ (s₀ + 2 * c) (by omega)]) h2
@@ -378,11 +389,13 @@ theorem anchorSteps_gap_within_at {g ΔR a b gS ΔF d : Time}
   exacts [st0, st1, st2]
 
 /-- The three same-tick route-A anchor steps. -/
-theorem anchorSteps_gap_at {g ΔR a b gS ΔF : Time}
+theorem anchorSteps_gap_at {g ΔR a b gS ΔF hold : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
     (hsign : RunTrace.GrowingAllTicksSign tr proposer dg H)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b) {c : Nat} (hc2 : 2 ≤ c)
+    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
+    (hhold : 0 ≤ hold)
+    {c : Nat} (hc2 : 2 ≤ c)
     (hdel : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * c) {s₀ : Nat}
     {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer
@@ -394,17 +407,19 @@ theorem anchorSteps_gap_at {g ΔR a b gS ΔF : Time}
     ∀ i : Fin 3, AnchorStepAt tr H (P i.castSucc) (P i.succ) := by
   have hc : (2 : Time) ≤ c := by exact_mod_cast hc2
   have hΔ := sp.toParams.hΔ
-  exact anchorSteps_gap_within_at hp hsign hs hc2 hp.rowSupplyWithin_zero le_rfl
+  exact anchorSteps_gap_within_at hp hsign hs hhold hc2 (hp.rowSupplyWithin_zero hhold) le_rfl
     (by simpa only [add_zero] using hdel)
     (by linarith [mul_le_mul_of_nonneg_left hc (show 0 ≤ 4 * sp.Δ by linarith)]) hP hR hb hgS hh₀
 
 /-- The three anchor steps with a signing-gap bound at each public anchor. Reports carry
 the calendar delay; the same-report rows have delay zero. -/
-theorem anchorSteps_gap_delayed_at {g ΔR a b gS ΔF : Time}
+theorem anchorSteps_gap_delayed_at {g ΔR a b gS ΔF hold : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔR a b cm βK hold)
     {sign : Fin sp.n → Time → Bool} (hcal : RunTrace.SignCalendarAt tr proposer dg H sign)
-    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b) {c G : Nat} (hc2 : 2 ≤ c)
+    (hs : Healing.Growing.HSSharedUpTo tr H dg gS ΔF b hold)
+    (hhold : 0 ≤ hold)
+    {c G : Nat} (hc2 : 2 ≤ c)
     (hdel : 6 * sp.Δ + G * sp.Δ + ΔF ≤ 4 * sp.Δ * c)
     (hrelay : 7 * sp.Δ + G * sp.Δ ≤ 4 * sp.Δ * c) {s₀ : Nat}
     (hgap : ∀ s, s₀ ≤ s → s ≤ s₀ + 2 * c →
@@ -433,16 +448,16 @@ theorem anchorSteps_gap_delayed_at {g ΔR a b gS ΔF : Time}
         sp.ts s + 7 * sp.Δ + G * sp.Δ ≤ sp.ts t := by
     rw [ht, ts_add_gap (sp := sp)]
     exact ⟨by linarith, by linarith⟩
-  have st0 := anchorStep_gap_delayed_at hp hcal hs hc2 rfl
+  have st0 := anchorStep_gap_delayed_at hp hcal hs hhold hc2 rfl
     (hgap s₀ le_rfl (by omega)) (hbudget (s := s₀) rfl).1 (hbudget (s := s₀) rfl).2
     hP0 hP1 hR ((hmono _ _ (by omega)).trans hb) hgS hh₀
   have e1 : s₀ + 2 * c = (s₀ + c) + c := by omega
-  have st1 := anchorStep_gap_delayed_at hp hcal hs hc2 e1
+  have st1 := anchorStep_gap_delayed_at hp hcal hs hhold hc2 e1
     (hgap (s₀ + c) (by omega) (by omega)) (hbudget e1).1 (hbudget e1).2 hP1 hP2
     (hR.trans (hmono _ _ (by omega))) ((hmono _ _ (by omega)).trans hb)
     (by linarith [hmono s₀ (s₀ + c) (by omega)]) h1
   have e2 : s₀ + 3 * c = (s₀ + 2 * c) + c := by omega
-  have st2 := anchorStep_gap_delayed_at hp hcal hs hc2 e2
+  have st2 := anchorStep_gap_delayed_at hp hcal hs hhold hc2 e2
     (hgap (s₀ + 2 * c) (by omega) le_rfl) (hbudget e2).1 (hbudget e2).2 hP2 hP3
     (hR.trans (hmono _ _ (by omega))) hb
     (by linarith [hmono s₀ (s₀ + 2 * c) (by omega)]) h2

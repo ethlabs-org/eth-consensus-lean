@@ -40,6 +40,7 @@ open AC (ACParams ReplayOrder Payload gbar)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+variable {hold : Time}
 
 /-- **The parent of a proposal is held**: the parent of a block proposed at a cut of a node
 honest at it is in the node's tree at the cut (the static `proposal_parent_held` on the prefix
@@ -61,11 +62,13 @@ theorem proposal_parent_held_at
 /-- **The anchor height step, attestations only at the old height**, under growing faults. An
 honest anchor `X` (proposal cut `kX`, parent `Pr`) with `A ⪯ Pr` in the proposer's store: when
 `σ[Pr]` is still at the height of `A`, a quorum of target attestations for its entry signed by `v`,
-each by a signer honest at its signing, gives `σ[A].h + 1 ≤ σ[X].h` on the post-store. -/
+each by a signer still honest at `v + hold` (the release hold of the HS premises), gives
+`σ[A].h + 1 ≤ σ[X].h` on the post-store. -/
 theorem anchor_height_step_or_crossed_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g ΔF v b : Time}
-    (hs : Healing.Growing.HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    {g ΔF v b hold : Time}
+    (hs : Healing.Growing.HSSharedUpTo tr H dg g ΔF b hold) (hhold : 0 ≤ hold) (hv : gbar g ≤ v)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
     {A X Pr : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b)
@@ -73,7 +76,7 @@ theorem anchor_height_step_or_crossed_at
     (hAPr : (tr.state p kX).fg.Anc A Pr)
     (hrows : ((tr.state p kX).fg.σ Pr.root).h = ((tr.state p kX).fg.σ A.root).h →
       ∃ S : Finset (Fin sp.n), sp.toParams.fg.q ≤ S.card ∧
-      ∀ y ∈ S, ∃ k att, y ∈ H (tr.time k) ∧ tr.SignAt y k att ∧ tr.time k ≤ v ∧
+      ∀ y ∈ S, ∃ k att, y ∈ H (v + hold) ∧ tr.SignAt y k att ∧ tr.time k ≤ v ∧
         att.h = ((tr.state p kX).fg.σ Pr.root).h ∧
         att.T = ((tr.state p kX).fg.σ Pr.root).Th ∧ att.timeout = false ∧
         (((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
@@ -91,8 +94,8 @@ theorem anchor_height_step_or_crossed_at
   obtain ⟨-, hXm, he⟩ := accept_of_proposesAt_at hrun hnc hp hX
   by_cases heq : ((tr.state p kX).fg.σ Pr.root).h = ((tr.state p kX).fg.σ A.root).h
   · obtain ⟨S, hS, hsig⟩ := hrows heq
-    have hj := (Healing.Growing.justify_of_signed_rows'_upTo_at hrun hs hv hp hX hvx hkb hpar
-      S hS hsig).1
+    have hj := (Healing.Growing.justify_of_signed_rows'_upTo_at hrun hs hhold hv hp hX hvx hkb
+      hpar S hS hsig).1
     have hlt := Healing.Store.hj_lt_h hr1 hXm
     rw [← he] at hlt
     omega
@@ -109,8 +112,9 @@ theorem anchor_height_step_or_crossed_at
 `AnchorStepAt tr H A X`, observed at the proposer of `X` at the proposal cut and just after it. -/
 theorem anchorStep_of_or_crossed_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g ΔF v b : Time}
-    (hs : Healing.Growing.HSSharedUpTo tr H dg g ΔF b) (hv : gbar g ≤ v)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+    {g ΔF v b hold : Time}
+    (hs : Healing.Growing.HSSharedUpTo tr H dg g ΔF b hold) (hhold : 0 ≤ hold) (hv : gbar g ≤ v)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
     {A X Pr : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hvx : v + ΔF ≤ tr.time kX) (hkb : tr.time kX ≤ b)
@@ -118,7 +122,7 @@ theorem anchorStep_of_or_crossed_at
     (hAPr : (tr.state p kX).fg.Anc A Pr)
     (hrows : ((tr.state p kX).fg.σ Pr.root).h = ((tr.state p kX).fg.σ A.root).h →
       ∃ S : Finset (Fin sp.n), sp.toParams.fg.q ≤ S.card ∧
-      ∀ y ∈ S, ∃ k att, y ∈ H (tr.time k) ∧ tr.SignAt y k att ∧ tr.time k ≤ v ∧
+      ∀ y ∈ S, ∃ k att, y ∈ H (v + hold) ∧ tr.SignAt y k att ∧ tr.time k ≤ v ∧
         att.h = ((tr.state p kX).fg.σ Pr.root).h ∧
         att.T = ((tr.state p kX).fg.σ Pr.root).Th ∧ att.timeout = false ∧
         (((tr.state p kX).fg.σ Pr.root).previousHeightJustified →
@@ -127,7 +131,8 @@ theorem anchorStep_of_or_crossed_at
           att.fin = some (((tr.state p kX).fg.σ Pr.root).hj,
             ((tr.state p kX).fg.σ Pr.root).J))) :
     AnchorStepAt tr H A X := by
-  have hst := anchor_height_step_or_crossed_at hrun hs hv hp hX hvx hkb hpar hPr hAPr hrows
+  have hst := anchor_height_step_or_crossed_at hrun hs hhold hv hp hX hvx hkb hpar hPr hAPr
+    hrows
   obtain ⟨ha, hXm, he⟩ := accept_of_proposesAt_at hrun hs.noColl hp hX
   obtain ⟨-, -, -, ht⟩ := accept_next_at hrun hp ha
   have h0 := hrun.time_nonneg kX
@@ -159,7 +164,7 @@ theorem report_slot_le_time_at
 of height above `h` at every holder honest at an observation time after the holder's cuts. -/
 theorem crossed_parents_above_upTo_at {g ΔF a b : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {z : Fin sp.n} {r : Nat} (hz : z ∈ H (tr.time r)) {ell : ACLabel (goldilocksNode sp ro)}
     {C : AC.Blk sp.n (List (FG.Att sp.n))} (hto : AC.ToFGAt tr.projAC z r ell C)
     (hR : Healing.drainTime sp a ≤ tr.time r) {h : Nat}

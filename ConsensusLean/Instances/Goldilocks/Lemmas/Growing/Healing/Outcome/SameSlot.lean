@@ -21,11 +21,12 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- Every bounded same-label raw source is below the actual unanimous head. -/
 theorem same_slot_source_below_unanimous_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {r u : Nat} (hx : x ∈ H (tr.time r))
     {B P : AC.Blk sp.n (List (FG.Att sp.n))}
     (horig : (∃ CV, AC.FastLockAt tr.projAC x r u B CV) ∨ AC.SlowLockAt tr.projAC x r u B)

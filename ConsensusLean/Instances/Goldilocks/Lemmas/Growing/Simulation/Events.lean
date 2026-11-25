@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Sched
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EventGroups
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.GoldilocksStateAgreement
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeRunSchedule
+import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeTickTail
 
 public section
 
@@ -21,7 +22,7 @@ open Consensus.Model (pubOf)
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- A public engine tick is exactly one canonical trace group. -/
+/-- A public engine tick starts with its canonical tick group, followed by its admission tail. -/
 theorem simTraceAt_tick_public_group (hv : rho.ExecutionValid)
     {v : V} {i : Nat} {t : Time} (he : rho.events[i]? = some (.tick v t))
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t) :
@@ -32,13 +33,18 @@ theorem simTraceAt_tick_public_group (hv : rho.ExecutionValid)
         (Node.exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
         ((simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i)) t
         (.tick (encodeTxs (Model.mempool rho.inbox v t))
-          (S.sign (pubOf E) (rho.ownKey v) t))).2.length := by
+          (S.sign (pubOf E) (rho.ownKey v) t))).2.length + (tickTail S rho hn v i t).length := by
   obtain ⟨htrace, hcut⟩ := simTrace_encoding S rho hn
   obtain ⟨hpr, hdg⟩ := runProposer_digestOf S rho hn
-  rw [simTraceAt_eq, htrace, hcut, hpr, hdg]
-  simpa only [traceEncoding_adapter_sign] using
-    NodeAsChainShape.CanonicalTrace.tick_public_group (traceEncoding S hn) rho
-      (traceEncoding_lawful S hn) hv he hp
+  refine ⟨?_, ?_⟩
+  · rw [simTraceAt_eq, htrace, hcut, hpr, hdg]
+    simpa only [traceEncoding_adapter_sign] using
+      (NodeAsChainShape.CanonicalTrace.tick_public_group (traceEncoding S hn) rho
+        (traceEncoding_lawful S hn) hv he hp).1
+  · have hi := (List.getElem?_eq_some_iff.mp he).1
+    have hst := simTraceAt_state_all S rho hn hv v i hi.le
+    rw [cutMap_succ, eventCuts_tick_public S rho hn i v t he hp,
+      List.length_append, length_groupRecs, hst, Nat.add_assoc]
 
 /-- A node honest and awake at a public time ticks there. -/
 theorem simTraceAt_tick_of_awake (hv : rho.ExecutionValid)

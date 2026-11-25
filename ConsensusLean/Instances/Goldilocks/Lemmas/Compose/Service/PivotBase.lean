@@ -300,6 +300,7 @@ theorem proposal_no_optimistic_of {ini} (hrun : GoldilocksRun proposer dg H tr i
     have hph : eu.phase ≤ 1 := by
       rcases lt_trichotomy g gi with h | rfl | h
       · have := hl.phase_order _ huH _ hp g gi (sp.ts s) eu _ hg hgi h
+          (.inr (not_ownPublicationAt_of_ac_cut hg hk₁))
         simpa [Node.Event.phase] using this
       · obtain ⟨_, hn₁⟩ := (group_call hg).1
         obtain ⟨_, hn₂⟩ := (group_call hgi).1

@@ -20,12 +20,12 @@ namespace Consensus.Goldilocks.Healing
 open AC (ACParams ReplayOrder Vote Payload)
 open Compose
 
-/-- Reset service projects to AC synchrony on any source window after GST. Only
-message and relay service are used; signed-attestation processing times play no role. -/
-theorem ResetService.syncAC {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+/-- The AC service projects to AC synchrony on any source window after GST. Only message and
+relay service are used. -/
+theorem ACService.syncAC {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
-    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF b lo hi : Time}
-    (hs : ResetService tr H g ΔF b) {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g lo hi : Time}
+    (hs : ACService tr H g) {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hg : g ≤ lo) : SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) lo hi tr.projAC := by
   have h := hrun.toLocalRun
   constructor
@@ -54,6 +54,15 @@ theorem ResetService.syncAC {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att s
     apply acRelay_of_acceptNext (σ := tr.time (i' + 1)) hc ?_ (fun _ _ => accept_next h hy)
     simpa only [he] using hs.relay x hx i' B hi' hgi y hy j ⟨_, projAC_callAt.1 hc⟩
       (by rw [he, ← projAC_deadline]; exact hdl) (hfr ▸ hanc)
+
+/-- Reset service projects to AC synchrony on any source window after GST (`ACService.syncAC`);
+signed-attestation processing times play no role. -/
+theorem ResetService.syncAC {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF b lo hi : Time}
+    (hs : ResetService tr H g ΔF b) {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+    (hg : g ≤ lo) : SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) lo hi tr.projAC :=
+  hs.toACService.syncAC hrun hg
 
 /-! ### One honest node over an AC trace -/
 

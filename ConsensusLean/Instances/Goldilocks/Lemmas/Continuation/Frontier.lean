@@ -134,7 +134,7 @@ theorem healed_frontier_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {T : Time} {r σ : Nat} (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK))
       {b : Time}
-    (hTb : T ≤ b) (hsvc : Healing.Growing.ResetService tr H g ΔF b)
+    (hTb : T ≤ b) (hsvc : Healing.Growing.ACResetService tr H g ΔF)
     (hB : SleepyBoundsFrom tr H r b) (hcv : ChainConvictedBelow tr H)
     {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :
@@ -142,7 +142,7 @@ theorem healed_frontier_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
       HealedVotesBelow tr H g r (r + sp.k - 1) s b := by
   have hΔ := sp.toParams.hΔ
   obtain ⟨-, hrσ, hgr⟩ := hseed.timing
-  have hsync := sleepyServiceFrom_of_reset hrun hsvc hseed.catchRun (by linarith)
+  have hsync := sleepyServiceFrom_of_reset hrun hsvc hseed.catchRun (b := b) (by linarith)
   have htr := ts_le_ts (sp := sp) (show r ≤ σ + 1 by omega)
   refine frontier_at hrun hnc hK hsync (hKB.of_le (show r ≤ σ + 1 by omega)) le_rfl (by omega)
     (by linarith) (fun s hs y i ℓ e hy hc hes _ l hl _ =>

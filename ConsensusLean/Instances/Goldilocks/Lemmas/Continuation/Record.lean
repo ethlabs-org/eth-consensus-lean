@@ -50,7 +50,7 @@ theorem seeded_record_cover_at (hrun : Growing.GoldilocksRun proposer dg H tr in
     (hnc : NoCollRun dg tr)
     {T : Time} {r σ : Nat} (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK))
       {t₁ b : Time}
-    (_hTb : T ≤ b) (_hsvc : Healing.Growing.ResetService tr H g ΔF b)
+    (_hTb : T ≤ b) (_hsvc : Healing.Growing.ACResetService tr H g ΔF)
     (_hB : SleepyBoundsFrom tr H r b) (_hcv : ChainConvictedBelow tr H)
     (_hdt : sp.ts (r + sp.k : Nat) ≤ t₁)
     (hcov : ∀ y n t, t₁ ≤ t → t ≤ T → y ∈ H t → Regimes.ReadPoint tr n t →

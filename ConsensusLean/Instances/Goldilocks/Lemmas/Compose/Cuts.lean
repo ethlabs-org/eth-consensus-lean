@@ -135,8 +135,7 @@ private theorem attest_chain (st : NodeState A) (t : Time) (C : A.Blk) :
   · rename_i h
     exact chain_single self ⟨h, rfl⟩
   · rename_i a Λ' h
-    exact .cons (st₁ := { st with record := Λ' }) ⟨h, rfl, rfl⟩
-      (chain_single self ⟨rfl, rfl, rfl⟩)
+    exact chain_single self ⟨h, rfl, rfl⟩
 
 /-- The cuts of a tick step form a cut chain. -/
 theorem tickStep_chain (st : NodeState A) (t : Time) (x : Nat) (s : TickStep) :
@@ -229,7 +228,7 @@ theorem tick_block_cut_fields (st : NodeState A) (t : Time) (x : Nat) (fgDue : B
     split at hm
     · simp [acToFG] at hm
     · simp only [attest, List.mem_cons, acToFG, reduceCtorEq, false_or] at hm
-      split at hm <;> simp [onAttestation] at hm
+      split at hm <;> simp at hm
 
 end Consensus.Goldilocks.Compose
 

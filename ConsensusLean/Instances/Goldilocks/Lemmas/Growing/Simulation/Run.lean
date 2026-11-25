@@ -90,14 +90,14 @@ theorem simTraceAt_goldilocksRun (hv : rho.ExecutionValid) :
   time_mono := simTraceAt_time_mono S rho hn hv
   finite := by rw [simTraceAt_eq]; exact simTrace_finite S rho hn hv
   phase_order := by
-    intro y y' j j' t e e' hy hy' hg hg' hj
+    intro y y' j j' t e e' hy hy' hg hg' hj hown
     have ht : 0 ≤ t := by
       have ht := (hg.2.1 0 (List.length_pos_of_ne_nil hg.1)).2.1
       rw [Nat.add_zero] at ht
       exact ht ▸ simTraceAt_time_nonneg S rho hn hv j
-    rw [simTraceAt_eq] at hg hg'
+    rw [simTraceAt_eq] at hg hg' hown
     exact simTrace_phase_order S rho hn hv y (honest_zero S rho hv ht hy)
-      y' (honest_zero S rho hv ht hy') j j' t e e' hg hg' hj
+      y' (honest_zero S rho hv ht hy') j j' t e e' hg hg' hj hown
   tick_public := by
     intro y j t hy hg
     have ht : 0 ≤ t := by

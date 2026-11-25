@@ -31,11 +31,14 @@ theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
   have hEC := eventCuts_tick_public S rho hn i v t he hp
   have hlab : r.label ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
       (stateAt S rho hn v i).node t
-      (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t))).2 := by
+      (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E) (rho.ownKey v) t))).2 ∨
+      r ∈ tickTail S rho hn v i t := by
     rw [hEC] at hr
-    obtain ⟨m, hm, rfl⟩ := List.getElem_of_mem hr
-    obtain ⟨-, -, -, -, hl⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm
-    rw [hl]; exact List.getElem_mem _
+    rcases List.mem_append.mp hr with hr | hr
+    · obtain ⟨m, hm, rfl⟩ := List.getElem_of_mem hr
+      obtain ⟨-, -, -, -, hl⟩ := getElem_groupRecs _ _ _ _ _ _ _ m hm
+      rw [hl]; exact Or.inl (List.getElem_mem _)
+    · exact Or.inr hr
   have hv' : v ∉ rho.faultyAt 0 := event_honest_zero S rho hv he
   obtain ⟨N4, N5, Q, R4, F, G, heq, -, -, -, -, hQlen, hQ, -, -⟩ :=
     tick_public_analysis S rho hn hv hv' he hp (preNode_releasable_at S rho hn hv he)
@@ -52,12 +55,7 @@ theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
       pollObj S rho v q ∈ rho.releasesAt i := by
     intro q hq hk
     rw [heq]
-    rcases hpos q hq with h | h
-    · refine List.mem_append_left _ (List.mem_append_left _ (List.mem_append_right _ ?_))
-      apply List.mem_append_left
-      rw [h]; simp [relHead_eq, hk]
-    · refine List.mem_append_left _ (List.mem_append_right _ ?_)
-      rw [h]; simp [relHead_eq, hk]
+    rcases hpos q hq with h | h <;> simp [h, relHead_eq, hk]
   refine ⟨fun B acc hB hpos => ?_, fun ℓ hℓ m hm => ?_⟩
   · obtain ⟨q, hq, hqp, hql, _⟩ := eventCuts_source S rho hn i hr
     have h := NodeAsChainShape.CanonicalTrace.tick_block_released (traceEncoding S hn) rho
@@ -74,7 +72,9 @@ theorem tick_block_vote_releases_at (hv : rho.ExecutionValid)
         cast_eq]
       rfl
     rwa [hobj] at h
-  · have hcut := hℓ ▸ hlab
+  · have hcut : Cut.ac ℓ ∈ _ := hℓ ▸ hlab.resolve_right fun ht => by
+      obtain ⟨-, a, ha⟩ := tickTail_label S rho hn ht
+      rw [ha] at hℓ; cases hℓ
     have hval := emits_val_of_mem_exec _ _ _ _ _ _ hcut m hm
     have hk := exec_emit_selected S rho hn hv hcut m hm
     obtain ⟨z, hz⟩ := stateAt_ownToken_exists S rho hn hv v i m.msg

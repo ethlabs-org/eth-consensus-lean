@@ -228,7 +228,7 @@ theorem tick_block_payload {st : NodeState A} {t : Time} {x : Nat} {fgDue : Bool
     split at h
     · simp [acToFG] at h
     · simp only [acToFG, List.mem_cons, reduceCtorEq, false_or, attest] at h
-      split at h <;> simp [Node.onAttestation] at h
+      split at h <;> simp at h
 
 /-- An `fg_attest` cut lies in a tick, after the earlier cuts of that tick. -/
 theorem tick_of_attest (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) {k : Nat} {C : A.Blk}

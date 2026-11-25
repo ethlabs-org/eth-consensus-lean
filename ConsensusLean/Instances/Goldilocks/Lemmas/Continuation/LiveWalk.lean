@@ -56,7 +56,7 @@ structure SeededRun (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
   run : Growing.GoldilocksRun proposer dg H tr ini
   noColl : NoCollRun dg tr
   seed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)
-  service : Healing.Growing.ResetService tr H g ΔF b
+  service : Healing.Growing.ACResetService tr H g ΔF
   bounds : SleepyBoundsFrom tr H r b
   inv : SeededInvariant tr H g r (r + sp.k - 1) t₁ b
   conv : ChainConvictedBelow tr H

@@ -33,10 +33,11 @@ open AC (ACParams ReplayOrder Payload Vote)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- The static AC run of the prefix through `d` of the nodes honest at `d`. -/
 private theorem acRun_prefix {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {d : Time}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {d : Time}
     (hd : 0 ≤ d) :
     AC.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d))
       (AC.committeeStart sp.genesisRoot (Generic.dictOfTime sp cm)) := by
@@ -46,7 +47,7 @@ private theorem acRun_prefix {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 /-- **Two optimistic sources of one label are compatible**, for writers honest at their writes
 by `b`. The quorum intersection is charged at the later write. -/
 theorem optimistic_sources_compatible_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {r q s : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time q))
     (hrb : tr.time r ≤ b) (hqb : tr.time q ≤ b) (hgs : AC.gbar g ≤ sp.ts s)
     {C D : AC.Blk sp.n (List (FG.Att sp.n))} {CV DV : Set (Vote sp.n)}
@@ -112,7 +113,7 @@ theorem optimistic_sources_compatible_at {cm : Time → Finset (Fin sp.n)} {βK 
 /-- **An optimistic source has an honest supporting vote no later than its write**, for a
 writer honest at its write by `b`. The supporter is honest at the write. -/
 theorem optimistic_supporter_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r)) (hrb : tr.time r ≤ b)
     (hgs : AC.gbar g ≤ sp.ts s)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}

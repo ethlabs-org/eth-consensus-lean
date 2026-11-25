@@ -24,10 +24,9 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 /-- Every bounded engine state matches the canonical event expansion. -/
 theorem simTraceAt_state_all (hv : rho.ExecutionValid) (v : V) :
     ∀ i ≤ rho.events.length, (stateAt S rho hn v i).node =
-      (simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i) := by
+        (simTraceAt S rho hn).state (rho.ownKey v) (cutMap S rho hn i) := by
   rw [simTraceAt_eq]
   exact simTrace_state_of S rho hn hv (fun he hnode => hnode ▸ event_honest_zero S rho hv he)
-    (fun he hp => node_of_tick_public_at S rho hn hv v _ _ he hp)
 
 /-- Time-local state interface: the trace state at the mapped cut is the engine node
 state observed while that node is honest. -/

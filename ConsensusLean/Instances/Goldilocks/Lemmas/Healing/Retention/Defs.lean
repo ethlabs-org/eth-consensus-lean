@@ -89,6 +89,28 @@ structure ResetService (g ΔF b : Time) : Prop where
       ∃ k ≤ j, tr.ProcessAttAt y k att ∧
         tr.time k < tr.deadline y k (max (tr.time i) g) ΔF
 
+/-- The AC part of the reset service: message, block and relay delivery, without the
+signed-attestation clause. -/
+structure ACService (g : Time) : Prop where
+  message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmitAt x i m →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j →
+      tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
+      tr.MsgDeliveredBy y j (tr.time i) (max (tr.time i) g) m
+  block : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B ∨ tr.OwnBlockAt x i B →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j →
+      tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
+      tr.BlockDeliveredBy y j (tr.time i) (max (tr.time i) g) B
+  relay : ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → g ≤ tr.time i →
+    ∀ y ∈ H, ∀ j, tr.IsCall y j →
+      tr.deadline y j (max (tr.time i) g) sp.Δ ≤ tr.time j →
+      Anc (tr.HonestBlocks H) (tr.state y j).fg.F B →
+      tr.BlockAcceptedBy y j (max (tr.time i) g) B
+
+/-- The reset service's AC part. -/
+theorem ResetService.toACService {g ΔF b : Time} (hs : ResetService tr H g ΔF b) :
+    ACService tr H g :=
+  ⟨hs.message, hs.block, hs.relay⟩
+
 /-- Full GST supplies the weaker signed-attestation service. -/
 theorem ResetService.of_gst {g ΔF b : Time} (h : tr.GSTRun H ΔF g) :
     ResetService tr H g ΔF b := by

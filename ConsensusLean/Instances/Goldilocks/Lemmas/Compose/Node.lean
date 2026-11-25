@@ -79,7 +79,7 @@ private theorem update_no_block {st : NodeState A} {t : Time} {x : Nat} {ℓ : A
     · simp only [Node.acToFG, Cut.ac.injEq] at h
       rw [h]
     · simp only [Node.attest] at h
-      split at h <;> simp [Node.onAttestation] at h
+      split at h <;> simp at h
 
 /-- **C0.5 (b), the AC sees only accepted blocks.** -/
 theorem ac_sees_accepted_blocks : ACSeesAcceptedBlocks proposer dg self := by

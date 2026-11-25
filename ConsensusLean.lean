@@ -568,6 +568,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Group
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GuardIdle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealedReadAncestry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HealingRows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.HeldRelease
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.LocalRows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
@@ -583,6 +584,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Queue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.ReceiverService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RegimeTransport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Release
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.ReleasedPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.ResetHealBudget
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run
@@ -804,6 +806,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnProposalP
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnReleaseProcessing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ProposerGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.QuerySlot
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ReleaseGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ResetCoefficients
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ResetOfDrainRounds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.SentForward
@@ -814,6 +817,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowAnchor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowEntry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowParents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowPlacement
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AdmitsAtTick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttGuard
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttUnforgeable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.BlockView
@@ -829,7 +833,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.EventGroups
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Forwarding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingInvariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ForwardingWrappers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.GoldilocksReady
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.GoldilocksStateAgreement
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.HeldFlush
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.HeldQueue
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.HeldRefusal
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.HeldSign
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Interface
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeBlockView
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeDeliveryOrigin
@@ -837,8 +846,11 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventory
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeInventorySchedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLaws
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLawsInstance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeOpLawsLawful
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodePool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeRunSchedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeStateAgreement
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.NodeTickTail
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Outbox
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PayloadSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.PoolInsertionRelease
@@ -854,12 +866,16 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReceiptTraver
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Release
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseZero
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseZeroTrace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RoleBinding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunBlocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSchedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSimulates
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Shape
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.SignBridge
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.SignCalendar
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.SignCut
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Steps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.TraceDefs

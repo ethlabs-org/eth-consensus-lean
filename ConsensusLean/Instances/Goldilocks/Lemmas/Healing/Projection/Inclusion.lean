@@ -194,7 +194,7 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
         have h2 := (hgi.2.1 0 (List.length_pos_iff.2 hgi.1)).2.2.2.2
         rw [h1] at h2
         simp [Node.exec, Node.onMessage, Node.acCall, onTick_eq, Node.tickStep] at h2
-      · exact absurd (h.phase_order y hy y hy ji jj _ _ _ hgi hgj h1)
+      · exact absurd (h.phase_order y hy y hy ji jj _ _ _ hgi hgj h1 (.inl rfl))
           (by simp [Node.Event.phase])
     by_contra hle
     have hqjlen := (List.getElem?_eq_some_iff.1 hqj).1
@@ -221,7 +221,7 @@ theorem projection_driven_of_run {ini : Fin sp.n → (goldilocksNode sp ro).Stat
         · have := Compose.group_phase hgi hgj
           rw [hph] at this
           simp [Node.Event.phase] at this
-        · have := h.phase_order y hy y hy ji jj _ _ _ hgi hgj h1
+        · have := h.phase_order y hy y hy ji jj _ _ _ hgi hgj h1 (.inl rfl)
           rw [hph] at this
           simp [Node.Event.phase] at this
       by_contra hle

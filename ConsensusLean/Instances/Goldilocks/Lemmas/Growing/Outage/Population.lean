@@ -260,9 +260,9 @@ theorem outage_bounds {proposer : Nat → Fin sp.n}
 
 /-- Population bounds from precisely the local supplier's L9 participation premises. -/
 theorem outage_bounds_of_local
-    {C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val)}
+    {fgHold : Time} {C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold}
     {sign : Fin sp.n → Time → Bool} {G : Nat}
-    (hC : GoldilocksLocalData sp ro C sign G) {cm : Time → Finset (Fin sp.n)}
+    {Rg : Nat} (hC : GoldilocksLocalData sp ro C sign G Rg) {cm : Time → Finset (Fin sp.n)}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
     (hrun : C.run.Run cm proposer dg H tr) (hb : RunPointBinding tr H p)
     (hp : p.EtaSleepyOn C.θ C.outageEta (max C.catchUp (C.outageEta - 1))

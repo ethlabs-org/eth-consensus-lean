@@ -79,9 +79,9 @@ abbrev Extends (_W : FinalWindowDataAt S A V Q)
 /-- Per-cut reset premises, catch-up, and honest anchors of the same window. -/
 def AnchorRun : Prop :=
   ∃ (proposer : Nat → Fin Q.params.n)
-    (dg : Digest (List (FG.Att Q.params.n)) (AC.Payload Q.params.n)) (g ΔF a b : Time),
+    (dg : Digest (List (FG.Att Q.params.n)) (AC.Payload Q.params.n)) (g ΔF a b hold : Time),
     Healing.Growing.ResetPremisesUpTo Q.trace Q.keys proposer dg g ΔF a b
-        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK ∧
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK hold ∧
     Healing.Growing.CatchRun Q.trace Q.keys g (2 * Q.params.Δ) ∧
     (∀ i, Healing.Growing.HonestProposalRun Q.trace Q.keys proposer
       (W.start + ![0, W.gap, 2 * W.gap, 3 * W.gap] i) (W.block i)) ∧
@@ -102,9 +102,9 @@ def CacheCoverage : Prop :=
 
 theorem anchorRun_iff : W.AnchorRun ↔
     ∃ (proposer : Nat → Fin Q.params.n)
-      (dg : Digest (List (FG.Att Q.params.n)) (AC.Payload Q.params.n)) (g ΔF a b : Time),
+      (dg : Digest (List (FG.Att Q.params.n)) (AC.Payload Q.params.n)) (g ΔF a b hold : Time),
       Healing.Growing.ResetPremisesUpTo Q.trace Q.keys proposer dg g ΔF a b
-        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK ∧
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK hold ∧
       Healing.Growing.CatchRun Q.trace Q.keys g (2 * Q.params.Δ) ∧
       (∀ i, Healing.Growing.HonestProposalRun Q.trace Q.keys proposer
         (W.start + ![0, W.gap, 2 * W.gap, 3 * W.gap] i) (W.block i)) ∧

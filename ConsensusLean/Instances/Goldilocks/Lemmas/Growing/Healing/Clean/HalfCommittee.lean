@@ -28,11 +28,12 @@ open AC (ACParams ReplayOrder Payload gbar)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- **CS2 at a slot committee** from the committee fault bound: fewer than half of the slot-`s`
 committee is faulty at any `d ∈ [0, b]`, for a slot starting from `ḡ` by `b`. -/
 theorem ResetPremisesUpTo.committee_cs2_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {s : Nat}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {s : Nat}
     (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b) {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
     2 * ((Generic.dictOfTime sp cm).committee s ∩ (H d)ᶜ).ncard < sp.committeeSize :=
   hp.committeeFaults.committee_cs2_at hp.beta_le hp.committee_pos (hp.committeeFacts.hsize s)
@@ -40,7 +41,7 @@ theorem ResetPremisesUpTo.committee_cs2_at {cm : Time → Finset (Fin sp.n)} {β
 
 /-- A slot committee from `ḡ` by `b` has a member honest at any `d ∈ [0, b]` (CS2). -/
 theorem ResetPremisesUpTo.committee_honest_nonempty_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {s : Nat}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {s : Nat}
     (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b) {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
     ((Generic.dictOfTime sp cm).committee s ∩ H d).Nonempty := by
   have hf := hp.committee_cs2_at hgs hsb hd0 hdb
@@ -51,7 +52,7 @@ theorem ResetPremisesUpTo.committee_honest_nonempty_at {cm : Time → Finset (Fi
 
 /-- **Half of the committee size votes** after the reset's cut, counted at `t ≥ t_m + Δ`. -/
 theorem ResetPremisesUpTo.half_committee_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {m : Nat} (hm : cutZ sp.toParams g ≤ sp.ts m) {t : Time} (hmt : sp.ts m + sp.Δ ≤ t)
     (htb : t ≤ b) :
     sp.committeeSize ≤ 2 * {z | z ∈ H t ∧ ∃ q e, z ∈ H (tr.time q) ∧ AC.VoteAt tr.projAC z q e ∧

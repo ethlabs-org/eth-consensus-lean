@@ -69,11 +69,11 @@ theorem shapeOf_act_propose (st : (Model.protoOf (compiled (goldilocks S)) E).St
   rw [goldilocks_propose_eq S _ st.1 s, dite_eq_left hn]
 
 omit [DecidableEq V] in
-/-- The engine's `pollPropose` duty is the shape's `nodeTick`. -/
+/-- The engine's `pollPropose` duty is the shape's `nodeTick`, marking the tick step done. -/
 theorem shapeOf_act_pollPropose (st : (Model.protoOf (compiled (goldilocks S)) E).State)
     (t : Nat) :
     ((Model.protoOf (compiled (goldilocks S)) E).act st (.pollPropose t)).1.1 hn =
-      nodeTick (st.1 hn) (S.sign (pubOf E)) := by
+      { nodeTick (st.1 hn) (S.sign (pubOf E)) with ticked := true } := by
   change ((goldilocks S (pubOf E)).pollPropose st.1 t).1 hn = _
   rw [goldilocks_pollPropose_eq S _ st.1 t, dite_eq_left hn]
 
@@ -81,10 +81,9 @@ omit [DecidableEq V] in
 /-- The engine's `poll` duty is the shape's `poll`. -/
 theorem shapeOf_act_poll (st : (Model.protoOf (compiled (goldilocks S)) E).State) (t : Nat) :
     ((Model.protoOf (compiled (goldilocks S)) E).act st (.poll t)).1.1 hn =
-      (poll (st.1 hn) t).1 := by
+      (pollBatch (st.1 hn) t (S.release (pubOf E))).1 := by
   change ((goldilocks S (pubOf E)).pollBatch st.1 t).1 hn = _
   rw [goldilocks_pollBatch_eq S _ st.1 t, dite_eq_left hn]
-  rfl
 
 omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `recordOwn`, `propose`, `nodeTick` and `poll` is
@@ -92,8 +91,8 @@ preserved by every duty step of the engine. -/
 theorem dutyStep_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
     (hprop : ∀ st s, Q st → Q (propose st s).1)
-    (htick : ∀ st, Q st → Q (nodeTick st (S.sign (pubOf E))))
-    (hpoll : ∀ st t, Q st → Q (poll st t).1) (v : V)
+    (htick : ∀ st, Q st → Q { nodeTick st (S.sign (pubOf E)) with ticked := true })
+    (hpoll : ∀ st t, Q st → Q (pollBatch st t (S.release (pubOf E))).1) (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) (h : Q (shapeOf S hn nd)) :
     Q (shapeOf S hn (rho.dutyStep v nd d).1) := by
@@ -122,8 +121,8 @@ preserved by running a list of duties. -/
 theorem runDuties_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
     (hprop : ∀ st s, Q st → Q (propose st s).1)
-    (htick : ∀ st, Q st → Q (nodeTick st (S.sign (pubOf E))))
-    (hpoll : ∀ st t, Q st → Q (poll st t).1) (v : V)
+    (htick : ∀ st, Q st → Q { nodeTick st (S.sign (pubOf E)) with ticked := true })
+    (hpoll : ∀ st t, Q st → Q (pollBatch st t (S.release (pubOf E))).1) (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty) (h : Q (shapeOf S hn nd)) :
     Q (shapeOf S hn (rho.runDuties v nd ds).1) := by
@@ -144,7 +143,7 @@ omit [DecidableEq V] in
 theorem shapeOf_clock (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time)
     (xs : List Tx) :
     ((Model.protoOf (compiled (goldilocks S)) E).clock nd.st t xs).1 hn =
-      { nd.st.1 hn with now := t } := rfl
+      { nd.st.1 hn with now := t, ticked := false } := by rfl
 
 omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `recordOwn`, `propose`, `nodeTick` and `poll` holds
@@ -153,10 +152,10 @@ state clocked, an awake node's runs the duties and the gossip. -/
 theorem tick_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
     (hprop : ∀ st s, Q st → Q (propose st s).1)
-    (htick : ∀ st, Q st → Q (nodeTick st (S.sign (pubOf E))))
-    (hpoll : ∀ st t, Q st → Q (poll st t).1) (v : V)
+    (htick : ∀ st, Q st → Q { nodeTick st (S.sign (pubOf E)) with ticked := true })
+    (hpoll : ∀ st t, Q st → Q (pollBatch st t (S.release (pubOf E))).1) (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time)
-    (h : Q { nd.st.1 hn with now := t }) :
+    (h : Q { nd.st.1 hn with now := t, ticked := false }) :
     Q (shapeOf S hn (rho.tick nd v t).1) := by
   unfold Model.Run.tick
   simp only
@@ -215,7 +214,8 @@ omit [DecidableEq V] in
 /-- The engine's poll duty step is the shape's `poll`: its released body is not recorded. -/
 theorem dutyStep_poll (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (t : Nat) (hsel : rho.ownKey v ∈ rho.sel .poll) :
-    shapeOf S hn (rho.dutyStep v nd (.poll t)).1 = (poll (shapeOf S hn nd) t).1 := by
+    shapeOf S hn (rho.dutyStep v nd (.poll t)).1 =
+      (pollBatch (shapeOf S hn nd) t (S.release (pubOf E))).1 := by
   unfold Model.Run.dutyStep
   simp only [show (Model.protoOf (compiled (goldilocks S)) E).role (.poll t) = .poll from rfl,
     hsel, ↓reduceIte]
@@ -223,12 +223,13 @@ theorem dutyStep_poll (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilo
   exact signedCandidate_poll_recordOwn S rho hn v t _
 
 omit [DecidableEq V] in
-/-- The engine's `pollPropose` duty step is the shape's `nodeTick`: it releases nothing. -/
+/-- The engine's `pollPropose` duty step is the shape's `nodeTick`, marking the tick step done: it
+releases nothing. -/
 theorem dutyStep_pollPropose (v : V) (nd : Model.Node (Model.protoOf (compiled
     (goldilocks S)) E))
     (t : Nat) (hsel : rho.ownKey v ∈ rho.sel .poll) :
     shapeOf S hn (rho.dutyStep v nd (.pollPropose t)).1 =
-      nodeTick (shapeOf S hn nd) (S.sign (pubOf E)) := by
+      { nodeTick (shapeOf S hn nd) (S.sign (pubOf E)) with ticked := true } := by
   unfold Model.Run.dutyStep
   simp only
       [show (Model.protoOf (compiled (goldilocks S)) E).role (.pollPropose t) = .poll from rfl,
@@ -268,11 +269,23 @@ theorem recordOwn_none_node (st : State sp ro binding) (m : Model.Msg (Header In
   | item h => rfl
 
 /-- A poll step with no FG update due keeps the node state. -/
-theorem poll_node_of_fgDue (st : State sp ro binding) (t : Time) (h : st.fgDue = false) :
-    (poll st t).1.node = st.node := by
+theorem poll_node_of_fgDue {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
+    (t : Time) (h : st.fgDue = false) : (poll st t release).1.node = st.node := by
   unfold poll
   simp only [h, Bool.false_eq_true, ite_false]
   split <;> rfl
+
+/-- A batch poll with no FG update due that flushes nothing keeps the node state. -/
+theorem pollBatch_node_of_fgDue {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
+    (t : Time) (h : st.fgDue = false) (hf : pollFlush st release = []) :
+    (pollBatch st t release).1.node = st.node := by
+  rw [pollBatch_fst]
+  split
+  · rename_i hfl
+    rw [poll_node_of_fgDue _ t (by rw [heldDrain_fgDue]; exact h)]
+    rw [pollFlush_eq, ite_eq_left hfl] at hf
+    rw [heldDrain_node, hf, List.foldl_nil]
+  · exact poll_node_of_fgDue st t h
 
 omit [DecidableEq V] in
 /-- The duties at a delivery at `t ≥ 0`: one poll step (`deliverOrder := [.poll]`). -/
@@ -309,7 +322,7 @@ omit [DecidableEq V] in
 holds after an engine delivery if it holds for the processed state: the delivery runs one poll
 step (at `t ≥ 0`) and the gossip, whose candidates are unsigned. -/
 theorem deliver_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
-    (hpoll : ∀ st t, Q st → Q (poll st t).1)
+    (hpoll : ∀ st t, Q st → Q (pollBatch st t (S.release (pubOf E))).1)
     (hrec : ∀ st m cs hs, Q st → Q (recordOwn st (.mk .none m cs) hs)) (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (o : (Model.protoOf (compiled (goldilocks S)) E).Object) (t : Time)
@@ -411,13 +424,13 @@ theorem self_eq_ownKey (v : V) : ∀ i, (stateAt S rho hn v i).self = rho.ownKey
           exact tick_pres S rho hn (fun st => st.self = rho.ownKey v')
             (fun st o hs h => (recordOwn_self st o hs).trans h)
             (fun st s h => (propose_self st s).trans h) (fun st h => (nodeTick_self st).trans h)
-            (fun st t h => (poll_self st t).trans h) v' _ t
+            (fun st t h => (pollBatch_self st t).trans h) v' _ t
             (by simpa only [stateAt_eq] using self_eq_ownKey v' i)
         | deliver v' o t =>
           simp only [Model.Event.node] at hv; subst hv
           rw [stateAt_deliver S rho hn _ he]
           exact deliver_pres S rho hn (fun st => st.self = rho.ownKey v')
-            (fun st t h => (poll_self st t).trans h)
+            (fun st t h => (pollBatch_self st t).trans h)
             (fun st _ _ hs h => (recordOwn_self st _ hs).trans h) v' _ o t
             ((process_self _ _ _).trans (by simpa only [stateAt_eq] using self_eq_ownKey v' i))
         | restart v' t =>
@@ -473,12 +486,12 @@ theorem now_eq_lastClock (_hv : rho.ExecutionValid) (v : V) :
           exact tick_pres S rho hn (fun st => st.now = t)
             (fun st o hs h => (recordOwn_now st o hs).trans h)
             (fun st s h => (propose_now st s).trans h) (fun st h => (nodeTick_now st).trans h)
-            (fun st t h => (poll_now st t).trans h) v' _ t rfl
+            (fun st t h => (pollBatch_now st t).trans h) v' _ t rfl
         | deliver v' o t =>
           simp only [Model.Event.node] at hv; subst hv
           rw [stateAt_deliver S rho hn _ he, lastClock_succ_deliver S rho _ he]
           exact deliver_pres S rho hn (fun st => st.now = lastClock S rho v' i)
-            (fun st t h => (poll_now st t).trans h)
+            (fun st t h => (pollBatch_now st t).trans h)
             (fun st _ _ hs h => (recordOwn_now st _ hs).trans h) v' _ o t
             ((process_now _ _ _).trans (by simpa only [stateAt_eq] using now_eq_lastClock _hv v' i))
         | restart v' t =>
@@ -592,7 +605,7 @@ theorem fgDue_eq_false (v : V) : ∀ i, (stateAt S rho hn v i).fgDue = false
               change (((Model.protoOf (compiled (goldilocks S)) E).act _
                 (.poll t.toNat)).1.1 hn).fgDue = false
               rw [shapeOf_act_poll]
-              exact poll_fgDue _ _
+              exact pollBatch_fgDue _ _
             · rw [duties_eq_nil S t ht]
               change ((rho.stateBefore i v').st.1 hn).fgDue = false
               simpa only [stateAt_eq] using fgDue_eq_false v' i
@@ -602,7 +615,7 @@ theorem fgDue_eq_false (v : V) : ∀ i, (stateAt S rho hn v i).fgDue = false
           simp only [Model.Event.node] at hv; subst hv
           rw [stateAt_deliver S rho hn _ he]
           exact deliver_pres S rho hn (fun st => st.fgDue = false)
-            (fun st t _ => poll_fgDue st t)
+            (fun st t _ => pollBatch_fgDue st t)
             (fun st _ _ hs h => (recordOwn_fgDue st _ hs).trans h) v' _ o t
             ((process_fgDue _ _ _).trans (by simpa only [stateAt_eq] using fgDue_eq_false v' i))
         | restart v' t =>

@@ -175,8 +175,8 @@ theorem received_forward_accepted_before_of_released_at (hv : rho.ExecutionValid
       exact False.elim (hp (hgen ▸ rfl))
     · exact ⟨k, hk.trans_le hej, ((RunTrace.upTo_acceptAt _).mp ha).2⟩
   rw [simTraceAt_eq] at ha ⊢
-  obtain ⟨r', q, ev, _, hq, hstart, _, _, _, ht, _⟩ :=
-    simTrace_cut S rho hn (by rw [ha.2]; simp)
+  obtain ⟨_, q, ev, _, hq, hstart, _, _, _, ht, _, _⟩ :=
+    simTrace_cut_origin S rho hn (by rw [ha.2]; simp)
   have hqi : q ≤ i := by
     by_contra h
     have hm : cutMap S rho hn (i + 1) ≤ cutMap S rho hn q :=

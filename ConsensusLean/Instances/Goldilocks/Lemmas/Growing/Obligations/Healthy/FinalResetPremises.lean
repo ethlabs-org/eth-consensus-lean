@@ -64,10 +64,10 @@ gap `c`**, under growing faults. -/
 theorem final_reset_premises_of_shared_within_at
     (Q : FinalQueryAt S A V)
     {c : Nat} (hc2 : 2 ≤ c)
-    (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {ΔF : Time}
+    (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {ΔF hold : Time}
     (hs : Healing.Growing.HSSharedUpTo Q.trace Q.keys
       (digestOf S Q.run.2) Q.gst ΔF
-      Q.run.2.horizon)
+      Q.run.2.horizon hold)
     {d : Time} {L : Nat} (hd0 : 0 ≤ d) (hdL : d ≤ (L : Time) * Q.run.1.ΔAC)
     {Gs : Nat} (hGsA : Gs ≤ A.signGap)
     (hmature : (Sys (goldilocks S) V).heal (K S A) .final Q.index Q.gst Q.run +
@@ -83,7 +83,7 @@ theorem final_reset_premises_of_shared_within_at
       Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
         (runProposer S Q.run.2 Q.hn)
         (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon
-        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK ∧
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK hold ∧
       max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
           ((finalGridAt
             S A V Q).slotTime
@@ -117,8 +117,9 @@ theorem final_reset_premises_of_shared_within_at
   have hβ : (K S A).params.βK ≤ 1 / 2 := by
     rw [goldilocksContract_params_eq]; exact le_rfl
   have hcf := committeeFaultsUpTo_of_healthyOn S Q.run.2 Q.hn Q.valid Q.healthy.2.2.2
-  have hinterface := goldilocksRunInterface_run_at S Q.run.2 Q.hn A Q.valid
-  have hhalf := Generic.committeeHalf_of_committeeFaults hβ hinterface hs.noColl hcf
+  have hhalf := Generic.committeeHalf_of_facts hβ
+    (S.committeeSize_pos _ Q.hn) (runCommittee_ncard S Q.run.2 Q.hn Q.valid)
+    (runCommittee_facts S Q.run.2 Q.hn Q.valid hs.noColl) hcf
   -- Catch with `κ = 2Δ`
   have hcatch : Healing.Growing.CatchRun Q.trace H Q.gst (2 * Q.params.Δ) := by
     have hnet : Q.run.2.log.PSync Q.run.2.point Q.gst :=
@@ -159,10 +160,10 @@ theorem final_reset_premises_of_shared_within_at
 theorem final_reset_premises_of_shared_at
     (Q : FinalQueryAt S A V)
     {c : Nat} (hc2 : 2 ≤ c)
-    (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {ΔF : Time}
+    (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {ΔF hold : Time}
     (hs : Healing.Growing.HSSharedUpTo Q.trace Q.keys
       (digestOf S Q.run.2) Q.gst ΔF
-      Q.run.2.horizon)
+      Q.run.2.horizon hold)
     {sign : Fin Q.params.n → Time → Bool}
     (hcal : Q.trace.SignCalendarAt (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.keys sign)
     (hgap : SignGapAt Q.params.toParams sign 0 0) :
@@ -170,7 +171,7 @@ theorem final_reset_premises_of_shared_at
       Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
         (runProposer S Q.run.2 Q.hn)
         (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon
-        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK ∧
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK hold ∧
       max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
           ((finalGridAt
             S A V Q).slotTime
@@ -198,7 +199,8 @@ theorem final_reset_premises_at
       Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
         (runProposer S Q.run.2 Q.hn)
         (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon
-        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK ∧
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK
+          ((A.releaseGap : Time) * Q.run.1.ΔAC) ∧
       max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
           ((finalGridAt
             S A V Q).slotTime

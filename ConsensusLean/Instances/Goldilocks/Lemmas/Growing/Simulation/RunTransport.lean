@@ -45,6 +45,13 @@ theorem runCommittee_facts (hv : rho.ExecutionValid)
   rw [dictOfTime_runCommittee]
   exact Obligations.Growing.voteK_facts S rho hn hv hnc (simTraceAt_goldilocksRun S rho hn hv)
 
+/-- **The run committee has the contract's size** at every slot (`voteK_ncard`). -/
+theorem runCommittee_ncard (hv : rho.ExecutionValid) (s : Nat) :
+    ((Generic.dictOfTime (S.params (pubOf E) hn) (runCommittee S rho hn)).committee s).ncard =
+      (S.params (pubOf E) hn).committeeSize := by
+  rw [dictOfTime_runCommittee]
+  exact Obligations.Growing.voteK_ncard S rho hn hv s
+
 /-- **The canonical trace is a run of the shared run interface** at the run committee, from
 execution validity and the contract's calendar bound. -/
 theorem goldilocksRunInterface_run_at (A : ContractAssumptions S) (hv : rho.ExecutionValid) :
@@ -53,10 +60,9 @@ theorem goldilocksRunInterface_run_at (A : ContractAssumptions S) (hv : rho.Exec
       (runProposer S rho hn) (digestOf S rho) (honestKeysAt S rho) (simTraceAt S rho hn) := by
   apply (Generic.goldilocksRunInterface_run_iff _).2
   refine ⟨simIni_eq_runStart S rho hn hv ▸ simTraceAt_goldilocksRun S rho hn hv,
-    S.committeeSize_pos (pubOf E) hn, ?_, runCommittee_facts S rho hn hv,
+    S.committeeSize_pos (pubOf E) hn, runCommittee_ncard S rho hn hv,
+    runCommittee_facts S rho hn hv,
     simTraceAt_signCalendar S rho hn _, Obligations.signGapAt_of_assumptions A (pubOf E) hn⟩
-  · rw [dictOfTime_runCommittee]
-    exact Obligations.Growing.voteK_ncard S rho hn hv
 
 /-- **The run map transports the engine run to the shared run interface**: its trace is a run of
 `goldilocksRunInterface`, read at the run map's signer (`goldilocksRunMap_signer`), at its

@@ -168,7 +168,7 @@ theorem postStopService_of_bounded {g : Time}
 
 /-- The healthy service uses the same message and relay rows as post-stop service. The
 additional block-call and signed-row suppliers are consumed only in their own rows. -/
-theorem service_of_postStop {g ΔF : Time}
+theorem service_of_postStop {g ΔF hold b : Time}
     (hs : Generic.PostStopService (simTrace e rho) (honestKeysAt rho) g)
     (hΔF : 0 < ΔF)
     (block : ∀ x i B, x ∈ honestKeysAt rho ((simTrace e rho).time i) →
@@ -180,15 +180,19 @@ theorem service_of_postStop {g ΔF : Time}
           (max ((simTrace e rho).time i) g) B)
     (row : ∀ x i att, x ∈ honestKeysAt rho ((simTrace e rho).time i) →
       (simTrace e rho).SignAt x i att →
+      (∀ k ≤ i, (simTrace e rho).SignAt x k att →
+        (simTrace e rho).time k = (simTrace e rho).time i → hold ≠ 0 →
+        x ∈ honestKeysAt rho (max ((simTrace e rho).time i) g + hold)) →
       ∀ y j, y ∈ honestKeysAt rho ((simTrace e rho).time j) → (simTrace e rho).IsCall y j →
-        (simTrace e rho).time j ≤ rho.horizon →
+        (simTrace e rho).time j ≤ b →
         (simTrace e rho).deadline y j (max ((simTrace e rho).time i) g) ΔF ≤
           (simTrace e rho).time j →
         ∃ k ≤ j, (simTrace e rho).ProcessAttAt y k att ∧
           (simTrace e rho).time k <
-            (simTrace e rho).deadline y k (max ((simTrace e rho).time i) g) ΔF) :
-    Generic.Service (simTrace e rho) (honestKeysAt rho) g ΔF rho.horizon :=
-  ⟨hΔF, hs.message, block, fun x i B hx hi _ => hs.relay x i B hx hi, row⟩
+            (simTrace e rho).deadline y k (max ((simTrace e rho).time i) g) ΔF)
+    (hhold : hold ≤ ΔF) :
+    Generic.Service (simTrace e rho) (honestKeysAt rho) g ΔF b hold :=
+  ⟨hΔF, hs.message, block, fun x i B hx hi _ => hs.relay x i B hx hi, row, hhold⟩
 
 /-- Catch up at the first snapshot after the publication window, even if the snapshot is a
 stutter beyond the horizon. The witness is an acceptance strictly before the snapshot cut. -/
@@ -620,22 +624,26 @@ theorem postStopService_of_psync_at (hn : 1 ≤ Fintype.card V) (hv : rho.Execut
     exact fun _ _ _ hx hi _ _ hy hj =>
       acceptance_relay_psync_any_at S rho hn hv hnc hnet hx hi hy hj
 
-/-- The finite valid engine run supplies every reset-service field under growing faults, with
-attestation service at a parametric `Δ_F` as a premise (`hrow`). Senders are honest at their
-event, recipients at their call; actual recipient calls lie within the engine horizon. -/
-theorem resetService_of_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+/-- The finite valid engine run supplies every reset-service field under growing faults through
+a bound `b` within the horizon, with attestation service at a parametric `Δ_F` and release hold
+`hold` as a premise (`hrow`). Senders are honest at their event, recipients at their call. With
+`hold ≠ 0`, the attestation service also reads the participation of a healthy run through `b`
+(`hawake`). -/
+theorem resetService_of_psync_upTo {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho)
       (simTraceAt S rho hn))
-    {g ΔF : Time} (hnet : rho.log.PSync rho.point g)
+    {g ΔF hold b : Time} (hnet : rho.log.PSync rho.point g)
     (hrow : PSyncFGAttTransportAt S rho
       (simTraceAt S rho hn)
-        (honestKeysAt S rho) ΔF)
-    (hΔF : 0 < ΔF) :
+        (honestKeysAt S rho) ΔF hold)
+    (hb : b ≤ rho.horizon)
+    (hawake : hold ≠ 0 → ∀ v t, max g 0 ≤ t → t ≤ b → rho.point.HonestAt v t →
+      rho.point.env.awake v t = true)
+    (hΔF : 0 < ΔF) (hhold : hold ≤ ΔF) :
     Healing.Growing.ResetService (simTraceAt S rho hn)
-      (honestKeysAt S rho) g ΔF
-      rho.horizon := by
+      (honestKeysAt S rho) g ΔF b hold := by
   have htr := network_trace_eq S rho hn
   have hH := network_honestKeysAt_eq S rho
   have hs := postStopService_of_psync_at S rho hn hv hnc hnet
@@ -648,9 +656,52 @@ theorem resetService_of_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env
         (isCall_time_le_horizon S rho hn hv hj) hd)
     (by
       rw [← htr, ← hH]
-      exact (psyncFGAttTransportAt_iff S rho _ _ _).mp hrow g hnet)
+      intro x i a hx hs hxh y j hy hj hjb
+      exact (psyncFGAttTransportAt_iff S rho _ _ _ hold).mp hrow g hnet x i a hx hs hxh y j hy hj
+        (hjb.trans hb) fun h0 v t ht htj => hawake h0 v t ht (htj.trans hjb)) hhold
   rw [← htr, ← hH] at h
-  exact ⟨h.deltaF, h.message, h.block, h.relay, h.signedRow⟩
+  exact ⟨h.deltaF, h.message, h.block, h.relay, h.signedRow, h.hold_le⟩
+
+/-- `resetService_of_psync_upTo` through the horizon. -/
+theorem resetService_of_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho)
+      (simTraceAt S rho hn))
+    {g ΔF hold : Time} (hnet : rho.log.PSync rho.point g)
+    (hrow : PSyncFGAttTransportAt S rho
+      (simTraceAt S rho hn)
+        (honestKeysAt S rho) ΔF hold)
+    (hawake : hold ≠ 0 → ∀ v t, max g 0 ≤ t → t ≤ rho.horizon → rho.point.HonestAt v t →
+      rho.point.env.awake v t = true)
+    (hΔF : 0 < ΔF) (hhold : hold ≤ ΔF) :
+    Healing.Growing.ResetService (simTraceAt S rho hn)
+      (honestKeysAt S rho) g ΔF
+      rho.horizon hold :=
+  resetService_of_psync_upTo S rho hn hv hnc hnet hrow le_rfl hawake hΔF hhold
+
+/-- **The AC part of the reset service from partial synchrony**, at any positive FG delay:
+message, block and relay delivery. It reads the attestation transport at the release gap `R` only
+through a horizon before every time, so it needs no participation and holds for a run that is only
+sleepy after a hand-over. -/
+theorem acResetService_of_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
+    (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    (hnc : Compose.NoCollRun (digestOf S rho)
+      (simTraceAt S rho hn))
+    {g ΔF : Time} (hnet : rho.log.PSync rho.point g) {R : ℕ}
+    (hgap : ReleaseGapAt (S.params (Model.pubOf E) hn).toParams (S.release (Model.pubOf E)) R 0)
+    (hΔF : 0 < ΔF) :
+    Healing.Growing.ACResetService (simTraceAt S rho hn) (honestKeysAt S rho) g ΔF := by
+  have hp : 0 < protoFGDelay (Model.pubOf E) := by
+    rw [protoFGDelay_eq]; exact (Model.pubOf E).ΔFG_pos
+  have hR : (0 : Time) ≤ (R : Time) * E.ΔAC := mul_nonneg (Nat.cast_nonneg _) E.ΔAC_pos.le
+  have h := (resetService_of_psync_upTo S rho hn hv hnc hnet
+    (signed_row_service_psync_at S rho hn hv hgap) (b := min (-1) rho.horizon)
+    (min_le_right _ _) (fun _ _ t h₁ h₂ _ => absurd
+      ((le_max_right g 0).trans (h₁.trans (h₂.trans (min_le_left _ _))))
+      (by norm_num)) (by linarith) (by linarith)).toAC
+  exact ⟨hΔF, h.message, h.block, h.relay⟩
 
 /-- Old acceptances by nodes honest at their cut catch up before the first `2Δ` snapshot after GST
 at every node honest at that snapshot, when every node honest at a time of

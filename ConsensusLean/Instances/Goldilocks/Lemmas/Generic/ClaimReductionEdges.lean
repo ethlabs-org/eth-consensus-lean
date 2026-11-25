@@ -95,14 +95,15 @@ def OutputValidAlways (B : EngineBinding (F := F) (V := V) pub payload sg runs) 
 Coherent union and
 root suppliers remain explicit; none enters an unconditional claim. Goldilocks instance:
 `Simulation.goldilocks_regimeTransport` and the sleepy rows of `goldilocks_localClaimSuppliers`. -/
-def SleepySafetyReduction (C : ACCorrectLocal A sg)
+def SleepySafetyReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
     (D : SleepyLayer1.Data A)
     (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) : Prop :=
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
-    let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
-    RegimeTransport M K L ∧ EngineReadPoint M ∧ StoredReadTransport M (R E hE rho hv) ∧
+    let L : ACCorrectLocal A M.signer fgHold := B.signer_eq E hE rho hv ▸ C
+    (∃ hold, RegimeTransport M K L hold) ∧ EngineReadPoint M ∧
+      StoredReadTransport M (R E hE rho hv) ∧
       LocalReadPoint L ∧ SleepyLayer1.EventSafety M L D ∧ SleepyLayer1.OutputProvenance L D ∧
       SleepyLayer1.Extension M L D ∧ SleepyLayer1.SourceProvenance L D ∧
       PopulationQuorumSupply M K ∧ SleepyWindowSupply M K L ∧ ClaimDeadlineFit M K L ∧
@@ -117,14 +118,14 @@ def SleepySafetyReduction (C : ACCorrectLocal A sg)
 progress interval,
 reader-conditional deadline and hash-collision branch. The strengthened witness
 supplier selects advertised readiness jointly with the proposal. -/
-def SleepyLivenessReduction (C : ACCorrectLocal A sg)
+def SleepyLivenessReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
     (D : SleepyLayer1.Data A)
     (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) : Prop :=
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
-    let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
-    RegimeTransport M K L ∧
+    let L : ACCorrectLocal A M.signer fgHold := B.signer_eq E hE rho hv ▸ C
+    (∃ hold, RegimeTransport M K L hold) ∧
       ProposalProgressTransport M ∧
       ProposalWitnessRefinement M K L ∧ ClaimDeadlineFit M K L ∧
       StoredReadTransport M (R E hE rho hv) ∧ SleepyLayer1.ProposalCoverage M L D ∧
@@ -148,18 +149,19 @@ No constant FrameWindow production or progress-form exclusion is assumed. The no
 inclusion reads at L7 (`HealthyReadPoint.proposal`), whose premises and selected reset come from
 the healthy preparation (`PreparationPremisesSupply`) and reset budget (`ResetHealBudgetSupply`)
 suppliers. Proved by `healthyLivenessReduction`. -/
-def HealthyLivenessReduction (C : ACCorrectLocal A sg)
+def HealthyLivenessReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
     (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) : Prop :=
   K.params.Admissible → HealthyBetaFit K → CommitteeHalfFit K →
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
-    let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
-    RegimeTransport M K L ∧
+    let L : ACCorrectLocal A M.signer fgHold := B.signer_eq E hE rho hv ▸ C
+    (∃ hold, RegimeTransport M K L hold) ∧
       ProposalProgressTransport M ∧
       ProposalWitnessRefinement M K L ∧ ClaimDeadlineFit M K L ∧
-      DeadlinePremisesSupply M K ∧ FinalWindowSupply M K L.catchUp L.hold ∧
-      FinalReadTransport M L ∧ PreparationPremisesSupply M K ∧ ResetHealBudgetSupply M K L ∧
+      DeadlinePremisesSupply M K fgHold (E.ΔFG + fgHold) ∧ FinalWindowSupply M K L.catchUp L.hold ∧
+      FinalReadTransport M L (E.ΔFG + fgHold) ∧
+      PreparationPremisesSupply M K fgHold (E.ΔFG + fgHold) ∧ ResetHealBudgetSupply M K L ∧
       StoredReadTransport M (R E hE rho hv) ∧ HealthyReadPoint L ∧ LocalReadPoint L ∧
       ReadRepresentation M ∧ HonestReadTransport M ∧
       (¬ rho.HashCollision → Coherent (M.trace.HonestBlocksAt M.honest))) →
@@ -174,11 +176,11 @@ def HealthyLivenessReduction (C : ACCorrectLocal A sg)
 both readers' own observation times and the attestation evidence; the map and honest
 view contracts bind the same evidence to the engine conviction rule.
 Proved by `finalAccountabilityReduction`. -/
-def FinalAccountabilityReduction (C : ACCorrectLocal A sg)
+def FinalAccountabilityReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq) : Prop :=
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
-    let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
+    let L : ACCorrectLocal A M.signer fgHold := B.signer_eq E hE rho hv ▸ C
     EngineReadPoint M ∧ ActualReadAccountability M L.run ∧
       ClaimDeadlineFit M K L ∧ ReadRepresentation M ∧ HonestReadTransport M ∧
       HonestChainReads M ∧
@@ -191,13 +193,13 @@ and collision alternative. The fixed local policy matches the contract by equali
 recipient-deadline service permits AC-owned retained evidence. OC-K and the instance
 transports remain obligations, not consequences of these numerical fits.
 Proved by `persistenceReduction`. -/
-def PersistenceReduction (C : ACCorrectLocal A sg)
+def PersistenceReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
     (D : ∀ E hE rho (hv : rho.ExecutionValid), OutagePolicy (B.map E hE rho hv))
     (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) : Prop :=
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
-    let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
+    let L : ACCorrectLocal A M.signer fgHold := B.signer_eq E hE rho hv ▸ C
     OutageTransport M (D E hE rho hv) K ∧
       OutageRecoveryBinding M K L ∧ OutageServiceSupply M K L ∧
       ResilienceTipTransport M ∧ OutageReadPoint L ∧
@@ -214,16 +216,16 @@ def PersistenceReduction (C : ACCorrectLocal A sg)
 budget are independent inputs to healing. Same-reader ancestry uses its own actual
 stored-read context and transport; representation still supplies the chain-prefix step.
 Proved by `healedSafetyReduction`. -/
-def HealedSafetyReduction (C : ACCorrectLocal A sg)
+def HealedSafetyReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
     (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) : Prop :=
   K.params.Admissible → HealthyBetaFit K → CommitteeHalfFit K →
   (∀ E hE rho (hv : rho.ExecutionValid),
     let M := B.map E hE rho hv
-    let L : ACCorrectLocal A M.signer := B.signer_eq E hE rho hv ▸ C
-    RegimeTransport M K L ∧ EngineReadPoint M ∧
-      ClaimDeadlineFit M K L ∧ PreparationPremisesSupply M K ∧
-      HighCanonicalSupply M K L ∧ ResetHealBudgetSupply M K L ∧
+    let L : ACCorrectLocal A M.signer fgHold := B.signer_eq E hE rho hv ▸ C
+    (∃ hold, RegimeTransport M K L hold) ∧ EngineReadPoint M ∧
+      ClaimDeadlineFit M K L ∧ PreparationPremisesSupply M K fgHold (E.ΔFG + fgHold) ∧
+      HighCanonicalSupply M K L (E.ΔFG + fgHold) ∧ ResetHealBudgetSupply M K L ∧
       HealthyReadPoint L ∧ LocalReadPoint L ∧
       StoredReadTransport M (R E hE rho hv) ∧ HealedReadAncestry M K (R E hE rho hv) ∧
       ReadRepresentation M ∧ HonestReadTransport M ∧
@@ -254,7 +256,7 @@ finalized caches (`HonestChainReads`). Compatible caches give a chain prefix
 `2q − n` validators with slashable attestation pairs on the two finality chains
 (`ActualReadAccountability`), which the readers' views hold (`chain_att_view`), and
 `α·n ≤ 2q − n` (`ClaimDeadlineFit.accountable`). -/
-theorem finalAccountabilityReduction (C : ACCorrectLocal A sg)
+theorem finalAccountabilityReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq) :
     FinalAccountabilityReduction C B K := by
   intro h g hg r hv hpub
@@ -343,7 +345,7 @@ durations from `OutageRecoveryBinding`, and both ready read points from
 `StoredReadTransport.end_read` at the local catch-up `C.catchUp ≤ cDur`. Their honest ancestry
 gives a chain prefix (`ReadRepresentation.ancestor_prefix`), with both tips held
 (`LocalReadPoint.held`). -/
-theorem persistenceReduction (C : ACCorrectLocal A sg)
+theorem persistenceReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
     (D : ∀ E hE rho (hv : rho.ExecutionValid), OutagePolicy (B.map E hE rho hv))
     (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) :
@@ -426,7 +428,7 @@ its store (`LocalReadPoint.held` at the stored read point of `StoredReadTranspor
   (`ACHealing.heal_after_reset`) give compatible tips at the opening's margin
   (`HealthyReadPoint.healed`): the stored reads are at `R.now ≥ cutTime − 1 ≥ heal − 1`.
 Honest ancestry of two held tips is a chain prefix (`ReadRepresentation.ancestor_prefix`). -/
-theorem healedSafetyReduction (C : ACCorrectLocal A sg)
+theorem healedSafetyReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
     (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) :
     HealedSafetyReduction C B K R := by
@@ -439,7 +441,7 @@ theorem healedSafetyReduction (C : ACCorrectLocal A sg)
   obtain ⟨-, heng, hfit, hprep, hhc, hbud, hHR, hLR, hSR, hanc, hrep, hhr, hcoh⟩ :=
     h E hpub rho hv
   set M := B.map E hpub rho hv
-  set L : ACCorrectLocal A M.signer := B.signer_eq E hpub rho hv ▸ C
+  set L : ACCorrectLocal A M.signer fgHold := B.signer_eq E hpub rho hv ▸ C
   have hT := B.run_transport E hpub rho hv
   have hrun : L.run.Run M.committee M.proposer M.digest M.honest M.trace := by
     rw [ACCorrectLocal.cast_signer (B.signer_eq E hpub rho hv) C
@@ -552,7 +554,7 @@ proposal witness is released after `t` by a proposer ready then, as an honest en
   premises (`DeadlinePremisesSupply`).
 The ancestor is held in the reader's store (`mem_of_honest_anc_at_from`), so its header is in
 the read (`ReadRepresentation.tip_in_chain` and `ancestor_prefix`). -/
-theorem healthyLivenessReduction (C : ACCorrectLocal A sg)
+theorem healthyLivenessReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
     (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) :
     HealthyLivenessReduction C B K R := by
@@ -565,7 +567,7 @@ theorem healthyLivenessReduction (C : ACCorrectLocal A sg)
   obtain ⟨-, hpp, hpw, hfit, hdp, hfw, hfr, hprep, hbud, hSR, hHR, hLR, hrep, hhr, hcoh⟩ :=
     h E hpub rho hv
   set M := B.map E hpub rho hv
-  set L : ACCorrectLocal A M.signer := B.signer_eq E hpub rho hv ▸ C
+  set L : ACCorrectLocal A M.signer fgHold := B.signer_eq E hpub rho hv ▸ C
   have hT := B.run_transport E hpub rho hv
   have hrun : L.run.Run M.committee M.proposer M.digest M.honest M.trace := by
     rw [ACCorrectLocal.cast_signer (B.signer_eq E hpub rho hv) C
@@ -679,7 +681,7 @@ section SleepyReductions
 variable {E : Env V} {rho : Model.Run (compiled F) E}
 
 private theorem sleepy_windows {M : RunMap rho payload} {K : Contract ProgressReq}
-    {C : ACCorrectLocal A M.signer} (hw : SleepyWindowSupply M K C)
+    {fgHold : Time} {C : ACCorrectLocal A M.signer fgHold} (hw : SleepyWindowSupply M K C)
     (hf : ClaimDeadlineFit M K C) (hv : rho.ExecutionValid)
     (hs : (Sys F V).Sleepy (shapeProgress F V).toExternal K ⟨E, rho⟩) :
     ∃ p, RunPointBinding M.trace M.honest p ∧
@@ -694,7 +696,7 @@ private theorem sleepy_windows {M : RunMap rho payload} {K : Contract ProgressRe
     SleepyLayer1.population_transport M C p rho.horizon _ _ hb.ge hc rfl h0 h1 hpop⟩
 
 private theorem sleepy_frames {M : RunMap rho payload} {K : Contract ProgressReq}
-    {C : ACCorrectLocal A M.signer} {D : SleepyLayer1.Data A}
+    {fgHold : Time} {C : ACCorrectLocal A M.signer fgHold} {D : SleepyLayer1.Data A}
     (hsource : SleepyLayer1.SourceProvenance C D)
     (hq : PopulationQuorumSupply M K) (hv : rho.ExecutionValid)
     (hs : (Sys F V).Sleepy (shapeProgress F V).toExternal K ⟨E, rho⟩)
@@ -707,7 +709,7 @@ private theorem sleepy_frames {M : RunMap rho payload} {K : Contract ProgressReq
     (fun _ _ t hr => hq hv hs t hr.2.2.1 hr.2.2.2)
 
 /-- Bounded explicit-read sleepy safety, preserving the original collision excuse. -/
-theorem sleepy_safety_reduction (C : ACCorrectLocal A sg)
+theorem sleepy_safety_reduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
     (D : SleepyLayer1.Data A)
     (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) :
@@ -717,8 +719,8 @@ theorem sleepy_safety_reduction (C : ACCorrectLocal A sg)
   · exact Or.inr hcollision
   left
   let M := B.map r.1 hpub r.2 hv
-  let L : ACCorrectLocal A M.signer := B.signer_eq r.1 hpub r.2 hv ▸ C
-  obtain ⟨hreg, _, hstored, hlocal, hevents, houtputs, hext, hsource,
+  let L : ACCorrectLocal A M.signer fgHold := B.signer_eq r.1 hpub r.2 hv ▸ C
+  obtain ⟨⟨_, hreg⟩, _, hstored, hlocal, hevents, houtputs, hext, hsource,
     hquorum, hwindow, hfit, hrep, hread, hcoh⟩ := supply r.1 hpub r.2 hv
   have hrun : L.run.Run M.committee M.proposer M.digest M.honest M.trace := by
     rw [ACCorrectLocal.cast_signer (B.signer_eq r.1 hpub r.2 hv) C
@@ -797,7 +799,7 @@ private theorem ancestor_held {st : Store P A.Payload} {U : Set A.Blk}
   · exact (Anc.mem (Store.anc_of_anc_universe hr hU hsub ha hy) he).1
 
 /-- Reader-conditional proposal liveness from the jointly admissible witness. -/
-theorem sleepy_liveness_reduction (C : ACCorrectLocal A sg)
+theorem sleepy_liveness_reduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
     (B : EngineBinding (F := F) (V := V) pub payload sg C.run) (K : Contract ProgressReq)
     (D : SleepyLayer1.Data A)
     (R : ∀ E hE rho (hv : rho.ExecutionValid), StoredReadContext (B.map E hE rho hv)) :
@@ -807,8 +809,8 @@ theorem sleepy_liveness_reduction (C : ACCorrectLocal A sg)
   · exact Or.inr hcollision
   left
   let M := B.map r.1 hpub r.2 hv
-  let L : ACCorrectLocal A M.signer := B.signer_eq r.1 hpub r.2 hv ▸ C
-  obtain ⟨hreg, hprogress, hwitness, hfit, hstored, hcoverage, hlocal,
+  let L : ACCorrectLocal A M.signer fgHold := B.signer_eq r.1 hpub r.2 hv ▸ C
+  obtain ⟨⟨_, hreg⟩, hprogress, hwitness, hfit, hstored, hcoverage, hlocal,
     _, _, _, hsource, hquorum, hwindow, hrep, hread, hcoh⟩ := supply r.1 hpub r.2 hv
   have hrun : L.run.Run M.committee M.proposer M.digest M.honest M.trace := by
     rw [ACCorrectLocal.cast_signer (B.signer_eq r.1 hpub r.2 hv) C
@@ -877,7 +879,7 @@ theorem meetsObligations_of_local_proof {O : OutputSchema} {Info : Type} [Decida
     (F : ChainShapeFamily O Info) (K : Contract ProgressReq) :
     meetsObligations_of_local F K := by
   rw [meetsObligations_of_local_iff]
-  intro P A sg C events B D R hL hadm hserv hfit htol hguard hβ hcf
+  intro P A sg _ C events B D R hL hadm hserv hfit htol hguard hβ hcf
   refine ⟨fun V _ _ => ?_, hadm, hserv, hfit, htol, hguard⟩
   have hE := shapeClaimsAt_of_isEmpty F K V
   refine

@@ -188,7 +188,7 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     · exact h
     · have := group_phase hgm hgt
       simp [Node.Event.phase] at this
-    · have := hl.phase_order y hy y hy m jt _ _ _ hgm hgt h
+    · have := hl.phase_order y hy y hy m jt _ _ _ hgm hgt h (.inl rfl)
       simp [Node.Event.phase] at this
   -- the tick's first cut is `ac_on_tick`
   obtain ⟨ℓt, pc, uc, hlt, hcs, -, -⟩ :=
@@ -312,6 +312,7 @@ theorem held_row_early_count
     have hph : eu.phase ≤ 1 := by
       rcases lt_trichotomy g gx with h | rfl | h
       · have := hl.phase_order _ huH _ hav g gx (tr.time k) eu _ hg hgx h
+          (.inr (not_ownPublicationAt_of_ac_cut hg hk₁))
         simpa [Node.Event.phase] using this
       · obtain ⟨_, hn₁⟩ := (group_call hg).1
         obtain ⟨_, hn₂⟩ := (group_call hgx).1

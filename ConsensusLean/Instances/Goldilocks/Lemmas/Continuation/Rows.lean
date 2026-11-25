@@ -66,6 +66,7 @@ namespace Consensus.Goldilocks.Compose.Growing
 open AC (ACParams ReplayOrder Vote Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {hold : Time}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
@@ -85,11 +86,11 @@ private theorem catch_old_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   exact hrun.toLocalRun.fgCatchAt hc hx hB hi hy hj hF
 
 /-- **The reset service with the catch-up is the sleepy service from `ḡ`**: sends and acceptances
-from `ḡ ≥ g` are served with the deadline from their own time (`ResetService.ac_service_at`,
-`ResetService.relay`); a block accepted before `ḡ` is caught up before `ḡ + κ` (`CatchRun`), at
+from `ḡ ≥ g` are served with the deadline from their own time (`ACResetService.ac_service_at`,
+`ACResetService.relay`); a block accepted before `ḡ` is caught up before `ḡ + κ` (`CatchRun`), at
 the node and, through the AC block call that follows each acceptance, at its AC projection. -/
 theorem sleepyServiceFrom_of_reset (hrun : Growing.GoldilocksRun proposer dg H tr ini) {κ b : Time}
-    (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hc : Healing.Growing.CatchRun tr H g κ)
+    (hsvc : Healing.Growing.ACResetService tr H g ΔF) (hc : Healing.Growing.CatchRun tr H g κ)
     (hκ : 0 ≤ κ) : SleepyServiceFrom tr H ΔF (AC.gbar g) κ b := by
   have hac := hsvc.ac_service_at hrun (lo := AC.gbar g) (hi := b) (AC.le_gbar g)
   refine ⟨hsvc.deltaF, hκ, hac.message, hac.relay, ?_, ?_, ?_⟩
@@ -147,12 +148,12 @@ after GST and before `T`, and the drain `t_{r+k}` before `T`. -/
 private theorem HandoverSeed.reset_timing {T : Time} {r σ : Nat}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) :
-    ∃ a, Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a T cm βK ∧
+    ∃ a hold, Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a T cm βK hold ∧
       r = Healing.cleanLabel sp a + sp.k + 2 ∧ r - sp.k - 3 = sp.slot a + 2 ∧
       a + sp.Δ < sp.ts (r - sp.k - 3 : Nat) ∧ AC.gbar g < a ∧
       sp.ts (r - sp.k - 3 : Nat) < sp.ts (r + sp.k : Nat) ∧ sp.ts (r + sp.k : Nat) ≤ T ∧
       Healing.drainTime sp a = sp.ts (r + sp.k : Nat) := by
-  obtain ⟨a, hp, hr⟩ := hseed.reset
+  obtain ⟨a, _, hp, hr⟩ := hseed.reset
   obtain ⟨hσT, hrσ, -⟩ := hseed.timing
   have hΔ := sp.toParams.hΔ
   have hca := hp.cutZ_lt_reset_at
@@ -163,7 +164,7 @@ private theorem HandoverSeed.reset_timing {T : Time} {r σ : Nat}
     omega
   have hq : r - sp.k - 3 = sp.slot a + 2 := by rw [hr, Healing.cleanLabel_eq]; omega
   have hk := sp.two_le_k
-  refine ⟨a, hp, hr, hq, ?_, by linarith, ?_, ?_, ?_⟩
+  refine ⟨a, _, hp, hr, hq, ?_, by linarith, ?_, ?_, ?_⟩
   · rw [hq]
     have : sp.ts ((sp.slot a + 2 : Nat) : Int) = sp.ts ((sp.slot a : Int) + 1) + 4 * sp.Δ := by
       simp only [ACParams.ts]; push_cast; ring
@@ -188,7 +189,7 @@ private theorem seed_time_call (hrun : Growing.GoldilocksRun proposer dg H tr in
     (hy : y ∈ H (sp.ts (r - sp.k - 3 : Nat))) :
     ∃ c, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
       tr.time c = sp.ts (r - sp.k - 3 : Nat) := by
-  obtain ⟨a, hp, -, -, hqa, hga, hqd, hdT, -⟩ := hseed.reset_timing
+  obtain ⟨a, _, hp, -, -, hqa, hga, hqd, hdT, -⟩ := hseed.reset_timing
   have hΔ := sp.toParams.hΔ
   set q := sp.ts (r - sp.k - 3 : Nat) with hq
   have hq0 : 0 ≤ q := ts_natCast_nonneg _
@@ -223,7 +224,7 @@ theorem seeded_reader_called_at (hrun : Growing.GoldilocksRun proposer dg H tr i
     {t : Time} (hy : y ∈ H t) (ht : sp.ts (r + sp.k : Nat) ≤ t) (hti : t ≤ tr.time i) :
     ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
       sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c := by
-  obtain ⟨-, -, -, -, -, -, hqd, -, -⟩ := hseed.reset_timing
+  obtain ⟨-, _, -, -, -, -, -, hqd, -, -⟩ := hseed.reset_timing
   obtain ⟨c, ell, hc, hct⟩ := seed_time_call hrun hseed (hrun.antitone (hqd.le.trans ht) hy)
   refine ⟨c, ?_, ell, hc, hct.ge⟩
   by_contra h
@@ -306,7 +307,7 @@ theorem low_seed_held (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     ∃ x q l S, Healing.Growing.HighOrigin tr H g x q l S ∧ tr.time q ≤ T ∧ l < r ∧
       Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F S ∧ S ∈ (tr.state y i).fg.tree ∧
       ∃ c < i, tr.time c = sp.ts (r - sp.k - 3 : Nat) ∧ S ∈ (tr.state y c).fg.tree := by
-  obtain ⟨a, hp, hr, hq, hqa, hga, hqd, hdT, -⟩ := hseed.reset_timing
+  obtain ⟨a, _, hp, hr, hq, hqa, hga, hqd, hdT, -⟩ := hseed.reset_timing
   have hΔ := sp.toParams.hΔ
   obtain ⟨x, q, l, S, hS, hqa', hqT, hheld⟩ := hp.reset_seed_held_at_call_at
   have hlr : l < r := by
@@ -385,7 +386,7 @@ private theorem signed_source_lock (hrun : Growing.GoldilocksRun proposer dg H t
     ∃ D, D ∈ (tr.state v k).fg.tree ∧ ((tr.state v k).fg.σ D.root).Th = a.T ∧
       ∃ c < k, ∃ l C CV, r ≤ l ∧ AC.FastLockAt tr.projAC v c l C CV ∧
         Anc (tr.HonestBlocksAt H) D C := by
-  obtain ⟨a₀, -, hr, -, -, -, -, -, hdrain⟩ := hseed.reset_timing
+  obtain ⟨a₀, _, -, hr, -, -, -, -, -, hdrain⟩ := hseed.reset_timing
   obtain ⟨src, hcall⟩ := hs
   obtain ⟨j, rfl, ℓ, hcj, -, htj, hC, hfg⟩ := attest_source hrun hv hcall
   have hvj : v ∈ H (tr.time j) := htj ▸ hv
@@ -455,7 +456,7 @@ private theorem high_row_member (hrun : Growing.GoldilocksRun proposer dg H tr i
       ∃ c < k, ∃ C l O OV, HealedOrigin tr H g r (r + sp.k - 1) C l (tr.time c) ∧
         (AC.ResultAt tr.projAC a.val c l O OV ∨ AC.OptimisticLockAt tr.projAC a.val c l O OV) ∧
         Anc (tr.HonestBlocksAt H) D C ∧ Anc (tr.HonestBlocksAt H) C O := by
-  obtain ⟨a₀, hp, -, -, -, -, -, hdT, -⟩ := hseed.reset_timing
+  obtain ⟨a₀, _, hp, -, -, -, -, -, hdT, -⟩ := hseed.reset_timing
   have hst := Trace.upTo_state tr y hi
   obtain ⟨m, hmi, hA, k, hkm, hS⟩ := Compose.honest_row_signed_before (hrun.upTo hd) (hnc.upTo _)
     hy (by rw [hst]; exact hX) ha hav
@@ -623,7 +624,7 @@ theorem seeded_reader_on_chain_at (hrun : Growing.GoldilocksRun proposer dg H tr
   have hJ : OnHealedChain tr H g r (r + sp.k - 1) (tr.state y i).fg.J b := by
     have hzt : Healing.cutZ sp.toParams g ≤ t := by
       obtain ⟨c, hci, -, -, hc⟩ := hcall
-      obtain ⟨a₀, hp₀, -, -, hlo, -⟩ := hseed.reset_timing
+      obtain ⟨a₀, _, hp₀, -, -, hlo, -⟩ := hseed.reset_timing
       linarith [hp₀.cutZ_lt_reset_at, hi c hci, sp.toParams.hΔ]
     have hsrc := rowsAbove_mono (seeded_rows_above_at hrun hnc hseed ht0 hzt hi hy)
       (show Healing.Growing.HZ tr H g + 1 ≤ ((tr.upTo t).state y i).fg.hj by rw [hst]; omega)
@@ -715,7 +716,7 @@ theorem seeded_viable_of (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hn
   have hCP : C ∈ (tr.upTo t).HonestBlocks (H t) := ⟨y, hy, i, by rw [hst]; exact hCt.1⟩
   have hzt : Healing.cutZ sp.toParams g ≤ t := by
     obtain ⟨c, hci, -, -, hc⟩ := hcall
-    obtain ⟨a₀, hp₀, -, -, hlo, -⟩ := hseed.reset_timing
+    obtain ⟨a₀, _, hp₀, -, -, hlo, -⟩ := hseed.reset_timing
     linarith [hp₀.cutZ_lt_reset_at, hi c hci, sp.toParams.hΔ]
   have hsrc := seeded_rows_above_at hrun hnc hseed ht0 hzt hi hy
   have hmem : ∀ {C'} {l : Nat}, HealedOrigin tr H g r (r + sp.k - 1) C' l t →
@@ -1044,7 +1045,7 @@ theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
       (hTb : T ≤ b)
-    (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
+    (hsvc : Healing.Growing.ACResetService tr H g ΔF) (hB : SleepyBoundsFrom tr H r b)
     (hcv : ChainConvictedBelow tr H) {s : Nat} (hs : σ + 1 ≤ s)
     (hP : HealedOriginsBelow tr H g r (r + sp.k - 1) (s + 1) b) {y : Fin sp.n} {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
@@ -1072,7 +1073,8 @@ theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   have hUP := (Compose.projFG_localRun hrun' hnc').coherent
   have hsub := upTo_subset hrun hd
   have hreach := Healing.Growing.fg_reachable_at hrun hd hi hy
-  have hsync := sleepyServiceFrom_of_reset hrun hsvc hseed.catchRun (κ := 2 * sp.Δ) (by linarith)
+  have hsync := sleepyServiceFrom_of_reset hrun hsvc hseed.catchRun (κ := 2 * sp.Δ) (b := b)
+    (by linarith)
   have hgs : AC.gbar g + 2 * sp.Δ ≤ sp.ts s := by
     have := ts_le_ts (sp := sp) (show r ≤ s by omega)
     linarith
@@ -1102,7 +1104,7 @@ theorem seeded_vote_frame_of (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     HealedOrigin tr H g r (r + sp.k - 1) C l b ∧ l ≤ s ∧ ∃ x k e', HVoteAt tr H x k e' ∧
       e'.msg.slot ≤ s ∧ AC.VoteExtends (tr.HonestBlocksAt H) e'.msg C
   have hzd : Healing.cutZ sp.toParams g ≤ tr.time i := by
-    obtain ⟨a₀, hp₀, -, -, hlo, -, hlt, -⟩ := hseed.reset_timing
+    obtain ⟨a₀, _, hp₀, -, -, hlo, -, hlt, -⟩ := hseed.reset_timing
     linarith [hp₀.cutZ_lt_reset_at, sp.toParams.hΔ]
   have hsrc := rowsAbove_of hrun hnc hseed hd hzd hi hy (Q := Q)
     fun m hmi X hA a ha hav k hkm hS c hck C l O OV hC hO => by

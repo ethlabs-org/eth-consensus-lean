@@ -104,7 +104,7 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hcv : ChainConvictedBelow tr H) {T : Time} {r σ : Nat}
     (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {t₁ b : Time}
       (hTb : T ≤ b)
-    (hsvc : Healing.Growing.ResetService tr H g ΔF b) (hB : SleepyBoundsFrom tr H r b)
+    (hsvc : Healing.Growing.ACResetService tr H g ΔF) (hB : SleepyBoundsFrom tr H r b)
     (hinv : SeededInvariant tr H g r (r + sp.k - 1) t₁ b)
     (hdt₁ : sp.ts (r + sp.k : Nat) ≤ t₁) {τ : Time}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -138,7 +138,7 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
         ¬ AC.conflictsWithLock sp (tr.state z k₀).ac.locks ℓ.frame (tr.time k₀) P := by
     intro z k₀ ℓ hz hu hk₀
     by_cases hpσ : p ≤ σ
-    · obtain ⟨a, hpr, hr⟩ := hseed.reset
+    · obtain ⟨a, _, hpr, hr⟩ := hseed.reset
       have hdrain : Healing.drainTime sp a = sp.ts (r + sp.k : Nat) := by
         rw [Healing.drainTime_eq, hr, Healing.cleanLabel_eq]
         congr 2
@@ -291,7 +291,7 @@ theorem continued_proposal_live_at
       (digestOf S Q.run.2) Q.gst ΔF T r σ
         (cm := runCommittee S Q.run.2 Q.hn)
         (βK := (K S A).params.βK)) (hTb : T ≤ Q.deadline) {t₁ : Time}
-    (hsvc : Healing.Growing.ResetService Q.trace Q.keys Q.gst ΔF Q.deadline)
+    (hsvc : Healing.Growing.ACResetService Q.trace Q.keys Q.gst ΔF)
     (hB : Compose.Growing.SleepyBoundsFrom Q.trace Q.keys r Q.deadline)
     (hKB : Compose.Growing.CommitteeBoundsFrom Q.trace Q.keys (voteK S Q.run.2) r Q.deadline)
     (hinv : Compose.Growing.SeededInvariant Q.trace Q.keys Q.gst r (r + Q.params.k - 1) t₁

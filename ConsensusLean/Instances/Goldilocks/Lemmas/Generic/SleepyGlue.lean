@@ -15,7 +15,7 @@ namespace Consensus.Goldilocks.Generic.SleepyLayer1
 
 variable {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n}
 
-theorem frames_from_sources (C : ACCorrectLocal A sg) (D : Data A) :
+theorem frames_from_sources {fgHold : Time} (C : ACCorrectLocal A sg fgHold) (D : Data A) :
     FramesFromSources C D := by
   intro hcache hrow hviable hsource cm proposer dg H tr b hrun hnc hpop y i t hr
   have hlocal := C.run.run_local hrun
@@ -37,7 +37,8 @@ variable {O : OutputSchema} {Info : Type} [DecidableEq Info] [Countable Info]
   {F : ChainShapeFamily O Info} {V : Type} [Fintype V] [DecidableEq V]
   {E : Env V} {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
 
-theorem read_agreement (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) (D : Data A) :
+theorem read_agreement (M : RunMap rho payload)
+    {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold) (D : Data A) :
     ReadAgreement M C D := by
   intro hevents houtputs ΔF b p hb hrun hnc hbind hpre hK hpop hframes
     y z i j t u hy hz hby hbz
@@ -99,7 +100,8 @@ theorem read_agreement (M : RunMap rho payload) (C : ACCorrectLocal A M.signer) 
   · exact Anc.total hcoh (ha.trans he) ha'
   · exact Anc.total hcoh ha (ha'.trans he)
 
-theorem ready_read_safety (M : RunMap rho payload) (C : ACCorrectLocal A M.signer)
+theorem ready_read_safety (M : RunMap rho payload)
+    {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold)
     (D : Data A) : ReadyReadSafety M C D := by
   intro hagree hevents houtputs hext ΔF b p hb hrun hnc hbind hpre hK hpop hf
   exact ⟨hagree hevents houtputs ΔF b p hb hrun hnc hbind hpre hK hpop hf,

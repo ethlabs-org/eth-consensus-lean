@@ -33,6 +33,7 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+variable {fgHold : Time}
 
 /-- **An honest proposal run is made operationally**: its proposer proposes it at some cut. -/
 theorem proposesAt_of_honestProposalRun_at
@@ -129,7 +130,7 @@ proposal `P` of slot `u`, by its proposer honest through `t_u + hold`, is an hon
 duty head of every proposal call at `t_{u+1}` of a node honest at that call. -/
 theorem UpTo.operational_proposal_below_next_parent_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK fgHold)
     {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H (sp.ts u + Regimes.Growing.hold sp)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
@@ -311,7 +312,7 @@ theorem UpTo.operational_proposal_below_next_parent_at
 /-- The honest proposal `P'` of `s'` is the child of the duty head of its proposal call. -/
 theorem honest_proposal_child_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK fgHold)
     {s' : Nat} {P P' : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP' : Healing.Growing.HonestProposalRun tr H proposer s' P')
     (hPd : ∀ {i ell} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay},

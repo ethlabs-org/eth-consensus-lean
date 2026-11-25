@@ -10,6 +10,7 @@ public section
 /-! # Early historical witnesses reach later frozen read points -/
 
 namespace Consensus.Goldilocks.Healing.Growing
+variable {hold : Time}
 
 open AC (ACParams ReplayOrder Payload gbar)
 
@@ -22,7 +23,7 @@ theorem frame_witness_readPoint_stamp_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : ResetService tr H g ΔF b) (hcatch : CatchRun tr H g (2 * sp.Δ))
+    (hsvc : ResetService tr H g ΔF b hold) (hcatch : CatchRun tr H g (2 * sp.Δ))
     (hnr : NoRestartAfter tr H (gbar g))
     {x y : Fin sp.n} {a i s : Nat} (hx : x ∈ H (tr.time a))
     (hy : y ∈ H (tr.time i))

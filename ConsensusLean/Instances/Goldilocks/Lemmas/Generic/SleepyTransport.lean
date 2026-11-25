@@ -20,7 +20,7 @@ variable {P : Params} {A : NodeAC P}
   {E : Env V} {rho : Model.Run (compiled F) E} {payload : A.Blk → Set Nat}
 
 theorem committee_transport (M : RunMap rho payload)
-    (C : ACCorrectLocal A M.signer) : CommitteeTransport M C := by
+    {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold) : CommitteeTransport M C := by
   intro p b c W _ hc hW h0 h1 h t d ht htd hdb hne
   have hcount := h t ht (htd.trans (hdb.trans (min_le_left _ _))) hne
   simp only [le_refl, ↓reduceIte] at hcount
@@ -28,7 +28,7 @@ theorem committee_transport (M : RunMap rho payload)
     hcount
 
 theorem population_transport (M : RunMap rho payload)
-    (C : ACCorrectLocal A M.signer) : PopulationTransport M C := by
+    {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold) : PopulationTransport M C := by
   intro p b c W _ hc hW h0 h1 h t d ht htd hdb
   have hcount := h t ht (htd.trans (hdb.trans (min_le_left _ _)))
   have he : d ≤ p.lookAhead W t := by rw [← hW]; exact hdb.trans (min_le_right _ _)

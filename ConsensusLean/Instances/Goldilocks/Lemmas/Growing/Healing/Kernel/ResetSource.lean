@@ -23,6 +23,7 @@ open AC (ACParams ReplayOrder Payload Vote)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+variable {hold : Time}
 
 private theorem hmax_le_snapshot {y : Fin sp.n} (hy : y ∈ H (cutZ sp.toParams g))
     {j : Nat} (hj : FirstCutAfter tr j (cutZ sp.toParams g)) :
@@ -83,7 +84,7 @@ theorem cutZ_lt_reset_of_snapshot_at
 /-- Finite reset premises suffice; the snapshot is observed before their horizon. -/
 theorem ResetPremisesUpTo.cutZ_lt_reset_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) : cutZ sp.toParams g < a :=
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) : cutZ sp.toParams g < a :=
   let ⟨j, hj, _⟩ := hp.snapshot
   cutZ_lt_reset_of_snapshot_at hp.run hp.noColl ⟨j, hj⟩ hp.reset
 
@@ -91,7 +92,7 @@ theorem ResetPremisesUpTo.cutZ_lt_reset_at
 clean label's slot after the reset's. -/
 theorem ResetPremisesUpTo.gbar_le_ts_of_clean_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {s : Nat}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {s : Nat}
     (hs : cleanLabel sp a ≤ s) : AC.gbar g ≤ sp.ts s := by
   have hca := hp.cutZ_lt_reset_at
   have hlc := lt_cutZ sp g

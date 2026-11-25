@@ -11,6 +11,7 @@ public section
 /-! # Following remapped optimistic writes at later honest proposal calls -/
 
 namespace Consensus.Goldilocks.Healing.Growing
+variable {hold : Time}
 
 open AC (ACParams ReplayOrder Payload gbar)
 
@@ -25,7 +26,7 @@ theorem FrameWindow.optimistic_write_later_proposal_head_at
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))

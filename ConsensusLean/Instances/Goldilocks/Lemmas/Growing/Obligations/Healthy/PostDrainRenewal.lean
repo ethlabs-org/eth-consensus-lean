@@ -50,6 +50,7 @@ open AC (ACParams ReplayOrder Payload Vote)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- **The higher-report escape by `T`**: a node honest at its report and at `c_z` reports, by
 `T`, a descendant of `P` at a strictly greater height than `P` (in its store at the report). -/
@@ -80,7 +81,7 @@ slot-`(u+1)` cast of a node honest at it, when `P` is above the cast's `Σ.F` an
 theorem extend_carry_votes_core_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hc : CatchRun tr H g (2 * sp.Δ)) {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hext : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
@@ -164,7 +165,7 @@ caster's finality and viable at its cast (`hcast`, which may use the earlier slo
 theorem extend_next_votes_core_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b)
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hc : CatchRun tr H g (2 * sp.Δ)) {m : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hext : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = m → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
@@ -232,7 +233,7 @@ theorem extend_next_votes_core_at
 
 /-- CS2 at the slot-`(m+1)` committee at every cut from `t_{m+1}` through `b`. -/
 private theorem next_cs2 {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {m : Nat}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {m : Nat}
     (hgm : AC.gbar g + 4 * sp.Δ ≤ sp.ts m) :
     ∀ i, sp.ts (m + 1 : Nat) ≤ tr.time i → tr.time i ≤ b →
       2 * ((Generic.dictOfTime sp cm).committee (m + 1) ∩ (H (tr.time i))ᶜ).ncard <
@@ -246,7 +247,7 @@ written before `t_{u+1}` are below `P`; a later origin is a fast lock of a slot 
 lock block has an honest supporting vote of slot `l`, no later than the lock, that extends it;
 that vote also extends `P` (it names `P` when `l = u`, and `hext` when `l > u`). -/
 theorem high_origin_compatible_post_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
     (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
@@ -317,7 +318,7 @@ theorem high_origin_compatible_post_at {cm : Time → Finset (Fin sp.n)} {βK : 
 slot, which starts after `ḡ + 4Δ` (the reset is after `c_z`), and the drain ending by `t_{u+1}`
 leaves `2k + 4` slots before `u`. -/
 theorem warm_slot_after_reset {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {u : Nat}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {u : Nat}
     (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat)) :
     a < sp.ts (sp.slot a + 1 : Nat) ∧ AC.gbar g + 4 * sp.Δ ≤ sp.ts (sp.slot a + 1 : Nat) ∧
       sp.slot a + 2 * sp.k + 4 ≤ u := by
@@ -335,7 +336,7 @@ theorem warm_slot_after_reset {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- The reset is at or before the slot `u` when its drain ends by `t_{u+1}`. -/
 theorem reset_le_ts_of_drain {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK) {u : Nat}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {u : Nat}
     (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat)) : a ≤ sp.ts u := by
   obtain ⟨hlt, -, hu⟩ := warm_slot_after_reset hp hR
   exact hlt.le.trans ((AC.ts_le_iff sp).2 (by omega))
@@ -345,7 +346,7 @@ at a cut of a node honest at it from `t_u` on, before the slot `M + 1` whose ear
 honest votes extend `P`, the finalized block is below a high origin written by the cut, which is
 compatible with `P` (`high_origin_compatible_post_at`). -/
 theorem finalized_below_post_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u M : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
     (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
@@ -389,7 +390,7 @@ unless the head-height floor passed it, which a strictly higher report causes. O
 below the root, and the caster's finality, below the root too, is below `P` unless a strictly
 higher report finalized above it. -/
 theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u m : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
     (hslot : P.slot = u) (hu : 0 < u)
     (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
@@ -522,10 +523,10 @@ theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : �
     · exact Or.inl ⟨z, r, l, C, hz, hto, hm hrj.le, hPC, hlt⟩
 
 /-- The reset service through `b` holds through any earlier horizon. -/
-private theorem resetService_mono {T : Time} (hs : ResetService tr H g ΔF b) (hTb : T ≤ b) :
-    ResetService tr H g ΔF T :=
-  ⟨hs.deltaF, hs.message, hs.block, hs.relay,
-    fun x i att hx hsg y j hy hj hjT => hs.signedRow x i att hx hsg y j hy hj (hjT.trans hTb)⟩
+private theorem resetService_mono {T hold : Time} (hs : ResetService tr H g ΔF b hold)
+    (hTb : T ≤ b) : ResetService tr H g ΔF T hold :=
+  ⟨hs.deltaF, hs.message, hs.block, hs.relay, fun x i att hx hsg hxh y j hy hj hjT =>
+    hs.signedRow x i att hx hsg hxh y j hy hj (hjT.trans hTb), hs.hold_le⟩
 
 /-- **Every honest vote by `T` of every slot `r ∈ [u + 1, N]` extends the unanimous post-drain
 proposal `P`**, unless a node honest at its report and at `c_z` reports a strictly higher
@@ -533,7 +534,7 @@ descendant of `P` by `T`: by induction on `r`, the slot-`(u+1)` votes by
 `unanimous_next_votes_extend_core_at`, each later slot by `extend_next_votes_core_at` through `T`,
 with no honest proposer needed. -/
 theorem post_drain_votes_extend_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u N : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
     (hslot : P.slot = u) (hu : 0 < u)
     (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
@@ -611,7 +612,7 @@ strictly higher descendant of `P` by then. The honest slot-`r` votes extend `P`
 (`post_drain_votes_extend_at`) and are resolved before `t_r + 2Δ` at the updater, whatever the
 slot-`r` proposer; no live lock vetoes `P`. -/
 theorem fast_lock_renewal_post_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u N : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
     (hslot : P.slot = u) (hu : 0 < u) (hPg : P.root ≠ sp.genesisRoot)
     (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
@@ -718,7 +719,7 @@ report extends `P` by `T`: at a cut of a node honest at it from `t_u + Δ` throu
 when the honest votes of the slots after `u` cast by `T` extend `P`, `P` is in the store frame,
 above its finalized-chain root, and among its viable heads. -/
 theorem viable_head_post_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
     (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
@@ -771,7 +772,7 @@ strictly higher descendant of `P` by the call: the fast lock of slot `max u (slo
 (`fast_lock_renewal_post_at`) is live and within the two-slot window of `toFGCandidates` at the
 call, on a block of the full viable tree. -/
 theorem toFG_candidate_post_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u N : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ tr.HonestBlocksAt H)
     (hslot : P.slot = u) (hu : 0 < u) (hPg : P.root ≠ sp.genesisRoot)
     (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →

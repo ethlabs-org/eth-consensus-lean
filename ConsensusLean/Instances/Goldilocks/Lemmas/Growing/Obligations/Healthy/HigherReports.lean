@@ -38,13 +38,14 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
 namespace ResetPremisesUpTo
+variable {hold : Time}
 
 /-- **A signed entry above the target yields a strictly higher report**: an attestation signed at
 `d < i` by a node honest at its signing and at `c_z`, naming an entry held at `i` strictly above a
 held target, is preceded by a report of its signer, honest at it and at `c_z`, extending the
 target, at a strictly higher height. -/
 theorem higher_report_of_signed_entry_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y z : Fin sp.n} {i d : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < i, tr.time q ≤ t)
     (hy : y ∈ H t) (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time d)))
     {P E : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -85,7 +86,7 @@ chain, strictly above a target `P`, of a node honest at its cut `k ≤ b`, is th
 entry signed by a validator honest at `k` and at `c_z` (the quorum is read at the later of the
 two), whose report extends `P` at a strictly higher height. -/
 private theorem finalized_descendant_report_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) (hkb : tr.time k ≤ b)
     {W X P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) (hX : X ∈ (tr.state y k).fg.tree)
@@ -194,7 +195,7 @@ private theorem finalized_descendant_report_at {cm : Time → Finset (Fin sp.n)}
 extends the target**, at a cut `k ≤ b` of a node honest at it; the reporter is honest at its
 report and at `c_z`. -/
 theorem finality_below_or_higher_report_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) (hkb : tr.time k ≤ b)
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hcompat : Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F P) :
@@ -217,7 +218,7 @@ earlier high origin, and the earlier high origins are pairwise compatible and co
 seed. -/
 theorem held_target_high_floor_report_before_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
     {P S : AC.Blk sp.n (List (FG.Att sp.n))} (hPy : P ∈ (tr.state y i).fg.tree)
     (hseed : HighOrigin tr H g v q m S) (hSP : Anc (tr.HonestBlocksAt H) S P)

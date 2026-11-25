@@ -35,13 +35,14 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+variable {hold : Time}
 
 /-- **Reports above a unanimous post-drain proposal `P` of slot `u` by `t_u + 6Δ + G·Δ`** under
 a signing calendar with gap `G` from `t_u + 6Δ`: every node honest at `t_u + 6Δ + G·Δ` reports a
 descendant of `P` by then, or a node honest at its report and at `c_z` reports a strict height
 increase above `P` by then. -/
 theorem report_cover_delayed_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     {G u : Nat} (hgap : SignGapAt sp.toParams sign G (sp.ts u + 6 * sp.Δ))
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -129,7 +130,7 @@ theorem growingAllTicksSign_of_calendar_true
 /-- **The responsive case `G = 0`**: under a calendar that signs at every public time, the delayed
 cover is the stock statement `report_cover_of_unanimous_at`, at `t_u + 6Δ`. -/
 theorem report_cover_of_unanimous_responsive_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     (hcal : tr.SignCalendarAt proposer dg H (fun _ _ => true))
     {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ tr.HonestBlocksAt H) (hslot : P.slot = u) (hu : 0 < u)
