@@ -49,7 +49,16 @@ simulated by a `GoldilocksRun` (claims C0.4 kept) and bind the evidence (G1.5). 
   The slot proposal step is C0.4's proposal step (`ac_proposal`, then the own `on_block`
   through `recordOwn`, which brings the digest). The first trailing poll runs the FG update
   (`ac_to_fg`, then `attest`, written out as `Node.tickStep … .fgUpdate` does) and queues the
-  attestation; the two trailing polls drain the tick's at most one vote and one attestation.
+  attestation, or holds it when the setup's release schedule refuses release at the tick's time
+  (`held`); the two trailing polls drain the tick's at most one vote and one attestation. The
+  record changes at the signing. When the schedule allows release at the signing time, the own
+  `on_attestation` runs at once and the attestation joins the outbox queue (released by a poll
+  of that time, after any body ahead of it); otherwise it is held: not in the node's pool, so no
+  proposal carries it. The first poll after the tick step of its time (`ticked`) at which the
+  schedule allows release processes every held attestation, oldest first, before that poll's FG
+  update, and releases them at the end of its batch, after the batch's other candidates. The
+  pool is in admission order, which can differ from signing order and from release order. Votes
+  never wait for held attestations.
 * **Relay.** A newly accepted block or an attestation is relayed at the gossip of its event as
   a carried object of an unsigned `.relay` wrapper; a delivery's emission and relay leave at the
   delivery's own time (`Model.Run.deliver`), as the spec's relay rule sends them.
@@ -460,6 +469,12 @@ structure State (binding : VoteBinding := stock) where
   voteForwards : List (Time × Vote sp.n × Wire sp.n (binding := binding)) := []
   /-- The node's vote authentication, installed at `init`, retained across restarts. -/
   voteIO : VoteAuth sp.n binding := ⟨fun _ _ _ _ => false, fun _ _ => none⟩
+  /-- Own signed attestations not yet released, oldest first: the release schedule refused
+  release at their signing time and at every poll since. Retained across restarts. -/
+  held : List (FG.Att sp.n) := []
+  /-- The tick step of the current time has run (set by the poll proposal step, cleared by the
+  clock): held attestations are released and processed only after it. -/
+  ticked : Bool := false
 
 variable {sp ro}
 
@@ -590,8 +605,10 @@ def wireCodec (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) (bindin
   attestation := decodeAttObj sp (binding := binding)
 
 /-- Connect node handlers to the Goldilocks clock, duty flag and publication queues. -/
-def nodeAdapter (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) (binding : VoteBinding)
-    (sign : Fin sp.n → Time → Bool := fun _ _ => true) :
+noncomputable def nodeAdapter (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (binding : VoteBinding)
+    (sign : Fin sp.n → Time → Bool := fun _ _ => true)
+    (release : Fin sp.n → Time → Bool := fun _ _ => true) :
     NodeAsChainShape.Adapter (goldilocksNode sp ro) binding.Kind Info Body
       (State sp ro binding) where
   self := State.self
@@ -602,7 +619,10 @@ def nodeAdapter (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) (bind
   wake st self now := { st with self, now }
   applyCuts := apply
   relayIf := relayIf
-  attest st node a := { st with node, outbox := st.outbox ++ [.att (encodeAtt a)] }
+  attest st node a :=
+    if release st.self st.now then
+      { st with node := (Node.onAttestation node a).1, outbox := st.outbox ++ [.att (encodeAtt a)] }
+    else { st with node, held := st.held ++ [a] }
   sign := sign
 
 variable (sp ro) in
@@ -724,31 +744,42 @@ noncomputable def propose
 it signs, the new record, the own `on_attestation` and the attestation queued), as
 `Node.tickStep … .fgUpdate`. -/
 noncomputable def fgUpdate
-    (st : State sp ro (binding := binding)) :
+    (st : State sp ro (binding := binding))
+    (release : Fin sp.n → Time → Bool := fun _ _ => true) :
     State sp ro (binding := binding) :=
-  NodeAsChainShape.fgUpdate (nodeAdapter sp ro binding) st
+  NodeAsChainShape.fgUpdate (nodeAdapter sp ro binding (release := release)) st
 
-/-- A poll step: the FG update when due, then the oldest queued ordinary body.
+/-- A poll step: the FG update when due (its attestation queued or held by `release`), then the
+oldest queued ordinary body.
 Clear the forwarding queue; `pollBatch` captures its contents before this step. -/
 noncomputable def poll
     (st : State sp ro (binding := binding))
-    (_ : Time) : State sp ro (binding := binding) ×
+    (_ : Time) (release : Fin sp.n → Time → Bool := fun _ _ => true) :
+    State sp ro (binding := binding) ×
       Option (Body × List (Wire sp.n (binding := binding))) :=
-  let st₁ := if st.fgDue then fgUpdate st else st
+  let st₁ := if st.fgDue then fgUpdate st release else st
   match st₁.outbox with
   | [] => ({ st₁ with forwards := [], voteForwards := [] }, none)
   | b :: rest => ({ st₁ with outbox := rest, forwards := [], voteForwards := [] }, some (b, []))
 
 /-- Keep the ordinary emission and parent-first block wrappers at their original offsets,
-then drain vote envelopes. Both queues are read before polling; the FG update admits no votes.
-The engine signs the list and checks each candidate against its actual release prefix. -/
+then drain vote envelopes, then, after the tick step of the node's time and when the release
+schedule allows it then, every held attestation, oldest first; these are processed by the
+own `on_attestation`, in that order, before the poll's FG update. The queues are read before
+polling; the FG update admits no votes. The engine signs the list and checks each candidate
+against its actual release prefix. -/
 noncomputable def pollBatch
     (st : State sp ro (binding := binding))
-    (t : Time) : State sp ro (binding := binding) ×
+    (t : Time) (release : Fin sp.n → Time → Bool := fun _ _ => true) :
+    State sp ro (binding := binding) ×
       List (Body × List (Wire sp.n (binding := binding))) :=
-  let r := poll st t
+  let flush := release st.self st.now && st.ticked
+  let r := poll (if flush then
+      { st with held := [], node := st.held.foldl (fun n a => (Node.onAttestation n a).1) st.node }
+    else st) t release
   (r.1, r.2.toList ++ (st.forwards.map fun p => (.forward p.1, p.2)) ++
-    (st.voteForwards.map fun p => (.voteForward p.1 (encodeVote p.2.1), [p.2.2])))
+    (st.voteForwards.map fun p => (.voteForward p.1 (encodeVote p.2.1), [p.2.2])) ++
+    (if flush then st.held.map fun a => (.att (encodeAtt a), []) else []))
 
 /-- The chain of headers from genesis (excluded) to `B`, oldest first, by parent walk in the
 held blocks `blocks`, with `fuel` steps at most. -/
@@ -774,16 +805,17 @@ noncomputable def restore (k : Fin sp.n)
 variable (sp ro) in
 /-- The Goldilocks engine operations at fixed protocol parameters and voting roles. -/
 noncomputable def nodeOps (binding : VoteBinding)
-    (sign : Fin sp.n → Time → Bool := fun _ _ => true) :
+    (sign : Fin sp.n → Time → Bool := fun _ _ => true)
+    (release : Fin sp.n → Time → Bool := fun _ _ => true) :
     NodeAsChainShape.Ops sp.n binding.Kind Info Body Out (State sp ro binding) Nat WireVote where
   init k p io := ⟨k, Node.initWith (goldilocksNode sp ro)
     (binding.installVote p (goldilocksNode sp ro).initial),
-    0, [], [], false, fun _ => none, [], [], io⟩
-  clock st t := { st with now := t }
+    0, [], [], false, fun _ => none, [], [], io, [], false⟩
+  clock st t := { st with now := t, ticked := false }
   propose := propose
-  pollPropose st _ := (nodeTick st sign, none)
-  poll := poll
-  pollBatch := pollBatch
+  pollPropose st _ := ({ nodeTick st sign with ticked := true }, none)
+  poll st t := poll st t release
+  pollBatch st t := pollBatch st t release
   gossip st _ :=
     match st.relayBuf with
     | [] => []
@@ -829,6 +861,9 @@ structure Setup where
   /-- Whether a validator may run `ac_to_fg` and `fg_attest` at a public time.
   By default every public tick may sign. -/
   sign : (pub : Public) → Fin pub.n → Time → Bool := fun _ _ _ => true
+  /-- Whether a validator may release its held signed FG attestations at a time.
+  By default every time releases, so nothing is ever held. -/
+  release : (pub : Public) → Fin pub.n → Time → Bool := fun _ _ _ => true
 
 /-- The AC parameters use protocol delay `pub.ΔAC` and slots of four protocol delays: L0 delivers
 strictly before the bound (`CommLog.PSync`), which is the node's deadline `[τ, max(τ, w) + Δ)`.
@@ -868,7 +903,8 @@ noncomputable def goldilocks (S : Setup) :
     ChainShapeFamily schema Info := fun pub =>
   let binding := S.vote
   NodeAsChainShape.shape (skeleton pub (binding := binding))
-    (NodeAsChainShape.familyOps fun hn => nodeOps (S.params pub hn) (S.ro _) binding (S.sign pub))
+    (NodeAsChainShape.familyOps fun hn =>
+      nodeOps (S.params pub hn) (S.ro _) binding (S.sign pub) (S.release pub))
     (voteClaim (binding := binding) pub.n) voteBody (presented (binding := binding))
     (binding.candidateRole pub.n) (dependencies pub.n (binding := binding))
     (conflicts (binding := binding)) (isFGAtt (binding := binding))
@@ -885,16 +921,18 @@ theorem goldilocks_propose_eq (S : Setup) (pub : Public) (st : PubState S pub) (
       if hn : 1 ≤ pub.n then (fun _ => (propose (st hn) s).1, (propose (st hn) s).2)
       else (st, none) := by rfl
 
-/-- The proposal poll runs the node tick but emits no proposal directly. -/
+/-- The proposal poll runs the node tick and marks the tick step done, but emits no proposal
+directly. -/
 theorem goldilocks_pollPropose_eq (S : Setup) (pub : Public) (st : PubState S pub) (t : Time) :
     (goldilocks S pub).pollPropose st t =
-      if hn : 1 ≤ pub.n then (fun _ => nodeTick (st hn) (S.sign pub), none)
+      if hn : 1 ≤ pub.n then (fun _ => { nodeTick (st hn) (S.sign pub) with ticked := true }, none)
       else (st, none) := by rfl
 
 /-- The batch poll runs the Goldilocks poll, or emits nothing with no keys. -/
 theorem goldilocks_pollBatch_eq (S : Setup) (pub : Public) (st : PubState S pub) (t : Time) :
     (goldilocks S pub).pollBatch st t =
-      if hn : 1 ≤ pub.n then (fun _ => (pollBatch (st hn) t).1, (pollBatch (st hn) t).2)
+      if hn : 1 ≤ pub.n then
+        (fun _ => (pollBatch (st hn) t (S.release pub)).1, (pollBatch (st hn) t (S.release pub)).2)
       else (st, []) := by rfl
 
 /-- Read the node's chain at its current time, or the empty chain with no keys. -/
@@ -1117,8 +1155,11 @@ theorem propose_eq (st : State sp ro binding) (s : Slot) : propose st s =
   | none => simp only [nodeAdapter, h]
   | some dp => rcases dp with ⟨d, p⟩; simp only [nodeAdapter, wireCodec, h]; rfl
 
-/-- Clear the FG duty flag and queue an attestation if AC supplies an attestable source. -/
-theorem fgUpdate_eq (st : State sp ro binding) : fgUpdate st =
+/-- Clear the FG duty flag; if AC supplies an attestable source, queue the attestation when the
+release schedule allows it at the node's time, processed by the own `on_attestation`, and hold
+it otherwise, with only the record changed. -/
+theorem fgUpdate_eq (st : State sp ro binding)
+    (release : Fin sp.n → Time → Bool := fun _ _ => true) : fgUpdate st release =
     (let r := Node.acToFG st.node st.now
      let st₁ := { st with node := r.1, fgDue := false }
      match r.2.2 with
@@ -1126,9 +1167,14 @@ theorem fgUpdate_eq (st : State sp ro binding) : fgUpdate st =
      | some C => match r.1.fg.attest r.1.record st.self C with
        | none => st₁
        | some (a, Λ') =>
-         { st₁ with
-           node := (Node.onAttestation { r.1 with record := Λ' } a).1
-           outbox := st₁.outbox ++ [.att (encodeAtt a)] }) := by
+         if release st.self st.now then
+           { st₁ with
+             node := (Node.onAttestation { r.1 with record := Λ' } a).1
+             outbox := st₁.outbox ++ [.att (encodeAtt a)] }
+         else
+           { st₁ with
+             node := { r.1 with record := Λ' }
+             held := st₁.held ++ [a] }) := by
   unfold fgUpdate NodeAsChainShape.fgUpdate
   cases h : (Node.acToFG st.node st.now).2.2 with
   | none => simp only [nodeAdapter, h]

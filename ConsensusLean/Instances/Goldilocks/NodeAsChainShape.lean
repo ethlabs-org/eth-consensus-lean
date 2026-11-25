@@ -187,7 +187,10 @@ noncomputable def recordBlock (st : S) (k : Fin P.n) (h : Header I)
       D.applyCuts st none (Node.onBlock (D.self st) (D.node st) (D.now st) (blockOf d h k atts p))
   | _, _ => st
 
-/-- Read the AC source and run the FG attestation duty, queueing a signed attestation. -/
+/-- Read the AC source and run the FG attestation duty: on a signing the record is updated and
+the adapter receives the attestation, with the node state before the own `on_attestation`; the
+adapter processes the own attestation when it releases it (an unreleased attestation is not in
+the own pool). -/
 noncomputable def fgUpdate (D : Adapter A K I B S) (st : S) : S :=
   let r := Node.acToFG (D.node st) (D.now st)
   let st₁ := D.setDue (D.setNode st r.1) false
@@ -196,7 +199,7 @@ noncomputable def fgUpdate (D : Adapter A K I B S) (st : S) : S :=
   | some b =>
       match r.1.fg.attest r.1.record (D.self st) b with
       | none => st₁
-      | some (a, record) => D.attest st₁ (Node.onAttestation { r.1 with record := record } a).1 a
+      | some (a, record) => D.attest st₁ { r.1 with record := record } a
 
 /-- Restart the node, retaining the instance's durable envelope. -/
 noncomputable def restore (D : Adapter A K I B S) (k : Fin P.n) (d : S) (t : Time) : S :=

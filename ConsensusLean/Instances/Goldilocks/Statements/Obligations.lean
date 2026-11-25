@@ -14,24 +14,27 @@ slots) on every run, faults growing over it, as an Ebb-and-Flow protocol
 (`ShapeObligationsAs .ebbAndFlow`: the schema provides all three capabilities, available and
 stable aliased to `confirmed`, final served by `finalized`), at the contract
 `goldilocksContract A (contract_coefficients S A)`, whose every number is a closed formula in the
-protocol parameters `k`, `δ_t`, the FG delay in slots `fgSlots`, the signing gap `G`, and the
-outer gap `X`.
+protocol parameters `k`, `δ_t`, the FG delay in slots `fgSlots`, the signing gap `G`, the
+release gap `R`, and the outer gap `X`.
 
 * **Assumptions** (`ContractAssumptions`): the FG delay in slots `fgSlots ≥ 2` and the timeout
-  `3·finalSlots ≤ δ_t`, where `finalSlots = ⌈(6 + fgDelay + G)/4⌉`. Each validator has a public
-  signing appointment within the signing-gap bound. Healthy runs have
+  `3·finalSlots ≤ δ_t`, where `finalSlots = ⌈(6 + fgDelay + R + G)/4⌉`. Each validator has a
+  public signing appointment within the signing-gap bound and a release time within the
+  release-gap bound. Healthy runs have
   `6·ΔAC + ΔFG ≤ 4·fgSlots·ΔAC` (the contract's FG delay
   bound is `fgDelay = 4·fgSlots − 6`): the FG attestations of a round reach every node within
   `fgSlots` slots, the paper's `c_F = ⌈(6Δ + Δ_F)/(4Δ)⌉ ≤ fgSlots`. `Setup` fixes the genesis root,
   `δ_t`, the lock window `k ≥ 2`, the fast increment `c ≥ 2` (read by no coefficient) and the
-  restart replay order, vote binding, and signing calendar.
-  The endpoint and headlines hold at every vote binding for calendars satisfying the gap bound.
+  restart replay order, vote binding, signing calendar and release schedule.
+  The endpoint and headlines hold at every vote binding for calendars and schedules satisfying
+  the gap bounds.
 * **Contract** (`goldilocksContract`): the standard thresholds, the FG delay bound, the outage
   numbers, and the progress patterns (`finalWindow A` for the final output, one honest ready
   proposer for the others, in every window of the outer gap).
 * **Coefficients** (`contract_coefficients`): catch-up `contract_catchUp`, heal `contract_heal`
   and latency `contract_latency`. Only the final latency depends on `finalSlots`; the heal
-  coefficient includes `5G` for signing waits.
+  coefficient includes `5G` for signing waits and no release term (a held attestation delays
+  delivery, which the timeout `3·finalSlots ≤ δ_t` pays, not a report).
 
 The time numbers (catch-up, heal, latency, arming lag, outage budget, outage look-back, recovery
 delay) are coefficients of `ΔAC`, the node and the engine delay alike (`Δp = Δe`: L0 delivers
@@ -66,16 +69,22 @@ structure ContractAssumptions (S : Setup) where
   sign_liveness : ∀ (pub : Public) (y : Fin pub.n) (t : Time), 0 ≤ t →
     ∃ t', t ≤ t' ∧ t' < t + ((signGap : Time) + 1) * pub.ΔAC ∧
       pub.ΔAC ∣ t' ∧ S.sign pub y t' = true
-  timeout : 3 * ((6 + (4 * fgSlots - 6) + signGap + 3) / 4) ≤ S.δt
+  /-- Maximum wait, in protocol-delay units, from a signing to the release of the attestation. -/
+  releaseGap : Nat := 0
+  /-- Every validator may release within the gap bound from every time; at `releaseGap = 0`
+  the schedule releases at every time `t ≥ 0`. -/
+  release_liveness : ∀ (pub : Public) (y : Fin pub.n) (t : Time), 0 ≤ t →
+    ∃ t', t ≤ t' ∧ t' ≤ t + (releaseGap : Time) * pub.ΔAC ∧ S.release pub y t' = true
+  timeout : 3 * ((6 + (4 * fgSlots - 6) + releaseGap + signGap + 3) / 4) ≤ S.δt
 
 /-- The contract's FG delay bound `4·fgSlots − 6` (positive, `fgSlots ≥ 2`): the healthy regime's
 `ΔFG ≤ (4·fgSlots − 6)·ΔAC` is `6·ΔAC + ΔFG ≤ 4·fgSlots·ΔAC`. -/
 def ContractAssumptions.fgDelay {S : Setup} (A : ContractAssumptions S) : ℕ+ :=
   ⟨4 * A.fgSlots - 6, by have := A.two_le_fgSlots; omega⟩
 
-/-- Final anchor spacing `⌈(6 + fgDelay + G)/4⌉` in slots. -/
+/-- Final anchor spacing `⌈(6 + fgDelay + R + G)/4⌉` in slots. -/
 def ContractAssumptions.finalSlots {S : Setup} (A : ContractAssumptions S) : Nat :=
-  (6 + (A.fgDelay : Nat) + A.signGap + 3) / 4
+  (6 + (A.fgDelay : Nat) + A.releaseGap + A.signGap + 3) / 4
 
 /-- Route-A four-anchor window `[0, c′, 2c′, 3c′]` at `c′ = finalSlots`. -/
 def finalWindow {S : Setup} (A : ContractAssumptions S) : Pattern :=
@@ -125,7 +134,7 @@ An abbreviation exposes the index type for the adapter signatures.
 
 * FG delay bound `A.fgDelay = 4·fgSlots − 6`: the healthy regime assumes
   `ΔFG ≤ (4·fgSlots − 6)·ΔAC`, i.e. `6·ΔAC + ΔFG ≤ 4·fgSlots·ΔAC` (an envelope, never a
-  deadline; final gap `finalSlots` also accounts for signing waits).
+  deadline; final gap `finalSlots` also accounts for signing and release waits).
 
 Outage numbers (slot `4ΔAC`; slow arming only):
 * arming lag `4k + 6`: the label before the outage label (`k + 1½` slots before `b₀`) is fully
@@ -168,7 +177,7 @@ abbrev goldilocksContract {S : Setup} (A : ContractAssumptions S)
         hold := 1 }
 
 /-- **Goldilocks meets the obligations**, the concrete endpoint: for every setup and every
-assumption set (the FG delay, signing-gap bound and timeout), the
+assumption set (the FG delay, signing-gap and release-gap bounds and timeout), the
 Goldilocks family at the setup's vote binding meets the obligations as an Ebb-and-Flow protocol,
 for every finite validator type, including the empty type (its schema provides exactly
 the final, stable and available capabilities; available and stable are both the `confirmed`
@@ -181,7 +190,7 @@ def MeetsObligations : Prop :=
 
 /-- **Goldilocks is correct and optimally fault tolerant**, the headline statement:
 for every setup `S`, every assumption set
-`A` (the FG delay, signing-gap bound and timeout) and every finite
+`A` (the FG delay, signing-gap and release-gap bounds and timeout) and every finite
 validator type `V`, including the empty type, the family at `S`'s vote binding, compiled and run
 by the general execution model (`sysOf schema (compiled (goldilocks S)) V`, with progress read by
 `shapeProgress`), is an L0
