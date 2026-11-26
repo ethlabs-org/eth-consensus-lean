@@ -36,7 +36,7 @@ private theorem stateTransition_counted {σ σ' : ChainState gp.n} {B : FGBlock 
 
 /-- **Timeout slot (lemma T).** A block that enters the next height without
 justifying the current one has a slot at least `δt` after the slot of the current entry. -/
-theorem timeout_step_slot {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
+private theorem timeout_step_slot {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
     (h : gp.stateTransition σ B = some σ') (hh : σ'.h = σ.h + 1) (hj : σ'.hj ≠ σ.h) :
     σ.ThSlot + gp.δt ≤ B.slot := by
   obtain ⟨σ₀, hs, hh₀, -, hT, -, rfl⟩ := gp.stateTransition_counted h
@@ -161,7 +161,7 @@ theorem justify_of_target_previousHeightJustified {c : List (FGBlock gp.n)} {σ 
 W2).** On a chain, if `h_F = h_j`, no pair is pending (pending heights are in `(h_F, h_j]`),
 so the finality step keeps `h_F`, and the loose-BJ gate holds: a block whose counted state has a
 target quorum justifies the entry, with no finality quorum, and keeps `h_F = h_j`. -/
-theorem justify_of_target_finalized {c : List (FGBlock gp.n)} {σ σ' : ChainState gp.n}
+private theorem justify_of_target_finalized {c : List (FGBlock gp.n)} {σ σ' : ChainState gp.n}
     {B : FGBlock gp.n} (hc : gp.chainState c = some σ) (h : gp.stateTransition σ B = some σ')
     (hfe : σ.hF = σ.hj)
     (hq : gp.q ≤ (B.atts.foldl ChainState.processAtt { σ with s := B.slot }).target.card) :
@@ -206,7 +206,7 @@ theorem justify_of_target_chain {c : List (FGBlock gp.n)} {σ σ' : ChainState g
 /-- **A pending pair at height `h_j` is `(h_j, J)` (G0.2 (d), (e)).** On a chain, the
 pending heights are strictly increasing and the newest pair is `(h_j, J)`, so a pending pair at
 height `h_j` is that pair. -/
-theorem pending_eq_of_fst_eq_hj {c : List (FGBlock gp.n)} {σ : ChainState gp.n}
+private theorem pending_eq_of_fst_eq_hj {c : List (FGBlock gp.n)} {σ : ChainState gp.n}
     (hc : gp.chainState c = some σ) {p : Nat × Nat} (hp : p ∈ σ.pending) (he : p.1 = σ.hj) :
     p = (σ.hj, σ.J) := by
   obtain ⟨-, -, -, -, -, -, hpw, hmem, hlast, -⟩ := chain_invariants gp c σ hc
@@ -241,7 +241,7 @@ private theorem step_fin {σ σ' : ChainState gp.n} {B : FGBlock gp.n}
 
 /-- **Finalized at `h_j` means finalized `J` (G0.2 (c)).** On a chain, if
 `h_F = h_j` then `F = J`. -/
-theorem F_eq_J_of_hF_eq_hj {c : List (FGBlock gp.n)} {σ : ChainState gp.n}
+private theorem F_eq_J_of_hF_eq_hj {c : List (FGBlock gp.n)} {σ : ChainState gp.n}
     (hc : gp.chainState c = some σ) (he : σ.hF = σ.hj) : σ.F = σ.J := by
   refine gp.chainState_induction (P := fun _ σ => σ.hF = σ.hj → σ.F = σ.J)
     (fun _ => rfl) (fun c σ B σ' hc ih hB => ?_) hc he
@@ -260,7 +260,7 @@ theorem F_eq_J_of_hF_eq_hj {c : List (FGBlock gp.n)} {σ : ChainState gp.n}
 /-- **A justification at a height whose previous height is justified finalizes the predecessor
 block.** On a chain, a block that justifies the current height of a state whose previous height is
 justified has `F = J` of the parent state: the predecessor block, not only its height. -/
-theorem previousHeightJustified_justify_finalizes_block {c : List (FGBlock gp.n)}
+private theorem previousHeightJustified_justify_finalizes_block {c : List (FGBlock gp.n)}
     {σ σ' : ChainState gp.n} {B : FGBlock gp.n} (hc : gp.chainState c = some σ)
     (h : gp.stateTransition σ B = some σ')
     (hb : σ.previousHeightJustified) (hj : σ'.hj = σ.h) : σ'.F = σ.J ∧ σ'.hF = σ.hj := by
@@ -309,7 +309,7 @@ height `σ.h` and enters the next height (state `ρ'`) has a slot before `ρ.ThS
 (`ρ'.hj = ρ.h`), then a block of `d` justified the entry `(σ.h, σ.Th)`, and finalized the
 predecessor block if `σ` has its previous height justified. The second disjunct covers a crossing at
 age `≥ δt` with a target quorum: the justify test precedes the timeout test. -/
-theorem cross_chain_justifies' {c d : List (FGBlock gp.n)} {σ τ : ChainState gp.n}
+private theorem cross_chain_justifies' {c d : List (FGBlock gp.n)} {σ τ : ChainState gp.n}
     (hc : gp.chainState c = some σ) (hd : gp.chainState (c ++ d) = some τ) (hh : σ.h < τ.h)
     (hs : ∀ d₁ B d₂ ρ ρ', d = d₁ ++ B :: d₂ → gp.chainState (c ++ d₁) = some ρ →
       gp.chainState (c ++ d₁ ++ [B]) = some ρ' → ρ.h = σ.h → ρ'.h = ρ.h + 1 →
