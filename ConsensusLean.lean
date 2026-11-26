@@ -940,7 +940,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.S
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.ACU
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Outcome
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Outcome
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Recovery

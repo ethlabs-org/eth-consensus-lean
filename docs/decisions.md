@@ -597,8 +597,8 @@ detail in `TRUST.md`.
 - **Statements at population-sized committees take the size equation as a premise.** The run records
   `GoldilocksRun`, `Growing.GoldilocksRun`, `AC.ACRun`, `AC.ACRunU` and `AC.Growing.ACRun` state the
   run and trace laws only, for every vote binding, and carry no committee size. A milestone statement proved or
-  stated for population-sized committees takes `sp.committeeSize = sp.n` as a premise: the growing-fault
-  statement over `Growing.GoldilocksRun` `Compose.Growing.OutcomeService`. The growing-fault R.2 rows
+  stated for population-sized committees takes `sp.committeeSize = sp.n` as a premise (as the `stock` field of
+  `AC.HealthyBaseU` does). The growing-fault R.2 rows
   `Regimes.Growing.IncludeSleepy` and `GrowSleepy` (`Results/Statements/SleepyGrowth`) are stated at a slot
   dictionary `K` instead: from its committee start, with its committee facts and its committee support
   `CommitteeSleepy`, and no size equation. So are the static healing statements: the HS shared premises

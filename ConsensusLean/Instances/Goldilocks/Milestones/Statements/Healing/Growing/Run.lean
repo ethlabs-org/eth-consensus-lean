@@ -24,7 +24,7 @@ stated under growing faults. The definitions read the honest set as follows:
   validators honest at a horizon `d`, at cuts up to `d`; a phase change is read at both cuts over
   the cohort `H d` of one fixed `d`, so the steps of the count do not cross a change of cohort (a
   compromise, which removes a node's blocks from the honest reads, is not a phase change);
-* **the proposer** of a healed or ready slot `s` is honest through `t_s + hold`
+* **the proposer** of a healed slot `s` is honest through `t_s + hold`
   (`Regimes.Growing.hold`).
 
 The vocabulary that binds no honest set (`FirstCutAfter`, `cutZ`, the constants, the phase case,
@@ -75,33 +75,6 @@ section Goldilocks
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
-
-/-- **A ready proposal** under growing faults: the proposer `p` of slot `s`, honest through
-`t_s + hold` and joined at `t_s`, makes its proposal `B` of slot `s` at cut `k`, and every
-slot-`(s−1)` support reference of `B` is held before the vote deadline `t_s + Δ` by every validator
-honest at `t_s + Δ`. -/
-def ReadyProposal (proposer : Nat → Fin sp.n)
-    (p : Fin sp.n) (k s : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
-  p ∈ H (sp.ts s + hold sp) ∧ p = proposer s ∧ tr.JoinedAt p (sp.ts s) ∧ tr.ProposesAt p k B ∧
-    B.slot = s ∧
-    ∀ x ∈ declaredSupportVotes B, x.slot + 1 = s → ∀ y j, y ∈ H (sp.ts s + sp.Δ) →
-      tr.FirstCutFrom j (sp.ts s + sp.Δ) →
-      ∃ R ∈ (tr.state y j).fg.tree, R.root = x.head ∧ R.slot + 1 ≤ s
-
-/-- **The HS shared premises** under growing faults, with `Healthy(g)` as `HealthyRunAt` at the
-release hold `fgHold` (default `0`: no hold). -/
-structure HSShared (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (g ΔF : Time)
-    (fgHold : Time := 0) : Prop where
-  /-- `NoColl` on the blocks of the run. -/
-  noColl : Compose.NoCollRun dg tr
-  /-- Genesis's root is its digest. -/
-  genesisRoot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg
-  /-- `Healthy(g)` under growing faults. -/
-  healthy : tr.HealthyRunAt H ΔF g fgHold
-  /-- No restart after `ḡ` of a node honest at its restart. -/
-  noRestart : NoRestartAfter tr H (gbar g)
-  /-- `δ_t ≥ ⌈(6Δ + Δ_F)/(4Δ)⌉`. -/
-  timeoutDelay : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.δt : Time)
 
 /-- **A high origin** `(B, j)` under growing faults: written by `x` honest at its write and at
 `c_z`. -/
