@@ -45,7 +45,7 @@ theorem releaseAll_subset (hash : P.Item → Nat) (k : Key pub) (nd : Node P)
 
 /-- A release is ready at any receiver holding the sender's initial objects
 and all preceding releases of this call. This includes same-event release order. -/
-theorem releaseAll_ready (hash : P.Item → Nat) (k : Key pub) (nd : Node P)
+private theorem releaseAll_ready (hash : P.Item → Nat) (k : Key pub) (nd : Node P)
     (cs : List P.Object) :
     ∀ i o, (releaseAll P hash k nd cs).2[i]? = some o →
       P.dependencies.ready
@@ -126,7 +126,7 @@ theorem TickReach.invariant {ds : List P.Duty} {st : P.State} (Q : P.State → P
   | recordOwn o hs _ ih => exact hr _ o hs ih
 
 /-- `releaseAll` from a reached state leaves a reached state. -/
-theorem releaseAll_reach {ds : List P.Duty} {st : P.State} (hash : P.Item → Nat)
+private theorem releaseAll_reach {ds : List P.Duty} {st : P.State} (hash : P.Item → Nat)
     (k : Key pub) (nd : Node P) (cs : List P.Object) (h : TickReach P ds st nd.st) :
     TickReach P ds st (releaseAll P hash k nd cs).1.st := by
   induction cs generalizing nd with

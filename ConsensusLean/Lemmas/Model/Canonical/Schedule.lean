@@ -113,7 +113,7 @@ theorem layer_time (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Ti
     mem_deliveryEvents] at he
   rcases he with (⟨v, _, _, _, rfl⟩ | ⟨v, _, _, rfl⟩) | ⟨_, v, _, _, o, _, rfl⟩ <;> rfl
 
-theorem layer_honest (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Time)
+private theorem layer_honest (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Time)
     {e : Event V (protoOf F E).Object} (he : e ∈ rho.layer g es t) :
     e.node ∉ rho.faultyAt e.time := by
   simp only [layer_eq, List.mem_append, mem_wakeEvents, mem_tickEvents,
@@ -121,7 +121,7 @@ theorem layer_honest (g : Time) (es : List (Event V (protoOf F E).Object)) (t : 
   rcases he with (⟨v, hv, _, _, rfl⟩ | ⟨v, hv, _, rfl⟩) | ⟨_, v, hv, _, o, _, rfl⟩ <;>
     exact hv
 
-theorem layer_sorted (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Time) :
+private theorem layer_sorted (g : Time) (es : List (Event V (protoOf F E).Object)) (t : Time) :
     (rho.layer g es t).Pairwise Event.keyLe := by
   classical
   have hw : ∀ e ∈ rho.wakeEvents t, e.time = t ∧ e.phase = 0 := by
@@ -203,7 +203,7 @@ theorem stages_time (g : Time) (n : Nat) {e : Event V (protoOf F E).Object}
     · rw [rho.layer_time g _ _ he]
       exact ⟨Int.natCast_nonneg n, by exact_mod_cast Nat.lt_succ_self n⟩
 
-theorem stages_sorted (g : Time) (n : Nat) : (rho.stages g n).Pairwise Event.keyLe := by
+private theorem stages_sorted (g : Time) (n : Nat) : (rho.stages g n).Pairwise Event.keyLe := by
   induction n with
   | zero => simp
   | succ n ih =>
@@ -267,7 +267,7 @@ theorem canonical_layer (g : Time) (t : Time) (h0 : 0 ≤ t) (hh : t ≤ rho.hor
     omega
   · simpa only [Int.toNat_of_nonneg h0] using he
 
-theorem canonical_tick_awake (g : Time) :
+private theorem canonical_tick_awake (g : Time) :
     ∀ v t, Event.tick v t ∈ rho.canonicalEvents g → E.awake v t = true := by
   intro v t he
   obtain ⟨k, _, hk⟩ := (rho.mem_stages g _ _).mp he

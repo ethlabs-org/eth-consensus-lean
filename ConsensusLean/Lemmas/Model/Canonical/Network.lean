@@ -15,7 +15,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {O : OutputSchema} {F : Protocol
 namespace Run
 variable (rho : Run F E)
 
-theorem stages_prefix (g : Time) {m n : Nat} (hmn : m ≤ n) :
+private theorem stages_prefix (g : Time) {m n : Nat} (hmn : m ≤ n) :
     ∃ tail, rho.stages g n = rho.stages g m ++ tail := by
   induction n with
   | zero =>
@@ -31,7 +31,7 @@ theorem stages_prefix (g : Time) {m n : Nat} (hmn : m ≤ n) :
       subst m
       exact ⟨[], (List.append_nil _).symm⟩
 
-theorem front_prefix (g : Time) {k n : Nat} (hk : k < n) :
+private theorem front_prefix (g : Time) {k n : Nat} (hk : k < n) :
     ∃ tail, rho.stages g n = rho.front (rho.stages g k) (k : Time) ++ tail := by
   obtain ⟨tail, ht⟩ := rho.stages_prefix g (show k + 1 ≤ n by omega)
   refine ⟨rho.deliveryEvents g (rho.front (rho.stages g k) (k : Time)) (k : Time) ++ tail, ?_⟩
@@ -86,7 +86,7 @@ theorem canonical_causal (g : Time) : (rho.withEvents (rho.canonicalEvents g)).C
 
 /-- Earlier entries of one recipient's delivery batch are already held at
 the current entry, even when all entries have the same timestamp. -/
-theorem delivery_batch_held (pre post : List (Event V (protoOf F E).Object))
+private theorem delivery_batch_held (pre post : List (Event V (protoOf F E).Object))
     (os : List (protoOf F E).Object) (v : V) (t : Time) (p : Nat) :
     os.take p ⊆
       ((rho.withEvents (pre ++ os.map (fun o => .deliver v o t) ++ post)).stateBefore
@@ -175,7 +175,7 @@ theorem canonical_delivery_ready (g : Time) :
   exact rho.delivery_batch_held pre post os v (k : Time) p hm
 
 /-- A canonical event whose time is below `a` lies in the stages before `a`. -/
-theorem mem_stages_of_time_lt (g : Time) {n : Nat} {e : Event V (protoOf F E).Object}
+private theorem mem_stages_of_time_lt (g : Time) {n : Nat} {e : Event V (protoOf F E).Object}
     (he : e ∈ rho.stages g n) {a : Time} (ha : e.time < a) : e ∈ rho.stages g a.toNat := by
   obtain ⟨k, _, hk⟩ := (rho.mem_stages g n e).mp he
   have htk : e.time = (k : Time) := rho.layer_time g _ _ hk

@@ -20,7 +20,7 @@ namespace Run
 variable (rho : Run F E)
 
 /-- In a causal run every observed signature has genuine release provenance. -/
-theorem released_of_causal (hc : rho.Causal) {o : (protoOf F E).Object}
+private theorem released_of_causal (hc : rho.Causal) {o : (protoOf F E).Object}
     (ho : o ∈ rho.Observed) {u : V} (hs : rho.signerOf o = some u) :
     ∃ j t, rho.SendsAt u j t ∧ o ∈ rho.releasesAt j := by
   obtain ⟨v, i, _, _, hov⟩ := ho

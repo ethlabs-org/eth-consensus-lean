@@ -100,7 +100,7 @@ theorem closed_of_sources
 
 /-- The seen form of `closed_of_sources`: at a cut before which every event of `v` is good,
 everything `v` has seen is closed. -/
-theorem seen_closed_of_sources
+private theorem seen_closed_of_sources
     (hmono : ∀ {i i' : Nat} {d : (protoOf F E).Object}, i ≤ i' → P i d → P i' d)
     (hnode : ∀ {i j : Nat} {ei ej : Event V (protoOf F E).Object}, G i → j < i →
       rho.events[i]? = some ei → rho.events[j]? = some ej → ej.node = ei.node → G j)
@@ -168,7 +168,7 @@ theorem mem_injectDeliveries (es : List (Event V (protoOf F E).Object)) (t : Tim
   · rintro ⟨v, hv, hw, o, ho, rfl⟩
     exact ⟨v, ⟨hv, hw⟩, o, ho, rfl⟩
 
-theorem injectDeliveries_nodup (es : List (Event V (protoOf F E).Object)) (t : Time) :
+private theorem injectDeliveries_nodup (es : List (Event V (protoOf F E).Object)) (t : Time) :
     (rho.injectDeliveries delay inj es t).Nodup := by
   classical
   unfold injectDeliveries
@@ -219,19 +219,19 @@ theorem mem_injectLayer (es : List (Event V (protoOf F E).Object)) (t : Time)
   simp only [injectLayer_eq, List.mem_append, mem_wakeEvents, mem_tickEvents,
     mem_injectDeliveries, or_assoc]
 
-theorem injectLayer_time (es : List (Event V (protoOf F E).Object)) (t : Time)
+private theorem injectLayer_time (es : List (Event V (protoOf F E).Object)) (t : Time)
     {e : Event V (protoOf F E).Object} (he : e ∈ rho.injectLayer delay inj es t) :
     e.time = t := by
   rcases (rho.mem_injectLayer delay inj es t e).mp he with
     ⟨v, _, _, _, rfl⟩ | ⟨v, _, _, rfl⟩ | ⟨v, _, _, o, _, rfl⟩ <;> rfl
 
-theorem injectLayer_honest (es : List (Event V (protoOf F E).Object)) (t : Time)
+private theorem injectLayer_honest (es : List (Event V (protoOf F E).Object)) (t : Time)
     {e : Event V (protoOf F E).Object} (he : e ∈ rho.injectLayer delay inj es t) :
     e.node ∉ rho.faultyAt e.time := by
   rcases (rho.mem_injectLayer delay inj es t e).mp he with
     ⟨v, hv, _, _, rfl⟩ | ⟨v, hv, _, rfl⟩ | ⟨v, hv, _, o, _, rfl⟩ <;> exact hv
 
-theorem injectLayer_sorted (es : List (Event V (protoOf F E).Object)) (t : Time) :
+private theorem injectLayer_sorted (es : List (Event V (protoOf F E).Object)) (t : Time) :
     (rho.injectLayer delay inj es t).Pairwise Event.keyLe := by
   classical
   have hw : ∀ e ∈ rho.wakeEvents t, e.time = t ∧ e.phase = 0 := by
@@ -262,7 +262,7 @@ theorem injectLayer_sorted (es : List (Event V (protoOf F E).Object)) (t : Time)
     · exact Or.inr ⟨(hw e he).1.trans hf'.1.symm, by rw [(hw e he).2, hf'.2]; decide⟩
     · exact Or.inr ⟨(ht e he).1.trans hf'.1.symm, by rw [(ht e he).2, hf'.2]; decide⟩
 
-theorem injectLayer_nodup (es : List (Event V (protoOf F E).Object)) (t : Time) :
+private theorem injectLayer_nodup (es : List (Event V (protoOf F E).Object)) (t : Time) :
     (rho.injectLayer delay inj es t).Nodup := by
   classical
   have hwt : (rho.wakeEvents t ++ rho.tickEvents t).Nodup := by
@@ -276,7 +276,7 @@ theorem injectLayer_nodup (es : List (Event V (protoOf F E).Object)) (t : Time) 
     obtain ⟨v, _, _, o, _, rfl⟩ := (rho.mem_injectDeliveries delay inj _ t e).mp hf
     simp at he
 
-theorem injectStages_time (n : Nat) {e : Event V (protoOf F E).Object}
+private theorem injectStages_time (n : Nat) {e : Event V (protoOf F E).Object}
     (he : e ∈ rho.injectStages delay inj n) : 0 ≤ e.time ∧ e.time < (n : Time) := by
   induction n with
   | zero => simp [injectStages] at he
@@ -288,7 +288,7 @@ theorem injectStages_time (n : Nat) {e : Event V (protoOf F E).Object}
     · rw [rho.injectLayer_time delay inj _ _ he]
       exact ⟨Int.natCast_nonneg n, by exact_mod_cast Nat.lt_succ_self n⟩
 
-theorem injectStages_sorted (n : Nat) :
+private theorem injectStages_sorted (n : Nat) :
     (rho.injectStages delay inj n).Pairwise Event.keyLe := by
   induction n with
   | zero => simp [injectStages]
@@ -300,7 +300,7 @@ theorem injectStages_sorted (n : Nat) :
       rw [rho.injectLayer_time delay inj _ _ hf]
       exact (rho.injectStages_time delay inj n he).2)
 
-theorem injectStages_nodup (n : Nat) : (rho.injectStages delay inj n).Nodup := by
+private theorem injectStages_nodup (n : Nat) : (rho.injectStages delay inj n).Nodup := by
   induction n with
   | zero => simp [injectStages]
   | succ n ih =>
@@ -330,7 +330,7 @@ theorem mem_injectStages (n : Nat) (e : Event V (protoOf F E).Object) :
         subst k
         exact Or.inr he
 
-theorem injectStages_prefix {m n : Nat} (hmn : m ≤ n) :
+private theorem injectStages_prefix {m n : Nat} (hmn : m ≤ n) :
     ∃ tail, rho.injectStages delay inj n = rho.injectStages delay inj m ++ tail := by
   induction n with
   | zero =>
@@ -346,7 +346,7 @@ theorem injectStages_prefix {m n : Nat} (hmn : m ≤ n) :
       subst m
       exact ⟨[], (List.append_nil _).symm⟩
 
-theorem injectFront_prefix {k n : Nat} (hk : k < n) :
+private theorem injectFront_prefix {k n : Nat} (hk : k < n) :
     ∃ tail, rho.injectStages delay inj n =
       rho.front (rho.injectStages delay inj k) (k : Time) ++ tail := by
   obtain ⟨tail, ht⟩ := rho.injectStages_prefix delay inj (show k + 1 ≤ n by omega)
@@ -356,7 +356,7 @@ theorem injectFront_prefix {k n : Nat} (hk : k < n) :
   simp only [List.append_assoc]
 
 /-- A scheduled event whose time is below `a` lies in the stages before `a`. -/
-theorem mem_injectStages_of_time_lt {n : Nat} {e : Event V (protoOf F E).Object}
+private theorem mem_injectStages_of_time_lt {n : Nat} {e : Event V (protoOf F E).Object}
     (he : e ∈ rho.injectStages delay inj n) {a : Time} (ha : e.time < a) :
     e ∈ rho.injectStages delay inj a.toNat := by
   obtain ⟨k, _, hk⟩ := (rho.mem_injectStages delay inj n e).mp he
@@ -366,7 +366,7 @@ theorem mem_injectStages_of_time_lt {n : Nat} {e : Event V (protoOf F E).Object}
   have h := (Int.toNat_lt_toNat (lt_of_le_of_lt (Int.natCast_nonneg k) ha)).mpr ha
   simpa using h
 
-theorem injectEvents_in_horizon (h0 : 0 ≤ rho.horizon) {e : Event V (protoOf F E).Object}
+private theorem injectEvents_in_horizon (h0 : 0 ≤ rho.horizon) {e : Event V (protoOf F E).Object}
     (he : e ∈ rho.injectEvents delay inj) : 0 ≤ e.time ∧ e.time ≤ rho.horizon := by
   have h := rho.injectStages_time delay inj _ he
   have hn : (rho.horizon.toNat : Int) = rho.horizon := Int.toNat_of_nonneg h0
@@ -441,7 +441,7 @@ theorem injectEvents_source {i : Nat} {w : V} {o : (protoOf F E).Object} {t : Ti
 
 /-- A release whose batch is due at `t` and whose event lies in the front of `t` (strictly
 before `t`, or a tick of `t`) is received by every awake honest node at `t`. -/
-theorem injectEvents_receives (h0 : 0 ≤ rho.horizon) {j : Nat}
+private theorem injectEvents_receives (h0 : 0 ≤ rho.horizon) {j : Nat}
     {e : Event V (protoOf F E).Object}
     (hj : (rho.injectRun delay inj).events[j]? = some e) {o : (protoOf F E).Object}
     (ho : o ∈ (rho.injectRun delay inj).releasesAt j) {t : Time} (hdue : e.time + delay e ≤ t)
