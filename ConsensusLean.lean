@@ -652,10 +652,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SupportCounting
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SupportCounting.Capacity
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SupportCounting.Selector
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SupportCounting.Support
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.WidthVocab
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireClient
@@ -913,7 +909,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.A
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Service
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.SupportCounting
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Always
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.BlockFinality
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Growing
