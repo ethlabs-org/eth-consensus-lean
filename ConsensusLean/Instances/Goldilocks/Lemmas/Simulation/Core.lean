@@ -97,63 +97,6 @@ theorem received_carried_message_processAt {i : Nat} {v : V}
   received_message_processAt e rho he
     ⟨w, carried_subset_delivered_self (receiverCodec e rho v) e.adapter _ ha hm, hd⟩
 
-/-- An AC block call in a delivery witnesses admission of the decoded block. A carried object
-decoding to the requested message therefore has a processing cut in the same delivery. -/
-theorem delivery_block_payload_processAt {due : e.State hn → Bool} (L : e.OpLaws due)
-    (hv : rho.ExecutionValid) {i : Nat} {v : V} {o : (Model.protoOf (compiled F) E).Object}
-    {t : Time} {r : CutRec A} {l : ACLabel A} {b : A.Blk} {m : A.Msg}
-    (he : rho.events[i]? = some (.deliver v o t)) (hr : r ∈ eventCuts e rho i)
-    (hl : r.label = .ac l) (hb : l.call = .block b)
-    (hp : ∃ w ∈ (receiverCodec e rho v).carried b.fgPayload b.acPayload,
-      canonEvent (receiverCodec e rho v) (Model.digests rho.hash o) w = some (.message m)) :
-    ∃ k, cutMap e rho i ≤ k ∧ k < cutMap e rho (i + 1) ∧
-      (simTrace e rho).projAC.ProcessAt (rho.ownKey v) k m ∧ (simTrace e rho).time k = t := by
-  obtain ⟨pre, obj, post, ev, hsplit, hc, hk, ht, -, hcut, -⟩ :=
-    L.replay_cut_in_applyCuts rho hv he hr
-  dsimp only at hcut
-  rw [hl, hk, ht] at hcut
-  let C := receiverCodec e rho v
-  let σ := pre.foldl (processOne C e.adapter (Model.digests rho.hash o)) (stateAt e rho v i)
-  have hadmit : ev = .block b ∧ ¬ (paramsAtCount p (Fintype.card V) hN hn).slotOf t < b.slot ∧
-      (e.adapter.node σ).fg.onBlock b ≠ none := by
-    cases ev with
-    | tick x fgDue => unfold canonEvent at hc; split at hc <;> cases hc
-    | restart => unfold canonEvent at hc; split at hc <;> cases hc
-    | attestation a => simp [exec, onAttestation] at hcut
-    | message m' =>
-      simp only [exec, onMessage, acCall, List.mem_singleton, Cut.ac.injEq] at hcut
-      subst l
-      cases hb
-    | block b' =>
-      simp only [exec, onBlock] at hcut
-      split at hcut
-      · simp at hcut
-      · rename_i hslot
-        split at hcut
-        · simp at hcut
-        · rename_i fg hfg
-          simp [acCall] at hcut
-          subst l
-          cases hb
-          exact ⟨rfl, hslot, by rw [hfg]; simp⟩
-  obtain ⟨rfl, hslot, hfg⟩ := hadmit
-  have hnref : ¬ Refuses C e.adapter (Model.digests rho.hash o) σ obj := by
-    rintro ⟨_, h⟩
-    rw [show e.adapter.now σ = t from ht] at h
-    exact (h b hc).elim hslot hfg
-  have hdec : decodeBlock C.decode C.carried A.validPayload
-      (Model.digests rho.hash o) obj = some b := by
-    unfold canonEvent at hc
-    split at hc
-    · cases hc; assumption
-    · cases hc
-    · cases hc
-    · cases hc
-  obtain ⟨w, hw, hd⟩ := hp
-  rw [← carried_of_decodeBlock hdec] at hw
-  exact received_message_processAt e rho he
-    ⟨w, carried_subset_delivered C e.adapter _ hsplit hnref hw, hd⟩
-
 end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
 
 namespace Consensus.Goldilocks.Simulation

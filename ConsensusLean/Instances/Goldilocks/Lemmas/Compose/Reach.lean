@@ -135,29 +135,6 @@ private theorem reachableAt_mono {U U' : Set A.Blk} (hUU : U ⊆ U') {s : A.Stat
   | init Φ hi hin => exact .init Φ hi ⟨hin.1, hin.2.trans hUU⟩
   | step c _ ht hok ih => exact .step c ih ht ⟨⟨hok.1.1, hok.1.2.trans hUU⟩, hok.2⟩
 
-private theorem atts_onAttestation (fg : Store P A.Payload) (a : FG.Att P.n) :
-    a ∈ (fg.onAttestation a).atts ∧ fg.atts ⊆ (fg.onAttestation a).atts := by
-  unfold Store.onAttestation
-  split_ifs with h
-  · exact ⟨h, fun _ h => h⟩
-  · exact ⟨by simp, List.subset_append_left _ _⟩
-
-private theorem atts_addAtts (fg : Store P A.Payload) (l : List (FG.Att P.n)) :
-    fg.atts ⊆ (fg.addAtts l).atts := by
-  induction l generalizing fg with
-  | nil => exact fun _ h => h
-  | cons a l ih =>
-    rw [Store.addAtts, List.foldl_cons, ← Store.addAtts]
-    exact fun b hb => ih _ ((atts_onAttestation fg a).2 hb)
-
-private theorem atts_onBlock {fg fg' : Store P A.Payload} {B : A.Blk}
-    (h : fg.onBlock B = some fg') : fg.atts ⊆ fg'.atts := by
-  obtain ⟨-, σ', -, -, -, -, -, rfl⟩ := Store.onBlock_eq_some h
-  intro a ha
-  refine atts_addAtts _ _ ?_
-  rw [(Store.updateFinality_spec _ _).2.2.1]
-  exact ha
-
 /-- A client run that signs at its last entry state. -/
 private theorem run_append (v : Fin P.n) :
     ∀ (Λ : FG.Record) (σes : List (FG.ChainState P.n)) (σe : FG.ChainState P.n)
