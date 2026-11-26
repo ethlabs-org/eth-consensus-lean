@@ -100,22 +100,6 @@ theorem duty_cut_vote_member (hv : rho.ExecutionValid) {v : V} (hv' : v ∉ rho.
     m.val = rho.ownKey v ∧ rho.ownKey v ∈ rho.sel (S.vote.voteRole m.slot) :=
   Simulation.duty_cut_vote_member S rho hn hv hv' hc m hm
 
-/-- At a tick duty prefix, every pooled vote is already held or pending in the
-ordinary outbox. This retains the actual prefix state needed by release guards. -/
-theorem tick_prefix_pool_available (hv : rho.ExecutionValid) {v : V}
-    {i p : Nat} {t : Time}
-    (he : rho.events[i]? = some (.tick v t)) (hw : E.awake v t = true)
-    (hp : p ≤ ((Model.protoOf (compiled (goldilocks S)) E).duties t).length)
-    (σ : Nat) (m : Vote (Fintype.card V)) :
-    let nd := (rho.runDuties v
-      ⟨(Model.protoOf (compiled (goldilocks S)) E).clock (rho.stateBefore i v).st t
-        (Model.mempool rho.inbox v t), (rho.stateBefore i v).seen⟩
-      (((Model.protoOf (compiled (goldilocks S)) E).duties t).take p)).1
-    m ∈ (shapeOf S hn nd).node.ac.pool σ →
-      ∃ z, voteObj m z ∈ Model.closure nd.seen ∨
-        Body.vote (encodeVote m) z ∈ (shapeOf S hn nd).outbox :=
-  Simulation.tick_prefix_pool_available S rho hn hv he hw hp σ m
-
 /-- Delivery processing keeps every queued admission's vote in the final pool. The actual
 event-boundary queue is empty, and none of the delivery handlers restarts the AC. -/
 theorem delivery_voteForward_in_pool (hv : rho.ExecutionValid) (v : V) (i : Nat)
@@ -126,29 +110,6 @@ theorem delivery_voteForward_in_pool (hv : rho.ExecutionValid) (v : V) (i : Nat)
       (Model.digests rho.hash o)).node.ac.pool tv.2.1.slot :=
   Simulation.delivery_voteForward_in_pool S rho hn hv v i o tv htv
 
-/-- After processing a delivery, every stored vote is either actually held (including in
-the delivered object's closure) or queued as a canonical own vote in the ordinary outbox. -/
-theorem delivery_pool_available (hv : rho.ExecutionValid)
-    {v : V} (i : Nat) (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
-    (σ : Nat) (m : Vote (Fintype.card V))
-    (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
-    ∃ z, voteObj m z ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
-      Body.vote (encodeVote m) z ∈
-        (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox :=
-  Simulation.delivery_pool_available S rho hn hv i o σ m hm
-
-/-- At an actual delivery, the only not-yet-held stored vote is the ordinary outbox head:
-the reachable one-vote invariant rules out a later queued vote. -/
-theorem delivery_pool_held_or_head (hv : rho.ExecutionValid) {v : V}
-    {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
-    (he : rho.events[i]? = some (.deliver v o t)) (σ : Nat) (m : Vote (Fintype.card V))
-    (hm : m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool σ) :
-    ∃ z, voteObj m z ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
-      (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.head? =
-        some (.vote (encodeVote m) z) :=
-  Simulation.delivery_pool_held_or_head S rho hn hv he
-    σ m hm
-
 /-- Any ordinary vote left by delivery processing is an own vote of a slot whose vote role
 selects the receiving node. -/
 theorem delivery_outbox_vote_member (hv : rho.ExecutionValid) {v : V}
@@ -158,19 +119,6 @@ theorem delivery_outbox_vote_member (hv : rho.ExecutionValid) {v : V}
       (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox) :
     m.val = rho.ownKey v ∧ rho.ownKey v ∈ rho.sel (S.vote.voteRole m.slot) :=
   Simulation.delivery_outbox_vote_member S rho hn hv _hv' i o m hm
-
-/-- Every envelope queued by an actual delivery has its canonical dependency held or at
-the ordinary outbox head. No queue-to-pool or readiness premise is left to the caller. -/
-theorem delivery_voteForward_held_or_head (hv : rho.ExecutionValid) {v : V}
-    {i : Nat} {o : (Model.protoOf (compiled (goldilocks S)) E).Object} {t : Time}
-    (he : rho.events[i]? = some (.deliver v o t))
-    (tv : Time × Vote (Fintype.card V) × Wire (Fintype.card V) S.vote)
-    (htv : tv ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).voteForwards) :
-    ∃ z, voteObj tv.2.1 z ∈ Model.closure ((rho.stateBefore i v).seen ++ [o]) ∨
-      (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).outbox.head? =
-        some (.vote (encodeVote tv.2.1) z) :=
-  Simulation.delivery_voteForward_held_or_head S rho hn
-    hv he tv htv
 
 /-- Proposal payloads of actual scheduled honest duties were already released or received.
 The proof uses engine-event inventory and the empty queue at the slot-start proposal. -/
