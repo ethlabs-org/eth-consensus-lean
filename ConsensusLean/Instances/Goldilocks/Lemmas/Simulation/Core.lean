@@ -47,7 +47,8 @@ private theorem delivery_label_cut {i : Nat} {v : V} {o : (Model.protoOf (compil
   · simpa only [simTrace_time, hk, Option.elim_some, Model.Event.time] using ht
 
 /-- A visited object decoding to a message has an explicit processing cut in its delivery. -/
-theorem received_message_processAt {i : Nat} {v : V} {o : (Model.protoOf (compiled F) E).Object}
+private theorem received_message_processAt {i : Nat} {v : V}
+    {o : (Model.protoOf (compiled F) E).Object}
     {t : Time} {m : A.Msg} (he : rho.events[i]? = some (.deliver v o t))
     (h : ∃ w ∈ delivered (receiverCodec e rho v) e.adapter (Model.digests rho.hash o)
         (stateAt e rho v i) (wireOf e o),
