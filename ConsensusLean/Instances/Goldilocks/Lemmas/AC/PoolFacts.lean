@@ -17,7 +17,7 @@ variable (sp : ACParams)
 
 /-- A vote is in the pool of an integer slot `s` iff `s ≥ 0` and it is in the pool of slot
 `s.toNat`; the pool of a negative slot is empty. -/
-theorem ACState.mem_poolAt {n : Nat} {A : ACState n} {s : Int} {v : Vote n} :
+private theorem ACState.mem_poolAt {n : Nat} {A : ACState n} {s : Int} {v : Vote n} :
     v ∈ A.poolAt s ↔ 0 ≤ s ∧ v ∈ A.pool s.toNat := by
   unfold ACState.poolAt
   split_ifs with hs
@@ -46,7 +46,7 @@ theorem Admits.of_pool_eq {A A' : ACState sp.n} {t : Time} (h : A'.pool = A.pool
 theorem Admits.trans {A B C : ACState sp.n} {t : Time} (h₁ : Admits A B t) (h₂ : Admits B C t) :
     Admits A C t := fun σ x hx => (h₂ σ x hx).elim (fun h => h₁ σ x h) Or.inr
 
-theorem admits_admitVote (A : ACState sp.n) (t : Time) (v : Vote sp.n) :
+private theorem admits_admitVote (A : ACState sp.n) (t : Time) (v : Vote sp.n) :
     Admits A (admitVote sp A t v) t := by
   intro σ x hx
   unfold admitVote at hx
@@ -81,7 +81,7 @@ theorem updateConfirmation_pool_eq (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : T
   · rfl
   · split_ifs <;> first | rfl | exact updateLatestConfirmed_pool_eq _ _ _
 
-theorem admits_tryVote (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+private theorem admits_tryVote (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Admits A (tryVote sp self A Φ t).1 t := by
   unfold tryVote
   lift_lets
@@ -96,23 +96,24 @@ theorem admits_tryVote (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) 
   · simp only [A₃, h₃, Bool.false_eq_true, ↓reduceIte]
     exact Admits.of_pool_eq hp
 
-theorem admits_blockReceipt (A : ACState sp.n) (t : Time) (B : Blk sp.n FGP) :
+private theorem admits_blockReceipt (A : ACState sp.n) (t : Time) (B : Blk sp.n FGP) :
     Admits A (blockReceipt sp A t B) t :=
   Admits.of_pool_eq rfl
 
-theorem admits_acOnBlock (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+private theorem admits_acOnBlock (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (B : Blk sp.n FGP) : Admits A (acOnBlock sp self A Φ t B).1 t := by
   unfold acOnBlock
   exact (admits_blockReceipt A t B).trans
     ((Admits.of_pool_eq (optimistic_pool_eq _ _ _)).trans (admits_tryVote _ _ _ _))
 
-theorem admits_acOnMessage (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
+private theorem admits_acOnMessage (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time)
     (v : Vote sp.n) : Admits A (acOnMessage sp self A Φ t v).1 t := by
   unfold acOnMessage
   exact (admits_admitVote A t v).trans
     ((Admits.of_pool_eq (optimistic_pool_eq _ _ _)).trans (admits_tryVote _ _ _ _))
 
-theorem admits_acOnTick (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+private theorem admits_acOnTick (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Admits A (acOnTick sp self A Φ t).1 t := by
   unfold acOnTick
   dsimp only
@@ -124,7 +125,7 @@ theorem admits_acOnTick (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     | exact (admits_tryVote _ _ _ _).trans (Admits.of_pool_eq (updateConfirmation_pool_eq _ _ _ _))
 
 /-- A restart's pools hold only votes of slot `slot(t) − 1` or `slot(t)`. -/
-theorem restart_admits (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
+private theorem restart_admits (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) :
     ∀ σ, ∀ x ∈ (acRestart sp ro self A Φ t).1.pool σ,
       x.slot + 1 = sp.slot t ∨ x.slot = sp.slot t := by
@@ -172,7 +173,7 @@ theorem Grows.mem {A A' : ACState sp.n} (h : Grows A A') {σ : Nat} {x : Vote sp
     (hx : x ∈ A.pool σ) : x ∈ A'.pool σ :=
   h σ x hx
 
-theorem grows_admitVote (A : ACState sp.n) (t : Time) (v : Vote sp.n) :
+private theorem grows_admitVote (A : ACState sp.n) (t : Time) (v : Vote sp.n) :
     Grows A (admitVote sp A t v) := by
   intro σ x hx
   unfold admitVote
@@ -492,7 +493,7 @@ theorem VoteClosed.step {P : ACState sp.n → Prop} (hP : VoteClosed P) (ro : Re
       | with_reducible exact hu _ hv
 
 /-- Pools only grow outside a restart. -/
-theorem voteClosed_grows (A₀ : ACState sp.n) : VoteClosed (Grows A₀) :=
+private theorem voteClosed_grows (A₀ : ACState sp.n) : VoteClosed (Grows A₀) :=
   ⟨fun A t v h => h.trans (grows_admitVote A t v), fun _ _ hp _ h => h.trans (Grows.of_pool_eq hp)⟩
 
 end Stamps
@@ -663,7 +664,7 @@ theorem proposal_payload_valid : ProposalPayloadValid sp :=
 /-- At a reachable state, every pool vote is of a slot at most the slot of the last call's time
 (admission at `t` takes votes of slot `slot(t) − 1` or `slot(t)`, and calls are at nondecreasing
 times from `0`). -/
-theorem pool_slot_le {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp.n}
+private theorem pool_slot_le {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp.n}
     {U : Set (Blk sp.n FGP)} {A : (goldilocksAC sp FGP ro).State}
     {Φ : (goldilocksAC sp FGP ro).Frm} {t₀ : Time}
     (h : (goldilocksAC sp FGP ro).ReachableAt self U A Φ t₀) :

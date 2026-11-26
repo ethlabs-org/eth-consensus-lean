@@ -903,7 +903,7 @@ theorem vote_slot_ne_of_exec (htime : ∀ i, 0 ≤ tr.time i) (hmono : Monotone 
     (by rw [stepWithM_parent, ← step_eq_stepWith]; exact hexec y hy i ℓ hc)
 
 /-- `step_restartTime` with the locks after the unlock given. -/
-theorem stepWith_restartTime {ro : ReplayOrder sp FGP} (self : Fin sp.n) (L : Set Lock)
+private theorem stepWith_restartTime {ro : ReplayOrder sp FGP} (self : Fin sp.n) (L : Set Lock)
     (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP ro).Call)
     (hc : c ≠ .restart) : (stepWithM sp ro wm self L A Φ t c).1.restartTime = A.restartTime := by
   cases c with

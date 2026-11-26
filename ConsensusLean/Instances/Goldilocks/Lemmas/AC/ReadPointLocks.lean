@@ -21,7 +21,7 @@ variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
 
 /-- **The read point of an honest vote has the lock invariant** at the call's frame, from starts
 up to the vote permission. -/
-theorem castAt_readPoint_lockInv (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+private theorem castAt_readPoint_lockInv (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) : LockInv U e.readPoint ℓ.frame := by
