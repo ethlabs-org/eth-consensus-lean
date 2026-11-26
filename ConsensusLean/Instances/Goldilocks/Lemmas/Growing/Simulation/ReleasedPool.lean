@@ -433,7 +433,7 @@ private theorem att_release_cases (hv : rho.ExecutionValid)
 releases is in the pool of the event's node after the event: the event is a tick, and the tick's
 first trailing poll processes it, as a held attestation it flushes or as the attestation its FG
 update signs at a time the schedule allows release. -/
-theorem released_att_mem_pool (hv : rho.ExecutionValid) {i : Nat}
+private theorem released_att_mem_pool (hv : rho.ExecutionValid) {i : Nat}
     {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
     (he : rho.events[i]? = some ev) {a : FG.Att (Fintype.card V)}
     (ho : (attObj a : (Model.protoOf (compiled (goldilocks S)) E).Object) ∈ rho.releasesAt i) :
@@ -488,7 +488,7 @@ private theorem stateAt_node_trace (v : V) (i : Nat) : (stateAt S rho hn v i).no
 
 /-- **A tick grows the pool only by its own admissions.** An attestation in `v`'s pool after its
 tick was in the pool before it or is an own admission of the tick. -/
-theorem tick_pool_split (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
+private theorem tick_pool_split (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) {a : FG.Att (Fintype.card V)}
     (ha : a ∈ (stateAt S rho hn v (i + 1)).node.fg.atts) :
     a ∈ (stateAt S rho hn v i).node.fg.atts ∨ a ∈ admitsAt S rho hn v i := by

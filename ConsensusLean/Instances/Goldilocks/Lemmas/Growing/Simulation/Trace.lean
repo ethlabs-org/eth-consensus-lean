@@ -28,7 +28,7 @@ theorem simTraceAt_labelled_time_le (hv : rho.ExecutionValid) {k : Nat}
   exact (hv.in_horizon ev (List.mem_of_getElem? he)).2
 
 /-- Every labelled cut's node is honest at that cut's time. -/
-theorem simTraceAt_labelled_honest (hv : rho.ExecutionValid) {k : Nat}
+private theorem simTraceAt_labelled_honest (hv : rho.ExecutionValid) {k : Nat}
     (hk : (simTraceAt S rho hn).label k ≠ none) :
     (simTraceAt S rho hn).node k ∈ honestKeysAt S rho ((simTraceAt S rho hn).time k) := by
   rw [simTraceAt_eq] at hk ⊢

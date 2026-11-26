@@ -107,7 +107,7 @@ namespace OutageLockInv
 
 /-- **The arming inputs (F), (VA), (N) at the label-`j₀` update**: from the invariant at a
 cut `≥ c`, the cover base holds at the label-`j₀` update at cut `c` of `x ∈ A₀`, honest then. -/
-theorem cover_base_at {i : Nat} (hinv : OutageLockInv D i) {x : Fin sp.n} (hx : x ∈ D.A₀)
+private theorem cover_base_at {i : Nat} (hinv : OutageLockInv D i) {x : Fin sp.n} (hx : x ∈ D.A₀)
     {c : Nat} (hxc : x ∈ H (tr.time c)) (hci : c ≤ i)
     {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
     (hu : AC.UpdateAt tr.projAC x c D.j₀ ℓ)
@@ -129,7 +129,7 @@ theorem cover_base_at {i : Nat} (hinv : OutageLockInv D i) {x : Fin sp.n} (hx : 
 /-- **(H) for a cast of `A₀` after `b₀`**, by a node honest at its cast: through the
 label-`(j₀ − 1)` protection for slots `≤ j₀ − 1 + k`, and through the cover protection for slot
 `j₀ + k`. -/
-theorem holder_vote_extends_at {i : Nat} (hinv : OutageLockInv D i) {x : Fin sp.n}
+private theorem holder_vote_extends_at {i : Nat} (hinv : OutageLockInv D i) {x : Fin sp.n}
     (hx : x ∈ D.A₀) {e : AC.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x i e)
     (hsK : e.msg.slot ≤ D.j₀ + sp.k) (hb : D.b₀ < tr.time i) :
     AC.VoteExtends (tr.HonestBlocksAt H) e.msg D.P := by

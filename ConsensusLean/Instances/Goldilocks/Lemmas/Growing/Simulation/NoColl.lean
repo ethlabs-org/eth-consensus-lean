@@ -25,7 +25,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 open NodeAsChainShape.CanonicalTrace in
 /-- Goldilocks releases the canonical object at every own block cut of a public tick. -/
-theorem tick_block_release_encoding (hv : rho.ExecutionValid)
+private theorem tick_block_release_encoding (hv : rho.ExecutionValid)
     {i : Nat} {v : V} {t : Time} (he : rho.events[i]? = some (.tick v t))
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t)
     {r} (hr : r ∈ NodeAsChainShape.CanonicalTrace.eventCuts (traceEncoding S hn) rho i)

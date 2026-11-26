@@ -31,7 +31,7 @@ theorem simTraceAt_time_mono (hv : rho.ExecutionValid) :
   exact simTrace_time_mono S rho hn hv
 
 /-- A trace observation in the horizon stays within the engine horizon. -/
-theorem simTraceAt_inHorizon_le (hv : rho.ExecutionValid) {t : Time}
+private theorem simTraceAt_inHorizon_le (hv : rho.ExecutionValid) {t : Time}
     (ht : (simTraceAt S rho hn).InHorizon t) : t ≤ rho.horizon := by
   rw [simTraceAt_eq] at ht
   exact simTrace_inHorizon_le S rho hn hv ht

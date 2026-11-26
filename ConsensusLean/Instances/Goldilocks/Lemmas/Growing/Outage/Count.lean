@@ -36,7 +36,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **A result's counted validators meet a participant set.** At an honest update with result
 `C`, if `T` are voters of the update's pool and `|Q| < |T|`, some counted vote is of a validator in
 `T` or outside `Q`. -/
-theorem exists_counted_of_participants {X : Fin sp.n} {i₀ s : Nat}
+private theorem exists_counted_of_participants {X : Fin sp.n} {i₀ s : Nat}
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hR : AC.ResultAt tr.projAC X i₀ s C CV) {T Q : Set (Fin sp.n)}
     (hT : T ⊆ AC.voters {v | v ∈ (tr.projAC.state X i₀).pool s}) (hQT : Q.ncard < T.ncard) :
@@ -132,7 +132,7 @@ theorem HVoteAt.head_mem (hrun : Consensus.Goldilocks.Growing.GoldilocksRun prop
 /-- A counted vote of a validator honest at the writer's update was cast by it at an earlier
 cut at which it was honest, of the update's slot, and its head extends the result inside the
 blocks held while honest (Lemma G at the update's pool). -/
-theorem counted_honest_vote_at
+private theorem counted_honest_vote_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {X : Fin sp.n} {i₀ s : Nat} (hX : X ∈ H (tr.time i₀))
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
@@ -149,7 +149,8 @@ theorem counted_honest_vote_at
     Anc.mono hΦU hCR⟩
 
 /-- The result of an update by a node honest at it is held while honest. -/
-theorem result_mem_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
+private theorem result_mem_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {X : Fin sp.n} {i₀ s : Nat} (hX : X ∈ H (tr.time i₀))
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hR : AC.ResultAt tr.projAC X i₀ s C CV) : C ∈ tr.HonestBlocksAt H := by
@@ -184,7 +185,7 @@ theorem vote_extends_of_genesis (D : OutageLockPremises tr H proposer dg ini)
 
 /-- A block held while honest is compatible with `P` when `P` is genesis, and otherwise when it
 is compatible with every origin `P` of label `σ` within `b₀`. -/
-theorem compatible_of (D : OutageLockPremises tr H proposer dg ini)
+private theorem compatible_of (D : OutageLockPremises tr H proposer dg ini)
     {C : AC.Blk sp.n (List (FG.Att sp.n))} (hC : C ∈ tr.HonestBlocksAt H)
     (h : OriginWithin tr H D.P D.σ D.b₀ → Compatible (tr.HonestBlocksAt H) C D.P) :
     Compatible (tr.HonestBlocksAt H) C D.P := by

@@ -14,7 +14,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- A tick's signed attestation is released at that tick when the release schedule allows it. -/
-theorem tick_att_releases_at (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
+private theorem tick_att_releases_at (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     (he : rho.events[i]? = some (.tick v t))
     (hp : (S.params (pubOf E) hn).toParams.IsPublic t)
     (hrel : S.release (pubOf E) (rho.ownKey v) t = true) :
