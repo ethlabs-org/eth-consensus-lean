@@ -84,12 +84,12 @@ theorem FrameWindow.unanimous_next_votes_at {K : AC.CommitteeDict sp.n}
     rw [RunTrace.upTo_projAC] at hr
     have hc' : AC.CastAt (tr.projAC.upTo (tr.time j)) y j ell e :=
       ⟨(Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩, hc.2⟩
-    have hslot := (AC.castAt_spec hr hy hc').2.1
+    have hslot := (AC.castAt_specU hr.toU hy hc').2.1
     change e.msg.slot = sp.slot (tr.time j) at hslot
     have hlo : sp.ts (u + 1 : Nat) ≤ tr.time j :=
       (AC.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).2 (by rw [← hslot, hes])
     have hhi : tr.time j ≤ sp.ts (u + 1 : Nat) + sp.Δ := by
-      have hv := AC.vote_time_le hr hy ⟨ell, hc'⟩
+      have hv := AC.vote_time_leU hr.toU hy ⟨ell, hc'⟩
       change tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ at hv
       rwa [← hslot, hes] at hv
     obtain ⟨hvi, _, hv⟩ := hframe.proposal_viable_after_votes_at hrun hnc hsvc hf hnr hgu hTb

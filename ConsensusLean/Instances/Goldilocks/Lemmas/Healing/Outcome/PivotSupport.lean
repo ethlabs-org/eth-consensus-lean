@@ -125,8 +125,8 @@ theorem ResetPremisesUpTo.reset_proposal_passes {b : Time}
         AC.VoteExtends (tr.HonestBlocks H) e.msg O := by
       rintro z hz q e ⟨ell', hcast⟩ hes
       have hqb : tr.time q ≤ b := by
-        have ht := AC.vote_time_le hr hz ⟨ell', hcast⟩
-        have hsl := (AC.castAt_spec hr hz hcast).2.1
+        have ht := AC.vote_time_leU hr.toU hz ⟨ell', hcast⟩
+        have hsl := (AC.castAt_specU hr.toU hz hcast).2.1
         rw [← hsl, hes] at ht
         exact ht.trans hsb
       exact hp.high_origin_votes_before q hqb x r l O ho hrb z hz ell' e hcast (by

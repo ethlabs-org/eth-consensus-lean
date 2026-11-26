@@ -255,7 +255,7 @@ theorem slot_start_optimistic {ini}
     · rw [restart_emits hr hv hpt.1 hcl] at he₀; cases he₀
   have hQ : ∀ c ≤ d, ∀ w ∈ (tr.projAC.state v c).pool m, w.val = v := by
     intro c hc w hw
-    have hws : w.slot = m := AC.state_pool_slot sp hr hrun.vstart hv c m w hw
+    have hws : w.slot = m := AC.state_pool_slotU sp hr.toU hrun.vstart hv c m w hw
     have hle : ∀ k₁, k₁ < c → sp.slot (tr.projAC.time k₁) ≤ m := fun k₁ hk₁ => by
       rw [← hslm, ← hdt]
       exact AC.slot_mono sp (hr.time_nonneg k₁) (hrun.time_mono (by omega))
@@ -265,7 +265,7 @@ theorem slot_start_optimistic {ini}
       have htk : tr.time k₁ = sp.ts m := le_antisymm (hdt ▸ hrun.time_mono (by omega))
         ((AC.ts_le_iff_le_slot sp (hr.time_nonneg k₁) _).2 (by rw [hsk]))
       obtain ⟨ell₁, hc₁, ⟨e₁, he₁, rfl⟩ | ⟨hnr, hn, hh⟩⟩ := hsend
-      · exact (AC.castAt_spec hr hv ⟨hc₁, he₁⟩).1
+      · exact (AC.castAt_specU hr.toU hv ⟨hc₁, he₁⟩).1
       · have hjk : j ≤ k₁ := by
           by_contra h
           exact hnr (hpre k₁ (by omega) ell₁ hc₁ htk)
@@ -283,17 +283,17 @@ theorem slot_start_optimistic {ini}
         · exact h
         · exfalso
           have hBt := (AC.accept_new sp hr hv ⟨ell₁, hc₁, hB⟩).1 ell₁ hc₁
-          have h₁ := (AC.frame_validPayload sp hr hv hc₁ B hBt).1 w hwB
-          have h₂ := AC.frame_slot_le sp hr hv hc₁ B hBt
+          have h₁ := (AC.frame_validPayloadU sp hr.toU hv hc₁ B hBt).1 w hwB
+          have h₂ := AC.frame_slot_leU sp hr.toU hv hc₁ B hBt
           omega
     · exfalso
-      have h₁ := (AC.frame_validPayload sp hr hv hc₁ B hB).1 w hwB
-      have h₂ := AC.frame_slot_le sp hr hv hc₁ B hB
+      have h₁ := (AC.frame_validPayloadU sp hr.toU hv hc₁ B hB).1 w hwB
+      have h₂ := AC.frame_slot_leU sp hr.toU hv hc₁ B hB
       have h₃ := hle k₁ hk₁
       omega
   have hP : ∀ w ∈ A.pool m, w.val = v := by
     intro w hw
-    have hws := AC.optimisticPoint_pool_slot hr hrun.vstart hv hpt hw
+    have hws := AC.optimisticPoint_pool_slotU hr.toU hrun.vstart hv hpt hw
     obtain ⟨hcv, hcase⟩ := hpt
     rcases hcase with ⟨mm, hmm, -⟩ | ⟨B, hB, rfl⟩ | ⟨e₀, he₀, rfl⟩
     · exact absurd hmm (hnomsg r hjr hrd.le ellv hcv mm)
@@ -301,13 +301,13 @@ theorem slot_start_optimistic {ini}
       · exact hQ r hrd.le w hw
       · exfalso
         have hBt := (AC.accept_new sp hr hv ⟨ellv, hcv, hB⟩).1 ellv hcv
-        have h₁ := (AC.frame_validPayload sp hr hv hcv B hBt).1 w hwB
-        have h₂ := AC.frame_slot_le sp hr hv hcv B hBt
+        have h₁ := (AC.frame_validPayloadU sp hr.toU hv hcv B hBt).1 w hwB
+        have h₂ := AC.frame_slot_leU sp hr.toU hv hcv B hBt
         have h₃ : sp.slot (tr.projAC.time r) = m := hsl
         omega
     · rcases admit_pool_mem hw with hw | rfl
-      · exact hQ (r + 1) hrd w (AC.readPoint_pool hr hv ⟨hcv, he₀⟩ hw).1
-      · exact (AC.castAt_spec hr hv ⟨hcv, he₀⟩).1
+      · exact hQ (r + 1) hrd w (AC.readPoint_poolU hr.toU hv ⟨hcv, he₀⟩ hw).1
+      · exact (AC.castAt_specU hr.toU hv ⟨hcv, he₀⟩).1
   have h34 : 3 * sp.committeeSize ≤ 4 * (AC.optimisticVoters sp A ellv.frame m D).ncard := by
     have h := hsel
     unfold AC.optimisticSelect at h
@@ -324,7 +324,8 @@ theorem slot_start_optimistic {ini}
   obtain ⟨i, w, hw, rfl, -⟩ :=
     Set.nonempty_of_ncard_ne_zero (s := AC.optimisticVoters sp A ellv.frame m D) (by omega)
   have hwv := hP w hw
-  obtain ⟨hws, j', hj', e', hve', he'⟩ := AC.optimisticPoint_pool_vote hrun' hv hpt hw (hwv ▸ hv)
+  obtain ⟨hws, j', hj', e', hve', he'⟩ := AC.optimisticPoint_pool_voteU hrun'.toU hv hpt hw (hwv ▸
+      hv)
   exact ⟨j', hj', e', hwv ▸ hve', by rw [he', hws]⟩
 
 /-- **A delivery at `t_m + Δ` comes after the slot-`m` vote** (the
@@ -375,7 +376,7 @@ theorem vote_before_late_delivery
     rw [restart_emits hr hy hc.1 hcl] at this
     cases this
   have hjk : AC.joined sp (tr.projAC.state y k) u := by
-    obtain ⟨-, -, hyj, -⟩ := AC.castAt_spec hr hy hc
+    obtain ⟨-, -, hyj, -⟩ := AC.castAt_specU hr.toU hy hc
     have he := hr.exec k ell hc.1.2 (hc.1.1 ▸ hy)
     rw [hc.1.1] at he
     have h1 : (tr.projAC.post k).restartTime = (tr.projAC.state y k).restartTime := by
@@ -384,7 +385,7 @@ theorem vote_before_late_delivery
       rw [hpost]
       exact AC.step_restartTime y _ _ _ _ hnrk
     unfold AC.joined at hyj ⊢
-    rw [← h1, AC.restartTime_of_castAt hr hy hc, ← htk]
+    rw [← h1, AC.restartTime_of_castAtU hr.toU hy hc, ← htk]
     exact hyj
   have hjp := Compose.joined_projection_from hrun hy u
   have hnr_k : ¬ tr.RestartAt y k := fun ⟨ell', hc', hr'⟩ => by
@@ -413,7 +414,7 @@ theorem vote_before_late_delivery
     rw [(AC.trace_mayVote hr hy jt).trans (AC.trace_mayVote hr hy k).symm]
     exact AC.mayVote_of_castAt hr hy hc
   by_cases hvs : (tr.projAC.state y jt).votedSlot = (e.msg.slot : Int)
-  · rcases AC.cast_of_votedSlot hr hrun.vstart hy jt e.msg.slot hvs with
+  · rcases AC.cast_of_votedSlotU hr.toU hrun.vstart hy jt e.msg.slot hvs with
       ⟨j', hj', e', hve', hes⟩ | hmf
     · have := (AC.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy j' k e' e hve' hve hes).1
       omega
@@ -425,7 +426,7 @@ theorem vote_before_late_delivery
     rw [show tr.projAC.time jt = u from htt] at hexec
     rw [hexec] at hne
     obtain ⟨e', he'⟩ := List.exists_mem_of_ne_nil _ hne
-    have hsl' := (AC.castAt_spec hr hy ⟨hpt, he'⟩).2.1
+    have hsl' := (AC.castAt_specU hr.toU hy ⟨hpt, he'⟩).2.1
     have := (AC.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy jt k e' e ⟨ellt, hpt, he'⟩ hve
       (by rw [hsl']; change sp.slot (tr.time jt) = _; rw [htt, hslot])).1
     omega

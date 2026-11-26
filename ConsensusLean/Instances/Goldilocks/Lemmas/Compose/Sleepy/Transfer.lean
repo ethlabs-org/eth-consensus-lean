@@ -49,7 +49,7 @@ theorem vote_extends_of_counted_batch {ini} (hrun : AC.ACRun proposer tr H U ini
     AC.VoteExtends U e.msg B := by
   have hr := hrun.localRun
   have hU := hr.coherent
-  obtain ⟨-, -, -, hhead⟩ := AC.castAt_spec hr hy hc
+  obtain ⟨-, -, -, hhead⟩ := AC.castAt_specU hr.toU hy hc
   obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hy hc.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
@@ -66,7 +66,7 @@ theorem vote_extends_of_counted_batch {ini} (hrun : AC.ACRun proposer tr H U ini
     have hw := hSXH hwSX
     obtain ⟨j, e', hv, hvs⟩ := hSXv w hwSX
     obtain ⟨ℓw, hcw⟩ := id hv
-    have hvw : e'.msg.val = w := (AC.castAt_spec hr hw hcw).1
+    have hvw : e'.msg.val = w := (AC.castAt_specU hr.toU hw hcw).1
     have hmem : e'.msg ∈ {v | ∃ x ∈ SX, ∃ j e', AC.VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = s} :=
       ⟨w, hwSX, j, e', hv, rfl, hvs⟩
     -- `y` holds `e'.msg` itself (an honest validator has one slot-`s` vote)
@@ -88,11 +88,11 @@ theorem vote_extends_of_counted_batch {ini} (hrun : AC.ACRun proposer tr H U ini
           (hv₁.trans hvw ▸ hv₁') hv (by rw [he₁, hs₁, hvs])
         exact h1 (he₁ ▸ this.2 ▸ rfl)
     obtain ⟨Hv, hHv, hHvr, hacc⟩ := hcarry.heads _ hmem
-    obtain ⟨Hd, hHd, hHdr, hHds⟩ := AC.honest_head hrun hw hv
+    obtain ⟨Hd, hHd, hHdr, hHds⟩ := AC.honest_headU hrun.toU hw hv
     obtain ⟨Hd', hHd', hHd'r, hBHd'⟩ := hall w hwSX j e' hv hvs
     have h1 : Hd = Hv := hU.1 hHd hHv (hHdr.trans hHvr.symm)
     have h2 : Hd' = Hv := hU.1 hHd' hHv (hHd'r.trans hHvr.symm)
-    have := AC.carried_supporter hrun hy hc hs hBt hvs hheld
+    have := AC.carried_supporterU hrun.toU hy hc hs hBt hvs hheld
       ⟨Hv, hHv, hHvr, h1 ▸ hvs ▸ hHds, h2 ▸ hBHd', hacc Hv Relation.ReflTransGen.refl⟩
       (AC.honest_not_equivocatorU hrun.toU hy hc (hvw ▸ hw))
     exact hvw ▸ this
@@ -100,7 +100,7 @@ theorem vote_extends_of_counted_batch {ini} (hrun : AC.ACRun proposer tr H U ini
     (AC.mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB =>
         AC.voteDomain_subset_tree hB) hdomA hviab.voteDomain
     hlocks fun X' Cx hCx hp hCxC =>
-      AC.isBest_of_majority hΦ (AC.merged_support_subset hr hy hc (s + 1)) (fun B hB =>
+      AC.isBest_of_majority hΦ (AC.merged_support_subsetU hr.toU hy hc (s + 1)) (fun B hB =>
           (AC.voteDomain_subset_tree hB.1))
         hsupp hW hcount hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩

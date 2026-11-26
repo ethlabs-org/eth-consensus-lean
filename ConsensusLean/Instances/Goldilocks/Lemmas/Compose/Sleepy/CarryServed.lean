@@ -47,14 +47,14 @@ private theorem readPoint_slot {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro
       fun u hu => Function.update_of_ne (by rintro rfl; exact hσ hu) _ _⟩
 
 /-- **`Carry_y` from what is served.** For an honest `y` casting its slot-`(s+1)` vote whose
-frames are closed under its acceptances (`hframe`, `frame_anc_accepted`): if each counted vote is
+frames are closed under its acceptances (`hframe`, `frame_anc_acceptedU`): if each counted vote is
 of slot `s`, has a release time `τ ∈ [t_s, t_s + 2Δ)` at which it is served to `y` (once `y`'s
 deadline for `τ` is at or before the vote), and has a head that is relayed to `y` from a time
 before `t_s + 2Δ` (likewise) or that `y` accepted before the freeze `t_s + 3Δ` (genesis
 included), then `Carry_y(s, ·, ·)` holds for the counted votes. -/
 theorem carryAt_of_served {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
-    {y : Fin sp.n} -- supplier: `frame_anc_accepted`
+    {y : Fin sp.n} -- supplier: `frame_anc_acceptedU`
     (hframe : ∀ k (ℓ : ACLabel (AC.goldilocksAC sp FGP ro)), T.CallAt y k ℓ →
       ∀ B ∈ ℓ.frame.tree, ∀ X, Anc U X B →
         X.root = sp.genesisRoot ∨ ∃ k' ≤ k, T.AcceptAt y k' X)
@@ -72,7 +72,7 @@ theorem carryAt_of_served {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
     simp only [ACParams.ts]; push_cast; ring
-  obtain ⟨-, hys, hyj, -⟩ := AC.castAt_spec hr hy hc
+  obtain ⟨-, hys, hyj, -⟩ := AC.castAt_specU hr.toU hy hc
   have hsi : sp.slot (T.time i) = s + 1 := by omega
   have hti : sp.ts s + 4 * sp.Δ ≤ T.time i := by
     have := (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) ((s + 1 : Nat) : Int)).2 (by rw [hsi])
@@ -80,7 +80,7 @@ theorem carryAt_of_served {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U
   -- the voter's restarts up to its vote are at or before `t_s`
   have hrsy : ∀ k ≤ i, T.RestartAt y k → T.time k ≤ sp.ts s := by
     have hj' : AC.joined sp (T.post i) (T.time i) := by
-      unfold AC.joined; rw [AC.restartTime_of_castAt hr hy hc]; exact hyj
+      unfold AC.joined; rw [AC.restartTime_of_castAtU hr.toU hy hc]; exact hyj
     intro k hk hrk
     have := (AC.joined_awakeU sp FGP ro H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
     rwa [hsi, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by push_cast; ring] at this
@@ -93,7 +93,7 @@ theorem carryAt_of_served {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U
     linarith only [h₁, h₂]
   have hdi : ∀ τ, τ < sp.ts s + 2 * sp.Δ → T.deadline y i τ ≤ T.time i := fun τ hτ => by
     linarith only [hdl i le_rfl τ hτ, hti, hΔ]
-  obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hy i ℓ hc.1
+  obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hy i ℓ hc.1
   refine ⟨hr.awake_of_call y hy i ℓ hc.1, hyj, fun v hv => ?_, fun v hv => ?_⟩
   · -- the head: relayed to `y` before `t_s + 3Δ`, with its ancestors
     obtain ⟨-, -, Hv, hHvr, hacc⟩ := hW v hv
@@ -123,7 +123,7 @@ theorem carryAt_of_served {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U
       have hheld (u : Vote sp.n) (hus : u.slot = s)
           (hu : AC.HeldBefore (T.state y i) u (sp.ts s + 3 * sp.Δ)) :
           AC.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
-        have hp := AC.heldBefore_mono hr hy (Nat.le_succ i)
+        have hp := AC.heldBefore_monoU hr.toU hy (Nat.le_succ i)
           (fun r hr₁ hr₂ hrr => by
             have heq : r = i := by omega
             subst r
@@ -157,7 +157,7 @@ theorem carryAt_of_served {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U
     have hheld : ∀ u ∈ (T.state y (k' + 1)).pool s,
         AC.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
       intro u hu
-      have hus : u.slot = s := AC.state_pool_slot sp hr hini hy (k' + 1) s u hu
+      have hus : u.slot = s := AC.state_pool_slotU sp hr.toU hini hy (k' + 1) s u hu
       obtain ⟨hpool, hstamp⟩ := readPoint_slot hr hy hc (σ := s) (by omega)
       have hu' := AC.pool_mono hr hy (show k' + 1 ≤ i + 1 by omega) hnr s hu
       refine ⟨by rw [hus, ← hpool]; exact hu', ?_⟩
@@ -179,14 +179,14 @@ theorem carryAt_of_served {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U
         linarith only [this, hΔ]
     by_cases hv' : v ∈ (T.state y (k' + 1)).pool s
     · exact Or.inl (hheld v hv')
-    · rcases AC.held_of_processAt hr hy hp (by rw [hvs, hsk']; omega) (by rw [hvs, hsk']) with
+    · rcases AC.held_of_processAtU hr.toU hy hp (by rw [hvs, hsk']; omega) (by rw [hvs, hsk']) with
         h | ⟨a, ha, c, hc'', hac, hav, hcv⟩
       · rw [hvs] at h
         exact absurd h hv'
       · have ha' : a ∈ (T.state y (k' + 1)).pool s := by rw [← hvs]; exact ha
         have hc' : c ∈ (T.state y (k' + 1)).pool s := by rw [← hvs]; exact hc''
-        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv, AC.state_pool_slot sp hr hini hy _ s a ha',
-          AC.state_pool_slot sp hr hini hy _ s c hc', hheld a ha', hheld c hc'⟩
+        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv, AC.state_pool_slotU sp hr.toU hini hy _ s a ha',
+          AC.state_pool_slotU sp hr.toU hini hy _ s c hc', hheld a ha', hheld c hc'⟩
         · rintro rfl; exact hv' ha'
         · rintro rfl; exact hv' hc'
 

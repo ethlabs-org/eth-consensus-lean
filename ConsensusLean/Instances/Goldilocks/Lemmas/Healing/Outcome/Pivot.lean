@@ -257,7 +257,7 @@ theorem reset_pivot (hp : ResetPremises tr H K proposer dg g ΔF a) (hc : CatchR
     (reset_proposal_passes hp hc hP hR hci hcall hd hti hPQ)
     (reset_suffix_viable hp hc hP hR hci hcall hd hti hPQ)
     (fun _ _ _ _ h => AC.frameIn_of_callAt hr h.1 h.2.1.1)
-    (fun _ _ _ _ h => h.2.2.1 ▸ (AC.castAt_spec hr h.1 h.2.1).2.2.2)
+    (fun _ _ _ _ h => h.2.2.1 ▸ (AC.castAt_specU hr.toU h.1 h.2.1).2.2.2)
     (fun _ _ _ _ h => proposal_start_supported hp hc hP hR hci hcall hd hti hPQ h.1 h.2.1 h.2.2.1
       h.2.2.2)
     (fun O hO y j ℓy e ⟨hy, hcy, hes, _⟩ => by
@@ -303,7 +303,7 @@ theorem ResetPremisesUpTo.reset_pivot {b : Time}
     (fun D hDt hsD hDold => hp.reset_suffix_viable hpH hR hci hcall hd hti hib D hDt hsD
       fun x r l O ho hrt _ => hDold O ⟨x, r, l, ho, hrt⟩)
     (fun _ _ _ _ h => AC.frameIn_of_callAt hr h.1 h.2.1.1)
-    (fun _ _ _ _ h => h.2.2.1 ▸ (AC.castAt_spec hr h.1 h.2.1).2.2.2)
+    (fun _ _ _ _ h => h.2.2.1 ▸ (AC.castAt_specU hr.toU h.1 h.2.1).2.2.2)
     (fun _ _ _ _ h => hp.proposal_start_supported hc hpH hR hci hcall hd hti hib h.1 h.2.1
       h.2.2.1 h.2.2.2.1)
     (fun O ⟨x, r, l, ho, hrt⟩ y j elly e ⟨hy, hcy, hes, hjb, _⟩ => by

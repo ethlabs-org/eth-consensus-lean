@@ -74,7 +74,7 @@ theorem unanimous_next_cast_supporters_at {K : AC.CommitteeDict sp.n}
   have hv' : AC.VoteAt (tr.projAC.upTo (tr.time j)) x i ev := by
     obtain ⟨ellx, hcx, he⟩ := hv
     exact ⟨ellx, (Trace.upTo_callAt _).mpr ⟨hit, hcx⟩, he⟩
-  have hval := (AC.castAt_spec hr hx ⟨hv'.choose_spec.1, hv'.choose_spec.2⟩).1
+  have hval := (AC.castAt_specU hr.toU hx ⟨hv'.choose_spec.1, hv'.choose_spec.2⟩).1
   have heP := hun x i ev (hrun.antitone hit hx) hv hs
   have hheld : AC.HeldBefore R ev.msg (sp.ts u + 2 * sp.Δ) := by
     apply AC.heldBefore_readPoint_branchU hr.toU hy hb' (fun h => by
@@ -84,7 +84,7 @@ theorem unanimous_next_cast_supporters_at {K : AC.CommitteeDict sp.n}
       (fun k hkj t _ => Compose.ac_deadline_le_of_restarts
         (fun r hr hrs => (hrst r (hr.trans hkj) hrs).le) t)
       hrst hx hv' hs (j + 1) (Or.inr rfl)
-  have hsupp := AC.carried_supporter_branch hS.run hy hb' hjs hPt hs
+  have hsupp := AC.carried_supporter_branchU hS.run.toU hy hb' hjs hPt hs
     ⟨hheld.1, lt_trans hheld.2
       (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (by linarith)))⟩
     ⟨P, hPhi.2 hPt, heP.symm, hPs.le, .refl,

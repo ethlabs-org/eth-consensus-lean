@@ -87,12 +87,12 @@ theorem later_heads_of_early_witness_at
       obtain ⟨ell, hc⟩ := hv
       have hr := (hac.upTo (hrun.time_nonneg i)).localRun
       have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
-      have hs : sp.slot (tr.time i) = m + 1 := (AC.castAt_spec hr hy hc').2.1.symm.trans hes
+      have hs : sp.slot (tr.time i) = m + 1 := (AC.castAt_specU hr.toU hy hc').2.1.symm.trans hes
       have hlo : sp.ts s ≤ tr.time i :=
         (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by
           rw [hs]; exact_mod_cast (by omega : s ≤ m + 1))
       have hhi : tr.time i ≤ sp.ts N + sp.Δ := by
-        have h := AC.vote_time_le hr hy ⟨ell, hc'⟩
+        have h := AC.vote_time_leU hr.toU hy ⟨ell, hc'⟩
         change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at h
         rw [hs] at h
         linarith only [h, ht]

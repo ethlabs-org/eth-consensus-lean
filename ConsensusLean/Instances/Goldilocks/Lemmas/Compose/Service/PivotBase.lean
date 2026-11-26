@@ -249,7 +249,7 @@ private theorem tick_ac_positions {y : Fin sp.n} {st : NodeState (goldilocksNode
 
 /-- **No honest optimistic check of slot `s` selects a block before the proposal**: its at least
 `3n/4` voters include an honest one (`2f < n`), whose slot-`s` vote is in the checker's pool, cast
-at a cut no later (`AC.optimisticPoint_pool_vote`), at `t_s`. A vote at `t_s` is cast in a call
+at a cut no later (`AC.optimisticPoint_pool_voteU`), at `t_s`. A vote at `t_s` is cast in a call
 whose group precedes the proposer's tick at `t_s` or is it (phase order), so in a tick, where only
 the slot's proposer's own block casts it (C0.4), after `ac_proposal`: in the proposer's tick
 (`tick_unique`), after cut `i`. -/
@@ -289,9 +289,9 @@ theorem proposal_no_optimistic_of {ini} (hrun : GoldilocksRun proposer dg H tr i
   have hnoH : AC.optimisticVoters sp AO ℓO.frame s C ⊆ Hᶜ := by
     rintro u ⟨v, hv, rfl, -⟩ huH
     obtain ⟨hvs, j', hj', e', ⟨ℓ', hc', he'⟩, rfl⟩ :=
-      AC.optimisticPoint_pool_vote hr' hz hpt hv huH
+      AC.optimisticPoint_pool_voteU hr'.toU hz hpt hv huH
     have hsl' : sp.slot (tr.projAC.time j') = s :=
-      (AC.castAt_spec hr huH ⟨hc', he'⟩).2.1.symm.trans hvs
+      (AC.castAt_specU hr.toU huH ⟨hc', he'⟩).2.1.symm.trans hvs
     have htj : tr.time j' = sp.ts s := le_antisymm ((hrun.time_mono hj').trans hct)
       ((AC.ts_le_iff_le_slot sp (hr.time_nonneg j') (s : Int)).2 (by rw [hsl']))
     obtain ⟨g, eu, k₁, hg, hjeq, hk₁⟩ := call_in_group hl huH (projAC_callAt.1 hc')
@@ -427,7 +427,8 @@ theorem vote_fcRoot_old_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hn
   have hΔ := sp.toParams.hΔ
   have htj : tr.time j ≤ sp.ts ((s' + 1 : Nat) : Int) + sp.Δ :=
     hes ▸ (cast_head_fcRoot hr hrun.vstart hy hc).2
-  have hsj : sp.slot (tr.projAC.time j) = s' + 1 := (AC.castAt_spec hr hy hc).2.1.symm.trans hes
+  have hsj : sp.slot (tr.projAC.time j) = s' + 1 := (AC.castAt_specU hr.toU hy hc).2.1.symm.trans
+      hes
   rw [frame_of_projAC hrun hy hc.1]
   refine fcRoot_of_rows_of hrun hnc hf hy (j := j)
     (R := fun B => ∃ O, OldOrigin tr H (s' + 1) O ∧ Anc (tr.HonestBlocks H) B O)

@@ -13,7 +13,7 @@ fast count for `C` (slot `s`) is a supporter of every ancestor `B` of `C` in `y`
 slot `s + 1`, when `y` carries the counted votes and every merged vote of slot `s` is in `X`'s
 pool or makes its validator an equivocator there (the writer-pool condition): the carried vote,
 or the two votes of its validator that `y` holds instead, are merged votes, so the validator does
-not equivocate there, and `AC.carried_supporter` on the prefix through `y`'s vote applies. -/
+not equivocate there, and `AC.carried_supporterU` on the prefix through `y`'s vote applies. -/
 
 namespace Consensus.Goldilocks.AC.Growing
 
@@ -38,8 +38,8 @@ theorem carried_counted_supporters {ini} (hrun : ACRun proposer tr H U ini)
   have hcX' := (Trace.upTo_callAt tr).mpr ⟨le_rfl, hcX⟩
   have hc' := upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hU := hrun.localRun.coherent
-  obtain ⟨hΦX, hΦXU⟩ := frameIn_of_call hrX hX hcX'
-  obtain ⟨hΦ, _⟩ := frameIn_of_call hry.localRun hy hc'.1
+  obtain ⟨hΦX, hΦXU⟩ := frameIn_of_callU hrX.toU hX hcX'
+  obtain ⟨hΦ, _⟩ := frameIn_of_callU hry.localRun.toU hy hc'.1
   have hCt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
     · exact h.1.1
@@ -50,9 +50,9 @@ theorem carried_counted_supporters {ini} (hrun : ACRun proposer tr H U ini)
       v₁.val = w → v₂.val = w → v₁ = v₂ := by
     intro w hw v₁ v₂ h₁ h₂ hv₁ hv₂
     by_contra hne
-    rcases hd v₁ h₁ (merged_vote_slot hry.localRun hry.vstart hy hc' v₁ h₁)
+    rcases hd v₁ h₁ (merged_vote_slotU hry.localRun.toU hry.vstart hy hc' v₁ h₁)
       with h₁' | h₁'
-    · rcases hd v₂ h₂ (merged_vote_slot hry.localRun hry.vstart hy hc' v₂ h₂)
+    · rcases hd v₂ h₂ (merged_vote_slotU hry.localRun.toU hry.vstart hy hc' v₂ h₂)
       with h₂' | h₂'
       · exact hw ⟨v₁, h₁', v₂, h₂', hne, hv₁, hv₂⟩
       · exact hw (hv₂ ▸ h₂')
@@ -61,7 +61,7 @@ theorem carried_counted_supporters {ini} (hrun : ACRun proposer tr H U ini)
   have hst := Trace.upTo_state tr X (d := tr.time i₀) (i := i₀)
     (fun _ hk => hrun.localRun.time_mono hk.le)
   have hvp' : v ∈ ((tr.upTo (tr.time i₀)).state X i₀).pool s := hst.symm ▸ hvp
-  have hvs := state_pool_slot sp hrX hrun.vstart hX i₀ s v hvp'
+  have hvs := state_pool_slotU sp hrX.toU hrun.vstart hX i₀ s v hvp'
   obtain ⟨Hd, hHd, hHdr, hHds⟩ : ∃ Hd ∈ ℓX.frame.tree, Hd.root = v.head ∧ Hd.slot ≤ v.slot := by
     unfold resolutionTime at hvres
     split at hvres
@@ -93,7 +93,7 @@ theorem carried_counted_supporters {ini} (hrun : ACRun proposer tr H U ini)
   subst Hd
   have hacc' : AcceptedBefore (tr.upTo (tr.time i)) y Hv (sp.ts s + 3 * sp.Δ) := by
     have hT : sp.ts s + 3 * sp.Δ < tr.time i := by
-      have hslot : e.msg.slot = sp.slot (tr.time i) := (castAt_spec hry.localRun hy hc').2.1
+      have hslot : e.msg.slot = sp.slot (tr.time i) := (castAt_specU hry.localRun.toU hy hc').2.1
       have h := (ts_le_iff_le_slot sp (hrun.localRun.time_nonneg i) ((s : Int) + 1)).mpr
         (by rw [← hslot, hs]; push_cast; rfl)
       have hΔ := sp.toParams.hΔ
@@ -103,7 +103,7 @@ theorem carried_counted_supporters {ini} (hrun : ACRun proposer tr H U ini)
     · exact Or.inl hg
     · exact Or.inr ⟨k, (ACTrace.upTo_acceptAt (A := goldilocksAC sp FGP ro)).mpr
         ⟨ht.le.trans hT.le, hk⟩, ht⟩
-  refine carried_supporter hry hy hc' hs hCt hvs hheld
+  refine carried_supporterU hry.toU hy hc' hs hCt hvs hheld
     ⟨Hv, hHv, hHvr, hvs ▸ hHds, hBC.trans hCHd, hacc'⟩ fun hq => ?_
   obtain ⟨x, hx, x', hx', hne, hxv, hx'v⟩ := hq
   exact hne (hone _ hvw x x' hx hx' hxv hx'v)

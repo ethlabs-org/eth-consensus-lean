@@ -75,7 +75,7 @@ theorem update_extends_of_resolved_votes
   set A := tr.state z k
   set Φ := ℓ.frame
   set Hv := {v | v ∈ H ∧ ∃ x' ∈ A.pool (s + 1), x'.val = v}
-  have hps := state_pool_slot sp hr hrun.vstart hz k (s + 1)
+  have hps := state_pool_slotU sp hr.toU hrun.vstart hz k (s + 1)
   -- an honest vote of the pool: no second vote, resolved early, its head extends `B`
   have key : ∀ v ∈ A.pool (s + 1), v.val ∈ H →
       v.val ∉ equivocators {x | x ∈ A.pool (s + 1)} ∧
@@ -108,7 +108,7 @@ theorem update_extends_of_resolved_votes
       fun h => hB (frame_mem_of_between sp hU hΦ hΦU hHd₀ hBHd₀ h)
     refine ⟨Φ.F, hΦ.rooted.1, Relation.ReflTransGen.refl, hBF,
       fun Hd hHd _ => hΦ.rooted.2 Hd hHd, fun _ hg => ?_⟩
-    obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_call sp hr hz _ _ hc
+    obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_callU sp hr.toU hz _ _ hc
     have hFG := hU.1 (hΦU hΦ.rooted.1) hGU (hg.trans hGr.symm)
     obtain h | ⟨c, -, hcF⟩ := (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hBF
     · exact hB (h ▸ hΦ.rooted.1)

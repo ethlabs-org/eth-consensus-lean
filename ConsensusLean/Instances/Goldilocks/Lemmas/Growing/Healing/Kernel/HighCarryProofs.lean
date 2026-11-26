@@ -124,7 +124,7 @@ theorem later_carry_of_finalized_anc_at
   have hrk := hac.localRun.upTo (hp.run.time_nonneg k)
   have hck : AC.CastAt (tr.projAC.upTo (tr.time k)) y k ell e :=
     AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
-  have hyk := (AC.castAt_spec hrk hy hck).2.1
+  have hyk := (AC.castAt_specU hrk.toU hy hck).2.1
   change e.msg.slot = sp.slot (tr.time k) at hyk
   refine carry_of_post_gst_senders_at hp hgm hy hc hs ?_
   rintro v ⟨z, q, e', hzv, rfl, hvs⟩
@@ -132,7 +132,7 @@ theorem later_carry_of_finalized_anc_at
   have hrq := hac.localRun.upTo (hp.run.time_nonneg q)
   have hcq' : AC.CastAt (tr.projAC.upTo (tr.time q)) z q ellq e' :=
     ⟨(Trace.upTo_callAt _).mpr ⟨le_rfl, hcq⟩, he'⟩
-  have hzs := (AC.castAt_spec hrq hzq hcq').2.1
+  have hzs := (AC.castAt_specU hrq.toU hzq hcq').2.1
   change e'.msg.slot = sp.slot (tr.time q) at hzs
   change e'.msg.slot = m at hvs
   have hqk : q < k := by
@@ -154,7 +154,7 @@ theorem later_carry_of_finalized_anc_at
   -- the voter accepted its head before its cast, which is after `c_z`
   have hZq : cutZ sp.toParams g ≤ tr.time q := hZj.trans (hjm'.trans hmq)
   have hcq'' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcq)
-  rcases Compose.frame_anc_accepted hrq hzq q ellq hcq'' Hd hHd Hd .refl with hg |
+  rcases Compose.frame_anc_acceptedU hrq.toU hzq q ellq hcq'' Hd hHd Hd .refl with hg |
       ⟨c, hcq₀, hacc⟩
   · exact (hp.not_genesis_above_at ho hHdU hBHv hg).elim
   obtain ⟨-, hacc⟩ := (ACTrace.upTo_acceptAt).mp hacc

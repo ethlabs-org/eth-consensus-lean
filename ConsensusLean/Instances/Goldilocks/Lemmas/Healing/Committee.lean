@@ -49,8 +49,8 @@ theorem committeeT_of_facts (hK : Compose.Growing.CommitteeFacts tr (fun _ => H)
   have hacr := Compose.goldilocks_ac_projection_from hrun hnc
   have hst : ∀ k, ∀ w ∈ e.readPoint.pool k,
       w ∈ (tr.projAC.state y (i + 1)).pool k ∧ w.slot = k := fun k w hw =>
-    have hp := (AC.readPoint_pool hacr.localRun hy hc hw).1
-    ⟨hp, AC.state_pool_slot _ hacr.localRun hacr.vstart hy (i + 1) _ w hp⟩
+    have hp := (AC.readPoint_poolU hacr.localRun.toU hy hc hw).1
+    ⟨hp, AC.state_pool_slotU _ hacr.localRun.toU hacr.vstart hy (i + 1) _ w hp⟩
   have hP := (committeeP_of_facts hK hrun).1 y hy (i + 1) v.slot
   rcases AC.merged_declared_backing_at_vote_slot (fun k w hw => (hst k w hw).2) hv with
     hp | ⟨u, hu, -, -, -, hu', -⟩

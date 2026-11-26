@@ -298,7 +298,7 @@ theorem optimistic_next_proposal_of_early_witness_at
     have heq : l.slot = s := by omega
     obtain ⟨L', hL', hL'r, -⟩ := AC.lock_below_origin hr hacP.vstart hy i l hl
     obtain rfl : L = L' := hU.1 hL (subU hL') (hLr.trans hL'r.symm)
-    obtain ⟨O, hLO, a', CW, ho⟩ := AC.proposal_high_lock hr hacP.vstart hy hti hl hls hL' hLr
+    obtain ⟨O, hLO, a', CW, ho⟩ := AC.proposal_high_lockU hr.toU hacP.vstart hy hti hl hls hL' hLr
     rw [heq] at ho
     obtain ⟨ha't, ho⟩ := (AC.upTo_optimisticLockAt hmono).mp ho
     have hya' : y ∈ H (tr.time a') := hrun.antitone ha't hy

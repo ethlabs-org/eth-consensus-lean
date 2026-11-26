@@ -102,7 +102,7 @@ theorem result_honest_supporter_of_participants {FGP : Type} {ro : ReplayOrder s
     by_contra hvH
     exact hz ⟨hvz ▸ hvH, v, hvp, hvz⟩
   obtain ⟨q, hq, e, he, hmsg⟩ := hrun.honest.pool_vote x hx i s v hvp hvH
-  have hslot := state_pool_slot sp hrun.localRun hrun.vstart hx i s v hvp
+  have hslot := state_pool_slotU sp hrun.localRun.toU hrun.vstart hx i s v hvp
   refine ⟨v.val, hvH, q, hq, e, he, hmsg.symm ▸ hv, ?_, ?_⟩
   · simpa only [hmsg] using hslot
   · rw [hmsg]

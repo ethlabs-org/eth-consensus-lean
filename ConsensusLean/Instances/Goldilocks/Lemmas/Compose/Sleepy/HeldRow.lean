@@ -165,7 +165,7 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   obtain ⟨hrs, hti⟩ := honest_vote_restarts hrun hnc hy hc hs
   have hti' : tr.time i ≤ sp.ts s + 5 * sp.Δ :=
     le_ts_add_five (by rw [← hs]; exact (cast_head_fcRoot hr hrun.vstart hy hc).2)
-  have hsi : sp.slot (tr.time i) = s + 1 := ((AC.castAt_spec hr hy hc).2.1.symm.trans hs)
+  have hsi : sp.slot (tr.time i) = s + 1 := ((AC.castAt_specU hr.toU hy hc).2.1.symm.trans hs)
   have hvi : AC.VoteAt tr.projAC y i e := ⟨ℓ, hc.1, hc.2⟩
   have hkm' := hrun.time_mono hkm.le
   have hmi' := hrun.time_mono hmi.le
@@ -211,7 +211,7 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     rw [(AC.trace_mayVote hr hy jt).trans (AC.trace_mayVote hr hy i).symm, ← hs]
     exact AC.mayVote_of_castAt hr hy hc
   by_cases hvs : (tr.projAC.state y jt).votedSlot = ((s + 1 : Nat) : Int)
-  · rcases AC.cast_of_votedSlot hr hrun.vstart hy jt (s + 1) hvs with
+  · rcases AC.cast_of_votedSlotU hr.toU hrun.vstart hy jt (s + 1) hvs with
       ⟨j, hj, e', hv', hes'⟩ | hmf
     · have := (AC.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy j i e' e hv' hvi
         (hes'.trans hs.symm)).1
@@ -250,7 +250,7 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   rw [show tr.projAC.time jt = tr.time m from ht₀] at hexec
   rw [hexec] at hne
   obtain ⟨e₀, he₀⟩ := List.exists_mem_of_ne_nil _ hne
-  have hsl₀ : e₀.msg.slot = sp.slot (tr.time m) := (AC.castAt_spec hr hy ⟨hpt0, he₀⟩).2.1.trans
+  have hsl₀ : e₀.msg.slot = sp.slot (tr.time m) := (AC.castAt_specU hr.toU hy ⟨hpt0, he₀⟩).2.1.trans
     (by rw [show tr.projAC.time jt = tr.time m from ht₀])
   have := (AC.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy jt i e₀ e ⟨ℓt, hpt0, he₀⟩ hvi
     (hsl₀.trans (hslm.trans hs.symm))).1
@@ -298,11 +298,11 @@ theorem held_row_early_count
     rintro u ⟨v, hv, hvu, -⟩ huH
     subst hvu
     obtain ⟨hvs, j', hj', e', ⟨ℓ', hc', he'⟩, rfl⟩ :=
-      AC.optimisticPoint_pool_vote hr' hz hpt hv huH
+      AC.optimisticPoint_pool_voteU hr'.toU hz hpt hv huH
     refine ⟨?_, j', hj', e', ⟨ℓ', hc', he'⟩, hvs⟩
     -- the vote is cast at `t_{s+1}`
     have hsl' : sp.slot (tr.time j') = s + 1 :=
-      (AC.castAt_spec hr huH ⟨hc', he'⟩).2.1.symm.trans hvs
+      (AC.castAt_specU hr.toU huH ⟨hc', he'⟩).2.1.symm.trans hvs
     have htj : tr.time j' = tr.time k := by
       refine le_antisymm ((hrun.time_mono hj').trans (htc ▸ le_rfl)) ?_
       rw [hT0]; exact slot_start_le (hr.time_nonneg j') hsl'

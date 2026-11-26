@@ -9,7 +9,7 @@ public section
 `saved[j]` is written only by the update of slot `j` (`update_confirmation`, at `t_j + 6Δ`, from
 a joined state), with the root of its result, and a restart clears it: a saved root at an honest
 node is the root of the result of that node's update of slot `j` at an earlier cut
-(`saved_result`). -/
+(`saved_resultU`). -/
 
 namespace Consensus.Goldilocks.AC
 
@@ -113,7 +113,9 @@ private theorem sv_step
     rw [((restart_state sp) FGP ro self A Φ t hΦ ht).2.2.2.1]
     rfl
 
-/-- `saved_result` with the unlock given, from starts up to the vote permission. -/
+/-- **A saved result comes from the node's update.** When the state of an honest node before cut `i`
+has `saved[j] = r`, the node's update of slot `j` at an earlier cut had a result with root `r`; from
+starts up to the vote permission. With the unlock given. -/
 theorem saved_resultU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
@@ -156,15 +158,6 @@ theorem saved_resultU
       rw [hst] at h
       obtain ⟨k, hk, hk'⟩ := ih h
       exact ⟨k, hk.trans (Nat.lt_succ_self i), hk'⟩
-
-/-- **A saved result comes from the node's update.** When the state of an honest node before
-cut `i` has `saved[j] = r`, the node's update of slot `j` at an earlier cut had a result with
-root `r`; from starts up to the vote permission. -/
-theorem saved_result (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
-    (hx : x ∈ H) (i j : Nat) {r : Nat} (h : (tr.state x i).saved j = some r) :
-    ∃ k < i, ∃ C CV, ResultAt tr x k j C CV ∧ C.root = r :=
-  saved_resultU (hr := hr.toU) hini (x := x) (hx := hx) (i := i) (j := j) (r := r) (h := h)
 
 /-- The state after a call of an honest node. -/
 private theorem post_step (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {x : Fin sp.n}

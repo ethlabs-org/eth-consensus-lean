@@ -115,7 +115,7 @@ theorem optimistic_next_result_of_floor_at
     intro v hv hvH
     obtain ⟨q, _, e, he, rfl⟩ := hS.run.honest.pool_vote y hy j (s + 1) v hv hvH
     rw [hst]
-    exact (receipt _ hvH q e he (AC.state_pool_slot sp hr hS.run.vstart hy j (s + 1) _ hv)).2
+    exact (receipt _ hvH q e he (AC.state_pool_slotU sp hr.toU hS.run.vstart hy j (s + 1) _ hv)).2
   -- every honest member of the slot-`s + 1` committee votes in it: a majority in the pool
   have hdl : sp.ts (s + 1 : Nat) + sp.Δ ≤ tr.time j := by rw [htime]; linarith
   have hall := honest_votes_in_slot_at hp hgu hR (hdl.trans hjb)
@@ -127,7 +127,7 @@ theorem optimistic_next_result_of_floor_at
     have hv : AC.VoteAt (tr.projAC.upTo (tr.time j)) z q e :=
       AC.upTo_voteAt.mpr ⟨hq.trans hdl, ellq, hcast⟩
     refine ⟨hz, e.msg, ?_,
-      (AC.castAt_spec hr hz (AC.upTo_castAt.mpr ⟨hq.trans hdl, hcast⟩)).1⟩
+      (AC.castAt_specU hr.toU hz (AC.upTo_castAt.mpr ⟨hq.trans hdl, hcast⟩)).1⟩
     rw [hst]
     exact (receipt z hz q e hv hes).1
   have hcount := Set.ncard_le_ncard hH

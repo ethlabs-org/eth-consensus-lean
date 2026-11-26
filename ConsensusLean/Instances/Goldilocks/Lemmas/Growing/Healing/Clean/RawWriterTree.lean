@@ -48,7 +48,7 @@ theorem raw_writer_voterBlockTree_window_before_at
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hc' : CastAt (tr.upTo (tr.time i)) y i ℓ e := upTo_castAt.mpr ⟨le_rfl, hc⟩
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hri hy hc'.1
-  obtain ⟨-, hys, hyj, -⟩ := castAt_spec hri hy hc'
+  obtain ⟨-, hys, hyj, -⟩ := castAt_specU hri.toU hy hc'
   have hm' : sp.ts ((e.msg.slot : Int) - 1) + 4 * sp.Δ = sp.ts e.msg.slot := by
     simp only [ACParams.ts]; ring
   have hti : sp.ts e.msg.slot ≤ tr.time i :=
@@ -57,7 +57,7 @@ theorem raw_writer_voterBlockTree_window_before_at
   have hrsy : ∀ k ≤ i, ACTrace.RestartAt (tr.upTo (tr.time i)) y k →
       tr.time k ≤ sp.ts ((e.msg.slot : Int) - 1) := by
     have hj' : joined sp ((tr.upTo (tr.time i)).post i) (tr.time i) := by
-      unfold joined; rw [restartTime_of_castAt hri hy hc']; exact hyj
+      unfold joined; rw [restartTime_of_castAtU hri.toU hy hc']; exact hyj
     intro k hk hrk
     have := (joined_awakeU sp FGP ro _ U _ hri.toU y hy i ℓ hc'.1 hj').2 k hk hrk
     rwa [← hys] at this
@@ -68,7 +68,7 @@ theorem raw_writer_voterBlockTree_window_before_at
   have hDt : D ∈ ℓ.frame.tree ∧
       e.readPoint.blockStamp D.root < ETime.of (freeze sp e.msg.slot) := by
     rcases hsource with hgen | ⟨q, hxq, hq, hqt⟩
-    · obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_call sp hri hy _ _ hc'.1
+    · obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_callU sp hri.toU hy _ _ hc'.1
       obtain rfl : D = G := hU.1 hDU hGU (hgen.trans hGr.symm)
       have hDt : D ∈ ℓ.frame.tree := by
         obtain heq | ⟨c, _, hp⟩ := (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hFD
@@ -77,13 +77,13 @@ theorem raw_writer_voterBlockTree_window_before_at
       have hfz' : freeze sp e.msg.slot < tr.time i := by
         unfold freeze ACParams.ts at hti ⊢
         linarith only [hΔ, hti]
-      have hbs := blockStamp_lt_of_acceptedBefore sp hri hini hy hc'.1 hDt (Or.inl hGr)
+      have hbs := blockStamp_lt_of_acceptedBeforeU sp hri.toU hini hy hc'.1 hDt (Or.inl hGr)
         (fun k hk hrk => lt_of_le_of_lt (hrsy k hk hrk) (by unfold freeze; linarith only [hΔ]))
         (Or.inl hfz'.le)
       have hne : ∀ X, ℓ.call = .block X → D.root ≠ X.root := by
         intro X hcall heq
-        exact accept_ne_genesis sp hri hy ⟨ℓ, hc'.1, hcall⟩ (heq.symm.trans hGr)
-      rw [← readPoint_blockStamp hri hy hc' hne] at hbs
+        exact accept_ne_genesisU sp hri.toU hy ⟨ℓ, hc'.1, hcall⟩ (heq.symm.trans hGr)
+      rw [← readPoint_blockStampU hri.toU hy hc' hne] at hbs
       exact ⟨hDt, hbs⟩
     have hsm : sp.ts s ≤ sp.ts ((e.msg.slot : Int) - 1) := (ts_le_iff sp).2 (by omega)
     have hdl : ∀ k ≤ i, tr.deadline y k (tr.time q) <
@@ -117,8 +117,8 @@ theorem raw_writer_voterBlockTree_window_before_at
     have hacc' :
         ACTrace.AcceptAt (A := goldilocksAC sp FGP ro) (tr.upTo (tr.time i)) y ky D :=
       (ACTrace.upTo_acceptAt).mpr ⟨hm hky, hacc⟩
-    have hWt := mem_tree_of_acceptAt sp hri hy hacc' hky hc'.1 hFD
-    have hbs := blockStamp_lt_of_acceptedBefore sp hri hini hy hc'.1 hWt
+    have hWt := mem_tree_of_acceptAtU sp hri.toU hy hacc' hky hc'.1 hFD
+    have hbs := blockStamp_lt_of_acceptedBeforeU sp hri.toU hini hy hc'.1 hWt
       (Or.inr ⟨ky, hacc', hkyt⟩)
       (fun k hk hrk => lt_of_le_of_lt (hrsy k hk hrk) (by unfold freeze; linarith only [hΔ]))
       (Or.inl hfz)
@@ -126,10 +126,10 @@ theorem raw_writer_voterBlockTree_window_before_at
       intro X hcall hX
       have hX₀ := (accept_new sp hri hy ⟨ℓ, hc'.1, hcall⟩).1 ℓ hc'.1
       obtain rfl : X = D := hU.1 (hΦU hX₀) (hΦU hWt) hX.symm
-      have heq := accept_unique sp hri hy hacc' ⟨ℓ, hc'.1, hcall⟩
+      have heq := accept_uniqueU sp hri.toU hy hacc' ⟨ℓ, hc'.1, hcall⟩
       rw [heq] at hkyt
       linarith only [hkyt, hfz]
-    rw [← readPoint_blockStamp hri hy hc' hne] at hbs
+    rw [← readPoint_blockStampU hri.toU hy hc' hne] at hbs
     exact ⟨hWt, hbs⟩
   have hBt := frame_mem_of_between sp hU hΦ hΦU hDt.1 hBD hF
   exact voterBlockTree_ancU hri.toU hini hy hc' D ⟨hDt.1, Or.inl hDt.2⟩ B

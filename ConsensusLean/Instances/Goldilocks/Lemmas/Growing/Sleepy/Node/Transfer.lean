@@ -107,10 +107,10 @@ theorem vote_extends_of_batch_at {ini} (hrun : Growing.GoldilocksRun proposer dg
       by_cases hw : v.val ∈ H (tr.time i)
       · obtain ⟨j, -, e', hv', he'⟩ := AC.honest_merged_voteU hr.toU hy hc' hv hw
         refine Or.inl (votersAt_iff.2 ⟨hw, j, e', hvote _ j e' hw hv', ?_⟩)
-        rw [he']; exact AC.merged_vote_slot hr.localRun hr.vstart hy hc'
+        rw [he']; exact AC.merged_vote_slotU hr.localRun.toU hr.vstart hy hc'
           v hv
       · have hK := hKB.committeeTAt hrun hnc y i ℓ e hy hc s v hv
-        rw [AC.merged_vote_slot hr.localRun hr.vstart hy hc' v hv] at hK
+        rw [AC.merged_vote_slotU hr.localRun.toU hr.vstart hy hc' v hv] at hK
         exact Or.inr ⟨hK, hw⟩)
     (by
       have hcount := faults_lt_voters hrun hnc hKB hBK (s := s) (d := tr.time i) hs₀
@@ -121,7 +121,7 @@ theorem vote_extends_of_batch_at {ini} (hrun : Growing.GoldilocksRun proposer dg
     ⟨⟨hcarry.awake, le_rfl⟩, hcarry.joined, fun v ⟨x, hx, j, e', hv, hev, hvs⟩ => by
       have hv' := hvote x j e' (votersAt_iff.1 hx).1 hv
       obtain ⟨Hv, hHv, hHvr, hacc⟩ := hcarry.heads v ⟨x, j, e', hv', hev, hvs⟩
-      obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := AC.honest_head hr (votersAt_iff.1 hx).1 hv
+      obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := AC.honest_headU hr.toU (votersAt_iff.1 hx).1 hv
       obtain rfl : Hv = Hd₂ := hU.1 hHv (hsub hHd₂) (hHvr.trans (hev ▸ hHd₂r.symm))
       refine ⟨Hv, hHd₂, hHvr, fun X hX => ?_⟩
       exact (hacc X (hX.mono hsub)).imp_right fun ⟨k, hk, hkT⟩ =>

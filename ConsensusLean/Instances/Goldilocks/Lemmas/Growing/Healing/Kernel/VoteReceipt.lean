@@ -73,7 +73,7 @@ theorem high_origin_frozen_head_at
   have hjt' : tr.time j ≤ sp.ts l + sp.Δ := by
     rw [hes] at hjt
     exact hjt
-  rcases Compose.frame_anc_accepted hrj hzj j ellZ hcz' W hW't W .refl with hg |
+  rcases Compose.frame_anc_acceptedU hrj.toU hzj j ellZ hcz' W hW't W .refl with hg |
       ⟨c, hcj, hacc⟩
   · exact (hp.not_genesis_above_at ho
       ⟨z, j, tr.time j, hp.run.time_nonneg j, fun _ hq => hm hq.le, hzj, hWz⟩ hOW hg).elim

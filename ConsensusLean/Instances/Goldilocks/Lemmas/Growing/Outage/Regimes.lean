@@ -188,7 +188,8 @@ theorem accepted_held_before_early_at
   have hab : AC.AcceptedBefore tr.projAC y B (sp.ts q + 2 * sp.Δ) ∧ B ∈ ℓ.frame.tree := by
     rcases hacc with hgen | ⟨x, k, hx, hax, hkt⟩
     · refine ⟨Or.inl hgen, ?_⟩
-      obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp (acRun_upTo hrun hnc hd).localRun hy
+      obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp (acRun_upTo hrun hnc hd).localRun.toU
+          hy
         c ℓ ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
       obtain rfl : B = G := hU.1 hBU (upTo_subset hrun hd hGU) (hgen.trans hGr.symm)
       rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hF with h | ⟨Q, -, hQ⟩

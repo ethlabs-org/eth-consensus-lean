@@ -41,7 +41,7 @@ theorem slow_live_locks_service_at
   have hr := hg.upTo (hrun.time_nonneg i)
   have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hslot : sp.slot (tr.time i) = s + 1 :=
-    ((AC.castAt_spec hr.localRun hy hc').2.1).symm.trans hs
+    ((AC.castAt_specU hr.localRun.toU hy hc').2.1).symm.trans hs
   have hgs : gbar g ≤ sp.ts (s + 1 : Nat) := hm.trans ((AC.ts_le_iff sp).mpr (by omega))
   have hsb : sp.ts (s + 1 : Nat) ≤ b :=
     ((AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by rw [hslot])).trans hib

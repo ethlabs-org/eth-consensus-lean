@@ -260,7 +260,7 @@ theorem healthy_current_stored_locks_at (D : RepairSchedule tr H proposer dg g b
   rw [RunTrace.upTo_projAC] at hac
   have he' : AC.CastAt (tr.projAC.upTo (tr.time q)) z q ell e :=
     AC.upTo_castAt.mpr ⟨le_rfl, he⟩
-  have hslot := (AC.castAt_spec hac hz he').2.1
+  have hslot := (AC.castAt_specU hac.toU hz he').2.1
   exact D.reset.result_prefix_stored_locks_at hx hz hr hRB
     (by simpa only [D.cleanLabel_eq] using hs) hrb hqb (by
       change e.msg.slot = sp.slot (tr.time q) at hslot

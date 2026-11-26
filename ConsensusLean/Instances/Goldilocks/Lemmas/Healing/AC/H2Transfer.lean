@@ -69,12 +69,12 @@ theorem heldAtProposal_of_writer {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro)
     have hsk' : sp.slot (tr.time k') = σ :=
       slot_of_mem sp σ (hk1.trans hkk') (by rw [hts]; linarith only [hk1, hk2, hk'lt])
     have hmono := pool_mono hr hx (show k' + 1 ≤ i by omega) hnr σ
-    have h := held_of_processAt hr hx hp (by rw [hvs, hsk']; omega) (by rw [hvs, hsk'])
+    have h := held_of_processAtU hr.toU hx hp (by rw [hvs, hsk']; omega) (by rw [hvs, hsk'])
     rw [hvs] at h
     exact backed_mono (P := {w | w ∈ (tr.state x (k' + 1)).pool σ})
       (Q := {w | w ∈ (tr.state x i).pool σ}) (fun _ hw => hmono hw) h
   · obtain ⟨Hv, hHv, hHvr, hFHv, hacc⟩ := hhead
-    obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_call sp hr hx i ℓ hc
+    obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_callU sp hr.toU hx i ℓ hc
     obtain ⟨hHt, hAB⟩ : Hv ∈ ℓ.frame.tree ∧ AcceptedBefore tr x Hv (sp.ts σ + 3 * sp.Δ) := by
       rcases hacc with hg | ⟨kw, hkw, hkwa, hkwt⟩ | ⟨ky, hky, hacc, hkyt⟩
       · refine ⟨?_, Or.inl hg⟩
@@ -85,11 +85,11 @@ theorem heldAtProposal_of_writer {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro)
       · obtain ⟨ky, hky, hacc, hkyt⟩ := hsync.2 w hw kw Hv hkw hkwa (by
           linarith only [hb, hkwt]) x hx i ℓ hc
           (by linarith only [hdl i le_rfl _ hkwt, ht, hΔ, hts]) hFHv
-        exact ⟨mem_tree_of_acceptAt sp hr hx hacc hky hc hFHv,
+        exact ⟨mem_tree_of_acceptAtU sp hr.toU hx hacc hky hc hFHv,
           Or.inr ⟨ky, hacc, hkyt.trans (hdl ky hky _ hkwt)⟩⟩
-      · exact ⟨mem_tree_of_acceptAt sp hr hx hacc hky hc hFHv, Or.inr ⟨ky, hacc, hkyt⟩⟩
+      · exact ⟨mem_tree_of_acceptAtU sp hr.toU hx hacc hky hc hFHv, Or.inr ⟨ky, hacc, hkyt⟩⟩
     refine ⟨Hv, hHt, hHvr, ?_⟩
-    exact (blockStamp_lt_of_acceptedBefore sp hr hini hx hc hHt hAB
+    exact (blockStamp_lt_of_acceptedBeforeU sp hr.toU hini hx hc hHt hAB
       (fun k hk hrk => (hrs k hk hrk).trans (by linarith only [hΔ]))
       (Or.inl (by
           rw [ht, hts]; linarith only [hΔ]))).trans (WithBot.coe_lt_coe.2 (WithTop.coe_lt_top _))
@@ -142,8 +142,8 @@ theorem next_vote_extends_before {ini} (hrun : ACRun proposer tr H U ini)
   have hqi : q < i := by
     by_contra hn
     obtain ⟨ell, hcast⟩ := hv
-    have hq := (castAt_spec hrun.localRun hz hcast).2.1
-    have hi := (castAt_spec hrun.localRun hy hc).2.1
+    have hq := (castAt_specU hrun.localRun.toU hz hcast).2.1
+    have hi := (castAt_specU hrun.localRun.toU hy hc).2.1
     have hmono := slot_mono sp (hrun.localRun.time_nonneg i)
       (hrun.localRun.time_mono (Nat.le_of_not_gt hn))
     omega

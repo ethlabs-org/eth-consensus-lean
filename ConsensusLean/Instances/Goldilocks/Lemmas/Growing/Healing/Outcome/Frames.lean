@@ -84,7 +84,7 @@ theorem proposal_unique_before_hold
         rw [RunTrace.upTo_projAC]
         exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩
       have ha := Compose.goldilocks_ac_projection_from hrt (hnc.upTo _)
-      have h := AC.frame_slot_le sp ha.localRun hy hc' Q hQ
+      have h := AC.frame_slot_leU sp ha.localRun.toU hy hc' Q hQ
       rw [hQs] at h
       exact (AC.ts_le_iff_le_slot sp (hrun.time_nonneg j) _).mpr (by exact_mod_cast h)
     simpa only [t, max_eq_right hslot] using hy

@@ -70,7 +70,7 @@ private theorem slow_live_locks_anc {FGP : Type} {ro' : ReplayOrder sp FGP}
   have hr := hrun.localRun
   have hU := hr.coherent
   obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hy hc.1
-  have hsi : e.msg.slot = sp.slot (T.time i) := (AC.castAt_spec hr hy hc).2.1
+  have hsi : e.msg.slot = sp.slot (T.time i) := (AC.castAt_specU hr.toU hy hc).2.1
   have down : ∀ {X Y}, Anc U X Y → Compatible U Y B → Compatible U X B := by
     rintro X Y hXY (h | h)
     · exact Or.inl (hXY.trans h)
@@ -101,7 +101,7 @@ private theorem slow_live_locks_anc {FGP : Type} {ro' : ReplayOrder sp FGP}
       (hcs2 _ hlt) fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
-    have hsj : e'.msg.slot = sp.slot (T.time j) := (AC.castAt_spec hr hvH hcj).2.1
+    have hsj : e'.msg.slot = sp.slot (T.time j) := (AC.castAt_specU hr.toU hvH hcj).2.1
     have : sp.slot (T.time j) ≤ sp.slot (T.time i) :=
       AC.slot_mono sp (hr.time_nonneg j) (hr.time_mono hj.le)
     exact hE _ hvH j hj e' hvote (by omega)
@@ -215,7 +215,7 @@ theorem origin_extends (hrun : GoldilocksRun proposer dg H tr
   obtain ⟨m', hm'⟩ : ∃ m', e.msg.slot = m' + 1 := ⟨e.msg.slot - 1, by omega⟩
   have hsm' : j < m' := by omega
   have h0 := hr.time_nonneg k
-  have hsl := (AC.castAt_spec hr hy hv).2.1
+  have hsl := (AC.castAt_specU hr.toU hy hv).2.1
   have hjm : sp.ts j ≤ sp.ts m' := (AC.ts_le_iff sp).2 (by exact_mod_cast hsm'.le)
   have htk : sp.ts e.msg.slot ≤ tr.time k :=
     (AC.ts_le_iff_le_slot sp h0 _).2 (by rw [hsl])
@@ -230,7 +230,7 @@ theorem origin_extends (hrun : GoldilocksRun proposer dg H tr
     have hk' : k' < k := by
       by_contra hkk
       obtain ⟨ℓ', hc', he'⟩ := hv'
-      have h₁ := (AC.castAt_spec hr hz ⟨hc', he'⟩).2.1
+      have h₁ := (AC.castAt_specU hr.toU hz ⟨hc', he'⟩).2.1
       have h₂ := AC.slot_mono sp h0 (hr.time_mono (not_lt.mp hkk))
       omega
     exact hprior z hz k' hk' e' hv' (by omega)
@@ -265,7 +265,7 @@ theorem clean_fast_extends (hrun : GoldilocksRun proposer dg H tr
   obtain ⟨-, hle⟩ := Compose.cast_head_fcRoot hr hrun.vstart hy hv
   have h0 := hr.time_nonneg k
   have htk : sp.ts e.msg.slot ≤ tr.time k :=
-    (AC.ts_le_iff_le_slot sp h0 _).2 (by rw [(AC.castAt_spec hr hy hv).2.1])
+    (AC.ts_le_iff_le_slot sp h0 _).2 (by rw [(AC.castAt_specU hr.toU hy hv).2.1])
   have hjk : sp.ts j ≤ tr.time k := ((AC.ts_le_iff sp).2 (by omega)).trans htk
   have hsync := syncRun_of_gst (b := sp.ts e.msg.slot + sp.Δ) hs.healthy.1
     ((le_gbar g).trans (gbar_le_of_clean hw hj))
@@ -415,7 +415,7 @@ theorem live_lock_below_proposal (hrun : GoldilocksRun proposer dg H tr
   obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr' hy hv.1
   have htk : sp.ts s ≤ tr.time k :=
     (AC.ts_le_iff_le_slot sp (hr'.time_nonneg k) _).2
-      (by rw [← he, (AC.castAt_spec hr' hy hv).2.1])
+      (by rw [← he, (AC.castAt_specU hr'.toU hy hv).2.1])
   have hclean := live_lock_clean (hr.trans htk) (Compose.locksWF_state hrun hs.noColl hy k) hl
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
   dsimp only at hls hLr hclean

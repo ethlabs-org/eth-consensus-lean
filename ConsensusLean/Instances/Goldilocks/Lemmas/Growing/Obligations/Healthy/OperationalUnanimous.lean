@@ -97,7 +97,7 @@ theorem operational_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       hPsiU₀.trans (RunTrace.honestBlocks_upTo_subset hp.run.time_mono hj0)
     have hjt : sp.ts (s + 1 : Nat) ≤ tr.time j := by
       apply (AC.ts_le_iff_le_slot sp hj0 _).2
-      have := (AC.castAt_spec hry hy hcy').2.1
+      have := (AC.castAt_specU hry.toU hy hcy').2.1
       rw [hes] at this
       exact_mod_cast this.le
     have hgj := hgu.trans hjt

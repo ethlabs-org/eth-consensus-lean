@@ -165,7 +165,7 @@ theorem ResetPremisesUpTo.proposal_relay_high {b : Time}
   obtain ⟨k, hki, hak, hkt⟩ := (hp.sync.syncAC hp.run le_rfl).2 z hz c B hacc hgc le_rfl
     p hpH i ell hci (by
         have := hdl i le_rfl; change _ ≤ tr.time i; linarith only [hti, hΔ, hts, this]) hFB
-  exact ⟨AC.mem_tree_of_acceptAt sp hr hpH hak hki hci hFB,
+  exact ⟨AC.mem_tree_of_acceptAtU sp hr.toU hpH hak hki hci hFB,
     Or.inr ⟨k, hak, lt_of_lt_of_le hkt (hdl k hki)⟩⟩
 
 /-- The label of an old source is below `u`. -/
@@ -223,7 +223,7 @@ theorem ResetPremisesUpTo.proposal_holds_old {b : Time}
       rw [hes] at hjt
       change tr.time j ≤ sp.ts l + sp.Δ at hjt
       linarith only [hts, hjt]
-    rcases Compose.frame_anc_accepted hr hz j ellZ hcz B hB't B .refl with hg | ⟨c, hcj, hacc⟩
+    rcases Compose.frame_anc_acceptedU hr.toU hz j ellZ hcz B hB't B .refl with hg | ⟨c, hcj, hacc⟩
     · exact False.elim ((hp.cutZ_lt_of_anc ho hz
         (mem_tree_of_frame hp.run hz hcz hB't) hOB).2 hg)
     have hct : tr.time c < sp.ts ((u : Int) - 1) + 2 * sp.Δ := by

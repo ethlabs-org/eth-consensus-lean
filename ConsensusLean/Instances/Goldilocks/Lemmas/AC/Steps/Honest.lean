@@ -137,7 +137,8 @@ theorem honest_head_frameU
     (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)
   exact ⟨_, hm, hh.symm, (frame_slot_leU sp hr hx hc.1 _ hm).trans hs.ge⟩
 
-/-- `honest_head` with the unlock given. -/
+/-- An honest vote's head is a block of its voter's frame, of a slot no later than the vote's. With
+the unlock given. -/
 theorem honest_headU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {x : Fin sp.n} (hx : x ∈ H) {j : Nat}
@@ -149,13 +150,6 @@ theorem honest_headU
       exact h.1
   obtain ⟨Hd, hHd, h⟩ := honest_head_frameU hrun.localRun hx ⟨hc, he⟩
   exact ⟨Hd, hΦU hHd, h⟩
-
-/-- An honest vote's head is a block of its voter's frame, of a slot no later than the
-vote's. -/
-theorem honest_head (hrun : ACRun proposer tr H U ini) {x : Fin sp.n} (hx : x ∈ H) {j : Nat}
-    {e : Em sp FGP} (hv : VoteAt tr x j e) :
-    ∃ Hd ∈ U, Hd.root = e.msg.head ∧ Hd.slot ≤ e.msg.slot :=
-  honest_headU (hrun := hrun.toU) (x := x) (hx := hx) (j := j) (e := e) (hv := hv)
 
 end Consensus.Goldilocks.AC
 

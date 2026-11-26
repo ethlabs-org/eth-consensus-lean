@@ -56,12 +56,12 @@ theorem proposal_views_agree_before_at
     exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
   have hSr := hS.run.localRun
   rw [← RunTrace.upTo_projAC] at hSr
-  have hslot := (AC.castAt_spec hSr hy hc').2.1.symm.trans hes
+  have hslot := (AC.castAt_specU hSr.toU hy hc').2.1.symm.trans hes
   change sp.slot (tr.time j) = s + 1 at hslot
   have hlo : sp.ts (s + 1 : Nat) ≤ tr.time j :=
     (AC.ts_le_iff_le_slot sp hd _).2 (by rw [hslot])
   have hhigh : tr.time j ≤ sp.ts (s + 1 : Nat) + sp.Δ := by
-    have ht := AC.vote_time_le hSr hy ⟨elly, hc'⟩
+    have ht := AC.vote_time_leU hSr.toU hy ⟨elly, hc'⟩
     change tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ at ht
     rwa [hslot] at ht
   have hz' := hr.antitone hhigh hz

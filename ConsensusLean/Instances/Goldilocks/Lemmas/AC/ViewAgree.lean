@@ -293,7 +293,7 @@ theorem view_agree_window_before {ini} (hrun : ACRun proposer tr H U ini)
         supporters ℓp.frame (View.ofLists pay) s X =
           supporters ℓy.frame (mergedVoteView sp e.readPoint ℓy.frame (s + 1)) s X := by
   refine view_agree_of_forward hrun hini hp hy hpp hprop hti hc hP ?_
-    (count_declared_of_window_before hrun.localRun hini hp hy hprop hti hc hes hP hsync ha hjb)
+    (count_declared_of_window_beforeU hrun.localRun.toU hini hp hy hprop hti hc hes hP hsync ha hjb)
     hyp hpy
   intro k v hsend hsk htk hvs hrs
   have hΔ := sp.toParams.hΔ

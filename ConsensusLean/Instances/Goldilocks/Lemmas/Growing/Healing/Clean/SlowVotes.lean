@@ -177,7 +177,7 @@ theorem slow_source_votes_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ
     have hi0 := hp.run.time_nonneg i
     have hcast' : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ell e :=
       AC.upTo_castAt.mpr ⟨le_rfl, hcast⟩
-    have hsl := (AC.castAt_spec (acRun_prefix hp hi0).localRun hy hcast').2.1
+    have hsl := (AC.castAt_specU (acRun_prefix hp hi0).localRun.toU hy hcast').2.1
     exact hp.slow_stored_locks_at hx hy hslow hs hrb hib (by
       change e.msg.slot = sp.slot (tr.time i) at hsl
       rw [← hsl, hfirst])

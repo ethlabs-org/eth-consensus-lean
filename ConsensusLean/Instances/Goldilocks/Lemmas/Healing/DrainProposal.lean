@@ -22,7 +22,7 @@ every honest vote of a slot `> j` before that vote extends `B`.
 * For `s ≥ j + 2` (`proposal_extends_of_batch`): `B` is viable in the proposer's full tree
   (`clean_vote_frame`: the aligned witness of an honest clean vote, relayed by `t_j + 3Δ`,
   HS.1 (c)), the honest slot-`(s−1)` votes extend `B` and reach the proposer
-  (`late_vote_held_of_frame`), its locks of a label `≥ s − 1` are optimistic over earlier honest
+  (`late_vote_held_of_frameU`), its locks of a label `≥ s − 1` are optimistic over earlier honest
   votes (`lock_below_origin`, `origin_compatible`), and ProposalCore's `batch_proposal` applies.
 * A regular write of label `j` is at `t_j + 6Δ`, after every honest vote of slot `j + 1`, so a
   slow origin and a regular fast origin have `s ≥ j + 2` (`clean_slow_proposal`); an optimistic
@@ -150,19 +150,19 @@ theorem optimistic_first_proposal_anc {ini} (hrun : ACRun proposer T H U ini)
   -- every optimistic voter of `D` supports `B` at the proposal, or equivocates there
   have hcover : SX ⊆ supporters ℓ.frame V σ B ∪ equivocators V.votes := by
     rintro w ⟨v, hv, rfl, R', hR', hR'r, hDR'⟩
-    have hvs := optimisticPoint_pool_slot hr hrun.vstart hX hpt hv
+    have hvs := optimisticPoint_pool_slotU hr.toU hrun.vstart hX hpt hv
     by_cases heq : v.val ∈ equivocators V.votes
     · exact Or.inr heq
     left
     obtain ⟨hheld, R, hR, hRr, hbs⟩ := heldAtProposal_iff.1 (hP v ⟨hv, R', hR', hR'r, hDR'⟩)
     obtain rfl : R = R' := hU.1 (hΦU hR) (hΦXU hR') (hRr.trans hR'r.symm)
     have hheld : v ∈ (T.state x i).pool σ := hheld.resolve_right fun h =>
-      heq (equivocators_mono (fun u hu => (mem_proposalView_votes hr
+      heq (equivocators_mono (fun u hu => (mem_proposalView_votesU hr.toU
         hrun.vstart hx i σ ℓ.frame u).2 hu) h)
     have hRs : R.slot ≤ σ := by
-      have := frame_slot_le sp hr hX hpt.1 R hR'
+      have := frame_slot_leU sp hr.toU hX hpt.1 R hR'
       omega
-    exact proposal_supporter hr hrun.vstart hx hc hvs hheld hR hRr hRs
+    exact proposal_supporterU hr.toU hrun.vstart hx hc hvs hheld hR hRr hRs
       (anc_tree_of_anc_U hU hΦ hΦU hV.1 (hBD.trans (Anc.mono hΦXU hDR')) hR) hbs heq
   -- counting: the equivocators are faulty, the other voters are outside `SX`
   have hSXK : SX ⊆ K.committee σ := by
@@ -170,10 +170,10 @@ theorem optimistic_first_proposal_anc {ini} (hrun : ACRun proposer T H U ini)
     exact hPK.2 X hX i₀ ℓX A hpt σ v hv
   have hVK : voters V.votes ⊆ K.committee σ := by
     rintro _ ⟨v, hv, rfl⟩
-    exact hPK.1 x hx i σ v ((mem_proposalView_votes hr hrun.vstart hx i σ ℓ.frame v).1 hv)
+    exact hPK.1 x hx i σ v ((mem_proposalView_votesU hr.toU hrun.vstart hx i σ ℓ.frame v).1 hv)
   have hE : (equivocators V.votes).ncard ≤ (K.committee σ ∩ Hᶜ).ncard := by
     refine Set.ncard_le_ncard fun w hw => ⟨?_, fun hwH =>
-      honest_not_equivocator_proposal hrun hx i σ ℓ.frame hwH hw⟩
+      honest_not_equivocator_proposalU hrun.toU hx i σ ℓ.frame hwH hw⟩
     obtain ⟨a, ha, -, -, -, haw, -⟩ := hw
     exact hVK ⟨a, ha, haw⟩
   have hO : (voters V.votes \ SX).ncard + SX.ncard ≤ sp.committeeSize := by
@@ -242,7 +242,7 @@ private theorem proposer_high_locks {ini' : Fin sp.n → AC.ACState sp.n}
     refine AC.origin_compatible hU hΦoU K h34
       (by rintro _ ⟨v, hv, rfl, -⟩; exact hPK.2 p hpH k' ℓo A hpt _ v hv)
       (hcs2 _ (by omega)) fun v hv hvH => ?_
-    obtain ⟨hvs, j', hj', e'', hve, rfl⟩ := AC.optimisticPoint_pool_vote hrun' hpH hpt hv hvH
+    obtain ⟨hvs, j', hj', e'', hve, rfl⟩ := AC.optimisticPoint_pool_voteU hrun'.toU hpH hpt hv hvH
     exact hprior _ hvH j' (by omega) e'' hve (by rw [hvs]; omega)
   rcases hO' with h | h
   · exact Or.inl (hLO.trans h)
@@ -313,7 +313,7 @@ private theorem proposal_follows (hrun : GoldilocksRun proposer dg H tr ini)
 `Γ` (without `Prop⁺`), let an honest vote of a clean slot `jw ≤ σ` extend `B`, and let every
 honest vote of a slot `≥ σ` before the proposal's `ac_proposal` cut extend `B`. Then its head
 extends `B`: unless `B ⪯ Σ.F`, `B` is viable in the proposer's full tree (`clean_vote_frame`),
-the honest slot-`σ` votes reach it (`late_vote_held_of_frame`), its locks of a label `≥ σ` are
+the honest slot-`σ` votes reach it (`late_vote_held_of_frameU`), its locks of a label `≥ σ` are
 optimistic over earlier honest votes (a result of such a label is written after `t_{σ+1}`), and
 `batch_proposal` applies. -/
 theorem proposal_head_of_batch (hrun : GoldilocksRun proposer dg H tr
@@ -411,7 +411,8 @@ theorem proposal_head_of_batch (hrun : GoldilocksRun proposer dg H tr
         refine AC.origin_compatible hU hΦoU K h34
           (by rintro _ ⟨v, hv, rfl, -⟩; exact (hs.hP hrun).2 p hpH k' ℓo A hpt _ v hv)
           (hs.cs2 (by omega)) fun v hv hvH => ?_
-        obtain ⟨hvs, j', hj', e'', hve, rfl⟩ := AC.optimisticPoint_pool_vote hrun' hpH hpt hv hvH
+        obtain ⟨hvs, j', hj', e'', hve, rfl⟩ := AC.optimisticPoint_pool_voteU hrun'.toU hpH hpt hv
+            hvH
         exact hprior _ hvH j' (by omega) e'' hve (by rw [hvs]; omega)
     rcases hO' with h | h
     · exact Or.inl (hLO.trans h)
@@ -456,7 +457,7 @@ optimistic lock of a clean label `j` select `D ⪰ B`, and let every honest vote
 before an in-phase honest slot-`(j+1)` vote extend `B`. Then the honest slot-`(j+1)` proposal
 extends `B` (`proposal_follows`): the counted votes and their heads reach the proposer (relay
 after `ḡ`, `Catch(2Δ)` before; `heldAtProposal_of_writer`), its locks of label `j` compare with
-`D` by TSQ (`fastLock_fastLock_compatible`), hence with `B`, those of label `j + 1` by the
+`D` by TSQ (`fastLock_fastLock_compatibleU`), hence with `B`, those of label `j + 1` by the
 earlier votes (`proposer_high_locks`): `optimistic_first_proposal_anc`. -/
 private theorem proposal_extends_of_optimistic (hrun : GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -549,7 +550,7 @@ under `Γ` (without `Prop⁺`), let `x` write a slow lock of label
 `j` (`t_{j−k+1} ≥ w + 4Δ`) with stored block `B` before an in-phase honest vote of slot `s > j`,
 before which every honest vote of a slot `> j` extends `B`. Then the honest slot-`s` proposal
 extends `B`: the write is at `t_j + 6Δ`, so `s ≥ j + 2`, and an honest supporter of the update's
-result `C ⪰ B` (`result_extended`) gives `proposal_extends_of_batch`. -/
+result `C ⪰ B` (`result_extendedU`) gives `proposal_extends_of_batch`. -/
 theorem clean_slow_proposal (hrun : GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n}

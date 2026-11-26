@@ -53,8 +53,8 @@ theorem regular_fast_next_votes_at {s₀ s floor : Nat}
   have hDC := ((AC.deepest_mem hsel).1.1.2.2).mono (frameIn_at hrun hnc hx hu.1).2
   have hr := (acRun_upTo hrun hnc (hrun.time_nonneg q)).localRun
   have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc, he⟩
-  have htq := AC.vote_time_le hr hz ⟨ell, hc'.1, he⟩
-  have hslot := (AC.castAt_spec hr hz hc').2.1.symm.trans hes
+  have htq := AC.vote_time_leU hr.toU hz ⟨ell, hc'.1, he⟩
+  have hslot := (AC.castAt_specU hr.toU hz hc').2.1.symm.trans hes
   change sp.slot (tr.time q) = s at hslot
   change tr.time q ≤ sp.ts (sp.slot (tr.time q)) + sp.Δ at htq
   rw [hslot] at htq

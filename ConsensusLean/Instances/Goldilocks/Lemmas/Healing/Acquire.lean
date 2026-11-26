@@ -161,7 +161,7 @@ theorem ready_protected (hrun : GoldilocksRun proposer dg H tr
       PhaseOn tr.projFG H i₀ k m c := fun y hy k ℓ e hv he => by
     refine hon k (not_le.1 fun hle => ?_)
     have := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg k) _).1 hle
-    have h2 : e.msg.slot = sp.slot (tr.time k) := (AC.castAt_spec hacr.localRun hy hv).2.1
+    have h2 : e.msg.slot = sp.slot (tr.time k) := (AC.castAt_specU hacr.localRun.toU hy hv).2.1
     rw [← h2, he] at this
     omega
   obtain ⟨h₁, h₂, h₃⟩ := frozen_tree_agreement_clean hclean sp ro proposer dg H tr K g ΔF w i₀ i₀
@@ -324,7 +324,7 @@ private theorem descendant_source_parent (hrun : GoldilocksRun proposer dg H tr
   have hkv := hvph kv hkvt
   have hkv0 : sp.ts s' ≤ tr.time kv :=
     (AC.ts_le_iff_le_slot sp (hr'.time_nonneg kv) _).2
-      (by rw [← hevs, (AC.castAt_spec hr' hzv hcv').2.1])
+      (by rw [← hevs, (AC.castAt_specU hr'.toU hzv hcv').2.1])
   have hrkv : r < kv := by
     by_contra h
     have := hl.time_mono (not_lt.1 h)

@@ -18,7 +18,7 @@ the proposal `P`. Then at every optimistic check of a node honest at its call, b
 
 * every block with three quarters of the committee as optimistic voters lies below `P`
   (`optimistic_pass_anc`): its quorum meets `Q` (`quorums_meet`) in a member whose pool vote is
-  genuine (`optimisticPoint_pool_vote`), so names `P`;
+  genuine (`optimisticPoint_pool_voteU`), so names `P`;
 * when the check sees `P` pass and no live lock conflicts with `P`, it selects `P`
   (`optimisticSelect_eq_proposal`).
 
@@ -64,8 +64,8 @@ private theorem optimisticPoint_pool_vote_at {ini}
     (hpt : AC.OptimisticPoint tr.projAC y i ℓ A) {σ : Nat} {v : Vote sp.n} (hv : v ∈ A.pool σ)
     (hvH : v.val ∈ H (tr.time i)) :
     v.slot = σ ∧ ∃ j ≤ i, ∃ e, AC.VoteAt tr.projAC v.val j e ∧ e.msg = v := by
-  obtain ⟨hs, j, hj, e, hve, hev⟩ := AC.optimisticPoint_pool_vote
-    (acRun_upTo hrun hnc (hrun.time_nonneg i)) hy
+  obtain ⟨hs, j, hj, e, hve, hev⟩ := AC.optimisticPoint_pool_voteU
+    (acRun_upTo hrun hnc (hrun.time_nonneg i)).toU hy
     ((AC.upTo_optimisticPoint hrun.time_mono).mpr ⟨le_rfl, hpt⟩) hv hvH
   exact ⟨hs, j, hj, e, (ac_voteAt_upTo.mp hve).2, hev⟩
 

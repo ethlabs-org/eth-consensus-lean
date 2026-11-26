@@ -67,7 +67,7 @@ theorem heldAtProposal_of_writer_at {ini}
         omega)
     simpa only [hvs] using hv
   · obtain ⟨B, hBU, hBr, hFB, hacc⟩ := hhead
-    obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_call sp hpre hx i ell hc'
+    obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_callU sp hpre.toU hx i ell hc'
     obtain ⟨hBt, hAB⟩ : B ∈ ell.frame.tree ∧
         AcceptedBefore (T.upTo (T.time i)) x B (sp.ts s + 3 * sp.Δ) := by
       rcases hacc with hg | ⟨k, hw, hak, hka, hkt⟩ | ⟨k, hki, hak, hkt⟩
@@ -80,14 +80,14 @@ theorem heldAtProposal_of_writer_at {ini}
           (le_of_lt ((hdl i le_rfl _ hkt).trans_le hb))
           (by rw [ht, hts]; linarith [hdl i le_rfl _ hkt]) hFB
         have haq' := (ACTrace.upTo_acceptAt).mpr ⟨hm hqi, haq⟩
-        exact ⟨mem_tree_of_acceptAt sp hpre hx haq' hqi hc' hFB,
+        exact ⟨mem_tree_of_acceptAtU sp hpre.toU hx haq' hqi hc' hFB,
           Or.inr ⟨q, haq', hqt.trans (hdl q hqi _ hkt)⟩⟩
       · have hak' := (ACTrace.upTo_acceptAt).mpr ⟨hm hki, hak⟩
-        exact ⟨mem_tree_of_acceptAt sp hpre hx hak' hki hc' hFB,
+        exact ⟨mem_tree_of_acceptAtU sp hpre.toU hx hak' hki hc' hFB,
           Or.inr ⟨k, hak', hkt⟩⟩
     refine ⟨B, hBt, hBr, ?_⟩
     rw [← hs]
-    exact (blockStamp_lt_of_acceptedBefore sp hpre hini hx hc' hBt hAB
+    exact (blockStamp_lt_of_acceptedBeforeU sp hpre.toU hini hx hc' hBt hAB
       (fun k hk hrk => (hrs' k hk hrk).trans (by linarith))
       (Or.inl (by change _ ≤ T.time i; rw [ht, hts]; linarith))).trans
         (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_top _))

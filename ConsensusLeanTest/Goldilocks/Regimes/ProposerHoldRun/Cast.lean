@@ -319,7 +319,7 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
   have hAC := Compose.projAC_state rhoc_run.toLocalRun hy (k + 1)
   by_cases hv : ((tr S).state y (k + 1)).ac.votedSlot = 1
   · obtain ⟨j, hj, e, he, hes⟩ :=
-      (AC.cast_of_votedSlot hac (fun _ => AC.voteStart_initial _) hy (k + 1) 1
+      (AC.cast_of_votedSlotU hac.toU (fun _ => AC.voteStart_initial _) hy (k + 1) 1
         (by rw [hAC]; exact hv)).resolve_right
         (by rw [AC.trace_mayVote_stock hac hy (k + 1)]; decide)
     exact ⟨j, e, he, hes, ((rhoc_run (S := S)).time_mono hj.le).trans (ht ▸ hk)⟩
@@ -351,7 +351,7 @@ theorem accept_vote {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {k : Nat}
         exact absurd hx List.not_mem_nil
   have hrt : ((tr S).state y (k + 1)).ac.restartTime = ⊥ := by
     rw [← hAC]
-    rcases AC.restartTime_state hac (fun _ => AC.voteStart_initial _) hy (k + 1) with
+    rcases AC.restartTime_stateU hac.toU (fun _ => AC.voteStart_initial _) hy (k + 1) with
       h | ⟨c, -, hrc, -⟩
     · exact h
     · exact absurd (Compose.projAC_restartAt.mp hrc) no_restart
@@ -427,7 +427,7 @@ theorem vote_time {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) {j : Nat}
   obtain ⟨ℓ, hc, he⟩ := hv
   have hsl : e.msg.slot = (({ S with vote := AsChainShape.stock } : Setup).params
       (pubOf env) one_le_card).slot ((tr S).time j) :=
-    (AC.castAt_spec hac hy ⟨hc, he⟩).2.1
+    (AC.castAt_specU hac.toU hy ⟨hc, he⟩).2.1
   rcases Nat.le_one_iff_eq_zero_or_eq_one.mp hs with h0 | h1
   · have h0' := slot_int (S := S) ((rhoc_run (S := S)).time_nonneg j)
     rw [← hsl, h0] at h0'

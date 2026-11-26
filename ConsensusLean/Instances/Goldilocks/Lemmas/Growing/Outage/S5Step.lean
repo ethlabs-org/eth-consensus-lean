@@ -66,7 +66,7 @@ private theorem accepted_voter_tree_at
   have hXt : X ∈ ℓ.frame.tree := by
     rcases hacc with hg | ⟨k, hk, hkt⟩
     · obtain ⟨G, hGU, hGr, hGp⟩ :=
-        AC.genesis_mem_of_call sp (acRun_upTo hrun hnc hd).localRun hy i ℓ hcT.1
+        AC.genesis_mem_of_callU sp (acRun_upTo hrun hnc hd).localRun.toU hy i ℓ hcT.1
       obtain rfl : X = G := hU.1 hXU (upTo_subset hrun hd hGU) (hg.trans hGr.symm)
       obtain h | ⟨c, -, hcp⟩ := (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hFX
       · exact h ▸ hΦ.rooted.1
@@ -218,15 +218,15 @@ private theorem vote_extends_of_counted_batch_run
         exact hW _ j e' (hvote _ j e' hw hv') hw
           (by
             rw [he']
-            exact AC.merged_vote_slot hr.localRun hr.vstart hy hc' v hv)
+            exact AC.merged_vote_slotU hr.localRun.toU hr.vstart hy hc' v hv)
       · have hvK := hTK y i ℓ e hy hc s v hv
-        rw [AC.merged_vote_slot hr.localRun hr.vstart hy hc' v hv] at hvK
+        rw [AC.merged_vote_slotU hr.localRun.toU hr.vstart hy hc' v hv] at hvK
         exact hWc ⟨hvK, hw⟩)
     hcount
     ⟨⟨hcarry.awake, le_rfl⟩, hcarry.joined, fun v ⟨x, hx, j, e', hv, hev, hvs⟩ => by
       have hv' := hvote x j e' (hSXH hx) hv
       obtain ⟨Hv, hHv, hHvr, hacc⟩ := hcarry.heads v ⟨x, hx, j, e', hv', hev, hvs⟩
-      obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := AC.honest_head hr (hSXH hx) hv
+      obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := AC.honest_headU hr.toU (hSXH hx) hv
       obtain rfl : Hv = Hd₂ := hU.1 hHv (hsub hHd₂) (hHvr.trans (hev ▸ hHd₂r.symm))
       refine ⟨Hv, hHd₂, hHvr, fun X hX => ?_⟩
       exact (hacc X (hX.mono hsub)).imp_right fun ⟨k, hk, hkT⟩ =>

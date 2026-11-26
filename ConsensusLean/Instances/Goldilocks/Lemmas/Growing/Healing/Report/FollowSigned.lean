@@ -60,7 +60,7 @@ private theorem root_ne_genesis_of_anc
   rw [RunTrace.upTo_projAC] at hr
   have hc' : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
-  obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hy _ _ hc'
+  obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hy _ _ hc'
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono (hrun.time_nonneg i)
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hBU : B ∈ tr.HonestBlocksAt H := hsub ((AC.frameIn_of_callAt hr hy hc').2 hB)
@@ -153,9 +153,9 @@ theorem proposal_report_follow_delayed_at
     Healing.honestProposalRun_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
       (hnc.upTo _) hzk hdes hP' hPs
   rw [← hdes] at hacc
-  have hPg := AC.accept_ne_genesis sp
+  have hPg := AC.accept_ne_genesisU sp
     (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg kP))
-      (hnc.upTo _)).localRun hzk hacc
+      (hnc.upTo _)).localRun.toU hzk hacc
   have hBg := root_ne_genesis_of_anc hrun hnc hyi hc hPg hPB hB.1.1
   obtain ⟨r, ellr, R, hR, hrt, hBR⟩ := report_of_compatible_candidate_of_run_at hrun hnc hyi hc
     hcall hjoin hBg hB (toFG_candidates_compatible_at_call_at hrun hnc hyi hc hB)

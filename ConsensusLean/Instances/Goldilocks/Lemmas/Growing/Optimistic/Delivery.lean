@@ -59,7 +59,7 @@ private theorem pool_vote_unique {ini} (hrun : Growing.GoldilocksRun proposer dg
     (hes : e.msg.slot = σ) : w = e.msg := by
   have hac := acRun_upTo hrun hnc hd
   obtain ⟨j', -, e', hv', rfl⟩ := hac.honest.pool_vote y hy c σ w hw (hwx ▸ hxd)
-  have hs := AC.state_pool_slot sp hac.localRun hrun.vstart hy c σ _ hw
+  have hs := AC.state_pool_slotU sp hac.localRun.toU hrun.vstart hy c σ _ hw
   obtain ⟨hjd, hv'⟩ := ac_voteAt_upTo.mp hv'
   rw [hwx] at hv'
   obtain ⟨-, rfl⟩ := one_vote_per_slot_at hrun hnc (hVoteAt_iff.2 ⟨hrun.antitone hjd hxd, hv'⟩) he
@@ -137,7 +137,7 @@ theorem vote_point_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     rcases (AC.poolEvidenceBefore_iff _ _ _).1 hev with ⟨hv, hstamp⟩ |
         ⟨a, c, hac', hav, hcv, has, hcs, ⟨ha, -⟩, ⟨hc, -⟩⟩
     · rw [← hst] at hv hstamp
-      obtain ⟨k, hkq, hsa, hks, hsl⟩ := AC.pool_origin_sent hr hrun.vstart hy q e.msg hv
+      obtain ⟨k, hkq, hsa, hks, hsl⟩ := AC.pool_origin_sentU hr.toU hrun.vstart hy q e.msg hv
       rw [hks] at hstamp
       have hkd : tr.time k < d :=
         lt_of_lt_of_le (WithTop.coe_lt_coe.1 (WithBot.coe_lt_coe.1 hstamp)) (hdl jc le_rfl)
@@ -168,7 +168,7 @@ theorem vote_point_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     · exact ⟨_, ⟨hcT, Or.inl ⟨e.msg, hm', rfl⟩⟩, AC.admitVote_held _ _ _ h1 h2⟩
     · rw [← hem] at h1 h2 ⊢
       exact ⟨_, ⟨hcT, Or.inr (Or.inr ⟨e', he', rfl⟩)⟩, AC.admitVote_held _ _ _ h1 h2⟩
-  have hpost := AC.optimisticPoint_pool_post hr hy hpt p
+  have hpost := AC.optimisticPoint_pool_postU hr.toU hy hpt p
   have hvA : e.msg ∈ A.pool p := by
     rw [hes] at hA
     rcases hA with h | ⟨a, ha, c, hc, hac', hav, hcv⟩

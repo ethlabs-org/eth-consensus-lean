@@ -67,7 +67,7 @@ private theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun proposer dg H t
     refine ⟨x, hx, not_not.1 fun h => hxK ⟨?_, h⟩⟩
     obtain ⟨v, hv, rfl, -⟩ := hx
     exact hPK.2 _ hz r ello A hpt s v hv
-  obtain ⟨hvs, j, hj, e, hvote, rfl⟩ := AC.optimisticPoint_pool_vote hac hz hpt hv hxH
+  obtain ⟨hvs, j, hj, e, hvote, rfl⟩ := AC.optimisticPoint_pool_voteU hac.toU hz hpt hv hxH
   obtain ⟨ellv, hcv, hev⟩ := hvote
   have hcut := proposal_cut_lt hrun hnc hz hc hcall hti hs1 hxH ⟨hcv, hev⟩ hvs
   clear * - hri hj hcut; omega
@@ -165,8 +165,8 @@ theorem vote_head_eq_of_anchor_eq (hrun : GoldilocksRun proposer dg H tr ini)
     e.msg.head = P.root := by
   have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hPhi := (AC.frameIn_of_callAt hr hy hc.1).1
-  have hslot := AC.frame_slot_le sp hr hy hc.1
-  have hs := (AC.castAt_spec hr hy hc).2.1
+  have hslot := AC.frame_slot_leU sp hr.toU hy hc.1
+  have hs := (AC.castAt_specU hr.toU hy hc).2.1
   have hstop : ¬ ∃ C, AC.IsBest sp
       (AC.headScore sp ell.frame (AC.mergedVoteView sp e.readPoint ell.frame e.msg.slot)
         ((e.msg.slot : Int) - 1))
@@ -185,7 +185,7 @@ theorem vote_head_eq_of_anchor_eq (hrun : GoldilocksRun proposer dg H tr ini)
     unfold AC.getHead
     rw [haP]
     exact AC.ghost_fuel_stable (Nat.zero_le _) hstop
-  exact (AC.castAt_spec hr hy hc).2.2.2.trans (congrArg Block.root heq)
+  exact (AC.castAt_specU hr.toU hy hc).2.2.2.trans (congrArg Block.root heq)
 
 /-- Any point between the actual voter anchor and a frozen viable block is
 itself frozen-viable. In head equality the upper block is P, not a transported
@@ -281,7 +281,7 @@ theorem fast_selection_slot_le (hrun : GoldilocksRun proposer dg H tr ini)
   have hac := Compose.goldilocks_ac_projection_from hrun hnc
   obtain ⟨y, hy, i, e, hv, hs, W, hW, hWr, hDW⟩ :=
     AC.fastLock_honest_vote hac K hPK hx ho hcs2
-  obtain ⟨W', hW', hW'r, hWs⟩ := AC.honest_head hac hy hv
+  obtain ⟨W', hW', hW'r, hWs⟩ := AC.honest_headU hac.toU hy hv
   obtain rfl : W' = W := hac.localRun.coherent.1 hW' hW (hW'r.trans hWr.symm)
   exact (Anc.slot_le hac.localRun.coherent hDW).1.trans (hWs.trans_eq hs)
 

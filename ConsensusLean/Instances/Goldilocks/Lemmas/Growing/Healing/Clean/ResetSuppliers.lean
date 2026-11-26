@@ -171,7 +171,7 @@ theorem castAt_facts_at {ini}
     ⟨projAC_callAt_upTo le_rfl hcast.1, hcast.2⟩
   obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hy hcT.1
   exact ⟨⟨hΦ, hΦU.trans (RunTrace.honestBlocks_upTo_subset hrun.time_mono hd)⟩,
-    Compose.cast_head_fcRoot hr hrun.vstart hy hcT, (AC.castAt_spec hr hy hcT).2.1⟩
+    Compose.cast_head_fcRoot hr hrun.vstart hy hcT, (AC.castAt_specU hr.toU hy hcT).2.1⟩
 
 /-! ### The reset service on the AC projection -/
 
@@ -343,7 +343,7 @@ theorem honest_votes_carry_reset_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ
     hFB.trans hBHv, ?_⟩
   have hrq := (Compose.goldilocks_ac_projection_from
     (hrun.upTo hq0) (hp.noColl.upTo _)).localRun
-  rcases Compose.frame_anc_accepted hrq hz q ell' (projAC_callAt_upTo le_rfl hc'.1) Hd hHd Hd
+  rcases Compose.frame_anc_acceptedU hrq.toU hz q ell' (projAC_callAt_upTo le_rfl hc'.1) Hd hHd Hd
       .refl with hg | ⟨k, hk, ℓa, hca, hcall⟩
   · exact Or.inl hg
   · obtain ⟨hkd, hca⟩ := projAC_callAt_of_upTo hca

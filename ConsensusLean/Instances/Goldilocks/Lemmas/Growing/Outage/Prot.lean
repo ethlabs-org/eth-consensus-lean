@@ -58,8 +58,8 @@ private theorem held_vote_cast {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   · -- a counted declaration: two distinct pool votes of the honest validator, a contradiction
     obtain ⟨-, x, hx, x', hx', hne, hxv, hx'v⟩ := hv
     rw [← projAC_state hrun.toLocalRun hy] at hx hx'
-    have hxs := AC.state_pool_slot sp hr hrun.vstart hy (j + 1) _ x hx
-    have hx's := AC.state_pool_slot sp hr hrun.vstart hy (j + 1) _ x' hx'
+    have hxs := AC.state_pool_slotU sp hr.toU hrun.vstart hy (j + 1) _ x hx
+    have hx's := AC.state_pool_slotU sp hr.toU hrun.vstart hy (j + 1) _ x' hx'
     obtain ⟨k, -, e, he, rfl⟩ := hrun'.honest.pool_vote y hy (j + 1) _ x hx (hxv ▸ hvH)
     obtain ⟨k', -, e', he', rfl⟩ := hrun'.honest.pool_vote y hy (j + 1) _ x' hx' (hx'v ▸ hvH)
     rw [hx'v, ← hxv] at he'
@@ -92,10 +92,10 @@ theorem unlockKeeps_of_voteCompat {ini} (hrun : GoldilocksRun proposer dg H tr i
     rw [tr.state_succ_of_call hcall, hst]
   have hpool : ∀ m τ, ∀ v ∈ (tr.state y m).ac.pool τ, v.slot = τ := fun m τ v hv => by
     rw [← projAC_state hrun.toLocalRun hy] at hv
-    exact AC.state_pool_slot sp hr hrun.vstart hy m τ v hv
+    exact AC.state_pool_slotU sp hr.toU hrun.vstart hy m τ v hv
   have hpay : ∀ C ∈ (Node.frame (tr.state y j)).tree, AC.validPayload C := by
     rw [← hfr]
-    exact AC.frame_validPayload sp hr hy (projAC_callAt.2 hcall)
+    exact AC.frame_validPayloadU sp hr.toU hy (projAC_callAt.2 hcall)
   have hΦ := frameOK_state hrun.toLocalRun hy j
   have hΦU : (Node.frame (tr.state y j)).tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, j, hX.1⟩
   have hmem : ∀ x ∈ AC.heldVotes (tr.state y j).ac (tr.state y (j + 1)).ac
@@ -162,8 +162,8 @@ private theorem voteCompat_upTo
     (h : VoteCompat (tr.HonestBlocksAt H) e.msg B) :
     VoteCompat ((tr.upTo d).HonestBlocks (H d)) e.msg B := by
   obtain ⟨Hd, hHd, hHdr, hcomp⟩ := voteCompat_iff.1 h
-  obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := AC.honest_head
-    (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d))
+  obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := AC.honest_headU
+    (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d)).toU
     hx hv
   obtain rfl : Hd = Hd₂ := (honestBlocksAt_coherent hrun hnc).1 hHd (upTo_subset hrun hd hHd₂)
     (hHdr.trans hHd₂r.symm)

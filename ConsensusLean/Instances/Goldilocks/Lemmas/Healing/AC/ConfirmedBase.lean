@@ -15,7 +15,7 @@ public section
 
 The late honest votes held at a call, the results extended by their honest supporters
 (`result_extendedU`) and the first update at `t_p + 6Δ` after an honest proposal `P` of slot `p`
-(`first_update_post`: result `P`, not vetoed, with `P` passing the fast test, so its own fast
+(`first_update_postU`: result `P`, not vetoed, with `P` passing the fast test, so its own fast
 selection, `fastSelect_eq_result`). -/
 
 namespace Consensus.Goldilocks.AC
@@ -42,9 +42,9 @@ theorem late_vote_pool_before {K : AC.CommitteeDict sp.n}
   have hr := hS.run.localRun
   have hDelta := sp.toParams.hΔ
   obtain ⟨ellx, hcx, hex⟩ := hv
-  obtain ⟨hval, hslot, -, -⟩ := castAt_spec hr hx ⟨hcx, hex⟩
+  obtain ⟨hval, hslot, -, -⟩ := castAt_specU hr.toU hx ⟨hcx, hex⟩
   have hti : tr.time i ≤ sp.ts s + sp.Δ := by
-    have hh := vote_time_le hr hx ⟨ellx, hcx, hex⟩
+    have hh := vote_time_leU hr.toU hx ⟨ellx, hcx, hex⟩
     rwa [← hslot, hes] at hh
   have hti0 : sp.ts s ≤ tr.time i :=
     (ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [← hslot, hes])
@@ -64,14 +64,14 @@ theorem late_vote_pool_before {K : AC.CommitteeDict sp.n}
         rw [AC.ts_succ]; linarith only [hti, hti0, hqT])
   have hxH : e.msg.val ∈ H := hval ▸ hx
   have hheld : e.msg ∈ (tr.state y (q + 1)).pool s := by
-    rcases held_of_processAt hr hy hproc (by rw [hqs, hes]; omega) (by rw [hqs, hes]) with
+    rcases held_of_processAtU hr.toU hy hproc (by rw [hqs, hes]; omega) (by rw [hqs, hes]) with
       h | ⟨v, hv, w, hw, hne, hvval, hwval⟩
     · rwa [hes] at h
     · rw [hes] at hv hw
       exact absurd ⟨v, hv, w, hw, hne, hvval, hwval⟩
         (honest_pool_not_equivocator hr.toU hS.run.vstart hS.run.honest hy (q + 1) s hxH)
   intro c hcj
-  have hst := stamp_lt_of_held_of_run hr hS.run.vstart hy (a := q + 1) (b := c) (by omega)
+  have hst := stamp_lt_of_held_of_runU hr.toU hS.run.vstart hy (a := q + 1) (b := c) (by omega)
     (w := e.msg) (by rw [hes]; exact hheld) (T := sp.ts s + 2 * sp.Δ)
     (fun k hk => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hk)) hqT)
     (by rw [hes]; linarith only [hti0, hqT, hiq])
@@ -96,7 +96,7 @@ theorem late_vote_readPoint_before {K : AC.CommitteeDict sp.n}
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {e : Em sp FGP}
     (hv : VoteAt tr x i e) (hes : e.msg.slot = s) :
     HeldBefore e'.readPoint e.msg (sp.ts s + 2 * sp.Δ) := by
-  apply heldBefore_readPoint hS.run.localRun hy hc (by omega)
+  apply heldBefore_readPointU hS.run.localRun.toU hy hc (by omega)
   simpa only [hes] using late_vote_pool_before hS hy hc.1 hs ht hjb hdeadline hrestart
     hx hv hes (j + 1) (Or.inr rfl)
 
@@ -108,12 +108,12 @@ theorem acceptedBefore_ancestor {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) 
     {T : Time} (hacc : AcceptedBefore tr y B T) (hX : Anc U X B) :
     AcceptedBefore tr y X T := by
   rcases hacc with hg | ⟨k, ⟨ell, hc, hcall⟩, ht⟩
-  · obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_call sp hr hy i ell hc
+  · obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_callU sp hr.toU hy i ell hc
     obtain rfl : B = G := hr.coherent.1 hB hGU (hg.trans hGr.symm)
     rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hX with rfl | ⟨Q, -, hQ⟩
     · exact Or.inl hGr
     · exact absurd (hQ.2.2.symm.trans hGp) (Option.some_ne_none _)
-  · rcases Compose.frame_anc_accepted hr hy k ell hc B
+  · rcases Compose.frame_anc_acceptedU hr.toU hy k ell hc B
       ((accept_new sp hr hy ⟨ell, hc, hcall⟩).1 ell hc) X hX with hg | ⟨j, hj, hjX⟩
     · exact Or.inl hg
     · exact Or.inr ⟨j, hjX, lt_of_le_of_lt (hr.time_mono hj) ht⟩
@@ -141,9 +141,9 @@ theorem late_vote_accepted_of_frame_before {K : AC.CommitteeDict sp.n}
   have hDelta := sp.toParams.hΔ
   obtain ⟨hPhi, hPhiU⟩ := frameIn_of_callAt hr hy hc
   obtain ⟨ellx, hcx, hex⟩ := hv
-  obtain ⟨-, hslx, -, hhead⟩ := castAt_spec hr hx ⟨hcx, hex⟩
+  obtain ⟨-, hslx, -, hhead⟩ := castAt_specU hr.toU hx ⟨hcx, hex⟩
   have hti : tr.time i ≤ sp.ts s + sp.Δ := by
-    have hh := vote_time_le hr hx ⟨ellx, hcx, hex⟩
+    have hh := vote_time_leU hr.toU hx ⟨ellx, hcx, hex⟩
     rwa [← hslx, hes] at hh
   obtain ⟨hPhix, hPhixU⟩ := frameIn_of_callAt hr hx hcx
   obtain ⟨B, hB, hBr⟩ : ∃ B ∈ ellx.frame.tree, B.root = e.msg.head :=
@@ -152,14 +152,14 @@ theorem late_vote_accepted_of_frame_before {K : AC.CommitteeDict sp.n}
       (T := ellx.frame.viableTree (voteDomain sp e.readPoint ellx.frame e.msg.slot)),
       hhead.symm⟩
   have hBs : B.slot ≤ s := by
-    have hh := frame_slot_le sp hr hx hcx B hB
+    have hh := frame_slot_leU sp hr.toU hx hcx B hB
     rwa [← hslx, hes] at hh
   have hFB := hF B (hPhixU hB) hBr
   obtain ⟨hBy, hAB⟩ : B ∈ ell.frame.tree ∧ AcceptedBefore tr y B (sp.ts s + 2 * sp.Δ) := by
-    rcases Compose.frame_anc_accepted hr hx i ellx hcx B hB B .refl with
+    rcases Compose.frame_anc_acceptedU hr.toU hx i ellx hcx B hB B .refl with
       hg | ⟨q, hqi, hacc⟩
     · refine ⟨?_, Or.inl hg⟩
-      obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_call sp hr hy j ell hc
+      obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_callU sp hr.toU hy j ell hc
       obtain rfl : B = G := hr.coherent.1 (hPhixU hB) hGU (hg.trans hGr.symm)
       rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hFB with he | ⟨C, -, hpar⟩
       · exact he ▸ hPhi.rooted.1
@@ -177,8 +177,8 @@ theorem late_vote_accepted_of_frame_before {K : AC.CommitteeDict sp.n}
       · obtain ⟨r, hrj, har, hrt⟩ := hS.catchUp.relay x hx q B hacc (lt_of_not_ge hgq)
           y hy j ell hc (by linarith only [hs, ht, hDelta]) hjb hFB
         exact ⟨r, hrj, har, by linarith only [hs, hDelta, hrt]⟩
-    exact ⟨mem_tree_of_acceptAt sp hr hy har hrj hc hFB, Or.inr ⟨r, har, hrt⟩⟩
-  have hstamp := blockStamp_lt_of_acceptedBefore sp hr hS.run.vstart hy hc hBy hAB
+    exact ⟨mem_tree_of_acceptAtU sp hr.toU hy har hrj hc hFB, Or.inr ⟨r, har, hrt⟩⟩
+  have hstamp := blockStamp_lt_of_acceptedBeforeU sp hr.toU hS.run.vstart hy hc hBy hAB
     (fun k hk hrs => lt_trans (hrestart k (by omega) hrs) (by linarith only [hDelta])) (Or.inl ht)
   exact ⟨B, hBy, hBr, hBs, hpool.1, hpool.2, hBr ▸ hstamp, hAB⟩
 
@@ -221,7 +221,7 @@ theorem honest_batch_carry_before {K : AC.CommitteeDict sp.n}
   have hr := hS.run.localRun
   have hDelta := sp.toParams.hΔ
   obtain ⟨hPhi, hPhiU⟩ := frameIn_of_callAt hr hy hc.1
-  refine ⟨hr.awake_of_call y hy j ell hc.1, (castAt_spec hr hy hc).2.2.1, ?_, ?_⟩
+  refine ⟨hr.awake_of_call y hy j ell hc.1, (castAt_specU hr.toU hy hc).2.2.1, ?_, ?_⟩
   · rintro v ⟨x, hx, i, e, hv, rfl, hes⟩
     obtain ⟨B, hB, hBr, -, -, -, -, hacc⟩ := late_vote_accepted_of_frame_before hS hy hc.1
       hs ht hjb hdeadline hrestart hx hv hes (hF x hx i e hv hes)
@@ -289,7 +289,10 @@ theorem late_vote_poolU
       linarith
   rwa [hes] at hst
 
-/-- `late_vote_held_of_frame` with the unlock given. -/
+/-- **A late honest batch**: for a slot `s ≥ r` and an honest call at a time `≥ t_s + 2Δ` whose
+`Φ.F` the vote's head extends, every honest slot-`s` vote is held, with its head in the call's frame
+(of slot at most `s`), and both its stamp and its head's are before `t_s + 2Δ`, before and after the
+call. With the unlock given. -/
 theorem late_vote_held_of_frameU
     {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
     {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ℓ) {s : Nat}
@@ -380,23 +383,6 @@ theorem late_vote_held_of_frameU
   · exact hbs
   · rw [hpost]; exact hbs
 
-/-- **A late honest batch**: for a slot `s ≥ r` and an honest call at a time
-`≥ t_s + 2Δ` whose `Φ.F` the vote's head extends, every honest slot-`s` vote is held, with its
-head in the call's frame (of slot at most `s`), and both its stamp and its head's are before
-`t_s + 2Δ`, before and after the call. -/
-theorem late_vote_held_of_frame (hS : HealthyBase tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
-    {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ℓ) {s : Nat}
-    (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j) {x : Fin sp.n}
-    (hx : x ∈ H) {i : Nat} {e : Em sp FGP} (hv : VoteAt tr x i e) (hes : e.msg.slot = s)
-    (hF : ∀ Hd ∈ U, Hd.root = e.msg.head → Anc U ℓ.frame.F Hd) :
-    ∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ Hd.slot ≤ s ∧
-      ∀ c, (c = j ∨ c = j + 1) → e.msg ∈ (tr.state y c).pool s ∧
-        (tr.state y c).voteStamp e.msg < ETime.of (sp.ts s + 2 * sp.Δ) ∧
-        (tr.state y c).blockStamp e.msg.head < ETime.of (sp.ts s + 2 * sp.Δ) :=
-  late_vote_held_of_frameU (hS := hS.toU) (y := y) (hy := hy) (j := j) (ℓ := ℓ) (hc := hc)
-      (s := s) (hs := hs) (ht := ht) (x := x) (hx := hx) (i := i) (e := e) (hv := hv) (hes := hes)
-          (hF := hF)
-
 /-- The resolution time of a vote whose head is a block of the frame of a slot at most the
 vote's is the later of the two stamps. -/
 theorem resolutionTime_lt_of {A : ACState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
@@ -462,7 +448,9 @@ theorem result_extended_of_members
 set_option linter.unusedVariables false in
 -- `HealthyBaseU` bounds the faults by `f < n/2` only; the bound `3f ≤ n − 1` is given.
 
-/-- `result_extended` with the unlock given. -/
+/-- **A late result has an honest supporter**: the result `C` of an honest update of a slot `s ≥ r`
+(read at a time `≥ t_s + 2Δ`) is extended by an honest vote of slot `s`: its supporters are a strict
+majority of the voters, which include all honest validators. With the unlock given. -/
 theorem result_extendedU
     {uL : Nat → Set Lock} (hS : HealthyBaseU wm uL tr H U proposer g) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) {x : Fin sp.n} (hx : x ∈ H) {c : Nat}
@@ -481,18 +469,6 @@ theorem result_extendedU
     have hn : H.ncard + Hᶜ.ncard = sp.n := by
       rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
     omega
-
-/-- **A late result has an honest supporter**: the result `C` of an honest update of a slot
-`s ≥ r` (read at a time `≥ t_s + 2Δ`) is extended by an honest vote of slot `s`: its supporters
-are a strict majority of the voters, which include all honest validators. -/
-theorem result_extended (hS : HealthyBase tr H U proposer g) {s : Nat}
-    (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) {x : Fin sp.n} (hx : x ∈ H) {c : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x c ℓ)
-    (ht : sp.ts s + 2 * sp.Δ ≤ tr.time c) {C : Blk sp.n FGP}
-    (hC : getConfirmation sp (tr.state x c) ℓ.frame s = some C) :
-    ∃ z ∈ H, ∃ j e, VoteAt tr z j e ∧ e.msg.slot = s ∧ VoteExtends U e.msg C :=
-  result_extendedU (hS := hS.toU) (s := s) (hs := hs) (x := x) (hx := hx) (c := c) (ℓ := ℓ)
-      (hc := hc) (ht := ht) (C := C) (hC := hC)
 
 /-! ## The first update at `t_p + 6Δ` -/
 
@@ -600,7 +576,11 @@ theorem first_update_post_of_members
     · exact Or.inl (anc_tree_of_anc_U hU hΦ hΦU hPt h hL.1)
   exact ⟨hconf, hnv, by unfold FastTest; omega, hpost⟩
 
-/-- `first_update_post` with the unlock given. -/
+/-- **The first update**: at an honest node's tick at `t_p + 6Δ`, with every honest slot-`p` vote
+exactly `P` and every live lock comparing with `P`, the tick is the slot-`p` update, whose result is
+`P` (its honest batch is a strict majority, and every other passing block has only faulty supporters
+unless it is an ancestor of `P`), not vetoed, and `P` passes the fast test (the honest batch is half
+of the committee or more). With the unlock given. -/
 theorem first_update_postU
     {uL : Nat → Set Lock} (hS : HealthyBaseU wm uL tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
     (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
@@ -643,28 +623,6 @@ theorem first_update_postU
   · rw [Set.univ_inter, hS.stock]
     omega
 
-/-- **The first update**: at an honest node's tick at `t_p + 6Δ`, with every honest
-slot-`p` vote exactly `P` and every live lock comparing with `P`, the tick is the slot-`p` update,
-whose result is `P` (its honest batch is a strict majority, and every other passing block has only
-faulty supporters unless it is an ancestor of `P`), not vetoed, and `P` passes the fast test
-(the honest batch is half of the committee or more). -/
-theorem first_update_post
-    (hS : HealthyBase tr H U proposer g) {p : Nat} {P : Blk sp.n FGP}
-    (hp4 : gbar g + 4 * sp.Δ ≤ sp.ts p)
-    (hexact : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = p → e.msg.head = P.root)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
-    (hc : tr.CallAt y k ℓ) (hcall : ℓ.call = .tick) (htk : tr.time k = sp.ts p + 6 * sp.Δ)
-    (hPt : P ∈ ℓ.frame.tree)
-    (hlocks : ∀ L ∈ liveLockBlocks sp (tr.state y k).locks ℓ.frame (tr.time k),
-      Compatible U L P) :
-    getConfirmation sp (tr.state y k) ℓ.frame p = some P ∧
-      ¬ conflictsWithLock sp (tr.state y k).locks ℓ.frame (tr.time k) P ∧
-      FastTest sp (tr.state y k) ℓ.frame p P ∧
-      tr.post k = updateConfirmation sp (tr.state y k) ℓ.frame (tr.time k) p :=
-  first_update_postU (hS := hS.toU) (p := p) (P := P) (hp4 := hp4) (hexact := hexact) (y := y)
-      (hy := hy) (k := k) (ℓ := ℓ) (hc := hc) (hcall := hcall) (htk := htk) (hPt := hPt)
-          (hlocks := hlocks)
-
 /-! ## The slot committees over a finite healthy base -/
 
 /-- **A late result has an honest supporter**, for the slot committees `K` of a finite healthy
@@ -693,14 +651,14 @@ theorem result_extended_before {K : CommitteeDict sp.n} {b : Time}
     (by rintro _ ⟨v, hv, rfl⟩; exact hS.hP.1 x hx c s v hv) (by omega) hC
   obtain ⟨j, e, hv, hes, -⟩ := honest_votes_in_slot_before hS hs (by linarith)
     (fun z hz r hrt hrz => (hrs z hz r hrz (by linarith)).trans (by linarith)) u hu.2 hu.1
-  obtain ⟨hval, -⟩ := castAt_spec hr hu.2 ⟨hv.choose_spec.1, hv.choose_spec.2⟩
+  obtain ⟨hval, -⟩ := castAt_specU hr.toU hu.2 ⟨hv.choose_spec.1, hv.choose_spec.2⟩
   refine ⟨e.msg, (late_vote_pool_before hS hx hc hs ht hcb
     (fun q hq t _ => Compose.ac_deadline_le_of_restarts
       (fun q' hq' hrq' => (hrsx q' (hq'.trans hq) hrq').trans (by linarith)) t)
     (fun q hq hrq => (hrsx q hq hrq).trans_lt (by linarith)) hu.2 hv hes c (Or.inl rfl)).1, hval⟩
 
 /-- **The first update**, for the slot committees `K` of a finite healthy base whose honest
-restarts within the horizon are by `ḡ`: as `first_update_post`, at an honest tick at
+restarts within the horizon are by `ḡ`: as `first_update_postU`, at an honest tick at
 `t_p + 6Δ ≤ b`, through `first_update_post_of_members` at `M = K.committee p` (the honest members'
 votes held and resolved before `t_p + 2Δ`, the voters members, CS2). -/
 theorem first_update_post_before {K : CommitteeDict sp.n} {b : Time}
@@ -747,7 +705,7 @@ theorem first_update_post_before {K : CommitteeDict sp.n} {b : Time}
     (fun q hq hrq => (hrsy q hq hrq).trans_lt (by linarith)) hu.2 hv hes fun Hd hHd hHdr => by
       rw [hU.1 hHd (hΦU hPt) (hHdr.trans (hexact u hu.2 i e hv hes))]
       exact (hΦ.rooted.2 P hPt).mono hΦU
-  obtain ⟨hval, -⟩ := castAt_spec hr hu.2 ⟨hv.choose_spec.1, hv.choose_spec.2⟩
+  obtain ⟨hval, -⟩ := castAt_specU hr.toU hu.2 ⟨hv.choose_spec.1, hv.choose_spec.2⟩
   exact ⟨e.msg, hmem, hval, resolutionTime_lt_of hΦ hHdt hHdr (hes ▸ hHds) hvst hbst⟩
 
 /-- **A result passing the fast test is its own fast selection**: the path of `P` holds only

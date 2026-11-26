@@ -36,12 +36,12 @@ theorem next_transfer_from {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP
   have hm := hr.time_mono
   have hry := hrun.upTo (hr.time_nonneg i)
   have hc' := upTo_castAt.mpr ⟨le_rfl, hc⟩
-  have hslot : e.msg.slot = sp.slot (tr.time i) := (castAt_spec hry.localRun hy hc').2.1
+  have hslot : e.msg.slot = sp.slot (tr.time i) := (castAt_specU hry.localRun.toU hy hc').2.1
   have before : ∀ {x j e'}, x ∈ H (tr.time j) → VoteAt tr x j e' → e'.msg.slot = m → j < i := by
     intro x j e' hx hv hvs
     obtain ⟨ℓ', hv⟩ := hv
-    have hs' : e'.msg.slot = sp.slot (tr.time j) := (castAt_spec (hr.upTo (hr.time_nonneg j)) hx
-      (upTo_castAt.mpr ⟨le_rfl, hv⟩)).2.1
+    have hs' : e'.msg.slot = sp.slot (tr.time j) := (castAt_specU (hr.upTo (hr.time_nonneg j)).toU
+      hx (upTo_castAt.mpr ⟨le_rfl, hv⟩)).2.1
     by_contra h
     have hmono := slot_mono sp (hr.time_nonneg i) (hm (Nat.le_of_not_gt h))
     rw [← hslot, ← hs', hvs, hs] at hmono

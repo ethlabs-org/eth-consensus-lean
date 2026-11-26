@@ -119,7 +119,7 @@ theorem carryAt_after_at
     have h₂ := max_lt hτ (show sp.ts s < sp.ts s + 2 * sp.Δ by linarith only [hΔ])
     change tr.projAC.deadline y k τ ≤ max τ (sp.ts s) + sp.Δ at h₁
     linarith only [h₁, h₂]
-  obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hy i ℓ hcT.1
+  obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hy i ℓ hcT.1
   refine ⟨(hr.awake_of_call y hy i ℓ hcT.1).1, hyj, fun v hv => ?_, fun v hv => ?_⟩
   · -- the head and its ancestors are accepted before the freeze
     obtain ⟨x, k, e', hv', rfl, hvs, Hv, hHv, hHvr, hFHv⟩ := hCV _ hv
@@ -173,7 +173,7 @@ theorem carryAt_after_at
     have hheld : ∀ u ∈ (T.state y (k' + 1)).pool s,
         AC.HeldBefore e.readPoint u (sp.ts s + 3 * sp.Δ) := by
       intro u hu
-      have hus : u.slot = s := AC.state_pool_slot sp hr hrun.vstart hy (k' + 1) s u hu
+      have hus : u.slot = s := AC.state_pool_slotU sp hr.toU hrun.vstart hy (k' + 1) s u hu
       obtain ⟨hpool, hstamp⟩ := Healing.readPoint_pool_of_ne hr hy hcT (σ := s) (by omega)
       have hu' := AC.pool_mono hr hy (show k' + 1 ≤ i + 1 by omega) hnr s hu
       refine ⟨by rw [hus, ← hpool]; exact hu', ?_⟩
@@ -194,15 +194,15 @@ theorem carryAt_after_at
         linarith only [this, hΔ]
     by_cases hv' : v ∈ (T.state y (k' + 1)).pool s
     · exact Or.inl (hheld v hv')
-    · rcases AC.held_of_processAt hr hy hpT (by rw [hvs, hsk']; omega) (by rw [hvs, hsk']) with
+    · rcases AC.held_of_processAtU hr.toU hy hpT (by rw [hvs, hsk']; omega) (by rw [hvs, hsk']) with
         h | ⟨a, ha, c, hc'', hac, hav, hcv⟩
       · rw [hvs] at h
         exact absurd h hv'
       · have ha' : a ∈ (T.state y (k' + 1)).pool s := by rw [← hvs]; exact ha
         have hc' : c ∈ (T.state y (k' + 1)).pool s := by rw [← hvs]; exact hc''
-        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv, AC.state_pool_slot sp hr hrun.vstart hy _ s
+        refine Or.inr ⟨a, c, hac, ?_, ?_, hav, hcv, AC.state_pool_slotU sp hr.toU hrun.vstart hy _ s
             a ha',
-          AC.state_pool_slot sp hr hrun.vstart hy _ s c hc', hheld a ha', hheld c hc'⟩
+          AC.state_pool_slotU sp hr.toU hrun.vstart hy _ s c hc', hheld a ha', hheld c hc'⟩
         · rintro rfl; exact hv' ha'
         · rintro rfl; exact hv' hc'
 

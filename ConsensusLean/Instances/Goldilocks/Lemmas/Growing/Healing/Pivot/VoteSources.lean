@@ -48,7 +48,7 @@ theorem vote_old_lock_source_before_at
     rw [RunTrace.upTo_projAC]
     exact (AC.upTo_castAt).mpr ⟨le_rfl, hc⟩
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hc'.1
-  have hslot : sp.slot (tr.time j) = u := ((AC.castAt_spec hr hy hc').2.1).symm.trans hes
+  have hslot : sp.slot (tr.time j) = u := ((AC.castAt_specU hr.toU hy hc').2.1).symm.trans hes
   have hclean : cleanLabel sp a + sp.k + 2 ≤ l.slot := by
     rw [Healing.drainTime_eq] at hR
     have := (AC.ts_le_iff sp).mp hR

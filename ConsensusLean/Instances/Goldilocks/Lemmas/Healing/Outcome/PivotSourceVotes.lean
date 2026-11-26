@@ -78,7 +78,7 @@ theorem ResetPremisesUpTo.proposal_start_supported {b : Time}
     (T := elly.frame.viableTree (AC.voteDomain sp e.readPoint elly.frame u))
     (fun _ h => (AC.voteDomain_subset_tree h.1)) e.readPoint (tr.time j)
     (AC.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)
-  have hheadr := (AC.castAt_spec hr hy hcy).2.2.2
+  have hheadr := (AC.castAt_specU hr.toU hy hcy).2.2.2
   rw [hes] at hheadr
   have extend : ∀ B, AC.VoteExtends (tr.HonestBlocks H) e.msg B →
       Anc (tr.HonestBlocks H) B

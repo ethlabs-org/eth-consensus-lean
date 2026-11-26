@@ -345,7 +345,7 @@ theorem joined_of_fastLockAt (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr in
       simp only at h1
       rw [← h1]
       exact step_restartTime x _ _ _ _ hnr
-    have := restartTime_of_castAt hr hx ⟨hc, he⟩
+    have := restartTime_of_castAtU hr.toU hx ⟨hc, he⟩
     exact ⟨hrs _ ((AC.admitVote_restartTime _ _ _).trans (this.symm.trans hpr)) hjA, ℓ, hc, hnr⟩
 
 end Consensus.Goldilocks.Healing

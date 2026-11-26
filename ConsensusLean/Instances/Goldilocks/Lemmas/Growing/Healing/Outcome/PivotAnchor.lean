@@ -80,7 +80,7 @@ theorem reset_vote_anchor_at
       push_cast at this
       omega)
     have hub : sp.ts u ≤ b := by
-      have h := (AC.castAt_spec hr.localRun hy hc').2.1
+      have h := (AC.castAt_specU hr.localRun.toU hy hc').2.1
       have hsl : sp.slot (tr.time j) = u := by rw [← hes]; exact h.symm
       exact ((AC.ts_le_iff_le_slot sp (hp.run.time_nonneg j) u).2
         (by exact_mod_cast hsl.ge)).trans hjb

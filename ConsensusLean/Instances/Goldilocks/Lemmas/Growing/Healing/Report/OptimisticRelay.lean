@@ -100,7 +100,7 @@ theorem relay_source_at_proposal_at
     Trace.upTo_state tr.projAC y fun _ hk => hmono hk.le
   have hQt : Q ∈ ell.frame.tree := by
     rcases ha with hg | ⟨k, hki, hk, -⟩
-    · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hy i ell hc'
+    · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hy i ell hc'
       obtain rfl : Q = G := hU.1 hQU (subU hGU) (hg.trans hGr.symm)
       obtain ⟨hPhi, -⟩ := AC.frameIn_of_callAt hr hy hc'
       rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hFQ with heq | ⟨P, -, hP⟩
@@ -111,13 +111,13 @@ theorem relay_source_at_proposal_at
       obtain ⟨ella, hca, hba⟩ := hk'
       have hQp := (AC.frameIn_of_callAt hr hy hca).2
         ((AC.accept_new sp hr hy ⟨ella, hca, hba⟩).1 ella hca)
-      exact AC.mem_tree_of_acceptAt sp hr hy ⟨ella, hca, hba⟩ hki hc'
+      exact AC.mem_tree_of_acceptAtU sp hr.toU hy ⟨ella, hca, hba⟩ hki hc'
         (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 hQp hFQ)
   have hacc : AC.AcceptedBefore (tr.projAC.upTo (tr.time i)) y Q (sp.ts s + 3 * sp.Δ) := by
     rcases ha with hg | ⟨k, hki, hk, hkt⟩
     · exact Or.inl hg
     · exact Or.inr ⟨k, ACTrace.upTo_acceptAt.mpr ⟨hmono hki, hk⟩, hkt⟩
-  have hbs := AC.blockStamp_lt_of_acceptedBefore sp hr hrun.vstart hy hc' hQt hacc
+  have hbs := AC.blockStamp_lt_of_acceptedBeforeU sp hr.toU hrun.vstart hy hc' hQt hacc
     (fun k hk hrk => by
       obtain ⟨-, hrk⟩ := ACTrace.upTo_restartAt.mp hrk
       change tr.time k < _

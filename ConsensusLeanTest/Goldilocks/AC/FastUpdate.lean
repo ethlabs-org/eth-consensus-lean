@@ -128,7 +128,7 @@ theorem blockStamp_lt {s : Nat} (hs : 1 ≤ s) :
   obtain ⟨f, hfs, hf⟩ := update_frame s
   obtain ⟨k, rfl⟩ : ∃ k, s = k + 1 := ⟨s - 1, by omega⟩
   obtain ⟨fg', e, hl, -⟩ := vote_label k
-  refine blockStamp_lt_of_acceptedBefore sp1 acRun.localRun (fun _ => voteStart_initial _)
+  refine blockStamp_lt_of_acceptedBeforeU sp1 acRun.localRun.toU (fun _ => voteStart_initial _)
     (Set.mem_univ v0) (update_callAt _)
     (hf.mem hfs (by omega)) (Or.inr ⟨8 * (4 * (k + 1)) + 3,
       ⟨_, Compose.projAC_callAt.2 ⟨rfl, hl⟩, rfl⟩, ?_⟩)
