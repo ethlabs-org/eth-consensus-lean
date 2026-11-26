@@ -306,16 +306,17 @@ truncation by `premises_restrict_truncH`.
 
 ### Generic healing report-delivery delay
 
-OPEN instance obligation: `round_of_warm_at`, `rise_reset_rounds_at`,
-`exists_reset` and `generic_healing` require
+OPEN instance obligation: the generic contracts `round_of_warm_at` and
+`rise_reset_rounds_at` (Milestones/Statements/Generic) require
 `∀ s, P.slotTime (s + 1) + 2 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)`.
-They are proved over any `ACHealing` with this inequality as a premise
-(`round_of_warm_at_of_healing` in Lemmas/Generic/HealingRounds.lean;
-`rise_reset_rounds_at_of`, `exists_reset` and `generic_healing` in
-Lemmas/Generic/HealingEdges.lean), so the obligation is only its supply.
+Their generic proofs over any `ACHealing` (`round_of_warm_at_of_healing`,
+`rise_reset_rounds_at_of`) and the generic slot-budget assembly (`exists_reset`,
+`generic_healing`) had no consumer and are deleted; the Goldilocks reset comes from the
+concrete route (Lemmas/Growing/Healing/Kernel/ResetRounds.lean), so the generic contracts
+are stated but not proved over a supplier.
 The first healthy-reduction consumer must supply this inequality; the old
 `Premises.timeoutDelay` and `Premises.slotLen` do not together imply it.
-The leaves also require `slotLen`; the assemblies obtain it from `Premises`.
+The generic leaves also require `slotLen`, which `Premises` supplies.
 On the four-Δ grid, substituting slotTime(s) = 4sΔ reduces the delay condition to
 6Δ + ΔF ≤ 4Δ·δt. The generic instance obligation for an arbitrary schedule is not
 discharged here.
