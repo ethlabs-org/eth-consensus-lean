@@ -9,7 +9,8 @@ public section
 
 The label induction of the sleepy proof, over a family of blocks that starts at two label floors:
 a lock floor `rL` and an origin floor `rO`. From genesis both floors are `0`; after a hand-over
-(`Lemmas/Continuation`), `rL = cleanLabel a + k + 2` and `rO = rL + k − 1` for the reset `a`.
+(`Lemmas/Growing/Continuation`), `rL = cleanLabel a + k + 2` and `rO = rL + k − 1` for the reset
+`a`.
 
 * `LockWithin`: a fast or slow lock write of label `s` on a block, by a writer honest at its
   write, at a time `≤ b`. Every stored lock of an honest node sits below its own lock write of the

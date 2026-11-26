@@ -25,6 +25,7 @@ Reference snapshots that no target builds or checks (an earlier Goldilocks Lean 
 | `Main.lean` | `ShapeObligations.correct` and `ShapeObligations.activeService`. |
 | `Instances/<P>/{Spec,Statements}/` | Goldilocks (`Spec/`: what the endpoint statement reaches; `Statements/Obligations`: the endpoint). |
 | `Instances/<P>/Milestones/` | Goldilocks milestone vocabulary and statements, not on the trusted surface. |
+| `Instances/<P>/Lemmas/{X,Growing/X}/` | `Lemmas/X`: a fixed honest set `H : Set`, or the engine level; `Lemmas/Growing/X`: a time-indexed honest set `H : Time → Set`, lifted from the fixed-set lemmas by `upTo`/`retain`. `Lemmas/Growing/Continuation` (the side property `GoldilocksContinues`) is a layer of its own that only the continuation milestone and the tests import. |
 | `Examples/Shape/` | Shape examples, not on the trusted surface: Bft, Streamlet, Tendermint as contract values. |
 
 `Init.lean` is imported last by `Spec/Problem/Basic.lean` and `Spec/Model/Objects.lean`,

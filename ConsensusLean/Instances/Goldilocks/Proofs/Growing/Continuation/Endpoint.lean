@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Continuation
 public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Handover
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Handover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 import ConsensusLean.Lemmas.Problem.Facts.CorrectProtocol
 import ConsensusLean.Lemmas.Problem.Facts.Network

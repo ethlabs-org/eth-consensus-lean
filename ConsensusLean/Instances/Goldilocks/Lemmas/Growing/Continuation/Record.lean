@@ -1,6 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Seed
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Accountable
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Seed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Accountable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.RecordGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count

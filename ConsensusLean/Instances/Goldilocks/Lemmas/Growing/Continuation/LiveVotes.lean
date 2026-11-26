@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.LiveReader
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.LiveReader
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Held
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
