@@ -135,7 +135,7 @@ theorem client_record_origin_of_run {ini : Fin sp.n → (goldilocksNode sp ro).S
   client_record_origin_from hrun.toLocalRun hy h r
 
 /-- Whole-run reset specialization of actual record provenance. -/
-theorem client_record_origin (hp : ResetPremises tr H K proposer dg g ΔF a)
+private theorem client_record_origin (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) (h r i : Nat) :
     ((tr.state y i).record.target h = some r ∨ r ∈ (tr.state y i).record.timeout h →
       ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.h = h ∧ att.T = r) ∧
@@ -195,7 +195,7 @@ theorem signed_fin_pair_entry_of_run {ini} (hrun : GoldilocksRun proposer dg H t
       exact ⟨Z, hZ, E, hE, hET.symm.trans hT.symm, hZE, hZr, hZh, hZT⟩
 
 /-- Reset-premise specialization of the run-only signed finality-pair provenance. -/
-theorem signed_fin_pair_entry (hp : ResetPremises tr H K proposer dg g ΔF a)
+private theorem signed_fin_pair_entry (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H)
     {k : Nat} {att : FG.Att sp.n} (hs : tr.SignAt y k att) {h r : Nat}
     (hfin : att.fin = some (h, r)) :

@@ -343,7 +343,7 @@ theorem low_finalized_below_high_block_of_run (hrun : GoldilocksRun proposer dg 
 
 /-- A block held anywhere honestly extends the target's finalized block if it meets the
 target's floor and, in the J-root case, extends the target's J. No target acceptance is needed. -/
-theorem finalized_below_floor_held (hrun : GoldilocksRun proposer dg H tr ini)
+private theorem finalized_below_floor_held (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i m : Nat}
     {W : AC.Blk sp.n (List (FG.Att sp.n))}

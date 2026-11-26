@@ -30,7 +30,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **ROW-deliver** from the finite service: an attestation signed by an honest validator by `v ≥ ḡ`
 is processed by the honest proposer before its proposal cut when `v + Δ_F ≤ t_{kX} ≤ b`. -/
-theorem rows_delivered_service {g ΔF b v : Time}
+private theorem rows_delivered_service {g ΔF b v : Time}
     (hsvc : ResetService tr H g ΔF b) (hnr : NoRestartAfter tr H (gbar g))
     (hv : gbar g ≤ v) {p : Fin sp.n} (hp : p ∈ H) {kX : Nat}
     {X : AC.Blk sp.n (List (FG.Att sp.n))} (hX : tr.ProposesAt p kX X)
