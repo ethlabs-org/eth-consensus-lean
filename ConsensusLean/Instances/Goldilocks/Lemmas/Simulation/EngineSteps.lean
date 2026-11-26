@@ -408,7 +408,7 @@ theorem nodeTick_node_public (st : State sp ro binding) (h : sp.toParams.IsPubli
   rfl
 
 /-- `ac_to_fg` and `fg_attest` do not read the pool. -/
-theorem tickStep_fgUpdate_atts (proposer : Nat → Fin sp.n)
+private theorem tickStep_fgUpdate_atts (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
     (n : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) (l : List (FG.Att sp.n)) :
     (Node.tickStep proposer dg self { n with fg := { n.fg with atts := l } } t x .fgUpdate).1 =
@@ -438,7 +438,7 @@ theorem tickStep_fgUpdate_fg (proposer : Nat → Fin sp.n)
 
 /-- **The own `on_attestation`s commute with the FG update**: it neither reads nor writes the
 pool except through `on_attestation`. -/
-theorem tickStep_fgUpdate_foldl (proposer : Nat → Fin sp.n)
+private theorem tickStep_fgUpdate_foldl (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n) (t : Time) (x : Nat)
     (l : List (FG.Att sp.n)) (n : NodeState (goldilocksNode sp ro)) :
     (Node.tickStep proposer dg self (l.foldl (fun n a => (Node.onAttestation n a).1) n) t x
@@ -518,7 +518,7 @@ theorem act_mempool (st : (Model.protoOf (compiled (goldilocks S)) E).State)
 
 omit [DecidableEq V] in
 /-- `releaseAll` keeps the mempool. -/
-theorem releaseAll_mempool (k : Fin (Fintype.card V)) :
+private theorem releaseAll_mempool (k : Fin (Fintype.card V)) :
     ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
       (cs : List (Model.protoOf (compiled (goldilocks S)) E).Object),
       (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd cs).1.st.2 =

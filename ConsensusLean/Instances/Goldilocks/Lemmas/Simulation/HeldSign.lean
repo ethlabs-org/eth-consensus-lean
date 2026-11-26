@@ -53,7 +53,7 @@ theorem fgSigned_of_attest (proposer : Nat → Fin sp.n)
 
 /-- A batch poll with the FG update due at a time the schedule refuses release holds the
 attestation of the FG update step's signing cut. -/
-theorem pollBatch_held_of_attest {release : Fin sp.n → Time → Bool}
+private theorem pollBatch_held_of_attest {release : Fin sp.n → Time → Bool}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (x : Nat)
     (st : State sp ro binding) (k : Time) (hf : st.fgDue = true)
     (hr : release st.self st.now = false) {C} {a : FG.Att sp.n}
@@ -64,7 +64,7 @@ theorem pollBatch_held_of_attest {release : Fin sp.n → Time → Bool}
   simp [hf, hr]
 
 /-- A batch poll at a time the schedule refuses release keeps the held queue. -/
-theorem pollBatch_held_keep {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
+private theorem pollBatch_held_keep {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
     (k : Time) (hr : release st.self st.now = false) {a : FG.Att sp.n} (ha : a ∈ st.held) :
     a ∈ (pollBatch st k release).1.held := by
   rw [pollBatch_held]
