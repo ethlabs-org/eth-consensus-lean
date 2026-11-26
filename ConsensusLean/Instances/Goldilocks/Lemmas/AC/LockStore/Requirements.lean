@@ -91,7 +91,7 @@ private theorem ghost_viableHead {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {dom : S
 
 /-- The finite viable-tree walk reaches a viable head in its domain if its anchor has
 a viable descendant there; otherwise it stays at the anchor. -/
-theorem ghost_viable_dichotomy {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+private theorem ghost_viable_dichotomy {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     {dom : Set (Blk sp.n FGP)} (hdom : dom ⊆ Φ.tree)
     (hdomA : ∀ B ∈ dom, ∀ X, Φ.Anc X B → X ∈ dom)
     {A : Blk sp.n FGP} (hA : A ∈ Φ.tree) (hroot : Φ.Anc Φ.fcRoot A)

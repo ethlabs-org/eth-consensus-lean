@@ -16,7 +16,7 @@ variable {FGP : Type} {sp : ACParams}
 
 /-- Below a common finalized ancestor of all viable heads, the viable-domain
 path is forced by geometry alone. No supporter or score bound is needed. -/
-theorem isBest_of_viable_floor {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+private theorem isBest_of_viable_floor {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     {dom : Set (Blk sp.n FGP)} (hdom : dom ⊆ Φ.tree)
     {F X C : Blk sp.n FGP}
     (hfloor : ∀ Q ∈ Φ.viableHeads, Φ.Anc F Q)

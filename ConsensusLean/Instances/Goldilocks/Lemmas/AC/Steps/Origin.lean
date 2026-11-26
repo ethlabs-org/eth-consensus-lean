@@ -235,7 +235,7 @@ theorem receipt_pool_vote (hrun : ACRun proposer tr H U ini)
 optimistic receipt in the vote's own call. Unlock and live remaps preserve its label
 and move its block only to ancestors of the selected block. From starts up to the vote
 permission. -/
-theorem lock_write_readPoint (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+private theorem lock_write_readPoint (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ell : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
     (hc : CastAt tr y i ell e) (hpos : 0 < e.msg.slot)
