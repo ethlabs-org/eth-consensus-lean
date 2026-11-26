@@ -35,7 +35,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.RelTrace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Resolution
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.MergedOpponents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
@@ -938,7 +937,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.G
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Sleepy
 public import ConsensusLean.Instances.Goldilocks.NodeAsChainShape
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
-public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main

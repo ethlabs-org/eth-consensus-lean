@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.CommitteeRun
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.GrowingPremises
 
 @[expose] public section

@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.CommitteeRun
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
@@ -158,13 +158,6 @@ theorem next_transfer_of_carry {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (
               (hhalf := hhalf) (hcarry := hcarry) (hfault := hfault) (hf1 := hf1)
                   (hviab := hviab) (hearlier := hearlier)
 
-/-- **A1.3.** -/
-theorem next_transfer : NextTransfer sp :=
-  fun _ _ _ _ _ _ hrun K hP hT hsize _ _ _ _ _ _ hy hc hs hall hhalf hcarry hfault hf1 hviab
-      hearlier =>
-    next_transfer_of_carry sp hrun K hP hT hsize hy hc hs hall hhalf hcarry hfault hf1 hviab
-      hearlier
-
 /-- `optimistic_transfer_stored` with the unlock given. -/
 theorem optimistic_transfer_storedU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
@@ -290,13 +283,6 @@ theorem optimistic_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : S
           (i₀ := i₀) (i := i) (B := B) (D := D) (CV := CV) (ℓ := ℓ) (e := e) (hx := hx)
               (hopt := hopt) (hBD := hBD) (hf := hf) (hf1 := hf1) (hy := hy) (hc := hc)
                   (hs := hs) (hcarry := hcarry) (hviab := hviab) (hearlier := hearlier)
-
-/-- **A1.4 (a).** -/
-theorem optimistic_transfer : OptimisticTransfer sp :=
-  fun _ _ _ _ _ _ hrun K hP hT hsize _ _ _ _ _ _ _ _ _ hx hopt hf hf1 hy hc hs hcarry hviab
-      hearlier =>
-    optimistic_transfer_stored sp hrun K hP hT hsize hx hopt .refl hf hf1 hy hc hs hcarry hviab
-      hearlier
 
 /-- The first transfer of a pooled lock into the store, with the unlock given. -/
 theorem first_transfer_stored_of_poolU
@@ -448,100 +434,7 @@ theorem first_transfer_stored {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (F
                   (hcarry := hcarry) (hfault := hfault) (hf1 := hf1) (hviab := hviab)
                       (hearlier := hearlier)
 
-/-- **A1.2.** -/
-theorem first_transfer : FirstTransfer sp :=
-  fun _ _ _ _ _ _ hrun K hP hT hsize _ _ _ _ _ _ _ _ _ hx hfl hy hc hs hsync hcarry hfault hf1
-      hviab hearlier =>
-    first_transfer_stored sp hrun K hP hT hsize hx hfl .refl hy hc hs hsync hcarry hfault hf1
-      hviab hearlier
-
 end Stock
-
-/-- A block that `ac_to_fg` returns is a candidate. -/
-private theorem mem_toFGCandidates {FGP : Type} {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
-    {C : Blk sp.n FGP} (h : (acToFG sp A Φ t).2 = some C) : C ∈ toFGCandidates sp A Φ t := by
-  unfold acToFG at h
-  split_ifs at h
-  split at h
-  · cases h
-  · rename_i C' hC'
-    split_ifs at h
-    cases h
-    exact (deepest_mem hC').1
-
-/-- **A1.5.** -/
-theorem source_age : SourceAge sp := by
-  intro FGP ro H U tr hrun τ x i ℓ C hx hto hslot
-  obtain ⟨hc, -, hC⟩ := hto
-  obtain ⟨hCv, l, hl, hlb, hlf, hls⟩ := mem_toFGCandidates sp hC
-  obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
-  obtain ⟨j, hj, B', CV', hfl, L, hL, hLr, hLB'⟩ :=
-    fast_lock_provenance hrun (fun _ => voteStart_initial _) hx i l₀ hl₀ hlf
-  have hU := hrun.coherent
-  obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
-    rcases hrun.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
-      exact h.1
-  refine ⟨j, hj.le, l₀.slot, B', CV', hfl, ?_, hls, ?_⟩
-  · -- the lock was written in a slot after `τ`'s
-    have h1 : sp.slot τ + 1 ≤ l₀.slot := by simp only at hls; omega
-    have hτ : τ < sp.ts (l₀.slot : Int) := by
-      rcases le_or_gt 0 τ with h0 | h0
-      · refine lt_of_lt_of_le (not_le.1 fun h => ?_)
-          ((ts_le_iff sp (a := (sp.slot τ : Int) + 1) (b := l₀.slot)).2 (by omega))
-        have := ((ts_le_iff_le_slot sp h0) _).1 h
-        omega
-      · refine lt_of_lt_of_le h0 ?_
-        simp only [ACParams.ts]
-        have := sp.toParams.hΔ
-        positivity
-    rcases hfl with ⟨ℓ', C', ⟨-, -, ht, -⟩, -⟩ | ⟨ℓ', A', -, hs, -⟩
-    · rw [ht]
-      have := sp.toParams.hΔ
-      linarith
-    · refine lt_of_lt_of_le hτ ?_
-      rw [← hs]
-      exact ((ts_le_iff_le_slot sp (hrun.time_nonneg j)) _).2 le_rfl
-  · -- `C` is the viable ancestor of the lock's block, which is `L`
-    have hCt : C ∈ ℓ.frame.tree := hCv.1
-    obtain ⟨hvat, hva⟩ := viableAncestor_anc hΦ hB₀
-    have hCe : C = ℓ.frame.viableAncestor B₀ := hU.1 (hΦU hCt) (hΦU hvat) hlb.symm
-    have hLe : L = B₀ := hU.1 hL (hΦU hB₀) (hLr.trans hB₀r.symm)
-    subst hCe hLe
-    exact (Anc.mono hΦU hva).trans hLB'
-
-/-- **A1.8.** -/
-theorem result_transfer : ResultTransfer sp := by
-  intro FGP ro H U tr proposer hrun s X y i₀ i C CV ℓ e hX hres hy hc hs hcarry hviab hlocks hd
-  obtain ⟨-, -, -, hhead⟩ := castAt_specU hrun.localRun.toU hy hc
-  have hU := hrun.localRun.coherent
-  obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
-    rcases hrun.localRun.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
-      exact h.1
-  have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
-  rw [hs, hσ] at hhead
-  have hdomA := voteDomain_ancU hrun.localRun.toU (fun _ => voteStart_initial _) hy hc
-  rw [hs] at hdomA
-  have hCt : C ∈ ℓ.frame.tree := by
-    rcases hviab with h | h
-    · exact h.1.1
-    · exact mem_of_anc h hΦ.fcRoot_mem
-  have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
-    (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB => voteDomain_subset_tree
-        hB) hdomA hviab.voteDomain
-    (fun L hL => hlocks L hL) fun X' Cx hCx hp hCxC =>
-      isBest_of_majority hΦ (merged_support_subsetU hrun.localRun.toU hy hc (s + 1))
-        (fun B hB => voteDomain_subset_tree hB.1)
-        (by
-          obtain ⟨ℓX, hupd, -, rfl⟩ := hres
-          exact counted_supportersU hrun.toU hX hy hupd.1 hc hs .refl hcarry hviab hd)
-        (merged_voters_subsetU hrun.localRun.toU (fun _ => voteStart_initial _) hy hc hd)
-        (result_majority hres) hCx hp hCxC
-  refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
-  by_cases he : C = getHead sp e.readPoint ℓ.frame (tr.time i)
-      (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)))
-      (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
-  · exact he ▸ hCt
-  · exact (Anc.mem hcore he).2
 
 end Consensus.Goldilocks.AC
 
