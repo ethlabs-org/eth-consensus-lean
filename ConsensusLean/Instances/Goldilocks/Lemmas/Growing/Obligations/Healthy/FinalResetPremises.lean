@@ -22,12 +22,11 @@ Each node is honest at its own cut and the fault bound is per time:
 
 * `final_query_gap_at`: the honest-proposer gap of a final query, as the
   kernel's `ProposalGap` (the designated proposer honest through its slot's hold);
-* `final_reset_premises_of_shared_at`: from the shared HS
-  premises at a forwarding delay `ΔF` and the final pattern `[0, c, 2c, 3c]` with `2 ≤ c` and
-  `3c ≤ δ_t`, a reset `a` with its finite premises through the horizon and the placement;
-* `final_reset_premises_at`: its instance at the FG gap `c = fgSlots` and the protocol FG delay.
+* `final_reset_premises_of_shared_within_at`: from the shared HS premises at a forwarding delay
+  `ΔF` and the final pattern `[0, c, 2c, 3c]` with `2 ≤ c` and `3c ≤ δ_t`, a reset `a` with its
+  finite premises through the horizon and the placement.
 
-The reset is the growing kernel's `exists_reset_of_drain_rounds_awake_at` on the drain
+The reset is the growing kernel's `exists_reset_of_drain_rounds_awake_within_at` on the drain
 `drainOutputs_of_service_at`; the snapshot is the static `snapshot_of_awake` on the prefix through
 the horizon. The ready scalar, the reset bound, the horizon of the gap and the placement are the
 static `final_reset_bounds`, the duties of the gap the static `final_query_duty`. -/
@@ -155,67 +154,6 @@ theorem final_reset_premises_of_shared_within_at
     obtain ⟨⟨_, k, _, _, _, _, hka⟩, _⟩ := ha
     rw [← hka]; exact hrun.time_nonneg k
   exact hplace a ha0 hab
-
-/-- The reset premises and placement of a final query on a responsive calendar (signing gap 0). -/
-theorem final_reset_premises_of_shared_at
-    (Q : FinalQueryAt S A V)
-    {c : Nat} (hc2 : 2 ≤ c)
-    (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c]) {ΔF hold : Time}
-    (hs : Healing.Growing.HSSharedUpTo Q.trace Q.keys
-      (digestOf S Q.run.2) Q.gst ΔF
-      Q.run.2.horizon hold)
-    {sign : Fin Q.params.n → Time → Bool}
-    (hcal : Q.trace.SignCalendarAt (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.keys sign)
-    (hgap : SignGapAt Q.params.toParams sign 0 0) :
-    ∃ ΔR a : Time,
-      Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
-        (runProposer S Q.run.2 Q.hn)
-        (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon
-        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK hold ∧
-      max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
-          ((finalGridAt
-            S A V Q).slotTime
-            (finalSeedMinAt
-            S A V Q a) - 1) +
-          ((((Q.index : Nat) + S.δt : Nat) : Time)) *
-          (finalGridAt S A V
-          Q).slotLen ≤
-        Q.query + (finalGridAt
-            S A V Q).slotLen :=
-  final_reset_premises_of_shared_within_at S A V Q hc2 h3c hpat hs (d := 0) (L := 0)
-    le_rfl (by simp) (Gs := 0) (Nat.zero_le _) (by simpa using Q.mature)
-    (Generic.voteLatency_zero_from (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid).toLocalRun)
-    (by simpa only [add_zero, Nat.cast_zero, zero_mul] using hs.timeoutDelay) hcal hgap
-    (by have : 2 * 3 ≤ 3 * c := by omega
-        change 3 + (0 + 3) / 4 ≤ S.δt; omega)
-
-/-- **The reset premises and the placement of a final query**, under growing faults. -/
-theorem final_reset_premises_at
-    (Q : FinalQueryAt S A V)
-    {sign : Fin Q.params.n → Time → Bool}
-    (hcal : Q.trace.SignCalendarAt (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.keys sign)
-    (hgap : SignGapAt Q.params.toParams sign 0 0) :
-    ∃ ΔR a : Time,
-      Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
-        (runProposer S Q.run.2 Q.hn)
-        (digestOf S Q.run.2) Q.gst ΔR a Q.run.2.horizon
-        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK
-          ((A.releaseGap : Time) * Q.run.1.ΔAC) ∧
-      max (max ((Sys (goldilocks S) V).ready (K S A) Q.gst Q.run) 0)
-          ((finalGridAt
-            S A V Q).slotTime
-            (finalSeedMinAt
-            S A V Q a) - 1) +
-          ((((Q.index : Nat) + S.δt : Nat) : Time)) *
-          (finalGridAt S A V
-          Q).slotLen ≤
-        Q.query + (finalGridAt
-            S A V Q).slotLen :=
-  final_reset_premises_of_shared_at S A V Q
-    (by have := A.two_le_fgSlots; rw [ContractAssumptions.finalSlots, A.fgDelay_val]; omega)
-    (by rw [ContractAssumptions.finalSlots, A.fgDelay_val]; exact A.timeout)
-    (finalWindow_offsets A)
-    (FinalQueryAt.hsSharedUpTo_at Q) hcal hgap
 
 end Consensus.Goldilocks.Obligations.Growing
 
