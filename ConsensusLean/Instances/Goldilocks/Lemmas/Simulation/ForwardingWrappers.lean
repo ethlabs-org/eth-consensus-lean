@@ -28,7 +28,7 @@ variable {binding : VoteBinding}
 /-- A newly queued candidate comes from this acceptance, at the current clock, using
 either genesis or the exact parent wrapper already in the durable map. Missing parents
 do not manufacture candidates. This local fact does not assume the parent exists. -/
-theorem queueAccepted_forward_origin {sp : AC.ACParams}
+private theorem queueAccepted_forward_origin {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (B : Blk sp)
     (q : Time × List (Wire sp.n binding)) (hq : q ∈ (queueAccepted st B).forwards) :
     q ∈ st.forwards ∨ ∃ root p, B.parent = some root ∧
@@ -96,7 +96,7 @@ theorem wrappersAccounted_iff {sp : AC.ACParams}
 
 /-- Enqueue preserves exact durable-entry provenance, retaining the new envelope as
 pending rather than prematurely counting it as published. -/
-theorem wrappersAccounted_queueAccepted {sp : AC.ACParams}
+private theorem wrappersAccounted_queueAccepted {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n binding → Prop)
     (st : State sp ro binding) (B : Blk sp) (h : WrappersAccounted prior st) :
     WrappersAccounted prior (queueAccepted st B) := by
@@ -130,7 +130,7 @@ theorem wrappersAccounted_queueAccepted {sp : AC.ACParams}
 
 /-- The exact selected non-genesis parent is already published or in the old queue;
 it is never justified by the newly appended child's envelope. -/
-theorem wrappersAccounted_parent {sp : AC.ACParams}
+private theorem wrappersAccounted_parent {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n binding → Prop)
     (st : State sp ro binding) (h : WrappersAccounted prior st) (root : Nat) (p : Wire sp.n binding)
     (hp : (if root = sp.genesisRoot then some none else
@@ -147,7 +147,7 @@ theorem wrappersAccounted_parent {sp : AC.ACParams}
 /-- At enqueue, the selected parent and canonical child are available before the fresh
 envelope: the parent is held or belongs to the old queue, while child holdings are supplied
 by the actual block receipt or own-block release. No publication is inferred from storage. -/
-theorem wrappersAccounted_carried {sp : AC.ACParams}
+private theorem wrappersAccounted_carried {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n binding))
     (st : State sp ro binding) (B : Blk sp) (root : Nat) (p : Option (Wire sp.n binding))
     (h : WrappersAccounted (fun o => o ∈ seen.flatMap Obj.parts) st)
@@ -183,7 +183,7 @@ theorem pendingReady_iff {n : Nat} (seen cs : List (Wire n binding)) : PendingRe
 
 /-- Appending a child keeps all old prefix obligations unchanged; its own carried
 objects may use the complete old queue, but not the child itself. -/
-theorem pendingReady_append {n : Nat} (seen cs : List (Wire n binding)) (o : Wire n binding)
+private theorem pendingReady_append {n : Nat} (seen cs : List (Wire n binding)) (o : Wire n binding)
     (h : PendingReady seen cs)
     (ho : ∀ c ∈ o.carried, c ∈ (seen ++ cs).flatMap Obj.parts) :
     PendingReady seen (cs ++ [o]) := by
@@ -205,7 +205,7 @@ theorem pendingReady_append {n : Nat} (seen cs : List (Wire n binding)) (o : Wir
 
 /-- Acceptance appends a ready envelope when the canonical child is actually held.
 The selected parent is justified by the old durable-map/queue invariant. -/
-theorem pendingReady_queueAccepted {sp : AC.ACParams}
+private theorem pendingReady_queueAccepted {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n binding))
     (st : State sp ro binding) (B : Blk sp)
     (ha : WrappersAccounted (fun o => o ∈ seen.flatMap Obj.parts) st)
@@ -229,7 +229,7 @@ theorem pendingReady_queueAccepted {sp : AC.ACParams}
 
 /-- Actual block handling preserves readiness, including refusal. Child holdings must
 come from the engine receipt or own release, rather than the store's acceptance result. -/
-theorem pendingReady_onBlock {sp : AC.ACParams}
+private theorem pendingReady_onBlock {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n binding))
     (st : State sp ro binding) (B : Blk sp)
     (ha : WrappersAccounted (fun o => o ∈ seen.flatMap Obj.parts) st)
@@ -281,7 +281,7 @@ theorem pendingReady_mono {n : Nat} {seen seen' cs : List (Wire n binding)}
   exact hh.elim (fun hh => Or.inl (hseen c hh)) Or.inr
 
 /-- Handler cut folds preserve exact map/queue accounting. -/
-theorem wrappersAccounted_apply {sp : AC.ACParams}
+private theorem wrappersAccounted_apply {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n binding → Prop)
     (st : State sp ro binding)
     (origin : Option (Wire sp.n binding))
@@ -333,7 +333,7 @@ theorem wrappersAccounted_apply {sp : AC.ACParams}
     exact hp
 
 /-- A receipt's canonical child is held independently of whether its handler accepts it. -/
-theorem pendingReady_processOne {sp : AC.ACParams}
+private theorem pendingReady_processOne {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n binding))
     (io : VoteAuth sp.n binding) (st : State sp ro binding) (hs : List (Header Info × Nat))
     (o : Wire sp.n binding)
@@ -361,7 +361,7 @@ theorem pendingReady_processOne {sp : AC.ACParams}
   · exact hr
 
 /-- Receipt handlers retain exact map accounting; relay-buffer updates do not affect it. -/
-theorem wrappersAccounted_processOne {sp : AC.ACParams}
+private theorem wrappersAccounted_processOne {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n binding → Prop)
     (io : VoteAuth sp.n binding) (st : State sp ro binding) (hs : List (Header Info × Nat))
     (o : Wire sp.n binding)
@@ -413,7 +413,7 @@ theorem pendingReady_process {sp : AC.ACParams}
 /-- Own recording preserves readiness provided the actual decoded own block is held.
 The caller must identify the generated canonical block; arbitrary signed headers do not
 justify this premise merely by having been released. -/
-theorem pendingReady_recordOwn {sp : AC.ACParams}
+private theorem pendingReady_recordOwn {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (seen : List (Wire sp.n binding))
     (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat))
     (ha : WrappersAccounted (fun c => c ∈ seen.flatMap Obj.parts) st)
@@ -434,7 +434,7 @@ theorem pendingReady_recordOwn {sp : AC.ACParams}
 
 /-- A generated proposal's decoded block has exactly the signed object just released.
 This is an encoding identity, independent of payload validity and the release digest. -/
-theorem proposal_blockObj {sp : AC.ACParams}
+private theorem proposal_blockObj {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (s : Slot)
     (par : ParentRef) (info : Info) (cs : List (Wire sp.n binding))
     (hp : (propose st s).2 = some (par, info, cs))
@@ -453,7 +453,7 @@ theorem proposal_blockObj {sp : AC.ACParams}
 
 /-- The engine's proposal candidate supplies the canonical-child premise used by own
 recording. It is identified from the actual duty, not inferred from an arbitrary header. -/
-theorem signedCandidate_propose_canonical {V : Type} [Fintype V] {E : Env V} (S : Setup)
+private theorem signedCandidate_propose_canonical {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
     (o : (protoOf (compiled (goldilocks S)) E).Object)
@@ -477,7 +477,7 @@ theorem signedCandidate_propose_canonical {V : Type} [Fintype V] {E : Env V} (S 
     (rho.ownKey v) (encodeTxs nd.st.2) d atts p hdec
 
 /-- Own recording preserves durable map provenance, including a new accepted block. -/
-theorem wrappersAccounted_recordOwn {sp : AC.ACParams}
+private theorem wrappersAccounted_recordOwn {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (prior : Wire sp.n binding → Prop)
     (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat))
     (ha : WrappersAccounted prior st) : WrappersAccounted prior (recordOwn st o hs) := by
@@ -491,7 +491,7 @@ theorem wrappersAccounted_recordOwn {sp : AC.ACParams}
 
 /-- A successful canonical own release supplies its child holding at the actual updated
 seen prefix; map accounting and ordered readiness survive its `recordOwn` call together. -/
-theorem pendingReady_own_release {sp : AC.ACParams}
+private theorem pendingReady_own_release {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (seen : List (Wire sp.n binding)) (st : State sp ro binding) (o : Wire sp.n binding)
     (hs : List (Header Info × Nat))
@@ -710,7 +710,7 @@ theorem onBlock_queues_acceptance_parent {sp : AC.ACParams}
 
 /-- A successful block call grows the held-block map and wrapper map at the same root.
 All other roots keep their existing wrappers; refusal leaves both maps unchanged. -/
-theorem wrappersCover_onBlock {sp : AC.ACParams}
+private theorem wrappersCover_onBlock {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (B : Blk sp)
     (hcover : WrappersCover st) :
     WrappersCover (apply st none (Node.onBlock st.self st.node st.now B)) := by

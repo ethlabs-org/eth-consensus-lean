@@ -36,7 +36,7 @@ theorem forwardQueueCanonical_iff {sp : AC.ACParams}
         q.2 = p.toList ++ [blockObj sp B] := by rfl
 
 /-- The handler's acceptance fold preserves canonical payload shape. -/
-theorem forwardQueueCanonical_apply {sp : AC.ACParams}
+private theorem forwardQueueCanonical_apply {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) origin r
     (h : ForwardQueueCanonical st) : ForwardQueueCanonical (apply st origin r) := by
   rw [forwardQueueCanonical_iff] at h ⊢
@@ -46,7 +46,7 @@ theorem forwardQueueCanonical_apply {sp : AC.ACParams}
   · exact ⟨p, B, congrArg Prod.snd he⟩
 
 /-- Canonical queue payloads become canonical signed forwarding objects. -/
-theorem forwardQueueCanonical_pending {sp : AC.ACParams}
+private theorem forwardQueueCanonical_pending {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
     (h : ForwardQueueCanonical st) :
     ∀ o ∈ pendingWrappers st, ∃ t p B, o = forwardObj sp st.self t p B := by
@@ -92,7 +92,7 @@ private theorem canonical_poll {sp : AC.ACParams}
 
 /-- The actual event-boundary queue always has canonical block payload shape. This
 structural invariant needs no execution-validity or publication-success premise. -/
-theorem stateAt_forwardQueueCanonical {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+private theorem stateAt_forwardQueueCanonical {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) : ∀ i, ForwardQueueCanonical (stateAt S rho hn v i)
   | 0 => by
@@ -144,7 +144,7 @@ theorem stateAt_forwardQueueCanonical {V : Type} [Fintype V] [DecidableEq V] {E 
 
 /-- The selected poll discharges pending accounting into holdings and leaves an empty,
 therefore ready, block queue. The later vote suffix needs no success premise. -/
-theorem dutyStep_poll_inventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
+private theorem dutyStep_poll_inventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (t : Nat)
     (hsel : rho.ownKey v ∈ rho.sel .poll) (hself : (shapeOf S hn nd).self = rho.ownKey v)
@@ -170,7 +170,7 @@ theorem dutyStep_poll_inventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
     cases hi
 
 /-- The queue-shape component survives every actual duty, including failed releases. -/
-theorem dutyStep_forwardQueueCanonical {V : Type} [Fintype V] {E : Env V} (S : Setup)
+private theorem dutyStep_forwardQueueCanonical {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
     (d : (protoOf (compiled (goldilocks S)) E).Duty)
@@ -187,7 +187,7 @@ theorem dutyStep_forwardQueueCanonical {V : Type} [Fintype V] {E : Env V} (S : S
 
 /-- All actual duties preserve the holdings/pending invariant. Committee duties are no-ops; the
 poll-proposal step cannot enqueue block wrappers. -/
-theorem dutyStep_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
+private theorem dutyStep_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
     (d : (protoOf (compiled (goldilocks S)) E).Duty)
@@ -240,7 +240,7 @@ theorem dutyStep_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
     · exact ⟨ha, hr⟩
 
 /-- Fold actual duties while threading their intermediate holdings and queue state. -/
-theorem runDuties_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
+private theorem runDuties_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
     (ds : List (protoOf (compiled (goldilocks S)) E).Duty)
@@ -266,7 +266,7 @@ theorem runDuties_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup
       (fun st t h => (pollBatch_self st t).trans h) v nd d hself
 
 /-- Unsigned gossip cannot record a proposer item, so it preserves both components. -/
-theorem gossip_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
+private theorem gossip_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (origin : Fin (Fintype.card V)) (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
     (t : Time)
@@ -284,7 +284,7 @@ theorem gossip_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
   cases he
 
 /-- Tick execution threads the same invariant through its clock, actual duties and gossip. -/
-theorem tick_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
+private theorem tick_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (t : Time)
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
@@ -315,7 +315,7 @@ theorem tick_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
 
 /-- Receipt processing starts with the received object's full recursive closure already
 held, then the actual delivery duties and gossip preserve inventory. -/
-theorem deliver_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
+private theorem deliver_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
     (o : (protoOf (compiled (goldilocks S)) E).Object) (t : Time)
@@ -363,7 +363,7 @@ theorem deliver_forwardInventory {V : Type} [Fintype V] {E : Env V} (S : Setup)
 
 /-- Reachable engine states account for each durable wrapper by an actual holding or
 an exact pending candidate, and every pending child is ready at its ordered prefix. -/
-theorem stateBefore_forwardInventory {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+private theorem stateBefore_forwardInventory {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) : ∀ i,
     WrappersAccounted (sp := S.params (pubOf E) hn)
@@ -434,7 +434,7 @@ theorem stateBefore_forwardInventory {V : Type} [Fintype V] [DecidableEq V] {E :
 
 /-- The delivery poll's immutable input is ready directly from the reachable inventory.
 The received object's recursive children are held before any of its calls run. -/
-theorem delivery_pendingReady {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+private theorem delivery_pendingReady {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) (i : Nat) (o : (protoOf (compiled (goldilocks S)) E).Object) :
     PendingReady ((rho.stateBefore i v).seen ++ [o])
@@ -457,7 +457,7 @@ theorem delivery_pendingReady {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
 /-- Every block wrapper pending after an actual receipt passes the delivery poll.
 This is release completeness for the queue, not yet completeness for acceptance cuts. -/
-theorem delivery_pending_released {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+private theorem delivery_pending_released {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {v : V} {i : Nat}
     {o : (protoOf (compiled (goldilocks S)) E).Object} {t : Time}
@@ -496,7 +496,7 @@ theorem delivery_pending_released {V : Type} [Fintype V] [DecidableEq V] {E : En
 
 /-- A real batch release has a successful candidate occurrence at its actual prefix.
 The index counts rejected candidates too, so it is suitable for publication order. -/
-theorem releaseAll_successful_index {pub : Public} {O : Type} (P : Protocol pub O)
+private theorem releaseAll_successful_index {pub : Public} {O : Type} (P : Protocol pub O)
     (hash : P.Item → Nat) (x : Key pub) (nd : Model.Node P) (cs : List P.Object)
     (o : P.Object) (ho : o ∈ (Model.releaseAll P hash x nd cs).2) :
     ∃ i, cs[i]? = some o ∧
@@ -525,7 +525,7 @@ theorem releaseAll_successful_index {pub : Public} {O : Type} (P : Protocol pub 
 
 /-- A release from an indexed actual batch gives a concrete publication occurrence,
 including its successful candidate prefix. No abstract publication premise is needed. -/
-theorem publication_of_batch_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+private theorem publication_of_batch_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (v : V) (i j : Nat)
     (t : Time) (he : rho.SendsAt v i t)
     (b : ReleaseBatch (protoOf (compiled (goldilocks S)) E))
@@ -549,7 +549,7 @@ theorem publication_of_batch_release {V : Type} [Fintype V] [DecidableEq V] {E :
 
 /-- Inverting duty releases retains the successful batch output, not just candidate
 membership, so rejected duplicate candidates cannot become publication witnesses. -/
-theorem runDuties_released_batch {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+private theorem runDuties_released_batch {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (v : V) :
     ∀ ds (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) o,
     o ∈ (rho.runDuties v nd ds).2 →
@@ -579,7 +579,7 @@ theorem runDuties_released_batch {V : Type} [Fintype V] [DecidableEq V] {E : Env
       exact ⟨b, List.mem_cons_of_mem _ hb, ho⟩
 
 /-- Every event release has an actual publication occurrence in that event. -/
-theorem publication_of_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+private theorem publication_of_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) {v : V} {i : Nat} {t : Time}
     (he : rho.SendsAt v i t) (o : (protoOf (compiled (goldilocks S)) E).Object)
     (ho : o ∈ rho.releasesAt i) :
@@ -625,7 +625,7 @@ theorem delivery_pending_publication {V : Type} [Fintype V] [DecidableEq V] {E :
     (delivery_pending_released S rho hn hv he c hc)
 
 /-- Enqueuing a new acceptance never removes an earlier pending block wrapper. -/
-theorem queueAccepted_forwards_mono {sp : AC.ACParams}
+private theorem queueAccepted_forwards_mono {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (B : Blk sp) :
     st.forwards ⊆ (queueAccepted st B).forwards := by
   unfold queueAccepted
@@ -638,7 +638,7 @@ theorem queueAccepted_forwards_mono {sp : AC.ACParams}
     | some p => exact fun _ h => List.mem_append_left _ h
 
 /-- Handler folds retain pending block wrappers even when later calls refuse input. -/
-theorem apply_forwards_mono {sp : AC.ACParams}
+private theorem apply_forwards_mono {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) origin r :
     st.forwards ⊆ (apply st origin r).forwards := by
   have hf : ∀ cs : List (Cut (goldilocksNode sp ro)), ∀ s : State sp ro binding,
@@ -663,7 +663,7 @@ theorem apply_forwards_mono {sp : AC.ACParams}
   exact hf r.2 st
 
 /-- Recursive receipt calls retain every wrapper already queued in this event. -/
-theorem processOne_forwards_mono {sp : AC.ACParams}
+private theorem processOne_forwards_mono {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding)
     (st : State sp ro binding) hs o :
     st.forwards ⊆ (processOne io hs st o).forwards := by
@@ -679,7 +679,7 @@ theorem processOne_forwards_mono {sp : AC.ACParams}
   · exact List.Subset.refl _
 
 /-- A wrapper queued at an intermediate receipt cut survives the remaining traversal. -/
-theorem process_fold_forwards_mono {sp : AC.ACParams}
+private theorem process_fold_forwards_mono {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding)
     (hs : List (Header Info × Nat))
     (xs : List (Wire sp.n binding)) (st : State sp ro binding) :
@@ -690,7 +690,7 @@ theorem process_fold_forwards_mono {sp : AC.ACParams}
 
 /-- A successful block call in a receipt leaves its exact stamped child in the final
 queue, even when subsequent calls are refused or queue further children. -/
-theorem processOne_acceptance_pending {sp : AC.ACParams}
+private theorem processOne_acceptance_pending {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding)
     (st : State sp ro binding) hs o (B : Blk sp)
     (tail : List (Wire sp.n binding)) (hcover : WrappersCover st)
@@ -764,7 +764,7 @@ theorem deliverRecs_acceptance_pending {sp : AC.ACParams}
 
 /-- Every intermediate duty prefix of a tick inherits the reachable forwarding inventory.
 No release-success premise is supplied by the caller. -/
-theorem tick_duty_prefix_inventory {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+private theorem tick_duty_prefix_inventory {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) (i : Nat) (t : Time)
     (ds : List (protoOf (compiled (goldilocks S)) E).Duty) :
@@ -790,7 +790,7 @@ theorem tick_duty_prefix_inventory {V : Type} [Fintype V] [DecidableEq V] {E : E
 
 /-- A poll following any actual tick-duty prefix releases all its queued block wrappers.
 Neither the ordinary emission nor the later vote suffix adds a caller guard premise. -/
-theorem tick_duty_prefix_poll_released {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+private theorem tick_duty_prefix_poll_released {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) (v : V) (i : Nat) (t : Time)
     (ds : List (protoOf (compiled (goldilocks S)) E).Duty) :
@@ -870,7 +870,7 @@ theorem tick_pending_publication {V : Type} [Fintype V] [DecidableEq V] {E : Env
     (tick_duty_prefix_poll_released S rho hn hv v i t pre c hc)
 
 /-- A successful singleton batch really records its sole candidate. -/
-theorem releaseAll_singleton_recorded {pub : Public} {O : Type} (P : Protocol pub O)
+private theorem releaseAll_singleton_recorded {pub : Public} {O : Type} (P : Protocol pub O)
     (hash : P.Item → Nat) (x : Key pub) (nd : Model.Node P) (o : P.Object)
     (ho : o ∈ (Model.releaseAll P hash x nd [o]).2) :
     (Model.releaseAll P hash x nd [o]).1 =
@@ -896,7 +896,7 @@ theorem tick_duty_prefix_wrappersCover {V : Type} [Fintype V] [DecidableEq V] {E
 
 /-- A successful proposal-step block cut releases its canonical block in that duty.
 The carried-object premise is the existing proposal release contract. -/
-theorem dutyStep_propose_accepted_release {V : Type} [Fintype V] {E : Env V}
+private theorem dutyStep_propose_accepted_release {V : Type} [Fintype V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
     (hsel : rho.sel (.proposer s) = {runProposer S rho hn s})
@@ -946,7 +946,7 @@ theorem dutyStep_propose_candidate_eq {V : Type} [Fintype V] {E : Env V}
 
 /-- An accepting proposal cut is the own block handler run after `acProposal`.
 The proposal duty itself does not change the handler's clock or validator. -/
-theorem proposal_acceptance_recording_handler {V : Type} [Fintype V] {E : Env V}
+private theorem proposal_acceptance_recording_handler {V : Type} [Fintype V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (s : Slot)
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
@@ -1005,7 +1005,7 @@ theorem recordOwn_canonical_block {V : Type} [Fintype V] {E : Env V}
 
 /-- A released canonical proposal accepted by its actual proposal step enters the
 forward queue. Receipt-decoder validity is not a premise of this own-recording bridge. -/
-theorem dutyStep_propose_accepted_pending {V : Type} [Fintype V] {E : Env V}
+private theorem dutyStep_propose_accepted_pending {V : Type} [Fintype V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (v : V) (nd : Model.Node (protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
     (hself : (shapeOf S hn nd).self = rho.ownKey v)
@@ -1038,7 +1038,7 @@ theorem dutyStep_propose_accepted_pending {V : Type} [Fintype V] {E : Env V}
   simp only [propose_self, propose_now, forwardObj]
 
 /-- Proposal cuts carry the digest and parent of the block just constructed by the node. -/
-theorem proposal_acceptance_block_fields {sp : AC.ACParams}
+private theorem proposal_acceptance_block_fields {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)

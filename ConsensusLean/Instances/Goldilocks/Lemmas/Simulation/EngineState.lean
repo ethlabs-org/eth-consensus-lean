@@ -79,7 +79,8 @@ theorem shapeOf_act_pollPropose (st : (Model.protoOf (compiled (goldilocks S)) E
 
 omit [DecidableEq V] in
 /-- The engine's `poll` duty is the shape's `poll`. -/
-theorem shapeOf_act_poll (st : (Model.protoOf (compiled (goldilocks S)) E).State) (t : Nat) :
+private theorem shapeOf_act_poll
+    (st : (Model.protoOf (compiled (goldilocks S)) E).State) (t : Nat) :
     ((Model.protoOf (compiled (goldilocks S)) E).act st (.poll t)).1.1 hn =
       (pollBatch (st.1 hn) t (S.release (pubOf E))).1 := by
   change ((goldilocks S (pubOf E)).pollBatch st.1 t).1 hn = _
@@ -200,7 +201,7 @@ theorem releaseAll_shape_eq (k : Fin (Fintype.card V)) :
 
 omit [DecidableEq V] in
 /-- A poll step's signed candidate is a data body, which `recordOwn` ignores. -/
-theorem signedCandidate_poll_recordOwn (v : V) (t : Nat)
+private theorem signedCandidate_poll_recordOwn (v : V) (t : Nat)
     (o : List (Body × List (Model.protoOf (compiled (goldilocks S)) E).Object)) :
     ∀ c ∈ rho.signedCandidate v (.poll t) (o.map fun bc => (.data bc.1, bc.2)),
       ∀ (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) hs, recordOwn st c hs = st := by
