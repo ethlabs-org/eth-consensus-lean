@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Safety
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.ReadPoint
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.State
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Regimes.Inclusion
