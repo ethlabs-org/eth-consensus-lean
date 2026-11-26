@@ -17,7 +17,7 @@ open AsChainShape Simulation Blocks Shape
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
 
 /-- A ready designated duty produces a proposal, with honesty at its actual production cut. -/
-theorem duty_proposal_run_at (run : (Sys (goldilocks S) V).Run)
+private theorem duty_proposal_run_at (run : (Sys (goldilocks S) V).Run)
     (hn : 1 ≤ Fintype.card V)
     (hv : (Sys (goldilocks S) V).Valid run) (hnc : ¬ run.2.HashCollision)
     {s : Nat} {hold : Time} (hs : 0 < s)

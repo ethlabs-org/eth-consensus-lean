@@ -43,7 +43,7 @@ theorem honest_of_quorum_two (hf : 2 * Hᶜ.ncard < sp.n) {Q : Finset (Fin sp.n)
 
 /-- **The honest `Σ.F` and `Σ.J` at a cut within `b` are on the chain of the origins within `b`**,
 with the count `2 f < n` in place of a slot count. -/
-theorem caches_on_chain_of_two {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+private theorem caches_on_chain_of_two {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {b : Time}
     (hi : ∀ k < i, tr.time k ≤ b) :
@@ -92,7 +92,8 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A block on the chain of the origins (within `b'`) of the prefix through `d` is on the chain of
 the origins within `b'` of the run. -/
-theorem onOriginChainWithin_of_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+private theorem onOriginChainWithin_of_upTo {ini}
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {d b' : Time}
     (hd : 0 ≤ d) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : Compose.OnOriginChainWithin (tr.upTo d) (H d) B b') : OnOriginChainWithin tr H B b' := by
