@@ -798,7 +798,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NonfinalSupp
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageArmingSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageGateSlot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageRead
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnProposalPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OwnReleaseProcessing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ProposerGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.QuerySlot
