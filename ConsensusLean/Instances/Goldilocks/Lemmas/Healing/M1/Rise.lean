@@ -1,5 +1,8 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Drain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AnchorPrefix
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FreshLock
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.PreAdvanceFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalCrosses
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
