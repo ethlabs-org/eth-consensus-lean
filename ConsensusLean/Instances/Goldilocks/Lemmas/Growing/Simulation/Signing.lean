@@ -65,7 +65,7 @@ private theorem released_poll_at {v : V} {i p : Nat} {nd}
 
 /-- Any actual attestation release has an actual engine signing. This is purely
 node-local: it needs neither constant faults nor honesty after the sending event. -/
-theorem released_att_signed_at {v : V} {i : Nat} {t : Time}
+private theorem released_att_signed_at {v : V} {i : Nat} {t : Time}
     (hs : rho.SendsAt v i t) {a : FG.Att (Fintype.card V)}
     (ha : attObj a ∈ rho.releasesAt i) :
     ∃ j q, EngineSignsAt S rho hn v j q a := by

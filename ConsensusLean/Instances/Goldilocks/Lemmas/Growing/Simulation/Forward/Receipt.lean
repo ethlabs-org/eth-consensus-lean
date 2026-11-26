@@ -57,7 +57,7 @@ theorem received_forward_stamp_le_at (hv : rho.ExecutionValid)
 
 /-- A received first-release vote envelope whose signer is honest at its stamp is processed in
 the delivery's group, no earlier than the stamp. -/
-theorem received_voteForward_processAt_at (hv : rho.ExecutionValid)
+private theorem received_voteForward_processAt_at (hv : rho.ExecutionValid)
     {source i : Nat} {x : Fin (Fintype.card V)} {v : V} {τ u : Time}
     {receipt : Wire (Fintype.card V) S.vote} {m : AC.Vote (Fintype.card V)} {z : Nat}
     (hcheck : rho.verify (m.val, S.vote.voteRole m.slot, encodeVote m) z = true)

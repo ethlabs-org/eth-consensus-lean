@@ -44,7 +44,7 @@ private theorem sendsAt_time_le (hv : rho.ExecutionValid) {j j' : Nat} {w w' : V
 /-- **Wrappers in a genuine release.** Every forwarding wrapper signed by `x` and contained in an
 object that `x` released at its event `j₀` at `t`, while honest at `t`, was itself accepted by
 `x` before the end of `j₀`, at its stamp `tq ≤ t`. -/
-theorem released_forward_source_acceptance_at (hv : rho.ExecutionValid)
+private theorem released_forward_source_acceptance_at (hv : rho.ExecutionValid)
     {j₀ : Nat} {x : Fin (Fintype.card V)} {t : Time} {o q : Wire (Fintype.card V) S.vote}
     (hs : rho.SendsAt (rho.key x) j₀ t) (ho : o ∈ rho.releasesAt j₀)
     (hx : rho.key x ∉ rho.faultyAt t) (hq : Model.Obj.Contains o q)

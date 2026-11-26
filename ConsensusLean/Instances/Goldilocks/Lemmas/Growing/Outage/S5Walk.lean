@@ -206,7 +206,7 @@ theorem vote_extends_of_hi_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n
 
 /-- **Lo is `Σ.J ⪯ P`**: `Σ.J`, read at a time at which its node is honest after every earlier
 cut, is compatible with `P` (OB-F) and not strictly above it. -/
-theorem J_anc_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} {k : Nat}
+private theorem J_anc_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} {k : Nat}
     {t : Time} (hk : k ≤ i) (ht0 : 0 ≤ t) (ht : ∀ k' < k, tr.time k' ≤ t) (hy : y ∈ H t)
     (hLo : ¬ HiAt tr H D.P y k) :
     Anc (tr.HonestBlocksAt H) (tr.state y k).fg.J D.P := by
