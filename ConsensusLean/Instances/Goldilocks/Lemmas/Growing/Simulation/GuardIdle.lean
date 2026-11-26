@@ -68,30 +68,6 @@ private theorem gossipRefusals_eq_nil (k : Fin (Fintype.card V))
     obtain ⟨mc, -, rfl⟩ := Model.mem_gossipCandidates.mp hc
     exact protects_of_not_att S k seen _ fun _ _ h => by cases h) _
 
-omit [DecidableEq V] in
-/-- `signedCandidate` signs a concatenation part by part. -/
-private theorem signedCandidate_append (v : V)
-    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty)
-    (a b : List (Model.Msg (Model.protoOf (compiled (goldilocks S)) E).Item
-      (Model.protoOf (compiled (goldilocks S)) E).Body ×
-        List (Model.protoOf (compiled (goldilocks S)) E).Object)) :
-    rho.signedCandidate v d (a ++ b) = rho.signedCandidate v d a ++ rho.signedCandidate v d b := by
-  unfold Model.Run.signedCandidate
-  split <;> simp [List.filterMap_append]
-
-omit [DecidableEq V] in
-/-- `signedCandidate` signs at most one candidate per message. -/
-private theorem signedCandidate_length_le (v : V)
-    (d : (Model.protoOf (compiled (goldilocks S)) E).Duty)
-    (a : List (Model.Msg (Model.protoOf (compiled (goldilocks S)) E).Item
-      (Model.protoOf (compiled (goldilocks S)) E).Body ×
-        List (Model.protoOf (compiled (goldilocks S)) E).Object)) :
-    (rho.signedCandidate v d a).length ≤ a.length := by
-  unfold Model.Run.signedCandidate
-  split
-  · exact List.length_filterMap_le _ _
-  · simp
-
 /-- **No duty of an actual event prefix has a refused candidate.** Every attestation candidate of a
 poll's batch, its ordinary emission or a flushed held attestation, is an engine signing, checked
 against the prefix's `seen` plus the batch's earlier releases, where the guard admits it. Every

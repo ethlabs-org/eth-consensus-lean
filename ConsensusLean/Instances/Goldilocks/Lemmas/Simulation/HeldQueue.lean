@@ -57,10 +57,6 @@ theorem fgSigned_eq (st : State sp ro binding) : fgSigned st =
       ((Node.acToFG st.node st.now).1.fg.attest (Node.acToFG st.node st.now).1.record st.self
         C).map Prod.fst := by rfl
 
-/-- The signed attestation does not read the held queue. -/
-theorem fgSigned_held (st : State sp ro binding) (l : List (FG.Att sp.n)) :
-    fgSigned { st with held := l } = fgSigned st := by rfl
-
 /-! ## The steps that keep `held` -/
 
 /-- Applying handler cuts keeps the held queue. -/
