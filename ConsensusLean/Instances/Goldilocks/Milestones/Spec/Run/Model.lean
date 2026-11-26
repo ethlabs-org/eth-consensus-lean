@@ -49,7 +49,7 @@ trace a run of the protocol. Faulty nodes have no cuts: what they send is an inp
   `max(τ, w_y) + Δ'` for a delivery parameter `Δ'` (`Δ` for blocks and AC messages, `Δ_F` for
   attestations), and the outputs at a cut (claims §"Outputs").
 
-Premises (`Sync`, `GST`, `Sleepy`, `Healthy`) are in `Spec/Run/Premises`, `NoColl` over a run
+Premises (`Sync`, `GST`, `Sleepy`, `Healthy`) are in `Spec/Run/GenericPremises`, `NoColl` over a run
 (`Compose.NoCollRun`) in `Statements/Compose/Run`; the
 concrete Goldilocks run (the node with `goldilocksAC`) in `Spec/Run/Goldilocks`; the
 projections onto the component traces in `Spec/Run/Projection`. -/
