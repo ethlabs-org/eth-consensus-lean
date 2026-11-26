@@ -23,6 +23,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyRepairTiming
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Head
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 
 public section
 

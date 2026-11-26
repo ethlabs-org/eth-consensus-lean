@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.ServedBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.ServedSteps
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Gate
