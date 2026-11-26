@@ -23,13 +23,6 @@ private theorem contract_heal_ge_reset_late_within (cap : Capability) (X : ℕ+)
   have := A.six_le_δt
   omega
 
-/-- The heal margin covers the reset reserve `R + 8k + 4X + 34` (the `Gs = 0` form of the
-signing-gap fit of `healthy_preparation_initialize_late_at`). -/
-theorem contract_heal_ge_reset_late (cap : Capability) (X : ℕ+) :
-    (contract_catchUp S A : Nat) + (healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 34) + 3 ≤
-      contract_heal S A cap X := by
-  simpa only [mul_zero, add_zero] using contract_heal_ge_reset_late_within S A cap X 0
-
 set_option linter.unusedVariables false in
 /-- An actual reset seed, a base slot and a repairing opening before the heal deadline, with `8Δ`
 of the heal margin to spare after the reserve: the query is at most `ready + (R + 8k + 20)Δ` and the

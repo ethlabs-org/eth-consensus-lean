@@ -231,12 +231,6 @@ theorem admitVote_held (A : ACState sp.n) (t : Time) (v : Vote sp.n)
 theorem equivocators_mono {S T : Set (Vote sp.n)} (h : S ⊆ T) : equivocators S ⊆ equivocators T :=
   fun _ ⟨x, hx, y, hy, hxy, hxi, hyi⟩ => ⟨x, h hx, y, h hy, hxy, hxi, hyi⟩
 
-/-- "Held or equivocating" is kept as the pools grow. -/
-theorem held_of_grows {A A' : ACState sp.n} (hg : Grows A A') {v : Vote sp.n}
-    (h : v ∈ A.pool v.slot ∨ v.val ∈ equivocators {x | x ∈ A.pool v.slot}) :
-    v ∈ A'.pool v.slot ∨ v.val ∈ equivocators {x | x ∈ A'.pool v.slot} :=
-  h.imp (hg _ _) fun he => equivocators_mono (fun x (hx : x ∈ A.pool v.slot) => hg _ x hx) he
-
 end Grows
 
 /-! ### Stamps between restarts

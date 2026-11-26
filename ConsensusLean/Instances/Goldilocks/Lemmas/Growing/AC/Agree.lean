@@ -285,31 +285,6 @@ theorem view_agree_window_before
     (hr.antitone (le_max_right _ _) hp) hy
     hpp hprop' hti hc' hes hP (hsync.upTo hr) ha hb hjb hyp hpy
 
-theorem view_agree_before
-    {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
-    {proposer : Nat → Fin sp.n} (hrun : ACRun proposer tr H U)
-    {s : Nat} {p y : Fin sp.n} {i j : Nat}
-    {ℓp ℓy : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
-    (hp : p ∈ H (max (tr.time i) (tr.time j))) (hy : y ∈ H (tr.time j))
-    (hpp : p = proposer (s + 1)) (hprop : ProposalAt tr p i ℓp pay)
-    (hti : tr.time i = sp.ts (s + 1 : Nat)) (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
-    (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
-    {b : Time} (hsync : ServiceBefore H U b tr) (hb : tr.time i ≤ b) (hjb : tr.time j ≤ b)
-    (hyp : ∀ Hd ∈ ℓy.frame.tree, Hd.slot ≤ s →
-      e.readPoint.blockStamp Hd.root < ETime.of (freeze sp (s + 1)) → Anc U ℓp.frame.F Hd →
-        Hd ∈ ℓp.frame.tree)
-    (hpy : ∀ x ∈ pay.2, ∀ Hd ∈ ℓp.frame.tree, Hd.root = x.head → Anc U ℓy.frame.F Hd →
-      Hd ∈ ℓy.frame.tree) :
-    equivocators (View.ofLists pay).votes =
-        equivocators (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes ∧
-      voters (View.ofLists pay).votes =
-        voters (mergedVoteView sp e.readPoint ℓy.frame (s + 1)).votes ∧
-      ∀ X ∈ ℓp.frame.tree, X ∈ ℓy.frame.tree →
-        supporters ℓp.frame (View.ofLists pay) s X =
-          supporters ℓy.frame (mergedVoteView sp e.readPoint ℓy.frame (s + 1)) s X :=
-  view_agree_window_before hrun hp hy hpp hprop hti hc hes hP hsync
-    (by have := sp.toParams.hΔ; simp only [ACParams.ts]; positivity) hb hjb hyp hpy
-
 theorem view_agree
     {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     {proposer : Nat → Fin sp.n} {ini} (hrun : ACRun proposer tr H U ini)
