@@ -7,9 +7,10 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.G
 
 /-! # Goldilocks milestone Healing under growing faults: the run-level statements (statements)
 
-The run-level healing vocabulary and HR.2 (`Statements/Healing/Run`) for a time-indexed honest
-set `H` (antitone), over `Growing.GoldilocksRun` (and, for HR.2, `Growing.FGLocalRun`): the
-definitions the growing healing proofs read. HR.1, HR.3, HR.4, H.2 (run), H.3 and H.4 are not
+The run-level healing vocabulary, HR.2 (`Statements/Healing/Run`) and G1.9 (b) (`CacheAcceptance`,
+the growing form of HR.5) for a time-indexed honest set `H` (antitone), over
+`Growing.GoldilocksRun` (and, for HR.2, `Growing.FGLocalRun`): the definitions the growing
+healing proofs read. HR.1, HR.3, HR.4, H.2 (run), H.3 and H.4 are not
 stated under growing faults. The definitions read the honest set as follows:
 
 * **who is honest where**: a node at a cut is honest at the time of the cut; a signer at its
@@ -102,6 +103,23 @@ def PhaseCount (P : Params) (ACP : Type) : Prop :=
         PhaseAt tr (H d) j m c' → c.rank ≤ c'.rank ∧ ∀ J, c.topJ = some J → c'.topJ = some J) ∧
       ∀ m, {i | tr.time (i + 1) ≤ d ∧ ∃ c c', PhaseAt tr (H d) i m c ∧
         PhaseAt tr (H d) (i + 1) m c' ∧ c ≠ c'}.encard ≤ 2
+
+/-- **G1.9 (b) under growing faults, cache acceptance.** In a Goldilocks run under growing
+faults, from any starts, under `NoColl`: at every acceptance of a block `B` by a node honest at
+that cut, with fewer than a third of the validators compromised by the cut (`3 f ≤ n − 1`, charged
+where it is consumed), `F* = σ[B].F` satisfies `F* ⪯ Σ.F` after that `fg_on_block` call. (The
+claims' reset and height bound are not needed, as in the static HR.5.) -/
+def CacheAcceptance : Prop :=
+  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+    (proposer : Nat → Fin sp.n)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
+    (tr : GoldilocksTrace sp ro) (ini : Fin sp.n → (goldilocksNode sp ro).State),
+    Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini →
+    Compose.NoCollRun dg tr →
+      ∀ y k B, y ∈ H (tr.time k) → 3 * (H (tr.time k))ᶜ.ncard ≤ sp.n - 1 →
+        tr.AcceptAt y k B →
+        ∀ Fs ∈ (tr.post k).fg.tree, Fs.root = ((tr.post k).fg.σ B.root).F →
+          (tr.post k).fg.Anc Fs (tr.post k).fg.F
 
 section Top
 

@@ -191,7 +191,7 @@ block); genesis takes an AC payload `acp₀` (never read). Restart keeps `Σ`, s
 stated: G0.3's "a block that leaves `Φ.tree` never returns" (it is `FrameNeverReturns` along the frames of
 `AcceptIsFrameStep`, with `U` the union of the trees, by `AcceptedTree`, `TreeGrows` and `FrameRealization`);
 G0.1 (store)'s "does not depend on the node, the arrival order or the time" (it follows from `ChainStateOfChain`
-under NoColl in F.3's form, and is stated with part 2, where two stores meet); G1.9 (b) (stated as HR.5, Healing, at every honest acceptance); G1.10's C1.1 scope (a)–(c) (Compose), and `Sync` over FG traces (with the statements that need it).
+under NoColl in F.3's form, and is stated with part 2, where two stores meet); G1.9 (b) (stated as HR.5, Healing, at every honest acceptance, and under growing faults as `Healing.Growing.CacheAcceptance`); G1.10's C1.1 scope (a)–(c) (Compose), and `Sync` over FG traces (with the statements that need it).
 Witnesses in `ConsensusLeanTest/Goldilocks/FGStore/Statements.lean`, kind (a): `init_reachable`, `accepts_b₁`, `idle_localRun`, `relay_localRun`.
 
 ## ACBase
@@ -523,6 +523,7 @@ HS.5's `Producer(A)` enter as conclusions (a), (b) of HR.3.
 | O.1 (node) | CLAIMS node O.1 (a conditional paper assembly) | **recovery under a bounded uniform pattern**: `Rec(ḡ + T_rec)`, and high honest `Σ.F` from `T_F = ḡ + T_rec − 12Δ` (not O.1's target) | Healing | `Consensus.Goldilocks.Healing.PatternRecovery` |
 | C1.3 | CLAIMS C1.3 | **recurring finalizing coverage**: from `R_*`, an honest proposal released in `[t, t + 4Δ(W + 1 + M)]` is ⪯ every honest `Σ.F` from `t + 4Δ(W + 1 + M) + Δ` | Healing | `Consensus.Goldilocks.Healing.FinalizingCoverage` |
 | HR.5 | CLAIMS HR.5 (G1.9 (b) after the reset) | **cache acceptance**: every honest acceptance of a block puts its `σ.F` under `Σ.F`. **Stronger than CLAIMS**: no reset, no time bound `≥ a_z` and no height bound `≥ H_z + 1` (the fault bound of `Healthy(g)` alone gives it), so G1.9 (b) holds at every height and time, not only at high heights after the reset | Healing | `Consensus.Goldilocks.Healing.CacheAcceptanceAfterReset` |
+| G1.9 (b), growing | CLAIMS G1.9 (b), HR.5 | **cache acceptance under growing faults**: every acceptance by a node honest at its cut puts its `σ.F` under `Σ.F`, when `3 f ≤ n − 1` with the faults counted at the cut; from any starts, no reset, time or height bound (at a constant honest set it implies HR.5). Proof `Healing.Growing.cache_acceptance` (`Lemmas/Growing/Healing/CacheAcceptance`) | Healing | `Consensus.Goldilocks.Healing.Growing.CacheAcceptance` |
 
 Modelling choices:
 

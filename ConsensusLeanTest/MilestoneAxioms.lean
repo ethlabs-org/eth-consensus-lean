@@ -11,6 +11,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.SleepyGrowth.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.OptimisticInclusion.Main
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.CacheAcceptance
 
 @[expose] public section
 
@@ -154,6 +155,14 @@ theorem Consensus.Goldilocks.Regimes.Growing.optimisticInclusion :
     Consensus.Goldilocks.Regimes.Growing.OptimisticInclusion :=
   Consensus.Goldilocks.Regimes.Growing.optimistic_inclusion
 
+/-! Goldilocks Healing: G1.9 (b), cache acceptance, under growing faults
+(`Healing/Growing/Run`, the growing form of HR.5). -/
+
+/-- Goldilocks Healing: `Growing.CacheAcceptance` (G1.9 (b)). -/
+theorem Consensus.Goldilocks.Healing.Growing.cacheAcceptance :
+    Consensus.Goldilocks.Healing.Growing.CacheAcceptance :=
+  Consensus.Goldilocks.Healing.Growing.cache_acceptance
+
 /-! Goldilocks Healing: C1.2, the AC outcome service (`Healing/Outcome`), and recovery (HR.5,
 node O.1, C1.3; `Healing/Recovery`). -/
 
@@ -261,6 +270,11 @@ info: 'Consensus.Goldilocks.Obligations.Growing.sleepyGrowFinite' depends on axi
 info: 'Consensus.Goldilocks.Regimes.Growing.optimisticInclusion' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Regimes.Growing.optimisticInclusion
+
+/--
+info: 'Consensus.Goldilocks.Healing.Growing.cacheAcceptance' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in #print axioms Consensus.Goldilocks.Healing.Growing.cacheAcceptance
 
 /-- info: 'Consensus.Goldilocks.Compose.outcomeService' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Compose.outcomeService
