@@ -92,7 +92,7 @@ theorem EtaReadyAbove.readyAbove {θ : ℚ} {η c t : Time} (h : p.EtaReadyAbove
 omit [DecidableEq V] in
 /-- Retaining through an earlier time `d ≤ e` keeps every validator ready at `t`, also at a shorter
 catch-up `c' ≤ c`: it charges fewer faults and asks for a shorter awake window. -/
-theorem readyAt_retain_subset {c c' t d e : Time} (hde : d ≤ e) (hc : c' ≤ c) :
+private theorem readyAt_retain_subset {c c' t d e : Time} (hde : d ≤ e) (hc : c' ≤ c) :
     (p.retain e).readyAt c t ⊆ (p.retain d).readyAt c' t := by
   intro v hv
   simp only [readyAt, Finset.mem_filter, Finset.mem_univ, true_and] at hv ⊢

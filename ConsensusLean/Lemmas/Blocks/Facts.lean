@@ -48,7 +48,7 @@ theorem slotTime_add (s j : Slot) :
 
 /-- Every window `(t, t + k · slotLen]` with `t ≥ 0` and `k ≥ 1` contains a slot
 start. -/
-theorem exists_slot_in_window {t : Time} (ht : 0 ≤ t) {k : Nat}
+private theorem exists_slot_in_window {t : Time} (ht : 0 ≤ t) {k : Nat}
     (hk : 1 ≤ k) :
     ∃ s, t < G.slotTime s ∧ G.slotTime s ≤ t + k * G.slotLen := by
   have hl := G.slotLen_pos

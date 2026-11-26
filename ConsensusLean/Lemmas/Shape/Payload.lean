@@ -41,7 +41,7 @@ theorem tickReach_mempool {S : ChainShape pub Out Info} {ds : List (compile S).D
 
 /-- A duty's item is a proposal whose payload is the encoded mempool of the
 state it acts from. -/
-theorem act_item_payload (S : ChainShape pub Out Info) (st : (compile S).State)
+private theorem act_item_payload (S : ChainShape pub Out Info) (st : (compile S).State)
     (d : (compile S).Duty) {h : Header Info} {cs}
     (hact : (.item h, cs) ∈ ((compile S).act st d).2) : h.input = encodeTxs st.2 := by
   change List.Mem (Msg.item h, cs) ((compile S).act st d).2 at hact

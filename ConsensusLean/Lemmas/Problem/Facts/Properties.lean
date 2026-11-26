@@ -25,7 +25,8 @@ theorem env (h : tr'.PrefixOf tr b) : tr'.point.env = tr.point.env := by
   rw [h.point]
 
 /-- A cut of the full trace at a time `≤ b` is a cut of the prefix. -/
-theorem le_cuts (h : tr'.PrefixOf tr b) {i : Nat} (hi : i ≤ tr.cuts) (hb : tr.cutTime i ≤ b) :
+private theorem le_cuts (h : tr'.PrefixOf tr b) {i : Nat} (hi : i ≤ tr.cuts)
+    (hb : tr.cutTime i ≤ b) :
     i ≤ tr'.cuts := by
   rw [h.cuts]; exact Nat.le_findGreatest hi hb
 
