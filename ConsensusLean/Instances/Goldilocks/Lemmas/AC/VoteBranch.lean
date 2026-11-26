@@ -447,12 +447,6 @@ theorem voteBranchAt_of_castAtU {u : Nat → Set Lock} (h : ACLocalRunU wm u H U
     rw [he, hR]
     exact hb
 
-/-- **A cast is a vote branch**, read at the emission's read point. -/
-theorem voteBranchAt_of_castAt (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
-    {e : Em sp FGP} (hc : CastAt tr y j ℓ e) : VoteBranchAt tr y j ℓ e.readPoint :=
-  voteBranchAt_of_castAtU h.toU hy hc
-
 /-- **A vote branch of a node that may vote in the slot is a cast**, read at the branch's read
 point, of the node's own vote of the slot. -/
 theorem castAt_of_voteBranchAtU {u : Nat → Set Lock} (h : ACLocalRunU wm u H U tr ini)

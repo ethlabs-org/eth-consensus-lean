@@ -187,7 +187,7 @@ theorem vote_held_before_early_at
   obtain ⟨hxi, ℓv, hcv, hev⟩ := hVoteAt_iff.1 hv
   have hr := (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun
   obtain ⟨Hd₀, hHd₀, hHd₀r, hHd₀s⟩ :=
-    AC.honest_head_frame hr hxi (ac_castAt_upTo.mpr ⟨le_rfl, hcv, hev⟩)
+    AC.honest_head_frameU hr.toU hxi (ac_castAt_upTo.mpr ⟨le_rfl, hcv, hev⟩)
   obtain rfl : Hd₀ = Hd := (honestBlocksAt_coherent hrun hnc).1
     ((frameIn_at hrun hnc hxi hcv).2 hHd₀) hHd (hHd₀r.trans hHdr.symm)
   have htj : tr.time i ≤ sp.ts q + sp.Δ := by

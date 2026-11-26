@@ -78,7 +78,7 @@ theorem readPoint_pool_of_ne {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) 
     {e : AC.Em sp FGP} (hc : AC.CastAt T y i ℓ e) {σ : Nat} (hσ : e.msg.slot ≠ σ) :
     (T.state y (i + 1)).pool σ = e.readPoint.pool σ ∧
       ∀ u : Vote sp.n, u.slot = σ → (T.state y (i + 1)).voteStamp u = e.readPoint.voteStamp u := by
-  rw [Trace.state_succ_of_call T hc.1, AC.post_of_castAt hr hy hc]
+  rw [Trace.state_succ_of_call T hc.1, AC.post_of_castAtU hr.toU hy hc]
   have hopt : ∀ A : AC.ACState sp.n,
       (AC.optimisticConfirmation sp A ℓ.frame (T.time i)).pool = A.pool ∧
         (AC.optimisticConfirmation sp A ℓ.frame (T.time i)).voteStamp = A.voteStamp := by
@@ -468,12 +468,12 @@ theorem voterBlockTree_of_relay_source
       exact AC.accept_ne_genesis sp hr hy ⟨ℓ, hc.1, hcall⟩ (heq.symm.trans hGr)
     rw [← AC.readPoint_blockStamp hr hy hc hne] at hbs
     have hBt := AC.frame_mem_of_between sp hr.coherent hΦ hΦU hDt hBD hF
-    exact AC.voterBlockTree_anc hr hini hy hc G ⟨hDt, Or.inl hbs⟩ B
+    exact AC.voterBlockTree_ancU hr.toU hini hy hc G ⟨hDt, Or.inl hbs⟩ B
       (AC.anc_tree_of_anc_U hr.coherent hΦ hΦU hBt hBD hDt)
   · have hDt := relay_mem_voterBlockTree_window_before hr hini hsync hcatch hx hy hq hqt
       hc hs hi hcatchTime (hF.trans hBD)
     have hBt := AC.frame_mem_of_between sp hr.coherent hΦ hΦU hDt.1 hBD hF
-    exact AC.voterBlockTree_anc hr hini hy hc D hDt B
+    exact AC.voterBlockTree_ancU hr.toU hini hy hc D hDt B
       (AC.anc_tree_of_anc_U hr.coherent hΦ hΦU hBt hBD hDt.1)
 
 /-- A raw writer's ancestor is available in a later voter's frozen block tree. -/

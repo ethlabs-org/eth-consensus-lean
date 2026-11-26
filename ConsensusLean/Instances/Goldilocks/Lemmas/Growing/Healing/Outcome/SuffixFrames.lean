@@ -65,7 +65,7 @@ theorem reset_winner_voter_tree_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)).localRun
     rw [RunTrace.upTo_projAC] at hr
     have hc' : AC.CastAt (tr.projAC.upTo (tr.time j)) y j ell e := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
-    exact AC.voterBlockTree_anc hr hrun.vstart hy hc' P hP.1 C hCP'
+    exact AC.voterBlockTree_ancU hr.toU hrun.vstart hy hc' P hP.1 C hCP'
   exact ⟨hCs, hfC', W, hW, hWv, hCP'.trans hPW⟩
 
 /-- A viable competitor of the proposal at a slot-`(s+1)` voter honest at its cast, a child of a

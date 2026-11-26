@@ -209,7 +209,7 @@ theorem frozen_viable_of_anchor_path (hrun : GoldilocksRun proposer dg H tr ini)
   have hrootXf := AC.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2
     hPhi.1.fcRoot_mem hrootX hXt
   obtain ⟨Y, hY, hvY, hPY⟩ := hP.2.2
-  exact ⟨AC.voterBlockTree_anc hr hrun.vstart hy hc P hP.1 X hXPf, hrootXf,
+  exact ⟨AC.voterBlockTree_ancU hr.toU hrun.vstart hy hc P hP.1 X hXPf, hrootXf,
     Y, hY, hvY, hXPf.trans hPY⟩
 
 /-- Actual pre-unlock live locks have genuine selection origins. Retain

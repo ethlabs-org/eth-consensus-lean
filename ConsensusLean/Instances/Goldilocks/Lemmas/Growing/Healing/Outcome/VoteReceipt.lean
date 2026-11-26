@@ -165,7 +165,7 @@ theorem high_origin_held_at_vote_at
     rw [Outcome.frame_of_call hp.run hy hc.1]
     exact ⟨hBt, store_anc_of_honest_anc_at hp.run hp.noColl
       (hp.run.time_nonneg k) (fun _ hq => hm hq.le) hy hF' hBt⟩
-  exact AC.voterBlockTree_anc hr hp.run.vstart hy hc' W hWtree B
+  exact AC.voterBlockTree_ancU hr.toU hp.run.vstart hy hc' W hWtree B
     (AC.anc_tree_of_anc_U hac.localRun.coherent hPhi hPhiU hBf hBW hWt)
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo

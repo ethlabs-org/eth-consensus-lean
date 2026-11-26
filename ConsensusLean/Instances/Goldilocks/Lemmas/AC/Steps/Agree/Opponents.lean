@@ -43,7 +43,8 @@ theorem frameIn_of_call (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {x
     FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U :=
   frameIn_of_callU (hr := hr.toU) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc)
 
-/-- `frame_accepted` with the unlock given. -/
+/-- Every block of an honest node's frame is genesis or was accepted by the node. With the unlock
+given. -/
 theorem frame_acceptedU
     {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
@@ -78,13 +79,6 @@ theorem frame_acceptedU
       · exact (ih j hj hc' X h).imp_right fun ⟨k, hk, h⟩ => ⟨k, hk.trans hj.le, h⟩
       · exact Or.inr ⟨i, le_rfl, ℓ, hc, h⟩
 
-/-- Every block of an honest node's frame is genesis or was accepted by the node. -/
-theorem frame_accepted (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr) {y : Fin sp.n}
-    (hy : y ∈ H) (i : Nat) :
-    ∀ {ℓ : ACLabel (goldilocksAC sp FGP ro)}, tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
-      X.root = sp.genesisRoot ∨ ∃ k ≤ i, tr.AcceptAt y k X :=
-  frame_acceptedU (hr := hr.toU) (y := y) (hy := hy) (i := i)
-
 /-- The genesis block of an honest node's initial frame is in `U`, with slot `0`. -/
 private theorem genesis_memU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
@@ -99,7 +93,8 @@ private theorem genesis_memU
     · exact ⟨Φ₀.F, hsub (htree ▸ rfl), hroot, hslot⟩
     · exact ih j hj hc'
 
-/-- `frameBlock_unique` with the unlock given. -/
+/-- An honest proposer of a slot `σ > 0` has one block of slot `σ` in the honest frames. With the
+unlock given. -/
 theorem frameBlock_uniqueU
     {ini} {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini) {σ : Nat} (hσ : σ ≠ 0)
     (hp : proposer σ ∈ H) {B B' : Blk sp.n FGP} (hB : HonestFrameBlock tr H B)
@@ -112,13 +107,6 @@ theorem frameBlock_uniqueU
     rw [← hXs, hr.coherent.1 ((frameIn_of_callU hr hy hc).2 hX) hG (hXr.trans hGr.symm), hGs]
   exact hrun.honest.one_block B B' hB hB' (hprop B hB hs ▸ hp)
     ((hprop B hB hs).trans (hprop B' hB' hs').symm) (hs.trans hs'.symm)
-
-/-- An honest proposer of a slot `σ > 0` has one block of slot `σ` in the honest frames. -/
-theorem frameBlock_unique (hrun : ACRun proposer tr H U) {σ : Nat} (hσ : σ ≠ 0)
-    (hp : proposer σ ∈ H) {B B' : Blk sp.n FGP} (hB : HonestFrameBlock tr H B)
-    (hB' : HonestFrameBlock tr H B') (hs : B.slot = σ) (hs' : B'.slot = σ) : B = B' :=
-  frameBlock_uniqueU (hrun := hrun.toU) (σ := σ) (hσ := hσ) (hp := hp) (B := B) (B' := B')
-      (hB := hB) (hB' := hB') (hs := hs) (hs' := hs')
 
 /-- A vote with a finite stamp whose head is a stamped block of the tree of slot at most the
 vote's is resolved. -/
@@ -181,7 +169,7 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
   intro FGP ro H U tr proposer hrun s p y i j ℓp ℓy pay e hp hy hpp hprop hti hc hs
     hPy hsync heq B hB hBs
   have hr := hrun.localRun
-  have hcount := count_declared_of_sync hr (fun _ => voteStart_initial _) hp hy
+  have hcount := count_declared_of_syncU hr.toU (fun _ => voteStart_initial _) hp hy
     hprop hti hc hs hPy hsync
   obtain ⟨hcp, hcall, d, hpay⟩ := hprop
   obtain ⟨hΦp, hΦpU⟩ := frameIn_of_call hr hp hcp
@@ -213,7 +201,7 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
   have hPsup : declaredSupportVotes P = (voteViewList (tr.state p i) ℓp.frame (s : Int) ⊤).2 := by
     simp only [declaredSupportVotes, hPpay]
   have huniq : ∀ X, HonestFrameBlock tr H X → X.slot = s + 1 → X = P := fun X hX hXs =>
-    frameBlock_unique hrun (by omega) (hpp ▸ hp) hX ⟨y, hy, j, ℓy, hc.1, hP⟩ hXs hPs
+    frameBlock_uniqueU hrun.toU (by omega) (hpp ▸ hp) hX ⟨y, hy, j, ℓy, hc.1, hP⟩ hXs hPs
   -- the proposal's votes are the proposer's slot-`s` pool
   have hpool : ∀ w ∈ (tr.state p i).pool s, (tr.state p i).voteStamp w < ⊤ := by
     intro w hw
@@ -242,7 +230,7 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
     (blockStamp_lt_of_acceptedBefore sp hr (fun _ => voteStart_initial _) hp hcp hHd
       (T := tr.time i + 1)
       (by
-        rcases frame_accepted hr hp i hcp Hd hHd with h | ⟨k, hk, h⟩
+        rcases frame_acceptedU hr.toU hp i hcp Hd hHd with h | ⟨k, hk, h⟩
         · exact Or.inl h
         · exact Or.inr ⟨k, h, by linarith [hr.time_mono hk]⟩)
       (fun k hk hrk => by

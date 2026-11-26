@@ -254,7 +254,7 @@ theorem FrameWindow.vote_head_eq_of_path_at {g ΔF b : Time} {s₀ s floor : Nat
       hcatch hnr hm hs₀ hz hdesignated hactual hPs hcp hcall hti hpay hpayload hparent hy hc
       hes hhigh hib hPv hSX hXQ' hne haX' hC hK)
     hstepP hstopP hstartX hXQ haX hXE
-  have hspec := AC.castAt_head_of_viable hri hy ⟨hci, hc.2⟩ (hes ▸ ⟨P, hPv⟩)
+  have hspec := AC.castAt_head_of_viableU hri.toU hy ⟨hci, hc.2⟩ (hes ▸ ⟨P, hPv⟩)
   change e.msg.head = _ at hspec
   simp only [hes, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hspec
   exact hspec.trans (congrArg Block.root heq)

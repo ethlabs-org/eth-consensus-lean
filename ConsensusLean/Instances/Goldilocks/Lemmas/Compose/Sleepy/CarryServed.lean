@@ -29,7 +29,7 @@ private theorem readPoint_slot {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro
     {e : AC.Em sp FGP} (hc : AC.CastAt T y i ℓ e) {σ : Nat} (hσ : e.msg.slot ≠ σ) :
     (T.state y (i + 1)).pool σ = e.readPoint.pool σ ∧
       ∀ u : Vote sp.n, u.slot = σ → (T.state y (i + 1)).voteStamp u = e.readPoint.voteStamp u := by
-  rw [Trace.state_succ_of_call T hc.1, AC.post_of_castAt hr hy hc]
+  rw [Trace.state_succ_of_call T hc.1, AC.post_of_castAtU hr.toU hy hc]
   have hopt : ∀ A : AC.ACState sp.n,
       (AC.optimisticConfirmation sp A ℓ.frame (T.time i)).pool = A.pool ∧
         (AC.optimisticConfirmation sp A ℓ.frame (T.time i)).voteStamp = A.voteStamp := by

@@ -17,7 +17,7 @@ cut precedes every slot-`s` vote (an early voter holds `P`, accepted
 after its proposer's own block call, the tick of the proposal), so the phase holds at it.
 
 The aligned-reader facts are `Geo`'s (`viableHeads_iff`, `proposal_head_viable`,
-`proposal_call_tick`, `effAllowed_transfer`, `effAllowed_of_anc`) and `AC.cast_ready`. The same
+`proposal_call_tick`, `effAllowed_transfer`, `effAllowed_of_anc`) and `AC.cast_readyU`. The same
 proof gives that `Q` is a viable head of the proposer (`proposal_head_viableHead`) and the phase
 facts at a vote (`phase_at_vote`). -/
 
@@ -150,7 +150,7 @@ private theorem frozen_core
       exact absurd (hl.time_mono (not_lt.1 hn)) (not_le.2 hlate)
     · have hearly : tr.time j < sp.ts e.msg.slot + sp.Δ := by
         rw [hes]; rw [hS.time] at hlate; linarith
-      obtain ⟨⟨P', hP', hP's, -⟩, -⟩ := AC.cast_ready hr hy hcy hearly
+      obtain ⟨⟨P', hP', hP's, -⟩, -⟩ := AC.cast_readyU hr.toU hy hcy hearly
       rw [hes] at hP's
       exact proposal_before_holder hS hs1 hPprop hy
         (mem_tree_of_frame hrun hy hcy.1 (hslotP P' hP' hP's ▸ hP'))
@@ -208,7 +208,7 @@ private theorem frozen_core
   -- the voter holds `P`
   have hPy : P ∈ (tr.state y j).fg.tree := by
     by_cases hearly : tr.time j < sp.ts s + sp.Δ
-    · obtain ⟨⟨P', hP', hP's, -⟩, -⟩ := AC.cast_ready hr hy hcy (by rw [hes]; exact hearly)
+    · obtain ⟨⟨P', hP', hP's, -⟩, -⟩ := AC.cast_readyU hr.toU hy hcy (by rw [hes]; exact hearly)
       rw [hes] at hP's
       exact mem_tree_of_frame hrun hy hcy.1 (hslotP P' hP' hP's ▸ hP')
     · push Not at hearly
@@ -237,7 +237,7 @@ private theorem frozen_core
   exact ⟨hPV, hΦy.fcRoot_anc_viableHeads P hPv, P, hPV, hPv, .refl⟩
 
 /-- **`P` is frozen-viable at every honest slot-`s` vote** (with
-`P` itself as frozen witness): `P` is held by the voter (ready at an early vote, `cast_ready`;
+`P` itself as frozen witness): `P` is held by the voter (ready at an early vote, `cast_readyU`;
 relayed by `t_s + Δ` otherwise, `relay_held`), allowed (its parent is a viable head of the
 proposer, whose walk starts in the viable tree, `proposal_head_viable`, read with the aligned
 readers at the proposal cut, which precedes the vote), so a viable head of the voter (HS.1,

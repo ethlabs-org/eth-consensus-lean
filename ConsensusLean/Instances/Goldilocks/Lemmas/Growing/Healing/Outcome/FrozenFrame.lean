@@ -44,7 +44,7 @@ theorem reset_frozen_frame_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := (hac.upTo (hp.run.time_nonneg j)).localRun
   have hcy' := AC.upTo_castAt.mpr ⟨le_rfl, hcy⟩
-  rw [AC.readPoint_blockStamp_eq hr hy hcy'] at hst
+  rw [AC.readPoint_blockStamp_eqU hr.toU hy hcy'] at hst
   rcases Healing.stamp_origin hr hy j elly hcy'.1 B hB with hgen |
       ⟨q, hqj, ellq, hcq, hBq, hstamp⟩
   · have hri := (hac.upTo (hp.run.time_nonneg i)).localRun

@@ -53,7 +53,7 @@ theorem vote_extends_of_counted_batch {ini} (hrun : AC.ACRun proposer tr H U ini
   obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hy hc.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := AC.voteDomain_anc hr hrun.vstart hy hc
+  have hdomA := AC.voteDomain_ancU hr.toU hrun.vstart hy hc
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -83,7 +83,7 @@ theorem vote_extends_of_counted_batch {ini} (hrun : AC.ACRun proposer tr H U ini
             simpa [hus] using hu.1
           · simpa [AC.freeze] using hu.2
         obtain ⟨j₁, -, e₁, hv₁', he₁⟩ :=
-          AC.honest_merged_vote hrun hy hc (hm v₁ hs₁ hh₁) (hv₁.trans hvw ▸ hw)
+          AC.honest_merged_voteU hrun.toU hy hc (hm v₁ hs₁ hh₁) (hv₁.trans hvw ▸ hw)
         have := (AC.one_vote_per_slotU sp) FGP ro H U tr hr.toU w hw j₁ j e₁ e'
           (hv₁.trans hvw ▸ hv₁') hv (by rw [he₁, hs₁, hvs])
         exact h1 (he₁ ▸ this.2 ▸ rfl)
@@ -94,7 +94,7 @@ theorem vote_extends_of_counted_batch {ini} (hrun : AC.ACRun proposer tr H U ini
     have h2 : Hd' = Hv := hU.1 hHd' hHv (hHd'r.trans hHvr.symm)
     have := AC.carried_supporter hrun hy hc hs hBt hvs hheld
       ⟨Hv, hHv, hHvr, h1 ▸ hvs ▸ hHds, h2 ▸ hBHd', hacc Hv Relation.ReflTransGen.refl⟩
-      (AC.honest_not_equivocator hrun hy hc (hvw ▸ hw))
+      (AC.honest_not_equivocatorU hrun.toU hy hc (hvw ▸ hw))
     exact hvw ▸ this
   have hcore := AC.anc_getHead hU hΦ hΦU e.readPoint (tr.time i)
     (AC.mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB =>

@@ -111,7 +111,7 @@ theorem FrameWindow.frozen_competitor_reflect_at {g ΔF b : Time} {s₀ s floor 
     rcases hWV.2 with hstamp | ⟨P', hP', hP's, hWP'⟩
     · have hFW := hFB.trans (hBW.mono hPhi.2)
       have hWp : W ∈ ellp.frame.tree := by
-        have hread := AC.readPoint_blockStamp_eq hri hy ⟨hci, hc.2⟩
+        have hread := AC.readPoint_blockStamp_eqU hri.toU hy ⟨hci, hc.2⟩
         rw [hread] at hstamp
         rcases Healing.stamp_origin hri hy i ell hci W hWV.1 with hg | ⟨q, hqi, ellq, hcq, hWq, hsq⟩
         · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hrp hz' ip ellp hcp'

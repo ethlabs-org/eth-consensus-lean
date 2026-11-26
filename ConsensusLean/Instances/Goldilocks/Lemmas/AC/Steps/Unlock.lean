@@ -18,7 +18,7 @@ compatible with the transferred block `B`.
 * At an honest slot-`(m+1)` vote, the locks of slot `m` or `m + 1` are optimistic locks written
   before the vote (`lock_origin_readPoint`); those of slot `m + 1` are compatible with `B` when
   the earlier honest slot-`(m+1)` votes extend `B`; those of slot `m` are a hypothesis, which each
-  transfer node discharges with its own evidence (`locks_compatible`). -/
+  transfer node discharges with its own evidence (`locks_compatibleU`). -/
 
 namespace Consensus.Goldilocks.AC
 
@@ -110,7 +110,14 @@ theorem origin_compatible (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree 
   obtain rfl : R = Hd := hU.1 (hΦU hR) hHd (hRr.trans hHdr.symm)
   exact anc_total hU (Anc.mono hΦU hDR) hBHd
 
-/-- `locks_compatible` with the unlock given. -/
+/-- **The locks at a transfer vote.** At an honest `y`'s slot-`(m+1)` vote, for a committee `K`
+whose members sign every vote in the honest pools: if at least half of the committee have slot-`m`
+support votes in `y`'s merged view whose heads extend `B`, or equivocate there, `2 |K (m+1) ∩ Hᶜ| <
+committeeSize`, every honest slot-`(m+1)` vote at an earlier cut extends `B`, and every optimistic
+origin of slot `m` (a block with three quarters of the committee size in optimistic voters whose
+honest votes were cast before the vote) is compatible with `B`, then every live lock block at the
+vote's read point is compatible with `B`. From starts up to the vote permission. With the unlock
+given. -/
 theorem locks_compatibleU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     (K : CommitteeDict sp.n)
@@ -180,34 +187,6 @@ theorem locks_compatibleU
   have hsi := (castAt_specU hr hy hc).2.1
   have := slot_mono sp (hr.time_nonneg j) (hr.time_mono hj.le)
   exact hearlier _ hvH j hj e' hvote (by omega)
-
-/-- **The locks at a transfer vote.** At an honest `y`'s slot-`(m+1)` vote, for a committee `K`
-whose members sign every vote in the honest pools: if at least half of the committee have
-slot-`m` support votes in `y`'s merged view whose heads extend `B`, or equivocate there,
-`2 |K (m+1) ∩ Hᶜ| < committeeSize`, every honest slot-`(m+1)` vote at an earlier cut
-extends `B`, and every optimistic origin of slot `m` (a block with three quarters of the
-committee size in optimistic voters whose honest
-votes were cast before the vote) is compatible with `B`, then every live lock block at the vote's
-read point is compatible with `B`. From starts up to the vote permission. -/
-theorem locks_compatible (hrun : ACRun proposer tr H U ini)
-    (K : CommitteeDict sp.n)
-    (hP : CommitteeP K tr H) {y : Fin sp.n} (hy : y ∈ H) {i m : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
-    (hs : e.msg.slot = m + 1) {B : Blk sp.n FGP} (hB : B ∈ ℓ.frame.tree) {S : Set (Fin sp.n)}
-    (hS : ∀ w ∈ S, w ∈ equivocators (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes ∨
-      ∃ x ∈ (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).support,
-        x.val = w ∧ x.slot = m ∧ AncR ℓ.frame B x.head)
-    (hn : sp.committeeSize ≤ 2 * S.ncard)
-    (hf : 2 * (K.committee (m + 1) ∩ Hᶜ).ncard < sp.committeeSize)
-    (hearlier : EarlierVotesExtend tr H U i (m + 1) B)
-    (hm : ∀ (Φ : Frm sp.n FGP) (A : ACState sp.n) (D : Blk sp.n FGP), FrameOK Φ → Φ.tree ⊆ U →
-      D ∈ Φ.tree → 3 * sp.committeeSize ≤ 4 * (optimisticVoters sp A Φ m D).ncard →
-      (∀ v ∈ A.pool m, v.val ∈ H → v.slot = m ∧
-        ∃ j < i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v) →
-      (∃ k ≤ i, A.pool m ⊆ (tr.state y (k + 1)).pool m) →
-      Compatible U D B) :
-    ∀ L ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i), Compatible U L B :=
-  locks_compatibleU hrun.toU K hP hy hc hs hB hS hn hf hearlier hm
 
 end Consensus.Goldilocks.AC
 

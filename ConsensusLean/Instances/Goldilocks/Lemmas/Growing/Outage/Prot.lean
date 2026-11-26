@@ -310,7 +310,7 @@ theorem vote_extends_of_prot_at {k : Nat} (hvi : OutageVoteInv D k) {x : Fin sp.
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun D.hnc hx hc
   rcases prot_iff.1 hp with hfl | hroot
   swap
-  · obtain ⟨Hd, hHd, hHdr, -⟩ := AC.honest_head_frame hr hx hcast
+  · obtain ⟨Hd, hHd, hHdr, -⟩ := AC.honest_head_frameU hr.toU hx hcast
     have hFHd : ℓ.frame.Anc ℓ.frame.F Hd := hΦ.rooted.2 Hd hHd
     rw [hfr] at hFHd
     exact ⟨Hd, hΦU hHd, hHdr,

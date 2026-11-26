@@ -410,7 +410,7 @@ private theorem mem_voterBlockTree_of_accept {FGP : Type} {ro' : ReplayOrder sp 
           (hr.time_nonneg i)).1] at he'
         simp at he'
       rw [hoth hb hrs]
-  exact ⟨hWt, Or.inl (by rw [AC.readPoint_blockStamp_eq hr hy hc, hpost]; exact hbs)⟩
+  exact ⟨hWt, Or.inl (by rw [AC.readPoint_blockStamp_eqU hr.toU hy hc, hpost]; exact hbs)⟩
 
 /-- **The aligned witness of a clean vote**: under `Γ`
 (without `Prop⁺`), let an honest vote of a clean slot `j` (`t_j ≥ w + 4Δ`, cut `kz`) extend `B`,

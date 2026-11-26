@@ -80,7 +80,7 @@ theorem optimistic_isBest_of_carry_at {ini : Fin sp.n → ACState sp.n}
     rwa [merged_vote_slot hry.localRun hry.vstart hy hc' v hv] at hK
   have hE : (equivocators V.votes).ncard ≤ (K.committee s ∩ (H (tr.time i))ᶜ).ncard :=
     Set.ncard_le_ncard fun w hw => by
-      refine ⟨?_, fun hwH => honest_not_equivocator hry hy hc' hwH hw⟩
+      refine ⟨?_, fun hwH => honest_not_equivocatorU hry.toU hy hc' hwH hw⟩
       obtain ⟨a, ha, -, -, -, rfl, -⟩ := hw
       exact hVK ⟨a, ha, rfl⟩
   have hsplit : SX.ncard + (K.committee s \ SX).ncard = sp.committeeSize := by
@@ -115,7 +115,7 @@ theorem optimistic_prefix_of_carry_at {ini : Fin sp.n → ACState sp.n}
   have hT : ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame (s + 1)) ⊆ ℓ.frame.tree :=
     fun _ h => voteDomain_subset_tree h.1
   have hBt := hT hB
-  have hdomA := voteDomain_anc hry.localRun hry.vstart hy hc'
+  have hdomA := voteDomain_ancU hry.localRun.toU hry.vstart hy hc'
   rw [hs] at hdomA
   unfold getHead
   refine anc_ghost_of_best hΦ.1.coherent hT (hΦ.1.finite.subset hT) hBt _ haB

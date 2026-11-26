@@ -106,7 +106,7 @@ theorem call_record_extends {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H
   · rw [hB] at hpost hemits
     exact receipt _ (Prod.ext hpost.symm hemits.symm) hsel
   · change RecAbove ℓ.frame P _
-    rw [AC.post_of_castAt hr hx ⟨hc, he'⟩]
+    rw [AC.post_of_castAtU hr.toU hx ⟨hc, he'⟩]
     exact optimisticConfirmation_recAbove hsel
 
 /-- **The last optimistic point of a call.** A non-restart call of an honest node with an
@@ -127,7 +127,7 @@ theorem point_top {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
     rw [hc.1] at he
     have hpost := congrArg Prod.fst he
     simp only at hpost
-    have hP := AC.post_of_castAt hr hx ⟨hc, he'⟩
+    have hP := AC.post_of_castAtU hr.toU hx ⟨hc, he'⟩
     have hpool := AC.optimistic_pool (AC.admitVote sp e.readPoint (tr.time i) e.msg) ℓ.frame
       (tr.time i)
     have hrt := (AC.optimistic_keeps (AC.admitVote sp e.readPoint (tr.time i) e.msg) ℓ.frame

@@ -83,7 +83,7 @@ theorem vote_viable_of_root_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
       have hBt := AC.frame_mem_of_between sp hr.coherent hPhi hPhiU hDt hBD hFB
       have hPhiBD := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hBt hBD hDt
       have hPhifB := AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hPhi.fcRoot_mem hfB hBt
-      refine Or.inl ⟨AC.voterBlockTree_anc hr hrun.vstart hy hc' D hD B hPhiBD,
+      refine Or.inl ⟨AC.voterBlockTree_ancU hr.toU hrun.vstart hy hc' D hD B hPhiBD,
         hPhifB, D, hD, ?_, hPhiBD⟩
       have hfD := hPhifB.trans hPhiBD
       rw [hfr] at hDt hfD ⊢

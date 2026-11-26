@@ -188,7 +188,7 @@ theorem vote_floor_le_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc 
   omega
 
 /-- **The voter holds the proposal**: an early vote is ready, with a block of slot `s` in its
-frame (`AC.cast_ready`), which is `P` (`eq_of_slot`); a vote at `t_s + Δ` follows the relay of
+frame (`AC.cast_readyU`), which is `P` (`eq_of_slot`); a vote at `t_s + Δ` follows the relay of
 `P`, accepted by its proposer at `t_s`, to the voter (restarted at or before `t_{s−1}`), when `P`
 extends the voter's `Σ.F`. -/
 private theorem voter_holds_proposal_before {ini} (hrun : GoldilocksRun proposer dg H tr ini)
@@ -463,7 +463,7 @@ private theorem competitor_reflect_before {a₀ κ b : Time}
       · exact Or.inl hg
       refine Or.inr ⟨kx, hA, ?_⟩
       have hge := blockStamp_ge_of_accept hr hy hA hg (j + 1) (by omega)
-      rw [Trace.state_succ_of_call _ hcy.1, ← AC.readPoint_blockStamp_eq hr hy hcy] at hge
+      rw [Trace.state_succ_of_call _ hcy.1, ← AC.readPoint_blockStamp_eqU hr.toU hy hcy] at hge
       have hlt := AC.etime_of_lt_of.1 (lt_of_le_of_lt hge hfz)
       have hfr : AC.freeze sp (s' + 1) = sp.ts (s' : Int) + 3 * sp.Δ := by
         simp only [AC.freeze, hcast]
@@ -618,7 +618,7 @@ private theorem views_agree_before {a₀ κ b : Time}
     right
     refine ⟨kx, hA, ?_⟩
     have hge := blockStamp_ge_of_accept hr hy hA hg (j + 1) (by omega)
-    rw [Trace.state_succ_of_call _ hcy.1, ← AC.readPoint_blockStamp_eq hr hy hcy] at hge
+    rw [Trace.state_succ_of_call _ hcy.1, ← AC.readPoint_blockStamp_eqU hr.toU hy hcy] at hge
     have hlt := AC.etime_of_lt_of.1 (lt_of_le_of_lt hge hst)
     have hfz : AC.freeze sp (s' + 1) = sp.ts (s' : Int) + 3 * sp.Δ := by
       simp only [AC.freeze, hcast]
@@ -721,7 +721,7 @@ theorem old_child_ineligible_of {a₀ κ b : Time}
       · exact Or.inl hg
       refine Or.inr ⟨kx, hA, ?_⟩
       have hge := blockStamp_ge_of_accept hr hy hA hg (j + 1) (by omega)
-      rw [Trace.state_succ_of_call _ hcy.1, ← AC.readPoint_blockStamp_eq hr hy hcy] at hge
+      rw [Trace.state_succ_of_call _ hcy.1, ← AC.readPoint_blockStamp_eqU hr.toU hy hcy] at hge
       have hlt := AC.etime_of_lt_of.1 (lt_of_le_of_lt hge hfz)
       have hfr : AC.freeze sp (s' + 1) = sp.ts (s' : Int) + 3 * sp.Δ := by
         simp only [AC.freeze, hcast]

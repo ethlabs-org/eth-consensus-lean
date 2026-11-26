@@ -167,7 +167,8 @@ theorem proposal_viable_at_cast_at
     rwa [hslot'] at ht
   obtain ⟨hPy, hroot, hv⟩ := proposal_viable_at_call_at hframe hrun hnc hsvc hf hnr hm hsp
     le_rfl hpb hz hdes hP hPs hy hc.1 hpT hhigh (fun hearly => by
-      obtain ⟨⟨Q, hQ, hQs, _⟩, -⟩ := AC.cast_ready hri.localRun hy hci (by rw [hes]; exact hearly)
+      obtain ⟨⟨Q, hQ, hQs, _⟩, -⟩ :=
+        AC.cast_readyU hri.localRun.toU hy hci (by rw [hes]; exact hearly)
       rw [hes] at hQs
       exact proposal_frame_unique_at hrun hnc hz hdes hP hPs hp0 hy hc.1 hhigh hQ hQs ▸ hQ)
   have hdom : P ∈ AC.voterBlockTree sp e.readPoint ell.frame p :=

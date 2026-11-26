@@ -53,7 +53,7 @@ theorem voterBlockTree_slot_le {ini : Fin sp.n → AC.ACState sp.n}
     {W : AC.Blk sp.n FGP} (hW : W ∈ AC.voterBlockTree sp e.readPoint ℓ.frame s) : W.slot ≤ s := by
   obtain ⟨hWt, hst | ⟨P', hP', hP's, hWP'⟩⟩ := hW
   · have heq : e.readPoint.blockStamp = (tr.post j).blockStamp := by
-      rw [AC.post_of_castAt hr hy hc, AC.optimistic_blockStamp, AC.admitVote_blockStamp]
+      rw [AC.post_of_castAtU hr.toU hy hc, AC.optimistic_blockStamp, AC.admitVote_blockStamp]
     rw [heq] at hst
     rcases stamp_origin hr hy j ℓ hc.1 W hWt with hgn | ⟨k, -, ℓk, hck, hWk, hsk⟩
     · rw [hgen W hWt hgn]; exact Nat.zero_le _

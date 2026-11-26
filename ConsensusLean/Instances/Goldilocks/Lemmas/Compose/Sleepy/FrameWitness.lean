@@ -62,8 +62,8 @@ theorem vote_frame_of_witnesses {ini} (hrun : GoldilocksRun proposer dg H tr ini
     B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame (s + 1)) ∨
       Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot := by
   have hfr := frame_of_projAC hrun hy hc.1
-  have hTa := AC.voterBlockTree_anc (goldilocks_ac_projection_from hrun hnc).localRun hrun.vstart
-    hy hc
+  have hTa := AC.voterBlockTree_ancU (goldilocks_ac_projection_from hrun hnc).localRun.toU
+    hrun.vstart hy hc
   rw [hs] at hTa
   have hsrc' : FrameGeometry.RowsAbove tr H G y i (tr.state y i).fg.hj :=
     FrameGeometry.rowsAbove_iff.2 fun X hX a ha hav hE hh =>

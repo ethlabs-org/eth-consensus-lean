@@ -10,7 +10,7 @@ public section
 Over the healthy setting, with `r = r_AC(ḡ)` (a slot `j` is `≥ r` exactly when `ḡ + 4Δ ≤ t_j`):
 
 * **stamps of held votes** (`stamp_lt_of_held_of_runU`, `heldBefore_readPointU`);
-* **the honest batch** (`honest_voters_half`): in a slot `≥ r` every honest node votes;
+* **the honest batch** (`honest_voters_halfU`): in a slot `≥ r` every honest node votes;
 * **a fast lock's honest vote** (`fastLock_honest_voteU`). -/
 
 namespace Consensus.Goldilocks.AC
@@ -130,7 +130,8 @@ private theorem optimistic_pool_stamp (A : ACState sp.n) (Φ : Frm sp.n FGP) (t 
   · exact ⟨rfl, rfl⟩
   · split_ifs <;> exact ⟨rfl, rfl⟩
 
-/-- `heldBefore_readPoint_branch` with the unlock given. -/
+/-- **A vote of another slot that the state after a vote branch holds, the branch's read point
+held**, with its stamp, whether or not the node may vote in the slot. With the unlock given. -/
 theorem heldBefore_readPoint_branchU
     {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
@@ -159,16 +160,6 @@ theorem heldBefore_readPointU
     HeldBefore e.readPoint w T :=
   heldBefore_readPoint_branchU hr hy (voteBranchAt_of_castAtU hr hy hc)
     ((castAt_specU hr hy hc).2.1 ▸ hne) h
-
-/-- **A vote of another slot that the state after a vote branch holds, the branch's read point
-held**, with its stamp, whether or not the node may vote in the slot. -/
-theorem heldBefore_readPoint_branch {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
-    {R : ACState sp.n} (hb : VoteBranchAt tr y i ℓ R) {w : Vote sp.n}
-    (hne : sp.slot (tr.time i) ≠ w.slot) {T : Time}
-    (h : w ∈ (tr.state y (i + 1)).pool w.slot ∧ (tr.state y (i + 1)).voteStamp w < ETime.of T) :
-    HeldBefore R w T :=
-  heldBefore_readPoint_branchU hr.toU hy hb hne h
 
 /-- A vote of another slot that the state after an honest cast holds, it held at the read
 point, with its stamp. -/
@@ -287,7 +278,10 @@ theorem honest_votes_in_slot (hS : HealthyBase tr H U proposer g) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) : ∀ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m :=
   honest_votes_in_slotU (hS := hS.toU) (m := m) (hm := hm)
 
-/-- `honest_voters_half` with the unlock given. -/
+/-- **The honest batch** (it has `n − f > n/2` seats): in a slot `m ≥ r` every honest node votes (it
+is awake and joined at `t_m + Δ`, runs its tick there (`Driven`), and `try_vote` votes unless it
+voted in slot `m` already), so the honest voters of slot `m` are at least half of the committee.
+With the unlock given. -/
 theorem honest_voters_halfU
     {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {m : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) :
@@ -299,15 +293,6 @@ theorem honest_voters_halfU
     rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
   have := hS.two_faulty_lt
   omega
-
-/-- **The honest batch** (it has `n − f > n/2` seats): in a slot
-`m ≥ r` every honest node votes (it is awake and joined at `t_m + Δ`, runs its tick there
-(`Driven`), and `try_vote` votes unless it voted in slot `m` already), so the honest voters of
-slot `m` are at least half of the committee. -/
-theorem honest_voters_half (hS : HealthyBase tr H U proposer g) {m : Nat}
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts m) :
-    sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard :=
-  honest_voters_halfU (hS := hS.toU) (m := m) (hm := hm)
 
 /-- `fastLock_honest_vote` with the unlock given. -/
 theorem fastLock_honest_voteU
