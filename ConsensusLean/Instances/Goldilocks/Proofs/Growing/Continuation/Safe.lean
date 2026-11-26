@@ -1,10 +1,10 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Endpoint
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Query
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Query
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Members
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Read
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Accountable
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Handover
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Read
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Accountable
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Handover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.PSync
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Transport

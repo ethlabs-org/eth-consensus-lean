@@ -1,7 +1,7 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Seed
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Accountable
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Rows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Seed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Accountable
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Rows
 
 public section
 

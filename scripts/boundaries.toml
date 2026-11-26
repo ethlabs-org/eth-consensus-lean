@@ -744,7 +744,18 @@ about = "the shape obligations of the Goldilocks family (MeetsObligations)"
 
 [[layer]]
 name = "Instances.Goldilocks.Lemmas.Growing"
-prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing"]
+# Every directory of Lemmas/Growing except Continuation, its own layer below (prefixes never overlap).
+prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC",
+            "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose",
+            "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG",
+            "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing",
+            "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations",
+            "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic",
+            "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage",
+            "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run",
+            "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation",
+            "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy",
+            "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Trace"]
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
          "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.GoldilocksAC",
@@ -769,8 +780,8 @@ static layer, trusted layer, Main or Solution may import them, so the static pro
 them"""
 
 [[layer]]
-name = "Instances.Goldilocks.Lemmas.Continuation"
-prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Continuation"]
+name = "Instances.Goldilocks.Lemmas.Growing.Continuation"
+prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation"]
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
          "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.GoldilocksAC",
@@ -1089,7 +1100,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Frame",
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
-         "Instances.Goldilocks.Lemmas.Continuation",
+         "Instances.Goldilocks.Lemmas.Growing.Continuation",
          "Instances.Goldilocks.Proofs.Growing.Obligations",
          "Instances.Goldilocks.Milestones.Spec.WriteModes",
          "Instances.Goldilocks.Milestones.Statements.Generic",
@@ -1193,7 +1204,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Frame",
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
-         "Instances.Goldilocks.Lemmas.Continuation",
+         "Instances.Goldilocks.Lemmas.Growing.Continuation",
          "Instances.Goldilocks.Proofs.FGSafety", "Instances.Goldilocks.Proofs.FGStore",
          "Instances.Goldilocks.Proofs.ACBase", "Instances.Goldilocks.Proofs.ACSteps",
          "Instances.Goldilocks.Proofs.ComposeAnyAC",

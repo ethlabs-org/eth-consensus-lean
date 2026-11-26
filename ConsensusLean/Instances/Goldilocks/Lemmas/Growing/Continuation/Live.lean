@@ -1,8 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunCommittee
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Invariant
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.LiveAdopt
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Read
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Invariant
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.LiveAdopt
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Read
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Queries.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Continuation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Binding

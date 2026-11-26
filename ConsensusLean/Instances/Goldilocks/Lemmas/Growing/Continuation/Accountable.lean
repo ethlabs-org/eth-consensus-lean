@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Endpo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Continuation
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.HeldChains
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.HeldViews
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.HeldViews
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Read
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Run

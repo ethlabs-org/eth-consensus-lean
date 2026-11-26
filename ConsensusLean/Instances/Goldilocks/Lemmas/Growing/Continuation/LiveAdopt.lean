@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.LiveVotes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.LiveVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Later
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.TransferLater

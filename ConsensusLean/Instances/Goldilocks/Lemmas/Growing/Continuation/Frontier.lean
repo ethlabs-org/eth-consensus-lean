@@ -1,8 +1,8 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Seed
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.VoteFrame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Seed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.VoteFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Induction
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Rows
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalService
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift

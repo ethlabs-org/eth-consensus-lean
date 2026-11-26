@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunCommittee
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Seed
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Invariant
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Seed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Invariant
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Continuation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Binding
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Members

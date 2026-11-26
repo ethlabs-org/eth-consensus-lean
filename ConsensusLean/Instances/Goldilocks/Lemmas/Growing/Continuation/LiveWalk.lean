@@ -1,6 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Invariant
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Rows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Invariant
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Agree
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
