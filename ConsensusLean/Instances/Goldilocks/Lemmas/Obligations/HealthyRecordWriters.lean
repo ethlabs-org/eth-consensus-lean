@@ -40,7 +40,7 @@ private theorem last_change {f : Nat → Nat} {n : Nat} (hne : f n ≠ f 0) :
 
 /-- A changed own record identifies its actual call, selected block and, for an
 optimistic selection, the normalized lock left by that same call. -/
-theorem record_changed_writer {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem record_changed_writer {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {q : Nat}
     (hne : (tr.state y (q + 1)).ac.latestConfirmed ≠ (tr.state y q).ac.latestConfirmed) :

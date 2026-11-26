@@ -48,7 +48,7 @@ theorem fgSlots_releaseGap_signGap_le {f R G δt : Nat} (h : 3 * releaseFinalSlo
 
 /-- The timeout pays the FG delay bound and the release wait, with the six delays of the
 attestation round: `F + R + 6 ≤ 4·δt`. -/
-theorem fgDelay_releaseGap_le {f R G δt : Nat}
+private theorem fgDelay_releaseGap_le {f R G δt : Nat}
     (h : 3 * releaseFinalSlots f R G ≤ δt) : (4 * f - 6) + R + 6 ≤ 4 * δt := by
   rw [releaseFinalSlots_eq] at h
   omega
@@ -66,7 +66,7 @@ theorem two_le_releaseFinalSlots (f R G : Nat) : 2 ≤ releaseFinalSlots f R G :
 
 /-- **The healing triple at the run-level FG delay `ΔF + R·Δ`**: from the protocol bound
 `6Δ + ΔF ≤ 4Δ·f` and the timeout, `6Δ + (ΔF + R·Δ) + G·Δ ≤ 4Δ·δt`. -/
-theorem release_triple {f R G δt : Nat} {Δ ΔF : Time} (hΔ : 0 < Δ)
+private theorem release_triple {f R G δt : Nat} {Δ ΔF : Time} (hΔ : 0 < Δ)
     (hd : 6 * Δ + ΔF ≤ 4 * Δ * (f : Time)) (h : 3 * releaseFinalSlots f R G ≤ δt) :
     6 * Δ + (ΔF + (R : Time) * Δ) + (G : Time) * Δ ≤ 4 * Δ * (δt : Time) := by
   have hc : (4 * f + R + G : Time) ≤ 4 * δt := by
@@ -86,20 +86,20 @@ theorem release_final_delivery {f R G : Nat} {Δ ΔF : Time} (hΔ : 0 < Δ)
 /-! ### No release gap -/
 
 /-- At `R = 0` the final gap is `⌈(6 + (4f − 6) + G)/4⌉`, the gap without a release gap. -/
-theorem releaseFinalSlots_zero (f G : Nat) :
+private theorem releaseFinalSlots_zero (f G : Nat) :
     releaseFinalSlots f 0 G = (6 + (4 * f - 6) + G + 3) / 4 := by
   simp only [releaseFinalSlots_eq, Nat.add_zero]
 
 /-- `fgSlots_signGap_le` over explicit parameters, as the `R = 0` case: the timeout
 `3·⌈(6 + (4f − 6) + G)/4⌉ ≤ δt` gives `4f + G ≤ 4δt`. -/
-theorem fgSlots_signGap_le_of_timeout {f G δt : Nat}
+private theorem fgSlots_signGap_le_of_timeout {f G δt : Nat}
     (h : 3 * ((6 + (4 * f - 6) + G + 3) / 4) ≤ δt) : 4 * f + G ≤ 4 * δt := by
   rw [← releaseFinalSlots_zero] at h
   simpa only [Nat.add_zero] using fgSlots_releaseGap_signGap_le h
 
 /-- The final budget without a release gap, over explicit parameters, as the `R = 0` case:
 `6 + (4f − 6) + G ≤ 4·⌈(6 + (4f − 6) + G)/4⌉`. -/
-theorem finalSlots_budget_of_zero (f G : Nat) :
+private theorem finalSlots_budget_of_zero (f G : Nat) :
     6 + (4 * f - 6) + G ≤ 4 * ((6 + (4 * f - 6) + G + 3) / 4) := by
   rw [← releaseFinalSlots_zero]
   simpa only [Nat.add_zero] using releaseFinalSlots_budget f 0 G

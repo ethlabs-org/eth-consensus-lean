@@ -25,7 +25,7 @@ AC formation of a slow lock (`updateConfirmation_slow_lock_effective`). -/
 namespace Consensus.Goldilocks.AC
 
 /-- An ancestor of a block that conflicts with no live lock conflicts with no live lock. -/
-theorem not_conflictsWithLock_of_anc {FGP : Type} {sp : ACParams} {L : Set Lock}
+private theorem not_conflictsWithLock_of_anc {FGP : Type} {sp : ACParams} {L : Set Lock}
     {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {C D : Blk sp.n FGP} (hCD : Φ.Anc C D)
     (hnv : ¬ conflictsWithLock sp L Φ t D) : ¬ conflictsWithLock sp L Φ t C := by
   rintro ⟨W, hW, hCW⟩
@@ -38,7 +38,7 @@ theorem not_conflictsWithLock_of_anc {FGP : Type} {sp : ACParams} {L : Set Lock}
 live lock conflicting with `C` store the slow lock of slot `s` and expiry `s + k` on the viable
 ancestor of the deepest unvetoed slow-test block `X`, `C ⪯ X ⪯ D`. A veto of `D` stops only the
 record. -/
-theorem updateConfirmation_slow_lock_of {FGP : Type} {sp : ACParams} {A : ACState sp.n}
+private theorem updateConfirmation_slow_lock_of {FGP : Type} {sp : ACParams} {A : ACState sp.n}
     {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {s : Nat} {C D : Blk sp.n FGP}
     (hD : getConfirmation sp A Φ s = some D) (hnvC : ¬ conflictsWithLock sp A.locks Φ t C)
     (hCt : C ∈ Φ.tree) (hCg : C.root ≠ sp.genesisRoot) (hCD : Φ.Anc C D)

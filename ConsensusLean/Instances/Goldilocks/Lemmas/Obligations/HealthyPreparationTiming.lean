@@ -146,7 +146,7 @@ theorem healthy_preparation_timing_within (run : (Sys (goldilocks S) V).Run)
 and `t_{w+2} + 6Δ ≤ heal`; and every reset `0 ≤ a ≤ ready + R·Δ + r` (`r = healthyResetSlack`)
 with a seed label `l ≤ slot a` has
 `max(ready, drainTime a, t_w, ḡ + 4Δ, 0, t_{l+1}) ≤ ready + (R + 8k + 20)·Δ`. -/
-theorem healthy_preparation_timing (run : (Sys (goldilocks S) V).Run)
+private theorem healthy_preparation_timing (run : (Sys (goldilocks S) V).Run)
     (hn : 1 ≤ Fintype.card V)
     (cap : Capability) (index : (K S A).Idx) (gst : Time)
     (hB : (Sys (goldilocks S) V).ready (K S A) gst run +
