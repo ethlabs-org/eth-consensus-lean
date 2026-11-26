@@ -34,7 +34,7 @@ or below `fc_root`, or in the viable tree of `T`, or there is a contest and ever
 extends `B` (in a contest every block of the maximal height extends `B`, but `T` need hold none).
 At `T` the whole frame tree the witnesses are the blocks themselves, and the contest's own block is
 a viable head above `B` (`held_candidate_of_rows`). -/
-theorem held_candidate_of_rows_within {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
+private theorem held_candidate_of_rows_within {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
     (hfg : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     (hf : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) (i : Nat)
     {G : A.Blk → Prop} (hsrc : HonestRowsSourced tr H G y i) {B : A.Blk}
