@@ -30,7 +30,7 @@ open Shape Blocks
 open Consensus.Model
 
 /-- The engine cut before an event is at a time no later than the event. -/
-theorem cutTime_le_of_event {V : Type} [Fintype V] [DecidableEq V] {E : Env V} {S : Setup}
+private theorem cutTime_le_of_event {V : Type} [Fintype V] [DecidableEq V] {E : Env V} {S : Setup}
     (rho : Model.Run (compiled (goldilocks S)) E) (hv : rho.ExecutionValid) {i : Nat}
     {e : Model.Event V (protoOf (compiled (goldilocks S)) E).Object}
     (he : rho.events[i]? = some e) : rho.cutTime i ≤ e.time := by
@@ -72,7 +72,8 @@ theorem accepted_child_decodes_at {V : Type} [Fintype V] [DecidableEq V] {E : En
     simpa only [hst, Node.acProposal, Node.tickStep, Node.acCall, hB] using hd
 
 /-- A scheduled honest proposal's actual pre-record state supplies canonical child validity. -/
-theorem scheduled_proposal_child_decodes_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+private theorem scheduled_proposal_child_decodes_at {V : Type} [Fintype V] [DecidableEq V]
+    {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (v : V) (i : Nat) (t : Time)
@@ -109,7 +110,7 @@ theorem scheduled_proposal_child_decodes_at {V : Type} [Fintype V] [DecidableEq 
 
 /-- Receipt acceptances publish a wrapper that decodes, not merely a candidate with the
 right syntactic shape. The queue and decoder witnesses use the same processed state. -/
-theorem delivery_acceptance_decoded_publication_at {V : Type} [Fintype V] [DecidableEq V]
+private theorem delivery_acceptance_decoded_publication_at {V : Type} [Fintype V] [DecidableEq V]
     {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {v : V}
@@ -129,7 +130,7 @@ theorem delivery_acceptance_decoded_publication_at {V : Type} [Fintype V] [Decid
     ⟨scheduled_proposal_child_decodes_at S rho hn hv v⟩
 
 /-- Every accepting cut of an honest tick has a successfully decoded publication. -/
-theorem tick_acceptance_decoded_publication_at {V : Type} [Fintype V] [DecidableEq V]
+private theorem tick_acceptance_decoded_publication_at {V : Type} [Fintype V] [DecidableEq V]
     {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (v : V)

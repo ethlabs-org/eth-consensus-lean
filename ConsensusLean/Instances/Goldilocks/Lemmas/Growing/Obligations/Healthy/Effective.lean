@@ -59,7 +59,7 @@ structure EffectiveRecordIntervalAt (tr : GoldilocksTrace sp ro) (H : Time → S
 /-- **A fixed record survives the node's floor change**, for a node honest at `t`, every cut
 before `j` at a time `≤ t`: a record looked up at `i ≤ j` that extends `O` still extends it at
 `j` when the new floor is compatible with `O`. -/
-theorem effective_record_frame_of_run_at
+private theorem effective_record_frame_of_run_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i j r : Nat} {t : Time} (ht0 : 0 ≤ t)

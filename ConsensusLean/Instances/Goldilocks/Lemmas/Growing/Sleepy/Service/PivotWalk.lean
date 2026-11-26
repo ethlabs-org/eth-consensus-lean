@@ -67,7 +67,7 @@ private theorem proposal_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H 
   exact ⟨(Trace.upTo_callAt_of_le _ le_rfl).mpr hc, hd⟩
 
 /-- **The proposal's anchor is below an old origin, or genesis** (lifted at `t_s`). -/
-theorem proposal_anchor_old_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+private theorem proposal_anchor_old_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {p : Fin sp.n} {s i : Nat} (hp : p ∈ H (tr.time i))
     (hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n)
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
@@ -92,7 +92,7 @@ theorem proposal_anchor_old_at {ini} (hrun : Growing.GoldilocksRun proposer dg H
 
 /-- **The proposal walk from `D` to `Q` is through viable heads**, for `D` of the proposal's frame
 above every old origin (lifted at `t_s`). -/
-theorem proposal_suffix_viable_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+private theorem proposal_suffix_viable_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {p : Fin sp.n} {s i : Nat} (hp : p ∈ H (tr.time i))
     (hf : 2 * (H (tr.time i))ᶜ.ncard < sp.n)
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
@@ -118,7 +118,7 @@ theorem proposal_suffix_viable_at {ini} (hrun : Growing.GoldilocksRun proposer d
 with the proposer honest then): for a block `D` above every old origin and below `Q = P.parent`, at
 a slot-`s` vote of a node honest then whose earlier slot-`s` votes by nodes honest at them are
 `P`. -/
-theorem vote_anchor_cases_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+private theorem vote_anchor_cases_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     (hf : 2 * (H (tr.time j))ᶜ.ncard < sp.n) {p : Fin sp.n} (hp : p ∈ H (tr.time j)) {k : Nat}
     {P Q D : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hP : tr.ProposesAt p k P)

@@ -25,7 +25,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 variable {hold : Time}
 
 /-- The finite domain reduction once the vote-row labels are strictly earlier. -/
-theorem held_target_vote_domain_of_row_bound_before_at
+private theorem held_target_vote_domain_of_row_bound_before_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}

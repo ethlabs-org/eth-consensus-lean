@@ -25,7 +25,7 @@ variable {hold : Time}
 
 /-- Read the unanimous pool through the caller's horizon. Historical senders remain
 accountable at their emission cuts, while counted voters are honest at the read. -/
-theorem unanimous_pool_core_at {K : AC.CommitteeDict sp.n} {ini}
+private theorem unanimous_pool_core_at {K : AC.CommitteeDict sp.n} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →

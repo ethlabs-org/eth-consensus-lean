@@ -225,7 +225,7 @@ theorem readAfter_lastOwn (hv : rho.ExecutionValid) (v : V) {i : Nat}
 
 /-- The trace cut after `v`'s last own event before engine cut `i` is a read point at `v`'s
 stored clock at `i`, which is the time of that engine cut. -/
-theorem lastOwn_readPoint (hv : rho.ExecutionValid) (v : V) (i : Nat) :
+private theorem lastOwn_readPoint (hv : rho.ExecutionValid) (v : V) (i : Nat) :
     Regimes.ReadPoint (simTraceAt S rho hn) (cutMap S rho hn (lastOwn S rho v i))
         (stateAt S rho hn v i).now ∧
       rho.cutTime (lastOwn S rho v i) = (stateAt S rho hn v i).now := by
@@ -248,7 +248,7 @@ theorem lastOwn_readPoint (hv : rho.ExecutionValid) (v : V) (i : Nat) :
 /-- **Every engine output of a node honest at its engine cut is read at the trace cut after its
 last own event**, at its stored clock: the trace state there is the node's engine state. Only
 honesty at `rho.cutTime i` is used. -/
-theorem engine_read_eq_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
+private theorem engine_read_eq_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) (hh : v ∉ rho.faultyAt (rho.cutTime i)) (g : Out) :
     (chainTrace rho).read g v i =
       outOf ((simTraceAt S rho hn).state (rho.ownKey v)

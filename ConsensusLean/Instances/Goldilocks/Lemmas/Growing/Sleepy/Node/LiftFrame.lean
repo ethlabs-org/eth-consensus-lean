@@ -24,7 +24,8 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {d : Time}
 
 /-- The result of an update is a block of the update's frame. -/
-theorem resultAt_mem_frame {FGP : Type} {ro' : ReplayOrder sp FGP} {trS : AC.GTrace sp FGP ro'}
+private theorem resultAt_mem_frame {FGP : Type} {ro' : ReplayOrder sp FGP}
+    {trS : AC.GTrace sp FGP ro'}
     {X : Fin sp.n} {i s : Nat} {C : AC.Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (h : AC.ResultAt trS X i s C CV) : ∃ ℓ, trS.CallAt X i ℓ ∧ C ∈ ℓ.frame.tree := by
   obtain ⟨ℓ, hu, hC, -⟩ := h

@@ -57,7 +57,7 @@ private theorem asleep_before_restart_at {E : Env V}
 /-- **The shared HS premises of a healthy run through its horizon under growing faults, from
 attestation service at `Δ_F` with release hold `hold ≤ Δ_F`**, at GST `g` and the digest of the
 run. -/
-theorem hsSharedUpTo_of_rows_at (run : (Sys (goldilocks S) V).Run)
+private theorem hsSharedUpTo_of_rows_at (run : (Sys (goldilocks S) V).Run)
     (hn : 1 ≤ Fintype.card V)
     (valid : (Sys (goldilocks S) V).Valid run)
     (noCollision : ¬ run.2.HashCollision)

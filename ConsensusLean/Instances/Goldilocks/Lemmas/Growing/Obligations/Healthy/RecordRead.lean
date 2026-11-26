@@ -48,7 +48,7 @@ private theorem clean_add_k_two_le {c k s : Nat} (hk : 2 ≤ k) (h : c + 2 * k +
 
 /-- After the drain, the latest view is a natural label beyond the reset, and its voting time is
 no later than the read. -/
-theorem healthy_read_label_at (D : RepairSchedule tr H proposer dg g b cm βK)
+private theorem healthy_read_label_at (D : RepairSchedule tr H proposer dg g b cm βK)
     (ac : AC.ACState sp.n) (frame : AC.Frm sp.n (List (FG.Att sp.n)))
     {t : Time} (ht0 : 0 ≤ t) (ht : Healing.drainTime sp D.resetTime ≤ t) :
     ∃ L : Nat, (L : Int) = (AC.latestView sp ac frame t).2 ∧
