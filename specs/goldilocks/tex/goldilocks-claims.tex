@@ -1523,8 +1523,8 @@ accepted-old-block bound~$\kappa$ is a regime premise: neither the
 acceptance-relay clause of $\mathsf{Sync}$ (acceptances at $\tau\geq g$) nor
 the $\mathsf{GST}$ convention (delivery, not acceptance, of old objects)
 gives it in an abstract node run (the engine supplies $\kappa=2\Delta$,
-\S``Premises'').  The Lean proves this node at $\kappa=2\Delta$ with the
-original cut only (\S\ref{sec:lean-status}, note~4).}
+\S``Premises'').  Its Lean proof, at $\kappa=2\Delta$ with the original cut
+only, is retired with HR.3 (\S\ref{sec:lean-status}, note~4).}
 
 \dagnode{HS.1}{Effective-phase viable-witness retention}{Under the shared
 premises: for an accepted block~$W$ that is allowed in the effective phase
@@ -2775,7 +2775,7 @@ not this target.
 The Lean counterpart of every node outside the lock nodes, in this repository (names relative to \texttt{Consensus.Goldilocks}; the
 crosswalk is \texttt{docs/goldilocks-mapping.md}).  The lock nodes (F.1 (b),
 A0.4, A0.5, the lock part of A0.7, A1.1, A1.2, A1.5, C1.1, HR.4) are not covered
-here (A1.4, A1.9 and HS.2 have rows for their deviations).  \emph{Proved}: a proof of the indexed
+here (A1.4 and A1.9 have rows for their deviations).  \emph{Proved}: a proof of the indexed
 proposition, named in the table, under the axioms \texttt{propext},
 \texttt{Classical.choice} and \texttt{Quot.sound}.  \emph{Conditional} or
 \emph{specialization}: a proof of a weaker or narrower statement, said
@@ -2924,40 +2924,29 @@ G1.10 & \texttt{Store.QuorumFreeEntries} & proved (\texttt{fg\_store\_trace}) un
   premises; its composed scope at C1.1 (conclusion~(iii)) is not stated in Lean\\
 C1.2 & --- & retired (owner decision): a paper claim, note~3\\
 C1.3 & --- & retired (owner decision): a paper claim\\
-HS.0 & \texttt{Healing.settle}, inside \texttt{Healing.ResetExistence} &
-  specialization: proved at $\kappa=2\Delta$ with the original cut, note~4\\
-HS.1 & \texttt{Healing.ViableWitnessRetention} & proved
-  (\texttt{viable\_witness\_retention}), at $\mathsf{Catch}(2\Delta)$\\
-HS.2 & \texttt{Healing.CleanLockDrain} & proved
-  (\texttt{clean\_lock\_drain}); stronger than HS.2: without
-  $\mathsf{Prop}^+(G_p)$, for locks written at any time, (3) at any call,
-  and later votes extend $B$ even when $B$ is at or below the voter's
-  $\fcroot$\\
-HS.3 & \texttt{Healing.FrozenTreeAgreement} & after-$r$ part only (the
-  first part is not stated; \texttt{docs/decisions.md} \S``Goldilocks model
-  choices'', HS.3): proved
-  (\texttt{frozen\_tree\_agreement}, from HS.2); without
-  $\mathsf{Prop}^+(G_p)$\\
-HS.4 & \texttt{Healing.CommonPathAcquisition} & proved
-  (\texttt{common\_path\_acquisition})\\
-HS.5 & $\mathsf{Producer}(A)$ inside \texttt{Healing.ResetExistence} &
-  partial: the producer is proved as part of HR.3; the named
-  phase-service, continuation and attestation-delivery assembly is not one
-  statement\\
+HS.0 & --- & formerly proved inside HR.3; retired with it (owner
+  decision)\\
+HS.1 & --- & retired (owner decision), with its proof\\
+HS.2 & --- & retired (owner decision), with its proof\\
+HS.3 & --- & retired; its after-$r$ lemma is removed with the static chain
+  under HR.3 and HS.4 (owner decision)\\
+HS.4 & --- & retired (owner decision), with its proof\\
+HS.5 & --- & not stated in Lean: $\mathsf{Producer}(A)$ and its
+  consumption step were proved inside HR.3, retired with it (owner
+  decision)\\
 H.1, corollary & --- & not stated in Lean\\
 H.2 & --- & not stated in Lean\\
 H.2 (run) & --- & not stated in Lean\\
 HR.1 & \texttt{Healing.CutAndReset} & proved (\texttt{cut\_and\_reset})\\
 HR.2 & \texttt{Healing.PhaseCount} & proved (\texttt{phase\_count})\\
-HR.3 & \texttt{Healing.ResetExistence} & proved (\texttt{reset\_existence}),
-  at $\mathsf{Catch}(2\Delta)$\\
+HR.3 & --- & retired (owner decision)\\
 HR.4 & --- & retired (owner decision)\\
 HR.5 & --- & retired (owner decision); its guarantee is G1.9 (b),
   above\\
 H.3 & \texttt{Healing.BridgeAt} & FG non-interference
   (\texttt{Healing.NonInterference}) is retired with its proof and the run
-  bundle; (a) is HR.3 (\texttt{reset\_existence}); (b) is HR.4, retired
-  (owner decision); (c) the bridge \texttt{BridgeAt} stays as vocabulary\\
+  bundle; (a) is HR.3 and (b) is HR.4, both retired (owner decision); (c)
+  the bridge \texttt{BridgeAt} stays as vocabulary\\
 H.4 & \texttt{Healing.T\_heal} & the statement (available healing) is
   retired with its proof; $T_{\mathrm{heal}}$ stays as vocabulary, its
   closed form checked by \texttt{T\_heal\_closed\_form} (\texttt{lake test});
@@ -3026,9 +3015,9 @@ reset, with \texttt{IsReset} a premise) and are retired by owner decision;
 HR.5's guarantee remains as G1.9 (b) under growing faults.
 (4) HS.0's general~$\kappa$ with the shifted cut
 $t_{\slot(g+\kappa)+3}$, and the $\bar g'$ shift of
-\S\ref{sec:healing-top}, are not transcribed: the Lean fixes $\kappa=2\Delta$
-and the original cut, and the HS service statements assume
-$\mathsf{Catch}(2\Delta)$.  A smaller~$\kappa$ reduces to it by
+\S\ref{sec:healing-top}, are not transcribed: the retired Lean specialization
+fixed $\kappa=2\Delta$ and the original cut, and the former HS service
+statements assumed $\mathsf{Catch}(2\Delta)$.  A smaller~$\kappa$ reduces to it by
 monotonicity; a larger one is a paper generalization.
 (5) The retired Lean H.4 concluded at the post-states of AC calls (at the boundary
 time itself, after the node's tick), not at every

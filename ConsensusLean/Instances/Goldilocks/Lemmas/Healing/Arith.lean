@@ -55,27 +55,6 @@ theorem gbar_le_of_cutZ_le {g t : Time} (h : cutZ sp.toParams g ≤ t) : gbar g 
   ((le_add_of_nonneg_right (mul_nonneg (Nat.ofNat_nonneg _) sp.toParams.hΔ.le)).trans
     (lt_cutZ sp g).le).trans h
 
-/-- `C_HS = (8k + 49 + 4δ_t)Δ + Δ_F + 3G` (HR.3 (c)). -/
-theorem C_HS_eq (ΔF G : Time) :
-    C_HS sp ΔF G = (8 * (sp.k : Time) + 49 + 4 * (sp.toParams.δt : Time)) * sp.Δ + ΔF + 3 * G := by
-  simp only [C_HS, D_HS]
-  ring
-
-/-- `c_z + 6(Δ + A_HS) ≤ ḡ + 24Δ + 12C_HS` (HR.3 (c)). -/
-theorem cutZ_add_le (g ΔF G : Time) :
-    cutZ sp.toParams g + 6 * (sp.Δ + A_HS sp ΔF G) ≤ gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF G := by
-  have := cutZ_le sp g
-  simp only [A_HS]
-  linarith
-
-/-- `ḡ + 24Δ + 12C_HS = ḡ + (96k + 612 + 48δ_t)Δ + 12Δ_F + 36G` (HR.3 (c)). -/
-theorem reset_bound_eq (g ΔF G : Time) :
-    gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF G =
-      gbar g + (96 * (sp.k : Time) + 612 + 48 * (sp.toParams.δt : Time)) * sp.Δ + 12 * ΔF +
-        36 * G := by
-  rw [C_HS_eq]
-  ring
-
 end Consensus.Goldilocks.Healing
 
 end

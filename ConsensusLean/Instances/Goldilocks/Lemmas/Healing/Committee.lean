@@ -325,13 +325,6 @@ theorem mayVote_iff (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (
 
 end HSShared
 
-/-- The AC base from `g' = t_{slot(ḡ)+1}` serves every slot with `ḡ + 8Δ ≤ t_s`:
-`gbar g' + 4Δ ≤ t_s` (`g' ≤ ḡ + 4Δ`). -/
-theorem gbar_slotAfter_add_le {g t : Time} (h : gbar g + 8 * sp.Δ ≤ t) :
-    gbar (sp.ts (sp.slot (gbar g) + 1 : Nat)) + 4 * sp.Δ ≤ t := by
-  rw [gbar_slotAfter]
-  linarith [slotAfter_le (sp := sp) g]
-
 end Consensus.Goldilocks.Healing
 
 end

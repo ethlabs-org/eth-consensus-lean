@@ -8,7 +8,7 @@ public section
 The forward half of `Compose.attest_source`: an honest node's `ac_to_fg` cut is the FG update's
 first cut (no other handler calls `ac_to_fg`), so when it returns a source `C`, the next cut is
 the update's `fg_attest(C)`, at the same time and the same FG state (an AC cut changes only `𝒜`).
-`HS.4`'s current-source arm is read through it (`historical_source_rows`). Under the
+Under the
 requirements of the node's AC start, the source is held in the FG tree at its cut
 (`toFG_source_mem_from`). -/
 

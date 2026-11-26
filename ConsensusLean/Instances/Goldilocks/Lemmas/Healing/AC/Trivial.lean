@@ -37,20 +37,6 @@ private theorem lastWake_cases (y : Fin sp.n) : ∀ c, tr.lastWake y c = ⊥ ∨
       · exact Or.inl h'
       · exact Or.inr ⟨k, hk.trans (Nat.le_succ c), hrk, h'⟩
 
-/-- Under `Healthy(g)`, the delivery deadline of an object of time `τ` at an honest node is at most
-`max(τ, ḡ) + Δ` (no restart after `ḡ`). With the unlock given. -/
-theorem HealthyBaseU.deadline_le
-    {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
-    (c : Nat) (τ : Time) : tr.deadline y c τ ≤ max τ (gbar g) + sp.Δ := by
-  unfold ACTrace.deadline
-  rcases lastWake_cases (tr := tr) y c with h | ⟨k, -, hrk, h⟩
-  · rw [h]
-    change τ + sp.Δ ≤ _
-    linarith [le_max_left τ (gbar g)]
-  · rw [h]
-    change max τ (tr.time k) + sp.Δ ≤ _
-    linarith [max_le_max_left τ (hS.restart_le hy hrk)]
-
 /-! ## Trivial frames: viability and `Carry` -/
 
 /-! ## Trivial frames: blocks, stamps, relay and held votes -/
@@ -85,16 +71,6 @@ theorem stamp_lt_of_held_of_runU
         _ hw) hnh
   · rw [hst, etime_of_lt_of]
     exact hrestart k hk ⟨ℓ, hc, hcall⟩
-
-/-- Whole-run specialization of bounded-cut stamp retention, with the unlock given. -/
-theorem stamp_lt_of_heldU
-    {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g) {y : Fin sp.n} (hy : y ∈ H)
-    {a b : Nat} (hab : a ≤ b) {w : Vote sp.n} (hw : w ∈ (tr.state y a).pool w.slot) {T : Time}
-    (hta : ∀ k < a, tr.time k < T) (hwT : sp.ts w.slot + sp.Δ < T) (hgT : gbar g < T)
-    (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) :
-    w ∈ (tr.state y b).pool w.slot ∧ (tr.state y b).voteStamp w < ETime.of T :=
-  stamp_lt_of_held_of_runU hS.run.localRun hS.run.vstart hy hab hw hta hwT
-    (fun _ _ hk => (hS.restart_le hy hk).trans_lt hgT) hnr
 
 private theorem admitVote_pool_ne {A : ACState sp.n} {t : Time} {v : Vote sp.n} {σ : Nat}
     (h : v.slot ≠ σ) : (admitVote sp A t v).pool σ = A.pool σ := by

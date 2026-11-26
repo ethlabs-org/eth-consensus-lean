@@ -1,6 +1,7 @@
 module
 public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Run
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Reset
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 @[expose] public section
@@ -9,8 +10,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 
 On the one-validator tick run of `Goldilocks/Runs/OneValidator/Premises` (`n = 1`, `f = 0`, `Δ = 1`,
 `k = δ_t = 2`, `t_s = 4s`, a tick at every time `t ≥ 0`, cut `i` at time `⌊i/8⌋`, no restart), with
-`g = 0`, `Δ_F = 1`, `κ = 2Δ`, `G_p = 4` and `T_b = 0`, the proved run-level healing statements HR.1
-(`CutAndReset`) and HR.3 (`ResetExistence`) are applied to the run, their premises met outright.
+`g = 0`, `Δ_F = 1`, `κ = 2Δ`, `G_p = 4` and `T_b = 0`, the proved run-level healing statement HR.1
+(`CutAndReset`) is applied to the run, its premises met outright (HR.3 is retired).
 
 * **The parameters** (computed from the definitions): `ḡ = 0` (`gbar_zero`), `c_z = 12`
   (`cutZ_zero`), `H_z = 3` (`hz_zero`), `a_z = 16` (`aZ_zero`), `Θ = 12` (`theta_sp1`),
@@ -18,8 +19,7 @@ On the one-validator tick run of `Goldilocks/Runs/OneValidator/Premises` (`n = 1
 * (a) `healing_premises`: `GoldilocksRun`, `HSShared` (with `Healthy(0)` and `NoColl`),
   `Catch(2Δ)` and `Prop⁺(4)`. `reset_bundle`: `16` is the reset `a_z` (`IsReset`) and H.3 (c)'s
   bridge `BridgeAt` holds at `a_z + T_b = 16`.
-* (b) `tickRun_cutAndReset` (HR.1) and `tickRun_resetExistence` (HR.3, `a_z ≤ 1056`): the
-  conclusions read at these parameters.
+* (b) `tickRun_cutAndReset` (HR.1): the conclusion read at these parameters.
 
 **Limitation: `Geo` is vacuous here.** The `Geo` part of H.3 (c)'s bridge `BridgeAt`, in
 `reset_bundle` (`Geo(P)` for an honest proposal whose proposal and votes lie in one settled
@@ -137,32 +137,6 @@ theorem tickRun_cutAndReset :
   rw [cutZ_zero, hz_zero, gbar_zero] at h
   obtain ⟨h1, h2, h3, h4, h5⟩ := h
   exact ⟨h1, h2, h3, h4, h5 16 reset_bundle.1⟩
-
-/-- (b) **HR.3 on the tick run** at `g = 0`, `Δ_F = 1`, `G_p = 4`: `8 < c_z = 12`; HS.0 from
-`12` on; `Producer(A_HS)` with `A_HS = 173`; the reset exists, and every reset is at most
-`c_z + 6(Δ + A_HS) = 1056 = ḡ + 24Δ + 12C_HS`, with `C_HS = 86`. -/
-theorem tickRun_resetExistence :
-    ((0 : Time) + 8 * sp1.Δ < 12 ∧
-      ∀ u, 12 ≤ u → ∀ j j', Healing.FirstCutAfter (tickRun N1 dg1) j u →
-        (tickRun N1 dg1).FirstCutFrom j' (u + sp1.Δ) →
-        Healing.PhaseChanged (tickRun N1 dg1).projFG Set.univ j j' ∨
-          Healing.SettledAt (tickRun N1 dg1) Set.univ 0 (2 * sp1.Δ) (u + sp1.Δ)) ∧
-    (∀ w, Healing.SettledAt (tickRun N1 dg1) Set.univ 0 (2 * sp1.Δ) w → ∀ j j',
-      (tickRun N1 dg1).FirstCutFrom j w → Healing.FirstCutAfter (tickRun N1 dg1) j' (w + 173) →
-      Healing.PhaseChanged (tickRun N1 dg1).projFG Set.univ j j') ∧
-    (∃ a, Healing.IsReset (tickRun N1 dg1) Set.univ 0 a) ∧
-    (∀ a, Healing.IsReset (tickRun N1 dg1) Set.univ 0 a → a ≤ 1056) ∧
-    (1056 : Time) ≤ 0 + 24 * sp1.Δ + 12 * 86 ∧
-    Healing.C_HS sp1 1 4 = 86 := by
-  obtain ⟨⟨h1, h2⟩, h3, h4, h5, h6, -, h8⟩ := Healing.reset_existence sp1 ro1 (fun _ => v0) dg1
-    Set.univ (tickRun N1 dg1) (AC.CommitteeDict.full sp1.n) 0 1 4
-    (by rw [AC.committeeStart_full]; exact tickRun_goldilocksRun) tickRun_allTicksSign
-    (tickRun_hsShared 0)
-    (tickRun_catch 0 _ (by decide)) (tickRun_propPlus 0 4 le_rfl)
-  rw [cutZ_zero] at h1 h2 h5 h6
-  simp only [gbar_zero, A_HS_sp1, C_HS_sp1] at h1 h3 h5 h6
-  refine ⟨⟨h1, h2⟩, h3, h4, fun a ha => (h5 a ha).trans (le_of_eq ?_), h6, C_HS_sp1⟩
-  decide
 
 end Consensus.Goldilocks.Witness.One
 

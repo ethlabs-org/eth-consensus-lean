@@ -13,8 +13,7 @@ public section
 /-! # Goldilocks Healing: proposal holding from a writer, and vote transfer
 
 * `heldAtProposal_of_writer`: a vote of an honest writer in `[t_σ, t_σ + 2Δ)` whose head extends
-  the proposer's `Φ.F` reaches the honest proposer of slot `σ + 1` (`carryAt_of_writer_catch` at
-  the proposal duty);
+  the proposer's `Φ.F` reaches the honest proposer of slot `σ + 1`;
 * `result_prefix_vote_extends_of_stored`: an honest vote of slot `s + 1` carrying a slot-`s` result
   extends a block below the result, from the stored locks and the earlier same-label votes;
 * `next_vote_extends_before`: an honest vote of slot `m + 1` extends `B` when the honest votes of
@@ -25,10 +24,10 @@ namespace Consensus.Goldilocks.AC
 variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {g t₀ : Time} {proposer : Nat → Fin sp.n}
 
-/-- **(P) from a writer, after the GST or by catch-up** (`carryAt_of_writer_catch` at the
-proposal duty): a slot-`σ` vote sent or admitted by an honest writer in `[t_σ, t_σ + 2Δ)`, whose
-head extends the proposer's `Φ.F` and is genesis, or was accepted by the writer from `a₀` on before
-`t_σ + 2Δ`, or by the proposer before `t_σ + 3Δ`, reaches the honest proposer of slot `σ + 1`
+/-- **(P) from a writer, after the GST or by catch-up**: a slot-`σ` vote sent or admitted by an
+honest writer in `[t_σ, t_σ + 2Δ)`, whose head extends the proposer's `Φ.F` and is genesis, or
+was accepted by the writer from `a₀` on before `t_σ + 2Δ`, or by the proposer before `t_σ + 3Δ`,
+reaches the honest proposer of slot `σ + 1`
 (Sync relays the vote and the head before `t_σ + 3Δ`; rooted retention keeps the head). -/
 theorem heldAtProposal_of_writer {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))

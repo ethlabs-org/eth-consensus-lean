@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retain
+public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Service
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Ready
@@ -9,25 +10,16 @@ public section
 
 /-! # Goldilocks Healing: settled-phase geometry (H.3 (c3))
 
-`geo_of_settled` proves `Geo(P)` for an honest proposal whose proposal and slot-`p` votes lie in one
-settled effective phase `(m, c)`, from HS.1 (`viable_witness_retention_of`, `Retain`). Its pieces:
+The pieces of the settled-phase geometry that remain; the geometry itself, its aligned readers
+and its relay to the proposer are removed with HS.4 and HR.3 (retired, owner decision):
 
-* **Aligned readers** (service readers are aligned after settling;
-  `viableHeads_iff`): at a cut of the phase, an honest node's head height floor is the phase floor
-  and its `fc_root` is `Σ.F` (gap, contest) or the phase's `J` (top `J`), so a block it holds is
-  a viable head of its frame exactly when it extends its `Σ.F` and is allowed in the effective
-  geometry. The cache side needs `JMax` (`Σ.h_j` is at least the justified height of every held
-  state whose `J` is a held block extending `Σ.F`, an FG store invariant), HR.2 (a) for `Σ.J`,
-  and HS.1 for `Σ.F ⪯ J` and for the contest witness.
-* **The voter block tree**: a block stamped before the freeze was held
-  by the voter at an earlier call (`stamp_origin`, `readPoint_blockStamp_eqU`), so accepted before
-  `t_p − Δ` and relayed to the proposer by `t_p` (`relay_held`); the other blocks are ancestors
-  of the slot's block, which is `P` (one block per honest proposer and slot).
-* **The proposal**: its parent is a viable head (requirement 1; the walk starts at an anchor in
-  the viable tree, `getAnchor_viable`, `proposal_head_viable`), so `P` is allowed wherever it is
-  held; a voter holds it (ready at an early vote, `cast_readyU`; relayed by `t_p + Δ` otherwise).
-  `Geo` quantifies over every proposal call at `t_p`; there is one (`proposal_call_unique`).
--/
+* **`JMax`**: `Σ.h_j` is at least the justified height of every held state whose `J` is a held
+  block extending `Σ.F`, an FG store invariant (`jMax_of_reachable`).
+* **The voter block tree**: a block stamped before the freeze was held by the voter at an earlier
+  call (`stamp_origin`, `readPoint_blockStamp_eqU`).
+* **The proposal**: the walk starts at an anchor in the viable tree (`getAnchor_viable`), and the
+  proposal's parent is a viable head (`proposal_head_viable`); an `ac_proposal` cut is the second
+  cut of a tick (`proposal_call_tick`). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -228,28 +220,6 @@ theorem jMax_of_reachable {st : Store P ACP} (hr : st.Reachable acp₀) : JMax s
   | refl => exact jMax_init
   | tail hr hs ih => exact jMax_step hr ih hs
 
-/-- A frame's viable heads read with the effective geometry: when the head height floor is the
-phase floor and the fork-choice root is `Σ.F`, or `J` in the top-`J` case, a held block is a viable
-head exactly when it extends `Σ.F` and is allowed in the effective geometry. -/
-private theorem viableHeads_iff_of {st : Store P ACP} {m : Nat} {c : PhaseCase (NodeBlock P ACP)}
-    (hfl : st.headHeightFloor = phaseFloor m c)
-    (hfc : ∀ J, c = .top J → st.fcRoot = J) (hfF : (∀ J, c ≠ .top J) → st.fcRoot = st.F)
-    {X : NodeBlock P ACP} (hX : X ∈ st.tree) :
-    X ∈ st.toFrame.viableHeads ↔ st.Anc st.F X ∧ EffAllowed st m c X := by
-  change (X ∈ st.tree ∧ st.Anc st.F X ∧ st.Anc st.fcRoot X ∧ st.headHeightFloor ≤
-    (st.σ X.root).h) ↔ st.Anc st.F X ∧ X ∈ st.tree ∧ phaseFloor m c ≤ (st.σ X.root).h ∧
-      ∀ J, c = .top J → st.Anc J X
-  rw [hfl]
-  by_cases htop : ∃ J, c = .top J
-  · obtain ⟨J, rfl⟩ := htop
-    rw [hfc J rfl]
-    exact ⟨fun ⟨_, hF, hJ, hh⟩ => ⟨hF, hX, hh, fun J' e => by cases e; exact hJ⟩,
-      fun ⟨hF, _, hh, hJ⟩ => ⟨hX, hF, hJ J rfl, hh⟩⟩
-  · push Not at htop
-    rw [hfF htop]
-    exact ⟨fun ⟨_, hF, _, hh⟩ => ⟨hF, hX, hh, fun J e => absurd e (htop J)⟩,
-      fun ⟨hF, _, hh, _⟩ => ⟨hX, hF, hF, hh⟩⟩
-
 end Stores
 
 /-! ## Runs: aligned readers in a settled phase -/
@@ -261,159 +231,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
   {proposer : Nat → Fin sp.n}
-
-/-- The FG projection of a run under the HS shared premises is an FG trace, with `f < 2q − n`. -/
-theorem fg_run_of_hs (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H K dg g ΔF) :
-    FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG ∧
-      Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
-  obtain ⟨-, -, hf⟩ := hs.healthy
-  have hn := sp.toParams.hn
-  exact ⟨Compose.fg_projection_from (fun y _ => Compose.requirements_from sp ro
-      (hrun.vstart y)) hs.genesisRoot hrun.toLocalRun hs.noColl,
-    by change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n; omega⟩
-
-/-- The evidence of a phase, once held, stays held (stores keep their blocks and states, and
-ancestry of a held block does not change). -/
-theorem holdsEvidence_mono (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr)
-    {z : Fin sp.n} (hz : z ∈ H) {a b m : Nat} {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))}
-    (hab : a ≤ b) (h : HoldsEvidence (tr.state z a).fg m c) :
-    HoldsEvidence (tr.state z b).fg m c := by
-  have hsub := Compose.tree_mono hrun.toLocalRun hz hab
-  have hσ : ∀ B ∈ (tr.state z a).fg.tree,
-      (tr.state z b).fg.σ B.root = (tr.state z a).fg.σ B.root :=
-    fun B hB => σ_eq_honest hrun hnc hz hz (hsub hB) hB
-  have hh : ∀ k, (∃ B ∈ (tr.state z a).fg.tree, ((tr.state z a).fg.σ B.root).h = k) →
-      ∃ B ∈ (tr.state z b).fg.tree, ((tr.state z b).fg.σ B.root).h = k :=
-    fun k ⟨B, hB, e⟩ => ⟨B, hsub hB, by rw [hσ B hB, e]⟩
-  have hj : ∀ J : AC.Blk sp.n (List (FG.Att sp.n)), (∃ B ∈ (tr.state z a).fg.tree,
-      ((tr.state z a).fg.σ B.root).hj = m - 1 ∧ ((tr.state z a).fg.σ B.root).J = J.root) →
-      ∃ B ∈ (tr.state z b).fg.tree,
-        ((tr.state z b).fg.σ B.root).hj = m - 1 ∧ ((tr.state z b).fg.σ B.root).J = J.root :=
-    fun J ⟨B, hB, e1, e2⟩ => ⟨B, hsub hB, by rw [hσ B hB, e1], by rw [hσ B hB, e2]⟩
-  have hc : ∀ J : AC.Blk sp.n (List (FG.Att sp.n)), (∃ B ∈ (tr.state z a).fg.tree,
-      ((tr.state z a).fg.σ B.root).h = m ∧ ¬ (tr.state z a).fg.Anc J B) →
-      ∃ B ∈ (tr.state z b).fg.tree,
-        ((tr.state z b).fg.σ B.root).h = m ∧ ¬ (tr.state z b).fg.Anc J B :=
-    fun J ⟨B, hB, e, hn⟩ => ⟨B, hsub hB, by rw [hσ B hB, e], fun ha => hn
-      (store_anc_of_honest_anc hrun hnc hz (ha.mono fun X hX => ⟨z, hz, b, hX⟩) hB)⟩
-  cases c with
-  | gap => exact hh m h
-  | top J => exact ⟨hh m h.1, hsub h.2.1, hj J h.2.2⟩
-  | contest J => exact ⟨hh m h.1, hsub h.2.1, hj J h.2.2.1, hc J h.2.2.2⟩
-
-/-- **Aligned readers**: at a cut where the effective phase is `(m, c)`
-and an honest node holds the phase's evidence, a block it holds is a viable head of its frame
-exactly when it extends its `Σ.F` and is allowed in the effective phase geometry. The head height
-floor is the phase floor and `fc_root` is `Σ.F`, or the phase's `J` in the top-`J` case: the
-node's `Σ.h_max` is `m`; its `Σ.h_j` is `m − 1` exactly when the phase has a justification there
-(`JMax`, with `Σ.F ⪯ J` from HS.1), its `Σ.J` is then the phase's `J` (HR.2 (a)), and its local
-contest test agrees with the phase case (the contest witness extends `Σ.F` by HS.1). -/
-theorem viableHeads_iff (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H K dg g ΔF)
-    (_hc : CatchRun tr H g (2 * sp.Δ)) {z : Fin sp.n} (hz : z ∈ H) {k m : Nat}
-    {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))} (hph : PhaseAt tr.projFG H k m c)
-    (hev : HoldsEvidence (tr.state z k).fg m c) {X : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hX : X ∈ (tr.state z k).fg.tree) :
-    X ∈ (Node.frame (tr.state z k)).viableHeads ↔
-      (tr.state z k).fg.Anc (tr.state z k).fg.F X ∧ EffAllowed (tr.state z k).fg m c X := by
-  obtain ⟨hfg, hq⟩ := fg_run_of_hs hrun hs
-  have hR := Compose.fg_reachable hrun.toLocalRun hz k
-  have hcoh : Coherent (tr.state z k).fg.tree :=
-    (Goldilocks.Store.accepted_tree _ _ _ _ hR).2.1
-  have hF : ∀ W, EffAllowed (tr.state z k).fg m c W →
-      (tr.state z k).fg.Anc (tr.state z k).fg.F W := fun W hW =>
-    store_anc_of_honest_anc hrun hs.noColl hz
-      ((viable_witness_retention_of hrun hs
-        (fun k' h1 h2 => (le_antisymm h2 h1).symm ▸ hph) hz hW hz le_rfl le_rfl).1) hW.1
-  obtain ⟨-, hJm, -, ⟨Bj, hBj, hBjJ, hBjhj⟩, hge, -, -⟩ :=
-    Goldilocks.Store.cache_invariants _ _ _ _ hR
-  have hjlt : (tr.state z k).fg.hj < (tr.state z k).fg.hmax :=
-    hBjhj ▸ (Store.hj_lt_h hR hBj).trans_le (hge Bj hBj)
-  have hmax : (tr.state z k).fg.hmax = m := by
-    have h1 := hph.frontierAt.2 z hz
-    rw [Compose.store_eq hrun hz] at h1
-    obtain ⟨B, hB, hBh⟩ : ∃ B ∈ (tr.state z k).fg.tree, ((tr.state z k).fg.σ B.root).h = m := by
-      cases c with
-      | gap => exact hev
-      | top J => exact hev.1
-      | contest J => exact hev.1
-    have := hge B hB
-    omega
-  have hjust : JustifiedAt tr.projFG H k (tr.state z k).fg.hj (tr.state z k).fg.J :=
-    ⟨z, hz, by rw [Compose.store_eq hrun hz]; exact hJm, Bj,
-      by rw [Compose.store_eq hrun hz]; exact hBj, by rw [Compose.store_eq hrun hz]; exact hBjhj,
-      by rw [Compose.store_eq hrun hz]; exact hBjJ⟩
-  -- with a justification at `m − 1` held whose `J` extends `Σ.F`, the cache is it
-  have hcache : ∀ J₀ B₀, J₀ ∈ (tr.state z k).fg.tree → B₀ ∈ (tr.state z k).fg.tree →
-      ((tr.state z k).fg.σ B₀.root).hj = m - 1 → ((tr.state z k).fg.σ B₀.root).J = J₀.root →
-      (tr.state z k).fg.Anc (tr.state z k).fg.F J₀ →
-      (tr.state z k).fg.hj = m - 1 ∧ (tr.state z k).fg.J = J₀ := by
-    intro J₀ B₀ hJ₀ hB₀ hB₀j hB₀J hFJ
-    have h1 := jMax_of_reachable hR B₀ hB₀ J₀ hJ₀ hB₀J.symm hFJ
-    have hhj : (tr.state z k).fg.hj = m - 1 := by omega
-    refine ⟨hhj, hcoh.1 hJm hJ₀ ?_⟩
-    have := J_eq_of_hj_eq hfg hq hz hz (i := k) (j := k) (B := Bj) (B' := B₀)
-      (by rw [Compose.store_eq hrun hz]; exact hBj) (by rw [Compose.store_eq hrun hz]; exact hB₀)
-      (by rw [Compose.store_eq hrun hz]; omega)
-    rw [Compose.store_eq hrun hz] at this
-    rw [← hBjJ, ← hB₀J, this]
-  -- the justification of a held state is a held ancestor
-  have hJanc : ∀ J₀ B₀, J₀ ∈ (tr.state z k).fg.tree → B₀ ∈ (tr.state z k).fg.tree →
-      ((tr.state z k).fg.σ B₀.root).J = J₀.root → (tr.state z k).fg.Anc J₀ B₀ ∧
-        ((tr.state z k).fg.σ B₀.root).hj ≤ ((tr.state z k).fg.σ J₀.root).h := by
-    intro J₀ B₀ hJ₀ hB₀ hB₀J
-    obtain ⟨E, hE, hEr, hEB, -⟩ := Store.J_entry_of_reachable hR hB₀
-    obtain ⟨E', hE', hE'r, hle⟩ := J_entry_h hR hB₀
-    obtain rfl : E = J₀ := hcoh.1 hE hJ₀ (hEr.trans hB₀J)
-    obtain rfl : E' = E := hcoh.1 hE' hE (hE'r.trans hEr.symm)
-    exact ⟨hEB, hle⟩
-  have hheld : ∀ B ∈ (tr.state z k).fg.tree, (tr.state z k).fg.σ B.root =
-      (tr.projFG.store z k).σ B.root := fun B _ => by rw [Compose.store_eq hrun hz]
-  refine viableHeads_iff_of ?_ ?_ ?_ hX
-  all_goals cases c with
-  | gap =>
-    have hne : ¬ (tr.state z k).fg.hmax = (tr.state z k).fg.hj + 1 := fun he =>
-      hph.2 _ (by rw [show m - 1 = (tr.state z k).fg.hj by omega]; exact hjust)
-    have hcon : ¬ (tr.state z k).fg.Contest := fun h => hne h.1
-    first
-      | (simp only [Store.headHeightFloor, hcon, ↓reduceIte, hmax]; rfl)
-      | (intro J e; cases e)
-      | (intro _; simp only [Store.fcRoot, hne, false_and, ↓reduceIte])
-  | top J₀ =>
-    obtain ⟨-, hJ₀, B₀, hB₀, hB₀j, hB₀J⟩ := hev
-    obtain ⟨hJB, hle⟩ := hJanc J₀ B₀ hJ₀ hB₀ hB₀J
-    obtain ⟨hhj, rfl⟩ := hcache J₀ B₀ hJ₀ hB₀ hB₀j hB₀J
-      (hF J₀ ⟨hJ₀, by change m - 1 ≤ _; omega, fun J e => by cases e; exact .refl⟩)
-    have hcon : ¬ (tr.state z k).fg.Contest := by
-      rintro ⟨-, B, hB, -, hBh, hn⟩
-      exact hph.2.2 ⟨z, hz, B, by rw [Compose.store_eq hrun hz]; exact hB,
-        by rw [Compose.store_eq hrun hz, hBh, hmax], by rw [Compose.store_eq hrun hz]; exact hn⟩
-    have hm1 : (tr.state z k).fg.hmax = (tr.state z k).fg.hj + 1 := by omega
-    first
-      | (simp only [Store.headHeightFloor, hcon, ↓reduceIte, hmax]; rfl)
-      | (intro J e; cases e
-         simp only [Store.fcRoot, hm1, hcon, not_false_eq_true, and_self, ↓reduceIte])
-      | (intro h; exact absurd rfl (h _))
-  | contest J₀ =>
-    obtain ⟨-, hJ₀, ⟨B₀, hB₀, hB₀j, hB₀J⟩, B₁, hB₁, hB₁h, hn⟩ := hev
-    obtain ⟨hJB, -⟩ := hJanc J₀ B₀ hJ₀ hB₀ hB₀J
-    have hB₀h : ((tr.state z k).fg.σ B₀.root).h = m := by
-      have := Store.hj_lt_h hR hB₀
-      have := hge B₀ hB₀
-      omega
-    have hFB₀ := hF B₀ ⟨hB₀, by change m ≤ _; omega, fun J e => by cases e⟩
-    have hFB₁ := hF B₁ ⟨hB₁, by change m ≤ _; omega, fun J e => by cases e⟩
-    have hFJ : (tr.state z k).fg.Anc (tr.state z k).fg.F J₀ := by
-      rcases Anc.total hcoh hFB₀ hJB with h | h
-      · exact h
-      · exact absurd (h.trans hFB₁) hn
-    obtain ⟨hhj, rfl⟩ := hcache J₀ B₀ hJ₀ hB₀ hB₀j hB₀J hFJ
-    have hcon : (tr.state z k).fg.Contest :=
-      ⟨by omega, B₁, hB₁, hFB₁, by rw [hB₁h, hmax], hn⟩
-    first
-      | (simp only [Store.headHeightFloor, hcon, ↓reduceIte, hmax]; rfl)
-      | (intro J e; cases e)
-      | (intro _; simp only [Store.fcRoot, hcon, not_true_eq_false, and_false, ↓reduceIte])
 
 end Runs
 
@@ -573,17 +390,6 @@ theorem proposal_call_tick {ini} (h : Node.LocalRun proposer dg H sg tr ini)
     subst hm
     cases hp
 
-/-- **One `ac_proposal` cut per node and time.** -/
-theorem proposal_call_unique {ini} (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
-    (hy : y ∈ H)
-    {i i' : Nat} {ℓ ℓ' : ACLabel A} (hc : tr.CallAt y i (.ac ℓ)) (hc' : tr.CallAt y i' (.ac ℓ'))
-    (hp : ℓ.call = .proposal) (hp' : ℓ'.call = .proposal) (ht : tr.time i = tr.time i') :
-    i = i' := by
-  obtain ⟨j, rfl, hj⟩ := proposal_call_tick h hy hc hp
-  obtain ⟨j', rfl, hj'⟩ := proposal_call_tick h hy hc' hp'
-  rw [ht] at hj
-  rw [h.tick_unique y hy j j' _ hj hj']
-
 end RunCuts
 
 /-! ## `Geo` in a settled phase -/
@@ -595,22 +401,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
   {proposer : Nat → Fin sp.n}
-
-/-- Allowedness in the effective geometry moves between honest stores that hold the block. -/
-theorem effAllowed_transfer (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr)
-    {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {i j m : Nat}
-    {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))} {X : AC.Blk sp.n (List (FG.Att sp.n))}
-    (h : EffAllowed (tr.state y i).fg m c X) (hX : X ∈ (tr.state z j).fg.tree) :
-    EffAllowed (tr.state z j).fg m c X :=
-  ⟨hX, by rw [σ_eq_honest hrun hnc hz hy hX h.1]; exact h.2.1, fun J hJ =>
-    store_anc_of_honest_anc hrun hnc hz ((h.2.2 J hJ).mono fun Z hZ => ⟨y, hy, i, hZ⟩) hX⟩
-
-/-- A held descendant of an allowed block is allowed (state heights do not decrease). -/
-theorem effAllowed_of_anc {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
-    (hr : st.Reachable acp₀) {m : Nat} {c : PhaseCase (NodeBlock P ACP)} {A W : NodeBlock P ACP}
-    (h : EffAllowed st m c A) (hW : W ∈ st.tree) (hAW : st.Anc A W) : EffAllowed st m c W :=
-  ⟨hW, h.2.1.trans (h_le_of_store_anc hr hAW), fun J hJ => (h.2.2 J hJ).trans hAW⟩
 
 end Main
 

@@ -8,10 +8,11 @@ public section
 
 /-! # Goldilocks Healing: HS.4 (b), the client subclaim
 
-Client progress (P1/P2). At an honest
+Client progress (P1/P2). HS.4 is retired (owner decision) and this subclaim is no longer proved;
+the lemmas here, which its proof used, remain. At an honest
 `fg_attest(C)` in the effective phase `(m, c)`, whose source `C` has state height `h ≥ ℓ`, entry
 `E` and is allowed in the phase geometry, the client signs a matching attestation `(h, E)` (target
-or timeout), or it signed one at an earlier cut (`client_progress`):
+or timeout), or it signed one at an earlier cut:
 
 * `height_pair` does not refuse. A lock at `h` naming `X ≠ E` was written by an earlier honest
   signing whose finality pair is `(h, X)` (`record_facts`, the record's only writer is
@@ -317,127 +318,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
-
-/-- **No conflicting finality lock at an allowed source's height**:
-at an honest `fg_attest(C)` in the phase `(m, c)`, with `C` allowed, of state height
-`h ≥ ℓ` and entry `E`, the record's lock at `h` is free or `E`. -/
-theorem lock_free_or_entry (hrun : GoldilocksRun proposer dg H tr ini)
-    (hs : HSShared tr H K dg g ΔF)
-    {i₀ m : Nat} {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))} {y : Fin sp.n} (hy : y ∈ H)
-    {k : Nat} (hk : i₀ ≤ k) (hon : PhaseOn tr.projFG H i₀ k m c)
-    {C E : AC.Blk sp.n (List (FG.Att sp.n))} {h : Nat} (hE : EntryOf (tr.state y k).fg C E h)
-    (hCh : ((tr.state y k).fg.σ C.root).h = h) (hfl : phaseFloor m c ≤ h)
-    (hall : EffAllowed (tr.state y k).fg m c C) :
-    (tr.state y k).record.lock h = none ∨ (tr.state y k).record.lock h = some E.root := by
-  obtain ⟨hfg, hq⟩ := fg_run_of_hs hrun hs
-  have hr := Compose.fg_reachable hrun.toLocalRun hy k
-  obtain ⟨⟨-, hETh⟩, hEh, hEC⟩ := hE
-  have hCTh : ((tr.state y k).fg.σ C.root).Th = E.root := by
-    rw [Th_eq_of_anc hr hEC (hCh.trans hEh.symm), hETh]
-  rcases hl : (tr.state y k).record.lock h with _ | X
-  · exact Or.inl rfl
-  refine Or.inr (congrArg some ?_)
-  by_contra hne
-  obtain ⟨k', hk', att, hsa, hfin⟩ := (record_facts hrun.toLocalRun hy k).2.2 h X hl
-  obtain ⟨B, hB, hBj, hBJ⟩ := signed_fin_justified hrun.toLocalRun hy hsa hfin
-  have hsub := Compose.tree_mono hrun.toLocalRun hy hk'.le
-  have hσB := σ_eq_honest hrun hs.noColl hy hy (hsub hB) hB
-  have hB' := hsub hB
-  have h1 : 1 ≤ h := hCh ▸ Store.one_le_h hr hall.1
-  obtain ⟨Z, hZ, -, hZr, hZh, hZT⟩ :=
-    (chain_pairs_entry hr hB').1 (by rw [hσB, hBj]; exact h1)
-  rw [hσB] at hZr hZh
-  rw [hBj] at hZh
-  rw [hBJ] at hZr
-  -- a held block of state height above `h`: `h < m`
-  have hlt : h < m := by
-    have hge := (Goldilocks.Store.cache_invariants _ _ _ _ hr).2.2.2.2.1 B hB'
-    have hjl := Store.hj_lt_h hr hB'
-    have hmax := (hon k hk le_rfl).frontierAt.2 y hy
-    rw [Compose.store_eq hrun hy] at hmax
-    have hBj' : ((tr.state y k).fg.σ B.root).hj = h := by rw [hσB]; exact hBj
-    omega
-  have hJ : JustifiedAt tr.projFG H k h Z := ⟨y, hy, by rw [Compose.store_eq hrun hy]; exact hZ,
-    B, by rw [Compose.store_eq hrun hy]; exact hB', by rw [Compose.store_eq hrun hy, hσB, hBj],
-    by rw [Compose.store_eq hrun hy, hσB, hBJ, hZr]⟩
-  have hph := hon k hk le_rfl
-  cases c with
-  | gap =>
-    change m - 1 ≤ h at hfl
-    obtain rfl : h = m - 1 := by omega
-    exact hph.2 Z hJ
-  | contest J₀ =>
-    change m ≤ h at hfl
-    omega
-  | top J₀ =>
-    change m - 1 ≤ h at hfl
-    obtain rfl : h = m - 1 := by omega
-    obtain rfl : J₀ = Z := justifiedAt_unique hfg hq hph.2.1 hJ
-    have hZC := hall.2.2 J₀ rfl
-    have := Th_eq_of_anc hr hZC (hCh.trans hZh.symm)
-    rw [hCTh, hZT, hZr] at this
-    exact hne this.symm
-
-/-- **HS.4 (b), the client subclaim** (P1/P2): at
-an honest `fg_attest(C)` in the phase, with `C` allowed, of state height `h ≥ ℓ` and entry `E`,
-the client signs a matching attestation for `E` at `h`, or signed one at an earlier cut. -/
-theorem client_progress (hrun : GoldilocksRun proposer dg H tr ini)
-    (hs : HSShared tr H K dg g ΔF) {i₀ m : Nat}
-    {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))} :
-    ∀ y ∈ H, ∀ k (C : AC.Blk sp.n (List (FG.Att sp.n))) (signed : Option (FG.Att sp.n)),
-      tr.CallAt y k (.fg (.attest C signed)) → i₀ ≤ k → PhaseOn tr.projFG H i₀ k m c →
-      ∀ E h, EntryOf (tr.state y k).fg C E h → ((tr.state y k).fg.σ C.root).h = h →
-        phaseFloor m c ≤ h →
-        EffAllowed (tr.state y k).fg m c C →
-        (∃ att, signed = some att ∧ att.h = h ∧ att.T = E.root) ∨
-        ∃ k' < k, ∃ att, tr.SignAt y k' att ∧ att.h = h ∧ att.T = E.root := by
-  intro y hy k C signed hc hk hon E h hE hCh hfl hall
-  have hr := Compose.fg_reachable hrun.toLocalRun hy k
-  have hlock := lock_free_or_entry hrun hs hy hk hon hE hCh hfl hall
-  obtain ⟨⟨-, hETh⟩, hEh, hEC⟩ := hE
-  have hCTh : ((tr.state y k).fg.σ C.root).Th = E.root := by
-    rw [Th_eq_of_anc hr hEC (hCh.trans hEh.symm), hETh]
-  -- the entry state
-  have hσe : (tr.state y k).fg.σ ((tr.state y k).fg.σ C.root).Th =
-      (tr.state y k).fg.σ E.root := by rw [hCTh]
-  have he₁ : ((tr.state y k).fg.σ E.root).h = h := hEh
-  have he₂ : ((tr.state y k).fg.σ E.root).Th = E.root := hETh
-  have hlaw := hrun.cutLaw y hy k _ hc
-  cases signed with
-  | some a =>
-    have hcl := hlaw.1
-    change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
-      ((tr.state y k).fg.σ C.root).Th) = some (a, _) at hcl
-    rw [hσe] at hcl
-    obtain ⟨-, hah, haT, -⟩ := Client.createAtt_some hcl
-    exact Or.inl ⟨a, rfl, hah.trans he₁, haT.trans he₂⟩
-  | none =>
-    have hcl := hlaw.1
-    change (tr.state y k).record.createAtt y ((tr.state y k).fg.σ
-      ((tr.state y k).fg.σ C.root).Th) = none at hcl
-    rw [hσe] at hcl
-    rcases Client.createAtt_none hcl with ⟨h1, h2⟩ | ⟨b, hb, hbh, hbT⟩
-    · simp only [he₁, he₂] at h1 h2
-      rcases hlock with hl | hl
-      · exact absurd hl h1
-      · exact absurd hl h2
-    simp only [he₁, he₂] at hbh hbT
-    obtain ⟨hok, hsent, -⟩ := record_facts hrun.toLocalRun hy k
-    have hbT' : b.2.1 = E.root := by
-      rcases hbT with hbT | ⟨hto, htg⟩
-      · exact hbT
-      obtain ⟨h1, h2⟩ := hok b hb
-      cases hτ : b.2.2.1
-      · have := h2 hτ
-        rw [hbh] at this
-        rcases htg with htg | htg <;> rw [htg] at this
-        · cases this
-        · exact (Option.some.inj this).symm
-      · have := h1 hτ
-        rw [hbh, hto] at this
-        simp at this
-    obtain ⟨k', hk', att, hsa, rfl⟩ := hsent b hb
-    exact Or.inr ⟨k', hk', att, hsa, hbh, hbT'⟩
 
 end Consensus.Goldilocks.Healing
 

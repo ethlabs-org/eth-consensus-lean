@@ -529,12 +529,13 @@ detail in `TRUST.md`.
   has no such conjunct. No consumer of either fact existed, so they were dropped rather than restated on `ac_head`.
   The node and the family behave as before (only an unread return value went), and the LaTeX (SPEC requirements 1
   and 2, claims A0.6) agrees.
-- **HS.3 is proved as its after-`r` part only.** `frozen_tree_agreement_clean` (`Lemmas/Healing/AgreeVotes`)
-  proves the second part of claims HS.3: with `Prop⁺(G_p)` and `t_s ≥ r`, every honest slot-`s` vote is `P` with
-  its ancestry retained, and later honest votes and proposal parents extend `P`. It omits the first part (every
-  honest slot-`s` vote is `P` under the explicit voter lock premise and the proposer-anchor premise, without
-  `Prop⁺` or `t_s ≥ r`). This deviates from claims HS.3, which states both parts. Reasons:
-  - The first part has no proof. Its route compiled except for one leaf, `voter_unlock_keeps_lock`: a voter keeps,
+- **Before retirement, only the after-`r` part of HS.3 was proved.** `frozen_tree_agreement_clean`
+  (`Lemmas/Healing/AgreeVotes`) proved the second part of claims HS.3: with `Prop⁺(G_p)` and `t_s ≥ r`, every
+  honest slot-`s` vote is `P` with its ancestry retained, and later honest votes and proposal parents extend `P`.
+  It omitted the first part (every honest slot-`s` vote is `P` under the explicit voter lock premise and the
+  proposer-anchor premise, without `Prop⁺` or `t_s ≥ r`). This deviated from claims HS.3, which states both
+  parts. Reasons:
+  - The first part had no proof. Its route compiled except for one leaf, `voter_unlock_keeps_lock`: a voter keeps,
     through its own `unlock`, a live lock above the proposer's lock `L`. The proposer's survival of `L` does not give
     that: `opponents` counts only support votes whose head is in the frame's tree, so a voter whose `Σ.F` is below
     the proposer's can count more opponents against the same votes. `unlockTarget_frame_dependent`
@@ -542,12 +543,16 @@ detail in `TRUST.md`.
     not show that the configuration is reachable under `AgreeSetting`. No counterexample to the leaf or to the first
     part under their premises is known. A proof would need a new argument: the honest voters' locks required by the
     proposer-anchor premise would have to bound the slot-`(s − 1)` votes.
-  - Nothing consumes the first part. HS.4, HS.5, HR.3 and H.4 use only the second (`frozen_tree_agreement_clean`,
+  - Nothing consumed the first part. HS.4, HS.5, HR.3 and H.4 used only the second (`frozen_tree_agreement_clean`,
     from HS.2): `ready_protected`, `consume_continue_of`, `acquired_or_changed`.
   - Restating the proposer-anchor premise over the voter's read-point locks was rejected: that premise is the
     voter's state after its own `unlock`, nearly the step being claimed. The HS.3 milestone statement and the
-    phase-service bundle (HS.1–HS.4) are retired; HS.1, HS.2 and HS.4 stay as the types of the lemmas the
+    phase-service bundle (HS.1–HS.4) were retired; HS.1, HS.2 and HS.4 stayed as the types of the lemmas the
     recovery proofs read.
+  - Later (owner decision, retiring HR.3 and HS.4): `frozen_tree_agreement_clean` and its consumers are removed
+    with the static chain under HR.3 and HS.4 (`Lemmas/Healing/{Reset, Service, Acquire, AgreeFrozen,
+    AgreeLater, AgreeSuffix, AgreeViews, AgreeVotes, ConsumeContinue, ConsumeUpper, ConsumeMature, Drain, Retain}`),
+    and so are HS.0, HS.1 and HS.2 with their proofs (the HS.1 and HS.2 statements are retired too).
 
 ### Committee modelling
 
@@ -606,9 +611,8 @@ detail in `TRUST.md`.
   (`Compose.Growing.CommitteeFacts` at the constant honest set: committee sizes, P and the gate; it has no
   `hFrame` premise on the blocks of frames, since a valid block may declare a non-member, and T follows from P)
   and CS2 for every slot after the slot of
-  `ḡ` (`twoK`; no count at a slot that starts at or before `ḡ`), and the statements that take them
-  (HR.3, HS.1, HS.2,
-  HS.4) run from `K`'s committee start. CS (`FaultBoundK`) is not a premise: the proofs
+  `ḡ` (`twoK`; no count at a slot that starts at or before `ḡ`); the retired HR.3, HS.1, HS.2 and HS.4 ran
+  from `K`'s committee start. CS (`FaultBoundK`) is not a premise: the proofs
   derive it where they count, at slots whose previous slot starts after `ḡ`. The AC healing bundle
   `HealthyBaseU` (`Milestones/Statements/Healing/ACU`) and the proof-side `AC.HealthyBase` built on it
   carry the size equation as a field;

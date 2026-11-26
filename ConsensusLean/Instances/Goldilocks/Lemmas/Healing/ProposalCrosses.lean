@@ -17,7 +17,7 @@ proposal.
   exactly when `X` justified the old one, and then, at an old height whose previous height
   is justified, `h_F = h_j`.
 * `cross_of_rows`, `cross_of_signed_rows`: the same at an honest proposal, with the attestations
-  processed before the cut, or signed by `v` with `v ≥ ḡ`, `v + Δ_F ≤ t_{kX}` (`rows_delivered`).
+  processed before the cut, or signed by `v` with `v ≥ ḡ`, `v + Δ_F ≤ t_{kX}`.
 * `handoff_slot_le`: `s** ≤ s_h + δ_t + g` when `δ_t ≥ c + g − 1`.
 
 An early crossing (`X.slot < ThSlot + δ_t`) justifies: `FGParams.early_cross_justifies`, and with

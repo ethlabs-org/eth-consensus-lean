@@ -6,7 +6,7 @@ public section
 
 /-! # Goldilocks AC: the locks at a vote's read point
 
-The input of the `try_vote` that emits an honest vote (`vote_tryVote_input`), the read point's
+The input of the `try_vote` that emits an honest vote (`vote_tryVote_inputU`), the read point's
 locks (`tryVote_readPoint_locks_eq`), and that a read-point lock of a slot other than the vote's
 sits below a stored lock of the same slot (`readPoint_locks_below_stored`). Public AC-level
 copies of private lemmas of `Lemmas/Compose/Sleepy/Transfer`, for H.1's transfer steps. Every
@@ -57,8 +57,8 @@ theorem tryVote_readPoint_locks_eq {x : Fin sp.n} {A : ACState sp.n}
     split_ifs
     rfl
 
-/-- `vote_tryVote_input` with the unlock given, the receipt's optimistic check at the writes of
-`wm`: the cast's vote branch (`voteBranchAt_inputU`). -/
+/-- The input of the `try_vote` that emits an honest vote, with the unlock given, the receipt's
+optimistic check at the writes of `wm`: the cast's vote branch (`voteBranchAt_inputU`). -/
 theorem vote_tryVote_inputU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
@@ -73,21 +73,6 @@ theorem vote_tryVote_inputU
   refine ⟨_, by rw [htv]; exact hc.2, rfl, hV, ?_⟩
   rcases callInputM_cases (wm := wm) (tr.state y i) ℓ.frame (tr.time i) ℓ.call with
     h | ⟨A, -, h, hl⟩
-  · exact Or.inl h
-  · exact Or.inr ⟨A, h, hl⟩
-
-/-- The input of the `try_vote` that emits an honest vote: the state before the call, or the
-optimistic check after the receipt of a message or a block, which keeps the locks. -/
-theorem vote_tryVote_input (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y i ℓ e) :
-    ∃ P, e ∈ (tryVote sp y P ℓ.frame (tr.time i)).2 ∧ (P = tr.state y i ∨
-      ∃ A : ACState sp.n, P = optimisticConfirmation sp A ℓ.frame (tr.time i) ∧
-        A.locks = (tr.state y i).locks) := by
-  obtain ⟨-, htv⟩ := voteBranchAt_input hr hy (voteBranchAt_of_castAtU hr.toU hy hc)
-  refine ⟨callInput sp (tr.state y i) ℓ.frame (tr.time i) ℓ.call, by rw [htv]; exact hc.2, ?_⟩
-  rcases callInputM_cases (wm := WriteMode.parent sp) (tr.state y i) ℓ.frame (tr.time i)
-    ℓ.call with h | ⟨A, -, h, hl⟩
   · exact Or.inl h
   · exact Or.inr ⟨A, h, hl⟩
 
@@ -135,8 +120,9 @@ theorem readPoint_locks_below_stored (hr : ACLocalRun (goldilocksAC sp FGP ro) H
   readPoint_locks_below_storedU (hr := hr.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e)
       (hc := hc) (hpos := hpos)
 
-/-- `vote_tryVote_input`, naming the optimistic point: after a message or block receipt, the
-`try_vote` input is the optimistic confirmation of the receipt state. -/
+/-- The input of the `try_vote` that emits an honest vote, naming the optimistic point: after a
+message or block receipt, the `try_vote` input is the optimistic confirmation of the receipt
+state. -/
 private theorem vote_tryVote_input_point (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :

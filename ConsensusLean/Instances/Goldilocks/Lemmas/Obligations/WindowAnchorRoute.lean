@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowAnchor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Healed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.OperationalReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalCrosses
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeMature
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeCrossing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 
 public section

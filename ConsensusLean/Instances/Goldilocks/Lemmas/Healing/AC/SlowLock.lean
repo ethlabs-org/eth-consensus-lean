@@ -12,7 +12,7 @@ that slot writing the lock block of `update_confirmation` that is not the fast t
 the AC's lock functions only move locks back and keep their slot and fast bit (A0.4 (c)), a
 restart keeps the locks (A0.7), an optimistic confirmation writes only fast locks, and an update
 writes a lock that is not fast only as its slow lock. `fast_lock_provenance` (A1.5) is the fast
-case. The slow one is the stored slow-lock provenance `slow_lock_provenance_stored`
+case. The slow one is the stored slow-lock provenance `slow_lock_provenance_storedM`
 (`Healing/DrainProvenance`), weakened from the stored block `Φ.viableAncestor D` to the selection
 `D` itself, which the stored block is an ancestor of. Over a run at a write mode `wm` the origin
 is a slow lock of width `wm.width` (`slow_lock_provenanceM`, `SlowLockAtW`), and `SlowLockAt` at the

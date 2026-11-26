@@ -12,8 +12,9 @@ Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"Healing: top-le
 statements" (HR.1–HR.4, H.3's bridge and `T_heal`) and §"Healing: phase service" (the
 HS shared premises, the settled predicate and the constants `D`, `C`, `A`), over the Goldilocks run
 (`Spec/Run`, `GoldilocksRun`) and, for HR.2, over FG traces (`FGLocalRun`). The run bundle, H.3's
-FG non-interference and H.4 are retired as milestone statements; the statements here are the types
-of the lemmas the recovery proofs read.
+FG non-interference, HR.3 (reset existence), H.4 and the phase-service statements HS.0–HS.5 are
+retired as milestone statements; the statements here are the types of the lemmas the recovery
+proofs read.
 
 **Vocabulary.**
 
@@ -41,7 +42,7 @@ of the lemmas the recovery proofs read.
 node over the FG component trace, the phase reads only the honest `Σ` (which an FG trace carries,
 with the honest records, unforgeability and serialized clients in `FGLocalRun`), and so it sits
 with G1.4 (`Store.FinalizedSafety`), whose premise `f < 2q − n` it shares. A run reaches it through
-C0.5 (c) (`Compose.FGProjection`), and HR.3 reads the same phase on `tr.projFG`.
+C0.5 (c) (`Compose.FGProjection`).
 
 "The state at `t`" is the state before the first cut at a time `≥ t` (`FirstCutFrom`); "after
 all events at `t`" is the state before the first cut at a time `> t` (`FirstCutAfter`).
@@ -242,7 +243,7 @@ structure HSShared (K : AC.CommitteeDict sp.n) (dg : Digest (List (FG.Att sp.n))
   noColl : Compose.NoCollRun dg tr
   /-- Genesis's root is its digest (as C0.3 and A1.7 take it): otherwise an honest proposal
   whose digest is the genesis root is refused by every FG, and the healing statements that need
-  honest proposals to be accepted (HR.3's reset, C1.2, H.3, H.4) fail. -/
+  honest proposals to be accepted (the reset, C1.2, H.3, H.4) fail. -/
   genesisRoot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg
   /-- `Healthy(g)`. -/
   healthy : tr.HealthyRun H ΔF g
@@ -359,40 +360,6 @@ def PhaseCount (P : Params) (ACP : Type) : Prop :=
     (∀ m i j c c', i ≤ j → PhaseAt tr H i m c → PhaseAt tr H j m c' →
       c.rank ≤ c'.rank ∧ ∀ J, c.topJ = some J → c'.topJ = some J) ∧
     ∀ m, {i | ∃ c c', PhaseAt tr H i m c ∧ PhaseAt tr H (i + 1) m c' ∧ c ≠ c'}.encard ≤ 2
-
-/-- **HR.3, reset existence.** In a Goldilocks run under the HS shared premises (`HSShared`,
-with `Healthy(g)`), `Catch(2Δ)` and `Prop⁺(G_p)` (so `κ = 2Δ`, `G = G_p`):
-(a) `c_z > ḡ + 8Δ`, and for every `u ≥ c_z` HS.0 applies at `u` (`Settle(Δ)`): the effective phase
-after all events at `u` has changed by `u + Δ` (at the state at `u + Δ`), or the run is settled
-at `u + Δ`;
-(b) from every settled `w`, by `w + A_HS` (after all events at `w + A_HS`) the effective phase has
-changed or the frontier has risen (`Producer(A)`; advances of `Σ.F` below the frontier do not
-count);
-(c) the reset `a_z` exists, and
-`a_z ≤ c_z + 6(Δ + A_HS) ≤ ḡ + 24Δ + 12C_HS = ḡ + (96k + 612 + 48δ_t)Δ + 12Δ_F + 36G_p`, with
-`C_HS = (8k + 49 + 4δ_t)Δ + Δ_F + 3G_p`. -/
-def ResetExistence : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (K : AC.CommitteeDict sp.n) (g ΔF Gp : Time),
-    GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K) →
-    tr.AllTicksSign proposer dg H →
-    HSShared tr H K dg g ΔF → CatchRun tr H g (2 * sp.Δ) → PropPlus tr H proposer g Gp →
-    (gbar g + 8 * sp.Δ < cutZ sp.toParams g ∧
-      ∀ u, cutZ sp.toParams g ≤ u → ∀ j j', FirstCutAfter tr j u →
-        tr.FirstCutFrom j' (u + sp.Δ) →
-        PhaseChanged tr.projFG H j j' ∨ SettledAt tr H g (2 * sp.Δ) (u + sp.Δ)) ∧
-    (∀ w, SettledAt tr H g (2 * sp.Δ) w → ∀ j j', tr.FirstCutFrom j w →
-      FirstCutAfter tr j' (w + A_HS sp ΔF Gp) → PhaseChanged tr.projFG H j j') ∧
-    (∃ a, IsReset tr H g a) ∧
-    (∀ a, IsReset tr H g a → a ≤ cutZ sp.toParams g + 6 * (sp.Δ + A_HS sp ΔF Gp)) ∧
-    cutZ sp.toParams g + 6 * (sp.Δ + A_HS sp ΔF Gp) ≤
-      gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF Gp ∧
-    gbar g + 24 * sp.Δ + 12 * C_HS sp ΔF Gp =
-      gbar g + (96 * (sp.k : Time) + 612 + 48 * (sp.toParams.δt : Time)) * sp.Δ + 12 * ΔF +
-        36 * Gp ∧
-    C_HS sp ΔF Gp = (8 * (sp.k : Time) + 49 + 4 * (sp.toParams.δt : Time)) * sp.Δ + ΔF + 3 * Gp
 
 section Top
 

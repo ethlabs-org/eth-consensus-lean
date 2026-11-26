@@ -6,8 +6,9 @@ public section
 
 /-! # Honest locks before the advance
 
-`client_progress_of_lock`: `client_progress` with the lock premise as a hypothesis, in place of
-`HSShared` and `PhaseOn`, for any node AC (`Node.LocalRun` from any starts `ini`). -/
+`client_progress_of_lock`: client progress (HS.4 (b), `Healing/AcquireClient`) with the lock
+premise as a hypothesis, in place of `HSShared` and `PhaseOn`, for any node AC (`Node.LocalRun`
+from any starts `ini`). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -17,10 +18,10 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n}
   {tr : RunTrace A} {ini : Fin P.n → A.State}
 
-/-- **Client progress from the lock premise.** `client_progress` with the lock premise as a
-hypothesis (no `HSShared`, no phase): at an honest `fg_attest(C)` with `C` of state height `h` and
-entry `E`, if the lock at `h` is free or `E`, the client signs an attestation `(h, E)` now or signed
-one at an earlier cut. -/
+/-- **Client progress from the lock premise.** Client progress (HS.4 (b)) with the lock premise
+as a hypothesis (no `HSShared`, no phase): at an honest `fg_attest(C)` with `C` of state height
+`h` and entry `E`, if the lock at `h` is free or `E`, the client signs an attestation `(h, E)`
+now or signed one at an earlier cut. -/
 theorem client_progress_of_lock (hrun : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {k : Nat} {C : A.Blk} {signed : Option (FG.Att P.n)}
     (hc : tr.CallAt y k (.fg (.attest C signed))) {E : A.Blk} {h : Nat}

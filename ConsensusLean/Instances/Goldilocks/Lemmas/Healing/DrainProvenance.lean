@@ -21,8 +21,8 @@ toolkit (`Lemmas/AC/LockProvenance`), with the stored block of HR.4's
 `stored_fast_lock_provenance` (`Retention/Provenance`)
 (every lock image retains its original label).
 `slow_lock_provenance` (`AC/SlowLock`) is its corollary for the raw selection `D`. Over a run at a
-write mode `wm` the slow lock has width `wm.width` (`slow_lock_provenance_storedM`, `SlowLockAtW`),
-and it is `SlowLockAt` at the parent's mode, of width `k` (`slow_lock_provenance_stored`). -/
+write mode `wm` the slow lock has width `wm.width` (`slow_lock_provenance_storedM`, `SlowLockAtW`).
+-/
 
 namespace Consensus.Goldilocks.AC
 
@@ -205,19 +205,6 @@ theorem slow_lock_provenance_storedM
         exact ⟨i, Nat.lt_succ_self i, ℓ, D, ⟨hnode.1, hℓ⟩, hD, below_iff.1 hB⟩
     · obtain ⟨j, hj, h⟩ := ih l hl hf
       exact ⟨j, hj.trans (Nat.lt_succ_self i), h⟩
-
-/-- **Stored slow-lock provenance**: every lock that is not fast and that an honest node holds
-before cut `i` sits below (inside `U`) the stored block `ℓ.frame.viableAncestor D` of a slow lock
-of its slot (selection `D`) that the node wrote at an earlier cut `j` (call label `ℓ`). -/
-theorem slow_lock_provenance_stored {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
-    {x : Fin sp.n} (hx : x ∈ H) (i : Nat) :
-    ∀ l ∈ (tr.state x i).locks, l.fast = false →
-      ∃ j < i, ∃ ℓ D, tr.CallAt x j ℓ ∧ SlowLockAt tr x j l.slot D ∧
-        ∃ L ∈ U, L.root = l.block ∧ Anc U L (ℓ.frame.viableAncestor D) := by
-  intro l hl hf
-  have h := slow_lock_provenance_storedM hr.toU hini hx i l hl hf
-  simpa only [show (WriteMode.parent sp).width = sp.k from rfl, slowLockAtW_k] using h
 
 end Consensus.Goldilocks.AC
 

@@ -52,9 +52,9 @@ provide the following applications. Do not read the old list as evidence that th
 
 | Statement | Premise / application evidence | Nonempty observation, arithmetic or rejection | Remaining limitation |
 |---|---|---|---|
-| HR.1 `CutAndReset`, HR.3 `ResetExistence` | `Goldilocks/Healing/TickRun.lean`: `healing_premises`, `reset_bundle`, `tickRun_cutAndReset`, `tickRun_resetExistence` | Reset `a_z = 16`, initial height `H_z = 3`, reset bound `1056` | One honest validator, no faults, GST `0`, no restart. |
+| HR.1 `CutAndReset` | `Goldilocks/Healing/TickRun.lean`: `healing_premises`, `reset_bundle`, `tickRun_cutAndReset` | Reset `a_z = 16`, initial height `H_z = 3` | One honest validator, no faults, GST `0`, no restart. |
 | HR.2 `PhaseCount` | `Goldilocks/Healing/Statements.lean`: idle phase; `Healing/PhaseCount.lean`: `phaseCount_premises`, `phaseCount_applies` | `phaseCount_b_witness`, `phaseCount_c_witness`: top-to-contest at fixed frontier `3`, nonempty counted set; `phaseCount_b_needs_fixed_frontier` rejects monotonicity across a frontier rise | FG-local trace, not a healthy node-run acquisition witness; `phaseCount_applies` takes the statement as a premise. |
-| H.3 bridge and HS.4 `CommonPathAcquisition` | `Goldilocks/Runs/OneValidator/Run.lean`: `tickRun_bridgeAt`; `Goldilocks/Healing/Settled.lean`: `settledIn_tickRun`, `acquisition_premises`, `acquisition_applies` | `acquisition_phase_changes`: the phase changes by the deadline `w + D_HS = 92` | HS.4's acquisition disjunct and client step are not exercised on this run. The bridge alone is not a non-vacuous test of all H.3 clauses or HS.1–HS.3. |
+| H.3 bridge and the premises of HS.4 (retired) | `Goldilocks/Runs/OneValidator/Run.lean`: `tickRun_bridgeAt`; `Goldilocks/Healing/Settled.lean`: `settledIn_tickRun`, `acquisition_premises` | `acquisition_phase_changes`: the phase changes by the deadline `w + D_HS = 92` | The run directly witnesses phase change, not acquisition or client progress; it does not apply a phase-service theorem. The bridge alone is not a non-vacuous test of all H.3 clauses. |
 
 ## Candidate next scenarios
 
@@ -62,7 +62,8 @@ These are candidates for prioritisation, not promised tests or a selected implem
 
 1. A C1.2 entry with `bound = false`, an actual entry/vote and every joint premise discharged.
 2. A long-lived settled phase exercising HS.4's acquisition/client branch and non-vacuous node-run `Geo`,
-   rather than only the phase-change alternative.
+   rather than only the phase-change alternative (paper-claim scenario, not an application of a retained Lean
+   theorem).
 3. A healthy outcome run with a genuine wake/rejoin or pre-GST acceptance, so delivery/catch-up deadlines
    constrain an observed event. Existing sleepy and persistence wake cases should be reused where appropriate,
    not counted as this joint healthy scenario already.

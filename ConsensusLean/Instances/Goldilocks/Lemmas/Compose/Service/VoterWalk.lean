@@ -13,8 +13,7 @@ score and eligibility) that passes a block `X` of the path from a block `D` of t
 through `Q` to `P`, agrees with the proposal walk's best children strictly between `D` and `Q`,
 has `P` as its only eligible child at `Q` and no best child at `P`, ends at `P`
 (`voter_walk_eq_proposal`). It reads the two frames and walks only; the pass, the agreement and
-the stop are its users' (`Service/Agree` for constant faults, its growing-fault form, and HS.3 of
-`Healing/AgreeVotes`). -/
+the stop are its users' (`Service/Agree` for constant faults and its growing-fault form). -/
 
 namespace Consensus.Goldilocks.Compose
 

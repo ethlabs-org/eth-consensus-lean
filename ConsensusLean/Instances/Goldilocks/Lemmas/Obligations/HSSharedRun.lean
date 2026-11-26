@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ContractDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTransport
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeMature
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeCrossing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunBlocks
 import ConsensusLean.Lemmas.Tactic.Linarith

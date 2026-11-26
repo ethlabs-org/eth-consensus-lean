@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifies
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeMature
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeCrossing
 
 public section
 
