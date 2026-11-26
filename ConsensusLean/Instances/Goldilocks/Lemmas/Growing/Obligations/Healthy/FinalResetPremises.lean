@@ -26,7 +26,7 @@ Each node is honest at its own cut and the fault bound is per time:
   `ΔF` and the final pattern `[0, c, 2c, 3c]` with `2 ≤ c` and `3c ≤ δ_t`, a reset `a` with its
   finite premises through the horizon and the placement.
 
-The reset is the growing kernel's `exists_reset_of_drain_rounds_awake_within_at` on the drain
+The reset is the growing kernel's `exists_reset_of_drain_rounds_awake_at` on the drain
 `drainOutputs_of_service_at`; the snapshot is the static `snapshot_of_awake` on the prefix through
 the horizon. The ready scalar, the reset bound, the horizon of the gap and the placement are the
 static `final_reset_bounds`, the duties of the gap the static `final_query_duty`. -/
@@ -59,7 +59,7 @@ theorem final_query_gap_at
   exact ⟨x, hxl, hxr, hP.1, k, P, hk, hPs⟩
 
 /-- **The reset premises and the placement of a final query, at a forwarding delay `ΔF` and a
-gap `c`**, under growing faults. -/
+gap `c`**, under growing faults, with signing within `Gs · Δ` of the appointment. -/
 theorem final_reset_premises_of_shared_within_at
     (Q : FinalQueryAt S A V)
     {c : Nat} (hc2 : 2 ≤ c)
@@ -67,12 +67,9 @@ theorem final_reset_premises_of_shared_within_at
     (hs : Healing.Growing.HSSharedUpTo Q.trace Q.keys
       (digestOf S Q.run.2) Q.gst ΔF
       Q.run.2.horizon hold)
-    {d : Time} {L : Nat} (hd0 : 0 ≤ d) (hdL : d ≤ (L : Time) * Q.run.1.ΔAC)
     {Gs : Nat} (hGsA : Gs ≤ A.signGap)
-    (hmature : (Sys (goldilocks S) V).heal (K S A) .final Q.index Q.gst Q.run +
-      5 * (L : Time) * Q.run.1.ΔAC ≤ Q.query)
-    (hlat : Generic.VoteLatencyAt Q.trace Q.keys d)
-    (htimeout : 6 * Q.params.Δ + (d + (Gs : Time) * Q.params.Δ) + ΔF ≤
+    (hmature : (Sys (goldilocks S) V).heal (K S A) .final Q.index Q.gst Q.run ≤ Q.query)
+    (htimeout : 6 * Q.params.Δ + (Gs : Time) * Q.params.Δ + ΔF ≤
       4 * Q.params.Δ * (S.δt : Time))
     {sign : Fin Q.params.n → Time → Bool}
     (hcal : Q.trace.SignCalendarAt (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.keys sign)
@@ -101,13 +98,11 @@ theorem final_reset_premises_of_shared_within_at
   have hk : Q.params.k = S.k := rfl
   have hGD : (0 : Time) ≤ (Gs : Time) * Q.params.Δ := mul_nonneg (Nat.cast_nonneg _) hD.le
   obtain ⟨hr0, hgr, hcz, h4B, hBh, hgapN, hplace⟩ :=
-    final_reset_bounds_within S A V Q.run Q.hn Q.index Q.gst Q.query (d := d + Gs * Q.params.Δ)
-      (L := L + Gs) (by linarith only [hd0, hGD])
-      (by change _ ≤ _ * Q.params.Δ at hdL; change _ ≤ _ * Q.params.Δ; push_cast
-          linarith only [hdL])
+    final_reset_bounds_within S A V Q.run Q.hn Q.index Q.gst Q.query (d := Gs * Q.params.Δ)
+      (L := Gs) hGD (by change _ ≤ _ * Q.params.Δ; exact le_rfl)
       (by have hG : (Gs : Time) ≤ (A.signGap : Time) := by exact_mod_cast hGsA
           have := Q.run.1.ΔAC_pos
-          push_cast; nlinarith) Q.bounded hc2 h3c
+          nlinarith) Q.bounded hc2 h3c
   have hb0 : (0 : Time) ≤ Q.run.2.horizon := by linarith only [hr0, h4B, hBh, hD]
   have hH : (H Q.run.2.horizon).Nonempty :=
     nonempty_of_fault_bound (hs.faults Q.run.2.horizon hb0 le_rfl) Q.params.toParams.hn
@@ -132,11 +127,11 @@ theorem final_reset_premises_of_shared_within_at
     Healing.Growing.drainOutputs_of_service_at hrun hs.noColl hs.sync hs.awake hs.faults hcatch
       (by rw [healthyDrainLen_val, hk]; exact Nat.le_succ _)
   -- the reset
-  obtain ⟨a, ha, hab⟩ := Healing.Growing.exists_reset_of_drain_rounds_awake_within_at
+  obtain ⟨a, ha, hab⟩ := Healing.Growing.exists_reset_of_drain_rounds_awake_at
     hstart hs.noColl hs.faults hs.sync hs.awake hcatch
     (Healing.Growing.noRestartUpTo_iff.mpr hs.noRestart) hH
     (by rw [hδeq]; exact (Nat.le_mul_of_pos_right 3 ((by decide : 0 < 2).trans_le hc2)).trans h3c)
-    hlat hd0 (by rw [hδeq]; exact htimeout)
+    (by rw [hδeq]; exact htimeout)
     hr0 hgr Q.index.pos hcz hBh
     (fun s₀ N hs₀ hN => Healing.Growing.proposalGap_iff.mpr <| final_query_gap_at S A V Q hpat
       (by rw [max_eq_left hr0]; exact hs₀) (hgapN N hN))
