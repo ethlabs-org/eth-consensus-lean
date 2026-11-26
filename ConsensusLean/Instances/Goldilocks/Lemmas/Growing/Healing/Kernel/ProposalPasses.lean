@@ -124,7 +124,7 @@ theorem ResetPremisesUpTo.reset_proposal_passes_at {b : Time}
         AC.VoteExtends ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) e.msg O := by
       rintro z hz q e hv hes
       obtain ⟨hqi, ellq, hcq, heq⟩ := AC.upTo_voteAt.mp hv
-      obtain ⟨R, hRV, hRroot, _⟩ := AC.honest_head hS.run hz hv
+      obtain ⟨R, hRV, hRroot, _⟩ := AC.honest_headU hS.run.toU hz hv
       obtain ⟨R', hR'U, hR'root, hOR'⟩ := hp.high_origin_votes_before_at q (hqi.trans hib)
         x r l O ho hrb z ellq e (hp.run.antitone hqi hz) ⟨hcq, heq⟩ (by omega)
       have hRR : R' = R := hU.1 hR'U (subU hRV) (hR'root.trans hRroot.symm)

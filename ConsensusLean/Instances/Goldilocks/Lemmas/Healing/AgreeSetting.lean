@@ -68,7 +68,7 @@ theorem voterBlockTree_slot_le {ini : Fin sp.n → AC.ACState sp.n}
         (by exact_mod_cast not_lt.1 hn)
       have : sp.ts ((s : Int) - 1) + 4 * sp.Δ = sp.ts s := by simp only [ACParams.ts]; ring
       linarith
-    exact (AC.frame_slot_le sp hr hy hck W hWk).trans hlt.le
+    exact (AC.frame_slot_leU sp hr.toU hy hck W hWk).trans hlt.le
   · rw [← hP's]
     exact (Anc.slot_le (AC.frameIn_of_callAt hr hy hc.1).1.coherent hWP').1
 
@@ -158,7 +158,7 @@ theorem start_le_voter (hrun : GoldilocksRun proposer dg H tr ini)
     (hv : AC.CastAt tr.projAC y k ℓ e) (hes : e.msg.slot = s) : i ≤ k := by
   have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨-, hys, -, -⟩ := AC.castAt_spec hr hy hv
+  obtain ⟨-, hys, -, -⟩ := AC.castAt_specU hr.toU hy hv
   have hvt : sp.ts s ≤ tr.time k :=
     (AC.ts_le_iff_le_slot sp (hrun.toLocalRun.time_nonneg k) s).2
       (by have := hys.le; rw [hes] at this; exact_mod_cast this)

@@ -72,8 +72,8 @@ private theorem result_side
       ((ac_restartAt_upTo tr.projAC).2 ⟨hrun.time_mono hk, hrk⟩)
   · rintro u ⟨v, ⟨hvp, -, hres, R, hR, hRr, hDR⟩, rfl⟩
     have hvp' : v ∈ ((tr.projAC.upTo (tr.time c)).state Y c).pool s := hst.symm ▸ hvp
-    have hvs := AC.state_pool_slot sp hr.localRun hr.vstart hY c s v hvp'
-    obtain ⟨k, hsend, h1, h2⟩ := AC.admitted_of_held hr.localRun hr.vstart hY hvs hvp' le_rfl
+    have hvs := AC.state_pool_slotU sp hr.localRun.toU hr.vstart hY c s v hvp'
+    obtain ⟨k, hsend, h1, h2⟩ := AC.admitted_of_heldU hr.localRun.toU hr.vstart hY hvs hvp' le_rfl
       (fun k _ hstk => by
         rw [hst] at hstk
         have hst' : (tr.projAC.state Y c).voteStamp v < AC.ETime.of (sp.ts s + 2 * sp.Δ) := by
@@ -133,7 +133,7 @@ private theorem released_held
     (by change tr.projAC.deadline Y c (tr.time k) ≤ tr.time c; linarith)
   have hserv : AC.MessageServedBefore tr.projAC Y c (tr.time k) v :=
     (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl ⟨q, hqc, hq0, hq, hqd⟩)
-  have h := AC.held_of_deadline_service hr.localRun hY
+  have h := AC.held_of_deadline_serviceU hr.localRun.toU hY
     (fun k' hk' hr' => hrs' k' hk' ((ac_restartAt_upTo tr.projAC).1 hr').2)
     (by change tr.time k + sp.Δ ≤ tr.time c; linarith)
     (fun t ht₁ ht₂ => by

@@ -186,7 +186,7 @@ private theorem later_parents_extend (hrun : GoldilocksRun proposer dg H tr
   -- an earlier honest vote of a slot `≥ s` is in the phase
   have htz : sp.ts e''.msg.slot ≤ tr.time k'' :=
     (AC.ts_le_iff_le_slot sp (hr.time_nonneg k'') _).2
-      (by rw [(AC.castAt_spec hr hz ⟨hc'', he''⟩).2.1])
+      (by rw [(AC.castAt_specU hr.toU hz ⟨hc'', he''⟩).2.1])
   have hsz : sp.ts s ≤ sp.ts e''.msg.slot := (AC.ts_le_iff sp).2 (by omega)
   exact hvotes k'' z hz ℓ'' e'' ⟨hc'', he''⟩ (by omega)
     fun k₁ h₁ h₂ => hkP k₁ h₁ (h₂.trans hk''.le)
@@ -312,7 +312,7 @@ private theorem proposer_stored_lock_lt
         (K.committee (sp.slot (tr.time r)) ∩ Hᶜ).ncard :=
       Set.ncard_le_ncard (fun z hz => ⟨hK hz, hno z hz⟩) (Set.toFinite _)
     omega
-  obtain ⟨hvs, j', hj', e', hv', rfl⟩ := AC.optimisticPoint_pool_vote hrun' hpH hpt hv hzH
+  obtain ⟨hvs, j', hj', e', hv', rfl⟩ := AC.optimisticPoint_pool_voteU hrun'.toU hpH hpt hv hzH
   have hrs : sp.slot (tr.time r) ≤ s := by
     have h1 := hl'.time_mono hrk.le
     have := AC.slot_mono sp (hr'.time_nonneg r) (h1.trans (le_of_eq htP))
@@ -368,7 +368,7 @@ theorem proposer_lock_extends
   -- the vote is in the phase from `i₀`
   have htj : sp.ts s ≤ tr.time j :=
     (AC.ts_le_iff_le_slot sp (hr'.time_nonneg j) _).2
-      (by rw [← hes, (AC.castAt_spec hr' hy hcy).2.1])
+      (by rw [← hes, (AC.castAt_specU hr'.toU hy hcy).2.1])
   have hij : i ≤ j := by
     by_contra hn
     have := hl.time_mono (not_le.1 hn).le
@@ -421,7 +421,7 @@ theorem readPoint_lockBlocks_below
   have hr := hac.localRun
   have hU := Compose.honest_blocks_coherent hl hnc
   obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hy hcy.1
-  obtain ⟨-, hys, -, -⟩ := AC.castAt_spec hr hy hcy
+  obtain ⟨-, hys, -, -⟩ := AC.castAt_specU hr.toU hy hcy
   have hsj : sp.slot (tr.time j) = s := by rw [← hes]; exact hys.symm
   have hPv := proposal_frozen_viable hS hy hcy hes
   have hfP : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot P := hPv.2.1.mono hΦU
@@ -467,7 +467,7 @@ theorem readPoint_lockBlocks_below
       omega
     obtain ⟨-, j', hj', e', hv', he'⟩ := hpool x hx hzH
     obtain ⟨ℓ', hc', hem'⟩ := hv'
-    obtain ⟨-, hys', -, -⟩ := AC.castAt_spec hr hzH ⟨hc', hem'⟩
+    obtain ⟨-, hys', -, -⟩ := AC.castAt_specU hr.toU hzH ⟨hc', hem'⟩
     have hys'' : e'.msg.slot = sp.slot (tr.time j') := hys'
     have hle : sp.slot (tr.time j') ≤ s :=
       hsj ▸ AC.slot_mono sp (hl.time_nonneg j') (hl.time_mono hj'.le)

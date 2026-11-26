@@ -84,8 +84,8 @@ private theorem result_side_at {ini} (hrun : Growing.GoldilocksRun proposer dg H
       ((ac_restartAt_upTo tr.projAC).2 ⟨hrun.time_mono hk, hrk⟩)
   · rintro u ⟨v, ⟨hvp, -, hres, R, hR, hRr, hDR⟩, rfl⟩
     have hvp' : v ∈ ((tr.projAC.upTo (tr.time c)).state Y c).pool s := hst.symm ▸ hvp
-    have hvs := AC.state_pool_slot sp hr.localRun hr.vstart hY c s v hvp'
-    obtain ⟨k, hsend, h1, h2⟩ := AC.admitted_of_held hr.localRun hr.vstart hY hvs hvp' le_rfl
+    have hvs := AC.state_pool_slotU sp hr.localRun.toU hr.vstart hY c s v hvp'
+    obtain ⟨k, hsend, h1, h2⟩ := AC.admitted_of_heldU hr.localRun.toU hr.vstart hY hvs hvp' le_rfl
       (fun k _ hstk => by
         rw [hst] at hstk
         have hst' : (tr.projAC.state Y c).voteStamp v < AC.ETime.of (sp.ts s + 2 * sp.Δ) := by
@@ -128,7 +128,7 @@ private theorem optimistic_side_at
   refine ⟨ℓ, A, fun B hB => upTo_subset hrun hd (hU hB), h34,
     fun _ ⟨v, hv, hvu, _⟩ => hvu ▸ hPk.2 X hX k ℓ A hpt s v hv,
     fun u hu => released_of_fwd hrun hd hX (hfwd hu), fun v hv hvH => ?_⟩
-  obtain ⟨hvs, j, hj, e, hve, rfl⟩ := AC.optimisticPoint_pool_vote hr hX hpt hv hvH
+  obtain ⟨hvs, j, hj, e, hve, rfl⟩ := AC.optimisticPoint_pool_voteU hr.toU hX hpt hv hvH
   obtain ⟨hjd, hve⟩ := ac_voteAt_upTo.mp hve
   exact ⟨hvs, j, hj, e, hVoteAt_iff.2 ⟨hrun.antitone hjd hvH, hve⟩, rfl⟩
 
@@ -159,7 +159,7 @@ private theorem released_held_at {ini} (hrun : Growing.GoldilocksRun proposer dg
   have hserv := hsync.message X k v hX hsend (ha.trans h1) Y c ℓ hY hc
     (by linarith) (by linarith)
   have hserv' := ac_messageServedBefore_upTo (d := tr.time c) hrun.time_mono le_rfl hserv
-  have h := AC.held_of_deadline_service hr.localRun hY
+  have h := AC.held_of_deadline_serviceU hr.localRun.toU hY
     (fun k' hk' hr' => hrs' k' hk' ((ac_restartAt_upTo tr.projAC).1 hr').2)
     (by change tr.time k + sp.Δ ≤ tr.time c; linarith)
     (fun t ht₁ ht₂ => by

@@ -12,7 +12,7 @@ the call's time, cast while joined, and its head is the walk from the anchor ove
 of the vote domain (the voter block tree, or the whole tree when the voter block tree has no viable
 block) with the merged view against the previous slot, all read at the emission's read point (the
 unlocking and `voted_slot` change nothing the walk reads but the locks). The branch's read point
-and the state it leaves (`voteBranchAt_specU`, `post_of_voteBranchAt`) hold for a node that may
+and the state it leaves (`voteBranchAt_specU`, `post_of_voteBranchAtU`) hold for a node that may
 not vote in the slot too. -/
 
 namespace Consensus.Goldilocks.AC
@@ -22,7 +22,7 @@ variable {wm : WriteMode}
 variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {ini : Fin sp.n → ACState sp.n}
 
-/-- The vote of `x` at frame `Φ` and time `t`, as `castAt_spec` states it. -/
+/-- The vote of `x` at frame `Φ` and time `t`, as `castAt_specU` states it. -/
 private def VoteSpec (x : Fin sp.n) (Φ : Frm sp.n FGP) (t : Time) (e : Em sp FGP) : Prop :=
   e.msg.val = x ∧ e.msg.slot = sp.slot t ∧
     e.msg.head = (getHead sp e.readPoint Φ t
@@ -67,8 +67,7 @@ theorem step_emission_signer (y : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FG
     exact absurd he List.not_mem_nil
   · exact (tryVote_emits y _ Φ t e (by rw [htv]; exact he)).1
 
-/-- `castAt_spec` with the unlock given: the joined read point is the vote branch's
-(`voteBranchAt_specU`); the signer, slot and head are the emission's. -/
+/-- **An honest vote.** With the unlock given. -/
 theorem castAt_specU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
@@ -80,17 +79,6 @@ theorem castAt_specU
   obtain ⟨-, -, htv⟩ := voteBranchAt_inputU hr hy (voteBranchAt_of_castAtU hr hy hc)
   obtain ⟨hval, hsl, hhead⟩ := tryVote_emits y _ ℓ.frame (tr.time i) e (by rw [htv]; exact hc.2)
   exact ⟨hval, hsl, (voteBranchAt_specU hr hy (voteBranchAt_of_castAtU hr hy hc)).2.1, hhead⟩
-
-/-- **An honest vote.** -/
-theorem castAt_spec (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y i ℓ e) :
-    e.msg.val = y ∧ e.msg.slot = sp.slot (tr.time i) ∧ joined sp e.readPoint (tr.time i) ∧
-      e.msg.head = (getHead sp e.readPoint ℓ.frame (tr.time i)
-        (ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame e.msg.slot))
-        (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)).root := by
-  apply castAt_specU (wm := WriteMode.parent sp) <;>
-    first | assumption | exact ACLocalRun.toU ‹_›
 
 /-- The call that casts an honest vote leaves the state of the vote's own receipt: the read point
 with the own vote admitted and the optimistic check run. With the unlock given. The optimistic check
@@ -106,19 +94,6 @@ theorem post_of_castAtU
   · exact absurd (hn ▸ hc.2) List.not_mem_nil
   · obtain rfl : e = e' := List.mem_singleton.1 (he' ▸ hc.2)
     exact hpost
-
-/-- **The state a vote branch leaves** (`post_of_voteBranchAtU`): a node that may not vote in the
-slot emits nothing and leaves the read point `R`; one that may emits its own vote of the slot,
-read at `R`, and leaves that vote's receipt. -/
-theorem post_of_voteBranchAt (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
-    {R : ACState sp.n} (hb : VoteBranchAt tr y j ℓ R) :
-    ((tr.state y j).mayVote (sp.slot (tr.time j)) = false ∧ ℓ.emits = [] ∧ tr.post j = R) ∨
-      ((tr.state y j).mayVote (sp.slot (tr.time j)) = true ∧ ∃ e, ℓ.emits = [e] ∧
-        e.readPoint = R ∧ e.msg.val = y ∧ e.msg.slot = sp.slot (tr.time j) ∧
-        tr.post j = optimisticConfirmation sp (admitVote sp R (tr.time j) e.msg) ℓ.frame
-          (tr.time j)) :=
-  post_of_voteBranchAtU hr.toU hy hb
 
 /-- The voter block tree of an honest vote is closed under ancestors in the frame (block stamps grow
 along parent edges, A0.1, at the state the call leaves, whose stamps are the read point's), from
@@ -175,8 +150,7 @@ theorem voteDomain_ancU
       X ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot :=
   voteDomain_anc_closed (voterBlockTree_ancU hr hini hy hc)
 
-/-- `vote_time_le` with the unlock given: the deadline of the vote branch
-(`voteBranchAt_specU`). -/
+/-- An honest vote is cast by `t_s + Δ` of its slot `s`. With the unlock given. -/
 theorem vote_time_leU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {e : Em sp FGP} (hv : VoteAt tr x j e) :
@@ -184,20 +158,13 @@ theorem vote_time_leU
   obtain ⟨ℓ, hc, he⟩ := hv
   exact (voteBranchAt_specU hr hx (voteBranchAt_of_castAtU hr hx ⟨hc, he⟩)).2.2
 
-/-- An honest vote is cast by `t_s + Δ` of its slot `s`. -/
-theorem vote_time_le (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {x : Fin sp.n}
-    (hx : x ∈ H) {j : Nat} {e : Em sp FGP} (hv : VoteAt tr x j e) :
-    tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ := by
-  apply vote_time_leU (wm := WriteMode.parent sp) <;>
-    first | assumption | exact ACLocalRun.toU ‹_›
-
 /-- An honest vote is its caster's, of the slot of its cast time. -/
 theorem vote_signer_slot (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {e : Em sp FGP} (hv : VoteAt tr x j e) :
     e.msg.val = x ∧ e.msg.slot = sp.slot (tr.time j) := by
   obtain ⟨ℓ, hc, he⟩ := hv
-  obtain ⟨hval, hsl, -⟩ := castAt_spec hr hx ⟨hc, he⟩
+  obtain ⟨hval, hsl, -⟩ := castAt_specU hr.toU hx ⟨hc, he⟩
   exact ⟨hval, hsl⟩
 
 end Consensus.Goldilocks.AC

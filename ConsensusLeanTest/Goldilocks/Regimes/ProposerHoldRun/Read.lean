@@ -105,9 +105,9 @@ theorem origin_label
     have hsub : AC.optimisticVoters _ A ℓ'.frame s C ⊆ H S := by
       rintro u ⟨v, hv, rfl, -⟩
       by_contra hvH
-      have hvs := AC.optimisticPoint_pool_slot hrun'.localRun
+      have hvs := AC.optimisticPoint_pool_slotU hrun'.localRun.toU
         (fun _ => AC.voteStart_initial _) hx hpt hv
-      have hpost := AC.optimisticPoint_pool_post hrun'.localRun hx hpt s hv
+      have hpost := AC.optimisticPoint_pool_postU hrun'.localRun.toU hx hpt s hv
       rw [Compose.projAC_state rhoc_run.toLocalRun hx, ← hvs] at hpost
       have := pool_vote_slot hx _ hpost hvH
       omega

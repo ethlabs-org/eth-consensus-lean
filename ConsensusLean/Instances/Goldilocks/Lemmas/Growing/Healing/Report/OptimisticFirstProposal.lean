@@ -71,20 +71,20 @@ theorem optimistic_first_proposal_stored_at {ini : Fin sp.n → ACState sp.n}
   -- every optimistic voter supports `B` at the proposal, or equivocates there
   have hcover : SX ⊆ supporters ℓ.frame V σ B ∪ equivocators V.votes := by
     rintro w ⟨v, hv, rfl, R', hR', hR'r, hDR'⟩
-    have hvs := optimisticPoint_pool_slot hrx.localRun hrx.vstart hX hpt' hv
+    have hvs := optimisticPoint_pool_slotU hrx.localRun.toU hrx.vstart hX hpt' hv
     by_cases heq : v.val ∈ equivocators V.votes
     · exact Or.inr heq
     left
     obtain ⟨hheld, R, hR, hRr, hbs⟩ := heldAtProposal_iff.mp (hP' v ⟨hv, R', hR', hR'r, hDR'⟩)
     obtain rfl : R = R' := hU.1 (hΦU hR) (hΦXU hR') (hRr.trans hR'r.symm)
     have hheld : v ∈ ((tr.upTo (tr.time i)).state x i).pool σ := hheld.resolve_right fun h =>
-      heq (equivocators_mono (fun u hu => (mem_proposalView_votes hr
+      heq (equivocators_mono (fun u hu => (mem_proposalView_votesU hr.toU
         hry.vstart hx i σ ℓ.frame u).2 hu) h)
     have hRs : R.slot ≤ σ := by
-      have h := frame_slot_le sp hrx.localRun hX hpt'.1 R hR'
+      have h := frame_slot_leU sp hrx.localRun.toU hX hpt'.1 R hR'
       change R.slot ≤ sp.slot (tr.time i₀) at h
       omega
-    exact proposal_supporter hr hry.vstart hx hc' hvs hheld hR hRr hRs
+    exact proposal_supporterU hr.toU hry.vstart hx hc' hvs hheld hR hRr hRs
       (anc_tree_of_anc_U hU hΦ hΦU hV.1 (hBD.trans (Anc.mono hΦXU hDR')) hR) hbs heq
   -- counting at the proposal among the slot-`σ` committee: the equivocators are its faulty
   -- members there, the others are outside `SX`
@@ -93,12 +93,12 @@ theorem optimistic_first_proposal_stored_at {ini : Fin sp.n → ACState sp.n}
     exact hPK.2 X i₀ ℓX A hX hpt σ v hv
   have hVK : voters V.votes ⊆ K.committee σ := by
     rintro w ⟨v, hv, rfl⟩
-    have hp := (mem_proposalView_votes hr hry.vstart hx i σ ℓ.frame v).1 hv
+    have hp := (mem_proposalView_votesU hr.toU hry.vstart hx i σ ℓ.frame v).1 hv
     rw [hst] at hp
     exact hPK.1 (tr.time i) x hx i (fun _ hk => htime hk.le) σ v hp
   have hE : (equivocators V.votes).ncard ≤ (K.committee σ ∩ (H (tr.time i))ᶜ).ncard :=
     Set.ncard_le_ncard fun w hw => by
-      refine ⟨?_, fun hwH => honest_not_equivocator_proposal hry hx i σ ℓ.frame hwH hw⟩
+      refine ⟨?_, fun hwH => honest_not_equivocator_proposalU hry.toU hx i σ ℓ.frame hwH hw⟩
       obtain ⟨a, ha, -, -, -, rfl, -⟩ := hw
       exact hVK ⟨a, ha, rfl⟩
   have hO : (voters V.votes \ SX).ncard + SX.ncard ≤ sp.committeeSize := by

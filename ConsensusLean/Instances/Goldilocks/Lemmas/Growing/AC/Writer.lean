@@ -30,7 +30,7 @@ private theorem cast_time_le {K : Set (Fin sp.n)}
         sp.ts (sp.slot t) + sp.Δ < t := Or.inr (Or.inr (lt_of_not_ge ht))
     simp only [tryVote, hguard, ite_true] at h
     exact h rfl
-  have hΦ := (frameIn_of_call hr hy hc.1).1
+  have hΦ := (frameIn_of_callU hr.toU hy hc.1).1
   obtain ⟨hc, he⟩ := hc
   have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
   rw [hc.1] at hx
@@ -100,12 +100,12 @@ theorem writer_pool (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} {i₀ s : 
     simp only [ACParams.ts]; push_cast; ring
   have hts₂ : sp.ts (s + 2 : Nat) = sp.ts s + 8 * sp.Δ := by
     simp only [ACParams.ts]; push_cast; ring
-  obtain ⟨_, hys, hyj, _⟩ := castAt_spec hry.localRun hy hc'
+  obtain ⟨_, hys, hyj, _⟩ := castAt_specU hry.localRun.toU hy hc'
   have hsi : sp.slot (tr.time i) = s + 1 := hys.symm.trans hs
   have hrsy : ∀ j ≤ i, tr.RestartAt y j → tr.time j ≤ sp.ts s := by
     have hj' : joined sp ((tr.upTo (tr.time i)).post i) (tr.time i) := by
       unfold joined
-      rw [restartTime_of_castAt hry.localRun hy hc']
+      rw [restartTime_of_castAtU hry.localRun.toU hy hc']
       exact hyj
     intro j hj hjr
     have h := (AC.joined_awakeU sp FGP ro _ U _ hry.localRun.toU y hy i ℓ hc'.1 hj').2 j hj
@@ -119,7 +119,7 @@ theorem writer_pool (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} {i₀ s : 
   have hstate : (tr.upTo (tr.time i)).state y (k + 1) = tr.state y (k + 1) :=
     Trace.upTo_state tr y fun j hj => hm ((Nat.le_of_lt_succ hj).trans hk)
   have hv' := hstate.symm ▸ hv
-  have hvs := state_pool_slot sp hry.localRun hrun.vstart hy (k + 1) s v hv'
+  have hvs := state_pool_slotU sp hry.localRun.toU hrun.vstart hy (k + 1) s v hv'
   rcases pool_origin hry.localRun hrun.vstart hy (k + 1) v (hvs ▸ hv') with
     ⟨j, hj, hsend, _, hsl⟩ | ⟨j, hj, ℓj, hcj, hrj, _, B, hB, hvB⟩
   · obtain ⟨hjt, hsend⟩ := (ACTrace.upTo_sendOrAdmit hm).mp hsend
@@ -147,8 +147,8 @@ theorem writer_pool (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} {i₀ s : 
     rwa [hvs] at h
   · obtain ⟨hjt, hcj⟩ := (Trace.upTo_callAt tr).mp hcj
     have hcj' := (Trace.upTo_callAt tr).mpr ⟨hjt, hcj⟩
-    have hBv := (frame_validPayload sp hry.localRun hy hcj' B hB).1 v hvB
-    have hBs := frame_slot_le sp hry.localRun hy hcj' B hB
+    have hBv := (frame_validPayloadU sp hry.localRun.toU hy hcj' B hB).1 v hvB
+    have hBs := frame_slot_leU sp hry.localRun.toU hy hcj' B hB
     have htk := hrsy j ((Nat.le_of_lt_succ hj).trans hk) ⟨ℓj, hcj, hrj⟩
     have hnot : ¬ ((s + 1 : Nat) : Int) ≤ sp.slot (tr.time j) := fun h => by
       have h' := (ts_le_iff_le_slot sp (hr.time_nonneg j) _).mpr h
@@ -172,7 +172,7 @@ theorem writer_merged (hrun : ACRun proposer tr H U ini) {X : Fin sp.n} {i₀ s 
   intro v hv hvs
   apply merged_declared_at_writer _ hvs hv
   intro w hw
-  have hp := (readPoint_pool hry.localRun hy hc' hw).1
+  have hp := (readPoint_poolU hry.localRun.toU hy hc' hw).1
   have hstate : (tr.upTo (tr.time i)).state y (i + 1) = tr.state y (i + 1) :=
     Trace.upTo_state tr y fun j hj => hm (Nat.le_of_lt_succ hj)
   rw [hstate] at hp

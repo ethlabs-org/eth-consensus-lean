@@ -52,7 +52,7 @@ theorem honest_vote_branches_of_joined_before {K : AC.CommitteeDict sp.n}
     ⟨4 * u + 1, by simp only [ACParams.ts]; ring⟩ (hS.awake x hx _ (by linarith) hub)
   have hj : joined sp (tr.state x c) (tr.time c) := by
     unfold joined
-    rcases restartTime_state hr hS.run.vstart hx c with h | ⟨r, hrc, hrs, h⟩
+    rcases restartTime_stateU hr.toU hS.run.vstart hx c with h | ⟨r, hrc, hrs, h⟩
     · rw [h]; exact bot_le
     · rw [h]
       apply WithBot.coe_le_coe.mpr
@@ -96,9 +96,9 @@ theorem honest_vote_early_pool_before {K : AC.CommitteeDict sp.n}
   have hr := hS.run.localRun
   have hDelta := sp.toParams.hΔ
   obtain ⟨ellx, hcx, hex⟩ := hv
-  obtain ⟨hval, hslot, -, -⟩ := castAt_spec hr hx ⟨hcx, hex⟩
+  obtain ⟨hval, hslot, -, -⟩ := castAt_specU hr.toU hx ⟨hcx, hex⟩
   have hti : tr.time i ≤ sp.ts u + sp.Δ := by
-    have hh := vote_time_le hr hx ⟨ellx, hcx, hex⟩
+    have hh := vote_time_leU hr.toU hx ⟨ellx, hcx, hex⟩
     rwa [← hslot, hes] at hh
   have hti0 : sp.ts u ≤ tr.time i :=
     (ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [← hslot, hes])
@@ -119,7 +119,7 @@ theorem honest_vote_early_pool_before {K : AC.CommitteeDict sp.n}
     slot_of_mem sp u (by linarith only [hti0, hiq]) (by rw [hts]; linarith only [hti, hti0, hqT])
   have hxH : e.msg.val ∈ H := hval ▸ hx
   have hheld : e.msg ∈ (tr.state y (q + 1)).pool u := by
-    rcases held_of_processAt hr hy hproc (by rw [hqs, hes]; (clear * -; omega)) (by
+    rcases held_of_processAtU hr.toU hy hproc (by rw [hqs, hes]; (clear * -; omega)) (by
         rw [hqs, hes]) with
       h | ⟨v, hv, w, hw, hne, hvval, hwval⟩
     · rwa [hes] at h
@@ -127,7 +127,7 @@ theorem honest_vote_early_pool_before {K : AC.CommitteeDict sp.n}
       exact absurd ⟨v, hv, w, hw, hne, hvval, hwval⟩
         (honest_pool_not_equivocator hr.toU hS.run.vstart hS.run.honest hy (q + 1) u hxH)
   intro c hcj
-  have hst := stamp_lt_of_held_of_run hr hS.run.vstart hy (a := q + 1) (b := c)
+  have hst := stamp_lt_of_held_of_runU hr.toU hS.run.vstart hy (a := q + 1) (b := c)
     (by clear * - hqj' hcj; omega)
     (w := e.msg) (by rw [hes]; exact hheld) (T := sp.ts u + 2 * sp.Δ)
     (fun k hk => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hk)) hqT)
@@ -259,7 +259,7 @@ theorem older_locks_compatible_after_unlock_branch {ini : Fin sp.n → ACState s
     rw [show tr.state y (j + 1) = tr.post j by
       simp [Trace.state, hb.callAt.1, hb.callAt.2]]
     intro l hl hls
-    rcases post_of_voteBranchAt hr hy hb with ⟨-, -, hp⟩ | ⟨-, e, -, -, -, -, hp⟩
+    rcases post_of_voteBranchAtU hr.toU hy hb with ⟨-, -, hp⟩ | ⟨-, e, -, -, -, -, hp⟩
     · rw [hp] at hl
       obtain ⟨Y, hY, hYr⟩ := hrb l hl
       exact ⟨Y, hY, hYr, hA l hl hls Y hY hYr⟩
@@ -281,7 +281,7 @@ theorem older_locks_compatible_after_unlock_branch {ini : Fin sp.n → ACState s
         simp only at hsl
         omega
   intro l hl hls L hL hLr
-  rcases lock_provenance_from hr hy (Nat.succ_le_of_lt hjk) l hl with
+  rcases lock_provenance_fromU hr.toU hy (Nat.succ_le_of_lt hjk) l hl with
     ⟨l', hl', hsl, h⟩ | ⟨j', hj', _, B, horig, _⟩
   · obtain ⟨Y, hY, hYr, hYP⟩ := hpost l' hl' (hsl ▸ hls)
     rcases h with rfl | ⟨L₁, hL₁, hL₁r, L₂, hL₂, hL₂r, hLL⟩

@@ -38,7 +38,7 @@ theorem relay_mem_voterBlockTree_at
   have hr := (hac.upTo (hp.run.time_nonneg i)).localRun
   have hc' := AC.upTo_castAt.mpr (And.intro le_rfl hc)
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨-, hys, hyj, -⟩ := AC.castAt_spec hr hy hc'
+  obtain ⟨-, hys, hyj, -⟩ := AC.castAt_specU hr.toU hy hc'
   change e.msg.slot = sp.slot (tr.time i) at hys
   have hslot : sp.ts ((e.msg.slot : Int) - 1) + 4 * sp.Δ = sp.ts e.msg.slot := by
     simp only [ACParams.ts]; ring
@@ -50,7 +50,7 @@ theorem relay_mem_voterBlockTree_at
       tr.time k ≤ sp.ts ((e.msg.slot : Int) - 1) := by
     have hj' : AC.joined sp ((tr.projAC.upTo (tr.time i)).post i) (tr.time i) := by
       unfold AC.joined
-      rw [AC.restartTime_of_castAt hr hy hc']
+      rw [AC.restartTime_of_castAtU hr.toU hy hc']
       exact hyj
     intro k hk hrk
     have := ((AC.joined_awakeU sp) _ ro _ _ _ hr.toU y hy i ell hc'.1 hj').2 k hk
@@ -79,8 +79,8 @@ theorem relay_mem_voterBlockTree_at
     unfold AC.freeze
     linarith only [hΔ, hslot, hti]
   have hacc' := ACTrace.upTo_acceptAt.mpr (And.intro (hm hky) hacc)
-  have hWt := AC.mem_tree_of_acceptAt sp hr hy hacc' hky hc'.1 hF
-  have hbs := AC.blockStamp_lt_of_acceptedBefore sp hr hp.run.vstart hy hc'.1 hWt
+  have hWt := AC.mem_tree_of_acceptAtU sp hr.toU hy hacc' hky hc'.1 hF
+  have hbs := AC.blockStamp_lt_of_acceptedBeforeU sp hr.toU hp.run.vstart hy hc'.1 hWt
     (Or.inr ⟨ky, hacc', hkyt'⟩)
     (fun k hk hrk => lt_of_le_of_lt (hrsy k hk (ACTrace.upTo_restartAt.mp hrk).2)
       (by unfold AC.freeze; linarith only [hΔ])) (Or.inl hfz)
@@ -89,7 +89,7 @@ theorem relay_mem_voterBlockTree_at
     have hB₀ := (AC.accept_new sp hr hy ⟨ell, hc'.1, hcall⟩).1 ell hc'.1
     obtain rfl : B₀ = W := hr.coherent.1 ((AC.frameIn_of_callAt hr hy hc'.1).2 hB₀)
       ((AC.frameIn_of_callAt hr hy hc'.1).2 hWt) hB.symm
-    have heq := AC.accept_unique sp hr hy hacc' ⟨ell, hc'.1, hcall⟩
+    have heq := AC.accept_uniqueU sp hr.toU hy hacc' ⟨ell, hc'.1, hcall⟩
     rw [heq] at hkyt'
     linarith only [hkyt', hfz]
   refine ⟨hWt, Or.inl ?_⟩

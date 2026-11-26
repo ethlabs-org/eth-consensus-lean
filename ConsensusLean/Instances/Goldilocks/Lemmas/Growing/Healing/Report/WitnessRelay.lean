@@ -48,10 +48,10 @@ theorem witness_voterBlockTree_at
   have hfz : AC.freeze sp (s + 1) = sp.ts s + 3 * sp.Δ := by
     simp only [AC.freeze, show ((s + 1 : Nat) : Int) - 1 = s by omega]
   have hrs : ∀ k ≤ i, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts s := by
-    have hjoined := (AC.castAt_spec hr hy hc').2.2.1
+    have hjoined := (AC.castAt_specU hr.toU hy hc').2.2.1
     have hj : AC.joined sp ((tr.projAC.upTo (tr.time i)).post i) (tr.time i) := by
       unfold AC.joined
-      rw [AC.restartTime_of_castAt hr hy hc']
+      rw [AC.restartTime_of_castAtU hr.toU hy hc']
       exact hjoined
     intro k hk hrestart
     have h := (AC.joined_awakeU sp _ ro (H (tr.time i)) _ _ hr.toU y hy i ell hc'.1 hj).2 k hk
@@ -96,7 +96,7 @@ theorem witness_voterBlockTree_at
     exact Or.inr ⟨q, ACTrace.upTo_acceptAt.mpr ⟨hrun.time_mono hqi, hq⟩, hqt⟩
   have hQt : Q ∈ ell.frame.tree := by
     rcases ha with hg | ⟨k, hk, hkt⟩
-    · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hy i ell hc'.1
+    · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hy i ell hc'.1
       obtain rfl : Q = G := hU.1 hQU (subU hGU) (hg.trans hGr.symm)
       rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hFQ with heq | ⟨P, -, hP⟩
       · exact heq ▸ hPhi.rooted.1
@@ -110,7 +110,7 @@ theorem witness_voterBlockTree_at
       obtain ⟨ella, hca, hba⟩ := hk
       have hk : ACTrace.AcceptAt (tr.projAC.upTo (tr.time i)) y k Q := ⟨ella, hca, hba⟩
       have hQp := (AC.frameIn_of_callAt hr hy hca).2 ((AC.accept_new sp hr hy hk).1 _ hca)
-      exact AC.mem_tree_of_acceptAt sp hr hy hk hki hc'.1
+      exact AC.mem_tree_of_acceptAtU sp hr.toU hy hk hki hc'.1
         (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 hQp hFQ)
   have hstamp := AC.readPoint_blockStamp_lt_of_acceptedBefore hr hrun.vstart hy hc' hQt
     (by simpa only [hs] using ha)

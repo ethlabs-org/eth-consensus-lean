@@ -61,7 +61,7 @@ theorem joined_of_restart_le_at
     exact Trace.upTo_state tr.projAC y (fun q hq => (hrun.time_mono hq.le).trans htime.le)
   rw [← hst]
   unfold AC.joined
-  rcases AC.restartTime_state hac hrun.vstart hy i with h | ⟨r, _, hrs, h⟩
+  rcases AC.restartTime_stateU hac.toU hrun.vstart hy i with h | ⟨r, _, hrs, h⟩
   · rw [h]; exact bot_le
   · rw [h]
     apply WithBot.coe_le_coe.mpr

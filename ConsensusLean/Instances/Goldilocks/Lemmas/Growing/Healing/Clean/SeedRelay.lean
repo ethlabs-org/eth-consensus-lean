@@ -56,11 +56,11 @@ theorem reset_accept_frame_at
       exact max_le hq hjoin
     obtain ⟨k, hkj, hak, _⟩ := hp.frame_relay_at hx ha ((AC.le_gbar g).trans hnew)
       hy hcall hdl hF
-    exact AC.mem_tree_of_acceptAt sp hR hy
+    exact AC.mem_tree_of_acceptAtU sp hR.toU hy
       ((ACTrace.upTo_acceptAt).mpr ⟨hm hkj, hak⟩) hkj hcall' hF
   · obtain ⟨k, hkj, hak, _⟩ := hp.run.toLocalRun.acCatchAt hp.catchUp hx ha (not_le.mp hnew)
       hy hcall hg hF
-    exact AC.mem_tree_of_acceptAt sp hR hy
+    exact AC.mem_tree_of_acceptAtU sp hR.toU hy
       ((ACTrace.upTo_acceptAt).mpr ⟨hm hkj, hak⟩) hkj hcall' hF
 
 /-- A historically held frame block reaches a bounded honest recipient above its guard. -/
@@ -81,8 +81,8 @@ theorem reset_frame_relay_at
   have hrj := (hac.upTo (hp.run.time_nonneg j)).localRun
   have hcx' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcx)
   have hcy' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcy)
-  rcases Compose.frame_anc_accepted hrq hx q ellx hcx' B hB B .refl with hgen | ⟨k, hk, ha⟩
-  · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hrj hy j elly hcy'
+  rcases Compose.frame_anc_acceptedU hrq.toU hx q ellx hcx' B hB B .refl with hgen | ⟨k, hk, ha⟩
+  · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hrj.toU hy j elly hcy'
     obtain rfl : B = G := hac.localRun.coherent.1 ((AC.frameIn_of_callAt hrq hx hcx').2 hB)
       hGU (hgen.trans hGr.symm)
     rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp hF with he | ⟨c, _, hpar⟩

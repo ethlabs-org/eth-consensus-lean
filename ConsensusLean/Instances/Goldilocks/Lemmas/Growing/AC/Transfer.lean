@@ -35,9 +35,9 @@ theorem result_transfer {ini} (hrun : ACRun proposer tr H U ini)
   have hry := hrun.upTo (hrun.localRun.time_nonneg i)
   have hc' := upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hr := hry.localRun
-  obtain ⟨_, _, _, hhead⟩ := castAt_spec hr hy hc'
+  obtain ⟨_, _, _, hhead⟩ := castAt_specU hr.toU hy hc'
   have hU := hrun.localRun.coherent
-  obtain ⟨hΦ, hΦU⟩ := frameIn_of_call hr hy hc'.1
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callU hr.toU hy hc'.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
   have hdomA := voteDomain_ancU hr.toU hry.vstart hy hc'
@@ -50,12 +50,12 @@ theorem result_transfer {ini} (hrun : ACRun proposer tr H U ini)
     (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
     (fun B hB => voteDomain_subset_tree hB) hdomA hviab.voteDomain
     (fun L hL => hlocks L hL) fun X' Cx hCx hp hCxC =>
-      isBest_of_majority hΦ (merged_support_subset hr hy hc' (s + 1))
+      isBest_of_majority hΦ (merged_support_subsetU hr.toU hy hc' (s + 1))
         (fun B hB => voteDomain_subset_tree hB.1)
         (by
           obtain ⟨ℓX, hupd, _, rfl⟩ := hres
           exact carried_counted_supporters hrun hX hy hupd.1 hc hs .refl hcarry hviab hd)
-        (merged_voters_subset hr hry.vstart hy hc' hd)
+        (merged_voters_subsetU hr.toU hry.vstart hy hc' hd)
         (result_majority hres) hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : C = getHead sp e.readPoint ℓ.frame (tr.time i)
@@ -78,9 +78,9 @@ theorem result_transfer_anc {ini} (hrun : ACRun proposer tr H U ini)
   have hry := hrun.upTo (hrun.localRun.time_nonneg i)
   have hc' := upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hr := hry.localRun
-  obtain ⟨_, _, _, hhead⟩ := castAt_spec hr hy hc'
+  obtain ⟨_, _, _, hhead⟩ := castAt_specU hr.toU hy hc'
   have hU := hrun.localRun.coherent
-  obtain ⟨hΦ, hΦU⟩ := frameIn_of_call hr hy hc'.1
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callU hr.toU hy hc'.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
   have hdomA := voteDomain_ancU hr.toU hrun.vstart hy hc'
@@ -93,12 +93,12 @@ theorem result_transfer_anc {ini} (hrun : ACRun proposer tr H U ini)
     (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int)
     (fun B hB => voteDomain_subset_tree hB) hdomA hviab.voteDomain
     (fun L hL => hlocks L hL) fun X' Cx hCx hp hCxD =>
-      isBest_of_majority hΦ (merged_support_subset hr hy hc' (s + 1))
+      isBest_of_majority hΦ (merged_support_subsetU hr.toU hy hc' (s + 1))
         (fun B hB => voteDomain_subset_tree hB.1)
         (by
           obtain ⟨ℓX, hupd, _, rfl⟩ := hres
           exact carried_counted_supporters hrun hX hy hupd.1 hc hs hDC hcarry hviab hd)
-        (merged_voters_subset hr hrun.vstart hy hc' hd)
+        (merged_voters_subsetU hr.toU hrun.vstart hy hc' hd)
         (result_majority hres) hCx hp hCxD
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : D = getHead sp e.readPoint ℓ.frame (tr.time i)
@@ -137,9 +137,9 @@ theorem first_transfer_stored
   · exact optimistic_transfer_stored hrun K hP hT hsize hx hopt hBD hf hf1 hy hc hs hcarry hviab
       hearlier
   have hupd' := (upTo_updateAt hr.time_mono).mpr ⟨le_rfl, hupd⟩
-  obtain ⟨_, _, _, hhead⟩ := castAt_spec hry.localRun hy hc'
-  obtain ⟨hΦ, hΦU⟩ := frameIn_of_call hry.localRun hy hc'.1
-  have hΦxU := (frameIn_of_call hrx.localRun hx hupd'.1).2
+  obtain ⟨_, _, _, hhead⟩ := castAt_specU hry.localRun.toU hy hc'
+  obtain ⟨hΦ, hΦU⟩ := frameIn_of_callU hry.localRun.toU hy hc'.1
+  have hΦxU := (frameIn_of_callU hrx.localRun.toU hx hupd'.1).2
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
   have hdomA := voteDomain_ancU hry.localRun.toU hrun.vstart hy hc'
@@ -206,9 +206,9 @@ theorem first_transfer_stored
         exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩)
       hhalf hf1 hearlier' hm)
     fun X' Cx hCx hp hCxC =>
-      isBest_of_majority hΦ (merged_support_subset hry.localRun hy hc' (s + 1))
+      isBest_of_majority hΦ (merged_support_subsetU hry.localRun.toU hy hc' (s + 1))
         (fun B hB => voteDomain_subset_tree hB.1) hsupp
-        (merged_voters_subset hry.localRun hrun.vstart hy hc' hd) hmaj hCx hp
+        (merged_voters_subsetU hry.localRun.toU hrun.vstart hy hc' hd) hmaj hCx hp
         hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : B = getHead sp e.readPoint ℓ.frame (tr.time i)

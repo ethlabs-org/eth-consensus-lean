@@ -118,7 +118,7 @@ theorem ResetPremisesUpTo.origins_compatible_before {b : Time}
       rcases hact with hik | hts
       · (clear * - hc hik; omega)
       refine hts c (not_le.mp fun hge => ?_)
-      have h₁ := (AC.castAt_spec hrl hz ⟨hcl, he⟩).2.1
+      have h₁ := (AC.castAt_specU hrl.toU hz ⟨hcl, he⟩).2.1
       have h₃ := (AC.ts_le_iff_le_slot sp (hrl.time_nonneg c) ((j + 1 : Nat) : Int)).mp hge
       clear * - hsl h₁ h₃; omega
     have hDO : Compatible (tr.HonestBlocks H) D O :=
@@ -286,7 +286,7 @@ theorem ResetPremisesUpTo.row_origin_label_lt {b : Time}
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   obtain ⟨ℓw, D, CV, -, hfl, -⟩ := hp.highOrigin_mem ho
-  have hk := (AC.castAt_spec hr hy hc).2.1
+  have hk := (AC.castAt_specU hr.toU hy hc).2.1
   have htr : tr.projAC.time r ≤ tr.projAC.time k := hr.time_mono (by clear * - hdk hrd; omega)
   rcases hfl with ⟨ℓ', C, ⟨-, -, ht, -⟩, -, -, -, -⟩ | hopt
   · have h₁ : sp.ts (l + 1 : Nat) ≤ tr.projAC.time k := by

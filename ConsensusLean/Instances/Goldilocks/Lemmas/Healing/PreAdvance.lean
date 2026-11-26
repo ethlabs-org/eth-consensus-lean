@@ -207,9 +207,9 @@ theorem FrameWindow.old_lock_witness {s₀ floor : Nat} {hi : Time}
       Q ∈ ell.frame.viableHeads ∧
       Q ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
   have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
-  have htvote := AC.vote_time_le hr hy ⟨ell, hc⟩
+  have htvote := AC.vote_time_leU hr.toU hy ⟨ell, hc⟩
   change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at htvote
-  have hslot : e.msg.slot = sp.slot (tr.time i) := (AC.castAt_spec hr hy hc).2.1
+  have hslot : e.msg.slot = sp.slot (tr.time i) := (AC.castAt_specU hr.toU hy hc).2.1
   rw [← hslot] at htvote
   obtain ⟨a, hai, ell₀, D, A, ha, hD, hAeq, ho, ⟨M, hM, hMr, hMA⟩, hcase⟩ :=
     AC.lock_write_witness hr hrun.vstart hy hl
@@ -276,7 +276,7 @@ theorem FrameWindow.live_old_lock_witness {s₀ floor : Nat} {hi : Time}
     ∃ Q ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
       Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc L Q := by
   have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
-  have hs := (AC.castAt_spec hr hy hc).2.1
+  have hs := (AC.castAt_specU hr.toU hy hc).2.1
   change e.msg.slot = sp.slot (tr.time i) at hs
   obtain ⟨l₀, hl₀, B, hB, hBr, hlive, heq⟩ := hl
   -- live ⇒ recent: the read point's locks expire by `slot + k`
@@ -325,7 +325,7 @@ theorem prior_vote_call_before_freeze {K : AC.CommitteeDict sp.n}
     ⟨4 * ((e.msg.slot - 1 : Nat) : Int) + 1, by simp only [AC.ACParams.ts]; ring⟩
     (hS.awake y hy _ (by linarith) hmb)
   change tr.time a = _ at ht
-  have hislot := (AC.castAt_spec hr hy hc).2.1
+  have hislot := (AC.castAt_specU hr.toU hy hc).2.1
   have hti := (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) (e.msg.slot : Int)).mpr
     (by rw [hislot])
   change sp.ts (e.msg.slot : Int) ≤ tr.time i at hti
@@ -384,7 +384,7 @@ theorem FrameWindow.vote_head_classification {s₀ floor : Nat} {hi : Time}
     (AC.voteDomain_ancU hr.toU hrun.vstart hy hc) e.readPoint (tr.time i)
     (AC.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1) hAt hroot
   refine ⟨Hd, AC.getHead_mem hPhi.1 (fun _ h => AC.voteDomain_subset_tree h.1) _ _ _ _,
-    (AC.castAt_spec hr hy hc).2.2.2.symm, ?_⟩
+    (AC.castAt_specU hr.toU hy hc).2.2.2.symm, ?_⟩
   by_cases hd : ∃ Q ∈ S, Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc A Q
   · exact Or.inl (hwalk.1 hd)
   have hHd : Hd = A := hwalk.2 hd

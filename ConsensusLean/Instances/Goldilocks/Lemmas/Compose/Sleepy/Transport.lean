@@ -33,7 +33,9 @@ section Node
 variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP ro}
 
-/-- `frame_anc_accepted` with the unlock given. -/
+/-- **Frames are closed under acceptance**: every ancestor (inside `U`) of a block of an honest
+node's frame at a call is genesis or was accepted by the node at that call or an earlier one. With
+the unlock given. -/
 theorem frame_anc_acceptedU
     {u : Nat → Set AC.Lock} {ini} (hr : AC.ACLocalRunU wm u H U T ini)
     {y : Fin sp.n} (hy : y ∈ H) :
@@ -81,14 +83,6 @@ theorem frame_anc_acceptedU
       exact step _ hin' hok fun B hB X hX =>
         (ih j hj ℓ' hc' B hB X hX).imp_right fun ⟨k, hk, h⟩ => ⟨k, hk.trans hj.le, h⟩
 
-/-- **Frames are closed under acceptance**: every ancestor (inside `U`) of a block of an honest
-node's frame at a call is genesis or was accepted by the node at that call or an earlier one. -/
-theorem frame_anc_accepted {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
-    {y : Fin sp.n} (hy : y ∈ H) :
-    ∀ i (ℓ : ACLabel (AC.goldilocksAC sp FGP ro)), T.CallAt y i ℓ → ∀ B ∈ ℓ.frame.tree, ∀ X,
-      Anc U X B → X.root = sp.genesisRoot ∨ ∃ k ≤ i, T.AcceptAt y k X :=
-  frame_anc_acceptedU (hr := hr.toU) (y := y) (hy := hy)
-
 /-- **`Carry_y` from a writer, per head.** For an honest `y` casting its slot-`(s+1)` vote,
 under `Sync` from `a ≤ t_s` to at least `t_s + 2Δ`: if each counted vote is of slot `s`, was sent
 or admitted by an honest writer `w` at a time in `[t_s, t_s + 2Δ)`, and has a head above `y`'s
@@ -111,7 +105,7 @@ theorem carryAt_of_writer_heads
           AC.AcceptedBefore T y Hv (sp.ts s + 3 * sp.Δ))) :
     AC.CarryAt T U y i e s CV := by
   refine carryAt_of_served hr
-    hini (frame_anc_accepted hr hy) hy hc hs fun v hv => ?_
+    hini (frame_anc_acceptedU hr.toU hy) hy hc hs fun v hv => ?_
   obtain ⟨hvs, ⟨k, hsend, hk1, hk2⟩, Hv, -, hHvr, hFHv, hacc⟩ := hW v hv
   -- the vote: forwarded by `w` from `t_k ∈ [t_s, t_s + 2Δ)`
   refine ⟨hvs, ⟨T.time k, hk1, hk2, fun hdi => hsync.elim
@@ -173,7 +167,7 @@ theorem carryAt_of_writer_window_before {ini}
   refine carryAt_of_writer_service hr hini (b := sp.ts s + 2 * sp.Δ) ha le_rfl
     hw hy hc hs (Or.inr restricted) hW ?_
   intro k B hk hka hanc
-  have hslot := (AC.castAt_spec hr hy hc).2.1
+  have hslot := (AC.castAt_specU hr.toU hy hc).2.1
   have hstart : sp.ts (s + 1 : Nat) ≤ T.time i :=
     (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by omega)
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
@@ -200,7 +194,7 @@ theorem result_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T i
   have hΦXU : ℓX.frame.tree ⊆ U := by
     rcases hr.frameLaw X hX i₀ ℓX hcX with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.2
   rintro v ⟨hvp, -, hvres, R, hR, hRr, hCR⟩
-  have hvs : v.slot = s := AC.state_pool_slot sp hr hini hX i₀ s v hvp
+  have hvs : v.slot = s := AC.state_pool_slotU sp hr.toU hini hX i₀ s v hvp
   -- the stamps of the vote and of its head are before `t_s + 2Δ`
   obtain ⟨hvst, hbst⟩ : (T.state X i₀).voteStamp v < AC.ETime.of (sp.ts s + 2 * sp.Δ) ∧
       (T.state X i₀).blockStamp v.head < AC.ETime.of (sp.ts s + 2 * sp.Δ) := by
@@ -219,13 +213,13 @@ theorem result_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T i
     · -- a restart's vote is of a block of slot at most `slot(t_k) ≤ s`, so of slot below `s`
       exfalso
       rw [hst, AC.etime_of_lt_of] at hvst
-      have hBv := (AC.frame_validPayload sp hr hX hck B hB).1 v hvB
-      have hBs := AC.frame_slot_le sp hr hX hck B hB
+      have hBv := (AC.frame_validPayloadU sp hr.toU hX hck B hB).1 v hvB
+      have hBs := AC.frame_slot_leU sp hr.toU hX hck B hB
       have : ¬ ((s + 1 : Nat) : Int) ≤ sp.slot (T.time k) := fun h => by
         have := (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 h
         rw [hts] at this; linarith only [this, hvst, hΔ]
       omega
-  · rcases frame_anc_accepted hr hX i₀ ℓX hcX R hR R Relation.ReflTransGen.refl with
+  · rcases frame_anc_acceptedU hr.toU hX i₀ ℓX hcX R hR R Relation.ReflTransGen.refl with
       hg | ⟨k, hk, hacc⟩
     · exact Or.inl hg
     · refine Or.inr ⟨k, hacc, not_le.1 fun hge => ?_⟩
@@ -236,7 +230,7 @@ theorem result_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T i
         rw [Option.some.inj (hc'.2.symm.trans hcX.2), htick] at hcall
         cases hcall
       rw [← hRr] at hbst
-      have h := (blockStamp_ge_of_accept hr hX hacc (AC.accept_ne_genesis sp hr hX hacc) i₀
+      have h := (blockStamp_ge_of_accept hr hX hacc (AC.accept_ne_genesisU sp hr.toU hX hacc) i₀
         hki).trans_lt
         hbst
       rw [AC.etime_of_lt_of] at h
@@ -267,8 +261,8 @@ theorem optimistic_writer_votes {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP r
   have hΦU : ℓx.frame.tree ⊆ U := by
     rcases hr.frameLaw x hx i₀ ℓx hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.2
   rintro v ⟨hvA, R, hR, hRr, hCR⟩
-  have hv1 := AC.optimisticPoint_pool_post hr hx hp s hvA
-  have hvs : v.slot = s := AC.state_pool_slot sp hr hini hx (i₀ + 1) s v hv1
+  have hv1 := AC.optimisticPoint_pool_postU hr.toU hx hp s hvA
+  have hvs : v.slot = s := AC.state_pool_slotU sp hr.toU hini hx (i₀ + 1) s v hv1
   refine ⟨hvs, ?_, R, hΦU hR, hRr, Anc.mono hΦU hCR, ?_⟩
   · rcases AC.pool_origin hr hini hx (i₀ + 1) v (by rw [hvs]; exact hv1) with
       ⟨k, hk, hsend, -, hsl'⟩ | ⟨k, hk, ℓk, hck, -, -, B, hB, hvB⟩
@@ -276,11 +270,11 @@ theorem optimistic_writer_votes {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP r
         (by rw [← hvs]; exact_mod_cast hsl'), lt_of_le_of_lt (hr.time_mono (by omega)) hti⟩
     · -- a restart's vote is of a block of slot at most `slot(t_k) ≤ s`, so of slot below `s`
       exfalso
-      have hBv := (AC.frame_validPayload sp hr hx hck B hB).1 v hvB
-      have hBs := AC.frame_slot_le sp hr hx hck B hB
+      have hBv := (AC.frame_validPayloadU sp hr.toU hx hck B hB).1 v hvB
+      have hBs := AC.frame_slot_leU sp hr.toU hx hck B hB
       have := AC.slot_mono sp (hr.time_nonneg k) (hr.time_mono (show k ≤ i₀ by omega))
       omega
-  · rcases frame_anc_accepted hr hx i₀ ℓx hc R hR R Relation.ReflTransGen.refl with
+  · rcases frame_anc_acceptedU hr.toU hx i₀ ℓx hc R hR R Relation.ReflTransGen.refl with
       hg | ⟨k, hk, hacc⟩
     · exact Or.inl hg
     · exact Or.inr ⟨k, hacc, lt_of_le_of_lt (hr.time_mono hk) hti⟩

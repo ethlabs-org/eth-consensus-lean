@@ -156,7 +156,8 @@ theorem honest_supporter_at
     have huH : u ∈ H (tr.time i₀) := by_contra fun h => huH ⟨hOK hu, h⟩
     obtain ⟨v, hv, rfl, R, hR, hRr, hCR⟩ := hu
     have hd := hrun.time_nonneg i₀
-    obtain ⟨hvs, j, hj, e, hve, rfl⟩ := AC.optimisticPoint_pool_vote (acRun_upTo hrun hnc hd) hX
+    obtain ⟨hvs, j, hj, e, hve, rfl⟩ := AC.optimisticPoint_pool_voteU (acRun_upTo hrun hnc hd).toU
+        hX
       (by
         refine ⟨(Trace.upTo_callAt_of_le _ le_rfl).mpr hpt.1, ?_⟩
         rw [projAC_upTo_state hrun le_rfl]

@@ -28,7 +28,7 @@ With `b = slot(a) + 3` (`cleanLabel`) and `R = t_{b+2k+2}` (`drainTime`, the `R_
 
 * **RN, stored ancestry is irreversible**: every lock stored at a later cut sits below a
   stored lock of its slot at an earlier cut, or below a fresh write between them
-  (`stored_lock_below`, `AC.lock_provenance_from` on the AC projection). **RU** is
+  (`stored_lock_below`, `AC.lock_provenance_fromU` on the AC projection). **RU** is
   `AC.unlock_compatible`: unlocking against a view with at least `n/2` validators whose slot-`s`
   support votes extend `B`, or that equivocate, moves every lock of a slot below `s` to a block
   compatible with `B`.
@@ -404,8 +404,8 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
         have hqi : q < i := by
           by_contra hn
           have := AC.slot_mono sp (hr.time_nonneg i) (hr.time_mono (Nat.le_of_not_gt hn))
-          have := (AC.castAt_spec hr hz hc').2.1
-          have := (AC.castAt_spec hr hy hcast).2.1
+          have := (AC.castAt_specU hr.toU hz hc').2.1
+          have := (AC.castAt_specU hr.toU hy hcast).2.1
           omega
         obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hprior z hz q hqi e' ⟨ell', hc'⟩ (by
             clear * - hsm hslot; omega)
@@ -422,12 +422,13 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
           rw [hslot] at hqt; linarith only [hΔ, hqt]
         refine ⟨hslot, ⟨q, ⟨ell', hc'.1, Or.inl ⟨e', hc'.2, rfl⟩⟩,
           (AC.ts_le_iff_le_slot sp (hr.time_nonneg q) m).mpr
-            (by rw [← (AC.castAt_spec hr hz hc').2.1, hslot]), ht⟩,
+            (by rw [← (AC.castAt_specU hr.toU hz hc').2.1, hslot]), ht⟩,
           Hd, hHv, hHvr, hFB.trans hBHv, ?_⟩
-        rcases Compose.frame_anc_accepted hr hz q ell' hc'.1 Hd hHd Hd .refl with hg | ⟨k, hk, ha⟩
+        rcases Compose.frame_anc_acceptedU hr.toU hz q ell' hc'.1 Hd hHd Hd .refl
+            with hg | ⟨k, hk, ha⟩
         · exact Or.inl hg
         · exact Or.inr ⟨k, ha, (hr.time_mono hk).trans_lt ht⟩
-      have hslot := (AC.castAt_spec hr hy hcast).2.1
+      have hslot := (AC.castAt_specU hr.toU hy hcast).2.1
       have htime : sp.ts (m + 1 : Nat) ≤ tr.time i :=
         (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) _).mpr (by rw [← hslot, hm])
       have hmt : sp.ts m + sp.Δ ≤ b := by
@@ -438,7 +439,7 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before {b : Time}
         (fun z hz q hq e' he hslot => hprior z hz q hq e' he (by
             rcases hslot with h | h <;> (clear * - hsm h; omega)))
         (hp.half_committee (hts.trans ((AC.ts_le_iff sp).mpr (by clear * - hsm; omega))) hmt)
-        ⟨hr.awake_of_call y hy i ell hcast.1, (AC.castAt_spec hr hy hcast).2.2.1,
+        ⟨hr.awake_of_call y hy i ell hcast.1, (AC.castAt_specU hr.toU hy hcast).2.2.1,
           fun v hv => (hone v hv).heads v rfl, fun v hv => (hone v hv).holds v rfl⟩
         (hp.faultBoundK_late (by clear * - hs1 hsm; omega) hcut hib)
         (hp.cs2 (by clear * - hs1 hsm; omega))
@@ -468,7 +469,7 @@ theorem raw_writer_held_at_slot_start
   obtain ⟨v, _, D, hD, hDr, hBD, hg | ⟨q, hq, hqt⟩⟩ :=
     raw_writer_relay_source hp.committee_pos hr hp.run.vstart hx hwriter hBC
   all_goals obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hpH hci
-  · obtain ⟨G, hG, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hpH _ _ hci
+  · obtain ⟨G, hG, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hpH _ _ hci
     have hDG : D = G := hr.coherent.1 hD hG (hg.trans hGr.symm)
     subst D
     have hGD : G ∈ ell.frame.tree := by
@@ -496,11 +497,11 @@ theorem raw_writer_held_at_slot_start
             have := hdl i le_rfl
             change tr.projAC.deadline p i (tr.time q) ≤ tr.time i
             linarith only [hstep, this, hΔ]) hFD
-        exact AC.mem_tree_of_acceptAt sp hr hpH hak hki hci hFD
+        exact AC.mem_tree_of_acceptAtU sp hr.toU hpH hak hki hci hFD
       · obtain ⟨k, hki, hak, _⟩ := projection_catch_of_run hp.run hc x hx q D hq (not_le.mp hg)
           p hpH i ell hci
           (by change _ ≤ tr.time i; linarith only [hs, hΔ, hstep]) hFD
-        exact AC.mem_tree_of_acceptAt sp hr hpH hak hki hci hFD
+        exact AC.mem_tree_of_acceptAtU sp hr.toU hpH hak hki hci hFD
     exact AC.frame_mem_of_between sp hr.coherent hPhi hPhiU hDt hBD hFB
 
 /-- Guarded receipt of an actual acceptance: old sources use Catch, newer ones use Sync.
@@ -526,10 +527,10 @@ theorem reset_accept_frame
     obtain ⟨k, hkj, hak, _⟩ := ((ResetService.of_gst tr H hp.healthy.1 (b := 0)).syncAC
       hp.run (hi := tr.time q) (AC.le_gbar g)).2 x hx q B ha hnew le_rfl
       y hy j ell hcall hdl hF
-    exact AC.mem_tree_of_acceptAt sp hr hy hak hkj hcall hF
+    exact AC.mem_tree_of_acceptAtU sp hr.toU hy hak hkj hcall hF
   · obtain ⟨k, hkj, hak, _⟩ := projection_catch_of_run hp.run hc x hx q B ha (not_le.mp hnew)
       y hy j ell hcall hg hF
-    exact AC.mem_tree_of_acceptAt sp hr hy hak hkj hcall hF
+    exact AC.mem_tree_of_acceptAtU sp hr.toU hy hak hkj hcall hF
 
 /-- A frame-held block reaches a later frame only under that receiver's finalization guard. -/
 theorem reset_frame_relay
@@ -543,8 +544,8 @@ theorem reset_frame_relay
     (hq : tr.time q + sp.Δ ≤ tr.time j)
     (hF : Anc (tr.HonestBlocks H) elly.frame.F B) : B ∈ elly.frame.tree := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  rcases Compose.frame_anc_accepted hr hx q ellx hcx B hB B .refl with hgen | ⟨k, hk, ha⟩
-  · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hy j elly hcy
+  rcases Compose.frame_anc_acceptedU hr.toU hx q ellx hcx B hB B .refl with hgen | ⟨k, hk, ha⟩
+  · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hy j elly hcy
     obtain rfl : B = G := hr.coherent.1 ((AC.frameIn_of_callAt hr hx hcx).2 hB)
       hGU (hgen.trans hGr.symm)
     rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp hF with he | ⟨c, _, hpar⟩

@@ -60,7 +60,7 @@ theorem current_lock_passage_of_regular_base_at
   have hc' := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
   have hPhi := frameIn_at hrun hnc hy hc.1
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono hd
-  have hslot : sp.slot (tr.time i) = p := ((AC.castAt_spec hr hy hc').2.1).symm.trans hes
+  have hslot : sp.slot (tr.time i) = p := ((AC.castAt_specU hr.toU hy hc').2.1).symm.trans hes
   by_cases hcurrent : p ≤ l.slot
   · obtain ⟨hs, a, hai, D, CV, hya, hop, ht, C, hC, hCr, hCD⟩ :=
       current_lock_write_readPoint_at hrun hnc hy hc (hes ▸ hp0) hl (hes ▸ hcurrent)
@@ -116,7 +116,7 @@ theorem current_lock_passage_of_regular_base_at
   have hAD : Anc (tr.HonestBlocksAt H) A D :=
     Anc.mono hW.2 (AC.viableAncestor_anc hW.1 hD).2
   have hhigh : tr.time i ≤ sp.ts p + sp.Δ := by
-    have ht := AC.vote_time_le hr hy ⟨ell, hc'⟩
+    have ht := AC.vote_time_leU hr.toU hy ⟨ell, hc'⟩
     change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at ht
     rwa [hslot] at ht
   have htime : tr.time kP = sp.ts p := by

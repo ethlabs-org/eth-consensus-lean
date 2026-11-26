@@ -103,7 +103,7 @@ theorem cast_head_fcRoot {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr 
     (tr.time i) ℓ.call.toStart ℓ.frame htp
     (ACInterface.callOK_ofStart.2 (by rw [ACInterface.Call.ofStart_toStart]; exact hok)) e
     (by rw [ACInterface.step_ofStart, ACInterface.Call.ofStart_toStart]; exact he') d hd).1
-  have hs := (AC.castAt_spec hr hy ⟨hcall, he⟩).2.1
+  have hs := (AC.castAt_specU hr.toU hy ⟨hcall, he⟩).2.1
   refine ⟨⟨d.head, ?_, hdr, hok'⟩, hs ▸ hle⟩
   by_cases hne : ℓ.frame.fcRoot = d.head
   · exact hne ▸ hok.1.1.fcRoot_mem

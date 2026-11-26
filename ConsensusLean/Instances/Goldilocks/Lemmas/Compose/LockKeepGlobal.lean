@@ -35,7 +35,7 @@ theorem cast_lt_of_slot {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hc : AC.CastAt tr.projAC x k ℓ' e)
     (hs : (e.msg.slot : Int) = (sp.slot (tr.time j) : Int) - 1) : k < j := by
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
-  have hsk : e.msg.slot = sp.slot (tr.time k) := (AC.castAt_spec hr hx hc).2.1
+  have hsk : e.msg.slot = sp.slot (tr.time k) := (AC.castAt_specU hr.toU hx hc).2.1
   by_contra hkj
   have := AC.slot_mono sp (hrun.time_nonneg j) (hrun.time_mono (Nat.le_of_not_lt hkj))
   omega

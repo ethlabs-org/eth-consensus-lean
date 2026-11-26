@@ -88,7 +88,7 @@ theorem reset_old_child_ineligible_at
   have hr := hac.localRun.upTo (hp.run.time_nonneg j)
   have hcy' := AC.upTo_castAt.mpr (And.intro le_rfl hcy)
   have hsj : sp.slot (tr.time j) = s + 1 :=
-    ((AC.castAt_spec hr hy hcy').2.1).symm.trans hes
+    ((AC.castAt_specU hr.toU hy hcy').2.1).symm.trans hes
   exact old_child_ineligible_of_views hPhi hd hslot heq hvot hsup hsj hQvy hBv hB.1.1 hBQ hBs
 
 /-- At the proposal parent the actual proposal is the unique eligible child, and has no
@@ -133,13 +133,13 @@ theorem reset_stop_at_parent_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hr := hac.localRun.upTo (hp.run.time_nonneg j)
   have hcy' := AC.upTo_castAt.mpr (And.intro le_rfl hcy)
   have hsj : sp.slot (tr.time j) = s + 1 :=
-    ((AC.castAt_spec hr hy hcy').2.1).symm.trans hes
+    ((AC.castAt_specU hr.toU hy hcy').2.1).symm.trans hes
   have hPhiU := Outcome.frame_tree_subset hp.run hpI hci
   have hPsi := Outcome.frame_realized hp.run hy hcy.1
   have hPsiU := Outcome.frame_tree_subset hp.run hy hcy.1
   have hU := hac.localRun.coherent
   have hslot : ∀ B ∈ elly.frame.tree, B.slot ≤ sp.slot (tr.time j) :=
-    AC.frame_slot_le sp hr hy hcy'.1
+    AC.frame_slot_leU sp hr.toU hy hcy'.1
   have old : ∀ B ∈ elly.frame.viableTree (AC.voterBlockTree sp e.readPoint elly.frame (s + 1)),
       B.parent = some d.head.root → B.slot < s + 1 →
       ¬ AC.headEligible sp elly.frame (tr.time j)
@@ -158,7 +158,7 @@ theorem reset_stop_at_parent_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     have hBs : B.slot = s + 1 := le_antisymm (hsj ▸ hslot B hB.1.1.1) hge
     have hj : tr.time j ≤ sp.ts (s + 1 : Nat) + hold sp := by
       have hbound : tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ :=
-        AC.vote_time_le hr hy ⟨elly, hcy'⟩
+        AC.vote_time_leU hr.toU hy ⟨elly, hcy'⟩
       simpa only [hsj, hold] using hbound
     exact Outcome.proposal_unique_before_hold hp.run hp.noColl hpH hdesignated hactual hPs
       (by omega) hy hcy.1 hj hB.1.1.1 hBs

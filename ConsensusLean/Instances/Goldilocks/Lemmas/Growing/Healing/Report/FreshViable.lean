@@ -112,12 +112,12 @@ theorem FrameWindow.unanimous_update_selection_at {K : AC.CommitteeDict sp.n}
     have hra := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg a))
       (hnc.upTo (tr.time a))).localRun
     rw [RunTrace.upTo_projAC] at hra
-    apply AC.accept_ne_genesis sp hra hza
+    apply AC.accept_ne_genesisU sp hra.toU hza
     obtain ⟨ella, hca, hea⟩ := ha
     exact ⟨ella, (Trace.upTo_callAt _).mpr ⟨le_rfl, hca⟩, hea⟩
   have hslots : ∀ v ∈ (tr.projAC.state y k).pool u, v.slot = u := by
     intro v hv
-    apply AC.state_pool_slot sp hr hrun.vstart hy k u v
+    apply AC.state_pool_slotU sp hr.toU hrun.vstart hy k u v
     rwa [hs]
   obtain ⟨hconf, hfast⟩ := AC.confirmation_of_unanimous_early_pool
     (AC.frameIn_of_callAt hr hy hc').1 hvi.1 hPg K (hK.facts.hsize u)

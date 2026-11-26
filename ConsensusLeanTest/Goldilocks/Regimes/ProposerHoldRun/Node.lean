@@ -317,7 +317,7 @@ theorem pool_vote_slot {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) (c : Na
   rcases AC.pool_origin hac (fun _ => AC.voteStart_initial _) hy c x hx with
     ⟨k, -, ⟨ℓ, hc, hsa⟩, -, -⟩ | ⟨k, -, ℓ, hc, hrs, -⟩
   · rcases hsa with ⟨e, he, rfl⟩ | ⟨hnr, hpre, hpost⟩
-    · exact absurd ((AC.castAt_spec hac hy ⟨hc, he⟩).1 ▸ hy) hxH
+    · exact absurd ((AC.castAt_specU hac.toU hy ⟨hc, he⟩).1 ▸ hy) hxH
     · have hex := hac.exec k ℓ hc.2 (hc.1 ▸ hy)
       rw [hc.1] at hex
       change x ∈ ((tr S).projAC.post k).pool x.slot at hpost

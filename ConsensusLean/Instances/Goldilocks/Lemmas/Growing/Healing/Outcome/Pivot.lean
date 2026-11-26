@@ -142,7 +142,7 @@ theorem reset_pivot_of_start_supported_at
       fun x r l O ho hrt _ => hDold O ⟨x, r, l, ho, hrt⟩)
     (fun _ _ _ _ h => ⟨Outcome.frame_realized hp.run h.1 h.2.1.1,
       Outcome.frame_tree_subset hp.run h.1 h.2.1.1⟩)
-    (fun _ j _ _ h => h.2.2.1 ▸ (AC.castAt_spec (hr.upTo (hp.run.time_nonneg j)) h.1
+    (fun _ j _ _ h => h.2.2.1 ▸ (AC.castAt_specU (hr.upTo (hp.run.time_nonneg j)).toU h.1
       (AC.upTo_castAt.mpr ⟨le_rfl, h.2.1⟩)).2.2.2)
     (fun y j elly e h => hstart y j elly e h.1 h.2.1 h.2.2.1 h.2.2.2.1)
     (fun O ⟨x, r, l, ho, hrt⟩ y j elly e ⟨hy, hcy, hes, hjb, _⟩ => by

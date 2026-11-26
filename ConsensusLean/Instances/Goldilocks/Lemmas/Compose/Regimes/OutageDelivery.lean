@@ -68,7 +68,7 @@ theorem vote_pooled_before_early {ini} (hrun : AC.ACRun proposer T H U ini)
     deadline_le_two (fun k' hk' hr' => hres k' (hk'.trans hk) hr') hg hτ
   obtain ⟨hxv, hxs⟩ := AC.vote_signer_slot hr hx hv
   have htj : T.time j ≤ sp.ts q + sp.Δ := by
-    have h := AC.vote_time_le hr hx hv
+    have h := AC.vote_time_leU hr.toU hx hv
     rwa [← hxs, hes] at h
   have hsj : sp.ts q ≤ T.time j :=
     (AC.ts_le_iff_le_slot sp (hr.time_nonneg j) q).2 (by omega)
@@ -88,7 +88,7 @@ theorem vote_pooled_before_early {ini} (hrun : AC.ACRun proposer T H U ini)
     have h₂ := hres r (by omega) ⟨ℓr, hcr, hrr⟩
     exact (hsj.trans hjk').not_gt (h₁.trans (hu.trans_le h₂))
   have hpk' : e.msg ∈ (T.state y (k' + 1)).pool q := by
-    rcases AC.held_of_processAt hr hy hp (by rw [hes, hsk']; omega) (by rw [hes, hsk']) with
+    rcases AC.held_of_processAtU hr.toU hy hp (by rw [hes, hsk']; omega) (by rw [hes, hsk']) with
       h | ⟨a, ha, b, hb, hab, hav, hbv⟩
     · rwa [hes] at h
     · rw [hes] at ha hb

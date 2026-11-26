@@ -113,16 +113,16 @@ theorem result_side {ini} (hrun : ACRun proposer tr H U ini)
   have hmaj := result_majority hR
   obtain ⟨ℓ, hu, _, rfl⟩ := hR
   have hu' := (upTo_updateAt hm).mpr ⟨le_rfl, hu⟩
-  obtain ⟨_, hΦU⟩ := frameIn_of_call hr.localRun hY hu'.1
+  obtain ⟨_, hΦU⟩ := frameIn_of_callU hr.localRun.toU hY hu'.1
   have hrs := update_restarts hr.localRun hY hu'
   refine ⟨ℓ, _, hu.1, hu.2.2.1, ?_, hmaj, ?_, ?_⟩
   · intro k hk hkr
     exact hrs k hk ((ACTrace.upTo_restartAt (A := goldilocksAC sp FGP ro)).mpr ⟨hm hk, hkr⟩)
   · rintro u ⟨v, ⟨hvp, _, hres, R, hR, hRr, hDR⟩, rfl⟩
     have hvp' : v ∈ ((tr.upTo (tr.time c)).state Y c).pool s := hs.symm ▸ hvp
-    have hvs := state_pool_slot sp hr.localRun hrun.vstart hY c s v hvp'
+    have hvs := state_pool_slotU sp hr.localRun.toU hrun.vstart hY c s v hvp'
     refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, ?_⟩
-    obtain ⟨k, hsend, h1, h2⟩ := admitted_of_held hr.localRun hrun.vstart hY hvs hvp' le_rfl
+    obtain ⟨k, hsend, h1, h2⟩ := admitted_of_heldU hr.localRun.toU hrun.vstart hY hvs hvp' le_rfl
       (fun k _ hst => by
         rw [hs] at hst
         have hst' : (tr.state Y c).voteStamp v < ETime.of (sp.ts s + 2 * sp.Δ) := by
@@ -160,7 +160,7 @@ theorem sync_window_before_forward
   have hp' := (upTo_messageServedBefore hm (d := tr.time i) le_rfl).mpr hp
   have hs : (tr.upTo (tr.time i)).state X i = tr.state X i :=
     Trace.upTo_state tr X fun _ hk => hm hk.le
-  have h := held_of_deadline_service (hr.upTo (hr.time_nonneg i)) hX
+  have h := held_of_deadline_serviceU (hr.upTo (hr.time_nonneg i)).toU hX
     (fun j hj hjr => hrs j hj ((ACTrace.upTo_restartAt
       (A := goldilocksAC sp FGP ro)).mp hjr).2) hdl hslot hp'
   simpa only [hs] using h
@@ -186,7 +186,7 @@ theorem sync_forward {ini}
   have hp' := (upTo_messageServedBefore hm (d := tr.time i) le_rfl).mpr hp
   have hs : (tr.upTo (tr.time i)).state X i = tr.state X i :=
     Trace.upTo_state tr X fun _ hk => hm hk.le
-  have h := held_of_deadline_service (hr.upTo (hr.time_nonneg i)) hX
+  have h := held_of_deadline_serviceU (hr.upTo (hr.time_nonneg i)).toU hX
     (fun j hj hjr => hrs j hj ((ACTrace.upTo_restartAt
       (A := goldilocksAC sp FGP ro)).mp hjr).2) hdl hslot hp'
   simpa only [hs] using h

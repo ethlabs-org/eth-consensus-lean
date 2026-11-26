@@ -49,7 +49,7 @@ theorem reset_frozen_frame_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       ⟨q, hqj, ellq, hcq, hBq, hstamp⟩
   · have hri := (hac.upTo (hp.run.time_nonneg i)).localRun
     have hci' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hci⟩
-    obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hri hpH i ellp hci'
+    obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hri.toU hpH i ellp hci'
     obtain rfl : B = G := hac.localRun.coherent.1
       ((AC.frameIn_of_callAt hr hy hcy'.1).2 hB) hGU (hgen.trans hGr.symm)
     rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp hF with he | ⟨c, _, hpar⟩
@@ -63,11 +63,11 @@ theorem reset_frozen_frame_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       simp only [AC.freeze, AC.ACParams.ts] at ht ⊢
       push_cast at ht ⊢
       linarith only [ht]
-    rcases Compose.frame_anc_accepted hr hy q ellq hcq B hBq B .refl with hgen |
+    rcases Compose.frame_anc_acceptedU hr.toU hy q ellq hcq B hBq B .refl with hgen |
         ⟨k, hkq, hak⟩
     · have hri := (hac.upTo (hp.run.time_nonneg i)).localRun
       have hci' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hci⟩
-      obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hri hpH i ellp hci'
+      obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hri.toU hpH i ellp hci'
       obtain rfl : B = G := hac.localRun.coherent.1
         ((AC.frameIn_of_callAt hr hy hcq).2 hBq) hGU (hgen.trans hGr.symm)
       rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp hF with he | ⟨c, _, hpar⟩

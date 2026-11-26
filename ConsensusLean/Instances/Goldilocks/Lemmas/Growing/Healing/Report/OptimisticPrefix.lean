@@ -57,7 +57,7 @@ theorem optimistic_isBest_of_carry_at {ini : Fin sp.n → ACState sp.n}
     rintro w ⟨v, hv, rfl, -⟩
     exact hPK.2 x i₀ ℓx A hx hpt s v hv
   have hfreeze : sp.ts s + 3 * sp.Δ ≤ tr.time i := by
-    have hsv := (castAt_spec hry.localRun hy hc').2.1
+    have hsv := (castAt_specU hry.localRun.toU hy hc').2.1
     change e.msg.slot = sp.slot (tr.time i) at hsv
     have ht := (ts_le_iff_le_slot sp (hr.time_nonneg i) (s + 1 : Nat)).mpr
       (by rw [← hsv, hs])
@@ -69,15 +69,15 @@ theorem optimistic_isBest_of_carry_at {ini : Fin sp.n → ACState sp.n}
   let V := mergedVoteView sp e.readPoint ℓ.frame (s + 1)
   have hcover : SX ⊆ supporters ℓ.frame V s B ∪ equivocators V.votes := by
     rintro w ⟨v, hv, rfl, R, hR, hRr, hDR⟩
-    exact carried_cover hry hy hc' hs hBt hcarry'
+    exact carried_coverU hry.toU hy hc' hs hBt hcarry'
       ⟨hv, R, hR, hRr, hDR⟩
-      (optimisticPoint_pool_slot hrx.localRun hrx.vstart hx hpt' hv)
-      ⟨R, hΦxU hR, hRr, (frame_slot_le sp hrx.localRun hx hpt'.1 R hR).trans hslx.le,
+      (optimisticPoint_pool_slotU hrx.localRun.toU hrx.vstart hx hpt' hv)
+      ⟨R, hΦxU hR, hRr, (frame_slot_leU sp hrx.localRun.toU hx hpt'.1 R hR).trans hslx.le,
         hBD.trans (Anc.mono hΦxU hDR)⟩
   have hVK : voters V.votes ⊆ K.committee s := by
     rintro w ⟨v, hv, rfl⟩
     have hK := hTK y i ℓ e hy hc s v hv
-    rwa [merged_vote_slot hry.localRun hry.vstart hy hc' v hv] at hK
+    rwa [merged_vote_slotU hry.localRun.toU hry.vstart hy hc' v hv] at hK
   have hE : (equivocators V.votes).ncard ≤ (K.committee s ∩ (H (tr.time i))ᶜ).ncard :=
     Set.ncard_le_ncard fun w hw => by
       refine ⟨?_, fun hwH => honest_not_equivocatorU hry.toU hy hc' hwH hw⟩
@@ -91,7 +91,7 @@ theorem optimistic_isBest_of_carry_at {ini : Fin sp.n → ACState sp.n}
     Set.ncard_le_ncard fun _ h => ⟨hVK h.1, h.2⟩
   have h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard := by
     omega
-  exact isBest_of_cover hΦ.1 (merged_support_subset hry.localRun hy hc' (s + 1))
+  exact isBest_of_cover hΦ.1 (merged_support_subsetU hry.localRun.toU hy hc' (s + 1))
     (fun _ h => voteDomain_subset_tree h.1) hcover (cover_sdiff_lt h3) hC hp hCB
 
 /-- Explicit anchor order suffices for prefix reachability, without a prior-vote induction. -/

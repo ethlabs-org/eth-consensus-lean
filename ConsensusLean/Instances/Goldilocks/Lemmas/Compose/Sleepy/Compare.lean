@@ -114,9 +114,9 @@ private theorem result_side (hrun : ACRun proposer tr H U) {Y : Fin sp.n} (hY : 
   obtain ⟨-, hΦU⟩ := frameIn_of_callAt hr hY hu.1
   refine ⟨ℓ, _, hu.1, hu.2.2.1, update_restarts hr hY hu, hmaj, ?_, ?_⟩
   · rintro u ⟨v, ⟨hvp, -, hres, R, hR, hRr, hDR⟩, rfl⟩
-    have hvs := state_pool_slot sp hr (fun _ => voteStart_initial _) hY c s v hvp
+    have hvs := state_pool_slotU sp hr.toU (fun _ => voteStart_initial _) hY c s v hvp
     refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩,
-      admitted_of_held hr (fun _ => voteStart_initial _) hY hvs hvp le_rfl
+      admitted_of_heldU hr.toU (fun _ => voteStart_initial _) hY hvs hvp le_rfl
       fun k _ hst => ?_⟩
     have hst' : (tr.state Y c).voteStamp v < ETime.of (sp.ts s + 2 * sp.Δ) := by
       unfold resolutionTime at hres
@@ -152,12 +152,12 @@ private theorem optimistic_seats
   rw [hstock] at h34
   refine ⟨ℓ, A, hpt, hΦU, h34, ?_⟩
   rintro u ⟨v, hv, rfl, R, hR, hRr, hDR⟩
-  have hvs := optimisticPoint_pool_slot hr (fun _ => voteStart_initial _) hX hpt hv
+  have hvs := optimisticPoint_pool_slotU hr.toU (fun _ => voteStart_initial _) hX hpt hv
   have htk : tr.time k < sp.ts s + 2 * sp.Δ :=
     not_le.1 (not_or.1 (not_or.1 (not_or.1 hcond).2).2).1
   refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, ?_⟩
-  exact admitted_of_held hr (fun _ => voteStart_initial _) hX hvs
-    (optimisticPoint_pool_post hr hX hpt s hv) le_rfl
+  exact admitted_of_heldU hr.toU (fun _ => voteStart_initial _) hX hvs
+    (optimisticPoint_pool_postU hr.toU hX hpt s hv) le_rfl
     fun k' hk' _ => lt_of_le_of_lt (hr.time_mono (Nat.lt_succ_iff.1 hk')) htk
 
 end Consensus.Goldilocks.AC
@@ -242,7 +242,7 @@ theorem vote_of_awake_joined {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   rcases AC.acOnTick_votes y _ ℓ.frame hjo (by rw [htj, hslot])
       (by rw [htj, hslot, projAC_state hrun.toLocalRun hy j]; exact hmv j) with hv | ⟨e, he', hes⟩
   · rw [htj, hslot] at hv
-    rcases AC.cast_of_votedSlot hr hrun.vstart hy j s hv with
+    rcases AC.cast_of_votedSlotU hr.toU hrun.vstart hy j s hv with
       ⟨k, hk, e, hve, hes⟩ | hmf
     · exact ⟨k, e, hve, hes, (hr.time_mono hk.le).trans htj.le⟩
     · rw [projAC_state hrun.toLocalRun hy j, hmv j] at hmf
@@ -281,7 +281,7 @@ theorem awake_participant_window_before {ini} (hrun : GoldilocksRun proposer dg 
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨k, e, ⟨ℓ, hc, he⟩, hes, hk⟩ := vote_of_awake_joined hrun hnc hy hmv hw hj
-  obtain ⟨hval, hsl', -, -⟩ := AC.castAt_spec hr hy ⟨hc, he⟩
+  obtain ⟨hval, hsl', -, -⟩ := AC.castAt_specU hr.toU hy ⟨hc, he⟩
   have hsk : sp.ts s ≤ tr.projAC.time k :=
     (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by omega)
   have ht : tr.time i₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1
@@ -323,7 +323,7 @@ theorem awake_participant_early {ini} (hrun : GoldilocksRun proposer dg H tr ini
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨k, e, ⟨ℓ, hc, he⟩, hes, hk⟩ := vote_of_awake_joined hrun hnc hy hmv hw hj
-  obtain ⟨hval, hsl', -, -⟩ := AC.castAt_spec hr hy ⟨hc, he⟩
+  obtain ⟨hval, hsl', -, -⟩ := AC.castAt_specU hr.toU hy ⟨hc, he⟩
   have hsk : sp.ts s ≤ tr.projAC.time k :=
     (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2 (by omega)
   have ht : tr.time i₀ = sp.ts s + 6 * sp.Δ := hu.2.2.1

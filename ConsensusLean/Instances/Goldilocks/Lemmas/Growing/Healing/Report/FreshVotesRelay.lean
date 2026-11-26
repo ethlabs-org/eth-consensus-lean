@@ -130,7 +130,7 @@ theorem frame_relay_before_at {ini}
     rw [Compose.frame_of_projAC hp hy hc', RunTrace.upTo_state_of_le hr.time_mono le_rfl]
     rfl
   rcases frame_block_acceptance_at hrun hx hcx hB with hgB | ⟨k, hk, hxk, ha⟩
-  · obtain ⟨G, hG, hGr, hGp⟩ := AC.genesis_mem_of_call sp hac.localRun hy j elly hc'
+  · obtain ⟨G, hG, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hac.localRun.toU hy j elly hc'
     have hBU : B ∈ tr.HonestBlocksAt H := by
       have hs := Compose.Growing.goldilocks_ac_projection_from hrun hnc
       exact (AC.frameIn_of_callAt (hs.upTo (hr.time_nonneg q)).localRun hx
@@ -157,7 +157,7 @@ theorem frame_relay_before_at {ini}
     have ht := (AC.frameIn_of_callAt hac.localRun hy hca).2
       ((AC.accept_new sp hac.localRun hy ⟨ella, hca, hba⟩).1 ella hca)
     exact RunTrace.anc_upTo_of_right hr hnc hd ht hF
-  exact AC.mem_tree_of_acceptAt sp hac.localRun hy hacc (by omega) hc' hBF
+  exact AC.mem_tree_of_acceptAtU sp hac.localRun.toU hy hacc (by omega) hc' hBF
 
 end Consensus.Goldilocks.Healing.Growing
 

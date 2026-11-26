@@ -141,7 +141,7 @@ private theorem upTo_pool_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho 
       ⟨ℓ, Compose.projAC_callAt.1 ((Trace.upTo_callAt _).mp hci).2, hcl⟩)
     (fun i ℓ e hci he => ?_)
   show e.msg.val ∈ K.committee e.msg.slot
-  rw [(AC.castAt_spec hr hw ⟨hci, he⟩).1]
+  rw [(AC.castAt_specU hr.toU hw ⟨hci, he⟩).1]
   exact simTraceAt_vote_member S rho hn hv hK w i e ⟨ℓ, ((Trace.upTo_callAt _).mp hci).2, he⟩
 
 /-- **The pool after an honest call holds votes of members of its slot** (`hPool`). -/
@@ -158,7 +158,7 @@ theorem simTraceAt_pool_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.
   have hm := upTo_pool_member S hrun hv hK hnc hd hw (c + 1) m v hvp
   have hacr := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)
   rw [RunTrace.upTo_projAC] at hacr
-  rwa [AC.state_pool_slot _ hacr.localRun hacr.vstart hw (c + 1) m v hvp] at hm
+  rwa [AC.state_pool_slotU _ hacr.localRun.toU hacr.vstart hw (c + 1) m v hvp] at hm
 
 end Consensus.Goldilocks.Simulation
 

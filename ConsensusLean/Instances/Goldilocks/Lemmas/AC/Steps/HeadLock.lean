@@ -68,7 +68,7 @@ theorem castAt_head_anc (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y
     rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1.1
   have hT : ℓ.frame.viableTree (voteDomain sp e.readPoint ℓ.frame e.msg.slot) ⊆
       ℓ.frame.tree := fun X hX => voteDomain_subset_tree hX.1
-  exact ⟨_, getHead_mem hΦ hT _ _ _ _, (castAt_spec hr hy hc).2.2.2.symm,
+  exact ⟨_, getHead_mem hΦ hT _ _ _ _, (castAt_specU hr.toU hy hc).2.2.2.symm,
     anc_getHead_of_compat hΦ hC hcomp hT _ _ hBC⟩
 
 end Consensus.Goldilocks.AC

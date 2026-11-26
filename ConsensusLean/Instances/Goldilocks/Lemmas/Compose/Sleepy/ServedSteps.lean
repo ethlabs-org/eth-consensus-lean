@@ -324,7 +324,7 @@ theorem honest_head_in_frame_at_read {ini} (hrun : GoldilocksRun proposer dg H t
   -- `y` accepted `Hd'` before `t_l + 2Δ`, by its tick then
   obtain ⟨hinj, hacc⟩ : Hd' ∈ (tr.state y jc).fg.tree ∧
       AC.AcceptedBefore tr.projAC y Hd' (sp.ts L + 2 * sp.Δ) := by
-    rcases frame_anc_accepted hr hx j' ℓ' hcall Hd' hHd'Φ Hd' .refl with hg | ⟨k, hk, hkA⟩
+    rcases frame_anc_acceptedU hr.toU hx j' ℓ' hcall Hd' hHd'Φ Hd' .refl with hg | ⟨k, hk, hkA⟩
     · refine ⟨?_, Or.inl hg⟩
       obtain ⟨-, -, hgen, -⟩ := Store.accepted_tree _ _ _ _ (fg_reachable hrun.toLocalRun hy jc)
       rwa [hU.1 hHd ⟨y, hy, jc, hgen⟩ hg]
@@ -380,7 +380,7 @@ theorem honest_head_in_frame_at_read {ini} (hrun : GoldilocksRun proposer dg H t
   have hHdjc : Hd' ∈ (Node.frame (tr.state y jc)).tree :=
     ⟨hinj, anc_of_anc_superset hU (fun X hX => ⟨y, hy, jc, hX⟩) (by simp [Params.genesisBlock])
       (hanc jc) (hgr.2.trans hF) hinj⟩
-  have hst := AC.blockStamp_lt_of_acceptedBefore sp hr hrun.vstart hy hcj
+  have hst := AC.blockStamp_lt_of_acceptedBeforeU sp hr.toU hrun.vstart hy hcj
     (by rw [hframe]; exact hHdjc) hacc
     (fun k hk hrk => by
       change tr.time k < _
@@ -436,7 +436,7 @@ theorem latest_vote_delivered {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨hTt, hres, jc, hjci, ℓj, hcj, htj⟩ := latest_slot_tick_at_read hrun hy hrd hL
   obtain ⟨ℓ, hck, he⟩ := hv
-  obtain ⟨hval, hsl', -, -⟩ := AC.castAt_spec hr hx ⟨hck, he⟩
+  obtain ⟨hval, hsl', -, -⟩ := AC.castAt_specU hr.toU hx ⟨hck, he⟩
   -- `x` casts one vote per slot, so its only slot-`L` vote in an honest pool is `e.msg`
   have huniq : ∀ m σ (a : Vote sp.n), a ∈ (tr.projAC.state y m).pool σ → a.val = e.msg.val →
       a.slot = e.msg.slot → a = e.msg := by
@@ -521,15 +521,15 @@ theorem latest_vote_delivered {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     have h1 := hprev k' (by omega) ℓ' hc'
     have h2 := hres' r ⟨ℓr, hcr, hrr'⟩ (hrd.before r hr2)
     exact lt_irrefl _ (h1.trans (hu.trans_le (h2.trans (hk0.trans hkk'))))) L
-  rcases AC.held_of_processAt hr hy hp (by rw [hes, hsk']; omega) (by rw [hes, hsk']) with
+  rcases AC.held_of_processAtU hr.toU hy hp (by rw [hes, hsk']; omega) (by rw [hes, hsk']) with
     h | ⟨a, ha, a', ha', hne, hav, hav'⟩
   · rw [hes] at h
     exact hpm h
   · rw [hes] at ha ha'
     have h1 := huniq _ _ a ha hav
-      (by simpa [hes] using AC.state_pool_slot sp hr hrun.vstart hy _ L a ha)
+      (by simpa [hes] using AC.state_pool_slotU sp hr.toU hrun.vstart hy _ L a ha)
     have h2 := huniq _ _ a' ha' hav'
-      (by simpa [hes] using AC.state_pool_slot sp hr hrun.vstart hy _ L a' ha')
+      (by simpa [hes] using AC.state_pool_slotU sp hr.toU hrun.vstart hy _ L a' ha')
     exact absurd (h1.trans h2.symm) hne
 
 /-- **The awake validators vote in the latest view** (Sync): at a read at `t`, an honest
@@ -551,7 +551,7 @@ theorem latest_awake_voter (hrun : GoldilocksRun proposer dg H tr) (hnc : NoColl
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   obtain ⟨k, e, ⟨ℓ, hck, he⟩, hes, -⟩ :=
     vote_of_awake_joined hrun hnc hx (mayVote_stock hrun hnc hx _) hxw hxj
-  obtain ⟨hval, -, -, -⟩ := AC.castAt_spec hr hx ⟨hck, he⟩
+  obtain ⟨hval, -, -, -⟩ := AC.castAt_specU hr.toU hx ⟨hck, he⟩
   refine ⟨e.msg, mem_latest_votes hrun hnc hy hL ?_, hval⟩
   rw [projAC_state hrun.toLocalRun hy i]
   exact latest_vote_delivered hrun hnc hsync hy hrd hL hx ⟨ℓ, hck, he⟩ hes

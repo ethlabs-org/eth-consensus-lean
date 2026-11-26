@@ -114,10 +114,11 @@ theorem origin_compatible (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree 
 whose members sign every vote in the honest pools: if at least half of the committee have slot-`m`
 support votes in `y`'s merged view whose heads extend `B`, or equivocate there, `2 |K (m+1) ∩ Hᶜ| <
 committeeSize`, every honest slot-`(m+1)` vote at an earlier cut extends `B`, and every optimistic
-origin of slot `m` (a block with three quarters of the committee size in optimistic voters whose
-honest votes were cast before the vote) is compatible with `B`, then every live lock block at the
-vote's read point is compatible with `B`. From starts up to the vote permission. With the unlock
-given. -/
+origin of slot `m` (a block with three quarters of the committee size in optimistic voters, read
+at a pool whose honest votes were cast at cuts before the vote and that `y`'s pool contains by the
+vote: the earlier pool-provenance premise) is compatible with `B`, then every live lock block at
+the vote's read point is compatible with `B`. From starts up to the vote permission. With the
+unlock given. -/
 theorem locks_compatibleU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     (K : CommitteeDict sp.n)

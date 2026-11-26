@@ -126,7 +126,7 @@ private theorem frozen_core
   -- times: the settled time and the vote are around `t_s`
   have hts : sp.ts ((s : Int) - 1) + 4 * sp.Δ = sp.ts s := by simp only [ACParams.ts]; ring
   have hvt : sp.ts s ≤ tr.time j := by
-    obtain ⟨-, hys, -, -⟩ := AC.castAt_spec hr hy hcy
+    obtain ⟨-, hys, -, -⟩ := AC.castAt_specU hr.toU hy hcy
     exact (AC.ts_le_iff_le_slot sp (hl.time_nonneg j) s).2
       (by have := hys.le; rw [hes] at this; exact_mod_cast this)
   have hwi : w ≤ tr.time i := hS.settled.2.1.1.trans (hl.time_mono hS.settled_le)

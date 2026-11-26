@@ -321,7 +321,7 @@ private theorem pool_vote_read
   have hv' : v ∈ ((tr.projAC.upTo d).state w i).pool σ := by rw [hst]; exact hv
   obtain ⟨j, hj, e, hve, hev⟩ := hr.honest.pool_vote w hw i σ v hv' hvH
   obtain ⟨hjd, hve⟩ := ac_voteAt_upTo.mp hve
-  exact ⟨AC.state_pool_slot sp hr.localRun hr.vstart hw i σ v hv', j, hj, e,
+  exact ⟨AC.state_pool_slotU sp hr.localRun.toU hr.vstart hw i σ v hv', j, hj, e,
     hVoteAt_iff.2 ⟨hrun.antitone hjd hvH, hve⟩, hev⟩
 
 /-- **L3** under growing faults: at a read by a node honest at the read time `d` (every cut
@@ -369,7 +369,7 @@ theorem read_majority_of_extending_at
     obtain rfl : Hd' = Hd := hU.1 (hΦU hHd't) hHdU (hHd'r.trans hHdr.symm)
     obtain ⟨hxk, ℓv, hcv, hev⟩ := hVoteAt_iff.1 hv
     obtain ⟨Hd₂, hHd₂, hHd₂r, hHd₂s⟩ :=
-      AC.honest_head (acRun_upTo hrun hnc (hrun.time_nonneg k)) hxk
+      AC.honest_headU (acRun_upTo hrun hnc (hrun.time_nonneg k)).toU hxk
         (ac_voteAt_upTo.mpr ⟨le_rfl, ℓv, hcv, hev⟩)
     obtain rfl : Hd' = Hd₂ :=
       hU.1 hHdU (upTo_subset hrun (hrun.time_nonneg k) hHd₂) (hHdr.trans hHd₂r.symm)

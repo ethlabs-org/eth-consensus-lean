@@ -60,7 +60,7 @@ theorem count_declared_of_syncAt
   have hc' := upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hjt : tr.time i ≤ tr.time j := by
     obtain ⟨P, hP, hPs, _⟩ := hP
-    have hslot := frame_slot_le sp (hr.upTo hd) hy hc'.1 P hP
+    have hslot := frame_slot_leU sp (hr.upTo hd).toU hy hc'.1 P hP
     rw [hPs] at hslot
     rw [hti]
     exact (ts_le_iff_le_slot sp hd (s + 1 : Nat)).mpr (by exact_mod_cast hslot)
@@ -104,8 +104,8 @@ theorem proposer_voters_agree_of_honest_max
   obtain ⟨hcp, hcall, d, hpay⟩ := hprop
   have hcp' := (Trace.upTo_callAt tr).mpr ⟨le_rfl, hcp⟩
   have hc' := upTo_castAt.mpr ⟨le_rfl, hc⟩
-  obtain ⟨hΦp, hΦpU⟩ := frameIn_of_call hpr.localRun hp hcp'
-  obtain ⟨hΦy, hΦyU⟩ := frameIn_of_call hyr.localRun hy hc'.1
+  obtain ⟨hΦp, hΦpU⟩ := frameIn_of_callU hpr.localRun.toU hp hcp'
+  obtain ⟨hΦy, hΦyU⟩ := frameIn_of_callU hyr.localRun.toU hy hc'.1
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
     simp only [ACParams.ts]; push_cast; ring
@@ -127,11 +127,11 @@ theorem proposer_voters_agree_of_honest_max
     have hh := (AC.joined_awake sp FGP ro _ U _ hpr.localRun p hp i ℓp hcp' hj').2 k hk
       ((ACTrace.upTo_restartAt (A := goldilocksAC sp FGP ro)).mpr ⟨hm hk, hrk⟩)
     simpa only [Trace.upTo_time, hsi, hcast] using hh
-  obtain ⟨_, hys, hyj, _⟩ := castAt_spec hyr.localRun hy hc'
+  obtain ⟨_, hys, hyj, _⟩ := castAt_specU hyr.localRun.toU hy hc'
   have hsj : sp.slot (tr.time j) = s + 1 := by change e.msg.slot = sp.slot (tr.time j) at hys; omega
   have hrsy : ∀ k ≤ j, tr.RestartAt y k → tr.time k ≤ sp.ts s := by
     have hj' : joined sp ((tr.upTo (tr.time j)).post j) (tr.time j) := by
-      unfold joined; rw [restartTime_of_castAt hyr.localRun hy hc']; exact hyj
+      unfold joined; rw [restartTime_of_castAtU hyr.localRun.toU hy hc']; exact hyj
     intro k hk hrk
     have hh := (AC.joined_awake sp FGP ro _ U _ hyr.localRun y hy j ℓy hc'.1 hj').2 k hk
       ((ACTrace.upTo_restartAt (A := goldilocksAC sp FGP ro)).mpr ⟨hm hk, hrk⟩)
@@ -152,7 +152,7 @@ theorem proposer_voters_agree_of_honest_max
     have hXp := hrun.honest.proposer X ⟨y, k, ℓk, hyk, hck, hX⟩ (by
       intro hroot
       obtain ⟨G, hG, hGr, hGs⟩ := AC.genesis_mem hyr.localRun hy k hck'
-      have he := hr.coherent.1 ((frameIn_of_call hyr.localRun hy hck').2 hX) hG
+      have he := hr.coherent.1 ((frameIn_of_callU hyr.localRun.toU hy hck').2 hX) hG
         (hroot.trans hGr.symm)
       rw [he, hGs] at hXs
       omega)
@@ -169,15 +169,16 @@ theorem proposer_voters_agree_of_honest_max
   have hpool : ∀ w ∈ (tr.state p i).pool s, (tr.state p i).voteStamp w < ⊤ := by
     intro w hw
     have hw' : w ∈ ((tr.upTo (tr.time i)).state p i).pool s := statep.symm ▸ hw
-    have hws := state_pool_slot sp hpr.localRun (fun _ => voteStart_initial _) hp i s w hw'
+    have hws := state_pool_slotU sp hpr.localRun.toU (fun _ => voteStart_initial _) hp i s w hw'
     rcases pool_origin hpr.localRun (fun _ => voteStart_initial _) hp i w (hws ▸ hw') with
       ⟨k, _, _, h, _⟩ | ⟨k, _, ℓ, _, _, h, _⟩ <;>
       rw [statep] at h <;> exact h ▸ etime_of_lt_top _
   have hstar : ∀ x ∈ e.readPoint.pool s, e.readPoint.voteStamp x < ETime.of (sp.ts s + 3 * sp.Δ) →
       x ∈ (tr.state p i).pool s ∨ x.val ∈ equivocators {w | w ∈ (tr.state p i).pool s} := by
     intro x hx hxt
-    obtain ⟨hx1, hx2⟩ := readPoint_pool hyr.localRun hy hc' hx
-    have hxs := state_pool_slot sp hyr.localRun (fun _ => voteStart_initial _) hy (j + 1) s x hx1
+    obtain ⟨hx1, hx2⟩ := readPoint_poolU hyr.localRun.toU hy hc' hx
+    have hxs := state_pool_slotU sp hyr.localRun.toU (fun _ => voteStart_initial _) hy (j + 1) s x
+        hx1
     rcases pool_origin hyr.localRun (fun _ => voteStart_initial _) hy (j + 1) x (hxs ▸ hx1) with
       ⟨k, hk, hsend, hst, hsl⟩ | ⟨k, hk, ℓk, hck, _, _, X, hX, hxX⟩
     · rw [hx2 hxs] at hst
@@ -191,14 +192,14 @@ theorem proposer_voters_agree_of_honest_max
         fun t h₁ h₂ => by
           rw [slot_of_mem sp s (hsk.trans h₁) (by rw [hts]; linarith), hxs]; omega
       rwa [hxs] at hh
-    · have hvp := (frame_validPayload sp hyr.localRun hy hck X hX).1 x hxX
+    · have hvp := (frame_validPayloadU sp hyr.localRun.toU hy hck X hX).1 x hxX
       obtain ⟨_, hck⟩ := (Trace.upTo_callAt tr).mp hck
       rw [huniq k ℓk (Nat.le_of_lt_succ hk) hck X hX (by omega)] at hxX
       exact Or.inl (mem_voteViewList_fst.1 (hPv ▸ hxX)).1
   -- the proposer has stamped the blocks of its tree
   have hbs : ∀ Hd ∈ ℓp.frame.tree, (tr.state p i).blockStamp Hd.root ≠ ⊤ := by
     intro Hd hHd
-    have hh := blockStamp_lt_of_acceptedBefore sp hpr.localRun
+    have hh := blockStamp_lt_of_acceptedBeforeU sp hpr.localRun.toU
       (fun _ => voteStart_initial _) hp hcp' hHd
       (T := tr.time i + 1) (by
         rcases frame_acceptedU hpr.localRun.toU hp i hcp' Hd hHd with h | ⟨k, hk, h⟩
@@ -271,7 +272,7 @@ theorem view_agree_window_before
   have hc' := upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hjt : tr.time i ≤ tr.time j := by
     obtain ⟨P, hP, hPs, _⟩ := hP
-    have hslot := frame_slot_le sp (hr.upTo hd) hy hc'.1 P hP
+    have hslot := frame_slot_leU sp (hr.upTo hd).toU hy hc'.1 P hP
     rw [hPs] at hslot
     rw [hti]
     exact (ts_le_iff_le_slot sp hd (s + 1 : Nat)).mpr (by exact_mod_cast hslot)
@@ -312,7 +313,7 @@ theorem view_agree
   have hc' := upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hjt : tr.time i ≤ tr.time j := by
     obtain ⟨P, hP, hPs, _⟩ := hP
-    have hslot := frame_slot_le sp (hr.upTo hd) hy hc'.1 P hP
+    have hslot := frame_slot_leU sp (hr.upTo hd).toU hy hc'.1 P hP
     rw [hPs] at hslot
     rw [hti]
     exact (ts_le_iff_le_slot sp hd (s + 1 : Nat)).mpr (by exact_mod_cast hslot)

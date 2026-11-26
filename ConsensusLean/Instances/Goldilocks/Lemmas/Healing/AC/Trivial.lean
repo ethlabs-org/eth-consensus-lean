@@ -58,7 +58,9 @@ theorem HealthyBaseU.deadline_le
 theorem ts_succ (s : Nat) : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
   simp only [ACParams.ts]; push_cast; ring
 
-/-- `stamp_lt_of_held_of_run` with the unlock given. -/
+/-- A vote an honest node holds at cut `a` is held at every later cut `b` with no restart in
+between, with a stamp before `T` when every cut before `a`, every own vote of its slot and every
+restart are before `T`. With the unlock given. -/
 theorem stamp_lt_of_held_of_runU
     {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H)
@@ -83,19 +85,6 @@ theorem stamp_lt_of_held_of_runU
         _ hw) hnh
   · rw [hst, etime_of_lt_of]
     exact hrestart k hk ⟨ℓ, hc, hcall⟩
-
-/-- A vote an honest node holds at cut `a` is held at every later cut `b` with no restart in
-between, with a stamp before `T` when every cut before `a`, every own vote of its slot and every
-restart are before `T`. -/
-theorem stamp_lt_of_held_of_run {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H)
-    {a b : Nat} (hab : a ≤ b) {w : Vote sp.n} (hw : w ∈ (tr.state y a).pool w.slot) {T : Time}
-    (hta : ∀ k < a, tr.time k < T) (hwT : sp.ts w.slot + sp.Δ < T)
-    (hrestart : ∀ k < b, tr.RestartAt y k → tr.time k < T)
-    (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) :
-    w ∈ (tr.state y b).pool w.slot ∧ (tr.state y b).voteStamp w < ETime.of T :=
-  stamp_lt_of_held_of_runU (hr := hr.toU) hini (y := y) (hy := hy) (a := a) (b := b) (hab := hab)
-      (w := w) (hw := hw) (T := T) (hta := hta) (hwT := hwT) (hrestart := hrestart) (hnr := hnr)
 
 /-- Whole-run specialization of bounded-cut stamp retention, with the unlock given. -/
 theorem stamp_lt_of_heldU
@@ -150,8 +139,8 @@ theorem heldBefore_readPoint_branchU
       admitVote_pool_ne hne, admitVote_stamp_ne fun h' => hne (by rw [h'])] at h
     exact h
 
-/-- `heldBefore_readPoint` with the unlock given (`heldBefore_readPoint_branchU` at the cast's
-vote branch). -/
+/-- A vote of another slot that the state after an honest cast holds, it held at the read point,
+with its stamp. With the unlock given. -/
 theorem heldBefore_readPointU
     {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
@@ -160,15 +149,6 @@ theorem heldBefore_readPointU
     HeldBefore e.readPoint w T :=
   heldBefore_readPoint_branchU hr hy (voteBranchAt_of_castAtU hr hy hc)
     ((castAt_specU hr hy hc).2.1 ▸ hne) h
-
-/-- A vote of another slot that the state after an honest cast holds, it held at the read
-point, with its stamp. -/
-theorem heldBefore_readPoint {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y i ℓ e) {w : Vote sp.n} (hne : e.msg.slot ≠ w.slot) {T : Time}
-    (h : w ∈ (tr.state y (i + 1)).pool w.slot ∧ (tr.state y (i + 1)).voteStamp w < ETime.of T) :
-    HeldBefore e.readPoint w T :=
-  heldBefore_readPointU hr.toU hy hc hne h
 
 /-- Every honest member of the slot's committee has an actual vote by the bounded slot deadline
 (the committee start lets it vote there). Restart bounds are required only before that deadline,
@@ -191,7 +171,7 @@ theorem honest_votes_in_slot_before {K : AC.CommitteeDict sp.n} {b : Time}
     ⟨4 * m + 1, by simp only [ACParams.ts]; ring⟩ (hS.awake x hx _ (by linarith) hmb)
   have hj : joined sp (tr.state x c) (tr.time c) := by
     unfold joined
-    rcases restartTime_state hr hS.run.vstart hx c with h | ⟨r, hrc, hrs, h⟩
+    rcases restartTime_stateU hr.toU hS.run.vstart hx c with h | ⟨r, hrc, hrs, h⟩
     · rw [h]; exact bot_le
     · rw [h]
       apply WithBot.coe_le_coe.mpr
@@ -199,7 +179,7 @@ theorem honest_votes_in_slot_before {K : AC.CommitteeDict sp.n} {b : Time}
       exact hrestart x hx r ((hr.time_mono hrc.le).trans htc.le) hrs
   by_cases hv : (tr.state x c).votedSlot = (sp.slot (tr.time c) : Int)
   · obtain ⟨j, hjc, e, he, hes⟩ :=
-      (cast_of_votedSlot hr hS.run.vstart hx c _ hv).resolve_right
+      (cast_of_votedSlotU hr.toU hS.run.vstart hx c _ hv).resolve_right
         (by rw [(trace_mayVote_iff hr hx c _).2 (by rw [htc, hslot]; exact hxK)]; decide)
     exact ⟨j, e, he, by rw [hes, htc, hslot], (hr.time_mono hjc.le).trans htc.le⟩
   · have hT : tr.time c = sp.ts (sp.slot (tr.time c)) + sp.Δ := by rw [htc, hslot]

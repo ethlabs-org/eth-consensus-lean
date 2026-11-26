@@ -214,7 +214,7 @@ theorem live_locks_of_stored_before {ini}
   have hr := hrun.localRun
   have hU := hr.coherent
   obtain ⟨hΦ, hΦU⟩ := frameIn_of_callAt hr hy hc.1
-  have hsi := (castAt_spec hr hy hc).2.1
+  have hsi := (castAt_specU hr.toU hy hc).2.1
   have down : ∀ {X Y}, Anc U X Y → Compatible U Y D → Compatible U X D := by
     rintro X Y hXY (h | h)
     · exact Or.inl (hXY.trans h)
@@ -245,7 +245,7 @@ theorem live_locks_of_stored_before {ini}
       fun v hv hvH => ?_)
     obtain ⟨hvs, j, hj, e', hvote, rfl⟩ := hpool v hv hvH
     obtain ⟨ℓ', hcj⟩ := id hvote
-    have hsj := (castAt_spec hr hvH hcj).2.1
+    have hsj := (castAt_specU hr.toU hvH hcj).2.1
     have : sp.slot (tr.time j) ≤ sp.slot (tr.time i) :=
       slot_mono sp (hr.time_nonneg j) (hr.time_mono hj.le)
     exact hE _ hvH j hj e' hvote (by omega)

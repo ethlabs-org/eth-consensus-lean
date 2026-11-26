@@ -224,7 +224,7 @@ private theorem proposal_stop
   obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hy hcy.1
   have hPs : P.slot = s := hS.ready.2.2.2.2.1
   have hPv := proposal_frozen_viable hS hy hcy hes
-  obtain ⟨-, hys, -, -⟩ := AC.castAt_spec hr hy hcy
+  obtain ⟨-, hys, -, -⟩ := AC.castAt_specU hr.toU hy hcy
   refine ⟨⟨⟨hPv, hS.parent, Or.inr (Or.inl (by rw [hPs, ← hes, hys]; rfl))⟩,
     proposal_only_child hS hy hcy hes⟩, fun ⟨C, hC⟩ => ?_⟩
   have hgen : ∀ X ∈ ℓy.frame.tree, X.root = sp.genesisRoot → X.slot = 0 := by

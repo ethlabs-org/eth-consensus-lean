@@ -39,7 +39,7 @@ theorem frame_witness_readPoint_stamp_at
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo (hrun.time_nonneg i)).localRun
   have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
-  have hs : sp.slot (tr.time i) = s + 1 := (AC.castAt_spec hr hy hc').2.1.symm.trans hes
+  have hs : sp.slot (tr.time i) = s + 1 := (AC.castAt_specU hr.toU hy hc').2.1.symm.trans hes
   have hti : sp.ts (s + 1 : Nat) ≤ tr.time i :=
     (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by rw [hs])
   have hts := AC.ts_succ s (sp := sp)

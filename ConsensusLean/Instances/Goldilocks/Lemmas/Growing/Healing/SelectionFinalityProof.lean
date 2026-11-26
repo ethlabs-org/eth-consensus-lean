@@ -63,7 +63,7 @@ theorem finalized_below_unanimous_at_update_at
     change sp.slot (tr.time j) = u + 1
     rw [ht, (AC.slot_arithmetic sp u).2.2]
     simpa using (AC.slot_arithmetic sp (u + 1)).1 2 (by omega)
-  have hBs : B.slot ≤ u + 1 := hsl ▸ AC.frame_slot_le sp hr.localRun hy hc' B hBf
+  have hBs : B.slot ≤ u + 1 := hsl ▸ AC.frame_slot_leU sp hr.localRun.toU hy hc' B hBf
   have hFs : (tr.state y j).fg.F.slot < B.slot :=
     (Anc.slot_le hU (hFB.mono hsub)).2 hne
   rcases hFR with h | hPF

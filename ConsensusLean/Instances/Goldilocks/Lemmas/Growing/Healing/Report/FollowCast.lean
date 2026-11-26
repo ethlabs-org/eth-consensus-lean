@@ -124,7 +124,7 @@ theorem proposal_viable_at_call_at
       have haq' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time i)) y q P := by
         obtain ⟨ellq, hcq, heq⟩ := haq
         exact ⟨ellq, (Trace.upTo_callAt _).mpr ⟨hrun.time_mono hqi, hcq⟩, heq⟩
-      exact AC.mem_tree_of_acceptAt sp hri.localRun hy haq' hqi hci hFP
+      exact AC.mem_tree_of_acceptAtU sp hri.localRun.toU hy haq' hqi hci hFP
   obtain ⟨_, hroot, hv⟩ := floor_ancestor_mem_frame_at hrun hnc hy hzja
     (hmf _ (hrun.time_nonneg i) (hhigh.trans hib)) hPt.1
     (by rw [hframe.floor_eq y i hy hlow hhigh]; exact hh)
@@ -157,12 +157,12 @@ theorem proposal_viable_at_cast_at
       P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame p) := by
   have hri := (Compose.Growing.goldilocks_ac_projection_from hrun hnc).upTo (hrun.time_nonneg i)
   have hci := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
-  have hslot : e.msg.slot = sp.slot (tr.time i) := (AC.castAt_spec hri.localRun hy hci).2.1
+  have hslot : e.msg.slot = sp.slot (tr.time i) := (AC.castAt_specU hri.localRun.toU hy hci).2.1
   have hslot' := hslot.symm.trans hes
   have hpT : sp.ts p ≤ tr.time i :=
     (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by rw [hslot'])
   have hhigh : tr.time i ≤ sp.ts p + sp.Δ := by
-    have ht := AC.vote_time_le hri.localRun hy ⟨ell, hci⟩
+    have ht := AC.vote_time_leU hri.localRun.toU hy ⟨ell, hci⟩
     change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at ht
     rwa [hslot'] at ht
   obtain ⟨hPy, hroot, hv⟩ := proposal_viable_at_call_at hframe hrun hnc hsvc hf hnr hm hsp

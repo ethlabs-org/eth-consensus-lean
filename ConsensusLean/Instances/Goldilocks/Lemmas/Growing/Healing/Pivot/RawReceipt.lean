@@ -44,7 +44,7 @@ theorem raw_writer_held_at_slot_start_at
     raw_writer_relay_source_at hp.committee_pos
       hac.localRun hac.vstart hx hwriter hBC
   · obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hpH hci'
-    obtain ⟨G, hG, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hpH _ _ hci'
+    obtain ⟨G, hG, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hpH _ _ hci'
     have hDG : D = G := hac.localRun.coherent.1 hD hG (hg.trans hGr.symm)
     subst D
     have hGt : G ∈ ell.frame.tree := by

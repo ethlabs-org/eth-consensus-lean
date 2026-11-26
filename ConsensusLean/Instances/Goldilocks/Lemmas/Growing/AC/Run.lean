@@ -48,7 +48,7 @@ theorem ACRun.upTo {ini} (h : ACRun proposer tr H U ini) {d : Time} (hd : 0 ≤ 
         have hslot : v.slot = σ := by
           have hv' := hv
           rw [← state_succ_of_call hc] at hv'
-          exact state_pool_slot sp hr h.vstart hy (i + 1) σ v hv'
+          exact state_pool_slotU sp hr.toU h.vstart hy (i + 1) σ v hv'
         by_cases hrs : ℓ.call = .restart
         · have hR := restart_state sp FGP ro y ((tr.upTo d).state y i) ℓ.frame
             ((tr.upTo d).time i) hΦ (hr.time_nonneg i)
@@ -72,7 +72,7 @@ theorem ACRun.upTo {ini} (h : ACRun proposer tr H U ini) {d : Time} (hd : 0 ≤ 
                 upTo_voteAt.mpr ⟨(h.localRun.time_mono hj.le).trans hid, hvote⟩, hev⟩
             · rw [he] at hem
               have hvote : VoteAt (tr.upTo d) y i e := ⟨ℓ, hc, hem⟩
-              have hval := (castAt_spec hr hy ⟨hc, hem⟩).1
+              have hval := (castAt_specU hr.toU hy ⟨hc, hem⟩).1
               exact ⟨i, Nat.lt_succ_self i, e, (hev ▸ hval) ▸ hvote, hev⟩
       · have hs : (tr.upTo d).state y (i + 1) = (tr.upTo d).state y i := by
           simp only [Trace.state, ite_eq_right hn]

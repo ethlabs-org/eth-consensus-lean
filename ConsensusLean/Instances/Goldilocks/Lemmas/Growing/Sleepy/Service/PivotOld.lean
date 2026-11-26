@@ -153,7 +153,7 @@ theorem sync_from_forward_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
   have hdl' : tr.projAC.deadline X i (tr.time k) ≤ tr.time k + sp.Δ :=
     (ac_deadline_le_of_restarts hrs _).trans (by rw [max_self])
   have hserv := hsync.message y k v hy hsend ha X i ℓ hX hc (hdl'.trans hb) (hdl'.trans hdl)
-  have h := AC.held_of_deadline_service (acRun_upTo hrun hnc hd).localRun (k := k) hX
+  have h := AC.held_of_deadline_serviceU (acRun_upTo hrun hnc hd).localRun.toU (k := k) hX
     (fun k' hk' hrk => hrs k' hk' ((ac_restartAt_upTo _).mp hrk).2) hdl hslot
     (ac_messageServedBefore_upTo hm le_rfl hserv)
   rwa [projAC_upTo_state hrun le_rfl] at h

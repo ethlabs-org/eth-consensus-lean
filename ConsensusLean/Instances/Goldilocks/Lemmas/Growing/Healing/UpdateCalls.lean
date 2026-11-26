@@ -41,7 +41,7 @@ theorem ResetPremisesUpTo.update_call_of_awake
     have hi' : tr.time i = d := hi
     have hac := (Compose.goldilocks_ac_projection_from hr (hp.noColl.upTo d)).localRun
     unfold AC.joined
-    rcases AC.restartTime_state hac hp.run.vstart hy i with h | ⟨r, hri, hrs, h⟩
+    rcases AC.restartTime_stateU hac.toU hp.run.vstart hy i with h | ⟨r, hri, hrs, h⟩
     · rw [h]; exact bot_le
     · rw [h]
       apply WithBot.coe_le_coe.mpr

@@ -575,7 +575,9 @@ private theorem fromP_betweenU
         ⟨B, ⟨b, hab, Nat.lt_succ_self b, h.2.1⟩, hB⟩
     · exact Or.inl ⟨l, hl, rfl, rfl, sitsBelow_iff.2 (Or.inl rfl)⟩
 
-/-- `lock_provenance_from` with the unlock given. -/
+/-- **Lock provenance from a cut.** Every lock that an honest node holds at cut `b` sits below a
+lock of its slot that it held at cut `a ≤ b`, or below the block of a lock of its slot that the node
+wrote at a cut in `[a, b)`. With the unlock given. -/
 theorem lock_provenance_fromU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {a b : Nat} (hab : a ≤ b) :
@@ -590,19 +592,6 @@ theorem lock_provenance_fromU
     ⟨l', hl', -, hs, hb⟩ | ⟨B, ⟨j, h1, h2, h⟩, hB⟩
   · exact Or.inl ⟨l', hl', hs.symm, (sitsBelow_iff.1 hb).imp Eq.symm id⟩
   · exact Or.inr ⟨j, h1, h2, B, h, below_iff.1 hB⟩
-
-/-- **Lock provenance from a cut.** Every lock that an honest node holds at cut `b` sits below a
-lock of its slot that it held at cut `a ≤ b`, or below the block of a lock of its slot that the
-node wrote at a cut in `[a, b)`. -/
-theorem lock_provenance_from (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    {x : Fin sp.n} (hx : x ∈ H) {a b : Nat} (hab : a ≤ b) :
-    ∀ l ∈ (tr.state x b).locks,
-      (∃ l' ∈ (tr.state x a).locks, l'.slot = l.slot ∧
-        (l' = l ∨ ∃ L ∈ U, L.root = l.block ∧ ∃ L' ∈ U, L'.root = l'.block ∧ Anc U L L')) ∨
-      ∃ j, a ≤ j ∧ j < b ∧ ∃ B,
-        ((∃ CV, OptimisticLockAt tr x j l.slot B CV) ∨ ∃ ℓ, UpdateAt tr x j l.slot ℓ) ∧
-        ∃ L ∈ U, L.root = l.block ∧ Anc U L B :=
-  lock_provenance_fromU (hr := hr.toU) (x := x) (hx := hx) (a := a) (b := b) (hab := hab)
 
 /-- `fast_lock_provenance` with the unlock given, from starts up to the vote permission. -/
 theorem fast_lock_provenanceU

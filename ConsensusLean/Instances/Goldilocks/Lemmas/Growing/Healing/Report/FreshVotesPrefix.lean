@@ -95,9 +95,9 @@ theorem honest_prefix_of_finality_before_at
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hri := (hac.upTo hd).localRun
   have hcast : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ell e := ⟨hci, hc.2⟩
-  have hslot := (AC.castAt_spec hri hy hcast).2.1.symm.trans hes
+  have hslot := (AC.castAt_specU hri.toU hy hcast).2.1.symm.trans hes
   change sp.slot (tr.time i) = s + 1 at hslot
-  have ht := AC.vote_time_le hri hy ⟨ell, hcast⟩
+  have ht := AC.vote_time_leU hri.toU hy ⟨ell, hcast⟩
   change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at ht
   rw [hslot] at ht
   have hstart : sp.ts (s + 1 : Nat) ≤ tr.time i :=
@@ -111,7 +111,7 @@ theorem honest_prefix_of_finality_before_at
     intro x hx j ev hv hs
     obtain ⟨ellx, hcx, hex⟩ := hv
     obtain ⟨hjd, hcx'⟩ := (Trace.upTo_callAt _).mp hcx
-    obtain ⟨R, hR, hRr, _⟩ := AC.honest_head hS.run hx ⟨ellx, hcx, hex⟩
+    obtain ⟨R, hR, hRr, _⟩ := AC.honest_headU hS.run.toU hx ⟨ellx, hcx, hex⟩
     obtain ⟨R', hR', hR'r, hBR⟩ := hheads x j ev (hr.antitone hjd hx) ⟨ellx, hcx', hex⟩ hs
     have he : R' = R := hac.localRun.coherent.1 hR'
       (RunTrace.honestBlocks_upTo_subset hr.time_mono hd hR) (hR'r.trans hRr.symm)
@@ -213,12 +213,12 @@ theorem FrameWindow.proposal_start_prefix_at {s₀ s floor : Nat}
   have hSv := frozen_viable_of_anchor_path_at hrun hnc hy hc hPv'
     (Anc.mono hPhi.2 haS) hSP
   rw [hes] at hSv
-  have hslot := (AC.castAt_spec hri hy hcast).2.1.symm.trans hes
+  have hslot := (AC.castAt_specU hri.toU hy hcast).2.1.symm.trans hes
   change sp.slot (tr.time i) = s + 1 at hslot
   have hlo : sp.ts s₀ ≤ tr.time i :=
     (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by
       rw [hslot]; omega)
-  have hhi := AC.vote_time_le hri hy ⟨ell, hcast⟩
+  have hhi := AC.vote_time_leU hri.toU hy ⟨ell, hcast⟩
   change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at hhi
   rw [hslot] at hhi
   have hplo : sp.ts s₀ ≤ tr.time ip := by

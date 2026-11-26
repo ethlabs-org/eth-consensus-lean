@@ -54,19 +54,19 @@ theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
     rintro x ⟨hxK, hx⟩
     obtain ⟨j, e', hv, hvs⟩ := hex x hx hxK
     obtain ⟨ℓx, hcx⟩ := hv
-    have hvx := (castAt_spec hr hx hcx).1
-    obtain ⟨R, hR, hRr, hRs⟩ := honest_head hrun hx ⟨ℓx, hcx⟩
+    have hvx := (castAt_specU hr.toU hx hcx).1
+    obtain ⟨R, hR, hRr, hRs⟩ := honest_headU hrun.toU hx ⟨ℓx, hcx⟩
     obtain ⟨R', hR', hR'r, hBR⟩ := hall x hx j e' ⟨ℓx, hcx⟩ hvs
     have heq : R' = R := hr.coherent.1 hR' hR (hR'r.trans hRr.symm)
     have hBR' : Anc U B R := heq ▸ hBR
-    have h := carried_cover hrun hy hc hs hBt hcarry
+    have h := carried_coverU hrun.toU hy hc hs hBt hcarry
       ⟨x, hx, j, e', ⟨ℓx, hcx⟩, rfl, hvs⟩ hvs
       ⟨R, hR, hRr, hvs ▸ hRs, hBR'⟩
     exact hvx ▸ h
   have hW : voters V.votes ⊆ K.committee s := by
     rintro u ⟨v, hv, rfl⟩
     have hK := hT y hy i ℓ e hc s v hv
-    rwa [merged_vote_slot hr hrun.vstart hy hc v hv] at hK
+    rwa [merged_vote_slotU hr.toU hrun.vstart hy hc v hv] at hK
   have hE : equivocators V.votes ⊆ K.committee s ∩ Hᶜ := by
     intro w hw
     refine ⟨?_, fun hwH => honest_not_equivocatorU hrun.toU hy hc hwH hw⟩
@@ -82,7 +82,7 @@ theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
     rw [← hsize s]
     exact Set.ncard_inter_add_ncard_sdiff_eq_ncard _ H (Set.toFinite _)
   have h3 := Set.ncard_le_ncard hout (Set.toFinite _)
-  exact isBest_of_cover hΦ.1 (merged_support_subset hr hy hc (s + 1)) (fun _ h =>
+  exact isBest_of_cover hΦ.1 (merged_support_subsetU hr.toU hy hc (s + 1)) (fun _ h =>
       voteDomain_subset_tree h.1)
     hcover (by
       change (voters V.votes \ (K.committee s ∩ H ∪ equivocators V.votes)).ncard <

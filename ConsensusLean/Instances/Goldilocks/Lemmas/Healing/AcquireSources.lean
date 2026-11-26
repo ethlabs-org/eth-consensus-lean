@@ -24,7 +24,7 @@ readers). At `y`'s tick at `v` (not a slot start, so its cuts are `ac_on_tick`, 
 there compares with `Y` (`update_locks_compatible`: a clean origin of
 a label `< s` by HS.2's transfer to an honest slot-`s` vote, which is `Y`; a label `≥ s` through
 an honest counted vote or result supporter of slot `s` or `s + 1`). The AC projection is a healthy
-driven trace (`DrainCommon.healthyBase_of_hs`), so H.1's `first_update_post` applies: the tick is
+driven trace (`DrainCommon.healthyBase_of_hs`), so H.1's `first_update_postU` applies: the tick is
 the slot-`s` update, its result is `Y`, not vetoed, and `Y` passes the fast test, so it is the
 update's fast selection (`AC.fastSelect_eq_result`) and is locked fast with label `s`. At the
 `ac_to_fg` that follows, `Y` is a candidate, and every candidate is below a live lock that
@@ -479,7 +479,7 @@ theorem update_locks_compatible (hrun : GoldilocksRun proposer dg H tr
 with HS.2 (`hclean`), for an honest proposal `Y` of slot `s` with `t_s ≥ r` on a protected branch,
 in the phase through `v = t_s + 6Δ`, every honest `y` has an `ac_to_fg` return `C ⪰ Y` in
 `[t_s, v]`: at its tick at `v`, the slot-`s` update has result and fast selection `Y`, not vetoed
-(`first_update_post`, `update_locks_compatible`), so `Y` is a candidate of the following
+(`first_update_postU`, `update_locks_compatible`), so `Y` is a candidate of the following
 `ac_to_fg`, whose deepest candidate `C` extends `Y`; `C` is returned, or the report record names a
 block `R ⪰ C` that an earlier `ac_to_fg` returned (`fgReported_origin`), at a time `≥ t_s`. -/
 theorem protected_sources (hrun : GoldilocksRun proposer dg H tr

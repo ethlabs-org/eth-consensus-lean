@@ -104,17 +104,17 @@ theorem extend_carry_votes_core_at
   have hts1 : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
     simp only [ACParams.ts]; push_cast; ring
   have hti : sp.ts (u + 1 : Nat) ≤ tr.time i := by
-    have h := (AC.castAt_spec hr hy hc').2.1
+    have h := (AC.castAt_specU hr.toU hy hc').2.1
     change e.msg.slot = sp.slot (tr.time i) at h
     exact (AC.ts_le_iff_le_slot sp hd _).2 (by omega)
   have hcarry := Compose.carryAt_of_served hr
-    (acRun_upTo_time hrun hnc i).vstart (Compose.frame_anc_accepted hr hy) hy hc' hs
+    (acRun_upTo_time hrun hnc i).vstart (Compose.frame_anc_acceptedU hr.toU hy) hy hc' hs
     (CV := Compose.Growing.honestVotes tr H u) fun v hv => by
     obtain ⟨z, q, e', hz, ⟨ell', hcz⟩, rfl, hsl⟩ := hv
     have hdq := hrun.time_nonneg q
     have hrq := (acRun_upTo_time hrun hnc q).localRun
     have hcz' := castAt_upTo_of_le le_rfl hcz
-    have hslq := (AC.castAt_spec hrq hz hcz').2.1
+    have hslq := (AC.castAt_specU hrq.toU hz hcz').2.1
     change e'.msg.slot = sp.slot (tr.time q) at hslq
     have hqts : sp.ts u ≤ tr.time q := (AC.ts_le_iff_le_slot sp hdq _).2 (by omega)
     obtain ⟨⟨Hd, hHd, hHdr, _⟩, hqt⟩ := Compose.cast_head_fcRoot hrq (acRun_upTo_time hrun
@@ -131,7 +131,8 @@ theorem extend_carry_votes_core_at
     · rw [ACTrace.upTo_deadline (d := tr.time i) hmA le_rfl] at hdl
       exact (AC.upTo_messageServedBefore hmA le_rfl).mpr
         (served_of_resetService hsvc hz hcz (hgg.trans (hg.trans hqts)) hy hcast.1 hdl)
-    rcases Compose.frame_anc_accepted hrq hz q ell' hcz'.1 Hd hHd Hd .refl with h0 | ⟨k, hk, ha⟩
+    rcases Compose.frame_anc_acceptedU hrq.toU hz q ell' hcz'.1 Hd hHd Hd .refl
+        with h0 | ⟨k, hk, ha⟩
     · exact Or.inr (Or.inl h0)
     rw [RunTrace.upTo_projAC] at ha
     obtain ⟨hkq, ha⟩ := (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mp ha

@@ -31,17 +31,12 @@ variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp
   {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → ACState sp.n}
 
-/-- `frameIn_of_call` with the unlock given. -/
+/-- `frameIn_of_callU` with the unlock given. -/
 theorem frameIn_of_callU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
   rcases hr.frameLaw x hx i ℓ hc with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
-
-theorem frameIn_of_call (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {x : Fin sp.n}
-    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ) :
-    FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U :=
-  frameIn_of_callU (hr := hr.toU) (x := x) (hx := hx) (i := i) (ℓ := ℓ) (hc := hc)
 
 /-- Every block of an honest node's frame is genesis or was accepted by the node. With the unlock
 given. -/
@@ -93,8 +88,8 @@ private theorem genesis_memU
     · exact ⟨Φ₀.F, hsub (htree ▸ rfl), hroot, hslot⟩
     · exact ih j hj hc'
 
-/-- An honest proposer of a slot `σ > 0` has one block of slot `σ` in the honest frames. With the
-unlock given. -/
+/-- An honest proposer of a slot `σ > 0` has at most one block of slot `σ` in the honest frames.
+With the unlock given. -/
 theorem frameBlock_uniqueU
     {ini} {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini) {σ : Nat} (hσ : σ ≠ 0)
     (hp : proposer σ ∈ H) {B B' : Blk sp.n FGP} (hB : HonestFrameBlock tr H B)
@@ -172,8 +167,8 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
   have hcount := count_declared_of_syncU hr.toU (fun _ => voteStart_initial _) hp hy
     hprop hti hc hs hPy hsync
   obtain ⟨hcp, hcall, d, hpay⟩ := hprop
-  obtain ⟨hΦp, hΦpU⟩ := frameIn_of_call hr hp hcp
-  obtain ⟨hΦy, -⟩ := frameIn_of_call hr hy hc.1
+  obtain ⟨hΦp, hΦpU⟩ := frameIn_of_callU hr.toU hp hcp
+  obtain ⟨hΦy, -⟩ := frameIn_of_callU hr.toU hy hc.1
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
     simp only [ACParams.ts]; push_cast; ring
@@ -205,17 +200,19 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
   -- the proposal's votes are the proposer's slot-`s` pool
   have hpool : ∀ w ∈ (tr.state p i).pool s, (tr.state p i).voteStamp w < ⊤ := by
     intro w hw
-    have hws := state_pool_slot sp hr (fun _ => voteStart_initial _) hp i s w hw
-    obtain ⟨k, -, -, h, -⟩ := pool_origin_sent hr (fun _ => voteStart_initial _) hp i w (hws ▸ hw)
+    have hws := state_pool_slotU sp hr.toU (fun _ => voteStart_initial _) hp i s w hw
+    obtain ⟨k, -, -, h, -⟩ :=
+      pool_origin_sentU hr.toU (fun _ => voteStart_initial _) hp i w (hws ▸ hw)
     exact h ▸ etime_of_lt_top _
   -- **every early vote of the voter reaches the proposer**
   have hstar : ∀ x ∈ e.readPoint.pool s, e.readPoint.voteStamp x < ETime.of (sp.ts s + 3 * sp.Δ) →
       x ∈ (tr.state p i).pool s ∨ x.val ∈ equivocators {w | w ∈ (tr.state p i).pool s} := by
     intro x hx hxt
-    obtain ⟨hx1, hx2⟩ := readPoint_pool hr hy hc hx
-    have hxs : x.slot = s := state_pool_slot sp hr (fun _ => voteStart_initial _) hy (j + 1) s x hx1
+    obtain ⟨hx1, hx2⟩ := readPoint_poolU hr.toU hy hc hx
+    have hxs : x.slot = s := state_pool_slotU sp hr.toU (fun _ => voteStart_initial _) hy (j + 1) s
+        x hx1
     obtain ⟨k, -, hsend, hst, hsl⟩ :=
-      pool_origin_sent hr (fun _ => voteStart_initial _) hy (j + 1) x (hxs ▸ hx1)
+      pool_origin_sentU hr.toU (fun _ => voteStart_initial _) hy (j + 1) x (hxs ▸ hx1)
     rw [hx2 hxs] at hst
     have htk : tr.time k < sp.ts s + 3 * sp.Δ := etime_of_lt_of.1 (hst ▸ hxt)
     have hsk : sp.ts s ≤ tr.time k :=
@@ -227,7 +224,7 @@ theorem proposer_voters_agree : ProposerVotersAgree sp := by
     rwa [hxs] at this
   -- the proposer has stamped the blocks of its tree
   have hbs : ∀ Hd ∈ ℓp.frame.tree, (tr.state p i).blockStamp Hd.root ≠ ⊤ := fun Hd hHd =>
-    (blockStamp_lt_of_acceptedBefore sp hr (fun _ => voteStart_initial _) hp hcp hHd
+    (blockStamp_lt_of_acceptedBeforeU sp hr.toU (fun _ => voteStart_initial _) hp hcp hHd
       (T := tr.time i + 1)
       (by
         rcases frame_acceptedU hr.toU hp i hcp Hd hHd with h | ⟨k, hk, h⟩

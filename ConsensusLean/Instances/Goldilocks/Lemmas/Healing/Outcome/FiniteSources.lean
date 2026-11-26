@@ -114,9 +114,9 @@ theorem ResetPremisesUpTo.optimistic_sources_compatible
   have hz : v.val ∈ H := by
     by_contra hn
     exact hz ⟨hKC ⟨v, hv, rfl, R, hR, hRr, hCR⟩, hn⟩
-  obtain ⟨hvs, i, _, e, he, rfl⟩ := AC.optimisticPoint_pool_vote hrun hx hpt hv hz
+  obtain ⟨hvs, i, _, e, he, rfl⟩ := AC.optimisticPoint_pool_voteU hrun.toU hx hpt hv hz
   obtain ⟨hvs', i', _, e', he', rfl⟩ :=
-    AC.optimisticPoint_pool_vote hrun hy hpt' hv' (hvz ▸ hz)
+    AC.optimisticPoint_pool_voteU hrun.toU hy hpt' hv' (hvz ▸ hz)
   rw [hvz] at he'
   obtain ⟨_, rfl⟩ := (AC.one_vote_per_slotU sp) _ ro H _ _ hr.toU _ hz i i' e e' he he'
     (hvs.trans hvs'.symm)
@@ -166,7 +166,7 @@ theorem ResetPremisesUpTo.optimistic_supporter
     by_contra hn
     exact hz ⟨hK ⟨v, hv, rfl, R, hR, hRr, hBR⟩, hn⟩
   obtain ⟨hvs, q, hqr, e, he, rfl⟩ :=
-    AC.optimisticPoint_pool_vote hrun hx hpt (hsl ▸ hv) hvH
+    AC.optimisticPoint_pool_voteU hrun.toU hx hpt (hsl ▸ hv) hvH
   exact ⟨_, hvH, q, hqr, e, he, hvs.trans hsl, R, hU hR, hRr, hBR.mono hU⟩
 
 /-- The prospective vote domain of an optimistic source uses only earlier receiving cuts. -/
@@ -277,7 +277,7 @@ theorem ResetPremisesUpTo.slow_source_votes_before
   · intro y hy i ell e hcast hib hfirst
     exact hp.slow_stored_locks hx hy hslow hs hrb hib (by
       change s + 1 ≤ sp.slot (tr.projAC.time i)
-      rw [← (AC.castAt_spec hr hy hcast).2.1, hfirst])
+      rw [← (AC.castAt_specU hr.toU hy hcast).2.1, hfirst])
 
 /-- Finite fast-source transfer, with its prospective domain supplied at earlier cuts. -/
 theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
@@ -314,7 +314,7 @@ theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
         hp.run.vstart hy hcast
       exact ⟨Hd, hΦU hHd, hHdr, hBF.trans (hfHd.mono hΦU)⟩
     have hFB := (hΦ.rooted.2 B hv.1.1).mono hΦU
-    have hslot := (AC.castAt_spec hr hy hcast).2.1
+    have hslot := (AC.castAt_specU hr.toU hy hcast).2.1
     have htime : sp.ts e.msg.slot ≤ tr.time i :=
       (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) _).mpr (by rw [← hslot])
     have hcut : cutZ sp.toParams g ≤ tr.time i :=
@@ -340,7 +340,7 @@ theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
         have hqi : q < i := by
           by_contra hn
           have := AC.slot_mono sp (hr.time_nonneg i) (hr.time_mono (Nat.le_of_not_gt hn))
-          have := (AC.castAt_spec hr hz hc').2.1
+          have := (AC.castAt_specU hr.toU hz hc').2.1
           omega
         obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hprior z hz q hqi e' ⟨ell', hc'⟩ (by omega)
         obtain ⟨⟨Hd, hHd, hHdr, _⟩, hqt⟩ := Compose.cast_head_fcRoot hr
@@ -356,9 +356,10 @@ theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
           exact hqt.trans_lt (add_lt_add_of_le_of_lt le_rfl (lt_two_mul_self hΔ))
         refine ⟨hsl, ⟨q, ⟨ell', hc'.1, Or.inl ⟨e', hc'.2, rfl⟩⟩,
           (AC.ts_le_iff_le_slot sp (hr.time_nonneg q) m).mpr
-            (by rw [← (AC.castAt_spec hr hz hc').2.1, hsl]), ht⟩,
+            (by rw [← (AC.castAt_specU hr.toU hz hc').2.1, hsl]), ht⟩,
           Hd, hHv, hHvr, hFB.trans hBHv, ?_⟩
-        rcases Compose.frame_anc_accepted hr hz q ell' hc'.1 Hd hHd Hd .refl with hg | ⟨k, hk, ha⟩
+        rcases Compose.frame_anc_acceptedU hr.toU hz q ell' hc'.1 Hd hHd Hd .refl
+            with hg | ⟨k, hk, ha⟩
         · exact Or.inl hg
         · exact Or.inr ⟨k, ha, (hr.time_mono hk).trans_lt ht⟩
       have hmt : sp.ts m + sp.Δ ≤ b := by
@@ -367,7 +368,7 @@ theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
       refine AC.next_vote_extends_before hac K hp.hP hp.hT hp.hsize hy hcast hm
         (fun z hz q hq e' he hsl => hprior z hz q hq e' he (by rcases hsl with h | h <;> omega))
         (hp.half_committee (hts.trans ((AC.ts_le_iff sp).mpr (by omega))) hmt)
-        ⟨hr.awake_of_call y hy i ell hcast.1, (AC.castAt_spec hr hy hcast).2.2.1,
+        ⟨hr.awake_of_call y hy i ell hcast.1, (AC.castAt_specU hr.toU hy hcast).2.2.1,
           fun v hv => (hone v hv).heads v rfl, fun v hv => (hone v hv).holds v rfl⟩
         (hp.faultBoundK_late (by omega) hcut hib) (hp.cs2 (by omega))
         (hp.sync.syncAC hp.run ((AC.le_gbar g).trans

@@ -109,12 +109,12 @@ theorem optimistic_supporter_later_heads_at {s₀ s N floor : Nat}
   have subU := RunTrace.honestBlocks_upTo_subset hmono (H := H) ht0
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hx hc'.1
   have hPhiU' := hPhiU.trans subU
-  have hslot := (AC.castAt_spec hr hx hc').2.1.symm.trans hes
+  have hslot := (AC.castAt_specU hr.toU hx hc').2.1.symm.trans hes
   change sp.slot (tr.time i) = s at hslot
   have hlo : sp.ts s ≤ tr.time i :=
     (AC.ts_le_iff_le_slot sp ht0 _).2 (by rw [hslot])
   have hhi : tr.time i ≤ sp.ts s + sp.Δ := by
-    have h := AC.vote_time_le hr hx ⟨ell, hc'⟩
+    have h := AC.vote_time_leU hr.toU hx ⟨ell, hc'⟩
     change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at h
     rwa [hslot] at h
   have hts : sp.ts s₀ ≤ sp.ts s := (AC.ts_le_iff sp).2 (by exact_mod_cast hs₀)

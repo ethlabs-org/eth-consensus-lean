@@ -59,8 +59,8 @@ theorem FrameWindow.read_locks_below_of_earlier_heads_at
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
   have hcast : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ell e := ⟨hci, hc.2⟩
   have hPhi := AC.frameIn_of_callAt hri.localRun hy hci
-  have hslot := (AC.castAt_spec hri.localRun hy hcast).2.1.symm.trans hes
-  have ht := AC.vote_time_le hri.localRun hy ⟨ell, hcast⟩
+  have hslot := (AC.castAt_specU hri.localRun.toU hy hcast).2.1.symm.trans hes
+  have ht := AC.vote_time_leU hri.localRun.toU hy ⟨ell, hcast⟩
   change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at ht
   change sp.slot (tr.time i) = p at hslot
   rw [hslot] at ht
@@ -117,7 +117,7 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads_at
     intro B hB
     obtain ⟨l, hl, B₀, hB₀, hB₀r, hlive, rfl⟩ := AC.mem_liveLockBlocks_of_wf hPhi.1
       (AC.castAt_readPoint_locksWF hri.localRun hrun.vstart hy hcast) hB
-    have hslot := (AC.castAt_spec hri.localRun hy hcast).2.1
+    have hslot := (AC.castAt_specU hri.localRun.toU hy hcast).2.1
     have hB₀P := hframe.read_locks_below_of_earlier_heads_at hrun hnc hsvc hawake hf hcatch
       hnr hm hsp hp0 hpb hz hdes hP hPs hy hc hes hmargin hIH hl
       (by rw [← hes, hslot]; exact hlive) hB₀ hB₀r hK

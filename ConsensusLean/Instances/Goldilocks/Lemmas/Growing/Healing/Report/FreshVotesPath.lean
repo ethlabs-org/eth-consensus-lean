@@ -71,7 +71,7 @@ theorem FrameWindow.proposal_suffix_before_at {g ΔF b : Time} {s₀ s floor : N
   have hPhip := AC.frameIn_of_callAt (hac.upTo (hr.time_nonneg ip)).localRun hz' hcp'
   have hlo : sp.ts (s + 1 : Nat) ≤ tr.time i :=
     (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by
-      have hs := (AC.castAt_spec hri hy ⟨hci, hc.2⟩).2.1.symm.trans hes
+      have hs := (AC.castAt_specU hri.toU hy ⟨hci, hc.2⟩).2.1.symm.trans hes
       change sp.slot (tr.time i) = s + 1 at hs
       rw [hs])
   have hipb : sp.ts (s + 1 : Nat) ≤ b := hlo.trans hib
@@ -151,7 +151,7 @@ theorem FrameWindow.proposal_stop_before_at {g ΔF b : Time} {s₀ s floor : Nat
   obtain ⟨hst, hroot, hw⟩ := proposal_walk_end_at hrun hnc hz' hcp hpay
   have hlo : sp.ts (s + 1 : Nat) ≤ tr.time i :=
     (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by
-      have hs := (AC.castAt_spec hri.localRun hy ⟨hci, hc.2⟩).2.1.symm.trans hes
+      have hs := (AC.castAt_specU hri.localRun.toU hy ⟨hci, hc.2⟩).2.1.symm.trans hes
       change sp.slot (tr.time i) = s + 1 at hs
       rw [hs])
   have hipb : tr.time ip ≤ b := hti ▸ hlo.trans hib
@@ -179,7 +179,7 @@ theorem FrameWindow.proposal_stop_before_at {g ΔF b : Time} {s₀ s floor : Nat
   rw [← (hrun.cutLaw y i _ (Compose.projAC_callAt.mp hc.1) hy).1] at hvQy
   have hng : ∀ B ∈ ell.frame.tree, B.parent ≠ none → B.root ≠ sp.genesisRoot := by
     intro B hB hpar hg
-    obtain ⟨G, hG, hGr, hGp⟩ := AC.genesis_mem_of_call sp hri.localRun hy i ell hci
+    obtain ⟨G, hG, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hri.localRun.toU hy i ell hci
     have he := hac.localRun.coherent.1 (hPhi.2 hB) hG (hg.trans hGr.symm)
     exact hpar (he ▸ hGp)
   have hv := proposal_views_agree_before_at hrun hnc hsvc hawake hf hcatch hnr hm hz
@@ -190,7 +190,7 @@ theorem FrameWindow.proposal_stop_before_at {g ΔF b : Time} {s₀ s floor : Nat
   simp only [show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hcore
   apply hcore
   intro B hB hBQ hBs
-  have hsi := (AC.castAt_spec hri.localRun hy ⟨hci, hc.2⟩).2.1.symm.trans hes
+  have hsi := (AC.castAt_specU hri.localRun.toU hy ⟨hci, hc.2⟩).2.1.symm.trans hes
   change sp.slot (tr.time i) = s + 1 at hsi
   exact old_child_ineligible_of_views hPhip.1 hpay hslot hv.1 hv.2.1 hv.2.2 hsi hvQy
     (hframe.frozen_competitor_reflect_at hrun hnc hsvc hcatch hnr hf hm hs₀ hz

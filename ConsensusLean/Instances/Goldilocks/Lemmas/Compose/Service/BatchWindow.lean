@@ -73,9 +73,9 @@ theorem honest_vote_at_update_of_sync {ini} (hrun : AC.ACRun proposer T H U ini)
     have h₁ := ac_deadline_le_of_restarts (fun k' hk' hr' => hrsy k' (hk'.trans hk) hr') τ
     change T.deadline y k τ ≤ max τ (sp.ts s) + sp.Δ at h₁
     linarith only [h₁, max_le hτ (le_add_of_nonneg_right hΔ.le)]
-  obtain ⟨Hd₂, hHd₂, hHd₂r, hHd₂s⟩ := AC.honest_head hrun hx hv
+  obtain ⟨Hd₂, hHd₂, hHd₂r, hHd₂s⟩ := AC.honest_headU hrun.toU hx hv
   obtain ⟨ℓv, hcv, hev⟩ := hv
-  obtain ⟨hxv, hxs, -, -⟩ := AC.castAt_spec hr hx ⟨hcv, hev⟩
+  obtain ⟨hxv, hxs, -, -⟩ := AC.castAt_specU hr.toU hx ⟨hcv, hev⟩
   obtain ⟨⟨Hd, hHd, hHdr, -⟩, htj⟩ := cast_head_fcRoot hr hrun.vstart hx ⟨hcv, hev⟩
   rw [hes] at htj
   have hsj : sp.ts s ≤ T.time j := (AC.ts_le_iff_le_slot sp (hr.time_nonneg j) s).2 (by omega)
@@ -109,7 +109,7 @@ theorem honest_vote_at_update_of_sync {ini} (hrun : AC.ACRun proposer T H U ini)
       have h₂ := hrsy r (by omega) ⟨ℓr, hcr, hrr⟩
       exact (hsj.trans hjk').not_gt (h₁.trans (hu.trans_le h₂))
     have hpk' : e.msg ∈ (T.state y (k' + 1)).pool s := by
-      rcases AC.held_of_processAt hr hy hp (by rw [hes, hsk']; omega) (by rw [hes, hsk']) with
+      rcases AC.held_of_processAtU hr.toU hy hp (by rw [hes, hsk']; omega) (by rw [hes, hsk']) with
         h | ⟨a, ha, b, hb, hab, hav, hbv⟩
       · rwa [hes] at h
       · rw [hes] at ha hb
@@ -152,9 +152,9 @@ theorem honest_vote_at_update_of_sync {ini} (hrun : AC.ACRun proposer T H U ini)
   -- the head: accepted by the voter before its vote, relayed to the updater before `t_s + 2Δ`
   have hHdP : Hd = P := hU.1 ((AC.frameIn_of_callAt hr hx hcv).2 hHd) hPU (hHdr.trans hhead)
   have hacc : AC.AcceptedBefore T y P (sp.ts s + 2 * sp.Δ) ∧ P ∈ ℓ.frame.tree := by
-    rcases frame_anc_accepted hr hx j ℓv hcv P (hHdP ▸ hHd) P .refl with hg | ⟨kx, hkx, hax⟩
+    rcases frame_anc_acceptedU hr.toU hx j ℓv hcv P (hHdP ▸ hHd) P .refl with hg | ⟨kx, hkx, hax⟩
     · refine ⟨Or.inl hg, ?_⟩
-      obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hy k₀ ℓ hcy
+      obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hy k₀ ℓ hcy
       obtain rfl : P = G := hU.1 hPU hGU (hg.trans hGr.symm)
       rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hFP with h | ⟨Q, -, hQ⟩
       · exact h ▸ hΦ.rooted.1
@@ -176,9 +176,9 @@ theorem honest_vote_at_update_of_sync {ini} (hrun : AC.ACRun proposer T H U ini)
               y hy k₀ ℓ hcy (by rw [htk₀]; linarith only [hκ, hΔ]) le_rfl hFP
             exact ⟨ky, hky, hay, hkyt.trans_le hκ⟩
       obtain ⟨ky, hky, hay, hkyt⟩ := hrelay
-      exact ⟨Or.inr ⟨ky, hay, hkyt⟩, AC.mem_tree_of_acceptAt sp hr hy hay hky hcy hFP⟩
+      exact ⟨Or.inr ⟨ky, hay, hkyt⟩, AC.mem_tree_of_acceptAtU sp hr.toU hy hay hky hcy hFP⟩
   obtain ⟨hacc, hPt⟩ := hacc
-  have hbst := AC.blockStamp_lt_of_acceptedBefore sp hr hrun.vstart hy hcy hPt hacc
+  have hbst := AC.blockStamp_lt_of_acceptedBeforeU sp hr.toU hrun.vstart hy hcy hPt hacc
     (fun k hk hrk => (hrsy k hk hrk).trans_lt
       (lt_add_of_pos_right _ (mul_pos two_pos hΔ)))
     (Or.inl (by rw [htk₀]; linarith only [hΔ]))

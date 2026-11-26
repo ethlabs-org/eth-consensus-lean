@@ -188,11 +188,11 @@ theorem unanimous_next_votes_of_witness_at {K : AC.CommitteeDict sp.n}
   have hr := hrun'.localRun
   have hcast' : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ell e :=
     AC.upTo_castAt.mpr ⟨le_rfl, hcast⟩
-  have hslot : sp.slot (tr.time i) = m + 1 := (AC.castAt_spec hr hy hcast').2.1.symm.trans hs
+  have hslot : sp.slot (tr.time i) = m + 1 := (AC.castAt_specU hr.toU hy hcast').2.1.symm.trans hs
   have hlo1 : sp.ts (m + 1 : Nat) ≤ tr.time i :=
     (AC.ts_le_iff_le_slot sp ht0 _).mpr (by rw [hslot])
   have hhi : tr.time i ≤ sp.ts (m + 1 : Nat) + sp.Δ := by
-    have h := AC.vote_time_le hr hy ⟨ell, hcast'⟩
+    have h := AC.vote_time_leU hr.toU hy ⟨ell, hcast'⟩
     change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at h
     simpa only [hslot] using h
   have hib : tr.time i ≤ b := hhi.trans hmb
@@ -396,9 +396,9 @@ theorem unanimous_next_proposal_of_witness_at {K : AC.CommitteeDict sp.n}
       (by rw [RunTrace.upTo_projAC]; exact hdp) hti (by rw [RunTrace.upTo_projAC]; exact hS.hP)
       (hS.cs2 (m + 1) (by linarith) (by linarith)) l hl'
     have heq : l.slot = m := by omega
-    obtain ⟨O, hLO, a, CV, hopt⟩ := AC.proposal_high_lock hr hS.run.vstart hy hti hl hlm hL hLr
+    obtain ⟨O, hLO, a, CV, hopt⟩ := AC.proposal_high_lockU hr.toU hS.run.vstart hy hti hl hlm hL hLr
     rw [heq] at hopt
-    rcases AC.optimisticLock_compatible hS.run K hS.hP hy hopt (hS.cs2 m hgm (by linarith))
+    rcases AC.optimisticLock_compatibleU hS.run.toU K hS.hP hy hopt (hS.cs2 m hgm (by linarith))
         hG' with hOX | hXO
     · exact Or.inl (hLO.trans hOX)
     · exact AC.anc_total hr.coherent hLO hXO

@@ -267,7 +267,7 @@ private theorem vote_F_anc (hp : ResetPremises tr H K proposer dg g ΔF a) (k : 
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hy hc.1
   have hts' : sp.ts e.msg.slot ≤ tr.time k :=
-    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr (by rw [(AC.castAt_spec hr hy hc).2.1])
+    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr (by rw [(AC.castAt_specU hr.toU hy hc).2.1])
   have hts : sp.ts (j + 1 : Nat) ≤ tr.time k :=
     ((AC.ts_le_iff sp).mpr (by exact_mod_cast hj : ((j + 1 : Nat) : Int) ≤ e.msg.slot)).trans hts'
   have hF : ℓ.frame.F = (tr.state y k).fg.F := by rw [Compose.frame_of_projAC hp.run hy hc.1]; rfl
@@ -516,7 +516,7 @@ theorem height_lead_above (hp : ResetPremises tr H K proposer dg g ΔF a) (k : N
     left_entry_origin hp hy hE hET (by omega) hEC (by clear * - hfloor hCh hEh; omega)
   -- the origin is comparable with `B`, and higher: it extends `B`
   have hts' : sp.ts e.msg.slot ≤ tr.time k :=
-    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr (by rw [(AC.castAt_spec hr hy hc).2.1])
+    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr (by rw [(AC.castAt_specU hr.toU hy hc).2.1])
   have hts : sp.ts (j + 1 : Nat) ≤ tr.time k :=
     ((AC.ts_le_iff sp).mpr (by exact_mod_cast hj : ((j + 1 : Nat) : Int) ≤ e.msg.slot)).trans hts'
   have hact : i < k ∨ ∀ c, tr.time c < sp.ts (j + 1 : Nat) → c < k :=
@@ -893,11 +893,11 @@ theorem ResetPremisesUpTo.later_carry_of_finalized_anc {b : Time}
   have hone : ∀ v ∈ Compose.honestVotes tr H m',
       AC.CarryAt tr.projAC (tr.HonestBlocks H) y k e m' {v} := by
     rintro v ⟨z, hz, k', e', ⟨ℓk, hck, he'⟩, rfl, hvs⟩
-    have hk' := (AC.castAt_spec hr hz ⟨hck, he'⟩).2.1
+    have hk' := (AC.castAt_specU hr.toU hz ⟨hck, he'⟩).2.1
     have hk'k : k' < k := by
       by_contra hkk
       have h₁ := AC.slot_mono sp (hr.time_nonneg k) (hr.time_mono (not_lt.mp hkk))
-      have h₂ := (AC.castAt_spec hr hy hc).2.1
+      have h₂ := (AC.castAt_specU hr.toU hy hc).2.1
       change e'.msg.slot = m' at hvs
       clear * - hm' hk' h₁ h₂ hvs; omega
     obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hprior z hz k' hk'k e' ⟨ℓk, hck, he'⟩ hvs
@@ -921,7 +921,8 @@ theorem ResetPremisesUpTo.later_carry_of_finalized_anc {b : Time}
     refine ⟨hvs, ⟨k', ⟨ℓk, hck, Or.inl ⟨e', he', rfl⟩⟩,
       (AC.ts_le_iff_le_slot sp (hr.time_nonneg k') m').2 (by clear * - hvs hk'; omega), hkt'⟩,
       Hd, hHv, hHvr, hF.trans hBHv, ?_⟩
-    rcases Compose.frame_anc_accepted hr hz k' ℓk hck Hd hHd Hd .refl with hg | ⟨k'', hk'', hacc⟩
+    rcases Compose.frame_anc_acceptedU hr.toU hz k' ℓk hck Hd hHd Hd .refl
+        with hg | ⟨k'', hk'', hacc⟩
     · exact Or.inl hg
     refine Or.inr ⟨k'', hacc, ?_, lt_of_le_of_lt (hr.time_mono hk'') hkt'⟩
     have := (hp.cutZ_lt_of_anc ho hz (hp.acceptAt_mem hz hacc) hBHv).1
@@ -929,7 +930,7 @@ theorem ResetPremisesUpTo.later_carry_of_finalized_anc {b : Time}
     have := le_gbar g
     change g ≤ tr.time k''
     linarith
-  exact ⟨hr.awake_of_call y hy k ℓ hc.1, (AC.castAt_spec hr hy hc).2.2.1,
+  exact ⟨hr.awake_of_call y hy k ℓ hc.1, (AC.castAt_specU hr.toU hy hc).2.2.1,
     fun v hv => (hone v hv).heads v rfl, fun v hv => (hone v hv).holds v rfl⟩
 
 /-- Whole-run specialization of later carry. -/

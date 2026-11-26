@@ -49,15 +49,15 @@ private theorem update_side
   have hm := hrun.localRun.time_mono
   have hstate : (tr.upTo (tr.time c)).state Y c = tr.state Y c :=
     Trace.upTo_state tr Y fun _ hk => hm hk.le
-  have hΦU := (frameIn_of_call hr.localRun hY
+  have hΦU := (frameIn_of_callU hr.localRun.toU hY
     ((upTo_updateAt hm).mpr ⟨le_rfl, hu⟩).1).2
   refine ⟨ℓ', T, hc, ht, hrs, hfast, hmaj', ?_, ?_⟩
   · rintro u ⟨_, v, ⟨hvp, hres⟩, rfl, _, R, hR, hRr, hDR⟩
     have hvp' : v ∈ ((tr.upTo (tr.time c)).state Y c).pool s := hstate.symm ▸ hvp
-    have hvs := state_pool_slot sp hr.localRun hrun.vstart hY c s v hvp'
+    have hvs := state_pool_slotU sp hr.localRun.toU hrun.vstart hY c s v hvp'
     rw [relayed_iff]
     refine ⟨v, rfl, hvs, ⟨R, hΦU hR, hRr, Anc.mono hΦU hDR⟩, ?_⟩
-    obtain ⟨k, hsend, h1, h2⟩ := admitted_of_held hr.localRun hrun.vstart hY hvs hvp' le_rfl
+    obtain ⟨k, hsend, h1, h2⟩ := admitted_of_heldU hr.localRun.toU hrun.vstart hY hvs hvp' le_rfl
       (fun k _ hst => by
         rw [hstate] at hst
         have hst' : (tr.state Y c).voteStamp v < ETime.of (sp.ts s + 2 * sp.Δ) := by
@@ -141,9 +141,9 @@ theorem fastLock_same_slot
     have huH := not_not.1 huH
     have hrw := hrun.upTo (hr.time_nonneg i₀)
     have hrx := hrun.upTo (hr.time_nonneg j)
-    obtain ⟨hvs, k₁, _, e₁, he₁, rfl⟩ := optimisticPoint_pool_vote hrw hw
+    obtain ⟨hvs, k₁, _, e₁, he₁, rfl⟩ := optimisticPoint_pool_voteU hrw.toU hw
       ((upTo_optimisticPoint hr.time_mono).mpr ⟨le_rfl, hpt⟩) hv (hr.antitone hi₀ huH)
-    obtain ⟨hvs', k₂, _, e₂, he₂, rfl⟩ := optimisticPoint_pool_vote hrx hx
+    obtain ⟨hvs', k₂, _, e₂, he₂, rfl⟩ := optimisticPoint_pool_voteU hrx.toU hx
       ((upTo_optimisticPoint hr.time_mono).mpr ⟨le_rfl, hpt'⟩) hv' (hv'u ▸ hr.antitone hj huH)
     obtain ⟨ht₁, he₁⟩ := upTo_voteAt.mp he₁
     obtain ⟨ht₂, he₂⟩ := upTo_voteAt.mp he₂

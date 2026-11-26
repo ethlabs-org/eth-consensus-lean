@@ -176,7 +176,7 @@ theorem fastLock_honest_vote_at
   rcases hfl with ⟨ℓ, C, -, -, -, rfl⟩ | ⟨ℓ, A, hpt, -, -, rfl⟩
   · obtain ⟨j, hj, e, hve, he⟩ := pool_vote_at hrun hnc hy hv.1 hvH
     exact ⟨j, hj.le, e, hve, he⟩
-  · obtain ⟨-, j, hj, e, hve, he⟩ := AC.optimisticPoint_pool_vote (acRun_upTo hrun hnc hd) hy
+  · obtain ⟨-, j, hj, e, hve, he⟩ := AC.optimisticPoint_pool_voteU (acRun_upTo hrun hnc hd).toU hy
       (by
         refine ⟨(Trace.upTo_callAt_of_le _ le_rfl).mpr hpt.1, ?_⟩
         rw [projAC_upTo_state hrun le_rfl]
@@ -309,7 +309,7 @@ theorem slow_lock_compatible_at
   rcases hms.lt_or_eq with hms | hms
   · obtain ⟨S, hS, hsaved, hLbS⟩ := hsave m hm hms
     have hmn : (m.toNat : Int) = m := Int.toNat_of_nonneg hm0
-    obtain ⟨k, hkc, C', CV', hC', hroot⟩ := AC.saved_result hr hrun.vstart
+    obtain ⟨k, hkc, C', CV', hC', hroot⟩ := AC.saved_resultU hr.toU hrun.vstart
       hx c m.toNat (by simpa only [hmn] using hsaved)
     obtain ⟨ℓ', hu', hconf, -⟩ := id hC'
     have hC'mem := (AC.frameIn_of_callAt hr hx hu'.1).2 (AC.deepest_mem hconf).1.1

@@ -294,7 +294,7 @@ theorem key1_vote_slot {i : Nat} {e : Ev S} (he : (rho S).events[i]? = some e) (
     rw [Simulation.mem_honestKeys_iff]
     rw [show (rho12 S).key ((rho12 S).ownKey 1) = 1 from (rho12 S).key.apply_symm_apply 1]
     exact hv'
-  have hspec := AC.castAt_spec hac hy ⟨Compose.projAC_callAt.mpr hc, hem⟩
+  have hspec := AC.castAt_specU hac.toU hy ⟨Compose.projAC_callAt.mpr hc, hem⟩
   rw [hspec.2.1]
   have hl : (Simulation.simTrace { S with vote := stock } (rho12 S)
       one_le_card).label k ≠ none := by

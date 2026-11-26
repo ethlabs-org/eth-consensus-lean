@@ -117,7 +117,7 @@ theorem vote_root_compatible (hp : ResetPremises tr H K proposer dg g ΔF a) (k 
     Compatible (tr.HonestBlocks H) ℓ.frame.fcRoot B := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hts' : sp.ts e.msg.slot ≤ tr.time k :=
-    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr (by rw [(AC.castAt_spec hr hy hc).2.1])
+    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr (by rw [(AC.castAt_specU hr.toU hy hc).2.1])
   have hts : sp.ts (j + 1 : Nat) ≤ tr.time k :=
     ((AC.ts_le_iff sp).mpr (by exact_mod_cast hj : ((j + 1 : Nat) : Int) ≤ e.msg.slot)).trans hts'
   have hcache := vote_state_caches hp k ih ho hy hts
@@ -228,9 +228,9 @@ theorem high_vote_extends_of_syncAC
       have hjk : j' < k := by
         by_contra hjk
         obtain ⟨ℓ', hc', he'⟩ := hv'
-        have h₁ := (AC.castAt_spec hr hz ⟨hc', he'⟩).2.1
+        have h₁ := (AC.castAt_specU hr.toU hz ⟨hc', he'⟩).2.1
         have h₂ := AC.slot_mono sp h0 (hr.time_mono (not_lt.mp hjk))
-        have h₃ := (AC.castAt_spec hr hy hc).2.1
+        have h₃ := (AC.castAt_specU hr.toU hy hc).2.1
         omega
       exact hprior z hz j' hjk e' hv' (by omega)
     · rw [← hm']; exact Or.inl hv
@@ -281,7 +281,7 @@ theorem retention_vote_step (hp : ResetPremises tr H K proposer dg g ΔF a) (k :
   obtain ⟨CV, hfl⟩ := ho.2.2.1
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hts : sp.ts e.msg.slot ≤ tr.time k :=
-    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr (by rw [(AC.castAt_spec hr hy hc).2.1])
+    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr (by rw [(AC.castAt_specU hr.toU hy hc).2.1])
   have hlate : ∀ m : Nat, j ≤ m → cutZ sp.toParams g ≤ sp.ts m := fun m hm =>
     (cutZ_le_ts_of_highOrigin hp ho).trans ((AC.ts_le_iff sp).mpr (by exact_mod_cast hm))
   have hK2 := vote_height_lead hp k ih ho hy hc hj
@@ -399,7 +399,7 @@ theorem ResetPremisesUpTo.high_origin_votes_before {b : Time}
       exact ih c hck hcb x₀ i₀ j₀ B₀ ho₀ hi₀ z hz ell' e' hc' hj'
     have hts : sp.ts e.msg.slot ≤ tr.time k :=
       (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).mpr
-        (by rw [(AC.castAt_spec hr hy hc).2.1])
+        (by rw [(AC.castAt_specU hr.toU hy hc).2.1])
     have hact : sp.ts (j + 1 : Nat) ≤ tr.time k :=
       ((AC.ts_le_iff sp).mpr (by omega)).trans hts
     have compare : ∀ z d n O, d < k → HighOrigin tr H g z d n O →

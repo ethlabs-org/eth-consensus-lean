@@ -351,7 +351,7 @@ theorem proposal_only_child
     (suffix_viable_iff hS hy hcy hes hQt hQy).2 (proposal_head_viableHead hS hy hcy hes)
   have hBp := suffix_reflect hS hy hcy hes (hw.anc hT hst) .refl hBQ hBP hB
   have hsc := suffix_scores hS hy hcy hes hBp.1 hBt
-  have hsj : sp.slot (tr.time j) = s := (AC.castAt_spec hr hy hcy).2.1.symm.trans hes
+  have hsj : sp.slot (tr.time j) = s := (AC.castAt_specU hr.toU hy hcy).2.1.symm.trans hes
   have help : AC.headEligible sp ℓp.frame (tr.time iP) (AC.View.ofLists pay)
       ((s : Int) - 1) B := by
     rcases hel with h | h | h

@@ -11,7 +11,7 @@ restart):
 * **`Carry`** (`carry_cv`, every slot): the vote of slot `s + 1` is cast in `ac_on_block` of
   the own block at `t_{s+1}`, when the validator has accepted `blk s` and its ancestors (at
   their slot starts) and holds `cv s` with a stamp before `t_s + 3Δ`. The stamp is traced
-  through `AC.readPoint_pool` and `AC.pool_origin`: it is the time of the cut that sent or
+  through `AC.readPoint_poolU` and `AC.pool_origin`: it is the time of the cut that sent or
   admitted `cv s`, and that cut is before the tick of `t_s + 2Δ`, whose pool already holds
   `cv s` (`readPoint_stamp`).
 * `tickRun_sleepy`: `SleepyRun` (`Sync[0, ∞)` and `f < h_t` at every `t_s, t_s + Δ,
@@ -66,7 +66,7 @@ theorem readPoint_stamp {s i : Nat} {ℓ : ACLabel N1} {e : N1.Em}
     (hc : AC.CastAt (tickRun N1 dg1).projAC v0 i ℓ e) (hx : cv s ∈ e.readPoint.pool s) :
     e.readPoint.voteStamp (cv s) < ETime.of (sp1.ts s + 3 * sp1.Δ) := by
   have hr := acRun.localRun
-  obtain ⟨hpool, hst⟩ := AC.readPoint_pool hr (Set.mem_univ v0) hc hx
+  obtain ⟨hpool, hst⟩ := AC.readPoint_poolU hr.toU (Set.mem_univ v0) hc hx
   rw [← hst rfl]
   rcases AC.pool_origin hr (fun _ => AC.voteStart_initial _) (Set.mem_univ v0) (i + 1)
     (cv s) hpool with
@@ -115,7 +115,7 @@ theorem carry_cv (s : Nat) {CV : Set (Vote sp1.n)} (hCV : ∀ v ∈ CV, v = cv s
   have hx : cv k ∈ e.readPoint.pool k := by
     rw [hp, (good_tick (4 * (k + 1))).ac.pool k, tip_A, ite_pos ⟨by omega, le_rfl⟩]
     exact List.mem_singleton_self _
-  refine ⟨?_, (AC.castAt_spec acRun.localRun (Set.mem_univ v0) hcast).2.2.1, ?_, ?_⟩
+  refine ⟨?_, (AC.castAt_specU acRun.localRun.toU (Set.mem_univ v0) hcast).2.2.1, ?_, ?_⟩
   · change (0 : Int) ≤ ((i / 8 : Nat) : Int)
     positivity
   · intro v hv

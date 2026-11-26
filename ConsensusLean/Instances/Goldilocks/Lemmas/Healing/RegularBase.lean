@@ -47,9 +47,9 @@ private theorem frame_relay_before {K : AC.CommitteeDict sp.n}
     (hq : tr.time q + sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
     (hF : Anc (tr.HonestBlocks H) elly.frame.F B) : B ∈ elly.frame.tree := by
   have hr := hS.run.localRun
-  rcases Compose.frame_anc_accepted hr hx q ellx hcx B hB B .refl with
+  rcases Compose.frame_anc_acceptedU hr.toU hx q ellx hcx B hB B .refl with
       hgen | ⟨k, hk, ha⟩
-  · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hy j elly hcy
+  · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hy j elly hcy
     obtain rfl : B = G := hr.coherent.1 ((AC.frameIn_of_callAt hr hx hcx).2 hB)
       hGU (hgen.trans hGr.symm)
     rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp hF with he | ⟨c, _, hpar⟩
@@ -68,10 +68,10 @@ private theorem frame_relay_before {K : AC.CommitteeDict sp.n}
       exact hd.trans hkt
     obtain ⟨a, haj, hacc, -⟩ := hS.sync.relay x hx k B ha hnew y hy j elly hcy
       (hdl.trans hjb) hdl hF
-    exact AC.mem_tree_of_acceptAt sp hr hy hacc haj hcy hF
+    exact AC.mem_tree_of_acceptAtU sp hr.toU hy hacc haj hcy hF
   · obtain ⟨a, haj, hacc, -⟩ := hS.catchUp.relay x hx k B ha (not_le.mp hnew)
       y hy j elly hcy hg hjb hF
-    exact AC.mem_tree_of_acceptAt sp hr hy hacc haj hcy hF
+    exact AC.mem_tree_of_acceptAtU sp hr.toU hy hacc haj hcy hF
 
 /-- The finite view comparison at an actual cast. Pre-freeze blocks
 relay to the proposer; payload support heads are held at an early ready cast
@@ -101,7 +101,7 @@ theorem proposal_views_agree_before {K : AC.CommitteeDict sp.n}
   have hr := hS.run.localRun
   have hΔ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := AC.ts_succ s
-  have hslot := (AC.castAt_spec hr hy hc).2.1.symm.trans hes
+  have hslot := (AC.castAt_specU hr.toU hy hc).2.1.symm.trans hes
   have hjlo : sp.ts (s + 1 : Nat) ≤ tr.time j :=
     (AC.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2 (by rw [hslot])
   have hipb : tr.time ip ≤ b := by rw [hti]; exact hjlo.trans hjb
@@ -114,7 +114,7 @@ theorem proposal_views_agree_before {K : AC.CommitteeDict sp.n}
   · intro B hB _ hstamp hFB
     rw [AC.readPoint_blockStamp_eqU hr.toU hy hc] at hstamp
     rcases stamp_origin hr hy j elly hc.1 B hB with hg | ⟨q, -, ellq, hq, hBq, hsq⟩
-    · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hz ip ellp hp.1
+    · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hz ip ellp hp.1
       obtain rfl : B = G := hr.coherent.1 (hPhiY.2 hB) hGU (hg.trans hGr.symm)
       rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp hFB with he | ⟨c, _, hpar⟩
       · exact he ▸ hPhiP.1.rooted.1
@@ -146,7 +146,7 @@ theorem proposal_views_agree_before {K : AC.CommitteeDict sp.n}
           AC.voteViewList, AC.ACState.poolAt, Int.toNat_natCast, List.filter_filter,
           List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
           Bool.and_eq_true, decide_eq_true_eq] at hv
-        rw [AC.state_pool_slot sp hr hS.run.vstart hz ip s v hv.1]
+        rw [AC.state_pool_slotU sp hr.toU hS.run.vstart hz ip s v hv.1]
       obtain ⟨B', hB', hBr', -⟩ := hsup v (by rw [AC.declaredSupportVotes, hpay]; exact hv) hvs
       rwa [hr.coherent.1 (hPhiP.2 hB) (hPhiY.2 hB') (hBr.trans hBr'.symm)]
     · exact frame_relay_before hS hnr hz hy hp.1 hc.1 hB

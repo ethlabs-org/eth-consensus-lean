@@ -214,7 +214,7 @@ theorem vote_anchor_cases_of_old {ini} (hrun : GoldilocksRun proposer dg H tr in
   have hr := hrun'.localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hy hcy.1
-  have hslj : e.msg.slot = sp.slot (tr.time j) := (AC.castAt_spec hr hy hcy).2.1
+  have hslj : e.msg.slot = sp.slot (tr.time j) := (AC.castAt_specU hr.toU hy hcy).2.1
   have htj : tr.time j ≤ sp.ts s + sp.Δ := hes ▸ (cast_head_fcRoot hr hrun.vstart hy hcy).2
   have hat := anchor_tree hΦ e.readPoint (tr.time j)
   have haS := anchor_mem ℓy.frame e.readPoint (tr.time j)
