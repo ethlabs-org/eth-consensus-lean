@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Pool
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVotes
 
 public section
 
@@ -48,10 +49,10 @@ private theorem pool_evidence_at_update {sp : ACParams} {FGP : Type}
     have h₂ := hrs r hrc.le ⟨ℓr, hcr, hrr⟩
     linarith
   have hm := AC.pool_mono hr hw (show k + 1 ≤ c by omega) hnr m
-  rcases AC.held_of_processAt hr hw hp (by rw [hslot, hsk]; omega)
-      (by rw [hslot, hsk]) with h | ⟨a, ha, b, hb, hab, hav, hbv⟩
-  · exact Or.inl (hm (hslot ▸ h))
-  · exact Or.inr ⟨a, hm (hslot ▸ ha), b, hm (hslot ▸ hb), hab, hav, hbv⟩
+  have h := AC.held_of_processAt hr hw hp (by rw [hslot, hsk]; omega) (by rw [hslot, hsk])
+  rw [hslot] at h
+  exact AC.backed_mono (P := {u | u ∈ (tr.state w (k + 1)).pool m})
+    (Q := {u | u ∈ (tr.state w c).pool m}) (fun _ hu => hm hu) h
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}

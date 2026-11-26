@@ -15,6 +15,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameClaims
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameStatements
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HonestPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockFloorStep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockKeepStep
@@ -57,6 +58,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Nodes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Saved
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.SideCount
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Update
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk

@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Service
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.CompatibleSides
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.SideCount
 
 public section
 
@@ -57,28 +58,8 @@ private theorem relayed_against_window {ini}
       ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U DY R)
     (hT : T ⊆ Relayed tr H U X s D) (hnc : ¬ Compatible U D DY) :
     T.ncard + S.ncard ≤ (voters {v | v ∈ (tr.state Y c).pool s}).ncard := by
-  have held := fun {u} (hu : u ∈ Relayed tr H U X s D) =>
-    relayed_held_window hr hsvc ha hY hc ht hb hrs hu
-  have hU := hr.coherent
-  have hdisj : Disjoint T S := by
-    rw [Set.disjoint_left]
-    intro u hu hu'
-    obtain ⟨hne, v', hv', hv'u, R', hR', hR'r, hDR'⟩ := hS u hu'
-    obtain ⟨v, hvu, ⟨R, hR, hRr, hDR⟩, hv | heq⟩ := held (hT hu)
-    · obtain rfl : v = v' := by
-        by_contra h
-        exact hne ⟨v, hv, v', hv', h, hvu, hv'u⟩
-      obtain rfl : R = R' := hU.1 hR hR' (hRr.trans hR'r.symm)
-      exact hnc (anc_total hU hDR hDR')
-    · exact hne heq
-  rw [← Set.ncard_union_eq hdisj]
-  refine Set.ncard_le_ncard ?_
-  rintro u (hu | hu)
-  · obtain ⟨v, rfl, _, hv | ⟨a, ha, _, _, _, hav, _⟩⟩ := held (hT hu)
-    · exact ⟨v, hv, rfl⟩
-    · exact ⟨a, ha, hav⟩
-  · obtain ⟨_, v, hv, rfl, _⟩ := hS u hu
-    exact ⟨v, hv, rfl⟩
+  exact side_count hr.coherent hS
+    (fun u hu => relayed_held_window hr hsvc ha hY hc ht hb hrs (hT hu)) hnc
 
 /-- Same-slot results of writers honest at their writes are compatible, using only service
 through their observation cutoff. -/

@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HonestPool
 
 public section
 
@@ -91,16 +92,8 @@ theorem vote_pooled_before_early {ini} (hrun : AC.ACRun proposer T H U ini)
       h | ⟨a, ha, b, hb, hab, hav, hbv⟩
     · rwa [hes] at h
     · rw [hes] at ha hb
-      obtain ⟨ja, -, ea, hea, hea'⟩ :=
-        hrun.honest.pool_vote y hy _ q a ha (by rw [hav, hxv]; exact hx)
-      obtain ⟨jb, -, eb, heb, heb'⟩ :=
-        hrun.honest.pool_vote y hy _ q b hb (by rw [hbv, hxv]; exact hx)
-      rw [hav, hxv] at hea
-      rw [hbv, hxv] at heb
-      obtain ⟨-, rfl⟩ := AC.one_vote_per_slotU sp FGP ro H U T hr.toU x hx ja jb ea eb hea heb
-        (by rw [hea', heb', AC.state_pool_slot sp hr hrun.vstart hy _ q a ha,
-          AC.state_pool_slot sp hr hrun.vstart hy _ q b hb])
-      exact absurd (hea'.symm.trans heb') hab
+      exact absurd ⟨a, ha, b, hb, hab, hav.trans hxv, hbv.trans hxv⟩
+        (AC.honest_pool_not_equivocator hr.toU hrun.vstart hrun.honest hy _ q hx)
   have hpool : e.msg ∈ (T.state y c).pool q :=
     AC.pool_mono hr hy (show k' + 1 ≤ c by omega) (fun r h₁ h₂ => hnr r h₁ (by omega)) q hpk'
   refine ⟨hpool, ?_⟩
