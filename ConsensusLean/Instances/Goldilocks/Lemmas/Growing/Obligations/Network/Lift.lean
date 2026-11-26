@@ -28,7 +28,7 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
 /-- Lift node acceptance service to the following AC block call, at the same deadline. -/
-theorem acRelayBefore (hrun : LocalRun proposer dg H sg tr ini) {b : Time}
+private theorem acRelayBefore (hrun : LocalRun proposer dg H sg tr ini) {b : Time}
     (relay : ∀ x i B, x ∈ H (tr.time i) → tr.AcceptAt x i B → 0 ≤ tr.time i →
       ∀ y j, y ∈ H (tr.time j) → tr.IsCall y j → tr.deadline y j (tr.time i) P.Δ ≤ b →
         tr.deadline y j (tr.time i) P.Δ ≤ tr.time j →
@@ -92,7 +92,7 @@ theorem sendOrAdmit_forward_source_at (hrun : Growing.GoldilocksRun proposer dg 
 
 /-- `Σ.F` of a node honest at cut `i'` moves only to descendants up to `i'`, inside the blocks held
 while honest. -/
-theorem run_F_mono_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+private theorem run_F_mono_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i i' : Nat}
     (hy : y ∈ H (tr.time i')) (hii : i ≤ i') :
     Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F (tr.state y i').fg.F :=

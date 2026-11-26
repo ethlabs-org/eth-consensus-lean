@@ -37,7 +37,7 @@ validator honest at `t` is accepted before `a + 2Δ` by every validator honest a
 finalized block it extends, as observed at a call in `[a + 2Δ, t]`. Before `ḡ` this is the run's
 catch-up (at the first cut from `ḡ + 2Δ ≤ t`); after `ḡ`, the prefix's acceptance relay, with the
 restarts no later than the reset. -/
-theorem catch_window_at_reset_at
+private theorem catch_window_at_reset_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {b : Time} (hs : ResetService tr H g ΔF b hold) (hc : CatchRun tr H g (2 * sp.Δ))

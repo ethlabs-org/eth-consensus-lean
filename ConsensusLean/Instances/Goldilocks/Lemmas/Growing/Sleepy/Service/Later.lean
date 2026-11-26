@@ -205,7 +205,7 @@ theorem update_adopts_extended_from {ini} (hrun : Growing.GoldilocksRun proposer
 otherwise the slot-`s'` voters still honest at `d` have votes extending `P` (S2), held and resolved
 at the update, so `P` is in the frame with a strict majority, the deepest majority block above
 `Σ.F` extends it, is not vetoed, and the record moves to it or keeps a deeper one. -/
-theorem update_adopts_origin_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+private theorem update_adopts_origin_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hinv : SleepyInvariantUpTo tr H b)
     (hsync : SleepyServiceBefore tr H ΔF b)
     {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hPo : OriginWithin tr H P s b)
