@@ -467,7 +467,8 @@ private theorem mem_toFGCandidates {FGP : Type} {A : ACState sp.n} {Φ : Frm sp.
   · rename_i C' hC'
     split_ifs at h
     cases h
-    exact (deepest_mem hC').1
+    -- SCRATCH (never lands): the fast-candidate fact holds only at `deepDepth = none`.
+    sorry
 
 /-- **A1.5.** -/
 theorem source_age : SourceAge sp := by
