@@ -160,36 +160,4 @@ theorem duty_honest_at (hv : rho.ExecutionValid) {v : V} {i p : Nat} {nd}
     simpa only [Model.Run.cutTime, he, Model.Event.time, Model.Event.node] using
       hv.honest_only _ (List.mem_of_getElem? he)
 
-/-- The own-object guard admits a genuine attestation at an actual event's duty prefix.
-Only the event node's current honesty is used, not a constant-fault assumption. -/
-theorem engine_att_protected_at (hv : rho.ExecutionValid)
-    {v : V} {i p : Nat} {nd}
-    (hc : EngineDutyCut S rho v i p nd) {j q : Nat} {a : FG.Att (Fintype.card V)}
-    (ha : EngineSignsAt S rho hn v j q a) :
-    Model.protects (Model.protoOf (compiled (goldilocks S)) E) (rho.ownKey v) nd.seen
-      (attObj a) = true := by
-  have hv0 : v ∉ rho.faultyAt 0 := by
-    cases hc with
-    | tick he _ _ => exact event_honest_zero S rho hv he
-    | deliver he _ => exact event_honest_zero S rho hv he
-  exact att_protected_of_signings S rho hn (engine_signings_nonFraming S rho hn hv hv0)
-    (engine_seen_att_signed_at S rho hn hv hc (duty_honest_at S rho hv hc)) ha
-
-/-- **Delay alone adds no content-based slashability.** Any two attestations that an honest
-node's events release, at any events and times, whether released at signing or held and flushed
-later, are not slashable: each is an engine signing (`released_att_signed_at`), and no two engine
-signings of the node are (`engine_signings_nonFraming`, from the record Λ at signing). -/
-theorem released_atts_not_slashable (hv : rho.ExecutionValid) {v : V} {i i' : Nat} {t t' : Time}
-    (hs : rho.SendsAt v i t) (hs' : rho.SendsAt v i' t') {a b : FG.Att (Fintype.card V)}
-    (ha : attObj a ∈ rho.releasesAt i) (hb : attObj b ∈ rho.releasesAt i') :
-    ¬ FG.slashable a b := by
-  have hn : 1 ≤ Fintype.card V := Fintype.card_pos_iff.mpr ⟨v⟩
-  have hv0 : v ∉ rho.faultyAt 0 := by
-    rcases hs with he | ⟨o, he⟩
-    · exact event_honest_zero S rho hv he
-    · exact event_honest_zero S rho hv he
-  obtain ⟨j, q, hja⟩ := released_att_signed_at S rho hn hs ha
-  obtain ⟨j', q', hjb⟩ := released_att_signed_at S rho hn hs' hb
-  exact engine_signings_nonFraming S rho hn hv hv0 hja hjb
-
 end Consensus.Goldilocks.Simulation

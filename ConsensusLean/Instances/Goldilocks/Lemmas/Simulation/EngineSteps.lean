@@ -399,13 +399,6 @@ theorem poll_node_eq {release : Fin sp.n → Time → Bool} (st : State sp ro bi
     simp only [h, ite_true]
     split <;> rfl
 
-/-- A poll step with the FG update due runs it on the node state. -/
-theorem poll_node_of_fgDue_true {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
-    (t : Time) (h : st.fgDue = true) : (poll st t release).1.node = (fgUpdate st release).node := by
-  unfold poll
-  simp only [h, ite_true]
-  split <;> rfl
-
 /-- The node's tick at a public time runs the AC's tick on the node state. -/
 theorem nodeTick_node_public (st : State sp ro binding) (h : sp.toParams.IsPublic st.now)
     {sign : Fin sp.n → Time → Bool} :
@@ -515,17 +508,6 @@ theorem pollBatch_node_eq {release : Fin sp.n → Time → Bool} (proposer : Nat
     · simp
     · simp only [↓reduceIte, Bool.true_and]
       rw [fgUpdate_node proposer dg x]
-
-omit [DecidableEq V] in
-/-- `fgUpdate_node` with the engine's digests. -/
-theorem fgUpdate_node_digestOf {release : Fin (Fintype.card V) → Time → Bool}
-    (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) (x : Nat) :
-    (fgUpdate st release).node =
-      (if release st.self st.now then (fgSigned st).toList else []).foldl
-        (fun n a => (Node.onAttestation n a).1)
-        (Node.tickStep (runProposer S rho hn) (digestOf S rho)
-          st.self st.node st.now x .fgUpdate).1 :=
-  fgUpdate_node (runProposer S rho hn) (digestOf S rho) x st
 
 omit [DecidableEq V] in
 /-- A duty keeps the mempool. -/
@@ -739,17 +721,6 @@ theorem tick_node_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (goldiloc
   rw [tick_of_awake S rho v nd t hw, gossip_node_eq, duties_eq S t ht, runDuties_fst_append, hpoll,
     hinit, hpoll]
   rfl
-
-/-- The node's `onTick` runs the AC tick and the proposal, followed by the FG update when due. -/
-theorem onTick_node (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
-    (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) (fgDue : Bool) :
-    (Node.onTick proposer dg self st t x fgDue).1 =
-      let afterProposal := (Node.tickStep proposer dg self
-        (Node.tickStep proposer dg self st t x .acTick).1 t x .proposal).1
-      if fgDue then (Node.tickStep proposer dg self afterProposal t x .fgUpdate).1
-      else afterProposal := by
-  cases fgDue <;> rfl
 
 /-- The AC-tick step is the AC's tick. -/
 theorem tickStep_acTick (proposer : Nat → Fin sp.n)

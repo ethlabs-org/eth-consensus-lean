@@ -117,34 +117,6 @@ theorem admitsAt_tick_of_release_eq (hR : S.release (pubOf E) = fun _ _ => true)
   rw [← hlist]
   exact trailing_rel S rho hn
 
-/-- **At the stock schedule the signing poll is the record update then the own admission**: with
-nothing held and the FG update due, the batch poll's node is the node's record-only
-`tickStep .fgUpdate` followed by the own `on_attestation` of the attestation it signs. -/
-theorem pollBatch_node_of_release {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-    {binding : VoteBinding} (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)) (x : Nat)
-    (st : State sp ro binding) (t : Time) (hh : st.held = []) (hd : st.fgDue = true) :
-    (pollBatch st t).1.node = (fgSigned st).toList.foldl (fun n a => (Node.onAttestation n a).1)
-      (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).1 := by
-  rw [pollBatch_node_eq proposer dg x st t, pollFlush_eq, hh, hd]
-  simp
-
-/-- **A validator signs a content once**: `create_attestation` refuses any height pair whose
-content the record has already sent, so what it signs is not among the contents sent. -/
-theorem createAtt_fresh {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : FG.ChainState n}
-    {a : FG.Att n} (h : Λ.createAtt v σe = some (a, Λ')) : a.content ∉ Λ.sent := by
-  unfold FG.Record.createAtt at h
-  rcases hp : Λ.heightPair σe.h σe.Th with _ | ⟨h', T', τ⟩ <;> rw [hp] at h
-  · cases h
-  · dsimp only at h
-    split_ifs at h with hany
-    simp only [Option.some.injEq, Prod.mk.injEq] at h
-    obtain ⟨rfl, -⟩ := h
-    intro hm
-    apply hany
-    refine List.any_eq_true.2 ⟨_, hm, ?_⟩
-    simp [FG.Att.content]
-
 /-- Recording an attestation adds its content to the contents sent. -/
 theorem recordAtt_sent {n : Nat} (Λ : FG.Record) (a : FG.Att n) :
     (Λ.recordAtt a).sent = Λ.sent ++ [a.content] := by rfl

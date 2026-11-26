@@ -576,26 +576,6 @@ theorem deliverRecs_id {Q : Params} {N : NodeAC Q} {K B : Type}
   obtain ⟨_, _, _, s, _, _, hle, hg⟩ := mem_deliverRecs_group _ _ _ _ _ _ _ _ _ _ hr
   exact ⟨s, hle, group_id _ _ _ _ _ _ _ hg⟩
 
-/-- The first coordinate of a replay cut's group id is its enclosing engine index, or, for an own
-admission of the time's tick phase, the index `j ≤ i` of its tick, with a positive subindex. -/
-theorem eventCut_id {i : Nat} {ev : Model.Event V (Model.protoOf (compiled F) E).Object}
-    (he : rho.events[i]? = some ev) {r : CutRec A} (hr : r ∈ eventCuts e rho i) :
-    (∃ s, r.event = Nat.pair i s) ∨
-      ∃ j ≤ i, ∃ w : V, rho.events[j]? = some (.tick w ev.time) ∧
-        ∃ s, 1 ≤ s ∧ r.event = Nat.pair j s := by
-  cases ev with
-  | tick v t =>
-    rcases mem_eventCuts_tick e rho he hr with ⟨-, hr⟩ | ⟨j, hj, w, hw, a, -, st, s, hs, hr⟩
-    · exact Or.inl ⟨0, group_id _ _ _ _ _ _ _ hr⟩
-    · exact Or.inr ⟨j, hj, w, hw, s, hs, group_id _ _ _ _ _ _ _ hr⟩
-  | restart v t =>
-    rw [eventCuts_restart e rho i v t he] at hr
-    exact Or.inl ⟨0, group_id _ _ _ _ _ _ _ hr⟩
-  | deliver v o t =>
-    rw [eventCuts_deliver e rho i v o t he] at hr
-    obtain ⟨s, _, hid⟩ := deliverRecs_id _ _ _ _ _ _ _ _ _ _ hr
-    exact Or.inl ⟨s, hid⟩
-
 /-- **The origin of a replay cut**: at its engine event's time, either at the event's node
 under an id `Nat.pair i s`, or an own admission of a tick event `j ≤ i` at that time: an
 `.attestation` cut of the tick's node under an id `Nat.pair j s` with `1 ≤ s`, inside a tick. -/

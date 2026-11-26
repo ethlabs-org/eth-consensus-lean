@@ -99,19 +99,6 @@ variable {binding : VoteBinding}
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
-/-- The trace's horizon is `awakeAt`'s clamp. -/
-theorem simTrace_inHorizon_iff (t : Time) :
-    (simTrace S rho hn).InHorizon t ↔
-      ∃ k, (cutLabel S rho hn k ≠ none ∨ t ≤ rho.horizon) ∧ t ≤ cutTime S rho hn k := by
-  simp [RunTrace.InHorizon, simTrace_label, simTrace_time, simTrace_observationHorizon,
-    cutLabel_eq, cutTime_eq]
-
-/-- Every time up to the run's horizon is in the trace's horizon. -/
-theorem simTrace_inHorizon_of_le {t : Time} (ht : t ≤ rho.horizon) :
-    (simTrace S rho hn).InHorizon t := by
-  rw [(simTrace_encoding S rho hn).1]
-  exact NodeAsChainShape.CanonicalTrace.inHorizon_of_le (traceEncoding S hn) rho ht
-
 /-- An honest node is awake only within the run's horizon. -/
 theorem simTrace_awake_in_horizon :
     ∀ y ∈ honestKeys S rho, ∀ t, (simTrace S rho hn).awake y t →

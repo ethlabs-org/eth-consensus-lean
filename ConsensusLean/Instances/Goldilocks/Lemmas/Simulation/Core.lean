@@ -154,62 +154,6 @@ theorem delivery_block_payload_processAt {due : e.State hn → Bool} (L : e.OpLa
   exact received_message_processAt e rho he
     ⟨w, carried_subset_delivered C e.adapter _ hsplit hnref hw, hd⟩
 
-/-- A block call is either at a delivery processing its decoded payload message or at a public
-tick of the same node, in the interval covering the cut. -/
-theorem acBlock_cut_cases {due : e.State hn → Bool} (L : e.OpLaws due)
-    (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : Nat}
-    {l : ACLabel A} {b : A.Blk} {m : A.Msg}
-    (hc : (simTrace e rho).CallAt y k (.ac l)) (hb : l.call = .block b)
-    (hp : ∀ (v : V) (o : (Model.protoOf (compiled F) E).Object),
-      ∃ w ∈ (receiverCodec e rho v).carried b.fgPayload b.acPayload,
-        canonEvent (receiverCodec e rho v) (Model.digests rho.hash o) w = some (.message m)) :
-    (∃ j, (simTrace e rho).projAC.ProcessAt y j m ∧
-        (simTrace e rho).time j = (simTrace e rho).time k) ∨
-      ∃ i v t, rho.events[i]? = some (.tick v t) ∧
-        (paramsAtCount p (Fintype.card V) hN hn).IsPublic t ∧ rho.ownKey v = y ∧
-        cutMap e rho i ≤ k ∧ k < cutMap e rho (i + 1) ∧ (simTrace e rho).time k = t := by
-  classical
-  have hl := hc.2
-  rw [simTrace_label] at hl
-  cases hr : (allCuts e rho)[k]? with
-  | none => simp [hr] at hl
-  | some r =>
-    rw [hr] at hl
-    have hlabel : r.label = .ac l := Option.some.inj hl
-    have h := hr
-    rw [allCuts_eq] at h
-    obtain ⟨i, hi, hlo, hhi, hm⟩ := cut_event_range e rho _ k r h
-    have he := List.getElem?_eq_getElem hi
-    have hmem := List.mem_of_getElem? hm
-    have ⟨ht, hy⟩ := eventCut_node_time e rho he hmem
-    have hy : r.node = rho.ownKey rho.events[i].node :=
-      hy.resolve_right fun ⟨_, _, _, _, _, _, _, h⟩ => by rw [hlabel] at h; cases h
-    have hkey := hy.symm.trans (show r.node = y by simpa only [simTrace_node, hr,
-      Option.elim_some] using hc.1)
-    rw [simTrace_time, hr, Option.elim_some, ht]
-    cases hev : rho.events[i] with
-    | deliver v o t =>
-      obtain ⟨j, -, -, hproc, htime⟩ :=
-        delivery_block_payload_processAt e rho L hv (he.trans (congrArg some hev)) hmem
-          hlabel hb (hp v o)
-      exact Or.inl ⟨j, (hev ▸ hkey) ▸ hproc, htime⟩
-    | tick v t =>
-      have he' := he.trans (congrArg some hev)
-      have hpublic : (paramsAtCount p (Fintype.card V) hN hn).IsPublic t := by
-        rcases mem_eventCuts_tick e rho he' hmem with ⟨hp, -⟩ | ⟨_, _, _, _, a, _, _, _, _, hg⟩
-        · exact hp
-        · have hl' := (mem_groupRecs_fields _ _ _ _ _ _ _ hg).1
-          rw [hlabel] at hl'
-          simp [exec, onAttestation] at hl'
-      exact Or.inr ⟨i, v, t, he', hpublic, by simpa only [hev, Model.Event.node] using hkey,
-        hlo, hhi, rfl⟩
-    | restart v t =>
-      rw [eventCuts_restart e rho i v t (he.trans (congrArg some hev)), groupRecs_eq] at hmem
-      simp [exec, Node.restart, acCall, cutPosts_cons, cutPosts_nil] at hmem
-      subst r
-      obtain rfl := Cut.ac.inj hlabel
-      cases hb
-
 end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace
 
 namespace Consensus.Goldilocks.Simulation
@@ -313,45 +257,6 @@ theorem simTrace_call_sending_event {y : Fin (Fintype.card V)} {k : Nat}
     rw [hrl] at heq
     have hcall := congrArg (fun c => match c with | .ac l => l.call | _ => .restart) heq
     exact False.elim (hnr hcall.symm)
-
-/-- An authenticated vote visited by a receipt is processed at a cut of that same delivery.
-Payloads of refused blocks are not visited. No fresh insertion, honest signer, or pool-cap
-premise is required. -/
-theorem received_vote_processAt {i : Nat} {v : V}
-    {receipt : Wire (Fintype.card V) S.vote} {u : Time} {m : AC.Vote (Fintype.card V)} {z : Nat}
-    (he : rho.events[i]? = some (.deliver v receipt u))
-    (hcheck : (rho.voteIO v).check m.val (S.vote.voteRole m.slot) (encodeVote m) z = true)
-    (hc : voteObj m z ∈ delivered (stateAt S rho hn v i).voteIO
-      (Model.digests rho.hash receipt) (stateAt S rho hn v i) receipt) :
-    ∃ k, cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
-      (simTrace S rho hn).projAC.ProcessAt (rho.ownKey v) k m ∧
-      (simTrace S rho hn).time k = u := by
-  rw [(simTrace_encoding S rho hn).1, (simTrace_encoding S rho hn).2]
-  apply NodeAsChainShape.CanonicalTrace.received_message_processAt (traceEncoding S hn) rho he
-  open NodeAsChainShape.CanonicalTrace in
-  apply traceEncoding_induction S hn (fun e _ _ =>
-    ∃ w ∈ NodeAsChainShape.delivered (receiverCodec e rho v) e.adapter
-        (Model.digests rho.hash receipt) (NodeAsChainShape.CanonicalTrace.stateAt e rho v i)
-        (wireOf e receipt),
-      NodeAsChainShape.canonEvent (receiverCodec e rho v) (Model.digests rho.hash receipt) w =
-        some (.message m))
-  intro e _
-  refine ⟨voteObj (binding := S.vote) m z, ?_, ?_⟩
-  · rw [NodeAsChainShape.CanonicalTrace.stateAt_eq]
-    rw (config := { transparency := .default }) [NodeAsChainShape.CanonicalTrace.wireOf_eq]
-    rw [NodeAsChainShape.CanonicalTrace.receiverCodec_eq,
-      NodeAsChainShape.CanonicalTrace.voteIOAt_eq]
-    rw [stateAt_voteIO S rho hn, stateAt_eq] at hc
-    exact (congrArg (voteObj (binding := S.vote) m z ∈ ·)
-      (delivered_nodeAdapter_sign
-        (wireCodec (S.params (pubOf E) hn) (S.ro _) S.vote (rho.voteIO v)) (S.sign (pubOf E))
-        (Model.digests rho.hash receipt) ((rho.stateBefore i v).st.1 hn) receipt)).mpr hc
-  · rw [NodeAsChainShape.CanonicalTrace.receiverCodec_eq,
-      NodeAsChainShape.CanonicalTrace.voteIOAt_eq]
-    have h := canonEvent_voteObj (sp := S.params (pubOf E) hn) (ro := S.ro _)
-      (binding := S.vote) (rho.voteIO v) (Model.digests rho.hash receipt) m z
-    rw [ite_eq_left hcheck] at h
-    exact h
 
 end Consensus.Goldilocks.Simulation
 

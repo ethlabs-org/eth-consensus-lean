@@ -345,16 +345,6 @@ theorem pollPre_eq (st : State sp ro binding) (release : Fin sp.n → Time → B
     pollPre st release = if st.fgDue then fgUpdate st release else st := by
   rfl
 
-/-- The outbox `pollPre` pops from does not read the held queue. -/
-theorem pollPre_held_outbox (st : State sp ro binding) (release : Fin sp.n → Time → Bool)
-    (l : List (FG.Att sp.n)) :
-    (pollPre { st with held := l } release).outbox = (pollPre st release).outbox := by
-  unfold pollPre
-  dsimp only
-  split
-  · rw [fgUpdate_outbox, fgUpdate_outbox, fgSigned_held]
-  · rfl
-
 /-- A recorded unsigned object keeps the outbox. -/
 theorem recordOwn_none_outbox (st : State sp ro binding) (m : Model.Msg (Header Info) Body)
     (cs : List (Wire sp.n binding)) hs : (recordOwn st (.mk .none m cs) hs).outbox = st.outbox := by
