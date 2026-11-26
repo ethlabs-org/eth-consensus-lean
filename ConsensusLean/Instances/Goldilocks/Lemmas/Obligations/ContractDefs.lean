@@ -163,7 +163,7 @@ theorem meetsObligations_optimalFaultTolerance (S : Setup) (A : ContractAssumpti
 /-- The readiness duration of an obligations contract with catch-up `≥ 19` covers `18Δ + 1`, for
 any coefficient record `C`, so that it also serves the witnesses over `goldilocksContract A C`.
 At `K S A` the premise is `contract_catchUp_ge_sleepy`. -/
-theorem cDur_ge_of_catchUp {S : Setup} (A : ContractAssumptions S) (V : Type) [Fintype V]
+private theorem cDur_ge_of_catchUp {S : Setup} (A : ContractAssumptions S) (V : Type) [Fintype V]
     [DecidableEq V] (C : ContractCoefficients) (hC : 19 ≤ (C.catchUp : Nat))
     (r : (Sys (goldilocks S) V).Run) :
     18 * r.1.ΔAC + 1 ≤

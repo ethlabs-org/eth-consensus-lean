@@ -82,7 +82,7 @@ theorem WrappersHeld.insert {sp : AC.ACParams}
 
 /-- The selected decoded parent is strictly earlier in slot than an accepted child.
 The actual held-block correspondence, not equality of roots alone, supplies this fact. -/
-theorem WrappersHeld.parent_slot_lt {sp : AC.ACParams}
+private theorem WrappersHeld.parent_slot_lt {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} {st : State sp ro binding}
     (h : WrappersHeld tables st)
@@ -158,7 +158,7 @@ theorem accepted_slotTime_le {sp : AC.ACParams}
 /-- An accepting block handler queues a decoded wrapper from the actual held parent.
 Only child wire validity and time bounds remain local inputs; parent slot order follows
 from the reachable FG store and durable-map correspondence. -/
-theorem decoded_acceptance_enqueue {V : Type} [Fintype V] {E : Env V}
+private theorem decoded_acceptance_enqueue {V : Type} [Fintype V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
     (hdec : WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
@@ -203,7 +203,7 @@ theorem _root_.Consensus.Goldilocks.Simulation.WrappersDecoded.accept {sp : AC.A
 
 /-- A canonical child decoded during a receipt also decodes under its own digest table.
 This discharges child wire validity for delivery acceptances without any payload premise. -/
-theorem received_child_decodes {V : Type} [Fintype V] {E : Env V}
+private theorem received_child_decodes {V : Type} [Fintype V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (receipt o : Wire (Fintype.card V) S.vote) (B : Blk (S.params (pubOf E) hn))
     (hc : Obj.Contains receipt o)
@@ -247,7 +247,7 @@ theorem own_proposal_decodes {V : Type} [Fintype V] {E : Env V}
     (fun a ha => (h.2.2.2.1 a ha).1) h.2.2.2.2.1
 
 /-- Acceptance preserves both decoder inventory and held-block correspondence together. -/
-theorem decoded_held_accept {V : Type} [Fintype V] {E : Env V}
+private theorem decoded_held_accept {V : Type} [Fintype V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
     (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
@@ -282,7 +282,7 @@ theorem decoded_held_accept {V : Type} [Fintype V] {E : Env V}
 
 /-- Block handling preserves the joint invariant even when the block is refused.
 Only the accepting branch needs a valid child wire. -/
-theorem decoded_held_onBlock {V : Type} [Fintype V] {E : Env V}
+private theorem decoded_held_onBlock {V : Type} [Fintype V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
     (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
@@ -307,7 +307,7 @@ theorem decoded_held_onBlock {V : Type} [Fintype V] {E : Env V}
 
 /-- Processing a child carried by a receipt preserves decoding and held correspondence.
 The decoder guard supplies the child's wire validity in the block branch. -/
-theorem decoded_held_processOne {V : Type} [Fintype V] {E : Env V}
+private theorem decoded_held_processOne {V : Type} [Fintype V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (io : VoteAuth (S.params (pubOf E) hn).n S.vote)
     (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
@@ -379,7 +379,7 @@ theorem decoded_held_process {V : Type} [Fintype V] {E : Env V}
   exact fold _ (fun _ ho => mem_delivered io _ ho) st hd hh hc hr ht
 
 /-- FG attestation work changes neither decoded wrapper inventory nor held blocks. -/
-theorem decoded_held_fgUpdate {sp : AC.ACParams}
+private theorem decoded_held_fgUpdate {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} (st : State sp ro binding)
     (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st)
@@ -401,7 +401,7 @@ theorem decoded_held_fgUpdate {sp : AC.ACParams}
       · exact ⟨hd.mono rfl rfl rfl le_rfl, hh.preserve rfl rfl rfl⟩
 
 /-- Polling drains pending wrappers without losing durable decoding or held correspondence. -/
-theorem decoded_held_poll {sp : AC.ACParams}
+private theorem decoded_held_poll {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} (st : State sp ro binding) (t : Time)
     (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st)
@@ -435,7 +435,7 @@ theorem decoded_held_pollBatch {sp : AC.ACParams}
       exact ⟨h.1.mono rfl rfl rfl le_rfl, h.2.preserve rfl rfl rfl⟩) ⟨hd, hh⟩
 
 /-- AC tick preparation preserves both wrapper invariants. -/
-theorem decoded_held_nodeTick {sp : AC.ACParams}
+private theorem decoded_held_nodeTick {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)} (st : State sp ro binding)
     (hd : WrappersDecoded tables st) (hh : WrappersHeld tables st)
@@ -510,7 +510,7 @@ theorem decoded_held_atProposal {V : Type} [Fintype V] {E : Env V}
   exact ⟨h3.1.mono rfl rfl rfl le_rfl, h3.2.preserve rfl rfl rfl⟩
 
 /-- Recording a valid canonical own block preserves the joint wrapper invariant. -/
-theorem decoded_held_recordOwn_block {V : Type} [Fintype V] {E : Env V}
+private theorem decoded_held_recordOwn_block {V : Type} [Fintype V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
     (hd : WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)

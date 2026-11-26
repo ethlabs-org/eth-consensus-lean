@@ -112,7 +112,7 @@ theorem now_after_local_event (hv : rho.ExecutionValid) {v : V} {i : Nat}
 
 /-- At any cut the reader is still initial, or its state is the post-state of a
 complete local event. Other nodes' later events do not move this reader's clock. -/
-theorem stateAt_last_local_event (hv : rho.ExecutionValid) (v : V) : ∀ i,
+private theorem stateAt_last_local_event (hv : rho.ExecutionValid) (v : V) : ∀ i,
     stateAt S rho hn v i = stateAt S rho hn v 0 ∨
       ∃ j < i, ∃ e, rho.events[j]? = some e ∧ e.node = v ∧
         stateAt S rho hn v i = stateAt S rho hn v (j + 1) ∧
@@ -166,7 +166,7 @@ theorem tick_before_stored_clock (hv : rho.ExecutionValid) {v : V} {p i : Nat} {
       | deliver w o u => simp only [Model.Event.phase] at hphase; omega
 
 /-- A stored clock cannot be ahead of the next engine event. -/
-theorem now_le_event (hv : rho.ExecutionValid) (v : V) {i : Nat}
+private theorem now_le_event (hv : rho.ExecutionValid) (v : V) {i : Nat}
     {e : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
     (he : rho.events[i]? = some e) : (stateAt S rho hn v i).now ≤ e.time := by
   rcases stateAt_last_local_event S rho hn hv v i with h | ⟨j, hj, f, hf, _, _, ht⟩

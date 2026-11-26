@@ -38,7 +38,7 @@ theorem slot_le_of_anc (hr : st.Reachable acp₀) {A Z : NodeBlock P ACP} (h : s
 
 /-- **(a) The entry slot above an anchor.** In a reachable store, for a held `A ⪯ Z` with
 `σ[A].h < σ[Z].h`, `A.slot < σ[Z].ThSlot`. -/
-theorem slot_lt_ThSlot_of_anc (hr : st.Reachable acp₀) {A Z : NodeBlock P ACP}
+private theorem slot_lt_ThSlot_of_anc (hr : st.Reachable acp₀) {A Z : NodeBlock P ACP}
     (h : st.Anc A Z) (hh : (st.σ A.root).h < (st.σ Z.root).h) :
     A.slot < (st.σ Z.root).ThSlot := by
   suffices key : (st.σ A.root).h < (st.σ Z.root).h → A.slot < (st.σ Z.root).ThSlot from key hh
@@ -59,7 +59,7 @@ theorem slot_lt_ThSlot_of_anc (hr : st.Reachable acp₀) {A Z : NodeBlock P ACP}
 `σ[A].h + 1` and `W.slot ≤ A.slot + δt`. Every held `D ⪯ W` with held parent `Z ⪰ X` at height
 `σ[X].h` or `σ[X].h + 1` that enters the next height is early (first disjunct), since
 `D.slot ≤ W.slot ≤ A.slot + δt < σ[Z].ThSlot + δt`. -/
-theorem anchor_window_hs (hr : st.Reachable acp₀) {A X W : NodeBlock P ACP}
+private theorem anchor_window_hs (hr : st.Reachable acp₀) {A X W : NodeBlock P ACP}
     (hAX : st.Anc A X) (hXh : (st.σ X.root).h = (st.σ A.root).h + 1)
     (hsl : W.slot ≤ A.slot + P.fg.δt) :
     ∀ D ∈ st.tree, ∀ Z ∈ st.tree, D.parent = some Z.root → st.Anc X Z → st.Anc D W →

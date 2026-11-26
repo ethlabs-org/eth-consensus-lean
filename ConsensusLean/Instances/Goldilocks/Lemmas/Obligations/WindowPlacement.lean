@@ -31,7 +31,7 @@ private theorem slot_le_of_slotTime_le (G : TimeGrid) {s s' : Slot}
 
 /-- **Query 1 fits when query 2 fits.** Under `(P)`, a pattern read from `t₁` ends by the end of
 the pattern read from `q`. -/
-theorem query_one_fit (G : TimeGrid) (ρ : Recurrence) {δt : Nat} {t₁ q : Time}
+private theorem query_one_fit (G : TimeGrid) (ρ : Recurrence) {δt : Nat} {t₁ q : Time}
     (hP : t₁ + (((ρ.gap : Nat) + δt : Nat) : Time) * G.slotLen ≤ q + G.slotLen) :
     t₁ + (ρ.len : Time) * G.slotLen ≤ q + (ρ.len : Time) * G.slotLen := by
   have hL := G.slotLen_pos

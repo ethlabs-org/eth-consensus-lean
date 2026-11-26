@@ -26,7 +26,7 @@ theorem ts_add_gap (s c : Nat) : sp.ts (s + c : Nat) = sp.ts s + 4 * sp.Δ * c :
   simp only [ACParams.ts]; push_cast; ring
 
 /-- The slot-free delivery premise gives the delivery inequality at every slot. -/
-theorem gap_delivery {ΔF : Time} {c : Nat} (h : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * c) (s : Nat) :
+private theorem gap_delivery {ΔF : Time} {c : Nat} (h : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * c) (s : Nat) :
     sp.ts s + 6 * sp.Δ + ΔF ≤ sp.ts (s + c : Nat) := by
   have := ts_add_gap (sp := sp) s c
   linarith
