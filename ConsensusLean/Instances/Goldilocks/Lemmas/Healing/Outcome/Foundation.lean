@@ -41,7 +41,7 @@ With `b = slot(a) + 3` (`cleanLabel`) and `R = t_{b+2k+2}` (`drainTime`, the `R_
   when it is high; inherited from a high seed when it is a low ancestor of one).
 
 `Outcome.Pivot` consumes these source facts. The downstream `Outcome.Supplier` retains
-`ready_unanimous` and the report-cover suppliers; this separation lets
+the report-cover suppliers; this separation lets
 those suppliers use the pivot without an import cycle. -/
 
 namespace Consensus.Goldilocks.Healing

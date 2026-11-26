@@ -497,26 +497,6 @@ theorem origins_compatible (hp : ResetPremises tr H K proposer dg g ΔF a) {x x'
   (hp.toUpTo tr H (le_max_left a (max (tr.time i) (tr.time i')))).origins_compatible ho
     ((le_max_left _ _).trans (le_max_right _ _)) ho' ((le_max_right _ _).trans (le_max_right _ _))
 
-/-- **HR.4, height-scoped retention** (HBoot, JointRet, the high records): (R1)'s
-comparability from the votes (`origins_compatible`), (R1)'s attestations (`high_rows`), (R2) and
-(R3) from the invariant (`retention_inv`), (R4) from (R1) (`high_records`). -/
-theorem height_scoped_retention : HeightScopedRetention := by
-  intro sp ro proposer dg H tr K g ΔF hrun hh hnc hK htwo a ha
-  have hp : ResetPremises tr H K proposer dg g ΔF a := ⟨hrun, hh, hnc, ha, hK, htwo⟩
-  have hinv := retention_inv hp
-  have hcomp : ∀ x i j B x' i' j' B', HighOrigin tr H g x i j B →
-      HighOrigin tr H g x' i' j' B' → Compatible (tr.HonestBlocks H) B B' := by
-    intro x i j B x' i' j' B' ho ho'
-    rcases le_total j j' with h | h
-    · exact origins_compatible hp ho ho' h fun k _ => (hinv k).1
-    · exact (origins_compatible hp ho' ho h fun k _ => (hinv k).1).symm
-  have hrows := high_rows hp
-  exact ⟨hcomp, hrows,
-    fun y hy k hc hk x i j B ho hik =>
-      (cacheInv_iff.1 (hinv k).2) y hy hc hk x i j B ho (Or.inl hik),
-    fun x i j B ho y hy k ℓ e hc hj => (voteInv_iff.1 (hinv k).1) x i j B ho y hy ℓ e hc hj,
-    high_records hp hcomp hrows⟩
-
 /-- An actual bounded honest supporter compares its target with an older bounded origin. -/
 theorem ResetPremisesUpTo.target_compatible_older_origin {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)

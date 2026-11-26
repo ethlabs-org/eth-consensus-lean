@@ -52,7 +52,7 @@ provide the following applications. Do not read the old list as evidence that th
 
 | Statement | Premise / application evidence | Nonempty observation, arithmetic or rejection | Remaining limitation |
 |---|---|---|---|
-| HR.1 `CutAndReset`, HR.3 `ResetExistence`, HR.4 `HeightScopedRetention` | `Goldilocks/Healing/TickRun.lean`: `healing_premises`, `reset_bundle`, `tickRun_cutAndReset`, `tickRun_resetExistence`, `tickRun_retention` | Reset `a_z = 16`, initial height `H_z = 3`, reset bound `1056` | One honest validator, no faults, GST `0`, no restart. |
+| HR.1 `CutAndReset`, HR.3 `ResetExistence` | `Goldilocks/Healing/TickRun.lean`: `healing_premises`, `reset_bundle`, `tickRun_cutAndReset`, `tickRun_resetExistence` | Reset `a_z = 16`, initial height `H_z = 3`, reset bound `1056` | One honest validator, no faults, GST `0`, no restart. |
 | HR.2 `PhaseCount` | `Goldilocks/Healing/Statements.lean`: idle phase; `Healing/PhaseCount.lean`: `phaseCount_premises`, `phaseCount_applies` | `phaseCount_b_witness`, `phaseCount_c_witness`: top-to-contest at fixed frontier `3`, nonempty counted set; `phaseCount_b_needs_fixed_frontier` rejects monotonicity across a frontier rise | FG-local trace, not a healthy node-run acquisition witness; `phaseCount_applies` takes the statement as a premise. |
 | H.3 bridge and HS.4 `CommonPathAcquisition` | `Goldilocks/Runs/OneValidator/Run.lean`: `tickRun_bridgeAt`; `Goldilocks/Healing/Settled.lean`: `settledIn_tickRun`, `acquisition_premises`, `acquisition_applies` | `acquisition_phase_changes`: the phase changes by the deadline `w + D_HS = 92` | HS.4's acquisition disjunct and client step are not exercised on this run. The bridge alone is not a non-vacuous test of all H.3 clauses or HS.1–HS.3. |
 

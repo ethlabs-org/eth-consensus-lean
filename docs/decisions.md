@@ -608,7 +608,7 @@ detail in `TRUST.md`.
   and CS2 for every slot after the slot of
   `ḡ` (`twoK`; no count at a slot that starts at or before `ḡ`), and the statements that take them
   (HR.3, HS.1, HS.2,
-  HS.4) run from `K`'s committee start; HR.4 `HeightScopedRetention` takes the same two facts. CS (`FaultBoundK`) is not a premise: the proofs
+  HS.4) run from `K`'s committee start. CS (`FaultBoundK`) is not a premise: the proofs
   derive it where they count, at slots whose previous slot starts after `ḡ`. The AC healing bundle
   `HealthyBaseU` (`Milestones/Statements/Healing/ACU`) and the proof-side `AC.HealthyBase` built on it
   carry the size equation as a field;

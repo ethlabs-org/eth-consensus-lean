@@ -42,7 +42,7 @@ public section
 
 /-! # Goldilocks Healing: the pivot of an honest ready proposal after the drain (interface)
 
-The post-reset pivot (A1.7) for `ready_unanimous`: an honest ready proposal `P` at `t_u ≥ R` has
+The post-reset pivot (A1.7): an honest ready proposal `P` at `t_u ≥ R` has
 duty head `Q = P.parent`. Under reset premises, `Catch(2Δ)` and three OPEN compatibility/support
 suppliers, its walk contains `D` with a viable path to `Q`. Each honest slot-`u` voter whose earlier
 honest slot-`u` votes are `P` walks through `P` or that path. Voters need not reach the proposer's
@@ -225,51 +225,6 @@ theorem reset_vote_root_below_proposal
   (hp.toUpTo tr H (le_max_left a (max (tr.time i) (tr.time j)))).reset_vote_root_below_proposal
     hc hP.1 hP.2.2.2.1 hR hci hcall hd hti ((le_max_left _ _).trans (le_max_right _ _)) hPQ hy hcy
     hes ((le_max_right _ _).trans (le_max_right _ _))
-
-/-- **The pivot after the drain** (open: through the four residual steps above). -/
-theorem reset_pivot (hp : ResetPremises tr H K proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u) {i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root) :
-    ∃ D, ℓp.frame.Anc d.start D ∧ ℓp.frame.Anc D d.head ∧
-      (∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head → X ∈ ℓp.frame.viableHeads) ∧
-      ∀ y ∈ H, ∀ j ℓy e, AC.CastAt tr.projAC y j ℓy e → e.msg.slot = u →
-        (∀ x ∈ H, ∀ j' < j, ∀ e', AC.VoteAt tr.projAC x j' e' → e'.msg.slot = u →
-          e'.msg.head = P.root) →
-        ∃ X, (X = P ∨ (ℓp.frame.Anc D X ∧ ℓp.frame.Anc X d.head)) ∧
-          ℓy.frame.Anc (AC.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X ∧
-          ℓy.frame.Anc X (AC.getHead sp e.readPoint ℓy.frame (tr.time j)
-            (ℓy.frame.viableTree (AC.voteDomain sp e.readPoint ℓy.frame u))
-            (AC.mergedVoteView sp e.readPoint ℓy.frame u) ((u : Int) - 1)) := by
-  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  have hret := height_scoped_retention sp ro proposer dg H tr K g ΔF
-    hp.run hp.healthy hp.noColl hp.committee hp.twoK a hp.reset
-  have hPU := proposal_mem_honestBlocks hp.run hp.noColl hP.1 hP.2.2.2.1
-  obtain ⟨hΦp, hΦpU⟩ := AC.frameIn_of_callAt hr hP.1 hci
-  refine (proposal_pivot_of_supports (tr := tr) (u := u) hr.coherent hΦp hΦpU hd hPQ
-    {O | OldSrc tr H g u O}
-    (fun y j ℓy e => y ∈ H ∧ AC.CastAt tr.projAC y j ℓy e ∧ e.msg.slot = u ∧
-      ∀ x ∈ H, ∀ j' < j, ∀ e', AC.VoteAt tr.projAC x j' e' → e'.msg.slot = u →
-        e'.msg.head = P.root)
-    (reset_proposal_passes hp hc hP hR hci hcall hd hti hPQ)
-    (reset_suffix_viable hp hc hP hR hci hcall hd hti hPQ)
-    (fun _ _ _ _ h => AC.frameIn_of_callAt hr h.1 h.2.1.1)
-    (fun _ _ _ _ h => h.2.2.1 ▸ (AC.castAt_specU hr.toU h.1 h.2.1).2.2.2)
-    (fun _ _ _ _ h => proposal_start_supported hp hc hP hR hci hcall hd hti hPQ h.1 h.2.1 h.2.2.1
-      h.2.2.2)
-    (fun O hO y j ℓy e ⟨hy, hcy, hes, _⟩ => by
-      obtain ⟨x, r, l, ho, hrt⟩ := oldSrc_iff.1 hO
-      exact (hret.votes x r l O ho y hy j ℓy e hcy (hes ▸ label_lt_of_old hp ho hrt)).1)
-    (fun D hDU hQU hDQ hDold y j ℓy e ⟨hy, hcy, hes, hE⟩ =>
-      (hp.toUpTo tr H (le_max_left a (tr.time j))).reset_vote_anchor hPU hR hPQ hQU hDQ hDU
-        (fun x r l O ho hrt _ => hDold O (oldSrc_iff.2 ⟨x, r, l, ho, hrt⟩)) hy hcy hes
-        (le_max_right _ _) hE fun l hl hne hlive L hL hLr =>
-          vote_old_live_lock_below_parent hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE
-            hl hne hlive hL hLr)).imp fun D ⟨hsD, hDQ, hV, h⟩ =>
-    ⟨hsD, hDQ, hV, fun y hy j ℓy e hcy hes hE => h y j ℓy e ⟨hy, hcy, hes, hE⟩⟩
 
 /-- The finite operational pivot after the drain, before the first disagreeing cast. -/
 theorem ResetPremisesUpTo.reset_pivot {b : Time}

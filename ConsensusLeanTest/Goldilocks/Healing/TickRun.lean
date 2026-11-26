@@ -10,8 +10,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 On the one-validator tick run of `Goldilocks/Runs/OneValidator/Premises` (`n = 1`, `f = 0`, `Δ = 1`,
 `k = δ_t = 2`, `t_s = 4s`, a tick at every time `t ≥ 0`, cut `i` at time `⌊i/8⌋`, no restart), with
 `g = 0`, `Δ_F = 1`, `κ = 2Δ`, `G_p = 4` and `T_b = 0`, the proved run-level healing statements HR.1
-(`CutAndReset`), HR.3 (`ResetExistence`) and HR.4 (`HeightScopedRetention`) are applied to the run,
-their premises met outright.
+(`CutAndReset`) and HR.3 (`ResetExistence`) are applied to the run, their premises met outright.
 
 * **The parameters** (computed from the definitions): `ḡ = 0` (`gbar_zero`), `c_z = 12`
   (`cutZ_zero`), `H_z = 3` (`hz_zero`), `a_z = 16` (`aZ_zero`), `Θ = 12` (`theta_sp1`),
@@ -19,8 +18,8 @@ their premises met outright.
 * (a) `healing_premises`: `GoldilocksRun`, `HSShared` (with `Healthy(0)` and `NoColl`),
   `Catch(2Δ)` and `Prop⁺(4)`. `reset_bundle`: `16` is the reset `a_z` (`IsReset`) and H.3 (c)'s
   bridge `BridgeAt` holds at `a_z + T_b = 16`.
-* (b) `tickRun_cutAndReset` (HR.1), `tickRun_resetExistence` (HR.3, `a_z ≤ 1056`) and
-  `tickRun_retention` (HR.4 at `a_z = 16`): the conclusions read at these parameters.
+* (b) `tickRun_cutAndReset` (HR.1) and `tickRun_resetExistence` (HR.3, `a_z ≤ 1056`): the
+  conclusions read at these parameters.
 
 **Limitation: `Geo` is vacuous here.** The `Geo` part of H.3 (c)'s bridge `BridgeAt`, in
 `reset_bundle` (`Geo(P)` for an honest proposal whose proposal and votes lie in one settled
@@ -164,14 +163,6 @@ theorem tickRun_resetExistence :
   simp only [gbar_zero, A_HS_sp1, C_HS_sp1] at h1 h3 h5 h6
   refine ⟨⟨h1, h2⟩, h3, h4, fun a ha => (h5 a ha).trans (le_of_eq ?_), h6, C_HS_sp1⟩
   decide
-
-/-- (b) **HR.4 on the tick run** at `g = 0`, `Δ_F = 1`: (R1)–(R4) hold for the reset `a_z = 16`,
-at the heights `≥ H_z + 1 = 4`. -/
-theorem tickRun_retention : Healing.RetentionAt (tickRun N1 dg1) Set.univ 0 16 :=
-  Healing.height_scoped_retention sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1)
-    (AC.CommitteeDict.full sp1.n) 0 1 (by rw [AC.committeeStart_full]; exact tickRun_goldilocksRun)
-    (tickRun_healthy 0) (dg1_noColl _) (tickRun_hsShared 0).committee (tickRun_hsShared 0).twoK
-    16 reset_bundle.1
 
 end Consensus.Goldilocks.Witness.One
 

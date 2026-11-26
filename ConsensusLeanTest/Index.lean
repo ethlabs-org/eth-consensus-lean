@@ -671,7 +671,6 @@ example := ``Consensus.Goldilocks.Healing.CutAndReset
 example := ``Consensus.Goldilocks.Healing.PhaseCount
 example := ``Consensus.Goldilocks.Healing.ResetExistence
 example := ``Consensus.Goldilocks.Healing.reset_existence
-example := ``Consensus.Goldilocks.Healing.HeightScopedRetention
 example := ``Consensus.Goldilocks.AC.gbar
 example := ``Consensus.Goldilocks.AC.Θ
 example := ``Consensus.Goldilocks.AC.HealthyAC

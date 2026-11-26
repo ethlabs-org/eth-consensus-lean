@@ -394,23 +394,6 @@ def ResetExistence : Prop :=
         36 * Gp ∧
     C_HS sp ΔF Gp = (8 * (sp.k : Time) + 49 + 4 * (sp.toParams.δt : Time)) * sp.Δ + ΔF + 3 * Gp
 
-/-- **HR.4, height-scoped retention.** In a Goldilocks run (unforgeable signatures, durable and
-serialized honest clients) from the committee start of a slot dictionary `K`, under `Healthy(g)`
-and `NoColl`, with the committee facts of `K` (`Compose.Growing.CommitteeFacts` at the constant
-honest set) and CS2 for every slot after the slot of `ḡ`, if the reset `a_z` exists, (R1)–(R4)
-hold for it (`RetentionAt`). -/
-def HeightScopedRetention : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
-    (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (K : AC.CommitteeDict sp.n) (g ΔF : Time),
-    GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K) →
-    tr.HealthyRun H ΔF g → Compose.NoCollRun dg tr →
-    Compose.Growing.CommitteeFacts tr (fun _ => H) K →
-    (∀ s : Nat, sp.slot (gbar g) + 1 ≤ s →
-      2 * (K.committee s ∩ Hᶜ).ncard < (K.committee s).ncard) →
-    ∀ a, IsReset tr H g a → RetentionAt tr H g a
-
 section Top
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}

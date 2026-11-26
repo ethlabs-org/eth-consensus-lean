@@ -29,63 +29,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF a : Time}
 
-/-- **The joined duty, unanimity** (the join with RN/RU): under the reset
-premises and `Catch(2Δ)`, every honest vote of the slot `u` of an honest ready proposal `P` with
-`t_u ≥ R` is `P`. -/
-theorem ready_unanimous (hp : ResetPremises tr H K proposer dg g ΔF a)
-    (hc : CatchRun tr H g (2 * sp.Δ)) {p : Fin sp.n} {k u : Nat}
-    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H proposer p k u P)
-    (hR : drainTime sp a ≤ sp.ts u) : Unanimous tr H u P := by
-  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  obtain ⟨s, rfl, hu, hg, hgu, hjoin⟩ :=
-    post_drain_slot (cutZ_lt_reset hp.run hp.healthy hp.reset) hR
-  obtain ⟨-, i, ellp, d, pay, hci, hcall, hd, hti, hPQ, -, -, hpay, -⟩ :=
-    honestProposalRun_of_ready hp.run hp.noColl hP
-  rw [← hP.2.1] at hci hd
-  change tr.time i = sp.ts (s + 1 : Nat) at hti
-  change (AC.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay) at hd
-  obtain ⟨D, hsD, hDQ, hviab, hvot⟩ := reset_pivot hp hc hP hR hci hcall hd hti hPQ
-  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hP.1 hci
-  obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
-  have hQt : d.head ∈ ellp.frame.tree := by
-    rcases eq_or_ne d.start d.head with he | he
-    · exact he ▸ hst
-    · exact (Anc.mem hsQ he).2
-  have hslot : sp.slot (tr.time i) = s + 1 := by
-    rw [hti]; simpa using (AC.slot_arithmetic sp (s + 1)).1 0 (by omega)
-  intro y hy j
-  induction j using Nat.strong_induction_on generalizing y with
-  | _ j ih =>
-    intro e hv hes
-    obtain ⟨elly, hcy, hey⟩ := hv
-    have hcy : AC.CastAt tr.projAC y j elly e := ⟨hcy, hey⟩
-    have hE : ∀ x ∈ H, ∀ j' < j, ∀ e', AC.VoteAt tr.projAC x j' e' →
-        e'.msg.slot = s + 1 → e'.msg.head = P.root :=
-      fun x hx j' hj' e' hv' hs' => ih j' hj' x hx e' hv' hs'
-    obtain ⟨hPsi, hPsiU⟩ := AC.frameIn_of_callAt hr hy hcy.1
-    have hjt : sp.ts (s + 1 : Nat) ≤ tr.time j := by
-      apply (AC.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2
-      have := (AC.castAt_specU hr.toU hy hcy).2.1
-      rw [hes] at this
-      exact_mod_cast this.le
-    have hgj := hgu.trans hjt
-    have hjoj := hjoin.trans hjt
-    have hjoi : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time i := hti ▸ hjoin
-    have hroot := reset_vote_root_below_proposal hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE
-    have hPy := reset_proposal_frame hp hc hP (by omega) hy hcy hes hgj hjoj
-      ((hPsi.F_anc_fcRoot.mono hPsiU).trans hroot)
-    have hPv := reset_proposal_viable hp hc hP hR hci hcall hd hti hPQ hy hcy hes hPy hE
-    obtain ⟨hstep, hP₀⟩ := reset_stop_at_parent hp hc hP hR hci hcall hd hti hpay hPQ hy
-      hcy hes hPv hg (hti ▸ hgu) hgj hQt (hviab _ hDQ .refl)
-    obtain ⟨X, hXc, haX, hXend⟩ := hvot y hy j elly e hcy hes hE
-    have hspec := AC.castAt_head_of_viableU hr.toU hy hcy (hes ▸ ⟨P, hPv⟩)
-    rw [hes] at hspec
-    exact hspec.trans (congrArg (·.root) (voter_head_eq_proposal hPhi hPsi hd hslot hsD hXc haX
-      hXend hPv hstep hP₀ fun B C hXB hDB hBQ hne hCQ hC => reset_suffix_best hp hc hP hci hcall
-        hd hti hpay hPQ hy hcy hes hPv hg (hti ▸ hgu) hgj hjoi hjoj hQt hBQ hne
-        (hviab _ hDB hBQ) hCQ
-        ((haX.mono hPsiU).trans (hXB.mono hPhiU)) hC))
-
 /-- Every bounded honest cast agrees with an actual honest proposal after the reset drain. -/
 theorem ResetPremisesUpTo.operational_unanimous {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
