@@ -6,7 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Mod
 
 /-! # Goldilocks runs under growing faults: the premises
 
-The premises of `Spec/Run/Premises` for a time-indexed honest set `H`:
+The premises of `Spec/Run/GenericPremises` for a time-indexed honest set `H`:
 
 * **`SyncOnAt`**: `SyncOn` with the sender honest at its send or admission and the recipient
   honest at the call that reads the deadline. A release stays owed after its sender is
@@ -23,10 +23,7 @@ The premises of `Spec/Run/Premises` for a time-indexed honest set `H`:
   view retained through `t + W`). The Goldilocks contract's look-ahead is `ahead = 5`, `W = 5Δ` at
   `Δp = Δe`.
 * **`HealthyRunAt`**: `GST(g)`, every validator honest at a time from `max g 0` on is awake then,
-  and `3 f_t ≤ n − 1` at every `t` (by monotonicity, the bound at the latest time).
-
-At `H := fun _ => H₀` each is the premise of `Spec/Run/Premises` with `H₀`, for every look-ahead
-(`Lemmas/Growing/Run/Const`). -/
+  and `3 f_t ≤ n − 1` at every `t` (by monotonicity, the bound at the latest time). -/
 
 namespace Consensus.Goldilocks.RunTrace
 

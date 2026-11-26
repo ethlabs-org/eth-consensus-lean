@@ -451,7 +451,6 @@ about = "untrusted milestone layer: FG store level: Sigma, handlers, frame, duti
 [[layer]]
 name = "Instances.Goldilocks.Milestones.Spec.AC"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Growing",
-            "ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.GrowingObservation",
             "ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Interface",
             "ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Trace"]
 expose = true
@@ -466,8 +465,6 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Committee",
             "ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.CommitteeRun",
             "ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Confirmation",
             "ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Events",
-            "ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Family",
-            "ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.FamilyIdentity",
             "ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.GrowingPremises",
             "ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Premises",
             "ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.RelTrace"]
