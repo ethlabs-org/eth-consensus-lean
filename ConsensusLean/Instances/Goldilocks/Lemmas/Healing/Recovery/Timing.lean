@@ -32,7 +32,7 @@ variable {sp : ACParams}
 /-! ## Ceilings -/
 
 /-- **The slot ceiling sandwich**: for `x ≥ 0`, `x ≤ 4Δ⌈x/4Δ⌉ < x + 4Δ`. -/
-theorem slotsCeil_bounds {x : Time} (hx : 0 ≤ x) :
+private theorem slotsCeil_bounds {x : Time} (hx : 0 ≤ x) :
     x ≤ 4 * sp.Δ * (slotsCeil sp x : Time) ∧
       4 * sp.Δ * (slotsCeil sp x : Time) < x + 4 * sp.Δ := by
   have hD : (0 : Time) < 4 * sp.Δ := by have := sp.toParams.hΔ; linarith
@@ -52,7 +52,7 @@ theorem slotsCeil_bounds {x : Time} (hx : 0 ≤ x) :
   exact ⟨Int.sub_one_lt_iff.mp h1, by linarith⟩
 
 /-- **The old-entry budget** `r_old = ⌈L_old/4Δ⌉ + 1`: `4Δ(r_old − 1)` is the ceiling. -/
-theorem oldSlots_bounds {ΔF Gp : Time} (hΔF : 0 ≤ ΔF) (hGp : 0 ≤ Gp) :
+private theorem oldSlots_bounds {ΔF Gp : Time} (hΔF : 0 ≤ ΔF) (hGp : 0 ≤ Gp) :
     L_old sp ΔF Gp ≤ 4 * sp.Δ * ((oldSlots sp ΔF Gp : Time) - 1) ∧
       4 * sp.Δ * ((oldSlots sp ΔF Gp : Time) - 1) < L_old sp ΔF Gp + 4 * sp.Δ := by
   have hΔ := sp.toParams.hΔ

@@ -232,7 +232,7 @@ theorem restart_le (hp : ResetPremises tr H K proposer dg g ΔF a)
 /-- **`f < h_t` after the cut** (`Healthy(g)`): from `c_z` on every honest validator is awake
 and joined (its restarts are at or before `t_{slot(ḡ)+1} < t_{slot(t) − 1}`, `restart_le`), and
 `3f ≤ n − 1`. -/
-theorem fault_bound_late_before {b : Time}
+private theorem fault_bound_late_before {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {t : Time}
     (ht : cutZ sp.toParams g ≤ t) (htb : t ≤ b) : tr.FaultBound H t := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
