@@ -328,7 +328,7 @@ theorem SleepyServiceBefore.toFrom {dg : Digest (List (FG.Att sp.n)) (Payload sp
 
 /-- A cut `i` of a node honest then, with every earlier cut within `b ≥ 0`, is read at
 `t = tr.time (i − 1)` (or `0` at `i = 0`). -/
-theorem exists_read_time {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+private theorem exists_read_time {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {proposer : Nat → Fin sp.n} {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) {b : Time}
     (hb : 0 ≤ b) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) (hi : ∀ k < i, tr.time k ≤ b) :
     ∃ t, 0 ≤ t ∧ (∀ k < i, tr.time k ≤ t) ∧ t ≤ b ∧ y ∈ H t := by

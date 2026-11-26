@@ -32,7 +32,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 honest at its cut `i ≤ b` whose `Σ.F` is below `B`, with the service from `a` (`a + κ ≤ t_s`),
 every slot-`s` vote of a node honest at it, all extending `B`, is carried; each voter is its own
 writer, honest at its vote and at its acceptance of the head. -/
-theorem honest_batch_carry_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+private theorem honest_batch_carry_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {s : Nat}
     (hsa : a + κ ≤ sp.ts s)
     {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}

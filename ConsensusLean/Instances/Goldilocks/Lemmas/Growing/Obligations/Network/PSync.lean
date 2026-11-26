@@ -32,7 +32,7 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
 /-- An honest node's own block call accepts, given the requirements at its actual start. -/
-theorem ownBlockAt_accept (hrun : LocalRun proposer dg H sg tr ini)
+private theorem ownBlockAt_accept (hrun : LocalRun proposer dg H sg tr ini)
     (hreq : ∀ y, ({ A with initial := ini y } : NodeAC P).Requirements)
     (hroot : (P.genesisBlock A.genesisPayload).RootOk dg)
     (hnc : Compose.NoCollRun dg tr) {y : Fin P.n} {i : Nat} {B : A.Blk}
@@ -76,7 +76,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   {ini : Fin (Fintype.card V) → A.State}
 
 /-- The held wrapper supplies a block call, not necessarily an acceptance. -/
-theorem publication_blockDeliveredBy_psync
+private theorem publication_blockDeliveredBy_psync
     (hr : Growing.LocalRun proposer (digestOf e rho) (honestKeysAt rho) sg (simTrace e rho) ini)
     (hΔ : E.ΔAC ≤ p.Δ) {g : Time} (hnet : rho.log.PSync rho.point g)
     {x y : Fin (Fintype.card V)} {τ : Time} {B : A.Blk}
@@ -106,7 +106,7 @@ theorem publication_blockDeliveredBy_psync
 
 /-- Block service from an acceptance publication. An own block call first uses the
 node's actual start requirements to obtain its acceptance. -/
-theorem blockService_psync
+private theorem blockService_psync
     (hr : Growing.LocalRun proposer (digestOf e rho) (honestKeysAt rho) sg (simTrace e rho) ini)
     (hΔ : E.ΔAC ≤ p.Δ) {g : Time} (hnet : rho.log.PSync rho.point g)
     (hreq : ∀ x, ({ A with initial := ini x } : NodeAC _).Requirements)
@@ -143,7 +143,7 @@ theorem blockService_psync
 
 /-- Assemble post-stop service from the two bounded readers. In particular the relay row
 also covers acceptances before GST. -/
-theorem postStopService_of_bounded {g : Time}
+private theorem postStopService_of_bounded {g : Time}
     (inHorizon : ∀ {y j}, (simTrace e rho).IsCall y j → (simTrace e rho).time j ≤ rho.horizon)
     (message : ∀ x i m, x ∈ honestKeysAt rho ((simTrace e rho).time i) →
       (simTrace e rho).SendOrAdmitAt x i m →
@@ -168,7 +168,7 @@ theorem postStopService_of_bounded {g : Time}
 
 /-- The healthy service uses the same message and relay rows as post-stop service. The
 additional block-call and signed-row suppliers are consumed only in their own rows. -/
-theorem service_of_postStop {g ΔF hold b : Time}
+private theorem service_of_postStop {g ΔF hold b : Time}
     (hs : Generic.PostStopService (simTrace e rho) (honestKeysAt rho) g)
     (hΔF : 0 < ΔF)
     (block : ∀ x i B, x ∈ honestKeysAt rho ((simTrace e rho).time i) →
@@ -196,7 +196,7 @@ theorem service_of_postStop {g ΔF hold b : Time}
 
 /-- Catch up at the first snapshot after the publication window, even if the snapshot is a
 stutter beyond the horizon. The witness is an acceptance strictly before the snapshot cut. -/
-theorem catchUp_at_snapshot (hΔ : E.ΔAC ≤ p.Δ) {g : Time}
+private theorem catchUp_at_snapshot (hΔ : E.ΔAC ≤ p.Δ) {g : Time}
     (hnet : rho.log.PSync rho.point g)
     (hawake : ∀ v u, max g 0 ≤ u → u ≤ rho.horizon → u ≤ max g 0 + E.ΔAC - 1 →
       v ∉ rho.faultyAt u → E.awake v u = true)
@@ -272,7 +272,7 @@ theorem received_forward_stamp_le_of_stamp_at (hn : 1 ≤ Fintype.card V)
 
 /-- GST holdings of an actual publication by an origin honest at its event, at a recipient
 honest at its call, before the effective `max(source, GST)` deadline. -/
-theorem publication_held_before_gst_deadline_at (hn : 1 ≤ Fintype.card V)
+private theorem publication_held_before_gst_deadline_at (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {g : Time} (hnet : rho.log.PSync rho.point g)
     (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
     (hr : (publisherExecution S rho).actual r)
@@ -299,7 +299,8 @@ theorem publication_held_before_gst_deadline_at (hn : 1 ≤ Fintype.card V)
 
 /-- Acceptance service for an actual publication by an origin honest at its event, including a
 pre-GST one, at the effective `max(source, GST)` deadline at the acceptance cut. -/
-theorem publication_acceptedBy_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+private theorem publication_acceptedBy_psync_any_at (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {g : Time} (hnet : rho.log.PSync rho.point g)
     (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
@@ -338,7 +339,7 @@ theorem publication_acceptedBy_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rh
 
 /-- The acceptance-relay service for an acceptance by a node honest at its cut, including a
 pre-GST one, at a recipient honest at its call within the horizon. -/
-theorem acceptance_relay_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+private theorem acceptance_relay_psync_any_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {g : Time} (hnet : rho.log.PSync rho.point g)
     {x : Fin (Fintype.card V)} {i : Nat}
@@ -419,7 +420,7 @@ theorem held_forward_blockCall_before_at {V : Type} [Fintype V] [DecidableEq V] 
 
 /-- A decoded publication by an origin honest at its event receives block service at the
 processing cut's GST deadline, including publications before GST. -/
-theorem publication_blockDeliveredBy_psync_at {V : Type} [Fintype V] [DecidableEq V]
+private theorem publication_blockDeliveredBy_psync_at {V : Type} [Fintype V] [DecidableEq V]
     {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid) {g : Time} (hnet : rho.log.PSync rho.point g)
@@ -457,7 +458,7 @@ theorem publication_blockDeliveredBy_psync_at {V : Type} [Fintype V] [DecidableE
   exact held_forward_blockCall_before_at S rho hn hv hx hh hdecode hlt hd
 
 /-- An own-block call of a node honest at it is an acceptance under collision freedom. -/
-theorem ownBlockAt_accept_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+private theorem ownBlockAt_accept_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho)
@@ -522,7 +523,8 @@ theorem block_service_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V
 /-- A first-release vote envelope of a sender honest at its release reaches a different recipient
 honest at its call under PSync. The release time is the lower bound; GST changes only the service
 deadline. -/
-theorem vote_message_service_psync_other_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+private theorem vote_message_service_psync_other_at (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid)
     {g : Time} (hnet : rho.log.PSync rho.point g)
     {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : AC.Vote (Fintype.card V)}
     {z : Nat} (hck : rho.verify (m.val, S.vote.voteRole m.slot, encodeVote m) z = true)
