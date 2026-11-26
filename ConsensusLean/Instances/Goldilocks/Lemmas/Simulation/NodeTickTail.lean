@@ -67,23 +67,6 @@ theorem mem_tickTail {v : V} {i : Nat} {t : Time} {r : CutRec A}
         (.attestation a) :=
   mem_admitRecs _ _ _ _ _ _ _ _ _ hr
 
-/-- The trace state of a node is unchanged across cuts of other nodes. -/
-theorem state_eq_of_other_cuts {y : Fin (Fintype.card V)} (a : Nat) :
-    ∀ m, (∀ m' < m, ∀ r, (allCuts e rho)[a + m']? = some r → r.node ≠ y) →
-      (simTrace e rho).state y (a + m) = (simTrace e rho).state y a
-  | 0, _ => rfl
-  | m + 1, h => by
-    change (simTrace e rho).state y (a + m + 1) = _
-    rw [Trace.state.eq_2, ite_eq_right, state_eq_of_other_cuts a m
-      (fun m' hm' => h m' (by omega))]
-    rintro ⟨hn, hl⟩
-    cases hr : (allCuts e rho)[a + m]? with
-    | none => rw [simTrace_label, hr] at hl; exact hl rfl
-    | some r =>
-      rw [simTrace_node, hr] at hn
-      exact h m (by omega) r hr hn
-
-
 /-- The stuttering ids beyond the replay are not the ids of engine events. -/
 theorem event_none {l : Nat} (hr : (allCuts e rho)[l]? = none) {i s : Nat}
     (hi : i < rho.events.length) (hl : (simTrace e rho).event l = Nat.pair i s) : False := by

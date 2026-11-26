@@ -935,39 +935,6 @@ private theorem indexed_delivery_group {y : Fin (Fintype.card V)} {t : Time} {i 
           omega
         exact huniq' l s' hl hs'
 
-/-- At an indexed delivery cut, expose the node replay prefix and the selected handler's
-label and pre-state. This does not require global uniqueness of the group's event id. -/
-theorem indexed_receipt_state {y : Fin (Fintype.card V)} {t : Time} {i j sub k : Nat}
-    (C : WireCodec A e.skel.Kind I e.Body)
-    (hs : List (Header I × Nat))
-    (os : List (ShapeObj (Fintype.card V) e.skel.Kind I e.Body)) (st : NodeState A)
-    (hcut : ∀ m < (deliverRecs C (runProposer rho hn) (digestOf e rho)
-        hs y t i os st sub).length,
-      (allCuts e rho)[j + m]? = (deliverRecs C (runProposer rho hn) (digestOf e rho)
-        hs y t i os st sub)[m]?)
-    (hstate : (simTrace e rho).state y j = st) {r : CutRec A}
-    (hr : (deliverRecs C (runProposer rho hn) (digestOf e rho)
-      hs y t i os st sub)[k]? = some r) :
-    ∃ pre w post ev, os = pre ++ w :: post ∧ canonEvent C hs w = some ev ∧
-      let st' := pre.foldl (fun a o => ((canonEvent C hs o).map
-        (fun ev => (exec (runProposer rho hn) (digestOf e rho) y a t ev).1)).getD a) st
-      let cs := (exec (runProposer rho hn) (digestOf e rho) y st' t ev).2
-      cs[r.pos]? = some r.label ∧
-        (simTrace e rho).state y (j + k) = (cs.take r.pos).foldl (cutPost y t) st' := by
-  obtain ⟨pre, w, post, ev, j', s, hm, hc, hrec, hst, hlo, hhi, _⟩ :=
-    indexed_delivery_group e rho C hs os j sub st hcut hstate k (List.getElem?_eq_some_iff.mp hr).1
-  have hidx : j' + (j + k - j') = j + k := Nat.add_sub_cancel' hlo
-  have hpos := hrec (j + k - j') (by omega)
-  rw [hidx, hcut _ (List.getElem?_eq_some_iff.mp hr).1, hr] at hpos
-  have hlen := (List.getElem?_eq_some_iff.mp hpos.symm).1
-  have hstep := state_in_group e rho _ _ hrec hst (j + k - j')
-    (by rw [length_group e rho] at hlen; exact hlen.le)
-  rw [hidx] at hstep
-  rw [List.getElem?_eq_getElem hlen, List.getElem_of_eq (groupRecs_eq ..),
-    List.getElem_mapIdx, List.getElem_zip] at hpos
-  cases hpos
-  exact ⟨pre, w, post, ev, hm, hc, List.getElem?_eq_getElem _, hstep⟩
-
 private theorem delivery_group {y : Fin (Fintype.card V)} {t : Time} {i : Nat}
     (C : WireCodec A e.skel.Kind I e.Body)
     (hs : List (Header I × Nat))
