@@ -608,7 +608,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Wire
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.ReadPoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Reads
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Compare
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
@@ -693,7 +692,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.LocalSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Deadline
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Drain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameKey
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLag
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameLagCore
