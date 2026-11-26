@@ -72,7 +72,7 @@ are fewer than those honest then, awake and joined at `t`. The engine count is c
 `lookAhead W t ≥ min (t + 5Δ) b` (its η-look-back form only enlarges the denominator); compromise
 only grows, and a ready node is honest, awake and (by its catch-up) joined at `t`. The population
 count `sleepy_faultBoundAt` is its `Sel = univ`, `η = 0` instance. -/
-theorem _root_.Consensus.Goldilocks.Generic.RunMap.committee_faultBoundAt {ini}
+private theorem _root_.Consensus.Goldilocks.Generic.RunMap.committee_faultBoundAt {ini}
     (hrun : Consensus.Goldilocks.Growing.LocalRun M.proposer M.digest M.honest M.signer M.trace ini)
     {Sel : Time → Finset V} {θ : ℚ} {η c W a b : Time} (hθ : 1 / 2 ≤ θ)
     (hc : 8 * sp.Δ ≤ c + 1) (hW : 5 * sp.Δ ≤ W)
@@ -167,7 +167,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Specialize the selected sleepy count to the Goldilocks run's validator keys. -/
-theorem committee_faultBoundAt (hv : rho.ExecutionValid) {ini}
+private theorem committee_faultBoundAt (hv : rho.ExecutionValid) {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho)
       (honestKeysAt S rho) (simTraceAt S rho hn) ini)
     {Sel : Time → Finset V} {θ : ℚ} {η c W a b : Time} (hθ : 1 / 2 ≤ θ)
