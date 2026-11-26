@@ -173,7 +173,7 @@ theorem engineSignsAt_of_fgSigned (hv : rho.ExecutionValid) {i : Nat} {v : V} {t
 /-- **An attestation the engine admits to a node's pool during a tick is released by the tick's
 first trailing poll** (duty `p`, at the engine node `nd` before it): a held attestation that poll
 flushes, or the attestation that poll's FG update signs at a time the schedule allows. -/
-theorem mem_admitsAt_tick (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
+private theorem mem_admitsAt_tick (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) {a : FG.Att (Fintype.card V)}
     (ha : a ∈ admitsAt S rho hn v i) :
     ∃ p nd, EngineDutyCut S rho v i p nd ∧
@@ -206,7 +206,7 @@ theorem admitsAt_tick_signed (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
 
 /-- **A tick admits only the node's own attestations**: a flushed held attestation and a fresh
 signing both carry the node's own key. -/
-theorem admitsAt_tick_own (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
+private theorem admitsAt_tick_own (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) {a : FG.Att (Fintype.card V)}
     (ha : a ∈ admitsAt S rho hn v i) : a.val = rho.ownKey v := by
   obtain ⟨p, nd, hc, h | h⟩ := mem_admitsAt_tick S rho hn hv he ha

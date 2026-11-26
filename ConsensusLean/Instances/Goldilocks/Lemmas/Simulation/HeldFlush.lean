@@ -43,7 +43,7 @@ theorem heldObj_eq_attObj {v : V} {a : FG.Att (Fintype.card V)} (h : a.val = rho
 
 omit [DecidableEq V] in
 /-- `releaseAll` releases every candidate that passes both guards at every prefix. -/
-theorem mem_releaseAll_of_ready (k : Fin (Fintype.card V))
+private theorem mem_releaseAll_of_ready (k : Fin (Fintype.card V))
     (c : (Model.protoOf (compiled (goldilocks S)) E).Object)
     (hrel : ∀ seen, Model.releasable seen c = true)
     (hdep : ∀ held, (Model.protoOf (compiled (goldilocks S)) E).dependencies.ready held c = true) :
@@ -70,7 +70,7 @@ theorem heldObj_releasable (v : V) (a : FG.Att (Fintype.card V)) seen :
 
 omit [DecidableEq V] in
 /-- A flushed held attestation depends on nothing. -/
-theorem heldObj_ready (v : V) (a : FG.Att (Fintype.card V)) held :
+private theorem heldObj_ready (v : V) (a : FG.Att (Fintype.card V)) held :
     (Model.protoOf (compiled (goldilocks S)) E).dependencies.ready held (heldObj S rho v a) =
       true := by
   have h := pollObj_ready S rho v held (.att (encodeAtt a))
@@ -95,7 +95,7 @@ theorem releaseAll_heldObj (v : V) (k : Fin (Fintype.card V)) :
 omit [DecidableEq V] in
 /-- After the tick step, at a time the release schedule allows, a selected poll releases every
 held attestation. -/
-theorem dutyStep_poll_flush (v : V) (hsel : rho.ownKey v ∈ rho.sel .poll)
+private theorem dutyStep_poll_flush (v : V) (hsel : rho.ownKey v ∈ rho.sel .poll)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Nat)
     (hr : (S.release (pubOf E) (shapeOf S hn nd).self (shapeOf S hn nd).now &&
       (shapeOf S hn nd).ticked) = true)
@@ -117,7 +117,7 @@ theorem dutyStep_poll_flush (v : V) (hsel : rho.ownKey v ∈ rho.sel .poll)
 
 omit [DecidableEq V] in
 /-- A selected duty keeps a held attestation, or releases it. -/
-theorem dutyStep_held (v : V) (hsel : rho.ownKey v ∈ rho.sel .poll)
+private theorem dutyStep_held (v : V) (hsel : rho.ownKey v ∈ rho.sel .poll)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (d : (Model.protoOf (compiled (goldilocks S)) E).Duty) {a : FG.Att (Fintype.card V)}
     (ha : a ∈ (shapeOf S hn nd).held) :
@@ -147,7 +147,7 @@ theorem dutyStep_held (v : V) (hsel : rho.ownKey v ∈ rho.sel .poll)
 
 omit [DecidableEq V] in
 /-- Selected duties keep a held attestation, or release it. -/
-theorem runDuties_held (v : V) (hsel : rho.ownKey v ∈ rho.sel .poll) :
+private theorem runDuties_held (v : V) (hsel : rho.ownKey v ∈ rho.sel .poll) :
     ∀ (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
       (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) {a : FG.Att (Fintype.card V)},
       a ∈ (shapeOf S hn nd).held →
@@ -163,7 +163,7 @@ theorem runDuties_held (v : V) (hsel : rho.ownKey v ∈ rho.sel .poll) :
     · exact Or.inr (List.mem_append_left _ h)
 
 /-- An engine event keeps a held attestation of its node, or releases it. -/
-theorem event_held (hv : rho.ExecutionValid) (v : V) {i : Nat} {a : FG.Att (Fintype.card V)}
+private theorem event_held (hv : rho.ExecutionValid) (v : V) {i : Nat} {a : FG.Att (Fintype.card V)}
     (ha : a ∈ (stateAt S rho hn v i).held) :
     a ∈ (stateAt S rho hn v (i + 1)).held ∨
       ∃ t, rho.SendsAt v i t ∧ heldObj S rho v a ∈ rho.releasesAt i := by
@@ -222,7 +222,7 @@ theorem event_held (hv : rho.ExecutionValid) (v : V) {i : Nat} {a : FG.Att (Fint
       exact Or.inl ha
 
 /-- A held attestation stays held until a sending event of its node releases it. -/
-theorem held_until (hv : rho.ExecutionValid) (v : V) {i : Nat} {a : FG.Att (Fintype.card V)}
+private theorem held_until (hv : rho.ExecutionValid) (v : V) {i : Nat} {a : FG.Att (Fintype.card V)}
     (ha : a ∈ (stateAt S rho hn v i).held) :
     ∀ j, i ≤ j → a ∈ (stateAt S rho hn v j).held ∨
       ∃ k t, i ≤ k ∧ k < j ∧ rho.SendsAt v k t ∧ heldObj S rho v a ∈ rho.releasesAt k := by
@@ -238,7 +238,7 @@ theorem held_until (hv : rho.ExecutionValid) (v : V) {i : Nat} {a : FG.Att (Fint
 
 /-- **The flush.** The first poll of a tick of `v` at a time `t` the release schedule allows
 releases every attestation `v` holds before the tick. -/
-theorem tick_flush (hv : rho.ExecutionValid) {j : Nat} {v : V} {t : Time}
+private theorem tick_flush (hv : rho.ExecutionValid) {j : Nat} {v : V} {t : Time}
     (he : rho.events[j]? = some (.tick v t)) {a : FG.Att (Fintype.card V)}
     (ha : a ∈ (stateAt S rho hn v j).held)
     (hr : S.release (pubOf E) (rho.ownKey v) t = true) :

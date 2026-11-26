@@ -39,7 +39,7 @@ theorem read_eq_out {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setu
   (readIsOut_iff V S).mp (readIsOut V S) E rho hn g v i
 
 /-- Fuel beyond the tip's slot cannot change its emitted chain. -/
-theorem chainTo_fuel (hr : st.Reachable acp₀) {B : Blk sp} (hB : B ∈ st.tree)
+private theorem chainTo_fuel (hr : st.Reachable acp₀) {B : Blk sp} (hB : B ∈ st.tree)
     {f k : Nat} (hf : B.slot < f) (hk : B.slot < k) :
     chainTo st.blocks f B = chainTo st.blocks k B := by
   induction f generalizing B k with
