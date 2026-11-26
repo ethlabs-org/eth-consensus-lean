@@ -62,10 +62,7 @@ private theorem event_of_cut {k : Nat} {r : CutRec A}
     (hr : (allCuts e rho)[k]? = some r) :
     ∃ i ev, rho.events[i]? = some ev ∧ cutMap e rho i ≤ k ∧
       k < cutMap e rho (i + 1) ∧ (simTrace e rho).time k = ev.time ∧
-      ((simTrace e rho).node k = rho.ownKey ev.node ∨ (∃ v, ev = .tick v ev.time) ∧
-        ∃ j ≤ i, ∃ w : V, rho.events[j]? = some (.tick w ev.time) ∧
-          (simTrace e rho).node k = rho.ownKey w ∧ ∃ a, r.label = .fg (.attestation a)) ∧
-      r ∈ eventCuts e rho i := by
+      (simTrace e rho).node k = rho.ownKey ev.node ∧ r ∈ eventCuts e rho i := by
   rw [allCuts_eq] at hr
   obtain ⟨i, hi, hlo, hhi, hmem⟩ := cut_event_range e rho _ _ _ hr
   have hm := List.mem_of_getElem? hmem
@@ -116,10 +113,7 @@ theorem eventOf_time {k : Nat} {ev} (hk : (simTrace e rho).label k ≠ none)
 private theorem call_origin {y : Fin (Fintype.card V)} {k : Nat} {c : Cut A}
     (hc : (simTrace e rho).CallAt y k c) :
     ∃ i ev, rho.events[i]? = some ev ∧ cutMap e rho i ≤ k ∧ k < cutMap e rho (i + 1) ∧
-      (simTrace e rho).time k = ev.time ∧ (ev.node = rho.key y ∨
-        (∃ v, ev = .tick v ev.time) ∧ ∃ j ≤ i, ∃ w : V,
-          rho.events[j]? = some (.tick w ev.time) ∧ w = rho.key y ∧
-          ∃ a, c = .fg (.attestation a)) ∧
+      (simTrace e rho).time k = ev.time ∧ ev.node = rho.key y ∧
       ∃ r ∈ eventCuts e rho i, r.label = c := by
   obtain ⟨hn, hl⟩ := hc
   cases hr : (allCuts e rho)[k]? with
@@ -130,10 +124,7 @@ private theorem call_origin {y : Fin (Fintype.card V)} {k : Nat} {c : Cut A}
     have hkey : ∀ x : V, (simTrace e rho).node k = rho.ownKey x → x = rho.key y := fun x hx => by
       have h := congrArg rho.key (hx.symm.trans hn)
       rwa [Model.Run.ownKey, Equiv.apply_symm_apply] at h
-    refine ⟨i, ev, he, h1, h2, ht, ?_, r, hm, hl⟩
-    rcases hy with hy | ⟨hev, j, hj, w, hw, hy, a, ha⟩
-    · exact Or.inl (hkey _ hy)
-    · exact Or.inr ⟨hev, j, hj, w, hw, hkey _ hy, a, hl ▸ ha⟩
+    exact ⟨i, ev, he, h1, h2, ht, hkey _ hy, r, hm, hl⟩
 
 private theorem time_bounds (hv : rho.ExecutionValid) (k : Nat) :
     0 ≤ (simTrace e rho).time k ∧ (simTrace e rho).time k ≤ rho.horizon + 1 := by
@@ -241,12 +232,6 @@ theorem awake_of_call (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : 
   obtain ⟨c, hc⟩ := hc
   obtain ⟨_, ev, he, _, _, ht, hkey, _⟩ := call_origin e rho hc
   have hm := List.mem_of_getElem? he
-  rcases hkey with hkey | ⟨-, j, -, w, hw, rfl, -⟩
-  swap
-  · have hmw := List.mem_of_getElem? hw
-    rw [simTrace_awake_iff, ht]
-    have hh := hv.in_horizon _ hmw
-    exact ⟨hv.tick_awake _ _ hmw, hh⟩
   rw [simTrace_awake_iff, ht, ← hkey]
   refine ⟨?_, hv.in_horizon ev hm⟩
   cases ev with
@@ -669,9 +654,6 @@ private theorem restart_origin {y : Fin (Fintype.card V)} {k : Nat}
   obtain ⟨l, hc, hl⟩ := hr
   obtain ⟨i, ev, he, h1, h2, ht, hy, r, hm, hlab⟩ := call_origin e rho hc
   obtain ⟨v, t, rfl⟩ := restart_of_mem_eventCuts e rho he hm hlab hl
-  rcases hy with hy | ⟨⟨_, h⟩, -⟩
-  swap
-  · cases h
   change v = rho.key y at hy
   subst v
   have hs := (restart_at e rho he).2.2
@@ -694,9 +676,6 @@ private theorem earlier_call_before_restart (hv : rho.ExecutionValid)
     | tick => simp [Model.Event.phase] at hp
     | deliver => simp [Model.Event.phase] at hp
     | restart v s =>
-      rcases hy with hy | ⟨⟨_, h⟩, -⟩
-      swap
-      · cases h
       change v = rho.key y at hy
       change s = t at hs
       subst v s

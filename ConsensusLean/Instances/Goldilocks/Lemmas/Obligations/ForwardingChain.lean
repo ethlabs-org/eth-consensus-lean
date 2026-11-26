@@ -490,7 +490,7 @@ theorem forward_publication_of_events {V : Type} [Fintype V] [DecidableEq V] {E 
   obtain ⟨hxk, hlab⟩ := ha
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, i, ev, _, he, hlo, hhi, hidx, hnode, htime, _, hlabel⟩ :=
-    simTrace_cut S rho hn hl fun a h => by rw [hlab] at h; cases h
+    simTrace_cut_origin S rho hn hl
   have hb : r.label = .fg (.block B true) := Option.some.inj (hlabel.symm.trans hlab)
   have hr := List.mem_of_getElem? hidx
   have hxev : rho.ownKey ev.node = x := hnode.symm.trans hxk

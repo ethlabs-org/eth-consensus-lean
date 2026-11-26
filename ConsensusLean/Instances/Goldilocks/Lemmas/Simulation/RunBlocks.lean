@@ -91,10 +91,9 @@ private theorem event_of_getElem? {k : Nat} {r : CutRec (S.params (pubOf E) hn) 
     (hr : (allCuts S rho hn)[k]? = some r) : (simTrace S rho hn).event k = r.event := by
   rw [simTrace_event, hr]; rfl
 
-/-- A cut with an event id of an engine event `i` other than a tick lies in the range of event
-`i`. (A tick's own admissions carry its id but lie in the tail of the time's last tick.) -/
-theorem range_of_event {i : Nat} (hi : i < rho.events.length)
-    (hnt : ∀ v t, rho.events[i]? ≠ some (.tick v t)) {k s : Nat}
+/-- A cut with an event id of engine event `i` lies in the range of event `i` (a tick's own
+admissions follow its tick group in the same range). -/
+theorem range_of_event {i : Nat} (hi : i < rho.events.length) {k s : Nat}
     (h : (simTrace S rho hn).event k = Nat.pair i s) :
     cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) := by
   cases hr : (allCuts S rho hn)[k]? with
@@ -104,15 +103,10 @@ theorem range_of_event {i : Nat} (hi : i < rho.events.length)
   | some r =>
     rw [event_of_getElem? S rho hn hr] at h
     obtain ⟨i', ev, he, h1, h2, h3⟩ := exists_event_of_getElem? S rho hn hr
-    rcases (mem_eventCuts S rho hn he (List.mem_of_getElem? h3)).2 with
-      ⟨-, s', hs'⟩ | hadm
-    · rw [hs', Nat.pair_eq_pair] at h
-      obtain ⟨rfl, -⟩ := h
-      exact ⟨h1, h2⟩
-    · obtain ⟨-, -, j, -, w, hw, -, s', -, hs'⟩ := (ownAdmitCut_iff S rho hn).1 hadm
-      rw [hs', Nat.pair_eq_pair] at h
-      obtain ⟨rfl, -⟩ := h
-      exact absurd hw (hnt _ _)
+    obtain ⟨-, -, s', hs'⟩ := mem_eventCuts S rho hn he (List.mem_of_getElem? h3)
+    rw [hs', Nat.pair_eq_pair] at h
+    obtain ⟨rfl, -⟩ := h
+    exact ⟨h1, h2⟩
 
 /-- A block of group cuts at `j0` whose event id is unique to the block is a group of the
 trace; its length is the handler's cut count on the trace's state. -/

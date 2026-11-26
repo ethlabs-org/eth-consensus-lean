@@ -61,8 +61,7 @@ theorem msg_delivered {y : Fin (Fintype.card (Fin 5))} {k : Nat}
   obtain ⟨ℓ, ⟨_, hlab⟩, hcall⟩ := hc
   have hl : (tr S).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, i, _, _, he, _, _, hidx, _, _, _, hlab'⟩ :=
-    simTrace_cut { S with vote := stock } (rhoc S) one_le_card hl
-      fun a h => by rw [hlab] at h; cases h
+    simTrace_cut_origin { S with vote := stock } (rhoc S) one_le_card hl
   have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
   have hmem := List.mem_of_getElem? hidx
   rcases eq_deliver_of_cut { S with vote := stock } (rhoc S) one_le_card he hmem

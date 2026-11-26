@@ -109,7 +109,7 @@ theorem cut_classify {l : Nat} {r : CutRec A} (hr : (allCuts e rho)[l]? = some r
     have hm' := hm
     rw [eventCuts_deliver e rho i v o t he] at hm'
     obtain ⟨s, -, hs⟩ := deliverRecs_id _ _ _ _ _ _ _ _ _ _ hm'
-    exact ⟨s, hs, hnode.resolve_right fun ⟨⟨_, h⟩, _⟩ => by cases h⟩
+    exact ⟨s, hs, hnode⟩
   | restart v t =>
     rw [hev] at he
     have hnode := (eventCut_node_time e rho he hm).2
@@ -117,8 +117,7 @@ theorem cut_classify {l : Nat} {r : CutRec A} (hr : (allCuts e rho)[l]? = some r
     refine ⟨fun _ _ h => (by cases h), ?_⟩
     have hm' := hm
     rw [eventCuts_restart e rho i v t he] at hm'
-    exact ⟨0, (mem_groupRecs_fields _ _ _ _ _ _ _ hm').2.2.2,
-      hnode.resolve_right fun ⟨⟨_, h⟩, _⟩ => by cases h⟩
+    exact ⟨0, (mem_groupRecs_fields _ _ _ _ _ _ _ hm').2.2.2, hnode⟩
 
 /-- The id of an own-admission cut of event `i`. -/
 private theorem tail_id {v : V} {i : Nat} {t : Time} {r : CutRec A}
