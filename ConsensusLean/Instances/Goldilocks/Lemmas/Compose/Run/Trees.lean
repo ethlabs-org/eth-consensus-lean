@@ -105,7 +105,7 @@ theorem tree_subset_run (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n
   fun _ hX => (tree_cases h hy hX).imp_right fun ⟨k, _, hk⟩ => ⟨y, k, true, hk⟩
 
 /-- **Under `NoColl`, blocks of honest trees with one root are one block.** -/
-theorem tree_root_inj (h : Node.LocalRun proposer dg H sg tr ini) (hnc : NoCollRun dg tr)
+private theorem tree_root_inj (h : Node.LocalRun proposer dg H sg tr ini) (hnc : NoCollRun dg tr)
     {y y' : Fin P.n}
     (hy : y ∈ H) (hy' : y' ∈ H) {i i' : Nat} {X X' : A.Blk} (hX : X ∈ (tr.state y i).fg.tree)
     (hX' : X' ∈ (tr.state y' i').fg.tree) (hr : X.root = X'.root) : X = X' := by

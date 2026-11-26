@@ -15,7 +15,7 @@ namespace Consensus.Goldilocks.Compose
 variable {P : Params} {FGP : Type} {A : ACInterface P FGP}
 
 /-- The frame of a reachable state is well formed and inside `U`. -/
-theorem frameIn_of_reachableAt {self : Fin P.n} {U : Set A.Blk} {s : A.State} {Φ : A.Frm}
+private theorem frameIn_of_reachableAt {self : Fin P.n} {U : Set A.Blk} {s : A.State} {Φ : A.Frm}
     {t : Time} (h : A.ReachableAt self U s Φ t) : A.FrameIn U Φ := by
   cases h with
   | init _ _ hin => exact hin
@@ -29,7 +29,7 @@ private theorem mem_of_anc_mem {S : Set A.Blk} {X Y : A.Blk} (h : Anc S X Y) (hX
   · exact (Anc.mem h he).2
 
 /-- A block above `fc_root` in a well-formed frame is in the tree and extends `Φ.F`. -/
-theorem held_of_fcRoot_anc {Φ : A.Frm} (hΦ : FrameOK Φ) {X : A.Blk} (h : Φ.Anc Φ.fcRoot X) :
+private theorem held_of_fcRoot_anc {Φ : A.Frm} (hΦ : FrameOK Φ) {X : A.Blk} (h : Φ.Anc Φ.fcRoot X) :
     X ∈ Φ.tree ∧ Φ.Anc Φ.F X :=
   ⟨mem_of_anc_mem h hΦ.fcRoot_mem, hΦ.F_anc_fcRoot.trans h⟩
 
