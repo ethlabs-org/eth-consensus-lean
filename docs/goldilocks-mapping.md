@@ -622,7 +622,7 @@ Modelling choices:
   `tickRun_hsShared`, `tickRun_propPlus`) and `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Run` (`tickRun_isReset`,
   `tickRun_bridgeAt`, with `Geo` vacuous). Not provided (a follow-up): a run witness (kind (b)) that applies them to
   HR.1, HR.3 and HR.4.
-- **Whole-run statements and MeetsObligations**: `Healthy(g)` (`HealthyRun`, `Spec/Run/Premises`) keeps every honest
+- **Whole-run statements and MeetsObligations**: `Healthy(g)` (`HealthyRun`, `Spec/Run/GenericPremises`) keeps every honest
   validator awake on `[max(g, 0), ∞)`, and a run's awake function lies in its horizon (`Node.LocalRun.awake_in_horizon`),
   so a run satisfying `Healthy(g)` with an honest validator is infinite. The trace of a model run is clamped to
   `[0, horizon]` (`awakeAt`, `Lemmas/Simulation/TraceDefs`). So the whole-run Healing statements (HR.1, HR.3, HR.4

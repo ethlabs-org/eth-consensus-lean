@@ -10,7 +10,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVoteTransfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
-public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Family.Identity
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Family.ServiceEquivalence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FrameClaims
@@ -537,7 +536,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Sources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.FamilyIdentity
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.SignGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
@@ -881,10 +879,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Committee
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.CommitteeRun
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Confirmation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Events
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Family
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.FamilyIdentity
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Growing
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.GrowingObservation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.GrowingPremises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Interface
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Premises
@@ -904,19 +899,16 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Reachable
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.GenericPremises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Family
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Model
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Premises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.UpTo
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Model
-public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.WriteModes.Writes
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Service
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Family.Unlock
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GenericRun
@@ -948,7 +940,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.S
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Generic.Truncation
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.AC
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.ACU
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.AC
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Outcome
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Outcome

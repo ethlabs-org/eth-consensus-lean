@@ -24,8 +24,8 @@ of the validator at every time `t ≥ 0`, the initial node state throughout):
 * (a) `periodicRun_localRun`: it is a `Node.LocalRun`, so an infinite run satisfies the awake
   clamp `awake_in_horizon` and the tick laws together;
 * (a) `periodicRun_healthy`: `Healthy(0)` holds on it, so that regime premise of
-  `Spec/Run/Premises` is satisfiable by a `Node.LocalRun` (it forces an infinite run; see the
-  module docstring there; `Sleepy` is met on the one-validator tick run,
+  `Spec/Run/GenericPremises` is satisfiable by a `Node.LocalRun` (it forces an infinite run,
+  through `awake_in_horizon`; `Sleepy` is met on the one-validator tick run,
   `Goldilocks/Persist/Premises`' `tickRun_sleepy`). The witness is over an AC that never proposes,
   not over `GoldilocksRun`: a `Sleepy` or `Healthy` run of the AC itself would carry its
   proposals and votes, a larger witness left to the Healing/Regimes milestone. -/
@@ -228,7 +228,7 @@ end Consensus.Goldilocks.Compose.Test
 
 /-! ## An infinite periodic run: `Healthy` and `Sleepy` are satisfiable
 
-`Spec/Run/Premises`: under `Healthy(g)` or `Sleepy`, `awake_in_horizon` makes a run infinite.
+`Spec/Run/GenericPremises`: under `Healthy(g)` or `Sleepy`, `awake_in_horizon` makes a run infinite.
 `idleAC` is `rootAC` with `ac_proposal = ⊥`, so the one validator never proposes, keeps the
 initial node state for ever and ticks at every time: the tick at `0` is the two cuts
 `ac_on_tick`, `ac_to_fg`, the tick at `t ≥ 1 = t_t` the three cuts `ac_on_tick`, `ac_proposal`,
