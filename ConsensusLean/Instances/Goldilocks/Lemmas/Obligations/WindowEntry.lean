@@ -47,14 +47,14 @@ namespace FG.FGParams
 variable (gp : FGParams)
 
 /-- `chainState_append` through a map. -/
-theorem chainState_map_append_singleton {α : Type} (f : α → FGBlock gp.n) (c : List α)
+private theorem chainState_map_append_singleton {α : Type} (f : α → FGBlock gp.n) (c : List α)
     (B : α) : gp.chainState ((c ++ [B]).map f) =
       (gp.chainState (c.map f)).bind (gp.stateTransition · (f B)) := by
   rw [List.map_append, List.map_singleton, gp.chainState_append]
 
 
 /-- `theorem_F_chain'` through a map: the two justifying blocks are images of blocks of `d`. -/
-theorem theorem_F_map_chain' {α : Type} (f : α → FGBlock gp.n) {c d : List α}
+private theorem theorem_F_map_chain' {α : Type} (f : α → FGBlock gp.n) {c d : List α}
     {σ τ : ChainState gp.n} (hc : gp.chainState (c.map f) = some σ)
     (hd : gp.chainState ((c ++ d).map f) = some τ) (hh : σ.h + 1 < τ.h)
     (hs : ∀ d₁ B d₂ ρ ρ', d = d₁ ++ B :: d₂ → gp.chainState ((c ++ d₁).map f) = some ρ →
@@ -92,7 +92,7 @@ variable {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
 `d` (with `d = d₁ ++ B :: d₂`), every block of `d₁` is an ancestor of `B`, and the parent `Z` of
 `B` (the last block of `d₁`, or `X`) is held, has `B.parent = some Z.root` and `X ⪯ Z`, and
 `c ++ d₁` reaches `σ[Z]`. -/
-theorem chain_states_of_anc' (hr : st.Reachable acp₀) {X W : NodeBlock P ACP}
+private theorem chain_states_of_anc' (hr : st.Reachable acp₀) {X W : NodeBlock P ACP}
     (hX : X ∈ st.tree) (hXW : st.Anc X W) :
     ∃ c d : List (NodeBlock P ACP),
       P.fg.chainState (c.map Block.fgView) = some (st.σ X.root) ∧
@@ -165,7 +165,7 @@ private theorem fin_step_pairs {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n}
 /-- **The finalized pair is the initial one or a self-entry.** In a reachable store, a held `X`
 has `σ[X].hF = 0`, or a held `W` has root `σ[X].F`, `σ[W].h = σ[X].hF` and `σ[W].Th = W.root`.
 -/
-theorem fin_pair_self_entry_or_zero (hr : st.Reachable acp₀) {X : NodeBlock P ACP}
+private theorem fin_pair_self_entry_or_zero (hr : st.Reachable acp₀) {X : NodeBlock P ACP}
     (hX : X ∈ st.tree) :
     (st.σ X.root).hF = 0 ∨ ∃ W ∈ st.tree, W.root = (st.σ X.root).F ∧
       (st.σ W.root).h = (st.σ X.root).hF ∧ (st.σ W.root).Th = W.root := by
@@ -186,7 +186,7 @@ theorem fin_pair_self_entry_or_zero (hr : st.Reachable acp₀) {X : NodeBlock P 
 
 /-- **The finalized height grows along an ancestry.** In a reachable store, for a held
 `X ⪯ Z`, `σ[X].hF ≤ σ[Z].hF`. -/
-theorem hF_mono (hr : st.Reachable acp₀) {X Z : NodeBlock P ACP} (hXZ : st.Anc X Z) :
+private theorem hF_mono (hr : st.Reachable acp₀) {X Z : NodeBlock P ACP} (hXZ : st.Anc X Z) :
     (st.σ X.root).hF ≤ (st.σ Z.root).hF := by
   induction hXZ with
   | refl => exact le_rfl
@@ -199,7 +199,7 @@ theorem hF_mono (hr : st.Reachable acp₀) {X Z : NodeBlock P ACP} (hXZ : st.Anc
 /-- **A self-entry at most the finalized height is below the finalized block.** In a reachable
 store, let `T ⪯ Z` be held with `σ[T].Th = T.root` and `σ[T].h ≤ σ[Z].hF`. Then the block of
 root `σ[Z].F` is held and `T ⪯` it. -/
-theorem self_entry_anc_finalized (hr : st.Reachable acp₀) {T Z : NodeBlock P ACP}
+private theorem self_entry_anc_finalized (hr : st.Reachable acp₀) {T Z : NodeBlock P ACP}
     (hT : T ∈ st.tree) (hZ : Z ∈ st.tree) (hTZ : st.Anc T Z)
     (hTs : (st.σ T.root).Th = T.root) (hh : (st.σ T.root).h ≤ (st.σ Z.root).hF) :
     ∃ F, st.blocks (st.σ Z.root).F = some F ∧ st.Anc T F := by
@@ -230,7 +230,7 @@ theorem self_entry_anc_finalized (hr : st.Reachable acp₀) {T Z : NodeBlock P A
 (`σ[D].h = σ[Z].h + 1`) has `D.slot < σ[Z].ThSlot + δt` or justifies (`σ[D].hj = σ[Z].h`).
 A crossing at age `≥ δt` with a target quorum (justify precedes timeout) meets the second
 disjunct. -/
-theorem theorem_F_of_anc'' (hr : st.Reachable acp₀) {X W : NodeBlock P ACP}
+private theorem theorem_F_of_anc'' (hr : st.Reachable acp₀) {X W : NodeBlock P ACP}
     (hX : X ∈ st.tree) (hXW : st.Anc X W) (hh : (st.σ X.root).h + 1 < (st.σ W.root).h)
     (hs : ∀ D ∈ st.tree, ∀ Z ∈ st.tree, D.parent = some Z.root → st.Anc X Z → st.Anc D W →
       ((st.σ Z.root).h = (st.σ X.root).h ∨ (st.σ Z.root).h = (st.σ X.root).h + 1) →

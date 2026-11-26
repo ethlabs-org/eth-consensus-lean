@@ -47,7 +47,7 @@ theorem healMargin_val (S : Setup) (A : ContractAssumptions S) (X : ℕ+) :
 
 /-- `M_f` covers the nonfinal reset reserve `R + 8k + 4X + 29` when `δ_t ≥ 6` (slack
 `4δ_t − 13`), also when both sides pay `5L` for vote latency. -/
-theorem healMargin_ge_reset_within (S : Setup) (A : ContractAssumptions S) (X : ℕ+)
+private theorem healMargin_ge_reset_within (S : Setup) (A : ContractAssumptions S) (X : ℕ+)
     (hδ : 6 ≤ S.δt) (L : Nat) :
     healthyResetCoeff S X + 8 * S.k + 4 * (X : Nat) + 29 + 5 * L ≤ healMargin S A X + 5 * L := by
   rw [healMargin_val, healthyResetCoeff_val]

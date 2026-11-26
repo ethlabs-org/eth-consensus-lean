@@ -58,7 +58,7 @@ theorem exposed_prefix_preserved_of_record_head (hU : Coherent U)
 
 /-- Compatibility with a write candidate preserves a prefix, even when the old record
 and the candidate themselves need not be comparable. -/
-theorem effective_record_update_of_compatible (hU : Coherent U)
+private theorem effective_record_update_of_compatible (hU : Coherent U)
     {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
     {A : AC.ACState sp.n} {O D : AC.Blk sp.n FGP}
     (hO : Anc U O ((AC.lookup Φ A.latestConfirmed).getD Φ.F))
@@ -120,7 +120,7 @@ theorem effective_record_frame_of_compatible (hU : Coherent U)
       simpa [this] using hO
 
 /-- The frame adapter instantiated on actual states of one honest node. -/
-theorem effective_record_frame_of_run
+private theorem effective_record_frame_of_run
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
     {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}

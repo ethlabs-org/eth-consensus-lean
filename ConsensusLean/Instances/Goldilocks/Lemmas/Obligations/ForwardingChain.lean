@@ -88,7 +88,7 @@ theorem scheduled_proposal_child_decodes_of_step {V : Type} [Fintype V] [Decidab
 
 /-- At a scheduled tick, the proposal duty preserves the joint invariant without assuming child
 decoding of the run: reachable proposal execution and the own-proposal premise supply it. -/
-theorem decoded_held_scheduled_proposal_of_own {V : Type} [Fintype V] [DecidableEq V]
+private theorem decoded_held_scheduled_proposal_of_own {V : Type} [Fintype V] [DecidableEq V]
     {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (v : V) (i : Nat) (t : Time)
@@ -172,7 +172,7 @@ theorem decoded_held_scheduled_proposal_of_own {V : Type} [Fintype V] [Decidable
       hsel, ↓reduceIte] using And.intro hd hh
 
 /-- Every tick of `v` preserves the joint invariant, including its own proposal. -/
-theorem decoded_held_tick_of_own {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+private theorem decoded_held_tick_of_own {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
     (v : V) (i : Nat) (t : Time)
@@ -338,7 +338,7 @@ theorem delivery_acceptance_decoded_publication_of_held {V : Type} [Fintype V] [
   exact ⟨p, q, hq, hi, hx, ho, ho.symm ▸ hd⟩
 
 /-- Scheduled proposal acceptance publishes its exact decoded wrapper in the same tick. -/
-theorem tick_proposal_acceptance_decoded_publication_of_queued {V : Type} [Fintype V]
+private theorem tick_proposal_acceptance_decoded_publication_of_queued {V : Type} [Fintype V]
     [DecidableEq V] {E : Env V} (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (v : V)

@@ -49,7 +49,7 @@ theorem protoFGDelay_delivery_of_fgDelay (run : (Sys (goldilocks S) V).Run)
 /-- **The rise timeout under the FG delay bound of `K S A`** at the protocol FG delay:
 `6Δ_p + Δ_F,p ≤ 4Δ_p·fgSlots ≤ 4Δ_p·δ_t`, from `protoFGDelay_delivery_of_fgDelay` and
 `3·fgSlots ≤ δ_t` (`ContractAssumptions.timeout`). -/
-theorem protoFGDelay_timeout_of_fgDelay (run : (Sys (goldilocks S) V).Run)
+private theorem protoFGDelay_timeout_of_fgDelay (run : (Sys (goldilocks S) V).Run)
     (hn : 1 ≤ Fintype.card V)
     (hfg : ((Sys (goldilocks S) V).pt run).env.ΔFG ≤
       ((K S A).params.fgDelay : Time) *
