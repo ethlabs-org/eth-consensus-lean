@@ -95,7 +95,7 @@ private theorem justification_before_timeout (hr : FGLocalRun acp₀ H U tr)
 
 /-- A pre-timeout higher descendant certifies an actual earlier acceptance of the first
 justifying block. The conclusion is read at that acceptance, not at a later replay. -/
-theorem accepted_justification_before_timeout (hr : FGLocalRun acp₀ H U tr)
+private theorem accepted_justification_before_timeout (hr : FGLocalRun acp₀ H U tr)
     {y : Fin P.n} (hy : y ∈ H) {i : Nat} {T C : NodeBlock P ACP}
     (hT : T ∈ (tr.store y i).tree) (hentry : ((tr.store y i).σ T.root).Th = T.root)
     (hpos : 0 < T.slot) (hTC : (tr.store y i).Anc T C)
@@ -178,7 +178,7 @@ theorem carrier_below_origin_before (hp : ResetPremises tr H K proposer dg g ΔF
 
 /-- A higher actual report by the inclusive `6Δ` deadline gives the exact early-outcome
 alternative, including strict carrier acceptance everywhere. No lower report time is needed. -/
-theorem higher_report_early_outcome (hp : ResetPremises tr H K proposer dg g ΔF a)
+private theorem higher_report_early_outcome (hp : ResetPremises tr H K proposer dg g ΔF a)
     (hs : HSShared tr H K dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) {m r cF kF : Nat}
     {T C : AC.Blk sp.n (List (FG.Att sp.n))} {ell : ACLabel (goldilocksNode sp ro)}
@@ -285,7 +285,7 @@ theorem drain_margins (hp : ResetPremises tr H K proposer dg g ΔF a) {u : Nat}
 
 /-- The supplier's actual reports yield either an identity quorum of exact entry attestations
 signed by `t_u + 6Δ`, or the full early outcome with its strict carrier deadline. -/
-theorem rows_or_early_outcome
+private theorem rows_or_early_outcome
     (supply : ReadyProposalReportSupply tr H K proposer dg g ΔF a)
     (hp : ResetPremises tr H K proposer dg g ΔF a) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) {p y : Fin sp.n} {k u m cF kF : Nat}

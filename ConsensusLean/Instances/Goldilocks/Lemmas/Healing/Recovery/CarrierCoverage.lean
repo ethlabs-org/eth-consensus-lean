@@ -34,7 +34,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : 
 /-- **No honest restart after `ḡ`** (`Healthy(g)`): a restart follows a time `u` at which the
 node was asleep, so `u < ḡ`; the wake after `u` is a restart at or before `ḡ`, and it is a call
 after `u`, so it is the restart itself. -/
-theorem restart_le_gbar (hp : ResetPremises tr H K proposer dg g ΔF a) :
+private theorem restart_le_gbar (hp : ResetPremises tr H K proposer dg g ΔF a) :
     NoRestartAfter tr H (gbar g) := by
   intro y hy w hw
   obtain ⟨u, hu0, -, hus, hprev⟩ := hp.run.sleep_of_restart y hy w hw
@@ -53,7 +53,7 @@ theorem restart_le_gbar (hp : ResetPremises tr H K proposer dg g ΔF a) :
   linarith
 
 /-- The deadline at an honest node of an object of time `τ ≥ ḡ` is `τ + Δ'`. -/
-theorem deadline_le_of_gbar (hp : ResetPremises tr H K proposer dg g ΔF a) {y : Fin sp.n}
+private theorem deadline_le_of_gbar (hp : ResetPremises tr H K proposer dg g ΔF a) {y : Fin sp.n}
     (hy : y ∈ H) (k : Nat) {τ : Time} (hτ : gbar g ≤ τ) (Δ' : Time) :
     tr.deadline y k τ Δ' ≤ τ + Δ' := by
   have h := Compose.ac_deadline_le_of_restarts (T := tr.projAC) (c := k)

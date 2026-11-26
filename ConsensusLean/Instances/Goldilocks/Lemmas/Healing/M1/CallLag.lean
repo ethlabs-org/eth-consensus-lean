@@ -46,7 +46,7 @@ private theorem gbar_lt_slot_succ_le_cutZ (g : Time) :
     P.slotTime_strictMono.monotone (by omega)⟩
 
 /-- An honest node awake at a public time `q ∈ [ḡ, b]` has a call at a cut of time `q`. -/
-theorem exists_call_of_public (hrun : Node.LocalRun proposer dg H sg tr ini) {g b : Time}
+private theorem exists_call_of_public (hrun : Node.LocalRun proposer dg H sg tr ini) {g b : Time}
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
     {z : Fin P.n} (hz : z ∈ H) {q : Time} (hq : P.IsPublic q)
     (hgq : gbar g ≤ q) (hqb : q ≤ b) :
@@ -83,7 +83,7 @@ private theorem cutZ_add_public (g : Time) : P.IsPublic (cutZ P g + P.Δ) :=
 
 /-- **The call for a relay deadline.** From `c_z` on, the call of `z` at a public time
 `q ∈ [τ + Δ, b]` is at a cut before every cut `m` later than `q`, and meets the deadline of `τ`. -/
-theorem call_before_of_public (hrun : Node.LocalRun proposer dg H sg tr ini) {g b : Time}
+private theorem call_before_of_public (hrun : Node.LocalRun proposer dg H sg tr ini) {g b : Time}
     (hawake : ∀ y ∈ H, ∀ t, gbar g ≤ t → t ≤ b → tr.awake y t)
     {z : Fin P.n} (hz : z ∈ H) {τ q : Time} (hτ : cutZ P g ≤ τ)
     (hq : P.IsPublic q) (hτq : τ + P.Δ ≤ q) (hqb : q ≤ b)

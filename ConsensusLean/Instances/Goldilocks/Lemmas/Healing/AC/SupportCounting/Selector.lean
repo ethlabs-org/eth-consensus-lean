@@ -20,7 +20,7 @@ namespace Consensus.Goldilocks.AC
 variable {sp : ACParams} {FGP : Type}
 
 /-- Two subsets of `D`, each a strict majority of `D`, intersect. -/
-theorem inter_nonempty_of_majority {D S S' : Set (Fin sp.n)} (hS : S ⊆ D) (hS' : S' ⊆ D)
+private theorem inter_nonempty_of_majority {D S S' : Set (Fin sp.n)} (hS : S ⊆ D) (hS' : S' ⊆ D)
     (h : D.ncard < 2 * S.ncard) (h' : D.ncard < 2 * S'.ncard) : (S ∩ S').Nonempty := by
   by_contra hne
   have hdis : Disjoint S S' :=

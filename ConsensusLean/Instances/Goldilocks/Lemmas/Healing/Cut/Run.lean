@@ -168,7 +168,7 @@ theorem signAt_of_projFG {v : Fin P.n} {j : Nat} {a : FG.Att P.n} (hs : tr.projF
 /-! ## The tick order at an `fg_attest` cut -/
 
 /-- Only a tick makes an `fg_attest` cut. -/
-theorem eq_tick_of_attest_mem {st : NodeState A} {t : Time} {e : Event A} {C : A.Blk}
+private theorem eq_tick_of_attest_mem {st : NodeState A} {t : Time} {e : Event A} {C : A.Blk}
     {s : Option (FG.Att P.n)} (h : Cut.fg (.attest C s) ∈ (exec proposer dg y st t e).2) :
     ∃ x fgDue, e = .tick x fgDue := by
   cases e with
@@ -192,7 +192,7 @@ private theorem onBlock_cuts {st : NodeState A} {t : Time} {B B' : A.Blk} {acc :
 
 /-- The only block a tick processes is the own proposal, whose attestations come from the pool
 at the start of the tick. -/
-theorem tick_block_payload {st : NodeState A} {t : Time} {x : Nat} {fgDue : Bool}
+private theorem tick_block_payload {st : NodeState A} {t : Time} {x : Nat} {fgDue : Bool}
     {B : A.Blk} {acc : Bool}
     (h : Cut.fg (.block B acc) ∈ (onTick proposer dg y st t x fgDue).2) :
     ∀ a ∈ B.fgPayload, a ∈ st.fg.atts := by
@@ -231,7 +231,8 @@ theorem tick_block_payload {st : NodeState A} {t : Time} {x : Nat} {fgDue : Bool
       split at h <;> simp at h
 
 /-- An `fg_attest` cut lies in a tick, after the earlier cuts of that tick. -/
-theorem tick_of_attest (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) {k : Nat} {C : A.Blk}
+private theorem tick_of_attest (h : LocalRun proposer dg H sg tr ini) (hy : y ∈ H) {k : Nat}
+    {C : A.Blk}
     {s : Option (FG.Att P.n)} (hc : tr.CallAt y k (.fg (.attest C s))) :
     ∃ j₀ ≤ k, ∃ x fgDue, tr.GroupAt proposer dg y j₀ (tr.time k) (.tick x fgDue) ∧
       ∀ i, j₀ ≤ i → i ≤ k →
