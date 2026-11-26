@@ -1475,9 +1475,34 @@ canary_run() {  # canary_run <file> <hash file>, in a subshell that restores <fi
   echo "  ok: control: the statement edit makes the default targets stale"
 }
 
+# step1b_lint_targets: what --changed step 1b lints when the cone is not empty, one module per line: the cone
+# and every edited source that still exists in a checked library or is the challenge, once each. The cone, not
+# only the edited sources: step 1 restores unchanged inputs from the Lake artifact cache (LAKE_RESTORE_ARTIFACTS;
+# shared across worktrees when LAKE_CACHE_DIR is), and a restored module replays no warnings, so --wfail misses a
+# warning that an edited module newly causes in an unedited importer (a deprecation, say) once identical inputs
+# were built without --wfail. Linting re-elaborates.
+step1b_lint_targets() {
+  local f m lib
+  {
+    printf '%s\n' "${CONE[@]}"
+    for f in "${CHANGED[@]}"; do
+      [[ "$f" == *.lean && -f "$f" ]] || continue
+      m="${f%.lean}"; m="${m//\//.}"
+      if [[ "$m" == "$CHALLENGE" ]]; then echo "$m"; continue; fi
+      for lib in "${LIBS[@]}"; do
+        if [[ "$m" == "$lib" || "$m" == "$lib".* ]]; then echo "$m"; break; fi
+      done
+    done
+  } | LC_ALL=C sort -u
+}
+
 step_syntax_lint() {
   if [[ "$mode" == full ]]; then
     python3 -I scripts/lint-syntax.py -j 2
+  elif [[ "$mode" == changed ]] && ((${#CONE[@]})); then
+    local targets=()
+    mapfile -t targets < <(step1b_lint_targets)
+    python3 -I scripts/lint-syntax.py -j 2 "${targets[@]}"
   else
     local lint_base="$base"
     if [[ -z "$lint_base" ]]; then lint_base="$(git merge-base HEAD origin/main 2>/dev/null || true)"; fi

@@ -190,6 +190,50 @@ for target in sys.argv[3:]:
         assert olean.exists(), "full restoration must restore the local olean"
         assert not saved.exists(), "artifact restoration does not regenerate setups"
         print("lint-syntax fixture: PASS (artifact restoration recovers oleans, not setups)")
+    # Cache gap (check.sh step 1b, --changed): an edited module deprecates a declaration that an
+    # unedited importer uses. Once the importer was built without --wfail, a strict build restores it
+    # from the artifact cache, which replays no warning; only linting the whole cone sees it.
+    with tempfile.TemporaryDirectory(prefix="lint-cone-") as tmp:
+        tmp = Path(tmp)
+        (tmp / "lean-toolchain").write_text((ROOT / "lean-toolchain").read_text())
+        (tmp / "lakefile.toml").write_text('name = "cone-fixture"\n[[lean_lib]]\nname = "ConsensusLean"\n'
+                                           'roots = ["ConsensusLean.Dep", "ConsensusLean.User"]\n')
+        (tmp / ".gitignore").write_text(".lake/\ncache/\nlake-manifest.json\n")
+        (tmp / "ConsensusLean").mkdir()
+        dep = tmp / "ConsensusLean/Dep.lean"
+        dep.write_text("def old : Nat := 1\n")
+        (tmp / "ConsensusLean/User.lean").write_text("import ConsensusLean.Dep\ndef user : Nat := old\n")
+        git = ["git", "-c", "user.name=Test", "-c", "user.email=noreply@openai.com"]
+        subprocess.run(["git", "init", "-q"], cwd=tmp, check=True)
+        subprocess.run(["git", "add", "."], cwd=tmp, check=True)
+        subprocess.run(git + ["commit", "-qm", "Fixture base"], cwd=tmp, check=True)
+        dep.write_text('@[deprecated "use a fresh name" (since := "2026-01-01")]\ndef old : Nat := 1\n')
+        env = {**os.environ, "LAKE_CACHE_DIR": str(tmp / "cache"),
+               "LAKE_ARTIFACT_CACHE": "true", "LAKE_RESTORE_ARTIFACTS": "true"}
+        loose = subprocess.run(["lake", "build", "ConsensusLean.User"], cwd=tmp, env=env,
+                               capture_output=True, text=True)
+        assert loose.returncode == 0 and "deprecated" in loose.stdout, loose
+        shutil.rmtree(tmp / ".lake/build")
+        strict = subprocess.run(["lake", "build", "--wfail", "ConsensusLean.User"], cwd=tmp, env=env,
+                                capture_output=True, text=True)
+        # Reported, not asserted: the gap belongs to Lake, and the cone lint below is what is gated.
+        print("lint-syntax fixture: strict build of the restored importer "
+              + ("passes (cache gap present)" if strict.returncode == 0 else "fails (Lake replays warnings)"))
+        lint = ["python3", "-I", str(ROOT / "scripts/lint-syntax.py")]
+        edited = subprocess.run(lint + ["--changed", "HEAD"], cwd=tmp, env=env, capture_output=True, text=True)
+        assert edited.returncode == 0 and "PASS (1 modules" in edited.stdout, edited
+        print("lint-syntax fixture: before (edited sources only): PASS, the importer's warning is missed")
+        cone = subprocess.run(lint + ["ConsensusLean.Dep", "ConsensusLean.User"], cwd=tmp, env=env,
+                              capture_output=True, text=True)
+        assert cone.returncode != 0 and "deprecated" in cone.stdout, cone
+        print("lint-syntax fixture: after (the cone): FAIL on the importer's deprecation warning")
+        shutil.rmtree(tmp / ".lake/build")
+        env["LAKE_ARTIFACT_CACHE"] = "false"
+        fresh = subprocess.run(["lake", "build", "--wfail", "ConsensusLean.User"], cwd=tmp, env=env,
+                               capture_output=True, text=True)
+        assert fresh.returncode != 0 and "deprecated" in fresh.stdout, fresh
+        print("lint-syntax fixture: PASS (cone lint sees a warning a cache-restored strict build hides;"
+              " control: an uncached strict build fails)")
     return 0
 
 

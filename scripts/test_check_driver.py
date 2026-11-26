@@ -15,7 +15,8 @@ CONFIG = Path(__file__).with_name("boundaries.toml").read_text()
 
 class DriverTests(unittest.TestCase):
     def drive(self, *args, bwrap=True, fail_build=False, replay=False, fail_leaf=False,
-              stale=False, changed=False, result_file=True, paths=None, graph=True, fail_lint=False):
+              stale=False, changed=False, result_file=True, paths=None, graph=True, fail_lint=False,
+              real_lint=False):
         with tempfile.TemporaryDirectory(prefix="check-driver-") as tmp:
             root = Path(tmp)
             scripts = root / "scripts"
@@ -26,7 +27,8 @@ class DriverTests(unittest.TestCase):
             # Only expensive step implementations and external self-test programs are replaced.
             stubs = "\n".join(f'{name}() {{ echo "EXEC {name}"; }}' for name in
                               re.findall(r"^((?:step_|selftest_)\w+)\(\)", SOURCE, re.M)
-                              if not (replay and name == "step_replay"))
+                              if not (replay and name == "step_replay")
+                              and not (real_lint and name == "step_syntax_lint"))
             stubs += f'\nhave_bwrap() {{ return {0 if bwrap else 1}; }}\n'
             stubs += '''
 python3() { echo "EXEC $*"; }
@@ -61,7 +63,7 @@ python3() {
       esac
       shift
     done
-  elif [[ "$2" == - ]]; then command python3 "$@"
+  elif [[ "$2" == - || "$2" == scripts/lint-syntax.py ]]; then command python3 "$@"
   else echo "EXEC $*"
   fi
 }
@@ -78,14 +80,33 @@ python3() {
                 (scripts / "check.sh").write_text(before + stubs + "\n# --- driver " + after)
                 def git(*cmd):
                     return subprocess.check_output(["git", *cmd], cwd=root, stderr=subprocess.DEVNULL, text=True).strip()
+                if real_lint:
+                    # The real lint-syntax.py, run by the real step 1b; Lake and Lean are replaced by
+                    # programs that answer setup queries and warn on a source containing `WARN`.
+                    (scripts / "lint-syntax.py").write_text(Path(__file__).with_name("lint-syntax.py").read_text())
+                    fake = root / ".bin"
+                    fake.mkdir()
+                    (fake / "lake").write_text(
+                        "#!/usr/bin/env python3\nimport json, sys\nassert sys.argv[1:3] == ['query', '--json']\n"
+                        "for t in sys.argv[3:]:\n"
+                        "    print(json.dumps({'name': t[1:].removesuffix(':setup'), 'options': {}}))\n")
+                    (fake / "lean").write_text(
+                        "#!/usr/bin/env python3\nimport json, sys\nfrom pathlib import Path\n"
+                        "if 'WARN' in Path(sys.argv[1]).read_text():\n"
+                        "    print(json.dumps({'severity': 'warning', 'fileName': sys.argv[1], 'data': 'planted'}))\n")
+                    for tool in ("lake", "lean"):
+                        (fake / tool).chmod(0o755)
                 git("init", "-q")
+                if real_lint:
+                    (root / ".git/info/exclude").write_text(".bin/\n")
                 git("config", "user.name", "Fixture")
                 git("config", "user.email", "fixture@example.invalid")
+                # `WARN` in a source makes the fake `lean` below report a warning (real_lint).
                 for path, action in paths.items():
                     if action != "untracked":
                         p = root / path
                         p.parent.mkdir(parents=True, exist_ok=True)
-                        p.write_text("before\n")
+                        p.write_text("WARN\n" if action == "unchanged-warn" else "before\n")
                 git("add", ".")
                 git("commit", "-qm", "base")
                 base = git("rev-parse", "HEAD")
@@ -93,9 +114,9 @@ python3() {
                     p = root / path
                     if action == "deleted":
                         p.unlink()
-                    else:
+                    elif not action.startswith("unchanged"):
                         p.parent.mkdir(parents=True, exist_ok=True)
-                        p.write_text("after\n")
+                        p.write_text("WARN\n" if action == "modified-warn" else "after\n")
                 args = tuple(base if a == "BASE" else a for a in args)
             marker = "# --- driver "
             before, after = SOURCE.split(marker, 1)
@@ -104,6 +125,8 @@ python3() {
             env["RUN_DIR"] = tmp
             env["REPLAY_JOBS"] = "2"
             env["LAKE_RESTORE_ARTIFACTS"] = "false"
+            if real_lint:
+                env["PATH"] = f"{root / '.bin'}:{env['PATH']}"
             result_path = root / "result.json"
             inventory = root / "inventory"
             args = [str(inventory) if a == "INVENTORY" else a for a in args]
@@ -244,6 +267,24 @@ python3() {
             self.assertEqual(result.returncode, 1, result.stdout)
             self.assertEqual(result.record["status"], "failed")
             self.assertIn("FAIL  1b deferred syntax lint", result.stdout)
+
+    def test_changed_lint_covers_cone_and_edited_challenge(self):
+        # The real step 1b and lint-syntax.py over real Git state and the real cone selection.
+        # (a) An unedited cone module that now warns (the cache-restored importer of an edit).
+        # (b) An edit of a library module and of Challenge, which no checked library contains.
+        cases = [({"ConsensusLean/Lemmas/Probe.lean": "modified", "Solution.lean": "unchanged-warn"},
+                  ["ConsensusLean.Lemmas.Probe", "Solution"]),
+                 ({"ConsensusLean/Lemmas/Probe.lean": "modified", "Solution.lean": "unchanged",
+                   "Challenge.lean": "modified-warn"},
+                  ["Challenge", "ConsensusLean.Lemmas.Probe", "Solution"])]
+        for paths, linted in cases:
+            with self.subTest(paths=paths):
+                result = self.drive("--changed", "BASE", paths=paths, real_lint=True, result_file=False)
+                self.assertIn("check.sh: mode changed", result.stdout)
+                self.assertEqual(sorted(re.findall(r"^lint-syntax: (\S+)$", result.stdout, re.M)), linted,
+                                 result.stdout)
+                self.assertIn("FAIL  1b deferred syntax lint", result.stdout)
+                self.assertEqual(result.returncode, 1, result.stdout)
 
     def test_plan_uses_real_changed_selection_and_conservative_fallbacks(self):
         cases = [({"docs/probe.md": "modified"}, True, "changed", "no Lean module changed", "no library affected"),
