@@ -127,21 +127,6 @@ theorem reset_of_high_report_within_at
     (fun q hq => hrun.time_mono hq.le), hst] at hstate
   rwa [hstate] at hres
 
-/-- The adjacent client call of a high report, by a reporter honest at it and at `c_z`, supplies
-the reset, including suppression (`reset_of_high_report_within_at` at latency `0`). -/
-theorem reset_of_high_report_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g : Time}
-    {y : Fin sp.n} {i : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
-    (hq : (H (max (cutZ sp.toParams g) (tr.time i)))ᶜ.ncard < sp.toParams.fg.q)
-    {ell : ACLabel (goldilocksNode sp ro)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hR : AC.ToFGAt tr.projAC y i ell R)
-    (hh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
-    ∃ a, IsReset tr H g a ∧ a ≤ tr.time i := by
-  simpa using reset_of_high_report_within_at hrun
-    (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl (by simpa using hyz)
-    (by simpa using hq) hR hh
-
 /-- A proposal's immediate acceptance is held while its proposer is honest
 (`Generic.proposal_mem_at_from` at the Goldilocks requirements from the run's starts). -/
 theorem proposal_mem_at
@@ -351,45 +336,9 @@ theorem round_of_warm_within_at
       (htjk.trans_lt htkx) hxN hpc hc' hcall hct hd' hK
     exact Or.inr ⟨C, hChead, y, k, hyk, hPy, hCy, hh⟩
 
-/-- The same-tick warm round is the delayed round with latency `0`. -/
-theorem round_of_warm_at
-    {g ΔF b T t₀ : Time} {s₀ u x N floor Gs : Nat} {kindJ : Prop}
-    {J P X : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
-    (hδ : 3 ≤ sp.toParams.fg.δt)
-    (hΔF : 6 * sp.Δ + (Gs : Time) * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
-    (hux : u + sp.toParams.fg.δt ≤ x) (hxN : x ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
-    (hTb : T ≤ b)
-    (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
-      tr.time k < T → att.h ≤ HZ tr H g)
-    (hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (Gs : Time) * sp.Δ < T)
-    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
-    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX)) (hdx : p = proposer x)
-    (hX : tr.ProposesAt p kX X) (hXs : X.slot = x)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
-    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
-    (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    P ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
-      ((tr.state p (kX + 1)).fg.σ P.root).h + 1 ≤
-        ((tr.state p (kX + 1)).fg.σ X.root).h :=
-  round_of_warm_within_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm hδ
-    (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl (by simpa only [zero_add] using hΔF)
-    hux hxN hmb hTb hna (by simpa only [zero_add] using hT) hz hdes hP hPs hp hdx hX hXs hcal
-    hgap ht₀ hδG hK
-
-/-- **The zero-rise reset under vote latency `D`**: with the premises of
-`reset_of_high_proposal_at`, the latency `D` and a service horizon covering
-`t_{u+1} + 2Δ + D + Gs · Δ`, a high warm proposal yields a reset by `t_{u+1} + 2Δ + D + Gs · Δ`.
+/-- **The zero-rise reset under vote latency `D`**: under the vote latency `D` and a service
+horizon covering `t_{u+1} + 2Δ + D + Gs · Δ`, a high warm proposal yields a reset by
+`t_{u+1} + 2Δ + D + Gs · Δ`.
 The report is the delayed one of a reader signing within `Gs · Δ` of `t_{u+1} + 2Δ`, so the frame
 window and the service horizon extend by `Gs · Δ`. -/
 theorem reset_of_high_proposal_within_at
@@ -461,35 +410,6 @@ theorem reset_of_high_proposal_within_at
     omega
   obtain ⟨a, ha, hat⟩ := reset_of_high_report_within_at hrun hlat hD hyD hq hR hhR
   exact ⟨a, ha, by linarith⟩
-
-/-- A high warm proposal yields a reset via a reader honest at the report deadline
-(`reset_of_high_proposal_within_at` at latency `0`). -/
-theorem reset_of_high_proposal_at
-    {g ΔF b t₀ : Time} {s₀ u N floor Gs : Nat} {kindJ : Prop}
-    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) floor
-      kindJ J)
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
-    (hN : u + 1 ≤ N) (hmb : sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ ≤ b)
-    (hH : (H b).Nonempty)
-    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
-    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hh : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
-    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    ∃ a, IsReset tr H g a ∧ a ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ + (Gs : Time) * sp.Δ := by
-  have hts : sp.ts (u + 1 : Nat) ≤ sp.ts N := (AC.ts_le_iff sp).2 (by exact_mod_cast hN)
-  simpa only [zero_add] using reset_of_high_proposal_within_at hframe hrun hnc hsvc hawake hf
-    hcatch hnr hm hwarm hN hmb hH (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl
-    (by linarith) hz hdes hP hPs hh hcal hgap ht₀ hK
 
 /-- Each round consumes one unit of height deficit. The latency `D` and the signing gap `Gs · Δ`
 are covered by the timeout between consecutive proposals and added once to the terminal
@@ -583,46 +503,6 @@ theorem rise_reset_rounds_within_at
     obtain ⟨a, ha, hat⟩ := ih (u := x) (by omega) hxN
       (by linarith [hts hnext]) hpx rfl hX hXs (by omega)
     exact ⟨a, ha, hat.trans (by linarith [hts hnext])⟩
-
-/-- The same-tick reset rounds are the delayed reset rounds with latency `0`. -/
-theorem rise_reset_rounds_at
-    {g ΔF b T t₀ : Time} {s₀ N G floor Gs : Nat} {kindJ : Prop}
-    {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) floor
-      kindJ J)
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀)
-    (hδ : 3 ≤ sp.toParams.fg.δt) (hG : 1 ≤ G)
-    (hΔF : 6 * sp.Δ + (Gs : Time) * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
-    (hgp : ProposalGap tr H proposer G s₀ N)
-    (hmb : sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ ≤ b) (hH : (H b).Nonempty) (hTb : T ≤ b)
-    (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
-      tr.time k < T → att.h ≤ HZ tr H g)
-    (r : Nat) {u : Nat} (hwarm : s₀ + 2 * sp.k ≤ u)
-    (hN : u + r * (sp.toParams.fg.δt + G - 1) + 1 ≤ N)
-    (hT : sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ + (Gs : Time) * sp.Δ ≤
-      T)
-    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
-    {kP : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hrise : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + r)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
-    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
-    (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    ∃ a, IsReset tr H g a ∧
-      a ≤ sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ +
-        (Gs : Time) * sp.Δ := by
-  simpa only [zero_add] using rise_reset_rounds_within_at hframe hrun hnc hsvc hawake hf hcatch
-    hnr hm hδ hG (Generic.voteLatency_zero_from hrun.toLocalRun) le_rfl
-    (by simpa only [zero_add] using hΔF) hgp hmb hH hTb hna r hwarm hN
-    (by simpa only [zero_add] using hT) hz hdes hP hPs hrise hcal hgap ht₀ hδG hK
 
 /-- The merged key bounds the deficit at the proposal cut itself. -/
 theorem rounds_le_warm_proposal_at
