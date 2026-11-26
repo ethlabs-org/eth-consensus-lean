@@ -1,11 +1,11 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Continuation
 public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Live
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Query
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Live
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Query
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Members
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Accountable
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Handover
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Accountable
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Handover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.PSync
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.Transport
