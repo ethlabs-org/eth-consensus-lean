@@ -68,7 +68,7 @@ theorem mem_tickTail {v : V} {i : Nat} {t : Time} {r : CutRec A}
   mem_admitRecs _ _ _ _ _ _ _ _ _ hr
 
 /-- The stuttering ids beyond the replay are not the ids of engine events. -/
-theorem event_none {l : Nat} (hr : (allCuts e rho)[l]? = none) {i s : Nat}
+private theorem event_none {l : Nat} (hr : (allCuts e rho)[l]? = none) {i s : Nat}
     (hi : i < rho.events.length) (hl : (simTrace e rho).event l = Nat.pair i s) : False := by
   rw [simTrace_event, hr, Option.elim_none, Nat.pair_eq_pair] at hl
   omega

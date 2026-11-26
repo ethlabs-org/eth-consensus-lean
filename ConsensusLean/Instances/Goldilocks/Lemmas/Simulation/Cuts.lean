@@ -208,7 +208,7 @@ theorem restart_of_mem_eventCuts {i : Nat}
     (hlabel ▸ hl) hℓ
 
 /-- An engine restart has exactly one cut, the restart's `ac_restart`. -/
-theorem eventCuts_restart_length {i : Nat} {v : V} {t : Time}
+private theorem eventCuts_restart_length {i : Nat} {v : V} {t : Time}
     (he : rho.events[i]? = some (.restart v t)) : (eventCuts S rho hn i).length = 1 := by
   rw [eventCuts_restart S rho hn i v t he]
   exact (length_groupRecs _ _ _ _ _ _ _).trans rfl
