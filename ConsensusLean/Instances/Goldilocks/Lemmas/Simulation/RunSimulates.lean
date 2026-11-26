@@ -80,12 +80,7 @@ theorem relays_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : 
     rcases hx with ⟨B, hB, -⟩ | ⟨a', ha', -⟩
     · rw [ha] at hB; cases hB
     · exact hown r hr a' ha' w i τ
-  -- a delivery's cuts are not own admissions (those belong to a tick)
-  replace hn' : (simTrace S rho hn).node k = rho.ownKey v := by
-    rcases hn' with h | h
-    · exact h
-    · obtain ⟨⟨_, hw⟩, _⟩ := (ownAdmitCut_iff S rho hn).mp h
-      cases hw
+  change (simTrace S rho hn).node k = rho.ownKey v at hn'
   simp only [Model.Event.time] at ht
   have hkey : v = rho.key y := key_of_ownKey S rho (hn'.symm.trans hnode)
   subst hkey

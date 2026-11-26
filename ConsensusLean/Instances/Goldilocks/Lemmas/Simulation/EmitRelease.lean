@@ -36,7 +36,7 @@ theorem emit_released_of (hv : rho.ExecutionValid)
   obtain ⟨z, hz⟩ := htok
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, i, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ :=
-    simTrace_cut S rho hn hl fun a h => by rw [hlab] at h; cases h
+    simTrace_cut_origin S rho hn hl
   have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
   have hmem := List.mem_of_getElem? hidx
   have hkey : ev.node = rho.key y := key_of_ownKey S rho (hn'.symm.trans hnode)

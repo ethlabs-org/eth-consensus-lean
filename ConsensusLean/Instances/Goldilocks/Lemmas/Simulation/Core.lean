@@ -42,8 +42,7 @@ private theorem delivery_label_cut {i : Nat} {v : V} {o : (Model.protoOf (compil
       List.getElem?_eq_getElem hj, heq]
   refine ⟨cutMap e rho i + j, Nat.le_add_right _ _, ?_, ⟨?_, ?_⟩, ?_⟩
   · rw [cutMap_succ]; omega
-  · simpa only [simTrace_node, hk, Option.elim_some, Model.Event.node] using
-      hy.resolve_right fun ⟨⟨_, h⟩, _⟩ => by cases h
+  · simpa only [simTrace_node, hk, Option.elim_some, Model.Event.node] using hy
   · simp only [simTrace_label, hk, Option.map_some]
   · simpa only [simTrace_time, hk, Option.elim_some, Model.Event.time] using ht
 
@@ -176,7 +175,7 @@ theorem simTrace_restart_event {y : Fin (Fintype.card V)} {k : Nat}
   obtain ⟨ℓ, ⟨hnode, hlab⟩, hcall⟩ := hr
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, i, ev, -, he, hlo, hhi, hidx, hn', ht, -, hlab'⟩ :=
-    simTrace_cut S rho hn hl fun a h => by rw [hlab] at h; cases h
+    simTrace_cut_origin S rho hn hl
   have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
   obtain ⟨v, t, rfl⟩ :=
     restart_of_mem_eventCuts S rho hn he (List.mem_of_getElem? hidx) hrl hcall
@@ -234,7 +233,7 @@ theorem simTrace_call_sending_event {y : Fin (Fintype.card V)} {k : Nat}
       rho.SendsAt (rho.key y) i ((simTrace S rho hn).time k) := by
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hc.2]; simp
   obtain ⟨r, i, ev, -, he, hlo, hhi, hidx, hnode, ht, -, hlabel⟩ :=
-    simTrace_cut S rho hn hl fun a h => by rw [hc.2] at h; cases h
+    simTrace_cut_origin S rho hn hl
   have hkey : rho.key y = ev.node := by
     rw [← hc.1, hnode]
     exact rho.key.apply_symm_apply ev.node

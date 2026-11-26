@@ -163,7 +163,7 @@ theorem simTrace_asleep_before_restart (hv : rho.ExecutionValid) :
   rintro y hy i ⟨ℓ, ⟨hnode, hlab⟩, hcall⟩ h
   have hl : (simTrace S rho hn).label i ≠ none := by rw [hlab]; simp
   obtain ⟨r, i₀, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ :=
-    simTrace_cut S rho hn hl fun a h => by rw [hlab] at h; cases h
+    simTrace_cut_origin S rho hn hl
   have hrl : r.label = .ac ℓ := Option.some.inj (hlab'.symm.trans hlab)
   obtain ⟨v, t, rfl⟩ :=
     restart_of_mem_eventCuts S rho hn he (List.mem_of_getElem? hidx) hrl hcall

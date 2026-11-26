@@ -81,8 +81,7 @@ theorem signAt_tick_cut_at {y : Fin (Fintype.card V)} {k : Nat} {a : FG.Att (Fin
   rw [simTraceAt_eq] at hs ⊢
   obtain ⟨src, hnode, hlab⟩ := hs
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, i, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ := simTrace_cut S rho hn hl
-    fun b h => by rw [hlab] at h; cases h
+  obtain ⟨r, i, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ := simTrace_cut_origin S rho hn hl
   have hrl : r.label = .fg (.attest src (some a)) := Option.some.inj (hlab'.symm.trans hlab)
   have hmem := List.mem_of_getElem? hidx
   have hkey : ev.node = rho.key y := key_of_ownKey S rho (hn'.symm.trans hnode)
@@ -135,8 +134,7 @@ theorem simTraceAt_att_released (hv : rho.ExecutionValid) :
   rintro y k a _ ⟨src, hnode, hlab⟩ hR
   erw [releasedFrom_iff]
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
-  obtain ⟨r, i, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ := simTrace_cut S rho hn hl
-    fun b h => by rw [hlab] at h; cases h
+  obtain ⟨r, i, ev, -, he, -, -, hidx, hn', ht, -, hlab'⟩ := simTrace_cut_origin S rho hn hl
   have hrl : r.label = .fg (.attest src (some a)) := Option.some.inj (hlab'.symm.trans hlab)
   have hmem := List.mem_of_getElem? hidx
   have hkey : ev.node = rho.key y := key_of_ownKey S rho (hn'.symm.trans hnode)
