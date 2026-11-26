@@ -36,7 +36,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **The anchor window advance** under growing faults. Three anchor steps `P i → P (i+1)` give
 `σ[P₀].h + 3 ≤ σ[P₃].h` at every store holding the four anchors of a node honest at an
 observation time `t` after the store's cuts. -/
-theorem anchor_window_advance_at
+private theorem anchor_window_advance_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t)

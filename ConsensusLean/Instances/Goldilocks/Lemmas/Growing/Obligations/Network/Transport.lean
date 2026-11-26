@@ -96,7 +96,7 @@ theorem not_faulty_of_mem_honestKeysAt {y : Fin (Fintype.card V)} {t a : Time}
   exact fun h => hy (rho.faultyAt_mono (le_min hat hah) h)
 
 /-- The recipient is awake from its effective send/wake start through the reading call. -/
-theorem deadline_awake_interval
+private theorem deadline_awake_interval
     (hr : Growing.LocalRun proposer (digestOf e rho) (honestKeysAt rho) sg (simTrace e rho) ini)
     {y : Fin (Fintype.card V)} {j : Nat}
     (hy : y ∈ honestKeysAt rho ((simTrace e rho).time j)) (hj : (simTrace e rho).IsCall y j)
@@ -172,7 +172,7 @@ theorem publication_held_before_psync
   rwa [hga] at h
 
 /-- Signatures of a node honest at the signing cut are well-formed attestations. -/
-theorem signed_att_wellFormed
+private theorem signed_att_wellFormed
     (hr : Growing.LocalRun proposer (digestOf e rho) (honestKeysAt rho) sg (simTrace e rho) ini)
     {y : Fin (Fintype.card V)} {i : Nat} {a : FG.Att (Fintype.card V)}
     (hy : y ∈ honestKeysAt rho ((simTrace e rho).time i))
@@ -187,7 +187,7 @@ theorem signed_att_wellFormed
   exact Compose.createAtt_wellFormed h1 h2 h3 hsign
 
 /-- A holding is backed by own processing no later than release, or by processing at receipt. -/
-theorem held_att_processed_before
+private theorem held_att_processed_before
     (hr : Growing.LocalRun proposer (digestOf e rho) (honestKeysAt rho) sg (simTrace e rho) ini)
     {y : Fin (Fintype.card V)} {a : FG.Att (Fintype.card V)}
     {o : (Model.protoOf (compiled F) E).Object}
@@ -324,7 +324,7 @@ theorem not_faulty_of_mem_honestKeysAt {y : Fin (Fintype.card V)} {t a : Time}
 
 /-- A recipient is awake from its effective send/wake start through its call. The recipient is
 honest at the call. -/
-theorem deadline_awake_interval_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+private theorem deadline_awake_interval_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} {j : Nat}
     (hy : y ∈ honestKeysAt S rho ((simTraceAt S rho hn).time j))
     (hj : (simTraceAt S rho hn).IsCall y j) {τ : Time} (hτ : 0 ≤ τ) :
@@ -339,7 +339,7 @@ theorem deadline_awake_interval_at (hn : 1 ≤ Fintype.card V) (hv : rho.Executi
     (network_localRun S rho hn hv) hy hj hτ _
 
 /-- Later observation cuts can only increase a recipient's deadline. -/
-theorem deadline_mono_cut_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+private theorem deadline_mono_cut_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (y : Fin (Fintype.card V)) (τ Δ : Time) :
     Monotone (fun j => (simTraceAt S rho hn).deadline y j τ Δ) :=
   (simTraceAt S rho hn).deadline_mono_cut_of_time_mono
@@ -369,7 +369,7 @@ theorem publication_held_psync_at (hn : 1 ≤ Fintype.card V) {g : Time}
 
 /-- Before an outage, only qualifying recipient deadlines receive service. The origin is honest
 at its event, the recipient at the holding time. -/
-theorem publication_held_syncUntil_at (hn : 1 ≤ Fintype.card V) {b : Time}
+private theorem publication_held_syncUntil_at (hn : 1 ≤ Fintype.card V) {b : Time}
     (hnet : rho.log.SyncUntil rho.point b)
     (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
     (hr : (publisherExecution S rho).actual r)
@@ -390,7 +390,7 @@ theorem publication_held_syncUntil_at (hn : 1 ≤ Fintype.card V) {b : Time}
     hx hrow y a ha hlt.le hh hy hawake, hlt⟩
 
 /-- A signing cut of the trace is at or before the engine horizon. -/
-theorem signAt_time_le_horizon (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+private theorem signAt_time_le_horizon (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} {i : Nat} {a : FG.Att (Fintype.card V)}
     (hs : (simTraceAt S rho hn).SignAt y i a) :
     (simTraceAt S rho hn).time i ≤ rho.horizon := by
@@ -407,7 +407,7 @@ theorem isCall_time_le_horizon (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionVa
   exact simTrace_labelled_time_le S rho hn hv (by rw [hc.2]; simp)
 
 /-- Signatures of a node honest at the signing cut are well-formed attestations. -/
-theorem signed_att_wellFormed_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+private theorem signed_att_wellFormed_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} {i : Nat}
@@ -423,7 +423,8 @@ theorem signed_att_wellFormed_at {V : Type} [Fintype V] [DecidableEq V] {E : Env
 (`released_att_processAt`): at the releasing tick for an own admission, or earlier for an
 attestation already in the releaser's pool. No honesty premise: an engine event's node is honest
 at the event. -/
-theorem released_att_processAt_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) {v : V}
+private theorem released_att_processAt_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+    {v : V}
     {a : FG.Att (Fintype.card V)} {t : Time} (hs : rho.releases v (attObj a) t) :
     ∃ k, (simTraceAt S rho hn).ProcessAttAt (rho.ownKey v) k a ∧
       (simTraceAt S rho hn).time k ≤ t := by
@@ -460,7 +461,7 @@ private theorem own_att_process_by (hn : 1 ≤ Fintype.card V) (hv : rho.Executi
 
 /-- Holdings suffice for processing before an observation deadline, even for an old receipt. No
 honesty premise: the processing is the holder's own release or its receipt. -/
-theorem held_att_processed_before_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+private theorem held_att_processed_before_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E)
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)}
@@ -481,7 +482,7 @@ schedule allows release then, and otherwise from the held queue by the first awa
 release (`released_by_of_release_liveness` with `held_flush`). In that case `R ≠ 0`, and the
 premises are those of `PSyncFGAttTransportAt` at hold `R·Δ_AC`: `x` honest at the bound, the
 bound `c` within the horizon and participation from `max g 0` through `c`. -/
-theorem signed_released_by_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) {R : ℕ}
+private theorem signed_released_by_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) {R : ℕ}
     (hgap : ReleaseGapAt (S.params (Model.pubOf E) hn).toParams (S.release (Model.pubOf E)) R 0)
     {g : Time} {x : Fin (Fintype.card V)} {i : Nat} {a : FG.Att (Fintype.card V)}
     (hx : x ∈ honestKeysAt S rho ((simTraceAt S rho hn).time i))

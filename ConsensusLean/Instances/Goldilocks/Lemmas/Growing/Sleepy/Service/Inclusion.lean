@@ -59,7 +59,7 @@ private theorem ready_joined_at {ini}
 /-- **A ready reader's record extends a ready proposal** under growing faults: for a proposal `P`
 released at `τ` by a proposer ready at `τ` and honest through its hold, and `y` ready at
 `t ∈ [τ + 6Δ, b]`, the record of `y` after all events at `t`, or its `Σ.F`, extends `P`. -/
-theorem ready_record_extends_at {ini}
+private theorem ready_record_extends_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b)
     (hsync : SleepyServiceBefore tr H ΔF b) (hB : SleepyBoundsFrom tr H 0 b)

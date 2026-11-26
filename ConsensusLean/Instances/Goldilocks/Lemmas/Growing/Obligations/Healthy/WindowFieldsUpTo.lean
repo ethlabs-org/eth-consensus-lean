@@ -30,7 +30,7 @@ variable {hold : Time}
 
 /-- **Window fields from four honest anchors**: proposal cuts with the proposals, the proposer's
 acceptances, the post-store as the proposer's next state, and the chain. -/
-theorem finalWindow_fields_of_honest_anchors_at
+private theorem finalWindow_fields_of_honest_anchors_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {s : Fin 4 → Nat}
@@ -56,13 +56,13 @@ theorem finalWindow_fields_of_honest_anchors_at
   exact (hacc i).2.1
 
 /-- **`slots`**, for any offset function `off`. -/
-theorem window_slots_of_honest_anchors_at {ι : Type*} {start : Nat} {off : ι → Nat}
+private theorem window_slots_of_honest_anchors_at {ι : Type*} {start : Nat} {off : ι → Nat}
     {P : ι → AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : ∀ i, Healing.Growing.HonestProposalRun tr H proposer (start + off i) (P i)) :
     ∀ i, (P i).slot = start + off i := fun i => honestProposalRun_slot_at (hP i)
 
 /-- **`ordered`**: proposal cuts of blocks of strictly increasing slots strictly increase. -/
-theorem strictMono_cut_of_proposesAt_at
+private theorem strictMono_cut_of_proposesAt_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {cut : Fin 4 → Nat} {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
@@ -76,7 +76,7 @@ theorem strictMono_cut_of_proposesAt_at
 
 /-- **Window cut fields from four honest anchors**, with the cut times, `ordered`, `fresh` (from
 `hq`) and `bounded` (from `hD`). -/
-theorem finalWindow_cuts_of_honest_anchors_at
+private theorem finalWindow_cuts_of_honest_anchors_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {s : Fin 4 → Nat}

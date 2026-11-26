@@ -232,7 +232,8 @@ theorem votePublication_intro {source : Nat} {x : Fin (Fintype.card V)}
 
 /-- An actual publication by an origin honest at its event is held strictly before a qualifying
 node deadline of a recipient honest at its call. -/
-theorem publication_held_before_deadline_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+private theorem publication_held_before_deadline_at (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid)
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
     (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
     (hr : (publisherExecution S rho).actual r)
@@ -313,7 +314,8 @@ theorem acceptancePublication (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionVal
 
 /-- Acceptance service is measured at the processing cut, even when later restarts enlarge the
 observation deadline. The origin is honest at its publication, the recipient at its call. -/
-theorem publication_acceptedBy_syncUntil_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+private theorem publication_acceptedBy_syncUntil_at (hn : 1 ≤ Fintype.card V)
+    (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
     (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
@@ -352,7 +354,7 @@ theorem publication_acceptedBy_syncUntil_at (hn : 1 ≤ Fintype.card V) (hv : rh
 
 /-- The finite acceptance-relay field: an acceptance by a node honest at its cut is relayed to
 every recipient honest at its call, inside the blocks held while honest. -/
-theorem acceptance_relay_syncUntil_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+private theorem acceptance_relay_syncUntil_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn))
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
     {x : Fin (Fintype.card V)} {i : Nat}
@@ -388,7 +390,7 @@ theorem acceptance_relay_syncUntil_at (hn : 1 ≤ Fintype.card V) (hv : rho.Exec
 
 /-- A different recipient honest at its call processes a first-release vote envelope of a sender
 honest at its release before its processing-cut deadline. -/
-theorem vote_message_service_other_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+private theorem vote_message_service_other_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {b : Time} (hbh : b ≤ rho.horizon) (hnet : rho.log.SyncUntil rho.point b)
     {source : Nat} {x y : Fin (Fintype.card V)} {τ : Time} {m : AC.Vote (Fintype.card V)}
     {z : Nat} (hck : rho.verify (m.val, S.vote.voteRole m.slot, encodeVote m) z = true)

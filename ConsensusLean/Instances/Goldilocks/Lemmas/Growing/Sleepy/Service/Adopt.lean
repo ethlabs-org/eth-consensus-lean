@@ -81,7 +81,7 @@ theorem proposal_held_at_update_from {ini} (hrun : Growing.GoldilocksRun propose
 /-- **`P` is in the updater's frame, above its `Σ.F`**: `Σ.F ⪯ P`
 (`updater_F_anc_proposal_at`), so the acceptance relay brings `P`, accepted at `t_s` by its
 proposer honest then, to the updater (restarts at or before `t_s`) before `t_s + Δ`. -/
-theorem proposal_held_at_update_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+private theorem proposal_held_at_update_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
@@ -154,7 +154,8 @@ update's cut `d = t_s + 6Δ`: the slot-`s` voters still honest at `d` have one s
 which is `P`, in the pool and resolved before `t_s + 2Δ`; every other voter of the pool is a
 member of the slot-`s` committee `K s` compromised by `d`; and
 `|K s ∩ (H d)ᶜ| < |VotersAt s d|`. -/
-theorem proposal_majority_at_update_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+private theorem proposal_majority_at_update_at {ini}
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hb0 : 0 ≤ b) (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}
     {P : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
