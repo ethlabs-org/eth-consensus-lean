@@ -113,7 +113,7 @@ theorem att_released_inv_at (hv : rho.ExecutionValid)
 
 /-- An attestation held by a node at an engine tick is its own, signed in the group of an earlier
 public tick of the node. -/
-theorem held_signing_tick (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
+private theorem held_signing_tick (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) {a : FG.Att (Fintype.card V)}
     (ha : a ∈ (stateAt S rho hn v i).held) :
     a.val = rho.ownKey v ∧ ∃ j < i, ∃ t', rho.events[j]? = some (.tick v t') ∧
@@ -132,7 +132,7 @@ theorem held_signing_tick (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
   exact ⟨hval.trans (cut_self S rho hn hc), j, hji, t', he', hp', C, hc'⟩
 
 /-- An attestation held by a node at an engine tick is its own, signed at an earlier trace cut. -/
-theorem held_signAt_before (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
+private theorem held_signAt_before (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) {a : FG.Att (Fintype.card V)}
     (ha : a ∈ (stateAt S rho hn v i).held) :
     a.val = rho.ownKey v ∧
@@ -157,7 +157,7 @@ theorem released_att_cut_at (hv : rho.ExecutionValid)
 /-- An own admission of a tick is signed: a held attestation the tick flushes was signed at an
 earlier trace cut, and an attestation the tick's FG update signs and admits at once is the signing
 cut of the tick's own group. -/
-theorem admitsAt_signed (hv : rho.ExecutionValid) {j : Nat} {w : V} {t : Time}
+private theorem admitsAt_signed (hv : rho.ExecutionValid) {j : Nat} {w : V} {t : Time}
     (he : rho.events[j]? = some (.tick w t)) {a : FG.Att (Fintype.card V)}
     (ha : a ∈ admitsAt S rho hn w j) :
     (∃ q < cutMap S rho hn j, (simTrace S rho hn).SignAt a.val q a) ∨

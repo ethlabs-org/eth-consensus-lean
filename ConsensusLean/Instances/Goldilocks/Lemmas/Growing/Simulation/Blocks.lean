@@ -20,7 +20,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- A genuine block release originated in a proposer tick preceding its release cut. -/
-theorem released_block_cut_at (hv : rho.ExecutionValid)
+private theorem released_block_cut_at (hv : rho.ExecutionValid)
     {i : Nat} {v : V} {t : Time} (hs : rho.SendsAt v i t)
     {B : Blk (S.params (pubOf E) hn)} (hpar : B.parent ≠ none)
     (hroot : B.RootOk (digestOf S rho))

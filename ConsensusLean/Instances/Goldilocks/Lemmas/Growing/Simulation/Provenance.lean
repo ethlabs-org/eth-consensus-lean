@@ -20,7 +20,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 /-- A signed object in a view has an earlier genuine release when its signer is honest
 at the observation cut. `ViewIdx` includes recursive containment and survives restart. -/
-theorem signed_view_released_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
+private theorem signed_view_released_at (hv : rho.ExecutionValid) {v : V} {i : Nat}
     (hi : i ≤ rho.events.length) {o : (Model.protoOf (compiled (goldilocks S)) E).Object}
     (ho : o ∈ rho.ViewIdx v i) {y : Fin (Fintype.card V)}
     (hy : y ∈ honestKeysAt S rho (rho.cutTime i))

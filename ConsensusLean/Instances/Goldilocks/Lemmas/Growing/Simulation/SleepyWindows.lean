@@ -63,7 +63,7 @@ theorem goldilocks_slot_constancy : GoldilocksSlotConstancy (V := V) := by
 
 /-- The population clause at threshold at least one half supplies the shared FG
 quorum at each bounded time. Committee participation alone does not suffice. -/
-theorem _root_.Consensus.Goldilocks.Generic.RunMap.population_quorum_supply
+private theorem _root_.Consensus.Goldilocks.Generic.RunMap.population_quorum_supply
     {P : Params} {A : NodeAC P} {O : OutputSchema} {I : Type} [DecidableEq I] [Countable I]
     {F : ChainShapeFamily O I} {E : Env V} {rho : Model.Run (compiled F) E}
     {payload : A.Blk → Set Nat} (M : RunMap rho payload) (K : Contract ProgressReq)
@@ -260,7 +260,7 @@ variable {P : Params} {A : NodeAC P} {O : OutputSchema} {I : Type} [DecidableEq 
 /-- Transport both sleepy regime clauses through the run map's validator equivalence.
 The same point witnesses both windows; their look-aheads remain independent.
 Catch-up domination belongs to `ClaimDeadlineFit`, not to this head. -/
-theorem _root_.Consensus.Goldilocks.Generic.RunMap.sleepy_window_supply
+private theorem _root_.Consensus.Goldilocks.Generic.RunMap.sleepy_window_supply
     (K : Contract ProgressReq) {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold)
     (hθ : C.θ = K.params.θ) (h0 : 0 ≤ C.θ) (h1 : C.θ ≤ 1)
     (hlook : C.look = (Sys F V).aheadDur K ⟨E, rho⟩)
@@ -331,7 +331,8 @@ theorem _root_.Consensus.Goldilocks.Generic.RunMap.outagePolicy_point :
     M.outagePolicy.point = indexedRunPoint rho M.validator := by rfl
 
 /-- Outage participation transports to the run map's point and committee. -/
-theorem _root_.Consensus.Goldilocks.Generic.RunMap.outageTransport (K : Contract ProgressReq) :
+private theorem _root_.Consensus.Goldilocks.Generic.RunMap.outageTransport
+    (K : Contract ProgressReq) :
     OutageTransport M M.outagePolicy K where
   participation _ T b₀ b₁ h := by
     classical

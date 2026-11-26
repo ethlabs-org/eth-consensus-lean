@@ -17,7 +17,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- A genuine release of a canonical vote comes from a local emission before the end cut. -/
-theorem released_vote_cut_at (hv : rho.ExecutionValid)
+private theorem released_vote_cut_at (hv : rho.ExecutionValid)
     {i : Nat} {v : V} {t : Time} (hs : rho.SendsAt v i t) {m : Vote (Fintype.card V)}
     {z : Nat} (hb : voteObj m z ∈ rho.releasesAt i) :
     ∃ k < cutMap S rho hn (i + 1), (simTraceAt S rho hn).EmitAt (rho.ownKey v) k m := by

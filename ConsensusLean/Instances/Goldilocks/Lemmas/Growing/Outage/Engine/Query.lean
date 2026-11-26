@@ -75,7 +75,8 @@ theorem outage_pre_service_at (Q : OutageQueryAt S A V) :
       (le_min hb (hd.trans (Q.call_le_horizon hj))) hd hF
 
 /-- PSync from the outage's stop on the engine log. -/
-theorem outage_psync_at (Q : OutageQueryAt S A V) : Q.run.2.log.PSync Q.run.2.point Q.stop :=
+private theorem outage_psync_at
+    (Q : OutageQueryAt S A V) : Q.run.2.log.PSync Q.run.2.point Q.stop :=
   (Model.sysOf_delivers_iff _ _ _ _).mp Q.outage.net.2
 
 /-- Post-stop service on the query's canonical node trace. -/

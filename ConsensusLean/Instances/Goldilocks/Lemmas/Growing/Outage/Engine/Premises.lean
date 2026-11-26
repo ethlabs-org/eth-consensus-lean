@@ -34,7 +34,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **A restart of a node awake on `[a, z]`** and honest at `z`, at a time `≤ z`, is by `a + Δ`:
 the node ticks at the first public time from `a`, so the restart (its first call after a sleep)
 cannot be later. -/
-theorem restart_le_of_awake_at
+private theorem restart_le_of_awake_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {x : Fin sp.n}
     {a z : Time}
     (hx : x ∈ H z) (ha0 : 0 ≤ a) (haw : ∀ u, a ≤ u → u ≤ z → tr.awake x u) {k : Nat}

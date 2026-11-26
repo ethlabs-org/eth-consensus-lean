@@ -169,7 +169,7 @@ private theorem outage_retained_count {H : Time → Set (Fin sp.n)} {p : EnvPoin
 selection at `t_s` has fewer members faulty at `d` than members honest at `d` and awake and
 joined at `t_s + δ`, for every shift `δ ∈ [0, η]` and every `d ∈ [t_s + δ, t_s + δ + 5Δ]`
 within `b`, from antitone honesty and a joining law. -/
-theorem outage_committee_count {A : NodeAC sp.toParams} {tr : RunTrace A}
+private theorem outage_committee_count {A : NodeAC sp.toParams} {tr : RunTrace A}
     {H : Time → Set (Fin sp.n)} (hanti : Antitone H)
     {p : EnvPoint (Fin sp.n)} (hb : RunPointBinding tr H p)
     {cm : Time → Finset (Fin sp.n)} {η c : Time} (hη0 : 0 < η)
