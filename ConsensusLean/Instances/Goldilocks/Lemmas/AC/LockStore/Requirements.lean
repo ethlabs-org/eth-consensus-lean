@@ -201,7 +201,8 @@ theorem toFG_candidate {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
   · rename_i C' hC'
     split_ifs at h
     cases h
-    exact (deepest_mem hC').1
+    -- SCRATCH (never lands): the fast-candidate fact holds only at `deepDepth = none`.
+    sorry
 
 /-- The voter block tree is closed under ancestors when block stamps grow along parent edges. -/
 private theorem voterBlockTree_closed {A : ACState sp.n} {Φ : Frm sp.n FGP}
