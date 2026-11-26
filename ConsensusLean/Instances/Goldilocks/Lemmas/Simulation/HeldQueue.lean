@@ -204,7 +204,8 @@ theorem poll_ticked (st : State sp ro binding) t : (poll st t release).1.ticked 
   unfold poll; simp only; split <;> split <;> simp [fgUpdate_ticked]
 
 /-- Processing attestations by the own `on_attestation` changes only the pool of the FG store. -/
-theorem foldl_onAttestation (l : List (FG.Att sp.n)) (n : NodeState (goldilocksNode sp ro)) :
+private theorem foldl_onAttestation (l : List (FG.Att sp.n))
+    (n : NodeState (goldilocksNode sp ro)) :
     ∃ atts, l.foldl (fun n a => (Node.onAttestation n a).1) n =
       { n with fg := { n.fg with atts := atts } } := by
   induction l generalizing n with
@@ -342,7 +343,7 @@ theorem pollBatch_held (st : State sp ro binding) t : (pollBatch st t release).1
 
 /-- **The flush.** At a time the schedule allows, the batch poll empties the held queue and
 releases every held attestation, oldest first, at the end of its batch. -/
-theorem pollBatch_flush (st : State sp ro binding) t (hr : release st.self st.now = true)
+private theorem pollBatch_flush (st : State sp ro binding) t (hr : release st.self st.now = true)
     (hk : st.ticked = true) :
     (pollBatch st t release).1.held = [] ∧
       ∃ pre, (pollBatch st t release).2 = pre ++ st.held.map fun a => (.att (encodeAtt a), []) :=
@@ -397,7 +398,7 @@ theorem heldRefused_pollBatch_of_refused {st : State sp ro binding} (h : HeldRef
 
 /-- The FG update keeps `HeldRefused`: it holds its attestation only when the schedule refuses
 release at the node's time. -/
-theorem heldRefused_fgUpdate {st : State sp ro binding} (h : HeldRefused release st) :
+private theorem heldRefused_fgUpdate {st : State sp ro binding} (h : HeldRefused release st) :
     HeldRefused release (fgUpdate st release) := by
   intro hne
   rw [fgUpdate_self, fgUpdate_now]
@@ -444,7 +445,7 @@ theorem pollBatch_of_held_nil (st : State sp ro binding) t (hh : st.held = []) :
   · rw [pollBatch_snd_flush, pollFlush_eq, hh, ite_self, List.map_nil, List.append_nil]
 
 /-- At the stock schedule a state with nothing held polls as the stock node. -/
-theorem pollBatch_stock (st : State sp ro binding) t (hh : st.held = []) : pollBatch st t =
+private theorem pollBatch_stock (st : State sp ro binding) t (hh : st.held = []) : pollBatch st t =
     ((poll st t).1, (poll st t).2.toList ++ (st.forwards.map fun p => (.forward p.1, p.2)) ++
       (st.voteForwards.map fun p => (.voteForward p.1 (encodeVote p.2.1), [p.2.2]))) :=
   pollBatch_of_held_nil st t hh

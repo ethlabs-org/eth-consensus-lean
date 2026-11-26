@@ -137,7 +137,7 @@ private theorem item_cast {s q : ChainShape (Model.pubOf E) O.Id I} (h : s = q)
   rfl
 
 /-- An object in the reader's view at an actual event was observed while the reader was honest. -/
-theorem observed_of_event_view (hv : rho.ExecutionValid)
+private theorem observed_of_event_view (hv : rho.ExecutionValid)
     {i : Nat} {ev : Model.Event V (Model.protoOf (compiled F) E).Object}
     {o : (Model.protoOf (compiled F) E).Object} (he : rho.events[i]? = some ev)
     (hview : o ∈ rho.ViewIdx ev.node (i + 1)) : o ∈ rho.Observed := by
