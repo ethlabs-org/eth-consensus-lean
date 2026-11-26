@@ -120,6 +120,20 @@ class StatusTests(unittest.TestCase):
                          [self.PREFIX + 'Obligations.protoFGDelay_pos'])
         self.assertEqual(ledger['historical_removed'], [])
 
+    def test_namespace_renames_keep_former_owners(self):
+        # The SA (Slow Arming) namespace became AC: a former owner keeps its row, and its prior audit
+        # evidence, under the AC name, and the SA name does not become historical.
+        historical = ('namespace Consensus.Goldilocks.SA\n'
+                      'theorem locksWF_state : True := by sorry\n')
+        evidence = status.PROVED_EVIDENCE + '065683b3.'
+        ledger = self.regenerate(['AC.locksWF_state'], set(), {}, lambda n: {}, historical=historical,
+                                 prior_rows=[{'name': self.PREFIX + 'AC.locksWF_state',
+                                              'status': 'lean-proved', 'evidence': evidence}],
+                                 document=True)
+        self.assertEqual([r['name'] for r in ledger['rows']], [self.PREFIX + 'AC.locksWF_state'])
+        self.assertEqual(ledger['rows'][0]['evidence'], evidence)
+        self.assertEqual(ledger['historical_removed'], [])
+
     def test_step3b_renames_keep_former_owners(self):
         # A historical owner among Concrete's field theorems keeps its row under its step-3b name.
         historical = ('namespace Consensus.Goldilocks.Obligations\n'

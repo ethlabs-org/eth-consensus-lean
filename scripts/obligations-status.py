@@ -123,11 +123,12 @@ def declarations(text):
 # Renames of declarations and of name components since the ledger's first audit. `Goldilocks.Refinement` was split
 # into `Goldilocks.AsChainShape`, `.Simulation`, `.Obligations` and the root `Consensus.Goldilocks`; the contract,
 # endpoint and family names were renamed, then the FG attestation lemmas, `rowDelay` (and its lemmas) to
-# `protoFGDelay`, `PSyncFGRowTransport` to `PSyncFGAttTransport`, and Concrete's field theorems and existential
-# endpoint (`accepted`, the step 3c root) after `MeetsObligations`. Historical source blobs still carry the old
-# names; `renamed` maps such a name to the one current declaration it became, so a former owner keeps its row
-# across the renames.
+# `protoFGDelay`, `PSyncFGRowTransport` to `PSyncFGAttTransport`, Concrete's field theorems and existential
+# endpoint (`accepted`, the step 3c root) after `MeetsObligations`, and the namespace `SA` (Slow Arming) to
+# `AC`. Historical source blobs still carry the old names; `renamed` maps such a name to the one current
+# declaration it became, so a former owner keeps its row across the renames.
 RENAMED_COMPONENTS = {
+    'SA': 'AC',
     'AcceptanceAssumptions': 'ContractAssumptions', 'AcceptanceCoefficients': 'ContractCoefficients',
     'acceptanceContract': 'goldilocksContract', 'acceptanceContract_params_eq': 'goldilocksContract_params_eq',
     'AcceptedEndpoint': 'MeetsObligations', 'accepted_endpoint': 'meets_obligations',
