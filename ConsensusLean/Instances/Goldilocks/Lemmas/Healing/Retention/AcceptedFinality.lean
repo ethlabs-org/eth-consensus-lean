@@ -1,17 +1,14 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Recovery
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
-import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 
 public section
 
-/-! # Goldilocks Healing: replay finality enters the cache (HR.5)
+/-! # Goldilocks Healing: replay finality enters the cache
 
-Successful acceptance puts the carrier's replay-finalized block below the actual cache under
-the FG fault bound. Reset timing and high height are unnecessary; `CacheAcceptanceAfterReset`
-is its Goldilocks projection, stated without them. -/
+Successful acceptance puts the carrier's replay-finalized block below the actual cache under the FG
+fault bound (`accepted_finality_cached`), with no reset, time or height bound. The growing G1.9 (b)
+(`Healing.Growing.cache_acceptance`) reads it on the static prefix of the run. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -41,25 +38,6 @@ theorem accepted_finality_cached {P : Params} {ACP : Type} {acp₀ : ACP}
     · exact accepted_replay_finalized_cached hr hf hy ha hX hXr hFX
   exact Goldilocks.Store.anc_of_U hr hy hout
     (Goldilocks.Store.cache_invariants _ _ _ _ hpost).1
-
-/-- **HR.5:** every honest acceptance caches its replay-finalized target. -/
-theorem cache_acceptance_after_reset : CacheAcceptanceAfterReset := by
-  intro sp ro proposer dg H tr K g ΔF hrun hh hnc y hy k B hB Fs hFs hroot
-  have hfg := Compose.fg_projection_from
-    (fun y _ => Compose.requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok
-    hrun.toLocalRun hnc
-  have hst : ∀ i, tr.projFG.store y i = (tr.state y i).fg :=
-    fun i => by simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hy i]
-  have hpost : tr.projFG.store y (k + 1) = (tr.post k).fg := by
-    rw [hst, tr.state_succ_of_call hB]
-  have hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
-    have hf := hh.2.2
-    have hn := sp.toParams.hn
-    change Hᶜ.ncard < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n
-    omega
-  have h := accepted_finality_cached hfg hf hy (Compose.projFG_callAt.mpr hB)
-    (hpost.symm ▸ hFs) (hpost.symm ▸ hroot)
-  simpa only [hpost] using h
 
 end Consensus.Goldilocks.Healing
 

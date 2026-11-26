@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Cache
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.AcceptedFinality
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements

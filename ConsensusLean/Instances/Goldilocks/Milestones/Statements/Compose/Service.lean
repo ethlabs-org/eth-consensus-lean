@@ -9,8 +9,8 @@ The milestone statements A1.6 (head extends the record) and A1.7 (inclusion) of
 `specs/goldilocks/tex/goldilocks-claims.tex` §"Available chain, after C1.1" are retired; the
 vocabulary the proofs of the obligations endpoint read stays: `RecordAt`, the block of a node's
 record `𝒜.latest_confirmed` before a cut when it is in the frame's tree. C1.2 (AC
-outcome service) is in `Statements/Healing/Outcome` (`OutcomeService`), C1.3 (finalizing coverage
-recurs) in `Statements/Healing/Recovery` (`FinalizingCoverage`).
+outcome service) and C1.3 (finalizing coverage recurs) are retired Lean statements; they stay
+paper claims.
 
 Statements only: no proofs here. -/
 

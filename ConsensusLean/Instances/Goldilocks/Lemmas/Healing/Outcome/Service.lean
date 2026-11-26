@@ -9,7 +9,7 @@ public section
 
 /-! # Goldilocks Healing: building blocks of C1.2, AC outcome service for honest entries
 
-Proved pieces toward C1.2 (`Compose.OutcomeService`, claims C1.2).
+Proved pieces toward claims C1.2 (its Lean statement is retired).
 C1.2 itself is not proved here.
 
 * **Entry attestations** (`EntryRows`): for a served entry `E = (h, T, u)`, by `t_u + 6Δ` either
@@ -20,11 +20,6 @@ C1.2 itself is not proved here.
   from signatures and reports (`row_target_of_sign`, `row_of_sign`, `sign_of_report`) and their
   finite forms through a horizon (`ResetPremisesUpTo.row_of_report`,
   `ResetPremisesUpTo.row_signers_of_reports`).
-* **The carriers**: acceptance relay reaches only the honest nodes whose `Σ.F` the carrier
-  extends; a carrier below a high origin is held or above every honest `Σ.F`
-  (`carrier_below_origin_before`), since HR.4 (R2) makes every honest `Σ.F` compatible with the
-  origin; a higher report above an honest ready proposal lies below a high origin
-  (`higher_report_window_origin_before`).
 -/
 
 namespace Consensus.Goldilocks.Healing

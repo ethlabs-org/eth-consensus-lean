@@ -55,28 +55,6 @@ provide the following applications. Do not read the old list as evidence that th
 | HR.1 `CutAndReset`, HR.3 `ResetExistence`, HR.4 `HeightScopedRetention` | `Goldilocks/Healing/TickRun.lean`: `healing_premises`, `reset_bundle`, `tickRun_cutAndReset`, `tickRun_resetExistence`, `tickRun_retention` | Reset `a_z = 16`, initial height `H_z = 3`, reset bound `1056` | One honest validator, no faults, GST `0`, no restart. |
 | HR.2 `PhaseCount` | `Goldilocks/Healing/Statements.lean`: idle phase; `Healing/PhaseCount.lean`: `phaseCount_premises`, `phaseCount_applies` | `phaseCount_b_witness`, `phaseCount_c_witness`: top-to-contest at fixed frontier `3`, nonempty counted set; `phaseCount_b_needs_fixed_frontier` rejects monotonicity across a frontier rise | FG-local trace, not a healthy node-run acquisition witness; `phaseCount_applies` takes the statement as a premise. |
 | H.3 bridge and HS.4 `CommonPathAcquisition` | `Goldilocks/Runs/OneValidator/Run.lean`: `tickRun_bridgeAt`; `Goldilocks/Healing/Settled.lean`: `settledIn_tickRun`, `acquisition_premises`, `acquisition_applies` | `acquisition_phase_changes`: the phase changes by the deadline `w + D_HS = 92` | HS.4's acquisition disjunct and client step are not exercised on this run. The bridge alone is not a non-vacuous test of all H.3 clauses or HS.1–HS.3. |
-| HR.5 cache acceptance | `Goldilocks/Healing/Recovery.lean`: `blk6_cache_premise`, `tickRun_cacheAcceptance` | Actual acceptance of `blk 6` at cut `194`, time `24`; `finalized_after_blk6` bounds the cache to `blk 4` or `blk 5` | No independent exact cache computation; held-block height bound is met with equality. |
-| O.1 `PatternRecovery`, C1.3 `FinalizingCoverage` | `Goldilocks/Healing/Recovery.lean`: `recovery_premises`; `tickRun_recovery` closes the statement parameters of `tickRun_patternRecovery` and `tickRun_finalizingCoverage` | `M* = 24`, `R* = 1092`, `T_rec = 1209`; a proposal in slots `273`–`299` is below later finality | `Rec`'s clean/records fields are not specialised to concrete cuts; the later cache is obtained by the theorem, not independently computed. |
-| C1.2 `OutcomeService` | `Goldilocks/Runs/TwoValidator/GoodWindow.lean`: `twoRun_goodWindow`, `twoRun_outcome`, run laws and Healthy discharged | Entry `E₃ = blk 21`; literal window `{32}`; carrier accepted by both nodes; target quorum has two rows | See the explicit branch inventory below. The symbolic infinite execution is not a finite `decide` fixture. |
-
-### C1.2 GoodWindow branch inventory
-
-`Runs/TwoValidator/GoodWindow.lean` establishes a real good window, not just satisfiable premises.
-Its stated limitations are:
-
-| Axis | Exercised | Not exercised by this witness |
-|---|---|---|
-| Previous-height bound | `bound = true` | Non-vacuous `bound = false`; its conjunct is vacuous here |
-| Outcome | Literal good window and application of the outcome disjunction | A separate concrete early-outcome execution |
-| Population | Two honest validators, zero faults | Nonzero faults under the same outcome premises |
-| Joining | Always awake, joined, no restart | Wake/rejoin delivery and ready-proposal joinedness |
-| Target rows | Already on the parent chain; fresh row `(v0, 4)` is included by the carrier | Target quorum depending on off-chain emitted/pooled rows |
-| Catch-up | GST `0`, so no pre-GST acceptance | Non-vacuous pre-GST `Catch(2Δ)` |
-| Window width | `k_F = 0`, one slot | Positive-width window with more than one candidate slot |
-
-These are gaps in this execution's branch coverage, not assertions of absence throughout the repository.
-For example, restart, faults and late delivery already occur in persistence and component tests above,
-but those tests do not discharge C1.2's joint premises.
 
 ## Candidate next scenarios
 

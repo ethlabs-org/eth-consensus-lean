@@ -6,8 +6,6 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Induction
 public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
-public import ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.SleepyGrowth.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.OptimisticInclusion.Main
@@ -163,28 +161,6 @@ theorem Consensus.Goldilocks.Healing.Growing.cacheAcceptance :
     Consensus.Goldilocks.Healing.Growing.CacheAcceptance :=
   Consensus.Goldilocks.Healing.Growing.cache_acceptance
 
-/-! Goldilocks Healing: C1.2, the AC outcome service (`Healing/Outcome`), and recovery (HR.5,
-node O.1, C1.3; `Healing/Recovery`). -/
-
-/-- Goldilocks Healing: `OutcomeService` (C1.2). -/
-theorem Consensus.Goldilocks.Compose.outcomeService : Consensus.Goldilocks.Compose.OutcomeService :=
-  Consensus.Goldilocks.Healing.Recovery.outcome_service
-
-/-- Goldilocks Healing: `CacheAcceptanceAfterReset` (HR.5). -/
-theorem Consensus.Goldilocks.Healing.cacheAcceptanceAfterReset :
-    Consensus.Goldilocks.Healing.CacheAcceptanceAfterReset :=
-  Consensus.Goldilocks.Healing.recovery_statements.cacheAcceptance
-
-/-- Goldilocks Healing: `PatternRecovery` (node O.1). -/
-theorem Consensus.Goldilocks.Healing.patternRecovery :
-    Consensus.Goldilocks.Healing.PatternRecovery :=
-  Consensus.Goldilocks.Healing.recovery_statements.patternRecovery
-
-/-- Goldilocks Healing: `FinalizingCoverage` (C1.3). -/
-theorem Consensus.Goldilocks.Healing.finalizingCoverage :
-    Consensus.Goldilocks.Healing.FinalizingCoverage :=
-  Consensus.Goldilocks.Healing.recovery_statements.finalizingCoverage
-
 /-! ## Axiom pins -/
 
 /-- info: 'Consensus.Goldilocks.FG.fGSafety' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -275,18 +251,6 @@ info: 'Consensus.Goldilocks.Regimes.Growing.optimisticInclusion' depends on axio
 info: 'Consensus.Goldilocks.Healing.Growing.cacheAcceptance' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Healing.Growing.cacheAcceptance
-
-/-- info: 'Consensus.Goldilocks.Compose.outcomeService' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Compose.outcomeService
-
-/-- info: 'Consensus.Goldilocks.Healing.cacheAcceptanceAfterReset' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.cacheAcceptanceAfterReset
-
-/-- info: 'Consensus.Goldilocks.Healing.patternRecovery' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.patternRecovery
-
-/-- info: 'Consensus.Goldilocks.Healing.finalizingCoverage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Healing.finalizingCoverage
 
 /-- info: 'Consensus.Goldilocks.goldilocks_continues' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.goldilocks_continues

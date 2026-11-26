@@ -47,7 +47,7 @@ overlap); `allow` lists the layers it may import, written out in full:
 | `Examples` (Shape examples, untrusted) | Init, ToMathlib, Core, Spec |
 | `Instances.Goldilocks.*` (one layer per component and level: `Spec.{Common,FG,Frame,Trace,FGStore,AC,GoldilocksAC,Node,Run}`; `Spec.AC` (the generic AC interface) and `Spec.GoldilocksAC` (the Goldilocks AC) are separate layers that share the directory `Spec/AC`, with explicit module prefixes, `AsChainShape`, `Statements.*`, `Lemmas.*`, `Proofs.<M>`, `Main`) | its row in `scripts/boundaries.toml`: no FG layer imports an AC layer and no AC layer an FG layer; `Statements.FG` reaches only the chain-level FG |
 | `Instances.Goldilocks.Lemmas.{Simulation,Obligations}` | its row above, including `Lemmas.Healing` for finite regime consumers and healing/final adapters; Healing cannot import either, and Simulation cannot import Obligations |
-| `Solution` | every generic layer and the closure of each finished instance milestone (today `Instances.Goldilocks.Proofs.FGSafety`, `Instances.Goldilocks.Proofs.ACBase`, `Instances.Goldilocks.Proofs.ACSteps`, `Instances.Goldilocks.Proofs.FGStore`, `Instances.Goldilocks.Proofs.ComposeAnyAC`, `Instances.Goldilocks.Proofs.Regimes`, `Instances.Goldilocks.Proofs.Growing.Obligations` and `Instances.Goldilocks.Proofs.Healing`, with `Instances.Goldilocks.Lemmas.Healing`) |
+| `Solution` | every generic layer and the closure of each finished instance milestone (today `Instances.Goldilocks.Proofs.FGSafety`, `Instances.Goldilocks.Proofs.ACBase`, `Instances.Goldilocks.Proofs.ACSteps`, `Instances.Goldilocks.Proofs.FGStore`, `Instances.Goldilocks.Proofs.ComposeAnyAC`, `Instances.Goldilocks.Proofs.Regimes` and `Instances.Goldilocks.Proofs.Growing.Obligations`, with `Instances.Goldilocks.Lemmas.Healing`) |
 | `Test` (`ConsensusLeanTest`) | everything above; library roots, import-only aggregates, `import all` |
 
 The checker fails on: a missing, unparsable or mistyped config (missing or unknown keys included); a
@@ -64,8 +64,7 @@ bodies; the solution and the tests are leaves, so their exposure costs no rebuil
 Lemmas, Proofs, ToMathlib or Main layer. Lean also exports the bodies of `abbrev`s and of instances of non-`Prop`
 classes without the attribute; the checker does not flag those (today `Trace.Agree` and `kv`). Its self-test (`scripts/fixtures/boundaries/cases.toml`, one case per
 failure kind) runs in check.sh step 2. Today's deviations from the matrix are reviewed
-`[[exception]]` entries, each with its reason; today one: Goldilocks
-`Lemmas.Healing.Recovery.Reports` and `Proofs.Healing.Main` import `Lemmas.Obligations.HealthyEffective`. An exception lets the modules under its `from` depend on the modules
+`[[exception]]` entries, each with its reason. An exception lets the modules under its `from` depend on the modules
 under its `to` (and so on what those reach), never the importers of the `from` modules; none starts in a
 trusted layer, and every `from` and `to` entry must be used.
 
@@ -133,7 +132,7 @@ The following paths are relative to `ConsensusLean/Instances/Goldilocks/Lemmas/`
 | `Common/`, `FG/`, `FGChain/`, `FGStore/` | `Common/Claims` states tree/digest facts; `FG/` and `FGChain/` handle chain safety and replay; `FGStore/` lifts them to node stores and effective phases. Consult the milestone's proof entry rather than importing a large hub for one helper. |
 | `AC/` | `Basic` and `Trace` provide trace vocabulary; `Steps/` handles node-call preservation and locks; `FrameClaims` records frame statements. `ACBase` and `ACSteps` proof entries assemble the respective milestones. |
 | `Compose/` | `Run/` relates the node to AC/FG projections; `Persist/` holds step lemmas of C1.1's induction; no module joins them into C1.1. `Service/{Record,Later}` and `Sleepy/{Served,Transport,Read}` separate service, transport and observable reads. Their parent modules only re-export interfaces. |
-| `Healing/` | `Assembly` packages run claims, `Service` packages phase service, `AC/Standalone` is the driven-AC endpoint, `Recovery/Assembly` packages HR.5/O.1/C1.3. `Retention/`, `Outcome/` and `Recovery/` supply preservation, outcome and finalization arguments; the corresponding milestone statements fix their contracts. |
+| `Healing/` | `Assembly` packages run claims, `Service` packages phase service, `AC/Standalone` is the driven-AC endpoint. `Retention/` and `Outcome/` supply preservation and outcome arguments; the corresponding milestone statements fix their contracts. |
 | `Simulation/` | `Interface` states the simulation bundle. `Core`/`Provenance` tie canonical objects and trace cuts to engine holdings; `Queue` follows pool/queue inventories; `Steps` identifies event-local node transitions; `Run` assembles run laws; `Release` follows the release path; `Transport` supplies read-side adapters. |
 | `Obligations/` | `ContractDefs` provides proof-side coefficient facts; `NonfinalSuppliers` holds the finite sleepy service; the confirmed, healthy preparation and outage queries are the growing endpoint's (`Growing/Obligations/Queries/Defs`). `HealthyEffective` develops operational update/selection and report coverage. `NetworkTransport` holds the finite services of the population-binding engine run. The growing endpoint (`Growing/Obligations`) assembles the obligations. |
 

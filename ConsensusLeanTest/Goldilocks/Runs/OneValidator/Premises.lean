@@ -1,6 +1,5 @@
 module
 public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.TickRun
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Recovery
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
@@ -13,7 +12,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 Non-vacuity of the healing premises: a
 `GoldilocksRun` meeting the HS shared premises, the reset and H.3 (c)'s bridge of the healing
-statements, and the pattern premises of node O.1 and C1.3 (`PatternPremises`). With
+statements. With
 one validator (`n = 1`, `f = 0`) this shows the premises **consistent**, not met with faults (a
 witness with a faulty validator, e.g. `n = 4`, `f = 1` silent, is a follow-up).
 
@@ -32,12 +31,9 @@ witness with a faulty validator, e.g. `n = 4`, `f = 1` silent, is a follow-up).
   `Sync` for every window, `Healthy(g)`, `Catch(κ)` and the HS shared premises hold on it; (a) a
   ready proposal at every slot `s ≥ 1` (`tickRun_readyProposal`) and `Prop⁺(G_p)` for `G_p ≥ 4Δ`
   (`tickRun_propPlus`).
-* **The pattern premises.** Here `tickRun_patternPremises` reduces `PatternPremises` to
-  `UPat(1, M)`, which `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Run` proves for this run
-  (`tickRun_upat`, over `Goldilocks/Runs/OneValidator/Chain` and
-  `Goldilocks/Runs/OneValidator/Ticks`), so the premises hold with no hypothesis left beyond the
-  parameter bounds: (a) `patternPremises_tickRun` (there). That module also proves the reset
-  (`tickRun_isReset`, `a_z = aZ g`) and H.3 (c)'s bridge (`tickRun_bridgeAt`) for this run. Caveat:
+* **The reset and the bridge.** `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Run` proves the
+  reset (`tickRun_isReset`, `a_z = aZ g`) and H.3 (c)'s bridge (`tickRun_bridgeAt`) for this run,
+  over `Goldilocks/Runs/OneValidator/Chain` and `Goldilocks/Runs/OneValidator/Ticks`. Caveat:
   `BridgeAt`'s `Geo` part holds vacuously here (`not_inSettledPhase`: the own block, accepted at
   `t_p` between `ac_proposal` and the vote, raises `h_max`, so no proposal and its votes lie in one
   settled phase); the witness does not exercise `Geo`. -/
@@ -638,27 +634,6 @@ theorem tickRun_hsShared (g : Time) :
   twoK s _ := by
     rw [AC.ncard_inter_full, AC.ncard_full, Set.compl_univ, Set.ncard_empty]
     simp
-
-/-- **Non-vacuity of node O.1's and C1.3's pattern premises, reduced to one fact of one run.**
-On the one-validator tick run, with `c_F = 2`, `k_F = 0` (so `c_F + k_F ≤ δ_t = 2`), `W = 1`,
-`G_p ≥ 4Δ` and any `M ≥ M*`: the HS shared premises, `Catch(2Δ)`, `Prop⁺(G_p)`, the window
-parameters and `W ≥ 1` hold outright; `UPat(1, M)` (a ready proposal at every slot `≥ 1`,
-`tickRun_readyProposal`, with C1.2's retained inclusion) is a hypothesis here. With `n = 1`
-and `f = 0` this shows the premises consistent, not met with faults. -/
-theorem tickRun_patternPremises (g Gp : Time) (M : Nat) (hGp : 4 ≤ Gp)
-    (hpat : Healing.UPat (tickRun N1 dg1) Set.univ (fun _ => v0) g 1 M 2 0)
-    (hM : Healing.Mstar sp1 1 Gp 2 0 ≤ M) :
-    Healing.PatternPremises (tickRun N1 dg1) Set.univ (AC.CommitteeDict.full sp1.n) (fun _ => v0)
-      dg1 g 1 Gp 1 M 2 0 where
-  shared := tickRun_hsShared g
-  catchPremise := tickRun_catch g _ (by decide)
-  prop := tickRun_propPlus g Gp hGp
-  cF_lower := by decide
-  cF_upper := by decide
-  timeout := le_rfl
-  one_le_W := le_rfl
-  pattern := hpat
-  long := hM
 
 end One
 

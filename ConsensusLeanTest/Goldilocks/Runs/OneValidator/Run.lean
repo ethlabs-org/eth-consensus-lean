@@ -3,10 +3,10 @@ public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Ticks
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
-/-! # The one-validator tick run: the reset, the bridge and the pattern
+/-! # The one-validator tick run: the reset and the bridge
 
-The remaining facts of the healing and pattern premises on the tick run of
-`Goldilocks/Runs/OneValidator/Premises`, proved outright, and the premises with no hypothesis left:
+The remaining facts of the healing premises on the tick run of
+`Goldilocks/Runs/OneValidator/Premises`, proved outright:
 
 * **The run** (`good_tick`, `label_cases`): before every tick the state is `Good`; the labelled cuts
   of every tick are listed. So the validator signs exactly `att s` at `t_s` (`signAt_iff`), accepts
@@ -21,10 +21,7 @@ The remaining facts of the healing and pattern premises on the tick run of
   the vote at `t_p`, raises the frontier `h_max` from `p − 1` to `p`. (`Geo` itself fails here for
   `p ≥ 4`: by `fgGood_frame`, the block of slot `p − 2` is a viable head of the proposer's frame and
   not of the voter's, and it is in the voter block tree.)
-* **The pattern** (`tickRun_upat`): every slot `s ≥ 1` has the ready proposal `blk s`, and the ready
-  proposal `blk (s + 2)` has the parent `blk (s + 1)`, which extends it.
-* `patternPremises_tickRun`: `PatternPremises` on the tick run, for `G_p ≥ 4Δ` and `M ≥ M*`.
-  With `n = 1` and `f = 0` this shows the premises consistent, not met with faults. -/
+With `n = 1` and `f = 0` this shows the premises consistent, not met with faults. -/
 
 namespace Consensus.Goldilocks.Witness.One
 
@@ -609,54 +606,6 @@ theorem tickRun_isReset (g : Time) : Healing.IsReset (tickRun N1 dg1) Set.univ g
     rw [show (8 * (4 * (zN g + 1)) + 5) / 8 = 4 * (zN g + 1) by omega]; push_cast; ring_nf; rfl
 
 theorem aZ_nonneg (g : Time) : 0 ≤ aZ g := by unfold aZ; positivity
-
-/-! ## The pattern -/
-
-/-- The ready proposal of slot `s ≥ 1` is the chain block of slot `s`. -/
-theorem readyProposal_blk (s : Nat) (hs : 1 ≤ s) :
-    ∃ k, Healing.ReadyProposal (tickRun N1 dg1) Set.univ (fun _ => v0) v0 k s (blk s) := by
-  obtain ⟨k, B, hR, -⟩ := tickRun_readyProposal s hs
-  obtain ⟨⟨acc, -, hl⟩, -⟩ := hR.2.2.2.1.1
-  obtain ⟨s', -, -, rfl, -⟩ := blockCall_eq hl
-  have : s' = s := by rw [← hR.2.2.2.2.1, blk_slot]
-  subst this
-  exact ⟨k, hR⟩
-
-/-- **`UPat(1, M)` holds on the tick run** for every `M` (with `c_F = 2`, `k_F = 0`): every slot
-`≥ 1` has a ready proposal, its chain block, and the chain block of two slots later is a ready
-proposal whose parent extends it. -/
-theorem tickRun_upat (g : Time) (M : Nat) :
-    Healing.UPat (tickRun N1 dg1) Set.univ (fun _ => v0) g 1 M 2 0 := by
-  intro τ hτ
-  have h0 : 0 ≤ τ := le_trans (le_max_right g 0) hτ
-  set v := sp1.slot τ + 1 with hv
-  have hlt : τ < sp1.ts (v : Int) := by
-    by_contra hc
-    have := (AC.ts_le_iff_le_slot sp1 h0 (v : Int)).1 (not_lt.1 hc)
-    omega
-  have hle : sp1.ts (sp1.slot τ : Int) ≤ τ := (AC.ts_le_iff_le_slot sp1 h0 _).2 le_rfl
-  refine ⟨v, hlt.le, ?_, fun s hs _ => ?_⟩
-  · have : sp1.ts (v : Int) = sp1.ts (sp1.slot τ : Int) + 4 := by
-      simp only [ACParams.ts, hv]; push_cast; ring
-    change sp1.ts (v : Int) ≤ τ + 4 * 1 * (((1 : Nat) : Int) + 1)
-    push_cast
-    linarith
-  · obtain ⟨k, hk⟩ := readyProposal_blk s (by omega)
-    obtain ⟨k2, hk2⟩ := readyProposal_blk (s + 2) (by omega)
-    refine ⟨k, blk s, hk, fun _ _ _ => ⟨v0, k2, blk (s + 2), ?_,
-      by rw [blk_slot], by rw [blk_slot], blk (s + 1), blk_parent_succ (s + 1),
-      anc_honest (by omega)⟩⟩
-    rw [blk_slot]; exact hk2
-
-/-! ## The pattern premises, met outright -/
-
-/-- **Non-vacuity of node O.1's and C1.3's pattern premises**, with `c_F = 2`, `k_F = 0`,
-`W = 1`, `G_p ≥ 4Δ` and any `M ≥ M*`. -/
-theorem patternPremises_tickRun (g Gp : Time) (M : Nat) (hGp : 4 ≤ Gp)
-    (hM : Healing.Mstar sp1 1 Gp 2 0 ≤ M) :
-    Healing.PatternPremises (tickRun N1 dg1) Set.univ (AC.CommitteeDict.full sp1.n) (fun _ => v0)
-      dg1 g 1 Gp 1 M 2 0 :=
-  tickRun_patternPremises g Gp M hGp (tickRun_upat g M) hM
 
 end Consensus.Goldilocks.Witness.One
 

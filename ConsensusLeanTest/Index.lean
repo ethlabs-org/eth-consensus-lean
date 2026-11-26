@@ -639,9 +639,6 @@ example := ``Consensus.Goldilocks.Compose.StoredFastLockAt
 /-! ## Goldilocks Service (a milestone PR appends here only) -/
 
 example := ``Consensus.Goldilocks.Compose.RecordAt
-example := ``Consensus.Goldilocks.Compose.RunEntry
-example := ``Consensus.Goldilocks.Compose.EarlyOutcome
-example := ``Consensus.Goldilocks.Compose.OutcomeService
 
 /-! ## Goldilocks Healing (a milestone PR appends here only) -/
 
@@ -704,26 +701,8 @@ example := ``Consensus.Goldilocks.Healing.CleanLockDrain
 example := ``Consensus.Goldilocks.Healing.CommonPathAcquisition
 example := ``Consensus.Goldilocks.Healing.frozen_tree_agreement_clean
 example := ``Consensus.Goldilocks.Healing.common_path_acquisition
-example := ``Consensus.Goldilocks.Healing.slotsCeil
-example := ``Consensus.Goldilocks.Healing.acqSlots
-example := ``Consensus.Goldilocks.Healing.L_old
-example := ``Consensus.Goldilocks.Healing.oldSlots
-example := ``Consensus.Goldilocks.Healing.Mstar
-example := ``Consensus.Goldilocks.Healing.Zreset
-example := ``Consensus.Goldilocks.Healing.T_rec
-example := ``Consensus.Goldilocks.Healing.Rstar
-example := ``Consensus.Goldilocks.Healing.Rec
-example := ``Consensus.Goldilocks.Healing.UPat
-example := ``Consensus.Goldilocks.Healing.PatternPremises
-example := ``Consensus.Goldilocks.Healing.PatternRecovery
-example := ``Consensus.Goldilocks.Healing.FinalizingCoverage
-example := ``Consensus.Goldilocks.Healing.CacheAcceptanceAfterReset
-example := ``Consensus.Goldilocks.Healing.cache_acceptance_after_reset
 example := ``Consensus.Goldilocks.Healing.Growing.CacheAcceptance
 example := ``Consensus.Goldilocks.Healing.Growing.cache_acceptance
-example := ``Consensus.Goldilocks.Healing.RecoveryStatements
-example := ``Consensus.Goldilocks.Healing.recovery_statements
-example := ``Consensus.Goldilocks.Healing.Recovery.outcome_service
 example := ``Consensus.Goldilocks.AC.HealthyBaseU
 
 /-! ## Goldilocks Regimes (a milestone PR appends here only) -/

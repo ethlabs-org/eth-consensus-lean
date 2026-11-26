@@ -875,27 +875,6 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
 about = "Goldilocks milestone"
 
 [[layer]]
-name = "Instances.Goldilocks.Proofs.Healing"
-prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.Healing"]
-sorry = true
-allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
-         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.GoldilocksAC",
-         "Instances.Goldilocks.Spec.Node",
-         "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.Milestones.Spec.Common",
-         "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
-         "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
-         "Instances.Goldilocks.Milestones.Spec.AC", "Instances.Goldilocks.Milestones.Spec.GoldilocksAC",
-         "Instances.Goldilocks.Milestones.Spec.Node", "Instances.Goldilocks.Milestones.Spec.Run",
-         "Instances.Goldilocks.Milestones.Statements.FG", "Instances.Goldilocks.Milestones.Statements.FGStore",
-         "Instances.Goldilocks.Milestones.Statements.AC", "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
-         "Instances.Goldilocks.Milestones.Statements.Compose", "Instances.Goldilocks.Lemmas.Common",
-         "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
-         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Frame",
-         "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Milestones.Spec.WriteModes"]
-about = "Goldilocks milestone"
-
-[[layer]]
 name = "Instances.Goldilocks.Proofs.Regimes"
 prefixes = ["ConsensusLean.Instances.Goldilocks.Proofs.Regimes"]
 sorry = true
@@ -1130,7 +1109,6 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Proofs.FGSafety", "Instances.Goldilocks.Proofs.FGStore",
          "Instances.Goldilocks.Proofs.ACBase", "Instances.Goldilocks.Proofs.ACSteps",
          "Instances.Goldilocks.Proofs.ComposeAnyAC",
-         "Instances.Goldilocks.Proofs.Healing",
          "Instances.Goldilocks.Proofs.Regimes",
          "Instances.Goldilocks.Milestones.Spec.WriteModes"]
 about = "composition of the Goldilocks milestones"
@@ -1169,7 +1147,6 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Proofs.FGSafety", "Instances.Goldilocks.Proofs.FGStore",
          "Instances.Goldilocks.Proofs.ACBase", "Instances.Goldilocks.Proofs.ACSteps",
          "Instances.Goldilocks.Proofs.ComposeAnyAC",
-         "Instances.Goldilocks.Proofs.Healing",
          "Instances.Goldilocks.Proofs.Regimes",
          "Instances.Goldilocks.Lemmas.Growing", "Instances.Goldilocks.Proofs.Growing.Obligations",
          "Instances.Goldilocks.Milestones.Spec.WriteModes",
@@ -1205,7 +1182,6 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Proofs.FGSafety", "Instances.Goldilocks.Proofs.FGStore",
          "Instances.Goldilocks.Proofs.ACBase", "Instances.Goldilocks.Proofs.ACSteps",
          "Instances.Goldilocks.Proofs.ComposeAnyAC",
-         "Instances.Goldilocks.Proofs.Healing",
          "Instances.Goldilocks.Proofs.Regimes",
          "Instances.Goldilocks.Main", "Instances.Goldilocks.Proofs.Growing.Obligations",
          "Instances.Goldilocks.Proofs.Growing.FGStore",
@@ -1271,14 +1247,12 @@ proved_milestone_modules = ["ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.
                             "ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main",
-                            "ConsensusLean.Instances.Goldilocks.Proofs.Healing.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.Growing.FGStore.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.Growing.Compose.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.Growing.SleepyGrowth.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.Growing.OptimisticInclusion.Main",
-                            "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.CacheAcceptance",
-                            "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Recovery.Reports"]
+                            "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.CacheAcceptance"]
 # Extra targets built by step 1 next to the default targets.
 extra_build_targets = ["ConsensusLeanTest", "Solution", "CheckFixtures", "CheckDeclsTest", "check-decls", "axiom-audit",
                        "spec-surface", "Challenge"]

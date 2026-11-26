@@ -113,7 +113,10 @@ healing statements H.1--H.4 and HR.1--HR.4 (Section~\ref{sec:healing-top})
 use the premises $\mathsf{Catch}$ and
 $\mathsf{Prop}$.  The recovery predicate $\mathsf{Rec}$, the
 pattern regime $\mathsf{UPat}$, node O.1 (recovery under that regime, not O.1's
-target), C1.3's statement, and HR.5 (G1.9 (b) after the reset) are fixed;
+target), C1.3's statement, and HR.5 (G1.9 (b) after the reset) are fixed as paper
+claims; their static Lean forms are retired, and G1.9 (b) is proved in Lean
+under growing faults as \texttt{Healing.Growing.CacheAcceptance}
+(\S\ref{sec:lean-status});
 post-GST recovery under weaker proposer premises is the open target O.1.
 The regime rows of the certified endpoint, with their premises and
 numbers, are in \S\ref{sec:obligations} and \S\ref{sec:certified-rows};
@@ -1016,14 +1019,16 @@ $\Sigma.F\prec\sigma[B].F$, $\sigma[B].F\preceq\Sigma.J$ after that call's
 justification step, and $\fname{has\_viable\_descendant}(\Sigma,\sigma[B].F)$
 after its $\hmax$ step, then $\sigma[B].F\preceq\Sigma.F$ afterwards.  (b) The
 run-level premises under which these conditions hold are stated after the reset
-and at heights above $H_z$ as HR.5 (cache acceptance after the reset); the
-Lean HR.5 (\texttt{Healing.CacheAcceptanceAfterReset}) proves its conclusion
-$\sigma[B].F\preceq\Sigma.F$ at every honest acceptance of a Goldilocks run
-under $\mathsf{Healthy}(g)$ and $\mathsf{NoColl}$, without the reset or the
-height bound (of $\mathsf{Healthy}(g)$ only the fault bound is used).  The tested block is $\sigma[B].F$, not an ancestor's:
+and at heights above $H_z$ as HR.5 (cache acceptance after the reset); in
+Lean, (b) is \texttt{Healing.Growing.CacheAcceptance}, which proves its
+conclusion $\sigma[B].F\preceq\Sigma.F$ at every acceptance by a node honest
+at its cut, in a Goldilocks run under growing faults from any starts, under
+$\mathsf{NoColl}$ and $3f\leq n-1$ for the faults counted at the cut, without
+the reset, the time bound or the height bound.  The tested block is $\sigma[B].F$, not an ancestor's:
 a finalization on an ancestor's chain that the caches refused is not re-read.}
-{G0.3, G0.4 (height)}{paper argument (not in this repository); (b): HR.5.}{M; (b)
-is HR.5 (in the Lean without the reset or the height bound).}
+{G0.3, G0.4 (height)}{paper argument (not in this repository); (b):
+\texttt{Healing.Growing.CacheAcceptance}.}{M; (b) is proved in Lean under
+growing faults, without the reset or the height bound.}
 
 \dagnode{G1.10}{Quorum-free entries (the cut)}{An FG fact, parametric in
 its scope.  Let $\mathcal E$ be a set of blocks (the \emph{excluded entries}),
@@ -2044,8 +2049,8 @@ extends $F$ and wins the justification comparison or loses to a higher~$J$,
 which is comparable with $F^*$ through the honest witnesses on the HR.4 chain;
 a retained frontier block extends $F^*$ (G1.2) and is allowed, which gives the
 viable-descendant guard.}
-{M.  Proved in Lean (\texttt{cache\_acceptance\_after\_reset},
-\S\ref{sec:lean-status}); on paper conditional on HR.4 (R1)--(R4).  Falsification test: the
+{M.  Proved in Lean under growing faults as G1.9 (b)
+(\texttt{Healing.Growing.cache\_acceptance}, \S\ref{sec:lean-status}); on paper conditional on HR.4 (R1)--(R4).  Falsification test: the
 simulation runs and sweeps of node O.1: 210\,356, 21.5 million and
 19.5 million honest acceptances after $a_z$ with $\sigma[B].F$ of state height $\geq H_z+1$,
 no violation.}
@@ -2574,17 +2579,8 @@ $\mathsf{Rec}$), at each honest validator's first source of that entry its
 durable record holds no target, timeout or lock at~$h$ for another block;
 (c) (K2) of C1.1 holds for those confirmations, at every honest vote of a slot
 in $(s,m]$ for every $m>s$.  $\mathsf{Rec}(t_0)$ implies
-$\mathsf{Rec}(t_0')$ for $t_0'\geq t_0$.  The Lean (b),
-\texttt{Healing.Rec.records}, is not a literal transcription: it does not
-select an entry through the earliest honest source reaching~$h$.  It covers
-every entry~$E$ entered after~$t_0$ that is an ancestor entry, at any
-height~$h$, of the chain of a post-$t_0$ honest source~$C$ (the source's own
-state height need not be~$h$), at the reader's first source whose chain
-contains~$E$.  This covers the served entry here, whose sources all come
-after~$t_0$, and also entries at~$h$ whose earliest source is before~$t_0$
-on another branch.  That node O.1's assembly gives this broader form is a
-conditional paper argument
-(\texttt{docs/goldilocks-mapping.md}, O.1), not a Lean equivalence.
+$\mathsf{Rec}(t_0')$ for $t_0'\geq t_0$.  Its Lean form is retired with
+node O.1 (\S\ref{sec:lean-status}).
 
 \paragraph{The pattern regime} $\mathsf{UPat}(W,M)$ with $W,M\geq1$ (slots):
 for every time $\tau\geq\bar g$ there is a slot~$v$ with
@@ -2921,15 +2917,13 @@ G1.8 & \texttt{Store.Crossing}, \texttt{Store.Coverage} & proved
   (\texttt{fg\_store\_service}), conditional bounds as stated\\
 G1.9 (a) & \texttt{Store.CacheAcceptance} & proved
   (\texttt{fg\_store\_service})\\
-G1.9 (b) & see HR.5 & proved through HR.5 at every honest acceptance
-  (the reset and the high heights are not needed)\\
+G1.9 (b) & \texttt{Healing.Growing.CacheAcceptance} & proved
+  (\texttt{Healing.Growing.cache\_acceptance}) under growing faults at every
+  acceptance by a node honest at its cut (no reset, time or height bound)\\
 G1.10 & \texttt{Store.QuorumFreeEntries} & proved (\texttt{fg\_store\_trace}) under its
   premises; its composed scope at C1.1 (conclusion~(iii)) is not stated in Lean\\
-C1.2 & \texttt{Compose.OutcomeService} & proved
-  (\texttt{Healing.Recovery.outcome\_service}), note~3; without
-  $\mathsf{Prop}^+(G_p)$ and with $c_F$ only bounded below by the ceiling\\
-C1.3 & \texttt{Healing.FinalizingCoverage} & proved
-  (\texttt{recovery\_statements})\\
+C1.2 & --- & retired (owner decision): a paper claim, note~3\\
+C1.3 & --- & retired (owner decision): a paper claim\\
 HS.0 & \texttt{Healing.settle}, inside \texttt{Healing.ResetExistence} &
   specialization: proved at $\kappa=2\Delta$ with the original cut, note~4\\
 HS.1 & \texttt{Healing.ViableWitnessRetention} & proved
@@ -2957,10 +2951,8 @@ HR.1 & \texttt{Healing.CutAndReset} & proved (\texttt{cut\_and\_reset})\\
 HR.2 & \texttt{Healing.PhaseCount} & proved (\texttt{phase\_count})\\
 HR.3 & \texttt{Healing.ResetExistence} & proved (\texttt{reset\_existence}),
   at $\mathsf{Catch}(2\Delta)$\\
-HR.5 & \texttt{Healing.CacheAcceptanceAfterReset} & proved
-  (\texttt{cache\_acceptance\_after\_reset}); stronger than HR.5: at every
-  honest acceptance, without the reset, the time bound or the height
-  bound\\
+HR.5 & --- & retired (owner decision); its guarantee is G1.9 (b),
+  above\\
 H.3 & \texttt{Healing.NonInterference}, \texttt{Healing.BridgeAt} & proved
   (\texttt{non\_interference}; in the run bundle
   \texttt{healing\_run\_statements}): (a), (b) are
@@ -2977,9 +2969,7 @@ H.4 & \texttt{Healing.AvailableHealing}, \texttt{Healing.T\_heal} &
   \texttt{available\_healing\_all}) and the closed form of $T_{\mathrm{heal}}$
   is \texttt{T\_heal\_eq}; all of H.4 ((i) included) is a proved lemma,
   checked by \texttt{lake test} and the axiom audit, not by the comparator\\
-O.1 (node) & \texttt{Healing.PatternRecovery} & proved
-  (\texttt{recovery\_statements}); the record quantifier of (b) differs
-  (\S``O.1'')\\
+O.1 (node) & --- & retired (owner decision): a paper claim\\
 O.1 (target) & none & open research; not a premise of \texttt{MeetsObligations};
   the certified finality-liveness row does not need it\\
 R.1 & \texttt{Regimes.SleepySafe} & proved (\texttt{sleepy\_safe}), at
@@ -3038,16 +3028,9 @@ chains.  The node statement \texttt{Regimes.FinalAccountable} finds it on two
 held carrier chains, which need not be the finalized output prefixes (a
 finalizing attestation can come after the block it finalizes).  The restriction to
 the two finalized output chains is not transcribed.
-(3) C1.2 assumes the reset (\texttt{IsReset}); its existence and the
-retention are HR.3 and HR.4, separate results.  At an entry whose previous
-height is not justified it concludes an accepted justification of~$U$, not
-the actual successor entry, which needs the chain transition.  Retained
-ready inclusion is an honest proposal whose parent extends~$P$; the
-alternative parent on a retained justification chain needs the ancestry
-fact.  The proof is \texttt{Healing.Recovery.outcome\_service}; the actual
-successor entry and the finalization of~$U$ itself are derived from its two
-applications in C1.3's two-window step
-(\texttt{Healing.Recovery.two\_window\_finalization}).
+(3) C1.2, C1.3, node O.1 and HR.5 were proved in Lean (C1.2 under the
+reset, with \texttt{IsReset} a premise) and are retired by owner decision;
+HR.5's guarantee remains as G1.9 (b) under growing faults.
 (4) HS.0's general~$\kappa$ with the shifted cut
 $t_{\slot(g+\kappa)+3}$, and the $\bar g'$ shift of
 \S\ref{sec:healing-top}, are not transcribed: the Lean fixes $\kappa=2\Delta$
