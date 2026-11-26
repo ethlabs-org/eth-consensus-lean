@@ -235,43 +235,6 @@ theorem relayed_held
       omega
   rwa [hvs] at h
 
-/-- Relayed votes for an incompatible block occupy seats disjoint from the result's supporters.
-Only release deadlines through `t_s + 3Δ` are consumed. -/
-theorem relayed_against
-    {ini} (hr : Goldilocks.Growing.ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    {s : Nat} {b : Time} (hsvc : ServiceBefore H U b tr)
-    {X Y : Fin sp.n} {c : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
-    (hY : Y ∈ H (tr.time c)) (hc : tr.CallAt Y c ℓ)
-    (ht : tr.time c = sp.ts s + 6 * sp.Δ) (hb : sp.ts s + 3 * sp.Δ ≤ b)
-    (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s)
-    {D DY : Blk sp.n FGP} {S T : Set (Fin sp.n)}
-    (hS : ∀ u ∈ S, u ∉ equivocators {v | v ∈ (tr.state Y c).pool s} ∧
-      ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U DY R)
-    (hT : T ⊆ Relayed tr H U X s D) (hnc : ¬ Compatible U D DY) :
-    T.ncard + S.ncard ≤ (voters {v | v ∈ (tr.state Y c).pool s}).ncard := by
-  have held := fun {u} (hu : u ∈ Relayed tr H U X s D) =>
-    relayed_held_before hr hsvc hY hc ht hb hrs hu
-  have hU := hr.coherent
-  have hdisj : Disjoint T S := by
-    rw [Set.disjoint_left]
-    intro u hu hu'
-    obtain ⟨hne, v', hv', hv'u, R', hR', hR'r, hDR'⟩ := hS u hu'
-    obtain ⟨v, hvu, ⟨R, hR, hRr, hDR⟩, hv | heq⟩ := held (hT hu)
-    · obtain rfl : v = v' := by
-        by_contra h
-        exact hne ⟨v, hv, v', hv', h, hvu, hv'u⟩
-      obtain rfl : R = R' := hU.1 hR hR' (hRr.trans hR'r.symm)
-      exact hnc (anc_total hU hDR hDR')
-    · exact hne heq
-  rw [← Set.ncard_union_eq hdisj]
-  refine Set.ncard_le_ncard ?_
-  rintro u (hu | hu)
-  · obtain ⟨v, rfl, _, hv | ⟨a, ha, _, _, _, hav, _⟩⟩ := held (hT hu)
-    · exact ⟨v, hv, rfl⟩
-    · exact ⟨a, ha, hav⟩
-  · obtain ⟨_, v, hv, rfl, _⟩ := hS u hu
-    exact ⟨v, hv, rfl⟩
-
 end Consensus.Goldilocks.AC.Growing
 
 end

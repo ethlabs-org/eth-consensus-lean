@@ -26,18 +26,6 @@ variable (sp : ACParams)
 
 section Stock
 
-/-- **CS2 at the full committee from the stock fault bound**: `f < h ≤ n − f` gives `2f < n`,
-which is CS2 at `K = full` with `committeeSize = n` (the stock callers' `hf1`). -/
-theorem cs2_full_of_faultBound {FGP : Type} {ro : ReplayOrder sp FGP} {tr : GTrace sp FGP ro}
-    {H : Set (Fin sp.n)} {t : Time} (hc : sp.committeeSize = sp.n) (hfault : FaultBound tr H t)
-    {s : Nat} : 2 * ((CommitteeDict.full sp.n).committee s ∩ Hᶜ).ncard < sp.committeeSize :=
-  cs2_full hc (by
-    have hn : H.ncard + Hᶜ.ncard = sp.n := by
-      rw [Set.ncard_add_ncard_compl, Nat.card_eq_fintype_card, Fintype.card_fin]
-    have : honestAwakeJoined tr H t ≤ H.ncard := Set.ncard_le_ncard fun x hx => hx.1
-    unfold FaultBound at hfault
-    omega)
-
 /-- `next_transfer_of_carry` with the unlock given. -/
 theorem next_transfer_of_carryU
     {uL : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}

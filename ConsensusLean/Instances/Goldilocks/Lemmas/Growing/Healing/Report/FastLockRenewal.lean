@@ -30,43 +30,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
 variable {hold : Time}
 
-/-- The head of an honest vote extending a floor-viable block lies above the finalized tip of
-every honest observation of the window, whoever proposed the head. -/
-theorem FrameWindow.finalized_below_extending_head_at {lo hi : Time} {floor : Nat}
-    {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H lo hi floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
-    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : P ∈ (tr.state z c).fg.tree)
-    (hh : floor ≤ ((tr.state z c).fg.σ P.root).h)
-    (hJ : kindJ → Anc (tr.HonestBlocksAt H) J P)
-    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    (hjlo : lo ≤ tr.time j) (hjhi : tr.time j ≤ hi)
-    {x : Fin sp.n} {i : Nat} (hx : x ∈ H (tr.time i))
-    {e : AC.Em sp (List (FG.Att sp.n))} (hv : AC.VoteAt tr.projAC x i e)
-    (hf : (H (max (tr.time j) (tr.time i)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    (hext : AC.VoteExtends (tr.HonestBlocksAt H) e.msg P) :
-    ∀ B ∈ tr.HonestBlocksAt H, B.root = e.msg.head →
-      Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B := by
-  intro B hB hBr
-  obtain ⟨W, hWU, hWr, hPW⟩ := hext
-  have hU := Compose.Growing.honest_blocks_coherent hrun hnc
-  obtain rfl : B = W := hU.1 hB hWU (hBr.trans hWr.symm)
-  obtain ⟨ell, hc⟩ := hv
-  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg i))
-    (hnc.upTo (tr.time i))).localRun
-  rw [RunTrace.upTo_projAC] at hr
-  have hc' : AC.CastAt (tr.projAC.upTo (tr.time i)) x i ell e :=
-    AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
-  obtain ⟨⟨Hd, hHd, hHdr, -⟩, -⟩ := Compose.cast_head_fcRoot hr hrun.vstart hx hc'
-  have hfr := (hrun.cutLaw x i (.ac ell) (Compose.projAC_callAt.mp hc.1) hx).1
-  have hHdx : Hd ∈ (tr.state x i).fg.tree := by rw [hfr] at hHd; exact hHd.1
-  have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono (hrun.time_nonneg i)
-  have hHdU : Hd ∈ tr.HonestBlocksAt H :=
-    hsub ((AC.frameIn_of_callAt hr hx hc'.1).2 hHd)
-  obtain rfl : Hd = B := hU.1 hHdU hB (hHdr.trans hBr.symm)
-  exact hframe.finalized_below_descendant_at hrun hnc hy hx hz hf hjlo hjhi hP hh hJ hHdx hPW
-
 /-- A vote of the prefix through `d` by a node honest at `d` extends `B` in the prefix's honest
 blocks when it does in the run's. -/
 private theorem vote_extends_upTo
@@ -749,31 +712,6 @@ private theorem pre_core_at {K : AC.CommitteeDict sp.n}
   exact ⟨k, fast_update_of_unvetoed_at hyk hrun hnc hu hconf hPt hPg hPCf
     (no_veto_of_lock_roots_compatible_at hrun hnc hyk hu.1 hPt hlocks) (fastTest_of_anc hPDf hDf)⟩
 
-
-/-- **Fresh fast locks at every slot of a pre-reset frame window.** For a warm honest proposal
-`P` of slot `u` in a frame window that lasts through the update of slot `N + 1`, every node
-honest at the update of a slot `r ∈ [u, N]` (at `t_r + 6Δ`) passes there the fast test of a block
-extending `P`, unvetoed by its live locks: the update writes a fast lock of slot `r` on it. The
-proposers of the slots after `u` need not be honest. At the slot committees `K` of a run from
-`K`'s committee start. -/
-theorem fast_lock_renewal_pre_at {K : AC.CommitteeDict sp.n}
-    {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop}
-    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts (N + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
-    (hmb : sp.ts (N + 1 : Nat) + 2 * sp.Δ ≤ b)
-    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
-    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ r, u ≤ r → r ≤ N → ∀ y, y ∈ H (sp.ts r + 6 * sp.Δ) →
-      ∃ j D CV, AC.FastUpdateAt tr.projAC y j r D CV ∧ Anc (tr.HonestBlocksAt H) P D :=
-  (pre_core_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm hmb hz hdes hP hPs hK).1
 
 /-- **The fast lock an update writes.** At an update whose result is `C` and whose deepest
 unvetoed fast block of the path is `D`, the update stores a fast lock of its slot on the viable

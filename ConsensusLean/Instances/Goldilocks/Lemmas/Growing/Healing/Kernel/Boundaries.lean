@@ -11,10 +11,10 @@ public section
 
 /-! # The growing drain kernel's steps
 
-The frame window and the warm proposals, each forwarded to its proof
-(`exists_frameWindow_seq_of_service_proof_at` in `Kernel/FrameWindow`, and the `KernelProof`
-form in `Kernel/DrainWarm`), and the finite reset record they give with the reset bound
-`exists_reset_of_drain_rounds_awake_at` of `Kernel/ResetRounds`. The finite reset lower bound is
+The warm proposals, forwarded to their proof (the `KernelProof` form in `Kernel/DrainWarm`); the
+frame window is `exists_frameWindow_seq_of_service_proof_at` in `Kernel/FrameWindow`. Together they
+give the finite reset record with the reset bound `exists_reset_of_drain_rounds_awake_at` of
+`Kernel/ResetRounds`. The finite reset lower bound is
 proved in `Kernel/ResetSource`. No deadline is lengthened here.
 -/
 
@@ -26,28 +26,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 variable {hold : Time}
-
-/-- Step 2: per-cut range and relay service produce a frame window for the warm/rise steps. -/
-theorem exists_frameWindow_seq_of_service_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
-    (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    (hsvc : ResetService tr H g ΔF b hold) (hcatch : CatchRun tr H g κ)
-    {lo lam T : Time} {hz : Nat} (len : Nat → Time)
-    (hlen : ∀ v, 0 ≤ len v) (hlam : 0 ≤ lam) (hlo : gbar g + κ ≤ lo) (hTb : T ≤ b)
-    (hrange : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i < T →
-      hz ≤ (tr.state y i).fg.hmax ∧ (tr.state y i).fg.hmax ≤ hz + 1)
-    (hcall : ∀ z i m, z ∈ H (tr.time m) → lo ≤ tr.time i →
-      tr.time i + lam ≤ tr.time m → tr.time m < T →
-      ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
-    (hT : lo + ∑ j ∈ Finset.range 5, (len (2 * hz + j) + lam) < T) :
-    ∃ v, 2 * hz ≤ v ∧ v ≤ 2 * hz + 4 ∧ ∃ a, lo + lam ≤ a ∧
-      a + len v ≤ lo + ∑ j ∈ Finset.range (v - 2 * hz + 1), (len (2 * hz + j) + lam) ∧
-      (∀ y i, y ∈ H (tr.time i) → a ≤ tr.time i → tr.time i ≤ a + len v →
-        frameKey' (tr.state y i).fg = v) ∧
-      ∃ floor kindJ J, FrameWindow tr H a (a + len v) floor kindJ J := by
-  exact exists_frameWindow_seq_of_service_proof_at hrun hnc hf hsvc hcatch len hlen hlam hlo
-    hTb hrange hcall hT
 
 /-- Step 3: service gives warm proposals without any reset lower-bound premise. -/
 theorem drainOutputs_of_service_at

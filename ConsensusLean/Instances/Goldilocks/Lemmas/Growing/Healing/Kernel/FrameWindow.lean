@@ -77,9 +77,9 @@ theorem FrameWindow.of_generic {lo hi : Time} {floor : Nat} {kindJ : Prop}
     FrameWindow tr H lo hi floor kindJ J :=
   ⟨h.floor_eq, h.kind_iff, h.root_eq⟩
 
-/-- **Step 2 (proof of `exists_frameWindow_seq_of_service_at`)**: per-cut height range and relay
-calls produce a frame window, by the sequential pigeonhole over the cuts of nodes honest at them
-with the merged-key lag between independently honest observations. -/
+/-- **Step 2**: per-cut height range and relay calls produce a frame window, by the sequential
+pigeonhole over the cuts of nodes honest at them with the merged-key lag between independently
+honest observations. -/
 theorem exists_frameWindow_seq_of_service_proof_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
