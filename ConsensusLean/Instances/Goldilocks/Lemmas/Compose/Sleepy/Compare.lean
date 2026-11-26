@@ -13,6 +13,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Same
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.SideCount
 
 public section
 
@@ -306,9 +307,8 @@ theorem awake_participant_window_before {ini} (hrun : GoldilocksRun proposer dg 
           (by rw [AC.add_delta_add_delta]; exact AC.add_mul_delta_le (by norm_num))))
       omega
   rw [hes] at this
-  rcases this with h | ⟨a, ha, -, -, -, hav, -⟩
-  · exact ⟨e.msg, h, hval⟩
-  · exact ⟨a, ha, hav.trans hval⟩
+  rw [← hval]
+  exact AC.voter_of_backed this
 
 /-- Awake joined validators participate in a result whose update may be after `b`: the votes are
 due by `t_s + 2Δ ≤ b`, so only the early cutoff needs to be within the service horizon. -/
@@ -348,9 +348,8 @@ theorem awake_participant_early {ini} (hrun : GoldilocksRun proposer dg H tr ini
           (by rw [AC.add_delta_add_delta]; exact AC.add_mul_delta_le (by norm_num))))
       omega
   rw [hes] at this
-  rcases this with h | ⟨a, ha, -, -, -, hav, -⟩
-  · exact ⟨e.msg, h, hval⟩
-  · exact ⟨a, ha, hav.trans hval⟩
+  rw [← hval]
+  exact AC.voter_of_backed this
 
 /-- If every honest member of the slot-`s` committee is awake, joined and permitted to vote,
 windowed forwarding makes the faulty participants of the actual update pool fewer than half of

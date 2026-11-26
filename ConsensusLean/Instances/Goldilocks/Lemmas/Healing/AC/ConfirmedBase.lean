@@ -7,6 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HonestPool
 
 public section
 
@@ -66,17 +67,9 @@ theorem late_vote_pool_before {K : AC.CommitteeDict sp.n}
     rcases held_of_processAt hr hy hproc (by rw [hqs, hes]; omega) (by rw [hqs, hes]) with
       h | ⟨v, hv, w, hw, hne, hvval, hwval⟩
     · rwa [hes] at h
-    · exfalso
-      rw [hes] at hv hw
-      obtain ⟨iv, -, ev, hev, rfl⟩ := hS.run.honest.pool_vote y hy (q + 1) s _ hv (hvval ▸ hxH)
-      obtain ⟨iw, -, ew, hew, rfl⟩ := hS.run.honest.pool_vote y hy (q + 1) s _ hw (hwval ▸ hxH)
-      have hsv := state_pool_slot sp hr hS.run.vstart hy (q + 1) s _ hv
-      have hsw := state_pool_slot sp hr hS.run.vstart hy (q + 1) s _ hw
-      rw [hvval] at hev
-      rw [hwval] at hew
-      obtain ⟨-, rfl⟩ := one_vote_per_slotU sp FGP ro H U tr hr.toU _ hxH iv iw ev ew hev hew
-        (hsv.trans hsw.symm)
-      exact hne rfl
+    · rw [hes] at hv hw
+      exact absurd ⟨v, hv, w, hw, hne, hvval, hwval⟩
+        (honest_pool_not_equivocator hr.toU hS.run.vstart hS.run.honest hy (q + 1) s hxH)
   intro c hcj
   have hst := stamp_lt_of_held_of_run hr hS.run.vstart hy (a := q + 1) (b := c) (by omega)
     (w := e.msg) (by rw [hes]; exact hheld) (T := sp.ts s + 2 * sp.Δ)
@@ -282,17 +275,9 @@ theorem late_vote_poolU
     rcases held_of_processAtU hr hy hproc (by rw [hsl', hes]; omega) (by rw [hsl', hes]) with
       h | ⟨a, ha, b, hb, hab, hav, hbv⟩
     · rwa [hes] at h
-    · exfalso
-      rw [hes] at ha hb
-      obtain ⟨ja, -, ea, hva, rfl⟩ := hS.run.honest.pool_vote y hy (k' + 1) s _ ha (hav ▸ hxH)
-      obtain ⟨jb, -, eb, hvb, rfl⟩ := hS.run.honest.pool_vote y hy (k' + 1) s _ hb (hbv ▸ hxH)
-      have hsa := state_pool_slotU sp hr (fun _ => voteStart_initial _) hy (k' + 1) s _ ha
-      have hsb := state_pool_slotU sp hr (fun _ => voteStart_initial _) hy (k' + 1) s _ hb
-      rw [hav] at hva
-      rw [hbv] at hvb
-      obtain ⟨-, rfl⟩ := (one_vote_per_slotU sp) FGP ro H U tr hr _ hxH ja jb ea eb hva hvb
-        (hsa.trans hsb.symm)
-      exact hab rfl
+    · rw [hes] at ha hb
+      exact absurd ⟨a, ha, b, hb, hab, hav, hbv⟩ (honest_pool_not_equivocator hr
+        (fun _ => voteStart_initial _) hS.run.honest hy (k' + 1) s hxH)
   intro c hcj
   have hst := stamp_lt_of_heldU hS hy (a := k' + 1) (b := c) (by omega) (w := e.msg)
     (by rw [hes]; exact hheld) (T := sp.ts s + 2 * sp.Δ)
@@ -432,23 +417,6 @@ theorem resolutionTime_lt_of {A : ACState sp.n} {Φ : Frm sp.n FGP} (hΦ : Frame
   · exact max_lt h1 h2
 
 /-! ## Honest votes and comparison with `P` -/
-
-/-- An honest validator is not an equivocator in an honest node's pool of a slot, from any run
-and vote start (its votes in the pool are actual votes of the slot, one per slot). -/
-theorem honest_not_equivocator_pool_of_run
-    {uL : Nat → Set Lock} {ini} (hrun : ACRunU wm uL proposer tr H U ini)
-    {y : Fin sp.n} (hy : y ∈ H)
-    (c s : Nat) {u : Fin sp.n} (hu : u ∈ H) :
-    u ∉ equivocators {v | v ∈ (tr.state y c).pool s} := by
-  have hr := hrun.localRun
-  rintro ⟨a, ha, b, hb, hab, rfl, hbv⟩
-  obtain ⟨ja, -, ea, hva, rfl⟩ := hrun.honest.pool_vote y hy c s _ ha hu
-  obtain ⟨jb, -, eb, hvb, rfl⟩ := hrun.honest.pool_vote y hy c s _ hb (hbv ▸ hu)
-  rw [hbv] at hvb
-  obtain ⟨-, rfl⟩ := (one_vote_per_slotU sp) FGP ro H U tr hr _ hu ja jb ea eb hva hvb
-    ((state_pool_slotU sp hr hrun.vstart hy c s _ ha).trans
-      (state_pool_slotU sp hr hrun.vstart hy c s _ hb).symm)
-  exact hab rfl
 
 /-- **A majority of the votes of a set `M` meets `H`**: a set `T` inside a vote set `W ⊆ M` that
 contains every member of `M ∩ H`, with `|W| < 2|T|`, has a member of `H` once at most `|M ∩ H|`
@@ -596,7 +564,8 @@ theorem first_update_post_of_members
         resolutionTime A ℓ.frame v < ETime.of (sp.ts p + 2 * sp.Δ)}⟩ p P := by
       intro u hu
       obtain ⟨v, hv, hvu, hres⟩ := hheld u hu
-      refine ⟨honest_not_equivocator_pool_of_run hrun hy k p hu.2, v, ⟨hv, hres⟩, hvu, ?_,
+      refine ⟨honest_pool_not_equivocator hrun.localRun hrun.vstart hrun.honest hy k p hu.2,
+        v, ⟨hv, hres⟩, hvu, ?_,
         P, hPt, (hhead v hv (hvu ▸ hu.2)).symm, Relation.ReflTransGen.refl⟩
       exact_mod_cast state_pool_slotU sp hr hrun.vstart hy k p v hv
     exact Set.ncard_le_ncard hsub
