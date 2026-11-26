@@ -54,8 +54,7 @@ theorem runCommittee_ncard (hv : rho.ExecutionValid) (s : Nat) :
 
 /-- **The canonical trace is a run of the shared run interface** at the run committee, from
 execution validity and the contract's calendar bound. -/
-private theorem goldilocksRunInterface_run_at (A : ContractAssumptions S)
-    (hv : rho.ExecutionValid) :
+theorem goldilocksRunInterface_run_at (A : ContractAssumptions S) (hv : rho.ExecutionValid) :
     (Generic.goldilocksRunInterface (S.params (pubOf E) hn) (S.ro _)
       (S.sign (pubOf E)) A.signGap).Run (runCommittee S rho hn)
       (runProposer S rho hn) (digestOf S rho) (honestKeysAt S rho) (simTraceAt S rho hn) := by

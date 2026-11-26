@@ -260,7 +260,7 @@ variable {P : Params} {A : NodeAC P} {O : OutputSchema} {I : Type} [DecidableEq 
 /-- Transport both sleepy regime clauses through the run map's validator equivalence.
 The same point witnesses both windows; their look-aheads remain independent.
 Catch-up domination belongs to `ClaimDeadlineFit`, not to this head. -/
-private theorem _root_.Consensus.Goldilocks.Generic.RunMap.sleepy_window_supply
+theorem _root_.Consensus.Goldilocks.Generic.RunMap.sleepy_window_supply
     (K : Contract ProgressReq) {fgHold : Time} (C : ACCorrectLocal A M.signer fgHold)
     (hθ : C.θ = K.params.θ) (h0 : 0 ≤ C.θ) (h1 : C.θ ≤ 1)
     (hlook : C.look = (Sys F V).aheadDur K ⟨E, rho⟩)
