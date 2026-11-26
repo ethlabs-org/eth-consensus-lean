@@ -57,7 +57,7 @@ theorem final_latency_gap_at (Q : FinalQueryAt S A V) :
 /-- **Final-window extraction at a gap `c` and a forwarding delay `ΔF`** (route A), under growing
 faults. A window of four honest anchors at `start + [0, c, 2c, 3c]` (`W.gap = c`) after the query,
 the slack `t(cut 3) + Δ ≤ deadline`, its anchor run and its three anchor steps. -/
-theorem final_window_extract_of_gap_within_at
+private theorem final_window_extract_of_gap_within_at
     (Q : FinalQueryAt S A V)
     {c : Nat} (hc2 : 2 ≤ c)
     (h3c : 3 * c ≤ S.δt) (hpat : (finalWindow A).offsets = [0, c, 2 * c, 3 * c])

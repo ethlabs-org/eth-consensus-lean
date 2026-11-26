@@ -31,7 +31,7 @@ theorem sleepyOn_of_duration (p : EnvPoint V) {c d W a b : Time} (hcd : c ≤ d)
   fun t hat htb => half_ready_of_duration V _ hcd (h t hat htb)
 
 /-- The finite sleepy service through the query deadline. -/
-theorem sleepy_query_sync_at (Q : ConfirmedQueryAt S A V)
+private theorem sleepy_query_sync_at (Q : ConfirmedQueryAt S A V)
     (hsleepy : (Sys (goldilocks S) V).Sleepy
         (shapeProgress (goldilocks S) V).toExternal (K S A) Q.run) :
     Compose.Growing.SleepyServiceBefore Q.trace Q.keys Q.params.Δ Q.deadline :=
@@ -40,7 +40,7 @@ theorem sleepy_query_sync_at (Q : ConfirmedQueryAt S A V)
     (sleepy_raw_syncUntil S A V Q.run Q.valid hsleepy Q.deadline)
 
 /-- The two sleepy count shapes through the query deadline. -/
-theorem sleepy_query_bounds_at (Q : ConfirmedQueryAt S A V)
+private theorem sleepy_query_bounds_at (Q : ConfirmedQueryAt S A V)
     (hsleepy : (Sys (goldilocks S) V).Sleepy
         (shapeProgress (goldilocks S) V).toExternal (K S A) Q.run) :
     Compose.Growing.SleepyBoundsFrom Q.trace Q.keys 0 Q.deadline :=
@@ -82,7 +82,7 @@ theorem sleepy_query_producer_at (Q : ConfirmedQueryAt S A V) {ready : Time}
   exact ⟨⟨B, k, he, hacc, hr, ht ▸ W.fresh, hbound⟩, hmargin, by rw [hp, ht]; exact W.hold⟩
 
 /-- A confirmed proposal with its sleepy service inputs. -/
-theorem sleepy_serviced_proposal_supply_at (Q : ConfirmedQueryAt S A V)
+private theorem sleepy_serviced_proposal_supply_at (Q : ConfirmedQueryAt S A V)
     (hsleepy : (Sys (goldilocks S) V).Sleepy
         (shapeProgress (goldilocks S) V).toExternal (K S A) Q.run)
     (hprogress : (Sys (goldilocks S) V).prog

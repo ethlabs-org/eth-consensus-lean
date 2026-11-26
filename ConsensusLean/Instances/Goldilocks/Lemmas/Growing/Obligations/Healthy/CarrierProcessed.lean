@@ -34,7 +34,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 
 /-- One protocol-delay publication tail is held strictly before a ready read, under growing
 faults: the origin is honest at its event and the reader at its read time. -/
-theorem publication_held_ready_tail_at (hn : 1 ≤ Fintype.card V) {g : Time}
+private theorem publication_held_ready_tail_at (hn : 1 ≤ Fintype.card V) {g : Time}
     (hnet : rho.log.PSync rho.point g)
     (r : Publication (Model.protoOf (compiled (goldilocks S)) E))
     (hr : (publisherExecution S rho).actual r)
@@ -74,7 +74,7 @@ theorem publication_held_ready_tail_at (hn : 1 ≤ Fintype.card V) {g : Time}
 
 /-- A held forwarding wrapper of a signer honest at its stamp is processed before the holding
 bound (the cut-free form of `held_forward_blockCall_before_at`). -/
-theorem held_forward_blockCall_lt_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
+private theorem held_forward_blockCall_lt_at (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y x : Fin (Fintype.card V)} {o : Wire (Fintype.card V) S.vote} {t d D : Time}
     {p : Option (Wire (Fintype.card V) S.vote)}
     {B : Blk (S.params (Model.pubOf E) hn)}
