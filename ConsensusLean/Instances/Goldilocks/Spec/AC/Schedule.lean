@@ -16,14 +16,17 @@ hypothesis that the shared slot times are the AC's, and the public committee siz
 `committeeSize`, the denominator of the fixed vote thresholds (fast, optimistic, unlock). The
 spec's all-of-`V` committee is the specialization `committeeSize = n` (the default). The switch
 `optimistic`, one value for the whole protocol, says whether the optimistic confirmation runs;
-the spec's protocol runs it (the default). `R`, `K_W`, `δ_t`'s lower bound and the source delay
-are the FG's and the regimes' (goldilocks-spec §"Schedule"); no AC rule reads them. -/
+the spec's protocol runs it (the default). The switch `deepDepth`, one value for the whole
+protocol, says whether `ac_to_fg` falls back to deep sources and at which depth `D` (in slots);
+the spec's protocol reads fast locks only (`none`, the default). `R`, `K_W`, `δ_t`'s lower bound
+and the source delay are the FG's and the regimes' (goldilocks-spec §"Schedule"); no AC rule
+reads them. -/
 
 namespace Consensus.Goldilocks.AC
 
 /-- The AC's parameters: the shared parameters, whose slot times are `t_s = 4Δs`, the lock
-window `k ≥ 2`, the fast increment `c ≥ 2`, the public committee size and the optimistic
-switch. -/
+window `k ≥ 2`, the fast increment `c ≥ 2`, the public committee size, the optimistic switch
+and the deep-source depth. -/
 structure ACParams where
   /-- The shared parameters. -/
   toParams : Params
@@ -42,6 +45,10 @@ structure ACParams where
   committeeSize : Nat := toParams.n
   /-- Whether the optimistic confirmation runs, for the whole protocol; stock runs it. -/
   optimistic : Bool := true
+  /-- The deep-source depth `D` in slots, for the whole protocol: with `some D`, `ac_to_fg`
+  falls back to a deep candidate when it has no fast-lock candidate; stock (`none`) reads fast
+  locks only. -/
+  deepDepth : Option Nat := none
 
 namespace ACParams
 

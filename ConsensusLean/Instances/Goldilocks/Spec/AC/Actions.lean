@@ -32,8 +32,11 @@ goldilocks-spec.tex §"Node actions" (Figures "Goldilocks: the vote and the vote
   votes held (pool order) as the declared head votes and the resolved ones as the support list
   (the Lean form of the support bits).
 * `ac_to_fg`: for a joined node the deepest candidate (a block of the full
-  viable tree under a live fast lock of slot `slot(t) − 2` or later) when it is not at or below
-  `fg_reported` (in the tree), which it then records. -/
+  viable tree under a live fast lock of slot `slot(t) − 2` or later); when there is none and deep
+  sources are on (`deepDepth = some D`), the deepest deep candidate (a block of the full viable
+  tree at or below `ac_confirmed`, not genesis, that the node accepted by `t_{slot(t) − D}`). The
+  block is returned when it is not at or below `fg_reported` (in the tree), which it then
+  records. -/
 
 namespace Consensus.Goldilocks.AC
 
@@ -115,13 +118,32 @@ def toFGCandidates (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) : Set (Blk 
   {B | B ∈ Φ.viableTree Φ.tree ∧
     ∃ l ∈ liveLocks sp A.locks Φ t, l.block = B.root ∧ l.fast = true ∧ sp.slot t ≤ l.slot + 2}
 
+/-- The deep candidates of `ac_to_fg` at depth `D`: the blocks of the full viable tree at or below
+the confirmed tip `ac_confirmed`, other than genesis, whose stamp (the time the node accepted
+them, or its last restart) is at most `t_{slot(t) − D}`. -/
+def toFGDeepCandidates (D : Nat) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    Set (Blk sp.n FGP) :=
+  {B | B ∈ Φ.viableTree Φ.tree ∧ Φ.Anc B (acConfirmed sp A Φ t) ∧ B.root ≠ sp.genesisRoot ∧
+    A.blockStamp B.root ≤ ETime.of (sp.ts ((sp.slot t : Int) - D))}
+
+open Classical in
+/-- The block `ac_to_fg` considers: the deepest fast-lock candidate; with deep sources on
+(`deepDepth = some D`) and no fast-lock candidate, the deepest deep candidate. With
+`deepDepth = none` it is the deepest fast-lock candidate. -/
+noncomputable def fgSource (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+    Option (Blk sp.n FGP) :=
+  match sp.deepDepth with
+  | none => deepest Φ (toFGCandidates sp A Φ t)
+  | some D => (deepest Φ (toFGCandidates sp A Φ t)).orElse
+      fun _ => deepest Φ (toFGDeepCandidates sp D A Φ t)
+
 open Classical in
 /-- `ac_to_fg(𝒜, Φ, t)`: `fg_confirmed` (or `⊥`). -/
 noncomputable def acToFG (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     ACState sp.n × Option (Blk sp.n FGP) :=
   if ¬ joined sp A t then (A, none)
   else
-    match deepest Φ (toFGCandidates sp A Φ t) with
+    match fgSource sp A Φ t with
     | none => (A, none)
     | some C =>
       if AncR Φ C A.fgReported then (A, none)
