@@ -25,7 +25,7 @@ variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
 /-- **An honest node accepts its own block in the tick that makes it**, after the tick's two
 AC cuts, at the FG state before the tick, and its attestations are the proposal attestations of
 that state. -/
-theorem own_accept (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P).Requirements)
+private theorem own_accept (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P).Requirements)
     (hg₀ : (P.genesisBlock A.genesisPayload).RootOk dg)
     (h : Node.LocalRun proposer dg H sg tr ini) (hnc : NoCollRun dg tr)
     {y : Fin P.n} (hy : y ∈ H) {i : Nat}

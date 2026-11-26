@@ -16,7 +16,7 @@ variable {FGP : Type} {sp : ACParams} {Φ : Frm sp.n FGP} {t : Time} {j m : Nat}
   {B₀ : Blk sp.n FGP}
 
 /-- `live_locks` keeps the fast floor. -/
-theorem fastFloor_liveLocks {L : Set Lock} (hΦ : FrameOK Φ) (hB0 : B₀ ∈ Φ.tree)
+private theorem fastFloor_liveLocks {L : Set Lock} (hΦ : FrameOK Φ) (hB0 : B₀ ∈ Φ.tree)
     (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (h : ∃ l ∈ L, l.slot = j ∧ l.fast = true ∧ m ≤ l.expiry ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B) :
@@ -28,7 +28,7 @@ theorem fastFloor_liveLocks {L : Set Lock} (hΦ : FrameOK Φ) (hB0 : B₀ ∈ Φ
     (viableAncestor_anc hΦ hB).1, rfl, anc_viableAncestor_of_floor hΦ hB0 hva0 hB hB0B⟩
 
 /-- `add_locks` keeps the fast floor. -/
-theorem fastFloor_addLocks {L : Set Lock} {s : Nat} {N : Set (Nat × Bool × Nat)}
+private theorem fastFloor_addLocks {L : Set Lock} {s : Nat} {N : Set (Nat × Bool × Nat)}
     (hΦ : FrameOK Φ) (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀)
     (hk : sp.slot t ≤ m)
     (h : ∃ l ∈ L, l.slot = j ∧ l.fast = true ∧ m ≤ l.expiry ∧
@@ -40,7 +40,7 @@ theorem fastFloor_addLocks {L : Set Lock} {s : Nat} {N : Set (Nat × Bool × Nat
 
 /-- `unlock` against the slot-`s` votes of `V` keeps the fast floor when `s ≤ j` or the unlock
 target of `B₀` is `B₀`. -/
-theorem fastFloor_unlock {L : Set Lock} {s : Int} {V : View sp.n} (hΦ : FrameOK Φ)
+private theorem fastFloor_unlock {L : Set Lock} {s : Int} {V : View sp.n} (hΦ : FrameOK Φ)
     (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (hu : s ≤ j ∨ unlockTarget sp Φ V s B₀ = B₀)
     (h : ∃ l ∈ L, l.slot = j ∧ l.fast = true ∧ m ≤ l.expiry ∧
@@ -58,7 +58,7 @@ theorem fastFloor_unlock {L : Set Lock} {s : Int} {V : View sp.n} (hΦ : FrameOK
       hB0B⟩
 
 /-- The optimistic confirmation keeps the fast floor. -/
-theorem fastFloor_optimisticConfirmation {A : ACState sp.n} (hΦ : FrameOK Φ)
+private theorem fastFloor_optimisticConfirmation {A : ACState sp.n} (hΦ : FrameOK Φ)
     (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (h : ∃ l ∈ A.locks, l.slot = j ∧ l.fast = true ∧ m ≤ l.expiry ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B) :
@@ -71,7 +71,7 @@ theorem fastFloor_optimisticConfirmation {A : ACState sp.n} (hΦ : FrameOK Φ)
     exact fastFloor_addLocks hΦ hB0 hva0 hk h
 
 /-- The confirmation update keeps the fast floor. -/
-theorem fastFloor_updateConfirmation {A : ACState sp.n} {s : Nat} (hΦ : FrameOK Φ)
+private theorem fastFloor_updateConfirmation {A : ACState sp.n} {s : Nat} (hΦ : FrameOK Φ)
     (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (h : ∃ l ∈ A.locks, l.slot = j ∧ l.fast = true ∧ m ≤ l.expiry ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B) :
@@ -88,7 +88,7 @@ theorem fastFloor_updateConfirmation {A : ACState sp.n} {s : Nat} (hΦ : FrameOK
 
 /-- `try_vote` keeps the fast floor when `unlock` at the merged vote view of its input keeps
 `B₀`. -/
-theorem fastFloor_tryVote (self : Fin sp.n) {A : ACState sp.n} (hΦ : FrameOK Φ)
+private theorem fastFloor_tryVote (self : Fin sp.n) {A : ACState sp.n} (hΦ : FrameOK Φ)
     (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (hu : (sp.slot t : Int) - 1 ≤ j ∨
       unlockTarget sp Φ (mergedVoteView sp A Φ (sp.slot t)) ((sp.slot t : Int) - 1) B₀ = B₀)
@@ -109,7 +109,7 @@ theorem fastFloor_tryVote (self : Fin sp.n) {A : ACState sp.n} (hΦ : FrameOK Φ
        exact h)
 
 /-- `ac_on_tick` keeps the fast floor. -/
-theorem fastFloor_acOnTick (self : Fin sp.n) {A : ACState sp.n} (hΦ : FrameOK Φ)
+private theorem fastFloor_acOnTick (self : Fin sp.n) {A : ACState sp.n} (hΦ : FrameOK Φ)
     (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (hu : (sp.slot t : Int) - 1 ≤ j ∨
       unlockTarget sp Φ (mergedVoteView sp A Φ (sp.slot t)) ((sp.slot t : Int) - 1) B₀ = B₀)
@@ -128,7 +128,7 @@ theorem fastFloor_acOnTick (self : Fin sp.n) {A : ACState sp.n} (hΦ : FrameOK �
     | exact fastFloor_updateConfirmation hΦ hB0 hva0 hk hv
 
 /-- `ac_proposal` keeps the fast floor. -/
-theorem fastFloor_acProposal {A : ACState sp.n} (hΦ : FrameOK Φ) (hB0 : B₀ ∈ Φ.tree)
+private theorem fastFloor_acProposal {A : ACState sp.n} (hΦ : FrameOK Φ) (hB0 : B₀ ∈ Φ.tree)
     (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (hu : (sp.slot t : Int) - 1 ≤ j ∨ unlockTarget sp Φ
       (View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤))
@@ -145,7 +145,7 @@ theorem fastFloor_acProposal {A : ACState sp.n} (hΦ : FrameOK Φ) (hB0 : B₀ �
     | exact fastFloor_unlock hΦ hB0 hva0 hk hu h
 
 /-- **The fast floor lemma of an AC call**: `exists_step_locks_floor` with the fast bit kept. -/
-theorem exists_step_locks_fastFloor {ro : ReplayOrder sp FGP} (self : Fin sp.n)
+private theorem exists_step_locks_fastFloor {ro : ReplayOrder sp FGP} (self : Fin sp.n)
     {A : ACState sp.n} (c : (goldilocksAC sp FGP ro).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t)
     (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (hu : (sp.slot t : Int) - 1 ≤ j ∨
