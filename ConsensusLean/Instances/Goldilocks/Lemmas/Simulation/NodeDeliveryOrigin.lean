@@ -244,7 +244,7 @@ theorem msgCall_delivered {v : V} {i : Nat} {t : Time}
   exact ⟨by assumption, by assumption⟩
 
 /-- A delivery's FG block cut or AC block call comes from a part that decodes to that block. -/
-theorem blockLabel_delivered {v : V} {i : Nat} {t : Time}
+private theorem blockLabel_delivered {v : V} {i : Nat} {t : Time}
     {o : (Model.protoOf (compiled F) E).Object} (he : rho.events[i]? = some (.deliver v o t))
     {r : CutRec A} (hr : r ∈ eventCuts e rho i) {b : A.Blk}
     (hl : (∃ acc, r.label = .fg (.block b acc)) ∨ ∃ l, r.label = .ac l ∧ l.call = .block b) :

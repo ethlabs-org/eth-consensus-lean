@@ -142,7 +142,7 @@ theorem decodeForward_transport {hs hs' : List (Header Info × Nat)} :
 
 /-- A single delivered object can create a wrapper only through its actual canonical
 handler. This keeps the handler state needed to locate the cut in recursive processing. -/
-theorem processOne_forward_origin (proposer : Nat → Fin sp.n)
+private theorem processOne_forward_origin (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (io : VoteAuth sp.n binding)
     (hs : List (Header Info × Nat)) (st : State sp ro binding) (o : Wire sp.n binding)

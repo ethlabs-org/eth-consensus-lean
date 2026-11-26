@@ -829,7 +829,7 @@ private theorem deliver_quiet (L : e.OpLaws due) (rho : Model.Run (compiled F) E
     exact h
 
 /-- At every cut of a valid run a node's state is quiet unless its last event was a restart. -/
-theorem cut_quiet [DecidableEq V] (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
+private theorem cut_quiet [DecidableEq V] (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
     (hv : rho.ExecutionValid) (v : V) :
     ∀ i, LastRestart rho v i ∨ L.quietOf (stateAt e rho v i)
   | 0 => by

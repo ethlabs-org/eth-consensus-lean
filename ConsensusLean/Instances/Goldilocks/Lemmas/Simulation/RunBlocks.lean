@@ -62,7 +62,7 @@ end
 
 /-- The trace's state across a group block at `j0`: the handler's state, by the cut law's
 successors. -/
-theorem state_of_group
+private theorem state_of_group
     (proposer : Nat → Fin (S.params (pubOf E) hn).n)
     (dg : Digest (List (FG.Att (S.params (pubOf E) hn).n)) (Payload (S.params (pubOf E) hn).n))
     {y : Fin (S.params (pubOf E) hn).n} {j0 : Nat}
