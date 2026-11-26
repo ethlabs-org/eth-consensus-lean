@@ -64,7 +64,7 @@ theorem relFlush_eq (v : V) (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
 
 omit [DecidableEq V] in
 /-- Releasing the ordinary head alone gives `relHead`, from any runtime state. -/
-theorem release_head (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+private theorem release_head (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (ob : Option Body) :
     (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash (rho.ownKey v) nd
       (pollOrdinary S rho v (ob.map fun b => (b, [])))).2 = relHead S rho v ob := by
@@ -104,7 +104,7 @@ theorem dutyStep_poll_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (gold
 omit [DecidableEq V] in
 /-- A poll step with no forwards pending releases `relHead` of the head of `pollPre`'s outbox,
 then every held attestation it flushes. -/
-theorem dutyStep_poll_first (v : V)
+private theorem dutyStep_poll_first (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (k : Nat) (hsel : rho.ownKey v ∈ rho.sel .poll)
     (hempty : (shapeOf S hn nd).forwards = [])
@@ -123,7 +123,7 @@ theorem dutyStep_poll_first (v : V)
 omit [DecidableEq V] in
 /-- Exact poll release decomposition at the actual candidate prefix. The suffix is run on
 the state and holdings left by the ordinary head, not the pre-poll holdings. -/
-theorem dutyStep_poll_batch (v : V) (nd : Model.Node (Model.protoOf (compiled
+private theorem dutyStep_poll_batch (v : V) (nd : Model.Node (Model.protoOf (compiled
     (goldilocks S)) E))
     (k : Nat) (hsel : rho.ownKey v ∈ rho.sel .poll) :
     let P := (Model.protoOf (compiled (goldilocks S)) E)
@@ -360,7 +360,7 @@ omit [DecidableEq V] in
 /-- The tick's two trailing polls, after the tick step (the tick flag set): the first releases
 the head of the outbox after the FG update when it is due (`pollPre`), the pending forwards, then
 every held attestation it flushes; the second releases the second body and flushes nothing. -/
-theorem trailing_polls (v : V) (N4 : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+private theorem trailing_polls (v : V) (N4 : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (k : Nat) (hsel : rho.ownKey v ∈ rho.sel .poll)
     (hk4 : (shapeOf S hn N4).ticked = true) :
     let N5 := (rho.dutyStep v N4 (.poll k)).1

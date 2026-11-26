@@ -59,7 +59,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Encoding a successfully decoded vote recovers its wire representation.
 Kept for a downstream consumer. -/
-theorem encodeVote_of_decodeVote {n : Nat} {w : WireVote} {v : Vote n}
+private theorem encodeVote_of_decodeVote {n : Nat} {w : WireVote} {v : Vote n}
     (h : decodeVote n w = some v) : encodeVote v = w := by
   unfold decodeVote at h
   split at h
@@ -120,7 +120,8 @@ theorem eq_blockObj_of_decodeBlock {hs : List (Header Info × Nat)} {o : Wire sp
 
 /-- A presented vote object is the signed vote body it parses to, by the vote's own signer in its
 slot's vote role. -/
-theorem presented_eq_some {n : Nat} {o : Wire n binding} {k : Fin n} {r : ShapeRole binding.Kind}
+private theorem presented_eq_some {n : Nat} {o : Wire n binding} {k : Fin n}
+    {r : ShapeRole binding.Kind}
     {w : WireVote} {z : Nat} (h : presented (binding := binding) o = some ((k, r, w), z)) :
     ∃ v, decodeVote n w = some v ∧ k = v.val ∧ r = binding.voteRole v.slot ∧
       o = .mk (.signed k r) (.data (.vote w z)) [] := by
@@ -622,7 +623,7 @@ theorem recordOwn_keeps (st : State sp ro binding) (o : Wire sp.n binding) (hs :
   · exact ⟨Or.inl rfl, rfl⟩
 
 /-- `recordOwn` of a signed object keeps the relay queue. -/
-theorem recordOwn_relayBuf_signed (st : State sp ro binding) {k : Fin sp.n}
+private theorem recordOwn_relayBuf_signed (st : State sp ro binding) {k : Fin sp.n}
     {r : ShapeRole binding.Kind}
     {m : Model.Msg (Header Info) Body} {cs : List (Wire sp.n binding)} (hs : List
         (Header Info × Nat)) :
@@ -645,7 +646,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 omit [DecidableEq V] in
 /-- A property of Goldilocks states kept by the slot proposal, the node's tick and a poll step
 is kept by every duty of the compiled family. -/
-theorem act_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
+private theorem act_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hprop : ∀ st s, Q st → Q (propose st s).1)
     (hnt : ∀ st, Q st → Q { nodeTick st (S.sign (pubOf E)) with ticked := true })
     (hpoll : ∀ st t, Q st → Q (pollBatch st t (S.release (pubOf E))).1)
@@ -704,7 +705,7 @@ theorem stateAt_succ_tick {i : Nat} {v : V} {t : Time}
 omit [DecidableEq V] in
 /-- A property of Goldilocks states kept by the clock, every duty step and every `recordOwn`
 is kept by a tick. -/
-theorem tick_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
+private theorem tick_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
     (hclock : ∀ st t, Q st → Q { st with now := t, ticked := false })
     (hprop : ∀ st s, Q st → Q (propose st s).1)
     (hnt : ∀ st, Q st → Q { nodeTick st (S.sign (pubOf E)) with ticked := true })
@@ -719,7 +720,7 @@ theorem tick_preserves (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Pr
 
 /-- The relay queue after a delivery's `process` is in the closure of what the node has seen with
 the delivered object, if the queue before it was. -/
-theorem process_relay_seen {i : Nat} {v : V}
+private theorem process_relay_seen {i : Nat} {v : V}
     (o : (Model.protoOf (compiled (goldilocks S)) E).Object)
     (ih : ∀ x ∈ (stateAt S rho hn v i).relayBuf, x ∈ Model.closure (rho.stateBefore i v).seen) :
     ∀ x ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).relayBuf,
@@ -740,7 +741,7 @@ theorem process_relay_seen {i : Nat} {v : V}
 
 /-- **The relay queue is seen.** Every object queued for relay by node `v` is in the closure of
 what `v` has seen. -/
-theorem stateAt_relay_seen (v : V) : ∀ i, ∀ x ∈ (stateAt S rho hn v i).relayBuf,
+private theorem stateAt_relay_seen (v : V) : ∀ i, ∀ x ∈ (stateAt S rho hn v i).relayBuf,
     x ∈ Model.closure (rho.stateBefore i v).seen
   | 0 => by rw [stateAt_zero]; exact fun x hx => absurd hx List.not_mem_nil
   | i + 1 => by
@@ -876,7 +877,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 omit [DecidableEq V] in
 /-- The duties of a tick release only signed objects. -/
-theorem runDuties_signed (v : V) :
+private theorem runDuties_signed (v : V) :
     ∀ (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
       (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)),
       ∀ o ∈ (rho.runDuties v nd ds).2, ∃ k r m cs, o = Model.Obj.mk (.signed k r) m cs
@@ -895,7 +896,7 @@ theorem runDuties_signed (v : V) :
 
 omit [DecidableEq V] in
 /-- The duties of a tick append what they release to `seen`. -/
-theorem runDuties_seen (v : V) :
+private theorem runDuties_seen (v : V) :
     ∀ (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty)
       (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)),
       (rho.runDuties v nd ds).1.seen = nd.seen ++ (rho.runDuties v nd ds).2

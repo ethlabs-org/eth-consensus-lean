@@ -751,7 +751,7 @@ theorem engine_event_signing_history (_hv : rho.ExecutionValid) {v : V}
 /-- The event-boundary signing history (`engine_event_signing_history`) without its unused
 interface arguments: every engine signing before event `i` is an output of a client run on entry
 inputs. -/
-theorem engine_signing_history (v : V) (i : Nat) :
+private theorem engine_signing_history (v : V) (i : Nat) :
     ∃ inputs, FG.EntryInputs (S.params (pubOf E) hn).toParams.fg inputs ∧
       ∀ j q a, j < i → EngineSignsAt S rho hn v j q a →
         a ∈ (FG.Record.run (rho.ownKey v) FG.Record.empty inputs).2 := by

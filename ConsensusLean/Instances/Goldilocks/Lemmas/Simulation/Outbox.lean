@@ -260,7 +260,7 @@ theorem OneVote.atMost {t : Time} {σ : State sp ro binding} (h : OneVote t σ) 
   rcases h.2 with h | ⟨b, h, -⟩ <;> simp [h]
 
 /-- Processing one received object at clock `t ≥ 0` keeps `OneVote t`. -/
-theorem processOne_oneVote (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+private theorem processOne_oneVote (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) {t : Time} (ht : 0 ≤ t) (σ : State sp ro binding)
         (o : Wire sp.n binding)
     (hnow : σ.now = t) (h : OneVote t σ) : OneVote t (processOne σ.voteIO hs σ o) := by
@@ -389,7 +389,7 @@ theorem pollBatch_outbox {release : Fin sp.n → Time → Bool} (st : State sp r
   · exact (poll_outbox _ _).1
 
 /-- A batch poll's ordinary body is the head of `pollPre`'s outbox. -/
-theorem pollBatch_ordinary {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
+private theorem pollBatch_ordinary {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
     (t : Time) : (poll st t release).2 = (pollPre st release).outbox.head?.map fun b => (b, []) :=
   (poll_outbox _ _).2
 
@@ -455,7 +455,7 @@ theorem effRole_poll (t : Nat) (b : Body) :
 
 omit [DecidableEq V] in
 /-- A poll signs every non-vote body in the poll role. -/
-theorem poll_candidateRole_of_not_vote (t : Nat) {b : Body} (hb : ∀ w z, b ≠ .vote w z) :
+private theorem poll_candidateRole_of_not_vote (t : Nat) {b : Body} (hb : ∀ w z, b ≠ .vote w z) :
     (Model.protoOf (compiled (goldilocks S)) E).candidateRole (.poll t) (.data b) = .poll :=
   (effRole_poll S t b).trans (pollRole_of_not_vote _ _ hb)
 
@@ -816,7 +816,7 @@ theorem gossip_unsigned (k : Fin (Fintype.card V))
 
 omit [DecidableEq V] in
 /-- The gossip keeps the outbox: its candidates are unsigned. -/
-theorem gossip_outbox (k : Fin (Fintype.card V))
+private theorem gossip_outbox (k : Fin (Fintype.card V))
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time) :
     (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd
       (Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) nd.st t)).1).outbox =
@@ -845,7 +845,7 @@ theorem gossip_outbox (k : Fin (Fintype.card V))
 
 omit [DecidableEq V] in
 /-- The shape after the proposal duty: the proposal's, possibly with the own block recorded. -/
-theorem dutyStep_propose_shape (v : V)
+private theorem dutyStep_propose_shape (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)
     (hsel : rho.ownKey v ∈ rho.sel (.proposer s)) :
     shapeOf S hn (rho.dutyStep v nd (.propose s hs)).1 = (propose (shapeOf S hn nd) s).1 ∨
@@ -882,7 +882,7 @@ theorem dutyStep_propose_shape (v : V)
     · exact Or.inl hact1
 
 /-- Recording an own object queues at most the emissions of the own block's handler. -/
-theorem recordOwn_outbox (st : State sp ro binding) (o : Wire sp.n binding) (hs : List
+private theorem recordOwn_outbox (st : State sp ro binding) (o : Wire sp.n binding) (hs : List
     (Header Info × Nat)) :
     (recordOwn st o hs).outbox = st.outbox ∨ ∃ B,
       (recordOwn st o hs).outbox =
@@ -915,7 +915,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 omit [DecidableEq V] in
 /-- The AC does not vote on its tick at a slot start: it votes on its tick only at `t_s + Δ`. -/
-theorem slotStart_ne_tickVote (t : Time) (s : Nat)
+private theorem slotStart_ne_tickVote (t : Time) (s : Nat)
     (hts : t = (skeleton (pubOf E) S.vote).grid.slotTime s) :
     t ≠ (S.params (pubOf E) hn).ts ((S.params (pubOf E) hn).slot t) +
       (S.params (pubOf E) hn).Δ := by
@@ -1022,7 +1022,8 @@ theorem outbox_after_pre (v : V) (σ : State (S.params (pubOf E) hn) (S.ro _) S.
 omit [DecidableEq V] in
 /-- The outbox after an awake tick at `t ≥ 0` from a state with no FG update due and at most one
 body queued is empty. -/
-theorem outbox_after_tick (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
+private theorem outbox_after_tick (v : V)
+    (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (t : Time) (ht : 0 ≤ t) (hw : E.awake v t = true) (hf : (shapeOf S hn nd).fgDue = false)
     (hb : (shapeOf S hn nd).outbox.length ≤ 1) (hsel : rho.ownKey v ∈ rho.sel .poll) :
     (shapeOf S hn (rho.tick nd v t).1).outbox = [] := by
@@ -1290,7 +1291,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 omit [DecidableEq V] in
 /-- Unsigned gossip does not alter pending signed publications. -/
-theorem gossip_forwards (k : Fin (Fintype.card V))
+private theorem gossip_forwards (k : Fin (Fintype.card V))
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time) :
     (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd
       (Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) nd.st t)).1).forwards
@@ -1361,7 +1362,7 @@ theorem forwards_empty (hv : rho.ExecutionValid) (v : V) :
 
 omit [DecidableEq V] in
 /-- Unsigned gossip preserves the vote publication queue. -/
-theorem gossip_voteForwards (k : Fin (Fintype.card V))
+private theorem gossip_voteForwards (k : Fin (Fintype.card V))
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Time) :
     (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd
       (Model.gossipCandidates (Model.protoOf (compiled (goldilocks S)) E) nd.st
