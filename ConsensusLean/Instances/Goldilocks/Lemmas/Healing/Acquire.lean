@@ -174,8 +174,9 @@ theorem ready_protected (hrun : GoldilocksRun proposer dg H tr
 
 /-- **A ready proposal of the settled phase is allowed**
 (`AcquireSources.proposal_allowed` for the ready proposal). -/
-theorem ready_allowed (hrun : GoldilocksRun proposer dg H tr ini) (hs : HSShared tr H K dg g ΔF)
-    (hc : CatchRun tr H g (2 * sp.Δ)) (hset : SettledIn tr H g w i₀ m c) {p : Fin sp.n}
+private theorem ready_allowed (hrun : GoldilocksRun proposer dg H tr ini)
+    (hs : HSShared tr H K dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
+    (hset : SettledIn tr H g w i₀ m c) {p : Fin sp.n}
     {kP s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))} (hP : ReadyProposal tr H proposer p kP s P)
     (hws : w ≤ sp.ts s) (hon : PhaseOn tr.projFG H i₀ kP m c) :
     EffAllowed (tr.post kP).fg m c P :=
@@ -219,7 +220,7 @@ below the stored block `O` of a fast-lock write of `y` of a clean label `j`
 an honest slot-`s'` vote, before which every honest vote of a slot `> s + 1` extends `O`,
 `clean_fast_extends`) gives `C ⪯ O ⪯ P'`; `C ≠ P'` (`C` is held before `t_{s'}`), so `C` is below
 `P'`'s parent. -/
-theorem descendant_source_parent (hrun : GoldilocksRun proposer dg H tr
+private theorem descendant_source_parent (hrun : GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ))

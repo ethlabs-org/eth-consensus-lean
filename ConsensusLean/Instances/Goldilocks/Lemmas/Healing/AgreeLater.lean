@@ -108,7 +108,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **The later votes extend `P`** (HS.3 (b)): under `Γ` (without
 `Prop⁺`), when every honest vote of a slot `s` with `t_{s−1} ≥ w + 4Δ` is exactly `P`, every
 in-phase honest vote of a later slot extends `P`. -/
-theorem later_votes_extend (hrun : GoldilocksRun proposer dg H tr
+private theorem later_votes_extend (hrun : GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {s : Nat}
     (hs1 : 1 ≤ s) (hsw : w + 4 * sp.Δ ≤ sp.ts (s - 1 : Nat))
@@ -156,7 +156,7 @@ private theorem proposal_call_lt_own (hrun : GoldilocksRun proposer dg H tr ini)
 cut precedes its own block cut (`proposal_call_lt_own`), so it is in the phase, and every honest
 vote of a slot `≥ s` before it extends `P` (`later_votes_extend`); `proposal_head_of_batch`, with
 an honest slot-`s` vote as the witness. -/
-theorem later_parents_extend (hrun : GoldilocksRun proposer dg H tr
+private theorem later_parents_extend (hrun : GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {s : Nat}
     (hs1 : 1 ≤ s) (hsw : w + 4 * sp.Δ ≤ sp.ts (s - 1 : Nat))
@@ -192,7 +192,7 @@ theorem later_parents_extend (hrun : GoldilocksRun proposer dg H tr
     fun k₁ h₁ h₂ => hkP k₁ h₁ (h₂.trans hk''.le)
 
 /-- `t_s ≥ r` gives a clean previous label: `t_{s−1} ≥ t_a ≥ w + 4Δ`. -/
-theorem clean_pred_of_rTime {s : Nat} (hr : rTime sp w ≤ sp.ts s) :
+private theorem clean_pred_of_rTime {s : Nat} (hr : rTime sp w ≤ sp.ts s) :
     1 ≤ s ∧ w + 4 * sp.Δ ≤ sp.ts (s - 1 : Nat) := by
   have ha := slotA_spec sp w
   have h1 : ((slotA sp w + 2 * sp.k + 2 : Nat) : Int) ≤ s := (AC.ts_le_iff sp).1 hr
@@ -260,7 +260,7 @@ theorem proposal_start_cases
 /-- **The proposer's stored locks at its proposal are of labels `< s`**: a regular write of a
 label `≥ s` is at `t_s + 6Δ` or later, after the proposal; an optimistic one (of label `s`, at
 `t_s`) has an honest slot-`s` supporter, whose vote follows the proposal (`proposal_cut_lt`). -/
-theorem proposer_stored_lock_lt
+private theorem proposer_stored_lock_lt
     (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay) {l : AC.Lock}
     (hl : l ∈ (tr.projAC.state p iP).locks) : l.slot < s := by
   have hrun := hS.run

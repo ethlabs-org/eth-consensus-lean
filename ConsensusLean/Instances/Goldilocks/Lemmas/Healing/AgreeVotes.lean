@@ -91,7 +91,7 @@ premise); a lock of a label `≥ s` sits below a block of three quarters of the 
 pool of earlier votes (`lock_origin_readPoint`), which has an honest supporter (`3f < n`), of
 slot `s` (no earlier vote is of a later slot), so `P`; and `fc_root ⪯ P`
 (`proposal_frozen_viable`). -/
-theorem voter_anchor_below
+private theorem voter_anchor_below
     (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hlock : ∀ y ∈ H, ∀ k ℓ e, AC.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
       ∀ l ∈ AC.liveLocks sp (tr.state y k).ac.locks ℓ.frame (tr.time k), l.slot < s →
@@ -173,7 +173,7 @@ place of (a)'s start premise. `d.start` is the
 proposer's `fc_root` `R` (`voter_passes_proposer_root`) or a live lock block of the proposer,
 clean (HS.2 (3)), whose origin every later in-phase honest vote extends
 (`proposer_lock_extends`). -/
-theorem voter_reaches_start_clean
+private theorem voter_reaches_start_clean
     (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hr : rTime sp w ≤ sp.ts s) (_hdrain : CleanLockDrain)
     (hlock : ∀ y ∈ H, ∀ k ℓ e, AC.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
@@ -202,7 +202,7 @@ theorem voter_reaches_start_clean
 eligible child is `P` (`proposal_frozen_viable`, eligible as of the current slot;
 `proposal_only_child`), and its walk has no best child at `P`: a child of `P` would be of a slot
 above `s`, and the voter block tree of slot `s` has none (`voterBlockTree_slot_le`). -/
-theorem proposal_stop
+private theorem proposal_stop
     (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hcy : AC.CastAt tr.projAC y j ℓy e)
@@ -242,7 +242,7 @@ slot-`s` vote exactly `P`, every honest in-phase vote of a later slot extends `P
 honest in-phase proposal of a later slot has a parent extending `P` (the honest batch, `n − f >
 2f`, beats every conflicting child and releases every older conflicting lock, by induction on the
 slot and the cut; each later event bounded by its own `PhaseOn i₀`). -/
-theorem later_extend
+private theorem later_extend
     (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hr : rTime sp w ≤ sp.ts s) (_hdrain : CleanLockDrain)
     (hvotes : ∀ y ∈ H, ∀ k ℓ e, AC.CastAt tr.projAC y k ℓ e → e.msg.slot = s →
@@ -265,7 +265,7 @@ theorem later_extend
 (it cannot have an earlier-slot descendant): its viable head
 witness `W ⪰ P` in the voter block tree has no slot above `s` (`voterBlockTree_slot_le`), so it
 is `P`. -/
-theorem viableHead_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer dg H tr ini)
+private theorem viableHead_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hcy : AC.CastAt tr.projAC y j ℓ e)
     (hPs : P.slot = s) (hP : P ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame s)) :
@@ -290,7 +290,7 @@ theorem viableHead_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer d
 head there (`viableHead_of_viableTree`), and every ancestor of `P` is in the viable voter block
 tree (the same viable head witnesses it; the voter block tree is closed under ancestors) or at or
 below `fc_root`. -/
-theorem frozen_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer dg H tr ini)
+private theorem frozen_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hcy : AC.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s)
     (hPs : P.slot = s) (hP : P ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame s)) :
@@ -319,7 +319,7 @@ theorem frozen_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun proposer dg H 
 /-- **Every voter passes the path from `d.start` through `Q` to `P`**: its anchor `a` is below
 `P`; if `d.start ⪯ a`, then `a` itself is on the path (`a = P` or `a ⪯ Q`); otherwise it passes
 `d.start`. -/
-theorem voters_pass
+private theorem voters_pass
     (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ℓy : ACLabel (goldilocksNode sp ro)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hcy : AC.CastAt tr.projAC y j ℓy e)
@@ -358,7 +358,7 @@ through `Q` to `P`, by induction on the vote's cut: from the passed block `X` th
 follows the proposal walk to `Q` (`proposal_suffix`) and steps to `P`, where it stops
 (`proposal_stop`, `ghost_follow`); with its full fuel it has stopped (`ghost_stopped`), so it ends
 at `P`. -/
-theorem votes_eq_of_pass
+private theorem votes_eq_of_pass
     (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hpass : ∀ y ∈ H, ∀ j ℓy e, AC.CastAt tr.projAC y j ℓy e → e.msg.slot = s →
       (∀ x ∈ H, ∀ j' < j, ∀ e', AC.VoteAt tr.projAC x j' e' → e'.msg.slot = s →
@@ -406,7 +406,7 @@ theorem votes_eq_of_pass
 
 /-- **The per-vote conclusion of HS.3 (a)** from the votes: every honest slot-`s` vote is `P`,
 `P` is a viable head in the viable voter block tree, and its ancestors are retained. -/
-theorem vote_conclusion
+private theorem vote_conclusion
     (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hvotes : ∀ x ∈ H, ∀ j e, AC.VoteAt tr.projAC x j e → e.msg.slot = s →
       e.msg.head = P.root)
@@ -426,7 +426,7 @@ theorem vote_conclusion
 clause is (a)'s lock premise (the voters' cuts are in the phase from `i₀`, `phaseOn_voter`); the
 votes are `P` as in (a), with `voter_reaches_start_clean`; the later votes and parents are
 `later_extend`. -/
-theorem frozen_votes_clean
+private theorem frozen_votes_clean
     (hS : AgreeSetting K proposer dg H tr g ΔF w i₀ i m c p kP s P iP ℓp d pay)
     (hr : rTime sp w ≤ sp.ts s) (hdrain : CleanLockDrain) :
     (∀ y ∈ H, ∀ k ℓ e, AC.CastAt tr.projAC y k ℓ e → e.msg.slot = s →

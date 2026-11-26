@@ -112,8 +112,8 @@ private theorem rank_lt_of_ne (hr : FGLocalRun acp₀ H U tr) (hH : Hᶜ.ncard <
   lt_of_le_of_ne h₁ fun he => hne (PhaseCase.eq_of_rank he ht)
 
 /-- **HR.2 (c).** At most two phase changes per value of the frontier. -/
-theorem phase_changes_le_two (hr : FGLocalRun acp₀ H U tr) (hH : Hᶜ.ncard < 2 * P.fg.q - P.n)
-    (m : Nat) :
+private theorem phase_changes_le_two (hr : FGLocalRun acp₀ H U tr)
+    (hH : Hᶜ.ncard < 2 * P.fg.q - P.n) (m : Nat) :
     {i | ∃ c c', PhaseAt tr H i m c ∧ PhaseAt tr H (i + 1) m c' ∧ c ≠ c'}.encard ≤ 2 := by
   classical
   set S := {i | ∃ c c', PhaseAt tr H i m c ∧ PhaseAt tr H (i + 1) m c' ∧ c ≠ c'}

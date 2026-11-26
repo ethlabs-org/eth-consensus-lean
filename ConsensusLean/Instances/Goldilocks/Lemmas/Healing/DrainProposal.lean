@@ -427,7 +427,7 @@ vote of a clean slot `j` extend `B`, and let every honest vote of a slot `> j` b
 honest slot-`s` vote extend `B`. Then the honest slot-`s` proposal `P` extends `B`: its
 `ac_proposal` cut precedes the vote (`proposal_follows`), so `proposal_head_of_batch` applies at
 it. -/
-theorem proposal_extends_of_batch (hrun : GoldilocksRun proposer dg H tr
+private theorem proposal_extends_of_batch (hrun : GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {z : Fin sp.n}
@@ -458,7 +458,7 @@ extends `B` (`proposal_follows`): the counted votes and their heads reach the pr
 after `ḡ`, `Catch(2Δ)` before; `heldAtProposal_of_writer`), its locks of label `j` compare with
 `D` by TSQ (`fastLock_fastLock_compatible`), hence with `B`, those of label `j + 1` by the
 earlier votes (`proposer_high_locks`): `optimistic_first_proposal_anc`. -/
-theorem proposal_extends_of_optimistic (hrun : GoldilocksRun proposer dg H tr
+private theorem proposal_extends_of_optimistic (hrun : GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hs : HSShared tr H K dg g ΔF) (hc : CatchRun tr H g (2 * sp.Δ))
     (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n} (hx : x ∈ H) {i j : Nat}
