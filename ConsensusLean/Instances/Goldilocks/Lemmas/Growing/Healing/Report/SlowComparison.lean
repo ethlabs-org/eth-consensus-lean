@@ -6,6 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 import ConsensusLean.Lemmas.Tactic.Linarith
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.SideCount
 
 public section
 
@@ -158,28 +159,8 @@ private theorem against_update
         ∃ R ∈ tr.HonestBlocksAt H, R.root = v.head ∧ Anc (tr.HonestBlocksAt H) DY R)
     (hT : T ⊆ Released tr H X s D) (hncp : ¬ Compatible (tr.HonestBlocksAt H) D DY) :
     T.ncard + S.ncard ≤ (AC.voters {v | v ∈ (tr.projAC.state Y c).pool s}).ncard := by
-  have hU := honestBlocksAt_coherent hrun hnc
-  have held := fun {u} (hu : u ∈ Released tr H X s D) =>
-    released_held hrun hnc hsvc hm hY hc ht hrs hu
-  have hdisj : Disjoint T S := by
-    rw [Set.disjoint_left]
-    intro u hu huS
-    obtain ⟨hne, v', hv', hv'u, R', hR', hR'r, hDR'⟩ := hS u huS
-    obtain ⟨v, hvu, ⟨R, hR, hRr, hDR⟩, hv | heq⟩ := held (hT hu)
-    · obtain rfl : v = v' := by
-        by_contra h
-        exact hne ⟨v, hv, v', hv', h, hvu, hv'u⟩
-      obtain rfl : R = R' := hU.1 hR hR' (hRr.trans hR'r.symm)
-      exact hncp (Anc.total hU hDR hDR')
-    · exact hne heq
-  rw [← Set.ncard_union_eq hdisj]
-  refine Set.ncard_le_ncard ?_
-  rintro u (hu | hu)
-  · obtain ⟨v, rfl, -, hv | ⟨a, ha, -, -, -, hav, -⟩⟩ := held (hT hu)
-    · exact ⟨v, hv, rfl⟩
-    · exact ⟨a, ha, hav⟩
-  · obtain ⟨-, v, hv, rfl, -⟩ := hS u hu
-    exact ⟨v, hv, rfl⟩
+  exact AC.side_count (honestBlocksAt_coherent hrun hnc) hS
+    (fun u hu => released_held hrun hnc hsvc hm hY hc ht hrs (hT hu)) hncp
 
 /-- Same-slot results agree using only releases after the warm service threshold. -/
 theorem result_result_compatible_service_at

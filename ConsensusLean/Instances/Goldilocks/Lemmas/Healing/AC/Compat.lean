@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.SideCount
 
 public section
 
@@ -167,28 +168,8 @@ private theorem against_update_window_before {ini}
       ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U DY R)
     (hT : T ⊆ Fwd tr U X s D) (hnc : ¬ Compatible U D DY) :
     T.ncard + S.ncard ≤ (voters {v | v ∈ (tr.state Y c).pool s}).ncard := by
-  have hU := hr.coherent
-  have hf := fun {u} (hu : u ∈ Fwd tr U X s D) =>
-    fwd_reaches_update_window_before hr hsync ha hX hY hc ht hb hrs hu
-  have hdisj : Disjoint T S := by
-    rw [Set.disjoint_left]
-    intro u hu hu'
-    obtain ⟨hne, v', hv', hv'u, R', hR', hR'r, hDR'⟩ := hS u hu'
-    obtain ⟨v, hvu, ⟨R, hR, hRr, hDR⟩, hv | heq⟩ := hf (hT hu)
-    · obtain rfl : v = v' := by
-        by_contra h
-        exact hne ⟨v, hv, v', hv', h, hvu, hv'u⟩
-      obtain rfl : R = R' := hU.1 hR hR' (hRr.trans hR'r.symm)
-      exact hnc (anc_total hU hDR hDR')
-    · exact hne heq
-  rw [← Set.ncard_union_eq hdisj]
-  refine Set.ncard_le_ncard ?_
-  rintro u (hu | hu)
-  · obtain ⟨v, rfl, -, hv | ⟨a, ha, -, -, -, hav, -⟩⟩ := hf (hT hu)
-    · exact ⟨v, hv, rfl⟩
-    · exact ⟨a, ha, hav⟩
-  · obtain ⟨-, v, hv, rfl, -⟩ := hS u hu
-    exact ⟨v, hv, rfl⟩
+  exact side_count hr.coherent hS
+    (fun u hu => fwd_reaches_update_window_before hr hsync ha hX hY hc ht hb hrs (hT hu)) hnc
 
 /-- Same-slot results are compatible using only service through their observation cutoff. -/
 theorem result_result_compatible_window_before {ini} (hrun : ACRun proposer tr H U ini)

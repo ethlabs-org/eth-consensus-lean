@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ProposalCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVotes
 
 public section
 
@@ -68,12 +69,10 @@ theorem heldAtProposal_of_writer {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro)
     have hsk' : sp.slot (tr.time k') = σ :=
       slot_of_mem sp σ (hk1.trans hkk') (by rw [hts]; linarith only [hk1, hk2, hk'lt])
     have hmono := pool_mono hr hx (show k' + 1 ≤ i by omega) hnr σ
-    rcases held_of_processAt hr hx hp (by rw [hvs, hsk']; omega) (by rw [hvs, hsk']) with
-      h | ⟨a, ha, c, hc', hac, hav, hcv⟩
-    · rw [hvs] at h
-      exact Or.inl (hmono h)
-    · rw [hvs] at ha hc'
-      exact Or.inr ⟨a, hmono ha, c, hmono hc', hac, hav, hcv⟩
+    have h := held_of_processAt hr hx hp (by rw [hvs, hsk']; omega) (by rw [hvs, hsk'])
+    rw [hvs] at h
+    exact backed_mono (P := {w | w ∈ (tr.state x (k' + 1)).pool σ})
+      (Q := {w | w ∈ (tr.state x i).pool σ}) (fun _ hw => hmono hw) h
   · obtain ⟨Hv, hHv, hHvr, hFHv, hacc⟩ := hhead
     obtain ⟨G, hGU, hGr, hGp⟩ := genesis_mem_of_call sp hr hx i ℓ hc
     obtain ⟨hHt, hAB⟩ : Hv ∈ ℓ.frame.tree ∧ AcceptedBefore tr x Hv (sp.ts σ + 3 * sp.Δ) := by

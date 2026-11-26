@@ -5,6 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.MergedOpponents
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVotes
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.SideCount
 
 public section
 
@@ -187,9 +188,7 @@ private theorem view_agree_of_forwardU
     · rintro ⟨a, ha, rfl⟩
       exact ⟨a, hm a ha, rfl⟩
     · rintro ⟨a, ha, rfl⟩
-      rcases hvotes a ha with ha' | ⟨b, hb, -, -, -, hb', -⟩
-      · exact ⟨a, ha', rfl⟩
-      · exact ⟨b, hb, hb'⟩
+      exact voter_of_backed (hvotes a ha)
   ext w
   constructor
   · rintro ⟨hw, x, hx, rfl, hxs, R, hR, hRr, hXR⟩

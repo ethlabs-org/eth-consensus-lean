@@ -5,6 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HonestPool
 
 public section
 
@@ -210,28 +211,13 @@ theorem proposalView_equivocatorU
     w ∈ equivocators {v | v ∈ (tr.state x i).pool σ} :=
   equivocators_mono (fun v hv => (mem_proposalView_votesU hr hini hx i σ Φ v).1 hv) h
 
-/-- An honest validator does not equivocate in an honest node's pool (any unlock). -/
-theorem honest_pool_not_equivocatorU
-    {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini) {x : Fin sp.n} (hx : x ∈ H)
-    (i σ : Nat) {w : Fin sp.n} (hw : w ∈ H) :
-    w ∉ equivocators {v | v ∈ (tr.state x i).pool σ} := by
-  rintro ⟨a, ha, b, hb, hab, rfl, hbw⟩
-  obtain ⟨ja, -, ea, hva, rfl⟩ := hrun.honest.pool_vote x hx i σ _ ha hw
-  obtain ⟨jb, -, eb, hvb, rfl⟩ := hrun.honest.pool_vote x hx i σ _ hb (hbw ▸ hw)
-  have has := state_pool_slotU sp hrun.localRun hrun.vstart hx i σ _ ha
-  have hbs := state_pool_slotU sp hrun.localRun hrun.vstart hx i σ _ hb
-  rw [hbw] at hvb
-  obtain ⟨-, rfl⟩ := (one_vote_per_slotU sp) FGP ro H U tr hrun.localRun _ hw ja jb ea eb hva hvb
-    (has.trans hbs.symm)
-  exact hab rfl
-
 /-- `honest_not_equivocator_proposal` with the unlock given. -/
 theorem honest_not_equivocator_proposalU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini) {x : Fin sp.n} (hx : x ∈ H)
     (i σ : Nat) (Φ : Frm sp.n FGP) {w : Fin sp.n} (hw : w ∈ H) :
     w ∉ equivocators (View.ofLists (voteViewList (tr.state x i) Φ σ ⊤)).votes := fun h =>
-  honest_pool_not_equivocatorU hrun hx i σ hw (proposalView_equivocatorU hrun.localRun hrun.vstart
-    hx i σ Φ h)
+  honest_pool_not_equivocator hrun.localRun hrun.vstart hrun.honest hx i σ hw
+    (proposalView_equivocatorU hrun.localRun hrun.vstart hx i σ Φ h)
 
 /-- An honest validator does not equivocate in the view of an honest proposal. -/
 theorem honest_not_equivocator_proposal (hrun : ACRun proposer tr H U ini) {x : Fin sp.n}
@@ -471,7 +457,7 @@ theorem batch_proposalU
     have hval : e.msg.val = w := (castAt_specU hr hw ⟨hcw, hew⟩).1
     obtain ⟨hheld, R, hR, hRr, hbs⟩ := hP w hw j e hv hes
     have hheld : e.msg ∈ (tr.state x i).pool σ := hheld.resolve_right fun h =>
-      honest_pool_not_equivocatorU hrun hx i σ hw (hval ▸ h)
+      honest_pool_not_equivocator hrun.localRun hrun.vstart hrun.honest hx i σ hw (hval ▸ h)
     obtain ⟨Hd, hHd, hHdr, hBHd⟩ := hB w hw j e hv hes
     obtain ⟨Hd', hHd', hHd'r, hHds⟩ := honest_headU hrun hw hv
     obtain rfl : Hd = R := hU.1 hHd (hΦU hR) (hHdr.trans hRr.symm)

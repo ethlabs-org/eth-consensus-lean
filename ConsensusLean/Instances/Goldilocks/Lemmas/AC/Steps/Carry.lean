@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.SideCount
 
 public section
 
@@ -135,9 +136,7 @@ theorem merged_voters_subsetU
       v ∈ P ∨ v.val ∈ equivocators {w | w ∈ P}) :
     voters (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes ⊆ voters {v | v ∈ P} := by
   rintro w ⟨v, hv, rfl⟩
-  rcases hd v hv (merged_vote_slotU hr hini hy hc v hv) with h | ⟨x, hx, -, -, -, hxv, -⟩
-  · exact ⟨v, h, rfl⟩
-  · exact ⟨x, hx, hxv⟩
+  exact voter_of_backed (hd v hv (merged_vote_slotU hr hini hy hc v hv))
 
 /-- Under the writer-pool condition (d), the voters of `y`'s merged view are participants at
 `X`, from starts up to the vote permission. -/

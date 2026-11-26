@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVotes
 
 public section
 
@@ -154,9 +155,8 @@ private theorem held_after (A A' : ACState sp.n) {t : Time} {v : Vote sp.n}
     (h₁ : (sp.slot t : Int) - 1 ≤ v.slot) (h₂ : v.slot ≤ sp.slot t)
     (h : Grow t (admitVote sp A t v) A') :
     v ∈ A'.pool v.slot ∨ v.val ∈ equivocators {w | w ∈ A'.pool v.slot} := by
-  rcases admitVote_held A _ _ h₁ h₂ with hv | ⟨a, ha, b, hb, hab, hav, hbv⟩
-  · exact Or.inl (h.1 _ hv)
-  · exact Or.inr ⟨a, h.1 _ ha, b, h.1 _ hb, hab, hav, hbv⟩
+  exact backed_mono (P := {w | w ∈ (admitVote sp A t v).pool v.slot})
+    (Q := {w | w ∈ A'.pool v.slot}) (fun _ hw => h.1 _ hw) (admitVote_held A _ _ h₁ h₂)
 
 /-! ## Over an AC trace -/
 
@@ -509,9 +509,9 @@ private theorem held_of_deadline_processingU
     have h₃ := hprev k' hk'' ℓ' hc'
     have h₄ := hrs k'' hk''i.le ⟨ℓ'', hc'', hcall''⟩
     exact lt_irrefl _ ((h₃.trans hu).trans_le (h₄.trans hkk'))) v.slot
-  rcases held_of_processAtU hr hX hproc h₁ h₂ with h | ⟨a, ha, b, hb, hab, hav, hbv⟩
-  · exact Or.inl (hmono h)
-  · exact Or.inr ⟨a, hmono ha, b, hmono hb, hab, hav, hbv⟩
+  exact backed_mono (P := {w | w ∈ (tr.state X (k' + 1)).pool v.slot})
+    (Q := {w | w ∈ (tr.state X i).pool v.slot}) (fun _ hw => hmono hw)
+    (held_of_processAtU hr hX hproc h₁ h₂)
 
 /-- `held_of_deadline_service` with the unlock given. -/
 theorem held_of_deadline_serviceU
