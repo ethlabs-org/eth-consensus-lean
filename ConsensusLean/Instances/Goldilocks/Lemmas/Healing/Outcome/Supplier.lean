@@ -78,7 +78,7 @@ theorem ready_unanimous (hp : ResetPremises tr H K proposer dg g ΔF a)
     obtain ⟨hstep, hP₀⟩ := reset_stop_at_parent hp hc hP hR hci hcall hd hti hpay hPQ hy
       hcy hes hPv hg (hti ▸ hgu) hgj hQt (hviab _ hDQ .refl)
     obtain ⟨X, hXc, haX, hXend⟩ := hvot y hy j elly e hcy hes hE
-    have hspec := AC.castAt_head_of_viable hr hy hcy (hes ▸ ⟨P, hPv⟩)
+    have hspec := AC.castAt_head_of_viableU hr.toU hy hcy (hes ▸ ⟨P, hPv⟩)
     rw [hes] at hspec
     exact hspec.trans (congrArg (·.root) (voter_head_eq_proposal hPhi hPsi hd hslot hsD hXc haX
       hXend hPv hstep hP₀ fun B C hXB hDB hBQ hne hCQ hC => reset_suffix_best hp hc hP hci hcall
@@ -139,7 +139,7 @@ theorem ResetPremisesUpTo.operational_unanimous {b : Time}
       hci hcall hd hti hpay hPQ hy hcy hes hib hjb hPv hg (hti ▸ hgu) hgj
       (hti ▸ hjoin) (hjoin.trans hjt) hQt (hviab _ hDQ .refl)
     obtain ⟨X, hXc, haX, hXend⟩ := hvot y hy j elly e hcy hes hjb hE
-    have hspec := AC.castAt_head_of_viable hr hy hcy (hes ▸ ⟨P, hPv⟩)
+    have hspec := AC.castAt_head_of_viableU hr.toU hy hcy (hes ▸ ⟨P, hPv⟩)
     rw [hes] at hspec
     exact hspec.trans (congrArg (·.root) (voter_head_eq_proposal hPhi hPsi hd hslot hsD hXc haX
       hXend hPv hstep hP₀ fun B C hXB hDB hBQ hne hCQ hC => hp.reset_suffix_best hc hpH

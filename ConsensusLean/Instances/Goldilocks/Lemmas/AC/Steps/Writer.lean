@@ -223,7 +223,9 @@ private theorem writer_pool_of_syncU
     clear * - this hBv hBs hvs
     omega
 
-/-- `writer_merged_of_sync` with the unlock given. -/
+/-- Under `Sync` or a service window from `t_s`, every slot-`s` entry of an honest slot-`(s+1)`
+voter's merged view is in the writer `X`'s slot-`s` pool at its update, or its validator equivocates
+there, with the unlock given. -/
 private theorem writer_merged_of_syncU
     {u : Nat → Set Lock} {ini} (hrun : ACRunU wm u proposer tr H U ini) {X : Fin sp.n}
     (hX : X ∈ H) {i₀ s : Nat}
@@ -238,19 +240,6 @@ private theorem writer_merged_of_syncU
   exact merged_declared_at_writer (P := {w | w ∈ (tr.state X i₀).pool s})
     (fun w hw => writer_pool_of_syncU hrun hX hupd hy hc hs hsync le_rfl w
       (readPoint_poolU hrun.localRun hy hc hw).1) hvs hv
-
-private theorem writer_merged_of_sync {ini} (hrun : ACRun proposer tr H U ini) {X : Fin sp.n}
-    (hX : X ∈ H) {i₀ s : Nat}
-    {ℓX : ACLabel (goldilocksAC sp FGP ro)} (hupd : UpdateAt tr X i₀ s ℓX) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
-    (hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (tr.time i) tr ∨
-      ServiceWindowBefore H U (sp.ts s) (tr.time i₀) tr) :
-    ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
-      v ∈ (tr.state X i₀).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} :=
-  writer_merged_of_syncU (hrun := hrun.toU) (X := X) (hX := hX) (i₀ := i₀) (s := s) (ℓX := ℓX)
-      (hupd := hupd) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc) (hs := hs)
-          (hsync := hsync)
 
 /-- **The writer's pool, for the voter's pool**, with the unlock given. -/
 theorem writer_poolU
@@ -300,7 +289,7 @@ theorem writer_merged_window_before {ini} (hrun : ACRun proposer tr H U ini) {a 
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) :
     ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ (tr.state X i₀).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s} := by
-  exact writer_merged_of_sync hrun hX hupd hy hc hs (Or.inr {
+  exact writer_merged_of_syncU hrun.toU hX hupd hy hc hs (Or.inr {
     message := fun x hx k m hm h0 z hz j ℓ hc hd ht =>
       hsync.message x hx k m hm (ha.trans h0) z hz j ℓ hc (hd.trans hi₀) ht
     relay := fun x hx k B hB h0 z hz j ℓ hc hd ht hanc =>

@@ -20,12 +20,12 @@ settled effective phase `(m, c)`, from HS.1 (`viable_witness_retention_of`, `Ret
   state whose `J` is a held block extending `Σ.F`, an FG store invariant), HR.2 (a) for `Σ.J`,
   and HS.1 for `Σ.F ⪯ J` and for the contest witness.
 * **The voter block tree**: a block stamped before the freeze was held
-  by the voter at an earlier call (`stamp_origin`, `readPoint_blockStamp_eq`), so accepted before
+  by the voter at an earlier call (`stamp_origin`, `readPoint_blockStamp_eqU`), so accepted before
   `t_p − Δ` and relayed to the proposer by `t_p` (`relay_held`); the other blocks are ancestors
   of the slot's block, which is `P` (one block per honest proposer and slot).
 * **The proposal**: its parent is a viable head (requirement 1; the walk starts at an anchor in
   the viable tree, `getAnchor_viable`, `proposal_head_viable`), so `P` is allowed wherever it is
-  held; a voter holds it (ready at an early vote, `cast_ready`; relayed by `t_p + Δ` otherwise).
+  held; a voter holds it (ready at an early vote, `cast_readyU`; relayed by `t_p + Δ` otherwise).
   `Geo` quantifies over every proposal call at `t_p`; there is one (`proposal_call_unique`).
 -/
 

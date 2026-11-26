@@ -45,7 +45,7 @@ theorem optimistic_transfer_stored
   obtain ⟨_, hΦxU⟩ := frameIn_of_call hrx.localRun hx hpt'.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_anc hry.localRun hry.vstart hy hc'
+  have hdomA := voteDomain_ancU hry.localRun.toU hry.vstart hy hc'
   rw [hs] at hdomA
   have hBt : B ∈ ℓ.frame.tree := by
     rcases hviab with h | h
@@ -102,7 +102,7 @@ theorem optimistic_transfer_stored
     rwa [merged_vote_slot hry.localRun hry.vstart hy hc' v hv] at hK
   have hE : equivocators V.votes ⊆ K.committee s ∩ (H (tr.time i))ᶜ := by
     intro w hw
-    refine ⟨?_, fun hwH => honest_not_equivocator hry hy hc' hwH hw⟩
+    refine ⟨?_, fun hwH => honest_not_equivocatorU hry.toU hy hc' hwH hw⟩
     obtain ⟨a, ha, -, -, -, rfl, -⟩ := hw
     exact hW ⟨a, ha, rfl⟩
   have hm : ∀ (Φ' : Frm sp.n FGP) (A' : ACState sp.n) (D' : Blk sp.n FGP), FrameOK Φ' →
@@ -138,7 +138,7 @@ theorem optimistic_transfer_stored
     cover_count (K.committee s) (hsize s) hSX hW hE h34 hf2
   have hcore := anc_getHead hU hΦ hΦU e.readPoint (tr.time i) V (s : Int)
     (fun B hB => voteDomain_subset_tree hB) hdomA hviab.voteDomain
-    (locks_compatible hry K (hP (tr.time i)) hy hc' hs hBt
+    (locks_compatibleU hry.toU K (hP (tr.time i)) hy hc' hs hBt
       (S := SX) (fun w hw => by
         rcases hcover hw with ⟨_, x, hx, hxv, hxs, hxa⟩ | h
         · exact Or.inr ⟨x, hx, hxv, by exact_mod_cast hxs, hxa⟩

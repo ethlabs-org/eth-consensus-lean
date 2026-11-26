@@ -154,7 +154,7 @@ private theorem suffix_reflect {X B : AC.Blk sp.n (List (FG.Att sp.n))}
     · -- `W` was received before the freeze, so relayed to the proposer by `t_s`
       have hFW : Anc (tr.HonestBlocks H) ℓp.frame.F W := hFB.trans (hBW.mono hΦyU)
       have hWt : W ∈ ℓp.frame.tree := by
-        rw [AC.readPoint_blockStamp_eq hr hy hcy] at hst
+        rw [AC.readPoint_blockStamp_eqU hr.toU hy hcy] at hst
         rcases stamp_origin hr hy j ℓy hcy.1 W hWV.1 with hg | ⟨k₁, -, ℓ₁, hc₁, hW₁, hst₁⟩
         · have hG := Store.genesis_mem (Compose.fg_reachable hl hpH iP)
           obtain rfl := hU.1 (hΦyU hWV.1) ⟨p, hpH, iP, hG⟩ hg

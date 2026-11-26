@@ -404,7 +404,8 @@ theorem accept_ne_genesis {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   apply accept_ne_genesisU (wm := WriteMode.parent sp) <;>
     first | assumption | exact ACLocalRun.toU ‹_›
 
-/-- `frame_genesis_or_accepted` with the unlock given. -/
+/-- Every block of an honest node's frame at a call is of slot `0` (genesis), or the node accepted
+it at that call or an earlier one. With the unlock given. -/
 theorem frame_genesis_or_acceptedU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
@@ -439,16 +440,6 @@ theorem frame_genesis_or_acceptedU
       exact Or.inl hslot
     · exact step _ hok fun B hB =>
         (ih j hj hc' B hB).imp_right fun ⟨k, hk, h⟩ => ⟨k, hk.trans hj.le, h⟩
-
-/-- Every block of an honest node's frame at a call is of slot `0` (genesis), or the node
-accepted it at that call or an earlier one. -/
-theorem frame_genesis_or_accepted {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
-    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ) :
-    ∀ B ∈ ℓ.frame.tree, B.slot = 0 ∨ ∃ k ≤ i, tr.AcceptAt y k B := by
-  apply frame_genesis_or_acceptedU (wm := WriteMode.parent sp) <;>
-    first | assumption | exact ACLocalRun.toU ‹_›
 
 /-- The stamp of a block of an honest node's frame after a call: `−∞` (genesis), the time of the
 node's acceptance of the block, or the time of one of its restarts, at or before the call; with

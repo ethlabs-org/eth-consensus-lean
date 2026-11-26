@@ -84,7 +84,7 @@ theorem vote_tryVote_input (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     ∃ P, e ∈ (tryVote sp y P ℓ.frame (tr.time i)).2 ∧ (P = tr.state y i ∨
       ∃ A : ACState sp.n, P = optimisticConfirmation sp A ℓ.frame (tr.time i) ∧
         A.locks = (tr.state y i).locks) := by
-  obtain ⟨-, htv⟩ := voteBranchAt_input hr hy (voteBranchAt_of_castAt hr hy hc)
+  obtain ⟨-, htv⟩ := voteBranchAt_input hr hy (voteBranchAt_of_castAtU hr.toU hy hc)
   refine ⟨callInput sp (tr.state y i) ℓ.frame (tr.time i) ℓ.call, by rw [htv]; exact hc.2, ?_⟩
   rcases callInputM_cases (wm := WriteMode.parent sp) (tr.state y i) ℓ.frame (tr.time i)
     ℓ.call with h | ⟨A, -, h, hl⟩
@@ -145,7 +145,7 @@ private theorem vote_tryVote_input_point (hr : ACLocalRun (goldilocksAC sp FGP r
         A.locks = (tr.state y i).locks ∧ OptimisticPoint tr y i ℓ A ∧
         ((∃ m, ℓ.call = .message m ∧ A = admitVote sp (tr.state y i) (tr.time i) m) ∨
           ∃ B, ℓ.call = .block B ∧ A = blockReceipt sp (tr.state y i) (tr.time i) B)) := by
-  obtain ⟨-, htv⟩ := voteBranchAt_input hr hy (voteBranchAt_of_castAt hr hy hc)
+  obtain ⟨-, htv⟩ := voteBranchAt_input hr hy (voteBranchAt_of_castAtU hr.toU hy hc)
   refine ⟨callInput sp (tr.state y i) ℓ.frame (tr.time i) ℓ.call, by rw [htv]; exact hc.2, ?_⟩
   rcases callInputM_cases (wm := WriteMode.parent sp) (tr.state y i) ℓ.frame (tr.time i)
     ℓ.call with h | ⟨A, hA, h, hl⟩

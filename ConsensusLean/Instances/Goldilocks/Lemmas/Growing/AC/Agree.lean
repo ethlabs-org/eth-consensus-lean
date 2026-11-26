@@ -42,7 +42,7 @@ private theorem syncAC_upTo
       by rwa [ACTrace.upTo_deadline hr.time_mono hrd]⟩
 
 /-- **Every vote an honest proposal declares is counted at an honest slot-`(s+1)` vote**, with
-time-indexed honesty: `count_declared_of_sync` on the prefix up to the vote, for a proposer
+time-indexed honesty: `count_declared_of_syncU` on the prefix up to the vote, for a proposer
 honest at the vote and a voter honest at it. -/
 theorem count_declared_of_syncAt
     {H : Time → Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
@@ -70,7 +70,7 @@ theorem count_declared_of_syncAt
     obtain ⟨hc, hcall, d, hp⟩ := hprop
     refine ⟨(Trace.upTo_callAt tr).mpr ⟨hjt, hc⟩, hcall, d, ?_⟩
     simpa only [hstate, Trace.upTo_time] using hp
-  have h := count_declared_of_sync (hrun.upTo hd).localRun hrun.vstart hp hy
+  have h := count_declared_of_syncU (hrun.upTo hd).localRun.toU hrun.vstart hp hy
     hprop' hti hc' hs hP (syncAC_upTo hr hsync)
   rwa [hstate] at h
 
@@ -201,7 +201,7 @@ theorem proposer_voters_agree_of_honest_max
     have hh := blockStamp_lt_of_acceptedBefore sp hpr.localRun
       (fun _ => voteStart_initial _) hp hcp' hHd
       (T := tr.time i + 1) (by
-        rcases frame_accepted hpr.localRun hp i hcp' Hd hHd with h | ⟨k, hk, h⟩
+        rcases frame_acceptedU hpr.localRun.toU hp i hcp' Hd hHd with h | ⟨k, hk, h⟩
         · exact Or.inl h
         · exact Or.inr ⟨k, h, by change tr.time k < tr.time i + 1; linarith [hm hk]⟩)
       (fun k hk hrk => by

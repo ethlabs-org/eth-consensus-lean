@@ -122,7 +122,7 @@ theorem proposal_views_agree
     hS.time hcy hes ⟨P, hPy, hPs, hpay⟩ hsync ?_ ?_
   · -- a voter block stamped before the freeze reaches the proposer by `t_s`
     intro Hd hHd _ hst hFHd
-    rw [AC.readPoint_blockStamp_eq hr hy hcy] at hst
+    rw [AC.readPoint_blockStamp_eqU hr.toU hy hcy] at hst
     rcases stamp_origin hr hy j ℓy hcy.1 Hd hHd with hg | ⟨k', -, ℓk', hck', hHdk', hsk⟩
     · have hG := Store.genesis_mem (Compose.fg_reachable hl hpH iP)
       obtain rfl := hU.1 (hΦyU hHd) ⟨p, hpH, iP, hG⟩ hg
@@ -137,7 +137,7 @@ theorem proposal_views_agree
   · -- a support head of `P` reaches the voter by its vote
     intro x hx Hd hHd hHdr hFHd
     by_cases hE : tr.time j < sp.ts ((s' + 1 : Nat) : Int) + sp.Δ
-    · obtain ⟨⟨P', hP't, hP's, hsup⟩, -⟩ := AC.cast_ready hr hy hcy (by rw [hes]; exact hE)
+    · obtain ⟨⟨P', hP't, hP's, hsup⟩, -⟩ := AC.cast_readyU hr.toU hy hcy (by rw [hes]; exact hE)
       rw [hes] at hP's hsup
       obtain rfl := hslotP P' hP't hP's
       have hxs : x.slot + 1 = s' + 1 := by

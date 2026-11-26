@@ -112,7 +112,7 @@ theorem proposal_views_agree_before {K : AC.CommitteeDict sp.n}
     ⟨P, hP, hPs, hpay⟩ (AC.serviceWindowBefore_of_sync hS.sync) (by linarith only [hm, hΔ]) hipb
     hjb
   · intro B hB _ hstamp hFB
-    rw [AC.readPoint_blockStamp_eq hr hy hc] at hstamp
+    rw [AC.readPoint_blockStamp_eqU hr.toU hy hc] at hstamp
     rcases stamp_origin hr hy j elly hc.1 B hB with hg | ⟨q, -, ellq, hq, hBq, hsq⟩
     · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hz ip ellp hp.1
       obtain rfl : B = G := hr.coherent.1 (hPhiY.2 hB) hGU (hg.trans hGr.symm)
@@ -128,7 +128,7 @@ theorem proposal_views_agree_before {K : AC.CommitteeDict sp.n}
       (by rw [hti, hts]; linarith only [hm, hΔ]) (by rw [hti, hts]; linarith only [hqt]) hipb hFB
   · intro v hv B hB hBr hFB
     by_cases hearly : tr.time j < sp.ts (s + 1 : Nat) + sp.Δ
-    · obtain ⟨⟨P', hP', hPs', hsup⟩, -⟩ := AC.cast_ready hr hy hc (by rw [hes]; exact hearly)
+    · obtain ⟨⟨P', hP', hPs', hsup⟩, -⟩ := AC.cast_readyU hr.toU hy hc (by rw [hes]; exact hearly)
       rw [hes] at hPs' hsup
       obtain rfl := proposal_frame_unique hrun hnc hz hdesignated hactual hPs
         (by clear * -; omega) hy hc.1 hP' hPs'

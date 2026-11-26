@@ -116,7 +116,7 @@ theorem proposal_mem_of_early_cast
   have hcast : AC.CastAt (tr.upTo (tr.time j)).projAC y j ell e := ⟨hc', hc.2⟩
   have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg j))
     (hnc.upTo _)).localRun
-  obtain ⟨⟨Q, hQ, hQs, -⟩, -⟩ := AC.cast_ready hr hy hcast (hes ▸ hj)
+  obtain ⟨⟨Q, hQ, hQs, -⟩, -⟩ := AC.cast_readyU hr.toU hy hcast (hes ▸ hj)
   have he := proposal_unique_before_hold hrun hnc hp hdesignated hactual hPs hu hy hc.1
     hj.le hQ (hQs.trans hes)
   exact he ▸ hQ

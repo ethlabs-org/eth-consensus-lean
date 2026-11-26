@@ -368,7 +368,7 @@ theorem update_locks_compatible_of_finalized_at {K : AC.CommitteeDict sp.n}
       have hPt : P ∈ ellj.frame.tree :=
         AC.frame_mem_of_between sp hrj.coherent hPhij.1 hPhij.2 hE hPW hFPj
       have hheld : AC.HeldBefore R e.msg (sp.ts (s + 1 : Nat) + 2 * sp.Δ) := by
-        apply AC.heldBefore_readPoint_branch hrj hyj hb' (fun h => by
+        apply AC.heldBefore_readPoint_branchU hrj.toU hyj hb' (fun h => by
           have h' := h.symm.trans hjs
           omega)
         simpa only [hes] using AC.honest_vote_early_pool_before hSj hyj hb'.callAt hgu hlate
@@ -382,7 +382,7 @@ theorem update_locks_compatible_of_finalized_at {K : AC.CommitteeDict sp.n}
           rcases hacc with hg | ⟨q', hq', hqt'⟩
           · exact Or.inl hg
           · exact Or.inr ⟨q', hq', by linarith⟩⟩
-        (AC.honest_not_equivocator_branch hSj.run hyj hb' (hval ▸ hx))
+        (AC.honest_not_equivocator_branchU hSj.run.toU hyj hb' (hval ▸ hx))
       rw [hval] at hs'
       exact ⟨hs', hPt⟩
     have hcsj := hK.cs2 (s + 1) hgu (by linarith) (tr.time j) hj0 hjb

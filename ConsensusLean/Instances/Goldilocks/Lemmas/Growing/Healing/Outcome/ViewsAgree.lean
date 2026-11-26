@@ -80,7 +80,7 @@ theorem reset_views_agree_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     exact hp.reset_frozen_frame_at hpi hy hci hti hcy hib hgi hjoi hB hstamp hF
   · intro v hv B hB hBr hF
     by_cases hearly : tr.time j < sp.ts (s + 1 : Nat) + sp.Δ
-    · obtain ⟨Q, hQ, hQs, hsup⟩ := (AC.cast_ready hr hy hcy' (by rw [hes]; exact hearly)).1
+    · obtain ⟨Q, hQ, hQs, hsup⟩ := (AC.cast_readyU hr.toU hy hcy' (by rw [hes]; exact hearly)).1
       rw [hes] at hQs hsup
       obtain rfl := Outcome.proposal_unique_before_hold hp.run hp.noColl hpH hdesignated
         hactual hPs (by omega) hy hcy.1 htj hQ hQs

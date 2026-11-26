@@ -168,7 +168,7 @@ theorem honest_votes_eq_proposal_of {ini} (hrun : Growing.GoldilocksRun proposer
   have hne : (ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s)).Nonempty :=
     ⟨P, hstep₀.1.1⟩
   rw [AC.viableTree_voteDomain_eq_of_viable hne] at hXend
-  have hspec := AC.castAt_head_of_viable (acRun_upTo hrun hnc (hrun.time_nonneg j)).localRun hy
+  have hspec := AC.castAt_head_of_viableU (acRun_upTo hrun hnc (hrun.time_nonneg j)).localRun.toU hy
     (ac_castAt_upTo.2 ⟨le_rfl, hcast⟩) (hes ▸ hne)
   rw [hes] at hspec
   rw [hspec]

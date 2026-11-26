@@ -126,7 +126,7 @@ private theorem vote_viable_at
       have hBt := AC.frame_mem_of_between sp hU hΦ hΦU hDt hBD hFB
       have hΦBD := AC.anc_tree_of_anc_U hU hΦ hΦU hBt hBD hDt
       have hΦfB := AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
-      refine Or.inl ⟨AC.voterBlockTree_anc hr hrun.vstart hy hcT D hD B
+      refine Or.inl ⟨AC.voterBlockTree_ancU hr.toU hrun.vstart hy hcT D hD B
           hΦBD, hΦfB, D, hD, ?_, hΦBD⟩
       have hfD := hΦfB.trans hΦBD
       rw [hfr] at hDt hfD ⊢
@@ -214,7 +214,7 @@ private theorem vote_extends_of_counted_batch_run
     (by
       rintro w ⟨v, hv, rfl⟩
       by_cases hw : v.val ∈ H (tr.time i)
-      · obtain ⟨j, -, e', hv', he'⟩ := AC.honest_merged_vote hr hy hc' hv hw
+      · obtain ⟨j, -, e', hv', he'⟩ := AC.honest_merged_voteU hr.toU hy hc' hv hw
         exact hW _ j e' (hvote _ j e' hw hv') hw
           (by
             rw [he']

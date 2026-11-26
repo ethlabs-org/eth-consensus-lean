@@ -448,7 +448,7 @@ theorem reset_proposal_frame
     (hF : Anc (tr.HonestBlocks H) ell.frame.F P) : P ∈ ell.frame.tree := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   by_cases hearly : tr.time j < sp.ts u + sp.Δ
-  · obtain ⟨Q, hQ, hQs, -⟩ := (AC.cast_ready hr hy hcy (by rw [hes]; exact hearly)).1
+  · obtain ⟨Q, hQ, hQs, -⟩ := (AC.cast_readyU hr.toU hy hcy (by rw [hes]; exact hearly)).1
     rw [hes] at hQs
     exact (reset_proposal_frame_unique hp hP hu hy hcy.1 hQ hQs) ▸ hQ
   · obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, -, ja, -, hacc, hta⟩ :=
@@ -470,7 +470,7 @@ theorem ResetPremisesUpTo.reset_proposal_frame {b : Time}
     (hF : Anc (tr.HonestBlocks H) ell.frame.F P) : P ∈ ell.frame.tree := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   by_cases hearly : tr.time j < sp.ts u + sp.Δ
-  · obtain ⟨Q, hQ, hQs, _⟩ := (AC.cast_ready hr hy hcy (by rw [hes]; exact hearly)).1
+  · obtain ⟨Q, hQ, hQs, _⟩ := (AC.cast_readyU hr.toU hy hcy (by rw [hes]; exact hearly)).1
     rw [hes] at hQs
     exact (hp.reset_proposal_frame_unique hpH hdesignated hactual hPs hu hy hcy.1 hQ hQs) ▸ hQ
   · obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, ja, _, hacc, hta⟩ :=
@@ -499,7 +499,7 @@ theorem reset_support_frame
     (hF : Anc (tr.HonestBlocks H) elly.frame.F B) : B ∈ elly.frame.tree := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   by_cases hearly : tr.time j < sp.ts (s + 1 : Nat) + sp.Δ
-  · obtain ⟨Q, hQ, hQs, hsup⟩ := (AC.cast_ready hr hy hcy (by rw [hes]; exact hearly)).1
+  · obtain ⟨Q, hQ, hQs, hsup⟩ := (AC.cast_readyU hr.toU hy hcy (by rw [hes]; exact hearly)).1
     rw [hes] at hQs hsup
     obtain rfl := reset_proposal_frame_unique hp hP (by omega) hy hcy.1 hQ hQs
     have hslot : sp.slot (tr.time i) = s + 1 := by
@@ -537,7 +537,7 @@ theorem reset_frozen_frame
     (hst : e.readPoint.blockStamp B.root < AC.ETime.of (AC.freeze sp (s + 1)))
     (hF : Anc (tr.HonestBlocks H) ellp.frame.F B) : B ∈ ellp.frame.tree := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  rw [AC.readPoint_blockStamp_eq hr hy hcy] at hst
+  rw [AC.readPoint_blockStamp_eqU hr.toU hy hcy] at hst
   rcases stamp_origin hr hy j elly hcy.1 B hB with hgen | ⟨q, -, ellq, hcq, hBq, hstamp⟩
   · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hpH i ellp hci
     obtain rfl : B = G := hr.coherent.1 ((AC.frameIn_of_callAt hr hy hcy.1).2 hB)
@@ -610,7 +610,7 @@ theorem ResetPremisesUpTo.reset_support_frame {b : Time}
     (hF : Anc (tr.HonestBlocks H) elly.frame.F B) : B ∈ elly.frame.tree := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   by_cases hearly : tr.time j < sp.ts (s + 1 : Nat) + sp.Δ
-  · obtain ⟨Q, hQ, hQs, hsup⟩ := (AC.cast_ready hr hy hcy (by rw [hes]; exact hearly)).1
+  · obtain ⟨Q, hQ, hQs, hsup⟩ := (AC.cast_readyU hr.toU hy hcy (by rw [hes]; exact hearly)).1
     rw [hes] at hQs hsup
     obtain rfl := hp.reset_proposal_frame_unique hpH hdesignated hactual hPs
       (by omega) hy hcy.1 hQ hQs
@@ -649,7 +649,7 @@ theorem ResetPremisesUpTo.reset_frozen_frame {b : Time}
     (hst : e.readPoint.blockStamp B.root < AC.ETime.of (AC.freeze sp (s + 1)))
     (hF : Anc (tr.HonestBlocks H) ellp.frame.F B) : B ∈ ellp.frame.tree := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  rw [AC.readPoint_blockStamp_eq hr hy hcy] at hst
+  rw [AC.readPoint_blockStamp_eqU hr.toU hy hcy] at hst
   rcases stamp_origin hr hy j elly hcy.1 B hB with hgen | ⟨q, _, ellq, hcq, hBq, hstamp⟩
   · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hpH i ellp hci
     obtain rfl : B = G := hr.coherent.1 ((AC.frameIn_of_callAt hr hy hcy.1).2 hB)

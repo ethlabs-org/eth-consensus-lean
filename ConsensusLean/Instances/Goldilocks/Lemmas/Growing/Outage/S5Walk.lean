@@ -190,7 +190,7 @@ theorem vote_extends_of_hi_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n
   have hfr : ℓ.frame = Node.frame (tr.state y i) := frame_of_projAC_at D.hrun hy hc.1
   obtain ⟨hΦ, hΦU⟩ := frameIn_at D.hrun D.hnc hy hc.1
   obtain ⟨-, -, -, hhead⟩ := castAt_spec_at D.hrun D.hnc hy hc
-  have hdomA := AC.voteDomain_anc hr D.hrun.vstart hy hcT
+  have hdomA := AC.voteDomain_ancU hr.toU D.hrun.vstart hy hcT
   have hne : (ℓ.frame.viableTree (AC.voteDomain sp e.readPoint ℓ.frame e.msg.slot)).Nonempty ∨
       ℓ.frame.tree ⊆ AC.voteDomain sp e.readPoint ℓ.frame e.msg.slot := by
     by_cases hv :

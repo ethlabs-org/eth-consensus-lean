@@ -290,7 +290,7 @@ theorem unanimous_next_vote_viable {b : Time}
   have hg' := slotAfter_add_le_of_drain hp hR
   rw [Healing.gbar_slotAfter] at hg'
   have hacc : AC.AcceptedBefore tr.projAC y P (sp.ts u + 3 * sp.Δ) := by
-    rcases AC.frame_genesis_or_accepted sp hr hz hv.1 P hHd with hz0 | ⟨k, hk, ha⟩
+    rcases AC.frame_genesis_or_acceptedU sp hr.toU hz hv.1 P hHd with hz0 | ⟨k, hk, ha⟩
     · omega
     have hkq : tr.time k ≤ tr.time q := hp.run.time_mono hk
     refine Or.inr ?_

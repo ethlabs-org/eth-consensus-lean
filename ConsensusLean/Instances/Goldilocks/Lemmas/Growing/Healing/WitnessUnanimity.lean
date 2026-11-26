@@ -209,7 +209,7 @@ theorem unanimous_next_votes_of_witness_at {K : AC.CommitteeDict sp.n}
     exact ⟨W, subU (hPhiU hW), hWr, hXF.trans ((hFW.mono hPhiU).mono subU)⟩
   -- the voter's vote domain holds `Q`, hence `X`, viable above its fork-choice root
   have hQdom : Q ∈ AC.voterBlockTree sp e.readPoint ell.frame (m + 1) := ⟨hQt, Or.inl hstamp⟩
-  have hdomA := AC.voterBlockTree_anc hr hrun'.vstart hy hcast'
+  have hdomA := AC.voterBlockTree_ancU hr.toU hrun'.vstart hy hcast'
   rw [hs] at hdomA
   have hviab : AC.ViableAtVote ell e (m + 1) X :=
     Or.inl ⟨hdomA Q hQdom X hXQf, hrootX, Q, hQdom, hvQ, hXQf⟩

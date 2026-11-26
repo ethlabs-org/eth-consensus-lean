@@ -532,7 +532,7 @@ private theorem root_below_voterHeads
   -- the proposer holds `W`
   have hWp : W ∈ (tr.state p iP).fg.tree := by
     rcases hWV.2 with hst | ⟨P', hP't, hP's, hWP'⟩
-    · rw [AC.readPoint_blockStamp_eq hr hy hcy] at hst
+    · rw [AC.readPoint_blockStamp_eqU hr.toU hy hcy] at hst
       rcases stamp_origin hr hy j ℓy hcy.1 W hWV.1 with hg | ⟨k', -, ℓk', hck', hWk', hsk⟩
       · have hG := Store.genesis_mem (Compose.fg_reachable hl hpH iP)
         obtain rfl := hU.1 (hΦyU hWV.1) ⟨p, hpH, iP, hG⟩ hg
@@ -614,7 +614,7 @@ theorem voter_passes_proposer_root
   have hRv : ℓp.frame.fcRoot ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s) :=
     ⟨⟨hRt, Or.inr ⟨P, hPt, hPs, hRPy⟩⟩,
       AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfR hRt, W, hW, hWv, hRPy.trans hPW⟩
-  have hdomA := AC.voterBlockTree_anc hr hrun.vstart hy hcy
+  have hdomA := AC.voterBlockTree_ancU hr.toU hrun.vstart hy hcy
   rw [hes] at hdomA
   have hkey := fun W hW hWv => root_below_voterHeads hS hRP hy hcy hes (W := W) hW hWv
   have hlk := readPoint_lockBlocks_below hS hlock hy hcy hes hIH
@@ -625,7 +625,7 @@ theorem voter_passes_proposer_root
         (ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s))
         (AC.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) ∈ ℓy.frame.tree :=
       AC.getHead_mem hΦ (fun _ hB => hB.1.1) _ _ _ _
-    have hhead := AC.castAt_head_of_viable hr hy hcy (hes ▸ ⟨_, hRv⟩)
+    have hhead := AC.castAt_head_of_viableU hr.toU hy hcy (hes ▸ ⟨_, hRv⟩)
     rw [hes] at hhead
     exact ⟨_, hΦU hGt, hhead.symm, Anc.mono hΦU hRG⟩
   -- the child towards `R` is the only eligible viable child

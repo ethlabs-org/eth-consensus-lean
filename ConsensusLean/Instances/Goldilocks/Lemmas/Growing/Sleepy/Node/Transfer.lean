@@ -105,7 +105,7 @@ theorem vote_extends_of_batch_at {ini} (hrun : Growing.GoldilocksRun proposer dg
     (by
       rintro w ⟨v, hv, rfl⟩
       by_cases hw : v.val ∈ H (tr.time i)
-      · obtain ⟨j, -, e', hv', he'⟩ := AC.honest_merged_vote hr hy hc' hv hw
+      · obtain ⟨j, -, e', hv', he'⟩ := AC.honest_merged_voteU hr.toU hy hc' hv hw
         refine Or.inl (votersAt_iff.2 ⟨hw, j, e', hvote _ j e' hw hv', ?_⟩)
         rw [he']; exact AC.merged_vote_slot hr.localRun hr.vstart hy hc'
           v hv

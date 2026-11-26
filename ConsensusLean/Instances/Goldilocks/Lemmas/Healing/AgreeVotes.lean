@@ -156,7 +156,7 @@ private theorem walk_passes_start
       (ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s))
       (AC.mergedVoteView sp e.readPoint ℓy.frame s) ((s : Int) - 1) ∈ ℓy.frame.tree :=
     AC.getHead_mem hΦ (fun _ hB => hB.1.1) _ _ _ _
-  have hhead := AC.castAt_head_of_viable hr' hy hcy
+  have hhead := AC.castAt_head_of_viableU hr'.toU hy hcy
     (hes ▸ ⟨P, proposal_frozen_viable hS hy hcy hes⟩)
   rw [hes] at hhead
   obtain rfl := hU.1 hHd (hΦU hGt) (hHdr.trans hhead)
@@ -312,7 +312,7 @@ private theorem frozen_of_viableTree {y : Fin sp.n} (hrun : GoldilocksRun propos
       hPv.1
     have hes' := hes
     rw [← hes'] at hPv ⊢
-    exact ⟨AC.voterBlockTree_anc hr hrun.vstart hy hcy P hPv X hXP',
+    exact ⟨AC.voterBlockTree_ancU hr.toU hrun.vstart hy hcy P hPv X hXP',
       AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem h hXt, W, by rw [hes']; exact hW, hWv,
       hXP'.trans hPW⟩
 
@@ -394,7 +394,7 @@ private theorem votes_eq_of_pass
   have hsuf := proposal_suffix hS .refl hsD hy hcast hes
   obtain ⟨hΦy, hΦyU⟩ := AC.frameIn_of_callAt hr hy hcy
   obtain ⟨X, hXc, haX, hXend⟩ := hpass y hy j ℓy e hcast hes hIH
-  have hspec := AC.castAt_head_of_viable hr hy hcast
+  have hspec := AC.castAt_head_of_viableU hr.toU hy hcast
     (hes ▸ ⟨P, proposal_frozen_viable hS hy hcast hes⟩)
   rw [hes] at hspec
   rw [hspec]

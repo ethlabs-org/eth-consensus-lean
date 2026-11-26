@@ -111,7 +111,7 @@ theorem operational_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       hci hcall hd hti hpay hPQ hy hcy hes hib hjb hPv hg (hti ▸ hgu) hgj
       (hti ▸ hjoin) (hjoin.trans hjt) hQt (hviab _ hDQ .refl)
     obtain ⟨X, hXc, haX, hXend⟩ := hvot y j elly e hy hcy hes hjb hE
-    have hspec := AC.castAt_head_of_viable hry hy hcy' (hes ▸ ⟨P, hPv⟩)
+    have hspec := AC.castAt_head_of_viableU hry.toU hy hcy' (hes ▸ ⟨P, hPv⟩)
     rw [hes] at hspec
     exact hspec.trans (congrArg (·.root) (voter_head_eq_proposal hPhi hPsi hd hslot hsD hXc haX
       hXend hPv hstep hP₀ fun B C hXB hDB hBQ hne hCQ hC => hp.reset_suffix_best_at hpH

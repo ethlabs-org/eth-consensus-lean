@@ -243,7 +243,7 @@ theorem unanimous_head_accepted_core_at
   have hHdq := (AC.frameIn_of_callAt hrq.localRun hwq hvq.1).2 hHd
   obtain rfl : Hd = P := hU.1 (RunTrace.honestBlocks_upTo_subset (H := H) hm
     (hrun.time_nonneg q) hHdq) hP (he.trans (hun w q e' hwq ⟨ellv, hv⟩ (hqj.trans hjb) hvs))
-  obtain hz | ⟨k, hk, ha⟩ := AC.frame_genesis_or_accepted sp hrq.localRun hwq hvq.1 Hd hHd
+  obtain hz | ⟨k, hk, ha⟩ := AC.frame_genesis_or_acceptedU sp hrq.localRun.toU hwq hvq.1 Hd hHd
   · omega
   rw [RunTrace.upTo_projAC] at ha
   obtain ⟨hkq, ha⟩ := (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mp ha

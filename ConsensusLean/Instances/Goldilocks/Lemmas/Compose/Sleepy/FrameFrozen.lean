@@ -139,7 +139,7 @@ theorem accepted_voter_tree {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have hnr := (honest_vote_call hrun hnc hy hc).2.2.2
   have hrp : e.readPoint.blockStamp X.root = (tr.projAC.state y i).blockStamp X.root := by
     have h1 : (tr.projAC.post i).blockStamp = e.readPoint.blockStamp := by
-      rw [AC.post_of_castAt hr hy hc, optimistic_stamp, AC.admitVote_blockStamp]
+      rw [AC.post_of_castAtU hr.toU hy hc, optimistic_stamp, AC.admitVote_blockStamp]
     have hp : tr.projAC.post i = ((AC.goldilocksAC sp _ ro).step y (tr.projAC.state y i)
         ℓ.frame (tr.projAC.time i) ℓ.call).1 := by rw [hx]
     obtain ⟨hblk, -, hoth⟩ :=

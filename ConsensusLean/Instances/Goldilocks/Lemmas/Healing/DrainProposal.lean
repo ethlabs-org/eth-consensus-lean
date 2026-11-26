@@ -71,7 +71,7 @@ private theorem proposal_before_holder (hrun : GoldilocksRun proposer dg H tr in
   omega
 
 /-- **The proposal's cut precedes every honest vote of its slot**: a vote after `t_s` is at a
-later cut; an early vote holds a slot-`s` block (`cast_ready`), of the slot's proposer
+later cut; an early vote holds a slot-`s` block (`cast_readyU`), of the slot's proposer
 (`HonestObjects.proposer`), so it is after the proposal (`proposal_before_holder`). -/
 theorem proposal_cut_lt (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
@@ -87,7 +87,7 @@ theorem proposal_cut_lt (hrun : GoldilocksRun proposer dg H tr ini)
   have hU := Compose.honest_blocks_coherent hl hnc
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   by_cases hearly : tr.time k < sp.ts s + sp.Δ
-  · obtain ⟨⟨P', hP', hP's, -⟩, -⟩ := AC.cast_ready hr hy hv (by rw [he]; exact hearly)
+  · obtain ⟨⟨P', hP', hP's, -⟩, -⟩ := AC.cast_readyU hr.toU hy hv (by rw [he]; exact hearly)
     rw [he] at hP's
     have hfU := (AC.frameIn_of_callAt hr hy hv.1).2
     have hroot : P'.root ≠ sp.genesisRoot := by

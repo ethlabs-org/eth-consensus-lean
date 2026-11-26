@@ -160,7 +160,7 @@ theorem vote_viable_of_root (hrun : GoldilocksRun proposer dg H tr ini)
       have hBt := AC.frame_mem_of_between sp hU hΦ hΦU hDt hBD hFB
       have hΦBD := AC.anc_tree_of_anc_U hU hΦ hΦU hBt hBD hDt
       have hΦfB := AC.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
-      refine Or.inl ⟨AC.voterBlockTree_anc hr hrun.vstart hy hc D hD B hΦBD,
+      refine Or.inl ⟨AC.voterBlockTree_ancU hr.toU hrun.vstart hy hc D hD B hΦBD,
         hΦfB, D, hD, ?_, hΦBD⟩
       have hfD := hΦfB.trans hΦBD
       rw [hfr] at hDt hfD ⊢
@@ -438,7 +438,7 @@ theorem ResetPremisesUpTo.high_origin_votes_before {b : Time}
           ho.1 hq hqg hqt le_rfl hy hc hj (hFB.trans hBD)
         obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hc.1
         have hBt := AC.frame_mem_of_between sp hr.coherent hPhi hPhiU hDt.1 hBD hFB
-        exact AC.voterBlockTree_anc hr hp.run.vstart hy hc D hDt B
+        exact AC.voterBlockTree_ancU hr.toU hp.run.vstart hy hc D hDt B
           (AC.anc_tree_of_anc_U hr.coherent hPhi hPhiU hBt hBD hDt.1)
     have hvi := hp.held_target_vote_domain_before ho.1 hy hBx hc held ho hj
       (Or.inl .refl) compare compare pair

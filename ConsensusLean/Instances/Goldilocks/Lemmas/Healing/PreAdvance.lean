@@ -381,7 +381,7 @@ theorem FrameWindow.vote_head_classification {s₀ floor : Nat} {hi : Time}
     (AC.castAt_liveLockBlocks_chain hr hrun.vstart hy hc _)
   have hroot := hanc _ (Or.inr rfl)
   have hwalk := AC.getHead_viable_dichotomy hPhi.1 (fun _ h => AC.voteDomain_subset_tree h)
-    (AC.voteDomain_anc hr hrun.vstart hy hc) e.readPoint (tr.time i)
+    (AC.voteDomain_ancU hr.toU hrun.vstart hy hc) e.readPoint (tr.time i)
     (AC.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1) hAt hroot
   refine ⟨Hd, AC.getHead_mem hPhi.1 (fun _ h => AC.voteDomain_subset_tree h.1) _ _ _ _,
     (AC.castAt_spec hr hy hc).2.2.2.symm, ?_⟩

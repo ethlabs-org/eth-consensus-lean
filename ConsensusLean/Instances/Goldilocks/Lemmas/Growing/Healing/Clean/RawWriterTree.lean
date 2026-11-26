@@ -132,7 +132,7 @@ theorem raw_writer_voterBlockTree_window_before_at
     rw [← readPoint_blockStamp hri hy hc' hne] at hbs
     exact ⟨hWt, hbs⟩
   have hBt := frame_mem_of_between sp hU hΦ hΦU hDt.1 hBD hF
-  exact voterBlockTree_anc hri hini hy hc' D ⟨hDt.1, Or.inl hDt.2⟩ B
+  exact voterBlockTree_ancU hri.toU hini hy hc' D ⟨hDt.1, Or.inl hDt.2⟩ B
     (anc_tree_of_anc_U hU hΦ hΦU hBt hBD hDt.1)
 
 end Consensus.Goldilocks.AC.Growing

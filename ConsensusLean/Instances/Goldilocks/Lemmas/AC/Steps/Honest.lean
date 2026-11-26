@@ -36,7 +36,7 @@ theorem getHead_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n FG
   · exact h ▸ ha
   · exact (Anc.mem (C := getHead sp A Φ t T V σ) (anc_ghost hT _ ha) h).2
 
-/-- `honest_merged_vote` at a vote branch, with the unlock given: a vote of an honest validator
+/-- `honest_merged_voteU` at a vote branch, with the unlock given: a vote of an honest validator
 in the read point's merged view was emitted by its node at a cut no later than the branch's
 call. -/
 theorem honest_merged_vote_branchU
@@ -77,8 +77,9 @@ theorem honest_merged_vote_branchU
       hv₁ hv₂ ((state_pool_slotU sp hrun.localRun hrun.vstart hy _ _ _ hx₁).trans
         (state_pool_slotU sp hrun.localRun hrun.vstart hy _ _ _ hx₂).symm)).2)
 
-/-- `honest_merged_vote` with the unlock given (`honest_merged_vote_branchU` at the cast's vote
-branch). -/
+/-- A vote of an honest validator in an honest voter's merged view was emitted by its node at a cut
+no later than the voter's call. With the unlock given. Via `honest_merged_vote_branchU` at the
+cast's vote branch. -/
 theorem honest_merged_voteU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -87,16 +88,9 @@ theorem honest_merged_voteU
     (hvH : v.val ∈ H) : ∃ j ≤ i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v :=
   honest_merged_vote_branchU hrun hy (voteBranchAt_of_castAtU hrun.localRun hy hc) hv hvH
 
-/-- A vote of an honest validator in an honest voter's merged view was emitted by its node at
-a cut no later than the voter's call. -/
-theorem honest_merged_vote (hrun : ACRun proposer tr H U ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
-    {v : Vote sp.n} (hv : v ∈ (mergedVoteView sp e.readPoint ℓ.frame σ).votes)
-    (hvH : v.val ∈ H) : ∃ j ≤ i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v :=
-  honest_merged_voteU (hrun := hrun.toU) (y := y) (hy := hy) (i := i) (ℓ := ℓ) (e := e) (hc := hc)
-      (σ := σ) (v := v) (hv := hv) (hvH := hvH)
-
-/-- `honest_not_equivocator_branch` with the unlock given. -/
+/-- **An honest validator is not an equivocator in the merged view of a vote branch's read point**,
+whether or not the node may vote in the slot. From starts up to the vote permission. With the unlock
+given. -/
 theorem honest_not_equivocator_branchU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -117,8 +111,9 @@ theorem honest_not_equivocator_branchU
     hv₂ ((merged_vote_slot_branchU hr hrun.vstart hy hb _ hx).trans
       (merged_vote_slot_branchU hr hrun.vstart hy hb _ hx').symm)).2)
 
-/-- `honest_not_equivocator` with the unlock given (`honest_not_equivocator_branchU` at the cast's
-vote branch). -/
+/-- An honest validator is not an equivocator in an honest voter's merged view. From starts up to
+the vote permission. With the unlock given. Via `honest_not_equivocator_branchU` at the cast's vote
+branch. -/
 theorem honest_not_equivocatorU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -127,25 +122,8 @@ theorem honest_not_equivocatorU
     w ∉ equivocators (mergedVoteView sp e.readPoint ℓ.frame σ).votes :=
   honest_not_equivocator_branchU hrun hy (voteBranchAt_of_castAtU hrun.localRun hy hc) hw
 
-/-- **An honest validator is not an equivocator in the merged view of a vote branch's read
-point**, whether or not the node may vote in the slot. From starts up to the vote permission. -/
-theorem honest_not_equivocator_branch (hrun : ACRun proposer tr H U ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {R : ACState sp.n} (hb : VoteBranchAt tr y i ℓ R)
-    {σ : Nat} {w : Fin sp.n} (hw : w ∈ H) :
-    w ∉ equivocators (mergedVoteView sp R ℓ.frame σ).votes :=
-  honest_not_equivocator_branchU hrun.toU hy hb hw
-
-/-- An honest validator is not an equivocator in an honest voter's merged view.
-From starts up to the vote permission. -/
-theorem honest_not_equivocator (hrun : ACRun proposer tr H U ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
-    {w : Fin sp.n} (hw : w ∈ H) :
-    w ∉ equivocators (mergedVoteView sp e.readPoint ℓ.frame σ).votes :=
-  honest_not_equivocatorU hrun.toU hy hc hw
-
-/-- `honest_head_frame` with the unlock given. -/
+/-- An honest vote's head is a block of the call's frame, of a slot no later than the vote's. With
+the unlock given. -/
 theorem honest_head_frameU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
@@ -158,13 +136,6 @@ theorem honest_head_frameU
     e.msg.slot)) (fun _ hB => voteDomain_subset_tree hB.1) e.readPoint (tr.time j)
     (mergedVoteView sp e.readPoint ℓ.frame e.msg.slot) ((e.msg.slot : Int) - 1)
   exact ⟨_, hm, hh.symm, (frame_slot_leU sp hr hx hc.1 _ hm).trans hs.ge⟩
-
-/-- An honest vote's head is a block of the call's frame, of a slot no later than the vote's. -/
-theorem honest_head_frame (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {x : Fin sp.n}
-    (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr x j ℓ e) :
-    ∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ Hd.slot ≤ e.msg.slot :=
-  honest_head_frameU (hr := hr.toU) (x := x) (hx := hx) (j := j) (ℓ := ℓ) (e := e) (hc := hc)
 
 /-- `honest_head` with the unlock given. -/
 theorem honest_headU

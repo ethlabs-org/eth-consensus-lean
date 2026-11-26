@@ -77,7 +77,7 @@ theorem unanimous_next_cast_supporters_at {K : AC.CommitteeDict sp.n}
   have hval := (AC.castAt_spec hr hx ⟨hv'.choose_spec.1, hv'.choose_spec.2⟩).1
   have heP := hun x i ev (hrun.antitone hit hx) hv hs
   have hheld : AC.HeldBefore R ev.msg (sp.ts u + 2 * sp.Δ) := by
-    apply AC.heldBefore_readPoint_branch hr hy hb' (fun h => by
+    apply AC.heldBefore_readPoint_branchU hr.toU hy hb' (fun h => by
       have h' : ev.msg.slot = u + 1 := h.symm.trans hjs
       omega)
     simpa only [hs] using AC.honest_vote_early_pool_before hS hy hb'.callAt hgu ht le_rfl
@@ -89,7 +89,7 @@ theorem unanimous_next_cast_supporters_at {K : AC.CommitteeDict sp.n}
       (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (by linarith)))⟩
     ⟨P, hPhi.2 hPt, heP.symm, hPs.le, .refl,
       Or.inr ⟨q, haq', by change tr.time q < _; rw [hta] at hqt; linarith⟩⟩
-    (AC.honest_not_equivocator_branch hS.run hy hb' (hval ▸ hx))
+    (AC.honest_not_equivocator_branchU hS.run.toU hy hb' (hval ▸ hx))
   rwa [hval] at hsupp
 
 /-- The receiver's next-slot vote branch clears every older incompatible lock before the update,

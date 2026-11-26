@@ -519,7 +519,7 @@ theorem result_transfer : ResultTransfer sp := by
       exact h.1
   have hσ : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
   rw [hs, hσ] at hhead
-  have hdomA := voteDomain_anc hrun.localRun (fun _ => voteStart_initial _) hy hc
+  have hdomA := voteDomain_ancU hrun.localRun.toU (fun _ => voteStart_initial _) hy hc
   rw [hs] at hdomA
   have hCt : C ∈ ℓ.frame.tree := by
     rcases hviab with h | h
