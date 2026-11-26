@@ -44,9 +44,7 @@ theorem Consensus.Goldilocks.meetsObligations : Consensus.Goldilocks.MeetsObliga
 
 /-- Goldilocks is correct. -/
 theorem Consensus.Goldilocks.goldilocksCorrect : Consensus.Goldilocks.GoldilocksCorrect :=
-  fun S A V => ⟨Consensus.Shape.ShapeObligations.correct
-    (Consensus.Goldilocks.Growing.meets_obligations S A).2 V,
-    Consensus.Goldilocks.Obligations.meetsObligations_optimalFaultTolerance S A⟩
+  Consensus.Goldilocks.Growing.goldilocks_correct
 
 /-- Goldilocks' full per-run behaviour, or a forgery, credential failure or
 inadmissible selection. Collisions excuse only `Holds`, never `HoldsAlways` rows;
