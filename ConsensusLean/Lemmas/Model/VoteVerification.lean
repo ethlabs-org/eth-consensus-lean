@@ -35,7 +35,7 @@ noncomputable def lawfulVerify (emb : {d : (protoOf F E).VoteData // ((protoOf F
 
 /-- **A run with the lawful issuer and verifier (for its own selection) satisfies
 `VoteVerification`.** -/
-theorem Run.voteVerification_of_lawful (rho : Run F E)
+private theorem Run.voteVerification_of_lawful (rho : Run F E)
     (emb : {d : (protoOf F E).VoteData // ((protoOf F E).claim d).isSome} ↪ (protoOf F E).Token)
     (hi : rho.issue = lawfulIssue emb) (hv : rho.verify = lawfulVerify emb rho.sel) :
     rho.VoteVerification := by

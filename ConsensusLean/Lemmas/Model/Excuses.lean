@@ -26,7 +26,7 @@ private theorem holds_atRun {V : Type} {S : System V}
 /-- The full table transfers to a valid run, with the original excuse only in
 `Holds` rows. `HoldsAlways` rows have no collision escape; monotonicity laws
 for conviction and views remain global over all runs. -/
-theorem Behaviour.at_run (h : Behaviour S X K) {r : S.Run}
+private theorem Behaviour.at_run (h : Behaviour S X K) {r : S.Run}
     (hv : S.Valid r) : Behaviour (S.atRun r) (X.atRun r) K where
   laws := ⟨by intro s hs; subst s; exact h.laws.trace r hv,
     h.laws.convicts_mono, h.laws.view_mono⟩
@@ -50,7 +50,7 @@ theorem Behaviour.at_run (h : Behaviour S X K) {r : S.Run}
 
 /-- Moving failed bindings out of validity gives an explicit disjunction,
 without weakening adequacy or realizability. -/
-theorem CorrectProtocol.with_excuses (h : CorrectProtocol S X K)
+private theorem CorrectProtocol.with_excuses (h : CorrectProtocol S X K)
     (Structural Failure : S.Run → Prop)
     (valid : ∀ r, Structural r → ¬ Failure r → S.Valid r) :
     CorrectProtocolWithExcuses S X K Structural Failure := by

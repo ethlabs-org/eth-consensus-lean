@@ -31,7 +31,7 @@ def Authorized (o : (protoOf F E).Object) : Prop :=
 
 omit [DecidableEq V] in
 /-- A tick keeps `seen` authorized and releases only authorized objects. -/
-theorem tick_authorized (nd : Node (protoOf F E)) (v : V) (t : Time)
+private theorem tick_authorized (nd : Node (protoOf F E)) (v : V) (t : Time)
     (hs : ∀ o ∈ nd.seen, rho.Authorized o) :
     (∀ o ∈ (rho.tick nd v t).1.seen, rho.Authorized o) ∧
       (∀ o ∈ (rho.tick nd v t).2, rho.Authorized o) := by
@@ -48,7 +48,7 @@ theorem tick_authorized (nd : Node (protoOf F E)) (v : V) (t : Time)
 omit [DecidableEq V] in
 /-- A delivery of an authorized object keeps `seen` authorized and releases
 only authorized objects. -/
-theorem deliver_authorized (nd : Node (protoOf F E)) (v : V) (p : (protoOf F E).Object)
+private theorem deliver_authorized (nd : Node (protoOf F E)) (v : V) (p : (protoOf F E).Object)
     (t : Time) (hs : ∀ o ∈ nd.seen, rho.Authorized o) (hp : rho.Authorized p) :
     (∀ o ∈ (rho.deliver nd v p t).1.seen, rho.Authorized o) ∧
       (∀ o ∈ (rho.deliver nd v p t).2, rho.Authorized o) := by
@@ -69,7 +69,7 @@ theorem deliver_authorized (nd : Node (protoOf F E)) (v : V) (p : (protoOf F E).
 
 /-- If every object delivered before event cut `i` is authorized, so is
 everything every node has seen at cut `i`. -/
-theorem seen_authorized (i : Nat)
+private theorem seen_authorized (i : Nat)
     (hd : ∀ k < i, ∀ w o t, rho.events[k]? = some (.deliver w o t) → rho.Authorized o) :
     ∀ v, ∀ o ∈ (rho.stateBefore i v).seen, rho.Authorized o := by
   induction i with
@@ -103,7 +103,7 @@ theorem seen_authorized (i : Nat)
 
 /-- If every object delivered at an event `k ≤ i` is authorized, so is every
 object released at event `i` (a delivery at `i` releases from its object). -/
-theorem releasesAt_authorized (i : Nat)
+private theorem releasesAt_authorized (i : Nat)
     (hd : ∀ k ≤ i, ∀ w o t, rho.events[k]? = some (.deliver w o t) → rho.Authorized o) :
     ∀ o ∈ rho.releasesAt i, rho.Authorized o := by
   cases he : rho.events[i]? with

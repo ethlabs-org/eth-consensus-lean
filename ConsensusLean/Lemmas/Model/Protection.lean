@@ -69,7 +69,7 @@ theorem guardRefusals_cons (hash : P.Item → Nat) (k : Key pub) (nd : Node P) (
         guardRefusals P hash k (releaseAll P hash k nd [c]).1 cs := rfl
 
 /-- The refusals depend only on `seen`, not on the state. -/
-theorem guardRefusals_seen_only (hash : P.Item → Nat) (k : Key pub) {nd nd' : Node P}
+private theorem guardRefusals_seen_only (hash : P.Item → Nat) (k : Key pub) {nd nd' : Node P}
     (h : nd.seen = nd'.seen) (cs : List P.Object) :
     guardRefusals P hash k nd cs = guardRefusals P hash k nd' cs := by
   induction cs generalizing nd nd' with
@@ -79,7 +79,7 @@ theorem guardRefusals_seen_only (hash : P.Item → Nat) (k : Key pub) {nd nd' : 
       ih (releaseAll_seen_only hash k h [c]).2]
 
 /-- Checking `cs ++ cs'` checks `cs`, then `cs'` from the node the release of `cs` leaves. -/
-theorem guardRefusals_append (hash : P.Item → Nat) (k : Key pub) (cs cs' : List P.Object) :
+private theorem guardRefusals_append (hash : P.Item → Nat) (k : Key pub) (cs cs' : List P.Object) :
     ∀ nd, guardRefusals P hash k nd (cs ++ cs') =
       guardRefusals P hash k nd cs ++
         guardRefusals P hash k (releaseAll P hash k nd cs).1 cs' := by
@@ -116,7 +116,7 @@ private theorem releaseAll_single (hash : P.Item → Nat) (k : Key pub) (nd : No
 
 /-- With no refusal, a released `k`-signed object never conflicts, in either order, with a
 `k`-signed object in the closure of `nd.seen`. -/
-theorem releaseAll_noConflict_seen {hash : P.Item → Nat} {k : Key pub} {nd : Node P}
+private theorem releaseAll_noConflict_seen {hash : P.Item → Nat} {k : Key pub} {nd : Node P}
     {cs : List P.Object} {c o : P.Object} (hg : guardRefusals P hash k nd cs = [])
     (h : c ∈ (releaseAll P hash k nd cs).2)
     (ho : o ∈ closure nd.seen) (hs : c.signer? = some k) (hs' : o.signer? = some k) :
@@ -177,7 +177,7 @@ variable (rho : Run F E)
 omit [DecidableEq V] in
 /-- Through the PKI, an object signed by validator `x` is signed by `x`'s own
 key. -/
-theorem signer_of_signerOf {o : (protoOf F E).Object} {x : V}
+private theorem signer_of_signerOf {o : (protoOf F E).Object} {x : V}
     (h : rho.signerOf o = some x) : o.signer? = some (rho.ownKey x) := by
   obtain ⟨k, hk, rfl⟩ := Option.map_eq_some_iff.mp h
   simp [ownKey, hk]
@@ -191,7 +191,7 @@ theorem viewIdx_closure {v : V} {i : Nat} {o : (protoOf F E).Object}
 before `i`: every object it contains that is signed by an honest validator
 was released by that validator at an earlier sending event (a tick or a
 delivery). -/
-theorem seen_safe (hv : rho.ExecutionValid) (H : V → Prop) (i : Nat)
+private theorem seen_safe (hv : rho.ExecutionValid) (H : V → Prop) (i : Nat)
     (hH : ∀ k < i, ∀ e, rho.events[k]? = some e →
       ∀ u, H u → u ∉ rho.faultyAt e.time) :
     ∀ v, ∀ o ∈ (rho.stateBefore i v).seen, rho.SafeBeforeOn H i o := by
@@ -253,7 +253,7 @@ theorem signed_seen_released (hv : rho.ExecutionValid) {i : Nat} {v : V}
 
 /-- Every object signed by an honest validator that an honest node saw was
 released by that validator at a sending event (a tick or a delivery). -/
-theorem released_of_observed (hv : rho.ExecutionValid) {o : (protoOf F E).Object}
+private theorem released_of_observed (hv : rho.ExecutionValid) {o : (protoOf F E).Object}
     {d : Time}
     (ho : ∃ v i, i ≤ rho.events.length ∧ rho.cutTime i ≤ d ∧ o ∈ rho.ViewIdx v i)
     {u : V} (hu : u ∉ rho.faultyAt d)
@@ -268,7 +268,7 @@ theorem released_of_observed (hv : rho.ExecutionValid) {o : (protoOf F E).Object
 omit [DecidableEq V] in
 /-- The duties `ds` release what one `releaseAll` call from `nd` releases on their candidates, leave
 the same `seen`, and have the refusals of one `guardRefusals` call on the same candidates. -/
-theorem runDuties_flat_guard (v : V) (ds : List (protoOf F E).Duty) :
+private theorem runDuties_flat_guard (v : V) (ds : List (protoOf F E).Duty) :
     ∀ nd : Node (protoOf F E), ∃ cs : List (protoOf F E).Object,
       (rho.runDuties v nd ds).2 = (releaseAll (protoOf F E) rho.hash (rho.ownKey v) nd cs).2 ∧
       (rho.runDuties v nd ds).1.seen =
@@ -348,7 +348,7 @@ theorem tick_flat_guard (nd : Node (protoOf F E)) (v : V) (t : Time) :
 omit [DecidableEq V] in
 /-- A delivery releases what one `releaseAll` call from the processed node releases on some
 candidates, and its refusals are those of one `guardRefusals` call on the same candidates. -/
-theorem deliver_flat_guard (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object)
+private theorem deliver_flat_guard (nd : Node (protoOf F E)) (v : V) (o : (protoOf F E).Object)
     (t : Time) :
     ∃ cs : List (protoOf F E).Object,
       (rho.deliver nd v o t).2 = (releaseAll (protoOf F E) rho.hash (rho.ownKey v)
@@ -381,7 +381,7 @@ theorem tick_noConflict {i : Nat} {v : V} {t : Time} (he : rho.events[i]? = some
 
 /-- With no refusal at the tick, an own-signed object it releases never conflicts, in either
 order, with an own-signed object in the closure of the node's `seen` before it. -/
-theorem tick_noConflict_seen {i : Nat} {v : V} {t : Time}
+private theorem tick_noConflict_seen {i : Nat} {v : V} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) (hg : rho.guardRefusalsAt i = [])
     {c o : (protoOf F E).Object}
     (hc : c ∈ rho.releasesAt i) (ho : o ∈ closure (rho.stateBefore i v).seen)
@@ -409,7 +409,7 @@ theorem deliver_noConflict {i : Nat} {v : V} {p : (protoOf F E).Object} {t : Tim
 
 /-- With no refusal at the delivery, an own-signed object it releases never conflicts, in either
 order, with an own-signed object in the closure of the node's `seen` before it. -/
-theorem deliver_noConflict_seen {i : Nat} {v : V} {p : (protoOf F E).Object} {t : Time}
+private theorem deliver_noConflict_seen {i : Nat} {v : V} {p : (protoOf F E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v p t)) (hg : rho.guardRefusalsAt i = [])
     {c o : (protoOf F E).Object}
     (hc : c ∈ rho.releasesAt i) (ho : o ∈ closure (rho.stateBefore i v).seen)
