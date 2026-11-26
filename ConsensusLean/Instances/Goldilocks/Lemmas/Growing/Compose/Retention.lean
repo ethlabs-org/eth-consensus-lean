@@ -15,7 +15,7 @@ of the nodes retained at `d` (`LocalRun.upTo`). -/
 namespace Consensus.Goldilocks.Growing
 
 /-- **Retention of a growing-fault run at a smaller growing honest set.** -/
-theorem LocalRun.upTo_of_subset {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+private theorem LocalRun.upTo_of_subset {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
     {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
     {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
     (h : LocalRun proposer dg H sg tr ini) {d : Time} (hd : 0 ≤ d)

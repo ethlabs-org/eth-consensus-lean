@@ -98,7 +98,7 @@ theorem rows_sourced_by {ini}
 `i` of a node honest at a time `t ≥ 0` after every cut before `i`, with `2 f_t < n`. The
 justification's honest source is found in the prefix through `t`; `B` is only held while
 honest. -/
-theorem J_compatible_by {ini}
+private theorem J_compatible_by {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t)
     (ht : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) (hf : 2 * (H t)ᶜ.ncard < sp.n)

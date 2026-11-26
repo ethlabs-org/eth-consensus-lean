@@ -130,7 +130,7 @@ theorem boundsK (Q : OutageQueryAt S A V) {ini}
     Compose.Growing.CommitteeBoundsFrom Q.trace Q.keys Q.K 0 b :=
   (Q.bounds_pair hrun hb).2
 
-theorem end_le_horizon (Q : OutageQueryAt S A V) : Q.winEnd ≤ Q.run.2.horizon :=
+private theorem end_le_horizon (Q : OutageQueryAt S A V) : Q.winEnd ≤ Q.run.2.horizon :=
   min_le_right _ _
 
 open Classical in
@@ -235,7 +235,7 @@ theorem opponents_lt_K (Q : OutageQueryAt S A V) {m : Nat}
 
 /-- **N6 inside a band committee**: `2·|K m ∩ ((H z)ᶜ ∪ W)| < committeeSize` (`opponents_lt_K`, the
 holders being disjoint from the opponents). -/
-theorem two_mul_opp_lt (Q : OutageQueryAt S A V) {m : Nat}
+private theorem two_mul_opp_lt (Q : OutageQueryAt S A V) {m : Nat}
     (h₁ : Compose.coverLabel Q.params Q.start ≤ m)
     (h₂ : m ≤ Compose.coverLabel Q.params Q.start + Q.params.k)
     (hq : Q.params.ts m ≤ Q.run.2.horizon) (hsh : Q.start ≤ Q.run.2.horizon) :

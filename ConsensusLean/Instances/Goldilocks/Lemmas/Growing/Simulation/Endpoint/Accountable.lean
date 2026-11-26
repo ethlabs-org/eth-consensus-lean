@@ -184,7 +184,8 @@ theorem final_accountable_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} 
 /-- **R.7 final accountability under growing faults**, the fourth `ShapeClaimsAt` field for every
 `α ≤ 1/3`: two finalized reads of nodes each honest at its own engine cut are compatible, or the
 union of their views convicts `nα` validators; the only escape is an observed hash collision. -/
-theorem engine_finalAccountable_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
+private theorem engine_finalAccountable_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+    (S : Setup)
     (rho : Model.Run (compiled (goldilocks S)) E) (hv : rho.ExecutionValid)
     {α : ℚ} (hα : α ≤ 1 / 3) :
     (chainTrace rho).AccountablySafe rho.ViewIdx rho.Slashable α .finalized 0 ∨

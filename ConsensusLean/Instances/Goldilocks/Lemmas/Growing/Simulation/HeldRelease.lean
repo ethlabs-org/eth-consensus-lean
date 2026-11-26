@@ -75,7 +75,7 @@ theorem released_by_of_release_liveness
 /-- Not withheld after the gap bound: under the premises of `released_by_of_release_liveness`, an
 item signed at `s` is no longer withheld at any `t ≥ e + R·Δ`. At `e := s` this is the validator
 awake on `[s, s + R·Δ]` and `s + R·Δ ≤ t`. -/
-theorem not_withheld_of_release_liveness {withheld : Time → Prop} {t : Time}
+private theorem not_withheld_of_release_liveness {withheld : Time → Prop} {t : Time}
     (hlive : ∀ t, t₀ ≤ t → ∃ t', t ≤ t' ∧ t' ≤ t + (R : Time) * Δ ∧ release t' = true)
     (ht₀ : t₀ ≤ e) (hse : s ≤ e) (hawake : ∀ t, e ≤ t → t ≤ e + (R : Time) * Δ → awake t)
     (hflush : ∀ t, s ≤ t → t ≤ e + (R : Time) * Δ → awake t → release t = true →
@@ -93,7 +93,7 @@ an attestation signed at `k` by `y` honest then is released at some `r` with
 `time k ≤ r ≤ max (time k) g + R·Δ`, by `y` still honest at `r`. For `R ≠ 0` the signer must be
 honest at that bound (`hyR`, the premise of `SyncOnAt.attestation`) and the bound within `b`;
 for `R = 0` the release is at the signing itself. -/
-theorem att_released_by {P : Params} {A : NodeAC P} (tr : RunTrace A)
+private theorem att_released_by {P : Params} {A : NodeAC P} (tr : RunTrace A)
     {H : Time → Set (Fin P.n)} {rel : Fin P.n → Time → Bool} {R : ℕ} {g b : Time}
     {released : Fin P.n → FG.Att P.n → Time → Prop}
     (hgap : ReleaseGapAt P rel R 0) (hanti : ∀ y s t, s ≤ t → y ∈ H t → y ∈ H s)

@@ -195,7 +195,7 @@ private theorem localData_eqs
 /-- **L6, healed agreement**: after a reset by the horizon and its drain, an honest opening
 proposal at `s₁` with its update by the horizon and `ḡ + 4Δ ≤ t_{s₁}` makes any two ready reads
 strictly after `t_{s₁} + 6Δ` compatible in the blocks held while honest. -/
-theorem goldilocks_healed_compatible
+private theorem goldilocks_healed_compatible
     {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
     {sign : Fin sp.n → Time → Bool} {G : Nat}
     {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg) {s₁ : Nat}
@@ -235,7 +235,7 @@ theorem goldilocks_healed_compatible
 /-- **L6, healed proposal ancestry**: after a reset by the horizon and its drain, an honest
 proposal at `s₁` by the horizon is an ancestor of every ready read at or after its update
 `t_{s₁} + 6Δ`, strictly before the read cut. -/
-theorem goldilocks_healed_proposal
+private theorem goldilocks_healed_proposal
     {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
     {sign : Fin sp.n → Time → Bool} {G : Nat}
     {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg) {s₁ : Nat}
@@ -271,7 +271,7 @@ theorem goldilocks_healed_proposal
 /-- **L7, ready proposal inclusion**: after a reset by the horizon, a ready proposal, still honest
 `Δ` after it, at a slot after the drain with `ḡ + 4Δ ≤ t_s`, is an ancestor of every ready read at
 or after `t_s + 6Δ`, strictly before the read cut. -/
-theorem goldilocks_proposal_read
+private theorem goldilocks_proposal_read
     {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
     {sign : Fin sp.n → Time → Bool} {G : Nat}
     {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg)

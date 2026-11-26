@@ -17,7 +17,7 @@ variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Time → Set (Fin P.n)}
 
 /-- An honest store supplies a finalized chain and genuine signatures for signers still
 honest at its observation. Its reader need not remain honest after that observation. -/
-theorem FGLocalRun.finalized_chain_upTo (hr : FGLocalRun acp₀ H U tr)
+private theorem FGLocalRun.finalized_chain_upTo (hr : FGLocalRun acp₀ H U tr)
     {y : Fin P.n} {i : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) :
     ∃ c σ, P.fg.chainState c = some σ ∧ σ.F = (tr.store y i).F.root ∧
@@ -78,7 +78,7 @@ theorem FGLocalRun.finalized_safety (hr : FGLocalRun acp₀ H U tr)
 
 /-- The finalized target obtained by replaying an honest reader's held carrier agrees with
 another honest reader's cache, charging certificate intersection at the later observation. -/
-theorem FGLocalRun.replay_finalized_safety_upTo (hr : FGLocalRun acp₀ H U tr)
+private theorem FGLocalRun.replay_finalized_safety_upTo (hr : FGLocalRun acp₀ H U tr)
     {x y : Fin P.n} {i j : Nat} {t : Time} (hx : x ∈ H (tr.time i))
     (ht : 0 ≤ t) (hle : ∀ k < j, tr.time k ≤ t) (hy : y ∈ H t)
     (hf : (H (max (tr.time i) t))ᶜ.ncard < 2 * P.fg.q - P.n)
