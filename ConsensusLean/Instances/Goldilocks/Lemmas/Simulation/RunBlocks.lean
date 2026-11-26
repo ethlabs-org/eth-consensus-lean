@@ -53,12 +53,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (proposer : Nat → Fin sp.n)
   (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
 
-/-- A tick makes a cut (the AC's tick), whether or not the FG update is due. -/
-theorem exec_tick_ne_nil (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
-    (fgDue : Bool) :
-    (exec proposer dg self st t (.tick x fgDue)).2 ≠ [] := by
-  cases fgDue <;> simp [Node.exec, onTick, runSteps, tickSteps, Node.tickStep]
-
 /-- A restart makes a cut (`ac_restart`). -/
 theorem exec_restart_ne_nil (st : NodeState (goldilocksNode sp ro)) (t : Time) :
     (exec proposer dg self st t .restart).2 ≠ [] := by

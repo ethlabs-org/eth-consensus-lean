@@ -328,33 +328,6 @@ theorem stateAt_other (v : V) {j : Nat}
   cases ev <;> simp only [Model.Event.node] at hne <;>
     simp only [Model.Run.step, Function.update_of_ne (Ne.symm hne)]
 
-private theorem keyLe_between {V' O' : Type} {x y z : Model.Event V' O'} (h1 : x.keyLe y)
-    (h2 : y.keyLe z) (ht : x.time = z.time) (hp : x.phase = z.phase) :
-    y.time = x.time ∧ y.phase = x.phase := by
-  have a1 : @LT.lt Int _ x.time y.time ∨ (@Eq Int x.time y.time ∧ x.phase ≤ y.phase) := h1
-  have a2 : @LT.lt Int _ y.time z.time ∨ (@Eq Int y.time z.time ∧ y.phase ≤ z.phase) := h2
-  have a3 : @Eq Int x.time z.time := ht
-  have : @Eq Int y.time x.time ∧ y.phase = x.phase := by omega
-  exact this
-
-/-- An engine event between two ticks at the same time is a tick at that time. -/
-theorem tick_between (hv : rho.ExecutionValid) {j i k : Nat} {a b : V} {t : Time}
-    {ev : Model.Event V (Model.protoOf (compiled F) E).Object}
-    (hj : rho.events[j]? = some (.tick a t)) (hk : rho.events[k]? = some (.tick b t))
-    (hji : j ≤ i) (hik : i ≤ k) (hi : rho.events[i]? = some ev) : ∃ c, ev = .tick c t := by
-  rcases Nat.eq_or_lt_of_le hji with rfl | hji
-  · exact ⟨a, Option.some.inj (hi.symm.trans hj)⟩
-  rcases Nat.eq_or_lt_of_le hik with rfl | hik
-  · exact ⟨b, Option.some.inj (hi.symm.trans hk)⟩
-  obtain ⟨ht, hp⟩ := keyLe_between (keyLe_of_lt rho hv hj hi hji) (keyLe_of_lt rho hv hi hk hik)
-    rfl rfl
-  cases ev with
-  | tick c t' =>
-    simp only [Model.Event.time] at ht
-    exact ⟨c, by rw [ht]⟩
-  | deliver c o t' => simp [Model.Event.phase] at hp
-  | restart c t' => simp [Model.Event.phase] at hp
-
 open Classical in
 /-- Every bounded engine prefix agrees with its replay, including at cuts after compromise:
 validity constrains the actual events, not the observing validator at the end of the prefix. -/
@@ -427,11 +400,5 @@ theorem stateAgreement_all {due : e.State hn → Bool} (laws : e.Lawful due)
           replay_deliver (receiverCodec e rho w) (runProposer rho hn) (digestOf e rho)
             (Model.digests rho.hash o)
             (rho.ownKey v) (rho.ownKey w) t j _ _ _ 0 (fun h => (hk h.symm).elim)
-
-/-- The valid engine prefix and its replay agree at the same bounded observation cut. -/
-theorem stateAgreement {due : e.State hn → Bool} (laws : e.Lawful due)
-    (hv : rho.ExecutionValid) : StateAgreement e rho := by
-  rw [stateAgreement_iff]
-  exact fun v i hi _ => stateAgreement_all laws hv v i hi
 
 end Consensus.Goldilocks.NodeAsChainShape.CanonicalTrace

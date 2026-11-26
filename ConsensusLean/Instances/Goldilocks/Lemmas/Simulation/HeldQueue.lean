@@ -191,15 +191,6 @@ theorem poll_snd (st : State sp ro binding) t : (poll st t release).2 =
   unfold poll; dsimp only
   split <;> simp_all
 
-/-- A poll step's body does not read the held queue. -/
-theorem poll_snd_held (st : State sp ro binding) (l : List (FG.Att sp.n)) t :
-    (poll { st with held := l } t release).2 = (poll st t release).2 := by
-  rw [poll_snd, poll_snd]
-  congr 2
-  split
-  · rw [fgUpdate_outbox, fgUpdate_outbox, fgSigned_held]
-  · rfl
-
 /-- A poll step keeps the key. -/
 theorem poll_self (st : State sp ro binding) t : (poll st t release).1.self = st.self := by
   unfold poll; simp only; split <;> split <;> simp [fgUpdate_self]
@@ -361,26 +352,6 @@ theorem pollBatch_flush (st : State sp ro binding) t (hr : release st.self st.no
       ∃ pre, (pollBatch st t release).2 = pre ++ st.held.map fun a => (.att (encodeAtt a), []) :=
   ⟨by simp [pollBatch_held, hr, hk],
     ⟨_, by rw [pollBatch_snd]; simp only [hr, hk, Bool.and_self, ↓reduceIte]; rfl⟩⟩
-
-/-- At a time the schedule refuses, the batch poll releases no held attestation: its batch is
-the poll step's body, the block wrappers and the vote envelopes. -/
-theorem pollBatch_snd_of_refused (st : State sp ro binding) t
-    (hr : release st.self st.now = false) : (pollBatch st t release).2 =
-    (poll st t release).2.toList ++ (st.forwards.map fun p => (.forward p.1, p.2)) ++
-      (st.voteForwards.map fun p => (.voteForward p.1 (encodeVote p.2.1), [p.2.2])) := by
-  rw [pollBatch_snd]; simp [hr]
-
-/-- Before the tick step of the node's time, the batch poll flushes nothing. -/
-theorem pollBatch_snd_of_unticked (st : State sp ro binding) t (hk : st.ticked = false) :
-    (pollBatch st t release).2 =
-    (poll st t release).2.toList ++ (st.forwards.map fun p => (.forward p.1, p.2)) ++
-      (st.voteForwards.map fun p => (.voteForward p.1 (encodeVote p.2.1), [p.2.2])) := by
-  rw [pollBatch_snd]; simp [hk]
-
-/-- Before the tick step of the node's time, the batch poll's state is the poll step's. -/
-theorem pollBatch_fst_of_unticked (st : State sp ro binding) t (hk : st.ticked = false) :
-    (pollBatch st t release).1 = (poll st t release).1 := by
-  rw [pollBatch_fst]; simp [hk]
 
 /-- A property kept by the poll step and by emptying the held queue is kept by the batch poll. -/
 theorem pollBatch_pres {Q : State sp ro binding → Prop} {st : State sp ro binding} {t : Time}

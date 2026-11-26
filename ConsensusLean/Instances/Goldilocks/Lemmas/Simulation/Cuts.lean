@@ -184,18 +184,6 @@ theorem mem_eventCuts {i : Nat}
   · obtain ⟨j, hj, w, hw, hn₂, s, hs, hid₂⟩ := h3
     exact Or.inr ⟨h1, ⟨a, hl.trans ha⟩, j, hj, w, hw, hn'.trans hn₂, s, hs, hid.trans hid₂⟩
 
-/-- A cut of engine event `i` that is no `.attestation` cut is at the event's node and time,
-under an event id `Nat.pair i s`. -/
-theorem mem_eventCuts_of_not_att {i : Nat}
-    {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
-    (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
-    (hr : r ∈ eventCuts S rho hn i) (hna : ∀ a, r.label ≠ .fg (.attestation a)) :
-    r.node = rho.ownKey ev.node ∧ r.time = ev.time ∧ ∃ s, r.event = Nat.pair i s := by
-  obtain ⟨ht, h | h⟩ := mem_eventCuts S rho hn he hr
-  · exact ⟨h.1, ht, h.2⟩
-  · obtain ⟨a, ha⟩ := h.label
-    exact absurd ha (hna a)
-
 /-- A cut at position `0` of engine event `i` starts a group whose handler is of the engine
 event's phase: if its label is the first cut of the handler of `e` (at any state), `e` has the
 phase of the engine event. -/
@@ -223,13 +211,6 @@ theorem restart_of_mem_eventCuts {i : Nat}
   obtain ⟨q, hq, _, hlabel, _⟩ := eventCuts_source S rho hn i hr
   exact NodeAsChainShape.CanonicalTrace.restart_of_mem_eventCuts (traceEncoding S hn) rho he hq
     (hlabel ▸ hl) hℓ
-
-/-- The cuts of an engine restart are at the positions `0, 1, …`. -/
-theorem pos_getElem_eventCuts_of_group {i : Nat} {v : V} {t : Time}
-    (he : rho.events[i]? = some (.restart v t)) (m : Nat)
-    (hm : m < (eventCuts S rho hn i).length) : (eventCuts S rho hn i)[m].pos = m := by
-  simp only [eventCuts_restart S rho hn i v t he] at hm ⊢
-  exact (getElem_groupRecs _ _ _ _ _ _ _ m hm).2.2.2.1
 
 /-- An engine restart has exactly one cut, the restart's `ac_restart`. -/
 theorem eventCuts_restart_length {i : Nat} {v : V} {t : Time}

@@ -243,24 +243,11 @@ theorem goldilocksPoint_readyAt (c t d : Time) (htb : t ≤ rho.horizon) :
   indexedRunPoint_readyAt rho.key c t d htb
 
 omit [DecidableEq V] in
-/-- Faulty validators map to the run's faulty validators at the clamped retention time. -/
-theorem goldilocksPoint_faultyAt (d t : Time) :
-    (((goldilocksPoint rho).retain d).faultyAt t).map rho.key.toEmbedding =
-      rho.faultyAt (min d rho.horizon) := indexedRunPoint_faultyAt rho.key d t
-
-omit [DecidableEq V] in
 /-- Validators honest and awake in a bounded window map to the run's. -/
 theorem goldilocksPoint_awakeIn (d a b : Time) (ha : 0 ≤ a) (hb : b ≤ rho.horizon) :
     (((goldilocksPoint rho).retain d).awakeIn a b).map rho.key.toEmbedding =
       (rho.point.retain (min d rho.horizon)).awakeIn a b :=
   indexedRunPoint_awakeIn rho.key d a b ha hb
-
-/-- The mapped committee is the run's selected committee at nonnegative times. -/
-theorem goldilocksPoint_committee (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
-    (t : Time) (ht : 0 ≤ t) :
-    ((goldilocksRunMap S rho hn hv).committee t).map rho.key.toEmbedding =
-      (Model.sysExternal _ (compiled (goldilocks S)) V).selected E (rho.key, rho.sel) t := by
-  simpa only [goldilocksRunMap_validator] using (goldilocksRunMap S rho hn hv).committee_map ht
 
 end Point
 

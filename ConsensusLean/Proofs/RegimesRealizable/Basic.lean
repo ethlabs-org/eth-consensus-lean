@@ -1037,20 +1037,6 @@ theorem profile_txLiveActive (awake : V → Time → Bool)
     have : kv key hn 2 (by decide) ≠ kv key hn 1 (by decide) := kv_ne key hn (by decide)
     simp only [realPoint_eq, this, false_and, ↓reduceIte, List.not_mem_nil, not_false_eq_true]
 
-/-- With keys `1` and `2` always awake, safety is active after `t₀`. -/
-theorem profile_safeActive (awake : V → Time → Bool)
-    (ha1 : ∀ t, awake (kv key hn 1 (by decide)) t = true)
-    (ha2 : ∀ t, awake (kv key hn 2 (by decide)) t = true) (c t₀ : Time) (hH : t₀ + 2 ≤ H) :
-    SafeActive c t₀ (realPoint key hn Δ hΔ ΔF hΔF awake H) := by
-  have h1 := fun t => realPoint_honest key hn hΔ hΔF awake H
-    (j := 1) (t := t) (by decide) (by decide)
-  have h2 := fun t => realPoint_honest key hn hΔ hΔF awake H
-    (j := 2) (t := t) (by decide) (by decide)
-  exact ⟨kv key hn 1 (by decide), kv key hn 2 (by decide), t₀ + 1, t₀ + 2,
-    kv_ne key hn (by decide), lt_add_one t₀, add_lt_add_right one_lt_two t₀, hH,
-    ⟨h1 _, fun t _ _ => ha1 t⟩, ⟨h2 _, fun t _ _ => ha2 t⟩,
-    ⟨h1 _, fun t _ _ => ha1 t⟩⟩
-
 /-- The canonical run at a witness point, from GST `g`, with some injective
 hash and an admissible selection `sel`: valid, no collision, and eager from
 `g`; its point, PKI and selection are the given ones definitionally
