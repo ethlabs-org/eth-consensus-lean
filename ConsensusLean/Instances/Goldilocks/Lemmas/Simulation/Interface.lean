@@ -39,7 +39,7 @@ kept)** and **G1.5, evidence binding**, over the Goldilocks shape of `AsChainSha
   Lemmas), nothing to state here.
 
 Not stated: the transport of the engine's network premises (`CommLog.PSync`, `SyncUntil`) to the
-spec's `Sync`/`GST` (`Spec/Run/Premises`). The engine's `Delivers` holds a receipt by
+spec's `Sync`/`GST` (`Spec/Run/GenericPremises`). The engine's `Delivers` holds a receipt by
 `max(a, g) + Δ − 1`, strictly before `max(a, g) + Δ`, as the spec requires processing strictly
 before `max(τ, w_y) + Δ'` (half-open delivery); the engine relays an admission at
 the admitting delivery's own time, as the spec's instantaneous send. The obligations proof does

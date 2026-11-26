@@ -37,5 +37,5 @@ module ownership/import effects, preserved replay leaf coverage and per-declarat
 Old forwarding paths may point toward Blocks; Blocks may not point back to them.
 
 Service, Sleepy, Simulation, AsChainShape and Obligations remain instance-side.
-Served, RecordWrites and ACFamily packages are outside this FG extraction.
+Served and RecordWrites packages are outside this FG extraction.
 No semantic/proof changes or silent ownership allowances belong in a physical move.
