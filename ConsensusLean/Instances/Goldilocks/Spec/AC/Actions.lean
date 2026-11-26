@@ -34,7 +34,7 @@ goldilocks-spec.tex §"Node actions" (Figures "Goldilocks: the vote and the vote
 * `ac_to_fg`: for a joined node the deepest candidate (a block of the full
   viable tree under a live fast lock of slot `slot(t) − 2` or later); when there is none and deep
   sources are on (`deepDepth = some D`), the deepest deep candidate (a block of the full viable
-  tree at or below `ac_confirmed`, not genesis, that the node accepted by `t_{slot(t) − D}`). The
+  tree at or below `deepAnchor`, not genesis, that the node accepted by `t_{slot(t) − D}`). The
   block is returned when it is not at or below `fg_reported` (in the tree), which it then
   records. -/
 
@@ -118,15 +118,20 @@ def toFGCandidates (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) : Set (Blk 
   {B | B ∈ Φ.viableTree Φ.tree ∧
     ∃ l ∈ liveLocks sp A.locks Φ t, l.block = B.root ∧ l.fast = true ∧ sp.slot t ≤ l.slot + 2}
 
+/-- The anchor of the deep candidates: a deep candidate is at or below it. One candidate anchor,
+still to be decided: the confirmed tip `ac_confirmed`. -/
+noncomputable def deepAnchor (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) : Blk sp.n FGP :=
+  acConfirmed sp A Φ t
+
 /-- The deep candidates of `ac_to_fg` at depth `D`: the blocks of the full viable tree at or below
-the confirmed tip `ac_confirmed`, other than genesis, whose stamp (the time the node accepted
-them, or its last restart) is at most `t_{slot(t) − D}`. A restart re-stamps every block at the
-restart time, so a node has no deep candidate for `D` slots after each restart: one that restarts
-more often than every `D` slots never has one. Genesis (stamp `−∞`) is excluded explicitly: the
+`deepAnchor`, other than genesis, whose stamp (the time the node accepted them, or its last
+restart) is at most `t_{slot(t) − D}`. A restart re-stamps every block at the restart time, so a
+node has no deep candidate for `D` slots after each restart: one that restarts more often than
+every `D` slots never has one. Genesis (stamp `−∞`) is excluded explicitly: the
 `fg_reported` test excludes it only when the reported block is in the frame's tree. -/
 def toFGDeepCandidates (D : Nat) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Set (Blk sp.n FGP) :=
-  {B | B ∈ Φ.viableTree Φ.tree ∧ Φ.Anc B (acConfirmed sp A Φ t) ∧ B.root ≠ sp.genesisRoot ∧
+  {B | B ∈ Φ.viableTree Φ.tree ∧ Φ.Anc B (deepAnchor sp A Φ t) ∧ B.root ≠ sp.genesisRoot ∧
     A.blockStamp B.root ≤ ETime.of (sp.ts ((sp.slot t : Int) - D))}
 
 open Classical in
