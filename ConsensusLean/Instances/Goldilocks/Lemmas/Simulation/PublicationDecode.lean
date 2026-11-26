@@ -26,20 +26,6 @@ variable {binding : VoteBinding}
 
 variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
 
-theorem contained_parts_infix {n : Nat} {Role Item Body : Type}
-    {o q : Model.Obj n Role Item Body} (h : Model.Obj.Contains o q) :
-    ∃ pre post, o.parts = pre ++ q.parts ++ post := by
-  rcases h.cases with rfl | ⟨c, hc, hcq⟩
-  · exact ⟨[], [], by simp⟩
-  · obtain ⟨pre, post, hp⟩ := contained_parts_infix hcq
-    obtain ⟨before, after, he, _⟩ := List.eq_append_cons_of_mem hc
-    refine ⟨o :: (before.flatMap Model.Obj.parts ++ pre),
-      post ++ after.flatMap Model.Obj.parts, ?_⟩
-    rw [Model.Obj.parts_eq, he, List.flatMap_append, List.flatMap_cons, hp]
-    simp only [List.cons_append, List.append_assoc]
-termination_by sizeOf o
-decreasing_by exact lt_trans (List.sizeOf_lt_of_mem hc) (Model.Obj.carried_size_lt _)
-
 /-- Splitting recursive receipt processing preserves the actual intermediate cut,
 rather than replacing a processing occurrence by an arbitrary historical call. -/
 theorem deliverSeq_append_split {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp ro}
