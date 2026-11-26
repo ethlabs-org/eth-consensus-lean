@@ -35,7 +35,7 @@ theorem truncate_eq (b : Time) : rho.truncate b =
 omit [DecidableEq V] in
 /-- On a time-sorted list, the events at times `≤ b` form a prefix, and every
 later event is after `b`. -/
-theorem filter_time_split (b : Time) :
+private theorem filter_time_split (b : Time) :
     ∀ (l : List (Event V (protoOf F E).Object)), l.Pairwise Event.keyLe →
       ∃ ys, l = l.filter (fun e => decide (e.time ≤ b)) ++ ys ∧ ∀ e ∈ ys, b < e.time
   | [], _ => ⟨[], rfl, by simp⟩
@@ -77,7 +77,7 @@ theorem truncate_getElem? {i : Nat} (hi : i < (rho.truncate b).events.length) :
     (rho.truncate b).events[i]? = rho.events[i]? := by
   rw [hsplit, List.getElem?_append_left hi]
 
-theorem truncate_stateBefore {i : Nat} (hi : i ≤ (rho.truncate b).events.length) :
+private theorem truncate_stateBefore {i : Nat} (hi : i ≤ (rho.truncate b).events.length) :
     (rho.truncate b).stateBefore i = rho.stateBefore i := by
   change ((rho.truncate b).events.take i).foldl rho.step rho.initWorld =
     (rho.events.take i).foldl rho.step rho.initWorld
@@ -89,7 +89,7 @@ theorem truncate_releasesAt {i : Nat} (hi : i < (rho.truncate b).events.length) 
   rw [truncate_getElem? hsplit hi, truncate_stateBefore hsplit hi.le]
   rfl
 
-theorem truncate_viewIdx (v : V) {i : Nat} (hi : i ≤ (rho.truncate b).events.length) :
+private theorem truncate_viewIdx (v : V) {i : Nat} (hi : i ≤ (rho.truncate b).events.length) :
     (rho.truncate b).ViewIdx v i = rho.ViewIdx v i := by
   unfold ViewIdx
   rw [truncate_stateBefore hsplit hi]

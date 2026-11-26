@@ -81,7 +81,7 @@ theorem causal_prefix (xs ys : List (Event V (protoOf F E).Object))
 
 /-- In a causal run every held root has an earlier release, including roots
 received at the current sender from a different validator. -/
-theorem seen_released_before (hc : rho.Causal) {i : Nat} {v : V}
+private theorem seen_released_before (hc : rho.Causal) {i : Nat} {v : V}
     {o : (protoOf F E).Object} (ho : o ∈ (rho.stateBefore i v).seen) :
     ∃ j < i, o ∈ rho.releasesAt j := by
   obtain ⟨j, hj, hs | ⟨t, ht⟩⟩ := rho.seen_source ho
@@ -92,7 +92,7 @@ theorem seen_released_before (hc : rho.Causal) {i : Nat} {v : V}
 
 /-- A causal release depends only on roots released earlier, including earlier
 positions in the same engine event. No extra tick is needed for a dependency. -/
-theorem release_ready_of_prefix (hc : rho.Causal) (i p : Nat)
+private theorem release_ready_of_prefix (hc : rho.Causal) (i p : Nat)
     (o : (protoOf F E).Object) (ho : (rho.releasesAt i)[p]? = some o)
     (held : List (protoOf F E).Object)
     (hprev : ∀ j < i, ∀ a ∈ rho.releasesAt j, a ∈ held)
@@ -136,7 +136,7 @@ theorem release_ready_of_prefix (hc : rho.Causal) (i p : Nat)
         simpa only [releasesAt, he] using ha
 
 /-- Flattening event-local release lists preserves the causal dependency order. -/
-theorem release_ready_flat (hc : rho.Causal) (n p : Nat)
+private theorem release_ready_flat (hc : rho.Causal) (n p : Nat)
     (o : (protoOf F E).Object)
     (ho : ((List.range n).flatMap rho.releasesAt)[p]? = some o) :
     (protoOf F E).dependencies.ready
@@ -196,7 +196,7 @@ theorem safeBeforeOn_iff {H : V → Prop} {i : Nat} {o : (protoOf F E).Object} :
       rho.signerOf d = some u → H u →
         ∃ j t, j < i ∧ rho.SendsAt u j t ∧ d ∈ rho.releasesAt j := Iff.rfl
 
-theorem signedBeforeOn_mono {H : V → Prop} {i j : Nat} (hij : i ≤ j)
+private theorem signedBeforeOn_mono {H : V → Prop} {i j : Nat} (hij : i ≤ j)
     {o : (protoOf F E).Object} (h : rho.SignedBeforeOn H i o) :
     rho.SignedBeforeOn H j o := by
   intro u hs hu
@@ -266,17 +266,17 @@ variable {rho} in
 theorem safeBefore_iff {i : Nat} {o : (protoOf F E).Object} :
     rho.SafeBefore i o ↔ ∀ d, Obj.Contains o d → rho.SignedBefore i d := Iff.rfl
 
-theorem signedBefore_mono {i j : Nat} (hij : i ≤ j) {o : (protoOf F E).Object}
+private theorem signedBefore_mono {i j : Nat} (hij : i ≤ j) {o : (protoOf F E).Object}
     (h : rho.SignedBefore i o) : rho.SignedBefore j o := by
   intro u hh
   obtain ⟨k, t, hk, he, ho⟩ := h u hh
   exact ⟨k, t, lt_of_lt_of_le hk hij, he, ho⟩
 
-theorem safeBefore_mono {i j : Nat} (hij : i ≤ j) {o : (protoOf F E).Object}
+private theorem safeBefore_mono {i j : Nat} (hij : i ≤ j) {o : (protoOf F E).Object}
     (h : rho.SafeBefore i o) : rho.SafeBefore j o :=
   fun d hd => rho.signedBefore_mono hij (h d hd)
 
-theorem tick_safe {i : Nat} {v : V} {t : Time}
+private theorem tick_safe {i : Nat} {v : V} {t : Time}
     (hi : rho.events[i]? = some (.tick v t))
     (hs : ∀ o ∈ (rho.stateBefore i v).seen, rho.SafeBefore i o) :
     (∀ o ∈ (rho.tick (rho.stateBefore i v) v t).1.seen, rho.SafeBefore (i + 1) o) ∧
@@ -299,7 +299,7 @@ theorem tick_safe {i : Nat} {v : V} {t : Time}
 
 /-- A delivery of an object safe before it keeps `seen` safe and releases only
 safe objects: the twin of `tick_safe`, from the processed `seen ++ [p]`. -/
-theorem deliver_safe {i : Nat} {v : V} {p : (protoOf F E).Object} {t : Time}
+private theorem deliver_safe {i : Nat} {v : V} {p : (protoOf F E).Object} {t : Time}
     (hi : rho.events[i]? = some (.deliver v p t))
     (hs : ∀ o ∈ (rho.stateBefore i v).seen, rho.SafeBefore i o) (hp : rho.SafeBefore i p) :
     (∀ o ∈ (rho.deliver (rho.stateBefore i v) v p t).1.seen, rho.SafeBefore (i + 1) o) ∧

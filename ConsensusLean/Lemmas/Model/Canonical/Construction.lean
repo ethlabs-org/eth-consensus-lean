@@ -68,7 +68,7 @@ theorem eagerRelay_txs {O : OutputSchema} {F : ProtocolFamily O} {V : Type} [Fin
   · simpa [hu, haw] using hx
 
 /-- The canonical schedule with GST `g` is a valid execution. -/
-theorem Run.canonical_valid {O : OutputSchema} {F : ProtocolFamily O} {V : Type} [Fintype V]
+private theorem Run.canonical_valid {O : OutputSchema} {F : ProtocolFamily O} {V : Type} [Fintype V]
     [DecidableEq V] {E : Env V} (base : Run F E) (hh : 0 ≤ base.horizon) (hsel : base.SelValid)
     (hvv : base.VoteVerification) (g : Time) :
     (base.withEvents (base.canonicalEvents g)).ExecutionValid :=
