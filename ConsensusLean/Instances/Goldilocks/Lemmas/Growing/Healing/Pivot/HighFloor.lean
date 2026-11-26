@@ -23,7 +23,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 variable {hold : Time}
 
 /-- Specialize the retained signed floor source to an actual proposal's causal label bound. -/
-theorem high_floor_source_at_proposal_of_sources_at
+private theorem high_floor_source_at_proposal_of_sources_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x p : Fin sp.n} {r l i u : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
