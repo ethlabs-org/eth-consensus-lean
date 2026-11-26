@@ -320,7 +320,7 @@ private theorem replay_prefix (v : V) (i : Nat) (hi : i ≤ rho.events.length) :
     by_cases h : r.node = rho.ownKey v <;> simp [replay, h]
 
 /-- Another node's event leaves this node's state unchanged. Kept for a downstream consumer. -/
-theorem stateAt_other (v : V) {j : Nat}
+private theorem stateAt_other (v : V) {j : Nat}
     {ev : Model.Event V (Model.protoOf (compiled F) E).Object}
     (he : rho.events[j]? = some ev) (hne : ev.node ≠ v) :
     stateAt e rho v (j + 1) = stateAt e rho v j := by

@@ -94,7 +94,7 @@ theorem taggedRoot_ne (g h : Nat) : taggedRoot g h ≠ g := by
 theorem rawRoot_taggedRoot (g h : Nat) : rawRoot g (taggedRoot g h) = h := by
   simp only [rawRoot_eq, taggedRoot_eq]; split <;> (try split) <;> omega
 
-theorem taggedRoot_rawRoot (g r : Nat) (h : r ≠ g) : taggedRoot g (rawRoot g r) = r := by
+private theorem taggedRoot_rawRoot (g r : Nat) (h : r ≠ g) : taggedRoot g (rawRoot g r) = r := by
   simp only [rawRoot_eq, taggedRoot_eq]; split <;> (try split) <;> omega
 
 /-- The parent root of the parent reference of a named root is that root. -/
@@ -220,7 +220,7 @@ theorem conflicts_iff : ConflictsIff := by
 
 /-- `conflicts` is false unless both objects are attestation data signed in the poll role:
 here the first is not. -/
-theorem conflicts_eq_false_of_not_att {n : Nat} (o o' : Wire n binding)
+private theorem conflicts_eq_false_of_not_att {n : Nat} (o o' : Wire n binding)
     (h : ∀ k w, o ≠ .mk (.signed k .poll) (.data (.att w)) []) : conflicts o o' = false := by
   unfold conflicts
   split
@@ -229,7 +229,7 @@ theorem conflicts_eq_false_of_not_att {n : Nat} (o o' : Wire n binding)
 
 /-- `conflicts` is false unless both objects are attestation data signed in the poll role:
 here the second is not. -/
-theorem conflicts_eq_false_of_not_att' {n : Nat} (o o' : Wire n binding)
+private theorem conflicts_eq_false_of_not_att' {n : Nat} (o o' : Wire n binding)
     (h : ∀ k w, o' ≠ .mk (.signed k .poll) (.data (.att w)) []) : conflicts o o' = false := by
   unfold conflicts
   split
@@ -293,7 +293,7 @@ theorem dependencies_item {n : Nat} (held : List (Wire n binding))
   rfl
 
 /-- A dependency projected from a forwarding shape is a carried object. -/
-theorem forwardParent_contains {n : Nat} (o parent : Wire n binding)
+private theorem forwardParent_contains {n : Nat} (o parent : Wire n binding)
     (h : forwardParent? o = some parent) : Model.Obj.Contains o parent := by
   unfold forwardParent? at h
   split at h
@@ -328,7 +328,8 @@ theorem forwardParent_forwardObj (origin : Fin sp.n) (t : Time)
 
 /-- A forwarding wrapper passes the dependency guard once its exact carried objects
 are held. Nested dependencies are already contained in those held objects. -/
-theorem dependencies_forwardObj (seen : List (Wire sp.n binding)) (origin : Fin sp.n) (t : Time)
+private theorem dependencies_forwardObj (seen : List (Wire sp.n binding)) (origin : Fin sp.n)
+    (t : Time)
     (parent : Option (Wire sp.n binding)) (B : Blk sp)
     (h : ∀ c ∈ parent.toList ++ [blockObj sp B], c ∈ seen.flatMap Model.Obj.parts) :
     (dependencies sp.n).ready (seen.flatMap Model.Obj.parts)
@@ -624,7 +625,7 @@ theorem processOne_fgDue io hs (st : State sp ro binding) o :
   rw [processOne_eq]; split <;> simp [relayIf_fgDue, apply_fgDue]
 
 /-- Processing one object preserves all previously queued admission envelopes. -/
-theorem processOne_voteForwards_subset io hs (st : State sp ro binding) o :
+private theorem processOne_voteForwards_subset io hs (st : State sp ro binding) o :
     st.voteForwards ⊆ (processOne io hs st o).voteForwards := by
   rw [processOne_eq]
   split
@@ -638,7 +639,7 @@ theorem processOne_voteForwards_subset io hs (st : State sp ro binding) o :
 
 /-- A delivery handler either preserves an old queue entry or stamps a new one
 with its actual clock. This does not assume first release or pool freshness. -/
-theorem processOne_voteForward_stamp io hs (st : State sp ro binding) o (t : Time)
+private theorem processOne_voteForward_stamp io hs (st : State sp ro binding) o (t : Time)
     (m : Vote sp.n) (w : Wire sp.n binding)
     (h : (t, m, w) ∈ (processOne io hs st o).voteForwards) :
     (t, m, w) ∈ st.voteForwards ∨ t = st.now := by

@@ -29,7 +29,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- The own-token gate holds at every engine state. -/
-theorem stateAt_voteGate (hv : rho.ExecutionValid) (v : V) (i : Nat) :
+private theorem stateAt_voteGate (hv : rho.ExecutionValid) (v : V) (i : Nat) :
     VoteGate (stateAt S rho hn v i) :=
   (voteGate_iff _).2 fun m hm => stateAt_ownToken_exists S rho hn hv v i m hm
 
@@ -433,7 +433,7 @@ private theorem queuedChecked_apply (st : State sp ro S.vote) origin
 omit [DecidableEq V] in
 /-- Processing one object keeps every queued token checked: an own envelope carries the own
 token of an own emission, and a received one is the object whose check admitted the vote. -/
-theorem queuedChecked_processOne (hs : List (Header Info × Nat)) (st : State sp ro S.vote)
+private theorem queuedChecked_processOne (hs : List (Header Info × Nat)) (st : State sp ro S.vote)
     (o : Wire sp.n S.vote) (h : QueuedChecked S st) (hown : OwnChecks S st) :
     QueuedChecked S (processOne st.voteIO hs st o) := by
   have hrelay : ∀ (s : State sp ro S.vote) (c : Prop) (_ : Decidable c),
@@ -469,7 +469,7 @@ theorem queuedChecked_processOne (hs : List (Header Info × Nat)) (st : State sp
 
 omit [DecidableEq V] in
 /-- A delivery traversal keeps every queued token checked. -/
-theorem queuedChecked_foldl (hs : List (Header Info × Nat)) (io : VoteAuth sp.n S.vote) :
+private theorem queuedChecked_foldl (hs : List (Header Info × Nat)) (io : VoteAuth sp.n S.vote) :
     ∀ (os : List (Wire sp.n S.vote)) (st : State sp ro S.vote), st.voteIO = io →
       QueuedChecked S st → OwnChecks S st →
       QueuedChecked S (os.foldl (processOne io hs) st) := by

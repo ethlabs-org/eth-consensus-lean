@@ -245,7 +245,7 @@ private theorem tick_source {i : Nat} {r : CutRec A} (hr : r ∈ eventCutsWith e
 /-- **The canonical trace follows its calendar**: every tick group of the trace under the
 signing calendar `due` (with the trace's proposer and digest) is a tick of `y` at `t` with
 `fgDue = due y t`, for every honest set. -/
-theorem simTraceWith_signCalendar (H : Time → Set (Fin (Fintype.card V))) :
+private theorem simTraceWith_signCalendar (H : Time → Set (Fin (Fintype.card V))) :
     (simTraceWith e rho due).SignCalendarAt (runProposer rho hn) (digestOf e rho) H due := by
   intro y j t x b _ hg
   obtain ⟨hne, hcuts, hrange⟩ := hg
@@ -333,7 +333,7 @@ theorem simTraceWith_signCalendar (H : Time → Set (Fin (Fintype.card V))) :
   · rfl
 
 /-- The canonical trace follows the adapter's signing calendar. -/
-theorem simTrace_signCalendar (H : Time → Set (Fin (Fintype.card V))) :
+private theorem simTrace_signCalendar (H : Time → Set (Fin (Fintype.card V))) :
     (simTrace e rho).SignCalendarAt (runProposer rho hn) (digestOf e rho) H e.adapter.sign :=
   simTrace_eq_with e rho ▸ simTraceWith_signCalendar e rho _ H
 

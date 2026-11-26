@@ -77,7 +77,7 @@ private theorem apply_voteForward_exists {sp : AC.ACParams}
           · exact ho)⟩
 
 /-- Every fresh block-handler insertion is queued, given the own-token gate. -/
-theorem onBlock_pool_insertion_queued {sp : AC.ACParams}
+private theorem onBlock_pool_insertion_queued {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (hg : VoteGate st)
     (B : Blk sp) (m : AC.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
     (hnew : m ∈ (Node.onBlock st.self st.node st.now B).1.ac.pool m.slot) :
@@ -107,7 +107,7 @@ theorem onBlock_pool_insertion_queued {sp : AC.ACParams}
         · exact Or.inl h
 
 /-- Every fresh message-handler insertion is queued, given the own-token gate. -/
-theorem onMessage_pool_insertion_queued {sp : AC.ACParams}
+private theorem onMessage_pool_insertion_queued {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (hg : VoteGate st)
     (o : Wire sp.n binding) (v m : AC.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
     (hnew : m ∈ (Node.onMessage st.self st.node st.now v).1.ac.pool m.slot) :
@@ -150,7 +150,7 @@ private theorem processOne_mayVote {sp : AC.ACParams}
   · rfl
 
 /-- Processing keeps the own-token gate. -/
-theorem processOne_voteGate {sp : AC.ACParams}
+private theorem processOne_voteGate {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding) hs
     (st : State sp ro binding) o (hg : VoteGate st) : VoteGate (processOne io hs st o) := by
   intro m hm
@@ -159,7 +159,7 @@ theorem processOne_voteGate {sp : AC.ACParams}
   exact hg m hm
 
 /-- Recording an own object keeps the own-token gate. -/
-theorem recordOwn_voteGate {sp : AC.ACParams}
+private theorem recordOwn_voteGate {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) o hs
     (hg : VoteGate st) : VoteGate (recordOwn st o hs) := by
   have hmv : (recordOwn st o hs).node.ac.mayVote = st.node.ac.mayVote := by
@@ -184,7 +184,7 @@ theorem recordOwn_voteGate {sp : AC.ACParams}
   exact hg m hm
 
 /-- The slot proposal keeps the own-token gate. -/
-theorem propose_voteGate {sp : AC.ACParams}
+private theorem propose_voteGate {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) s
     (hg : VoteGate st) : VoteGate (propose st s).1 := by
   have hmv : (propose st s).1.node.ac.mayVote = st.node.ac.mayVote := by
@@ -239,7 +239,7 @@ theorem foldl_processOne_pool_insertion_queued {sp : AC.ACParams}
       exact ⟨w, hq⟩
 
 /-- Recording an own block queues every fresh pool insertion as well. -/
-theorem recordOwn_pool_insertion_queued {sp : AC.ACParams}
+private theorem recordOwn_pool_insertion_queued {sp : AC.ACParams}
     {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (hg : VoteGate st)
     o hs (m : AC.Vote sp.n) (hold : m ∉ st.node.ac.pool m.slot)
     (hnew : m ∈ (recordOwn st o hs).node.ac.pool m.slot) :
@@ -584,7 +584,7 @@ omit [DecidableEq V] in
 /-- Vote envelopes drain after the actual ordinary/block release prefix when each carries a
 canonical vote object that is held there. No success assumption is imposed on the prefix
 candidates themselves. -/
-theorem releaseAll_voteForward_suffix (hash : Blocks.Header Info → Nat)
+private theorem releaseAll_voteForward_suffix (hash : Blocks.Header Info → Nat)
     (x : Fin (Fintype.card V))
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (pre : List (Model.protoOf (compiled (goldilocks S)) E).Object)
@@ -631,7 +631,7 @@ private theorem mem_releaseAll_middle (hash : Blocks.Header Info → Nat)
 omit [DecidableEq V] in
 /-- The actual poll releases its vote envelopes when each carries a canonical vote object held
 after the ordinary/block prefix. This permits an own vote first released by this very poll. -/
-theorem dutyStep_poll_voteForward_of_prefix (v : V)
+private theorem dutyStep_poll_voteForward_of_prefix (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (t : Nat)
     (hsel : rho.ownKey v ∈ rho.sel .poll)
     (hself : (shapeOf S hn nd).self = rho.ownKey v)

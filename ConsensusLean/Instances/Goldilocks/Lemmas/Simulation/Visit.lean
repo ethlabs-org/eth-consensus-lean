@@ -209,7 +209,7 @@ private theorem visitList_closed : ∀ (st : S) (cs : List (ShapeObj P.n K I B))
 end
 
 /-- Folding the visited objects reaches the visit's final state. -/
-theorem foldl_delivered {st : S} {o : ShapeObj P.n K I B} :
+private theorem foldl_delivered {st : S} {o : ShapeObj P.n K I B} :
     (delivered C D hs st o).foldl (processOne C D hs) st = (visit C D hs st o).2 :=
   (visit_closed C D hs st o).2.1
 
@@ -239,7 +239,7 @@ variable {binding : VoteBinding} {sp : ACParams} {ro : ReplayOrder sp (List (FG.
 
 /-- A delivery processes its delivered objects in order (`process`): their fold reaches
 `visit`'s state. -/
-theorem process_eq_visit (hs : List (Header Info × Nat))
+private theorem process_eq_visit (hs : List (Header Info × Nat))
     (st : State sp ro binding) (o : Wire sp.n binding) :
     process st o hs = (visit st.voteIO hs st o).2 :=
   NodeAsChainShape.CanonicalTrace.foldl_delivered

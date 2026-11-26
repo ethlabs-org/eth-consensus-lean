@@ -182,7 +182,7 @@ theorem proposal_step (L : e.OpLaws due) (rho : Model.Run (compiled F) E)
 open Classical in
 /-- The node at the end of a tick's proposal duty: the slot proposal of the node after the
 leading polls and the node's tick. -/
-theorem tick_proposal_at [DecidableEq V] (L : e.OpLaws due) (ready : e.ProposalReady)
+private theorem tick_proposal_at [DecidableEq V] (L : e.OpLaws due) (ready : e.ProposalReady)
     (rho : Model.Run (compiled F) E) (hv : rho.ExecutionValid) {i v t}
     (he : rho.events[i]? = some (.tick v t)) :
     let pre := (rho.runDuties v (afterClock rho (rho.stateBefore i v) v t)
