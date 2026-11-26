@@ -26,7 +26,7 @@ variable (sp : ACParams)
 /-- Prior-slot honest heads force the child toward a lock anchor once their
 actual batch is carried. This is a local comparison, not current-slot unanimity. The voters
 are members of the slot-`s` committee (T), fewer than half of whose members are faulty. -/
-theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
+private theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
     {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
     {proposer : Nat → Fin sp.n} {ini : Fin sp.n → ACState sp.n} (hrun : ACRun proposer tr H U ini)
     (K : CommitteeDict sp.n)
