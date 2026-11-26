@@ -27,22 +27,6 @@ variable {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {R : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-theorem goldilocksFamilyRun (hr : GoldilocksRun proposer dg H R) (hnc : Compose.NoCollRun dg R) :
-    FamilyRun (goldilocksFamily sp (List (FG.Att sp.n)) ro) proposer dg H R := by
-  refine ⟨hr.toLocalRun, hr.genesis_root_ok, ?_,
-    goldilocksObservation
-      (Compose.Growing.goldilocks_ac_projection sp ro dg H R proposer hr hnc).localRun⟩
-  · constructor
-    · intro y i hy
-      exact congrArg (fun o : AC.GTrace sp (List (FG.Att sp.n)) ro => o.state y i)
-        (AC.proj_goldilocks R.projAC)
-    · intro y i ℓ hy hc he
-      have h := AC.projCall_goldilocks (sp := sp) (ro := ro) ℓ.call
-      exact False.elim (Option.some_ne_none _ (h.symm.trans he))
-    · intro y i ℓ hy hc he
-      have h := AC.projCall_goldilocks (sp := sp) (ro := ro) ℓ.call
-      exact False.elim (Option.some_ne_none _ (h.symm.trans he))
-
 end Consensus.Goldilocks.Growing
 
 end

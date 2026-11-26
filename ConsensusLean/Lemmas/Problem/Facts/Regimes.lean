@@ -261,21 +261,6 @@ theorem times (h : S.Outage X K T b₀ b₁ r) :
 theorem net (h : S.Outage X K T b₀ b₁ r) :
     (S.log r).OutageNet (S.pt r) b₀ b₁ := h.2.1
 
-/-- An outage run satisfies the population η-sleepy conjunct `EtaSleepyOn` on the horizon. -/
-theorem etaSleepy (h : S.Outage X K T b₀ b₁ r) :
-    (S.pt r).EtaSleepyOn K.params.θ ((K.params.η : Time) * (S.pt r).env.ΔAC)
-      (max (S.cDur K r) ((K.params.η : Time) * (S.pt r).env.ΔAC - 1))
-      (S.aheadDur K r) 0 (S.pt r).horizon := h.2.2.1
-
-/-- An outage run satisfies the look-back committee η-sleepy conjunct `CommitteeSleepyOn` on the
-horizon, for each look-back `δ ∈ [0, η·ΔAC]` (selection at `max 0 (t − δ)`). -/
-theorem committeeSleepy (h : S.Outage X K T b₀ b₁ r) {δ : Time} (h0 : 0 ≤ δ)
-    (hδ : δ ≤ (K.params.η : Time) * (S.pt r).env.ΔAC) :
-    (S.pt r).CommitteeSleepyOn (fun t => X.selected (S.pt r).env (X.ext r) (max 0 (t - δ)))
-      K.params.θ ((K.params.η : Time) * (S.pt r).env.ΔAC)
-      (max (S.cDur K r) ((K.params.η : Time) * (S.pt r).env.ΔAC - 1))
-      (S.committeeAheadDur K r) 0 (S.pt r).horizon := h.2.2.2 δ h0 hδ
-
 end System.Outage
 
 end Consensus

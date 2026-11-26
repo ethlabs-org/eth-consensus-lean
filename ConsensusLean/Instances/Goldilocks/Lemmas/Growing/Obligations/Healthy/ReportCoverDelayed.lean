@@ -118,15 +118,6 @@ theorem report_cover_delayed_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {
       (toFG_candidates_compatible_at_call_at hp.run hp.noColl hyi hc hB)
     exact ⟨r, e, R, hto', hrt.trans (by rw [hti]; linarith), hPB.trans hBR⟩
 
-/-- A calendar that signs at every public time makes every honest tick sign. -/
-theorem growingAllTicksSign_of_calendar_true
-    (hcal : tr.SignCalendarAt proposer dg H (fun _ _ => true)) :
-    tr.GrowingAllTicksSign proposer dg H := by
-  refine RunTrace.growingAllTicksSign_iff.mpr ?_
-  rintro y j t hy ⟨x, f, hg⟩
-  obtain rfl : f = true := hcal y j t x f hy hg
-  exact ⟨x, hg⟩
-
 /-- **The responsive case `G = 0`**: under a calendar that signs at every public time, the delayed
 cover is the stock statement `report_cover_of_unanimous_at`, at `t_u + 6Δ`. -/
 theorem report_cover_of_unanimous_responsive_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}

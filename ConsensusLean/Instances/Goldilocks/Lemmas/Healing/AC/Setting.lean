@@ -66,13 +66,6 @@ structure HealthyBaseUpTo (K : CommitteeDict sp.n) (tr : GTrace sp FGP ro) (H : 
   cs2 : ∀ s : Nat, gbar g ≤ sp.ts s → sp.ts s ≤ b →
     2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize
 
-/-- The run of a stock-committee base, at the initial starts (`committeeStart_full`). -/
-theorem HealthyBaseUpTo.stockRun {b : Time}
-    (hS : HealthyBaseUpTo (CommitteeDict.full sp.n) tr H U proposer g b) :
-    ACRun proposer tr H U := by
-  have h := hS.run
-  rwa [committeeStart_full] at h
-
 /-- `Healthy(g)` gives its service and awake part. -/
 theorem HealthyAC.core (h : HealthyAC tr H U g) : HealthyACCore tr H U g :=
   ⟨h.1, h.2.1, h.2.2.1⟩

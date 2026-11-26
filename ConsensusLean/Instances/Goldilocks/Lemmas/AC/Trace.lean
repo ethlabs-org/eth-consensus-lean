@@ -450,7 +450,9 @@ theorem frame_genesis_or_accepted {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   apply frame_genesis_or_acceptedU (wm := WriteMode.parent sp) <;>
     first | assumption | exact ACLocalRun.toU ‹_›
 
-/-- `stamp_cases` with the unlock given, from starts up to the vote permission. -/
+/-- The stamp of a block of an honest node's frame after a call: `−∞` (genesis), the time of the
+node's acceptance of the block, or the time of one of its restarts, at or before the call; with
+the unlock given, from starts up to the vote permission. -/
 theorem stamp_casesU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
@@ -517,18 +519,6 @@ theorem stamp_casesU
     | proposal => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2 ▸ hX)
     | toFG => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2 ▸ hX)
     | message m => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2.1 ▸ hX)
-
-/-- The stamp of a block of an honest node's frame after a call: `−∞` (genesis), the time of the
-node's acceptance of the block, or the time of one of its restarts, at or before the call. -/
-theorem stamp_cases {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
-    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H) :
-    ∀ i (ℓ : ACLabel (goldilocksAC sp FGP ro)), tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
-      (tr.post i).blockStamp X.root = ⊥ ∨
-        (∃ k ≤ i, tr.AcceptAt y k X ∧ (tr.post i).blockStamp X.root = ETime.of (tr.time k)) ∨
-        (∃ r ≤ i, tr.RestartAt y r ∧ (tr.post i).blockStamp X.root = ETime.of (tr.time r)) := by
-  apply stamp_casesU (wm := WriteMode.parent sp) <;>
-    first | assumption | exact ACLocalRun.toU ‹_› | exact fun _ => voteStart_initial _
 
 /-- `blockStamp_lt_of_acceptedBefore` with the unlock given, from starts up to the vote
 permission. -/
