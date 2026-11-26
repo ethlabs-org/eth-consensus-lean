@@ -10,24 +10,17 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 
 On the one-validator tick run of `Goldilocks/Runs/OneValidator/Premises` (`n = 1`, `f = 0`, `Δ = 1`,
 `k = δ_t = 2`, `t_s = 4s`, a tick at every time `t ≥ 0`, cut `i` at time `⌊i/8⌋`, no restart), with
-`g = 0`, `Δ_F = 1`, `κ = 2Δ`, `G_p = 4` and `T_b = 0`, the proved run-level healing statement HR.1
+`g = 0`, `Δ_F = 1`, `κ = 2Δ` and `G_p = 4`, the proved run-level healing statement HR.1
 (`CutAndReset`) is applied to the run, its premises met outright (HR.3 is retired).
 
 * **The parameters** (computed from the definitions): `ḡ = 0` (`gbar_zero`), `c_z = 12`
   (`cutZ_zero`), `H_z = 3` (`hz_zero`), `a_z = 16` (`aZ_zero`), `Θ = 12` (`theta_sp1`),
   `C_HS = 86` (`C_HS_sp1`), `A_HS = 173` (`A_HS_sp1`).
 * (a) `healing_premises`: `GoldilocksRun`, `HSShared` (with `Healthy(0)` and `NoColl`),
-  `Catch(2Δ)` and `Prop⁺(4)`. `reset_bundle`: `16` is the reset `a_z` (`IsReset`) and H.3 (c)'s
-  bridge `BridgeAt` holds at `a_z + T_b = 16`.
+  `Catch(2Δ)` and `Prop⁺(4)`.
 * (b) `tickRun_cutAndReset` (HR.1): the conclusion read at these parameters.
 
-**Limitation: `Geo` is vacuous here.** The `Geo` part of H.3 (c)'s bridge `BridgeAt`, in
-`reset_bundle` (`Geo(P)` for an honest proposal whose proposal and votes lie in one settled
-effective phase), holds vacuously on the tick run (`tickRun_bridgeAt`, `not_inSettledPhase`): the
-own block, accepted at `t_p` between `ac_proposal` and the vote, raises the frontier `h_max`, so
-no proposal of a slot `p ≥ 2` and its votes lie in one settled effective phase. So this witness
-does not exercise `Geo`. With `n = 1` and `f = 0` this shows the premises consistent, not met
-with faults. -/
+With `n = 1` and `f = 0` this shows the premises consistent, not met with faults. -/
 
 namespace Consensus.Goldilocks.Witness.One
 
@@ -90,14 +83,6 @@ theorem healing_premises :
   ⟨tickRun_goldilocksRun, tickRun_hsShared 0, tickRun_catch 0 _ (by decide),
     tickRun_propPlus 0 4 le_rfl⟩
 
-/-- (a) **The reset and the bridge** at `g = 0`: `16` is the reset `a_z` and H.3 (c)'s bridge holds
-at `a_z` with `T_b = 0` (its `Geo` part vacuously, `not_inSettledPhase`). -/
-theorem reset_bundle :
-    Healing.IsReset (tickRun N1 dg1) Set.univ 0 16 ∧
-      Healing.BridgeAt (tickRun N1 dg1) Set.univ (fun _ => v0) 0 16 0 := by
-  rw [← aZ_zero]
-  exact ⟨tickRun_isReset 0, tickRun_bridgeAt 0 _ 0 (by rw [add_zero]; exact aZ_nonneg 0)⟩
-
 /-! ## The statements on the run -/
 
 /-- (b) **HR.1 on the tick run** at `g = 0`, `Δ_F = 1`, with `c_z = 12` and `H_z = 3`. Part (a):
@@ -136,7 +121,7 @@ theorem tickRun_cutAndReset :
     tickRun_goldilocksRun (tickRun_healthy 0) (dg1_noColl _)
   rw [cutZ_zero, hz_zero, gbar_zero] at h
   obtain ⟨h1, h2, h3, h4, h5⟩ := h
-  exact ⟨h1, h2, h3, h4, h5 16 reset_bundle.1⟩
+  exact ⟨h1, h2, h3, h4, h5 16 (by rw [← aZ_zero]; exact tickRun_isReset 0)⟩
 
 end Consensus.Goldilocks.Witness.One
 

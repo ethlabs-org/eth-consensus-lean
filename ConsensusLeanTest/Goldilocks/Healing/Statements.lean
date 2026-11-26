@@ -33,8 +33,8 @@ Labelled by kind (CONTRIBUTING "Statements"):
 **Elsewhere.** The premise witnesses over a Goldilocks trace are on the one-validator tick run:
 `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Premises` gives `GoldilocksRun`, `Healthy(g)`,
 `HSShared` and `Prop⁺(G_p)` (`tickRun_goldilocksRun`, `tickRun_healthy`, `tickRun_hsShared`,
-`tickRun_propPlus`), and `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Run` the reset and H.3
-(c)'s bridge (`tickRun_isReset`, `tickRun_bridgeAt`, with `Geo` vacuous). `Healthy(g)` keeps every
+`tickRun_propPlus`), and `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Run` the reset
+(`tickRun_isReset`). `Healthy(g)` keeps every
 honest validator awake from `ḡ` on, and a run's awake function is clamped to its horizon
 (`Node.LocalRun.awake_in_horizon`), so every run satisfying `Healthy(g)` is infinite, as the
 periodic run above and the tick run are.

@@ -489,10 +489,8 @@ paper claims.
 
 ## Healing
 
-The run-level healing nodes HR.1–HR.4
-are over the Goldilocks run (`Spec/Run`, `GoldilocksRun`), HR.2 over FG traces (`FGLocalRun`), in
-`Milestones/Statements/Healing/Run`, with H.3's vocabulary (the run bundle, H.3's FG non-interference and
-H.4 are retired as milestone statements, and so are the phase-service bundle and HS.3's statement). The AC healing
+Milestones/Statements/Healing/Run retains HR.1 over GoldilocksRun and HR.2 over FGLocalRun. The run bundle,
+H.3 (including its bridge vocabulary), and H.4 are retired as milestone statements. The AC healing
 vocabulary over driven AC traces of the AC is in `Milestones/Statements/Healing/AC`. Standalone H.1/H.2 and
 H.2 (run) are not retained Lean Results; their vocabulary and support needed by retained results or
 downstream consumers remain. HR.1 and HR.2 remain; HR.3, HR.4 and HS.0–HS.5 are retired. `Settle(Δ)` and
@@ -503,15 +501,15 @@ downstream consumers remain. HR.1 and HR.2 remain; HR.3, HR.4 and HS.0–HS.5 ar
 | — | CLAIMS HR.1 | "after all events at `t`" (the state before the first cut at a time `> t`); `c_z = t_{slot(ḡ)+3}`; `H_z`, the greatest honest `Σ.h_max` after all events at `c_z`; the reset `a_z`, the first time an honest validator signs an attestation of height `H_z + 1`; the honest accepted entries of heights `≥ H_z + 1` | Healing | `Consensus.Goldilocks.Healing.FirstCutAfter`, `Consensus.Goldilocks.Healing.cutZ`, `Consensus.Goldilocks.Healing.HZ`, `Consensus.Goldilocks.Healing.IsReset`, `Consensus.Goldilocks.Healing.HighEntries` |
 | Premises | CLAIMS §"Healing: top-level statements" (the two premises), §"Healing: phase service" (shared premises, constants) | `Catch(κ)` over a run; no honest restart after `t`; `Prop⁺(G_p)` (honest joined proposal at a slot start in every `[τ, τ + G_p]`, `τ ≥ ḡ`, with its slot-`(s−1)` support references held by every honest node at `t_s + Δ`); the HS shared premises (`NoColl`, the genesis root, `Healthy(g)`, no restart after `ḡ`, `δ_t ≥ ⌈(6Δ + Δ_F)/(4Δ)⌉`, and, for a slot dictionary `K` (not in CLAIMS, whose committee of every slot is `V`), its committee facts and fewer than half of each slot committee after the slot of `ḡ` faulty; the statements over them run from `K`'s committee start); `D`, `C`, `A` with `G = G_p` | Healing | `Consensus.Goldilocks.Healing.CatchRun`, `Consensus.Goldilocks.Healing.NoRestartAfter`, `Consensus.Goldilocks.Healing.ReadyProposal`, `Consensus.Goldilocks.Healing.PropPlus`, `Consensus.Goldilocks.Healing.HSShared`, `Consensus.Goldilocks.Healing.D_HS`, `Consensus.Goldilocks.Healing.C_HS`, `Consensus.Goldilocks.Healing.A_HS` |
 | HR.2, HS | CLAIMS HR.2 (b), §"Healing: phase service" (phases, settled) | the effective phase over an FG trace at a cut: the frontier (greatest honest `Σ.h_max`), a justification at a height on an honest accepted chain, a contest against `J`, the three cases with their rank and top `J`, the phase `(m, c)`, a phase change; the evidence of a phase held by a store; **settled at `w`** (late enough, all joined, evidence held, pre-GST catch-up complete) | Healing | `Consensus.Goldilocks.Healing.FrontierAt`, `Consensus.Goldilocks.Healing.JustifiedAt`, `Consensus.Goldilocks.Healing.ContestAt`, `Consensus.Goldilocks.Healing.PhaseCase`, `Consensus.Goldilocks.Healing.PhaseCase.rank`, `Consensus.Goldilocks.Healing.PhaseCase.topJ`, `Consensus.Goldilocks.Healing.PhaseAt`, `Consensus.Goldilocks.Healing.PhaseChanged`, `Consensus.Goldilocks.Healing.HoldsEvidence`, `Consensus.Goldilocks.Healing.SettledAt` |
-| HR.4 | CLAIMS HR.4 | a high origin (a fast-lock write at an honest joined node, stored block of state height `≥ H_z + 1`); (R1)–(R4) for the reset `a` | Healing | `Consensus.Goldilocks.Healing.HighOrigin`, `Consensus.Goldilocks.Healing.RetentionAt` |
+| HR.4 | CLAIMS HR.4 | a high origin (a fast-lock write at an honest joined node, stored block of state height `≥ H_z + 1`) | Healing | `Consensus.Goldilocks.Healing.HighOrigin` |
 | HR.1 | CLAIMS HR.1 (uses A1.5, G1.10 (K1)) | **cut and reset**: `c_z ≤ ḡ + 12Δ`; (a) attestations up to `c_z` have height `≤ H_z`, sources from `c_z` on come from fast locks written after `ḡ`; (b) a chain of height `≥ H_z + 2` carries an honest attestation of height `H_z + 1`; (c) at the reset `a`: `a > c_z`, no high attestation before `a`, frontier `≤ H_z + 1` at the FG update of the ticks at `a`, attestations at `a` of height `≤ H_z + 1`, K1's first clause at `T₀ = a − Δ` by `Store.namers` | Healing | `Consensus.Goldilocks.Healing.CutAndReset` |
 | HR.2 | CLAIMS HR.2 | **phase count**: over an `FGLocalRun` with `f < 2q − n`, (a) one justified entry per height, (b) the phase moves only forward with one `J` while `m` is fixed, at most two changes per `m` | Healing | `Consensus.Goldilocks.Healing.PhaseCount` |
 | HR.3 | CLAIMS HR.3 (with HS.0, HS.5) | **retired** as a milestone statement (reset existence: `Settle(Δ)` from `c_z`, `Producer(A)`, `a_z ≤ c_z + 6(Δ + A_HS)`), with its proof (`reset_existence`, with HS.0 `settle` and HS.5 `producer`) and witness (`tickRun_resetExistence`) | Healing | — |
-| HR.4 | CLAIMS HR.4 | **retired** as a milestone statement (height-scoped retention: (R1)–(R4) for every reset `a`, at a slot dictionary `K`), with its proof (`height_scoped_retention`) and witness (`tickRun_retention`); the vocabulary row above stays | Healing | — |
+| HR.4 | CLAIMS HR.4 | **retired** as a milestone statement (height-scoped retention: (R1)–(R4) for every reset `a`, at a slot dictionary `K`), with its proof (`height_scoped_retention`) and witness (`tickRun_retention`), and its bundle `RetentionAt`; `HighOrigin` stays | Healing | — |
 | — | CLAIMS §"Healing: top-level statements" (notation, driven AC traces, the two premises) | `ḡ`, `Θ` (`4(k + 1)Δ` with the optimistic confirmation on, `(4k − 2)Δ` off); `Healthy(g)` and `Catch(κ)` over an AC trace; an honest proposal of slot `p` (the block made from `ac_proposal`: parent the returned duty head); a **driven** AC trace (assigned proposer, slot order, held parent, no future slot, honest slot = honest proposal; tick and proposal order of C0.4, including Driven (b)'s "before any object received at `t_s`": `proposal_first`, every AC message or block call of the proposer at its `ac_proposal`'s time comes after it) | Healing | `Consensus.Goldilocks.AC.gbar`, `Consensus.Goldilocks.AC.Θ`, `Consensus.Goldilocks.AC.HealthyAC`, `Consensus.Goldilocks.AC.CatchAC`, `Consensus.Goldilocks.AC.HonestProposal`, `Consensus.Goldilocks.AC.Driven` |
-| — | CLAIMS §"Healing: top-level statements" (protected blocks, `Inv`, `Geo`), H.2 | a slow lock write (the deepest block of the update's result path that conflicts with no live lock and that the `k − 1` previous saved results extend, vetoed or not; written independently of the fast lock); the protected pairs `𝒫(t₀)` (P1)–(P3); `Inv(t₀)`; `Geo(P)` (read by H.3's bridge) | Healing | `Consensus.Goldilocks.AC.SlowLockAt`, `Consensus.Goldilocks.AC.Protected`, `Consensus.Goldilocks.AC.Inv`, `Consensus.Goldilocks.AC.Geo` |
+| — | CLAIMS §"Healing: top-level statements" (protected blocks, `Inv`, `Geo`), H.2 | a slow lock write (the deepest block of the update's result path that conflicts with no live lock and that the `k − 1` previous saved results extend, vetoed or not; written independently of the fast lock); the protected pairs `𝒫(t₀)` (P1)–(P3); `Inv(t₀)`; `Geo(P)` | Healing | `Consensus.Goldilocks.AC.SlowLockAt`, `Consensus.Goldilocks.AC.Protected`, `Consensus.Goldilocks.AC.Inv`, `Consensus.Goldilocks.AC.Geo` |
 | — | CLAIMS H.2 (run) | unanimity and honest proposal over the AC projection | Healing | `Consensus.Goldilocks.Healing.Unanimous`, `Consensus.Goldilocks.Healing.HonestProposalRun` |
-| H.3 | CLAIMS H.3 | one settled effective phase for a proposal and its votes; the bridge `Inv(a_z + T_b)` + `Geo` in settled phases. **FG non-interference** is retired as a milestone statement (with its proof); the vocabulary stays | Healing | `Consensus.Goldilocks.Healing.InSettledPhase`, `Consensus.Goldilocks.Healing.BridgeAt` |
+| H.3 | CLAIMS H.3 | **retired** as a milestone statement: **FG non-interference** with its proof, and the vocabulary (one settled effective phase for a proposal and its votes; the bridge `Inv(a_z + T_b)` + `Geo` in settled phases) | Healing | — |
 | H.4 | CLAIMS H.4 | `T_heal`. **Available healing** is retired as a milestone statement (with its proof) | Healing | `Consensus.Goldilocks.Healing.T_heal` |
 | HS | CLAIMS §"Healing: phase service" (shared definitions) | the phase constant over a range of cuts (before the phase end `e`); the entry of a source's chain at a height; settled at `w` in a phase. The phase floor, effective-phase allowedness, `a` and `r` from `w`, the vote-keeps and stored-slow-lock predicates are removed with the HS statements (owner decision) | Healing | `Consensus.Goldilocks.Healing.PhaseOn`, `Consensus.Goldilocks.Healing.EntryOf`, `Consensus.Goldilocks.Healing.SettledIn` |
 | HS.1 | CLAIMS HS.1 | **retired** as a milestone statement (viable-witness retention, `ViableWitnessRetention`), with its proof (`viable_witness_retention`), with HR.3 and HS.4 (owner decision) | Healing | — |
@@ -563,9 +561,6 @@ Modelling choices:
 - **`Inv`, `Geo`**: `filtered(Φ, Φ.tree)` is `Φ.viableTree Φ.tree` and `Φ.allowed` is `Φ.viableHeads`; the vote
   clause of `Inv` is viability in the voter block tree at every emission of the call. `Geo(P)` is read at every `ac_proposal` call of the
   proposer at `t_p`.
-- **H.3 (c)**: "lie in one effective phase in which every honest node is settled" is `InSettledPhase`: the run is
-  settled (with `κ = 2Δ`) at some `w ≤ t_p` and the phase is constant on every cut from `w` through `t_p` and the
-  last honest slot-`p` vote.
 - **"`B ⪯ fc_root`" is block order**, in `Inv` (inside `U`), HR.4 (R3), and C1.1's (K2) and (i)
   (inside `tr.HonestBlocks H`), not ancestry inside the frame tree (`Φ.Anc`, as in `AC.ViableAtVote`): once an
   honest `Σ.F` passes `B`, `B` leaves the frame tree and the frame reading fails. `tr.HonestBlocks H` holds every
@@ -602,8 +597,8 @@ Modelling choices:
   infinite periodic `idleAC` run; arithmetic checks of `C_HS`, HR.3's bound and `T_heal`. The premises over a
   Goldilocks trace are witnessed on the one-validator infinite tick run (`n = 1`, `f = 0`: consistent, not met with
   faults): `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Premises` (`tickRun_goldilocksRun`, `tickRun_healthy`, `tickRun_catch`,
-  `tickRun_hsShared`, `tickRun_propPlus`) and `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Run` (`tickRun_isReset`,
-  `tickRun_bridgeAt`, with `Geo` vacuous). `tickRun_cutAndReset` applies HR.1; the HR.3 and HR.4 application
+  `tickRun_hsShared`, `tickRun_propPlus`) and `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Run` (`tickRun_isReset`).
+  `tickRun_cutAndReset` applies HR.1; the HR.3 and HR.4 application
   witnesses are retired.
 - **Whole-run statements and MeetsObligations**: `Healthy(g)` (`HealthyRun`, `Spec/Run/GenericPremises`) keeps every honest
   validator awake on `[max(g, 0), ∞)`, and a run's awake function lies in its horizon (`Node.LocalRun.awake_in_horizon`),
@@ -712,10 +707,8 @@ Modelling choices:
   window, `Healthy(g)`, `Catch(κ)` and the HS shared premises (kind (a)), with a ready proposal at every slot `≥ 1`
   (`tickRun_readyProposal`) and `Prop⁺(G_p)` for `G_p ≥ 4Δ` (`tickRun_propPlus`). In
   `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Run` (the run computed tick by tick in `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Chain`, `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Ticks`):
-  the reset is `a_z = t_{slot(ḡ)+4}` (`tickRun_isReset`), H.3 (c)'s bridge holds with `Inv(t₀)` for every `t₀` and
-  `Geo` required of no proposal, since each own block raises the frontier between its proposal and its votes, so no
-  proposal lies in one settled effective phase (`not_inSettledPhase`; the witness does not exercise `Geo`, which fails
-  on this run). `n = 1` shows the premises consistent,
+  the reset is `a_z = t_{slot(ḡ)+4}` (`tickRun_isReset`) and `Inv(t₀)` holds for every `t₀` (`tickRun_inv`; `Geo` is
+  not exercised and fails on this run). `n = 1` shows the premises consistent,
   not met with faults (a faulty witness is a follow-up). R.7 and R.8 have no premise beyond the run laws (and `NoColl`, `f < 2q − n` where
   stated).
 

@@ -52,9 +52,9 @@ provide the following applications. Do not read the old list as evidence that th
 
 | Statement | Premise / application evidence | Nonempty observation, arithmetic or rejection | Remaining limitation |
 |---|---|---|---|
-| HR.1 `CutAndReset` | `Goldilocks/Healing/TickRun.lean`: `healing_premises`, `reset_bundle`, `tickRun_cutAndReset` | Reset `a_z = 16`, initial height `H_z = 3` | One honest validator, no faults, GST `0`, no restart. |
+| HR.1 `CutAndReset` | `Goldilocks/Healing/TickRun.lean`: `healing_premises`, `tickRun_cutAndReset` | Reset `a_z = 16`, initial height `H_z = 3` | One honest validator, no faults, GST `0`, no restart. |
 | HR.2 `PhaseCount` | `Goldilocks/Healing/Statements.lean`: idle phase; `Healing/PhaseCount.lean`: `phaseCount_premises`, `phaseCount_applies` | `phaseCount_b_witness`, `phaseCount_c_witness`: top-to-contest at fixed frontier `3`, nonempty counted set; `phaseCount_b_needs_fixed_frontier` rejects monotonicity across a frontier rise | FG-local trace, not a healthy node-run acquisition witness; `phaseCount_applies` takes the statement as a premise. |
-| H.3 bridge and the premises of HS.4 (retired) | `Goldilocks/Runs/OneValidator/Run.lean`: `tickRun_bridgeAt`; `Goldilocks/Healing/Settled.lean`: `settledIn_tickRun`, `acquisition_premises` | `acquisition_phase_changes`: the phase changes by the deadline `w + D_HS = 92` | The run directly witnesses phase change, not acquisition or client progress; it does not apply a phase-service theorem. The bridge alone is not a non-vacuous test of all H.3 clauses. |
+| The premises of HS.4 (retired) | `Goldilocks/Healing/Settled.lean`: `settledIn_tickRun`, `acquisition_premises` | `acquisition_phase_changes`: the phase changes by the deadline `w + D_HS = 92` | The run directly witnesses phase change, not acquisition or client progress; it does not apply a phase-service theorem. |
 
 ## Candidate next scenarios
 
