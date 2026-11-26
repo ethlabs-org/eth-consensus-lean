@@ -153,7 +153,7 @@ theorem executedPublication_iff {V : Type} [Fintype V] [DecidableEq V] {E : Env 
 /-- A successful candidate at its actual prefix occurs in the batch output. Rejected
 earlier candidates still count towards the index; induction follows the engine's guard,
 so the prefix state includes exactly the successful earlier releases. -/
-theorem releaseAll_candidate_success {pub : Public} {O : Type} (P : Protocol pub O)
+private theorem releaseAll_candidate_success {pub : Public} {O : Type} (P : Protocol pub O)
     (hash : P.Item → Nat) (origin : Key pub) (nd : Model.Node P)
     (cs : List P.Object) (i : Nat) (o : P.Object)
     (hi : cs[i]? = some o)
@@ -208,7 +208,7 @@ theorem releaseAll_of_prefix_guards {pub : Public} {O : Type} (P : Protocol pub 
       ht.2.trans (by simp only [List.append_assoc, List.singleton_append])⟩
 
 /-- Ordered readiness discharges every guard for a batch of canonical block envelopes. -/
-theorem forward_batch_guards {V : Type} [Fintype V] {E : Env V} (S : Setup)
+private theorem forward_batch_guards {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (hn : 1 ≤ Fintype.card V) (x : Fin (Fintype.card V))
     (seen cs : List (Wire (Fintype.card V) S.vote)) (hr : PendingReady seen cs)
     (hshape : ∀ o ∈ cs, ∃ t p B, o = forwardObj (S.params (pubOf E) hn) x t p B) :
@@ -224,7 +224,7 @@ theorem forward_batch_guards {V : Type} [Fintype V] {E : Env V} (S : Setup)
 
 /-- A ready canonical forwarding suffix is released completely from its actual
 post-prefix node. This allows an ordinary poll emission to precede the block queue. -/
-theorem releaseAll_forward_batch {V : Type} [Fintype V] {E : Env V} (S : Setup)
+private theorem releaseAll_forward_batch {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (hn : 1 ≤ Fintype.card V) (hash : Header Info → Nat) (x : Fin (Fintype.card V))
     (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
     (cs : List (protoOf (compiled (goldilocks S)) E).Object)
@@ -238,7 +238,7 @@ theorem releaseAll_forward_batch {V : Type} [Fintype V] {E : Env V} (S : Setup)
 
 /-- Ordinary poll candidates may succeed or fail: either way they preserve holdings,
 so a ready block-envelope suffix drains completely after their actual release prefix. -/
-theorem releaseAll_forward_suffix {V : Type} [Fintype V] {E : Env V} (S : Setup)
+private theorem releaseAll_forward_suffix {V : Type} [Fintype V] {E : Env V} (S : Setup)
     (hn : 1 ≤ Fintype.card V) (hash : Header Info → Nat) (x : Fin (Fintype.card V))
     (nd : Model.Node (protoOf (compiled (goldilocks S)) E))
     (pre cs : List (protoOf (compiled (goldilocks S)) E).Object)
@@ -360,7 +360,7 @@ theorem dutyStep_poll_wrappers_held {V : Type} [Fintype V] {E : Env V} (S : Setu
 /-- Each enumerated duty batch releases only objects released by the actual duty list.
 The induction threads the same intermediate node as `runDuties`, including unselected
 duties, which have an empty batch and leave the state unchanged. -/
-theorem dutyBatches_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+private theorem dutyBatches_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     {O : OutputSchema} {F : ProtocolFamily O} (rho : Model.Run F E) (v : V)
     (nd : Model.Node (protoOf F E)) (ds : List (protoOf F E).Duty)
     (b : ReleaseBatch (protoOf F E)) (hb : b ∈ dutyBatches rho v nd ds)
@@ -385,7 +385,7 @@ theorem dutyBatches_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
 /-- Actual event batches include the duty releases and final gossip, in engine order.
 Thus a release from an enumerated batch is an actual event release, not a synthetic
 candidate occurrence. This covers delivery events as well as awake ticks. -/
-theorem eventBatches_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
+private theorem eventBatches_release {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
     {O : OutputSchema} {F : ProtocolFamily O} (rho : Model.Run F E) (v : V) (i : Nat) (t : Time)
     (he : rho.SendsAt v i t) (b : ReleaseBatch (protoOf F E))
     (hb : b ∈ eventBatches rho i) (o : (protoOf F E).Object)
