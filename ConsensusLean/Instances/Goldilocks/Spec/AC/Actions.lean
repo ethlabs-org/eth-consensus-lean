@@ -126,11 +126,13 @@ noncomputable def deepAnchor (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
   deepest Φ (liveLockBlocks sp A.locks Φ t)
 
 /-- The deep candidates of `ac_to_fg` at depth `D` under the anchor `a`: the blocks of the full
-viable tree at or below `a`, other than genesis, whose stamp (the time the node accepted them, or
-its last restart) is at most `t_{slot(t) − D}`. A restart re-stamps every block at the restart
-time, so a node has no deep candidate for `D` slots after each restart: one that restarts more
-often than every `D` slots never has one. Genesis (stamp `−∞`) is excluded explicitly: the
-`fg_reported` test excludes it only when the reported block is in the frame's tree. -/
+viable tree at or below `a` (`a` itself included), other than genesis, whose stamp (the time the
+node accepted them, or its last restart) is at most `t_{slot(t) − D}`. So a lock that is not fast
+is never a fast candidate, but its block (or one below it) can be a deep candidate. A restart
+re-stamps every held block other than genesis at the restart time, so a node has no deep
+candidate for at least `D` slots after each restart; one that restarts more often than every `D`
+slots never has one. Genesis keeps its stamp `−∞` and is excluded by its own conjunct (the
+`fg_reported` test excludes it only when the reported block is in the frame's tree). -/
 def toFGDeepCandidates (D : Nat) (a : Blk sp.n FGP) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : Set (Blk sp.n FGP) :=
   {B | B ∈ Φ.viableTree Φ.tree ∧ Φ.Anc B a ∧ B.root ≠ sp.genesisRoot ∧
@@ -139,8 +141,9 @@ def toFGDeepCandidates (D : Nat) (a : Blk sp.n FGP) (A : ACState sp.n) (Φ : Frm
 open Classical in
 /-- The block `ac_to_fg` considers: the deepest fast-lock candidate; with deep sources on
 (`deepDepth = some D`), no fast-lock candidate and a deep anchor `a`, the deepest deep candidate
-under `a` (none for `D` slots after a restart, see `toFGDeepCandidates`). With
-`deepDepth = none` it is the deepest fast-lock candidate. -/
+at or below `a`, which can be `a` itself, the block of a lock that is not fast (none for at least
+`D` slots after a restart, see `toFGDeepCandidates`). With `deepDepth = none` it is the deepest
+fast-lock candidate. -/
 noncomputable def fgSource (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Option (Blk sp.n FGP) :=
   match sp.deepDepth with
