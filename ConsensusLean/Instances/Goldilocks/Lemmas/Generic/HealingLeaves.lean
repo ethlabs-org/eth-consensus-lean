@@ -69,11 +69,11 @@ Leaf 6c (`reset_of_high_source_at_from`): a high `fg_attest` source of a caller 
 at `c_z` forces a reset no later; with no earlier high signing, the client's record has no lock or
 sent content at that height, so the call signs and leaf 1 applies.
 
-Leaf 6 (`reset_of_high_report_at_from`): a report of height at least `HZ + 1`, by a reporter
-honest at it and at `c_z`, is followed in the same tick by its `fg_attest` call with the same
-store (`voteLatency_zero_from`), so leaf 6c gives a reset no later. Under a vote latency `D`
-(`VoteLatencyAt`: the `fg_attest` call on a source at least as high follows within `D`), the reset
-comes at most `D` after the report (`reset_of_high_report_within_from`).
+Leaf 6 (`reset_of_high_report_within_from`): a report of height at least `HZ + 1`, by a
+reporter honest at it and at `c_z`, under a vote latency `D` (`VoteLatencyAt`: the `fg_attest`
+call on a source at least as high follows within `D`), forces a reset at most `D` after the
+report, by leaf 6c. A report is followed in the same tick by its `fg_attest` call with the same
+store, so the latency `0` holds (`voteLatency_zero_from`).
 
 Leaf 7 (`sign_from_report_at_from`): an honest signing comes from the report of the `ac_to_fg`
 cut just before it, at the same time and with the same store; under the requirements of the
@@ -402,21 +402,6 @@ theorem reset_of_high_report_within_from {P : Params} {A : NodeAC P} {proposer :
   obtain ⟨a, ha, hat⟩ :=
     reset_of_high_source_at_from hrun (hrun.antitone hmono hyz) hqk hc (hh.trans hCh)
   exact ⟨a, ha, hat.trans hk⟩
-
-/-- A high report gives a high FG source in the same tick, hence a reset no later
-(`reset_of_high_report_within_from` at latency `0`). -/
-theorem reset_of_high_report_at_from {P : Params} {A : NodeAC P}
-    {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
-    {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
-    {ini : Fin P.n → A.State} {g : Time} {y : Fin P.n} {i : Nat} {R : A.Blk}
-    (hrun : Consensus.Goldilocks.Growing.LocalRun proposer dg H sg tr ini)
-    (hyz : y ∈ H (max (Healing.cutZ P g) (tr.time i)))
-    (hq : (H (max (Healing.cutZ P g) (tr.time i)))ᶜ.ncard < P.fg.q)
-    (hR : ReportAt tr y i R)
-    (hh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
-    ∃ a, Healing.Growing.IsReset tr H g a ∧ a ≤ tr.time i := by
-  simpa using reset_of_high_report_within_from hrun (voteLatency_zero_from hrun)
-    (by simpa using hyz) (by simpa using hq) hR hh
 
 /-! ## Leaf 7 -/
 
