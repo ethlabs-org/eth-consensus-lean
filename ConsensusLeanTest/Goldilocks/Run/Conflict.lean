@@ -2,14 +2,15 @@ module
 public import ConsensusLeanTest.Goldilocks.FG.ConflictChains
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.Always
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
+import ConsensusLeanTest.Goldilocks.Growing.Compose
 import Mathlib.Tactic.FinCases
 @[expose] public section
 
 /-! # Run-level rejection: two honest finalized tips conflict once the fault bound is dropped
 
-Kind (r) for R.7 `FinalizedSafe` (`Regimes.FinalizedSafe`), with its other premises met, and
-kind (a) for `FinalAccountable` and `NonFraming` on the same run (CONTRIBUTING "Statements").
+Kind (r) for R.7 `finalized_safe_below_third` over a fixed honest set (the static form of
+`Regimes.Growing.FinalizedSafe` at a constant honest set), with its other premises met, and kind
+(a) for `finalAccountable` and `nonFraming` on the same run (CONTRIBUTING "Statements").
 The run `conflictRun` is a hand-built `GoldilocksRun` over the parameters of
 `Goldilocks/FG/ConflictChains` (`n = 6`, `q = 4`, `2q − n = 2`, `Δ = 2`, `t_s = 8s`, `k = c = 2`):
 
@@ -26,9 +27,10 @@ The run `conflictRun` is a hand-built `GoldilocksRun` over the parameters of
   `NoCollRun` (the digest `dg6` is injective on the run's blocks).
 * `conflicting_finalized`: node `4` finalizes the first block of chain A and node `5` the first
   block of chain B, and the two are incompatible among the honest blocks.
-* `finalizedSafe_needs_fault_bound`: `FinalizedSafe` without its premise `f < 2q − n` is false;
+* `finalizedSafe_needs_fault_bound`: finalized safety without its premise `f < 2q − n` is false;
   `conflictRun_faults` gives `f = 4` and `2q − n = 2` here.
-* `conflictRun_accountable`: the proved `final_accountable` and `non_framing` on the run: at least
+* `conflictRun_accountable`: the proved growing `finalAccountable` and `nonFraming` at the
+  constant honest set (`Regimes.Growing.Test.{finalAccountable_const, nonFraming_const}`): at least
   `2q − n` validators are convicted from the chains the two honest readers hold, and no honest
   validator signs a slashable pair. -/
 
@@ -841,14 +843,14 @@ theorem H_compl : Hᶜ = ↑({0, 1, 2, 3} : Finset (Fin 6)) := by
   ext v; fin_cases v <;> simp [H]
 
 /-- **The fault count**: `f = 4` faulty validators, against `2q − n = 2`: the fault bound
-`f < 2q − n` of `FinalizedSafe` fails. -/
+`f < 2q − n` of finalized safety fails. -/
 theorem conflictRun_faults :
     Hᶜ.ncard = 4 ∧ 2 * sp6.toParams.q - sp6.n = 2 ∧ ¬ Hᶜ.ncard < 2 * sp6.toParams.q - sp6.n := by
   have h : Hᶜ.ncard = 4 := by rw [H_compl, Set.ncard_coe_finset]; rfl
   have hq : 2 * sp6.toParams.q - sp6.n = 2 := rfl
   exact ⟨h, hq, by omega⟩
 
-/-- (r) **`FinalizedSafe` needs its fault bound**: with the premise `f < 2q − n` dropped and every
+/-- (r) **Finalized safety needs its fault bound**: with the premise `f < 2q − n` dropped and every
 other premise kept (a `GoldilocksRun` with `NoCollRun`), two honest finalized tips can conflict. -/
 theorem finalizedSafe_needs_fault_bound :
     ¬ ∀ (sp : AC.ACParams) (ro : AC.ReplayOrder sp (List (Att sp.n)))
@@ -862,8 +864,8 @@ theorem finalizedSafe_needs_fault_bound :
   exact hc (h sp6 ro6 dg6 H conflictRun (fun _ => v0) conflictRun_goldilocksRun
     conflictRun_noColl 4 h4 5 h5 7 14)
 
-/-- (a) **R.7 on the run**: the proved `final_accountable` convicts at least `2q − n = 2`
-validators from the chains the two honest readers hold, and `non_framing` holds: no honest
+/-- (a) **R.7 on the run**: the proved growing `finalAccountable` convicts at least `2q − n = 2`
+validators from the chains the two honest readers hold, and `nonFraming` holds: no honest
 validator signs a slashable pair. -/
 theorem conflictRun_accountable :
     (∃ X₁ ∈ (conflictRun.state 4 7).fg.tree, ∃ X₂ ∈ (conflictRun.state 5 14).fg.tree,
@@ -874,10 +876,10 @@ theorem conflictRun_accountable :
     ∀ v ∈ H, ∀ k k' a b, conflictRun.SignAt v k a → conflictRun.SignAt v k' b →
       ¬ slashable a b := by
   obtain ⟨h4, h5, -, -, hc⟩ := conflicting_finalized
-  refine ⟨?_, Regimes.non_framing sp6 ro6 dg6 H conflictRun (fun _ => v0)
-    conflictRun_goldilocksRun⟩
-  obtain ⟨X₁, hX₁, X₂, hX₂, S, hS, hv⟩ := Regimes.final_accountable sp6 ro6 dg6 H conflictRun
-    (fun _ => v0) conflictRun_goldilocksRun conflictRun_noColl 4 h4 5 h5 7 14 hc
+  refine ⟨?_, fun _ hv _ _ _ _ ha hb =>
+    Regimes.Growing.Test.nonFraming_const conflictRun_goldilocksRun hv ha hb⟩
+  obtain ⟨X₁, hX₁, X₂, hX₂, S, hS, hv⟩ := Regimes.Growing.Test.finalAccountable_const
+    conflictRun_goldilocksRun conflictRun_noColl h4 h5 7 14 hc
   exact ⟨X₁, hX₁, X₂, hX₂, S, (conflictRun_faults.2.1 ▸ hS), hv⟩
 
 end Consensus.Goldilocks.ConflictRun

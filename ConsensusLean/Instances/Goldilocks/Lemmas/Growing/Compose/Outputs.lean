@@ -11,7 +11,7 @@ public section
 
 /-! # Outputs of nodes honest at their observation horizon
 
-The node-local always rows reuse the static proofs on a retained prefix. No fault count or
+The node-local always rows reuse the fixed-set run lemmas on a retained prefix. No fault count or
 sleepy invariant is transported: the only cohort is the node honest at the final observation.
 -/
 
@@ -21,8 +21,7 @@ namespace Consensus.Goldilocks.Regimes.Growing
 theorem outputs_nested : OutputsNested := by
   intro sp ro dg H tr proposer h y i hy
   have hs := RunTrace.upTo_state_of_le (y := y) h.time_mono (le_refl (tr.time i))
-  have ht := Regimes.outputs_nested sp ro dg (H (tr.time i)) (tr.upTo (tr.time i)) proposer
-    (h.upTo (h.time_nonneg i)) y hy i
+  have ht := Regimes.outputs_nested_at (h.upTo (h.time_nonneg i)) hy i
   simpa only [RunTrace.finalizedAt, RunTrace.confirmedAt, RunTrace.headAt, hs,
     Trace.upTo_time] using ht
 
@@ -31,16 +30,14 @@ theorem finalized_monotone : FinalizedMonotone := by
   intro sp ro dg H tr proposer h y i j hij hy
   have hsi := RunTrace.upTo_state_of_le (y := y) h.time_mono (h.time_mono hij)
   have hsj := RunTrace.upTo_state_of_le (y := y) h.time_mono (le_refl (tr.time j))
-  have ht := Regimes.finalized_monotone sp ro dg (H (tr.time j)) (tr.upTo (tr.time j)) proposer
-    (h.upTo (h.time_nonneg j)) y hy i j hij
+  have ht := Regimes.finalized_monotone_from (h.upTo (h.time_nonneg j)) hy hij
   simpa only [RunTrace.finalizedAt, hsi, hsj] using ht
 
 /-- Both always outputs carry valid chains and accepted-block provenance. -/
 theorem outputs_valid : OutputsValid := by
   intro sp ro dg H tr proposer h y i hy
   have hs := RunTrace.upTo_state_of_le (y := y) h.time_mono (le_refl (tr.time i))
-  have ht := Regimes.outputs_valid sp ro dg (H (tr.time i)) (tr.upTo (tr.time i)) proposer
-    (h.upTo (h.time_nonneg i)) y hy i
+  have ht := Regimes.outputs_valid_at (h.upTo (h.time_nonneg i)) hy i
   have conv : ∀ X, ValidOutput (tr.upTo (tr.time i)) proposer dg y i X →
       ValidOutput tr proposer dg y i X := by
     intro X hv
@@ -62,9 +59,7 @@ theorem non_framing : NonFraming := by
   intro sp ro dg H tr proposer h v k k' a b ha hb hv
   have hkd : tr.time k ≤ max (tr.time k) (tr.time k') := le_max_left _ _
   have hkd' : tr.time k' ≤ max (tr.time k) (tr.time k') := le_max_right _ _
-  exact Regimes.non_framing sp ro dg (H (max (tr.time k) (tr.time k')))
-    (tr.upTo (max (tr.time k) (tr.time k'))) proposer
-    (h.upTo ((h.time_nonneg k).trans hkd)) v hv k k' a b
+  exact Regimes.goldilocksRun_nonFraming (h.upTo ((h.time_nonneg k).trans hkd)) hv
     ((RunTrace.upTo_signAt _).mpr ⟨hkd, ha⟩) ((RunTrace.upTo_signAt _).mpr ⟨hkd', hb⟩)
 
 private theorem fg_run {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
