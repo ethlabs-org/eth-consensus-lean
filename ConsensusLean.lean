@@ -112,7 +112,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.TickOnce
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Adopt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
@@ -129,7 +128,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Restarts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.SuffixBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.SuffixWindow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.VoterWalk
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.CarryServed
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
@@ -175,7 +173,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Finality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.FinalityPair
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Live
-public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.LiveConstants
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Transition
@@ -1017,7 +1014,6 @@ public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 public import ConsensusLean.Lemmas.Blocks.Facts
 public import ConsensusLean.Lemmas.Model.Adequate
-public import ConsensusLean.Lemmas.Model.AdequateObs
 public import ConsensusLean.Lemmas.Model.Candidates
 public import ConsensusLean.Lemmas.Model.Canonical.Construction
 public import ConsensusLean.Lemmas.Model.Canonical.Delivery
@@ -1039,10 +1035,8 @@ public import ConsensusLean.Lemmas.Model.Protocol
 public import ConsensusLean.Lemmas.Model.Retain
 public import ConsensusLean.Lemmas.Model.SysLog
 public import ConsensusLean.Lemmas.Model.Truncate
-public import ConsensusLean.Lemmas.Model.TruncateExt
 public import ConsensusLean.Lemmas.Model.View
 public import ConsensusLean.Lemmas.Model.VoteVerification
-public import ConsensusLean.Lemmas.Problem.AdequateObs
 public import ConsensusLean.Lemmas.Problem.Constant
 public import ConsensusLean.Lemmas.Problem.Derived
 public import ConsensusLean.Lemmas.Problem.DerivedFacts
