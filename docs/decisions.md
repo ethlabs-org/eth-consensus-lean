@@ -446,6 +446,7 @@ detail in `TRUST.md`.
     and a tick that signs nothing new has only its tick group (`pool_release_zero_relation_tick_none`). So the run
     at `R = 0` relates to the run without a release schedule by this placement of the own admission; it is not the
     same run.
+    The lemmas cited in this bullet were unused and are deleted; the relation is no longer stated in Lean.
   - *Own publications are exempt from the cross-validator phase order.* The three phase-order clauses
     (`Node.LocalRun.phase_order`, `Growing.LocalRun.phase_order`, `RunOrder.phase`) order two groups of one time
     by phase unless the earlier one is another node's own publication (`RunTrace.OwnPublicationAt`). So the trace

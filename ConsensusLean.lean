@@ -190,7 +190,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Compatible
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.CountedSupporters
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.FutureVotes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Healing.OriginLabel
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Healing.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Next
@@ -235,7 +234,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.See
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.VoteFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Crossing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Entries
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.QuorumFreeCounterexample
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Retention
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.FG.Safety
@@ -582,7 +580,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Queue
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.ReceiverService
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RegimeTransport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Release
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.ReleaseZeroPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.ReleasedPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.ResetHealBudget
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Restart
@@ -832,8 +829,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReceiptTraver
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.Release
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseTick
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseZero
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.ReleaseZeroTrace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RoleBinding
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunBlocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSchedule
