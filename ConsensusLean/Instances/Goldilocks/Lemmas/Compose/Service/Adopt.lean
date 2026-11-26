@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic

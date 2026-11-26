@@ -5,7 +5,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Adopt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageArmingSteps
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin

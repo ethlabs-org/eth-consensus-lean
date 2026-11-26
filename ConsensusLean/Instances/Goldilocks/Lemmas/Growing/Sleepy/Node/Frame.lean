@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.LiftFrame
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.HeldRow
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee

@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
@@ -11,6 +10,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Cuts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels

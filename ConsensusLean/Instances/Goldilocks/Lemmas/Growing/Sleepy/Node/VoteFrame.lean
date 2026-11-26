@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.LiftFrame
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.SourceLabels
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameWitness

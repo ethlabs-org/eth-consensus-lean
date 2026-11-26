@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Attest
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

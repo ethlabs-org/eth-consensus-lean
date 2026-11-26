@@ -11,7 +11,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Batch
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.OutageGateSlot
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run

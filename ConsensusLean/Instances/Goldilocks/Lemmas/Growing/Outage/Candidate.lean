@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Frame
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameCandidate
 
 public section

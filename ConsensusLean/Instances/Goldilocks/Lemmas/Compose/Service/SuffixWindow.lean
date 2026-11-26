@@ -3,7 +3,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.SuffixBa
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ViewAgree
@@ -18,6 +17,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Honest
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants

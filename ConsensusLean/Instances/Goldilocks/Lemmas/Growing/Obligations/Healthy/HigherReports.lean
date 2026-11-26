@@ -6,7 +6,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.S
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Reset
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run

@@ -10,6 +10,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.R
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PreparationInitialize
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.ServedHead
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalSource
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.LatestVotes
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count

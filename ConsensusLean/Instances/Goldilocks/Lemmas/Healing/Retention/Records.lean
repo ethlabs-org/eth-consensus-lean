@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RecordsCore

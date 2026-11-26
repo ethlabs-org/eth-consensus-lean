@@ -3,7 +3,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepHonest
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.HeadLock
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPointLocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockFloorStep

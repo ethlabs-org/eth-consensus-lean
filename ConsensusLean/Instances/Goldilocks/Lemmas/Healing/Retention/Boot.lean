@@ -4,7 +4,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Prefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

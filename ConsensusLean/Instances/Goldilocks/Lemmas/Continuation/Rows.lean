@@ -16,7 +16,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Attest
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Attest
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameSources
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen

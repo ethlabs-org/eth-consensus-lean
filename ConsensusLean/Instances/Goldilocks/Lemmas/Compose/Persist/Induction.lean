@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.P
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Attest
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 import ConsensusLean.Lemmas.Tactic.Linarith
 

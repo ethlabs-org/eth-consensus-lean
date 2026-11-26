@@ -22,7 +22,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepInterval
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.HeadLock
 import ConsensusLean.Lemmas.Tactic.Linarith

@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Deadline
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart

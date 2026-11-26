@@ -3,7 +3,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockFloorGlobal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 

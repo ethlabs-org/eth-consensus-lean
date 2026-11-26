@@ -9,10 +9,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Agree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
