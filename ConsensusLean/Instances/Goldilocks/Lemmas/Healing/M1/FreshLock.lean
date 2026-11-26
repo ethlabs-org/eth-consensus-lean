@@ -9,6 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.FloorUpdate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HonestPool
 
 public section
 
@@ -122,17 +123,9 @@ theorem honest_vote_early_pool_before {K : AC.CommitteeDict sp.n}
         rw [hqs, hes]) with
       h | ⟨v, hv, w, hw, hne, hvval, hwval⟩
     · rwa [hes] at h
-    · exfalso
-      rw [hes] at hv hw
-      obtain ⟨iv, -, ev, hev, rfl⟩ := hS.run.honest.pool_vote y hy (q + 1) u _ hv (hvval ▸ hxH)
-      obtain ⟨iw, -, ew, hew, rfl⟩ := hS.run.honest.pool_vote y hy (q + 1) u _ hw (hwval ▸ hxH)
-      have hsv := state_pool_slot sp hr hS.run.vstart hy (q + 1) u _ hv
-      have hsw := state_pool_slot sp hr hS.run.vstart hy (q + 1) u _ hw
-      rw [hvval] at hev
-      rw [hwval] at hew
-      obtain ⟨-, rfl⟩ := AC.one_vote_per_slotU sp FGP ro H U tr hr.toU _ hxH iv iw ev ew
-        hev hew (hsv.trans hsw.symm)
-      exact hne rfl
+    · rw [hes] at hv hw
+      exact absurd ⟨v, hv, w, hw, hne, hvval, hwval⟩
+        (honest_pool_not_equivocator hr.toU hS.run.vstart hS.run.honest hy (q + 1) u hxH)
   intro c hcj
   have hst := stamp_lt_of_held_of_run hr hS.run.vstart hy (a := q + 1) (b := c)
     (by clear * - hqj' hcj; omega)

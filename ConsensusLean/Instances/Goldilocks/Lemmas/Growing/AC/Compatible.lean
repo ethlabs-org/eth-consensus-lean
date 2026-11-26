@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Later
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Same
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.SideCount
 
 public section
 
@@ -86,28 +87,7 @@ private theorem against_update
       ∃ v ∈ (tr.state Y c).pool s, v.val = u ∧ ∃ R ∈ U, R.root = v.head ∧ Anc U DY R)
     (hT : T ⊆ Relayed tr H U X s D) (hnc : ¬ Compatible U D DY) :
     T.ncard + S.ncard ≤ (voters {v | v ∈ (tr.state Y c).pool s}).ncard := by
-  have held := fun {u} (hu : u ∈ Relayed tr H U X s D) =>
-    relayed_held hr hsync hY hc ht hrs hu
-  have hU := hr.coherent
-  have hdisj : Disjoint T S := by
-    rw [Set.disjoint_left]
-    intro u hu hu'
-    obtain ⟨hne, v', hv', hv'u, R', hR', hR'r, hDR'⟩ := hS u hu'
-    obtain ⟨v, hvu, ⟨R, hR, hRr, hDR⟩, hv | heq⟩ := held (hT hu)
-    · obtain rfl : v = v' := by
-        by_contra h
-        exact hne ⟨v, hv, v', hv', h, hvu, hv'u⟩
-      obtain rfl : R = R' := hU.1 hR hR' (hRr.trans hR'r.symm)
-      exact hnc (anc_total hU hDR hDR')
-    · exact hne heq
-  rw [← Set.ncard_union_eq hdisj]
-  refine Set.ncard_le_ncard ?_
-  rintro u (hu | hu)
-  · obtain ⟨v, rfl, _, hv | ⟨a, ha, _, _, _, hav, _⟩⟩ := held (hT hu)
-    · exact ⟨v, hv, rfl⟩
-    · exact ⟨a, ha, hav⟩
-  · obtain ⟨_, v, hv, rfl, _⟩ := hS u hu
-    exact ⟨v, hv, rfl⟩
+  exact side_count hr.coherent hS (fun u hu => relayed_held hr hsync hY hc ht hrs (hT hu)) hnc
 
 /-- Two historical locks are compatible even if their writers do not survive each other.
 The shared honest validator in the optimistic case is chosen at the later write cut. -/
