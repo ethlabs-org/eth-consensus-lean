@@ -18,7 +18,7 @@ variable {FGP : Type} {sp : ACParams} {Φ : Frm sp.n FGP} {t : Time}
 
 /-- **The opponents of `B` are not in `Hn`** when no validator of `Hn` equivocates in
 `V.votes` and every slot-`s` support vote of `Hn` has only heads compatible with `B`. -/
-theorem opponents_subset_compl {V : View sp.n} {s : Int} {B : Blk sp.n FGP}
+private theorem opponents_subset_compl {V : View sp.n} {s : Int} {B : Blk sp.n FGP}
     {Hn : Set (Fin sp.n)}
     (hne : ∀ x ∈ V.votes, ∀ y ∈ V.votes, x.val ∈ Hn → y.val = x.val → x = y)
     (hcompat : ∀ x ∈ V.support, x.val ∈ Hn → (x.slot : Int) = s →
@@ -41,7 +41,7 @@ held vote of slot `slot(t) − 1`. -/
 
 /-- The votes of a pool view of slot `σ` are of slot `σ` when every pool holds votes of its own
 slot. -/
-theorem voteViewList_votes_slot {A : ACState sp.n} {σ : Int} {cutoff : ETime}
+private theorem voteViewList_votes_slot {A : ACState sp.n} {σ : Int} {cutoff : ETime}
     (hp : ∀ τ, ∀ v ∈ A.pool τ, v.slot = τ) :
     ∀ v ∈ (View.ofLists (voteViewList A Φ σ cutoff)).votes, (v.slot : Int) = σ := by
   intro v hv
@@ -55,7 +55,7 @@ theorem voteViewList_votes_slot {A : ACState sp.n} {σ : Int} {cutoff : ETime}
 
 /-- The votes of the merged view of slot `s` are of slot `s − 1` when every pool holds votes of
 its own slot and every block of the tree has a valid payload. -/
-theorem mergedVoteView_votes_slot {A : ACState sp.n} (s : Nat)
+private theorem mergedVoteView_votes_slot {A : ACState sp.n} (s : Nat)
     (hp : ∀ τ, ∀ v ∈ A.pool τ, v.slot = τ) (hpay : ∀ C ∈ Φ.tree, validPayload C) :
     ∀ v ∈ (mergedVoteView sp A Φ s).votes, (v.slot : Int) = (s : Int) - 1 := by
   rintro v (hv | ⟨C, hC, hCs, hv, -⟩)
@@ -65,7 +65,7 @@ theorem mergedVoteView_votes_slot {A : ACState sp.n} (s : Nat)
 
 /-- **The view of a call holds only slot-`(slot(t) − 1)` votes** when the pools before and
 after the call hold votes of their own slot and every block of `Φ.tree` has a valid payload. -/
-theorem unlockView_votes_slot {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A : ACState sp.n}
+private theorem unlockView_votes_slot {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A : ACState sp.n}
     (c : (goldilocksAC sp FGP ro).Call) (hpre : ∀ τ, ∀ v ∈ A.pool τ, v.slot = τ)
     (hpost : ∀ τ, ∀ v ∈ ((goldilocksAC sp FGP ro).step self A Φ t c).1.pool τ, v.slot = τ)
     (hpay : ∀ C ∈ Φ.tree, validPayload C) :

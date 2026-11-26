@@ -109,7 +109,7 @@ theorem updateConfirmation_mayVote (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : T
   · split_ifs <;> first | rfl | exact updateLatestConfirmed_mayVote _ _ _
 
 /-- Permission gates own creation, but is itself immutable under voting. -/
-theorem tryVote_mayVote (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
+private theorem tryVote_mayVote (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (tryVote sp self A Φ t).1.mayVote = A.mayVote := by
   unfold tryVote
   lift_lets
@@ -236,7 +236,7 @@ theorem trace_mayVote_stock {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
 /-! ## The emission gate -/
 
 /-- **The emission gate.** `try_vote` emits only a vote of a slot its state may vote in. -/
-theorem tryVote_emits_mayVote (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP)
+private theorem tryVote_emits_mayVote (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : ∀ e ∈ (tryVote sp self A Φ t).2, A.mayVote e.msg.slot = true := by
   unfold tryVote
   lift_lets

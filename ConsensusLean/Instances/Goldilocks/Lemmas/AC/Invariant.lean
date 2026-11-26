@@ -197,7 +197,7 @@ private theorem acRestart_poolOK (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A 
     exact ih _ ((acOnBlock_fields _ _ _ _ _).1 h)
 
 /-- `step_pool_cap` with the locks after the unlock given. -/
-theorem stepWith_pool_cap (ro : ReplayOrder sp FGP) (self : Fin sp.n) (L : Set Lock)
+private theorem stepWith_pool_cap (ro : ReplayOrder sp FGP) (self : Fin sp.n) (L : Set Lock)
     (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP ro).Call)
     (h : ∀ σ, (∀ m ∈ A.pool σ, m.slot = σ) ∧
       ∀ x : Fin sp.n, ((A.pool σ).filter (fun m => m.val = x)).dedup.length ≤ 2) :

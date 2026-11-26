@@ -120,7 +120,7 @@ theorem mem_of_anc {Φ : Frame n FGP ACP} {A B : Block n FGP ACP} (h : Φ.Anc A 
 /-- **G0.4 (frame), the viable ancestor exists.** In a well-formed frame, a block of the tree has
 a viable ancestor: the deepest (by slot) ancestor that is at or below `fc_root` or viable; `Φ.F`
 is one, and the ancestors of a block form a chain. -/
-theorem exists_isViableAncestor {Φ : Frame n FGP ACP} (hΦ : FrameOK Φ) {B : Block n FGP ACP}
+private theorem exists_isViableAncestor {Φ : Frame n FGP ACP} (hΦ : FrameOK Φ) {B : Block n FGP ACP}
     (hB : B ∈ Φ.tree) : ∃ A, Φ.IsViableAncestor B A := by
   have hfin : {A | Φ.Anc A B ∧ Φ.AncestorCandidate A}.Finite :=
     hΦ.finite.subset fun A hA => mem_of_anc hA.1 hB

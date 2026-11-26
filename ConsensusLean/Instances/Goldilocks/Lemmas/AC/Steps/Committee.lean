@@ -166,7 +166,7 @@ end Counts
 section Full
 
 /-- Every slot of the full dictionary is the whole validator set. -/
-theorem committee_full (n s : Nat) : (CommitteeDict.full n).committee s = Set.univ := rfl
+private theorem committee_full (n s : Nat) : (CommitteeDict.full n).committee s = Set.univ := rfl
 
 /-- P and T membership at `K = full` holds for every signer. -/
 theorem mem_full {n : Nat} (s : Nat) (u : Fin n) : u ∈ (CommitteeDict.full n).committee s :=

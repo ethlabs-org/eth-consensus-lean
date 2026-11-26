@@ -60,13 +60,13 @@ theorem shouldCountDeclaredVote_iff {A : ACState sp.n} {x : Vote sp.n} :
   Iff.rfl
 
 /-- A vote of the pool of its slot should be counted. -/
-theorem shouldCountDeclaredVote_of_mem {A : ACState sp.n} {x : Vote sp.n}
+private theorem shouldCountDeclaredVote_of_mem {A : ACState sp.n} {x : Vote sp.n}
     (h : x ∈ A.poolAt x.slot) : ShouldCountDeclaredVote sp A x :=
   Or.inl h
 
 /-- **Pool growth keeps a declared vote counted**: the exact vote stays, and a pair of its
 validator stays a pair. -/
-theorem shouldCountDeclaredVote_mono {A A' : ACState sp.n} {x : Vote sp.n}
+private theorem shouldCountDeclaredVote_mono {A A' : ACState sp.n} {x : Vote sp.n}
     (hg : ∀ s, A.pool s ⊆ A'.pool s) (h : ShouldCountDeclaredVote sp A x) :
     ShouldCountDeclaredVote sp A' x := by
   refine backed_mono (P := {y | y ∈ A.poolAt x.slot}) (Q := {y | y ∈ A'.poolAt x.slot})
@@ -78,7 +78,7 @@ theorem shouldCountDeclaredVote_mono {A A' : ACState sp.n} {x : Vote sp.n}
   · exact hg _ hy
 
 /-- A counted declared vote of a slot-`s` proposal of the tree is a merged-view vote. -/
-theorem mem_mergedVoteView_votes_of_declared {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
+private theorem mem_mergedVoteView_votes_of_declared {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
     {B : Blk sp.n FGP} (hB : B ∈ Φ.tree) (hBs : B.slot = s) {x : Vote sp.n}
     (hx : x ∈ declaredHeadVotes B) (hc : ShouldCountDeclaredVote sp A x) :
     x ∈ (mergedVoteView sp A Φ s).votes :=
@@ -86,7 +86,8 @@ theorem mem_mergedVoteView_votes_of_declared {A : ACState sp.n} {Φ : Frm sp.n F
 
 /-- A counted support entry `(v, s−1, H)` of a slot-`s` proposal of the tree, with `H` in the tree
 and of a slot at most `s − 1`, is a merged-view support vote. -/
-theorem mem_mergedVoteView_support_of_declared {A : ACState sp.n} {Φ : Frm sp.n FGP} {s : Nat}
+private theorem mem_mergedVoteView_support_of_declared {A : ACState sp.n} {Φ : Frm sp.n FGP}
+    {s : Nat}
     {B : Blk sp.n FGP} (hB : B ∈ Φ.tree) (hBs : B.slot = s) {x : Vote sp.n}
     (hx : x ∈ declaredSupportVotes B) (hc : ShouldCountDeclaredVote sp A x) (hxs : x.slot + 1 = s)
     {H : Blk sp.n FGP} (hH : H ∈ Φ.tree) (hHr : H.root = x.head) (hHs : H.slot + 1 ≤ s) :
@@ -96,7 +97,7 @@ theorem mem_mergedVoteView_support_of_declared {A : ACState sp.n} {Φ : Frm sp.n
 /-- **An early vote counts every declared vote**: when `try_vote` emits before `t_s + Δ`, every
 declared vote and support entry of every slot-`s` proposal of the frame should be counted at the
 state the handler received. -/
-theorem allDeclaredVotesCounted_of_tryVote_early {self : Fin sp.n} {A : ACState sp.n}
+private theorem allDeclaredVotesCounted_of_tryVote_early {self : Fin sp.n} {A : ACState sp.n}
     {Φ : Frm sp.n FGP} {t : Time} (hlt : t < sp.ts (sp.slot t) + sp.Δ)
     (hem : (tryVote sp self A Φ t).2 ≠ []) :
     AllDeclaredVotesCounted sp A Φ (sp.slot t) := by
@@ -107,7 +108,7 @@ theorem allDeclaredVotesCounted_of_tryVote_early {self : Fin sp.n} {A : ACState 
 
 /-- **The read point of an emitted vote has the received state's pool** (the unlock and
 `voted_slot ← s` change neither the pool nor the vote stamps). -/
-theorem tryVote_readPoint_pool {self : Fin sp.n} {A : ACState sp.n} {Φ : Frm sp.n FGP}
+private theorem tryVote_readPoint_pool {self : Fin sp.n} {A : ACState sp.n} {Φ : Frm sp.n FGP}
     {t : Time} {e : Em sp FGP} (he : e ∈ (tryVote sp self A Φ t).2) :
     e.readPoint.pool = A.pool := by
   simp only [tryVote] at he
