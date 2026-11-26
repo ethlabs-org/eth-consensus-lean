@@ -12,7 +12,7 @@ namespace Consensus.Goldilocks.LocalSources
 variable {P : Params} {ACP : Type}
 
 /-- Authentic observation followed by source provenance preserves both strict cuts. -/
-theorem observed_high_row_source_before
+private theorem observed_high_row_source_before
     (st : Fin P.n → Nat → Store P ACP) (time : Nat → Time)
     (H : Time → Set (Fin P.n)) (Sign : Fin P.n → Nat → FG.Att P.n → Prop)
     (Origin : Fin P.n → Nat → Nat → NodeBlock P ACP → Prop)
@@ -29,7 +29,7 @@ theorem observed_high_row_source_before
 
 /-- An incompatible high entry has no surviving honest row, so the existing quorum core
 compares J; reachable-store ancestry compares F and the actual fork-choice root as well. -/
-theorem high_roots_before (acp₀ : ACP)
+private theorem high_roots_before (acp₀ : ACP)
     (st : Fin P.n → Nat → Store P ACP) (time : Nat → Time)
     (H : Time → Set (Fin P.n)) (Sign : Fin P.n → Nat → FG.Att P.n → Prop)
     (Origin : Fin P.n → Nat → Nat → NodeBlock P ACP → Prop)

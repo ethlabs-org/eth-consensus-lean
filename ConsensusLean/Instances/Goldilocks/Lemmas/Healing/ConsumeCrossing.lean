@@ -42,7 +42,7 @@ variable {P : Params} {ACP : Type} {acp₀ : ACP} {H : Set (Fin P.n)} {U : Set (
 the parent `Pr`, whose state has the height `h` of the entry `E ⪯ Pr` and the entry `E`, with
 `E.slot + δ_t ≤ X.slot`, and a set `S` of validators of weight `≥ q` each with an attestation for
 `E` at `h` in `X`'s payload or on `Pr`'s chain: `X` has state height `≥ h + 1`. -/
-theorem crossing_step (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
+private theorem crossing_step (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {X Pr E : NodeBlock P ACP} (hX : X ∈ (tr.store y i).tree) (hpar : X.parent = some Pr.root)
     (hE : IsEntry P ACP (tr.store y i) E) (hEPr : (tr.store y i).Anc E Pr)
     (hPrh : ((tr.store y i).σ Pr.root).h = ((tr.store y i).σ E.root).h)
