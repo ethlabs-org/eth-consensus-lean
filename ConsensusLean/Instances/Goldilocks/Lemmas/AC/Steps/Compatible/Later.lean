@@ -43,7 +43,7 @@ theorem fastLock_compatible_of_votes
       exact hu ⟨hP.1 x hx j s' v hvp, h⟩
     obtain ⟨j', hj', e, hve, rfl⟩ := hrun.honest.pool_vote x hx j s' _ hvp huH
     obtain ⟨Hd, hHd, hHdr, hBHd⟩ := hvotes _ huH j' (hj'.trans hji) e hve
-      (state_pool_slot sp hr hrun.vstart hx j s' _ hvp)
+      (state_pool_slotU sp hr.toU hrun.vstart hx j s' _ hvp)
     obtain rfl : R = Hd := hU.1 (hΦU hR) hHd (hRr.trans hHdr.symm)
     exact anc_total hU (Anc.mono hΦU hB'R) hBHd
   · -- an optimistic confirmation: three quarters of the committee, one of them honest
@@ -56,7 +56,7 @@ theorem fastLock_compatible_of_votes
     rw [hsl] at h34
     refine origin_compatible hU hΦU K h34
       (fun u ⟨v, hv, hvu, _⟩ => hvu ▸ hP.2 x hx j ℓ A hpt s' v hv) hf fun v hv hvH => ?_
-    obtain ⟨hvs, j', hj', e, hve, rfl⟩ := optimisticPoint_pool_vote hrun hx hpt hv hvH
+    obtain ⟨hvs, j', hj', e, hve, rfl⟩ := optimisticPoint_pool_voteU hrun.toU hx hpt hv hvH
     exact hvotes _ hvH j' (lt_of_le_of_lt hj' hji) e hve hvs
 
 end Consensus.Goldilocks.AC

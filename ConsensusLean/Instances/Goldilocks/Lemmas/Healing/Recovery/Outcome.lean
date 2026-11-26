@@ -211,7 +211,7 @@ theorem higher_report_early_outcome (hp : ResetPremises tr H K proposer dg g ΔF
   have hTr := mem_tree_of_anc hp hz hTC hC
   have hσ := σ_eq_run hp hz hy hTr hT
   have hCt : sp.ts C.slot ≤ tr.time r := (AC.ts_le_iff_le_slot sp (hr.time_nonneg r) _).2
-    (by exact_mod_cast AC.frame_slot_le sp hr hz hrep.1 C hCr)
+    (by exact_mod_cast AC.frame_slot_leU sp hr.toU hz hrep.1 C hCr)
   have hslot : C.slot < T.slot + sp.toParams.δt := by
     have hlt : sp.ts C.slot < sp.ts (T.slot + sp.toParams.δt : Nat) := by
       simp only [ACParams.ts] at hCt hrt ⊢

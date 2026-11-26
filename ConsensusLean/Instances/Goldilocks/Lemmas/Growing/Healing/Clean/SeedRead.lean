@@ -74,7 +74,7 @@ theorem reset_seed_held_at_read_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       intro i hi
       have hac := (Compose.goldilocks_ac_projection_from hr (hp.noColl.upTo t)).localRun
       unfold AC.joined
-      rcases AC.restartTime_state hac hp.run.vstart hy i with h | ⟨r, hri, hrs, h⟩
+      rcases AC.restartTime_stateU hac.toU hp.run.vstart hy i with h | ⟨r, hri, hrs, h⟩
       · rw [h]; exact bot_le
       · rw [h]
         apply WithBot.coe_le_coe.mpr

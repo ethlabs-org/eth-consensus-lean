@@ -193,7 +193,10 @@ private theorem grow_callU
     ℓ.call hnr
   rwa [he] at h
 
-/-- `pool_origin_sent` with the unlock given, from starts up to the vote permission. -/
+/-- **Where a held vote comes from.** A vote that an honest node holds before cut `c` (in the pool
+of its slot) was sent or admitted by it at an earlier cut, at a time of slot at least the vote's,
+which is its stamp (a restart empties the pools and its replay admits nothing). From starts up to
+the vote permission. With the unlock given. -/
 theorem pool_origin_sentU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
@@ -230,17 +233,6 @@ theorem pool_origin_sentU
       obtain ⟨k, hk, h⟩ := ih hx
       exact ⟨k, hk.trans (Nat.lt_succ_self c), h⟩
 
-/-- **Where a held vote comes from.** A vote that an honest node holds before cut `c` (in the
-pool of its slot) was sent or admitted by it at an earlier cut, at a time of slot at least the
-vote's, which is its stamp (a restart empties the pools and its replay admits nothing). From
-starts up to the vote permission. -/
-theorem pool_origin_sent (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
-    (hy : y ∈ H) (c : Nat) (x : Vote sp.n) (hx : x ∈ (tr.state y c).pool x.slot) :
-    ∃ k < c, tr.SendOrAdmit y k x ∧ (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧
-      x.slot ≤ sp.slot (tr.time k) :=
-  pool_origin_sentU (hr := hr.toU) hini (y := y) (hy := hy) (c := c) (x := x) (hx := hx)
-
 /-- `pool_origin` with the unlock given: `pool_origin_sentU` with the (empty) restart case. -/
 theorem pool_originU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
@@ -253,7 +245,7 @@ theorem pool_originU
         ∃ B ∈ ℓ.frame.tree, x ∈ declaredHeadVotes B :=
   Or.inl (pool_origin_sentU hr hini hy c x hx)
 
-/-- `pool_origin_sent` with a restart case, which never occurs (kept for its callers). -/
+/-- `pool_origin_sentU` with a restart case, which never occurs (kept for its callers). -/
 theorem pool_origin (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) (c : Nat) (x : Vote sp.n) (hx : x ∈ (tr.state y c).pool x.slot) :
@@ -262,7 +254,7 @@ theorem pool_origin (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
     ∃ k < c, ∃ ℓ, tr.CallAt y k ℓ ∧ ℓ.call = .restart ∧
       (tr.state y c).voteStamp x = ETime.of (tr.time k) ∧
         ∃ B ∈ ℓ.frame.tree, x ∈ declaredHeadVotes B :=
-  Or.inl (pool_origin_sent hr hini hy c x hx)
+  Or.inl (pool_origin_sentU hr.toU hini hy c x hx)
 
 /-- `pool_mono` with the unlock given. -/
 theorem pool_monoU
@@ -350,7 +342,7 @@ theorem serviceWindowBefore_of_sync {a b : Time} (h : SyncACWindowBefore H U a b
   exact (messageServedBefore_iff _ _ _ _).mpr
     (Or.inl (h.message x hx i v hi hai y hy j ℓ hj hdb hdj))
 
-/-- `heldBefore_mono` with the unlock given. -/
+/-- A held vote keeps its admission stamp between restarts. With the unlock given. -/
 theorem heldBefore_monoU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
@@ -369,14 +361,6 @@ theorem heldBefore_monoU
       exact ⟨hg.1 _ hv'.1, ((hg.2 v).1 hv'.1) ▸ hv'.2⟩
     · rw [state_succ_of_not hn]
       exact hv'
-
-/-- A held vote keeps its admission stamp between restarts. -/
-theorem heldBefore_mono (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {a b : Nat} (hab : a ≤ b)
-    (hnr : ∀ k, a ≤ k → k < b → ¬ tr.RestartAt y k) {v : Vote sp.n} {T : Time}
-    (hv : HeldBefore (tr.state y a) v T) : HeldBefore (tr.state y b) v T :=
-  heldBefore_monoU (hr := hr.toU) (y := y) (hy := hy) (a := a) (b := b) (hab := hab) (hnr := hnr)
-      (v := v) (T := T) (hv := hv)
 
 /-- Actual retained evidence survives a restart-free interval with its original stamps, with the
 unlock given. -/
@@ -426,7 +410,9 @@ theorem messageServedBefore_of_retained (y : Fin sp.n) {q j : Nat} (hqj : q ≤ 
   exact Or.inr ((retainedBefore_iff _ _ _ _).mpr
     ⟨q, hqj, (poolEvidenceBefore_iff _ _ _).mpr (Or.inl hv), hnr⟩)
 
-/-- `held_of_processAt` with the unlock given. -/
+/-- **An honest node holds a vote it processed.** When an honest node processes a vote (receives it,
+or emits it) at a time of the vote's slot or the next, the node holds it after that cut, or two
+other votes of its validator. With the unlock given. -/
 theorem held_of_processAtU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {v : Vote sp.n} (hp : tr.ProcessAt y k v)
@@ -445,18 +431,6 @@ theorem held_of_processAtU
     exact held_after _ _ h₁ h₂ h
   · rw [state_succ_of_call hc, post_of_castAtU hr hy ⟨hc, he⟩]
     exact held_after _ _ h₁ h₂ (grow_optimistic _ _ _)
-
-/-- **An honest node holds a vote it processed.** When an honest node processes a vote (receives
-it, or emits it) at a time of the vote's slot or the next, the node holds it after that cut, or
-two other votes of its validator. -/
-theorem held_of_processAt (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    {y : Fin sp.n}
-    (hy : y ∈ H) {k : Nat} {v : Vote sp.n} (hp : tr.ProcessAt y k v)
-    (h₁ : (sp.slot (tr.time k) : Int) - 1 ≤ v.slot) (h₂ : v.slot ≤ sp.slot (tr.time k)) :
-    v ∈ (tr.state y (k + 1)).pool v.slot ∨
-      v.val ∈ equivocators {w | w ∈ (tr.state y (k + 1)).pool v.slot} :=
-  held_of_processAtU (hr := hr.toU) (y := y) (hy := hy) (k := k) (v := v) (hp := hp) (h₁ := h₁)
-      (h₂ := h₂)
 
 private theorem lastWake_eq_coe {y : Fin sp.n} {w : Time} :
     ∀ {c : Nat}, tr.lastWake y c = (w : WithBot Time) →
@@ -513,7 +487,8 @@ private theorem held_of_deadline_processingU
     (Q := {w | w ∈ (tr.state X i).pool v.slot}) (fun _ hw => hmono hw)
     (held_of_processAtU hr hX hproc h₁ h₂)
 
-/-- `held_of_deadline_service` with the unlock given. -/
+/-- Both processing and retained evidence establish the writer's pool comparison. The retained route
+needs no artificial lower bound on the original admission time. With the unlock given. -/
 theorem held_of_deadline_serviceU
     {u : Nat → Set Lock}
     (hr : ACLocalRunU wm u H U tr ini) {X : Fin sp.n}
@@ -531,21 +506,6 @@ theorem held_of_deadline_serviceU
       ⟨a, b, hab, hav, hbv, has, hbs, ha, hb⟩
     · exact Or.inl hv.1
     · exact Or.inr ⟨a, has ▸ ha.1, b, hbs ▸ hb.1, hab, hav, hbv⟩
-
-/-- Both processing and retained evidence establish the writer's pool comparison.
-The retained route needs no artificial lower bound on the original admission time. -/
-theorem held_of_deadline_service
-    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {X : Fin sp.n}
-    {k : Nat} {v : Vote sp.n} (hX : X ∈ H) {i : Nat}
-    (hrs : ∀ k' ≤ i, tr.RestartAt X k' → tr.time k' ≤ tr.time k)
-    (hdl : tr.time k + sp.Δ ≤ tr.time i)
-    (hslot : ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
-      (sp.slot t : Int) - 1 ≤ v.slot ∧ v.slot ≤ sp.slot t)
-    (hp : MessageServedBefore tr X i (tr.time k) v) :
-    v ∈ (tr.state X i).pool v.slot ∨
-      v.val ∈ equivocators {w | w ∈ (tr.state X i).pool v.slot} :=
-  held_of_deadline_serviceU (hr := hr.toU) (X := X) (k := k) (v := v) (hX := hX) (i := i)
-      (hrs := hrs) (hdl := hdl) (hslot := hslot) (hp := hp)
 
 /-- `sync_forward` with the unlock given. -/
 theorem sync_forwardU
@@ -620,7 +580,8 @@ theorem sync_window_before_forward (hr : ACLocalRun (goldilocksAC sp FGP ro) H U
       (hy := hy) (k := k) (v := v) (hsend := hsend) (ha := ha) (hb := hb) (hX := hX) (i := i)
           (ℓ := ℓ) (hc := hc) (hrs := hrs) (hdl := hdl) (hslot := hslot)
 
-/-- `readPoint_pool` with the unlock given. -/
+/-- The state a cast leaves holds the votes of the vote's read point, with their stamps. With the
+unlock given. -/
 theorem readPoint_poolU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
@@ -632,16 +593,7 @@ theorem readPoint_poolU
     (grow_optimistic _ ℓ.frame (tr.time j))
   exact ⟨hg.1 _ hx, fun h => (hg.2 x).1 (h ▸ hx)⟩
 
-/-- The state a cast leaves holds the votes of the vote's read point, with their stamps. -/
-theorem readPoint_pool (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y j ℓ e) {x : Vote sp.n} {σ : Nat} (hx : x ∈ e.readPoint.pool σ) :
-    x ∈ (tr.state y (j + 1)).pool σ ∧
-      (x.slot = σ → (tr.state y (j + 1)).voteStamp x = e.readPoint.voteStamp x) :=
-  readPoint_poolU (hr := hr.toU) (y := y) (hy := hy) (j := j) (ℓ := ℓ) (e := e) (hc := hc)
-      (x := x) (σ := σ) (hx := hx)
-
-/-- `restartTime_of_castAt` with the unlock given. -/
+/-- A cast leaves the restart time of its read point. With the unlock given. -/
 theorem restartTime_of_castAtU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
@@ -655,13 +607,8 @@ theorem restartTime_of_castAtU
     · split_ifs <;> rfl
   rw [post_of_castAtU hr hy hc, h₂, h₁]
 
-/-- A cast leaves the restart time of its read point. -/
-theorem restartTime_of_castAt (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
-    (hc : CastAt tr y j ℓ e) : (tr.post j).restartTime = e.readPoint.restartTime :=
-  restartTime_of_castAtU (hr := hr.toU) (y := y) (hy := hy) (j := j) (ℓ := ℓ) (e := e) (hc := hc)
-
-/-- `optimisticPoint_pool_post` with the unlock given. -/
+/-- The pools at a state where an honest node runs the optimistic check are kept by the call. With
+the unlock given. -/
 theorem optimisticPoint_pool_postU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
@@ -688,14 +635,6 @@ theorem optimisticPoint_pool_postU
     exact h.1 σ
   · rw [state_succ_of_call hc, post_of_castAtU hr hy ⟨hc, he⟩]
     exact (grow_optimistic _ ℓ.frame (tr.time k)).1 σ
-
-/-- The pools at a state where an honest node runs the optimistic check are kept by the call. -/
-theorem optimisticPoint_pool_post (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
-    {A : ACState sp.n} (hp : OptimisticPoint tr y k ℓ A) (σ : Nat) :
-    A.pool σ ⊆ (tr.state y (k + 1)).pool σ :=
-  optimisticPoint_pool_postU (hr := hr.toU) (y := y) (hy := hy) (k := k) (ℓ := ℓ) (A := A)
-      (hp := hp) (σ := σ)
 
 end Consensus.Goldilocks.AC
 

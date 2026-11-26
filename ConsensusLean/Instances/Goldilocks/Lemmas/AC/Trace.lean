@@ -127,7 +127,9 @@ variable {wm : WriteMode}
 variable (sp : ACParams) {FGP : Type}
 variable {ini : Fin sp.n → ACState sp.n}
 
-/-- `frame_validPayload` with the unlock given. -/
+/-- Every block of an honest node's frame passes `ac_valid_payload`: the initial frame holds
+genesis, whose payload is empty, and a frame step adds only the block of an `on_block` call, which
+passed the check (the input contract). With the unlock given. -/
 theorem frame_validPayloadU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
@@ -160,17 +162,6 @@ theorem frame_validPayloadU
       subst hB
       simp [validPayload, declaredHeadVotes, declaredSupportVotes, hpay]
     · exact step _ _ _ _ hok (ih j hj hc')
-
-/-- Every block of an honest node's frame passes `ac_valid_payload`: the initial frame holds
-genesis, whose payload is empty, and a frame step adds only the block of an `on_block` call,
-which passed the check (the input contract). -/
-theorem frame_validPayload {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
-    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ) :
-    ∀ B ∈ ℓ.frame.tree, validPayload B := by
-  apply frame_validPayloadU (wm := WriteMode.parent sp) <;>
-    first | assumption | exact ACLocalRun.toU ‹_›
 
 /-- A block between `Φ.F` and a block of a well-formed frame tree (ancestry inside a coherent `U`
 containing the tree) is in the tree. -/
@@ -253,7 +244,10 @@ theorem retain_betweenU
     obtain ⟨hF, hX⟩ := callOK_retains sp h.coherent hin hok
     exact ⟨ihF.trans hF, fun X hXj hFX => hX X (ihX X hXj (hF.trans hFX)) hFX⟩
 
-/-- `mem_tree_of_acceptAt` with the unlock given. -/
+/-- **Retention at one node.** A block that an honest node accepted is in the frame of each of its
+later calls whose finalized tip it extends (inside `U`): the node's frames evolve by frame steps
+inside `U` (G0.3 (frame)), so a block leaves only when `Φ.F` moves past it, and never returns. With
+the unlock given. -/
 theorem mem_tree_of_acceptAtU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
@@ -269,18 +263,8 @@ theorem mem_tree_of_acceptAtU
       rw [hs.tree_eq]; exact ⟨Set.mem_insert _ _, hs.F'_anc_B⟩
   exact (retain_betweenU sp h hy hck i ℓ hc hki).2 B hBk hF
 
-/-- **Retention at one node.** A block that an honest node accepted is in the frame of each of its
-later calls whose finalized tip it extends (inside `U`): the node's frames evolve by frame steps
-inside `U` (G0.3 (frame)), so a block leaves only when `Φ.F` moves past it, and never returns. -/
-theorem mem_tree_of_acceptAt {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
-    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {k i : Nat}
-    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hk : tr.AcceptAt y k B)
-    (hki : k ≤ i) (hc : tr.CallAt y i ℓ) (hF : Anc U ℓ.frame.F B) : B ∈ ℓ.frame.tree := by
-  apply mem_tree_of_acceptAtU (wm := WriteMode.parent sp) <;>
-    first | assumption | exact ACLocalRun.toU ‹_›
-
-/-- `genesis_mem_of_call` with the unlock given. -/
+/-- The coherent set of an honest node's frames holds a genesis block (root `genesisRoot`, no
+parent): its first call follows an initial frame. With the unlock given. -/
 theorem genesis_mem_of_callU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
@@ -295,16 +279,6 @@ theorem genesis_mem_of_callU
       ⟨j, ℓ', hj, hc', -⟩
     · exact ⟨Φ₀.F, hin.2 (htree ▸ rfl), hroot, hpar⟩
     · exact ih j hj ℓ' hc'
-
-/-- The coherent set of an honest node's frames holds a genesis block (root `genesisRoot`, no
-parent): its first call follows an initial frame. -/
-theorem genesis_mem_of_call {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
-    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) :
-    ∀ i (ℓ : ACLabel (goldilocksAC sp FGP ro)), tr.CallAt y i ℓ →
-      ∃ G ∈ U, G.root = sp.genesisRoot ∧ G.parent = none := by
-  apply genesis_mem_of_callU (wm := WriteMode.parent sp) <;>
-    first | assumption | exact ACLocalRun.toU ‹_›
 
 /-- `accept_new` with the unlock given. -/
 theorem accept_newU
@@ -351,7 +325,7 @@ theorem accept_new {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
   apply accept_newU (wm := WriteMode.parent sp) <;>
     first | assumption | exact ACLocalRun.toU ‹_›
 
-/-- `accept_unique` with the unlock given. -/
+/-- An honest node accepts a block at most once. With the unlock given. -/
 theorem accept_uniqueU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
@@ -366,15 +340,7 @@ theorem accept_uniqueU
     exact absurd ((accept_newU sp h hy ⟨ℓ, hc, hcl⟩).1 ℓ hc) ((accept_newU sp h hy hk).2 k' hlt ℓ
         hc)
 
-/-- An honest node accepts a block at most once. -/
-theorem accept_unique {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
-    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {k k' : Nat}
-    {B : Blk sp.n FGP} (hk : tr.AcceptAt y k B) (hk' : tr.AcceptAt y k' B) : k = k' := by
-  apply accept_uniqueU (wm := WriteMode.parent sp) <;>
-    first | assumption | exact ACLocalRun.toU ‹_›
-
-/-- `accept_ne_genesis` with the unlock given. -/
+/-- An honest node never accepts a block with the genesis root. With the unlock given. -/
 theorem accept_ne_genesisU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
@@ -395,14 +361,6 @@ theorem accept_ne_genesisU
   obtain ⟨P, hP⟩ := hpar
   rw [hBG, hGp] at hP
   exact absurd hP (by simp)
-
-/-- An honest node never accepts a block with the genesis root. -/
-theorem accept_ne_genesis {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
-    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {B : Blk sp.n FGP} (hk : tr.AcceptAt y k B) : B.root ≠ sp.genesisRoot := by
-  apply accept_ne_genesisU (wm := WriteMode.parent sp) <;>
-    first | assumption | exact ACLocalRun.toU ‹_›
 
 /-- Every block of an honest node's frame at a call is of slot `0` (genesis), or the node accepted
 it at that call or an earlier one. With the unlock given. -/
@@ -511,8 +469,12 @@ theorem stamp_casesU
     | toFG => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2 ▸ hX)
     | message m => rw [hoth (fun _ => by simp) (by simp)]; exact hpre X (hok.2.1 ▸ hX)
 
-/-- `blockStamp_lt_of_acceptedBefore` with the unlock given, from starts up to the vote
-permission. -/
+/-- **Stamps of accepted blocks.** At an honest node's call, a block of the call's frame that the
+node accepted before `T` (or genesis) has a stamp below `T` in the state before the call, when every
+restart of the node up to the call was before `T` and the call does not itself accept the block (it
+is at or after `T`, or not `on_block(B)`): the stamp of a block is written only when the node
+accepts it (once) and by a restart's replay (A0.7). From starts up to the vote permission. With the
+unlock given. -/
 theorem blockStamp_lt_of_acceptedBeforeU
     {u : Nat → Set Lock} {ro : ReplayOrder sp FGP}
     {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
@@ -595,24 +557,6 @@ theorem blockStamp_lt_of_acceptedBeforeU
       · rw [accept_uniqueU sp h hy hk hk']; exact hlt _ hkT
     · rw [h1]; exact hlt _ (hrs r (hr.trans hj.le) hrr)
 
-/-- **Stamps of accepted blocks.** At an honest node's call, a block of the call's frame that the
-node accepted before `T` (or genesis) has a stamp below `T` in the state before the call, when
-every restart of the node up to the call was before `T` and the call does not itself accept the
-block (it is at or after `T`, or not `on_block(B)`): the stamp of a block is written only when
-the node accepts it (once) and by a restart's replay (A0.7). From starts up to the vote
-permission. -/
-theorem blockStamp_lt_of_acceptedBefore {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
-    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ) {B : Blk sp.n FGP}
-    (hB : B ∈ ℓ.frame.tree) {T : Time} (hacc : AcceptedBefore tr y B T)
-    (hrs : ∀ k ≤ i, tr.RestartAt y k → tr.time k < T)
-    (hi : T ≤ tr.time i ∨ ℓ.call ≠ .block B) :
-    (tr.state y i).blockStamp B.root < ETime.of T := by
-  apply blockStamp_lt_of_acceptedBeforeU (wm := WriteMode.parent sp) <;>
-    first | assumption | exact ACLocalRun.toU ‹_›
-
 /-- The AC trace contract with the unlock given, from the starts `ini`, gives the states reachable
 with the unlock given from each start. -/
 theorem localRun_reachableU {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
@@ -673,7 +617,8 @@ theorem state_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.
     exact Or.inr ⟨ℓ.frame, tr.time j, localRun_reachable h y hy j ℓ hc,
       h.time_mono (Nat.le_of_lt hj)⟩
 
-/-- `state_pool_slot` with the unlock given, from starts up to the vote permission. -/
+/-- The slot-`σ` pool of an honest node's state before any cut holds only slot-`σ` votes, from
+starts up to the vote permission. With the unlock given. -/
 theorem state_pool_slotU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
@@ -684,16 +629,9 @@ theorem state_pool_slotU
   · rw [h0, (hini y).pool]; intro v hv; simp at hv
   · exact (pool_capU sp FGP ro y U h.coherent (hini y) _ Φ t hr σ).1
 
-/-- The slot-`σ` pool of an honest node's state before any cut holds only slot-`σ` votes, from
-starts up to the vote permission. -/
-theorem state_pool_slot {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
-    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H) (i σ : Nat) :
-    ∀ v ∈ (tr.state y i).pool σ, v.slot = σ :=
-  state_pool_slotU (wm := WriteMode.parent sp) sp h.toU hini hy i σ
-
-/-- `frame_slot_le` with the unlock given. -/
+/-- The blocks of an honest call's frame are not of a future slot: the initial frame holds genesis,
+of slot `0`, and a frame step adds only the block of an `on_block` call, which is not of a future
+slot (the input contract); calls are at nondecreasing times from `0`. With the unlock given. -/
 theorem frame_slot_leU
     {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
@@ -729,17 +667,6 @@ theorem frame_slot_leU
     · refine step _ _ hok fun B hB => ?_
       exact le_trans (ih j hj hc' B hB)
         (slot_mono sp (h.time_nonneg j) (h.time_mono (Nat.le_of_lt hj)))
-
-/-- The blocks of an honest call's frame are not of a future slot: the initial frame holds
-genesis, of slot `0`, and a frame step adds only the block of an `on_block` call, which is not of
-a future slot (the input contract); calls are at nondecreasing times from `0`. -/
-theorem frame_slot_le {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
-    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ℓ) :
-    ∀ B ∈ ℓ.frame.tree, B.slot ≤ sp.slot (tr.time i) := by
-  apply frame_slot_leU (wm := WriteMode.parent sp) <;>
-    first | assumption | exact ACLocalRun.toU ‹_›
 
 /-! ### One vote per slot (A0.8)
 
@@ -1060,8 +987,10 @@ private theorem state_mayVoteU {u : Nat → Set Lock} (h : ACLocalRunU wm u H U 
       rw [hs]
       exact ih
 
-/-- `cast_of_votedSlot` with the unlock given, from starts up to the vote permission: the vote
-branch of `voteBranchAt_of_votedSlotU` is a cast when the node may vote in its slot. -/
+/-- **`voted_slot` names a cast vote.** When an honest node's state before cut `i` has `voted_slot =
+σ ≥ 0`, the node cast a vote of slot `σ` at an earlier cut, or `σ` is a slot the node may not vote
+in (a non-member's `voted_slot` moves without a cast). From starts up to the vote permission. With
+the unlock given. -/
 theorem cast_of_votedSlotU
     {u : Nat → Set Lock} (h : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
@@ -1076,19 +1005,6 @@ theorem cast_of_votedSlotU
     right
     rw [state_mayVoteU h hy i, ← state_mayVoteU h hy j]
     exact hm
-
-/-- **`voted_slot` names a cast vote.** When an honest node's state before cut `i` has
-`voted_slot = σ ≥ 0`, the node cast a vote of slot `σ` at an earlier cut, or `σ` is a slot the
-node may not vote in (a non-member's `voted_slot` moves without a cast). From starts up to the
-vote permission. -/
-theorem cast_of_votedSlot {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
-    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
-    (hy : y ∈ H) (i σ : Nat) (hv : (tr.state y i).votedSlot = σ) :
-    (∃ j < i, ∃ e, VoteAt tr y j e ∧ e.msg.slot = σ) ∨ (tr.state y i).mayVote σ = false := by
-  apply cast_of_votedSlotU (wm := WriteMode.parent sp) <;>
-    first | assumption | exact ACLocalRun.toU ‹_›
 
 /-- **A cast is at a slot the node may vote in** (the emission gate at the cast's call). -/
 theorem mayVote_of_castAt {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}

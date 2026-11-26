@@ -140,7 +140,7 @@ theorem blockStamp_early_of_historical_acceptance_at
   have haq' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time j)) y q P := by
     obtain ⟨ellq, hcq, heq⟩ := haq
     exact ⟨ellq, (Trace.upTo_callAt _).mpr ⟨hrun.time_mono hqj, hcq⟩, heq⟩
-  have hp := AC.blockStamp_lt_of_acceptedBefore sp hr hrun.vstart hy hc' hPt
+  have hp := AC.blockStamp_lt_of_acceptedBeforeU sp hr.toU hrun.vstart hy hc' hPt
     (Or.inr ⟨q, haq', by change tr.time q < _; rw [hti] at hqt; linarith [sp.toParams.hΔ]⟩)
     (fun k _ hrs => by
       have hck := hrs.choose_spec.1
@@ -197,7 +197,7 @@ theorem unanimous_early_pool_of_blockStamp_at {K : AC.CommitteeDict sp.n}
   have heP := hun x i e (hrun.antitone hit hx) hv hes
   obtain ⟨hm, hvs⟩ := honest_vote_early_pool_before_at hrun hnc hsvc hawake hf hcatch hnr
     hmargin hy hc ht hjb hx hv hes hit hK
-  have hval := (AC.castAt_spec hr hx ⟨hv'.choose_spec.1, hv'.choose_spec.2⟩).1
+  have hval := (AC.castAt_specU hr.toU hx ⟨hv'.choose_spec.1, hv'.choose_spec.2⟩).1
   refine ⟨e.msg, hm, hval, heP,
     AC.resolutionTime_lt_of hPhi.1 hPt heP.symm (by omega) hvs (heP ▸ hbs), ?_⟩
   intro v' hm' hv'x
@@ -206,7 +206,7 @@ theorem unanimous_early_pool_of_blockStamp_at {K : AC.CommitteeDict sp.n}
   obtain ⟨q, _, e', he', rfl⟩ := hS.run.honest.pool_vote y hy j u v' hm'' (hv'x ▸ hx)
   rw [hv'x] at he'
   obtain ⟨_, rfl⟩ := AC.one_vote_per_slotU sp _ _ _ _ _ hr.toU x hx q i e' e he' hv'
-    ((AC.state_pool_slot sp hr hS.run.vstart hy j u _ hm'').trans hes.symm)
+    ((AC.state_pool_slotU sp hr.toU hS.run.vstart hy j u _ hm'').trans hes.symm)
   rfl
 
 /-- The warm route assembles the early unanimous pool using only joinedness at
@@ -282,7 +282,7 @@ theorem update_call_of_awake_at
     intro i hi
     unfold AC.joined
     have hac := (Compose.goldilocks_ac_projection_from hr (hnc.upTo T)).localRun
-    rcases AC.restartTime_state hac hrun.vstart hy i with h | ⟨r, _, hrs, h⟩
+    rcases AC.restartTime_stateU hac.toU hrun.vstart hy i with h | ⟨r, _, hrs, h⟩
     · rw [h]; exact bot_le
     · rw [h]
       apply WithBot.coe_le_coe.mpr

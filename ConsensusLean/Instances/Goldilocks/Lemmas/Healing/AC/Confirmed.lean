@@ -85,14 +85,14 @@ theorem unanimous_pool_before {K : AC.CommitteeDict sp.n}
       (fun B hBU hBr => by
         rw [hr.coherent.1 hBU (hPhiU hPt) (hBr.trans heP)]
         exact (hPhi.rooted.2 P hPt).mono hPhiU)
-  obtain ⟨hval, -⟩ := castAt_spec hr hx ⟨hv.choose_spec.1, hv.choose_spec.2⟩
+  obtain ⟨hval, -⟩ := castAt_specU hr.toU hx ⟨hv.choose_spec.1, hv.choose_spec.2⟩
   refine ⟨e.msg, hmem, hval, heP,
     resolutionTime_lt_of hPhi hB hBr (hes ▸ hBs) hvs hbs, ?_⟩
   intro v' hv' hv'x
   obtain ⟨q, -, e', he', rfl⟩ := hS.run.honest.pool_vote y hy j s v' hv' (hv'x ▸ hx)
   rw [hv'x] at he'
   obtain ⟨-, rfl⟩ := one_vote_per_slotU sp FGP ro H U tr hr.toU x hx q i e' e he' hv
-    ((state_pool_slot sp hr hS.run.vstart hy j s _ hv').trans hes.symm)
+    ((state_pool_slotU sp hr.toU hS.run.vstart hy j s _ hv').trans hes.symm)
   rfl
 
 end Consensus.Goldilocks.AC

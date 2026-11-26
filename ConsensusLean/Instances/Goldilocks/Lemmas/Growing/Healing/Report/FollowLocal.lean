@@ -122,7 +122,7 @@ theorem toFG_time_ge_of_ancestor_slot_at
     · simpa only [RunTrace.upTo_projAC, hs, Trace.upTo_time] using hR.2.2
   have hac := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo (tr.time i))
   have hRc := (AC.toFG_candidate hR'.2.2).1.1
-  have hRs : R.slot ≤ sp.slot (tr.time i) := AC.frame_slot_le sp hac.localRun hy hR'.1 R hRc
+  have hRs : R.slot ≤ sp.slot (tr.time i) := AC.frame_slot_leU sp hac.localRun.toU hy hR'.1 R hRc
   have hPR' := RunTrace.anc_upTo_of_right hr hnc hd
     ((AC.frameIn_of_callAt hac.localRun hy hR'.1).2 hRc) hPR
   have hPRs := (Anc.slot_le hac.localRun.coherent hPR').1

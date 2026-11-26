@@ -32,7 +32,7 @@ theorem fastLock_counted (hrun : ACRun proposer tr H U ini)
       ∀ v ∈ CV, v.slot = s ∧ ∃ R ∈ U, R.root = v.head ∧ R.slot ≤ s ∧ Anc U B R := by
   have hr := hrun.localRun
   rcases hfl with ⟨ℓ, C, ⟨hc, -, -, -⟩, -, hD, rfl⟩ | ⟨ℓ, A, hpt, hsl, hsel, rfl⟩
-  · obtain ⟨hΦ, hΦU⟩ := frameIn_of_call hr hw hc
+  · obtain ⟨hΦ, hΦU⟩ := frameIn_of_callU hr.toU hw hc
     refine ⟨?_, ?_⟩
     · have hfast := (deepest_mem hD).1.2.2
       unfold FastTest confirmationScore at hfast
@@ -40,9 +40,9 @@ theorem fastLock_counted (hrun : ACRun proposer tr H U ini)
       rintro u ⟨hu, x, ⟨hx, hres⟩, hval, -, hanc⟩
       exact ⟨x, ⟨hx, hval ▸ hu, hres, hanc⟩, hval⟩
     · rintro v ⟨hvp, -, hres, R, hR, hRr, hBR⟩
-      refine ⟨state_pool_slot sp hr hrun.vstart hw i₀ s v hvp, R, hΦU hR, hRr, ?_,
+      refine ⟨state_pool_slotU sp hr.toU hrun.vstart hw i₀ s v hvp, R, hΦU hR, hRr, ?_,
         Anc.mono hΦU hBR⟩
-      have hvs := state_pool_slot sp hr hrun.vstart hw i₀ s v hvp
+      have hvs := state_pool_slotU sp hr.toU hrun.vstart hw i₀ s v hvp
       unfold resolutionTime at hres
       split at hres
       · exact absurd hres (by simp [ETime.of])
@@ -52,7 +52,7 @@ theorem fastLock_counted (hrun : ACRun proposer tr H U ini)
         split_ifs at hres with hlt
         · exact absurd hres (by simp [ETime.of])
         · omega
-  · obtain ⟨hΦ, hΦU⟩ := frameIn_of_call hr hw hpt.1
+  · obtain ⟨hΦ, hΦU⟩ := frameIn_of_callU hr.toU hw hpt.1
     unfold optimisticSelect at hsel
     dsimp only at hsel
     split_ifs at hsel
@@ -65,9 +65,9 @@ theorem fastLock_counted (hrun : ACRun proposer tr H U ini)
       have := Set.ncard_le_ncard hsub
       omega
     · rintro v ⟨hv, R, hR, hRr, hBR⟩
-      refine ⟨optimisticPoint_pool_slot hr hrun.vstart hw hpt hv, R, hΦU hR, hRr, ?_,
+      refine ⟨optimisticPoint_pool_slotU hr.toU hrun.vstart hw hpt hv, R, hΦU hR, hRr, ?_,
         Anc.mono hΦU hBR⟩
-      have := frame_slot_le sp hr hw hpt.1 R hR
+      have := frame_slot_leU sp hr.toU hw hpt.1 R hR
       omega
 
 end Consensus.Goldilocks.AC

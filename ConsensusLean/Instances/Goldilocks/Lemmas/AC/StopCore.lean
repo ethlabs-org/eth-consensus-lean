@@ -12,7 +12,7 @@ when `P` is in the voter's viable voter block tree and no old child of `Q` (slot
 eligible there, `P` is the voter's only eligible child of `Q` (a second slot-`s` child would be a
 second block of the honest proposer in the slot, `HonestObjects.one_block`; `P` itself is eligible
 as a block of the current slot), and the voter's walk has no best child at `P` (no block of the
-frame is of a later slot than the vote, `frame_slot_le`). Shared by the growing-fault A1.7
+frame is of a later slot than the vote, `frame_slot_leU`). Shared by the growing-fault A1.7
 (`Growing/Sleepy/Service/Agree`) and HS.3 (`proposal_only_child`, in a settled phase), which supply
 the two leaves.
 -/
@@ -47,8 +47,8 @@ theorem stop_core {ini} (hrun : ACRun proposer tr H U ini) {y : Fin sp.n} (hy : 
   have hr := hrun.localRun
   have hU := hr.coherent
   have hΦU := (frameIn_of_callAt hr hy hc.1).2
-  have hsj : sp.slot (tr.time j) = s := (castAt_spec hr hy hc).2.1.symm.trans hes
-  have hslot := frame_slot_le sp hr hy hc.1
+  have hsj : sp.slot (tr.time j) = s := (castAt_specU hr.toU hy hc).2.1.symm.trans hes
+  have hslot := frame_slot_leU sp hr.toU hy hc.1
   have hPt : P ∈ ℓ.frame.tree := hPv.1.1
   have hfb : ∀ B ∈ ℓ.frame.tree, HonestFrameBlock tr H B := fun B hB => ⟨y, hy, j, ℓ, hc.1, hB⟩
   have hpp : P.proposer = proposer s :=

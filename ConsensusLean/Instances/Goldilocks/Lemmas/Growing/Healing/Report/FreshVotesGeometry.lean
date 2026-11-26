@@ -90,7 +90,7 @@ theorem FrameWindow.frozen_competitor_reflect_at {g ΔF b : Time} {s₀ s floor 
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := AC.ts_succ s
   have hlo : sp.ts (s + 1 : Nat) ≤ tr.time i :=
     (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by
-      have hs := (AC.castAt_spec hri hy ⟨hci, hc.2⟩).2.1.symm.trans hes
+      have hs := (AC.castAt_specU hri.toU hy ⟨hci, hc.2⟩).2.1.symm.trans hes
       change sp.slot (tr.time i) = s + 1 at hs
       rw [hs])
   have hipl : sp.ts s₀ ≤ tr.time ip := by
@@ -114,7 +114,7 @@ theorem FrameWindow.frozen_competitor_reflect_at {g ΔF b : Time} {s₀ s floor 
         have hread := AC.readPoint_blockStamp_eqU hri.toU hy ⟨hci, hc.2⟩
         rw [hread] at hstamp
         rcases Healing.stamp_origin hri hy i ell hci W hWV.1 with hg | ⟨q, hqi, ellq, hcq, hWq, hsq⟩
-        · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hrp hz' ip ellp hcp'
+        · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hrp.toU hz' ip ellp hcp'
           obtain rfl : W = G := hac.localRun.coherent.1 (hPhi.2 hWV.1) hGU (hg.trans hGr.symm)
           rcases Relation.ReflTransGen.cases_tail hFW with he | ⟨C, _, hp⟩
           · exact he ▸ hPhip.1.rooted.1

@@ -78,8 +78,8 @@ theorem honest_vote_heads_eq_at
       (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
     have hri := (hac.upTo (hr.time_nonneg i)).localRun
     have hcast' : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ell e := ⟨hci, he⟩
-    have hhigh := AC.vote_time_le hri hy ⟨ell, hcast'⟩
-    have hslot := (AC.castAt_spec hri hy hcast').2.1.symm.trans hes
+    have hhigh := AC.vote_time_leU hri.toU hy ⟨ell, hcast'⟩
+    have hslot := (AC.castAt_specU hri.toU hy hcast').2.1.symm.trans hes
     change sp.slot (tr.time i) = s + 1 at hslot
     change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at hhigh
     rw [hslot] at hhigh

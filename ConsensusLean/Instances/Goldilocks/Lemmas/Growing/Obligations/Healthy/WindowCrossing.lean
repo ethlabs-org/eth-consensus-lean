@@ -154,7 +154,7 @@ theorem report_slot_le_time_at
   have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)).localRun
   have hto' := (Healing.Growing.toFGAt_upTo_iff hrun.time_mono le_rfl).mpr hto
   have hCs : C.slot ≤ sp.slot (tr.time r) :=
-    AC.frame_slot_le sp hr hz hto'.1 C (toFG_live_fast_lock hto).1
+    AC.frame_slot_leU sp hr.toU hz hto'.1 C (toFG_live_fast_lock hto).1
   have hPs := Healing.slot_le_of_anc (Compose.Growing.honest_blocks_coherent hrun hnc) hPC
   exact (AC.ts_le_iff_le_slot sp hd _).2 (by omega)
 

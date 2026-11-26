@@ -136,7 +136,7 @@ theorem ResetPremisesUpTo.vote_old_lock_source_before {b : Time}
       Anc (tr.HonestBlocks H) (ell.frame.viableAncestor L) D := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hc.1
-  have hslot : sp.slot (tr.time j) = u := ((AC.castAt_spec hr hy hc).2.1).symm.trans hes
+  have hslot : sp.slot (tr.time j) = u := ((AC.castAt_specU hr.toU hy hc).2.1).symm.trans hes
   have hclean : cleanLabel sp a + sp.k + 2 ≤ l.slot := by
     rw [drainTime_eq] at hR
     have := (AC.ts_le_iff sp).mp hR

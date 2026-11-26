@@ -249,7 +249,7 @@ theorem ResetPremisesUpTo.ready_update_selection_of_pool {b : Time}
     refine ⟨?_, vote, ⟨hm, hres⟩, he, ?_, P, hPt, hh.symm, .refl⟩
     · rintro ⟨x, hx, z, hz, hne, hxv, hzv⟩
       exact hne ((huniq x hx hxv).trans (huniq z hz hzv).symm)
-    · exact_mod_cast AC.state_pool_slot sp hr hp.run.vstart hy j u vote hm
+    · exact_mod_cast AC.state_pool_slotU sp hr.toU hp.run.vstart hy j u vote hm
   have hconf : AC.getConfirmation sp A ell.frame u = some P := by
     unfold AC.getConfirmation
     have hPS : P ∈ {B | B ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.F B ∧
@@ -408,10 +408,10 @@ theorem ResetPremisesUpTo.reset_accept_frame {b : Time}
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   by_cases hnew : AC.gbar g ≤ tr.time q
   · obtain ⟨k, hkj, hak, -⟩ := hp.reset_relay_accept hx hy ha hnew hcall hjb hjoin hq hF
-    exact AC.mem_tree_of_acceptAt sp hr hy hak hkj hcall hF
+    exact AC.mem_tree_of_acceptAtU sp hr.toU hy hak hkj hcall hF
   · obtain ⟨k, hkj, hak, _⟩ := (catch_window_of_run hp.run hc).relay x hx q B ha
       (not_le.mp hnew) y hy j ell hcall hg hjb hF
-    exact AC.mem_tree_of_acceptAt sp hr hy hak hkj hcall hF
+    exact AC.mem_tree_of_acceptAtU sp hr.toU hy hak hkj hcall hF
 
 /-- Finite relay of held blocks retains the receiver's finalization guard. -/
 theorem ResetPremisesUpTo.reset_frame_relay {b : Time}
@@ -425,8 +425,8 @@ theorem ResetPremisesUpTo.reset_frame_relay {b : Time}
     (hq : tr.time q + sp.Δ ≤ tr.time j)
     (hF : Anc (tr.HonestBlocks H) elly.frame.F B) : B ∈ elly.frame.tree := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  rcases Compose.frame_anc_accepted hr hx q ellx hcx B hB B .refl with hgen | ⟨k, hk, ha⟩
-  · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hy j elly hcy
+  rcases Compose.frame_anc_acceptedU hr.toU hx q ellx hcx B hB B .refl with hgen | ⟨k, hk, ha⟩
+  · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hy j elly hcy
     obtain rfl : B = G := hr.coherent.1 ((AC.frameIn_of_callAt hr hx hcx).2 hB)
       hGU (hgen.trans hGr.symm)
     rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp hF with he | ⟨c, _, hpar⟩
@@ -517,7 +517,7 @@ theorem reset_support_frame
       simp only [AC.voteViewList, AC.ACState.poolAt, Int.toNat_natCast, List.filter_filter,
         List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
         Bool.and_eq_true, decide_eq_true_eq] at hv
-      rw [AC.state_pool_slot sp hr hp.run.vstart hP.1 i s v hv.1]
+      rw [AC.state_pool_slotU sp hr.toU hp.run.vstart hP.1 i s v hv.1]
     obtain ⟨B', hB', hBr', -⟩ := hsup v (by rw [AC.declaredSupportVotes, hpay]; exact hv) hvs
     rwa [hr.coherent.1 ((AC.frameIn_of_callAt hr hP.1 hci).2 hB)
       ((AC.frameIn_of_callAt hr hy hcy.1).2 hB') (hBr.trans hBr'.symm)]
@@ -539,7 +539,7 @@ theorem reset_frozen_frame
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   rw [AC.readPoint_blockStamp_eqU hr.toU hy hcy] at hst
   rcases stamp_origin hr hy j elly hcy.1 B hB with hgen | ⟨q, -, ellq, hcq, hBq, hstamp⟩
-  · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hpH i ellp hci
+  · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hpH i ellp hci
     obtain rfl : B = G := hr.coherent.1 ((AC.frameIn_of_callAt hr hy hcy.1).2 hB)
       hGU (hgen.trans hGr.symm)
     rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp hF with he | ⟨c, _, hpar⟩
@@ -629,7 +629,7 @@ theorem ResetPremisesUpTo.reset_support_frame {b : Time}
       simp only [AC.voteViewList, AC.ACState.poolAt, Int.toNat_natCast, List.filter_filter,
         List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
         Bool.and_eq_true, decide_eq_true_eq] at hv
-      rw [AC.state_pool_slot sp hr hp.run.vstart hpH i s v hv.1]
+      rw [AC.state_pool_slotU sp hr.toU hp.run.vstart hpH i s v hv.1]
     obtain ⟨B', hB', hBr', _⟩ := hsup v (by rw [AC.declaredSupportVotes, hpay]; exact hv) hvs
     rwa [hr.coherent.1 ((AC.frameIn_of_callAt hr hpH hci).2 hB)
       ((AC.frameIn_of_callAt hr hy hcy.1).2 hB') (hBr.trans hBr'.symm)]
@@ -651,7 +651,7 @@ theorem ResetPremisesUpTo.reset_frozen_frame {b : Time}
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   rw [AC.readPoint_blockStamp_eqU hr.toU hy hcy] at hst
   rcases stamp_origin hr hy j elly hcy.1 B hB with hgen | ⟨q, _, ellq, hcq, hBq, hstamp⟩
-  · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hpH i ellp hci
+  · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hpH i ellp hci
     obtain rfl : B = G := hr.coherent.1 ((AC.frameIn_of_callAt hr hy hcy.1).2 hB)
       hGU (hgen.trans hGr.symm)
     rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).mp hF with he | ⟨c, _, hpar⟩

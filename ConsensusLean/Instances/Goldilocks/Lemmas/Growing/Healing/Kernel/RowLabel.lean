@@ -158,7 +158,7 @@ theorem row_origin_label_lt_at
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := (hac.upTo (hp.run.time_nonneg k)).localRun
   have hc' := AC.upTo_castAt.mpr (And.intro le_rfl hc)
-  have hk : e.msg.slot = sp.slot (tr.time k) := (AC.castAt_spec hr hy hc').2.1
+  have hk : e.msg.slot = sp.slot (tr.time k) := (AC.castAt_specU hr.toU hy hc').2.1
   have htr : tr.time r ≤ tr.time k := hp.run.time_mono (by omega)
   obtain ⟨_, _, ⟨CV, ellw, D, _, hfl, _⟩, _⟩ := ho
   rcases hfl with ⟨ell', C, ⟨-, -, ht, -⟩, -⟩ | hopt

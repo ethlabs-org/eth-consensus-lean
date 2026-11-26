@@ -49,7 +49,7 @@ theorem mem_latest_votes {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {u : Vote sp.n} (hu : u ∈ (tr.projAC.state y i).pool L) :
     u ∈ (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).1.votes := by
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
-  have hus : u.slot = L := AC.state_pool_slot sp hr hrun.vstart hy i L u hu
+  have hus : u.slot = L := AC.state_pool_slotU sp hr.toU hrun.vstart hy i L u hu
   have hst : (tr.projAC.state y i).voteStamp u < ⊤ := by
     rcases AC.pool_origin hr hrun.vstart hy i u (hus ▸ hu) with
       ⟨k, -, -, h, -⟩ | ⟨k, -, -, -, -, h, -⟩ <;>
@@ -122,7 +122,7 @@ theorem latest_honest_supporter_of_target_votes (hrun : GoldilocksRun proposer d
       t).1.votes, u ∈ (tr.projAC.state y i).pool L ∧ u.slot = L := fun u hu => by
     have h := ((latestView_mem hL u).1.1 hu).1
     rw [← hst] at h
-    exact ⟨h, AC.state_pool_slot sp hr (fun _ => AC.voteStart_initial _) hy i L u h⟩
+    exact ⟨h, AC.state_pool_slotU sp hr.toU (fun _ => AC.voteStart_initial _) hy i L u h⟩
   obtain ⟨hvp, hvs⟩ := hpool v hvV
   -- the vote is `v.val`'s own, of slot `L`, and extends `R` (S2)
   obtain ⟨j', hj', e, hve, hev⟩ := hrun'.honest.pool_vote y hy i L v hvp hwH
@@ -130,7 +130,7 @@ theorem latest_honest_supporter_of_target_votes (hrun : GoldilocksRun proposer d
   have hF : Anc (tr.HonestBlocks H) (tr.state y i).fg.F Hd :=
     ((hΦ.rooted.2 R hR).mono hΦU).trans hRHd
   obtain ⟨hHdΦ, hbst⟩ := hrelay v.val hwH j' e hve (by rw [hev, hvs]) Hd hHdU hHdr hF
-  obtain ⟨Hd₂, hHd₂, hHd₂r, hHd₂s⟩ := AC.honest_head hrun' hwH hve
+  obtain ⟨Hd₂, hHd₂, hHd₂r, hHd₂s⟩ := AC.honest_headU hrun'.toU hwH hve
   obtain rfl : Hd = Hd₂ := hU.1 hHdU hHd₂ (hHdr.trans hHd₂r.symm)
   rw [hev] at hHdr hHd₂s
   -- the vote is resolved

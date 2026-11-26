@@ -145,7 +145,7 @@ theorem proposal_views_agree
         simp only [AC.voteViewList, AC.ACState.poolAt, Int.toNat_natCast, List.filter_filter,
           List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
           Bool.and_eq_true, decide_eq_true_eq] at hx
-        rw [AC.state_pool_slot sp hr hrun.vstart hpH iP s' x hx.1]
+        rw [AC.state_pool_slotU sp hr.toU hrun.vstart hpH iP s' x hx.1]
       obtain ⟨H', hH't, hH'r, -⟩ :=
         hsup x (by rw [AC.declaredSupportVotes, hpay]; exact hx) hxs
       rwa [hU.1 (hΦpU hHd) (hΦyU hH't) (hHdr.trans hH'r.symm)]

@@ -44,7 +44,10 @@ theorem CompatibleSides.slot_of_lt {s : Nat} {t : Time}
     sp.slot t = s :=
   slot_of_mem sp s h₁ (by rw [← add_zero (sp.ts (s + 1 : Nat)), ts_add]; linarith)
 
-/-- `admitted_of_held` with the unlock given. -/
+/-- A vote that an honest node holds before cut `c`, of slot `s`, admitted before a time of slot
+`s`, was admitted by the node at a time in `[t_s, T)` (a restart puts in the pools only votes of
+frame blocks, whose slots are at most the restart's). From starts up to the vote permission. With
+the unlock given. -/
 theorem admitted_of_heldU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {X : Fin sp.n}
@@ -67,17 +70,6 @@ theorem admitted_of_heldU
       rw [← add_zero (sp.ts (s + 1 : Nat)), ts_add] at this
       linarith
     omega
-
-/-- A vote that an honest node holds before cut `c`, of slot `s`, admitted before a time of slot
-`s`, was admitted by the node at a time in `[t_s, T)` (a restart puts in the pools only votes of
-frame blocks, whose slots are at most the restart's). From starts up to the vote permission. -/
-theorem admitted_of_held (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {X : Fin sp.n}
-    (hX : X ∈ H) {c s : Nat} {v : Vote sp.n} (hvs : v.slot = s) (hv : v ∈ (tr.state X c).pool s)
-    {T : Time} (hT : T ≤ sp.ts s + 2 * sp.Δ)
-    (hlt : ∀ k < c, (tr.state X c).voteStamp v = ETime.of (tr.time k) → tr.time k < T) :
-    ∃ k, tr.SendOrAdmit X k v ∧ sp.ts s ≤ tr.time k ∧ tr.time k < T :=
-  admitted_of_heldU hr.toU hini hX hvs hv hT hlt
 
 /-- `optimistic_side` with the unlock given. From starts up to the vote permission. -/
 theorem optimistic_sideU

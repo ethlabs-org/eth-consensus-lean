@@ -297,7 +297,7 @@ private theorem optimistic_unlock_keeps_at
     exact (Compose.state_pool_cap hrT hy m τ).1 v hv
   have hpay : ∀ C ∈ (Node.frame ((tr.upTo t).state y j)).tree, AC.validPayload C := by
     rw [← hfr]
-    exact AC.frame_validPayload sp hr hy hcallA
+    exact AC.frame_validPayloadU sp hr.toU hy hcallA
   -- the held votes of slot `s + 1` are of slot-`s + 1` committee members, fewer than half of
   -- whom are faulty at `t`
   let K := Generic.dictOfTime sp cm
@@ -541,7 +541,7 @@ theorem update_before_stored_clock_at (hvalid : rho.ExecutionValid) {g ΔF a b :
         (rho.ownKey v) (cutMap S rho hn p))
             ((simTraceAt S rho hn).time (cutMap S rho hn p)) := by
       unfold AC.joined
-      rcases AC.restartTime_state hac hp.run.vstart
+      rcases AC.restartTime_stateU hac.toU hp.run.vstart
         hy (cutMap S rho hn p) with
         h | ⟨r, hri, hrs, h⟩
       · rw [h]; exact bot_le

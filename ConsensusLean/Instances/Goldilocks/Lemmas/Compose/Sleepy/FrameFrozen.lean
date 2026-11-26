@@ -42,10 +42,10 @@ theorem honest_vote_restarts {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : e.msg.slot = s + 1) :
     (∀ c ≤ i, tr.projAC.RestartAt y c → tr.time c ≤ sp.ts s) ∧ sp.ts s + 4 * sp.Δ ≤ tr.time i := by
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
-  obtain ⟨-, hslot, hjoin, -⟩ := AC.castAt_spec hr hy hc
+  obtain ⟨-, hslot, hjoin, -⟩ := AC.castAt_specU hr.toU hy hc
   have hti : sp.slot (tr.projAC.time i) = s + 1 := hslot ▸ hs
   have hjp : AC.joined sp (tr.projAC.post i) (tr.projAC.time i) := by
-    unfold AC.joined; rw [AC.restartTime_of_castAt hr hy hc]; exact hjoin
+    unfold AC.joined; rw [AC.restartTime_of_castAtU hr.toU hy hc]; exact hjoin
   refine ⟨fun c hc' hrc => ?_, ?_⟩
   · have h := (AC.joined_awakeU sp _ ro H _ tr.projAC hr.toU y hy i ℓ hc.1 hjp).2 c hc' hrc
     rw [hti, show (((s + 1 : Nat) : Int) - 1) = (s : Int) by push_cast; ring] at h
@@ -109,7 +109,7 @@ theorem accepted_voter_tree {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     change sp.ts s + 3 * sp.Δ < tr.time i
     exact (add_mul_delta_lt (by norm_num)).trans_le hti
   -- in the voter's frame
-  obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hy _ _ hc.1
+  obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hy _ _ hc.1
   have hXt : X ∈ ℓ.frame.tree := by
     rcases hacc with hg | ⟨k, hk, hkt⟩
     · obtain rfl : X = G := hU.1 hXU hGU (hg.trans hGr.symm)
@@ -120,9 +120,9 @@ theorem accepted_voter_tree {ini} (hrun : GoldilocksRun proposer dg H tr ini)
         by_contra h
         have := hr.time_mono (le_of_not_ge h)
         exact lt_irrefl _ (hT.trans (this.trans_lt hkt))
-      exact AC.mem_tree_of_acceptAt sp hr hy hk hki hc.1 hFX
+      exact AC.mem_tree_of_acceptAtU sp hr.toU hy hk hki hc.1 hFX
   -- its stamp before the call is below the freeze
-  have hbs := AC.blockStamp_lt_of_acceptedBefore sp hr hrun.vstart hy hc.1 hXt hacc
+  have hbs := AC.blockStamp_lt_of_acceptedBeforeU sp hr.toU hrun.vstart hy hc.1 hXt hacc
     (fun k hk hrk => lt_of_le_of_lt (hrs k hk hrk)
       (lt_add_of_pos_right _ (mul_pos (by norm_num) hΔ))) (Or.inl hT.le)
   -- the call does not receive `X`, so the read point keeps that stamp
@@ -131,8 +131,8 @@ theorem accepted_voter_tree {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     have hai : tr.projAC.AcceptAt y i B := ⟨ℓ, hc.1, hcall⟩
     obtain rfl : B = X := hΦ.coherent.1 ((AC.accept_new sp hr hy hai).1 ℓ hc.1) hXt hXB.symm
     rcases hacc with hg | ⟨k, hk, hkT⟩
-    · exact AC.accept_ne_genesis sp hr hy hai hg
-    · obtain rfl := AC.accept_unique sp hr hy hk hai
+    · exact AC.accept_ne_genesisU sp hr.toU hy hai hg
+    · obtain rfl := AC.accept_uniqueU sp hr.toU hy hk hai
       exact absurd hkT (not_lt.2 hT.le)
   have hx := hr.exec i ℓ hc.1.2 (hc.1.1 ▸ hy)
   rw [hc.1.1] at hx

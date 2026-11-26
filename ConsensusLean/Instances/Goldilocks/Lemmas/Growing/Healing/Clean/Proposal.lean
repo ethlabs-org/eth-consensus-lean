@@ -187,7 +187,7 @@ theorem clean_source_proposal_parent_before_at {cm : Time → Finset (Fin sp.n)}
           (by rintro w ⟨v, hv, rfl, -⟩; exact hS.hP.2 p hpH q ellO A hpt l.slot v hv)
           (hS.cs2 l.slot (by linarith only [hgl, hσg, hΔ]) (by linarith only [hli, hσD, hΔ]))
           fun v hv hvH => ?_
-        obtain ⟨hvs, q', _, e', hv', rfl⟩ := AC.optimisticPoint_pool_vote hS.run hpH hpt hv hvH
+        obtain ⟨hvs, q', _, e', hv', rfl⟩ := AC.optimisticPoint_pool_voteU hS.run.toU hpH hpt hv hvH
         exact votes _ hvH q' e' hv' (by rw [hvs]; clear * - hlσ hle; omega)
     rcases hcomp with h | h
     · exact Or.inl (hLO.trans h)

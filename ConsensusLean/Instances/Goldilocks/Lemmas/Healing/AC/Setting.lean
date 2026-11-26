@@ -22,7 +22,7 @@ validator is awake from `g` on, so there is no later restart):
   awake from `ḡ` on;
 * hence an honest node is joined at every time `t` with `ḡ ≤ t_{slot(t)−1}`, in its state
   before every call at such a time (`joined_state`; the state's
-  `restart_time` is the time of the node's latest restart, `restartTime_state`);
+  `restart_time` is the time of the node's latest restart, `restartTime_stateU`);
 * `Sync[a, b]` for every `a ≥ ḡ` (`syncAC`) and `f < h_t` there (`faultBound`), `f < n/2`.
 
 The settings at a write mode and an unlock oracle (`HealthyACCore`, `HealthyBaseU`) are defined in
@@ -124,7 +124,8 @@ private theorem rt_step
     rw [AC.tryVote_restartTimeWith, rt_optimistic, rt_blockReceipt]
   | restart => exact absurd rfl hc
 
-/-- `restartTime_state` with the unlock given. -/
+/-- **The restart time of a state**: the state of an honest node before cut `i` has `restart_time =
+−∞`, or the time of a restart of the node at an earlier cut. With the unlock given. -/
 theorem restartTime_stateU
     {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
@@ -162,15 +163,6 @@ theorem restartTime_stateU
         simp only [Trace.state]; exact ite_eq_right hn
       rw [hst]
       exact ih.imp_right fun ⟨k, hk, h⟩ => ⟨k, hk.trans (Nat.lt_succ_self i), h⟩
-
-/-- **The restart time of a state**: the state of an honest node before cut `i` has
-`restart_time = −∞`, or the time of a restart of the node at an earlier cut. -/
-theorem restartTime_state {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
-    (hy : y ∈ H) (i : Nat) :
-    (tr.state y i).restartTime = ⊥ ∨
-      ∃ k < i, tr.RestartAt y k ∧ (tr.state y i).restartTime = (tr.time k : WithBot Time) :=
-  restartTime_stateU (hr := hr.toU) hini (y := y) (hy := hy) (i := i)
 
 /-- **Joined from the restart bound**: the state of an honest node before cut `i` is joined at the
 time of `i` when each of its restarts before `i` is at or before `t_{slot(t)−1}`, `t` that time. -/

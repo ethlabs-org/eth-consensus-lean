@@ -99,7 +99,7 @@ theorem proposal_holds_old_at
       rw [hes] at hjt
       change tr.time j ≤ sp.ts l + sp.Δ at hjt
       linarith
-    rcases Compose.frame_anc_accepted hrj hzj j ellZ hcz' B hB't B .refl with hg |
+    rcases Compose.frame_anc_acceptedU hrj.toU hzj j ellZ hcz' B hB't B .refl with hg |
         ⟨c, hcj, hacc⟩
     · exact (hp.not_genesis_above_at ho
         ⟨z, j, tr.time j, hp.run.time_nonneg j, fun _ hq => hm hq.le, hzj, hBz⟩ hOB hg).elim
@@ -155,7 +155,7 @@ theorem proposal_holds_old_at
       (by rw [hti, htsu]; have := hdl i le_rfl; have := sp.toParams.hΔ; linarith)
       (hFO.trans hOB)
     have hak' := (ACTrace.upTo_acceptAt).mpr (And.intro (hm hki) hak)
-    have hBt := AC.mem_tree_of_acceptAt sp hr hpH hak' hki hci' (hFO.trans hOB)
+    have hBt := AC.mem_tree_of_acceptAtU sp hr.toU hpH hak' hki hci' (hFO.trans hOB)
     exact Compose.mem_between hac.localRun.coherent hPhi hPhiU hPhi.rooted.1 hBt hFO hOB
   · exact Or.inr hOF
 

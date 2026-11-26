@@ -42,11 +42,11 @@ theorem later_heads_of_common_root_at {s₀ s N floor : Nat} {kindJ : Prop}
     have hr := (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun
     have hc' := ac_castAt_upTo.mpr ⟨le_rfl, hc, he⟩
     obtain ⟨hPhi, hPhiU⟩ := frameIn_at hrun hnc hy hc
-    have hsl := (AC.castAt_spec hr hy hc').2.1.symm.trans hes
+    have hsl := (AC.castAt_specU hr.toU hy hc').2.1.symm.trans hes
     change sp.slot (tr.time i) = r at hsl
     have hlo : sp.ts s₀ ≤ tr.time i :=
       (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).mpr (by rw [hsl]; omega)
-    have hhi := AC.vote_time_le hr hy ⟨ell, hc'.1, he⟩
+    have hhi := AC.vote_time_leU hr.toU hy ⟨ell, hc'.1, he⟩
     change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at hhi
     rw [hsl] at hhi
     obtain ⟨W, hW, hWr, hRW⟩ := AC.castAt_head_anc hr hy hc' (Or.inr rfl)

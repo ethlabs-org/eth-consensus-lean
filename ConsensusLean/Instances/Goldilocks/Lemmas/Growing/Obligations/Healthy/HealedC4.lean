@@ -289,7 +289,7 @@ theorem UpTo.operational_proposal_below_next_parent_at
         refine AC.origin_compatible hU hΦU _ h34
           (by rintro w ⟨v, hv, rfl, -⟩; exact hS.hP.2 y hy q ellO A hpt l.slot v hv)
           (hS.cs2 l.slot (by linarith) (by linarith)) fun v hv hvH => ?_
-        obtain ⟨hvs, q', _, e', hv', rfl⟩ := AC.optimisticPoint_pool_vote hS.run hy hpt hv hvH
+        obtain ⟨hvs, q', _, e', hv', rfl⟩ := AC.optimisticPoint_pool_voteU hS.run.toU hy hpt hv hvH
         exact votes _ hvH q' e' hv' (by rw [hvs]; omega)
     rcases hcomp with h | h
     · exact Or.inl (hLO.trans h)

@@ -134,7 +134,7 @@ theorem relay_mem_voterBlockTree {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP 
     W ∈ AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
   have hU := hr.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨-, hys, hyj, -⟩ := AC.castAt_spec hr hy hc
+  obtain ⟨-, hys, hyj, -⟩ := AC.castAt_specU hr.toU hy hc
   have hm : sp.ts ((e.msg.slot : Int) - 1) + 4 * sp.Δ = sp.ts e.msg.slot := by
     simp only [ACParams.ts]; ring
   have hti : sp.ts e.msg.slot ≤ T.time i :=
@@ -142,7 +142,7 @@ theorem relay_mem_voterBlockTree {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP 
   have hsm : sp.ts s ≤ sp.ts ((e.msg.slot : Int) - 1) := (AC.ts_le_iff sp).2 (by omega)
   have hrsy : ∀ k ≤ i, T.RestartAt y k → T.time k ≤ sp.ts ((e.msg.slot : Int) - 1) := by
     have hj' : AC.joined sp (T.post i) (T.time i) := by
-      unfold AC.joined; rw [AC.restartTime_of_castAt hr hy hc]; exact hyj
+      unfold AC.joined; rw [AC.restartTime_of_castAtU hr.toU hy hc]; exact hyj
     intro k hk hrk
     have := (AC.joined_awakeU sp FGP ro H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
     rwa [← hys] at this
@@ -164,8 +164,8 @@ theorem relay_mem_voterBlockTree {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP 
     unfold AC.freeze
     linarith only [hkyt, this]
   have hfz : AC.freeze sp e.msg.slot ≤ T.time i := by unfold AC.freeze; linarith only [hΔ, hm, hti]
-  have hWt := AC.mem_tree_of_acceptAt sp hr hy hacc hky hc.1 hF
-  have hbs := AC.blockStamp_lt_of_acceptedBefore sp hr hini
+  have hWt := AC.mem_tree_of_acceptAtU sp hr.toU hy hacc hky hc.1 hF
+  have hbs := AC.blockStamp_lt_of_acceptedBeforeU sp hr.toU hini
     hy hc.1 hWt (Or.inr ⟨ky, hacc, hkyt'⟩)
     (fun k hk hrk => lt_of_le_of_lt (hrsy k hk hrk) (by unfold AC.freeze; linarith only [hΔ]))
     (Or.inl hfz)
@@ -174,10 +174,10 @@ theorem relay_mem_voterBlockTree {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP 
     have hB₀ := (AC.accept_new sp hr hy ⟨ℓ, hc.1, hcall⟩).1 ℓ hc.1
     obtain rfl : B₀ = W := hU.1 ((AC.frameIn_of_callAt hr hy hc.1).2 hB₀)
       ((AC.frameIn_of_callAt hr hy hc.1).2 hWt) hB.symm
-    have heq := AC.accept_unique sp hr hy hacc ⟨ℓ, hc.1, hcall⟩
+    have heq := AC.accept_uniqueU sp hr.toU hy hacc ⟨ℓ, hc.1, hcall⟩
     rw [heq] at hkyt'
     linarith only [hkyt', hfz]
-  rw [← AC.readPoint_blockStamp hr hy hc hne] at hbs
+  rw [← AC.readPoint_blockStampU hr.toU hy hc hne] at hbs
   exact ⟨hWt, Or.inl hbs⟩
 
 /-- A counted head reaches the actual voter freeze through either window service or
@@ -195,7 +195,7 @@ private theorem relay_mem_voterBlockTree_window_aux
     W ∈ ℓ.frame.tree ∧ e.readPoint.blockStamp W.root < AC.ETime.of (AC.freeze sp e.msg.slot) := by
   have hU := hr.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
-  obtain ⟨-, hys, hyj, -⟩ := AC.castAt_spec hr hy hc
+  obtain ⟨-, hys, hyj, -⟩ := AC.castAt_specU hr.toU hy hc
   have hm : sp.ts ((e.msg.slot : Int) - 1) + 4 * sp.Δ = sp.ts e.msg.slot := by
     simp only [ACParams.ts]; ring
   have hti : sp.ts e.msg.slot ≤ T.time i :=
@@ -203,7 +203,7 @@ private theorem relay_mem_voterBlockTree_window_aux
   have hsm : sp.ts s ≤ sp.ts ((e.msg.slot : Int) - 1) := (AC.ts_le_iff sp).2 (by omega)
   have hrsy : ∀ k ≤ i, T.RestartAt y k → T.time k ≤ sp.ts ((e.msg.slot : Int) - 1) := by
     have hj' : AC.joined sp (T.post i) (T.time i) := by
-      unfold AC.joined; rw [AC.restartTime_of_castAt hr hy hc]; exact hyj
+      unfold AC.joined; rw [AC.restartTime_of_castAtU hr.toU hy hc]; exact hyj
     intro k hk hrk
     have := (AC.joined_awakeU sp FGP ro H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
     rwa [← hys] at this
@@ -230,8 +230,8 @@ private theorem relay_mem_voterBlockTree_window_aux
     · exact hcatch (lt_of_not_ge ha)
   obtain ⟨ky, hky, hacc, hkyt⟩ := haccepted
   have hfz : AC.freeze sp e.msg.slot ≤ T.time i := by unfold AC.freeze; linarith only [hΔ, hm, hti]
-  have hWt := AC.mem_tree_of_acceptAt sp hr hy hacc hky hc.1 hF
-  have hbs := AC.blockStamp_lt_of_acceptedBefore sp hr hini
+  have hWt := AC.mem_tree_of_acceptAtU sp hr.toU hy hacc hky hc.1 hF
+  have hbs := AC.blockStamp_lt_of_acceptedBeforeU sp hr.toU hini
     hy hc.1 hWt (Or.inr ⟨ky, hacc, hkyt⟩)
     (fun k hk hrk => lt_of_le_of_lt (hrsy k hk hrk) (by unfold AC.freeze; linarith only [hΔ]))
     (Or.inl hfz)
@@ -240,10 +240,10 @@ private theorem relay_mem_voterBlockTree_window_aux
     have hB₀ := (AC.accept_new sp hr hy ⟨ℓ, hc.1, hcall⟩).1 ℓ hc.1
     obtain rfl : B₀ = W := hU.1 ((AC.frameIn_of_callAt hr hy hc.1).2 hB₀)
       ((AC.frameIn_of_callAt hr hy hc.1).2 hWt) hB.symm
-    have heq := AC.accept_unique sp hr hy hacc ⟨ℓ, hc.1, hcall⟩
+    have heq := AC.accept_uniqueU sp hr.toU hy hacc ⟨ℓ, hc.1, hcall⟩
     rw [heq] at hkyt
     linarith only [hkyt, hfz]
-  rw [← AC.readPoint_blockStamp hr hy hc hne] at hbs
+  rw [← AC.readPoint_blockStampU hr.toU hy hc hne] at hbs
   exact ⟨hWt, hbs⟩
 
 /-- Old acceptances use catch-up; post-start acceptances use window relay.
@@ -264,7 +264,7 @@ theorem relay_readPoint_stamp_window_before
   intro ha
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hti : sp.ts e.msg.slot ≤ T.time i :=
-    (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [(AC.castAt_spec hr hy hc).2.1])
+    (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [(AC.castAt_specU hr.toU hy hc).2.1])
   have hm : sp.ts ((e.msg.slot : Int) - 1) + 4 * sp.Δ = sp.ts e.msg.slot := by
     simp only [ACParams.ts]; ring
   obtain ⟨ky, hky, hacc, hkyt⟩ := hcatch.relay w hw kw W hkw ha y hy i ℓ hc.1
@@ -306,7 +306,7 @@ theorem fastLock_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T
   rcases hfl with ⟨ℓX, C, ⟨hcX, htick, -, -⟩, -, -, -, rfl⟩ | ⟨ℓx, A, hp, hsl, hsel, rfl⟩
   · have hΦXU : ℓX.frame.tree ⊆ U := (AC.frameIn_of_callAt hr hx hcX).2
     rintro v ⟨hvp, -, hvres, R, hR, hRr, hCR⟩
-    have hvs : v.slot = s := AC.state_pool_slot sp hr hini hx i₀ s v hvp
+    have hvs : v.slot = s := AC.state_pool_slotU sp hr.toU hini hx i₀ s v hvp
     obtain ⟨hvst, hbst⟩ : (T.state x i₀).voteStamp v < AC.ETime.of (sp.ts s + 2 * sp.Δ) ∧
         (T.state x i₀).blockStamp v.head < AC.ETime.of (sp.ts s + 2 * sp.Δ) := by
       unfold AC.resolutionTime at hvres
@@ -323,13 +323,13 @@ theorem fastLock_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T
           (by rw [← hvs]; exact_mod_cast hsl), hvst⟩
       · exfalso
         rw [hst, AC.etime_of_lt_of] at hvst
-        have hBv := (AC.frame_validPayload sp hr hx hck B hB).1 v hvB
-        have hBs := AC.frame_slot_le sp hr hx hck B hB
+        have hBv := (AC.frame_validPayloadU sp hr.toU hx hck B hB).1 v hvB
+        have hBs := AC.frame_slot_leU sp hr.toU hx hck B hB
         have : ¬ ((s + 1 : Nat) : Int) ≤ sp.slot (T.time k) := fun h => by
           have := (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 h
           rw [hts] at this; linarith only [hΔ, hvst, this]
         omega
-    · rcases frame_anc_accepted hr hx i₀ ℓX hcX R hR R Relation.ReflTransGen.refl with
+    · rcases frame_anc_acceptedU hr.toU hx i₀ ℓX hcX R hR R Relation.ReflTransGen.refl with
         hg | ⟨k, hk, hacc⟩
       · exact Or.inl hg
       · refine Or.inr ⟨k, hacc, not_le.1 fun hge => ?_⟩
@@ -340,7 +340,7 @@ theorem fastLock_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T
           rw [Option.some.inj (hc'.2.symm.trans hcX.2), htick] at hcall
           cases hcall
         rw [← hRr] at hbst
-        have h := (blockStamp_ge_of_accept hr hx hacc (AC.accept_ne_genesis sp hr hx hacc) i₀
+        have h := (blockStamp_ge_of_accept hr hx hacc (AC.accept_ne_genesisU sp hr.toU hx hacc) i₀
           hki).trans_lt hbst
         rw [AC.etime_of_lt_of] at h
         linarith only [hge, h]
@@ -355,19 +355,19 @@ theorem fastLock_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T
     rw [hsl] at hti
     have hΦU : ℓx.frame.tree ⊆ U := (AC.frameIn_of_callAt hr hx hc).2
     rintro v ⟨hvA, R, hR, hRr, hCR⟩
-    have hv1 := AC.optimisticPoint_pool_post hr hx hp s hvA
-    have hvs : v.slot = s := AC.state_pool_slot sp hr hini hx (i₀ + 1) s v hv1
+    have hv1 := AC.optimisticPoint_pool_postU hr.toU hx hp s hvA
+    have hvs : v.slot = s := AC.state_pool_slotU sp hr.toU hini hx (i₀ + 1) s v hv1
     refine ⟨hvs, ?_, R, hΦU hR, hRr, Anc.mono hΦU hCR, ?_⟩
     · rcases AC.pool_origin hr hini hx (i₀ + 1) v (by rw [hvs]; exact hv1) with
         ⟨k, hk, hsend, -, hsl'⟩ | ⟨k, hk, ℓk, hck, -, -, B, hB, hvB⟩
       · exact ⟨k, hsend, (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) s).2
           (by rw [← hvs]; exact_mod_cast hsl'), lt_of_le_of_lt (hr.time_mono (by omega)) hti⟩
       · exfalso
-        have hBv := (AC.frame_validPayload sp hr hx hck B hB).1 v hvB
-        have hBs := AC.frame_slot_le sp hr hx hck B hB
+        have hBv := (AC.frame_validPayloadU sp hr.toU hx hck B hB).1 v hvB
+        have hBs := AC.frame_slot_leU sp hr.toU hx hck B hB
         have := AC.slot_mono sp (hr.time_nonneg k) (hr.time_mono (show k ≤ i₀ by omega))
         omega
-    · rcases frame_anc_accepted hr hx i₀ ℓx hc R hR R Relation.ReflTransGen.refl with
+    · rcases frame_anc_acceptedU hr.toU hx i₀ ℓx hc R hR R Relation.ReflTransGen.refl with
         hg | ⟨k, hk, hacc⟩
       · exact Or.inl hg
       · exact Or.inr ⟨k, hacc, lt_of_le_of_lt (hr.time_mono hk) hti⟩
@@ -438,7 +438,7 @@ theorem voterBlockTree_of_relay_source
   rcases hsource with hgen | ⟨q, hq, hqt⟩
   all_goals obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hy hc.1
   · have hFD := hF.trans hBD
-    obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hy _ _ hc.1
+    obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hy _ _ hc.1
     have hDG : D = G := hr.coherent.1 hDU hGU (hgen.trans hGr.symm)
     subst D
     have hDt : G ∈ ℓ.frame.tree := by
@@ -446,7 +446,7 @@ theorem voterBlockTree_of_relay_source
       · exact heq ▸ hΦ.rooted.1
       · exact absurd (hp.2.2.symm.trans hGp) (Option.some_ne_none _)
     have hΔ := sp.toParams.hΔ
-    obtain ⟨_, hys, hyj, _⟩ := AC.castAt_spec hr hy hc
+    obtain ⟨_, hys, hyj, _⟩ := AC.castAt_specU hr.toU hy hc
     have hti : sp.ts e.msg.slot ≤ T.time i :=
       (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [hys])
     have hfz : AC.freeze sp e.msg.slot < T.time i := by
@@ -454,19 +454,19 @@ theorem voterBlockTree_of_relay_source
       linarith only [hΔ, hti]
     have hrs : ∀ k ≤ i, T.RestartAt y k → T.time k < AC.freeze sp e.msg.slot := by
       have hj' : AC.joined sp (T.post i) (T.time i) := by
-        unfold AC.joined; rw [AC.restartTime_of_castAt hr hy hc]; exact hyj
+        unfold AC.joined; rw [AC.restartTime_of_castAtU hr.toU hy hc]; exact hyj
       intro k hk hrk
       have ht := (AC.joined_awakeU sp FGP ro H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
       rw [← hys] at ht
       unfold AC.freeze
       linarith only [hΔ, ht]
-    have hbs := AC.blockStamp_lt_of_acceptedBefore sp hr hini
+    have hbs := AC.blockStamp_lt_of_acceptedBeforeU sp hr.toU hini
       hy hc.1 hDt (Or.inl hGr)
       hrs (Or.inl hfz.le)
     have hne : ∀ X, ℓ.call = .block X → G.root ≠ X.root := by
       intro X hcall heq
-      exact AC.accept_ne_genesis sp hr hy ⟨ℓ, hc.1, hcall⟩ (heq.symm.trans hGr)
-    rw [← AC.readPoint_blockStamp hr hy hc hne] at hbs
+      exact AC.accept_ne_genesisU sp hr.toU hy ⟨ℓ, hc.1, hcall⟩ (heq.symm.trans hGr)
+    rw [← AC.readPoint_blockStampU hr.toU hy hc hne] at hbs
     have hBt := AC.frame_mem_of_between sp hr.coherent hΦ hΦU hDt hBD hF
     exact AC.voterBlockTree_ancU hr.toU hini hy hc G ⟨hDt, Or.inl hbs⟩ B
       (AC.anc_tree_of_anc_U hr.coherent hΦ hΦU hBt hBD hDt)

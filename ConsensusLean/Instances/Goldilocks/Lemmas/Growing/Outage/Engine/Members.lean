@@ -45,7 +45,7 @@ theorem voteK_gate (hv : rho.ExecutionValid) :
 `≤ t`, and its optimistic-check states at the cuts at which it is honest, hold only votes of
 members of their slots. The start's pools are empty (`simIni_voteStart`); a later pool is the
 post-state of an honest call (`simTraceAt_pool_member`), and an optimistic-check pool is in the
-call's post-state pool (`AC.optimisticPoint_pool_post`). -/
+call's post-state pool (`AC.optimisticPoint_pool_postU`). -/
 theorem voteK_committeeP (hv : rho.ExecutionValid)
     (hnc : Compose.NoCollRun (digestOf S rho) (simTraceAt S rho hn)) {ini}
     (hrun : Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho) (honestKeysAt S rho)
@@ -64,7 +64,7 @@ theorem voteK_committeeP (hv : rho.ExecutionValid)
     | succ i => exact hpool y i s (hrun.antitone (hi i (Nat.lt_succ_self i)) hy) v hm
   · have hm' := hrun.time_mono
     have hacr := Compose.Growing.acRun_upTo hrun hnc (hrun.time_nonneg i)
-    have hsub := AC.optimisticPoint_pool_post hacr.localRun hy
+    have hsub := AC.optimisticPoint_pool_postU hacr.localRun.toU hy
       ((AC.upTo_optimisticPoint hm').mpr ⟨le_rfl, hpt⟩) s hm
     rw [Trace.upTo_state (simTraceAt S rho hn).projAC y
       fun k hk => hm' (Nat.lt_succ_iff.mp hk)] at hsub

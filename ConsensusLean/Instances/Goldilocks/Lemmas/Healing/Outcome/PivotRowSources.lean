@@ -272,7 +272,7 @@ theorem ResetPremisesUpTo.raw_writer_held_at_slot_start {b : Time}
   obtain ⟨v, _, D, hD, hDr, hBD, hg | ⟨q, hq, hqt⟩⟩ :=
     raw_writer_relay_source hp.committee_pos hr hp.run.vstart hx hwriter hBC
   all_goals obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hpH hci
-  · obtain ⟨G, hG, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hpH _ _ hci
+  · obtain ⟨G, hG, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hpH _ _ hci
     have hDG : D = G := hr.coherent.1 hD hG (hg.trans hGr.symm)
     subst D
     have hGD : G ∈ ell.frame.tree := by
@@ -300,11 +300,11 @@ theorem ResetPremisesUpTo.raw_writer_held_at_slot_start {b : Time}
         obtain ⟨k, hki, hak, _⟩ := (sync_window_of_service hp.run hp.sync).relay x hx q D hq hg
           p hpH i ell hci
           (hdl.trans hib) hdl hFD
-        exact AC.mem_tree_of_acceptAt sp hr hpH hak hki hci hFD
+        exact AC.mem_tree_of_acceptAtU sp hr.toU hpH hak hki hci hFD
       · obtain ⟨k, hki, hak, _⟩ := (catch_window_of_run hp.run hc).relay x hx q D hq
           (not_le.mp hg) p hpH i ell hci (by change _ ≤ tr.time i; linarith only [hs, hstep, hΔ])
           hib hFD
-        exact AC.mem_tree_of_acceptAt sp hr hpH hak hki hci hFD
+        exact AC.mem_tree_of_acceptAtU sp hr.toU hpH hak hki hci hFD
     exact AC.frame_mem_of_between sp hr.coherent hPhi hPhiU hDt hBD hFB
 
 /-- A clean protected source compares with every high origin inside the horizon. -/
@@ -488,8 +488,8 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
       AC.VoteExtends (tr.HonestBlocks H) e.msg B := by
     rintro z hz q e ⟨ell', hc'⟩ hslot
     have hqb : tr.time q ≤ b := by
-      have ht := AC.vote_time_le hr hz ⟨ell', hc'⟩
-      have hsl := (AC.castAt_spec hr hz hc').2.1
+      have ht := AC.vote_time_leU hr.toU hz ⟨ell', hc'⟩
+      have hsl := (AC.castAt_specU hr.toU hz hc').2.1
       rw [← hsl, hslot] at ht
       exact ht.trans hσb
     rcases hsource with ⟨CV, hfast⟩ | hslow
@@ -561,7 +561,7 @@ theorem ResetPremisesUpTo.clean_source_proposal_parent_before {b : Time}
         refine AC.origin_compatible hU hΦU K h34
           (by rintro _ ⟨v, hv, rfl, -⟩; exact hp.hP.2 p hpH q ellO A hpt _ v hv)
           (hp.cs2 (by clear * - hσ1 hlσ; omega)) fun v hv hvH => ?_
-        obtain ⟨hvs, q', _, e', hv', rfl⟩ := AC.optimisticPoint_pool_vote hS.run hpH hpt hv hvH
+        obtain ⟨hvs, q', _, e', hv', rfl⟩ := AC.optimisticPoint_pool_voteU hS.run.toU hpH hpt hv hvH
         exact votes _ hvH q' e' hv' (by rw [hvs]; clear * - hlσ hle; omega)
     rcases hcomp with h | h
     · exact Or.inl (hLO.trans h)

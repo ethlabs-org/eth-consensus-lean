@@ -133,7 +133,7 @@ theorem point_top {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
     have hrt := (AC.optimistic_keeps (AC.admitVote sp e.readPoint (tr.time i) e.msg) ℓ.frame
       (tr.time i)).2
     refine ⟨_, ⟨hc, Or.inr (Or.inr ⟨e, he', rfl⟩)⟩, fun A' hA' σ v hv => ?_, fun σ v hv => ?_, ?_⟩
-    · have h := AC.optimisticPoint_pool_post hr hx hA' σ hv
+    · have h := AC.optimisticPoint_pool_postU hr.toU hx hA' σ hv
       rwa [AC.state_succ_of_call hc, hP, hpool] at h
     · have h := AC.step_pool_subset (ro := ro) x _ ℓ.frame (tr.time i) ℓ.call hnr σ hv
       rwa [hpost, hP, hpool] at h

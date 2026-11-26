@@ -54,7 +54,7 @@ theorem optimistic_first_proposal_anc_at
   set SX := optimisticVoters sp A ellX.frame σ D
   have hcover : SX ⊆ supporters ell.frame V σ B ∪ equivocators V.votes := by
     rintro w ⟨v, hv, rfl, R', hR', hR'r, hDR'⟩
-    have hvs := optimisticPoint_pool_slot hrX.localRun hrX.vstart hX hpt' hv
+    have hvs := optimisticPoint_pool_slotU hrX.localRun.toU hrX.vstart hX hpt' hv
     by_cases heq : v.val ∈ equivocators V.votes
     · exact Or.inr heq
     left
@@ -66,7 +66,7 @@ theorem optimistic_first_proposal_anc_at
         (fun u hu => (mem_proposalView_votesU (hr := hr.toU) hrx.vstart hx i σ ell.frame u).2
           (hs.symm ▸ hu)) h)
     have hRs : R.slot ≤ σ := by
-      have := frame_slot_le sp hrX.localRun hX hpt'.1 R hR'
+      have := frame_slot_leU sp hrX.localRun.toU hX hpt'.1 R hR'
       change R.slot ≤ sp.slot (T.time i₀) at this
       rw [hslX] at this
       omega
@@ -84,7 +84,8 @@ theorem optimistic_first_proposal_anc_at
     exact hPK.2 X i₀ ellX A hX hpt σ v hv
   have hEK : equivocators V.votes ⊆ K.committee σ ∩ (H (T.time i))ᶜ := fun w hw =>
     ⟨hWK (by obtain ⟨v, hv, -, -, -, hvw, -⟩ := hw; exact ⟨v, hv, hvw⟩), fun hwH =>
-      honest_not_equivocator_proposal hrx hx i σ ell.frame hwH (by simpa only [V, hs] using hw)⟩
+      honest_not_equivocator_proposalU hrx.toU hx i σ ell.frame hwH
+        (by simpa only [V, hs] using hw)⟩
   have h3 : (equivocators V.votes).ncard + (voters V.votes \ SX).ncard < SX.ncard :=
     cover_count (K.committee σ) hsize hSXK hWK hEK h34 (by rw [hsize]; exact hf)
   have hprop' := hprop

@@ -233,7 +233,8 @@ theorem saved_rows_above {ini} (hrun : GoldilocksRun proposer dg H tr ini)
         rw [h, projAC_state hrun.toLocalRun hy, hR]
         rfl
   obtain ⟨r, hrs⟩ := Option.isSome_iff_exists.1 (hsome c hk₀ le_rfl)
-  obtain ⟨k', hk', C', CV, ⟨ℓ', hu', hC', -⟩, hC'r⟩ := AC.saved_result hr hrun.vstart hy c q hrs
+  obtain ⟨k', hk', C', CV, ⟨ℓ', hu', hC', -⟩, hC'r⟩ := AC.saved_resultU hr.toU hrun.vstart hy c q
+      hrs
   obtain ⟨R, hR, hCR⟩ := hrow q hj₁ hq₂ k' hk' ℓ' hu'
   rw [projAC_state hrun.toLocalRun hy, hR] at hC'
   obtain rfl : R = C' := Option.some.inj hC'
@@ -274,7 +275,7 @@ theorem own_optimistic_compatible_result {ini} (hrun : GoldilocksRun proposer dg
   have hsub : ∀ v ∈ A.pool s, v ∈ (tr.projAC.state y c).pool s := fun v hv =>
     AC.pool_mono hr hy (show k + 1 ≤ c by omega)
       (fun r hr₁ hr₂ ⟨ℓr, hcr, hrr⟩ => hnr r (by omega) hr₂.le ⟨ℓr, projAC_callAt.1 hcr, hrr⟩) s
-      (AC.optimisticPoint_pool_post hr hy hp s hv)
+      (AC.optimisticPoint_pool_postU hr.toU hy hp s hv)
   set V : AC.View sp.n := ⟨{v | v ∈ (tr.projAC.state y c).pool s},
     {v | v ∈ (tr.projAC.state y c).pool s ∧ AC.resolutionTime (tr.projAC.state y c) ℓ.frame v <
       AC.ETime.of (sp.ts s + 2 * sp.Δ)}⟩

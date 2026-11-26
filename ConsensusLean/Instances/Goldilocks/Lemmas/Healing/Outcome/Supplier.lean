@@ -65,7 +65,7 @@ theorem ready_unanimous (hp : ResetPremises tr H K proposer dg g ΔF a)
     obtain ⟨hPsi, hPsiU⟩ := AC.frameIn_of_callAt hr hy hcy.1
     have hjt : sp.ts (s + 1 : Nat) ≤ tr.time j := by
       apply (AC.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2
-      have := (AC.castAt_spec hr hy hcy).2.1
+      have := (AC.castAt_specU hr.toU hy hcy).2.1
       rw [hes] at this
       exact_mod_cast this.le
     have hgj := hgu.trans hjt
@@ -125,7 +125,7 @@ theorem ResetPremisesUpTo.operational_unanimous {b : Time}
     obtain ⟨hPsi, hPsiU⟩ := AC.frameIn_of_callAt hr hy hcy.1
     have hjt : sp.ts (s + 1 : Nat) ≤ tr.time j := by
       apply (AC.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2
-      have := (AC.castAt_spec hr hy hcy).2.1
+      have := (AC.castAt_specU hr.toU hy hcy).2.1
       rw [hes] at this
       exact_mod_cast this.le
     have hgj := hgu.trans hjt
@@ -210,7 +210,7 @@ theorem ResetPremisesUpTo.update_toFG_calls {b : Time}
   intro i hi
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   unfold AC.joined
-  rcases AC.restartTime_state hr hp.run.vstart hy i with h | ⟨r, hri, hrs, h⟩
+  rcases AC.restartTime_stateU hr.toU hp.run.vstart hy i with h | ⟨r, hri, hrs, h⟩
   · rw [h]; exact bot_le
   · rw [h]
     apply WithBot.coe_le_coe.mpr

@@ -89,7 +89,7 @@ theorem relay_mem_window_before {ini} (hrun : GoldilocksRun proposer dg H tr ini
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
   obtain ⟨hΦ, -⟩ := AC.frameIn_of_callAt hr hz hcz
   rcases hacc with hg | ⟨kx, hkx, hdl⟩
-  · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hz _ _ hcz
+  · obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hz _ _ hcz
     obtain rfl : B = G := hU.1 hBU hGU (hg.trans hGr.symm)
     obtain h | ⟨c, -, hcp⟩ := (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hF
     · exact h ▸ hΦ.rooted.1
@@ -97,10 +97,10 @@ theorem relay_mem_window_before {ini} (hrun : GoldilocksRun proposer dg H tr ini
   have hd := (ac_deadline_le_of_restarts hrs _).trans hdl
   by_cases hka : a₀ ≤ tr.projAC.time kx
   · obtain ⟨k', hk', hAz, -⟩ := hsync.relay x hx kx B hkx hka z hz jz ℓz hcz (hd.trans hb) hd hF
-    exact AC.mem_tree_of_acceptAt sp hr hz hAz hk' hcz hF
+    exact AC.mem_tree_of_acceptAtU sp hr.toU hz hAz hk' hcz hF
   · obtain ⟨k', hk', hAz, -⟩ :=
       hcat.relay x hx kx B hkx (lt_of_not_ge hka) z hz jz ℓz hcz hκz hb hF
-    exact AC.mem_tree_of_acceptAt sp hr hz hAz hk' hcz hF
+    exact AC.mem_tree_of_acceptAtU sp hr.toU hz hAz hk' hcz hF
 /-- **The service of the suffix lemmas** for slot `s`: the AC service window from `a` through `b`,
 with the catch-up of older acceptances before `a + κ ≤ t_{s−1}` at calls through `b`. -/
 structure SuffixService (H : Set (Fin sp.n)) (tr : GoldilocksTrace sp ro)
@@ -149,7 +149,7 @@ private theorem vote_rows_old {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     obtain ⟨-, -, -, hsc, -⟩ := id hOp
     have hle := AC.slot_mono sp (hr.time_nonneg c) (hr.time_mono (show c ≤ j by omega))
     have hsj : sp.slot (tr.projAC.time j) = s' + 1 :=
-      (AC.castAt_spec hr hy hc).2.1.symm.trans hes
+      (AC.castAt_specU hr.toU hy hc).2.1.symm.trans hes
     rcases Nat.lt_or_ge l (s' + 1) with h | h
     · omega
     obtain rfl : l = s' + 1 := by omega
@@ -457,7 +457,7 @@ private theorem competitor_reflect_before {a₀ κ b : Time}
       rw [hsi, hcast] at hrsp
       refine relay_mem_window_before hrun hnc hsync.window hsync.caught hy hp hBU hc hib
         (hsync.le_time hti.ge) hrsp ?_ hFB
-      rcases frame_anc_accepted hr hy j ℓy hcy.1 B hB.1.1 B .refl with hg | ⟨kx, hkx, hA⟩
+      rcases frame_anc_acceptedU hr.toU hy j ℓy hcy.1 B hB.1.1 B .refl with hg | ⟨kx, hkx, hA⟩
       · exact Or.inl hg
       by_cases hg : B.root = sp.genesisRoot
       · exact Or.inl hg
@@ -598,7 +598,7 @@ private theorem views_agree_before {a₀ κ b : Time}
       AC.voteReady sp e.readPoint ℓy.frame (s' + 1) := fun h =>
     hes ▸ AC.cast_readyU hr.toU hy hcy (by rw [hes]; exact h)
   have hj1 : sp.ts ((s' + 1 : Nat) : Int) ≤ tr.time j := by
-    have h := (AC.castAt_spec hr hy hcy).2.1
+    have h := (AC.castAt_specU hr.toU hy hcy).2.1
     rw [hes] at h
     exact (AC.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2 (by rw [h])
   refine hcast ▸ AC.view_agree_window_before hrun' hrun.vstart hp hy hpp ⟨hc, hcall, d, hd⟩ hti hcy
@@ -611,7 +611,7 @@ private theorem views_agree_before {a₀ κ b : Time}
     have hHdU := hΦyU hHd
     refine relay_mem_window_before hrun hnc hsync.window hsync.caught hy hp hHdU hc hib
       (hsync.le_time hti.ge) hrsp ?_ hFHd
-    rcases frame_anc_accepted hr hy j ℓy hcy.1 Hd hHd Hd .refl with hg | ⟨kx, hkx, hA⟩
+    rcases frame_anc_acceptedU hr.toU hy j ℓy hcy.1 Hd hHd Hd .refl with hg | ⟨kx, hkx, hA⟩
     · exact Or.inl hg
     by_cases hg : Hd.root = sp.genesisRoot
     · exact Or.inl hg
@@ -637,13 +637,13 @@ private theorem views_agree_before {a₀ κ b : Time}
         simp only [AC.voteViewList, AC.ACState.poolAt, Int.toNat_natCast, List.filter_filter,
           List.mem_filter, List.mem_ite_nil_left, not_lt, Nat.cast_nonneg, true_and,
           Bool.and_eq_true, decide_eq_true_eq] at hx
-        rw [AC.state_pool_slot sp hr hrun.vstart hp i s' x hx.1]
+        rw [AC.state_pool_slotU sp hr.toU hrun.vstart hp i s' x hx.1]
       obtain ⟨H', hH't, hH'r, -⟩ :=
         hsup x (by rw [AC.declaredSupportVotes, hpay]; exact hx) hxs
       rwa [hU.1 (hΦpU hHd) (hΦyU hH't) (hHdr.trans hH'r.symm)]
     · refine relay_mem_window_before hrun hnc hsync.window hsync.caught hp hy (hΦpU hHd) hcy.1 hjb
         (hsync.le_time hj1) hrsy ?_ hFHd
-      rcases frame_anc_accepted hr hp i ℓp hc Hd hHd Hd .refl with hg | ⟨kx, hkx, hA⟩
+      rcases frame_anc_acceptedU hr.toU hp i ℓp hc Hd hHd Hd .refl with hg | ⟨kx, hkx, hA⟩
       · exact Or.inl hg
       right
       refine ⟨kx, hA, ?_⟩
@@ -715,7 +715,7 @@ theorem old_child_ineligible_of {a₀ κ b : Time}
       rw [hsi, hcast] at hrsp
       refine relay_mem_window_before hrun hnc hsync.window hsync.caught hy hp hBU hc hib
         (hsync.le_time hti.ge) hrsp ?_ hFB
-      rcases frame_anc_accepted hr hy j ℓy hcy.1 B hB.1.1 B .refl with hg | ⟨kx, hkx, hA⟩
+      rcases frame_anc_acceptedU hr.toU hy j ℓy hcy.1 B hB.1.1 B .refl with hg | ⟨kx, hkx, hA⟩
       · exact Or.inl hg
       by_cases hg : B.root = sp.genesisRoot
       · exact Or.inl hg
@@ -786,7 +786,7 @@ theorem old_child_ineligible_of {a₀ κ b : Time}
   -- the views agree on `B`
   obtain ⟨heq, hvot, hsup⟩ :=
     views_agree_before hrun hnc hp hP hPs hc hcall hd hti hPQ hy hcy hes hsync hib hjb hPt
-  have hsj : sp.slot (tr.time j) = s := ((AC.castAt_spec hr hy hcy).2.1).symm.trans hes
+  have hsj : sp.slot (tr.time j) = s := ((AC.castAt_specU hr.toU hy hcy).2.1).symm.trans hes
   rintro (h | h | h)
   · exact h ⟨d.head, hQvy, hBQ⟩
   · omega

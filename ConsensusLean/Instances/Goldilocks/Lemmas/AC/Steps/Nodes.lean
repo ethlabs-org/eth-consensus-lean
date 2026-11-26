@@ -512,7 +512,7 @@ theorem source_age : SourceAge sp := by
 /-- **A1.8.** -/
 theorem result_transfer : ResultTransfer sp := by
   intro FGP ro H U tr proposer hrun s X y i₀ i C CV ℓ e hX hres hy hc hs hcarry hviab hlocks hd
-  obtain ⟨-, -, -, hhead⟩ := castAt_spec hrun.localRun hy hc
+  obtain ⟨-, -, -, hhead⟩ := castAt_specU hrun.localRun.toU hy hc
   have hU := hrun.localRun.coherent
   obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
     rcases hrun.localRun.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;>
@@ -529,12 +529,12 @@ theorem result_transfer : ResultTransfer sp := by
     (mergedVoteView sp e.readPoint ℓ.frame (s + 1)) (s : Int) (fun B hB => voteDomain_subset_tree
         hB) hdomA hviab.voteDomain
     (fun L hL => hlocks L hL) fun X' Cx hCx hp hCxC =>
-      isBest_of_majority hΦ (merged_support_subset hrun.localRun hy hc (s + 1))
+      isBest_of_majority hΦ (merged_support_subsetU hrun.localRun.toU hy hc (s + 1))
         (fun B hB => voteDomain_subset_tree hB.1)
         (by
           obtain ⟨ℓX, hupd, -, rfl⟩ := hres
-          exact counted_supporters hrun hX hy hupd.1 hc hs .refl hcarry hviab hd)
-        (merged_voters_subset hrun.localRun (fun _ => voteStart_initial _) hy hc hd)
+          exact counted_supportersU hrun.toU hX hy hupd.1 hc hs .refl hcarry hviab hd)
+        (merged_voters_subsetU hrun.localRun.toU (fun _ => voteStart_initial _) hy hc hd)
         (result_majority hres) hCx hp hCxC
   refine ⟨_, hΦU ?_, hhead.symm, Anc.mono hΦU hcore⟩
   by_cases he : C = getHead sp e.readPoint ℓ.frame (tr.time i)

@@ -340,7 +340,7 @@ theorem reset_old_child_ineligible
   obtain ⟨heq, hvot, hsup⟩ := reset_views_agree hp hc hP hci hcall hd hti hpay hy hcy hes
     hPy hg hgi hgj hjoi hjoj
   have hsj : sp.slot (tr.time j) = s + 1 :=
-    ((AC.castAt_spec hr hy hcy).2.1).symm.trans hes
+    ((AC.castAt_specU hr.toU hy hcy).2.1).symm.trans hes
   exact old_child_ineligible_of_views hPhi hd hslot heq hvot hsup hsj hQvy hBv hB.1.1 hBQ hBs
 
 /-- Finite old-child exclusion preserves the proposal call's strict-majority test. -/
@@ -381,7 +381,7 @@ theorem ResetPremisesUpTo.reset_old_child_ineligible {b : Time}
   obtain ⟨heq, hvot, hsup⟩ := hp.reset_views_agree hc hpH hdesignated hactual hPs
     hci hcall hd hti hpay hy hcy hes hib hjb hPy hg hgi hgj hjoi hjoj
   have hsj : sp.slot (tr.time j) = s + 1 :=
-    ((AC.castAt_spec hr hy hcy).2.1).symm.trans hes
+    ((AC.castAt_specU hr.toU hy hcy).2.1).symm.trans hes
   exact old_child_ineligible_of_views hPhi hd hslot heq hvot hsup hsj hQvy hBv hB.1.1 hBQ hBs
 
 /-- Finite sibling viability places their parent above the voter's root and height floor. -/
@@ -534,7 +534,7 @@ theorem reset_stop_at_parent
     linarith
   have hjt : sp.ts (s + 1 : Nat) ≤ tr.time j :=
     (AC.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2
-      (by rw [← (AC.castAt_spec hr hy hcy).2.1, hes])
+      (by rw [← (AC.castAt_specU hr.toU hy hcy).2.1, hes])
   exact (hp.toUpTo tr H (le_max_left a (max (tr.time i) (tr.time j)))).reset_stop_at_parent hc
     hP.1 hP.2.1 hP.2.2.2.1 hP.2.2.2.2.1 hR hci hcall hd hti hpay hPQ hy hcy hes
     ((le_max_left _ _).trans (le_max_right _ _)) ((le_max_right _ _).trans (le_max_right _ _))

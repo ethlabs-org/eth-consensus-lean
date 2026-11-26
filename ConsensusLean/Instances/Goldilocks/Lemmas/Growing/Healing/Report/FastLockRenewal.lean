@@ -163,7 +163,7 @@ theorem update_result_extends_of_finalized_at {K : AC.CommitteeDict sp.n}
     intro v hv hvH
     obtain ⟨q, _, e, he, rfl⟩ := hS.run.honest.pool_vote y hy k (s + 1) v hv hvH
     rw [hst]
-    exact (receipt _ hvH q e he (AC.state_pool_slot sp hr hS.run.vstart hy k (s + 1) _ hv)).2
+    exact (receipt _ hvH q e he (AC.state_pool_slotU sp hr.toU hS.run.vstart hy k (s + 1) _ hv)).2
   have hdl1 : sp.ts (s + 1 : Nat) + sp.Δ ≤ tr.time k := by rw [htime]; linarith
   have hS0 := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch
     (show 0 ≤ sp.ts (s + 1 : Nat) + sp.Δ by linarith [AC.gbar_nonneg g]) (hdl1.trans hkb)
@@ -176,7 +176,7 @@ theorem update_result_extends_of_finalized_at {K : AC.CommitteeDict sp.n}
     have hv : AC.VoteAt (tr.projAC.upTo (tr.time k)) x q e :=
       AC.upTo_voteAt.mpr ⟨hq.trans hdl1, ellq, hcast⟩
     refine ⟨hx, e.msg, ?_,
-      (AC.castAt_spec hr hx (AC.upTo_castAt.mpr ⟨hq.trans hdl1, hcast⟩)).1⟩
+      (AC.castAt_specU hr.toU hx (AC.upTo_castAt.mpr ⟨hq.trans hdl1, hcast⟩)).1⟩
     rw [hst]
     exact (receipt x hx q e hv hes).1
   have hcount := Set.ncard_le_ncard hH
@@ -373,8 +373,8 @@ theorem update_locks_compatible_of_finalized_at {K : AC.CommitteeDict sp.n}
           omega)
         simpa only [hes] using AC.honest_vote_early_pool_before hSj hyj hb'.callAt hgu hlate
           le_rfl hdl hrs hx hv hes (j + 1) (Or.inr rfl)
-      have hval := (AC.castAt_spec hrj hx (AC.upTo_castAt.mpr ⟨hqj, hcast⟩)).1
-      have hs' := AC.carried_supporter_branch hSj.run hyj hb' (s := s + 1)
+      have hval := (AC.castAt_specU hrj.toU hx (AC.upTo_castAt.mpr ⟨hqj, hcast⟩)).1
+      have hs' := AC.carried_supporter_branchU hSj.run.toU hyj hb' (s := s + 1)
         (by change sp.slot (tr.time j) = _; omega) hPt hes
         ⟨hheld.1, lt_trans hheld.2
           (WithBot.coe_lt_coe.mpr (WithTop.coe_lt_coe.mpr (by linarith)))⟩

@@ -79,7 +79,7 @@ theorem high_origin_held_at_vote_at
   have hWz : W ∈ (tr.state z q).fg.tree :=
     (frame_tree_subset_at hp.run hp.noColl hzq hcz).2 hW't
   have hZq := cutZ_lt_of_anc_at hp ho hzZ hWz hBW
-  rcases Compose.frame_anc_accepted hrq hzq q ellZ hcz' W hW't W .refl with hg |
+  rcases Compose.frame_anc_acceptedU hrq.toU hzq q ellZ hcz' W hW't W .refl with hg |
       ⟨c, hcq, hacc⟩
   · exact (hp.not_genesis_above_at ho
       ⟨z, q, tr.time q, hp.run.time_nonneg q, fun _ hq => hm hq.le, hzq, hWz⟩ hBW hg).elim
@@ -98,9 +98,9 @@ theorem high_origin_held_at_vote_at
     have := cutZ_lt_of_anc_at hp ho hzc hWc hBW
     linarith [lt_cutZ sp g, le_gbar g, sp.toParams.hΔ]
   have hΔ := sp.toParams.hΔ
-  have hys := (AC.castAt_spec hr hy hc').2.1
+  have hys := (AC.castAt_specU hr.toU hy hc').2.1
   change e.msg.slot = sp.slot (tr.time k) at hys
-  have hyj := (AC.castAt_spec hr hy hc').2.2.1
+  have hyj := (AC.castAt_specU hr.toU hy hc').2.2.1
   have hm' : sp.ts ((e.msg.slot : Int) - 1) + 4 * sp.Δ = sp.ts e.msg.slot := by
     simp only [ACParams.ts]; ring
   have hkt : sp.ts e.msg.slot ≤ tr.time k :=
@@ -113,7 +113,7 @@ theorem high_origin_held_at_vote_at
       tr.time r ≤ sp.ts ((e.msg.slot : Int) - 1) := by
     have hj' : AC.joined sp ((tr.projAC.upTo (tr.time k)).post k) (tr.time k) := by
       unfold AC.joined
-      rw [AC.restartTime_of_castAt hr hy hc']
+      rw [AC.restartTime_of_castAtU hr.toU hy hc']
       exact hyj
     intro r hrk hrr
     have hrr' := (ACTrace.upTo_restartAt).mpr ⟨hm hrk, hrr⟩
@@ -134,7 +134,7 @@ theorem high_origin_held_at_vote_at
   obtain ⟨r, hrk, har, hrt⟩ := hp.frame_relay_at hzc₀ hacc₀ hgc hy hc.1
     (by have := hdl k le_rfl; linarith) (hF.trans hBW)
   have har' := (ACTrace.upTo_acceptAt).mpr ⟨hm hrk, har⟩
-  have hWt := AC.mem_tree_of_acceptAt sp hr hy har' hrk hc'.1 (hF.trans hBW)
+  have hWt := AC.mem_tree_of_acceptAtU sp hr.toU hy har' hrk hc'.1 (hF.trans hBW)
   have hrt' : tr.time r < AC.freeze sp e.msg.slot := by
     have := hdl r hrk
     unfold AC.freeze
@@ -142,7 +142,7 @@ theorem high_origin_held_at_vote_at
   have hfz : AC.freeze sp e.msg.slot ≤ tr.time k := by
     unfold AC.freeze
     linarith
-  have hbs := AC.blockStamp_lt_of_acceptedBefore sp hr hp.run.vstart hy hc'.1 hWt
+  have hbs := AC.blockStamp_lt_of_acceptedBeforeU sp hr.toU hp.run.vstart hy hc'.1 hWt
     (Or.inr ⟨r, har', hrt'⟩)
     (fun r hrk hrr => lt_of_le_of_lt (hrsy r hrk ((ACTrace.upTo_restartAt).mp hrr).2)
       (by unfold AC.freeze; linarith)) (Or.inl hfz)
@@ -150,10 +150,10 @@ theorem high_origin_held_at_vote_at
     intro X hcall hroot
     have hX := (AC.accept_new sp hr hy ⟨ell, hc'.1, hcall⟩).1 ell hc'.1
     obtain rfl : X = W := hac.localRun.coherent.1 (hPhiU hX) (hPhiU hWt) hroot.symm
-    have heq := AC.accept_unique sp hr hy har' ⟨ell, hc'.1, hcall⟩
+    have heq := AC.accept_uniqueU sp hr.toU hy har' ⟨ell, hc'.1, hcall⟩
     rw [heq] at hrt'
     linarith
-  rw [← AC.readPoint_blockStamp hr hy hc' hne] at hbs
+  rw [← AC.readPoint_blockStampU hr.toU hy hc' hne] at hbs
   have hWtree : W ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot :=
     ⟨hWt, Or.inl hbs⟩
   have hBt := mem_of_honest_anc_at hp.run hp.noColl

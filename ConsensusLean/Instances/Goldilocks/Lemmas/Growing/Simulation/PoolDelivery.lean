@@ -49,7 +49,7 @@ private theorem pool_evidence_at_update {sp : ACParams} {FGP : Type}
     have h₂ := hrs r hrc.le ⟨ℓr, hcr, hrr⟩
     linarith
   have hm := AC.pool_mono hr hw (show k + 1 ≤ c by omega) hnr m
-  have h := AC.held_of_processAt hr hw hp (by rw [hslot, hsk]; omega) (by rw [hslot, hsk])
+  have h := AC.held_of_processAtU hr.toU hw hp (by rw [hslot, hsk]; omega) (by rw [hslot, hsk])
   rw [hslot] at h
   exact AC.backed_mono (P := {u | u ∈ (tr.state w (k + 1)).pool m})
     (Q := {u | u ∈ (tr.state w c).pool m}) (fun _ hu => hm hu) h
@@ -140,7 +140,7 @@ theorem outage_pool_delivery_at (hrun : Growing.GoldilocksRun proposer dg H tr i
     exact ⟨l, Compose.projAC_callAt.mpr ((Trace.upTo_callAt tr).mpr
       ⟨le_rfl, Compose.projAC_callAt.mp hc⟩), he⟩
   have hsl := (AC.vote_signer_slot hrx hx hv').2
-  have hτ := AC.vote_time_le hrx hx hv'
+  have hτ := AC.vote_time_leU hrx.toU hx hv'
   change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at hτ
   change e.msg.slot = sp.slot (tr.time i) at hsl
   rw [← hsl, hes] at hτ

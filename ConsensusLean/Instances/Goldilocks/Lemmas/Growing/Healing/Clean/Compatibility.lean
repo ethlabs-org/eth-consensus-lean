@@ -96,8 +96,8 @@ theorem optimistic_sources_compatible_at {cm : Time → Finset (Fin sp.n)} {βK 
   have hz := not_not.mp hz
   have hzr : v.val ∈ H (tr.time r) := hp.run.antitone (le_max_left _ _) hz
   have hzq : v'.val ∈ H (tr.time q) := hp.run.antitone (le_max_right _ _) (hvz ▸ hz)
-  obtain ⟨hvs, i, _, e, he, rfl⟩ := AC.optimisticPoint_pool_vote hrunR hx hpt hv hzr
-  obtain ⟨hvs', i', _, e', he', rfl⟩ := AC.optimisticPoint_pool_vote hrunQ hy hpt' hv' hzq
+  obtain ⟨hvs, i, _, e, he, rfl⟩ := AC.optimisticPoint_pool_voteU hrunR.toU hx hpt hv hzr
+  obtain ⟨hvs', i', _, e', he', rfl⟩ := AC.optimisticPoint_pool_voteU hrunQ.toU hy hpt' hv' hzq
   rw [hvz] at he'
   obtain ⟨hit, he₀⟩ := AC.upTo_voteAt.mp he
   obtain ⟨hit', he₀'⟩ := AC.upTo_voteAt.mp he'
@@ -151,7 +151,7 @@ theorem optimistic_supporter_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hzH : z ∈ H (tr.time r) := by_contra fun h => hz ⟨hOK hzO, h⟩
   rw [← hsl] at hzO
   obtain ⟨v, hv, rfl, R, hR, hRr, hBR⟩ := hzO
-  obtain ⟨hvs, q, hqr, e, he, rfl⟩ := AC.optimisticPoint_pool_vote hrun hx hpt hv hzH
+  obtain ⟨hvs, q, hqr, e, he, rfl⟩ := AC.optimisticPoint_pool_voteU hrun.toU hx hpt hv hzH
   exact ⟨_, q, hzH, hqr, e, (AC.upTo_voteAt.mp he).2, hvs.trans hsl, R,
     hsub (hU hR), hRr, (hBR.mono hU).mono hsub⟩
 

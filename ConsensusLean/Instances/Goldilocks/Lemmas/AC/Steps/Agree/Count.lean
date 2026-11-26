@@ -23,7 +23,7 @@ exact-or-pair condition at the cast that the merged view needs to reproduce the 
   grow up to the read point.
 
 `count_declared_of_syncU`, and the service-window form
-`count_declared_of_window_beforeU` / `count_declared_of_window_before`. -/
+`count_declared_of_window_beforeU`. -/
 
 namespace Consensus.Goldilocks.AC
 
@@ -195,22 +195,6 @@ theorem count_declared_of_window_beforeU {ini} {u : Nat → Set Lock}
       have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
         simp only [ACParams.ts]; push_cast; ring
       exact slot_window_of_forward (hr.time_nonneg k) hsk le_rfl (by linarith only [hkb, hts, hΔ]))
-
-/-- `count_declared_of_window_beforeU` without the unlock. -/
-theorem count_declared_of_window_before {ini}
-    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
-    {s : Nat} {p y : Fin sp.n} {i j : Nat}
-    {ℓp ℓy : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
-    (hp : p ∈ H) (hy : y ∈ H)
-    (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
-    (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
-    (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
-    {a b : Time} (hsync : ServiceWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
-    (hjb : tr.time j ≤ b) :
-    ∀ v ∈ (tr.state p i).pool s, ShouldCountDeclaredVote sp e.readPoint v :=
-  count_declared_of_window_beforeU (wm := WriteMode.parent sp) hr.toU hini hp hy hprop hti hc hes
-    hP hsync ha hjb
 
 end Consensus.Goldilocks.AC
 

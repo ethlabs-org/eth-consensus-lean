@@ -102,7 +102,7 @@ theorem proposal_start_supported_at
     (T := elly.frame.viableTree (AC.voteDomain sp e.readPoint elly.frame u))
     (fun _ h => AC.voteDomain_subset_tree h.1) e.readPoint (tr.time j)
     (AC.mergedVoteView sp e.readPoint elly.frame u) ((u : Int) - 1)
-  have hheadr := (AC.castAt_spec hrj hy ((AC.upTo_castAt).mpr ⟨le_rfl, hcy⟩)).2.2.2
+  have hheadr := (AC.castAt_specU hrj.toU hy ((AC.upTo_castAt).mpr ⟨le_rfl, hcy⟩)).2.2.2
   rw [hes] at hheadr
   have extend : ∀ B, AC.VoteExtends (tr.HonestBlocksAt H) e.msg B →
       Anc (tr.HonestBlocksAt H) B

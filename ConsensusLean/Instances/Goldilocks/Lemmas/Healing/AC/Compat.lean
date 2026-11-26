@@ -11,7 +11,7 @@ Over the healthy base at a write mode (`HealthyBaseU`), for a slot `s` with `t_s
 (`s ≥ r_AC(ḡ)`):
 
 * two fast origins (fast test or optimistic, any combination) are compatible
-  (`fastLock_fastLock_compatible`: A1.9's `fastLock_same_slot`);
+  (`fastLock_fastLock_compatibleU`: A1.9's `fastLock_same_slot`);
 * two results of `get_confirmation` (fast, slow, vetoed or not) at honest nodes are compatible
   (`result_result_compatibleU`): their supporter sets are disjoint, since a common supporter's two
   votes both reach both readers before their updates (`Sync`), and each reader counts both sets
@@ -73,7 +73,9 @@ theorem result_sideU
   · rintro u ⟨hneq, v, ⟨hvp, -⟩, rfl, -, R, hR, hRr, hDR⟩
     exact ⟨hneq, v, hvp, rfl, R, hΦU hR, hRr, Anc.mono hΦU hDR⟩
 
-/-- `fastLock_fastLock_compatible` with the unlock given. -/
+/-- **Two fast origins of one slot** (fast test or optimistic, in any combination; this includes the
+optimistic/optimistic case): A1.9's same-slot lemma under `Sync[t_s, t_{s+1} + Δ]` and `f < n/2`.
+With the unlock given. -/
 theorem fastLock_fastLock_compatibleU
     {u : Nat → Set Lock} (hS : HealthyBaseU wm u tr H U proposer g)
     {s : Nat} {x x' : Fin sp.n}
@@ -82,19 +84,6 @@ theorem fastLock_fastLock_compatibleU
     (hs : gbar g ≤ sp.ts s) : Compatible U B B' :=
   fastLock_same_slotU hS.run _ CommitteeP.full (size_binding_full hS.stock) hx hfl hx' hfl'
     (hS.syncAC hs _) (cs2_full hS.stock hS.two_faulty_lt)
-
-/-- **Two fast origins of one slot** (fast test or optimistic, in any combination; this includes
-the optimistic/optimistic case): A1.9's same-slot lemma under `Sync[t_s, t_{s+1} + Δ]` and
-`f < n/2`. -/
-theorem fastLock_fastLock_compatible
-    (hS : HealthyBase tr H U proposer g)
-    {s : Nat} {x x' : Fin sp.n}
-    {i i' : Nat} {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hx : x ∈ H)
-    (hfl : FastLockAt tr x i s B CV) (hx' : x' ∈ H) (hfl' : FastLockAt tr x' i' s B' CV')
-    (hs : gbar g ≤ sp.ts s) : Compatible U B B' :=
-  fastLock_fastLock_compatibleU (hS := hS.toU) (s := s) (x := x) (x' := x') (i := i) (i' := i')
-      (B := B) (B' := B') (CV := CV) (CV' := CV') (hx := hx) (hfl := hfl) (hx' := hx')
-          (hfl' := hfl') (hs := hs)
 
 /-- Two results of `get_confirmation` at honest nodes are compatible, with the unlock given. -/
 theorem result_result_compatibleU

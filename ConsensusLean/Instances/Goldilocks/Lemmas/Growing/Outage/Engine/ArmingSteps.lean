@@ -50,8 +50,8 @@ private theorem head_mem_upTo {ini}
     (hHdr : Hd.root = e.msg.head) : Hd ∈ (tr.upTo d).HonestBlocks (H d) := by
   have hv' : AC.VoteAt (tr.upTo d).projAC x j e := by
     rw [RunTrace.upTo_projAC]; exact ac_voteAt_upTo.mpr ⟨hjd, hv⟩
-  obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := AC.honest_head
-    (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d))
+  obtain ⟨Hd₂, hHd₂, hHd₂r, -⟩ := AC.honest_headU
+    (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d)).toU
     hx hv'
   obtain rfl : Hd = Hd₂ := (honestBlocksAt_coherent hrun hnc).1 hHd (upTo_subset hrun hd hHd₂)
     (hHdr.trans hHd₂r.symm)

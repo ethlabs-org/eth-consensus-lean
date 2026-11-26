@@ -304,7 +304,7 @@ private theorem head_viable {FGP : Type} {ro' : ReplayOrder sp FGP} {U : Set (AC
     (hfc : ℓz.frame.fcRoot ∈ ℓz.frame.viableTree ℓz.frame.tree) :
     ∃ Hd ∈ ℓz.frame.viableTree ℓz.frame.tree, Hd.root = e'.msg.head := by
   have hΦ := (AC.frameIn_of_callAt hr hz hc.1).1
-  obtain ⟨-, -, -, hhead⟩ := AC.castAt_spec hr hz hc
+  obtain ⟨-, -, -, hhead⟩ := AC.castAt_specU hr.toU hz hc
   refine ⟨_, ?_, hhead.symm⟩
   have hsub : ℓz.frame.viableTree (AC.voteDomain sp e'.readPoint ℓz.frame e'.msg.slot) ⊆
       ℓz.frame.viableTree ℓz.frame.tree :=
@@ -350,7 +350,8 @@ private theorem eq_of_anc_parent_none {FGP : Type} {U : Set (AC.Blk sp.n FGP)}
   · exact absurd (hQ.2.2.symm.trans hG) (Option.some_ne_none _)
 
 /-- **A block accepted before the freeze is in the voter block tree** of an honest vote: its
-stamp at the state before the vote's call is its acceptance time (`blockStamp_lt_of_acceptedBefore`;
+stamp at the state before the vote's call is its acceptance time
+(`blockStamp_lt_of_acceptedBeforeU`;
 the vote's call does not accept it again), and the read point keeps that state's stamps. -/
 private theorem mem_voterBlockTree_of_accept {FGP : Type} {ro' : ReplayOrder sp FGP}
     {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP ro'}
@@ -363,7 +364,7 @@ private theorem mem_voterBlockTree_of_accept {FGP : Type} {ro' : ReplayOrder sp 
   have hU := hr.coherent
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hy hc.1
-  obtain ⟨-, hys, hyj, -⟩ := AC.castAt_spec hr hy hc
+  obtain ⟨-, hys, hyj, -⟩ := AC.castAt_specU hr.toU hy hc
   have hti : sp.ts e.msg.slot ≤ T.time i :=
     (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) _).2 (by rw [hys])
   have hm : sp.ts ((e.msg.slot : Int) - 1) + 4 * sp.Δ = sp.ts e.msg.slot := by
@@ -371,13 +372,13 @@ private theorem mem_voterBlockTree_of_accept {FGP : Type} {ro' : ReplayOrder sp 
   have hfz : AC.freeze sp e.msg.slot ≤ T.time i := by unfold AC.freeze; linarith
   have hrsy : ∀ k ≤ i, T.RestartAt y k → T.time k < AC.freeze sp e.msg.slot := by
     have hj' : AC.joined sp (T.post i) (T.time i) := by
-      unfold AC.joined; rw [AC.restartTime_of_castAt hr hy hc]; exact hyj
+      unfold AC.joined; rw [AC.restartTime_of_castAtU hr.toU hy hc]; exact hyj
     intro k hk hrk
     have := (AC.joined_awakeU sp FGP ro' H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
     rw [← hys] at this
     unfold AC.freeze
     linarith only [hΔ, this]
-  have hbs := AC.blockStamp_lt_of_acceptedBefore sp hr hini
+  have hbs := AC.blockStamp_lt_of_acceptedBeforeU sp hr.toU hini
     hy hc.1 hWt (Or.inr ⟨k', hacc, hkt⟩)
     hrsy (Or.inl hfz)
   -- the vote's call does not accept `W`
@@ -385,7 +386,7 @@ private theorem mem_voterBlockTree_of_accept {FGP : Type} {ro' : ReplayOrder sp 
     intro B₀ hcall hB
     have hB₀ := (AC.accept_new sp hr hy ⟨ℓ, hc.1, hcall⟩).1 ℓ hc.1
     obtain rfl : B₀ = W := hU.1 (hΦU hB₀) (hΦU hWt) hB.symm
-    obtain rfl := AC.accept_unique sp hr hy hacc ⟨ℓ, hc.1, hcall⟩
+    obtain rfl := AC.accept_uniqueU sp hr.toU hy hacc ⟨ℓ, hc.1, hcall⟩
     linarith only [hkt, hfz]
   have he := hr.exec i ℓ hc.1.2 (hc.1.1 ▸ hy)
   rw [hc.1.1] at he
@@ -437,7 +438,7 @@ private theorem clean_vote_witness (hrun : GoldilocksRun proposer dg H tr ini)
   obtain ⟨ℓz, hcz, hez⟩ := hvz
   have hvz : AC.CastAt tr.projAC z kz ℓz e' := ⟨hcz, hez⟩
   obtain ⟨-, hΦzU⟩ := AC.frameIn_of_callAt hr hz hcz
-  have hsz := (AC.castAt_spec hr hz hvz).2.1
+  have hsz := (AC.castAt_specU hr.toU hz hvz).2.1
   have htz : sp.ts j ≤ tr.time kz :=
     (AC.ts_le_iff_le_slot sp (hr.time_nonneg kz) _).2 (by rw [← hes, hsz])
   have htz' : tr.time kz ≤ sp.ts j + sp.Δ := by
@@ -464,7 +465,7 @@ private theorem clean_vote_witness (hrun : GoldilocksRun proposer dg H tr ini)
     rw [Compose.frame_of_projAC hrun hz hcz] at hWv
     exact ((viableHeads_iff hrun hs hc hz hphz hev hWst).1 hWv).2
   refine ⟨hi₀z, hkzk, htz', W, hBHv.trans (Anc.mono hΦzU hHdW), hWE, ?_⟩
-  rcases Compose.frame_anc_accepted hr hz kz ℓz hcz W hWt W .refl with hg | ⟨kw, hkw, hacc⟩
+  rcases Compose.frame_anc_acceptedU hr.toU hz kz ℓz hcz W hWt W .refl with hg | ⟨kw, hkw, hacc⟩
   · exact Or.inl hg
   · refine Or.inr ⟨kw, hkw, hacc, ?_⟩
     have := hr.time_mono hkw
@@ -495,7 +496,7 @@ theorem viable_of_clean_vote (hrun : GoldilocksRun proposer dg H tr ini)
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hy hv.1
   have hty : sp.ts e.msg.slot ≤ tr.time k :=
-    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 (by rw [(AC.castAt_spec hr hy hv).2.1])
+    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 (by rw [(AC.castAt_specU hr.toU hy hv).2.1])
   have hjσ : sp.ts j + 4 * sp.Δ ≤ sp.ts ((e.msg.slot : Int) - 1) + 4 * sp.Δ := by
     have := (AC.ts_le_iff sp).2 (show (j : Int) ≤ (e.msg.slot : Int) - 1 by omega)
     linarith only [this]
@@ -512,7 +513,7 @@ theorem viable_of_clean_vote (hrun : GoldilocksRun proposer dg H tr ini)
   rcases hWo with hg | ⟨kw, hkw, hacc, hkwt⟩
   · -- a genesis witness: `B` and `Σ.F` are the genesis
     right
-    obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_call sp hr hy k ℓ hv.1
+    obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hy k ℓ hv.1
     obtain rfl : W = G := hU.1 hWU hGU (hg.trans hGr.symm)
     rw [eq_of_anc_parent_none hBW hGp, ← eq_of_anc_parent_none hFW hGp]
     exact hΦ.F_anc_fcRoot.mono hΦU
@@ -529,7 +530,7 @@ theorem viable_of_clean_vote (hrun : GoldilocksRun proposer dg H tr ini)
         accept_of_catch hrun hc hz hacc (not_le.1 hkg) hy hv.1 (by
             linarith only [hj, hΔ, hty, hjσ, hσ, hw8]) hFW
       refine mem_voterBlockTree_of_accept hr hrun.vstart hy hv
-        (AC.mem_tree_of_acceptAt sp hr hy hacc' hk' hv.1 hFW) hacc' ?_
+        (AC.mem_tree_of_acceptAtU sp hr.toU hy hacc' hk' hv.1 hFW) hacc' ?_
       unfold AC.freeze
       change tr.time k' < _
       linarith only [hj, hΔ, hjσ, hw8, hk't]
@@ -610,7 +611,7 @@ theorem clean_fast_viable (hrun : GoldilocksRun proposer dg H tr
 /-- **Frozen viability of a clean slow origin** (the slow
 helper): as `clean_fast_viable`, for a slow lock of label `j` with `t_{j−k+1} ≥ w + 4Δ` and
 stored block `B`: an honest slot-`j` vote extends the update's result `C ⪰ D ⪰ B`
-(`result_extended`; `viable_of_clean_vote`). -/
+(`result_extendedU`; `viable_of_clean_vote`). -/
 theorem clean_slow_viable (hrun : GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K)) (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {x : Fin sp.n}
@@ -662,7 +663,8 @@ theorem clean_fast_carry (hrun : GoldilocksRun proposer dg H tr
     (clean_fast_viable hrun hs hc hw hx ho hj hy hv (by omega) hk) hroot
   have hgj := gbar_le_of_clean hw hj
   have htk : sp.ts (j + 1 : Nat) ≤ tr.time k :=
-    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 (by rw [← he, (AC.castAt_spec hr hy hv).2.1])
+    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 (by rw [← he, (AC.castAt_specU hr.toU hy
+        hv).2.1])
   have hts : sp.ts (j + 1 : Nat) = sp.ts j + 4 * sp.Δ := by
     simp only [ACParams.ts]; push_cast; ring
   obtain ⟨ℓw, D, hcw, hflD, rfl⟩ := ho
@@ -707,7 +709,8 @@ theorem clean_slow_carry (hrun : GoldilocksRun proposer dg H tr
     hj.trans ((AC.ts_le_iff sp).2 (by have := sp.two_le_k; omega))
   have hgj := gbar_le_of_clean hw hj'
   have htk : sp.ts (j + 1 : Nat) ≤ tr.time k :=
-    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 (by rw [← he, (AC.castAt_spec hr hy hv).2.1])
+    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 (by rw [← he, (AC.castAt_specU hr.toU hy
+        hv).2.1])
   have hts : sp.ts (j + 1 : Nat) = sp.ts j + 4 * sp.Δ := by
     simp only [ACParams.ts]; push_cast; ring
   -- the stored block is below the slow selection, on the result's path
@@ -761,7 +764,8 @@ theorem honest_batch_carry (hrun : GoldilocksRun proposer dg H tr
   have hF := frame_F_anc_of_viable hrun hs hy hv hviab hroot
   have hgm := gbar_le_of_clean hw hm'
   have htk : sp.ts (m' + 1 : Nat) ≤ tr.time k :=
-    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 (by rw [← he, (AC.castAt_spec hr hy hv).2.1])
+    (AC.ts_le_iff_le_slot sp (hr.time_nonneg k) _).2 (by rw [← he, (AC.castAt_specU hr.toU hy
+        hv).2.1])
   have hts : sp.ts (m' + 1 : Nat) = sp.ts m' + 4 * sp.Δ := by
     simp only [ACParams.ts]; push_cast; ring
   have hsync := Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
@@ -771,7 +775,7 @@ theorem honest_batch_carry (hrun : GoldilocksRun proposer dg H tr
       AC.CarryAt tr.projAC (tr.HonestBlocks H) y k e m' {v} := by
     rintro v ⟨z, hz, k', e', ⟨ℓk, hck, he'⟩, rfl, hvs⟩
     change e'.msg.slot = m' at hvs
-    have hk' := (AC.castAt_spec hr hz ⟨hck, he'⟩).2.1
+    have hk' := (AC.castAt_specU hr.toU hz ⟨hck, he'⟩).2.1
     obtain ⟨Hv, hHv, hHvr, hBHv⟩ := hall z hz k' e' ⟨ℓk, hck, he'⟩ hvs
     obtain ⟨⟨Hd, hHd, hHdr, -⟩, hkt⟩ := Compose.cast_head_fcRoot hr
         hrun.vstart hz ⟨hck, he'⟩
@@ -785,7 +789,8 @@ theorem honest_batch_carry (hrun : GoldilocksRun proposer dg H tr
     refine ⟨hvs, ⟨k', ⟨ℓk, hck, Or.inl ⟨e', he', rfl⟩⟩,
       (AC.ts_le_iff_le_slot sp (hr.time_nonneg k') m').2 (by omega), by
         change tr.time k' < _; linarith only [hΔ, hkt]⟩, Hd, hHv, hHvr, hFHd, ?_⟩
-    rcases Compose.frame_anc_accepted hr hz k' ℓk hck Hd hHd Hd .refl with hg | ⟨k'', hk'', hacc⟩
+    rcases Compose.frame_anc_acceptedU hr.toU hz k' ℓk hck Hd hHd Hd .refl
+        with hg | ⟨k'', hk'', hacc⟩
     · exact Or.inl hg
     have hk''t : tr.time k'' < sp.ts m' + 2 * sp.Δ := by
       have := hr.time_mono hk''
@@ -798,7 +803,7 @@ theorem honest_batch_carry (hrun : GoldilocksRun proposer dg H tr
             linarith only [hΔ, hgm, htk, hts]) hFHd
       exact Or.inr (Or.inr ⟨k₂, hk₂, hacc₂, by
           change tr.time k₂ < _; linarith only [hΔ, hgm, hk₂t]⟩)
-  exact ⟨hr.awake_of_call y hy k ℓ hv.1, (AC.castAt_spec hr hy hv).2.2.1,
+  exact ⟨hr.awake_of_call y hy k ℓ hv.1, (AC.castAt_specU hr.toU hy hv).2.2.1,
     fun v hv' => (hone v hv').heads v rfl, fun v hv' => (hone v hv').holds v rfl⟩
 
 /-! ### Raw-result comparisons -/

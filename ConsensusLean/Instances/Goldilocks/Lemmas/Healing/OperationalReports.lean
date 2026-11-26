@@ -187,13 +187,13 @@ theorem unanimous_carry_votes {b : Time}
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hDelta := sp.toParams.hΔ
   apply AC.carryAt_of_each (hr.awake_of_call y hy i ell hcast.1)
-    (AC.castAt_spec hr hy hcast).2.2.1
+    (AC.castAt_specU hr.toU hy hcast).2.2.1
   rintro v ⟨z, hz, q, e', ⟨ell', hc'⟩, rfl, hsl⟩
   have hqi : q < i := by
     by_contra hn
     have := AC.slot_mono sp (hr.time_nonneg i) (hr.time_mono (Nat.le_of_not_gt hn))
-    have := (AC.castAt_spec hr hz hc').2.1
-    have := (AC.castAt_spec hr hy hcast).2.1
+    have := (AC.castAt_specU hr.toU hz hc').2.1
+    have := (AC.castAt_specU hr.toU hy hcast).2.1
     omega
   obtain ⟨⟨Hd, hHd, hHdr, _⟩, hqt⟩ := Compose.cast_head_fcRoot hr
       hp.run.vstart hz hc'
@@ -208,8 +208,8 @@ theorem unanimous_carry_votes {b : Time}
   have ht : tr.projAC.time q < sp.ts u + 2 * sp.Δ := by rw [hsl] at hqt; linarith
   refine ⟨hsl, ⟨q, ⟨ell', hc'.1, Or.inl ⟨e', hc'.2, rfl⟩⟩,
     (AC.ts_le_iff_le_slot sp (hr.time_nonneg q) u).mpr
-      (by rw [← (AC.castAt_spec hr hz hc').2.1, hsl]), ht⟩, P, hP, hHdr, hFP, ?_⟩
-  rcases Compose.frame_anc_accepted hr hz q ell' hc'.1 P hHd P .refl with hg | ⟨k, hk, ha⟩
+      (by rw [← (AC.castAt_specU hr.toU hz hc').2.1, hsl]), ht⟩, P, hP, hHdr, hFP, ?_⟩
+  rcases Compose.frame_anc_acceptedU hr.toU hz q ell' hc'.1 P hHd P .refl with hg | ⟨k, hk, ha⟩
   · exact Or.inl hg
   · exact Or.inr ⟨k, ha, (hr.time_mono hk).trans_lt ht⟩
 
@@ -284,7 +284,7 @@ theorem unanimous_next_vote_viable {b : Time}
   have hΔ := sp.toParams.hΔ
   have hjt : sp.ts (u + 1 : Nat) ≤ tr.time j :=
     (AC.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2
-      (by rw [← (AC.castAt_spec hr hy hcast).2.1, hs])
+      (by rw [← (AC.castAt_specU hr.toU hy hcast).2.1, hs])
   have hsucc : sp.ts (u + 1 : Nat) = sp.ts u + 4 * sp.Δ := by
     simp only [AC.ACParams.ts]; push_cast; ring
   have hg' := slotAfter_add_le_of_drain hp hR
@@ -357,7 +357,7 @@ theorem unanimous_next_votes_extend {b : Time}
         hy hcast hs hjb
       have htime : sp.ts (u + 1 : Nat) ≤ tr.time j :=
         (AC.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2
-          (by rw [← (AC.castAt_spec hr hy hcast).2.1, hs])
+          (by rw [← (AC.castAt_specU hr.toU hy hcast).2.1, hs])
       obtain ⟨v, r, l, O, ho, _, hl, _⟩ := hp.reset_seed_before_slot hR
       have hcut : Healing.cutZ sp.toParams g ≤ tr.time j :=
         (hp.cutZ_le_ts_of_highOrigin ho).trans
