@@ -67,7 +67,7 @@ is the reference for every section below. File names below (`shared/fg.tex`, `co
 ## Baseline (archived)
 
 The pre-foundation pinned numbers (the archived `Shape.goldilocksContract` at `FGSAParams`) and the properties sheet
-(`GoldilocksTarget`, `GoldilocksExtraAt`) are archived in [`archive/consensus-lean-baseline`](https://github.com/ethlabs-org/eth-consensus-lean/tree/79cdddc8e8e4c981211076da0ab1e7ee0bac1a25/archive/consensus-lean-baseline) (at `79cdddc8`), with their
+(`GoldilocksTarget`, `GoldilocksExtraAt`) are archived in [`archive/consensus-lean-baseline`](https://github.com/ethlabs-org/verified-consensus/tree/79cdddc8e8e4c981211076da0ab1e7ee0bac1a25/archive/consensus-lean-baseline) (at `79cdddc8`), with their
 tests. No statement, proof or milestone of this library depends on them.
 
 ## First slice
@@ -811,7 +811,7 @@ Modelling choices (`docs/decisions.md` §"Goldilocks model choices", the entries
   side (`Steps`: the node state across each event, the clock, at most two bodies pending at a tick, a proposal
   carries only released objects, the digests cover a block's header), and one theorem per field of `GoldilocksRun` and `SimulatesAt` over the trace (`Run`); `simTraceAt_simulates`
   assembles them under growing faults (`Lemmas/Growing/Simulation/Simulates`).
-- **The Baseline target is archived** ([`archive/consensus-lean-baseline`](https://github.com/ethlabs-org/eth-consensus-lean/tree/79cdddc8e8e4c981211076da0ab1e7ee0bac1a25/archive/consensus-lean-baseline)): no Baseline row is instantiated at the
+- **The Baseline target is archived** ([`archive/consensus-lean-baseline`](https://github.com/ethlabs-org/verified-consensus/tree/79cdddc8e8e4c981211076da0ab1e7ee0bac1a25/archive/consensus-lean-baseline)): no Baseline row is instantiated at the
   refinement family. The milestone statements are stated directly over `compiled (goldilocks S)`.
 
 ## Exclusions

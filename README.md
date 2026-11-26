@@ -1,4 +1,4 @@
-# eth-consensus-lean
+# verified-consensus
 
 A machine-checked proof, in [Lean 4](https://lean-lang.org), that **Goldilocks** is a correct consensus protocol under stated network and adversary assumptions. Goldilocks combines an *available chain* that keeps growing while many validators are offline with a *finality gadget* that finalizes blocks when the network is healthy; its specification is in [`specs/goldilocks/tex/`](specs/goldilocks/tex/).
 

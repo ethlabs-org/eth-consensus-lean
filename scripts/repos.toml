@@ -1,4 +1,4 @@
 # Where the project lives on GitHub (owner/name). Read by scripts/push-main.sh, which refuses a GitHub `origin`
 # that is another repository.
 #   code: the code repository: main, the landing lock `push-main-lock`, pull requests; the `origin` of every clone.
-code = "ethlabs-org/eth-consensus-lean"
+code = "ethlabs-org/verified-consensus"

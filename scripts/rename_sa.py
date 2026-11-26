@@ -4,7 +4,7 @@
 Purely nominal: moves files and rewrites text by an ordered list of regex rules; no Lean is elaborated.
 The rules are the name map. Every replacement keeps or shortens the line, except two Milestones module
 paths and a section name, so the output needs no hand rewrapping and is a pure function of the input
-tree (which `rebase-branch` relies on). Run it on any tree of eth-consensus-lean (main, an in-flight
+tree (which `rebase-branch` relies on). Run it on any tree of verified-consensus (main, an in-flight
 branch) or on a downstream tree that mirrors upstream paths; it is idempotent.
 
   rename_sa.py apply ROOT          move files (git mv when ROOT is a Git work tree) and rewrite tracked text

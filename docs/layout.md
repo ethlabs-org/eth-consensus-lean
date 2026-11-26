@@ -11,7 +11,7 @@ The only default target is `ConsensusLean` (`defaultTargets = ["ConsensusLean"]`
 `ConsensusLeanTest` is the test library, selected by the lakefile's `testDriver` and built by
 `lake test`; it is not a default target.
 `Solution` and `Challenge` are single-module libraries for the comparator.
-Reference snapshots that no target builds or checks (an earlier Goldilocks Lean model and spec, a Baseline properties sheet and the regime rows R.3–R.6) are outside the tree, at [`archive/` of `79cdddc8`](https://github.com/ethlabs-org/eth-consensus-lean/tree/79cdddc8e8e4c981211076da0ab1e7ee0bac1a25/archive), each with its `ARCHIVE.md`.
+Reference snapshots that no target builds or checks (an earlier Goldilocks Lean model and spec, a Baseline properties sheet and the regime rows R.3–R.6) are outside the tree, at [`archive/` of `79cdddc8`](https://github.com/ethlabs-org/verified-consensus/tree/79cdddc8e8e4c981211076da0ab1e7ee0bac1a25/archive), each with its `ARCHIVE.md`.
 `specs/goldilocks/tex/` is the live LaTeX spec of Goldilocks, edited here; it is outside every Lake target and check and not trusted surface: fidelity is carried by the Lean statements and `docs/goldilocks-mapping.md` ([`README.md`](../specs/goldilocks/tex/README.md)).
 
 | Layer under `ConsensusLean/` | Contents |
