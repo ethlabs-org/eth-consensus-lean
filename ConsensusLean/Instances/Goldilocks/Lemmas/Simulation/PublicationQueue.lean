@@ -17,7 +17,7 @@ variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A canonical, nonfuture block in a recursive receipt produces an actual block-call
 record even when the store refuses it. -/
-theorem deliverRecs_block_call (io : VoteAuth sp.n binding) (proposer : Nat → Fin sp.n)
+private theorem deliverRecs_block_call (io : VoteAuth sp.n binding) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
     (B : Blk sp) (hslot : B.slot ≤ sp.toParams.slotOf t) :
@@ -217,7 +217,7 @@ theorem proposal_duty_forward_origin (v : V)
 omit [DecidableEq V] in
 /-- A decoded envelope's child is decoded identically inside any enclosing receipt.
 Both roots are obtained from the engine hash of the child's header. -/
-theorem decoded_forward_child_in_receipt
+private theorem decoded_forward_child_in_receipt
     {o receipt : Wire (Fintype.card V) S.vote} {x : Fin (Fintype.card V)} {t : Time}
     {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (hc : Model.Obj.Contains receipt o)
@@ -241,7 +241,7 @@ theorem decoded_forward_child_in_receipt
 omit [DecidableEq V] in
 /-- A decodable forwarding candidate of a poll comes from its pre-duty forwarding
 queue, not the ordinary outbox emission (which carries no child). -/
-theorem poll_candidate_forward_queue (v : V)
+private theorem poll_candidate_forward_queue (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (u : Nat)
     {o : Wire (Fintype.card V) S.vote} {t : Time} {p : Option (Wire (Fintype.card V) S.vote)}
     {B : Blk (S.params (Model.pubOf E) hn)}
@@ -424,7 +424,7 @@ theorem released_candidate_batch {i : Nat} {v : V} {u : Time}
         Model.releaseAll_subset (P := Model.protoOf (compiled (goldilocks S)) E) _ _ _ _ o ho⟩
 
 /-- A forwarding candidate in an actual event batch has that event's timestamp. -/
-theorem eventBatches_forward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V}
+private theorem eventBatches_forward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V}
     {u : Time} (he : rho.SendsAt v i u)
     (b : ReleaseBatch (Model.protoOf (compiled (goldilocks S)) E))
     (hb : b ∈ eventBatches rho i) {o : Wire (Fintype.card V) S.vote} (ho : o ∈ b.candidates)
@@ -474,7 +474,7 @@ theorem released_forward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V} {u : 
 
 /-- An indexed successful canonical cut supplies acceptance at its actual recorded time.
 In particular this bridge never turns a refused block call into acceptance. -/
-theorem acceptAt_of_allCuts {k : Nat} {r : CutRec (S.params (Model.pubOf E) hn) (S.ro _)}
+private theorem acceptAt_of_allCuts {k : Nat} {r : CutRec (S.params (Model.pubOf E) hn) (S.ro _)}
     {B : Blk (S.params (Model.pubOf E) hn)}
     (hr : (allCuts S rho hn)[k]? = some r) (hb : r.label = .fg (.block B true)) :
     (simTrace S rho hn).AcceptAt r.node k B ∧ (simTrace S rho hn).time k = r.time := by
@@ -500,7 +500,7 @@ theorem acceptAt_of_eventCuts {i : Nat} (hi : i < rho.events.length)
 
 /-- The processing phase of an actual delivery queues only wrappers for acceptances in
 that delivery, at its actual time. The event-boundary queue is empty, not a premise. -/
-theorem delivery_forward_acceptance_decoded (hv : rho.ExecutionValid) {i : Nat} {v : V}
+private theorem delivery_forward_acceptance_decoded (hv : rho.ExecutionValid) {i : Nat} {v : V}
     {o : Wire (Fintype.card V) S.vote} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t))
     (q : Time × List (Wire (Fintype.card V) S.vote))
@@ -531,7 +531,7 @@ theorem delivery_forward_acceptance_decoded (hv : rho.ExecutionValid) {i : Nat} 
 
 /-- Digest-backed decoding identifies the exact accepted block behind a delivery queue
 entry. Wire equality supplies its header, not its root. -/
-theorem delivery_decoded_forward_acceptance (hv : rho.ExecutionValid)
+private theorem delivery_decoded_forward_acceptance (hv : rho.ExecutionValid)
     {i : Nat} {v : V} {receipt o : Wire (Fintype.card V) S.vote} {u t : Time}
     {p : Option (Wire (Fintype.card V) S.vote)} {B : Blk (S.params (Model.pubOf E) hn)}
     (he : rho.events[i]? = some (.deliver v receipt u))
@@ -595,7 +595,7 @@ theorem delivery_released_forward_acceptance (hv : rho.ExecutionValid)
     exact False.elim (gossip_not_forward S rho hn _ u ho hd)
 
 /-- Receipt witnesses require only a block call, including a refused call. -/
-theorem blockCallAt_of_allCuts {k : Nat}
+private theorem blockCallAt_of_allCuts {k : Nat}
     {r : CutRec (S.params (Model.pubOf E) hn) (S.ro _)}
     {B : Blk (S.params (Model.pubOf E) hn)} {accepted : Bool}
     (hr : (allCuts S rho hn)[k]? = some r)
