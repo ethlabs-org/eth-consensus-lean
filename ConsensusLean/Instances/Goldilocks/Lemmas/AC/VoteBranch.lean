@@ -31,7 +31,7 @@ variable {wm : WriteMode} {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
   {ini : Fin sp.n → ACState sp.n}
 
 /-- `vote_ready` reads the state only through its pools. -/
-theorem voteReady_congr_pool {A A' : ACState sp.n} (h : A'.pool = A.pool) (Φ : Frm sp.n FGP)
+private theorem voteReady_congr_pool {A A' : ACState sp.n} (h : A'.pool = A.pool) (Φ : Frm sp.n FGP)
     (s : Nat) : voteReady sp A' Φ s ↔ voteReady sp A Φ s := by
   have hc : ∀ x, ShouldCountDeclaredVote sp A' x ↔ ShouldCountDeclaredVote sp A x := fun x => by
     simp only [ShouldCountDeclaredVote, ACState.poolAt, h]

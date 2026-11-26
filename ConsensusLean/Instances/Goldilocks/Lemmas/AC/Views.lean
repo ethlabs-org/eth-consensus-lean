@@ -15,7 +15,8 @@ namespace Consensus.Goldilocks.AC
 variable (sp : ACParams)
 
 /-- A support vote of a vote view is resolved before the cutoff, so its head is in the tree. -/
-theorem voteView_support_inTree {n : Nat} {FGP : Type} {A : ACState n} {Φ : Frm n FGP} {σ : Int}
+private theorem voteView_support_inTree {n : Nat} {FGP : Type} {A : ACState n} {Φ : Frm n FGP}
+    {σ : Int}
     {cutoff : ETime} {x : Vote n} (hx : x ∈ (voteView A Φ σ cutoff).support) : InTree Φ x.head := by
   simp only [voteView, voteViewList, View.ofLists, Set.mem_ofPred_eq, List.mem_filter,
     decide_eq_true_eq] at hx
@@ -67,7 +68,7 @@ theorem compatible_of_ancR {n : Nat} {FGP : Type} {Φ : Frm n FGP} (hΦ : FrameO
   exact anc_total hΦ.coherent hBR hCR'
 
 /-- Two sets of validators whose sizes add up to more than a bound `m ≥ |S ∪ T|` meet. -/
-theorem inter_nonempty_of_ncard {n : Nat} {S T : Set (Fin n)} {m : Nat}
+private theorem inter_nonempty_of_ncard {n : Nat} {S T : Set (Fin n)} {m : Nat}
     (hm : (S ∪ T).ncard ≤ m) (h : m < S.ncard + T.ncard) : (S ∩ T).Nonempty := by
   have := Set.ncard_union_add_ncard_inter S T (Set.toFinite _) (Set.toFinite _)
   exact Set.nonempty_of_ncard_ne_zero (by omega)
@@ -142,7 +143,7 @@ theorem voteDomain_eq_tree_of_not_viable {A : ACState sp.n} {Φ : Frm sp.n FGP} 
   exact ⟨fun hB => hB.elim (fun hB' => absurd hB'.2 h) And.left, fun hB => Or.inr ⟨hB, h⟩⟩
 
 /-- The viable tree grows with the domain. -/
-theorem viableTree_mono {Φ : Frm sp.n FGP} {S T : Set (Blk sp.n FGP)} (hST : S ⊆ T) :
+private theorem viableTree_mono {Φ : Frm sp.n FGP} {S T : Set (Blk sp.n FGP)} (hST : S ⊆ T) :
     Φ.viableTree S ⊆ Φ.viableTree T := by
   rintro B ⟨hB, hf, W, hW, hWv, hBW⟩
   exact ⟨hST hB, hf, W, hST hW, hWv, hBW⟩
