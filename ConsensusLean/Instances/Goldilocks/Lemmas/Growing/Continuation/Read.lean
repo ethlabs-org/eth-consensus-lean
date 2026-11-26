@@ -1,6 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Invariant
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Rows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Invariant
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family

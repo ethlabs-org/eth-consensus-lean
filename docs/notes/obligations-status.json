@@ -208,7 +208,7 @@
   "rows": [
     {
       "name": "Consensus.Goldilocks.Compose.Growing.J_eq_of_hj_eq_conv",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/Accountable.lean:87",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Growing/Continuation/Accountable.lean:87",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -218,7 +218,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Compose.Growing.finalized_compatible_of_convictedBelow",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/Accountable.lean:69",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Growing/Continuation/Accountable.lean:69",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -248,7 +248,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Compose.Growing.seed_held_past_at",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/Invariant.lean:279",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Growing/Continuation/Invariant.lean:279",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -258,7 +258,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Compose.Growing.seeded_caches_at",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/Invariant.lean:237",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Growing/Continuation/Invariant.lean:237",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -268,7 +268,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Compose.Growing.seeded_record_at",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/Invariant.lean:203",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Growing/Continuation/Invariant.lean:203",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -278,7 +278,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Compose.Growing.seeded_viable_at",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/Invariant.lean:259",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Growing/Continuation/Invariant.lean:259",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -288,7 +288,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Compose.Growing.seeded_vote_frame_at",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/VoteFrame.lean:40",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Growing/Continuation/VoteFrame.lean:40",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -418,7 +418,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Growing.GoldilocksRun.finalized_anc_of_lt_conv",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/Accountable.lean:122",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Growing/Continuation/Accountable.lean:122",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,
@@ -728,7 +728,7 @@
     },
     {
       "name": "Consensus.Goldilocks.Obligations.Growing.chainConvictedBelow_at",
-      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Continuation/Accountable.lean:164",
+      "file:line": "ConsensusLean/Instances/Goldilocks/Lemmas/Growing/Continuation/Accountable.lean:164",
       "status": "lean-proved",
       "blocked-by": [],
       "in_obligations_closure": false,

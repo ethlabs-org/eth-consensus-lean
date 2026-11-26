@@ -1,8 +1,8 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Frontier
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Rows
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Record
-import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.SeedHeld
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Frontier
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Rows
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Record
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.SeedHeld
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance

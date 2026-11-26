@@ -1,7 +1,7 @@
 module
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Relay
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Seed
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Continuation.Accountable
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Seed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Accountable
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Frame
