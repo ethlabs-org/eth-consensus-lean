@@ -191,26 +191,6 @@ theorem sync_forward {ini}
       (A := goldilocksAC sp FGP ro)).mp hjr).2) hdl hslot hp'
   simpa only [hs] using h
 
-theorem relayed_held_before
-    {ini} (hr : Goldilocks.Growing.ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    {s : Nat} {b : Time} (hsvc : ServiceBefore H U b tr)
-    {X Y : Fin sp.n} {c : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
-    (hY : Y ∈ H (tr.time c)) (hc : tr.CallAt Y c ℓ)
-    (ht : tr.time c = sp.ts s + 6 * sp.Δ) (hb : sp.ts s + 3 * sp.Δ ≤ b)
-    (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s)
-    {D : Blk sp.n FGP} {u : Fin sp.n} (hu : u ∈ Relayed tr H U X s D) :
-    ∃ v : Vote sp.n, v.val = u ∧ (∃ R ∈ U, R.root = v.head ∧ Anc U D R) ∧
-      (v ∈ (tr.state Y c).pool s ∨ u ∈ equivocators {w | w ∈ (tr.state Y c).pool s}) := by
-  have hΔ := sp.toParams.hΔ
-  obtain ⟨v, rfl, hvs, hR, k, hX, hsend, h1, h2⟩ := hu
-  refine ⟨v, rfl, hR, ?_⟩
-  have h := sync_window_before_forward hr hsvc hX hsend (hr.time_nonneg k)
-    (by linarith) hY hc (fun j hj hjr => (hrs j hj hjr).trans h1)
-    (by rw [ht]; linarith) fun t ht₁ ht₂ => by
-      rw [CompatibleSides.slot_of_lt (s := s) (h1.trans ht₁) (by linarith), hvs]
-      omega
-  rwa [hvs] at h
-
 /-- A release in the synchrony window reaches an update at the recipient's own cut. -/
 theorem relayed_held
     {ini} (hr : Goldilocks.Growing.ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
