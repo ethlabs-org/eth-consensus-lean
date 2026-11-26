@@ -22,7 +22,7 @@ variable {FGP : Type} {sp : ACParams} {Φ : Frm sp.n FGP}
 
 /-- **`unlock` keeps a block with few opponents.** If `B` is in the tree and fewer than half of
 the committee oppose `B` in `V` against the slot-`s` votes, then `unlockTarget` of `B` is `B`. -/
-theorem unlockTarget_eq_self (hΦ : FrameOK Φ) (V : View sp.n) (s : Int) {B : Blk sp.n FGP}
+private theorem unlockTarget_eq_self (hΦ : FrameOK Φ) (V : View sp.n) (s : Int) {B : Blk sp.n FGP}
     (hB : B ∈ Φ.tree) (hopp : 2 * (opponents sp Φ V s B).ncard < sp.committeeSize) :
     unlockTarget sp Φ V s B = B := by
   have hS : {B' | B' ∈ Φ.tree ∧ Φ.Anc B' B ∧ 2 * (opponents sp Φ V s B').ncard < sp.committeeSize} ⊆

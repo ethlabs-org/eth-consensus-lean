@@ -34,7 +34,7 @@ theorem opponents_mono_view {V W : View sp.n} (hv : V.votes ⊆ W.votes)
   · exact Or.inr ⟨x, hs hx, h⟩
 
 /-- The votes and the support of a pool view lie in a set that holds the pools. -/
-theorem voteViewList_subset {A : ACState sp.n} {σ : Int} {cutoff : ETime}
+private theorem voteViewList_subset {A : ACState sp.n} {σ : Int} {cutoff : ETime}
     {S : Set (Vote sp.n)} (hpool : ∀ τ, ∀ v ∈ A.pool τ, v ∈ S) :
     (View.ofLists (voteViewList A Φ σ cutoff)).votes ⊆ S ∧
       (View.ofLists (voteViewList A Φ σ cutoff)).support ⊆ S := by
@@ -55,7 +55,7 @@ theorem voteViewList_subset {A : ACState sp.n} {σ : Int} {cutoff : ETime}
 /-- The votes and the support of the merged vote view lie in a set that holds the pools of `A`
 and the counted declarations of the slot-`s` blocks of `Φ.tree` whose validator equivocates in
 the pool of `A` (a counted declaration that the pool holds is a pool vote). -/
-theorem mergedVoteView_subset {A : ACState sp.n} {s : Nat} {S : Set (Vote sp.n)}
+private theorem mergedVoteView_subset {A : ACState sp.n} {s : Nat} {S : Set (Vote sp.n)}
     (hpool : ∀ τ, ∀ v ∈ A.pool τ, v ∈ S)
     (htree : ∀ C ∈ Φ.tree, C.slot = s → ∀ v, v ∈ declaredHeadVotes C ∨ v ∈ declaredSupportVotes C →
       v.val ∈ equivocators {w | w ∈ A.pool v.slot} → v ∈ S) :
