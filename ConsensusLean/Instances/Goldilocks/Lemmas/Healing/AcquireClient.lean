@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.ServedBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.FinalityPair
 
 public section

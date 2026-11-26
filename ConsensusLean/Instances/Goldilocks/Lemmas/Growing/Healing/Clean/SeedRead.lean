@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Regimes.S
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.ServedBase
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

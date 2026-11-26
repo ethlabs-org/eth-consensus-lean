@@ -7,7 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.PivotRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
-import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.ServedBase
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section

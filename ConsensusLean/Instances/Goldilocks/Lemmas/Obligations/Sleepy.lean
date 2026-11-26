@@ -11,7 +11,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenanc
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameLabels
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transfer
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Served
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.ServedBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 public import ConsensusLean.Spec.Shape.Run
 import ConsensusLean.Lemmas.Tactic.Linarith
