@@ -60,7 +60,7 @@ theorem committeeT_of_facts (hK : Compose.Growing.CommitteeFacts tr (fun _ => H)
 
 /-- **The gate**: an honest node may vote in slot `s`, at every cut, iff it is in the slot-`s`
 committee. -/
-theorem mayVote_iff_of_facts (hK : Compose.Growing.CommitteeFacts tr (fun _ => H) K)
+private theorem mayVote_iff_of_facts (hK : Compose.Growing.CommitteeFacts tr (fun _ => H) K)
     (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H) (i s : Nat) :
     (tr.state y i).ac.mayVote s = true ↔ y ∈ K.committee s :=
   hK.hGate (tr.time i) (hrun.time_nonneg i) y hy i (fun _ hk => hrun.time_mono hk.le) s
@@ -102,7 +102,7 @@ theorem committeeSize_pos_of_mem (hK : Compose.Growing.CommitteeFacts tr (fun _ 
   hK.hsize s ▸ (Set.ncard_pos (Set.toFinite _)).2 ⟨u, hu⟩
 
 /-- `committeeSize` is positive: CS2 at the slot after the slot of `ḡ` leaves a member. -/
-theorem committeeSize_pos_of_twoK (hK : Compose.Growing.CommitteeFacts tr (fun _ => H) K)
+private theorem committeeSize_pos_of_twoK (hK : Compose.Growing.CommitteeFacts tr (fun _ => H) K)
     {g : Time} (htwo : ∀ s : Nat, sp.slot (gbar g) + 1 ≤ s →
       2 * (K.committee s ∩ Hᶜ).ncard < (K.committee s).ncard) : 0 < sp.committeeSize := by
   have := cs2_of_twoK hK htwo (le_refl (sp.slot (gbar g) + 1))

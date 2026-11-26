@@ -87,7 +87,7 @@ theorem cutZ_le_of_clean (hw : SettledIn tr H g w i₀ m c) {j : Int}
   linarith
 
 /-- A cut at a time `≥ w` is at or after the settled cut `i₀`. -/
-theorem le_of_settled (hw : SettledIn tr H g w i₀ m c) {k : Nat} (hk : w ≤ tr.time k) :
+private theorem le_of_settled (hw : SettledIn tr H g w i₀ m c) {k : Nat} (hk : w ≤ tr.time k) :
     i₀ ≤ k := by
   by_contra h
   have := hw.2.1.2 k (not_le.1 h)
@@ -101,7 +101,7 @@ theorem PhaseOn.mono_right {k k' : Nat} (h : PhaseOn tr.projFG H i₀ k m c) (hk
 /-! ### `Healthy(g)` after the cut `c_z` (HR.4's facts over `HSShared`) -/
 
 /-- An honest restart is at or before `t_{slot(ḡ)+1}` (`Healthy(g)`; HR.4's `restart_le`). -/
-theorem restart_le_of_healthy (hrun : GoldilocksRun proposer dg H tr ini)
+private theorem restart_le_of_healthy (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H K dg g ΔF)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (hk : tr.RestartAt y k) :
     tr.time k ≤ sp.ts (sp.slot (gbar g) + 1 : Nat) := by
@@ -127,7 +127,7 @@ theorem restart_le_of_healthy (hrun : GoldilocksRun proposer dg H tr ini)
     exact hgu (by linarith only [hp₀, ht, this])
 
 /-- **`f < h_t` after the cut** (`Healthy(g)`; HR.4's `fault_bound_late`). -/
-theorem faultBound_of_healthy (hrun : GoldilocksRun proposer dg H tr ini)
+private theorem faultBound_of_healthy (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H K dg g ΔF)
     {t : Time} (ht : cutZ sp.toParams g ≤ t) : tr.FaultBound H t := by
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
@@ -419,7 +419,7 @@ is cast by `t_j + Δ`, and `B` is below a block `W` effectively allowed at the v
 its voter's full viable tree: `fc_root` is there, by the phase's frontier block,
 `getAnchor_viable`, and the walk steps in the viable vote domain; so it is below a viable head,
 allowed by `viableHeads_iff`) that is genesis or that the voter accepted before `t_j + 2Δ`. -/
-theorem clean_vote_witness (hrun : GoldilocksRun proposer dg H tr ini)
+private theorem clean_vote_witness (hrun : GoldilocksRun proposer dg H tr ini)
     (hs : HSShared tr H K dg g ΔF)
     (hc : CatchRun tr H g (2 * sp.Δ)) (hw : SettledIn tr H g w i₀ m c) {z : Fin sp.n}
     (hz : z ∈ H) {kz : Nat} {e' : AC.Em sp (List (FG.Att sp.n))}

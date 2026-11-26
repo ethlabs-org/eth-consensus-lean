@@ -25,7 +25,7 @@ namespace Consensus.Goldilocks
 
 /-- A set of at least `k` validators meets every set whose complement has fewer than `k`
 members. -/
-theorem exists_mem_of_ncard_compl_lt {n k : Nat} {S : Finset (Fin n)} {V : Set (Fin n)}
+private theorem exists_mem_of_ncard_compl_lt {n k : Nat} {S : Finset (Fin n)} {V : Set (Fin n)}
     (hS : k ≤ S.card) (hV : Vᶜ.ncard < k) : ∃ v ∈ S, v ∈ V := by
   by_contra! h
   have := Set.ncard_le_ncard (s := (S : Set (Fin n))) (t := Vᶜ) h

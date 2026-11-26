@@ -24,7 +24,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 An optimistic write would require an honest vote before the proposal cut;
 a regular write is later even in time. The counted voters are members of the slot-`s` committee
 (P), fewer than half of whose members are faulty. -/
-theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun proposer dg H tr ini)
+private theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {K : AC.CommitteeDict sp.n}
     (hPK : AC.CommitteeP K tr.projAC H)
     {s i : Nat} (hs1 : 1 ≤ s) (hcs2 : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize)
@@ -74,7 +74,7 @@ theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun proposer dg H tr ini)
 
 /-- The actual proposal start is the current root or a live image of its
 own unlocked locks. No phase or cross-node ancestry is assumed. -/
-theorem actual_proposal_start_cases {A : AC.ACState sp.n}
+private theorem actual_proposal_start_cases {A : AC.ACState sp.n}
     {Phi : AC.Frm sp.n (List (FG.Att sp.n))} {t : Time}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp A Phi t).2 = some (d, pay)) :
@@ -96,7 +96,7 @@ theorem actual_proposal_start_cases {A : AC.ACState sp.n}
 
 /-- Keep the live preimage before unlock, so its actual writer origin can
 be classified without replacing it by an arbitrary optimistic lock. -/
-theorem unlocked_live_preimage {Phi : AC.Frm sp.n (List (FG.Att sp.n))}
+private theorem unlocked_live_preimage {Phi : AC.Frm sp.n (List (FG.Att sp.n))}
     (hPhi : FrameOK Phi) {L : Set AC.Lock} (hwf : AC.LocksWF sp L) {t : Time} {s : Int}
     {V : AC.View sp.n} {X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : X ∈ AC.liveLockBlocks sp (AC.unlock sp L Phi t s V) Phi t) :

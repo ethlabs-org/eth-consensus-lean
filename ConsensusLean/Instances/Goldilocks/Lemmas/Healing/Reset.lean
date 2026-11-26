@@ -305,7 +305,7 @@ theorem producer {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
       hset hwit hcl j' hj'
 
 /-- **The reset count** (HR.3 (c)): the reset exists by `c_z + 6(Δ + A_HS)`. -/
-theorem reset_count {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+private theorem reset_count {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
     {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF Gp : Time}
