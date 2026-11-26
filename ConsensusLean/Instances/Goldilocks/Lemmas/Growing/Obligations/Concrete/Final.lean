@@ -94,10 +94,8 @@ theorem final_window_extract_at
     have := A.two_le_fgSlots
     rw [A.finalSlots_eq]; omega
   obtain ⟨ΔR, a, hreset, hplace⟩ := final_reset_premises_of_shared_within_at S A V Q hc2 h3c
-    (finalWindow_offsets A) (FinalQueryAt.hsSharedUpTo_at Q) (d := 0) (L := 0) le_rfl
-    (by simp) (Gs := A.signGap) le_rfl (by simpa using Q.mature)
-    (Generic.voteLatency_zero_from (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid).toLocalRun)
-    (by linarith [mul_le_mul_of_nonneg_left hT hΔ.le])
+    (finalWindow_offsets A) (FinalQueryAt.hsSharedUpTo_at Q) (Gs := A.signGap) le_rfl
+    (by simpa using Q.mature) (by linarith [mul_le_mul_of_nonneg_left hT hΔ.le])
     hcal (final_signGap_at S A V Q le_rfl) (signGap_δt A)
   have hdel : 6 * Q.params.Δ + (A.signGap : Time) * Q.params.Δ +
       (protoFGDelay (Model.pubOf Q.run.1) + (A.releaseGap : Time) * Q.params.Δ) ≤
