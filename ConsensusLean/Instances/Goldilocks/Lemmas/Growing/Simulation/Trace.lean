@@ -34,15 +34,9 @@ theorem simTraceAt_labelled_honest (hv : rho.ExecutionValid) {k : Nat}
   rw [simTraceAt_eq] at hk ⊢
   obtain ⟨r, _, ev, hr, he, _, _, _, hnode, ht, _⟩ := simTrace_cut_origin S rho hn hk
   rw [ht]
-  rcases hnode with hnode | hown
-  swap
-  · obtain ⟨-, -, j, -, w, hej, hrn, -⟩ := (ownAdmitCut_iff S rho hn).mp hown
-    rw [simTrace_node, hr, Option.elim_some, hrn]
-    have hm := List.mem_of_getElem? hej
-    exact honest_ownKey_at S rho (hv.honest_only _ hm) (hv.in_horizon _ hm).2
-  · rw [hnode]
-    exact honest_ownKey_at S rho (hv.honest_only ev (List.mem_of_getElem? he))
-      (hv.in_horizon ev (List.mem_of_getElem? he)).2
+  rw [hnode]
+  exact honest_ownKey_at S rho (hv.honest_only ev (List.mem_of_getElem? he))
+    (hv.in_horizon ev (List.mem_of_getElem? he)).2
 
 /-- A trace call's node is honest when it runs, even if compromised later. -/
 theorem simTraceAt_call_honest (hv : rho.ExecutionValid) {y k c}

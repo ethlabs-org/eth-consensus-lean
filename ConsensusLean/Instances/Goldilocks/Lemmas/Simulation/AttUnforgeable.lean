@@ -61,42 +61,38 @@ theorem attCall_sign_of_released (hv : rho.ExecutionValid) {y : Fin (Fintype.car
   cases ev with
   | tick v t =>
     rcases mem_eventCuts_tick e rho he (List.mem_of_getElem? hr) with
-      ⟨-, hg⟩ | ⟨j, hj, w, hw, a', ha', st, s, -, hg⟩
+      ⟨-, hg⟩ | ⟨a', ha', st, s, -, hg⟩
     · exact (Compose.tick_no_attestation _ _ _ _ _ _ _ _
         (hlabel ▸ (mem_groupRecs_fields _ _ _ _ _ _ _ hg).1)).elim
     have hl' := (mem_groupRecs_fields _ _ _ _ _ _ _ hg).1
     rw [hlabel] at hl'
     obtain rfl : a = a' := by simpa [exec, onAttestation] using hl'
-    rcases hadm hw ha' with ⟨q, hq, hsig⟩ | ⟨hp, C, hC⟩
-    · exact ⟨q, hq.trans_le ((cutMap_mono e rho hj).trans hstart), hsig⟩
-    obtain ⟨G, hG⟩ : ∃ G, G = groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey w)
-        (e.adapter.node (stateAt e rho w j)) t (Nat.pair j 0)
-        (.tick (encodeTxs (Model.mempool rho.inbox w t)) (e.adapter.sign (rho.ownKey w) t)) :=
+    rcases hadm he ha' with ⟨q, hq, hsig⟩ | ⟨hp, C, hC⟩
+    · exact ⟨q, hq.trans_le hstart, hsig⟩
+    obtain ⟨G, hG⟩ : ∃ G, G = groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
+        (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0)
+        (.tick (encodeTxs (Model.mempool rho.inbox v t)) (e.adapter.sign (rho.ownKey v) t)) :=
       ⟨_, rfl⟩
-    have hEj : eventCuts e rho j = G ++
-        admitRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey w) t j (admitsAt e rho w j)
-          (postTick e rho e.adapter.sign w j t) 1 := by
-      rw [eventCuts_tick e rho j w t hw, ite_eq_left hp, hG]
+    have hEj : eventCuts e rho i = G ++
+        admitRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v) t i (admitsAt e rho v i)
+          (postTick e rho e.adapter.sign v i t) 1 := by
+      rw [eventCuts_tick e rho i v t he, ite_eq_left hp, hG]
     obtain ⟨m, hm, hCm⟩ := List.getElem_of_mem hC
     have hmG : m < G.length := by rw [hG, length_groupRecs']; exact hm
-    have hend : cutMap e rho j + G.length ≤ k := by
-      rcases Nat.lt_or_eq_of_le hj with hlt | rfl
-      · have := cutMap_mono e rho (Nat.succ_le_of_lt hlt)
-        rw [cutMap_succ, hEj, List.length_append] at this
-        omega
-      · refine Nat.le_of_not_lt fun hlt => ?_
-        rw [hEj, List.getElem?_append_left (by omega)] at hr
-        exact Compose.tick_no_attestation _ _ _ _ _ _ _ _
-          (hlabel ▸ (mem_groupRecs_fields _ _ _ _ _ _ _ (hG ▸ List.mem_of_getElem? hr)).1)
-    have hval : a.val = rho.ownKey w := Simulation.attest_val_of_mem_node_exec
-      (A := A) (C := C) (a := a) (runProposer rho hn) (digestOf e rho) (rho.ownKey w)
-      (e.adapter.node (stateAt e rho w j)) t
-      (.tick (encodeTxs (Model.mempool rho.inbox w t)) (e.adapter.sign (rho.ownKey w) t)) hC
-    have hrec := allCuts_getElem?_add e rho j m (List.getElem?_eq_some_iff.mp hw).1
+    have hend : cutMap e rho i + G.length ≤ k := by
+      refine Nat.le_of_not_lt fun hlt => ?_
+      rw [hEj, List.getElem?_append_left (by omega)] at hr
+      exact Compose.tick_no_attestation _ _ _ _ _ _ _ _
+        (hlabel ▸ (mem_groupRecs_fields _ _ _ _ _ _ _ (hG ▸ List.mem_of_getElem? hr)).1)
+    have hval : a.val = rho.ownKey v := Simulation.attest_val_of_mem_node_exec
+      (A := A) (C := C) (a := a) (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
+      (e.adapter.node (stateAt e rho v i)) t
+      (.tick (encodeTxs (Model.mempool rho.inbox v t)) (e.adapter.sign (rho.ownKey v) t)) hC
+    have hrec := allCuts_getElem?_add e rho i m (List.getElem?_eq_some_iff.mp he).1
       (by rw [hEj, List.length_append]; omega)
     rw [hEj, List.getElem?_append_left hmG, List.getElem?_eq_getElem hmG] at hrec
     subst hG
-    refine ⟨cutMap e rho j + m, by omega, C, ?_, ?_⟩
+    refine ⟨cutMap e rho i + m, by omega, C, ?_, ?_⟩
     · rw [simTrace_node, hrec, hval]
       simp only [Option.elim_some, groupRecs_eq, List.getElem_mapIdx]
     · rw [simTrace_label, hrec]

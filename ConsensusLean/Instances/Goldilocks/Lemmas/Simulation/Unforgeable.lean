@@ -42,9 +42,6 @@ theorem blockCall_origin {y : Fin (Fintype.card V)} {k : Nat} {b : A.Blk}
   cases ev with
   | tick v t =>
     have hm := List.mem_of_getElem? hr
-    rcases hnode with hnode | ⟨-, -, -, -, -, -, a, ha⟩
-    swap
-    · cases ha
     have hmem := hm
     rw [eventCuts_tick e rho i v t he] at hmem
     rcases List.mem_append.mp hmem with hmem | hmem
@@ -320,12 +317,7 @@ private theorem emit_of_record {i : Nat} {ev}
     {em} (hem : em ∈ ℓ.emits) :
     ∃ k < cutMap S rho hn (i + 1),
       (simTrace S rho hn).EmitAt (rho.ownKey ev.node) k em.msg := by
-  have hnode : r.node = rho.ownKey ev.node := by
-    rcases (mem_eventCuts S rho hn he hr).2 with ⟨h, -⟩ | h
-    · exact h
-    · obtain ⟨a, ha⟩ := h.label
-      rw [hl] at ha
-      cases ha
+  have hnode : r.node = rho.ownKey ev.node := (mem_eventCuts S rho hn he hr).2.1
   obtain ⟨m, hm, hrm⟩ := List.getElem_of_mem hr
   have hk := allCuts_getElem?_add S rho hn i m (List.getElem?_eq_some_iff.mp he).1 hm
   rw [List.getElem?_eq_getElem hm, hrm] at hk

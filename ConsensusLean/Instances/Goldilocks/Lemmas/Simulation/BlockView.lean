@@ -67,7 +67,7 @@ theorem accepted_in_view_of_releases (hv : rho.ExecutionValid) {v : V}
   obtain ⟨hnode, hlab⟩ := hacc
   have hl : (simTrace S rho hn).label k ≠ none := by rw [hlab]; simp
   obtain ⟨r, j, ev, _, he, hjk, _, hidx, hn', _, _, hlab'⟩ :=
-    simTrace_cut S rho hn hl fun a h => by rw [hlab] at h; cases h
+    simTrace_cut_origin S rho hn hl
   have hji : j < i := by
     by_contra h
     have := cutMap_mono S rho hn (not_lt.1 h)

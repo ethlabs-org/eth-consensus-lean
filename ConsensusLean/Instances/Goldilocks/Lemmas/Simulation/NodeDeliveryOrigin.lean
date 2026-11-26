@@ -431,25 +431,25 @@ private theorem group_label_time {Q : Params} {N : NodeAC Q}
   rw [List.getElem_mapIdx, List.getElem_zip]
   exact ⟨List.getElem_mem _, rfl, rfl⟩
 
-/-- A cut of an engine tick of `v` at `t` is a cut of its public tick group, or an own
-admission (`mem_admitRecs`). -/
+/-- A cut of an engine tick of `v` at `t` (event `i`) is a cut of its public tick group, or an
+own admission of that tick: an `.attestation` group of `v` under an id `Nat.pair i s`, `1 ≤ s`
+(`mem_admitRecs`). -/
 theorem mem_eventCuts_tick {i : Nat} {v : V} {t : Time}
     (he : rho.events[i]? = some (.tick v t)) {r : CutRec A} (hr : r ∈ eventCuts e rho i) :
     ((paramsAtCount p (Fintype.card V) hN hn).IsPublic t ∧
       r ∈ groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v)
         (e.adapter.node (stateAt e rho v i)) t (Nat.pair i 0)
         (.tick (encodeTxs (Model.mempool rho.inbox v t)) (e.adapter.sign (rho.ownKey v) t))) ∨
-    ∃ j ≤ i, ∃ w : V, rho.events[j]? = some (.tick w t) ∧ ∃ a ∈ admitsAt e rho w j,
-      ∃ (st : NodeState A) (s : Nat), 1 ≤ s ∧
-        r ∈ groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey w) st t (Nat.pair j s)
-          (.attestation a) := by
+    ∃ a ∈ admitsAt e rho v i, ∃ (st : NodeState A) (s : Nat), 1 ≤ s ∧
+      r ∈ groupRecs (runProposer rho hn) (digestOf e rho) (rho.ownKey v) st t (Nat.pair i s)
+        (.attestation a) := by
   rw [eventCuts_tick e rho i v t he] at hr
   rcases List.mem_append.mp hr with hr | hr
   · split at hr
     · exact Or.inl ⟨by assumption, hr⟩
     · cases hr
   · obtain ⟨a, ha, st, s, hs, hg⟩ := mem_admitRecs _ _ _ _ _ _ _ _ _ hr
-    exact Or.inr ⟨i, le_rfl, v, he, a, ha, st, s, hs, hg⟩
+    exact Or.inr ⟨a, ha, st, s, hs, hg⟩
 
 omit [Countable I] in
 private theorem delivery_node_time {Q : Params} {N : NodeAC Q} {K B : Type}
@@ -461,38 +461,27 @@ private theorem delivery_node_time {Q : Params} {N : NodeAC Q} {K B : Type}
   obtain ⟨_, _, _, _, _, _, _, hg⟩ := mem_deliverRecs_group C hs pr dg y t i os st sub hr
   exact (group_label_time _ _ _ _ _ _ _ hg).2
 
-/-- A replay cut has the time of its enclosing engine event, and its node key, except an own
-admission of the time's tick phase: the `.attestation` cut of the node of a tick at that time at
-an event `j ≤ i`. -/
+/-- A replay cut has the time of its enclosing engine event and the event node's key (a tick's
+own admissions are cuts of the ticking node). -/
 theorem eventCut_node_time {i : Nat} {ev : Model.Event V (Model.protoOf (compiled F) E).Object}
     (he : rho.events[i]? = some ev) {r : CutRec A} (hr : r ∈ eventCuts e rho i) :
-    r.time = ev.time ∧ (r.node = rho.ownKey ev.node ∨ (∃ v, ev = .tick v ev.time) ∧
-      ∃ j ≤ i, ∃ w : V, rho.events[j]? = some (.tick w ev.time) ∧ r.node = rho.ownKey w ∧
-        ∃ a, r.label = .fg (.attestation a)) := by
+    r.time = ev.time ∧ r.node = rho.ownKey ev.node := by
   cases ev with
   | tick v t =>
-    rcases mem_eventCuts_tick e rho he hr with ⟨-, hr⟩ | ⟨j, hj, w, hw, a, -, st, s, -, hr⟩
-    · exact ⟨(group_label_time _ _ _ _ _ _ _ hr).2.1,
-        Or.inl (group_label_time _ _ _ _ _ _ _ hr).2.2⟩
-    · obtain ⟨hl, ht, hn⟩ := group_label_time _ _ _ _ _ _ _ hr
-      refine ⟨ht, Or.inr ⟨⟨v, rfl⟩, j, hj, w, hw, hn, a, ?_⟩⟩
-      simpa [exec, onAttestation] using hl
+    rcases mem_eventCuts_tick e rho he hr with ⟨-, hr⟩ | ⟨_, -, _, _, -, hr⟩ <;>
+    exact (group_label_time _ _ _ _ _ _ _ hr).2
   | restart v t =>
     rw [eventCuts_restart e rho i v t he] at hr
-    exact ⟨(group_label_time _ _ _ _ _ _ _ hr).2.1,
-      Or.inl (group_label_time _ _ _ _ _ _ _ hr).2.2⟩
+    exact (group_label_time _ _ _ _ _ _ _ hr).2
   | deliver v o t =>
     rw [eventCuts_deliver e rho i v o t he] at hr
-    exact ⟨(delivery_node_time _ _ _ _ _ _ _ _ _ _ hr).1,
-      Or.inl (delivery_node_time _ _ _ _ _ _ _ _ _ _ hr).2⟩
+    exact delivery_node_time _ _ _ _ _ _ _ _ _ _ hr
 
 /-- A labelled trace cut lies in an engine event with the same time and node. -/
 theorem labelled_cut_origin {k : Nat} {l : Cut A} (hl : (simTrace e rho).label k = some l) :
     ∃ i ev r, rho.events[i]? = some ev ∧ cutMap e rho i ≤ k ∧
       (eventCuts e rho i)[k - cutMap e rho i]? = some r ∧ r.label = l ∧
-      (simTrace e rho).time k = ev.time ∧ ((simTrace e rho).node k = rho.ownKey ev.node ∨
-        (∃ v, ev = .tick v ev.time) ∧ ∃ j ≤ i, ∃ w : V, rho.events[j]? = some (.tick w ev.time) ∧
-          (simTrace e rho).node k = rho.ownKey w ∧ ∃ a, l = .fg (.attestation a)) ∧
+      (simTrace e rho).time k = ev.time ∧ (simTrace e rho).node k = rho.ownKey ev.node ∧
       (simTrace e rho).pos k = r.pos ∧ (allCuts e rho)[k]? = some r ∧
       k < cutMap e rho (i + 1) := by
   rw [simTrace_label] at hl
@@ -507,10 +496,7 @@ theorem labelled_cut_origin {k : Nat} {l : Cut A} (hl : (simTrace e rho).label k
     obtain ⟨ht, hn⟩ := eventCut_node_time e rho he (List.mem_of_getElem? hr)
     rw [simTrace_time, simTrace_node, simTrace_pos, hk]
     have hrl := Option.some.inj hl
-    refine ⟨i, _, r, he, hstart, hr, hrl, ht, ?_, rfl, rfl, hend⟩
-    rcases hn with hn | ⟨hev, j, hj, w, hw, hn, a, ha⟩
-    · exact Or.inl hn
-    · exact Or.inr ⟨hev, j, hj, w, hw, hn, a, hrl ▸ ha⟩
+    exact ⟨i, _, r, he, hstart, hr, hrl, ht, hn, rfl, rfl, hend⟩
 
 private theorem group_id {Q : Params} {N : NodeAC Q}
     (pr : Nat → Fin Q.n) (dg : Digest (List (FG.Att Q.n)) N.Payload)
@@ -576,32 +562,27 @@ theorem deliverRecs_id {Q : Params} {N : NodeAC Q} {K B : Type}
   obtain ⟨_, _, _, s, _, _, hle, hg⟩ := mem_deliverRecs_group _ _ _ _ _ _ _ _ _ _ hr
   exact ⟨s, hle, group_id _ _ _ _ _ _ _ hg⟩
 
-/-- **The origin of a replay cut**: at its engine event's time, either at the event's node
-under an id `Nat.pair i s`, or an own admission of a tick event `j ≤ i` at that time: an
-`.attestation` cut of the tick's node under an id `Nat.pair j s` with `1 ≤ s`, inside a tick. -/
+/-- **The origin of a replay cut**: at its engine event's time and node, under an id
+`Nat.pair i s` of the event (a tick's own admissions included). -/
 theorem eventCut_origin {i : Nat} {ev : Model.Event V (Model.protoOf (compiled F) E).Object}
     (he : rho.events[i]? = some ev) {r : CutRec A} (hr : r ∈ eventCuts e rho i) :
-    r.time = ev.time ∧ ((r.node = rho.ownKey ev.node ∧ ∃ s, r.event = Nat.pair i s) ∨
-      (∃ v, ev = .tick v ev.time) ∧ (∃ a, r.label = .fg (.attestation a)) ∧
-        ∃ j ≤ i, ∃ w : V, rho.events[j]? = some (.tick w ev.time) ∧ r.node = rho.ownKey w ∧
-          ∃ s, 1 ≤ s ∧ r.event = Nat.pair j s) := by
+    r.time = ev.time ∧ r.node = rho.ownKey ev.node ∧ ∃ s, r.event = Nat.pair i s := by
   cases ev with
   | tick v t =>
-    rcases mem_eventCuts_tick e rho he hr with ⟨-, hr⟩ | ⟨j, hj, w, hw, a, -, st, s, hs, hr⟩
-    · obtain ⟨-, ht, hn⟩ := group_label_time _ _ _ _ _ _ _ hr
-      exact ⟨ht, Or.inl ⟨hn, 0, group_id _ _ _ _ _ _ _ hr⟩⟩
-    · obtain ⟨hl, ht, hn⟩ := group_label_time _ _ _ _ _ _ _ hr
-      refine ⟨ht, Or.inr ⟨⟨v, rfl⟩, ⟨a, ?_⟩, j, hj, w, hw, hn, s, hs, group_id _ _ _ _ _ _ _ hr⟩⟩
-      simpa [exec, onAttestation] using hl
+    rcases mem_eventCuts_tick e rho he hr with ⟨-, hr⟩ | ⟨_, -, _, s, -, hr⟩
+    · exact ⟨(group_label_time _ _ _ _ _ _ _ hr).2.1, (group_label_time _ _ _ _ _ _ _ hr).2.2,
+        0, group_id _ _ _ _ _ _ _ hr⟩
+    · exact ⟨(group_label_time _ _ _ _ _ _ _ hr).2.1, (group_label_time _ _ _ _ _ _ _ hr).2.2,
+        s, group_id _ _ _ _ _ _ _ hr⟩
   | restart v t =>
     rw [eventCuts_restart e rho i v t he] at hr
     obtain ⟨-, ht, hn⟩ := group_label_time _ _ _ _ _ _ _ hr
-    exact ⟨ht, Or.inl ⟨hn, 0, group_id _ _ _ _ _ _ _ hr⟩⟩
+    exact ⟨ht, hn, 0, group_id _ _ _ _ _ _ _ hr⟩
   | deliver v o t =>
     rw [eventCuts_deliver e rho i v o t he] at hr
     obtain ⟨s, _, hid⟩ := deliverRecs_id _ _ _ _ _ _ _ _ _ _ hr
     obtain ⟨ht, hn⟩ := delivery_node_time _ _ _ _ _ _ _ _ _ _ hr
-    exact ⟨ht, Or.inl ⟨hn, s, hid⟩⟩
+    exact ⟨ht, hn, s, hid⟩
 
 private def cutPhase {Q : Params} {N : NodeAC Q} : Cut N → Nat
   | .ac l => match l.call with
@@ -682,7 +663,7 @@ theorem phase_of_pos_zero {i : Nat}
   rw [← hphase]
   cases ev with
   | tick v t =>
-    rcases mem_eventCuts_tick e rho he hr with ⟨-, hr⟩ | ⟨j, -, w, -, a, -, st, s, -, hr⟩
+    rcases mem_eventCuts_tick e rho he hr with ⟨-, hr⟩ | ⟨a, -, st, s, -, hr⟩
     · exact Or.inl (first_group_phase (N := A) _ _ _ _ _ _ _ hr h0)
     · exact Or.inr ⟨⟨v, t, rfl⟩, first_group_phase (N := A) _ _ _ _ _ _ _ hr h0⟩
   | restart v t =>
@@ -752,7 +733,7 @@ theorem restart_of_mem_eventCuts {i : Nat}
   cases ev with
   | restart v t => exact ⟨v, t, rfl⟩
   | tick v t =>
-    rcases mem_eventCuts_tick e rho he hr with ⟨-, hr⟩ | ⟨j, -, w, -, a, -, st, s, -, hr⟩ <;>
+    rcases mem_eventCuts_tick e rho he hr with ⟨-, hr⟩ | ⟨a, -, st, s, -, hr⟩ <;>
     · have hc := (group_label_time _ _ _ _ _ _ _ hr).1
       rw [hlabel] at hc
       cases restart_of_mem_exec _ _ _ _ _ _ hc hl
@@ -817,7 +798,7 @@ theorem simTraceAt_msgCall_delivered {y : Fin (Fintype.card V)} {k : Nat} {m : A
     | tick v t =>
       have ht : rho.events[i]? = some (.tick v t) :=
         (List.getElem?_eq_getElem hi).trans (congrArg some he)
-      rcases mem_eventCuts_tick e rho ht hmem with ⟨-, hmem⟩ | ⟨j, -, w, -, a, -, st, s, -, hmem⟩
+      rcases mem_eventCuts_tick e rho ht hmem with ⟨-, hmem⟩ | ⟨a, -, st, s, -, hmem⟩
       · exact (tick_no_message _ _ _ _ _ _ (hrl ▸ (group_label_time _ _ _ _ _ _ _ hmem).1) hm).elim
       · have hh := (group_label_time _ _ _ _ _ _ _ hmem).1
         rw [hrl] at hh
