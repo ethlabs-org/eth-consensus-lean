@@ -24,7 +24,7 @@ theorem fcRoot_mono_at'
     Anc (tr.HonestBlocksAt H) (Node.frame (tr.state y a)).fcRoot
       (Node.frame (tr.state y i)).fcRoot := by
   rw [Node.frame_eq, Node.frame_eq, Store.toFrame_fcRoot, Store.toFrame_fcRoot]
-  exact hrun.toLocalRun.finalized_mono_on_prefix' (hrun.time_nonneg i) hy hai
+  exact hrun.toLocalRun.finalized_mono_on_prefix (hrun.time_nonneg i) hy hai
     (fun k hk => hrun.time_mono hk.le)
 
 /-- A live remapped lock records a selection made before this same reader's compromise. -/

@@ -43,7 +43,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A source of an honest node is in its FG tree (`Healing.toFG_mem_tree`): the shadow frame's
 tree is the store's tree above `F`. -/
-theorem toFG_mem_tree' (hrun : GoldilocksRun proposer dg H tr ini)
+theorem toFG_mem_tree (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hto : AC.ToFGAt tr.projAC y k ℓ C) : C ∈ (tr.state y k).fg.tree := by
@@ -109,7 +109,7 @@ theorem report_of_deepest_candidate_of_run
       rcases Relation.ReflTransGen.cases_tail hPR with heq | ⟨Y, _, hY⟩
       · exact False.elim (hPg (by rw [← heq]; rfl))
       · exact False.elim (Option.some_ne_none _ (hY.2.2.symm.trans rfl))
-    have hR't := toFG_mem_tree' hrun hy hto
+    have hR't := toFG_mem_tree hrun hy hto
     obtain rfl : R' = R := hr.coherent.1 ⟨y, hy, r, hR't⟩ (hPhiU hRt)
       (hR'r.trans hRr.symm)
     exact ⟨r, ell', R', hto, hrun.time_mono hrj.le, hPR.mono hPhiU⟩
@@ -177,7 +177,7 @@ private theorem cut_lt_blockStamp_of_late {Hs : Set (Fin sp.n)}
     exact hlate k hki (not_lt.1 hle) (Coherence.accept_mem_from hrun.toLocalRun hx hA)
   have hge := Compose.blockStamp_ge_of_accept hacr.localRun hx
     ⟨ℓ', Compose.projAC_callAt.2 hc', hcall'⟩ hg i hk1
-  rw [Compose.projAC_state' hrun.toLocalRun hx i] at hge
+  rw [Compose.projAC_state hrun.toLocalRun hx i] at hge
   change AC.ETime.of (tr.time (k + 1)) ≤ _ at hge
   rw [ht'] at hge
   exact lt_of_lt_of_le (AC.etime_of_lt_of.2 hkc) hge
@@ -199,7 +199,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem projAC_state_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) :
     tr.projAC.state y i = (tr.state y i).ac := by
-  have h := Compose.projAC_state' (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy i
+  have h := Compose.projAC_state (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy i
   rwa [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC y (fun k hk => hrun.time_mono hk.le),
     RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
 
@@ -396,7 +396,7 @@ theorem toFG_time_ge_of_ancestor_slot_at
   have hac := Compose.goldilocks_ac_projection_from' (hrun.upTo hd) (hnc.upTo (tr.time i))
   have hRc := (AC.toFG_source hR'.2.2).1.1
   have hRs : R.slot ≤ sp.slot (tr.time i) := AC.frame_slot_leU sp hac.localRun.toU hy hR'.1 R hRc
-  have hPR' := RunTrace.anc_upTo_of_right' hrun hnc hd
+  have hPR' := RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd
     ((AC.frameIn_of_callAt hac.localRun hy hR'.1).2 hRc) hPR
   have hPRs := (Anc.slot_le hac.localRun.coherent hPR').1
   exact (AC.ts_le_iff_le_slot sp hd _).2 (by omega)
@@ -450,8 +450,8 @@ theorem report_of_compatible_candidate_of_run_at
     (fun C hC => by
       rw [hst] at hC
       exact (hcompat C hC).imp
-        (RunTrace.anc_upTo_of_right' hrun hnc hd (hU P hPc.1.1))
-        (RunTrace.anc_upTo_of_right' hrun hnc hd (hU C hC.1.1)))
+        (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd (hU P hPc.1.1))
+        (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd (hU C hC.1.1)))
   have hrj : tr.time r ≤ tr.time j := hrt
   exact ⟨r, ell', R, (Healing.Growing.toFGAt_upTo_iff hrun.time_mono hrj).mp hto, hrj,
     hPR.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono hd)⟩

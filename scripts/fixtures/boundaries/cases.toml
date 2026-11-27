@@ -1375,3 +1375,22 @@ allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas", "GenericStatements
 '''], ['''"Main", "Sol"]''', '''"Main", "Sol", "GenericStatements", "GenericEdges"]'''], ['''"Proofs.Q", "Main"]
 expose = true''', '''"Proofs.Q", "Main", "GenericStatements"]
 expose = true''']]
+
+# The Shadow/PU proof tree joins the Growing lemma layer (adoption of P-U): as two layers, an edge
+# from the first into the second is refused; as one layer with both prefixes, the same edge is an
+# in-layer import, and the merged layer carries `sorry = false`.
+[ShadowSeparateRejectsGrowingEdge]
+expect = "FAIL[import] Fx.Lemmas.N (layer Shadow) imported by Fx.Lemmas.M (layer Lemmas)"
+edit."Fx/Lemmas/M.lean" = [['public import Fx.Lemmas.L', "public import Fx.Lemmas.L\npublic import Fx.Lemmas.N"]]
+edit."boundaries.toml" = [['prefixes = ["Fx.Lemmas"]', 'prefixes = ["Fx.Lemmas.L", "Fx.Lemmas.M"]'], ['[[exception]]', '''[[layer]]
+name = "Shadow"
+prefixes = ["Fx.Lemmas.N"]
+sorry = true
+allow = ["Init", "ToMathlib", "Spec", "Statements", "Lemmas"]
+[[exception]]'''], ['"Main", "Sol"]', '"Main", "Sol", "Shadow"]']]
+
+[ShadowMergedAllowsGrowingEdge]
+edit."Fx/Lemmas/M.lean" = [['public import Fx.Lemmas.L', "public import Fx.Lemmas.L\npublic import Fx.Lemmas.N"]]
+edit."boundaries.toml" = [['''prefixes = ["Fx.Lemmas"]
+sorry = true''', '''prefixes = ["Fx.Lemmas.L", "Fx.Lemmas.M", "Fx.Lemmas.N"]
+sorry = false''']]

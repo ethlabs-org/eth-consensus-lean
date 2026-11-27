@@ -1,4 +1,6 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Trace
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Reachable
@@ -130,34 +132,6 @@ private theorem tick_before_attest (y : Fin P.n) (st : NodeState A) (t : Time) (
 
 /-! ### In the run -/
 
-/-- **An `fg_attest` call is in a tick** (a copy of `attestCall_tick`). -/
-theorem attestCall_tick' (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
-    (hy : y ∈ H) {i : Nat} {C : A.Blk} {s : Option (FG.Att P.n)}
-    (hc : tr.CallAt y i (.fg (.attest C s))) :
-    ∃ j, j ≤ i ∧ tr.TickAt proposer dg y j (tr.time i) := by
-  obtain ⟨j, e, k, hg, rfl, hk⟩ := Coherence.call_in_group h hy hc
-  obtain ⟨x, rfl⟩ := exec_attest y _ _ e (List.mem_of_getElem? hk)
-  exact ⟨j, by omega, (RunTrace.tickAt_iff _ _ _ _ _ _).2 ⟨x, true, hg⟩⟩
-
-/-- **Before the tick of a time, a node's cuts at that time are restarts** (a copy of
-`before_tick`). -/
-theorem before_tick' (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
-    (hy : y ∈ H) {j k : Nat} {t : Time} {c : Cut A} (hg : tr.TickAt proposer dg y j t)
-    (hc : tr.CallAt y k c) (hk : k < j) (ht : tr.time k = t) :
-    ∃ ℓ : ACLabel A, c = .ac ℓ ∧ ℓ.call = .restart := by
-  obtain ⟨j', e, m, hg', rfl, hm⟩ := Coherence.call_in_group h hy hc
-  obtain ⟨x, f, hg⟩ := (RunTrace.tickAt_iff _ _ _ _ _ _).1 hg
-  rw [ht] at hg' hm
-  have hph := h.phase_order y hy y hy j' j t e (.tick x f) hg' hg (by omega) (.inl rfl)
-  cases e with
-  | tick x' f' =>
-    exact absurd (h.tick_unique y hy j' j t ((RunTrace.tickAt_iff _ _ _ _ _ _).2 ⟨x', f', hg'⟩)
-      ((RunTrace.tickAt_iff _ _ _ _ _ _).2 ⟨x, f, hg⟩)) (by omega)
-  | restart =>
-    rcases m with _ | m <;> simp [exec_eq, restart_eq, acCall_eq] at hm
-    exact ⟨_, hm.symm, rfl⟩
-  | _ => simp [Event.phase] at hph
-
 /-- **An honest node accepts its own block in the tick that makes it**, after the tick's two
 AC cuts, at the FG state before the tick, and its attestations are the proposal attestations of
 that state (a copy of `own_accept`). -/
@@ -178,7 +152,7 @@ private theorem own_accept (hq : ∀ y ∈ H, ({ A with initial := ini y } : Nod
   · have hg := (RunTrace.groupAt_iff _ _ _ _ _ _ _).1 hg
     exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   -- C0.3: the own block is accepted at its tick
-  obtain ⟨cfg, hreach, hst, hstep⟩ := group_step' h hy hg
+  obtain ⟨cfg, hreach, hst, hstep⟩ := group_step h hy hg
   have hC03 := honest_block_accepted_from' proposer dg y (hq y hy) hg₀ cfg _ (tr.time (j + 2)) x f
     hreach hstep hpr d p (by rw [hst]; exact hdp)
   simp only [hst] at hC03
@@ -203,7 +177,7 @@ private theorem own_accept (hq : ∀ y ∈ H, ({ A with initial := ini y } : Nod
   obtain rfl : j + 2 = i := by
     by_contra hne
     have hnew := (Coherence.accept_facts h hy hc).2.2.1
-    have := Coherence.tree_mono' h hy (show j + 2 + 1 ≤ i by omega) hfgB
+    have := Coherence.tree_mono h hy (show j + 2 + 1 ≤ i by omega) hfgB
     change (tr.state y i).fg.blocks B.root = some B at this
     rw [hnew] at this
     cases this
@@ -233,7 +207,7 @@ theorem fg_tick_order (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P
     fun y hy j src signed hc i ℓ hij hci ht =>
       fg_before_attest h hy (projFG_callAt.1 hc) (projFG_callAt.1 hci) hij ht,
     fun y hy i B hc hp _ a ha => ?_⟩
-  · obtain ⟨j, -, hg⟩ := attestCall_tick' h hy (projFG_callAt.1 hc)
+  · obtain ⟨j, -, hg⟩ := attestCall_tick h hy (projFG_callAt.1 hc)
     exact h.tick_public y hy j _ hg
   · -- the own acceptance is after the tick's AC cuts and the restarts of its time
     have hc := projFG_callAt.1 hc
@@ -241,50 +215,15 @@ theorem fg_tick_order (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P
     obtain ⟨j, rfl, hg, hac, -⟩ := own_accept hq hg₀ h hnc hy hc hp
     refine lt_of_le_of_ne (h.time_mono hk.le) fun ht => ?_
     by_cases hkj : k < j
-    · obtain ⟨ℓ', he, -⟩ := before_tick' h hy hg hck hkj ht
+    · obtain ⟨ℓ', he, -⟩ := before_tick h hy hg hck hkj ht
       cases he
     · obtain ⟨ℓ', hℓ'⟩ := hac k (by omega) hk
       cases Option.some.inj (hck.2.symm.trans hℓ'.2)
   · have hc := projFG_callAt.1 hc
     obtain ⟨j, rfl, -, -, hfg, H₀, hpay⟩ := own_accept hq hg₀ h hnc hy hc hp
-    rw [FGTrace.store, projFG_state' h hy, hfg]
+    rw [FGTrace.store, projFG_state h hy, hfg]
     rw [hpay] at ha
     exact (List.mem_filter.1 ha).1
-
-/-- **C0.5 (c), the shadow FG projection**, from any starts `ini` at which the AC meets the
-requirements (a copy of `fg_projection_from`). -/
-theorem fg_projection_from' (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P).Requirements)
-    (hg₀ : (P.genesisBlock A.genesisPayload).RootOk dg) (h : Node.LocalRun proposer dg H sg tr ini)
-    (hnc : NoCollRun dg tr) : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG := by
-  obtain ⟨hpub, hfirst, horder, hpay⟩ := fg_tick_order hq hg₀ h hnc
-  refine
-    { coherent := Coherence.honest_blocks_coherent h hnc
-      init := (fg_exec' h).1
-      exec := (fg_exec' h).2
-      tree_subset := fun y hy i X hX => ⟨y, hy, i, by
-        rw [FGTrace.store, projFG_state' h hy] at hX
-        exact hX⟩
-      time_nonneg := h.time_nonneg
-      time_mono := h.time_mono
-      attest_public := hpub
-      own_first := hfirst
-      attest_order := horder
-      own_payload := hpay
-      unforgeable := fun y hy i a ⟨ℓ, hc, ha⟩ hv => ?_ }
-  have hc := projFG_callAt.1 hc
-  have hpr : tr.AttCallAt y i a ∨ ∃ B, tr.BlockCallAt y i B ∧ a ∈ B.fgPayload := by
-    cases ℓ with
-    | block B acc =>
-      cases acc with
-      | true => exact Or.inr ⟨B, ⟨true, hc⟩, ha⟩
-      | false => cases ha
-    | attestation a' =>
-      rw [FGLabel.processed, List.mem_singleton] at ha
-      subst ha
-      exact Or.inl hc
-    | attest C s => cases ha
-  obtain ⟨j, hj, src, hs⟩ := h.att_unforgeable y hy i a hpr hv
-  exact ⟨j, hj, src, projFG_callAt.2 hs⟩
 
 end Consensus.Goldilocks.Compose
 

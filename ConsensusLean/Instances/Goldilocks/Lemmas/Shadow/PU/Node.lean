@@ -1,4 +1,6 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Reachable
 public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Handlers
@@ -336,39 +338,6 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
-theorem projAC_state' (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
-    (hy : y ∈ H) (i : Nat) : tr.projAC.state y i = (tr.state y i).ac := by
-  induction i with
-  | zero => simp [Trace.state, RunTrace.projAC, h.init y hy]
-  | succ i ih =>
-    by_cases hn : tr.node i = y
-    · cases hl : tr.label i with
-      | none =>
-        rw [tr.state_succ_of_not fun ℓ hc => by simp [hc.2] at hl]
-        rw [← ih]
-        simp [Trace.state, RunTrace.projAC, hl]
-      | some c =>
-        have hc : tr.CallAt y i c := ⟨hn, hl⟩
-        have hlaw := h.cutLaw y hy i c hc
-        rw [tr.state_succ_of_call hc]
-        cases c with
-        | ac ℓ => simp [Trace.state, RunTrace.projAC, hn, hl, RunTrace.acLabel]
-        | fg ℓ =>
-          rw [show (tr.post i).ac = (tr.state y i).ac by
-            cases ℓ with
-            | block B acc =>
-              cases acc
-              · rw [Node.cutStep_block_false] at hlaw; rw [hlaw.2]
-              · exact ((Node.cutStep_block_true _ _ _ _ _).1 hlaw).2.2.1
-            | attestation a => exact ((Node.cutStep_attestation _ _ _ _ _).1 hlaw).2.1
-            | attest C s =>
-              cases s
-              · rw [Node.cutStep_attest_none] at hlaw; rw [hlaw.2]
-              · exact ((Node.cutStep_attest_some _ _ _ _ _ _).1 hlaw).2.2, ← ih]
-          simp [Trace.state, RunTrace.projAC, hl, RunTrace.acLabel]
-    · rw [tr.state_succ_of_not fun ℓ hc => hn hc.1, ← ih]
-      simp [Trace.state, RunTrace.projAC, hn]
-
 end Consensus.Goldilocks.Compose
 
 namespace Consensus.Goldilocks.Healing
@@ -378,15 +347,6 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-
-theorem toFG_mem_tree' {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hto : AC.ToFGAt tr.projAC y k ℓ C) : C ∈ (tr.state y k).fg.tree := by
-  have hmem := (AC.toFG_source hto.2.2).1.1
-  rw [Node.frame_of_projAC_at hrun.toLocalRun hy hto.1, Node.frame_eq,
-    Store.toFrame_tree] at hmem
-  exact hmem.1
 
 end Consensus.Goldilocks.Healing
 

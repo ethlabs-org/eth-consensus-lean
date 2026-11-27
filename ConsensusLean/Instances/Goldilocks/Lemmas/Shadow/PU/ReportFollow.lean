@@ -10,7 +10,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshToFG
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowWrite
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowSigned
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence

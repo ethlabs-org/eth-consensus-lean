@@ -103,13 +103,13 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
       B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   have ht := hp.run.time_nonneg i
   have hle : ∀ c < i, tr.time c ≤ tr.time i := fun _ hc => hp.run.time_mono hc.le
-  have hR := Compose.Growing.reachable_at' hp.run ht hy hle
+  have hR := Compose.Growing.reachable_at hp.run ht hy hle
   have hs := hR.puSnapshot
   have hr := hR.reachableWith
   have hu := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   have hU := Coherence.honestBlocksAt_coherent hp.run hp.noColl
   have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocksAt H :=
-    Compose.Growing.tree_held_at' ht hy hle
+    Compose.Growing.tree_held_at ht hy hle
   have hanc : ∀ {X Y : AC.Blk sp.n (List (FG.Att sp.n))}, Anc (tr.HonestBlocksAt H) X Y →
       Y ∈ (tr.state y i).fg.tree → (tr.state y i).fg.Anc X Y :=
     fun h hY => Coherence.held_anc_at hp.run hp.noColl ht hy hle h hY
@@ -126,7 +126,7 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
       Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F O →
       ∃ W ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
         Anc (tr.HonestBlocksAt H) O W := fun ho hrb' hl hFO =>
-    KernelProof.high_origin_frozen_head_at' hp ho hrb' hy hcast hl (hFe ▸ hFO)
+    KernelProof.high_origin_frozen_head_at hp ho hrb' hy hcast hl (hFe ▸ hFO)
   -- the reduction: `B ⪯ Σ.F`, or `Σ.F ⪯ B` with a P-U viable frozen block above `B`
   suffices key : Anc (tr.HonestBlocksAt H) B (tr.state y i).fg.F ∨
       (Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F B ∧
@@ -146,7 +146,7 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
         l' < e.msg.slot ∧ Anc (tr.HonestBlocksAt H) E O := by
     intro E C hE hET hEh hEC hlt
     obtain ⟨W, hW, att, ha, v', d, hv', hd, hs', -, r', hrd, l', O, ho, hEO⟩ :=
-      hp.left_entry_origin_of_quarantine_at' ht hle hy hib hE hET hEh hEC hlt hpre
+      hp.left_entry_origin_of_quarantine_at ht hle hy hib hE hET hEh hEC hlt hpre
     have hl := KernelProof.row_origin_label_lt_at hp hy hcast hW ha
       (hp.run.antitone (hp.run.time_mono hd.le) hv') hs' hd hrd ho
     exact ⟨v', r', l', O, ho, by omega, (hp.run.time_mono (show r' ≤ i by omega)).trans hib,
@@ -225,7 +225,7 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
       obtain ⟨W, hW, hOW⟩ := frozen ho hrb' hl (hFJU.trans hJO)
       exact ⟨W, hW, hBJ.trans (hJO.trans hOW), viabJ (hvt hW) (hanc (hJO.trans hOW) (hvt hW))⟩
   · -- low `h_j`: `Σ.F` is below the seed
-    have hFS := hp.low_finalized_below_origin_at' ht hle hy hib (by omega) hS hqb
+    have hFS := hp.low_finalized_below_origin_at ht hle hy hib (by omega) hS hqb
     have hFB : Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.F B := by
       rcases hBS with h | h
       · exact Anc.total hU hFS h
@@ -242,8 +242,8 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
       rcases hBS with hBS | hSB
       · obtain ⟨W, hW, hSW⟩ := frozen hS hqb hm (hFB.trans hBS)
         exact ⟨W, hW, hBS.trans hSW,
-          Outcome.high_of_anc_at' hp.run hp.noColl hS ht hle hy (hvt hW) hSW⟩
-      · exact ⟨B, hBv, .refl, Outcome.high_of_anc_at' hp.run hp.noColl hS ht hle hy hBt hSB⟩
+          Outcome.high_of_anc_at hp.run hp.noColl hS ht hle hy (hvt hW) hSW⟩
+      · exact ⟨B, hBv, .refl, Outcome.high_of_anc_at hp.run hp.noColl hS ht hle hy hBt hSB⟩
     by_cases hHm : (tr.state y i).fg.hmax ≤ HZ tr H g + 1
     · exact ⟨W, hWv, hBW, isViable_of_hmax_le (by omega)⟩
     · exact gapW (by omega) (by omega) hBt hFB

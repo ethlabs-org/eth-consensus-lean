@@ -375,7 +375,7 @@ theorem optimisticSelect_le {Φ : N1.Frm} {f j τ : Nat} (h : ChainFrame Φ f j 
   obtain ⟨m, hm, rfl⟩ := ancR_blk_le h hanc
   exact ⟨m, le_trans hm hσ, rfl⟩
 
-theorem projAC_state' (i : Nat) :
+theorem projAC_state (i : Nat) :
     (tickRun N1 dg1).projAC.state v0 i = ((tickRun N1 dg1).state v0 i).ac :=
   Compose.projAC_state tickRun_goldilocksRun.toLocalRun (Set.mem_univ _) i
 
@@ -404,7 +404,7 @@ theorem optPoint_pool {x : Fin sp1.n} {i : Nat} {ℓ : ACLabel N1} {A : ACState 
       rw [time_eq, slot_nat]; omega
     rw [hs] at hv ⊢
     rcases ACPool.blockReceipt_pool sp1 _ _ _ _ v hv with hv | hv
-    · rw [projAC_state'] at hv; exact ⟨k + 1, le_rfl, pool_cv _ _ v hv⟩
+    · rw [projAC_state] at hv; exact ⟨k + 1, le_rfl, pool_cv _ _ v hv⟩
     · rw [show declaredHeadVotes (blk (k + 1)) = [cv k] from rfl, List.mem_singleton] at hv
       exact ⟨k, by omega, hv⟩
   · rcases emit_cases hl he with ⟨rfl, hm, hrp⟩ | ⟨k, fg', rfl, -, -, -, hm, hrp⟩
@@ -425,7 +425,7 @@ theorem update_pool {x : Fin sp1.n} {i s : Nat} {ℓ : ACLabel N1}
     (∀ v ∈ ((tickRun N1 dg1).projAC.state x i).pool s, v = cv s) ∧
       ∃ f, ChainFrame ℓ.frame f (jexp (stTip i)) (stTip i) := by
   obtain ⟨rfl, hfr, -⟩ := projAC_call hu.1
-  rw [projAC_state', hfr]
+  rw [projAC_state, hfr]
   exact ⟨pool_cv i s, state_frame i⟩
 
 /-- **Every protected block of slot `j` is a chain block of slot `≤ j`.** -/

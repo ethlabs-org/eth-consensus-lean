@@ -434,11 +434,11 @@ theorem result_honest_supporter_before_at
     rw [hcast]
     simp only [ACParams.ts] at hm
     linarith
-  have hparts := Compose.honest_participants_window_before' hpre (hnc.upTo _) (K := K)
+  have hparts := Compose.honest_participants_window_before hpre (hnc.upTo _) (K := K)
     (by rw [RunTrace.upTo_projAC]; exact AC.serviceWindowBefore_of_sync hS.sync)
     hgs hx (by rwa [RunTrace.upTo_projAC]) le_rfl hready
     (fun y hy hyK i => by
-      rw [← Compose.projAC_state' hpre.toLocalRun hy i]
+      rw [← Compose.projAC_state hpre.toLocalRun hy i]
       exact (AC.trace_mayVote_iff (Compose.goldilocks_ac_projection_from' hpre
         (hnc.upTo _)).localRun hy i s).2 hyK)
     (fun v hv => hK.facts.hP.1 _ x hx c (fun _ hk => hm' hk.le) s v (by
@@ -541,7 +541,7 @@ theorem vote_head_classification_of_service_at {s₀ M : Nat} {hi : Time}
     have hDw := (AC.deepest_mem hsel).1.1
     rw [Node.frame_of_projAC_at hr.toLocalRun hy hp.1,
       Node.frame_eq, Store.toFrame_tree] at hDw
-    have hDi := Compose.tree_mono' hr.toLocalRun hy hci hDw.1
+    have hDi := Compose.tree_mono hr.toLocalRun hy hci hDw.1
     have hHD := (hHL.mono hPhi.2).trans hLD
     have hHdi := hHd
     rw [Node.frame_of_projAC_at hr.toLocalRun hy hc'.1,

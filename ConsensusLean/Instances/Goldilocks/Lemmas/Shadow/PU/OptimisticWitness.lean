@@ -118,7 +118,7 @@ private theorem carry_of_service_senders
         y i ell hy hcast.1 hdl hFHv
       exact ⟨ky, hky, (ACTrace.upTo_acceptAt).mpr ⟨hm hky, hacc'⟩,
         by rw [ACTrace.upTo_deadline (tr := tr.projAC) hm (hm hky)]; exact hkyt⟩
-    · obtain ⟨ky, hky, hacc', hkyt⟩ := hrun.toLocalRun.acCatchAt' hcatch hwkw hkw
+    · obtain ⟨ky, hky, hacc', hkyt⟩ := hrun.toLocalRun.acCatchAt hcatch hwkw hkw
         (lt_of_lt_of_le (not_le.mp hgk) hgg) hy hcast.1
         (by linarith [sp.toParams.hΔ]) hFHv
       exact Or.inr (Or.inr ⟨ky, ACTrace.upTo_acceptAt.mpr ⟨hm hky, hacc'⟩,
@@ -168,7 +168,7 @@ private theorem relay_source_at_proposal_at
             change tr.projAC.deadline y i (tr.time q) ≤ tr.time i
             linarith) hFQ
       exact ⟨k, hki, hk, hkt.trans (hdl k hki _ hqt)⟩
-    · obtain ⟨k, hki, hk, hkt⟩ := hrun.toLocalRun.acCatchAt' hcatch hz hq
+    · obtain ⟨k, hki, hk, hkt⟩ := hrun.toLocalRun.acCatchAt hcatch hz hq
         (lt_of_not_ge hqg) hy hc (by linarith) hFQ
       exact ⟨k, hki, hk, by linarith⟩
   have hac := Compose.goldilocks_ac_projection_from' (hrun.upTo ht0) (hnc.upTo _)
@@ -190,7 +190,7 @@ private theorem relay_source_at_proposal_at
       have hQp := (AC.frameIn_of_callAt hr hy hca).2
         ((AC.accept_new sp hr hy ⟨ella, hca, hba⟩).1 ella hca)
       exact AC.mem_tree_of_acceptAtU sp hr.toU hy ⟨ella, hca, hba⟩ hki hc'
-        (RunTrace.anc_upTo_of_right' hrun hnc ht0 hQp hFQ)
+        (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 hQp hFQ)
   have hacc : AC.AcceptedBefore (tr.projAC.upTo (tr.time i)) y Q (sp.ts s + 3 * sp.Δ) := by
     rcases ha with hg | ⟨k, hki, hk, hkt⟩
     · exact Or.inl hg
@@ -282,7 +282,7 @@ private theorem proposal_root_viable_at
     ell.frame.fcRoot ∈ ell.frame.viableTree ell.frame.tree := by
   have ht := hrun.time_nonneg i
   have hb : ∀ k < i, tr.time k ≤ tr.time i := fun _ hk => hrun.time_mono hk.le
-  have hr := Compose.Growing.reachable_at' hrun ht hy hb
+  have hr := Compose.Growing.reachable_at hrun ht hy hb
   have hu := Store.finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   obtain ⟨_, _, _, _, _, ⟨Q, hQ, hheight⟩, _⟩ := Store.cache_invariants' hr
   have hFQ := Store.F_anc_of_hmax_le_of_safe_with hu hr.reachableWith hr.reachableWith
@@ -501,7 +501,7 @@ theorem optimistic_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
       tr.projAC.AcceptAt z q Q ∧ tr.time q < sp.ts s + 2 * sp.Δ := by
     rcases frame_block_acceptance_at hrun hw hcw hQw with hg | ⟨k, hka, hwk, hacc⟩
     · exact Or.inl (congrArg Block.root hg)
-    · obtain ⟨hacc', htk, -⟩ := Healing.ac_block_after'
+    · obtain ⟨hacc', htk, -⟩ := Healing.ac_block_after
         (hrun.upTo (hrun.time_nonneg k)).toLocalRun hwk
         ((RunTrace.upTo_acceptAt _).mpr ⟨le_rfl, hacc⟩)
       rw [RunTrace.upTo_projAC] at hacc'
@@ -551,10 +551,10 @@ theorem optimistic_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
     intro l hl _ hls L hL hLr
     rw [← hst] at hl
     have hl' : l ∈ ((tr.upTo (tr.time i)).state y i).ac.locks := by
-      have h := Compose.projAC_state' (hrun.upTo ht0).toLocalRun hy i
+      have h := Compose.projAC_state (hrun.upTo ht0).toLocalRun hy i
       rw [RunTrace.upTo_projAC] at h
       rwa [h] at hl
-    have hlsb := Compose.proposal_locks_slot_of' (hrun.upTo ht0) (hnc.upTo _) hy
+    have hlsb := Compose.proposal_locks_slot_of (hrun.upTo ht0) (hnc.upTo _) hy
       (by rw [RunTrace.upTo_projAC]; exact hcp) hcall
       (by rw [RunTrace.upTo_projAC]; exact hdp) hti
       (by rw [RunTrace.upTo_projAC];

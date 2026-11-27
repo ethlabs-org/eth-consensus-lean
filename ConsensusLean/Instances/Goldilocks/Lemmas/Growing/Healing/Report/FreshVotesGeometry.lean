@@ -22,33 +22,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
 variable {hold : Time}
 
-/-- A viable head transfers between warm frames whenever the receiving tree holds it. -/
-theorem FrameWindow.viableHead_transfer_at {lo hi : Time} {floor : Nat}
-    {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H lo hi floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {i c : Nat}
-    (hy : y ∈ H (tr.time i)) (hz : z ∈ H (tr.time c))
-    (hf : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    (hilo : lo ≤ tr.time i) (hihi : tr.time i ≤ hi)
-    (hclo : lo ≤ tr.time c) (hchi : tr.time c ≤ hi)
-    {Q : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hv : Q ∈ (Node.frame (tr.state z c)).viableHeads)
-    (hQ : Q ∈ (Node.frame (tr.state y i)).tree) :
-    Q ∈ (Node.frame (tr.state y i)).viableHeads := by
-  apply (floor_ancestor_mem_frame_at hrun hnc hy hz hf hv.1 _ _ hQ.1
-    (Relation.ReflTransGen.refl)).2.2
-  · rw [hframe.floor_eq y i hy hilo hihi, ← hframe.floor_eq z c hz hclo hchi]
-    exact hv.2.2.2
-  · intro hm hc
-    have hk := (hframe.kind_iff y i hy hilo hihi).mp ⟨hm, hc⟩
-    have hzk := (hframe.kind_iff z c hz hclo hchi).mpr hk
-    have hroot : (tr.state z c).fg.fcRoot = (tr.state z c).fg.J := ite_eq_left hzk
-    rw [hframe.root_eq y i hy hilo hihi hk,
-      ← hframe.root_eq z c hz hclo hchi hk, ← hroot]
-    exact hv.2.2.1.mono (fun B hB =>
-      ⟨z, c, tr.time c, hrun.time_nonneg c, (fun q hq => hrun.time_mono hq.le), hz, hB⟩)
-
 /-- A frozen competing child reflects into the actual proposer's full viable tree, over any run
 core, from a viable-head transfer across the window (`hT`) and the proposer's parent viability
 (`hPV`). -/
@@ -159,44 +132,6 @@ theorem Core.frozen_competitor_reflect_at {g ΔF b : Time} {s₀ s : Nat}
   have hBp := AC.frame_mem_of_between sp hac.localRun.coherent hPhip.1 hPhip.2 hW't hBW' hFB
   exact ⟨hBp, hrootX.tail ⟨hX, hBp, hBX⟩, W', hW't, hW'v,
     AC.anc_tree_of_anc_U hac.localRun.coherent hPhip.1 hPhip.2 hBp hBW' hW't⟩
-
-
-/-- A frozen competing child reflects into the actual proposer's full viable tree. -/
-theorem FrameWindow.frozen_competitor_reflect_at {g ΔF b : Time} {s₀ s floor : Nat}
-    {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (AC.gbar g))
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hm : AC.gbar g + 2 * sp.Δ ≤ sp.ts s) (hs₀ : s₀ ≤ s + 1)
-    {z : Fin sp.n} (hz : z ∈ H (sp.ts (s + 1 : Nat) + sp.Δ))
-    (hdesignated : z = proposer (s + 1))
-    {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
-    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
-    (hti : tr.time ip = sp.ts (s + 1 : Nat))
-    (hpay : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 = some (d, pay))
-    (hparent : P.parent = some d.head.root)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
-    (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hpb : sp.ts (s + 1 : Nat) ≤ b)
-    {X B : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hX : X ∈ ellp.frame.tree) (hrootX : ellp.frame.Anc ellp.frame.fcRoot X)
-    (hBX : B.parent = some X.root) (hne : B ≠ P)
-    (hB : B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1))) :
-    B ∈ ellp.frame.viableTree ellp.frame.tree := by
-  refine Core.frozen_competitor_reflect_at hrun.toCore hnc hsvc hcatch hnr hf hm hs₀
-    (fun hx hw hm' hjl hjh hql hqh hcx hcw hv hW => ?_)
-    (fun hx hm' hc hcall hti hp =>
-      proposal_parent_viable_full_frame_at hrun hnc hx hm' hc hcall hti hp)
-    hz hdesignated hactual hPs hcp hcall hti hpay hparent hy hc hes hhigh hpb hX hrootX hBX hne hB
-  rw [(hrun.cutLaw _ _ _ (Compose.projAC_callAt.mp hcx) hx).1] at hW ⊢
-  rw [(hrun.cutLaw _ _ _ (Compose.projAC_callAt.mp hcw) hw).1] at hv
-  exact hframe.viableHead_transfer_at hrun hnc hx hw hm' hjl hjh hql hqh hv hW
 
 end Consensus.Goldilocks.Healing.Growing
 

@@ -3,8 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportRoots
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RowBefore
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LeftEntryBefore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.LeftEntry
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LeftEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frontier
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.StaticCoreFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
@@ -23,7 +23,7 @@ branches that read `fc_root = J`) split on the store's fork-choice root. The sha
 (the stock higher-report premise applies), or strictly below `Σ.J` (the stock `cache_ahead_report`
 with `X = J` applies). The case "top-clean, `σ(P).h = h_j`, `J ⋠ P`" is the third branch: the
 root premise, supplied by strictly prior row provenance (high `h_j`) and
-`low_root_of_held_seed_at'` (low `h_j`), forces `P ⪯ J`. No new hypothesis is needed.
+`low_analysis_root_of_held_seed_at` (low `h_j`), forces `P ⪯ J`. No new hypothesis is needed.
 
 The run-level statements take the shadow reset premises `ResetPremisesUpTo'` (`Shadow/PU/Run`);
 the covered form discharges its root and floor premises using the before-cut source suppliers. -/
@@ -104,14 +104,14 @@ theorem held_target_viableHeads_or_higher_report_of_cases
   have hU := Coherence.honestBlocksAt_coherent hrun hnc
   have hd := hrun.time_nonneg i
   have hle : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
-  have hreach := (Compose.Growing.reachable_at' hrun hd hy hle).reachableWith
+  have hreach := (Compose.Growing.reachable_at hrun hd hy hle).reachableWith
   have hfs := Store.finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   obtain ⟨hPy, hFP⟩ := Shadow.PU.mem_frame_tree.1 hPt
-  have hcz := ProposalImpl.cutZ_lt_of_anc_at' hp hseed (by rwa [max_comm]) hPy hSP
+  have hcz := ProposalImpl.cutZ_lt_of_anc_at hp hseed (by rwa [max_comm]) hPy hSP
   have hroot : Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot P := by
     by_cases hlow : (tr.state y i).fg.hj ≤ HZ tr H g
-    · exact hp.low_root_of_held_seed_at' hy hib hseed hqb
-        (mem_of_honest_anc_at' hrun hnc hd hle hy hSP hPy) hlow (Or.inr hSP)
+    · exact hp.low_analysis_root_of_held_seed_at hy hib hseed hqb
+        (mem_of_honest_anc_at hrun hnc hd hle hy hSP hPy) hlow (Or.inr hSP)
         (fun _ => hPt)
     · exact hhighroot hlow
   have hFt := (Store.cache_invariants_with hfs hreach).1
@@ -138,10 +138,10 @@ theorem held_target_viableHeads_or_higher_report_of_cases
       change (H (tr.time i))ᶜ.ncard < (2 * sp.n + 2) / 3
       omega
     obtain ⟨x, hx, r, hri, d, _, att, ell', C, _, _, _, _, hto, _, hJx, hJC, _, hCh, hPh⟩ :=
-      cache_ahead_report_at' hrun hnc hy hf (Or.inr rfl) hPy hPR hPne
+      cache_ahead_report_at hrun hnc hy hf (Or.inr rfl) hPy hPR hPne
     have hxle : ∀ k < r, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono (by omega)
-    have hPx := mem_of_honest_anc_at' hrun hnc hd hxle hx hPR hJx
-    have hσ := σ_eq_honest_at' hrun hnc hd hle hy hd hxle hx hPy hPx
+    have hPx := mem_of_honest_anc_at hrun hnc hd hxle hx hPR hJx
+    have hσ := σ_eq_honest_at hrun hnc hd hle hy hd hxle hx hPy hPx
     exact ⟨x, r, ell', C,
       hrun.antitone (max_le hcz.le (hrun.time_mono hri.le)) hx, hri, hto,
       hPR.trans hJC, by rw [← hσ, hCh]; exact hPh⟩
@@ -166,7 +166,7 @@ private theorem high_root_of_held_seed_at
   have hfs := hr.finalitySpec
   have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨y, i, tr.time i, hd, hle, hy, h⟩
-  have hcz := ProposalImpl.cutZ_lt_of_anc_at' hp hseed (by rwa [max_comm]) hPy hSP
+  have hcz := ProposalImpl.cutZ_lt_of_anc_at hp hseed (by rwa [max_comm]) hPy hSP
   have hrow : ∀ E ∈ (tr.state y i).fg.tree,
       HZ tr H g + 1 ≤ ((tr.state y i).fg.σ E.root).h →
       ((tr.state y i).fg.σ E.root).Th = E.root →
@@ -194,7 +194,7 @@ private theorem high_root_of_held_seed_at
       (fun _ hk => hr.time_mono hk.le) hv hd hle hy hEs hE
     have hhh : HZ tr H g + 1 ≤ att.h := by rw [← hEsh, hσ]; exact hEh
     have hvz := hr.antitone (max_le hcz.le (hle d hdi)) haH
-    rcases hp.quarantine_or_cover_at' hib with hpre | hc
+    rcases hp.quarantine_or_cover_at hib with hpre | hc
     · obtain ⟨r, hrd, l, O, ho, E₀, hE₀, hEO, hEr, -⟩ :=
         Outcome.high_row_source_at_core hr hnc hvz hs hhh
           (hp.snapshot.imp fun _ h => h.1) fun D hD => (hle d hdi).trans (hpre D hD)
@@ -207,7 +207,7 @@ private theorem high_root_of_held_seed_at
           att.val r l O (hrd.trans hdi) ho with hPO | hOP
       · exact hEP (Anc.total hU hEO' hPO)
       · exact hEP (Or.inl (hEO'.trans hOP))
-    · obtain ⟨E₁, hE₁, hE₁r, hcov⟩ := Outcome.signed_row_covered_before_at'
+    · obtain ⟨E₁, hE₁, hE₁r, hcov⟩ := Outcome.signed_row_covered_before_at
         hp.run hnc hvz hs hhh (hp.snapshot.imp fun _ h => h.1) hc ((hle d hdi).trans hib)
       obtain rfl : E₁ = E := hU.1 hE₁ (hsub hE) (hE₁r.trans haT)
       obtain ⟨-, C, s, hC, hsl, hEC⟩ := coveredBefore_iff.1 hcov
@@ -271,7 +271,7 @@ theorem held_target_viableHeads_or_higher_report_covered_at
   intro hfloor
   have hreach := hr.reachable_at hd hy hle
   have hfs := hr.finalitySpec
-  have hPh := Outcome.high_of_anc_at' hp.run hp.noColl hseed hd hle hy hPy hSP
+  have hPh := Outcome.high_of_anc_at hp.run hp.noColl hseed hd hle hy hPy hSP
   have hcon : ¬ (tr.state y i).fg.Contest := by
     intro hc
     have hnc := Outcome.no_high_contest_at' hp hy hib
@@ -285,7 +285,7 @@ theorem held_target_viableHeads_or_higher_report_covered_at
   obtain ⟨E, hE, hEC, hEh, hET⟩ := Store.entry_at_height_with hfs hreach hC
     (h := (tr.state y i).fg.hmax - 1) (by omega) (by omega)
   obtain ⟨W, hW, att, ha, x, d, hx, hdi, hs, hT, hor⟩ :=
-    hp.left_entry_origin_or_covered_before_at' hd hle hy hib hE hET
+    hp.left_entry_origin_or_covered_before_at hd hle hy hib hE hET
       (by omega) hEC (by omega)
   have hPE : Anc (tr.HonestBlocksAt H) P E := by
     have hcomp : Compatible (tr.HonestBlocksAt H) P E := by

@@ -5,7 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HonestProposal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetRounds
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalPersistence
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.BoundariesCover
@@ -20,8 +20,8 @@ Fields of the committee-indexed Goldilocks healing supplier (`goldilocksACHealin
 run interface `goldilocksRunInterface`, whose runs start each node with its committee permission
 and carry the committee facts under collision freedom:
 
-* `report_in_frame`: `goldilocks_report_in_frame`, the report's frame root ancestry
-  (`report_root_at` at the committee start);
+* `report_in_frame`: `goldilocks_report_in_frame`, the report's finalized-root ancestry
+  (`Shadow.PU.Growing.report_root_at` at the committee start);
 * `origins_comparable`: `goldilocks_origins_comparable`, at the joined stored-fast-lock origin of
   `GoldilocksHealingData`, by `ResetPremisesUpTo.origins_compatible_at`;
 * `heal_after_reset`: `goldilocks_heal_after_reset`, at the drain `2k + 5` of
@@ -214,17 +214,17 @@ theorem resetPremisesUpTo_of_premises_budget {cm : Time → Finset (Fin sp.n)} {
     rw [Healing.drainTime_eq]; simp only [ACParams.ts]; push_cast; ring
   linarith
 
-/-- `report_in_frame`: an honest report lies in its reporter's tree above the fork-choice root. -/
+/-- `report_in_frame`: an honest report lies in its reporter's tree above the finalized root. -/
 theorem goldilocks_report_in_frame {cm : Time → Finset (Fin sp.n)}
     {y : Fin sp.n} {i : Nat} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
     (hy : y ∈ H (tr.time i)) (hR : ReportAt tr y i R) :
-    R ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot R := by
+    R ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc (tr.state y i).fg.F R := by
   have hrun := ((goldilocksRunInterface_run_iff cm).mp hrun).1
   obtain ⟨ell, hc, hto, hret⟩ := hR
-  refine Healing.Growing.KernelProof.report_root_at hrun hy
+  refine Shadow.PU.Growing.report_root_at hrun hy
     ⟨Compose.projAC_callAt.mpr hc, hto, ?_⟩
-  rw [Obligations.Growing.projAC_state_at hrun hy]
+  rw [Compose.Growing.projAC_state_at hrun hy]
   exact hret
 
 /-- `origins_comparable` at the joined stored-fast-lock origin: two high honest origins by the

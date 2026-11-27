@@ -89,8 +89,8 @@ theorem proposal_lock_prefix_cases_at
     change sp.slot (tr.time a) = l.slot at ht
     exact hts.trans ((AC.ts_le_iff_le_slot sp (hrun.time_nonneg a) _).2 (by rw [ht]))
   rcases (AC.viableAncestor_spec hW.1 hD).2.1 with hbelow | hAv
-  · exact Or.inl (unlocked_image_below_write_root_at hframe hrun hnc hz hai.le ha hc
-      halo hi hXB hBA hbelow)
+  · exact Or.inl (unlocked_image_below_write_root_at hrun hnc hz hai.le ha hc
+      hXB hBA hbelow)
   obtain ⟨Q, hQ, hvQ, hAQ⟩ := hAv.2.2
   have hvQ' := hvQ
   rw [frame_of_projAC_at hrun hza ha] at hvQ'
