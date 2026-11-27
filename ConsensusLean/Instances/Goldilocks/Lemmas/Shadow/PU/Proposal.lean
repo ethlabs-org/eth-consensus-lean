@@ -8,9 +8,8 @@ public section
 
 /-! # Shadow P-U: proposal and attestation interfaces
 
-The two proposal interfaces await the shadow own-block suppliers. The attestation
-source proof uses the stock handler-chain argument. This module stays downstream
-of Run and Coherence; neither supplier module imports it.
+The proposal and attestation source proofs use the stock handler-cut arguments.
+This module stays downstream of Run and Coherence; neither supplier module imports it.
 -/
 
 namespace Consensus.Goldilocks.Coherence
@@ -23,21 +22,55 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
 
-/-- Unresolved: an honest proposal is accepted at its cut, from arbitrary run starts. -/
+/-- An honest proposal is accepted at its cut, from arbitrary run starts. -/
 theorem accept_of_proposesAt' {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : GoldilocksRun' proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : tr.ProposesAt p k W) :
     tr.AcceptAt p k W ∧ W ∈ (tr.state p (k + 1)).fg.tree ∧ tr.post k = tr.state p (k + 1) := by
-  sorry
+  have h := hrun.toLocalRun'
+  obtain ⟨⟨⟨acc, hc⟩, hpos⟩, -, -⟩ := hW
+  rcases blockCall_cases' h hp hc with hg |
+    ⟨j, x, fgDue, rfl, hg, hpr, d, p', hdp, rfl, -, -, -, -⟩
+  · rw [RunTrace.groupAt'_iff] at hg
+    exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
+  have hreq := Compose.requirements_from sp ro (hrun.vstart p)
+  obtain ⟨hacc, -⟩ := Healing.own_block_accepted' h hreq hrun.genesis_root_ok hnc hp hg hpr hdp
+  have he := hc.2.symm.trans hacc.2
+  simp only [Option.some.injEq, Cut.fg.injEq, FGLabel.block.injEq] at he
+  obtain rfl := he.2
+  exact ⟨hc, accept_mem_from' h hp hc, (tr.state_succ_of_call hc).symm⟩
 
-/-- Unresolved: extraction of the AC proposal run from the proposal cut. -/
+/-- Extraction of the AC proposal run from the proposal cut. -/
 theorem honestProposalRun_of_proposesAt' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} {kP s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hp : p ∈ H) (hpp : p = proposer s) (hP : tr.ProposesAt p kP P)
     (hPs : P.slot = s) : Healing.HonestProposalRun tr H proposer s P := by
-  sorry
+  have h := hrun.toLocalRun'
+  subst p
+  obtain ⟨⟨⟨acc, hc⟩, hpos⟩, -, htk⟩ := hP
+  refine ⟨hp, ?_⟩
+  rcases blockCall_cases' h hp hc with hg |
+    ⟨j, x, fgDue, rfl, hg, hpr, d, pay, hdp, hB, -, -, -, -⟩
+  · rw [RunTrace.groupAt'_iff] at hg
+    exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
+  have hreq := Compose.requirements_from sp ro (hrun.vstart (proposer s))
+  obtain ⟨hc1, ht1, hst1⟩ := tick_proposal_call' h hp hg hpr
+  obtain ⟨hacc, ht2⟩ := Healing.own_block_accepted' h hreq hrun.genesis_root_ok hnc hp hg hpr hdp
+  obtain ⟨hacc3, ht3, -⟩ := Healing.ac_block_after' h hp hacc
+  simp only [Node.acProposal'_eq] at hc1
+  simp only [Node.acProposal'_eq, Node.tickStep'_eq, Node.acCall'_eq] at hacc3
+  have hts : tr.time (j + 2) = sp.ts s := by
+    rw [htk, sp.slotTime_eq, hPs]; rfl
+  subst hB
+  refine ⟨j + 1, ⟨.proposal, Node.frame'
+    (Node.tickStep' proposer dg _ (tr.state _ j) (tr.time (j + 2)) x .acTick).1, []⟩,
+    d, pay, Compose.projAC_callAt.2 hc1, rfl, ?_, ht1.trans hts, rfl, hPs, rfl,
+    rfl, j + 3, by omega, hacc3, ht3.trans (ht2.trans hts)⟩
+  have ht1' : tr.projAC.time (j + 1) = tr.time (j + 2) := ht1
+  rw [Compose.projAC_state' h hp, hst1, ht1']
+  simpa only [Node.acProposal'_eq] using hdp
 
 end Proposals
 
