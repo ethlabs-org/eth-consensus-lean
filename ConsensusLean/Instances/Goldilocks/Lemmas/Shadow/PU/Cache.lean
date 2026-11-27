@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Viability
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.StoreCache
@@ -1368,6 +1369,28 @@ theorem cache_invariants' {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable' a
       (∃ B ∈ st.tree, (st.σ B.root).h = st.hmax) ∧
       ∃ B ∈ st.tree, (st.σ B.root).F = st.F.root :=
   cache_invariants_with finalitySpec_updateFinality' h.reachableWith
+
+/-- Every store reached with a finality update of the stock shape is a `PUSnapshot`. -/
+theorem ReachableWith.puSnapshot {u : Store P ACP → FG.ChainState P.n → Store P ACP}
+    {acp₀ : ACP} {st : Store P ACP} (hu : FinalitySpec u) (hr : ReachableWith u acp₀ st) :
+    st.PUSnapshot acp₀ := by
+  obtain ⟨hfin, hcoh, -, hg⟩ := accepted_tree_with hu hr
+  obtain ⟨hF, hJ, hFJ, -, hle, hmax, -⟩ := cache_invariants_with hu hr
+  obtain ⟨hcase, W, hW, hJW, hjW⟩ := store_J_entry_with hu hr
+  refine ⟨hfin, hcoh, hF, hJ, hFJ, hjW.trans_le (hle W hW), hle, hmax,
+    fun h => h_le_of_store_anc_with hu hr h,
+    fun hC _ h1 h2 => entry_at_height_with hu hr hC h1 h2,
+    store_J_height_le_with hu hr, ?_, hg, ?_⟩
+  · rcases hcase with ⟨he, -⟩ | ⟨h1, h2⟩
+    · exact Or.inl he
+    · exact Or.inr ⟨h1, h2, W, hW, hJW, hjW⟩
+  · rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, σ_genesis_with hu hr]
+    rfl
+
+/-- Every shadow-reachable store is a `PUSnapshot`. -/
+theorem Reachable'.puSnapshot {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable' acp₀) :
+    st.PUSnapshot acp₀ :=
+  h.reachableWith.puSnapshot finalitySpec_updateFinality'
 
 end Consensus.Goldilocks.Store
 
