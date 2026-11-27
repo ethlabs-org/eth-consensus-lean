@@ -80,13 +80,13 @@ theorem honest_held_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)
 /-- State heights do not decrease along ancestry in an honest store, and equal heights have equal
 `Th`. -/
 theorem honest_held_height {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) {y : Fin sp.n}
+    (_hnc : NoCollRun dg tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {A W : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : (tr.state y i).fg.Anc A W) :
     ((tr.state y i).fg.σ A.root).h ≤ ((tr.state y i).fg.σ W.root).h ∧
       (((tr.state y i).fg.σ W.root).h = ((tr.state y i).fg.σ A.root).h →
         ((tr.state y i).fg.σ W.root).Th = ((tr.state y i).fg.σ A.root).Th) :=
-  FrameGeometry.honest_held_height hrun.toLocalRun (projFG_localRun hrun hnc) hy h
+  FrameGeometry.honest_held_height hrun.toLocalRun hy h
 
 /-- Two entries of one state height below one held block are equal. -/
 theorem held_entry_unique {ini} (hrun : GoldilocksRun proposer dg H tr ini)

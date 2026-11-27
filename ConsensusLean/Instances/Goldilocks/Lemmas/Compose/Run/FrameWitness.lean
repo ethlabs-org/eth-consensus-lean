@@ -107,7 +107,7 @@ theorem viable_of_frozen_witnesses (hr : Node.LocalRun proposer dg H sg tr ini)
   rcases floor_or_crossing_of hr hfg hf hy hsrc hGG hGB hBt with hle | ⟨D, E, -, hD, hDs, hE,
     hBE, hEh, -⟩
   · exact head W hW hΦBW (viab W hWt.1 (Anc.mono hΦs hΦBW)
-      (hle.trans (honest_held_height hr hfg hy (Anc.mono hΦs hΦBW)).1))
+      (hle.trans (honest_held_height hr hy (Anc.mono hΦs hΦBW)).1))
   · -- the witness above the crossing source
     obtain ⟨x₀, hx₀, k₀, -, -, hED, -, -⟩ := honest_source_entry hr hfg hDs ⟨y, hy, i, hE⟩ rfl
     have hEDU : Anc (tr.HonestBlocks H) E D := hED.mono (fg_tree_subset_honest hx₀ k₀)
@@ -118,7 +118,7 @@ theorem viable_of_frozen_witnesses (hr : Node.LocalRun proposer dg H sg tr ini)
       ((hBE.mono hsU).trans (hEDU.trans hDW')) hW't
     refine head W' hW' hΦBW' (viab W' hW't.1 (Anc.mono hΦs hΦBW') ?_)
     rw [← hEh]
-    exact (honest_held_height hr hfg hy hEW').1
+    exact (honest_held_height hr hy hEW').1
 
 end Consensus.Goldilocks.Compose.FrameGeometry
 

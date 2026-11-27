@@ -35,7 +35,7 @@ private theorem below_entry {B D E : A.Blk}
   obtain ⟨x, hx, k, -, -, hED, -, -⟩ := honest_source_entry hr hfg hD ⟨y, hy, i, hE⟩ rfl
   have hEDU : Anc (tr.HonestBlocks H) E D := hED.mono (fg_tree_subset_honest hx k)
   have no : ¬ Anc (tr.HonestBlocks H) E B := fun h => by
-    have := (honest_held_height hr hfg hy (honest_held_anc hr hfg hy h hB)).1
+    have := (honest_held_height hr hy (honest_held_anc hr hfg hy h hB)).1
     omega
   rcases hDB with h | h
   · exact absurd (hEDU.trans h) no
@@ -81,7 +81,7 @@ private theorem floor_or_crossing_core (hsrc : RowsAbove tr H G y i (tr.state y 
   have hZ1 := (honest_held_chain hr hy hZ).2.1
   have hZ2 := hZm Z hZ
   obtain ⟨E, hE, hEX, hEh, -, D, hD, hDs⟩ :=
-    frame_crossing_source_of hr hfg hf hy hsrc hX (j := (tr.state y i).fg.hmax - 1) (by omega)
+    frame_crossing_source_of hr hf hy hsrc hX (j := (tr.state y i).fg.hmax - 1) (by omega)
       (by omega) (by omega)
   exact ⟨D, E, X, hD, hDs, hE, below_entry hr hfg hy hB hE hDs (hGB D hD) (by omega), hEh, hX,
     hEX, Or.inl hXh.ge⟩

@@ -96,7 +96,7 @@ theorem rows_prog (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (
     ∀ X, (tr.store y m).Anc X W → ∀ r ∈ X.fgPayload, r.h ≤ ((tr.store y m).σ W.root).h ∧
       (r.h = ((tr.store y m).σ W.root).h → r.T = ((tr.store y m).σ W.root).Th →
         r.val ∈ ((tr.store y m).σ W.root).prog) := by
-  have hR := (store_reachable' hr hy m).reachableWith
+  have hR := (store_reachable hr hy m).reachableWith
   have hg := (accepted_tree_with finalitySpec_updateFinality hR).2.2.2 W hW
   clear hW
   induction hg with

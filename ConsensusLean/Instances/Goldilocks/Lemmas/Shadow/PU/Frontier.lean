@@ -99,10 +99,10 @@ theorem viable_of_frozen_witnesses' (hr : Node.LocalRun proposer dg H sg tr ini)
   -- `B` lies between `Σ.F` and a witness, so it is in the frame
   obtain ⟨W, hW, hBW⟩ := hw (hF0 ▸ hFB)
   have hWt := (hmemΦ W).1 (hTt hW)
-  have hBW' := honest_held_anc' hr hfg hy hBW hWt.1
+  have hBW' := honest_held_anc hr hfg hy hBW hWt.1
   have hBt : B ∈ st.tree := anc_mem hBW' hWt.1
   have hBΦ : B ∈ (Node.frame (tr.state y i)).tree :=
-    (hmemΦ B).2 ⟨hBt, honest_held_anc' hr hfg hy hFB hBt⟩
+    (hmemΦ B).2 ⟨hBt, honest_held_anc hr hfg hy hFB hBt⟩
   have hΦBW : (Node.frame (tr.state y i)).Anc B W :=
     Frame.anc_tree_of_anc_U hU hΦ hΦU hBΦ hBW (hTt hW)
   have hΦfB : (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot B :=
@@ -125,10 +125,10 @@ theorem viable_of_frozen_witnesses' (hr : Node.LocalRun proposer dg H sg tr ini)
     have hBJ : Anc (tr.HonestBlocks H) B st.J := hJ.resolve_left fun h => hcase (Or.inr h)
     have h1 : 1 ≤ st.hj := by
       by_contra h0
-      have hJg := justified_genesis' hr (show st.hj = 0 by omega) hy
-      exact hcase (Or.inr (hJg ▸ (honest_genesis_anc' hr hB).2))
-    obtain ⟨-, -, D, hD, hDs⟩ := justified_honest_source_of' hr hfg hf hy hsrc h1
-    obtain ⟨x, hx, k, -, -, hJD, -, -⟩ := honest_source_entry' hr hfg hDs ⟨y, hy, i, hJt⟩ rfl
+      have hJg := justified_genesis hr (show st.hj = 0 by omega) hy
+      exact hcase (Or.inr (hJg ▸ (honest_genesis_anc hr hB).2))
+    obtain ⟨-, -, D, hD, hDs⟩ := justified_honest_source_of hr hfg hf hy hsrc h1
+    obtain ⟨x, hx, k, -, -, hJD, -, -⟩ := honest_source_entry hr hfg hDs ⟨y, hy, i, hJt⟩ rfl
     have hJDU : Anc (tr.HonestBlocks H) st.J D := hJD.mono (fg_tree_subset_honest hx k)
     obtain ⟨W', hW', hDW'⟩ := hGW D hD (hF0 ▸ (hFB.trans (hBJ.trans hJDU)))
     have hJΦ : st.J ∈ (Node.frame (tr.state y i)).tree := (hmemΦ _).2 ⟨hJt, hFJ⟩
@@ -145,22 +145,22 @@ theorem viable_of_frozen_witnesses' (hr : Node.LocalRun proposer dg H sg tr ini)
     by_cases hm : st.hmax ≤ (st.σ W'.root).h
     · exact Or.inl hm
     refine Or.inr ⟨by omega, hcase.imp id fun hJB => ?_⟩
-    exact honest_held_anc' hr hfg hy (hJB.trans (hBW''.mono hsU)) hW'
+    exact honest_held_anc hr hfg hy (hJB.trans (hBW''.mono hsU)) hW'
   rcases floor_or_crossing_of' hr hfg hf hy hsrc hGB hBt with hle | ⟨D, E, -, hD, hDs, hE,
     hBE, hEh, -⟩
   · exact head W hW hΦBW (viab W hWt.1 (hΦs _ _ hΦBW)
-      (hle.trans (honest_held_height' hr hy (hΦs _ _ hΦBW)).1))
+      (hle.trans (honest_held_height hr hy (hΦs _ _ hΦBW)).1))
   · -- the witness above the crossing source
-    obtain ⟨x₀, hx₀, k₀, -, -, hED, -, -⟩ := honest_source_entry' hr hfg hDs ⟨y, hy, i, hE⟩ rfl
+    obtain ⟨x₀, hx₀, k₀, -, -, hED, -, -⟩ := honest_source_entry hr hfg hDs ⟨y, hy, i, hE⟩ rfl
     have hEDU : Anc (tr.HonestBlocks H) E D := hED.mono (fg_tree_subset_honest hx₀ k₀)
     obtain ⟨W', hW', hDW'⟩ := hGW D hD (hF0 ▸ (hFB.trans ((hBE.mono hsU).trans hEDU)))
     have hW't := (hmemΦ W').1 (hTt hW')
-    have hEW' := honest_held_anc' hr hfg hy (hEDU.trans hDW') hW't.1
+    have hEW' := honest_held_anc hr hfg hy (hEDU.trans hDW') hW't.1
     have hΦBW' := Frame.anc_tree_of_anc_U hU hΦ hΦU hBΦ
       ((hBE.mono hsU).trans (hEDU.trans hDW')) (hTt hW')
     refine head W' hW' hΦBW' (viab W' hW't.1 (hΦs _ _ hΦBW') ?_)
     rw [← hEh]
-    exact (honest_held_height' hr hy hEW').1
+    exact (honest_held_height hr hy hEW').1
 
 end Consensus.Goldilocks.Compose.FrameGeometry
 
