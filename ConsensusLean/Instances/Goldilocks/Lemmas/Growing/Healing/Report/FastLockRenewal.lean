@@ -127,10 +127,11 @@ theorem fastLock_mem_updateConfirmation_of_select {FGP : Type} {A : AC.ACState s
     (hconf : AC.getConfirmation sp A Φ u = some C)
     (hD : AC.deepest Φ {X | X ∈ AC.confirmationPath sp Φ C ∧
       ¬ AC.conflictsWithLock sp A.locks Φ t X ∧ AC.FastTest sp A Φ u X} = some D)
-    (hDt : D ∈ Φ.tree) (hlive : sp.slot t ≤ u + 2) :
+    (hDt : D ∈ Φ.tree) (hlive : sp.slot t ≤ u + 2)
+    (hcap : ∀ l ∈ A.locks, l.expiry ≤ l.slot + sp.k) (hu : u ≤ sp.slot t) :
     ∃ e, u + 2 ≤ e ∧ (⟨(Φ.viableAncestor D).root, u, true, e⟩ : AC.Lock) ∈
       (AC.updateConfirmation sp A Φ t u).locks :=
-  Core.fastLock_mem_updateConfirmation_of_select hconf hD hDt hlive
+  Core.fastLock_mem_updateConfirmation_of_select hconf hD hDt hlive hcap hu
 
 /-- The state after an update of slot `u` of an honest node is the update's result. -/
 private theorem post_of_updateAt

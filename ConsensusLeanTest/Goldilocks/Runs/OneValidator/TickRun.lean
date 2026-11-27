@@ -598,11 +598,7 @@ theorem acProposal_pool (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
 theorem acToFG_pool (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (AC.acToFG sp A Φ t).1.pool = A.pool := by
   unfold AC.acToFG
-  split_ifs
-  · split
-    · rfl
-    · split_ifs <;> rfl
-  · rfl
+  split_ifs <;> rfl
 
 theorem acOnBlock_pool (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
     (B : Blk sp.n FGP) (σ : Nat) (w : Vote sp.n) (h : w ∈ (acOnBlock sp self A Φ t B).1.pool σ) :

@@ -534,8 +534,11 @@ theorem Core.fresh_fast_lock_of_selection_at
       ite_eq_left ⟨ht2, Nat.succ_pos u⟩]
     simp only [Nat.add_sub_cancel]
   rw [hpost]
+  have hwf := AC.locksWF_state hr hrun.vstart hy k
+  rw [hs] at hwf
   exact AC.fastLock_mem_updateConfirmation_floor hPt hva hconf hnv hfast
     (by rw [hslot]; have := sp.two_le_k; omega)
+    (fun l hl => hwf.cap hl) (by omega)
 
 /-- The stock run instantiates the shared local fast-lock insertion proof. -/
 theorem fresh_fast_lock_of_selection_at

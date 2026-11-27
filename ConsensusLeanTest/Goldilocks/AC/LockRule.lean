@@ -411,7 +411,8 @@ theorem optimisticSelect_A2 : optimisticSelect sp A2 Φ₁ 8 = some B1 := by
       ⟨w2, by rw [A2_pool]; exact List.mem_singleton.2 rfl, rfl, B1, B1_mem₁, rfl,
         Relation.ReflTransGen.refl⟩]
     decide
-  · rintro ⟨B, ⟨-, l, hl, -⟩, -⟩
+  · intro hc
+    obtain ⟨B, ⟨-, l, hl, -⟩, -⟩ := exists_of_conflictsWithLock hc
     rw [A2_locks] at hl
     obtain ⟨l0, hl0, -⟩ := hl
     exact hl0
@@ -499,11 +500,67 @@ theorem liveLocksChain_unreachable :
   · rw [liveLocks_Sbad]; exact Or.inl rfl
   · rw [liveLocks_Sbad]; exact Or.inr rfl
 
+/-! ## Sibling tips: only the highest live lock counts -/
+
+/-- The ancestors of `B2` or of `B3` are `g`, `B1` and the block itself. -/
+theorem ancs_sibling {B : Blk sp.n Unit} (hB : B = B2 ∨ B = B3) :
+    {A | Φ.Anc A B} = {g, B1, B} := by
+  have hBU : B ∈ U := by rcases hB with rfl | rfl; exacts [B2_mem, B3_mem]
+  ext A
+  constructor
+  · intro h
+    have hr := ancRoot_of_anc h
+    have hAU : A ∈ U := mem_of_anc h hBU
+    rcases hAU with rfl | rfl | rfl | rfl <;> rcases hB with rfl | rfl <;>
+      simp_all [AncRoot, g, B1, B2, B3]
+  · rintro (rfl | rfl | rfl)
+    · exact anc_g _ hBU
+    · rcases hB with rfl | rfl
+      exacts [anc_B1_B2, anc_B1_B3]
+    · exact Relation.ReflTransGen.refl
+
+/-- The siblings `B2` and `B3` have the same depth. -/
+theorem depth_B2_eq_B3 : depth Φ B2 = depth Φ B3 := by
+  have h2 : (depth Φ B2) = 3 := Set.ncard_eq_three.2 ⟨g, B1, B2, by simp [g, B1], by simp [g, B2],
+    by simp [B1, B2], ancs_sibling (Or.inl rfl)⟩
+  have h3 : (depth Φ B3) = 3 := Set.ncard_eq_three.2 ⟨g, B1, B3, by simp [g, B1], by simp [g, B3],
+    by simp [B1, B3], ancs_sibling (Or.inr rfl)⟩
+  rw [h2, h3]
+
+/-- Of the live lock blocks `B2` and `B3` of `Sbad`, `B2` is the highest: equal depth, and the
+smaller root wins. -/
+theorem highestLiveLock_Sbad : highestLiveLock sp Sbad.locks Φ 16 = some B2 := by
+  refine deepest_eq_of_isDeepest ⟨⟨B2_mem, ⟨2, 3, true, 5⟩, ?_, rfl⟩, ?_⟩
+  · rw [liveLocks_Sbad]; exact Or.inl rfl
+  · rintro C ⟨hC, l, hl, hr⟩ hne
+    rw [liveLocks_Sbad] at hl
+    rcases hl with rfl | rfl
+    · exact absurd (eq_of_root hC B2_mem hr.symm) hne
+    · rw [eq_of_root hC B3_mem hr.symm]
+      exact Or.inr ⟨depth_B2_eq_B3.symm, by decide⟩
+
+/-- **Sibling tips.** At `Sbad` the live lock blocks are the siblings `B2` and `B3`, and the highest
+live lock is `B2`. The candidate `B2` is not vetoed, and `B3`, which conflicts with `B2`, is. -/
+theorem highest_lock_sibling_tip :
+    ¬ conflictsWithLock sp Sbad.locks Φ 16 B2 ∧ conflictsWithLock sp Sbad.locks Φ 16 B3 := by
+  refine ⟨?_, ⟨B2, highestLiveLock_Sbad, fun h => not_compatible_B2_B3 (Or.symm h)⟩⟩
+  rintro ⟨H, hH, hnc⟩
+  rw [highestLiveLock_Sbad] at hH
+  obtain rfl := Option.some.inj hH
+  exact hnc (Or.inl Relation.ReflTransGen.refl)
+
+/-- The sibling-tip input is where the rules differ: the old rule, which reads every live lock
+block, would veto the candidate `B2` because of the live lock on `B3`. -/
+theorem sibling_tip_old_rule_vetoes :
+    ∃ K ∈ liveLockBlocks sp Sbad.locks Φ 16, ¬ Compatible Φ.tree B2 K :=
+  ⟨B3, ⟨B3_mem, ⟨3, 3, true, 5⟩, by rw [liveLocks_Sbad]; exact Or.inr rfl, rfl⟩,
+    not_compatible_B2_B3⟩
+
 /-! ## A0.4 (f) `CandidatesChain` -/
 
 /-- The anchor of `S2` while its lock is live: the lock block `B1`. -/
 theorem getAnchor_S2 {t : Time} (ht : sp.slot t ≤ 4) : getAnchor sp S2 Φ₁ t = B1 := by
-  unfold getAnchor
+  rw [getAnchor_eq_deepest_union frameOK_Φ₁]
   rw [deepest_top₁ (Or.inl (mem_liveLockBlocks_S2.2 ⟨rfl, ht⟩))]
   · rfl
   rintro B (hB | rfl)

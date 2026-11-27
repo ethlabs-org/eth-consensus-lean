@@ -271,14 +271,21 @@ private theorem vote_head_classification_core
     obtain ⟨Q, hQ, hv, hrQ⟩ := hrootWitness
     exact hd ⟨Q, AC.voterBlockTree_subset_voteDomain hQ, hv, heq ▸ hrQ⟩
   have hAm : A ∈ AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) := by
-    unfold A AC.getAnchor
+    unfold A
+    rw [AC.getAnchor_eq_deepest_union hPhi.1]
     cases hh : AC.deepest ell.frame
         (AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) ∪ {ell.frame.fcRoot}) with
-    | none => exact (heq (by unfold A AC.getAnchor; rw [hh]; rfl)).elim
+    | none => exact (heq (by
+        unfold A
+        rw [AC.getAnchor_eq_deepest_union hPhi.1, hh]
+        rfl)).elim
     | some B =>
       rcases (AC.deepest_mem hh).1 with h | h
       · exact h
-      · exact (heq (by unfold A AC.getAnchor; rw [hh]; exact h)).elim
+      · exact (heq (by
+          unfold A
+          rw [AC.getAnchor_eq_deepest_union hPhi.1, hh]
+          exact h)).elim
   obtain ⟨hA, l, hl, hlr⟩ := hAm
   have hstrict : ¬ Anc (tr.HonestBlocks H) A ell.frame.fcRoot := by
     intro h

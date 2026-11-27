@@ -409,11 +409,7 @@ private theorem acProposal_pv (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) 
 private theorem acToFG_pv (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (acToFG sp A Φ t).1.pool = A.pool ∧ (acToFG sp A Φ t).1.voteStamp = A.voteStamp := by
   unfold acToFG
-  split_ifs
-  · split
-    · exact ⟨rfl, rfl⟩
-    · split_ifs <;> exact ⟨rfl, rfl⟩
-  · exact ⟨rfl, rfl⟩
+  split_ifs <;> exact ⟨rfl, rfl⟩
 
 /-- Every call other than the restart keeps the held stamps and grows the pools. -/
 private theorem step_vok_keep (ro : ReplayOrder sp FGP) (self : Fin sp.n) {A : ACState sp.n}
@@ -517,11 +513,7 @@ theorem admission_slots : AdmissionSlots sp := by
     refine Or.inl ⟨?_, by simp⟩
     change x ∈ (acToFG sp A Φ' t).1.pool σ at hx
     unfold acToFG at hx
-    split_ifs at hx
-    · split at hx
-      · exact hx
-      · split_ifs at hx <;> exact hx
-    · exact hx
+    split_ifs at hx <;> exact hx
 
 /-- `try_vote` adds to the pools only the node's own vote of the slot of `t`. -/
 private theorem tryVote_adds_only_own {FGP : Type} (self : Fin sp.n) (A : ACState sp.n)
@@ -598,7 +590,7 @@ private theorem pool_nodup_from {FGP : Type} {ro : ReplayOrder sp FGP}
     · subst hc
       intro σ
       change ((acRestart sp ro self A Φ' t').1.pool σ).Nodup
-      rw [(restart_state sp FGP ro self A Φ' t' hok.1.1 h0).2.2.2.2.2.2.2.2.1 σ]
+      rw [(restart_state sp FGP ro self A Φ' t' hok.1.1 h0).2.2.2.2.2.2.2.1 σ]
       exact List.nodup_nil
     · exact hP.step ro self Φ' t' hc ih.2
 
@@ -713,7 +705,7 @@ private theorem sinv_of_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {self :
     by_cases hc : c = .restart
     · subst hc
       refine ⟨acRestart_vok ro self A Φ' t', fun r hr' => ?_, hΦ', ih.genesis⟩
-      rcases (restart_state sp FGP ro self A Φ' t' hΦ'.1 h0).2.2.2.2.2.2.2.2.2.2 r with
+      rcases (restart_state sp FGP ro self A Φ' t' hΦ'.1 h0).2.2.2.2.2.2.2.2.2 r with
         hq | ⟨-, -, X, hX, hXr⟩
       · obtain ⟨G, hG, hGr, hGp⟩ := ih.genesis
         have hg : r = sp.genesisRoot := by

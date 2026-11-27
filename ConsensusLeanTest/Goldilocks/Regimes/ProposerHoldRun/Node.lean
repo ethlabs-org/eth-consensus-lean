@@ -267,11 +267,7 @@ theorem step_pool_new (self : Fin sp.n) (A : AC.ACState sp.n) (Φ : AC.Frm sp.n 
   | toFG =>
     change x ∈ (AC.acToFG sp A Φ t).1.pool σ at h
     unfold AC.acToFG at h
-    split_ifs at h
-    · split at h
-      · exact absurd h hn
-      · split_ifs at h <;> exact absurd h hn
-    · exact absurd h hn
+    split_ifs at h <;> exact absurd h hn
   | message m =>
     change x ∈ (AC.tryVote sp self (AC.optimisticConfirmation sp (AC.admitVote sp A t m) Φ t) Φ
       t).1.pool σ at h

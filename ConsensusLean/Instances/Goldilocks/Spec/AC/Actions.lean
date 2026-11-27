@@ -33,10 +33,11 @@ goldilocks-spec.tex §"Node actions" (Figures "Goldilocks: the vote and the vote
   (the Lean form of the support bits).
 * `ac_to_fg`: for a joined node the deepest candidate (a block of the full
   viable tree under a live fast lock of slot `slot(t) − 2` or later); when there is none, deep
-  sources are on (`deepDepth = some D`) and there is a deep anchor `a` (`deepAnchor`), the deepest
+  sources are on (`deepDepth = some D`) and there is a deep anchor `a` (`deepAnchor`), the highest
+  live lock, the deepest
   deep candidate (a block of the full viable tree at or below `a`, not genesis, that the node
-  accepted by `t_{slot(t) − D}`). The block is returned when it is not at or below `fg_reported`
-  (in the tree), which it then records. -/
+  accepted by `t_{slot(t) − D}`). The selected block is returned without changing the AC state,
+  even if it was returned before. Genesis is allowed as a fast candidate, not a deep one. -/
 
 namespace Consensus.Goldilocks.AC
 
@@ -119,11 +120,10 @@ def toFGCandidates (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) : Set (Blk 
     ∃ l ∈ liveLocks sp A.locks Φ t, l.block = B.root ∧ l.fast = true ∧ sp.slot t ≤ l.slot + 2}
 
 open Classical in
-/-- `deep_anchor(𝒜, Φ, t)`: the deepest block of the live locks, fast or slow, or `none` when
-there is no live lock (no `fc_root` fallback; `get_anchor` is unchanged). -/
+/-- `deep_anchor(𝒜, Φ, t)`: the highest live lock of the node's locks. -/
 noncomputable def deepAnchor (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Option (Blk sp.n FGP) :=
-  deepest Φ (liveLockBlocks sp A.locks Φ t)
+  highestLiveLock sp A.locks Φ t
 
 /-- The deep candidates of `ac_to_fg` at depth `D` under the anchor `a`: the blocks of the full
 viable tree at or below `a` (`a` itself included), other than genesis, whose stamp (the time the
@@ -132,8 +132,7 @@ is never a fast candidate, but its block (or one below it) can be a deep candida
 re-stamps every held block other than genesis at the restart time, so a node has no deep
 candidate for at least `D` slots after each restart; one that restarts more often than every `D`
 slots never has one. Genesis is excluded by its own conjunct, whatever its stamp (`−∞` in the
-initial state, kept by a restart whose replay order skips it); the `fg_reported` test excludes it
-only when the reported block is in the frame's tree. -/
+initial state, kept by a restart whose replay order skips it). -/
 def toFGDeepCandidates (D : Nat) (a : Blk sp.n FGP) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : Set (Blk sp.n FGP) :=
   {B | B ∈ Φ.viableTree Φ.tree ∧ Φ.Anc B a ∧ B.root ≠ sp.genesisRoot ∧
@@ -157,12 +156,7 @@ open Classical in
 noncomputable def acToFG (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     ACState sp.n × Option (Blk sp.n FGP) :=
   if ¬ joined sp A t then (A, none)
-  else
-    match fgSource sp A Φ t with
-    | none => (A, none)
-    | some C =>
-      if AncR Φ C A.fgReported then (A, none)
-      else ({ A with fgReported := C.root }, some C)
+  else (A, fgSource sp A Φ t)
 
 end Consensus.Goldilocks.AC
 

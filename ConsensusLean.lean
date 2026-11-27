@@ -22,7 +22,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockKeepStep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Deepest
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.ExpiryEquiv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.HighestEquiv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Unlock
@@ -659,7 +662,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.WidthVocab
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireClient
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AnchorPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith

@@ -30,13 +30,13 @@ private theorem vt_four {s : Nat} (hs : 1 ≤ s) : vt s = 4 * s := by unfold vt;
 /-- **Every cut of the shape** says what `SkOk` asks. -/
 private theorem plan_ok {t : Nat} {p : Fin sp.n × Node.Event N × List Sk} (hp : p ∈ plan t) {c : Sk}
     (hc : c ∈ p.2.2) : SkOk t p.1 c := by
-  unfold plan at hp
+  unfold plan refusedSk at hp
   split_ifs at hp with h1 h2 h3 h4 h5 <;>
     simp only [tickSk, List.cons_append, List.nil_append, List.append_nil, List.mem_cons,
       List.not_mem_nil, or_false] at hp <;>
     rcases hp with rfl | rfl | rfl | rfl | rfl | rfl <;>
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hc <;>
-    rcases hc with rfl | rfl | rfl | rfl | rfl <;>
+    rcases hc with rfl | rfl | rfl | rfl | rfl | rfl <;>
     simp only [SkOk, ne_eq, reduceCtorEq, not_false_eq_true, List.mem_cons, List.not_mem_nil,
       or_false, forall_eq, true_and, false_implies, implies_true] <;>
     first

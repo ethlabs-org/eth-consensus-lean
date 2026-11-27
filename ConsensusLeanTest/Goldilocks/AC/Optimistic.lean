@@ -1,6 +1,8 @@
 module
 public import ConsensusLeanTest.Goldilocks.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.AC.Main
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -178,11 +180,12 @@ theorem liveLocks_eq {L : Set Lock} {t : Time}
     rfl
 
 theorem not_conflicts {L : Set Lock} {t : Time} {B : Blk sp1.n Unit} (hB : B ∈ U₁) :
-    ¬ conflictsWithLock sp1 L Φ₁ t B :=
-  fun ⟨_, hC, hnc⟩ => hnc (compatible_U₁ hB hC.1)
+    ¬ conflictsWithLock sp1 L Φ₁ t B := fun hc =>
+  let ⟨_, hC, hnc⟩ := exists_of_conflictsWithLock hc
+  hnc (compatible_U₁ hB hC.1)
 
 theorem getAnchor_mem (A : ACState sp1.n) (t : Time) : getAnchor sp1 A Φ₁ t ∈ U₁ := by
-  unfold getAnchor
+  rw [getAnchor_eq_deepest_union frameOK_Φ₁]
   cases h : deepest Φ₁ (liveLockBlocks sp1 A.locks Φ₁ t ∪ {Φ₁.fcRoot}) with
   | none => exact g_mem
   | some D =>
@@ -316,13 +319,12 @@ def lock1 : Lock := ⟨1, 1, true, 3⟩
 binds, so the live lock of slot `1` does not extend it. -/
 def lock2 : Lock := ⟨1, 2, true, 4⟩
 
-/-- At `k = 2` every fast lock of slot `s` expires after `s + 2`: the cap `s + k` and the floor
-`s + 2` coincide. -/
-theorem fastExpiry_eq (L : Set Lock) (t : Time) (s : Nat) : fastExpiry sp1 L Φ₁ t s = s + 2 := by
-  unfold fastExpiry
-  change min (s + 2) _ = s + 2
-  dsimp only
-  split_ifs <;> omega
+/-- At `k = 2` a legal write of a fast lock of slot `s`, with capped stored expiries, expires after
+`s + 2`: the cap `s + k` and the floor `s + 2` coincide. -/
+theorem fastExpiry_eq (L : Set Lock) (t : Time) (s : Nat)
+    (hcap : ∀ l ∈ L, l.expiry ≤ l.slot + sp1.k) (hs : s ≤ sp1.slot t) :
+    fastExpiry sp1 L Φ₁ t s = s + 2 :=
+  le_antisymm (fastExpiry_le sp1 L Φ₁ t s) (le_fastExpiry sp1 L Φ₁ t s hcap hs)
 
 /-- Cut 0: `ac_on_block(B1)` at `t_1 = 4`. -/
 noncomputable def r0 : ACState sp1.n × List (Em sp1 Unit) :=
@@ -444,7 +446,9 @@ theorem r0_eq : ∃ d, r0 = (S1, [⟨vote1, R0, some d⟩]) := by
   rw [admitVote_fresh R0 4 vote1 slot_4 rfl, optimisticConfirmation_some hsel, fastExpiry_eq,
     addLocks_eq (fun l hl => hl.elim) (by rw [slot_4]; decide), updateLatestConfirmed_new rfl,
     slot_4]
-  rfl
+  · rfl
+  · exact fun l hl => hl.elim
+  · exact le_rfl
 
 theorem acOnTick_vote {A : ACState sp1.n} {t : Time} (hj : A.restartTime = ⊥)
     (h1 : t = sp1.ts (sp1.slot t) + sp1.Δ) : acOnTick sp1 v0 A Φ₁ t = tryVote sp1 v0 A Φ₁ t := by
@@ -485,7 +489,7 @@ def S2 : ACState sp1.n :=
     locks := insert lock2 S1.locks }
 
 /-- The state after cut 2. -/
-def S3 : ACState sp1.n := { S2 with fgReported := 1 }
+def S3 : ACState sp1.n := S2
 
 theorem mem_S1_locks {l : Lock} (hl : l ∈ S1.locks) : l = lock1 := by
   rcases hl with rfl | h
@@ -529,7 +533,11 @@ theorem r1_eq : ∃ d, r1 = (S2, [⟨vote2, R1, some d⟩]) := by
   rw [admitVote_fresh R1 9 vote2 slot_9 rfl, optimisticConfirmation_some hsel, fastExpiry_eq,
     addLocks_eq (fun l hl => by rw [mem_S1_locks hl, slot_9]; exact ⟨rfl, by decide⟩)
       (by rw [slot_9]; decide), updateLatestConfirmed_keep rfl, slot_9]
-  rfl
+  · rfl
+  · intro l hl
+    rw [mem_S1_locks hl]
+    decide
+  · exact le_rfl
 
 theorem notAncR_B1_0 : ¬ AncR Φ₁ B1 0 := by
   rintro ⟨R, hR, hr, hanc⟩
@@ -549,7 +557,6 @@ theorem toFG_S2 : (acToFG sp1 S2 Φ₁ 12).1 = S3 ∧ (acToFG sp1 S2 Φ₁ 12).2
   unfold acToFG fgSource
   rw [ite_eq_right (not_not.2 (joined_bot rfl 12)), hc]
   dsimp only
-  rw [ite_eq_right (show ¬ AncR Φ₁ B1 S2.fgReported from notAncR_B1_0)]
   exact ⟨rfl, rfl⟩
 
 theorem r3_eq : r3 = (updateConfirmation sp1 S3 Φ₁ 14 2, []) := by
