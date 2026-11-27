@@ -94,10 +94,9 @@ theorem finalizedMonotone_iff : FinalizedMonotone P ACP ↔
         ∀ a, (st.onAttestation a).F = st.F := Iff.rfl
 
 /-- **C0.2, the `Σ` half** (`FinalizedMonotone`, unfolded). -/
-theorem finalized_monotone : ∀ (acp₀ : ACP) (st : Store P ACP), st.Reachable acp₀ →
+theorem finalized_monotone (st : Store P ACP) :
     (∀ B st', st.onBlock B = some st' → st'.Anc st.F st'.F) ∧
       ∀ a, (st.onAttestation a).F = st.F := by
-  intro acp₀ st _
   refine ⟨fun B st' h => ?_, fun a => ?_⟩
   · rcases onBlock_F h with he | ⟨-, hFF'⟩
     · rw [he]
@@ -125,7 +124,7 @@ theorem accept_is_frame_step : AcceptIsFrameStep P ACP := by
         exact hXB
     refine frameStep_of hT' (fun hB => by cases hnew.symm.trans hB) (parent_ne_of_none hr hnew)
       (fun he => ?_) (cache_invariants P ACP acp₀ st hr).1 (hT' ▸ hFB)
-      ((finalized_monotone P ACP acp₀ st hr).1 B st' h) hF'B
+      ((finalized_monotone P ACP st).1 B st' h) hF'B
     rw [hpr, Option.some.injEq] at he
     rw [he, hnew] at hpr'
     cases hpr'
