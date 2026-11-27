@@ -940,7 +940,6 @@ public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.Obligations.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.OptimisticInclusion.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.SleepyGrowth.Main
-public import ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main
 public import ConsensusLean.Instances.Goldilocks.Results.Spec.CanonicalTrace
 public import ConsensusLean.Instances.Goldilocks.Results.Spec.NodeCanonicalTrace
 public import ConsensusLean.Instances.Goldilocks.Results.Spec.SleepyGrowth

@@ -1246,7 +1246,6 @@ proved_milestone_modules = ["ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.
                             "ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main",
-                            "ConsensusLean.Instances.Goldilocks.Proofs.Regimes.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.Growing.FGStore.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.Growing.Compose.Main",
                             "ConsensusLean.Instances.Goldilocks.Proofs.Growing.Continuation.Main",

@@ -6,18 +6,19 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Honest
 
 public section
 
-/-! # Goldilocks milestone Regimes: R.8 (the outputs of an honest node)
+/-! # Goldilocks Regimes: the outputs of an honest node (R.8 over a fixed honest set)
 
-The three R.8 rows of `Statements/Regimes/Always`, in every Goldilocks run (no `NoColl`):
+The run-level facts behind the R.8 rows, in every Goldilocks run (no `NoColl`); the growing rows
+(`Lemmas/Growing/Compose/Outputs`) apply them on a retained prefix:
 
-* `outputs_nested` (C0.1 at every cut): `Σ.F ⪯ ac_confirmed ⪯ ac_head` in the node's tree. The
+* `outputs_nested_at` (C0.1 at every cut): `Σ.F ⪯ ac_confirmed ⪯ ac_head` in the node's tree. The
   frame `fg_to_ac(Σ)` of a reachable FG state is well formed, and at a well-formed frame the
   AC's confirmed tip is the deepest common ancestor of the record and the head, or `Φ.F`.
-* `finalized_monotone` (C0.2 over the run): every cut moves `Σ.F` to a descendant in the grown
-  tree (`chain_fg`), also at restarts, which keep `Σ`.
-* `outputs_valid` (F.2 with the node's checks): every block of an honest tree other than genesis
-  was accepted by the node at an earlier cut, so it has its digest as root and its slot's
-  proposer, and its parent is held with a smaller slot. -/
+* `finalized_monotone_from` (C0.2 over the run): every cut moves `Σ.F` to a descendant in the
+  grown tree (`chain_fg`), also at restarts, which keep `Σ`.
+* `outputs_valid_at` (F.2 with the node's checks): every block of an honest tree other than
+  genesis was accepted by the node at an earlier cut, so it has its digest as root and its slot's
+  proposer, and its parent is held with a smaller slot (`validOutput_of_mem`). -/
 
 namespace Consensus.Goldilocks.Regimes
 
@@ -50,14 +51,17 @@ private theorem frame_ok (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
       (Node.frame (tr.state y i)).tree ⊆ (tr.state y i).fg.tree :=
   ⟨(Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1, fun _ hX => hX.1⟩
 
-/-- **R.8, `nested`.** -/
-theorem outputs_nested : OutputsNested := by
-  intro sp ro dg H tr proposer hrun y hy i
+/-- **R.8, `nested`**, at a cut of an honest node: the finalized tip is an ancestor of the
+confirmed tip, and the confirmed tip of the head, in the node's tree. -/
+theorem outputs_nested_at (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+    (i : Nat) :
+    (tr.state y i).fg.Anc (tr.finalizedAt y i) (tr.confirmedAt y i) ∧
+      (tr.state y i).fg.Anc (tr.confirmedAt y i) (tr.headAt y i) := by
   obtain ⟨hΦ, hsub⟩ := frame_ok hrun hy i
   obtain ⟨hC, hCH⟩ := ac_tips (A := (tr.state y i).ac) hΦ (tr.time i)
   exact ⟨Anc.mono hsub (hΦ.rooted.2 _ hC), Anc.mono hsub hCH⟩
 
-/-- `finalized_monotone` from any start: the proof reads only the cut law and FG reachability. -/
+/-- C0.2 from any start: the proof reads only the cut law and FG reachability. -/
 theorem finalized_monotone_from {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H) {i j : Nat}
     (hij : i ≤ j) : (tr.state y j).fg.Anc (tr.finalizedAt y i) (tr.finalizedAt y j) := by
@@ -74,10 +78,6 @@ theorem finalized_monotone_from {ini : Fin sp.n → (goldilocksNode sp ro).State
     · change (tr.state y (j + 1)).fg.Anc (tr.state y i).fg.F (tr.state y (j + 1)).fg.F
       rw [tr.state_succ_of_not fun c h => hc ⟨c, h⟩]
       exact ih
-
-/-- **R.8, `finalMonotone`.** -/
-theorem finalized_monotone : FinalizedMonotone :=
-  fun _ _ _ _ _ _ hrun _ hy _ _ hij => finalized_monotone_from hrun hy hij
 
 /-- Every block of an honest node's tree is a valid output, from any start. -/
 theorem validOutput_of_mem {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -105,9 +105,12 @@ theorem validOutput_of_mem {ini : Fin sp.n → (goldilocksNode sp ro).State}
   exact ⟨hro, ⟨k, hk, hacc⟩, hpr, Pz, hPzi, hp,
     (Store.accepted_tree _ _ _ _ (fg_reachable h hy i)).2.1.2 Pz hPzi Z hZ hp⟩
 
-/-- **R.8, `outputValid`.** -/
-theorem outputs_valid : OutputsValid := by
-  intro sp ro dg H tr proposer hrun y hy i
+/-- **R.8, `outputValid`**, at a cut of an honest node: the finalized and confirmed outputs are
+valid outputs of its tree. -/
+theorem outputs_valid_at (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n} (hy : y ∈ H)
+    (i : Nat) :
+    ValidOutput tr proposer dg y i (tr.finalizedAt y i) ∧
+      ValidOutput tr proposer dg y i (tr.confirmedAt y i) := by
   obtain ⟨hΦ, hsub⟩ := frame_ok hrun hy i
   exact ⟨validOutput_of_mem hrun hy
       (Store.cache_invariants _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1,
