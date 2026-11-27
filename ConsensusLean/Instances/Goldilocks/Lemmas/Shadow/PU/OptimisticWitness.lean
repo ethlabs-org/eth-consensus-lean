@@ -551,10 +551,10 @@ theorem optimistic_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
     intro l hl _ hls L hL hLr
     rw [← hst] at hl
     have hl' : l ∈ ((tr.upTo (tr.time i)).state y i).ac.locks := by
-      have h := Compose.projAC_state' (hrun.upTo ht0).toLocalRun hy i
+      have h := Compose.projAC_state (hrun.upTo ht0).toLocalRun hy i
       rw [RunTrace.upTo_projAC] at h
       rwa [h] at hl
-    have hlsb := Compose.proposal_locks_slot_of' (hrun.upTo ht0) (hnc.upTo _) hy
+    have hlsb := Compose.proposal_locks_slot_of (hrun.upTo ht0) (hnc.upTo _) hy
       (by rw [RunTrace.upTo_projAC]; exact hcp) hcall
       (by rw [RunTrace.upTo_projAC]; exact hdp) hti
       (by rw [RunTrace.upTo_projAC];

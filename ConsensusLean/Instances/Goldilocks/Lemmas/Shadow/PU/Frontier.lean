@@ -231,9 +231,9 @@ theorem Outcome.no_high_contest_at'
   have hJlt : ((tr.state p i).fg.σ (tr.state p i).fg.J.root).h <
       ((tr.state p i).fg.σ Bj.root).h := by have := hj_lt_h_with hu hr hBj; omega
   obtain ⟨-, -, -, -, v₁, d₁, -, hd₁, -, -, h₁⟩ :=
-    hp.left_entry_origin_or_covered_at' ht hi hpH hib hEC hECT (by omega) hECC (by omega)
+    hp.left_entry_origin_or_covered_at ht hi hpH hib hEC hECT (by omega) hECC (by omega)
   obtain ⟨-, -, -, -, v₂, d₂, -, hd₂, -, -, h₂⟩ :=
-    hp.left_entry_origin_or_covered_at' ht hi hpH hib hJm hJT (by omega) hEJB hJlt
+    hp.left_entry_origin_or_covered_at ht hi hpH hib hJm hJT (by omega) hEJB hJlt
   have hcmp := entries_compatible hp hib hd₁ hd₂ (h₁.imp_right And.right) (h₂.imp_right And.right)
   have hh : ((tr.state p i).fg.σ (tr.state p i).fg.J.root).h =
       ((tr.state p i).fg.σ EC.root).h := by rw [hJh, hBjhj, hECh]
@@ -248,17 +248,6 @@ theorem Outcome.no_high_contest_at'
   have heq : EC = (tr.state p i).fg.J := hU.1 (hsub hEC) (hsub hJm) he
   exact hJC (heq ▸ hECC)
 
-/-- An older fast-lock label written by the late-vote deadline was written before the slot
-(`Outcome.fastLock_time_lt_at`, the stock proof). -/
-theorem Outcome.fastLock_time_lt_at' {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {x : Fin sp.n} {r m u : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (AC.Vote sp.n)} (hfl : AC.FastLockAt tr.projAC x r m D CV)
-    (hmu : m < u) (htr : tr.time r ≤ sp.ts u + sp.Δ) : tr.time r < sp.ts u :=
-  hrun.toCore.fastLock_time_lt_at hfl hmu htr
-
-/-- **The voter's height floor** over the shadow run (`reset_vote_floor_above_old_or_covered_at`):
-a pre-slot origin bound and a label-bounded cover bound reach the voter's height floor. -/
 theorem ResetPremisesUpTo.reset_vote_floor_above_old_or_covered_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {j u : Nat} (hy : y ∈ H (tr.time j)) (hR : drainTime sp a ≤ sp.ts u)
@@ -274,7 +263,7 @@ theorem ResetPremisesUpTo.reset_vote_floor_above_old_or_covered_at
   have hj : ∀ q < j, tr.time q ≤ tr.time j := fun q hq => hp.run.time_mono hq.le
   have hreach := (Compose.Growing.reachable_at' hp.run ht hy hj).reachableWith
   have hu := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
-  obtain ⟨v₀, r₀, l₀, O₀, ho₀, hrb, _, hrt⟩ := hp.reset_seed_before_slot_at' hR
+  obtain ⟨v₀, r₀, l₀, O₀, ho₀, hrb, _, hrt⟩ := hp.reset_seed_before_slot_at hR
   have hBh := Outcome.high_of_anc_at' hp.run hp.noColl ho₀ ht hj hy hB
     (hBold v₀ r₀ l₀ O₀ ho₀ hrt hrb)
   have hnc := Outcome.no_high_contest_at' hp hy hjb
@@ -292,7 +281,7 @@ theorem ResetPremisesUpTo.reset_vote_floor_above_old_or_covered_at
   obtain ⟨E, hE, hEC, hEh, hET⟩ := entry_at_height_with hu hreach hC
     (h := (tr.state y j).fg.hmax - 1) (by omega) (by omega)
   obtain ⟨W, hW, att, ha, v, d, hv, hdj, hs, hT, hsource⟩ :=
-    hp.left_entry_origin_or_covered_at' ht hj hy hjb hE hET (by omega) hEC (by omega)
+    hp.left_entry_origin_or_covered_at ht hj hy hjb hE hET (by omega) hEC (by omega)
   have hc' : (tr.upTo (tr.time j)).projAC.CallAt y j ell := by
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc.1⟩
@@ -305,10 +294,10 @@ theorem ResetPremisesUpTo.reset_vote_floor_above_old_or_covered_at
         (hp.run.antitone (hp.run.time_mono hdj.le) hv) hs hdj hrd ho
       obtain ⟨CV, ellw, D, _, hf, _⟩ := ho.2.2.1
       have hrj := hp.run.time_mono (show r ≤ j by omega)
-      have hrt := Outcome.fastLock_time_lt_at' hp.run hf hlu (hrj.trans htupper)
+      have hrt := Outcome.fastLock_time_lt_at hp.run hf hlu (hrj.trans htupper)
       exact hEO.trans (hBold v r l O ho hrt (hrj.trans hjb))
     · obtain ⟨hcov, _⟩ := coveredUpTo_iff.1 hcov
-      obtain ⟨C, s, hC, hsu, hEC⟩ := Outcome.row_entry_member_before_cast_at' hp hy hjb hc hW ha
+      obtain ⟨C, s, hC, hsu, hEC⟩ := Outcome.row_entry_member_before_cast_at hp hy hjb hc hW ha
         ‹v ∈ H (max (cutZ sp.toParams g) (tr.time j))› hs hdj hE hT (by omega) hcov
       exact hEC.trans (hcovered hcov C s hC (hes ▸ hsu))
   have hh := h_le_of_store_anc_with hu hreach
@@ -350,7 +339,7 @@ theorem ProposalImpl.held_high_origin_viable_at'
       (st.σ E.root).h < (st.σ W.root).h → Compatible (tr.HonestBlocksAt H) E B := by
     intro E W hE hET hEh hEW hlt
     obtain ⟨_, _, _, _, v, d, _, hdc, _, _, hor⟩ :=
-      hp.left_entry_origin_or_covered_at' ht hle hpH hcb hE hET hEh hEW hlt
+      hp.left_entry_origin_or_covered_at ht hle hpH hcb hE hET hEh hEW hlt
     rcases hor with ⟨r, hrd, l, O, hoO, hEO⟩ | ⟨-, hcov⟩
     · rcases hp.origins_compatible_at' hoO
           ((hp.run.time_mono (show r ≤ c by omega)).trans hcb) ho hib with h | h

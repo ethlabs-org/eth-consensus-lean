@@ -839,7 +839,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Key
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Leaves
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LeftEntry
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LeftEntryBefore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LockLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LowFinalized
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
@@ -851,9 +850,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.PrimedCurrentP
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.PrimedFresh
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalLocks
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalStart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalViable
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Reach
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularClassification
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
@@ -862,7 +859,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportCover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportFollow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportRoots
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ResetSeeds
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RowBefore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore

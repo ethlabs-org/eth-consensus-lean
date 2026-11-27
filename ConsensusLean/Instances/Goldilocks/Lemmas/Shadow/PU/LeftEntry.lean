@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.LeftEntry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SourceCover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LeftEntry
@@ -88,43 +89,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {g ΔF a b hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-
-/-- At a time bounded by the reset horizon, deep quarantine or the high-source cover holds. -/
-theorem ResetPremisesUpTo.quarantine_or_cover_at'
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {t : Time} (htb : t ≤ b) :
-    (∀ D, sp.deepDepth = some D → t ≤ cutZ sp.toParams g + 4 * D * sp.Δ) ∨
-      HighSourceCover tr H g a b :=
-  hp.toCore.quarantine_or_cover_at htb
-
-/-- Inside the deep quarantine a left high entry has a prior high origin above it. -/
-theorem ResetPremisesUpTo.left_entry_origin_of_quarantine_at'
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) {E C : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hE : E ∈ (tr.state y k).fg.tree) (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
-    (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h) (hEC : (tr.state y k).fg.Anc E C)
-    (hlt : ((tr.state y k).fg.σ E.root).h < ((tr.state y k).fg.σ C.root).h)
-    (hpre : ∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
-    ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v d, v ∈ H t ∧ d < k ∧
-      tr.SignAt v d att ∧ att.T = E.root ∧
-        ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧ Anc (tr.HonestBlocksAt H) E O :=
-  hp.toCore.left_entry_origin_of_quarantine_at ht hle hy htb hE hET hEh hEC hlt hpre
-
-/-- A left high entry has an earlier high origin, or is covered after the deep quarantine.
-This is the stock left-entry contract over the shadow execution. -/
-theorem ResetPremisesUpTo.left_entry_origin_or_covered_at'
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) {E C : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hE : E ∈ (tr.state y k).fg.tree) (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
-    (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h) (hEC : (tr.state y k).fg.Anc E C)
-    (hlt : ((tr.state y k).fg.σ E.root).h < ((tr.state y k).fg.σ C.root).h) :
-    ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v d, v ∈ H t ∧ d < k ∧
-      tr.SignAt v d att ∧ att.T = E.root ∧
-        ((∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧ Anc (tr.HonestBlocksAt H) E O) ∨
-          (v ∈ H (max (cutZ sp.toParams g) t) ∧ CoveredUpTo tr H g a b (sp.slot t) E)) :=
-  hp.toCore.left_entry_origin_or_covered_at ht hle hy htb hE hET hEh hEC hlt
 
 end Consensus.Goldilocks.Healing.Growing
 

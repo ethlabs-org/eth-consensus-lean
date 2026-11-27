@@ -57,7 +57,7 @@ theorem own_block_payload (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
   rcases Coherence.blockCall_cases h hy hacc with hg |
       ⟨j, x, f, -, hg, hp, d, p, hdp, rfl, -⟩
   · exact (h.wire y hy i _ _ hg).2.2
-  obtain ⟨cfg, hreach, hst, hstep⟩ := group_step' h hy hg
+  obtain ⟨cfg, hreach, hst, hstep⟩ := group_step h hy hg
   obtain ⟨hcoh, t₀, ht₀, hR⟩ := ac_states_reachable' proposer dg y (hpay y hy) hreach
   have hfg : cfg.st.fg.Reachable A.genesisPayload := by
     rw [hst]
@@ -132,7 +132,7 @@ theorem own_block_accepted' (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin
     | some fg' =>
       exact ⟨y, j + 2, true, (Compose.group_cut hg (cuts true (by
         simp [onBlock_eq, hs, hb]))).1⟩
-  obtain ⟨cfg, hR, hst, hS⟩ := Compose.group_step' h hy hg
+  obtain ⟨cfg, hR, hst, hS⟩ := Compose.group_step h hy hg
   have hacc := Compose.honest_block_accepted_from' proposer dg y hq hroot
     cfg _ t x fgDue hR hS hP d pay (by rw [hst]; exact hr)
   simp only [hst] at hacc

@@ -11,7 +11,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Driven
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Participants
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FGProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Rows
@@ -334,8 +333,8 @@ private theorem toFG_next (y : Fin sp.n) (st : NodeState (goldilocksNode sp ro))
     set st₁ := (Node.tickStep proposer dg y (Node.tickStep proposer dg y st t x .acTick).1 t x
       .proposal).1
     have hch : Node.CutChain y t st l st₁ :=
-      Compose.chain_append' y (Compose.tickStep_chain' proposer dg y st t x _)
-        (Compose.tickStep_chain' proposer dg y (Node.tickStep proposer dg y st t x .acTick).1 t x
+      Compose.chain_append y (Compose.tickStep_chain proposer dg y st t x _)
+        (Compose.tickStep_chain proposer dg y (Node.tickStep proposer dg y st t x .acTick).1 t x
           .proposal)
     have hn : l.length ≤ k := by
       by_contra hlt
@@ -412,7 +411,7 @@ private theorem report_attest_pending (hrun : GoldilocksRun proposer dg H tr ini
   have hg' := (RunTrace.groupAt_iff _ _ _ _ _ _ _).1 hg
   have hlen := (List.getElem?_eq_some_iff.1 hk').1
   have hst : tr.state y (j₀ + k') = st₁ := by
-    have := Compose.cutChain_run' h hy hch j₀ rfl fun m hm => by
+    have := Compose.cutChain_run h hy hch j₀ rfl fun m hm => by
       rw [List.length_take] at hm
       obtain ⟨hn, ht, -, -, hl⟩ := hg'.2.1 m (by omega)
       exact ⟨hn, ht, by rw [hl, List.getElem_take]⟩
@@ -454,7 +453,7 @@ private theorem signed_tick_pending (hrun : GoldilocksRun proposer dg H tr ini) 
       (n := i - j) (by omega)
     rw [← Option.some.inj hl] at hmem
     exact tick_no_message y _ _ x _ hmem m hm
-  · exact Compose.before_tick' hrun.toLocalRun hy
+  · exact Compose.before_tick hrun.toLocalRun hy
       ((RunTrace.tickAt_iff _ _ _ _ _ _).2 ⟨x, true, hg⟩) hc hi ht
 
 private theorem late_tick_pending (hrun : GoldilocksRun proposer dg H tr ini) :
@@ -504,7 +503,7 @@ private theorem signed_before_attest_pending (hrun : GoldilocksRun proposer dg H
   obtain ⟨j₀, hj₀k, x, ht, hl⟩ := tick_of_attest hrun hy hc
   have nfg : ∀ m < j₀, ∀ ℓ, tr.CallAt y m (.fg ℓ) → tr.time m = tr.time k → False :=
     fun m hm ℓ hcm htm => by
-      obtain ⟨ℓ', he, -⟩ := Compose.before_tick' h hy ht hcm hm htm
+      obtain ⟨ℓ', he, -⟩ := Compose.before_tick h hy ht hcm hm htm
       cases he
   rcases lt_or_ge i j₀ with hij₀ | hij₀
   · exact (nfg i hij₀ _ hA hti).elim
@@ -540,17 +539,17 @@ theorem GoldilocksRun.toStaticCore' (hrun : GoldilocksRun proposer dg H tr ini) 
   sleep_of_restart := hrun.sleep_of_restart
   sign_public y hy k a hs := by
     obtain ⟨C, hc⟩ := hs
-    obtain ⟨j, -, ht⟩ := Compose.attestCall_tick' hrun.toLocalRun hy hc
+    obtain ⟨j, -, ht⟩ := Compose.attestCall_tick hrun.toLocalRun hy hc
     exact hrun.tick_public y hy j _ ht
   signed_run v hv i := by
-    obtain ⟨hinit, hexec⟩ := Compose.fg_exec' hrun.toLocalRun
-    obtain ⟨inputs, hin, hs⟩ := Healing.signed_run hinit hexec hv i
+    have hfg := Compose.fg_exec hrun.toLocalRun
+    obtain ⟨inputs, hin, hs⟩ := Healing.signed_run hfg.init hfg.exec hv i
     exact ⟨inputs, hin, fun j hj a ha =>
       hs j hj a ⟨_, Compose.projFG_callAt.mpr ha.choose_spec⟩⟩
   reachable y hy i := (Node.fg_reachable_at hrun.toLocalRun hy i).reachableWith
   jmax y hy i := (Healing.jMax_iff _).1 (Node.fg_reachable_at hrun.toLocalRun hy i).jMax
   frameOK y hy i := Compose.frameOK_state' hrun.toLocalRun hy i
-  projAC_state y hy i := Compose.projAC_state' hrun.toLocalRun hy i
+  projAC_state y hy i := Compose.projAC_state hrun.toLocalRun hy i
   acRun hnc := Compose.goldilocks_ac_projection_from' hrun hnc
   coherent hnc := Coherence.honest_blocks_coherent hrun.toLocalRun hnc
   tree_mono y hy _ _ hki := Coherence.tree_mono' hrun.toLocalRun hy hki
