@@ -87,7 +87,7 @@ theorem readPoint_stamp {s i : Nat} {ℓ : ACLabel N1} {e : N1.Em}
     · by_contra hge
       apply hnot
       change cv s ∈ ((tickRun N1 dg1).projAC.state v0 k).pool s
-      rw [projAC_state']
+      rw [projAC_state]
       refine tickRun_pool_mono (Nat.le_of_not_lt hge) s ?_
       rw [state_tick, (good_tick (4 * s + 2)).ac.pool s,
         ite_pos ⟨by omega, by unfold tip; omega⟩]

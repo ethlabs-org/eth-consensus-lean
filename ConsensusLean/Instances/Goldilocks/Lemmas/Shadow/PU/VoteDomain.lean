@@ -146,7 +146,7 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
         l' < e.msg.slot ∧ Anc (tr.HonestBlocksAt H) E O := by
     intro E C hE hET hEh hEC hlt
     obtain ⟨W, hW, att, ha, v', d, hv', hd, hs', -, r', hrd, l', O, ho, hEO⟩ :=
-      hp.left_entry_origin_of_quarantine_at' ht hle hy hib hE hET hEh hEC hlt hpre
+      hp.left_entry_origin_of_quarantine_at ht hle hy hib hE hET hEh hEC hlt hpre
     have hl := KernelProof.row_origin_label_lt_at hp hy hcast hW ha
       (hp.run.antitone (hp.run.time_mono hd.le) hv') hs' hd hrd ho
     exact ⟨v', r', l', O, ho, by omega, (hp.run.time_mono (show r' ≤ i by omega)).trans hib,
@@ -225,7 +225,7 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
       obtain ⟨W, hW, hOW⟩ := frozen ho hrb' hl (hFJU.trans hJO)
       exact ⟨W, hW, hBJ.trans (hJO.trans hOW), viabJ (hvt hW) (hanc (hJO.trans hOW) (hvt hW))⟩
   · -- low `h_j`: `Σ.F` is below the seed
-    have hFS := hp.low_finalized_below_origin_at' ht hle hy hib (by omega) hS hqb
+    have hFS := hp.low_finalized_below_origin_at ht hle hy hib (by omega) hS hqb
     have hFB : Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.F B := by
       rcases hBS with h | h
       · exact Anc.total hU hFS h

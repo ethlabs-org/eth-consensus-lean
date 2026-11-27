@@ -97,7 +97,7 @@ theorem signAt_report_entry {ini} (hrun : GoldilocksRun proposer dg Hs tr ini) {
     finalitySpec_updateFinality (Node.fg_reachable_at hrun.toLocalRun hv j).reachableWith
     hCt hsigned
   refine ⟨j, rfl, ht, ℓ, C, E, ⟨hpc, hcall, ?_⟩, hCt, hE, hEr, hEC, hTh, hET, hEh, hCa⟩
-  rw [Compose.projAC_state' hrun.toLocalRun hv j]
+  rw [Compose.projAC_state hrun.toLocalRun hv j]
   exact hret
 
 /-- A cache strictly ahead of a held target is backed by an actual earlier honest report at a
@@ -228,8 +228,9 @@ theorem ResetPremisesUpTo.low_analysis_root_of_held_seed_at
   have hU := Coherence.honestBlocksAt_coherent hrun hnc
   have hi0 := hrun.time_nonneg i
   have hlei : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
-  have hs := (Compose.Growing.reachable_at' hrun hi0 hy hlei).puSnapshot
-  have hFS := hp.low_finalized_below_origin_at' hi0 hlei hy hib hlow hS hqb
+  have hreach := (Compose.Growing.reachable_at' hrun hi0 hy hlei).reachableWith
+  have hFS := hp.low_finalized_below_origin_at hi0 hlei hy hib hlow hS hqb
+  have hSh := Outcome.high_of_anc_at' hrun hnc hS hi0 hlei hy hSy .refl
   have hJ : ∀ D ∈ (tr.state y i).fg.tree,
       Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F D →
       HZ tr H g + 1 ≤ ((tr.state y i).fg.σ D.root).h →
@@ -237,7 +238,7 @@ theorem ResetPremisesUpTo.low_analysis_root_of_held_seed_at
       ¬ (tr.state y i).fg.Contest → Anc (tr.HonestBlocksAt H) (tr.state y i).fg.J D := by
     intro D hD hFD hDh htop hnc
     have hDm : ((tr.state y i).fg.σ D.root).h = (tr.state y i).fg.hmax := by
-      have := hs.height_bound D hD
+      have := (cache_invariants_with finalitySpec_updateFinality hreach).2.2.2.2.1 D hD
       omega
     have hJD : (tr.state y i).fg.Anc (tr.state y i).fg.J D := by
       by_contra hn
@@ -248,7 +249,7 @@ theorem ResetPremisesUpTo.low_analysis_root_of_held_seed_at
   split_ifs with hactive
   · rcases hBS with hBS | hSB
     · exact Anc.total hU
-        (hJ S hSy hFS (Outcome.high_of_anc_at' hrun hp.noColl hS hi0 hlei hy hSy .refl)
+        (hJ S hSy hFS hSh
           hactive.1 hactive.2) hBS
     · have hFB := hFS.trans hSB
       have hB := (mem_frame_tree.1 (hheld hFB)).1

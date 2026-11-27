@@ -37,7 +37,7 @@ theorem onTick_cuts (y : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) (fgDue
       (if fgDue then (tickStep proposer dg y
         (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1
           t x .proposal).1 t x .fgUpdate).2 else []) := by
-  cases fgDue <;> simp [onTick_eq, runSteps_eq, tickSteps]
+  cases fgDue <;> simp [onTick_eq]
 
 /-- Every public shadow tick starts with its AC tick cut. -/
 theorem tick_first_cut' {y : Fin P.n} {j : Nat} {t : Time} {x : Nat} {fgDue : Bool}
@@ -294,7 +294,7 @@ private theorem honest_proposal_of_tick (hrun : GoldilocksRun proposer dg H tr i
     d, pay, Compose.projAC_callAt.2 hc1, rfl, ?_, ht1.trans hts, rfl, rfl, rfl, rfl,
     j + 3, by omega, hacc3, ht3.trans (ht2.trans hts)⟩
   have ht1' : tr.projAC.time (j + 1) = t := ht1
-  rw [Compose.projAC_state' h hp, hst1, ht1']
+  rw [Compose.projAC_state h hp, hst1, ht1']
   simpa only [acProposal_eq] using hr
 
 /-- The shadow run supplies the stock driven-execution contract on its AC projection. -/
@@ -370,7 +370,7 @@ theorem projection_driven_of_run' (hrun : GoldilocksRun proposer dg H tr ini)
       x .acTick).1, []⟩, Compose.projAC_callAt.2 hc1, rfl, ht1, ?_⟩
     rintro ⟨pay, -, -, d, hd⟩
     have ht1' : tr.projAC.time (j + 1) = sp.ts s := ht1
-    rw [Compose.projAC_state' h hp, hst1, ht1'] at hd
+    rw [Compose.projAC_state h hp, hst1, ht1'] at hd
     have hd' : (acProposal (tickStep proposer dg p (tr.state p j) (sp.ts s)
         x .acTick).1 (sp.ts s)).2.2 = some (d, pay) := by
       simpa only [acProposal_eq] using hd
