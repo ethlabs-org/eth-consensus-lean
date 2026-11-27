@@ -605,7 +605,7 @@ theorem acProposal_tick {A : ACState sp1.n} {Φ : N1.Frm} {f k : Nat}
     · left
       exact ⟨h.mem hf le_rfl, _, h.mem_liveLocks (htip₁ hk1) hf le_rfl rfl
         (by rw [hs]; change k + 1 ≤ k + 2; omega), rfl⟩
-  refine ⟨L₁, _, rfl, ?_, hL₁, htip₁⟩
+  refine ⟨A.locks, _, rfl, ?_, hL, htip⟩
   change ghost sp1 _ _ _ _ (getAnchor sp1 { A with locks := L₁ } Φ _) = _
   rw [hanc]
   refine ghost_tip (fun B hB => ?_) _ _ _

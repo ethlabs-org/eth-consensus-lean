@@ -126,9 +126,10 @@ private theorem view_agree_of_forwardU
     have he := hr.exec i ℓp hcp.2 (hcp.1 ▸ hp)
     rw [hcp.1, hcall] at he
     have hj' : joined sp (tr.post i) (tr.time i) := by
-      have hpost : tr.post i = (acProposalWith sp (u i) (tr.state p i) ℓp.frame (tr.time i)).1 :=
+      have hpost : tr.post i = tr.state p i :=
         (congrArg Prod.fst he).symm
-      unfold joined; rw [hpost, (acProposalWith_keeps _ _ _ _).2]; exact hjp
+      rw [hpost]
+      exact hjp
     intro k hk hrk
     have := ((joined_awakeU sp) FGP ro H U tr hr p hp i ℓp hcp hj').2 k hk hrk
     rwa [hsi, hcast] at this

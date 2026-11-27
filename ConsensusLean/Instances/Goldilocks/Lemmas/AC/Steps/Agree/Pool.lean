@@ -119,11 +119,7 @@ private theorem grow_step
     · exact grow_tryVote (wm := wm) _ _ _ _
     · exact Grow.of_eq rfl rfl
     · exact Grow.of_eq rfl rfl
-  | proposal =>
-    change Grow t A (acProposalWith sp L A Φ t).1
-    unfold acProposalWith
-    dsimp only
-    split_ifs <;> exact Grow.of_eq rfl rfl
+  | proposal => exact Grow.of_eq rfl rfl
   | toFG =>
     change Grow t A (acToFG sp A Φ t).1
     unfold acToFG

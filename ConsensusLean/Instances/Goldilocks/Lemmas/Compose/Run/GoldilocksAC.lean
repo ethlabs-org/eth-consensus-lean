@@ -165,15 +165,15 @@ end Adds
 /-! ### In the run -/
 
 /-- The Goldilocks node's AC started at a start up to the vote permission meets the interface
-requirements 1–5 (A0.6, A0.9), at the states reachable from that start. -/
+requirements 1–3 and 5 (A0.6, A0.9), at the states reachable from that start. -/
 theorem requirements_from (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
     {s₀ : AC.ACState sp.n} (h₀ : AC.VoteStart sp.genesisRoot s₀) :
     ({ goldilocksNode sp ro with initial := s₀ } : NodeAC sp.toParams).Requirements :=
   have h := AC.interface_requirements_from sp (List (FG.Att sp.n)) ro h₀
-  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, fun self U _ s Φ t₀ hr =>
+  ⟨h.1, h.2.1, h.2.2, fun self U _ s Φ t₀ hr =>
     AC.proposal_payload_valid_from sp h₀.pool self U s Φ t₀ (ACInterface.reachableAtFrom_iff.2 hr)⟩
 
-/-- The Goldilocks node's AC meets the interface requirements 1–5 (A0.6, A0.9):
+/-- The Goldilocks node's AC meets the interface requirements 1–3 and 5 (A0.6, A0.9):
 `requirements_from` at the initial state. -/
 theorem requirements (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :
     (goldilocksNode sp ro).Requirements :=

@@ -201,7 +201,7 @@ theorem stepWithM_voteBranch {L : Set Lock} (self : Fin sp.n)
       | (exfalso; linarith [h₂.1, h₁])
   | proposal =>
     obtain ⟨rfl, rfl⟩ := Prod.mk.inj hs
-    exact Or.inl ⟨rfl, Or.inl (acProposalWith_keeps L _ _ _).1⟩
+    exact Or.inl ⟨rfl, Or.inl rfl⟩
   | toFG =>
     obtain ⟨rfl, rfl⟩ := Prod.mk.inj hs
     exact Or.inl ⟨rfl, Or.inl (acToFG_keeps _ _ _).1⟩

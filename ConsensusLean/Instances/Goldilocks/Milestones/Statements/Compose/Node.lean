@@ -9,7 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Client
 
 Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`,
 the composition nodes stated at **one node composed with any AC** that meets
-requirements 1–5 (`ACInterface.Requirements`), over the configurations the node reaches
+requirements 1–3 and 5 (`ACInterface.Requirements`), over the configurations the node reaches
 (`Node.Reachable`, `Spec/Node`): C0.2 (finalized monotone, also across restarts), C0.3
 (honest blocks are accepted), C0.4 (tick order) and C0.5 (projection onto the components: the
 AC's states are reachable AC states under the call law, the FG's states are reachable FG states,

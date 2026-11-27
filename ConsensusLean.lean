@@ -32,6 +32,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Unlock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Locks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.OpponentsHonest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ProposalHead
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPointLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Ready
@@ -95,6 +96,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Attest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.ProposalReceipt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Reach
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Accountable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.OutageDelivery
