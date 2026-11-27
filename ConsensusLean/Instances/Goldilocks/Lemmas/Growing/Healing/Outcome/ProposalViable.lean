@@ -17,7 +17,7 @@ public section
 `reset_proposal_viable` (`Healing/Outcome/SupplierViews`): the proposer honest through
 `t_u + hold`, the voter at its cast. The cast's `fc_root` is below the proposal
 (`reset_vote_root_below_proposal_at`), the proposal is in the voter's block tree as a current-slot
-block, and its height reaches the voter's floor (`reset_vote_floor_above_old_or_covered_at`): every
+block, and it is viable at the voter (`reset_vote_viable_above_old_or_covered_at`): every
 earlier high origin is below the proposal's parent (`reset_proposal_passes_at`). -/
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
@@ -73,7 +73,7 @@ theorem reset_proposal_viable_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     have ht := AC.vote_time_leU hr.toU hy ⟨elly, hcy'⟩
     change tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ at ht
     simpa only [← hsl, hes] using ht
-  have hfloor := hp.reset_vote_floor_above_old_or_covered_at hy hR hcy hes hjb hPyStore
+  have hviable := hp.reset_vote_viable_above_old_or_covered_at hy hR hcy hes hjb hPyStore
     (fun x r l O ho ht _ => by
       have hOQ := hp.reset_proposal_passes_at hpi hR hci hcall hd hti hib O ⟨x, r, l, ho, ht⟩
       obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
@@ -88,7 +88,7 @@ theorem reset_proposal_viable_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
           (.single ⟨hPhiU hQt, hPsiU hPy, hPQ⟩))
   refine ⟨hPt, hroot', P, hPt, ?_, .refl⟩
   rw [hfr] at hPy hroot' ⊢
-  exact ⟨hPy.1, hPy.2, hroot'.mono (fun X hX => hX.1), hfloor⟩
+  exact ⟨hPy.1, hPy.2, hviable⟩
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
