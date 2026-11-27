@@ -3,8 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportRoots
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RowBefore
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LeftEntryBefore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.LeftEntry
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LeftEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frontier
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.StaticCoreFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
@@ -194,7 +194,7 @@ private theorem high_root_of_held_seed_at
       (fun _ hk => hr.time_mono hk.le) hv hd hle hy hEs hE
     have hhh : HZ tr H g + 1 ≤ att.h := by rw [← hEsh, hσ]; exact hEh
     have hvz := hr.antitone (max_le hcz.le (hle d hdi)) haH
-    rcases hp.quarantine_or_cover_at' hib with hpre | hc
+    rcases hp.quarantine_or_cover_at hib with hpre | hc
     · obtain ⟨r, hrd, l, O, ho, E₀, hE₀, hEO, hEr, -⟩ :=
         Outcome.high_row_source_at_core hr hnc hvz hs hhh
           (hp.snapshot.imp fun _ h => h.1) fun D hD => (hle d hdi).trans (hpre D hD)
@@ -207,7 +207,7 @@ private theorem high_root_of_held_seed_at
           att.val r l O (hrd.trans hdi) ho with hPO | hOP
       · exact hEP (Anc.total hU hEO' hPO)
       · exact hEP (Or.inl (hEO'.trans hOP))
-    · obtain ⟨E₁, hE₁, hE₁r, hcov⟩ := Outcome.signed_row_covered_before_at'
+    · obtain ⟨E₁, hE₁, hE₁r, hcov⟩ := Outcome.signed_row_covered_before_at
         hp.run hnc hvz hs hhh (hp.snapshot.imp fun _ h => h.1) hc ((hle d hdi).trans hib)
       obtain rfl : E₁ = E := hU.1 hE₁ (hsub hE) (hE₁r.trans haT)
       obtain ⟨-, C, s, hC, hsl, hEC⟩ := coveredBefore_iff.1 hcov
@@ -285,7 +285,7 @@ theorem held_target_viableHeads_or_higher_report_covered_at
   obtain ⟨E, hE, hEC, hEh, hET⟩ := Store.entry_at_height_with hfs hreach hC
     (h := (tr.state y i).fg.hmax - 1) (by omega) (by omega)
   obtain ⟨W, hW, att, ha, x, d, hx, hdi, hs, hT, hor⟩ :=
-    hp.left_entry_origin_or_covered_before_at' hd hle hy hib hE hET
+    hp.left_entry_origin_or_covered_before_at hd hle hy hib hE hET
       (by omega) hEC (by omega)
   have hPE : Anc (tr.HonestBlocksAt H) P E := by
     have hcomp : Compatible (tr.HonestBlocksAt H) P E := by

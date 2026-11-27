@@ -193,7 +193,7 @@ theorem store_eq' (hr : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
     tr.projFG.store y i = (tr.state y i).fg := by
   change (tr.projFG.state y i).1 = _
-  rw [projFG_state' hr hy i]
+  rw [projFG_state hr hy i]
 
 /-- Ancestry in the honest-block universe lifts below a held block (`honest_held_anc`). -/
 theorem honest_held_anc' (hr : Node.LocalRun proposer dg H sg tr ini)
@@ -483,7 +483,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : 
 blocks (`projFG_localRun`). Unresolved until `fg_projection_from'` (lane B0b) is proved. -/
 theorem projFG_localRun' (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr) :
     FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG :=
-  fg_projection_from' (fun y _ => requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok
+  fg_projection_from (fun y _ => requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok
     hrun.toLocalRun hnc
 
 end Consensus.Goldilocks.Compose

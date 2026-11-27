@@ -1,4 +1,6 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifiesSigned
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeCrossing
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ProposalJustifies
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FGProjection
@@ -125,7 +127,6 @@ theorem rows_prog (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (
       · exact bp ((ih X hX' r hrX).2 hrh' hrT)
     · exact ⟨by omega, fun h' => by omega⟩
 
-/-- **The crossing at one block** (a copy of `cross_step`). -/
 end Chain
 
 /-! ## The pool and the proposals of an honest node (any AC) -/
@@ -218,44 +219,6 @@ private theorem mem_atts_of_process (h : Node.LocalRun proposer dg H sg tr ini)
     exact mem_onBlock ((Node.cutStep_block_true _ _ _ _ _).1 (h.cutLaw y hy k _ hc)).2.1
       (Or.inr ha)
 
-/-- **Processed attestations persist in the honest node's pool** (a copy of
-`processed_att_retained`). -/
-theorem accept_of_proposesAt_from' (h : Node.LocalRun proposer dg H sg tr ini)
-    (hroot : (P.genesisBlock A.genesisPayload).RootOk dg) (hnc : Compose.NoCollRun dg tr)
-    {p : Fin P.n} (hp : p ∈ H) (hq : ({ A with initial := ini p } : NodeAC P).Requirements)
-    {k : Nat} {W : A.Blk} (hW : tr.ProposesAt p k W) :
-    tr.AcceptAt p k W ∧ W ∈ (tr.state p (k + 1)).fg.tree ∧ tr.post k = tr.state p (k + 1) := by
-  obtain ⟨⟨⟨acc, hc⟩, hpos⟩, -, -⟩ := hW
-  rcases Coherence.blockCall_cases h hp hc with hg |
-    ⟨j, x, fgDue, rfl, hg, hpr, d, p', hdp, rfl, -, -, -, -⟩
-  · rw [RunTrace.groupAt_iff] at hg
-    exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
-  obtain ⟨hacc, -⟩ := own_block_accepted' h hq hroot hnc hp hg hpr hdp
-  have he := hc.2.symm.trans hacc.2
-  simp only [Option.some.injEq, Cut.fg.injEq, FGLabel.block.injEq] at he
-  obtain rfl := he.2
-  exact ⟨hc, Coherence.accept_mem_from h hp hc, (tr.state_succ_of_call hc).symm⟩
-
-/-- **The parent of an honest proposal is held at its cut** (a copy of
-`proposal_parent_held_from`). -/
-theorem proposal_parent_held_from' (h : Node.LocalRun proposer dg H sg tr ini)
-    (hroot : (P.genesisBlock A.genesisPayload).RootOk dg) (hnc : Compose.NoCollRun dg tr)
-    {p : Fin P.n} (hp : p ∈ H) (hq : ({ A with initial := ini p } : NodeAC P).Requirements)
-    {kX : Nat} {X : A.Blk} (hX : tr.ProposesAt p kX X) :
-    ∃ Pr : A.Blk, X.parent = some Pr.root ∧ Pr ∈ (tr.state p kX).fg.tree := by
-  obtain ⟨hacc, -, -⟩ := accept_of_proposesAt_from' h hroot hnc hp hq hX
-  obtain ⟨pr, _, _, hsome, hpar, _⟩ :=
-    onBlock_fields ((Node.cutStep_block_true _ _ _ _ _).1 (h.cutLaw p hp kX _ hacc)).2.1
-  obtain ⟨Y, hY⟩ := Option.isSome_iff_exists.1 hsome
-  have hR := (Node.fg_reachable_at h hp kX).reachableWith
-  have hYr : Y.root = pr := Store.blocks_root_with Store.finalitySpec_updateFinality hR hY
-  refine ⟨Y, by rw [hpar, hYr], ?_⟩
-  change (tr.state p kX).fg.blocks Y.root = some Y
-  rw [hYr]
-  exact hY
-
-/-- **The attestations of an honest proposal** (a copy of `proposal_rows_placed_from`; the FG
-projection is the shadow `FGLocalRun'`). -/
 end AnyAC
 
 end Consensus.Goldilocks.Healing

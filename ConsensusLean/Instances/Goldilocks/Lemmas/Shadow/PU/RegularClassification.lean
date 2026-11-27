@@ -592,7 +592,7 @@ theorem result_honest_supporter_before_at
     (by rw [RunTrace.upTo_projAC]; exact AC.serviceWindowBefore_of_sync hS.sync)
     hgs hx (by rwa [RunTrace.upTo_projAC]) le_rfl hready
     (fun y hy hyK i => by
-      rw [← Compose.projAC_state' hpre.toLocalRun hy i]
+      rw [← Compose.projAC_state hpre.toLocalRun hy i]
       exact (AC.trace_mayVote_iff (Compose.goldilocks_ac_projection_from' hpre
         (hnc.upTo _)).localRun hy i s).2 hyK)
     (fun v hv => hK.facts.hP.1 _ x hx c (fun _ hk => hm' hk.le) s v (by
