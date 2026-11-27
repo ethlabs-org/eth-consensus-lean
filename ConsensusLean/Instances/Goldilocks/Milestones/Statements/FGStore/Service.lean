@@ -231,17 +231,6 @@ def CacheAcceptance : Prop :=
     ({ st with hmax := max st.hmax (st.σ B.root).h } : Store P ACP).HasViableDescendant X →
     (st.updateFinality (st.σ B.root)).Anc X (st.updateFinality (st.σ B.root)).F
 
-/-- The statements of FGStore part 3 at parameters `P` and AC payload type `ACP`. -/
-structure FGStoreServiceAt : Prop where
-  previousHeightJustifiedEntry : PreviousHeightJustifiedEntry P ACP
-  previousHeightNotJustifiedEntry : PreviousHeightNotJustifiedEntry P ACP
-  crossing : Crossing P ACP
-  coverage : Coverage P ACP
-  cacheAcceptance : CacheAcceptance P ACP
-
-/-- **FGStore, part 3.** The FG service lemmas hold at every parameter and AC payload type. -/
-def FGStoreService : Prop := ∀ (P : Params) (ACP : Type), FGStoreServiceAt P ACP
-
 end Consensus.Goldilocks.Store
 
 end

@@ -6,11 +6,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
 
 public section
 
-/-! # Goldilocks milestone FGStore: part 1, one FG store, and part 2, FG traces
+/-! # Goldilocks milestone FGStore: part 1, one FG store
 
 `FGStoreLocal` from `Lemmas/FGStore/`: the reachable-state invariant (G0.1, F.2, G0.3, entry
-states) and the frame (the frame step, G0.4; C0.2's `Σ` half follows); part 2, over FG traces
-(G1.4, the core of G1.10); and part 3, the FG service lemmas (G1.6–G1.8, G1.9 (a)). -/
+states) and the frame (the frame step, G0.4; C0.2's `Σ` half follows). Parts 2 and 3 (FG traces
+and the FG service lemmas) are bundled under growing faults (`Proofs/Growing/FGStore/Main`); their
+row lemmas stay in `Lemmas/FGStore/`. -/
 
 namespace Consensus.Goldilocks.Store
 
@@ -23,19 +24,6 @@ theorem fg_store_local : FGStoreLocal := fun P ACP =>
     acceptIsFrameStep := accept_is_frame_step P ACP
     frameRealization := frame_realization P ACP
     entryStateOfSource := entry_state_of_source P ACP }
-
-/-- **FGStore, part 2 (so far).** -/
-theorem fg_store_trace : FGStoreTrace := fun P ACP =>
-  { finalizedSafety := finalized_safety P ACP
-    quorumFreeEntries := quorum_free_entries P ACP }
-
-/-- **FGStore, part 3.** -/
-theorem fg_store_service : FGStoreService := fun P ACP =>
-  { previousHeightJustifiedEntry := previousHeightJustified_entry P ACP
-    previousHeightNotJustifiedEntry := previousHeightNotJustified_entry P ACP
-    crossing := crossing P ACP
-    coverage := coverage P ACP
-    cacheAcceptance := cache_acceptance P ACP }
 
 end Consensus.Goldilocks.Store
 

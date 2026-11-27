@@ -58,15 +58,6 @@ def QuorumFreeEntries : Prop :=
       ((tr.store y (i + 1)).σ X.root).h = h ∧ ((tr.store y (i + 1)).σ X.root).Th = E.root ∧
         ((tr.store y (i + 1)).σ X.root).prog.card < P.fg.q
 
-/-- The statements of FGStore part 2 (so far) at parameters `P` and AC payload type `ACP`. -/
-structure FGStoreTraceAt : Prop where
-  finalizedSafety : FinalizedSafety P ACP
-  quorumFreeEntries : QuorumFreeEntries P ACP
-
-/-- **FGStore, part 2 (so far).** The FG trace statements hold at every parameter and AC payload
-type. The statements of G1.6–G1.9 over FG traces will extend `FGStoreTraceAt`. -/
-def FGStoreTrace : Prop := ∀ (P : Params) (ACP : Type), FGStoreTraceAt P ACP
-
 end Consensus.Goldilocks.Store
 
 end

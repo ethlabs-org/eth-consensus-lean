@@ -104,8 +104,8 @@ structure FGStoreLocalAt : Prop where
   entryStateOfSource : EntryStateOfSource P ACP
 
 /-- **FGStore, part 1.** The single-store statements hold at every parameter and AC payload
-type. Parts 2 and 3 (`FGStoreTrace`, `FGStoreService`) are separate bundles, each a statement
-of `Challenge`. -/
+type. Parts 2 and 3 are bundled under growing faults (`Store.Growing.FGStoreTrace`,
+`Store.Growing.FGStoreService`, `FGStore/Growing`). -/
 def FGStoreLocal : Prop := ∀ (P : Params) (ACP : Type), FGStoreLocalAt P ACP
 
 end Consensus.Goldilocks.Store

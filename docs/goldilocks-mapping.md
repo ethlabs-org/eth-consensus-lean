@@ -25,8 +25,8 @@ are unchanged. The latter also owns the frame-sequence vocabulary, not needed by
 |---|---|---|---|---|
 | `Consensus.Goldilocks.FG.FGSafety` | `Milestones/Statements/FGSafety` | G0.2 (part), G0.5, G0.7 (c), G0.8–G0.10, G1.1, G1.3 | First slice | proved (lemma) |
 | `Consensus.Goldilocks.Store.FGStoreLocal` | `Milestones/Statements/FGStore/Local` | F.2 (store), G0.1 (store), G0.2 (c), (h), G0.3, G0.3 (frame) at the store, G0.4 (height), C0.2 (`Σ`) | FGStore | proved (lemma) |
-| `Consensus.Goldilocks.Store.FGStoreTrace` | `Milestones/Statements/FGStore/Trace` | G1.4, G1.10 (core) | FGStore | proved (lemma) |
-| `Consensus.Goldilocks.Store.FGStoreService` | `Milestones/Statements/FGStore/Service` | G1.6, G1.7, G1.8, G1.9 (a) | FGStore | proved (lemma) |
+| `Consensus.Goldilocks.Store.Growing.FGStoreTrace` | `Milestones/Statements/FGStore/Growing` | G1.4, G1.10 (core), under growing faults (the static bundle is retired, owner decision) | FGStore | proved (lemma) |
+| `Consensus.Goldilocks.Store.Growing.FGStoreService` | `Milestones/Statements/FGStore/Growing` | G1.6, G1.7, G1.8 under growing faults (the static bundle is retired, owner decision; G1.9 (a)'s lemma stays, G1.9 (b) is `Healing.Growing.CacheAcceptance`) | FGStore | proved (lemma) |
 | `Consensus.Goldilocks.AC.ACBase`, `Consensus.Goldilocks.LocalRunReachable` | `Milestones/Statements/AC/Base` | F.1, A0.1–A0.9 (the trace contract is not a node) | ACBase | proved (lemma) |
 | `Consensus.Goldilocks.AC.ACSteps` | `Milestones/Statements/AC/Steps` | A1.1–A1.5, A1.8 | ACSteps | proved (lemma) |
 | `Consensus.Goldilocks.Compose.ComposeInterfaceStatements` | `Milestones/Statements/Compose/Interface` | C0.1 at the AC; A0.6, A0.9 consequences; C0.5 (c) | Compose/AnyAC | proved (lemma) |
@@ -157,8 +157,10 @@ all kind (a): `frameOK_Φ₀`, `frameOK_Φ₁`, `step_Φ₀_Φ₁`, `step_Φ₁_
 ## FGStore
 
 Part 1 (`FGStoreLocal`) is
-about the FG states that the handlers reach, at one node; part 2 (`FGStoreTrace`: G1.4, the core of G1.10) and
-part 3 (`FGStoreService`: G1.6–G1.8, G1.9 (a)) are over FG traces.
+about the FG states that the handlers reach, at one node; parts 2 (G1.4, the core of G1.10) and 3 (G1.6–G1.8,
+G1.9 (a)) are over FG traces, their rows stated here. Under growing faults, `Store.Growing.FGStoreTrace` bundles
+G1.4 and G1.10 (core) and `Store.Growing.FGStoreService` bundles G1.6–G1.8; G1.9 (a) remains a separate per-call
+lemma (`Store.CacheAcceptance`, `Store.cache_acceptance`). The static bundles are retired (owner decision).
 
 | Node | Reference | Definition | Milestone | Lean name |
 |---|---|---|---|---|
@@ -178,13 +180,13 @@ part 3 (`FGStoreService`: G1.6–G1.8, G1.9 (a)) are over FG traces.
 | — | CLAIMS C0.4, C0.5 (c) | FG state with the record; the execution law of an FG call; an FG trace; the FG trace contract (initial state, execution, trees in `U`, time order, signing at public times, own proposal first and from the pool, attest before receipts, unforgeability) | — | `Consensus.Goldilocks.FGState`, `Consensus.Goldilocks.FGLabel.Step`, `Consensus.Goldilocks.FGLabel.processed`, `Consensus.Goldilocks.FGTrace`, `Consensus.Goldilocks.FGTrace.SignAt`, `Consensus.Goldilocks.FGTrace.AcceptAt`, `Consensus.Goldilocks.FGTrace.ProcessAt`, `Consensus.Goldilocks.FGLocalRun` |
 | G1.4 | CLAIMS G1.4 | finalized safety over FG traces | FGStore (part 2) | `Consensus.Goldilocks.Store.FinalizedSafety` |
 | G1.10 | CLAIMS G1.10 (the core, with the own proposal) | quorum-free entries | FGStore (part 2) | `Consensus.Goldilocks.Store.namers`, `Consensus.Goldilocks.Store.QuorumFreeEntries` |
-| — | the part-2 bundle | the above, at one and at every parameter set | FGStore (part 2) | `Consensus.Goldilocks.Store.FGStoreTraceAt`, `Consensus.Goldilocks.Store.FGStoreTrace` |
+| — | the part-2 bundle, under growing faults (the static bundle is retired, owner decision) | the above, at one and at every parameter set | FGStore (part 2) | `Consensus.Goldilocks.Store.Growing.FGStoreTraceAt`, `Consensus.Goldilocks.Store.Growing.FGStoreTrace` |
 | — | CLAIMS §"L1: components / Finality gadget" (notation: entry, window, `D`) | an entry block; an honest proposal (P5's inclusion rule, **weaker than CLAIMS**: only the pooled attestations for the parent's current entry, target or timeout, not every one valid against the parent's state; docs/decisions.md "Final liveness"); the good window `GW(E, a, k_F)` (P1–P6; P7 is `FGLocalRun`); a block that justifies an entry without leaving its height first | FGStore (part 3) | `Consensus.Goldilocks.Store.IsEntry`, `Consensus.Goldilocks.Store.HonestProposal`, `Consensus.Goldilocks.Store.GoodWindow`, `Consensus.Goldilocks.Store.JustifiesEntry` |
 | G1.6 | CLAIMS G1.6 (theorem A) | entry whose previous height is justified | FGStore (part 3) | `Consensus.Goldilocks.Store.PreviousHeightJustifiedEntry` |
 | G1.7 | CLAIMS G1.7 (theorem B) | entry whose previous height is not justified, two windows | FGStore (part 3) | `Consensus.Goldilocks.Store.PreviousHeightNotJustifiedEntry` |
 | G1.8 | CLAIMS G1.8 (corollary C) | (a) crossing bound; (b) coverage after failed entries, by slot `T.slot + D₀ + D₁` (stronger than CLAIMS: `T₁` is any ancestor of `T`, not an entry strictly below it, and without the premise that the entries after `T₁` cross by timeout; the proof uses neither) | FGStore (part 3) | `Consensus.Goldilocks.Store.Crossing`, `Consensus.Goldilocks.Store.Coverage` |
 | G1.9 (a) | CLAIMS G1.9 (a) | cache acceptance per `update_finality` call | FGStore (part 3) | `Consensus.Goldilocks.Store.afterJustification`, `Consensus.Goldilocks.Store.CacheAcceptance` |
-| — | the part-3 bundle | the above, at one and at every parameter set | FGStore (part 3) | `Consensus.Goldilocks.Store.FGStoreServiceAt`, `Consensus.Goldilocks.Store.FGStoreService` |
+| — | the part-3 bundle, under growing faults: G1.6–G1.8 (G1.9 (a) remains a separate per-call lemma, `Store.cache_acceptance`; the static bundle is retired, owner decision) | G1.6–G1.8, at one and at every parameter set | FGStore (part 3) | `Consensus.Goldilocks.Store.Growing.FGStoreServiceAt`, `Consensus.Goldilocks.Store.Growing.FGStoreService` |
 
 Modelling notes: `Σ.T` and `Σ.σ` are kept by root (the store's duplicate test is by root, so a held root names one
 block); genesis takes an AC payload `acp₀` (never read). Restart keeps `Σ`, so it is no store step. Not yet

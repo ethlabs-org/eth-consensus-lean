@@ -39,10 +39,6 @@ theorem Consensus.Goldilocks.AC.aCSteps : Consensus.Goldilocks.AC.ACSteps :=
 theorem Consensus.Goldilocks.Store.fGStoreLocal : Consensus.Goldilocks.Store.FGStoreLocal :=
   Consensus.Goldilocks.Store.fg_store_local
 
-/-- Goldilocks FGStore, part 2 so far: FG traces (G1.4, the core of G1.10). -/
-theorem Consensus.Goldilocks.Store.fGStoreTrace : Consensus.Goldilocks.Store.FGStoreTrace :=
-  Consensus.Goldilocks.Store.fg_store_trace
-
 /-- Goldilocks ACBase, the AC interface and the AC's foundations. -/
 theorem Consensus.Goldilocks.AC.aCBase : Consensus.Goldilocks.AC.ACBase :=
   Consensus.Goldilocks.AC.acBase
@@ -50,10 +46,6 @@ theorem Consensus.Goldilocks.AC.aCBase : Consensus.Goldilocks.AC.ACBase :=
 /-- Goldilocks ACBase: the AC trace contract gives reachable states. -/
 theorem Consensus.Goldilocks.localRunReachable : Consensus.Goldilocks.LocalRunReachable :=
   fun _ _ _ _ _ _ h => Consensus.Goldilocks.localRun_reachable h
-
-/-- Goldilocks FGStore, part 3: the FG service lemmas (G1.6–G1.8, G1.9 (a)). -/
-theorem Consensus.Goldilocks.Store.fGStoreService : Consensus.Goldilocks.Store.FGStoreService :=
-  Consensus.Goldilocks.Store.fg_store_service
 
 /-- Goldilocks Compose/AnyAC: the interface statements (C0.1, C0.3), for any AC. -/
 theorem Consensus.Goldilocks.Compose.composeInterfaceStatements :
@@ -172,17 +164,11 @@ theorem Consensus.Goldilocks.Healing.Growing.cacheAcceptance :
 /-- info: 'Consensus.Goldilocks.Store.fGStoreLocal' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Store.fGStoreLocal
 
-/-- info: 'Consensus.Goldilocks.Store.fGStoreTrace' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Store.fGStoreTrace
-
 /-- info: 'Consensus.Goldilocks.AC.aCBase' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.AC.aCBase
 
 /-- info: 'Consensus.Goldilocks.localRunReachable' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.localRunReachable
-
-/-- info: 'Consensus.Goldilocks.Store.fGStoreService' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.Store.fGStoreService
 
 /-- info: 'Consensus.Goldilocks.Compose.composeInterfaceStatements' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Compose.composeInterfaceStatements
