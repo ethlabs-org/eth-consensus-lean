@@ -34,6 +34,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Ready
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.RelTrace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Resolution
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.RestartStamp
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.MergedOpponents
