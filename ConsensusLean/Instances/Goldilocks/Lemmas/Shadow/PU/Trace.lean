@@ -17,8 +17,9 @@ This file copies the stock trace laws that read the node's execution, over `gold
   `Growing.FGLocalRun'`, copies of `FGLabel.Step`, `FGLocalRun` and `Growing.FGLocalRun` with
   `Store.onBlock'` in place of `Store.onBlock`;
 * the component state `Compose.projFG_state'` (`Compose.projAC_state'` is in
-  `Shadow/PU/Node`), and the FG execution `Compose.fg_exec'`; the proved honest-tree
-  coherence and `Compose.fg_projection_from'` are in `Shadow/PU/Coherence`;
+  `Shadow/PU/Node`, the proved honest-tree coherence in `Shadow/PU/Coherence`), the FG
+  execution `Compose.fg_exec'` (the FG projection `Compose.fg_projection_from'` is in
+  `Shadow/PU/FGProjection`);
 * (the AC projection `Compose.goldilocks_ac_projection_from'` is in `Shadow/PU/ACProjection`);
 * the run laws under growing faults, `Growing.LocalRun'` and `Growing.GoldilocksRun'`, copies of
   `Growing.LocalRun` and `Growing.GoldilocksRun` with the shadow cut law and groups;
@@ -30,10 +31,7 @@ in the AC interface, and the shadow changes only the FG store and the frame. The
 conclude the stock `AC.ACRun`. The run carrier `RunTrace' = RunTrace` is shared, so the pure trace
 predicates (`SyncRunAt`, `GSTRunAt`, `HealthyRunAt`, `CatchRun`, `NoCollRun`, `projAC_callAt`,
 `projFG_callAt`, `HonestBlocks`, `Trace.upTo`, `projFG`) are reused as they are; only the lemmas
-that read the run laws are copied.
-
-**Open (shadow work in progress).** The proofs marked `sorry` are copies still to be written;
-each is named after its stock counterpart with a prime. -/
+that read the run laws are copied. -/
 
 namespace Consensus.Goldilocks
 
@@ -253,25 +251,6 @@ theorem fg_exec' (h : Node.LocalRun' proposer dg H sg tr ini) :
     | some a =>
       have hlaw := (cutStep'_attest_some _ _ _ _ _ _).1 hlaw
       exact ⟨hlaw.2.1, by simp [hlaw.1]⟩
-
-/-- The tick order through the FG calls for a shadow run: the FG laws `attest_public`,
-`own_first`, `attest_order` and `own_payload` of the projection (copies of `attestCall_tick`,
-`own_accept`, `before_tick` and `fg_before_attest` over the shadow groups). -/
-theorem fg_tick_order' (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P).Requirements)
-    (hg₀ : (P.genesisBlock A.genesisPayload).RootOk dg)
-    (h : Node.LocalRun' proposer dg H sg tr ini) (hnc : NoCollRun dg tr) :
-    (∀ y ∈ H, ∀ i src signed, tr.projFG.CallAt y i (.attest src signed) →
-      P.IsPublic (tr.projFG.time i)) ∧
-    (∀ y ∈ H, ∀ i B, tr.projFG.CallAt y i (.block B true) → B.proposer = y →
-      P.slotTime B.slot = tr.projFG.time i → ∀ k < i, ∀ ℓ, tr.projFG.CallAt y k ℓ →
-        tr.projFG.time k < tr.projFG.time i) ∧
-    (∀ y ∈ H, ∀ j src signed, tr.projFG.CallAt y j (.attest src signed) →
-      ∀ i ℓ, i < j → tr.projFG.CallAt y i ℓ → tr.projFG.time i = tr.projFG.time j →
-        ∃ B acc, ℓ = .block B acc ∧ B.proposer = y ∧ P.slotTime B.slot = tr.projFG.time j) ∧
-    (∀ y ∈ H, ∀ i B, tr.projFG.CallAt y i (.block B true) → B.proposer = y →
-      P.slotTime B.slot = tr.projFG.time i → ∀ a ∈ B.fgPayload,
-        a ∈ (tr.projFG.store y i).atts) := by
-  sorry
 
 end Consensus.Goldilocks.Compose
 
