@@ -98,6 +98,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Regimes.Outputs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Core
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Deadline
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameCandidate
@@ -753,6 +755,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.RecordsCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.WeakBase
