@@ -183,6 +183,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.LocalRunCore
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.LocalRunCoreStock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.OutageSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyFG
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyGlue
