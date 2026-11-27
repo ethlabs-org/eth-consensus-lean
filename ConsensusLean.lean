@@ -527,6 +527,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic.Recor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic.Select
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Optimistic.Votes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Candidate
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.CoreLift
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Arming
@@ -827,10 +828,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Origins
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OutageCount
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OutageInduction
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OutageLocks
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OutageProt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Participants
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalStart
