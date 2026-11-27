@@ -152,7 +152,7 @@ namespace ChainFrame
 variable {Φ : N.Frm} {f j τ : Nat}
 
 theorem fcRoot_mem' (h : ChainFrame Φ f j τ) : Φ.fcRoot ∈ Φ.tree := by
-  rw [h.fcRoot]; exact h.mem h.fj h.jτ
+  rw [h.fcRoot]; exact h.mem le_rfl (h.fj.trans h.jτ)
 
 theorem eq_of_mem (h : ChainFrame Φ f j τ) {B : N.Blk} (hB : B ∈ Φ.tree) :
     ∃ m, f ≤ m ∧ m ≤ τ ∧ B = blk m := (h.tree B).1 hB
@@ -205,9 +205,9 @@ theorem deepest_eq (h : ChainFrame Φ f j τ) {S : Set N.Blk} (hS : S ⊆ Φ.tre
 theorem viableAncestor_eq (h : ChainFrame Φ f j τ) {m : Nat} (h1 : f ≤ m) (h2 : m ≤ τ) :
     Φ.viableAncestor (blk m) = blk m := by
   have hcand : Φ.AncestorCandidate (blk m) := by
-    rcases Nat.lt_or_ge m j with hm | hm
-    · left; rw [h.fcRoot]; exact h.anc h1 hm.le h.jτ
-    · right; exact h.mem_viableTree (h.mem (le_trans h.fj h.jτ) le_rfl) hm h2 (h.mem h1 h2)
+    right
+    refine ⟨h.mem h1 h2, by rw [h.fcRoot]; exact h.anc le_rfl h1 h2, blk τ,
+      h.mem (h.fj.trans h.jτ) le_rfl, h.head_mem h.jτ le_rfl, h.anc h1 h2 le_rfl⟩
   have hv : Φ.IsViableAncestor (blk m) (blk m) :=
     ⟨Relation.ReflTransGen.refl, hcand, fun _ hA' _ => hA'⟩
   unfold Frame.viableAncestor
@@ -241,9 +241,9 @@ theorem liveLockBlocks_le (h : ChainFrame Φ f j τ) {L : Set Lock} {b : Nat} (h
   obtain ⟨m, hm, hr'⟩ := hL l hlL
   exact ⟨m, hm, (h.eq_of_root hBt (hr.symm.trans hr')).1⟩
 
-/-- The anchor is the latest live lock block (or `fc_root`). -/
+/-- The anchor is the latest live lock block (or `fc_root = Σ.F`). -/
 theorem getAnchor_eq (h : ChainFrame Φ f j τ) {A : ACState sp.n} {t : Time} {b : Nat}
-    (hL : LocksLe A.locks b) (hjb : j ≤ b) (hb : blk b ∈ liveLockBlocks sp A.locks Φ t ∨ b = j) :
+    (hL : LocksLe A.locks b) (hjb : f ≤ b) (hb : blk b ∈ liveLockBlocks sp A.locks Φ t ∨ b = f) :
     getAnchor sp A Φ t = blk b := by
   unfold getAnchor
   rw [h.deepest_eq (M := b)]
@@ -256,7 +256,7 @@ theorem getAnchor_eq (h : ChainFrame Φ f j τ) {A : ACState sp.n} {t : Time} {b
     · exact Or.inr h.fcRoot.symm
   · rintro B (hB | hB)
     · exact h.liveLockBlocks_le hL hB
-    · rw [Set.mem_singleton_iff.1 hB, h.fcRoot]; exact ⟨j, hjb, rfl⟩
+    · rw [Set.mem_singleton_iff.1 hB, h.fcRoot]; exact ⟨f, hjb, rfl⟩
 
 end ChainFrame
 
