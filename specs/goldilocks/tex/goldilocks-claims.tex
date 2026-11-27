@@ -2890,27 +2890,28 @@ C0.5 & \texttt{Compose.ACSeesAcceptedBlocks}, \texttt{Compose.ExecIsCutChain},
   projections of \texttt{Milestones/Statements/Compose/Run} & proved
   (\texttt{compose\_node\_statements}, \texttt{ac\_projection}, \texttt{fg\_projection}, \dots); the slot's
   proposer is a run law (C0.5 (b))\\
-A1.3 & \texttt{AC.NextTransfer} & proved (\texttt{acSteps}), per vote under
+A1.3 & \texttt{AC.Growing.NextTransfer} & proved (\texttt{AC.Growing.acSteps}), per vote under
   its premises, without $\mathsf{Sync}[t_m,\tau]$\\
-A1.4 & \texttt{AC.OptimisticTransfer}, \texttt{AC.OptimisticNextUpdate} &
-  proved (\texttt{acSteps}); (a) per vote without $\mathsf{Sync}[t_s,\tau]$;
+A1.4 & \texttt{AC.Growing.OptimisticTransfer}, \texttt{AC.Growing.OptimisticNextUpdate} &
+  proved (\texttt{AC.Growing.acSteps}); (a) per vote without $\mathsf{Sync}[t_s,\tau]$;
   (b) without $\mathsf{Sync}[t_s,t_{s+1}+\Delta]$ and without the
-  optimistic confirmation of~$B$: it keeps only $f<n/2$, (a)'s conclusion
-  (every honest slot-$(s+1)$ vote extends~$B$) and the updating node's
-  premises\\
-A1.5 & \texttt{AC.SourceAge} & proved (\texttt{acSteps}) at every
+  optimistic confirmation of~$B$: fewer than half of $K(s+1)$ are faulty
+  at $z$'s update cut ($f<n/2$ at the population binding), and every
+  slot-$(s+1)$ vote cast while honest extends~$B$; the updating node's
+  premises are kept\\
+A1.5 & \texttt{AC.Growing.SourceAge} & proved (\texttt{AC.Growing.acSteps}) at every
   \texttt{deepDepth}: a fast-lock block written after~$\tau$, or, with
   $D\neq\bot$ and no fast-lock candidate, a deep candidate under the deep
-  anchor (no claim on when it was written); stronger than
+  anchor, accepted by $t_{\operatorname{slot}(t)-D}$, without requiring a post-$\tau$ fast-lock write; stronger than
   A1.5 in form: over every AC trace with the local contract
-  (\texttt{ACLocalRun}), without the honest-object facts of
-  \texttt{ACRun} (signature provenance, slot proposer)\\
+  (\texttt{Growing.ACLocalRun}), without the honest-object facts of
+  \texttt{AC.Growing.ACRun} (signature provenance, slot proposer)\\
 A1.9 & --- & retired as a milestone statement (no field of
-  \texttt{ACSteps}); its source cases remain lemmas on fast locks
+  \texttt{AC.Growing.ACSteps}); its source cases remain lemmas on fast locks
   (\texttt{AC.fastLock\_same\_slot}, \texttt{AC.fastLock\_compatible\_of\_votes},
   \texttt{AC.fastLock\_counted}), at every \texttt{deepDepth}; with
   $D\neq\bot$ a deep-candidate source is not one of these cases\\
-A1.8 & \texttt{AC.ResultTransfer} & proved (\texttt{acSteps}), per vote under
+A1.8 & \texttt{AC.Growing.ResultTransfer} & proved (\texttt{AC.Growing.acSteps}), per vote under
   its premises\\
 A1.6 & \texttt{Compose.HeadExtendsRecord} & proved
   (\texttt{head\_extends\_record}), with $\mathsf{NoColl}$; the condition

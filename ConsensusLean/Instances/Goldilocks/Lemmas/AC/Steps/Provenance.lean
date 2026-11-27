@@ -1,7 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.CommitteeRun
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Tree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockProvenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain

@@ -1,17 +1,18 @@
 module
 public import ConsensusLeanTest.Goldilocks.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
-public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.AC.Main
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
-/-! # Witnesses for the premises of the Goldilocks optimistic-path ACSteps statements
+/-! # Witnesses for the premises of the growing Goldilocks optimistic-path AC steps
 
 Review item B3-O1: the hypotheses of A1.4 (a) `OptimisticTransfer`, A1.4 (b)
-`OptimisticNextUpdate` and A1.5 `SourceAge` (`Statements/AC/Steps.lean`) hold together of one
+`OptimisticNextUpdate` and A1.5 `SourceAge` (`Statements/AC/Growing.lean`) hold together of one
 concrete run, so none of the three proved milestones is vacuous. The parameters are
 `Goldilocks/AC/Base`'s (one validator `v0`, `Δ = 1`, `t_s = 4s`, `k = 2`, genesis `g` of root `0`).
+The static witness is used with the constant honest family `H := fun _ => Set.univ`.
 
 The frame of every call is `Φ₁`: tree `{g, B1}` with `B1` the slot-`1` block on `g` (root `1`,
 empty payloads), `F = fc_root = g`, viable heads `{B1}`. The coherent set is `U₁ = {g, B1}`, the
@@ -966,21 +967,49 @@ theorem sourceAge_premises_satisfiable :
 
 /-! ## The milestones on the witness -/
 
+private theorem constant_run : Growing.ACRun (fun _ => v0) trW (fun _ => Set.univ) U₁ := by
+  let h := acRun_W
+  let l := h.localRun
+  refine ⟨{
+    antitone := fun _ _ _ => Set.Subset.rfl
+    coherent := l.coherent
+    init := l.init
+    exec := l.exec
+    frameLaw := fun y i ℓ hy => l.frameLaw y hy i ℓ
+    time_nonneg := l.time_nonneg
+    time_mono := l.time_mono
+    awake_of_call := fun y i ℓ hy => l.awake_of_call y hy i ℓ
+    restart_of_sleep := fun y i ℓ u hy => l.restart_of_sleep y hy i ℓ u
+    restart_at_wake := fun y u v hy => l.restart_at_wake y hy u v
+    sleep_of_restart := fun y i ℓ hy => l.sleep_of_restart y hy i ℓ }, {
+    pool_vote := fun y i σ hy => h.honest.pool_vote y hy i σ
+    message_vote := fun y i ℓ v hy => h.honest.message_vote y hy i ℓ v
+    proposer := ?_
+    one_block := ?_ }, h.vstart⟩
+  · rintro B ⟨y, i, ℓ, hy, hc, hB⟩
+    exact h.honest.proposer B ⟨y, hy, i, ℓ, hc, hB⟩
+  · intro y i ℓ B y' i' ℓ' B' hy hc hB hy' hc' hB'
+    exact h.honest.one_block B B' ⟨y, hy, i, ℓ, hc, hB⟩ ⟨y', hy', i', ℓ', hc', hB'⟩
+
 /-- A1.4 (a) on the run: the slot-`2` vote extends `B1`. -/
 theorem optimisticTransfer_on_witness : VoteExtends U₁ e1.msg B1 :=
-  (acStepsAt sp1).optimisticTransfer Unit ro1 Set.univ U₁ trW (fun _ => v0) acRun_W
-    (CommitteeDict.full sp1.n) CommitteeP.full CommitteeT.full (size_binding_full rfl) 1 v0 v0 0 1
+  (Growing.acStepsAt sp1).optimisticTransfer Unit ro1 (fun _ => Set.univ) U₁ trW
+    (fun _ => v0) constant_run
+    (CommitteeDict.full sp1.n) CommitteePAt.full
+    (fun _ _ _ _ _ _ _ v _ => mem_full v.slot _) (size_binding_full rfl) 1 v0 v0 0 1
     B1 CV1 ℓ1 e1 trivial optimisticLock_W faultsK_W faultsK_W trivial castAt_W rfl carry_W viable_W
-    earlier_W
+    (fun x j hj hx e he hs => earlier_W x hx j hj e he hs)
 
 /-- A1.4 (b) on the run: the update of slot `2` has a result extending `B1`, and, `B1` not being
 genesis, its fast test selects a block extending `B1`. -/
 theorem optimisticNextUpdate_on_witness :
     ∃ C, getConfirmation sp1 (trW.state v0 3) ℓ3.frame (1 + 1) = some C ∧ Anc U₁ B1 C ∧
       ∃ D, fastSelect sp1 (trW.state v0 3) ℓ3.frame (1 + 1) C = some D ∧ Anc U₁ B1 D := by
-  obtain ⟨C, hC, hBC, hD⟩ := (acStepsAt sp1).optimisticNextUpdate Unit ro1 Set.univ U₁ trW
-    (fun _ => v0) acRun_W (CommitteeDict.full sp1.n) CommitteeP.full CommitteeT.full
-    (size_binding_full rfl) 1 v0 3 B1 ℓ3 faultsK_W slot2_extend_W trivial update_W
+  obtain ⟨C, hC, hBC, hD⟩ := (Growing.acStepsAt sp1).optimisticNextUpdate Unit ro1
+    (fun _ => Set.univ) U₁ trW (fun _ => v0) constant_run
+    (CommitteeDict.full sp1.n) CommitteePAt.full (fun _ _ _ _ _ _ _ v _ => mem_full v.slot _)
+    (size_binding_full rfl) 1 v0 3 B1 ℓ3 faultsK_W
+    (fun x j e hx he hs => slot2_extend_W x hx j e he hs) trivial update_W
     participation_W resolved_W
   exact ⟨C, hC, hBC, hD (by decide)⟩
 
@@ -990,8 +1019,9 @@ lock of a slot `s'` with `slot(12) ≤ s' + 2`, written after time `0` (deep sou
 theorem sourceAge_on_witness :
     ∃ j ≤ 2, ∃ s' B' CV', FastLockAt trW v0 j s' B' CV' ∧ (0 : Time) < trW.time j ∧
       sp1.slot (trW.time 2) ≤ s' + 2 ∧ Anc U₁ B1 B' :=
-  ((acStepsAt sp1).sourceAge Unit ro1 Set.univ U₁ trW acRun_W.localRun 0 v0 2 ℓ2 B1 trivial
-    toFG_W (by decide)).resolve_right fun ⟨_, _, hD, _⟩ => nomatch hD
+  ((Growing.acStepsAt sp1).sourceAge Unit ro1 (fun _ => Set.univ) U₁ trW
+    constant_run.localRun
+    0 v0 2 ℓ2 B1 trivial toFG_W (by decide)).resolve_right fun ⟨_, _, hD, _⟩ => nomatch hD
 
 end Consensus.Goldilocks.AC.Test
 
