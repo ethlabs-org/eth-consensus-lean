@@ -15,7 +15,9 @@ Labelled by kind (CONTRIBUTING "Statements"):
   concrete setups, `k = 2, δt = 6` and `k = 6, δt = 8`; `assumptions_iff` gives its exact range
   for stock signing and release, and `assumptions_iff_calendar` characterises arbitrary schedules.
   `assumptions_empty_of_timeout` rejects `δt = 5`; `assumptions_empty_of_never_sign` rejects
-  an always-false signing calendar.
+  an always-false signing calendar. With deep sources at `k = 2, δt = 6`, the assumptions exist at
+  depth `179` (`assumptions_deep_179`), and at `178` no setup with `k = 2, δt = 6` has any
+  (`assumptions_empty_of_deep_178`).
 * (b) The coefficients at those setups (phase 2, `Δp = Δe`): `contract_catchUp` is `19`
   (`catchUp_small`, `catchUp_large`; at every `k`, `contract_catchUp_val`); the outage look-back
   `12k + 7` is the proof window `budget + 2·lag` and covers catch-up + 1 at every `k`
@@ -173,6 +175,23 @@ theorem assumptions_iff_calendar (S : Setup) : Nonempty (ContractAssumptions S) 
 theorem assumptions_empty_of_timeout (S : Setup) (h : S.δt = 5) :
     IsEmpty (ContractAssumptions S) :=
   ⟨fun A => by have := A.six_le_δt; omega⟩
+
+/-- (a) With deep sources at `k = 2`, `δt = 6`, the least admitted depth is `179`: the assumptions
+exist at `deepDepth = some 179` (stock signing and release). -/
+theorem assumptions_deep_179 :
+    Nonempty (ContractAssumptions { setupSmall with deepDepth := some 179 }) :=
+  (assumptions_iff _ rfl rfl).2 ⟨le_rfl, fun D hD => by cases hD; norm_num [setupSmall]⟩
+
+/-- (a) Rejection: at `k = 2`, `δt = 6`, depth `178` admits no contract assumptions, for every
+setup and so whatever its calendars: `deep_final`'s left side is at least `715` (the FG slots,
+signing and release gaps only add), and `715 ≤ 4 · 178 = 712` fails. -/
+theorem assumptions_empty_of_deep_178 (S : Setup) (hk : S.k = 2) (hδ : S.δt = 6)
+    (hD : S.deepDepth = some 178) : IsEmpty (ContractAssumptions S) :=
+  ⟨fun A => by
+    have h := A.deep_final 178 hD
+    have := A.two_le_fgSlots
+    rw [hk, hδ] at h
+    omega⟩
 
 /-- (b) Catch-up is `19` at `k = 2`. -/
 theorem catchUp_small : (contract_catchUp setupSmall assumptionsSmall : Nat) = 19 :=

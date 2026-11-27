@@ -162,7 +162,8 @@ def OptimisticNextUpdate : Prop :=
 honest node is the block of a fast lock that node wrote after `τ` (at or below the block of a
 fast lock of a slot `s'` with `slot(t) ≤ s' + 2`, written at a cut after `τ`), or, with deep
 sources on (`deepDepth = some D`) and no fast-lock candidate, a deep candidate of the call under
-its deep anchor (no claim on when it was written). It needs only the AC trace contract
+its deep anchor, which the node accepted by `t_{slot(t) − D}` (its stamp; no claim on a fast-lock
+write after `τ`). It needs only the AC trace contract
 (`ACLocalRun`), not the honest-object facts of `ACRun` (signature provenance, slot proposer). -/
 def SourceAge : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
