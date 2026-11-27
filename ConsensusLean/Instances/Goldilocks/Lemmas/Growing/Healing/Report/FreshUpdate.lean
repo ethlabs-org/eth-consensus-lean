@@ -20,11 +20,11 @@ through their common timestamp; no later honesty of the original proposer is req
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
 /-- Explicit joinedness, rather than a stronger GST margin, supplies actual votes
@@ -75,7 +75,7 @@ stamp in the receiver's pool, at the slot committees `K` of a run from `K`'s com
 Only the receiving prefix is used. -/
 theorem Core.honest_vote_early_pool_before_at
     {uf : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
     {K : AC.CommitteeDict sp.n}
     (hrun : GoldilocksRunCore uf frameOf proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -86,7 +86,7 @@ theorem Core.honest_vote_early_pool_before_at
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     {u : Nat} (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y j ell)
     (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
     {x : Fin sp.n} (hx : x ∈ H (tr.time j)) {i : Nat}
     {e : AC.Em sp (List (FG.Att sp.n))}
@@ -127,7 +127,7 @@ theorem honest_vote_early_pool_before_at {K : AC.CommitteeDict sp.n}
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     {u : Nat} (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y j ell)
     (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
     {x : Fin sp.n} (hx : x ∈ H (tr.time j)) {i : Nat}
     {e : AC.Em sp (List (FG.Att sp.n))}
@@ -142,8 +142,8 @@ theorem honest_vote_early_pool_before_at {K : AC.CommitteeDict sp.n}
 without retaining sender honesty until the receiving call, from any vote-permitted start. -/
 theorem Core.blockStamp_early_of_historical_acceptance_at
     {uf : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRunCore uf frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold) (hnr : NoRestartAfter tr H (gbar g))
@@ -151,7 +151,7 @@ theorem Core.blockStamp_early_of_historical_acceptance_at
     {x y : Fin sp.n} {i j : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (ha : tr.projAC.AcceptAt x i P)
     (hti : tr.time i = sp.ts u)
-    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y j ell) (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j)
     (hPt : P ∈ ell.frame.tree) :
     (tr.projAC.state y j).blockStamp P.root < AC.ETime.of (sp.ts u + 2 * sp.Δ) := by
@@ -182,7 +182,7 @@ theorem Core.blockStamp_early_of_historical_acceptance_at
 
 /-- The stock receiver instantiates the shared historical block-stamp bound. -/
 theorem blockStamp_early_of_historical_acceptance_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold) (hnr : NoRestartAfter tr H (gbar g))
@@ -190,7 +190,7 @@ theorem blockStamp_early_of_historical_acceptance_at
     {x y : Fin sp.n} {i j : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (ha : tr.projAC.AcceptAt x i P)
     (hti : tr.time i = sp.ts u)
-    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y j ell) (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j)
     (hPt : P ∈ ell.frame.tree) :
     (tr.projAC.state y j).blockStamp P.root < AC.ETime.of (sp.ts u + 2 * sp.Δ) :=
@@ -202,7 +202,7 @@ stamp. Vote delivery and uniqueness are charged at the receiving cut. The pool h
 of the honest members of the slot committee `K u`, for a run from `K`'s committee start. -/
 theorem Core.unanimous_early_pool_of_blockStamp_at
     {uf : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
     {K : AC.CommitteeDict sp.n}
     (hrun : GoldilocksRunCore uf frameOf proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -216,7 +216,7 @@ theorem Core.unanimous_early_pool_of_blockStamp_at
     (hun : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e →
       e.msg.slot = u → e.msg.head = P.root)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y j ell)
     (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
     (hPt : P ∈ ell.frame.tree)
     (hbs : (tr.projAC.state y j).blockStamp P.root <
@@ -252,7 +252,7 @@ theorem Core.unanimous_early_pool_of_blockStamp_at
     rwa [hs]
   obtain ⟨q, _, e', he', rfl⟩ := hS.run.honest.pool_vote y hy j u v' hm'' (hv'x ▸ hx)
   rw [hv'x] at he'
-  obtain ⟨_, rfl⟩ := AC.one_vote_per_slotU sp _ _ _ _ _ hr.toU x hx q i e' e he' hv'
+  obtain ⟨_, rfl⟩ := AC.one_vote_per_slotU sp _ _ _ _ hr.toU x hx q i e' e he' hv'
     ((AC.state_pool_slotU sp hr.toU hS.run.vstart hy j u _ hm'').trans hes.symm)
   rfl
 
@@ -270,7 +270,7 @@ theorem unanimous_early_pool_of_blockStamp_at {K : AC.CommitteeDict sp.n}
     (hun : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e →
       e.msg.slot = u → e.msg.head = P.root)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y j ell)
     (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
     (hPt : P ∈ ell.frame.tree)
     (hbs : (tr.projAC.state y j).blockStamp P.root < AC.ETime.of (sp.ts u + 2 * sp.Δ))
@@ -289,7 +289,7 @@ the vote deadline and historical honesty of the proposal's first acceptance, for
 members of the slot committee `K u` of a run from `K`'s committee start. -/
 theorem Core.unanimous_early_pool_of_acceptance_at
     {uf : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
     {K : AC.CommitteeDict sp.n}
     (hrun : GoldilocksRunCore uf frameOf proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -306,7 +306,7 @@ theorem Core.unanimous_early_pool_of_acceptance_at
     {z : Fin sp.n} {a : Nat} (hz : z ∈ H (tr.time a))
     (ha : tr.projAC.AcceptAt z a P) (hta : tr.time a = sp.ts u)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y j ell)
     (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
     (hPt : P ∈ ell.frame.tree) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ x, x ∈ H (tr.time j) → x ∈ K.committee u → ∃ v ∈ (tr.projAC.state y j).pool u,
@@ -344,7 +344,7 @@ theorem unanimous_early_pool_of_acceptance_at {K : AC.CommitteeDict sp.n}
     {z : Fin sp.n} {a : Nat} (hz : z ∈ H (tr.time a))
     (ha : tr.projAC.AcceptAt z a P) (hta : tr.time a = sp.ts u)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y j ell)
     (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
     (hPt : P ∈ ell.frame.tree) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ x, x ∈ H (tr.time j) → x ∈ K.committee u → ∃ v ∈ (tr.projAC.state y j).pool u,
@@ -357,7 +357,7 @@ theorem unanimous_early_pool_of_acceptance_at {K : AC.CommitteeDict sp.n}
 /-- Wakefulness and the receiver's restart cutoff produce the actual joined update, whether or
 not its tick signs, from any vote-permitted start. -/
 theorem update_call_of_awake_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {g b : Time}
@@ -420,8 +420,8 @@ The tick at a signing time runs the FG update (the calendar fixes its `fgDue`), 
 update's time, which is not a proposal time, its to-FG call is the cut right after the update. -/
 theorem Core.update_toFG_calls_of_awake_at
     {uf : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRunCore uf frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {g b : Time}
@@ -456,7 +456,7 @@ theorem Core.update_toFG_calls_of_awake_at
 
 /-- Stock signing ticks supply the adjacent cuts to the shared joined-update proof. -/
 theorem update_toFG_calls_of_awake_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {g b : Time}
@@ -491,12 +491,12 @@ theorem update_toFG_calls_of_awake_at
 The conclusion keeps its two-slot lifetime independently of the service proof. From any start. -/
 theorem Core.fresh_fast_lock_of_selection_at
     {uf : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRunCore uf frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {k u : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hu : AC.UpdateAt tr.projAC y k u ell) (hPt : P ∈ ell.frame.tree)
     (hconf : AC.getConfirmation sp (tr.projAC.state y k) ell.frame u = some P)
@@ -542,11 +542,11 @@ theorem Core.fresh_fast_lock_of_selection_at
 
 /-- The stock run instantiates the shared local fast-lock insertion proof. -/
 theorem fresh_fast_lock_of_selection_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {k u : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hu : AC.UpdateAt tr.projAC y k u ell) (hPt : P ∈ ell.frame.tree)
     (hconf : AC.getConfirmation sp (tr.projAC.state y k) ell.frame u = some P)

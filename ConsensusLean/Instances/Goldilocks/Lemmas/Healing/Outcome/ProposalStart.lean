@@ -18,7 +18,7 @@ well-formedness of the stored locks. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 variable {sp : ACParams}
 

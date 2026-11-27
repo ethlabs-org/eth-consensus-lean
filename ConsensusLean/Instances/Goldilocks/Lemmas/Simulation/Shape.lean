@@ -18,7 +18,7 @@ namespace Consensus.Goldilocks.Simulation
 open AsChainShape
 
 open Blocks Shape
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
 variable {binding : VoteBinding}
 
@@ -104,7 +104,7 @@ theorem parentRoot_parentRef (g : Nat) (r : Nat) :
   · subst h; simp [parentRef_eq, parentRoot_eq]
   · simp [parentRef_eq, parentRoot_eq, h, taggedRoot_rawRoot g r h]
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-! ## Decoding the canonical objects -/
 
@@ -167,7 +167,7 @@ theorem decodeAttObj_attObj (a : FG.Att sp.n) (hwf : a.WellFormed) :
 /-- A canonical vote object calls the message handler exactly when its evidence passes. -/
 theorem canonEvent_voteObj (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
     (v : Vote sp.n) (z : Nat) :
-    canonEvent sp ro io hs (voteObj (binding := binding) v z) =
+    canonEvent sp io hs (voteObj (binding := binding) v z) =
       if io.check v.val (binding.voteRole v.slot) (encodeVote v) z then some (.message v)
       else none := by
   have h1 : decodeBlock sp (binding := binding) hs (voteObj v z) = none := by
@@ -182,7 +182,7 @@ event. -/
 theorem canonEvent_attObj (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
     (a : FG.Att sp.n)
     (hwf : a.WellFormed) :
-    canonEvent sp ro io hs (attObj (binding := binding) a) =
+    canonEvent sp io hs (attObj (binding := binding) a) =
       some (.attestation a) := by
   have h1 : decodeBlock sp (binding := binding) hs (attObj (binding := binding) a) = none := by
     simp [decodeBlock_eq, attObj]
@@ -548,21 +548,21 @@ theorem decoded_forward_fields {sp : AC.ACParams} (hs : List (Header Info × Nat
 
 /-! ## Shape-level preservation -/
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- `apply` keeps the key. -/
-theorem apply_self (st : State sp ro binding) origin r : (apply st origin r).self = st.self := rfl
+theorem apply_self (st : State sp binding) origin r : (apply st origin r).self = st.self := rfl
 /-- `apply` keeps the clock. -/
-theorem apply_now (st : State sp ro binding) origin r : (apply st origin r).now = st.now := rfl
+theorem apply_now (st : State sp binding) origin r : (apply st origin r).now = st.now := rfl
 /-- `apply` keeps the FG-due flag. -/
-theorem apply_fgDue (st : State sp ro binding) origin r : (apply st origin r).fgDue = st.fgDue :=
+theorem apply_fgDue (st : State sp binding) origin r : (apply st origin r).fgDue = st.fgDue :=
   rfl
 /-- `apply` installs the node state of its handler result. -/
-theorem apply_node (st : State sp ro binding) origin r : (apply st origin r).node = r.1 := rfl
+theorem apply_node (st : State sp binding) origin r : (apply st origin r).node = r.1 := rfl
 
 /-- A newly queued envelope has the handler's clock and an actual fresh pool insertion.
 This is local queue provenance, not a release or service theorem. -/
-theorem apply_voteForward_fresh (st : State sp ro binding) origin r (t : Time) (v : Vote sp.n)
+theorem apply_voteForward_fresh (st : State sp binding) origin r (t : Time) (v : Vote sp.n)
     (o : Wire sp.n binding) (h : (t, v, o) ∈ (apply st origin r).voteForwards)
     (hold : (t, v, o) ∉ st.voteForwards) :
     t = st.now ∧ v ∉ st.node.ac.pool v.slot ∧ v ∈ r.1.ac.pool v.slot := by
@@ -577,8 +577,8 @@ theorem apply_voteForward_fresh (st : State sp ro binding) origin r (t : Time) (
 
 /-- Wire and own-emission candidates surviving a fresh handler insertion
 are queued at that handler's clock. Completeness of these candidates is a separate obligation. -/
-theorem apply_voteForward_of_admission (st : State sp ro binding) origin r (v : Vote sp.n)
-    (ℓ : ACLabel (goldilocksNode sp ro)) (hℓ : .ac ℓ ∈ r.2)
+theorem apply_voteForward_of_admission (st : State sp binding) origin r (v : Vote sp.n)
+    (ℓ : ACLabel (goldilocksNode sp)) (hℓ : .ac ℓ ∈ r.2)
     (hsource : ℓ.call = .message v ∨ ∃ e ∈ ℓ.emits, e.msg = v)
     (hold : v ∉ st.node.ac.pool v.slot) (hnew : v ∈ r.1.ac.pool v.slot)
     {o : Wire sp.n binding}
@@ -599,33 +599,33 @@ theorem apply_voteForward_of_admission (st : State sp ro binding) origin r (v : 
   · exact List.mem_append_right _ (List.mem_map.mpr ⟨e, he, hv⟩)
 
 /-- `relayIf` keeps the key. -/
-theorem relayIf_self (st : State sp ro binding) (c : Prop) [Decidable c] o :
+theorem relayIf_self (st : State sp binding) (c : Prop) [Decidable c] o :
     (relayIf st c o).self = st.self := by unfold relayIf; split <;> rfl
 /-- `relayIf` keeps the clock. -/
-theorem relayIf_now (st : State sp ro binding) (c : Prop) [Decidable c] o :
+theorem relayIf_now (st : State sp binding) (c : Prop) [Decidable c] o :
     (relayIf st c o).now = st.now := by unfold relayIf; split <;> rfl
 /-- `relayIf` keeps the FG-due flag. -/
-theorem relayIf_fgDue (st : State sp ro binding) (c : Prop) [Decidable c] o :
+theorem relayIf_fgDue (st : State sp binding) (c : Prop) [Decidable c] o :
     (relayIf st c o).fgDue = st.fgDue := by unfold relayIf; split <;> rfl
 /-- `relayIf` keeps the node state. -/
-theorem relayIf_node (st : State sp ro binding) (c : Prop) [Decidable c] o :
+theorem relayIf_node (st : State sp binding) (c : Prop) [Decidable c] o :
     (relayIf st c o).node = st.node := by unfold relayIf; split <;> rfl
 
 /-- Processing one delivered object keeps the key. -/
-theorem processOne_self io hs (st : State sp ro binding) o :
+theorem processOne_self io hs (st : State sp binding) o :
     (processOne io hs st o).self = st.self := by
   rw [processOne_eq]; split <;> simp [relayIf_self, apply_self]
 /-- Processing one delivered object keeps the clock. -/
-theorem processOne_now io hs (st : State sp ro binding) o :
+theorem processOne_now io hs (st : State sp binding) o :
     (processOne io hs st o).now = st.now := by
   rw [processOne_eq]; split <;> simp [relayIf_now, apply_now]
 /-- Processing one delivered object keeps the FG-due flag. -/
-theorem processOne_fgDue io hs (st : State sp ro binding) o :
+theorem processOne_fgDue io hs (st : State sp binding) o :
     (processOne io hs st o).fgDue = st.fgDue := by
   rw [processOne_eq]; split <;> simp [relayIf_fgDue, apply_fgDue]
 
 /-- Processing one object preserves all previously queued admission envelopes. -/
-private theorem processOne_voteForwards_subset io hs (st : State sp ro binding) o :
+private theorem processOne_voteForwards_subset io hs (st : State sp binding) o :
     st.voteForwards ⊆ (processOne io hs st o).voteForwards := by
   rw [processOne_eq]
   split
@@ -639,7 +639,7 @@ private theorem processOne_voteForwards_subset io hs (st : State sp ro binding) 
 
 /-- A delivery handler either preserves an old queue entry or stamps a new one
 with its actual clock. This does not assume first release or pool freshness. -/
-private theorem processOne_voteForward_stamp io hs (st : State sp ro binding) o (t : Time)
+private theorem processOne_voteForward_stamp io hs (st : State sp binding) o (t : Time)
     (m : Vote sp.n) (w : Wire sp.n binding)
     (h : (t, m, w) ∈ (processOne io hs st o).voteForwards) :
     (t, m, w) ∈ st.voteForwards ∨ t = st.now := by
@@ -659,7 +659,7 @@ private theorem processOne_voteForward_stamp io hs (st : State sp ro binding) o 
 /-- Recursive receipt processing cannot introduce a vote stamp from a different
 clock, including when several objects admit votes during the same delivery. -/
 theorem foldl_processOne_voteForward_stamp io hs (os : List (Wire sp.n binding))
-    (st : State sp ro binding) (t : Time) (m : Vote sp.n) (w : Wire sp.n binding)
+    (st : State sp binding) (t : Time) (m : Vote sp.n) (w : Wire sp.n binding)
     (h : (t, m, w) ∈ (os.foldl (processOne io hs) st).voteForwards) :
     (t, m, w) ∈ st.voteForwards ∨ t = st.now := by
   induction os generalizing st with
@@ -671,7 +671,7 @@ theorem foldl_processOne_voteForward_stamp io hs (os : List (Wire sp.n binding))
 
 /-- Later objects in a delivery cannot remove an already queued admission envelope. -/
 theorem foldl_processOne_voteForwards_subset io hs (os : List (Wire sp.n binding))
-    (st : State sp ro binding) :
+    (st : State sp binding) :
     st.voteForwards ⊆ (os.foldl (processOne io hs) st).voteForwards := by
   induction os generalizing st with
   | nil => exact List.Subset.refl _
@@ -680,47 +680,47 @@ theorem foldl_processOne_voteForwards_subset io hs (os : List (Wire sp.n binding
     exact ih _ (processOne_voteForwards_subset io hs st o hq)
 
 /-- Processing a list of delivered objects keeps the key. -/
-theorem foldl_processOne_self io hs (os : List (Wire sp.n binding)) (st : State sp ro binding) :
+theorem foldl_processOne_self io hs (os : List (Wire sp.n binding)) (st : State sp binding) :
     (os.foldl (processOne io hs) st).self = st.self := by
   induction os generalizing st with
   | nil => rfl
   | cons o os ih => simp [List.foldl_cons, ih, processOne_self]
 /-- Processing a list of delivered objects keeps the clock. -/
-theorem foldl_processOne_now io hs (os : List (Wire sp.n binding)) (st : State sp ro binding) :
+theorem foldl_processOne_now io hs (os : List (Wire sp.n binding)) (st : State sp binding) :
     (os.foldl (processOne io hs) st).now = st.now := by
   induction os generalizing st with
   | nil => rfl
   | cons o os ih => simp [List.foldl_cons, ih, processOne_now]
 
 /-- Processing a list of delivered objects keeps the FG-due flag. -/
-theorem foldl_processOne_fgDue io hs (os : List (Wire sp.n binding)) (st : State sp ro binding) :
+theorem foldl_processOne_fgDue io hs (os : List (Wire sp.n binding)) (st : State sp binding) :
     (os.foldl (processOne io hs) st).fgDue = st.fgDue := by
   induction os generalizing st with
   | nil => rfl
   | cons o os ih => simp [List.foldl_cons, ih, processOne_fgDue]
 
 /-- A delivery keeps the key. -/
-theorem process_self (st : State sp ro binding) o hs : (process st o hs).self = st.self :=
+theorem process_self (st : State sp binding) o hs : (process st o hs).self = st.self :=
   foldl_processOne_self st.voteIO hs _ st
 /-- A delivery keeps the clock. -/
-theorem process_now (st : State sp ro binding) o hs : (process st o hs).now = st.now :=
+theorem process_now (st : State sp binding) o hs : (process st o hs).now = st.now :=
   foldl_processOne_now st.voteIO hs _ st
 /-- A delivery keeps the FG-due flag. -/
-theorem process_fgDue (st : State sp ro binding) o hs : (process st o hs).fgDue = st.fgDue :=
+theorem process_fgDue (st : State sp binding) o hs : (process st o hs).fgDue = st.fgDue :=
   foldl_processOne_fgDue st.voteIO hs _ st
 
 /-- Recording an own object keeps the key. -/
-theorem recordOwn_self (st : State sp ro binding) o hs : (recordOwn st o hs).self = st.self := by
+theorem recordOwn_self (st : State sp binding) o hs : (recordOwn st o hs).self = st.self := by
   rw [recordOwn_eq]; split <;> (try split) <;> rfl
 /-- Recording an own object keeps the clock. -/
-theorem recordOwn_now (st : State sp ro binding) o hs : (recordOwn st o hs).now = st.now := by
+theorem recordOwn_now (st : State sp binding) o hs : (recordOwn st o hs).now = st.now := by
   rw [recordOwn_eq]; split <;> (try split) <;> rfl
 /-- Recording an own object keeps the FG-due flag. -/
-theorem recordOwn_fgDue (st : State sp ro binding) o hs : (recordOwn st o hs).fgDue = st.fgDue := by
+theorem recordOwn_fgDue (st : State sp binding) o hs : (recordOwn st o hs).fgDue = st.fgDue := by
   rw [recordOwn_eq]; split <;> (try split) <;> rfl
 
 /-- Own-object callbacks do not drain queued vote envelopes. -/
-theorem recordOwn_voteForwards_subset (st : State sp ro binding) o hs :
+theorem recordOwn_voteForwards_subset (st : State sp binding) o hs :
     st.voteForwards ⊆ (recordOwn st o hs).voteForwards := by
   rw [recordOwn_eq]
   split
@@ -731,26 +731,26 @@ theorem recordOwn_voteForwards_subset (st : State sp ro binding) o hs :
   · exact List.Subset.refl _
 
 /-- The node's tick keeps the key. -/
-theorem nodeTick_self {sign : Fin sp.n → Time → Bool} (st : State sp ro binding) :
+theorem nodeTick_self {sign : Fin sp.n → Time → Bool} (st : State sp binding) :
     (nodeTick st sign).self = st.self := by
   rw [nodeTick_eq (sign := _)]; split <;> rfl
 /-- The node's tick keeps the clock. -/
-theorem nodeTick_now {sign : Fin sp.n → Time → Bool} (st : State sp ro binding) :
+theorem nodeTick_now {sign : Fin sp.n → Time → Bool} (st : State sp binding) :
     (nodeTick st sign).now = st.now := by
   rw [nodeTick_eq (sign := _)]; split <;> rfl
 
 /-- The slot proposal keeps the key. -/
-theorem propose_self (st : State sp ro binding) s : (propose st s).1.self = st.self := by
+theorem propose_self (st : State sp binding) s : (propose st s).1.self = st.self := by
   rw [propose_eq]; dsimp only; split <;> rfl
 /-- The slot proposal keeps the clock. -/
-theorem propose_now (st : State sp ro binding) s : (propose st s).1.now = st.now := by
+theorem propose_now (st : State sp binding) s : (propose st s).1.now = st.now := by
   rw [propose_eq]; dsimp only; split <;> rfl
 /-- The slot proposal keeps the FG-due flag. -/
-theorem propose_fgDue (st : State sp ro binding) s : (propose st s).1.fgDue = st.fgDue := by
+theorem propose_fgDue (st : State sp binding) s : (propose st s).1.fgDue = st.fgDue := by
   rw [propose_eq]; dsimp only; split <;> rfl
 
 /-- Proposing does not drain the queue made by the preceding node tick. -/
-theorem propose_voteForwards (st : State sp ro binding) s :
+theorem propose_voteForwards (st : State sp binding) s :
     (propose st s).1.voteForwards = st.voteForwards := by
   rw [propose_eq]; dsimp only; split <;> rfl
 

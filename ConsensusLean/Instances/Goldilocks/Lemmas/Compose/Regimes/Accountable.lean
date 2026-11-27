@@ -18,16 +18,16 @@ projection (`Lemmas/Growing/Compose/Outputs`). -/
 
 namespace Consensus.Goldilocks.Regimes
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Compose
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- **R.7, `nonFraming`** of a Goldilocks run from any AC starts `ini`: the FG projection
 executes the FG at the honest nodes, whose clients sign no slashable pair. -/
-theorem goldilocksRun_nonFraming {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem goldilocksRun_nonFraming {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini) {v : Fin sp.n} (hv : v ∈ H)
     {k k' : Nat} {a b : FG.Att sp.n} (ha : tr.SignAt v k a) (hb : tr.SignAt v k' b) :
     ¬ FG.slashable a b := by

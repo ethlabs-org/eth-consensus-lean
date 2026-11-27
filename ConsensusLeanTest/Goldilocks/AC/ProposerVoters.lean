@@ -19,7 +19,7 @@ block `blk (k + 1)` (`proposal_payload`, from `onTick_block_made`), and votes in
   both have `Φ.F = blk 0`, since `jexp 1 = jexp 2 = 0`.
 * `proposerVotersAgree_premises_slot_one` bundles every hypothesis at `s = 1` (proposal cut
   `65`, time `8 = t_2`; vote cut `67`); `proposerVotersAgree_premises_satisfiable` states, at
-  `sp1`, `FGP := List (FG.Att sp1.n)`, `ro1`, that there are values of all the statement's
+  `sp1`, `FGP := List (FG.Att sp1.n)`, that there are values of all the statement's
   universally bound variables satisfying `ACRun` and every hypothesis (copied from the
   statement), with a block of slot at most `s` in the proposal's frame;
   `proposerVotersAgree_on_witness` applies `Growing.acStepsAt` with constant honesty
@@ -133,16 +133,16 @@ of slot `2`, and the proposal's frame holds a block of slot at most `s` (`blk 0`
 conclusion is not vacuous. -/
 theorem proposerVotersAgree_premises_satisfiable :
     ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n (List (FG.Att sp1.n))))
-      (tr : GTrace sp1 (List (FG.Att sp1.n)) ro1) (proposer : Nat → Fin sp1.n) (s : Nat)
+      (tr : GTrace sp1 (List (FG.Att sp1.n))) (proposer : Nat → Fin sp1.n) (s : Nat)
       (p y : Fin sp1.n) (i j : Nat)
-      (ℓp ℓy : ACLabel (goldilocksAC sp1 (List (FG.Att sp1.n)) ro1))
+      (ℓp ℓy : ACLabel (goldilocksAC sp1 (List (FG.Att sp1.n))))
       (pay : Payload sp1.n) (e : Em sp1 (List (FG.Att sp1.n))),
     ACRun proposer tr H U ∧
     p ∈ H ∧ y ∈ H ∧ p = proposer (s + 1) ∧
     ProposalAt tr p i ℓp pay ∧ tr.time i = sp1.ts (s + 1 : Nat) ∧
     CastAt tr y j ℓy e ∧ e.msg.slot = s + 1 ∧
     (∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay) ∧
-    SyncAC (goldilocksAC sp1 (List (FG.Att sp1.n)) ro1) H U (sp1.ts s) (sp1.ts (s + 1 : Nat))
+    SyncAC (goldilocksAC sp1 (List (FG.Att sp1.n))) H U (sp1.ts s) (sp1.ts (s + 1 : Nat))
       tr ∧
     {X | X ∈ ℓp.frame.tree ∧ X.slot ≤ s} = {X | X ∈ ℓy.frame.tree ∧ X.slot ≤ s} ∧
     ∃ B ∈ ℓp.frame.tree, B.slot ≤ s := by
@@ -203,7 +203,7 @@ theorem proposerVotersAgree_on_witness :
             ((1 : Nat) : Int) B := by
   obtain ⟨fg', e, hp, ht, hc, hs, hP, hsy, heq⟩ := proposerVotersAgree_premises_slot_one
   refine ⟨fg', e, hc, fun B hB hBs => ?_⟩
-  exact (AC.Growing.acStepsAt sp1).proposerVotersAgree (List (FG.Att sp1.n)) ro1
+  exact (AC.Growing.acStepsAt sp1).proposerVotersAgree (List (FG.Att sp1.n))
     (fun _ => Set.univ) ((tickRun N1 dg1).HonestBlocks Set.univ) (tickRun N1 dg1).projAC
     (fun _ => v0) constant_run 1 v0 v0
     (8 * (4 * (1 + 1)) + 1) (8 * (4 * (1 + 1)) + 3)

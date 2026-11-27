@@ -27,16 +27,16 @@ before `t_s`. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP} {proposer : Nat → Fin sp.n}
 
 /-- The restarts of an honest node up to its update of slot `s` (joined) are at or before
 `t_s`. -/
 theorem update_restarts {ini : Fin sp.n → AC.ACState sp.n}
-    (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
-    {y : Fin sp.n} (hy : y ∈ H) {k₀ s : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)}
+    (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
+    {y : Fin sp.n} (hy : y ∈ H) {k₀ s : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)}
     (hu : AC.UpdateAt T y k₀ s ℓ) : ∀ k ≤ k₀, T.RestartAt y k → T.time k ≤ sp.ts s := by
   obtain ⟨hc, hcall, ht, hj⟩ := hu
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
@@ -48,7 +48,7 @@ theorem update_restarts {ini : Fin sp.n → AC.ACState sp.n}
   rw [hc.1] at he
   have hpost : AC.joined sp (T.post k₀) (T.time k₀) := by
     have hp : T.post k₀ =
-        ((AC.goldilocksAC sp FGP ro).step y (T.state y k₀) ℓ.frame (T.time k₀) ℓ.call).1 := by
+        ((AC.goldilocksAC sp FGP).step y (T.state y k₀) ℓ.frame (T.time k₀) ℓ.call).1 := by
       rw [he]
     unfold AC.joined at hj ⊢
     rw [hp, AC.step_restartTime y _ _ _ _ (by rw [hcall]; simp)]
@@ -56,7 +56,7 @@ theorem update_restarts {ini : Fin sp.n → AC.ACState sp.n}
   have hsl : sp.slot (T.time k₀) = s + 1 :=
     AC.slot_of_mem sp (s + 1) (by rw [ht, hts]; linarith) (by rw [ht, hts₂]; linarith)
   intro k hk hrk
-  have := (AC.joined_awakeU sp FGP ro H U T hr.toU y hy k₀ ℓ hc hpost).2 k hk hrk
+  have := (AC.joined_awakeU sp FGP H U T hr.toU y hy k₀ ℓ hc hpost).2 k hk hrk
   rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at this
 
 end Consensus.Goldilocks.Compose

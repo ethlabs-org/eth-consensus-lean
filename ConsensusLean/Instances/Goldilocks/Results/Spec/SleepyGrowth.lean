@@ -16,11 +16,11 @@ Vocabulary only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Regimes.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 /-- Committee support from genesis, with faults charged at each consumption time. -/
-def CommitteeSleepy {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+def CommitteeSleepy {sp : ACParams}
+    (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (K : AC.CommitteeDict sp.n) : Prop :=
   (∀ (s : Nat) (d : Time), sp.ts s + sp.Δ ≤ d → d ≤ sp.ts s + 6 * sp.Δ →
     AC.FaultBoundK K s tr.projAC (H d) (sp.ts s + sp.Δ)) ∧

@@ -13,11 +13,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.Shadow
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {hold : Time}
   {K : AC.CommitteeDict sp.n} {g ΔF b : Time} {u M : Nat} {isTop : Prop}
   {J P : AC.Blk sp.n (List (FG.Att sp.n))}
   (hframe : Generic.FrameWindow tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) M isTop J)
@@ -40,7 +40,7 @@ include hframe hrun hnc hsvc hf hnr hmargin hTb hz hdes hP hPs in
 /-- Late honest calls retain the primed proposal's full-frame geometry. -/
 theorem proposal_viable_after_votes_primed_at'
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y k ell)
     (hlo : sp.ts u + 2 * sp.Δ ≤ tr.time k)
     (hhi : tr.time k ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ) :
     P ∈ ell.frame.viableTree ell.frame.tree ∧ ell.frame.viableAncestor P = P ∧
@@ -56,7 +56,7 @@ include hframe hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin hTb hz hdes hP h
 /-- Primed geometry supplies the window-free unanimous selection proof. -/
 theorem unanimous_update_selection_primed_at'
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k u ell) :
+    {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k u ell) :
     P ∈ ell.frame.viableTree ell.frame.tree ∧
       AC.getConfirmation sp (tr.projAC.state y k) ell.frame u = some P ∧
       AC.fastSelect sp (tr.projAC.state y k) ell.frame u P = some P ∧
@@ -98,7 +98,7 @@ include hframe hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin hTb hz hdes hP h
 /-- Primed selection and geometry discharge the shared lock-veto proof. -/
 theorem unanimous_update_no_veto_primed_at'
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k u ell) :
+    {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k u ell) :
     ¬ AC.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P := by
   apply Core.unanimous_update_no_veto_at hrun.toCore hnc hsvc hawake hf hcatch
     hmargin hTb hun hy hu hK

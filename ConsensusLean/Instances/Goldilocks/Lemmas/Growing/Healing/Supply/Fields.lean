@@ -35,12 +35,12 @@ Proofs of `ACHealing` fields at the committee-start Goldilocks run interface
 
 namespace Consensus.Goldilocks.Generic
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open Healing.Growing (HZ IsReset)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
   {sign : Fin sp.n → Time → Bool} {G : Nat}
 
 /-- An actual report of a node honest at it is an `ac_to_fg` call of the AC projection. -/
@@ -60,7 +60,7 @@ maximum height and exceeds its pre-proposal justification height
 (`Shadow.PU.Growing.goldilocks_proposal_floor`). -/
 theorem goldilocks_proposal_floor {cm : Time → Finset (Fin sp.n)} {lo hi : Time}
     {M u : Nat} {isTop : Prop} {J B : AC.Blk sp.n (List (FG.Att sp.n))} {z : Fin sp.n}
-    {kB : Nat} (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    {kB : Nat} (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hframe : FrameWindow tr H lo hi M isTop J)
     (hz : z ∈ H (sp.toParams.slotTime u)) (hdes : z = proposer u) (hP : tr.ProposesAt z kB B)
     (hBs : B.slot = u) (hlo : lo ≤ sp.toParams.slotTime u) (hhi : sp.toParams.slotTime u ≤ hi)
@@ -77,7 +77,7 @@ theorem goldilocks_report_origin {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     {hold : Time} {g ΔF a b : Time}
     {y : Fin sp.n} {i : Nat} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (_hβ : βK ≤ 1 / 2)
-    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (_hr : IsReset tr H g a) (_hab : a ≤ b) (hy : y ∈ H (tr.time i)) (_hib : tr.time i ≤ b)
     (hcap : OriginInCap sp.toParams sp.deepDepth g (tr.time i))
@@ -123,7 +123,7 @@ committee facts, sizes and positivity are the run's, under collision freedom. No
 other premise is read. -/
 theorem committeeHalf_of_committeeFaults {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {g b : Time}
     (hβ : βK ≤ 1 / 2)
-    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) (hcf : CommitteeFaultsUpTo (P := sp.toParams) βK cm H g b) :
     Healing.Growing.CommitteeHalfUpTo tr H (dictOfTime sp cm) g b := by
   obtain ⟨-, hpos, hsize, hfacts, -, -⟩ := (goldilocksRunInterface_run_iff cm).mp hrun
@@ -136,7 +136,7 @@ theorem goldilocks_report_follow {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     {hold : Time} {g ΔF b : Time}
     {s₀ N u M : Nat} {isTop : Prop} {J B : AC.Blk sp.n (List (FG.Att sp.n))} {z : Fin sp.n}
     {kB : Nat} (hβ : βK ≤ 1 / 2)
-    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (hframe : FrameWindow tr H (sp.toParams.slotTime s₀)
       (shiftDelay sp.toParams G (sp.toParams.slotTime N + 2 * sp.toParams.Δ)) M isTop J)
@@ -158,9 +158,9 @@ theorem goldilocks_report_follow {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 /-- The Goldilocks healing witness, with the committee-start run interface and the exact
 warmup, follow, drain and joined stored-fast-lock origin equations. -/
 theorem goldilocks_ac_healing {Rg : Nat} (hδ : 3 + (G + 3) / 4 ≤ sp.toParams.δt) :
-    goldilocksACHealing sp ro sign G Rg := by
-  let O : ACHealing (goldilocksNode sp ro) (fun v => v.val)
-      (goldilocksRunInterface sp ro sign G) ((Rg : Time) * sp.Δ) :=
+    goldilocksACHealing sp sign G Rg := by
+  let O : ACHealing (goldilocksNode sp) (fun v => v.val)
+      (goldilocksRunInterface sp sign G) ((Rg : Time) * sp.Δ) :=
     { warmup := 2 * sp.k
       follow := 3 + (G + 3) / 4
       reportDelay := G
@@ -176,7 +176,7 @@ theorem goldilocks_ac_healing {Rg : Nat} (hδ : 3 + (G + 3) / 4 ≤ sp.toParams.
       origins_comparable := goldilocks_origins_comparable
       heal_after_reset := fun hβ hr hp hres hab hbudget _ =>
         goldilocks_heal_after_reset hβ hr hp hres hab hbudget }
-  exact ⟨goldilocksRunInterface sp ro sign G, O, goldilocksRunInterface_data,
+  exact ⟨goldilocksRunInterface sp sign G, O, goldilocksRunInterface_data,
     rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 end Consensus.Goldilocks.Generic

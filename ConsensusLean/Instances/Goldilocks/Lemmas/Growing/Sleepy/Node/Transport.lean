@@ -39,14 +39,14 @@ premises (`carryAt_of_delivered`); the deliveries come from the service. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
 /-! ### One honest voter over an AC trace, with the deliveries given -/
 
 section Node
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP ro}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP}
 
 /-- **`Carry_y` from deliveries.** For an honest `y` casting its slot-`(s+1)` vote: if each
 counted vote is of slot `s`, has a release time `τ ∈ [t_s, t_s + 2Δ)` at which it is served to
@@ -55,9 +55,9 @@ relayed to `y` from a time before `t_s + 2Δ` (likewise) or that `y` accepted be
 `t_s + 3Δ`, then `Carry_y(s, ·, ·)` holds for the counted votes: `carryAt_of_served`, with the
 frames closed under acceptance by `frame_anc_acceptedU`. This is the voter's side of
 `carryAt_of_writer_heads`, without the sender. -/
-theorem carryAt_of_delivered {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+theorem carryAt_of_delivered {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {s : Nat}
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)}
     {e : AC.Em sp FGP} (hc : AC.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1)
     {CV : Set (Vote sp.n)}
     (hW : ∀ v ∈ CV, v.slot = s ∧
@@ -72,9 +72,9 @@ theorem carryAt_of_delivered {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) 
 
 end Node
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-! ### From the writer to the voter -/
 
@@ -85,7 +85,7 @@ heads are above the voter's `Σ.F` and are genesis or accepted by `w` while hone
 `t_s + 2Δ`. A head accepted before `a` is caught up by the voter before `a + κ ≤ t_s`. -/
 theorem carryAt_of_writer_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {s : Nat}
-    (hsa : a + κ ≤ sp.ts s) {w y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hsa : a + κ ≤ sp.ts s) {w y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
     (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) (hi : tr.time i ≤ b)
     {CV : Set (Vote sp.n)}
@@ -172,7 +172,7 @@ theorem result_carry_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini
     (hsa : a + κ ≤ sp.ts s)
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)} (hX : X ∈ H (tr.time i₀))
     (hR : AC.ResultAt tr.projAC X i₀ s C CV) {y : Fin sp.n} {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) (hF : Anc (tr.HonestBlocksAt H) ℓ.frame.F C) :
     AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV :=
@@ -187,7 +187,7 @@ theorem optimistic_carry_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr
     {X : Fin sp.n} {i₀ s : Nat} (hsa : a + κ ≤ sp.ts s)
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hX : X ∈ H (tr.time i₀)) (hO : AC.OptimisticLockAt tr.projAC X i₀ s C CV) {y : Fin sp.n}
-    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {i : Nat} {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) (hF : Anc (tr.HonestBlocksAt H) ℓ.frame.F C) :
     AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV :=
@@ -203,7 +203,7 @@ sent or admitted at a time in `[t_s, t_s + 5Δ]` is held at an update of slot `s
 of its validator are. -/
 private theorem served_held_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
-    {X x : Fin sp.n} {c s : Nat} (ha : a ≤ sp.ts s) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {X x : Fin sp.n} {c s : Nat} (ha : a ≤ sp.ts s) {ℓ : ACLabel (goldilocksNode sp)}
     (hX : X ∈ H (tr.time c))
     (hc : tr.projAC.CallAt X c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ) (hcb : tr.time c ≤ b)
     (hrs : ∀ k ≤ c, tr.projAC.RestartAt X k → tr.time k ≤ sp.ts s) {v : Vote sp.n}
@@ -250,7 +250,7 @@ theorem result_writer_pool_at {ini} (hrun : Growing.GoldilocksRun proposer dg H 
     {X : Fin sp.n} {i₀ s : Nat} (ha : a ≤ sp.ts s)
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hX : X ∈ H (tr.time i₀)) (hR : AC.ResultAt tr.projAC X i₀ s C CV) (hi₀ : tr.time i₀ ≤ b)
-    {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
     (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) :
     ∀ v ∈ (AC.mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
@@ -286,7 +286,7 @@ theorem result_writer_pool_at {ini} (hrun : Growing.GoldilocksRun proposer dg H 
     have hj' : AC.joined sp ((tr.projAC.upTo (tr.time i)).post i) (tr.time i) := by
       unfold AC.joined; rw [AC.restartTime_of_castAtU hr.toU hy hc']; exact hyj
     intro k hk hrk
-    have := (AC.joined_awakeU sp _ ro _ _ _ hr.toU y hy i ℓ hc'.1 hj').2 k hk hrk
+    have := (AC.joined_awakeU sp _ _ _ _ hr.toU y hy i ℓ hc'.1 hj').2 k hk hrk
     change tr.time k ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) at this
     rwa [hsi, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by push_cast; ring] at this
   -- every slot-`s` vote of the voter's pool up to its vote reaches the writer

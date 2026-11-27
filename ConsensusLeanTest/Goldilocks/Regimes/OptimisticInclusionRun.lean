@@ -76,7 +76,7 @@ theorem committee_ncard {p : Nat} {u t : Time} (ht : 0 ≤ t) :
 cut `8(t + 1)` after `t`. -/
 theorem optimisticInclusion_premises (p t : Nat) (hp : 1 ≤ p) (ht : 4 * p + 2 ≤ t) :
     sp1.optimistic = true ∧
-      Consensus.Goldilocks.Growing.GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1
+      Consensus.Goldilocks.Growing.GoldilocksRun (sp := sp1) (fun _ => v0) dg1
         (fun _ => Set.univ) (tickRun N1 dg1)
         (committeeStart sp1.genesisRoot (CommitteeDict.full sp1.n)) ∧
       Compose.NoCollRun dg1 (tickRun N1 dg1) ∧

@@ -11,10 +11,10 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+variable {sp : ACParams}
+  {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {g ΔF a b hold : Time} {committee : Time → Finset (Fin sp.n)} {beta : ℚ}
 

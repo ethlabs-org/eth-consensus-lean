@@ -14,12 +14,12 @@ uses honesty at the vote deadline and antitonicity at each earlier restart.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- A warm node is joined at the vote deadline, even if it is compromised afterwards. -/
 theorem joined_voteTime_of_warm_frame_at
@@ -42,11 +42,11 @@ theorem joined_voteTime_of_warm_frame_at
 
 /-- No restart in `(t, b]` of a node honest at its restart: `NoRestartAfter` for the restarts up
 to `b`. -/
-def NoRestartUpTo (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (t b : Time) : Prop :=
+def NoRestartUpTo (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) (t b : Time) : Prop :=
   ∀ y k, y ∈ H (tr.time k) → tr.RestartAt y k → tr.time k ≤ b → tr.time k ≤ t
 
 /-- The bounded no-restart premise, without exposing the definition's body. -/
-theorem noRestartUpTo_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {t b : Time} :
+theorem noRestartUpTo_iff {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {t b : Time} :
     NoRestartUpTo tr H t b ↔
       ∀ y k, y ∈ H (tr.time k) → tr.RestartAt y k → tr.time k ≤ b → tr.time k ≤ t :=
   Iff.rfl
@@ -76,7 +76,7 @@ theorem joined_voteTime_of_warm_frame_upTo_at
 theorem toFG_candidates_compatible_at_call_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ell) {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : P ∈ AC.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i)) :
     ∀ C ∈ AC.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i),
@@ -107,7 +107,7 @@ theorem toFG_time_ge_of_ancestor_slot_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i u : Nat}
     (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {P R : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {P R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : AC.ToFGAt tr.projAC y i ell R) (hPs : P.slot = u)
     (hPR : Anc (tr.HonestBlocksAt H) P R) :
     sp.ts u ≤ tr.time i := by

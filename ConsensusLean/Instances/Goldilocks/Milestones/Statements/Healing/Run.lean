@@ -51,7 +51,7 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar declaredSupportVotes)
+open AC (ACParams Payload gbar declaredSupportVotes)
 
 section Vocabulary
 
@@ -200,8 +200,8 @@ end Run
 
 section Goldilocks
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+variable {sp : ACParams}
+  (tr : GoldilocksTrace sp) (H : Set (Fin sp.n))
 
 /-- **A ready proposal**: the honest proposer `p` of slot `s`, joined at `t_s`, makes its
 proposal `B` of slot `s` at cut `k`, and every slot-`(s−1)` support reference of `B` is a block of
@@ -244,7 +244,7 @@ structure HSShared (K : AC.CommitteeDict sp.n) (dg : Digest (List (FG.Att sp.n))
   /-- Genesis's root is its digest (as C0.3 and A1.7 take it): otherwise an honest proposal
   whose digest is the genesis root is refused by every FG, and the healing statements that need
   honest proposals to be accepted (the reset, C1.2, H.3, H.4) fail. -/
-  genesisRoot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg
+  genesisRoot : (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload).RootOk dg
   /-- `Healthy(g)`. -/
   healthy : tr.HealthyRun H ΔF g
   /-- No honest restart after `ḡ`. -/
@@ -288,10 +288,10 @@ frontier is `≤ H_z + 1`, so every honest attestation signed at `a` has height 
 for every entry of height `≥ H_z + 1` the first clause of (K1) of G1.10 holds with
 `T₀ = a − Δ`. -/
 def CutAndReset : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams)
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF : Time),
+    (tr : GoldilocksTrace sp) (g ΔF : Time),
     GoldilocksRun proposer dg H tr → tr.HealthyRun H ΔF g → Compose.NoCollRun dg tr →
     cutZ sp.toParams g ≤ gbar g + 12 * sp.Δ ∧
     (∀ y ∈ H, ∀ k att, tr.SignAt y k att → tr.time k ≤ cutZ sp.toParams g →
@@ -340,8 +340,8 @@ def PhaseCount (P : Params) (ACP : Type) : Prop :=
 
 section Top
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+variable {sp : ACParams}
+  (tr : GoldilocksTrace sp) (H : Set (Fin sp.n))
 
 /-- The honest votes of slot `p` (over the AC projection) are all `P`. -/
 def Unanimous (p : Nat) (P : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=

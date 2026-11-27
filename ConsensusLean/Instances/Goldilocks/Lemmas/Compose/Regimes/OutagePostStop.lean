@@ -16,7 +16,7 @@ public section
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 /-- Among a slow lock's consecutive labels, at least one is outside the outage pollution
 window, under the gap budget `(4k − 5)Δ`: the polluted slot starts lie in the open interval
@@ -36,8 +36,8 @@ theorem exists_unpolluted_label (sp : AC.ACParams) {start stop : Time}
   simp only [AC.ACParams.ts] at hfirst hlast
   linarith
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 end Consensus.Goldilocks.Compose

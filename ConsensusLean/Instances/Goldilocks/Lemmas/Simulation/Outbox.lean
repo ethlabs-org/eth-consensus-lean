@@ -34,7 +34,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote Payload ACState)
+open AC (ACParams Vote Payload ACState)
 
 variable {binding : VoteBinding}
 
@@ -100,19 +100,19 @@ private theorem acOnBlock_voteStep (self : Fin sp.n) (A : ACState sp.n) (Φ : AC
     ((optimistic_keeps _ _ _).1.trans (blockReceipt_keeps _ _ _).1)
     ((optimistic_keeps _ _ _).2.trans (blockReceipt_keeps _ _ _).2)
 
-private theorem acRestart_emits_nil (ro : ReplayOrder sp FGP) (self : Fin sp.n)
+private theorem acRestart_emits_nil (self : Fin sp.n)
     (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time) (_ht : 0 ≤ t) :
-    (AC.acRestart sp ro self A Φ t).2 = [] := by
+    (AC.acRestart sp self A Φ t).2 = [] := by
   rfl
 
 /-- **One vote per call.** A call of the node's AC at `t ≥ 0` other than a restart is a
 `VoteStep`; a restart emits nothing. -/
-theorem step_voteStep (ro : ReplayOrder sp (List (FG.Att sp.n))) (self : Fin sp.n)
-    (A : ACState sp.n) (Φ : (goldilocksNode sp ro).Frm) (t : Time) (ht : 0 ≤ t)
-    (c : (goldilocksNode sp ro).Call) :
-    (c = .restart ∧ ((goldilocksNode sp ro).step self A Φ t c).2 = []) ∨
-      VoteStep A ((goldilocksNode sp ro).step self A Φ t c).1
-        ((goldilocksNode sp ro).step self A Φ t c).2 t := by
+theorem step_voteStep (self : Fin sp.n)
+    (A : ACState sp.n) (Φ : (goldilocksNode sp).Frm) (t : Time) (ht : 0 ≤ t)
+    (c : (goldilocksNode sp).Call) :
+    (c = .restart ∧ ((goldilocksNode sp).step self A Φ t c).2 = []) ∨
+      VoteStep A ((goldilocksNode sp).step self A Φ t c).1
+        ((goldilocksNode sp).step self A Φ t c).2 t := by
   cases c with
   | tick =>
     right
@@ -150,18 +150,18 @@ theorem step_voteStep (ro : ReplayOrder sp (List (FG.Att sp.n))) (self : Fin sp.
       ((optimistic_keeps _ _ _).1.trans (admitVote_keeps _ _ _).1)
       ((optimistic_keeps _ _ _).2.trans (admitVote_keeps _ _ _).2)
   | block B => exact Or.inr (acOnBlock_voteStep _ _ _ _ _)
-  | restart => exact Or.inl ⟨rfl, acRestart_emits_nil ro self A Φ t ht⟩
+  | restart => exact Or.inl ⟨rfl, acRestart_emits_nil self A Φ t ht⟩
 
 /-- A restart at `t ≥ 0` emits nothing (it is not joined at its own time). -/
-theorem restart_emits_nil (ro : ReplayOrder sp (List (FG.Att sp.n))) (self : Fin sp.n)
-    (A : ACState sp.n) (Φ : (goldilocksNode sp ro).Frm) (t : Time) (ht : 0 ≤ t) :
-    ((goldilocksNode sp ro).step self A Φ t .restart).2 = [] :=
-  acRestart_emits_nil ro self A Φ t ht
+theorem restart_emits_nil (self : Fin sp.n)
+    (A : ACState sp.n) (Φ : (goldilocksNode sp).Frm) (t : Time) (ht : 0 ≤ t) :
+    ((goldilocksNode sp).step self A Φ t .restart).2 = [] :=
+  acRestart_emits_nil self A Φ t ht
 
 /-- The AC's tick emits only at `t_s + Δ`. -/
-theorem acOnTick_emits (ro : ReplayOrder sp (List (FG.Att sp.n))) (self : Fin sp.n)
-    (A : ACState sp.n) (Φ : (goldilocksNode sp ro).Frm) (t : Time)
-    (h : ((goldilocksNode sp ro).step self A Φ t .tick).2 ≠ []) :
+theorem acOnTick_emits (self : Fin sp.n)
+    (A : ACState sp.n) (Φ : (goldilocksNode sp).Frm) (t : Time)
+    (h : ((goldilocksNode sp).step self A Φ t .tick).2 ≠ []) :
     t = sp.ts (sp.slot t) + sp.Δ := by
   change (AC.acOnTick sp self A Φ t).2 ≠ [] at h
   unfold AC.acOnTick at h
@@ -174,25 +174,25 @@ end OneVote
 
 section Deliver
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- The votes a handler's cuts queue: its AC cut's emissions. -/
 private theorem handler_voteStep (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (io : VoteAuth sp.n binding)
-    (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (ht : 0 ≤ t)
-    (e : Event (goldilocksNode sp ro)) (hne : ∀ x fgDue, e ≠ .tick x fgDue) (hnr : e ≠ .restart) :
+    (self : Fin sp.n) (st : NodeState (goldilocksNode sp)) (t : Time) (ht : 0 ≤ t)
+    (e : Event (goldilocksNode sp)) (hne : ∀ x fgDue, e ≠ .tick x fgDue) (hnr : e ≠ .restart) :
     ∃ (A' : ACState sp.n) (es : List (AC.Em sp (List (FG.Att sp.n)))),
       VoteStep st.ac A' es t ∧ (exec proposer dg self st t e).1.ac = A' ∧
         emitted io (exec proposer dg self st t e).2 = es.filterMap fun e =>
           (ownToken (binding := binding) io e.msg).map fun z => .vote (encodeVote e.msg) z := by
-  have hstep : ∀ (st' : NodeState (goldilocksNode sp ro)) (c : (goldilocksNode sp ro).Call),
+  have hstep : ∀ (st' : NodeState (goldilocksNode sp)) (c : (goldilocksNode sp).Call),
       st'.ac = st.ac → c ≠ .restart →
-      VoteStep st.ac ((goldilocksNode sp ro).step self st'.ac (frame st') t c).1
-        ((goldilocksNode sp ro).step self st'.ac (frame st') t c).2 t := by
+      VoteStep st.ac ((goldilocksNode sp).step self st'.ac (frame st') t c).1
+        ((goldilocksNode sp).step self st'.ac (frame st') t c).2 t := by
     intro st' c hac hc
     rw [hac]
-    rcases step_voteStep ro self st.ac (frame st') t ht c with ⟨h, -⟩ | h
+    rcases step_voteStep self st.ac (frame st') t ht c with ⟨h, -⟩ | h
     · exact absurd h hc
     · exact h
   cases e with
@@ -216,36 +216,36 @@ private theorem handler_voteStep (proposer : Nat → Fin sp.n)
         · simp [exec, onBlock, hf, hfg, acCall, emitted]
 
 /-- At most one queued vote, of a state that has voted in the slot of `t`. -/
-def OneVote (t : Time) (σ : State sp ro binding) : Prop :=
+def OneVote (t : Time) (σ : State sp binding) : Prop :=
   (∀ b ∈ σ.outbox, ∃ w z, b = .vote w z) ∧
     (σ.outbox = [] ∨ ∃ b, σ.outbox = [b] ∧ σ.node.ac.votedSlot = sp.slot t)
 
 /-- `OneVote` unfolded. -/
-theorem oneVote_iff (t : Time) (σ : State sp ro binding) : OneVote t σ ↔
+theorem oneVote_iff (t : Time) (σ : State sp binding) : OneVote t σ ↔
     (∀ b ∈ σ.outbox, ∃ w z, b = .vote w z) ∧
       (σ.outbox = [] ∨ ∃ b, σ.outbox = [b] ∧ σ.node.ac.votedSlot = sp.slot t) := Iff.rfl
 
 /-- At most one vote queued, all votes. -/
-def AtMostOneVote (σ : State sp ro binding) : Prop :=
+def AtMostOneVote (σ : State sp binding) : Prop :=
   (∀ b ∈ σ.outbox, ∃ w z, b = .vote w z) ∧ σ.outbox.length ≤ 1
 
 /-- `AtMostOneVote` unfolded. -/
-theorem atMostOneVote_iff (σ : State sp ro binding) :
+theorem atMostOneVote_iff (σ : State sp binding) :
     AtMostOneVote σ ↔ (∀ b ∈ σ.outbox, ∃ w z, b = .vote w z) ∧ σ.outbox.length ≤ 1 := Iff.rfl
 
-theorem OneVote.atMost {t : Time} {σ : State sp ro binding} (h : OneVote t σ) : AtMostOneVote σ
+theorem OneVote.atMost {t : Time} {σ : State sp binding} (h : OneVote t σ) : AtMostOneVote σ
     := by
   refine ⟨h.1, ?_⟩
   rcases h.2 with h | ⟨b, h, -⟩ <;> simp [h]
 
 /-- Processing one received object at clock `t ≥ 0` keeps `OneVote t`. -/
 private theorem processOne_oneVote (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (hs : List (Header Info × Nat)) {t : Time} (ht : 0 ≤ t) (σ : State sp ro binding)
+    (hs : List (Header Info × Nat)) {t : Time} (ht : 0 ≤ t) (σ : State sp binding)
         (o : Wire sp.n binding)
     (hnow : σ.now = t) (h : OneVote t σ) : OneVote t (processOne σ.voteIO hs σ o) := by
   obtain ⟨-, -, -, -, -, hnode⟩ := processOne_eq (fun _ => σ.self) dg σ.voteIO hs σ o
   have hout := processOne_outbox_eq (fun _ => σ.self) dg σ.voteIO hs σ o
-  cases he : canonEvent sp ro σ.voteIO hs o with
+  cases he : canonEvent sp σ.voteIO hs o with
   | none =>
     rw [he] at hnode hout
     simp only [Option.elim_none, List.append_nil] at hnode hout
@@ -295,7 +295,7 @@ private theorem processOne_oneVote (dg : Digest (List (FG.Att sp.n)) (Payload sp
 /-- A delivery at clock `t ≥ 0` keeps `OneVote t`. -/
 theorem process_oneVote (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) {t : Time} (ht : 0 ≤ t) :
-    ∀ (os : List (Wire sp.n binding)) (σ : State sp ro binding), σ.now = t → OneVote t σ →
+    ∀ (os : List (Wire sp.n binding)) (σ : State sp binding), σ.now = t → OneVote t σ →
       OneVote t (os.foldl (processOne σ.voteIO hs) σ)
   | [], _, _, h => h
   | o :: os, σ, hnow, h => by
@@ -311,28 +311,28 @@ end Deliver
 
 section Duties
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- The state a poll step pops from at the release schedule `release`: after the FG update
 when it is due. -/
-noncomputable def pollPre (st : State sp ro binding) (release : Fin sp.n → Time → Bool) :
-    State sp ro binding :=
+noncomputable def pollPre (st : State sp binding) (release : Fin sp.n → Time → Bool) :
+    State sp binding :=
   if st.fgDue then fgUpdate st release else st
 
 /-- `pollPre` unfolded. -/
-theorem pollPre_eq (st : State sp ro binding) (release : Fin sp.n → Time → Bool) :
+theorem pollPre_eq (st : State sp binding) (release : Fin sp.n → Time → Bool) :
     pollPre st release = if st.fgDue then fgUpdate st release else st := by
   rfl
 
 /-- A recorded unsigned object keeps the outbox. -/
-theorem recordOwn_none_outbox (st : State sp ro binding) (m : Model.Msg (Header Info) Body)
+theorem recordOwn_none_outbox (st : State sp binding) (m : Model.Msg (Header Info) Body)
     (cs : List (Wire sp.n binding)) hs : (recordOwn st (.mk .none m cs) hs).outbox = st.outbox := by
   cases m with
   | data b => cases b <;> rfl
   | item h => rfl
 
 /-- The FG update queues at most the attestation it signs. -/
-theorem fgUpdate_outbox_cases {release : Fin sp.n → Time → Bool} (st : State sp ro binding) :
+theorem fgUpdate_outbox_cases {release : Fin sp.n → Time → Bool} (st : State sp binding) :
     (fgUpdate st release).outbox = st.outbox ∨
       ∃ a, (fgUpdate st release).outbox = st.outbox ++ [.att a] := by
   rw [fgUpdate_outbox]
@@ -341,7 +341,7 @@ theorem fgUpdate_outbox_cases {release : Fin sp.n → Time → Bool} (st : State
   · exact Or.inl (List.append_nil _)
 
 /-- The flush of held attestations does not change the outbox `pollPre` pops from. -/
-theorem pollPre_heldDrain_outbox (st : State sp ro binding)
+theorem pollPre_heldDrain_outbox (st : State sp binding)
     (release : Fin sp.n → Time → Bool) :
     (pollPre (heldDrain st) release).outbox = (pollPre st release).outbox := by
   unfold pollPre
@@ -351,7 +351,7 @@ theorem pollPre_heldDrain_outbox (st : State sp ro binding)
   · exact heldDrain_outbox st
 
 /-- A poll step pops the head of `pollPre`'s outbox. -/
-theorem poll_outbox {release : Fin sp.n → Time → Bool} (st : State sp ro binding) (t : Time) :
+theorem poll_outbox {release : Fin sp.n → Time → Bool} (st : State sp binding) (t : Time) :
     (poll st t release).1.outbox = (pollPre st release).outbox.tail ∧
       (poll st t release).2 = (pollPre st release).outbox.head?.map fun b => (b, []) := by
   unfold poll pollPre
@@ -360,7 +360,7 @@ theorem poll_outbox {release : Fin sp.n → Time → Bool} (st : State sp ro bin
 
 /-- A batch poll pops the head of `pollPre`'s outbox; the flush of held attestations does not
 touch the outbox. -/
-theorem pollBatch_outbox {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
+theorem pollBatch_outbox {release : Fin sp.n → Time → Bool} (st : State sp binding)
     (t : Time) : (pollBatch st t release).1.outbox = (pollPre st release).outbox.tail := by
   rw [pollBatch_fst]
   split
@@ -368,12 +368,12 @@ theorem pollBatch_outbox {release : Fin sp.n → Time → Bool} (st : State sp r
   · exact (poll_outbox _ _).1
 
 /-- A batch poll's ordinary body is the head of `pollPre`'s outbox. -/
-private theorem pollBatch_ordinary {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
+private theorem pollBatch_ordinary {release : Fin sp.n → Time → Bool} (st : State sp binding)
     (t : Time) : (poll st t release).2 = (pollPre st release).outbox.head?.map fun b => (b, []) :=
   (poll_outbox _ _).2
 
 /-- Two batch polls empty an outbox of at most one body. -/
-theorem poll_poll_nil {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
+theorem poll_poll_nil {release : Fin sp.n → Time → Bool} (st : State sp binding)
     (t t' : Time) (h : st.outbox.length ≤ 1) :
     (pollBatch (pollBatch st t release).1 t' release).1.outbox = [] := by
   have h₁ : (pollPre st release).outbox.length ≤ 2 := by
@@ -396,26 +396,26 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
 /-- Polling clears only pending forwarding candidates, not the durable wrapper map. -/
-theorem poll_forwards {release : Fin sp.n → Time → Bool} (st : State sp ro binding) (t : Time) :
+theorem poll_forwards {release : Fin sp.n → Time → Bool} (st : State sp binding) (t : Time) :
     (poll st t release).1.forwards = [] := by
   unfold poll
   dsimp only
   split <;> rfl
 
 /-- Polling drains pending vote envelopes irrespective of release-guard success. -/
-theorem poll_voteForwards {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
+theorem poll_voteForwards {release : Fin sp.n → Time → Bool} (st : State sp binding)
     (t : Time) : (poll st t release).1.voteForwards = [] := by
   unfold poll
   dsimp only
   split <;> rfl
 
 /-- A batch poll clears the pending forwarding candidates. -/
-theorem pollBatch_forwards {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
+theorem pollBatch_forwards {release : Fin sp.n → Time → Bool} (st : State sp binding)
     (t : Time) : (pollBatch st t release).1.forwards = [] := by
   rw [pollBatch_fst]; exact poll_forwards _ _
 
 /-- A batch poll drains the pending vote envelopes. -/
-theorem pollBatch_voteForwards {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
+theorem pollBatch_voteForwards {release : Fin sp.n → Time → Bool} (st : State sp binding)
     (t : Time) : (pollBatch st t release).1.voteForwards = [] := by
   rw [pollBatch_fst]; exact poll_voteForwards _ _
 
@@ -861,7 +861,7 @@ private theorem dutyStep_propose_shape (v : V)
     · exact Or.inl hact1
 
 /-- Recording an own object queues at most the emissions of the own block's handler. -/
-private theorem recordOwn_outbox (st : State sp ro binding) (o : Wire sp.n binding) (hs : List
+private theorem recordOwn_outbox (st : State sp binding) (o : Wire sp.n binding) (hs : List
     (Header Info × Nat)) :
     (recordOwn st o hs).outbox = st.outbox ∨ ∃ B,
       (recordOwn st o hs).outbox =
@@ -875,7 +875,7 @@ private theorem recordOwn_outbox (st : State sp ro binding) (o : Wire sp.n bindi
   · exact Or.inl rfl
 
 /-- The slot proposal keeps the outbox, the own index and the clock. -/
-theorem propose_keeps' (st : State sp ro binding) (s : Slot) :
+theorem propose_keeps' (st : State sp binding) (s : Slot) :
     (propose st s).1.outbox = st.outbox ∧ (propose st s).1.self = st.self ∧
       (propose st s).1.now = st.now := by
   refine ⟨?_, propose_self _ _, propose_now _ _⟩
@@ -935,7 +935,7 @@ theorem pre_shape (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilocks 
 omit [DecidableEq V] in
 /-- After the proposal duty of a tick at `t ≥ 0` (from the node `N3` after the first three duties,
 with at most one body queued before the tick and no FG update due) at most one body is queued. -/
-theorem outbox_after_pre (v : V) (σ : State (S.params (pubOf E) hn) (S.ro _) S.vote) (t : Time)
+theorem outbox_after_pre (v : V) (σ : State (S.params (pubOf E) hn) S.vote) (t : Time)
     (ht : 0 ≤ t) (_hf : σ.fgDue = false) (hb : σ.outbox.length ≤ 1)
     (N3 : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (hN3 : shapeOf S hn N3 = { nodeTick (pollBatch (pollBatch { σ with now := t, ticked := false }
@@ -943,7 +943,7 @@ theorem outbox_after_pre (v : V) (σ : State (S.params (pubOf E) hn) (S.ro _) S.
       ticked := true }) :
     (shapeOf S hn (rho.runDuties v N3
       ((skeleton (pubOf E) S.vote).proposeAt t)).1).outbox.length ≤ 1 := by
-  set σc : State (S.params (pubOf E) hn) (S.ro _) S.vote := { σ with now := t, ticked := false }
+  set σc : State (S.params (pubOf E) hn) S.vote := { σ with now := t, ticked := false }
   have h2 : (pollBatch (pollBatch σc t.toNat (S.release (pubOf E))).1 t.toNat
       (S.release (pubOf E))).1.outbox = [] := poll_poll_nil σc _ _ hb
   have h2s : (pollBatch (pollBatch σc t.toNat (S.release (pubOf E))).1 t.toNat
@@ -961,12 +961,12 @@ theorem outbox_after_pre (v : V) (σ : State (S.params (pubOf E) hn) (S.ro _) S.
       rw [h2s]
       constructor
       · refine (List.length_filterMap_le _ _).trans ?_
-        rcases step_voteStep (sp := S.params (pubOf E) hn) (S.ro _) _ _ _ t ht .tick with
+        rcases step_voteStep (sp := S.params (pubOf E) hn) _ _ _ t ht .tick with
           ⟨h, -⟩ | ⟨-, -, h, -⟩
         · cases h
         · exact h
       · intro hne
-        exact acOnTick_emits (S.ro _) _ _ _ t (fun h => hne (by rw [h]; simp))
+        exact acOnTick_emits _ _ _ t (fun h => hne (by rw [h]; simp))
     · rw [h2]; simp
   have hnow : (shapeOf S hn N3).now = t := by rw [hN3, nodeTick_now, h2s]
   rcases Skeleton.proposeAt_cases (skeleton (pubOf E) S.vote) t with
@@ -984,9 +984,9 @@ theorem outbox_after_pre (v : V) (σ : State (S.params (pubOf E) hn) (S.ro _) S.
       by_contra hne
       exact slotStart_ne_tickVote S hn t s hts (h3.2 hne)
     rcases dutyStep_propose_shape S rho hn v N3 s hs hsel with h | ⟨c, hs', h⟩
-    · refine (congrArg (fun st : State _ _ _ => st.outbox.length) h).trans_le ?_
+    · refine (congrArg (fun st : State _ _ => st.outbox.length) h).trans_le ?_
       rw [(propose_keeps' _ _).1, h30]; simp
-    · refine (congrArg (fun st : State _ _ _ => st.outbox.length) h).trans_le ?_
+    · refine (congrArg (fun st : State _ _ => st.outbox.length) h).trans_le ?_
       rcases recordOwn_outbox (propose (shapeOf S hn N3) s).1 c hs' with h' | ⟨B, h'⟩
       · rw [h', (propose_keeps' _ _).1, h30]; simp
       · rw [h', (propose_keeps' _ _).1, h30, List.nil_append, (propose_keeps' _ _).2.2, hnow]
@@ -1125,10 +1125,10 @@ theorem outbox_inv (hv : rho.ExecutionValid) (v : V) :
           have hout : (restore (rho.ownKey w) (stateAt S rho hn w i) t).outbox =
               (stateAt S rho hn w i).outbox := by
             change (stateAt S rho hn w i).outbox ++ emitted _ [Cut.ac ⟨.restart, _,
-              ((goldilocksNode _ _).step _ _ _ t .restart).2⟩] = _
-            have h0 : ((goldilocksNode (S.params (pubOf E) hn) (S.ro _)).step (rho.ownKey w)
+              ((goldilocksNode _).step _ _ _ t .restart).2⟩] = _
+            have h0 : ((goldilocksNode (S.params (pubOf E) hn)).step (rho.ownKey w)
                 (stateAt S rho hn w i).node.ac (frame (stateAt S rho hn w i).node) t .restart).2 =
-                [] := restart_emits_nil _ _ _ _ t ht
+                [] := restart_emits_nil _ _ _ t ht
             simp only [nodeAdapter, h0]
             simp [emitted]
           refine ⟨by unfold AtMostOneVote; rw [hout]; exact ih₁, Or.inl ?_⟩
@@ -1213,7 +1213,7 @@ theorem outbox_empty (hv : rho.ExecutionValid) (v : V) :
           simp only [Model.Event.node] at hnode
           subst w
           rw [stateAt_restart S rho hn v he]
-          have hnil := restart_emits_nil (S.ro _) (rho.ownKey v)
+          have hnil := restart_emits_nil (rho.ownKey v)
             (stateAt S rho hn v i).node.ac (frame (stateAt S rho hn v i).node) t
             (hv.in_horizon _ (List.mem_of_getElem? he)).1
           change (stateAt S rho hn v i).outbox ++ emitted _ [Cut.ac ⟨.restart, _, _⟩] = []
@@ -1228,7 +1228,7 @@ theorem atProposal_outbox_nil (hv : rho.ExecutionValid) (i : Nat) {v : V} {t : T
     (shapeOf S hn (atProposal S rho v (rho.stateBefore i v) t)).outbox = [] := by
   rw [atProposal_shape S rho hn v _ t (poll_selected S rho hv v)]
   rw [← stateAt_eq S rho hn v i]
-  set σ : State (S.params (pubOf E) hn) (S.ro _) S.vote :=
+  set σ : State (S.params (pubOf E) hn) S.vote :=
     { stateAt S rho hn v i with now := t, ticked := false }
   have hout : σ.outbox = [] := outbox_empty S rho hn hv v i
   have hf : σ.fgDue = false := fgDue_eq_false S rho hn v i
@@ -1247,7 +1247,7 @@ theorem atProposal_outbox_nil (hv : rho.ExecutionValid) (i : Nat) {v : V} {t : T
     by_contra hne
     rw [hnow2] at hne
     exact slotStart_ne_tickVote S hn t s (hts.trans (slotTime_eq S hn s))
-      (acOnTick_emits (S.ro _) _ _ _ t fun h => hne (by rw [h]; simp))
+      (acOnTick_emits _ _ _ t fun h => hne (by rw [h]; simp))
   · exact hout2
 
 /-- **A body pending after an event was released at that event's time.** In this engine
@@ -1407,7 +1407,7 @@ theorem voteForwards_empty (hv : rho.ExecutionValid) (v : V) :
           simp only [Model.Event.node] at hnode
           subst w
           rw [stateAt_restart S rho hn v he]
-          have hnil := restart_emits_nil (S.ro _) (rho.ownKey v)
+          have hnil := restart_emits_nil (rho.ownKey v)
             (stateAt S rho hn v i).node.ac (frame (stateAt S rho hn v i).node) t ht
           rw [restore_eq]
           simp only [apply, Node.restart, acCall, hnil, List.map_nil,

@@ -45,12 +45,12 @@ end Consensus.Goldilocks.Store
 
 namespace Consensus.Goldilocks.Shadow.PU.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- **The early viable witness** at an AC call of a node honest at it, inside a shadow window:
 a viable head `Q` of the call's frame (the shadow frame) is at least `M − 1` high, and in a top
@@ -60,7 +60,7 @@ theorem early_witness_viable
     {lo hi : Time} {M : Nat} {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hwin : Generic.FrameWindow tr H lo hi M isTop J)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a)) (hlo : lo ≤ tr.time a)
-    (hhi : tr.time a ≤ hi) {ellw : ACLabel (goldilocksNode sp ro)}
+    (hhi : tr.time a ≤ hi) {ellw : ACLabel (goldilocksNode sp)}
     (hcw : tr.projAC.CallAt w a ellw) {Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hQ : Q ∈ ellw.frame.viableHeads) :
     M - 1 ≤ ((tr.state w a).fg.σ Q.root).h ∧

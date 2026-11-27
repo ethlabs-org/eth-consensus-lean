@@ -45,19 +45,19 @@ Prerequisites for the post-reset proposal pivot. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-! ### Sources of the proposer's attestations -/
 
 /-- Finite high-origin labels preceding an actual proposal are strictly older. -/
 theorem ResetPremisesUpTo.origin_label_lt_at_proposal {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
-    {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ell : ACLabel (goldilocksNode sp)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
     (hti : tr.time i = sp.ts u) {v : Fin sp.n} {r l : Nat}
     {O : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -82,7 +82,7 @@ theorem ResetPremisesUpTo.origin_label_lt_at_proposal {b : Time}
 /-- An origin already preceding an honest signature before a proposal has an older label.
 This bound does not require the origin to precede a later receiving cast. -/
 theorem origin_label_lt_at_proposal (hp : ResetPremises tr H K proposer dg g ΔF a)
-    {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} {ell : ACLabel (goldilocksNode sp)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
     (hti : tr.time i = sp.ts u) {v : Fin sp.n} {r l : Nat}
     {O : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -96,7 +96,7 @@ theorem ResetPremisesUpTo.raw_writer_held_at_slot_start {b : Time}
     {B C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (hwriter : AC.ResultAt tr.projAC x r s C CV ∨ AC.FastLockAt tr.projAC x r s C CV)
     (hBC : Anc (tr.HonestBlocks H) B C) (hs : AC.gbar g + 4 * sp.Δ ≤ sp.ts s)
-    (hsu : s < u) {ell : ACLabel (goldilocksNode sp ro)}
+    (hsu : s < u) {ell : ACLabel (goldilocksNode sp)}
     (hci : tr.projAC.CallAt p i ell) (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
     (hFB : Anc (tr.HonestBlocks H) ell.frame.F B) : B ∈ ell.frame.tree := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun

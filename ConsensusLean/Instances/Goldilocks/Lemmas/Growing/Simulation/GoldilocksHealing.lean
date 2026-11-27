@@ -34,12 +34,12 @@ The last two read the bundled premises through the finite reset record
 
 namespace Consensus.Goldilocks.Generic
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Healing (cutZ)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
   {sign : Fin sp.n → Time → Bool} {G : Nat}
 
 
@@ -48,7 +48,7 @@ record: the committee facts come from the run under collision freedom, the servi
 same, and restarts after `ḡ` are excluded at every cut, so also at those by the horizon. -/
 theorem resetPremisesUpTo_of_premises {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     {g ΔF a b hold : Time} (hβ : βK ≤ 1 / 2)
-    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
     (hdeep : ∀ D, sp.deepDepth = some D →
@@ -121,7 +121,7 @@ private theorem originCapTime_quarantine (g b : Time) :
 `c_z`). -/
 private theorem snapshot_le_reset {g a : Time} {hold ΔF b : Time} {cm : Time → Finset (Fin sp.n)}
     {βK : ℚ}
-    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (hr : Healing.Growing.IsReset tr H g a) :
     ∃ k, Healing.FirstCutAfter tr k (cutZ sp.toParams g) ∧ tr.time k ≤ a := by
@@ -150,7 +150,7 @@ private theorem timeoutDelay_scalar {cm : Time → Finset (Fin sp.n)} {βK : ℚ
 reset record through `originCapTime`, inside the deep quarantine. -/
 theorem resetPremisesUpTo_of_premises_cap {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     {g ΔF a b hold : Time} (hβ : βK ≤ 1 / 2)
-    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
     (hac : OriginInCap sp.toParams sp.deepDepth g a) :
@@ -179,7 +179,7 @@ the drain of `a` at least `4Δ` before `T` (the budget: `slot a + drain + 1 ≤ 
 the high-source cover through the horizon (`healthy_high_source_cover_at`). -/
 theorem resetPremisesUpTo_of_premises_budget {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     {g ΔF a b hold : Time} (hβ : βK ≤ 1 / 2)
-    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
     (hbud : ResetInBudget sp.toParams sp.deepDepth (2 * sp.k + 5) g a) :
@@ -217,7 +217,7 @@ theorem resetPremisesUpTo_of_premises_budget {cm : Time → Finset (Fin sp.n)} {
 /-- `report_in_frame`: an honest report lies in its reporter's tree above the finalized root. -/
 theorem goldilocks_report_in_frame {cm : Time → Finset (Fin sp.n)}
     {y : Fin sp.n} {i : Nat} {R : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
     (hy : y ∈ H (tr.time i)) (hR : ReportAt tr y i R) :
     R ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc (tr.state y i).fg.F R := by
   have hrun := ((goldilocksRunInterface_run_iff cm).mp hrun).1
@@ -232,7 +232,7 @@ horizon, after a reset by it, are compatible. -/
 theorem goldilocks_origins_comparable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {hold : Time}
     {g ΔF a b : Time} {x x' : Fin sp.n} {i j i' j' : Nat}
     {B B' : AC.Blk sp.n (List (FG.Att sp.n))} (hβ : βK ≤ 1 / 2)
-    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
     (hac : OriginInCap sp.toParams sp.deepDepth g a)
@@ -255,7 +255,7 @@ reset's slot are chained through the horizon, one slot on with the service reser
 more slots on. -/
 theorem goldilocks_heal_after_reset {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     {g ΔF a b hold : Time} (hβ : βK ≤ 1 / 2)
-    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
     (hbudget : ResetInBudget sp.toParams sp.deepDepth (2 * sp.k + 5) g a) :

@@ -51,18 +51,18 @@ the cut or read time, where the node is honest throughout. -/
 namespace Consensus.Goldilocks.Obligations.Growing
 
 open AsChainShape Simulation
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 variable {hold : Time}
 
 /-- The writer shape of a cut of the prefix through `d`, read back on the run. -/
 private theorem writer_shape_of_upTo
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {d : Time}
-    {y : Fin sp.n} {q : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {q : Nat} {ell : ACLabel (goldilocksNode sp)}
     {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hle : ∀ k < q + 1, tr.time k ≤ d)
     (h : (∃ s CV, AC.ResultAt (tr.upTo d).projAC y q s R CV) ∨
@@ -82,7 +82,7 @@ private theorem writer_shape_of_upTo
 /-- A non-genesis current record of a reader honest at `t` has a last own writer, with unchanged
 record roots thereafter and the actual creation lock in the optimistic case. -/
 theorem last_record_writer_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {n : Nat} {t : Time} (ht0 : 0 ≤ t)
     (hnt : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t)
@@ -110,7 +110,7 @@ theorem last_record_writer_at
 /-- Creation-time holding plus a later finalized-floor guard keeps the writer's block in every
 intervening filtered frame of a reader honest at `t`. -/
 theorem writer_mem_frame_between_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {q e n : Nat} {t : Time} (ht0 : 0 ≤ t)
     (hnt : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t) (hqe : q ≤ e) (hen : e ≤ n)
@@ -207,7 +207,7 @@ theorem retained_writer_slot_after_update_at
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
     (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
     {y : Fin sp.n} {j n q : Nat} {t : Time}
-    {ell ellq : ACLabel (goldilocksNode sp ro)} (ht0 : 0 ≤ t) (hnt : ∀ k < n, tr.time k ≤ t)
+    {ell ellq : ACLabel (goldilocksNode sp)} (ht0 : 0 ≤ t) (hnt : ∀ k < n, tr.time k ≤ t)
     (hy : y ∈ H t) (hup : AC.UpdateAt tr.projAC y j u ell) (hjn : j < n)
     {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hlookup : AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed = some R)
@@ -291,7 +291,7 @@ private theorem optimistic_unlock_keeps_at
   have hcallA := Compose.projAC_callAt.2 hcall
   obtain ⟨hfr, hst, _, _⟩ := hrT.cutLaw y hy j _ hcall
   rw [hfr] at hst
-  have hA' : ((AC.goldilocksAC sp (List (FG.Att sp.n)) ro).step y ((tr.upTo t).state y j).ac
+  have hA' : ((AC.goldilocksAC sp (List (FG.Att sp.n))).step y ((tr.upTo t).state y j).ac
       (Node.frame ((tr.upTo t).state y j)) ((tr.upTo t).time j) ell.call).1 =
         ((tr.upTo t).state y (j + 1)).ac := by
     rw [(tr.upTo t).state_succ_of_call hcall, hst]
@@ -359,7 +359,7 @@ private theorem optimistic_unlock_keeps_at
       obtain ⟨k', _, e', he', rfl⟩ := hrunT.honest.pool_vote y hy (j + 1) _ x' hx' (hx'v ▸ hvH)
       rw [hx'v, ← hxv] at he'
       exact absurd (congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg)
-        (AC.one_vote_per_slotU sp _ ro (H t) _ _ hrunT.localRun.toU _ (hxv ▸ hvH) k k' e e' he he'
+        (AC.one_vote_per_slotU sp _ (H t) _ _ hrunT.localRun.toU _ (hxv ▸ hvH) k k' e e' he he'
           (hxs.trans hx's.symm)).2) hne
   have hkj : k < j :=
     Compose.cast_lt_of_slot hrT hncT hvH hcast (by simpa [hmsg] using hvs)
@@ -431,7 +431,7 @@ theorem optimistic_result_or_finalized_at_update_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {r s j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
-    {CV : Set (Vote sp.n)} {ell : ACLabel (goldilocksNode sp ro)}
+    {CV : Set (Vote sp.n)} {ell : ACLabel (goldilocksNode sp)}
     (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time j))
     (hop : AC.OptimisticLockAt tr.projAC x r s B CV)
     (hs : Healing.cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hrb : tr.time r ≤ b)

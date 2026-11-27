@@ -76,9 +76,9 @@ end Consensus.Goldilocks
 
 namespace Consensus.Goldilocks.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 end Consensus.Goldilocks.Growing
 
@@ -100,11 +100,11 @@ end Consensus.Goldilocks.RunTrace
 
 namespace Consensus.Goldilocks.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
+variable {sp : ACParams} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro}
+  {tr : GoldilocksTrace sp}
 
 end Consensus.Goldilocks.Growing
 

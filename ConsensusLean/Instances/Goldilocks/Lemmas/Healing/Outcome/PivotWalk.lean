@@ -42,12 +42,12 @@ Prerequisites for the post-reset proposal pivot. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n} {g ΔF a : Time}
 
 /-! ### The proposal walk and fork-choice roots -/
 
@@ -56,7 +56,7 @@ precedes the receiving cast, not necessarily the proposal. -/
 theorem ResetPremisesUpTo.vote_old_lock_source_before {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {j u : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
     (hR : drainTime sp a ≤ sp.ts u)
     {l : AC.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
@@ -123,7 +123,7 @@ theorem ResetPremisesUpTo.vote_old_lock_source_before {b : Time}
 /-- Whole-run specialization of actual read-point lock provenance. -/
 theorem vote_old_lock_source_before (hp : ResetPremises tr H K proposer dg g ΔF a)
     {y : Fin sp.n} (hy : y ∈ H) {j u : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
     (hR : drainTime sp a ≤ sp.ts u)
     {l : AC.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
@@ -142,13 +142,13 @@ variable (hp : ResetPremises tr H K proposer dg g ΔF a)
   (hc : CatchRun tr H g (2 * sp.Δ))
   {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
   (hP : ReadyProposal tr H proposer p k u P) (hR : drainTime sp a ≤ sp.ts u)
-  {i : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
+  {i : Nat} {ℓp : ACLabel (goldilocksNode sp)}
   {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
   (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
   (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
   (hti : tr.time i = sp.ts u) (hPQ : P.parent = some d.head.root)
   {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-  {ℓy : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+  {ℓy : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
   (hcy : AC.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = u)
   (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', AC.VoteAt tr.projAC x j' e' →
     e'.msg.slot = u → e'.msg.head = P.root)

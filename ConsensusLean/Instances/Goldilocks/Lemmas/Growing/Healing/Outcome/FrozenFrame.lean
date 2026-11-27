@@ -19,12 +19,12 @@ block's stamp is an acceptance of the voter, honest then, relayed to the propose
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Regimes.Growing (hold)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {fgHold : Time}
 
 /-- A bounded pre-freeze block of a voter honest at its cast, above the `Σ.F` of a proposer
@@ -32,7 +32,7 @@ honest at its proposal call, is in the proposer's frame. -/
 theorem reset_frozen_frame_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK fgHold)
     {p y : Fin sp.n} {i j s : Nat} (hpH : p ∈ H (tr.time i)) (hy : y ∈ H (tr.time j))
-    {ellp elly : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ellp elly : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hci : tr.projAC.CallAt p i ellp) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hcy : AC.CastAt tr.projAC y j elly e) (hib : tr.time i ≤ b)
     (hg : AC.gbar g + 2 * sp.Δ ≤ tr.time i)

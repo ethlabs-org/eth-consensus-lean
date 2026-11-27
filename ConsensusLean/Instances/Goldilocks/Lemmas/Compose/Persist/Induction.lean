@@ -16,10 +16,10 @@ starts. The induction of C1.1 that read it is retired with C1.1. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder goldilocksAC Vote Payload)
+open AC (ACParams goldilocksAC Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+variable {sp : ACParams}
+  (tr : GoldilocksTrace sp) (H : Set (Fin sp.n))
 
 variable {tr H}
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {ΔF : Time} {x : Fin sp.n}

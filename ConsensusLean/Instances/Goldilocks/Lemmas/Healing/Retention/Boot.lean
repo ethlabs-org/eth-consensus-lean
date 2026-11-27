@@ -21,11 +21,11 @@ the GST, `Retention/Relay`), (R4) (`Retention/Records`) and HBoot's caches from 
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
-  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
 /-! ### The base case, the vote premises and the records -/
@@ -132,8 +132,8 @@ theorem boot_caches (hp : ResetPremises tr H K proposer dg g ΔF a)
 
 /-- `Sync` on the AC projection from `g` on (`GST(g)`). -/
 private theorem sync_after (hp : ResetPremises tr H K proposer dg g ΔF a) (b : Time) :
-    SyncAC (AC.goldilocksAC sp (List (FG.Att sp.n)) ro) H (tr.HonestBlocks H) g b tr.projAC :=
-  Compose.sync_projection sp.toParams (goldilocksNode sp ro) dg H (fun v => v.val)
+    SyncAC (AC.goldilocksAC sp (List (FG.Att sp.n))) H (tr.HonestBlocks H) g b tr.projAC :=
+  Compose.sync_projection sp.toParams (goldilocksNode sp) dg H (fun v => v.val)
     tr proposer ΔF g b
     hp.run.toLocalRun (syncRun_of_gst hp.healthy.1 le_rfl)
 
@@ -143,7 +143,7 @@ theorem ResetPremisesUpTo.high_origin_held_at_vote {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {x y : Fin sp.n} {i j k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hy : y ∈ H)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) (hj : j < e.msg.slot)
     (hF : Anc (tr.HonestBlocks H) ell.frame.F B) : B ∈ (tr.state y k).fg.tree := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
@@ -174,7 +174,7 @@ tree holds a descendant `D` of the origin's block `B`, then `D` has state height
 theorem low_root_compatible (hp : ResetPremises tr H K proposer dg g ΔF a) {x : Fin sp.n}
     {i j : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
-    (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ℓ e) (_hj : j < e.msg.slot)
     (hroot : (tr.state y k).fg.hmax = (tr.state y k).fg.hj + 1 ∧ ¬ (tr.state y k).fg.Contest)
     (hlow : (tr.state y k).fg.hj ≤ HZ tr H g) {D : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -238,7 +238,7 @@ theorem ResetPremisesUpTo.low_root_of_held_seed_at_call {b : Time}
     {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (_hx : x ∈ H) (_hBx : B ∈ (tr.state x r).fg.tree) (hy : y ∈ H)
     (hS : HighOrigin tr H g v q m S)
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ell) (_hSy : S ∈ (tr.state y i).fg.tree)
     (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
     (hBS : Compatible (tr.HonestBlocks H) B S)
@@ -258,7 +258,7 @@ theorem ResetPremisesUpTo.low_root_of_seed_before {b : Time}
     {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H) (hBx : B ∈ (tr.state x r).fg.tree) (hy : y ∈ H)
     (hS : HighOrigin tr H g v q m S)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hm : m < e.msg.slot)
     (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
     (hBS : Compatible (tr.HonestBlocks H) B S)
@@ -281,7 +281,7 @@ theorem ResetPremisesUpTo.first_carry_of_finalized_anc {b : Time}
     {x : Fin sp.n} {i j : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (ho : HighOrigin tr H g x i j B) (hfl : Compose.StoredFastLockAt tr x i j B CV)
-    {y : Fin sp.n} (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y k ℓ e)
     (hs : e.msg.slot = j + 1) (hF : Anc (tr.HonestBlocks H) ℓ.frame.F B) :
     AC.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV := by
@@ -319,7 +319,7 @@ theorem first_carry_of_finalized_anc (hp : ResetPremises tr H K proposer dg g Δ
     {x : Fin sp.n} {i j : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (ho : HighOrigin tr H g x i j B) (hfl : Compose.StoredFastLockAt tr x i j B CV)
-    {y : Fin sp.n} (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y k ℓ e)
     (hs : e.msg.slot = j + 1) (hF : Anc (tr.HonestBlocks H) ℓ.frame.F B) :
     AC.CarryAt tr.projAC (tr.HonestBlocks H) y k e j CV :=
@@ -332,7 +332,7 @@ theorem ResetPremisesUpTo.later_carry_of_finalized_anc {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (k : Nat)
     {x : Fin sp.n} {i j : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
-    (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ℓ e) {m' : Nat} (hm' : e.msg.slot = m' + 1) (hjm : j < m')
     (hF : Anc (tr.HonestBlocks H) ℓ.frame.F B)
     (hprior : ∀ z ∈ H, ∀ q < k, ∀ e', AC.VoteAt tr.projAC z q e' →
@@ -388,7 +388,7 @@ theorem ResetPremisesUpTo.later_carry_of_finalized_anc {b : Time}
 theorem later_carry_of_finalized_anc (hp : ResetPremises tr H K proposer dg g ΔF a) (k : Nat)
     {x : Fin sp.n} {i j : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) {y : Fin sp.n}
-    (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hy : y ∈ H) {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ℓ e) {m' : Nat} (hm' : e.msg.slot = m' + 1) (hjm : j < m')
     (hF : Anc (tr.HonestBlocks H) ℓ.frame.F B)
     (hprior : ∀ z ∈ H, ∀ q < k, ∀ e', AC.VoteAt tr.projAC z q e' →

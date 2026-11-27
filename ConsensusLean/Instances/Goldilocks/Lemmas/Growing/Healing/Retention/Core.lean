@@ -13,16 +13,16 @@ provenance (`left_entry_origin_of_quarantine_at`) is derived from it, not a fiel
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+variable {sp : ACParams}
+  (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
 
 /-- **The core of a finite reset**: `GoldilocksRunCore` at the committee starts, with the other
 premises of `ResetPremisesUpTo`. -/
 structure ResetRunCore
     (u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n))
-    (frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n)))
+    (frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n)))
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (g ΔF a b : Time) (committee : Time → Finset (Fin sp.n)) (beta : ℚ) (hold : Time := 0) :
     Prop where

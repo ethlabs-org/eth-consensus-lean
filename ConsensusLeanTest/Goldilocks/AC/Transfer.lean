@@ -10,7 +10,7 @@ together of the run `trW` of `Goldilocks/AC/Optimistic` (one validator `v0`, `Δ
 all of `Fin 1`), so neither proved milestone is vacuous. Both are taken at the slot-`2` vote of
 `v0` at cut 1 (time `9 = t_2 + Δ`), with head `B1`.
 
-`*_premises_satisfiable` state, for each statement at `sp1`, `FGP := Unit`, `ro1`, that there are
+`*_premises_satisfiable` state, for each statement at `sp1`, `FGP := Unit`, that there are
 values of all its universally bound variables satisfying `ACRun` and every hypothesis (copied from
 the statement); `*_on_witness` apply `Growing.acStepsAt` with constant `H := fun _ => Set.univ`.
 
@@ -86,15 +86,15 @@ theorem carryHonest_W : CarryAt trW U₁ v0 1 e1 1
 statement holds of the run at `s = 1`, with the full committee: `v0`'s fast lock of slot `1` on
 `B1` at cut 0 (optimistic origin) and its slot-`2` vote at cut 1, time `9`. -/
 theorem firstTransfer_premises_satisfiable :
-    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : GTrace sp1 Unit ro1)
+    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : GTrace sp1 Unit)
       (proposer : Nat → Fin sp1.n) (K : CommitteeDict sp1.n) (s : Nat) (x y : Fin sp1.n)
       (i₀ i : Nat) (B : Blk sp1.n Unit) (CV : Set (Vote sp1.n))
-      (ℓ : ACLabel (goldilocksAC sp1 Unit ro1)) (e : Em sp1 Unit),
+      (ℓ : ACLabel (goldilocksAC sp1 Unit)) (e : Em sp1 Unit),
     ACRun proposer tr H U ∧
     CommitteeP K tr H ∧ CommitteeT K tr H ∧ (∀ σ, (K.committee σ).ncard = sp1.committeeSize) ∧
     x ∈ H ∧ FastLockAt tr x i₀ s B CV ∧
     y ∈ H ∧ CastAt tr y i ℓ e ∧ e.msg.slot = s + 1 ∧
-    SyncAC (goldilocksAC sp1 Unit ro1) H U (sp1.ts s) (tr.time i) tr ∧
+    SyncAC (goldilocksAC sp1 Unit) H U (sp1.ts s) (tr.time i) tr ∧
     CarryAt tr U y i e s CV ∧ FaultBoundK K s tr H (tr.time i) ∧
     2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp1.committeeSize ∧
     ViableAtVote ℓ e (s + 1) B ∧ EarlierVotesExtend tr H U i (s + 1) B :=
@@ -107,9 +107,9 @@ theorem firstTransfer_premises_satisfiable :
 holds of the run at `m = 1`, with the full committee: the honest slot-`1` votes (`{vote1}`, on
 `B1`, the whole committee) and `v0`'s slot-`2` vote at cut 1, time `9`. -/
 theorem nextTransfer_premises_satisfiable :
-    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : GTrace sp1 Unit ro1)
+    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : GTrace sp1 Unit)
       (proposer : Nat → Fin sp1.n) (K : CommitteeDict sp1.n) (m : Nat) (y : Fin sp1.n) (i : Nat)
-      (B : Blk sp1.n Unit) (ℓ : ACLabel (goldilocksAC sp1 Unit ro1)) (e : Em sp1 Unit),
+      (B : Blk sp1.n Unit) (ℓ : ACLabel (goldilocksAC sp1 Unit)) (e : Em sp1 Unit),
     ACRun proposer tr H U ∧
     CommitteeP K tr H ∧ CommitteeT K tr H ∧ (∀ σ, (K.committee σ).ncard = sp1.committeeSize) ∧
     y ∈ H ∧ CastAt tr y i ℓ e ∧ e.msg.slot = m + 1 ∧
@@ -157,7 +157,7 @@ private theorem constant_sync {a b : Time} (h : SyncAC GA1 Set.univ U₁ a b trW
 
 /-- (a) A1.2 on the run: the slot-`2` vote extends `B1`. -/
 theorem firstTransfer_on_witness : VoteExtends U₁ e1.msg B1 :=
-  (Growing.acStepsAt sp1).firstTransfer Unit ro1 (fun _ => Set.univ) U₁ trW
+  (Growing.acStepsAt sp1).firstTransfer Unit (fun _ => Set.univ) U₁ trW
     (fun _ => v0) constant_run
     (CommitteeDict.full sp1.n) CommitteePAt.full
     (fun _ _ _ _ _ _ _ v _ => mem_full v.slot _) (size_binding_full rfl) 1 v0 v0 0 1
@@ -168,7 +168,7 @@ theorem firstTransfer_on_witness : VoteExtends U₁ e1.msg B1 :=
 
 /-- (a) A1.3 on the run: the slot-`2` vote extends `B1`. -/
 theorem nextTransfer_on_witness : VoteExtends U₁ e1.msg B1 := by
-  apply (Growing.acStepsAt sp1).nextTransfer Unit ro1 (fun _ => Set.univ) U₁ trW
+  apply (Growing.acStepsAt sp1).nextTransfer Unit (fun _ => Set.univ) U₁ trW
     (fun _ => v0) constant_run
     (CommitteeDict.full sp1.n) CommitteePAt.full
     (fun _ _ _ _ _ _ _ v _ => mem_full v.slot _) (size_binding_full rfl) 1 v0 1 B1

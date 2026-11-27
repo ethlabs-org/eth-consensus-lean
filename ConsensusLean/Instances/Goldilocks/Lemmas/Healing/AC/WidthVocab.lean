@@ -16,12 +16,12 @@ old slow locks of the formation window to be compatible, which is not proved). -
 
 namespace Consensus.Goldilocks.AC
 
-variable {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
+variable {sp : ACParams} {FGP : Type}
 
 /-- **A slow lock of width `w`** of slot `s` on `B`, written at cut `i` of `x`: the update of slot
 `s` returns `C`, and `B` is the deepest block of `C`'s path that conflicts with no live lock and
 has the `w − 1` previous saved results as descendants. -/
-def SlowLockAtW (w : Nat) (tr : GTrace sp FGP ro) (x : Fin sp.n) (i s : Nat)
+def SlowLockAtW (w : Nat) (tr : GTrace sp FGP) (x : Fin sp.n) (i s : Nat)
     (B : Blk sp.n FGP) : Prop :=
   ∃ ℓ C, UpdateAt tr x i s ℓ ∧ getConfirmation sp (tr.state x i) ℓ.frame s = some C ∧
     deepest ℓ.frame {X | X ∈ confirmationPath sp ℓ.frame C ∧
@@ -30,11 +30,11 @@ def SlowLockAtW (w : Nat) (tr : GTrace sp FGP ro) (x : Fin sp.n) (i s : Nat)
         ∃ S ∈ ℓ.frame.tree, (tr.state x i).saved j = some S.root ∧ ℓ.frame.Anc X S} =
       some B
 
-theorem slowLockAtW_k {tr : GTrace sp FGP ro} {x : Fin sp.n} {i s : Nat} {B : Blk sp.n FGP} :
+theorem slowLockAtW_k {tr : GTrace sp FGP} {x : Fin sp.n} {i s : Nat} {B : Blk sp.n FGP} :
     SlowLockAtW sp.k tr x i s B ↔ SlowLockAt tr x i s B :=
   Iff.rfl
 
-theorem slowLockAtW_iff {w : Nat} {tr : GTrace sp FGP ro} {x : Fin sp.n} {i s : Nat}
+theorem slowLockAtW_iff {w : Nat} {tr : GTrace sp FGP} {x : Fin sp.n} {i s : Nat}
     {B : Blk sp.n FGP} : SlowLockAtW w tr x i s B ↔
       ∃ ℓ C, UpdateAt tr x i s ℓ ∧ getConfirmation sp (tr.state x i) ℓ.frame s = some C ∧
         deepest ℓ.frame {X | X ∈ confirmationPath sp ℓ.frame C ∧

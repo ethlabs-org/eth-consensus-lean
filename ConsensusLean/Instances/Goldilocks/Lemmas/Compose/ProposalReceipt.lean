@@ -16,10 +16,10 @@ theorem AC.acProposal_state (sp : ACParams) {FGP : Type}
   split_ifs <;> rfl
 
 namespace Node
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- The proposal cut is read-only, including when no proposal is returned. -/
-theorem acProposal_state (st : NodeState (goldilocksAC sp (List (FG.Att sp.n)) ro)) (t : Time) :
+theorem acProposal_state (st : NodeState (goldilocksAC sp (List (FG.Att sp.n)))) (t : Time) :
     (acProposal st t).1 = st := by
   simp only [acProposal, goldilocksAC, AC.acProposal_state]
 
@@ -27,7 +27,7 @@ theorem acProposal_state (st : NodeState (goldilocksAC sp (List (FG.Att sp.n)) r
 theorem proposal_step_eq_onBlock
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (self : Fin sp.n) (st : NodeState (goldilocksAC sp (List (FG.Att sp.n)) ro))
+    (self : Fin sp.n) (st : NodeState (goldilocksAC sp (List (FG.Att sp.n))))
     (t : Time) (x : Nat)
     (d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)) (p : Payload sp.n)
     (hduty : Proposes proposer self t)
@@ -42,7 +42,7 @@ No acceptance, frame-well-formedness or reachability premise is needed. -/
 theorem proposal_step_strip_eq_onBlock
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (self : Fin sp.n) (st : NodeState (goldilocksAC sp (List (FG.Att sp.n)) ro))
+    (self : Fin sp.n) (st : NodeState (goldilocksAC sp (List (FG.Att sp.n))))
     (t : Time) (x : Nat)
     (d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)) (p : Payload sp.n)
     (hduty : Proposes proposer self t)
@@ -56,7 +56,7 @@ theorem proposal_step_strip_eq_onBlock
 theorem proposal_step_none
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (self : Fin sp.n) (st : NodeState (goldilocksAC sp (List (FG.Att sp.n)) ro))
+    (self : Fin sp.n) (st : NodeState (goldilocksAC sp (List (FG.Att sp.n))))
     (t : Time) (x : Nat)
     (hduty : Proposes proposer self t)
     (hbuild : (acProposal st t).2.2 = none) :
@@ -67,7 +67,7 @@ theorem proposal_step_none
 theorem proposal_step_no_duty
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (self : Fin sp.n) (st : NodeState (goldilocksAC sp (List (FG.Att sp.n)) ro))
+    (self : Fin sp.n) (st : NodeState (goldilocksAC sp (List (FG.Att sp.n))))
     (t : Time) (x : Nat)
     (hduty : ¬ Proposes proposer self t) :
     tickStep proposer dg self st t x .proposal = (st, []) := by

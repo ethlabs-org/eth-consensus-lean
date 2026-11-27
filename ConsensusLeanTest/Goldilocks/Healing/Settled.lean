@@ -109,7 +109,7 @@ theorem settledIn_tickRun :
 
 /-- (a) **The premises of HS.4 hold together**, with a settled phase. -/
 theorem acquisition_premises :
-    GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
+    GoldilocksRun (sp := sp1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
       HSShared (tickRun N1 dg1) Set.univ (AC.CommitteeDict.full sp1.n) dg1 0 1 ∧
       CatchRun (tickRun N1 dg1) Set.univ 0 (2 * sp1.Δ) ∧
       PropPlus (tickRun N1 dg1) Set.univ (fun _ => v0) 0 4 ∧

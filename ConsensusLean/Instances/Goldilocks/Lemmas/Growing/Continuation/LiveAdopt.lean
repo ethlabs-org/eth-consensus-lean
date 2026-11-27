@@ -28,14 +28,14 @@ For the proposal `P` of a slot `s` after a hand-over whose honest slot-`s` votes
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : AC.CommitteeDict sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF : Time}
   {T : Time} {r σ : Nat} {t₁ b : Time} {s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
 
 /-- **Every member of a label `≤ s` is below `P`** when every honest slot-`s` vote is `P`, through
@@ -119,7 +119,7 @@ theorem seeded_updater_F_anc
     (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hs : σ + 1 ≤ s) (hPU : P ∈ tr.HonestBlocksAt H) (hPs : P.slot = s)
     (hall : ∀ x j e, HVoteAt tr H x j e → e.msg.slot = s → e.msg.head = P.root)
-    {y : Fin sp.n} {k₀ : Nat} (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {k₀ : Nat} (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp)}
     (hu : AC.UpdateAt tr.projAC y k₀ s ℓ) (ht₁ : t₁ ≤ tr.time k₀) (hb : tr.time k₀ ≤ b) :
     Anc (tr.HonestBlocksAt H) (tr.state y k₀).fg.F P := by
   have hΔ := sp.toParams.hΔ
@@ -210,7 +210,7 @@ vetoed**: every live lock block of the updater is on the healed chain (`seeded_l
 compatible with the member. -/
 theorem seeded_result_not_vetoed
     (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
-    {y : Fin sp.n} {k₀ m : Nat} (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {k₀ m : Nat} (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp)}
     (hu : AC.UpdateAt tr.projAC y k₀ m ℓ) (ht₁ : t₁ ≤ tr.time k₀) (hb : tr.time k₀ ≤ b)
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {l : Nat}
     (hC : HealedOrigin tr H g r (r + sp.k - 1) C l b) (hCt : C ∈ ℓ.frame.tree) :
@@ -240,7 +240,7 @@ theorem seeded_adopt_result
     (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hs : σ + 1 ≤ s) {p : Fin sp.n} {k : Nat} (hp : p ∈ H (sp.ts s + sp.Δ))
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) (ht₁ : t₁ ≤ sp.ts s)
-    {y : Fin sp.n} {k₀ : Nat} (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {k₀ : Nat} (hy : y ∈ H (tr.time k₀)) {ℓ : ACLabel (goldilocksNode sp)}
     (hu : AC.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) :
     AC.getConfirmation sp (tr.state y k₀).ac ℓ.frame s = some P ∧
       ¬ AC.conflictsWithLock sp (tr.state y k₀).ac.locks ℓ.frame (tr.time k₀) P := by

@@ -14,12 +14,12 @@ public section
 
 namespace Consensus.Goldilocks.Generic
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Healing (cutZ)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
   {sign : Fin sp.n → Time → Bool} {G : Nat}
 
 /-- The slot-indexed origin cap is the end of the deep quarantine. -/
@@ -42,7 +42,7 @@ theorem goldilocks_origin_cap_bound {g t : Time}
 snapshot cut must itself fit within the smaller horizon. -/
 theorem goldilocks_premises_before
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {hold : Time} {g ΔF b c : Time}
-    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (hcb : c ≤ b) (hsnap : ∃ k, Healing.FirstCutAfter tr k (cutZ sp.toParams g) ∧ tr.time k ≤ c) :
     Premises tr H cm βK proposer dg (fun v => v.val) g ΔF c hold := by
@@ -64,7 +64,7 @@ at least one slot before the snapshot, even at depth zero. -/
 theorem deep_report_acceptance_before_cut
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g : Time} {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hto : AC.ToFGAt tr.projAC y i ell R)
     (hRi : R ∈ (tr.state y i).fg.tree) (hRg : R.root ≠ sp.genesisRoot)
@@ -224,7 +224,7 @@ theorem high_report_fast_of_cap
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hto : AC.ToFGAt tr.projAC y i ell R)
     (hh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h)
     (hq : ∀ D, sp.deepDepth = some D → tr.time i ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
@@ -256,7 +256,7 @@ honest both at the report and at the high-state snapshot. -/
 theorem goldilocks_report_origin_of_quarantine
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {hold : Time} {g ΔF a b : Time}
     (hβ : βK ≤ 1 / 2)
-    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
     (hcap : ∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ)
@@ -286,7 +286,7 @@ inside the deep quarantine. No post-expiry source cover is used. -/
 theorem goldilocks_origins_comparable_of_quarantine
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {hold : Time}
     {g ΔF a b : Time} (hβ : βK ≤ 1 / 2)
-    (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
+    (hrun : (goldilocksRunInterface sp sign G).Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
     (hcap : ∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ)

@@ -40,15 +40,15 @@ the honest slot-`(s−1)` batch is `VotersAt (s − 1) d`, which outnumbers `K (
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- **The old origins of slot `s`**: the regular origins of labels at most `s − 2` and the
 optimistic origins of labels at most `s − 1`, each by a node honest at its event. -/
-def OldOrigin (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (s : Nat)
+def OldOrigin (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) (s : Nat)
     (O : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∃ x k m CV, x ∈ H (tr.time k) ∧ ((AC.ResultAt tr.projAC x k m O CV ∧ m + 2 ≤ s) ∨
     (AC.OptimisticLockAt tr.projAC x k m O CV ∧ m + 1 ≤ s))
@@ -59,7 +59,7 @@ theorem oldOrigin_iff {s : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))} : OldOrig
 
 /-- **The old origins of slot `s` of label at least `ρ`**: those of `OldOrigin` whose label is
 `≥ ρ` (all of them at `ρ = 0`). -/
-def OldOriginAbove (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (ρ s : Nat)
+def OldOriginAbove (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) (ρ s : Nat)
     (O : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∃ x k m CV, x ∈ H (tr.time k) ∧ ρ ≤ m ∧ ((AC.ResultAt tr.projAC x k m O CV ∧ m + 2 ≤ s) ∨
     (AC.OptimisticLockAt tr.projAC x k m O CV ∧ m + 1 ≤ s))
@@ -120,7 +120,7 @@ theorem honestAt_genesis_root_anc {ini} (hrun : Growing.GoldilocksRun proposer d
 proposal's time). -/
 theorem proposal_call_restarts_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {p : Fin sp.n} {i : Nat} (hp : p ∈ H (tr.time i))
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {ℓp : ACLabel (goldilocksNode sp)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay)) :
     ∀ c ≤ i, tr.projAC.RestartAt p c →
@@ -141,7 +141,7 @@ theorem sync_from_forward_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {y X : Fin sp.n} {k : Nat} {v : Vote sp.n} (ha : a ≤ tr.time k) (hy : y ∈ H (tr.time k))
     (hsend : tr.projAC.SendOrAdmit y k v) (hb : tr.time k + sp.Δ ≤ b) {i : Nat}
-    (hX : X ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt X i ℓ)
+    (hX : X ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt X i ℓ)
     (hrs : ∀ k' ≤ i, tr.projAC.RestartAt X k' → tr.time k' ≤ tr.time k)
     (hdl : tr.time k + sp.Δ ≤ tr.time i)
     (hslot : ∀ t, tr.time k ≤ t → t < tr.time k + sp.Δ →
@@ -167,7 +167,7 @@ acceptance from `a` on is relayed; an older one is caught up before `a + κ`. -/
 theorem proposer_relay_from {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {p : Fin sp.n} {s i : Nat} (hp : p ∈ H (tr.time i))
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {ℓp : ACLabel (goldilocksNode sp)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b)
@@ -213,7 +213,7 @@ of slot `s`: its voter accepted it (or it is genesis) by `t_{s−1} + Δ`, and
 theorem proposer_accepts_head_from {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {p : Fin sp.n} {s i : Nat} (hp : p ∈ H (tr.time i))
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {ℓp : ACLabel (goldilocksNode sp)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b)
@@ -261,7 +261,7 @@ theorem proposal_holds_old_from {ini} (hrun : Growing.GoldilocksRun proposer dg 
     {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     (hBK : CommitteeBoundsFrom tr H K σ₀ b) {ρ : Nat} (hσρ : σ₀ ≤ ρ) (haρ : a ≤ sp.ts ρ)
     {p : Fin sp.n} {s i : Nat} (hp : p ∈ H (tr.time i))
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {ℓp : ACLabel (goldilocksNode sp)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b)
@@ -290,7 +290,7 @@ theorem proposal_holds_old_at {ini} (hrun : Growing.GoldilocksRun proposer dg H 
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
     (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {s i : Nat}
     (hp : p ∈ H (tr.time i))
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {ℓp : ACLabel (goldilocksNode sp)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b)
@@ -363,7 +363,7 @@ theorem proposal_best_toward_from {ini} (hrun : Growing.GoldilocksRun proposer d
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b) {σ₀ : Nat}
     {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     (hBK : CommitteeBoundsFrom tr H K σ₀ b) {p : Fin sp.n} {s i : Nat} (hp : p ∈ H (tr.time i))
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {ℓp : ACLabel (goldilocksNode sp)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) (hb : tr.time i ≤ b) (hs0 : 0 < s) (hσ₀ : σ₀ + 1 ≤ s)

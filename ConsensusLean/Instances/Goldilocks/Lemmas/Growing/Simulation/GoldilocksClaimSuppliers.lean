@@ -41,16 +41,16 @@ its data equations. -/
 theorem goldilocks_localClaimSuppliers (S : Setup) (A : ContractAssumptions S) {E : Env V}
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn))
       (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G A.releaseGap) :
+    (hdata : GoldilocksLocalData (S.params (pubOf E) hn) C sign G A.releaseGap) :
     LocalClaimSuppliers (goldilocksRunMap S rho hn hv)
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C) (K S A)
       (goldilocksOutagePolicy S rho hn hv) (goldilocksStoredReadContext S rho hn hv)
-      (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
+      (goldilocksEvents (S.params (pubOf E) hn)) := by
   have hsg := (goldilocksRunMap_signer S rho hn hv).symm
-  have hcast := fun (Q : ∀ s, ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+  have hcast := fun (Q : ∀ s, ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn))
       s fgHold → Prop) (h : Q _ C) => ACCorrectLocal.cast_signer hsg C Q h
   have hθK : (K S A).params.θ = 1 / 2 := by norm_num [Params.standard]
   have hΔ : (S.params (pubOf E) hn).Δ = E.ΔAC := rfl
@@ -83,7 +83,7 @@ theorem goldilocks_localClaimSuppliers (S : Setup) (A : ContractAssumptions S) {
       rw [show (goldilocksRunMap S rho hn hv).chain =
           fun st B => blocksTo st.fg.blocks (B.slot + 1) B from
         funext₂ (goldilocksRunMap_chain S rho hn hv), goldilocksRunMap_header]
-      exact goldilocks_chainRepresentation _ _
+      exact goldilocks_chainRepresentation _
     honestChains := goldilocksRunMap_honestChainReads S rho hn hv
     coherent := goldilocksRunMap_coherent S rho hn hv
     engineRead := goldilocksRunMap_engineReadPoint S rho hn hv

@@ -167,12 +167,12 @@ end Consensus.Goldilocks.Compose.FrameGeometry
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Consensus.Goldilocks.Store
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
   {hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- Two blocks below two compatible blocks of a coherent set are compatible. -/
@@ -254,7 +254,7 @@ theorem Outcome.no_high_contest_at'
 theorem ProposalImpl.held_high_origin_viable_at'
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {p : Fin sp.n} {c : Nat} (hpH : p ∈ H (tr.time c))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p c ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt p c ell)
     (hcb : tr.time c ≤ b) {x : Fin sp.n} {i j : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
     (hib : tr.time i ≤ b) (_ht : sp.ts (j + 1 : Nat) ≤ tr.time c)

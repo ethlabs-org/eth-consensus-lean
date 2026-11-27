@@ -41,11 +41,11 @@ same time), and ancestry is in the blocks held while honest. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- OPEN. **The read after an actual update** of the operational proposal `P` of slot `u`, by a
@@ -58,7 +58,7 @@ theorem operational_update_read_after_at
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
     (hR : drainTime sp a ≤ sp.ts u) (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u)
     (hTb : sp.ts u + 6 * sp.Δ ≤ b) {y : Fin sp.n} (hy : y ∈ H (sp.ts u + 6 * sp.Δ))
-    {j : Nat} {ell : ACLabel (goldilocksNode sp ro)} (hup : AC.UpdateAt tr.projAC y j u ell)
+    {j : Nat} {ell : ACLabel (goldilocksNode sp)} (hup : AC.UpdateAt tr.projAC y j u ell)
     (hlock : ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.post j).locks)
     {J : Nat} (hJ : Regimes.CutAfter tr J (sp.ts u + 6 * sp.Δ)) :
     Anc (tr.HonestBlocksAt H) P (Regimes.readAfter tr y J (sp.ts u + 6 * sp.Δ)) := by

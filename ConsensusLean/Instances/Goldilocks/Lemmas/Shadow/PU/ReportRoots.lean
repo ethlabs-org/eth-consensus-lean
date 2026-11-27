@@ -25,12 +25,12 @@ only as the frame's tree, which is the store's tree above `F` (`mem_frame'_tree`
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Consensus.Goldilocks.Store Consensus.Goldilocks.Shadow.PU
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time} {hold : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time} {hold : Time}
   {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 section Static
@@ -66,7 +66,7 @@ theorem signAt_report_entry {ini} (hrun : GoldilocksRun proposer dg Hs tr ini) {
 
 /-- A cache strictly ahead of a held target is backed by an actual earlier honest report at a
 strictly higher height (`cache_ahead_report`). -/
-theorem cache_ahead_report {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem cache_ahead_report {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg Hs tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hsᶜ.ncard < sp.toParams.fg.q)
     {y : Fin sp.n} (hy : y ∈ Hs) {i : Nat}

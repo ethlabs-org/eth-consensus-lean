@@ -229,14 +229,14 @@ of the tree, with
 `B₀ ∈ Φ.tree` its own viable ancestor, `slot(t) ≤ m`, and `unlock` at the call's view
 keeping `B₀` (or `slot(t) − 1 ≤ j`), then the new locks hold a lock of slot `j` on a block
 `⪰ B₀` of the tree (the moved lock), which keeps its expiry `≥ m`. -/
-theorem exists_step_locks_floor {ro : ReplayOrder sp FGP} (self : Fin sp.n)
-    {A : ACState sp.n} (c : (goldilocksAC sp FGP ro).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t)
+theorem exists_step_locks_floor (self : Fin sp.n)
+    {A : ACState sp.n} (c : (goldilocksAC sp FGP).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t)
     (hB0 : B₀ ∈ Φ.tree) (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
     (hu : (sp.slot t : Int) - 1 ≤ j ∨
       unlockTarget sp Φ (unlockView A Φ t c) ((sp.slot t : Int) - 1) B₀ = B₀)
     (h : ∃ l ∈ A.locks, l.slot = j ∧ m ≤ l.expiry ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B) :
-    ∃ l ∈ ((goldilocksAC sp FGP ro).step self A Φ t c).1.locks, l.slot = j ∧ m ≤ l.expiry ∧
+    ∃ l ∈ ((goldilocksAC sp FGP).step self A Φ t c).1.locks, l.slot = j ∧ m ≤ l.expiry ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B := by
   cases c with
   | tick =>
@@ -245,7 +245,7 @@ theorem exists_step_locks_floor {ro : ReplayOrder sp FGP} (self : Fin sp.n)
   | proposal =>
     exact floor_acProposal h
   | toFG =>
-    have he : ((goldilocksAC sp FGP ro).step self A Φ t .toFG).1.locks = A.locks :=
+    have he : ((goldilocksAC sp FGP).step self A Φ t .toFG).1.locks = A.locks :=
       acToFG_locks_eq A
     rw [he]
     exact h
@@ -256,16 +256,16 @@ theorem exists_step_locks_floor {ro : ReplayOrder sp FGP} (self : Fin sp.n)
     rw [unlockView_block] at hu
     exact floor_acOnBlock self C hΦ hB0 hva0 hk hu h
   | restart =>
-    have he : ((goldilocksAC sp FGP ro).step self A Φ t .restart).1.locks = A.locks :=
-      ((restart_state sp) FGP ro self A Φ t hΦ ht).2.1
+    have he : ((goldilocksAC sp FGP).step self A Φ t .restart).1.locks = A.locks :=
+      ((restart_state sp) FGP self A Φ t hΦ ht).2.1
     rw [he]
     exact h
 
 /-! ## The read point of a cast -/
 
 section readPoint
-variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
-  {tr : GTrace sp FGP ro}
+variable {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
+  {tr : GTrace sp FGP}
 
 /-- `try_vote` keeps the floor in its read point. -/
 private theorem floor_tryVote_readPoint {x : Fin sp.n} {P : ACState sp.n} {e : Em sp FGP}
@@ -283,8 +283,8 @@ private theorem floor_tryVote_readPoint {x : Fin sp.n} {P : ACState sp.n} {e : E
   · exact h
 
 /-- **The floor is in the read point of a cast.** -/
-theorem floor_readPoint_locks (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+theorem floor_readPoint_locks (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) (hB0 : B₀ ∈ ℓ.frame.tree)
     (hva0 : ℓ.frame.viableAncestor B₀ = B₀) (hk : sp.slot (tr.time i) ≤ m)
     (hu : (sp.slot (tr.time i) : Int) - 1 ≤ j ∨
@@ -298,7 +298,7 @@ theorem floor_readPoint_locks (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr i
   have hΦ := (frameIn_of_callAt hr hy hc).1
   have hx := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
   rw [hc.1] at hx
-  have he' : e ∈ ((goldilocksAC sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i)
+  have he' : e ∈ ((goldilocksAC sp FGP).step y (tr.state y i) ℓ.frame (tr.time i)
       ℓ.call).2 := by
     rw [hx]
     exact he
@@ -336,14 +336,14 @@ theorem floor_readPoint_locks (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr i
     exact h
   | restart =>
     rw [hcall] at he'
-    change e ∈ (acRestart sp ro y _ ℓ.frame (tr.time i)).2 at he'
-    rw [((restart_state sp) FGP ro y _ ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he'
+    change e ∈ (acRestart sp y _ ℓ.frame (tr.time i)).2 at he'
+    rw [((restart_state sp) FGP y _ ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)).1] at he'
     simp at he'
 
 /-- **The read point of a cast holds a live lock block `⪰ B₀`.** -/
 theorem exists_readPoint_liveLockBlocks_floor
-    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
+    (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
     (hB0 : B₀ ∈ ℓ.frame.tree) (hva0 : ℓ.frame.viableAncestor B₀ = B₀)
     (hk : sp.slot (tr.time i) ≤ m)
     (hu : (sp.slot (tr.time i) : Int) - 1 ≤ j ∨

@@ -14,8 +14,8 @@ receiving cast; historical writers need not remain honest there.
 
 namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
-  {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)}
+variable {FGP : Type} {sp : ACParams}
+  {tr : GTrace sp FGP} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 /-- Counted optimistic votes dominate each child towards the historical anchor. The counted and
@@ -25,7 +25,7 @@ theorem optimistic_isBest_of_carry_at {ini : Fin sp.n → ACState sp.n}
     (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n) (hPK : CommitteePAt K tr H)
     (hTK : CommitteeTAt K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
     {s : Nat} {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hx : x ∈ H (tr.time i₀)) (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D)
     (hf : 2 * (K.committee s ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
     (hy : y ∈ H (tr.time i)) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
@@ -99,7 +99,7 @@ theorem optimistic_prefix_of_carry_at {ini : Fin sp.n → ACState sp.n}
     (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n) (hPK : CommitteePAt K tr H)
     (hTK : CommitteeTAt K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
     {s : Nat} {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hx : x ∈ H (tr.time i₀)) (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D)
     (hf : 2 * (K.committee s ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
     (hy : y ∈ H (tr.time i)) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)

@@ -27,10 +27,10 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder goldilocksAC Vote Payload)
+open AC (ACParams goldilocksAC Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+variable {sp : ACParams}
+  (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
 
 /-- The votes of slot `σ` of the validators honest at their votes. -/
 def honestVotes (σ : Nat) : Set (Vote sp.n) :=

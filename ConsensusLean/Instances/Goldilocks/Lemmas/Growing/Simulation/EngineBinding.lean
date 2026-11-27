@@ -22,8 +22,8 @@ variable {V : Type} [Fintype V] [DecidableEq V]
 noncomputable def goldilocksEngineBinding (S : Setup) (A : ContractAssumptions S)
     (pub : Model.Public) (hn : 1 ≤ pub.n) :
     Generic.EngineBinding (V := V) (F := goldilocks S)
-      (A := goldilocksNode (S.params pub hn) (S.ro _)) pub (payloadOf S) (fun v => v.val)
-      (Generic.goldilocksRunInterface (S.params pub hn) (S.ro _) (S.sign pub) A.signGap) where
+      (A := goldilocksNode (S.params pub hn)) pub (payloadOf S) (fun v => v.val)
+      (Generic.goldilocksRunInterface (S.params pub hn) (S.sign pub) A.signGap) where
   map E hE rho hv := by
     subst hE
     exact goldilocksRunMap S rho hn hv

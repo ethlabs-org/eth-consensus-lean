@@ -10,16 +10,16 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Regimes.Growing (hold)
 
 /-- The proposal supplier is node-local: retain the execution through the proposal time,
 then transport the proposal and immediate acceptance witnesses back to the full trace. -/
 theorem honestProposalRun_of_proposesAt_at
-    {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {sp : ACParams}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} {kP s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}

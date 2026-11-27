@@ -15,11 +15,11 @@ core at `Store.updateFinality` and `Node.frame` (`upTo` through `Growing.Goldilo
 
 namespace Consensus.Goldilocks
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 variable {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp} {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- **The core of a stock Goldilocks run under growing faults.** -/
 theorem Growing.GoldilocksRun.toCore {H : Time → Set (Fin sp.n)}

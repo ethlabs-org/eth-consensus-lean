@@ -16,11 +16,11 @@ compatible tips (`below_tips_compatible`). -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- **Sources below pairwise compatible tips.** In a coherent `U`, the blocks below tips `Q` that
 are pairwise compatible are pairwise compatible, and compatible with a block compatible with every
@@ -47,7 +47,7 @@ tree, or at or below `fc_root`, when `B` and every source above `Σ.F` have froz
 of the voter block tree above them). -/
 theorem vote_frame_of_witnesses {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e)
     (hs : e.msg.slot = s + 1)
     {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}

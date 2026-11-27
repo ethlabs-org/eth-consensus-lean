@@ -53,11 +53,8 @@ abbrev sp6 : AC.ACParams where
   c := 2
   two_le_c := le_rfl
 
-/-- A replay order for restarts. -/
-noncomputable abbrev ro6 : AC.ReplayOrder sp6 (List (Att sp6.n)) := AC.ReplayOrder.choice sp6
-
 /-- The node's AC. -/
-noncomputable abbrev Nd : NodeAC P6 := goldilocksNode sp6 ro6
+noncomputable abbrev Nd : NodeAC P6 := goldilocksNode sp6
 
 /-- The blocks of the node. -/
 abbrev Blk : Type := NodeBlock P6 (AC.Payload 6)

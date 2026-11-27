@@ -1629,6 +1629,7 @@ run_selftest "0 commit email allowlist self-test (throwaway repositories)" pytho
 run_selftest "0 report-only build timing self-test" python3 -I scripts/test_build_timing.py
 run_selftest "0 report-only constant diff self-test (compiled mutations and controls)" python3 -I scripts/test_const_diff.py
 run_selftest "0 rename tool self-test (check verdicts, idempotence, aliases, branch replay)" python3 -I scripts/rename_sa.py selftest
+run_selftest "0 replay-order removal self-test (binders, arguments, comments, idempotence)" python3 -I scripts/remove_replay_order.py --selftest
 if [[ "$mode" == changed ]] && ((${#BUILD_TARGETS[@]} == 0)); then
   skip_step "1 build" "no Lean module changed"
 else

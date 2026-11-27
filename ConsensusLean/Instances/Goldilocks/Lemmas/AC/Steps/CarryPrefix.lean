@@ -26,13 +26,13 @@ variable (sp : ACParams)
 /-- Prior-slot honest heads force the child toward a lock anchor once their
 actual batch is carried. This is a local comparison, not current-slot unanimity. The voters
 are members of the slot-`s` committee (T), fewer than half of whose members are faulty. -/
-private theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+private theorem honest_isBest_of_carry {FGP : Type}
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP}
     {proposer : Nat → Fin sp.n} {ini : Fin sp.n → ACState sp.n} (hrun : ACRun proposer tr H U ini)
     (K : CommitteeDict sp.n)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) {B : Blk sp.n FGP}
     (hBt : B ∈ ℓ.frame.tree)
     (hall : ∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = s → VoteExtends U e'.msg B)
@@ -92,14 +92,14 @@ private theorem honest_isBest_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
 
 /-- A shallower voter walk reaches a lock anchor supported by all actual
 prior-slot honest votes. Only the prefix is asserted. -/
-theorem honest_prefix_of_carry {FGP : Type} {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+theorem honest_prefix_of_carry {FGP : Type}
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP}
     {proposer : Nat → Fin sp.n} {ini : Fin sp.n → ACState sp.n} (hrun : ACRun proposer tr H U ini)
     (K : CommitteeDict sp.n)
     (hT : CommitteeT K tr H) (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) {y : Fin sp.n} (hy : y ∈ H)
     {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) {B : Blk sp.n FGP}
     (hall : ∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = s → VoteExtends U e'.msg B)
     (hex : ∀ x ∈ H, x ∈ K.committee s → ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = s)

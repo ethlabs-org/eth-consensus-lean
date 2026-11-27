@@ -28,19 +28,19 @@ its own cast, and every relayed acceptance at its own cut:
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Regimes.Growing (hold)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {fgHold : Time}
 
 /-- Any ancestor of a viable current proposal above the voter's anchor is in the voter's viable
 tree, for a voter honest at its cast. -/
 theorem reset_winner_voter_tree_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK fgHold)
-    {y : Fin sp.n} {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j u : Nat} {ell : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time j))
     (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
     {P C : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -76,7 +76,7 @@ theorem reset_competitor_reflect_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ
     {p y : Fin sp.n} {k i j s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H (sp.ts (s + 1 : Nat) + hold sp)) (hdesignated : p = proposer (s + 1))
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = s + 1)
-    {ellp elly : ACLabel (goldilocksNode sp ro)}
+    {ellp elly : ACLabel (goldilocksNode sp)}
     (hci : tr.projAC.CallAt p i ellp) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hy : y ∈ H (tr.time j)) {e : AC.Em sp (List (FG.Att sp.n))}
     (hcy : AC.CastAt tr.projAC y j elly e) (hes : e.msg.slot = s + 1) (hib : tr.time i ≤ b)

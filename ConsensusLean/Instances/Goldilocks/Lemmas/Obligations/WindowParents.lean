@@ -25,17 +25,17 @@ Case (A) of `window_justifies_or_crossed` is an honest report `C` with `h < σ[C
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- **A report is a live fast lock block, or a deep candidate.** If `ac_to_fg` returns `C` at the
 call of `z` at cut `r`, then `C` is in the frame and either some live fast lock `l` of that call
 has `l.block = C.root` (and slot `≥ slot(t_r) − 2`), or, with deep sources on
 (`deepDepth = some D`) and no fast-lock candidate, `C` is a deep candidate under the deep anchor. -/
-theorem toFG_live_fast_lock {z : Fin sp.n} {r : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+theorem toFG_live_fast_lock {z : Fin sp.n} {r : Nat} {ell : ACLabel (goldilocksNode sp)}
     {C : AC.Blk sp.n (List (FG.Att sp.n))} (hto : AC.ToFGAt tr.projAC z r ell C) :
     C ∈ ell.frame.tree ∧
       ((∃ l ∈ AC.liveLocks sp (tr.projAC.state z r).locks ell.frame (tr.time r),

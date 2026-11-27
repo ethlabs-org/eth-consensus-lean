@@ -34,13 +34,13 @@ written at `t_j`), `(4k − 2)Δ` otherwise (a lock of the confirmation update, 
 def Θ : Time :=
   if sp.optimistic then 4 * ((sp.k : Time) + 1) * sp.Δ else (4 * (sp.k : Time) - 2) * sp.Δ
 
-variable {sp} {FGP : Type} {ro : ReplayOrder sp FGP}
+variable {sp} {FGP : Type}
 
 /-- **`Healthy(g)` over an AC trace**: `GST(g)` for AC messages and blocks (every AC message an
 honest node sends or admits, also before `g`, is processed by every honest `y` by
 `max(τ, g, w_y) + Δ`, at or after `τ`; acceptance relay with the same deadline), every honest
 validator awake from `ḡ` on, and `3f ≤ n − 1`. -/
-def HealthyAC (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (g : Time) :
+def HealthyAC (tr : GTrace sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (g : Time) :
     Prop :=
   (∀ x ∈ H, ∀ i m, tr.SendOrAdmit x i m →
     ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → tr.deadline y j (max (tr.time i) g) ≤ tr.time j →
@@ -55,7 +55,7 @@ def HealthyAC (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FG
 /-- **`Catch(κ)` over an AC trace** (accepted-old-block catch-up): every block an honest node
 accepts before `ḡ` is accepted before `ḡ + κ` by every honest `y` whose `Φ.F` it extends, read
 at every call of `y` at or after `ḡ + κ`. -/
-def CatchAC (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
+def CatchAC (tr : GTrace sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (g κ : Time) : Prop :=
   ∀ x ∈ H, ∀ i B, tr.AcceptAt x i B → tr.time i < gbar g →
     ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → gbar g + κ ≤ tr.time j → Anc U ℓ.frame.F B →
@@ -67,7 +67,7 @@ returns the duty head `d` and the payload `pay`, and `P` has parent `d.head`, sl
 `p` and payload `pay`; `p` passes it to its own `ac_on_block` at a later cut at the same time.
 (The parent is part of "the block made from `ac_proposal`": without it a block of the right slot
 and payload on another parent would count.) -/
-def HonestProposal (tr : GTrace sp FGP ro) (p : Fin sp.n) (s : Nat) (P : Blk sp.n FGP) : Prop :=
+def HonestProposal (tr : GTrace sp FGP) (p : Fin sp.n) (s : Nat) (P : Blk sp.n FGP) : Prop :=
   ∃ k ℓ d pay, tr.CallAt p k ℓ ∧ ℓ.call = .proposal ∧
     (acProposal sp (tr.state p k) ℓ.frame (tr.time k)).2 = some (d, pay) ∧
     tr.time k = sp.ts s ∧ P.parent = some d.head.root ∧ P.slot = s ∧ P.proposer = p ∧
@@ -83,7 +83,7 @@ runs its tick there; the honest proposer of a slot `s > 0` awake and joined at `
 head) to its own
 `ac_on_block` at once, before any object received at `t_s`. -/
 structure Driven (proposer : Nat → Fin sp.n)
-    (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) : Prop where
+    (tr : GTrace sp FGP) (H : Set (Fin sp.n)) : Prop where
   /-- (a) Blocks have their slot's proposer, a slot not in the future, and an earlier parent. -/
   blocks : ∀ y ∈ H, ∀ i B, tr.AcceptAt y i B → B.root ≠ sp.genesisRoot →
     B.proposer = proposer B.slot ∧ B.slot ≤ sp.slot (tr.time i) ∧
@@ -115,7 +115,7 @@ structure Driven (proposer : Nat → Fin sp.n)
 `t_s + 6Δ`, joined) returns `C` (vetoed or not), and `B` is the deepest block of `C`'s path that
 conflicts with no live lock and has the `k − 1` previous saved results as descendants, written
 as a lock that is not fast. -/
-def SlowLockAt (tr : GTrace sp FGP ro) (x : Fin sp.n) (i s : Nat) (B : Blk sp.n FGP) : Prop :=
+def SlowLockAt (tr : GTrace sp FGP) (x : Fin sp.n) (i s : Nat) (B : Blk sp.n FGP) : Prop :=
   ∃ ℓ C, UpdateAt tr x i s ℓ ∧ getConfirmation sp (tr.state x i) ℓ.frame s = some C ∧
     deepest ℓ.frame {X | X ∈ confirmationPath sp ℓ.frame C ∧
       ¬ conflictsWithLock sp (tr.state x i).locks ℓ.frame (tr.time i) X ∧
@@ -132,7 +132,7 @@ fast, of slot `j` with `j − k + 1 ≥ r_AC(t₀)`; or (P3) `B` is an honest pr
 slot with `t_r ≥ t₀ + 4Δ`) exactly when `t_j ≥ t₀ + 4Δ`, and `≥ s_AC(t₀)` (the least slot with
 `t_s ≥ t₀ + 2Θ + 8Δ`) exactly when `t_j ≥ t₀ + 2Θ + 8Δ`. -/
 def Protected (proposer : Nat → Fin sp.n)
-    (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) (t₀ : Time) (B : Blk sp.n FGP)
+    (tr : GTrace sp FGP) (H : Set (Fin sp.n)) (t₀ : Time) (B : Blk sp.n FGP)
     (j : Nat) : Prop :=
   (∃ x ∈ H, ∃ i CV, JoinedAt tr x (tr.time i) ∧ FastLockAt tr x i j B CV ∧
     t₀ + 4 * sp.Δ ≤ sp.ts j) ∨
@@ -148,7 +148,7 @@ tree of `Φ.tree` (`filtered(Φ, Φ.tree)`); at a vote, moreover, `B ⪯ Φ.fc_r
 viable tree of the voter block tree. `B ⪯ Φ.fc_root` is the block order inside `U` (the coherent
 set of frame blocks), not ancestry inside `Φ.tree`: once `Φ.F` passes `B`, `B` is no longer in the
 tree. -/
-def Inv (proposer : Nat → Fin sp.n) (tr : GTrace sp FGP ro)
+def Inv (proposer : Nat → Fin sp.n) (tr : GTrace sp FGP)
     (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (t₀ : Time) : Prop :=
   ∀ B j, Protected proposer tr H t₀ B j → ∀ y ∈ H, ∀ i ℓ,
     tr.CallAt y i ℓ → sp.ts (j + 1 : Nat) ≤ tr.time i →
@@ -161,7 +161,7 @@ of the proposer at `t_p` (frame `Φ_P`) and every vote of slot `p` of an honest 
 `Φ_y`), `P` is a viable head of `Φ_y` (`Φ_y.allowed`), and every other block of `y`'s voter block
 tree is a viable head of `Φ_y` exactly when it is one of `Φ_P`. -/
 def Geo (proposer : Nat → Fin sp.n)
-    (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) (p : Nat) (P : Blk sp.n FGP) : Prop :=
+    (tr : GTrace sp FGP) (H : Set (Fin sp.n)) (p : Nat) (P : Blk sp.n FGP) : Prop :=
   ∀ k ℓP, tr.CallAt (proposer p) k ℓP → ℓP.call = .proposal → tr.time k = sp.ts p →
     ∀ y ∈ H, ∀ i ℓ e, CastAt tr y i ℓ e → e.msg.slot = p →
       P ∈ ℓ.frame.viableHeads ∧

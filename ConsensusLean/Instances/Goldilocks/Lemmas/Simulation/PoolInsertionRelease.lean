@@ -35,7 +35,7 @@ private theorem stateAt_voteGate (hv : rho.ExecutionValid) (v : V) (i : Nat) :
 
 omit [DecidableEq V] in
 /-- A state with an engine state's AC vote permission and vote authentication has its gate. -/
-private theorem voteGate_of_eq {st σ : State (S.params (pubOf E) hn) (S.ro _) S.vote}
+private theorem voteGate_of_eq {st σ : State (S.params (pubOf E) hn) S.vote}
     (hg : VoteGate σ) (hm : st.node.ac.mayVote = σ.node.ac.mayVote)
     (hio : st.voteIO = σ.voteIO) : VoteGate st := by
   rw [voteGate_iff] at hg ⊢
@@ -45,11 +45,11 @@ private theorem voteGate_of_eq {st σ : State (S.params (pubOf E) hn) (S.ro _) S
   exact hg m h
 
 omit [DecidableEq V] in
-private theorem nodeTick_mayVote (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) :
+private theorem nodeTick_mayVote (st : State (S.params (pubOf E) hn) S.vote) :
     (nodeTick st (S.sign (pubOf E))).node.ac.mayVote = st.node.ac.mayVote := by
   rw [nodeTick_eq (sign := _)]
   split
-  · exact AC.step_mayVote _ _ _ _ _ _
+  · exact AC.step_mayVote _ _ _ _ _
   · rfl
 
 /-- **A tick's pool insertion is queued before its trailing polls.** A vote `m` that the tick
@@ -67,7 +67,7 @@ theorem tick_pool_insertion_queued (hv : rho.ExecutionValid) {v : V} {i : Nat} {
   have hsel := poll_selected S rho hv v
   have ht := (hv.in_horizon _ (List.mem_of_getElem? he)).1
   have hw := hv.tick_awake v t (List.mem_of_getElem? he)
-  let st₀ : State (S.params (pubOf E) hn) (S.ro _) S.vote :=
+  let st₀ : State (S.params (pubOf E) hn) S.vote :=
     { stateAt S rho hn v i with now := t, ticked := false }
   let st := (pollBatch (pollBatch st₀ t.toNat (S.release (pubOf E))).1 t.toNat
     (S.release (pubOf E))).1
@@ -191,25 +191,25 @@ theorem delivery_pool_insertion_queued (hv : rho.ExecutionValid) {v : V}
     rw [node_of_deliver S rho hn hv v hv' i o t he
       ((heldRefused_inv S rho hn hv v i).resolve_left (not_lastRestart_deliver S rho hv he))]
     rw [process_eq (stateAt S rho hn v i) o (Model.digests rho.hash o)]
-    erw [foldl_processOne_node (sp := S.params (pubOf E) hn) (ro := S.ro _)
+    erw [foldl_processOne_node (sp := S.params (pubOf E) hn)
       (runProposer S rho hn) (digestOf S rho)]
     rw [self_eq_ownKey, hnow]
   rw [← hnow]
   rw [process_eq (stateAt S rho hn v i) o (Model.digests rho.hash o)]
   exact foldl_processOne_pool_insertion_queued (sp := S.params (pubOf E) hn)
-    (ro := S.ro _) (stateAt S rho hn v i).voteIO (Model.digests rho.hash o) _
+    (stateAt S rho hn v i).voteIO (Model.digests rho.hash o) _
     (stateAt S rho hn v i) (stateAt_voteGate S rho hn hv v i) m hold
     (show m ∈ (process (stateAt S rho hn v i) o (Model.digests rho.hash o)).node.ac.pool m.slot
       from hnode.symm ▸ hnew)
 
 section QueuedObjects
 
-variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams}
 
 /-- A fresh envelope's object is the own object with its own token, whose body the same handler
 queues and whose vote a cut of the handler emits, or the received object of a message call
 admitting that vote. -/
-theorem apply_voteForward_obj (st : State sp ro S.vote) origin r (t : Time)
+theorem apply_voteForward_obj (st : State sp S.vote) origin r (t : Time)
     (v : AC.Vote sp.n) (w : Wire sp.n S.vote) (h : (t, v, w) ∈ (apply st origin r).voteForwards) :
     (t, v, w) ∈ st.voteForwards ∨
       (∃ z, w = voteObj v z ∧ Body.vote (encodeVote v) z ∈ (apply st origin r).outbox ∧
@@ -248,17 +248,17 @@ theorem apply_voteForward_obj (st : State sp ro S.vote) origin r (t : Time)
 /-- Each envelope a processed object queues carries the canonical object of its vote: the own
 object with the token of a queued own body, or the processed object itself. -/
 private theorem processOne_voteForward_obj (io : VoteAuth sp.n S.vote)
-    (hs : List (Header Info × Nat)) (st : State sp ro S.vote) (o : Wire sp.n S.vote)
+    (hs : List (Header Info × Nat)) (st : State sp S.vote) (o : Wire sp.n S.vote)
     (t : Time) (v : AC.Vote sp.n) (w : Wire sp.n S.vote)
     (h : (t, v, w) ∈ (processOne io hs st o).voteForwards) :
     (t, v, w) ∈ st.voteForwards ∨ ∃ z, w = voteObj v z ∧
       (Body.vote (encodeVote v) z ∈ (processOne io hs st o).outbox ∨ w = o) := by
-  have hrelay : ∀ (s : State sp ro S.vote) (c : Prop) (_ : Decidable c),
+  have hrelay : ∀ (s : State sp S.vote) (c : Prop) (_ : Decidable c),
       (relayIf s c o).voteForwards = s.voteForwards ∧ (relayIf s c o).outbox = s.outbox := by
     intro s c _
     unfold relayIf
     split <;> exact ⟨rfl, rfl⟩
-  rcases canonEvent_cases (ro := ro) io hs o with he | ⟨B, he⟩ | ⟨m, he⟩ | ⟨a, he⟩
+  rcases canonEvent_cases io hs o with he | ⟨B, he⟩ | ⟨m, he⟩ | ⟨a, he⟩
   · simp only [AsChainShape.processOne_eq, he] at h
     exact Or.inl h
   · simp only [AsChainShape.processOne_eq, he] at h ⊢
@@ -293,7 +293,7 @@ private theorem processOne_voteForward_obj (io : VoteAuth sp.n S.vote)
 of its vote: an object of `L`, or the own object whose same-token body is queued. -/
 private theorem foldl_voteForward_obj (io : VoteAuth sp.n S.vote)
     (hs : List (Header Info × Nat)) (L : List (Wire sp.n S.vote)) :
-    ∀ (os : List (Wire sp.n S.vote)) (st : State sp ro S.vote), (∀ x ∈ os, x ∈ L) →
+    ∀ (os : List (Wire sp.n S.vote)) (st : State sp S.vote), (∀ x ∈ os, x ∈ L) →
     (∀ q ∈ st.voteForwards, ∃ z, q.2.2 = voteObj q.2.1 z ∧
       (Body.vote (encodeVote q.2.1) z ∈ st.outbox ∨ q.2.2 ∈ L)) →
     ∀ q ∈ (os.foldl (processOne io hs) st).voteForwards, ∃ z, q.2.2 = voteObj q.2.1 z ∧
@@ -367,34 +367,34 @@ theorem delivery_voteForward_canonical_held (hv : rho.ExecutionValid) {v : V}
 
 section QueuedChecks
 
-variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams}
 
 /-- Every queued envelope carries the canonical object of its vote with a token the node's own
 verifier accepts. -/
-def QueuedChecked (st : State sp ro S.vote) : Prop :=
+def QueuedChecked (st : State sp S.vote) : Prop :=
   ∀ q ∈ st.voteForwards, ∃ z, q.2.2 = voteObj q.2.1 z ∧
     st.voteIO.check q.2.1.val (S.vote.voteRole q.2.1.slot) (encodeVote q.2.1) z = true
 
 omit [DecidableEq V] in
-theorem queuedChecked_iff (st : State sp ro S.vote) : QueuedChecked S st ↔
+theorem queuedChecked_iff (st : State sp S.vote) : QueuedChecked S st ↔
     ∀ q ∈ st.voteForwards, ∃ z, q.2.2 = voteObj q.2.1 z ∧
       st.voteIO.check q.2.1.val (S.vote.voteRole q.2.1.slot) (encodeVote q.2.1) z = true :=
   Iff.rfl
 
 /-- The node's verifier accepts the token its own issuer gives for a vote of its own key. -/
-def OwnChecks (st : State sp ro S.vote) : Prop :=
+def OwnChecks (st : State sp S.vote) : Prop :=
   ∀ (m : AC.Vote sp.n) z, m.val = st.self → ownToken st.voteIO m = some z →
     st.voteIO.check m.val (S.vote.voteRole m.slot) (encodeVote m) z = true
 
 omit [DecidableEq V] in
-private theorem acCall_val (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time)
+private theorem acCall_val (self : Fin sp.n) (st : NodeState (goldilocksNode sp)) (t : Time)
     (c) {ℓ} (h : Cut.ac ℓ = (Node.acCall self st t c).2) : ∀ e ∈ ℓ.emits, e.msg.val = self := by
   simp only [Node.acCall] at h
   cases h
-  exact emits_val (ro := ro) self st.ac _ t c
+  exact emits_val self st.ac _ t c
 
 omit [DecidableEq V] in
-private theorem onBlock_val (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time)
+private theorem onBlock_val (self : Fin sp.n) (st : NodeState (goldilocksNode sp)) (t : Time)
     B {ℓ} (h : Cut.ac ℓ ∈ (Node.onBlock self st t B).2) : ∀ e ∈ ℓ.emits, e.msg.val = self := by
   unfold Node.onBlock at h
   split at h
@@ -407,15 +407,15 @@ private theorem onBlock_val (self : Fin sp.n) (st : NodeState (goldilocksNode sp
       · exact acCall_val self _ t _ h
 
 omit [DecidableEq V] in
-private theorem ownChecks_of_eq {st st' : State sp ro S.vote} (h : OwnChecks S st)
+private theorem ownChecks_of_eq {st st' : State sp S.vote} (h : OwnChecks S st)
     (hio : st'.voteIO = st.voteIO) (hself : st'.self = st.self) : OwnChecks S st' := by
   intro m z hm hz
   rw [hio] at hz ⊢
   exact h m z (hm.trans hself) hz
 
 omit [DecidableEq V] in
-private theorem queuedChecked_apply (st : State sp ro S.vote) origin
-    (r : NodeState (goldilocksNode sp ro) × List (Cut (goldilocksNode sp ro)))
+private theorem queuedChecked_apply (st : State sp S.vote) origin
+    (r : NodeState (goldilocksNode sp) × List (Cut (goldilocksNode sp)))
     (h : QueuedChecked S st) (hown : OwnChecks S st)
     (hcuts : ∀ ℓ, Cut.ac ℓ ∈ r.2 → ∀ e ∈ ℓ.emits, e.msg.val = st.self)
     (horig : ∀ (w : Wire sp.n S.vote) (v : AC.Vote sp.n), origin = some w →
@@ -433,15 +433,15 @@ private theorem queuedChecked_apply (st : State sp ro S.vote) origin
 omit [DecidableEq V] in
 /-- Processing one object keeps every queued token checked: an own envelope carries the own
 token of an own emission, and a received one is the object whose check admitted the vote. -/
-private theorem queuedChecked_processOne (hs : List (Header Info × Nat)) (st : State sp ro S.vote)
+private theorem queuedChecked_processOne (hs : List (Header Info × Nat)) (st : State sp S.vote)
     (o : Wire sp.n S.vote) (h : QueuedChecked S st) (hown : OwnChecks S st) :
     QueuedChecked S (processOne st.voteIO hs st o) := by
-  have hrelay : ∀ (s : State sp ro S.vote) (c : Prop) (_ : Decidable c),
+  have hrelay : ∀ (s : State sp S.vote) (c : Prop) (_ : Decidable c),
       QueuedChecked S s → QueuedChecked S (relayIf s c o) := by
     intro s c _ hs'
     unfold relayIf
     split <;> exact hs'
-  rcases canonEvent_cases (ro := ro) st.voteIO hs o with he | ⟨B, he⟩ | ⟨m, he⟩ | ⟨a, he⟩
+  rcases canonEvent_cases st.voteIO hs o with he | ⟨B, he⟩ | ⟨m, he⟩ | ⟨a, he⟩
   · simp only [AsChainShape.processOne_eq, he]
     exact h
   · simp only [AsChainShape.processOne_eq, he]
@@ -470,7 +470,7 @@ private theorem queuedChecked_processOne (hs : List (Header Info × Nat)) (st : 
 omit [DecidableEq V] in
 /-- A delivery traversal keeps every queued token checked. -/
 private theorem queuedChecked_foldl (hs : List (Header Info × Nat)) (io : VoteAuth sp.n S.vote) :
-    ∀ (os : List (Wire sp.n S.vote)) (st : State sp ro S.vote), st.voteIO = io →
+    ∀ (os : List (Wire sp.n S.vote)) (st : State sp S.vote), st.voteIO = io →
       QueuedChecked S st → OwnChecks S st →
       QueuedChecked S (os.foldl (processOne io hs) st) := by
   intro os
@@ -483,7 +483,7 @@ private theorem queuedChecked_foldl (hs : List (Header Info × Nat)) (io : VoteA
       (ownChecks_of_eq S hown (processOne_voteIO _ _ _ _) (processOne_self _ _ _ _))
 
 omit [DecidableEq V] in
-theorem queuedChecked_recordOwn (st : State sp ro S.vote) o hs (h : QueuedChecked S st)
+theorem queuedChecked_recordOwn (st : State sp S.vote) o hs (h : QueuedChecked S st)
     (hown : OwnChecks S st) : QueuedChecked S (recordOwn st o hs) := by
   rw [AsChainShape.recordOwn_eq]
   split
@@ -495,12 +495,12 @@ theorem queuedChecked_recordOwn (st : State sp ro S.vote) o hs (h : QueuedChecke
   · exact h
 
 omit [DecidableEq V] in
-theorem queuedChecked_propose (st : State sp ro S.vote) s (h : QueuedChecked S st) :
+theorem queuedChecked_propose (st : State sp S.vote) s (h : QueuedChecked S st) :
     QueuedChecked S (propose st s).1 := by
   rw [propose_eq]; dsimp only; split <;> exact h
 
 omit [DecidableEq V] in
-theorem queuedChecked_nodeTick {sign : Fin sp.n → Time → Bool} (st : State sp ro S.vote)
+theorem queuedChecked_nodeTick {sign : Fin sp.n → Time → Bool} (st : State sp S.vote)
     (h : QueuedChecked S st)
     (hown : OwnChecks S st) : QueuedChecked S (nodeTick st sign) := by
   rw [nodeTick_eq (sign := _)]
@@ -511,7 +511,7 @@ theorem queuedChecked_nodeTick {sign : Fin sp.n → Time → Bool} (st : State s
   · exact h
 
 omit [DecidableEq V] in
-theorem queuedChecked_poll {release : Fin sp.n → Time → Bool} (st : State sp ro S.vote) u :
+theorem queuedChecked_poll {release : Fin sp.n → Time → Bool} (st : State sp S.vote) u :
     QueuedChecked S (pollBatch st u release).1 := by
   intro q hq
   rw [pollBatch_fst, poll_voteForwards] at hq
@@ -522,7 +522,7 @@ end QueuedChecks
 /-- A node's own verifier accepts its own tokens on its own votes, under the run's vote
 verification. -/
 theorem ownChecks_of_eq_voteIO (hv : rho.ExecutionValid) {v : V}
-    {st : State (S.params (pubOf E) hn) (S.ro _) S.vote}
+    {st : State (S.params (pubOf E) hn) S.vote}
     (hio : st.voteIO = rho.voteIO v) (hself : st.self = rho.ownKey v) : OwnChecks S st := by
   intro m z hm hz
   rw [hio] at hz ⊢

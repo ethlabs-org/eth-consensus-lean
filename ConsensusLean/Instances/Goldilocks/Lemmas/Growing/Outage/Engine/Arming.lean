@@ -270,18 +270,18 @@ end OutageQueryAt
 end Consensus.Goldilocks.Obligations.Growing
 
 namespace Consensus.Goldilocks.Compose.Growing
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Blocks Shape
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- **An armed ready source** on a node trace: the confirmed read `tip` of `y` at cut `i` and
 clock `T`, a held origin above it (genesis, or an origin within `T` of a label `σ` more than `k`
 labels before `j₀`), S-vote, and O1 at `j₀ − 1` and `j₀` for the holders `A₀`, when the gate is
 within `hor`. -/
-structure OutageArming (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (j₀ : Nat)
+structure OutageArming (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) (j₀ : Nat)
     (hor : Time) (A₀ : Set (Fin sp.n)) (y : Fin sp.n) (i : Nat) (T : Time) where
   tip : AC.Blk sp.n (List (FG.Att sp.n))
   origin : AC.Blk sp.n (List (FG.Att sp.n))

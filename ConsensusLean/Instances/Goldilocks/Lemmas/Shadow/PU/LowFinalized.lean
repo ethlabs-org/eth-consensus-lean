@@ -15,12 +15,12 @@ side is the shadow client safety `held_atts_safe_at'` (`Shadow/PU/Safety`). -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Consensus.Goldilocks.Store
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
   {hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- A linked chain from `A` lies below its last block. -/
@@ -54,7 +54,7 @@ private theorem chainAtts_held {S : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
 a block finalized by the state of a held `X` of a reader honest at `t` is an ancestor of every
 block held by a reader honest at `u` above the finalized height, when fewer than `2q − n`
 validators are faulty at `max t u`. -/
-theorem finalized_anc_of_lt_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem finalized_anc_of_lt_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {k m : Nat} {t u : Time}
     (ht : 0 ≤ t) (hk : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
@@ -82,7 +82,7 @@ theorem finalized_anc_of_lt_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
   have hnot : ((tr.state y k).fg.σ X.root).F ∉ sp.toParams.fg.roots (c₂.map Block.fgView) := by
     intro hmem
     rw [← hFr] at hmem
-    obtain ⟨Y, hY, hYF⟩ : ∃ Y ∈ sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload
+    obtain ⟨Y, hY, hYF⟩ : ∃ Y ∈ sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload
         :: c₂, Y.root = F.root := by
       simpa [FG.FGParams.roots, Block.fgView, Params.fg, Params.genesisBlock, eq_comm] using hmem
     have hYt : Y ∈ (tr.state z m).fg.tree := by

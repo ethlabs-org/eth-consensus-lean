@@ -147,7 +147,7 @@ theorem readyImpliesJoined_restart :
     rw [sp_Δ] at h1' h2
     exact (haw u).2 ⟨by linarith, by linarith⟩
   have hc : 8 * (sp S).Δ ≤ (8 * (sp S).Δ - 1) + 1 := (sub_add_cancel _ _).symm.le
-  obtain ⟨hw, hj⟩ := Compose.ready_implies_joined _ _ _ _ _ _ hrun y hy (8 * (sp S).Δ + 1)
+  obtain ⟨hw, hj⟩ := Compose.ready_implies_joined _ _ _ _ _ hrun y hy (8 * (sp S).Δ + 1)
     (8 * (sp S).Δ - 1) (by rw [sp_Δ]; decide) hc hwin
   refine ⟨rho, hv, hrun, y, hy, k, hR, hk, hc, hwin, hw, hj, by rw [sp_Δ]; rfl, ?_⟩
   rw [sp_Δ]; rfl
@@ -173,15 +173,15 @@ at `t = 8Δ − 1 = 15` with `c = 8Δ − 3 = 13` (`c + 1 = 8Δ − 2`), validat
 whole window `[1, 15]`, but its restart at `1` is after `t_{slot 15 − 1} = t_0 = 0`, so it is not
 joined at `15`. -/
 theorem readyImpliesJoined_needs_catchUp :
-    ¬ ∀ (sp : AC.ACParams) (ro : AC.ReplayOrder sp (List (FG.Att sp.n)))
+    ¬ ∀ (sp : AC.ACParams)
       (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)) (H : Set (Fin sp.n))
-      (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+      (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n),
       GoldilocksRun proposer dg H tr → ∀ y ∈ H, ∀ (t c : Time), 0 ≤ t →
         (∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) →
         tr.awake y t ∧ tr.JoinedAt y t := by
   intro hall
   obtain ⟨rho, -, hrun, y, hy, haw, k, hR, hk, -⟩ := restart_at_one S
-  obtain ⟨-, hj⟩ := hall _ _ _ _ _ _ hrun y hy 15 13 (by decide) (fun u h1 h2 =>
+  obtain ⟨-, hj⟩ := hall _ _ _ _ _ hrun y hy 15 13 (by decide) (fun u h1 h2 =>
     (haw u).2 ⟨by linarith [le_of_max_le_right h1], by linarith⟩)
   obtain ⟨-, hle⟩ := hj k hR (by rw [hk]; decide)
   rw [hk, show (sp S).toParams.slotTime ((sp S).toParams.slotOf 15 - 1) = 0 from rfl] at hle

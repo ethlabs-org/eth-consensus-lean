@@ -28,13 +28,13 @@ No reachable counterexample to propagation or extra milestone premise is claimed
 
 namespace Consensus.Goldilocks.Healing.PU
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open _root_.Consensus.Goldilocks.Growing
 open _root_.Consensus.Goldilocks.Healing.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {hold : Time}
 
 /-- V-B8 over the fixed-maximum shadow window; the stock-window version remains open. -/
 theorem regular_later_heads_at

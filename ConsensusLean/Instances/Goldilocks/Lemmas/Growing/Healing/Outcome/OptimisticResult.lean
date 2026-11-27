@@ -33,11 +33,11 @@ time. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- A clean optimistic source above the next update's finalized block is extended by that
@@ -49,7 +49,7 @@ theorem optimistic_next_result_of_floor_at
     {CV : Set (AC.Vote sp.n)} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time j))
     (hop : AC.OptimisticLockAt tr.projAC x r s B CV)
     (hs : cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hrb : tr.time r ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y j (s + 1) ell)
+    {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y j (s + 1) ell)
     (hjb : tr.time j ≤ b) (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts (s + 1 : Nat))
     (hR : drainTime sp a ≤ sp.ts (s + 1 + 1 : Nat))
     (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
@@ -70,7 +70,7 @@ theorem optimistic_next_result_of_floor_at
   have hrs : ∀ k ≤ j, ACTrace.RestartAt (tr.projAC.upTo (tr.time j)) y k →
       tr.time k < sp.ts (s + 1 : Nat) := by
     intro k _ hk
-    obtain ⟨hkD, hk⟩ := (ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _ ro)).mp hk
+    obtain ⟨hkD, hk⟩ := (ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _)).mp hk
     have hh := restart_before_unanimous_slot_at hp hR (hp.run.antitone hkD hy)
       (Compose.projAC_restartAt.mp hk) (hkD.trans hjb)
     exact hh.trans_lt ((AC.ts_lt_iff sp).mpr (by clear * -; omega))

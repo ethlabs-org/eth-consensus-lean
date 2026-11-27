@@ -47,11 +47,11 @@ theorem scheduled_proposal_child_decodes_of_step {V : Type} [Fintype V] [Decidab
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (v : V) (i : Nat) (t : Time)
     (hp : Node.Proposes (P := (S.params (pubOf E) hn).toParams)
       (runProposer S rho hn) (rho.ownKey v) t)
-    {cfg cfg' : Node.Config (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
+    {cfg cfg' : Node.Config (goldilocksNode (S.params (pubOf E) hn))}
     -- Node run: a configuration reachable from an AC start `s₀` up to the vote permission,
     -- holding the engine state of `v` before the tick, steps through the tick at `t`, and the
     -- genesis block is well rooted.
-    {s₀ : (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).State}
+    {s₀ : (goldilocksNode (S.params (pubOf E) hn)).State}
     (hr : Node.Reachable (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) cfg s₀)
     (h₀ : AC.VoteStart (S.params (pubOf E) hn).genesisRoot s₀)
     (hst : cfg.st = (stateAt S rho hn v i).node)
@@ -59,7 +59,7 @@ theorem scheduled_proposal_child_decodes_of_step {V : Type} [Fintype V] [Decidab
     (hs : Node.Step (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) cfg
       (.tick (encodeTxs (mempool rho.inbox v t)) fgDue) t cfg')
     (hg : ((S.params (pubOf E) hn).toParams.genesisBlock
-      (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload).RootOk (digestOf S rho)) :
+      (goldilocksNode (S.params (pubOf E) hn)).genesisPayload).RootOk (digestOf S rho)) :
     let nd := atProposal S rho v (rho.stateBefore i v) t
     let r := Node.acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now
     ∀ d p, r.2.2 = some (d, p) →
@@ -117,7 +117,7 @@ private theorem decoded_held_scheduled_proposal_of_own {V : Type} [Fintype V] [D
     dsimp only
     split <;> simpa only [wrappersCover_iff, Node.acProposal] using h
   have hr : (propose (shapeOf S hn nd) s).1.node.fg.Reachable
-      (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload := by
+      (goldilocksNode (S.params (pubOf E) hn)).genesisPayload := by
     have hnode := atProposal_node S rho hn v (rho.stateBefore i v) t
       (by simpa only [stateAt_eq] using fgDue_eq_false S rho hn v i) hpoll
     have hpub : (S.params (pubOf E) hn).toParams.IsPublic t :=
@@ -159,7 +159,7 @@ private theorem decoded_held_scheduled_proposal_of_own {V : Type} [Fintype V] [D
     | some result =>
       obtain ⟨d, p⟩ := result
       exact decoded_held_proposal_candidate S rho hn v nd s hs hd hh hc hr
-        (Node.mkBlock (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+        (Node.mkBlock (A := goldilocksNode (S.params (pubOf E) hn))
           (digestOf S rho) (rho.ownKey v)
           (Node.acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).1.fg
           (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p)
@@ -296,7 +296,7 @@ theorem delivery_acceptance_decoded_publication_of_held {V : Type} [Fintype V] [
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {v : V} {i : Nat} {o : (protoOf (compiled (goldilocks S)) E).Object} {t : Time}
     (he : rho.events[i]? = some (.deliver v o t))
-    (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
+    (r : CutRec (S.params (pubOf E) hn)) (B : Blk (S.params (pubOf E) hn))
     (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true))
     (hchild : decodeBlock (S.params (pubOf E) hn) (binding := S.vote)
       (digests rho.hash (blockObj _ B))
@@ -402,7 +402,7 @@ theorem tick_acceptance_decoded_publication_of_queued {V : Type} [Fintype V] [De
     (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     (v : V)
     (i : Nat) (t : Time) (he : rho.events[i]? = some (.tick v t))
-    (r : CutRec (S.params (pubOf E) hn) (S.ro _)) (B : Blk (S.params (pubOf E) hn))
+    (r : CutRec (S.params (pubOf E) hn)) (B : Blk (S.params (pubOf E) hn))
     (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true))
     (hchild : decodeBlock (S.params (pubOf E) hn) (binding := S.vote)
       (digests rho.hash (blockObj _ B))

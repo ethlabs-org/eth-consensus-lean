@@ -22,7 +22,7 @@ The run-level facts behind the R.8 rows, in every Goldilocks run (no `NoColl`); 
 
 namespace Consensus.Goldilocks.Regimes
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Compose
 
 /-- At a well-formed frame, the AC's confirmed tip and head are blocks of the tree, and the
@@ -40,9 +40,9 @@ theorem ac_tips {sp : ACParams} {FGP : Type} {A : AC.ACState sp.n} {Φ : AC.Frm 
     obtain ⟨hD, -⟩ := AC.deepest_mem hd
     exact ⟨hD.1, hD.2.2⟩
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- The frame of an honest node before a cut is well formed, and its tree is in the node's. -/
 private theorem frame_ok (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
@@ -62,7 +62,7 @@ theorem outputs_nested_at (hrun : GoldilocksRun proposer dg H tr) {y : Fin sp.n}
   exact ⟨Anc.mono hsub (hΦ.rooted.2 _ hC), Anc.mono hsub hCH⟩
 
 /-- C0.2 from any start: the proof reads only the cut law and FG reachability. -/
-theorem finalized_monotone_from {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem finalized_monotone_from {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H) {i j : Nat}
     (hij : i ≤ j) : (tr.state y j).fg.Anc (tr.finalizedAt y i) (tr.finalizedAt y j) := by
   induction j, hij using Nat.le_induction with
@@ -80,7 +80,7 @@ theorem finalized_monotone_from {ini : Fin sp.n → (goldilocksNode sp ro).State
       exact ih
 
 /-- Every block of an honest node's tree is a valid output, from any start. -/
-theorem validOutput_of_mem {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem validOutput_of_mem {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat}
     {X : AC.Blk sp.n (List (FG.Att sp.n))} (hX : X ∈ (tr.state y i).fg.tree) :

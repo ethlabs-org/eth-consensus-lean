@@ -25,11 +25,11 @@ reads restarts only up to `b` (`NoRestartUpTo`) by truncating the honest sets af
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
 private theorem faults_lt_quorums {f n : Nat} (hn : 0 < n) (hf : 3 * f ≤ n - 1) :
@@ -38,10 +38,10 @@ private theorem faults_lt_quorums {f n : Nat} (hn : 0 < n) (hf : 3 * f ≤ n - 1
 
 /-- A report of a node honest at its call is a block of its tree (the frame-tree half of the
 stock `report_root_at`; under P-U the frame root is `Σ.F`, not the analysis root). -/
-private theorem report_mem_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem report_mem_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : AC.ToFGAt tr.projAC y i ell R) : R ∈ (tr.state y i).fg.tree := by
   have hret := hR.2.2
   change (AC.acToFG sp _ _ _).2 = some R at hret
@@ -71,7 +71,7 @@ private theorem drainOutputs_restrict {g b T : Time} {G Ld : Nat}
 
 /-- Snapshot relay at the proposal call bounds a warm proposal's replay height. -/
 theorem warm_proposal_height_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -152,7 +152,7 @@ theorem warm_proposal_height_at
 /-- Finite service supplies the frozen drain contract. The full proposal frame suffices;
 no cast-time frame or signature-height restriction is needed for this lower bound. -/
 theorem drainOutputs_of_service_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -305,7 +305,7 @@ open Generic (truncH truncH_eq_of_le honestBlocksAt_truncH_subset catchRun_trunc
 
 /-- The local run laws transfer by `LocalRun.truncH`; the Goldilocks-specific laws preserve the
 same starts and the genesis root. -/
-theorem goldilocksRun_truncH {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem goldilocksRun_truncH {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (b : Time) :
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg (truncH H b) tr ini where
   toLocalRun := hrun.toLocalRun.truncH b

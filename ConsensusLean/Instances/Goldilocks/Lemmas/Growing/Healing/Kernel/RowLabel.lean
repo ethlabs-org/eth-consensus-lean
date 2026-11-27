@@ -23,11 +23,11 @@ Neither is required to survive to the other's observation.
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 private theorem signer_eq_core
@@ -69,7 +69,7 @@ theorem row_origin_not_current_at_core
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     {u frameOf} (hp : ResetRunCore tr H u frameOf proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)
     {v : Fin sp.n} {d : Nat} (hv : v ∈ H (tr.time d)) (hs : tr.SignAt v d att)
@@ -117,7 +117,7 @@ theorem row_origin_not_current_at_core
       (hp.noColl.upTo _) hv hs' (by change tr.time d = _; rw [hcτ', hcc, hts]) hrd hop'
       hp.committee_pos
     -- the slot's committee has at most one member, and both the signer and the voter are members
-    have hmem : ∀ {x : Fin sp.n} {q : Nat} {ℓq : ACLabel (goldilocksNode sp ro)}
+    have hmem : ∀ {x : Fin sp.n} {q : Nat} {ℓq : ACLabel (goldilocksNode sp)}
         {eq : AC.Em sp (List (FG.Att sp.n))}, x ∈ H (tr.time q) → AC.CastAt tr.projAC x q ℓq eq →
         x ∈ (Generic.dictOfTime sp cm).committee eq.msg.slot := by
       intro x q ℓq eq hx hcq
@@ -144,7 +144,7 @@ theorem row_origin_not_current_at_core
       · simpa only [max_eq_left h] using hvj
     have hrmax := (hac.upTo (d := max (tr.time j') (tr.time k))
       ((rc.time_nonneg j').trans (le_max_left _ _))).localRun
-    have := (AC.one_vote_per_slotU sp _ ro _ _ _ hrmax.toU y hmax j' k e' e
+    have := (AC.one_vote_per_slotU sp _ _ _ _ hrmax.toU y hmax j' k e' e
       (AC.upTo_voteAt.mpr ⟨le_max_left _ _, ℓv, hcv⟩)
       (AC.upTo_voteAt.mpr ⟨le_max_right _ _, ell, hc⟩) hes).1
     omega
@@ -157,7 +157,7 @@ theorem row_origin_label_lt_at_core
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     {u frameOf} (hp : ResetRunCore tr H u frameOf proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)
     {v : Fin sp.n} {d : Nat} (hv : v ∈ H (tr.time d)) (hs : tr.SignAt v d att)
@@ -191,7 +191,7 @@ theorem row_origin_not_current_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)
     {v : Fin sp.n} {d : Nat} (hv : v ∈ H (tr.time d)) (hs : tr.SignAt v d att)
@@ -204,7 +204,7 @@ theorem row_origin_label_lt_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)
     {v : Fin sp.n} {d : Nat} (hv : v ∈ H (tr.time d)) (hs : tr.SignAt v d att)

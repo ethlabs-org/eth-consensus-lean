@@ -21,7 +21,7 @@ slot `s ≥ 1`:
   vote of the update's pool `s` (`[cv s]`).
 
 `resultTransfer_premises_update` bundles these for every `s ≥ 1`;
-`resultTransfer_premises_satisfiable` states, at `sp1`, `FGP := List (FG.Att sp1.n)`, `ro1`,
+`resultTransfer_premises_satisfiable` states, at `sp1`, `FGP := List (FG.Att sp1.n)`,
 that there are values of all the statement's universally bound variables satisfying `ACRun` and
 every hypothesis (copied from the statement), at `s = 1` (update cut `80`, vote cut `67`);
 `resultTransfer_on_witness` applies `Growing.acStepsAt` with constant `H := fun _ => Set.univ`.
@@ -111,9 +111,9 @@ update of slot `1` at cut `80` (time `10`), counting `{cv 1}`, and the slot-`2` 
 (time `8`). -/
 theorem resultTransfer_premises_satisfiable :
     ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n (List (FG.Att sp1.n))))
-      (tr : GTrace sp1 (List (FG.Att sp1.n)) ro1) (proposer : Nat → Fin sp1.n) (s : Nat)
+      (tr : GTrace sp1 (List (FG.Att sp1.n))) (proposer : Nat → Fin sp1.n) (s : Nat)
       (X y : Fin sp1.n) (i₀ i : Nat) (C : Blk sp1.n (List (FG.Att sp1.n)))
-      (CV : Set (Vote sp1.n)) (ℓ : ACLabel (goldilocksAC sp1 (List (FG.Att sp1.n)) ro1))
+      (CV : Set (Vote sp1.n)) (ℓ : ACLabel (goldilocksAC sp1 (List (FG.Att sp1.n))))
       (e : Em sp1 (List (FG.Att sp1.n))),
     ACRun proposer tr H U ∧
     X ∈ H ∧ ResultAt tr X i₀ s C CV ∧
@@ -158,7 +158,7 @@ theorem resultTransfer_on_witness {s : Nat} (hs : 1 ≤ s) :
       CastAt (tickRun N1 dg1).projAC v0 (8 * (4 * (s + 1)) + 3) ℓ e ∧
       VoteExtends ((tickRun N1 dg1).HonestBlocks Set.univ) e.msg (blk s) := by
   obtain ⟨ℓ, e, hr, hc, hsl, hca, hv, hl, hm⟩ := resultTransfer_premises_update hs
-  exact ⟨ℓ, e, hc, (AC.Growing.acStepsAt sp1).resultTransfer _ ro1 (fun _ => Set.univ) _ _
+  exact ⟨ℓ, e, hc, (AC.Growing.acStepsAt sp1).resultTransfer _ (fun _ => Set.univ) _ _
     (fun _ => v0) constant_run s v0
     v0 _ _ (blk s) {cv s} ℓ e (Set.mem_univ _) hr (Set.mem_univ _) hc hsl hca hv hl hm⟩
 

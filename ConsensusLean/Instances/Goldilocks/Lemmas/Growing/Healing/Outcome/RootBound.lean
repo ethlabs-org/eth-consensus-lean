@@ -11,11 +11,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- An honest cast's actual frame root is below its store's analysis root. -/
@@ -23,7 +23,7 @@ theorem cast_root_anc_analysis_root_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ell e) :
     Anc (tr.HonestBlocksAt H) ell.frame.fcRoot (tr.state y j).fg.fcRoot := by
   rw [Outcome.frame_of_call hp.run hy hc.1]
@@ -45,7 +45,7 @@ theorem reset_vote_root_source_or_covered_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {u : Nat} (hR : drainTime sp a ≤ sp.ts u)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) :
     (tr.state y j).fg.fcRoot.root = sp.genesisRoot ∨
       (∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b ∧
@@ -133,7 +133,7 @@ theorem reset_vote_root_below_bound_at
     (hcovered : HighSourceCover tr H g a b → ∀ C s,
       HealedMemberBefore tr H g a b C s j → s < u → Anc (tr.HonestBlocksAt H) C P)
     {y : Fin sp.n} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ell e) (hs : e.msg.slot = u) (hjb : tr.time j ≤ b) :
     Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot P := by
   rcases hp.reset_vote_root_source_or_covered_at hR hy hc hs hjb with
@@ -160,7 +160,7 @@ theorem reset_vote_root_below_bound_or_covered_at
     (hcovered : ∀ C s, Compose.Growing.HealedOrigin tr H g (healedLockFloor sp a)
       (healedOriginFloor sp a) C s b → s < u → Anc (tr.HonestBlocksAt H) C P)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b) :
     Anc (tr.HonestBlocksAt H) (tr.state y j).fg.fcRoot P := by
   have ht := hp.run.time_nonneg j

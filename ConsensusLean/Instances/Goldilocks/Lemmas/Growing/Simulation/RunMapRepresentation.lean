@@ -70,11 +70,11 @@ theorem goldilocksRunMap_readRepresentation :
   confirmed_tip g hg st t := by
     obtain rfl : Out.confirmed = g := Option.some.inj hg
     rw [goldilocksRunMap_tip]
-    exact outTip_confirmed _ _ st t
+    exact outTip_confirmed _ st t
   finalized_tip g hg st t := by
     obtain rfl : Out.finalized = g := Option.some.inj hg
     rw [goldilocksRunMap_tip]
-    exact outTip_finalized _ _ st t
+    exact outTip_finalized _ st t
 
 /-- Honest engine reads transport their reachable stores, roots and held objects. -/
 theorem goldilocksRunMap_honestReadTransport :
@@ -109,8 +109,8 @@ theorem goldilocksRunMap_honestReadTransport :
 
 /-- The canonical chain map represents same-store ancestry by prefixes and survives store growth. -/
 theorem goldilocks_chainRepresentation (sp : AC.ACParams)
-    (ro : AC.ReplayOrder sp (List (FG.Att sp.n))) :
-    Generic.ChainRepresentation (goldilocksNode sp ro)
+    :
+    Generic.ChainRepresentation (goldilocksNode sp)
       (fun st B => blocksTo st.fg.blocks (B.slot + 1) B) (headerOf sp) where
   same_store_prefix st hr B C h := by
     rw [blocksTo_map, blocksTo_map]
@@ -153,7 +153,7 @@ theorem goldilocksRunMap_honestChainReads :
   finalized_tip g hg st t := by
     obtain rfl : Out.finalized = g := Option.some.inj hg
     rw [goldilocksRunMap_tip]
-    exact outTip_finalized _ _ st t
+    exact outTip_finalized _ st t
   tree_growth hv' v i j hij hj hh := by
     simp only [Generic.mappedReadState, goldilocksRunMap_trace, goldilocksRunMap_validator,
       goldilocksRunMap_cut]
@@ -178,7 +178,7 @@ theorem goldilocksRunMap_resilienceTipTransport :
   intro g hg st t
   obtain rfl : Out.confirmed = g := Option.some.inj hg
   rw [goldilocksRunMap_tip]
-  exact outTip_confirmed _ _ st t
+  exact outTip_confirmed _ st t
 
 /-- The blocks held while honest are coherent on a collision-free run. -/
 theorem goldilocksRunMap_coherent (hc : ¬ rho.HashCollision) :
@@ -197,11 +197,11 @@ theorem goldilocksRunMap_outputValidity :
 from some start: the shared FG argument at both readers' own read points
 (`finalAccountable_readPoint`). -/
 theorem goldilocks_actualReadAccountability {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {O : OutputSchema} {Info : Type}
+    {O : OutputSchema} {Info : Type}
     [DecidableEq Info] [Countable Info] {F : ChainShapeFamily O Info} {E : Env V}
     {rho : Model.Run (compiled F) E} {payload : AC.Blk sp.n (List (FG.Att sp.n)) → Set Nat}
-    (M : Generic.RunMap (A := goldilocksNode sp ro) rho payload)
-    (runs : Generic.ACRun (goldilocksNode sp ro) M.signer)
+    (M : Generic.RunMap (A := goldilocksNode sp) rho payload)
+    (runs : Generic.ACRun (goldilocksNode sp) M.signer)
     (hruns : ∀ cm proposer dg H tr, runs.Run cm proposer dg H tr →
       ∃ ini, Growing.GoldilocksRun proposer dg H tr ini) :
     Generic.ActualReadAccountability M runs := by

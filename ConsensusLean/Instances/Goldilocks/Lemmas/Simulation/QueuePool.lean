@@ -21,26 +21,26 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote Payload ACState)
+open AC (ACParams Vote Payload ACState)
 
 variable {binding : VoteBinding}
 
 section ShapeInventory
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- Every pending admission envelope still has its vote in the stored pool. -/
-private def QueuedInPool (st : State sp ro binding) : Prop :=
+private def QueuedInPool (st : State sp binding) : Prop :=
   ∀ tv ∈ st.voteForwards, tv.2.1 ∈ st.node.ac.pool tv.2.1.slot
 
-private theorem apply_queuedInPool (st : State sp ro binding) origin r (h : QueuedInPool st)
+private theorem apply_queuedInPool (st : State sp binding) origin r (h : QueuedInPool st)
     (hg : ∀ σ, st.node.ac.pool σ ⊆ r.1.ac.pool σ) : QueuedInPool (apply st origin r) := by
   intro tv htv
   by_cases hold : tv ∈ st.voteForwards
   · exact hg _ (h tv hold)
   · exact (apply_voteForward_fresh st origin r tv.1 tv.2.1 tv.2.2 htv hold).2.2
 
-private theorem block_queuedInPool (st : State sp ro binding) (B : Blk sp) (h : QueuedInPool st) :
+private theorem block_queuedInPool (st : State sp binding) (B : Blk sp) (h : QueuedInPool st) :
     QueuedInPool (apply st none (Node.onBlock st.self st.node st.now B)) := by
   apply apply_queuedInPool st _ _ h
   unfold Node.onBlock
@@ -50,7 +50,7 @@ private theorem block_queuedInPool (st : State sp ro binding) (B : Blk sp) (h : 
     · exact fun _ => List.Subset.refl _
     · exact AC.step_pool_subset st.self st.node.ac _ st.now (.block B) (by simp)
 
-private theorem processOne_queuedInPool io hs (st : State sp ro binding) o
+private theorem processOne_queuedInPool io hs (st : State sp binding) o
     (h : QueuedInPool st) : QueuedInPool (processOne io hs st o) := by
   rw [AsChainShape.processOne_eq]
   split
@@ -63,7 +63,7 @@ private theorem processOne_queuedInPool io hs (st : State sp ro binding) o
     split <;> apply apply_queuedInPool st _ _ h <;> exact fun _ => List.Subset.refl _
   · exact h
 
-private theorem process_queuedInPool (st : State sp ro binding) o hs (h : QueuedInPool st) :
+private theorem process_queuedInPool (st : State sp binding) o hs (h : QueuedInPool st) :
     QueuedInPool (process st o hs) := by
   rw [process_eq]
   generalize delivered st.voteIO hs st o = os
@@ -72,7 +72,7 @@ private theorem process_queuedInPool (st : State sp ro binding) o hs (h : Queued
   | nil => exact h
   | cons o os ih => exact ih _ (processOne_queuedInPool io hs st o h)
 
-private theorem record_queuedInPool (st : State sp ro binding) o hs (h : QueuedInPool st) :
+private theorem record_queuedInPool (st : State sp binding) o hs (h : QueuedInPool st) :
     QueuedInPool (recordOwn st o hs) := by
   rw [AsChainShape.recordOwn_eq]
   split
@@ -82,7 +82,7 @@ private theorem record_queuedInPool (st : State sp ro binding) o hs (h : QueuedI
     · exact h
   · exact h
 
-private theorem propose_queuedInPool (st : State sp ro binding) s (h : QueuedInPool st) :
+private theorem propose_queuedInPool (st : State sp binding) s (h : QueuedInPool st) :
     QueuedInPool (propose st s).1 := by
   have hp : (Node.acProposal st.node st.now).1.ac.pool = st.node.ac.pool := by
     change (AC.acProposal sp st.node.ac (frame st.node) st.now).1.pool = _
@@ -92,7 +92,7 @@ private theorem propose_queuedInPool (st : State sp ro binding) s (h : QueuedInP
   dsimp only
   split <;> intro tv htv <;> rw [hp] <;> exact h tv htv
 
-private theorem nodeTick_queuedInPool {sign : Fin sp.n → Time → Bool} (st : State sp ro binding)
+private theorem nodeTick_queuedInPool {sign : Fin sp.n → Time → Bool} (st : State sp binding)
     (h : QueuedInPool st) :
     QueuedInPool (nodeTick st sign) := by
   rw [nodeTick_eq (sign := _)]
@@ -101,13 +101,13 @@ private theorem nodeTick_queuedInPool {sign : Fin sp.n → Time → Bool} (st : 
     exact AC.step_pool_subset st.self st.node.ac _ st.now .tick (by simp)
   · exact h
 
-private theorem poll_queuedInPool {release : Fin sp.n → Time → Bool} (st : State sp ro binding) t :
+private theorem poll_queuedInPool {release : Fin sp.n → Time → Bool} (st : State sp binding) t :
     QueuedInPool (pollBatch st t release).1 := by
   intro tv htv
   rw [pollBatch_voteForwards] at htv
   cases htv
 
-private theorem block_pool_subset (st : State sp ro binding) (B : Blk sp) (σ : Nat) :
+private theorem block_pool_subset (st : State sp binding) (B : Blk sp) (σ : Nat) :
     st.node.ac.pool σ ⊆ (apply st none (Node.onBlock st.self st.node st.now B)).node.ac.pool σ := by
   unfold apply Node.onBlock
   dsimp only
@@ -117,7 +117,7 @@ private theorem block_pool_subset (st : State sp ro binding) (B : Blk sp) (σ : 
     · exact List.Subset.refl _
     · exact AC.step_pool_subset st.self st.node.ac _ st.now (.block B) (by simp) σ
 
-private theorem record_pool_subset (st : State sp ro binding) o hs (σ : Nat) :
+private theorem record_pool_subset (st : State sp binding) o hs (σ : Nat) :
     st.node.ac.pool σ ⊆ (recordOwn st o hs).node.ac.pool σ := by
   rw [AsChainShape.recordOwn_eq]
   split
@@ -127,7 +127,7 @@ private theorem record_pool_subset (st : State sp ro binding) o hs (σ : Nat) :
     · exact List.Subset.refl _
   · exact List.Subset.refl _
 
-private theorem propose_pool_eq (st : State sp ro binding) s :
+private theorem propose_pool_eq (st : State sp binding) s :
     (propose st s).1.node.ac.pool = st.node.ac.pool := by
   have hp : (Node.acProposal st.node st.now).1.ac.pool = st.node.ac.pool := by
     change (AC.acProposal sp st.node.ac (frame st.node) st.now).1.pool = _
@@ -137,7 +137,7 @@ private theorem propose_pool_eq (st : State sp ro binding) s :
   dsimp only
   split <;> exact hp
 
-private theorem nodeTick_pool_subset {sign : Fin sp.n → Time → Bool} (st : State sp ro binding)
+private theorem nodeTick_pool_subset {sign : Fin sp.n → Time → Bool} (st : State sp binding)
     (σ : Nat) :
     st.node.ac.pool σ ⊆ (nodeTick st sign).node.ac.pool σ := by
   rw [nodeTick_eq (sign := _)]
@@ -146,7 +146,7 @@ private theorem nodeTick_pool_subset {sign : Fin sp.n → Time → Bool} (st : S
   · exact List.Subset.refl _
 
 /-- Polling, including the due FG update, leaves vote pools unchanged. -/
-theorem poll_pool_eq {release : Fin sp.n → Time → Bool} (st : State sp ro binding) t :
+theorem poll_pool_eq {release : Fin sp.n → Time → Bool} (st : State sp binding) t :
     (pollBatch st t release).1.node.ac.pool = st.node.ac.pool := by
   refine pollBatch_pres (Q := fun x => x.node.ac.pool = st.node.ac.pool) (fun x hx => ?_)
     (fun x h => by obtain ⟨_, hd⟩ := heldDrain_eq x; rw [hd]; exact h) rfl
@@ -214,7 +214,7 @@ theorem dutyStep_pool_subset (v : V)
     (fun st t h => by rw [poll_pool_eq]; exact h) v nd d hm
 
 omit [DecidableEq V] in
-/-- Duty execution never removes a stored vote; only restart replay can do so. -/
+/-- Duty execution never removes a stored vote; only restart can do so. -/
 theorem runDuties_pool_subset (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty) (σ : Nat) :

@@ -15,11 +15,11 @@ the updating node's prefix. No earlier origin writer must survive to this cut.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 theorem finalized_below_unanimous_at_update_at
@@ -33,7 +33,7 @@ theorem finalized_below_unanimous_at_update_at
     (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
     (hTb : sp.ts u + 6 * sp.Δ ≤ b)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     (hup : AC.UpdateAt tr.projAC y j u ell) (ha : a ≤ tr.time j) :
     Anc (tr.HonestBlocksAt H) ell.frame.F P := by
   have hm := hp.run.time_mono
@@ -49,7 +49,7 @@ theorem finalized_below_unanimous_at_update_at
   rw [Outcome.frame_of_call hp.run hy hup.1]
   change Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F P
   by_cases hg : (tr.state y j).fg.F =
-      sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload
+      sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload
   · exact ProposalImpl.genesis_root_anc_at hp.run hp.noColl (hsub hFt)
       (by rw [hg]; rfl) hPU
   obtain ⟨B, hBt, _, hFB, hne⟩ := Store.F_lt_finalizer hreach hg

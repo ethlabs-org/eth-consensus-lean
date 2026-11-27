@@ -13,7 +13,7 @@ open Blocks Shape Node
 
 variable {binding : VoteBinding}
 
-variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams}
 
 /-- A canonical, nonfuture block in a recursive receipt produces an actual block-call
 record even when the store refuses it. -/
@@ -21,8 +21,8 @@ private theorem deliverRecs_block_call (io : VoteAuth sp.n binding) (proposer : 
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
     (B : Blk sp) (hslot : B.slot ≤ sp.toParams.slotOf t) :
-    ∀ (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat),
-    (∃ o ∈ os, canonEvent sp ro io hs o = some (.block B)) →
+    ∀ (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp)) (sub : Nat),
+    (∃ o ∈ os, canonEvent sp io hs o = some (.block B)) →
     ∃ r ∈ deliverRecs io proposer dg hs self t i os st sub,
       ∃ accepted, r.label = .fg (.block B accepted) := by
   intro os
@@ -44,7 +44,7 @@ private theorem deliverRecs_block_call (io : VoteAuth sp.n binding) (proposer : 
       refine ⟨_, List.mem_append_left _ (List.getElem_mem hlen), accepted, ?_⟩
       rw [(getElem_groupRecs proposer dg self st t (Nat.pair i sub) (.block B) 0 hlen).2.2.2.2]
       simp only [List.getElem_of_eq hcuts, List.getElem_cons_zero]
-    · cases ho : canonEvent sp ro io hs o with
+    · cases ho : canonEvent sp io hs o with
       | none =>
         rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ _ ho]
         exact ih st (sub + 1) ⟨x, hx, he⟩
@@ -54,10 +54,10 @@ private theorem deliverRecs_block_call (io : VoteAuth sp.n binding) (proposer : 
           (sub + 1) ⟨x, hx, he⟩
         exact ⟨r, List.mem_append_right _ hr, accepted, ha⟩
 
-private def QueueStamped (t : Time) (st : State sp ro binding) : Prop :=
+private def QueueStamped (t : Time) (st : State sp binding) : Prop :=
   st.now = t ∧ ∀ q ∈ st.forwards, q.1 = t
 
-private theorem nodeTick_forwards {sign : Fin sp.n → Time → Bool} (st : State sp ro binding) :
+private theorem nodeTick_forwards {sign : Fin sp.n → Time → Bool} (st : State sp binding) :
     (nodeTick st sign).forwards = st.forwards := by
   rw [nodeTick_eq (sign := _)]
   split
@@ -65,7 +65,7 @@ private theorem nodeTick_forwards {sign : Fin sp.n → Time → Bool} (st : Stat
       List.flatMap_nil, List.append_nil]
   · rfl
 
-private theorem stamped_apply (t : Time) (st : State sp ro binding) origin r
+private theorem stamped_apply (t : Time) (st : State sp binding) origin r
     (h : QueueStamped t st) : QueueStamped t (apply st origin r) := by
   refine ⟨h.1, ?_⟩
   intro q hq
@@ -73,7 +73,7 @@ private theorem stamped_apply (t : Time) (st : State sp ro binding) origin r
   · exact h.2 q hq
   · exact h.1
 
-private theorem stamped_recordOwn (t : Time) (st : State sp ro binding) o hs
+private theorem stamped_recordOwn (t : Time) (st : State sp binding) o hs
     (h : QueueStamped t st) : QueueStamped t (recordOwn st o hs) := by
   rw [AsChainShape.recordOwn_eq]
   split
@@ -83,14 +83,14 @@ private theorem stamped_recordOwn (t : Time) (st : State sp ro binding) o hs
     · exact h
   · exact h
 
-private theorem stamped_propose (t : Time) (st : State sp ro binding) s
+private theorem stamped_propose (t : Time) (st : State sp binding) s
     (h : QueueStamped t st) : QueueStamped t (propose st s).1 := by
   rw [propose_eq]
   dsimp only
   split <;> exact h
 
 private theorem stamped_nodeTick (t : Time) {sign : Fin sp.n → Time → Bool}
-    (st : State sp ro binding)
+    (st : State sp binding)
     (h : QueueStamped t st) : QueueStamped t (nodeTick st sign) := by
   rw [nodeTick_eq (sign := _)]
   split
@@ -98,7 +98,7 @@ private theorem stamped_nodeTick (t : Time) {sign : Fin sp.n → Time → Bool}
   · exact h
 
 private theorem stamped_poll {release : Fin sp.n → Time → Bool} (t : Time)
-    (st : State sp ro binding) u (h : QueueStamped t st) :
+    (st : State sp binding) u (h : QueueStamped t st) :
     QueueStamped t (poll st u release).1 := by
   refine ⟨(poll_now st u).trans h.1, ?_⟩
   intro q hq
@@ -106,7 +106,7 @@ private theorem stamped_poll {release : Fin sp.n → Time → Bool} (t : Time)
   exact False.elim (List.not_mem_nil hq)
 
 private theorem stamped_pollBatch {release : Fin sp.n → Time → Bool} (t : Time)
-    (st : State sp ro binding) u (h : QueueStamped t st) :
+    (st : State sp binding) u (h : QueueStamped t st) :
     QueueStamped t (pollBatch st u release).1 := by
   rw [pollBatch_fst]
   refine stamped_poll t _ u ?_
@@ -116,7 +116,7 @@ private theorem stamped_pollBatch {release : Fin sp.n → Time → Bool} (t : Ti
     exact h
   · exact h
 
-private theorem stamped_process (t : Time) (st : State sp ro binding) o hs
+private theorem stamped_process (t : Time) (st : State sp binding) o hs
     (h : QueueStamped t st) : QueueStamped t (process st o hs) := by
   refine ⟨(process_now st o hs).trans h.1, ?_⟩
   intro q hq
@@ -194,7 +194,7 @@ theorem proposal_duty_forward_origin (v : V)
       · change q ∈ (recordOwn (a.1.1 hn) _ _).forwards at hq
         rw [hact1] at hq
         replace hq := Eq.mp (congrArg (fun st => q ∈ st.forwards)
-          (AsChainShape.recordOwn_eq (sp := S.params (Model.pubOf E) hn) (ro := S.ro _)
+          (AsChainShape.recordOwn_eq (sp := S.params (Model.pubOf E) hn)
             (binding := S.vote) _ _ _)) hq
         simp only [decodeInfo_encodeInfo] at hq
         erw [rootOf_digests_item] at hq
@@ -203,7 +203,7 @@ theorem proposal_duty_forward_origin (v : V)
           (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).1.fg
           (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p s hslot
         erw [hb] at hq
-        rcases apply_forward_origin (sp := S.params (Model.pubOf E) hn) (ro := S.ro _)
+        rcases apply_forward_origin (sp := S.params (Model.pubOf E) hn)
             _ _ _ q hq with hq | ⟨B, parent, hB, hq⟩
         · exact Or.inl hq
         · refine Or.inr ⟨B, parent, ?_, hq⟩
@@ -474,7 +474,7 @@ theorem released_forward_stamp (hv : rho.ExecutionValid) {i : Nat} {v : V} {u : 
 
 /-- An indexed successful canonical cut supplies acceptance at its actual recorded time.
 In particular this bridge never turns a refused block call into acceptance. -/
-private theorem acceptAt_of_allCuts {k : Nat} {r : CutRec (S.params (Model.pubOf E) hn) (S.ro _)}
+private theorem acceptAt_of_allCuts {k : Nat} {r : CutRec (S.params (Model.pubOf E) hn)}
     {B : Blk (S.params (Model.pubOf E) hn)}
     (hr : (allCuts S rho hn)[k]? = some r) (hb : r.label = .fg (.block B true)) :
     (simTrace S rho hn).AcceptAt r.node k B ∧ (simTrace S rho hn).time k = r.time := by
@@ -485,7 +485,7 @@ private theorem acceptAt_of_allCuts {k : Nat} {r : CutRec (S.params (Model.pubOf
 /-- An acceptance in an actual event's record list gives the required strict event-prefix
 bound; no search for a merely similar successful label is involved. -/
 theorem acceptAt_of_eventCuts {i : Nat} (hi : i < rho.events.length)
-    {r : CutRec (S.params (Model.pubOf E) hn) (S.ro _)}
+    {r : CutRec (S.params (Model.pubOf E) hn)}
     {B : Blk (S.params (Model.pubOf E) hn)}
     (hr : r ∈ eventCuts S rho hn i) (hb : r.label = .fg (.block B true)) :
     ∃ k < cutMap S rho hn (i + 1),
@@ -596,7 +596,7 @@ theorem delivery_released_forward_acceptance (hv : rho.ExecutionValid)
 
 /-- Receipt witnesses require only a block call, including a refused call. -/
 private theorem blockCallAt_of_allCuts {k : Nat}
-    {r : CutRec (S.params (Model.pubOf E) hn) (S.ro _)}
+    {r : CutRec (S.params (Model.pubOf E) hn)}
     {B : Blk (S.params (Model.pubOf E) hn)} {accepted : Bool}
     (hr : (allCuts S rho hn)[k]? = some r)
     (hb : r.label = .fg (.block B accepted)) :
@@ -640,7 +640,7 @@ theorem received_forward_blockCall {i : Nat} {v : V}
     (stateAt S rho hn v i).node 0
     ⟨blockObj _ B, hdel, (canonEvent_eq _ _ _).trans (by rw [hdecode])⟩
   obtain ⟨hn', ht', _⟩ := mem_deliverRecs (sp := S.params (Model.pubOf E) hn)
-    (ro := S.ro _) (runProposer S rho hn) (digestOf S rho)
+    (runProposer S rho hn) (digestOf S rho)
     (rho.ownKey v) (stateAt S rho hn v i).voteIO (Model.digests rho.hash receipt) u i hr
   have hr' : r ∈ eventCuts S rho hn i := by
     rw [eventCuts_deliver S rho hn i v receipt u he, ← stateAt_voteIO S rho hn v i]

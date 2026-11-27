@@ -15,16 +15,16 @@ This module stays downstream of Run and Coherence; neither supplier module impor
 
 namespace Consensus.Goldilocks.Coherence
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 section Proposals
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 /-- An honest proposal is accepted at its cut, from arbitrary run starts. -/
-theorem accept_of_proposesAt {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem accept_of_proposesAt {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : tr.ProposesAt p k W) :
@@ -35,7 +35,7 @@ theorem accept_of_proposesAt {ini : Fin sp.n → (goldilocksNode sp ro).State}
     ⟨j, x, fgDue, rfl, hg, hpr, d, p', hdp, rfl, -, -, -, -⟩
   · rw [RunTrace.groupAt_iff] at hg
     exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
-  have hreq := Compose.requirements_from sp ro (hrun.vstart p)
+  have hreq := Compose.requirements_from sp (hrun.vstart p)
   obtain ⟨hacc, -⟩ := Healing.own_block_accepted h hreq hrun.genesis_root_ok hnc hp hg hpr hdp
   have he := hc.2.symm.trans hacc.2
   simp only [Option.some.injEq, Cut.fg.injEq, FGLabel.block.injEq] at he
@@ -56,7 +56,7 @@ theorem honestProposalRun_of_proposesAt {ini} (hrun : GoldilocksRun proposer dg 
     ⟨j, x, fgDue, rfl, hg, hpr, d, pay, hdp, hB, -, -, -, -⟩
   · rw [RunTrace.groupAt_iff] at hg
     exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
-  have hreq := Compose.requirements_from sp ro (hrun.vstart (proposer s))
+  have hreq := Compose.requirements_from sp (hrun.vstart (proposer s))
   obtain ⟨hc1, ht1, hst1⟩ := tick_proposal_call h hp hg hpr
   obtain ⟨hacc, ht2⟩ := Healing.own_block_accepted h hreq hrun.genesis_root_ok hnc hp hg hpr hdp
   obtain ⟨hacc3, ht3, -⟩ := Healing.ac_block_after h hp hacc

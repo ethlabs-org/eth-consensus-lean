@@ -23,10 +23,10 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 
 /-- The canonical engine expansion obeys the node laws with time-indexed honesty, from the AC
 starts `ini` (default: the interface's initial state). -/
-structure SimulatesAt (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _))
+structure SimulatesAt (tr : GoldilocksTrace (S.params (pubOf E) hn))
     (ι : Nat → Nat) (ini : Fin (Fintype.card V) →
-      (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).State :=
-      fun _ => (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).initial) : Prop where
+      (goldilocksNode (S.params (pubOf E) hn)).State :=
+      fun _ => (goldilocksNode (S.params (pubOf E) hn)).initial) : Prop where
   run : Growing.GoldilocksRun (runProposer S rho hn) (digestOf S rho)
     (honestKeysAt S rho) tr ini
   ι_zero : ι 0 = 0

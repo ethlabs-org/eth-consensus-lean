@@ -34,14 +34,14 @@ suffix lemmas under the service from `ḡ` (`suffix_agree_from` and its siblings
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : AC.CommitteeDict sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF : Time}
   {T : Time} {r σ : Nat} {t₁ b : Time}
 
 private theorem frame_root_anc_analysis_root
@@ -83,7 +83,7 @@ private theorem optimistic_label_le (hrun : Growing.GoldilocksRun proposer dg H 
   rw [← hs]
   exact AC.slot_mono sp (hrun.time_nonneg c) hc
 
-variable {p : Fin sp.n} {s i : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
+variable {p : Fin sp.n} {s i : Nat} {ℓp : ACLabel (goldilocksNode sp)}
   {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
 
 /-- **The high rows of the proposer of slot `s` are sourced below members of labels below `s`**
@@ -130,7 +130,7 @@ row classification of `seeded_reader_old` at the vote cut). -/
 theorem voter_row_labels
     (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     {y : Fin sp.n}
-    {j : Nat} (hy : y ∈ H (tr.time j)) {ℓy : ACLabel (goldilocksNode sp ro)}
+    {j : Nat} (hy : y ∈ H (tr.time j)) {ℓy : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hcy : AC.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) (hs0 : 0 < s) (hjb : tr.time j ≤ b) (hrs : r ≤ s) :
     ∀ m < j, ∀ X, tr.AcceptAt y m X → ∀ a ∈ X.fgPayload, a.val ∈ H (tr.time j) →
@@ -240,7 +240,7 @@ theorem seeded_vote_anchor
     {P D : AC.Blk sp.n (List (FG.Att sp.n))} (hPU : P ∈ tr.HonestBlocksAt H)
     (hDP : Anc (tr.HonestBlocksAt H) D P)
     (hDold : ∀ O, SeededOld tr H g r b s O → Anc (tr.HonestBlocksAt H) O D)
-    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ℓy : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ℓy : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hcy : AC.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) (ht₁ : t₁ ≤ tr.time j) (hjb : tr.time j ≤ b)
     (hE : ∀ x j' e', j' < j → HVoteAt tr H x j' e' → e'.msg.slot = s → e'.msg.head = P.root) :
@@ -344,7 +344,7 @@ private theorem seeded_voter_facts
     (hS : SeededRun tr H proposer dg g ΔF T r σ t₁ b K (cm := cm) (βK := βK) (ini := ini))
     (hs : σ + 1 ≤ s) {Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hpass : ∀ O, SeededOld tr H g r b s O → Anc (tr.HonestBlocksAt H) O Q)
-    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ℓy : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ℓy : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hcy : AC.CastAt tr.projAC y j ℓy e)
     (hes : e.msg.slot = s) (ht₁ : t₁ ≤ tr.time j) (hjb : tr.time j ≤ b) :
     Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot Q ∧

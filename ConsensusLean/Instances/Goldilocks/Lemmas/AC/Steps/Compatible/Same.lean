@@ -24,8 +24,8 @@ namespace Consensus.Goldilocks.AC
 
 variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {proposer : Nat → Fin sp.n}
 
 theorem rt_optimistic (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (optimisticConfirmation sp A Φ t).restartTime = A.restartTime := by
@@ -42,7 +42,7 @@ private theorem update_sideU
     (hY : Y ∈ H)
     {c s : Nat}
     {D : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : FastUpdateAt tr Y c s D CV) :
-    ∃ (ℓ : ACLabel (goldilocksAC sp FGP ro)) (S : Set (Fin sp.n)),
+    ∃ (ℓ : ACLabel (goldilocksAC sp FGP)) (S : Set (Fin sp.n)),
       tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
       (∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) ∧
       sp.committeeSize ≤ 2 * S.ncard ∧
@@ -71,7 +71,7 @@ private theorem update_sideU
         (by rw [ht, ← add_zero (sp.ts (s + 1 : Nat)), ts_add]; linarith)
         (by rw [ht, ts_add]; linarith)
     intro k hk hrk
-    have := ((joined_awakeU sp) FGP ro H U tr hr Y hY c ℓ hc hpost).2 k hk hrk
+    have := ((joined_awakeU sp) FGP H U tr hr Y hY c ℓ hc hpost).2 k hk hrk
     rwa [hsl, show ((s + 1 : Nat) : Int) - 1 = s by push_cast; ring] at this
   · have hfast := (deepest_mem hD).1.2.2
     unfold FastTest confirmationScore at hfast
@@ -106,7 +106,7 @@ theorem fastLock_same_slotU
     {w x : Fin sp.n} {i₀ j : Nat}
     {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hw : w ∈ H) (hfl : FastLockAt tr w i₀ s B CV)
     (hx : x ∈ H) (hfl' : FastLockAt tr x j s B' CV')
-    (hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
+    (hsync : SyncAC (goldilocksAC sp FGP) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
     (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) : Compatible U B B' := by
   have hr := hrun.localRun
   have hU := hr.coherent
@@ -146,7 +146,7 @@ theorem fastLock_same_slotU
     obtain ⟨hv's, j₂, -, e₂, he₂, rfl⟩ :=
       optimisticPoint_pool_voteU hrun hx hpt' hv' (hv'u ▸ huH)
     rw [hv'u] at he₂
-    obtain ⟨-, rfl⟩ := (one_vote_per_slotU sp) FGP ro H U tr hr _ huH j₁ j₂ e₁ e₂ he₁ he₂
+    obtain ⟨-, rfl⟩ := (one_vote_per_slotU sp) FGP H U tr hr _ huH j₁ j₂ e₁ e₂ he₁ he₂
       (hvs.trans hv's.symm)
     obtain rfl : R = R' := hU.1 (hΦU hR) (hΦU' hR') (hRr.trans hR'r.symm)
     exact hnc (anc_total hU (Anc.mono hΦU hBR) (Anc.mono hΦU' hBR'))
@@ -158,7 +158,7 @@ theorem fastLock_same_slot
     {i₀ j : Nat}
     {B B' : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)} (hw : w ∈ H) (hfl : FastLockAt tr w i₀ s B CV)
     (hx : x ∈ H) (hfl' : FastLockAt tr x j s B' CV')
-    (hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
+    (hsync : SyncAC (goldilocksAC sp FGP) H U (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
     (hf : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) : Compatible U B B' :=
   fastLock_same_slotU (hrun := hrun.toU) K hP hsize (s := s) (w := w) (x := x) (i₀ := i₀)
       (j := j) (B := B) (B' := B') (CV := CV) (CV' := CV') (hw := hw) (hfl := hfl) (hx := hx)

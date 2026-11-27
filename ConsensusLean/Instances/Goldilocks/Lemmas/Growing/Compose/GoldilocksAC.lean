@@ -10,10 +10,9 @@ namespace Consensus.Goldilocks.Compose.Growing
 /-- Votes retain their honest emission provenance at the reading cut, from starts up to the vote
 permission. -/
 theorem goldilocks_ac_projection_from {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (h : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) :
     AC.Growing.ACRun proposer tr.projAC H (tr.HonestBlocksAt H) ini := by
@@ -50,7 +49,7 @@ theorem goldilocks_ac_projection_from {sp : AC.ACParams}
     have hpi' := h.antitone (le_max_right _ _) hp
     have frame_cases {y i ℓ B} (hy : y ∈ H (tr.time i))
         (hc : tr.projAC.CallAt y i ℓ) (hB : B ∈ ℓ.frame.tree) :
-        B = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload ∨
+        B = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload ∨
           ∃ k < i, tr.AcceptAt y k B := by
       have ht : B ∈ ((tr.upTo (tr.time i)).state y i).fg.tree := by
         rw [RunTrace.upTo_state_of_le h.time_mono le_rfl]
@@ -61,7 +60,7 @@ theorem goldilocks_ac_projection_from {sp : AC.ACParams}
       · exact Or.inr ⟨k, hk, ((RunTrace.upTo_acceptAt _).mp ha).2⟩
     have own {y i ℓ B} (hy : y ∈ H (tr.time i)) (hc : tr.projAC.CallAt y i ℓ)
         (hB : B ∈ ℓ.frame.tree) (hp : B.proposer ∈ H (tr.time i))
-        (hng : B ≠ sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) :
+        (hng : B ≠ sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload) :
         ∃ j acc, tr.CallAt B.proposer j (.fg (.block B acc)) ∧
           ∃ j₀, tr.TickAt proposer dg B.proposer j₀ (sp.toParams.slotTime B.slot) ∧
             j = j₀ + 2 ∧ 0 < B.slot ∧ sp.toParams.slotTime B.slot ≤ tr.time i := by
@@ -80,14 +79,14 @@ theorem goldilocks_ac_projection_from {sp : AC.ACParams}
           (tr.upTo (tr.time i)).TickAt proposer dg B.proposer j₀ (tr.time (j₀ + 2)) from ⟨x, f, ht⟩)
         rw [← htime] at ht'
         exact ht'.2
-    by_cases hg : B = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload
-    · by_cases hg' : B' = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload
+    by_cases hg : B = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload
+    · by_cases hg' : B' = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload
       · exact hg.trans hg'.symm
       · obtain ⟨_, _, _, _, _, _, hs, _⟩ := own hy' hc' hB' (hprop ▸ hpi') hg'
         simp only [hg, Params.genesisBlock] at hslot
         omega
     · obtain ⟨j, acc, hj, j₀, ht, hje, hs, htime⟩ := own hy hc hB hpi hg
-      by_cases hg' : B' = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload
+      by_cases hg' : B' = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload
       · simp only [hg', Params.genesisBlock] at hslot
         omega
       · obtain ⟨j', acc', hj', j₀', ht', hje', _, _⟩ := own hy' hc' hB' (hprop ▸ hpi') hg'
@@ -101,7 +100,7 @@ theorem goldilocks_ac_projection_from {sp : AC.ACParams}
 /-- Votes retain their honest emission provenance at the reading cut:
 `goldilocks_ac_projection_from` at the initial starts. -/
 theorem goldilocks_ac_projection : GoldilocksACProjection :=
-  fun _ _ _ _ _ _ h hnc => goldilocks_ac_projection_from h hnc
+  fun _ _ _ _ _ h hnc => goldilocks_ac_projection_from h hnc
 
 end Consensus.Goldilocks.Compose.Growing
 

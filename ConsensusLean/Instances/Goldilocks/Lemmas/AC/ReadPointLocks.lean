@@ -16,22 +16,22 @@ assumed: the invariant holds at every reachable state. -/
 
 namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {ini : Fin sp.n → ACState sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {ini : Fin sp.n → ACState sp.n}
 
 /-- **The read point of an honest vote has the lock invariant** at the call's frame, from starts
 up to the vote permission. -/
-private theorem castAt_readPoint_lockInv (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+private theorem castAt_readPoint_lockInv (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) : LockInv U e.readPoint ℓ.frame := by
   have hU := hr.coherent
   obtain ⟨hcall, he⟩ := hc
   obtain ⟨hΦ, hΦU⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by
     rcases hr.frameLaw y hy i ℓ hcall with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
   obtain ⟨Φp, tp, hR, hok⟩ : ∃ Φp tp,
-      (goldilocksAC sp FGP ro).ReachableAtFrom (ini y) y U (tr.state y i) Φp tp ∧
-        (goldilocksAC sp FGP ro).CallOK U Φp (tr.time i) ℓ.call ℓ.frame := by
+      (goldilocksAC sp FGP).ReachableAtFrom (ini y) y U (tr.state y i) Φp tp ∧
+        (goldilocksAC sp FGP).CallOK U Φp (tr.time i) ℓ.call ℓ.frame := by
     rcases hr.frameLaw y hy i ℓ hcall with ⟨hn, Φ₀, hi, hf, hok⟩ | ⟨j, ℓ', hj, hc', hnb, hok⟩
     · refine ⟨Φ₀, 0, ?_, hok⟩
       rw [tr.state_of_noCall hn, hr.init y hy]
@@ -42,7 +42,7 @@ private theorem castAt_readPoint_lockInv (hr : ACLocalRun (goldilocksAC sp FGP r
   obtain ⟨hin, -, hinv⟩ := lockInv_of_reachable hU (hini y) hR
   have hx := hr.exec i ℓ hcall.2 (hcall.1 ▸ hy)
   rw [hcall.1] at hx
-  have he' : e ∈ ((goldilocksAC sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i)
+  have he' : e ∈ ((goldilocksAC sp FGP).step y (tr.state y i) ℓ.frame (tr.time i)
       ℓ.call).2 := by
     rw [hx]
     exact he
@@ -50,9 +50,9 @@ private theorem castAt_readPoint_lockInv (hr : ACLocalRun (goldilocksAC sp FGP r
 
 /-- **The live lock blocks of an honest vote's read point lie on one chain**, at every time,
 from starts up to the vote permission. -/
-theorem castAt_liveLockBlocks_chain (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+theorem castAt_liveLockBlocks_chain (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) (t : Time) :
     ∀ L ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame t,
       ∀ D ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame t, Compatible ℓ.frame.tree L D := by
@@ -63,9 +63,9 @@ theorem castAt_liveLockBlocks_chain (hr : ACLocalRun (goldilocksAC sp FGP ro) H 
 /-- **A read live lock is compatible with every live lock.** At an honest vote, a live lock
 block of the read point, or `fc_root`, is compatible with every live lock block of the read
 point; from starts up to the vote permission. -/
-theorem castAt_compatible_of_live (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+theorem castAt_compatible_of_live (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {t : Time} {C : Blk sp.n FGP}
     (hC : C ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame t ∪ {ℓ.frame.fcRoot}) :
     ∀ L ∈ liveLockBlocks sp e.readPoint.locks ℓ.frame t, Compatible ℓ.frame.tree L C := by

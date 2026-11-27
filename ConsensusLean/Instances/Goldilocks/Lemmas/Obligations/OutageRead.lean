@@ -12,7 +12,7 @@ namespace Consensus.Goldilocks.Obligations
 
 variable {sp : AC.ACParams} {FGP : Type} {U : Set (AC.Blk sp.n FGP)}
 
-variable {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+variable {tr : GoldilocksTrace sp}
   {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
 
@@ -23,7 +23,7 @@ theorem late_reader_record_cover
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {B : AC.Blk sp.n (List (FG.Att sp.n))} {c i : Nat}
     (hci : c < i) {s : Nat}
-    {ell : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    {ell : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))}
     (hu : AC.UpdateAt tr.projAC y c s ell)
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (hR : AC.ResultAt tr.projAC y c s C CV) (hBC : Anc (tr.HonestBlocks H) B C)

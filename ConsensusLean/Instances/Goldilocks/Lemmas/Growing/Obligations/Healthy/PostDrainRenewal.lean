@@ -48,11 +48,11 @@ and the viability of `P` at the slot-`(m+1)` casts is an input. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- A member written before the reader has a same-label supporter before that reader. -/
@@ -93,7 +93,7 @@ private theorem member_supporter_before_at {cm : Time → Finset (Fin sp.n)} {β
 
 /-- **The higher-report escape by `T`**: a node honest at its report and at `c_z` reports, by
 `T`, a descendant of `P` at a strictly greater height than `P` (in its store at the report). -/
-def HigherReportBy (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (g : Time)
+def HigherReportBy (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) (g : Time)
     (P : AC.Blk sp.n (List (FG.Att sp.n))) (T : Time) : Prop :=
   ∃ x q e C, x ∈ H (max (cutZ sp.toParams g) (tr.time q)) ∧ AC.ToFGAt tr.projAC x q e C ∧
     tr.time q ≤ T ∧ Anc (tr.HonestBlocksAt H) P C ∧
@@ -118,14 +118,14 @@ theorem HigherReportBy.mono {P : AC.Blk sp.n (List (FG.Att sp.n))} {T T' : Time}
 slot-`(u+1)` cast of a node honest at it, when `P` is above the cast's `Σ.F` and `ḡ ≤ t_u`: as
 `unanimous_carry_votes_core_at`, with each counted head extending `P` instead of being `P`. -/
 theorem extend_carry_votes_core_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hc : CatchRun tr H g (2 * sp.Δ)) {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hext : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
     (hg : AC.gbar g ≤ sp.ts u)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hcast : AC.CastAt tr.projAC y i ell e)
     (hs : e.msg.slot = u + 1) (hib : tr.time i ≤ b)
     (hFP : Anc (tr.HonestBlocksAt H) ell.frame.F P) :
@@ -174,7 +174,7 @@ theorem extend_carry_votes_core_at
         with h0 | ⟨k, hk, ha⟩
     · exact Or.inr (Or.inl h0)
     rw [RunTrace.upTo_projAC] at ha
-    obtain ⟨hkq, ha⟩ := (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mp ha
+    obtain ⟨hkq, ha⟩ := (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _)).mp ha
     change tr.time k ≤ tr.time q at hkq
     have hzk := hrun.antitone hkq hz
     by_cases hkg : AC.gbar g ≤ tr.time k
@@ -183,17 +183,17 @@ theorem extend_carry_votes_core_at
       obtain ⟨ky, hky, hacc, hkyt⟩ := relayed_of_resetService hrun hsvc hzk ha (hgg.trans hkg) hy
         hcast.1 hdl hFHd
       have hkyd : tr.time ky ≤ tr.time i := hm hky
-      exact ⟨ky, hky, (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mpr ⟨hkyd, hacc⟩,
+      exact ⟨ky, hky, (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _)).mpr ⟨hkyd, hacc⟩,
         by rw [ACTrace.upTo_deadline hmA hkyd]; exact hkyt⟩
     · obtain ⟨ky, hky, hacc, hkyt⟩ := caught_of_catchRun hrun hc hzk ha (not_le.mp hkg) hy
         hcast.1 (by linarith) hFHd
-      exact Or.inr (Or.inr ⟨ky, (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mpr
+      exact Or.inr (Or.inr ⟨ky, (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _)).mpr
         ⟨hm hky, hacc⟩, by change tr.time ky < _; linarith⟩)
   refine ⟨hcarry.awake.1, hcarry.joined, fun v hv => ?_, hcarry.holds⟩
   obtain ⟨Hv, hHv, hHvr, hacc⟩ := hcarry.heads v hv
   refine ⟨Hv, hsub hHv, hHvr, fun X hX => ?_⟩
   exact (hacc X (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hHv hX)).imp_right
-    fun ⟨k, hk, hkt⟩ => ⟨k, ((ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mp hk).2, hkt⟩
+    fun ⟨k, hk, hkt⟩ => ⟨k, ((ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _)).mp hk).2, hkt⟩
 
 /-! ### The step from slot `m` to slot `m + 1` -/
 
@@ -203,7 +203,7 @@ node honest at it does, by strong induction on the vote's cut. As in
 `hfault`, `hcs2`); the slot-`m` votes are carried (`extend_carry_votes_core_at`); `P` is above the
 caster's finality and viable at its cast (`hcast`, which may use the earlier slot-`(m+1)` votes). -/
 theorem extend_next_votes_core_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hc : CatchRun tr H g (2 * sp.Δ)) {m : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -483,7 +483,7 @@ theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : �
     (hprev : ∀ s, u + 1 ≤ s → s ≤ m → ∀ y' j' e, y' ∈ H (tr.time j') →
       AC.VoteAt tr.projAC y' j' e → tr.time j' ≤ tr.time j → e.msg.slot = s →
       AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
-    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y j ell e)
     (hs : e.msg.slot = m + 1) (hjb : tr.time j ≤ b)
     (hearlier : ∀ x q e', q < j → x ∈ H (tr.time q) → AC.VoteAt tr.projAC x q e' →
@@ -570,7 +570,7 @@ theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : �
     obtain ⟨hPhi', hPhiU'⟩ := AC.frameIn_of_callAt hr hy hc'.1
     have ha'' : (tr.upTo (tr.time j)).projAC.AcceptAt y k' P := by
       rw [RunTrace.upTo_projAC]
-      exact (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mpr ⟨hm hk'j, ha'⟩
+      exact (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _)).mpr ⟨hm hk'j, ha'⟩
     have hPp : P ∈ (tr.upTo (tr.time j)).HonestBlocks (H (tr.time j)) := by
       obtain ⟨ella, hca, hba⟩ := ha''
       exact (AC.frameIn_of_callAt hr hy hca).2

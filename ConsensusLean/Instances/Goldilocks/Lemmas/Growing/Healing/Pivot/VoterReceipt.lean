@@ -20,11 +20,11 @@ into its per-cut inputs.
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- An ancestor of a raw write is available at a later honest voter's read point. -/
@@ -36,7 +36,7 @@ theorem raw_writer_voterBlockTree_before_at
     (hwriter : AC.ResultAt tr.projAC x r s C CV ∨ AC.FastLockAt tr.projAC x r s C CV)
     (hBC : Anc (tr.HonestBlocksAt H) B C)
     (hgs : AC.gbar g + 4 * sp.Δ ≤ sp.ts s)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hs : s < e.msg.slot)
     (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by

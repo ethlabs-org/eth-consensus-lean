@@ -92,7 +92,7 @@ open AsChainShape
 
 open Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
 variable {binding : VoteBinding}
 
@@ -118,7 +118,7 @@ theorem cutMap_index_le {i i' k k' : Nat} (hk : cutMap S rho hn i ≤ k)
   rw [(simTrace_encoding S rho hn).2] at hk hk'
   exact NodeAsChainShape.CanonicalTrace.cutMap_index_le (traceEncoding S hn) rho hk hk' h
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- A canonical message in a recursive receipt has an actual AC message cut,
 even when its vote is already present or rejected by the pool cap. -/
@@ -126,13 +126,13 @@ theorem deliverRecs_message_call (io : VoteAuth sp.n binding) (proposer : Nat �
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
     (m : Vote sp.n) :
-    ∀ (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat),
-    (∃ o ∈ os, canonEvent sp ro io hs o = some (.message m)) →
+    ∀ (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp)) (sub : Nat),
+    (∃ o ∈ os, canonEvent sp io hs o = some (.message m)) →
     ∃ r ∈ deliverRecs io proposer dg hs self t i os st sub,
       ∃ ℓ, r.label = .ac ℓ ∧ ℓ.call = .message m := by
   intro os st sub hm
   obtain ⟨r, hr, l, hl, hm⟩ := NodeAsChainShape.CanonicalTrace.deliverRecs_message_call
-    (wireCodec sp ro binding io) hs proposer dg self t i m os st sub hm
+    (wireCodec sp binding io) hs proposer dg self t i m os st sub hm
   obtain ⟨q, hq, hlabel⟩ := deliverRecs_label io proposer dg hs self t i os st sub hr
   exact ⟨q, hq, l, hlabel.trans hl, hm⟩
 

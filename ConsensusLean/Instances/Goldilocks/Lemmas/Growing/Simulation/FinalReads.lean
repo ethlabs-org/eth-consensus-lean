@@ -34,7 +34,7 @@ variable {V : Type} [Fintype V] [DecidableEq V]
 theorem goldilocks_finalReadTransport (S : Setup) {E : Env V}
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn))
       (goldilocksRunMap S rho hn hv).signer fgHold) {ΔF : Time} :
     FinalReadTransport (goldilocksRunMap S rho hn hv) C ΔF := by
   classical

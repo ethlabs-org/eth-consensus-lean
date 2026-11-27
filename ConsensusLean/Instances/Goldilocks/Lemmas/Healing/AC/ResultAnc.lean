@@ -17,11 +17,11 @@ variable (sp : ACParams)
 
 /-- `result_transfer_anc` with the unlock given. -/
 theorem result_transfer_ancU
-    {u : Nat → Set Lock} {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {proposer : Nat → Fin sp.n} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+    {u : Nat → Set Lock} {FGP : Type} {H : Set (Fin sp.n)}
+    {proposer : Nat → Fin sp.n} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP}
     {ini} (hrun : ACRunU wm u proposer tr H U ini) {s : Nat}
     {X y : Fin sp.n} {i₀ i : Nat} {C D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hX : X ∈ H)
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP} (hX : X ∈ H)
     (hres : ResultAt tr X i₀ s C CV) (hDC : Anc U D C) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = s + 1) (hcarry : CarryAt tr U y i e s CV)
     (hviab : ViableAtVote ℓ e (s + 1) D)
@@ -61,11 +61,11 @@ theorem result_transfer_ancU
   · exact (Anc.mem hcore he).2
 
 /-- **A1.8 for a block `D ⪯ C` of the result `C`.** -/
-theorem result_transfer_anc {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {proposer : Nat → Fin sp.n} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+theorem result_transfer_anc {FGP : Type} {H : Set (Fin sp.n)}
+    {proposer : Nat → Fin sp.n} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP}
     (hrun : ACRun proposer tr H U) {s : Nat}
     {X y : Fin sp.n} {i₀ i : Nat} {C D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hX : X ∈ H)
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP} (hX : X ∈ H)
     (hres : ResultAt tr X i₀ s C CV) (hDC : Anc U D C) (hy : y ∈ H) (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = s + 1) (hcarry : CarryAt tr U y i e s CV)
     (hviab : ViableAtVote ℓ e (s + 1) D)
@@ -73,7 +73,7 @@ theorem result_transfer_anc {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin
     (hd : ∀ v ∈ (mergedVoteView sp e.readPoint ℓ.frame (s + 1)).votes, v.slot = s →
       v ∈ (tr.state X i₀).pool s ∨ v.val ∈ equivocators {w | w ∈ (tr.state X i₀).pool s}) :
     VoteExtends U e.msg D :=
-  result_transfer_ancU (FGP := FGP) (ro := ro) (H := H) (proposer := proposer) (U := U) (tr := tr)
+  result_transfer_ancU (FGP := FGP) (H := H) (proposer := proposer) (U := U) (tr := tr)
       (hrun := hrun.toU) (s := s) (X := X) (y := y) (i₀ := i₀) (i := i) (C := C) (D := D)
           (CV := CV) (ℓ := ℓ) (e := e) (hX := hX) (hres := hres) (hDC := hDC) (hy := hy)
               (hc := hc) (hs := hs) (hcarry := hcarry) (hviab := hviab) (hlocks := hlocks)
@@ -81,8 +81,8 @@ theorem result_transfer_anc {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin
 
 /-- A strict majority result has an earlier honest counted supporter when its
 participants number at least twice its faulty participants. -/
-theorem result_honest_supporter_of_participants {FGP : Type} {ro : ReplayOrder sp FGP}
-    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+theorem result_honest_supporter_of_participants {FGP : Type}
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP}
     {proposer : Nat → Fin sp.n} {ini} (hrun : ACRun proposer tr H U ini)
     {x : Fin sp.n} (hx : x ∈ H) {i s : Nat} {B C : Blk sp.n FGP}
     {CV : Set (Vote sp.n)} (hR : ResultAt tr x i s C CV) (hBC : Anc U B C)

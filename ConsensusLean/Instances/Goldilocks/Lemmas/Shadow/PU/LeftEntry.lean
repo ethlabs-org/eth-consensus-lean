@@ -15,11 +15,11 @@ AC-only facts use the stock AC projection inside those cores.
 
 namespace Consensus.Goldilocks.Healing.ShadowLeft
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 /-- The stock local RowSource extraction, keeping joinedness as the AC trace predicate. -/
 theorem signed_entry_source {ini} (hrun : GoldilocksRun proposer dg H tr ini)
@@ -45,11 +45,11 @@ end Consensus.Goldilocks.Healing.ShadowLeft
 
 namespace Consensus.Goldilocks.Healing.Growing.ShadowLeft
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 /-- The stock RowSource wrapper, using the proved shadow deep quarantine. -/
 theorem high_row_source_at {ini}
@@ -83,11 +83,11 @@ end Consensus.Goldilocks.Healing.Growing.ShadowLeft
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
   {g ΔF a b hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 end Consensus.Goldilocks.Healing.Growing

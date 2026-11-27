@@ -68,7 +68,7 @@ theorem effective_record_update_slot_growth
 
 section CoveredEndpoint
 
-variable {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+variable {tr : GoldilocksTrace sp}
   {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {g ΔF a : Time}
 
@@ -175,7 +175,7 @@ theorem unanimous_carry_votes {b : Time}
     (hun : ∀ y ∈ H, ∀ j e, AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
     (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hcast : AC.CastAt tr.projAC y i ell e)
     (hs : e.msg.slot = u + 1) (hib : tr.time i ≤ b)
     (hFP : Anc (tr.HonestBlocks H) ell.frame.F P) :
@@ -218,7 +218,7 @@ theorem unanimous_pool {b : Time}
     (hun : ∀ y ∈ H, ∀ j e, AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
     (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp)}
     (hcall : tr.projAC.CallAt y j ell) (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b) (hPt : P ∈ ell.frame.tree) :
     ∀ x ∈ H, x ∈ K.committee u →
@@ -290,7 +290,7 @@ theorem candidate_after_fast_update {A : AC.ACState sp.n} {Phi : AC.Frm sp.n FGP
 /-- The exact fast candidate persists into an adjacent call with the same frame
 and timestamp; these are the equalities supplied by `update_toFG_calls`. -/
 theorem candidate_at_adjacent_call
-    {y : Fin sp.n} {j u : Nat} {ell ell' : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j u : Nat} {ell ell' : ACLabel (goldilocksNode sp)}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hc : tr.projAC.CallAt y j ell) (hPhi : FrameOK ell.frame)
     (hframe : ell'.frame = ell.frame) (htime : tr.time (j + 1) = tr.time j)
@@ -311,7 +311,7 @@ at or before the adjacent toFG call, not merely a selected candidate. -/
 theorem report_of_viable_unanimous_pool {b : Time}
     (hp : Healing.ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H) {j u : Nat}
-    {ell ell' : ACLabel (goldilocksNode sp ro)}
+    {ell ell' : ACLabel (goldilocksNode sp)}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hu : AC.UpdateAt tr.projAC y j u ell)
     (hc : tr.projAC.CallAt y (j + 1) ell') (hto : ell'.call = .toFG)
@@ -349,7 +349,7 @@ theorem unanimous_head_held_at_call {b : Time}
       e.msg.slot = u → e.msg.head = P.root)
     (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u)
     (hR : Healing.drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp)}
     (hcall : tr.projAC.CallAt y j ell) (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b) (hFP : Anc (tr.HonestBlocks H) (tr.state y j).fg.F P) :
     P ∈ ell.frame.tree := by

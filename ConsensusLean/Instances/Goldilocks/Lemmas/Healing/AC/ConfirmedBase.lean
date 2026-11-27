@@ -20,15 +20,15 @@ namespace Consensus.Goldilocks.AC
 
 variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {g : Time} {proposer : Nat → Fin sp.n}
 
 /-- Finite message service retains an actual honest vote with its strict early stamp.
 Only deadlines and restarts through the receiving call are used. -/
 theorem late_vote_pool_before {K : AC.CommitteeDict sp.n}
     {b : Time} (hS : HealthyBaseUpTo K tr H U proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ell : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
+    {ell : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt y j ell) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)
     (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ max t (sp.ts s) + sp.Δ)
@@ -85,7 +85,7 @@ next-slot vote, not just to the receiving call's pre-state. -/
 theorem late_vote_readPoint_before {K : AC.CommitteeDict sp.n}
     {b : Time} (hS : HealthyBaseUpTo K tr H U proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ell : ACLabel (goldilocksAC sp FGP ro)} {e' : Em sp FGP}
+    {ell : ACLabel (goldilocksAC sp FGP)} {e' : Em sp FGP}
     (hc : CastAt tr y j ell e') {s : Nat} (hs' : e'.msg.slot = s + 1)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)
@@ -99,9 +99,9 @@ theorem late_vote_readPoint_before {K : AC.CommitteeDict sp.n}
     hx hv hes (j + 1) (Or.inr rfl)
 
 /-- Acceptance before a deadline carries every global ancestor before that deadline too. -/
-theorem acceptedBefore_ancestor {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+theorem acceptedBefore_ancestor {ini} (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y i ell)
+    {ell : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt y i ell)
     {B X : Blk sp.n FGP} (hB : B ∈ U)
     {T : Time} (hacc : AcceptedBefore tr y B T) (hX : Anc U X B) :
     AcceptedBefore tr y X T := by
@@ -121,7 +121,7 @@ the same strict deadline as its message, retaining the acceptance witness. -/
 theorem late_vote_accepted_of_frame_before {K : AC.CommitteeDict sp.n}
     {b : Time} (hS : HealthyBaseUpTo K tr H U proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ell : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
+    {ell : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt y j ell) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)
     (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ max t (sp.ts s) + sp.Δ)
@@ -185,7 +185,7 @@ the same strict deadline as its message. The output is at the observing pre-stat
 theorem late_vote_held_of_frame_before {K : AC.CommitteeDict sp.n}
     {b : Time} (hS : HealthyBaseUpTo K tr H U proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ell : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
+    {ell : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt y j ell) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)
     (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ max t (sp.ts s) + sp.Δ)
@@ -206,7 +206,7 @@ The frame-dependent delivery input uses the receiver's own F. -/
 theorem honest_batch_carry_before {K : AC.CommitteeDict sp.n}
     {b : Time} (hS : HealthyBaseUpTo K tr H U proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ell : ACLabel (goldilocksAC sp FGP ro)} {e' : Em sp FGP}
+    {ell : ACLabel (goldilocksAC sp FGP)} {e' : Em sp FGP}
     (hc : CastAt tr y j ell e') {s : Nat} (hs' : e'.msg.slot = s + 1)
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)

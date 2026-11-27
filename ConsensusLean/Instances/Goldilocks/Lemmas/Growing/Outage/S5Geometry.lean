@@ -22,15 +22,15 @@ protected block `P`.
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- Strictly above `P` in the node's justification cache. -/
-def HiAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+def HiAt (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (P : AC.Blk sp.n (List (FG.Att sp.n))) (y : Fin sp.n) (i : Nat) : Prop :=
   Anc (tr.HonestBlocksAt H) P (tr.state y i).fg.J ∧ (tr.state y i).fg.J.root ≠ P.root
 

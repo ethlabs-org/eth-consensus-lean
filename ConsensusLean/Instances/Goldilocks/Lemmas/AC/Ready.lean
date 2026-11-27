@@ -15,26 +15,26 @@ namespace Consensus.Goldilocks.AC
 
 variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP}
 
 /-- The read point of an honest vote has the block stamps of the state its call leaves. With the
 unlock given. -/
 theorem readPoint_blockStamp_eqU
     {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     {e : Em sp FGP} (hc : CastAt tr y i ℓ e) :
     e.readPoint.blockStamp = (tr.post i).blockStamp := by
   rw [post_of_castAtU hr hy hc, AC.optimistic_blockStamp,
     AC.admitVote_blockStamp]
 
 /-- A block already held in an earlier frame has an early read-point stamp. The
-stamp cases include restart replay; unique acceptance forbids a later overwrite. From starts up
+stamp cases include restart stamping; unique acceptance forbids a later overwrite. From starts up
 to the vote permission. -/
 theorem readPoint_blockStamp_lt_of_earlier_frame {ini}
-    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+    (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n} (hy : y ∈ H)
-    {a i : Nat} {ell₀ ell : ACLabel (goldilocksAC sp FGP ro)}
+    {a i : Nat} {ell₀ ell : ACLabel (goldilocksAC sp FGP)}
     (ha : tr.CallAt y a ell₀) {e : Em sp FGP} (hc : CastAt tr y i ell e)
     {Q : Blk sp.n FGP} (hQa : Q ∈ ell₀.frame.tree) (hQi : Q ∈ ell.frame.tree)
     (hat : tr.time a < freeze sp e.msg.slot)
@@ -57,7 +57,7 @@ frame holds a block of its slot, and every declaration of a slot-`s` proposal of
 counted in the pools of the read point (`vote_ready`). With the unlock given. -/
 theorem cast_readyU
     {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (ht : tr.time i < sp.ts e.msg.slot + sp.Δ) :
     voteReady sp e.readPoint ℓ.frame e.msg.slot := by
   have hb := voteBranchAt_iff.1 (voteBranchAt_of_castAtU hr hy hc)

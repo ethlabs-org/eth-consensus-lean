@@ -10,11 +10,11 @@ The canonical comparison lemmas supply honest votes and participants.
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 /-- At a non-restart call, joinedness agrees with the AC state's joined test. -/
 theorem joined_at_call {ini} (h : GoldilocksRun proposer dg H tr ini)

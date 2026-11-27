@@ -158,7 +158,7 @@ theorem simTraceAt_vote_forwarded (hv : rho.ExecutionValid) :
       have hnr : ℓ.call ≠ .restart := by
         intro h
         rw [h] at hstep
-        have hn := restart_emits_nil (S.ro _) y
+        have hn := restart_emits_nil y
           (((simTrace S rho hn).upTo ((simTrace S rho hn).time k)).state y k).ac ℓ.frame
           ((simTrace S rho hn).time k) (hr.time_nonneg k)
         have hnil : ℓ.emits = [] := (congrArg Prod.snd hstep).symm.trans hn

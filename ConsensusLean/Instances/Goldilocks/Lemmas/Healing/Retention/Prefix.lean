@@ -34,7 +34,7 @@ public section
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
 /-- **The entry of every height of a chain**: for a held `C` and `1 ≤ h ≤ σ[C].h`, an ancestor of
 `C` has state height `h` and is its own entry. -/
@@ -87,9 +87,9 @@ theorem honest_att_of_left {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store 
   honest_att_of_left_with Goldilocks.Store.finalitySpec_updateFinality hr.reachableWith
     hq hET hEC hlt
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
-  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 
 /-- **Prefix comparison of two high origins before a cut**.
@@ -180,7 +180,7 @@ vote, so `n = 1` and the signer is the voter, whose one slot-`m` vote would prec
 theorem ResetPremisesUpTo.row_origin_not_current {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
     {y : Fin sp.n} (hy : y ∈ H)
-    {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {k : Nat} {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ℓ e) {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)
     {v : Fin sp.n} (hv : v ∈ H) {d : Nat} (hs : tr.SignAt v d att) {r : Nat} (hrd : r < d)
@@ -227,7 +227,7 @@ theorem ResetPremisesUpTo.row_origin_not_current {b : Time}
     obtain rfl : v = y := eq_of_mem_committee hp.committee hn1
       (hes ▸ mem_committee_of_voteAt hp.committee hp.run hp.noColl hv hve')
       (mem_committee_of_castAt hp.committee hp.run hp.noColl hy hc)
-    have := (AC.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU v hy j' k e' e hve'
+    have := (AC.one_vote_per_slotU sp _ H _ tr.projAC hr.toU v hy j' k e' e hve'
       ⟨ℓ, hc.1, hc.2⟩ hes).1
     clear * - hik hd₀ hrd hj' this; omega
   · -- signed at `t_m + Δ`: the voter accepted `W` at `t_m + Δ`, before its vote
@@ -244,7 +244,7 @@ at `t_l + 6Δ ≥ t_{l+1}`, an optimistic write of slot `l` is in slot `l ≤ m`
 (`row_origin_not_current`). -/
 theorem ResetPremisesUpTo.row_origin_label_lt {b : Time}
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {y : Fin sp.n} (hy : y ∈ H)
-    {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {k : Nat} {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ℓ e) {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)
     {v : Fin sp.n} (hv : v ∈ H) {d : Nat} (hs : tr.SignAt v d att) (hdk : d < k) {r l : Nat}
@@ -275,7 +275,7 @@ theorem ResetPremisesUpTo.row_origin_label_lt {b : Time}
 /-- Whole-run specialization of the strict source-label bound. -/
 theorem row_origin_label_lt (hp : ResetPremises tr H K proposer dg g ΔF a) {y : Fin sp.n}
     (hy : y ∈ H)
-    {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {k : Nat} {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ℓ e) {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)
     {v : Fin sp.n} (hv : v ∈ H) {d : Nat} (hs : tr.SignAt v d att) (hdk : d < k) {r l : Nat}

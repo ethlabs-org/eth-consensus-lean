@@ -24,11 +24,11 @@ earlier cut at a time `≤ t ≤ b`, `y ∈ H t`.
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- The tree of such a reader is held while honest. -/
 theorem tree_subset_at {y : Fin sp.n} {i : Nat} {t : Time} (ht0 : 0 ≤ t)
@@ -43,10 +43,10 @@ theorem confirmed_read_on_chain_at {b : Time} (hinv : SleepyInvariantUpTo tr H b
     {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr) {y : Fin sp.n}
     {i : Nat} {t : Time} (ht0 : 0 ≤ t) (hi : ∀ k < i, tr.time k ≤ t) (htb : t ≤ b)
     (hy : y ∈ H t) (u : Time) :
-    (goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) u ∈
+    (goldilocksNode sp).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) u ∈
         tr.HonestBlocksAt H ∧
       OnOriginChainWithin tr H
-        ((goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) u) b := by
+        ((goldilocksNode sp).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) u) b := by
   have hU := honestBlocksAt_coherent hrun hnc
   have hΦ : FrameOK (Node.frame (tr.state y i)) :=
     (Store.frame_realization _ _ _ _ (Healing.Growing.fg_reachable_at hrun ht0 hi hy)).1
@@ -97,8 +97,8 @@ theorem SleepyInvariantUpTo.read_compatible_at {b : Time} (hinv : SleepyInvarian
     (hy : y ∈ H t) (ht0' : 0 ≤ t') (hi' : ∀ k < i', tr.time k ≤ t') (htb' : t' ≤ b)
     (hy' : y' ∈ H t') (u u' : Time) :
     Compatible (tr.HonestBlocksAt H)
-      ((goldilocksNode sp ro).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) u)
-      ((goldilocksNode sp ro).confirmed (tr.state y' i').ac (Node.frame (tr.state y' i')) u') :=
+      ((goldilocksNode sp).confirmed (tr.state y i).ac (Node.frame (tr.state y i)) u)
+      ((goldilocksNode sp).confirmed (tr.state y' i').ac (Node.frame (tr.state y' i')) u') :=
   have ⟨hB, hc⟩ := confirmed_read_on_chain_at hinv hrun hnc ht0 hi htb hy u
   have ⟨hB', hc'⟩ := confirmed_read_on_chain_at hinv hrun hnc ht0' hi' htb' hy' u'
   OnOriginChainWithin.compatible hrun hnc hinv.origins_compatible hB hB' hc hc'

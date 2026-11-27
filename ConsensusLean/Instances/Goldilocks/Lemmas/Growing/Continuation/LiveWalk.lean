@@ -29,18 +29,18 @@ The setting of the seeded service lemmas and the family of blocks the proposal w
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : AC.CommitteeDict sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF : Time}
 
 /-- `RowsAbove` at a height passes to every greater height. -/
 theorem rowsAbove_height_mono {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop} {Hs : Set (Fin sp.n)}
-    {tr₀ : GoldilocksTrace sp ro} {y : Fin sp.n} {i h₀ h₁ : Nat}
+    {tr₀ : GoldilocksTrace sp} {y : Fin sp.n} {i h₀ h₁ : Nat}
     (h : Compose.RowsAbove tr₀ Hs G y i h₀) (hle : h₀ ≤ h₁) : Compose.RowsAbove tr₀ Hs G y i h₁ :=
   Compose.rowsAbove_iff.2 fun X hX a ha hav hE hh =>
     Compose.rowsAbove_iff.1 h X hX a ha hav hE (hle.trans hh)
@@ -48,10 +48,10 @@ theorem rowsAbove_height_mono {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop} {H
 /-- **The seeded setting through `b`**: a run with the hand-over seed at `T ≤ b`, the reset
 service, the slot counts from `r`, the seeded invariant from `t₁ ≥ t_{r+k}` and conviction below
 a third. -/
-structure SeededRun (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+structure SeededRun (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (g ΔF T : Time) (r σ : Nat) (t₁ b : Time) (K : AC.CommitteeDict sp.n)
-    {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {ini : Fin sp.n → (goldilocksNode sp ro).State} :
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {ini : Fin sp.n → (goldilocksNode sp).State} :
     Prop where
   run : Growing.GoldilocksRun proposer dg H tr ini
   noColl : NoCollRun dg tr
@@ -88,7 +88,7 @@ theorem SeededRun.called
     {y : Fin sp.n}
     {i : Nat} {t : Time} (hy : y ∈ H t) (ht : sp.ts (r + sp.k : Nat) ≤ t)
     (hti : t ≤ tr.time i) :
-    ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
+    ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp), tr.projAC.CallAt y c ell ∧
       sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c :=
   seeded_reader_called_at hS.run hS.seed.toHandoverCore hy ht hti
 
@@ -112,7 +112,7 @@ theorem SeededRun.live_label
 
 /-- **The old family of slot `s` after a hand-over**: the members of the healed family of labels
 at most `s − 2`, and the optimistic origins of label `s − 1`. -/
-def SeededOld (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (g : Time) (r : Nat)
+def SeededOld (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) (g : Time) (r : Nat)
     (b : Time) (s : Nat) (C : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   (∃ l, HealedOrigin tr H g r (r + sp.k - 1) C l b ∧ l + 2 ≤ s) ∨
     ∃ x k CV, x ∈ H (tr.time k) ∧ AC.OptimisticLockAt tr.projAC x k (s - 1) C CV
@@ -170,7 +170,7 @@ theorem SeededRun.slot_timing
   rw [← ts_pred h0] at h1
   refine ⟨h0, by omega, by linarith, le_max_of_le_left (by linarith)⟩
 
-variable {p : Fin sp.n} {s i : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
+variable {p : Fin sp.n} {s i : Nat} {ℓp : ACLabel (goldilocksNode sp)}
   {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
 
 /-- **The proposer's `Σ.F` is on the healed chain**, at a proposal at `t_s ∈ [t₁, b]`. -/

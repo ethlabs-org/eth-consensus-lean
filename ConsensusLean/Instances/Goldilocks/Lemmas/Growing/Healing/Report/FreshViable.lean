@@ -15,21 +15,21 @@ observation, rather than extending the receiver's honesty beyond that cut.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
 /-- A call-local viability witness fixes its viable ancestor for every run core. -/
 theorem Core.proposal_viable_after_votes_at
     {uf : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRunCore uf frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat}
-    (hy : y ∈ H (tr.time k)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time k)) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y k ell) {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ ell.frame.tree) (hroot : ell.frame.Anc ell.frame.fcRoot P)
     (hv : P ∈ ell.frame.viableHeads) :
@@ -46,7 +46,7 @@ selection, at the slot committees `K` of a run from `K`'s committee start. No
 lock-compatibility premise is used to select the raw result. -/
 theorem Core.unanimous_update_selection_at
     {uf : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
     {K : AC.CommitteeDict sp.n}
     {g ΔF b : Time} {u : Nat}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -64,7 +64,7 @@ theorem Core.unanimous_update_selection_at
     (hun : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e →
       e.msg.slot = u → e.msg.head = P.root)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k u ell)
+    {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k u ell)
     (hK : CommitteeHalfUpTo tr H K g b)
     (hvi : P ∈ ell.frame.viableTree ell.frame.tree)
     (hva : ell.frame.viableAncestor P = P) :

@@ -25,11 +25,11 @@ public section
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- **(SRC)**: an FG source at a cut `k` of a node honest then is compatible with `B` when every
 lock stored at `k` names a held block compatible with `B`. -/
@@ -39,7 +39,7 @@ theorem source_compatible_at {ini}
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hlocks : ∀ l ∈ (tr.state y k).ac.locks, ∃ L ∈ (tr.state y k).fg.tree, L.root = l.block ∧
       Compatible (tr.HonestBlocksAt H) L B)
-    {ℓ : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : AC.ToFGAt tr.projAC y k ℓ C) : Compatible (tr.HonestBlocksAt H) C B := by
   have hU := honestBlocksAt_coherent hrun hnc
   obtain ⟨hpc, -, hC⟩ := h

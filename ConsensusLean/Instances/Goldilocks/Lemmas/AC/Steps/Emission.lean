@@ -19,8 +19,8 @@ namespace Consensus.Goldilocks.AC
 
 variable {wm : WriteMode}
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {ini : Fin sp.n → ACState sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {ini : Fin sp.n → ACState sp.n}
 
 /-- The vote of `x` at frame `Φ` and time `t`, as `castAt_specU` states it. -/
 private def VoteSpec (x : Fin sp.n) (Φ : Frm sp.n FGP) (t : Time) (e : Em sp FGP) : Prop :=
@@ -55,13 +55,13 @@ private theorem tryVote_emits
 
 /-- A single call emits only its own signer's vote, without a coherent-universe premise. -/
 theorem step_emission_signer (y : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) (c : (goldilocksAC sp FGP ro).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t)
-    {e : Em sp FGP} (he : e ∈ ((goldilocksAC sp FGP ro).step y A Φ t c).2) :
+    (t : Time) (c : (goldilocksAC sp FGP).Call) (hΦ : FrameOK Φ) (ht : 0 ≤ t)
+    {e : Em sp FGP} (he : e ∈ ((goldilocksAC sp FGP).step y A Φ t c).2) :
     e.msg.val = y := by
   rw [step_eq_stepWith, ← stepWithM_parent] at he
   rcases stepWithM_voteBranch (L := parentUnlock sp A Φ t c) y hΦ ht c
-      (A' := (stepWithM sp ro (WriteMode.parent sp) y (parentUnlock sp A Φ t c) A Φ t c).1)
-      (es := (stepWithM sp ro (WriteMode.parent sp) y (parentUnlock sp A Φ t c) A Φ t c).2) rfl with
+      (A' := (stepWithM sp (WriteMode.parent sp) y (parentUnlock sp A Φ t c) A Φ t c).1)
+      (es := (stepWithM sp (WriteMode.parent sp) y (parentUnlock sp A Φ t c) A Φ t c).2) rfl with
     ⟨hn, -⟩ | ⟨-, -, -, -, -, -, htv⟩
   · rw [hn] at he
     exact absurd he List.not_mem_nil
@@ -70,7 +70,7 @@ theorem step_emission_signer (y : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FG
 /-- **An honest vote.** With the unlock given. -/
 theorem castAt_specU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     e.msg.val = y ∧ e.msg.slot = sp.slot (tr.time i) ∧ joined sp e.readPoint (tr.time i) ∧
       e.msg.head = (getHead sp e.readPoint ℓ.frame (tr.time i)
@@ -85,7 +85,7 @@ with the own vote admitted and the optimistic check run. With the unlock given. 
 is at the writes of `wm`: the cast is the emitting arm of `post_of_voteBranchAtU`. -/
 theorem post_of_castAtU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     tr.post i = optimisticConfirmation sp (admitVote sp e.readPoint (tr.time i) e.msg)
       ℓ.frame (tr.time i) := by
@@ -101,12 +101,12 @@ starts up to the vote permission. With the unlock given. -/
 theorem voterBlockTree_ancU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     ∀ B ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
       X ∈ voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
   intro B hB X hX
-  have hsp := stamp_parentU sp FGP ro y U hr.coherent (hini y) _ _ _
+  have hsp := stamp_parentU sp FGP y U hr.coherent (hini y) _ _ _
     (localRun_reachableU sp hr hy i ℓ hc.1)
   have hle : (tr.post i).blockStamp X.root ≤ (tr.post i).blockStamp B.root := by
     clear hB
@@ -123,7 +123,7 @@ viable voter block tree (the vote domain is the voter block tree, `voteDomain_eq
 the unlock given. -/
 theorem castAt_head_of_viableU
     {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e)
     (hne : (ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame e.msg.slot)).Nonempty) :
     e.msg.head = (getHead sp e.readPoint ℓ.frame (tr.time i)
@@ -133,7 +133,7 @@ theorem castAt_head_of_viableU
   exact (castAt_specU hr hy hc).2.2.2
 
 /-- Viability at a vote in the voter block tree gives viability in the vote domain. -/
-theorem ViableAtVote.voteDomain {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} {σ : Nat}
+theorem ViableAtVote.voteDomain {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP} {σ : Nat}
     {B : Blk sp.n FGP} (h : ViableAtVote ℓ e σ B) :
     B ∈ ℓ.frame.viableTree (AC.voteDomain sp e.readPoint ℓ.frame σ) ∨
       ℓ.frame.Anc B ℓ.frame.fcRoot :=
@@ -144,7 +144,7 @@ vote permission. With the unlock given. -/
 theorem voteDomain_ancU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) :
     ∀ B ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot, ∀ X, ℓ.frame.Anc X B →
       X ∈ voteDomain sp e.readPoint ℓ.frame e.msg.slot :=
@@ -159,7 +159,7 @@ theorem vote_time_leU
   exact (voteBranchAt_specU hr hx (voteBranchAt_of_castAtU hr hx ⟨hc, he⟩)).2.2
 
 /-- An honest vote is its caster's, of the slot of its cast time. -/
-theorem vote_signer_slot (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+theorem vote_signer_slot (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
     {x : Fin sp.n}
     (hx : x ∈ H) {j : Nat} {e : Em sp FGP} (hv : VoteAt tr x j e) :
     e.msg.val = x ∧ e.msg.slot = sp.slot (tr.time j) := by

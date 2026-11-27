@@ -16,17 +16,17 @@ node is honest throughout, and is read back on the run. -/
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+variable {sp : ACParams}
+  {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 
 /-- **An unchanged record keeps its lookup back to an earlier cut**: for a node honest at `t`,
 every cut before `j` at a time `≤ t`, a record looked up before `j` and unchanged since `i ≤ j` is
 already looked up before `i` (advancing finalization cannot bring it back into the frame). -/
 theorem record_lookup_of_later_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i j : Nat} {t : Time} (ht : 0 ≤ t)
     (hjt : ∀ k < j, tr.time k ≤ t) (hy : y ∈ H t) (hij : i ≤ j)
@@ -43,7 +43,7 @@ theorem record_lookup_of_later_at
 /-- **One step of a node's record**, for a node honest at the step: the record is unchanged, or
 it names a block of its tree with a result or optimistic-lock source of its own at the step. -/
 theorem record_step_origin_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) :
     (tr.state y (i + 1)).ac.latestConfirmed = (tr.state y i).ac.latestConfirmed ∨

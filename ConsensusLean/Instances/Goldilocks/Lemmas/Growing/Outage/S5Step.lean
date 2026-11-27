@@ -39,18 +39,18 @@ then, from `OutageLockInv D i` (`k ≤ i`) and receiver service from `b₁`:
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- **A block accepted before the freeze is in the voter block tree** (`accepted_voter_tree` on
 the prefix through the vote's time). -/
 private theorem accepted_voter_tree_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
-    {s : Nat} {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {s : Nat} {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
     (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     {X : AC.Blk sp.n (List (FG.Att sp.n))} (hXU : X ∈ tr.HonestBlocksAt H)
@@ -96,7 +96,7 @@ at its cut): a block compatible with both caches and below a frozen viable block
 is in the vote's viable tree or below `fc_root`. -/
 private theorem vote_viable_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {k : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time k))
     (hc : AC.CastAt tr.projAC y k ℓ e) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hcache : Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F B ∧
@@ -132,7 +132,7 @@ private theorem vote_viable_at
 
 /-- A block held below a source's entry height is below the entry, in a static run. (As
 `Compose/Sleepy/Frame.lean`'s private `below_entry`.) -/
-private theorem below_entry {H₀ : Set (Fin sp.n)} {tr₀ : GoldilocksTrace sp ro}
+private theorem below_entry {H₀ : Set (Fin sp.n)} {tr₀ : GoldilocksTrace sp}
     (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H₀ tr₀ ini) (hnc : NoCollRun dg tr₀)
     {y : Fin sp.n} (hy : y ∈ H₀) {i : Nat} {B Ds E : AC.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ (tr₀.state y i).fg.tree) (hE : E ∈ (tr₀.state y i).fg.tree)
@@ -160,7 +160,7 @@ with `B`, makes the vote extend `B`. The static counted batch on the prefix thro
 private theorem vote_extends_of_counted_batch_run
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {K : AC.CommitteeDict sp.n} (hTK : AC.CommitteeTAt K tr.projAC H)
-    {s : Nat} {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {s : Nat} {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
     (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hviab : AC.ViableAtVote ℓ e (s + 1) B)
@@ -244,7 +244,7 @@ its cast) extends is viable at the vote. The witness head is frozen; below the f
 store of `y` is read on the prefix through `t_i`. -/
 theorem viable_at_vote_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
     (hy : y ∈ H (tr.time i)) (hS : ReceiverServiceAfterAt H (tr.HonestBlocksAt H) D.b₁ y tr.projAC)
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ℓ e) {q : Nat} (hs : e.msg.slot = q + 1) (hrq : D.r ≤ q)
     (hLo : ¬ HiAt tr H D.P y i)
     (hFP : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F D.P)

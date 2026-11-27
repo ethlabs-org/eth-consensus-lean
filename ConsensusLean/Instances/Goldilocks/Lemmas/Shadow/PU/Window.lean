@@ -139,14 +139,14 @@ theorem frameKey''_le_of_relay {acp₀ : A.Payload} {stx stz : Store P A.Payload
   rw [Generic.frameKey''_eq, Generic.frameKey''_eq]
   split_ifs <;> omega
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 section Persistence
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- The shadow fork-choice root is F at every cut, so its monotonicity needs no window
 or top-status case split. -/
@@ -167,7 +167,7 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.viableHead_persists'
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
     (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y a ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y a ell)
     {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hv : Q ∈ ell.frame.viableHeads) :
     Q ∈ (Node.frame (tr.state y i)).tree ∧
       (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot Q ∧
@@ -222,7 +222,7 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.root_witness_of_earlier_
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : NoRestartAfter tr H (AC.gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
-    {ell₀ ell : ACLabel (goldilocksNode sp ro)}
+    {ell₀ ell : ACLabel (goldilocksNode sp)}
     (ha : tr.projAC.CallAt y a ell₀) {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
@@ -261,10 +261,10 @@ end Persistence
 
 namespace Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {hold : Time}
 
 /-- Relay and catch-up transport a held block whose height is not below the receiver's
 maximum. This is the observation-level service obligation for the shadow lag core. -/
@@ -337,8 +337,8 @@ theorem frameKey''_lag_obs
     (hcall : ∃ j < m, tr.IsCall z j ∧
       tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
     (hcm : AC.gbar g + κ ≤ tr.time m) :
-    Generic.frameKey'' (goldilocksNode sp ro) (tr.state x i).fg ≤
-      Generic.frameKey'' (goldilocksNode sp ro) (tr.state z m).fg := by
+    Generic.frameKey'' (goldilocksNode sp) (tr.state x i).fg ≤
+      Generic.frameKey'' (goldilocksNode sp) (tr.state z m).fg := by
   have hi := hrun.time_nonneg i
   have hm := hrun.time_nonneg m
   have hbi : ∀ k < i, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono hk.le
@@ -394,7 +394,7 @@ theorem exists_frameWindow'_seq_of_service_proof_at
     ∃ v, 2 * hz ≤ v ∧ v ≤ 2 * hz + 3 ∧ ∃ a, lo + lam ≤ a ∧
       a + len v ≤ lo + ∑ j ∈ Finset.range (v - 2 * hz + 1), (len (2 * hz + j) + lam) ∧
       (∀ y i, y ∈ H (tr.time i) → a ≤ tr.time i → tr.time i ≤ a + len v →
-        Generic.frameKey'' (goldilocksNode sp ro) (tr.state y i).fg = v) ∧
+        Generic.frameKey'' (goldilocksNode sp) (tr.state y i).fg = v) ∧
       ∃ M isTop J, Generic.FrameWindow tr H a (a + len v) M isTop J := by
   apply Generic.exists_frameWindow_seq_of_mem len hlen hlam hrange
   · intro x z i k hx hz hi _ hik hk
@@ -410,7 +410,7 @@ theorem exists_frameWindow'_seq_of_service_proof_at
 theorem _root_.Consensus.Goldilocks.Healing.PU.service_syncACAt
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g ΔF b lo hi : Time} (hsvc : ResetService tr H g ΔF b hold) (hg : g ≤ lo) :
-    SyncACAt (goldilocksNode sp ro) H (tr.HonestBlocksAt H) lo hi tr.projAC := by
+    SyncACAt (goldilocksNode sp) H (tr.HonestBlocksAt H) lo hi tr.projAC := by
   refine ⟨?_, ?_⟩
   · intro x i m hx hsa hai _ y j ell hy hcj hdl
     have hsa' : tr.SendOrAdmitAt x i m := by

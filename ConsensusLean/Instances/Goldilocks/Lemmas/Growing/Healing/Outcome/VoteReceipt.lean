@@ -28,15 +28,15 @@ Its own acceptance is after the snapshot; only post-GST relay is needed.
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open ProposalImpl
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
 
 set_option linter.unusedVariables false in
 /-- A high origin is in a later honest cast's voter tree whenever its finalized cache
@@ -47,7 +47,7 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.high_origin_hel
     {x y : Fin sp.n} {i j k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
     (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) (hkb : tr.time k ≤ b)
     (hj : j < e.msg.slot) (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
@@ -123,7 +123,7 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.high_origin_hel
       exact hyj
     intro r hrk hrr
     have hrr' := (ACTrace.upTo_restartAt).mpr ⟨hm hrk, hrr⟩
-    have hh := (AC.joined_awakeU sp (List (FG.Att sp.n)) ro (H (tr.time k))
+    have hh := (AC.joined_awakeU sp (List (FG.Att sp.n)) (H (tr.time k))
       (tr.HonestBlocksAt H) _ hr.toU y hy k ell hc'.1 hj').2 r hrk hrr'
     change tr.time r ≤ sp.ts ((sp.slot (tr.time k) : Int) - 1) at hh
     rwa [← hys] at hh
@@ -181,7 +181,7 @@ theorem high_origin_held_at_vote_at
     {x y : Fin sp.n} {i j k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
     (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) (hkb : tr.time k ≤ b)
     (hj : j < e.msg.slot) (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot :=

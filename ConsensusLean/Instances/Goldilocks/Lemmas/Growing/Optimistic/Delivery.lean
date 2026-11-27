@@ -31,11 +31,11 @@ Every step is proved. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- A node awake on `[a, z]` has no restart at a cut after a call of it at a time `≥ a` and at a
 time `≤ z`, when it is honest at `z`. -/
@@ -198,7 +198,7 @@ private theorem frame_F_anc_proposal_at {ini} (hrun : Growing.GoldilocksRun prop
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) (hsb : sp.ts s + 6 * sp.Δ ≤ b)
     {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     (hBK : CommitteeBoundsFrom tr H K 0 b) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ) (hb : tr.time i ≤ b)
+    {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y i ℓ) (hb : tr.time i ≤ b)
     (hsl : sp.slot (tr.time i) ≤ s) : Anc (tr.HonestBlocksAt H) ℓ.frame.F P := by
   have hU := honestBlocksAt_coherent hrun hnc
   obtain ⟨hPo, hPU⟩ := proposal_originWithin_at hrun hnc hb0 hsync hB hinv hp hP hPs hsb hKB hBK
@@ -218,7 +218,7 @@ private theorem frame_F_anc_proposal_at {ini} (hrun : Growing.GoldilocksRun prop
   rw [hfr]
   change Anc _ (tr.state y i).fg.F P
   by_cases hg : (tr.state y i).fg.F =
-      sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload
+      sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload
   · exact honestAt_genesis_root_anc hrun hU hFU (by rw [hg]; rfl) hPU
   obtain ⟨B, hBt, -, hFB, hne⟩ := Store.F_lt_finalizer hR hg
   have hBf : B ∈ ℓ.frame.tree := by rw [hfr]; exact ⟨hBt, hFB⟩

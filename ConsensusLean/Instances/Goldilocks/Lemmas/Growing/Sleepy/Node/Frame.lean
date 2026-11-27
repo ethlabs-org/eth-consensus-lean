@@ -17,18 +17,18 @@ Lemma G). The frame lemmas of `Compose/Sleepy/Frame` lift at the cut's time `d =
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- The honest rows of `y`'s tree before cut `i` are sourced in `G`, classified at `tr.time i`. -/
-def HonestRowsSourcedAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+def HonestRowsSourcedAt (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop) (y : Fin sp.n) (i : Nat) : Prop :=
   ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H (tr.time i) →
     ∃ D, G D ∧ ∃ x k, x ∈ H (tr.time i) ∧ k ≤ i ∧ D ∈ (tr.state x k).fg.tree ∧
       ((tr.state x k).fg.σ D.root).Th = a.T
 
-theorem honestRowsSourcedAt_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+theorem honestRowsSourcedAt_iff {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)}
     {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop} {y : Fin sp.n} {i : Nat} :
     HonestRowsSourcedAt tr H G y i ↔
       ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H (tr.time i) →
@@ -38,19 +38,19 @@ theorem honestRowsSourcedAt_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (
 
 /-- `D` is the source of target `T` held, while honest at `d`, by a node before a cut whose earlier
 cuts are at times `≤ d`. -/
-def IsHonestSourceAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+def IsHonestSourceAt (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (D : AC.Blk sp.n (List (FG.Att sp.n))) (T : Nat) (d : Time) : Prop :=
   ∃ x k, x ∈ H d ∧ (∀ k' < k, tr.time k' ≤ d) ∧ D ∈ (tr.state x k).fg.tree ∧
     ((tr.state x k).fg.σ D.root).Th = T
 
-theorem isHonestSourceAt_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+theorem isHonestSourceAt_iff {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)}
     {D : AC.Blk sp.n (List (FG.Att sp.n))} {T : Nat} {d : Time} :
     IsHonestSourceAt tr H D T d ↔ ∃ x k, x ∈ H d ∧ (∀ k' < k, tr.time k' ≤ d) ∧
       D ∈ (tr.state x k).fg.tree ∧ ((tr.state x k).fg.σ D.root).Th = T :=
   Iff.rfl
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- **An honest row was signed while honest** (`honest_row_signed_before` at `d = tr.time i`): an
 attestation of a block in the tree of a node honest at cut `i`, whose signer is honest at `i`, was
@@ -78,7 +78,7 @@ seats are the slot's proposer, so the slot-`(s+1)` committee is one member (on t
 `tr.time c`), the voter (a member by the gate), and the voter has a second slot-`(s+1)` vote. -/
 theorem no_optimistic_before_held_row_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
-    {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} {s : Nat} (hy : y ∈ H (tr.time i))
     (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) {m : Nat}
     {X : AC.Blk sp.n (List (FG.Att sp.n))} (hacc : tr.AcceptAt y m X) (hmi : m < i)

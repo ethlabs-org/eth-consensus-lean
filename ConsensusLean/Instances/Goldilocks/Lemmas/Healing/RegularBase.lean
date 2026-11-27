@@ -26,12 +26,12 @@ emission read points, remapped locks and viableAncestor, not a lease or pivot-co
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF b : Time}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF b : Time}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- Finite frame transport for head equality. The receiver's finalized-ancestor guard
 is explicit; old acceptances use Catch and newer ones use their relay deadline.
@@ -40,7 +40,7 @@ private theorem frame_relay_before {K : AC.CommitteeDict sp.n}
     (hS : AC.HealthyBaseUpTo K tr.projAC H (tr.HonestBlocks H) proposer g b)
     (hnr : NoRestartAfter tr H (gbar g))
     {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {q j : Nat}
-    {ellx elly : ACLabel (goldilocksNode sp ro)}
+    {ellx elly : ACLabel (goldilocksNode sp)}
     (hcx : tr.projAC.CallAt x q ellx) (hcy : tr.projAC.CallAt y j elly)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ellx.frame.tree)
     (hg : gbar g + 2 * sp.Δ ≤ tr.time j)
@@ -84,11 +84,11 @@ theorem proposal_views_agree_before {K : AC.CommitteeDict sp.n}
     {z : Fin sp.n} (hz : z ∈ H) (hdesignated : z = proposer (s + 1))
     {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
-    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)} {pay : Payload sp.n}
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp)} {pay : Payload sp.n}
     (hp : AC.ProposalAt tr.projAC z ip ellp pay) (hti : tr.time ip = sp.ts (s + 1 : Nat))
     (hpay : P.acPayload = pay)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {elly : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {elly : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j elly e) (hes : e.msg.slot = s + 1)
     (hP : P ∈ elly.frame.tree) (hjb : tr.time j ≤ b) :
     AC.equivocators (AC.View.ofLists pay).votes =
@@ -192,7 +192,7 @@ theorem proposal_parent_viable_full_frame
     (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y : Fin sp.n} (hy : y ∈ H) {i s : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.toParams.slotTime s)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hp : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 =
@@ -208,7 +208,7 @@ theorem proposal_parent_viable_full_frame
 finite walk supplied by acProposal, without any settled-phase interface. -/
 theorem proposal_walk_end (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {z : Fin sp.n} (hz : z ∈ H) {ip : Nat}
-    {ellp : ACLabel (goldilocksNode sp ro)} (hcp : tr.projAC.CallAt z ip ellp)
+    {ellp : ACLabel (goldilocksNode sp)} (hcp : tr.projAC.CallAt z ip ellp)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hp : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 =
       some (d, pay)) :

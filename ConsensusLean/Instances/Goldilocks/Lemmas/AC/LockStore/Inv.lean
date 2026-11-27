@@ -244,9 +244,9 @@ private theorem LockInv.tryVote {A : ACState sp.n} (h : LockInv U A Φ) (x : Fin
     exact LockInv.of_eq hA₂ (admitVote_keeps_locks _ _ _).1 (admitVote_keeps_locks _ _ _).2
   · simpa only [A₃, h₃, Bool.false_eq_true, ↓reduceIte] using hA₂
 
-private theorem LockInv.step {ro : ReplayOrder sp FGP} {A : ACState sp.n} (h : LockInv U A Φ)
-    (x : Fin sp.n) (t : Time) (ht : 0 ≤ t) (c : (goldilocksAC sp FGP ro).Call) :
-    LockInv U ((goldilocksAC sp FGP ro).step x A Φ t c).1 Φ := by
+private theorem LockInv.step {A : ACState sp.n} (h : LockInv U A Φ)
+    (x : Fin sp.n) (t : Time) (ht : 0 ≤ t) (c : (goldilocksAC sp FGP).Call) :
+    LockInv U ((goldilocksAC sp FGP).step x A Φ t c).1 Φ := by
   cases c with
   | tick =>
     change LockInv U (acOnTick sp x A Φ t).1 Φ
@@ -273,17 +273,17 @@ private theorem LockInv.step {ro : ReplayOrder sp FGP} {A : ACState sp.n} (h : L
     exact LockInv.tryVote hU hΦ hΦU (LockInv.optimistic hU hΦ hΦU
       (h.of_eq (blockReceipt_keeps_locks _ _ _).1 (blockReceipt_keeps_locks _ _ _).2) _) _ _
   | restart =>
-    obtain ⟨-, hl, hr, -⟩ := (restart_state sp) FGP ro x A Φ t hΦ ht
+    obtain ⟨-, hl, hr, -⟩ := (restart_state sp) FGP x A Φ t hΦ ht
     exact h.of_eq hl hr
 
 omit hU hΦ hΦU
 
 /-- **The lock invariant at the states reachable from a start up to the vote permission.** -/
-theorem lockInv_of_reachable {ro : ReplayOrder sp FGP} {x : Fin sp.n} (hU : Coherent U)
+theorem lockInv_of_reachable {x : Fin sp.n} (hU : Coherent U)
     {s₀ : ACState sp.n} (h₀ : VoteStart sp.genesisRoot s₀)
-    {A : (goldilocksAC sp FGP ro).State} {Φ : (goldilocksAC sp FGP ro).Frm} {t₀ : Time}
-    (hr : (goldilocksAC sp FGP ro).ReachableAtFrom s₀ x U A Φ t₀) :
-    (goldilocksAC sp FGP ro).FrameIn U Φ ∧ 0 ≤ t₀ ∧ LockInv U A Φ := by
+    {A : (goldilocksAC sp FGP).State} {Φ : (goldilocksAC sp FGP).Frm} {t₀ : Time}
+    (hr : (goldilocksAC sp FGP).ReachableAtFrom s₀ x U A Φ t₀) :
+    (goldilocksAC sp FGP).FrameIn U Φ ∧ 0 ≤ t₀ ∧ LockInv U A Φ := by
   induction hr with
   | init Φ hinit hin =>
     obtain ⟨m, rfl⟩ := voteStart_iff.1 h₀
@@ -344,11 +344,11 @@ private theorem LockInv.tryVote_emits {A : ACState sp.n} (h : LockInv U A Φ) (x
 
 /-- **The emitted duty heads of a call** from a state with the lock invariant at the call's
 frame. -/
-theorem LockInv.step_emits {ro : ReplayOrder sp FGP} {A : ACState sp.n} (h : LockInv U A Φ)
-    (x : Fin sp.n) (t : Time) (ht : 0 ≤ t) (c : (goldilocksAC sp FGP ro).Call) :
-    ∀ e ∈ ((goldilocksAC sp FGP ro).step x A Φ t c).2, ∀ d, e.head = some d →
+theorem LockInv.step_emits {A : ACState sp.n} (h : LockInv U A Φ)
+    (x : Fin sp.n) (t : Time) (ht : 0 ≤ t) (c : (goldilocksAC sp FGP).Call) :
+    ∀ e ∈ ((goldilocksAC sp FGP).step x A Φ t c).2, ∀ d, e.head = some d →
       ∃ (A₁ : ACState sp.n) (V : View sp.n) (σ : Int), LockInv U A₁ Φ ∧
-        A₁.blockStamp = ((goldilocksAC sp FGP ro).step x A Φ t c).1.blockStamp ∧
+        A₁.blockStamp = ((goldilocksAC sp FGP).step x A Φ t c).1.blockStamp ∧
         d = ⟨getHead sp A₁ Φ t (Φ.viableTree (voteDomain sp A₁ Φ (sp.slot t))) V σ,
           getAnchor sp A₁ Φ t, voteDomain sp A₁ Φ (sp.slot t)⟩ := by
   cases c with
@@ -377,8 +377,8 @@ theorem LockInv.step_emits {ro : ReplayOrder sp FGP} {A : ACState sp.n} (h : Loc
       (h.of_eq (blockReceipt_keeps_locks _ _ _).1 (blockReceipt_keeps_locks _ _ _).2) _) _ _
   | restart =>
     intro e he
-    change e ∈ (acRestart sp ro x A Φ t).2 at he
-    rw [((restart_state sp) FGP ro x A Φ t hΦ ht).1] at he
+    change e ∈ (acRestart sp x A Φ t).2 at he
+    rw [((restart_state sp) FGP x A Φ t hΦ ht).1] at he
     simp at he
 
 private theorem LockInv.tryVote_readPoint {A : ACState sp.n} (h : LockInv U A Φ) (x : Fin sp.n)
@@ -404,10 +404,10 @@ private theorem LockInv.tryVote_readPoint {A : ACState sp.n} (h : LockInv U A Φ
 a state with the lock invariant at the call's frame reads a state with the invariant: the
 read point is the input of `try_vote`, after the optimistic check of a receipt and the
 unlocking, with the same record. -/
-theorem LockInv.step_readPoint {ro : ReplayOrder sp FGP} {A : ACState sp.n}
+theorem LockInv.step_readPoint {A : ACState sp.n}
     (h : LockInv U A Φ) (x : Fin sp.n) (t : Time) (ht : 0 ≤ t)
-    (c : (goldilocksAC sp FGP ro).Call) :
-    ∀ e ∈ ((goldilocksAC sp FGP ro).step x A Φ t c).2, LockInv U e.readPoint Φ := by
+    (c : (goldilocksAC sp FGP).Call) :
+    ∀ e ∈ ((goldilocksAC sp FGP).step x A Φ t c).2, LockInv U e.readPoint Φ := by
   cases c with
   | tick =>
     change ∀ e ∈ (acOnTick sp x A Φ t).2, LockInv U e.readPoint Φ
@@ -427,17 +427,17 @@ theorem LockInv.step_readPoint {ro : ReplayOrder sp FGP} {A : ACState sp.n}
       (h.of_eq (blockReceipt_keeps_locks _ _ _).1 (blockReceipt_keeps_locks _ _ _).2) _) _ _
   | restart =>
     intro e he
-    change e ∈ (acRestart sp ro x A Φ t).2 at he
-    rw [((restart_state sp) FGP ro x A Φ t hΦ ht).1] at he
+    change e ∈ (acRestart sp x A Φ t).2 at he
+    rw [((restart_state sp) FGP x A Φ t hΦ ht).1] at he
     simp at he
 
 omit hU hΦ hΦU
 
 /-- The lock invariant passes to the frame of a lawful next call. -/
-theorem LockInv.callOK {ro : ReplayOrder sp FGP} (hU : Coherent U) {A : ACState sp.n}
-    {Φ Φ' : Frm sp.n FGP} {t : Time} {c : (goldilocksAC sp FGP ro).Call}
-    (hin : (goldilocksAC sp FGP ro).FrameIn U Φ)
-    (hok : (goldilocksAC sp FGP ro).CallOK U Φ t c Φ') (h : LockInv U A Φ) :
+theorem LockInv.callOK (hU : Coherent U) {A : ACState sp.n}
+    {Φ Φ' : Frm sp.n FGP} {t : Time} {c : (goldilocksAC sp FGP).Call}
+    (hin : (goldilocksAC sp FGP).FrameIn U Φ)
+    (hok : (goldilocksAC sp FGP).CallOK U Φ t c Φ') (h : LockInv U A Φ) :
     LockInv U A Φ' := by
   obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
   obtain ⟨hF, hX⟩ := callOK_retains sp hU hin hok

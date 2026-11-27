@@ -473,17 +473,15 @@ lines 147–152 give the frame returned to the available chain.
 - **Restart is an order-free bulk stamp.** A restart keeps locks, `latestConfirmed` and `mayVote`,
   resets the remaining fields, sets `restartTime` to its time, and stamps genesis `⊥`, other
   roots in the frame `ETime.of t`, and outside roots `⊤`. It emits nothing and admits no votes.
-  The replay characterization and two-way lawful trace equivalence require `FrameOK` and
-  nonnegative time; they preserve the identical trace carrier, including state reads and emission
-  read points. This is not equality with replay on every raw input: without a parent enumeration,
-  a replay order can skip held roots; negative times are also outside the proved guard. Raw restart
-  entry points include `stepWith`, `stepWithM`, the AC interface and the node adapter's `restore`.
-  An arbitrary initial AC state alone is not an exception. The retained order parameter is unused.
-- **Restart replay order is proposer-independent.** It depends only on the validator count and the genesis root:
-  its data enumerates a frame's non-genesis blocks in parent order, with no proposer or timing dependence. Indexing
-  it by these two values, supplied from `Setup` by validator count, keeps the actual sibling order when the
-  simulation parameters use the run's proposer selection. `ReplayOrder sp` is notation for this type; no state
-  transport or freshly chosen replay order is needed for a different proposer schedule.
+  No replay order is a protocol parameter: stamping observes no enumeration, including on raw inputs.
+  Forgetting an order from a setup has a section for every validator count, including zero:
+  classically choose a parent-order enumeration when one exists, and otherwise use the empty list.
+  This construction uses only the validator count and genesis root, not runtime parameters or a
+  positive-validator hypothesis. The projection and section are not an isomorphism of setup types.
+  The historical `BeforeHighest` comparison also calls the production stamp at restart: it holds
+  restart fixed on both sides and compares only the lock and expiry rules. On a `FrameOK` frame
+  at a nonnegative time, the historical replay agrees with this stamp; outside those guards,
+  normalizing the historical restart changes the raw `BeforeHighest.stepWith` and `step` values.
 - **The publisher.** Successful block cuts, including own-proposal acceptance, enqueue signed timestamped wrappers;
   duplicate or refused calls do not. A durable node-root-to-wrapper map supplies the exact same-origin parent; the
   next selected poll drains the event queue in acceptance order through `releaseAll`, after the vote/attestation

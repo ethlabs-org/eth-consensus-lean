@@ -14,15 +14,15 @@ committee belongs to the unlock frame, rather than a run-wide honest cohort.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 /-- A vote branch of the prefix through `d` is a vote branch of the run at a time `≤ d`. -/
 theorem voteBranchAt_upTo_iff (hm : Monotone tr.time) {d : Time} {y : Fin sp.n} {j : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {R : AC.ACState sp.n} :
+    {ell : ACLabel (goldilocksNode sp)} {R : AC.ACState sp.n} :
     AC.VoteBranchAt (tr.projAC.upTo d) y j ell R ↔
       tr.time j ≤ d ∧ AC.VoteBranchAt tr.projAC y j ell R := by
   have hs (ht : tr.time j ≤ d) := Trace.upTo_state tr.projAC y (d := d) (i := j)
@@ -42,15 +42,15 @@ namespace Core
 
 variable
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- `older_locks_compatible_after_unlock_at` over a run bundle `GoldilocksRunCore`. -/
 theorem older_locks_compatible_after_unlock_at
     (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {j k u : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {R : AC.ACState sp.n}
+    {ell : ACLabel (goldilocksNode sp)} {R : AC.ACState sp.n}
     (hb : AC.VoteBranchAt tr.projAC y j ell R) (hs : sp.slot (tr.time j) = u + 1) (hjk : j < k)
     {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPt : P ∈ ell.frame.tree)
     {S : Set (Fin sp.n)}
@@ -86,11 +86,11 @@ end Core
 labels for a receiver that is still honest at the later observation, from starts up to the vote
 permission. The branch need not emit, so the receiver need not vote in that slot. -/
 theorem older_locks_compatible_after_unlock_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {j k u : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {R : AC.ACState sp.n}
+    {ell : ACLabel (goldilocksNode sp)} {R : AC.ACState sp.n}
     (hb : AC.VoteBranchAt tr.projAC y j ell R) (hs : sp.slot (tr.time j) = u + 1) (hjk : j < k)
     {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPt : P ∈ ell.frame.tree)
     {S : Set (Fin sp.n)}

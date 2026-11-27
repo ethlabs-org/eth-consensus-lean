@@ -65,11 +65,8 @@ abbrev sp : ACParams where
   c := 2
   two_le_c := le_rfl
 
-/-- A replay order (never used: nobody restarts). -/
-noncomputable abbrev ro : ReplayOrder sp (List (FG.Att sp.n)) := ReplayOrder.choice sp
-
 /-- The node. -/
-noncomputable abbrev N : NodeAC sp.toParams := goldilocksNode sp ro
+noncomputable abbrev N : NodeAC sp.toParams := goldilocksNode sp
 
 /-- The proposer of every slot. -/
 abbrev w0 : Fin sp.n := v0

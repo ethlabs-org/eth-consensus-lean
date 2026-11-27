@@ -13,36 +13,36 @@ are of slot `slot(t_j) − 1`, so their honest casts are at earlier cuts (`cast_
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- The unlock premise of `lock_keep_run_view` at node `y`, cut `j`, over the node frame
 `frameOf`: `unlock` at the view of the AC call at `j` does not move `B` (for the
 slot-`(slot(t_j) − 1)` votes). `UnlockKeeps` is this at `Node.frame`. -/
 abbrev UnlockKeepsWith
-    (frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n)))
-    (tr : GoldilocksTrace sp ro) (y : Fin sp.n) (j : Nat)
+    (frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n)))
+    (tr : GoldilocksTrace sp) (y : Fin sp.n) (j : Nat)
     (B : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∀ ℓ, tr.CallAt y j (.ac ℓ) → AC.unlockTarget sp (frameOf (tr.state y j))
-    (AC.unlockView (ro := ro) (tr.state y j).ac (frameOf (tr.state y j)) (tr.time j) ℓ.call)
+    (AC.unlockView (tr.state y j).ac (frameOf (tr.state y j)) (tr.time j) ℓ.call)
     ((sp.slot (tr.time j) : Int) - 1) B = B
 
 /-- The unlock premise of `lock_keep_run_view` at node `y`, cut `j`: `unlock` at the view of the
 AC call at `j` does not move `B` (for the slot-`(slot(t_j) − 1)` votes). -/
-abbrev UnlockKeeps (tr : GoldilocksTrace sp ro) (y : Fin sp.n) (j : Nat)
+abbrev UnlockKeeps (tr : GoldilocksTrace sp) (y : Fin sp.n) (j : Nat)
     (B : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∀ ℓ, tr.CallAt y j (.ac ℓ) → AC.unlockTarget sp (Node.frame (tr.state y j))
-    (AC.unlockView (ro := ro) (tr.state y j).ac (Node.frame (tr.state y j)) (tr.time j) ℓ.call)
+    (AC.unlockView (tr.state y j).ac (Node.frame (tr.state y j)) (tr.time j) ℓ.call)
     ((sp.slot (tr.time j) : Int) - 1) B = B
 
 /-- An honest cast of a vote of slot `slot(t_j) − 1` is at a cut before `j`. -/
 theorem cast_lt_of_slot {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {x : Fin sp.n} (hx : x ∈ H) {k j : Nat}
-    {ℓ' : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)} {e}
+    {ℓ' : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))} {e}
     (hc : AC.CastAt tr.projAC x k ℓ' e)
     (hs : (e.msg.slot : Int) = (sp.slot (tr.time j) : Int) - 1) : k < j := by
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun

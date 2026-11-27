@@ -53,7 +53,7 @@ theorem vote_label (k : Nat) : ∃ (fg' : Store sp1.toParams N1.Payload) (e : N1
 /-- The AC projection of the tick run is an AC run. -/
 theorem acRun : AC.ACRun (fun _ => v0) (tickRun N1 dg1).projAC Set.univ
     ((tickRun N1 dg1).HonestBlocks Set.univ) :=
-  Compose.goldilocks_ac_projection sp1 ro1 dg1 Set.univ (tickRun N1 dg1) (fun _ => v0)
+  Compose.goldilocks_ac_projection sp1 dg1 Set.univ (tickRun N1 dg1) (fun _ => v0)
     tickRun_goldilocksRun (dg1_noColl _)
 
 theorem etime_of_lt {a b : Time} (h : a < b) : ETime.of a < ETime.of b :=

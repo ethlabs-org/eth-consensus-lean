@@ -19,12 +19,12 @@ yielding the exact frozen endpoint without a writer-survival premise.
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Consensus.Goldilocks.Store
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- The finite domain reduction once the vote-row labels are strictly earlier. -/
@@ -34,7 +34,7 @@ private theorem held_target_vote_domain_of_row_bound_before_at
     {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (_hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     (_hBx : B ∈ (tr.state x r).fg.tree) (_hrb : tr.time r ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcast : AC.CastAt tr.projAC y i ell e) (hib : tr.time i ≤ b)
     (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B →
       B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
@@ -198,7 +198,7 @@ theorem held_target_vote_domain_before_of_quarantine_at
     {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     (hBx : B ∈ (tr.state x r).fg.tree) (hrb : tr.time r ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcast : AC.CastAt tr.projAC y i ell e) (hib : tr.time i ≤ b)
     (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B →
       B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)

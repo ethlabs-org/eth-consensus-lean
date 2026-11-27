@@ -13,11 +13,11 @@ at every public time (`SignCalendarAt … (fun _ _ => true)`), through its stock
 
 namespace Consensus.Goldilocks.Healing.Growing.Test
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
 /-- Under the stock signing calendar, every node honest at `t_u + 6Δ` reports a descendant of a
 unanimous post-drain proposal `P` of slot `u` by then, or a node honest at its report and at `c_z`

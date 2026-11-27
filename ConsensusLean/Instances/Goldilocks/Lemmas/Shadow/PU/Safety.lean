@@ -156,13 +156,13 @@ end Consensus.Goldilocks.Healing
 
 namespace Consensus.Goldilocks.Healing.Growing.Shadow
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 private theorem held_att_signed_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ini}
+    {tr : GoldilocksTrace sp} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) {a : FG.Att sp.n}
@@ -185,7 +185,7 @@ private theorem held_att_signed_at {proposer : Nat → Fin sp.n}
 honest through both observations, but the two holders need not remain honest together. -/
 theorem held_atts_safe_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ini}
+    {tr : GoldilocksTrace sp} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (_hnc : Compose.NoCollRun dg tr)
     {y x : Fin sp.n} {m i : Nat} {u t d : Time}

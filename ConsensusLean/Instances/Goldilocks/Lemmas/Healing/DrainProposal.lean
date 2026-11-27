@@ -24,14 +24,14 @@ HR.3 (retired, owner decision). -/
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF w : Time}
+  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n} {g ΔF w : Time}
   {i₀ m : Nat}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
   {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))}
 
 /-! ### The proposal precedes the votes of its slot -/
@@ -40,7 +40,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 holder accepted the block after its proposer's own block call (unforgeable blocks), which is the
 cut after the `ac_proposal` cut (one tick per node and time). -/
 private theorem proposal_before_holder (hrun : GoldilocksRun proposer dg H tr ini) {p : Fin sp.n}
-    (hpH : p ∈ H) {kP s : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
+    (hpH : p ∈ H) {kP s : Nat} {ℓp : ACLabel (goldilocksNode sp)}
     (hcP : tr.projAC.CallAt p kP ℓp) (hcall : ℓp.call = .proposal)
     (htP : tr.time kP = sp.ts s) (hs1 : 1 ≤ s) {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPs : P.slot = s) (hPprop : P.proposer = p) {z : Fin sp.n} (hz : z ∈ H) {k : Nat}
@@ -68,10 +68,10 @@ later cut; an early vote holds a slot-`s` block (`cast_readyU`), of the slot's p
 (`HonestObjects.proposer`), so it is after the proposal (`proposal_before_holder`). -/
 theorem proposal_cut_lt (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
-    {kP s : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
+    {kP s : Nat} {ℓp : ACLabel (goldilocksNode sp)}
     (hpH : proposer s ∈ H) (hcP : tr.projAC.CallAt (proposer s) kP ℓp)
     (hcall : ℓp.call = .proposal) (htP : tr.time kP = sp.ts s) (hs1 : 1 ≤ s) {y : Fin sp.n}
-    (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hv : AC.CastAt tr.projAC y k ℓ e)
     (he : e.msg.slot = s) : kP < k := by
   have hl := hrun.toLocalRun
@@ -102,8 +102,8 @@ section General
 
 open AC
 
-variable {FGP : Type} {ro' : ReplayOrder sp FGP} {U : Set (Blk sp.n FGP)}
-  {T : GTrace sp FGP ro'}
+variable {FGP : Type} {U : Set (Blk sp.n FGP)}
+  {T : GTrace sp FGP}
 
 /-- **A1.4 (a) at the proposal duty, for an ancestor `B ⪯ D` of the optimistic selection**
 (A1.4 (a) at the proposal with its hypotheses and conclusion about `B`, as
@@ -117,7 +117,7 @@ theorem optimistic_first_proposal_anc {ini} (hrun : ACRun proposer T H U ini)
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {X : Fin sp.n} (hX : X ∈ H)
     {i₀ σ : Nat} {D B : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt T X i₀ σ D CV) (hBD : Anc U B D) {x : Fin sp.n} (hx : x ∈ H)
-    {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro')} (hc : T.CallAt x i ℓ)
+    {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} (hc : T.CallAt x i ℓ)
     (hslot : sp.slot (T.time i) = σ + 1) {d : DutyHead sp.n FGP (Payload sp.n)}
     {pay : Payload sp.n}
     (hprop : (acProposal sp (T.state x i) ℓ.frame (T.time i)).2 = some (d, pay))

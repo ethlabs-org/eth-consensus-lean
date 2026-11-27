@@ -27,14 +27,14 @@ Every node quantifier reads honesty at the cut of the event it constrains:
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- **The finite Sleepy service under growing faults**: AC message service and acceptance relay
 (senders honest at the send, recipients honest at the reading call), and node acceptance relay
 inside the blocks held while honest. -/
-structure SleepyServiceBefore (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+structure SleepyServiceBefore (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (ΔF b : Time) : Prop where
   deltaF : 0 < ΔF
   message : ∀ x i v, x ∈ H (tr.time i) → tr.projAC.SendOrAdmit x i v → 0 ≤ tr.time i →
@@ -56,7 +56,7 @@ acceptances: a block that a node honest then accepted before `a` is accepted, be
 every node honest at a call from `a + κ` on whose `Σ.F` it extends (`old` at the node, `acOld` at
 its AC projection). From genesis `a = κ = 0`, and the catch-up is vacuous
 (`SleepyServiceBefore.toFrom`); after GST, `a = ḡ` with the catch-up window `κ`. -/
-structure SleepyServiceFrom (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+structure SleepyServiceFrom (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (ΔF a κ b : Time) : Prop where
   deltaF : 0 < ΔF
   kappa : 0 ≤ κ
@@ -81,7 +81,7 @@ structure SleepyServiceFrom (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin 
       Anc (tr.HonestBlocksAt H) ℓ.frame.F B →
       ∃ k < j, tr.projAC.AcceptAt y k B ∧ tr.time k < a + κ
 
-variable (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+variable (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
 
 /-- A vote cast at a cut at which its node is honest. -/
 def HVoteAt (y : Fin sp.n) (i : Nat) (e : AC.Em sp (List (FG.Att sp.n))) : Prop :=

@@ -25,11 +25,11 @@ public section
 
 namespace Consensus.Goldilocks.Regimes.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 /-- **R.2, `includeSleepy`, at a committee**, from `include_sleepy_at` through `b = t`. -/
 theorem include_sleepy : IncludeSleepy := by
-  intro sp ro dg H tr proposer ΔF K hrun hnc hKB hsl hCS τ P hP y t j ht hy hj
+  intro sp dg H tr proposer ΔF K hrun hnc hKB hsl hCS τ P hP y t j ht hy hj
   have hb0 : 0 ≤ t := by
     obtain ⟨_, kP, -, -, -, hkP⟩ := hP
     have := hrun.time_nonneg kP
@@ -40,7 +40,7 @@ theorem include_sleepy : IncludeSleepy := by
 
 /-- **R.2, `growSleepy`, at a committee**, from `grow_sleepy_at` through `b = t + D`. -/
 theorem grow_sleepy : GrowSleepy := by
-  intro sp ro dg H tr proposer ΔF k K hrun hnc hKB hsl hCS hk D t ht hrec
+  intro sp dg H tr proposer ΔF k K hrun hnc hKB hsl hCS hk D t ht hrec
   have hb0 : 0 ≤ t + D := by
     have := sp.toParams.hΔ
     positivity

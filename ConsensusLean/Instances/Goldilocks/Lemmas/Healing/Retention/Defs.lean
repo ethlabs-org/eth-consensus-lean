@@ -25,7 +25,7 @@ public section
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
 /-- `GST(g)` gives `Sync[a, b]` for every window that starts at or after `g`: an object sent at
 `τ ≥ g` is processed as if sent at `max τ g = τ`. -/
@@ -47,8 +47,8 @@ theorem syncRun_of_gst {P : Params} {A : NodeAC P} {tr : RunTrace A} {H : Set (F
     simp only [he _ hw.1] at this
     exact this
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) {K : AC.CommitteeDict sp.n}
+variable {sp : ACParams}
+  (tr : GoldilocksTrace sp) (H : Set (Fin sp.n)) {K : AC.CommitteeDict sp.n}
 
 /-- **The premises of HR.4** for the reset `a`: a Goldilocks run from the committee start of the
 slot dictionary `K` under `Healthy(g)` and `NoColl`, with the committee facts of `K` and CS2 for

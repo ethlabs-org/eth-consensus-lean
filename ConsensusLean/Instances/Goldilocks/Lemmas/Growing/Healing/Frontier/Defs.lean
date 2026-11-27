@@ -23,10 +23,10 @@ and two origins compare only from there (`clean_sources_compatible_at`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-variable (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+variable {sp : ACParams}
+variable (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
 
 /-- **The healed record cover** at the origin floor `rO`: the record `R` of `y` before cut `n`,
 read at `t`, is its finalized block, or an ancestor (inside the blocks held while honest) of a

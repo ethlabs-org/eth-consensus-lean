@@ -40,11 +40,11 @@ honest source of a crossing quorum and of `Σ.J` under `RowsAbove` (`frame_cross
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-! ### The store of an honest node whose honest attestations have compatible sources -/
 
@@ -58,7 +58,7 @@ variable {ini} (hrun : GoldilocksRun proposer dg H tr ini)
 include hrun in
 /-- With `h_j = 0`, `Σ.J` is genesis. -/
 theorem justified_genesis (h0 : (tr.state y i).fg.hj = 0) (hy : y ∈ H) :
-    (tr.state y i).fg.J = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
+    (tr.state y i).fg.J = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload :=
   FrameGeometry.justified_genesis hrun.toLocalRun h0 hy
 
 include hrun hnc hf hy in

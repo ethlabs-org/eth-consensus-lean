@@ -28,7 +28,7 @@ The run `trW` (each post-state the call's literal output, threaded):
 | 2 | `12 = t_3` | `ac_to_fg` | returns `B1` (live fast lock of slot `1 ≥ slot(12) − 2`) |
 | 3 | `14 = t_2 + 6Δ` | `ac_on_tick` | the update of slot `2` |
 
-`*_premises_satisfiable` state, for each statement at `sp1`, `FGP := Unit`, `ro1`, that there are
+`*_premises_satisfiable` state, for each statement at `sp1`, `FGP := Unit`, that there are
 values of all its universally bound variables satisfying `ACRun` (`ACLocalRun` for `SourceAge`)
 and every hypothesis (copied from
 the statement); `*_on_witness` apply the proved milestones (`acStepsAt`) to the run. -/
@@ -592,7 +592,7 @@ noncomputable def ℓ3 : ACLabel GA1 := ⟨.tick, Φ₁, r3.2⟩
 /-- The run: `v0` accepts `B1` at `t_1 = 4` (its slot-`1` vote and optimistic lock), ticks at
 `t_2 + Δ = 9` (its slot-`2` vote and optimistic lock), calls `ac_to_fg` at `t_3 = 12` and ticks at
 `t_2 + 6Δ = 14` (the update of slot `2`); every post-state is the call's output. -/
-noncomputable def trW : GTrace sp1 Unit ro1 where
+noncomputable def trW : GTrace sp1 Unit where
   init := fun _ => ACState.initial 0
   node := fun _ => v0
   time := fun i => if i = 0 then 4 else if i = 1 then 9 else if i = 2 then 12 else 14
@@ -925,10 +925,10 @@ theorem toFG_W : ToFGAt trW v0 2 ℓ2 B1 :=
 statement holds of the run at `s = 1`, with the full committee: `v0`'s optimistic lock of slot `1`
 on `B1` at cut 0 and its slot-`2` vote at cut 1. -/
 theorem optimisticTransfer_premises_satisfiable :
-    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : GTrace sp1 Unit ro1)
+    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : GTrace sp1 Unit)
       (proposer : Nat → Fin sp1.n) (K : CommitteeDict sp1.n) (s : Nat) (x y : Fin sp1.n)
       (i₀ i : Nat) (B : Blk sp1.n Unit) (CV : Set (Vote sp1.n))
-      (ℓ : ACLabel (goldilocksAC sp1 Unit ro1)) (e : Em sp1 Unit),
+      (ℓ : ACLabel (goldilocksAC sp1 Unit)) (e : Em sp1 Unit),
     ACRun proposer tr H U ∧
     CommitteeP K tr H ∧ CommitteeT K tr H ∧ (∀ σ, (K.committee σ).ncard = sp1.committeeSize) ∧
     x ∈ H ∧ OptimisticLockAt tr x i₀ s B CV ∧
@@ -946,9 +946,9 @@ statement holds of the run at `s = 1`, `B = B1` (not genesis, so the fast-select
 conclusion is in force), with the full committee: the update of slot `2` at cut 3, holding
 `vote2` (stamp `9`, resolved before `t_2 + 2Δ = 10`). -/
 theorem optimisticNextUpdate_premises_satisfiable :
-    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : GTrace sp1 Unit ro1)
+    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : GTrace sp1 Unit)
       (proposer : Nat → Fin sp1.n) (K : CommitteeDict sp1.n) (s : Nat) (z : Fin sp1.n) (k : Nat)
-      (B : Blk sp1.n Unit) (ℓ : ACLabel (goldilocksAC sp1 Unit ro1)),
+      (B : Blk sp1.n Unit) (ℓ : ACLabel (goldilocksAC sp1 Unit)),
     ACRun proposer tr H U ∧
     CommitteeP K tr H ∧ CommitteeT K tr H ∧ (∀ σ, (K.committee σ).ncard = sp1.committeeSize) ∧
     2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp1.committeeSize ∧
@@ -965,10 +965,10 @@ theorem optimisticNextUpdate_premises_satisfiable :
 the run at `τ = 0`: `ac_to_fg` returns `B1` at cut 2, time `12`, and
 `slot(0) + 3 = 3 = slot(12)`. -/
 theorem sourceAge_premises_satisfiable :
-    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : GTrace sp1 Unit ro1)
+    ∃ (H : Set (Fin sp1.n)) (U : Set (Blk sp1.n Unit)) (tr : GTrace sp1 Unit)
       (τ : Time) (x : Fin sp1.n) (i : Nat)
-      (ℓ : ACLabel (goldilocksAC sp1 Unit ro1)) (C : Blk sp1.n Unit),
-    ACLocalRun (goldilocksAC sp1 Unit ro1) H U tr ∧
+      (ℓ : ACLabel (goldilocksAC sp1 Unit)) (C : Blk sp1.n Unit),
+    ACLocalRun (goldilocksAC sp1 Unit) H U tr ∧
     x ∈ H ∧ ToFGAt tr x i ℓ C ∧ sp1.slot τ + 3 ≤ sp1.slot (tr.time i) :=
   ⟨Set.univ, U₁, trW, 0, v0, 2, ℓ2, B1, acRun_W.localRun, trivial, toFG_W, by decide⟩
 
@@ -1000,7 +1000,7 @@ private theorem constant_run : Growing.ACRun (fun _ => v0) trW (fun _ => Set.uni
 
 /-- A1.4 (a) on the run: the slot-`2` vote extends `B1`. -/
 theorem optimisticTransfer_on_witness : VoteExtends U₁ e1.msg B1 :=
-  (Growing.acStepsAt sp1).optimisticTransfer Unit ro1 (fun _ => Set.univ) U₁ trW
+  (Growing.acStepsAt sp1).optimisticTransfer Unit (fun _ => Set.univ) U₁ trW
     (fun _ => v0) constant_run
     (CommitteeDict.full sp1.n) CommitteePAt.full
     (fun _ _ _ _ _ _ _ v _ => mem_full v.slot _) (size_binding_full rfl) 1 v0 v0 0 1
@@ -1012,7 +1012,7 @@ genesis, its fast test selects a block extending `B1`. -/
 theorem optimisticNextUpdate_on_witness :
     ∃ C, getConfirmation sp1 (trW.state v0 3) ℓ3.frame (1 + 1) = some C ∧ Anc U₁ B1 C ∧
       ∃ D, fastSelect sp1 (trW.state v0 3) ℓ3.frame (1 + 1) C = some D ∧ Anc U₁ B1 D := by
-  obtain ⟨C, hC, hBC, hD⟩ := (Growing.acStepsAt sp1).optimisticNextUpdate Unit ro1
+  obtain ⟨C, hC, hBC, hD⟩ := (Growing.acStepsAt sp1).optimisticNextUpdate Unit
     (fun _ => Set.univ) U₁ trW (fun _ => v0) constant_run
     (CommitteeDict.full sp1.n) CommitteePAt.full (fun _ _ _ _ _ _ _ v _ => mem_full v.slot _)
     (size_binding_full rfl) 1 v0 3 B1 ℓ3 faultsK_W
@@ -1026,7 +1026,7 @@ lock of a slot `s'` with `slot(12) ≤ s' + 2`, written after time `0` (deep sou
 theorem sourceAge_on_witness :
     ∃ j ≤ 2, ∃ s' B' CV', FastLockAt trW v0 j s' B' CV' ∧ (0 : Time) < trW.time j ∧
       sp1.slot (trW.time 2) ≤ s' + 2 ∧ Anc U₁ B1 B' :=
-  ((Growing.acStepsAt sp1).sourceAge Unit ro1 (fun _ => Set.univ) U₁ trW
+  ((Growing.acStepsAt sp1).sourceAge Unit (fun _ => Set.univ) U₁ trW
     constant_run.localRun
     0 v0 2 ℓ2 B1 trivial toFG_W (by decide)).resolve_right fun ⟨_, _, hD, _⟩ => nomatch hD
 

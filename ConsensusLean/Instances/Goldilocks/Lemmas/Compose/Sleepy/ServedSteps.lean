@@ -44,11 +44,11 @@ latest view's slot at `t`. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- Inside a coherent `U`, ancestry towards a block of a subset `S ⊆ U` in which every block
 descends from a parentless root stays inside `S` (`S` is parent-closed). -/
@@ -129,7 +129,7 @@ theorem record_step_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : 
     exact ⟨C, hΦU hC, rfl, hEE₁.trans hE₁C, Or.inl hC, hCc⟩
 
 /-- The cuts of a tick: the AC's tick, the proposal step, the FG update. -/
-theorem exec_tick_cuts (y : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time)
+theorem exec_tick_cuts (y : Fin sp.n) (st : NodeState (goldilocksNode sp)) (t : Time)
     (x : Nat) (fgDue : Bool) :
     (Node.exec proposer dg y st t (.tick x fgDue)).2 =
       (Node.tickStep proposer dg y st t x .acTick).2 ++
@@ -152,7 +152,7 @@ theorem tickAt_acCall {y : Fin sp.n} {j : Nat} {T : Time} (hT : tr.TickAt propos
     simp only [exec_tick_cuts]; rfl
   rw [hget] at hl0
   simp only [Nat.add_zero] at hn0 ht0 hl0
-  obtain ⟨ℓ, hl, hcall⟩ : ∃ ℓ : ACLabel (goldilocksNode sp ro),
+  obtain ⟨ℓ, hl, hcall⟩ : ∃ ℓ : ACLabel (goldilocksNode sp),
       tr.label j = some (.ac ℓ) ∧ ℓ.call = .tick := ⟨_, hl0, rfl⟩
   exact ⟨ℓ, projAC_callAt.2 ⟨hn0, hl⟩, hcall, ht0⟩
 
@@ -192,7 +192,7 @@ cut `i` at or after it, `y`'s tick at `t` (if any) at or before cut `i`, and `y`
 joined at `t`. -/
 structure ReadAtCut (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (tr : GoldilocksTrace sp ro) (y : Fin sp.n) (i : Nat) (t : Time) : Prop where
+    (tr : GoldilocksTrace sp) (y : Fin sp.n) (i : Nat) (t : Time) : Prop where
   /-- The read time is from `0` on. -/
   nonneg : 0 ≤ t
   /-- Every cut before `i` is at or before `t`. -/
@@ -212,7 +212,7 @@ the stored locks and the caches; origins `O`, among them those whose event prece
 viable at the cuts up to `i` and extended by the earlier honest votes of later slots; and the
 service `Service` (`ReadSyncOrService` at the served head). `Compose/Sleepy/Served` builds it
 under `Sleepy` from the full invariant, or from the invariant up to `b ≥ t`. -/
-structure ReadInvWith (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+structure ReadInvWith (tr : GoldilocksTrace sp) (H : Set (Fin sp.n))
     (Ch : AC.Blk sp.n (List (FG.Att sp.n)) → Prop)
     (O : AC.Blk sp.n (List (FG.Att sp.n)) → Nat → Prop) (y : Fin sp.n) (i : Nat) (t : Time)
     (Service : Prop) : Prop where
@@ -230,8 +230,8 @@ structure ReadInvWith (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
     s < e.msg.slot → AC.VoteExtends (tr.HonestBlocks H) e.msg C
   sync : Service
 
-abbrev ReadSyncOrService (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (t : Time) :=
-  SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) 0 (t - sp.Δ) tr.projAC ∨
+abbrev ReadSyncOrService (tr : GoldilocksTrace sp) (H : Set (Fin sp.n)) (t : Time) :=
+  SyncAC (goldilocksNode sp) H (tr.HonestBlocks H) 0 (t - sp.Δ) tr.projAC ∨
     AC.ServiceBefore H (tr.HonestBlocks H) t tr.projAC
 
 /-- **The tick of the latest view's slot at a read.** At a read of an honest node at `t`, with
@@ -375,7 +375,7 @@ theorem honest_head_in_frame_at_read {ini} (hrun : GoldilocksRun proposer dg H t
       rw [frame_of_projAC hrun hy hck] at h2
       exact (fg_grows hrun hy hk₂j).1 h2.1
   have hanc : ∀ m, ∀ B ∈ (tr.state y m).fg.tree, (tr.state y m).fg.Anc
-      (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) B := fun m =>
+      (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload) B := fun m =>
     (Store.accepted_tree _ _ _ _ (fg_reachable hrun.toLocalRun hy m)).2.2.2
   have hHdjc : Hd' ∈ (Node.frame (tr.state y jc)).tree :=
     ⟨hinj, anc_of_anc_superset hU (fun X hX => ⟨y, hy, jc, hX⟩) (by simp [Params.genesisBlock])
@@ -444,7 +444,7 @@ theorem latest_vote_delivered {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     obtain ⟨j, -, e', hv', he'⟩ :=
       pool_vote_emitted hrun hy m σ a ha (by rw [hav, hval]; exact hx)
     rw [hav, hval] at hv'
-    obtain ⟨-, rfl⟩ := AC.one_vote_per_slotU sp _ _ _ _ _ hr.toU x hx j k e' e hv' ⟨ℓ, hck, he⟩
+    obtain ⟨-, rfl⟩ := AC.one_vote_per_slotU sp _ _ _ _ hr.toU x hx j k e' e hv' ⟨ℓ, hck, he⟩
       (by rw [he', has])
     exact he'.symm
   have hk : tr.projAC.time k ≤ sp.ts L + sp.Δ := by

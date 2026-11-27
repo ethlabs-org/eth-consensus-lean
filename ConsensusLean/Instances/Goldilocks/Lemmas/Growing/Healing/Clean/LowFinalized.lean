@@ -131,11 +131,11 @@ end Consensus.Goldilocks.Growing
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- The FG projection's store of a reader honest at `t`, after cuts by `t`, is the run's. -/
@@ -168,13 +168,13 @@ theorem low_finalized_below_origin_at {cm : Time → Finset (Fin sp.n)} {βK : �
   have hcoh : Coherent (tr.state y m).fg.tree := hU.mono hsub
   have hg := Store.genesis_mem hreach
   have hgB : Anc (tr.HonestBlocksAt H)
-      (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) B :=
+      (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload) B :=
     ((Goldilocks.Store.accepted_tree _ _ _ _
       (fg_reachable_at hrun hi0 hlei hx)).2.2.2 B hBt).mono
         (fun X hX => (⟨x, i, tr.time i, hi0, hlei, hx, hX⟩ : X ∈ tr.HonestBlocksAt H))
   obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, -, ⟨Bf, hBf, hBfF⟩⟩ :=
     Goldilocks.Store.cache_invariants _ _ _ _ hreach
-  have hgF : (tr.state y m).fg.Anc (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload)
+  have hgF : (tr.state y m).fg.Anc (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload)
       (tr.state y m).fg.F := (Goldilocks.Store.accepted_tree _ _ _ _ hreach).2.2.2 _ hFm
   -- a genesis `Σ.F` is below `B`
   have hgen : (tr.state y m).fg.F.root = sp.toParams.genesisRoot →
@@ -192,10 +192,10 @@ theorem low_finalized_below_origin_at {cm : Time → Finset (Fin sp.n)} {βK : �
     exact hgen (congrArg Block.root (Anc.antisymm hcoh hFJ hgF))
   have h₁ := h_le_of_store_anc hreach hFJ
   -- G1.2 at strict height, the faults counted at the later observation
-  have hfg : Consensus.Goldilocks.Growing.FGLocalRun (goldilocksNode sp ro).genesisPayload H
+  have hfg : Consensus.Goldilocks.Growing.FGLocalRun (goldilocksNode sp).genesisPayload H
       (tr.HonestBlocksAt H) tr.projFG :=
     Compose.Growing.fg_projection _ _ dg H _ tr proposer
-      (fun y => Compose.requirements_from sp ro (hrun.vstart y))
+      (fun y => Compose.requirements_from sp (hrun.vstart y))
       hrun.genesis_root_ok hrun.toLocalRun hnc
   have hH : (H (max t (tr.time i)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
     have h3 := hp.faults (max t (tr.time i)) (ht.trans (le_max_left _ _)) (max_le htb hib)

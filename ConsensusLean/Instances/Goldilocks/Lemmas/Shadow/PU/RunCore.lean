@@ -12,11 +12,11 @@ The static, growing and reset cores use the canonical run-facts bundles.
 
 namespace Consensus.Goldilocks
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {tr : GoldilocksTrace sp} {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- The node-run bundle under growing faults, obtained from the canonical growing core. -/
 theorem Growing.GoldilocksRun.toLocalRunCore {H : Time → Set (Fin sp.n)}

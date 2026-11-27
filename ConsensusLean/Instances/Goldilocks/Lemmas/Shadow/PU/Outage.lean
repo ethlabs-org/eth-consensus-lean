@@ -37,36 +37,36 @@ namespace Consensus.Goldilocks.Shadow.PU
 
 open Consensus.Goldilocks.Compose Consensus.Goldilocks.Compose.Growing
 open Consensus.Goldilocks.Coherence
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
-variable {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+variable {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 
 /-- Membership in the shadow frame's tree is the store's tree above `F`. -/
-theorem mem_frame_tree {st : NodeState (goldilocksNode sp ro)}
+theorem mem_frame_tree {st : NodeState (goldilocksNode sp)}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} :
     B ∈ (Node.frame st).tree ↔ B ∈ st.fg.tree ∧ st.fg.Anc st.fg.F B := by
   rw [Node.frame_eq, Store.toFrame_tree]; exact Iff.rfl
 
 /-- Ancestry in the shadow frame is ancestry in the store's tree above `F`. -/
-theorem frame_anc_iff {st : NodeState (goldilocksNode sp ro)}
+theorem frame_anc_iff {st : NodeState (goldilocksNode sp)}
     {A B : AC.Blk sp.n (List (FG.Att sp.n))} :
     (Node.frame st).Anc A B ↔ Anc {X | X ∈ st.fg.tree ∧ st.fg.Anc st.fg.F X} A B := by
   change Anc (Node.frame st).tree A B ↔ _
   rw [Node.frame_eq, Store.toFrame_tree]
 
-theorem frame_F (st : NodeState (goldilocksNode sp ro)) : (Node.frame st).F = st.fg.F := by
+theorem frame_F (st : NodeState (goldilocksNode sp)) : (Node.frame st).F = st.fg.F := by
   rw [Node.frame_eq, Store.toFrame_F]
 
 /-- **The premise package of the outage lock module under growing faults**, at trace level, from
 the starts `ini`, on a shadow run: the generic package `OutageLockPremisesOver` at the shadow run
 bundle `Growing.GoldilocksRun'.toCore` (`Store.updateFinality'`, `Node.frame'`). -/
-abbrev OutageLockPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+abbrev OutageLockPremises (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (ini : Fin sp.n → (goldilocksNode sp ro).State) :=
+    (ini : Fin sp.n → (goldilocksNode sp).State) :=
   OutageLockPremisesOver (R := Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (u := Store.updateFinality) (frameOf := Node.frame) tr H proposer dg ini
     (fun h => h.toCore)
@@ -301,9 +301,9 @@ theorem mem_honestBlocksAt
 theorem honestAt_genesis_anc
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocksAt H) :
-    sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload ∈ tr.HonestBlocksAt H ∧
+    sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload ∈ tr.HonestBlocksAt H ∧
       Anc (tr.HonestBlocksAt H)
-        (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) B := by
+        (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload) B := by
   obtain ⟨t, ht, hBt⟩ := exists_upTo_of_mem hB
   obtain ⟨hg, hanc⟩ := FrameGeometry.honest_genesis_anc (hrun.upTo ht).toLocalRun hBt
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono ht
@@ -319,7 +319,7 @@ theorem acRun_upTo (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer d
 /-- A frame of a call of a node honest then is well formed, inside the blocks held while honest
 (`frameIn_at`). -/
 theorem frameIn_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hnc : NoCollRun dg tr) (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ℓ) : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocksAt H :=
   have h := AC.frameIn_of_callAt (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
     ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
@@ -334,7 +334,7 @@ theorem source_compatible_at
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hlocks : ∀ l ∈ (tr.state y k).ac.locks, ∃ L ∈ (tr.state y k).fg.tree, L.root = l.block ∧
       Compatible (tr.HonestBlocksAt H) L B)
-    {ℓ : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : AC.ToFGAt tr.projAC y k ℓ C) : Compatible (tr.HonestBlocksAt H) C B := by
   have hU := Coherence.honestBlocksAt_coherent hrun hnc
   obtain ⟨hpc, -, hC⟩ := h

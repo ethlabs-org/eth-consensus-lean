@@ -23,10 +23,10 @@ open Blocks Shape Node
 
 variable {binding : VoteBinding}
 
-variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+variable {sp : AC.ACParams}
+  {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- Every cut up to an acceptance cut is at a time no later than it. -/
 private theorem time_le_acc (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
@@ -196,7 +196,7 @@ theorem forward_receipt_held_at
     (hd : 0 ≤ d) (hbj : ∀ k < j, tr.time k ≤ d) (hy : y ∈ H d)
     {io : VoteAuth sp.n binding} {hs : List (Header Info × Nat)} {u : Time} {B : Blk sp}
     (hFB : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B) :
-    ∀ (A : Blk sp) (o : Wire sp.n binding) (σ : State sp ro binding) (t : Time)
+    ∀ (A : Blk sp) (o : Wire sp.n binding) (σ : State sp binding) (t : Time)
       (p : Option (Wire sp.n binding)) (r e : Nat),
       decodeForward sp hs o = some (x, t, p, A) →
       DeliverSeq proposer tr dg io hs y u (visit io hs σ o).1 r e → e ≤ j → t ≤ u →
@@ -213,7 +213,7 @@ theorem forward_receipt_held_at
     have hre := (deliverSeq_cover hseq).1
     have child (m : Nat) (P : Blk sp) (hPe : P ∈ (tr.state y m).fg.tree)
         (hp : A.parent = some P.root)
-        (σ' : State sp ro binding)
+        (σ' : State sp binding)
         (hchild : DeliverSeq proposer tr dg io hs y u
           (visit io hs σ' (blockObj sp A (binding := binding))).1 m e) :
         A ∈ (tr.state y e).fg.tree := by
@@ -239,7 +239,7 @@ theorem forward_receipt_held_at
       have ho := forwardObj_of_decodeForward hs o x t none A hd'
       rw [ho] at hseq
       obtain ⟨σ', hchild⟩ := deliverSeq_forward_genesis hseq
-      apply child r (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload)
+      apply child r (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload)
       · exact (Store.accepted_tree sp.toParams _ _ _
           (reachable_upTo hrun hd (fun k hk => hbj k (by omega)) hy)).2.2.1
       · exact hgen

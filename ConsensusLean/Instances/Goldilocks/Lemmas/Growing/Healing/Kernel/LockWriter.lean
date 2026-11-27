@@ -12,14 +12,14 @@ honesty of the writer at those cuts, without assuming survival to another reader
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Vote)
+open AC (ACParams Vote)
 
-variable {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
-  {T : AC.GTrace sp FGP ro} {H : Time → Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)}
+variable {sp : ACParams} {FGP : Type}
+  {T : AC.GTrace sp FGP} {H : Time → Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)}
 
 /-- Counted votes were released and their heads accepted while the writer was honest. -/
 theorem fastLock_writer_at {ini}
-    (hr : Goldilocks.Growing.ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    (hr : Goldilocks.Growing.ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} {i s : Nat} (hx : x ∈ H (T.time i))
     {D : AC.Blk sp.n FGP} {CV : Set (Vote sp.n)} (hfl : AC.FastLockAt T x i s D CV) :

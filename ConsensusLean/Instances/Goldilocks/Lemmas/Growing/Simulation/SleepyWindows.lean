@@ -308,7 +308,7 @@ end MapWindows
 theorem goldilocks_sleepy_window_supply :
     ∀ (S : Setup) (E : Env V) (rho : Model.Run (compiled (goldilocks S)) E)
       (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid) (K : Contract ProgressReq)
-      {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn))
         (goldilocksRunMap S rho hn hv).signer fgHold),
       C.θ = K.params.θ → 0 ≤ C.θ → C.θ ≤ 1 →
       C.look = (Sys (goldilocks S) V).aheadDur K ⟨E, rho⟩ →
@@ -420,11 +420,11 @@ budget, for every run map of the binding's parameters. -/
 theorem goldilocks_outageRecoveryBinding (S : Setup) (A : ContractAssumptions S) {E : Env V}
     {rho : Model.Run (compiled (goldilocks S)) E} (hn : 1 ≤ Fintype.card V)
     {payload : Blk (S.params (pubOf E) hn) → Set Nat}
-    (M : RunMap (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) rho payload)
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+    (M : RunMap (A := goldilocksNode (S.params (pubOf E) hn)) rho payload)
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn))
       (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G Rg)
+    {Rg : Nat} (hC : GoldilocksLocalData (S.params (pubOf E) hn) C sign G Rg)
     (hsg : (fun v => v.val) = M.signer) :
     OutageRecoveryBinding M (goldilocksContract A (contract_coefficients S A)) (hsg ▸ C) := by
   obtain ⟨-, hθ, hc, hl, hcl, -, -, -, hr, hη, hlag, hb, -, -⟩ := hC
@@ -470,15 +470,15 @@ variable {V : Type} [Fintype V] [DecidableEq V] (S : Setup) {E : Env V}
 /-- The canonical map supplies the slot-constant committee and the horizon binding;
 the local data equations supply the numerical fits, not an existential supplier. -/
 private theorem canonical_window_premises
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn))
       (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G Rg)
+    {Rg : Nat} (hdata : GoldilocksLocalData (S.params (pubOf E) hn) C sign G Rg)
     {p : EnvPoint (Fin (Fintype.card V))} {ΔF b : Time}
     (hb : b ≤ rho.horizon)
     (hbind : RunPointBinding (goldilocksRunMap S rho hn hv).trace
       (goldilocksRunMap S rho hn hv).honest p)
-    {C' : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+    {C' : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn))
       (goldilocksRunMap S rho hn hv).signer fgHold}
     (hserved : C'.served = fun tr y j τ m => AC.FamilyFacts.MessageServedBefore tr.projAC y j τ m)
     (hpre : SleepyServicePrefix C' (goldilocksRunMap S rho hn hv).trace
@@ -508,13 +508,13 @@ private theorem canonical_window_premises
 
 /-- The fixed concrete event proof supplies the generic map-bound event-safety row. -/
 theorem goldilocksRunMap_event_safety
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn))
       (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G Rg) :
+    {Rg : Nat} (hdata : GoldilocksLocalData (S.params (pubOf E) hn) C sign G Rg) :
     EventSafety (goldilocksRunMap S rho hn hv)
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
-      (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
+      (goldilocksEvents (S.params (pubOf E) hn)) := by
   intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes B B' hB hB'
   obtain ⟨hsv, hl, hc, hr, hcl, hθ⟩ :=
     Generic.ACCorrectLocal.cast_signer (goldilocksRunMap_signer S rho hn hv).symm C
@@ -524,7 +524,7 @@ theorem goldilocksRunMap_event_safety
   rw [hr] at hrun
   rw [hl] at hpre
   simp only [CommitteeWindow, PopulationWindow, hl, hc, hcl, hθ] at hK hpop
-  have hrun' : (goldilocksRunInterface (S.params (pubOf E) hn) (S.ro _) sign G).Run
+  have hrun' : (goldilocksRunInterface (S.params (pubOf E) hn) sign G).Run
       (goldilocksRunMap S rho hn hv).committee (goldilocksRunMap S rho hn hv).proposer
       (goldilocksRunMap S rho hn hv).digest (goldilocksRunMap S rho hn hv).honest
       (goldilocksRunMap S rho hn hv).trace := by
@@ -539,13 +539,13 @@ theorem goldilocksRunMap_event_safety
 
 /-- The concrete extension proof keeps the canonical map's two read boundaries. -/
 theorem goldilocksRunMap_extension
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn))
       (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G Rg) :
+    {Rg : Nat} (hdata : GoldilocksLocalData (S.params (pubOf E) hn) C sign G Rg) :
     Extension (goldilocksRunMap S rho hn hv)
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
-      (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
+      (goldilocksEvents (S.params (pubOf E) hn)) := by
   intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes y i j t u hi hj hbi hbj hij htu
   obtain ⟨hsv, hl, hc, hr, hcl, hθ⟩ :=
     Generic.ACCorrectLocal.cast_signer (goldilocksRunMap_signer S rho hn hv).symm C
@@ -566,13 +566,13 @@ theorem goldilocksRunMap_extension
 
 /-- The proposal adapter retains the local hold and margin equations. -/
 theorem goldilocksRunMap_proposal_coverage
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn))
       (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hdata : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G Rg) :
+    {Rg : Nat} (hdata : GoldilocksLocalData (S.params (pubOf E) hn) C sign G Rg) :
     ProposalCoverage (goldilocksRunMap S rho hn hv)
       ((goldilocksRunMap_signer S rho hn hv).symm ▸ C)
-      (goldilocksEvents (S.params (pubOf E) hn) (S.ro _)) := by
+      (goldilocksEvents (S.params (pubOf E) hn)) := by
   intro ΔF b p hb hrun hnc hbind hpre hK hpop hframes B k y j t hP hk hhold hkb hkt hy hread hjt
   obtain ⟨hsv, hl, hc, hm, hh, hr, hcl, hθ⟩ :=
     Generic.ACCorrectLocal.cast_signer (goldilocksRunMap_signer S rho hn hv).symm C

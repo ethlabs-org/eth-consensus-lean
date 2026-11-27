@@ -18,15 +18,15 @@ or service premise is reconstructed for a retained cohort.
 
 namespace Consensus.Goldilocks.Healing.Growing.Outcome
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+  {tr : GoldilocksTrace sp} {H : Set (Fin sp.n)}
 
 private theorem fastLock_frame_mem {x : Fin sp.n} {i s : Nat}
     {D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
-    (h : AC.FastLockAt tr.projAC x i s D CV) {ell : ACLabel (goldilocksNode sp ro)}
+    (h : AC.FastLockAt tr.projAC x i s D CV) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt x i ell) : D ∈ ell.frame.tree := by
   rcases h with ⟨ell', C, ⟨hc', -⟩, -, hD, -⟩ | ⟨ell', A, ⟨hc', -⟩, -, hsel, -⟩
   · obtain rfl : ell' = ell := Option.some.inj (hc'.2.symm.trans hc.2)
@@ -59,7 +59,7 @@ fast-lock candidate (`hfast`, needed only at sources at least as high as the row
 need not sit below a fast lock. This local extraction does not mention a reset or a snapshot
 height. -/
 theorem signed_entry_source_core
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     {u frameOf} (hrun : StaticRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {v : Fin sp.n} (hv : v ∈ H) {d : Nat} {att : FG.Att sp.n}
@@ -151,7 +151,7 @@ is signed before the deep quarantine ends (`hq`), so its high source is a fast-l
 (`KernelProof.high_toFG_fast_at`). -/
 theorem high_row_source_at_core
     {H : Time → Set (Fin sp.n)}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     {u frameOf} (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g : Time}
     {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
@@ -207,7 +207,7 @@ theorem high_row_source_at_core
     ⟨CV, ell, D, hc', hfl', hO⟩, hh.trans hOh⟩, E, hE, hEO, hEr, hEh, hETh⟩
 
 /-- Stock specialization of signed-entry extraction. -/
-theorem signed_entry_source {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem signed_entry_source {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {v : Fin sp.n} (hv : v ∈ H) {d : Nat} {att : FG.Att sp.n}
     (hs : tr.SignAt v d att)
@@ -224,7 +224,7 @@ theorem signed_entry_source {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Stock specialization of high-row provenance. -/
 theorem high_row_source_at {H : Time → Set (Fin sp.n)}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g : Time}
     {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}

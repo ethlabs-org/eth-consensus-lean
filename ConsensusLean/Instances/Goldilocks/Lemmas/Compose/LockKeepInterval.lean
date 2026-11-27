@@ -15,11 +15,11 @@ ancestor, and `unlock` does not move it, then `y` holds `l` at cut `k`. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-! ## With the view that `unlock` reads
 
@@ -29,7 +29,7 @@ unlock premise at the view of the AC call made at the cut
 
 /-- One cut of lock keeping, with the unlock premise at the view `AC.unlockView` of the AC call
 at cut `i`. -/
-theorem lock_keep_run_view {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem lock_keep_run_view {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H)
     (i : Nat) {l : AC.Lock} (hl : l ∈ (tr.state y i).ac.locks)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hk : l.LiveAt sp (tr.time i))
@@ -37,7 +37,7 @@ theorem lock_keep_run_view {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hva : (Node.frame (tr.state y i)).viableAncestor B = B)
     (hu : ∀ ℓ, tr.CallAt y i (.ac ℓ) → (sp.slot (tr.time i) : Int) - 1 ≤ l.slot ∨
       AC.unlockTarget sp (Node.frame (tr.state y i))
-        (AC.unlockView (ro := ro) (tr.state y i).ac (Node.frame (tr.state y i)) (tr.time i)
+        (AC.unlockView (tr.state y i).ac (Node.frame (tr.state y i)) (tr.time i)
           ℓ.call) ((sp.slot (tr.time i) : Int) - 1) B = B) :
     l ∈ (tr.state y (i + 1)).ac.locks := by
   by_cases hc : ∃ c, tr.CallAt y i c
@@ -48,7 +48,7 @@ theorem lock_keep_run_view {ini : Fin sp.n → (goldilocksNode sp ro).State}
     | ac ℓ =>
       obtain ⟨hfr, hstep, -, -⟩ := hlaw
       rw [hfr] at hstep
-      have := AC.mem_step_locks_of_keep_view (ro := ro) y ℓ.call
+      have := AC.mem_step_locks_of_keep_view y ℓ.call
         (frameOK_state hrun.toLocalRun hy i) (hrun.time_nonneg i) hl hk hB hBr hva (hu ℓ hc)
       rw [hstep] at this
       exact this
@@ -68,7 +68,7 @@ theorem lock_keep_run_view {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Lock keeping over an interval of cuts, with the unlock premise at the view of the AC call
 at each cut. -/
-theorem lock_keep_interval_view {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem lock_keep_interval_view {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i k : Nat} (hik : i ≤ k) {l : AC.Lock} (hl : l ∈ (tr.state y i).ac.locks)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hBr : B.root = l.block)
@@ -77,7 +77,7 @@ theorem lock_keep_interval_view {ini : Fin sp.n → (goldilocksNode sp ro).State
       (Node.frame (tr.state y j)).viableAncestor B = B ∧
       ∀ ℓ, tr.CallAt y j (.ac ℓ) → (sp.slot (tr.time j) : Int) - 1 ≤ l.slot ∨
         AC.unlockTarget sp (Node.frame (tr.state y j))
-          (AC.unlockView (ro := ro) (tr.state y j).ac (Node.frame (tr.state y j)) (tr.time j)
+          (AC.unlockView (tr.state y j).ac (Node.frame (tr.state y j)) (tr.time j)
             ℓ.call) ((sp.slot (tr.time j) : Int) - 1) B = B) :
     l ∈ (tr.state y k).ac.locks := by
   induction k, hik using Nat.le_induction with

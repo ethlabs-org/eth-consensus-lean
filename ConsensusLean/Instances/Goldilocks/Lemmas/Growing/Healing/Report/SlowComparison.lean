@@ -18,15 +18,15 @@ neither writer is required to remain honest at the other writer's observation.
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload Vote gbar)
+open AC (ACParams Payload Vote gbar)
 open Compose.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
-private def Released (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+private def Released (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (X : Fin sp.n) (s : Nat) (D : AC.Blk sp.n (List (FG.Att sp.n))) : Set (Fin sp.n) :=
   {u | ∃ v : Vote sp.n, v.val = u ∧ v.slot = s ∧
     (∃ R ∈ tr.HonestBlocksAt H, R.root = v.head ∧ Anc (tr.HonestBlocksAt H) D R) ∧
@@ -34,7 +34,7 @@ private def Released (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
       tr.time k < sp.ts s + 2 * sp.Δ}
 
 private theorem released_of_fwd
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {d : Time}
     (hd : 0 ≤ d) {X : Fin sp.n} (hX : X ∈ H d) {s : Nat}
     {D : AC.Blk sp.n (List (FG.Att sp.n))} {u : Fin sp.n}
@@ -47,12 +47,12 @@ private theorem released_of_fwd
     hrun.antitone hkd hX, hsend, h1, h2⟩
 
 private theorem result_side
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {Y : Fin sp.n} {c s : Nat}
     (hY : Y ∈ H (tr.time c)) {D : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (Vote sp.n)} (hR : AC.ResultAt tr.projAC Y c s D CV) :
-    ∃ (ell : ACLabel (goldilocksNode sp ro)) (S : Set (Fin sp.n)),
+    ∃ (ell : ACLabel (goldilocksNode sp)) (S : Set (Fin sp.n)),
       tr.projAC.CallAt Y c ell ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
       (∀ k ≤ c, tr.projAC.RestartAt Y k → tr.time k ≤ sp.ts s) ∧
       (AC.voters {v | v ∈ (tr.projAC.state Y c).pool s}).ncard < 2 * S.ncard ∧
@@ -92,7 +92,7 @@ private theorem result_side
     exact ⟨hne, v, hvp, rfl, R, hPhiU hR, hRr, Anc.mono hPhiU hDR⟩
 
 private theorem optimistic_side
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {X : Fin sp.n} {k s : Nat}
     (hX : X ∈ H (tr.time k)) {D : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -104,11 +104,11 @@ private theorem optimistic_side
   exact ⟨_, h34, fun u hu => released_of_fwd hrun hd hX (hfwd hu)⟩
 
 private theorem released_held
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     {X Y : Fin sp.n} {c s : Nat} (hm : gbar g ≤ sp.ts s)
-    {ell : ACLabel (goldilocksNode sp ro)} (hY : Y ∈ H (tr.time c))
+    {ell : ACLabel (goldilocksNode sp)} (hY : Y ∈ H (tr.time c))
     (hc : tr.projAC.CallAt Y c ell) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
     (hrs : ∀ k ≤ c, tr.projAC.RestartAt Y k → tr.time k ≤ sp.ts s)
     {D : AC.Blk sp.n (List (FG.Att sp.n))} {u : Fin sp.n}
@@ -146,11 +146,11 @@ private theorem released_held
   exact h
 
 private theorem against_update
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     {X Y : Fin sp.n} {c s : Nat} (hm : gbar g ≤ sp.ts s)
-    {ell : ACLabel (goldilocksNode sp ro)} (hY : Y ∈ H (tr.time c))
+    {ell : ACLabel (goldilocksNode sp)} (hY : Y ∈ H (tr.time c))
     (hc : tr.projAC.CallAt Y c ell) (ht : tr.time c = sp.ts s + 6 * sp.Δ)
     (hrs : ∀ k ≤ c, tr.projAC.RestartAt Y k → tr.time k ≤ sp.ts s)
     {D DY : AC.Blk sp.n (List (FG.Att sp.n))} {S T : Set (Fin sp.n)}
@@ -164,7 +164,7 @@ private theorem against_update
 
 /-- Same-slot results agree using only releases after the warm service threshold. -/
 theorem result_result_compatible_service_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     {s : Nat} (hm : gbar g ≤ sp.ts s) {x y : Fin sp.n} {c i : Nat}

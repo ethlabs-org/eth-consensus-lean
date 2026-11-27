@@ -103,11 +103,11 @@ end Consensus.Goldilocks.AC
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-! ### The arithmetic -/
 
@@ -157,7 +157,7 @@ theorem armed_label_lt {T b₀ : Time} {σ : Nat} (hT : 0 ≤ T)
 
 /-- The frame of an update is the node's frame at the update's cut. -/
 theorem update_frame {ini} (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H)
-    {c s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y c s ℓ) :
+    {c s : Nat} {ℓ : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y c s ℓ) :
     ℓ.frame = Node.frame (tr.state y c) := by
   obtain ⟨⟨hn, hl⟩, -⟩ := hu
   obtain ⟨cl, hc, hcl⟩ := Option.bind_eq_some_iff.1 hl
@@ -173,7 +173,7 @@ update, every attestation of the slow test names a block of the frame above `C`.
 theorem saved_rows_above {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} (hy : y ∈ H) {c s : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y c s ℓ) (hks : sp.k ≤ s)
+    {ℓ : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y c s ℓ) (hks : sp.k ≤ s)
     (hFC : Anc (tr.HonestBlocks H) (tr.state y c).fg.F C)
     (hCt : C ∈ (tr.state y c).fg.tree)
     (hnr : ∀ k ≤ c, tr.RestartAt y k → tr.time k ≤ sp.ts ((s : Int) - sp.k + 1))

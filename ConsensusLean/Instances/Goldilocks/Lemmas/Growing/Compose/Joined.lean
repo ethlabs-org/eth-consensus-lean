@@ -9,11 +9,11 @@ namespace Consensus.Goldilocks.Compose.Growing
 
 /-- Joining projects independently of honesty; honesty is needed only for the state test. -/
 theorem joined_projection : JoinedProjection := by
-  intro sp ro dg H tr proposer h
+  intro sp dg H tr proposer h
   have joined := Compose.projAC_joinedAt_iff h.time_nonneg
   refine ⟨fun y t hy => ⟨joined y t, fun i hc hn hit => ?_⟩, fun t d => ?_⟩
   · have ht : 0 ≤ t := hit ▸ h.time_nonneg i
-    have hr := (Compose.joined_projection sp ro dg (H t) (tr.upTo t) proposer
+    have hr := (Compose.joined_projection sp dg (H t) (tr.upTo t) proposer
       (h.upTo ht) y hy t).2.1 i ((RunTrace.upTo_isCall _).mpr ⟨hit.le, hc⟩)
       (fun hr => hn ((RunTrace.upTo_restartAt _).mp hr).2) hit
     have hj : (tr.upTo t).JoinedAt y t ↔ tr.JoinedAt y t := by

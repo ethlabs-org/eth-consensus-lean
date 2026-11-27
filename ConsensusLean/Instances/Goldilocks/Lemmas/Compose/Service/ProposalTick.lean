@@ -16,11 +16,11 @@ first cut and the AC projection's state after it; the run supplies these for an 
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {tr : GoldilocksTrace sp ro}
+  {tr : GoldilocksTrace sp}
 
 /-- **A block proposed in a tick is `ac_proposal`'s** at `t_s`: from `p`'s tick group at `j` (at
 the time `t_s` of cut `j + 2`) whose proposal step proposes `P`, made from the duty head `d.head`

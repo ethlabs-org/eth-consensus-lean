@@ -14,18 +14,18 @@ the vote deadline and the voter at its cast; no static healing invariant is reco
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
 namespace Core
 
 variable
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
 
 /-- Finite proposal/vote view agreement, with honesty at the two observation cuts. -/
 theorem proposal_views_agree_before_at
@@ -42,11 +42,11 @@ theorem proposal_views_agree_before_at
     (hdesignated : z = proposer (s + 1))
     {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
-    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)} {pay : Payload sp.n}
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp)} {pay : Payload sp.n}
     (hp : AC.ProposalAt tr.projAC z ip ellp pay) (hti : tr.time ip = sp.ts (s + 1 : Nat))
     (hpay : P.acPayload = pay)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {elly : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {elly : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j elly e) (hes : e.msg.slot = s + 1)
     (hP : P ∈ elly.frame.tree) (hjb : tr.time j ≤ b) (hK : CommitteeHalfUpTo tr H K g b) :
     AC.equivocators (AC.View.ofLists pay).votes =
@@ -164,11 +164,11 @@ theorem proposal_views_agree_before_at
     (hdesignated : z = proposer (s + 1))
     {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
-    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)} {pay : Payload sp.n}
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp)} {pay : Payload sp.n}
     (hp : AC.ProposalAt tr.projAC z ip ellp pay) (hti : tr.time ip = sp.ts (s + 1 : Nat))
     (hpay : P.acPayload = pay)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {elly : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {elly : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j elly e) (hes : e.msg.slot = s + 1)
     (hP : P ∈ elly.frame.tree) (hjb : tr.time j ≤ b) (hK : CommitteeHalfUpTo tr H K g b) :
     AC.equivocators (AC.View.ofLists pay).votes =

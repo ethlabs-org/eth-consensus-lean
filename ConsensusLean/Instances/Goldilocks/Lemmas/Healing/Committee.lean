@@ -25,12 +25,12 @@ facts of a slot dictionary `K` in the form the growing proofs use,
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
+variable {sp : ACParams}
+  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- **P** over the AC projection, from the committee facts. -/
 theorem committeeP_of_facts (hK : Compose.Growing.CommitteeFacts tr (fun _ => H) K)
@@ -76,7 +76,7 @@ theorem cs2_of_twoK (hK : Compose.Growing.CommitteeFacts tr (fun _ => H) K) {g :
 /-- **A cast is by a member of its slot's committee** (the gate at the cast). -/
 theorem mem_committee_of_castAt (hK : Compose.Growing.CommitteeFacts tr (fun _ => H) K)
     (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ℓ e) : y ∈ K.committee e.msg.slot := by
   have h := AC.mayVote_of_castAt (Compose.goldilocks_ac_projection_from hrun hnc).localRun hy hc
   rw [Compose.projAC_state hrun.toLocalRun hy i] at h

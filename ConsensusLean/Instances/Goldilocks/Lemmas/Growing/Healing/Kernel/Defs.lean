@@ -13,13 +13,13 @@ They do not reconstruct the reset for a terminal honest cohort.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+variable {sp : ACParams}
+  {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)}
 
 /-- The frame data shared by the nodes honest at their individual cuts in an interval. -/
-structure FrameWindow (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+structure FrameWindow (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (lo hi : Time) (floor : Nat) (kindJ : Prop)
     (J : AC.Blk sp.n (List (FG.Att sp.n))) : Prop where
   floor_eq : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi →
@@ -31,7 +31,7 @@ structure FrameWindow (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
     (tr.state y i).fg.J = J
 
 /-- The bounded-gap proposal evidence includes honesty through the slot's vote deadline. -/
-def ProposalGap (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+def ProposalGap (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (proposer : Nat → Fin sp.n) (G s₀ N : Nat) : Prop :=
   ∀ a, s₀ ≤ a → a + G ≤ N + 1 → ∃ x, a ≤ x ∧ x < a + G ∧
     proposer x ∈ H (sp.ts x + sp.Δ) ∧
@@ -47,7 +47,7 @@ theorem proposalGap_iff {proposer : Nat → Fin sp.n} {G s₀ N : Nat} :
 /-- A warm proposal on every sufficiently long frame window. Signature bounds apply to signers
 honest at their signing cuts and at `c_z`; the height frontier is the original snapshot frontier,
 not a retained one. -/
-structure DrainOutputs (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n)
+structure DrainOutputs (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n)
     (H : Time → Set (Fin sp.n)) (g : Time) (G Ld : Nat) (b : Time) : Prop where
   warm : ∀ {s₀ N floor : Nat} {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))},
     FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J →

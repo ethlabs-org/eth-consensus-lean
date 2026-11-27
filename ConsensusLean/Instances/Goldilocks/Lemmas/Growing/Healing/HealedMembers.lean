@@ -25,12 +25,12 @@ slot after a member's label extend it) makes such a vote extend every block belo
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g : Time}
 
 /-- **After the drain, a source is on the healed chain, fast or deep.** For the reset `a`, an
 honest `ac_to_fg` source `C` at a cut `i` at or after the drain `t_{clean(a)+k+3}` (`drainTime`),
@@ -41,7 +41,7 @@ past the drain, a `LockWithin` member of the healed family. -/
 theorem deep_source_on_healed_chain_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a : Time} {rO : Nat} {b : Time}
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) (hdt : Healing.drainTime sp a ≤ tr.time i)
-    (hib : tr.time i ≤ b) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hib : tr.time i ≤ b) {ℓ : ACLabel (goldilocksNode sp)}
     {C : AC.Blk sp.n (List (FG.Att sp.n))} (h : AC.ToFGAt tr.projAC y i ℓ C) :
     OnHealedChain tr H g (Healing.cleanLabel sp a + sp.k + 2) rO C b := by
   have hd := hrun.time_nonneg i

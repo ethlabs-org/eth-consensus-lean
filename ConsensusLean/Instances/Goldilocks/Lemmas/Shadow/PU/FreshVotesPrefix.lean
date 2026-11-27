@@ -14,11 +14,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.Shadow
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {hold : Time}
 
 /-- Primed finality and the actual proposal's live lock put its start below the cast head. -/
 theorem proposal_start_prefix_at {s₀ s M : Nat}
@@ -36,14 +36,14 @@ theorem proposal_start_prefix_at {s₀ s M : Nat}
     (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts (s + 1 : Nat) + sp.Δ))
     (hdes : z = proposer (s + 1)) {ip : Nat}
-    {ellp : ACLabel (goldilocksNode sp ro)}
+    {ellp : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
     (hti : tr.time ip = sp.ts (s + 1 : Nat))
     (hpay : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 = some (d, pay))
     (hparent : P.parent = some d.head.root)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hPv : P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
     (hvP : P ∈ ell.frame.viableHeads)

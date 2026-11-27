@@ -17,26 +17,26 @@ Participation is counted at that cast, never at a fixed honest cohort.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
 namespace Core
 
 variable
   {uf : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 private theorem relayed_of_service
     (hrun : GoldilocksRunCore uf frameOf proposer dg H tr ini)
     {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold) {z : Fin sp.n} {k : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hz : z ∈ H (tr.time k))
     (hacc : tr.projAC.AcceptAt z k B) (hgk : g ≤ tr.time k)
-    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time i))
+    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp)} (hy : y ∈ H (tr.time i))
     (hci : tr.projAC.CallAt y i ell) (hdl : tr.projAC.deadline y i (tr.time k) ≤ tr.time i)
     (hanc : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     ∃ k' ≤ i, tr.projAC.AcceptAt y k' B ∧ tr.time k' < tr.projAC.deadline y k' (tr.time k) := by
@@ -55,7 +55,7 @@ private theorem carry_votes
     (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
     (hg : gbar g ≤ sp.ts u)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hcast : AC.CastAt tr.projAC y i ell e)
     (hs : e.msg.slot = u + 1) (hib : tr.time i ≤ b)
     (hFP : Anc (tr.HonestBlocksAt H) ell.frame.F P) :
@@ -101,7 +101,7 @@ private theorem carry_votes
     rcases Compose.frame_anc_acceptedU hrq.toU hz q ell' hcz'.1 Hd hHd Hd .refl with
       h0 | ⟨k, hk, ha⟩
     · exact Or.inr (Or.inl h0)
-    obtain ⟨hkq, ha⟩ := (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mp ha
+    obtain ⟨hkq, ha⟩ := (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _)).mp ha
     change tr.time k ≤ tr.time q at hkq
     have hzk := hrun.antitone hkq hz
     by_cases hkg : gbar g ≤ tr.time k
@@ -110,17 +110,17 @@ private theorem carry_votes
       obtain ⟨ky, hky, hacc, hkyt⟩ := relayed_of_service hrun hsvc hzk ha (hgg.trans hkg) hy
         hcast.1 hdl hFP
       have hkyd := hm hky
-      exact ⟨ky, hky, (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mpr ⟨hkyd, hacc⟩,
+      exact ⟨ky, hky, (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _)).mpr ⟨hkyd, hacc⟩,
         by rw [ACTrace.upTo_deadline hmA hkyd]; exact hkyt⟩
     · obtain ⟨ky, hky, hacc, hkyt⟩ := hrun.acCatchAt hc hzk ha (not_le.mp hkg) hy
         hcast.1 (by linarith) hFP
-      exact Or.inr (Or.inr ⟨ky, (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mpr
+      exact Or.inr (Or.inr ⟨ky, (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _)).mpr
         ⟨hm hky, hacc⟩, by change tr.time ky < _; linarith⟩)
   refine ⟨hcarry.awake.1, hcarry.joined, fun v hv => ?_, hcarry.holds⟩
   obtain ⟨Hv, hHv, hHvr, hacc⟩ := hcarry.heads v hv
   refine ⟨Hv, hsub hHv, hHvr, fun X hX => ?_⟩
   exact (hacc X (hrun.anc_upTo_of_right hnc hd hHv hX)).imp_right
-    fun ⟨k, hk, hkt⟩ => ⟨k, ((ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mp hk).2, hkt⟩
+    fun ⟨k, hk, hkt⟩ => ⟨k, ((ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _)).mp hk).2, hkt⟩
 
 private theorem head_accepted
     (hrun : GoldilocksRunCore uf frameOf proposer dg H tr ini)
@@ -130,7 +130,7 @@ private theorem head_accepted
     (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
     (hg : gbar g ≤ sp.ts u)
-    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp)}
     (hcall : tr.projAC.CallAt y j ell) (hti : sp.ts u + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b) (hnr : ∀ r ≤ j, tr.RestartAt y r → tr.time r ≤ gbar g)
     (hvote : ∃ w q e', w ∈ H (tr.time q) ∧ AC.VoteAt tr.projAC w q e' ∧ e'.msg.slot = u ∧
@@ -151,7 +151,7 @@ private theorem head_accepted
     (he.trans (hun w q e' hwq ⟨ellv, hv⟩ (hqj.trans hjb) hvs))
   obtain hz | ⟨k, hk, ha⟩ := AC.frame_genesis_or_acceptedU sp hrq.localRun.toU hwq hvq.1 Hd hHd
   · omega
-  obtain ⟨hkq, ha⟩ := (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mp ha
+  obtain ⟨hkq, ha⟩ := (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _)).mp ha
   change tr.time k ≤ tr.time q at hkq
   have hwk := hrun.antitone hkq hwq
   have hdl : ∀ c ≤ j, tr.projAC.deadline y c (tr.time k) ≤ max (tr.time k) (gbar g) + sp.Δ :=
@@ -171,7 +171,7 @@ private theorem head_accepted
 private theorem cast_bounds
     (hrun : GoldilocksRunCore uf frameOf proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ell e) :
     sp.ts e.msg.slot ≤ tr.time j ∧ tr.time j ≤ sp.ts e.msg.slot + sp.Δ := by
   have hr := hrun.acRun_upTo hnc (hrun.time_nonneg j)
@@ -190,7 +190,7 @@ private theorem next_viable
     (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
     (hg : gbar g ≤ sp.ts u)
-    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hcast : AC.CastAt tr.projAC y j ell e)
     (hs : e.msg.slot = u + 1) (hjb : tr.time j ≤ b)
     (hnr : ∀ r ≤ j, tr.RestartAt y r → tr.time r ≤ gbar g)
@@ -215,7 +215,7 @@ private theorem next_viable
   obtain ⟨k, hkj, ha, hkt⟩ := head_accepted hrun hnc hsvc hc hP hslot hu hun hg hy hcast.1
     (by linarith) hjb hnr hvote hFP
   have ha' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time j)) y k P :=
-    (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mpr ⟨hrun.time_mono hkj, ha⟩
+    (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _)).mpr ⟨hrun.time_mono hkj, ha⟩
   have hPu : P ∈ (tr.upTo (tr.time j)).HonestBlocks (H (tr.time j)) := by
     obtain ⟨ella, hca, hea⟩ := ha'
     exact (AC.frameIn_of_callAt hr.localRun hy hca).2
@@ -361,7 +361,7 @@ theorem unanimous_next_votes_at {K : AC.CommitteeDict sp.n}
       ⟨ella, ((Trace.upTo_callAt _).mp hca).2, hea⟩
     have hr := hrun.acRun_upTo hnc (hrun.time_nonneg (kP + 1))
     have ha'' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time (kP + 1))) z (kP + 1) P :=
-      (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _ ro)).mpr ⟨le_rfl, ha'⟩
+      (ACTrace.upTo_acceptAt (A := AC.goldilocksAC sp _)).mpr ⟨le_rfl, ha'⟩
     obtain ⟨ellb, hcb, heb⟩ := ha''
     exact hrun.upTo_subset (hrun.time_nonneg (kP + 1))
       ((AC.frameIn_of_callAt hr.localRun hzA hcb).2

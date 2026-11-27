@@ -304,11 +304,11 @@ theorem dutyStep_poll_pending {V : Type} [Fintype V] {E : Env V} (S : Setup)
 
 /-- Poll's block map is durable while the pending queue is cleared. -/
 theorem poll_wrappers {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {release : Fin sp.n → Time → Bool}
-    (st : State sp ro binding) (t : Time) :
+    {release : Fin sp.n → Time → Bool}
+    (st : State sp binding) (t : Time) :
     (pollBatch st t release).1.wrappers = st.wrappers ∧
       (pollBatch st t release).1.forwards = [] := by
-  have key : ∀ st : State sp ro binding, (poll st t release).1.wrappers = st.wrappers ∧
+  have key : ∀ st : State sp binding, (poll st t release).1.wrappers = st.wrappers ∧
       (poll st t release).1.forwards = [] := by
     intro st
     unfold poll
@@ -413,7 +413,7 @@ private theorem eventBatches_release {V : Type} [Fintype V] [DecidableEq V] {E :
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V}
   (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-  (tr : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _)) (cutMap : Nat → Nat)
+  (tr : GoldilocksTrace (S.params (pubOf E) hn)) (cutMap : Nat → Nat)
   (pubExec : PublisherExecution S rho)
 
 /-- Concrete publication relation: all executed candidates passing the three guards at

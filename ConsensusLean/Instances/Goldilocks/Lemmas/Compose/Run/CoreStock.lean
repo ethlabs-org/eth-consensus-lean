@@ -11,7 +11,7 @@ finality update) and `Node.CutStep.with` (the stock cut law is `CutStepWith` at
 
 namespace Consensus.Goldilocks
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 namespace Store
 
@@ -37,11 +37,11 @@ theorem Reachable.reachableWith {acp₀ : ACP} {st : Store P ACP} (h : st.Reacha
 
 end Store
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- The stock cut law is the cut law at the stock finality update and frame. -/
-theorem Node.CutStep.with {self : Fin sp.n} {t : Time} {st st' : NodeState (goldilocksNode sp ro)}
-    {c : Cut (goldilocksNode sp ro)} (h : Node.CutStep self t st c st') :
+theorem Node.CutStep.with {self : Fin sp.n} {t : Time} {st st' : NodeState (goldilocksNode sp)}
+    {c : Cut (goldilocksNode sp)} (h : Node.CutStep self t st c st') :
     CutStepWith Store.updateFinality Node.frame self t st c st' := by
   rcases c with ⟨⟨B, _ | _⟩ | a | ⟨C, _ | a⟩⟩ | ℓ
   · exact (cutStepWith_block_false B).2 ⟨by rw [← Store.onBlock_eq_onBlockWith]; exact h.1, h.2⟩

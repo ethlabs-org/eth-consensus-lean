@@ -18,11 +18,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF a b : Time}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n} {g ΔF a b : Time}
 
 /-- The Catch deadline `ḡ + 2Δ` from `ḡ ≤ x`. -/
 private theorem catch_time_le {x : Time} (h : AC.gbar g ≤ x) :
@@ -102,7 +102,7 @@ theorem ResetPremisesUpTo.optimistic_sources_compatible
   obtain ⟨hvs', i', _, e', he', rfl⟩ :=
     AC.optimisticPoint_pool_voteU hrun.toU hy hpt' hv' (hvz ▸ hz)
   rw [hvz] at he'
-  obtain ⟨_, rfl⟩ := (AC.one_vote_per_slotU sp) _ ro H _ _ hr.toU _ hz i i' e e' he he'
+  obtain ⟨_, rfl⟩ := (AC.one_vote_per_slotU sp) _ H _ _ hr.toU _ hz i i' e e' he he'
     (hvs.trans hvs'.symm)
   obtain rfl : R = R' := hr.coherent.1 (hU hR) (hU' hR') (hRr.trans hRr'.symm)
   exact AC.anc_total hr.coherent (hCR.mono hU) (hDR.mono hU')

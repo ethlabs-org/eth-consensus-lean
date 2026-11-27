@@ -23,7 +23,7 @@ and its relay to the proposer are removed with HS.4 and HR.3 (retired, owner dec
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
 /-! ## Stores -/
 
@@ -226,10 +226,10 @@ end Stores
 
 section Runs
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF : Time}
   {proposer : Nat → Fin sp.n}
 
 end Runs
@@ -238,17 +238,17 @@ end Runs
 
 section ACFacts
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (AC.Blk sp.n FGP)} {tr : AC.GTrace sp FGP ro}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {tr : AC.GTrace sp FGP}
 
 /-- **Where a block stamp comes from**: after an honest call, the stamp of a block of its frame is
 genesis's, or the time of an earlier call of the node whose frame holds the block (the call that
 accepted it, or a restart's replay). -/
-theorem stamp_origin {ini} (h : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
+theorem stamp_origin {ini} (h : ACLocalRun (AC.goldilocksAC sp FGP) H U tr ini)
     {y : Fin sp.n}
     (hy : y ∈ H) :
-    ∀ i (ℓ : ACLabel (AC.goldilocksAC sp FGP ro)), tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
-      X.root = sp.genesisRoot ∨ ∃ k ≤ i, ∃ ℓk : ACLabel (AC.goldilocksAC sp FGP ro),
+    ∀ i (ℓ : ACLabel (AC.goldilocksAC sp FGP)), tr.CallAt y i ℓ → ∀ X ∈ ℓ.frame.tree,
+      X.root = sp.genesisRoot ∨ ∃ k ≤ i, ∃ ℓk : ACLabel (AC.goldilocksAC sp FGP),
         tr.CallAt y k ℓk ∧ X ∈ ℓk.frame.tree ∧
           (tr.post i).blockStamp X.root = AC.ETime.of (tr.time k) := by
   intro i
@@ -258,11 +258,11 @@ theorem stamp_origin {ini} (h : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr in
     have hexec := h.exec i ℓ hc.2 (hc.1 ▸ hy)
     rw [hc.1] at hexec
     have hpost : tr.post i =
-        ((AC.goldilocksAC sp FGP ro).step y (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
+        ((AC.goldilocksAC sp FGP).step y (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
       rw [hexec]
-    obtain ⟨Φ, hok, hpre⟩ : ∃ Φ, (AC.goldilocksAC sp FGP ro).CallOK U Φ (tr.time i) ℓ.call
+    obtain ⟨Φ, hok, hpre⟩ : ∃ Φ, (AC.goldilocksAC sp FGP).CallOK U Φ (tr.time i) ℓ.call
         ℓ.frame ∧ ∀ X ∈ Φ.tree, X.root = sp.genesisRoot ∨ ∃ k ≤ i,
-          ∃ ℓk : ACLabel (AC.goldilocksAC sp FGP ro), tr.CallAt y k ℓk ∧ X ∈ ℓk.frame.tree ∧
+          ∃ ℓk : ACLabel (AC.goldilocksAC sp FGP), tr.CallAt y k ℓk ∧ X ∈ ℓk.frame.tree ∧
             (tr.state y i).blockStamp X.root = AC.ETime.of (tr.time k) := by
       rcases h.frameLaw y hy i ℓ hc with ⟨-, Φ₀, ⟨htree, hroot, -, -, -⟩, -, hok⟩ |
         ⟨j, ℓ', hj, hc', hnb, hok⟩
@@ -274,7 +274,7 @@ theorem stamp_origin {ini} (h : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr in
         exact (ih j hj ℓ' hc' X hX).imp_right fun ⟨k, hk, ℓk, h1, h2, h3⟩ =>
           ⟨k, hk.trans hj.le, ℓk, h1, h2, h3⟩
     have hΦ' := hok.1
-    obtain ⟨hblk, hrst, hoth⟩ := AC.step_blockStamp_eq ro y (tr.state y i) hΦ'.1
+    obtain ⟨hblk, hrst, hoth⟩ := AC.step_blockStamp_eq y (tr.state y i) hΦ'.1
       (h.time_nonneg i) ℓ.call
     rw [hpost]
     generalize hcall : ℓ.call = c at hok hblk hrst hoth
@@ -319,9 +319,9 @@ theorem getAnchor_viable {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) (A : AC.ACSta
 /-- **The parent of an honest proposal is a viable head** of the proposer's frame when `fc_root`
 has a viable head above it (requirement 1: the walk starts at the anchor, in the viable tree), for
 starts up to the vote permission. -/
-theorem proposal_head_viable {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
+theorem proposal_head_viable {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U tr ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
-    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)}
     (hc : tr.CallAt y k ℓ) (hcall : ℓ.call = .proposal) {σ : Nat}
     (hk : tr.time k = sp.toParams.slotTime σ) {d : DutyHead sp.n FGP (Payload sp.n)}
     {pay : Payload sp.n} (hp : (AC.acProposal sp (tr.state y k) ℓ.frame (tr.time k)).2 =
@@ -333,7 +333,7 @@ theorem proposal_head_viable {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) 
     rw [hcall] at this
     exact this
   have hΦ : FrameOK ℓ.frame := hok.1.1
-  have hOK := ((AC.interface_requirements_from sp FGP ro (hini y)).1 y U hr.coherent _ _ _
+  have hOK := ((AC.interface_requirements_from sp FGP (hini y)).1 y U hr.coherent _ _ _
     (ACInterface.reachableAtFrom_iff.1 hreach)).1 σ (hk ▸ htp) d pay
     (by rw [← hk, ← hΦp]; exact hp)
   rw [← hΦp] at hOK
@@ -396,10 +396,10 @@ end RunCuts
 
 section Main
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF : Time}
   {proposer : Nat → Fin sp.n}
 
 end Main

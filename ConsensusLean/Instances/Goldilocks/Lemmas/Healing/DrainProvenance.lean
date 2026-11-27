@@ -117,13 +117,13 @@ private theorem FromP.of_onTick
   · exact FromP.of_eq rfl
   · exact FromP.of_eq rfl
 
-variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : GTrace sp FGP ro}
+variable {H : Set (Fin sp.n)} {tr : GTrace sp FGP}
 
 /-- A call of an honest node keeps its locks below earlier ones, or writes fast locks, or writes
 a slow lock of width `wm.width` of the slot of its update. -/
 private theorem call_fromPU
     {u : Nat → Set Lock} {ini} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
-    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ) :
+    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt x i ℓ) :
     FromP U (tr.state x i).locks (tr.post i).locks
       (fun s f O => f = false →
         ∃ D, SlowLockAtW wm.width tr x i s D ∧ O = ℓ.frame.viableAncestor D) := by
@@ -170,7 +170,7 @@ private theorem call_fromPU
     exact (FromP.trans hU h₁ (FromP.of_tryVote (wm := wm) (L := u i) hU hΦ hΦU x _ _ hlaw)).mono
       fun s f B h hf => fast s f B h hf
   | restart =>
-    exact FromP.of_eq ((restart_state sp) FGP ro x A ℓ.frame (tr.time i) hΦ
+    exact FromP.of_eq ((restart_state sp) FGP x A ℓ.frame (tr.time i) hΦ
       (hr.time_nonneg i)).2.1
 
 /-- **Stored slow-lock provenance at width `wm.width`**: every lock that is not fast and that an

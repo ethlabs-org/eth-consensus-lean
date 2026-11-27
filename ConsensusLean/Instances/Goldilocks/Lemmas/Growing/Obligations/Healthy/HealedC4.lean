@@ -29,16 +29,16 @@ C4 and its window-facing wrappers, with each proposer honest through its own slo
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {fgHold : Time}
 
 /-- **An honest proposal run is made operationally**: its proposer proposes it at some cut. -/
 theorem proposesAt_of_honestProposalRun_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {s : Nat}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : Healing.Growing.HonestProposalRun tr H proposer s P) :
@@ -72,7 +72,7 @@ theorem honestProposalRun_slot_at {s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n)
 /-- **A proposal of a node honest at its proposal cut is accepted there**, with the block in its
 tree after the cut (the static `accept_of_proposesAt` on the prefix through the cut's time). -/
 theorem accept_of_proposesAt_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} {k : Nat}
     {W : AC.Blk sp.n (List (FG.Att sp.n))} (hp : p ∈ H (tr.time k)) (hW : tr.ProposesAt p k W) :
@@ -88,7 +88,7 @@ theorem accept_of_proposesAt_at
 
 /-- The proposer of an honest anchor is honest at its proposal cut. -/
 theorem proposer_mem_of_proposesAt_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {s : Nat}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : Healing.Growing.HonestProposalRun tr H proposer s P) {k : Nat}
@@ -102,7 +102,7 @@ theorem proposer_mem_of_proposesAt_at
 
 /-- **An honest proposal is held by its proposer**: proposed at a cut `k` where the proposer is
 honest, and held after it, at cut `k + 1`, which is at the same time. -/
-theorem proposal_held_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem proposal_held_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : Healing.Growing.HonestProposalRun tr H proposer s P) :
@@ -136,7 +136,7 @@ theorem UpTo.operational_proposal_below_next_parent_at
     (hpH : p ∈ H (sp.ts u + Regimes.Growing.hold sp)) (hdesignated : p = proposer u)
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
     (hTb : sp.ts u + 6 * sp.Δ ≤ b)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt y i ell) (hcall : ell.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))

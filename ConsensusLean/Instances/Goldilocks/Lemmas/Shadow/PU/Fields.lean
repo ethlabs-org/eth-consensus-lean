@@ -27,11 +27,11 @@ only splits its `Run` conjunction into them.
 namespace Consensus.Goldilocks.Shadow.PU.Witness
 
 open FG
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 /-- **The warm proposal bounds at one store** (`warm_proposal_bounds_at'` without a window): a
 designated honest proposal, under the FG fault bound at its slot, reaches the predecessor of the
@@ -128,13 +128,13 @@ end Consensus.Goldilocks.Shadow.PU.Witness
 
 namespace Consensus.Goldilocks.Shadow.PU.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open Consensus.Goldilocks.Generic
 open Consensus.Goldilocks.Healing.Growing (CommitteeHalfUpTo)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 /-- An actual report of a node honest at it is an `ac_to_fg` call of the AC projection
 (`reportAt_iff_toFGAt` over the shadow run). -/

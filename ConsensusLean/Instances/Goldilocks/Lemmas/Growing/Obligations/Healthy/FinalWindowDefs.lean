@@ -17,17 +17,17 @@ namespace Consensus.Goldilocks.Obligations.Growing
 
 open AsChainShape Simulation Blocks Shape
 
-variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams}
 
 /-- One height step, observed at two cuts of a node honest at each observation. -/
-def AnchorStepAt (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+def AnchorStepAt (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (A X : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∃ z j j', z ∈ H (tr.time j) ∧ z ∈ H (tr.time j') ∧
     A ∈ (tr.state z j).fg.tree ∧ X ∈ (tr.state z j').fg.tree ∧
     ((tr.state z j).fg.σ A.root).h + 1 ≤ ((tr.state z j').fg.σ X.root).h
 
 /-- The observations witnessing an anchor step, without exposing the definition's body. -/
-theorem anchorStepAt_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+theorem anchorStepAt_iff {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)}
     {A X : AC.Blk sp.n (List (FG.Att sp.n))} :
     AnchorStepAt tr H A X ↔
       ∃ z j j', z ∈ H (tr.time j) ∧ z ∈ H (tr.time j') ∧

@@ -34,15 +34,15 @@ there. A genesis head is excluded by the height of a high origin (`not_genesis_a
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 open ProposalImpl
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+  {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
 
 /-- **An acceptance of a head above a high origin is after GST**, for an acceptor honest
 at the later of its acceptance and `c_z`. -/
@@ -74,7 +74,7 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.first_carry_of_
     (ho : HighOrigin tr H g x i j B)
     (hfl : Compose.StoredFastLockAt tr x i j B CV)
     (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) (_hkb : tr.time k ≤ b)
     (hs : e.msg.slot = j + 1) (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y k e j CV := by
@@ -113,7 +113,7 @@ theorem first_carry_of_finalized_anc_at
     (ho : HighOrigin tr H g x i j B)
     (hfl : Compose.StoredFastLockAt tr x i j B CV)
     (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) (_hkb : tr.time k ≤ b)
     (hs : e.msg.slot = j + 1) (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y k e j CV :=
@@ -126,7 +126,7 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.later_carry_of_
     {x y : Fin sp.n} {i j k m : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B)
     (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) (_hkb : tr.time k ≤ b)
     (hs : e.msg.slot = m + 1) (hjm : j < m)
     (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B)
@@ -193,7 +193,7 @@ theorem later_carry_of_finalized_anc_at
     {x y : Fin sp.n} {i j k m : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B)
     (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) (_hkb : tr.time k ≤ b)
     (hs : e.msg.slot = m + 1) (hjm : j < m)
     (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B)

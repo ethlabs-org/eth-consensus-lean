@@ -136,7 +136,7 @@ theorem honestAwakeJoined_eq (hp : rho.point = point) (hv : rho.ExecutionValid) 
         honestKeys { S with vote := stock } rho := by
     ext y
     refine ⟨fun h => h.1, fun hy => ⟨hy, ?_⟩⟩
-    exact Compose.ready_implies_joined _ _ _ _ _ _
+    exact Compose.ready_implies_joined _ _ _ _ _
       (Test.goldilocksRun_of_at S rho one_le_card (point_constant hp) hv) y hy t
       (8 * (({ S with vote := AsChainShape.stock } : Setup).params
         (pubOf point.env) one_le_card).Δ) ht (Int.le_add_one le_rfl)

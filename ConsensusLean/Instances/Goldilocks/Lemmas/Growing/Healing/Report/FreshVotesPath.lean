@@ -14,18 +14,18 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
 /-- Above both anchors, the proposer's actual winner remains the voter's winner. Over any run core,
 from the window's viable-head transfer (`hT`) and the proposer's parent viability (`hPV`). -/
 theorem Core.proposal_suffix_before_at {g ΔF b : Time} {s₀ s : Nat}
     {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
     {K : AC.CommitteeDict sp.n}
     (rc : GoldilocksRunCore u frameOf proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
@@ -33,14 +33,14 @@ theorem Core.proposal_suffix_before_at {g ΔF b : Time} {s₀ s : Nat}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     (hm : gbar g + 2 * sp.Δ ≤ sp.ts s) (hs₀ : s₀ ≤ s + 1)
-    (hT : ∀ {x w : Fin sp.n} {j q : Nat} {ellx ellw : ACLabel (goldilocksNode sp ro)}
+    (hT : ∀ {x w : Fin sp.n} {j q : Nat} {ellx ellw : ACLabel (goldilocksNode sp)}
       {W : AC.Blk sp.n (List (FG.Att sp.n))}, x ∈ H (tr.time j) → w ∈ H (tr.time q) →
       (H (tr.time j))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n →
       sp.ts s₀ ≤ tr.time j → tr.time j ≤ sp.ts (s + 1 : Nat) + sp.Δ →
       sp.ts s₀ ≤ tr.time q → tr.time q ≤ sp.ts (s + 1 : Nat) + sp.Δ →
       tr.projAC.CallAt x j ellx → tr.projAC.CallAt w q ellw →
       W ∈ ellw.frame.viableHeads → W ∈ ellx.frame.tree → W ∈ ellx.frame.viableHeads)
-    (hPV : ∀ {x : Fin sp.n} {j σ : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hPV : ∀ {x : Fin sp.n} {j σ : Nat} {ell : ACLabel (goldilocksNode sp)}
       {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n},
       x ∈ H (tr.time j) → (H (tr.time j))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n →
       tr.projAC.CallAt x j ell → ell.call = .proposal → tr.time j = sp.toParams.slotTime σ →
@@ -50,14 +50,14 @@ theorem Core.proposal_suffix_before_at {g ΔF b : Time} {s₀ s : Nat}
     (hdesignated : z = proposer (s + 1))
     {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
-    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
     (hti : tr.time ip = sp.ts (s + 1 : Nat))
     (hpay : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 = some (d, pay))
     (hpayload : P.acPayload = pay) (hparent : P.parent = some d.head.root)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hib : tr.time i ≤ b)
     (hPv : P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
@@ -113,7 +113,7 @@ theorem Core.proposal_suffix_before_at {g ΔF b : Time} {s₀ s : Nat}
 core, from the window's viable-head transfer (`hT`) and the proposer's parent viability (`hPV`). -/
 theorem Core.proposal_stop_before_at {g ΔF b : Time} {s₀ s : Nat}
     {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
     {K : AC.CommitteeDict sp.n}
     (rc : GoldilocksRunCore u frameOf proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
@@ -121,14 +121,14 @@ theorem Core.proposal_stop_before_at {g ΔF b : Time} {s₀ s : Nat}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     (hm : gbar g + 2 * sp.Δ ≤ sp.ts s) (hs₀ : s₀ ≤ s + 1)
-    (hT : ∀ {x w : Fin sp.n} {j q : Nat} {ellx ellw : ACLabel (goldilocksNode sp ro)}
+    (hT : ∀ {x w : Fin sp.n} {j q : Nat} {ellx ellw : ACLabel (goldilocksNode sp)}
       {W : AC.Blk sp.n (List (FG.Att sp.n))}, x ∈ H (tr.time j) → w ∈ H (tr.time q) →
       (H (tr.time j))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n →
       sp.ts s₀ ≤ tr.time j → tr.time j ≤ sp.ts (s + 1 : Nat) + sp.Δ →
       sp.ts s₀ ≤ tr.time q → tr.time q ≤ sp.ts (s + 1 : Nat) + sp.Δ →
       tr.projAC.CallAt x j ellx → tr.projAC.CallAt w q ellw →
       W ∈ ellw.frame.viableHeads → W ∈ ellx.frame.tree → W ∈ ellx.frame.viableHeads)
-    (hPV : ∀ {x : Fin sp.n} {j σ : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hPV : ∀ {x : Fin sp.n} {j σ : Nat} {ell : ACLabel (goldilocksNode sp)}
       {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n},
       x ∈ H (tr.time j) → (H (tr.time j))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n →
       tr.projAC.CallAt x j ell → ell.call = .proposal → tr.time j = sp.toParams.slotTime σ →
@@ -138,14 +138,14 @@ theorem Core.proposal_stop_before_at {g ΔF b : Time} {s₀ s : Nat}
     (hdesignated : z = proposer (s + 1))
     {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
-    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
     (hti : tr.time ip = sp.ts (s + 1 : Nat))
     (hpay : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 = some (d, pay))
     (hpayload : P.acPayload = pay) (hparent : P.parent = some d.head.root)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hib : tr.time i ≤ b)
     (hPv : P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
@@ -219,7 +219,7 @@ theorem Core.proposal_stop_before_at {g ΔF b : Time} {s₀ s : Nat}
 window's viable-head transfer (`hT`) and the proposer's parent viability (`hPV`). -/
 theorem Core.vote_head_eq_of_path_at {g ΔF b : Time} {s₀ s : Nat}
     {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
     {K : AC.CommitteeDict sp.n}
     (rc : GoldilocksRunCore u frameOf proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
@@ -227,14 +227,14 @@ theorem Core.vote_head_eq_of_path_at {g ΔF b : Time} {s₀ s : Nat}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     (hm : gbar g + 2 * sp.Δ ≤ sp.ts s) (hs₀ : s₀ ≤ s + 1)
-    (hT : ∀ {x w : Fin sp.n} {j q : Nat} {ellx ellw : ACLabel (goldilocksNode sp ro)}
+    (hT : ∀ {x w : Fin sp.n} {j q : Nat} {ellx ellw : ACLabel (goldilocksNode sp)}
       {W : AC.Blk sp.n (List (FG.Att sp.n))}, x ∈ H (tr.time j) → w ∈ H (tr.time q) →
       (H (tr.time j))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n →
       sp.ts s₀ ≤ tr.time j → tr.time j ≤ sp.ts (s + 1 : Nat) + sp.Δ →
       sp.ts s₀ ≤ tr.time q → tr.time q ≤ sp.ts (s + 1 : Nat) + sp.Δ →
       tr.projAC.CallAt x j ellx → tr.projAC.CallAt w q ellw →
       W ∈ ellw.frame.viableHeads → W ∈ ellx.frame.tree → W ∈ ellx.frame.viableHeads)
-    (hPV : ∀ {x : Fin sp.n} {j σ : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hPV : ∀ {x : Fin sp.n} {j σ : Nat} {ell : ACLabel (goldilocksNode sp)}
       {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n},
       x ∈ H (tr.time j) → (H (tr.time j))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n →
       tr.projAC.CallAt x j ell → ell.call = .proposal → tr.time j = sp.toParams.slotTime σ →
@@ -244,14 +244,14 @@ theorem Core.vote_head_eq_of_path_at {g ΔF b : Time} {s₀ s : Nat}
     (hdesignated : z = proposer (s + 1))
     {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
-    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
     (hti : tr.time ip = sp.ts (s + 1 : Nat))
     (hpay : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 = some (d, pay))
     (hpayload : P.acPayload = pay) (hparent : P.parent = some d.head.root)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hib : tr.time i ≤ b)
     (hPv : P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
@@ -293,7 +293,7 @@ any run core, from the window's viable-head transfer (`hT`) and the proposer's p
 (`hPV`). -/
 theorem Core.vote_head_eq_of_start_prefix_at {g ΔF b : Time} {s₀ s : Nat}
     {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
-    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {frameOf : NodeState (goldilocksNode sp) → AC.Frm sp.n (List (FG.Att sp.n))}
     {K : AC.CommitteeDict sp.n}
     (rc : GoldilocksRunCore u frameOf proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
@@ -301,14 +301,14 @@ theorem Core.vote_head_eq_of_start_prefix_at {g ΔF b : Time} {s₀ s : Nat}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     (hm : gbar g + 2 * sp.Δ ≤ sp.ts s) (hs₀ : s₀ ≤ s + 1)
-    (hT : ∀ {x w : Fin sp.n} {j q : Nat} {ellx ellw : ACLabel (goldilocksNode sp ro)}
+    (hT : ∀ {x w : Fin sp.n} {j q : Nat} {ellx ellw : ACLabel (goldilocksNode sp)}
       {W : AC.Blk sp.n (List (FG.Att sp.n))}, x ∈ H (tr.time j) → w ∈ H (tr.time q) →
       (H (tr.time j))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n →
       sp.ts s₀ ≤ tr.time j → tr.time j ≤ sp.ts (s + 1 : Nat) + sp.Δ →
       sp.ts s₀ ≤ tr.time q → tr.time q ≤ sp.ts (s + 1 : Nat) + sp.Δ →
       tr.projAC.CallAt x j ellx → tr.projAC.CallAt w q ellw →
       W ∈ ellw.frame.viableHeads → W ∈ ellx.frame.tree → W ∈ ellx.frame.viableHeads)
-    (hPV : ∀ {x : Fin sp.n} {j σ : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hPV : ∀ {x : Fin sp.n} {j σ : Nat} {ell : ACLabel (goldilocksNode sp)}
       {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n},
       x ∈ H (tr.time j) → (H (tr.time j))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n →
       tr.projAC.CallAt x j ell → ell.call = .proposal → tr.time j = sp.toParams.slotTime σ →
@@ -318,14 +318,14 @@ theorem Core.vote_head_eq_of_start_prefix_at {g ΔF b : Time} {s₀ s : Nat}
     (hdesignated : z = proposer (s + 1))
     {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
-    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
     (hti : tr.time ip = sp.ts (s + 1 : Nat))
     (hpay : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 = some (d, pay))
     (hpayload : P.acPayload = pay) (hparent : P.parent = some d.head.root)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hib : tr.time i ≤ b)
     (hPv : P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
