@@ -9,7 +9,8 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Floor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowLabel
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ResetSeeds
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LeftEntry
 
 public section
 
@@ -26,8 +27,8 @@ by height, by the gap, or because it extends `Σ.J`.
 The growing items (`no_high_contest_at'`, `reset_vote_floor_above_old_or_covered_at'`,
 `held_high_origin_viable_at'`) are over `Growing.GoldilocksRun'` and `ResetPremisesUpTo'`. They read
 the run-level origin family (left entries, high origins, healed covers) from `Shadow/PU/Origins`,
-the row label bound from `Shadow/PU/RowLabel`, and the reset seed and the row entry member from
-`Shadow/PU/ResetSeeds`.
+the row label bound from `Growing/Healing/Kernel/RowLabel`, the reset seed from
+`Growing/Healing/Kernel/Seed`, and the row entry member from `Growing/Healing/Outcome/Floor`.
 
 * `no_high_contest_at'` is an FG-state fact. Its proof compares the two entries at `h_j` through
   their origins or covers directly (pairwise compatible above, so compatible), instead of through a
