@@ -5,6 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupporter
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularTransfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.StockWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularClassification
@@ -474,6 +475,314 @@ theorem regular_slow_next_votes_at' {s₀ s M : Nat}
       (hframe.mono le_rfl (by linarith)) hrun hnc hsvc hawake hf hcatch hnr
       (by linarith) (by omega) (by omega) (by linarith)
       hz hza ⟨hc, he⟩ hes hA hop hQD hK (s + 1) le_rfl le_rfl).1
+
+/-- Fast transfer needs a stock witness held at the early cast cut, not a frozen witness. -/
+theorem regular_fast_next_votes_of_stock_witness_at'
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
+    (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
+    (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
+    {s floor : Nat} (hm : gbar g ≤ sp.ts s) (hmb : sp.ts s + 6 * sp.Δ ≤ b)
+    {kindJ : Prop} {J X W D C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Generic.FrameWindow tr H (sp.ts s) (sp.ts s + 6 * sp.Δ) floor kindJ J)
+    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
+    (hfast : AC.FastUpdateAt tr.projAC x c s D CV)
+    {RV : Set (AC.Vote sp.n)} (hres : AC.ResultAt tr.projAC x c s C RV)
+    (hXD : Anc (tr.HonestBlocksAt H) X D) (hCW : Anc (tr.HonestBlocksAt H) C W)
+    {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
+    (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
+    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    (hWw : W ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ W.root).h)
+    (hJ : kindJ → Anc (tr.HonestBlocksAt H) J W)
+    (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
+  obtain ⟨ellx, C', hu, hconf, hsel, hCV⟩ := hfast
+  have he : C' = C := by
+    obtain ⟨ell', hu', hconf', -⟩ := hres
+    have he : ellx = ell' := Option.some.inj (hu.1.2.symm.trans hu'.1.2)
+    subst ell'
+    exact Option.some.inj (hconf.symm.trans hconf')
+  subst C'
+  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hr := (hac.upTo (hrun.time_nonneg c)).localRun
+  have hc' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
+  have hPhiU := (AC.frameIn_of_callU hr.toU hx hc').2
+  have hDC := ((AC.deepest_mem hsel).1.1.2.2).mono hPhiU
+  apply Shadow.PU.Growing.next_votes_of_stock_witness_at' hrun hnc hsvc hawake hf hcatch hm
+    (by rw [AC.ts_succ]; linarith only [sp.toParams.hΔ]) hmb hframe hw halo hat hcw hWw hh hJ
+      (hXD.trans (hDC.trans hCW))
+  intro y i ell e hy hc hs hhigh hFX hviab ih
+  exact first_transfer_service_at' hrun hnc hsvc hawake hcatch hnr hm hx hy
+    (Or.inl ⟨ellx, C, hu, hconf, hsel, hCV⟩) hXD hc hs (hhigh.trans hmb)
+    (by rwa [Shadow.PU.Growing.frame_of_projAC_at' hrun hy hc.1]) hviab
+    (fun z k hki hz ev hv hes => ih z k ev hki hz hv hes) hK
+
+/-- Slow transfer keeps its original lock target when the stock witness is a descendant. -/
+theorem regular_slow_next_votes_of_stock_witness_at'
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
+    (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
+    {s floor : Nat} (hm : gbar g ≤ sp.ts s)
+    (hslow : gbar g ≤ sp.ts ((s : Int) - sp.k + 1))
+    (hmb : sp.ts s + 6 * sp.Δ ≤ b) {kindJ : Prop}
+    {J W D C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Generic.FrameWindow tr H (sp.ts s) (sp.ts s + 6 * sp.Δ) floor kindJ J)
+    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c))
+    (hsl : AC.SlowLockAt tr.projAC x c s D)
+    {CV : Set (AC.Vote sp.n)} (hres : AC.ResultAt tr.projAC x c s C CV)
+    (hCW : Anc (tr.HonestBlocksAt H) C W)
+    {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
+    (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
+    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    (hWw : W ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ W.root).h)
+    (hJ : kindJ → Anc (tr.HonestBlocksAt H) J W)
+    (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
+  obtain ⟨ellx, C', hu, hconf, hsel⟩ := hsl
+  have he : C' = C := by
+    obtain ⟨ell', hu', hconf', -⟩ := hres
+    have he : ellx = ell' := Option.some.inj (hu.1.2.symm.trans hu'.1.2)
+    subst ell'
+    exact Option.some.inj (hconf.symm.trans hconf')
+  subst C'
+  have hsl : AC.SlowLockAt tr.projAC x c s D := ⟨ellx, C, hu, hconf, hsel⟩
+  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hr := (hac.upTo (hrun.time_nonneg c)).localRun
+  have hc' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
+  have hPhiU := (AC.frameIn_of_callU hr.toU hx hc').2
+  have hDC := ((AC.deepest_mem hsel).1.1.2.2).mono hPhiU
+  apply Shadow.PU.Growing.next_votes_of_stock_witness_at' hrun hnc hsvc hawake hf hcatch hm
+    (by rw [AC.ts_succ]; linarith only [sp.toParams.hΔ]) hmb hframe hw halo hat hcw hWw hh hJ
+      (hDC.trans hCW)
+  intro y i ell e hy hc hs hhigh hFD hviab ih
+  have hFC : Anc (tr.HonestBlocksAt H) ell.frame.F C := by
+    rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hy hc.1]
+    exact hFD.trans hDC
+  exact AC.Growing.result_transfer_anc hac hx hres hDC hy hc hs
+    (result_carry_service_at' hrun hnc hsvc hcatch hm hx hy hres hc hs hFC) hviab
+    (slow_live_locks_service_at' hrun hnc hsvc hx hsl hslow hy hc hs (hhigh.trans hmb) ih hK)
+    (writer_merged_service_at' hrun hnc hsvc hm hx hy hu hc hs)
+
+namespace StockWindow
+
+private theorem restrict_window {lo lo' hi hi' : Time} {floor : Nat} {kindJ : Prop}
+    {J : AC.Blk sp.n (List (FG.Att sp.n))}
+    (h : Generic.FrameWindow tr H lo hi floor kindJ J) (hl : lo ≤ lo') (hh : hi' ≤ hi) :
+    Generic.FrameWindow tr H lo' hi' floor kindJ J :=
+  ⟨fun y i hy hlo hhi => h.floor_eq y i hy (hl.trans hlo) (hhi.trans hh),
+   fun y i hy hlo hhi => h.kind_iff y i hy (hl.trans hlo) (hhi.trans hh),
+   fun y i hy hlo hhi => h.root_eq y i hy (hl.trans hlo) (hhi.trans hh)⟩
+
+/-- The stock classification's fourth case uses a held descendant witness, not the cast head. -/
+theorem next_votes_of_supporter_at' {s₀ s floor : Nat}
+    {kindJ : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
+    (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
+    (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
+    (hwarm : s₀ + sp.k ≤ s) (hpos : 0 < s) (hs₀ : s₀ ≤ s - 1)
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts ((s - 1 : Nat) : Int))
+    (hmb : sp.ts s + 6 * sp.Δ ≤ b)
+    {z : Fin sp.n} {q : Nat} (hz : z ∈ H (tr.time q))
+    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC z q ell e) (hes : e.msg.slot = s)
+    (hQU : Q ∈ tr.HonestBlocksAt H) (hQr : Q.root = e.msg.head)
+    (hXQ : Anc (tr.HonestBlocksAt H) X Q)
+    (hbase : ∀ W ∈ ell.frame.tree, floor ≤ ((tr.state z q).fg.σ W.root).h →
+      (kindJ → Anc (tr.HonestBlocksAt H) J W) → Anc (tr.HonestBlocksAt H) Q W →
+      ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
+        AC.VoteExtends (tr.HonestBlocksAt H) ev.msg X)
+    (hviable : Q ∈ ell.frame.tree → Q ∈ ell.frame.viableHeads →
+      ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
+        AC.VoteExtends (tr.HonestBlocksAt H) ev.msg X)
+    (hcommon : kindJ → Q = J →
+      ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
+        AC.VoteExtends (tr.HonestBlocksAt H) ev.msg X)
+    (hoptimistic : Q = AC.getAnchor sp e.readPoint ell.frame (tr.time q) →
+      ∀ a D CV, z ∈ H (tr.time a) → AC.OptimisticLockAt tr.projAC z a s D CV →
+      Anc (tr.HonestBlocksAt H) Q D →
+      ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
+        AC.VoteExtends (tr.HonestBlocksAt H) ev.msg Q) (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
+      AC.VoteExtends (tr.HonestBlocksAt H) ev.msg X := by
+  have hΔ := sp.toParams.hΔ
+  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hr := (hac.upTo (hrun.time_nonneg q)).localRun
+  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
+  have htq := AC.vote_time_leU hr.toU hz ⟨ell, hc'.1, hc'.2⟩
+  have hslot := (AC.castAt_specU hr.toU hz hc').2.1.symm.trans hes
+  change sp.slot (tr.time q) = s at hslot
+  change tr.time q ≤ sp.ts (sp.slot (tr.time q)) + sp.Δ at htq
+  rw [hslot] at htq
+  have hqhi : tr.time q ≤ sp.ts s + 6 * sp.Δ := by linarith
+  have hPhiU := (AC.frameIn_of_callU hr.toU hz hc'.1).2
+  have hframe' : Healing.Growing.FrameWindow tr H (sp.ts s₀)
+      (sp.ts s + 6 * sp.Δ) floor kindJ J :=
+    ⟨hframe.floor_eq, hframe.kind_iff, hframe.root_eq⟩
+  obtain ⟨Hd, hHd, hHdr, hclass⟩ := vote_head_classification_of_service_at' hframe'
+    hrun hnc hsvc hawake hf hcatch hnr hz hc hqhi (hqhi.trans hmb)
+    (hes ▸ hwarm) (hes ▸ hpos) (hes ▸ hs₀) (by simpa only [hes] using hm) (by
+      rw [hes]; simp only [AC.freeze]
+      have hcast : ((s - 1 : Nat) : Int) = (s : Int) - 1 := by omega
+      rw [← hcast]; linarith only [hΔ, hm]) hK
+  have hEQ : Hd = Q := (Coherence.honestBlocksAt_coherent' hrun hnc).1
+    (hPhiU hHd) hQU (hHdr.trans hQr.symm)
+  subst Hd
+  rcases hclass with hv | hj | ho | ⟨-, -, W, hW, -, hQW, hh, hJ⟩
+  · exact hviable hHd hv.2
+  · exact hcommon hj.1 hj.2
+  · obtain ⟨hA, l, hl, hls, a, hai, D, CV, hza, hop, -, -, -, hQD⟩ := ho
+    intro y i ev hy hv hesv
+    obtain ⟨W, hW, hWr, hQW⟩ := hoptimistic hA a D CV hza (hes ▸ hop)
+      (hQD.mono hPhiU) y i ev hy hv hesv
+    exact ⟨W, hW, hWr, hXQ.trans hQW⟩
+  · exact hbase W hW hh hJ (hQW.mono hPhiU)
+
+/-- Stock-window fast votes; the viable-head residue is still unresolved. -/
+theorem regular_fast_next_votes_at' {s₀ s floor : Nat}
+    {kindJ : Prop} {J X D : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
+    (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
+    (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
+    (hwarm : s₀ + sp.k ≤ s) (hpos : 0 < s) (hs₀ : s₀ ≤ s - 1)
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts ((s - 1 : Nat) : Int))
+    (hmb : sp.ts s + 6 * sp.Δ ≤ b)
+    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
+    (hfast : AC.FastUpdateAt tr.projAC x c s D CV)
+    (hXD : Anc (tr.HonestBlocksAt H) X D) (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
+  have hΔ := sp.toParams.hΔ
+  obtain ⟨ellx, C, hu, hconf, hsel, hCV⟩ := hfast
+  have hfast : AC.FastUpdateAt tr.projAC x c s D CV := ⟨ellx, C, hu, hconf, hsel, hCV⟩
+  have hres : AC.ResultAt tr.projAC x c s C
+      (AC.fastCounted sp (tr.projAC.state x c) ellx.frame s C) := ⟨ellx, hu, hconf, rfl⟩
+  have hprev : sp.ts ((s - 1 : Nat) : Int) = sp.ts s - 4 * sp.Δ := by
+    rw [Nat.cast_sub (by omega : 1 ≤ s), Nat.cast_one, AC.ts_sub_one]
+  obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
+    result_honest_supporter_before_at' hrun hnc hsvc hawake hf hcatch hnr (by linarith)
+      hx hres (hu.2.2.1.trans_le hmb) hK
+  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
+  have hcx := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
+  have hDC := ((AC.deepest_mem hsel).1.1.2.2).mono (AC.frameIn_of_callU hrx.toU hx hcx).2
+  have hr := (hac.upTo (hrun.time_nonneg q)).localRun
+  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc, he⟩
+  have htq := AC.vote_time_leU hr.toU hz ⟨ell, hc'.1, he⟩
+  have hslot := (AC.castAt_specU hr.toU hz hc').2.1.symm.trans hes
+  change sp.slot (tr.time q) = s at hslot
+  change tr.time q ≤ sp.ts (sp.slot (tr.time q)) + sp.Δ at htq
+  rw [hslot] at htq
+  have halo : sp.ts s ≤ tr.time q :=
+    (AC.ts_le_iff_le_slot sp (hrun.time_nonneg q) _).2 (by rw [hslot])
+  apply next_votes_of_supporter_at' hframe hrun hnc hsvc hawake hf hcatch hnr
+    hwarm hpos hs₀ hm hmb hz ⟨hc, he⟩ hes hQU hQr (hXD.trans (hDC.trans hCQ)) ?_ ?_ ?_ ?_ hK
+  · intro W hW hh hJ hQW
+    exact regular_fast_next_votes_of_stock_witness_at' hrun hnc hsvc hawake hf hcatch hnr
+      (by linarith) hmb (restrict_window hframe ((AC.ts_le_iff sp).mpr (by omega)) le_rfl)
+      hx hfast hres hXD (hCQ.trans hQW) hz halo (by linarith) hc hW hh hJ hK
+  · intro hQ hvQ
+    -- A viable head may be at floor - 1 in a contest. The contest-gap residue is needed.
+    sorry
+  · intro hk hQJ
+    exact Consensus.Goldilocks.Healing.PU.regular_fast_next_votes_at'
+      (Healing.toFrameWindow'_of_kind hframe hk) hrun hnc hsvc hawake hf hcatch hnr
+      hwarm hpos hs₀ hm hmb hx hfast hXD hK
+  · intro hA a D' CV' hza hop hQD
+    have hts := AC.ts_succ s (sp := sp)
+    exact (Shadow.PU.Growing.optimistic_supporter_later_heads_stock_at'
+      (restrict_window hframe le_rfl (by linarith)) hrun hnc hsvc hawake hf hcatch hnr
+      (by linarith) (by omega) (by omega) (by linarith)
+      hz hza ⟨hc, he⟩ hes hA hop hQD hK (s + 1) le_rfl le_rfl).1
+
+/-- Stock-window slow votes; the viable-head residue is still unresolved. -/
+theorem regular_slow_next_votes_at' {s₀ s floor : Nat}
+    {kindJ : Prop} {J D : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
+    (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
+    (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
+    (hwarm : s₀ + sp.k ≤ s) (hpos : 0 < s) (hs₀ : s₀ ≤ s - 1)
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hmb : sp.ts s + 6 * sp.Δ ≤ b)
+    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c))
+    (hsl : AC.SlowLockAt tr.projAC x c s D) (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
+  have hΔ := sp.toParams.hΔ
+  have hslow : gbar g ≤ sp.ts ((s : Int) - sp.k + 1) := by
+    have hts : sp.ts s₀ ≤ sp.ts ((s : Int) - sp.k + 1) := (AC.ts_le_iff sp).mpr (by omega)
+    linarith
+  have hm' : gbar g + 4 * sp.Δ ≤ sp.ts ((s - 1 : Nat) : Int) :=
+    hm.trans ((AC.ts_le_iff sp).mpr (by exact_mod_cast hs₀))
+  have hprev : sp.ts ((s - 1 : Nat) : Int) = sp.ts s - 4 * sp.Δ := by
+    rw [Nat.cast_sub (by omega : 1 ≤ s), Nat.cast_one, AC.ts_sub_one]
+  obtain ⟨ellx, C, hu, hconf, hsel⟩ := hsl
+  have hsl : AC.SlowLockAt tr.projAC x c s D := ⟨ellx, C, hu, hconf, hsel⟩
+  have hres : AC.ResultAt tr.projAC x c s C
+      (AC.fastCounted sp (tr.projAC.state x c) ellx.frame s C) := ⟨ellx, hu, hconf, rfl⟩
+  obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
+    result_honest_supporter_before_at' hrun hnc hsvc hawake hf hcatch hnr (by linarith)
+      hx hres (hu.2.2.1.trans_le hmb) hK
+  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
+  have hcx := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
+  have hDC := ((AC.deepest_mem hsel).1.1.2.2).mono (AC.frameIn_of_callU hrx.toU hx hcx).2
+  have hr := (hac.upTo (hrun.time_nonneg q)).localRun
+  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc, he⟩
+  have htq := AC.vote_time_leU hr.toU hz ⟨ell, hc'.1, he⟩
+  have hslot := (AC.castAt_specU hr.toU hz hc').2.1.symm.trans hes
+  change sp.slot (tr.time q) = s at hslot
+  change tr.time q ≤ sp.ts (sp.slot (tr.time q)) + sp.Δ at htq
+  rw [hslot] at htq
+  have halo : sp.ts s ≤ tr.time q :=
+    (AC.ts_le_iff_le_slot sp (hrun.time_nonneg q) _).2 (by rw [hslot])
+  apply next_votes_of_supporter_at' hframe hrun hnc hsvc hawake hf hcatch hnr
+    hwarm hpos hs₀ hm' hmb hz ⟨hc, he⟩ hes hQU hQr (hDC.trans hCQ) ?_ ?_ ?_ ?_ hK
+  · intro W hW hh hJ hQW
+    exact regular_slow_next_votes_of_stock_witness_at' hrun hnc hsvc hawake hf hcatch
+      (by linarith) hslow hmb (restrict_window hframe ((AC.ts_le_iff sp).mpr (by omega)) le_rfl)
+      hx hsl hres (hCQ.trans hQW) hz halo (by linarith) hc hW hh hJ hK
+  · intro hQ hvQ
+    -- The same viable-head contest-gap residue as in the fast endpoint.
+    sorry
+  · intro hk hQJ
+    exact Consensus.Goldilocks.Healing.PU.regular_slow_next_votes_at'
+      (Healing.toFrameWindow'_of_kind hframe hk) hrun hnc hsvc hawake hf hcatch hnr
+      hwarm hpos hs₀ hm hmb hx hsl hK
+  · intro hA a D' CV' hza hop hQD
+    have hts := AC.ts_succ s (sp := sp)
+    exact (Shadow.PU.Growing.optimistic_supporter_later_heads_stock_at'
+      (restrict_window hframe le_rfl (by linarith)) hrun hnc hsvc hawake hf hcatch hnr
+      (by linarith) (by omega) (by omega) (by linarith)
+      hz hza ⟨hc, he⟩ hes hA hop hQD hK (s + 1) le_rfl le_rfl).1
+
+end StockWindow
 
 end Consensus.Goldilocks.Healing.PU
 
