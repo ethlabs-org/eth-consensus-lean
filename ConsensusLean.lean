@@ -806,7 +806,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OutageCount
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OutageInduction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OutageLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OutageProt
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OutageStubs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Participants
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Provenance

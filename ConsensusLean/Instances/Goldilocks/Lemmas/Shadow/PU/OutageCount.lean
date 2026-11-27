@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OutageStubs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Participants
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
@@ -18,7 +18,7 @@ The shadow copy of `Growing/Outage/Count` (and the node-local lifts of
 `Growing/Sleepy/Node/Lift` that it reads) over `OutageLockPremises'` and `Growing.GoldilocksRun'`.
 The proofs are the stock ones: the counts read the AC projection, the committee facts and the
 trace, and the shadow frame enters only as the frame of an AC call, which is `Node.frame'`
-(`frame_of_projAC_at'`). The static run facts of `Shadow/PU/OutageStubs` are interface stubs. -/
+(`frame_of_projAC_at'`). The static lock provenance comes from `Shadow/PU/Provenance`. -/
 
 namespace Consensus.Goldilocks.Shadow.PU
 

@@ -15,8 +15,7 @@ public section
 
 The shadow copy of `Growing/Outage/Locks` over `OutageLockPremises'` and `Growing.GoldilocksRun'`:
 (i) at a cut, `OutageVoteInv'.locks_compatible_at`. The proofs are the stock ones; the static run
-fact `Compose.lock_origin'` is the shadow `good_state` (`Shadow/PU/Provenance`, interface stub
-`Shadow/PU/OutageStubs` until it is merged). -/
+fact `Compose.lock_origin'` is the shadow `good_state` (`Shadow/PU/Provenance`). -/
 
 namespace Consensus.Goldilocks.Shadow.PU
 
