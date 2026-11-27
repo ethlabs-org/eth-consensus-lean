@@ -363,7 +363,6 @@ example := ``Consensus.Goldilocks.ACInterface.InitialFrame
 example := ``Consensus.Goldilocks.ACInterface.ReachableAt
 example := ``Consensus.Goldilocks.ACInterface.ReqHeads
 example := ``Consensus.Goldilocks.ACInterface.ReqOutputs
-example := ``Consensus.Goldilocks.ACInterface.ReqParent
 example := ``Consensus.Goldilocks.ACInterface.ReqPayload
 example := ``Consensus.Goldilocks.ACInterface.ReqSource
 example := ``Consensus.Goldilocks.ACInterface.Requirements

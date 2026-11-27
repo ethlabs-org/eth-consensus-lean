@@ -4,15 +4,14 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks AC: the interface requirements 1–4 (A0.6)
+/-! # Goldilocks AC: the interface requirements 1–3 (A0.6)
 
 The heads of the duties extend `fc_root` (the anchor does, and the walk only descends) and end in
 `viable_heads` when they start in the viable tree of their domain (a walk inside a viable tree
 whose domain is closed under ancestors stops only at a viable head: below any other block of it,
 the child towards a viable head is eligible, so there is a best child); the block for the FG is a
-candidate below the anchor; the confirmed tip is between `Φ.F` and the head; and the parent of a
-proposal is the head of `ac_head` at the state the proposal leaves (at a slot start the latest
-view is the proposal's view of the previous slot). -/
+candidate below the anchor; the confirmed tip is between `Φ.F` and the head. The proposal parent
+is computed on a virtually unlocked working copy, not the unchanged stored state. -/
 
 namespace Consensus.Goldilocks.AC
 
@@ -278,17 +277,16 @@ private theorem voterBlockTree_closed {A : ACState sp.n} {Φ : Frm sp.n FGP}
 
 variable (sp)
 
-/-- **A0.6** from a start up to the vote permission: the requirements 1–4 of the AC started at
+/-- **A0.6** from a start up to the vote permission: the requirements 1–3 of the AC started at
 `s₀`, i.e. at the states reachable from `s₀` (`ACInterface.reachableAtFrom_iff`). -/
 theorem interface_requirements_from (FGP : Type) (ro : ReplayOrder sp FGP) {s₀ : ACState sp.n}
     (h₀ : VoteStart sp.genesisRoot s₀) :
     ({ goldilocksAC sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqHeads ∧
       ({ goldilocksAC sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqSource ∧
-      ({ goldilocksAC sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqOutputs ∧
-      ({ goldilocksAC sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqParent := by
+      ({ goldilocksAC sp FGP ro with initial := s₀ } : ACInterface sp.toParams FGP).ReqOutputs := by
   have hall : ∀ (Φ : Frm sp.n FGP), ∀ B ∈ Φ.tree, ∀ X, Φ.Anc X B → X ∈ Φ.tree :=
     fun Φ B hB X hX => mem_of_anc hX hB
-  refine ⟨?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_⟩
   · -- requirement 1: the heads of the duties
     intro x U hU A Φ t₀ hr
     replace hr := ACInterface.reachableAtFrom_iff.2 hr
@@ -334,26 +332,6 @@ theorem interface_requirements_from (FGP : Type) (ro : ReplayOrder sp FGP) {s₀
     · exact ⟨.refl, hΦ.rooted.2 _ hHt⟩
     · obtain ⟨⟨hDt, -, hDH⟩, -⟩ := deepest_mem hd
       exact ⟨hΦ.rooted.2 D hDt, hDH⟩
-  · -- requirement 4: the parent of a proposal is the head
-    intro x U hU A Φ t₀ hr σ _ s' d p hp
-    change acProposal sp A Φ (sp.toParams.slotTime σ) = (s', some (d, p)) at hp
-    unfold acProposal at hp
-    dsimp only at hp
-    split_ifs at hp
-    swap
-    · simp at hp
-    simp only [Prod.mk.injEq, Option.some.injEq] at hp
-    obtain ⟨rfl, ⟨rfl, -⟩, -⟩ := hp
-    change _ = acHead sp _ Φ _
-    have hts : sp.toParams.slotTime σ = sp.ts σ := by
-      rw [sp.slotTime_eq]; simp [ACParams.ts]
-    have hsl : sp.slot (sp.toParams.slotTime σ) = σ := by
-      rw [hts]; exact slot_of_mem sp σ le_rfl ((ts_lt_iff sp).2 (by push_cast; omega))
-    have hlt : ¬ (sp.ts (σ : Int) + 2 * sp.Δ ≤ sp.toParams.slotTime σ) := by
-      rw [hts]; have := sp.toParams.hΔ; linarith
-    unfold acHead latestView
-    simp only [hsl, hlt, ↓reduceIte]
-    rfl
 
 /-- **A0.6**: `interface_requirements_from` at the initial state. -/
 theorem interface_requirements : InterfaceRequirements sp := fun FGP ro =>

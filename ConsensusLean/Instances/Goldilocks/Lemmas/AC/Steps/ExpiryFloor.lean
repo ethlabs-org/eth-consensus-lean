@@ -169,11 +169,7 @@ theorem LocksWF.stepWith
       | exact h.updateConfirmationM Φ t _ (Nat.sub_le _ _)
       | exact h
   | proposal =>
-    refine ⟨?_, fun e he => by simp at he⟩
-    change LocksWF sp (acProposalWith sp L A Φ t).1.locks
-    unfold acProposalWith
-    dsimp only
-    split_ifs <;> first | exact h | exact h.unlockRel hL
+    exact ⟨h, fun e he => by simp at he⟩
   | toFG =>
     refine ⟨?_, fun e he => by simp at he⟩
     change LocksWF sp (acToFG sp A Φ t).1.locks

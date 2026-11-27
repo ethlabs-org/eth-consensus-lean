@@ -128,21 +128,13 @@ private theorem fastFloor_acOnTick (self : Fin sp.n) {A : ACState sp.n} (hΦ : F
     | exact fastFloor_updateConfirmation hΦ hB0 hva0 hk hv
 
 /-- `ac_proposal` keeps the fast floor. -/
-private theorem fastFloor_acProposal {A : ACState sp.n} (hΦ : FrameOK Φ) (hB0 : B₀ ∈ Φ.tree)
-    (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
-    (hu : (sp.slot t : Int) - 1 ≤ j ∨ unlockTarget sp Φ
-      (View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤))
-      ((sp.slot t : Int) - 1) B₀ = B₀)
+private theorem fastFloor_acProposal {A : ACState sp.n}
     (h : ∃ l ∈ A.locks, l.slot = j ∧ l.fast = true ∧ m ≤ l.expiry ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B) :
     ∃ l ∈ (acProposal sp A Φ t).1.locks, l.slot = j ∧ l.fast = true ∧ m ≤ l.expiry ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B := by
   unfold acProposal
-  dsimp only
-  split_ifs <;>
-    first
-    | exact h
-    | exact fastFloor_unlock hΦ hB0 hva0 hk hu h
+  split_ifs <;> exact h
 
 /-- **The fast floor lemma of an AC call**: `exists_step_locks_floor` with the fast bit kept. -/
 private theorem exists_step_locks_fastFloor {ro : ReplayOrder sp FGP} (self : Fin sp.n)
@@ -159,8 +151,7 @@ private theorem exists_step_locks_fastFloor {ro : ReplayOrder sp FGP} (self : Fi
     rw [unlockView_tick] at hu
     exact fastFloor_acOnTick self hΦ hB0 hva0 hk hu h
   | proposal =>
-    rw [unlockView_proposal] at hu
-    exact fastFloor_acProposal hΦ hB0 hva0 hk hu h
+    exact fastFloor_acProposal h
   | toFG =>
     have he : ((goldilocksAC sp FGP ro).step self A Φ t .toFG).1.locks = A.locks :=
       acToFG_locks_eq A

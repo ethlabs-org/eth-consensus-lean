@@ -64,7 +64,7 @@ def EventOrder : Prop :=
 
 /-- **C0.5, the AC projection of a run is an AC trace with the contract**, for the honest
 validators, inside the honest blocks of the run, for an AC with requirement 5 from each honest
-start, under `NoColl`, from the AC starts `ini` of the run; requirements 1–4 are not needed.
+start, under `NoColl`, from the AC starts `ini` of the run; requirements 1–3 are not needed.
 Requirement 5 is needed: the own block's
 `ac_on_block` call must satisfy `CallOK`, whose `validPayload` the FG does not check (the FG
 accepts without reading the AC payload), so it holds only because the AC's own proposal passes
@@ -79,16 +79,15 @@ def ACProjection : Prop :=
       ACLocalRun A H (tr.HonestBlocks H) tr.projAC ini
 
 /-- **C0.5 (c), the FG projection of a run is an FG trace with the contract**, with the AC's
-genesis payload, inside the honest blocks of the run, for an AC with requirements 1–5 and a
+genesis payload, inside the honest blocks of the run, for an AC with requirements 1–3 and 5 and a
 genesis whose root is its digest (the premises of C0.3), under `NoColl`. Its tick-order laws
 (`own_first`, `attest_order`, `own_payload`) come from C0.4 and the group law with C0.3: the own
 block is accepted in its tick, so the acceptance of the own proposal is the first FG cut at its
 time. The proof uses requirement 1 only for the parent of the own proposal: it extends `fc_root`,
 so it is held; without that the own block can be refused at the tick, then accepted later at the
 same time after its parent and a copy of it arrive, against `own_first`.
-Requirements 3 and 4 already give it (the parent is `ac_head` at the state `ac_proposal` leaves,
-which extends `fc_root`; `proposalHead_of_outputs_parent` in ConsensusLeanTest), so requirement 1
-adds nothing here beyond them; its vote-head clause is not used. The genesis root is taken as C0.3
+The proposal clause of requirement 1 supplies this fact directly; its vote-head clause is not
+used. The genesis root is taken as C0.3
 takes it, so the proof is C0.3 (a refused own block is otherwise refused for ever at its node, its
 root being held). Its unforgeability is the run's. -/
 def FGProjection : Prop :=
