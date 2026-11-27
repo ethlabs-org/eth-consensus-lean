@@ -37,7 +37,7 @@ theorem onTick_cuts (y : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) (fgDue
       (if fgDue then (tickStep proposer dg y
         (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1
           t x .proposal).1 t x .fgUpdate).2 else []) := by
-  cases fgDue <;> simp [onTick_eq, runSteps_eq, tickSteps]
+  cases fgDue <;> simp [onTick_eq]
 
 /-- Every public shadow tick starts with its AC tick cut. -/
 theorem tick_first_cut' {y : Fin P.n} {j : Nat} {t : Time} {x : Nat} {fgDue : Bool}
