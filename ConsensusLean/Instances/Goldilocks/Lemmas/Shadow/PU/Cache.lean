@@ -12,6 +12,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.HeldChains
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Entry
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutSteps
 
+-- One transport file for the whole stock cache family (shadow investigation only), so that
+-- consumer lanes import a single module; it exceeds the 1,500-line soft bound.
+set_option linter.style.longFile 1700
+
 public section
 
 /-! # Shadow P-U: the store invariants under any finality update (lane C0)
