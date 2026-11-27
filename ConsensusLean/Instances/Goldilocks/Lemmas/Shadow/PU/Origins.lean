@@ -17,15 +17,9 @@ restated over the shadow run and the shadow reset premises `ResetPremisesUpTo'`.
   `σ_eq_honest_at'`, Coherence's `honestBlocksAt_coherent'` and `held_anc_at'`, and the shadow AC
   projection (`Compose.goldilocks_ac_projection_from'`).
 * `CoveredUpTo.compatible_highOrigin'` is the stock proof (S1 of the cover, generic in the run).
-* `ResetPremisesUpTo'.origins_compatible_at'` (R1) and
-  `ResetPremisesUpTo'.left_entry_origin_or_covered_at'` (in `Shadow/PU/LeftEntry`) are
-  the open inputs. Their stock
-  proofs are the healing kernel (`Kernel/OriginCompare`, `HighInduction`, `VoteDomain`: the
-  vote-domain induction, which reads `viableTree` and `fc_root` of the voters' frames) and the
-  left-entry row-source argument (`Outcome/LeftEntry`, `RowSource`). Their stock import closure
-  is about 140 modules, about 20,000 lines.
-* `ProposalImpl.finalized_compatible_high_origin_at'` is a stub as well: its stock proof reads R1
-  and the low-justification bound `low_finalized_below_origin_at`. -/
+* R1 (`ResetPremisesUpTo'.origins_compatible_at'`) and
+  `ProposalImpl.finalized_compatible_high_origin_at'` are in `Shadow/PU/Kernel`, above the P-U
+  vote domain (`Shadow/PU/VoteDomain`). -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
@@ -95,26 +89,6 @@ theorem CoveredUpTo.compatible_highOrigin' {ini : Fin sp.n → (goldilocksNode' 
   let ⟨hc, C, s, hC, _, hEC⟩ := coveredUpTo_iff.1 h
   Compose.Growing.compatible_of_anc_left (Coherence.honestBlocksAt_coherent' hrun hnc) hEC
     (hc.s1 C s B j hC (Compose.Growing.HealedOrigin.of_high hib ho))
-
-/-- **Interface stub** (R1, `ResetPremisesUpTo.origins_compatible_at`, `Kernel/ResetFacts`):
-high origins within the horizon are comparable. -/
-theorem ResetPremisesUpTo'.origins_compatible_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
-    {x z : Fin sp.n} {i j r l : Nat} {B O : AC.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
-    (hO : HighOrigin tr H g z r l O) (hrb : tr.time r ≤ b) :
-    Compatible (tr.HonestBlocksAt H) B O := by
-  sorry
-
-/-- **Interface stub** (`ProposalImpl.finalized_compatible_high_origin_at`, `Pivot/OldSources`):
-the finalized tip of an honest reader is compatible with every high origin written by `b`. -/
-theorem ProposalImpl.finalized_compatible_high_origin_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
-    {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c)) (hcb : tr.time c ≤ b)
-    {x : Fin sp.n} {i j : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j O) (hib : tr.time i ≤ b) :
-    Compatible (tr.HonestBlocksAt H) (tr.state z c).fg.F O := by
-  sorry
 
 end Consensus.Goldilocks.Healing.Growing
 
