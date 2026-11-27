@@ -43,7 +43,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **A viable frozen descendant puts the target in the vote's viable tree** over the shadow
 frame (`KernelProof.vote_viable_of_root_at`; the shadow root is `Σ.F`). -/
 theorem KernelProof.vote_viable_of_root_at' {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {B D : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -81,7 +81,7 @@ theorem KernelProof.vote_viable_of_root_at' {ini : Fin sp.n → (goldilocksNode 
 /-- **The finite vote-domain reduction inside the deep quarantine**, over the shadow run
 (`KernelProof.held_target_vote_domain_before_of_quarantine_at`), with the stock conclusion. -/
 theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (_hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     (_hBx : B ∈ (tr.state x r).fg.tree) (_hrb : tr.time r ≤ b)
@@ -106,7 +106,7 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
   have hR := Compose.Growing.reachable_at' hp.run ht hy hle
   have hs := hR.puSnapshot
   have hr := hR.reachableWith
-  have hu := finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
+  have hu := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   have hU := Coherence.honestBlocksAt_coherent hp.run hp.noColl
   have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocksAt H :=
     Compose.Growing.tree_held_at' ht hy hle

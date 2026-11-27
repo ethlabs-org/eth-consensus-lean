@@ -88,6 +88,43 @@ class AdoptionRenameTest(unittest.TestCase):
             self.assertIn("N.f_at", result.stdout)
             self.assertEqual(p.read_text(), original)
 
+    def test_canonical_body_match_with_different_binders_refuses_write(self):
+        with tempfile.TemporaryDirectory(dir=Path(__file__).parent.parent / ".amp/in/orb-backup") as d:
+            root = Path(d)
+            p = root / SOURCE
+            p.parent.mkdir(parents=True)
+            original = ("namespace Consensus.Goldilocks.Store\n"
+                        "def IsViable' (h : Nat) : Prop := True\nend Consensus.Goldilocks.Store\n")
+            p.write_text(original)
+            stock = root / "ConsensusLean/Stock.lean"
+            stock.write_text(original.replace("IsViable'", "IsViable").replace("Nat", "Bool"))
+            result = subprocess.run([sys.executable, "-I", str(SCRIPT), "--root", d, "--write"],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(p.read_text(), original)
+
+    def test_structure_rebinding_checks_fields_and_preserves_methods(self):
+        with tempfile.TemporaryDirectory(dir=Path(__file__).parent.parent / ".amp/in/orb-backup") as d:
+            root = Path(d)
+            p = root / SOURCE
+            p.parent.mkdir(parents=True)
+            original = ("module\nnamespace N\n/-- Copied contract. -/\n"
+                        "structure LocalRun' where\n  value : Nat\n"
+                        "theorem LocalRun'.toCore (h : LocalRun') : Nat := h.value\nend N\n")
+            p.write_text(original)
+            stock = root / "ConsensusLean/Stock.lean"
+            stock.write_text("module\nnamespace N\nstructure LocalRun where\n  value : Bool\n"
+                             "theorem LocalRun.toCore (h : LocalRun) : Bool := h.value\nend N\n")
+            args = [sys.executable, "-I", str(SCRIPT), "--root", d, "--structures"]
+            self.assertNotEqual(subprocess.run([*args, "--write"], capture_output=True).returncode, 0)
+            self.assertEqual(p.read_text(), original)
+            stock.write_text(stock.read_text().replace("Bool", "Nat"))
+            self.assertEqual(subprocess.run([*args, "--write"], capture_output=True).returncode, 0)
+            self.assertNotIn("structure LocalRun", p.read_text())
+            self.assertNotIn("Copied contract", p.read_text())
+            self.assertIn("theorem LocalRun.toCore' (h : LocalRun)", p.read_text())
+            self.assertEqual(subprocess.run([*args, "--check"], capture_output=True).returncode, 0)
+
     def test_matching_proof_keeps_stock_and_redirects_shadow(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).parent.parent / ".amp/in/orb-backup") as d:
             root = Path(d)

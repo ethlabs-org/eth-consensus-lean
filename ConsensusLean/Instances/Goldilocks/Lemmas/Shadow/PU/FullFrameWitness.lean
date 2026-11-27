@@ -14,7 +14,7 @@ namespace Consensus.Goldilocks.Healing
 variable {P : Params} {ACP : Type} {st : Store P ACP}
 
 private theorem full_frame_viable_witness_of_max {acp₀ : ACP}
-    (hr : st.Reachable' acp₀)
+    (hr : st.Reachable acp₀)
     (hF : ∀ Q ∈ st.tree, (st.σ Q.root).h = st.hmax → st.Anc st.F Q) :
     ∃ Q ∈ st.toFrame.tree, Q ∈ st.toFrame.viableHeads ∧
       st.toFrame.Anc st.toFrame.fcRoot Q := by
@@ -41,7 +41,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem full_frame_viable_witness_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i))
     (hf : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) :
@@ -51,7 +51,7 @@ theorem full_frame_viable_witness_at {proposer : Nat → Fin sp.n}
   have ht := hrun.time_nonneg i
   have hle : ∀ k < i, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono hk.le
   have hr := Compose.Growing.reachable_at' hrun ht hy hle
-  have hu := Store.finalitySpec_updateFinality' (P := sp.toParams)
+  have hu := Store.finalitySpec_updateFinality (P := sp.toParams)
     (ACP := Payload sp.n)
   simp only [Node.frame_eq]
   apply full_frame_viable_witness_of_max hr

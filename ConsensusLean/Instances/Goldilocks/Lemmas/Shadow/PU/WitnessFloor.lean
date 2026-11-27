@@ -185,7 +185,7 @@ private theorem mem_addAtts {a : FG.Att P.n} {l : List (FG.Att P.n)}
       · exact ih (Or.inr h)
 
 /-- Every attestation carried by a held block is in the pool. -/
-theorem payload_mem_atts (hr : st.Reachable' acp₀) :
+theorem payload_mem_atts (hr : st.Reachable acp₀) :
     ∀ B ∈ st.tree, ∀ a ∈ B.fgPayload, a ∈ st.atts := by
   rw [Store.reachable_eq] at hr
   induction hr with
@@ -201,7 +201,7 @@ theorem payload_mem_atts (hr : st.Reachable' acp₀) :
     · rw [Store.onBlock_eq_onBlockWith] at hB'
       obtain ⟨pr, σ', -, -, -, -, -, rfl⟩ := Store.onBlockWith_eq_some hB'
       have hspec := (Store.finalitySpec_iff _).1
-        (Store.finalitySpec_updateFinality' (P := P) (ACP := ACP))
+        (Store.finalitySpec_updateFinality (P := P) (ACP := ACP))
       intro B hB a ha
       set st₁ : Store P ACP :=
         { s with blocks := Function.update s.blocks B'.root (some B'),
@@ -227,7 +227,7 @@ theorem payload_mem_atts (hr : st.Reachable' acp₀) :
         split_ifs at this <;> exact this
       exact mem_onAttestation (Or.inl (ih B hB' a ha))
 
-variable (hr : st.Reachable' acp₀)
+variable (hr : st.Reachable acp₀)
 include hr
 
 /-- The attestations on the chain of a held block are well formed and not above its height, and
@@ -239,7 +239,7 @@ theorem rows_at {W : NodeBlock P ACP} (hW : W ∈ st.tree) :
         ∀ pr, r.fin = some pr → pr ∈ (st.σ W.root).pending →
           r.val ∈ (st.σ W.root).fin pr.1)) := by
   have hR := hr.reachableWith
-  have hu' := Store.finalitySpec_updateFinality' (P := P) (ACP := ACP)
+  have hu' := Store.finalitySpec_updateFinality (P := P) (ACP := ACP)
   have hg := (accepted_tree_with hu' hR).2.2.2 W hW
   clear hW
   induction hg with
@@ -328,7 +328,7 @@ private theorem hj_anc {A W : NodeBlock P ACP} (h : st.Anc A W) :
     ((st.σ W.root).hj = (st.σ A.root).hj ∧ (st.σ W.root).J = (st.σ A.root).J) ∨
       (st.σ A.root).h ≤ (st.σ W.root).hj := by
   have hR := hr.reachableWith
-  have hu := Store.finalitySpec_updateFinality' (P := P) (ACP := ACP)
+  have hu := Store.finalitySpec_updateFinality (P := P) (ACP := ACP)
   induction h with
   | refl => exact Or.inl ⟨rfl, rfl⟩
   | @tail W' W hAW' hp ih =>
@@ -346,7 +346,7 @@ private theorem hj_anc {A W : NodeBlock P ACP} (h : st.Anc A W) :
 private theorem hj_eq_of_anc {A W : NodeBlock P ACP} (hW : W ∈ st.tree) (h : st.Anc A W)
     (hh : (st.σ W.root).h = (st.σ A.root).h) :
     (st.σ W.root).hj = (st.σ A.root).hj ∧ (st.σ W.root).J = (st.σ A.root).J := by
-  have hjh := hj_lt_h_with Store.finalitySpec_updateFinality' hr.reachableWith hW
+  have hjh := hj_lt_h_with Store.finalitySpec_updateFinality hr.reachableWith hW
   rcases hj_anc hr h with h' | h'
   · exact h'
   · omega
@@ -362,7 +362,7 @@ theorem proposal_crosses {W : NodeBlock P ACP} (hW : W ∈ st.tree)
     (hσ : P.fg.stateTransition (st.σ W.root) B = some σ') : st.hj < σ'.h := by
   classical
   have hR := hr.reachableWith
-  have hu := Store.finalitySpec_updateFinality' (P := P) (ACP := ACP)
+  have hu := Store.finalitySpec_updateFinality (P := P) (ACP := ACP)
   have hcoh := (accepted_tree_with hu hR).2.1
   have hroot : ∀ {X Y : NodeBlock P ACP}, X ∈ st.tree → Y ∈ st.tree → X.root = Y.root →
       X = Y := fun hX hY he => hcoh.1 hX hY he
@@ -498,7 +498,7 @@ theorem onBlock_σ {st' : Store P ACP} {B : NodeBlock P ACP} (h : st.onBlock B =
     { st with blocks := Function.update st.blocks B.root (some B),
               σ := Function.update st.σ B.root σ' } with hst₁
   have hspec := (Store.finalitySpec_iff _).1
-    (Store.finalitySpec_updateFinality' (P := P) (ACP := ACP))
+    (Store.finalitySpec_updateFinality (P := P) (ACP := ACP))
   obtain ⟨-, hσu, -⟩ := hspec st₁ σ'
   obtain ⟨-, hσa, -⟩ := Goldilocks.Store.addAtts_fields (Store.updateFinality st₁ σ') B.fgPayload
   rw [hσa, hσu]
@@ -532,7 +532,7 @@ theorem floor_le_of_isViable {D : NodeBlock P ACP} (hD : D ∈ st.tree) (hv : st
 theorem hj_lt_of_isViable {D : NodeBlock P ACP} (hD : D ∈ st.tree) (hv : st.IsViable D)
     {B : FGBlock P.n} (hB : B.atts = st.proposalAttestations D) {σ' : ChainState P.n}
     (hσ : P.fg.stateTransition (st.σ D.root) B = some σ') : st.hj < σ'.h := by
-  have hj := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality'
+  have hj := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
     hr.reachableWith
   have hmono : (st.σ D.root).h ≤ σ'.h := by
     rcases (step_rows hσ).2 with h | ⟨h, -⟩ <;> omega
@@ -557,7 +557,7 @@ proposal inside the window reaches the window's head height floor. -/
 theorem warm_proposal_bounds_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.Growing.FrameWindow tr H lo hi floor kindJ J)
@@ -572,7 +572,7 @@ theorem warm_proposal_bounds_at {proposer : Nat → Fin sp.n}
   have hzk : z ∈ H (tr.time kP) := htime ▸ hz
   have ht := hrun.time_nonneg kP
   have hr := hrun.upTo ht
-  have h := hr.toLocalRun'
+  have h := hr.toLocalRun
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2.1, hP.2.2⟩
   have hleB : ∀ q < kP + 1, tr.time q ≤ tr.time kP :=
@@ -658,7 +658,7 @@ theorem warm_proposal_bounds_at {proposer : Nat → Fin sp.n}
 theorem floor_le_warm_proposal_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.Growing.FrameWindow tr H lo hi floor kindJ J)
@@ -675,7 +675,7 @@ the stock arithmetic `le_floor_add_riseRounds` and `floor_le_warm_proposal_at'`.
 theorem rounds_le_warm_proposal_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g af len : Time} {u floor v : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hwin : Healing.Growing.FrameWindow tr H af (af + len) floor kindJ J)
@@ -692,7 +692,7 @@ theorem rounds_le_warm_proposal_at {proposer : Nat → Fin sp.n}
   have hzk : z ∈ H (tr.time kP) := ht ▸ hz
   have hkey := hK z kP hzk (ht ▸ hlo) (ht ▸ hhi)
   have hle : ∀ q < kP, tr.time q ≤ tr.time kP := fun q hq => hrun.time_mono hq.le
-  have hpos := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality'
+  have hpos := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
     (Compose.Growing.reachable_at' hrun (hrun.time_nonneg kP) hzk hle).reachableWith
   have hfloor := Healing.le_floor_add_riseRounds (tr.state z kP).fg (by omega)
     (HZ := Healing.Growing.HZ tr H g) (by rw [hkey]; exact hv)

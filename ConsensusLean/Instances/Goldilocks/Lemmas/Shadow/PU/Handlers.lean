@@ -14,7 +14,6 @@ namespace Consensus.Goldilocks.Node
 
 variable {P : Params} {A : NodeAC P}
 
-/-- Consecutive shadow cuts, with their intermediate states. -/
 end Consensus.Goldilocks.Node
 
 namespace Consensus.Goldilocks.Compose
@@ -33,7 +32,7 @@ theorem chain_append' {t : Time} {st st₁ st₂ : NodeState A} {cs cs' : List (
   | cons hs _ ih => exact .cons hs (ih h')
 
 private theorem chain_single {t : Time} {st st' : NodeState A} {c : Cut A}
-    (h : CutStep' self t st c st') : CutChain self t st [c] st' :=
+    (h : CutStep self t st c st') : CutChain self t st [c] st' :=
   .cons h (.nil _)
 
 private theorem acCall_chain (st : NodeState A) (t : Time) (c : A.Call) :
@@ -138,7 +137,7 @@ theorem exec_is_cut_chain' (st : NodeState A) (t : Time) (e : Event A) :
   case restart => rw [restart_eq]; exact acCall_chain self st t _
 
 private theorem cutStep_unique {y : Fin P.n} {t : Time} {st st₁ st₂ : NodeState A}
-    {c : Cut A} (h₁ : CutStep' y t st c st₁) (h₂ : CutStep' y t st c st₂) : st₁ = st₂ := by
+    {c : Cut A} (h₁ : CutStep y t st c st₁) (h₂ : CutStep y t st c st₂) : st₁ = st₂ := by
   obtain ⟨fg₁, ac₁, r₁⟩ := st₁
   obtain ⟨fg₂, ac₂, r₂⟩ := st₂
   cases c with
@@ -209,7 +208,7 @@ theorem group_call' {y : Fin P.n} {j : Nat} {t : Time} {e : Event A}
   simp only [Nat.add_zero] at hn ht hl
   exact ⟨⟨_, hn, hl⟩, ht⟩
 
-private theorem group_phase {y : Fin P.n} {j : Nat} {t t' : Time} {e e' : Event A}
+private theorem shadow_group_phase {y : Fin P.n} {j : Nat} {t t' : Time} {e e' : Event A}
     (hg : tr.GroupAt proposer dg y j t e) (hg' : tr.GroupAt proposer dg y j t' e') :
     e.phase = e'.phase := by
   have htt : t = t' := (group_call' hg).2.symm.trans (group_call' hg').2
@@ -225,7 +224,7 @@ private theorem group_phase {y : Fin P.n} {j : Nat} {t t' : Time} {e e' : Event 
   rw [← exec_head proposer dg y (tr.state y j) t e _ (mem hg.1),
     ← exec_head proposer dg y (tr.state y j) t e' _ (mem hg'.1), Option.some.inj h₀]
 
-private theorem group_start {y y' : Fin P.n} {j j' : Nat} {t t' : Time} {e e' : Event A}
+private theorem shadow_group_start {y y' : Fin P.n} {j j' : Nat} {t t' : Time} {e e' : Event A}
     (hg : tr.GroupAt proposer dg y j t e) (hg' : tr.GroupAt proposer dg y' j' t' e')
     (h₁ : j ≤ j') (h₂ : j' < j + (exec proposer dg y (tr.state y j) t e).2.length) :
     j' = j := by
@@ -243,7 +242,7 @@ theorem group_cut {y : Fin P.n} {j : Nat} {t : Time} {e : Event A}
   obtain ⟨hn, ht, -, -, hl⟩ := hg.2.1 k hk'
   exact ⟨⟨hn, hl.trans (congrArg some hc)⟩, ht⟩
 
-theorem cutChain_run' (h : Node.LocalRun' proposer dg H sg tr ini)
+theorem cutChain_run' (h : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) {t : Time} {st st' : NodeState A} {cs : List (Cut A)}
     (hch : CutChain y t st cs st') :
     ∀ j, tr.state y j = st →
@@ -265,7 +264,7 @@ theorem cutChain_run' (h : Node.LocalRun' proposer dg H sg tr ini)
     simpa only [List.length_cons, show j + (cs.length + 1) = j + 1 + cs.length by omega]
       using this
 
-private theorem group_post (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+private theorem group_post (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {j : Nat} {t : Time} {e : Event A}
     (hg : tr.GroupAt proposer dg y j t e) :
     tr.state y (j + (exec proposer dg y (tr.state y j) t e).2.length) =
@@ -278,7 +277,7 @@ private theorem group_post (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin
 private structure GInv (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (tr : RunTrace A)
     (y : Fin P.n) (s₀ : A.State) (j : Nat) (cfg : Config A) : Prop where
-  reach : Node.Reachable' proposer dg y cfg s₀
+  reach : Node.Reachable proposer dg y cfg s₀
   st : cfg.st = tr.state y j
   calls : ∀ k < j, tr.IsCall y k → tr.time k ≤ cfg.time
   time : cfg.time ≤ tr.time j
@@ -287,7 +286,7 @@ private structure GInv (proposer : Nat → Fin P.n)
 
 variable {s₀ : A.State}
 
-private theorem gInv_skip (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+private theorem gInv_skip (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     {j : Nat} {cfg : Config A} (hi : GInv proposer dg tr y s₀ j cfg)
     (hn : ¬ tr.IsCall y j) : GInv proposer dg tr y s₀ (j + 1) cfg where
   reach := hi.reach
@@ -305,7 +304,7 @@ private theorem gInv_skip (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin 
 private theorem phaseAfter_eq {e : Event A} : e.phaseAfter = .post ↔ 0 < e.phase := by
   cases e <;> simp [Event.phaseAfter, Event.phase]
 
-private theorem eventOK (h : Node.LocalRun' proposer dg H sg tr ini)
+private theorem eventOK (h : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) {j : Nat} {t : Time} {e : Event A} {cfg : Config A}
     (hi : GInv proposer dg tr y s₀ j cfg) (hg : tr.GroupAt proposer dg y j t e) :
     EventOK t (Phase.at cfg.time t cfg.phase) e := by
@@ -338,7 +337,7 @@ private theorem eventOK (h : Node.LocalRun' proposer dg H sg tr ini)
     have hj₀ : j₀ < j := by
       rcases lt_trichotomy j₀ j with hlt | rfl | hgt
       · exact hlt
-      · exact absurd (group_phase hg₀ hg) (by simp [Event.phase])
+      · exact absurd (shadow_group_phase hg₀ hg) (by simp [Event.phase])
       · exact absurd (h.phase_order y hy y hy j j₀ t _ _ hg hg₀ hgt (.inl rfl))
           (by simp [Event.phase])
     have htc : cfg.time = t :=
@@ -346,7 +345,7 @@ private theorem eventOK (h : Node.LocalRun' proposer dg H sg tr ini)
     simp only [htc, Phase.at, lt_self_iff_false, ↓reduceIte]
     exact hi.phase.2 ⟨j₀, hj₀, .tick x₀ f₀, htc ▸ hg₀, by simp [Event.phase]⟩
 
-private theorem gInv_init (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+private theorem gInv_init (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) : GInv proposer dg tr y (ini y) 0 (Config.init A (ini y)) where
   reach := (congrFun (Node.reachable_eq proposer dg y (ini y)) _).mpr .refl
   st := (h.init y hy).symm
@@ -354,7 +353,7 @@ private theorem gInv_init (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin 
   time := h.time_nonneg 0
   phase := by simp [Config.init]
 
-private theorem gInv_nodeStep (h : Node.LocalRun' proposer dg H sg tr ini)
+private theorem gInv_nodeStep (h : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) {j : Nat} {t : Time} {e : Event A} {cfg : Config A}
     (hi : GInv proposer dg tr y s₀ j cfg) (hg : tr.GroupAt proposer dg y j t e) :
     Node.Step proposer dg y cfg e t
@@ -363,7 +362,7 @@ private theorem gInv_nodeStep (h : Node.LocalRun' proposer dg H sg tr ini)
   exact ⟨(group_call' hg).2 ▸ hi.time, eventOK h hy hi hg, h.wire y hy j t e hg,
     by rw [hi.st], rfl, rfl⟩
 
-private theorem gInv_step (h : Node.LocalRun' proposer dg H sg tr ini)
+private theorem gInv_step (h : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) {j : Nat} {t : Time} {e : Event A} {cfg : Config A}
     (hi : GInv proposer dg tr y s₀ j cfg) (hg : tr.GroupAt proposer dg y j t e) :
     GInv proposer dg tr y s₀ (j + (exec proposer dg y (tr.state y j) t e).2.length)
@@ -390,10 +389,10 @@ private theorem gInv_step (h : Node.LocalRun' proposer dg H sg tr ini)
     rintro ⟨j₀, hj₀, e₀, hg₀, hp₀⟩
     by_cases hlt : j₀ < j
     · exact lt_of_lt_of_le hp₀ (h.phase_order y hy y hy j₀ j t e₀ e hg₀ hg hlt (.inl rfl))
-    · obtain rfl := group_start hg hg₀ (not_lt.1 hlt) hj₀
-      exact group_phase hg₀ hg ▸ hp₀
+    · obtain rfl := shadow_group_start hg hg₀ (not_lt.1 hlt) hj₀
+      exact shadow_group_phase hg₀ hg ▸ hp₀
 
-private theorem gInv_exists (h : Node.LocalRun' proposer dg H sg tr ini)
+private theorem gInv_exists (h : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) (j : Nat)
     (hb : ∀ j' t e, tr.GroupAt proposer dg y j' t e → j' < j →
       j' + (exec proposer dg y (tr.state y j') t e).2.length ≤ j) :
@@ -409,7 +408,7 @@ private theorem gInv_exists (h : Node.LocalRun' proposer dg H sg tr ini)
     obtain ⟨hg, hj'i, hij'⟩ := hg
     obtain ⟨cfg, hcfg⟩ := ih j' (by omega) fun j'' t e hg'' hlt => by
       by_contra
-      exact absurd (group_start hg'' hg hlt.le (by omega)) hlt.ne'
+      exact absurd (shadow_group_start hg'' hg hlt.le (by omega)) hlt.ne'
     have := hb j' _ e hg (by omega)
     rw [show i + 1 = j' + (exec proposer dg y (tr.state y j') (tr.time i) e).2.length by omega]
     exact ⟨_, gInv_step h hy hcfg hg⟩
@@ -423,14 +422,14 @@ private theorem gInv_exists (h : Node.LocalRun' proposer dg H sg tr ini)
     exact ⟨cfg, gInv_skip h hcfg hc⟩
 
 /-- Each honest shadow group executes from a reachable node configuration. -/
-theorem group_step' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+theorem group_step' (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
     {j : Nat} {t : Time} {e : Event A} (hg : tr.GroupAt proposer dg y j t e) :
-    ∃ cfg : Config A, Node.Reachable' proposer dg y cfg (ini y) ∧ cfg.st = tr.state y j ∧
+    ∃ cfg : Config A, Node.Reachable proposer dg y cfg (ini y) ∧ cfg.st = tr.state y j ∧
       Node.Step proposer dg y cfg e t
         ⟨(exec proposer dg y (tr.state y j) t e).1, t, e.phaseAfter⟩ := by
   obtain ⟨cfg, hcfg⟩ := gInv_exists h hy j fun j' t' e' hg' hlt => by
     by_contra
-    exact absurd (group_start hg' hg hlt.le (by omega)) hlt.ne'
+    exact absurd (shadow_group_start hg' hg hlt.le (by omega)) hlt.ne'
   exact ⟨cfg, hcfg.reach, hcfg.st, gInv_nodeStep h hy hcfg hg⟩
 
 private theorem onBlock_no_message (y : Fin P.n) (st : NodeState A) (t : Time)
@@ -517,7 +516,7 @@ private theorem exec_message (y : Fin P.n) (st : NodeState A) (t : Time) (e : Ev
     exact False.elim (runSteps_no_message y st t x _ h hm)
 
 /-- A shadow AC message call belongs to delivery of that same message. -/
-theorem msgCall_group' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+theorem msgCall_group' (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel A} {m : A.Msg}
     (hc : tr.CallAt y i (.ac ℓ)) (hm : ℓ.call = .message m) :
     ∃ j, tr.GroupAt proposer dg y j (tr.time i) (.message m) := by

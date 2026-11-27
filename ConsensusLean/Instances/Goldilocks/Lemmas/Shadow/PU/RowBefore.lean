@@ -17,7 +17,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- The signed row's healed member was written before the shadow signing. -/
 theorem signed_row_lock_member_before_at'
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {a b : Time} {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
     (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
     (hh : HZ tr H g + 1 ≤ att.h) (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))
@@ -31,7 +31,7 @@ theorem signed_row_lock_member_before_at'
 /-- The shadow signed row is covered by a member written before its signing. -/
 theorem signed_row_covered_before_at'
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {a b : Time} {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
     (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
     (hh : HZ tr H g + 1 ≤ att.h) (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))
@@ -43,7 +43,7 @@ theorem signed_row_covered_before_at'
 /-- A held shadow left entry is covered by a member written before the reader's cut. -/
 theorem left_entry_covered_before_at'
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {a b : Time} {y : Fin sp.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
     (hq : (H (max (cutZ sp.toParams g) t))ᶜ.ncard < sp.toParams.fg.q)

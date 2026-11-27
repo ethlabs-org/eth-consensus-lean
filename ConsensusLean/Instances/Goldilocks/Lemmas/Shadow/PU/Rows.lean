@@ -95,7 +95,7 @@ theorem rows_prog (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (
       (r.h = ((tr.store y m).σ W.root).h → r.T = ((tr.store y m).σ W.root).Th →
         r.val ∈ ((tr.store y m).σ W.root).prog) := by
   have hR := (store_reachable' hr hy m).reachableWith
-  have hg := (accepted_tree_with finalitySpec_updateFinality' hR).2.2.2 W hW
+  have hg := (accepted_tree_with finalitySpec_updateFinality hR).2.2.2 W hW
   clear hW
   induction hg with
   | refl =>
@@ -105,7 +105,7 @@ theorem rows_prog (hr : FGLocalRun acp₀ H U tr) {y : Fin P.n} (hy : y ∈ H) (
     · cases hZ
   | @tail W' W _ hpar ih =>
     obtain ⟨h1, h2, hp⟩ := hpar
-    obtain ⟨-, -, -, hst⟩ := step_σ_with finalitySpec_updateFinality' hR h2 hp
+    obtain ⟨-, -, -, hst⟩ := step_σ_with finalitySpec_updateFinality hR h2 hp
     obtain ⟨hle, hcase⟩ := step_prog hst
     intro X hX r hrX
     have hX' := Store.anc_parent h1 hp hX
@@ -172,7 +172,7 @@ theorem onBlock_fields {ACP : Type} {st st' : Store P ACP} {B : NodeBlock P ACP}
     { st with blocks := Function.update st.blocks B.root (some B),
               σ := Function.update st.σ B.root σ' }
   have hspec := (Store.finalitySpec_iff _).1
-    (Store.finalitySpec_updateFinality' (P := P) (ACP := ACP))
+    (Store.finalitySpec_updateFinality (P := P) (ACP := ACP))
   obtain ⟨hb, hσ, ha, -⟩ := hspec st₁ σ'
   obtain ⟨h1, h2, h3⟩ := Goldilocks.Store.addAtts_fields (Store.updateFinality st₁ σ') B.fgPayload
   refine ⟨pr, σ', hn, hs, hp, ht, h1.trans hb, h2.trans hσ, fun a h => ?_⟩
@@ -186,13 +186,13 @@ private theorem mem_onBlock {ACP : Type} {st st' : Store P ACP} {B : NodeBlock P
   rw [Store.onBlock_eq_onBlockWith] at hB
   obtain ⟨pr, σ', -, -, -, -, -, rfl⟩ := Store.onBlockWith_eq_some hB
   have hspec := (Store.finalitySpec_iff _).1
-    (Store.finalitySpec_updateFinality' (P := P) (ACP := ACP))
+    (Store.finalitySpec_updateFinality (P := P) (ACP := ACP))
   refine mem_addAtts (h.imp_left fun h => ?_)
   rw [(hspec _ σ').2.2.1]
   exact h
 
 /-- The pool of an honest node only grows (a copy of `atts_mono`). -/
-private theorem atts_mono (h : Node.LocalRun' proposer dg H sg tr ini)
+private theorem atts_mono (h : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) {i j : Nat}
     (hij : i ≤ j) {a : FG.Att P.n} (ha : a ∈ (tr.state y i).fg.atts) :
     a ∈ (tr.state y j).fg.atts := by
@@ -207,7 +207,7 @@ private theorem atts_mono (h : Node.LocalRun' proposer dg H sg tr ini)
       exact mem_onAttestation (Or.inl ha)
 
 /-- A processed attestation is in the pool after the cut (a copy of `mem_atts_of_process`). -/
-private theorem mem_atts_of_process (h : Node.LocalRun' proposer dg H sg tr ini)
+private theorem mem_atts_of_process (h : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) {k : Nat} {a : FG.Att P.n} (hp : tr.ProcessAttAt y k a) :
     a ∈ (tr.state y (k + 1)).fg.atts := by
   rcases hp with hc | ⟨B, hc, ha⟩
@@ -220,7 +220,7 @@ private theorem mem_atts_of_process (h : Node.LocalRun' proposer dg H sg tr ini)
 
 /-- **Processed attestations persist in the honest node's pool** (a copy of
 `processed_att_retained`). -/
-theorem accept_of_proposesAt_from' (h : Node.LocalRun' proposer dg H sg tr ini)
+theorem accept_of_proposesAt_from' (h : Node.LocalRun proposer dg H sg tr ini)
     (hroot : (P.genesisBlock A.genesisPayload).RootOk dg) (hnc : Compose.NoCollRun dg tr)
     {p : Fin P.n} (hp : p ∈ H) (hq : ({ A with initial := ini p } : NodeAC P).Requirements)
     {k : Nat} {W : A.Blk} (hW : tr.ProposesAt p k W) :
@@ -238,7 +238,7 @@ theorem accept_of_proposesAt_from' (h : Node.LocalRun' proposer dg H sg tr ini)
 
 /-- **The parent of an honest proposal is held at its cut** (a copy of
 `proposal_parent_held_from`). -/
-theorem proposal_parent_held_from' (h : Node.LocalRun' proposer dg H sg tr ini)
+theorem proposal_parent_held_from' (h : Node.LocalRun proposer dg H sg tr ini)
     (hroot : (P.genesisBlock A.genesisPayload).RootOk dg) (hnc : Compose.NoCollRun dg tr)
     {p : Fin P.n} (hp : p ∈ H) (hq : ({ A with initial := ini p } : NodeAC P).Requirements)
     {kX : Nat} {X : A.Blk} (hX : tr.ProposesAt p kX X) :
@@ -248,7 +248,7 @@ theorem proposal_parent_held_from' (h : Node.LocalRun' proposer dg H sg tr ini)
     onBlock_fields ((Node.cutStep_block_true _ _ _ _ _).1 (h.cutLaw p hp kX _ hacc)).2.1
   obtain ⟨Y, hY⟩ := Option.isSome_iff_exists.1 hsome
   have hR := (Node.fg_reachable_at h hp kX).reachableWith
-  have hYr : Y.root = pr := Store.blocks_root_with Store.finalitySpec_updateFinality' hR hY
+  have hYr : Y.root = pr := Store.blocks_root_with Store.finalitySpec_updateFinality hR hY
   refine ⟨Y, by rw [hpar, hYr], ?_⟩
   change (tr.state p kX).fg.blocks Y.root = some Y
   rw [hYr]

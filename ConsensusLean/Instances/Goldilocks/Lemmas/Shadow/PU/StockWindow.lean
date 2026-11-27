@@ -48,7 +48,7 @@ non-top window at `M = floor + 1`. -/
 theorem toFrameWindow_of_noContest {lo hi : Time} {floor : Nat} {kindJ : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hw : Generic.FrameWindow tr H lo hi floor kindJ J) (hk : ¬ kindJ)
     (hnoC : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi →
       ¬ (tr.state y i).fg.Contest) :
@@ -60,7 +60,7 @@ theorem toFrameWindow_of_noContest {lo hi : Time} {floor : Nat} {kindJ : Prop}
     have hnc := hnoC y i hy hlo hhi
     have htop : (tr.state y i).fg.hmax ≠ (tr.state y i).fg.hj + 1 :=
       fun h => hk ((hw.kind_iff y i hy hlo hhi).1 ⟨h, hnc⟩)
-    have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality'
+    have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
       (Compose.Growing.reachable_at' hrun (hrun.time_nonneg i) hy
         (fun q hq => hrun.time_mono hq.le)).reachableWith
     have hfl := hw.floor_eq y i hy hlo hhi

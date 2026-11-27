@@ -22,7 +22,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem faultBoundK_of_service_at {K : AC.CommitteeDict sp.n} {g b : Time}
     (hK : CommitteeHalfUpTo tr H K g b)
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hnr : Healing.Growing.NoRestartAfter tr H (gbar g)) {s : Nat}
     (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b)

@@ -35,9 +35,9 @@ open AC (ACParams ReplayOrder Payload)
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The shadow cut law is the cut law at the shadow finality update and frame. -/
-theorem Node.CutStep'.with {self : Fin sp.n} {t : Time}
+theorem Node.CutStep.with' {self : Fin sp.n} {t : Time}
     {st st' : NodeState (goldilocksNode sp ro)} {c : Cut (goldilocksNode sp ro)}
-    (h : Node.CutStep' self t st c st') :
+    (h : Node.CutStep self t st c st') :
     CutStepWith Store.updateFinality Node.frame self t st c st' := by
   rcases c with ⟨⟨B, _ | _⟩ | a | ⟨C, _ | a⟩⟩ | ℓ
   · have h := (Node.cutStep_block_false _ _ _ _ _).1 h
@@ -141,7 +141,7 @@ private theorem tick_no_message (y : Fin sp.n) (st : NodeState (goldilocksNode s
 
 /-- An attestation in the pool of an honest node was processed by it at an earlier cut (a copy of
 `pool_processed`). -/
-private theorem pool_processed (hrun : GoldilocksRun' proposer dg H tr ini) {y : Fin sp.n}
+private theorem pool_processed (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {m : Nat} {a : FG.Att sp.n}
     (ha : a ∈ (tr.state y m).fg.atts) : ∃ k < m, tr.ProcessAttAt y k a := by
   induction m with
@@ -153,7 +153,7 @@ private theorem pool_processed (hrun : GoldilocksRun' proposer dg H tr ini) {y :
     have lift : a ∈ (tr.state y m).fg.atts → ∃ k < m + 1, tr.ProcessAttAt y k a := fun ha =>
       let ⟨k, hk, hp⟩ := ih ha
       ⟨k, by omega, hp⟩
-    rcases Coherence.fg_step hrun.toLocalRun' hy m with he | ⟨B, hA, hB⟩ | ⟨b, hb, he⟩
+    rcases Coherence.fg_step hrun.toLocalRun hy m with he | ⟨B, hA, hB⟩ | ⟨b, hb, he⟩
     · exact lift (he ▸ ha)
     · rcases (Healing.onBlock_fields hB).choose_spec.choose_spec.2.2.2.2.2.2 a ha with ha | ha
       · exact lift ha
@@ -217,14 +217,14 @@ private theorem tick_block_payload {y : Fin sp.n} {st : NodeState (goldilocksNod
 
 /-- An `fg_attest` cut lies in a tick, after the earlier cuts of that tick (a copy of
 `tick_of_attest`). -/
-private theorem tick_of_attest (hrun : GoldilocksRun' proposer dg H tr ini) {y : Fin sp.n}
+private theorem tick_of_attest (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Option (FG.Att sp.n)}
     (hc : tr.CallAt y k (.fg (.attest C s))) :
     ∃ j₀ ≤ k, ∃ x, tr.TickAt proposer dg y j₀ (tr.time k) ∧
       ∀ i, j₀ ≤ i → i ≤ k →
         ∃ c ∈ (Node.exec proposer dg y (tr.state y j₀) (tr.time k) (.tick x true)).2,
           tr.label i = some c := by
-  obtain ⟨j₀, e, kk, hg, hk, hkk⟩ := Coherence.call_in_group hrun.toLocalRun' hy hc
+  obtain ⟨j₀, e, kk, hg, hk, hkk⟩ := Coherence.call_in_group hrun.toLocalRun hy hc
   obtain ⟨x, rfl⟩ := Compose.exec_attest (proposer := proposer) (dg := dg) y _ _ e
     (List.mem_of_getElem? hkk)
   have hg' := (RunTrace.groupAt_iff _ _ _ _ _ _ _).1 hg
@@ -367,14 +367,14 @@ private theorem toFG_next (y : Fin sp.n) (st : NodeState (goldilocksNode sp ro))
 
 /-! ### Pending fields (placeholders with the fields' exact types) -/
 
-private theorem hj_mono_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
+private theorem hj_mono_pending (hrun : GoldilocksRun proposer dg H tr ini) :
     ∀ y ∈ H, ∀ {i j}, i ≤ j → (tr.state y i).fg.hj ≤ (tr.state y j).fg.hj := by
   intro y hy i j hij
   induction j, hij using Nat.le_induction with
   | base => exact le_rfl
   | succ j _ ih =>
     apply ih.trans
-    rcases Coherence.fg_step hrun.toLocalRun' hy j with he | ⟨B, -, hB⟩ | ⟨a, -, he⟩
+    rcases Coherence.fg_step hrun.toLocalRun hy j with he | ⟨B, -, hB⟩ | ⟨a, -, he⟩
     · rw [he]
     · rw [Store.onBlock_eq_onBlockWith] at hB
       obtain ⟨pr, σ, -, -, -, -, -, he⟩ := Store.onBlockWith_eq_some hB
@@ -387,7 +387,7 @@ private theorem hj_mono_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
       have key : ∀ st₁ : Store sp.toParams (Payload sp.n), st₁.hj = (tr.state y j).fg.hj →
           (tr.state y j).fg.hj ≤ (Store.updateFinality st₁ σ).hj := by
         intro st₁ hst₁
-        rcases Store.FinalitySpec.J_hj Store.finalitySpec_updateFinality' st₁ σ with
+        rcases Store.FinalitySpec.J_hj Store.finalitySpec_updateFinality st₁ σ with
           h | ⟨-, he', -, hlex⟩
         · exact le_of_eq (hst₁.symm.trans h.2.symm)
         · rw [he', ← hst₁]
@@ -399,14 +399,14 @@ private theorem hj_mono_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
       obtain ⟨atts, he'⟩ := Store.onAttestation_eq (tr.state y j).fg a
       rw [he']
 
-private theorem report_attest_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
+private theorem report_attest_pending (hrun : GoldilocksRun proposer dg H tr ini) :
     ∀ y ∈ H, ∀ {k} {ℓ : ACLabel (goldilocksNode sp ro)} {C},
     tr.CallAt y k (.ac ℓ) → ℓ.call = .toFG →
     ((goldilocksNode sp ro).toFG (tr.state y k).ac ℓ.frame (tr.time k)).2 = some C →
     ∃ s, tr.CallAt y (k + 1) (.fg (.attest C s)) ∧ tr.time (k + 1) = tr.time k ∧
       (tr.state y (k + 1)).fg = (tr.state y k).fg := by
   intro y hy k ℓ C hk hc hC
-  have h := hrun.toLocalRun'
+  have h := hrun.toLocalRun
   obtain ⟨j₀, e, k', hg, rfl, hk'⟩ := Coherence.call_in_group h hy hk
   obtain ⟨st₁, hch, hfr, hnext⟩ := toFG_next y _ _ e hk' hc
   have hg' := (RunTrace.groupAt_iff _ _ _ _ _ _ _).1 hg
@@ -429,14 +429,14 @@ private theorem report_attest_pending (hrun : GoldilocksRun' proposer dg H tr in
   · rw [tr.state_succ_of_call hk]
     exact ((Node.cutStep_ac _ _ _ _ _).1 (h.cutLaw y hy _ _ hk)).2.2.1
 
-private theorem signed_tick_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
+private theorem signed_tick_pending (hrun : GoldilocksRun proposer dg H tr ini) :
     ∀ y ∈ H, ∀ {d C a}, tr.CallAt y d (.fg (.attest C (some a))) →
     ∃ j ≤ d, (∀ i, j ≤ i → i ≤ d → tr.time i = tr.time d ∧
         ∀ ℓ : ACLabel (goldilocksNode sp ro), tr.CallAt y i (.ac ℓ) → ∀ m, ℓ.call ≠ .message m) ∧
       ∀ i < j, ∀ c, tr.CallAt y i c → tr.time i = tr.time d →
         ∃ ℓ : ACLabel (goldilocksNode sp ro), c = .ac ℓ ∧ ℓ.call = .restart := by
   intro y hy d C a hcd
-  obtain ⟨j, ev, kk, hg, hdj, hk⟩ := Coherence.call_in_group hrun.toLocalRun' hy hcd
+  obtain ⟨j, ev, kk, hg, hdj, hk⟩ := Coherence.call_in_group hrun.toLocalRun hy hcd
   obtain ⟨x, rfl⟩ := signed_only_in_ticks'' y _ _ _ C a (List.mem_of_getElem? hk)
   have hg' := (RunTrace.groupAt_iff _ _ _ _ _ _ _).1 hg
   have hkk : kk < (Node.exec proposer dg y (tr.state y j) (tr.time d)
@@ -454,10 +454,10 @@ private theorem signed_tick_pending (hrun : GoldilocksRun' proposer dg H tr ini)
       (n := i - j) (by omega)
     rw [← Option.some.inj hl] at hmem
     exact tick_no_message y _ _ x _ hmem m hm
-  · exact Compose.before_tick' hrun.toLocalRun' hy
+  · exact Compose.before_tick' hrun.toLocalRun hy
       ((RunTrace.tickAt_iff _ _ _ _ _ _).2 ⟨x, true, hg⟩) hc hi ht
 
-private theorem late_tick_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
+private theorem late_tick_pending (hrun : GoldilocksRun proposer dg H tr ini) :
     ∀ y ∈ H, ∀ {t}, 0 ≤ t → sp.toParams.IsPublic t → tr.awake y t →
     ∃ jt, ∃ ℓ : ACLabel (goldilocksNode sp ro), tr.CallAt y jt (.ac ℓ) ∧ ℓ.call = .tick ∧
       tr.time jt = t ∧ ∀ i W, tr.AcceptAt y i W → tr.time i = t → ¬ Node.Proposes proposer y t →
@@ -478,7 +478,7 @@ private theorem late_tick_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
   rw [hget] at hl0
   simp only [Nat.add_zero] at hn0 ht0' hl0
   refine ⟨jt, _, ⟨hn0, hl0⟩, rfl, ht0', fun i W hA hit hnp => ?_⟩
-  rcases Coherence.blockCall_cases hrun.toLocalRun' hy hA with hgW |
+  rcases Coherence.blockCall_cases hrun.toLocalRun hy hA with hgW |
     ⟨j, x', f', -, -, hP, -⟩
   · rw [hit] at hgW
     rcases lt_trichotomy jt i with h | rfl | h
@@ -489,12 +489,12 @@ private theorem late_tick_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
       simp [Node.Event.phase] at this
   · exact absurd (hit ▸ hP) hnp
 
-private theorem signed_before_attest_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
+private theorem signed_before_attest_pending (hrun : GoldilocksRun proposer dg H tr ini) :
     ∀ y ∈ H, ∀ {k C s}, tr.CallAt y k (.fg (.attest C s)) →
     ∀ {Y}, Y ∈ (tr.state y k).fg.tree → ∀ {a}, a ∈ Y.fgPayload → a.val ∈ H →
       ∃ j, tr.SignAt a.val j a ∧ tr.time j < tr.time k := by
   intro y hy k C s hc Y hY a ha haH
-  have h := hrun.toLocalRun'
+  have h := hrun.toLocalRun
   rcases Coherence.tree_accepted h hy hY with rfl | ⟨i, hik, hA⟩
   · cases ha
   obtain ⟨j, hji, hj⟩ := hrun.att_unforgeable y hy i a (Or.inr ⟨Y, ⟨true, hA⟩, ha⟩) haH
@@ -524,9 +524,9 @@ private theorem signed_before_attest_pending (hrun : GoldilocksRun' proposer dg 
 /-! ### The instances -/
 
 /-- **The static core of a shadow Goldilocks run.** -/
-theorem GoldilocksRun'.toStaticCore (hrun : GoldilocksRun' proposer dg H tr ini) :
+theorem GoldilocksRun.toStaticCore' (hrun : GoldilocksRun proposer dg H tr ini) :
     StaticRunCore Store.updateFinality Node.frame proposer dg H tr ini where
-  finalitySpec := Store.finalitySpec_updateFinality'
+  finalitySpec := Store.finalitySpec_updateFinality
   frameOf_F st := by rw [Node.frame_eq]; exact Store.toFrame_F _
   frameOf_tree st B := by rw [Node.frame_eq, Store.toFrame_tree]; exact Iff.rfl
   init := hrun.init
@@ -540,24 +540,24 @@ theorem GoldilocksRun'.toStaticCore (hrun : GoldilocksRun' proposer dg H tr ini)
   sleep_of_restart := hrun.sleep_of_restart
   sign_public y hy k a hs := by
     obtain ⟨C, hc⟩ := hs
-    obtain ⟨j, -, ht⟩ := Compose.attestCall_tick' hrun.toLocalRun' hy hc
+    obtain ⟨j, -, ht⟩ := Compose.attestCall_tick' hrun.toLocalRun hy hc
     exact hrun.tick_public y hy j _ ht
   signed_run v hv i := by
-    obtain ⟨hinit, hexec⟩ := Compose.fg_exec' hrun.toLocalRun'
+    obtain ⟨hinit, hexec⟩ := Compose.fg_exec' hrun.toLocalRun
     obtain ⟨inputs, hin, hs⟩ := Healing.signed_run hinit hexec hv i
     exact ⟨inputs, hin, fun j hj a ha =>
       hs j hj a ⟨_, Compose.projFG_callAt.mpr ha.choose_spec⟩⟩
-  reachable y hy i := (Node.fg_reachable_at hrun.toLocalRun' hy i).reachableWith
-  jmax y hy i := (Healing.jMax_iff _).1 (Node.fg_reachable_at hrun.toLocalRun' hy i).jMax
-  frameOK y hy i := Compose.frameOK_state' hrun.toLocalRun' hy i
-  projAC_state y hy i := Compose.projAC_state' hrun.toLocalRun' hy i
+  reachable y hy i := (Node.fg_reachable_at hrun.toLocalRun hy i).reachableWith
+  jmax y hy i := (Healing.jMax_iff _).1 (Node.fg_reachable_at hrun.toLocalRun hy i).jMax
+  frameOK y hy i := Compose.frameOK_state' hrun.toLocalRun hy i
+  projAC_state y hy i := Compose.projAC_state' hrun.toLocalRun hy i
   acRun hnc := Compose.goldilocks_ac_projection_from' hrun hnc
-  coherent hnc := Coherence.honest_blocks_coherent hrun.toLocalRun' hnc
-  tree_mono y hy _ _ hki := Coherence.tree_mono' hrun.toLocalRun' hy hki
-  tree_accepted y hy _ _ hW := Coherence.tree_accepted hrun.toLocalRun' hy hW
+  coherent hnc := Coherence.honest_blocks_coherent hrun.toLocalRun hnc
+  tree_mono y hy _ _ hki := Coherence.tree_mono' hrun.toLocalRun hy hki
+  tree_accepted y hy _ _ hW := Coherence.tree_accepted hrun.toLocalRun hy hW
   hj_mono := hj_mono_pending hrun
-  ac_block_after y hy _ _ ha := Healing.ac_block_after' hrun.toLocalRun' hy ha
-  attest_source y hy _ _ _ hc := Coherence.attest_source hrun.toLocalRun' hy hc
+  ac_block_after y hy _ _ ha := Healing.ac_block_after' hrun.toLocalRun hy ha
+  attest_source y hy _ _ _ hc := Coherence.attest_source hrun.toLocalRun hy hc
   report_attest := report_attest_pending hrun
   signed_tick := signed_tick_pending hrun
   late_tick := late_tick_pending hrun
@@ -566,7 +566,7 @@ theorem GoldilocksRun'.toStaticCore (hrun : GoldilocksRun' proposer dg H tr ini)
   accept_of_proposesAt hnc _ _ _ hp hW := Coherence.accept_of_proposesAt hrun hnc hp hW
   proposal_payload hp hW := by
     obtain ⟨⟨⟨acc, hc⟩, hpos⟩, -, -⟩ := hW
-    rcases Coherence.blockCall_cases hrun.toLocalRun' hp hc with hg |
+    rcases Coherence.blockCall_cases hrun.toLocalRun hp hc with hg |
       ⟨j, x, fgDue, -, -, -, d, pay, -, hB, -, -, -, hfgj⟩
     · rw [RunTrace.groupAt_iff] at hg
       exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
@@ -578,10 +578,10 @@ theorem GoldilocksRun'.toStaticCore (hrun : GoldilocksRun' proposer dg H tr ini)
     Compose.awake_participant_early' hrun hnc hsync hb hX hu hy hmv hw hj
 
 /-- **The core of a shadow Goldilocks run under growing faults.** -/
-theorem Growing.GoldilocksRun'.toCore {H : Time → Set (Fin sp.n)}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr ini) :
+theorem Growing.GoldilocksRun.toCore' {H : Time → Set (Fin sp.n)}
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini) :
     GoldilocksRunCore Store.updateFinality Node.frame proposer dg H tr ini where
-  finalitySpec := Store.finalitySpec_updateFinality'
+  finalitySpec := Store.finalitySpec_updateFinality
   frameOf_F st := by rw [Node.frame_eq]; exact Store.toFrame_F _
   frameOf_tree st B := by rw [Node.frame_eq, Store.toFrame_tree]; exact Iff.rfl
   antitone := hrun.antitone
@@ -595,15 +595,15 @@ theorem Growing.GoldilocksRun'.toCore {H : Time → Set (Fin sp.n)}
   acRun hnc := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
   coherent hnc := Coherence.honest_blocks_coherent_at hrun hnc
   held_anc_at hnc := fun hd hy hi h hW => Coherence.held_anc_at hrun hnc hd hy hi h hW
-  F_mono_at := fun hd hy hi hki => hrun.toLocalRun'.finalized_mono_on_prefix' hd hy hki hi
-  acRelayAt := fun hx hacc hy hc hanc relay => hrun.toLocalRun'.acRelayAt' hx hacc hy hc hanc relay
+  F_mono_at := fun hd hy hi hki => hrun.toLocalRun.finalized_mono_on_prefix' hd hy hki hi
+  acRelayAt := fun hx hacc hy hc hanc relay => hrun.toLocalRun.acRelayAt' hx hacc hy hc hanc relay
   acCatchAt hcatch := fun hx ha hi hy hc hj hanc =>
-    hrun.toLocalRun'.acCatchAt' hcatch hx ha hi hy hc hj hanc
+    hrun.toLocalRun.acCatchAt' hcatch hx ha hi hy hc hj hanc
 
 /-- **The node-run bundle of a shadow Goldilocks run under growing faults**
 (`GoldilocksRunCore.toLocalRunCore` of `Growing.GoldilocksRun'.toCore`). -/
-theorem Growing.GoldilocksRun'.toLocalRunCore {H : Time → Set (Fin sp.n)}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr ini) :
+theorem Growing.GoldilocksRun.toLocalRunCore {H : Time → Set (Fin sp.n)}
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini) :
     Generic.LocalRunCore Store.updateFinality proposer dg H tr ini :=
   hrun.toCore.toLocalRunCore
 
@@ -619,8 +619,8 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {g ΔF a b hold : Time} {committee : Time → Finset (Fin sp.n)} {beta : ℚ}
 
 /-- **The core of the shadow finite-reset premises.** -/
-theorem ResetPremisesUpTo'.toCore
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b committee beta hold) :
+theorem ResetPremisesUpTo.toCore'
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b committee beta hold) :
     ResetRunCore tr H Store.updateFinality Node.frame proposer dg g ΔF a b committee beta hold
     where
   core := hp.run.toCore
