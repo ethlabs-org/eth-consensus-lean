@@ -113,6 +113,40 @@ theorem windowWitness_of_stock
       omega
   · exact Or.inl hge
 
+/-- **A stock witness above a floor anchor**: a block held at an honest reader of a stock window,
+above its finalized tip and above an honestly held anchor `P` with
+`floor ≤ σ(P).h ∧ (kindJ → floor < σ(P).h)` (`warm_proposal_bounds_at'` for a warm proposal), is a
+stock witness: heights grow along held ancestry, and in the J-kind its height is `h_max`, where no
+contest puts it off `J`. The shared floor-anchor premise of the stock later-head suppliers. -/
+theorem stock_witness_of_floor_anchor_at' {lo hi : Time} {floor : Nat} {kindJ : Prop}
+    {J : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Generic.FrameWindow tr H lo hi floor kindJ J)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} {kP : Nat}
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hp : p ∈ H (tr.time kP))
+    (hPp : P ∈ (tr.state p kP).fg.tree)
+    (hPfl : floor ≤ ((tr.state p kP).fg.σ P.root).h ∧
+      (kindJ → floor < ((tr.state p kP).fg.σ P.root).h))
+    {y : Fin sp.n} {a : Nat} (hy : y ∈ H (tr.time a)) (hlo : lo ≤ tr.time a)
+    (hhi : tr.time a ≤ hi) {Q : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hQ : Q ∈ (tr.state y a).fg.tree) (hFQ : (tr.state y a).fg.Anc (tr.state y a).fg.F Q)
+    (hPQ : Anc (tr.HonestBlocksAt H) P Q) :
+    floor ≤ ((tr.state y a).fg.σ Q.root).h ∧ (kindJ → Anc (tr.HonestBlocksAt H) J Q) := by
+  refine ⟨Growing.le_height_of_honest_ancestor_at' hrun hnc hy hp hPp hPfl.1 hQ hPQ, fun hk => ?_⟩
+  have ht0 := hrun.time_nonneg a
+  have hba : ∀ q < a, tr.time q ≤ tr.time a := fun q hq => hrun.time_mono hq.le
+  have hr := Compose.Growing.reachable_at' hrun ht0 hy hba
+  have hgt := Growing.le_height_of_honest_ancestor_at' hrun hnc hy hp hPp (hPfl.2 hk) hQ hPQ
+  obtain ⟨htop, hnC⟩ := (hframe.kind_iff y a hy hlo hhi).2 hk
+  have hfl := hframe.floor_eq y a hy hlo hhi
+  rw [Store.headHeightFloor, ite_eq_right hnC] at hfl
+  have hle := (Store.cache_invariants' hr).2.2.2.2.1 Q hQ
+  have hJy : (tr.state y a).fg.Anc (tr.state y a).fg.J Q := by
+    by_contra hnJ
+    exact hnC ⟨htop, Q, hQ, hFQ, by omega, hnJ⟩
+  rw [← hframe.root_eq y a hy hlo hhi hk]
+  exact hJy.mono (Compose.Growing.tree_held_at' ht0 hy hba)
+
 /-- The frame geometry of a stock witness at a reader's cut (`witness_frame_at'` with the stock
 window and witness): the stock witness is P-U viable at every honest reader of the window. -/
 theorem witness_frame_stock_at'
@@ -443,6 +477,57 @@ theorem optimistic_supporter_later_heads_stock_at' {s₀ s N floor : Nat}
   -- The supporter's witness is the anchor's P-U viable head in its cast frame, possibly at
   -- `floor − 1` at a contesting caster; route (i) needs `floor ≤ σ(Q).h`. Open.
   sorry
+
+/-- **An optimistic supporter's anchor over the stock window, above a floor anchor**
+(`optimistic_supporter_later_heads_at'` with the stock window): the anchor `L` extends an honestly
+held `P` with `floor ≤ σ(P).h ∧ (kindJ → floor < σ(P).h)`, so the viable head above it is a stock
+witness (`stock_witness_of_floor_anchor_at'`). -/
+theorem optimistic_supporter_later_heads_floor_stock_at' {s₀ s N floor : Nat}
+    {kindJ : Prop} {J L D : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
+    (hsvc : ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g ≤ sp.ts s) (hs₀ : s₀ ≤ s) (hsN : s + 1 ≤ N)
+    (hmb : sp.ts N + sp.Δ ≤ b)
+    {x : Fin sp.n} {i a : Nat} (hx : x ∈ H (tr.time i)) (hxa : x ∈ H (tr.time a))
+    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC x i ell e) (hes : e.msg.slot = s)
+    (hanchor : L = AC.getAnchor sp e.readPoint ell.frame (tr.time i))
+    {CV : Set (AC.Vote sp.n)} (hop : AC.OptimisticLockAt tr.projAC x a s D CV)
+    (hLD : Anc (tr.HonestBlocksAt H) L D)
+    {p : Fin sp.n} {kP : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hp : p ∈ H (tr.time kP)) (hPp : P ∈ (tr.state p kP).fg.tree)
+    (hPfl : floor ≤ ((tr.state p kP).fg.σ P.root).h ∧
+      (kindJ → floor < ((tr.state p kP).fg.σ P.root).h))
+    (hPL : Anc (tr.HonestBlocksAt H) P L) (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ r, s + 1 ≤ r → r ≤ N →
+      (∀ y j ev, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j ev → ev.msg.slot = r →
+        AC.VoteExtends (tr.HonestBlocksAt H) ev.msg L) ∧
+      (∀ y j ell', y ∈ H (tr.time j) → tr.projAC.CallAt y j ell' → ell'.call = .proposal →
+        tr.time j = sp.ts r → ∀ d pay,
+        (AC.acProposal sp (tr.projAC.state y j) ell'.frame (tr.time j)).2 = some (d, pay) →
+          Anc (tr.HonestBlocksAt H) L d.head) := by
+  have hts : sp.ts s₀ ≤ sp.ts s := (AC.ts_le_iff sp).2 (by exact_mod_cast hs₀)
+  have htN : sp.ts s ≤ sp.ts N :=
+    (AC.ts_le_iff sp).2 (by exact_mod_cast (show s ≤ N by omega))
+  obtain ⟨hlo, hhi, Q, hQ, -, hLQ⟩ := supporter_anchor_viable_head_at' hrun hnc hf
+    (by linarith only [htN, hmb]) hx hc hes hanchor
+  have hQt := hQ
+  rw [frame_of_projAC_at' hrun hx hc.1, Node.frame'_eq, Store.toFrame'_tree] at hQt
+  obtain ⟨hh, hJ⟩ := Healing.stock_witness_of_floor_anchor_at' hframe hrun hnc hp hPp hPfl hx
+    (hts.trans hlo) (by linarith [sp.toParams.hΔ]) hQt.1 hQt.2 (hPL.trans hLQ)
+  have hsub : Generic.FrameWindow tr H (sp.ts s) (sp.ts N + sp.Δ) floor kindJ J :=
+    ⟨fun y j hy hl hh => hframe.floor_eq y j hy (hts.trans hl) hh,
+     fun y j hy hl hh => hframe.kind_iff y j hy (hts.trans hl) hh,
+     fun y j hy hl hh => hframe.root_eq y j hy (hts.trans hl) hh⟩
+  exact optimistic_later_heads_of_stock_witness_at' hrun hnc hsvc hawake hf hcatch hnr hm hmb
+    hsub hxa hop hLD hx hlo (by linarith [sp.toParams.hΔ]) hc.1 hQ hh hJ hLQ hK
 
 end Consensus.Goldilocks.Shadow.PU.Growing
 
