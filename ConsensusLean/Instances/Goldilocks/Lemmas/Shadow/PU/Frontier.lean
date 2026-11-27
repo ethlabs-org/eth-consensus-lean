@@ -8,7 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Floor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RowLabel
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowLabel
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ResetSeeds
 
 public section
@@ -301,7 +301,7 @@ theorem ResetPremisesUpTo.reset_vote_floor_above_old_or_covered_at
     hes ▸ (Compose.cast_head_fcRoot hr (hp.run.upTo ht).vstart hy ⟨hc', hc.2⟩).2
   have hEB : Anc (tr.HonestBlocksAt H) E B := by
     rcases hsource with ⟨r, hrd, l, O, ho, hEO⟩ | ⟨_, hcov⟩
-    · have hlu : l < u := hes ▸ KernelProof.row_origin_label_lt_at' hp hy hc hW ha
+    · have hlu : l < u := hes ▸ KernelProof.row_origin_label_lt_at hp hy hc hW ha
         (hp.run.antitone (hp.run.time_mono hdj.le) hv) hs hdj hrd ho
       obtain ⟨CV, ellw, D, _, hf, _⟩ := ho.2.2.1
       have hrj := hp.run.time_mono (show r ≤ j by omega)

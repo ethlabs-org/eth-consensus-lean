@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LeftEntry
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RowLabel
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowLabel
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.StaticCoreFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
@@ -90,7 +91,7 @@ private theorem row_lock_label_lt_at
         exact AC.slot_mono sp (hp.run.time_nonneg r) htr
       rcases hl.lt_or_eq with hl | rfl
       · exact hl
-      · exact absurd hopt (KernelProof.row_origin_not_current_at' hp hy hc hW ha hv hs hrd)
+      · exact absurd hopt (KernelProof.row_origin_not_current_at hp hy hc hW ha hv hs hrd)
   · exact hup hu.2.2.1
 
 /-- A high signed entry is below a healed member strictly before the cast's slot. -/

@@ -29,7 +29,7 @@ variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
   {ini : Fin P.n → A.State}
 
 /-- **An AC block call follows the FG cut that accepts the block** (a copy of `acBlock_prev`). -/
-private theorem acBlock_prev (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
+private theorem block_call_after_accept (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel A} {B : A.Blk} (hc : tr.CallAt y i (.ac ℓ))
     (hb : ℓ.call = .block B) :
     ∃ i', i = i' + 1 ∧ tr.CallAt y i' (.fg (.block B true)) ∧ tr.time i' = tr.time i := by
@@ -111,7 +111,7 @@ private theorem callOK_from (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
   obtain ⟨c, Φ, es⟩ := ℓ
   cases c with
   | block B =>
-    obtain ⟨i', rfl, hacc, hti⟩ := acBlock_prev h hy hc rfl
+    obtain ⟨i', rfl, hacc, hti⟩ := block_call_after_accept h hy hc rfl
     have hai' : a ≤ i' := by
       by_contra hlt
       exact ha i' B (by omega) hacc
