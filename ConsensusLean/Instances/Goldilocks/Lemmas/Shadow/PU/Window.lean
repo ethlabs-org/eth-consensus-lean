@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Key
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
@@ -28,115 +28,18 @@ namespace Consensus.Goldilocks.Healing
 
 variable {P : Params} {A : NodeAC P}
 
-/-- F-independent P-U frame data at the honest cuts of a finite interval.
-For a constant honest set use `H := fun _ => H₀`. -/
-structure FrameWindow' (tr : RunTrace A) (H : Time → Set (Fin P.n))
-    (lo hi : Time) (M : Nat) (isTop : Prop) (J : A.Blk) : Prop where
-  M_eq : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi →
-    (tr.state y i).fg.hmax = M
-  top_iff : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi →
-    ((tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ↔ isTop)
-  root_eq : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi → isTop →
-    (tr.state y i).fg.J = J
-
-/-- Restricting the interval changes none of the pinned data. -/
-theorem FrameWindow'.mono {tr : RunTrace A} {H : Time → Set (Fin P.n)}
-    {lo hi lo' hi' : Time} {M : Nat} {isTop : Prop} {J : A.Blk}
-    (h : FrameWindow' tr H lo hi M isTop J) (hl : lo ≤ lo') (hh : hi' ≤ hi) :
-    FrameWindow' tr H lo' hi' M isTop J :=
-  ⟨fun y i hy hi₁ hi₂ => h.M_eq y i hy (hl.trans hi₁) (hi₂.trans hh),
-    fun y i hy hi₁ hi₂ => h.top_iff y i hy (hl.trans hi₁) (hi₂.trans hh),
-    fun y i hy hi₁ hi₂ => h.root_eq y i hy (hl.trans hi₁) (hi₂.trans hh)⟩
-
-open Classical in
-/-- The two numerical window fields determine the shadow key. -/
-theorem FrameWindow'.key_eq {tr : RunTrace A} {H : Time → Set (Fin P.n)}
-    {lo hi : Time} {M : Nat} {isTop : Prop} {J : A.Blk}
-    (h : FrameWindow' tr H lo hi M isTop J) {y : Fin P.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) (hl : lo ≤ tr.time i) (hh : tr.time i ≤ hi) :
-    frameKey'' (tr.state y i).fg = 2 * M + if isTop then 1 else 0 := by
-  classical
-  rw [frameKey''_def, h.M_eq y i hy hl hh]
-  have ht := h.top_iff y i hy hl hh
-  rw [h.M_eq y i hy hl hh] at ht
-  simp only [ht]
-
-/-- Constant shadow keys give constant `(M, isTop)`; top justification agreement supplies J.
-This is the P-U replacement of `frameData_of_frameKey'_eq`. -/
-theorem frameData_of_frameKey''_eq {α : Type*} (mem : α → Nat → Prop)
-    (time : Nat → Time) (st : α → Nat → Store P A.Payload) (dflt : A.Blk)
-    {lo hi : Time}
-    (hK : ∀ y z i m, mem y i → mem z m → lo ≤ time i → time i ≤ hi → lo ≤ time m →
-      time m ≤ hi → frameKey'' (st y i) = frameKey'' (st z m))
-    (hJ : ∀ y z i m, mem y i → mem z m → lo ≤ time i → time i ≤ hi → lo ≤ time m →
-      time m ≤ hi → (st y i).hj = (st z m).hj → (st y i).J = (st z m).J) :
-    ∃ M isTop J,
-      (∀ y i, mem y i → lo ≤ time i → time i ≤ hi → (st y i).hmax = M) ∧
-      (∀ y i, mem y i → lo ≤ time i → time i ≤ hi →
-        ((st y i).hmax = (st y i).hj + 1 ↔ isTop)) ∧
-      (∀ y i, mem y i → lo ≤ time i → time i ≤ hi → isTop → (st y i).J = J) := by
-  classical
-  by_cases hex : ∃ y i, mem y i ∧ lo ≤ time i ∧ time i ≤ hi
-  · obtain ⟨y₀, i₀, hy₀, h₁, h₂⟩ := hex
-    have heq := fun y i hy hl hh =>
-      frameKey''_eq_iff.mp (hK y y₀ i i₀ hy hy₀ hl hh h₁ h₂)
-    refine ⟨_, _, (st y₀ i₀).J, fun y i hy hl hh => (heq y i hy hl hh).1,
-      fun y i hy hl hh => (heq y i hy hl hh).2, fun y i hy hl hh ht => ?_⟩
-    have h := heq y i hy hl hh
-    have ht' := h.2.mpr ht
-    apply hJ y y₀ i i₀ hy hy₀ hl hh h₁ h₂
-    omega
-  · push Not at hex
-    exact ⟨0, True, dflt, fun y i hy hl hh => absurd hh (not_le.mpr (hex y i hy hl)),
-      fun y i hy hl hh => absurd hh (not_le.mpr (hex y i hy hl)),
-      fun y i hy hl hh => absurd hh (not_le.mpr (hex y i hy hl))⟩
-
-/-- Four attempts suffice once the run supplies height range, shadow-key lag and J agreement.
-The run-level service supplier must discharge these premises on shadow executions. -/
-theorem exists_frameWindow'_seq_of_mem {tr : RunTrace A} {H : Time → Set (Fin P.n)}
-    {lo lam T : Time} {hz : Nat} (len : Nat → Time)
-    (hlen : ∀ v, 0 ≤ len v) (hlam : 0 ≤ lam)
-    (hrange : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i < T →
-      hz ≤ (tr.state y i).fg.hmax ∧ (tr.state y i).fg.hmax ≤ hz + 1)
-    (hlag : ∀ x z i k, x ∈ H (tr.time i) → z ∈ H (tr.time k) →
-      lo ≤ tr.time i → tr.time i < T → tr.time i + lam ≤ tr.time k → tr.time k < T →
-      frameKey'' (tr.state x i).fg ≤ frameKey'' (tr.state z k).fg)
-    (hJ : ∀ y z i m, y ∈ H (tr.time i) → z ∈ H (tr.time m) → lo ≤ tr.time i →
-      tr.time i < T → lo ≤ tr.time m → tr.time m < T →
-      (tr.state y i).fg.hj = (tr.state z m).fg.hj →
-      (tr.state y i).fg.J = (tr.state z m).fg.J)
-    (hT : lo + ∑ j ∈ Finset.range 4, (len (2 * hz + j) + lam) < T) :
-    ∃ v, 2 * hz ≤ v ∧ v ≤ 2 * hz + 3 ∧ ∃ a, lo + lam ≤ a ∧
-      a + len v ≤ lo + ∑ j ∈ Finset.range (v - 2 * hz + 1), (len (2 * hz + j) + lam) ∧
-      (∀ y i, y ∈ H (tr.time i) → a ≤ tr.time i → tr.time i ≤ a + len v →
-        frameKey'' (tr.state y i).fg = v) ∧
-      ∃ M isTop J, FrameWindow' tr H a (a + len v) M isTop J := by
-  obtain ⟨v, hv₁, hv₂, a, ha, hb, hK⟩ := exists_const_window_seq_of_mem
-    (fun y i => y ∈ H (tr.time i)) tr.time (fun y i => frameKey'' (tr.state y i).fg)
-    (2 * hz) 3 len hlen hlam
-    (fun y i hy hl hh => frameKey''_bounds (hrange y i hy hl hh).1
-      (hrange y i hy hl hh).2) hlag hT
-  have hpart : (∑ j ∈ Finset.range (v - 2 * hz + 1), (len (2 * hz + j) + lam)) ≤
-      ∑ j ∈ Finset.range 4, (len (2 * hz + j) + lam) :=
-    Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_mono (by omega))
-      (fun j _ _ => add_nonneg (hlen _) hlam)
-  have hend : a + len v < T := lt_of_le_of_lt (hb.trans (add_le_add_right hpart lo)) hT
-  obtain ⟨M, isTop, J, hM, ht, hj⟩ := frameData_of_frameKey''_eq
-    (fun y i => y ∈ H (tr.time i)) tr.time (fun y i => (tr.state y i).fg)
-    (P.genesisBlock A.genesisPayload)
-    (fun y z i m hy hz hi₁ hi₂ hm₁ hm₂ =>
-      (hK y i hy hi₁ hi₂).trans (hK z m hz hm₁ hm₂).symm)
-    (fun y z i m hy hz hi₁ hi₂ hm₁ hm₂ => hJ y z i m hy hz
-      ((le_add_of_nonneg_right hlam).trans (ha.trans hi₁)) (hi₂.trans_lt hend)
-      ((le_add_of_nonneg_right hlam).trans (ha.trans hm₁)) (hm₂.trans_lt hend))
-  exact ⟨v, hv₁, hv₂, a, ha, hb, hK, M, isTop, J, hM, ht, hj⟩
+/-- Transitional alias of the milestone `Generic.FrameWindow`, which now carries the P-U frame
+data (`h_max`, top status, and `J` when top). Removed by the final rename sweep. -/
+abbrev FrameWindow' (tr : RunTrace A) (H : Time → Set (Fin P.n)) (lo hi : Time) (M : Nat)
+    (isTop : Prop) (J : A.Blk) : Prop :=
+  Generic.FrameWindow tr H lo hi M isTop J
 
 /-- The P-U floor, unlike the stock contest floor, is always `hmax - 1`. -/
 theorem le_pred_add_riseRounds (st : Store P A.Payload) {hz : Nat}
-    (hpos : 1 ≤ st.hmax) (hv : 2 * hz ≤ frameKey'' st) :
-    hz + 1 ≤ st.hmax - 1 + riseRounds hz (frameKey'' st) := by
+    (hpos : 1 ≤ st.hmax) (hv : 2 * hz ≤ Generic.frameKey'' A st) :
+    hz + 1 ≤ st.hmax - 1 + riseRounds hz (Generic.frameKey'' A st) := by
   classical
-  rw [riseRounds_eq, frameKey''_def] at *
+  rw [riseRounds_eq, Generic.frameKey''_eq] at *
   split_ifs at * <;> omega
 
 /-- A P-U viable held block is above finality. In the predecessor-height top case use
@@ -179,30 +82,30 @@ theorem isViable'_of_window_data {ACP : Type} {a b : Store P ACP} {Q : NodeBlock
 
 /-- The shadow key lag needs only the maximum-height and J carriers. The stock contest
 witness is unnecessary: contest and clean top frames have the same shadow key. -/
-theorem frameKey''_le_of_relay {ACP : Type} {acp₀ : ACP} {stx stz : Store P ACP}
+theorem frameKey''_le_of_relay {acp₀ : A.Payload} {stx stz : Store P A.Payload}
     (hRx : stx.Reachable' acp₀) (hRz : stz.Reachable' acp₀)
-    {U : Set (NodeBlock P ACP)} (hU : Coherent U)
+    {U : Set (NodeBlock P A.Payload)} (hU : Coherent U)
     (hsubx : stx.tree ⊆ U) (hsubz : stz.tree ⊆ U) {V : Set (Fin P.n)}
     (hV : Vᶜ.ncard < 2 * P.fg.q - P.n)
     (hsafe : ∀ a b, (∃ Y ∈ stz.tree, a ∈ Y.fgPayload) →
       (∃ Y ∈ stx.tree, b ∈ Y.fgPayload) → a.val ∈ V → ¬ FG.slashable a b)
     (hancz : ∀ A C, Anc U A C → C ∈ stz.tree → stz.Anc A C)
     (hheld : ∀ B ∈ stx.tree, stz.hmax ≤ (stx.σ B.root).h → B ∈ stz.tree) :
-    frameKey'' stx ≤ frameKey'' stz := by
+    Generic.frameKey'' A stx ≤ Generic.frameKey'' A stz := by
   classical
-  have hu := Store.finalitySpec_updateFinality' (P := P) (ACP := ACP)
+  have hu := Store.finalitySpec_updateFinality' (P := P) (ACP := A.Payload)
   have hrx := hRx.reachableWith
   have hrz := hRz.reachableWith
   obtain ⟨-, hJx, -, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, ⟨Bh, hBh, hBhh⟩, -⟩ :=
     Store.cache_invariants' hRx
   obtain ⟨-, -, -, -, hgez, -, -⟩ := Store.cache_invariants' hRz
   by_cases hlt : stx.hmax < stz.hmax
-  · rw [frameKey''_def, frameKey''_def]
+  · rw [Generic.frameKey''_eq, Generic.frameKey''_eq]
     split_ifs <;> omega
   have hle : stz.hmax ≤ stx.hmax := not_lt.mp hlt
-  have hheld' : ∀ {B : NodeBlock P ACP}, B ∈ stx.tree → stx.hmax ≤ (stx.σ B.root).h →
+  have hheld' : ∀ {B : NodeBlock P A.Payload}, B ∈ stx.tree → stx.hmax ≤ (stx.σ B.root).h →
       B ∈ stz.tree := fun hB hh => hheld _ hB (hle.trans hh)
-  have hσ : ∀ {B : NodeBlock P ACP}, B ∈ stz.tree → B ∈ stx.tree →
+  have hσ : ∀ {B : NodeBlock P A.Payload}, B ∈ stz.tree → B ∈ stx.tree →
       stz.σ B.root = stx.σ B.root :=
     fun hBz hBx => Store.σ_eq_of_mem_with hrz hu hrx hU.1 hsubz hsubx hBz hBx
   have hBhz := hheld' hBh hBhh.ge
@@ -227,7 +130,7 @@ theorem frameKey''_le_of_relay {ACP : Type} {acp₀ : ACP} {stx stz : Store P AC
     have := (jMax_iff _).mp hRz.jMax Bj hBjz _ hJz (by rw [hσj, hBjJ]) hFJ
     rw [hσj] at this
     omega
-  rw [frameKey''_def, frameKey''_def]
+  rw [Generic.frameKey''_eq, Generic.frameKey''_eq]
   split_ifs <;> omega
 
 open AC (ACParams ReplayOrder Payload)
@@ -251,9 +154,9 @@ theorem fcRoot_mono' (hrun : GoldilocksRun' proposer dg H tr ini)
 /-- V-B4: a write-frame viable head remains a viable head at later cuts in the P-U window.
 The only new geometric step is `finalized_below_viable'`; the rest is the stock persistence
 argument, with fixed maximum height and top status in place of the old merged floor. -/
-theorem FrameWindow'.viableHead_persists' {lo hi : Time} {M : Nat}
-    {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr (fun _ => H) lo hi M isTop J)
+theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.viableHead_persists'
+    {lo hi : Time} {M : Nat} {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Generic.FrameWindow tr (fun _ => H) lo hi M isTop J)
     (hrun : GoldilocksRun' proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
@@ -304,9 +207,9 @@ theorem FrameWindow'.viableHead_persists' {lo hi : Time} {M : Nat}
 
 /-- An earlier action supplies a frozen viable descendant of the current F-root, in both
 top and gap windows. No non-top premise or common-J fallback is needed. -/
-theorem FrameWindow'.root_witness_of_earlier_call' {lo hi g : Time} {M : Nat}
-    {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr (fun _ => H) lo hi M isTop J)
+theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.root_witness_of_earlier_call'
+    {lo hi g : Time} {M : Nat} {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Generic.FrameWindow tr (fun _ => H) lo hi M isTop J)
     (hrun : GoldilocksRun' proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : NoRestartAfter tr H (AC.gbar g))
@@ -424,7 +327,8 @@ theorem frameKey''_lag_obs'
     (hcall : ∃ j < m, tr.IsCall z j ∧
       tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
     (hcm : AC.gbar g + κ ≤ tr.time m) :
-    frameKey'' (tr.state x i).fg ≤ frameKey'' (tr.state z m).fg := by
+    Generic.frameKey'' (goldilocksNode' sp ro) (tr.state x i).fg ≤
+      Generic.frameKey'' (goldilocksNode' sp ro) (tr.state z m).fg := by
   have hi := hrun.time_nonneg i
   have hm := hrun.time_nonneg m
   have hbi : ∀ k < i, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono hk.le
@@ -480,9 +384,9 @@ theorem exists_frameWindow'_seq_of_service_proof_at
     ∃ v, 2 * hz ≤ v ∧ v ≤ 2 * hz + 3 ∧ ∃ a, lo + lam ≤ a ∧
       a + len v ≤ lo + ∑ j ∈ Finset.range (v - 2 * hz + 1), (len (2 * hz + j) + lam) ∧
       (∀ y i, y ∈ H (tr.time i) → a ≤ tr.time i → tr.time i ≤ a + len v →
-        frameKey'' (tr.state y i).fg = v) ∧
-      ∃ M isTop J, FrameWindow' tr H a (a + len v) M isTop J := by
-  apply exists_frameWindow'_seq_of_mem len hlen hlam hrange
+        Generic.frameKey'' (goldilocksNode' sp ro) (tr.state y i).fg = v) ∧
+      ∃ M isTop J, Generic.FrameWindow tr H a (a + len v) M isTop J := by
+  apply Generic.exists_frameWindow_seq_of_mem len hlen hlam hrange
   · intro x z i k hx hz hi _ hik hk
     exact frameKey''_lag_obs' hrun hnc hf hsvc hcatch hx hz (by linarith)
       (hk.le.trans hTb) (hcall z i k hz hi hik hk) (hlo.trans (by linarith))
