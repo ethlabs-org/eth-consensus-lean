@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Inv
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
 
 public section
@@ -108,7 +109,8 @@ theorem anc_getAnchor {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {A : ACState sp.n} 
     · rw [Set.mem_singleton_iff.1 hB, Set.mem_singleton_iff.1 hC]
       exact Or.inl Relation.ReflTransGen.refl
   obtain ⟨D, hD⟩ := exists_deepest hΦ hS ⟨Φ.fcRoot, Or.inr rfl⟩
-  have hA : getAnchor sp A Φ t = D := by unfold getAnchor; rw [hD]; rfl
+  have hA : getAnchor sp A Φ t = D := by
+    rw [getAnchor_eq_deepest_union hΦ, hD]; rfl
   rw [hA]
   exact ⟨hS (deepest_mem hD).1, anc_deepest hΦ hS hch' hD⟩
 

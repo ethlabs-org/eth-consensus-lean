@@ -83,7 +83,8 @@ theorem fcRoot_anc_getAnchor {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (A : ACState
     · exact hX.1
     · exact (Set.mem_singleton_iff.1 hX) ▸ hΦ.fcRoot_mem
   obtain ⟨D, hD⟩ := exists_deepest hΦ hS ⟨Φ.fcRoot, Or.inr rfl⟩
-  have hA : getAnchor sp A Φ t = D := by unfold getAnchor; rw [hD, Option.getD_some]
+  have hA : getAnchor sp A Φ t = D := by
+    rw [getAnchor_eq_deepest_union hΦ, hD, Option.getD_some]
   rw [hA]
   have hD' := deepest_mem hD
   have hcomp : Compatible Φ.tree Φ.fcRoot D := by

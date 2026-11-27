@@ -729,12 +729,13 @@ theorem armed_lock_cover_at
     (fun r hr hrr => (hnr r hr hrr).trans_lt hτs) Hold Opp (htc ▸ hF) hopp
     (fun x j e hv hx hs hj => hcast x j e hv (htc ▸ hx) hs (htc ▸ hrun.time_mono hj.le)) hN
   have hnvC : ¬ AC.conflictsWithLock sp (tr.state w c).ac.locks ℓ.frame (tr.time c) C := by
-    rintro ⟨W, hW, hCW⟩
+    apply AC.not_conflictsWithLock_of_forall
+    intro W hW
     by_cases hDW : Compatible ℓ.frame.tree D W
     · rcases hDW with h | h
-      · exact hCW (Or.inl (hCD.trans h))
-      · exact hCW (AC.anc_total hΦ.coherent hCD h)
-    · exact hCW (Or.inl (hveto W hW hDW).2)
+      · exact Or.inl (hCD.trans h)
+      · exact AC.anc_total hΦ.coherent hCD h
+    · exact Or.inl (hveto W hW hDW).2
   have hlive : sp.slot (tr.time c) ≤ s + sp.k := by
     rw [htc, slot_update_time]; have := sp.two_le_k; omega
   obtain ⟨L, -, hCL, hl⟩ := AC.updateConfirmation_slow_lock_effective_of hΦ hD hnvC hCt hCg

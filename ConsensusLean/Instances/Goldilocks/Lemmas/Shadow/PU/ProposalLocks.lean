@@ -3,6 +3,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LockLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.StockWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ViableHeadRoute
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -19,13 +21,11 @@ at the writer's own cut:
   the writer is in a contest at `h_max = floor` with `Q` its P-U-only head (`σ(Q).h + 1 = floor`,
   `Σ.J ⪯ Q`); with the stock witness the stock proof goes through
   (`optimistic_later_heads_of_stock_witness_at'`);
-* the **contest writer** is open: the contest/gap geometry (`Store.contest_gap_residue'`) only
-  places the reader's locks, not the later heads, so the older optimistic transfer from a contest
-  writer is the named interface stub `Stub.older_optimistic_contest_transfer_at'`.
+* the **contest writer** reads X2's shared interface `optimistic_contest_residue'`
+  (`Shadow/PU/ViableHeadRoute`, unresolved): the contest/gap geometry only places the reader's
+  locks, not the later heads, and no closing argument is known.
 
-The stock-window regular later heads are the named interface stub
-`Stub.regular_later_heads_stock_at'` (R's announced `regular_later_heads_at'` over the stock
-window). -/
+The regular write reads R's stock-window `Healing.PU.StockWindow.regular_later_heads_at'`. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
@@ -36,76 +36,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
 variable {hold : Time}
-
-namespace Stub
-
-/-- **Interface stub**: the regular later heads over the stock window
-(`FrameWindow.regular_later_heads_at` over the shadow run; `Healing.PU.regular_later_heads_at'`
-with the stock window). -/
-theorem regular_later_heads_stock_at'
-    {g ΔF b : Time} {s₀ s N floor : Nat} {kindJ : Prop}
-    {J D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    (hwarm : s₀ + sp.k ≤ s) (hpos : 0 < s) (hs₀ : s₀ ≤ s - 1)
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hsN : s + 2 ≤ N)
-    (hmb : sp.ts N + sp.Δ ≤ b)
-    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c))
-    (horigin : (∃ CV, AC.FastUpdateAt tr.projAC x c s D CV) ∨
-      AC.SlowLockAt tr.projAC x c s D) (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ r, s + 1 ≤ r → r ≤ N →
-      (∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = r →
-        AC.VoteExtends (tr.HonestBlocksAt H) e.msg D) ∧
-      (s + 2 ≤ r → ∀ y i ell, y ∈ H (tr.time i) → tr.projAC.CallAt y i ell →
-        ell.call = .proposal → tr.time i = sp.ts r → ∀ d pay,
-        (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
-          Anc (tr.HonestBlocksAt H) D d.head) := by
-  sorry
-
-/-- **Interface stub**: an older optimistic write by a writer in a contest at `h_max = floor`,
-whose P-U viable head `Q` above the write's viable ancestor is the P-U-only head
-(`σ(Q).h + 1 = floor`, `Σ.J ⪯ Q`). No closing argument is known: the stock witness fails at the
-write, and the contest/gap geometry places only the reader's locks. -/
-theorem older_optimistic_contest_transfer_at'
-    {g ΔF b : Time} {s₀ s floor : Nat} {kindJ : Prop}
-    {J X D Q : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) floor kindJ J)
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀)
-    (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
-    {z : Fin sp.n} {i : Nat} (hz : z ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt z i ell)
-    (hti : tr.time i = sp.ts (s + 1 : Nat))
-    {m : Nat} (hlabel : s₀ ≤ m) (hms : m < s)
-    {a : Nat} (hai : a < i) (hza : z ∈ H (tr.time a))
-    {ellw : ACLabel (goldilocksNode' sp ro)} (ha : tr.projAC.CallAt z a ellw)
-    {CV : Set (AC.Vote sp.n)} (hop : AC.OptimisticLockAt tr.projAC z a m D CV)
-    (hXD : Anc (tr.HonestBlocksAt H) X (ellw.frame.viableAncestor D))
-    (hAD : Anc (tr.HonestBlocksAt H) (ellw.frame.viableAncestor D) D)
-    (hQ : Q ∈ ellw.frame.viableHeads)
-    (hAQ : Anc (tr.HonestBlocksAt H) (ellw.frame.viableAncestor D) Q)
-    (hcon : (tr.state z a).fg.Contest) (hmax : (tr.state z a).fg.hmax = floor)
-    (hQh : ((tr.state z a).fg.σ Q.root).h + 1 = floor)
-    (hJQ : (tr.state z a).fg.Anc (tr.state z a).fg.J Q)
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    Anc (tr.HonestBlocksAt H) X ell.frame.fcRoot ∨
-      ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → e.msg.slot = s →
-        AC.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
-  sorry
-
-end Stub
 
 /-- **Proposal lock cases over the shadow run** (`proposal_lock_prefix_cases_at`): a warm live
 lock is below the root, followed by votes, or from a current optimistic write. -/
@@ -163,8 +93,8 @@ theorem proposal_lock_prefix_cases_at'
       simp only [ACParams.ts] at ht htime
       push_cast at htime
       linarith only [hΔ, ht, htime]
-    have hall := (Stub.regular_later_heads_stock_at' hframe hrun hnc hsvc hawake hf hcatch hnr
-      hwarm hpos hpred hm hgap hmb hza ho hK s (by omega) (by omega)).1
+    have hall := (Healing.PU.StockWindow.regular_later_heads_at' hframe hrun hnc hsvc hawake hf
+      hcatch hnr hwarm hpos hpred hm hgap hmb hza ho hK s (by omega) (by omega)).1
     intro y j e hy hv hs
     obtain ⟨R, hR, hRr, hDR⟩ := hall y j e hy hv hs
     exact ⟨R, hR, hRr, (hXA.trans hAD).trans hDR⟩
@@ -244,9 +174,13 @@ theorem proposal_lock_prefix_cases_at'
     intro y j e hy hv hes
     obtain ⟨R, hR, hRr, hAR⟩ := hall y j e hy hv hes
     exact ⟨R, hR, hRr, hXA.trans hAR⟩
-  · exact (Stub.older_optimistic_contest_transfer_at' hframe hrun hnc hsvc hawake hf hcatch hnr
-      hm hmb hz hc hti hlabel (by omega) hai hza ha hop hXA hAD hvQ (Anc.mono hW.2 hAQ) hcon hmax
-      hQh hJQ hK).imp_right Or.inl
+  · have hall := (optimistic_contest_residue' hframe hrun hnc hsvc hawake hf hcatch hnr hm hmb
+      hlabel (by omega) hza ha hop hAD hvQ (Anc.mono hW.2 hAQ) hcon hmax hQh hJQ hK s (by omega)
+      (by omega)).1
+    refine Or.inr (Or.inl ?_)
+    intro y j e hy hv hes
+    obtain ⟨R, hR, hRr, hAR⟩ := hall y j e hy hv hes
+    exact ⟨R, hR, hRr, hXA.trans hAR⟩
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

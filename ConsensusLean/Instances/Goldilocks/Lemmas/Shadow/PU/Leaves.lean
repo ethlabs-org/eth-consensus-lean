@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalViable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
@@ -81,84 +82,7 @@ theorem proposal_viable_at {proposer : Nat → Fin sp.n}
     M - 1 ≤ ((tr.state z (kB + 1)).fg.σ B.root).h ∧
       (isTop → ((tr.state z (kB + 1)).fg.σ B.root).h = M - 1 →
         Anc (tr.HonestBlocksAt H) J B) := by
-  have htime : tr.time kB = sp.ts u := by
-    simpa only [sp.slotTime_eq, hBs, ACParams.ts] using hB.2.2
-  have hzk : z ∈ H (tr.time kB) := htime ▸ hz
-  have ht := hrun.time_nonneg kB
-  have hr := hrun.upTo ht
-  have hB' : (tr.upTo (tr.time kB)).ProposesAt z kB B :=
-    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hB.1⟩, hB.2.1, hB.2.2⟩
-  obtain ⟨_, ip, ell, d, pay, hc, hcall, hd, hti, hpar, _⟩ :=
-    Coherence.honestProposalRun_of_proposesAt' hr (hnc.upTo _) hzk hdes hB' hBs
-  rw [← hdes] at hc hd
-  have hip : tr.time ip = sp.ts u := hti
-  have hzi : z ∈ H (tr.time ip) := hip ▸ hz
-  have hleip : ∀ q < ip, tr.time q ≤ tr.time kB := by
-    intro q hq
-    exact (hrun.time_mono hq.le).trans (by rw [hip, htime])
-  have hleB : ∀ q < kB + 1, tr.time q ≤ tr.time kB :=
-    fun q hq => hrun.time_mono (by omega)
-  have hfr := Node.frame_of_projAC_at' hr.toLocalRun' hzk hc
-  have hfr' : ell.frame = Node.frame' (tr.state z ip) := by
-    rw [Trace.upTo_state tr z hleip] at hfr
-    exact hfr
-  obtain ⟨Q, hQ, hv, hroot⟩ := full_frame_viable_witness_at' hrun hnc hzi (hip ▸ hf)
-  rw [← hfr'] at hQ hv hroot
-  have hac := (Compose.goldilocks_ac_projection_from' hr (hnc.upTo _)).localRun
-  have hvd := Healing.proposal_head_viable hac hr.vstart hzk hc hcall
-    (by rw [sp.slotTime_eq]; exact hti) hd
-    ⟨(AC.frameIn_of_callAt hac hzk hc).1.fcRoot_mem, .refl, Q, hQ, hv, hroot⟩
-  rw [hfr, Node.frame'_eq, Store.toFrame'_viableHeads] at hvd
-  obtain ⟨hDm, _, hDv⟩ := hvd
-  have hBm : B ∈ ((tr.upTo (tr.time kB)).state z (kB + 1)).fg.tree := by
-    exact (Coherence.accept_of_proposesAt' hr (hnc.upTo _) hzk hB').2.1
-  have hDhist : d.head ∈ (tr.upTo (tr.time kB)).HonestBlocks (H (tr.time kB)) :=
-    ⟨z, hzk, ip, hDm⟩
-  have hBhist : B ∈ (tr.upTo (tr.time kB)).HonestBlocks (H (tr.time kB)) :=
-    ⟨z, hzk, kB + 1, hBm⟩
-  have hDB : Anc ((tr.upTo (tr.time kB)).HonestBlocks (H (tr.time kB))) d.head B :=
-    .single ⟨hDhist, hBhist, hpar⟩
-  have hDBs := Coherence.honest_held_anc' hr (hnc.upTo _) hzk hDB hBm
-  have hDpost : d.head ∈ ((tr.upTo (tr.time kB)).state z (kB + 1)).fg.tree := by
-    by_cases he : d.head = B
-    · exact he ▸ hBm
-    · exact (Anc.mem hDBs he).1
-  have hσ := Store.σ_eq_of_mem_with
-    (Node.fg_reachable_at' hr.toLocalRun' hzk ip).reachableWith
-    Store.finalitySpec_updateFinality'
-    (Node.fg_reachable_at' hr.toLocalRun' hzk (kB + 1)).reachableWith
-    (Coherence.honest_blocks_coherent' hr.toLocalRun' (hnc.upTo _)).1
-    (fun _ hm => ⟨z, hzk, ip, hm⟩) (fun _ hm => ⟨z, hzk, kB + 1, hm⟩) hDm hDpost
-  have hh := (Coherence.honest_held_height' hr (hnc.upTo _) hzk hDBs).1
-  rw [← hσ] at hh
-  have hM : ((tr.upTo (tr.time kB)).state z ip).fg.hmax = M := by
-    rw [Trace.upTo_state tr z hleip]
-    exact hwin.M_eq z ip hzi (hip ▸ hlo) (hip ▸ hhi)
-  have hpred : M - 1 ≤
-      (((tr.upTo (tr.time kB)).state z ip).fg.σ d.head.root).h := by
-    rw [Store.isViable'_iff] at hDv
-    rcases hDv with hh | ⟨hh, _⟩ <;> omega
-  have hheight := hpred.trans hh
-  rw [Trace.upTo_state tr z hleB] at hheight
-  refine ⟨hheight, ?_⟩
-  intro htop heq
-  have htop' : ((tr.upTo (tr.time kB)).state z ip).fg.hmax =
-      ((tr.upTo (tr.time kB)).state z ip).fg.hj + 1 := by
-    rw [Trace.upTo_state tr z hleip]
-    exact (hwin.top_iff z ip hzi (hip ▸ hlo) (hip ▸ hhi)).2 htop
-  have hJ : ((tr.upTo (tr.time kB)).state z ip).fg.J = J := by
-    rw [Trace.upTo_state tr z hleip]
-    exact hwin.root_eq z ip hzi (hip ▸ hlo) (hip ▸ hhi) htop
-  rw [Trace.upTo_state tr z hleB, heq] at hh
-  have hJD : ((tr.upTo (tr.time kB)).state z ip).fg.Anc J d.head := by
-    rw [Store.isViable'_iff] at hDv
-    rcases hDv with hh | ⟨hh, hgap | hJD⟩
-    · omega
-    · omega
-    · exact hJ ▸ hJD
-  have hJD' : Anc ((tr.upTo (tr.time kB)).HonestBlocks (H (tr.time kB))) J d.head :=
-    Anc.mono (fun _ hm => ⟨z, hzk, ip, hm⟩) hJD
-  exact Anc.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono ht) (hJD'.trans hDB)
+  exact KernelProof.proposal_window_witness hrun hnc hwin hz hdes hB hBs hlo hhi hf
 
 /-- Leaf 8's arithmetic assembly, conditional on actual proposal viability. -/
 private theorem rounds_le_of_proposal_viable
@@ -625,6 +549,196 @@ theorem round_of_warm_within_at
     have hChead := Goldilocks.Shadow.PU.Growing.toFG_later_proposal_head_after_at'
       hshort hrun hnc hsvc hawake hf hcatch hnr hm hwarm (by linarith) hyj hC hPs hPC
       (by linarith [hts hxN]) (htjk.trans_lt htkx) hxN hpc hc' hcall hct hd' hK
+    exact Or.inr ⟨C, hChead, y, k, hyk, hPy, hCy, hh⟩
+
+/-- Leaf 11 over the stock window. The warm proposal is strictly above the floor in
+the J-kind, so the row-or-high split does not need a constant P-U top root. -/
+theorem round_of_warm_within_stock_at
+    {g ΔF b T D t₀ : Time} {s₀ u x N floor Gs : Nat} {kindJ : Prop}
+    {J P X : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
+    (hδ : 3 ≤ sp.toParams.fg.δt)
+    (hlat : Generic.VoteLatencyAt tr H D) (hD : 0 ≤ D)
+    (hΔF : 6 * sp.Δ + (D + (Gs : Time) * sp.Δ) + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
+    (hux : u + sp.toParams.fg.δt ≤ x) (hxN : x ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
+    (hTb : T ≤ b)
+    (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
+      tr.time k < T → att.h ≤ HZ tr H g)
+    (hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) < T)
+    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
+    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
+    {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX)) (hdx : p = proposer x)
+    (hX : tr.ProposesAt p kX X) (hXs : X.slot = x)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt' proposer dg H sign)
+    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
+    (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
+    (hK : CommitteeHalfUpTo tr H K g b) :
+    P ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
+      ((tr.state p (kX + 1)).fg.σ P.root).h + 1 ≤
+        ((tr.state p (kX + 1)).fg.σ X.root).h := by
+  have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
+  have hGs0 : (0 : Time) ≤ (Gs : Time) * sp.Δ :=
+    mul_nonneg (Nat.cast_nonneg _) (zero_le_one.trans sp.toParams.hΔ)
+  have hts {a c : Nat} (h : a ≤ c) : sp.ts a ≤ sp.ts c :=
+    (AC.ts_le_iff sp).2 (by exact_mod_cast h)
+  have htX : tr.time kX = sp.ts x := by
+    simpa only [sp.slotTime_eq, hXs, ACParams.ts] using hX.2.2
+  have huN : u + 1 ≤ N := by omega
+  have hu0 := hts (show s₀ ≤ u by omega)
+  have hcu : cutZ sp.toParams g ≤ sp.ts u := by
+    have h4 := hts (show s₀ + 4 ≤ u by have := sp.two_le_k; omega)
+    have he : sp.ts (s₀ + 4 : Nat) = sp.ts s₀ + 16 * sp.Δ := by
+      simp only [ACParams.ts]; push_cast; ring
+    linarith [cutZ_le sp g]
+  have hv : gbar g ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) := by
+    have := hts (show s₀ ≤ u + 1 by omega)
+    linarith
+  have hvx : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) + ΔF ≤
+      tr.time kX := by
+    have h1 := hts hux
+    have h2 : sp.ts (u + sp.toParams.fg.δt : Nat) =
+        sp.ts (u + 1 : Nat) + 4 * sp.Δ * (sp.toParams.fg.δt : Time) - 4 * sp.Δ := by
+      simp only [ACParams.ts]; push_cast; ring
+    rw [htX]
+    linarith
+  have hvc : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) <
+      tr.time kX := by linarith [hsvc.deltaF]
+  have hTx : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (Gs : Time) * sp.Δ ≤ tr.time kX := by
+    linarith
+  have hTN : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (Gs : Time) * sp.Δ ≤
+      sp.ts N + 2 * sp.Δ := by linarith [hts hxN]
+  have hfi : (H (sp.ts u))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n := by
+    have hf' := hf (sp.ts u) (by simp only [ACParams.ts]; positivity)
+      (by linarith [hts (show u ≤ N by omega)])
+    have hn := sp.toParams.hn
+    change (H (sp.ts u))ᶜ.ncard < 2 * ((2 * sp.n + 2) / 3) - sp.n
+    omega
+  have hz0 : z ∈ H (sp.ts u) := hrun.antitone (by linarith) hz
+  have htimeP : tr.time kP = sp.ts u := by
+    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
+  have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
+    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
+  have hPm := (Coherence.accept_of_proposesAt' (hrun.upTo (hrun.time_nonneg kP))
+    (hnc.upTo _) (htimeP ▸ hz0) hP').2.1
+  rw [Trace.upTo_state tr z (fun q hq => hrun.time_mono (by omega))] at hPm
+  have hPH : P ∈ tr.HonestBlocksAt H :=
+    ⟨z, kP + 1, tr.time kP, hrun.time_nonneg kP,
+      fun q hq => hrun.time_mono (by omega), htimeP ▸ hz0, hPm⟩
+  have hbounds := Goldilocks.Shadow.PU.Witness.warm_proposal_bounds_at'
+    hrun hnc ⟨hframe.floor_eq, hframe.kind_iff, hframe.root_eq⟩ hz0 hdes hP hPs hu0
+    (by linarith [hts (show u ≤ N by omega)]) hfi
+  have hr := hrun.upTo (hrun.time_nonneg kX)
+  have hX' : (tr.upTo (tr.time kX)).ProposesAt p kX X :=
+    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hX.1⟩, hX.2⟩
+  obtain ⟨_, c, ellp, d, pay, hc, hcall, hd, htc, hpar, _⟩ :=
+    Coherence.honestProposalRun_of_proposesAt' hr (hnc.upTo _) hp hdx hX' hXs
+  rw [← hdx] at hc hd
+  have hct : tr.time c = sp.ts x := htc
+  have hpc := hrun.antitone (show tr.time c ≤ tr.time kX by rw [hct, htX]) hp
+  have hc' : tr.projAC.CallAt p c ellp := by
+    rw [RunTrace.upTo_projAC] at hc
+    exact ((Trace.upTo_callAt tr.projAC).mp hc).2
+  have hd' : (AC.acProposal sp (tr.projAC.state p c) ellp.frame (tr.time c)).2 =
+      some (d, pay) := by
+    rw [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC p
+      (fun q hq => (hrun.time_mono hq.le).trans (by rw [hct, htX]))] at hd
+    exact hd
+  have hfollow : Generic.FrameWindow tr H (sp.ts s₀)
+      (max (sp.ts N + 2 * sp.Δ)
+        (sp.ts (u + 1 : Nat) + 2 * sp.Δ + (Gs : Time) * sp.Δ)) floor kindJ J :=
+    ⟨fun y i hy hl hi => hframe.floor_eq y i hy hl (hi.trans (max_le le_rfl hTN)),
+      fun y i hy hl hi => hframe.kind_iff y i hy hl (hi.trans (max_le le_rfl hTN)),
+      fun y i hy hl hi => hframe.root_eq y i hy hl (hi.trans (max_le le_rfl hTN))⟩
+  have hfol := fun y (hy : y ∈ H (tr.time kX)) =>
+    Goldilocks.Shadow.PU.Growing.proposal_report_follow_delayed_stock_at' hfollow hrun hnc
+      hsvc hawake hf hcatch hnr hm hwarm huN (max_le hmb (hTN.trans hmb)) hz hdes hP hPs hcal
+      hgap (by linarith [hts (show s₀ ≤ u + 1 by omega)]) (hrun.antitone hTx hy) hK
+  obtain ⟨i₀, ell₀, R₀, _, _, _, _, hPR₀, hR₀d⟩ := hfol p hp
+  refine Generic.Shadow.round_cross_at_from' hrun
+    (fun y => Compose.requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok hnc
+    hsvc.signedRow hsvc.hold_le hnr hPH
+    (hPR₀.trans (hR₀d x (by omega) hxN p c ellp hpc hc' hcall hct d pay hd')) hpar hp hX
+    (hf _ (hrun.time_nonneg kX) (by rw [htX]; linarith [hts hxN])) hv hvx
+    (by rw [htX]; linarith [hts hxN]) (by
+      change P.slot + sp.toParams.fg.δt ≤ X.slot
+      rw [hPs, hXs]
+      exact hux) ?_
+  intro y hy
+  obtain ⟨i, ell, R, hyi, hR, htil, hti, hPR, _⟩ := hfol y hy
+  have hreport : Generic.ReportAt tr y i R :=
+    ⟨ell, Compose.projAC_callAt.mp hR.1, hR.2.1,
+      by change (AC.acToFG sp (tr.state y i).ac ell.frame (tr.time i)).2 = some R
+         rw [← Goldilocks.Shadow.PU.Growing.projAC_state_at' hrun hyi]
+         exact hR.2.2⟩
+  obtain ⟨k, hik, hk, C, s, hatt, _, hRC, j, hij, hjk, ellC, hcC, htoC, hretC⟩ :=
+    hlat.attests y i R hreport (hrun.antitone (by linarith) hy)
+  have hPC := hPR.trans hRC
+  have htk := hrun.time_mono hik
+  have htkx : tr.time k < sp.ts x := by rw [← htX]; linarith
+  have hyk := hrun.antitone (htX ▸ htkx.le) hy
+  have htjk := hrun.time_mono hjk
+  have hyj := hrun.antitone htjk hyk
+  have hC : AC.ToFGAt tr.projAC y j ellC C :=
+    ⟨Compose.projAC_callAt.mpr hcC, htoC,
+      by change (AC.acToFG sp (tr.projAC.state y j) ellC.frame (tr.time j)).2 = some C
+         rw [Goldilocks.Shadow.PU.Growing.projAC_state_at' hrun hyj]
+         exact hretC⟩
+  have hCj : C ∈ (tr.state y j).fg.tree := by
+    have hsrc := (AC.toFG_source hC.2.2).1.1
+    rw [Goldilocks.Shadow.PU.Growing.frame_of_projAC_at' hrun hyj hC.1,
+      Node.frame'_eq, Store.toFrame'_tree] at hsrc
+    exact hsrc.1
+  have hkle : ∀ q < k, tr.time q ≤ tr.time k := fun q hq => hrun.time_mono hq.le
+  have hk0 := hrun.time_nonneg k
+  have hCk := Compose.Growing.tree_mono_at' hrun hk0 hyk hkle hjk hCj
+  have hPk := mem_of_honest_anc_at' hrun hnc hk0 hkle hyk hPC hCk
+  have hσ := σ_eq_honest_at' hrun hnc (hrun.time_nonneg kP)
+    (fun q hq => hrun.time_mono (by omega)) (htimeP ▸ hz0) hk0 hkle hyk hPm hPk
+  have ⟨hfloor, htop⟩ := hbounds
+  rw [hσ] at hfloor htop
+  have hjlo := hu0.trans (htil.trans (hrun.time_mono hij))
+  have hklo := hjlo.trans htjk
+  have hkhi : tr.time k ≤ sp.ts N + 2 * sp.Δ := by linarith [hts hxN]
+  have hfh := hframe.floor_eq y k hyk hklo hkhi
+  have hkind := hframe.kind_iff y k hyk hklo hkhi
+  obtain ⟨hPy, hCy, hor⟩ := Generic.Shadow.row_or_high_of_attest_at_from' hrun hnc
+    (fun t ht htT => hf t ht (htT.le.trans hTb)) hna
+    (by rwa [max_eq_right (hcu.trans (htil.trans htk))]) hatt (by linarith) hCk hPC (fun _ => by
+      right
+      left
+      have hjmax := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality'
+        (Compose.Growing.reachable_at' hrun hk0 hyk hkle).reachableWith
+      by_cases hkj : kindJ
+      · have ⟨hmax, hncst⟩ := hkind.mpr hkj
+        rw [Store.headHeightFloor, ite_eq_right hncst, hmax] at hfh
+        have hstrict := htop hkj
+        omega
+      · have hlt : (tr.state y k).fg.hj < floor := by
+          rw [Store.headHeightFloor] at hfh
+          split_ifs at hfh with hcontest
+          · omega
+          · have hne : (tr.state y k).fg.hmax ≠ (tr.state y k).fg.hj + 1 :=
+              fun he => hkj (hkind.mp ⟨he, hcontest⟩)
+            omega
+        exact hlt.trans_le hfloor)
+  rcases hor with ⟨l, att, hyl, hs, hlk, hah, haT⟩ | hh
+  · exact Or.inl ⟨y, k, hyk, hPy, l, att, hyl, hs, by linarith, hah, haT⟩
+  · have hshort : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J :=
+      ⟨fun y i hy hl hi => hframe.floor_eq y i hy hl (by linarith),
+        fun y i hy hl hi => hframe.kind_iff y i hy hl (by linarith),
+        fun y i hy hl hi => hframe.root_eq y i hy hl (by linarith)⟩
+    have hChead := Goldilocks.Shadow.PU.Growing.toFG_later_proposal_head_after_stock_at'
+      hshort hrun hnc hsvc hawake hf hcatch hnr hm hwarm (by linarith) hyj hC hPs hPC
+      hyk hPk ⟨hfloor, htop⟩ (by linarith [hts hxN]) (htjk.trans_lt htkx)
+      hxN hpc hc' hcall hct hd' hK
     exact Or.inr ⟨C, hChead, y, k, hyk, hPy, hCy, hh⟩
 
 end Reset

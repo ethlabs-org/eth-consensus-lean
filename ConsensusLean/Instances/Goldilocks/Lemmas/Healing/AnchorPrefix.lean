@@ -76,6 +76,7 @@ private theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun proposer dg H t
 own unlocked locks. No phase or cross-node ancestry is assumed. -/
 private theorem actual_proposal_start_cases {A : AC.ACState sp.n}
     {Phi : AC.Frm sp.n (List (FG.Att sp.n))} {t : Time}
+    (hPhi : FrameOK Phi)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp A Phi t).2 = some (d, pay)) :
     d.start = Phi.fcRoot ∨
@@ -87,7 +88,7 @@ private theorem actual_proposal_start_cases {A : AC.ACState sp.n}
   simp only [Option.some.injEq, Prod.mk.injEq] at hd
   obtain ⟨rfl, -⟩ := hd
   change AC.getAnchor sp _ Phi t = _ ∨ AC.getAnchor sp _ Phi t ∈ _
-  unfold AC.getAnchor
+  rw [AC.getAnchor_eq_deepest_union hPhi]
   rcases hD : AC.deepest Phi (AC.liveLockBlocks sp _ Phi t ∪ {Phi.fcRoot}) with _ | D
   · exact Or.inl rfl
   · rcases (AC.deepest_mem hD).1 with h | h
@@ -137,10 +138,10 @@ theorem actual_proposal_start_live_origin (hrun : GoldilocksRun proposer dg H tr
       ∃ l ∈ AC.liveLocks sp (tr.projAC.state (proposer p) i).locks ell.frame (tr.time i),
         s₀ ≤ l.slot ∧ l.slot < p ∧ ∃ B ∈ ell.frame.tree,
           B.root = l.block ∧ ell.frame.Anc d.start B := by
-  rcases actual_proposal_start_cases hd with hroot | hlock
-  · exact Or.inl hroot
   have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hPhi := (AC.frameIn_of_callAt hr hz hc).1
+  rcases actual_proposal_start_cases hPhi hd with hroot | hlock
+  · exact Or.inl hroot
   obtain ⟨l, hl, B, hB, hBr, hlive, hstart⟩ :=
     unlocked_live_preimage hPhi (AC.locksWF_state hr hrun.vstart hz i) hlock
   have hslot : sp.slot (tr.time i) = p := by

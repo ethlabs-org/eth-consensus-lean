@@ -403,14 +403,17 @@ theorem FrameWindow.vote_head_classification {s₀ floor : Nat} {hi : Time}
         hframe.root_witness_of_earlier_call hrun hnc hf hk hnr hy hai ha hc halo hihi hat hgf
       exact hd ⟨Q, AC.voterBlockTree_subset_voteDomain hQ, hv, heq ▸ hrQ⟩
   have hAm : A ∈ AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) := by
-    unfold A AC.getAnchor
+    dsimp only [A]
+    rw [AC.getAnchor_eq_deepest_union hPhi.1]
     cases hh : AC.deepest ell.frame
         (AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) ∪ {ell.frame.fcRoot}) with
-    | none => exact (heq (by unfold A AC.getAnchor; rw [hh]; rfl)).elim
+    | none => exact (heq (by
+        dsimp only [A]; rw [AC.getAnchor_eq_deepest_union hPhi.1, hh]; rfl)).elim
     | some B =>
       rcases (AC.deepest_mem hh).1 with h | h
       · exact h
-      · exact (heq (by unfold A AC.getAnchor; rw [hh]; exact h)).elim
+      · exact (heq (by
+          dsimp only [A]; rw [AC.getAnchor_eq_deepest_union hPhi.1, hh]; exact h)).elim
   obtain ⟨hA, l, hl, hlr⟩ := hAm
   have hstrict : ¬ Anc (tr.HonestBlocks H) A ell.frame.fcRoot := by
     intro h
