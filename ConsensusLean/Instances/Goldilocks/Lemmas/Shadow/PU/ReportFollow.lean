@@ -47,6 +47,65 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
 
+/-- **A later honest proposal head extends an actual report above a slot-`u` block**
+(`FrameWindow.toFG_later_proposal_head_after_at` over the shadow run). -/
+theorem toFG_later_proposal_head_after_at'
+    {g ΔF b : Time} {s₀ u N M : Nat} {isTop : Prop}
+    {J P R : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
+    (hmb : sp.ts N + sp.Δ ≤ b)
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
+    {ell : ACLabel (goldilocksNode' sp ro)} (hto : AC.ToFGAt tr.projAC y i ell R)
+    (hPs : P.slot = u) (hPR : Anc (tr.HonestBlocksAt H) P R)
+    (hihi : tr.time i ≤ sp.ts N + sp.Δ)
+    {r : Nat} (ht : tr.time i < sp.ts r) (hrN : r ≤ N)
+    {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
+    {ellp : ACLabel (goldilocksNode' sp ro)} (hcp : tr.projAC.CallAt z c ellp)
+    (hcall : ellp.call = .proposal) (hti : tr.time c = sp.ts r)
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hd : (AC.acProposal sp (tr.projAC.state z c) ellp.frame (tr.time c)).2 =
+      some (d, pay)) (hK : CommitteeHalfUpTo tr H K g b) :
+    Anc (tr.HonestBlocksAt H) R d.head := by
+  sorry
+
+/-- Reports up to `e` slots after `t_{u+1} + 2Δ` precede proposals from slot `u + 3 + e`
+(`FrameWindow.toFG_later_proposal_head_within_at` over the shadow run). -/
+theorem toFG_later_proposal_head_within_at'
+    {g ΔF b : Time} {s₀ u N M e : Nat} {isTop : Prop}
+    {J P R : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
+    (hmb : sp.ts N + sp.Δ ≤ b)
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
+    {ell : ACLabel (goldilocksNode' sp ro)} (hto : AC.ToFGAt tr.projAC y i ell R)
+    (hPs : P.slot = u) (hPR : Anc (tr.HonestBlocksAt H) P R)
+    (hihi : tr.time i ≤ sp.ts N + sp.Δ)
+    (ht : tr.time i ≤ sp.ts (u + 1 + e : Nat) + 2 * sp.Δ)
+    {r : Nat} (hrlo : u + 3 + e ≤ r) (hrN : r ≤ N)
+    {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
+    {ellp : ACLabel (goldilocksNode' sp ro)} (hcp : tr.projAC.CallAt z c ellp)
+    (hcall : ellp.call = .proposal) (hti : tr.time c = sp.ts r)
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hd : (AC.acProposal sp (tr.projAC.state z c) ellp.frame (tr.time c)).2 =
+      some (d, pay)) (hK : CommitteeHalfUpTo tr H K g b) :
+    Anc (tr.HonestBlocksAt H) R d.head := by
+  sorry
+
 /-- **The fresh candidate yields an actual report**, followed by later honest proposal heads
 (`proposal_report_follow_at` over the shadow run). -/
 theorem proposal_report_follow_at'
