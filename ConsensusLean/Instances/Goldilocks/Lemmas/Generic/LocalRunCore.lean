@@ -72,6 +72,21 @@ structure LocalRunCore {P : Params} {A : NodeAC P}
   /-- `Healing.sent_origin_from` on the prefix. -/
   sent_origin : ∀ {y i t}, 0 ≤ t → (∀ q < i, tr.time q ≤ t) → y ∈ H t → ∀ {b : FG.Content},
     b ∈ (tr.state y i).record.sent → ∃ k < i, ∃ att, tr.SignAt y k att ∧ att.content = b
+  /-- The sent contents are recorded (`Healing.Client.SentOK`, the first part of
+  `Healing.record_facts`) on the prefix. -/
+  record_sentOK : ∀ {y i t}, 0 ≤ t → (∀ q < i, tr.time q ≤ t) → y ∈ H t →
+    ∀ b ∈ (tr.state y i).record.sent,
+      (b.2.2.1 = true → b.2.1 ∈ (tr.state y i).record.timeout b.1) ∧
+      (b.2.2.1 = false → (tr.state y i).record.target b.1 = some b.2.1)
+  /-- `Healing.hj_mono` on the prefix. -/
+  hj_mono_at : ∀ {y k i t}, 0 ≤ t → (∀ q < i, tr.time q ≤ t) → y ∈ H t → k ≤ i →
+    (tr.state y k).fg.hj ≤ (tr.state y i).fg.hj
+  /-- `held_atts_safe_at_from`. -/
+  held_atts_safe_at : ∀ {y x : Fin P.n} {m i : Nat} {u t d : Time},
+    0 ≤ u → (∀ k < m, tr.time k ≤ u) → y ∈ H u →
+    0 ≤ t → (∀ k < i, tr.time k ≤ t) → x ∈ H t → u ≤ d → t ≤ d →
+    ∀ (a b : FG.Att P.n), (∃ Y ∈ (tr.state y m).fg.tree, a ∈ Y.fgPayload) →
+    (∃ Y ∈ (tr.state x i).fg.tree, b ∈ Y.fgPayload) → a.val ∈ H d → ¬ FG.slashable a b
   /-- `Healing.signAt_wellFormed_from`. -/
   signAt_wellFormed : ∀ {y k} {att : FG.Att P.n}, y ∈ H (tr.time k) → tr.SignAt y k att →
     att.WellFormed
