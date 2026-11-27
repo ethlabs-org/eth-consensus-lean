@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularClassif
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularVotes
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.StockWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
@@ -13,12 +14,20 @@ public section
 
 /-! # P-U regular-later assembly
 
-V-B8 remains unresolved. The result-supporter and classification suppliers live in
-`RegularClassification` so that `RegularVotes` can consume them without a cycle.
-The exact fast/slow signature handoff for `RegularVotes` is recorded in that supplier's
-header comment. They are not active declarations here. The witness family belongs to
-`WitnessFamily`; the direct caller must supply its source-window lower bound `halo`.
-No reachable counterexample or run-level proof is claimed.
+The theorem below proves propagation over `FrameWindow'`. The result-supporter and
+classification suppliers live in `RegularClassification` so that `RegularVotes` can
+consume them without a cycle. Its viable branch uses source viability instead of
+ancestry of an arbitrary lock origin above J.
+
+The stock-window endpoint in `StockWindow` remains explicitly unresolved. The
+four-case stock-window classification is proved in `RegularClassification`.
+Its fourth case carries a new whole-tree stock witness W; the adapter below
+discharges its later-head step with D ⪯ Hd ⪯ W and the stock witness family.
+
+This does not discharge the ordinary viable-only branch when its head is a
+contest J-side block at floor−1, or the optimistic supporter's analogous witness
+extraction. A stock window does not imply a fixed-maximum `FrameWindow'`.
+No reachable counterexample to propagation or extra milestone premise is claimed.
 -/
 
 namespace Consensus.Goldilocks.Healing.PU
@@ -31,7 +40,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
 
-/-- V-B8, interface only. No proof or reachable counterexample is claimed. -/
+/-- V-B8 over the fixed-maximum shadow window; the stock-window version remains open. -/
 theorem regular_later_heads_at'
     {g ΔF b : Time} {s₀ s N M : Nat} {isTop : Prop}
     {J D : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -130,5 +139,84 @@ theorem regular_later_heads_at'
       exact hDQ.trans ((hheads r hrlo hrN).2 y i ell' hy hc' hcall hti d pay hd)
 
 end Consensus.Goldilocks.Healing.PU
+
+namespace Consensus.Goldilocks.Healing.PU.StockWindow
+
+open AC (ACParams ReplayOrder Payload gbar)
+open _root_.Consensus.Goldilocks.Growing
+open _root_.Consensus.Goldilocks.Healing.Growing
+
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+
+/-- The fourth classification branch follows D, not its lock head Hd or its
+witness W. Frozen-domain membership of W is not a premise of the stock family. -/
+theorem later_heads_of_older_lock_witness_at' {K : AC.CommitteeDict sp.n}
+    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
+    (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
+    (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
+    {s N floor : Nat} (hm : gbar g ≤ sp.ts s) (hmb : sp.ts N + sp.Δ ≤ b)
+    {kindJ : Prop} {J D Hd W : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Healing.Growing.FrameWindow tr H (sp.ts s) (sp.ts N + sp.Δ) floor kindJ J)
+    {z : Fin sp.n} {q : Nat} (hz : z ∈ H (tr.time q))
+    (halo : sp.ts s ≤ tr.time q) (hat : tr.time q < sp.ts s + 2 * sp.Δ)
+    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt z q ell)
+    (hW : W ∈ ell.frame.tree) (hh : floor ≤ ((tr.state z q).fg.σ W.root).h)
+    (hJ : kindJ → Anc (tr.HonestBlocksAt H) J W)
+    (hDH : Anc (tr.HonestBlocksAt H) D Hd) (hHW : ell.frame.Anc Hd W)
+    (hbase : ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
+      e.msg.slot = s + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg D)
+    (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ r, s + 1 ≤ r → r ≤ N →
+      (∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = r →
+        AC.VoteExtends (tr.HonestBlocksAt H) e.msg D) ∧
+      (s + 2 ≤ r → ∀ y i ell, y ∈ H (tr.time i) → tr.projAC.CallAt y i ell →
+        ell.call = .proposal → tr.time i = sp.ts r → ∀ d pay,
+        (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
+          Anc (tr.HonestBlocksAt H) D d.head) := by
+  have hPhi := AC.frameIn_of_callU
+    (Compose.Growing.goldilocks_ac_projection_from' hrun hnc |>.upTo
+      (hrun.time_nonneg q)).localRun.toU hz
+    ((Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩)
+  exact Shadow.PU.Growing.later_heads_of_stock_witness_at' hrun hnc hsvc hawake hf hcatch
+    hnr hm hmb ⟨hframe.floor_eq, hframe.kind_iff, hframe.root_eq⟩ hz halo hat hc hW hh hJ
+    (hDH.trans (hHW.mono hPhi.2)) hbase hK
+
+/-- Unresolved stock-window V-B8 endpoint. The fourth classification alternative
+can follow D through its independent stock witness W, using D ⪯ Hd ⪯ W.
+The viable-only contest alternative and optimistic supporter extraction still
+need stock-window witness transport; this declaration does not certify them. -/
+theorem regular_later_heads_at'
+    {g ΔF b : Time} {s₀ s N floor : Nat} {kindJ : Prop}
+    {J D : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Healing.Growing.FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
+    (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
+    (hwarm : s₀ + sp.k ≤ s) (hpos : 0 < s) (hs₀ : s₀ ≤ s - 1)
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hsN : s + 2 ≤ N)
+    (hmb : sp.ts N + sp.Δ ≤ b)
+    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c))
+    (horigin : (∃ CV, AC.FastUpdateAt tr.projAC x c s D CV) ∨
+      AC.SlowLockAt tr.projAC x c s D) (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ r, s + 1 ≤ r → r ≤ N →
+      (∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = r →
+        AC.VoteExtends (tr.HonestBlocksAt H) e.msg D) ∧
+      (s + 2 ≤ r → ∀ y i ell, y ∈ H (tr.time i) → tr.projAC.CallAt y i ell →
+        ell.call = .proposal → tr.time i = sp.ts r → ∀ d pay,
+        (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
+          Anc (tr.HonestBlocksAt H) D d.head) := by
+  sorry
+
+end Consensus.Goldilocks.Healing.PU.StockWindow
 
 end
