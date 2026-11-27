@@ -5,10 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.StockWindow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignedTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FastLockRenewal
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshViable
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshLocks
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.PrimedFresh
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshToFG
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowWrite
@@ -39,11 +36,11 @@ early-witness family (`WitnessFamily`) and the regular and optimistic later-head
 (`FollowHeads`, `FollowWrite`, `RegularLater`). The later-head pair
 (`toFG_later_proposal_head_after_at'`, `_within_at'`) is proved here from `RegularLater`'s
 `regular_later_heads_at'` and `optimistic_write_later_proposal_head_at'`; it is unresolved while
-those are. The two endpoints are assembled from the stock proofs: the fresh lock from lane N's
-selection and no-veto (primed and stock), lane C's `toFG_candidate_pre_within_stock_at'`, and two
+those are. The two endpoints are assembled from the stock proofs: the fresh lock and its report
+from lane N's `KernelProof.fresh_fast_lock_update_toFG(_primed)_at'`, lane C's
+`toFG_candidate_pre_within_stock_at'`, and two
 named stubs: `honest_vote_heads_eq_stub` / `honest_vote_heads_eq_stock_stub` (lane A, the
-unanimous slot-`u` votes). The tick and report cuts of a signing tick are lane C's
-`signing_tick_toFG_cuts_at'`.
+unanimous slot-`u` votes).
 
 The milestone form reads the stock window (`Generic.FrameWindow … floor kindJ J`):
 `proposal_report_follow_stock_at'` and `proposal_report_follow_delayed_stock_at'` are assembled
@@ -614,66 +611,6 @@ theorem honest_vote_heads_eq_stub
       e.msg.head = P.root := by
   sorry
 
-/-- The fresh fast lock and its report call over the P-U window: lane N's primed selection and
-no-veto (`Shadow.unanimous_update_selection_primed_at'`, `…_no_veto_primed_at'`) at the update cut
-of a signing tick (`signing_tick_toFG_cuts_at'`). -/
-theorem fresh_fast_lock_update_toFG_of_cuts {K : AC.CommitteeDict sp.n}
-    {g ΔF b : Time} {u M : Nat} {isTop : Prop}
-    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (_hnc : Compose.NoCollRun dg tr) (_hsvc : ResetService tr H g ΔF b hold)
-    (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (_hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (_hcatch : CatchRun tr H g (2 * sp.Δ)) (_hnr : NoRestartAfter tr H (gbar g))
-    (_hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
-    (_hjoin : ∀ y, y ∈ H (sp.ts u + sp.Δ) →
-      AC.JoinedAt tr.projAC y (sp.ts u + sp.Δ))
-    (_hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
-    (_hframe : Healing.FrameWindow' tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ)
-      M isTop J)
-    {z : Fin sp.n} (_hz : z ∈ H (sp.ts u + sp.Δ)) (_hdes : z = proposer u)
-    {kP : Nat} (_hP : tr.ProposesAt z kP P) (_hPs : P.slot = u)
-    (_hun : ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
-      e.msg.slot = u → e.msg.head = P.root)
-    {sign : Fin sp.n → Time → Bool} (_hcal : tr.SignCalendarAt' proposer dg H sign)
-    {y : Fin sp.n} (_hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ))
-    (_hsign : sign y (sp.ts (u + 1 : Nat) + 2 * sp.Δ) = true)
-    (_hK : CommitteeHalfUpTo tr H K g b) :
-    ∃ k ell ell', AC.UpdateAt tr.projAC y k u ell ∧
-      tr.projAC.CallAt y (k + 1) ell' ∧ ell'.call = .toFG ∧
-      tr.time (k + 1) = sp.ts (u + 1 : Nat) + 2 * sp.Δ ∧
-      ell'.frame = ell.frame ∧
-      AC.getConfirmation sp (tr.projAC.state y k) ell.frame u = some P ∧
-      ¬ AC.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P ∧
-      AC.fastSelect sp (tr.projAC.state y k) ell.frame u P = some P ∧
-      ell'.frame.viableAncestor P = P ∧
-      P ∈ ell'.frame.viableTree ell'.frame.tree ∧
-      ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.post k).locks ∧
-        (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.state y (k + 1)).locks := by
-  obtain ⟨k, ell, ell', hu, hc, hto, ht, hframes⟩ :=
-    Healing.Growing.Core.update_toFG_calls_of_awake_at
-    _hrun.toCore _hnc _hawake _hnr _hmargin _hTb (sign := sign)
-    (fun x hx haw hsig => signing_tick_toFG_cuts_at' _hrun _hcal ⟨u, rfl⟩ hx haw hsig) _hy _hsign
-  have hkt : tr.time k = sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
-    have hk := hu.2.2.1
-    change tr.time k = sp.ts u + 6 * sp.Δ at hk
-    rw [hk]
-    simp only [ACParams.ts]; push_cast; ring
-  have hyk : y ∈ H (tr.time k) := hkt ▸ _hy
-  obtain ⟨hvi, hconf, hfast, hva⟩ :=
-    Healing.Growing.Shadow.unanimous_update_selection_primed_at' _hframe _hrun
-    _hnc _hsvc _hawake _hf _hcatch _hnr _hmargin _hjoin _hTb _hz _hdes _hP _hPs _hun _hK hyk hu
-  have hnv :=
-    Healing.Growing.Shadow.unanimous_update_no_veto_primed_at' _hframe _hrun _hnc _hsvc _hawake _hf
-    _hcatch _hnr _hmargin _hjoin _hTb _hz _hdes _hP _hPs _hun _hK hyk hu
-  obtain ⟨e, he, hlock⟩ :=
-    Healing.Growing.Core.fresh_fast_lock_of_selection_at _hrun.toCore _hnc hyk hu hvi.1
-    hconf hnv hfast hva
-  refine ⟨k, ell, ell', hu, hc, hto, ht, hframes, hconf, hnv, hfast,
-    hframes.symm ▸ hva, hframes.symm ▸ hvi, e, he, hlock, ?_⟩
-  simpa only [Trace.state_succ_of_call tr.projAC hu.1] using hlock
-
 /-- Stub for lane C's `toFG_candidate_pre_within_at'` (stock `toFG_candidate_pre_within_at`,
 FastLockRenewal). -/
 theorem toFG_candidate_pre_within_stub {K : AC.CommitteeDict sp.n}
@@ -718,69 +655,6 @@ theorem honest_vote_heads_eq_stock_stub
     ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = u →
       e.msg.head = P.root := by
   sorry
-
-/-- The fresh fast lock and its report call over the stock window (stock
-`fresh_fast_lock_update_toFG_at`): lane N's selection and no-veto
-(`Shadow.unanimous_update_selection_at'`, `Shadow.unanimous_update_no_veto_at'`) at the update cut
-of a signing tick (`signing_tick_toFG_cuts_at'`). -/
-theorem fresh_fast_lock_update_toFG_stock_of_cuts {K : AC.CommitteeDict sp.n}
-    {g ΔF b : Time} {u floor : Nat} {kindJ : Prop}
-    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (_hnc : Compose.NoCollRun dg tr) (_hsvc : ResetService tr H g ΔF b hold)
-    (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (_hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (_hcatch : CatchRun tr H g (2 * sp.Δ)) (_hnr : NoRestartAfter tr H (gbar g))
-    (_hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
-    (_hjoin : ∀ y, y ∈ H (sp.ts u + sp.Δ) →
-      AC.JoinedAt tr.projAC y (sp.ts u + sp.Δ))
-    (_hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
-    (_hframe : Generic.FrameWindow tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ)
-      floor kindJ J)
-    {z : Fin sp.n} (_hz : z ∈ H (sp.ts u + sp.Δ)) (_hdes : z = proposer u)
-    {kP : Nat} (_hP : tr.ProposesAt z kP P) (_hPs : P.slot = u)
-    (_hun : ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
-      e.msg.slot = u → e.msg.head = P.root)
-    {sign : Fin sp.n → Time → Bool} (_hcal : tr.SignCalendarAt' proposer dg H sign)
-    {y : Fin sp.n} (_hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ))
-    (_hsign : sign y (sp.ts (u + 1 : Nat) + 2 * sp.Δ) = true)
-    (_hK : CommitteeHalfUpTo tr H K g b) :
-    ∃ k ell ell', AC.UpdateAt tr.projAC y k u ell ∧
-      tr.projAC.CallAt y (k + 1) ell' ∧ ell'.call = .toFG ∧
-      tr.time (k + 1) = sp.ts (u + 1 : Nat) + 2 * sp.Δ ∧
-      ell'.frame = ell.frame ∧
-      AC.getConfirmation sp (tr.projAC.state y k) ell.frame u = some P ∧
-      ¬ AC.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P ∧
-      AC.fastSelect sp (tr.projAC.state y k) ell.frame u P = some P ∧
-      ell'.frame.viableAncestor P = P ∧
-      P ∈ ell'.frame.viableTree ell'.frame.tree ∧
-      ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.post k).locks ∧
-        (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.state y (k + 1)).locks := by
-  obtain ⟨k, ell, ell', hu, hc, hto, ht, hframes⟩ :=
-    Healing.Growing.Core.update_toFG_calls_of_awake_at
-    _hrun.toCore _hnc _hawake _hnr _hmargin _hTb (sign := sign)
-    (fun x hx haw hsig => signing_tick_toFG_cuts_at' _hrun _hcal ⟨u, rfl⟩ hx haw hsig) _hy _hsign
-  have hkt : tr.time k = sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
-    have hk := hu.2.2.1
-    change tr.time k = sp.ts u + 6 * sp.Δ at hk
-    rw [hk]
-    simp only [ACParams.ts]; push_cast; ring
-  have hyk : y ∈ H (tr.time k) := hkt ▸ _hy
-  have hframeK : Healing.Growing.FrameWindow tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ)
-      floor kindJ J := ⟨_hframe.floor_eq, _hframe.kind_iff, _hframe.root_eq⟩
-  obtain ⟨hvi, hconf, hfast, hva⟩ :=
-    Healing.Growing.Shadow.unanimous_update_selection_at' hframeK _hrun _hnc
-    _hsvc _hawake _hf _hcatch _hnr _hmargin _hjoin _hTb _hz _hdes _hP _hPs _hun hyk hu _hK
-  have hnv :=
-    Healing.Growing.Shadow.unanimous_update_no_veto_at' hframeK _hrun _hnc _hsvc _hawake _hf _hcatch
-    _hnr _hmargin _hjoin _hTb _hz _hdes _hP _hPs _hun hyk hu _hK
-  obtain ⟨e, he, hlock⟩ :=
-    Healing.Growing.Core.fresh_fast_lock_of_selection_at _hrun.toCore _hnc hyk hu hvi.1
-    hconf hnv hfast hva
-  refine ⟨k, ell, ell', hu, hc, hto, ht, hframes, hconf, hnv, hfast,
-    hframes.symm ▸ hva, hframes.symm ▸ hvi, e, he, hlock, ?_⟩
-  simpa only [Trace.state_succ_of_call tr.projAC hu.1] using hlock
 
 /-- **The fresh candidate yields an actual report**, followed by later honest proposal heads
 (`proposal_report_follow_at` over the shadow run). -/
@@ -828,8 +702,8 @@ theorem proposal_report_follow_at'
     have := hts (show s₀ ≤ u by omega)
     linarith only [hm, this, hΔ]
   obtain ⟨k, ell, ell', hu, hc, hto, ht, _, _, _, _, hva, hv, e, he, _, hl⟩ :=
-    fresh_fast_lock_update_toFG_of_cuts hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin
-      (hT.trans hmb) hshort hz hdes hP hPs hun hcal hy hsign hK
+    Healing.Growing.KernelProof.fresh_fast_lock_update_toFG_primed_at' hrun hnc hsvc hawake hf
+      hcatch hnr hmargin hjoin (hT.trans hmb) hshort hz hdes hP hPs hun hcal hy hsign hK
   have hyc : y ∈ H (tr.time (k + 1)) := ht ▸ hy
   have hPc := Healing.fresh_lock_toFG_candidate hv hva hl he ht
   have hr := (Compose.Growing.goldilocks_ac_projection_from' hrun hnc).upTo
@@ -1037,8 +911,9 @@ theorem proposal_report_follow_stock_at'
     have := hts (show s₀ ≤ u by omega)
     linarith only [hm, this, hΔ]
   obtain ⟨k, ell, ell', hu, hc, hto, ht, _, _, _, _, hva, hv, e, he, _, hl⟩ :=
-    fresh_fast_lock_update_toFG_stock_of_cuts hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin
-      (hT.trans hmb) hshort hz hdes hP hPs hun hcal hy hsign hK
+    Healing.Growing.KernelProof.fresh_fast_lock_update_toFG_at' hrun hnc hsvc hawake hf hcatch hnr
+      hmargin hjoin (hT.trans hmb) ⟨hshort.floor_eq, hshort.kind_iff, hshort.root_eq⟩ hz hdes hP
+      hPs hun hcal hy hsign hK
   have hyc : y ∈ H (tr.time (k + 1)) := ht ▸ hy
   have hPc := Healing.fresh_lock_toFG_candidate hv hva hl he ht
   have hr := (Compose.Growing.goldilocks_ac_projection_from' hrun hnc).upTo
