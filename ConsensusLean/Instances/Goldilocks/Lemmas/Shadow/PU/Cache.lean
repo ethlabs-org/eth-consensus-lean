@@ -130,15 +130,6 @@ theorem Reachable.good {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable acp�
     CacheGood acp₀ st :=
   h.reachableWith.good finalitySpec_updateFinality
 
-/-- `cache_invariants` over the shadow `Reachable'`. -/
-theorem cache_invariants' {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable acp₀) :
-    st.F ∈ st.tree ∧ st.J ∈ st.tree ∧ st.Anc st.F st.J ∧
-      (∃ B ∈ st.tree, (st.σ B.root).J = st.J.root ∧ (st.σ B.root).hj = st.hj) ∧
-      (∀ B ∈ st.tree, (st.σ B.root).h ≤ st.hmax) ∧
-      (∃ B ∈ st.tree, (st.σ B.root).h = st.hmax) ∧
-      ∃ B ∈ st.tree, (st.σ B.root).F = st.F.root :=
-  cache_invariants_with finalitySpec_updateFinality h.reachableWith
-
 /-- Every store reached with a finality update of the stock shape is a `PUSnapshot`. -/
 theorem ReachableWith.puSnapshot {u : Store P ACP → FG.ChainState P.n → Store P ACP}
     {acp₀ : ACP} {st : Store P ACP} (hu : FinalitySpec u) (hr : ReachableWith u acp₀ st) :

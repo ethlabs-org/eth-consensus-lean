@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.HighInduction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.VoteReceipt
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.OldSources
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.VoteDomain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteDomain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 
@@ -17,7 +17,7 @@ The stock healing kernel's R1 chain over the shadow run, read off the reset core
   `KernelProof.high_origin_votes_of_domain_before_at'` (HighInduction, the vote domain an
   explicit input): the core versions of the stock lemmas.
 * `ResetPremisesUpTo'.high_origin_votes_before_at'` (ResetFacts, R2): the deep quarantine arm
-  plugs in the P-U vote domain (`held_target_vote_domain_before_of_quarantine_at'`); the cover
+  plugs in the P-U vote domain (`held_target_vote_domain_before_of_quarantine_at`); the cover
   arm is S2 of the high-source cover; stock proof.
 * `ResetPremisesUpTo'.origins_compatible_at'` (ResetFacts, R1, through
   `ResetRunCore.origins_compatible_of_votes_at`) and
