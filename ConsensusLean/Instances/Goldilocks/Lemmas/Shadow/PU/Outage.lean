@@ -127,13 +127,45 @@ variable {tr : GoldilocksTrace' sp ro} {H : Time → Set (Fin sp.n)} {proposer :
   {ini : Fin sp.n → (goldilocksNode' sp ro).State}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 
+/-- Membership in the shadow frame's tree is the store's tree above `F`. -/
+theorem mem_frame'_tree {st : NodeState (goldilocksNode' sp ro)}
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} :
+    B ∈ (Node.frame' st).tree ↔ B ∈ st.fg.tree ∧ st.fg.Anc st.fg.F B := by
+  rw [Node.frame'_eq, Store.toFrame'_tree]; exact Iff.rfl
+
+/-- Ancestry in the shadow frame is ancestry in the store's tree above `F`. -/
+theorem frame'_anc_iff {st : NodeState (goldilocksNode' sp ro)}
+    {A B : AC.Blk sp.n (List (FG.Att sp.n))} :
+    (Node.frame' st).Anc A B ↔ Anc {X | X ∈ st.fg.tree ∧ st.fg.Anc st.fg.F X} A B := by
+  change Anc (Node.frame' st).tree A B ↔ _
+  rw [Node.frame'_eq, Store.toFrame'_tree]
+
+theorem frame'_F (st : NodeState (goldilocksNode' sp ro)) : (Node.frame' st).F = st.fg.F := by
+  rw [Node.frame'_eq, Store.toFrame'_F]
+
+/-- The floor at node `y`, cut `i`: a lock of label `j` and expiry at least `m` on a block `⪰ B₀`
+of the shadow frame's tree (`FloorAt` over `Node.frame'`). -/
+abbrev FloorAt' (tr : GoldilocksTrace' sp ro) (y : Fin sp.n) (i : Nat)
+    (B₀ : AC.Blk sp.n (List (FG.Att sp.n))) (j m : Nat) : Prop :=
+  ∃ l ∈ (tr.state y i).ac.locks, l.slot = j ∧ m ≤ l.expiry ∧
+    ∃ B ∈ (Node.frame' (tr.state y i)).tree, B.root = l.block ∧
+      (Node.frame' (tr.state y i)).Anc B₀ B
+
+/-- The unlock premise at node `y`, cut `j`: `unlock` at the view of the AC call at `j` does not
+move `B` (`UnlockKeeps` over the shadow frame). -/
+abbrev UnlockKeeps' (tr : GoldilocksTrace' sp ro) (y : Fin sp.n) (j : Nat)
+    (B : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+  ∀ ℓ, tr.CallAt y j (.ac ℓ) → AC.unlockTarget sp (Node.frame' (tr.state y j))
+    (AC.unlockView (ro := ro) (tr.state y j).ac (Node.frame' (tr.state y j)) (tr.time j) ℓ.call)
+    ((sp.slot (tr.time j) : Int) - 1) B = B
+
 /-- The protection of `x` at cut `i` with label `j` through slot `m`: a lock of label `j` and
 expiry at least `m` on a frame block above `P`, or root cover (`P ⪯ Σ.F`). -/
 def Prot' (D : OutageLockPremises' tr H proposer dg ini) (x : Fin sp.n) (i j m : Nat) : Prop :=
-  FloorAt tr x i D.P j m ∨ Anc (tr.HonestBlocksAt H) D.P (tr.state x i).fg.F
+  FloorAt' tr x i D.P j m ∨ Anc (tr.HonestBlocksAt H) D.P (tr.state x i).fg.F
 
 theorem prot'_iff {D : OutageLockPremises' tr H proposer dg ini} {x : Fin sp.n} {i j m : Nat} :
-    Prot' D x i j m ↔ FloorAt tr x i D.P j m ∨ Anc (tr.HonestBlocksAt H) D.P (tr.state x i).fg.F :=
+    Prot' D x i j m ↔ FloorAt' tr x i D.P j m ∨ Anc (tr.HonestBlocksAt H) D.P (tr.state x i).fg.F :=
   Iff.rfl
 
 /-- The vote half of the invariant at the cuts before `i`: (H) and S5V, over votes cast by nodes
@@ -209,6 +241,17 @@ theorem viable_at_cut (hinv : OutageLockInv' D i) {y : Fin sp.n} {k : Nat} (hk :
   hinv.viable y k (tr.time k) hk (D.hrun.time_nonneg k) (fun _ hk' => D.hrun.time_mono hk'.le) hy
 
 end OutageLockInv'
+
+/-- The restored-vote step that the lock module consumes: from the invariant at `i`, the votes
+of cut `i` past the lock lifetime, by nodes honest then, have heads compatible with `P`. -/
+def OutageS5StepAt' (D : OutageLockPremises' tr H proposer dg ini) : Prop :=
+  ∀ i, OutageLockInv' D i → ∀ y e, HVoteAt tr H y i e →
+    D.j₀ + sp.k < e.msg.slot → VoteCompat (tr.HonestBlocksAt H) e.msg D.P
+
+theorem outageS5StepAt'_iff {D : OutageLockPremises' tr H proposer dg ini} :
+    OutageS5StepAt' D ↔ ∀ i, OutageLockInv' D i → ∀ y e, HVoteAt tr H y i e →
+      D.j₀ + sp.k < e.msg.slot → VoteCompat (tr.HonestBlocksAt H) e.msg D.P :=
+  Iff.rfl
 
 /-! ## Run facts over the shadow run (`RunFacts'`)
 
