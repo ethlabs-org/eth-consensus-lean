@@ -160,14 +160,10 @@ private theorem good_onTick (hΦ : FrameOK Φ) (hD : Down Φ G) (x : Fin sp.n) {
   · exact h
   · exact h
 
-private theorem good_proposal (hΦ : FrameOK Φ) (hD : Down Φ G) {A : AC.ACState sp.n}
+private theorem good_proposal (_hΦ : FrameOK Φ) (_hD : Down Φ G) {A : AC.ACState sp.n}
     (h : Good R G A) (t : Time) : Good R G (AC.acProposal sp A Φ t).1 := by
   unfold AC.acProposal
-  dsimp only
-  split_ifs
-  all_goals first
-    | exact h
-    | exact ⟨h.1, good_movesBack hD ((AC.locks_move_back sp FGP Φ A.locks t hΦ).2.2 _ _) h.2⟩
+  split_ifs <;> exact h
 
 private theorem good_toFG {A : AC.ACState sp.n} (h : Good R G A) (t : Time) :
     Good R G (AC.acToFG sp A Φ t).1 := by
