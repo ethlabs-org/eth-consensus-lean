@@ -669,10 +669,9 @@ theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : �
       have hPx := mem_of_honest_anc_at hp.run hp.noColl hd hxle hx hPR hJx
       have hσ := σ_eq_honest_at hp.run hp.noColl hd (fun _ hq => hm hq.le) hy
         hd hxle hx (hPhiS hPt) hPx
-      have hcz : cutZ sp.toParams g ≤ tr.time j := by
-        have := hp.cutZ_lt_reset_at
-        have := reset_le_ts_of_drain hp hR
-        linarith
+      have hcz : cutZ sp.toParams g ≤ tr.time j :=
+        hp.cutZ_lt_reset_at.le.trans
+          ((reset_le_ts_of_drain hp hR).trans ((hts (by omega : u ≤ m + 1)).trans hjlo))
       exact Or.inl ⟨x, r, ell', C, hp.run.antitone (max_le hcz (hm hrj.le)) hx,
         hto, hm hrj.le, hPR.trans hJC, by rw [← hσ, hCh]; exact hPh⟩
     · exact Or.inl ⟨z, r, l, C, hz, hto, hm hrj.le, hPC, hlt⟩
