@@ -3,8 +3,15 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Key
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.DeclaredVoteTransfer
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.Deadline
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -231,13 +238,14 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
   {ini : Fin sp.n → (goldilocksNode' sp ro).State}
 
-/-- Unresolved run bridge: the stock held-attestation safety fact on shadow executions. -/
-theorem held_atts_safe_window' (hrun : GoldilocksRun' proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
-    {a b : FG.Att sp.n} (ha : ∃ Y ∈ (tr.state y i).fg.tree, a ∈ Y.fgPayload)
-    (hb : ∃ Y ∈ (tr.state y i).fg.tree, b ∈ Y.fgPayload) (hv : a.val ∈ H) :
-    ¬ FG.slashable a b := by
-  sorry
+/-- The shadow fork-choice root is F at every cut, so its monotonicity needs no window
+or top-status case split. -/
+theorem fcRoot_mono' (hrun : GoldilocksRun' proposer dg H tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i) :
+    Anc (tr.HonestBlocks H) (Node.frame' (tr.state y a)).fcRoot
+      (Node.frame' (tr.state y i)).fcRoot := by
+  rw [Node.frame'_eq, Node.frame'_eq, Store.toFrame'_fcRoot, Store.toFrame'_fcRoot]
+  exact run_F_mono' hrun.toLocalRun' hy hai
 
 /-- V-B4: a write-frame viable head remains a viable head at later cuts in the P-U window.
 The only new geometric step is `finalized_below_viable'`; the rest is the stock persistence
@@ -270,11 +278,17 @@ theorem FrameWindow'.viableHead_persists' {lo hi : Time} {M : Nat}
         ((hframe.top_iff y a hy halo (htime.trans hihi)).mp ht)).trans
         (hframe.root_eq y i hy (halo.trans htime) hihi
           ((hframe.top_iff y a hy halo (htime.trans hihi)).mp ht)).symm)
-      (hj_lt_hmax' hrun hy i) (σ_eq_honest' hrun hnc hy hy hQa hQi)
+      (hj_lt_hmax' hrun hy i)
+      (Store.σ_eq_of_mem_with
+        (Node.fg_reachable_at' hrun.toLocalRun' hy a).reachableWith
+        Store.finalitySpec_updateFinality'
+        (Node.fg_reachable_at' hrun.toLocalRun' hy i).reachableWith
+        (Coherence.honest_blocks_coherent' hrun.toLocalRun' hnc).1
+        (fun _ hB => ⟨y, hy, a, hB⟩) hsub hQa hQi)
       (fun h => h.mono (Compose.tree_mono' hrun.toLocalRun' hy hai)) hv.2.2
   have hFQ := finalized_below_viable' (Node.fg_reachable_at' hrun.toLocalRun' hy i)
-    (Compose.honest_blocks_coherent' hrun.toLocalRun' hnc) hsub hf
-    (fun a b ha hb hv => held_atts_safe_window' hrun hnc hy i ha hb hv) hQi hvi
+    (Coherence.honest_blocks_coherent' hrun.toLocalRun' hnc) hsub hf
+    (fun a b ha hb hv => held_atts_safe' hrun hnc hy hy i i a b ha hb hv) hQi hvi
   have hQt : Q ∈ (tr.state y i).fg.toFrame'.tree := by
     rw [Store.toFrame'_tree]
     exact ⟨hQi, hFQ⟩
@@ -287,6 +301,48 @@ theorem FrameWindow'.viableHead_persists' {lo hi : Time} {M : Nat}
   · rw [Node.frame'_eq, Store.toFrame'_viableHeads]
     exact ⟨hQi, hFQ, hvi⟩
 
+/-- An earlier action supplies a frozen viable descendant of the current F-root, in both
+top and gap windows. No non-top premise or common-J fallback is needed. -/
+theorem FrameWindow'.root_witness_of_earlier_call' {lo hi g : Time} {M : Nat}
+    {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow' tr (fun _ => H) lo hi M isTop J)
+    (hrun : GoldilocksRun' proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    (hnr : NoRestartAfter tr H (AC.gbar g))
+    {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
+    {ell₀ ell : ACLabel (goldilocksNode' sp ro)}
+    (ha : tr.projAC.CallAt y a ell₀) {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y i ell e)
+    (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
+    (hat : tr.time a < AC.freeze sp e.msg.slot)
+    (hgf : AC.gbar g < AC.freeze sp e.msg.slot) :
+    ∃ Q ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
+      Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc ell.frame.fcRoot Q := by
+  have hr := (Compose.goldilocks_ac_projection_from' hrun hnc).localRun
+  have hR := Node.fg_reachable_at' hrun.toLocalRun' hy a
+  obtain ⟨-, -, -, -, -, ⟨Q, hQ, hQh⟩, -⟩ := Store.cache_invariants' hR
+  have hv : (tr.state y a).fg.IsViable' Q :=
+    (Store.isViable'_iff _ _).mpr (Or.inl hQh.ge)
+  have hFQ := finalized_below_viable' hR
+    (Coherence.honest_blocks_coherent' hrun.toLocalRun' hnc)
+    (fun B hB => ⟨y, hy, a, hB⟩) hf
+    (fun b c h₁ h₂ hv => held_atts_safe' hrun hnc hy hy a a b c h₁ h₂ hv) hQ hv
+  have hQt : Q ∈ ell₀.frame.tree := by
+    rw [Node.frame_of_projAC_at' hrun.toLocalRun' hy ha, Node.frame'_eq,
+      Store.toFrame'_tree]
+    exact ⟨hQ, hFQ⟩
+  have hv₀ : Q ∈ ell₀.frame.viableHeads := by
+    rw [Node.frame_of_projAC_at' hrun.toLocalRun' hy ha, Node.frame'_eq,
+      Store.toFrame'_viableHeads]
+    exact ⟨hQ, hFQ, hv⟩
+  obtain ⟨hQi, hrooti, hvi⟩ :=
+    hframe.viableHead_persists' hrun hnc hf hy hai halo hihi ha hv₀
+  rw [← Node.frame_of_projAC_at' hrun.toLocalRun' hy hc.1] at hQi hrooti hvi
+  refine ⟨Q, ⟨hQi, Or.inl ?_⟩, hvi, hrooti⟩
+  apply AC.readPoint_blockStamp_lt_of_earlier_frame hr hrun.vstart hy ha hc hQt hQi hat
+  intro r _ hrs
+  exact (hnr y hy r (Compose.projAC_restartAt.mp hrs)).trans_lt hgf
+
 end Persistence
 
 namespace Growing
@@ -296,7 +352,67 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
   {ini : Fin sp.n → (goldilocksNode' sp ro).State} {hold : Time}
 
-/-- Unresolved shadow observation wrapper around the proved store-level relay lag. -/
+/-- Relay and catch-up transport a held block whose height is not below the receiver's
+maximum. This is the observation-level service obligation for the shadow lag core. -/
+theorem held_of_relay_le_at_from'
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b κ τ : Time}
+    (hsvc : ResetService tr H g ΔF b hold) (hcatch : CatchRun tr H g κ)
+    {x z : Fin sp.n} {i m : Nat} (hτ0 : 0 ≤ τ) (hx : x ∈ H τ)
+    (hz : z ∈ H (tr.time m))
+    (hf : (H (max τ (tr.time m)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state x i).fg.tree)
+    (hh : (tr.state z m).fg.hmax ≤ ((tr.state x i).fg.σ B.root).h)
+    (hτ : ∀ k < i, tr.time k ≤ τ)
+    (hcall : ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max τ g) sp.Δ ≤ tr.time j)
+    (hcm : AC.gbar g + κ ≤ tr.time m) : B ∈ (tr.state z m).fg.tree := by
+  have hm0 := hrun.time_nonneg m
+  have hm : ∀ k < m, tr.time k ≤ tr.time m := fun k hk => hrun.time_mono hk.le
+  have hs : ∀ j ≤ m, (tr.upTo (tr.time m)).state z j = tr.state z j :=
+    fun j hj => Trace.upTo_state tr z (fun k hk => hrun.time_mono (by omega))
+  have hr := (hrun.upTo hm0).toLocalRun'
+  have hF : ∀ j ≤ m, Anc (tr.HonestBlocksAt H) (tr.state z j).fg.F B := by
+    intro j hj
+    have hheight := Coherence.hmax_mono' hr hz hj
+    dsimp only at hheight
+    rw [hs j hj, hs m le_rfl] at hheight
+    have hjtime : ∀ k < j, tr.time k ≤ tr.time m := fun k hk => hrun.time_mono (by omega)
+    exact (Store.F_anc_of_hmax_le_of_safe_with Store.finalitySpec_updateFinality'
+      (Compose.Growing.reachable_at' hrun hm0 hz hjtime).reachableWith
+      (Compose.Growing.reachable_at' hrun hτ0 hx hτ).reachableWith
+      (Coherence.honestBlocksAt_coherent' hrun hnc)
+      (Compose.Growing.tree_held_at' hm0 hz hjtime)
+      (Compose.Growing.tree_held_at' hτ0 hx hτ) hf
+      (fun a b ha hb hav => Shadow.held_atts_safe_at' hrun hnc hm0 hjtime hz hτ0 hτ hx
+        (le_max_right _ _) (le_max_left _ _) a b ha hb hav)
+      hB (hheight.trans hh)).mono (Compose.Growing.tree_held_at' hτ0 hx hτ)
+  have hlift : ∀ k, k + 1 ≤ m → tr.AcceptAt z k B → B ∈ (tr.state z m).fg.tree := by
+    intro k hkm ha
+    have ha' : (tr.upTo (tr.time m)).AcceptAt z k B :=
+      (RunTrace.upTo_acceptAt tr).mpr ⟨hrun.time_mono (by omega), ha⟩
+    have hmem := Coherence.accept_mem_from' hr hz ha'
+    have := Coherence.tree_mono' hr hz hkm hmem
+    rwa [hs m le_rfl] at this
+  have hB' : B ∈ ((tr.upTo τ).state x i).fg.tree := by
+    rwa [Trace.upTo_state tr x hτ]
+  rcases Coherence.tree_accepted' (hrun.upTo hτ0).toLocalRun' hx hB' with he | ⟨k, hk, ha⟩
+  · rw [he]
+    exact Store.genesis_mem_with Store.finalitySpec_updateFinality'
+      (Compose.Growing.reachable_at' hrun hm0 hz hm).reachableWith
+  have ha := ((RunTrace.upTo_acceptAt tr).mp ha).2
+  have hxk := hrun.antitone (hτ k hk) hx
+  by_cases hg : g ≤ tr.time k
+  · obtain ⟨j, hjm, hcj, hdl⟩ := hcall
+    have hdl' := (tr.deadline_mono z j (max_le_max (hτ k hk) le_rfl) sp.Δ).trans hdl
+    obtain ⟨k', hk'j, ha', -⟩ := hsvc.relay x k B hxk ha hg z j
+      (hrun.antitone (hrun.time_mono hjm.le) hz) hcj hdl' (hF j hjm.le)
+    exact hlift k' (by omega) ha'
+  · obtain ⟨k', hk', ha', _⟩ := Healing.accept_before_snapshot hcm fun q hq hfirst =>
+      hcatch x k B hxk ha (lt_of_lt_of_le (not_le.mp hg) (le_max_left _ _)) z q
+        (hrun.antitone hcm hz) hfirst (hF q hq)
+    exact hlift k' hk' ha'
+
+/-- Shadow key lag between independently honest observations, from relay and catch-up. -/
 theorem frameKey''_lag_obs'
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
@@ -308,9 +424,24 @@ theorem frameKey''_lag_obs'
       tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
     (hcm : AC.gbar g + κ ≤ tr.time m) :
     frameKey'' (tr.state x i).fg ≤ frameKey'' (tr.state z m).fg := by
-  sorry
+  have hi := hrun.time_nonneg i
+  have hm := hrun.time_nonneg m
+  have hbi : ∀ k < i, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono hk.le
+  have hbm : ∀ k < m, tr.time k ≤ tr.time m := fun k hk => hrun.time_mono hk.le
+  have hfm := hf _ hm hmb
+  apply frameKey''_le_of_relay
+    (Compose.Growing.reachable_at' hrun hi hx hbi)
+    (Compose.Growing.reachable_at' hrun hm hz hbm)
+    (Coherence.honestBlocksAt_coherent' hrun hnc)
+    (Compose.Growing.tree_held_at' hi hx hbi) (Compose.Growing.tree_held_at' hm hz hbm) hfm
+  · exact fun a b ha hb hav => Shadow.held_atts_safe_at' hrun hnc hm hbm hz hi hbi hx
+      le_rfl him a b ha hb hav
+  · exact fun _ _ h hC => store_anc_of_honest_anc_at' hrun hnc hm hbm hz h hC
+  · intro B hB hh
+    exact held_of_relay_le_at_from' hrun hnc hsvc hcatch hi hx hz
+      (by simpa only [max_eq_right him] using hfm) hB hh hbi hcall hcm
 
-/-- Unresolved two-reader shadow observation wrapper for cached justification agreement. -/
+/-- Equal cached justification heights agree at independently honest observations. -/
 theorem J_eq_of_hj_eq_obs'
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {i m : Nat}
@@ -318,11 +449,20 @@ theorem J_eq_of_hj_eq_obs'
     (hf : (H (max (tr.time i) (tr.time m)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (he : (tr.state y i).fg.hj = (tr.state z m).fg.hj) :
     (tr.state y i).fg.J = (tr.state z m).fg.J := by
-  sorry
+  have hi := hrun.time_nonneg i
+  have hm := hrun.time_nonneg m
+  have hbi : ∀ k < i, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono hk.le
+  have hbm : ∀ k < m, tr.time k ≤ tr.time m := fun k hk => hrun.time_mono hk.le
+  exact Store.J_eq_of_cache_hj_eq_of_safe_with Store.finalitySpec_updateFinality'
+    (Compose.Growing.reachable_at' hrun hi hy hbi).reachableWith
+    (Compose.Growing.reachable_at' hrun hm hz hbm).reachableWith
+    (Coherence.honestBlocksAt_coherent' hrun hnc)
+    (Compose.Growing.tree_held_at' hi hy hbi) (Compose.Growing.tree_held_at' hm hz hbm) hf
+    (fun a b ha hb hav => Shadow.held_atts_safe_at' hrun hnc hi hbi hy hm hbm hz
+      (le_max_left _ _) (le_max_right _ _) a b ha hb hav) he
 
-/-- V-B2, unresolved run supplier. The four-attempt combinatorial core is
-`exists_frameWindow'_seq_of_mem`; the open obligations are service relay and J agreement
-at two independently honest shadow observations. -/
+/-- V-B2: the four-attempt window supplier, using service relay and J agreement at two
+independently honest shadow observations. -/
 theorem exists_frameWindow'_seq_of_service_proof_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
@@ -350,6 +490,74 @@ theorem exists_frameWindow'_seq_of_service_proof_at
     exact hf _ ((hrun.time_nonneg i).trans (le_max_left _ _))
       (max_le (hi.le.trans hTb) (hm.le.trans hTb))
   · exact hT
+
+/-- Pool membership and declared backing give committee membership for every counted vote
+on the shadow AC projection. -/
+theorem _root_.Consensus.Goldilocks.Compose.Growing.CommitteeFacts.committeeTAt'
+    {K : AC.CommitteeDict sp.n} (hK : Compose.Growing.CommitteeFacts tr H K)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) : AC.CommitteeTAt K tr.projAC H := by
+  intro y i ℓ e hy hcast m v hv
+  have hri := Compose.goldilocks_ac_projection_from'
+    (hrun.upTo (hrun.time_nonneg i)) (hnc.upTo (tr.time i))
+  rw [RunTrace.upTo_projAC] at hri
+  have hb : ∀ k < i + 1, tr.time k ≤ tr.time i := fun k hk =>
+    hrun.time_mono (Nat.lt_succ_iff.mp hk)
+  have hcastU := AC.upTo_castAt.mpr ⟨le_rfl, hcast⟩
+  have hpool : ∀ k, ∀ w ∈ e.readPoint.pool k, w.slot = k := fun k w hw =>
+    AC.state_pool_slotU _ hri.localRun.toU hri.vstart hy (i + 1) k w
+      (AC.readPoint_poolU hri.localRun.toU hy hcastU hw).1
+  have hmem : ∀ w ∈ e.readPoint.pool v.slot, w.val = v.val →
+      v.val ∈ K.committee v.slot := by
+    intro w hw hwv
+    have hp := (AC.readPoint_poolU hri.localRun.toU hy hcastU hw).1
+    rw [Trace.upTo_state tr.projAC y hb] at hp
+    exact hwv ▸ hK.hP.1 (tr.time i) y hy (i + 1) hb _ w hp
+  rcases AC.merged_declared_backing_at_vote_slot hpool hv with h | ⟨w, hw, -, -, -, hwv, -⟩
+  · exact hmem v h rfl
+  · exact hmem w hw hwv
+
+/-- The stock-shaped healthy AC base supplier on shadow executions. The committee and
+prefix bookkeeping is unchanged; driven execution, synchrony and catch-up still need their
+shadow run-law adapters. This endpoint is unresolved until those three obligations close. -/
+theorem CommitteeHalfUpTo.healthy_base_before_at' {K : AC.CommitteeDict sp.n}
+    {g ΔF b hold : Time} (hK : CommitteeHalfUpTo tr H K g b)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) (hs : ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → AC.gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hfaults : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hc : CatchRun tr H g (2 * sp.Δ)) {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
+    AC.HealthyBaseUpTo K (tr.projAC.upTo d) (H d)
+      ((tr.upTo d).HonestBlocks (H d)) proposer g d := by
+  have hpre := hrun.upTo hd0
+  have hr := Compose.goldilocks_ac_projection_from' hpre (hnc.upTo d)
+  rw [RunTrace.upTo_projAC] at hr
+  refine ⟨hr, ?_, ?_, ?_, ?_, hfaults d hd0 hdb, hK.facts.hsize,
+    AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP d,
+    AC.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt' hrun hnc) d,
+    fun s hgs hsd => hK.cs2 s hgs (hsd.trans hdb) d hd0 hdb⟩
+  · -- Shadow driven execution (proposal and acceptance run laws).
+    sorry
+  · -- Shadow AC synchrony from the reset service on the prefix.
+    sorry
+  · -- Shadow AC catch-up on the prefix.
+    rw [← RunTrace.upTo_projAC]
+    constructor
+    intro x hx i B ha hi y hy j ell hj ht hjd hF
+    change AC.gbar g + 2 * sp.Δ ≤ tr.time j at ht
+    change tr.time j ≤ d at hjd
+    rw [RunTrace.upTo_projAC] at ha hj ⊢
+    obtain ⟨hid, ha'⟩ := ACTrace.upTo_acceptAt.mp ha
+    obtain ⟨_, hj'⟩ := (Trace.upTo_callAt _).mp hj
+    obtain ⟨k, hkj, hak, hkt⟩ := hrun.toLocalRun'.acCatchAt' hc
+      (hrun.antitone hid hx) ha' hi (hrun.antitone hjd hy) hj' ht
+      (hF.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono hd0))
+    exact ⟨k, hkj,
+      ACTrace.upTo_acceptAt.mpr ⟨(hrun.time_mono hkj).trans hjd, hak⟩, hkt⟩
+  · intro y hy t hgt htd
+    exact (Trace.upTo_awake _ y t).mpr
+      ⟨hawake y t (hrun.antitone htd hy) hgt (htd.trans hdb), htd⟩
 
 end Growing
 
