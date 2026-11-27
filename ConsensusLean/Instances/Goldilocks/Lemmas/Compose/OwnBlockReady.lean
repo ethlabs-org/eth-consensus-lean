@@ -196,6 +196,30 @@ theorem sealed_reader_coverage_iff (Φ : Frm n FGP) (F : Blk n FGP)
   · exact fun h x hx hn => (h x hx hn).2
   · exact fun h x hx hn => ⟨hx, h x hx hn⟩
 
+/-- Coverage can be target-local: a mark supporting a compared target above the
+preview survives even when finality advances beyond the old frame root. -/
+theorem sealed_mark_of_supports_target {Φ : Frm n FGP} {F X : Blk n FGP}
+    {pay : Payload n} {x : Vote n} (hFX : Φ.Anc F X) (hx : x ∈ pay.2)
+    (hX : AncR Φ X x.head) : x ∈ (sealSupport Φ F pay).2 := by
+  obtain ⟨Hd, hHd, hr, ha⟩ := hX
+  exact mem_sealSupport.mpr ⟨hx, Hd, hHd, hr, hFX.trans ha⟩
+
+/-- Sealing preserves the exact supporters of any target above the preview.
+This requires neither stable old finality nor adoption by the reader. -/
+theorem sealed_supporters_eq {sp : ACParams} (Φ : Frm sp.n FGP)
+    (F X : Blk sp.n FGP) (pay : Payload sp.n) (s : Int) (hFX : Φ.Anc F X) :
+    supporters Φ (View.ofLists (sealSupport Φ F pay)) s X =
+      supporters Φ (View.ofLists pay) s X := by
+  ext i
+  change (i ∉ equivocators {v | v ∈ (sealSupport Φ F pay).1} ∧
+    ∃ x ∈ (sealSupport Φ F pay).2, x.val = i ∧ (x.slot : Int) = s ∧ AncR Φ X x.head) ↔ _
+  rw [sealSupport_declared]
+  constructor
+  · rintro ⟨hne, x, hx, hi, hs, ha⟩
+    exact ⟨hne, x, (mem_sealSupport.mp hx).1, hi, hs, ha⟩
+  · rintro ⟨hne, x, hx, hi, hs, ha⟩
+    exact ⟨hne, x, sealed_mark_of_supports_target hFX hx ha, hi, hs, ha⟩
+
 /-- A vote-independent sufficient stable-finality premise: the preview is no
 later than the pre-proposal frame root. It preserves every raw mark, so existing
 raw-view comparisons can be reused without requiring a reader to adopt it. -/
