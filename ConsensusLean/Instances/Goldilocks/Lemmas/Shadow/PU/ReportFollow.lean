@@ -2,7 +2,6 @@ module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Model
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignCalendar
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.StockWindow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignedTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotes
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal

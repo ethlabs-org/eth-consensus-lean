@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.StockWindow
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 import ConsensusLean.Lemmas.Tactic.Linarith
 
