@@ -1196,6 +1196,7 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
          "Instances.Goldilocks.Lemmas.Growing.Continuation",
+         "Instances.Goldilocks.Lemmas.Shadow",
          "Instances.Goldilocks.Proofs.FGSafety", "Instances.Goldilocks.Proofs.FGStore",
          "Instances.Goldilocks.Proofs.ACBase",
          "Instances.Goldilocks.Proofs.ComposeAnyAC",
