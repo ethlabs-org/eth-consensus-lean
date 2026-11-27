@@ -5,6 +5,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Prefix
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.LeftEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
@@ -79,7 +81,7 @@ theorem signed_entry_source {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
   have hU := hr.coherent
   obtain ⟨C, hcall⟩ := hs
   obtain ⟨d', rfl, ell, hc', hto, -, hC, hfgeq⟩ :=
-    Compose.attest_source' hrun.toLocalRun' hv hcall
+    Coherence.attest_source' hrun.toLocalRun' hv hcall
   have hpc : tr.projAC.CallAt v d' ell := Compose.projAC_callAt.mpr hc'
   have hC' : (AC.acToFG sp (tr.projAC.state v d') ell.frame (tr.time d')).2 = some C := by
     rw [Compose.projAC_state' hrun.toLocalRun' hv]
@@ -293,7 +295,7 @@ private theorem attest_source {ini}
       ((goldilocksNode' sp ro).toFG (tr.state v j).ac ell.frame (tr.time j)).2 = some C ∧
       (tr.state v d).fg = (tr.state v j).fg := by
   obtain ⟨j, hj, ell, hc', hto, ht, hC, hs⟩ :=
-    Compose.attest_source' (hrun.upTo (hrun.time_nonneg d)).toLocalRun' hv
+    Coherence.attest_source' (hrun.upTo (hrun.time_nonneg d)).toLocalRun' hv
       ((Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩)
   change tr.time j = tr.time d at ht
   rw [RunTrace.upTo_state_of_le hrun.time_mono ht.le] at hC
