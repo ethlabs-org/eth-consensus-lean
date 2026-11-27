@@ -553,8 +553,8 @@ theorem _root_.Consensus.Goldilocks.Compose.Growing.CommitteeFacts.committeeTAt'
   · exact hmem w hw hwv
 
 /-- The stock-shaped healthy AC base supplier on shadow executions. The committee and
-prefix bookkeeping is unchanged; driven execution, synchrony and catch-up still need their
-shadow run-law adapters. This endpoint is unresolved until those three obligations close. -/
+prefix bookkeeping is unchanged. Service synchrony and catch-up restrict to the prefix;
+the endpoint remains unresolved until the driven-execution adapter closes. -/
 theorem CommitteeHalfUpTo.healthy_base_before_at' {K : AC.CommitteeDict sp.n}
     {g ΔF b hold : Time} (hK : CommitteeHalfUpTo tr H K g b)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
@@ -574,8 +574,29 @@ theorem CommitteeHalfUpTo.healthy_base_before_at' {K : AC.CommitteeDict sp.n}
     fun s hgs hsd => hK.cs2 s hgs (hsd.trans hdb) d hd0 hdb⟩
   · -- Shadow driven execution (proposal and acceptance run laws).
     sorry
-  · -- Shadow AC synchrony from the reset service on the prefix.
-    sorry
+  · -- Restrict actual service witnesses to the read prefix.
+    have hm := hrun.time_mono
+    have hsync := Healing.PU.service_syncACAt' hrun hs (lo := g) (hi := d) le_rfl
+    constructor
+    · intro x hx i m hsend hi y hy j ell hj ht hd
+      obtain ⟨hid, hsend⟩ := (ACTrace.upTo_sendOrAdmit hm).mp hsend
+      obtain ⟨hjd, hj⟩ := (Trace.upTo_callAt _).mp hj
+      rw [ACTrace.upTo_deadline hm hjd] at ht hd
+      obtain ⟨k, hkj, hik, hproc, hkt⟩ := hsync.1 x i m (hrun.antitone hid hx) hsend
+        ((AC.le_gbar g).trans hi) hid y j ell (hrun.antitone hjd hy) hj hd
+      have hkd : tr.time k ≤ d := (hm hkj).trans hjd
+      exact ⟨k, hkj, hik, ACTrace.upTo_processAt.mpr ⟨hkd, hproc⟩,
+        by rwa [ACTrace.upTo_deadline hm hkd]⟩
+    · intro x hx i B hacc hi y hy j ell hj ht hd hF
+      obtain ⟨hid, hacc⟩ := ACTrace.upTo_acceptAt.mp hacc
+      obtain ⟨hjd, hj⟩ := (Trace.upTo_callAt _).mp hj
+      rw [ACTrace.upTo_deadline hm hjd] at ht hd
+      obtain ⟨k, hkj, hak, hkt⟩ := hsync.2 x i B (hrun.antitone hid hx) hacc
+        ((AC.le_gbar g).trans hi) hid y j ell (hrun.antitone hjd hy) hj hd
+        (hF.mono (RunTrace.honestBlocks_upTo_subset hm hd0))
+      have hkd : tr.time k ≤ d := (hm hkj).trans hjd
+      exact ⟨k, hkj, ACTrace.upTo_acceptAt.mpr ⟨hkd, hak⟩,
+        by rwa [ACTrace.upTo_deadline hm hkd]⟩
   · -- Shadow AC catch-up on the prefix.
     rw [← RunTrace.upTo_projAC]
     constructor

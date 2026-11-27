@@ -820,6 +820,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Viability
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.VoteDomain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WindowRounds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Witness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AdmitsAtTick
