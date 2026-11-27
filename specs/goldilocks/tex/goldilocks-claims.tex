@@ -2924,23 +2924,24 @@ G1.1 & \texttt{FG.QuorumIntersection} & proved (\texttt{fg\_safety})\\
 G1.2 & \texttt{FG.FGParams.finalization\_meets\_crossing} & proved core
   lemma, note~1\\
 G1.3 & \texttt{FG.AccountableSafety} & proved (\texttt{fg\_safety})\\
-G1.4 & \texttt{Store.FinalizedSafety} & proved (\texttt{fg\_store\_trace})\\
+G1.4 & \texttt{Store.FinalizedSafety} & proved (\texttt{Store.finalized\_safety})\\
 G1.5 & \texttt{Simulation.ConflictsIff}, \texttt{Simulation.held\_att\_in\_view\_at},
   \texttt{Simulation.final\_accountable\_at}; \texttt{Regimes.FinalAccountable}
   & proved (\texttt{conflicts\_iff}, \texttt{final\_accountable});
   evidence universes differ, note~2\\
 G1.6 & \texttt{Store.PreviousHeightJustifiedEntry} & proved
-  (\texttt{fg\_store\_service})\\
+  (\texttt{Store.previousHeightJustified\_entry})\\
 G1.7 & \texttt{Store.PreviousHeightNotJustifiedEntry} & proved
-  (\texttt{fg\_store\_service})\\
+  (\texttt{Store.previousHeightNotJustified\_entry})\\
 G1.8 & \texttt{Store.Crossing}, \texttt{Store.Coverage} & proved
-  (\texttt{fg\_store\_service}), conditional bounds as stated\\
+  (\texttt{Store.crossing}, \texttt{Store.coverage}), conditional bounds as
+  stated\\
 G1.9 (a) & \texttt{Store.CacheAcceptance} & proved
-  (\texttt{fg\_store\_service})\\
+  (\texttt{Store.cache\_acceptance})\\
 G1.9 (b) & \texttt{Healing.Growing.CacheAcceptance} & proved
   (\texttt{Healing.Growing.cache\_acceptance}) under growing faults at every
   acceptance by a node honest at its cut (no reset, time or height bound)\\
-G1.10 & \texttt{Store.QuorumFreeEntries} & proved (\texttt{fg\_store\_trace}) under its
+G1.10 & \texttt{Store.QuorumFreeEntries} & proved (\texttt{Store.quorum\_free\_entries}) under its
   premises; its composed scope at C1.1 (conclusion~(iii)) is not stated in Lean\\
 C1.2 & --- & retired (owner decision): a paper claim, note~3\\
 C1.3 & --- & retired (owner decision): a paper claim\\
