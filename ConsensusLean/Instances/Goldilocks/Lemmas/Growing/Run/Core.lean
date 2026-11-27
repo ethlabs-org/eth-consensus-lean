@@ -81,6 +81,8 @@ structure StaticRunCore
       ∃ j < i, tr.SignAt a.val j a
   /-- `LocalRun.awake_of_call`. -/
   awake_of_call : ∀ y ∈ H, ∀ i, tr.IsCall y i → tr.awake y (tr.time i)
+  /-- Honest signings are at public times (`FGLocalRun.attest_public` of the projection). -/
+  sign_public : ∀ y ∈ H, ∀ k a, tr.SignAt y k a → sp.toParams.IsPublic (tr.time k)
   /-- `Compose.fg_reachable`. -/
   reachable : ∀ y ∈ H, ∀ i,
     Store.ReachableWith u (goldilocksNode sp ro).genesisPayload (tr.state y i).fg
