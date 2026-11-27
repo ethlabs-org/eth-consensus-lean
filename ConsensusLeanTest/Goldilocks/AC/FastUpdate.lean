@@ -32,7 +32,7 @@ confirmation update) is realized, for every slot `s ≥ 1`, at the tick of `t_s 
 * `fastLockAt_update`: `FastLockAt` by the update origin (`Or.inl`), as A1.2 and A1.9 consume it.
 * `firstTransfer_premises_update`: the premises of A1.2 (`FirstTransfer`) at that lock and the
   slot-`(s + 1)` vote at cut `8 · t_{s+1} + 3` (`Sync`, `Carry`, `f < h_τ`, the viable voter
-  block tree, no earlier vote); `firstTransfer_update` applies `FirstTransfer` to them. The vote's
+  block tree, no earlier vote). The vote's
   cut precedes the update's (`t_{s+1} < t_s + 6Δ`): A1.2 does not order the two.
 
 Limitations: `n = 1` and `f = 0`, so this shows the update clause consistent, not met with
@@ -394,25 +394,6 @@ theorem firstTransfer_premises_update {s : Nat} (hs : 1 ≤ s) :
     · rw [hm'] at hs'
       change k + 1 = s + 1 at hs'
       omega
-
-/-- The bundle fits A1.2 as stated: `FirstTransfer` applies to it, and gives that the
-slot-`(s + 1)` vote extends `blk s` inside the honest blocks. -/
-theorem firstTransfer_update (hA : FirstTransfer sp1) {s : Nat} (hs : 1 ≤ s) :
-    ∃ (ℓ : ACLabel N1) (e : N1.Em),
-      CastAt (tickRun N1 dg1).projAC v0 (8 * (4 * (s + 1)) + 3) ℓ e ∧
-      VoteExtends ((tickRun N1 dg1).HonestBlocks Set.univ) e.msg (blk s) := by
-  obtain ⟨ℓ, e, hr, hfl, hc, hsl, hsy, hca, hfb, hv, hea⟩ := firstTransfer_premises_update hs
-  have hf1 : 2 * ((CommitteeDict.full sp1.n).committee (s + 1) ∩
-      (Set.univ : Set (Fin sp1.n))ᶜ).ncard < sp1.committeeSize := by
-    refine cs2_full rfl ?_
-    have hn := sp1.toParams.hn
-    change 1 ≤ sp1.n at hn
-    rw [Set.compl_univ, Set.ncard_empty]
-    omega
-  exact ⟨ℓ, e, hc, hA _ ro1 Set.univ _ _ (fun _ => v0) hr (CommitteeDict.full sp1.n)
-    CommitteeP.full CommitteeT.full (size_binding_full rfl) s v0 v0 _ _ (blk s) {cv s} ℓ e
-    (Set.mem_univ _) hfl (Set.mem_univ _) hc hsl hsy hca ((faultBoundK_full_iff _ _).mpr hfb) hf1
-    hv hea⟩
 
 end Consensus.Goldilocks.Witness.One
 

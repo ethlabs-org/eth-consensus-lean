@@ -1,12 +1,12 @@
 module
 public import ConsensusLeanTest.Goldilocks.AC.FastUpdate
-public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.AC.Main
 @[expose] public section
 
-/-! # Witness for the premises of the Goldilocks ACSteps statement A1.1 `ProposerVotersAgree`
+/-! # Witness for the growing Goldilocks AC step A1.1 `ProposerVotersAgree`
 
 Kind (a), joint satisfiability (CONTRIBUTING "Statements"): the hypotheses of A1.1
-`ProposerVotersAgree` (`Statements/AC/Steps.lean`) hold together on the AC projection of the
+`ProposerVotersAgree` (`Statements/AC/Growing.lean`) hold together on the AC projection of the
 one-validator tick run of `Goldilocks/Runs/OneValidator/Premises` (`n = 1`, `Δ = 1`, `t_s = 4s`,
 `k = c = 2`, a tick at every time, no restart), so the proved milestone is not vacuous. At the tick
 of `t_{k+1} = 4(k + 1)` the validator, proposer of slot `k + 1`, calls `ac_proposal` at cut
@@ -22,7 +22,8 @@ block `blk (k + 1)` (`proposal_payload`, from `onTick_block_made`), and votes in
   `sp1`, `FGP := List (FG.Att sp1.n)`, `ro1`, that there are values of all the statement's
   universally bound variables satisfying `ACRun` and every hypothesis (copied from the
   statement), with a block of slot at most `s` in the proposal's frame;
-  `proposerVotersAgree_on_witness` applies the proved milestone (`acStepsAt`).
+  `proposerVotersAgree_on_witness` applies `Growing.acStepsAt` with constant honesty
+  `H := fun _ => Set.univ`.
 
 Limitations: `n = 1` and `f = 0`, and the run is one chain, so the opponents are trivially equal:
 both are empty (`opponents_chain_empty` for the proposal's view, `opponents_vote_empty` for the
@@ -155,6 +156,39 @@ theorem proposerVotersAgree_premises_satisfiable :
 
 /-! ## The milestone on the witness -/
 
+private theorem constant_run : AC.Growing.ACRun (fun _ => v0) (tickRun N1 dg1).projAC
+    (fun _ => Set.univ) ((tickRun N1 dg1).HonestBlocks Set.univ) := by
+  let h := acRun
+  let l := h.localRun
+  refine ⟨{
+    antitone := fun _ _ _ => Set.Subset.rfl
+    coherent := l.coherent
+    init := l.init
+    exec := l.exec
+    frameLaw := fun y i ℓ hy => l.frameLaw y hy i ℓ
+    time_nonneg := l.time_nonneg
+    time_mono := l.time_mono
+    awake_of_call := fun y i ℓ hy => l.awake_of_call y hy i ℓ
+    restart_of_sleep := fun y i ℓ u hy => l.restart_of_sleep y hy i ℓ u
+    restart_at_wake := fun y u v hy => l.restart_at_wake y hy u v
+    sleep_of_restart := fun y i ℓ hy => l.sleep_of_restart y hy i ℓ }, {
+    pool_vote := fun y i σ hy => h.honest.pool_vote y hy i σ
+    message_vote := fun y i ℓ v hy => h.honest.message_vote y hy i ℓ v
+    proposer := ?_
+    one_block := ?_ }, h.vstart⟩
+  · rintro B ⟨y, i, ℓ, hy, hc, hB⟩
+    exact h.honest.proposer B ⟨y, hy, i, ℓ, hc, hB⟩
+  · intro y i ℓ B y' i' ℓ' B' hy hc hB hy' hc' hB'
+    exact h.honest.one_block B B' ⟨y, hy, i, ℓ, hc, hB⟩ ⟨y', hy', i', ℓ', hc', hB'⟩
+
+private theorem constant_sync {a b : Time}
+    (h : SyncAC N1 Set.univ ((tickRun N1 dg1).HonestBlocks Set.univ) a b
+      (tickRun N1 dg1).projAC) :
+    SyncACAt N1 (fun _ => Set.univ) ((tickRun N1 dg1).HonestBlocks Set.univ) a b
+      (tickRun N1 dg1).projAC :=
+  ⟨fun x i m hx hs ha hb y j ℓ hy => h.1 x hx i m hs ha hb y hy j ℓ,
+    fun x i B hx hs ha hb y j ℓ hy => h.2 x hx i B hs ha hb y hy j ℓ⟩
+
 /-- (a) A1.1 on the run at `s = 1`: the proposal's view and the voter's merged view give the
 same opponents (against the slot-`1` votes) to every block of slot at most `1` of the
 proposal's frame. -/
@@ -169,12 +203,13 @@ theorem proposerVotersAgree_on_witness :
             ((1 : Nat) : Int) B := by
   obtain ⟨fg', e, hp, ht, hc, hs, hP, hsy, heq⟩ := proposerVotersAgree_premises_slot_one
   refine ⟨fg', e, hc, fun B hB hBs => ?_⟩
-  exact (acStepsAt sp1).proposerVotersAgree (List (FG.Att sp1.n)) ro1 Set.univ
-    ((tickRun N1 dg1).HonestBlocks Set.univ) (tickRun N1 dg1).projAC (fun _ => v0) acRun 1 v0 v0
+  exact (AC.Growing.acStepsAt sp1).proposerVotersAgree (List (FG.Att sp1.n)) ro1
+    (fun _ => Set.univ) ((tickRun N1 dg1).HonestBlocks Set.univ) (tickRun N1 dg1).projAC
+    (fun _ => v0) constant_run 1 v0 v0
     (8 * (4 * (1 + 1)) + 1) (8 * (4 * (1 + 1)) + 3)
     ⟨.proposal, Node.frame (tickState N1 dg1 (4 * (1 + 1))), []⟩
     ⟨.block (blk (1 + 1)), fg'.toFrame, [e]⟩ ([cv 1], [cv 1]) e (Set.mem_univ _) (Set.mem_univ _)
-    rfl hp ht hc hs hP hsy heq B hB hBs
+    rfl hp ht hc hs hP (constant_sync hsy) heq B hB hBs
 
 /-- On a chain frame, the view of copies of one vote gives no block an opponent: nobody
 equivocates, and every two blocks of the frame are compatible. -/

@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Steps
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.CommitteeRun
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 
@@ -144,13 +144,6 @@ theorem update_extends_of_resolved_votes
   have hDd := deepest_mem hD
   exact ⟨D, hD, hBBs.trans ((anc_of_isDeepest hΦ hDd hBsP hBsΦ
     (anc_total hΦ.coherent hBsC hDd.1.1.2.2)).mono hΦU)⟩
-
-variable (sp)
-
-/-- **A1.4 (b).** -/
-theorem optimistic_next_update : OptimisticNextUpdate sp := by
-  intro FGP ro H U tr proposer hrun K hP hT hsize s z k B ℓ hf hext hz hup hh hres
-  exact update_extends_of_resolved_votes hrun K (hP.1 z hz k (s + 1)) hf hext hz hup hh hres
 
 end Consensus.Goldilocks.AC
 
