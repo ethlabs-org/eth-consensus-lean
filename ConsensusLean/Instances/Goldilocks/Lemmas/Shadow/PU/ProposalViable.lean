@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowCast
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowProposal
 import ConsensusLean.Lemmas.Tactic.Linarith

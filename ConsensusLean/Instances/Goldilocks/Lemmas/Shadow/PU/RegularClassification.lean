@@ -10,7 +10,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.D
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Participants
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ViableHeadRoute
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch

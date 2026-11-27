@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FastLockRenewalCore
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.StockWitness
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshEndpoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.PrimedFresh
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater

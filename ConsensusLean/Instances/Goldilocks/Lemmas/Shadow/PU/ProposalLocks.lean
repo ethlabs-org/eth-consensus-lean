@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LockLocal
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.StockWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater

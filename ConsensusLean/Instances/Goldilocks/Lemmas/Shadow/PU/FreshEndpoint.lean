@@ -1,5 +1,4 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignedTick
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Driven
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
