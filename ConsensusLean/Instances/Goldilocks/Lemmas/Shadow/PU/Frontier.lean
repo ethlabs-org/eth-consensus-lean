@@ -6,6 +6,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Kernel
 import ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Floor
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RowLabel
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ResetSeeds
 
 public section
 
@@ -22,9 +26,8 @@ by height, by the gap, or because it extends `Σ.J`.
 The growing items (`no_high_contest_at'`, `reset_vote_floor_above_old_or_covered_at'`,
 `held_high_origin_viable_at'`) are over `Growing.GoldilocksRun'` and `ResetPremisesUpTo'`. They read
 the run-level origin family (left entries, high origins, healed covers) from `Shadow/PU/Origins`,
-and further facts through the named **interface stubs** of section `Stub` below, each the
-stock lemma over the shadow run; a theorem reading a stub stays unresolved until that stub is
-proved.
+the row label bound from `Shadow/PU/RowLabel`, and the reset seed and the row entry member from
+`Shadow/PU/ResetSeeds`.
 
 * `no_high_contest_at'` is an FG-state fact. Its proof compares the two entries at `h_j` through
   their origins or covers directly (pairwise compatible above, so compatible), instead of through a
@@ -171,34 +174,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {g ΔF a b : Time}
   {hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
-namespace Stub
-
-/-- **Interface stub** (`ResetPremisesUpTo.reset_seed_before_slot_at`, `Kernel/Seed`). -/
-theorem reset_seed_before_slot_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold) {u : Nat}
-    (hR : drainTime sp a ≤ sp.ts u) :
-    ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ b ∧ l < u ∧
-      tr.time r < sp.ts u := by
-  sorry
-
-/-- **Interface stub** (`Outcome.row_entry_member_before_cast_at`, `Outcome/Floor`). -/
-theorem row_entry_member_before_cast_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) (hkb : tr.time k ≤ b)
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y k ell e) {W : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)
-    {v : Fin sp.n} {d : Nat} (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time k)))
-    (hs : tr.SignAt v d att) (hdk : d < k)
-    {E : AC.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ (tr.state y k).fg.tree)
-    (hT : att.T = E.root) (hh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h)
-    (hcover : HighSourceCover tr H g a b) :
-    ∃ C s, HealedMemberBefore tr H g a b C s k ∧
-      s < e.msg.slot ∧ Anc (tr.HonestBlocksAt H) E C := by
-  sorry
-
-end Stub
-
 /-- Two blocks below two compatible blocks of a coherent set are compatible. -/
 private theorem compatible_of_below {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
     (hU : Coherent U) {X₁ X₂ Y₁ Y₂ : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -279,20 +254,8 @@ theorem Outcome.fastLock_time_lt_at' {ini : Fin sp.n → (goldilocksNode' sp ro)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     {x : Fin sp.n} {r m u : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (AC.Vote sp.n)} (hfl : AC.FastLockAt tr.projAC x r m D CV)
-    (hmu : m < u) (htr : tr.time r ≤ sp.ts u + sp.Δ) : tr.time r < sp.ts u := by
-  rcases hfl with ⟨ell, C, ⟨_, _, ht, _⟩, _⟩ | ⟨ell, A, _, hsl, _⟩
-  · change tr.time r = sp.ts m + 6 * sp.Δ at ht
-    have htwo : (m : Int) + 2 ≤ u := by
-      have := Compose.ts_add_two_le (ht ▸ htr)
-      exact_mod_cast this
-    have hDelta := sp.toParams.hΔ
-    rw [ht]
-    simp only [ACParams.ts] at htr ⊢
-    linarith only [mul_le_mul_of_nonneg_left htwo (show (0 : Time) ≤ 4 * sp.Δ by linarith), hDelta]
-  · change sp.slot (tr.time r) = m at hsl
-    by_contra h
-    have := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg r) u).mp (not_lt.mp h)
-    omega
+    (hmu : m < u) (htr : tr.time r ≤ sp.ts u + sp.Δ) : tr.time r < sp.ts u :=
+  hrun.toCore.fastLock_time_lt_at hfl hmu htr
 
 /-- **The voter's height floor** over the shadow run (`reset_vote_floor_above_old_or_covered_at`):
 a pre-slot origin bound and a label-bounded cover bound reach the voter's height floor. -/
@@ -311,7 +274,7 @@ theorem ResetPremisesUpTo'.reset_vote_floor_above_old_or_covered_at'
   have hj : ∀ q < j, tr.time q ≤ tr.time j := fun q hq => hp.run.time_mono hq.le
   have hreach := (Compose.Growing.reachable_at' hp.run ht hy hj).reachableWith
   have hu := finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
-  obtain ⟨v₀, r₀, l₀, O₀, ho₀, hrb, _, hrt⟩ := Stub.reset_seed_before_slot_at' hp hR
+  obtain ⟨v₀, r₀, l₀, O₀, ho₀, hrb, _, hrt⟩ := hp.reset_seed_before_slot_at' hR
   have hBh := Outcome.high_of_anc_at' hp.run hp.noColl ho₀ ht hj hy hB
     (hBold v₀ r₀ l₀ O₀ ho₀ hrt hrb)
   have hnc := Outcome.no_high_contest_at' hp hy hjb
@@ -338,14 +301,14 @@ theorem ResetPremisesUpTo'.reset_vote_floor_above_old_or_covered_at'
     hes ▸ (Compose.cast_head_fcRoot hr (hp.run.upTo ht).vstart hy ⟨hc', hc.2⟩).2
   have hEB : Anc (tr.HonestBlocksAt H) E B := by
     rcases hsource with ⟨r, hrd, l, O, ho, hEO⟩ | ⟨_, hcov⟩
-    · have hlu : l < u := hes ▸ Stub.row_origin_label_lt_at' hp hy hc hW ha
+    · have hlu : l < u := hes ▸ KernelProof.row_origin_label_lt_at' hp hy hc hW ha
         (hp.run.antitone (hp.run.time_mono hdj.le) hv) hs hdj hrd ho
       obtain ⟨CV, ellw, D, _, hf, _⟩ := ho.2.2.1
       have hrj := hp.run.time_mono (show r ≤ j by omega)
       have hrt := Outcome.fastLock_time_lt_at' hp.run hf hlu (hrj.trans htupper)
       exact hEO.trans (hBold v r l O ho hrt (hrj.trans hjb))
     · obtain ⟨hcov, _⟩ := coveredUpTo_iff.1 hcov
-      obtain ⟨C, s, hC, hsu, hEC⟩ := Stub.row_entry_member_before_cast_at' hp hy hjb hc hW ha
+      obtain ⟨C, s, hC, hsu, hEC⟩ := Outcome.row_entry_member_before_cast_at' hp hy hjb hc hW ha
         ‹v ∈ H (max (cutZ sp.toParams g) (tr.time j))› hs hdj hE hT (by omega) hcov
       exact hEC.trans (hcovered hcov C s hC (hes ▸ hsu))
   have hh := h_le_of_store_anc_with hu hreach

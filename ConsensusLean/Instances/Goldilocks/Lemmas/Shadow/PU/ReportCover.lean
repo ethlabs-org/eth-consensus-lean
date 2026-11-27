@@ -173,7 +173,17 @@ theorem held_target_viable'_or_higher_report_covered_at
       ∃ x r ell' C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
         AC.ToFGAt tr.projAC x r ell' C ∧ Anc (tr.HonestBlocksAt H) P C ∧
         ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
-  sorry
+  have hy := hp.run.antitone (le_max_right _ _) hyz
+  rw [Shadow.PU.Growing.frame_of_projAC_at' hp.run hy hcall] at hPt ⊢
+  rcases held_target_viableHeads'_or_higher_report_covered_at hp hyz hib hPt hseed hqb hSP
+      hcompare with hhead | hreport
+  · refine Or.inl ⟨hPt, ?_, P, hPt, hhead, .refl⟩
+    have hF := hhead
+    rw [Node.frame'_eq, Store.toFrame'_viableHeads] at hF
+    change Anc (Node.frame' (tr.state y i)).tree (Node.frame' (tr.state y i)).fcRoot P
+    rw [Node.frame'_eq, Store.toFrame'_tree, Store.toFrame'_fcRoot]
+    exact Anc.restrict .refl hF.2.1
+  · exact Or.inr hreport
 
 end Consensus.Goldilocks.Healing.Growing.Shadow
 

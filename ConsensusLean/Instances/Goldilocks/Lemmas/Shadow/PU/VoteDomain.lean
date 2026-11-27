@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.VoteReceipt
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RowLabel
 
 public section
 
@@ -27,7 +28,7 @@ The proof is the P-U one (the stock proof reads `headHeightFloor`, `Contest` and
 * **Gap frames** with `HZ + 1 ≤ h_max − 1`: the entry at `h_max − 1` below a block at `h_max` has a
   left-entry origin above `B` (or `B` reaches `h_max − 1` itself), whose frozen head is viable.
 
-The frame-agnostic suppliers it reads are the named **interface stubs** of section `Stub`. -/
+The row label bound is the shared `KernelProof.row_origin_label_lt_at'` (`Shadow/PU/RowLabel`). -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
@@ -38,22 +39,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {g ΔF a b : Time}
   {hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-
-namespace Stub
-
-/-- **Interface stub** (`KernelProof.row_origin_label_lt_at`, `Kernel/RowLabel`). -/
-theorem row_origin_label_lt_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y k ell e) {W : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)
-    {v : Fin sp.n} {d : Nat} (hv : v ∈ H (tr.time d)) (hs : tr.SignAt v d att)
-    (hdk : d < k) {r l : Nat} (hrd : r < d) {O : AC.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g v r l O) : l < e.msg.slot := by
-  sorry
-
-end Stub
 
 /-- **A viable frozen descendant puts the target in the vote's viable tree** over the shadow
 frame (`KernelProof.vote_viable_of_root_at`; the shadow root is `Σ.F`). -/
@@ -162,7 +147,7 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
     intro E C hE hET hEh hEC hlt
     obtain ⟨W, hW, att, ha, v', d, hv', hd, hs', -, r', hrd, l', O, ho, hEO⟩ :=
       hp.left_entry_origin_of_quarantine_at' ht hle hy hib hE hET hEh hEC hlt hpre
-    have hl := Stub.row_origin_label_lt_at' hp hy hcast hW ha
+    have hl := KernelProof.row_origin_label_lt_at' hp hy hcast hW ha
       (hp.run.antitone (hp.run.time_mono hd.le) hv') hs' hd hrd ho
     exact ⟨v', r', l', O, ho, by omega, (hp.run.time_mono (show r' ≤ i by omega)).trans hib,
       hl, hEO⟩
