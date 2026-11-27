@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularClassification
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Transfer
@@ -29,38 +30,6 @@ open Consensus.Goldilocks.Healing.Growing
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
-
-/-- Finite shadow service projects to the unchanged AC synchrony contract. -/
-theorem service_syncACAt'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr ini)
-    {g ΔF b lo hi : Time} (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
-    (hg : g ≤ lo) :
-    SyncACAt (goldilocksNode' sp ro) H (tr.HonestBlocksAt H) lo hi tr.projAC := by
-  refine ⟨?_, ?_⟩
-  · intro x i m hx hsa hai _ y j ell hy hcj hdl
-    have hsa' : tr.SendOrAdmitAt x i m := by
-      obtain ⟨ell₀, hc₀, hm⟩ := hsa
-      refine ⟨ell₀, Compose.projAC_callAt.1 hc₀, ?_⟩
-      rwa [Shadow.PU.Growing.projAC_state_at' hrun hx] at hm
-    have he : max (tr.time i) g = tr.time i := max_eq_left (hg.trans hai)
-    rw [Compose.projAC_deadline] at hdl
-    obtain ⟨k, hk, h1, h2, h3⟩ := hsvc.message x i m hx hsa' y j hy
-      ⟨_, Compose.projAC_callAt.1 hcj⟩ (by rw [he]; exact hdl)
-    refine ⟨k, hk, h1, ?_, ?_⟩
-    · rcases h2 with ⟨ell', hc', hm'⟩ | ⟨ell', hc', e, he', hem⟩
-      · exact ⟨ell', Compose.projAC_callAt.2 hc', Or.inl hm'⟩
-      · exact ⟨ell', Compose.projAC_callAt.2 hc', Or.inr ⟨e, he', hem⟩⟩
-    · rw [Compose.projAC_deadline]
-      change tr.time k < tr.deadline y k (tr.time i) sp.Δ
-      simpa only [he] using h3
-  · intro x i B hx hacc hai _ y j ell hy hcj hdl hanc
-    apply Growing.LocalRun'.acRelayAt' hrun.toLocalRun' (σ := tr.time i) hx hacc hy hcj hanc
-    intro k hki hx' hk hj hF
-    have hgi : g ≤ tr.time k := hki ▸ hg.trans hai
-    have he : max (tr.time k) g = tr.time i := (max_eq_left hgi).trans hki
-    simpa only [he] using hsvc.relay x k B hx' hk hgi y j hy hj
-      (by rw [he, ← Compose.projAC_deadline]; exact hdl) hF
 
 /-- The shadow FG catch-up bridge supplies the stock AC acceptance witness. -/
 theorem service_catch_at'
