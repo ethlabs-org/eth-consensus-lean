@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.S5Walk
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Geometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
@@ -218,11 +219,13 @@ theorem frameOK_at' (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer
     FrameOK (Node.frame' (tr.state y i)) := by
   sorry
 
-/-- Stub: the shadow store of a node honest at `d` is `Reachable'`. -/
+/-- The shadow store of a node honest at `d` is `Reachable'`: the static fact on the prefix through
+`d` (`Growing.GoldilocksRun'.upTo`, lane B0b). -/
 theorem reachable_at' (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d) :
     (tr.state y i).fg.Reachable' (goldilocksNode' sp ro).genesisPayload := by
-  sorry
+  have h := Node.fg_reachable_at' (hrun.upTo hd).toLocalRun' hy i
+  rwa [Trace.upTo_state tr y hi] at h
 
 /-- Stub: ancestry in the honest blocks, ending in the tree, is ancestry in the store. -/
 theorem held_anc_at' (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
@@ -237,18 +240,25 @@ theorem honestBlocksAt_coherent'
     (hnc : NoCollRun dg tr) : Coherent (tr.HonestBlocksAt H) := by
   sorry
 
-/-- Stub: `h_j < h_max` at a shadow store. -/
-theorem hj_lt_hmax_at' (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
-    (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d) :
-    (tr.state y i).fg.hj < (tr.state y i).fg.hmax := by
-  sorry
-
-/-- Stub: the shadow cache invariant (`Shadow/PU/Cache`, lane C0): a block of state height
-`h_max`. -/
+/-- A shadow-reachable store has a block of state height `h_max` (lane C0's `cache_invariants'`). -/
 theorem hmax_block_of_reachable' {acp₀ : Payload sp.n}
     {st : Store sp.toParams (Payload sp.n)} (h : st.Reachable' acp₀) :
-    ∃ B ∈ st.tree, (st.σ B.root).h = st.hmax := by
-  sorry
+    ∃ B ∈ st.tree, (st.σ B.root).h = st.hmax :=
+  (Store.cache_invariants' h).2.2.2.2.2.1
+
+/-- `h_j < h_max` at a shadow-reachable store: the cached justification is the state of a held
+block, whose `h_j` is below its height, which is at most `h_max`. -/
+theorem hj_lt_hmax_of_reachable' {acp₀ : Payload sp.n}
+    {st : Store sp.toParams (Payload sp.n)} (h : st.Reachable' acp₀) : st.hj < st.hmax := by
+  obtain ⟨-, -, -, ⟨Bj, hBj, -, hBjhj⟩, hge, -, -⟩ := Store.cache_invariants' h
+  exact hBjhj ▸ (Store.hj_lt_h_with Store.finalitySpec_updateFinality' h.reachableWith hBj).trans_le
+    (hge Bj hBj)
+
+/-- `h_j < h_max` at the shadow store of a node honest at `d`. -/
+theorem hj_lt_hmax_at' (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d) :
+    (tr.state y i).fg.hj < (tr.state y i).fg.hmax :=
+  hj_lt_hmax_of_reachable' (reachable_at' hrun hd hy hi)
 
 end RunFacts'
 
