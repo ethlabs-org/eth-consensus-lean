@@ -846,6 +846,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.S5Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignCalendar
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignedTick
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.StockWindow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Viability
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.VoteDomain
