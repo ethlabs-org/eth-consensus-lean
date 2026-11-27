@@ -1,9 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesPath
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowFinality
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowRegularBoundary
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.OptimisticService
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.ProposalLocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Confirmed
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Trivial
