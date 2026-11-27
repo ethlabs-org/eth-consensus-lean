@@ -787,6 +787,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowPlacem
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Key
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AdmitsAtTick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttGuard
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttUnforgeable
