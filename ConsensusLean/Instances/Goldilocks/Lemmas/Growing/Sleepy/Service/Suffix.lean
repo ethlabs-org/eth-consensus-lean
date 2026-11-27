@@ -100,10 +100,10 @@ private theorem suffix_lift_from {ini} (hrun : Growing.GoldilocksRun proposer dg
   · rw [hst] at hB ⊢
     exact hflQ B hB (hQB.mono hsub)
 
-/-- The voter's `fc_root` and head height floor are bounded by `Q`, and `0 < s`, from the old
-origins (the genesis case): every old origin of the prefix through the vote is below `Q`
-(`proposal_walk_passes_old_at`), so `fc_root` is genesis or below `Q` (`vote_fcRoot_old_of`) and
-the floor is at most the height of every block above `Q` (`vote_floor_le_of`). -/
+/-- The voter's `fc_root` is below `Q`, every held descendant of `Q` is viable, and `0 < s`,
+from the old origins (the genesis case): every old origin of the prefix through the vote is
+below `Q` (`proposal_walk_passes_old_at`), giving the root bound (`vote_fcRoot_old_of`) and
+descendant viability (`vote_viable_of`). -/
 private theorem genesis_voter_facts {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {b : Time} (hsync : SleepyServiceBefore tr H ΔF b)
     (hB : SleepyBoundsFrom tr H 0 b) (hinv : SleepyInvariantUpTo tr H b) {p : Fin sp.n} {k : Nat}

@@ -45,7 +45,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- The shadow FG catch-up bridge supplies the stock AC acceptance witness. -/
 theorem service_catch_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {g : Time} (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
     {w : Fin sp.n} {kw : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hw : w ∈ H (tr.time kw))
@@ -59,7 +59,7 @@ theorem service_catch_at
 /-- The shared AC service proof transfers a fast lock at the next cast. -/
 private theorem first_transfer_service_at
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -82,7 +82,7 @@ private theorem first_transfer_service_at
 /-- The shared service proof carries counted result votes to the next reader. -/
 private theorem result_carry_service_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
@@ -100,7 +100,7 @@ private theorem result_carry_service_at
 /-- The shared service proof compares merged votes with the result writer. -/
 private theorem writer_merged_service_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     {s : Nat} (hm : gbar g ≤ sp.ts s)
@@ -116,7 +116,7 @@ private theorem writer_merged_service_at
 /-- Stored slow-window locks compare with the slow origin. -/
 private theorem slow_live_locks_service_at
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     {x : Fin sp.n} {c s : Nat} (hx : x ∈ H (tr.time c))
@@ -213,7 +213,7 @@ private theorem slow_live_locks_service_at
 /-- The stock fast transfer applied to the shared shadow early-witness induction. -/
 theorem regular_fast_next_votes_of_early_witness_at
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -258,7 +258,7 @@ theorem regular_fast_next_votes_of_early_witness_at
 /-- The stock slow transfer applied to the shared shadow early-witness induction. -/
 theorem regular_slow_next_votes_of_early_witness_at
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -310,7 +310,7 @@ theorem next_votes_of_supporter_at {s₀ s M : Nat}
     {isTop : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -364,7 +364,7 @@ theorem regular_fast_next_votes_at {s₀ s M : Nat}
     {isTop : Prop} {J X D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -421,7 +421,7 @@ theorem regular_slow_next_votes_at {s₀ s M : Nat}
     {isTop : Prop} {J D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -479,7 +479,7 @@ theorem regular_slow_next_votes_at {s₀ s M : Nat}
 /-- Fast transfer needs a stock witness held at the early cast cut, not a frozen witness. -/
 theorem regular_fast_next_votes_of_stock_witness_at
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -525,7 +525,7 @@ theorem regular_fast_next_votes_of_stock_witness_at
 /-- Slow transfer keeps its original lock target when the stock witness is a descendant. -/
 theorem regular_slow_next_votes_of_stock_witness_at
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -588,7 +588,7 @@ theorem next_votes_of_supporter_at {s₀ s floor : Nat}
     {kindJ : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -658,7 +658,7 @@ theorem regular_fast_next_votes_at {s₀ s floor : Nat}
     {kindJ : Prop} {J X D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -721,7 +721,7 @@ theorem regular_slow_next_votes_at {s₀ s floor : Nat}
     {kindJ : Prop} {J D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -787,7 +787,7 @@ theorem regular_fast_next_votes_of_floor_ancestor_at {s₀ s floor : Nat}
     {kindJ : Prop} {J X D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -853,7 +853,7 @@ theorem regular_slow_next_votes_of_floor_ancestor_at {s₀ s floor : Nat}
     {kindJ : Prop} {J D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -920,7 +920,7 @@ theorem regular_fast_next_votes_of_strict_floor_ancestor_at {s₀ s floor : Nat}
     {kindJ : Prop} {J X D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -952,7 +952,7 @@ theorem regular_slow_next_votes_of_strict_floor_ancestor_at {s₀ s floor : Nat}
     {kindJ : Prop} {J D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)

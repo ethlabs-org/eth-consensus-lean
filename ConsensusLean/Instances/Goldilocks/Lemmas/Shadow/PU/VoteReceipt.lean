@@ -26,7 +26,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 private theorem ts_le_of_fastLock
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n} {r l : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (AC.Vote sp.n)} (hf : AC.FastLockAt tr.projAC x r l D CV) :
     sp.ts l ≤ tr.time r := by
@@ -40,7 +40,7 @@ private theorem ts_le_of_fastLock
 
 private theorem highOrigin_raw_head
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {x : Fin sp.n} {r l : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) :
@@ -56,7 +56,7 @@ private theorem highOrigin_raw_head
     fun _ hq => hrun.time_mono hq.le, hx, hsub hB⟩
 
 private theorem cutZ_lt_of_anc
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) {z : Fin sp.n} {k : Nat}
     (hz : z ∈ H (max (tr.time k) (cutZ sp.toParams g)))
@@ -77,7 +77,7 @@ private theorem cutZ_lt_of_anc
   have hr := hp.run.upTo hZ0
   have hWk : W ∈ ((tr.upTo (cutZ sp.toParams g)).state z k).fg.tree := by
     rwa [Trace.upTo_state tr z (fun _ hq => (hp.run.time_mono hq.le).trans hkZ)]
-  have hWc := Coherence.tree_mono' hr.toLocalRun' hzZ hkc hWk
+  have hWc := Coherence.tree_mono' hr.toLocalRun hzZ hkc hWk
   rw [Trace.upTo_state tr z hc.1] at hWc
   have hs := σ_eq_honest_at' hp.run hp.noColl hZ0
     (fun _ hq => (hp.run.time_mono hq.le).trans hkZ) hzZ hZ0 hc.1 hzZ hW hWc
@@ -93,7 +93,7 @@ private theorem cutZ_lt_of_anc
   omega
 
 private theorem not_genesis_above
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B)
     {G : AC.Blk sp.n (List (FG.Att sp.n))} (hGU : G ∈ tr.HonestBlocksAt H)
@@ -103,7 +103,7 @@ private theorem not_genesis_above
   have hle : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hm hq.le
   have hx := hp.run.antitone (le_max_right _ _) ho.1
   have hreach := Compose.Growing.reachable_at' hp.run hi0 hx hle
-  have hgen := (Store.accepted_tree_with Store.finalitySpec_updateFinality'
+  have hgen := (Store.accepted_tree_with Store.finalitySpec_updateFinality
     hreach.reachableWith).2.2.1
   have heq : G = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
     (Coherence.honestBlocksAt_coherent hp.run hp.noColl).1 hGU
@@ -112,19 +112,19 @@ private theorem not_genesis_above
   have hh := Outcome.high_of_anc_at' hp.run hp.noColl ho hi0 hle hx hGx hBG
   rw [heq, show (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).root =
       sp.toParams.genesisRoot from rfl,
-    Store.σ_genesis_with Store.finalitySpec_updateFinality' hreach.reachableWith] at hh
+    Store.σ_genesis_with Store.finalitySpec_updateFinality hreach.reachableWith] at hh
   change HZ tr H g + 1 ≤ 1 at hh
   obtain ⟨kZ, hkZ, _⟩ := hp.snapshot
   have hxZ := hp.run.antitone (le_max_left _ _) ho.1
   have hZ0 : 0 ≤ cutZ sp.toParams g := by
     linarith [lt_cutZ sp g, Healing.gbar_nonneg g, sp.toParams.hΔ]
   have hreachZ := Compose.Growing.reachable_at' hp.run hZ0 hxZ hkZ.1
-  have hGZ := (Store.accepted_tree_with Store.finalitySpec_updateFinality'
+  have hGZ := (Store.accepted_tree_with Store.finalitySpec_updateFinality
     hreachZ.reachableWith).2.2.1
   have hbnd := (Store.cache_invariants' hreachZ).2.2.2.2.1 _ hGZ
   rw [show (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).root =
       sp.toParams.genesisRoot from rfl,
-    Store.σ_genesis_with Store.finalitySpec_updateFinality' hreachZ.reachableWith] at hbnd
+    Store.σ_genesis_with Store.finalitySpec_updateFinality hreachZ.reachableWith] at hbnd
   have hmax : (tr.state x kZ).fg.hmax ≤ HZ tr H g := by
     refine le_csSup (((Set.finite_range fun v => (tr.state v kZ).fg.hmax).subset ?_).bddAbove)
       ⟨x, hxZ, kZ, hkZ, rfl⟩
@@ -135,7 +135,7 @@ private theorem not_genesis_above
   omega
 
 private theorem cutZ_le_ts_of_highOrigin
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) : cutZ sp.toParams g ≤ sp.ts j := by
   have hac := Compose.Growing.goldilocks_ac_projection_from' hp.run hp.noColl
@@ -175,7 +175,7 @@ private theorem cutZ_le_ts_of_highOrigin
   linarith
 
 private theorem frame_relay
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (hacc : tr.projAC.AcceptAt x i B) (hgi : g ≤ tr.time i)
     (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
@@ -184,7 +184,7 @@ private theorem frame_relay
     (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     ∃ k ≤ j, tr.projAC.AcceptAt y k B ∧
       tr.time k < tr.projAC.deadline y k (tr.time i) := by
-  apply hp.run.toLocalRun'.acRelayAt' (σ := tr.time i) hx hacc hy hc hFB
+  apply hp.run.toLocalRun.acRelayAt' (σ := tr.time i) hx hacc hy hc hFB
   intro q hqt hx' hq hj hF
   have hgq : g ≤ tr.time q := hqt ▸ hgi
   have he : max (tr.time q) g = tr.time i := (max_eq_left hgq).trans hqt
@@ -193,7 +193,7 @@ private theorem frame_relay
 
 /-- A historical acceptance before the slot deadline reaches a later honest vote's freeze. -/
 theorem KernelProof.relay_mem_voterBlockTree_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {w y : Fin sp.n} {kw i s : Nat} {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hw : w ∈ H (tr.time kw)) (hkw : tr.projAC.AcceptAt w kw W)
     (hg : g ≤ tr.time kw) (hkwt : tr.time kw < sp.ts s + 2 * sp.Δ)
@@ -265,7 +265,7 @@ theorem KernelProof.relay_mem_voterBlockTree_at'
 
 /-- A counted high-origin head is held at a later honest vote's freeze. -/
 theorem KernelProof.high_origin_frozen_head_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {r l k : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) (hrb : tr.time r ≤ b)
     (hy : y ∈ H (tr.time k))

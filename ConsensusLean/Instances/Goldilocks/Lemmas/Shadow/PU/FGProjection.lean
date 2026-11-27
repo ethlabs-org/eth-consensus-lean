@@ -145,7 +145,7 @@ private theorem tick_before_attest (y : Fin P.n) (st : NodeState A) (t : Time) (
 /-! ### In the run -/
 
 /-- **An `fg_attest` call is in a tick** (a copy of `attestCall_tick`). -/
-theorem attestCall_tick' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+theorem attestCall_tick' (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {i : Nat} {C : A.Blk} {s : Option (FG.Att P.n)}
     (hc : tr.CallAt y i (.fg (.attest C s))) :
     ∃ j, j ≤ i ∧ tr.TickAt proposer dg y j (tr.time i) := by
@@ -155,7 +155,7 @@ theorem attestCall_tick' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P
 
 /-- **Before the tick of a time, a node's cuts at that time are restarts** (a copy of
 `before_tick`). -/
-theorem before_tick' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+theorem before_tick' (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {j k : Nat} {t : Time} {c : Cut A} (hg : tr.TickAt proposer dg y j t)
     (hc : tr.CallAt y k c) (hk : k < j) (ht : tr.time k = t) :
     ∃ ℓ : ACLabel A, c = .ac ℓ ∧ ℓ.call = .restart := by
@@ -174,7 +174,7 @@ theorem before_tick' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
 
 /-- **The FG cuts of a node at the time of its `fg_attest` and before it are its own
 proposal's** (a copy of `fg_before_attest`). -/
-private theorem fg_before_attest (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+private theorem fg_before_attest (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {i j : Nat} {ℓ : FGLabel P A.Payload} {C : A.Blk} {s : Option (FG.Att P.n)}
     (hc : tr.CallAt y j (.fg (.attest C s))) (hi : tr.CallAt y i (.fg ℓ)) (hij : i < j)
     (ht : tr.time i = tr.time j) :
@@ -197,7 +197,7 @@ AC cuts, at the FG state before the tick, and its attestations are the proposal 
 that state (a copy of `own_accept`). -/
 private theorem own_accept (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P).Requirements)
     (hg₀ : (P.genesisBlock A.genesisPayload).RootOk dg)
-    (h : Node.LocalRun' proposer dg H sg tr ini) (hnc : NoCollRun dg tr)
+    (h : Node.LocalRun proposer dg H sg tr ini) (hnc : NoCollRun dg tr)
     {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     {B : A.Blk} (hc : tr.CallAt y i (.fg (.block B true))) (hp : B.proposer = y) :
     ∃ j, i = j + 2 ∧ tr.TickAt proposer dg y j (tr.time i) ∧
@@ -231,7 +231,7 @@ private theorem own_accept (hq : ∀ y ∈ H, ({ A with initial := ini y } : Nod
     have hb := ((cutStep_block_true _ _ _ _ _).1 (h.cutLaw y hy _ _ hcall)).2.1
     rw [Store.onBlock_eq_onBlockWith] at hb
     rw [tr.state_succ_of_call hcall,
-      (Store.tree_grows_with Store.finalitySpec_updateFinality').1 B _ hb]
+      (Store.tree_grows_with Store.finalitySpec_updateFinality).1 B _ hb]
     exact Set.mem_insert _ _
   -- so the acceptance at `i` is that one
   obtain rfl : j + 2 = i := by
@@ -251,7 +251,7 @@ private theorem own_accept (hq : ∀ y ∈ H, ({ A with initial := ini y } : Nod
 `own_accept`, `before_tick` and `fg_before_attest` over the shadow groups). -/
 theorem fg_tick_order (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P).Requirements)
     (hg₀ : (P.genesisBlock A.genesisPayload).RootOk dg)
-    (h : Node.LocalRun' proposer dg H sg tr ini) (hnc : NoCollRun dg tr) :
+    (h : Node.LocalRun proposer dg H sg tr ini) (hnc : NoCollRun dg tr) :
     (∀ y ∈ H, ∀ i src signed, tr.projFG.CallAt y i (.attest src signed) →
       P.IsPublic (tr.projFG.time i)) ∧
     (∀ y ∈ H, ∀ i B, tr.projFG.CallAt y i (.block B true) → B.proposer = y →
@@ -288,7 +288,7 @@ theorem fg_tick_order (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P
 /-- **C0.5 (c), the shadow FG projection**, from any starts `ini` at which the AC meets the
 requirements (a copy of `fg_projection_from`). -/
 theorem fg_projection_from' (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P).Requirements)
-    (hg₀ : (P.genesisBlock A.genesisPayload).RootOk dg) (h : Node.LocalRun' proposer dg H sg tr ini)
+    (hg₀ : (P.genesisBlock A.genesisPayload).RootOk dg) (h : Node.LocalRun proposer dg H sg tr ini)
     (hnc : NoCollRun dg tr) : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG := by
   obtain ⟨hpub, hfirst, horder, hpay⟩ := fg_tick_order hq hg₀ h hnc
   refine

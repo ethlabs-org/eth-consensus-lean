@@ -37,7 +37,7 @@ with the stock window and witness). -/
 theorem finalized_below_descendant_stock_at {lo hi : Time} {floor : Nat}
     {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H lo hi floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y x z : Fin sp.n} {j i c : Nat}
     (hy : y ∈ H (tr.time j)) (hx : x ∈ H (tr.time i)) (hz : z ∈ H (tr.time c))
     (hf : (H (max (tr.time j) (tr.time i)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
@@ -52,7 +52,7 @@ theorem finalized_below_descendant_stock_at {lo hi : Time} {floor : Nat}
   have hr := Compose.Growing.reachable_at' hrun hjt hy hbj
   have hfl := hframe.floor_eq y j hy hjlo hjhi
   have hkind := hframe.kind_iff y j hy hjlo hjhi
-  have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality'
+  have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
     hr.reachableWith
   by_cases hk : kindJ
   · have hFJ := (Store.cache_invariants' hr).2.2.1
@@ -76,7 +76,7 @@ theorem finalized_below_descendant_stock_at {lo hi : Time} {floor : Nat}
 the window holding it, `F ⪯ Q` (`finalized_below_descendant_stock_at'`) and `Q` is P-U viable,
 since `h_max − 1 ≤ floor` at each reader and a top reader at `h_max − 1` is in the J-kind. -/
 theorem windowWitness_of_stock
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor : Nat} {kindJ : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))} (hframe : Generic.FrameWindow tr H lo hi floor kindJ J)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c)) {Q : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -93,7 +93,7 @@ theorem windowWitness_of_stock
     (fun _ hq => hrun.time_mono hq.le) hz hjt hbj hy hQ hQy
   have hfl := hframe.floor_eq y j hy hlo hhi
   have hkind := hframe.kind_iff y j hy hlo hhi
-  have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality'
+  have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
     hr.reachableWith
   have hh := hwit.1
   rw [hσ] at hh
@@ -121,7 +121,7 @@ contest puts it off `J`. The shared floor-anchor premise of the stock later-head
 theorem stock_witness_of_floor_anchor_at {lo hi : Time} {floor : Nat} {kindJ : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H lo hi floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} {kP : Nat}
     {P : AC.Blk sp.n (List (FG.Att sp.n))} (hp : p ∈ H (tr.time kP))
     (hPp : P ∈ (tr.state p kP).fg.tree)
@@ -150,7 +150,7 @@ theorem stock_witness_of_floor_anchor_at {lo hi : Time} {floor : Nat} {kindJ : P
 /-- The frame geometry of a stock witness at a reader's cut (`witness_frame_at'` with the stock
 window and witness): the stock witness is P-U viable at every honest reader of the window. -/
 theorem witness_frame_stock_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor : Nat} {kindJ : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))} (hframe : Generic.FrameWindow tr H lo hi floor kindJ J)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
@@ -183,7 +183,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- `unanimous_next_votes_of_witness_at'` with the stock window and witness. -/
 theorem unanimous_next_votes_of_stock_witness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -212,7 +212,7 @@ theorem unanimous_next_votes_of_stock_witness_at {K : AC.CommitteeDict sp.n}
 
 /-- `unanimous_next_proposal_of_witness_at'` with the stock window and witness. -/
 theorem unanimous_next_proposal_of_stock_witness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -243,7 +243,7 @@ theorem unanimous_next_proposal_of_stock_witness_at {K : AC.CommitteeDict sp.n}
 /-- `next_votes_of_early_witness_at'` with the stock window and the stock witness at the early
 writer. -/
 theorem next_votes_of_stock_witness_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -283,7 +283,7 @@ theorem next_votes_of_stock_witness_at
 /-- `later_heads_of_early_witness_at'` with the stock window and the stock witness at the early
 writer. -/
 theorem later_heads_of_stock_witness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -327,7 +327,7 @@ theorem later_heads_of_stock_witness_at {K : AC.CommitteeDict sp.n}
 
 /-- `optimistic_next_votes_of_early_witness_at'` with the stock window and witness. -/
 theorem optimistic_next_votes_of_stock_witness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -364,7 +364,7 @@ theorem optimistic_next_votes_of_stock_witness_at {K : AC.CommitteeDict sp.n}
 
 /-- `optimistic_next_proposal_of_early_witness_at'` with the stock window and witness. -/
 theorem optimistic_next_proposal_of_stock_witness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -405,7 +405,7 @@ theorem optimistic_next_proposal_of_stock_witness_at {K : AC.CommitteeDict sp.n}
 
 /-- `optimistic_later_heads_of_early_witness_at'` with the stock window and witness. -/
 theorem optimistic_later_heads_of_stock_witness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -452,7 +452,7 @@ theorem optimistic_supporter_later_heads_stock_at {s₀ s N floor : Nat}
     {kindJ : Prop} {J L D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -486,7 +486,7 @@ theorem optimistic_supporter_later_heads_floor_stock_at {s₀ s N floor : Nat}
     {kindJ : Prop} {J L D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)

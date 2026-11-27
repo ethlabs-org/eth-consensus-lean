@@ -106,7 +106,7 @@ write-frame viable witness; its AC write provenance is unchanged. -/
 private theorem old_lock_witness {s₀ M : Nat} {hi : Time}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr (fun _ => H) (sp.ts s₀) hi M isTop J)
-    (hrun : Consensus.Goldilocks.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : Healing.NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -165,12 +165,12 @@ private theorem old_lock_witness {s₀ M : Nat} {hi : Time}
   · exfalso
     apply hstrict
     have hroot := Healing.fcRoot_mono hrun hy hai.le
-    rw [← Node.frame_of_projAC_at hrun.toLocalRun' hy ha,
-      ← Node.frame_of_projAC_at hrun.toLocalRun' hy hc.1] at hroot
+    rw [← Node.frame_of_projAC_at hrun.toLocalRun hy ha,
+      ← Node.frame_of_projAC_at hrun.toLocalRun hy hc.1] at hroot
     exact hBA.trans ((hbelow.mono hPhi₀.2).trans hroot)
   · obtain ⟨hQt, -, hvQ⟩ :=
       hframe.viableHead_persists' hrun hnc hf hy hai.le htime.1 hihi ha hv
-    rw [← Node.frame_of_projAC_at hrun.toLocalRun' hy hc.1] at hQt hvQ
+    rw [← Node.frame_of_projAC_at hrun.toLocalRun hy hc.1] at hQt hvQ
     refine ⟨a, hai, ell₀, D, Q, ha, htime.1, htime.2, ho, hv,
       hBA.trans (hAQ.mono hPhi₀.2), hvQ, hQt, Or.inl ?_⟩
     apply AC.readPoint_blockStamp_lt_of_earlier_frame hr hrun.vstart hy ha hc hQ hQt htime.2
@@ -181,7 +181,7 @@ private theorem old_lock_witness {s₀ M : Nat} {hi : Time}
 private theorem live_old_lock_witness {s₀ M : Nat} {hi : Time}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr (fun _ => H) (sp.ts s₀) hi M isTop J)
-    (hrun : Consensus.Goldilocks.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : Healing.NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -228,7 +228,7 @@ of the old frozen witness. AC's live-lock candidate supplies it at the voter. -/
 private theorem live_old_lock_witness_stock {s₀ floor : Nat} {hi : Time}
     {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow (tr := tr) (H := H) (sp.ts s₀) hi floor kindJ J)
-    (hrun : Consensus.Goldilocks.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : Healing.NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -282,7 +282,7 @@ private theorem live_old_lock_witness_stock {s₀ floor : Nat} {hi : Time}
     rcases AC.liveLockBlock_candidate hPhi.1 ⟨hL, l, hLive, hLr.symm⟩ with hcan | hbelow
     · obtain ⟨-, -, W, hW, hvW, hLW⟩ := hcan
       have hvStore := hvW
-      rw [Node.frame_of_projAC_at hrun.toLocalRun' hy hc.1,
+      rw [Node.frame_of_projAC_at hrun.toLocalRun hy hc.1,
         Node.frame_eq, Store.toFrame_viableHeads] at hvStore
       have hh : floor ≤ ((tr.state y i).fg.σ W.root).h := by
         rcases (Store.isViable_iff _ _).mp hvStore.2.2 with hh | ⟨hh, -⟩ <;> omega
@@ -290,7 +290,7 @@ private theorem live_old_lock_witness_stock {s₀ floor : Nat} {hi : Time}
     · exact (hstrict (hbelow.mono hPhi.2)).elim
 
 private theorem vote_head_classification_core
-    (hrun : Consensus.Goldilocks.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
@@ -370,7 +370,7 @@ that witness, not on the older lock head. -/
 theorem vote_head_classification {s₀ floor : Nat} {hi : Time}
     {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow (tr := tr) (H := H) (sp.ts s₀) hi floor kindJ J)
-    (hrun : Consensus.Goldilocks.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : Healing.NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i a : Nat} (hai : a ≤ i)
@@ -540,7 +540,7 @@ theorem regular_slow_next_votes_at' {s₀ s M : Nat}
 shared window service and participant suppliers. -/
 theorem result_honest_supporter_before_at
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -592,7 +592,7 @@ theorem result_honest_supporter_before_at
     (by rw [RunTrace.upTo_projAC]; exact AC.serviceWindowBefore_of_sync hS.sync)
     hgs hx (by rwa [RunTrace.upTo_projAC]) le_rfl hready
     (fun y hy hyK i => by
-      rw [← Compose.projAC_state' hpre.toLocalRun' hy i]
+      rw [← Compose.projAC_state' hpre.toLocalRun hy i]
       exact (AC.trace_mayVote_iff (Compose.goldilocks_ac_projection_from' hpre
         (hnc.upTo _)).localRun hy i s).2 hyK)
     (fun v hv => hK.facts.hP.1 _ x hx c (fun _ hk => hm' hk.le) s v (by
@@ -613,7 +613,7 @@ theorem vote_head_classification_of_service_at {s₀ M : Nat} {hi : Time}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) hi M isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -693,19 +693,19 @@ theorem vote_head_classification_of_service_at {s₀ M : Nat} {hi : Time}
     dsimp only at hsel
     split_ifs at hsel
     have hDw := (AC.deepest_mem hsel).1.1
-    rw [Node.frame_of_projAC_at hr.toLocalRun' hy hp.1,
+    rw [Node.frame_of_projAC_at hr.toLocalRun hy hp.1,
       Node.frame_eq, Store.toFrame_tree] at hDw
-    have hDi := Compose.tree_mono' hr.toLocalRun' hy hci hDw.1
+    have hDi := Compose.tree_mono' hr.toLocalRun hy hci hDw.1
     have hHD := (hHL.mono hPhi.2).trans hLD
     have hHdi := hHd
-    rw [Node.frame_of_projAC_at hr.toLocalRun' hy hc'.1,
+    rw [Node.frame_of_projAC_at hr.toLocalRun hy hc'.1,
       Node.frame_eq, Store.toFrame_tree] at hHdi
     have hFD : Anc ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)))
         ((tr.upTo (tr.time i)).state y i).fg.F D :=
       (Anc.mono (show ((tr.upTo (tr.time i)).state y i).fg.tree ⊆
         (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) from
         fun B hB => ⟨y, hy, i, hB⟩) hHdi.2).trans hHD
-    rw [Node.frame_of_projAC_at hr.toLocalRun' hy hc'.1,
+    rw [Node.frame_of_projAC_at hr.toLocalRun hy hc'.1,
       Node.frame_eq, Store.toFrame_tree]
     exact ⟨hDi, Coherence.honest_held_anc' hr (hnc.upTo _) hy hFD hDi⟩
   have hLt : L ∈ ell.frame.tree := by
@@ -737,7 +737,7 @@ theorem vote_head_classification_of_service_at {s₀ floor : Nat} {hi : Time}
     {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.Growing.FrameWindow tr H (sp.ts s₀) hi floor kindJ J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -822,19 +822,19 @@ theorem vote_head_classification_of_service_at {s₀ floor : Nat} {hi : Time}
       dsimp only at hsel
       split_ifs at hsel
       have hDw := (AC.deepest_mem hsel).1.1
-      rw [Node.frame_of_projAC_at hr.toLocalRun' hy hp.1,
+      rw [Node.frame_of_projAC_at hr.toLocalRun hy hp.1,
         Node.frame_eq, Store.toFrame_tree] at hDw
-      have hDi := Compose.tree_mono' hr.toLocalRun' hy hci hDw.1
+      have hDi := Compose.tree_mono' hr.toLocalRun hy hci hDw.1
       have hHD := (hHL.mono hPhi.2).trans hLD
       have hHdi := hHd
-      rw [Node.frame_of_projAC_at hr.toLocalRun' hy hc'.1,
+      rw [Node.frame_of_projAC_at hr.toLocalRun hy hc'.1,
         Node.frame_eq, Store.toFrame_tree] at hHdi
       have hFD : Anc ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)))
           ((tr.upTo (tr.time i)).state y i).fg.F D :=
         (Anc.mono (show ((tr.upTo (tr.time i)).state y i).fg.tree ⊆
           (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) from
           fun B hB => ⟨y, hy, i, hB⟩) hHdi.2).trans hHD
-      rw [Node.frame_of_projAC_at hr.toLocalRun' hy hc'.1,
+      rw [Node.frame_of_projAC_at hr.toLocalRun hy hc'.1,
         Node.frame_eq, Store.toFrame_tree]
       exact ⟨hDi, Coherence.honest_held_anc' hr (hnc.upTo _) hy hFD hDi⟩
     have hLt : L ∈ ell.frame.tree := by

@@ -420,7 +420,7 @@ the honest nodes, grouped by top-level event; faulty nodes have no cuts.
 | F.5 (run) | CLAIMS F.5 (run) | the order facts (by time; restart < tick < delivery at one time; positions inside a tick; a send before its receipts); every run has them | Persist | `Consensus.Goldilocks.Compose.RunOrder`, `Consensus.Goldilocks.Compose.EventOrder` |
 | F.4 | CLAIMS F.4 (D4) | awake on `[max(0, t − c − 1), t]` with `c + 1 ≥ 8Δ` gives awake and joined at `t`, for `t ≥ 0` (the interval is empty for `t < 0`) | Persist | `Consensus.Goldilocks.Compose.ReadyImpliesJoined` |
 | C0.5 | CLAIMS C0.5 (last sentence) | the AC projection is an `ACLocalRun` (with `U` the honest blocks; for an AC with requirement 5 from each honest start, since the own block's `ac_on_block` needs `ac_valid_payload`); the FG projection is an `FGLocalRun` at `A.genesisPayload` (with the requirements and the genesis root, the premises of C0.3: the own block is accepted in its tick, so `own_first` holds); the Goldilocks run's AC projection is an `AC.ACRun`; the states at the start of every event are `Node.Reachable`; `Sync` projects to `SyncAC`; joining and `h_t` project | Persist | `Consensus.Goldilocks.Compose.ACProjection`, `Consensus.Goldilocks.Compose.FGProjection`, `Consensus.Goldilocks.Compose.GoldilocksACProjection`, `Consensus.Goldilocks.Compose.GroupStatesReachable`, `Consensus.Goldilocks.Compose.SyncProjection`, `Consensus.Goldilocks.Compose.JoinedProjection` |
-| C1.1 | CLAIMS C1.1 (premises), G1.10 ("The scope of C1.1") | the honest votes of a slot; the excluded entries 𝓔 (conflict with `B`, strictly extend an honest `Σ.F` at `t_s`); `Clean(s, m, B)` with (K0) caches, (K1) attestation cut `K1_𝓔` by `Store.namers` on the FG projection at `t_{s+1} + Δ`, (K2) height lead; a fast lock whose **stored** block (after the move back) is `B`; the premise bundle itself (writer honest and joined, the stored fast lock, `Sync[t_s, t_m + Δ]`, `Carry`, half-committee, later `Carry`, `f < h_t` at honest vote times, `NoColl`, `Clean`) is paper-only, not stated in Lean | Persist | `Consensus.Goldilocks.Compose.honestVotes`, `Consensus.Goldilocks.Compose.excludedEntries`, `Consensus.Goldilocks.Compose.Clean`, `Consensus.Goldilocks.Compose.StoredFastLockAt` |
+| C1.1 | CLAIMS C1.1 (premises), G1.10 ("The scope of C1.1") | the honest votes of a slot; the excluded entries 𝓔 (conflict with `B`, strictly extend an honest `Σ.F` at `t_s`); `Clean(s, m, B)` with (K0) caches, (K1) attestation cut `K1_𝓔` by `Store.namers` on the FG projection at `t_{s+1} + Δ`, (K2) height lead (a viable descendant of `B`, possibly `B` itself, in the voter block tree, or `B ⪯ Σ.F`); a fast lock whose **stored** block (after the move back) is `B`; the premise bundle itself (writer honest and joined, the stored fast lock, `Sync[t_s, t_m + Δ]`, `Carry`, half-committee, later `Carry`, `f < h_t` at honest vote times, `NoColl`, `Clean`) is paper-only, not stated in Lean | Persist | `Consensus.Goldilocks.Compose.honestVotes`, `Consensus.Goldilocks.Compose.excludedEntries`, `Consensus.Goldilocks.Compose.Clean`, `Consensus.Goldilocks.Compose.StoredFastLockAt` |
 | C1.1 | CLAIMS C1.1 | **retired** as a milestone statement (honest fast confirmations persist, its corollary "recent source, next vote", the conclusion vocabulary of G1.10 at C1.1's scope, and its premise bundle); the vocabulary of its premises stays | Persist | — |
 
 Modelling choices:
@@ -567,11 +567,11 @@ Modelling choices:
 - **`Inv`, `Geo`**: `filtered(Φ, Φ.tree)` is `Φ.viableTree Φ.tree` and `Φ.allowed` is `Φ.viableHeads`; the vote
   clause of `Inv` is viability in the voter block tree at every emission of the call. `Geo(P)` is read at every `ac_proposal` call of the
   proposer at `t_p`.
-- **"`B ⪯ fc_root`" is block order**, in `Inv` (inside `U`), HR.4 (R3), and C1.1's (K2) and (i)
-  (inside `tr.HonestBlocks H`), not ancestry inside the frame tree (`Φ.Anc`, as in `AC.ViableAtVote`): once an
-  honest `Σ.F` passes `B`, `B` leaves the frame tree and the frame reading fails. `tr.HonestBlocks H` holds every
-  block of an honest node's accepted tree, faulty proposals included, so it contains the voter's `fc_root` (in its
-  own `Σ.tree`) and `B`'s chain.
+- **Ancestry to the fork-choice root is block order**, in `Inv` (inside `U`), HR.4 (R3), and C1.1's (K2) and (i)
+  (inside `tr.HonestBlocks H`), not ancestry inside the frame tree (`Φ.Anc`, as in `AC.ViableAtVote`). For a frame
+  derived from an FG store the root is `Σ.F`, so the comparison is `B ⪯ Σ.F`. Once an honest `Σ.F` passes `B`,
+  `B` leaves the frame tree and the frame reading fails. `tr.HonestBlocks H` holds every block of an honest node's
+  accepted tree, faulty proposals included, so it contains the voter's `Σ.F` and `B`'s chain.
 - **Genesis root**: `HSShared` takes `genesis.RootOk dg`, as C0.3 does (A1.7 does not). Without
   it an honest proposal whose digest is the genesis root is refused by every FG, so driven-trace clause (b) over a run,
   the reset's existence (HR.3, H.3 (a)) and C1.2's window proposal can fail. HR.1, HR.2 and HR.4 conclude nothing about

@@ -18,7 +18,7 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
 /-- An AC block call on the shadow projection has an immediately preceding FG acceptance. -/
-theorem fg_accept_before' (h : LocalRun' proposer dg H sg tr ini)
+theorem fg_accept_before' (h : LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} (hy : y ∈ H) {i : Nat} {B : A.Blk}
     (ha : tr.projAC.AcceptAt y i B) :
     ∃ k, i = k + 1 ∧ tr.AcceptAt y k B ∧ tr.time k = tr.time i := by
@@ -270,7 +270,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
-private theorem honest_proposal_of_tick (hrun : GoldilocksRun' proposer dg H tr ini)
+private theorem honest_proposal_of_tick (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg)
     {p : Fin sp.n} (hp : p ∈ H) {j : Nat} {t : Time} {x : Nat} {fgDue : Bool}
@@ -281,7 +281,7 @@ private theorem honest_proposal_of_tick (hrun : GoldilocksRun' proposer dg H tr 
       some (d, pay)) :
     AC.HonestProposal tr.projAC p (sp.slot t)
       (mkBlock dg p (tr.state p j).fg t x d.head pay) := by
-  have h := hrun.toLocalRun'
+  have h := hrun.toLocalRun
   obtain ⟨hc1, ht1, hst1⟩ := Coherence.tick_proposal_call h hp hg hP
   obtain ⟨hacc, ht2⟩ := own_block_accepted' h
     (Compose.requirements_from sp ro (hrun.vstart p)) hroot hnc hp hg hP hr
@@ -298,11 +298,11 @@ private theorem honest_proposal_of_tick (hrun : GoldilocksRun' proposer dg H tr 
   simpa only [acProposal_eq] using hr
 
 /-- The shadow run supplies the stock driven-execution contract on its AC projection. -/
-theorem projection_driven_of_run' (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem projection_driven_of_run' (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg) :
     AC.Driven proposer tr.projAC H := by
-  have h := hrun.toLocalRun'
+  have h := hrun.toLocalRun
   have hac := Compose.goldilocks_ac_projection_from' hrun hnc
   have hr := hac.localRun
   have blocks : ∀ y ∈ H, ∀ i B, tr.projAC.AcceptAt y i B → B.root ≠ sp.genesisRoot →

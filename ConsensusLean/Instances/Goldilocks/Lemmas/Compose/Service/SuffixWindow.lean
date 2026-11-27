@@ -35,8 +35,8 @@ public section
 
 The suffix steps, generic in the service start. The leaves read the service as
 `SuffixService` (the AC service window from a start `a₀` with the catch-up of older acceptances
-before `a₀ + κ ≤ t_{s−1}`), and the voter's facts at `Q` (its `fc_root` below `Q`, its head height
-floor at most the height of every block of its tree above `Q`) as premises:
+before `a₀ + κ ≤ t_{s−1}`), and the voter's facts at `Q` (its `fc_root` below `Q`, and every
+held descendant of `Q` viable) as premises:
 
 * `relay_mem_window_before`: the acceptance relay into a frame under the window and its catch-up;
 * `suffix_agree_of`: on the suffix from the pivot, the proposer's best child is the voter's;
@@ -682,8 +682,8 @@ proposer's tree, and a viable head there (its height is at least `Q`'s, a propos
 the proposal walk stopped at `Q`, so `B` has no strict majority in the proposal's view; the views
 agree on `B` (`views_agree_before`), and `Q` is a viable head of the voter, so
 `B` is ineligible at the voter too. Under the suffix service from `a₀` with its catch-up
-(`SuffixService`), given the voter's `fc_root` below `Q` and its head height floor at most the
-height of every block of its tree above `Q`. -/
+(`SuffixService`), given the voter's `fc_root` below `Q` and viability of every held descendant
+of `Q`. -/
 theorem old_child_ineligible_of {a₀ κ b : Time}
     (hsync : SuffixService H tr a₀ κ b s)
     (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b)
@@ -825,7 +825,7 @@ theorem old_child_ineligible_of {a₀ κ b : Time}
 end Leaves
 
 /-- **The suffix** under the suffix service from `a₀` with its catch-up (`SuffixService`), given
-the voter's head height floor at most the height of every block of its tree above `Q`. -/
+viability of every held descendant of `Q` at the voter. -/
 theorem suffix_agree_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini}
     (hrun : GoldilocksRun proposer dg H tr ini)
@@ -885,8 +885,8 @@ theorem suffix_agree_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
         hs hib hDX hXQ hne hBX hB) hC
 
 /-- **`P` is in the voter's viable voter block tree** under the suffix service from `a₀` with its
-catch-up (`SuffixService`), given the voter's `fc_root` below `Q` and its head height floor at most
-the height of every block of its tree above `Q`. -/
+catch-up (`SuffixService`), given the voter's `fc_root` below `Q` and viability of every held
+descendant of `Q`. -/
 theorem proposal_at_voter_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini}
     (hrun : GoldilocksRun proposer dg H tr ini)

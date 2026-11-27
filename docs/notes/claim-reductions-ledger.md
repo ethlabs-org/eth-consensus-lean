@@ -306,6 +306,20 @@ truncation by `premises_restrict_truncH`.
 
 ### Generic healing report-delivery delay
 
+The milestone window pins maximum height `M`, top status `hmax = hj + 1`, and
+the common `J` whenever top. Its four-key measure is
+`frameKey'' = 2 * hmax + [hmax = hj + 1]`, not the former floor/clean-kind key.
+The restatement excludes mixed contest/gap windows and varying-`J` top contests,
+admits same-M common-J clean/contest toggles, and weakens leaf 8's two contest
+round bounds (1 → 2 and 0 → 1). `resetSlots` retains its five-key range and
+`healMargin` is unchanged. Replacement window and AC field suppliers are
+separate proof obligations; this restatement lands only with P-U adoption.
+
+The proposal-height field requires pre-state `hmax - 1 ≤` post-proposal height
+and pre-state `hj <` that height. The report field retains tree membership and
+uses `Anc F R` rather than `Anc fcRoot R`. The protocol frame and viable-head
+rules are in `specs/goldilocks/tex/shared/fg.tex`, lines 71–77 and 136–152.
+
 OPEN instance obligation: `round_of_warm_at`, `rise_reset_rounds_at`,
 `exists_reset` and `generic_healing` require
 `∀ s, P.slotTime (s + 1) + 2 * P.Δ + ΔF ≤ P.slotTime (s + P.δt)`.

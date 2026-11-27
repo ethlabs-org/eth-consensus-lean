@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Model
 public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Handlers
@@ -69,49 +70,6 @@ theorem FGLabel.step_attest (v : Fin P.n) (s s' : FGState P ACP) (src : NodeBloc
 
 namespace Growing
 
-/-- The shadow FG trace contract under growing faults (a copy of `Growing.FGLocalRun`). -/
-structure LocalRun' {A : NodeAC P} (proposer : Nat → Fin P.n)
-    (dg : Digest (List (FG.Att P.n)) A.Payload)
-    (H : Time → Set (Fin P.n)) (sg : A.Msg → Fin P.n) (tr : RunTrace A)
-    (ini : Fin P.n → A.State := fun _ => A.initial) : Prop where
-  antitone : Antitone H
-  init : ∀ y ∈ H 0, tr.init y = Node.initWith A (ini y)
-  grouped : ∀ y i c, tr.CallAt y i c → y ∈ H (tr.time i) →
-    ∃ j e, tr.InGroup proposer dg y j i (tr.time i) e
-  cutLaw : ∀ y i c, tr.CallAt y i c → y ∈ H (tr.time i) →
-    Node.CutStep' y (tr.time i) (tr.state y i) c (tr.post i)
-  wire : ∀ y j t e, y ∈ H t → tr.GroupAt proposer dg y j t e → Node.WireOK dg e
-  proposerCredential : ∀ y j t B, y ∈ H t → tr.GroupAt proposer dg y j t (.block B) →
-    B.proposer = proposer B.slot
-  time_nonneg : ∀ i, 0 ≤ tr.time i
-  time_mono : Monotone tr.time
-  finite : ∀ T : Time, {i | tr.label i ≠ none ∧ tr.time i ≤ T}.Finite
-  phase_order : ∀ y y' j j' t e e', y ∈ H t → y' ∈ H t → tr.GroupAt proposer dg y j t e →
-    tr.GroupAt proposer dg y' j' t e' → j < j' →
-    (y = y' ∨ ¬ tr.OwnPublicationAt proposer dg y j t) → e.phase ≤ e'.phase
-  tick_public : ∀ y j t, y ∈ H t → tr.TickAt proposer dg y j t → P.IsPublic t
-  tick_unique : ∀ y j j' t, y ∈ H t →
-    tr.TickAt proposer dg y j t → tr.TickAt proposer dg y j' t → j = j'
-  tick_of_awake : ∀ y t, y ∈ H t → 0 ≤ t → P.IsPublic t → tr.awake y t →
-    ∃ j, tr.TickAt proposer dg y j t
-  awake_in_horizon : ∀ y t, y ∈ H t → tr.awake y t → tr.InHorizon t
-  awake_of_call : ∀ y i, y ∈ H (tr.time i) → tr.IsCall y i → tr.awake y (tr.time i)
-  restart_of_sleep : ∀ y i (u : Time), y ∈ H (tr.time i) → tr.IsCall y i → 0 ≤ u →
-    u < tr.time i → ¬ tr.awake y u → (∀ j < i, tr.IsCall y j → tr.time j < u) →
-    tr.RestartAt y i
-  restart_at_wake : ∀ y (u v : Time), y ∈ H v → 0 ≤ u → u < v → ¬ tr.awake y u →
-    tr.awake y v → ∃ k, tr.RestartAt y k ∧ u < tr.time k ∧ tr.time k ≤ v
-  sleep_of_restart : ∀ y i, y ∈ H (tr.time i) → tr.RestartAt y i →
-    ∃ u : Time, 0 ≤ u ∧ u < tr.time i ∧ ¬ tr.awake y u ∧
-      ∀ j < i, tr.IsCall y j → tr.time j < u
-  block_unforgeable : ∀ y i B, y ∈ H (tr.time i) → tr.BlockCallAt y i B →
-    B.proposer ∈ H (tr.time i) → ∃ j ≤ i, tr.OwnBlockAt B.proposer j B
-  att_unforgeable : ∀ y i a, y ∈ H (tr.time i) →
-    (tr.AttCallAt y i a ∨ ∃ B, tr.BlockCallAt y i B ∧ a ∈ B.fgPayload) →
-    a.val ∈ H (tr.time i) → ∃ j < i, tr.SignAt a.val j a
-  msg_unforgeable : ∀ y i m, y ∈ H (tr.time i) → tr.MsgCallAt y i m →
-    sg m ∈ H (tr.time i) → ∃ j < i, tr.EmitAt (sg m) j m
-
 end Growing
 
 end Consensus.Goldilocks
@@ -121,16 +79,6 @@ namespace Consensus.Goldilocks.Growing
 open AC (ACParams ReplayOrder Vote Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-
-/-- **A shadow Goldilocks run under growing faults** (a copy of `Growing.GoldilocksRun`). -/
-structure GoldilocksRun' (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro)
-    (ini : Fin sp.n → (goldilocksNode sp ro).State :=
-      fun _ => (goldilocksNode sp ro).initial) : Prop
-    extends Growing.LocalRun' proposer dg H (fun v : Vote sp.n => v.val) tr ini where
-  genesis_root_ok : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg
-  vstart : ∀ y, AC.VoteStart sp.genesisRoot (ini y)
 
 end Consensus.Goldilocks.Growing
 
@@ -144,7 +92,7 @@ variable {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload
 
 /-- **The FG projection's state is the FG part and the record of the run's state** (honest
 node; a copy of `projFG_state`). -/
-theorem projFG_state' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+theorem projFG_state' (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
     (i : Nat) : tr.projFG.state y i = ((tr.state y i).fg, (tr.state y i).record) := by
   induction i with
   | zero => simp [Trace.state, RunTrace.projFG, h.init y hy]
@@ -168,7 +116,7 @@ theorem projFG_state' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
       simp [Trace.state, RunTrace.projFG, hn]
 
 /-- **The FG projection executes the shadow FG** at the honest nodes (a copy of `fg_exec`). -/
-theorem fg_exec' (h : Node.LocalRun' proposer dg H sg tr ini) :
+theorem fg_exec' (h : Node.LocalRun proposer dg H sg tr ini) :
     (∀ y ∈ H, tr.projFG.init y = (Store.init A.genesisPayload, FG.Record.empty)) ∧
     ∀ i ℓ, tr.projFG.label i = some ℓ → tr.projFG.node i ∈ H →
       FGLabel.Step (tr.projFG.node i) (tr.projFG.state (tr.projFG.node i) i) ℓ
@@ -305,9 +253,9 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : 
 /-- **Retention** for shadow runs: the prefix through `d` of a shadow run under growing faults is
 a static shadow run for the validators honest at `d`, from the same starts (a copy of
 `Growing.GoldilocksRun.upTo`). -/
-theorem GoldilocksRun'.upTo {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (h : Growing.GoldilocksRun' proposer dg H tr ini) {d : Time} (hd : 0 ≤ d) :
-    Consensus.Goldilocks.GoldilocksRun' proposer dg (H d) (tr.upTo d) ini := by
+theorem GoldilocksRun.upTo' {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    (h : Growing.GoldilocksRun proposer dg H tr ini) {d : Time} (hd : 0 ≤ d) :
+    Consensus.Goldilocks.GoldilocksRun proposer dg (H d) (tr.upTo d) ini := by
   have hm := h.time_mono
   have anti : ∀ {t}, t ≤ d → H d ⊆ H t := fun ht => h.antitone ht
   refine

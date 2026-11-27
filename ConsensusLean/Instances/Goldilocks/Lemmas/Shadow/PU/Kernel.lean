@@ -33,8 +33,8 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- A high origin above a later honest cast's finalized tip is in its voter block tree
 (`ResetPremisesUpTo.high_origin_held_at_vote_at`, `Outcome/VoteReceipt`): the voter block
 tree is closed under ancestors and holds the origin's frozen head. -/
-theorem ResetPremisesUpTo'.high_origin_held_at_vote_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+theorem ResetPremisesUpTo.high_origin_held_at_vote_at'
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {i j k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
     (hy : y ∈ H (tr.time k))
@@ -47,7 +47,7 @@ theorem ResetPremisesUpTo'.high_origin_held_at_vote_at'
 /-- **The retained-vote induction**, given the finite held-target domain
 (`KernelProof.high_origin_votes_of_domain_before_at`). -/
 theorem KernelProof.high_origin_votes_of_domain_before_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     (hdomain : ∀ {x y v : Fin sp.n} {r i q m : Nat}
       {B S : AC.Blk sp.n (List (FG.Att sp.n))},
       x ∈ H (tr.time r) → y ∈ H (tr.time i) →
@@ -74,8 +74,8 @@ theorem KernelProof.high_origin_votes_of_domain_before_at'
 
 /-- **R2 over the shadow run** (`ResetPremisesUpTo.high_origin_votes_before_at`): every
 later-label honest cast extends each high origin within the finite horizon. -/
-theorem ResetPremisesUpTo'.high_origin_votes_before_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold) :
+theorem ResetPremisesUpTo.high_origin_votes_before_at'
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) :
     ∀ k, tr.time k ≤ b → ∀ x i j B, HighOrigin tr H g x i j B → tr.time i ≤ b →
       ∀ y ell e, y ∈ H (tr.time k) → AC.CastAt tr.projAC y k ell e → j < e.msg.slot →
         AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
@@ -98,8 +98,8 @@ theorem ResetPremisesUpTo'.high_origin_votes_before_at'
 
 /-- **R1 over the shadow run** (`ResetPremisesUpTo.origins_compatible_at`): high origins within
 the horizon are comparable. -/
-theorem ResetPremisesUpTo'.origins_compatible_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+theorem ResetPremisesUpTo.origins_compatible_at'
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x z : Fin sp.n} {i j r l : Nat} {B O : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
     (hO : HighOrigin tr H g z r l O) (hrb : tr.time r ≤ b) :
@@ -108,13 +108,13 @@ theorem ResetPremisesUpTo'.origins_compatible_at'
 
 /-- A held block with the genesis root is below every held block (`genesis_root_anc_at`). -/
 private theorem genesis_root_anc_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {G B : AC.Blk sp.n (List (FG.Att sp.n))} (hG : G ∈ tr.HonestBlocksAt H)
     (hg : G.root = sp.toParams.genesisRoot) (hB : B ∈ tr.HonestBlocksAt H) :
     Anc (tr.HonestBlocksAt H) G B := by
   obtain ⟨y, k, t, ht, hle, hy, hBt⟩ := hB
-  have hfs := finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
+  have hfs := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   have hr := (Compose.Growing.reachable_at' hrun ht hy hle).reachableWith
   have hh := (accepted_tree_with hfs hr).2.2.2 B hBt
   have hsub := Compose.Growing.tree_held_at' ht hy hle
@@ -126,14 +126,14 @@ private theorem genesis_root_anc_at {ini : Fin sp.n → (goldilocksNode sp ro).S
 /-- **The finalized cache compares with a high origin** at independently honest cuts
 (`ProposalImpl.finalized_compatible_high_origin_at`). -/
 theorem ProposalImpl.finalized_compatible_high_origin_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c)) (hcb : tr.time c ≤ b)
     {x : Fin sp.n} {i j : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j O) (hib : tr.time i ≤ b) :
     Compatible (tr.HonestBlocksAt H) (tr.state z c).fg.F O := by
   have ht := hp.run.time_nonneg c
   have hle : ∀ q < c, tr.time q ≤ tr.time c := fun _ hq => hp.run.time_mono hq.le
-  have hfs := finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
+  have hfs := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   have hr := (Compose.Growing.reachable_at' hp.run ht hz hle).reachableWith
   have hU := Coherence.honestBlocksAt_coherent hp.run hp.noColl
   have hsub := Compose.Growing.tree_held_at' ht hz hle
