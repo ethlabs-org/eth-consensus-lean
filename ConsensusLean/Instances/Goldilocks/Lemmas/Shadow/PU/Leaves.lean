@@ -123,63 +123,6 @@ theorem rounds_le_warm_proposal_at {proposer : Nat → Fin sp.n}
     (hK z kB hzk (ht ▸ hlo) (ht ▸ hhi)) hv
     (proposal_viable_at hrun hnc hwin hz hdes hB hBs hlo hhi hf).1
 
-/-- Leaf 9 over the stock window: an equal-height report above a warm shadow proposal
-is strictly above the reader's justified height. Only report membership is needed. -/
-theorem report_kind_of_warm_at {proposer : Nat → Fin sp.n}
-    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
-    {J B R : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.Growing.FrameWindow tr H lo hi floor kindJ J)
-    {z : Fin sp.n} {kB : Nat} (hz : z ∈ H (sp.ts u)) (hdes : z = proposer u)
-    (hB : tr.ProposesAt z kB B) (hBs : B.slot = u)
-    (hlo : lo ≤ sp.ts u) (hhi : sp.ts u ≤ hi)
-    (hf : (H (sp.ts u))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    (hRm : R ∈ (tr.state y i).fg.tree) (hBR : Anc (tr.HonestBlocksAt H) B R)
-    (hil : lo ≤ tr.time i) (hih : tr.time i ≤ hi)
-    (_heq : ((tr.state y i).fg.σ R.root).h = ((tr.state y i).fg.σ B.root).h) :
-    (tr.state y i).fg.hj < ((tr.state y i).fg.σ B.root).h ∨
-      ((tr.state y i).fg.hj = ((tr.state y i).fg.σ B.root).h ∧
-        (tr.state y i).fg.Anc (tr.state y i).fg.J R) := by
-  have ht : tr.time kB = sp.ts u := by
-    simpa only [sp.slotTime_eq, hBs, ACParams.ts] using hB.2.2
-  have hzk : z ∈ H (tr.time kB) := ht ▸ hz
-  have hB' : (tr.upTo (tr.time kB)).ProposesAt z kB B :=
-    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hB.1⟩, hB.2⟩
-  have hBm := (Coherence.accept_of_proposesAt (hrun.upTo (hrun.time_nonneg kB))
-    (hnc.upTo _) hzk hB').2.1
-  rw [Trace.upTo_state tr z (fun q hq => hrun.time_mono (by omega))] at hBm
-  have hle : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
-  have hBy := mem_of_honest_anc_at hrun hnc (hrun.time_nonneg i) hle hy hBR hRm
-  have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg kB)
-    (fun q hq => hrun.time_mono (by omega)) hzk (hrun.time_nonneg i) hle hy hBm hBy
-  obtain ⟨hfloor, hstrict⟩ :=
-    Goldilocks.Shadow.PU.Witness.warm_proposal_bounds_at hrun hnc hframe hz hdes hB hBs
-      hlo hhi hf
-  rw [hσ] at hfloor hstrict
-  have hreach := (Compose.Growing.reachable_at hrun (hrun.time_nonneg i) hy hle).reachableWith
-  have hj := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality hreach
-  have hfl := hframe.floor_eq y i hy hil hih
-  have hkind := hframe.kind_iff y i hy hil hih
-  left
-  by_cases hk : kindJ
-  · obtain ⟨hm, hc⟩ := hkind.mpr hk
-    have hfloor' : floor = (tr.state y i).fg.hj := by
-      rw [← hfl, Store.headHeightFloor, ite_eq_right hc, hm]
-      omega
-    have := hstrict hk
-    omega
-  · have hnk := hkind.not.mpr hk
-    by_cases hc : (tr.state y i).fg.Contest
-    · rw [Store.headHeightFloor, ite_eq_left hc] at hfl
-      omega
-    · rw [Store.headHeightFloor, ite_eq_right hc] at hfl
-      have hne : (tr.state y i).fg.hmax ≠ (tr.state y i).fg.hj + 1 :=
-        fun hm => hnk ⟨hm, hc⟩
-      omega
-
 section Reset
 
 open AC (gbar)

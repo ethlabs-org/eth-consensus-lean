@@ -10,12 +10,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
 
 public section
 
-/-! # V-A7: the proposal floor under P-U
+/-! # Store-level proposal height bounds under P-U
 
-`pu_cex_proposal_floor_top` and `pu_cex_leaf8_low` are resolved as **proved**: the stock facts
-`floor_le_warm_proposal_at` and leaf 8 `rounds_le_warm_proposal_at` hold over shadow runs
-(`floor_le_warm_proposal_at'`, `rounds_le_warm_proposal_at'`), with the stock statements and the
-stock `FrameWindow`.
+The store-level bounds here support proposal viability over the fixed-maximum P-U window.
 
 The only P-U-new walk head is a block `W` of height `h_j` above `J` in a contest. An honest
 proposal on it includes, from the proposer's pool, every attestation of `J`'s justification
@@ -367,7 +364,7 @@ theorem proposal_crosses {W : NodeBlock P ACP} (hW : W ∈ st.tree)
   have hroot : ∀ {X Y : NodeBlock P ACP}, X ∈ st.tree → Y ∈ st.tree → X.root = Y.root →
       X = Y := fun hX hY he => hcoh.1 hX hY he
   have hjh := hj_lt_h_with hu hR hW
-  obtain ⟨-, hJm, -, ⟨X, hX, hXJ, hXj⟩, -⟩ := cache_invariants' hr
+  obtain ⟨-, hJm, -, ⟨X, hX, hXJ, hXj⟩, -⟩ := cache_invariants _ _ _ _ hr
   obtain ⟨hJcase, -⟩ := store_J_entry_with hu hR
   have hJ : (st.σ st.J.root).h = st.hj ∧ (st.σ st.J.root).Th = st.J.root := by
     rcases hJcase with ⟨-, h0⟩ | h
@@ -544,163 +541,6 @@ theorem hj_lt_of_isViable {D : NodeBlock P ACP} (hD : D ∈ st.tree) (hv : st.Is
     · exact proposal_crosses hr hD (by omega) hJD hB hσ
 
 end Store
-
-section Run
-
-open AC (ACParams ReplayOrder Payload)
-
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-
-/-- **`floor_le_warm_proposal_at` holds under P-U** (V-A7, `pu_cex_proposal_floor_top`:
-proved). The stock statement over the stock `FrameWindow`, for shadow runs: a designated honest
-proposal inside the window reaches the window's head height floor. -/
-theorem warm_proposal_bounds_at {proposer : Nat → Fin sp.n}
-    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
-    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.Growing.FrameWindow tr H lo hi floor kindJ J)
-    {z : Fin sp.n} {kP : Nat} (hz : z ∈ H (sp.ts u)) (_hdes : z = proposer u)
-    (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hlo : lo ≤ sp.ts u) (hhi : sp.ts u ≤ hi)
-    (hf : (H (sp.ts u))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) :
-    floor ≤ ((tr.state z (kP + 1)).fg.σ P.root).h ∧
-      (kindJ → floor < ((tr.state z (kP + 1)).fg.σ P.root).h) := by
-  have htime : tr.time kP = sp.ts u := by
-    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
-  have hzk : z ∈ H (tr.time kP) := htime ▸ hz
-  have ht := hrun.time_nonneg kP
-  have hr := hrun.upTo ht
-  have h := hr.toLocalRun
-  have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
-    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2.1, hP.2.2⟩
-  have hleB : ∀ q < kP + 1, tr.time q ≤ tr.time kP :=
-    fun q hq => hrun.time_mono (by omega)
-  obtain ⟨hacc, -, -⟩ := Coherence.accept_of_proposesAt hr (hnc.upTo _) hzk hP'
-  obtain ⟨⟨⟨-, -⟩, hpos⟩, -, -⟩ := hP'
-  rcases Coherence.blockCall_cases h hzk hacc with hg |
-    ⟨j, x, fgDue, rfl, hg, hpr, d, pay, hdp, hB, hacc', ⟨ℓ₀, h₀⟩, -, hst2⟩
-  · rw [RunTrace.groupAt_iff] at hg
-    exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
-  obtain ⟨hc1, ht1, hst1⟩ := Coherence.tick_proposal_call h hzk hg hpr
-  simp only [Node.acProposal_eq] at hc1
-  set tu := tr.upTo (tr.time (j + 2)) with htu
-  have hc := Compose.projAC_callAt.2 hc1
-  have hj1 : tu.time (j + 1) = sp.ts u := by
-    rw [ht1]
-    exact htime
-  have hzi : z ∈ H (tr.time (j + 1)) := by
-    have : tu.time (j + 1) = tr.time (j + 1) := rfl
-    rw [← this, hj1]
-    exact hz
-  have hle1 : ∀ q < j + 1, tr.time q ≤ tr.time (j + 2) :=
-    fun q hq => hrun.time_mono (by omega)
-  have hfr := Node.frame_of_projAC_at h hzk hc
-  rw [Trace.upTo_state tr z hle1] at hfr
-  have hac := (Compose.goldilocks_ac_projection_from hr (hnc.upTo _)).localRun
-  obtain ⟨Q, hQ, hv, hroot⟩ :=
-    Healing.Growing.Shadow.full_frame_viable_witness_at hrun hnc hzi (by
-      have : tr.time (j + 1) = sp.ts u := hj1
-      rw [this]
-      exact hf)
-  rw [← hfr] at hQ hv hroot
-  have hd : (AC.acProposal sp (tu.projAC.state z (j + 1))
-      (Node.frame (Node.tickStep proposer dg z (tu.state z j) (tu.time (j + 2)) x
-        .acTick).1) (tu.projAC.time (j + 1))).2 = some (d, pay) := by
-    have ht1' : tu.projAC.time (j + 1) = tu.time (j + 2) := ht1
-    rw [Compose.projAC_state h hzk, hst1, ht1']
-    simpa only [Node.acProposal_eq] using hdp
-  have hvd := Healing.proposal_head_viable hac hr.vstart hzk hc rfl
-    (by rw [sp.slotTime_eq]; exact hj1) hd
-    ⟨(AC.frameIn_of_callAt hac hzk hc).1.fcRoot_mem, .refl, Q, hQ, hv, hroot⟩
-  rw [hfr, Node.frame_eq, Store.toFrame_viableHeads] at hvd
-  obtain ⟨hDm, -, hDv⟩ := hvd
-  -- the proposal's store, block and state
-  have hfgj : (tr.state z (j + 1)).fg = (tu.state z j).fg := by
-    rw [← Trace.upTo_state tr z hle1, tu.state_succ_of_call h₀,
-      ((Node.cutStep_ac _ _ _ _ _).1 (h.cutLaw z hzk _ _ h₀)).2.2.1]
-  obtain ⟨fg', hfg'⟩ := hacc'.1 rfl
-  have hpost : (tu.state z (j + 2 + 1)).fg = fg' := by
-    have hcl := ((Node.cutStep_block_true _ _ _ _ _).1 (h.cutLaw z hzk _ _ hacc)).2.1
-    rw [tu.state_succ_of_call hacc]
-    rw [hst2, hfg'] at hcl
-    exact (Option.some.inj hcl).symm
-  obtain ⟨pr, hpar, hσ'⟩ := onBlock_σ hfg'
-  rw [← hpost, Trace.upTo_state tr z hleB] at hσ'
-  -- the floor of the window at the proposal cut
-  have hj1' : tr.time (j + 1) = sp.ts u := hj1
-  have hfl := hframe.floor_eq z (j + 1) hzi (hj1' ▸ hlo) (hj1' ▸ hhi)
-  rw [hfgj] at hDm hDv
-  have hpr' : pr = d.head.root := by
-    rw [hB] at hpar
-    simp only [Node.mkBlock] at hpar
-    exact (Option.some.inj hpar).symm
-  subst hpr'
-  have hatts : P.fgView.atts = (tu.state z j).fg.proposalAttestations d.head := by
-    rw [hB]
-    rfl
-  have hreach := Node.fg_reachable_at h hzk j
-  constructor
-  · rw [← hfl, hfgj]
-    exact floor_le_of_isViable hreach hDm hDv hatts hσ'
-  · intro hk
-    obtain ⟨hmax, hcont⟩ :=
-      (hframe.kind_iff z (j + 1) hzi (hj1' ▸ hlo) (hj1' ▸ hhi)).2 hk
-    have hfloor : floor = (tu.state z j).fg.hj := by
-      rw [← hfl, Store.headHeightFloor, ite_eq_right hcont, hmax]
-      rw [hfgj]
-      omega
-    rw [hfloor]
-    exact hj_lt_of_isViable hreach hDm hDv hatts hσ'
-
-/-- A warm shadow proposal reaches the unchanged stock window floor. -/
-theorem floor_le_warm_proposal_at {proposer : Nat → Fin sp.n}
-    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
-    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.Growing.FrameWindow tr H lo hi floor kindJ J)
-    {z : Fin sp.n} {kP : Nat} (hz : z ∈ H (sp.ts u)) (hdes : z = proposer u)
-    (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hlo : lo ≤ sp.ts u) (hhi : sp.ts u ≤ hi)
-    (hf : (H (sp.ts u))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) :
-    floor ≤ ((tr.state z (kP + 1)).fg.σ P.root).h :=
-  (warm_proposal_bounds_at hrun hnc hframe hz hdes hP hPs hlo hhi hf).1
-
-/-- **Leaf 8 `rounds_le_warm_proposal_at` holds under P-U** (V-A7, `pu_cex_leaf8_low`: proved).
-The stock statement over the stock `FrameWindow` and the stock key `frameKey'`, for shadow runs;
-the stock arithmetic `le_floor_add_riseRounds` and `floor_le_warm_proposal_at'`. -/
-theorem rounds_le_warm_proposal_at {proposer : Nat → Fin sp.n}
-    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {g af len : Time} {u floor v : Nat} {kindJ : Prop}
-    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hwin : Healing.Growing.FrameWindow tr H af (af + len) floor kindJ J)
-    (hK : ∀ y i, y ∈ H (tr.time i) → af ≤ tr.time i → tr.time i ≤ af + len →
-      Healing.frameKey' (tr.state y i).fg = v)
-    (hv : 2 * Healing.Growing.HZ tr H g ≤ v) (hlo : af ≤ sp.ts u) (hhi : sp.ts u ≤ af + len)
-    {z : Fin sp.n} {kP : Nat} (hz : z ∈ H (sp.ts u)) (hdes : z = proposer u)
-    (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hf : (H (sp.ts u))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) :
-    Healing.Growing.HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h +
-      Healing.riseRounds (Healing.Growing.HZ tr H g) v := by
-  have ht : tr.time kP = sp.ts u := by
-    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
-  have hzk : z ∈ H (tr.time kP) := ht ▸ hz
-  have hkey := hK z kP hzk (ht ▸ hlo) (ht ▸ hhi)
-  have hle : ∀ q < kP, tr.time q ≤ tr.time kP := fun q hq => hrun.time_mono hq.le
-  have hpos := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
-    (Compose.Growing.reachable_at hrun (hrun.time_nonneg kP) hzk hle).reachableWith
-  have hfloor := Healing.le_floor_add_riseRounds (tr.state z kP).fg (by omega)
-    (HZ := Healing.Growing.HZ tr H g) (by rw [hkey]; exact hv)
-  rw [hkey, hwin.floor_eq z kP hzk (ht ▸ hlo) (ht ▸ hhi)] at hfloor
-  exact hfloor.trans (Nat.add_le_add_right
-    (floor_le_warm_proposal_at hrun hnc hwin hz hdes hP hPs hlo hhi hf) _)
-
-end Run
 
 end Consensus.Goldilocks.Shadow.PU.Witness
 
