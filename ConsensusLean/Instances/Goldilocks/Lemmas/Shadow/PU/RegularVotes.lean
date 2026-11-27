@@ -915,6 +915,68 @@ theorem regular_slow_next_votes_of_floor_ancestor_at' {s₀ s floor : Nat}
     (by linarith) hslow hmb (restrict_window hframe ((AC.ts_le_iff sp).mpr (by omega)) le_rfl)
     hx hsl hres hCQ hz halo (by linarith) hc hQt' hhQ (fun hk => (hJP hk).trans hPQ) hK
 
+/-- A strict floor anchor suffices without an explicit J-ancestry premise. -/
+theorem regular_fast_next_votes_of_strict_floor_ancestor_at' {s₀ s floor : Nat}
+    {kindJ : Prop} {J X D : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
+    (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
+    (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
+    (hwarm : s₀ + sp.k ≤ s) (hpos : 0 < s) (hs₀ : s₀ ≤ s - 1)
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts ((s - 1 : Nat) : Int))
+    (hmb : sp.ts s + 6 * sp.Δ ≤ b)
+    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
+    (hfast : AC.FastUpdateAt tr.projAC x c s D CV)
+    (hXD : Anc (tr.HonestBlocksAt H) X D)
+    {p : Fin sp.n} {kP : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hp : p ∈ H (tr.time kP)) (hP : P ∈ (tr.state p kP).fg.tree)
+    (hPfl : floor ≤ ((tr.state p kP).fg.σ P.root).h ∧
+      (kindJ → floor < ((tr.state p kP).fg.σ P.root).h))
+    (hPX : Anc (tr.HonestBlocksAt H) P X) (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
+  by_cases hk : kindJ
+  · exact Consensus.Goldilocks.Healing.PU.regular_fast_next_votes_at'
+      (Healing.toFrameWindow'_of_kind hframe hk) hrun hnc hsvc hawake hf hcatch hnr
+      hwarm hpos hs₀ hm hmb hx hfast hXD hK
+  · exact regular_fast_next_votes_of_floor_ancestor_at' hframe hrun hnc hsvc hawake hf hcatch hnr
+      hwarm hpos hs₀ hm hmb hx hfast hXD hp hP hPfl.1 (fun h => (hk h).elim) hPX hK
+
+/-- The strict floor-anchor interface for regular slow next votes. -/
+theorem regular_slow_next_votes_of_strict_floor_ancestor_at' {s₀ s floor : Nat}
+    {kindJ : Prop} {J D : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
+    (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
+    (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
+    (hwarm : s₀ + sp.k ≤ s) (hpos : 0 < s) (hs₀ : s₀ ≤ s - 1)
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hmb : sp.ts s + 6 * sp.Δ ≤ b)
+    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c))
+    (hsl : AC.SlowLockAt tr.projAC x c s D)
+    {p : Fin sp.n} {kP : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hp : p ∈ H (tr.time kP)) (hP : P ∈ (tr.state p kP).fg.tree)
+    (hPfl : floor ≤ ((tr.state p kP).fg.σ P.root).h ∧
+      (kindJ → floor < ((tr.state p kP).fg.σ P.root).h))
+    (hPD : Anc (tr.HonestBlocksAt H) P D) (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
+  by_cases hk : kindJ
+  · exact Consensus.Goldilocks.Healing.PU.regular_slow_next_votes_at'
+      (Healing.toFrameWindow'_of_kind hframe hk) hrun hnc hsvc hawake hf hcatch hnr
+      hwarm hpos hs₀ hm hmb hx hsl hK
+  · exact regular_slow_next_votes_of_floor_ancestor_at' hframe hrun hnc hsvc hawake hf hcatch hnr
+      hwarm hpos hs₀ hm hmb hx hsl hp hP hPfl.1 (fun h => (hk h).elim) hPD hK
+
 end StockWindow
 
 end Consensus.Goldilocks.Healing.PU
