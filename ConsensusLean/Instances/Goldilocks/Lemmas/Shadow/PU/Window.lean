@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Driven
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
@@ -554,7 +555,7 @@ theorem _root_.Consensus.Goldilocks.Compose.Growing.CommitteeFacts.committeeTAt'
 
 /-- The stock-shaped healthy AC base supplier on shadow executions. The committee and
 prefix bookkeeping is unchanged. Service synchrony and catch-up restrict to the prefix;
-the endpoint remains unresolved until the driven-execution adapter closes. -/
+driven execution follows from the static shadow run on that prefix. -/
 theorem CommitteeHalfUpTo.healthy_base_before_at' {K : AC.CommitteeDict sp.n}
     {g ΔF b hold : Time} (hK : CommitteeHalfUpTo tr H K g b)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
@@ -573,7 +574,8 @@ theorem CommitteeHalfUpTo.healthy_base_before_at' {K : AC.CommitteeDict sp.n}
     AC.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt' hrun hnc) d,
     fun s hgs hsd => hK.cs2 s hgs (hsd.trans hdb) d hd0 hdb⟩
   · -- Shadow driven execution (proposal and acceptance run laws).
-    sorry
+    have hdr := projection_driven_of_run' hpre (hnc.upTo d) hpre.genesis_root_ok
+    rwa [RunTrace.upTo_projAC] at hdr
   · -- Restrict actual service witnesses to the read prefix.
     have hm := hrun.time_mono
     have hsync := Healing.PU.service_syncACAt' hrun hs (lo := g) (hi := d) le_rfl
