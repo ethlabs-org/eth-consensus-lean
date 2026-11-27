@@ -57,7 +57,7 @@ theorem KernelProof.high_origin_held_at_vote_at'
     (hc : AC.CastAt tr.projAC y k ell e) (hl : l < e.msg.slot)
     (hFO : Anc (tr.HonestBlocksAt H) ell.frame.F O) :
     O ∈ (tr.state y k).fg.tree := by
-  obtain ⟨W, hW, hOW⟩ := Stub.high_origin_frozen_head_at' hp ho hrb hy hc hl hFO
+  obtain ⟨W, hW, hOW⟩ := KernelProof.high_origin_frozen_head_at' hp ho hrb hy hc hl hFO
   have hWy := (Shadow.PU.Growing.frame_tree_subset_at' hp.run hp.noColl hy hc.1).2 hW.1
   exact Compose.FrameGeometry.anc_mem (Coherence.held_anc_at' hp.run hp.noColl
     (hp.run.time_nonneg k) hy (fun _ hq => hp.run.time_mono hq.le) hOW hWy) hWy
@@ -74,7 +74,7 @@ theorem ResetPremisesUpTo'.high_origin_held_at_vote_at'
     (hc : AC.CastAt tr.projAC y k ell e) (_hkb : tr.time k ≤ b)
     (hj : j < e.msg.slot) (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
-  obtain ⟨W, hW, hBW⟩ := Stub.high_origin_frozen_head_at' hp ho hib hy hc hj hF
+  obtain ⟨W, hW, hBW⟩ := KernelProof.high_origin_frozen_head_at' hp ho hib hy hc hj hF
   have hd := hp.run.time_nonneg k
   have hle : ∀ q < k, tr.time q ≤ tr.time k := fun _ hq => hp.run.time_mono hq.le
   have hr := (Compose.goldilocks_ac_projection_from' (hp.run.upTo hd)
