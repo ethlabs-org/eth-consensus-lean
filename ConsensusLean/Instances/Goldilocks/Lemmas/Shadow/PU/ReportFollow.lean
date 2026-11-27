@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignCalendar
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.StockWindow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignedTick
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotes
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FastLockRenewal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshToFG
@@ -38,9 +39,9 @@ early-witness family (`WitnessFamily`) and the regular and optimistic later-head
 `regular_later_heads_at'` and `optimistic_write_later_proposal_head_at'`; it is unresolved while
 those are. The two endpoints are assembled from the stock proofs: the fresh lock and its report
 from lane N's `KernelProof.fresh_fast_lock_update_toFG(_primed)_at'`, lane C's
-`toFG_candidate_pre_within_stock_at'`, and two
-named stubs: `honest_vote_heads_eq_stub` / `honest_vote_heads_eq_stock_stub` (lane A, the
-unanimous slot-`u` votes).
+`toFG_candidate_pre_within_stock_at'`, and the unanimous slot-`u` votes: lane A's
+`Healing.Growing.Shadow.honest_vote_heads_eq_at'` over `FrameWindow'`, and the named stub
+`honest_vote_heads_eq_stock_stub` over the stock window.
 
 The milestone form reads the stock window (`Generic.FrameWindow … floor kindJ J`):
 `proposal_report_follow_stock_at'` and `proposal_report_follow_delayed_stock_at'` are assembled
@@ -589,28 +590,6 @@ private theorem restrict_stock {lo hi lo' hi' : Time} {floor : Nat} {kindJ : Pro
 The exact contracts sent to the supplier lanes, as named stubs until they land: each is its
 stock statement over the shadow run and the P-U window. Replaced by the suppliers' exports. -/
 
-/-- Stub for lane A's `Healing.Growing.Shadow.honest_vote_heads_eq_at'` (stock
-`honest_vote_heads_eq_at`, FreshVotes). -/
-theorem honest_vote_heads_eq_stub
-    {g ΔF b : Time} {s₀ u M : Nat} {isTop : Prop}
-    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (_hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts u + sp.Δ) M isTop J)
-    {K : AC.CommitteeDict sp.n}
-    (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (_hnc : Compose.NoCollRun dg tr) (_hsvc : ResetService tr H g ΔF b hold)
-    (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (_hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (_hcatch : CatchRun tr H g (2 * sp.Δ)) (_hnr : NoRestartAfter tr H (gbar g))
-    (_hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (_hwarm : s₀ + 2 * sp.k ≤ u)
-    (_hmb : sp.ts u + sp.Δ ≤ b)
-    {z : Fin sp.n} (_hz : z ∈ H (sp.ts u + sp.Δ)) (_hdes : z = proposer u)
-    {kP : Nat} (_hP : tr.ProposesAt z kP P) (_hPs : P.slot = u)
-    (_hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = u →
-      e.msg.head = P.root := by
-  sorry
-
 /-- Stock-window stub for lane A's `Healing.Growing.Shadow.honest_vote_heads_eq_at'` (stock
 `honest_vote_heads_eq_at`, FreshVotes). -/
 theorem honest_vote_heads_eq_stock_stub
@@ -669,7 +648,8 @@ theorem proposal_report_follow_at'
     have := hts hN
     linarith only [this]
   have huN := hts (show u ≤ N by omega)
-  have hun := honest_vote_heads_eq_stub (hframe.mono le_rfl (by linarith only [huN, hΔ]))
+  have hun := Healing.Growing.Shadow.honest_vote_heads_eq_at'
+    (hframe.mono le_rfl (by linarith only [huN, hΔ]))
     hrun hnc hsvc hawake hf hcatch hnr hm hwarm (by linarith only [huN, hΔ, hmb])
     hz hdes hP hPs hK
   have hshort := hframe.mono (hts (by omega : s₀ ≤ u)) hT
@@ -798,7 +778,8 @@ theorem proposal_report_follow_delayed_at'
     (by rw [← hT]; exact htl) hpub' (hawake y t' hyt' (by linarith) ht'b) hs'
   have hyi : y ∈ H (tr.time i) := by rw [hti]; exact hyt'
   have huN' : sp.ts u ≤ sp.ts N := (AC.ts_le_iff sp).2 (by exact_mod_cast (show u ≤ N by omega))
-  have hun := honest_vote_heads_eq_stub (hframe.mono le_rfl (by linarith only [huN', hΔ, hm1]))
+  have hun := Healing.Growing.Shadow.honest_vote_heads_eq_at'
+    (hframe.mono le_rfl (by linarith only [huN', hΔ, hm1]))
     hrun hnc hsvc hawake hf hcatch hnr hm hwarm (by linarith only [huN', hΔ, hm1, hmb]) hz hdes
     hP hPs hK
   obtain ⟨B, hB, hPB⟩ := Healing.Growing.toFG_candidate_pre_within_primed_at' hframe hrun hnc hsvc

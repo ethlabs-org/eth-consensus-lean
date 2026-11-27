@@ -823,6 +823,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshNext
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshSupport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshToFG
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshViable
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotes
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesAnchor
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesFinality
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesGeometry
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesPath
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frontier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.GenericReset

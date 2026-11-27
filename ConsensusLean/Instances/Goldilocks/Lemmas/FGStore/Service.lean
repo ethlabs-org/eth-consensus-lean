@@ -172,9 +172,7 @@ theorem headHeightFloor_bounds (st : Store P ACP) :
 it. -/
 theorem height_le_of_isViable {st : Store P ACP} {B : NodeBlock P ACP} {h : Nat}
     (hv : st.IsViable B) (hh : h ≤ st.hmax) : h ≤ (st.σ B.root).h + 1 := by
-  have hb := headHeightFloor_bounds st
-  change st.headHeightFloor ≤ (st.σ B.root).h at hv
-  omega
+  rcases hv with hv | ⟨hv, -⟩ <;> omega
 
 /-- The finalization step of `update_finality` moves `Σ.F` to `X` when its four tests pass on
 the state after the justification step. -/
@@ -338,38 +336,33 @@ theorem coverage : Coverage P ACP := by
   omega
 
 /-- **G1.9 (a).** The finalization step reads viability after the justification step: if
-`σ.h ≥ Σ.h_max`, `B` itself is viable there (the floor is at most `h_max = σ.h`) and extends
-`X`; otherwise `h_max` is unchanged, and a fired justification step sets `h_j := σ.h_j` with
-`σ.h_j + 1 ≤ σ.h < h_max`, so there is no contest, the floor `h_max − 1` is at most the floor
-after the `h_max` step, and the given viable descendant stays viable. So the four tests pass and
-`Σ.F` moves to `X`. -/
+`σ.h ≥ Σ.h_max`, `B` itself is viable there (its height is `h_max = σ.h`) and extends `X`;
+otherwise `h_max` is unchanged, and a fired justification step sets `h_j := σ.h_j` with
+`σ.h_j + 1 ≤ σ.h < h_max`, so a descendant at height `h_max − 1` is viable by the gap and the given
+viable descendant stays viable. So the four tests pass and `Σ.F` moves to `X`. -/
 theorem cache_acceptance : CacheAcceptance P ACP := by
   intro st B X hB hlt hX hXB hFX hne hJ hV
   obtain ⟨hb, hσ, -, hm, hj⟩ := afterJustification_eq st (st.σ B.root)
   have ht : (afterJustification P ACP st (st.σ B.root)).tree = st.tree := by
     unfold Store.tree; rw [hb]
-  have hfA := headHeightFloor_bounds (afterJustification P ACP st (st.σ B.root))
   have hV' : (afterJustification P ACP st (st.σ B.root)).HasViableDescendant X := by
     by_cases hle : st.hmax ≤ (st.σ B.root).h
     · rw [Nat.max_eq_right hle] at hm
       refine ⟨B, ht ▸ hB, by rw [Store.Anc, ht]; exact hXB, ?_⟩
-      unfold IsViable; rw [hσ]; omega
+      unfold IsViable; left; rw [hσ, hm]
     · rw [Nat.max_eq_left (Nat.le_of_not_le hle)] at hm
+      rcases hj with h | h
+      · rw [h]; exact hV
       obtain ⟨B', hB', hanc, hv⟩ := hV
-      have h₁ := headHeightFloor_bounds ({ st with hmax := max st.hmax (st.σ B.root).h } :
-        Store P ACP)
-      have hs₁ : ({ st with hmax := max st.hmax (st.σ B.root).h } : Store P ACP).hmax =
-          st.hmax := Nat.max_eq_left (Nat.le_of_not_le hle)
-      have hfl : (afterJustification P ACP st (st.σ B.root)).headHeightFloor ≤
-          ({ st with hmax := max st.hmax (st.σ B.root).h } : Store P ACP).headHeightFloor := by
-        rcases hj with h | h
-        · rw [h]
-        · have hc : ¬ (afterJustification P ACP st (st.σ B.root)).Contest := fun hc => by
-            have := hc.1; omega
-          rw [headHeightFloor, ite_eq_right hc]
-          omega
       refine ⟨B', ht ▸ hB', by rw [Store.Anc, ht]; exact hanc, ?_⟩
-      unfold IsViable at hv ⊢; rw [hσ]; exact hfl.trans hv
+      have hv' : st.hmax ≤ (st.σ B'.root).h ∨ (st.σ B'.root).h + 1 = st.hmax := by
+        rcases hv with hv | ⟨hv, -⟩
+        · left; change max st.hmax (st.σ B.root).h ≤ (st.σ B'.root).h at hv; omega
+        · right; change (st.σ B'.root).h + 1 = max st.hmax (st.σ B.root).h at hv; omega
+      unfold IsViable; rw [hσ, hm, h]
+      rcases hv' with hv' | hv'
+      · exact Or.inl hv'
+      · exact Or.inr ⟨hv', Or.inl (by omega)⟩
   rw [updateFinality_F st _ X hX hFX hne hJ hV']
   exact Relation.ReflTransGen.refl
 
