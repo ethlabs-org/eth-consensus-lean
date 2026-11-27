@@ -387,6 +387,73 @@ theorem FrameWindow'.finalized_below_descendant_at' {lo hi : Time} {M : Nat}
       have := hwit.1
       omega
 
+/-- **The frame geometry of a viable witness at a reader's cut** (`witness_frame_at` over the
+shadow frame): for a reader honest at its call in a `FrameWindow'`, holding a descendant `Q` of `X`
+that carries the witness clause, either `X` is below its finalized tip, or `X` and `Q` are in its
+frame above `F` with `Q` a P-U viable head. The witness clause is exactly P-U viability at the
+window's `M` and `J`; no `fc_root = J` case arises. -/
+theorem witness_frame_at'
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {M : Nat} {isTop : Prop}
+    {J : AC.Blk sp.n (List (FG.Att sp.n))} (hframe : FrameWindow' tr H lo hi M isTop J)
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp ro)}
+    (hc : tr.projAC.CallAt y i ell) (hlo : lo ≤ tr.time i) (hhi : tr.time i ≤ hi)
+    (hf : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {X Q : AC.Blk sp.n (List (FG.Att sp.n))} (hQy : Q ∈ (tr.state y i).fg.tree)
+    (hwit : M - 1 ≤ ((tr.state y i).fg.σ Q.root).h ∧
+      (isTop → ((tr.state y i).fg.σ Q.root).h = M - 1 → Anc (tr.HonestBlocksAt H) J Q))
+    (hXQ : Anc (tr.HonestBlocksAt H) X Q) :
+    Anc (tr.HonestBlocksAt H) X ell.frame.F ∨
+      (Anc (tr.HonestBlocksAt H) ell.frame.F X ∧ X ∈ ell.frame.tree ∧
+        ell.frame.Anc ell.frame.fcRoot X ∧ Q ∈ ell.frame.tree ∧ Q ∈ ell.frame.viableHeads ∧
+        ell.frame.Anc X Q) := by
+  have ht := hrun.time_nonneg i
+  have hb : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hrun.time_mono hq.le
+  have hU := Coherence.honestBlocksAt_coherent' hrun hnc
+  have hr := Compose.Growing.reachable_at' hrun ht hy hb
+  rw [Consensus.Goldilocks.Shadow.PU.Growing.frame_of_projAC_at' hrun hy hc]
+  rcases AC.anc_total hU (hframe.finalized_below_descendant_at' hrun hnc hy hy hy
+      (by rwa [max_self]) hlo hhi hQy hwit hQy .refl) hXQ with hFX | hXF
+  swap
+  · exact Or.inl (by rwa [Node.frame'_eq, Store.toFrame'_F])
+  have hΦ := Compose.Growing.frameOK_at' hrun ht hy hb
+  have hsub : (Node.frame' (tr.state y i)).tree ⊆ tr.HonestBlocksAt H := by
+    rw [Node.frame'_eq, Store.toFrame'_tree]
+    exact fun _ h => ⟨y, i, tr.time i, ht, hb, hy, h.1⟩
+  have hXy := Growing.mem_of_honest_anc_at' hrun hnc ht hb hy hXQ hQy
+  have hFXs := Growing.store_anc_of_honest_anc_at' hrun hnc ht hb hy hFX hXy
+  have hFQs := Growing.store_anc_of_honest_anc_at' hrun hnc ht hb hy (hFX.trans hXQ) hQy
+  have hXt : X ∈ (Node.frame' (tr.state y i)).tree := by
+    rw [Node.frame'_eq, Store.toFrame'_tree]; exact ⟨hXy, hFXs⟩
+  have hQt : Q ∈ (Node.frame' (tr.state y i)).tree := by
+    rw [Node.frame'_eq, Store.toFrame'_tree]; exact ⟨hQy, hFQs⟩
+  have hvQ : Q ∈ (Node.frame' (tr.state y i)).viableHeads := by
+    rw [Node.frame'_eq, Store.toFrame'_viableHeads]
+    refine ⟨hQy, hFQs, ?_⟩
+    rw [Store.isViable'_iff, hframe.M_eq y i hy hlo hhi]
+    have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality'
+      hr.reachableWith
+    have hM := hframe.M_eq y i hy hlo hhi
+    have htop := hframe.top_iff y i hy hlo hhi
+    rcases Nat.lt_or_ge ((tr.state y i).fg.σ Q.root).h M with hlt | hge
+    · have he : ((tr.state y i).fg.σ Q.root).h = M - 1 := by have := hwit.1; omega
+      refine Or.inr ⟨by omega, ?_⟩
+      by_cases ht' : isTop
+      · right
+        have hJQ := Growing.store_anc_of_honest_anc_at' hrun hnc ht hb hy (hwit.2 ht' he) hQy
+        rwa [hframe.root_eq y i hy hlo hhi ht']
+      · left
+        have := mt htop.1 ht'
+        omega
+    · exact Or.inl hge
+  have hXQf := AC.anc_tree_of_anc_U hU hΦ hsub hXt hXQ hQt
+  have hFt : (Node.frame' (tr.state y i)).fcRoot ∈ (Node.frame' (tr.state y i)).tree :=
+    hΦ.fcRoot_mem
+  refine Or.inr ⟨by rwa [Node.frame'_eq, Store.toFrame'_F], hXt, ?_, hQt, hvQ, hXQf⟩
+  apply AC.anc_tree_of_anc_U hU hΦ hsub hFt _ hXt
+  rw [Node.frame'_eq, Store.toFrame'_fcRoot]
+  exact hFX
+
 end Consensus.Goldilocks.Healing
 
 namespace Consensus.Goldilocks.Shadow.PU.Growing
