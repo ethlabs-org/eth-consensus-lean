@@ -590,7 +590,7 @@ private theorem pool_nodup_from {FGP : Type} {ro : ReplayOrder sp FGP}
     · subst hc
       intro σ
       change ((acRestart sp ro self A Φ' t').1.pool σ).Nodup
-      rw [(restart_state sp FGP ro self A Φ' t' hok.1.1 h0).2.2.2.2.2.2.2.1 σ]
+      rw [acRestart_eq_stamp sp ro self A Φ' t' hok.1.1 h0, restartStamp_eq]
       exact List.nodup_nil
     · exact hP.step ro self Φ' t' hc ih.2
 

@@ -109,6 +109,11 @@ theorem restart_pool_inventory (P : Vote sp.n → Prop) (ro : ReplayOrder sp FGP
     (self : Fin sp.n) (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time)
     (he : ∀ e ∈ (AC.acRestart sp ro self A Φ t).2, P e.msg) :
     ∀ s, ∀ v ∈ (AC.acRestart sp ro self A Φ t).1.pool s, P v := by
+  classical
+  by_cases h : FrameOK Φ ∧ 0 ≤ t
+  · rw [AC.acRestart_eq_stamp sp ro self A Φ t h.1 h.2, AC.restartStamp_eq]
+    exact fun _ _ hv => False.elim (List.not_mem_nil hv)
+  clear h
   unfold AC.acRestart at he ⊢
   generalize ro.order t Φ = l at he ⊢
   have key : ∀ (l : List (AC.Blk sp.n FGP)) (acc : ACState sp.n × List (AC.Em sp FGP)),

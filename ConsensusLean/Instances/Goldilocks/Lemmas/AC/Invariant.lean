@@ -220,63 +220,21 @@ theorem step_pool_cap (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState s
   rw [step_eq_stepWith, ← stepWithM_parent]
   exact stepWith_pool_cap ro self _ A Φ t c h
 
-/-- The replay of a restart at `t` stamps `t` on every block it receives (and keeps the stamps
-`t` it finds). -/
-private theorem replay_blockStamp (self : Fin sp.n) (A₀ : ACState sp.n) {Φ : Frm sp.n FGP}
-    {t : Time} (ht : 0 ≤ t) :
-    ∀ l : List (Blk sp.n FGP), (∀ B ∈ l, B ∈ Φ.tree ∧ B.root ≠ sp.genesisRoot) →
-    ∀ acc : ACState sp.n × List (Em sp FGP), RestartInv sp A₀ Φ t acc.1 →
-    ∀ q, (acc.1.blockStamp q = ETime.of t ∨ ∃ B ∈ l, B.root = q) →
-      (l.foldl (fun acc B => let r := acOnBlock sp self acc.1 Φ t B; (r.1, acc.2 ++ r.2))
-        acc).1.blockStamp q = ETime.of t := by
-  intro l
-  induction l with
-  | nil =>
-    intro _ acc _ q hq
-    rcases hq with hq | ⟨B, hB, -⟩
-    · exact hq
-    · exact absurd hB List.not_mem_nil
-  | cons B l ih =>
-    intro hl acc h q hq
-    obtain ⟨hB, hg⟩ := hl B List.mem_cons_self
-    have hr : (acOnBlock sp self acc.1 Φ t B).1 = blockReceipt sp acc.1 t B := by
-      rw [h.acOnBlock sp ht hB hg self]
-    simp only [List.foldl_cons]
-    apply ih (fun C hC => hl C (List.mem_cons_of_mem _ hC))
-    · rw [hr]
-      exact h.blockReceipt sp hB hg
-    · rw [hr, (blockReceipt_fields _ _ _).2, Function.update_apply]
-      split_ifs with hqB
-      · exact Or.inl rfl
-      · rcases hq with hq | ⟨C, hC, hCq⟩
-        · exact Or.inl hq
-        · rcases List.mem_cons.mp hC with rfl | hC
-          · exact absurd hCq.symm hqB
-          · exact Or.inr ⟨C, hC, hCq⟩
-
 /-- After a restart at `t`, a block of the tree other than genesis has the stamp `t`. -/
 private theorem acRestart_blockStamp (ro : ReplayOrder sp FGP) (self : Fin sp.n)
     (A : ACState sp.n) {Φ : Frm sp.n FGP} {t : Time} (hΦ : FrameOK Φ) (ht : 0 ≤ t)
     {X : Blk sp.n FGP} (hX : X ∈ Φ.tree) (hg : X.root ≠ sp.genesisRoot) :
     (acRestart sp ro self A Φ t).1.blockStamp X.root = ETime.of t := by
-  have hl := ro.parentOrder t Φ (parentOrder_exists sp hΦ)
-  have h₀ : RestartInv sp A Φ t { ACState.initial sp.genesisRoot with
-      locks := A.locks, latestConfirmed := A.latestConfirmed,
-      restartTime := (t : WithBot Time), mayVote := A.mayVote } :=
-    ⟨rfl, rfl, rfl, rfl, rfl, fun σ => rfl,
-      fun x => Or.inl rfl, fun q => Or.inl rfl⟩
-  exact replay_blockStamp self A ht _ (fun B hB => (hl.2.1 B).mp hB) (_, []) h₀ X.root
-    (Or.inr ⟨X, (hl.2.1 X).mpr ⟨hX, hg⟩, rfl⟩)
+  rw [acRestart_eq_stamp sp ro self A Φ t hΦ ht]
+  simp only [restartStamp_eq, hg, ite_false, show InTree Φ X.root from ⟨X, hX, rfl⟩,
+    ite_true]
 
 /-- After a restart, genesis has the stamp `−∞`. -/
 private theorem acRestart_blockStamp_genesis (ro : ReplayOrder sp FGP) (self : Fin sp.n)
     (A : ACState sp.n) {Φ : Frm sp.n FGP} {t : Time} (hΦ : FrameOK Φ) (ht : 0 ≤ t) :
     (acRestart sp ro self A Φ t).1.blockStamp sp.genesisRoot = ⊥ := by
-  obtain ⟨-, -, -, -, -, -, -, -, -, h⟩ := restart_state sp FGP ro self A Φ t hΦ ht
-  rcases h sp.genesisRoot with h | h
-  · rw [h]
-    simp only [ACState.initial, ite_true]
-  · exact absurd rfl h.2.1
+  rw [acRestart_eq_stamp sp ro self A Φ t hΦ ht]
+  simp only [restartStamp_eq, ite_true]
 
 /-- `step_blockStamp_eq` with the locks after the unlock given. -/
 theorem stepWith_blockStamp_eq (ro : ReplayOrder sp FGP) (self : Fin sp.n) (L : Set Lock)
