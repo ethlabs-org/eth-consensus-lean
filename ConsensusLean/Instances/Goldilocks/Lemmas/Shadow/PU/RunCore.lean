@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retentio
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreLocal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Driven
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Participants
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Provenance
@@ -542,6 +543,7 @@ theorem GoldilocksRun'.toStaticCore (hrun : GoldilocksRun' proposer dg H tr ini)
     exact ⟨inputs, hin, fun j hj a ha =>
       hs j hj a ⟨_, Compose.projFG_callAt.mpr ha.choose_spec⟩⟩
   reachable y hy i := (Node.fg_reachable_at' hrun.toLocalRun' hy i).reachableWith
+  jmax y hy i := (Healing.jMax_iff _).1 (Node.fg_reachable_at' hrun.toLocalRun' hy i).jMax
   frameOK y hy i := Compose.frameOK_state' hrun.toLocalRun' hy i
   projAC_state y hy i := Compose.projAC_state' hrun.toLocalRun' hy i
   acRun hnc := Compose.goldilocks_ac_projection_from' hrun hnc

@@ -76,6 +76,10 @@ theorem _root_.Consensus.Goldilocks.Growing.LocalRun.toLocalRunCore
     have h := Compose.fg_reachable (hrun.upTo ht) hy k
     rw [Trace.upTo_state tr y hle] at h
     exact StockCore.reachableWith h
+  jmax_at := fun {y k t} ht hle hy => by
+    have h := Compose.fg_reachable (hrun.upTo ht) hy k
+    rw [Trace.upTo_state tr y hle] at h
+    exact (Healing.jMax_iff _).1 (Healing.jMax_of_reachable h)
   coherent hnc := Compose.Growing.honest_blocks_coherent_local hrun hnc
   held_anc_at hnc := fun {y k t B C} ht hle hy hBC hC => by
     have hs := Trace.upTo_state tr y hle

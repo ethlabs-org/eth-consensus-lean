@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Optimistic
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
@@ -514,7 +515,7 @@ theorem optimistic_next_proposal_of_early_witness_at' {K : AC.CommitteeDict sp.n
       have h := Compose.projAC_state' (hrun.upTo ht0).toLocalRun' hy i
       rw [RunTrace.upTo_projAC] at h
       rwa [h] at hl
-    have hlsb := proposal_locks_slot_of_stub (hrun.upTo ht0) (hnc.upTo _) hy
+    have hlsb := Compose.proposal_locks_slot_of' (hrun.upTo ht0) (hnc.upTo _) hy
       (by rw [RunTrace.upTo_projAC]; exact hcp) hcall
       (by rw [RunTrace.upTo_projAC]; exact hdp) hti
       (by rw [RunTrace.upTo_projAC];

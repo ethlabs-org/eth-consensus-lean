@@ -131,6 +131,11 @@ structure StaticRunCore
   /-- `Compose.fg_reachable`. -/
   reachable : ∀ y ∈ H, ∀ i,
     Store.ReachableWith u (goldilocksNode sp ro).genesisPayload (tr.state y i).fg
+  /-- `Healing.jMax_of_reachable` (the body of `Healing.JMax`): `Σ.h_j` is at least the justified
+  height of every held state whose `J` is a held block extending `Σ.F`. -/
+  jmax : ∀ y ∈ H, ∀ i, ∀ B ∈ (tr.state y i).fg.tree, ∀ X ∈ (tr.state y i).fg.tree,
+    X.root = ((tr.state y i).fg.σ B.root).J → (tr.state y i).fg.Anc (tr.state y i).fg.F X →
+    ((tr.state y i).fg.σ B.root).hj ≤ (tr.state y i).fg.hj
   /-- `Compose.frameOK_state`. -/
   frameOK : ∀ y ∈ H, ∀ i, FrameOK (frameOf (tr.state y i))
   /-- `Compose.projAC_state`. -/
