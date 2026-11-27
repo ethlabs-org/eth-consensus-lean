@@ -150,12 +150,9 @@ theorem seeded_reader_old
     · exact hFJ'.trans hJO
   · -- the floor
     have hGB := hbelow hB hOB
-    have finish : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ B.root).h →
+    have finish : (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ B.root).h →
         (tr.state y i).fg.IsViable B := by
-      intro hfloor
-      have hpred : (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ B.root).h := by
-        unfold Goldilocks.Store.headHeightFloor at hfloor
-        split_ifs at hfloor <;> omega
+      intro hpred
       change _ ∨ (_ ∧ _)
       by_cases hh : (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ B.root).h
       · exact Or.inl hh
@@ -185,7 +182,11 @@ theorem seeded_reader_old
         rwa [hst] at hheld
     apply finish
     by_cases hlow : (tr.state y i).fg.hj ≤ Healing.Growing.HZ tr H g
-    · obtain ⟨x, q, l, S, hS', hqT, hl, hFS, hSy, -⟩ :=
+    · suffices hfloor : (tr.state y i).fg.headHeightFloor ≤
+          ((tr.state y i).fg.σ B.root).h by
+        unfold Goldilocks.Store.headHeightFloor at hfloor
+        split_ifs at hfloor <;> omega
+      obtain ⟨x, q, l, S, hS', hqT, hl, hFS, hSy, -⟩ :=
         low_seed_held hrun hnc hS.conv hS.seed.toHandoverCore ht0 hi hy hcall hlow
       have hSB : Anc (tr.HonestBlocksAt H) S B := hOB S (hseedOld hS' hqT hl)
       have hSh : Healing.Growing.HZ tr H g + 1 ≤ ((tr.state y i).fg.σ S.root).h := by
