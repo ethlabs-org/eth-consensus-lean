@@ -1,7 +1,9 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.FloorHead
 
@@ -40,7 +42,7 @@ theorem finalized_anc_head_at_cast_at {lo hi : Time} {M : Nat}
       (AC.getHead sp e.readPoint ell.frame (tr.time i)
         (ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot))
         (AC.mergedVoteView sp e.readPoint ell.frame e.msg.slot) ((e.msg.slot : Int) - 1)) := by
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
   have hri := (hac.upTo (hrun.time_nonneg i)).localRun

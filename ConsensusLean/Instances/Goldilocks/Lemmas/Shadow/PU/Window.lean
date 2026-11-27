@@ -14,7 +14,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Driven
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
@@ -235,7 +236,7 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.root_witness_of_earlier_
     (hgf : AC.gbar g < AC.freeze sp e.msg.slot) :
     ∃ Q ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
       Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc ell.frame.fcRoot Q := by
-  have hr := (Compose.goldilocks_ac_projection_from' hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hR := Node.fg_reachable_at hrun.toLocalRun hy a
   obtain ⟨-, -, -, -, -, ⟨Q, hQ, hQh⟩, -⟩ := Store.cache_invariants' hR
   have hv : (tr.state y a).fg.IsViable Q :=
@@ -453,7 +454,7 @@ theorem _root_.Consensus.Goldilocks.Compose.Growing.CommitteeFacts.committeeTAt'
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) : AC.CommitteeTAt K tr.projAC H := by
   intro y i ℓ e hy hcast m v hv
-  have hri := Compose.goldilocks_ac_projection_from'
+  have hri := Compose.goldilocks_ac_projection_from
     (hrun.upTo (hrun.time_nonneg i)) (hnc.upTo (tr.time i))
   rw [RunTrace.upTo_projAC] at hri
   have hb : ∀ k < i + 1, tr.time k ≤ tr.time i := fun k hk =>
@@ -486,7 +487,7 @@ theorem CommitteeHalfUpTo.healthy_base_before_at' {K : AC.CommitteeDict sp.n}
     AC.HealthyBaseUpTo K (tr.projAC.upTo d) (H d)
       ((tr.upTo d).HonestBlocks (H d)) proposer g d := by
   have hpre := hrun.upTo hd0
-  have hr := Compose.goldilocks_ac_projection_from' hpre (hnc.upTo d)
+  have hr := Compose.goldilocks_ac_projection_from hpre (hnc.upTo d)
   rw [RunTrace.upTo_projAC] at hr
   refine ⟨hr, ?_, ?_, ?_, ?_, hfaults d hd0 hdb, hK.facts.hsize,
     AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP d,

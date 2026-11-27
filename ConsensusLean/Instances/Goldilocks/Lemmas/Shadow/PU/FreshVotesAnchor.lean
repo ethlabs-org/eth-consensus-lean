@@ -50,7 +50,7 @@ theorem read_locks_below_of_earlier_heads_at
     hmargin hl hlive hB hBr hK
   rcases hpass with h | ⟨hs, _⟩
   · exact h
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hri := hac.upTo (hrun.time_nonneg i)
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
@@ -99,7 +99,7 @@ theorem vote_anchor_below_of_earlier_heads_at
     (hIH : ∀ x j ev, j < i → x ∈ H (tr.time j) → AC.VoteAt tr.projAC x j ev →
       ev.msg.slot = p → ev.msg.head = P.root) (hK : CommitteeHalfUpTo tr H K g b) :
     Anc (tr.HonestBlocksAt H) (AC.getAnchor sp e.readPoint ell.frame (tr.time i)) P := by
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hri := hac.upTo (hrun.time_nonneg i)
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩

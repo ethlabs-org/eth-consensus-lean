@@ -104,7 +104,7 @@ theorem cache_ahead_report {ini : Fin sp.n → (goldilocksNode sp ro).State}
   obtain ⟨v, hvq, hv⟩ := hex
   obtain ⟨B, hB, a, ha, hav, haX⟩ := hrows v hvq
   have haH : a.val ∈ Hs := hav ▸ hv
-  obtain ⟨m, hmi, _, k, hkm, hs⟩ := Compose.honest_row_signed_before' hrun hnc hy hB ha haH
+  obtain ⟨m, hmi, _, k, hkm, hs⟩ := Compose.honest_row_signed_before hrun hnc hy hB ha haH
   obtain ⟨j, hkj, ht, ℓ, C, E, hto, hC, hE, hEr, hEC, hTh, hET, hEh, _⟩ :=
     signAt_report_entry hrun haH hs
   have hsubv : (tr.state a.val j).fg.tree ⊆ tr.HonestBlocks Hs :=

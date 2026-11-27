@@ -38,7 +38,7 @@ theorem signed_entry_source {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     Growing.Outcome.signed_entry_source_core hrun.toStaticCore hnc hv hs hfast
   obtain ⟨CV, ell, D, hc, hfl, hO⟩ := hstored
   have hj := (Healing.joined_of_fastLockAt
-    (Compose.goldilocks_ac_projection_from' hrun hnc).localRun hv hfl).1
+    (Compose.goldilocks_ac_projection_from hrun hnc).localRun hv hfl).1
   exact ⟨r, hrd, l, O, hj, ⟨CV, ell, D, hc, hfl, hO⟩, rest⟩
 
 end Consensus.Goldilocks.Healing.ShadowLeft

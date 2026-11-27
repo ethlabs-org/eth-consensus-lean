@@ -1,5 +1,4 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowCast
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HonestProposal
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
@@ -41,35 +40,6 @@ theorem Core.proposal_viable_after_votes_at
   have hc' : (tr.projAC.upTo (tr.time k)).CallAt y k ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
   exact ⟨hvi, AC.viableAncestor_self (AC.frameIn_of_callAt hr hy hc').1 hPt (Or.inl hvi), hv⟩
-
-/-- The actual proposal is viable at a full-frame read after its relay deadline, including the
-update itself, from any vote-permitted start: the proposal is relayed to the reader
-(`KernelProof.proposal_viable_at_call_at`), so no vote of the reader is used. -/
-theorem FrameWindow.proposal_viable_after_votes_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    {g ΔF b : Time} {u floor : Nat} {kindJ : Prop}
-    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hnr : NoRestartAfter tr H (gbar g)) (hgu : gbar g ≤ sp.ts u)
-    (hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
-    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
-    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ell)
-    (hlo : sp.ts u + 2 * sp.Δ ≤ tr.time k)
-    (hhi : tr.time k ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ) :
-    P ∈ ell.frame.viableTree ell.frame.tree ∧ ell.frame.viableAncestor P = P ∧
-      P ∈ ell.frame.viableHeads := by
-  have hΔ := sp.toParams.hΔ
-  have hshortT : sp.ts u + sp.Δ ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
-    simp only [ACParams.ts]; push_cast; linarith
-  obtain ⟨hPt, hroot, hv⟩ := KernelProof.proposal_viable_at_call_at hframe hrun hnc hsvc hf hnr
-    hgu le_rfl hshortT hTb hz hdes hP hPs hy hc (by linarith) hhi
-    (fun h => absurd h (by linarith))
-  exact Core.proposal_viable_after_votes_at hrun.toCore hnc hy hc hPt hroot hv
 
 /-- At an actual update the warm unanimous pool forces confirmation and fast
 selection, at the slot committees `K` of a run from `K`'s committee start. No
@@ -146,41 +116,6 @@ theorem Core.unanimous_update_selection_at
     (fun v hv => hK.facts.hP.1 (tr.time k) y hy k (fun q hq => hrun.time_mono hq.le) u v hv)
     (hK.cs2 u hgu (by linarith) _ (hrun.time_nonneg k) hkb) hslots hpool
   exact ⟨hvi, hconf, hfast, hva⟩
-
-/-- The stock window supplies viability to the shared pool-selection proof. -/
-theorem FrameWindow.unanimous_update_selection_at {K : AC.CommitteeDict sp.n}
-    {g ΔF b : Time} {u floor : Nat} {kindJ : Prop}
-    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
-    (hjoin : ∀ x, x ∈ H (sp.ts u + sp.Δ) → AC.JoinedAt tr.projAC x (sp.ts u + sp.Δ))
-    (hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
-    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
-    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    (hun : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e →
-      e.msg.slot = u → e.msg.head = P.root)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k u ell)
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    P ∈ ell.frame.viableTree ell.frame.tree ∧
-      AC.getConfirmation sp (tr.projAC.state y k) ell.frame u = some P ∧
-      AC.fastSelect sp (tr.projAC.state y k) ell.frame u P = some P ∧
-      ell.frame.viableAncestor P = P := by
-  have ht : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
-  have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ = sp.ts u + 6 * sp.Δ := by
-    simp only [ACParams.ts]; push_cast; ring
-  obtain ⟨hvi, hva, _⟩ := hframe.proposal_viable_after_votes_at hrun hnc hsvc hf hnr
-    (by linarith [sp.toParams.hΔ]) hTb hz hdes hP hPs hy hu.1
-    (by rw [ht]; linarith [sp.toParams.hΔ])
-    (by rw [ht, hT])
-  exact Core.unanimous_update_selection_at hrun.toCore hnc hsvc hawake hf hcatch hnr
-    hmargin hjoin hTb hz hdes hP hPs hun hy hu hK hvi hva
 
 end Consensus.Goldilocks.Healing.Growing
 

@@ -8,7 +8,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.PrefixBase
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Participants
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
@@ -124,7 +126,7 @@ private theorem old_lock_witness {s₀ M : Nat} {hi : Time}
       Q ∈ ell₀.frame.viableHeads ∧ Anc (tr.HonestBlocks H) L Q ∧
       Q ∈ ell.frame.viableHeads ∧
       Q ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
-  have hr := (Compose.goldilocks_ac_projection_from' hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have htvote := AC.vote_time_leU hr.toU hy ⟨ell, hc⟩
   change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at htvote
   have hslot : e.msg.slot = sp.slot (tr.time i) := (AC.castAt_specU hr.toU hy hc).2.1
@@ -194,7 +196,7 @@ private theorem live_old_lock_witness {s₀ M : Nat} {hi : Time}
     (hLr : L.root = l.block) (hstrict : ¬ Anc (tr.HonestBlocks H) L ell.frame.fcRoot) :
     ∃ Q ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
       Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc L Q := by
-  have hr := (Compose.goldilocks_ac_projection_from' hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hs := (AC.castAt_specU hr.toU hy hc).2.1
   change e.msg.slot = sp.slot (tr.time i) at hs
   obtain ⟨l₀, hl₀, B, hB, hBr, hlive, heq⟩ := hl
@@ -246,7 +248,7 @@ private theorem vote_head_classification_core
           ∃ L ∈ tr.HonestBlocks H, L.root = l.block ∧
             ell.frame.Anc Hd L ∧ Anc (tr.HonestBlocks H) L D)) := by
   classical
-  have hr := (Compose.goldilocks_ac_projection_from' hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hPhi := AC.frameIn_of_callAt hr hy hc.1
   let A := AC.getAnchor sp e.readPoint ell.frame (tr.time i)
   let S := AC.voteDomain sp e.readPoint ell.frame e.msg.slot
@@ -439,7 +441,7 @@ theorem result_honest_supporter_before_at
     hgs hx (by rwa [RunTrace.upTo_projAC]) le_rfl hready
     (fun y hy hyK i => by
       rw [← Compose.projAC_state hpre.toLocalRun hy i]
-      exact (AC.trace_mayVote_iff (Compose.goldilocks_ac_projection_from' hpre
+      exact (AC.trace_mayVote_iff (Compose.goldilocks_ac_projection_from hpre
         (hnc.upTo _)).localRun hy i s).2 hyK)
     (fun v hv => hK.facts.hP.1 _ x hx c (fun _ hk => hm' hk.le) s v (by
       rwa [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC x (fun _ hk => hm' hk.le)] at hv))

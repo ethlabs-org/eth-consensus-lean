@@ -54,7 +54,7 @@ private theorem optimistic_writer_votes_at
         (Hv.root = sp.genesisRoot ∨ ∃ k, x ∈ H (tr.time k) ∧ tr.projAC.AcceptAt x k Hv ∧
           tr.time k < sp.ts s + 2 * sp.Δ) := by
   have hd := hrun.time_nonneg i₀
-  have hr := Compose.goldilocks_ac_projection_from' (hrun.upTo hd) (hnc.upTo _)
+  have hr := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)
   rw [RunTrace.upTo_projAC] at hr
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono hd
   intro v hv
@@ -85,7 +85,7 @@ private theorem carry_of_service_senders
           tr.time k < sp.ts s + 2 * sp.Δ)) :
     AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
   have hm := hrun.time_mono
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo (hrun.time_nonneg i)).localRun
   have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hcast⟩
   have hsync := Healing.PU.service_syncACAt hrun hsvc
@@ -171,7 +171,7 @@ private theorem relay_source_at_proposal_at
     · obtain ⟨k, hki, hk, hkt⟩ := hrun.toLocalRun.acCatchAt hcatch hz hq
         (lt_of_not_ge hqg) hy hc (by linarith) hFQ
       exact ⟨k, hki, hk, by linarith⟩
-  have hac := Compose.goldilocks_ac_projection_from' (hrun.upTo ht0) (hnc.upTo _)
+  have hac := Compose.goldilocks_ac_projection_from (hrun.upTo ht0) (hnc.upTo _)
   rw [RunTrace.upTo_projAC] at hac
   have hr := hac.localRun
   have hc' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩
@@ -219,8 +219,8 @@ private theorem optimisticLock_pair_compatible_at
   have hU := Coherence.honestBlocksAt_coherent hrun hnc
   have hi0 := hrun.time_nonneg i
   have hj0 := hrun.time_nonneg j
-  have hrx := Compose.goldilocks_ac_projection_from' (hrun.upTo hi0) (hnc.upTo _)
-  have hry := Compose.goldilocks_ac_projection_from' (hrun.upTo hj0) (hnc.upTo _)
+  have hrx := Compose.goldilocks_ac_projection_from (hrun.upTo hi0) (hnc.upTo _)
+  have hry := Compose.goldilocks_ac_projection_from (hrun.upTo hj0) (hnc.upTo _)
   rw [RunTrace.upTo_projAC] at hrx hry
   have hd' := (AC.upTo_optimisticLockAt hmono).mpr ⟨le_rfl, hd⟩
   have he' := (AC.upTo_optimisticLockAt hmono).mpr ⟨le_rfl, he⟩
@@ -255,7 +255,7 @@ private theorem optimisticLock_pair_compatible_at
       · simpa only [max_eq_right h] using hcH
       · simpa only [max_eq_left h] using haH
     have hmax0 := (hrun.time_nonneg a).trans (le_max_left (tr.time a) (tr.time c))
-    have hac := Compose.goldilocks_ac_projection_from' (hrun.upTo hmax0) (hnc.upTo _)
+    have hac := Compose.goldilocks_ac_projection_from (hrun.upTo hmax0) (hnc.upTo _)
     rw [RunTrace.upTo_projAC] at hac
     have heq := AC.one_vote_per_slotU sp _ ro _ _ _ hac.localRun.toU
       v.val hmH a c ev ev'
@@ -346,7 +346,7 @@ theorem optimistic_next_votes_of_windowWitness_at {K : AC.CommitteeDict sp.n}
   have hss : sp.ts s ≤ sp.ts (s + 1 : Nat) := (AC.ts_le_iff sp).2 (by omega)
   have hΔ := sp.toParams.hΔ
   exact AC.Growing.optimistic_transfer_stored
-    (Compose.Growing.goldilocks_ac_projection_from' hrun hnc) K
+    (Compose.Growing.goldilocks_ac_projection_from hrun hnc) K
     (AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP)
     (AC.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt' hrun hnc)) hK.facts.hsize
     hx hopt hXD (hK.cs2 s hm (by linarith) _ ht0 hib)
@@ -429,8 +429,8 @@ theorem optimistic_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
   have hfq := quorum_excess (hf _ ht0 hib)
   have hU := Coherence.honestBlocksAt_coherent hrun hnc
   have subU := RunTrace.honestBlocks_upTo_subset hmono (H := H) ht0
-  have hacG := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
-  have hacP := Compose.goldilocks_ac_projection_from' (hrun.upTo ht0) (hnc.upTo _)
+  have hacG := Compose.Growing.goldilocks_ac_projection_from hrun hnc
+  have hacP := Compose.goldilocks_ac_projection_from (hrun.upTo ht0) (hnc.upTo _)
   rw [RunTrace.upTo_projAC] at hacP
   have hr := hacP.localRun
   have hcp := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩
@@ -569,7 +569,7 @@ theorem optimistic_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
     have hya' : y ∈ H (tr.time a') := hrun.antitone ha't hy
     have hmax : max (tr.time a') (tr.time c) ≤ tr.time i := by
       refine max_le ha't ?_
-      have hcP := Compose.goldilocks_ac_projection_from'
+      have hcP := Compose.goldilocks_ac_projection_from
         (hrun.upTo (hrun.time_nonneg c)) (hnc.upTo _)
       rw [RunTrace.upTo_projAC] at hcP
       obtain ⟨hct, -⟩ := AC.optimisticLockAt_spec hcP hx
@@ -739,7 +739,7 @@ theorem supporter_anchor_viable_head_at
     sp.ts s ≤ tr.time i ∧ tr.time i ≤ sp.ts s + sp.Δ ∧
       ∃ Q ∈ ell.frame.tree, Q ∈ ell.frame.viableHeads ∧ Anc (tr.HonestBlocksAt H) L Q := by
   have ht0 := hrun.time_nonneg i
-  have hac := Compose.goldilocks_ac_projection_from' (hrun.upTo ht0) (hnc.upTo _)
+  have hac := Compose.goldilocks_ac_projection_from (hrun.upTo ht0) (hnc.upTo _)
   rw [RunTrace.upTo_projAC] at hac
   have hr := hac.localRun
   have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩

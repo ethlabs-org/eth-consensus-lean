@@ -285,7 +285,7 @@ theorem ResetPremisesUpTo.reset_vote_floor_above_old_or_covered_at
   have hc' : (tr.upTo (tr.time j)).projAC.CallAt y j ell := by
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc.1⟩
-  have hr := (Compose.goldilocks_ac_projection_from' (hp.run.upTo ht) (hp.noColl.upTo _)).localRun
+  have hr := (Compose.goldilocks_ac_projection_from (hp.run.upTo ht) (hp.noColl.upTo _)).localRun
   have htupper : tr.time j ≤ sp.ts u + sp.Δ :=
     hes ▸ (Compose.cast_head_fcRoot hr (hp.run.upTo ht).vstart hy ⟨hc', hc.2⟩).2
   have hEB : Anc (tr.HonestBlocksAt H) E B := by
