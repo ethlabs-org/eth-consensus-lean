@@ -577,24 +577,6 @@ theorem honestProposalRun_of_proposesAt' {ini} (hrun : GoldilocksRun' proposer d
     (hPs : P.slot = s) : HonestProposalRun tr H proposer s P := by
   sorry
 
-/-- Shadow ancestry transfer, with the stock run and collision premises. -/
-theorem honest_held_anc' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {A W : AC.Blk sp.n (List (FG.Att sp.n))}
-    (h : Anc (tr.HonestBlocks H) A W) (hW : W ∈ (tr.state y i).fg.tree) :
-    (tr.state y i).fg.Anc A W := by
-  sorry
-
-/-- Shadow height transfer, including equal-height entry preservation. -/
-theorem honest_held_height' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {A W : AC.Blk sp.n (List (FG.Att sp.n))}
-    (h : (tr.state y i).fg.Anc A W) :
-    ((tr.state y i).fg.σ A.root).h ≤ ((tr.state y i).fg.σ W.root).h ∧
-      (((tr.state y i).fg.σ W.root).h = ((tr.state y i).fg.σ A.root).h →
-        ((tr.state y i).fg.σ W.root).Th = ((tr.state y i).fg.σ A.root).Th) := by
-  sorry
-
 end Consensus.Goldilocks.Healing
 
 namespace Consensus.Goldilocks.Compose
@@ -638,49 +620,17 @@ theorem projAC_state' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
 
 end Consensus.Goldilocks.Compose
 
-namespace Consensus.Goldilocks.Healing
-
-variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
-  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
-  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
-
-theorem tree_accepted' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
-    (hy : y ∈ H) {m : Nat} {B : A.Blk} (hB : B ∈ (tr.state y m).fg.tree) :
-    B = P.genesisBlock A.genesisPayload ∨ ∃ k < m, tr.AcceptAt y k B := by
-  sorry
-
-theorem accept_mem_from' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
-    (hy : y ∈ H) {k : Nat} {B : A.Blk} (hA : tr.AcceptAt y k B) :
-    B ∈ (tr.state y (k + 1)).fg.tree := by
-  sorry
-
-theorem hmax_mono' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H) :
-    Monotone fun m => (tr.state y m).fg.hmax := by
-  sorry
-
-end Consensus.Goldilocks.Healing
-
 namespace Consensus.Goldilocks.Compose
 
 variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
-theorem accept_next' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
-    {i : Nat} {B : A.Blk} (hc : tr.CallAt y i (.fg (.block B true))) :
-    ∃ ℓ : ACLabel A, tr.CallAt y (i + 1) (.ac ℓ) ∧ ℓ.call = .block B ∧
-      tr.time (i + 1) = tr.time i := by
-  sorry
-
 theorem attest_source' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
     {j : Nat} {C : A.Blk} {a : FG.Att P.n} (hc : tr.CallAt y j (.fg (.attest C (some a)))) :
     ∃ j', j = j' + 1 ∧ ∃ ℓ : ACLabel A, tr.CallAt y j' (.ac ℓ) ∧ ℓ.call = .toFG ∧
       tr.time j' = tr.time j ∧ (A.toFG (tr.state y j').ac ℓ.frame (tr.time j')).2 = some C ∧
       (tr.state y j).fg = (tr.state y j').fg := by
-  sorry
-
-theorem honest_blocks_coherent' (h : Node.LocalRun' proposer dg H sg tr ini)
-    (hnc : NoCollRun dg tr) : Coherent (tr.HonestBlocks H) := by
   sorry
 
 end Consensus.Goldilocks.Compose
@@ -703,32 +653,5 @@ theorem toFG_mem_tree' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
   exact hmem.1
 
 end Consensus.Goldilocks.Healing
-
-namespace Consensus.Goldilocks.Compose
-
-open AC (ACParams ReplayOrder Payload)
-
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-
-theorem honest_eq_genesis' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
-    (hU : Coherent (tr.HonestBlocks H))
-    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocks H)
-    (hr : B.root = sp.genesisRoot) :
-    B = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload := by
-  sorry
-
-theorem honest_row_signed_before' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
-    (_hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {X : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hX : X ∈ (tr.state y i).fg.tree) {a : FG.Att sp.n} (ha : a ∈ X.fgPayload) (hav : a.val ∈ H) :
-    ∃ m < i, tr.AcceptAt y m X ∧ ∃ k < m, tr.SignAt a.val k a := by
-  rcases Healing.tree_accepted' hrun.toLocalRun' hy hX with rfl | ⟨m, hm, hA⟩
-  · simp [Params.genesisBlock] at ha
-  · exact ⟨m, hm, hA,
-      hrun.att_unforgeable y hy m a (Or.inr ⟨X, ⟨true, hA⟩, ha⟩) hav⟩
-
-end Consensus.Goldilocks.Compose
 
 end
