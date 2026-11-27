@@ -82,6 +82,7 @@ theorem reset_vote_root_below_proposal_at {cm : Time → Finset (Fin sp.n)} {βK
     have ht := AC.vote_time_leU hr.toU hy ⟨elly, hcy'⟩
     change tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ at ht
     simpa only [← hsl, hes] using ht
+  apply (hp.cast_root_anc_analysis_root_at hy hcy).trans
   exact hp.reset_vote_root_below_bound_at hR hPU
     (fun x r l O ho hrt _ =>
       (hp.reset_proposal_passes_at hpi hR hci hcall hd hti hib O ⟨x, r, l, ho, hrt⟩).trans
