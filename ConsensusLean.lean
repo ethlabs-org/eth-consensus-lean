@@ -788,6 +788,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Geometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Key
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
