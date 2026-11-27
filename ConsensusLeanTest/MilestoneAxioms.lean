@@ -1,6 +1,5 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGSafety.Main
-public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.FGStore.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ACBase.Main
 public import ConsensusLean.Instances.Goldilocks.Proofs.ComposeAnyAC.Main
@@ -29,10 +28,6 @@ set_option linter.style.longLine false
 /-- Goldilocks M₁, FG safety. -/
 theorem Consensus.Goldilocks.FG.fGSafety : Consensus.Goldilocks.FG.FGSafety :=
   Consensus.Goldilocks.FG.fg_safety
-
-/-- Goldilocks ACSteps, the AC step lemmas. -/
-theorem Consensus.Goldilocks.AC.aCSteps : Consensus.Goldilocks.AC.ACSteps :=
-  Consensus.Goldilocks.AC.acSteps
 
 /-- Goldilocks FGStore, part 1: one FG store. -/
 theorem Consensus.Goldilocks.Store.fGStoreLocal : Consensus.Goldilocks.Store.FGStoreLocal :=
@@ -128,9 +123,6 @@ theorem Consensus.Goldilocks.Healing.Growing.cacheAcceptance :
 
 /-- info: 'Consensus.Goldilocks.FG.fGSafety' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.FG.fGSafety
-
-/-- info: 'Consensus.Goldilocks.AC.aCSteps' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms Consensus.Goldilocks.AC.aCSteps
 
 /-- info: 'Consensus.Goldilocks.Store.fGStoreLocal' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms Consensus.Goldilocks.Store.fGStoreLocal

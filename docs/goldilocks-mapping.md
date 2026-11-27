@@ -28,7 +28,7 @@ are unchanged. The latter also owns the frame-sequence vocabulary, not needed by
 | `Consensus.Goldilocks.Store.Growing.FGStoreTrace` | `Milestones/Statements/FGStore/Growing` | G1.4, G1.10 (core), under growing faults (the static bundle is retired, owner decision) | FGStore | proved (lemma) |
 | `Consensus.Goldilocks.Store.Growing.FGStoreService` | `Milestones/Statements/FGStore/Growing` | G1.6, G1.7, G1.8 under growing faults (the static bundle is retired, owner decision; G1.9 (a)'s lemma stays, G1.9 (b) is `Healing.Growing.CacheAcceptance`) | FGStore | proved (lemma) |
 | `Consensus.Goldilocks.AC.ACBase`, `Consensus.Goldilocks.LocalRunReachable` | `Milestones/Statements/AC/Base` | F.1, A0.1–A0.9 (the trace contract is not a node) | ACBase | proved (lemma) |
-| `Consensus.Goldilocks.AC.ACSteps` | `Milestones/Statements/AC/Steps` | A1.1–A1.5, A1.8 | ACSteps | proved (lemma) |
+| `Consensus.Goldilocks.AC.Growing.ACSteps` | `Milestones/Statements/AC/Growing` | A1.1–A1.5, A1.8 | ACSteps (growing) | proved (lemma) |
 | `Consensus.Goldilocks.Compose.ComposeInterfaceStatements` | `Milestones/Statements/Compose/Interface` | C0.1 at the AC; A0.6, A0.9 consequences; C0.5 (c) | Compose/AnyAC | proved (lemma) |
 | `Consensus.Goldilocks.Compose.ComposeNodeStatements` | `Milestones/Statements/Compose/Node` | C0.1–C0.5 at the node | Compose/AnyAC | proved (lemma) |
 | `Consensus.Goldilocks.Compose.EventOrder`, `Consensus.Goldilocks.Compose.ReadyImpliesJoined` and the six other run statements (the projections) | `Milestones/Statements/Compose/Run` | F.5 (run), F.4, C0.5 | Persist | proved (lemma) |
@@ -273,10 +273,11 @@ not a milestone statement) as `CaseOneA13`: the premises of `NextTransfer`, over
 
 ## ACSteps
 
-Milestone `ACSteps` covers the AC module's L1 step lemmas over AC traces of the AC:
-A1.1, A1.2, A1.3, A1.4, A1.5 and A1.8. A1.2–A1.4 and A1.8 are per vote. A1.9 (per `ac_to_fg` call) is not stated:
-no field of the milestone and no theorem in its joined stored-block form; only its fast-lock source cases are lemmas
-(`Lemmas/AC/Steps/Compatible/{Same,Later,Unlocked}`). A1.6 and
+Milestone `AC.Growing.ACSteps` covers the AC module's L1 step lemmas over AC traces of the AC,
+with honesty read at each event and counts charged at their consuming cuts. At a constant honest
+set these specialize to the fixed-set rows; there is no separate static milestone:
+A1.1, A1.2, A1.3, A1.4, A1.5 and A1.8. A1.2–A1.4 and A1.8 are per vote. A1.9 (per `ac_to_fg` call)
+is retired as a milestone; only the source-case lemmas remain, not a joined stored-block theorem. A1.6 and
 A1.7 are run-level (Service, retired as milestone statements).
 
 | Node | Reference | Definition | Milestone | Lean name |
@@ -285,14 +286,14 @@ A1.7 are run-level (Service, retired as milestone statements).
 | — | CLAIMS §"L1 / Available chain" (events of the step lemmas) | votes and their viability; updates, results, fast lock writes of either origin with counted votes; `ac_to_fg` returns; proposals | — | `Consensus.Goldilocks.AC.VoteExtends`, `Consensus.Goldilocks.AC.CastAt`, `Consensus.Goldilocks.AC.ViableAtVote`, `Consensus.Goldilocks.AC.EarlierVotesExtend`, `Consensus.Goldilocks.AC.UpdateAt`, `Consensus.Goldilocks.AC.ResultAt`, `Consensus.Goldilocks.AC.FastUpdateAt`, `Consensus.Goldilocks.AC.OptimisticPoint`, `Consensus.Goldilocks.AC.OptimisticLockAt`, `Consensus.Goldilocks.AC.FastLockAt`, `Consensus.Goldilocks.AC.ToFGAt`, `Consensus.Goldilocks.AC.ProposalAt` |
 | — | CLAIMS §Runs (unforgeable signatures); FG acceptance (slot proposer) | honest objects over an AC trace (pool and received votes of honest validators were emitted; no fact about a block's declared head votes, which are not signed); the bundle with the trace contract | — | `Consensus.Goldilocks.AC.HonestObjects`, `Consensus.Goldilocks.AC.ACRun` |
 | — | not a claims node (slot committees; `docs/decisions.md` §"Committee modelling") | a slot dictionary and its full form; over an AC trace, P (honest pools and optimistic-check states hold only signatures of the slot's committee), T (the merged-view votes of honest votes, counted declared head votes included, are by members of their slot's committee: membership only, not that a declared head was signed) and CS (fewer faulty members of the slot's committee than honest, awake and joined ones), with P and T under growing faults | — | `Consensus.Goldilocks.AC.CommitteeDict`, `Consensus.Goldilocks.AC.CommitteeDict.full`, `Consensus.Goldilocks.AC.CommitteeP`, `Consensus.Goldilocks.AC.CommitteeT`, `Consensus.Goldilocks.AC.FaultBoundK`, `Consensus.Goldilocks.AC.CommitteePAt`, `Consensus.Goldilocks.AC.CommitteeTAt` |
-| A1.1 | CLAIMS A1.1 | proposer and voters agree on unlocking | `ACSteps` | `Consensus.Goldilocks.AC.ProposerVotersAgree` |
-| A1.2 | CLAIMS A1.2 | first transfer, per vote | `ACSteps` | `Consensus.Goldilocks.AC.FirstTransfer` |
-| A1.3 | CLAIMS A1.3 | next transfer, per vote. **Stronger than CLAIMS**: no `Sync[t_m, τ]` premise | `ACSteps` | `Consensus.Goldilocks.AC.NextTransfer` |
-| A1.4 | CLAIMS A1.4 (a), (b) | optimistic is fast: the transfer (per vote), the next update. **Stronger than CLAIMS**: (a) has no `Sync` premise; (b) assumes neither the optimistic confirmation nor `Sync`: in their place only `2·\|K(s+1) ∖ H\| < committeeSize` (`f < n/2` at the population binding) and that every honest slot-`(s+1)` vote extends `B` (the premises about the updating node `z` are kept) | `ACSteps` | `Consensus.Goldilocks.AC.OptimisticTransfer`, `Consensus.Goldilocks.AC.OptimisticNextUpdate` |
-| A1.5 | CLAIMS A1.5 | source age. **Stronger than CLAIMS** in form: over every AC trace with the local contract `ACLocalRun` (the earlier form was an `ACRun`, whose honest-object facts, signature provenance and slot proposer, the proof never used). With deep sources on (`deepDepth = some D`) the returned block may instead, when there is no fast-lock candidate, be a deep candidate under the call's deep anchor, without requiring a post-`τ` fast-lock write (the deep stamp-age bound `t_{slot(t) − D}` of `toFGDeepCandidates` still applies; deep FG sources, decisions) | `ACSteps` | `Consensus.Goldilocks.AC.SourceAge` |
-| A1.8 | CLAIMS A1.8 | result transfer, per vote | `ACSteps` | `Consensus.Goldilocks.AC.ResultTransfer` |
+| A1.1 | CLAIMS A1.1 | proposer and voters agree on unlocking; proposer honest through the vote | `ACSteps` (growing) | `Consensus.Goldilocks.AC.Growing.ProposerVotersAgree` |
+| A1.2 | CLAIMS A1.2 | first transfer, per vote | `ACSteps` (growing) | `Consensus.Goldilocks.AC.Growing.FirstTransfer` |
+| A1.3 | CLAIMS A1.3 | next transfer, per vote. **Stronger than CLAIMS**: no `Sync[t_m, τ]` premise | `ACSteps` (growing) | `Consensus.Goldilocks.AC.Growing.NextTransfer` |
+| A1.4 | CLAIMS A1.4 (a), (b) | optimistic is fast: the transfer (per vote), the next update. **Stronger than CLAIMS**: (a) has no `Sync` premise; (b) assumes neither the optimistic confirmation nor `Sync`: in their place only fewer than half of `K(s+1)` are faulty at `z`'s update cut (`f < n/2` at the population binding), and every slot-`(s+1)` vote cast while honest extends `B` (the premises about the updating node `z` are kept) | `ACSteps` (growing) | `Consensus.Goldilocks.AC.Growing.OptimisticTransfer`, `Consensus.Goldilocks.AC.Growing.OptimisticNextUpdate` |
+| A1.5 | CLAIMS A1.5 | source age. **Stronger than CLAIMS** in form: over every AC trace with the local contract `Growing.ACLocalRun`, without honest-object facts (signature provenance, slot proposer). With deep sources on (`deepDepth = some D`) the returned block may instead, when there is no fast-lock candidate, be a deep candidate under the call's deep anchor, accepted by `t_{slot(t)−D}`, without requiring a post-τ fast-lock write (deep FG sources, decisions) | `ACSteps` (growing) | `Consensus.Goldilocks.AC.Growing.SourceAge` |
+| A1.8 | CLAIMS A1.8 | result transfer, per vote | `ACSteps` (growing) | `Consensus.Goldilocks.AC.Growing.ResultTransfer` |
 | A1.9 | CLAIMS A1.9 | **retired** as a milestone statement: source compatibility after the cut is no field of `ACSteps`. Its source cases remain lemmas (`Lemmas/AC/Steps/Compatible/{Same,Later,Unlocked}`); the joined stored-block form is not stated | `ACSteps` | — |
-| — | the milestone | all of the above, at one and at every AC parameter set | `ACSteps` | `Consensus.Goldilocks.AC.ACStepsAt`, `Consensus.Goldilocks.AC.ACSteps` |
+| — | the milestone | all of the above, at one and at every AC parameter set | `ACSteps` (growing) | `Consensus.Goldilocks.AC.Growing.ACStepsAt`, `Consensus.Goldilocks.AC.Growing.ACSteps` |
 
 Modelling choices:
 
@@ -300,8 +301,8 @@ Modelling choices:
   by their validator's node. Every frame block has its slot's proposer. An honest proposer has at most one block per
   slot. `Spec/Run` discharges them through the projection.
 - **Committees.** A1.2–A1.4 count over a slot dictionary `K` of `committeeSize` members per slot whose
-  members cast the votes the honest nodes hold and are the validators their merged views count (`CommitteeP`,
-  `CommitteeT`; T states membership only), with the fault bounds charged to the
+  members cast the votes the honest nodes hold and are the validators their merged views count (`CommitteePAt`,
+  `CommitteeTAt` for the growing rows; T states membership only), with the fault bounds charged to the
   slot committees (`FaultBoundK`, `2·|K s ∖ H| < committeeSize`). At the full dictionary with `committeeSize = n`
   these are the population facts (`FaultBound`, `2f < n`).
 - **Events inside a call** are named through the AC's own functions:

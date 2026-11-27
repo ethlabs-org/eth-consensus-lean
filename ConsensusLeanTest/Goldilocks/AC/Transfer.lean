@@ -2,9 +2,9 @@ module
 public import ConsensusLeanTest.Goldilocks.AC.Optimistic
 @[expose] public section
 
-/-! # Witnesses for the premises of the Goldilocks transfer ACSteps statements
+/-! # Witnesses for the premises of the growing Goldilocks transfer AC steps
 
-The hypotheses of A1.2 `FirstTransfer` and A1.3 `NextTransfer` (`Statements/AC/Steps.lean`) hold
+The hypotheses of A1.2 `FirstTransfer` and A1.3 `NextTransfer` (`Statements/AC/Growing.lean`) hold
 together of the run `trW` of `Goldilocks/AC/Optimistic` (one validator `v0`, `Δ = 1`,
 `t_s = 4s`, `k = c = 2`, frame `Φ₁` with tree `{g, B1}`, coherent set `U₁ = {g, B1}`, honest set
 all of `Fin 1`), so neither proved milestone is vacuous. Both are taken at the slot-`2` vote of
@@ -12,7 +12,7 @@ all of `Fin 1`), so neither proved milestone is vacuous. Both are taken at the s
 
 `*_premises_satisfiable` state, for each statement at `sp1`, `FGP := Unit`, `ro1`, that there are
 values of all its universally bound variables satisfying `ACRun` and every hypothesis (copied from
-the statement); `*_on_witness` apply the proved milestones (`acStepsAt`) to the run.
+the statement); `*_on_witness` apply `Growing.acStepsAt` with constant `H := fun _ => Set.univ`.
 
 Limitations: `n = 1` and `f = 0`, so the participation and fault bounds hold trivially. The fast
 lock of A1.2 has the optimistic origin (`v0`'s optimistic confirmation of slot `1` at cut 0,
@@ -126,19 +126,57 @@ theorem nextTransfer_premises_satisfiable :
 
 /-! ## The milestones on the witness -/
 
+private theorem constant_run : Growing.ACRun (fun _ => v0) trW (fun _ => Set.univ) U₁ := by
+  let h := acRun_W
+  let l := h.localRun
+  refine ⟨{
+    antitone := fun _ _ _ => Set.Subset.rfl
+    coherent := l.coherent
+    init := l.init
+    exec := l.exec
+    frameLaw := fun y i ℓ hy => l.frameLaw y hy i ℓ
+    time_nonneg := l.time_nonneg
+    time_mono := l.time_mono
+    awake_of_call := fun y i ℓ hy => l.awake_of_call y hy i ℓ
+    restart_of_sleep := fun y i ℓ u hy => l.restart_of_sleep y hy i ℓ u
+    restart_at_wake := fun y u v hy => l.restart_at_wake y hy u v
+    sleep_of_restart := fun y i ℓ hy => l.sleep_of_restart y hy i ℓ }, {
+    pool_vote := fun y i σ hy => h.honest.pool_vote y hy i σ
+    message_vote := fun y i ℓ v hy => h.honest.message_vote y hy i ℓ v
+    proposer := ?_
+    one_block := ?_ }, h.vstart⟩
+  · rintro B ⟨y, i, ℓ, hy, hc, hB⟩
+    exact h.honest.proposer B ⟨y, hy, i, ℓ, hc, hB⟩
+  · intro y i ℓ B y' i' ℓ' B' hy hc hB hy' hc' hB'
+    exact h.honest.one_block B B' ⟨y, hy, i, ℓ, hc, hB⟩ ⟨y', hy', i', ℓ', hc', hB'⟩
+
+private theorem constant_sync {a b : Time} (h : SyncAC GA1 Set.univ U₁ a b trW) :
+    SyncACAt GA1 (fun _ => Set.univ) U₁ a b trW :=
+  ⟨fun x i m hx hs ha hb y j ℓ hy => h.1 x hx i m hs ha hb y hy j ℓ,
+    fun x i B hx hs ha hb y j ℓ hy => h.2 x hx i B hs ha hb y hy j ℓ⟩
+
 /-- (a) A1.2 on the run: the slot-`2` vote extends `B1`. -/
 theorem firstTransfer_on_witness : VoteExtends U₁ e1.msg B1 :=
-  (acStepsAt sp1).firstTransfer Unit ro1 Set.univ U₁ trW (fun _ => v0) acRun_W
-    (CommitteeDict.full sp1.n) CommitteeP.full CommitteeT.full (size_binding_full rfl) 1 v0 v0 0 1
-    B1 CV1 ℓ1 e1 trivial (Or.inr optimisticLock_W) trivial castAt_W rfl (sync_W (by decide))
-    carry_W (faultBoundK_W _ _) faultsK_W viable_W earlier_W
+  (Growing.acStepsAt sp1).firstTransfer Unit ro1 (fun _ => Set.univ) U₁ trW
+    (fun _ => v0) constant_run
+    (CommitteeDict.full sp1.n) CommitteePAt.full
+    (fun _ _ _ _ _ _ _ v _ => mem_full v.slot _) (size_binding_full rfl) 1 v0 v0 0 1
+    B1 CV1 ℓ1 e1 trivial (Or.inr optimisticLock_W) trivial castAt_W rfl
+    (constant_sync (sync_W (by decide)))
+    carry_W (faultBoundK_W _ _) faultsK_W viable_W
+    (fun x j hj hx e he hs => earlier_W x hx j hj e he hs)
 
 /-- (a) A1.3 on the run: the slot-`2` vote extends `B1`. -/
-theorem nextTransfer_on_witness : VoteExtends U₁ e1.msg B1 :=
-  (acStepsAt sp1).nextTransfer Unit ro1 Set.univ U₁ trW (fun _ => v0) acRun_W
-    (CommitteeDict.full sp1.n) CommitteeP.full CommitteeT.full (size_binding_full rfl) 1 v0 1 B1
-    ℓ1 e1 trivial castAt_W rfl slot1_extend_W participation1_W carryHonest_W (faultBoundK_W _ _)
-    faultsK_W viable_W earlier_W
+theorem nextTransfer_on_witness : VoteExtends U₁ e1.msg B1 := by
+  apply (Growing.acStepsAt sp1).nextTransfer Unit ro1 (fun _ => Set.univ) U₁ trW
+    (fun _ => v0) constant_run
+    (CommitteeDict.full sp1.n) CommitteePAt.full
+    (fun _ _ _ _ _ _ _ v _ => mem_full v.slot _) (size_binding_full rfl) 1 v0 1 B1
+    ℓ1 e1 trivial castAt_W rfl
+    (fun x j e hx he hs => slot1_extend_W x hx j e he hs) _ _ (faultBoundK_W _ _)
+    faultsK_W viable_W (fun x j hj hx e he hs => earlier_W x hx j hj e he hs)
+  · simpa only [Set.mem_univ, true_and] using participation1_W
+  · simpa only [Set.mem_univ, true_and] using carryHonest_W
 
 end Consensus.Goldilocks.AC.Test
 
