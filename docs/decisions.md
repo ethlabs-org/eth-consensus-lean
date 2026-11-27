@@ -167,7 +167,7 @@ detail in `TRUST.md`.
   blocks it does not accept. Only a newly accepted block is relayed: a receipt of a block the node already holds is
   refused by the FG and is not forwarded (composition.tex §"Model"). A vote is forwarded, in a signed envelope
   stamped with its admission time, exactly when a call other than a restart newly inserts it into the pool; the
-  restart's replay forwards nothing (`SendOrAdmit`). A vote the restart drops and the replay does not restore is
+  restart forwards nothing (`SendOrAdmit`). A vote the restart drops is
   forwarded again when it is re-admitted, as a fresh admission. The attestations of an accepted block get actual
   attestation calls; its declared head votes are not objects and get no call. Block-before-payload preserves the block handler's
   priority (including any vote it emits); the later message handlers use the resulting state. The one-vote
@@ -438,6 +438,15 @@ detail in `TRUST.md`.
   hidden in runtime data. The engine's `dutyStep` gates both state mutation and release on selection.
   Delivered-block proposer correspondence is an explicit `LocalRun.proposerCredential` obligation, including
   faulty signers, proved for the canonical simulation by `simTrace_proposerCredential` (`Lemmas/Simulation/RunSchedule`).
+- **Restart is an order-free bulk stamp.** A restart keeps locks, `latestConfirmed` and `mayVote`,
+  resets the remaining fields, sets `restartTime` to its time, and stamps genesis `⊥`, other
+  roots in the frame `ETime.of t`, and outside roots `⊤`. It emits nothing and admits no votes.
+  The replay characterization and two-way lawful trace equivalence require `FrameOK` and
+  nonnegative time; they preserve the identical trace carrier, including state reads and emission
+  read points. This is not equality with replay on every raw input: without a parent enumeration,
+  a replay order can skip held roots; negative times are also outside the proved guard. Raw restart
+  entry points include `stepWith`, `stepWithM`, the AC interface and the node adapter's `restore`.
+  An arbitrary initial AC state alone is not an exception. The retained order parameter is unused.
 - **Restart replay order is proposer-independent.** It depends only on the validator count and the genesis root:
   its data enumerates a frame's non-genesis blocks in parent order, with no proposer or timing dependence. Indexing
   it by these two values, supplied from `Setup` by validator count, keeps the actual sibling order when the

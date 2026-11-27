@@ -275,47 +275,13 @@ theorem blockReceipt_admits_nothing :
 theorem message_admits : (admitVote sp3 (ACState.initial 0) 8 a).pool 1 = [a] := by
   simp [admitVote, slot_8, ACState.initial, a]
 
-/-- A restart replays no declaration, whatever the frame and the replay order: the pools stay
-empty (the node is not joined at its restart time, so it casts no vote either). -/
+/-- A restart admits no declaration, whatever the frame and the retained replay order:
+the pools are empty and nothing is emitted. -/
 theorem acRestart_pools_empty (ro : ReplayOrder sp3 Unit) (self : Fin sp3.n) (A : ACState sp3.n)
     (Φ : Frm sp3.n Unit) :
     (acRestart sp3 ro self A Φ 10).1.pool = (fun _ => []) ∧
       (acRestart sp3 ro self A Φ 10).2 = [] := by
-  have hnj : ∀ A' : ACState sp3.n, A'.restartTime = ((10 : Time) : WithBot Time) →
-      ¬ joined sp3 A' 10 := by
-    intro A' h hj
-    unfold joined at hj
-    rw [h, show sp3.slot 10 = 2 by decide] at hj
-    exact absurd (WithBot.coe_le_coe.mp hj) (by decide)
-  have hblock : ∀ (A' : ACState sp3.n) (B : Blk sp3.n Unit),
-      A'.restartTime = ((10 : Time) : WithBot Time) →
-      acOnBlock sp3 self A' Φ 10 B = (blockReceipt sp3 A' 10 B, []) := by
-    intro A' B h
-    have hr : ¬ joined sp3 (blockReceipt sp3 A' 10 B) 10 := hnj _ h
-    have ho : optimisticConfirmation sp3 (blockReceipt sp3 A' 10 B) Φ 10 =
-        blockReceipt sp3 A' 10 B := by
-      unfold optimisticConfirmation optimisticSelect
-      rw [ite_eq_left (Or.inl hr)]
-    unfold acOnBlock
-    rw [ho]
-    unfold tryVote
-    rw [ite_eq_left (Or.inl hr)]
-  let step := fun (acc : ACState sp3.n × List (Em sp3 Unit)) B =>
-    let r := acOnBlock sp3 self acc.1 Φ 10 B; (r.1, acc.2 ++ r.2)
-  suffices ∀ (L : List (Blk sp3.n Unit)) (acc : ACState sp3.n × List (Em sp3 Unit)),
-      acc.1.pool = (fun _ => []) → acc.1.restartTime = ((10 : Time) : WithBot Time) → acc.2 = [] →
-      (L.foldl step acc).1.pool = (fun _ => []) ∧ (L.foldl step acc).2 = [] from
-    this (ro.order 10 Φ) _ rfl rfl rfl
-  intro L
-  induction L with
-  | nil => intro acc h1 _ h3; exact ⟨h1, h3⟩
-  | cons B L ih =>
-    intro acc h1 h2 h3
-    simp only [List.foldl_cons]
-    have hs : step acc B = (blockReceipt sp3 acc.1 10 B, acc.2) := by
-      simp only [step, hblock acc.1 B h2, List.append_nil]
-    rw [hs]
-    exact ih _ h1 h2 h3
+  exact ⟨rfl, rfl⟩
 
 /-- A block's AC payload carries no vote object: only its attestations are carried (under the
 former rule a block declaring `a`, `b'` and `z` would carry their vote objects). -/

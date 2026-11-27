@@ -1243,13 +1243,14 @@ update does not query $\Call{ac\_to\_fg}{}$ for that duty.
 
 \subsection{Joining and restart}\label{sec:ac-joining}
 
-\emph{Restart.}  A restart keeps the locks and $\AC.\latestConfirmed$, and it resets
+\emph{Restart.}  A restart keeps the locks, $\AC.\latestConfirmed$ and the installed
+voting permission, and it resets
 every other part of~$\AC$ to its initial value.  It sets
-$\AC.\restartTime$ to the time of the restart, and it calls
-$\Call{ac\_on\_block}{}$ at that time for every block of $\Fr.\tree$ other
-than~$\genesis$, in parent order; the order of siblings is not fixed.
-These blocks get that stamp, so every deep candidate's age restarts;
-$\genesis$ keeps $-\infty$.  Their declarations are not admitted, so the
+$\AC.\restartTime$ to the time of the restart and assigns block stamps in bulk:
+the genesis root gets $-\infty$, every other root in $\Fr.\tree$ gets the restart
+time, and every root outside the tree gets $+\infty$. No enumeration or block
+handler is run, so every deep candidate's age restarts independently of order.
+No declaration is admitted and no vote is emitted, so the
 restarted pools hold only votes received after the restart.  A joined
 voter of slot~$s$ restarted by $t_{s-1}$, so it lost no slot-$(s-1)$ vote:
 admission refuses such a vote before~$t_{s-1}$.  A lock written before a
@@ -1265,11 +1266,13 @@ restart keeps its slot and its expiry.
   \State $\AC'.\locks\gets\AC.\locks$;\quad
     $\AC'.\latestConfirmed\gets\AC.\latestConfirmed$
   \Comment{they persist}
+  \State $\AC'.\mathsf{mayVote}\gets\AC.\mathsf{mayVote}$
   \State $\AC'.\restartTime\gets t$
-  \ForAll{$B\in\Fr.\tree$ with $B\neq\genesis$, in parent order}
-    \State \Call{ac\_on\_block}{$\AC',\Fr,t,B$}
-    \Comment{stamps the block with $t$}
-  \EndFor
+  \State $\AC'.\timestamp[q]\gets
+    \text{if }q=\genesis.\rootf\text{ then }-\infty
+    \text{ else if }\exists B\in\Fr.\tree:B.\rootf=q\text{ then }t
+    \text{ else }+\infty$
+    for every block root $q$ \Comment{nothing is emitted}
   \State \Return $\AC'$
 \EndFunction
 \end{algorithmic}

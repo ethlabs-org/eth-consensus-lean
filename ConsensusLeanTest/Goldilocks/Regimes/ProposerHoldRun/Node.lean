@@ -321,8 +321,10 @@ theorem pool_vote_slot {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) (c : Na
       have hp := congrArg Prod.fst hex
       dsimp only at hp
       rw [← hp] at hpost
-      rcases step_pool_new (ro := S.ro _) y ((tr S).projAC.state y k) ℓ.frame ((tr S).projAC.time k)
-        ℓ.call hnr hpost hpre with hm | hval
+      rcases step_pool_new
+        (sp := ({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
+        (ro := S.ro _) y ((tr S).projAC.state y k) ℓ.frame ((tr S).projAC.time k)
+        ℓ.call hnr (x := x) (σ := x.slot) hpost hpre with hm | hval
       · obtain ⟨i, w, o, t, hi, z, hcont⟩ := msg_delivered ⟨ℓ, Compose.projAC_callAt.mp hc, hm⟩
         obtain ⟨i', hi'⟩ := rhoc_deliver hi
         exact delivered_vote hi' _ hcont x z rfl (val_faulty hxH)

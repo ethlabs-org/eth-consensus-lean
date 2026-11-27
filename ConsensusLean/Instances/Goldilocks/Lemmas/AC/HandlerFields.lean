@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Actions
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Restart
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Premises
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.RestartStamp
 
 public section
 
@@ -153,19 +154,11 @@ theorem acToFG_mayVote (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
   unfold acToFG
   split_ifs <;> rfl
 
-/-- Restart replays receipts without changing the installed permission. -/
+/-- Restart keeps the installed permission. -/
 theorem acRestart_mayVote (ro : ReplayOrder sp FGP) (self : Fin sp.n)
     (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (acRestart sp ro self A Φ t).1.mayVote = A.mayVote := by
-  have keeps (bs : List (Blk sp.n FGP)) (acc : ACState sp.n × List (Em sp FGP)) :
-      (bs.foldl (fun acc B =>
-        let r := acOnBlock sp self acc.1 Φ t B
-        (r.1, acc.2 ++ r.2)) acc).1.mayVote = acc.1.mayVote := by
-    induction bs generalizing acc with
-    | nil => rfl
-    | cons B bs ih =>
-      exact (ih _).trans (acOnBlock_mayVote self acc.1 Φ t B)
-  exact keeps (ro.order t Φ) _
+  rfl
 
 /-- Every AC call preserves the permission installed before execution. -/
 theorem step_mayVote (ro : ReplayOrder sp FGP) (self : Fin sp.n)
@@ -249,22 +242,6 @@ private theorem acOnBlock_emits_mayVote (self : Fin sp.n) (A : ACState sp.n) (Φ
   have h := tryVote_emits_mayVote self _ Φ t e he
   rwa [optimisticConfirmation_mayVote, blockReceipt_mayVote] at h
 
-/-- The restart replay keeps the permission and emits only gated votes. -/
-private theorem foldl_acOnBlock_emits_mayVote (self : Fin sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (p : Nat → Bool) :
-    ∀ (l : List (Blk sp.n FGP)) (acc : ACState sp.n × List (Em sp FGP)),
-      acc.1.mayVote = p → (∀ e ∈ acc.2, p e.msg.slot = true) →
-        ∀ e ∈ (l.foldl (fun acc B => let r := acOnBlock sp self acc.1 Φ t B;
-          (r.1, acc.2 ++ r.2)) acc).2, p e.msg.slot = true
-  | [], _, _, h => h
-  | B :: l, acc, h₁, h₂ => foldl_acOnBlock_emits_mayVote self Φ t p l _
-      ((acOnBlock_mayVote self acc.1 Φ t B).trans h₁)
-      fun e he => by
-        rcases List.mem_append.mp he with he | he
-        · exact h₂ e he
-        · rw [← h₁]
-          exact acOnBlock_emits_mayVote self acc.1 Φ t B e he
-
 /-- **Every AC call is gated.** Every emission of an AC call passes the call's input gate: a
 vote of slot `s` only when `mayVote s`. -/
 theorem emits_mayVote (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
@@ -289,9 +266,7 @@ theorem emits_mayVote (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState s
   | block B => exact acOnBlock_emits_mayVote self A Φ t B e he
   | restart =>
     change e ∈ (acRestart sp ro self A Φ t).2 at he
-    unfold acRestart at he
-    exact foldl_acOnBlock_emits_mayVote self Φ t A.mayVote _ _ rfl
-      (fun _ h => absurd h List.not_mem_nil) e he
+    exact absurd he List.not_mem_nil
 
 end Consensus.Goldilocks.AC
 

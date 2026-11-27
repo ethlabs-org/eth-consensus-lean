@@ -62,7 +62,9 @@ theorem committeeOne_nonmember_silent (S : Setup) (pub : Public) (hn : 1 ≤ pub
         (((goldilocks { S with vote := committeeOne } pub).init key p io hn).node.ac) Φ t c).2,
       e.msg.slot ≠ s := by
   intro e he hs
-  have h := AC.emits_mayVote (S.ro pub.n) key _ Φ t c e he
+  have h := AC.emits_mayVote
+    (sp := ({ S with vote := committeeOne } : Setup).params pub hn)
+    (S.ro pub.n) key _ Φ t c e he
   rw [hs, committeeOne_init_mayVote S pub hn key p io s, hp] at h
   exact Bool.false_ne_true h
 
@@ -82,7 +84,9 @@ theorem committeeOne_nonmember_silent_at {V : Type} [Fintype V] [DecidableEq V] 
         (Simulation.stateAt { S with vote := committeeOne } rho hn v i).node.ac Φ t c).2,
       e.msg.slot ≠ s := by
   intro e he hes
-  have h := AC.emits_mayVote (S.ro _) key _ Φ t c e he
+  have h := AC.emits_mayVote
+    (sp := Setup.params { S with vote := committeeOne } (Model.pubOf E) hn)
+    (S.ro _) key _ Φ t c e he
   rw [hes, Simulation.stateAt_mayVote { S with vote := committeeOne } rho hn hv v i] at h
   exact hs (of_decide_eq_true h)
 
