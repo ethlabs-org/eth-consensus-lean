@@ -1,8 +1,11 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularClassification
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.HeadLock
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -27,6 +30,58 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 variable {hold : Time}
+
+namespace Core
+
+/-- Classification and propagation are independent of the frame's root policy. -/
+theorem next_votes_of_supporter_at
+    {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
+    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State} {s : Nat}
+    {kindJ : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hrun : Consensus.Goldilocks.GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr)
+    {z : Fin sp.n} {q : Nat} (hz : z ∈ H (tr.time q))
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC z q ell e) (hes : e.msg.slot = s)
+    (hQU : Q ∈ tr.HonestBlocksAt H) (hQr : Q.root = e.msg.head)
+    (hXQ : Anc (tr.HonestBlocksAt H) X Q)
+    (hclass : ∃ Hd ∈ ell.frame.tree, Hd.root = e.msg.head ∧
+      (Hd ∈ ell.frame.viableHeads ∨ (kindJ ∧ Hd = J) ∨
+        (Hd = AC.getAnchor sp e.readPoint ell.frame (tr.time q) ∧
+          ∃ l ∈ e.readPoint.locks, l.slot = e.msg.slot ∧
+          ∃ a ≤ q, ∃ D CV, z ∈ H (tr.time a) ∧
+            AC.OptimisticLockAt tr.projAC z a e.msg.slot D CV ∧
+            sp.ts e.msg.slot ≤ tr.time a ∧ tr.time a < sp.ts e.msg.slot + 2 * sp.Δ ∧
+            3 * sp.committeeSize ≤ 4 * (AC.voters CV).ncard ∧ ell.frame.Anc Hd D)))
+    (hbase : Q ∈ ell.frame.tree → Q ∈ ell.frame.viableHeads →
+      ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
+        AC.VoteExtends (tr.HonestBlocksAt H) ev.msg X)
+    (hcommon : kindJ → Q = J →
+      ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
+        AC.VoteExtends (tr.HonestBlocksAt H) ev.msg X)
+    (hoptimistic : Q = AC.getAnchor sp e.readPoint ell.frame (tr.time q) →
+      ∀ a D CV, z ∈ H (tr.time a) → AC.OptimisticLockAt tr.projAC z a s D CV →
+      Anc (tr.HonestBlocksAt H) Q D →
+      ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
+        AC.VoteExtends (tr.HonestBlocksAt H) ev.msg Q) :
+    ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
+      AC.VoteExtends (tr.HonestBlocksAt H) ev.msg X := by
+  obtain ⟨Hd, hHd, hHdr, hclass⟩ := hclass
+  have hPhiU := (hrun.frameIn_at hnc hz hc.1).2
+  have hEQ : Hd = Q := (hrun.coherent hnc).1
+    (hPhiU hHd) hQU (hHdr.trans hQr.symm)
+  rw [hEQ] at hHd hclass
+  rcases hclass with hv | hj | ho
+  · exact hbase hHd hv
+  · exact hcommon hj.1 hj.2
+  · obtain ⟨hA, l, hl, hls, a, hai, D, CV, hza, hop, -, -, -, hQD⟩ := ho
+    have hheads := hoptimistic hA a D CV hza (hes ▸ hop) (hQD.mono hPhiU)
+    intro y i ev hy hv hesv
+    obtain ⟨W, hW, hWr, hQW⟩ := hheads y i ev hy hv hesv
+    exact ⟨W, hW, hWr, hXQ.trans hQW⟩
+
+end Core
 
 /-- Supporter classification separates viable, common-root and optimistic-anchor cases. -/
 theorem FrameWindow.next_votes_of_supporter_at {s₀ s floor : Nat}
@@ -103,33 +158,30 @@ theorem FrameWindow.next_votes_of_supporter_at {s₀ s floor : Nat}
       have hcast : ((s - 1 : Nat) : Int) = (s : Int) - 1 := by omega
       rw [← hcast]; linarith only [hΔ, hm]) hK
   have hPhi := Compose.Growing.frameIn_at hrun hnc hz hc.1
-  have hEQ : Hd = Q := hU.1 (hPhi.2 hHd) hQU (hHdr.trans hQr.symm)
-  rw [hEQ] at hHd hclass
   have hfr := Compose.Growing.frame_of_projAC_at hrun hz hc.1
-  rcases hclass with hv | hj | ho
-  · have hvQ := hv.2
+  apply Core.next_votes_of_supporter_at hrun.toCore hnc hz hc hes hQU hQr hXQ
+    ⟨Hd, hHd, hHdr, hclass.imp And.right (fun h => h)⟩
+    (hoptimistic := hoptimistic)
+  · intro hQt hv
+    have hvQ := hv
     rw [hfr] at hvQ
     have hJQ : kindJ → Anc (tr.HonestBlocksAt H) J Q := by
       intro hk
       have hkind := (hframe.kind_iff z q hz hqt hqhi).mpr hk
-      have hroot := (hPhi.1.fcRoot_anc_viableHeads Q hv.2).mono hPhi.2
+      have hroot := (hPhi.1.fcRoot_anc_viableHeads Q hv).mono hPhi.2
       rw [hfr] at hroot
       change Anc (tr.HonestBlocksAt H) (tr.state z q).fg.fcRoot Q at hroot
       rwa [show (tr.state z q).fg.fcRoot = (tr.state z q).fg.J from ite_eq_left hkind,
         hframe.root_eq z q hz hqt hqhi hk] at hroot
     by_cases hJX : kindJ → Anc (tr.HonestBlocksAt H) J X
-    · apply hbase hHd ?_ hJX
+    · apply hbase hQt ?_ hJX
       rw [← hframe.floor_eq z q hz hqt hqhi]
       exact hvQ.2.2.2
     · push Not at hJX
       obtain ⟨hk, hn⟩ := hJX
       exact hrootVotes hk ((AC.anc_total hU hXQ (hJQ hk)).resolve_right hn)
-  · exact hrootVotes hj.1 (hj.2 ▸ hXQ)
-  · obtain ⟨hA, l, hl, hls, a, hai, D, CV, hza, hop, -, -, -, hQD⟩ := ho
-    have hheads := hoptimistic hA a D CV hza (hes ▸ hop) (hQD.mono hPhi.2)
-    intro y i ev hy hv hesv
-    obtain ⟨W, hW, hWr, hQW⟩ := hheads y i ev hy hv hesv
-    exact ⟨W, hW, hWr, hXQ.trans hQW⟩
+  · intro hk hQJ
+    exact hrootVotes hk (hQJ ▸ hXQ)
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
