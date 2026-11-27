@@ -722,21 +722,8 @@ theorem fastFloor_step_at
     (hP : P ∈ (tr.state y k).fg.toFrame.tree) (hP' : P ∈ (tr.state y (k + 1)).fg.toFrame.tree)
     (hva : (tr.state y k).fg.toFrame.viableAncestor P = P)
     (hu : (sp.slot (tr.time k) : Int) - 1 ≤ j ∨ Compose.UnlockKeeps tr y k P) :
-    Compose.FastFloorAt tr y (k + 1) P j m := by
-  have hd := hrun.time_nonneg k
-  have hst : (tr.upTo (tr.time k)).state y k = tr.state y k :=
-    RunTrace.upTo_state_of_le hrun.time_mono le_rfl
-  have hst1 : (tr.upTo (tr.time k)).state y (k + 1) = tr.state y (k + 1) :=
-    Trace.upTo_state tr y fun _ hk' => hrun.time_mono (Nat.lt_succ_iff.1 hk')
-  have h := Compose.fastFloor_run_view (hrun.upTo hd) hy k (B₀ := P) (j := j) (m := m)
-    (by simp only [Compose.FastFloorAt, hst]; exact hfl) hk (by rw [hst]; exact hP)
-    (by rw [hst1]; exact hP') (by rw [hst]; exact hva) fun ℓ hc => by
-      rw [hst]
-      rcases hu with hs | hu
-      · exact Or.inl hs
-      · exact Or.inr (hu ℓ ((Trace.upTo_callAt_of_le _ le_rfl).mp hc))
-  simp only [Compose.FastFloorAt, hst1] at h
-  exact h
+    Compose.FastFloorAt tr y (k + 1) P j m :=
+  Core.fastFloor_step_at hrun.toCore hy hfl hk hP hP' hva hu
 
 /-- **A fresh fast lock is a toFG candidate until its two slots end.** Let an honest node `y`
 pass at cut `j` the fast test of its slot-`r` update on a block `D ⪰ P`, where `P` is a viable
@@ -763,97 +750,8 @@ theorem toFG_candidate_of_viable_head_at {K : AC.CommitteeDict sp.n}
     (hib : tr.time i ≤ b)
     (hslot : sp.slot (tr.time i) ≤ r + 2) :
     ∃ B ∈ AC.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i),
-      Anc (tr.HonestBlocksAt H) P B := by
-  have hmono := hrun.time_mono
-  have hU := Compose.Growing.honest_blocks_coherent hrun hnc
-  obtain ⟨ellj, C, hu, hconf, hD, -⟩ := hfu
-  have hji' := hmono hji.le
-  have hyj : y ∈ H (tr.time j) := hrun.antitone hji' hy
-  have hfrj := Compose.Growing.frame_of_projAC_at hrun hyj hu.1
-  obtain ⟨hΦj, hΦjU⟩ := Compose.Growing.frameIn_at hrun hnc hyj hu.1
-  have hDt := (AC.deepest_mem hD).1.1.1
-  have hPj : P ∈ ellj.frame.tree := by rw [hfrj]; exact (hPk j le_rfl hji.le).1
-  have hΦk (k : Nat) (hki : k ≤ i) : FrameOK (Node.frame (tr.state y k)) :=
-    (Store.frame_realization _ _ _ _ (fg_reachable_at hrun (hrun.time_nonneg k)
-      (fun q hq => hmono hq.le) (hrun.antitone (hmono hki) hy))).1
-  have hvak (k : Nat) (hjk : j ≤ k) (hki : k ≤ i) :
-      (Node.frame (tr.state y k)).viableAncestor P = P := by
-    obtain ⟨hPt, hroot, hv⟩ := hPk k hjk hki
-    exact AC.viableAncestor_self (hΦk k hki) hPt (Or.inl ⟨hPt, hroot, P, hPt, hv, .refl⟩)
-  -- the update writes a fast lock of slot `r` above `P`
-  have hjslot : sp.slot (tr.time j) = r + 1 := by
-    have hjt : tr.time j = sp.ts r + 6 * sp.Δ := hu.2.2.1
-    rw [hjt]
-    apply AC.slot_of_mem sp (r + 1)
-    all_goals simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ]
-  obtain ⟨e, he, hl⟩ := fastLock_mem_updateConfirmation_of_select (t := tr.time j) hconf hD hDt
-    (by omega)
-  rw [← post_of_updateAt hrun hnc hyj hu] at hl
-  have hyj1 : y ∈ H (tr.time (j + 1)) := hrun.antitone (hmono hji) hy
-  have hl1 : (⟨(ellj.frame.viableAncestor D).root, r, true, e⟩ : AC.Lock) ∈
-      (tr.state y (j + 1)).ac.locks := by
-    rw [← Compose.Growing.projAC_state_at hrun hyj1, Trace.state_succ_of_call tr.projAC hu.1]
-    exact hl
-  have hPDj : ellj.frame.Anc P D := AC.anc_tree_of_anc_U hU hΦj hΦjU hPj hPD hDt
-  have hvaj : ellj.frame.viableAncestor P = P := by rw [hfrj]; exact hvak j le_rfl hji.le
-  have hbase : Compose.FastFloorAt tr y (j + 1) P r (r + 2) := by
-    have hB := (AC.viableAncestor_anc hΦj hDt).1
-    have hPB := AC.anc_viableAncestor_of_floor hΦj hPj hvaj hDt hPDj
-    rw [hfrj] at hB hPB
-    obtain ⟨hB', hPB'⟩ := Compose.Growing.floor_frame_transport_at hrun
-      (hrun.time_nonneg (j + 1)) hyj1 (fun q hq => hmono hq.le) (Nat.le_succ j)
-      (hPk (j + 1) (Nat.le_succ j) hji).1 hB hPB
-    exact ⟨_, hl1, rfl, rfl, he, _, hB', by rw [hfrj], hPB'⟩
-  -- the fast floor survives every cut up to the call
-  have hfloor : ∀ k, j + 1 ≤ k → k ≤ i → Compose.FastFloorAt tr y k P r (r + 2) := by
-    intro k hk
-    induction k, hk using Nat.le_induction with
-    | base => exact fun _ => hbase
-    | succ k hjk ih =>
-      intro hki
-      have hkt := hmono (show k ≤ i by omega)
-      have hyk := hrun.antitone hkt hy
-      have hk0 := hrun.time_nonneg k
-      have hsk : sp.slot (tr.time k) ≤ r + 2 :=
-        (AC.slot_mono sp hk0 hkt).trans hslot
-      refine fastFloor_step_at hrun hyk (ih (by omega)) hsk (hPk k (by omega) (by omega)).1
-        (hPk (k + 1) (by omega) hki).1 (hvak k (by omega) (by omega)) ?_
-      by_cases hs : (sp.slot (tr.time k) : Int) - 1 ≤ r
-      · exact Or.inl hs
-      have hslk : sp.slot (tr.time k) = r + 2 := by omega
-      have hkb := hkt.trans hib
-      refine Or.inr (Compose.Growing.unlockKeeps_of_voteCompat_at hrun hnc hK.facts hyk
-        subset_rfl ?_ (hPk k (by omega) (by omega)).1 ?_)
-      · rw [hslk, show r + 2 - 1 = r + 1 by omega]
-        exact hK.cs2 (r + 1) hgr (by
-          have := (AC.ts_le_iff_le_slot sp hk0 ((r + 1 : Nat) : Int)).2 (by omega)
-          linarith) (tr.time k) hk0 hkb
-      · intro x hx k' hk' e' hv hes
-        obtain ⟨hx', hv'⟩ := Compose.Growing.hVoteAt_iff.1 hv
-        exact (hext x k' e' hx' hv' (by omega) (hmono (by omega))).voteCompat
-  obtain ⟨l, hl, hls, hlf, hle, B, hB, hBr, hPB⟩ := hfloor i hji le_rfl
-  have hfri := Compose.Growing.frame_of_projAC_at hrun hy hc
-  obtain ⟨hΦi, hΦiU⟩ := Compose.Growing.frameIn_at hrun hnc hy hc
-  obtain ⟨hPti, hrooti, hvi⟩ := hPk i hji.le le_rfl
-  rw [← hfri] at hPti hrooti hvi
-  have hB' : B ∈ ell.frame.tree := by rw [hfri]; exact hB
-  have hPB' : ell.frame.Anc P B := by rw [hfri]; exact hPB
-  have hPv : P ∈ ell.frame.viableTree ell.frame.tree := ⟨hPti, hrooti, P, hPti, hvi, .refl⟩
-  have hvaP := AC.viableAncestor_self hΦi hPti (Or.inl hPv)
-  have hPV := AC.anc_viableAncestor_of_floor hΦi hPti hvaP hB' hPB'
-  have hVv : ell.frame.viableAncestor B ∈ ell.frame.viableTree ell.frame.tree := by
-    rcases (AC.viableAncestor_spec hΦi hB').2.1 with hroot | hvt
-    · rw [Anc.antisymm hΦi.coherent (hroot.trans hrooti) hPV]
-      exact hPv
-    · exact hvt
-  have hl' : l ∈ (tr.projAC.state y i).locks := by
-    rw [Compose.Growing.projAC_state_at hrun hy]; exact hl
-  refine ⟨_, ⟨hVv, { l with block := (ell.frame.viableAncestor B).root },
-    ⟨l, hl', B, hB', hBr, ?_, rfl⟩, rfl, hlf, ?_⟩, hPV.mono hΦiU⟩
-  · change sp.slot (tr.time i) ≤ l.expiry
-    omega
-  · change sp.slot (tr.time i) ≤ l.slot + 2
-    omega
+      Anc (tr.HonestBlocksAt H) P B :=
+  Core.toFG_candidate_of_viable_head_at hrun.toCore hnc hK hgr hfu hPD hy hc hji hext hPk hib hslot
 
 /-- **A fresh fast lock is a toFG candidate until its two slots end.** In a frame window, let an
 honest node `y` pass at cut `j` the fast test of its slot-`r` update on a block `D ⪰ P`, for a
