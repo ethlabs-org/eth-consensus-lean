@@ -119,17 +119,7 @@ theorem witness_frame_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun prop
     ⟨hXy, store_anc_of_honest_anc_at hrun hnc ht hb hy hFX hXy⟩
   refine ⟨hXt, ?_, hQt, hvQ, AC.anc_tree_of_anc_U hU hΦ hsub hXt hXQ hQt⟩
   apply AC.anc_tree_of_anc_U hU hΦ hsub hΦ.fcRoot_mem _ hXt
-  change Anc (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot X
-  by_cases hk : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧
-      ¬(tr.state y i).fg.Contest
-  · have hkJ := (hframe.kind_iff y i hy hlo hhi).mp hk
-    have he : (tr.state y i).fg.fcRoot = (tr.state y i).fg.J := by
-      simp [Goldilocks.Store.fcRoot, hk]
-    rw [he, hframe.root_eq y i hy hlo hhi hkJ]
-    exact hJ hkJ
-  · have he : (tr.state y i).fg.fcRoot = (tr.state y i).fg.F := by
-      simp [Goldilocks.Store.fcRoot, hk]
-    exact he ▸ hFX
+  exact hFX
 
 /-- The witness's replay height, seen by an independently honest source, is the reader's. -/
 private theorem witness_height
