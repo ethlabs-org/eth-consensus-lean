@@ -142,7 +142,7 @@ private theorem tick_before_attest' (y : Fin P.n) (st : NodeState A) (t : Time) 
 /-! ### In the run -/
 
 /-- **An `fg_attest` call is in a tick** (a copy of `attestCall_tick`). -/
-private theorem attestCall_tick' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+theorem attestCall_tick' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {i : Nat} {C : A.Blk} {s : Option (FG.Att P.n)}
     (hc : tr.CallAt y i (.fg (.attest C s))) :
     ∃ j, j ≤ i ∧ tr.TickAt' proposer dg y j (tr.time i) := by
@@ -152,7 +152,7 @@ private theorem attestCall_tick' (h : Node.LocalRun' proposer dg H sg tr ini) {y
 
 /-- **Before the tick of a time, a node's cuts at that time are restarts** (a copy of
 `before_tick`). -/
-private theorem before_tick' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+theorem before_tick' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {j k : Nat} {t : Time} {c : Cut A} (hg : tr.TickAt' proposer dg y j t)
     (hc : tr.CallAt y k c) (hk : k < j) (ht : tr.time k = t) :
     ∃ ℓ : ACLabel A, c = .ac ℓ ∧ ℓ.call = .restart := by
