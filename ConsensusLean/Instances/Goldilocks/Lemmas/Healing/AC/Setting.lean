@@ -113,8 +113,7 @@ private theorem rt_step
   | toFG =>
     change (acToFG sp A Φ t).1.restartTime = _
     unfold acToFG
-    split_ifs
-    all_goals first | rfl | (split <;> (try split_ifs) <;> rfl)
+    split_ifs <;> rfl
   | message m =>
     change (tryVoteWithM sp wm self L _ Φ t).1.restartTime = _
     rw [AC.tryVote_restartTimeWith, rt_optimistic,

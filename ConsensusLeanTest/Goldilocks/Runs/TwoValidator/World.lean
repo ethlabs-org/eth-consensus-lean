@@ -44,6 +44,17 @@ noncomputable def segsSk (t : Nat) : List (Fin sp.n × Node.Event N × List Sk) 
 `ac_to_fg`. -/
 def tickSk (es : List (Vote sp.n)) : List Sk := [.ac .tick es, .ac .toFG []]
 
+noncomputable def refusedSk (b : Nat) : List Sk :=
+  if b = 0 then [] else [.fg (.attest (blk b) none)]
+
+theorem refusedCuts_sk (b : Nat) : (refusedCuts b).map sk = refusedSk b := by
+  unfold refusedCuts refusedSk; split <;> rfl
+
+theorem refusedCuts_filters (b : Nat) :
+    (refusedCuts b).filterMap toW1 = [] ∧ (refusedCuts b).filterMap voteOf = [] ∧
+      (refusedCuts b).filterMap attOf = [] := by
+  unfold refusedCuts; split <;> exact ⟨rfl, rfl, rfl⟩
+
 /-- **The shape of the events of time `t`.**
 * `t = 1`: both ticks cast the votes of slot `0`, then each node receives the other's vote.
 * `t = t_s`, `s ≥ 1`: `v0` proposes `blk s`, accepts it and votes; `v1` ticks; `v1` receives
@@ -60,8 +71,8 @@ noncomputable def plan (t : Nat) : List (Fin sp.n × Node.Event N × List Sk) :=
       (w0, .message (vote w1 0), [.ac (.message (vote w1 0)) []])]
   else if t % 4 = 0 ∧ 4 ≤ t then
     [(w0, .tick 0 true, [.ac .tick [], .ac .proposal [], .fg (.block (blk (t / 4)) true),
-        .ac (.block (blk (t / 4))) [vote w0 (t / 4)], .ac .toFG []]),
-      (w1, .tick 0 true, tickSk []),
+        .ac (.block (blk (t / 4))) [vote w0 (t / 4)], .ac .toFG []] ++ refusedSk (t / 4 - 1)),
+      (w1, .tick 0 true, tickSk [] ++ refusedSk (t / 4 - 1)),
       (w1, .block (blk (t / 4)), [.fg (.block (blk (t / 4)) true),
         .ac (.block (blk (t / 4))) [vote w1 (t / 4)]]),
       (w1, .message (vote w0 (t / 4)), [.ac (.message (vote w0 (t / 4))) []]),
@@ -78,7 +89,8 @@ noncomputable def plan (t : Nat) : List (Fin sp.n × Node.Event N × List Sk) :=
     [(w0, .tick 0 true, tickSk [] ++ [.fg (.attest (blk (t / 4)) none)]),
       (w1, .tick 0 true, tickSk [] ++ [.fg (.attest (blk (t / 4)) none)])]
   else
-    [(w0, .tick 0 true, tickSk []), (w1, .tick 0 true, tickSk [])]
+    [(w0, .tick 0 true, tickSk [] ++ refusedSk (tip t)),
+      (w1, .tick 0 true, tickSk [] ++ refusedSk (tip t))]
 
 /-! ## The queue of `v1`'s rows -/
 
@@ -97,8 +109,8 @@ theorem plan_one : plan 1 =
 
 theorem plan_four {s : Nat} (hs : 1 ≤ s) : plan (4 * s) =
     [(w0, .tick 0 true, [.ac .tick [], .ac .proposal [], .fg (.block (blk s) true),
-        .ac (.block (blk s)) [vote w0 s], .ac .toFG []]),
-      (w1, .tick 0 true, tickSk []),
+        .ac (.block (blk s)) [vote w0 s], .ac .toFG []] ++ refusedSk (s - 1)),
+      (w1, .tick 0 true, tickSk [] ++ refusedSk (s - 1)),
       (w1, .block (blk s), [.fg (.block (blk s) true), .ac (.block (blk s)) [vote w1 s]]),
       (w1, .message (vote w0 s), [.ac (.message (vote w0 s)) []]),
       (w0, .message (vote w1 s), [.ac (.message (vote w1 s)) []])] ++
@@ -128,7 +140,8 @@ theorem plan_four1 {s : Nat} (hs : 1 ≤ s) (h10 : s % 10 ≠ 1) : plan (4 * s +
 /-- The other times (`0`, `2`, `3`, `t_s + 2`, `t_s + 3`): two quiet ticks. -/
 theorem plan_quiet {t : Nat} (h1 : t ≠ 1) (h0 : ¬ (t % 4 = 0 ∧ 4 ≤ t))
     (h4 : ¬ (t % 4 = 1 ∧ 4 ≤ t)) :
-    plan t = [(w0, .tick 0 true, tickSk []), (w1, .tick 0 true, tickSk [])] := by
+    plan t = [(w0, .tick 0 true, tickSk [] ++ refusedSk (tip t)),
+      (w1, .tick 0 true, tickSk [] ++ refusedSk (tip t))] := by
   unfold plan
   rw [ite_eq_right h1, ite_eq_right h0, ite_eq_right (fun h => h4 ⟨h.1, h.2.1⟩), ite_eq_right h4]
 
@@ -237,12 +250,23 @@ theorem forall_y {p : Fin sp.n → Prop} (h0 : p w0) (h1 : p w1) : ∀ y, p y :=
 /-- A quiet tick of `y` at `t` from a state `Good` at `t`. -/
 theorem quiet_tick {st : St} {y : Fin sp.n} {t : Nat} (h : Good st y t)
     (hnp : ¬ (y = w0 ∧ t % 4 = 0 ∧ 4 ≤ t)) (h2 : ¬ (t % 4 = 2 ∧ 4 ≤ t)) (h1 : t % 4 ≠ 1)
-    (hlk : tip t ≤ rep t) (hrp : rep t ≤ tip t) :
+    (_hlk : tip t ≤ rep t) (_hrp : rep t ≤ tip t) :
     Node.onTick prop dg y st (t : Int) 0 true =
-      (st, [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩] ++ []) := by
-  rw [List.append_nil]
-  exact tick_noop h hnp (by rw [acOnTick_eq _ _ _ _ h.ac.restart, ite_eq_right h2,
-    ite_eq_right h1]) hlk hrp (by omega)
+      (st, [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩] ++
+        refusedCuts (tip t)) := by
+  obtain ⟨f, hf⟩ := ns_frame h
+  have hh : hgt (tip t) ≤ nrw t ∨ tip t = 0 := by
+    unfold hgt tip nrw; split_ifs <;> omega
+  have hn := tickStep_fgUpdate_none (y := y) hf h.ac.locks h.fg h.record h.ac.zeroLocks
+    (fun hb m _ _ hm => (hgt_mono hm).trans (hh.resolve_right hb)) t 0
+  rw [onTick_eq', tickStep_acTick,
+    show acOnTick sp y st.ac (Node.frame st) t = (st.ac, []) from by
+      rw [acOnTick_eq _ _ _ _ h.ac.restart, ite_eq_right h2, ite_eq_right h1]]
+  dsimp only
+  rw [show ({ fg := st.fg, ac := st.ac, record := st.record } : St) = st from rfl,
+    tickStep_proposal_no hnp, hn, readCuts_eq h.ac hf le_rfl (jx_le _)
+      (t : Int) (by rw [slot_nat]; unfold tip; omega)]
+  rfl
 
 /-- **The step of a quiet time** (`0`, `2`, `3`, `t_s + 3`): both states stay. -/
 theorem step_quiet {t : Nat} (hw : WorldGood t) (hq : QueueGood t)
@@ -250,11 +274,14 @@ theorem step_quiet {t : Nat} (hw : WorldGood t) (hq : QueueGood t)
     (hlk : tip t ≤ rep t) (hrp : rep t ≤ tip t) (hqa : qa t = []) (hqo : qOf t = [])
     (hg : ∀ y st, Good st y t → Good st y (t + 1)) :
     WorldGood (t + 1) ∧ QueueGood (t + 1) ∧
-      segsSk t = [(w0, .tick 0 true, tickSk []), (w1, .tick 0 true, tickSk [])] := by
+      segsSk t = [(w0, .tick 0 true, tickSk [] ++ refusedSk (tip t)),
+        (w1, .tick 0 true, tickSk [] ++ refusedSk (tip t))] := by
   obtain ⟨hW, hQ, hS⟩ := step_ticks
     (quiet_tick (hw w0) (fun h => hnp h.2) h2 h1 hlk hrp)
-    (quiet_tick (hw w1) (fun h => hnp h.2) h2 h1 hlk hrp) rfl rfl rfl rfl hq hqa hqo
-  refine ⟨forall_y ?_ ?_, hQ, by rw [hS]; rfl⟩
+    (quiet_tick (hw w1) (fun h => hnp h.2) h2 h1 hlk hrp)
+    (refusedCuts_filters _).1 (refusedCuts_filters _).2.1
+    (refusedCuts_filters _).2.2 (refusedCuts_filters _).2.2 hq hqa hqo
+  refine ⟨forall_y ?_ ?_, hQ, by rw [hS, refusedCuts_sk]⟩
   · rw [hW, upd2_w0]; exact hg _ _ (hw w0)
   · rw [hW, upd2_w1]; exact hg _ _ (hw w1)
 
@@ -321,7 +348,8 @@ theorem other_w1 : other w1 = w0 := by decide
 /-- **The step of times `0, 2, 3`**: two ticks with nothing to do. -/
 theorem step_small {t : Nat} (ht : t = 0 ∨ t = 2 ∨ t = 3) (hw : WorldGood t) (hq : QueueGood t) :
     WorldGood (t + 1) ∧ QueueGood (t + 1) ∧ segsSk t = plan t := by
-  have hp : plan t = [(w0, .tick 0 true, tickSk []), (w1, .tick 0 true, tickSk [])] :=
+  have hp : plan t = [(w0, .tick 0 true, tickSk [] ++ refusedSk (tip t)),
+      (w1, .tick 0 true, tickSk [] ++ refusedSk (tip t))] :=
     plan_quiet (by omega) (by omega) (by omega)
   rw [hp]
   refine step_quiet hw hq (by omega) (by omega) (by omega) ?_ ?_
@@ -390,26 +418,33 @@ theorem step_four {s : Nat} (hs : 1 ≤ s) (hw : WorldGood (4 * s)) (hq : QueueG
   obtain ⟨st0, e0, h0, he0, hv0⟩ := tick_propose hs (hw w0)
   have h1 := quiet_tick (hw w1) (fun h => w1_ne h.1) (by omega) (by omega)
     (by rw [tip_four, rep_four]) (by rw [tip_four, rep_four])
-  rw [List.append_nil] at h1
   have hg1 : NS (W w1) w1 (s - 1) (cnt w1 (4 * s)) (nrw (4 * s)) (vsT (4 * s)) (poolT w1 (4 * s))
       (s - 1) (s - 1) (s - 1) (s - 1) (nsv (4 * s)) := by
     have := hw w1; unfold Good at this; rwa [tip_four, rep_four] at this
   obtain ⟨st1, e1, hb1, he1, hv1⟩ := onBlock_blk hs hg1
   obtain ⟨B1, hm1, hn1⟩ := deliver_vote hs hv1
   obtain ⟨B0, hm0, hn0⟩ := deliver_vote hs hv0
+  obtain ⟨f0, hf0⟩ := ns_frame hv0
+  have hj0 : jx s ≤ s - 1 := by have := jx_le_pred s; unfold jx at *; omega
+  rw [readCuts_eq hv0.ac hf0 (by omega) hj0 (4 * s) (by
+    change sp.slot ((4 * s : Nat) : Int) ≤ _; rw [slot_nat]; omega)] at h0
+  rw [tip_four] at h1
   rw [other_w1] at hm1
   rw [other_w0] at hm0
   have htk0 : tk0 (4 * s) = (st0, [.ac ⟨.tick, Node.frame (W w0), []⟩,
       .ac ⟨.proposal, Node.frame (W w0), []⟩, .fg (.block (blk s) true),
-      .ac ⟨.block (blk s), Node.frame st0, [e0]⟩, .ac ⟨.toFG, Node.frame st0, []⟩]) := h0
+      .ac ⟨.block (blk s), Node.frame st0, [e0]⟩, .ac ⟨.toFG, Node.frame st0, []⟩] ++
+      refusedCuts (s - 1)) := h0
   have hwA : wA (4 * s) w1 = W w1 := Function.update_of_ne w1_ne _ _
   have htk1 : tk1 (4 * s) = (W w1, [.ac ⟨.tick, Node.frame (W w1), []⟩,
-      .ac ⟨.toFG, Node.frame (W w1), []⟩]) := by
+      .ac ⟨.toFG, Node.frame (W w1), []⟩] ++ refusedCuts (s - 1)) := by
     change exec prop dg w1 (wA _ w1) _ (.tick 0 true) = _; rw [hwA]; exact h1
   have hwB : wB (4 * s) = Function.update (Function.update W w0 st0) w1 (W w1) := by
     unfold wB wA; rw [htk0, htk1]
   have hevs1 : evs1 (4 * s) = [(w1, .block (blk s)), (w1, .message (vote w0 s))] := by
     unfold evs1; rw [htk0, htk1]
+    simp only [List.filterMap_append, (refusedCuts_filters _).1,
+      (refusedCuts_filters _).2.2, List.append_nil]
     change [(w1, Node.Event.block (blk s)), (w1, Node.Event.message e0.msg)] = _; rw [he0]
   have hrun1 : run1 (4 * s) = (Function.update (Function.update (wB (4 * s)) w1 st1) w1
         { st1 with ac := B1 },
@@ -432,9 +467,13 @@ theorem step_four {s : Nat} (hs : 1 ≤ s) (hw : WorldGood (4 * s)) (hq : QueueG
     rw [hrun1]; dsimp only; exact Function.update_self _ _ _
   have hvs : ((tk1 (4 * s)).2 ++ (run1 (4 * s)).2.flatMap Seg.cuts).filterMap voteOf =
       [(.message (vote w1 s) : Node.Event N)] := by
-    rw [htk1, hrun1]; change [Node.Event.message e1.msg] = _; rw [he1]
+    rw [htk1, hrun1]
+    simp only [List.filterMap_append, (refusedCuts_filters _).2.1]
+    change [Node.Event.message e1.msg] = _; rw [he1]
   have hqa := qa_four hs hq
-  have hQ := queue_step hq (by rw [htk1, qOf_of (by omega)]; rfl)
+  have hQ := queue_step hq (by
+    rw [htk1, qOf_of (by omega)]
+    simp only [List.filterMap_append, (refusedCuts_filters _).2.2]; rfl)
   set S0 : St := { st0 with ac := B0 }
   have hg1' : Good { st1 with ac := B1 } w1 (4 * s + 1) :=
     good_of_voted' hn1 (by rw [cnt_four1, ite_eq_right (fun h => w1_ne h.1)])
@@ -468,7 +507,8 @@ theorem step_four {s : Nat} (hs : 1 ≤ s) (hw : WorldGood (4 * s)) (hq : QueueG
     · rw [hW, Function.update_of_ne w1_ne, Function.update_of_ne w1_ne, hr1']; exact hg1'
     · unfold segsSk; rw [segs_eq, hrun3, hrun1, htk0, htk1, plan_four hs, ite_eq_left h10,
         ← he0, ← he1]
-      rfl
+      simp only [List.map_cons, List.map_nil, refusedCuts_sk, sk, tickSk,
+        List.cons_append, List.nil_append]
   · have hevs0 : evs0 (4 * s) = [(w0, .message (vote w1 s))] := by
       unfold evs0; rw [hvs, hqa, ite_eq_right h10]; rfl
     have hrun3 : runEvs (4 * s) (run1 (4 * s)).1 (evs0 (4 * s)) =
@@ -486,7 +526,8 @@ theorem step_four {s : Nat} (hs : 1 ≤ s) (hw : WorldGood (4 * s)) (hq : QueueG
     · rw [hW, Function.update_of_ne w1_ne, hr1']; exact hg1'
     · unfold segsSk; rw [segs_eq, hrun3, hrun1, htk0, htk1, plan_four hs, ite_eq_right h10,
         ← he0, ← he1]
-      rfl
+      simp only [List.map_cons, List.map_nil, refusedCuts_sk, sk, tickSk,
+        List.cons_append, List.nil_append, List.append_nil]
 
 /-- **The step of time `t_s + 1`**, `s ≥ 1`: the reports to the FG and, at `s ≡ 1 mod 10`, the
 rows. -/
@@ -563,10 +604,19 @@ theorem step_four2 {s : Nat} (hs : 1 ≤ s) (hw : WorldGood (4 * s + 2))
     WorldGood (4 * s + 3) ∧ QueueGood (4 * s + 3) ∧ segsSk (4 * s + 2) = plan (4 * s + 2) := by
   obtain ⟨A0, h0, hg0⟩ := tick_update hs (hw w0)
   obtain ⟨A1, h1, hg1⟩ := tick_update hs (hw w1)
-  rw [← List.append_nil [Cut.ac _, Cut.ac _]] at h0 h1
-  obtain ⟨hW, hQ, hS⟩ := step_ticks h0 h1 rfl rfl rfl rfl hq
+  obtain ⟨f0, hf0⟩ := ns_frame hg0
+  obtain ⟨f1, hf1⟩ := ns_frame hg1
+  rw [readCuts_eq hg0.ac hf0 le_rfl (jx_le _) (4 * s + 2) (by
+    change sp.slot ((4 * s + 2 : Nat) : Int) ≤ _; rw [slot_nat, tip_four3]; omega),
+    tip_four3] at h0
+  rw [readCuts_eq hg1.ac hf1 le_rfl (jx_le _) (4 * s + 2) (by
+    change sp.slot ((4 * s + 2 : Nat) : Int) ≤ _; rw [slot_nat, tip_four3]; omega),
+    tip_four3] at h1
+  obtain ⟨hW, hQ, hS⟩ := step_ticks h0 h1 (refusedCuts_filters _).1
+    (refusedCuts_filters _).2.1 (refusedCuts_filters _).2.2 (refusedCuts_filters _).2.2 hq
     (qa_nil hq (by omega)) (qOf_of (by omega))
-  refine ⟨forall_y ?_ ?_, hQ, by rw [hS, plan_quiet (by omega) (by omega) (by omega)]; rfl⟩
+  refine ⟨forall_y ?_ ?_, hQ, by
+    rw [hS, plan_quiet (by omega) (by omega) (by omega), refusedCuts_sk, tip_four2]⟩
   · rw [hW, upd2_w0]; exact hg0
   · rw [hW, upd2_w1]; exact hg1
 
@@ -712,7 +762,7 @@ theorem atts_onBlock' {fg fg' : Store sp.toParams N.Payload} {B : N.Blk}
 theorem plan_no_restart (t : Nat) :
     ∀ p ∈ plan t, ∀ c ∈ p.2.2, ∀ es, c ≠ .ac .restart es := by
   unfold plan
-  split_ifs <;> simp [tickSk]
+  split_ifs <;> simp [tickSk, refusedSk] <;> split <;> simp
 
 /-- No cut of the run is a restart. -/
 theorem label_not_restart {i : Nat} {ℓ : ACLabel N} (h : run.label i = some (.ac ℓ)) :

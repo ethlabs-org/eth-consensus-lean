@@ -198,7 +198,8 @@ theorem tryVote_blk {y : Fin sp.n} {A : ACState sp.n} {Φ : N.Frm} {f k : Nat}
       (admitVote sp { A with locks := L₁, votedSlot := (k + 1 : Nat) }
         ((4 * (k + 1) : Nat) : Int) (vote y (k + 1)),
         [⟨vote y (k + 1), { A with locks := L₁, votedSlot := (k + 1 : Nat) }, some d⟩]) ∧
-      LocksLe L₁ k ∧ (1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ L₁) := by
+      LocksLe L₁ k ∧ (1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ L₁) ∧
+      (A.locks = ∅ → L₁ = ∅) := by
   have hs := slot4 k
   have hf : f ≤ k := le_trans h.fj (jx_succ_le k)
   unfold tryVote
@@ -249,7 +250,8 @@ theorem tryVote_blk {y : Fin sp.n} {A : ACState sp.n} {Φ : N.Frm} {f k : Nat}
     rw [Function.update_self, hpool]; rfl
   exact ⟨L₁, ⟨blk (k + 1), getAnchor sp { A with locks := L₁ } Φ ((4 * (k + 1) : Nat) : Int),
     voteDomain sp { A with locks := L₁ } Φ (k + 1)⟩,
-    Prod.ext (optimisticConfirmation_of_none (optimisticSelect_one hadm)) rfl, hL₁, htip₁⟩
+    Prod.ext (optimisticConfirmation_of_none (optimisticSelect_one hadm)) rfl, hL₁, htip₁,
+    fun he => by ext l; simp [L₁, unlock, liveLocks, he]⟩
 
 /-- The resolution time of a vote on a chain block of the tree, of the block's slot. -/
 theorem resolutionTime_vote {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {A : ACState sp.n}
@@ -309,6 +311,27 @@ theorem acProposal_tick {A : ACState sp.n} {Φ : N.Frm} {f k : Nat}
   exact ⟨m, hm, rfl⟩
 
 /-- `ac_to_fg` with the tip `τ` locked: the source is the tip, with no state write. -/
+theorem acToFG_tip {A : ACState sp.n} {Φ : N.Frm} {f j τ b : Nat} {t : Time}
+    (h : ChainFrame Φ f j τ) (hj : A.restartTime = ⊥) (hf : f ≤ b)
+    (hjb : j ≤ b) (hb : b ≤ τ) (hst : sp.slot t ≤ b + 2)
+    (hL : LocksLe A.locks b)
+    (htip : (⟨(blk b).root, b, true, b + 2⟩ : Lock) ∈ A.locks) :
+    (AC.acToFG sp A Φ t).1 = A ∧
+      (AC.acToFG sp A Φ t).2 = some (blk b) := by
+  have htip' := h.mem hf hb
+  have hd : deepest Φ (toFGCandidates sp A Φ t) = some (blk b) := by
+    apply h.deepest_eq (fun B hB => hB.1.1)
+    · exact ⟨h.mem_viableTree (h.mem (hf.trans hb) le_rfl) hjb hb htip', _,
+        h.mem_liveLocks htip hf hb rfl hst, rfl, rfl, hst⟩
+    · intro B hB
+      obtain ⟨l, hl, hr, -, -⟩ := hB.2
+      exact h.liveLockBlocks_le hL ⟨hB.1.1, l, hl, hr⟩
+  unfold AC.acToFG AC.fgSource
+  rw [ite_eq_right (not_not.2 (joined_of_bot hj _))]
+  dsimp only
+  rw [hd]
+  exact ⟨rfl, rfl⟩
+
 theorem acToFG_tick {A : ACState sp.n} {Φ : N.Frm} {f τ : Nat} {t : Time}
     (h : ChainFrame Φ f (jx τ) τ) (hj : A.restartTime = ⊥) (hst : sp.slot t = τ)
     (htip : (⟨(blk τ).root, τ, true, τ + 2⟩ : Lock) ∈ A.locks) :

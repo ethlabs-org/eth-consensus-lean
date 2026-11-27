@@ -19,7 +19,7 @@ open AC Node ChainFrame
 /-- The shape of an AC state: no restart, the voted slot `vs`, the pools `pl` (stamped at their
 vote times), the blocks up to `τ` stamped at their slots, the first `us` slots saved with their
 blocks, locks on chain blocks up to `lk`, the fast lock of slot `tl` on its block (from `1`), the
-record on the block of slot `lc`, the block of slot `rp` reported. -/
+record on the block of slot `lc`. The report-phase index `rp` carries no state invariant. -/
 structure ACShape (A : ACState sp.n) (vs : Int) (τ : Nat) (pl : Nat → List (Vote sp.n))
     (lk tl lc rp us : Nat) : Prop where
   permission : A.mayVote = fun _ => true
@@ -132,6 +132,25 @@ noncomputable def readCuts (st : St) (t : Time) : List (Cut N) :=
     | none => []
     | some C => [.fg (.attest C none)]
 
+noncomputable def refusedCuts (b : Nat) : List (Cut N) :=
+  if b = 0 then [] else [.fg (.attest (blk b) none)]
+
+theorem readCuts_eq {st : St} {f j τ b : Nat} {vs : Int}
+    {pl : Nat → List (Vote sp.n)} {lc rp us : Nat}
+    (h : ACShape st.ac vs τ pl b b lc rp us)
+    (hf : ChainFrame (Node.frame st) f j τ) (hb : b ≤ τ) (hj : j ≤ b)
+    (t : Time) (ht : sp.slot t ≤ b + 2) :
+    readCuts st t = [.ac ⟨.toFG, Node.frame st, []⟩] ++ refusedCuts b := by
+  by_cases hz : b = 0
+  · have he := h.zeroLocks hz
+    have hn : (AC.acToFG sp st.ac (Node.frame st) t).2 = none := by
+      unfold AC.acToFG AC.fgSource
+      split <;> simp [sp, toFGCandidates, liveLocks, he, deepest, IsDeepest]
+    simp [readCuts, refusedCuts, hz, hn]
+  · have hs := (acToFG_tip hf h.restart (hf.fj.trans hj) hj hb ht h.locks
+      (h.tipLock (by omega))).2
+    simp [readCuts, refusedCuts, hz, hs]
+
 theorem tickStep_fgUpdate_refused {y : Fin sp.n} {st : St} (n : Time) (x : Nat)
     (hatt : ∀ C, (AC.acToFG sp st.ac (Node.frame st) n).2 = some C →
       st.fg.attest st.record y C = none) :
@@ -149,7 +168,8 @@ theorem tickStep_fgUpdate_refused {y : Fin sp.n} {st : St} (n : Time) (x : Nat)
 theorem tickStep_fgUpdate_none {y : Fin sp.n} {st : St} {f j τ : Nat}
     (hf : ChainFrame (Node.frame st) f j τ) {b : Nat} (hL : LocksLe st.ac.locks b)
     (hfg : FGGood st.fg τ) {nr : Nat} (hrec : RecGood st.record nr)
-    (hzero : b = 0 → st.ac.locks = ∅) (hh : ∀ m, f ≤ m → m ≤ τ → m ≤ b → hgt m ≤ nr)
+    (hzero : b = 0 → st.ac.locks = ∅)
+    (hh : b ≠ 0 → ∀ m, f ≤ m → m ≤ τ → m ≤ b → hgt m ≤ nr)
     (n x : Nat) :
     tickStep prop dg y st (n : Int) x .fgUpdate =
       (st, readCuts st n) := by
@@ -159,22 +179,20 @@ theorem tickStep_fgUpdate_none {y : Fin sp.n} {st : St} {f j τ : Nat}
   by_cases hb : b = 0
   · have he : toFGCandidates sp st.ac (Node.frame st) n = ∅ := by
       ext B; simp [toFGCandidates, liveLocks, hzero hb]
-    unfold AC.acToFG AC.fgSource at hc
-    split_ifs at hc
-    · cases hc
-    · have hm := (deepest_mem hc).1
-      rw [he] at hm
-      exact False.elim hm
-  exact attest_signed hfg hmτ y hrec (hh m hmf hmτ hmb)
+    have hn : (AC.acToFG sp st.ac (Node.frame st) n).2 = none := by
+      unfold AC.acToFG AC.fgSource
+      split <;> simp [sp, he, deepest, IsDeepest]
+    rw [hn] at hc
+    cases hc
+  exact attest_signed hfg hmτ y hrec (hh hb m hmf hmτ hmb)
 
 theorem jx_le_pred (τ : Nat) : jx τ ≤ τ - 1 ∨ jx τ = 0 := by
   rcases τ with _ | τ
   · exact Or.inr rfl
   · exact Or.inl (by have := jx_succ_le τ; omega)
 
-/-- **A tick with nothing to do**: its AC tick changes nothing, it does not propose, and
-`ac_to_fg` returns nothing (every lock at or below the reported block, which is the tip or its
-parent). -/
+/-- **A tick with no state change**: its AC tick changes nothing, it does not propose, and
+the FG refuses any source read because its entry height has already been signed. -/
 theorem tick_noop {st : St} {y : Fin sp.n} {τ k nr : Nat} {vs : Int}
     {pl : Nat → List (Vote sp.n)} {lk tl lc rp us : Nat}
     (h : NS st y τ k nr vs pl lk tl lc rp us) {n : Nat}
@@ -189,7 +207,7 @@ theorem tick_noop {st : St} {y : Fin sp.n} {τ k nr : Nat} {vs : Int}
   rw [show ({ fg := st.fg, ac := st.ac, record := st.record } : St) = st from rfl,
     tickStep_proposal_no hnp,
     tickStep_fgUpdate_none hf h.ac.locks h.fg h.record h.ac.zeroLocks
-      (fun m _ _ hml => (hgt_mono hml).trans hh)]
+      (fun _ m _ _ hml => (hgt_mono hml).trans hh)]
   rfl
 
 /-! ## The parameters along time -/
@@ -243,7 +261,8 @@ theorem saved_succ {S : Int → Option Nat} {u : Nat}
 theorem tick_update {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s)
     (h : Good st y (4 * s + 2)) :
     ∃ A', Node.onTick prop dg y st ((4 * s + 2 : Nat) : Int) 0 true =
-      ({ st with ac := A' }, [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩]) ∧
+      ({ st with ac := A' }, [.ac ⟨.tick, Node.frame st, []⟩] ++
+        readCuts { st with ac := A' } (4 * s + 2)) ∧
       Good { st with ac := A' } y (4 * s + 3) := by
   have ht := tip_four2 s
   obtain ⟨hfg, hatts, hrec, hac⟩ := h
@@ -309,7 +328,11 @@ theorem tick_update {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s)
   · rw [onTick_eq', tickStep_acTick, hstep]
     dsimp only
     rw [tickStep_proposal_no (by omega),
-      tickStep_fgUpdate_none (st := { st with ac := A' }) hf hL (by omega) le_rfl hrep]
+      tickStep_fgUpdate_none (st := { st with ac := A' }) hf hL hfg hrec
+        (fun hz => by omega) (fun _ m _ _ hm => by
+          have := hgt_mono hm
+          rw [nrw_row_succ hs]
+          exact this)]
     · rfl
   · refine ⟨?_, ?_, ?_, ?_⟩
     · rw [tip_four3]; exact hfg
@@ -377,7 +400,11 @@ theorem tick_vote0 {st : St} {y : Fin sp.n} (h : Good st y 1) :
   rw [onTick_eq', tickStep_acTick, hstep]
   dsimp only
   rw [tickStep_proposal_no (by omega),
-    tickStep_fgUpdate_none (st := { st with ac := A' }) hf0 hac'.locks le_rfl le_rfl hac'.reported]
+    tickStep_fgUpdate_none (st := { st with ac := A' }) hf0 hac'.locks hfg hrec
+      hac'.zeroLocks (fun hn => False.elim (hn rfl))]
+  have he : A'.locks = ∅ := hac'.zeroLocks rfl
+  simp [readCuts, AC.acToFG, AC.fgSource, sp, toFGCandidates, liveLocks, he, deepest,
+    IsDeepest, joined]
   rfl
 
 /-- The AC's receipt of the other validator's vote of the slot, the own vote already held. -/
@@ -533,9 +560,10 @@ theorem tick_report_new {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s) (h10 :
   obtain ⟨hda, hns'⟩ := deliver_att hns
   rw [hk] at hda hns'
   refine ⟨_, _, ?_, hda, hns'⟩
+  change Node.onTick prop dg y st' _ _ _ = _
   rw [onTick_eq', tickStep_acTick, tick_report_ac hs hac]
   dsimp only
-  rw [show ({ fg := st.fg, ac := st.ac, record := st.record } : St) = st from rfl,
+  rw [show ({ fg := st'.fg, ac := st'.ac, record := st'.record } : St) = st' from rfl,
     tickStep_proposal_no (by omega), tickStep_report hf hs hac]
   dsimp only
   unfold Node.attest
@@ -600,11 +628,12 @@ theorem acOnBlock_blk {y : Fin sp.n} {A : ACState sp.n} {Φ : N.Frm} {f k : Nat}
                   (ETime.of ((4 * (k + 1) : Nat) : Int)),
                 locks := L₁, votedSlot := ((k + 1 : Nat) : Int) }, [e]) ∧
       e.msg = vote y (k + 1) ∧ LocksLe L₁ k ∧
-      (1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ L₁) := by
+      (1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ L₁) ∧
+      (A.locks = ∅ → L₁ = ∅) := by
   have hs := slot4 k
   unfold acOnBlock blockReceipt
   rw [optimisticConfirmation_of_none (optimisticSelect_of_pool_nil (by rw [hs]; exact hpool))]
-  obtain ⟨L₁, d, he, hL₁, htip₁⟩ := tryVote_blk (y := y)
+  obtain ⟨L₁, d, he, hL₁, htip₁, hzero⟩ := tryVote_blk (y := y)
     (A := { A with blockStamp := Function.update A.blockStamp (blk (k + 1)).root
                     (ETime.of ((4 * (k + 1) : Nat) : Int)) }) hperm h hj hvs hpool h0 h1 hL htip
   rw [he, admitVote_fresh (by rw [hs]; rfl) (by change _ ∉ A.pool (k + 1); rw [hpool]; simp)
@@ -613,7 +642,7 @@ theorem acOnBlock_blk {y : Fin sp.n} {A : ACState sp.n} {Φ : N.Frm} {f k : Nat}
     (ETime.of ((4 * (k + 1) : Nat) : Int)) = bs
   refine ⟨L₁,
     ⟨vote y (k + 1), { A with blockStamp := bs, locks := L₁, votedSlot := ((k + 1 : Nat) : Int) },
-      some d⟩, ?_, rfl, hL₁, htip₁⟩
+      some d⟩, ?_, rfl, hL₁, htip₁, hzero⟩
   congr 2
   change Function.update A.pool (k + 1) (A.pool (k + 1) ++ [vote y (k + 1)]) = _
   rw [hpool]; rfl
@@ -690,7 +719,7 @@ theorem onBlock_blk {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s)
     rw [hac.pool]; unfold poolT; rw [tip_four, ite_eq_left ⟨by omega, by omega⟩]
   have hp1 : st.ac.pool (k + 1) = [] := by
     rw [hac.pool]; unfold poolT; rw [tip_four, ite_eq_right (by omega)]
-  obtain ⟨L₁, e, he, hem, hL₁, htip₁⟩ := acOnBlock_blk (y := y)
+  obtain ⟨L₁, e, he, hem, hL₁, htip₁, hzero⟩ := acOnBlock_blk (y := y)
     (by rw [hac.permission]) hf hac.restart
     (by rw [hac.voted, hvt]) hp1 (pool_both hpk).1 (pool_both hpk).2 hac.locks hac.tipLock
   refine ⟨{ st with fg := fg', ac := (acOnBlock sp y st.ac (Node.frame { st with fg := fg' })
@@ -700,7 +729,12 @@ theorem onBlock_blk {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s)
     refine ⟨hfg', by rw [hatts', hatts], hrec,
       ⟨hac.permission, hac.restart, rfl, ?_, ?_, ?_, ?_, hac.saved,
       by rw [Nat.add_sub_cancel]; exact hL₁, by rw [Nat.add_sub_cancel]; exact htip₁,
-      by rw [Nat.add_sub_cancel]; exact hac.latest, fun hz => by omega⟩⟩
+      by rw [Nat.add_sub_cancel]; exact hac.latest, fun hz => by
+        change k + 1 - 1 = 0 at hz
+        have hk : k = 0 := by omega
+        have he0 := hac.zeroLocks (by simpa using hk)
+        change L₁ = ∅
+        exact hzero he0⟩⟩
     · change Function.update st.ac.pool (k + 1) [vote y (k + 1)] = _
       rw [hac.pool]
     · intro σ x hx
@@ -804,8 +838,8 @@ and the vote for it. -/
 theorem tick_propose {st : St} {s : Nat} (hs : 1 ≤ s) (h : Good st w0 (4 * s)) :
     ∃ st' e, Node.onTick prop dg w0 st ((4 * s : Nat) : Int) 0 true =
       (st', [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.proposal, Node.frame st, []⟩,
-        .fg (.block (blk s) true), .ac ⟨.block (blk s), Node.frame st', [e]⟩,
-        .ac ⟨.toFG, Node.frame st', []⟩]) ∧
+        .fg (.block (blk s) true), .ac ⟨.block (blk s), Node.frame st', [e]⟩] ++
+        readCuts st' (4 * s)) ∧
       e.msg = vote w0 s ∧ Voted st' w0 s := by
   obtain ⟨k, rfl⟩ : ∃ k, s = k + 1 := ⟨s - 1, by omega⟩
   have hgood := h
@@ -839,14 +873,21 @@ theorem tick_propose {st : St} {s : Nat} (hs : 1 ≤ s) (h : Good st w0 (4 * s))
       ⟨hac.permission, hac.restart, hac.voted, hac.pool, hac.vstamp, hac.bstamp, hac.bstamp0,
       hac.saved, hL₁, htip₁, hac.latest, fun hz => by
         have he := hac.zeroLocks hz
-        rw [he] at hprop
-        exact False.elim (by omega)⟩⟩
+        have hp := congrArg (fun r => r.1.locks) hprop
+        unfold AC.acProposal at hp
+        split at hp
+        · exact hp.symm.trans he
+        · simpa [unlock, liveLocks, he] using hp.symm⟩⟩
   obtain ⟨st₂, e, hob, hem, hv⟩ := onBlock_blk (y := w0) (s := k + 1) (by omega)
     (by rw [Nat.add_sub_cancel]; exact hns₁)
   obtain ⟨f₂, hf₂⟩ := fgGood_frame hv.fg
   change ChainFrame (Node.frame st₂) f₂ (jx (k + 1)) (k + 1) at hf₂
   have hfu := tickStep_fgUpdate_none (y := w0) (st := st₂) hf₂ hv.ac.locks
-    (by have := hf₂.fj; have := jx_succ_le k; omega) (by omega) hv.ac.reported (4 * (k + 1)) 0
+    hv.fg hv.record hv.ac.zeroLocks (fun hb m _ _ hm => by
+      have := hgt_mono hm
+      have hk : k ≠ 0 := by simpa using hb
+      have hr : nrw (4 * (k + 1)) = hgt k := by unfold nrw hgt; split_ifs <;> omega
+      rw [hr]; simpa only [Nat.add_sub_cancel] using this) (4 * (k + 1)) 0
   have hP : tickStep prop dg w0 st ((4 * (k + 1) : Nat) : Int) 0 .proposal =
       (st₂, .ac ⟨.proposal, Node.frame st, []⟩ ::
         [.fg (.block (blk (k + 1)) true), .ac ⟨.block (blk (k + 1)), Node.frame st₂, [e]⟩]) := by

@@ -80,23 +80,36 @@ theorem propose_cut {s : Nat} (hs : 1 ≤ s) :
       (run.state w0 (1024 * (4 * s) + 2)).fg = ((world (4 * s)).1 w0).fg ∧
       FGGood (run.post (1024 * (4 * s) + 2)).fg s := by
   obtain ⟨st', e, hex, -, hv⟩ := tick_propose hs (world_good (4 * s) w0)
-  have hc : (ex (world (4 * s)).1 w0 (4 * s) (.tick 0 true)) = (st', _) := hex
-  have hs0 := segs_zero (4 * s)
-  rw [hc] at hs0
-  have hi : 1024 * (4 * s) + 2 = 1024 * (4 * s) + 8 * 0 + 2 := rfl
-  obtain ⟨hcall, htime⟩ := tick0_callAt hex (k := 2) (by decide) rfl
-  refine ⟨hcall, show (1024 * (4 * s) + 2) % 8 = 2 by omega, by rw [htime]; push_cast; rfl, ?_, ?_⟩
-  · rw [hi, run_state_seg (by decide) (by decide) hs0]
-    simp only [List.take_succ_cons, List.take_zero, List.foldl_cons, List.foldl_nil, cutPost_ac_fg]
-  · have hfull := foldl_seg hs0 (k := 7) le_rfl
-    dsimp only at hfull
-    rw [hc] at hfull
-    simp only [List.take_succ_cons, List.take_nil, List.foldl_cons, List.foldl_nil] at hfull
-    rw [hi, run_post (by decide) (by decide) hs0]
-    simp only [List.take_succ_cons, List.take_zero, List.foldl_cons, List.foldl_nil]
-    rw [← cutPost_ac_fg w0 _ _ ⟨.block (blk s), Node.frame st', [e]⟩,
-      ← cutPost_ac_fg w0 _ _ ⟨.toFG, Node.frame st', []⟩, hfull]
-    exact hv.fg
+  obtain ⟨f, hf⟩ := ns_frame hv
+  have hj : jx s ≤ s - 1 := by
+    have := jx_succ_le (s - 1)
+    simpa only [Nat.sub_add_cancel hs] using this
+  rw [readCuts_eq hv.ac hf (by omega) hj (4 * s) (by
+    change sp.slot ((4 * s : Nat) : Int) ≤ _; rw [slot_nat]; omega)] at hex
+  unfold refusedCuts at hex
+  split_ifs at hex
+  all_goals
+    simp only [List.cons_append, List.nil_append, List.append_nil] at hex
+    have hc : (ex (world (4 * s)).1 w0 (4 * s) (.tick 0 true)) = (st', _) := hex
+    have hs0 := segs_zero (4 * s)
+    rw [hc] at hs0
+    have hi : 1024 * (4 * s) + 2 = 1024 * (4 * s) + 8 * 0 + 2 := rfl
+    obtain ⟨hcall, htime⟩ := tick0_callAt hex (k := 2) (by decide) rfl
+    refine ⟨hcall, show (1024 * (4 * s) + 2) % 8 = 2 by omega,
+      by rw [htime]; push_cast; rfl, ?_, ?_⟩
+    · rw [hi, run_state_seg (by decide) (by decide) hs0]
+      simp only [List.take_succ_cons, List.take_zero, List.foldl_cons, List.foldl_nil,
+        cutPost_ac_fg]
+    · have hfull := foldl_seg hs0 (k := 7) le_rfl
+      dsimp only at hfull
+      rw [hc] at hfull
+      simp only [List.take_succ_cons, List.take_nil, List.foldl_cons, List.foldl_nil] at hfull
+      have hfg := congrArg (fun st : St => st.fg) hfull
+      simp only [cutPost_eq] at hfg
+      rw [hi, run_post (by decide) (by decide) hs0]
+      simp only [List.take_succ_cons, List.take_zero, List.foldl_cons, List.foldl_nil, cutPost_eq]
+      rw [hfg]
+      exact hv.fg
 
 /-- `v0`'s proposal of slot `s ≥ 1` is its own block, processed at `t_s`. -/
 theorem run_proposesAt {s : Nat} (hs : 1 ≤ s) :

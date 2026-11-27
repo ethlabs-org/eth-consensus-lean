@@ -44,6 +44,11 @@ theorem tick_cases (t : Nat) : t = 1 ∨ (∃ k, t = 4 * (k + 1)) ∨ (t % 4 = 2
   · exact Or.inr (Or.inr (Or.inl hC))
   · exact Or.inr (Or.inr (Or.inr ⟨h1, hA, hC⟩))
 
+theorem admitOwn_readCuts (st : NodeState N1) (t : Time) (c : Cut N1) :
+    admitOwn (st, c :: readCuts st t) = (st, c :: readCuts st t) := by
+  unfold readCuts
+  split <;> rfl
+
 /-- **The run invariant**: before every tick, the node state is `Good`. -/
 theorem good_tick : ∀ t, Good (tickState N1 dg1 t) t
   | 0 => good_init
@@ -56,8 +61,13 @@ theorem good_tick : ∀ t, Good (tickState N1 dg1 t) t
     · obtain ⟨fg', e, st', -, -, he, -, -, hg⟩ := tick_A ih
       rw [he]; exact hg
     · obtain ⟨A', he, hg⟩ := tick_C ih hC
-      rw [stockTick, he]; exact hg
-    · rw [stockTick, (tick_noop ih h1 hA hC).1]; exact (tick_noop ih h1 hA hC).2
+      rw [stockTick, he, show Node.frame (tickState N1 dg1 t) =
+        Node.frame { (tickState N1 dg1 t) with ac := A' } from rfl,
+        show [_] ++ readCuts _ _ = _ :: readCuts _ _ from rfl, admitOwn_readCuts]
+      exact hg
+    · rw [stockTick, (tick_noop ih h1 hA hC).1, show [_] ++ readCuts _ _ =
+        _ :: readCuts _ _ from rfl, admitOwn_readCuts]
+      exact (tick_noop ih h1 hA hC).2
 
 /-! ## The cuts of the run -/
 
@@ -86,8 +96,13 @@ theorem tickCuts_other {t : Nat} (h1 : t ≠ 1) (hA : ¬ (t % 4 = 0 ∧ 4 ≤ t)
   rw [tickCuts_eq, stockTick]
   by_cases hC : t % 4 = 2 ∧ 4 ≤ t
   · obtain ⟨A', he, -⟩ := tick_C (good_tick t) hC
-    rw [he]; exact ⟨_, rfl, rfl⟩
-  · rw [(tick_noop (good_tick t) h1 hA hC).1]; exact ⟨_, rfl, rfl⟩
+    rw [he, show Node.frame (tickState N1 dg1 t) =
+      Node.frame { (tickState N1 dg1 t) with ac := A' } from rfl,
+      show [_] ++ readCuts _ _ = _ :: readCuts _ _ from rfl, admitOwn_readCuts]
+    exact ⟨_, rfl, rfl⟩
+  · rw [(tick_noop (good_tick t) h1 hA hC).1,
+      show [_] ++ readCuts _ _ = _ :: readCuts _ _ from rfl, admitOwn_readCuts]
+    exact ⟨_, rfl, rfl⟩
 
 theorem get7 {α : Type} {a0 a1 a2 a3 a4 a5 a6 c : α} {k : Nat}
     (h : [a0, a1, a2, a3, a4, a5, a6][k]? = some c) :
@@ -312,8 +327,8 @@ theorem mid_fgGood (t j : Nat) :
   all_goals
     have htip : tip (t + 1) = tip t := by unfold tip; omega
     rw [ite_neg (by omega)]
-    have hnoblock : ∀ k c, (tickCuts N1 dg1 t)[k]? = some c →
-        ∀ B, c ≠ .fg (.block B true) := by
+    have hnoblock : ∀ (k : Nat) (c : Cut N1), (tickCuts N1 dg1 t)[k]? = some c →
+        ∀ B, c ≠ Cut.fg (A := N1) (.block B true) := by
       intro k c hc B
       first
       | (obtain rfl := ht; obtain ⟨e, he, -, -⟩ := tickCuts_B0
