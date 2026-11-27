@@ -161,7 +161,8 @@ theorem tick_noop {st : St} {y : Fin sp.n} {τ k nr : Nat} {vs : Int}
   dsimp only
   rw [show ({ fg := st.fg, ac := st.ac, record := st.record } : St) = st from rfl,
     tickStep_proposal_no hnp,
-    tickStep_fgUpdate_none hf (fun l hl => (h.ac.locks l hl).imp fun _ hm => ⟨by omega, hm.2⟩)
+    tickStep_fgUpdate_none hf
+      (fun l hl => ⟨(h.ac.locks l hl).1.imp fun _ hm => ⟨by omega, hm.2⟩, (h.ac.locks l hl).2⟩)
       hfr hrp h.ac.reported]
   rfl
 
@@ -356,7 +357,8 @@ theorem tick_vote0 {st : St} {y : Fin sp.n} (h : Good st y 1) :
 
 /-- The AC's receipt of the other validator's vote of the slot, the own vote already held. -/
 theorem acOnMessage_other {y : Fin sp.n} {A : ACState sp.n} {Φ : N.Frm} {t : Time} {σ : Nat}
-    (hst : sp.slot t = σ) (hpool : A.pool σ = [vote y σ]) (hvs : A.votedSlot = σ) :
+    (hst : sp.slot t = σ) (hpool : A.pool σ = [vote y σ]) (hvs : A.votedSlot = σ)
+    (hcap : ∀ l ∈ A.locks, l.expiry ≤ l.slot + sp.k) :
     acOnMessage sp y A Φ t (vote (other y) σ) =
       (optimisticConfirmation sp
         { A with pool := Function.update A.pool σ [vote y σ, vote (other y) σ],
@@ -376,7 +378,7 @@ theorem acOnMessage_other {y : Fin sp.n} {A : ACState sp.n} {Φ : N.Frm} {t : Ti
   exact tryVote_voted (by
     obtain ⟨hs, -⟩ := optimisticConfirmation_cases
       { A with pool := Function.update A.pool σ ([vote y σ] ++ [vote (other y) σ]),
-               voteStamp := Function.update A.voteStamp (vote (other y) σ) (ETime.of t) } Φ t
+               voteStamp := Function.update A.voteStamp (vote (other y) σ) (ETime.of t) } Φ t hcap
     rw [hs.votedSlot, hst]; exact hvs)
 
 theorem onMessage_eq (y : Fin sp.n) (st : St) (t : Time) (m : Vote sp.n) :
@@ -393,7 +395,8 @@ theorem deliver_vote0 {st : St} {y : Fin sp.n}
   obtain ⟨hfg, hatts, hrec, hac⟩ := h
   have hpool : st.ac.pool 0 = [vote y 0] := by rw [hac.pool, Function.update_self]
   have hs1 : sp.slot ((1 : Nat) : Int) = 0 := slot_nat 1
-  rw [onMessage_eq, acOnMessage_other hs1 hpool (by rw [hac.voted]; rfl),
+  rw [onMessage_eq, acOnMessage_other hs1 hpool (by rw [hac.voted]; rfl)
+    (fun l hl => (hac.locks l hl).2),
     optimisticConfirmation_of_none (optimisticSelect_slot_zero hs1)]
   refine ⟨_, rfl, ?_⟩
   have hp2 : poolT y 2 = Function.update (poolT y 1) 0 [vote y 0, vote (other y) 0] := by
@@ -846,9 +849,10 @@ theorem addLocks_tip {Φ : N.Frm} {f s : Nat} (h : ChainFrame Φ f (jx s) s) {L 
       (⟨(blk s).root, s, true, s + 2⟩ : Lock) ∈
         addLocks sp L Φ t s {((blk s).root, true, s + 2)} := by
   have hf : f ≤ s := le_trans h.fj (jx_le _)
-  refine ⟨addLocks_le h (fun l hl => (hL l hl).imp fun _ hm => ⟨by omega, hm.2⟩) le_rfl _ _ ?_, ?_⟩
+  refine ⟨addLocks_le h
+    (fun l hl => ⟨(hL l hl).1.imp fun _ hm => ⟨by omega, hm.2⟩, (hL l hl).2⟩) le_rfl _ _ ?_, ?_⟩
   · rintro p hp; rw [Set.mem_singleton_iff] at hp
-    exact ⟨blk s, h.mem hf le_rfl, by rw [hp]⟩
+    exact ⟨⟨blk s, h.mem hf le_rfl, by rw [hp]⟩, by rw [hp]⟩
   · exact h.mem_liveLocks (Or.inr ⟨_, rfl, rfl⟩) hf le_rfl rfl (by rw [hst]; dsimp only; omega)
 
 /-- **The other validator's vote of slot `s ≥ 1`** at `t_s`: both votes are held, and the
@@ -863,7 +867,8 @@ theorem deliver_vote {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s) (h : Vote
   change ChainFrame (Node.frame st) f (jx s) s at hf
   have hst : sp.slot ((4 * s : Nat) : Int) = s := by rw [slot_nat]; omega
   have hpool : st.ac.pool s = [vote y s] := by rw [hac.pool, Function.update_self]
-  rw [onMessage_eq, acOnMessage_other hst hpool (by rw [hac.voted])]
+  rw [onMessage_eq, acOnMessage_other hst hpool (by rw [hac.voted])
+    (fun l hl => (hac.locks l hl).2)]
   have hsel := optimisticSelect_two hf hs hst
     (by rw [ts_nat, delta1]; change ((4 * s : Nat) : Int) < 4 * (s : Int) + 2 * 1; omega)
     (joined_of_bot hac.restart _) (y := y)
@@ -871,7 +876,7 @@ theorem deliver_vote {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s) (h : Vote
       pool := Function.update st.ac.pool s [vote y s, vote (other y) s],
       voteStamp := Function.update st.ac.voteStamp (vote (other y) s)
         (ETime.of ((4 * s : Nat) : Int)) }) (Function.update_self _ _ _)
-  rw [optimisticConfirmation_of_some hsel, hst]
+  rw [optimisticConfirmation_of_some hsel (fun l hl => (hac.locks l hl).2), hst]
   refine ⟨_, rfl, ?_⟩
   obtain ⟨hLk, htipk⟩ := addLocks_tip hf hac.locks hst
   have hnot : ¬ AncR (Node.frame st) (blk s) st.ac.latestConfirmed := by

@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AnchorPrefix
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -260,12 +261,8 @@ private theorem actual_proposal_start_cases {A : AC.ACState sp.n}
   simp only [Option.some.injEq, Prod.mk.injEq] at hd
   obtain ⟨rfl, -⟩ := hd
   change AC.getAnchor sp _ Phi t = _ ∨ AC.getAnchor sp _ Phi t ∈ _
-  unfold AC.getAnchor
-  rcases hD : AC.deepest Phi (AC.liveLockBlocks sp _ Phi t ∪ {Phi.fcRoot}) with _ | D
-  · exact Or.inl rfl
-  · rcases (AC.deepest_mem hD).1 with h | h
-    · exact Or.inr h
-    · exact Or.inl (Set.mem_singleton_iff.1 h)
+  exact (Compose.anchor_mem Phi _ t).elim Or.inr
+    (fun h => Or.inl (Set.mem_singleton_iff.mp h))
 
 private theorem unlocked_live_preimage {Phi : AC.Frm sp.n (List (FG.Att sp.n))}
     (hPhi : FrameOK Phi) {L : Set AC.Lock} (hwf : AC.LocksWF sp L) {t : Time} {s : Int}

@@ -10,6 +10,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Participants
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ViableHeadRoute
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.PivotBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.H2Batch
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.ResultAnc
@@ -334,14 +335,8 @@ private theorem vote_head_classification_core'
     obtain ⟨Q, hQ, hv, hrQ⟩ := hrootWitness
     exact hd ⟨Q, AC.voterBlockTree_subset_voteDomain hQ, hv, heq ▸ hrQ⟩
   have hAm : A ∈ AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) := by
-    unfold A AC.getAnchor
-    cases hh : AC.deepest ell.frame
-        (AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) ∪ {ell.frame.fcRoot}) with
-    | none => exact (heq (by unfold A AC.getAnchor; rw [hh]; rfl)).elim
-    | some B =>
-      rcases (AC.deepest_mem hh).1 with h | h
-      · exact h
-      · exact (heq (by unfold A AC.getAnchor; rw [hh]; exact h)).elim
+    exact (Compose.anchor_mem ell.frame e.readPoint (tr.time i)).elim id
+      (fun h => (heq (Set.mem_singleton_iff.mp h)).elim)
   obtain ⟨hA, l, hl, hlr⟩ := hAm
   have hstrict : ¬ Anc (tr.HonestBlocks H) A ell.frame.fcRoot := by
     intro h
@@ -418,14 +413,8 @@ theorem vote_head_classification' {s₀ floor : Nat} {hi : Time}
       hrun hnc hf hnr hy hai ha hc halo hihi hat hgf
     exact (hd ⟨Q, AC.voterBlockTree_subset_voteDomain hQ, hv, heq ▸ hrQ⟩).elim
   have hAm : A ∈ AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) := by
-    unfold A AC.getAnchor
-    cases hh : AC.deepest ell.frame
-        (AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) ∪ {ell.frame.fcRoot}) with
-    | none => exact (heq (by unfold A AC.getAnchor; rw [hh]; rfl)).elim
-    | some B =>
-      rcases (AC.deepest_mem hh).1 with h | h
-      · exact h
-      · exact (heq (by unfold A AC.getAnchor; rw [hh]; exact h)).elim
+    exact (Compose.anchor_mem ell.frame e.readPoint (tr.time i)).elim id
+      (fun h => (heq (Set.mem_singleton_iff.mp h)).elim)
   obtain ⟨hA, l, hl, hlr⟩ := hAm
   have hstrict : ¬ Anc (tr.HonestBlocks H) A ell.frame.fcRoot := by
     intro h

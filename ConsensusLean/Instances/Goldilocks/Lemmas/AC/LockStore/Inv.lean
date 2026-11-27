@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Deepest
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
 
 public section
@@ -31,7 +32,7 @@ theorem lockInv_iff {A : ACState sp.n} {Φ : Frm sp.n FGP} :
   Iff.rfl
 
 /-- Locks that move back stay below the record. -/
-private theorem LockInv.movesBack (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree ⊆ U)
+theorem LockInv.movesBack (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : Φ.tree ⊆ U)
     {A A' : ACState sp.n} (h : LockInv U A Φ) (hm : MovesBack sp Φ A.locks A'.locks)
     (hl : A'.latestConfirmed = A.latestConfirmed) : LockInv U A' Φ := by
   obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
@@ -41,12 +42,25 @@ private theorem LockInv.movesBack (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : 
   exact (Anc.mono hΦU hA).trans (hlE l hl B (hΦU hB) hBr)
 
 /-- A conflicting member of a chain of live lock blocks witnesses a lock conflict. -/
-private theorem conflictsWithLock_of_mem {Φ : Frm sp.n FGP} (_hΦ : FrameOK Φ)
+private theorem conflictsWithLock_of_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     {L : Set Lock} {t : Time}
-    (_hch : ∀ B ∈ liveLockBlocks sp L Φ t, ∀ D ∈ liveLockBlocks sp L Φ t,
+    (hch : ∀ B ∈ liveLockBlocks sp L Φ t, ∀ D ∈ liveLockBlocks sp L Φ t,
       Compatible Φ.tree B D) {C B : Blk sp.n FGP}
     (hB : B ∈ liveLockBlocks sp L Φ t) (hCB : ¬ Compatible Φ.tree C B) :
-    conflictsWithLock sp L Φ t C := ⟨B, hB, hCB⟩
+    conflictsWithLock sp L Φ t C := by
+  obtain ⟨D, hD⟩ := exists_deepest hΦ (fun _ h => h.1) ⟨B, hB⟩
+  have hd := deepest_mem hD
+  have hBD : Φ.Anc B D := by
+    rcases hch B hB D hd.1 with h | h
+    · exact h
+    · by_cases he : D = B
+      · exact he ▸ Relation.ReflTransGen.refl
+      · have hlt := depth_lt_of_anc hΦ h he hB.1
+        rcases hd.2 B hB (Ne.symm he) with hb | ⟨hb, -⟩ <;> omega
+  refine ⟨D, hD, fun hc => hCB ?_⟩
+  rcases hc with hCD | hDC
+  · exact anc_total hΦ.coherent hCD hBD
+  · exact Or.inr (hBD.trans hDC)
 
 open Classical in
 /-- **New locks below a new record.** The record moves to `C` (unless `C` is below it), and the
@@ -116,7 +130,7 @@ theorem LockInv.addLocks (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ
 /-- **New locks below a live lock, the record kept.** When every new lock is on a block below a
 live lock block, and the record does not move, the invariant holds after: the live lock blocks are
 below the record. -/
-private theorem LockInv.addLocks_below (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
+theorem LockInv.addLocks_below (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     (hΦU : Φ.tree ⊆ U) {A A' : ACState sp.n} (h : LockInv U A Φ) {t : Time} {s : Nat}
     {N : Set (Nat × Bool × Nat)} (hlocks : A'.locks = AC.addLocks sp A.locks Φ t s N)
     (hN : ∀ p ∈ N, ∃ Y ∈ Φ.tree, Y.root = p.1 ∧
@@ -141,7 +155,7 @@ private theorem LockInv.addLocks_below (hU : Coherent U) {Φ : Frm sp.n FGP} (h�
 
 /-! ### Each AC function keeps the invariant -/
 
-private theorem LockInv.of_eq {Φ : Frm sp.n FGP} {A A' : ACState sp.n} (h : LockInv U A Φ)
+theorem LockInv.of_eq {Φ : Frm sp.n FGP} {A A' : ACState sp.n} (h : LockInv U A Φ)
     (hl : A'.locks = A.locks) (hr : A'.latestConfirmed = A.latestConfirmed) : LockInv U A' Φ := by
   obtain ⟨E, hE, hEr, hEt, hlE⟩ := h
   exact ⟨E, hE, hEr.trans hr.symm, hEt, hl ▸ hlE⟩
@@ -154,7 +168,7 @@ theorem LockInv.unlock {A : ACState sp.n} (h : LockInv U A Φ) (t : Time) (s : I
   h.movesBack hU hΦU (((locks_move_back sp) FGP Φ A.locks t hΦ).2.2 s V) rfl
 
 open Classical in
-private theorem LockInv.optimistic {A : ACState sp.n} (h : LockInv U A Φ) (t : Time) :
+theorem LockInv.optimistic {A : ACState sp.n} (h : LockInv U A Φ) (t : Time) :
     LockInv U (optimisticConfirmation sp A Φ t) Φ := by
   unfold optimisticConfirmation
   rcases hsel : optimisticSelect sp A Φ t with _ | B
@@ -188,6 +202,7 @@ private theorem LockInv.update {A : ACState sp.n} (h : LockInv U A Φ) (t : Time
     split_ifs with hconf
     · -- vetoed: the record stays; a written path block is below the live lock `C` conflicts with
       obtain ⟨L, hL, hCL⟩ := hconf
+      have hLm := (deepest_mem hL).1
       refine (h.of_eq (A' := { A with saved := Function.update A.saved s (some C.root) }) rfl rfl
         ).addLocks_below hU hΦ hΦU rfl (fun p hp => ?_) rfl
       have hp' : ∃ Y, (Y ∈ confirmationPath sp Φ C ∧ ¬ conflictsWithLock sp A.locks Φ t Y) ∧
@@ -195,7 +210,7 @@ private theorem LockInv.update {A : ACState sp.n} (h : LockInv U A Φ) (t : Time
         rcases hp with ⟨D, hD, rfl⟩ | ⟨D, hD, rfl⟩ <;> exact ⟨D, (deepest_mem hD).1.1, rfl⟩
       obtain ⟨Y, hYt, hYr, hYC, hnc⟩ :=
         hN {p} (fun q hq => (Set.mem_singleton_iff.1 hq) ▸ hp') p rfl
-      refine ⟨Y, hYt, hYr, L, hL, ?_⟩
+      refine ⟨Y, hYt, hYr, L, hLm, ?_⟩
       rcases (show Compatible Φ.tree Y L by by_contra h'; exact hnc ⟨L, hL, h'⟩) with hYL | hLY
       · exact hYL
       · exact absurd (Or.inr (hLY.trans hYC)) hCL

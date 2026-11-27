@@ -2,6 +2,7 @@ module
 public import ConsensusLeanTest.Goldilocks.Persist.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 @[expose] public section
 
 /-! # The one-validator tick run writes a fast lock by the fast test of the update
@@ -218,7 +219,8 @@ theorem notConflicts_update (s : Nat) {X : N1.Blk}
       (Node.frame (tickState N1 dg1 (4 * s + 6))) ((tickRun N1 dg1).projAC.time (8 * (4 * s + 6)))
       X := by
   obtain ⟨f, -, hf⟩ := update_frame s
-  rintro ⟨B, hB, hnc⟩
+  intro hc
+  obtain ⟨B, hB, hnc⟩ := exists_of_conflictsWithLock hc
   exact hnc (compatible_chain hf hX hB.1)
 
 /-- (a) **The fast test of the update of slot `s` passes on `blk s`**: `n = 1 ≤ 2 · 1`. -/
@@ -288,6 +290,7 @@ open Classical in
 of the stored locks with new entries, among them the fast entry on `D` with expiry `s + 2`. -/
 theorem updateConfirmation_fastEntry {A : ACState sp1.n} {Φ : N1.Frm} {t : Time} {s : Nat}
     {C D : N1.Blk} (hC : getConfirmation sp1 A Φ s = some C)
+    (hcap : ∀ l ∈ A.locks, l.expiry ≤ l.slot + sp1.k) (hs : s ≤ sp1.slot t)
     (hD : deepest Φ {X | X ∈ confirmationPath sp1 Φ C ∧ ¬ conflictsWithLock sp1 A.locks Φ t X ∧
       FastTest sp1 A Φ s X} = some D) :
     ∃ N : Set (Nat × Bool × Nat), (D.root, true, s + 2) ∈ N ∧
@@ -299,9 +302,10 @@ theorem updateConfirmation_fastEntry {A : ACState sp1.n} {Φ : N1.Frm} {t : Time
   simp only [hC]
   split_ifs
   · refine ⟨_, ?_, rfl⟩
-    exact Or.inl ⟨D, hD', by rw [fastExpiry_eq]⟩
+    exact Or.inl ⟨D, hD', by rw [fastExpiry_eq _ _ _ _ hcap hs]⟩
   · unfold updateLatestConfirmed
-    split_ifs <;> refine ⟨_, ?_, rfl⟩ <;> exact Or.inl ⟨D, hD', by rw [fastExpiry_eq]⟩
+    split_ifs <;> refine ⟨_, ?_, rfl⟩ <;>
+      exact Or.inl ⟨D, hD', by rw [fastExpiry_eq _ _ _ _ hcap hs]⟩
 
 /-- The post-state of the update cut is the update of slot `s`. -/
 theorem update_post (s : Nat) :
@@ -331,7 +335,10 @@ theorem update_writes_fastLock {s : Nat} (hs : 1 ≤ s) :
       ((tickRun N1 dg1).projAC.state v0 (8 * (4 * s + 6) + 1)).locks := by
   obtain ⟨f, hfs, hf⟩ := update_frame s
   obtain ⟨N, hN, hL⟩ :=
-    updateConfirmation_fastEntry (getConfirmation_update hs) (fastSelect_update hs)
+    updateConfirmation_fastEntry (getConfirmation_update hs)
+      (fun l hl => (locksWF_state acRun.localRun acRun.vstart (y := v0) (Set.mem_univ _)
+        (8 * (4 * s + 6))).cap hl)
+      (by rw [update_time, slot_nat]; omega) (fastSelect_update hs)
   rw [update_post]
   refine ⟨⟨N, hN, hL⟩, ?_⟩
   rw [hL]

@@ -418,9 +418,11 @@ theorem fastLock_mem_updateConfirmation_of_select {FGP : Type} {A : AC.ACState s
     (hconf : AC.getConfirmation sp A Φ s = some C)
     (hD : AC.deepest Φ {X | X ∈ AC.confirmationPath sp Φ C ∧
       ¬ AC.conflictsWithLock sp A.locks Φ t X ∧ AC.FastTest sp A Φ s X} = some D)
-    (hDt : D ∈ Φ.tree) (hlive : sp.slot t ≤ s + 2) :
+    (hDt : D ∈ Φ.tree) (hlive : sp.slot t ≤ s + 2)
+    (hcap : ∀ l ∈ A.locks, l.expiry ≤ l.slot + sp.k) (hs : s ≤ sp.slot t) :
     ∃ e, s + 2 ≤ e ∧ (⟨(Φ.viableAncestor D).root, s, true, e⟩ : AC.Lock) ∈
       (AC.updateConfirmation sp A Φ t s).locks := by
+  classical
   have hD' : AC.deepest Φ {B | B ∈ {B | B ∈ AC.confirmationPath sp Φ C ∧
       ¬ AC.conflictsWithLock sp A.locks Φ t B} ∧ AC.FastTest sp A Φ s B} = some D := by
     rw [← hD]
@@ -429,9 +431,17 @@ theorem fastLock_mem_updateConfirmation_of_select {FGP : Type} {A : AC.ACState s
     simp only [Set.mem_ofPred_eq, and_assoc]
   unfold AC.updateConfirmation
   simp only [hconf]
-  exact ⟨_, AC.le_fastExpiry sp _ Φ t s, ⟨D.root, s, true, _⟩,
+  have hlocks : (if AC.conflictsWithLock sp A.locks Φ t C then
+      { A with saved := Function.update A.saved (s : Int) (some C.root) }
+      else AC.updateLatestConfirmed sp
+        { A with saved := Function.update A.saved (s : Int) (some C.root) } Φ C).locks =
+      A.locks := by
+    split_ifs <;> simp only [AC.updateLatestConfirmed_keeps_locks]
+  simp only [Option.map_some] at *
+  rw [hlocks]
+  exact ⟨_, AC.le_fastExpiry sp _ Φ t s hcap hs, ⟨D.root, s, true, _⟩,
     Or.inr ⟨_, Or.inl ⟨D, hD', rfl⟩, rfl⟩, D, hDt, rfl,
-    hlive.trans (AC.le_fastExpiry sp _ Φ t s), rfl⟩
+    hlive.trans (AC.le_fastExpiry sp _ Φ t s hcap hs), rfl⟩
 
 /-- The AC post-state of an honest update is the update-confirmation result. -/
 theorem post_of_updateAt
@@ -534,6 +544,14 @@ theorem toFG_candidate_of_viable_head_at {K : AC.CommitteeDict sp.n}
     apply AC.slot_of_mem sp (r + 1)
     all_goals simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ]
   obtain ⟨e, he, hl⟩ := fastLock_mem_updateConfirmation_of_select (t := tr.time j) hconf hD hDt
+    (by omega)
+    (by
+      have hr := (hrun.acRun_upTo hnc (hrun.time_nonneg j)).localRun
+      have hwf := AC.locksWF_state hr hrun.vstart hyj j
+      have hs := Trace.upTo_state tr.projAC y (d := tr.time j) (i := j)
+        (fun q hq => hmono hq.le)
+      rw [hs] at hwf
+      exact fun l hl => hwf.cap hl)
     (by omega)
   rw [← post_of_updateAt hrun hnc hyj hu] at hl
   have hyj1 : y ∈ H (tr.time (j + 1)) := hrun.antitone (hmono hji) hy
