@@ -322,7 +322,7 @@ private theorem lock_label {ini}
     omega
   · exact (hupd ell hu).trans hm
 
-private theorem signed_row_lock_member {ini}
+theorem signed_row_lock_member {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g a b : Time} {v : Fin sp.n} {d : Nat}
     {att : FG.Att sp.n} (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d)))
