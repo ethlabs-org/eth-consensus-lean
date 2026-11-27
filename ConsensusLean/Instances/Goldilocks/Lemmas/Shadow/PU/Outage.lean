@@ -11,6 +11,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 
 public section
 
@@ -246,7 +247,7 @@ every FG source, at a cut before `n` of a node honest then, compatible with `B`,
 of the tree at cut `n` of a node honest at a time `t ≥ 0` after every cut before `n`, by a
 validator honest at `t`, has a source compatible with `B`, held by that validator at its signing
 cut. The frame enters only through the signed source lying in the signer's tree, which is the
-store's tree above `F` (`Store.toFrame'_tree`). Reads `Compose.attest_source'` (lane C). -/
+store's tree above `F` (`Store.toFrame'_tree`). Uses `Coherence.attest_source'`. -/
 theorem rows_sourced_by' {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {B : AC.Blk sp.n (List (FG.Att sp.n))} {n : Nat}
@@ -259,7 +260,7 @@ theorem rows_sourced_by' {ini}
   obtain ⟨m, hmn, -, k, hkm, src, hcall⟩ :=
     honest_row_signed_before' hr (hnc.upTo _) hy (by rw [Trace.upTo_state tr y ht]; exact hX) ha
       hav
-  obtain ⟨j, rfl, ℓ, hcj, hcl, -, hC, hfg⟩ := attest_source' hr.toLocalRun' hav hcall
+  obtain ⟨j, rfl, ℓ, hcj, hcl, -, hC, hfg⟩ := Coherence.attest_source' hr.toLocalRun' hav hcall
   have hj1 : j + 1 < n := by omega
   have hjt : ∀ k' < j + 1, tr.time k' ≤ t := fun k' hk' => ht k' (by omega)
   have hjt' : ∀ k' < j, tr.time k' ≤ t := fun k' hk' => ht k' (by omega)
