@@ -13,7 +13,8 @@ locks of earlier slots) plus `c`, at least `j + 2` and at most `j + k` (`fastExp
 reads the locks through `live_locks`, which moves each live lock back to its viable ancestor
 (`Frame.viableAncestor`, the frame-level definition of claims G0.4 (frame), which goldilocks-spec
 §"Locks" also gives). The highest live lock is the deepest live lock block. The anchor is the
-higher of it and `fc_root`; it vetoes a block that conflicts with it; `add_locks` returns the
+higher of it and `fc_root`. The highest live lock vetoes a block that conflicts with it;
+there is no veto when no live lock exists. `add_locks` returns the
 live locks of the stored set and the new locks together, each with its expiry; `unlock` against
 the slot-`s` votes of a view
 moves each live lock of a slot below `s` back to its deepest ancestor (at or above `Φ.F`) with
