@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Actions
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Restart
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Premises
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.RestartStamp
 
 public section
 
@@ -157,6 +158,10 @@ theorem acToFG_mayVote (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
 theorem acRestart_mayVote (ro : ReplayOrder sp FGP) (self : Fin sp.n)
     (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (acRestart sp ro self A Φ t).1.mayVote = A.mayVote := by
+  classical
+  by_cases h : FrameOK Φ ∧ 0 ≤ t
+  · rw [acRestart_eq_stamp sp ro self A Φ t h.1 h.2, restartStamp_eq]
+  clear h
   have keeps (bs : List (Blk sp.n FGP)) (acc : ACState sp.n × List (Em sp FGP)) :
       (bs.foldl (fun acc B =>
         let r := acOnBlock sp self acc.1 Φ t B
