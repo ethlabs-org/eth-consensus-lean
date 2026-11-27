@@ -5,6 +5,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
@@ -177,8 +178,6 @@ theorem frameKey''_le_of_relay {ACP : Type} {acp₀ : ACP} {stx stz : Store P AC
     (hV : Vᶜ.ncard < 2 * P.fg.q - P.n)
     (hsafe : ∀ a b, (∃ Y ∈ stz.tree, a ∈ Y.fgPayload) →
       (∃ Y ∈ stx.tree, b ∈ Y.fgPayload) → a.val ∈ V → ¬ FG.slashable a b)
-    (hjmax : ∀ B ∈ stz.tree, ∀ X ∈ stz.tree, (stz.σ B.root).J = X.root →
-      stz.Anc stz.F X → (stz.σ B.root).hj ≤ stz.hj)
     (hancz : ∀ A C, Anc U A C → C ∈ stz.tree → stz.Anc A C)
     (hheld : ∀ B ∈ stx.tree, stz.hmax ≤ (stx.σ B.root).h → B ∈ stz.tree) :
     frameKey'' stx ≤ frameKey'' stz := by
@@ -217,7 +216,7 @@ theorem frameKey''_le_of_relay {ACP : Type} {acp₀ : ACP} {stx stz : Store P AC
     have hFJ := hancz _ _ ((Store.F_anc_of_hj_lt_of_safe_with hu hrz hrx hU hsubz hsubx
       hV hsafe hJx (by rw [hBjhj] at hJh; omega)).mono hsubx) hJz
     have hσj := hσ hBjz hBj
-    have := hjmax Bj hBjz _ hJz (by rw [hσj, hBjJ]) hFJ
+    have := (jMax_iff _).mp hRz.jMax Bj hBjz _ hJz (by rw [hσj, hBjJ]) hFJ
     rw [hσj] at this
     omega
   rw [frameKey''_def, frameKey''_def]
@@ -297,6 +296,30 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
   {ini : Fin sp.n → (goldilocksNode' sp ro).State} {hold : Time}
 
+/-- Unresolved shadow observation wrapper around the proved store-level relay lag. -/
+theorem frameKey''_lag_obs'
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
+    (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    (hsvc : ResetService tr H g ΔF b hold) (hcatch : CatchRun tr H g κ)
+    {x z : Fin sp.n} {i m : Nat} (hx : x ∈ H (tr.time i)) (hz : z ∈ H (tr.time m))
+    (him : tr.time i ≤ tr.time m) (hmb : tr.time m ≤ b)
+    (hcall : ∃ j < m, tr.IsCall z j ∧
+      tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
+    (hcm : AC.gbar g + κ ≤ tr.time m) :
+    frameKey'' (tr.state x i).fg ≤ frameKey'' (tr.state z m).fg := by
+  sorry
+
+/-- Unresolved two-reader shadow observation wrapper for cached justification agreement. -/
+theorem J_eq_of_hj_eq_obs'
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {i m : Nat}
+    (hy : y ∈ H (tr.time i)) (hz : z ∈ H (tr.time m))
+    (hf : (H (max (tr.time i) (tr.time m)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    (he : (tr.state y i).fg.hj = (tr.state z m).fg.hj) :
+    (tr.state y i).fg.J = (tr.state z m).fg.J := by
+  sorry
+
 /-- V-B2, unresolved run supplier. The four-attempt combinatorial core is
 `exists_frameWindow'_seq_of_mem`; the open obligations are service relay and J agreement
 at two independently honest shadow observations. -/
@@ -318,7 +341,15 @@ theorem exists_frameWindow'_seq_of_service_proof_at
       (∀ y i, y ∈ H (tr.time i) → a ≤ tr.time i → tr.time i ≤ a + len v →
         frameKey'' (tr.state y i).fg = v) ∧
       ∃ M isTop J, FrameWindow' tr H a (a + len v) M isTop J := by
-  sorry
+  apply exists_frameWindow'_seq_of_mem len hlen hlam hrange
+  · intro x z i k hx hz hi _ hik hk
+    exact frameKey''_lag_obs' hrun hnc hf hsvc hcatch hx hz (by linarith)
+      (hk.le.trans hTb) (hcall z i k hz hi hik hk) (hlo.trans (by linarith))
+  · intro y z i m hy hz _ hi _ hm he
+    apply J_eq_of_hj_eq_obs' hrun hnc hy hz _ he
+    exact hf _ ((hrun.time_nonneg i).trans (le_max_left _ _))
+      (max_le (hi.le.trans hTb) (hm.le.trans hTb))
+  · exact hT
 
 end Growing
 
