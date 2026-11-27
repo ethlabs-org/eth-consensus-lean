@@ -2,6 +2,8 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -38,7 +40,17 @@ theorem viableHead_transfer_primed_at' {lo hi : Time} {M : Nat}
     (hv : Q ∈ (Node.frame' (tr.state z c)).viableHeads)
     (hQ : Q ∈ (Node.frame' (tr.state y i)).tree) :
     Q ∈ (Node.frame' (tr.state y i)).viableHeads := by
-  sorry
+  have hct := hrun.time_nonneg c
+  have hbc : ∀ q < c, tr.time q ≤ tr.time c := fun q hq => hrun.time_mono hq.le
+  rw [Node.frame'_eq, Store.toFrame'_viableHeads] at hv
+  obtain ⟨hQz, -, hvz⟩ := hv
+  have hwz := (tr.state z c).fg.viable'_witness (hframe.M_eq z c hz hclo hchi)
+    (hframe.top_iff z c hz hclo hchi) (hframe.root_eq z c hz hclo hchi) hvz
+  have hW := Healing.windowWitness_of_frameWindow' hrun hnc hframe hz hQz
+    ⟨hwz.1, fun ht he => (hwz.2 ht he).mono (Compose.Growing.tree_held_at' hct hz hbc)⟩
+  rw [Node.frame'_eq, Store.toFrame'_tree] at hQ
+  rw [Node.frame'_eq, Store.toFrame'_viableHeads]
+  exact ⟨hQ.1, hQ.2, (hW.held y i hy hilo hihi hf hQ.1).2⟩
 
 /-- A frozen competing child reflects into the actual proposer's full viable tree.
 (`FrameWindow.frozen_competitor_reflect_at` over the shadow run and `FrameWindow'`). -/
@@ -69,7 +81,16 @@ theorem frozen_competitor_reflect_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
     (hBX : B.parent = some X.root) (hne : B ≠ P)
     (hB : B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1))) :
     B ∈ ellp.frame.viableTree ellp.frame.tree := by
-  sorry
+  refine Healing.Growing.Core.frozen_competitor_reflect_at hrun.toCore hnc hsvc hcatch hnr hf hm hs₀
+    ?_ (fun hx hm' hc hcall hti hp =>
+      Healing.Growing.Core.proposal_parent_viable_full_frame_at hrun.toCore hnc hx hm'
+        (fun y i hy hf => full_frame_viable_witness_at' hrun hnc hy hf) hc hcall hti hp)
+    hz hdesignated hactual hPs hcp hcall hti hpay hparent hy hc hes hhigh hpb hX hrootX hBX
+    hne hB
+  intro x w j q ellx ellw W hx hw hm' hjl hjh hql hqh hcx hcw hv hW
+  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hx hcx] at hW ⊢
+  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hw hcw] at hv
+  exact viableHead_transfer_primed_at' hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
 
 end Consensus.Goldilocks.Healing.Growing.Shadow
 

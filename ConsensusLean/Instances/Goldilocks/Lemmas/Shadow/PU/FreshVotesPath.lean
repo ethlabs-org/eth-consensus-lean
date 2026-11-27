@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesPath
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -61,7 +62,17 @@ theorem proposal_suffix_before_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
       {B | B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)) ∧
         B.parent = some X.root ∧ AC.headEligible sp ell.frame (tr.time i)
           (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)) s B} C := by
-  sorry
+  refine Healing.Growing.Core.proposal_suffix_before_at hrun.toCore hnc hsvc hawake hf hcatch hnr hm
+      hs₀
+    ?_ (fun hx hm' hc hcall hti hp =>
+      Healing.Growing.Core.proposal_parent_viable_full_frame_at hrun.toCore hnc hx hm'
+        (fun y i hy hf => full_frame_viable_witness_at' hrun hnc hy hf) hc hcall hti hp)
+    hz hdesignated hactual hPs hcp hcall hti hpay hpayload hparent hy hc hes hhigh hib hPv
+    hstartX hXQ hne hanchorX hC hK
+  intro x w j q ellx ellw W hx hw hm' hjl hjh hql hqh hcx hcw hv hW
+  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hx hcx] at hW ⊢
+  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hw hcw] at hv
+  exact viableHead_transfer_primed_at' hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
 
 /-- The voter takes the proposal at its parent and has no eligible child beyond it.
 (`FrameWindow.proposal_stop_before_at` over the shadow run and `FrameWindow'`). -/
@@ -104,7 +115,17 @@ theorem proposal_stop_before_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
       {B | B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)) ∧
         B.parent = some P.root ∧ AC.headEligible sp ell.frame (tr.time i)
           (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)) s B} C := by
-  sorry
+  refine Healing.Growing.Core.proposal_stop_before_at hrun.toCore hnc hsvc hawake hf hcatch hnr hm
+      hs₀
+    ?_ (fun hx hm' hc hcall hti hp =>
+      Healing.Growing.Core.proposal_parent_viable_full_frame_at hrun.toCore hnc hx hm'
+        (fun y i hy hf => full_frame_viable_witness_at' hrun hnc hy hf) hc hcall hti hp)
+    hz hdesignated hactual hPs hcp hcall hti hpay hpayload hparent hy hc hes hhigh hib hPv
+    hrootQ hK
+  intro x w j q ellx ellw W hx hw hm' hjl hjh hql hqh hcx hcw hv hW
+  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hx hcx] at hW ⊢
+  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hw hcw] at hv
+  exact viableHead_transfer_primed_at' hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
 
 /-- Reaching the actual proposal-parent path determines the cast's head.
 (`FrameWindow.vote_head_eq_of_path_at` over the shadow run and `FrameWindow'`). -/
@@ -141,7 +162,17 @@ theorem vote_head_eq_of_path_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
       (ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
       (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)) s))
     (hK : CommitteeHalfUpTo tr H K g b) : e.msg.head = P.root := by
-  sorry
+  refine Healing.Growing.Core.vote_head_eq_of_path_at hrun.toCore hnc hsvc hawake hf hcatch hnr hm
+      hs₀
+    ?_ (fun hx hm' hc hcall hti hp =>
+      Healing.Growing.Core.proposal_parent_viable_full_frame_at hrun.toCore hnc hx hm'
+        (fun y i hy hf => full_frame_viable_witness_at' hrun hnc hy hf) hc hcall hti hp)
+    hz hdesignated hactual hPs hcp hcall hti hpay hpayload hparent hy hc hes hhigh hib hPv
+    hstartX hXQ haX hXE hK
+  intro x w j q ellx ellw W hx hw hm' hjl hjh hql hqh hcx hcw hv hW
+  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hx hcx] at hW ⊢
+  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hw hcw] at hv
+  exact viableHead_transfer_primed_at' hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
 
 /-- A deeper anchor already lies on the proposal path; a shallower one uses a prefix supplier.
 (`FrameWindow.vote_head_eq_of_start_prefix_at` over the shadow run and `FrameWindow'`). -/
@@ -177,7 +208,17 @@ theorem vote_head_eq_of_start_prefix_primed_at' {g ΔF b : Time} {s₀ s M : Nat
         (ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
         (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)) s))
     (hK : CommitteeHalfUpTo tr H K g b) : e.msg.head = P.root := by
-  sorry
+  refine Healing.Growing.Core.vote_head_eq_of_start_prefix_at hrun.toCore hnc hsvc hawake hf hcatch
+      hnr hm hs₀
+    ?_ (fun hx hm' hc hcall hti hp =>
+      Healing.Growing.Core.proposal_parent_viable_full_frame_at hrun.toCore hnc hx hm'
+        (fun y i hy hf => full_frame_viable_witness_at' hrun hnc hy hf) hc hcall hti hp)
+    hz hdesignated hactual hPs hcp hcall hti hpay hpayload hparent hy hc hes hhigh hib hPv haP
+    hprefix hK
+  intro x w j q ellx ellw W hx hw hm' hjl hjh hql hqh hcx hcw hv hW
+  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hx hcx] at hW ⊢
+  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hw hcw] at hv
+  exact viableHead_transfer_primed_at' hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
 
 end Consensus.Goldilocks.Healing.Growing.Shadow
 
