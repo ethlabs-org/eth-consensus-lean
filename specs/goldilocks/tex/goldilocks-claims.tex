@@ -207,9 +207,9 @@ formed (G0.4 (frame)), at nondecreasing times, starting from the initial frame
 $\fname{ac\_on\_block}(\Fr',B)$ is called only when $\Fr\sqsubseteq_B\Fr'$ for
 the frame $\Fr$ of the previous call (G0.3 (frame)), where the trees of all
 the frames and every block passed to $\fname{ac\_on\_block}$ lie in one set of
-blocks with injective roots and slots increasing along parent edges; the replay of
-$\fname{ac\_on\_block}$ inside $\fname{ac\_restart}$ is internal to the restart
-and re-processes blocks already in the frame.  C0.5 says that an honest node's
+blocks with injective roots and slots increasing along parent edges; a restart
+stamps the non-genesis roots already in the frame without calling a block handler.
+C0.5 says that an honest node's
 AC states are reachable.  Table~\ref{tab:modules} maps the
 nodes to the modules of the Lean instance (\texttt{Instances/Goldilocks}, a
 ``component $\times$ level'' decomposition).
@@ -804,9 +804,9 @@ the parent of a proposal is a head at that time.}
 \dagnode{A0.7}{Restart and joining}{After $\fname{ac\_restart}$ at $t$:
 $\AC.\mathsf{locks}$, $\AC.\latestConfirmed$ and the vote permission (Lean
 \texttt{mayVote}) are kept, every other field is initial except $\mathsf{restart\_time}=t$ and the block stamps
-written by the replay at~$t$ (the replay admits no vote, so every pool is
+assigned in bulk at~$t$ (a restart admits no vote, so every pool is
 empty), and the
-node is not joined at~$t$, so the replay sends nothing and writes no lock.  A
+node is not joined at~$t$. A restart emits nothing and writes no lock.  A
 node joined at $t$ has erased no vote of slot $\slot(t)-1$ or later.}
 {F.1, A0.1}{AC \S Joining and restart.}{S.}
 
@@ -903,7 +903,7 @@ authenticated run law, \texttt{LocalRun.proposerCredential} for a delivered
 block, and, for the own block, the node's \texttt{Node.Proposes} check (it
 proposes only in a slot whose proposer it is), \texttt{docs/decisions.md}
 \S``Goldilocks model choices''; composition \S``Node'': $\fname{ac\_on\_block}$ runs only after
-$\fname{fg\_on\_block}$ accepts, and the restart replays only blocks of
+$\fname{fg\_on\_block}$ accepts, and the restart stamps only non-genesis roots of
 $\Fr.\mathsf{tree}$), so its states are reachable, by induction over the calls
 (\S\ref{sec:dag-rules}); (c) the FG's inputs are the accepted blocks, the
 received attestations, and the sources that $\fname{ac\_to\_fg}$ returns, in the

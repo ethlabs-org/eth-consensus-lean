@@ -38,6 +38,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Ready
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.RelTrace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Resolution
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Restart
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.RestartStamp
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.RestartTrace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Schedule
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Count
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.MergedOpponents
@@ -116,6 +118,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Order
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.RestartStamp
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.TickOnce
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Trees
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Adopt

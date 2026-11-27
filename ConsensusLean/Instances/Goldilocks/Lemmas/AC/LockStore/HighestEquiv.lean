@@ -356,8 +356,10 @@ private theorem tick_eq_inv (m : WriteMode) {A : ACState sp.n} {L : Set Lock} (h
 
 omit hU hΦ hΦU in
 private theorem restart_eq (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
-    (Φ : Frm sp.n FGP) {t : Time} (ht : 0 ≤ t) :
+    (Φ : Frm sp.n FGP) (hf : FrameOK Φ) {t : Time} (ht : 0 ≤ t) :
     restart ro self A Φ t = acRestart sp ro self A Φ t := by
+  rw [acRestart_eq_stamp sp ro self A Φ t hf ht,
+    ← restartReplay_eq_stamp sp ro self A Φ t hf ht]
   have key (l : List (Blk sp.n FGP)) (acc : ACState sp.n × List (Em sp FGP))
       (hr : acc.1.restartTime = (t : WithBot Time)) :
       l.foldl (fun acc B =>
@@ -376,6 +378,8 @@ private theorem restart_eq (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACSt
       simp only [List.foldl_cons, acOnBlock, optimistic, select, optimisticConfirmation,
         optimisticSelect, hnj, not_false_eq_true, true_or, ite_true, tryVote, AC.tryVote]
       exact ih _ hr
+  rw [restartReplay_eq]
+  unfold restart
   exact key _ _ rfl
 
 private theorem input_eq_inv {ro : ReplayOrder sp FGP} {A : ACState sp.n} (h : LockInv U A Φ)
@@ -451,7 +455,7 @@ theorem stepWith_eq_inv {ro : ReplayOrder sp FGP} (m : WriteMode) (self : Fin sp
     exact tryVote_eq_inv hU hΦ hΦU m hi hL hwi (hwi.unlockRel hu) self t
   | restart =>
     obtain ⟨-, hl, hr, -⟩ := (restart_state sp) FGP ro self A Φ t hΦ ht
-    exact ⟨restart_eq ro self A Φ ht, h.of_eq hl hr⟩
+    exact ⟨restart_eq ro self A Φ hΦ ht, h.of_eq hl hr⟩
 
 theorem step_eq {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A : ACState sp.n}
     (h : LockInv U A Φ) (hw : LocksWF sp A.locks) {t : Time} (ht : 0 ≤ t)

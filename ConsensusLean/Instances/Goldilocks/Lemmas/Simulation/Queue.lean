@@ -104,37 +104,13 @@ private theorem pool_tick {P : Vote sp.n → Prop} (self : Fin sp.n)
       rw [AC.updateConfirmation_pool_eq] at hv
       first | exact h s v hv | exact pool_tryVote self A Φ t h he s v hv
 
-/-- Restart replay can only add actual emissions to its cleared pools. -/
+set_option linter.unusedVariables false in
+/-- Restart clears its pools. -/
 theorem restart_pool_inventory (P : Vote sp.n → Prop) (ro : ReplayOrder sp FGP)
     (self : Fin sp.n) (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time)
     (he : ∀ e ∈ (AC.acRestart sp ro self A Φ t).2, P e.msg) :
     ∀ s, ∀ v ∈ (AC.acRestart sp ro self A Φ t).1.pool s, P v := by
-  unfold AC.acRestart at he ⊢
-  generalize ro.order t Φ = l at he ⊢
-  have key : ∀ (l : List (AC.Blk sp.n FGP)) (acc : ACState sp.n × List (AC.Em sp FGP)),
-      PoolIn P acc.1 →
-      (∀ e ∈ (l.foldl (fun acc B => let r := AC.acOnBlock sp self acc.1 Φ t B;
-        (r.1, acc.2 ++ r.2)) acc).2, P e.msg) →
-      PoolIn P (l.foldl (fun acc B => let r := AC.acOnBlock sp self acc.1 Φ t B;
-        (r.1, acc.2 ++ r.2)) acc).1 := by
-    intro l
-    induction l with
-    | nil => exact fun _ h _ => h
-    | cons B l ih =>
-      intro acc h he
-      have append_mem : ∀ (l : List (AC.Blk sp.n FGP)) acc,
-          acc.2 ⊆ (l.foldl (fun acc B => let r := AC.acOnBlock sp self acc.1 Φ t B;
-            (r.1, acc.2 ++ r.2)) acc).2 := by
-        intro l
-        induction l with
-        | nil => exact fun _ _ h => h
-        | cons B l ih => exact fun acc e he => ih _ (List.mem_append_left _ he)
-      apply ih ((AC.acOnBlock sp self acc.1 Φ t B).1,
-        acc.2 ++ (AC.acOnBlock sp self acc.1 Φ t B).2)
-        (pool_block self _ Φ t B h ?_) he
-      intro e he'
-      exact he e (append_mem l _ (List.mem_append_right _ he'))
-  exact key l _ (fun s v hv => False.elim (List.not_mem_nil hv)) he
+  exact fun _ _ hv => False.elim (List.not_mem_nil hv)
 
 /-- **One AC call keeps a vote predicate on the pool**, given it of its message input
 (if any) and of its emissions. -/
@@ -167,7 +143,7 @@ section Inventory
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- Inventory before an engine operation. The predicate will be membership in the seen
-closure or in the queue; stored block payloads are needed again by restart replay. Every pool
+closure or in the queue; stored block payloads retain their inventory across restart. Every pool
 vote has a signed object with some token; `gate`: the node's vote authentication `io` holds an
 own token for every slot its AC may vote in, so own emissions are released. -/
 private structure Inventory (io : VoteAuth sp.n binding) (P : Wire sp.n binding → Prop)
