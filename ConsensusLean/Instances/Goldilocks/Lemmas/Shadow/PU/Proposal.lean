@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Reach
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 
@@ -7,9 +8,9 @@ public section
 
 /-! # Shadow P-U: proposal and attestation interfaces
 
-These three named interfaces are unresolved. Their stock proofs await the shadow
-handler-chain and own-block suppliers. This module stays downstream of Run and
-Coherence; neither supplier module imports it.
+The two proposal interfaces await the shadow own-block suppliers. The attestation
+source proof uses the stock handler-chain argument. This module stays downstream
+of Run and Coherence; neither supplier module imports it.
 -/
 
 namespace Consensus.Goldilocks.Coherence
@@ -42,17 +43,125 @@ end Proposals
 
 section Attestations
 
+open Node
+
 variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
-/-- Unresolved: an attestation is sourced by the immediately preceding AC toFG call. -/
+private theorem proposal_no_attest' {y : Fin P.n} (st : NodeState A) (t : Time) (x : Nat)
+    (C : A.Blk) (s : Option (FG.Att P.n)) :
+    Cut.fg (.attest C s) ∉ (tickStep' proposer dg y st t x .proposal).2 := by
+  simp only [tickStep'_eq]
+  split_ifs
+  · split
+    · simp [acProposal'_eq]
+    · simp only [proposeBlock'_eq, onBlock'_eq]
+      split_ifs
+      · simp [acProposal'_eq]
+      · split <;> simp [acProposal'_eq, acCall'_eq]
+  · simp
+
+private theorem tick_cuts' (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
+    (st : NodeState A) (t : Time) (x : Nat) :
+    (exec' proposer dg y st t (.tick x true)).2 = (tickStep' proposer dg y st t x .acTick).2 ++
+      (tickStep' proposer dg y (tickStep' proposer dg y st t x .acTick).1 t x .proposal).2 ++
+      (tickStep' proposer dg y
+        (tickStep' proposer dg y (tickStep' proposer dg y st t x .acTick).1 t x .proposal).1
+        t x .fgUpdate).2 := by
+  simp [exec'_eq, onTick'_eq, runSteps'_eq, tickSteps]
+
+private theorem signed_only_in_ticks' (dg : Digest (List (FG.Att P.n)) A.Payload)
+    (self : Fin P.n) (st : NodeState A) (t : Time) (e : Event A) (C : A.Blk) (a : FG.Att P.n)
+    (h : Cut.fg (.attest C (some a)) ∈ (exec' proposer dg self st t e).2) :
+    ∃ x, e = .tick x true := by
+  cases e with
+  | tick x fgDue =>
+    cases fgDue
+    · exfalso
+      simp only [exec'_eq, onTick'_eq, runSteps'_eq, tickSteps, Bool.false_eq_true,
+        ↓reduceIte, List.foldl_cons, List.foldl_nil, List.nil_append, List.mem_append] at h
+      rcases h with h | h
+      · simp [tickStep'_eq, acCall'_eq] at h
+      · exact proposal_no_attest' _ t x C _ h
+    · exact ⟨x, rfl⟩
+  | block B =>
+    simp only [exec'_eq, onBlock'_eq, acCall'_eq] at h
+    split_ifs at h
+    · simp at h
+    · split at h <;> simp at h
+  | message m => simp [exec'_eq, onMessage'_eq, acCall'_eq] at h
+  | attestation a' => simp [exec'_eq, onAttestation] at h
+  | restart => simp [exec'_eq, restart'_eq, acCall'_eq] at h
+
+private theorem update_attest' (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
+    (st : NodeState A) (t : Time) (x : Nat) {m : Nat} {C : A.Blk} {a : FG.Att P.n}
+    (hm : (tickStep' proposer dg y st t x .fgUpdate).2[m]? = some (.fg (.attest C (some a)))) :
+    m = 1 ∧ (tickStep' proposer dg y st t x .fgUpdate).2[0]? =
+      some (.ac ⟨.toFG, frame' st, []⟩) ∧ (A.toFG st.ac (frame' st) t).2 = some C := by
+  simp only [tickStep'_eq, acToFG'_eq] at hm ⊢
+  split at hm
+  · rcases m with _ | m <;>
+      simp only [List.getElem?_cons_zero, List.getElem?_cons_succ, List.getElem?_nil,
+        Option.some.injEq, reduceCtorEq] at hm
+  rename_i C' hC'
+  simp only [attest] at hm
+  split at hm
+  · rcases m with _ | _ | m <;>
+      simp only [List.getElem?_cons_zero, List.getElem?_cons_succ,
+        List.getElem?_nil, Option.some.injEq, Cut.fg.injEq, FGLabel.attest.injEq,
+        reduceCtorEq, and_false] at hm
+  rcases m with _ | _ | m <;>
+    simp only [List.getElem?_cons_zero, List.getElem?_cons_succ, List.getElem?_nil,
+      Option.some.injEq, Cut.fg.injEq, FGLabel.attest.injEq, reduceCtorEq] at hm
+  obtain ⟨rfl, -⟩ := hm
+  exact ⟨rfl, rfl, hC'⟩
+
+private theorem attest_prev' (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
+    (st : NodeState A) (t : Time) (e : Event A) {k : Nat} {C : A.Blk} {a : FG.Att P.n}
+    (hk : (exec' proposer dg y st t e).2[k]? = some (.fg (.attest C (some a)))) :
+    ∃ k', k = k' + 1 ∧ ∃ st₁, CutChain' y t st ((exec' proposer dg y st t e).2.take k') st₁ ∧
+      (exec' proposer dg y st t e).2[k']? = some (.ac ⟨.toFG, frame' st₁, []⟩) ∧
+      (A.toFG st₁.ac (frame' st₁) t).2 = some C := by
+  obtain ⟨x, rfl⟩ := signed_only_in_ticks' dg y st t e C a (List.mem_of_getElem? hk)
+  rw [tick_cuts'] at hk ⊢
+  set l₁ := (tickStep' proposer dg y st t x .acTick).2 with hl₁
+  set r₂ := tickStep' proposer dg y (tickStep' proposer dg y st t x .acTick).1 t x .proposal
+  have hch : CutChain' y t st (l₁ ++ r₂.2) r₂.1 :=
+    Compose.chain_append' y (Compose.tickStep_chain' proposer dg y st t x _)
+      (Compose.tickStep_chain' proposer dg y _ t x _)
+  have hn : (l₁ ++ r₂.2).length ≤ k := by
+    by_contra hlt
+    rw [List.getElem?_append_left (by omega)] at hk
+    rcases List.mem_append.1 (List.mem_of_getElem? hk) with hm | hm
+    · simp [hl₁, tickStep'_eq, acCall'_eq] at hm
+    · exact proposal_no_attest' _ t x C _ hm
+  rw [List.getElem?_append_right hn] at hk
+  obtain ⟨hm, h0, hC⟩ := update_attest' dg y r₂.1 t x hk
+  refine ⟨(l₁ ++ r₂.2).length, by omega, r₂.1, by rw [List.take_left' rfl]; exact hch, ?_, hC⟩
+  rw [List.getElem?_append_right le_rfl, Nat.sub_self]
+  exact h0
+
+/-- An attestation is sourced by the immediately preceding AC toFG call. -/
 theorem attest_source' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
     {j : Nat} {C : A.Blk} {a : FG.Att P.n} (hc : tr.CallAt y j (.fg (.attest C (some a)))) :
     ∃ j', j = j' + 1 ∧ ∃ ℓ : ACLabel A, tr.CallAt y j' (.ac ℓ) ∧ ℓ.call = .toFG ∧
       tr.time j' = tr.time j ∧ (A.toFG (tr.state y j').ac ℓ.frame (tr.time j')).2 = some C ∧
       (tr.state y j).fg = (tr.state y j').fg := by
-  sorry
+  obtain ⟨j₀, e, k, hg, rfl, hk⟩ := call_in_group' h hy hc
+  obtain ⟨k', rfl, st₁, hch, hk', hC⟩ := attest_prev' dg y _ _ e hk
+  have hlen := (List.getElem?_eq_some_iff.1 hk').1
+  have hst : tr.state y (j₀ + k') = st₁ := by
+    have hg' := (RunTrace.groupAt'_iff _ _ _ _ _ _ _).1 hg
+    have := Compose.cutChain_run' h hy hch j₀ rfl fun m hm => by
+      rw [List.length_take] at hm
+      obtain ⟨hn, ht, -, -, hl⟩ := hg'.2.1 m (by omega)
+      exact ⟨hn, ht, by rw [hl, List.getElem_take]⟩
+    rwa [List.length_take, min_eq_left hlen.le] at this
+  obtain ⟨hc', ht⟩ := Compose.group_cut' hg hk'
+  refine ⟨j₀ + k', by omega, _, hc', rfl, ht, by rw [hst, ht]; exact hC, ?_⟩
+  rw [show j₀ + (k' + 1) = j₀ + k' + 1 by omega, tr.state_succ_of_call hc']
+  exact ((cutStep'_ac _ _ _ _ _).1 (h.cutLaw y hy _ _ hc')).2.2.1
 
 end Attestations
 
