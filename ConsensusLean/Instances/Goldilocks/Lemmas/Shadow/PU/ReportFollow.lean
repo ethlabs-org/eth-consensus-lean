@@ -6,7 +6,6 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowWrite
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowSigned
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OutageCount
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
