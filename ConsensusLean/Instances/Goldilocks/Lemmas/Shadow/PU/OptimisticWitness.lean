@@ -8,6 +8,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Relay
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.OptimisticBaseProposal
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -301,6 +302,57 @@ private theorem proposal_root_viable_at'
 
 /-! ## Optimistic next-vote base -/
 
+/-- An optimistic write propagates its prefix to next-slot votes through a window witness: the
+window-free core of `optimistic_next_votes_of_early_witness_at'` and its stock form. -/
+theorem optimistic_next_votes_of_windowWitness_at' {K : AC.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
+    (hsvc : ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ))
+    {s : Nat} (hm : gbar g ≤ sp.ts s)
+    (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
+    {X Q D : AC.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
+    (hopt : AC.OptimisticLockAt tr.projAC x c s D CV)
+    (hXD : Anc (tr.HonestBlocksAt H) X D)
+    {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
+    (hat : tr.time a < sp.ts s + 2 * sp.Δ)
+    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    (hQw : Q ∈ ellw.frame.tree)
+    (hW : Healing.WindowWitness tr H (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) Q)
+    (hfin : ∀ y i, y ∈ H (tr.time i) → sp.ts s ≤ tr.time i →
+      tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ →
+      Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F Q)
+    (hXQ : Anc (tr.HonestBlocksAt H) X Q) (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
+      e.msg.slot = s + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
+  apply next_votes_of_windowWitness_at' hrun hnc hsvc hawake hf hcatch hm le_rfl hmb
+    hw hat hcw hQw hW hfin hXQ
+  intro y i ell e hy hcast hs hhi hFX hviab ih
+  have ht0 := hrun.time_nonneg i
+  have hib : tr.time i ≤ b := hhi.trans hmb
+  have hFX' : Anc (tr.HonestBlocksAt H) ell.frame.F X := by
+    rwa [frame_of_projAC_at' hrun hy hcast.1]
+  have hcarry := carry_of_service_senders' hrun hnc hsvc hcatch hm hy hcast hs
+    (CV := CV) fun v hv => by
+      obtain ⟨hvs, ⟨k, hk, hsend, hlo, hhi'⟩, Hv, -, hroot, hanc, hacc⟩ :=
+        optimistic_writer_votes_at' hrun hnc hx hopt v hv
+      refine ⟨hvs, ⟨x, k, hk, hsend, hlo, hhi'⟩, Hv, hroot,
+        (hFX'.trans hXD).trans hanc, ?_⟩
+      exact hacc.imp_right fun ⟨k', hk', hacc', htime⟩ => ⟨x, k', hk', hacc', htime⟩
+  have hss : sp.ts s ≤ sp.ts (s + 1 : Nat) := (AC.ts_le_iff sp).2 (by omega)
+  have hΔ := sp.toParams.hΔ
+  exact AC.Growing.optimistic_transfer_stored
+    (Compose.Growing.goldilocks_ac_projection_from' hrun hnc) K
+    (AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP)
+    (AC.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt' hrun hnc)) hK.facts.hsize
+    hx hopt hXD (hK.cs2 s hm (by linarith) _ ht0 hib)
+    (hK.cs2 (s + 1) (hm.trans hss) (by linarith) _ ht0 hib) hy hcast hs hcarry
+    hviab (fun z k hki hz ev hv hes => ih z k ev hki hz hv hes)
+
 /-- An optimistic write propagates a viable prefix to next-slot votes. -/
 theorem optimistic_next_votes_of_early_witness_at' {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
@@ -324,32 +376,23 @@ theorem optimistic_next_votes_of_early_witness_at' {K : AC.CommitteeDict sp.n}
     (hXQ : Anc (tr.HonestBlocksAt H) X Q) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
       e.msg.slot = s + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
-  apply next_votes_of_early_witness_at' hrun hnc hsvc hawake hf hcatch hm le_rfl hmb
-    hframe hw halo hat hcw hQw hvQ hXQ
-  intro y i ell e hy hcast hs hhi hFX hviab ih
-  have ht0 := hrun.time_nonneg i
-  have hib : tr.time i ≤ b := hhi.trans hmb
-  have hFX' : Anc (tr.HonestBlocksAt H) ell.frame.F X := by
-    rwa [frame_of_projAC_at' hrun hy hcast.1]
-  have hcarry := carry_of_service_senders' hrun hnc hsvc hcatch hm hy hcast hs
-    (CV := CV) fun v hv => by
-      obtain ⟨hvs, ⟨k, hk, hsend, hlo, hhi'⟩, Hv, -, hroot, hanc, hacc⟩ :=
-        optimistic_writer_votes_at' hrun hnc hx hopt v hv
-      refine ⟨hvs, ⟨x, k, hk, hsend, hlo, hhi'⟩, Hv, hroot,
-        (hFX'.trans hXD).trans hanc, ?_⟩
-      exact hacc.imp_right fun ⟨k', hk', hacc', htime⟩ => ⟨x, k', hk', hacc', htime⟩
-  have hss : sp.ts s ≤ sp.ts (s + 1 : Nat) := (AC.ts_le_iff sp).2 (by omega)
-  have hΔ := sp.toParams.hΔ
-  exact AC.Growing.optimistic_transfer_stored
-    (Compose.Growing.goldilocks_ac_projection_from' hrun hnc) K
-    (AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP)
-    (AC.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt' hrun hnc)) hK.facts.hsize
-    hx hopt hXD (hK.cs2 s hm (by linarith) _ ht0 hib)
-    (hK.cs2 (s + 1) (hm.trans hss) (by linarith) _ ht0 hib) hy hcast hs hcarry
-    hviab (fun z k hki hz ev hv hes => ih z k ev hki hz hv hes)
+  have hahi : tr.time a ≤ sp.ts (s + 1 : Nat) + sp.Δ := by
+    linarith only [hat, AC.ts_succ s (sp := sp), sp.toParams.hΔ]
+  have hwit := early_witness_viable' hrun hframe hw halo hahi hcw hvQ
+  have hQ : Q ∈ (tr.state w a).fg.tree := by
+    have h := hQw
+    rw [frame_of_projAC_at' hrun hw hcw, Node.frame'_eq, Store.toFrame'_tree] at h
+    exact h.1
+  exact optimistic_next_votes_of_windowWitness_at' hrun hnc hsvc hawake hf hcatch hm hmb hx hopt hXD
+    hw hat hcw hQw (Healing.windowWitness_of_frameWindow' hrun hnc hframe hw hQ hwit)
+    (fun y i hy hlo hhi => hframe.finalized_below_descendant_at' hrun hnc hy hw hw
+      (sp.toParams.fg.faults_lt_quorum_margin
+        (hf _ ((hrun.time_nonneg i).trans (le_max_left _ _)) (max_le (hhi.trans hmb)
+          (hahi.trans hmb)))) hlo hhi hQ hwit hQ .refl) hXQ hK
 
-/-- The first next-slot proposal follows the same prefix. -/
-theorem optimistic_next_proposal_of_early_witness_at' {K : AC.CommitteeDict sp.n}
+/-- The first next-slot proposal follows an optimistic prefix through a window witness: the
+window-free core of `optimistic_next_proposal_of_early_witness_at'` and its stock form. -/
+theorem optimistic_next_proposal_of_windowWitness_at' {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
@@ -357,16 +400,18 @@ theorem optimistic_next_proposal_of_early_witness_at' {K : AC.CommitteeDict sp.n
     (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ))
-    {s M : Nat} (hm : gbar g ≤ sp.ts s) (hmb : sp.ts (s + 1 : Nat) ≤ b)
-    {isTop : Prop} {J X Q D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s) (sp.ts (s + 1 : Nat)) M isTop J)
+    {s : Nat} (hm : gbar g ≤ sp.ts s) (hmb : sp.ts (s + 1 : Nat) ≤ b)
+    {X Q D : AC.Blk sp.n (List (FG.Att sp.n))}
     {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
     (hopt : AC.OptimisticLockAt tr.projAC x c s D CV)
     (hXD : Anc (tr.HonestBlocksAt H) X D)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
-    (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
+    (hat : tr.time a < sp.ts s + 2 * sp.Δ)
     {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
-    (hQw : Q ∈ ellw.frame.tree) (hvQ : Q ∈ ellw.frame.viableHeads)
+    (hQw : Q ∈ ellw.frame.tree)
+    (hW : Healing.WindowWitness tr H (sp.ts s) (sp.ts (s + 1 : Nat)) Q)
+    (hfin : ∀ y i, y ∈ H (tr.time i) → sp.ts s ≤ tr.time i → tr.time i ≤ sp.ts (s + 1 : Nat) →
+      Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F Q)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell)
@@ -435,13 +480,10 @@ theorem optimistic_next_proposal_of_early_witness_at' {K : AC.CommitteeDict sp.n
   have hQ : Q ∈ (tr.state w a).fg.tree := by
     rw [hfrw, Node.frame'_eq, Store.toFrame'_tree] at hQw
     exact hQw.1
-  have hwit := early_witness_viable' hrun hframe hw halo
-    (by rw [hts]; linarith) hcw hvQ
   have hQU : Q ∈ tr.HonestBlocksAt H :=
     ⟨w, a, tr.time a, hrun.time_nonneg a, fun _ hq => hmono hq.le, hw, hQ⟩
   have hai : tr.time a ≤ tr.time i := by linarith
-  have hFQ0 := hframe.finalized_below_descendant_at' hrun hnc hy hw hw
-    (by rw [max_eq_left hai]; exact hfq) hlo hti.le hQ hwit hQ Relation.ReflTransGen.refl
+  have hFQ0 := hfin y i hy hlo hti.le
   have hXF_case : Anc (tr.HonestBlocksAt H) X ell.frame.F →
       Anc (tr.HonestBlocksAt H) X d.head := by
     intro hXF
@@ -472,11 +514,8 @@ theorem optimistic_next_proposal_of_early_witness_at' {K : AC.CommitteeDict sp.n
   have hQy : Q ∈ (tr.state y i).fg.tree := by
     rw [hfr, Node.frame'_eq, Store.toFrame'_tree] at hQt
     exact hQt.1
-  have hwy : M - 1 ≤ ((tr.state y i).fg.σ Q.root).h ∧
-      (isTop → ((tr.state y i).fg.σ Q.root).h = M - 1 → Anc (tr.HonestBlocksAt H) J Q) := by
-    rwa [← Healing.Growing.σ_eq_honest_at' hrun hnc (hrun.time_nonneg a)
-      (fun _ hq => hmono hq.le) hw ht0 (fun _ hq => hmono hq.le) hy hQ hQy]
-  rcases Healing.witness_frame_at' hrun hnc hframe hy hc hlo hti.le hfq hQy hwy hXQ with
+  obtain ⟨hFQy, hvy⟩ := hW.held y i hy hlo hti.le hfq hQy
+  rcases Healing.witness_frame_of_held' hrun hnc hy hc hQy hFQy hvy hXQ with
     hXF | ⟨-, hXt, hrootX, hQt', hvQ', hXQf⟩
   · exact hXF_case hXF
   have hsw : AC.Growing.ServiceWindowBefore H (tr.HonestBlocksAt H) g (tr.time i) tr.projAC :=
@@ -549,6 +588,97 @@ theorem optimistic_next_proposal_of_early_witness_at' {K : AC.CommitteeDict sp.n
     hc (AC.proposal_slot hti) hd
     ⟨hXt, Or.inl ⟨hXt, hrootX, Q, hQt', hvQ', hXQf⟩⟩ hP hhigh
 
+/-- The first next-slot proposal follows the same prefix. -/
+theorem optimistic_next_proposal_of_early_witness_at' {K : AC.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
+    (hsvc : ResetService tr H g ΔF b hold)
+    (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ))
+    {s M : Nat} (hm : gbar g ≤ sp.ts s) (hmb : sp.ts (s + 1 : Nat) ≤ b)
+    {isTop : Prop} {J X Q D : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Healing.FrameWindow' tr H (sp.ts s) (sp.ts (s + 1 : Nat)) M isTop J)
+    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
+    (hopt : AC.OptimisticLockAt tr.projAC x c s D CV)
+    (hXD : Anc (tr.HonestBlocksAt H) X D)
+    {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
+    (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
+    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    (hQw : Q ∈ ellw.frame.tree) (hvQ : Q ∈ ellw.frame.viableHeads)
+    (hXQ : Anc (tr.HonestBlocksAt H) X Q)
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
+    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell)
+    (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts (s + 1 : Nat))
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hd : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hK : CommitteeHalfUpTo tr H K g b) :
+    Anc (tr.HonestBlocksAt H) X d.head := by
+  have hahi : tr.time a ≤ sp.ts (s + 1 : Nat) := by
+    linarith only [hat, AC.ts_succ s (sp := sp), sp.toParams.hΔ]
+  have hwit := early_witness_viable' hrun hframe hw halo hahi hcw hvQ
+  have hQ : Q ∈ (tr.state w a).fg.tree := by
+    have h := hQw
+    rw [frame_of_projAC_at' hrun hw hcw, Node.frame'_eq, Store.toFrame'_tree] at h
+    exact h.1
+  exact optimistic_next_proposal_of_windowWitness_at' hrun hnc hsvc _hawake hf hcatch hm hmb hx
+    hopt hXD
+    hw hat hcw hQw (Healing.windowWitness_of_frameWindow' hrun hnc hframe hw hQ hwit)
+    (fun y i hy hlo hhi => hframe.finalized_below_descendant_at' hrun hnc hy hw hw
+      (sp.toParams.fg.faults_lt_quorum_margin
+        (hf _ ((hrun.time_nonneg i).trans (le_max_left _ _)) (max_le (hhi.trans hmb)
+          (hahi.trans hmb)))) hlo hhi hQ hwit hQ .refl) hXQ hy hc hcall hti hd hK
+
+/-- An optimistic prefix reaches later honest calls through a window witness: the window-free
+core of `optimistic_later_heads_of_early_witness_at'` and its stock form. -/
+theorem optimistic_later_heads_of_windowWitness_at' {K : AC.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
+    (hsvc : ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    {s N : Nat} (hm : gbar g ≤ sp.ts s) (hmb : sp.ts N + sp.Δ ≤ b)
+    {X Q D : AC.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
+    (hopt : AC.OptimisticLockAt tr.projAC x c s D CV)
+    (hXD : Anc (tr.HonestBlocksAt H) X D)
+    {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
+    (hat : tr.time a < sp.ts s + 2 * sp.Δ)
+    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    (hQw : Q ∈ ellw.frame.tree)
+    (hW : Healing.WindowWitness tr H (sp.ts s) (sp.ts N + sp.Δ) Q)
+    (hfin : ∀ y i, y ∈ H (tr.time i) → sp.ts s ≤ tr.time i → tr.time i ≤ sp.ts N + sp.Δ →
+      Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F Q)
+    (hXQ : Anc (tr.HonestBlocksAt H) X Q) (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ r, s + 1 ≤ r → r ≤ N →
+      (∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = r →
+        AC.VoteExtends (tr.HonestBlocksAt H) e.msg X) ∧
+      (∀ y i ell, y ∈ H (tr.time i) → tr.projAC.CallAt y i ell →
+        ell.call = .proposal → tr.time i = sp.ts r → ∀ d pay,
+        (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
+          Anc (tr.HonestBlocksAt H) X d.head) := by
+  intro r hrlo hrN
+  have ht : sp.ts (s + 1 : Nat) ≤ sp.ts N :=
+    (AC.ts_le_iff sp).2 (by exact_mod_cast hrlo.trans hrN)
+  have hbase := optimistic_next_votes_of_windowWitness_at' hrun hnc hsvc hawake hf hcatch hm
+    (by linarith) hx hopt hXD hw hat hcw hQw (hW.mono le_rfl (by linarith))
+    (fun y i hy hlo hhi => hfin y i hy hlo (by linarith)) hXQ hK
+  obtain ⟨hvote, hproposal⟩ := later_heads_of_windowWitness_at' hrun hnc hsvc hawake hf hcatch
+    hnr hm hmb hw hat hcw hQw hW hfin hXQ hbase hK r hrlo hrN
+  refine ⟨hvote, ?_⟩
+  by_cases heq : r = s + 1
+  · subst r
+    intro y i ell hy hc hcall hti d pay hd
+    exact optimistic_next_proposal_of_windowWitness_at' hrun hnc hsvc hawake hf hcatch hm
+      (by linarith [sp.toParams.hΔ]) hx hopt hXD hw hat hcw hQw
+      (hW.mono le_rfl (by linarith [sp.toParams.hΔ]))
+      (fun y i hy hlo hhi => hfin y i hy hlo (by linarith [sp.toParams.hΔ])) hXQ hy hc hcall
+      hti hd hK
+  · exact hproposal (by omega)
+
 /-- An early P-U viable witness propagates an optimistic prefix to later honest calls. -/
 theorem optimistic_later_heads_of_early_witness_at' {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
@@ -577,20 +707,20 @@ theorem optimistic_later_heads_of_early_witness_at' {K : AC.CommitteeDict sp.n}
         (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
           Anc (tr.HonestBlocksAt H) X d.head) := by
   intro r hrlo hrN
-  have ht : sp.ts (s + 1 : Nat) ≤ sp.ts N :=
-    (AC.ts_le_iff sp).2 (by exact_mod_cast hrlo.trans hrN)
-  have hbase := optimistic_next_votes_of_early_witness_at' hrun hnc hsvc hawake hf hcatch hm
-    (by linarith) (hframe.mono le_rfl (by linarith)) hx hopt hXD hw halo hat hcw hQw hvQ hXQ hK
-  obtain ⟨hvote, hproposal⟩ := later_heads_of_early_witness_at' hrun hnc hsvc hawake hf hcatch
-    hnr hm hmb hframe hw halo hat hcw hQw hvQ hXQ hbase hK r hrlo hrN
-  refine ⟨hvote, ?_⟩
-  by_cases heq : r = s + 1
-  · subst r
-    intro y i ell hy hc hcall hti d pay hd
-    exact optimistic_next_proposal_of_early_witness_at' hrun hnc hsvc hawake hf hcatch hm
-      (by linarith [sp.toParams.hΔ]) (hframe.mono le_rfl (by linarith [sp.toParams.hΔ]))
-      hx hopt hXD hw halo hat hcw hQw hvQ hXQ hy hc hcall hti hd hK
-  · exact hproposal (by omega)
+  have hsN : sp.ts (s + 1 : Nat) ≤ sp.ts N := (AC.ts_le_iff sp).2 (by exact_mod_cast hrlo.trans hrN)
+  have hahi : tr.time a ≤ sp.ts N + sp.Δ := by
+    linarith only [hat, AC.ts_succ s (sp := sp), hsN, sp.toParams.hΔ]
+  have hwit := early_witness_viable' hrun hframe hw halo hahi hcw hvQ
+  have hQ : Q ∈ (tr.state w a).fg.tree := by
+    have h := hQw
+    rw [frame_of_projAC_at' hrun hw hcw, Node.frame'_eq, Store.toFrame'_tree] at h
+    exact h.1
+  exact optimistic_later_heads_of_windowWitness_at' hrun hnc hsvc hawake hf hcatch hnr hm hmb
+    hx hopt hXD hw hat hcw hQw (Healing.windowWitness_of_frameWindow' hrun hnc hframe hw hQ hwit)
+    (fun y i hy hlo hhi => hframe.finalized_below_descendant_at' hrun hnc hy hw hw
+      (sp.toParams.fg.faults_lt_quorum_margin
+        (hf _ ((hrun.time_nonneg i).trans (le_max_left _ _)) (max_le (hhi.trans hmb)
+          (hahi.trans hmb)))) hlo hhi hQ hwit hQ .refl) hXQ hK r hrlo hrN
 
 /-- An optimistic supporter's anchor propagates to independently honest later calls. -/
 theorem optimistic_supporter_later_heads_at' {s₀ s N M : Nat}
