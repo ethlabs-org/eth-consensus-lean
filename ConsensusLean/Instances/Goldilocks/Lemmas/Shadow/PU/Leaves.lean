@@ -448,9 +448,9 @@ theorem reset_of_high_proposal_within_stock_at
   exact ⟨a, ha, by linarith⟩
 
 /-- Leaf 11 over the P-U window. The proof must use `proposal_viable_at`: its height
-bound is `M - 1`, and in a top window equality supplies `J` ancestry. The stock
-`floor_le_warm_proposal_at` is false for P-U and is not a supplier for this statement.
-Unresolved until the shared row-or-high proof and Q's later-head/report suppliers land. -/
+bound is `M - 1`, and in a top window equality supplies `J` ancestry. The shared
+row-or-high and later-head suppliers are proved; the delayed report-follow interface is
+the remaining proof gap. The stock-window version also needs stock later-head transfer. -/
 theorem round_of_warm_within_at
     {g ΔF b T D t₀ : Time} {s₀ u x N M Gs : Nat} {isTop : Prop}
     {J P X : AC.Blk sp.n (List (FG.Att sp.n))}

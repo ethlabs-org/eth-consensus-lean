@@ -10,8 +10,8 @@ public section
 /-! # Shadow reset rounds (interface-only)
 
 The induction is the existing growing reset-round argument with the P-U window and calendar.
-The temporary warm-crossing contract below is unresolved, not a proved reset supplier. Its name
-is kept separate from the concrete leaf so it can be replaced without duplicate declarations.
+The warm-crossing wrapper uses the concrete leaf in `Leaves`; its remaining proof gap is the
+delayed report-follow supplier, not an independent warm-crossing stub.
 -/
 
 namespace Consensus.Goldilocks.Healing.Growing.Shadow
@@ -25,7 +25,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 private theorem faults_lt_quorum {f n : Nat} (hn : 1 ≤ n) (hf : 3 * f ≤ n - 1) :
     f < 2 * ((2 * n + 2) / 3) - n := by omega
 
-/-- Unresolved leaf 11: warm proposals cross one height within the delayed signing bound. -/
+/-- Leaf 11's wrapper for the reset induction, through the delayed report-follow interface. -/
 theorem round_of_warm_within_interface'
     {g ΔF b T D t₀ : Time} {s₀ u x N M Gs : Nat} {isTop : Prop}
     {J P X : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -56,8 +56,9 @@ theorem round_of_warm_within_interface'
     (hK : CommitteeHalfUpTo tr H K g b) :
     P ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
       ((tr.state p (kX + 1)).fg.σ P.root).h + 1 ≤
-        ((tr.state p (kX + 1)).fg.σ X.root).h := by
-  sorry
+        ((tr.state p (kX + 1)).fg.σ X.root).h :=
+  round_of_warm_within_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm hδ hlat
+    hD hΔF hux hxN hmb hTb hna hT hz hdes hP hPs hp hdx hX hXs hcal hgap ht₀ hδG hK
 
 /-- Proposal acceptance, read in the proposer's prefix rather than a stock run. -/
 theorem proposal_mem_at' {ini}
