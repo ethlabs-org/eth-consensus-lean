@@ -16,8 +16,8 @@ The shadow instances of the Option B bundles, at `Store.updateFinality'` and `No
 `Healing.Growing.ResetPremisesUpTo'.toCore`, every field from the proved shadow lemmas.
 
 **Pending (work in progress).** The private `*_pending` theorems are placeholders with the exact
-types of the fields whose shadow proofs are still being written: `hj_mono`, `report_attest`,
-`signed_tick`, `late_tick`, `signed_before_attest` (copies over `exec'`), and `driven` (lane W's
+types of the fields whose shadow proofs are still being written: `report_attest`,
+`signed_before_attest` (copies over `exec'`), and `driven` (lane W's
 `Healing.projection_driven_of_run'`). -/
 
 namespace Consensus.Goldilocks
@@ -47,11 +47,122 @@ variable {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payloa
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
   {ini : Fin sp.n → (goldilocksNode' sp ro).State}
 
+
+/-! ### Handler facts over `exec'` (copies of the stock private ones) -/
+
+private theorem proposal_no_attest'' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp ro))
+    (t : Time) (x : Nat) (C : AC.Blk sp.n (List (FG.Att sp.n))) (s : Option (FG.Att sp.n)) :
+    Cut.fg (.attest C s) ∉ (Node.tickStep' proposer dg y st t x .proposal).2 := by
+  simp only [Node.tickStep'_eq]
+  split_ifs
+  · split
+    · simp [Node.acProposal'_eq]
+    · simp only [Node.proposeBlock'_eq, Node.onBlock'_eq]
+      split_ifs
+      · simp [Node.acProposal'_eq]
+      · split <;> simp [Node.acProposal'_eq, Node.acCall'_eq]
+  · simp
+
+private theorem signed_only_in_ticks'' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp ro))
+    (t : Time) (e : Node.Event (goldilocksNode' sp ro)) (C : AC.Blk sp.n (List (FG.Att sp.n)))
+    (a : FG.Att sp.n) (h : Cut.fg (.attest C (some a)) ∈ (Node.exec' proposer dg y st t e).2) :
+    ∃ x, e = .tick x true := by
+  cases e with
+  | tick x fgDue =>
+    cases fgDue
+    · exfalso
+      simp only [Node.exec'_eq, Node.onTick'_eq, Node.runSteps'_eq, Node.tickSteps,
+        Bool.false_eq_true, ↓reduceIte, List.foldl_cons, List.foldl_nil, List.nil_append,
+        List.mem_append] at h
+      rcases h with h | h
+      · simp [Node.tickStep'_eq, Node.acCall'_eq] at h
+      · exact proposal_no_attest'' y _ t x C _ h
+    · exact ⟨x, rfl⟩
+  | block B =>
+    simp only [Node.exec'_eq, Node.onBlock'_eq, Node.acCall'_eq] at h
+    split_ifs at h
+    · simp at h
+    · split at h <;> simp at h
+  | message m => simp [Node.exec'_eq, Node.onMessage'_eq, Node.acCall'_eq] at h
+  | attestation a' => simp [Node.exec'_eq, Node.onAttestation] at h
+  | restart => simp [Node.exec'_eq, Node.restart'_eq, Node.acCall'_eq] at h
+
+/-- A tick delivers no message (the `ac_on_message` half of `exec_ac_call`). -/
+private theorem tick_no_message' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp ro))
+    (t : Time) (x : Nat) (fgDue : Bool) {ℓ : ACLabel (goldilocksNode' sp ro)}
+    (hm : Cut.ac ℓ ∈ (Node.exec' proposer dg y st t (.tick x fgDue)).2) (m : AC.Vote sp.n)
+    (hc : ℓ.call = .message m) : False := by
+  have hm' : Cut.ac ℓ ∈ (Node.tickStep' proposer dg y st t x .acTick).2 ++
+      (Node.tickStep' proposer dg y (Node.tickStep' proposer dg y st t x .acTick).1 t x
+        .proposal).2 ++
+      (Node.tickStep' proposer dg y (Node.tickStep' proposer dg y
+        (Node.tickStep' proposer dg y st t x .acTick).1 t x .proposal).1 t x .fgUpdate).2 := by
+    cases fgDue
+    · simp only [Node.exec'_eq, Node.onTick'_eq, Node.runSteps'_eq, Node.tickSteps,
+        Bool.false_eq_true, ↓reduceIte, List.foldl_cons, List.foldl_nil, List.nil_append] at hm
+      exact List.mem_append_left _ hm
+    · simpa [Node.exec'_eq, Node.onTick'_eq, Node.runSteps'_eq, Node.tickSteps] using hm
+  simp only [List.mem_append] at hm'
+  rcases hm' with (hm' | hm') | hm'
+  · simp only [Node.tickStep'_eq, Node.acCall'_eq, List.mem_singleton, Cut.ac.injEq] at hm'
+    subst hm'; cases hc
+  · simp only [Node.tickStep'_eq] at hm'
+    split_ifs at hm'
+    · split at hm'
+      · simp only [Node.acProposal'_eq, List.mem_singleton, Cut.ac.injEq] at hm'
+        subst hm'; cases hc
+      · rcases List.mem_cons.1 hm' with hm' | hm'
+        · simp only [Node.acProposal'_eq, Cut.ac.injEq] at hm'; subst hm'; cases hc
+        · simp only [Node.proposeBlock'_eq, Node.onBlock'_eq] at hm'
+          split_ifs at hm'
+          · simp at hm'
+          · split at hm'
+            · simp at hm'
+            · simp only [Node.acCall'_eq, List.mem_cons, reduceCtorEq, false_or, Cut.ac.injEq,
+                List.not_mem_nil, or_false] at hm'
+              subst hm'; cases hc
+    · simp at hm'
+  · simp only [Node.tickStep'_eq] at hm'
+    split at hm'
+    · simp only [Node.acToFG'_eq, List.mem_singleton, Cut.ac.injEq] at hm'; subst hm'; cases hc
+    · rcases List.mem_cons.1 hm' with hm' | hm'
+      · simp only [Node.acToFG'_eq, Cut.ac.injEq] at hm'; subst hm'; cases hc
+      · simp only [Node.attest] at hm'
+        split at hm' <;> simp at hm'
+
 /-! ### Pending fields (placeholders with the fields' exact types) -/
 
 private theorem hj_mono_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
     ∀ y ∈ H, ∀ {i j}, i ≤ j → (tr.state y i).fg.hj ≤ (tr.state y j).fg.hj := by
-  sorry
+  intro y hy i j hij
+  induction j, hij using Nat.le_induction with
+  | base => exact le_rfl
+  | succ j _ ih =>
+    apply ih.trans
+    rcases Coherence.fg_step' hrun.toLocalRun' hy j with he | ⟨B, -, hB⟩ | ⟨a, -, he⟩
+    · rw [he]
+    · rw [Store.onBlock'_eq_onBlockWith] at hB
+      obtain ⟨pr, σ, -, -, -, -, -, he⟩ := Store.onBlockWith_eq_some hB
+      rw [he]
+      obtain ⟨atts, hatt⟩ := Store.addAtts_eq
+        (Store.updateFinality' { (tr.state y j).fg with
+          blocks := Function.update (tr.state y j).fg.blocks B.root (some B),
+          σ := Function.update (tr.state y j).fg.σ B.root σ } σ) B.fgPayload
+      rw [hatt]
+      have key : ∀ st₁ : Store sp.toParams (Payload sp.n), st₁.hj = (tr.state y j).fg.hj →
+          (tr.state y j).fg.hj ≤ (Store.updateFinality' st₁ σ).hj := by
+        intro st₁ hst₁
+        rcases Store.FinalitySpec.J_hj Store.finalitySpec_updateFinality' st₁ σ with
+          h | ⟨-, he', -, hlex⟩
+        · exact le_of_eq (hst₁.symm.trans h.2.symm)
+        · rw [he', ← hst₁]
+          rcases hlex with h | h
+          · exact h.le
+          · exact le_of_eq h.1
+      exact key _ rfl
+    · rw [he]
+      obtain ⟨atts, he'⟩ := Store.onAttestation_eq (tr.state y j).fg a
+      rw [he']
 
 private theorem report_attest_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
     ∀ y ∈ H, ∀ {k} {ℓ : ACLabel (goldilocksNode sp ro)} {C},
@@ -67,14 +178,59 @@ private theorem signed_tick_pending (hrun : GoldilocksRun' proposer dg H tr ini)
         ∀ ℓ : ACLabel (goldilocksNode sp ro), tr.CallAt y i (.ac ℓ) → ∀ m, ℓ.call ≠ .message m) ∧
       ∀ i < j, ∀ c, tr.CallAt y i c → tr.time i = tr.time d →
         ∃ ℓ : ACLabel (goldilocksNode sp ro), c = .ac ℓ ∧ ℓ.call = .restart := by
-  sorry
+  intro y hy d C a hcd
+  obtain ⟨j, ev, kk, hg, hdj, hk⟩ := Coherence.call_in_group' hrun.toLocalRun' hy hcd
+  obtain ⟨x, rfl⟩ := signed_only_in_ticks'' y _ _ _ C a (List.mem_of_getElem? hk)
+  have hg' := (RunTrace.groupAt'_iff _ _ _ _ _ _ _).1 hg
+  have hkk : kk < (Node.exec' proposer dg y (tr.state y j) (tr.time d)
+      (.tick x true)).2.length := by
+    by_contra h
+    rw [List.getElem?_eq_none (not_lt.mp h)] at hk
+    cases hk
+  refine ⟨j, by omega, fun i h1 h2 => ⟨?_, fun ℓ hc m hm => ?_⟩, fun i hi c hc ht => ?_⟩
+  · have := (hg'.2.1 (i - j) (by omega)).2.1
+    rwa [Nat.add_sub_cancel' h1] at this
+  · have hl := (hg'.2.1 (i - j) (by omega)).2.2.2.2
+    rw [Nat.add_sub_cancel' h1, hc.2] at hl
+    have hmem := List.getElem_mem
+      (l := (Node.exec' proposer dg y (tr.state y j) (tr.time d) (.tick x true)).2)
+      (n := i - j) (by omega)
+    rw [← Option.some.inj hl] at hmem
+    exact tick_no_message' y _ _ x _ hmem m hm
+  · exact Compose.before_tick' hrun.toLocalRun' hy
+      ((RunTrace.tickAt'_iff _ _ _ _ _ _).2 ⟨x, true, hg⟩) hc hi ht
 
 private theorem late_tick_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
     ∀ y ∈ H, ∀ {t}, 0 ≤ t → sp.toParams.IsPublic t → tr.awake y t →
     ∃ jt, ∃ ℓ : ACLabel (goldilocksNode sp ro), tr.CallAt y jt (.ac ℓ) ∧ ℓ.call = .tick ∧
       tr.time jt = t ∧ ∀ i W, tr.AcceptAt y i W → tr.time i = t → ¬ Node.Proposes proposer y t →
         jt < i := by
-  sorry
+  intro y hy t ht0 hpub hw
+  obtain ⟨jt, hj'⟩ := hrun.tick_of_awake y hy t ht0 hpub hw
+  obtain ⟨x, fgDue, hgt⟩ := (RunTrace.tickAt'_iff _ _ _ _ _ _).1 hj'
+  have hg := (RunTrace.groupAt'_iff _ _ _ _ _ _ _).1 hgt
+  have hlen : 0 < (Node.exec' proposer dg y (tr.state y jt) t (.tick x fgDue)).2.length := by
+    cases fgDue <;> simp [Node.exec'_eq, Node.onTick'_eq, Node.runSteps'_eq, Node.tickSteps,
+      Node.tickStep'_eq, Node.acCall'_eq]
+  obtain ⟨hn0, ht0', -, -, hl0⟩ := hg.2.1 0 hlen
+  have hget : (Node.exec' proposer dg y (tr.state y jt) t (.tick x fgDue)).2[0]'hlen =
+      .ac ⟨.tick, Node.frame' (tr.state y jt), ((goldilocksNode' sp ro).step y
+        (tr.state y jt).ac (Node.frame' (tr.state y jt)) t .tick).2⟩ := by
+    cases fgDue <;> simp [Node.exec'_eq, Node.onTick'_eq, Node.runSteps'_eq, Node.tickSteps,
+      Node.tickStep'_eq, Node.acCall'_eq]
+  rw [hget] at hl0
+  simp only [Nat.add_zero] at hn0 ht0' hl0
+  refine ⟨jt, _, ⟨hn0, hl0⟩, rfl, ht0', fun i W hA hit hnp => ?_⟩
+  rcases Coherence.blockCall_cases' hrun.toLocalRun' hy hA with hgW |
+    ⟨j, x', f', -, -, hP, -⟩
+  · rw [hit] at hgW
+    rcases lt_trichotomy jt i with h | rfl | h
+    · exact h
+    · have := hl0.symm.trans hA.2
+      cases this
+    · have := hrun.phase_order y hy y hy i jt t (.block W) (.tick x fgDue) hgW hgt h (.inl rfl)
+      simp [Node.Event.phase] at this
+  · exact absurd (hit ▸ hP) hnp
 
 private theorem signed_before_attest_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
     ∀ y ∈ H, ∀ {k C s}, tr.CallAt y k (.fg (.attest C s)) →
@@ -102,6 +258,7 @@ theorem GoldilocksRun'.toStaticCore (hrun : GoldilocksRun' proposer dg H tr ini)
   cutLaw y hy i c hc := (hrun.cutLaw y hy i c hc).with
   att_unforgeable := hrun.att_unforgeable
   awake_of_call := hrun.awake_of_call
+  sleep_of_restart := hrun.sleep_of_restart
   sign_public y hy k a hs := by
     obtain ⟨C, hc⟩ := hs
     obtain ⟨j, -, ht⟩ := Compose.attestCall_tick' hrun.toLocalRun' hy hc

@@ -79,6 +79,7 @@ theorem GoldilocksRun.toStaticCore (hrun : GoldilocksRun proposer dg H tr ini) :
   cutLaw y hy i c hc := (hrun.cutLaw y hy i c hc).with
   att_unforgeable := hrun.att_unforgeable
   awake_of_call := hrun.awake_of_call
+  sleep_of_restart := hrun.sleep_of_restart
   sign_public y hy k a hs := by
     obtain ⟨C, hc⟩ := hs
     obtain ⟨j, -, ht⟩ := Compose.attestCall_tick hrun.toLocalRun hy hc
