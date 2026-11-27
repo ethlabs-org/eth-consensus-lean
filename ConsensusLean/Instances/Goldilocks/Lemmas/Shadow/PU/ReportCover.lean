@@ -271,7 +271,7 @@ theorem held_target_viableHeads_or_higher_report_covered_at
   intro hfloor
   have hreach := hr.reachable_at hd hy hle
   have hfs := hr.finalitySpec
-  have hPh := Outcome.high_of_anc_at' hp.run hp.noColl hseed hd hle hy hPy hSP
+  have hPh := Outcome.high_of_anc_at hp.run hp.noColl hseed hd hle hy hPy hSP
   have hcon : ¬ (tr.state y i).fg.Contest := by
     intro hc
     have hnc := Outcome.no_high_contest_at' hp hy hib

@@ -156,7 +156,7 @@ theorem ResetPremisesUpTo.low_analysis_root_of_held_seed_at
   have hlei : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
   have hreach := (Compose.Growing.reachable_at hrun hi0 hy hlei).reachableWith
   have hFS := hp.low_finalized_below_origin_at hi0 hlei hy hib hlow hS hqb
-  have hSh := Outcome.high_of_anc_at' hrun hnc hS hi0 hlei hy hSy .refl
+  have hSh := Outcome.high_of_anc_at hrun hnc hS hi0 hlei hy hSy .refl
   have hJ : ∀ D ∈ (tr.state y i).fg.tree,
       Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F D →
       HZ tr H g + 1 ≤ ((tr.state y i).fg.σ D.root).h →
@@ -180,7 +180,7 @@ theorem ResetPremisesUpTo.low_analysis_root_of_held_seed_at
     · have hFB := hFS.trans hSB
       have hB := (mem_frame_tree.1 (hheld hFB)).1
       exact Or.inl (hJ B hB hFB
-        (Outcome.high_of_anc_at' hrun hp.noColl hS hi0 hlei hy hB hSB)
+        (Outcome.high_of_anc_at hrun hp.noColl hS hi0 hlei hy hB hSB)
         hactive.1 hactive.2)
   · rcases hBS with hBS | hSB
     · exact Anc.total hU hFS hBS

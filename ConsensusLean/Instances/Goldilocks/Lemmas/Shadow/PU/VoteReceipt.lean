@@ -69,7 +69,7 @@ private theorem cutZ_lt_of_anc
   have hkZ : tr.time k ≤ cutZ sp.toParams g := not_lt.mp h
   have hzZ : z ∈ H (cutZ sp.toParams g) := by rwa [max_eq_right hkZ] at hz
   have hZ0 : 0 ≤ cutZ sp.toParams g := (hp.run.time_nonneg k).trans hkZ
-  have hhigh := Outcome.high_of_anc_at' hp.run hp.noColl ho hZ0
+  have hhigh := Outcome.high_of_anc_at hp.run hp.noColl ho hZ0
     (fun _ hq => (hp.run.time_mono hq.le).trans hkZ) hzZ hW hBW
   obtain ⟨c, hc, _⟩ := hp.snapshot
   have hkc : k ≤ c := by
@@ -110,7 +110,7 @@ private theorem not_genesis_above
     (Coherence.honestBlocksAt_coherent hp.run hp.noColl).1 hGU
       ⟨x, i, tr.time i, hi0, hle, hx, hgen⟩ hg
   have hGx : G ∈ (tr.state x i).fg.tree := heq ▸ hgen
-  have hh := Outcome.high_of_anc_at' hp.run hp.noColl ho hi0 hle hx hGx hBG
+  have hh := Outcome.high_of_anc_at hp.run hp.noColl ho hi0 hle hx hGx hBG
   rw [heq, show (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).root =
       sp.toParams.genesisRoot from rfl,
     Store.σ_genesis_with Store.finalitySpec_updateFinality hreach.reachableWith] at hh

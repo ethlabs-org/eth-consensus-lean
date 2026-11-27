@@ -200,10 +200,10 @@ private theorem entries_compatible
     · exact compatible_of_below hU hEO₁ hEO₂
         (hp.origins_compatible_at ho₁ (hb hr₁ hd₁) ho₂ (hb hr₂ hd₂))
     · exact compatible_of_below hU hEO₁ .refl
-        (CoveredUpTo.compatible_highOrigin' hp.run hp.noColl hc₂ (hb hr₁ hd₁) ho₁).symm
+        (CoveredUpTo.compatible_highOrigin hp.run hp.noColl hc₂ (hb hr₁ hd₁) ho₁).symm
   · rcases h₂ with ⟨r₂, hr₂, l₂, O₂, ho₂, hEO₂⟩ | hc₂
     · exact compatible_of_below hU .refl hEO₂
-        (CoveredUpTo.compatible_highOrigin' hp.run hp.noColl hc₁ (hb hr₂ hd₂) ho₂)
+        (CoveredUpTo.compatible_highOrigin hp.run hp.noColl hc₁ (hb hr₂ hd₂) ho₂)
     · obtain ⟨hc, C₁, s₁, hC₁, -, hEC₁⟩ := coveredUpTo_iff.1 hc₁
       obtain ⟨-, C₂, s₂, hC₂, -, hEC₂⟩ := coveredUpTo_iff.1 hc₂
       exact compatible_of_below hU hEC₁ hEC₂ (hc.s1 C₁ s₁ C₂ s₂ hC₁ hC₂)
@@ -264,7 +264,7 @@ theorem ResetPremisesUpTo.reset_vote_floor_above_old_or_covered_at
   have hreach := (Compose.Growing.reachable_at hp.run ht hy hj).reachableWith
   have hu := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   obtain ⟨v₀, r₀, l₀, O₀, ho₀, hrb, _, hrt⟩ := hp.reset_seed_before_slot_at hR
-  have hBh := Outcome.high_of_anc_at' hp.run hp.noColl ho₀ ht hj hy hB
+  have hBh := Outcome.high_of_anc_at hp.run hp.noColl ho₀ ht hj hy hB
     (hBold v₀ r₀ l₀ O₀ ho₀ hrt hrb)
   have hnc := Outcome.no_high_contest_at' hp hy hjb
   by_contra hle
@@ -331,7 +331,7 @@ theorem ProposalImpl.held_high_origin_viable_at'
   refine ⟨hBs, hFB, ?_⟩
   set st := (tr.state p c).fg with hst
   have hBh : HZ tr H g + 1 ≤ (st.σ B.root).h :=
-    Outcome.high_of_anc_at' hp.run hp.noColl ho ht hle hpH hBs .refl
+    Outcome.high_of_anc_at hp.run hp.noColl ho ht hle hpH hBs .refl
   have hjm := hs.hj_lt_hmax
   -- the left entry of a held entry `E` above `B`'s height is compatible with `B`
   have hcmp : ∀ {E W : AC.Blk sp.n (List (FG.Att sp.n))}, E ∈ st.tree →
@@ -345,7 +345,7 @@ theorem ProposalImpl.held_high_origin_viable_at'
           ((hp.run.time_mono (show r ≤ c by omega)).trans hcb) ho hib with h | h
       · exact Or.inl (hEO.trans h)
       · exact Anc.total hU hEO h
-    · exact CoveredUpTo.compatible_highOrigin' hp.run hp.noColl hcov hib ho
+    · exact CoveredUpTo.compatible_highOrigin hp.run hp.noColl hcov hib ho
   by_cases hm : st.hmax ≤ (st.σ B.root).h
   · exact ⟨B, hBs, hFB, isViable_of_hmax_le hm, .refl⟩
   by_cases hlow : (st.σ B.root).h + 2 ≤ st.hmax
