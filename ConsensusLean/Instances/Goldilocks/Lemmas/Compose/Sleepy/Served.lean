@@ -60,7 +60,8 @@ theorem anchor_compatible_of_live_candidates
     · exact hX.1
     · exact (Set.mem_singleton_iff.mp hX) ▸ hΦ.fcRoot_mem
   obtain ⟨D, hD⟩ := AC.exists_deepest hΦ hsub ⟨Φ.fcRoot, Or.inr rfl⟩
-  have ha : AC.getAnchor sp A Φ t = D := by simp only [AC.getAnchor, hD, Option.getD_some]
+  have ha : AC.getAnchor sp A Φ t = D := by
+    simp only [AC.getAnchor_eq_deepest_union hΦ, hD, Option.getD_some]
   rw [ha]
   exact hcomp D (AC.deepest_mem hD).1
 
