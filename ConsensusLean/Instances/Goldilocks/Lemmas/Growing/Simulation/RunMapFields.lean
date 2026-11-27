@@ -126,33 +126,33 @@ namespace Consensus.Goldilocks.Simulation
 
 open AsChainShape Shape Blocks
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 section Chain
 
 variable {sp : ACParams}
 
-variable (sp) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+variable (sp)
 
 /-- The tip of each output of a node state at time `t`, as in `outOf`: `Σ.F` for `finalized`,
 `ac_confirmed(𝒜, fg_to_ac(Σ), t)` for `confirmed`. -/
-noncomputable def outTip : Out → NodeState (goldilocksNode sp ro) → Time → Blk sp :=
+noncomputable def outTip : Out → NodeState (goldilocksNode sp) → Time → Blk sp :=
   NodeAsChainShape.outTip
 
 /-- The confirmed tip is the AC's confirmed block. -/
-theorem outTip_confirmed (st : NodeState (goldilocksNode sp ro)) (t : Time) :
-    outTip sp ro .confirmed st t = (goldilocksNode sp ro).confirmed st.ac (Node.frame st) t := by
+theorem outTip_confirmed (st : NodeState (goldilocksNode sp)) (t : Time) :
+    outTip sp .confirmed st t = (goldilocksNode sp).confirmed st.ac (Node.frame st) t := by
   exact NodeAsChainShape.outTip_confirmed st t
 
 /-- The finalized tip is the FG store's finalized block. -/
-theorem outTip_finalized (st : NodeState (goldilocksNode sp ro)) (t : Time) :
-    outTip sp ro .finalized st t = st.fg.F := by
+theorem outTip_finalized (st : NodeState (goldilocksNode sp)) (t : Time) :
+    outTip sp .finalized st t = st.fg.F := by
   exact NodeAsChainShape.outTip_finalized st t
 
 /-- Each node output is the header list of `blocksTo` up to its tip (fuel: the tip's slot). -/
-theorem outOf_eq_blocksTo (st : NodeState (goldilocksNode sp ro)) (t : Time) (g : Out) :
-    outOf st t g = (blocksTo st.fg.blocks ((outTip sp ro g st t).slot + 1)
-      (outTip sp ro g st t)).map (headerOf sp) := by
+theorem outOf_eq_blocksTo (st : NodeState (goldilocksNode sp)) (t : Time) (g : Out) :
+    outOf st t g = (blocksTo st.fg.blocks ((outTip sp g st t).slot + 1)
+      (outTip sp g st t)).map (headerOf sp) := by
   have hout : outOf st t g = NodeAsChainShape.outOf (headerOf sp) st t g := by
     cases g <;> rfl
   rw [blocksTo_node]

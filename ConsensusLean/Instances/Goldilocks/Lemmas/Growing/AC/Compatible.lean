@@ -13,15 +13,15 @@ public section
 
 namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
-  {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)}
+variable {FGP : Type} {sp : ACParams}
+  {tr : GTrace sp FGP} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 private theorem update_side
     {ini} (hrun : ACRun proposer tr H U ini) {Y : Fin sp.n} {c s : Nat}
     (hY : Y ∈ H (tr.time c)) {D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hfl : FastUpdateAt tr Y c s D CV) :
-    ∃ (ℓ : ACLabel (goldilocksAC sp FGP ro)) (S : Set (Fin sp.n)),
+    ∃ (ℓ : ACLabel (goldilocksAC sp FGP)) (S : Set (Fin sp.n)),
       tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
       (∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s) ∧
       sp.committeeSize ≤ 2 * S.ncard ∧
@@ -75,10 +75,10 @@ private theorem update_side
     exact ⟨hne, v, hvp, rfl, R, hΦU hR, hRr, Anc.mono hΦU hDR⟩
 
 private theorem against_update
-    {ini} (hr : Goldilocks.Growing.ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {s : Nat}
-    (hsync : SyncACAt (goldilocksAC sp FGP ro) H U
+    {ini} (hr : Goldilocks.Growing.ACLocalRun (goldilocksAC sp FGP) H U tr ini) {s : Nat}
+    (hsync : SyncACAt (goldilocksAC sp FGP) H U
       (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
-    {X Y : Fin sp.n} {c : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {X Y : Fin sp.n} {c : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     (hY : Y ∈ H (tr.time c)) (hc : tr.CallAt Y c ℓ)
     (ht : tr.time c = sp.ts s + 6 * sp.Δ)
     (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s)
@@ -98,7 +98,7 @@ theorem fastLock_same_slot
     {w x : Fin sp.n} {i₀ j : Nat} {B D : Blk sp.n FGP} {CV CV' : Set (Vote sp.n)}
     (hw : w ∈ H (tr.time i₀)) (hfl : FastLockAt tr w i₀ s B CV)
     (hx : x ∈ H (tr.time j)) (hfl' : FastLockAt tr x j s D CV')
-    (hsync : SyncACAt (goldilocksAC sp FGP ro) H U
+    (hsync : SyncACAt (goldilocksAC sp FGP) H U
       (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) tr)
     {d : Time} (hi₀ : OptimisticLockAt tr w i₀ s B CV → tr.time i₀ ≤ d)
     (hj : tr.time j ≤ d)
@@ -151,7 +151,7 @@ theorem fastLock_same_slot
     have he₁' := upTo_voteAt.mpr ⟨ht₁.trans hi₀, he₁⟩
     have he₂' := upTo_voteAt.mpr ⟨ht₂.trans hj, he₂⟩
     rw [hv'u] at he₂'
-    obtain ⟨_, rfl⟩ := AC.one_vote_per_slotU sp FGP ro (H d) U (tr.upTo d)
+    obtain ⟨_, rfl⟩ := AC.one_vote_per_slotU sp FGP (H d) U (tr.upTo d)
       hrd.localRun.toU _ huH k₁ k₂ e₁ e₂ he₁' he₂' (hvs.trans hvs'.symm)
     obtain rfl : R = R' := hU.1 (hΦU hR) (hΦU' hR') (hRr.trans hR'r.symm)
     exact hnc (anc_total hU (Anc.mono hΦU hBR) (Anc.mono hΦU' hDR'))

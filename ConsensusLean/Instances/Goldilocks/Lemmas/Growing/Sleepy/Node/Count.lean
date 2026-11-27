@@ -27,11 +27,11 @@ committee `K` (`CommitteeFacts`, `CommitteeBoundsFrom`):
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- `t_s ≥ 0`. -/
 theorem ts_natCast_nonneg (s : Nat) : (0 : Time) ≤ sp.ts s := by
@@ -51,7 +51,7 @@ theorem optimistic_time_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr 
 /-- A cast of a node honest then is in `[t_σ, t_σ + Δ]` of its slot `σ`. -/
 theorem cast_time_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ℓ e) :
     sp.ts e.msg.slot ≤ tr.time i ∧ tr.time i ≤ sp.ts e.msg.slot + sp.Δ := by
   refine ⟨?_, (cast_head_fcRoot_at hrun hnc hy hc).2⟩
@@ -170,11 +170,11 @@ end Consensus.Goldilocks.Compose.Growing
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- A node honest at `t ≥ 0` and awake through the catch-up window before `t` is awake and joined
 at `t`. The node was honest at each intermediate tick and restart by antitonicity. -/

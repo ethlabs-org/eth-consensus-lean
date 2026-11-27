@@ -25,11 +25,11 @@ facts `voteK_facts`, and the query's numbers and counts. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- **A restart of a node awake on `[a, z]`** and honest at `z`, at a time `≤ z`, is by `a + Δ`:
 the node ticks at the first public time from `a`, so the restart (its first call after a sleep)
@@ -167,7 +167,7 @@ noncomputable def outageLockPremises_of_arming {ini}
 
 section NodeProjections
 
-variable {ini : Fin sp.n → (goldilocksNode sp ro).State}
+variable {ini : Fin sp.n → (goldilocksNode sp).State}
   {hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini} {hnc : NoCollRun dg tr}
   {K : AC.CommitteeDict sp.n} {hKB : CommitteeFacts tr H K} {T b₀ b₁ hor a z : Time}
   {A₀ W : Set (Fin sp.n)} {r : Nat} {hT0 : 0 ≤ T} {hlag : T + (4 * sp.k + 6) * sp.Δ ≤ b₀}

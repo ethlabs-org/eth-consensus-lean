@@ -28,11 +28,11 @@ the later call):
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- A bounded clean source, written by a node honest at its write, is below the head of an actual
@@ -43,7 +43,7 @@ theorem clean_source_below_cast_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     {B P : AC.Blk sp.n (List (FG.Att sp.n))}
     (horig : (∃ CV, AC.FastLockAt tr.projAC x r s B CV) ∨ AC.SlowLockAt tr.projAC x r s B)
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcast : AC.CastAt tr.projAC y i ell e) (hib : tr.time i ≤ b)
     (hsi : s < e.msg.slot) (hPU : P ∈ tr.HonestBlocksAt H) (heP : e.msg.head = P.root) :
     Anc (tr.HonestBlocksAt H) B P := by
@@ -68,7 +68,7 @@ theorem call_locks_compatible_of_unanimous_at {cm : Time → Finset (Fin sp.n)} 
       e.msg.slot = u → e.msg.head = P.root)
     (hvote : ∃ z q ell e, z ∈ H (tr.time q) ∧ AC.CastAt tr.projAC z q ell e ∧
       tr.time q ≤ b ∧ e.msg.slot = u)
-    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp)}
     (hcall : tr.projAC.CallAt y j ell) (hjb : tr.time j ≤ b)
     (hafter : drainTime sp a ≤ tr.time j) (hbefore : tr.time j ≤ sp.ts u + 6 * sp.Δ)
     (hnext : ∀ r < j, ∀ B CV, AC.OptimisticLockAt tr.projAC y r (u + 1) B CV →

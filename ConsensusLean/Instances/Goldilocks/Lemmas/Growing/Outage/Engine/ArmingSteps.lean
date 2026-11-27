@@ -34,11 +34,11 @@ delivery, lifted to the prefix through `t_c`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- The head of a vote of a node honest at `d`, cast at a time `≤ d`, is held in the prefix
 through `d` (the one block held while honest with its root). -/
@@ -68,7 +68,7 @@ theorem update_result_extends_origin_at
     {ΔF b : Time} (hinv : SleepyInvariantUpTo tr H b) (hsync : SleepyServiceBefore tr H ΔF b)
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {σ : Nat} (hC : OriginWithin tr H C σ b)
     {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hσs : σ < s) (hu : AC.UpdateAt tr.projAC y c s ℓ)
+    {ℓ : ACLabel (goldilocksNode sp)} (hσs : σ < s) (hu : AC.UpdateAt tr.projAC y c s ℓ)
     (hsb : sp.ts s + 2 * sp.Δ ≤ b)
     (hfb : AC.FaultBoundK K s tr.projAC (H (tr.time c)) (sp.ts s + sp.Δ))
     (hFC : Anc (tr.HonestBlocksAt H) (tr.state y c).fg.F C) :
@@ -224,7 +224,7 @@ theorem update_result_or_root_at
     {ΔF b : Time} (hinv : SleepyInvariantUpTo tr H b) (hsync : SleepyServiceBefore tr H ΔF b)
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {σ : Nat} (hC : OriginWithin tr H C σ b)
     (hCU : C ∈ tr.HonestBlocksAt H) {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hσs : σ < s) (hu : AC.UpdateAt tr.projAC y c s ℓ)
+    {ℓ : ACLabel (goldilocksNode sp)} (hσs : σ < s) (hu : AC.UpdateAt tr.projAC y c s ℓ)
     (hcb : tr.time c ≤ b)
     (hfb : AC.FaultBoundK K s tr.projAC (H (tr.time c)) (sp.ts s + sp.Δ)) :
     Anc (tr.HonestBlocksAt H) C (tr.state y c).fg.F ∨
@@ -251,7 +251,7 @@ theorem saved_rows_above_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y c s ℓ) (hks : sp.k ≤ s)
+    {ℓ : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y c s ℓ) (hks : sp.k ≤ s)
     (hFC : Anc (tr.HonestBlocksAt H) (tr.state y c).fg.F C)
     (hCt : C ∈ (tr.state y c).fg.tree)
     (hnr : ∀ k ≤ c, tr.RestartAt y k → tr.time k ≤ sp.ts ((s : Int) - sp.k + 1))
@@ -319,7 +319,7 @@ theorem cover_gate_veto_above_at
     (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {b : Time} (hinv : SleepyInvariantUpTo tr H b)
     {C D : AC.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y c s ℓ)
+    {ℓ : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y c s ℓ)
     (hfirst : ∀ k < c, ∀ ℓ', ¬ AC.UpdateAt tr.projAC y k s ℓ')
     (hD : AC.getConfirmation sp (tr.state y c).ac ℓ.frame s = some D) (hCD : ℓ.frame.Anc C D)
     (hsupp : ∃ x j e, HVoteAt tr H x j e ∧ x ∈ H (tr.time c) ∧ e.msg.slot = s ∧
@@ -614,7 +614,7 @@ theorem armed_first_update_at
 private theorem locks_after_update_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    {w : Fin sp.n} {c s : Nat} (hw : w ∈ H (tr.time c)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {w : Fin sp.n} {c s : Nat} (hw : w ∈ H (tr.time c)) {ℓ : ACLabel (goldilocksNode sp)}
     (hu : AC.UpdateAt tr.projAC w c s ℓ) :
     (tr.state w (c + 1)).ac.locks =
       (AC.updateConfirmation sp (tr.state w c).ac ℓ.frame (tr.time c) s).locks := by

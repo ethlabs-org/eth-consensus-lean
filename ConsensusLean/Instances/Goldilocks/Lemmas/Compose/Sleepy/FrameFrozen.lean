@@ -15,11 +15,11 @@ honest-store geometry; `FrameLabels` uses this witness for viability at votes. -
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-! ### The frozen witness: an honest head relayed before the freeze -/
 
@@ -37,7 +37,7 @@ private theorem optimistic_stamp (A : AC.ACState sp.n) (Φ : AC.Frm sp.n (List (
 and the vote is cast from `t_{s+1} = t_s + 4Δ` on. -/
 theorem honest_vote_restarts {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {s : Nat}
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e)
     (hs : e.msg.slot = s + 1) :
     (∀ c ≤ i, tr.projAC.RestartAt y c → tr.time c ≤ sp.ts s) ∧ sp.ts s + 4 * sp.Δ ≤ tr.time i := by
@@ -47,7 +47,7 @@ theorem honest_vote_restarts {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have hjp : AC.joined sp (tr.projAC.post i) (tr.projAC.time i) := by
     unfold AC.joined; rw [AC.restartTime_of_castAtU hr.toU hy hc]; exact hjoin
   refine ⟨fun c hc' hrc => ?_, ?_⟩
-  · have h := (AC.joined_awakeU sp _ ro H _ tr.projAC hr.toU y hy i ℓ hc.1 hjp).2 c hc' hrc
+  · have h := (AC.joined_awakeU sp _ H _ tr.projAC hr.toU y hy i ℓ hc.1 hjp).2 c hc' hrc
     rw [hti, show (((s + 1 : Nat) : Int) - 1) = (s : Int) by push_cast; ring] at h
     exact h
   · have h := (AC.ts_le_iff_le_slot sp (hr.time_nonneg i) ((s : Int) + 1)).2
@@ -68,7 +68,7 @@ private theorem acOnTick_emits {self : Fin sp.n} {A : AC.ACState sp.n}
 restart, `ac_proposal` or `ac_to_fg`. -/
 theorem honest_vote_call {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e) :
     (ℓ.call = .tick → tr.time i = sp.ts (sp.slot (tr.time i)) + sp.Δ) ∧ ℓ.call ≠ .proposal ∧
       ℓ.call ≠ .toFG ∧ ℓ.call ≠ .restart := by
@@ -77,14 +77,14 @@ theorem honest_vote_call {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     rcases hr.frameLaw y hy i ℓ hc.1 with ⟨-, Φ₀, -, -, h⟩ | ⟨j, ℓ', -, -, -, h⟩ <;> exact h.1
   have hx := hr.exec i ℓ hc.1.2 (hc.1.1 ▸ hy)
   rw [hc.1.1] at hx
-  have he' : e ∈ ((AC.goldilocksAC sp _ ro).step y (tr.projAC.state y i) ℓ.frame
+  have he' : e ∈ ((AC.goldilocksAC sp _).step y (tr.projAC.state y i) ℓ.frame
       (tr.projAC.time i) ℓ.call).2 := by rw [hx]; exact hc.2
   refine ⟨fun h => ?_, fun h => ?_, fun h => ?_, fun h => ?_⟩ <;> rw [h] at he'
   · exact acOnTick_emits (self := y) (A := tr.projAC.state y i) (Φ := ℓ.frame) he'
   · simp [ACInterface.step] at he'
   · simp [ACInterface.step] at he'
-  · change e ∈ (AC.acRestart sp ro y _ ℓ.frame _).2 at he'
-    rw [((AC.restart_state sp) _ ro y _ ℓ.frame _ hΦ (hr.time_nonneg i)).1] at he'
+  · change e ∈ (AC.acRestart sp y _ ℓ.frame _).2 at he'
+    rw [((AC.restart_state sp) _ y _ ℓ.frame _ hΦ (hr.time_nonneg i)).1] at he'
     simp at he'
 
 /-- **A block accepted before the freeze is in the voter block tree** of an honest
@@ -93,7 +93,7 @@ point is below `t_s + 3Δ` (the voter's restarts were before, and this call does
 it). -/
 theorem accepted_voter_tree {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e)
     (hs : e.msg.slot = s + 1) {X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hXU : X ∈ tr.HonestBlocks H) (hacc : AC.AcceptedBefore tr.projAC y X (sp.ts s + 3 * sp.Δ))
@@ -140,10 +140,10 @@ theorem accepted_voter_tree {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have hrp : e.readPoint.blockStamp X.root = (tr.projAC.state y i).blockStamp X.root := by
     have h1 : (tr.projAC.post i).blockStamp = e.readPoint.blockStamp := by
       rw [AC.post_of_castAtU hr.toU hy hc, optimistic_stamp, AC.admitVote_blockStamp]
-    have hp : tr.projAC.post i = ((AC.goldilocksAC sp _ ro).step y (tr.projAC.state y i)
+    have hp : tr.projAC.post i = ((AC.goldilocksAC sp _).step y (tr.projAC.state y i)
         ℓ.frame (tr.projAC.time i) ℓ.call).1 := by rw [hx]
     obtain ⟨hblk, -, hoth⟩ :=
-      AC.step_blockStamp_eq ro y (tr.projAC.state y i) hΦ (hr.time_nonneg i) ℓ.call
+      AC.step_blockStamp_eq y (tr.projAC.state y i) hΦ (hr.time_nonneg i) ℓ.call
     rw [← h1, hp]
     by_cases hb : ∃ B, ℓ.call = .block B
     · obtain ⟨B, hB⟩ := hb

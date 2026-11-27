@@ -58,12 +58,6 @@ open AsChainShape Simulation
 
 open Blocks Shape AC
 
-open Classical in
-/-- A replay order at genesis root `0`: a chosen parent-order enumeration (`[]` if none). -/
-noncomputable def replayOrder (n : Nat) : ReplayOrderData n 0 (List (FG.Att n)) where
-  order := fun _ Φ => if h : ∃ l, ParentOrderAt 0 Φ l then h.choose else []
-  parentOrder := fun _ Φ h => by simp only [h, ↓reduceDIte]; exact h.choose_spec
-
 /-- The smallest setup the assumptions allow: `k = 2`, `δt = 6`. -/
 noncomputable def setupSmall : Setup where
   genesisRoot := 0
@@ -72,7 +66,6 @@ noncomputable def setupSmall : Setup where
   two_le_k := le_rfl
   c := 2
   two_le_c := le_rfl
-  ro := replayOrder
   vote := stock
 
 /-- A larger setup: `k = 6`, `δt = 8`. -/
@@ -83,7 +76,6 @@ noncomputable def setupLarge : Setup where
   two_le_k := by decide
   c := 2
   two_le_c := le_rfl
-  ro := replayOrder
   vote := stock
 
 /-- The stock calendar's signing appointment from `t ≥ 0`: `signGapAt_true` at the node
@@ -318,7 +310,6 @@ noncomputable def setupRow : Setup where
   two_le_k := le_rfl
   c := 2
   two_le_c := le_rfl
-  ro := replayOrder
   vote := stock
 
 /-- (b) FG gap `2`: `6 ≤ δt`, the window `[0, 2, 4, 6]` of span `6`, final latency `4(X + 6) + 1`;

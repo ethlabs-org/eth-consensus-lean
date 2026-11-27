@@ -12,11 +12,11 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.Outcome
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- An acceptance is relayed without requiring its sender to remain honest at the read. -/
@@ -24,7 +24,7 @@ theorem accept_mem_frame {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {q j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time q)) (hy : y ∈ H (tr.time j))
-    (ha : tr.AcceptAt x q B) {ell : ACLabel (goldilocksNode sp ro)}
+    (ha : tr.AcceptAt x q B) {ell : ACLabel (goldilocksNode sp)}
     (hcall : tr.projAC.CallAt y j ell) (hjb : tr.time j ≤ b)
     (hg : gbar g + 2 * sp.Δ ≤ tr.time j)
     (hjoin : sp.ts (sp.slot (gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)

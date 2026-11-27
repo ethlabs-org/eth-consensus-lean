@@ -20,17 +20,17 @@ Goldilocks run. No unconditional generic event-safety supplier is constructed.
 
 namespace Consensus.Goldilocks.Generic.SleepyLayer1
 
-open AC (ACParams ReplayOrder)
+open AC (ACParams)
 open Compose.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {sign : Fin sp.n → Time → Bool} {G : Nat}
 
 
-private theorem anchored_of_chain {tr : GoldilocksTrace sp ro}
+private theorem anchored_of_chain {tr : GoldilocksTrace sp}
     {H : Time → Set (Fin sp.n)} {b t : Time} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : OnOriginChainWithin tr H B t) (ht : t ≤ b) :
-    Anchored (goldilocksEvents sp ro) tr H b t B := by
+    Anchored (goldilocksEvents sp) tr H b t B := by
   rcases onOriginChainWithin_iff.1 h with hg | ⟨C, s, hC, hBC⟩
   · exact Or.inl hg
   obtain ⟨x, i, CV, hx, hi, he⟩ := originWithin_iff.1 hC
@@ -38,7 +38,7 @@ private theorem anchored_of_chain {tr : GoldilocksTrace sp ro}
     goldilocksEvents_confirmedEvent_iff.2 ⟨CV, he⟩⟩, hBC⟩
 
 theorem goldilocks_output_provenance :
-    GoldilocksOutputProvenance (sp := sp) (ro := ro) sign G := by
+    GoldilocksOutputProvenance (sp := sp) sign G := by
   rw [goldilocksOutputProvenance_iff]
   intro cm proposer dg H tr b hrun hnc y i t hread _
   obtain ⟨hrun, -⟩ := (goldilocksRunInterface_run_iff cm).1 hrun
@@ -53,10 +53,10 @@ theorem goldilocks_output_provenance :
   have htip := (Regimes.ac_tips (A := (tr.state y i).ac) hΦ t).1
   refine ⟨htip.1, ?_⟩
   obtain ⟨R, hR, hRr, hRc⟩ := record_origin_at hrun hnc ht0 hi le_rfl hy
-  have hRa : Anchored (goldilocksEvents sp ro) tr H b t R :=
+  have hRa : Anchored (goldilocksEvents sp) tr H b t R :=
     anchored_of_chain (onOriginChainWithin_iff.2
       (hRc.imp_right fun ⟨s, h⟩ => ⟨R, s, h, .refl⟩)) htb
-  change Anchored (goldilocksEvents sp ro) tr H b t (AC.acConfirmed sp (tr.state y i).ac
+  change Anchored (goldilocksEvents sp) tr H b t (AC.acConfirmed sp (tr.state y i).ac
     (Node.frame (tr.state y i)) t) ∨ Anc (tr.HonestBlocksAt H)
       (AC.acConfirmed sp (tr.state y i).ac (Node.frame (tr.state y i)) t)
       (tr.state y i).fg.F
@@ -94,7 +94,7 @@ theorem goldilocks_output_provenance :
       · exact Or.inl (Or.inr ⟨E, he, (hXe.mono hsub).trans hRE⟩)
 
 theorem goldilocks_source_provenance :
-    GoldilocksSourceProvenance (sp := sp) (ro := ro) sign G := by
+    GoldilocksSourceProvenance (sp := sp) sign G := by
   rw [goldilocksSourceProvenance_iff]
   intro cm proposer dg H tr b hrun hnc y i B hy hib hreport
   obtain ⟨hrun, -⟩ := (goldilocksRunInterface_run_iff cm).1 hrun
@@ -150,10 +150,10 @@ retained-evidence `served`: the AC message service is fresh processing
 (`sleepyServiceBefore_of_message_relay_at`). -/
 theorem sleepyServiceBefore_of_acService {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-    {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {ini ΔF b}
+    {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {ini ΔF b}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    {sg : (goldilocksNode sp ro).Msg → Fin sp.n}
-    {fgHold : Time} {C : ACCorrectLocal (goldilocksNode sp ro) sg fgHold}
+    {sg : (goldilocksNode sp).Msg → Fin sp.n}
+    {fgHold : Time} {C : ACCorrectLocal (goldilocksNode sp) sg fgHold}
     (hserved : C.served = fun tr y j τ m => AC.FamilyFacts.MessageServedBefore tr.projAC y j τ m)
     (hs : ACServiceBefore C tr H ΔF b) : SleepyServiceBefore tr H sp.Δ b :=
   Obligations.Growing.sleepyServiceBefore_of_message_relay_at hrun
@@ -174,10 +174,10 @@ service, `SleepyServicePrefix` gives the finite sleepy service
 (`sleepyServiceBefore_of_acService`) at the prefix's own `ΔF`. -/
 theorem sleepyServiceBefore_of_prefix {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-    {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {ini ΔF look b}
+    {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {ini ΔF look b}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini)
-    {sg : (goldilocksNode sp ro).Msg → Fin sp.n}
-    {fgHold : Time} {C : ACCorrectLocal (goldilocksNode sp ro) sg fgHold}
+    {sg : (goldilocksNode sp).Msg → Fin sp.n}
+    {fgHold : Time} {C : ACCorrectLocal (goldilocksNode sp) sg fgHold}
     (hserved : C.served = fun tr y j τ m => AC.FamilyFacts.MessageServedBefore tr.projAC y j τ m)
     (h : SleepyServicePrefix C tr H ΔF look b) :
     0 ≤ b ∧ SleepyServiceBefore tr H ΔF b := by
@@ -230,7 +230,7 @@ theorem join_le_of_catchUp {c : Time} (hc : Regimes.catchUp sp ≤ c) : 8 * sp.�
 
 theorem retained_count {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-    {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {ini}
+    {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {ini}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {p : EnvPoint (Fin sp.n)} (hbind : RunPointBinding tr H p)
     {c t d : Time} (hc : Regimes.catchUp sp ≤ c) (ht : 0 ≤ t) (htd : t ≤ d)
@@ -247,7 +247,7 @@ theorem retained_count {proposer : Nat → Fin sp.n}
 discharges. Positivity and slot sizes are explicit. -/
 private theorem sleepy_service_and_bounds {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-    {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {ini}
+    {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {ini}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {cm : Time → Finset (Fin sp.n)} (hpos : 0 < sp.committeeSize)
     (hsize : ∀ s, ((dictOfTime sp cm).committee s).ncard = sp.committeeSize)
@@ -311,7 +311,7 @@ private theorem sleepy_service_and_bounds {proposer : Nat → Fin sp.n}
 obtained from a particular supplier's run interface. -/
 theorem sleepy_invariant_of_windows {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-    {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {ini}
+    {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {ini}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {cm : Time → Finset (Fin sp.n)} (hpos : 0 < sp.committeeSize)
     (hKB : CommitteeFacts tr H (dictOfTime sp cm))
@@ -321,7 +321,7 @@ theorem sleepy_invariant_of_windows {proposer : Nat → Fin sp.n}
   obtain ⟨hb, hservice, hB, hBK⟩ := sleepy_service_and_bounds hrun hpos hKB.hsize hw
   exact sleepy_invariant_at hrun hnc hKB hb hservice hB hBK
 
-private theorem ready_of_window {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+private theorem ready_of_window {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)}
     {c t : Time} {y : Fin sp.n} (hc : Regimes.catchUp sp ≤ c)
     (hy : y ∈ H t)
     (hawake : ∀ u, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) :
@@ -332,7 +332,7 @@ private theorem ready_of_window {tr : GoldilocksTrace sp ro} {H : Time → Set (
 /-- Proposal ancestry from the shared windows, with positivity explicit. -/
 theorem sleepy_proposal_coverage_of_windows {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-    {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {ini}
+    {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {ini}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {cm : Time → Finset (Fin sp.n)} (hpos : 0 < sp.committeeSize)
     (hKB : CommitteeFacts tr H (dictOfTime sp cm))
@@ -358,7 +358,7 @@ theorem sleepy_proposal_coverage_of_windows {proposer : Nat → Fin sp.n}
 /-- Same-reader extension from the shared windows, with positivity explicit. -/
 theorem sleepy_extension_of_windows {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-    {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {ini}
+    {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {ini}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {cm : Time → Finset (Fin sp.n)} (hpos : 0 < sp.committeeSize)
     (hKB : CommitteeFacts tr H (dictOfTime sp cm))
@@ -376,7 +376,7 @@ theorem sleepy_extension_of_windows {proposer : Nat → Fin sp.n}
 
 /-- The committee-indexed run supplies the positivity needed by the invariant core. -/
 theorem goldilocks_invariant_adapter :
-    GoldilocksInvariantAdapter (sp := sp) (ro := ro) sign G := by
+    GoldilocksInvariantAdapter (sp := sp) sign G := by
   rw [goldilocksInvariantAdapter_iff]
   intro cm proposer dg H tr p c look committeeLook ΔF b hrun hnc hKB hw
   obtain ⟨hrun, hpos, -⟩ := (goldilocksRunInterface_run_iff cm).mp hrun
@@ -384,7 +384,7 @@ theorem goldilocks_invariant_adapter :
 
 /-- Actual confirmation events are the origins compared by the sleepy invariant. -/
 theorem goldilocks_event_safety :
-    GoldilocksEventSafety (sp := sp) (ro := ro) sign G := by
+    GoldilocksEventSafety (sp := sp) sign G := by
   rw [goldilocksEventSafety_iff]
   intro cm proposer dg H tr p c look committeeLook ΔF b hrun hnc hKB hw _ B B' hB hB'
   have hinv := (goldilocksInvariantAdapter_iff.mp goldilocks_invariant_adapter)
@@ -399,7 +399,7 @@ theorem goldilocks_event_safety :
 
 /-- Proposal coverage uses the same committee and retained-count windows. -/
 theorem goldilocks_proposal_coverage :
-    GoldilocksProposalCoverage (sp := sp) (ro := ro) sign G := by
+    GoldilocksProposalCoverage (sp := sp) sign G := by
   rw [goldilocksProposalCoverage_iff]
   intro cm proposer dg H tr p c look committeeLook ΔF b hold margin
     hrun hnc hKB hw hhold hmargin _ B k y j t hP _ _ _ hkt hy _ hjt
@@ -408,7 +408,7 @@ theorem goldilocks_proposal_coverage :
 
 /-- Extension keeps both read boundaries and both orderings from the fixed head. -/
 theorem goldilocks_extension :
-    GoldilocksExtension (sp := sp) (ro := ro) sign G := by
+    GoldilocksExtension (sp := sp) sign G := by
   rw [goldilocksExtension_iff]
   intro cm proposer dg H tr p c look committeeLook ΔF b hrun hnc hKB hw _
     y i j t u hi hj hbi hbj hij htu
@@ -417,10 +417,10 @@ theorem goldilocks_extension :
 
 /-- Output provenance remains quantified over every run of the supplied local interface. -/
 theorem goldilocksLocal_output_provenance
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp) (fun v => v.val) fgHold)
     {sign : Fin sp.n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg) :
-    OutputProvenance C (goldilocksEvents sp ro) := by
+    {Rg : Nat} (hdata : GoldilocksLocalData sp C sign G Rg) :
+    OutputProvenance C (goldilocksEvents sp) := by
   intro cm proposer dg H tr b hrun hnc
   rw [hdata.healing.1.1] at hrun
   exact (goldilocksOutputProvenance_iff.mp goldilocks_output_provenance)
@@ -428,10 +428,10 @@ theorem goldilocksLocal_output_provenance
 
 /-- Source provenance retains the same-reporter event and its ancestry witness. -/
 theorem goldilocksLocal_source_provenance
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp) (fun v => v.val) fgHold)
     {sign : Fin sp.n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg) :
-    SourceProvenance C (goldilocksEvents sp ro) := by
+    {Rg : Nat} (hdata : GoldilocksLocalData sp C sign G Rg) :
+    SourceProvenance C (goldilocksEvents sp) := by
   intro cm proposer dg H tr b hrun hnc
   rw [hdata.healing.1.1] at hrun
   exact (goldilocksSourceProvenance_iff.mp goldilocks_source_provenance)

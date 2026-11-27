@@ -354,7 +354,7 @@ theorem update_writes_fastLock {s : Nat} (hs : 1 ≤ s) :
 theorem tickRun_faultBound_proj {t : Time} (ht : 0 ≤ t) :
     AC.FaultBound (tickRun N1 dg1).projAC Set.univ t := by
   unfold AC.FaultBound
-  rw [← (Compose.joined_projection sp1 ro1 dg1 Set.univ (tickRun N1 dg1) (fun _ => v0)
+  rw [← (Compose.joined_projection sp1 dg1 Set.univ (tickRun N1 dg1) (fun _ => v0)
     tickRun_goldilocksRun v0 (Set.mem_univ _) t).2.2]
   exact tickRun_faultBound ht
 

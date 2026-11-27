@@ -12,7 +12,7 @@ it refuses (`createAtt_refused`), and the frame of a fast-lock write (`fastLockA
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 section Store
 
@@ -72,12 +72,12 @@ theorem createAtt_refused {n : Nat} {Λ : FG.Record} {v : Fin n} {σe : FG.Chain
     obtain ⟨b, hb, hb'⟩ := List.any_eq_true.1 hany
     exact Or.inr ⟨b, hb, (of_decide_eq_true hb').1⟩
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+variable {sp : ACParams} {tr : GoldilocksTrace sp}
 
 /-- The selection of a fast-lock write is in the frame of its call. -/
 theorem fastLockAt_frame_mem {x : Fin sp.n} {i s : Nat}
     {D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
-    (h : AC.FastLockAt tr.projAC x i s D CV) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (h : AC.FastLockAt tr.projAC x i s D CV) {ℓ : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt x i ℓ) : D ∈ ℓ.frame.tree := by
   rcases h with ⟨ℓ', C, ⟨hc', -⟩, -, hD, -⟩ | ⟨ℓ', A, ⟨hc', -⟩, -, hsel, -⟩
   · obtain rfl : ℓ' = ℓ := Option.some.inj (hc'.2.symm.trans hc.2)

@@ -13,11 +13,11 @@ the public ResetFacts wrappers. Comparisons consume only strictly earlier votes.
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- The retained-vote induction, given the independent finite held-target domain. -/
@@ -28,7 +28,7 @@ theorem high_origin_votes_of_domain_before_at
       {B S : AC.Blk sp.n (List (FG.Att sp.n))},
       x ∈ H (tr.time r) → y ∈ H (tr.time i) →
       B ∈ (tr.state x r).fg.tree → tr.time r ≤ b →
-      ∀ {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))},
+      ∀ {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))},
       AC.CastAt tr.projAC y i ell e → tr.time i ≤ b →
       (Anc (tr.HonestBlocksAt H) ell.frame.F B →
         B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) →

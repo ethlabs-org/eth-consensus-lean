@@ -38,8 +38,8 @@ namespace Consensus.Goldilocks.AC
 
 variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → ACState sp.n}
 
 /-! ## The proposal duty -/
@@ -219,7 +219,7 @@ of its head in the proposal's view, unless its validator equivocates there. With
 theorem proposal_supporterU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
-    (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ)
+    (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt x i ℓ)
     {v : Vote sp.n} (hvs : v.slot = σ) (hv : v ∈ (tr.state x i).pool σ) {C R : Blk sp.n FGP}
     (hR : R ∈ ℓ.frame.tree) (hRr : R.root = v.head) (hRs : R.slot ≤ σ)
     (hCR : ℓ.frame.Anc C R) (hbs : (tr.state x i).blockStamp R.root < ⊤)
@@ -241,7 +241,7 @@ theorem proposal_supporterU
 /-- `proposal_walk` with the unlock given. -/
 theorem proposal_walkU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
-    (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ)
+    (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt x i ℓ)
     (hslot : sp.slot (tr.time i) = σ + 1) {d : DutyHead sp.n FGP (Payload sp.n)}
     {pay : Payload sp.n}
     {L : Set Lock}
@@ -269,8 +269,8 @@ theorem proposal_walkU
 `ac_proposal` of slot `σ + 1` extends a block `B` of its tree that is viable or at or below
 `fc_root` (V), when every live lock after the unlocking is compatible with `B` and every child
 toward `B` is the best. -/
-theorem proposal_walk (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {x : Fin sp.n}
-    (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ)
+theorem proposal_walk (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini) {x : Fin sp.n}
+    (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt x i ℓ)
     (hslot : sp.slot (tr.time i) = σ + 1) {d : DutyHead sp.n FGP (Payload sp.n)}
     {pay : Payload sp.n}
     (hprop : (acProposal sp (tr.state x i) ℓ.frame (tr.time i)).2 = some (d, pay))
@@ -352,7 +352,7 @@ Kept for a downstream consumer. -/
 theorem proposal_locksU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
-    (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ)
+    (hx : x ∈ H) {i σ : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt x i ℓ)
     {B : Blk sp.n FGP} {L : Set Lock} (hB : B ∈ ℓ.frame.tree)
     (hL : UnlockRel sp (tr.state x i).locks ℓ.frame (tr.time i) σ
       (View.ofLists (voteViewList (tr.state x i) ℓ.frame σ ⊤)) L)
@@ -384,7 +384,7 @@ theorem batch_proposalU
     (hhalf : sp.committeeSize ≤
       2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = σ}.ncard)
     (hB : ∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = σ → VoteExtends U e.msg B)
-    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     (hc : tr.CallAt x i ℓ) (hK : ∀ v ∈ (tr.state x i).pool σ, v.val ∈ K.committee σ)
     (hslot : sp.slot (tr.time i) = σ + 1)
     {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}
@@ -448,7 +448,7 @@ theorem batch_proposal (hrun : ACRun proposer tr H U ini) {K : CommitteeDict sp.
     (hhalf : sp.committeeSize ≤
       2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = σ}.ncard)
     (hB : ∀ z ∈ H, ∀ j e, VoteAt tr z j e → e.msg.slot = σ → VoteExtends U e.msg B)
-    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     (hc : tr.CallAt x i ℓ) (hK : ∀ v ∈ (tr.state x i).pool σ, v.val ∈ K.committee σ)
     (hslot : sp.slot (tr.time i) = σ + 1)
     {d : DutyHead sp.n FGP (Payload sp.n)} {pay : Payload sp.n}

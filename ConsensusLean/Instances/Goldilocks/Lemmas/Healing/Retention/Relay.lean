@@ -17,16 +17,16 @@ lock, the fast test's selected block instead of the result), with the counted vo
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 open Compose
 
 /-- The AC service projects to AC synchrony on any source window after GST. Only message and
 relay service are used. -/
-theorem ACService.syncAC {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+theorem ACService.syncAC {sp : ACParams}
+    {tr : GoldilocksTrace sp} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g lo hi : Time}
     (hs : ACService tr H g) {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    (hg : g ≤ lo) : SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) lo hi tr.projAC := by
+    (hg : g ≤ lo) : SyncAC (goldilocksNode sp) H (tr.HonestBlocks H) lo hi tr.projAC := by
   have h := hrun.toLocalRun
   constructor
   · intro x hx i m hsa hai _ y hy j ℓ hc hdl
@@ -57,24 +57,24 @@ theorem ACService.syncAC {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n
 
 /-- Reset service projects to AC synchrony on any source window after GST (`ACService.syncAC`);
 signed-attestation processing times play no role. -/
-theorem ResetService.syncAC {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+theorem ResetService.syncAC {sp : ACParams}
+    {tr : GoldilocksTrace sp} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF b lo hi : Time}
     (hs : ResetService tr H g ΔF b) {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    (hg : g ≤ lo) : SyncAC (goldilocksNode sp ro) H (tr.HonestBlocks H) lo hi tr.projAC :=
+    (hg : g ≤ lo) : SyncAC (goldilocksNode sp) H (tr.HonestBlocks H) lo hi tr.projAC :=
   hs.toACService.syncAC hrun hg
 
 /-! ### One honest node over an AC trace -/
 
 section Node
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP ro}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP}
 
 /-- At an honest vote, the pool of a slot other than the vote's, and the stamps of its votes,
 are those of the state after the vote's call (main's Sleepy `readPoint_slot`). -/
-theorem readPoint_pool_of_ne {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)}
+theorem readPoint_pool_of_ne {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)}
     {e : AC.Em sp FGP} (hc : AC.CastAt T y i ℓ e) {σ : Nat} (hσ : e.msg.slot ≠ σ) :
     (T.state y (i + 1)).pool σ = e.readPoint.pool σ ∧
       ∀ u : Vote sp.n, u.slot = σ → (T.state y (i + 1)).voteStamp u = e.readPoint.voteStamp u := by
@@ -100,11 +100,11 @@ honest `y` casting its slot-`(s+1)` vote, with `a₀ ≤ t_s` and `t_s + 2Δ ≤
 is of slot `s`, was sent or admitted by an honest writer `w` at a time in `[t_s, t_s + 2Δ)`, and has
 a head above `y`'s `Σ.F` that is genesis or that `w` accepted in `[a₀, t_s + 2Δ)`, then
 `Carry_y(s, ·, ·)` holds for the counted votes. -/
-theorem carryAt_of_writer_window {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+theorem carryAt_of_writer_window {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
-    {a₀ b : Time} (hsync : SyncAC (AC.goldilocksAC sp FGP ro) H U a₀ b T) {s : Nat}
+    {a₀ b : Time} (hsync : SyncAC (AC.goldilocksAC sp FGP) H U a₀ b T) {s : Nat}
     (ha₀ : a₀ ≤ sp.ts s) (hb : sp.ts s + 2 * sp.Δ ≤ b) {w : Fin sp.n} (hw : w ∈ H) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} {e : AC.Em sp FGP}
+    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)} {e : AC.Em sp FGP}
     (hc : AC.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
     (hW : ∀ v ∈ CV, v.slot = s ∧
       (∃ k, T.SendOrAdmit w k v ∧ sp.ts s ≤ T.time k ∧ T.time k < sp.ts s + 2 * sp.Δ) ∧
@@ -123,13 +123,13 @@ theorem carryAt_of_writer_window {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP 
 above the voter's `Σ.F` that an honest writer accepted in `[a₀, t_s + 2Δ)`, under `Sync[a₀, b]`
 with `t_s + 2Δ ≤ b`, is in the voter block tree of every honest vote of a slot `> s` (relayed to
 the voter, joined at its vote, before `t_{s} + 3Δ`, at or before its vote freeze). -/
-theorem relay_mem_voterBlockTree {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+theorem relay_mem_voterBlockTree {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
-    {a₀ b : Time} (hsync : SyncAC (AC.goldilocksAC sp FGP ro) H U a₀ b T) {w : Fin sp.n}
+    {a₀ b : Time} (hsync : SyncAC (AC.goldilocksAC sp FGP) H U a₀ b T) {w : Fin sp.n}
     (hw : w ∈ H) {kw : Nat} {W : AC.Blk sp.n FGP} (hkw : T.AcceptAt w kw W)
     (ha₀ : a₀ ≤ T.time kw) {s : Nat} (hkwt : T.time kw < sp.ts s + 2 * sp.Δ)
     (hb : sp.ts s + 2 * sp.Δ ≤ b) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} {e : AC.Em sp FGP} (hc : AC.CastAt T y i ℓ e)
+    {ℓ : ACLabel (AC.goldilocksAC sp FGP)} {e : AC.Em sp FGP} (hc : AC.CastAt T y i ℓ e)
     (hs : s + 1 ≤ e.msg.slot) (hF : Anc U ℓ.frame.F W) :
     W ∈ AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
   have hU := hr.coherent
@@ -144,7 +144,7 @@ theorem relay_mem_voterBlockTree {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP 
     have hj' : AC.joined sp (T.post i) (T.time i) := by
       unfold AC.joined; rw [AC.restartTime_of_castAtU hr.toU hy hc]; exact hyj
     intro k hk hrk
-    have := (AC.joined_awakeU sp FGP ro H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
+    have := (AC.joined_awakeU sp FGP H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
     rwa [← hys] at this
   have hdl : ∀ k ≤ i, T.deadline y k (T.time kw) < sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ := by
     intro k hk
@@ -183,12 +183,12 @@ theorem relay_mem_voterBlockTree {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP 
 /-- A counted head reaches the actual voter freeze through either window service or
 catch-up of an old acceptance. Only recipient observations through `b` are used. -/
 private theorem relay_mem_voterBlockTree_window_aux
-    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {a b : Time}
     (hsync : SyncACWindowBefore H U a b T)
     {w y : Fin sp.n} (hw : w ∈ H) (hy : y ∈ H) {kw i s : Nat} {W : AC.Blk sp.n FGP}
     (hkw : T.AcceptAt w kw W) (ht : T.time kw < sp.ts s + 2 * sp.Δ)
-    {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} {e : AC.Em sp FGP}
+    {ℓ : ACLabel (AC.goldilocksAC sp FGP)} {e : AC.Em sp FGP}
     (hc : AC.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
     (hcatch : T.time kw < a → ∃ ky ≤ i, T.AcceptAt y ky W ∧ T.time ky < AC.freeze sp e.msg.slot)
     (hF : Anc U ℓ.frame.F W) :
@@ -205,7 +205,7 @@ private theorem relay_mem_voterBlockTree_window_aux
     have hj' : AC.joined sp (T.post i) (T.time i) := by
       unfold AC.joined; rw [AC.restartTime_of_castAtU hr.toU hy hc]; exact hyj
     intro k hk hrk
-    have := (AC.joined_awakeU sp FGP ro H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
+    have := (AC.joined_awakeU sp FGP H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
     rwa [← hys] at this
   have hdl : ∀ k ≤ i, T.deadline y k (T.time kw) < sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ := by
     intro k hk
@@ -250,12 +250,12 @@ private theorem relay_mem_voterBlockTree_window_aux
 The strict stamp is at the actual emission read point, suitable for iterating the unanimity
 propagation. -/
 theorem relay_readPoint_stamp_window_before
-    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {a b κ : Time}
     (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
     {w y : Fin sp.n} (hw : w ∈ H) (hy : y ∈ H) {kw i s : Nat} {W : AC.Blk sp.n FGP}
     (hkw : T.AcceptAt w kw W) (ht : T.time kw < sp.ts s + 2 * sp.Δ)
-    {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} {e : AC.Em sp FGP}
+    {ℓ : ACLabel (AC.goldilocksAC sp FGP)} {e : AC.Em sp FGP}
     (hc : AC.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
     (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
     (hF : Anc U ℓ.frame.F W) :
@@ -275,12 +275,12 @@ theorem relay_readPoint_stamp_window_before
 
 /-- Relay and catch-up place an accepted block in the later frozen voter domain. -/
 theorem relay_mem_voterBlockTree_window_before
-    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {a b κ : Time}
     (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
     {w y : Fin sp.n} (hw : w ∈ H) (hy : y ∈ H) {kw i s : Nat} {W : AC.Blk sp.n FGP}
     (hkw : T.AcceptAt w kw W) (ht : T.time kw < sp.ts s + 2 * sp.Δ)
-    {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} {e : AC.Em sp FGP}
+    {ℓ : ACLabel (AC.goldilocksAC sp FGP)} {e : AC.Em sp FGP}
     (hc : AC.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
     (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
     (hF : Anc U ℓ.frame.F W) : W ∈ AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
@@ -292,7 +292,7 @@ theorem relay_mem_voterBlockTree_window_before
 `result_writer` and `optimistic_writer`, for the selected block): each was admitted (or sent) by
 the writer at a time in `[t_s, t_s + 2Δ)`, and its head extends the selected block and is genesis
 or was accepted by the writer before `t_s + 2Δ`. -/
-theorem fastLock_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+theorem fastLock_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} (hx : x ∈ H) {i₀ s : Nat} {D : AC.Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hfl : AC.FastLockAt T x i₀ s D CV) :
@@ -399,7 +399,7 @@ theorem fastLock_counted_nonempty (hcommittee : 0 < sp.committeeSize)
 /-- A raw writer supplies a counted head above the target, accepted before the slot freeze. -/
 theorem raw_writer_relay_source
     (hcommittee : 0 < sp.committeeSize) {ini}
-    (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} (hx : x ∈ H) {i s : Nat}
     {B C : AC.Blk sp.n FGP} {CV : Set (Vote sp.n)}
@@ -424,14 +424,14 @@ theorem raw_writer_relay_source
 /-- An ancestor of an early source is available in a later voter's frozen block tree.
 The source may be genesis or an actual acceptance; old acceptances use Catch. -/
 theorem voterBlockTree_of_relay_source
-    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {a b κ : Time}
     (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
     {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {i s : Nat}
     {B D : AC.Blk sp.n FGP} (hDU : D ∈ U) (hBD : Anc U B D)
     (hsource : D.root = sp.genesisRoot ∨
       ∃ q, T.AcceptAt x q D ∧ T.time q < sp.ts s + 2 * sp.Δ)
-    {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} {e : AC.Em sp FGP}
+    {ℓ : ACLabel (AC.goldilocksAC sp FGP)} {e : AC.Em sp FGP}
     (hc : AC.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
     (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
     (hF : Anc U ℓ.frame.F B) : B ∈ AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by
@@ -456,7 +456,7 @@ theorem voterBlockTree_of_relay_source
       have hj' : AC.joined sp (T.post i) (T.time i) := by
         unfold AC.joined; rw [AC.restartTime_of_castAtU hr.toU hy hc]; exact hyj
       intro k hk hrk
-      have ht := (AC.joined_awakeU sp FGP ro H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
+      have ht := (AC.joined_awakeU sp FGP H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
       rw [← hys] at ht
       unfold AC.freeze
       linarith only [hΔ, ht]
@@ -479,13 +479,13 @@ theorem voterBlockTree_of_relay_source
 /-- A raw writer's ancestor is available in a later voter's frozen block tree. -/
 theorem raw_writer_voterBlockTree_window_before
     (hcommittee : 0 < sp.committeeSize) {ini}
-    (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {a b κ : Time}
     (hsync : SyncACWindowBefore H U a b T) (hcatch : CatchACWindowBefore T H U a κ b)
     {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {j i s : Nat}
     {B C : AC.Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hwriter : AC.ResultAt T x j s C CV ∨ AC.FastLockAt T x j s C CV)
-    (hBC : Anc U B C) {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} {e : AC.Em sp FGP}
+    (hBC : Anc U B C) {ℓ : ACLabel (AC.goldilocksAC sp FGP)} {e : AC.Em sp FGP}
     (hc : AC.CastAt T y i ℓ e) (hs : s + 1 ≤ e.msg.slot) (hi : T.time i ≤ b)
     (hcatchTime : a + κ ≤ sp.ts ((e.msg.slot : Int) - 1) + 3 * sp.Δ)
     (hF : Anc U ℓ.frame.F B) : B ∈ AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot := by

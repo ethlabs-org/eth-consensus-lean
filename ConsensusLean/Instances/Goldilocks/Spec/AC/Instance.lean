@@ -9,14 +9,13 @@ public import ConsensusLean.Instances.Goldilocks.Spec.AC.Restart
 Goldilocks") as an `ACInterface`, polymorphic in the FG payload `FGP`, which it never reads
 (the node instantiates `FGP := List (FG.Att n)`). Its messages are head votes, its payload
 is `(votes, support_votes)` (two empty lists for genesis), and its message check is trivial
-(form, committee and signature are not modelled, see `Vote`). It is parametric in the restart's
-replay order (`ReplayOrder`), which the spec leaves free among parent orders. -/
+(form, committee and signature are not modelled, see `Vote`). -/
 
 namespace Consensus.Goldilocks.AC
 
-/-- The Goldilocks AC, with the restart replay order `ro`. -/
+/-- The Goldilocks AC. -/
 @[reducible] noncomputable def goldilocksAC (sp : ACParams) (FGP : Type)
-    (ro : ReplayOrder sp FGP) : ACInterface sp.toParams FGP where
+    : ACInterface sp.toParams FGP where
   State := ACState sp.n
   Msg := Vote sp.n
   Payload := Payload sp.n
@@ -32,7 +31,7 @@ namespace Consensus.Goldilocks.AC
   toFG := acToFG sp
   confirmed := acConfirmed sp
   head := acHead sp
-  restart := acRestart sp ro
+  restart := acRestart sp
 
 end Consensus.Goldilocks.AC
 

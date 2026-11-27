@@ -17,8 +17,8 @@ namespace Consensus.Goldilocks.AC
 
 variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → ACState sp.n}
 
 /-- The walk of a subtree of a well-formed frame ends in the frame's tree. -/
@@ -43,7 +43,7 @@ call. -/
 theorem honest_merged_vote_branchU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {R : ACState sp.n} (hb : VoteBranchAt tr y i ℓ R)
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {R : ACState sp.n} (hb : VoteBranchAt tr y i ℓ R)
     {σ : Nat} {v : Vote sp.n} (hv : v ∈ (mergedVoteView sp R ℓ.frame σ).votes)
     (hvH : v.val ∈ H) : ∃ j ≤ i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v := by
   have hpost : ∀ w : Vote sp.n, ∀ τ : Nat, w ∈ R.pool τ → w ∈ (tr.state y (i + 1)).pool τ :=
@@ -74,7 +74,7 @@ theorem honest_merged_vote_branchU
     obtain ⟨j', -, e₂, hv₂, rfl⟩ := hrun.honest.pool_vote y hy _ _ _ hx₂ (hx'v ▸ hvH)
     rw [hxv] at hv₁
     rw [hx'v] at hv₂
-    exact hne (congrArg Emission.msg (one_vote_per_slotU sp _ _ _ _ _ hrun.localRun _ hvH _ _ _ _
+    exact hne (congrArg Emission.msg (one_vote_per_slotU sp _ _ _ _ hrun.localRun _ hvH _ _ _ _
       hv₁ hv₂ ((state_pool_slotU sp hrun.localRun hrun.vstart hy _ _ _ hx₁).trans
         (state_pool_slotU sp hrun.localRun hrun.vstart hy _ _ _ hx₂).symm)).2)
 
@@ -84,7 +84,7 @@ cast's vote branch. -/
 theorem honest_merged_voteU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
     {v : Vote sp.n} (hv : v ∈ (mergedVoteView sp e.readPoint ℓ.frame σ).votes)
     (hvH : v.val ∈ H) : ∃ j ≤ i, ∃ e', VoteAt tr v.val j e' ∧ e'.msg = v :=
   honest_merged_vote_branchU hrun hy (voteBranchAt_of_castAtU hrun.localRun hy hc) hv hvH
@@ -95,7 +95,7 @@ given. -/
 theorem honest_not_equivocator_branchU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {R : ACState sp.n} (hb : VoteBranchAt tr y i ℓ R)
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {R : ACState sp.n} (hb : VoteBranchAt tr y i ℓ R)
     {σ : Nat} {w : Fin sp.n} (hw : w ∈ H) :
     w ∉ equivocators (mergedVoteView sp R ℓ.frame σ).votes := by
   have hr := hrun.localRun
@@ -108,7 +108,7 @@ theorem honest_not_equivocator_branchU
   obtain ⟨j, -, e₁, hv₁, rfl⟩ := honest_merged_vote_branchU hrun hy hb hx hw
   obtain ⟨j', -, e₂, hv₂, rfl⟩ := honest_merged_vote_branchU hrun hy hb hx' (hxx ▸ hw)
   rw [hxx] at hv₂
-  exact hne (congrArg Emission.msg (one_vote_per_slotU sp _ _ _ _ _ hr _ (hxx ▸ hw) _ _ _ _ hv₁
+  exact hne (congrArg Emission.msg (one_vote_per_slotU sp _ _ _ _ hr _ (hxx ▸ hw) _ _ _ _ hv₁
     hv₂ ((merged_vote_slot_branchU hr hrun.vstart hy hb _ hx).trans
       (merged_vote_slot_branchU hr hrun.vstart hy hb _ hx').symm)).2)
 
@@ -118,7 +118,7 @@ branch. -/
 theorem honest_not_equivocatorU
     {u : Nat → Set Lock} (hrun : ACRunU wm u proposer tr H U ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e) {σ : Nat}
     {w : Fin sp.n} (hw : w ∈ H) :
     w ∉ equivocators (mergedVoteView sp e.readPoint ℓ.frame σ).votes :=
   honest_not_equivocator_branchU hrun hy (voteBranchAt_of_castAtU hrun.localRun hy hc) hw
@@ -127,7 +127,7 @@ theorem honest_not_equivocatorU
 the unlock given. -/
 theorem honest_head_frameU
     {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini) {x : Fin sp.n}
-    (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    (hx : x ∈ H) {j : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr x j ℓ e) :
     ∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ Hd.slot ≤ e.msg.slot := by
   obtain ⟨hΦ, -⟩ : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ U := by

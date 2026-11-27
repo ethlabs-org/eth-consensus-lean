@@ -12,14 +12,14 @@ honest node of a Goldilocks run and at the read point of its casts, through the 
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- **`LocksWF` at every honest AC state** of a Goldilocks run. -/
-theorem locksWF_state {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem locksWF_state {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) : AC.LocksWF sp (tr.state y i).ac.locks := by
   rw [← projAC_state hrun.toLocalRun hy]

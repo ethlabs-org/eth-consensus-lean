@@ -12,19 +12,19 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 /-- Full-frame parent viability is local to the proposer's honest observation. -/
 theorem proposal_parent_viable_full_frame_at
-    {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {sp : ACParams}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {i s : Nat} (hy : y ∈ H (tr.time i))
     (hf : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.toParams.slotTime s)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hp : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 =
@@ -41,17 +41,17 @@ theorem proposal_parent_viable_full_frame_at
 
 /-- A proposal remains unique through the proposer's honesty deadline, not after compromise. -/
 theorem proposal_frame_unique_at
-    {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {sp : ACParams}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hpH : p ∈ H (sp.ts u + sp.Δ)) (hdes : p = proposer u)
     (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hu : 0 < u)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y j ell)
     (hjt : tr.time j ≤ sp.ts u + sp.Δ)
     {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hQ : Q ∈ ell.frame.tree)
     (hQu : Q.slot = u) : Q = P := by

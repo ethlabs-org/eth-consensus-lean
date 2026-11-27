@@ -53,10 +53,10 @@ private theorem anc_of_isDeepest {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {S : Set
 /-- An actual update with an early-resolved honest majority extending a target
 selects a result extending it. Source provenance and service only produce these inputs. -/
 theorem update_extends_of_resolved_votes
-    {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
-    {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+    {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
+    {tr : GTrace sp FGP} {proposer : Nat → Fin sp.n}
     {ini} (hrun : ACRun proposer tr H U ini) {s : Nat} {z : Fin sp.n} {k : Nat}
-    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksAC sp FGP ro)} (K : CommitteeDict sp.n)
+    {B : Blk sp.n FGP} {ℓ : ACLabel (goldilocksAC sp FGP)} (K : CommitteeDict sp.n)
     (hP : ∀ v ∈ (tr.state z k).pool (s + 1), v.val ∈ K.committee (s + 1))
     (hf : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize)
     (hext : ∀ x ∈ H, ∀ j e, VoteAt tr x j e → e.msg.slot = s + 1 → VoteExtends U e.msg B)
@@ -88,7 +88,7 @@ theorem update_extends_of_resolved_votes
       obtain ⟨j₂, -, e₂, hv₂, rfl⟩ := hrun.honest.pool_vote z hz k _ x₂ hx₂ (h₂ ▸ hvH)
       rw [h₁] at hv₁
       rw [h₂] at hv₂
-      exact hne (congrArg Emission.msg (one_vote_per_slotU sp _ _ _ _ _ hr.toU _ hvH _ _ _ _ hv₁
+      exact hne (congrArg Emission.msg (one_vote_per_slotU sp _ _ _ _ hr.toU _ hvH _ _ _ _ hv₁
         hv₂ ((hps _ hx₁).trans (hps _ hx₂).symm)).2)
     · obtain ⟨j, -, e, hve, rfl⟩ := hrun.honest.pool_vote z hz k _ v hv hvH
       obtain ⟨Hd, hHdU, hHdr, hBHd⟩ := hext _ hvH j e hve (hps _ hv)

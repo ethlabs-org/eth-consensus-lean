@@ -20,7 +20,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote Payload ACState)
+open AC (ACParams Vote Payload ACState)
 
 variable {binding : VoteBinding}
 
@@ -28,47 +28,47 @@ variable {binding : VoteBinding}
 
 section TickCuts
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- The attestation bodies a list of cuts queues: one per signing `fg_attest` cut. -/
-def attBodies (cs : List (Cut (goldilocksNode sp ro))) : List Body :=
+def attBodies (cs : List (Cut (goldilocksNode sp))) : List Body :=
   cs.flatMap fun
     | .fg (.attest _ (some a)) => [.att (encodeAtt a)]
     | _ => []
 
 /-- The canonical objects of the blocks of a list of cuts' `fg_on_block` cuts. -/
-def blockObjs (cs : List (Cut (goldilocksNode sp ro))) : List (Wire sp.n binding) :=
+def blockObjs (cs : List (Cut (goldilocksNode sp))) : List (Wire sp.n binding) :=
   cs.flatMap fun
     | .fg (.block B _) => [blockObj sp B]
     | _ => []
 
 /-- The flat-map interface of attestation bodies, without generated match equations. -/
-theorem attBodies_eq (cs : List (Cut (goldilocksNode sp ro))) :
+theorem attBodies_eq (cs : List (Cut (goldilocksNode sp))) :
     attBodies cs = cs.flatMap (fun
       | .fg (.attest _ (some a)) => [.att (encodeAtt a)]
       | _ => []) := by rfl
 
-theorem attBodies_nil : attBodies (sp := sp) (ro := ro) [] = [] := by rfl
+theorem attBodies_nil : attBodies (sp := sp) [] = [] := by rfl
 
-theorem attBodies_cons (c : Cut (goldilocksNode sp ro)) (cs : List (Cut (goldilocksNode sp ro))) :
+theorem attBodies_cons (c : Cut (goldilocksNode sp)) (cs : List (Cut (goldilocksNode sp))) :
     attBodies (c :: cs) = (match c with
       | .fg (.attest _ (some a)) => [.att (encodeAtt a)]
       | _ => []) ++ attBodies cs := by rfl
 
 /-- The flat-map interface of block objects, without generated match equations. -/
-theorem blockObjs_eq (cs : List (Cut (goldilocksNode sp ro))) :
+theorem blockObjs_eq (cs : List (Cut (goldilocksNode sp))) :
     blockObjs (binding := binding) cs = cs.flatMap (fun
       | .fg (.block B _) => [blockObj sp B]
       | _ => []) := by rfl
 
-theorem blockObjs_nil : blockObjs (binding := binding) (sp := sp) (ro := ro) [] = [] := by rfl
+theorem blockObjs_nil : blockObjs (binding := binding) (sp := sp) [] = [] := by rfl
 
-theorem blockObjs_cons (c : Cut (goldilocksNode sp ro)) (cs : List (Cut (goldilocksNode sp ro))) :
+theorem blockObjs_cons (c : Cut (goldilocksNode sp)) (cs : List (Cut (goldilocksNode sp))) :
     blockObjs (binding := binding) (c :: cs) = (match c with
       | .fg (.block B _) => [blockObj sp B]
       | _ => []) ++ blockObjs cs := by rfl
 
-theorem mem_blockObjs {cs : List (Cut (goldilocksNode sp ro))} {o : Wire sp.n binding} :
+theorem mem_blockObjs {cs : List (Cut (goldilocksNode sp))} {o : Wire sp.n binding} :
     o ∈ blockObjs cs ↔ ∃ B acc, Cut.fg (.block B acc) ∈ cs ∧ o = blockObj sp B := by
   simp only [blockObjs_eq, List.mem_flatMap]
   constructor
@@ -83,11 +83,11 @@ theorem mem_blockObjs {cs : List (Cut (goldilocksNode sp ro))} {o : Wire sp.n bi
   · rintro ⟨B, acc, hc, rfl⟩
     exact ⟨_, hc, List.mem_singleton_self _⟩
 
-theorem emitted_append (io : VoteAuth sp.n binding) (cs cs' : List (Cut (goldilocksNode sp ro))) :
+theorem emitted_append (io : VoteAuth sp.n binding) (cs cs' : List (Cut (goldilocksNode sp))) :
     emitted io (cs ++ cs') = emitted io cs ++ emitted io cs' := by simp [emitted]
 
 /-- A vote is released with token `z` exactly when the cuts emit it and `z` is its own token. -/
-theorem mem_emitted {io : VoteAuth sp.n binding} {cs : List (Cut (goldilocksNode sp ro))}
+theorem mem_emitted {io : VoteAuth sp.n binding} {cs : List (Cut (goldilocksNode sp))}
     {v : Vote sp.n} {z : Nat} :
     Body.vote (encodeVote v) z ∈ emitted io cs ↔
       (∃ ℓ, Cut.ac ℓ ∈ cs ∧ ∃ em ∈ ℓ.emits, em.msg = v) ∧ ownToken io v = some z := by
@@ -107,11 +107,11 @@ theorem mem_emitted {io : VoteAuth sp.n binding} {cs : List (Cut (goldilocksNode
   · rintro ⟨⟨ℓ, hc, em, hem, rfl⟩, hz⟩
     exact ⟨_, hc, List.mem_filterMap.mpr ⟨em, hem, by rw [hz]; rfl⟩⟩
 
-theorem attBodies_append (cs cs' : List (Cut (goldilocksNode sp ro))) :
+theorem attBodies_append (cs cs' : List (Cut (goldilocksNode sp))) :
     attBodies (cs ++ cs') = attBodies cs ++ attBodies cs' := by
   simp only [attBodies_eq, List.flatMap_append]
 
-theorem vote_not_mem_attBodies (cs : List (Cut (goldilocksNode sp ro))) (w : WireVote)
+theorem vote_not_mem_attBodies (cs : List (Cut (goldilocksNode sp))) (w : WireVote)
     (z : Nat) : Body.vote w z ∉ attBodies cs := by
   simp only [attBodies_eq, List.mem_flatMap, not_exists, not_and]
   intro c _
@@ -119,21 +119,21 @@ theorem vote_not_mem_attBodies (cs : List (Cut (goldilocksNode sp ro))) (w : Wir
   | ac => simp
   | fg l => cases l <;> simp; split <;> simp
 
-theorem blockObjs_append (cs cs' : List (Cut (goldilocksNode sp ro))) :
+theorem blockObjs_append (cs cs' : List (Cut (goldilocksNode sp))) :
     blockObjs (binding := binding) (cs ++ cs') = blockObjs cs ++ blockObjs cs' := by
   simp only [blockObjs_eq, List.flatMap_append]
 
-theorem attBodies_ac (ℓ : ACLabel (goldilocksNode sp ro)) : attBodies [Cut.ac ℓ] = [] := by
+theorem attBodies_ac (ℓ : ACLabel (goldilocksNode sp)) : attBodies [Cut.ac ℓ] = [] := by
   simp only [attBodies_cons, attBodies_nil, List.append_nil]
 
-theorem blockObjs_ac (ℓ : ACLabel (goldilocksNode sp ro)) :
+theorem blockObjs_ac (ℓ : ACLabel (goldilocksNode sp)) :
     blockObjs (binding := binding) [Cut.ac ℓ] = [] := by
   simp only [blockObjs_cons, blockObjs_nil, List.append_nil]
 
 /-- The cuts of the node's tick: the AC tick, the proposal, then the FG update when due. -/
 theorem onTick_cuts (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
-    (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) (fgDue : Bool) :
+    (st : NodeState (goldilocksNode sp)) (t : Time) (x : Nat) (fgDue : Bool) :
     (Node.onTick proposer dg self st t x fgDue).2 =
       (Node.tickStep proposer dg self st t x .acTick).2 ++
         (Node.tickStep proposer dg self
@@ -148,7 +148,7 @@ release schedule allows release at the node's time (and holds it otherwise), and
 no vote and processes no block. -/
 theorem fgUpdate_outbox_eq {release : Fin sp.n → Time → Bool} (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (x : Nat)
-    (st : State sp ro binding) :
+    (st : State sp binding) :
     (fgUpdate st release).outbox =
         st.outbox ++ (if release st.self st.now then
           attBodies (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2 else []) ∧
@@ -187,7 +187,7 @@ theorem fgUpdate_outbox_eq {release : Fin sp.n → Time → Bool} (proposer : Na
 /-- The proposal step signs nothing. -/
 theorem tickStep_proposal_attBodies (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) :
+    (self : Fin sp.n) (st : NodeState (goldilocksNode sp)) (t : Time) (x : Nat) :
     attBodies (Node.tickStep proposer dg self st t x .proposal).2 = [] := by
   simp only [Node.tickStep]
   split_ifs
@@ -288,11 +288,11 @@ theorem dutyStep_propose_full (v : V) (nd : Model.Node (Model.protoOf (compiled
         (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).1.fg (shapeOf S hn nd).now
         (encodeTxs nd.st.2) d.head p s hslot
       have hfut : ¬ (S.params (pubOf E) hn).toParams.slotOf (shapeOf S hn nd).now <
-          (mkBlock (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (digestOf S rho)
+          (mkBlock (A := goldilocksNode (S.params (pubOf E) hn)) (digestOf S rho)
             (rho.ownKey v) (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).1.fg
             (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p).slot := lt_irrefl _
       have hobj : blockObj (S.params (pubOf E) hn) (binding := S.vote)
-          (mkBlock (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (digestOf S rho)
+          (mkBlock (A := goldilocksNode (S.params (pubOf E) hn)) (digestOf S rho)
             (rho.ownKey v) (acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).1.fg
             (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p) =
           Model.Obj.mk (.signed (rho.ownKey v) (.proposer s))

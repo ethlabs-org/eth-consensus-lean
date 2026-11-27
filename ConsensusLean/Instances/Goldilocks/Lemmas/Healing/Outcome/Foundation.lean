@@ -46,9 +46,9 @@ those suppliers use the pivot without an import cycle. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
 
 /-- The first clean evidence label `b = slot(a) + 3` after the reset `a`. -/
@@ -79,8 +79,8 @@ theorem slot_gbar_lt_of_drainTime_le {g a : Time} {u : Nat} (hca : cutZ sp.toPar
   exact slot_gbar_lt_of_cutZ_le (by linarith [lt_drainTime (sp := sp) ha0])
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF a : Time}
 
 /-- **The drain** (HS.2 (3)): at a time `t ≥ R`, every live lock of an honest node has a
 label at least `b + k + 2`; every lock of a label before `b`, and every slow lock whose window
@@ -358,7 +358,7 @@ theorem raw_writer_held_at_slot_start
     {B C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (hwriter : AC.ResultAt tr.projAC x r s C CV ∨ AC.FastLockAt tr.projAC x r s C CV)
     (hBC : Anc (tr.HonestBlocks H) B C) (hs : AC.gbar g + 4 * sp.Δ ≤ sp.ts s)
-    (hsu : s < u) {ell : ACLabel (goldilocksNode sp ro)}
+    (hsu : s < u) {ell : ACLabel (goldilocksNode sp)}
     (hci : tr.projAC.CallAt p i ell) (hti : tr.time i = sp.ts u)
     (hFB : Anc (tr.HonestBlocks H) ell.frame.F B) : B ∈ ell.frame.tree := by
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
@@ -412,7 +412,7 @@ theorem reset_accept_frame
     (hp : ResetPremises tr H K proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {q j : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (ha : tr.projAC.AcceptAt x q B)
-    {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y j ell)
+    {ell : ACLabel (goldilocksNode sp)} (hcall : tr.projAC.CallAt y j ell)
     (hg : AC.gbar g + 2 * sp.Δ ≤ tr.time j)
     (hjoin : sp.ts (sp.slot (AC.gbar g) + 1 : Nat) + sp.Δ ≤ tr.time j)
     (hq : tr.time q + sp.Δ ≤ tr.time j)
@@ -438,7 +438,7 @@ theorem reset_accept_frame
 theorem reset_frame_relay
     (hp : ResetPremises tr H K proposer dg g ΔF a) (hc : CatchRun tr H g (2 * sp.Δ))
     {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {q j : Nat}
-    {ellx elly : ACLabel (goldilocksNode sp ro)}
+    {ellx elly : ACLabel (goldilocksNode sp)}
     (hcx : tr.projAC.CallAt x q ellx) (hcy : tr.projAC.CallAt y j elly)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ellx.frame.tree)
     (hg : AC.gbar g + 2 * sp.Δ ≤ tr.time j)

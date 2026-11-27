@@ -16,17 +16,17 @@ growing honest-block universe, not reconstructed from a terminal cohort.
 
 namespace Consensus.Goldilocks.Healing.Growing.Outcome
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 /-- An AC frame is the local store frame at its own honest call. -/
 theorem frame_of_call
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp)}
     (hy : y ∈ H (tr.time i)) (hc : tr.projAC.CallAt y i ell) :
     ell.frame = Node.frame (tr.state y i) := by
   have hc' : (tr.upTo (tr.time i)).projAC.CallAt y i ell := by
@@ -37,9 +37,9 @@ theorem frame_of_call
 
 /-- A frame's tree lies in the historical honest-block universe. -/
 theorem frame_tree_subset
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp)}
     (hy : y ∈ H (tr.time i)) (hc : tr.projAC.CallAt y i ell) :
     ell.frame.tree ⊆ tr.HonestBlocksAt H := by
   rw [frame_of_call hrun hy hc]
@@ -48,9 +48,9 @@ theorem frame_tree_subset
 
 /-- Realization is node-local even when other holders were subsequently compromised. -/
 theorem frame_realized
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode sp)}
     (hy : y ∈ H (tr.time i)) (hc : tr.projAC.CallAt y i ell) :
     FrameOK ell.frame := by
   rw [frame_of_call hrun hy hc]
@@ -59,14 +59,14 @@ theorem frame_realized
 
 /-- Proposal uniqueness before the proposer can be compromised uses only a local prefix. -/
 theorem proposal_unique_before_hold
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {p y : Fin sp.n} {k j u : Nat} {P Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hp : p ∈ H (sp.ts u + Regimes.Growing.hold sp))
     (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
     (hu : 0 < u) (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y j ell)
     (hj : tr.time j ≤ sp.ts u + Regimes.Growing.hold sp)
     (hQ : Q ∈ ell.frame.tree) (hQs : Q.slot = u) : Q = P := by
   have hk : tr.time k = sp.ts u := by
@@ -100,14 +100,14 @@ theorem proposal_unique_before_hold
 
 /-- An early cast has the actual proposal in its frame before the hold expires. -/
 theorem proposal_mem_of_early_cast
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {p y : Fin sp.n} {k j u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hp : p ∈ H (sp.ts u + Regimes.Growing.hold sp))
     (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P) (hPs : P.slot = u)
     (hu : 0 < u) (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u)
     (hj : tr.time j < sp.ts u + sp.Δ) : P ∈ ell.frame.tree := by
   have hc' : (tr.upTo (tr.time j)).projAC.CallAt y j ell := by

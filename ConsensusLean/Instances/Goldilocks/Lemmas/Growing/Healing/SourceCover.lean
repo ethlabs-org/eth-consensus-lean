@@ -17,24 +17,24 @@ report is on the healed chain of the reset: after the quarantine the drain is ov
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
   {g ΔF a b : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {hold : Time}
 
 /-- **`E` is below a stored high origin, or covered.** Either `E` is below a high origin `B` (a
 stored fast-lock write of a node honest at its write and at `c_z`) written by the horizon `b`, or
 the high-source cover through `b` holds and `E` is on the healed chain of the reset `a` at its
 floors. The common form every widened high-origin contract takes. -/
-def HighOrCovered (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (g a b : Time)
+def HighOrCovered (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) (g a b : Time)
     (E : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   (∃ x i j B, HighOrigin tr H g x i j B ∧ tr.time i ≤ b ∧ Anc (tr.HonestBlocksAt H) E B) ∨
   (HighSourceCover tr H g a b ∧
     Compose.Growing.OnHealedChain tr H g (healedLockFloor sp a) (healedOriginFloor sp a) E b)
 
-theorem highOrCovered_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {g a b : Time}
+theorem highOrCovered_iff {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {g a b : Time}
     {E : AC.Blk sp.n (List (FG.Att sp.n))} :
     HighOrCovered tr H g a b E ↔
       ((∃ x i j B, HighOrigin tr H g x i j B ∧ tr.time i ≤ b ∧ Anc (tr.HonestBlocksAt H) E B) ∨
@@ -47,13 +47,13 @@ theorem highOrCovered_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp
 below a member of the healed family of the reset `a` (at its floors) of label at most `m`. The
 label-bounded cover arm of a widened high-origin contract: S2 extends such a member by the honest
 votes of every slot after `m`. -/
-def CoveredUpTo (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (g a b : Time) (m : Nat)
+def CoveredUpTo (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) (g a b : Time) (m : Nat)
     (E : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   HighSourceCover tr H g a b ∧ ∃ C s,
     Compose.Growing.HealedOrigin tr H g (healedLockFloor sp a) (healedOriginFloor sp a) C s b ∧
       s ≤ m ∧ Anc (tr.HonestBlocksAt H) E C
 
-theorem coveredUpTo_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {g a b : Time}
+theorem coveredUpTo_iff {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {g a b : Time}
     {m : Nat} {E : AC.Blk sp.n (List (FG.Att sp.n))} :
     CoveredUpTo tr H g a b m E ↔ HighSourceCover tr H g a b ∧ ∃ C s,
       Compose.Growing.HealedOrigin tr H g (healedLockFloor sp a) (healedOriginFloor sp a) C s b ∧
@@ -63,7 +63,7 @@ theorem coveredUpTo_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n
 /-- **A member of the healed family written before the cut `k`**: an origin of label at least the
 origin floor, a lock write of label at least the lock floor, or a high origin, each at a cut
 before `k` and a time `≤ b`. -/
-def HealedMemberBefore (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (g a b : Time)
+def HealedMemberBefore (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) (g a b : Time)
     (C : AC.Blk sp.n (List (FG.Att sp.n))) (s k : Nat) : Prop :=
   (healedOriginFloor sp a ≤ s ∧ ∃ x i CV, i < k ∧ x ∈ H (tr.time i) ∧ tr.time i ≤ b ∧
       (AC.ResultAt tr.projAC x i s C CV ∨ AC.OptimisticLockAt tr.projAC x i s C CV)) ∨
@@ -71,7 +71,7 @@ def HealedMemberBefore (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)
       ((∃ CV, AC.FastLockAt tr.projAC x i s C CV) ∨ AC.SlowLockAt tr.projAC x i s C)) ∨
   ∃ x i, i < k ∧ tr.time i ≤ b ∧ HighOrigin tr H g x i s C
 
-theorem healedMemberBefore_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+theorem healedMemberBefore_iff {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)}
     {g a b : Time} {C : AC.Blk sp.n (List (FG.Att sp.n))} {s k : Nat} :
     HealedMemberBefore tr H g a b C s k ↔
       (healedOriginFloor sp a ≤ s ∧ ∃ x i CV, i < k ∧ x ∈ H (tr.time i) ∧ tr.time i ≤ b ∧
@@ -103,12 +103,12 @@ theorem HealedMemberBefore.mono {C : AC.Blk sp.n (List (FG.Att sp.n))} {s k k' :
 
 /-- **`E` is covered up to the label `m` by a member written before the cut `k`**: the
 cut-indexed form of `CoveredUpTo`. -/
-def CoveredBefore (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (g a b : Time)
+def CoveredBefore (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) (g a b : Time)
     (m k : Nat) (E : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   HighSourceCover tr H g a b ∧ ∃ C s, HealedMemberBefore tr H g a b C s k ∧ s ≤ m ∧
     Anc (tr.HonestBlocksAt H) E C
 
-theorem coveredBefore_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+theorem coveredBefore_iff {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)}
     {g a b : Time} {m k : Nat} {E : AC.Blk sp.n (List (FG.Att sp.n))} :
     CoveredBefore tr H g a b m k E ↔ HighSourceCover tr H g a b ∧ ∃ C s,
       HealedMemberBefore tr H g a b C s k ∧ s ≤ m ∧ Anc (tr.HonestBlocksAt H) E C :=
@@ -156,7 +156,7 @@ theorem CoveredUpTo.onHealedChain {m : Nat} {E : AC.Blk sp.n (List (FG.Att sp.n)
 
 /-- **A covered block is compatible with every high origin written by `b`** (S1, the high
 origin being a member of the healed family). -/
-theorem CoveredUpTo.compatible_highOrigin {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem CoveredUpTo.compatible_highOrigin {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {m : Nat} {E : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : CoveredUpTo tr H g a b m E) {x : Fin sp.n} {i j : Nat}
@@ -173,7 +173,7 @@ on the healed chain of the reset `a` at its floors. -/
 theorem ResetPremisesUpTo.high_source_cover_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {z : Fin sp.n} {r : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time r)))
-    {ell : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hrep : AC.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
     (hhC : HZ tr H g + 1 ≤ ((tr.state z r).fg.σ C.root).h) :
     (∃ io < r, ∃ jo O D CV, HighOrigin tr H g z io jo O ∧ tr.time io ≤ b ∧
@@ -200,7 +200,7 @@ theorem ResetPremisesUpTo.high_source_cover_at
 theorem ResetPremisesUpTo.high_or_covered_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {z : Fin sp.n} {r : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time r)))
-    {ell : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hrep : AC.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
     (hhC : HZ tr H g + 1 ≤ ((tr.state z r).fg.σ C.root).h) :
     HighOrCovered tr H g a b C := by

@@ -65,10 +65,10 @@ reader at cut `k` of a trace `T` whose held non-genesis blocks have their digest
 parent (`hroot`), the chain of every held block is linked, has increasing positions and
 proposal-role provenance in the engine view `rho.ViewIdx v i`, given that this view contains the
 held non-genesis blocks (`hheld`). -/
-theorem reader_chains_valid {T : GoldilocksTrace (S.params (pubOf E) hn) (S.ro _)}
+theorem reader_chains_valid {T : GoldilocksTrace (S.params (pubOf E) hn)}
     {v : V} (k i : Nat)
     (hr : (T.state (rho.ownKey v) k).fg.Reachable
-      (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload)
+      (goldilocksNode (S.params (pubOf E) hn)).genesisPayload)
     (hroot : ∀ X ∈ (T.state (rho.ownKey v) k).fg.tree,
       X.root ≠ (S.params (pubOf E) hn).genesisRoot →
       X.RootOk (digestOf S rho) ∧ ∃ P : Blk (S.params (pubOf E) hn), X.parent = some P.root)

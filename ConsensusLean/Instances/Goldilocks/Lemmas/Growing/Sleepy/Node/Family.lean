@@ -15,11 +15,11 @@ member once the members are pairwise compatible (`OnHealedChain.compatible`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- Compatibility with `B` passes to ancestors. -/
 theorem compatible_of_anc_left {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (hU : Coherent U)
@@ -90,7 +90,7 @@ theorem compatible_of_anc_both {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (hU 
 
 /-- **A block on the healed chain is compatible with every member** when the members are
 pairwise compatible: it is below one member `C₀`, and every member is compatible with `C₀`. -/
-theorem OnHealedChain.compatible {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem OnHealedChain.compatible {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {g : Time} {rL rO : Nat} {b : Time}
     (hP : ∀ C s C' s', HealedOrigin tr H g rL rO C s b → HealedOrigin tr H g rL rO C' s' b →

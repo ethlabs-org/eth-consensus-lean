@@ -20,7 +20,7 @@ def releaseUntil (stop : Time) (y : Fin sp.n) (t : Time) : Bool :=
 
 /-- The signing poll of the first row, after the AC tick of time 5. That AC tick is silent and
 does not change the node, by `tick_report_ac` on the fixture's state at time 5. -/
-noncomputable def signer : State sp ro where
+noncomputable def signer : State sp where
   self := w0
   node := (world 5).1 w0
   now := 5
@@ -111,7 +111,7 @@ theorem release_gap_one :
 
 /-- The local proposal state at slot 2. The denied poll supplies the held queue, and the
 stock fixture's only pooled row is absent because it has not been admitted. -/
-noncomputable def proposalState : State sp ro :=
+noncomputable def proposalState : State sp :=
   { signer with
     node := { (world 8).1 w0 with fg := { ((world 8).1 w0).fg with atts := [] } }
     now := 8
@@ -164,7 +164,7 @@ theorem denied_proposal_omits_held :
     rfl
   dsimp only
   rw [hpre]
-  have hjust (st : State sp ro) (hac' : st.node.ac = ((world 8).1 w0).ac)
+  have hjust (st : State sp) (hac' : st.node.ac = ((world 8).1 w0).ac)
       (hf' : Node.frame st.node = Node.frame ((world 8).1 w0)) (ht : st.now = 8) :
       let p := ([vote w0 1, vote w1 1], [vote w0 1, vote w1 1])
       let atts := st.node.fg.proposalAttestations (blk 1)

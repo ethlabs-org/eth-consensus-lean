@@ -42,21 +42,21 @@ Every count classifies a validator at the cut that reads it: the update's cut, o
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- The latest restored gate before an explicit strict read. -/
-structure OutageReaderGate (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+structure OutageReaderGate (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (b₁ : Time) (y : Fin sp.n) (j : Nat) (t : Time) where
   slot : Nat
   restored : b₁ ≤ sp.ts slot + sp.Δ
   gate_le : sp.ts slot + 6 * sp.Δ ≤ t
   lt_next : t < sp.ts slot + 10 * sp.Δ
   cut : Nat
-  label : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)
+  label : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))
   update : AC.UpdateAt tr.projAC y cut slot label
   cut_lt : cut < j
   restarts : ∀ k, tr.projAC.RestartAt y k → tr.time k ≤ t → tr.time k ≤ sp.ts slot
@@ -174,7 +174,7 @@ theorem vote_held_before_early_at
     (hnc : NoCollRun dg tr)
     {g : Time} {y : Fin sp.n} {q c : Nat} (hy : y ∈ H (tr.time c))
     (hS : ReceiverServiceAfterAt H (tr.HonestBlocksAt H) g y tr.projAC)
-    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)} (hc : tr.projAC.CallAt y c ℓ)
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))} (hc : tr.projAC.CallAt y c ℓ)
     (hct : sp.ts q + 2 * sp.Δ ≤ tr.time c) (hg : g ≤ sp.ts q + sp.Δ)
     (hres : ∀ k ≤ c, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts q)
     {x : Fin sp.n} {i : Nat} {e : AC.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x i e)
@@ -212,7 +212,7 @@ theorem gate_result_extends_at
     (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hP : AC.CommitteePAt K tr.projAC H)
     {g : Time} {y : Fin sp.n} {c s : Nat} (hy : y ∈ H (tr.time c))
     (hS : ReceiverServiceAfterAt H (tr.HonestBlocksAt H) g y tr.projAC)
-    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))}
     (hu : AC.UpdateAt tr.projAC y c s ℓ)
     (hg : g ≤ sp.ts s + sp.Δ) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hmaj : ExtendingMajorityAt tr H K B s (tr.time c))

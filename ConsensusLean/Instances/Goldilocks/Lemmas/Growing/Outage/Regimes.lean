@@ -24,11 +24,11 @@ public section
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-! ### The extending majority -/
 
@@ -168,7 +168,7 @@ theorem accepted_held_before_early_at
     (hnc : NoCollRun dg tr)
     {g : Time} {y : Fin sp.n} {q c : Nat} (hy : y ∈ H (tr.time c))
     (hS : ReceiverServiceAfterAt H (tr.HonestBlocksAt H) g y tr.projAC)
-    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)} (hc : tr.projAC.CallAt y c ℓ)
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))} (hc : tr.projAC.CallAt y c ℓ)
     (hct : sp.ts q + 2 * sp.Δ ≤ tr.time c) (hg : g ≤ sp.ts q + sp.Δ)
     (hres : ∀ k ≤ c, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts q)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hBU : B ∈ tr.HonestBlocksAt H)
@@ -211,7 +211,7 @@ theorem vote_pooled_before_early_at
     (hnc : NoCollRun dg tr)
     {g : Time} {y : Fin sp.n} {q c : Nat} (hy : y ∈ H (tr.time c))
     (hS : ReceiverServiceAfterAt H (tr.HonestBlocksAt H) g y tr.projAC)
-    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)} (hc : tr.projAC.CallAt y c ℓ)
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))} (hc : tr.projAC.CallAt y c ℓ)
     (hct : sp.ts q + 2 * sp.Δ ≤ tr.time c) (hg : g ≤ sp.ts q + sp.Δ)
     (hres : ∀ k ≤ c, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts q)
     {x : Fin sp.n} {j : Nat} {e : AC.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x j e)
@@ -238,7 +238,7 @@ theorem vote_resolved_before_early_at
     (hnc : NoCollRun dg tr)
     {g : Time} {y : Fin sp.n} {q c : Nat} (hy : y ∈ H (tr.time c))
     (hS : ReceiverServiceAfterAt H (tr.HonestBlocksAt H) g y tr.projAC)
-    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)} (hc : tr.projAC.CallAt y c ℓ)
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))} (hc : tr.projAC.CallAt y c ℓ)
     (hct : sp.ts q + 2 * sp.Δ ≤ tr.time c) (hg : g ≤ sp.ts q + sp.Δ)
     (hres : ∀ k ≤ c, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts q)
     {x : Fin sp.n} {j : Nat} {e : AC.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x j e)

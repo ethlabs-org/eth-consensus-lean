@@ -16,17 +16,17 @@ premise of the Sleepy consumers is `SleepyServiceBefore`. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
 /-- The finite Sleepy consumers need AC evidence, not fresh processing of every repeated vote or
 attestation admission. -/
-structure SleepyServiceBefore {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (ΔF b : Time) : Prop where
+structure SleepyServiceBefore {sp : ACParams}
+    (tr : GoldilocksTrace sp) (H : Set (Fin sp.n)) (ΔF b : Time) : Prop where
   deltaF : 0 < ΔF
   ac : AC.ServiceBefore H (tr.HonestBlocks H) b tr.projAC
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+variable {sp : ACParams}
+  (tr : GoldilocksTrace sp) (H : Set (Fin sp.n))
 
 /-- **An origin of label `s`**: the result `C ≠ ⊥` of the update of slot `s` of an honest node
 (joined at `t_s + 6Δ`), or the block that an honest optimistic check of slot `s` selects. -/

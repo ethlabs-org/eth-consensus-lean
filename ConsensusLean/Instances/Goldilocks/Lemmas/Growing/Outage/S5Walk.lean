@@ -42,12 +42,12 @@ At a vote of `y` at cut `i`, `y` honest at `t_i`, from `OutageLockInv D i`:
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- Two blocks of one coherent set with the same parent root: one below the other is the other. -/
 private theorem eq_of_anc_sibling {S : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (hS : Coherent S)
@@ -178,7 +178,7 @@ private theorem anc_getHead_of_hi {i : Nat} (hinv : OutageLockInv D i) {w : Fin 
 /-- **H1, vote form**: under Hi, a vote of a node honest at its cut extends `P`, given that the
 live lock blocks of its read point are compatible with `P`; counted at the cut's time. -/
 theorem vote_extends_of_hi_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
-    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e)
     (hHi : HiAt tr H D.P y i)
     (hL : ∀ L ∈ AC.liveLockBlocks sp e.readPoint.locks ℓ.frame (tr.time i),
@@ -273,7 +273,7 @@ node honest at its cut `i`, of a positive slot: a stored lock by (L) at `t_i`, t
 optimistic lock by the fast-lock count at `i` (its counted votes of validators honest at `t_i`
 were cast at earlier cuts, at which they were honest). -/
 theorem readPoint_liveLockBlocks_compatible_at {i : Nat} (hinv : OutageLockInv D i)
-    {y : Fin sp.n} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e)
     (hpos : 0 < sp.slot (tr.time i)) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hBP : Anc (tr.HonestBlocksAt H) B D.P) :
@@ -404,7 +404,7 @@ extending supporter counted there, of the lock's slot, which is at most `q`: a f
 later slot is written after the vote, and an optimistic lock of slot `q + 1` before a held
 attestation is excluded (`no_optimistic_before_held_row_at`, counted at the lock's cut). -/
 theorem rows_supported_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
-    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e) {q : Nat}
     (hs : e.msg.slot = q + 1) :
     HonestRowsSourcedAt tr H (fun Ds => Compatible (tr.HonestBlocksAt H) Ds D.P ∧

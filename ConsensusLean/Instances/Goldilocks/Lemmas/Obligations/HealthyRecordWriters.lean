@@ -17,11 +17,11 @@ particular, no whole-history read invariant is assumed.
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 private theorem last_change {f : Nat → Nat} {n : Nat} (hne : f n ≠ f 0) :
     ∃ q < n, f (q + 1) ≠ f q ∧ ∀ m, q < m → m ≤ n → f m = f n := by
@@ -40,7 +40,7 @@ private theorem last_change {f : Nat → Nat} {n : Nat} (hne : f n ≠ f 0) :
 
 /-- A changed own record identifies its actual call, selected block and, for an
 optimistic selection, the normalized lock left by that same call. -/
-private theorem record_changed_writer {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem record_changed_writer {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {q : Nat}
     (hne : (tr.state y (q + 1)).ac.latestConfirmed ≠ (tr.state y q).ac.latestConfirmed) :
@@ -65,7 +65,7 @@ private theorem record_changed_writer {ini : Fin sp.n → (goldilocksNode sp ro)
 
 /-- A non-genesis current record has a last own writer, with unchanged record
 roots thereafter and the actual creation lock in the optimistic case. -/
-theorem last_record_writer {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem last_record_writer {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {n : Nat}
     {R : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -98,7 +98,7 @@ theorem last_record_writer {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- Creation-time holding plus a later finalized-floor guard keeps the writer's
 block in every intervening filtered frame, not only in the archival store. -/
-theorem writer_mem_frame_between {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem writer_mem_frame_between {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {q e n : Nat}
     (hqe : q ≤ e) (hen : e ≤ n) {R : AC.Blk sp.n (List (FG.Att sp.n))}

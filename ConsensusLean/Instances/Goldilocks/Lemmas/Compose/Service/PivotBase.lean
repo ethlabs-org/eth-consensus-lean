@@ -29,9 +29,9 @@ and `fc_root` below an old origin from the row sources (`fcRoot_of_rows_of`, `vo
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-! ### Blocks and walks -/
 
@@ -137,17 +137,17 @@ end Walk
 /-! ### Over a run -/
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- **The old origins of slot `s`** (the set whose deepest member is `D_s`): the
 regular origins of labels at most `s − 2` and the optimistic origins of labels at most `s − 1`,
 the origins whose events precede `t_s`. -/
-def OldOrigin (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n)) (s : Nat)
+def OldOrigin (tr : GoldilocksTrace sp) (H : Set (Fin sp.n)) (s : Nat)
     (O : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   ∃ x ∈ H, ∃ k m CV, (AC.ResultAt tr.projAC x k m O CV ∧ m + 2 ≤ s) ∨
     (AC.OptimisticLockAt tr.projAC x k m O CV ∧ m + 1 ≤ s)
 
-theorem oldOrigin_iff {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {s : Nat}
+theorem oldOrigin_iff {tr : GoldilocksTrace sp} {H : Set (Fin sp.n)} {s : Nat}
     {O : AC.Blk sp.n (List (FG.Att sp.n))} : OldOrigin tr H s O ↔
       ∃ x ∈ H, ∃ k m CV, (AC.ResultAt tr.projAC x k m O CV ∧ m + 2 ≤ s) ∨
         (AC.OptimisticLockAt tr.projAC x k m O CV ∧ m + 1 ≤ s) := Iff.rfl
@@ -164,7 +164,7 @@ theorem honest_genesis_root_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini
 joined, and keeps the restart time. -/
 theorem proposal_call_restarts {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    {p : Fin sp.n} (hp : p ∈ H) {i : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
+    {p : Fin sp.n} (hp : p ∈ H) {i : Nat} {ℓp : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay)) :
@@ -181,11 +181,11 @@ theorem proposal_call_restarts {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     unfold AC.acProposal at hd ⊢
     split_ifs at hd ⊢ with hj
     exact hj
-  exact ((AC.joined_awakeU sp) _ ro H _ tr.projAC hr.toU p hp i ℓp hc hj).2
+  exact ((AC.joined_awakeU sp) _ H _ tr.projAC hr.toU p hp i ℓp hc hj).2
 
 /-- An AC call with the proposal label is a cut of a tick. -/
-theorem acProposal_in_tick {y : Fin sp.n} {st : NodeState (goldilocksNode sp ro)}
-    {t : Time} {e : Node.Event (goldilocksNode sp ro)} {ℓ : ACLabel (goldilocksNode sp ro)}
+theorem acProposal_in_tick {y : Fin sp.n} {st : NodeState (goldilocksNode sp)}
+    {t : Time} {e : Node.Event (goldilocksNode sp)} {ℓ : ACLabel (goldilocksNode sp)}
     (h : Cut.ac ℓ ∈ (Node.exec proposer dg y st t e).2) (hm : ℓ.call = .proposal) :
     ∃ x fgDue, e = .tick x fgDue := by
   cases e with
@@ -209,14 +209,14 @@ theorem acProposal_in_tick {y : Fin sp.n} {st : NodeState (goldilocksNode sp ro)
 
 /-- **The AC cuts of a tick by position** (C0.4): `ac_on_tick` first, then for the slot's
 proposer `ac_proposal` second and its own block's `ac_on_block` later, and `ac_to_fg`. -/
-private theorem tick_ac_positions {y : Fin sp.n} {st : NodeState (goldilocksNode sp ro)}
-    {t : Time} {x c : Nat} {fgDue : Bool} {ℓ : ACLabel (goldilocksNode sp ro)}
+private theorem tick_ac_positions {y : Fin sp.n} {st : NodeState (goldilocksNode sp)}
+    {t : Time} {x c : Nat} {fgDue : Bool} {ℓ : ACLabel (goldilocksNode sp)}
     (h : (Node.exec proposer dg y st t (.tick x fgDue)).2[c]? = some (Cut.ac ℓ)) :
     (ℓ.call = .tick ∧ c = 0) ∨ ℓ.call = .toFG ∨
       (Node.Proposes proposer y t ∧
         ((ℓ.call = .proposal ∧ c = 1) ∨ (ℓ.call ≠ .proposal ∧ 2 ≤ c))) := by
   obtain ⟨ℓt, pc, uc, hlt, hcs, hpc, hupdate⟩ :=
-    @tick_order sp.toParams (goldilocksNode sp ro) proposer dg y st t x fgDue
+    @tick_order sp.toParams (goldilocksNode sp) proposer dg y st t x fgDue
   have huc' : ∀ ℓ', Cut.ac ℓ' ∈ uc → ℓ'.call = .toFG := by
     cases fgDue
     · simp only [Bool.false_eq_true, ↓reduceIte] at hupdate
@@ -262,7 +262,7 @@ theorem proposal_no_optimistic_of {ini} (hrun : GoldilocksRun proposer dg H tr i
     {s : Nat} {K : AC.CommitteeDict sp.n} (hP : AC.CommitteeP K tr.projAC H)
     (hfK : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize)
     {p : Fin sp.n} (hp : p ∈ H) {i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p i ℓp)
+    {ℓp : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt p i ℓp)
     (hcall : ℓp.call = .proposal) (hti : tr.time i = sp.ts s) :
     ∀ x ∈ H, ∀ k' < i, ∀ C CV, ¬ AC.OptimisticLockAt tr.projAC x k' s C CV := by
   intro z hz c hci C CV hO
@@ -348,7 +348,7 @@ after `t_s`, an optimistic one has the slot of its time, at most `s`, and not `s
 theorem proposal_locks_slot_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
-    {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
+    {ℓp : ACLabel (goldilocksNode sp)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
     {pay : Payload sp.n} (hc : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts s) {K : AC.CommitteeDict sp.n}
@@ -419,7 +419,7 @@ label `l` is written at `t_l + 6Δ ≤ t_s + Δ`, so `l ≤ s − 2`; an optimis
 `s`, and not `s` (`no_optimistic_before_held_row_of`, under the slot committee half bound). -/
 theorem vote_fcRoot_old_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} (hs : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s)
     (K : AC.CommitteeDict sp.n) (hP : AC.CommitteeP K tr.projAC H)
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)

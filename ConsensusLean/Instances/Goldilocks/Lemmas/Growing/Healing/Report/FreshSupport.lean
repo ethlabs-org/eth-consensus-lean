@@ -13,11 +13,11 @@ The receiver's branch need not emit a vote, so the receiver need not be a commit
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
 /-- Every member of the slot committee `K u` still honest at the next-slot read supports the
@@ -38,7 +38,7 @@ theorem unanimous_next_cast_supporters_at {K : AC.CommitteeDict sp.n}
     {z : Fin sp.n} {a : Nat} (hz : z ∈ H (tr.time a))
     (ha : tr.projAC.AcceptAt z a P) (hta : tr.time a = sp.ts u)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} {R : AC.ACState sp.n}
+    {ell : ACLabel (goldilocksNode sp)} {R : AC.ACState sp.n}
     (hb : AC.VoteBranchAt tr.projAC y j ell R) (hjs : sp.slot (tr.time j) = u + 1)
     (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
     (hPt : P ∈ ell.frame.tree)
@@ -114,7 +114,7 @@ theorem FrameWindow.older_locks_compatible_at_update_at {K : AC.CommitteeDict sp
     (hun : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e →
       e.msg.slot = u → e.msg.head = P.root)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k u ell)
+    {ell : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k u ell)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ l ∈ (tr.projAC.state y k).locks, l.slot < u →
       ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →

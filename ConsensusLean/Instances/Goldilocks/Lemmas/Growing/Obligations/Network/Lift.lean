@@ -52,12 +52,12 @@ end Consensus.Goldilocks.Growing.LocalRun
 
 namespace Consensus.Goldilocks.Obligations.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- The AC projection holds the AC state of a node honest at the cut. -/
 theorem projAC_state_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
@@ -102,17 +102,17 @@ private theorem run_F_mono_at (hrun : Growing.GoldilocksRun proposer dg H tr ini
 time. -/
 theorem acBlock_prev_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
-    {B : (goldilocksNode sp ro).Blk} (hc : tr.CallAt y i (.ac ℓ)) (hb : ℓ.call = .block B) :
+    (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
+    {B : (goldilocksNode sp).Blk} (hc : tr.CallAt y i (.ac ℓ)) (hb : ℓ.call = .block B) :
     ∃ i', i = i' + 1 ∧ tr.CallAt y i' (.fg (.block B true)) ∧ tr.time i' = tr.time i :=
   hrun.toLocalRun.acBlock_prev hy hc hb
 
 /-- An FG acceptance of a node honest at it is followed at once by the AC block call. -/
 theorem accept_next_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat}
-    (hy : y ∈ H (tr.time i)) {B : (goldilocksNode sp ro).Blk}
+    (hy : y ∈ H (tr.time i)) {B : (goldilocksNode sp).Blk}
     (hc : tr.CallAt y i (.fg (.block B true))) :
-    ∃ ℓ : ACLabel (goldilocksNode sp ro), tr.CallAt y (i + 1) (.ac ℓ) ∧ ℓ.call = .block B ∧
+    ∃ ℓ : ACLabel (goldilocksNode sp), tr.CallAt y (i + 1) (.ac ℓ) ∧ ℓ.call = .block B ∧
       tr.time (i + 1) = tr.time i :=
   hrun.toLocalRun.accept_next hy hc
 

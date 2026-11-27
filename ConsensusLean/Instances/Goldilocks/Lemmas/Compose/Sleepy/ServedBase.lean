@@ -35,11 +35,11 @@ The facts on the latest view that the served head (`Compose/Sleepy/Served`) and 
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- A vote of the slot-`L` pool of an honest node is a vote of its latest view, of slot `L`. -/
 theorem mem_latest_votes {ini} (hrun : GoldilocksRun proposer dg H tr ini)
@@ -111,7 +111,7 @@ theorem latest_honest_supporter_of_target_votes (hrun : GoldilocksRun proposer d
         (AC.latestView sp (tr.state y i).ac (Node.frame (tr.state y i)) t).2 R := by
   intro w ⟨v, hvV, hvw⟩ hwH
   subst hvw
-  have hrun' := goldilocks_ac_projection sp ro dg H tr proposer hrun hnc
+  have hrun' := goldilocks_ac_projection sp dg H tr proposer hrun hnc
   have hr := hrun'.localRun
   have hU := hr.coherent
   have hΦ : FrameOK (Node.frame (tr.state y i)) :=
@@ -152,7 +152,7 @@ theorem latest_honest_supporter_of_target_votes (hrun : GoldilocksRun proposer d
     obtain ⟨jb, -, eb, heb, heb'⟩ := hrun'.honest.pool_vote y hy i L b hbp (by rw [hbv]; exact hwH)
     rw [hav] at hea
     rw [hbv] at heb
-    obtain ⟨-, rfl⟩ := AC.one_vote_per_slot sp _ ro H _ _ hr v.val hwH ja jb ea eb hea heb
+    obtain ⟨-, rfl⟩ := AC.one_vote_per_slot sp _ H _ _ hr v.val hwH ja jb ea eb hea heb
       (by rw [hea', heb', has, hbs])
     exact hab (hea'.symm.trans heb')
   refine ⟨hne, v, (latestView_mem hL v).2.2 ⟨(latestView_mem hL v).1.1 hvV, hres⟩, rfl,

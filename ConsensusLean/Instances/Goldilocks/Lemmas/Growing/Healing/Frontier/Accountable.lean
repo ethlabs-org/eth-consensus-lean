@@ -37,12 +37,12 @@ on the two chains, which `ChainConvictedBelow` excludes. The crossing sets come 
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- **Conviction below a third on held chains.** For two nodes `y` (state before cut `i`) and `z`
 (before cut `j`), each honest at a time `≥ 0` at or after every cut before its state, and blocks
@@ -51,7 +51,7 @@ attestations on the chains of `X₁` and `X₂`. The trace form of `System.Convi
 `α = 1/3`; consumed by `finalized_compatible_of_convictedBelow`,
 `GoldilocksRun.finalized_anc_of_lt_conv`, `J_eq_of_hj_eq_conv`, and by the seeded frame facts
 and the continued reads in place of the healthy fault bound. -/
-def ChainConvictedBelow (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) : Prop :=
+def ChainConvictedBelow (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) : Prop :=
   ∀ (y z : Fin sp.n) (i j : Nat) (t t' : Time), 0 ≤ t → (∀ k < i, tr.time k ≤ t) → y ∈ H t →
     0 ≤ t' → (∀ k < j, tr.time k ≤ t') → z ∈ H t' →
     ∀ X₁ ∈ (tr.state y i).fg.tree, ∀ X₂ ∈ (tr.state z j).fg.tree, ∀ W : Finset (Fin sp.n),
@@ -60,7 +60,7 @@ def ChainConvictedBelow (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n
           a.val = v ∧ FG.slashable a b) →
       3 * W.card < sp.n
 
-theorem chainConvictedBelow_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} :
+theorem chainConvictedBelow_iff {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} :
     ChainConvictedBelow tr H ↔
     ∀ (y z : Fin sp.n) (i j : Nat) (t t' : Time), 0 ≤ t → (∀ k < i, tr.time k ≤ t) → y ∈ H t →
       0 ≤ t' → (∀ k < j, tr.time k ≤ t') → z ∈ H t' →
@@ -74,7 +74,7 @@ theorem chainConvictedBelow_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (
 /-- **Conviction below a third through `b`**: `ChainConvictedBelow` for the readers honest at
 times `≤ b`. It follows from the fault bound through `b` alone (`chainConvictedBelowUpTo_of_faults`,
 `Continuation/HealedCoverSupply`), and the healed frontier through `b` reads it only there. -/
-def ChainConvictedBelowUpTo (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (b : Time) :
+def ChainConvictedBelowUpTo (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) (b : Time) :
     Prop :=
   ∀ (y z : Fin sp.n) (i j : Nat) (t t' : Time), 0 ≤ t → t ≤ b → (∀ k < i, tr.time k ≤ t) →
     y ∈ H t → 0 ≤ t' → t' ≤ b → (∀ k < j, tr.time k ≤ t') → z ∈ H t' →
@@ -84,7 +84,7 @@ def ChainConvictedBelowUpTo (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin 
           a.val = v ∧ FG.slashable a b) →
       3 * W.card < sp.n
 
-theorem chainConvictedBelowUpTo_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+theorem chainConvictedBelowUpTo_iff {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)}
     {b : Time} :
     ChainConvictedBelowUpTo tr H b ↔
     ∀ (y z : Fin sp.n) (i j : Nat) (t t' : Time), 0 ≤ t → t ≤ b → (∀ k < i, tr.time k ≤ t) →
@@ -97,7 +97,7 @@ theorem chainConvictedBelowUpTo_iff {tr : GoldilocksTrace sp ro} {H : Time → S
   Iff.rfl
 
 /-- Conviction below a third holds through every `b`. -/
-theorem ChainConvictedBelow.upTo {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+theorem ChainConvictedBelow.upTo {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)}
     (h : ChainConvictedBelow tr H) (b : Time) : ChainConvictedBelowUpTo tr H b :=
   fun y z i j t t' ht _ hi hy ht' _ hj hz => h y z i j t t' ht hi hy ht' hj hz
 
@@ -145,12 +145,12 @@ end Consensus.Goldilocks.Compose.Growing
 
 namespace Consensus.Goldilocks.Growing.GoldilocksRun
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- **G1.2 at strict height under conviction below a third.** A block `F` finalized by the state
 of a held `X` in the store of a reader honest at `t` is an ancestor, inside the blocks held while

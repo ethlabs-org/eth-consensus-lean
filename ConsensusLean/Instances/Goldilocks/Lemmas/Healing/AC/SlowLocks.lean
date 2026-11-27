@@ -25,8 +25,8 @@ namespace Consensus.Goldilocks.AC
 
 variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {g : Time}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {g : Time}
   {proposer : Nat → Fin sp.n}
 
 /-- Compatibility of `L ⪯ O` with `D ⪯ R` when `O` and `R` are compatible. -/
@@ -61,7 +61,7 @@ theorem slow_window_resultsU
 
 /-- **The writer's results over a slow lock's window**: for an honest slow lock of slot `s` on
 `D`, the writer's update of every slot `j` with `s − k < j ≤ s` has a result extending `D`. -/
-theorem slow_window_results {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+theorem slow_window_results {ini} (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
     (hx : x ∈ H) {i₀ s : Nat} {D : Blk sp.n FGP} (hsl : SlowLockAt tr x i₀ s D) :
     ∀ j : Nat, (s : Int) - sp.k < j → j ≤ s →
@@ -95,7 +95,7 @@ theorem lock_below_originU
 
 /-- Every stored lock of an honest node sits below an origin of its slot, written at an earlier
 cut: a result or an optimistic confirmation of the node. -/
-theorem lock_below_origin {ini} (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+theorem lock_below_origin {ini} (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     ∀ l ∈ (tr.state y i).locks, ∃ L ∈ U, L.root = l.block ∧ ∃ O, Anc U L O ∧
@@ -166,7 +166,7 @@ theorem live_locks_of_stored_before {ini}
     (hrun : ACRun proposer tr H U ini) (K : CommitteeDict sp.n) (hP : CommitteeP K tr H)
     {s : Nat} (hf : 2 * (K.committee (s + 1) ∩ Hᶜ).ncard < sp.committeeSize) {D : Blk sp.n FGP}
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hc : CastAt tr y i ℓ e) (hes : e.msg.slot = s + 1)
     (hstored : ∀ l ∈ (tr.state y i).locks,
       sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →

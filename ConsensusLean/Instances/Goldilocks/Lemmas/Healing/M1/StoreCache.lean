@@ -81,11 +81,11 @@ theorem F_anc_of_hj_lt_of_safe {st₁ st₂ : Store P ACP} (hR₁ : st₁.Reacha
 
 end Store
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 end Consensus.Goldilocks.Healing
 

@@ -470,7 +470,7 @@ private theorem ownBlockAt_accept_at {V : Type} [Fintype V] [DecidableEq V] {E :
     (hown : (simTraceAt S rho hn).OwnBlockAt y i B) :
     (simTraceAt S rho hn).AcceptAt y i B := by
   have hrun := simTraceAt_goldilocksRun S rho hn hv
-  exact hrun.toLocalRun.ownBlockAt_accept (fun y => Compose.requirements_from _ _ (hrun.vstart y))
+  exact hrun.toLocalRun.ownBlockAt_accept (fun y => Compose.requirements_from _ (hrun.vstart y))
     hrun.genesis_root_ok hnc hy hown
 
 /-- Finite GST block service for blocks accepted or proposed by a node honest at its cut, at a
@@ -514,7 +514,7 @@ theorem block_service_psync_at {V : Type} [Fintype V] [DecidableEq V] {E : Env V
   rw [htr, hH] at hx hy
   rw [htr] at hi hih hpub hj hb hd ⊢
   apply NodeAsChainShape.CanonicalTrace.blockService_psync (network_localRun S rho hn hv)
-    le_rfl hnet (fun x => Compose.requirements_from _ _ (hrun.vstart x))
+    le_rfl hnet (fun x => Compose.requirements_from _ (hrun.vstart x))
     hroot hnc hx hi hih hpub _ hy hj hb hd
   intro o parent k d D hdecode _ hx held hd' hk
   rw [← htr] at hdecode hx hk ⊢

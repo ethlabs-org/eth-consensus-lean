@@ -18,7 +18,7 @@ namespace Consensus.Goldilocks.AC.Growing
 
 /-- Proposer agreement at the repaired, two-cut honesty premise. -/
 theorem proposer_voters_agree (sp : ACParams) : ProposerVotersAgree sp := by
-  intro FGP ro H U tr proposer hr s p y i j ℓp ℓy pay e hp hy hpp hprop hti hc hs hP
+  intro FGP H U tr proposer hr s p y i j ℓp ℓy pay e hp hy hpp hprop hti hc hs hP
     hsync heq B hB hBs
   exact proposer_voters_agree_of_honest_max hr hp hy hpp hprop hti hc hs hP hsync heq B hB hBs
 
@@ -31,7 +31,7 @@ theorem acStepsAt (sp : ACParams) : ACStepsAt sp where
   optimisticNextUpdate := optimistic_next_update sp
   sourceAge := source_age sp
   resultTransfer := by
-    intro FGP ro H U tr proposer hr s X y i₀ i C CV ℓ e hX hres hy hc hs hcarry hv hl hd
+    intro FGP H U tr proposer hr s X y i₀ i C CV ℓ e hX hres hy hc hs hcarry hv hl hd
     exact result_transfer hr hX hres hy hc hs hcarry hv hl hd
 
 /-- The growing-fault ACSteps milestone. -/

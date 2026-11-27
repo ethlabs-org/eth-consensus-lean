@@ -19,16 +19,16 @@ require that writer to remain honest at the later proposal.
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g : Time}
 variable {hold : Time}
 
 /-- A historically held block with the genesis root is below every historically held block. -/
 theorem genesis_root_anc_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {G B : AC.Blk sp.n (List (FG.Att sp.n))} (hG : G ∈ tr.HonestBlocksAt H)
@@ -40,7 +40,7 @@ theorem genesis_root_anc_at
   have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨y, k, t, ht, hle, hy, h⟩
   have hgen := (Store.accepted_tree _ _ _ _ hr).2.2.1
-  have he : G = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
+  have he : G = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload :=
     (Compose.Growing.honest_blocks_coherent hrun hnc).1 hG (hsub hgen) hg
   rw [he]
   exact hh.mono hsub

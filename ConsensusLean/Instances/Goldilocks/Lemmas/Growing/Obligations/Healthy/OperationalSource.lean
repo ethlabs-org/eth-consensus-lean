@@ -26,11 +26,11 @@ updater is honest throughout (`Compose.record_origin_before`, lifted by `originB
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open Compose.Growing (originBefore_iff)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+variable {sp : ACParams}
+  {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
 variable {hold : Time}
 
@@ -45,7 +45,7 @@ theorem operational_update_recent_source_at {b : Time}
     (hactual : tr.ProposesAt p k P)
     (hPs : P.slot = u) (hR : drainTime sp a ≤ sp.ts u)
     (hgu : gbar g + 4 * sp.Δ ≤ sp.ts u) (hTb : sp.ts u + 6 * sp.Δ ≤ b)
-    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp)}
     (hup : AC.UpdateAt tr.projAC y j u ell)
     {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hlookup : AC.lookup (Node.frame (tr.state y (j + 1)))

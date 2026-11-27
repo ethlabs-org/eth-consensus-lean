@@ -15,8 +15,8 @@ extends `B`, the lock's block is compatible with `B`. -/
 
 namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {proposer : Nat → Fin sp.n}
 
 /-- **A fast lock supported by votes that extend `B` is compatible with `B`.** -/
 theorem fastLock_compatible_of_votes

@@ -18,11 +18,11 @@ The prefix of the growing run is a static AC run (`acRun_upTo`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- A slot-`s` vote of a node honest at it precedes every cut at a time `≥ t_{s+1}`. -/
 theorem vote_cut_lt {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
@@ -50,7 +50,7 @@ theorem vote_extends_of_batch_at {ini} (hrun : Growing.GoldilocksRun proposer dg
     (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     {b : Time} {σ₀ : Nat} (hBK : CommitteeBoundsFrom tr H K σ₀ b) {s : Nat}
     (hs₀ : σ₀ ≤ s) {y : Fin sp.n}
-    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {i : Nat} {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hviab : AC.ViableAtVote ℓ e (s + 1) B)

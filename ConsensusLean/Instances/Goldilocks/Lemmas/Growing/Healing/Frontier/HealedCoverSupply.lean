@@ -33,12 +33,12 @@ pre-expiry facts. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- A restart of a node honest at its cut, by `b`, is no later than `t_{slot ḡ + 1}` when every
 node honest at a time of `[ḡ, b]` is awake then (the argument of `restart_le_before_at`). -/

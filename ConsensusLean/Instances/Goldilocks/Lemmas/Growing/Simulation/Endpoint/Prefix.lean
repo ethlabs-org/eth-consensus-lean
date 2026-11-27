@@ -18,18 +18,18 @@ times `≤ d`, is read on the prefix through `d`, which is a static run for the 
 
 namespace Consensus.Goldilocks.Simulation
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- The store of a node honest at `d ≥ 0`, before a cut whose predecessors are at times `≤ d`, is
 reachable. -/
 theorem reachable_upTo (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {w : Fin sp.n} {m : Nat} {d : Time} (hd : 0 ≤ d) (hb : ∀ k < m, tr.time k ≤ d)
-    (hw : w ∈ H d) : (tr.state w m).fg.Reachable (goldilocksNode sp ro).genesisPayload := by
+    (hw : w ∈ H d) : (tr.state w m).fg.Reachable (goldilocksNode sp).genesisPayload := by
   rw [← Trace.upTo_state tr w hb]
   exact Compose.fg_reachable (hrun.upTo hd).toLocalRun hw m
 
@@ -44,7 +44,7 @@ theorem held_upTo {w : Fin sp.n} {m : Nat} {d : Time} (hd : 0 ≤ d)
 over the blocks held while honest in the whole run. -/
 theorem fgRun_upTo (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {d : Time} (hd : 0 ≤ d) :
-    FGLocalRun (goldilocksNode sp ro).genesisPayload (H d) (tr.HonestBlocksAt H)
+    FGLocalRun (goldilocksNode sp).genesisPayload (H d) (tr.HonestBlocksAt H)
       (tr.upTo d).projFG := by
   have h := Compose.projFG_localRun (hrun.upTo hd) (hnc.upTo d)
   exact { h with

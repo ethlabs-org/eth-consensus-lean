@@ -289,7 +289,7 @@ theorem key1_vote_slot {i : Nat} {e : Ev S} (he : (rho S).events[i]? = some e) (
     rw [← Simulation.simTraceAt_eq]
     exact Simulation.noCollRun_simTraceAt _ (rho12 S) one_le_card rho12_valid
       rho12_not_hashCollision
-  have hac := (Compose.goldilocks_ac_projection _ _ _ _ _ _ hrun hnc).localRun
+  have hac := (Compose.goldilocks_ac_projection _ _ _ _ _ hrun hnc).localRun
   have hy : (rho12 S).ownKey 1 ∈ Simulation.honestKeys { S with vote := stock } (rho12 S) := by
     rw [Simulation.mem_honestKeys_iff]
     rw [show (rho12 S).key ((rho12 S).ownKey 1) = 1 from (rho12 S).key.apply_symm_apply 1]

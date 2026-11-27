@@ -20,12 +20,12 @@ node honest at the later of the acceptance and `c_z` is after `c_z` (`cutZ_lt_of
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open ProposalImpl
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- **No genesis block is above a high origin**: genesis is low at the snapshot cut, read by the
@@ -41,12 +41,12 @@ theorem ResetPremisesUpTo.not_genesis_above_at {cm : Time → Finset (Fin sp.n)}
   have hle : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hm hq.le
   have hx := hp.run.antitone (le_max_right _ _) ho.1
   have hreach := fg_reachable_at hp.run hi0 hle hx
-  have heq : G = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
+  have heq : G = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload :=
     (Compose.Growing.honest_blocks_coherent hp.run hp.noColl).1 hGU
       ⟨x, i, tr.time i, hi0, hle, hx, (Store.accepted_tree _ _ _ _ hreach).2.2.1⟩ hg
   have hGx : G ∈ (tr.state x i).fg.tree := heq ▸ (Store.accepted_tree _ _ _ _ hreach).2.2.1
   have hh := hp.high_of_anc_at ho hi0 hle hx hGx hBG
-  rw [heq, show (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).root =
+  rw [heq, show (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload).root =
       sp.toParams.genesisRoot from rfl, Store.σ_genesis hreach] at hh
   change HZ tr H g + 1 ≤ 1 at hh
   obtain ⟨kZ, hkZ, _⟩ := hp.snapshot
@@ -56,7 +56,7 @@ theorem ResetPremisesUpTo.not_genesis_above_at {cm : Time → Finset (Fin sp.n)}
   have hreachZ := fg_reachable_at hp.run hZ0 hkZ.1 hxZ
   have hGZ := (Store.accepted_tree _ _ _ _ hreachZ).2.2.1
   have hbnd := (Store.cache_invariants _ _ _ _ hreachZ).2.2.2.2.1 _ hGZ
-  rw [show (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).root =
+  rw [show (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload).root =
       sp.toParams.genesisRoot from rfl, Store.σ_genesis hreachZ] at hbnd
   have hmax : (tr.state x kZ).fg.hmax ≤ HZ tr H g := by
     refine le_csSup (((Set.finite_range fun v => (tr.state v kZ).fg.hmax).subset ?_).bddAbove)

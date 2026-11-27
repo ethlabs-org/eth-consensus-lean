@@ -59,7 +59,7 @@ theorem simTraceAt_mayVote (hv : rho.ExecutionValid) (y : Fin (Fintype.card V)) 
       cases c with
       | ac ℓ =>
         obtain ⟨-, he, -, -⟩ := hstep
-        have h₁ := AC.step_mayVote (S.ro _) y ((simTraceAt S rho hn).state y i).ac ℓ.frame
+        have h₁ := AC.step_mayVote y ((simTraceAt S rho hn).state y i).ac ℓ.frame
           ((simTraceAt S rho hn).time i) ℓ.call
         rw [he] at h₁
         exact h₁

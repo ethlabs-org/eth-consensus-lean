@@ -27,7 +27,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote Payload ACState)
+open AC (ACParams Vote Payload ACState)
 
 variable {binding : VoteBinding}
 
@@ -106,27 +106,27 @@ private theorem pool_tick {P : Vote sp.n → Prop} (self : Fin sp.n)
 
 set_option linter.unusedVariables false in
 /-- Restart clears its pools. -/
-theorem restart_pool_inventory (P : Vote sp.n → Prop) (ro : ReplayOrder sp FGP)
+theorem restart_pool_inventory (P : Vote sp.n → Prop)
     (self : Fin sp.n) (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time)
-    (he : ∀ e ∈ (AC.acRestart sp ro self A Φ t).2, P e.msg) :
-    ∀ s, ∀ v ∈ (AC.acRestart sp ro self A Φ t).1.pool s, P v := by
+    (he : ∀ e ∈ (AC.acRestart sp self A Φ t).2, P e.msg) :
+    ∀ s, ∀ v ∈ (AC.acRestart sp self A Φ t).1.pool s, P v := by
   exact fun _ _ hv => False.elim (List.not_mem_nil hv)
 
 /-- **One AC call keeps a vote predicate on the pool**, given it of its message input
 (if any) and of its emissions. -/
-theorem pool_step_inventory (P : Vote sp.n → Prop) (ro : ReplayOrder sp FGP) (self : Fin sp.n)
-    (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time) (c : (AC.goldilocksAC sp FGP ro).Call)
+theorem pool_step_inventory (P : Vote sp.n → Prop) (self : Fin sp.n)
+    (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time) (c : (AC.goldilocksAC sp FGP).Call)
     (h : ∀ s, ∀ v ∈ A.pool s, P v)
     (hc : match c with
       | .message v => P v
       | _ => True)
-    (he : ∀ e ∈ ((AC.goldilocksAC sp FGP ro).step self A Φ t c).2, P e.msg) :
-    ∀ s, ∀ v ∈ ((AC.goldilocksAC sp FGP ro).step self A Φ t c).1.pool s, P v := by
+    (he : ∀ e ∈ ((AC.goldilocksAC sp FGP).step self A Φ t c).2, P e.msg) :
+    ∀ s, ∀ v ∈ ((AC.goldilocksAC sp FGP).step self A Φ t c).1.pool s, P v := by
   cases c with
   | block B => exact pool_block self A Φ t B h he
   | message v => exact pool_message self A Φ t v h hc he
   | tick => exact pool_tick self A Φ t h he
-  | restart => exact restart_pool_inventory P ro self A Φ t he
+  | restart => exact restart_pool_inventory P self A Φ t he
   | proposal =>
     change PoolIn P (AC.acProposal sp A Φ t).1
     unfold AC.acProposal
@@ -140,14 +140,14 @@ end Pools
 
 section Inventory
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- Inventory before an engine operation. The predicate will be membership in the seen
 closure or in the queue; stored block payloads retain their inventory across restart. Every pool
 vote has a signed object with some token; `gate`: the node's vote authentication `io` holds an
 own token for every slot its AC may vote in, so own emissions are released. -/
 private structure Inventory (io : VoteAuth sp.n binding) (P : Wire sp.n binding → Prop)
-    (st : NodeState (goldilocksNode sp ro)) : Prop where
+    (st : NodeState (goldilocksNode sp)) : Prop where
   reachable : st.fg.Reachable ([], [])
   blocks : ∀ B ∈ st.fg.tree, ∀ o ∈ payloadObjs B.fgPayload B.acPayload, P o
   votes : PoolIn (fun v => ∃ z, P (voteObj v z)) st.ac
@@ -156,13 +156,13 @@ private structure Inventory (io : VoteAuth sp.n binding) (P : Wire sp.n binding 
 
 private theorem inventory_init (io : VoteAuth sp.n binding) (P : Wire sp.n binding → Prop)
     (B : VoteBinding) (q : ShapeRole B.Kind → Bool)
-    (hg : ∀ m : Vote sp.n, (Node.initWith (goldilocksNode sp ro)
-      (B.installVote q (goldilocksNode sp ro).initial)).ac.mayVote m.slot = true →
+    (hg : ∀ m : Vote sp.n, (Node.initWith (goldilocksNode sp)
+      (B.installVote q (goldilocksNode sp).initial)).ac.mayVote m.slot = true →
         ∃ z, ownToken io m = some z) :
-    Inventory io P (Node.initWith (goldilocksNode sp ro)
-      (B.installVote q (goldilocksNode sp ro).initial)) := by
-  have hpool : (B.installVote q (goldilocksNode sp ro).initial).pool =
-      (goldilocksNode sp ro).initial.pool := by
+    Inventory io P (Node.initWith (goldilocksNode sp)
+      (B.installVote q (goldilocksNode sp).initial)) := by
+  have hpool : (B.installVote q (goldilocksNode sp).initial).pool =
+      (goldilocksNode sp).initial.pool := by
     unfold VoteBinding.installVote
     split <;> rfl
   refine ⟨Relation.ReflTransGen.refl, ?_, ?_, ?_, hg⟩
@@ -173,23 +173,23 @@ private theorem inventory_init (io : VoteAuth sp.n binding) (P : Wire sp.n bindi
     · cases Option.some.inj hB
       simp [payloadObjs, Params.genesisBlock] at ho
   · intro s v hv
-    change v ∈ (B.installVote q (goldilocksNode sp ro).initial).pool s at hv
+    change v ∈ (B.installVote q (goldilocksNode sp).initial).pool s at hv
     rw [hpool] at hv
     exact False.elim (List.not_mem_nil hv)
   · intro a ha
     exact False.elim (List.not_mem_nil ha)
 
 private theorem inventory_att {io : VoteAuth sp.n binding} {P : Wire sp.n binding → Prop}
-  {st : NodeState (goldilocksNode sp ro)}
+  {st : NodeState (goldilocksNode sp)}
     (h : Inventory io P st) (a : FG.Att sp.n) (ha : P (attObj a)) :
     Inventory io P (Node.onAttestation st a).1 := by
-  have hfg := NodeAsChainShape.inventory_att (wireCodec sp ro binding io) attObj
+  have hfg := NodeAsChainShape.inventory_att (wireCodec sp binding io) attObj
     ⟨h.reachable, h.blocks, h.atts⟩ a ha
   exact ⟨hfg.reachable, hfg.blocks, h.votes, hfg.atts, h.gate⟩
 
 /-- Processing a list of attestations, each of which satisfies `P`, keeps the inventory. -/
 private theorem inventory_foldl_att {io : VoteAuth sp.n binding} {P : Wire sp.n binding → Prop}
-    {st : NodeState (goldilocksNode sp ro)} (h : Inventory io P st) (l : List (FG.Att sp.n))
+    {st : NodeState (goldilocksNode sp)} (h : Inventory io P st) (l : List (FG.Att sp.n))
     (hl : ∀ a ∈ l, P (attObj a)) :
     Inventory io P (l.foldl (fun n a => (Node.onAttestation n a).1) st) := by
   induction l generalizing st with
@@ -200,7 +200,7 @@ private theorem inventory_foldl_att {io : VoteAuth sp.n binding} {P : Wire sp.n 
 
 private theorem inventory_accept {io : VoteAuth sp.n binding} {P : Wire sp.n binding → Prop}
   {st : NodeState
-    (goldilocksNode sp ro)}
+    (goldilocksNode sp)}
     (h : Inventory io P st) {B : Blk sp} {fg' : Store sp.toParams (Payload sp.n)}
     (hacc : st.fg.onBlock B = some fg')
     (hB : ∀ o ∈ payloadObjs B.fgPayload B.acPayload, P o) :
@@ -208,35 +208,35 @@ private theorem inventory_accept {io : VoteAuth sp.n binding} {P : Wire sp.n bin
   have hatt : ∀ a ∈ B.fgPayload,
       attObj a ∈ payloadObjs (binding := binding) B.fgPayload B.acPayload :=
     fun a ha => List.mem_map.mpr ⟨a, ha, rfl⟩
-  have hfg := NodeAsChainShape.inventory_accept (wireCodec sp ro binding io) attObj
+  have hfg := NodeAsChainShape.inventory_accept (wireCodec sp binding io) attObj
     ⟨h.reachable, h.blocks, h.atts⟩ hacc hB hatt
   exact ⟨hfg.reachable, hfg.blocks, h.votes, hfg.atts, h.gate⟩
 
 private theorem inventory_call {io : VoteAuth sp.n binding} {P : Wire sp.n binding → Prop}
   {st : NodeState
-    (goldilocksNode sp ro)}
+    (goldilocksNode sp)}
     (h : Inventory io P st) (self : Fin sp.n) (t : Time)
-    (c : (goldilocksNode sp ro).Call)
+    (c : (goldilocksNode sp).Call)
     (hc : match c with
       | .message v => ∃ z, P (voteObj v z)
       | _ => True)
-    (he : ∀ e ∈ ((goldilocksNode sp ro).step self st.ac (frame st) t c).2,
+    (he : ∀ e ∈ ((goldilocksNode sp).step self st.ac (frame st) t c).2,
       ∃ z, P (voteObj e.msg z)) : Inventory io P (Node.acCall self st t c).1 := by
-  refine ⟨h.reachable, h.blocks, pool_step_inventory _ ro self st.ac (frame st) t c h.votes
+  refine ⟨h.reachable, h.blocks, pool_step_inventory _ self st.ac (frame st) t c h.votes
     ?_ he, h.atts, fun m hm => h.gate m ?_⟩
   · cases c <;> exact hc
-  · change ((goldilocksNode sp ro).step self st.ac (frame st) t c).1.mayVote m.slot = true at hm
+  · change ((goldilocksNode sp).step self st.ac (frame st) t c).1.mayVote m.slot = true at hm
     rwa [AC.step_mayVote] at hm
 
 private theorem inventory_mono {io : VoteAuth sp.n binding} {P Q : Wire sp.n binding → Prop}
-    {st : NodeState (goldilocksNode sp ro)} (h : Inventory io P st) (hPQ : ∀ o, P o → Q o) :
+    {st : NodeState (goldilocksNode sp)} (h : Inventory io P st) (hPQ : ∀ o, P o → Q o) :
     Inventory io Q st :=
   ⟨h.reachable, fun B hB o ho => hPQ o (h.blocks B hB o ho),
     fun s v hv => (h.votes s v hv).imp fun _ => hPQ _, fun a ha => hPQ _ (h.atts a ha), h.gate⟩
 
 private theorem inventory_block {io : VoteAuth sp.n binding} {P : Wire sp.n binding → Prop}
   {st : NodeState
-    (goldilocksNode sp ro)}
+    (goldilocksNode sp)}
     (h : Inventory io P st) (self : Fin sp.n) (t : Time) (B : Blk sp)
     (hB : ∀ o ∈ payloadObjs B.fgPayload B.acPayload, P o)
     (he : ∀ b ∈ emitted io (Node.onBlock self st t B).2,
@@ -251,14 +251,14 @@ private theorem inventory_block {io : VoteAuth sp.n binding} {P : Wire sp.n bind
       rw [hfg] at he
       apply inventory_call (inventory_accept h hfg hB) self t (.block B) trivial
       intro e he'
-      obtain ⟨z, hz⟩ := h.gate e.msg (AC.emits_mayVote ro _ _ _ _ _ e he')
+      obtain ⟨z, hz⟩ := h.gate e.msg (AC.emits_mayVote _ _ _ _ _ e he')
       refine ⟨z, he (.vote (encodeVote e.msg) z) ?_ e.msg z rfl⟩
       simp only [emitted, acCall, List.flatMap_cons, List.flatMap_nil,
         List.nil_append, List.append_nil]
       exact List.mem_filterMap.mpr ⟨e, he', by rw [hz]; rfl⟩
 
 private theorem inventory_proposal {io : VoteAuth sp.n binding} {P : Wire sp.n binding → Prop}
-    {st : NodeState (goldilocksNode sp ro)} (h : Inventory io P st) (t : Time) :
+    {st : NodeState (goldilocksNode sp)} (h : Inventory io P st) (t : Time) :
     Inventory io P (Node.acProposal st t).1 := by
   refine ⟨h.reachable, h.blocks, ?_, h.atts, fun m hm => h.gate m ?_⟩
   · change PoolIn _ (AC.acProposal sp st.ac (frame st) t).1
@@ -269,7 +269,7 @@ private theorem inventory_proposal {io : VoteAuth sp.n binding} {P : Wire sp.n b
     split_ifs at hm <;> exact hm
 
 private theorem inventory_toFG {io : VoteAuth sp.n binding} {P : Wire sp.n binding → Prop}
-    {st : NodeState (goldilocksNode sp ro)} (h : Inventory io P st) (t : Time) :
+    {st : NodeState (goldilocksNode sp)} (h : Inventory io P st) (t : Time) :
     Inventory io P (Node.acToFG st t).1 := by
   refine ⟨h.reachable, h.blocks, ?_, h.atts, fun m hm => h.gate m ?_⟩
   · change PoolIn _ (AC.acToFG sp st.ac (frame st) t).1
@@ -279,7 +279,7 @@ private theorem inventory_toFG {io : VoteAuth sp.n binding} {P : Wire sp.n bindi
     unfold AC.acToFG at hm
     split_ifs at hm <;> exact hm
 
-private theorem proposal_inventory {P : Wire sp.n binding → Prop} (st : State sp ro binding)
+private theorem proposal_inventory {P : Wire sp.n binding → Prop} (st : State sp binding)
     (h : Inventory st.voteIO P st.node) (s : Slot) {par : ParentRef} {info : Info}
     {cs : List (Wire sp.n binding)} (hp : (propose st s).2 = some (par, info, cs)) :
     ∀ o ∈ cs, P o ∧ ∃ a, o = attObj a := by
@@ -298,15 +298,15 @@ end Inventory
 
 section ShapeInventory
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- Own material not yet released: a vote or attestation queued in the outbox. (A held
 attestation is not in the node's pool: it enters the pool when it is released.) -/
-private def Pending (st : State sp ro binding) (o : Wire sp.n binding) : Prop :=
+private def Pending (st : State sp binding) (o : Wire sp.n binding) : Prop :=
   (∃ v z, o = voteObj v z ∧ .vote (encodeVote v) z ∈ st.outbox) ∨
     ∃ a, o = attObj a ∧ .att (encodeAtt a) ∈ st.outbox
 
-private def Available (seen : List (Wire sp.n binding)) (st : State sp ro binding)
+private def Available (seen : List (Wire sp.n binding)) (st : State sp binding)
     (o : Wire sp.n binding) : Prop :=
   o ∈ seen.flatMap Model.Obj.parts ∨ Pending st o
 
@@ -322,21 +322,21 @@ private theorem carried_parts {n : Nat} (auth : Model.Auth n (ShapeRole binding.
   exact List.mem_cons_of_mem _ (List.mem_flatMap.mpr ⟨x, hx,
     by rw [Model.Obj.parts_eq]; exact List.mem_cons_self⟩)
 
-private theorem pending_mono {st st' : State sp ro binding} (h : st.outbox ⊆ st'.outbox)
+private theorem pending_mono {st st' : State sp binding} (h : st.outbox ⊆ st'.outbox)
     {o : Wire sp.n binding} : Pending st o → Pending st' o := by
   rintro (⟨v, z, rfl, hv⟩ | ⟨a, rfl, ha⟩)
   · exact Or.inl ⟨v, z, rfl, h hv⟩
   · exact Or.inr ⟨a, rfl, h ha⟩
 
 private theorem available_mono {seen seen' : List (Wire sp.n binding)}
-    {st st' : State sp ro binding}
+    {st st' : State sp binding}
     (hs : seen.flatMap Model.Obj.parts ⊆ seen'.flatMap Model.Obj.parts)
     (hq : st.outbox ⊆ st'.outbox)
     {o : Wire sp.n binding} : Available seen st o → Available seen' st' o :=
   Or.imp (fun h => hs h) (pending_mono hq)
 
-private theorem apply_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
-    origin (r : NodeState (goldilocksNode sp ro) × List (Cut (goldilocksNode sp ro)))
+private theorem apply_inventory (seen : List (Wire sp.n binding)) (st : State sp binding)
+    origin (r : NodeState (goldilocksNode sp) × List (Cut (goldilocksNode sp)))
     (hr : ∀ P : Wire sp.n binding → Prop, Inventory st.voteIO P st.node →
       (∀ o ∈ seen.flatMap Model.Obj.parts, P o) →
       (∀ b ∈ emitted st.voteIO r.2, ∀ v z, b = .vote (encodeVote v) z → P (voteObj v z)) →
@@ -351,7 +351,7 @@ private theorem apply_inventory (seen : List (Wire sp.n binding)) (st : State sp
     exact Or.inr (Or.inl ⟨v, z, rfl, List.mem_append_right _ (hv ▸ hb)⟩)
 
 private theorem tick_inventory (seen : List (Wire sp.n binding)) {sign : Fin sp.n → Time → Bool}
-    (st : State sp ro binding)
+    (st : State sp binding)
     (h : Inventory st.voteIO (Available seen st) st.node) :
     Inventory (nodeTick st sign).voteIO (Available seen (nodeTick st sign))
       (nodeTick st sign).node := by
@@ -363,13 +363,13 @@ private theorem tick_inventory (seen : List (Wire sp.n binding)) {sign : Fin sp.
     intro P h _ he
     apply inventory_call h st.self st.now .tick trivial
     intro e he'
-    obtain ⟨z, hz⟩ := h.gate e.msg (AC.emits_mayVote ro _ _ _ _ _ e he')
+    obtain ⟨z, hz⟩ := h.gate e.msg (AC.emits_mayVote _ _ _ _ _ e he')
     refine ⟨z, he (.vote (encodeVote e.msg) z) ?_ e.msg z rfl⟩
     simp only [emitted, acCall, List.flatMap_cons, List.flatMap_nil, List.append_nil]
     exact List.mem_filterMap.mpr ⟨e, he', by rw [hz]; rfl⟩
   · exact h
 
-private theorem restore_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
+private theorem restore_inventory (seen : List (Wire sp.n binding)) (st : State sp binding)
     (k : Fin sp.n) (t : Time) (h : Inventory st.voteIO (Available seen st) st.node) :
     Inventory (restore k st t).voteIO (Available seen (restore k st t)) (restore k st t).node := by
   apply apply_inventory seen { st with self := k, now := t } none
@@ -377,7 +377,7 @@ private theorem restore_inventory (seen : List (Wire sp.n binding)) (st : State 
   intro P h _ he
   apply inventory_call h k t .restart trivial
   intro e he'
-  obtain ⟨z, hz⟩ := h.gate e.msg (AC.emits_mayVote ro _ _ _ _ _ e he')
+  obtain ⟨z, hz⟩ := h.gate e.msg (AC.emits_mayVote _ _ _ _ _ e he')
   refine ⟨z, he (.vote (encodeVote e.msg) z) ?_ e.msg z rfl⟩
   simp only [emitted, acCall, List.flatMap_cons, List.flatMap_nil, List.append_nil]
   exact List.mem_filterMap.mpr ⟨e, he', by rw [hz]; rfl⟩
@@ -385,7 +385,7 @@ private theorem restore_inventory (seen : List (Wire sp.n binding)) (st : State 
 /-- The FG update keeps the inventory: its attestation is queued in the outbox when the schedule
 releases at the node's time, and held otherwise. -/
 private theorem fg_inventory (release : Fin sp.n → Time → Bool) (seen : List (Wire sp.n binding))
-    (st : State sp ro binding) (h : Inventory st.voteIO (Available seen st) st.node) :
+    (st : State sp binding) (h : Inventory st.voteIO (Available seen st) st.node) :
     Inventory (fgUpdate st release).voteIO (Available seen (fgUpdate st release))
       (fgUpdate st release).node := by
   rw [fgUpdate_eq st release]
@@ -409,7 +409,7 @@ private theorem fg_inventory (release : Fin sp.n → Time → Bool) (seen : List
         · exact Or.inr (Or.inr ⟨a, rfl, List.mem_append_right _ (List.mem_singleton_self _)⟩)
       · exact inventory_mono ht' fun o ho => ho
 
-private theorem processOne_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
+private theorem processOne_inventory (seen : List (Wire sp.n binding)) (st : State sp binding)
     (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat)) (o : Wire sp.n binding)
     (h : Inventory st.voteIO (Available seen st) st.node)
     (ho : ∀ x ∈ o.parts, x ∈ seen.flatMap Model.Obj.parts) :
@@ -451,7 +451,7 @@ private theorem processOne_inventory (seen : List (Wire sp.n binding)) (st : Sta
         rw [Model.Obj.parts_eq]
         exact List.mem_cons_self
       · intro e he'
-        obtain ⟨z, hz⟩ := h.gate e.msg (AC.emits_mayVote ro _ _ _ _ _ e he')
+        obtain ⟨z, hz⟩ := h.gate e.msg (AC.emits_mayVote _ _ _ _ _ e he')
         refine ⟨z, he (.vote (encodeVote e.msg) z) ?_ e.msg z rfl⟩
         simp only [Node.onMessage, emitted, acCall, List.flatMap_cons,
           List.flatMap_nil, List.append_nil]
@@ -472,7 +472,7 @@ private theorem processOne_inventory (seen : List (Wire sp.n binding)) (st : Sta
     exact List.mem_cons_self
   · exact h
 
-private theorem process_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
+private theorem process_inventory (seen : List (Wire sp.n binding)) (st : State sp binding)
     (hs : List (Header Info × Nat)) (o : Wire sp.n binding)
     (h : Inventory st.voteIO (Available seen st) st.node)
     (ho : ∀ x ∈ o.parts, x ∈ seen.flatMap Model.Obj.parts) :
@@ -480,7 +480,7 @@ private theorem process_inventory (seen : List (Wire sp.n binding)) (st : State 
       (process st o hs).node := by
   rw [process_eq]
   have key : ∀ (io : VoteAuth sp.n binding) (l : List (Wire sp.n binding))
-      (st : State sp ro binding),
+      (st : State sp binding),
       Inventory st.voteIO (Available seen st) st.node →
       (∀ x ∈ l, ∀ y ∈ x.parts, y ∈ seen.flatMap Model.Obj.parts) →
       Inventory (l.foldl (processOne io hs) st).voteIO
@@ -497,7 +497,7 @@ private theorem process_inventory (seen : List (Wire sp.n binding)) (st : State 
   intro x hx y hy
   exact ho y (Model.Obj.Contains.trans (mem_delivered st.voteIO hs hx) hy)
 
-private theorem record_inventory (seen : List (Wire sp.n binding)) (st : State sp ro binding)
+private theorem record_inventory (seen : List (Wire sp.n binding)) (st : State sp binding)
     (hs : List (Header Info × Nat)) (o : Wire sp.n binding)
     (h : Inventory st.voteIO (Available seen st) st.node)
     (hp : ∀ k s hd cs, o = .mk (.signed k (.proposer s)) (.item hd) cs →
@@ -521,7 +521,7 @@ private theorem record_inventory (seen : List (Wire sp.n binding)) (st : State s
   · exact h
 
 private theorem poll_inventory_core (release : Fin sp.n → Time → Bool)
-    (seen : List (Wire sp.n binding)) (st : State sp ro binding)
+    (seen : List (Wire sp.n binding)) (st : State sp binding)
     (t : Time) (h : Inventory st.voteIO (Available seen st) st.node)
     (hv : ∀ v z, (pollPre st release).outbox.head? =
       some (.vote (encodeVote v) z) → voteObj v z ∈ seen.flatMap Model.Obj.parts)
@@ -566,7 +566,7 @@ private theorem poll_inventory_core (release : Fin sp.n → Time → Bool)
 /-- A batch poll keeps the inventory, given that its ordinary emission and the held
 attestations it flushes are in the new `seen` log. -/
 private theorem poll_inventory (release : Fin sp.n → Time → Bool)
-    (seen seen' : List (Wire sp.n binding)) (st : State sp ro binding)
+    (seen seen' : List (Wire sp.n binding)) (st : State sp binding)
     (t : Time) (h : Inventory st.voteIO (Available seen st) st.node)
     (hs : seen.flatMap Model.Obj.parts ⊆ seen'.flatMap Model.Obj.parts)
     (hv : ∀ v z, (pollPre st release).outbox.head? =
@@ -576,7 +576,7 @@ private theorem poll_inventory (release : Fin sp.n → Time → Bool)
     (hf : ∀ a ∈ pollFlush st release, attObj a ∈ seen'.flatMap Model.Obj.parts) :
     Inventory (pollBatch st t release).1.voteIO (Available seen' (pollBatch st t release).1)
       (pollBatch st t release).1.node := by
-  have hcore : ∀ st₀ : State sp ro binding,
+  have hcore : ∀ st₀ : State sp binding,
       (pollPre st₀ release).outbox = (pollPre st release).outbox →
       Inventory st₀.voteIO (Available seen' st₀) st₀.node →
       Inventory (poll st₀ t release).1.voteIO (Available seen' (poll st₀ t release).1)

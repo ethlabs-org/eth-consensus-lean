@@ -116,7 +116,7 @@ section
 
 open AC
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
 
 private theorem joined_iff {τ t : Time} (hτ : 0 ≤ τ) :
@@ -142,25 +142,25 @@ theorem joinedAt_iff_restartCuts {A : NodeAC sp.toParams} {tr : RunTrace A}
     joined_iff (htime k hk)
 
 /-- **The run's joined test is the AC projection's**, on a trace whose cuts are at times `≥ 0`. -/
-theorem projAC_joinedAt_iff {tr : GoldilocksTrace sp ro} (htime : ∀ k, 0 ≤ tr.time k)
+theorem projAC_joinedAt_iff {tr : GoldilocksTrace sp} (htime : ∀ k, 0 ≤ tr.time k)
     (y : Fin sp.n) (t : Time) : tr.JoinedAt y t ↔ AC.JoinedAt tr.projAC y t := by
   rw [joinedAt_iff_restartCuts y t (fun k _ => htime k)]
   simp only [AC.JoinedAt, projAC_restartAt]
   rfl
 
 /-- The latest restart time before cut `i`. -/
-private noncomputable def lastBefore (tr : GoldilocksTrace sp ro) (y : Fin sp.n) :
+private noncomputable def lastBefore (tr : GoldilocksTrace sp) (y : Fin sp.n) :
     Nat → WithBot Time
   | 0 => ⊥
   | i + 1 => tr.lastWake y i
 
 open Classical in
-private theorem lastBefore_succ (tr : GoldilocksTrace sp ro) (y : Fin sp.n) (i : Nat) :
+private theorem lastBefore_succ (tr : GoldilocksTrace sp) (y : Fin sp.n) (i : Nat) :
     lastBefore tr y (i + 1) =
       if tr.RestartAt y i then (tr.time i : WithBot Time) else lastBefore tr y i := by
   cases i <;> rfl
 
-private theorem lastBefore_le {dg} {H} {tr : GoldilocksTrace sp ro}
+private theorem lastBefore_le {dg} {H} {tr : GoldilocksTrace sp}
     {ini} (h : GoldilocksRun proposer dg H tr ini)
     (y : Fin sp.n) (x : Time) :
     ∀ i, lastBefore tr y i ≤ x ↔ ∀ k < i, tr.RestartAt y k → tr.time k ≤ x := by
@@ -177,7 +177,7 @@ private theorem lastBefore_le {dg} {H} {tr : GoldilocksTrace sp ro}
       rcases Nat.lt_succ_iff_lt_or_eq.1 hk with hk | rfl
       exacts [hall k hk hk', absurd hk' hr]
 
-private theorem restartTime_eq {dg} {H} {tr : GoldilocksTrace sp ro}
+private theorem restartTime_eq {dg} {H} {tr : GoldilocksTrace sp}
     {ini} (h : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) : ∀ i, (tr.state y i).ac.restartTime = lastBefore tr y i := by
   intro i
@@ -195,7 +195,7 @@ private theorem restartTime_eq {dg} {H} {tr : GoldilocksTrace sp ro}
       rw [tr.state_succ_of_call hc]
       cases c with
       | ac ℓ =>
-        have hpost : (tr.post i).ac = ((goldilocksNode sp ro).step y (tr.state y i).ac ℓ.frame
+        have hpost : (tr.post i).ac = ((goldilocksNode sp).step y (tr.state y i).ac ℓ.frame
             (tr.time i) ℓ.call).1 := (congrArg Prod.fst hlaw.2.1).symm
         rw [hpost]
         split_ifs with hR
@@ -204,7 +204,7 @@ private theorem restartTime_eq {dg} {H} {tr : GoldilocksTrace sp ro}
           rw [hr]
           have hΦ : FrameOK ℓ.frame := hlaw.1 ▸
             (Store.frame_realization _ _ _ _ (fg_reachable h.toLocalRun hy i)).1
-          exact (restart_state sp _ ro y _ ℓ.frame (tr.time i) hΦ
+          exact (restart_state sp _ y _ ℓ.frame (tr.time i) hΦ
             (h.time_nonneg i)).2.2.2.2.2.1
         · exact step_restartTime y _ _ _ _ fun hr => hR ⟨ℓ, hc, hr⟩
       | fg ℓ =>
@@ -235,7 +235,7 @@ sets it, every other call keeps it), and the restarts at or before the time of a
 a restart are the ones before it (restarts come first at a time). From starts up to the vote
 permission. -/
 theorem joined_projection_from {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini} (h : GoldilocksRun proposer dg H tr ini)
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp} {ini} (h : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) (t : Time) :
     (tr.JoinedAt y t ↔ AC.JoinedAt tr.projAC y t) ∧
       (∀ i, tr.IsCall y i → ¬ tr.RestartAt y i → tr.time i = t →
@@ -270,7 +270,7 @@ theorem joined_projection_from {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 
 /-- **Joining and participation project**: `joined_projection_from` at the initial starts. -/
 theorem joined_projection : JoinedProjection :=
-  fun _ _ _ _ _ _ h _ hy t => joined_projection_from h hy t
+  fun _ _ _ _ _ h _ hy t => joined_projection_from h hy t
 
 end
 

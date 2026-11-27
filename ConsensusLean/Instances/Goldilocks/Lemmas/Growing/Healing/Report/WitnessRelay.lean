@@ -12,13 +12,13 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open Compose.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 variable {hold : Time}
 
 /-- Joinedness of this cast, rather than a no-restart premise, bounds its relay deadlines. -/
@@ -27,7 +27,7 @@ theorem witness_voterBlockTree_at
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hm : gbar g ≤ sp.ts s)
     {w y : Fin sp.n} {a i : Nat} (hw : w ∈ H (tr.time a)) (hy : y ∈ H (tr.time i))
-    {ellw ell : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw ell : ACLabel (goldilocksNode sp)} (hcw : tr.projAC.CallAt w a ellw)
     (hat : tr.time a < sp.ts s + 2 * sp.Δ)
     {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hQw : Q ∈ ellw.frame.tree)
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ell e)
@@ -54,7 +54,7 @@ theorem witness_voterBlockTree_at
       rw [AC.restartTime_of_castAtU hr.toU hy hc']
       exact hjoined
     intro k hk hrestart
-    have h := (AC.joined_awakeU sp _ ro (H (tr.time i)) _ _ hr.toU y hy i ell hc'.1 hj).2 k hk
+    have h := (AC.joined_awakeU sp _ (H (tr.time i)) _ _ hr.toU y hy i ell hc'.1 hj).2 k hk
       (ACTrace.upTo_restartAt.mpr ⟨hrun.time_mono hk, hrestart⟩)
     change tr.time k ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) at h
     simpa only [hslot, show ((s + 1 : Nat) : Int) - 1 = s by omega] using h

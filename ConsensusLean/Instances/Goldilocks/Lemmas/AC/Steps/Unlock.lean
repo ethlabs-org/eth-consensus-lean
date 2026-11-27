@@ -89,8 +89,8 @@ theorem unlockRel_compatible {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {V : View sp
   · exact Or.inl (hYT.trans h)
   · exact anc_total hΦ.coherent hYT h
 
-variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
-  {tr : GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
+  {tr : GTrace sp FGP} {proposer : Nat → Fin sp.n}
 
 /-- **An optimistic origin is compatible.** A block `D` of a frame inside `U` with three quarters
 of the committee as optimistic voters, all members of the slot's committee `K σ`, in a pool whose
@@ -124,7 +124,7 @@ theorem locks_compatibleU
     (K : CommitteeDict sp.n)
     (hP : CommitteeP K tr H) {y : Fin sp.n} (hy : y ∈ H)
     {i m : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP} (hc : CastAt tr y i ℓ e)
     (hs : e.msg.slot = m + 1) {B : Blk sp.n FGP} (hB : B ∈ ℓ.frame.tree) {S : Set (Fin sp.n)}
     (hS : ∀ w ∈ S, w ∈ equivocators (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).votes ∨
       ∃ x ∈ (mergedVoteView sp e.readPoint ℓ.frame (m + 1)).support,

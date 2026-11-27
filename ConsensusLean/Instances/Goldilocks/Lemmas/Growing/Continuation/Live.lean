@@ -36,14 +36,14 @@ are healthy ones.
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : AC.CommitteeDict sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF : Time}
 
 /-- **The effective record after an update extends `P`** when the updater's `Σ.F` extends `P`, or
 the record names a block of the update's frame extending `P`: the AC update leaves the FG store,
@@ -51,7 +51,7 @@ so the frame, unchanged, and the effective record is the frame block of the reco
 or `Σ.F`. -/
 private theorem eff_record_of_update (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {k₀ m : Nat} (hy : y ∈ H (tr.time k₀))
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k₀ m ℓ)
+    {ℓ : ACLabel (goldilocksNode sp)} (hu : AC.UpdateAt tr.projAC y k₀ m ℓ)
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : Anc (tr.HonestBlocksAt H) P (tr.state y (k₀ + 1)).fg.F ∨
       ∃ E ∈ ℓ.frame.tree, E.root = (tr.state y (k₀ + 1)).ac.latestConfirmed ∧
@@ -132,7 +132,7 @@ theorem continued_include_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   have htp : sp.ts p + 6 * sp.Δ ≤ b := by linarith
   have hga : AC.gbar g + 20 * sp.Δ ≤ sp.ts p := hS.gbar_le (by omega)
   -- every honest update of slot `p` returns `P`, not vetoed
-  have hadopt : ∀ z k₀ (ℓ : ACLabel (goldilocksNode sp ro)), z ∈ H (tr.time k₀) →
+  have hadopt : ∀ z k₀ (ℓ : ACLabel (goldilocksNode sp)), z ∈ H (tr.time k₀) →
       AC.UpdateAt tr.projAC z k₀ p ℓ → tr.time k₀ ≤ b →
       AC.getConfirmation sp (tr.state z k₀).ac ℓ.frame p = some P ∧
         ¬ AC.conflictsWithLock sp (tr.state z k₀).ac.locks ℓ.frame (tr.time k₀) P := by

@@ -13,13 +13,13 @@ public section
 namespace Consensus.Goldilocks.Healing.Growing
 variable {hold : Time}
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
 /-- The stored viable ancestor, rather than the raw selected block, supplies the prefix. -/
 theorem FrameWindow.optimistic_write_later_proposal_head_at
-    {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {sp : ACParams}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
     {g ΔF b : Time} {s₀ j N floor : Nat} {kindJ : Prop}
     {J R A D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
@@ -32,7 +32,7 @@ theorem FrameWindow.optimistic_write_later_proposal_head_at
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     (hm : gbar g ≤ sp.ts s₀) (hmb : sp.ts N + sp.Δ ≤ b) (hj : s₀ ≤ j)
     {y : Fin sp.n} {a : Nat} (hy : y ∈ H (tr.time a)) {CV : Set (AC.Vote sp.n)}
-    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt y a ellw)
+    {ellw : ACLabel (goldilocksNode sp)} (hcw : tr.projAC.CallAt y a ellw)
     (halo : sp.ts s₀ ≤ tr.time a) (hat : tr.time a < sp.ts j + 2 * sp.Δ)
     (hopt : AC.OptimisticLockAt tr.projAC y a j D CV)
     (hRA : Anc (tr.HonestBlocksAt H) R A) (hAD : Anc (tr.HonestBlocksAt H) A D)
@@ -41,7 +41,7 @@ theorem FrameWindow.optimistic_write_later_proposal_head_at
         (kindJ → Anc (tr.HonestBlocksAt H) J A) ∧ Anc (tr.HonestBlocksAt H) A Q)
     {r : Nat} (hrlo : j + 1 ≤ r) (hrN : r ≤ N)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt z c ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt z c ell)
     (hcall : ell.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state z c) ell.frame (tr.time c)).2 =

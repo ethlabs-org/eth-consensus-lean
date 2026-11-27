@@ -8,14 +8,14 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 /-- A common window root follows an actual proposal without retaining either reader's honesty. -/
 theorem FrameWindow.fcRoot_anc_proposal_head_at
-    {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {sp : ACParams}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     {lo hi : Time} {floor : Nat} {kindJ : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H lo hi floor kindJ J)
@@ -26,7 +26,7 @@ theorem FrameWindow.fcRoot_anc_proposal_head_at
     (hf : (H (max (tr.time i) (tr.time c)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hilo : lo ≤ tr.time i) (hihi : tr.time i ≤ hi)
     (hclo : lo ≤ tr.time c) (hchi : tr.time c ≤ hi)
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt z c ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt z c ell)
     (hcall : ell.call = .proposal) (hti : tr.time c = sp.ts s)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state z c) ell.frame (tr.time c)).2 =

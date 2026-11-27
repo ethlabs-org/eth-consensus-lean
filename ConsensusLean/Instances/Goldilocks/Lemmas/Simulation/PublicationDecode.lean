@@ -24,11 +24,11 @@ open Blocks Shape Node
 
 variable {binding : VoteBinding}
 
-variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : AC.ACParams}
 
 /-- Splitting recursive receipt processing preserves the actual intermediate cut,
 rather than replacing a processing occurrence by an arbitrary historical call. -/
-theorem deliverSeq_append_split {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp ro}
+theorem deliverSeq_append_split {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {hs : List (Header Info × Nat)}
     {io : VoteAuth sp.n binding}
     {y : Fin sp.n} {t : Time} (xs ys : List (Wire sp.n binding)) {j j' : Nat}
@@ -53,24 +53,24 @@ theorem deliverSeq_append_split {proposer : Nat → Fin sp.n} {tr : GoldilocksTr
 private theorem canonEvent_forward_none (io : VoteAuth sp.n binding)
     (hs : List (Header Info × Nat))
     (x : Fin sp.n) (t : Time) (p : Option (Wire sp.n binding)) (B : Blk sp) :
-    canonEvent sp ro io hs (forwardObj sp x t p B) = none := by
+    canonEvent sp io hs (forwardObj sp x t p B) = none := by
   cases hp : binding.participationKind <;>
     simp [canonEvent_eq, forwardObj, decodeBlock_eq, decodeVoteObj, decodeAttObj, presented]
 
 /-- A forwarding chain processes the parent's visit before the visit of the child's canonical
 block (with its payload when it is accepted); the split retains the actual cut boundary. -/
-theorem deliverSeq_forward_parent {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp ro}
+theorem deliverSeq_forward_parent {proposer : Nat → Fin sp.n} {tr : GoldilocksTrace sp}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {hs : List (Header Info × Nat)}
     {io : VoteAuth sp.n binding}
     {y x : Fin sp.n} {u t : Time} {parent : Wire sp.n binding} {B : Blk sp} {j j' : Nat}
-    {σ : State sp ro binding}
+    {σ : State sp binding}
     (h : DeliverSeq proposer tr dg io hs y u
       (visit io hs σ (forwardObj sp x t (some parent) B)).1 j j') :
-    ∃ (m : Nat) (σ₁ σ₂ : State sp ro binding),
+    ∃ (m : Nat) (σ₁ σ₂ : State sp binding),
       DeliverSeq proposer tr dg io hs y u (visit io hs σ₁ parent).1 j m ∧
       DeliverSeq proposer tr dg io hs y u
         (visit io hs σ₂ (blockObj sp (binding := binding) B)).1 m j' := by
-  have hz := canonEvent_forward_none (ro := ro) io hs x t (some parent) B
+  have hz := canonEvent_forward_none io hs x t (some parent) B
   rcases visit_cases io hs σ (forwardObj sp x t (some parent) B) with ⟨hr, -⟩ | ⟨-, hv⟩
   · exact absurd hr (not_refuses_of_data _ _ rfl)
   rw [hv] at h
@@ -145,18 +145,18 @@ handler. This keeps the handler state needed to locate the cut in recursive proc
 private theorem processOne_forward_origin (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (io : VoteAuth sp.n binding)
-    (hs : List (Header Info × Nat)) (st : State sp ro binding) (o : Wire sp.n binding)
+    (hs : List (Header Info × Nat)) (st : State sp binding) (o : Wire sp.n binding)
     (q : Time × List (Wire sp.n binding)) (hq : q ∈ (processOne io hs st o).forwards) :
     q ∈ st.forwards ∨ ∃ e B, ∃ p : Option (Wire sp.n binding),
-      canonEvent sp ro io hs o = some e ∧
+      canonEvent sp io hs o = some e ∧
       .fg (.block B true) ∈ (exec proposer dg st.self st.node st.now e).2 ∧
       q = (st.now, p.toList ++ [blockObj sp B]) := by
-  have hrelay : ∀ (s : State sp ro binding) (c : Prop) [Decidable c],
+  have hrelay : ∀ (s : State sp binding) (c : Prop) [Decidable c],
       (relayIf s c o).forwards = s.forwards := by
     intro s c _
     unfold relayIf
     split <;> rfl
-  rcases canonEvent_cases (ro := ro) io hs o with he | ⟨B, he⟩ | ⟨v, he⟩ | ⟨a, he⟩
+  rcases canonEvent_cases io hs o with he | ⟨B, he⟩ | ⟨v, he⟩ | ⟨a, he⟩
   · exact Or.inl (by simpa only [AsChainShape.processOne_eq, he] using hq)
   all_goals
     simp only [AsChainShape.processOne_eq, he, hrelay] at hq
@@ -168,12 +168,12 @@ private theorem processOne_forward_origin (proposer : Nat → Fin sp.n)
 private theorem accepted_canonEvent_block (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (io : VoteAuth sp.n binding)
-    (hs : List (Header Info × Nat)) (st : State sp ro binding) (o : Wire sp.n binding)
-    {e : Event (goldilocksNode sp ro)} {B : Blk sp}
-    (he : canonEvent sp ro io hs o = some e)
+    (hs : List (Header Info × Nat)) (st : State sp binding) (o : Wire sp.n binding)
+    {e : Event (goldilocksNode sp)} {B : Blk sp}
+    (he : canonEvent sp io hs o = some e)
     (hb : .fg (.block B true) ∈ (exec proposer dg st.self st.node st.now e).2) :
     decodeBlock sp hs o = some B := by
-  rcases canonEvent_cases (ro := ro) io hs o with h | ⟨C, h⟩ | ⟨v, h⟩ | ⟨a, h⟩
+  rcases canonEvent_cases io hs o with h | ⟨C, h⟩ | ⟨v, h⟩ | ⟨a, h⟩
   · rw [h] at he
     cases he
   · have heq := Option.some.inj (he.symm.trans h)
@@ -200,7 +200,7 @@ theorem foldl_processOne_forward_origin (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (io : VoteAuth sp.n binding)
     (hs : List (Header Info × Nat)) (i : Nat) (q : Time × List (Wire sp.n binding)) :
-    ∀ (os : List (Wire sp.n binding)) (st : State sp ro binding) (sub : Nat),
+    ∀ (os : List (Wire sp.n binding)) (st : State sp binding) (sub : Nat),
     q ∈ (os.foldl (processOne io hs) st).forwards →
     q ∈ st.forwards ∨ ∃ B, ∃ p : Option (Wire sp.n binding), ∃ r,
       r ∈ deliverRecs io proposer dg hs st.self st.now i os st.node sub ∧
@@ -232,7 +232,7 @@ theorem foldl_processOne_forward_origin (proposer : Nat → Fin sp.n)
     · simp only [processOne_self, processOne_now] at hm hn ht hq
       rw [processOne_node proposer dg] at hm
       refine Or.inr ⟨B, p, r, ?_, hl, hn, ht, hq, hd, List.mem_cons_of_mem _ ho⟩
-      cases he : canonEvent sp ro io hs o with
+      cases he : canonEvent sp io hs o with
       | none =>
         rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ _ he]
         simpa only [he] using hm

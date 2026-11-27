@@ -27,17 +27,17 @@ The growing form of the trace part of `Obligations/WindowAnchorRoute`; the store
 namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- **The anchor window advance** under growing faults. Three anchor steps `P i → P (i+1)` give
 `σ[P₀].h + 3 ≤ σ[P₃].h` at every store holding the four anchors of a node honest at an
 observation time `t` after the store's cuts. -/
 private theorem anchor_window_advance_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
@@ -67,7 +67,7 @@ private theorem anchor_window_advance_at
 `y` of `P 3` at cut `k`, honest at an observation time `t` after its earlier cuts, the block `F` of
 root `σ[P₃].F` is held by `y` and `P₀ ⪯ F` in the honest blocks. -/
 theorem cacheCoverage_of_anchor_window_upTo_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {P : Fin 4 → AC.Blk sp.n (List (FG.Att sp.n))}
     (hch : ∀ i, Anc (tr.HonestBlocksAt H) (P i) (P 3))
@@ -92,7 +92,7 @@ theorem cacheCoverage_of_anchor_window_upTo_at
 charged at `t`, puts `X` below the reader's cache or the cache below `X ⪯ B`. In the second case
 the reader accepts `B` before `j` (`hacc`), caches `X` there, and its cache grows on the run up to
 `j`. -/
-theorem reader_cache_covers_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem reader_cache_covers_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {c : Nat}
     {A B X : AC.Blk sp.n (List (FG.Att sp.n))} (hx : x ∈ H (tr.time c))
@@ -104,7 +104,7 @@ theorem reader_cache_covers_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hacc : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B → ∃ k < j, tr.AcceptAt y k B) :
     Anc (tr.HonestBlocksAt H) A (tr.state y j).fg.F := by
   have fg := Compose.Growing.fg_projection _ _ _ _ _ _ _
-    (fun z => Compose.requirements_from _ _ (hrun.vstart z)) hrun.genesis_root_ok
+    (fun z => Compose.requirements_from _ (hrun.vstart z)) hrun.genesis_root_ok
     hrun.toLocalRun hnc
   have hstore : ∀ {z : Fin sp.n} {i : Nat} {u : Time}, 0 ≤ u → (∀ q < i, tr.time q ≤ u) →
       z ∈ H u → tr.projFG.store z i = (tr.state z i).fg := fun {_ i _} hu hl hz => by

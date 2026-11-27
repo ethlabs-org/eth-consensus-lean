@@ -20,13 +20,13 @@ static healing chain, are removed with HS.4 and HR.3 (retired, owner decision). 
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF Gp w : Time}
+  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF Gp w : Time}
   {i₀ m : Nat}
   {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))}
 

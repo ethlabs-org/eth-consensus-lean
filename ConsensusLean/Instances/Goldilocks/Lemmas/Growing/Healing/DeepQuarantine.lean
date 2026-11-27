@@ -19,18 +19,18 @@ fast-lock candidate (`high_toFG_fast_at`). -/
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
 
 /-- At an honest `ac_to_fg` call, a block other than genesis of the caller's tree that the caller
 did not hold after any cut at a time `≤ c` has a stamp later than `c` (it was accepted at a later
 cut, and a stamp is at least the acceptance time). -/
-private theorem cut_lt_blockStamp_of_late {Hs : Set (Fin sp.n)} {T : GoldilocksTrace sp ro}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem cut_lt_blockStamp_of_late {Hs : Set (Fin sp.n)} {T : GoldilocksTrace sp}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg Hs T ini) (hnc : Compose.NoCollRun dg T)
-    {x : Fin sp.n} (hx : x ∈ Hs) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {x : Fin sp.n} (hx : x ∈ Hs) {i : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     (hc : T.projAC.CallAt x i ℓ) (hcall : ℓ.call = .toFG) {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hCt : C ∈ (T.state x i).fg.tree) (hg : C.root ≠ sp.genesisRoot) {c : Time}
     (hlate : ∀ k < i, T.time k ≤ c → C ∉ (T.state x (k + 1)).fg.tree) :
@@ -58,7 +58,7 @@ private theorem cut_lt_blockStamp_of_late {Hs : Set (Fin sp.n)} {T : GoldilocksT
   rw [ht'] at hge
   exact lt_of_lt_of_le (AC.etime_of_lt_of.2 hkc) hge
 
-variable {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+variable {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 /-- **The deep quarantine.** Before `c_z + 4DΔ` (for deep sources on at depth `D`), the source
 that `ac_to_fg` returns at a node honest at it and at `c_z`, of state height `≥ H_z + 1`, is a
@@ -69,7 +69,7 @@ theorem high_toFG_fast_at {ini}
     (hnc : Compose.NoCollRun dg tr) {g : Time}
     (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))
     {z : Fin sp.n} {r : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time r)))
-    {ell : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hrep : AC.ToFGAt tr.projAC z r ell C)
     (hhC : HZ tr H g + 1 ≤ ((tr.state z r).fg.σ C.root).h)
     (hq : ∀ D, sp.deepDepth = some D → tr.time r ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :

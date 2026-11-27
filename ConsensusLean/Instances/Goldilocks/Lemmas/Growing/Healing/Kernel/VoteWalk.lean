@@ -16,11 +16,11 @@ The two clean-parent inputs are taken as hypotheses, in the form of
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- A noncurrent live voter lock is below the actual parent when the two clean
@@ -38,7 +38,7 @@ theorem vote_old_live_lock_below_parent_of_sources_at
       AC.OptimisticLockAt tr.projAC x r s B CV → cleanLabel sp a + sp.k + 2 ≤ s →
       tr.time r ≤ b → u = s + 1 → Anc (tr.HonestBlocksAt H) B d.head)
     {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {elly : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {elly : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcy : AC.CastAt tr.projAC y j elly e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
     {l : AC.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
     (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k)

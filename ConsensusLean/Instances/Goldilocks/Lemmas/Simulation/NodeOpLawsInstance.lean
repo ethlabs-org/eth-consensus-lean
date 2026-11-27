@@ -171,7 +171,7 @@ open AsChainShape Shape
 open Model (pubOf)
 
 /-- The FG update keeps the vote authentication. -/
-private theorem fgUpdate_voteIO {sp ro binding} {release} (st : State sp ro binding) :
+private theorem fgUpdate_voteIO {sp binding} {release} (st : State sp binding) :
     (AsChainShape.fgUpdate st release).voteIO = st.voteIO := by
   rw [fgUpdate_eq st release]; simp only; split
   · rfl
@@ -180,7 +180,7 @@ private theorem fgUpdate_voteIO {sp ro binding} {release} (st : State sp ro bind
     · split <;> rfl
 
 /-- A batch poll keeps the vote authentication. -/
-theorem poll_voteIO {sp ro binding} {release} (st : State sp ro binding) t :
+theorem poll_voteIO {sp binding} {release} (st : State sp binding) t :
     (AsChainShape.pollBatch st t release).1.voteIO = st.voteIO := by
   refine pollBatch_pres (Q := fun x => x.voteIO = st.voteIO) (fun x hx => ?_)
     (fun x h => by obtain ⟨atts, he⟩ := heldDrain_eq x; rw [he]; exact h) rfl
@@ -188,19 +188,19 @@ theorem poll_voteIO {sp ro binding} {release} (st : State sp ro binding) t :
   unfold AsChainShape.poll; simp only; split <;> split <;> simp [fgUpdate_voteIO]
 
 /-- Recording an own object keeps the vote authentication. -/
-theorem recordOwn_voteIO {sp ro binding} (st : State sp ro binding) o hs :
+theorem recordOwn_voteIO {sp binding} (st : State sp binding) o hs :
     (AsChainShape.recordOwn st o hs).voteIO = st.voteIO := by
   rw [AsChainShape.recordOwn_eq]; split <;> (try split) <;> rfl
 
 /-- The proposal poll keeps the vote authentication. -/
-private theorem pollPropose_voteIO {sp ro binding} {sign} (st : State sp ro binding) :
-    ({ AsChainShape.nodeTick st sign with ticked := true } : State sp ro binding).voteIO =
+private theorem pollPropose_voteIO {sp binding} {sign} (st : State sp binding) :
+    ({ AsChainShape.nodeTick st sign with ticked := true } : State sp binding).voteIO =
       st.voteIO := by
   change (AsChainShape.nodeTick st sign).voteIO = _
   rw [nodeTick_eq (sign := _)]; split <;> rfl
 
 /-- Processing a delivery keeps the tick flag. -/
-private theorem process_ticked {sp ro binding} (st : State sp ro binding) o hs :
+private theorem process_ticked {sp binding} (st : State sp binding) o hs :
     (AsChainShape.process st o hs).ticked = st.ticked := by
   rw [process_eq]
   generalize delivered st.voteIO hs st o = os
@@ -214,19 +214,19 @@ private theorem process_ticked {sp ro binding} (st : State sp ro binding) o hs :
     split <;> (try dsimp only) <;> (try unfold AsChainShape.relayIf) <;> (try split) <;> rfl
 
 /-- A state with the key, clock, held queue and tick flag of another flushes the same. -/
-private theorem pollFlush_congr {sp ro binding} {release} {st st' : State sp ro binding}
+private theorem pollFlush_congr {sp binding} {release} {st st' : State sp binding}
     (hs : st'.self = st.self) (hn : st'.now = st.now) (hh : st'.held = st.held)
     (hk : st'.ticked = st.ticked) : pollFlush st' release = pollFlush st release := by
   rw [pollFlush_eq, pollFlush_eq, hs, hn, hh, hk]
 
 /-- After a batch poll, the next batch poll flushes nothing. -/
-private theorem pollFlush_pollBatch {sp ro binding} {release} (st : State sp ro binding) t :
+private theorem pollFlush_pollBatch {sp binding} {release} (st : State sp binding) t :
     pollFlush (AsChainShape.pollBatch st t release).1 release = [] := by
   rw [pollFlush_eq, pollBatch_ticked, pollBatch_self, pollBatch_now, pollBatch_held]
   cases hr : release st.self st.now <;> cases hk : st.ticked <;> simp
 
 /-- A batch poll that flushes nothing runs the FG update when due. -/
-private theorem pollBatch_node_quiet {sp ro binding} {release} (st : State sp ro binding) t
+private theorem pollBatch_node_quiet {sp binding} {release} (st : State sp binding) t
     (h : pollFlush st release = []) : (AsChainShape.pollBatch st t release).1.node =
       (if st.fgDue then AsChainShape.fgUpdate st release else st).node := by
   rw [pollBatch_node_eq (fun _ => st.self) (fun _ _ _ _ _ => 0) 0, h, List.nil_append]
@@ -249,7 +249,7 @@ theorem traceEncoding_ioLaws {V : Type} [Fintype V] {E : Env V} (S : Setup)
       change (AsChainShape.relayIf st c o).voteIO = _
       unfold AsChainShape.relayIf; split <;> rfl
     attest_io := fun st _ _ => by
-      change (if _ then _ else _ : State _ _ _).voteIO = st.voteIO
+      change (if _ then _ else _ : State _ _).voteIO = st.voteIO
       split <;> rfl
     wake_io := fun _ _ _ => rfl
     clock_io := fun _ _ => rfl
@@ -271,7 +271,7 @@ theorem traceEncoding_opLaws {V : Type} [Fintype V] {E : Env V} (S : Setup)
     relayIf_obs := fun st c _ o => by
       exact ⟨relayIf_node st c o, relayIf_self st c o, relayIf_now st c o, relayIf_fgDue st c o⟩
     attest_obs := fun st _ _ => by
-      change let r := (if _ then _ else _ : State _ _ _)
+      change let r := (if _ then _ else _ : State _ _)
         (∃ l : List (FG.Att _), r.node = l.foldl (fun n a => (Node.onAttestation n a).1) _) ∧
           r.self = st.self ∧ r.now = st.now
       dsimp only

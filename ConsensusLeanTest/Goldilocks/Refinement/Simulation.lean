@@ -119,13 +119,12 @@ omit [DecidableEq V] in
 handler: its declaration is header data, not a carried vote object, so no message handler runs
 for it (goldilocks-spec.tex §"Declarations are not votes"). -/
 theorem declared_vote_no_message_after_accepted_block {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (hs : List (Blocks.Header Info × Nat)) (i : Nat)
-    (σ : State sp ro stock) (B : Blk sp) (v : AC.Vote sp.n)
+    (σ : State sp stock) (B : Blk sp) (v : AC.Vote sp.n)
     (ha : B.fgPayload = []) (_hp : B.acPayload = ([v], []))
-    (hc : canonEvent sp ro σ.voteIO hs (blockObj sp B) = some (.block B))
+    (hc : canonEvent sp σ.voteIO hs (blockObj sp B) = some (.block B))
     (hslot : ¬ sp.toParams.slotOf σ.now < B.slot) (hfg : σ.node.fg.onBlock B ≠ none) :
     deliverRecs σ.voteIO proposer dg hs σ.self σ.now i
         (delivered σ.voteIO hs σ (blockObj sp B)) σ.node 0 =
@@ -144,12 +143,11 @@ omit [DecidableEq V] in
 /-- A canonical block that `on_block` drops as of a future slot, or that the FG refuses, is
 delivered alone: no handler runs for it (composition.tex §"Blocks"). -/
 theorem payload_skipped_after_refused_block {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (hs : List (Blocks.Header Info × Nat)) (i : Nat)
-    (σ : State sp ro stock) (B : Blk sp)
-    (hc : canonEvent sp ro σ.voteIO hs (blockObj sp B) = some (.block B))
+    (σ : State sp stock) (B : Blk sp)
+    (hc : canonEvent sp σ.voteIO hs (blockObj sp B) = some (.block B))
     (hrefused : sp.toParams.slotOf σ.now < B.slot ∨ σ.node.fg.onBlock B = none) :
     deliverRecs σ.voteIO proposer dg hs σ.self σ.now i
         (delivered σ.voteIO hs σ (blockObj sp B)) σ.node 0 =
@@ -167,19 +165,18 @@ omit [DecidableEq V] in
 effect, also for what it carries: a delivery of it makes no handler call, so the vote it carries
 is not processed (composition.tex §"Blocks"). -/
 theorem undecoded_block_dropped {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (hs : List (Blocks.Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
-    (σ : State sp ro stock) (k : Fin sp.n) (s : Nat) (h : Blocks.Header Info)
+    (σ : State sp stock) (k : Fin sp.n) (s : Nat) (h : Blocks.Header Info)
     (v : AC.Vote sp.n) (z : Nat)
-    (hc : canonEvent sp ro σ.voteIO hs
+    (hc : canonEvent sp σ.voteIO hs
       (.mk (.signed k (.proposer s)) (.item h) [voteObj v z]) = none) :
     deliverRecs σ.voteIO proposer dg hs self t i
       (delivered σ.voteIO hs σ (.mk (.signed k (.proposer s)) (.item h) [voteObj v z]))
       σ.node 0 = [] := by
   let o : Wire sp.n stock := .mk (.signed k (.proposer s)) (.item h) [voteObj v z]
-  change canonEvent sp ro σ.voteIO hs o = none at hc
+  change canonEvent sp σ.voteIO hs o = none at hc
   have hr : Refuses σ.voteIO hs σ o :=
     (refuses_iff _ _ _ _).2 ⟨trivial, fun B hB => by rw [hc] at hB; cases hB⟩
   have hd : delivered σ.voteIO hs σ o = [o] := by
@@ -194,11 +191,10 @@ omit [DecidableEq V] in
 /-- Two nested relay wrappers still execute the carried vote's message handler, with its
 actual cuts and post-states, rather than dropping the inner wrapper's contents. -/
 theorem nested_payload_message {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
     (hs : List (Blocks.Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat)
-    (σ : State sp ro stock) (v : AC.Vote sp.n) (z : Nat)
+    (σ : State sp stock) (v : AC.Vote sp.n) (z : Nat)
     (hcheck : σ.voteIO.check v.val (stock.voteRole v.slot) (encodeVote v) z = true) :
     deliverRecs σ.voteIO proposer dg hs self t i
       (delivered σ.voteIO hs σ (.mk .none (.data .relay) [.mk .none (.data .relay) [voteObj v z]]))
@@ -215,10 +211,10 @@ theorem nested_payload_message {sp : AC.ACParams}
       Model.Obj.carried, visitList_cons,
       visit_of_carried_eq_nil σ.voteIO hs _ (o := voteObj v z) rfl]
     simp [visitList_nil_eq]
-  have hz : ∀ cs, canonEvent sp ro σ.voteIO hs (.mk .none (.data .relay) cs) = none := by
+  have hz : ∀ cs, canonEvent sp σ.voteIO hs (.mk .none (.data .relay) cs) = none := by
     intro cs
     simp [canonEvent_eq, decodeBlock_eq, decodeVoteObj, presented, decodeAttObj, stock]
-  have hv : canonEvent sp ro σ.voteIO hs (voteObj v z) = some (.message v) := by
+  have hv : canonEvent sp σ.voteIO hs (voteObj v z) = some (.message v) := by
     rw [canonEvent_voteObj, ite_eq_left hcheck]
   rw [hd, deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ _ (hz _),
     deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ _ (hz _),
@@ -259,14 +255,14 @@ theorem forward_dependency_preheld :
   decide
 
 /-- Without observation metadata the legacy action-covered horizon is unchanged. -/
-theorem action_only_horizon {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-    (tr : GoldilocksTrace sp ro) (h : tr.observationHorizon = none) (t : Time) :
+theorem action_only_horizon {sp : AC.ACParams}
+    (tr : GoldilocksTrace sp) (h : tr.observationHorizon = none) (t : Time) :
     tr.InHorizon t ↔ ∃ i, tr.label i ≠ none ∧ t ≤ tr.time i := by
   simp [RunTrace.InHorizon, h]
 
 /-- Projection preserves finite observation metadata, including the absence of it. -/
 theorem projection_observation {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (tr : GoldilocksTrace sp ro) :
+    (tr : GoldilocksTrace sp) :
     tr.projAC.observationHorizon = tr.observationHorizon ∧
       tr.projFG.observationHorizon = tr.observationHorizon := ⟨rfl, rfl⟩
 
@@ -332,8 +328,8 @@ theorem protocol_delay_grid (S : Setup) :
     let pub : Model.Public := ⟨1, 2, by decide, 2, by decide⟩
     (({ S with vote := AsChainShape.stock } : Setup).params pub (by decide)).Δ = 2 ∧
       (goldilocks { S with vote := AsChainShape.stock } pub).skel.grid.slotTime 1 = 8 ∧
-      (goldilocksShape (({ S with vote := AsChainShape.stock } : Setup).params pub (by decide))
-        (S.ro 1)).skel.grid.slotTime 1 = 8 := by
+      (goldilocksShape (({ S with vote := AsChainShape.stock } : Setup).params pub
+        (by decide))).skel.grid.slotTime 1 = 8 := by
   exact ⟨rfl, rfl, rfl⟩
 
 /-- Half-open engine delivery (held by `base + Δ − 1`) is strict protocol delivery
@@ -364,7 +360,7 @@ theorem old_outage_coefficients_fail :
 /-- Actual successful cuts queue a parent and child at one timestamp, with the child's
 exact parent wrapper supplied by the persistent root map. Refusal queues neither. -/
 theorem acceptance_publication_order {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (A B : Blk sp)
+    (st : State sp) (A B : Blk sp)
     (ha : A.parent = some sp.genesisRoot) (hb : B.parent = some A.root)
     (hroot : A.root ≠ sp.genesisRoot) (hq : st.forwards = []) :
     (apply st none (st.node, [.fg (.block A true), .fg (.block B true)])).forwards =
@@ -375,9 +371,9 @@ theorem acceptance_publication_order {sp : AC.ACParams}
 
 /-- The installed poll drains all timestamped wrappers in order and retains their durable map. -/
 theorem publisher_poll_drain {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (t : Time)
+    (st : State sp) (t : Time)
     (hf : st.fgDue = false) (ho : st.outbox = []) (hh : st.held = []) :
-    (goldilocksShape sp ro).pollBatch st t =
+    (goldilocksShape sp).pollBatch st t =
       ({ st with forwards := [], voteForwards := [] },
         st.forwards.map (fun p => (.forward p.1, p.2)) ++
         st.voteForwards.map (fun p => (.voteForward p.1 (encodeVote p.2.1), [p.2.2]))) := by
@@ -386,7 +382,7 @@ theorem publisher_poll_drain {sp : AC.ACParams}
 
 /-- A duplicate block is refused by the actual node handler and creates no fresh candidate. -/
 theorem duplicate_no_publication {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro) (B : Blk sp)
+    (st : State sp) (B : Blk sp)
     (hs : st.node.fg.blocks B.root = some B) :
     (apply st none (Node.onBlock st.self st.node st.now B)).forwards = st.forwards := by
   unfold Node.onBlock
@@ -401,9 +397,9 @@ theorem duplicate_no_publication {sp : AC.ACParams}
 /-- A duplicate block is not relayed: a receipt of a block the node already holds leaves the
 relay queue unchanged (composition.tex §"Model": a refused receipt is not forwarded). -/
 theorem duplicate_not_relayed {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (hs : List (Blocks.Header Info × Nat))
-    (st : State sp ro) (o : Wire sp.n) (B : Blk sp)
-    (hc : canonEvent sp ro st.voteIO hs o = some (.block B))
+    (hs : List (Blocks.Header Info × Nat))
+    (st : State sp) (o : Wire sp.n) (B : Blk sp)
+    (hc : canonEvent sp st.voteIO hs o = some (.block B))
     (hheld : st.node.fg.blocks B.root = some B) :
     (processOne st.voteIO hs st o).relayBuf = st.relayBuf := by
   rw [AsChainShape.processOne_eq]
@@ -418,11 +414,11 @@ theorem duplicate_not_relayed {sp : AC.ACParams}
 by replaying the frame's blocks) queues no vote envelope, no block wrapper, no relay and no body
 (composition.tex §"Model": the replay re-processes blocks already accepted and sends nothing). -/
 theorem restart_replay_forwards_nothing {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (k : Fin sp.n) (d : State sp ro) (t : Time)
+    (k : Fin sp.n) (d : State sp) (t : Time)
     (ht : 0 ≤ t) :
     (restore k d t).voteForwards = d.voteForwards ∧ (restore k d t).forwards = d.forwards ∧
       (restore k d t).relayBuf = d.relayBuf ∧ (restore k d t).outbox = d.outbox := by
-  have hnil := restart_emits_nil ro k d.node.ac (Node.frame d.node) t ht
+  have hnil := restart_emits_nil k d.node.ac (Node.frame d.node) t ht
   rw [restore_eq]
   simp only [apply, Node.restart, Node.acCall, hnil, emitted, List.filterMap_nil,
     List.flatMap_cons, List.flatMap_nil, List.append_nil, List.map_nil,
@@ -432,8 +428,8 @@ theorem restart_replay_forwards_nothing {sp : AC.ACParams}
 re-admitted: processing an object that inserts it into the restored pool queues its envelope,
 stamped with the new admission time `t` (a fresh admission by a call other than the restart). -/
 theorem readmitted_after_restart_forwarded {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (hs : List (Blocks.Header Info × Nat))
-    (k : Fin sp.n) (d : State sp ro) (t : Time) (o : Wire sp.n) (m : AC.Vote sp.n)
+    (hs : List (Blocks.Header Info × Nat))
+    (k : Fin sp.n) (d : State sp) (t : Time) (o : Wire sp.n) (m : AC.Vote sp.n)
     (hg : VoteGate (restore k d t))
     (hdrop : m ∉ (restore k d t).node.ac.pool m.slot)
     (hnew : m ∈ (processOne (restore k d t).voteIO hs (restore k d t) o).node.ac.pool m.slot) :

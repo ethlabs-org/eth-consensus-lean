@@ -16,10 +16,10 @@ A store's finality update never lowers its cached `h_j` (`updateFinality_hj_le`)
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)}
+variable {sp : ACParams}
+  {tr : GoldilocksTrace sp} {H : Set (Fin sp.n)}
 
 theorem updateFinality_hj_le {P : Params} {ACP : Type}
     (st : Store P ACP) (σ : FG.ChainState P.n) : st.hj ≤ (st.updateFinality σ).hj := by

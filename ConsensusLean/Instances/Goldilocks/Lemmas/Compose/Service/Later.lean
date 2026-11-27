@@ -15,14 +15,14 @@ slot `s` there; its tick at that public time starts with `ac_on_tick`, joined. -
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
 
 /-- The cuts of a tick: the AC's tick, the proposal step, the FG update. -/
 private theorem tick_cuts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} (y : Fin sp.n)
-    (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) (fgDue : Bool) :
+    (st : NodeState (goldilocksNode sp)) (t : Time) (x : Nat) (fgDue : Bool) :
     (Node.exec proposer dg y st t (.tick x fgDue)).2 =
       (Node.tickStep proposer dg y st t x .acTick).2 ++
       (Node.tickStep proposer dg y
@@ -35,7 +35,7 @@ private theorem tick_cuts {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} (y :
 /-- **An honest validator awake and joined at `t_s + 6Δ` runs the update of slot `s`** there: its
 tick at that public time starts with `ac_on_tick`, joined. -/
 theorem update_of_awake_joined {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini}
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp} {ini}
     (hrun : GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n} (hx : x ∈ H) {s : Nat} (hw : tr.awake x (sp.ts s + 6 * sp.Δ))
     (hj : tr.JoinedAt x (sp.ts s + 6 * sp.Δ)) :
@@ -59,7 +59,7 @@ theorem update_of_awake_joined {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     simp only [tick_cuts]; rfl
   rw [hget] at hl0
   simp only [Nat.add_zero] at hn0 ht0 hl0
-  obtain ⟨ℓ, hl, hcall⟩ : ∃ ℓ : ACLabel (goldilocksNode sp ro),
+  obtain ⟨ℓ, hl, hcall⟩ : ∃ ℓ : ACLabel (goldilocksNode sp),
       tr.label j = some (.ac ℓ) ∧ ℓ.call = .tick := ⟨_, hl0, rfl⟩
   have hnr : ¬ tr.RestartAt x j := by
     rintro ⟨ℓ', ⟨-, hl'⟩, hr'⟩

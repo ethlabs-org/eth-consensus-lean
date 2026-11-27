@@ -26,7 +26,7 @@ Every step is proved. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
 section Deepest
 
@@ -51,16 +51,16 @@ private theorem deepest_eq_of_anc {Φ : AC.Frm n FGP} (hΦ : FrameOK Φ) {S : Se
 
 end Deepest
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- **A genuine pool vote at an optimistic point**: a vote of the pool of an optimistic point of a
 node honest at its call, whose validator is honest then, was cast by it no later. -/
 private theorem optimisticPoint_pool_vote_at {ini}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr) {y : Fin sp.n}
     {i : Nat} (hy : y ∈ H (tr.time i))
-    {ℓ : ACLabel (goldilocksNode sp ro)} {A : AC.ACState sp.n}
+    {ℓ : ACLabel (goldilocksNode sp)} {A : AC.ACState sp.n}
     (hpt : AC.OptimisticPoint tr.projAC y i ℓ A) {σ : Nat} {v : Vote sp.n} (hv : v ∈ A.pool σ)
     (hvH : v.val ∈ H (tr.time i)) :
     v.slot = σ ∧ ∃ j ≤ i, ∃ e, AC.VoteAt tr.projAC v.val j e ∧ e.msg = v := by
@@ -79,7 +79,7 @@ theorem optimistic_pass_anc {ini} (hrun : Growing.GoldilocksRun proposer dg H tr
     (hQK : Q ⊆ K.committee p) (hQH : Q ⊆ H (sp.ts p + 2 * sp.Δ))
     (hQ : 3 * sp.committeeSize ≤ 4 * Q.ncard) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i)) (hti : tr.time i ≤ sp.ts p + 2 * sp.Δ)
-    {ℓ : ACLabel (goldilocksNode sp ro)} {A : AC.ACState sp.n}
+    {ℓ : ACLabel (goldilocksNode sp)} {A : AC.ACState sp.n}
     (hpt : AC.OptimisticPoint tr.projAC y i ℓ A) (hP : P ∈ ℓ.frame.tree)
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (h3 : 3 * sp.committeeSize ≤ 4 * (AC.optimisticVoters sp A ℓ.frame p B).ncard) :
@@ -109,7 +109,7 @@ theorem optimisticSelect_eq_proposal {ini} (hrun : Growing.GoldilocksRun propose
     (hQK : Q ⊆ K.committee p) (hQH : Q ⊆ H (sp.ts p + 2 * sp.Δ))
     (hQ : 3 * sp.committeeSize ≤ 4 * Q.ncard) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i)) (hti₀ : sp.ts p ≤ tr.time i) (hti : tr.time i < sp.ts p + 2 * sp.Δ)
-    {ℓ : ACLabel (goldilocksNode sp ro)} {A : AC.ACState sp.n}
+    {ℓ : ACLabel (goldilocksNode sp)} {A : AC.ACState sp.n}
     (hpt : AC.OptimisticPoint tr.projAC y i ℓ A) (hj : AC.joined sp A (tr.time i))
     (hP : P ∈ ℓ.frame.tree)
     (hPass : 3 * sp.committeeSize ≤ 4 * (AC.optimisticVoters sp A ℓ.frame p P).ncard)

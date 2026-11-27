@@ -38,12 +38,12 @@ only extends from there (`healthy_current_record_interval_at`, `effective_record
 
 namespace Consensus.Goldilocks.Generic
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open Obligations.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {cm : Time → Finset (Fin sp.n)}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {cm : Time → Finset (Fin sp.n)}
   {βK : ℚ} {g ΔF a b : Time}
 variable {hold : Time}
 
@@ -180,11 +180,11 @@ private theorem proposal_below_ready_read {D : RepairSchedule tr H proposer dg g
 /-- The supplier's data equations give the interface run, the drain `2k + 5`, the catch-up `18Δ`,
 the hold `Δ`, the margin and the latency `6Δ`. -/
 private theorem localData_eqs
-      {fgHold : Time} {C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold}
+      {fgHold : Time} {C : ACCorrectLocal (goldilocksNode sp) (fun v => v.val) fgHold}
     {sign : Fin sp.n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg) :
-    (∀ cm proposer dg H (tr : GoldilocksTrace sp ro), C.run.Run cm proposer dg H tr →
-      (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr) ∧
+    {Rg : Nat} (hdata : GoldilocksLocalData sp C sign G Rg) :
+    (∀ cm proposer dg H (tr : GoldilocksTrace sp), C.run.Run cm proposer dg H tr →
+      (goldilocksRunInterface sp sign G).Run cm proposer dg H tr) ∧
     C.healing.drain = 2 * sp.k + 5 ∧ C.healing.deepBudget = sp.deepDepth ∧
     C.catchUp = 18 * sp.Δ ∧ C.hold = sp.Δ ∧ C.margin = 6 * sp.Δ ∧ C.latency = 6 * sp.Δ := by
   obtain ⟨⟨⟨hrunEq, -⟩, -, -, -, hdrain, hbudget, -⟩, -, hcatch, -, -, hhold, hmargin, hlat, -⟩ :=
@@ -197,9 +197,9 @@ private theorem localData_eqs
 proposal at `s₁` with its update by the horizon and `ḡ + 4Δ ≤ t_{s₁}` makes any two ready reads
 strictly after `t_{s₁} + 6Δ` compatible in the blocks held while honest. -/
 private theorem goldilocks_healed_compatible
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp) (fun v => v.val) fgHold)
     {sign : Fin sp.n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg) {s₁ : Nat}
+    {Rg : Nat} (hdata : GoldilocksLocalData sp C sign G Rg) {s₁ : Nat}
     (hβ : βK ≤ 1 / 2) (hrun : C.run.Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b fgHold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
@@ -239,9 +239,9 @@ private theorem goldilocks_healed_compatible
 proposal at `s₁` by the horizon is an ancestor of every ready read at or after its update
 `t_{s₁} + 6Δ`, strictly before the read cut. -/
 private theorem goldilocks_healed_proposal
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp) (fun v => v.val) fgHold)
     {sign : Fin sp.n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg) {s₁ : Nat}
+    {Rg : Nat} (hdata : GoldilocksLocalData sp C sign G Rg) {s₁ : Nat}
     (hβ : βK ≤ 1 / 2) (hrun : C.run.Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b fgHold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
@@ -277,9 +277,9 @@ private theorem goldilocks_healed_proposal
 `Δ` after it, at a slot after the drain with `ḡ + 4Δ ≤ t_s`, is an ancestor of every ready read at
 or after `t_s + 6Δ`, strictly before the read cut. -/
 private theorem goldilocks_proposal_read
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp) (fun v => v.val) fgHold)
     {sign : Fin sp.n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg)
+    {Rg : Nat} (hdata : GoldilocksLocalData sp C sign G Rg)
     (hβ : βK ≤ 1 / 2) (hrun : C.run.Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b fgHold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
@@ -315,9 +315,9 @@ private theorem goldilocks_proposal_read
 
 /-- **The healthy read points of the Goldilocks supplier** (L6 and L7) at its data equations. -/
 theorem goldilocks_healthyReadPoint
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp) (fun v => v.val) fgHold)
     {sign : Fin sp.n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg) : HealthyReadPoint C where
+    {Rg : Nat} (hdata : GoldilocksLocalData sp C sign G Rg) : HealthyReadPoint C where
   healed := fun _ _ _ _ _ _ _ _ _ _ _ hβ hrun hp hr hab hbud hs₁ _ _ =>
     ⟨fun hX hTb hgu _ _ _ _ _ _ ht hu hy hz _ _ =>
       goldilocks_healed_compatible C hdata hβ hrun hp hr hab hbud hs₁ hX hTb hgu ht hu hy hz,

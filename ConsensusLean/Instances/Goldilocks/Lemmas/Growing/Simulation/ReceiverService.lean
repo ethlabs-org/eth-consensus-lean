@@ -25,11 +25,11 @@ open Consensus.Model (pubOf)
 
 section Run
 
-open AC (ACParams ReplayOrder)
+open AC (ACParams)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 /-- Post-stop service on a Goldilocks run gives every receiver honest at its call strict
 processing and acceptance relay on the AC projection. Senders need be honest only at their

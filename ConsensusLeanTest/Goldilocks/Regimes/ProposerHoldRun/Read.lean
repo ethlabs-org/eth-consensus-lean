@@ -92,7 +92,7 @@ theorem origin_label
     (hC : Compose.OriginWithin (tr S) (H S) C s 41) : s ≤ 1 := by
   by_contra hs
   push Not at hs
-  have hrun' := Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl
+  have hrun' := Compose.goldilocks_ac_projection _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl
   obtain ⟨x, hx, i, CV, hi, ⟨ℓ, hu, -⟩ | hO⟩ := Compose.originWithin_iff.mp hC
   · have ht : (tr S).time i = (({ S with vote := AsChainShape.stock } : Setup).params
         (pubOf env) one_le_card).ts s +

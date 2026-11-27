@@ -11,10 +11,10 @@ of C1.1 at the honest call of cut `k`. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder goldilocksAC Vote Payload)
+open AC (ACParams goldilocksAC Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+variable {sp : ACParams}
+  (tr : GoldilocksTrace sp) (H : Set (Fin sp.n))
 
 /-- C1.1 (i) and (ii) at the honest votes cast at cut `k` of a slot in `(s, m]`. (i) reads "at or
 below `fc_root`" in the honest blocks (claims C1.1; the frame-tree reading of `ViableAtVote` fails

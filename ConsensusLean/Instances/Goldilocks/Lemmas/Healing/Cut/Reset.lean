@@ -36,7 +36,7 @@ the honest-object facts of A1.5 come from `Compose.goldilocks_ac_projection`. -/
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
 /-! ## The cut `c_z` and the frontier `H_z` -/
 
@@ -63,10 +63,10 @@ theorem hmax_le_HZ {y : Fin P.n} (hy : y ∈ H) {j : Nat} (hj : FirstCutAfter tr
 
 end Frontier
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp} {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF : Time}
 
 /-- Under `Healthy(g)` (an honest node awake from `ḡ` on, so the run goes on), some cut is the
 first cut after `c_z`. -/
@@ -89,7 +89,7 @@ theorem faulty_lt_q (hh : tr.HealthyRun H ΔF g) : Hᶜ.ncard < sp.toParams.fg.q
   omega
 
 /-- The height pair an honest node signs names a block it holds, of that height. -/
-theorem signAt_entry {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem signAt_entry {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {att : FG.Att sp.n} (hs : tr.SignAt y k att) :
     ∃ E ∈ (tr.state y k).fg.tree, E.root = att.T ∧ ((tr.state y k).fg.σ E.root).h = att.h :=
@@ -124,7 +124,7 @@ theorem signAt_report_entry {ini} (hrun : GoldilocksRun proposer dg H tr ini) {v
 
 /-- A cache strictly ahead of a held target is backed by an actual earlier
 honest report at a strictly higher height. No report at the reader is invented. -/
-theorem cache_ahead_report {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem cache_ahead_report {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < sp.toParams.fg.q)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
@@ -224,7 +224,7 @@ by it at a cut after `c_z`, so its AC stamp at an AC call of `i` other than the 
 receipt is later than `c_z` (`H_z` bounds the honest frontier after all events at `c_z`). -/
 private theorem cutZ_lt_blockStamp_of_high (hrun : GoldilocksRun proposer dg H tr ini)
     (hh : tr.HealthyRun H ΔF g) (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} (hx : x ∈ H)
-    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt x i ℓ)
+    {i : Nat} {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt x i ℓ)
     (hcall : ℓ.call = .toFG) {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hCt : C ∈ (tr.state x i).fg.tree) (hg : C.root ≠ sp.genesisRoot)
     (hhC : HZ tr H g + 1 ≤ ((tr.state x i).fg.σ C.root).h) :
@@ -275,7 +275,7 @@ candidate, a deep candidate under the deep anchor whose stamp, when its state he
 `≥ H_z + 1`, is later than `c_z`. -/
 theorem toFG_fastLock (hrun : GoldilocksRun proposer dg H tr ini) (hh : tr.HealthyRun H ΔF g)
     (hnc : Compose.NoCollRun dg tr)
-    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     {C : AC.Blk sp.n (List (FG.Att sp.n))} (hto : AC.ToFGAt tr.projAC x i ℓ C)
     (hi : cutZ sp.toParams g ≤ tr.time i) :
     (∃ l ∈ AC.liveLocks sp (tr.state x i).ac.locks ℓ.frame (tr.time i),
@@ -469,7 +469,7 @@ theorem namers_lt_q (hrun : GoldilocksRun proposer dg H tr ini) (hh : tr.Healthy
 
 /-- **HR.1, cut and reset.** -/
 theorem cut_and_reset : CutAndReset := by
-  intro sp ro proposer dg H tr g ΔF hrun hh hnc
+  intro sp proposer dg H tr g ΔF hrun hh hnc
   refine ⟨cutZ_le sp g, fun y hy k att hs hk => signed_le_HZ hrun hh hy hs hk,
     fun x hx i ℓ C hto hi => toFG_fastLock hrun hh hnc hx hto hi,
     fun y hy i X hX hXh => honest_row_of_height hrun hh hy i hX hXh, fun a hR => ?_⟩

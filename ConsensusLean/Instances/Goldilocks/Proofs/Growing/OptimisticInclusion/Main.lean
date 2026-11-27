@@ -19,11 +19,11 @@ public section
 
 namespace Consensus.Goldilocks.Regimes.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 /-- **Optimistic inclusion, under growing faults, at a committee.** -/
 theorem optimistic_inclusion : OptimisticInclusion := by
-  intro sp ro dg H tr proposer ΔF K hopt hrun hnc hKB hsl hCS p P hP hU hQ y t j ht hy hw hj
+  intro sp dg H tr proposer ΔF K hopt hrun hnc hKB hsl hCS p P hP hU hQ y t j ht hy hw hj
   have hΔ := sp.toParams.hΔ
   obtain ⟨p₀, kP, hpr, hph, hPa, hkP⟩ := hP
   have hPs := Compose.Growing.proposesAt_slot_eq hPa hkP

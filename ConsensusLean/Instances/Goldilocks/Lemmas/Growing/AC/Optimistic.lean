@@ -16,8 +16,8 @@ cut, but the shared validator is chosen outside the faulty set at the consuming 
 
 namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
-  {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)}
+variable {FGP : Type} {sp : ACParams}
+  {tr : GTrace sp FGP} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 theorem optimistic_transfer_stored
@@ -25,7 +25,7 @@ theorem optimistic_transfer_stored
     (hP : ∀ t, CommitteeP K (tr.upTo t) (H t)) (hT : ∀ t, CommitteeT K (tr.upTo t) (H t))
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize) {s : Nat}
     {x y : Fin sp.n} {i₀ i : Nat} {B D : Blk sp.n FGP} {CV : Set (Vote sp.n)}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hx : x ∈ H (tr.time i₀)) (hopt : OptimisticLockAt tr x i₀ s D CV) (hBD : Anc U B D)
     (hf : 2 * (K.committee s ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
     (hf1 : 2 * (K.committee (s + 1) ∩ (H (tr.time i))ᶜ).ncard < sp.committeeSize)
@@ -124,7 +124,7 @@ theorem optimistic_transfer_stored
     obtain ⟨hs₂, j₂, hj₂, e₂, hvote₂, rfl⟩ := hpool v₂ hv₂ (hv₂w ▸ hwH)
     have hvote₁' := (upTo_voteAt).mp hvote₁
     have hvote₁'' := upTo_voteAt.mpr ⟨hvote₁'.1.trans hxi, hvote₁'.2⟩
-    obtain ⟨_, rfl⟩ := AC.one_vote_per_slotU sp FGP ro (H (tr.time i)) U
+    obtain ⟨_, rfl⟩ := AC.one_vote_per_slotU sp FGP (H (tr.time i)) U
       (tr.upTo (tr.time i)) hry.localRun.toU _ hwH j₁ j₂ e₁ e₂ hvote₁''
       (hv₂w ▸ hvote₂)
       (by rw [optimisticPoint_pool_slotU hrx.localRun.toU hrx.vstart hx hpt' hv₁, hs₂])
@@ -155,7 +155,7 @@ theorem optimistic_transfer_stored
 
 theorem optimistic_transfer (sp : ACParams) :
     OptimisticTransfer sp := by
-  intro FGP ro H U tr proposer hrun K hP hT hsize s x y i₀ i B CV ℓ e hx hopt hf hf1 hy hc hs
+  intro FGP H U tr proposer hrun K hP hT hsize s x y i₀ i B CV ℓ e hx hopt hf hf1 hy hc hs
     hcarry hv he
   exact optimistic_transfer_stored hrun K (hP.upTo hrun.localRun.time_mono hrun.localRun.antitone)
     (hT.upTo hrun.localRun.antitone) hsize hx hopt .refl hf hf1 hy hc hs hcarry hv he

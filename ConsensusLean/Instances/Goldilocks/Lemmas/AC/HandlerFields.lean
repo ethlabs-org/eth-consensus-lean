@@ -155,28 +155,28 @@ theorem acToFG_mayVote (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
   split_ifs <;> rfl
 
 /-- Restart keeps the installed permission. -/
-theorem acRestart_mayVote (ro : ReplayOrder sp FGP) (self : Fin sp.n)
+theorem acRestart_mayVote (self : Fin sp.n)
     (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (acRestart sp ro self A Φ t).1.mayVote = A.mayVote := by
+    (acRestart sp self A Φ t).1.mayVote = A.mayVote := by
   rfl
 
 /-- Every AC call preserves the permission installed before execution. -/
-theorem step_mayVote (ro : ReplayOrder sp FGP) (self : Fin sp.n)
+theorem step_mayVote (self : Fin sp.n)
     (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (c : (goldilocksAC sp FGP ro).Call) :
-    ((goldilocksAC sp FGP ro).step self A Φ t c).1.mayVote = A.mayVote := by
+    (c : (goldilocksAC sp FGP).Call) :
+    ((goldilocksAC sp FGP).step self A Φ t c).1.mayVote = A.mayVote := by
   cases c with
   | tick => exact acOnTick_mayVote self A Φ t
   | proposal => exact acProposal_mayVote A Φ t
   | toFG => exact acToFG_mayVote A Φ t
   | message v => exact acOnMessage_mayVote self A Φ t v
   | block B => exact acOnBlock_mayVote self A Φ t B
-  | restart => exact acRestart_mayVote ro self A Φ t
+  | restart => exact acRestart_mayVote self A Φ t
 
 /-- A trace preserves each honest node's supplied initial permission at every cut. -/
-theorem trace_mayVote {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {ini : Fin sp.n → ACState sp.n}
-    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {y : Fin sp.n} (hy : y ∈ H)
+theorem trace_mayVote {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {ini : Fin sp.n → ACState sp.n}
+    (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini) {y : Fin sp.n} (hy : y ∈ H)
     (i : Nat) : (tr.state y i).mayVote = (ini y).mayVote := by
   induction i with
   | zero => change (tr.init y).mayVote = _; rw [hr.init y hy]
@@ -185,7 +185,7 @@ theorem trace_mayVote {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
     · obtain ⟨ℓ, hc⟩ := hc
       have he := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
       rw [hc.1] at he
-      have hp := step_mayVote ro y (tr.state y i) ℓ.frame (tr.time i) ℓ.call
+      have hp := step_mayVote y (tr.state y i) ℓ.frame (tr.time i) ℓ.call
       rw [he] at hp
       have hs : tr.state y (i + 1) = tr.post i := by
         simp [Trace.state, hc.1, hc.2]
@@ -202,18 +202,18 @@ theorem trace_mayVote {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
 
 /-- **The read-time gate**: on a trace from the canonical committee start, an honest node may
 vote in slot `s` at a cut iff it is a member of the slot-`s` committee. -/
-theorem trace_mayVote_iff {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {K : CommitteeDict sp.n}
-    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr (committeeStart sp.genesisRoot K))
+theorem trace_mayVote_iff {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {K : CommitteeDict sp.n}
+    (hr : ACLocalRun (goldilocksAC sp FGP) H U tr (committeeStart sp.genesisRoot K))
     {y : Fin sp.n} (hy : y ∈ H) (i s : Nat) :
     (tr.state y i).mayVote s = true ↔ y ∈ K.committee s := by
   rw [trace_mayVote hr hy i, committeeStart_mayVote]
 
 /-- Stock traces retain the always-permitted initial binding: the gate at the full committee,
 whose canonical start is the stock one (`committeeStart_full`). -/
-theorem trace_mayVote_stock {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
-    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr) {y : Fin sp.n} (hy : y ∈ H)
+theorem trace_mayVote_stock {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP}
+    (hr : ACLocalRun (goldilocksAC sp FGP) H U tr) {y : Fin sp.n} (hy : y ∈ H)
     (i s : Nat) : (tr.state y i).mayVote s = true :=
   (trace_mayVote_iff (K := CommitteeDict.full sp.n) (by rw [committeeStart_full]; exact hr) hy
     i s).2 (Set.mem_univ y)
@@ -244,9 +244,9 @@ private theorem acOnBlock_emits_mayVote (self : Fin sp.n) (A : ACState sp.n) (Φ
 
 /-- **Every AC call is gated.** Every emission of an AC call passes the call's input gate: a
 vote of slot `s` only when `mayVote s`. -/
-theorem emits_mayVote (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP ro).Call) :
-    ∀ e ∈ ((goldilocksAC sp FGP ro).step self A Φ t c).2, A.mayVote e.msg.slot = true := by
+theorem emits_mayVote (self : Fin sp.n) (A : ACState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP).Call) :
+    ∀ e ∈ ((goldilocksAC sp FGP).step self A Φ t c).2, A.mayVote e.msg.slot = true := by
   intro e he
   cases c with
   | tick =>
@@ -265,7 +265,7 @@ theorem emits_mayVote (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState s
     rwa [optimisticConfirmation_mayVote, admitVote_mayVote] at h
   | block B => exact acOnBlock_emits_mayVote self A Φ t B e he
   | restart =>
-    change e ∈ (acRestart sp ro self A Φ t).2 at he
+    change e ∈ (acRestart sp self A Φ t).2 at he
     exact absurd he List.not_mem_nil
 
 end Consensus.Goldilocks.AC

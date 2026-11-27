@@ -11,8 +11,8 @@ public section
 
 namespace Consensus.Goldilocks.AC
 
-variable {wm : WriteMode} {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
-  {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+variable {wm : WriteMode} {sp : ACParams} {FGP : Type}
+  {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP}
   {ini : Fin sp.n → ACState sp.n} {proposer : Nat → Fin sp.n}
 
 /-- **An honest validator is not an equivocator in an honest node's pool**, with the unlock
@@ -25,7 +25,7 @@ theorem honest_pool_not_equivocator {u : Nat → Set Lock} (hr : ACLocalRunU wm 
   obtain ⟨ja, -, ea, hva, rfl⟩ := hho.pool_vote y hy i σ _ ha hw
   obtain ⟨jb, -, eb, hvb, rfl⟩ := hho.pool_vote y hy i σ _ hb (hbw ▸ hw)
   rw [hbw] at hvb
-  obtain ⟨-, rfl⟩ := one_vote_per_slotU sp FGP ro H U tr hr _ hw ja jb ea eb hva hvb
+  obtain ⟨-, rfl⟩ := one_vote_per_slotU sp FGP H U tr hr _ hw ja jb ea eb hva hvb
     ((state_pool_slotU sp hr hini hy i σ _ ha).trans (state_pool_slotU sp hr hini hy i σ _ hb).symm)
   exact hab rfl
 

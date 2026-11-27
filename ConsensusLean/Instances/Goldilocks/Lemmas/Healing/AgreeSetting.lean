@@ -23,22 +23,22 @@ that do not compare walks:
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
 /-! ### Block stamps -/
 
 section Stamps
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (AC.Blk sp.n FGP)} {tr : AC.GTrace sp FGP ro}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {tr : AC.GTrace sp FGP}
 
 end Stamps
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF w : Time}
+  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF w : Time}
   {i₀ i m : Nat}
   {c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))}
 
@@ -60,9 +60,9 @@ theorem honestProposalRun_of_proposesAt {ini} (hrun : GoldilocksRun proposer dg 
   rcases Compose.blockCall_cases h hp hc with hg |
     ⟨j, x, fgDue, rfl, hg, hpr, d, pay, hdp, hB, -, -, -, -⟩
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
-  have hreq : ({ goldilocksNode sp ro with initial := ini (proposer s) } :
+  have hreq : ({ goldilocksNode sp with initial := ini (proposer s) } :
       NodeAC sp.toParams).Requirements :=
-    Compose.requirements_from sp ro (hrun.vstart (proposer s))
+    Compose.requirements_from sp (hrun.vstart (proposer s))
   obtain ⟨hc1, ht1, hst1⟩ := tick_proposal_call h hp hg hpr
   obtain ⟨hacc, ht2⟩ := own_block_accepted h hreq hrun.genesis_root_ok hnc hp hg hpr hdp
   obtain ⟨hacc3, ht3, -⟩ := ac_block_after h hp hacc
@@ -96,9 +96,9 @@ proposal's `ac_proposal` call at cut `iP`, at `t_s`, with duty head `d` (`P.pare
 and payload `pay`. -/
 structure AgreeSetting (K : AC.CommitteeDict sp.n) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (g ΔF w : Time) (i₀ i m : Nat)
+    (tr : GoldilocksTrace sp) (g ΔF w : Time) (i₀ i m : Nat)
     (c : PhaseCase (AC.Blk sp.n (List (FG.Att sp.n)))) (p : Fin sp.n) (kP s : Nat)
-    (P : AC.Blk sp.n (List (FG.Att sp.n))) (iP : Nat) (ℓp : ACLabel (goldilocksNode sp ro))
+    (P : AC.Blk sp.n (List (FG.Att sp.n))) (iP : Nat) (ℓp : ACLabel (goldilocksNode sp))
     (d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)) (pay : Payload sp.n) : Prop where
   run : GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K)
   shared : HSShared tr H K dg g ΔF

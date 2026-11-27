@@ -26,13 +26,13 @@ growing-fault siblings read them on the honest prefix they need:
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 /-! ### Pools at a slot start -/
 
 section Pools
 
-variable {FGP : Type} {sp : AC.ACParams} {ro : AC.ReplayOrder sp FGP}
+variable {FGP : Type} {sp : AC.ACParams}
 
 /-- A vote in a pool after an admission was there before, or is the admitted vote. -/
 theorem admit_pool_mem {A : AC.ACState sp.n} {t : Time} {m w : AC.Vote sp.n} {s : Nat}
@@ -71,9 +71,9 @@ private theorem tryVote_pool_mem (self : Fin sp.n) (A : AC.ACState sp.n) (Φ : A
 
 /-- At a slot start, a nondelivery call takes only own votes or votes from its input block. -/
 theorem step_pool_new (self : Fin sp.n) (A : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP)
-    {t : Time} (ht : t = sp.ts (sp.slot t)) (hΔ : 0 < sp.Δ) (c : (AC.goldilocksAC sp FGP ro).Call)
+    {t : Time} (ht : t = sp.ts (sp.slot t)) (hΔ : 0 < sp.Δ) (c : (AC.goldilocksAC sp FGP).Call)
     (hm : ∀ m, c ≠ .message m) (hc : c ≠ .restart) {w : AC.Vote sp.n} {s : Nat}
-    (h : w ∈ ((AC.goldilocksAC sp FGP ro).step self A Φ t c).1.pool s) :
+    (h : w ∈ ((AC.goldilocksAC sp FGP).step self A Φ t c).1.pool s) :
     w ∈ A.pool s ∨ w.val = self ∨ ∃ B, c = .block B ∧ w ∈ AC.declaredHeadVotes B := by
   cases c with
   | tick =>
@@ -124,12 +124,12 @@ theorem createAtt_spec {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σe : FG.Chai
     rw [List.any_eq_true]
     exact ⟨b, hb, by simp [hb'.1, hb'.2]⟩
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 /-- An honest client's sent contents only grow. -/
-private theorem sent_succ {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem sent_succ {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     {v : Fin sp.n} (hv : v ∈ H)
     (c : Nat) {b : FG.Content} (hb : b ∈ (tr.state v c).record.sent) :
@@ -158,7 +158,7 @@ private theorem sent_succ {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- **An honest validator signs an attestation at most once**: after signing, its content is in
 the client's sent list, and `create_attestation` refuses it. -/
-theorem sign_unique {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem sign_unique {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     {v : Fin sp.n} (hv : v ∈ H)
     {d d' : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hs' : tr.SignAt v d' att) :
@@ -185,15 +185,15 @@ theorem sign_unique {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- A restart emits nothing. -/
 private theorem restart_emits {ini}
-    (hr : ACLocalRun (goldilocksNode sp ro) H (tr.HonestBlocks H) tr.projAC ini)
-    {v : Fin sp.n} (hv : v ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    (hr : ACLocalRun (goldilocksNode sp) H (tr.HonestBlocks H) tr.projAC ini)
+    {v : Fin sp.n} (hv : v ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt v i ell) (hcl : ell.call = .restart) : ell.emits = [] := by
   have he := hr.exec i ell hc.2 (hc.1 ▸ hv)
   rw [hc.1, hcl] at he
-  have h' : ell.emits = (((AC.goldilocksAC sp (List (FG.Att sp.n)) ro).step v
+  have h' : ell.emits = (((AC.goldilocksAC sp (List (FG.Att sp.n))).step v
       (tr.projAC.state v i) ell.frame (tr.projAC.time i) .restart)).2 := by rw [he]
   rw [h']
-  exact ((AC.restart_state sp) _ ro v (tr.projAC.state v i) ell.frame (tr.projAC.time i)
+  exact ((AC.restart_state sp) _ v (tr.projAC.state v i) ell.frame (tr.projAC.time i)
     (AC.frameIn_of_callAt hr hv hc).1 (hr.time_nonneg i)).1
 
 /-- **An optimistic write of slot `m` before a signing at `t_m`** (the signing at a slot start).
@@ -223,7 +223,7 @@ theorem slot_start_optimistic {ini}
     exact (AC.ts_le_iff_le_slot sp (hr.time_nonneg r) (m : Int)).2 (by rw [hsl])
   obtain ⟨C, hcd⟩ := hs
   obtain ⟨j, ev, kk, hg, hdj, hk⟩ := Compose.call_in_group hrun.toLocalRun hv hcd
-  obtain ⟨x, rfl⟩ := @Compose.signed_only_in_ticks sp.toParams (goldilocksNode sp ro)
+  obtain ⟨x, rfl⟩ := @Compose.signed_only_in_ticks sp.toParams (goldilocksNode sp)
     proposer dg v _ _ _ C att (List.mem_of_getElem? hk)
   have hkk : kk < (Node.exec proposer dg v (tr.state v j) (tr.time d) (.tick x true)).2.length := by
     by_contra h
@@ -272,7 +272,7 @@ theorem slot_start_optimistic {ini}
         have he := hr.exec k₁ ell₁ hc₁.2 (hc₁.1 ▸ hv)
         rw [hc₁.1] at he
         change w ∈ (tr.projAC.post k₁).pool w.slot at hh
-        have hpost : tr.projAC.post k₁ = ((AC.goldilocksAC sp (List (FG.Att sp.n)) ro).step v
+        have hpost : tr.projAC.post k₁ = ((AC.goldilocksAC sp (List (FG.Att sp.n))).step v
             (tr.projAC.state v k₁) ell₁.frame (tr.projAC.time k₁) ell₁.call).1 := by rw [he]
         rw [hpost] at hh
         have hts : tr.projAC.time k₁ = sp.ts (sp.slot (tr.projAC.time k₁)) := by
@@ -333,10 +333,10 @@ signing at `t_m + Δ`). At a public time a node's deliveries follow its tick, an
 `t_m + Δ` casts its slot-`m` vote unless it voted in slot `m` already; so an honest voter of slot
 `m` accepts no block at `t_m + Δ` before its vote. -/
 theorem vote_before_late_delivery
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {i : Nat} {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hA : tr.AcceptAt y i W) (hik : i < k) (ht : tr.time i = sp.ts e.msg.slot + sp.Δ) :
     False := by
@@ -380,7 +380,7 @@ theorem vote_before_late_delivery
     have he := hr.exec k ell hc.1.2 (hc.1.1 ▸ hy)
     rw [hc.1.1] at he
     have h1 : (tr.projAC.post k).restartTime = (tr.projAC.state y k).restartTime := by
-      have hpost : tr.projAC.post k = ((AC.goldilocksAC sp (List (FG.Att sp.n)) ro).step y
+      have hpost : tr.projAC.post k = ((AC.goldilocksAC sp (List (FG.Att sp.n))).step y
           (tr.projAC.state y k) ell.frame (tr.projAC.time k) ell.call).1 := by rw [he]
       rw [hpost]
       exact AC.step_restartTime y _ _ _ _ hnrk
@@ -396,7 +396,7 @@ theorem vote_before_late_delivery
   have hJ : tr.JoinedAt y u := (hjp.2.1 k ⟨_, Compose.projAC_callAt.mp hc.1⟩ hnr_k htk).mpr (by
     rw [← Compose.projAC_state hrun.toLocalRun hy k]
     exact hjk)
-  obtain ⟨ellt, hlt, hcall⟩ : ∃ ellt : ACLabel (goldilocksNode sp ro),
+  obtain ⟨ellt, hlt, hcall⟩ : ∃ ellt : ACLabel (goldilocksNode sp),
       tr.label jt = some (.ac ellt) ∧ ellt.call = .tick := ⟨_, hct.2, rfl⟩
   have hct' : tr.CallAt y jt (.ac ellt) := ⟨hct.1, hlt⟩
   have hpt : tr.projAC.CallAt y jt ellt := Compose.projAC_callAt.mpr hct'
@@ -416,18 +416,18 @@ theorem vote_before_late_delivery
   by_cases hvs : (tr.projAC.state y jt).votedSlot = (e.msg.slot : Int)
   · rcases AC.cast_of_votedSlotU hr.toU hrun.vstart hy jt e.msg.slot hvs with
       ⟨j', hj', e', hve', hes⟩ | hmf
-    · have := (AC.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy j' k e' e hve' hve hes).1
+    · have := (AC.one_vote_per_slotU sp _ H _ tr.projAC hr.toU y hy j' k e' e hve' hve hes).1
       omega
     · exact absurd hmay (by rw [hmf]; decide)
   · have hexec := hr.exec jt ellt hpt.2 (hpt.1 ▸ hy)
     rw [hpt.1, hcall] at hexec
-    have hne := Compose.acOnTick_votes (ro' := ro) y _ ellt.frame hjt
+    have hne := Compose.acOnTick_votes y _ ellt.frame hjt
       (by rw [hslot]; exact hvs) (by rw [hslot]; exact hmay) (by rw [hslot])
     rw [show tr.projAC.time jt = u from htt] at hexec
     rw [hexec] at hne
     obtain ⟨e', he'⟩ := List.exists_mem_of_ne_nil _ hne
     have hsl' := (AC.castAt_specU hr.toU hy ⟨hpt, he'⟩).2.1
-    have := (AC.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy jt k e' e ⟨ellt, hpt, he'⟩ hve
+    have := (AC.one_vote_per_slotU sp _ H _ tr.projAC hr.toU y hy jt k e' e ⟨ellt, hpt, he'⟩ hve
       (by rw [hsl']; change sp.slot (tr.time jt) = _; rw [htt, hslot])).1
     omega
 

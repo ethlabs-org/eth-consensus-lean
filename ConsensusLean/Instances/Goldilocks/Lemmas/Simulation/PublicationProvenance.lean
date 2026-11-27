@@ -152,18 +152,17 @@ private theorem tick_forward_acceptance_wire (hv : rho.ExecutionValid) {i : Nat}
     rw [hnode] at hc
     refine ⟨C, parent, ?_, hq, hpub⟩
     change _ ∈ (Node.onTick _ _ _ _ _ _ _).2
-    rw [onTick_cuts (sp := S.params (Model.pubOf E) hn) (ro := S.ro _)]
+    rw [onTick_cuts (sp := S.params (Model.pubOf E) hn)]
     exact List.mem_append_left _ (List.mem_append_right _ hc)
 
 private theorem tick_accepted_root {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
-    (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) {fgDue : Bool}
+    (self : Fin sp.n) (st : NodeState (goldilocksNode sp)) (t : Time) (x : Nat) {fgDue : Bool}
     {B : Blk sp}
     (hm : .fg (.block B true) ∈ (exec proposer dg self st t (.tick x fgDue)).2) :
     B.RootOk dg ∧ B.parent ≠ none := by
-  change _ ∈ (onTick (A := goldilocksNode sp ro) proposer dg self st t x fgDue).2 at hm
-  rw [onTick_cuts (sp := sp) (ro := ro)] at hm
+  change _ ∈ (onTick (A := goldilocksNode sp) proposer dg self st t x fgDue).2 at hm
+  rw [onTick_cuts (sp := sp)] at hm
   rcases List.mem_append.mp hm with hm | hm
   · rcases List.mem_append.mp hm with hm | hm
     · simp [tickStep, acCall] at hm

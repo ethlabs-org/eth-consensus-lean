@@ -31,10 +31,10 @@ constraint. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-variable (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+variable {sp : ACParams}
+variable (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
 
 /-- **A lock write within `b`**: a fast lock (a fast update or an optimistic selection) or a slow
 lock of label `s` on the block `C`, written at cut `i` by a writer `x` honest at that cut, at a

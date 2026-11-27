@@ -20,7 +20,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote Payload ACState)
+open AC (ACParams Vote Payload ACState)
 
 variable {binding : VoteBinding}
 
@@ -51,13 +51,13 @@ theorem relHead_eq (v : V) (ob : Option Body) :
 /-- What the first trailing poll of a tick at `t` from the shape state `st` releases after its
 ordinary body and forwards: every held attestation, oldest first, when the release schedule
 allows release at `t`. -/
-noncomputable def relFlush (v : V) (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
+noncomputable def relFlush (v : V) (st : State (S.params (pubOf E) hn) S.vote)
     (t : Time) : List (Model.protoOf (compiled (goldilocks S)) E).Object :=
   (if S.release (pubOf E) st.self t then st.held else []).map (heldObj S rho v)
 
 omit [DecidableEq V] in
 /-- `relFlush` releases every held attestation when the schedule allows release at `t`. -/
-theorem relFlush_eq (v : V) (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) (t : Time) :
+theorem relFlush_eq (v : V) (st : State (S.params (pubOf E) hn) S.vote) (t : Time) :
     relFlush S rho hn v st t =
       (if S.release (pubOf E) st.self t then st.held else []).map (heldObj S rho v) := by
   rfl
@@ -292,23 +292,23 @@ theorem leading_polls (v : V) (nd : Model.Node (Model.protoOf (compiled (goldilo
 
 omit [DecidableEq V] in
 /-- The slot proposal keeps the vote authentication. -/
-theorem propose_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) s :
+theorem propose_voteIO (st : State (S.params (pubOf E) hn) S.vote) s :
     (propose st s).1.voteIO = st.voteIO := by
   rw [propose_eq]; dsimp only; split <;> rfl
 
 omit [DecidableEq V] in
 /-- The node's tick keeps the vote authentication. -/
-theorem nodeTick_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) :
+theorem nodeTick_voteIO (st : State (S.params (pubOf E) hn) S.vote) :
     (nodeTick st (S.sign (pubOf E))).voteIO = st.voteIO := by
   rw [nodeTick_eq (sign := _)]; split <;> rfl
 
 omit [DecidableEq V] in
 /-- A delivery keeps the vote authentication: the generic `process_io` at Goldilocks' laws. -/
-theorem process_voteIO (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) o hs :
+theorem process_voteIO (st : State (S.params (pubOf E) hn) S.vote) o hs :
     (process st o hs).voteIO = st.voteIO :=
   traceEncoding_induction S hn
     (fun e _ io => (∀ st o hs, io ((e.ops hn).process st o hs) = io st) →
-      ∀ (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) o hs,
+      ∀ (st : State (S.params (pubOf E) hn) S.vote) o hs,
         (process st o hs).voteIO = st.voteIO)
     (fun _ h => h)
     (NodeAsChainShape.CanonicalTrace.Encoding.OpLaws.process_io (traceEncoding_ioLaws S hn))
@@ -344,7 +344,7 @@ theorem stateAt_voteIO (v : V) (i : Nat) : (stateAt S rho hn v i).voteIO = rho.v
 omit [DecidableEq V] in
 /-- The node's tick at a public time from a state with nothing queued: the AC's tick, its
 emissions queued, the FG update due. -/
-theorem nodeTick_public (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
+theorem nodeTick_public (st : State (S.params (pubOf E) hn) S.vote)
     (hp : (S.params (pubOf E) hn).toParams.IsPublic st.now) (h0 : st.outbox = []) :
     (nodeTick st (S.sign (pubOf E))).node = (Node.acCall st.self st.node st.now .tick).1 ∧
       (nodeTick st (S.sign (pubOf E))).outbox =
@@ -425,9 +425,9 @@ private theorem trailing_polls (v : V) (N4 : Model.Node (Model.protoOf (compiled
       exact Or.inr ⟨τ, m, w, rfl⟩
 
 /-- The proposal step of a key that does not propose at `t` makes no cut. -/
-theorem tickStep_proposal_not' {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+theorem tickStep_proposal_not' {sp : ACParams}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
-    (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
+    (st : NodeState (goldilocksNode sp)) (t : Time) (x : Nat)
     (h : ¬ Proposes (P := sp.toParams) proposer self t) :
     Node.tickStep proposer dg self st t x .proposal = (st, []) := by
   simp [Node.tickStep, h]
@@ -530,7 +530,7 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
         (if sg then (Node.tickStep (runProposer S rho hn) dg (rho.ownKey v)
           (Node.tickStep (runProposer S rho hn) dg (rho.ownKey v) n1 t X .proposal).1 t X
           .fgUpdate).2 else []) :=
-    onTick_cuts (sp := S.params (pubOf E) hn) (ro := S.ro _)
+    onTick_cuts (sp := S.params (pubOf E) hn)
       (runProposer S rho hn) dg (rho.ownKey v) _ t X sg
   -- the third and fourth duties
   have hpre : preNode S rho v nd t = (rho.dutyStep v (rho.dutyStep v (rho.dutyStep v
@@ -614,7 +614,7 @@ theorem tick_public_analysis (hv : rho.ExecutionValid) {i : Nat} {v : V} {t : Ti
         · rw [h, List.length_append, List.length_singleton]; omega
     · have hab : attBodies [(Node.acCall (rho.ownKey v) (shapeOf S hn nd).node t .tick).2] = [] :=
         attBodies_ac _
-      have hpb := tickStep_proposal_attBodies (sp := S.params (pubOf E) hn) (ro := S.ro _)
+      have hpb := tickStep_proposal_attBodies (sp := S.params (pubOf E) hn)
         (runProposer S rho hn) dg (rho.ownKey v) n1 t X
       rw [hpre4, hcuts]
       cases sg
@@ -774,7 +774,7 @@ theorem mem_relHead {v : V} {ob : Option Body} {o}
 omit [DecidableEq V] in
 /-- No attestation object among the canonical block objects. -/
 theorem attObj_not_mem_blockObjs (b : FG.Att (Fintype.card V))
-    (cs : List (Cut (goldilocksNode (S.params (pubOf E) hn) (S.ro _)))) :
+    (cs : List (Cut (goldilocksNode (S.params (pubOf E) hn)))) :
     (attObj b : (Model.protoOf (compiled (goldilocks S)) E).Object) ∉
       blockObjs (sp := S.params (pubOf E) hn) cs := by
   intro h
@@ -792,7 +792,7 @@ theorem attObj_not_mem_blockObjs (b : FG.Att (Fintype.card V))
 omit [DecidableEq V] in
 /-- An attestation body among `emitted ++ attBodies` comes from a signing cut. -/
 theorem att_mem_bodies {io : VoteAuth (S.params (pubOf E) hn).n S.vote}
-    {cs : List (Cut (goldilocksNode (S.params (pubOf E) hn) (S.ro _)))}
+    {cs : List (Cut (goldilocksNode (S.params (pubOf E) hn)))}
     {w : WireAtt} (h : Body.att w ∈ emitted io cs ++ attBodies cs) :
     ∃ C a, Cut.fg (.attest C (some a)) ∈ cs ∧ w = encodeAtt a := by
   rcases List.mem_append.mp h with h | h
@@ -946,12 +946,12 @@ theorem attest_val_of_mem_node_exec {P : Params} {A : NodeAC P}
   exact key (Compose.exec_is_cut_chain proposer dg self st t e) h
 
 /-- A signing cut of a handler of `self` signs an attestation of `self`. -/
-theorem attest_val_of_mem_exec {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+theorem attest_val_of_mem_exec {sp : ACParams}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
-    (st : NodeState (goldilocksNode sp ro)) (t : Time) (e : Event (goldilocksNode sp ro))
-    {C : (goldilocksNode sp ro).Blk} {a : FG.Att sp.n}
+    (st : NodeState (goldilocksNode sp)) (t : Time) (e : Event (goldilocksNode sp))
+    {C : (goldilocksNode sp).Blk} {a : FG.Att sp.n}
     (h : Cut.fg (.attest C (some a)) ∈ (exec proposer dg self st t e).2) : a.val = self :=
-  attest_val_of_mem_node_exec (P := sp.toParams) (A := goldilocksNode sp ro)
+  attest_val_of_mem_node_exec (P := sp.toParams) (A := goldilocksNode sp)
     proposer dg self st t e h
 
 /-- A signing cut of an honest node's tick at a public time is a signing of the simulating
@@ -972,7 +972,7 @@ theorem signAt_in_tick {j : Nat} {v : V} {t : Time}
       (Nat.pair j 0) (.tick (encodeTxs (Model.mempool rho.inbox v t)) (S.sign (pubOf E)
         (rho.ownKey v) t))).length :=
     lt_of_lt_of_eq hm
-      (length_groupRecs (sp := S.params (pubOf E) hn) (ro := S.ro _) _ _ _ _ _ _ _).symm
+      (length_groupRecs (sp := S.params (pubOf E) hn) _ _ _ _ _ _ _).symm
   have hm' : m < (eventCuts S rho hn j).length := by
     rw [hEC, List.length_append]; omega
   have hget : (eventCuts S rho hn j)[m] = (groupRecs (runProposer S rho hn)
@@ -1009,8 +1009,8 @@ theorem signAt_before_tick_end {j : Nat} {v : V} {t : Time}
 /-- A vote emitted by a cut of `v`'s handler run from its engine state is of a slot whose vote
 role selects `v` (the emission gate at the state's installed permission). -/
 theorem exec_emit_selected (hv : rho.ExecutionValid) {v : V} {i : Nat} {t : Time}
-    {e : Event (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
-    {ℓ : ACLabel (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
+    {e : Event (goldilocksNode (S.params (pubOf E) hn))}
+    {ℓ : ACLabel (goldilocksNode (S.params (pubOf E) hn))}
     (hℓ : Cut.ac ℓ ∈ (exec (runProposer S rho hn) (digestOf S rho) (rho.ownKey v)
       (stateAt S rho hn v i).node t e).2) :
     ∀ m ∈ ℓ.emits, rho.ownKey v ∈ rho.sel (S.vote.voteRole m.msg.slot) := fun m hm => by

@@ -200,25 +200,25 @@ theorem ncard_inter_full_lt_iff {n : Nat} (s : Nat) (F J : Set (Fin n)) :
       ((CommitteeDict.full n).committee s ∩ J).ncard ↔ F.ncard < J.ncard := by
   rw [ncard_inter_full, ncard_inter_full]
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
+variable {FGP : Type} {sp : ACParams}
 
 /-- **P at `K = full`.** -/
-theorem CommitteeP.full {tr : GTrace sp FGP ro} {H : Set (Fin sp.n)} :
+theorem CommitteeP.full {tr : GTrace sp FGP} {H : Set (Fin sp.n)} :
     CommitteeP (CommitteeDict.full sp.n) tr H :=
   ⟨fun _ _ _ s _ _ => mem_full s _, fun _ _ _ _ _ _ s _ _ => mem_full s _⟩
 
 /-- **T at `K = full`.** -/
-theorem CommitteeT.full {tr : GTrace sp FGP ro} {H : Set (Fin sp.n)} :
+theorem CommitteeT.full {tr : GTrace sp FGP} {H : Set (Fin sp.n)} :
     CommitteeT (CommitteeDict.full sp.n) tr H :=
   fun _ _ _ _ _ _ _ v _ => mem_full v.slot _
 
 /-- P under growing faults holds at `K = full`. -/
-theorem CommitteePAt.full {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)} :
+theorem CommitteePAt.full {tr : GTrace sp FGP} {H : Time → Set (Fin sp.n)} :
     CommitteePAt (CommitteeDict.full sp.n) tr H :=
   ⟨fun _ _ _ _ _ s _ _ => mem_full s _, fun _ _ _ _ _ _ s _ _ => mem_full s _⟩
 
 /-- **CS at `K = full`** is `FaultBound`. -/
-theorem faultBoundK_full_iff {tr : GTrace sp FGP ro} {H : Set (Fin sp.n)} (s : Nat) (t : Time) :
+theorem faultBoundK_full_iff {tr : GTrace sp FGP} {H : Set (Fin sp.n)} (s : Nat) (t : Time) :
     FaultBoundK (CommitteeDict.full sp.n) s tr H t ↔ FaultBound tr H t :=
   ncard_inter_full_lt_iff s _ _
 

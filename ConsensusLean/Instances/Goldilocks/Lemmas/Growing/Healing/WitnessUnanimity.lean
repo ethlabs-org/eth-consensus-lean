@@ -30,12 +30,12 @@ the next transfer for a vote, the batch proposal for a proposal. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload gbar Vote)
+open AC (ACParams Payload gbar Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 variable {hold : Time}
 
 /-- The static AC run of the prefix through `d` of the nodes honest at `d`. -/
@@ -79,7 +79,7 @@ finalized tip is below `X`. -/
 theorem witness_frame_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor : Nat} {kindJ : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))} (hframe : FrameWindow tr H lo hi floor kindJ J)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ell) (hlo : lo ≤ tr.time i) (hhi : tr.time i ≤ hi)
     (hf : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {X Q : AC.Blk sp.n (List (FG.Att sp.n))} (hQy : Q ∈ (tr.state y i).fg.tree)
@@ -231,10 +231,10 @@ theorem unanimous_next_votes_of_witness_at {K : AC.CommitteeDict sp.n}
   have hrestart : ∀ k, ACTrace.RestartAt (tr.projAC.upTo (tr.time i)) y k →
       tr.time k ≤ gbar g := by
     intro k hk
-    obtain ⟨hkd, hk⟩ := (ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _ ro)).mp hk
+    obtain ⟨hkd, hk⟩ := (ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _)).mp hk
     exact hnr y k (hrun.antitone hkd hy) (Compose.projAC_restartAt.mp hk)
   have hdl : ∀ k ≤ i, ∀ t, gbar g ≤ t →
-      ACTrace.deadline (A := AC.goldilocksAC sp _ ro) (tr.projAC.upTo (tr.time i)) y k t ≤
+      ACTrace.deadline (A := AC.goldilocksAC sp _) (tr.projAC.upTo (tr.time i)) y k t ≤
         max t (sp.ts m) + sp.Δ :=
     fun _ _ t _ => Compose.ac_deadline_le_of_restarts (a := sp.ts m)
       (fun r _ hrs => (hrestart r hrs).trans hgm) t
@@ -245,7 +245,7 @@ theorem unanimous_next_votes_of_witness_at {K : AC.CommitteeDict sp.n}
     (show sp.ts m + 2 * sp.Δ ≤ tr.time i by linarith) le_rfl hdl hrs hrelay
   have hhalf := AC.honest_voters_half_before hS hm (show sp.ts m + sp.Δ ≤ tr.time i by linarith)
     (fun x hx r _ hrest => by
-      obtain ⟨hrd, hrest⟩ := (ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _ ro)).mp hrest
+      obtain ⟨hrd, hrest⟩ := (ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _)).mp hrest
       rw [AC.ts_sub_one]
       exact (hnr x r (hrun.antitone hrd hx) (Compose.projAC_restartAt.mp hrest)).trans
         (by linarith))
@@ -295,7 +295,7 @@ theorem unanimous_next_proposal_of_witness_at {K : AC.CommitteeDict sp.n}
     (hG : ∀ x j e, x ∈ H (tr.time j) → AC.VoteAt tr.projAC x j e →
       e.msg.slot = m → AC.VoteExtends (tr.HonestBlocksAt H) e.msg X)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y i ell)
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts (m + 1 : Nat))
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
@@ -350,10 +350,10 @@ theorem unanimous_next_proposal_of_witness_at {K : AC.CommitteeDict sp.n}
   have hrestart : ∀ k, ACTrace.RestartAt (tr.projAC.upTo (tr.time i)) y k →
       tr.time k ≤ gbar g := by
     intro k hk
-    obtain ⟨hkd, hk⟩ := (ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _ ro)).mp hk
+    obtain ⟨hkd, hk⟩ := (ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _)).mp hk
     exact hnr y k (hrun.antitone hkd hy) (Compose.projAC_restartAt.mp hk)
   have hdl : ∀ k ≤ i, ∀ t, gbar g ≤ t →
-      ACTrace.deadline (A := AC.goldilocksAC sp _ ro) (tr.projAC.upTo (tr.time i)) y k t ≤
+      ACTrace.deadline (A := AC.goldilocksAC sp _) (tr.projAC.upTo (tr.time i)) y k t ≤
         max t (sp.ts m) + sp.Δ :=
     fun _ _ t _ => Compose.ac_deadline_le_of_restarts (a := sp.ts m)
       (fun r _ hrs => (hrestart r hrs).trans hgm) t
@@ -362,7 +362,7 @@ theorem unanimous_next_proposal_of_witness_at {K : AC.CommitteeDict sp.n}
     fun k _ hk => (hrestart k hk).trans_lt (by linarith)
   have hhalf := AC.honest_voters_half_before hS hm (show sp.ts m + sp.Δ ≤ tr.time i by linarith)
     (fun x hx r _ hrest => by
-      obtain ⟨hrd, hrest⟩ := (ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _ ro)).mp hrest
+      obtain ⟨hrd, hrest⟩ := (ACTrace.upTo_restartAt (A := AC.goldilocksAC sp _)).mp hrest
       rw [AC.ts_sub_one]
       exact (hnr x r (hrun.antitone hrd hx) (Compose.projAC_restartAt.mp hrest)).trans
         (by linarith))

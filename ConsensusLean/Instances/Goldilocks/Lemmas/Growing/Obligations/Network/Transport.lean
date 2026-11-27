@@ -447,7 +447,7 @@ private theorem decode_attObj (hn : 1 ≤ Fintype.card V) (a : FG.Att (Fintype.c
   intro _ _
   rw (config := { transparency := .default }) [NodeAsChainShape.CanonicalTrace.wireOf_eq]
   rw [NodeAsChainShape.CanonicalTrace.receiverCodec_eq, NodeAsChainShape.CanonicalTrace.voteIOAt_eq]
-  exact canonEvent_attObj (sp := S.params (Model.pubOf E) hn) (ro := S.ro _) _ _ a hwf
+  exact canonEvent_attObj (sp := S.params (Model.pubOf E) hn) _ _ a hwf
 
 private theorem own_att_process_by (hn : 1 ≤ Fintype.card V) (hv : rho.ExecutionValid)
     {y : Fin (Fintype.card V)} {a : FG.Att (Fintype.card V)} {u : Time}
@@ -534,8 +534,8 @@ private theorem signed_released_by_at (hn : 1 ≤ Fintype.card V) (hv : rho.Exec
       (mul_nonneg (Nat.cast_nonneg _) E.ΔAC_pos.le)),
       (releasedFrom_iff S rho _ _ _).mp (hrel hR), hu⟩
 
-variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (ΔF : Time)
+variable {sp : AC.ACParams}
+  (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) (ΔF : Time)
 
 /-- Signed FG attestations of a node honest at the signing cut are processed before the
 attestation deadline at FG delay `Δ_F` at recipient calls within the engine horizon, by every

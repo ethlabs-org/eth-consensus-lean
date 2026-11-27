@@ -29,7 +29,7 @@ variable {V : Type} [Fintype V] [DecidableEq V] (S : Setup) {E : Env V}
 
 /-- **The Goldilocks run map** of a valid engine run, through its canonical growing trace. -/
 noncomputable def goldilocksRunMap (hv : rho.ExecutionValid) :
-    Generic.RunMap (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) rho (payloadOf S) where
+    Generic.RunMap (A := goldilocksNode (S.params (pubOf E) hn)) rho (payloadOf S) where
   validator := rho.key
   keyIndex := Equiv.refl _
   key_eq _ := rfl
@@ -64,16 +64,16 @@ noncomputable def goldilocksRunMap (hv : rho.ExecutionValid) :
   attObject := attObj
   att_signer _ := rfl
   att_conflict a b hab := (conflictsIff_iff.mp conflicts_iff S.vote _ _ _).mpr ⟨a, b, rfl, rfl, hab⟩
-  tip := outTip _ _
+  tip := outTip _
   chain st B := blocksTo st.fg.blocks (B.slot + 1) B
   clock s := (s hn).now
   output_eq g v i _ := by
     have h := read_eq_out S rho hn g v i
     rw [stateAt_eq] at h
-    exact h.trans (outOf_eq_blocksTo _ _ _ _ g)
+    exact h.trans (outOf_eq_blocksTo _ _ _ g)
   available_tip g hg := by
     obtain rfl : Out.confirmed = g := Option.some.inj hg
-    exact outTip_confirmed _ _
+    exact outTip_confirmed _
 
 variable (hv : rho.ExecutionValid)
 
@@ -123,7 +123,7 @@ variable (hv : rho.ExecutionValid)
 
 /-- The run map's output tips are `outTip`. -/
 @[simp] theorem goldilocksRunMap_tip :
-    (goldilocksRunMap S rho hn hv).tip = outTip _ _ := by rfl
+    (goldilocksRunMap S rho hn hv).tip = outTip _ := by rfl
 
 /-- The run map's output clock is the engine state's stored clock. -/
 @[simp] theorem goldilocksRunMap_clock (s : (goldilocks S (pubOf E)).State) :
@@ -131,8 +131,8 @@ variable (hv : rho.ExecutionValid)
 
 /-- The run map's chain follows the store's parents up to the supplied tip. -/
 @[simp] theorem goldilocksRunMap_chain
-    (st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _)))
-    (tip : (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).Blk) :
+    (st : NodeState (goldilocksNode (S.params (pubOf E) hn)))
+    (tip : (goldilocksNode (S.params (pubOf E) hn)).Blk) :
     (goldilocksRunMap S rho hn hv).chain st tip =
       blocksTo st.fg.blocks (tip.slot + 1) tip := by rfl
 

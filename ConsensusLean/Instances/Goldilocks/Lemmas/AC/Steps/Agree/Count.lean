@@ -29,8 +29,8 @@ namespace Consensus.Goldilocks.AC
 
 variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP}
 
 private theorem admitVote_pool_sub (A : ACState sp.n) (t : Time) (v : Vote sp.n) (σ : Nat) :
     A.pool σ ⊆ (admitVote sp A t v).pool σ := by
@@ -47,7 +47,7 @@ private theorem admitVote_pool_sub (A : ACState sp.n) (t : Time) (v : Vote sp.n)
 /-- The state before a cast's call holds no slot-`σ` vote that the read point lacks. -/
 private theorem state_pool_sub_readPointU {ini} {u : Nat → Set Lock}
     (hr : ACLocalRunU wm u H U tr ini) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP} (hc : CastAt tr y j ℓ e) (σ : Nat) :
+    {ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP} (hc : CastAt tr y j ℓ e) (σ : Nat) :
     (tr.state y j).pool σ ⊆ e.readPoint.pool σ := by
   obtain ⟨-, hR, -⟩ := voteBranchAt_inputU hr hy (voteBranchAt_of_castAtU hr hy hc)
   have hin : (callInputM sp wm (tr.state y j) ℓ.frame (tr.time j) ℓ.call).pool σ ⊆
@@ -70,7 +70,7 @@ private theorem state_pool_sub_readPointU {ini} {u : Nat → Set Lock}
 /-- The proposal's declared head votes are the proposer's slot-`s` pool. -/
 private theorem mem_pay_of_pool {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y)) {p : Fin sp.n} (hp : p ∈ H) {i s : Nat}
-    {ℓp : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n}
+    {ℓp : ACLabel (goldilocksAC sp FGP)} {pay : Payload sp.n}
     (hprop : ProposalAt tr p i ℓp pay) (hsi : sp.slot (tr.time i) = s + 1) {v : Vote sp.n}
     (hv : v ∈ (tr.state p i).pool s) : v ∈ pay.1 := by
   obtain ⟨-, -, d, hd⟩ := hprop
@@ -92,7 +92,7 @@ proposer's forwarded admissions, given by `hdeliver` for the admissions inside `
 private theorem count_declared_coreU {ini} {u : Nat → Set Lock}
     (hr : ACLocalRunU wm u H U tr ini) (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {s : Nat} {p y : Fin sp.n} {i j : Nat}
-    {ℓp ℓy : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
+    {ℓp ℓy : ACLabel (goldilocksAC sp FGP)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H)
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
@@ -137,7 +137,7 @@ private theorem count_declared_coreU {ini} {u : Nat → Set Lock}
         exact hjoin
       have hrsy : ∀ k' ≤ j, tr.RestartAt y k' → tr.time k' ≤ tr.time k := by
         intro k' hk' hr'
-        have h := ((joined_awakeU sp) FGP ro H U tr hr y hy j ℓy hcj hpost).2 k' hk' hr'
+        have h := ((joined_awakeU sp) FGP H U tr hr y hy j ℓy hcj hpost).2 k' hk' hr'
         rw [hsj] at h
         have hcast : ((s + 1 : Nat) : Int) - 1 = (s : Int) := by push_cast; ring
         rw [hcast] at h
@@ -156,12 +156,12 @@ private theorem count_declared_coreU {ini} {u : Nat → Set Lock}
 theorem count_declared_of_syncU {ini} {u : Nat → Set Lock} (hr : ACLocalRunU wm u H U tr ini)
     (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {s : Nat} {p y : Fin sp.n} {i j : Nat}
-    {ℓp ℓy : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
+    {ℓp ℓy : ACLabel (goldilocksAC sp FGP)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H)
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)
     (hP : ∃ P ∈ ℓy.frame.tree, P.slot = s + 1 ∧ P.acPayload = pay)
-    (hsync : SyncAC (goldilocksAC sp FGP ro) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr) :
+    (hsync : SyncAC (goldilocksAC sp FGP) H U (sp.ts s) (sp.ts (s + 1 : Nat)) tr) :
     ∀ v ∈ (tr.state p i).pool s, ShouldCountDeclaredVote sp e.readPoint v := by
   refine count_declared_coreU hr hini hp hy hprop hti hc hes hP ?_
   intro k v hsend hsk hkb hvs hrs hdl
@@ -178,7 +178,7 @@ given). -/
 theorem count_declared_of_window_beforeU {ini} {u : Nat → Set Lock}
     (hr : ACLocalRunU wm u H U tr ini) (hini : ∀ y, VoteStart sp.genesisRoot (ini y))
     {s : Nat} {p y : Fin sp.n} {i j : Nat}
-    {ℓp ℓy : ACLabel (goldilocksAC sp FGP ro)} {pay : Payload sp.n} {e : Em sp FGP}
+    {ℓp ℓy : ACLabel (goldilocksAC sp FGP)} {pay : Payload sp.n} {e : Em sp FGP}
     (hp : p ∈ H) (hy : y ∈ H)
     (hprop : ProposalAt tr p i ℓp pay) (hti : tr.time i = sp.ts (s + 1 : Nat))
     (hc : CastAt tr y j ℓy e) (hes : e.msg.slot = s + 1)

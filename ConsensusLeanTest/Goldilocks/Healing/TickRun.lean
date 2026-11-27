@@ -76,7 +76,7 @@ theorem A_HS_sp1 : Healing.A_HS sp1 1 4 = 173 := by decide
 run with the HS shared premises (`Healthy(0)`, `NoColl`, genesis root, no restart, the timeout
 bound), `Catch(2Δ)` and `Prop⁺(4)`. -/
 theorem healing_premises :
-    GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
+    GoldilocksRun (sp := sp1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) ∧
       Healing.HSShared (tickRun N1 dg1) Set.univ (AC.CommitteeDict.full sp1.n) dg1 0 1 ∧
       Healing.CatchRun (tickRun N1 dg1) Set.univ 0 (2 * sp1.Δ) ∧
       Healing.PropPlus (tickRun N1 dg1) Set.univ (fun _ => v0) 0 4 :=
@@ -117,7 +117,7 @@ theorem tickRun_cutAndReset :
       ∀ E ∈ Healing.HighEntries (tickRun N1 dg1) Set.univ 3,
         (Store.namers sp1.toParams (Payload sp1.n) Set.univ (tickRun N1 dg1).projFG (16 - sp1.Δ)
           E).ncard < sp1.toParams.fg.q) := by
-  have h := Healing.cut_and_reset sp1 ro1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) 0 1
+  have h := Healing.cut_and_reset sp1 (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) 0 1
     tickRun_goldilocksRun (tickRun_healthy 0) (dg1_noColl _)
   rw [cutZ_zero, hz_zero, gbar_zero] at h
   obtain ⟨h1, h2, h3, h4, h5⟩ := h

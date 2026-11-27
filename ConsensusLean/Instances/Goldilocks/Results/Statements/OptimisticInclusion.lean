@@ -23,7 +23,7 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Regimes.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 /-- **Optimistic inclusion, under growing faults, at a committee.** In R.2's setting, with the
 optimistic confirmation on: let `P` be an honest proposal released at the start `t_p` of slot `p`
@@ -34,9 +34,9 @@ honest through the optimistic window (an adversary of at most a quarter of the c
 `P` is in the confirmed read of every node ready at `t` and awake and joined throughout
 `[t_p, t_p + 2Δ]`, for every `t ≥ t_p + 2Δ`. -/
 def OptimisticInclusion : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time)
+    (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n) (ΔF : Time)
     (K : AC.CommitteeDict sp.n),
     sp.optimistic = true →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr

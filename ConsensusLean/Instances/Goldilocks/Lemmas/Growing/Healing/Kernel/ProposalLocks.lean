@@ -17,11 +17,11 @@ earlier optimistic write without requiring any other writer to survive.
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- At a proposal, a stored high lock comes from an earlier optimistic write of
@@ -30,7 +30,7 @@ theorem proposal_high_lock_source_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
     (hti : tr.time i = sp.ts u) (hgu : AC.gbar g ≤ sp.ts u) (hib : tr.time i ≤ b)
     {l : AC.Lock} (hl : l ∈ (tr.projAC.state p i).locks) (hlabel : u - 1 ≤ l.slot) :

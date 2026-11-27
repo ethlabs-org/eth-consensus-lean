@@ -28,11 +28,11 @@ prefix through it.
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- The static AC run of the prefix through `d` of the nodes honest at `d`. -/
@@ -105,7 +105,7 @@ theorem optimistic_sources_compatible_at {cm : Time → Finset (Fin sp.n)} {βK 
     ⟨hit.trans (le_max_left _ _), he₀⟩
   have heD' := (AC.upTo_voteAt (d := max (tr.time r) (tr.time q))).mpr
     ⟨hit'.trans (le_max_right _ _), he₀'⟩
-  obtain ⟨_, rfl⟩ := AC.one_vote_per_slotU sp _ ro _ _ _ hrunD.localRun.toU _ hz i i' e e' heD
+  obtain ⟨_, rfl⟩ := AC.one_vote_per_slotU sp _ _ _ _ hrunD.localRun.toU _ hz i i' e e' heD
     heD' (hvs.trans hvs'.symm)
   obtain rfl : R = R' := hUc.1 (hsubR (hU hR)) (hsubQ (hU' hR')) (hRr.trans hRr'.symm)
   exact AC.anc_total hUc ((hCR.mono hU).mono hsubR) ((hDR.mono hU').mono hsubQ)

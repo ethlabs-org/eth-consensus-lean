@@ -35,13 +35,13 @@ namespace Consensus.Goldilocks.Simulation
 
 open AsChainShape Blocks Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote)
+open AC (ACParams Vote)
 
 /-- **The pool of an AC run keeps a vote predicate** that holds of the node's received
 messages and its own emissions. A block's declared references do not enter the pool. -/
-theorem pool_mem_of_run {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
-    {H₀ : Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)} {trA : AC.GTrace sp FGP ro} {ini} {g : Nat}
-    (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H₀ U trA ini) (hini : ∀ y, AC.VoteStart g (ini y))
+theorem pool_mem_of_run {sp : ACParams} {FGP : Type}
+    {H₀ : Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)} {trA : AC.GTrace sp FGP} {ini} {g : Nat}
+    (hr : ACLocalRun (AC.goldilocksAC sp FGP) H₀ U trA ini) (hini : ∀ y, AC.VoteStart g (ini y))
     {y : Fin sp.n} (hy : y ∈ H₀)
     (P : Vote sp.n → Prop)
     (hmsg : ∀ i ℓ v, trA.CallAt y i ℓ → ℓ.call = .message v → P v)
@@ -60,7 +60,7 @@ theorem pool_mem_of_run {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
       rw [trA.state_succ_of_call hc]
       have he := hr.exec i ℓ hc.2 (hc.1 ▸ hy)
       rw [hc.1] at he
-      have key := pool_step_inventory P ro y (trA.state y i) ℓ.frame (trA.time i) ℓ.call ih
+      have key := pool_step_inventory P y (trA.state y i) ℓ.frame (trA.time i) ℓ.call ih
         ?_ (by rw [he]; exact fun e he' => hem i ℓ e hc he')
       · rwa [he] at key
       · split
@@ -118,7 +118,7 @@ theorem simTraceAt_vote_member (hv : rho.ExecutionValid) (hK : K.BindsSel rho S.
   obtain ⟨-, hstep, -, -⟩ :=
     simTraceAt_cutLaw S rho hn hv x i (.ac ℓ) (Compose.projAC_callAt.1 hc)
   exact (simTraceAt_mayVote_iff S rho hn hv hK x i _).1
-    (AC.emits_mayVote (S.ro _) x _ ℓ.frame _ ℓ.call e (by rw [hstep]; exact he))
+    (AC.emits_mayVote x _ ℓ.frame _ ℓ.call e (by rw [hstep]; exact he))
 
 /-! ### On a run record of the canonical trace -/
 

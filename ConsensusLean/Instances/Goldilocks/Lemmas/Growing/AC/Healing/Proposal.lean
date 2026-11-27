@@ -10,9 +10,9 @@ public section
 
 namespace Consensus.Goldilocks.AC.Growing.ProposalSources
 
-variable {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
+variable {sp : ACParams} {FGP : Type}
   {proposer : Nat → Fin sp.n} {H : Time → Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {T : GTrace sp FGP ro}
+  {U : Set (Blk sp.n FGP)} {T : GTrace sp FGP}
 
 theorem optimistic_first_proposal_anc_at
     {ini} (hrun : Growing.ACRun proposer T H U ini) {K : CommitteeDict sp.n}
@@ -23,7 +23,7 @@ theorem optimistic_first_proposal_anc_at
     {D B : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt T X i₀ σ D CV) (hBD : Anc U B D)
     {x : Fin sp.n} (hx : x ∈ H (T.time i))
-    {ell : ACLabel (goldilocksAC sp FGP ro)} (hc : T.CallAt x i ell)
+    {ell : ACLabel (goldilocksAC sp FGP)} (hc : T.CallAt x i ell)
     (hslot : sp.slot (T.time i) = σ + 1) {d : DutyHead sp.n FGP (Payload sp.n)}
     {pay : Payload sp.n}
     (hprop : (acProposal sp (T.state x i) ell.frame (T.time i)).2 = some (d, pay))

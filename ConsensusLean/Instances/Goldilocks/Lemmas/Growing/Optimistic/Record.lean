@@ -21,7 +21,7 @@ lies or moves it to `P`, and a later candidate below `P` keeps such a record. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
 section Record
 
@@ -60,15 +60,15 @@ private theorem optimisticConfirmation_recAbove {A : AC.ACState sp.n} {Φ : AC.F
 
 end Record
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (AC.Blk sp.n FGP)} {tr : AC.GTrace sp FGP ro}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {tr : AC.GTrace sp FGP}
 
 /-- **The record after a call whose optimistic check selects `P`.** At a call of an honest node,
 if one optimistic check of the call selects `P` and every optimistic selection of the call is an
 ancestor of `P` in the call's frame, the record after the call names a block of the frame at or
-above `P`. A restart replays blocks with checks of its own and is excluded. -/
-theorem call_record_extends {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
-    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)}
+above `P`. A restart performs no optimistic check and is excluded. -/
+theorem call_record_extends {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U tr ini)
+    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)}
     (hc : tr.CallAt x i ℓ) {P : AC.Blk sp.n FGP}
     (hbelow : ∀ A B, AC.OptimisticPoint tr x i ℓ A →
       AC.optimisticSelect sp A ℓ.frame (tr.time i) = some B → ℓ.frame.Anc B P)
@@ -113,8 +113,8 @@ theorem call_record_extends {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H
 optimistic point has a point whose pools hold those of every point of the call and of the state
 before the call, with the state's restart time: the own vote's check when the call votes, else
 its receipt check. -/
-theorem point_top {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
-    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)}
+theorem point_top {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U tr ini)
+    {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)}
     (hnr : ℓ.call ≠ .restart) {A₀ : AC.ACState sp.n} (h₀ : AC.OptimisticPoint tr x i ℓ A₀) :
     ∃ A, AC.OptimisticPoint tr x i ℓ A ∧
       (∀ A', AC.OptimisticPoint tr x i ℓ A' → ∀ σ, A'.pool σ ⊆ A.pool σ) ∧
@@ -135,7 +135,7 @@ theorem point_top {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
     refine ⟨_, ⟨hc, Or.inr (Or.inr ⟨e, he', rfl⟩)⟩, fun A' hA' σ v hv => ?_, fun σ v hv => ?_, ?_⟩
     · have h := AC.optimisticPoint_pool_postU hr.toU hx hA' σ hv
       rwa [AC.state_succ_of_call hc, hP, hpool] at h
-    · have h := AC.step_pool_subset (ro := ro) x _ ℓ.frame (tr.time i) ℓ.call hnr σ hv
+    · have h := AC.step_pool_subset x _ ℓ.frame (tr.time i) ℓ.call hnr σ hv
       rwa [hpost, hP, hpool] at h
     · rw [← hrt, ← hP, ← hpost]
       exact AC.step_restartTime x _ ℓ.frame (tr.time i) ℓ.call hnr

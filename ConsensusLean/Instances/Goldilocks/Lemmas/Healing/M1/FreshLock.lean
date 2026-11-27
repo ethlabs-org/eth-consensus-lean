@@ -28,8 +28,8 @@ public section
 
 namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {g b : Time}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {g b : Time}
   {proposer : Nat → Fin sp.n}
 
 /-- Finite service and joinedness at the actual vote deadline take every honest node through the
@@ -84,7 +84,7 @@ The restart and deadline premises concern only cuts through the receiving call. 
 theorem honest_vote_early_pool_before {K : AC.CommitteeDict sp.n}
     (hS : HealthyBaseUpTo K tr H U proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ell : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ell) {u : Nat}
+    {ell : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt y j ell) {u : Nat}
     (hgu : gbar g ≤ sp.ts u) (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)
     (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ max t (sp.ts u) + sp.Δ)
@@ -219,9 +219,9 @@ node, whether or not it may vote in that slot (the read point's locks are the un
 branch leaves the read point or the receipt of the node's own vote). Provenance excludes
 intervening writes of those old labels; equal-time calls are ordered by their actual cuts. -/
 theorem older_locks_compatible_after_unlock_branch {ini : Fin sp.n → ACState sp.n}
-    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
+    (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {j k u : Nat}
-    {ell : ACLabel (goldilocksAC sp FGP ro)} {R : ACState sp.n}
+    {ell : ACLabel (goldilocksAC sp FGP)} {R : ACState sp.n}
     (hb : VoteBranchAt tr y j ell R) (hs : sp.slot (tr.time j) = u + 1) (hjk : j < k)
     {P : Blk sp.n FGP} (hPt : P ∈ ell.frame.tree) {S : Set (Fin sp.n)}
     (hS : ∀ x ∈ S, x ∈ equivocators (mergedVoteView sp R ell.frame (u + 1)).votes ∨
@@ -306,11 +306,11 @@ end Consensus.Goldilocks.AC
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF b : Time}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF b : Time}
 
 end Consensus.Goldilocks.Healing
 

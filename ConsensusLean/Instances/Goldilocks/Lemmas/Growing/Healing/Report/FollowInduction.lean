@@ -13,13 +13,13 @@ public section
 namespace Consensus.Goldilocks.Healing.Growing
 variable {hold : Time}
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
 /-- A next-vote base propagates through later labels without retaining a fixed honest cohort. -/
 theorem later_heads_of_early_witness_at
-    {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {sp : ACParams}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -33,7 +33,7 @@ theorem later_heads_of_early_witness_at
     (hframe : FrameWindow tr H (sp.ts s) (sp.ts N + sp.Δ) floor kindJ J)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw : ACLabel (goldilocksNode sp)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ Q.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocksAt H) J X)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q)

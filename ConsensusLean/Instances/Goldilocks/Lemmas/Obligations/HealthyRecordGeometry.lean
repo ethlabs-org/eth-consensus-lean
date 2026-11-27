@@ -14,10 +14,10 @@ namespace Consensus.Goldilocks.Obligations
 
 /-- An unchanged record cannot reenter the filtered frame after its finalized floor advances. -/
 theorem record_lookup_of_later
-    {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-    {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+    {sp : AC.ACParams}
+    {tr : GoldilocksTrace sp} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i j : Nat} (hij : i ≤ j)
     (heq : (tr.state y j).ac.latestConfirmed = (tr.state y i).ac.latestConfirmed)
@@ -45,8 +45,8 @@ theorem record_lookup_of_later
 
 namespace UpTo
 
-variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+variable {sp : AC.ACParams}
+  {tr : GoldilocksTrace sp} {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {g ΔF a : Time}
 
 end UpTo

@@ -19,7 +19,7 @@ namespace Consensus.Goldilocks.Regimes.Growing
 
 /-- The finalized, confirmed and head tips are nested at every honest cut. -/
 theorem outputs_nested : OutputsNested := by
-  intro sp ro dg H tr proposer h y i hy
+  intro sp dg H tr proposer h y i hy
   have hs := RunTrace.upTo_state_of_le (y := y) h.time_mono (le_refl (tr.time i))
   have ht := Regimes.outputs_nested_at (h.upTo (h.time_nonneg i)) hy i
   simpa only [RunTrace.finalizedAt, RunTrace.confirmedAt, RunTrace.headAt, hs,
@@ -27,7 +27,7 @@ theorem outputs_nested : OutputsNested := by
 
 /-- A node honest at the later cut has monotonically finalized tips. -/
 theorem finalized_monotone : FinalizedMonotone := by
-  intro sp ro dg H tr proposer h y i j hij hy
+  intro sp dg H tr proposer h y i j hij hy
   have hsi := RunTrace.upTo_state_of_le (y := y) h.time_mono (h.time_mono hij)
   have hsj := RunTrace.upTo_state_of_le (y := y) h.time_mono (le_refl (tr.time j))
   have ht := Regimes.finalized_monotone_from (h.upTo (h.time_nonneg j)) hy hij
@@ -35,7 +35,7 @@ theorem finalized_monotone : FinalizedMonotone := by
 
 /-- Both always outputs carry valid chains and accepted-block provenance. -/
 theorem outputs_valid : OutputsValid := by
-  intro sp ro dg H tr proposer h y i hy
+  intro sp dg H tr proposer h y i hy
   have hs := RunTrace.upTo_state_of_le (y := y) h.time_mono (le_refl (tr.time i))
   have ht := Regimes.outputs_valid_at (h.upTo (h.time_nonneg i)) hy i
   have conv : ∀ X, ValidOutput (tr.upTo (tr.time i)) proposer dg y i X →
@@ -56,26 +56,26 @@ theorem outputs_valid : OutputsValid := by
 
 /-- A validator honest at both signing cuts cannot frame itself. -/
 theorem non_framing : NonFraming := by
-  intro sp ro dg H tr proposer h v k k' a b ha hb hv
+  intro sp dg H tr proposer h v k k' a b ha hb hv
   have hkd : tr.time k ≤ max (tr.time k) (tr.time k') := le_max_left _ _
   have hkd' : tr.time k' ≤ max (tr.time k) (tr.time k') := le_max_right _ _
   exact Regimes.goldilocksRun_nonFraming (h.upTo ((h.time_nonneg k).trans hkd)) hv
     ((RunTrace.upTo_signAt _).mpr ⟨hkd, ha⟩) ((RunTrace.upTo_signAt _).mpr ⟨hkd', hb⟩)
 
-private theorem fg_run {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+private theorem fg_run {sp : AC.ACParams}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+    {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     (hnc : Compose.NoCollRun dg tr) :
-    Consensus.Goldilocks.Growing.FGLocalRun (goldilocksNode sp ro).genesisPayload H
+    Consensus.Goldilocks.Growing.FGLocalRun (goldilocksNode sp).genesisPayload H
       (tr.HonestBlocksAt H) tr.projFG :=
   Compose.Growing.fg_projection _ _ dg H _ tr proposer
-    (fun y => Compose.requirements_from sp ro (hrun.vstart y))
+    (fun y => Compose.requirements_from sp (hrun.vstart y))
     hrun.genesis_root_ok hrun.toLocalRun hnc
 
-private theorem store_eq {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+private theorem store_eq {sp : AC.ACParams}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+    {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) :
     tr.projFG.store y i = (tr.state y i).fg := by
@@ -87,7 +87,7 @@ private theorem store_eq {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.At
 
 /-- Conflicting finalizations expose a slashable quorum intersection in the held chains. -/
 theorem final_accountable : FinalAccountable := by
-  intro sp ro dg H tr proposer hrun hnc y z i j hy hz hne
+  intro sp dg H tr proposer hrun hnc y z i j hy hz hne
   have hr := fg_run hrun hnc
   obtain ⟨c₁, σ₁, h₁, hF₁, hU₁, hc₁, _, X₁, hX₁, hb₁⟩ := hr.finalized_chain hy
   obtain ⟨c₂, σ₂, h₂, hF₂, hU₂, hc₂, _, X₂, hX₂, hb₂⟩ := hr.finalized_chain hz
@@ -109,7 +109,7 @@ theorem final_accountable : FinalAccountable := by
 
 /-- Finalized tips agree with the quorum bound charged at the later reader horizon. -/
 theorem finalized_safe : FinalizedSafe := by
-  intro sp ro dg H tr proposer hrun hnc y z i j hy hz hf
+  intro sp dg H tr proposer hrun hnc y z i j hy hz hf
   have h := (fg_run hrun hnc).finalized_safety hy hz hf
   rwa [store_eq hrun hy, store_eq hrun hz] at h
 

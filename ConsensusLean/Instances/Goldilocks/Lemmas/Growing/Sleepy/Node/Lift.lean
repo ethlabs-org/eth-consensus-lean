@@ -44,7 +44,7 @@ Ancestry comes down into the prefix by `RunTrace.anc_upTo_of_right`; conclusions
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
 /-! ### The AC trace of the prefix -/
 
@@ -116,7 +116,7 @@ end ACUpTo
 
 section GoldilocksACUpTo
 
-variable {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP} {trS : AC.GTrace sp FGP ro}
+variable {sp : ACParams} {FGP : Type} {trS : AC.GTrace sp FGP}
   {d : Time}
 
 theorem ac_voteAt_upTo {y : Fin sp.n} {i : Nat} {e : AC.Em sp FGP} :
@@ -124,13 +124,13 @@ theorem ac_voteAt_upTo {y : Fin sp.n} {i : Nat} {e : AC.Em sp FGP} :
   simp only [AC.VoteAt, Trace.upTo_callAt]
   exact ⟨fun ⟨ℓ, ⟨h, hc⟩, hl⟩ => ⟨h, ℓ, hc, hl⟩, fun ⟨h, ℓ, hc, hl⟩ => ⟨ℓ, ⟨h, hc⟩, hl⟩⟩
 
-theorem ac_castAt_upTo {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)}
+theorem ac_castAt_upTo {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)}
     {e : AC.Em sp FGP} :
     AC.CastAt (trS.upTo d) y i ℓ e ↔ trS.time i ≤ d ∧ AC.CastAt trS y i ℓ e := by
   simp only [AC.CastAt, Trace.upTo_callAt, and_assoc]
 
 theorem ac_updateAt_upTo (hmono : Monotone trS.time) {x : Fin sp.n} {i s : Nat}
-    {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} :
+    {ℓ : ACLabel (AC.goldilocksAC sp FGP)} :
     AC.UpdateAt (trS.upTo d) x i s ℓ ↔ trS.time i ≤ d ∧ AC.UpdateAt trS x i s ℓ := by
   simp only [AC.UpdateAt, Trace.upTo_callAt]
   constructor
@@ -188,9 +188,9 @@ theorem ac_messageServedBefore_upTo (hmono : Monotone trS.time) {y : Fin sp.n} {
 
 end GoldilocksACUpTo
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {d : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {d : Time}
 
 /-! ### The blocks held while honest -/
 
@@ -219,9 +219,9 @@ theorem honestBlocksAt_coherent {ini} (hrun : Growing.GoldilocksRun proposer dg 
 /-- Genesis is held while honest, below every block held while honest. -/
 theorem honestAt_genesis_anc {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocksAt H) :
-    sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload ∈ tr.HonestBlocksAt H ∧
+    sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload ∈ tr.HonestBlocksAt H ∧
       Anc (tr.HonestBlocksAt H)
-        (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) B := by
+        (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload) B := by
   obtain ⟨t, ht, hBt⟩ := exists_upTo_of_mem hB
   obtain ⟨hg, hanc⟩ := honest_genesis_anc (hrun.upTo ht) hBt
   exact ⟨upTo_subset hrun ht hg, hanc.mono (upTo_subset hrun ht)⟩
@@ -230,14 +230,14 @@ theorem honestAt_genesis_anc {ini} (hrun : Growing.GoldilocksRun proposer dg H t
 theorem honestAt_eq_genesis {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hU : Coherent (tr.HonestBlocksAt H)) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ tr.HonestBlocksAt H) (hr : B.root = sp.genesisRoot) :
-    B = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
+    B = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload :=
   hU.1 hB (honestAt_genesis_anc hrun hB).1 hr
 
 /-- Genesis has no parent, so its only ancestor is itself. -/
 private theorem anc_genesis {S : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
     {A : AC.Blk sp.n (List (FG.Att sp.n))}
-    (h : Anc S A (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload)) :
-    A = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload := by
+    (h : Anc S A (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload)) :
+    A = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload := by
   rcases Relation.ReflTransGen.cases_tail h with heq | ⟨Y, -, hY⟩
   · exact heq.symm
   · exact absurd hY.2.2 (by simp [Params.genesisBlock])
@@ -393,7 +393,7 @@ theorem acRun_upTo {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hn
 
 /-- A frame of a call of a node honest then is well formed, inside the blocks held while honest. -/
 theorem frameIn_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ℓ) : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocksAt H :=
   have h := AC.frameIn_of_callAt (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
     ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
@@ -402,7 +402,7 @@ theorem frameIn_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hn
 /-- The frame of a call of a node honest then is in the prefix's honest blocks at its time. -/
 theorem frame_upTo_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ℓ) :
     ℓ.frame.tree ⊆ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) :=
   (AC.frameIn_of_callAt (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
@@ -410,7 +410,7 @@ theorem frame_upTo_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
 
 theorem castAt_spec_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e) :
     e.msg.val = y ∧ e.msg.slot = sp.slot (tr.time i) ∧ AC.joined sp e.readPoint (tr.time i) ∧
       e.msg.head = (AC.getHead sp e.readPoint ℓ.frame (tr.time i)
@@ -421,7 +421,7 @@ theorem castAt_spec_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
 
 theorem cast_head_fcRoot_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e) :
     (∃ Hd ∈ ℓ.frame.tree, Hd.root = e.msg.head ∧ ℓ.frame.Anc ℓ.frame.fcRoot Hd) ∧
       tr.time i ≤ sp.ts e.msg.slot + sp.Δ :=
@@ -429,7 +429,7 @@ theorem cast_head_fcRoot_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr
   cast_head_fcRoot ha.localRun ha.vstart hy (ac_castAt_upTo.mpr ⟨le_rfl, hc⟩)
 
 theorem frame_of_projAC_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
-    {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ℓ) : ℓ.frame = Node.frame (tr.state y i) := by
   have h := frame_of_projAC (hrun.upTo (hrun.time_nonneg i)) hy
     (by rw [RunTrace.upTo_projAC]; exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
@@ -444,7 +444,7 @@ theorem projAC_state_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini
 /-- A cast of a node honest then is at a slot the node may vote in. -/
 theorem mayVote_of_castAt_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ℓ e) : (tr.state y i).ac.mayVote e.msg.slot = true := by
   have h := AC.mayVote_of_castAt (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun hy
     (ac_castAt_upTo.mpr ⟨le_rfl, hc⟩)
@@ -452,7 +452,7 @@ theorem mayVote_of_castAt_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
 
 theorem frame_slot_le_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y i ℓ) : ∀ B ∈ ℓ.frame.tree, B.slot ≤ sp.slot (tr.time i) :=
   AC.frame_slot_leU sp (acRun_upTo hrun hnc (hrun.time_nonneg i)).localRun.toU hy
     ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
@@ -489,7 +489,7 @@ theorem one_vote_per_slot_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
   have hd := hrun.time_nonneg j'
   have hjd := hrun.time_mono hjj
   have hr := (acRun_upTo hrun hnc hd).localRun
-  exact AC.one_vote_per_slotU sp _ ro _ _ _ hr.toU x (hVoteAt_iff.1 hv').1 j j' e e'
+  exact AC.one_vote_per_slotU sp _ _ _ _ hr.toU x (hVoteAt_iff.1 hv').1 j j' e e'
     (ac_voteAt_upTo.mpr ⟨hjd, (hVoteAt_iff.1 hv).2⟩)
     (ac_voteAt_upTo.mpr ⟨le_rfl, (hVoteAt_iff.1 hv').2⟩) hs
 
@@ -497,7 +497,7 @@ theorem one_vote_per_slot_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
 accepted by the caller by then. -/
 theorem frame_anc_accepted_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ)
+    {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y i ℓ)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree)
     {X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hXB : Anc (tr.HonestBlocksAt H) X B) :
@@ -635,7 +635,7 @@ theorem optimistic_writer_votes_at {ini} (hrun : Growing.GoldilocksRun proposer 
 honest blocks through `d`. -/
 theorem mem_upTo_of_frame {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     {k : Nat}
-    (hy : y ∈ H d) (hkd : tr.time k ≤ d) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H d) (hkd : tr.time k ≤ d) {ℓ : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y k ℓ) {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) :
     B ∈ (tr.upTo d).HonestBlocks (H d) := by
   rw [frame_of_projAC_at hrun (hrun.antitone hkd hy) hc] at hB
@@ -645,7 +645,7 @@ theorem mem_upTo_of_frame {ini} (hrun : Growing.GoldilocksRun proposer dg H tr i
 (inside the blocks held while honest) is in the frame. -/
 theorem mem_tree_of_acceptAt_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {k i : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time i)) (hk : tr.projAC.AcceptAt y k B)
+    {ℓ : ACLabel (goldilocksNode sp)} (hy : y ∈ H (tr.time i)) (hk : tr.projAC.AcceptAt y k B)
     (hki : k ≤ i) (hc : tr.projAC.CallAt y i ℓ) (hFB : Anc (tr.HonestBlocksAt H) ℓ.frame.F B) :
     B ∈ ℓ.frame.tree := by
   have hd := hrun.time_nonneg i
@@ -678,7 +678,7 @@ theorem pool_stamp_lt_top_at {ini} (hrun : Growing.GoldilocksRun proposer dg H t
 restarts up to `i` before `T`, has a stamp before `T`. -/
 theorem blockStamp_lt_of_acceptedBefore_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ)
+    {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y i ℓ)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) {T : Time}
     (hacc : AC.AcceptedBefore tr.projAC y B T)
     (hrs : ∀ k ≤ i, tr.projAC.RestartAt y k → tr.time k < T) (hT : T ≤ tr.time i) :

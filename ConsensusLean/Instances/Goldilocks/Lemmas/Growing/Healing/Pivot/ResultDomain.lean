@@ -22,11 +22,11 @@ In particular this leaf does not import clean source votes or protected-source c
 
 namespace Consensus.Goldilocks.Healing.Growing.ProposalImpl
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- The result-prefix reduction uses the frozen vote-domain supplier, not its row-bound helper. -/
@@ -36,7 +36,7 @@ theorem result_prefix_vote_domain_before_of_domain_at
     (hdomain : ∀ {x y v : Fin sp.n} {r i q m : Nat}
       {B S : AC.Blk sp.n (List (FG.Att sp.n))},
       x ∈ H (tr.time r) → y ∈ H (tr.time i) → B ∈ (tr.state x r).fg.tree → tr.time r ≤ b →
-      ∀ {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))},
+      ∀ {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))},
       AC.CastAt tr.projAC y i ell e → tr.time i ≤ b →
       (Anc (tr.HonestBlocksAt H) ell.frame.F B →
         B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) →
@@ -53,7 +53,7 @@ theorem result_prefix_vote_domain_before_of_domain_at
     {B C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (hres : AC.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocksAt H) B C)
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcast : AC.CastAt tr.projAC y i ell e) (hsi : s < e.msg.slot) (hib : tr.time i ≤ b)
     (hprior : ∀ z q e', q < i → Compose.Growing.HVoteAt tr H z q e' →
       s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
@@ -139,7 +139,7 @@ theorem result_prefix_vote_domain_before_of_quarantine_at
     {B C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (hres : AC.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocksAt H) B C)
     (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcast : AC.CastAt tr.projAC y i ell e) (hsi : s < e.msg.slot) (hib : tr.time i ≤ b)
     (hprior : ∀ z q, z ∈ H (tr.time q) → q < i → ∀ e', AC.VoteAt tr.projAC z q e' →
       s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
