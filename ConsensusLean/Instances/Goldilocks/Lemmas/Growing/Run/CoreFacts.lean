@@ -178,6 +178,24 @@ theorem committeeTAt {K : AC.CommitteeDict sp.n} (hKB : Compose.Growing.Committe
   · exact hmem v h rfl
   · exact hmem w hw hwv
 
+/-- **An awake, joined, permitted node votes in its slot** by `t_s + Δ`
+(`Compose.Growing.vote_of_awake_joined_at`). -/
+theorem vote_of_awake_joined_at (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {s : Nat}
+    (hy : y ∈ H (sp.ts s + sp.Δ))
+    (hmv : ∀ i, (∀ k < i, tr.time k ≤ sp.ts s + sp.Δ) → (tr.state y i).ac.mayVote s = true)
+    (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
+    ∃ k e, Compose.Growing.HVoteAt tr H y k e ∧ e.msg.slot = s ∧ tr.time k ≤ sp.ts s + sp.Δ := by
+  have hd := Compose.Growing.ts_add_delta_nonneg (sp := sp) s
+  obtain ⟨k, e, hv, hs, hk⟩ := (rc.upTo hd).vote_of_awake_joined (hnc.upTo _) y hy
+    (fun i => by
+      obtain ⟨i₀, -, hb, h⟩ := Trace.upTo_state_exists tr rc.time_mono y i
+      rw [h]
+      exact hmv i₀ hb)
+    ⟨hw, le_rfl⟩ (Compose.Growing.joinedAt_upTo hj)
+  rw [RunTrace.upTo_projAC] at hv
+  obtain ⟨hkd, hv⟩ := Compose.Growing.ac_voteAt_upTo.mp hv
+  exact ⟨k, e, Compose.Growing.hVoteAt_iff.2 ⟨rc.antitone hkd hy, hv⟩, hs, hk⟩
+
 end Consensus.Goldilocks.GoldilocksRunCore
 
 end
