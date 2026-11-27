@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Trace.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
 
 public section
 
@@ -379,7 +380,20 @@ theorem finalized_mono_on_prefix' (h : LocalRun' proposer dg H sg tr ini) {d : T
     (hd : 0 ≤ d) {y : Fin P.n} {i j : Nat} (hy : y ∈ H d) (hij : i ≤ j)
     (hj : ∀ k < j, tr.time k ≤ d) :
     Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F (tr.state y j).fg.F := by
-  sorry
+  induction j, hij using Nat.le_induction with
+  | base => exact .refl
+  | succ j hij ih =>
+    refine (ih (fun k hk => hj k (by omega))).trans ?_
+    by_cases hc : ∃ c, tr.CallAt y j c
+    · obtain ⟨c, hc⟩ := hc
+      rw [tr.state_succ_of_call hc]
+      rcases Node.cutStep'_fg (h.cutLaw y j c hc (h.antitone (hj j (by omega)) hy)) with he | hs
+      · rw [he]
+      · rcases (Store.step'_iff _ _).mp hs with ⟨B, hB⟩ | ⟨a, ha⟩
+        · exact ((Store.finalized_monotone' _).1 B _ hB).mono fun X hX =>
+            ⟨y, j + 1, d, hd, hj, hy, by rw [tr.state_succ_of_call hc]; exact hX⟩
+        · rw [ha, (Store.finalized_monotone' _).2 a]
+    · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩]
 
 theorem acRelayAt' (hrun : LocalRun' proposer dg H sg tr ini)
     {x y : Fin P.n} {i j : Nat} {B : A.Blk} {ℓ : ACLabel A} {σ : Time}
@@ -399,7 +413,10 @@ theorem fgCatchAt' (hrun : LocalRun' proposer dg H sg tr ini) {g κ : Time}
     (hy : y ∈ H (tr.time j)) (hj : AC.gbar g + κ ≤ tr.time j)
     (hanc : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B) :
     ∃ k < j, tr.AcceptAt y k B ∧ tr.time k < AC.gbar g + κ := by
-  sorry
+  exact Healing.accept_before_snapshot hj fun q hq hfirst =>
+    hcatch x i B hx ha hi y q (hrun.antitone hj hy) hfirst
+      ((finalized_mono_on_prefix' hrun (hrun.time_nonneg j) hy hq
+        (fun k hk => hrun.time_mono hk.le)).trans hanc)
 
 theorem acCatchAt' (hrun : LocalRun' proposer dg H sg tr ini) {g κ : Time}
     (hcatch : Healing.Growing.CatchRun tr H g κ)
