@@ -373,8 +373,8 @@ theorem reset_of_high_proposal_within_stock_at
 
 /-- Leaf 11 over the P-U window. The proof must use `proposal_viable_at`: its height
 bound is `M - 1`, and in a top window equality supplies `J` ancestry. The shared
-row-or-high and later-head suppliers are proved; the delayed report-follow interface is
-the remaining proof gap. The stock-window version also needs stock later-head transfer. -/
+row-or-high, later-head and delayed report-follow suppliers are proved. The stock-window
+version also needs stock later-head transfer. -/
 theorem round_of_warm_within_at
     {g ΔF b T D t₀ : Time} {s₀ u x N M Gs : Nat} {isTop : Prop}
     {J P X : AC.Blk sp.n (List (FG.Att sp.n))}
