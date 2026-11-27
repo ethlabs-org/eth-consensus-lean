@@ -558,9 +558,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Core
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreLocal
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.SignGap
@@ -809,8 +808,10 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Driven
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FGProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FaultBound
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowWrite
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frontier
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.GenericReset
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Geometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Handlers
