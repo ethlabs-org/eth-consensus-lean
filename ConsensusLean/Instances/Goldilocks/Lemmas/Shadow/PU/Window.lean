@@ -40,8 +40,8 @@ namespace Consensus.Goldilocks.Healing
 
 variable {P : Params} {A : NodeAC P}
 
-/-- Transitional alias of the milestone `Generic.FrameWindow`, which now carries the P-U frame
-data (`h_max`, top status, and `J` when top). Removed by the final rename sweep. -/
+/-- Transitional alias of the milestone `Generic.FrameWindow`, used only by the stock-window
+modules `StockWindow` and `StockWitness`; it goes with them. -/
 abbrev FrameWindow' (tr : RunTrace A) (H : Time → Set (Fin P.n)) (lo hi : Time) (M : Nat)
     (isTop : Prop) (J : A.Blk) : Prop :=
   Generic.FrameWindow tr H lo hi M isTop J

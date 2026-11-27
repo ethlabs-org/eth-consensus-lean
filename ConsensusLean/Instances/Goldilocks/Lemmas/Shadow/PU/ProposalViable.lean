@@ -25,7 +25,7 @@ theorem proposal_window_witness
     (hnc : Compose.NoCollRun dg tr)
     {lo hi : Time} {M u : Nat} {isTop : Prop}
     {J B : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hwin : FrameWindow' tr H lo hi M isTop J)
+    (hwin : Generic.FrameWindow tr H lo hi M isTop J)
     {z : Fin sp.n} {kB : Nat} (hz : z ∈ H (sp.ts u)) (hdes : z = proposer u)
     (hB : tr.ProposesAt z kB B) (hBs : B.slot = u)
     (hlo : lo ≤ sp.ts u) (hhi : sp.ts u ≤ hi)
@@ -117,7 +117,7 @@ theorem proposal_viable_at_call_with_early_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     {g ΔF b hi : Time} {u M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts u) hi M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts u) hi M isTop J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -170,7 +170,7 @@ theorem proposal_viable_at_call_with_early_at
       (by linarith only [hphi.trans hib, sp.toParams.hΔ]))
   rw [hσ] at hw
   have hlow : sp.ts u ≤ tr.time i := by linarith [sp.toParams.hΔ]
-  have hFP := FrameWindow'.finalized_below_descendant_at
+  have hFP := Generic.FrameWindow.finalized_below_descendant_at
     hframe hrun hnc hy hzja hzja
     (hmf _ ((hrun.time_nonneg i).trans (le_max_left _ _))
       (max_le (hhi.trans hib) (by rw [hja]; linarith [sp.toParams.hΔ])))
@@ -211,7 +211,7 @@ theorem proposal_viable_at_call_primed_at'
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     {g ΔF b hi : Time} {u M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts u) hi M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts u) hi M isTop J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -232,7 +232,7 @@ theorem proposal_viable_at_cast_primed_at'
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     {g ΔF b : Time} {s₀ p M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts p + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts p + sp.Δ) M isTop J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)

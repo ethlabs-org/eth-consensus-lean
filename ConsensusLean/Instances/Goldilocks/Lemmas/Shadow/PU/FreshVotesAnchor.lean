@@ -23,7 +23,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem read_locks_below_of_earlier_heads_at
     {g ΔF b : Time} {s₀ p M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts p + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts p + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -80,7 +80,7 @@ theorem read_locks_below_of_earlier_heads_at
 theorem vote_anchor_below_of_earlier_heads_at
     {g ΔF b : Time} {s₀ p M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts p + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts p + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))

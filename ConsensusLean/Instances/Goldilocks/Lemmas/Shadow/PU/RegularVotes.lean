@@ -224,7 +224,7 @@ theorem regular_fast_next_votes_of_early_witness_at
     (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
     {s M : Nat} (hm : gbar g ≤ sp.ts s) (hmb : sp.ts s + 6 * sp.Δ ≤ b)
     {isTop : Prop} {J X Q D C : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s) (sp.ts s + 6 * sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s) (sp.ts s + 6 * sp.Δ) M isTop J)
     {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
     (hfast : AC.FastUpdateAt tr.projAC x c s D CV)
     {RV : Set (AC.Vote sp.n)} (hres : AC.ResultAt tr.projAC x c s C RV)
@@ -270,7 +270,7 @@ theorem regular_slow_next_votes_of_early_witness_at
     (hslow : gbar g ≤ sp.ts ((s : Int) - sp.k + 1))
     (hmb : sp.ts s + 6 * sp.Δ ≤ b) {isTop : Prop}
     {J Q D C : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s) (sp.ts s + 6 * sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s) (sp.ts s + 6 * sp.Δ) M isTop J)
     {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c))
     (hsl : AC.SlowLockAt tr.projAC x c s D)
     {CV : Set (AC.Vote sp.n)} (hres : AC.ResultAt tr.projAC x c s C CV)
@@ -310,7 +310,7 @@ theorem regular_slow_next_votes_of_early_witness_at
 /-- The shared supporter proof consumes the shadow two-case classification. -/
 theorem next_votes_of_supporter_at {s₀ s M : Nat}
     {isTop : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
@@ -364,7 +364,7 @@ theorem next_votes_of_supporter_at {s₀ s M : Nat}
 /-- A regular fast selection constrains next-slot votes. -/
 theorem regular_fast_next_votes_at {s₀ s M : Nat}
     {isTop : Prop} {J X D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
@@ -421,7 +421,7 @@ theorem regular_fast_next_votes_at {s₀ s M : Nat}
 /-- A regular slow selection constrains next-slot votes. -/
 theorem regular_slow_next_votes_at {s₀ s M : Nat}
     {isTop : Prop} {J D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}

@@ -29,7 +29,7 @@ private theorem faults_lt_quorum {f n : Nat} (hn : 1 ≤ n) (hf : 3 * f ≤ n - 
 theorem round_of_warm_within_interface
     {g ΔF b T D t₀ : Time} {s₀ u x N M Gs : Nat} {isTop : Prop}
     {J P X : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -76,7 +76,7 @@ theorem proposal_mem_at {ini}
 theorem rise_reset_rounds_within_at
     {g ΔF b T D t₀ : Time} {s₀ N G M Gs : Nat} {isTop : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) M
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) M
       isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
@@ -167,7 +167,7 @@ theorem rise_reset_rounds_within_at
 theorem rise_reset_rounds_at
     {g ΔF b T t₀ : Time} {s₀ N G M Gs : Nat} {isTop : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) M
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) M
       isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
@@ -216,7 +216,7 @@ theorem sum_riseLen_four (d ρ s lam : Time) (HZ : Nat) :
 structure DrainOutputs (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n)
     (H : Time → Set (Fin sp.n)) (g : Time) (G Ld : Nat) (b : Time) : Prop where
   warm : ∀ {s₀ N M : Nat} {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))},
-    FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J →
+    Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J →
     gbar g + 4 * sp.Δ ≤ sp.ts s₀ → s₀ + Ld ≤ N → sp.ts N + 2 * sp.Δ ≤ b →
     (∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
       tr.time k ≤ sp.ts N + 2 * sp.Δ → att.h ≤ HZ tr H g) →
@@ -235,7 +235,7 @@ theorem exists_reset_in_window
     (hnc : Compose.NoCollRun dg tr) {g ΔF b af len D t₀ : Time}
     {s₀ N G Ld M v Gs : Nat} {isTop : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hwin : FrameWindow' tr H af (af + len) M isTop J)
+    (hwin : Generic.FrameWindow tr H af (af + len) M isTop J)
     (hkey : ∀ y i, y ∈ H (tr.time i) → af ≤ tr.time i → tr.time i ≤ af + len →
       frameKey'' (tr.state y i).fg = v)
     (hv : 2 * HZ tr H g ≤ v)
@@ -265,7 +265,7 @@ theorem exists_reset_in_window
     mul_nonneg (Nat.cast_nonneg _) (zero_le_one.trans hΔ)
   have hts {x y : Nat} (h : x ≤ y) : sp.ts x ≤ sp.ts y :=
     (AC.ts_le_iff sp).2 (by exact_mod_cast h)
-  have hframe : FrameWindow' tr H (sp.ts s₀)
+  have hframe : Generic.FrameWindow tr H (sp.ts s₀)
       (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) M isTop J :=
     hwin.mono hslo (by linarith)
   obtain ⟨u, hwarm, huLd, z, kP, P, hz, hdes, hP, hPs, _⟩ := hdrain.warm

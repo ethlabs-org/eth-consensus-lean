@@ -365,7 +365,7 @@ theorem optimistic_next_votes_of_early_witness_at {K : AC.CommitteeDict sp.n}
     {s M : Nat} (hm : gbar g ≤ sp.ts s)
     (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
     {isTop : Prop} {J X Q D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
     {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
     (hopt : AC.OptimisticLockAt tr.projAC x c s D CV)
     (hXD : Anc (tr.HonestBlocksAt H) X D)
@@ -599,7 +599,7 @@ theorem optimistic_next_proposal_of_early_witness_at {K : AC.CommitteeDict sp.n}
     (hcatch : CatchRun tr H g (2 * sp.Δ))
     {s M : Nat} (hm : gbar g ≤ sp.ts s) (hmb : sp.ts (s + 1 : Nat) ≤ b)
     {isTop : Prop} {J X Q D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s) (sp.ts (s + 1 : Nat)) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s) (sp.ts (s + 1 : Nat)) M isTop J)
     {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
     (hopt : AC.OptimisticLockAt tr.projAC x c s D CV)
     (hXD : Anc (tr.HonestBlocksAt H) X D)
@@ -690,7 +690,7 @@ theorem optimistic_later_heads_of_early_witness_at {K : AC.CommitteeDict sp.n}
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     {s N M : Nat} (hm : gbar g ≤ sp.ts s) (hmb : sp.ts N + sp.Δ ≤ b)
     {isTop : Prop} {J X Q D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s) (sp.ts N + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s) (sp.ts N + sp.Δ) M isTop J)
     {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c)) {CV : Set (AC.Vote sp.n)}
     (hopt : AC.OptimisticLockAt tr.projAC x c s D CV)
     (hXD : Anc (tr.HonestBlocksAt H) X D)
@@ -778,7 +778,7 @@ theorem supporter_anchor_viable_head_at
 /-- An optimistic supporter's anchor propagates to independently honest later calls. -/
 theorem optimistic_supporter_later_heads_at {s₀ s N M : Nat}
     {isTop : Prop} {J L D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))

@@ -52,7 +52,7 @@ theorem fresh_fast_lock_update_toFG_primed_at' {K : AC.CommitteeDict sp.n}
     (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
     (hjoin : ∀ y, y ∈ H (sp.ts u + sp.Δ) → AC.JoinedAt tr.projAC y (sp.ts u + sp.Δ))
     (hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
-    (hframe : FrameWindow' tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) M isTop J)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hun : ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →

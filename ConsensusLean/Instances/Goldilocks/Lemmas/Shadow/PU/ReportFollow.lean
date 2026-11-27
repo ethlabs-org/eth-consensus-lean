@@ -33,14 +33,14 @@ public section
 
 The stock suppliers `proposal_report_follow_at` (`FollowEndpoint`) and
 `proposal_report_follow_delayed_at` (`FollowSigned`), restated over `Growing.GoldilocksRun'` and
-`Healing.FrameWindow' … M isTop J`. Their proofs compose `CandidateReport` (`Deep`), the
+`Generic.FrameWindow … M isTop J`. Their proofs compose `CandidateReport` (`Deep`), the
 early-witness family (`WitnessFamily`) and the regular and optimistic later-head suppliers
 (`FollowHeads`, `FollowWrite`, `RegularLater`). The later-head pair
 (`toFG_later_proposal_head_after_at'`, `_within_at'`) is proved here from `RegularLater`'s
 `regular_later_heads_at'` and `optimistic_write_later_proposal_head_at'`; it is unresolved while
 those are. The two endpoints are assembled from the stock proofs: the fresh lock and its report
 from lane N's `KernelProof.fresh_fast_lock_update_toFG_primed_at'`, and lane A's unanimous slot-`u`
-votes `Healing.Growing.Shadow.honest_vote_heads_eq_at'` over `FrameWindow'`. The stock-window
+votes `Healing.Growing.Shadow.honest_vote_heads_eq_at'` over `Generic.FrameWindow`. The stock-window
 forms are retired with the stock chain (adoption A3).
 
 The signing calendar of a shadow run, `RunTrace.SignCalendarAt'`, is in `SignCalendar`. -/
@@ -151,7 +151,7 @@ private theorem frame_slot_le_at {ini : Fin sp.n → (goldilocksNode sp ro).Stat
 theorem toFG_later_proposal_head_after_at
     {g ΔF b : Time} {s₀ u N M : Nat} {isTop : Prop}
     {J P R : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -297,7 +297,7 @@ theorem toFG_later_proposal_head_after_at
 theorem toFG_later_proposal_head_within_at
     {g ΔF b : Time} {s₀ u N M e : Nat} {isTop : Prop}
     {J P R : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -379,7 +379,7 @@ private theorem root_ne_genesis_of_anc {ini : Fin sp.n → (goldilocksNode sp ro
 theorem proposal_report_follow_at
     {g ΔF b : Time} {s₀ u N M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -484,7 +484,7 @@ shadow run). -/
 theorem proposal_report_follow_delayed_at
     {g ΔF b t₀ : Time} {s₀ u N M G : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s₀)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀)
       (max (sp.ts N + 2 * sp.Δ) (sp.ts (u + 1 : Nat) + 2 * sp.Δ + (G : Time) * sp.Δ))
       M isTop J)
     {K : AC.CommitteeDict sp.n}

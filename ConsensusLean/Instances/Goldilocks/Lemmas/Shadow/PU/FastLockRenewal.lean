@@ -26,7 +26,7 @@ The primed witness and later-head induction are used directly, without a stock w
 theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
     {g ΔF b hi : Time} {s₀ u M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s₀) hi M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) hi M isTop J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
@@ -54,7 +54,7 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
   have hib := hhi.trans hhib
   have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ hi := by linarith
   have hsub {lo hi' : Time} (hl : sp.ts s₀ ≤ lo) (hh : hi' ≤ hi) :
-      FrameWindow' tr H lo hi' M isTop J := hframe.mono hl hh
+      Generic.FrameWindow tr H lo hi' M isTop J := hframe.mono hl hh
   have hjoin := fun w hw => Goldilocks.Shadow.PU.Growing.joined_voteTime_of_warm_frame_at
     hrun hnr hm (by omega : s₀ + 1 ≤ u) (y := w) hw
   have hyu : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ) := hrun.antitone hlo.le hy

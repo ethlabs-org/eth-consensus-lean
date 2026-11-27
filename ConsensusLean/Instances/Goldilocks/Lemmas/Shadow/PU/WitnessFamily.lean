@@ -18,7 +18,7 @@ The stock family (`FollowFinality`, `WitnessUnanimity`/`FollowWitnessBoundary`, 
 `FreshVotesRelay`, `FollowInduction`, `FollowLaterBoundary`) carries a frozen witness `Q ⪰ X` by
 `floor ≤ σ(Q).h` and `kindJ → J ⪯ X`, over a stock `FrameWindow`. Over the shadow frame the `J`
 clause moves to the witness (`EarlyWitness`): a witness `Q` held by an honest `z` at cut `c` in a
-`Healing.FrameWindow' … M isTop J` carries
+`Generic.FrameWindow … M isTop J` carries
 
   `M − 1 ≤ σ_z(Q).h ∧ (isTop → σ_z(Q).h = M − 1 → J ⪯ Q)` (the witness clause),
 
@@ -349,9 +349,9 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **A window's witness places every honest finalized tip in it below an independently held
 descendant** (`FrameWindow.finalized_below_descendant_at` over the shadow run, with the witness
 clause on `X` in place of `floor ≤ σ(X).h` and `kindJ → J ⪯ X`). -/
-theorem FrameWindow'.finalized_below_descendant_at {lo hi : Time} {M : Nat}
+theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.finalized_below_descendant_at {lo hi : Time} {M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H lo hi M isTop J)
+    (hframe : Generic.FrameWindow tr H lo hi M isTop J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y x z : Fin sp.n} {j i c : Nat}
     (hy : y ∈ H (tr.time j)) (hx : x ∈ H (tr.time i)) (hz : z ∈ H (tr.time c))
@@ -433,12 +433,12 @@ theorem witness_frame_of_held
   rw [Node.frame_eq, Store.toFrame_fcRoot]
   exact hFX
 
-/-- In a `FrameWindow'`, a held block carrying the P-U witness clause at the reader is P-U viable
+/-- In a `Generic.FrameWindow`, a held block carrying the P-U witness clause at the reader is P-U viable
 in the reader's store. -/
 private theorem isViable_of_frameWindow
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {M : Nat} {isTop : Prop}
-    {J : AC.Blk sp.n (List (FG.Att sp.n))} (hframe : FrameWindow' tr H lo hi M isTop J)
+    {J : AC.Blk sp.n (List (FG.Att sp.n))} (hframe : Generic.FrameWindow tr H lo hi M isTop J)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) (hlo : lo ≤ tr.time i)
     (hhi : tr.time i ≤ hi) {Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hQy : Q ∈ (tr.state y i).fg.tree)
@@ -466,14 +466,14 @@ private theorem isViable_of_frameWindow
   · exact Or.inl hge
 
 /-- **The frame geometry of a viable witness at a reader's cut** (`witness_frame_at` over the
-shadow frame): for a reader honest at its call in a `FrameWindow'`, holding a descendant `Q` of `X`
+shadow frame): for a reader honest at its call in a `Generic.FrameWindow`, holding a descendant `Q` of `X`
 that carries the witness clause, either `X` is below its finalized tip, or `X` and `Q` are in its
 frame above `F` with `Q` a P-U viable head. The witness clause is exactly P-U viability at the
 window's `M` and `J`; no `fc_root = J` case arises. -/
 theorem witness_frame_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {M : Nat} {isTop : Prop}
-    {J : AC.Blk sp.n (List (FG.Att sp.n))} (hframe : FrameWindow' tr H lo hi M isTop J)
+    {J : AC.Blk sp.n (List (FG.Att sp.n))} (hframe : Generic.FrameWindow tr H lo hi M isTop J)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y i ell) (hlo : lo ≤ tr.time i) (hhi : tr.time i ≤ hi)
     (hf : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
@@ -506,11 +506,11 @@ theorem WindowWitness.mono {lo hi lo' hi' : Time} {Q : AC.Blk sp.n (List (FG.Att
     WindowWitness tr H lo' hi' Q :=
   ⟨fun y j hy h₁ h₂ => h.held y j hy (hl.trans h₁) (h₂.trans hh)⟩
 
-/-- The P-U witness clause of a held block is a witness of a `FrameWindow'`. -/
+/-- The P-U witness clause of a held block is a witness of a `Generic.FrameWindow`. -/
 theorem windowWitness_of_frameWindow
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {M : Nat} {isTop : Prop}
-    {J : AC.Blk sp.n (List (FG.Att sp.n))} (hframe : FrameWindow' tr H lo hi M isTop J)
+    {J : AC.Blk sp.n (List (FG.Att sp.n))} (hframe : Generic.FrameWindow tr H lo hi M isTop J)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c)) {Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hQ : Q ∈ (tr.state z c).fg.tree)
     (hwit : M - 1 ≤ ((tr.state z c).fg.σ Q.root).h ∧
@@ -727,7 +727,7 @@ theorem unanimous_next_votes_of_witness_at {K : AC.CommitteeDict sp.n}
     {m M : Nat} (hm : gbar g + 4 * sp.Δ ≤ sp.ts m)
     (hmb : sp.ts (m + 1 : Nat) + sp.Δ ≤ b)
     {isTop : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts m) (sp.ts (m + 1 : Nat) + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts m) (sp.ts (m + 1 : Nat) + sp.Δ) M isTop J)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
     (hQ : Q ∈ (tr.state z c).fg.tree)
     (hwit : M - 1 ≤ ((tr.state z c).fg.σ Q.root).h ∧
@@ -883,7 +883,7 @@ theorem unanimous_next_proposal_of_witness_at {K : AC.CommitteeDict sp.n}
     {m M : Nat} (hm : gbar g + 4 * sp.Δ ≤ sp.ts m)
     (hmb : sp.ts (m + 1 : Nat) + sp.Δ ≤ b)
     {isTop : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts m) (sp.ts (m + 1 : Nat) + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts m) (sp.ts (m + 1 : Nat) + sp.Δ) M isTop J)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
     (hQ : Q ∈ (tr.state z c).fg.tree)
     (hwit : M - 1 ≤ ((tr.state z c).fg.σ Q.root).h ∧
@@ -1003,7 +1003,7 @@ theorem later_heads_of_early_witness_at {K : AC.CommitteeDict sp.n}
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
     {s N M : Nat} (hm : gbar g ≤ sp.ts s) (hmb : sp.ts N + sp.Δ ≤ b)
     {isTop : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s) (sp.ts N + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s) (sp.ts N + sp.Δ) M isTop J)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
     {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
@@ -1252,7 +1252,7 @@ theorem next_votes_of_early_witness_at
     {s M : Nat} {hi : Time} (hm : gbar g ≤ sp.ts s)
     (hnext : sp.ts (s + 1 : Nat) + sp.Δ ≤ hi) (hmb : hi ≤ b)
     {isTop : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s) hi M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s) hi M isTop J)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
     {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
