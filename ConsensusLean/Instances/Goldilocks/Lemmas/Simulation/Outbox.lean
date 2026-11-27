@@ -101,26 +101,9 @@ private theorem acOnBlock_voteStep (self : Fin sp.n) (A : ACState sp.n) (Φ : AC
     ((optimistic_keeps _ _ _).2.trans (blockReceipt_keeps _ _ _).2)
 
 private theorem acRestart_emits_nil (ro : ReplayOrder sp FGP) (self : Fin sp.n)
-    (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time) (ht : 0 ≤ t) :
+    (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time) (_ht : 0 ≤ t) :
     (AC.acRestart sp ro self A Φ t).2 = [] := by
-  unfold AC.acRestart
-  suffices h : ∀ (l : List (AC.Blk sp.n FGP)) (acc : ACState sp.n × List (AC.Em sp FGP)),
-      acc.1.restartTime = (t : WithBot Time) → acc.2 = [] →
-      (l.foldl (fun acc B => let r := AC.acOnBlock sp self acc.1 Φ t B; (r.1, acc.2 ++ r.2))
-        acc).2 = [] from h _ _ rfl rfl
-  intro l
-  induction l with
-  | nil => exact fun _ _ h => h
-  | cons B l ih =>
-    intro acc hr he
-    obtain ⟨h₁, -, -, h₄⟩ := acOnBlock_voteStep self acc.1 Φ t B
-    have hnil : (AC.acOnBlock sp self acc.1 Φ t B).2 = [] := by
-      cases hc : (AC.acOnBlock sp self acc.1 Φ t B).2 with
-      | nil => rfl
-      | cons e es =>
-        exact absurd (h₄ e (hc ▸ List.mem_cons_self)).1
-          (AC.not_joined_of_restartTime sp ht hr)
-    exact ih _ (h₁.trans hr) (by simp [he, hnil])
+  rfl
 
 /-- **One vote per call.** A call of the node's AC at `t ≥ 0` other than a restart is a
 `VoteStep`; a restart emits nothing. -/
