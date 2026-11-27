@@ -722,21 +722,8 @@ theorem fastFloor_step_at
     (hP : P ∈ (tr.state y k).fg.toFrame.tree) (hP' : P ∈ (tr.state y (k + 1)).fg.toFrame.tree)
     (hva : (tr.state y k).fg.toFrame.viableAncestor P = P)
     (hu : (sp.slot (tr.time k) : Int) - 1 ≤ j ∨ Compose.UnlockKeeps tr y k P) :
-    Compose.FastFloorAt tr y (k + 1) P j m := by
-  have hd := hrun.time_nonneg k
-  have hst : (tr.upTo (tr.time k)).state y k = tr.state y k :=
-    RunTrace.upTo_state_of_le hrun.time_mono le_rfl
-  have hst1 : (tr.upTo (tr.time k)).state y (k + 1) = tr.state y (k + 1) :=
-    Trace.upTo_state tr y fun _ hk' => hrun.time_mono (Nat.lt_succ_iff.1 hk')
-  have h := Compose.fastFloor_run_view (hrun.upTo hd) hy k (B₀ := P) (j := j) (m := m)
-    (by simp only [Compose.FastFloorAt, hst]; exact hfl) hk (by rw [hst]; exact hP)
-    (by rw [hst1]; exact hP') (by rw [hst]; exact hva) fun ℓ hc => by
-      rw [hst]
-      rcases hu with hs | hu
-      · exact Or.inl hs
-      · exact Or.inr (hu ℓ ((Trace.upTo_callAt_of_le _ le_rfl).mp hc))
-  simp only [Compose.FastFloorAt, hst1] at h
-  exact h
+    Compose.FastFloorAt tr y (k + 1) P j m :=
+  Core.fastFloor_step_at hrun.toCore hy hfl hk hP hP' hva hu
 
 /-- **A fresh fast lock is a toFG candidate until its two slots end.** Let an honest node `y`
 pass at cut `j` the fast test of its slot-`r` update on a block `D ⪰ P`, where `P` is a viable

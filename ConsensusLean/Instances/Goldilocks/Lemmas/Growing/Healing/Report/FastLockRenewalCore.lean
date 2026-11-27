@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.FloorCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Update
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
@@ -107,6 +108,32 @@ theorem post_of_updateAt
   rw [ite_eq_right (not_not.mpr hj), ite_eq_right ht1,
     ite_eq_left ⟨ht2, Nat.succ_pos s⟩]
   simp only [Nat.add_sub_cancel]
+
+/-- The fast floor survives a cut of a growing run at its supplied frame. -/
+theorem fastFloor_step_at
+    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} {j m : Nat}
+    (hfl : Compose.FastFloorAtWith frameOf tr y k P j m) (hk : sp.slot (tr.time k) ≤ m)
+    (hP : P ∈ (frameOf (tr.state y k)).tree)
+    (hP' : P ∈ (frameOf (tr.state y (k + 1))).tree)
+    (hva : (frameOf (tr.state y k)).viableAncestor P = P)
+    (hu : (sp.slot (tr.time k) : Int) - 1 ≤ j ∨ Compose.UnlockKeepsWith frameOf tr y k P) :
+    Compose.FastFloorAtWith frameOf tr y (k + 1) P j m := by
+  have hd := hrun.time_nonneg k
+  have hst : (tr.upTo (tr.time k)).state y k = tr.state y k :=
+    RunTrace.upTo_state_of_le hrun.time_mono le_rfl
+  have hst1 : (tr.upTo (tr.time k)).state y (k + 1) = tr.state y (k + 1) :=
+    Trace.upTo_state tr y fun _ hk' => hrun.time_mono (Nat.lt_succ_iff.1 hk')
+  have h := Compose.fastFloor_run_view_core (hrun.upTo hd) hy k (B₀ := P) (j := j) (m := m)
+    (by simp only [Compose.FastFloorAtWith, hst]; exact hfl) hk (by rw [hst]; exact hP)
+    (by rw [hst1]; exact hP') (by rw [hst]; exact hva) fun ell hc => by
+      rw [hst]
+      rcases hu with hs | hu
+      · exact Or.inl hs
+      · exact Or.inr (hu ell ((Trace.upTo_callAt_of_le _ le_rfl).mp hc))
+  simp only [Compose.FastFloorAtWith, hst1] at h
+  exact h
 
 end Consensus.Goldilocks.Healing.Growing.Core
 
