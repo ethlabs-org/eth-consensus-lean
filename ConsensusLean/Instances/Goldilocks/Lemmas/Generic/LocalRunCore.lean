@@ -30,6 +30,12 @@ structure LocalRunCore {P : Params} {A : NodeAC P}
   /-- `Compose.fg_reachable` on the prefix. -/
   reachable_at : ∀ {y k t}, 0 ≤ t → (∀ q < k, tr.time q ≤ t) → y ∈ H t →
     Store.ReachableWith u A.genesisPayload (tr.state y k).fg
+  /-- `Healing.jMax_of_reachable` on the prefix (the body of `Healing.JMax`): `Σ.h_j` is at least
+  the justified height of every held state whose `J` is a held block extending `Σ.F`. -/
+  jmax_at : ∀ {y k t}, 0 ≤ t → (∀ q < k, tr.time q ≤ t) → y ∈ H t →
+    ∀ B ∈ (tr.state y k).fg.tree, ∀ X ∈ (tr.state y k).fg.tree,
+      X.root = ((tr.state y k).fg.σ B.root).J → (tr.state y k).fg.Anc (tr.state y k).fg.F X →
+      ((tr.state y k).fg.σ B.root).hj ≤ (tr.state y k).fg.hj
   /-- `Compose.Growing.honest_blocks_coherent_local`. -/
   coherent : Compose.NoCollRun dg tr → Coherent (tr.HonestBlocksAt H)
   /-- `store_anc_of_honest_anc_at_from`. -/

@@ -9,6 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Service.Record
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 
 public section
 
@@ -49,6 +50,8 @@ theorem GoldilocksRun.toStaticCore (hrun : GoldilocksRun proposer dg H tr ini) :
     exact ⟨inputs, hin, fun j hj a ha =>
       hs j hj a ⟨_, Compose.projFG_callAt.mpr ha.choose_spec⟩⟩
   reachable y hy i := (Compose.fg_reachable hrun.toLocalRun hy i).reachableWith
+  jmax y hy i :=
+    (Healing.jMax_iff _).1 (Healing.jMax_of_reachable (Compose.fg_reachable hrun.toLocalRun hy i))
   frameOK y hy i := Compose.frameOK_state hrun.toLocalRun hy i
   projAC_state y hy i := Compose.projAC_state hrun.toLocalRun hy i
   acRun hnc := Compose.goldilocks_ac_projection_from hrun hnc
