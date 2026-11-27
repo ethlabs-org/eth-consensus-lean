@@ -17,10 +17,7 @@ AC trace contract `ACLocalRun` and the stock `AC.ACRun`, at the frames `fg_to_ac
 **Reused, not copied:** `ACLocalRun`, `AC.ACRun`, `projAC`, `projAC_callAt`, `Trace.state_succ_*`
 (generic); `Compose.projAC_state'` (Shadow/PU/Node), `Coherence.accept_next'` and
 `Coherence.honest_blocks_coherent'` (Shadow/PU/Coherence);
-`Compose.frameOK_state'` (Shadow/PU/Run, from the shadow cache invariant).
-
-**Pending supplier.** The private `own_block_payload_pending` is a placeholder with the exact type
-of `own_block_payload'` (Lane C, Run); it is replaced by an import when that lands. -/
+`Compose.frameOK_state'` and `Compose.own_block_payload'` (Shadow/PU/Run). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -39,15 +36,6 @@ private theorem acBlock_prev' (h : Node.LocalRun' proposer dg H sg tr ini) {y : 
   obtain ⟨k', rfl, hk'⟩ := Coherence.exec_acBlock_prev' proposer dg y _ _ e hk hb
   obtain ⟨hc', ht⟩ := group_cut' hg hk'
   exact ⟨j + k', rfl, hc', ht⟩
-
-/-! ### Pending supplier (a placeholder with the supplier's exact type) -/
-
-/-- Placeholder for `own_block_payload'` (Reach): every block an honest node accepts passes
-`ac_valid_payload` (from the wire, or requirement 5 at its own proposal). -/
-private theorem own_block_payload_pending (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
-    (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
-    {i : Nat} {B : A.Blk} (hacc : tr.CallAt y i (.fg (.block B true))) : A.validPayload B := by
-  sorry
 
 /-! ### The frame between AC calls -/
 
@@ -133,7 +121,7 @@ private theorem callOK_from' (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
       · obtain ⟨ℓ', hℓ', -⟩ := Coherence.accept_next' h hy hB'
         cases callAt_unique hacc hℓ'
     have hlaw := (cutStep'_block_true _ _ _ _ _).1 (h.cutLaw y hy i' _ hacc)
-    refine ⟨?_, own_block_payload_pending hpay h hy hacc, hti ▸ hlaw.1⟩
+    refine ⟨?_, own_block_payload' hpay h hy hacc, hti ▸ hlaw.1⟩
     rw [← hfr', hfr, tr.state_succ_of_call hacc, frame'_eq, frame'_eq]
     exact (Store.accept_is_frame_step' _ _ (fg_reachable_at' h hy i')).1 B _ hlaw.2.1
   | message m =>
