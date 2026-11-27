@@ -8,12 +8,17 @@ public section
 Classification of the three V-A7 candidates:
 
 * `pu_cex_proposal_floor_top`: **proved**, no counterexample exists. The stock
-  `floor_le_warm_proposal_at` holds over shadow runs: `floor_le_warm_proposal_at'` in
-  `Shadow/PU/WitnessFloor`. The paper trace assumed the honest proposal on a height-`h_j` head
-  above `J` carries fewer than `q` attestations; `proposal_attestations` includes `J`'s whole
-  justification quorum (and the predecessor's finality quorum), so it crosses (`proposal_crosses`).
-* `pu_cex_leaf8_low`: **proved**, by the same supplier: `rounds_le_warm_proposal_at'`.
-* `pu_cex_viableHead_persists`: see `Shadow/PU/WitnessFloor` and the lane report.
+  `floor_le_warm_proposal_at` holds over shadow runs:
+  `Consensus.Goldilocks.Shadow.PU.Witness.floor_le_warm_proposal_at'` (`Shadow/PU/WitnessFloor`).
+  The paper trace assumed the honest proposal on a height-`h_j` head above `J` carries fewer
+  than `q` attestations; `proposal_attestations` includes `J`'s whole justification quorum (and
+  the predecessor's finality quorum), so it crosses (`proposal_crosses`).
+* `pu_cex_leaf8_low`: **proved**, by the same supplier:
+  `Consensus.Goldilocks.Shadow.PU.Witness.rounds_le_warm_proposal_at'`.
+* `pu_cex_viableHead_persists`: **unresolved**. The old-window fact is superseded by the proved
+  `FrameWindow'.viableHead_persists'` (V-B4) and no shadow theorem uses it; whether it needs a
+  verdict is a scope decision with the owner. A paper candidate run (not built) is recorded in
+  the lane report.
 
 The declarations below are client and transition checks used for the persistence candidate.
 
