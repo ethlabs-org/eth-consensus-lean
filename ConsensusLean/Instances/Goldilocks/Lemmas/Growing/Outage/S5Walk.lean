@@ -30,8 +30,8 @@ At a vote of `y` at cut `i`, `y` honest at `t_i`, from `OutageLockInv D i`:
 
 * `vote_extends_of_hi_at` (H1, vote form): under Hi the walk over the viable vote domain passes
   `P`; every viable head is strictly above `P` by G3′ (`above_of_hi_height_at`, counted at `t_i`);
-* `J_anc_of_lo_at`, `not_contest_of_lo_at`: Lo is `Σ.J ⪯ P`, with no contest, at a cut read at
-  a time at which its node is honest after every earlier cut;
+* `J_anc_of_lo_at`: Lo is `Σ.J ⪯ P`, at a cut read at a time at which its node is honest after
+  every earlier cut;
 * `readPoint_liveLockBlocks_compatible_at`: the read point's live locks are compatible with every
   block below `P`; a stored lock by (L) at `t_i`, an optimistic lock of the cast by the fast-lock
   count at the cast's cut;
@@ -203,7 +203,7 @@ theorem vote_extends_of_hi_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n
 
 /-- **Lo is `Σ.J ⪯ P`**: `Σ.J`, read at a time at which its node is honest after every earlier
 cut, is compatible with `P` (OB-F) and not strictly above it. -/
-private theorem J_anc_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} {k : Nat}
+theorem J_anc_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} {k : Nat}
     {t : Time} (hk : k ≤ i) (ht0 : 0 ≤ t) (ht : ∀ k' < k, tr.time k' ≤ t) (hy : y ∈ H t)
     (hLo : ¬ HiAt tr H D.P y k) :
     Anc (tr.HonestBlocksAt H) (tr.state y k).fg.J D.P := by
@@ -215,54 +215,6 @@ private theorem J_anc_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.
       rw [hU.1 (tree_held_at ht0 hy ht hJt) D.hP.1 hr]
       exact .refl
     · exact absurd (hiAt_iff.2 ⟨h, hr⟩) hLo
-
-/-- **Lo has no contest**, read at a time `t` at which the node is honest after every earlier
-cut, with `2 f_t < n`: a contest block's `h_j`-entry is compatible with `P` (its source, held while
-honest at `t`, is) and is not `Σ.J`; with `Σ.J ⪯ P` it would be `Σ.J` or above `Σ.J`. -/
-theorem not_contest_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} {k : Nat}
-    {t : Time} (hk : k ≤ i) (ht0 : 0 ≤ t) (ht : ∀ k' < k, tr.time k' ≤ t) (hy : y ∈ H t)
-    (hf : 2 * (H t)ᶜ.ncard < sp.n) (hLo : ¬ HiAt tr H D.P y k) :
-    ¬ (tr.state y k).fg.Contest := by
-  have hU := D.coherent
-  have hr := D.hrun.upTo ht0
-  have hnc' := D.hnc.upTo t
-  have hsub := upTo_subset D.hrun ht0
-  have hst := Trace.upTo_state tr y ht
-  have hJP := J_anc_of_lo_at D hinv hk ht0 ht hy hLo
-  have hsrc := (rows_sourced_by D.hrun D.hnc (B := D.P) (n := k)
-    (fun x k' hk' hx => hinv.sources x k' (by omega) hx) ht0 ht hy).upTo_held ht
-  rw [← hst] at hJP ⊢
-  rintro ⟨hm, X, hX, -, hXh, hJX⟩
-  have hR := fg_reachable hr.toLocalRun hy k
-  have hJt := (Store.cache_invariants _ _ _ _ hR).2.1
-  have hJU : ((tr.upTo t).state y k).fg.J ∈ (tr.upTo t).HonestBlocks (H t) := ⟨y, hy, k, hJt⟩
-  by_cases h0 : ((tr.upTo t).state y k).fg.hj = 0
-  · rw [justified_genesis hr (i := k) h0 hy] at hJX
-    exact hJX ((Store.accepted_tree _ _ _ _ hR).2.2.2 X hX)
-  obtain ⟨hJh, hJT, -⟩ := justified_honest_source_before hr hnc' hf hy hsrc (by omega)
-  obtain ⟨E, hEt, hEX, hEh, hET, D', ⟨hD'P, -⟩, hD's⟩ :=
-    frame_crossing_source_before hr hnc' hf hy (i := k) hsrc hX
-      (j := ((tr.upTo t).state y k).fg.hj) (by omega)
-      (Nat.lt_of_lt_of_eq (Nat.lt_succ_self _) (hXh.trans hm).symm)
-  have hEU : E ∈ (tr.upTo t).HonestBlocks (H t) := fg_tree_subset_honest hy k hEt
-  obtain ⟨x, hx, k', -, -, hED', -, -⟩ := honest_source_entry hr hnc' hD's hEU rfl
-  have hEP : Compatible (tr.HonestBlocksAt H) E D.P :=
-    compatible_of_head_anc hU (hED'.mono ((fg_tree_subset_honest hx k').trans hsub)) hD'P
-  have back := fun {A W} (hW : W ∈ ((tr.upTo t).state y k).fg.tree)
-      (h : Anc (tr.HonestBlocksAt H) A W) =>
-    honest_held_anc hr hnc' hy (RunTrace.anc_upTo_of_right D.hrun.toLocalRun D.hnc ht0
-      ⟨y, hy, k, hW⟩ h) hW
-  rcases hEP with hEP | hPE
-  · rcases Anc.total hU hEP hJP with h | h
-    · have hEJ := back hJt h
-      obtain rfl : E = ((tr.upTo t).state y k).fg.J :=
-        held_entry_unique hr hnc' hy hJt hEJ .refl (hEh.trans hJh.symm) hET hJT
-      exact hJX hEX
-    · have hJE := back hEt h
-      obtain rfl : ((tr.upTo t).state y k).fg.J = E :=
-        held_entry_unique hr hnc' hy hEt hJE .refl (hJh.trans hEh.symm) hJT hET
-      exact hJX hEX
-  · exact hJX ((back hEt (hJP.trans hPE)).trans hEX)
 
 /-- **The read point's live locks are compatible with every block below `P`**, at a vote of a
 node honest at its cut `i`, of a positive slot: a stored lock by (L) at `t_i`, the cast's
