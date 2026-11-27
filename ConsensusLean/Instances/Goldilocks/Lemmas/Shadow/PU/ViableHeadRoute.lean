@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PreAdvance
+import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
