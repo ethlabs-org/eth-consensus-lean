@@ -212,7 +212,7 @@ theorem cache_ahead_report_at' {ini : Fin sp.n → (goldilocksNode sp ro).State}
 /-- A cut of a node honest at it, with a low justified height and a held high seed, has its
 finalized-chain root compatible with every held block compatible with the seed
 (`low_root_of_held_seed_at`). The root is the store's analysis `fcRoot`. -/
-theorem ResetPremisesUpTo.low_root_of_held_seed_at'
+theorem ResetPremisesUpTo.low_analysis_root_of_held_seed_at
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)

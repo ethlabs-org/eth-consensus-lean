@@ -23,7 +23,7 @@ branches that read `fc_root = J`) split on the store's fork-choice root. The sha
 (the stock higher-report premise applies), or strictly below `Σ.J` (the stock `cache_ahead_report`
 with `X = J` applies). The case "top-clean, `σ(P).h = h_j`, `J ⋠ P`" is the third branch: the
 root premise, supplied by strictly prior row provenance (high `h_j`) and
-`low_root_of_held_seed_at'` (low `h_j`), forces `P ⪯ J`. No new hypothesis is needed.
+`low_analysis_root_of_held_seed_at` (low `h_j`), forces `P ⪯ J`. No new hypothesis is needed.
 
 The run-level statements take the shadow reset premises `ResetPremisesUpTo'` (`Shadow/PU/Run`);
 the covered form discharges its root and floor premises using the before-cut source suppliers. -/
@@ -110,7 +110,7 @@ theorem held_target_viableHeads_or_higher_report_of_cases
   have hcz := ProposalImpl.cutZ_lt_of_anc_at' hp hseed (by rwa [max_comm]) hPy hSP
   have hroot : Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot P := by
     by_cases hlow : (tr.state y i).fg.hj ≤ HZ tr H g
-    · exact hp.low_root_of_held_seed_at' hy hib hseed hqb
+    · exact hp.low_analysis_root_of_held_seed_at hy hib hseed hqb
         (mem_of_honest_anc_at' hrun hnc hd hle hy hSP hPy) hlow (Or.inr hSP)
         (fun _ => hPt)
     · exact hhighroot hlow
