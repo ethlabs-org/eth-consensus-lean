@@ -25,11 +25,11 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- An honest proposal is accepted at its cut, from arbitrary run starts. -/
 theorem accept_of_proposesAt {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : GoldilocksRun' proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
+    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {k : Nat} {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : tr.ProposesAt p k W) :
     tr.AcceptAt p k W ∧ W ∈ (tr.state p (k + 1)).fg.tree ∧ tr.post k = tr.state p (k + 1) := by
-  have h := hrun.toLocalRun'
+  have h := hrun.toLocalRun
   obtain ⟨⟨⟨acc, hc⟩, hpos⟩, -, -⟩ := hW
   rcases blockCall_cases h hp hc with hg |
     ⟨j, x, fgDue, rfl, hg, hpr, d, p', hdp, rfl, -, -, -, -⟩
@@ -43,12 +43,12 @@ theorem accept_of_proposesAt {ini : Fin sp.n → (goldilocksNode sp ro).State}
   exact ⟨hc, accept_mem_from h hp hc, (tr.state_succ_of_call hc).symm⟩
 
 /-- Extraction of the AC proposal run from the proposal cut. -/
-theorem honestProposalRun_of_proposesAt {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem honestProposalRun_of_proposesAt {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {p : Fin sp.n} {kP s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hp : p ∈ H) (hpp : p = proposer s) (hP : tr.ProposesAt p kP P)
     (hPs : P.slot = s) : Healing.HonestProposalRun tr H proposer s P := by
-  have h := hrun.toLocalRun'
+  have h := hrun.toLocalRun
   subst p
   obtain ⟨⟨⟨acc, hc⟩, hpos⟩, -, htk⟩ := hP
   refine ⟨hp, ?_⟩
@@ -177,7 +177,7 @@ private theorem attest_prev (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin
   exact h0
 
 /-- An attestation is sourced by the immediately preceding AC toFG call. -/
-theorem attest_source (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+theorem attest_source (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
     {j : Nat} {C : A.Blk} {a : FG.Att P.n} (hc : tr.CallAt y j (.fg (.attest C (some a)))) :
     ∃ j', j = j' + 1 ∧ ∃ ℓ : ACLabel A, tr.CallAt y j' (.ac ℓ) ∧ ℓ.call = .toFG ∧
       tr.time j' = tr.time j ∧ (A.toFG (tr.state y j').ac ℓ.frame (tr.time j')).2 = some C ∧

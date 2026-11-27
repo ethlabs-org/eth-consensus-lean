@@ -29,7 +29,7 @@ variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
   {ini : Fin P.n → A.State}
 
 /-- **An AC block call follows the FG cut that accepts the block** (a copy of `acBlock_prev`). -/
-private theorem acBlock_prev (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+private theorem acBlock_prev (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel A} {B : A.Blk} (hc : tr.CallAt y i (.ac ℓ))
     (hb : ℓ.call = .block B) :
     ∃ i', i = i' + 1 ∧ tr.CallAt y i' (.fg (.block B true)) ∧ tr.time i' = tr.time i := by
@@ -41,7 +41,7 @@ private theorem acBlock_prev (h : Node.LocalRun' proposer dg H sg tr ini) {y : F
 /-! ### The frame between AC calls -/
 
 /-- The frame of every honest state is a frame inside the honest blocks. -/
-private theorem frameIn_state (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+private theorem frameIn_state (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) (k : Nat) : A.FrameIn (tr.HonestBlocks H) (frame (tr.state y k)) := by
   refine ⟨frameOK_state' h hy k, fun X hX => ⟨y, hy, k, ?_⟩⟩
   rw [frame_eq, Store.toFrame_tree] at hX
@@ -53,7 +53,7 @@ private theorem callAt_unique {y : Fin P.n} {i : Nat} {c c' : Cut A} (hc : tr.Ca
 
 /-- Without AC calls of `y` in `[a, b)`, its shadow frame at `b` is the frame at `a`, or the cut
 before `b` accepts a block, at the frame of `a` (a copy of `frame_flat`). -/
-private theorem frame_flat (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+private theorem frame_flat (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {a b : Nat}
     (hab : a ≤ b) (hno : ∀ k, a ≤ k → k < b → ∀ ℓ : ACLabel A, ¬ tr.CallAt y k (.ac ℓ)) :
     frame (tr.state y b) = frame (tr.state y a) ∨ ∃ b', b = b' + 1 ∧ a ≤ b' ∧
@@ -95,7 +95,7 @@ private theorem frame_flat (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin
 /-- The call law for an AC call of `y` at `i` after the frame of `a`, without AC calls of `y`
 in `[a, i)` and without an accepting cut of `y` just before `a` (a copy of `callOK_from`). -/
 private theorem callOK_from (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
-    (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+    (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {a i : Nat} {ℓ : ACLabel A} (hc : tr.CallAt y i (.ac ℓ)) (hai : a ≤ i)
     (hno : ∀ k, a ≤ k → k < i → ∀ ℓ' : ACLabel A, ¬ tr.CallAt y k (.ac ℓ'))
     (ha : ∀ k B, k + 1 = a → ¬ tr.CallAt y k (.fg (.block B true))) :
@@ -133,7 +133,7 @@ private theorem callOK_from (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
 /-- **C0.5, the AC projection of a shadow run**, from the run's AC starts `ini` (a copy of
 `ac_projection`; the conclusion is the stock AC trace contract). -/
 theorem ac_projection' (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
-    (h : Node.LocalRun' proposer dg H sg tr ini) (hnc : NoCollRun dg tr) :
+    (h : Node.LocalRun proposer dg H sg tr ini) (hnc : NoCollRun dg tr) :
     ACLocalRun A H (tr.HonestBlocks H) tr.projAC ini := by
   classical
   refine
@@ -217,7 +217,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- The frame of an honest AC call is inside the node's tree (a copy of `frame_tree`). -/
-private theorem frame_tree (hrun : GoldilocksRun' proposer dg H tr ini) {y : Fin sp.n}
+private theorem frame_tree (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ)
     {B : Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) :
@@ -232,7 +232,7 @@ private theorem emit_voteAt {x : Fin sp.n} {j : Nat} {v : Vote sp.n} (h : tr.Emi
   obtain ⟨ℓ, hc, e, he, rfl⟩ := h
   exact ⟨e, ⟨ℓ, projAC_callAt.2 hc, he⟩, rfl⟩
 
-private theorem message_vote (hrun : GoldilocksRun' proposer dg H tr ini) {y : Fin sp.n}
+private theorem message_vote (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {v : Vote sp.n}
     (hc : tr.projAC.CallAt y i ℓ) (hm : ℓ.call = .message v) (hval : v.val ∈ H) :
@@ -241,7 +241,7 @@ private theorem message_vote (hrun : GoldilocksRun' proposer dg H tr ini) {y : F
   exact ⟨j, hj, emit_voteAt he⟩
 
 /-- The pool form and capacity invariant of a shadow run (a copy of `state_pool_cap`). -/
-theorem state_pool_cap' (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem state_pool_cap' (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     ∀ σ, (∀ m ∈ (tr.projAC.state y i).pool σ, m.slot = σ) ∧
       ∀ x : Fin sp.n, (((tr.projAC.state y i).pool σ).filter
@@ -254,7 +254,7 @@ theorem state_pool_cap' (hrun : GoldilocksRun' proposer dg H tr ini)
     · rw [tr.projAC.state_of_lastCall hc hk hn]
       have hex := ((Node.cutStep_ac _ _ _ _ _).1
         (hrun.cutLaw y hy k _ (projAC_callAt.mp hc))).2.1
-      rw [← projAC_state' hrun.toLocalRun' hy] at hex
+      rw [← projAC_state' hrun.toLocalRun hy] at hex
       have h := AC.step_pool_cap ro y (tr.projAC.state y k) ℓ.frame (tr.time k)
         ℓ.call (ih k hk)
       rw [hex] at h
@@ -263,7 +263,7 @@ theorem state_pool_cap' (hrun : GoldilocksRun' proposer dg H tr ini)
 /-- Honest votes in a stored pool of a shadow run have an earlier emission, from starts up to
 the vote permission (a copy of `pool_vote_emitted`; the pool insertions are read from the public
 `step_pool_insertion_source`). -/
-theorem pool_vote_emitted' (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem pool_vote_emitted' (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) (i σ : Nat) (v : Vote sp.n)
     (hv : v ∈ (tr.projAC.state y i).pool σ) (hval : v.val ∈ H) :
     ∃ j < i, ∃ e, AC.VoteAt tr.projAC v.val j e ∧ e.msg = v := by
@@ -274,9 +274,9 @@ theorem pool_vote_emitted' (hrun : GoldilocksRun' proposer dg H tr ini)
       simp [RunTrace.projAC, hrun.init y hy, Node.initWith, (hrun.vstart y).pool] at hv
     · rw [tr.projAC.state_of_lastCall hc hk hn] at hv
       have hlaw := (Node.cutStep_ac _ _ _ _ _).1 (hrun.cutLaw y hy k _ (projAC_callAt.mp hc))
-      have hΦ : FrameOK ℓ.frame := hlaw.1 ▸ frameOK_state' hrun.toLocalRun' hy k
+      have hΦ : FrameOK ℓ.frame := hlaw.1 ▸ frameOK_state' hrun.toLocalRun hy k
       have hex := hlaw.2.1
-      rw [← projAC_state' hrun.toLocalRun' hy] at hex
+      rw [← projAC_state' hrun.toLocalRun hy] at hex
       by_cases hr : ℓ.call = .restart
       · have hs := AC.restart_state sp _ ro y (tr.projAC.state y k) ℓ.frame
           (tr.time k) hΦ (hrun.time_nonneg k)
@@ -307,26 +307,26 @@ theorem pool_vote_emitted' (hrun : GoldilocksRun' proposer dg H tr ini)
 
 /-- A block of an honest frame is genesis or was accepted by an honest node (a copy of
 `frame_block_cases`). -/
-private theorem frame_block_cases (hrun : GoldilocksRun' proposer dg H tr ini)
+private theorem frame_block_cases (hrun : GoldilocksRun proposer dg H tr ini)
     {B : Blk sp.n (List (FG.Att sp.n))} (hB : AC.HonestFrameBlock tr.projAC H B) :
     B = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload ∨
       ∃ y ∈ H, ∃ k, tr.AcceptAt y k B := by
   obtain ⟨y, hy, i, ℓ, hc, hB⟩ := hB
-  rcases Coherence.tree_accepted hrun.toLocalRun' hy (frame_tree hrun hy hc hB) with
+  rcases Coherence.tree_accepted hrun.toLocalRun hy (frame_tree hrun hy hc hB) with
     h | ⟨k, -, hk⟩
   · exact Or.inl h
   · exact Or.inr ⟨y, hy, k, hk⟩
 
 /-- An accepted block of an honest proposer is its own proposal, at the third cut of its tick at
 the start of the block's slot, which is not slot `0` (a copy of `own_tick`). -/
-private theorem own_tick (hrun : GoldilocksRun' proposer dg H tr ini) {y : Fin sp.n}
+private theorem own_tick (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {k : Nat}
     {B : Blk sp.n (List (FG.Att sp.n))} (hk : tr.AcceptAt y k B) (hp : B.proposer ∈ H) :
     ∃ j₀ acc, tr.TickAt proposer dg B.proposer j₀ (tr.time (j₀ + 2)) ∧
       tr.CallAt B.proposer (j₀ + 2) (.fg (.block B acc)) ∧ 0 < B.slot ∧
       tr.time (j₀ + 2) = sp.toParams.slotTime B.slot := by
   obtain ⟨j, -, ⟨acc, hc⟩, hpos⟩ := hrun.block_unforgeable y hy k B ⟨true, hk⟩ hp
-  rcases Coherence.blockCall_cases hrun.toLocalRun' hp hc with
+  rcases Coherence.blockCall_cases hrun.toLocalRun hp hc with
     hg | ⟨j₀, x, f, rfl, ht, hP, d, p, -,
     hB, -⟩
   · have hg := (RunTrace.groupAt_iff _ _ _ _ _ _ _).1 hg
@@ -334,7 +334,7 @@ private theorem own_tick (hrun : GoldilocksRun' proposer dg H tr ini) {y : Fin s
   · have hs : B.slot = sp.toParams.slotOf (tr.time (j₀ + 2)) := by rw [hB]; rfl
     exact ⟨j₀, acc, (RunTrace.tickAt_iff _ _ _ _ _ _).2 ⟨x, f, ht⟩, hc, hs ▸ hP.1, hs ▸ hP.2.1⟩
 
-private theorem one_block (hrun : GoldilocksRun' proposer dg H tr ini)
+private theorem one_block (hrun : GoldilocksRun proposer dg H tr ini)
     {B B' : Blk sp.n (List (FG.Att sp.n))}
     (hB : AC.HonestFrameBlock tr.projAC H B) (hB' : AC.HonestFrameBlock tr.projAC H B')
     (hp : B.proposer ∈ H) (hpr : B.proposer = B'.proposer) (hs : B.slot = B'.slot) : B = B' := by
@@ -358,18 +358,18 @@ private theorem one_block (hrun : GoldilocksRun' proposer dg H tr ini)
 /-- **The honest-object facts of a shadow run's AC projection**, from starts up to the vote
 permission (a copy of `goldilocks_ac_projection_from`; the conclusion is the stock `AC.ACRun`, the
 AC being the stock one). -/
-theorem goldilocks_ac_projection_from' (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem goldilocks_ac_projection_from' (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) :
     AC.ACRun proposer tr.projAC H (tr.HonestBlocks H) ini := by
   have hloc := ac_projection'
     (fun y _ U _ s Φ t₀ h => AC.proposal_payload_valid_from _ (hrun.vstart y).pool y U s Φ t₀ h)
-    hrun.toLocalRun' hnc
+    hrun.toLocalRun hnc
   refine ⟨hloc, ⟨fun y hy => pool_vote_emitted' hrun hy,
     fun y hy i ℓ v hc hm hval => message_vote hrun hy hc hm hval, fun B hB hr => ?_,
     fun B B' hB hB' hp hpr hs => one_block hrun hB hB' hp hpr hs⟩, hrun.vstart⟩
   rcases frame_block_cases hrun hB with rfl | ⟨y, hy, k, hk⟩
   · exact absurd rfl hr
-  · exact (Coherence.accept_facts hrun.toLocalRun' hy hk).2.1
+  · exact (Coherence.accept_facts hrun.toLocalRun hy hk).2.1
 
 end Consensus.Goldilocks.Compose
 
@@ -384,7 +384,7 @@ variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
 `Growing.goldilocks_ac_projection_from` and of the growing `ac_projection` inlined, by
 retention through `Growing.GoldilocksRun'.upTo`; the conclusion is the stock `AC.Growing.ACRun`). -/
 theorem goldilocks_ac_projection_from'
-    (h : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (h : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) :
     AC.Growing.ACRun proposer tr.projAC H (tr.HonestBlocksAt H) ini := by
   have hpay {H' : Set (Fin sp.n)} :
@@ -393,7 +393,7 @@ theorem goldilocks_ac_projection_from'
   have retained (i : Nat) :=
     Compose.goldilocks_ac_projection_from' (h.upTo (h.time_nonneg i)) (hnc.upTo _)
   have retainedLocal (i : Nat) := Compose.ac_projection' hpay
-    (h.upTo (h.time_nonneg i)).toLocalRun' (hnc.upTo (tr.time i))
+    (h.upTo (h.time_nonneg i)).toLocalRun (hnc.upTo (tr.time i))
   have call {y i ℓ} (hc : tr.projAC.CallAt y i ℓ) :
       (tr.upTo (tr.time i)).projAC.CallAt y i ℓ := by
     rw [RunTrace.upTo_projAC]
@@ -450,7 +450,7 @@ theorem goldilocks_ac_projection_from'
       intro j hj ℓ' hc'
       rw [RunTrace.upTo_projAC] at hc'
       exact hb j hj ℓ' ((Trace.upTo_callAt _).mp hc').2
-    · have hr := Compose.ac_projection' hpay (h.upTo (hu.trans huv.le)).toLocalRun'
+    · have hr := Compose.ac_projection' hpay (h.upTo (hu.trans huv.le)).toLocalRun
         (hnc.upTo v)
       obtain ⟨k, ⟨ℓ, hc, hrestart⟩, huk, hkv⟩ :=
         hr.restart_at_wake y hy u v hu huv (fun hw => hs hw.1) ⟨hw, le_rfl⟩
@@ -484,7 +484,7 @@ theorem goldilocks_ac_projection_from'
           ∃ k < i, tr.AcceptAt y k B := by
       have ht : B ∈ ((tr.upTo (tr.time i)).state y i).fg.tree :=
         frame_tree (h.upTo (h.time_nonneg i)) hy (call hc) hB
-      rcases Coherence.tree_accepted (h.upTo (h.time_nonneg i)).toLocalRun' hy ht with
+      rcases Coherence.tree_accepted (h.upTo (h.time_nonneg i)).toLocalRun hy ht with
         hg | ⟨k, hk, ha⟩
       · exact Or.inl hg
       · exact Or.inr ⟨k, hk, ((RunTrace.upTo_acceptAt _).mp ha).2⟩
@@ -498,7 +498,7 @@ theorem goldilocks_ac_projection_from'
       have ha' := (RunTrace.upTo_acceptAt _).mpr ⟨h.time_mono hk.le, ha⟩
       obtain ⟨j, hjk, ⟨acc, hj⟩, hpos⟩ :=
         (h.upTo (h.time_nonneg i)).block_unforgeable y hy k B ⟨true, ha'⟩ hp
-      rcases Coherence.blockCall_cases (h.upTo (h.time_nonneg i)).toLocalRun' hp hj with
+      rcases Coherence.blockCall_cases (h.upTo (h.time_nonneg i)).toLocalRun hp hj with
         hg | ⟨j₀, x, f, rfl, ht, hP, d, p, _, hBdef, _⟩
       · have hg := (RunTrace.groupAt_iff _ _ _ _ _ _ _).1 hg
         exact absurd (by simpa using (hg.2.1 0 (List.length_pos_of_ne_nil hg.1)).2.2.2.1) hpos

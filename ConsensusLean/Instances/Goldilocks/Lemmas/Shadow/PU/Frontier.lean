@@ -53,7 +53,7 @@ the node's honest rows at heights `≥ h_j` (sources pairwise compatible), is in
 `T` or at or below `fc_root` (`Σ.F` in the shadow frame), when `T` is a part of the node's frame
 tree closed under ancestors and `B` and every source above `Σ.F` have witnesses in `T` above
 them. -/
-theorem viable_of_frozen_witnesses' (hr : Node.LocalRun' proposer dg H sg tr ini)
+theorem viable_of_frozen_witnesses' (hr : Node.LocalRun proposer dg H sg tr ini)
     (hfg : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     (hf : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) {i : Nat} {G : A.Blk → Prop}
     (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
@@ -184,7 +184,7 @@ private theorem compatible_of_below {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
 
 /-- An origin or a cover above each of two left entries makes them compatible. -/
 private theorem entries_compatible
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {E₁ E₂ : AC.Blk sp.n (List (FG.Att sp.n))} {c d₁ d₂ : Nat} {v₁ v₂ : Fin sp.n}
     {m₁ m₂ : Nat} (hcb : tr.time c ≤ b) (hd₁ : d₁ < c) (hd₂ : d₂ < c)
     (h₁ : (∃ r < d₁, ∃ l O, HighOrigin tr H g v₁ r l O ∧ Anc (tr.HonestBlocksAt H) E₁ O) ∨
@@ -210,14 +210,14 @@ private theorem entries_compatible
 
 /-- **No high contest at an honest reader's cut** over the shadow run (`no_high_contest_at`). -/
 theorem Outcome.no_high_contest_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {p : Fin sp.n} {i : Nat} (hpH : p ∈ H (tr.time i)) (hib : tr.time i ≤ b) :
     ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax) := by
   have ht := hp.run.time_nonneg i
   have hi : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hp.run.time_mono hq.le
   have hU := Coherence.honestBlocksAt_coherent hp.run hp.noColl
   have hr := (Compose.Growing.reachable_at' hp.run ht hpH hi).reachableWith
-  have hu := finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
+  have hu := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   have hsub : (tr.state p i).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨p, i, tr.time i, ht, hi, hpH, h⟩
   rintro ⟨⟨hmj, C, hC, _, hCh, hJC⟩, hmax⟩
@@ -251,7 +251,7 @@ theorem Outcome.no_high_contest_at'
 /-- An older fast-lock label written by the late-vote deadline was written before the slot
 (`Outcome.fastLock_time_lt_at`, the stock proof). -/
 theorem Outcome.fastLock_time_lt_at' {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n} {r m u : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (AC.Vote sp.n)} (hfl : AC.FastLockAt tr.projAC x r m D CV)
     (hmu : m < u) (htr : tr.time r ≤ sp.ts u + sp.Δ) : tr.time r < sp.ts u :=
@@ -259,8 +259,8 @@ theorem Outcome.fastLock_time_lt_at' {ini : Fin sp.n → (goldilocksNode sp ro).
 
 /-- **The voter's height floor** over the shadow run (`reset_vote_floor_above_old_or_covered_at`):
 a pre-slot origin bound and a label-bounded cover bound reach the voter's height floor. -/
-theorem ResetPremisesUpTo'.reset_vote_floor_above_old_or_covered_at
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+theorem ResetPremisesUpTo.reset_vote_floor_above_old_or_covered_at
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {j u : Nat} (hy : y ∈ H (tr.time j)) (hR : drainTime sp a ≤ sp.ts u)
     {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
@@ -273,7 +273,7 @@ theorem ResetPremisesUpTo'.reset_vote_floor_above_old_or_covered_at
   have ht := hp.run.time_nonneg j
   have hj : ∀ q < j, tr.time q ≤ tr.time j := fun q hq => hp.run.time_mono hq.le
   have hreach := (Compose.Growing.reachable_at' hp.run ht hy hj).reachableWith
-  have hu := finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
+  have hu := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   obtain ⟨v₀, r₀, l₀, O₀, ho₀, hrb, _, hrt⟩ := hp.reset_seed_before_slot_at' hR
   have hBh := Outcome.high_of_anc_at' hp.run hp.noColl ho₀ ht hj hy hB
     (hBold v₀ r₀ l₀ O₀ ho₀ hrt hrb)
@@ -318,7 +318,7 @@ theorem ResetPremisesUpTo'.reset_vote_floor_above_old_or_covered_at
 /-- **A held origin is viable at its independently honest reader** over the shadow run
 (`ProposalImpl.held_high_origin_viable_at`, Pivot/Viability). -/
 theorem ProposalImpl.held_high_origin_viable_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {p : Fin sp.n} {c : Nat} (hpH : p ∈ H (tr.time c))
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p c ell)
     (hcb : tr.time c ≤ b) {x : Fin sp.n} {i j : Nat}

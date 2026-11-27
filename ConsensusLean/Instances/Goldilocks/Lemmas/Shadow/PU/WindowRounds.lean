@@ -31,7 +31,7 @@ theorem round_of_warm_within_interface
     {J P X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -62,7 +62,7 @@ theorem round_of_warm_within_interface
 
 /-- Proposal acceptance, read in the proposer's prefix rather than a stock run. -/
 theorem proposal_mem_at {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} {k : Nat}
     (hp : p ∈ H (tr.time k)) {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : tr.ProposesAt p k P) : P ∈ (tr.state p (k + 1)).fg.tree := by
@@ -79,7 +79,7 @@ theorem rise_reset_rounds_within_at
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) M
       isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -170,7 +170,7 @@ theorem rise_reset_rounds_at
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) M
       isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -230,7 +230,7 @@ structure DrainOutputs (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n
 This separates the round argument from the window-search budget, without assuming a reset. -/
 theorem exists_reset_in_window
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b af len D t₀ : Time}
     {s₀ N G Ld M v Gs : Nat} {isTop : Prop}
@@ -289,7 +289,7 @@ theorem exists_reset_in_window
 until the generic snapshot/awake wrappers are ported; no reset is assumed in either premise. -/
 theorem exists_reset
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b lo D t₀ : Time} {G Ld Gs : Nat}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)

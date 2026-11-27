@@ -17,12 +17,6 @@ namespace Consensus.Goldilocks.Node
 
 variable {P : Params} {A : NodeAC P}
 
-def Reachable' (proposer : Nat → Fin P.n)
-    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n) (cfg : Config A)
-    (a : A.State := A.initial) : Prop :=
-  Relation.ReflTransGen (fun cfg cfg' => ∃ e t', Step proposer dg self cfg e t' cfg')
-    (Config.init A a) cfg
-
 theorem step_iff (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n) (cfg : Config A)
     (e : Event A) (t' : Time) (cfg' : Config A) :
@@ -33,7 +27,7 @@ theorem step_iff (proposer : Nat → Fin P.n)
 
 theorem reachable_eq (proposer : Nat → Fin P.n)
     (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n) (a : A.State) :
-    Reachable' proposer dg self (a := a) =
+    Reachable proposer dg self (a := a) =
       Relation.ReflTransGen (fun cfg cfg' => ∃ e t', Step proposer dg self cfg e t' cfg')
         (Config.init A a) := by rfl
 
@@ -49,7 +43,7 @@ variable {P : Params} {A : NodeAC P} (proposer : Nat → Fin P.n)
 /-- The AC part of the node invariant, with payload well-formedness and root provenance
 needed to validate an own proposal. The client record is handled by the signed-run supplier. -/
 private structure NInv (v : Fin P.n) (s₀ : A.State) (st : NodeState A) (t : Time) : Prop where
-  fg : st.fg.Reachable' A.genesisPayload
+  fg : st.fg.Reachable A.genesisPayload
   ac : A.ReqPayloadFrom s₀ v →
     ∃ t₀ ≤ t, A.ReachableAtFrom s₀ v st.fg.tree st.ac (frame st) t₀
   wf : ({ A with initial := s₀ } : NodeAC P).Requirements → ∀ a ∈ st.fg.atts, a.WellFormed
@@ -57,7 +51,7 @@ private structure NInv (v : Fin P.n) (s₀ : A.State) (st : NodeState A) (t : Ti
 
 variable {s₀ : A.State}
 
-private theorem frameIn_store {st : NodeState A} (hr : st.fg.Reachable' A.genesisPayload) :
+private theorem frameIn_store {st : NodeState A} (hr : st.fg.Reachable A.genesisPayload) :
     A.FrameIn st.fg.tree (frame st) := by
   rw [Node.frame_eq]
   exact ⟨Store.frameOK_toFrame hr.puSnapshot, fun _ h => by
@@ -75,7 +69,7 @@ private theorem NInv.mono {st : NodeState A} {t t' : Time} (h : NInv dg self s�
     (ht : t ≤ t') : NInv dg self s₀ st t' :=
   ⟨h.fg, fun hq => (h.ac hq).imp fun _ h => ⟨h.1.trans ht, h.2⟩, h.wf, h.roots⟩
 
-private theorem NInv.ac {st : NodeState A} {t : Time} (h : NInv dg self s₀ st t)
+private theorem NInv.ac' {st : NodeState A} {t : Time} (h : NInv dg self s₀ st t)
     (s : A.State) (hs : A.ReqPayloadFrom s₀ self →
       ∃ t₀ ≤ t, A.ReachableAtFrom s₀ self st.fg.tree s (frame st) t₀) :
     NInv dg self s₀ { st with ac := s } t := by
@@ -86,21 +80,21 @@ private theorem NInv.acCall {st : NodeState A} {t : Time} (h : NInv dg self s₀
     (c : A.Call) (hc : A.CallOK st.fg.tree (frame st) t c (frame st)) :
     NInv dg self s₀ (acCall self st t c).1 t := by
   rw [acCall_eq]
-  exact h.ac dg self _ fun hq => by
+  exact h.ac' dg self _ fun hq => by
     obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
     exact ⟨t, le_rfl, .step c hR ht₀ hc⟩
 
 private theorem NInv.acProposal {st : NodeState A} {t : Time} (h : NInv dg self s₀ st t) :
     NInv dg self s₀ (Node.acProposal st t).1 t := by
   rw [acProposal_eq]
-  exact h.ac dg self _ fun hq => by
+  exact h.ac' dg self _ fun hq => by
     obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
     exact ⟨t, le_rfl, .step .proposal hR ht₀ ⟨frameIn_store h.fg, rfl⟩⟩
 
 private theorem NInv.acToFG {st : NodeState A} {t : Time} (h : NInv dg self s₀ st t) :
     NInv dg self s₀ (Node.acToFG st t).1 t := by
   rw [acToFG_eq]
-  exact h.ac dg self _ fun hq => by
+  exact h.ac' dg self _ fun hq => by
     obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
     exact ⟨t, le_rfl, .step .toFG hR ht₀ ⟨frameIn_store h.fg, rfl⟩⟩
 
@@ -155,7 +149,7 @@ private theorem NInv.fgAtt {st : NodeState A} {t : Time} (h : NInv dg self s₀ 
       a.WellFormed) : NInv dg self s₀ { st with fg := st.fg.onAttestation a } t := by
   have hr := h.fg
   have htree := (Store.tree_grows_with (st := st.fg)
-    Store.finalitySpec_updateFinality').2 a
+    Store.finalitySpec_updateFinality).2 a
   have hfr := (Store.accept_is_frame_step' A.genesisPayload st.fg hr).2 a
   refine ⟨?_, fun hq => ?_, fun hq b hb => ?_, fun hg => ?_⟩
   · rw [Store.reachable_eq] at hr ⊢
@@ -185,12 +179,12 @@ private theorem NInv.onBlock {st : NodeState A} {t : Time} (h : NInv dg self s�
   rename_i fg' hb
   rw [Node.acCall_eq]
   have hr := h.fg
-  have hr' : fg'.Reachable' A.genesisPayload := by
+  have hr' : fg'.Reachable A.genesisPayload := by
     rw [Store.reachable_eq] at hr ⊢
     exact hr.tail ((Store.step_iff _ _).2 (Or.inl ⟨B, hb⟩))
   have hb' := hb
   rw [Store.onBlock_eq_onBlockWith] at hb'
-  have htree := (Store.tree_grows_with Store.finalitySpec_updateFinality').1 B fg' hb'
+  have htree := (Store.tree_grows_with Store.finalitySpec_updateFinality).1 B fg' hb'
   have hstep := (Store.accept_is_frame_step' A.genesisPayload st.fg hr).1 B fg' hb
   refine ⟨hr', fun hq => ?_, fun hq a ha => ?_, fun hg X hX => ?_⟩
   · obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
@@ -233,7 +227,7 @@ private theorem NInv.tickStep {st : NodeState A} {t : Time} (h : NInv dg self s�
         refine (h.acProposal dg self).onBlock dg self _ (fun hq => ?_) rfl
         obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
         have hts : t = P.slotTime (P.slotOf t) := hp.2.1
-        refine hq _ (Store.accepted_tree_with Store.finalitySpec_updateFinality'
+        refine hq _ (Store.accepted_tree_with Store.finalitySpec_updateFinality
           h.fg.reachableWith).2.1 _ _ t₀ hR (P.slotOf t) (hts ▸ ht₀) d p ?_ _ rfl ?_
         · rw [← hts]
           simpa only [acProposal_eq] using hdp
@@ -269,7 +263,7 @@ private theorem NInv.exec {st : NodeState A} {t : Time} (h : NInv dg self s₀ s
       h.acCall dg self .restart ⟨frameIn_store h.fg, rfl⟩
 
 private theorem nInv_of_reachable {cfg : Config A}
-    (h : Node.Reachable' proposer dg self cfg s₀) : NInv dg self s₀ cfg.st cfg.time := by
+    (h : Node.Reachable proposer dg self cfg s₀) : NInv dg self s₀ cfg.st cfg.time := by
   rw [congrFun (Node.reachable_eq proposer dg self s₀) cfg] at h
   induction h with
   | refl =>
@@ -287,11 +281,11 @@ private theorem nInv_of_reachable {cfg : Config A}
     exact (ih.mono dg self ht).exec proposer dg self e hw
 
 theorem ac_states_reachable' (hp : A.ReqPayloadFrom s₀ self) {cfg : Config A}
-    (h : Node.Reachable' proposer dg self cfg s₀) :
+    (h : Node.Reachable proposer dg self cfg s₀) :
     Coherent cfg.st.fg.tree ∧ ∃ t₀ ≤ cfg.time,
       A.ReachableAtFrom s₀ self cfg.st.fg.tree cfg.st.ac (frame cfg.st) t₀ := by
   have hI := nInv_of_reachable proposer dg self h
-  exact ⟨(Store.accepted_tree_with Store.finalitySpec_updateFinality'
+  exact ⟨(Store.accepted_tree_with Store.finalitySpec_updateFinality
     hI.fg.reachableWith).2.1, hI.ac hp⟩
 
 private theorem onBlock_tree (st : NodeState A) (t : Time) (B X : A.Blk)
@@ -305,7 +299,7 @@ private theorem onBlock_tree (st : NodeState A) (t : Time) (B X : A.Blk)
   · rename_i fg' hb
     simp only [acCall_eq] at hX
     rw [Store.onBlock_eq_onBlockWith] at hb
-    rw [(Store.tree_grows_with Store.finalitySpec_updateFinality').1 B _ hb] at hX
+    rw [(Store.tree_grows_with Store.finalitySpec_updateFinality).1 B _ hb] at hX
     rcases hX with rfl | hX
     · exact Or.inr (Nat.le_of_not_lt hf)
     · exact Or.inl hX
@@ -352,7 +346,7 @@ private theorem exec_tree (st : NodeState A) (t : Time) (e : Event A) (X : A.Blk
   | restart => exact Or.inl (by simpa only [exec_eq, restart_eq, acCall_eq] using hX)
   | attestation a =>
     simp only [exec_eq, Node.onAttestation] at hX
-    rw [(Store.tree_grows_with (st := st.fg) Store.finalitySpec_updateFinality').2 a] at hX
+    rw [(Store.tree_grows_with (st := st.fg) Store.finalitySpec_updateFinality).2 a] at hX
     exact Or.inl hX
 
 private def SlotInv (cfg : Config A) : Prop :=
@@ -365,7 +359,7 @@ private theorem slotTime_slotOf_le {t : Time} (ht : 0 ≤ t) :
     (by rw [P.slotTime_zero]; exact ht)
 
 private theorem slotInv_of_reachable {cfg : Config A}
-    (h : Node.Reachable' proposer dg self cfg s₀) : SlotInv cfg := by
+    (h : Node.Reachable proposer dg self cfg s₀) : SlotInv cfg := by
   rw [congrFun (Node.reachable_eq proposer dg self s₀) cfg] at h
   induction h with
   | refl => exact ⟨le_rfl, fun X hX => Or.inl (by rw [mem_init_tree hX]; rfl)⟩
@@ -397,7 +391,7 @@ private theorem slotInv_of_reachable {cfg : Config A}
           (slotTime_slotOf_le (h0.trans ht)), fun h => by cases h⟩
 
 private theorem slot_lt_of_tick {cfg cfg' : Config A} {t : Time} {x : Nat} {fgDue : Bool}
-    (h : Node.Reachable' proposer dg self cfg s₀)
+    (h : Node.Reachable proposer dg self cfg s₀)
     (hs : Node.Step proposer dg self cfg (.tick x fgDue) t cfg')
     (hp : Proposes proposer self t) : ∀ X ∈ cfg.st.fg.tree, X.slot < P.slotOf t := by
   intro X hX
@@ -414,10 +408,10 @@ private theorem slot_lt_of_tick {cfg cfg' : Config A} {t : Time} {x : Nat} {fgDu
   rw [hp.2.1] at hlt
   exact P.slotTime_strictMono.lt_iff_lt.1 hlt
 
-private theorem σ_slot {fg : Store P A.Payload} (hr : fg.Reachable' A.genesisPayload)
+private theorem σ_slot {fg : Store P A.Payload} (hr : fg.Reachable A.genesisPayload)
     {H : A.Blk} (hH : H ∈ fg.tree) : (fg.σ H.root).s ≤ H.slot := by
   obtain ⟨c, _, _, hlast, hcs⟩ := Store.chain_state_of_chain_with
-    Store.finalitySpec_updateFinality' hr.reachableWith H hH
+    Store.finalitySpec_updateFinality hr.reachableWith H hH
   rcases hlast with ⟨rfl, _⟩ | hlast
   · have h := (show P.fg.chainState [] = some (FG.ChainState.init P.fg) from rfl).symm.trans hcs
     rw [← Option.some.inj h]
@@ -433,7 +427,7 @@ private theorem σ_slot {fg : Store P A.Payload} (hr : fg.Reachable' A.genesisPa
 theorem honest_block_accepted_from' {s₀ : A.State}
     (hq : ({ A with initial := s₀ } : NodeAC P).Requirements)
     (hg : (P.genesisBlock A.genesisPayload).RootOk dg) (cfg cfg' : Config A) (t : Time) (x : Nat)
-    (fgDue : Bool) (hR : Node.Reachable' proposer dg self cfg s₀)
+    (fgDue : Bool) (hR : Node.Reachable proposer dg self cfg s₀)
     (hs : Node.Step proposer dg self cfg (.tick x fgDue) t cfg')
     (hp : Proposes proposer self t) :
     let st₁ := (tickStep proposer dg self cfg.st t x .acTick).1
@@ -451,7 +445,7 @@ theorem honest_block_accepted_from' {s₀ : A.State}
   have hI := (nInv_of_reachable proposer dg self hR).mono dg self hs.1
   have h₁ := hI.tickStep proposer dg self x .acTick
   obtain ⟨t₀, ht₀, hRA⟩ := h₁.ac (payloadFrom_initial hq self)
-  have hcoh := (Store.accepted_tree_with Store.finalitySpec_updateFinality'
+  have hcoh := (Store.accepted_tree_with Store.finalitySpec_updateFinality
     h₁.fg.reachableWith).2.1
   have hts : t = P.slotTime (P.slotOf t) := hp.2.1
   have hprop : (A.proposal (tickStep proposer dg self cfg.st t x .acTick).1.ac
@@ -491,7 +485,7 @@ theorem honest_block_accepted_from' {s₀ : A.State}
     | none => rfl
     | some X =>
       exfalso
-      have hXr := Store.blocks_root_with Store.finalitySpec_updateFinality' h₁.fg.reachableWith hb
+      have hXr := Store.blocks_root_with Store.finalitySpec_updateFinality h₁.fg.reachableWith hb
       have hX : X ∈ fg.tree := by
         change fg.blocks X.root = some X
         rw [hXr]; exact hb

@@ -70,7 +70,7 @@ suppliers are being assembled; no stock execution premise replaces the shadow ru
 theorem proposal_viable_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {lo hi : Time} {M u : Nat} {isTop : Prop}
     {J B : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -104,7 +104,7 @@ private theorem rounds_le_of_proposal_viable
 theorem rounds_le_warm_proposal_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g af len : Time} {u M v : Nat} {isTop : Prop}
     {J B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hwin : FrameWindow' tr H af (af + len) M isTop J)
@@ -127,7 +127,7 @@ is strictly above the reader's justified height. Only report membership is neede
 theorem report_kind_of_warm_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
     {J B R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.Growing.FrameWindow tr H lo hi floor kindJ J)
@@ -159,7 +159,7 @@ theorem report_kind_of_warm_at {proposer : Nat → Fin sp.n}
       hlo hhi hf
   rw [hσ] at hfloor hstrict
   have hreach := (Compose.Growing.reachable_at' hrun (hrun.time_nonneg i) hy hle).reachableWith
-  have hj := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality' hreach
+  have hj := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality hreach
   have hfl := hframe.floor_eq y i hy hil hih
   have hkind := hframe.kind_iff y i hy hil hih
   left
@@ -190,7 +190,7 @@ variable {proposer : Nat → Fin sp.n}
 
 /-- The latency deadline of a high report is also a reset deadline for a shadow run. -/
 private theorem reset_of_high_report_within_at {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini) {g D : Time}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g D : Time}
     (hlat : Generic.VoteLatencyAt tr H D) (hD : 0 ≤ D)
     {y : Fin sp.n} {i : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i + D)))
     (hq : (H (max (cutZ sp.toParams g) (tr.time i + D)))ᶜ.ncard < sp.toParams.fg.q)
@@ -213,7 +213,7 @@ theorem reset_of_high_proposal_within_at
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) M
       isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -268,7 +268,7 @@ theorem reset_of_high_proposal_within_at
   have hσ := σ_eq_honest_at' hrun hnc (hrun.time_nonneg kP)
     (fun q hq => hrun.time_mono (by omega)) hzk (hrun.time_nonneg i) hle hyi hPm hPy
   rw [hσ] at hh
-  have hhR := hh.trans (Store.h_le_of_store_anc_with Store.finalitySpec_updateFinality'
+  have hhR := hh.trans (Store.h_le_of_store_anc_with Store.finalitySpec_updateFinality
     (Compose.Growing.reachable_at' hrun (hrun.time_nonneg i) hyi hle).reachableWith
     (store_anc_of_honest_anc_at' hrun hnc (hrun.time_nonneg i) hle hyi hPR hRm))
   have hiD : tr.time i + D ≤ b := by linarith
@@ -294,7 +294,7 @@ theorem round_of_warm_within_at
     {J P X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -441,7 +441,7 @@ theorem round_of_warm_within_at
     (fun t ht htT => hf t ht (htT.le.trans hTb)) hna
     (by rwa [max_eq_right (hcu.trans (htil.trans htk))]) hatt (by linarith) hCk hPC (fun _ => by
       right
-      have hjmax := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality'
+      have hjmax := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
         (Compose.Growing.reachable_at' hrun hk0 hyk hkle).reachableWith
       by_cases htop' : isTop
       · have hmax := hkind.mpr htop'

@@ -59,7 +59,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 its own earlier fast write, or a deep candidate under a deep anchor whose live locks are slow. -/
 private theorem toFG_fast_candidate_origin_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
     {R : AC.Blk sp.n (List (FG.Att sp.n))} (hto : AC.ToFGAt tr.projAC y i ell R) :
@@ -123,7 +123,7 @@ private theorem toFG_fast_candidate_origin_at
 over the static shadow run). -/
 private theorem fast_selection_slot_le {H₀ : Set (Fin sp.n)}
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : GoldilocksRun' proposer dg H₀ tr ini)
+    (hrun : GoldilocksRun proposer dg H₀ tr ini)
     (hnc : Compose.NoCollRun dg tr) {K : AC.CommitteeDict sp.n}
     (hPK : AC.CommitteeP K tr.projAC H₀)
     {x : Fin sp.n} (hx : x ∈ H₀) {a j : Nat}
@@ -139,7 +139,7 @@ private theorem fast_selection_slot_le {H₀ : Set (Fin sp.n)}
 
 /-- Frame blocks of an honest call are no newer than its slot (`frame_slot_le_at`). -/
 private theorem frame_slot_le_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y i ℓ) : ∀ B ∈ ℓ.frame.tree, B.slot ≤ sp.slot (tr.time i) :=
@@ -153,7 +153,7 @@ theorem toFG_later_proposal_head_after_at
     {J P R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -299,7 +299,7 @@ theorem toFG_later_proposal_head_within_at
     {J P R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -332,7 +332,7 @@ theorem toFG_later_proposal_head_within_at
 /-- At a public signing time after a warm update deadline, a node honest then executes a joined
 `ac_to_fg` call (`toFG_call_of_sign_at` over the shadow run and its calendar). -/
 theorem toFG_call_of_sign_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g : Time} (hnr : NoRestartAfter tr H (gbar g))
     {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     {y : Fin sp.n} {t : Time} {u : Nat} (hy : y ∈ H t) (hgu : gbar g ≤ sp.ts u)
@@ -353,7 +353,7 @@ theorem toFG_call_of_sign_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
 /-- A block of an honest frame above a non-genesis block is not genesis
 (`root_ne_genesis_of_anc` over the shadow run). -/
 private theorem root_ne_genesis_of_anc {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
     {P B : AC.Blk sp.n (List (FG.Att sp.n))} (hPg : P.root ≠ sp.genesisRoot)
@@ -381,7 +381,7 @@ theorem proposal_report_follow_at
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -488,7 +488,7 @@ theorem proposal_report_follow_delayed_at
       (max (sp.ts N + 2 * sp.Δ) (sp.ts (u + 1 : Nat) + 2 * sp.Δ + (G : Time) * sp.Δ))
       M isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)

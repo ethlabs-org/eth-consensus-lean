@@ -20,7 +20,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- A held honest row cannot originate in a same-slot optimistic write. -/
 theorem row_origin_not_current_at'
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {W : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -33,7 +33,7 @@ theorem row_origin_not_current_at'
 /-- The source label of a held honest row strictly precedes the vote's slot. -/
 theorem row_origin_label_lt_at'
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {W : AC.Blk sp.n (List (FG.Att sp.n))}

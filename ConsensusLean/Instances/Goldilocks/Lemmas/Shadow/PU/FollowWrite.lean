@@ -30,7 +30,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- The parent of an honest proposal is a P-U viable head of its frame
 (`proposal_parent_viable_full_frame_at` over the shadow run). -/
 private theorem proposal_parent_viable_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {z : Fin sp.n} {c s : Nat} (hz : z ∈ H (tr.time c))
     (hf : (H (tr.time c))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt z c ell)
@@ -59,7 +59,7 @@ private theorem proposal_parent_viable_at
 private theorem F_anc_proposal_head_at {lo hi : Time} {M : Nat} {isTop : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow' tr H lo hi M isTop J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {i c s : Nat}
     (hy : y ∈ H (tr.time i)) (hz : z ∈ H (tr.time c))
     (hf : (H (max (tr.time i) (tr.time c)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
@@ -91,7 +91,7 @@ theorem optimistic_write_later_proposal_head_at
     {J R A D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -155,7 +155,7 @@ at that justified height has the same `J` (`J_eq_of_hj_eq_obs'`). -/
 theorem F_anc_of_viable_stock_at {lo hi : Time} {floor : Nat} {kindJ : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H lo hi floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {i c : Nat}
     (hy : y ∈ H (tr.time i)) (hz : z ∈ H (tr.time c))
     (hf : (H (max (tr.time i) (tr.time c)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
@@ -169,7 +169,7 @@ theorem F_anc_of_viable_stock_at {lo hi : Time} {floor : Nat} {kindJ : Prop}
   have hbc : ∀ q < c, tr.time q ≤ tr.time c := fun q hq => hrun.time_mono hq.le
   have hry := Compose.Growing.reachable_at' hrun hit hy hbi
   have hrz := Compose.Growing.reachable_at' hrun hct hz hbc
-  have hjmz := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality'
+  have hjmz := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
     hrz.reachableWith
   have hFJ := ((Store.cache_invariants' hry).2.2.1).mono (Compose.Growing.tree_held_at' hit hy hbi)
   by_cases hgt : (tr.state y i).fg.hj < ((tr.state z c).fg.σ X.root).h
@@ -199,7 +199,7 @@ theorem F_anc_of_viable_stock_at {lo hi : Time} {floor : Nat} {kindJ : Prop}
         · rw [Store.headHeightFloor, ite_eq_right hC] at hfly
           have htop : (tr.state y i).fg.hmax ≠ (tr.state y i).fg.hj + 1 :=
             fun h => hk (hky.1 ⟨h, hC⟩)
-          have hjmy := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality'
+          have hjmy := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
             hry.reachableWith
           omega
       by_cases hCz : (tr.state z c).fg.Contest
@@ -225,7 +225,7 @@ theorem optimistic_write_later_proposal_head_stock_at
     {J R A D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)

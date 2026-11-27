@@ -43,7 +43,7 @@ private theorem quorum_excess {t : Time} (h : 3 * (H t)ᶜ.ncard ≤ sp.n - 1) :
   omega
 
 private theorem optimistic_writer_votes_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {i₀ s : Nat}
     (hx : x ∈ H (tr.time i₀)) {C : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (AC.Vote sp.n)} (hO : AC.OptimisticLockAt tr.projAC x i₀ s C CV) :
@@ -68,7 +68,7 @@ private theorem optimistic_writer_votes_at
   exact ⟨k', hrun.antitone hk'd hx, hk', hk't⟩
 
 private theorem carry_of_service_senders
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold) (hcatch : CatchRun tr H g (2 * sp.Δ))
     {s : Nat} (hts : gbar g ≤ sp.ts s)
@@ -118,7 +118,7 @@ private theorem carry_of_service_senders
         y i ell hy hcast.1 hdl hFHv
       exact ⟨ky, hky, (ACTrace.upTo_acceptAt).mpr ⟨hm hky, hacc'⟩,
         by rw [ACTrace.upTo_deadline (tr := tr.projAC) hm (hm hky)]; exact hkyt⟩
-    · obtain ⟨ky, hky, hacc', hkyt⟩ := hrun.toLocalRun'.acCatchAt' hcatch hwkw hkw
+    · obtain ⟨ky, hky, hacc', hkyt⟩ := hrun.toLocalRun.acCatchAt' hcatch hwkw hkw
         (lt_of_lt_of_le (not_le.mp hgk) hgg) hy hcast.1
         (by linarith [sp.toParams.hΔ]) hFHv
       exact Or.inr (Or.inr ⟨ky, ACTrace.upTo_acceptAt.mpr ⟨hm hky, hacc'⟩,
@@ -129,7 +129,7 @@ private theorem carry_of_service_senders
     fun ⟨k, hk, hkt⟩ => ⟨k, (ACTrace.upTo_acceptAt.mp hk).2, hkt⟩⟩
 
 private theorem relay_source_at_proposal_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hm : gbar g ≤ sp.ts s)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
@@ -168,7 +168,7 @@ private theorem relay_source_at_proposal_at
             change tr.projAC.deadline y i (tr.time q) ≤ tr.time i
             linarith) hFQ
       exact ⟨k, hki, hk, hkt.trans (hdl k hki _ hqt)⟩
-    · obtain ⟨k, hki, hk, hkt⟩ := hrun.toLocalRun'.acCatchAt' hcatch hz hq
+    · obtain ⟨k, hki, hk, hkt⟩ := hrun.toLocalRun.acCatchAt' hcatch hz hq
         (lt_of_not_ge hqg) hy hc (by linarith) hFQ
       exact ⟨k, hki, hk, by linarith⟩
   have hac := Compose.goldilocks_ac_projection_from' (hrun.upTo ht0) (hnc.upTo _)
@@ -206,7 +206,7 @@ private theorem relay_source_at_proposal_at
 
 private theorem optimisticLock_pair_compatible_at
     {K : AC.CommitteeDict sp.n} {g b : Time}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {x y : Fin sp.n} {i j s : Nat}
     (hx : x ∈ H (tr.time i)) (hy : y ∈ H (tr.time j))
@@ -275,7 +275,7 @@ private theorem optimisticLock_pair_compatible_at
   exact AC.anc_total hU (hDR.mono hDU) (hER'.mono hEU)
 
 private theorem proposal_root_viable_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     (hf : (H (tr.time i))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell) :
@@ -283,7 +283,7 @@ private theorem proposal_root_viable_at
   have ht := hrun.time_nonneg i
   have hb : ∀ k < i, tr.time k ≤ tr.time i := fun _ hk => hrun.time_mono hk.le
   have hr := Compose.Growing.reachable_at' hrun ht hy hb
-  have hu := Store.finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
+  have hu := Store.finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   obtain ⟨_, _, _, _, _, ⟨Q, hQ, hheight⟩, _⟩ := Store.cache_invariants' hr
   have hFQ := Store.F_anc_of_hmax_le_of_safe_with hu hr.reachableWith hr.reachableWith
     (Store.accepted_tree_with hu hr.reachableWith).2.1 subset_rfl subset_rfl hf
@@ -305,7 +305,7 @@ private theorem proposal_root_viable_at
 /-- An optimistic write propagates its prefix to next-slot votes through a window witness: the
 window-free core of `optimistic_next_votes_of_early_witness_at'` and its stock form. -/
 theorem optimistic_next_votes_of_windowWitness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -355,7 +355,7 @@ theorem optimistic_next_votes_of_windowWitness_at {K : AC.CommitteeDict sp.n}
 
 /-- An optimistic write propagates a viable prefix to next-slot votes. -/
 theorem optimistic_next_votes_of_early_witness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -393,7 +393,7 @@ theorem optimistic_next_votes_of_early_witness_at {K : AC.CommitteeDict sp.n}
 /-- The first next-slot proposal follows an optimistic prefix through a window witness: the
 window-free core of `optimistic_next_proposal_of_early_witness_at'` and its stock form. -/
 theorem optimistic_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -502,7 +502,7 @@ theorem optimistic_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
     rcases frame_block_acceptance_at hrun hw hcw hQw with hg | ⟨k, hka, hwk, hacc⟩
     · exact Or.inl (congrArg Block.root hg)
     · obtain ⟨hacc', htk, -⟩ := Healing.ac_block_after'
-        (hrun.upTo (hrun.time_nonneg k)).toLocalRun' hwk
+        (hrun.upTo (hrun.time_nonneg k)).toLocalRun hwk
         ((RunTrace.upTo_acceptAt _).mpr ⟨le_rfl, hacc⟩)
       rw [RunTrace.upTo_projAC] at hacc'
       change tr.time (k + 1) = tr.time k at htk
@@ -551,7 +551,7 @@ theorem optimistic_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
     intro l hl _ hls L hL hLr
     rw [← hst] at hl
     have hl' : l ∈ ((tr.upTo (tr.time i)).state y i).ac.locks := by
-      have h := Compose.projAC_state' (hrun.upTo ht0).toLocalRun' hy i
+      have h := Compose.projAC_state' (hrun.upTo ht0).toLocalRun hy i
       rw [RunTrace.upTo_projAC] at h
       rwa [h] at hl
     have hlsb := Compose.proposal_locks_slot_of' (hrun.upTo ht0) (hnc.upTo _) hy
@@ -590,7 +590,7 @@ theorem optimistic_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
 
 /-- The first next-slot proposal follows the same prefix. -/
 theorem optimistic_next_proposal_of_early_witness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -633,7 +633,7 @@ theorem optimistic_next_proposal_of_early_witness_at {K : AC.CommitteeDict sp.n}
 /-- An optimistic prefix reaches later honest calls through a window witness: the window-free
 core of `optimistic_later_heads_of_early_witness_at'` and its stock form. -/
 theorem optimistic_later_heads_of_windowWitness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -681,7 +681,7 @@ theorem optimistic_later_heads_of_windowWitness_at {K : AC.CommitteeDict sp.n}
 
 /-- An early P-U viable witness propagates an optimistic prefix to later honest calls. -/
 theorem optimistic_later_heads_of_early_witness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -728,7 +728,7 @@ cast's frame. The window-free extraction step of `optimistic_supporter_later_hea
 stock form. -/
 theorem supporter_anchor_viable_head_at
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {b : Time}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     {s : Nat} (hsb : sp.ts s + sp.Δ ≤ b) {L : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -780,7 +780,7 @@ theorem optimistic_supporter_later_heads_at {s₀ s N M : Nat}
     {isTop : Prop} {J L D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)

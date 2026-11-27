@@ -21,8 +21,8 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- **Left-entry provenance, with the cover read before the cut**, over the shadow run
 (`ResetPremisesUpTo.left_entry_origin_or_covered_before_at`). -/
-theorem ResetPremisesUpTo'.left_entry_origin_or_covered_before_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+theorem ResetPremisesUpTo.left_entry_origin_or_covered_before_at'
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
     (hy : y ∈ H t) (htb : t ≤ b) {E C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hE : E ∈ (tr.state y k).fg.tree) (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
