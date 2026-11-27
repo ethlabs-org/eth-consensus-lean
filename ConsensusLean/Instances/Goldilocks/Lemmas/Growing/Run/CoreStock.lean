@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Core
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.PrefixSteps
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Inclusion
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run
