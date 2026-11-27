@@ -289,6 +289,17 @@ theorem rows_sourced_by' {ini}
   exact ⟨src, hsrc a.val j (by omega) hav' ℓ src hto,
     isHonestSourceAt_iff.2 ⟨a.val, j + 1, hav, hjt, hst', hT.symm⟩⟩
 
+/-- The rows sourced at a read time, in the prefix through it, as shadow-geometry rows
+(`FrameGeometry.HonestRowsSourced`), sourced by `G`-blocks held in the prefix. -/
+theorem honestRowsSourcedBy_toFrame {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    {y : Fin sp.n} {k : Nat} {t : Time} (ht : ∀ k' < k, tr.time k' ≤ t)
+    (hsrc : HonestRowsSourcedBy tr H G y k t) :
+    FrameGeometry.HonestRowsSourced (tr.upTo t) (H t)
+      (fun D' => G D' ∧ D' ∈ (tr.upTo t).HonestBlocks (H t)) y k :=
+  FrameGeometry.honestRowsSourced_iff.2 fun X hX a ha hav => by
+    obtain ⟨D', hD', hDs⟩ := Compose.honestRowsSourced_iff.1 (hsrc.upTo_held ht) X hX a ha hav
+    exact ⟨D', hD', FrameGeometry.isHonestSource_iff.2 (Compose.isHonestSource_iff.1 hDs)⟩
+
 /-- **G3′ over the shadow run.** Under Hi at cut `k`, read at a time `t` at which the node is
 honest after every earlier cut, with `2 f_t < n`, every block of its tree at state height at least
 `h_j + 1` is strictly above `P` (stock `above_of_hi_height_at`). The stock proof reads only the
@@ -321,14 +332,8 @@ theorem above_of_hi_height_at' (D : OutageLockPremises' tr H proposer dg ini) {i
     rw [hJg] at this
     exact Nat.not_lt_zero _ this
   -- the height-`h_j` entry below `X`, with a source compatible with `P`, held while honest at `t`
-  have hsrc := (rows_sourced_by' D.hrun D.hnc (B := D.P) (n := k)
-    (fun x k' hk' hx => hinv.sources x k' (by omega) hx) ht0 ht hy).upTo_held ht
-  have hsrcF : FrameGeometry.HonestRowsSourced (tr.upTo t) (H t)
-      (fun D' => Compatible (tr.HonestBlocksAt H) D' D.P ∧ D' ∈ (tr.upTo t).HonestBlocks (H t))
-      y k :=
-    FrameGeometry.honestRowsSourced_iff.2 fun X hX a ha hav => by
-      obtain ⟨D', hD', hDs⟩ := Compose.honestRowsSourced_iff.1 hsrc X hX a ha hav
-      exact ⟨D', hD', FrameGeometry.isHonestSource_iff.2 (Compose.isHonestSource_iff.1 hDs)⟩
+  have hsrcF := honestRowsSourcedBy_toFrame ht (rows_sourced_by' D.hrun D.hnc (B := D.P) (n := k)
+    (fun x k' hk' hx => hinv.sources x k' (by omega) hx) ht0 ht hy)
   obtain ⟨E, hEt, hEX, hEh, hET, D', ⟨hD'P, -⟩, hD's⟩ :=
     FrameGeometry.frame_crossing_source_before' hr.toLocalRun' hf hy hsrcF hX hj1
       (Nat.lt_of_succ_le hh)
@@ -347,8 +352,7 @@ theorem above_of_hi_height_at' (D : OutageLockPremises' tr H proposer dg ini) {i
   have hnot : ¬ Anc (tr.HonestBlocksAt H) E D.P := by
     intro hE
     have hEJ := FrameGeometry.honest_held_anc' hr.toLocalRun' hfg hy
-      (Consensus.Goldilocks.Shadow.PU.Growing.anc_upTo_of_right_stub D.hrun.toLocalRun' D.hnc
-        ht0 ⟨y, hy, k, hJt⟩ (hE.trans hPJ)) hJt
+      (RunTrace.anc_upTo_of_right' D.hrun D.hnc ht0 ⟨y, hy, k, hJt⟩ (hE.trans hPJ)) hJt
     obtain ⟨hJh, hJT, -⟩ :=
       FrameGeometry.justified_honest_source_before' hr.toLocalRun' hfg hf hy hsrcF hj1
     have hEJe : E = ((tr.upTo t).state y k).fg.J :=
@@ -392,6 +396,176 @@ theorem anc_getHead_of_hi' (D : OutageLockPremises' tr H proposer dg ini) {i : N
     hPJ hJP (fun hX hh => above_of_hi_height_at' D hinv le_rfl hd ht hw hf hHi hX hh)
     (hinv.caches_at_cut le_rfl hw).1
     (fun hY hXY => held_anc_at' D.hrun D.hnc hd hw ht hXY hY) A t V σ hdom hdomA hne hlocks
+
+
+/-! ## The candidate step of the invariant (`viable`, OB-F)
+
+The only place where the shadow frame enters the cut induction: at a cut `n` of a node honest at a
+read time `t`, with the FG sources of the earlier cuts compatible with `P`, the caches are
+compatible with `P` and `P`, when in the shadow frame, is a candidate of it. -/
+
+section Candidate'
+
+variable {d : Time} {y : Fin sp.n} {i : Nat}
+
+/-- A block held by a node honest at its cut is held while honest (`mem_honestBlocksAt`). -/
+theorem mem_honestBlocksAt'
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
+    (hB : B ∈ (tr.state y i).fg.tree) : B ∈ tr.HonestBlocksAt H :=
+  ⟨y, i, tr.time i, hrun.time_nonneg i, fun _ hk => hrun.time_mono hk.le, hy, hB⟩
+
+/-- Every block held while honest descends from genesis (`honestAt_genesis_anc`). -/
+theorem honestAt_genesis_anc'
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocksAt H) :
+    sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload ∈ tr.HonestBlocksAt H ∧
+      Anc (tr.HonestBlocksAt H)
+        (sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload) B := by
+  obtain ⟨t, ht, hBt⟩ := exists_upTo_of_mem hB
+  obtain ⟨hg, hanc⟩ := FrameGeometry.honest_genesis_anc' (hrun.upTo ht).toLocalRun' hBt
+  have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono ht
+  exact ⟨hsub hg, hanc.mono hsub⟩
+
+/-- The AC run of the prefix through `d ≥ 0` (`acRun_upTo`). -/
+theorem acRun_upTo' (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) (hd : 0 ≤ d) :
+    AC.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) ini := by
+  have h := Compose.goldilocks_ac_projection_from' (hrun.upTo hd) (hnc.upTo d)
+  rwa [RunTrace.upTo_projAC] at h
+
+/-- A frame of a call of a node honest then is well formed, inside the blocks held while honest
+(`frameIn_at`). -/
+theorem frameIn_at' (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode' sp ro)}
+    (hc : tr.projAC.CallAt y i ℓ) : FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocksAt H :=
+  have h := AC.frameIn_of_callAt (acRun_upTo' hrun hnc (hrun.time_nonneg i)).localRun hy
+    ((Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
+  ⟨h.1, h.2.trans (RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono (hrun.time_nonneg i))⟩
+
+/-- **(SRC)**: an FG source at a cut `k` of a node honest then is compatible with `B` when every
+lock stored at `k` names a held block compatible with `B` (`source_compatible_at`). The source is
+the viable ancestor of a live lock block in the call's frame, which is the shadow frame. -/
+theorem source_compatible_at'
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) {k : Nat} (hy : y ∈ H (tr.time k))
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hlocks : ∀ l ∈ (tr.state y k).ac.locks, ∃ L ∈ (tr.state y k).fg.tree, L.root = l.block ∧
+      Compatible (tr.HonestBlocksAt H) L B)
+    {ℓ : ACLabel (goldilocksNode' sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (h : AC.ToFGAt tr.projAC y k ℓ C) : Compatible (tr.HonestBlocksAt H) C B := by
+  have hU := honestBlocksAt_coherent' hrun hnc
+  obtain ⟨hpc, -, hC⟩ := h
+  obtain ⟨hΦ, hΦU⟩ := frameIn_at' hrun hnc hy hpc
+  rw [Consensus.Goldilocks.Shadow.PU.Growing.projAC_state_at' hrun hy] at hC
+  obtain ⟨-, a, ha, hCa⟩ := AC.toFG_source_below_lock hC
+  obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := AC.mem_liveLockBlocks hΦ ha
+  obtain ⟨-, hva⟩ := AC.viableAncestor_anc hΦ hB₀
+  obtain ⟨L, hL, hLr, hLB⟩ := hlocks l₀ hl₀
+  obtain rfl : B₀ = L :=
+    hU.1 (hΦU hB₀) (mem_honestBlocksAt' hrun hy hL) (hB₀r.trans hLr.symm)
+  have hCB : ℓ.frame.Anc C B₀ := hCa.trans hva
+  exact compatible_of_head_anc hU (hCB.mono hΦU) hLB
+
+/-- **`Σ.J` is compatible with a block compatible with every source satisfying `G`**, at a cut `i`
+of a node honest at a time `t ≥ 0` after every cut before `i`, with `2 f_t < n`
+(`J_compatible_by`). -/
+theorem J_compatible_by' (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) {t : Time} (ht0 : 0 ≤ t) (ht : ∀ k < i, tr.time k ≤ t)
+    (hy : y ∈ H t) (hf : 2 * (H t)ᶜ.ncard < sp.n)
+    {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourcedBy tr H G y i t)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hGB : ∀ D, G D → Compatible (tr.HonestBlocksAt H) D B) (hB : B ∈ tr.HonestBlocksAt H) :
+    Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.J B := by
+  have hU := honestBlocksAt_coherent' hrun hnc
+  have hr := hrun.upTo ht0
+  have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono ht0
+  have hst := Trace.upTo_state tr y ht
+  by_cases h0 : (tr.state y i).fg.hj = 0
+  · have hJ := FrameGeometry.justified_genesis' hr.toLocalRun' (i := i) (by rw [hst]; exact h0) hy
+    rw [hst] at hJ
+    rw [hJ]
+    exact Or.inl (honestAt_genesis_anc' hrun hB).2
+  obtain ⟨-, -, D, ⟨hD, -⟩, hDs⟩ :=
+    FrameGeometry.justified_honest_source_before' hr.toLocalRun'
+      (projFG_localRun' hr (hnc.upTo _)) hf hy (honestRowsSourcedBy_toFrame ht hsrc)
+      (by rw [hst]; omega)
+  rw [hst] at hDs
+  have hJ := (Store.cache_invariants' (Node.fg_reachable_at' hr.toLocalRun' hy i)).2.1
+  rw [hst] at hJ
+  obtain ⟨x, hx, k, -, -, hJD, -, -⟩ := FrameGeometry.honest_source_entry' hr.toLocalRun'
+    (projFG_localRun' hr (hnc.upTo _)) hDs ⟨y, hy, i, by rw [hst]; exact hJ⟩ rfl
+  have hJDU : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.J D :=
+    (hJD.mono (FrameGeometry.fg_tree_subset_honest hx k)).mono hsub
+  rcases hGB D hD with h | h
+  · exact Or.inl (hJDU.trans h)
+  · exact Anc.total hU hJDU h
+
+/-- **OB-F at a read time**: at a cut `n` of a node honest at a time `t ≥ 0` after every cut
+before `n`, with `2 f_t < n` and the rows sourced by blocks compatible with a block `B` held while
+honest, `Σ.F` and `Σ.J` are compatible with `B` (`caches_compatible_by`). -/
+theorem caches_compatible_by'
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) {n : Nat} {t : Time} (ht0 : 0 ≤ t)
+    (ht : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t) (hf : 2 * (H t)ᶜ.ncard < sp.n)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hBU : B ∈ tr.HonestBlocksAt H)
+    (hsrc : HonestRowsSourcedBy tr H (fun D => Compatible (tr.HonestBlocksAt H) D B) y n t) :
+    Compatible (tr.HonestBlocksAt H) (tr.state y n).fg.F B ∧
+      Compatible (tr.HonestBlocksAt H) (tr.state y n).fg.J B := by
+  have hU := honestBlocksAt_coherent' hrun hnc
+  have hst := Trace.upTo_state tr y ht
+  have hJ := J_compatible_by' hrun hnc ht0 ht hy hf hsrc (fun _ h => h) hBU
+  have hR := Node.fg_reachable_at' (hrun.upTo ht0).toLocalRun' hy n
+  rw [hst] at hR
+  obtain ⟨-, -, hFJ, -⟩ := Store.cache_invariants' hR
+  have hsub : (tr.state y n).fg.tree ⊆ tr.HonestBlocksAt H := fun X hX =>
+    RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono ht0 ⟨y, hy, n, by rw [hst]; exact hX⟩
+  exact ⟨compatible_of_head_anc hU (hFJ.mono hsub) hJ, hJ⟩
+
+/-- **A held block compatible with every source stays a shadow candidate**, at a cut `i` of a node
+honest at a time `t ≥ 0` after every cut before `i`, with `2 f_t < n`
+(`held_candidate_of_rows_by`). -/
+theorem held_candidate_of_rows_by'
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) {t : Time} (ht0 : 0 ≤ t) (ht : ∀ k < i, tr.time k ≤ t)
+    (hy : y ∈ H t) (hf : 2 * (H t)ᶜ.ncard < sp.n)
+    {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop} (hsrc : HonestRowsSourcedBy tr H G y i t)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hGB : ∀ D, G D → Compatible (tr.HonestBlocksAt H) D B)
+    (hBt : B ∈ (Node.frame' (tr.state y i)).tree) :
+    (Node.frame' (tr.state y i)).Anc B (Node.frame' (tr.state y i)).fcRoot ∨
+      B ∈ (Node.frame' (tr.state y i)).viableTree (Node.frame' (tr.state y i)).tree := by
+  have hst := Trace.upTo_state tr y ht
+  have hBt' := hBt
+  rw [Node.frame'_eq, Store.toFrame'_tree] at hBt'
+  have hBU : B ∈ (tr.upTo t).HonestBlocks (H t) := ⟨y, hy, i, by rw [hst]; exact hBt'.1⟩
+  have h := FrameGeometry.held_candidate_of_rows' (hrun.upTo ht0).toLocalRun'
+    (projFG_localRun' (hrun.upTo ht0) (hnc.upTo _)) hf hy i (honestRowsSourcedBy_toFrame ht hsrc)
+    (fun D ⟨hD, hDU⟩ => (hGB D hD).imp (RunTrace.anc_upTo_of_right' hrun hnc ht0 hBU)
+      (RunTrace.anc_upTo_of_right' hrun hnc ht0 hDU))
+    (by rw [hst]; exact hBt)
+  rwa [hst] at h
+
+/-- **The caches and the candidate at a cut, from the earlier sources.** At a cut `n` of a node
+honest at a time `t ≥ 0` after every cut before `n`, with `2 f_t < n` and every FG source of the
+earlier cuts compatible with `P`: `Σ.F` and `Σ.J` are compatible with `P` (OB-F), and `P`, when in
+the shadow frame, is a candidate of it (VA). The induction step of `outage_lock_inv_at` for the
+two state fields. -/
+theorem caches_and_viable_at' (D : OutageLockPremises' tr H proposer dg ini) {n : Nat}
+    (hsrc : ∀ x k, k < n → x ∈ H (tr.time k) → ∀ ℓ C, AC.ToFGAt tr.projAC x k ℓ C →
+      Compatible (tr.HonestBlocksAt H) C D.P)
+    {t : Time} (ht0 : 0 ≤ t) (ht : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t)
+    (hf : 2 * (H t)ᶜ.ncard < sp.n) :
+    (Compatible (tr.HonestBlocksAt H) (tr.state y n).fg.F D.P ∧
+      Compatible (tr.HonestBlocksAt H) (tr.state y n).fg.J D.P) ∧
+    (D.P ∈ (Node.frame' (tr.state y n)).tree →
+      (Node.frame' (tr.state y n)).AncestorCandidate D.P) :=
+  ⟨caches_compatible_by' D.hrun D.hnc ht0 ht hy hf D.hP.1
+      (rows_sourced_by' D.hrun D.hnc hsrc ht0 ht hy),
+    fun hPt => held_candidate_of_rows_by' D.hrun D.hnc ht0 ht hy hf
+      (rows_sourced_by' D.hrun D.hnc hsrc ht0 ht hy) (fun _ h => h) hPt⟩
+
+end Candidate'
 
 end Consensus.Goldilocks.Shadow.PU
 
