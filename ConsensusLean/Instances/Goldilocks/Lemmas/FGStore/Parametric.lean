@@ -1331,6 +1331,59 @@ theorem F_anc_of_hj_lt_of_safe_with {st₁ st₂ : Store P ACP}
 
 end Held
 
+/-- If every attestation naming an entry is faulty, no descendant leaves its height or entry,
+for any finality update satisfying the store contract. -/
+theorem entry_kept_with {u : Store P ACP → FG.ChainState P.n → Store P ACP}
+    {acp₀ : ACP} {st : Store P ACP} (hu : FinalitySpec u) (hr : ReachableWith u acp₀ st)
+    {H : Set (Fin P.n)} (hq : Hᶜ.ncard < P.fg.q) {E : NodeBlock P ACP}
+    (hE : ∀ W ∈ st.tree, ∀ a ∈ W.fgPayload, a.T = E.root → a.val ∉ H)
+    {A X : NodeBlock P ACP} (hAX : st.Anc A X) (hATh : (st.σ A.root).Th = E.root) :
+    (st.σ X.root).h = (st.σ A.root).h ∧ (st.σ X.root).Th = E.root := by
+  have hcard : ∀ p : Finset (Fin P.n), (∀ v ∈ p, v ∉ H) → p.card < P.fg.q := fun p hp => by
+    have := Set.ncard_le_ncard (s := (p : Set (Fin P.n))) (t := Hᶜ) hp (Set.toFinite _)
+    rw [Set.ncard_coe_finset] at this
+    omega
+  have hU : ∀ W, st.Anc (P.genesisBlock acp₀) W →
+      (st.σ W.root).target ⊆ (st.σ W.root).prog ∧ ∀ v ∈ (st.σ W.root).prog,
+        ∃ W' ∈ st.tree, st.Anc W' W ∧ ∃ a ∈ W'.fgPayload, a.val = v ∧
+          a.T = (st.σ W.root).Th := by
+    intro W hW
+    induction hW with
+    | refl =>
+      rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl, σ_genesis_with hu hr]
+      exact ⟨fun _ h => h, fun v hv => (Finset.notMem_empty v hv).elim⟩
+    | tail _ hpar ih =>
+      obtain ⟨-, h2, hp⟩ := id hpar
+      obtain ⟨-, -, -, ht⟩ := step_σ_with hu hr h2 hp
+      obtain ⟨htp, p, hpv, hcase⟩ := step_prog ht ih.1
+      refine ⟨htp, ?_⟩
+      rcases hcase with ⟨-, hTh, hpe⟩ | ⟨-, hpe⟩
+      · rw [hpe, hTh]
+        intro v hv
+        rcases hpv v hv with hv | ⟨a, ha, hav, haT⟩
+        · obtain ⟨W', hW't, hW', a, ha, h'⟩ := ih.2 v hv
+          exact ⟨W', hW't, hW'.tail hpar, a, ha, h'⟩
+        · exact ⟨_, h2, .refl, a, ha, hav, haT⟩
+      · rw [hpe]
+        exact fun v hv => (Finset.notMem_empty v hv).elim
+  have hg := (accepted_tree_with hu hr).2.2.2
+  induction hAX with
+  | refl => exact ⟨rfl, hATh⟩
+  | tail _ hpar ih =>
+    obtain ⟨h1, h2, hp⟩ := hpar
+    obtain ⟨-, -, -, ht⟩ := step_σ_with hu hr h2 hp
+    obtain ⟨ihh, ihT⟩ := ih
+    obtain ⟨-, p, hpv, hcase⟩ := step_prog ht (hU _ (hg _ h1)).1
+    have hpn : ∀ v ∈ p, v ∉ H := by
+      intro v hv
+      rcases hpv v hv with hv | ⟨a, ha, hav, haT⟩
+      · obtain ⟨W', hW't, -, a, ha, hav, haT⟩ := (hU _ (hg _ h1)).2 v hv
+        exact hav ▸ hE W' hW't a ha (haT.trans ihT)
+      · exact hav ▸ hE _ h2 a ha (haT.trans ihT)
+    rcases hcase with ⟨hh, hTh, -⟩ | ⟨hq', -⟩
+    · exact ⟨hh.trans ihh, hTh.trans ihT⟩
+    · exact absurd hq' (not_le.2 (hcard p hpn))
+
 end Consensus.Goldilocks.Store
 
 end
