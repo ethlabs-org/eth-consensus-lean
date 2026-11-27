@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreLocal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Participants
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Provenance
@@ -595,6 +596,13 @@ theorem Growing.GoldilocksRun'.toCore {H : Time → Set (Fin sp.n)}
   acRelayAt := fun hx hacc hy hc hanc relay => hrun.toLocalRun'.acRelayAt' hx hacc hy hc hanc relay
   acCatchAt hcatch := fun hx ha hi hy hc hj hanc =>
     hrun.toLocalRun'.acCatchAt' hcatch hx ha hi hy hc hj hanc
+
+/-- **The node-run bundle of a shadow Goldilocks run under growing faults**
+(`GoldilocksRunCore.toLocalRunCore` of `Growing.GoldilocksRun'.toCore`). -/
+theorem Growing.GoldilocksRun'.toLocalRunCore {H : Time → Set (Fin sp.n)}
+    (hrun : Growing.GoldilocksRun' proposer dg H tr ini) :
+    Generic.LocalRunCore Store.updateFinality' proposer dg H tr ini :=
+  hrun.toCore.toLocalRunCore
 
 end Consensus.Goldilocks
 
