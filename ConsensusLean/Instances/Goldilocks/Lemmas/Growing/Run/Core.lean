@@ -52,6 +52,48 @@ def CutStepWith
   | .fg (.attest C (some a)), st' =>
       st.fg.attest st.record self C = some (a, st'.record) ∧ st'.fg = st.fg ∧ st'.ac = st.ac
 
+section CutStepWith
+
+variable
+    {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
+    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {self : Fin sp.n} {t : Time} {st st' : NodeState (goldilocksNode sp ro)}
+
+theorem cutStepWith_ac (ℓ : ACLabel (goldilocksNode sp ro)) :
+    CutStepWith u frameOf self t st (.ac ℓ) st' ↔
+      ℓ.frame = frameOf st ∧
+        (goldilocksNode sp ro).step self st.ac ℓ.frame t ℓ.call = (st'.ac, ℓ.emits) ∧
+        st'.fg = st.fg ∧ st'.record = st.record := by
+  rfl
+
+theorem cutStepWith_block_true (B : AC.Blk sp.n (List (FG.Att sp.n))) :
+    CutStepWith u frameOf self t st (.fg (.block B true)) st' ↔
+      B.slot ≤ sp.toParams.slotOf t ∧ st.fg.onBlockWith u B = some st'.fg ∧ st'.ac = st.ac ∧
+        st'.record = st.record := by
+  rfl
+
+theorem cutStepWith_block_false (B : AC.Blk sp.n (List (FG.Att sp.n))) :
+    CutStepWith u frameOf self t st (.fg (.block B false)) st' ↔
+      st.fg.onBlockWith u B = none ∧ st' = st := by
+  rfl
+
+theorem cutStepWith_attestation (a : FG.Att sp.n) :
+    CutStepWith u frameOf self t st (.fg (.attestation a)) st' ↔
+      st'.fg = st.fg.onAttestation a ∧ st'.ac = st.ac ∧ st'.record = st.record := by
+  rfl
+
+theorem cutStepWith_attest_none (C : AC.Blk sp.n (List (FG.Att sp.n))) :
+    CutStepWith u frameOf self t st (.fg (.attest C none)) st' ↔
+      st.fg.attest st.record self C = none ∧ st' = st := by
+  rfl
+
+theorem cutStepWith_attest_some (C : AC.Blk sp.n (List (FG.Att sp.n))) (a : FG.Att sp.n) :
+    CutStepWith u frameOf self t st (.fg (.attest C (some a))) st' ↔
+      st.fg.attest st.record self C = some (a, st'.record) ∧ st'.fg = st.fg ∧ st'.ac = st.ac := by
+  rfl
+
+end CutStepWith
+
 /-- **The static core of a Goldilocks run** with the honest set `H`: the facts the healing,
 outage and report proofs read on a run (or on a prefix of a run under growing faults). Fields
 taking `NoCollRun dg tr` are the ones whose stock proofs need collision resistance. -/
