@@ -5,9 +5,17 @@ public section
 
 /-! # P-U execution witness investigation
 
-All three execution candidates remain unresolved: `pu_cex_proposal_floor_top`,
-`pu_cex_leaf8_low`, and `pu_cex_viableHead_persists`. The declarations below are client and
-transition checks, not reachable counterexamples and not proofs of the old facts.
+Classification of the three V-A7 candidates:
+
+* `pu_cex_proposal_floor_top`: **proved**, no counterexample exists. The stock
+  `floor_le_warm_proposal_at` holds over shadow runs: `floor_le_warm_proposal_at'` in
+  `Shadow/PU/WitnessFloor`. The paper trace assumed the honest proposal on a height-`h_j` head
+  above `J` carries fewer than `q` attestations; `proposal_attestations` includes `J`'s whole
+  justification quorum (and the predecessor's finality quorum), so it crosses (`proposal_crosses`).
+* `pu_cex_leaf8_low`: **proved**, by the same supplier: `rounds_le_warm_proposal_at'`.
+* `pu_cex_viableHead_persists`: see `Shadow/PU/WitnessFloor` and the lane report.
+
+The declarations below are client and transition checks used for the persistence candidate.
 
 The stock `ConflictRun` cannot be transported as a witness: its six validators have quorum
 four, all four quorum signers are faulty, and its honest set is `{4, 5}`. Thus its fault count
@@ -16,9 +24,8 @@ four breaks the required strict bound `f < 2q - n = 2`. No test module is import
 At four validators and quorum three, targeting J and then timing out on a sibling entry is
 allowed by the real client record. This does not supply either source through `acToFG'`:
 that still requires honest node calls, confirmations, and their resulting source choices.
-For the proposal candidates, a confirmation must write the lock and the lock must survive
-the whole previous-slot pool's unlock before the proposal. Payload length alone does not
-bound the child's height: the parent's accumulated participation counts too.
+Payload length alone does not bound a child's height: the parent's accumulated participation
+counts too.
 
 For persistence, a pair of stores is not sufficient: a constant honest set, the fault bound,
 NoCollRun, every honest cut of the old FrameWindow, and the actual AC call at the first cut
