@@ -9,13 +9,15 @@ goldilocks-spec.tex §"Confirmation" (Figure "Goldilocks: confirmation"): the re
 `latest_confirmed`; the confirmation update of slot `s` at `t_s + 6Δ` (the result: the deepest
 block of the tree at or above `Φ.F` with a strict majority of the slot's participants among the
 votes resolved before `t_s + 2Δ` of validators with no second vote; saved also when vetoed; a
-veto stops only the record: over the blocks of the result's chain that conflict with no live
-lock, a fast lock on the deepest one with half of the committee or more, and a slow lock on the
+veto stops only the record: over the blocks of the result's chain not vetoed by the highest live
+lock (including when none exists), a fast lock on the deepest one with half of the committee or
+more, and a slow lock on the
 deepest one that the saved results of the previous `k − 1` slots extend, both written when they
 exist); when the protocol's switch `optimistic` is on (the default), the optimistic
 confirmation of the current slot before `t_s + 2Δ` (three quarters of the committee with a
-slot-`s` vote whose head extends the block, equivocators included, and no conflicting live
-lock); and the confirmed tip. A slow lock of slot `s` lives through `s + k`; a
+slot-`s` vote whose head extends the block, equivocators included, and not vetoed by the highest
+live lock (including when none exists)); and the confirmed tip. A slow lock of slot `s` lives
+through `s + k`; a
 fast lock gets `fastExpiry`.
 
 This module holds only what the Challenge statements reach; the fast test's selections `fastSelect`
@@ -89,8 +91,8 @@ def optimisticVoters (A : ACState sp.n) (Φ : Frm sp.n FGP) (s : Nat) (B : Blk s
 open Classical in
 /-- The block the optimistic check at `(𝒜, Φ, t)` locks, if any: when the switch
 `sp.optimistic` is on, for a joined node in a slot `s > 0` before `t_s + 2Δ`, the deepest block
-of the tree with three quarters of the committee as `optimisticVoters` and no conflicting live
-lock; with the switch off, none. -/
+of the tree with three quarters of the committee as `optimisticVoters` and not vetoed by the
+highest live lock (including when none exists); with the switch off, none. -/
 noncomputable def optimisticSelect (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     Option (Blk sp.n FGP) :=
   let s := sp.slot t

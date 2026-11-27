@@ -115,20 +115,23 @@ theorem optimisticSelect_two {Φ : N.Frm} {f j s : Nat} (h : ChainFrame Φ f j s
             htip, rfl, Relation.ReflTransGen.refl⟩
       rw [this, Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fin]
       decide
-    · rintro ⟨B, hB, hnc⟩; exact hnc (compatible_chain h htip hB.1)
+    · intro hc
+      obtain ⟨B, hB, hnc⟩ := exists_of_conflictsWithLock hc
+      exact hnc (compatible_chain h htip hB.1)
   · rintro B ⟨hB, -⟩
     obtain ⟨m, -, hm, rfl⟩ := h.eq_of_mem hB
     exact ⟨m, hm, rfl⟩
 
 theorem optimisticConfirmation_of_some {A : ACState sp.n} {Φ : N.Frm} {t : Time} {B : N.Blk}
-    (h : optimisticSelect sp A Φ t = some B) :
+    (h : optimisticSelect sp A Φ t = some B)
+    (hcap : ∀ l ∈ A.locks, l.expiry ≤ l.slot + sp.k) :
     optimisticConfirmation sp A Φ t = updateLatestConfirmed sp
       { A with locks := addLocks sp A.locks Φ t (sp.slot t) {(B.root, true, sp.slot t + 2)} }
       Φ B := by
   unfold optimisticConfirmation
   rw [h]
   dsimp only
-  rw [fastExpiry_eq]
+  rw [fastExpiry_eq _ _ _ _ hcap le_rfl]
 
 /-- The vote of slot `0`, at time `1`. -/
 theorem tryVote_zero {y : Fin sp.n} {A : ACState sp.n} {Φ : N.Frm} (h : ChainFrame Φ 0 0 0)
@@ -353,7 +356,7 @@ theorem acToFG_none {A : ACState sp.n} {Φ : N.Frm} {f j τ : Nat} (h : ChainFra
       have hCt := hCv.1
       obtain ⟨m, hm1, hm, rfl⟩ := h.eq_of_mem hCt
       obtain ⟨hlL, -, -⟩ := h.liveLocks_sub hl
-      obtain ⟨m', hm', hr'⟩ := hL l hlL
+      obtain ⟨⟨m', hm', hr'⟩, -⟩ := hL l hlL
       obtain ⟨-, hm'1, hm'2⟩ := h.eq_of_root hCt (hlb.symm.trans hr')
       have hmm : m = m' := blk_root_inj (hlb.symm.trans hr')
       rw [ite_eq_left ⟨blk b, h.mem hb hbτ, hrep.symm, h.anc hm1 (by omega) hbτ⟩]
@@ -448,7 +451,8 @@ theorem updateConfirmation_tick {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f
     Same A (updateConfirmation sp A Φ t σ) ∧
       (updateConfirmation sp A Φ t σ).saved = Function.update A.saved σ (some (blk σ).root) ∧
       (updateConfirmation sp A Φ t σ).latestConfirmed = A.latestConfirmed ∧
-      ∃ N : Set (Nat × Bool × Nat), (∀ p ∈ N, ∃ B ∈ Φ.tree, p.1 = B.root) ∧
+      ∃ N : Set (Nat × Bool × Nat),
+        (∀ p ∈ N, (∃ B ∈ Φ.tree, p.1 = B.root) ∧ p.2.2 ≤ σ + sp.k) ∧
         (updateConfirmation sp A Φ t σ).locks = addLocks sp A.locks Φ t σ N := by
   have hanc : AncR Φ (blk σ) (blk b).root :=
     ⟨blk b, h.mem (by omega) hb, rfl, h.anc hσf hσb hb⟩
@@ -462,8 +466,8 @@ theorem updateConfirmation_tick {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f
   simp only [Option.map_some, hul, ite_self]
   refine ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, trivial, trivial, _, ?_, rfl⟩
   rintro p (⟨B, hB, rfl⟩ | ⟨B, hB, rfl⟩)
-  · exact ⟨B, (deepest_mem hB).1.1.1.1, rfl⟩
-  · exact ⟨B, (deepest_mem hB).1.1.1.1, rfl⟩
+  · exact ⟨⟨B, (deepest_mem hB).1.1.1.1, rfl⟩, fastExpiry_le sp _ _ _ _⟩
+  · exact ⟨⟨B, (deepest_mem hB).1.1.1.1, rfl⟩, le_rfl⟩
 
 end Consensus.Goldilocks.Witness.TwoRun
 

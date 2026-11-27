@@ -46,7 +46,8 @@ private theorem fastLock_mem_updateConfirmation_floor {FGP : Type} {A : AC.ACSta
     {Φ : AC.Frm sp.n FGP} {t : Time} {u : Nat} {P : AC.Blk sp.n FGP} (hPt : P ∈ Φ.tree)
     (hva : Φ.viableAncestor P = P) (hconf : AC.getConfirmation sp A Φ u = some P)
     (hnv : ¬ AC.conflictsWithLock sp A.locks Φ t P) (hfast : AC.fastSelect sp A Φ u P = some P)
-    (hage : sp.slot t ≤ u + 2) :
+    (hage : sp.slot t ≤ u + 2)
+    (hcap : ∀ l ∈ A.locks, l.expiry ≤ l.slot + sp.k) (hu : u ≤ sp.slot t) :
     ∃ e, u + 2 ≤ e ∧
       (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (AC.updateConfirmation sp A Φ t u).locks := by
   have hD := Obligations.UpTo.deepest_of_subset (S := {B | B ∈ {B | B ∈
@@ -57,9 +58,10 @@ private theorem fastLock_mem_updateConfirmation_floor {FGP : Type} {A : AC.ACSta
   unfold AC.updateConfirmation
   simp only [hconf]
   rw [ite_eq_right hnv]
-  exact ⟨_, AC.le_fastExpiry sp _ _ _ _, ⟨P.root, u, true, _⟩,
+  rw [AC.updateLatestConfirmed_keeps_locks]
+  exact ⟨_, AC.le_fastExpiry sp _ _ _ _ hcap hu, ⟨P.root, u, true, _⟩,
     Or.inr ⟨_, Or.inl ⟨P, hD, rfl⟩, rfl⟩, P, hPt, rfl,
-    hage.trans (AC.le_fastExpiry sp _ _ _ _), by rw [hva]⟩
+    hage.trans (AC.le_fastExpiry sp _ _ _ _ hcap hu), by rw [hva]⟩
 
 /-- **The fresh fast lock at an actual update.** Every update of slot `u` after the drain, by a
 node honest at it, writes `(P, u, true, e)` for the actual designated proposal `P` of slot `u`,
@@ -113,8 +115,14 @@ theorem operational_update_fresh_lock_at
           (Healing.Growing.healed_member_compatible_before_update_at hp hc hPU hPs hu hun
             hgu hRnext hTb D l hD.healedOrigin (by omega)).symm⟩)).symm
   rw [hpost]
+  have hr := (Compose.goldilocks_ac_projection_from
+    (hp.run.upTo (hp.run.time_nonneg j)) (hp.noColl.upTo (tr.time j))).localRun
+  rw [RunTrace.upTo_projAC] at hr
+  have hwf := AC.locksWF_state hr hp.run.vstart hy j
+  rw [Trace.upTo_state tr.projAC y (fun _ hq => hp.run.time_mono hq.le)] at hwf
   exact fastLock_mem_updateConfirmation_floor hPt (hframe ▸ hva) hconf hnv hfast
     (by rw [hslot]; exact Nat.le_succ _)
+    (fun l hl => hwf.cap hl) (by omega)
 
 /-- **Every reader honest at `t_u + 6Δ` holds the operational proposal** under its confirmed read
 at the first cut after `t_u + 6Δ`, when every update of slot `u` by a node honest at it writes the

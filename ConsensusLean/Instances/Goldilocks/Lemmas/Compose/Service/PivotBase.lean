@@ -82,9 +82,13 @@ theorem anc_parent {U : Set (AC.Blk sp.n FGP)} (hU : Coherent U)
 theorem anchor_mem (Φ : AC.Frm sp.n FGP) (A : AC.ACState sp.n) (t : Time) :
     AC.getAnchor sp A Φ t ∈ AC.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} := by
   unfold AC.getAnchor
-  cases hd : AC.deepest Φ (AC.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) with
+  cases hd : AC.highestLiveLock sp A.locks Φ t with
   | none => exact Or.inr rfl
-  | some D => exact (AC.deepest_mem hd).1
+  | some D =>
+    dsimp only
+    split_ifs
+    · exact Or.inl (AC.deepest_mem hd).1
+    · exact Or.inr rfl
 
 /-- The anchor of a well-formed frame is in its tree. -/
 theorem anchor_tree {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) (A : AC.ACState sp.n)
