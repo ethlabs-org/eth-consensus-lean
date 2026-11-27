@@ -652,8 +652,10 @@ frames alone allow a block that left to come back under a reused root): every bl
 of $\Fr_i.\mathsf{tree}$ that extends $\Fr_j.F$, $j\geq i$, is in
 $\Fr_j.\mathsf{tree}$; a block that leaves the tree never returns; each $B_i$
 enters exactly once.  Write $\Fr\sqsubseteq\Fr'$ for the reflexive-transitive
-closure of the steps $\sqsubseteq_B$.  Nothing is said about $\fcroot$ or $\allowed$: a contest
-moves them back and forth.  A definition and its consequences about frames; that
+closure of the steps $\sqsubseteq_B$.  The abstract step imposes no additional
+condition on $\fcroot$ or $\allowed$; in a frame derived from the FG store,
+$\fcroot$ follows $\Sigma.F$ and $\allowed$ is recomputed by
+$\fname{is\_viable}$.  A definition and its consequences about frames; that
 the frames of an honest node evolve so is C0.5.}
 {F.2}{composition \S``The FG frame''.}{S.}
 
@@ -675,10 +677,14 @@ $\fcroot$ within that set.}
 as its hypothesis on frames.}
 
 \dagnode{G0.4 (height)}{Frame realization}{At an honest node,
-$\fname{fg\_to\_ac}(\Sigma)$ is a well-formed frame (G0.4 (frame)); the head
-height floor is $\hmax$ or $\hmax-1$; $\allowed$ is the set of blocks of the
-tree that extend $\fcroot$ and whose state height is at least the head height
-floor.}
+$\fname{fg\_to\_ac}(\Sigma)$ is a well-formed frame (G0.4 (frame)), with
+$\fcroot=\Sigma.F$.  The set $\allowed$ consists of the blocks of the frame
+tree that pass $\fname{is\_viable}(\Sigma,B)$: a block~$B$ is viable exactly
+when $\Sigma.\hmax\leq\Sigma.\sigma[B].h$, or
+$\Sigma.\sigma[B].h+1=\Sigma.\hmax$ and
+($\Sigma.h_j+1<\Sigma.\hmax$ or $\Sigma.J\preceq B$).  The head height floor
+is $\Sigma.\hmax$ or $\Sigma.\hmax-1$; it is an FG analysis quantity, not a
+test for membership in $\allowed$.}
 {G0.3, G0.4 (frame), F.2}{FG \S Finality caches and frame.}{S.}
 
 \dagnode{G0.5}{Client safety}{An honest validator whose $\Lambda$ persists
@@ -1011,13 +1017,19 @@ $\sum_i\tau_i+D_0+D_1$ slots.}
 
 \dagnode{G1.9}{Cache acceptance}{(a) Per call, for the call inside
 $\fname{fg\_on\_block}$ (so $\sigma[B]$ is the state of the block~$B$ it has just
-added: $\sigma[B].h_j<\sigma[B].h$ and $\sigma[B].F\preceq B$; over arbitrary
-$(\Sigma,\sigma)$ the justification step can open a contest and raise the head
-height floor): when
+added: $\sigma[B].h_j<\sigma[B].h$ and $\sigma[B].F\preceq B$): when
 $\fname{update\_finality}(\Sigma,\sigma[B])$ runs with
 $\Sigma.F\prec\sigma[B].F$, $\sigma[B].F\preceq\Sigma.J$ after that call's
 justification step, and $\fname{has\_viable\_descendant}(\Sigma,\sigma[B].F)$
-after its $\hmax$ step, then $\sigma[B].F\preceq\Sigma.F$ afterwards.  (b) The
+after its $\hmax$ step, then $\sigma[B].F\preceq\Sigma.F$ afterwards.
+The guard reads viability after the justification step.  If $\sigma[B].h$
+reaches the updated $\hmax$, $B$ itself is a viable descendant.  Otherwise
+the witness from after the $\hmax$ step stays viable: either the justification
+step leaves the store unchanged, or it sets $\Sigma.h_j$ to $\sigma[B].h_j$,
+so $\Sigma.h_j+1\leq\sigma[B].h<\Sigma.\hmax$.  A witness at height
+$\Sigma.\hmax$ or higher stays viable by height, and a witness at height
+$\Sigma.\hmax-1$ is viable by the gap arm of $\fname{is\_viable}$ without
+having to extend the new $\Sigma.J$.  (b) The
 run-level premises under which these conditions hold are stated after the reset
 and at heights above $H_z$ as HR.5 (cache acceptance after the reset); in
 Lean, (b) is \texttt{Healing.Growing.CacheAcceptance}, which proves its
@@ -1299,8 +1311,8 @@ attestations that all precede the event, so the step uses only earlier facts; th
 votes of slot~$s'$ use $T\leq t_{s'}$, and the unlocking in slot $s+1$ has an
 empty attestation hypothesis.  (iii) for $\mathcal X_{s'}$ is the union
 of these steps.  (i) at a vote of slot~$s'$:
-the voter's $\fcroot$ is $\Sigma.F$ or $\Sigma.J$, compatible with~$B$ by (K0)
-and G1.10 (c) at that vote (G0.3); then (K2) and G0.4 (frame), G0.4 (height).}
+the voter's $\fcroot$ is $\Sigma.F$, compatible with~$B$ by (K0) and G1.10 (c)
+at that vote (G0.3); then (K2) and G0.4 (frame), G0.4 (height).}
 {A1.2, A1.3, A1.4, A1.9, G1.10, G0.2, G0.3, G0.4 (frame), G0.4 (height), A0.1, A0.4, F.3, G0.1 (store), C0.4, C0.5, F.5 (run)}{old
 \texttt{FrameClaimNext}, \texttt{SourceDisciplineClaim},
 \texttt{HeadReachesLoClaim}, \texttt{CleanCut}, \texttt{CleanHistory};
