@@ -783,7 +783,8 @@ tree that it walks.
 
 \emph{The head.}  $\Call{ac\_head}{}$ computes the head when it is read: a
 walk of the full viable tree with the latest view.  It reads the current
-frame and the current locks.  At~$t_s$ it is the head of the proposal.  The
+frame and the current locks. At~$t_s$ the proposal instead reads the head
+of a virtually unlocked copy; it need not equal the stored state's served head. The
 vote duty walks its vote domain instead (Section~\ref{sec:ac-actions}).
 
 \captionof{figure}{Goldilocks: fork choice}\label{alg:ac-fc}
@@ -1145,18 +1146,18 @@ Signing and publication are separate: the signing calendar decides when the
 FG update runs, and the release schedule decides when the signed attestation
 is broadcast (Section~\ref{sec:node}); the record~$\Lambda$ changes at the
 signing, and the own pool only at the broadcast.
-Before it proposes, $\Call{ac\_proposal}{}$ unlocks against the
-slot-$(s-1)$ votes.
+Before it proposes, $\Call{ac\_proposal}{}$ unlocks a working copy against the
+slot-$(s-1)$ votes, then discards the copy without changing the stored AC state.
 
 \emph{The proposal.}  At~$t_s$, for $s>0$, the proposer puts a declared head
 vote $(v,H)$ in $B.\mathsf{declared\_head\_votes}$ for every previous-slot vote
 $(v,s-1,H)$ that it holds, in the order of its pool, and sets the support
 bit of exactly the entries whose votes are resolved at proposal time.  Its parent is the head of
-$\Call{ac\_head}{}$ after the unlocking against its whole slot-$(s-1)$
+$\Call{ac\_head}{}$ on the working copy after unlocking against its whole slot-$(s-1)$
 pool, with the resolved votes as support (Section~\ref{sec:ac-locks}).
 At slot~$0$ the head is genesis.  The proposer processes its own block at
-once, so it can vote at~$t_s$; it unlocks again before that vote, with
-the frame and the view of the vote.
+once through the ordinary block handler, from the unchanged pre-proposal state,
+so it can vote at~$t_s$; that vote unlocks with its own frame and merged view.
 
 \emph{The block for the FG.}  When its calendar allows the FG update,
 a joined node gives the FG a new block when it has one.  The candidates are the blocks of the live
@@ -1212,10 +1213,11 @@ $\Call{ac\_to\_fg}{}$ nor writes $\AC.\fgReported$ for that duty.
   \State $(\mathit{votes},\mathit{support\_votes})\gets
     \Call{vote\_view}{\AC,\Fr,s-1,+\infty}$
   \Comment{every previous-slot vote held; the resolved ones}
-  \State $\AC.\locks\gets\Call{unlock}{\AC.\locks,\Fr,t,s-1,\mathit{votes},\mathit{support\_votes}}$
-  \State $H\gets\Call{get\_head}{\AC,\Fr,t,\filtered(\Fr,\Fr.\tree),
+  \State $\AC'\gets\AC$ \Comment{a working copy; the stored state is unchanged}
+  \State $\AC'.\locks\gets\Call{unlock}{\AC.\locks,\Fr,t,s-1,\mathit{votes},\mathit{support\_votes}}$
+  \State $H\gets\Call{get\_head}{\AC',\Fr,t,\filtered(\Fr,\Fr.\tree),
     \mathit{votes},\mathit{support\_votes},s-1}$
-  \Comment{the head of $\Call{ac\_head}{}$}
+  \Comment{the head of $\Call{ac\_head}{}$ on the copy; discard the copy after the walk}
   \State $\mathit{declared\_head\_votes}\gets[(v,H'):(v,s-1,H')\in\mathit{votes}]$;\quad
     $\mathit{support\_bits}\gets[\,[x\in\mathit{support\_votes}]:x\in\mathit{votes}\,]$
   \Comment{in the order of the pool}

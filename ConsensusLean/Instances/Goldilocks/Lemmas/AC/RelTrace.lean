@@ -50,10 +50,7 @@ theorem stepWithM_mayVote (ro : ReplayOrder sp FGP) (m : WriteMode) (self : Fin 
     unfold acOnTickWithM
     dsimp only
     split_ifs <;> simp only [tryVoteWithM_mayVote, updateM_mayVote]
-  | proposal =>
-    change (acProposalWith sp L A Φ t).1.mayVote = _
-    unfold acProposalWith
-    split_ifs <;> rfl
+  | proposal => rfl
   | toFG => exact acToFG_mayVote A Φ t
   | message v =>
     simp only [stepWithM, acOnMessageWithM, tryVoteWithM_mayVote, optimisticConfirmation_mayVote,
@@ -90,16 +87,6 @@ theorem traceWithM_mayVote {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat �
       rw [hs]
       exact ih
 
-/-! ### The handlers with the locks after the unlock given -/
-
-/-- `ac_proposal` with the locks after the unlock given keeps `voted_slot` and
-`restart_time`. -/
-theorem acProposalWith_keeps (L : Set Lock) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (acProposalWith sp L A Φ t).1.votedSlot = A.votedSlot ∧
-      (acProposalWith sp L A Φ t).1.restartTime = A.restartTime := by
-  unfold acProposalWith
-  split_ifs <;> exact ⟨rfl, rfl⟩
-
 /-! ### The unlock input of a call -/
 
 /-- **The parent's call is `stepWith` of its own unlock.** -/
@@ -107,7 +94,12 @@ theorem step_eq_stepWith (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACStat
     (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP ro).Call) :
     (goldilocksAC sp FGP ro).step self A Φ t c =
       stepWith sp ro self (parentUnlock sp A Φ t c) A Φ t c := by
-  cases c <;> rfl
+  cases c
+  all_goals first
+    | rfl
+    | change ((acProposal sp A Φ t).1, []) = (A, [])
+      unfold acProposal
+      split_ifs <;> rfl
 
 theorem tryVote_eq_tryVoteWith (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) :

@@ -785,13 +785,12 @@ it is in $\Fr.\mathsf{tree}$, else $\Fr.F$.}
 
 \dagnode{A0.6}{AC interface requirements}{At every reachable AC state
 (\S\ref{sec:dag-rules}) and well-formed frame of the call, Goldilocks meets
-requirements 1--4 of composition \S``The available chain'':
+requirements 1--3 of composition \S``The available chain'':
 every head of a duty extends $\fcroot$, and one whose walk starts in the
 viable tree of the walked tree is in $\allowed$ (the vote's anchor can be in
 the full viable tree and outside the voter's tree); $\mathit{fg\_confirmed}\neq\bot$ is in the
 viable tree; $\fname{ac\_head}$ extends
-$\fcroot$; the confirmed tip extends $\Fr.F$ and is an ancestor of the head;
-the parent of a proposal is a head at that time.}
+$\fcroot$; the confirmed tip extends $\Fr.F$ and is an ancestor of the head.}
 {A0.1, A0.4, A0.5, G0.4 (frame), G0.3 (frame)}{composition \S The available chain; AC \S Fork choice,
 \S Node actions.}{M.  The FG side uses only this node of the AC.}
 
@@ -815,11 +814,12 @@ $\fname{ac\_proposal}(\AC,\Fr,t_s)=(H,p)$ at a reachable AC state, then a block 
 slot~$s$ with AC payload~$p$ passes $\fname{ac\_valid\_payload}$: its declared
 head votes are the slot-$(s-1)$ votes of the proposer's pool (admission checks
 the slot), distinct, at most two per validator (the pool's cap), with the
-support bits marking an ordered sublist of them.  Requirements 1--4 do not give
+support bits marking an ordered sublist of them.  Requirements 1--3 do not give
 this; it is a fifth interface requirement, which every AC must meet (a proposed
 addition to composition \S``The available chain''), and for
 Goldilocks this node.  Requirement 5 is about the payload only: that the parent
-is held, with a smaller slot, follows from requirement 4 and C0.4 (C0.3).}
+is held follows from requirement 1, and its smaller slot follows from the tick
+order and future-slot rejection in C0.4 (C0.3).}
 {A0.1}{AC \S Node actions ``The proposal''; \S Votes ``The payload check''.}{S.}
 
 \subsection{Composition}
@@ -839,13 +839,12 @@ moves only forward along the trajectory of $\Sigma$ (G0.3, an FG store fact),
 and a restart keeps $\Sigma$ (a node fact).}
 
 \dagnode{C0.3}{Honest blocks are accepted}{In the node composed with an AC
-that meets requirements 1--5 (A0.6, A0.9), with $\mathsf{GenRoot}$: a block made by
+that meets requirements 1--3 and 5 (A0.6, A0.9), with $\mathsf{GenRoot}$: a block made by
 $\fname{propose\_block}$ at an honest node at~$t_s$ passes the checks of its
 maker: its attestations are valid against the parent's state (they come from
 $\fname{proposal\_attestations}$), its payload passes $\fname{ac\_valid\_payload}$
-(requirement~5), its parent is held (requirement~1, or requirements~3
-and~4 together: the parent is $\fname{ac\_head}$ after
-$\fname{ac\_proposal}$, which extends $\fcroot$; in $\Fr.\mathsf{tree}$) with a smaller slot (the proposal runs in the tick at~$t_s$,
+(requirement~5), its parent is held (requirement~1: it extends $\fcroot$
+in $\Fr.\mathsf{tree}$) with a smaller slot (the proposal runs in the tick at~$t_s$,
 before the objects of that time (C0.4), and the node drops blocks of a future
 slot), it extends $\Sigma.F$, and, under $\mathsf{NoColl}$, its root is new (the
 digest excludes the proposer).  Formerly G0.6.}
@@ -2868,7 +2867,7 @@ A0.6, A0.9 (interface consequences) & \texttt{Compose.TipsNested},
   \texttt{Compose.ProposalParentHeld}, \texttt{Compose.SourceHeld},
   \texttt{Compose.DutyHeadsHeld} & proved
   (\texttt{compose\_interface\_statements}); stronger than assuming
-  requirements 1--5: tips need only requirement~3 (\texttt{ReqOutputs}),
+  requirements 1--3 and 5: tips need only requirement~3 (\texttt{ReqOutputs}),
   proposal parents and duty heads only requirement~1 (\texttt{ReqHeads}),
   and sources only requirement~2 (\texttt{ReqSource})\\
 C0.1 & \texttt{Compose.TipsNested} at the states of

@@ -100,7 +100,8 @@ noncomputable def acOnTick (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n F
     (A₂, r.2)
 
 open Classical in
-/-- `ac_proposal(𝒜, Φ, t)`, at `t_s`: the parent (with its walk) and the payload, or `⊥`. -/
+/-- `ac_proposal(𝒜, Φ, t)`, at `t_s`: the parent (with its walk) and the payload, or `⊥`.
+Unlocking uses a working copy for the parent and anchor; the stored state is unchanged. -/
 noncomputable def acProposal (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     ACState sp.n × Option (DutyHead sp.n FGP (Payload sp.n) × Payload sp.n) :=
   if ¬ joined sp A t then (A, none)
@@ -110,7 +111,7 @@ noncomputable def acProposal (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     let V := View.ofLists p
     let A₁ := { A with locks := unlock sp A.locks Φ t (s - 1) V }
     let H := getHead sp A₁ Φ t (Φ.viableTree Φ.tree) V (s - 1)
-    (A₁, some (⟨H, getAnchor sp A₁ Φ t, Φ.tree⟩, p))
+    (A, some (⟨H, getAnchor sp A₁ Φ t, Φ.tree⟩, p))
 
 /-- The candidates of `ac_to_fg`: the blocks of the full viable tree under a live fast lock of
 slot `slot(t) − 2` or later. -/

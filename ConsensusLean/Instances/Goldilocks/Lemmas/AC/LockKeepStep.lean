@@ -155,20 +155,11 @@ theorem mem_acOnTick_of_keep_view (self : Fin sp.n) {A : ACState sp.n} (hl : l �
     | exact mem_updateConfirmation_of_keep hl hk hB hBr hva
     | exact mem_updateConfirmation_of_keep hv hk hB hBr hva
 
-/-- `ac_proposal` keeps such a lock (the slot-`(slot(t) − 1)` pool view). -/
-theorem mem_acProposal_of_keep_view {A : ACState sp.n} (hl : l ∈ A.locks)
-    (hk : l.LiveAt sp t) (hB : B ∈ Φ.tree) (hBr : B.root = l.block)
-    (hva : Φ.viableAncestor B = B)
-    (hu : (sp.slot t : Int) - 1 ≤ l.slot ∨ unlockTarget sp Φ
-      (View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤))
-      ((sp.slot t : Int) - 1) B = B) :
+/-- `ac_proposal` keeps every stored lock. -/
+theorem mem_acProposal_of_keep_view {A : ACState sp.n} (hl : l ∈ A.locks) :
     l ∈ (acProposal sp A Φ t).1.locks := by
   unfold acProposal
-  dsimp only
-  split_ifs <;>
-    first
-    | exact hl
-    | exact mem_unlock_of_keep hl hk hB hBr hva hu
+  split_ifs <;> exact hl
 
 /-- The view that an AC call `c` passes to `unlock` at time `t` from state `A` with frame `Φ`
 (the merged vote view of the state `try_vote` receives; the pool view in `ac_proposal`; for
@@ -222,7 +213,7 @@ theorem mem_step_locks_of_keep_view {ro : ReplayOrder sp FGP} (self : Fin sp.n)
     l ∈ ((goldilocksAC sp FGP ro).step self A Φ t c).1.locks := by
   cases c with
   | tick => exact mem_acOnTick_of_keep_view self hl hk hB hBr hva hu
-  | proposal => exact mem_acProposal_of_keep_view hl hk hB hBr hva hu
+  | proposal => exact mem_acProposal_of_keep_view hl
   | toFG =>
     change l ∈ (acToFG sp A Φ t).1.locks
     rw [acToFG_locks_eq]

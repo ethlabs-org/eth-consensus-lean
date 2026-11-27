@@ -214,21 +214,13 @@ theorem floor_acOnTick (self : Fin sp.n) {A : ACState sp.n} (hΦ : FrameOK Φ)
     | exact floor_updateConfirmation hΦ hB0 hva0 hk hv
 
 /-- `ac_proposal` keeps the floor (the slot-`(slot(t) − 1)` pool view). -/
-theorem floor_acProposal {A : ACState sp.n} (hΦ : FrameOK Φ) (hB0 : B₀ ∈ Φ.tree)
-    (hva0 : Φ.viableAncestor B₀ = B₀) (hk : sp.slot t ≤ m)
-    (hu : (sp.slot t : Int) - 1 ≤ j ∨ unlockTarget sp Φ
-      (View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤))
-      ((sp.slot t : Int) - 1) B₀ = B₀)
+theorem floor_acProposal {A : ACState sp.n}
     (h : ∃ l ∈ A.locks, l.slot = j ∧ m ≤ l.expiry ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B) :
     ∃ l ∈ (acProposal sp A Φ t).1.locks, l.slot = j ∧ m ≤ l.expiry ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B := by
   unfold acProposal
-  dsimp only
-  split_ifs <;>
-    first
-    | exact h
-    | exact floor_unlock hΦ hB0 hva0 hk hu h
+  split_ifs <;> exact h
 
 /-- **The floor lemma of an AC call.** A call of the AC at time `t ≥ 0` with a well-formed frame
 `Φ` keeps the floor: if `A.locks` holds a lock of slot `j` and expiry `≥ m` on a block `⪰ B₀`
@@ -250,8 +242,7 @@ theorem exists_step_locks_floor {ro : ReplayOrder sp FGP} (self : Fin sp.n)
     rw [unlockView_tick] at hu
     exact floor_acOnTick self hΦ hB0 hva0 hk hu h
   | proposal =>
-    rw [unlockView_proposal] at hu
-    exact floor_acProposal hΦ hB0 hva0 hk hu h
+    exact floor_acProposal h
   | toFG =>
     have he : ((goldilocksAC sp FGP ro).step self A Φ t .toFG).1.locks = A.locks :=
       acToFG_locks_eq A

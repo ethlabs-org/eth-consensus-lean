@@ -144,13 +144,6 @@ private theorem acOnTick_fields (self : Fin sp.n) (L : Set Lock) (A : ACState sp
   all_goals first | exact ⟨id, rfl⟩ | exact tryVote_fields (wm := wm) _ _ _ _ _
 
 
-private theorem acProposal_fields (L : Set Lock) (A : ACState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) :
-    (PoolOK A.pool → PoolOK (acProposalWith sp L A Φ t).1.pool) ∧
-      (acProposalWith sp L A Φ t).1.blockStamp = A.blockStamp := by
-  unfold acProposalWith
-  split_ifs <;> exact ⟨id, rfl⟩
-
 private theorem acToFG_fields (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (PoolOK A.pool → PoolOK (acToFG sp A Φ t).1.pool) ∧
       (acToFG sp A Φ t).1.blockStamp = A.blockStamp := by
@@ -206,7 +199,7 @@ theorem stepWith_pool_cap (ro : ReplayOrder sp FGP) (self : Fin sp.n) (L : Set L
         (fun m => m.val = x)).dedup.length ≤ 2 := by
   cases c with
   | tick => exact (acOnTick_fields self L A Φ t).1 h
-  | proposal => exact (acProposal_fields L A Φ t).1 h
+  | proposal => exact h
   | toFG => exact (acToFG_fields A Φ t).1 h
   | message m => exact (acOnMessage_fields self L A Φ t m).1 h
   | block B => exact (acOnBlockWith_fields self L A Φ t B).1 h
@@ -306,7 +299,7 @@ theorem stepWith_blockStamp_eq (ro : ReplayOrder sp FGP) (self : Fin sp.n) (L : 
   | tick => exact ⟨fun B h => absurd h (by simp), fun h => absurd h (by simp),
       fun _ _ => (acOnTick_fields _ _ _ _ _).2⟩
   | proposal => exact ⟨fun B h => absurd h (by simp), fun h => absurd h (by simp),
-      fun _ _ => (acProposal_fields _ _ _ _).2⟩
+      fun _ _ => rfl⟩
   | toFG => exact ⟨fun B h => absurd h (by simp), fun h => absurd h (by simp),
       fun _ _ => (acToFG_fields _ _ _).2⟩
   | message m => exact ⟨fun B h => absurd h (by simp), fun h => absurd h (by simp),
@@ -453,8 +446,7 @@ private theorem inv_of_reachableU {FGP : Type} {ro : ReplayOrder sp FGP} {self :
         (acOnTick_fields _ L _ _ _).2
     | proposal =>
       obtain ⟨-, rfl⟩ := hc
-      exact ih.of_stamps sp ht ((acProposal_fields L _ _ _).1 ih.pool)
-        (acProposal_fields L _ _ _).2
+      exact ih.of_stamps sp ht ih.pool rfl
     | toFG =>
       obtain ⟨-, rfl⟩ := hc
       exact ih.of_stamps sp ht ((acToFG_fields _ _ _).1 ih.pool) (acToFG_fields _ _ _).2

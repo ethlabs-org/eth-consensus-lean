@@ -88,18 +88,13 @@ theorem FromP.of_movesBack {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
 
 variable {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
 
-/-- The proposal with the unlock given keeps `FromP`: it only moves locks back. -/
+/-- The proposal with the unlock given keeps `FromP`: the stored locks are unchanged. -/
 theorem FromP.of_proposalWith
-    {L : Set Lock} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (A : ACState sp.n)
-    (t : Time) {New : Nat → Bool → Blk sp.n FGP → Prop}
-    (hL : UnlockRel sp A.locks Φ t ((sp.slot t : Int) - 1)
-      (View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤)) L) :
+    {L : Set Lock} (A : ACState sp.n)
+    (t : Time) {New : Nat → Bool → Blk sp.n FGP → Prop} :
     FromP U A.locks (acProposalWith sp L A Φ t).1.locks New := by
   unfold acProposalWith
-  dsimp only
-  split_ifs
-  · exact FromP.of_movesBack hΦU (hL.movesBack hΦ)
-  · exact FromP.of_eq rfl
+  split_ifs <;> exact FromP.of_eq rfl
 
 theorem toFG_locks (A : ACState sp.n) (t : Time) :
     (acToFG sp A Φ t).1.locks = A.locks := by

@@ -107,9 +107,7 @@ private theorem rt_step
     unfold acOnTickWithM; dsimp only
     split_ifs <;> simp only [updateConfirmationM_field ACState.restartTime (fun _ _ => rfl),
       AC.updateConfirmation_restartTime, AC.tryVote_restartTimeWith]
-  | proposal =>
-    change (acProposalWith sp L A Φ t).1.restartTime = _
-    unfold acProposalWith; split_ifs <;> rfl
+  | proposal => rfl
   | toFG =>
     change (acToFG sp A Φ t).1.restartTime = _
     unfold acToFG

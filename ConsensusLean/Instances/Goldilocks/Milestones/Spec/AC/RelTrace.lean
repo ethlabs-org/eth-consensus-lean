@@ -47,7 +47,8 @@ noncomputable abbrev tryVoteWith (self : Fin sp.n) (L₁ : Set Lock) (A : ACStat
 
 variable (sp) in
 open Classical in
-/-- The parent's `ac_proposal`, with `L₁` as the locks after its unlock. -/
+/-- The parent's `ac_proposal`, with `L₁` as the virtually unlocked working-copy locks.
+The returned state remains `A`. -/
 noncomputable abbrev acProposalWith (L₁ : Set Lock) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : ACState sp.n × Option (DutyHead sp.n FGP (Payload sp.n) × Payload sp.n) :=
   if ¬ joined sp A t then (A, none)
@@ -57,7 +58,7 @@ noncomputable abbrev acProposalWith (L₁ : Set Lock) (A : ACState sp.n) (Φ : F
     let V := View.ofLists p
     let A₁ := { A with locks := L₁ }
     let H := getHead sp A₁ Φ t (Φ.viableTree Φ.tree) V (s - 1)
-    (A₁, some (⟨H, getAnchor sp A₁ Φ t, Φ.tree⟩, p))
+    (A, some (⟨H, getAnchor sp A₁ Φ t, Φ.tree⟩, p))
 
 variable (sp) in
 open Classical in
@@ -91,7 +92,7 @@ noncomputable abbrev stepWith (ro : ReplayOrder sp FGP) (self : Fin sp.n) (L₁ 
     (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (goldilocksAC sp FGP ro).Call → ACState sp.n × List (Em sp FGP)
   | .tick => acOnTickWith sp self L₁ A Φ t
-  | .proposal => ((acProposalWith sp L₁ A Φ t).1, [])
+  | .proposal => (A, [])
   | .toFG => ((acToFG sp A Φ t).1, [])
   | .message m => acOnMessageWith sp self L₁ A Φ t m
   | .block B => acOnBlockWith sp self L₁ A Φ t B
@@ -175,7 +176,7 @@ noncomputable abbrev stepWithM (ro : ReplayOrder sp FGP) (m : WriteMode) (self :
     (L₁ : Set Lock) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (goldilocksAC sp FGP ro).Call → ACState sp.n × List (Em sp FGP)
   | .tick => acOnTickWithM sp m self L₁ A Φ t
-  | .proposal => ((acProposalWith sp L₁ A Φ t).1, [])
+  | .proposal => (A, [])
   | .toFG => ((acToFG sp A Φ t).1, [])
   | .message v => acOnMessageWithM sp m self L₁ A Φ t v
   | .block B => acOnBlockWithM sp m self L₁ A Φ t B

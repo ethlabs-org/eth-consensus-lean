@@ -90,9 +90,7 @@ private theorem sv_step
       · exact sv_tryVote _ _ _ _
       · rfl
   | proposal =>
-    left
-    change (acProposalWith sp L A Φ t).1.saved = _
-    unfold acProposalWith; split_ifs <;> rfl
+    exact Or.inl rfl
   | toFG =>
     left
     change (acToFG sp A Φ t).1.saved = _
