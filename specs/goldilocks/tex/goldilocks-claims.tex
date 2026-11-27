@@ -1248,8 +1248,7 @@ $\mathsf{Clean}(s,m,B)$:
   after~$t_s$.)
 \item[(K2)] \emph{Height lead.} At each vote of an honest voter~$y$ of a slot
   in $(s,m]$, the voter block tree of~$y$ holds a descendant of~$B$ (or $B$
-  itself) whose state height is at least $y$'s head height floor, or
-  $B\preceq\fcroot$ at~$y$.
+  itself) that is viable at~$y$, or $B\preceq\Sigma.F$ at~$y$.
 \end{itemize}
 Then, writing $\mathcal X_{s'}$ for the blocks that an honest node accepts in
 $[t_s,t_{s'}+2\Delta)$, for every slot $s'\in(s,m]$: (iii) the conclusion of
@@ -1269,8 +1268,12 @@ validators can target one fork and time out on another, so the faulty
 validators plus those attestations reach~$q$ for an entry of every fork; (K0) and the
 scope of (K1) say that honest finality has passed that dirt.  (K2) is the
 height race: a faulty proposer can release late blocks on~$B$'s own branch
-that raise $\hmax$, and so the head height floor, above every block of a
-voter's pre-freeze tree; then $B$ has no viable descendant in that tree.  The regime nodes discharge (K0)--(K2): R.1 by its induction from time~$0$, R.3 and
+that raise $\hmax$ so that every block~$D$ extending~$B$ in a voter's
+pre-freeze tree has state height below $\hmax-1$, or has state height
+$\hmax-1$ at a top state ($h_j+1=\hmax$) and does not extend~$\Sigma.J$;
+then $B$ has no viable descendant in that tree.  ($B$ itself may lie strictly
+below~$\Sigma.J$; a $D$ that extends~$\Sigma.J$ at $\hmax-1$ would be viable.)
+The regime nodes discharge (K0)--(K2): R.1 by its induction from time~$0$, R.3 and
 R.5 only once honest finality has passed the pre-GST dirt (see O.1).  The
 height bound of G1.10 is the tool for (K2).
 

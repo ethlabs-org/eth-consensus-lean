@@ -18,9 +18,9 @@ The premises bundle `Premises`, the healing obligations `ACHealing`, the local r
 `ACCorrectLocal`, the healing contracts that read `Service` or `Premises`, `HealthyReadPoint` and
 the claim suppliers `DeadlinePremisesSupply`, `FinalReadTransport`, `HighCanonicalSupply` and
 `PreparationPremisesSupply` take the same hold (and the suppliers an FG delay `ΔF`, default
-`E.ΔFG`). Each `…NoHold` below is main's form without the hold, verbatim but for the names; at
-the defaults each Prop agrees with it (`…_zero_iff`) and each record is equivalent to it
-(`…ZeroEquiv`). -/
+`E.ΔFG`). Each `…NoHold` below restates the corresponding contract without the release hold,
+using the same protocol rules. At the defaults each Prop agrees with it (`…_zero_iff`) and each
+record is equivalent to it (`…ZeroEquiv`). -/
 
 namespace Consensus.Goldilocks.Test.ServiceHold
 
@@ -243,11 +243,11 @@ variable {runs : ACRun A sg}
 
 /-- `reset_of_high_proposal_at` as stated before the release hold. -/
 def reset_of_high_proposal_atNoHold (O : ACHealing A sg runs) : Prop :=
-  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time} {s₀ u N floor : Nat}
-    {kindJ : Prop} {J B : A.Blk}
+  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time} {s₀ u N M : Nat}
+    {isTop : Prop} {J B : A.Blk}
     {z : Fin P.n} {kB : Nat},
     βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
-    SlotWindowWithin tr H O.reportDelay s₀ N floor kindJ J →
+    SlotWindowWithin tr H O.reportDelay s₀ N M isTop J →
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     ServiceNoHold tr H g ΔF b → (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
@@ -263,10 +263,10 @@ def reset_of_high_proposal_atNoHold (O : ACHealing A sg runs) : Prop :=
 
 /-- `round_of_warm_at` as stated before the release hold. -/
 def round_of_warm_atNoHold (O : ACHealing A sg runs) : Prop :=
-  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b T : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
+  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b T : Time} {s₀ u x N M : Nat} {isTop : Prop}
     {J B X : A.Blk} {z : Fin P.n} {kB : Nat} {p : Fin P.n} {kX : Nat},
     βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
-    SlotWindowWithin tr H O.reportDelay s₀ N floor kindJ J →
+    SlotWindowWithin tr H O.reportDelay s₀ N M isTop J →
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     ServiceNoHold tr H g ΔF b → (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
@@ -329,9 +329,9 @@ def high_entry_eq_atNoHold (O : ACHealing A sg runs) : Prop :=
 /-- `rise_reset_rounds_at` as stated before the release hold. -/
 def rise_reset_rounds_atNoHold (O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b T : Time}
-    {s₀ N Gp floor : Nat} {kindJ : Prop} {J : A.Blk},
+    {s₀ N Gp M : Nat} {isTop : Prop} {J : A.Blk},
     βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
-    SlotWindowWithin tr H O.reportDelay s₀ N floor kindJ J →
+    SlotWindowWithin tr H O.reportDelay s₀ N M isTop J →
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → ServiceNoHold tr H g ΔF b →
     (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →

@@ -161,12 +161,7 @@ tick can pass the join test $\AC.\restartTime\leq t_{\slot(t)-1}$ wrongly.
 The Lean model keeps the explicit cutoff \texttt{lateVotes} (stamp below
 the gate time) in the confirmation update; this form reads the whole
 pool, which is the same set because the tick runs before the objects of
-its time.  The Lean model uses the witness height
-$\Sigma.\hmax-1$ in finality acceptance, also in a contest; this form uses
-the head height floor.  They agree: outside a contest the two heights are equal,
-and in a contest the block that carried the justification of~$\Sigma.J$
-has state height $\Sigma.h_j+1=\Sigma.\hmax$ and extends every candidate,
-because a candidate is an ancestor of~$\Sigma.J$.
+its time.
 The remaining differences are of form only.
 
 \paragraph{Changes of behaviour.}
