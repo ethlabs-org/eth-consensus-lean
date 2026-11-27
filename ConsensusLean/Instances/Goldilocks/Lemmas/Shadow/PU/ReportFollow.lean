@@ -42,8 +42,8 @@ early-witness family (`WitnessFamily`) and the regular and optimistic later-head
 those are. The two endpoints are assembled from the stock proofs: the fresh lock from lane N's
 selection and no-veto (primed and stock), lane C's `toFG_candidate_pre_within_stock_at'`, and two
 named stubs: `honest_vote_heads_eq_stub` / `honest_vote_heads_eq_stock_stub` (lane A, the
-unanimous slot-`u` votes) and `signing_tick_toFG_cuts_stub` (the tick and report cuts of a signing
-tick over the shadow groups).
+unanimous slot-`u` votes). The tick and report cuts of a signing tick are lane C's
+`signing_tick_toFG_cuts_at'`.
 
 The milestone form reads the stock window (`Generic.FrameWindow … floor kindJ J`):
 `proposal_report_follow_stock_at'` and `proposal_report_follow_delayed_stock_at'` are assembled
@@ -592,19 +592,6 @@ private theorem restrict_stock {lo hi lo' hi' : Time} {floor : Nat} {kindJ : Pro
 The exact contracts sent to the supplier lanes, as named stubs until they land: each is its
 stock statement over the shadow run and the P-U window. Replaced by the suppliers' exports. -/
 
-/-- Stub (signing tick cuts over the shadow groups; stock `toFG_second_cut_of_signing_tick`
-through `update_toFG_calls_of_awake_at`): at the update deadline `t_{u+1} + 2Δ`, a node honest and
-awake that signs then runs its tick cut and, next, its `ac_to_fg` cut on the same frame. -/
-theorem signing_tick_toFG_cuts_stub {ini : Fin sp.n → (goldilocksNode' sp ro).State}
-    (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
-    {sign : Fin sp.n → Time → Bool} (_hcal : tr.SignCalendarAt' proposer dg H sign) {T : Time}
-    (_hT : ∃ u : Nat, T = sp.ts (u + 1 : Nat) + 2 * sp.Δ) {y : Fin sp.n} (_hy : y ∈ H T)
-    (_haw : tr.awake y T) (_hsig : sign y T = true) :
-    ∃ k ell ell', tr.projAC.CallAt y k ell ∧ ell.call = .tick ∧ tr.time k = T ∧
-      tr.projAC.CallAt y (k + 1) ell' ∧ ell'.call = .toFG ∧ tr.time (k + 1) = T ∧
-      ell'.frame = ell.frame := by
-  sorry
-
 /-- Stub for lane A's `Healing.Growing.Shadow.honest_vote_heads_eq_at'` (stock
 `honest_vote_heads_eq_at`, FreshVotes). -/
 theorem honest_vote_heads_eq_stub
@@ -629,7 +616,7 @@ theorem honest_vote_heads_eq_stub
 
 /-- The fresh fast lock and its report call over the P-U window: lane N's primed selection and
 no-veto (`Shadow.unanimous_update_selection_primed_at'`, `…_no_veto_primed_at'`) at the update cut
-of a signing tick (`signing_tick_toFG_cuts_stub`). -/
+of a signing tick (`signing_tick_toFG_cuts_at'`). -/
 theorem fresh_fast_lock_update_toFG_of_cuts {K : AC.CommitteeDict sp.n}
     {g ΔF b : Time} {u M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -667,7 +654,7 @@ theorem fresh_fast_lock_update_toFG_of_cuts {K : AC.CommitteeDict sp.n}
   obtain ⟨k, ell, ell', hu, hc, hto, ht, hframes⟩ :=
     Healing.Growing.Core.update_toFG_calls_of_awake_at
     _hrun.toCore _hnc _hawake _hnr _hmargin _hTb (sign := sign)
-    (fun x hx haw hsig => signing_tick_toFG_cuts_stub _hrun _hcal ⟨u, rfl⟩ hx haw hsig) _hy _hsign
+    (fun x hx haw hsig => signing_tick_toFG_cuts_at' _hrun _hcal ⟨u, rfl⟩ hx haw hsig) _hy _hsign
   have hkt : tr.time k = sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
     have hk := hu.2.2.1
     change tr.time k = sp.ts u + 6 * sp.Δ at hk
@@ -735,7 +722,7 @@ theorem honest_vote_heads_eq_stock_stub
 /-- The fresh fast lock and its report call over the stock window (stock
 `fresh_fast_lock_update_toFG_at`): lane N's selection and no-veto
 (`Shadow.unanimous_update_selection_at'`, `Shadow.unanimous_update_no_veto_at'`) at the update cut
-of a signing tick (`signing_tick_toFG_cuts_stub`). -/
+of a signing tick (`signing_tick_toFG_cuts_at'`). -/
 theorem fresh_fast_lock_update_toFG_stock_of_cuts {K : AC.CommitteeDict sp.n}
     {g ΔF b : Time} {u floor : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -773,7 +760,7 @@ theorem fresh_fast_lock_update_toFG_stock_of_cuts {K : AC.CommitteeDict sp.n}
   obtain ⟨k, ell, ell', hu, hc, hto, ht, hframes⟩ :=
     Healing.Growing.Core.update_toFG_calls_of_awake_at
     _hrun.toCore _hnc _hawake _hnr _hmargin _hTb (sign := sign)
-    (fun x hx haw hsig => signing_tick_toFG_cuts_stub _hrun _hcal ⟨u, rfl⟩ hx haw hsig) _hy _hsign
+    (fun x hx haw hsig => signing_tick_toFG_cuts_at' _hrun _hcal ⟨u, rfl⟩ hx haw hsig) _hy _hsign
   have hkt : tr.time k = sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
     have hk := hu.2.2.1
     change tr.time k = sp.ts u + 6 * sp.Δ at hk
