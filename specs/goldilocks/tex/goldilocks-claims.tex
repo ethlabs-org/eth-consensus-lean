@@ -1341,16 +1341,19 @@ ready proposal~$P$ gets every honest slot-$u$ vote and, at $t_u+6\Delta$, a
 surviving fast write of~$P$ or a retained chain that extends~$P$ and carries a
 justified crossing of its entry ($\delta_{\mathrm t}\geq2$ rules out a timeout
 through $t_u+6\Delta$).  In the first case every honest validator has an actual
-source with entry~$E$ by $t_u+6\Delta$, or an earlier report of~$E$ suppresses
-it; by HR.4 (R1), (R4) and G0.10 its record allows a target at~$h$ and, at an
+source with entry~$E$ by $t_u+6\Delta$; repeated AC reads are allowed, while
+the FG client refuses to sign when its record already contains the relevant vote.
+By HR.4 (R1), (R4) and G0.10 its record allows a target at~$h$ and, at an
 entry whose previous height is justified, permits~$P_E$ (BA), so the honest attestations give P2; they arrive before
 $t_{u+\cF}$, and the window's honest ready proposal with the retained-inclusion
 parent gives P1, P3--P5 (C0.3), unless a retained chain justifies~$E$ first,
 which is branch~(ii).  In the second case branch~(ii) holds.)  Faulty or old entries are not
 served by this node (an open AC obligation; H4).  The disjunction is
 needed: an early justification can use $q-f$ honest and $f$ faulty targets
-($n=7$: three plus two), after which higher-source suppression can skip that
-height for every later honest source, so the existing duty interface does not
+($n=7$: three plus two), after which a different current source can select a
+higher entry, or the FG client can refuse to sign an already recorded vote.
+The removed AC report cursor does not suppress repeated or ancestor reads;
+the existing duty interface still does not
 entail a quorum of honest targets (no reachable
 counterexample is claimed).}
 {A1.5, A0.6, C0.3, C0.5, G0.2, G0.7, G0.10, G0.1 (store), G0.5, HR.1,

@@ -13,7 +13,8 @@ The AC calls of the run on chain frames (`ChainFrame`), for either validator `y`
 * `admitVote_fresh` and the optimistic check: one vote of the slot locks nothing
   (`optimisticSelect_one`), both votes lock the tip (`optimisticSelect_two`);
 * `getConfirmation_tick`: the confirmation of slot `σ` is the block of slot `σ`;
-* `acToFG_tick`, `acToFG_none`: `ac_to_fg` returns the new tip once, then nothing. -/
+* `acToFG_tick`, `acToFG_read`: `ac_to_fg` returns the current tip without changing the AC state,
+  including on repeated reads. -/
 
 namespace Consensus.Goldilocks.Witness.TwoRun
 

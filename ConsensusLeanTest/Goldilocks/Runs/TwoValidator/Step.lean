@@ -562,7 +562,6 @@ theorem tick_report_new {st : St} {y : Fin sp.n} {s : Nat} (hs : 1 ≤ s) (h10 :
   obtain ⟨hda, hns'⟩ := deliver_att hns
   rw [hk] at hda hns'
   refine ⟨_, _, ?_, hda, hns'⟩
-  change Node.onTick prop dg y st' _ _ _ = _
   rw [onTick_eq', tickStep_acTick, tick_report_ac hs hac]
   dsimp only
   rw [show ({ fg := st'.fg, ac := st'.ac, record := st'.record } : St) = st' from rfl,

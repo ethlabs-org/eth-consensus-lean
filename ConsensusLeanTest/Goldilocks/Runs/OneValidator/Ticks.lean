@@ -18,7 +18,8 @@ time `t`, with `tip t` the latest accepted slot):
   `blk (k + 1)` and the node signs `att (k + 1)`.
 * `tick_B0` (`t = 1`): the vote of slot `0` on genesis.
 * `tick_C` (`t = t_s + 2Δ`): the confirmation update, which keeps the locks on chain blocks.
-* `tick_noop`: the other ticks change nothing; `ac_to_fg` returns `⊥` once the tip is reported. -/
+* `tick_noop`: the other ticks preserve the state; repeated `ac_to_fg` reads may return the tip,
+  and the FG client refuses to sign its already recorded entry. -/
 
 namespace Consensus.Goldilocks.Witness.One
 

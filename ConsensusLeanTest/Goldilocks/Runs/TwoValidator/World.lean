@@ -762,7 +762,7 @@ theorem atts_onBlock' {fg fg' : Store sp.toParams N.Payload} {B : N.Blk}
 theorem plan_no_restart (t : Nat) :
     ∀ p ∈ plan t, ∀ c ∈ p.2.2, ∀ es, c ≠ .ac .restart es := by
   unfold plan
-  split_ifs <;> simp [tickSk, refusedSk] <;> split <;> simp
+  split_ifs <;> simp [tickSk, refusedSk]
 
 /-- No cut of the run is a restart. -/
 theorem label_not_restart {i : Nat} {ℓ : ACLabel N} (h : run.label i = some (.ac ℓ)) :

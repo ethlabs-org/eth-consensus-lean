@@ -18,7 +18,8 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 variable {hold : Time}
 
-/-- The fresh candidate yields an actual report, including when an earlier report suppresses it. -/
+/-- The fresh candidate yields an actual report. Earlier reports do not suppress the AC read;
+the FG client may refuse to sign a repeated entry. -/
 theorem proposal_report_follow_at
     {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}

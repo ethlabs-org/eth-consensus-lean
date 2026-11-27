@@ -97,8 +97,7 @@ private theorem sv_step
     left
     change (acToFG sp A Φ t).1.saved = _
     unfold acToFG
-    split_ifs
-    all_goals first | rfl | (split <;> (try split_ifs) <;> rfl)
+    split_ifs <;> rfl
   | message m =>
     left
     change (tryVoteWithM sp wm self L _ Φ t).1.saved = _
