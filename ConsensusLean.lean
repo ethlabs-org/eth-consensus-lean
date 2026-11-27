@@ -89,6 +89,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepHonest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LockKeepInterval
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Node
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.OwnBlockReady
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Attest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Induction
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Inv
