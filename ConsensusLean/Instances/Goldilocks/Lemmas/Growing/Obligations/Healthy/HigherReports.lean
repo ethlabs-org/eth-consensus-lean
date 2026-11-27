@@ -248,7 +248,8 @@ theorem held_target_high_floor_report_before_covered_at
     rw [σ_eq_honest_at hrun hp.noColl (hrun.time_nonneg q) (fun _ hk => hrun.time_mono hk.le)
       (hrun.antitone (le_max_right _ _) hseed.1) hd hle hy hSs hSy]
     omega
-  rcases hp.high_floor_signed_source_or_covered_before_at hseed hd hle hy hib
+  rcases Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo.high_floor_signed_source_or_covered_before_at
+      hp hseed hd hle hy hib
       (u := sp.slot (tr.time i) + 1)
       (fun W hW att ha z d hz hd' hdi r' l O hrd ho => by
         obtain ⟨-, -, ⟨CV, ℓ, D, -, hfl, -⟩, -⟩ := ho

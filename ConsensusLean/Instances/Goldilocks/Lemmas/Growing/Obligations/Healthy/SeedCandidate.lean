@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.FloorSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.High
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
@@ -143,7 +144,8 @@ theorem guarded_seed_ancestor_candidate_at_state_covered_at
   have hpred : (tr.state y i).fg.hmax - 1 ≤ (tr.state y i).fg.headHeightFloor := by
     unfold Store.headHeightFloor
     split_ifs <;> omega
-  rcases hp.high_floor_signed_source_or_covered_before_at hseed ht hle hy htb
+  rcases Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo.high_floor_signed_source_or_covered_before_at
+      hp hseed ht hle hy htb
       (u := sp.slot t + 1)
       (guarded_row_bound hp ht hle)
       (fun x r l B hri ho x' r' l' B' hr'i ho' => hp.origins_compatible_at ho
