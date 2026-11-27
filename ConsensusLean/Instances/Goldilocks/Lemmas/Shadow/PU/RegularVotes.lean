@@ -1,6 +1,9 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupporter
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularTransfer
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
@@ -50,71 +53,9 @@ theorem service_catch_at'
     (hcy : tr.projAC.CallAt y i ell) (hi : gbar g + 2 * sp.Δ ≤ tr.time i)
     (hanc : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     ∃ k ≤ i, tr.projAC.AcceptAt y k B ∧ tr.time k < gbar g + 2 * sp.Δ :=
-  Growing.LocalRun'.acCatchAt' hrun.toLocalRun' hcatch hw ha hkw hy hcy hi hanc
+  KernelProof.Core.service_catch_at hrun.toCore hcatch hw ha hkw hy hcy hi hanc
 
-/-- Historical messages and accepted heads are carried by the next-slot voter. -/
-private theorem carry_of_service_senders'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
-    (hrun : Growing.GoldilocksRun' proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
-    (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
-    {s : Nat} (hts : gbar g ≤ sp.ts s)
-    {y : Fin sp.n} {i : Nat} {ell : ACLabel (goldilocksNode' sp ro)}
-    {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
-    (hcast : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
-    {CV : Set (AC.Vote sp.n)}
-    (hW : ∀ v ∈ CV, v.slot = s ∧
-      (∃ w k, w ∈ H (tr.time k) ∧ tr.projAC.SendOrAdmit w k v ∧ sp.ts s ≤ tr.time k ∧
-        tr.time k < sp.ts s + 2 * sp.Δ) ∧
-      ∃ Hv : AC.Blk sp.n (List (FG.Att sp.n)), Hv.root = v.head ∧
-        Anc (tr.HonestBlocksAt H) ell.frame.F Hv ∧
-        (Hv.root = sp.genesisRoot ∨ ∃ w k, w ∈ H (tr.time k) ∧ tr.projAC.AcceptAt w k Hv ∧
-          tr.time k < sp.ts s + 2 * sp.Δ)) :
-    AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
-  have hm := hrun.time_mono
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
-  have hr := (hac.upTo (hrun.time_nonneg i)).localRun
-  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hcast⟩
-  have hsync := service_syncACAt' hrun hsvc (lo := g) (hi := sp.ts s + 2 * sp.Δ) le_rfl
-  have hgg := AC.le_gbar g
-  have hti : sp.ts s + 4 * sp.Δ ≤ tr.time i := by
-    have hsl := (AC.castAt_specU hr.toU hy hc').2.1
-    change e.msg.slot = sp.slot (tr.time i) at hsl
-    have h := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) ((s + 1 : Nat) : Int)).2
-      (by rw [← hsl, hs])
-    rw [AC.ts_succ] at h
-    exact h
-  have hcarry := Compose.Growing.carryAt_of_delivered hr hac.vstart hy hc' hs (CV := CV)
-      fun v hv => by
-    obtain ⟨hvs, ⟨w, k, hwk, hsend, hk1, hk2⟩, Hv, hHvr, hFHv, hacc⟩ := hW v hv
-    refine ⟨hvs, ⟨tr.time k, hk1, hk2, fun hdl => ?_⟩, Hv, hHvr, ?_⟩
-    · rw [ACTrace.upTo_deadline (tr := tr.projAC) (d := tr.time i) (i := i) hm le_rfl]
-        at hdl
-      exact Compose.Growing.ac_messageServedBefore_upTo hm le_rfl
-        ((AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl
-          (hsync.1 w k v hwk hsend (hgg.trans (hts.trans hk1)) hk2.le
-            y i ell hy hcast.1 hdl)))
-    rcases hacc with hg | ⟨w', kw, hwkw, hkw, hkwt⟩
-    · exact Or.inr (Or.inl hg)
-    by_cases hgk : g ≤ tr.time kw
-    · refine Or.inl ⟨tr.time kw, hkwt, fun hdl => ?_⟩
-      rw [ACTrace.upTo_deadline (tr := tr.projAC) (d := tr.time i) (i := i) hm le_rfl]
-        at hdl
-      obtain ⟨ky, hky, hacc', hkyt⟩ := hsync.2 w' kw Hv hwkw hkw hgk hkwt.le
-        y i ell hy hcast.1 hdl hFHv
-      exact ⟨ky, hky, (ACTrace.upTo_acceptAt).mpr ⟨hm hky, hacc'⟩,
-        by rw [ACTrace.upTo_deadline (tr := tr.projAC) hm (hm hky)]; exact hkyt⟩
-    · obtain ⟨ky, hky, hacc', hkyt⟩ := service_catch_at' hrun hcatch hwkw hkw
-        (lt_of_lt_of_le (not_le.mp hgk) hgg) hy hcast.1 (by linarith [sp.toParams.hΔ]) hFHv
-      exact Or.inr (Or.inr ⟨ky, ACTrace.upTo_acceptAt.mpr ⟨hm hky, hacc'⟩,
-        show tr.time ky < sp.ts s + 3 * sp.Δ by linarith [sp.toParams.hΔ]⟩)
-  refine ⟨hcarry.awake.1, hcarry.joined, fun v hv => ?_, hcarry.holds⟩
-  obtain ⟨Hv, hHv, hHvr, hacc⟩ := hcarry.heads v hv
-  exact ⟨Hv, hHv, hHvr, fun X hX => (hacc X hX).imp_right
-    fun ⟨k, hk, hkt⟩ => ⟨k, (ACTrace.upTo_acceptAt.mp hk).2, hkt⟩⟩
-
-/-- Unresolved AC service input: a fast lock transfers at the next cast. -/
+/-- The shared AC service proof transfers a fast lock at the next cast. -/
 private theorem first_transfer_service_at'
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
@@ -134,41 +75,10 @@ private theorem first_transfer_service_at'
     (hearlier : AC.EarlierVotesExtendAt tr.projAC H (tr.HonestBlocksAt H) i (s + 1) B)
     (hK : CommitteeHalfUpTo tr H K g b) :
     AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
-  have hr := (hac.upTo (hrun.time_nonneg i)).localRun
-  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
-  have hslot := (AC.castAt_specU hr.toU hy hc').2.1.symm.trans hs
-  change sp.slot (tr.time i) = s + 1 at hslot
-  have hprev : gbar g ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) := by
-    rw [hslot, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega]
-    exact hm
-  have hnext : sp.ts (s + 1 : Nat) ≤ tr.time i :=
-    (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by rw [hslot])
-  have hss : sp.ts s ≤ sp.ts (s + 1 : Nat) := (AC.ts_le_iff sp).2 (by omega)
-  have hcarry : AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
-    apply carry_of_service_senders' hrun hnc hsvc hcatch hm hy hc hs
-    intro v hv
-    have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
-    obtain ⟨hvs, ⟨k, hk, hlo, hhi⟩, Hv, -, hroot, hanc, hacc⟩ :=
-      Healing.fastLock_writer hrx hac.vstart hx
-        ((AC.upTo_fastLockAt hrun.time_mono).mpr ⟨le_rfl, hfl⟩) v hv
-    obtain ⟨hkt, hk⟩ := (ACTrace.upTo_sendOrAdmit hrun.time_mono).mp hk
-    refine ⟨hvs, ⟨x, k, hrun.antitone hkt hx, hk, hlo, hhi⟩, Hv, hroot,
-      (hFB.trans hBD).trans hanc, ?_⟩
-    exact hacc.imp_right fun ⟨k', hk', htime⟩ => by
-      obtain ⟨hkt', hk'⟩ := ACTrace.upTo_acceptAt.mp hk'
-      exact ⟨x, k', hrun.antitone hkt' hx, hk', htime⟩
-  exact AC.Growing.first_transfer_stored hac K
-    (AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP)
-    (AC.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt' hrun hnc)) hK.facts.hsize
-    hx hfl hBD hy hc hs
-    (service_syncACAt' hrun hsvc ((AC.le_gbar g).trans hm)) hcarry
-    (faultBoundK_of_service_at' hK hrun hawake hnr hm (by linarith)
-      (hrun.time_nonneg i) hprev hib)
-    (hK.cs2 (s + 1) (hm.trans hss) (hnext.trans hib) _ (hrun.time_nonneg i) hib)
-    hviab hearlier
+  exact KernelProof.Core.first_transfer_service_at hrun.toCore hnc hsvc hawake hcatch hnr hm
+    hx hy hfl hBD hc hs hib hFB hviab hearlier hK
 
-/-- Unresolved AC service input: counted result votes reach the next reader. -/
+/-- The shared service proof carries counted result votes to the next reader. -/
 private theorem result_carry_service_at'
     {ini : Fin sp.n → (goldilocksNode' sp ro).State}
     (hrun : Growing.GoldilocksRun' proposer dg H tr ini)
@@ -183,21 +93,10 @@ private theorem result_carry_service_at'
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hFC : Anc (tr.HonestBlocksAt H) ell.frame.F C) :
     AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
-  have hr := (hac.upTo (hrun.time_nonneg c)).localRun
-  apply carry_of_service_senders' hrun hnc hsvc hcatch hts hy hc hes
-  intro v hv
-  obtain ⟨hvs, ⟨k, hk, hlo, hhi⟩, Hv, -, hroot, hanc, hacc⟩ :=
-    Compose.result_writer hr hac.vstart hx
-      ((AC.upTo_resultAt hrun.time_mono).mpr ⟨le_rfl, hres⟩) v hv
-  obtain ⟨hkt, hk⟩ := (ACTrace.upTo_sendOrAdmit hrun.time_mono).mp hk
-  refine ⟨hvs, ⟨x, k, hrun.antitone hkt hx, hk, hlo, hhi⟩, Hv, hroot,
-    hFC.trans hanc, ?_⟩
-  exact hacc.imp_right fun ⟨k', hk', htime⟩ => by
-    obtain ⟨hkt', hk'⟩ := ACTrace.upTo_acceptAt.mp hk'
-    exact ⟨x, k', hrun.antitone hkt' hx, hk', htime⟩
+  exact KernelProof.Core.result_carry_service_at hrun.toCore hnc hsvc hcatch hts
+    hx hy hres hc hes hFC
 
-/-- Unresolved AC service input: a receiver's merged votes reach the result writer. -/
+/-- The shared service proof compares merged votes with the result writer. -/
 private theorem writer_merged_service_at'
     {ini : Fin sp.n → (goldilocksNode' sp ro).State}
     (hrun : Growing.GoldilocksRun' proposer dg H tr ini)
@@ -211,11 +110,9 @@ private theorem writer_merged_service_at'
     ∀ v ∈ (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)).votes, v.slot = s →
       v ∈ (tr.projAC.state x c).pool s ∨
         v.val ∈ AC.equivocators {w | w ∈ (tr.projAC.state x c).pool s} := by
-  exact AC.Growing.writer_merged
-    (Compose.Growing.goldilocks_ac_projection_from' hrun hnc)
-    hx hu hy hc hs (service_syncACAt' hrun hsvc ((AC.le_gbar g).trans hm))
+  exact KernelProof.Core.writer_merged_service_at hrun.toCore hnc hsvc hm hx hy hu hc hs
 
-/-- Unresolved AC service input: stored slow-window locks compare with the slow origin. -/
+/-- Stored slow-window locks compare with the slow origin. -/
 private theorem slow_live_locks_service_at'
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
@@ -407,7 +304,7 @@ theorem regular_slow_next_votes_of_early_witness_at'
     (slow_live_locks_service_at' hrun hnc hsvc hx hsl hslow hy hc hs (hhigh.trans hmb) ih hK)
     (writer_merged_service_at' hrun hnc hsvc hm hx hy hu hc hs)
 
-/-- Interface-only shadow port of the regular fast next-vote base. -/
+/-- The shared supporter proof consumes the shadow two-case classification. -/
 theorem next_votes_of_supporter_at' {s₀ s M : Nat}
     {isTop : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
@@ -456,19 +353,12 @@ theorem next_votes_of_supporter_at' {s₀ s M : Nat}
       have hcast : ((s - 1 : Nat) : Int) = (s : Int) - 1 := by omega
       rw [← hcast]
       linarith only [hΔ, hm]) hK
-  have hPhiU := (AC.frameIn_of_callU hr.toU hz hc'.1).2
-  have hEQ : Hd = Q := (Coherence.honestBlocksAt_coherent' hrun hnc).1
-    (hPhiU hHd) hQU (hHdr.trans hQr.symm)
-  rw [hEQ] at hHd hclass
-  rcases hclass with hv | ho
-  · exact hbase hHd hv.2
-  · obtain ⟨hA, l, hl, hls, a, hai, D, CV, hza, hop, -, -, -, hQD⟩ := ho
-    have hheads := hoptimistic hA a D CV hza (hes ▸ hop) (hQD.mono hPhiU)
-    intro y i ev hy hv hesv
-    obtain ⟨W, hW, hWr, hQW⟩ := hheads y i ev hy hv hesv
-    exact ⟨W, hW, hWr, hXQ.trans hQW⟩
+  apply KernelProof.Core.next_votes_of_supporter_at (kindJ := False) (J := J)
+    hrun.toCore hnc hz hc hes hQU hQr hXQ ?_ hbase (fun h => h.elim) hoptimistic
+  refine ⟨Hd, hHd, hHdr, ?_⟩
+  exact hclass.elim (fun hv => Or.inl hv.2) (fun ho => Or.inr (Or.inr ho))
 
-/-- Interface-only shadow port of the regular fast next-vote base. -/
+/-- A regular fast selection constrains next-slot votes. -/
 theorem regular_fast_next_votes_at' {s₀ s M : Nat}
     {isTop : Prop} {J X D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
@@ -525,7 +415,7 @@ theorem regular_fast_next_votes_at' {s₀ s M : Nat}
       (by linarith) (by omega) (by omega) (by linarith)
       hz hza ⟨hc, he⟩ hes hA hop hQD hK (s + 1) le_rfl le_rfl).1
 
-/-- Interface-only shadow port of the regular slow next-vote base. -/
+/-- A regular slow selection constrains next-slot votes. -/
 theorem regular_slow_next_votes_at' {s₀ s M : Nat}
     {isTop : Prop} {J D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
