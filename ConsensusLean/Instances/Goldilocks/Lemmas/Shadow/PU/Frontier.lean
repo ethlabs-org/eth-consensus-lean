@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Geometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Origins
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.VoteDomain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -22,8 +22,8 @@ by height, by the gap, or because it extends `Σ.J`.
 The growing items (`no_high_contest_at'`, `reset_vote_floor_above_old_or_covered_at'`,
 `held_high_origin_viable_at'`) are over `Growing.GoldilocksRun'` and `ResetPremisesUpTo'`. They read
 the run-level origin family (left entries, high origins, healed covers) from `Shadow/PU/Origins`,
-and three further facts through the named **interface stubs** of section `Stub` below, each the
-stock lemma over the shadow run; a theorem reading a stub is unresolved (`sorryAx`) until it is
+and further facts through the named **interface stubs** of section `Stub` below, each the
+stock lemma over the shadow run; a theorem reading a stub stays unresolved until that stub is
 proved.
 
 * `no_high_contest_at'` is an FG-state fact. Its proof compares the two entries at `h_j` through
@@ -179,18 +179,6 @@ theorem reset_seed_before_slot_at'
     (hR : drainTime sp a ≤ sp.ts u) :
     ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ b ∧ l < u ∧
       tr.time r < sp.ts u := by
-  sorry
-
-/-- **Interface stub** (`KernelProof.row_origin_label_lt_at`, `Kernel/RowLabel`). -/
-theorem row_origin_label_lt_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y k ell e) {W : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)
-    {v : Fin sp.n} {d : Nat} (hv : v ∈ H (tr.time d)) (hs : tr.SignAt v d att)
-    (hdk : d < k) {r l : Nat} (hrd : r < d) {O : AC.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g v r l O) : l < e.msg.slot := by
   sorry
 
 /-- **Interface stub** (`Outcome.row_entry_member_before_cast_at`, `Outcome/Floor`). -/

@@ -797,11 +797,13 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Geometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Key
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Leaves
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LeftEntry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Origins
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Participants
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Provenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Reach
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularClassification
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
@@ -813,6 +815,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.S5Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Viability
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.VoteDomain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Witness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
