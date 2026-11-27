@@ -79,7 +79,8 @@ theorem anc_acHead {A : ACState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t 
     · exact hX.1
     · exact (Set.mem_singleton_iff.1 hX) ▸ hΦ.fcRoot_mem
   obtain ⟨D, hD⟩ := exists_deepest hΦ hS ⟨Φ.fcRoot, Or.inr rfl⟩
-  have ha : a = D := by simp only [a, getAnchor, hD, Option.getD_some]
+  have ha : a = D := by
+    simp only [a, getAnchor_eq_deepest_union hΦ, hD, Option.getD_some]
   have hdeep := deepest_mem hD
   rw [← ha] at hdeep
   have haT : a ∈ Φ.tree := hS hdeep.1
@@ -160,7 +161,7 @@ private theorem acHead_mem {A : ACState sp.n} {Φ : Frm sp.n FGP} (hΦ : FrameOK
     · exact (Set.mem_singleton_iff.1 hX) ▸ hΦ.fcRoot_mem
   obtain ⟨D, hD⟩ := exists_deepest hΦ hS ⟨Φ.fcRoot, Or.inr rfl⟩
   have haT : getAnchor sp A Φ t ∈ Φ.tree := by
-    simp only [getAnchor, hD, Option.getD_some]
+    simp only [getAnchor_eq_deepest_union hΦ, hD, Option.getD_some]
     exact hS (deepest_mem hD).1
   have h := anc_ghost (fun X (hX : X ∈ Φ.viableTree Φ.tree) => hX.1)
     (score := headScore sp Φ (latestView sp A Φ t).1 (latestView sp A Φ t).2)

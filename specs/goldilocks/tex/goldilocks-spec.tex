@@ -636,8 +636,11 @@ later step changes the slot or the expiry of a lock.
 A lock that is not fast gets $s+k$, the slow window.  A fast lock gets
 $\Call{fast\_expiry}{}$: with $E$ the latest expiry of the node's live
 fast locks of earlier slots at the write, the node's \emph{fast
-deadline}, it is $\max(s+2,E+c)$, capped at $s+k$, and $s+2$ when no
-live fast lock of an earlier slot remains.  $E$ counts every such lock whatever its
+deadline}, it is $E+c$, capped at $s+k$, and $s+2$ when no
+live fast lock of an earlier slot remains.  It is at least $s+2$ when the
+stored expiries are bounded (each at most its slot plus $k$) and the write is of a
+slot not after $\slot(t)$: every lock of $E$ is live, so $E\geq\slot(t)\geq s$, and
+$c\geq 2$.  $E$ counts every such lock whatever its
 block, also one that unlocking moved to $\Fr.F$ and an optimistic lock on
 $\genesis$ or on a common prefix.  The fast locks of one slot do not count
 for each other.
@@ -645,18 +648,20 @@ for each other.
 \emph{Live locks.}  Every rule reads the locks through
 $\Call{live\_locks}{}$, which moves each live lock back to its deepest
 ancestor that is in the viable tree or at or below $\Fr.\fcroot$ (at worst
-$\Fr.F$), and a block is \emph{locked} when it is at or below the block of
-such a lock.
+$\Fr.F$).  The \emph{highest live lock} is the highest block of a live lock,
+fast or not (the deepest block of $\Call{live\_locks}{}$; of two blocks of equal
+depth, the one with the smaller root), or $\bot$ when no lock is live.
+$\Call{highest\_live\_lock}{}$ computes it.
 
-\emph{Effects.}  A live lock has two effects.  Every head walk of a
-duty (Section~\ref{sec:ac-fc}) starts at the \emph{anchor}: the deepest locked block of the full
-viable tree $\filtered(\Fr,\Fr.\tree)$, or $\Fr.\fcroot$ when there is no
-such block.  $\Call{get\_anchor}{}$ computes it.  A live lock vetoes a confirmation
-result~$C$ (Section~\ref{sec:ac-confirmation}) when $C$ conflicts with a
-locked block, that is, with the block of a lock of $\Call{live\_locks}{}$;
-$\Call{conflicts\_with\_lock}{}$ is this test.
+\emph{Effects.}  The highest live lock has two effects.  Every head walk of a
+duty (Section~\ref{sec:ac-fc}) starts at the \emph{anchor}: the higher of the
+highest live lock and $\Fr.\fcroot$, which is $\Fr.\fcroot$ when no lock is live.
+$\Call{get\_anchor}{}$ computes it.  The highest live lock vetoes a confirmation
+result~$C$ (Section~\ref{sec:ac-confirmation}) when $C$ conflicts with it;
+$\Call{conflicts\_with\_lock}{}$ is this test, and it is false when no lock is
+live.
 With $D\neq\bot$, the \emph{deep anchor} $\Call{deep\_anchor}{}$ is the
-deepest block of a live lock, fast or not, with no fallback: it is $\bot$
+highest live lock itself, with no fallback: it is $\bot$
 when no lock is live.  The deep anchor bounds the deep candidates of
 $\Call{ac\_to\_fg}{}$, which must lie at or below it;
 $\Call{get\_anchor}{}$ and the head walks do not change.
@@ -696,23 +701,29 @@ not live.
   \State \Return $\{(\Call{viable\_ancestor}{\Fr,B},j,f,e):(B,j,f,e)\in\mathit{locks},\ \slot(t)\leq e,\ B\in\Fr.\tree\}$
 \EndFunction
 \vspace{1pt}
+\Function{highest\_live\_lock}{$\mathit{locks},\Fr,t$}
+  \Comment{the highest block of a live lock, or $\bot$}
+  \State $\mathit{blocks}\gets\{B:(B,j,f,e)\in\Call{live\_locks}{\mathit{locks},\Fr,t}\}$
+  \Comment{each viable, or at or below $\Fr.\fcroot$}
+  \If{$\mathit{blocks}=\emptyset$} \State \Return $\bot$ \EndIf
+  \State \Return the deepest block of $\mathit{blocks}$
+\EndFunction
+\vspace{1pt}
 \Function{conflicts\_with\_lock}{$\mathit{locks},\Fr,t,C$}
-  \Comment{$C$ conflicts with a locked block}
-  \State \Return $\mathsf{true}$ if $C$ conflicts with $B_0$ for some $(B_0,j,f,e)\in\Call{live\_locks}{\mathit{locks},\Fr,t}$, else $\mathsf{false}$
+  \Comment{$C$ conflicts with the highest live lock}
+  \State \Return $\mathsf{true}$ if $\Call{highest\_live\_lock}{\mathit{locks},\Fr,t}=H\neq\bot$ and $C$ conflicts with $H$, else $\mathsf{false}$
 \EndFunction
 \vspace{1pt}
 \Function{get\_anchor}{$\AC,\Fr,t$}
-  \Comment{the deepest viable lock block, or $\Fr.\fcroot$}
-  \State $\mathit{blocks}\gets\{B:(B,j,f,e)\in\Call{live\_locks}{\AC.\locks,\Fr,t}\}$
-  \Comment{each viable, or at or below $\Fr.\fcroot$}
-  \State \Return the deepest block of $\mathit{blocks}\cup\{\Fr.\fcroot\}$
+  \Comment{the higher of the highest live lock and $\Fr.\fcroot$}
+  \State $H\gets\Call{highest\_live\_lock}{\AC.\locks,\Fr,t}$
+  \If{$H\neq\bot$ and $H$ is deeper than $\Fr.\fcroot$} \State \Return $H$ \EndIf
+  \State \Return $\Fr.\fcroot$
 \EndFunction
 \vspace{1pt}
 \Function{deep\_anchor}{$\AC,\Fr,t$}
-  \Comment{with $D\neq\bot$: the deepest live lock block, or $\bot$; no $\Fr.\fcroot$ fallback}
-  \State $\mathit{blocks}\gets\{B:(B,j,f,e)\in\Call{live\_locks}{\AC.\locks,\Fr,t}\}$
-  \If{$\mathit{blocks}=\emptyset$} \State \Return $\bot$ \EndIf
-  \State \Return the deepest block of $\mathit{blocks}$
+  \Comment{with $D\neq\bot$: the highest live lock, or $\bot$; no $\Fr.\fcroot$ fallback}
+  \State \Return $\Call{highest\_live\_lock}{\AC.\locks,\Fr,t}$
 \EndFunction
 \vspace{1pt}
 \Function{fast\_expiry}{$\mathit{locks},\Fr,t,s$}
@@ -720,8 +731,8 @@ not live.
   \State $E\gets\{e:(B,j,\mathsf{true},e)\in\Call{live\_locks}{\mathit{locks},\Fr,t},\ j<s\}$
   \Comment{the live fast locks of earlier slots}
   \If{$E=\emptyset$} \State \Return $s+2$ \EndIf
-  \State \Return $\min(s+k,\ \max(s+2,\ \max E+c))$
-  \Comment{at least $s+2$, at most $s+k$}
+  \State \Return $\min(s+k,\ \max E+c)$
+  \Comment{at most $s+k$; at least $s+2$ when the stored expiries are bounded and $s\leq\slot(t)$}
 \EndFunction
 \vspace{1pt}
 \Function{add\_locks}{$\mathit{locks},\Fr,t,s,N$}
@@ -855,18 +866,18 @@ validators with no second vote, and the participants are the validators
 with a vote.
 
 \emph{The saved result and the veto.}  The update saves the result in
-$\AC.\savedConfirmation[s]$, also when a live lock vetoes it, for the slow
-test of later slots.  A live lock that conflicts with the result vetoes it
+$\AC.\savedConfirmation[s]$, also when the highest live lock vetoes it, for the slow
+test of later slots.  The result is vetoed when it conflicts with the highest live lock
 (Section~\ref{sec:ac-locks}).  An update with no result changes neither
 $\AC.\latestConfirmed$ nor the locks.  The veto stops only the
 confirmation: an update with a vetoed result leaves
 $\AC.\latestConfirmed$ unchanged, and it still writes its locks, on the
-blocks of the result's chain that conflict with no live lock.  Otherwise
+blocks of the result's chain not vetoed by the highest live lock (including when none exists).  Otherwise
 the update updates $\AC.\latestConfirmed$ with the result.
 
 \emph{The locks.}  Then the update writes locks of slot~$s$
 (Section~\ref{sec:ac-locks}) on the \emph{path}: the non-genesis blocks of
-the result's chain in $\Fr.\tree$ that conflict with no live lock.  The update reads
+the result's chain in $\Fr.\tree$ not vetoed by the highest live lock (including when none exists).  The update reads
 two tests.  The fast test: half of $\committee_s$ or more supports the
 block.  The slow test: the saved confirmations of the previous $k-1$
 slots are all in $\Fr.\tree$ and extend the block.  The update writes a
@@ -890,7 +901,7 @@ slot $s>0$, before $t_s+2\Delta$, a joined node checks after each receipt
 (Section~\ref{sec:ac-actions}) the blocks~$B$ of $\Fr.\tree$.  A
 block~$B$ passes when at least three quarters of $\committee_s$ have a
 slot-$s$ vote in its pool whose head extends~$B$, equivocators included,
-and $B$ conflicts with no locked block.  For the deepest passing block,
+and $B$ does not conflict with the highest live lock.  For the deepest passing block,
 the node adds a fast lock of slot~$s$ with the expiry
 $\Call{fast\_expiry}{}$, stored moved back as every new
 lock, and updates $\AC.\latestConfirmed$.  An optimistic confirmation does not change the saved result, and
@@ -941,7 +952,7 @@ ancestor of that block and the head of $\Call{ac\_head}{}$.
     \State $\mathit{vetoed}\gets\Call{conflicts\_with\_lock}{\AC.\locks,\Fr,t,C}$
     \State $\mathit{path}\gets\{B\in\Fr.\tree:B\neq\genesis,\ B\preceq C,$
       not $\Call{conflicts\_with\_lock}{\AC.\locks,\Fr,t,B}\}$
-    \Comment{all of $C$'s chain when not vetoed}
+    \Comment{all of $C$'s chain when not vetoed, else only up to its common prefix with the highest live lock}
     \State define $\mathit{fast}(B)$ as
       $2\,\Call{confirmation\_score}{\AC,\Fr,s,B}\geq|\committee_s|$
     \Comment{the fast test}
@@ -1148,7 +1159,7 @@ the frame and the view of the vote.
 a joined node gives the FG the selected block when it has one.  The candidates are the blocks of the live
 fast locks of slot $\slot(t)-2$ or later that are in the full viable
 tree.  When there is none and $D\neq\bot$, the node computes
-$\Call{deep\_anchor}{}$.  When it is not $\bot$, the deep candidates are the
+$\Call{deep\_anchor}{}$, the highest live lock.  When it is not $\bot$, the deep candidates are the
 blocks $B\neq\genesis$ of the full viable tree with $B\preceq$ the deep anchor
 and $\AC.\timestamp[B]\leq t_{\slot(t)-D}$: blocks the node accepted at least
 $D$ slots ago, the anchor block included.  Only the node's own receipt counts,

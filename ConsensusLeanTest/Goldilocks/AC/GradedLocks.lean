@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 public import Mathlib.Data.Set.Card
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 @[expose] public section
@@ -228,7 +229,7 @@ theorem fastExpiry_Φ {L : Set Lock} {t : Time} {s : Nat}
     (hL : ∀ l ∈ L, l.block ≤ 3 ∧ sp.slot t ≤ l.expiry) :
     fastExpiry sp L Φ t s =
       min (s + 6) (if {e | ∃ l ∈ L, l.fast = true ∧ l.slot < s ∧ e = l.expiry}.Nonempty
-        then max (s + 2) (sSup {e | ∃ l ∈ L, l.fast = true ∧ l.slot < s ∧ e = l.expiry} + 2)
+        then sSup {e | ∃ l ∈ L, l.fast = true ∧ l.slot < s ∧ e = l.expiry} + 2
         else s + 2) := by
   unfold fastExpiry
   rw [liveLocks_Φ hL]
@@ -257,6 +258,15 @@ theorem fastExpiry_capped : fastExpiry sp {⟨0, 3, true, 9⟩} Φ 16 4 = 10 := 
   rw [show {e | ∃ l ∈ ({⟨0, 3, true, 9⟩} : Set Lock), l.fast = true ∧ l.slot < 4 ∧
     e = l.expiry} = {9} by ext; simp, ite_eq_left (Set.singleton_nonempty 9), csSup_singleton]
   decide
+
+/-- **No floor outside a legal write.** A live fast lock of slot `3` with expiry `4`, read at slot
+`4`, gives a write of the illegal slot `5` the expiry `4 + c = 6`. The earlier formula had the floor
+`s + 2 = 7` there; on a legal write (`s ≤ slot t`) the two agree. -/
+theorem fastExpiry_illegal_slot : fastExpiry sp {⟨0, 3, true, 4⟩} Φ 16 5 = 6 := by
+  have hE : {e | ∃ l ∈ ({⟨0, 3, true, 4⟩} : Set Lock), l.fast = true ∧ l.slot < 5 ∧
+      e = l.expiry} = {4} := Set.ext fun e => by simp
+  rw [fastExpiry_Φ (by rintro l rfl; exact ⟨by decide, by rw [slot_16]⟩), hE]
+  simp
 
 /-- The fast deadline is the latest expiry: of two live fast locks of earlier slots with
 expiries `5` and `7`, the later one counts (`7 + c = 9`, not `5 + c = 7`). -/
@@ -540,7 +550,8 @@ theorem slow_iff (L : Set Lock) {B : Blk sp.n Unit} :
 /-- A live lock on `B1` vetoes no ancestor of `B2`. -/
 theorem not_conflicts_u {B : Blk sp.n Unit} (hB : Φ.Anc B B2) :
     ¬ conflictsWithLock sp ({⟨1, 2, true, 6⟩} : Set Lock) Φ 18 B := by
-  rintro ⟨L', ⟨hL', l, hl, hr⟩, hnc⟩
+  intro hc
+  obtain ⟨L', ⟨hL', l, hl, hr⟩, hnc⟩ := exists_of_conflictsWithLock hc
   rw [liveLocks_Φ (by rintro l rfl; exact ⟨by decide, by decide⟩)] at hl
   obtain rfl : l = _ := hl
   rw [eq_of_root hL' B1_mem hr.symm] at hnc
@@ -551,12 +562,19 @@ theorem conflicts_v {B : Blk sp.n Unit} :
     conflictsWithLock sp ({⟨3, 2, true, 5⟩} : Set Lock) Φ 18 B ↔ ¬ Compatible U B B3 := by
   have hlive : liveLocks sp ({⟨3, 2, true, 5⟩} : Set Lock) Φ 18 = {⟨3, 2, true, 5⟩} :=
     liveLocks_Φ (by rintro l rfl; exact ⟨by decide, by decide⟩)
+  have htop : highestLiveLock sp ({⟨3, 2, true, 5⟩} : Set Lock) Φ 18 = some B3 :=
+    deepest_top ⟨B3_mem, ⟨3, 2, true, 5⟩, by rw [hlive]; rfl, rfl⟩ B3_mem
+      fun C ⟨hC, l, hl, hr⟩ => by
+        rw [hlive] at hl
+        obtain rfl : l = _ := hl
+        rw [eq_of_root hC B3_mem hr.symm]
+        exact Relation.ReflTransGen.refl
   constructor
-  · rintro ⟨L', ⟨hL', l, hl, hr⟩, hnc⟩
-    rw [hlive] at hl
-    obtain rfl : l = _ := hl
-    rwa [eq_of_root hL' B3_mem hr.symm] at hnc
-  · exact fun h => ⟨B3, ⟨B3_mem, ⟨3, 2, true, 5⟩, by rw [hlive]; rfl, rfl⟩, h⟩
+  · rintro ⟨H, hH, hnc⟩
+    rw [htop] at hH
+    obtain rfl := Option.some.inj hH
+    exact hnc
+  · exact fun h => ⟨B3, htop, h⟩
 
 /-- The unvetoed update: a live fast lock of slot `2` on `B1` with expiry `6`. -/
 def Au : ACState sp.n := base {⟨1, 2, true, 6⟩}

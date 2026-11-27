@@ -657,7 +657,7 @@ theorem record_writer {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : N
             hcond m' h₁ (h₂.trans (Nat.lt_succ_self m))⟩⟩
     obtain ⟨ℓ, hc⟩ := hcall
     rw [tr.projAC.state_succ_of_call hc]
-    obtain ⟨hk, hrl⟩ := call_reclock hr hy hc
+    obtain ⟨hk, hrl⟩ := call_reclock hr hrun.vstart hy hc
     have hΦ := (AC.frameIn_of_callAt hr hy hc).1
     have hframe : ℓ.frame = Node.frame (tr.state y m) := frame_of_projAC hrun hy hc
     have hcand : ∀ C ∈ ℓ.frame.tree, ∀ s, O C s →
@@ -842,7 +842,7 @@ theorem head_support_at {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc :
   have hSsub : S ⊆ Φ.tree := fun X hX => (hSc X hX).1
   obtain ⟨D, hD⟩ := AC.exists_deepest hΦ hSsub ⟨Φ.fcRoot, Or.inr rfl⟩
   have ha : AC.getAnchor sp (tr.state y i).ac Φ t = D := by
-    simp only [AC.getAnchor, S, hD, Option.getD_some]
+    simp only [AC.getAnchor_eq_deepest_union hΦ, S, hD, Option.getD_some]
   have hDS := (AC.deepest_mem hD).1
   have hdom : ∀ X ∈ S, Φ.Anc X D := AC.anc_deepest hΦ hSsub
     (fun X hX Y hY => hcomp X Y (hSc X hX).1 (hSc Y hY).1 (hSc X hX).2 (hSc Y hY).2) hD

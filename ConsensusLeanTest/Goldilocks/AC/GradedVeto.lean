@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.HandlerFields
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 public import Mathlib.Data.Set.Card
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 @[expose] public section
@@ -11,7 +12,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 calls over two slots and a sleep, through the trusted handlers (`acOnTick`, `acOnMessage`,
 `tryVote`, `optimisticConfirmation`, `updateConfirmation`, `acRestart`), at `k = 6`, `c = 2`,
 four validators, `Δ = 1`, `t_s = 4s`. The node is `v0`; it is never the slot proposer, so it
-makes no `ac_proposal` call, and its FG updates (`ac_to_fg`, which writes only `fg_reported`)
+makes no `ac_proposal` call, and its FG reads (`ac_to_fg`, which leaves the AC state unchanged)
 are left out.
 
 The tree: genesis `g` (root `0`), `B1` (root `1`, slot `1`) on `g`, and the conflicting children
@@ -506,7 +507,8 @@ theorem S3_locks : S3.locks = {lockV} := by
   have hsel : optimisticSelect sp S3' Φ 36 = some Bv := by
     refine optimisticSelect_Bv (by rw [joined, fixed_S3'.rt]; exact bot_le) slot_36 (by decide)
       heads_S3' (by rw [S3'_pool]; decide) (by rw [S3'_pool]; decide) (by rw [S3'_pool]; decide) ?_
-    rintro ⟨B, hB, -⟩
+    intro hc
+    obtain ⟨B, hB, -⟩ := exists_of_conflictsWithLock hc
     rw [show S3'.locks = ∅ by rw [S3', admitVote_locks, S2_locks]] at hB
     rw [liveLockBlocks_Φ (by simp)] at hB
     simp at hB
@@ -530,13 +532,20 @@ theorem liveLocks_lockV {t : Time} (ht : sp.slot t ≤ 11) : liveLocks sp {lockV
 /-- The lock on `Bv` vetoes exactly the blocks that conflict with `Bv`. -/
 theorem conflicts_lockV {t : Time} (ht : sp.slot t ≤ 11) {B : Blk sp.n Unit} :
     conflictsWithLock sp {lockV} Φ t B ↔ ¬ Compatible U B Bv := by
+  have hL : ∀ l ∈ ({lockV} : Set Lock), l.block ≤ 3 ∧ sp.slot t ≤ l.expiry := by
+    rintro l rfl; exact ⟨by decide, ht⟩
+  have htop : highestLiveLock sp {lockV} Φ t = some Bv :=
+    deepest_top ((liveLockBlocks_Φ hL).2 ⟨Bv_mem, lockV, rfl, rfl⟩) Bv_mem fun C hC => by
+      rw [liveLockBlocks_Φ hL] at hC
+      obtain ⟨hCU, l, rfl, hr⟩ := hC
+      rw [eq_of_root hCU Bv_mem hr.symm]
+      exact Relation.ReflTransGen.refl
   constructor
-  · rintro ⟨L', hL', hnc⟩
-    rw [liveLockBlocks_Φ (by rintro l rfl; exact ⟨by decide, ht⟩)] at hL'
-    obtain ⟨hL'U, l, rfl, hr⟩ := hL'
-    rwa [eq_of_root hL'U Bv_mem hr.symm] at hnc
-  · exact fun h => ⟨Bv, (liveLockBlocks_Φ (by rintro l rfl; exact ⟨by decide, ht⟩)).2
-      ⟨Bv_mem, lockV, rfl, rfl⟩, h⟩
+  · rintro ⟨H, hH, hnc⟩
+    rw [htop] at hH
+    obtain rfl := Option.some.inj hH
+    exact hnc
+  · exact fun h => ⟨Bv, htop, h⟩
 
 /-- Unlocking against the slot-`8` votes keeps the slot-`9` lock. -/
 theorem unlock_lockV (W : View sp.n) :
@@ -557,9 +566,8 @@ theorem getAnchor_lockV {A : ACState sp.n} {t : Time} (hA : A.locks = {lockV})
     (ht : sp.slot t ≤ 11) : getAnchor sp A Φ t = Bv := by
   have hL : ∀ l ∈ ({lockV} : Set Lock), l.block ≤ 3 ∧ sp.slot t ≤ l.expiry := by
     rintro l rfl; exact ⟨by decide, ht⟩
-  unfold getAnchor
-  rw [hA, deepest_top (D := Bv) (Or.inl ((liveLockBlocks_Φ hL).2 ⟨Bv_mem, lockV, rfl, rfl⟩))
-    Bv_mem]
+  rw [getAnchor_eq_deepest_union frameOK_Φ, hA, deepest_top (D := Bv)
+    (Or.inl ((liveLockBlocks_Φ hL).2 ⟨Bv_mem, lockV, rfl, rfl⟩)) Bv_mem]
   · rfl
   rintro C (hC | rfl)
   · rw [liveLockBlocks_Φ hL] at hC
@@ -936,7 +944,8 @@ theorem lockV_expired : ¬ lockV.LiveAt sp 56 := by
 /-- **The anchor at slot `14` is the fork block `B1`.** -/
 theorem anchor_at_j0k (ro : ReplayOrder sp Unit) :
     getAnchor sp (acRestart sp ro v0 S5 Φ 56).1 Φ 56 = B1 := by
-  unfold getAnchor liveLockBlocks
+  rw [getAnchor_eq_deepest_union frameOK_Φ]
+  unfold liveLockBlocks
   rw [live_at_j0k, deepest_top (D := B1) (Or.inl ⟨B1_mem, slowB1, rfl, rfl⟩) B1_mem]
   · rfl
   rintro C (⟨hC, l, rfl, hr⟩ | rfl)
@@ -987,7 +996,8 @@ theorem old_live_at_j0k (ro : ReplayOrder sp Unit) :
 /-- Under the old rule the anchor at slot `14` falls back to `fc_root = g`. -/
 theorem old_anchor_at_j0k (ro : ReplayOrder sp Unit) :
     getAnchor sp (acRestart sp ro v0 (updateConfirmationOld S4 Φ 38 8) Φ 56).1 Φ 56 = g := by
-  unfold getAnchor liveLockBlocks
+  rw [getAnchor_eq_deepest_union frameOK_Φ]
+  unfold liveLockBlocks
   rw [old_live_at_j0k, deepest_top (D := g) (Or.inr rfl) g_mem]
   · rfl
   rintro C (⟨-, l, hl, -⟩ | rfl)

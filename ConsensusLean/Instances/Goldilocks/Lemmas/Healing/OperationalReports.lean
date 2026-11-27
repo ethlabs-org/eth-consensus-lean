@@ -265,10 +265,11 @@ theorem candidate_after_fast_update {A : AC.ACState sp.n} {Phi : AC.Frm sp.n FGP
     (hconf : AC.getConfirmation sp A Phi u = some P)
     (hnv : ¬ AC.conflictsWithLock sp A.locks Phi t P)
     (hfast : AC.fastSelect sp A Phi u P = some P)
-    (_hlive : sp.slot t ≤ u + sp.k) (hage : sp.slot t ≤ u + 2) :
+    (_hlive : sp.slot t ≤ u + sp.k) (hage : sp.slot t ≤ u + 2)
+    (hcap : ∀ l ∈ A.locks, l.expiry ≤ l.slot + sp.k) :
     P ∈ AC.toFGCandidates sp (AC.updateConfirmation sp A Phi t u) Phi t := by
   have hself : Phi.viableAncestor P = P := AC.viableAncestor_self hPhi hPv.1 (Or.inl hPv)
-  -- unvetoed, so the filtered fast selection is the raw one; its expiry is `fastExpiry ≥ u + 2`
+  -- Unvetoed, so the filtered fast selection is the raw one; its expiry is still live.
   have hD := deepest_of_subset (S := {B | B ∈ {B | B ∈ AC.confirmationPath sp Phi P ∧
       ¬ AC.conflictsWithLock sp A.locks Phi t B} ∧ AC.FastTest sp A Phi u B}) hfast
     (fun B hB => ⟨hB.1.1, hB.2⟩)
@@ -278,9 +279,10 @@ theorem candidate_after_fast_update {A : AC.ACState sp.n} {Phi : AC.Frm sp.n FGP
     unfold AC.updateConfirmation
     simp only [hconf]
     rw [ite_eq_right hnv]
-    exact ⟨_, hage.trans (AC.le_fastExpiry sp _ _ _ _), ⟨P.root, u, true, _⟩,
+    rw [AC.updateLatestConfirmed_keeps_locks]
+    exact ⟨_, AC.slot_le_fastExpiry sp _ _ _ _ hcap hage, ⟨P.root, u, true, _⟩,
       Or.inr ⟨_, Or.inl ⟨P, hD, rfl⟩, rfl⟩, P, hPv.1, rfl,
-      hage.trans (AC.le_fastExpiry sp _ _ _ _), by rw [hself]⟩
+      AC.slot_le_fastExpiry sp _ _ _ _ hcap hage, by rw [hself]⟩
   obtain ⟨e, he, hlock⟩ := hlock
   exact ⟨hPv, ⟨P.root, u, true, e⟩, ⟨⟨P.root, u, true, e⟩, hlock, P, hPv.1, rfl, he,
     by rw [hself]⟩, rfl, rfl, hage⟩
@@ -298,10 +300,11 @@ theorem candidate_at_adjacent_call
     (hfast : AC.fastSelect sp (tr.projAC.state y j) ell.frame u P = some P)
     (hpost : tr.projAC.post j =
       AC.updateConfirmation sp (tr.projAC.state y j) ell.frame (tr.time j) u)
-    (hlive : sp.slot (tr.time j) ≤ u + sp.k) (hage : sp.slot (tr.time j) ≤ u + 2) :
+    (hlive : sp.slot (tr.time j) ≤ u + sp.k) (hage : sp.slot (tr.time j) ≤ u + 2)
+    (hcap : ∀ l ∈ (tr.projAC.state y j).locks, l.expiry ≤ l.slot + sp.k) :
     P ∈ AC.toFGCandidates sp (tr.projAC.state y (j + 1)) ell'.frame (tr.time (j + 1)) := by
   rw [tr.projAC.state_succ_of_call hc, hpost, hframe, htime]
-  exact candidate_after_fast_update hPhi hPv hconf hnv hfast hlive hage
+  exact candidate_after_fast_update hPhi hPv hconf hnv hfast hlive hage hcap
 
 /-- A full viable unanimous pool at an actual update produces an actual report
 at or before the adjacent toFG call, not merely a selected candidate. -/
@@ -332,6 +335,7 @@ theorem report_of_viable_unanimous_pool {b : Time}
   have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
   have hPc := candidate_at_adjacent_call hu.1 (AC.frameIn_of_callAt hr hy hu.1).1
     hframe htime hPv hconf hnv hfast hpost hlive hage
+    (fun l hl => (AC.locksWF_state hr hp.run.vstart hy j).cap hl)
   exact Healing.report_of_compatible_candidate_of_run hp.run hp.noColl hy hc hto hjoin hPg hPc hnext
 
 /-- An honest node retains its unanimous vote head at a later call whenever

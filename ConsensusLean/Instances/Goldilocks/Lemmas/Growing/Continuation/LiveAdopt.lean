@@ -220,7 +220,8 @@ theorem seeded_result_not_vetoed
   have hU := honestBlocksAt_coherent hrun hnc
   obtain ⟨hΦ, hHB⟩ := frameIn_at hrun hnc hy hu.1
   have hfr := frame_of_projAC_at hrun hy hu.1
-  rintro ⟨V, hV, hconf⟩
+  intro hc
+  obtain ⟨V, hV, hconf⟩ := AC.exists_of_conflictsWithLock hc
   have hVc := seeded_locks_at hrun hnc hS.seed (hS.drain.trans ht₁)
     (fun q hq => hrun.time_mono hq.le) hb hy V (by rw [← hfr]; exact hV)
   have hcomp := OnHealedChain.compatible hrun hnc hS.inv.origins_compatible hVc hC

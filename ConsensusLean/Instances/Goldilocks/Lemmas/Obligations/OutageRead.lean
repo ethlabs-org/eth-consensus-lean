@@ -43,7 +43,7 @@ theorem late_reader_record_cover
   have hpost : Anc (tr.HonestBlocks H) B
       ((AC.lookup ell.frame (tr.projAC.post c).latestConfirmed).getD ell.frame.F) := by
     by_cases hnv : AC.conflictsWithLock sp (tr.projAC.state y c).locks ell.frame (tr.time c) C
-    · obtain ⟨L, hL, hCL⟩ := hnv
+    · obtain ⟨L, hL, hCL⟩ := AC.exists_of_conflictsWithLock hnv
       have hconflict : ¬ Compatible (tr.HonestBlocks H) C L := by
         rintro (h | h)
         · exact hCL (Or.inl (AC.anc_tree_of_anc_U hr.coherent hΦ hΦU hCt h hL.1))
@@ -62,7 +62,9 @@ theorem late_reader_record_cover
       rw [post_of_update hr hy hu]
       unfold AC.updateConfirmation
       simp only [hCR]
-      rw [ite_eq_left ⟨L, hL, hCL⟩]
+      change AC.conflictsWithLock sp (tr.projAC.state y c).locks ell.frame
+        (tr.projAC.time c) C at hnv
+      rw [ite_eq_left hnv]
       change Anc (tr.HonestBlocks H) B
         ((AC.lookup ell.frame (tr.projAC.state y c).latestConfirmed).getD ell.frame.F)
       rw [hlookup]

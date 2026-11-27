@@ -29,6 +29,13 @@ variable {FGP : Type} {sp : ACParams}
 def LocksWF (sp : ACParams) (L : Set Lock) : Prop :=
   ∀ l ∈ L, l.slot + 2 ≤ l.expiry ∧ l.expiry ≤ l.slot + sp.k
 
+/-- A vote-permission start has no locks. -/
+theorem VoteStart.locksWF {A : ACState sp.n} (h : VoteStart sp.genesisRoot A) :
+    LocksWF sp A.locks := by
+  obtain ⟨_, rfl⟩ := voteStart_iff.1 h
+  intro l hl
+  exact (Set.notMem_empty l hl).elim
+
 /-- The floor half: a lock of a well-formed set lives through `slot + 2`. -/
 theorem LocksWF.floor {L : Set Lock} (h : LocksWF sp L) {l : Lock} (hl : l ∈ L) :
     l.slot + 2 ≤ l.expiry :=
@@ -95,13 +102,14 @@ theorem LocksWF.optimisticConfirmation {A : ACState sp.n} (h : LocksWF sp A.lock
     refine h.addLocks Φ t _ fun p hp => ?_
     rw [Set.mem_singleton_iff] at hp
     subst hp
-    exact ⟨le_fastExpiry sp _ Φ t _, fastExpiry_le sp _ Φ t _⟩
+    exact ⟨le_fastExpiry sp _ Φ t _ (fun l hl => h.cap hl) le_rfl,
+      fastExpiry_le sp _ Φ t _⟩
 
 /-- The confirmation update at the write mode `wm` keeps `LocksWF`: its fast lock on `D` has
 expiry `s + k` when the path has a slow-test block (B′) and `fastExpiry` otherwise, its slow
 lock `s + k`. -/
 theorem LocksWF.updateConfirmationM {A : ACState sp.n} (h : LocksWF sp A.locks)
-    (Φ : Frm sp.n FGP) (t : Time) (s : Nat) :
+    (Φ : Frm sp.n FGP) (t : Time) (s : Nat) (hs : s ≤ sp.slot t) :
     LocksWF sp (AC.updateConfirmationM sp wm A Φ t s).locks := by
   have hk := sp.two_le_k
   rcases hC : getConfirmation sp A Φ s with _ | C
@@ -110,7 +118,7 @@ theorem LocksWF.updateConfirmationM {A : ACState sp.n} (h : LocksWF sp A.locks)
   · rw [updateConfirmationM_locks_of_some hC]
     refine h.addLocks Φ t s fun p hp => ?_
     rcases mem_newLocksM.1 hp with ⟨-, B, -, rfl⟩ | ⟨B, -, rfl⟩
-    · exact ⟨le_fastExpiry sp _ Φ t s, fastExpiry_le sp _ Φ t s⟩
+    · exact ⟨le_fastExpiry sp _ Φ t s (fun l hl => h.cap hl) hs, fastExpiry_le sp _ Φ t s⟩
     · dsimp only; omega
 
 /-- `try_vote` with the unlock given keeps `LocksWF`, in its post-state and in its emissions' read
@@ -156,9 +164,9 @@ theorem LocksWF.stepWith
     dsimp only
     split_ifs <;> simp only [List.not_mem_nil, false_imp_iff, imp_true_iff, and_true] <;>
       first
-      | exact ⟨hv.1.updateConfirmationM Φ t _, hv.2⟩
+      | exact ⟨hv.1.updateConfirmationM Φ t _ (Nat.sub_le _ _), hv.2⟩
       | exact hv
-      | exact h.updateConfirmationM Φ t _
+      | exact h.updateConfirmationM Φ t _ (Nat.sub_le _ _)
       | exact h
   | proposal =>
     refine ⟨?_, fun e he => by simp at he⟩
@@ -195,10 +203,8 @@ theorem locksWF_stateU
     (hy : y ∈ H) (i : Nat) : LocksWF sp (tr.state y i).locks := by
   induction i with
   | zero =>
-    obtain ⟨m, hm⟩ := hini y
-    rw [Trace.state, hr.init y hy, hm]
-    intro l hl
-    exact absurd hl (Set.notMem_empty l)
+    rw [Trace.state, hr.init y hy]
+    exact VoteStart.locksWF (hini y)
   | succ i ih =>
     rw [Trace.state]
     split
