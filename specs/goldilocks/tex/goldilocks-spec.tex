@@ -869,18 +869,18 @@ validators with no second vote, and the participants are the validators
 with a vote.
 
 \emph{The saved result and the veto.}  The update saves the result in
-$\AC.\savedConfirmation[s]$, also when a live lock vetoes it, for the slow
-test of later slots.  A live lock that conflicts with the result vetoes it
+$\AC.\savedConfirmation[s]$, also when the highest live lock vetoes it, for the slow
+test of later slots.  The result is vetoed when it conflicts with the highest live lock
 (Section~\ref{sec:ac-locks}).  An update with no result changes neither
 $\AC.\latestConfirmed$ nor the locks.  The veto stops only the
 confirmation: an update with a vetoed result leaves
 $\AC.\latestConfirmed$ unchanged, and it still writes its locks, on the
-blocks of the result's chain that conflict with no live lock.  Otherwise
+blocks of the result's chain not vetoed by the highest live lock (including when none exists).  Otherwise
 the update updates $\AC.\latestConfirmed$ with the result.
 
 \emph{The locks.}  Then the update writes locks of slot~$s$
 (Section~\ref{sec:ac-locks}) on the \emph{path}: the non-genesis blocks of
-the result's chain in $\Fr.\tree$ that conflict with no live lock.  The update reads
+the result's chain in $\Fr.\tree$ not vetoed by the highest live lock (including when none exists).  The update reads
 two tests.  The fast test: half of $\committee_s$ or more supports the
 block.  The slow test: the saved confirmations of the previous $k-1$
 slots are all in $\Fr.\tree$ and extend the block.  The update writes a
