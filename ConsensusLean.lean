@@ -560,6 +560,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.SignGap
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.StaticCoreFacts
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Attestations
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.Blocks
