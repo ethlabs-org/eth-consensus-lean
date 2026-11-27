@@ -1099,36 +1099,6 @@ theorem next_votes_of_early_witness_at'
       (by rw [Node.frame'_eq, Store.toFrame'_F]; exact hFX) hviab
       (fun z k ev hki hz hv hes => ih k hki z ev hz hv hes)
 
-/-- An optimistic supporter's anchor propagates to later honest calls
-(`optimistic_supporter_later_heads_at` over the shadow run). -/
-theorem optimistic_supporter_later_heads_at' {s₀ s N M : Nat}
-    {isTop : Prop} {J L D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    (hm : gbar g ≤ sp.ts s) (hs₀ : s₀ ≤ s) (hsN : s + 1 ≤ N)
-    (hmb : sp.ts N + sp.Δ ≤ b)
-    {x : Fin sp.n} {i a : Nat} (hx : x ∈ H (tr.time i)) (hxa : x ∈ H (tr.time a))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC x i ell e) (hes : e.msg.slot = s)
-    (hanchor : L = AC.getAnchor sp e.readPoint ell.frame (tr.time i))
-    {CV : Set (AC.Vote sp.n)} (hop : AC.OptimisticLockAt tr.projAC x a s D CV)
-    (hLD : Anc (tr.HonestBlocksAt H) L D) (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ r, s + 1 ≤ r → r ≤ N →
-      (∀ y j ev, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j ev → ev.msg.slot = r →
-        AC.VoteExtends (tr.HonestBlocksAt H) ev.msg L) ∧
-      (∀ y j ell', y ∈ H (tr.time j) → tr.projAC.CallAt y j ell' → ell'.call = .proposal →
-        tr.time j = sp.ts r → ∀ d pay,
-        (AC.acProposal sp (tr.projAC.state y j) ell'.frame (tr.time j)).2 = some (d, pay) →
-          Anc (tr.HonestBlocksAt H) L d.head) := by
-  sorry
-
 /-- **A remapped optimistic write is followed by later honest proposal heads**
 (`FrameWindow.optimistic_write_later_proposal_head_at` over the shadow run). The stock source
 premise `A ⪯ fc_root ∨ ∃ Q, floor ≤ σ(Q).h ∧ (kindJ → J ⪯ A) ∧ A ⪯ Q` becomes the shadow frame's

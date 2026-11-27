@@ -803,6 +803,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Leaves
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LeftEntry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LowFinalized
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Origins
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OutageCount
