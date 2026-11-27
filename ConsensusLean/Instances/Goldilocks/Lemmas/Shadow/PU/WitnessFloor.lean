@@ -1,5 +1,9 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Leaves
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Live
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
@@ -524,6 +528,21 @@ theorem floor_le_of_isViable' {D : NodeBlock P ACP} (hD : D ∈ st.tree) (hv : s
     · have hfl : st.headHeightFloor = st.hmax - 1 := ite_eq_right hc
       omega
 
+/-- A proposal on a viable parent crosses the store's justified height. -/
+theorem hj_lt_of_isViable' {D : NodeBlock P ACP} (hD : D ∈ st.tree) (hv : st.IsViable' D)
+    {B : FGBlock P.n} (hB : B.atts = st.proposalAttestations D) {σ' : ChainState P.n}
+    (hσ : P.fg.stateTransition (st.σ D.root) B = some σ') : st.hj < σ'.h := by
+  have hj := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality'
+    hr.reachableWith
+  have hmono : (st.σ D.root).h ≤ σ'.h := by
+    rcases (step_rows hσ).2 with h | ⟨h, -⟩ <;> omega
+  rcases (Store.isViable'_iff st D).1 hv with h | ⟨h, hgap | hJD⟩
+  · omega
+  · omega
+  · by_cases hlt : st.hj < (st.σ D.root).h
+    · omega
+    · exact proposal_crosses hr hD (by omega) hJD hB hσ
+
 end Store
 
 section Run
@@ -535,7 +554,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **`floor_le_warm_proposal_at` holds under P-U** (V-A7, `pu_cex_proposal_floor_top`:
 proved). The stock statement over the stock `FrameWindow`, for shadow runs: a designated honest
 proposal inside the window reaches the window's head height floor. -/
-theorem floor_le_warm_proposal_at' {proposer : Nat → Fin sp.n}
+theorem warm_proposal_bounds_at' {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
     {tr : GoldilocksTrace' sp ro} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
@@ -546,7 +565,8 @@ theorem floor_le_warm_proposal_at' {proposer : Nat → Fin sp.n}
     (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hlo : lo ≤ sp.ts u) (hhi : sp.ts u ≤ hi)
     (hf : (H (sp.ts u))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) :
-    floor ≤ ((tr.state z (kP + 1)).fg.σ P.root).h := by
+    floor ≤ ((tr.state z (kP + 1)).fg.σ P.root).h ∧
+      (kindJ → floor < ((tr.state z (kP + 1)).fg.σ P.root).h) := by
   have htime : tr.time kP = sp.ts u := by
     simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
   have hzk : z ∈ H (tr.time kP) := htime ▸ hz
@@ -611,16 +631,43 @@ theorem floor_le_warm_proposal_at' {proposer : Nat → Fin sp.n}
   -- the floor of the window at the proposal cut
   have hj1' : tr.time (j + 1) = sp.ts u := hj1
   have hfl := hframe.floor_eq z (j + 1) hzi (hj1' ▸ hlo) (hj1' ▸ hhi)
-  rw [← hfl, hfgj]
   rw [hfgj] at hDm hDv
   have hpr' : pr = d.head.root := by
     rw [hB] at hpar
     simp only [Node.mkBlock] at hpar
     exact (Option.some.inj hpar).symm
   subst hpr'
-  refine floor_le_of_isViable' (Node.fg_reachable_at' h hzk j) hDm hDv ?_ hσ'
-  rw [hB]
-  rfl
+  have hatts : P.fgView.atts = (tu.state z j).fg.proposalAttestations d.head := by
+    rw [hB]
+    rfl
+  have hreach := Node.fg_reachable_at' h hzk j
+  constructor
+  · rw [← hfl, hfgj]
+    exact floor_le_of_isViable' hreach hDm hDv hatts hσ'
+  · intro hk
+    obtain ⟨hmax, hcont⟩ :=
+      (hframe.kind_iff z (j + 1) hzi (hj1' ▸ hlo) (hj1' ▸ hhi)).2 hk
+    have hfloor : floor = (tu.state z j).fg.hj := by
+      rw [← hfl, Store.headHeightFloor, ite_eq_right hcont, hmax]
+      rw [hfgj]
+      omega
+    rw [hfloor]
+    exact hj_lt_of_isViable' hreach hDm hDv hatts hσ'
+
+/-- A warm shadow proposal reaches the unchanged stock window floor. -/
+theorem floor_le_warm_proposal_at' {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
+    {tr : GoldilocksTrace' sp ro} {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
+    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Healing.Growing.FrameWindow tr H lo hi floor kindJ J)
+    {z : Fin sp.n} {kP : Nat} (hz : z ∈ H (sp.ts u)) (hdes : z = proposer u)
+    (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
+    (hlo : lo ≤ sp.ts u) (hhi : sp.ts u ≤ hi)
+    (hf : (H (sp.ts u))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) :
+    floor ≤ ((tr.state z (kP + 1)).fg.σ P.root).h :=
+  (warm_proposal_bounds_at' hrun hnc hframe hz hdes hP hPs hlo hhi hf).1
 
 /-- **Leaf 8 `rounds_le_warm_proposal_at` holds under P-U** (V-A7, `pu_cex_leaf8_low`: proved).
 The stock statement over the stock `FrameWindow` and the stock key `frameKey'`, for shadow runs;
