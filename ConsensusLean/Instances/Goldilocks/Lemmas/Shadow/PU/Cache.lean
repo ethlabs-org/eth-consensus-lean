@@ -2,6 +2,8 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Quorum
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Entry
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutSteps
 
@@ -679,6 +681,218 @@ theorem entry_at_height_with {C : NodeBlock P ACP} (hC : C ∈ st.tree) {h : Nat
 
 end With
 
+
+/-- Some `q` validators each have an attestation on the chain naming `T`. -/
+private def Quorum (gp : FG.FGParams) (c : List (FG.FGBlock gp.n)) (T : Nat) : Prop :=
+  ∃ Q : Finset (Fin gp.n), gp.q ≤ Q.card ∧ ∀ v ∈ Q, ∃ a ∈ gp.chainAtts c, a.val = v ∧ a.T = T
+
+/-- The justified and finalized roots of a chain state and its pending pairs are genesis or named
+by a quorum of attestations on the chain; its progress bits by attestations on its entry. -/
+private structure Named (gp : FG.FGParams) (c : List (FG.FGBlock gp.n))
+    (σ : FG.ChainState gp.n) : Prop where
+  prog : ∀ v ∈ σ.prog, ∃ a ∈ gp.chainAtts c, a.val = v ∧ a.T = σ.Th
+  pending : ∀ p ∈ σ.pending, Quorum gp c p.2
+  J : σ.J = gp.genesis ∨ Quorum gp c σ.J
+  F : σ.F = gp.genesis ∨ Quorum gp c σ.F
+
+private theorem named_step (gp : FG.FGParams) {c : List (FG.FGBlock gp.n)}
+    {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock gp.n} (hc : gp.chainState c = some σ)
+    (hN : Named gp c σ) (h : gp.stateTransition σ B = some σ') : Named gp (c ++ [B]) σ' := by
+  have hatts : gp.chainAtts (c ++ [B]) = gp.chainAtts c ++ B.atts := by
+    simp [FG.FGParams.chainAtts]
+  have liftA : ∀ {a}, a ∈ gp.chainAtts c → a ∈ gp.chainAtts (c ++ [B]) := fun h => by
+    rw [hatts]; exact List.mem_append_left _ h
+  have liftQ : ∀ {T}, Quorum gp c T → Quorum gp (c ++ [B]) T := fun ⟨Q, hQ, hv⟩ =>
+    ⟨Q, hQ, fun v hv' => let ⟨a, ha, h1⟩ := hv v hv'; ⟨a, liftA ha, h1⟩⟩
+  obtain ⟨-, -, -, -, -, -, -, -, -, hts⟩ := FG.chain_invariants gp c σ hc
+  obtain ⟨-, rfl⟩ := gp.stateTransition_eq_some.1 h
+  have hsub := FG.ChainState.foldl_processAtt_target_subset { σ with s := B.slot } B.atts hts
+  have hP := fun v => @Goldilocks.Store.mem_foldl_prog _ { σ with s := B.slot } B.atts v
+  obtain ⟨f, p, t, he⟩ := FG.ChainState.foldl_processAtt_eq { σ with s := B.slot } B.atts
+  rw [he] at hsub hP ⊢
+  dsimp only at hsub hP ⊢
+  have hprog : ∀ v ∈ p, ∃ a ∈ gp.chainAtts (c ++ [B]), a.val = v ∧ a.T = σ.Th := by
+    intro v hv
+    rcases hP v hv with hv | ⟨a, ha, h1, h2⟩
+    · obtain ⟨a, ha, h'⟩ := hN.prog v hv
+      exact ⟨a, liftA ha, h'⟩
+    · exact ⟨a, by rw [hatts]; exact List.mem_append_right _ ha, h1, h2⟩
+  obtain ⟨F, hF, σ₁, rfl, hFc, hcase⟩ := gp.heightEvents_cases
+    { σ with s := B.slot, L := B.root, fin := f, prog := p, target := t }
+  have hpend : ∀ r ∈ σ.pending.filter (fun p => hF < p.1), Quorum gp (c ++ [B]) r.2 :=
+    fun r hr => liftQ (hN.pending r (List.mem_of_mem_filter hr))
+  have hF₁ : F = gp.genesis ∨ Quorum gp (c ++ [B]) F := by
+    rcases hFc with ⟨rfl, -⟩ | ⟨hm, -⟩
+    · exact hN.F.imp_right liftQ
+    · exact Or.inr (liftQ (hN.pending _ hm))
+  rcases hcase with ⟨hj, he'⟩ | ⟨-, -, he'⟩ | ⟨-, -, he'⟩ <;> rw [he']
+  · have hQ : Quorum gp (c ++ [B]) σ.Th := ⟨t, hj.1, fun v hv => hprog v (hsub hv)⟩
+    refine ⟨by simp [FG.ChainState.advance], fun r hr => ?_, Or.inr hQ, hF₁⟩
+    simp only [FG.ChainState.advance] at hr
+    rcases List.mem_append.1 (List.mem_of_mem_drop hr) with hr | hr
+    · exact hpend r hr
+    · rw [List.mem_singleton] at hr
+      subst hr
+      exact hQ
+  · exact ⟨by simp [FG.ChainState.advance], hpend, hN.J.imp_right liftQ, hF₁⟩
+  · exact ⟨hprog, hpend, hN.J.imp_right liftQ, hF₁⟩
+
+private theorem named (gp : FG.FGParams) {c : List (FG.FGBlock gp.n)} {σ : FG.ChainState gp.n}
+    (h : gp.chainState c = some σ) : Named gp c σ :=
+  gp.chainState_induction (P := fun c σ => Named gp c σ)
+    ⟨by simp [FG.ChainState.init], by simp [FG.ChainState.init], Or.inl rfl, Or.inl rfl⟩
+    (fun _ _ _ _ hc hN hB => named_step gp hc hN hB) h
+
+
+/-! ## Further store lemmas over `ReachableWith` (lane Q) -/
+
+section More
+
+variable {u : Store P ACP → FG.ChainState P.n → Store P ACP} {acp₀ : ACP} {st : Store P ACP}
+
+/-- An unheld root keeps the initial chain state (`σ_of_blocks_none`). -/
+theorem σ_of_blocks_none_with (hu : FinalitySpec u) (hr : ReachableWith u acp₀ st) {r : Nat}
+    (hn : st.blocks r = none) : st.σ r = FG.ChainState.init P.fg := by
+  induction hr generalizing r with
+  | refl => rfl
+  | @tail s₀ s' _ hs ih =>
+    rcases hs with ⟨B, hB⟩ | ⟨a, rfl⟩
+    · obtain ⟨pr, σ', -, -, -, -, -, rfl⟩ := onBlockWith_eq_some hB
+      obtain ⟨hb, hσ, -⟩ := hu { s₀ with
+        blocks := Function.update s₀.blocks B.root (some B),
+        σ := Function.update s₀.σ B.root σ' } σ'
+      obtain ⟨atts, he⟩ := addAtts_eq (u { s₀ with
+        blocks := Function.update s₀.blocks B.root (some B),
+        σ := Function.update s₀.σ B.root σ' } σ') B.fgPayload
+      rw [he] at hn ⊢
+      have hn' := hn
+      change (u _ σ').blocks r = none at hn'
+      rw [hb] at hn'
+      have hne : r ≠ B.root := fun e => by simp [e] at hn'
+      change (u _ σ').σ r = _
+      rw [hσ]
+      change Function.update s₀.σ B.root σ' r = _
+      change Function.update s₀.blocks B.root (some B) r = none at hn'
+      rw [Function.update_of_ne hne] at hn' ⊢
+      exact ih hn'
+    · obtain ⟨atts, he⟩ := onAttestation_eq s₀ a
+      rw [he] at hn ⊢
+      exact ih hn
+
+variable (hu : FinalitySpec u) (hr : ReachableWith u acp₀ st)
+include hu hr
+
+/-- A report from a held source preserves its entry ancestor (`entry_of_createAtt`). -/
+theorem entry_of_createAtt_with {Λ Λ' : FG.Record} {v : Fin P.n}
+    {src : NodeBlock P ACP} {a : FG.Att P.n} (hsrc : src ∈ st.tree)
+    (h : Λ.createAtt v (st.σ (st.σ src.root).Th) = some (a, Λ')) :
+    ∃ E ∈ st.tree, E.root = a.T ∧ st.Anc E src ∧
+      (st.σ src.root).Th = E.root ∧ (st.σ E.root).Th = E.root ∧
+      (st.σ E.root).h = (st.σ src.root).h ∧ (st.σ src.root).h = a.h := by
+  obtain ⟨hh, hT⟩ := Healing.Store.createAtt_eq h
+  obtain ⟨⟨E, hE, hEr, hEC, hEh, hET⟩, _⟩ := entry_state_of_source_with hu hr src hsrc
+  refine ⟨E, hE, ?_, hEC, hEr.symm, hET.trans hEr.symm, hEh, ?_⟩
+  · rw [hT, ← hEr, hET]
+    exact hEr
+  · rw [hh, ← hEr, hEh]
+
+/-- The height pair that `fg_attest` signs names a held block (`exists_entry_of_createAtt`). -/
+theorem exists_entry_of_createAtt_with {Λ Λ' : FG.Record} {v : Fin P.n}
+    {src : NodeBlock P ACP} {a : FG.Att P.n}
+    (h : Λ.createAtt v (st.σ (st.σ src.root).Th) = some (a, Λ')) :
+    ∃ E ∈ st.tree, E.root = a.T ∧ (st.σ E.root).h = a.h := by
+  obtain ⟨hh, hT⟩ := Healing.Store.createAtt_eq h
+  rcases hs : st.blocks src.root with _ | X
+  · have hg : (st.σ src.root).Th = P.genesisRoot := by
+      rw [σ_of_blocks_none_with hu hr hs]; rfl
+    rw [hg, σ_genesis_with hu hr] at hh hT
+    refine ⟨_, genesis_mem_with hu hr, ?_, ?_⟩
+    · rw [hT]; rfl
+    · rw [hh]; exact congrArg FG.ChainState.h (σ_genesis_with hu hr)
+  · have hXr : X.root = src.root := blocks_root_with hu hr hs
+    have hX : X ∈ st.tree := by change st.blocks X.root = some X; rw [hXr]; exact hs
+    obtain ⟨⟨E, hE, hEr, -, hEh, hET⟩, -⟩ := entry_state_of_source_with hu hr X hX
+    rw [hXr] at hEr hEh hET
+    refine ⟨E, hE, ?_, ?_⟩
+    · rw [hT, ← hEr, hET]
+      exact hEr
+    · rw [hh, ← hEr]
+
+/-- The height pair that `fg_attest` signs is at most `Σ.h_max` (`createAtt_h_le`). -/
+theorem createAtt_h_le_with {Λ Λ' : FG.Record} {v : Fin P.n}
+    {src : NodeBlock P ACP} {a : FG.Att P.n}
+    (h : Λ.createAtt v (st.σ (st.σ src.root).Th) = some (a, Λ')) : a.h ≤ st.hmax := by
+  obtain ⟨E, hE, -, hEh⟩ := exists_entry_of_createAtt_with hu hr h
+  exact hEh ▸ (cache_invariants_with hu hr).2.2.2.2.1 E hE
+
+/-- In a store, `Σ.J` and `Σ.F` are genesis or named by a quorum of attestations that blocks of
+the tree carry (`Compose.cache_quorum`). -/
+theorem cache_quorum_with :
+    ∀ X ∈ ({st.J, st.F} : Set (NodeBlock P ACP)), X.root = P.genesisRoot ∨
+      ∃ Q : Finset (Fin P.n), P.fg.q ≤ Q.card ∧ ∀ v ∈ Q,
+        ∃ Z ∈ st.tree, ∃ a ∈ Z.fgPayload, a.val = v ∧ a.T = X.root := by
+  obtain ⟨-, -, -, ⟨BJ, hBJ, hJ, -⟩, -, -, BF, hBF, hF⟩ := cache_invariants_with hu hr
+  have key : ∀ B ∈ st.tree, ∀ T, ((st.σ B.root).J = T ∨ (st.σ B.root).F = T) →
+      T = P.genesisRoot ∨ ∃ Q : Finset (Fin P.n), P.fg.q ≤ Q.card ∧ ∀ v ∈ Q,
+        ∃ Z ∈ st.tree, ∃ a ∈ Z.fgPayload, a.val = v ∧ a.T = T := by
+    intro B hB T hT
+    obtain ⟨c, hc, -, -, hcs⟩ := chain_state_of_chain_with hu hr B hB
+    have hN := named P.fg hcs
+    have lift : Quorum P.fg (c.map Block.fgView) T → ∃ Q : Finset (Fin P.n), P.fg.q ≤ Q.card ∧
+        ∀ v ∈ Q, ∃ Z ∈ st.tree, ∃ a ∈ Z.fgPayload, a.val = v ∧ a.T = T := by
+      rintro ⟨Q, hQ, hv⟩
+      refine ⟨Q, hQ, fun v hv' => ?_⟩
+      obtain ⟨a, ha, h1, h2⟩ := hv v hv'
+      simp only [FG.FGParams.chainAtts, List.mem_flatMap] at ha
+      obtain ⟨Z', hZ', ha⟩ := ha
+      obtain ⟨Z, hZ, rfl⟩ := List.mem_map.1 hZ'
+      exact ⟨Z, hc Z hZ, a, ha, h1, h2⟩
+    rcases hT with rfl | rfl
+    · exact hN.J.imp_right lift
+    · exact hN.F.imp_right lift
+  rintro X (rfl | rfl)
+  · exact key BJ hBJ _ (Or.inl hJ)
+  · exact key BF hBF _ (Or.inr hF)
+
+/-- The tree half of G0.4 (frame realization) for the stock frame `toFrame`. -/
+theorem frame_realization_with :
+    FrameOK st.toFrame ∧ (st.headHeightFloor = st.hmax ∨ st.headHeightFloor = st.hmax - 1) := by
+  obtain ⟨hfin, hcoh, -, -⟩ := accepted_tree_with hu hr
+  obtain ⟨hF, hJ, hFJ, -⟩ := cache_invariants_with hu hr
+  have hfc : st.fcRoot ∈ st.tree ∧ st.Anc st.F st.fcRoot := by
+    unfold fcRoot
+    split_ifs
+    exacts [⟨hJ, hFJ⟩, ⟨hF, .refl⟩]
+  refine ⟨⟨hfin.subset fun _ h => h.1, hcoh.mono fun _ h => h.1,
+    ⟨⟨hF, .refl⟩, fun _ hC => Anc.restrict .refl hC.2⟩, hfc,
+    Anc.restrict .refl hfc.2, fun _ h => ⟨h.1, h.2.1⟩, fun _ h => Anc.restrict hfc.2 h.2.2.1⟩,
+    ?_⟩
+  unfold headHeightFloor
+  split_ifs
+  exacts [Or.inl rfl, Or.inr rfl]
+
+omit hu in
+/-- One state per block across two stores reached with `u` (`σ_eq_of_mem`). -/
+theorem σ_eq_of_mem_with (hu : FinalitySpec u) {st₂ : Store P ACP}
+    (hr₂ : ReachableWith u acp₀ st₂)
+    {U : Set (NodeBlock P ACP)} (hU : Set.InjOn Block.root U) (h₁ : st.tree ⊆ U)
+    (h₂ : st₂.tree ⊆ U) {B : NodeBlock P ACP} (hB₁ : B ∈ st.tree) (hB₂ : B ∈ st₂.tree) :
+    st.σ B.root = st₂.σ B.root := by
+  have hg := (accepted_tree_with hu hr).2.2.2 B hB₁
+  clear hB₁
+  induction hg with
+  | refl =>
+    change st.σ P.genesisRoot = st₂.σ P.genesisRoot
+    rw [σ_genesis_with hu hr, σ_genesis_with hu hr₂]
+  | @tail W' W _ hpar ih =>
+    obtain ⟨hW'₁, hW₁, hp⟩ := hpar
+    obtain ⟨X, hX, hXr, ht₂⟩ := step_σ_with hu hr₂ hB₂ hp
+    obtain rfl : X = W' := hU (h₂ hX) (h₁ hW'₁) hXr
+    obtain ⟨-, -, -, ht₁⟩ := step_σ_with hu hr hW₁ hp
+    rw [ih hX] at ht₁
+    exact Option.some.inj (ht₁.symm.trans ht₂)
+
+end More
 
 /-! ## The shadow store
 
