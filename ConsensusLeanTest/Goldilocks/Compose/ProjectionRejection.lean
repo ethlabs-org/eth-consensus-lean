@@ -16,8 +16,8 @@ Kind (r) (CONTRIBUTING "Statements") for `Compose.ACProjection`
 On its tick run (`Witness.tickRun`: the validator ticks at every time `t ≥ 0`) with a collision-free
 digest `dgP`:
 
-* `payloadAC_reqHeads`, `payloadAC_reqSource`, `payloadAC_reqOutputs`, `payloadAC_reqParent`:
-  requirements 1–4 hold;
+* `payloadAC_reqHeads`, `payloadAC_reqSource`, `payloadAC_reqOutputs`:
+  requirements 1–3 hold;
 * `tickRun_localRun` and `dgP_noColl`: the run is a `Node.LocalRun` with `NoCollRun`;
 * `tickCuts_one`: at time `1 = t_1` the validator proposes, the FG accepts the own block, and the
   node calls `ac_on_block` with it;
@@ -30,7 +30,7 @@ namespace Consensus.Goldilocks.Compose.Test.ProjectionRejection
 
 open Node Witness
 
-/-- `rootAC` with no valid payload: requirement 5 fails, requirements 1–4 are `rootAC`'s. -/
+/-- `rootAC` with no valid payload: requirement 5 fails, requirements 1–3 are `rootAC`'s. -/
 def payloadAC : NodeAC P₁ := { rootAC with validPayload := fun _ => False }
 
 /-- `payloadAC` sends nothing. -/
@@ -60,16 +60,6 @@ theorem payloadAC_reqOutputs : payloadAC.ReqOutputs := by
   have hok := frameOK_of_reachableAt hr
   exact ⟨Relation.ReflTransGen.refl, Relation.ReflTransGen.refl,
     hok.rooted.2 Φ.fcRoot hok.fcRoot_mem⟩
-
-/-- Requirement 4 holds. -/
-theorem payloadAC_reqParent : payloadAC.ReqParent := by
-  intro _ _ _ s Φ _ _ σ _ s' d p h
-  simp only [payloadAC, rootAC] at h
-  injection h with hs hp
-  injection hp with hp
-  injection hp with hd _
-  rw [← hd]
-  rfl
 
 instance : Countable payloadAC.Payload := inferInstanceAs (Countable Unit)
 
@@ -237,16 +227,16 @@ theorem not_acLocalRun : ¬ ACLocalRun payloadAC Set.univ
   · exact hok.2.2.1
   · exact hok.2.2.1
 
-/-- **Requirement 5 is needed in `ACProjection`.** Requirements 1–4 hold of `payloadAC`, its tick
+/-- **Requirement 5 is needed in `ACProjection`.** Requirements 1–3 hold of `payloadAC`, its tick
 run is a `Node.LocalRun` with `NoCollRun`, and the AC projection of that run is not an
 `ACLocalRun`. -/
 theorem acProjection_needs_payload (sg : payloadAC.Msg → Fin P₁.n) :
-    payloadAC.ReqHeads ∧ payloadAC.ReqSource ∧ payloadAC.ReqOutputs ∧ payloadAC.ReqParent ∧
+    payloadAC.ReqHeads ∧ payloadAC.ReqSource ∧ payloadAC.ReqOutputs ∧
       Node.LocalRun (fun _ => v0) dgP Set.univ sg (tickRun payloadAC dgP) ∧
       NoCollRun dgP (tickRun payloadAC dgP) ∧
       ¬ ACLocalRun payloadAC Set.univ ((tickRun payloadAC dgP).HonestBlocks Set.univ)
         (tickRun payloadAC dgP).projAC :=
-  ⟨payloadAC_reqHeads, payloadAC_reqSource, payloadAC_reqOutputs, payloadAC_reqParent,
+  ⟨payloadAC_reqHeads, payloadAC_reqSource, payloadAC_reqOutputs,
     tickRun_localRun (A := payloadAC) (dg := dgP) rfl rfl sg
       ownAdmission_none, dgP_noColl _, not_acLocalRun⟩
 

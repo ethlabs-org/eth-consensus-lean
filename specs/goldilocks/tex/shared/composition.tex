@@ -175,8 +175,7 @@ requirements.
   $\filtered(\Fr,\Fr.\tree)$.
 \item The output of $\Call{ac\_head}{}$ extends~$\Fr.\fcroot$, and the
   confirmed tip extends~$\Fr.F$ and is an ancestor of that output.
-\item The parent of a proposal is a head of the AC at that time.
-\item If the proposal at~$t_s$ returns the AC payload~$p$, that is,
+\item[5.] If the proposal at~$t_s$ returns the AC payload~$p$, that is,
   $\Call{ac\_proposal}{\AC,\Fr,t_s}=(H,p)$, then every block of slot~$s$
   with AC payload~$p$ passes the check $\Call{ac\_valid\_payload}{}$.
 \end{enumerate}

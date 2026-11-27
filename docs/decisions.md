@@ -525,6 +525,12 @@ detail in `TRUST.md`.
 
 ### Protocol rules
 
+- **Proposal construction is read-only.** `acProposal` unlocks a working copy for the parent
+  walk and anchor, then returns the original state. The proposer processes its block through the
+  ordinary `onBlock` handler from that unchanged prestate; that handler's vote uses its own
+  frame and merged view. The generic interface requires the parent to extend `fc_root`, not to
+  equal the served head of the returned state. Requirement ids 1–3 and 5 are kept; there is no
+  requirement 4. The virtually unlocked head equality is Goldilocks-specific.
 - **Graded fast locks.** Each lock carries its own expiry, fixed at the write; a lock is live at `t` while
   `slot(t) ≤ l.expiry` (`Lock.LiveAt`); unlock and the move back keep it, and a restart keeps the locks. A slow lock
   of slot `s` gets `s + k`. A fast lock of slot `s` gets `fastExpiry`, `min(s + k, E + c)`, with `E` the

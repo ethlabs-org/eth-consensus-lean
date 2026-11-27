@@ -8,7 +8,7 @@ On `Spec/Node` with the AC `rootAC` (one validator, `Δ = 1`, slot `s` starts at
 keeps no state, proposes `fc_root` with a unit payload, vouches for nothing and sends nothing),
 labelled by kind (CONTRIBUTING "Statements"):
 
-* (a) `rootAC_requirements`: `rootAC` meets requirements 1–5, so the hypothesis
+* (a) `rootAC_requirements`: `rootAC` meets requirements 1–3 and 5, so the hypothesis
   `A.Requirements` of `HonestBlockAccepted` and `SourcesHeld`
   is satisfiable by an AC that proposes.
 * (a) `init_reachable`, `tick_at_zero`: the initial configuration is reachable and the tick of
@@ -80,7 +80,7 @@ theorem headOK_fcRoot (Φ : rootAC.Frm) : rootAC.HeadOK Φ ⟨Φ.fcRoot, Φ.fcRo
   refine ⟨Relation.ReflTransGen.refl, fun h => ?_⟩
   exact absurd h.1 (Set.notMem_empty _)
 
-/-- (a) `rootAC` meets requirements 1–5. -/
+/-- (a) `rootAC` meets requirements 1–3 and 5. -/
 theorem rootAC_requirements : rootAC.Requirements where
   heads := by
     intro self U _ s Φ t₀ _
@@ -99,14 +99,6 @@ theorem rootAC_requirements : rootAC.Requirements where
     have hok := frameOK_of_reachableAt hr
     exact ⟨Relation.ReflTransGen.refl, Relation.ReflTransGen.refl,
       hok.rooted.2 Φ.fcRoot hok.fcRoot_mem⟩
-  parent := by
-    intro _ _ _ s Φ _ _ σ _ s' d p h
-    simp only [rootAC] at h
-    injection h with hs hp
-    injection hp with hp
-    injection hp with hd _
-    rw [← hd]
-    rfl
   payload := by
     intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
     trivial

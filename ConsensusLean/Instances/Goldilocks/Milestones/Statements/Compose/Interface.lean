@@ -11,7 +11,7 @@ C0.1, C0.5 (c)): the parent of a proposal, the source `fg_confirmed`, the head o
 duty and the two AC tips are blocks of the frame's tree that extend its root `Φ.F`, and the
 tips are nested. Each statement assumes only its one interface requirement: requirement 3
 (`ReqOutputs`) for the tips, 1 (`ReqHeads`) for proposal parents and duty heads, and 2
-(`ReqSource`) for sources. This is stronger than assuming all requirements 1–5
+(`ReqSource`) for sources. This is stronger than assuming all requirements 1–3 and 5
 (`ACInterface.Requirements`, claims A0.6 with A0.9). These are frame-level consequences under
 a well-formed frame
 (`FrameIn`: `FrameOK` inside `U`, so `fc_root ∈ Φ.tree` and the tree is rooted at `Φ.F`); they

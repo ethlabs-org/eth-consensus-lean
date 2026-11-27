@@ -9,7 +9,6 @@ public import ConsensusLeanTest.Goldilocks.AC.DeclaredVotes
 public import ConsensusLeanTest.Goldilocks.AC.FastUpdate
 public import ConsensusLeanTest.Goldilocks.AC.GradedLocks
 public import ConsensusLeanTest.Goldilocks.AC.GradedVeto
-public import ConsensusLeanTest.Goldilocks.AC.HeadsImplied
 public import ConsensusLeanTest.Goldilocks.AC.JoinedRestart
 public import ConsensusLeanTest.Goldilocks.AC.LockRule
 public import ConsensusLeanTest.Goldilocks.AC.LockStore
