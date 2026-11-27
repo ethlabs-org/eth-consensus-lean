@@ -660,9 +660,8 @@ locked block, that is, with the block of a lock of $\Call{live\_locks}{}$;
 $\Call{conflicts\_with\_lock}{}$ is this test.
 With $D\neq\bot$, the \emph{deep anchor} $\Call{deep\_anchor}{}$ is the
 deepest block of a live lock, fast or not, with no fallback: it is $\bot$
-when no lock is live.  The live lock blocks lie on one chain, so a block is
-at or below the deep anchor when it is at or below the block of some live
-lock.  The deep anchor bounds the deep candidates of $\Call{ac\_to\_fg}{}$;
+when no lock is live.  The deep anchor bounds the deep candidates of
+$\Call{ac\_to\_fg}{}$, which must lie at or below it;
 $\Call{get\_anchor}{}$ and the head walks do not change.
 
 \emph{Adding locks.}  The two confirmations (Section~\ref{sec:ac-confirmation})
