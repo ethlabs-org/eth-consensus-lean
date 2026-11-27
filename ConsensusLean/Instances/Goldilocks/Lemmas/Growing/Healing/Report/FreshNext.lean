@@ -309,9 +309,8 @@ private theorem next_votes
 
 /-- Next-slot extension from call-local full-frame geometry, independently of the frame handler. -/
 theorem unanimous_next_votes_at {K : AC.CommitteeDict sp.n}
-    {g ΔF b : Time} {u floor : Nat} {kindJ : Prop}
-    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
+    {g ΔF b : Time} {u : Nat}
+    {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hrun : GoldilocksRunCore uf frameOf proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
@@ -331,7 +330,6 @@ theorem unanimous_next_votes_at {K : AC.CommitteeDict sp.n}
     ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
   have hΔ := sp.toParams.hΔ
-  have _ := hframe
   have _ := hdes
   have hgu : gbar g ≤ sp.ts u := by linarith
   have hu0 : 0 < u := by
@@ -413,7 +411,7 @@ theorem FrameWindow.unanimous_next_votes_at {K : AC.CommitteeDict sp.n}
       e.msg.slot = u → e.msg.head = P.root) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
-  refine Core.unanimous_next_votes_at hframe hrun.toCore hnc hsvc hawake hf hcatch hnr
+  refine Core.unanimous_next_votes_at hrun.toCore hnc hsvc hawake hf hcatch hnr
     hmargin hjoin hTb hz hdes hP hPs hun hK ?_
   intro y j ell e hy hc hs hjb
   have hΔ := sp.toParams.hΔ

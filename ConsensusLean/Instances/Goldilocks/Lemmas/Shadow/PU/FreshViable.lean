@@ -74,7 +74,7 @@ theorem unanimous_update_selection_at' {K : AC.CommitteeDict sp.n}
   obtain ⟨hvi, hva, _⟩ := proposal_viable_after_votes_at' hframe hrun hnc hsvc hf hnr
     (by linarith [sp.toParams.hΔ]) hTb hz hdes hP hPs hy hu.1
     (by rw [ht]; linarith [sp.toParams.hΔ]) (by rw [ht, hT])
-  exact Core.unanimous_update_selection_at hframe hrun.toCore hnc hsvc hawake hf hcatch hnr
+  exact Core.unanimous_update_selection_at hrun.toCore hnc hsvc hawake hf hcatch hnr
     hmargin hjoin hTb hz hdes hP hPs hun hy hu hK hvi hva
 
 end Consensus.Goldilocks.Healing.Growing.Shadow

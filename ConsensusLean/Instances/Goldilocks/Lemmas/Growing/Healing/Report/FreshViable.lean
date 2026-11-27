@@ -78,9 +78,8 @@ theorem Core.unanimous_update_selection_at
     {uf : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
     {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
     {K : AC.CommitteeDict sp.n}
-    {g ΔF b : Time} {u floor : Nat} {kindJ : Prop}
-    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (_hframe : FrameWindow tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
+    {g ΔF b : Time} {u : Nat}
+    {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hrun : GoldilocksRunCore uf frameOf proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
@@ -180,7 +179,7 @@ theorem FrameWindow.unanimous_update_selection_at {K : AC.CommitteeDict sp.n}
     (by linarith [sp.toParams.hΔ]) hTb hz hdes hP hPs hy hu.1
     (by rw [ht]; linarith [sp.toParams.hΔ])
     (by rw [ht, hT])
-  exact Core.unanimous_update_selection_at hframe hrun.toCore hnc hsvc hawake hf hcatch hnr
+  exact Core.unanimous_update_selection_at hrun.toCore hnc hsvc hawake hf hcatch hnr
     hmargin hjoin hTb hz hdes hP hPs hun hy hu hK hvi hva
 
 end Consensus.Goldilocks.Healing.Growing

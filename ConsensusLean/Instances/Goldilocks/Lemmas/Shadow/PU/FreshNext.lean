@@ -36,7 +36,7 @@ theorem unanimous_next_votes_at' {K : AC.CommitteeDict sp.n}
       e.msg.slot = u → e.msg.head = P.root) (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u + 1 → AC.VoteExtends (tr.HonestBlocksAt H) e.msg P := by
-  refine Core.unanimous_next_votes_at hframe hrun.toCore hnc hsvc hawake hf hcatch hnr
+  refine Core.unanimous_next_votes_at hrun.toCore hnc hsvc hawake hf hcatch hnr
     hmargin hjoin hTb hz hdes hP hPs hun hK ?_
   intro y j ell e hy hc hs hjb
   have hΔ := sp.toParams.hΔ
