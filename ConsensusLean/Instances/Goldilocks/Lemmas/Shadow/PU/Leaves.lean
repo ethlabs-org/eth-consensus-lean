@@ -218,7 +218,7 @@ private theorem reset_of_high_report_within_at {ini}
     ∃ a, IsReset tr H g a ∧ a ≤ tr.time i + D := by
   have hy := hrun.antitone ((le_add_of_nonneg_right hD).trans (le_max_right _ _)) hyz
   obtain ⟨hc, hto, hres⟩ := hR
-  apply Generic.Shadow.reset_of_high_report_within_from hrun.toLocalRun' hlat hyz hq ?_ hh
+  apply Generic.Shadow.reset_of_high_report_within_from hrun hlat hyz hq ?_ hh
   refine ⟨ell, Compose.projAC_callAt.mp hc, hto, ?_⟩
   change (AC.acToFG sp (tr.state y i).ac ell.frame (tr.time i)).2 = some R
   rw [← Goldilocks.Shadow.PU.Growing.projAC_state_at' hrun hy]
