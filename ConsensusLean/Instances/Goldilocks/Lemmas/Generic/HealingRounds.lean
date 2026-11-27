@@ -82,62 +82,55 @@ private theorem proposal_below_held_at {cm proposer dg H tr}
     σ_eq_honest_at_from hrl hnc (hrl.time_nonneg kB) (fun q hq => hrl.time_mono (by omega)) hz
       hi0 hle hy hBm hBy⟩
 
-/-- Leaf 8: a warm proposal at a constant merged key `v ≥ 2HZ` is at most `r(v)` rounds below
-`HZ + 1`. The supplier's `proposal_floor` puts it at or above the window floor, and the proposer's
-store has `HZ + 1 ≤ floor + r(v)` (`Healing.le_floor_add_riseRounds`). -/
+/-- Leaf 8: the four-key deficit bound and the supplier's proposal-height bound put a warm
+proposal at most `r(v)` rounds below `HZ + 1`. -/
 theorem rounds_le_warm_proposal_at_of_healing {hold : Time} (O : ACHealing A sg runs hold) :
     rounds_le_warm_proposal_at A sg O := by
   intro cm proposer dg H tr g af len u floor v kindJ J B z kB hrun hnc hwin hK hv hlo hhi hz
     hdes hB hBs hf
-  have hfl := O.proposal_floor hrun hnc hwin hz hdes hB hBs hlo hhi hf
+  have hfl := (O.proposal_floor hrun hnc hwin hz hdes hB hBs hlo hhi hf).1
   have hrl := runs.run_local hrun
   have ht : tr.time kB = P.slotTime u := by rw [hB.2.2, hBs]
   have hzk : z ∈ H (tr.time kB) := ht ▸ hz
   have hkey := hK z kB hzk (ht ▸ hlo) (ht ▸ hhi)
-  have hpos := Healing.Store.hj_lt_hmax_of_reachable
-    (fg_reachable_at_from hrl (hrl.time_nonneg kB) (fun q hq => hrl.time_mono hq.le) hzk)
-  rw [frameKey'_eq] at hkey
-  have h := Healing.le_floor_add_riseRounds (tr.state z kB).fg (by omega) (HZ := HZ tr H g)
-    (by rw [hkey]; exact hv)
-  rw [hkey, hwin.floor_eq z kB hzk (ht ▸ hlo) (ht ▸ hhi)] at h
-  have hrr : riseRounds (HZ tr H g) v = Healing.riseRounds (HZ tr H g) v := by
-    rw [Healing.riseRounds_eq]
-    rfl
-  rw [hrr]
-  omega
+  have h := pred_add_riseRounds_of_key
+    (HZ := HZ tr H g) (M := (tr.state z kB).fg.hmax) (j := (tr.state z kB).fg.hj)
+    (by rw [← hkey, frameKey''_eq]) hv
+  exact h.trans (Nat.add_le_add_right hfl _)
 
-/-- Leaf 9: a report in the window at the height of a warm honest proposal below it is above the
-reader's `h_j`, or at it with `J` below the report. The supplier's `proposal_floor`, read in the
-reader's store, puts the report at or above the head-height floor; the root kind and
-`ACHealing.report_in_frame` decide the case. -/
+/-- Leaf 9: an equal-height report above a warm proposal is strictly above the reader's `h_j`.
+The supplier's proposal bounds transfer through report membership (`report_in_frame`); constant
+maximum height and top status compare the reader's justified height with the proposer's.
+Neither the report's `fcRoot` ancestry nor the conditional window root is needed. -/
 theorem report_kind_of_warm_at_of_healing {hold : Time} (O : ACHealing A sg runs hold) :
     report_kind_of_warm_at A sg O := by
   intro cm proposer dg H tr lo hi floor u kindJ J B R z kB y i hrun hnc hframe hz hdes hB hBs
     hlo hhi hf hy hR hBR hil hih heq
   have hrl := runs.run_local hrun
-  have hfl := O.proposal_floor hrun hnc hframe hz hdes hB hBs hlo hhi hf
+  obtain ⟨hfl, hstrict⟩ := O.proposal_floor hrun hnc hframe hz hdes hB hBs hlo hhi hf
   have ht : tr.time kB = P.slotTime u := by rw [hB.2.2, hBs]
-  obtain ⟨hRm, hroot⟩ := O.report_in_frame hrun hy hR
+  have hzk : z ∈ H (tr.time kB) := ht ▸ hz
+  have hzlo : lo ≤ tr.time kB := ht ▸ hlo
+  have hzhi : tr.time kB ≤ hi := ht ▸ hhi
+  have hzM := hframe.M_eq z kB hzk hzlo hzhi
+  have hyM := hframe.M_eq y i hy hil hih
+  have hztop := hframe.top_iff z kB hzk hzlo hzhi
+  have hytop := hframe.top_iff y i hy hil hih
+  have hRm := (O.report_in_frame hrun hy hR).1
   obtain ⟨-, -, hσ⟩ := proposal_below_held_at hrun hnc (ht ▸ hz) hB hy hBR hRm
-  rw [hσ] at hfl
-  have hfloor : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ R.root).h := by
-    rw [hframe.floor_eq y i hy hil hih, heq]
-    exact hfl
+  rw [hσ] at hfl hstrict
+  have hzj := Healing.Store.hj_lt_hmax_of_reachable
+    (fg_reachable_at_from hrl (hrl.time_nonneg kB) (fun q hq => hrl.time_mono hq.le) hzk)
   have hj := Healing.Store.hj_lt_hmax_of_reachable
     (fg_reachable_at_from hrl (hrl.time_nonneg i) (fun q hq => hrl.time_mono hq.le) hy)
-  rw [← heq]
-  by_cases hc : (tr.state y i).fg.Contest
-  · have he := hc.1
-    rw [Store.headHeightFloor, ite_eq_left hc] at hfloor
-    exact Or.inl (by omega)
-  · rw [Store.headHeightFloor, ite_eq_right hc] at hfloor
-    by_cases he : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1
-    · have hr' : (tr.state y i).fg.fcRoot = (tr.state y i).fg.J := ite_eq_left ⟨he, hc⟩
-      rw [hr'] at hroot
-      by_cases hlt : (tr.state y i).fg.hj < ((tr.state y i).fg.σ R.root).h
-      · exact Or.inl hlt
-      · exact Or.inr ⟨by omega, hroot⟩
-    · exact Or.inl (by omega)
+  left
+  by_cases htop : kindJ
+  · have hzt := hztop.mpr htop
+    have hyt := hytop.mpr htop
+    omega
+  · have hynt : (tr.state y i).fg.hmax ≠ (tr.state y i).fg.hj + 1 :=
+      fun he => htop (hytop.mp he)
+    omega
 
 end WarmProposal
 
@@ -274,10 +267,10 @@ the earlier proposal or strictly higher, and leaf 5 crosses one height. The repo
 spacing `t_{s+1} + 2Δ + ΔF ≤ t_{s+δt}` gives the row deadline and `δt ≥ 2`, so the later proposal
 is at or after `c_z`. -/
 theorem round_of_warm_at_of_healing {hold : Time} (O : ACHealing A sg runs hold) :
-    ∀ {cm proposer dg H} {tr : RunTrace A} {βK : ℚ} {g ΔF b T : Time} {s₀ u x N floor : Nat}
-      {kindJ : Prop} {J B X : A.Blk} {z : Fin P.n} {kB : Nat} {p : Fin P.n} {kX : Nat},
+    ∀ {cm proposer dg H} {tr : RunTrace A} {βK : ℚ} {g ΔF b T : Time} {s₀ u x N M : Nat}
+      {isTop : Prop} {J B X : A.Blk} {z : Fin P.n} {kB : Nat} {p : Fin P.n} {kX : Nat},
     βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
-    SlotWindowWithin tr H O.reportDelay s₀ N floor kindJ J →
+    SlotWindowWithin tr H O.reportDelay s₀ N M isTop J →
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     Service tr H g ΔF b hold → (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →

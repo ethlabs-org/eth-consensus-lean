@@ -183,7 +183,7 @@ theorem accepted_replay_finalized_cached {P : Params} {ACP : Type} {acp₀ : ACP
   have hFX' : post.Anc pre.F X := Goldilocks.Store.anc_of_U hr hy hFX hX
   by_cases he : pre.F = X
   · rw [← he]
-    exact ((Goldilocks.Store.finalized_monotone P ACP acp₀ _ hpre).1 B _ hab).mono sub
+    exact ((Goldilocks.Store.finalized_monotone P ACP _).1 B _ hab).mono sub
   have hXF : ins.blocks (ins.σ B.root).F = some X := by
     rw [← hs, ← hb, ← hXr]
     exact hX
@@ -245,11 +245,12 @@ theorem accepted_replay_finalized_cached {P : Params} {ACP : Type} {acp₀ : ACP
     · change W ∈ ins.tree; rw [← ht]; exact hW
     · change Anc ins.tree X W; rw [← ht]
       exact Goldilocks.Store.anc_of_U hr hy hXW hW
-    · change _ ≤ (ins.σ W.root).h
+    · refine Or.inl ?_
+      change max ins.hmax (ins.σ B.root).h ≤ (ins.σ W.root).h
       rw [← hs]
       have hm : ins.hmax = pre.hmax := rfl
-      unfold Goldilocks.Store.headHeightFloor
-      split_ifs <;> change _ ≤ (post.σ W.root).h <;> simp only [hm] <;> (clear * - hWh; omega)
+      rw [hm]
+      exact hWh.ge
   have hc := Goldilocks.Store.cache_acceptance P ACP ins B X
     (ht ▸ hB) (by rw [← hs]; exact hlimits.2.1) hXF
     (by change Anc ins.tree X B; rw [← ht]; exact hXB)
@@ -420,7 +421,23 @@ theorem viable_head_of_floor (hrun : GoldilocksRun proposer dg H tr ini)
         ¬(tr.state y i).fg.Contest
     · simpa [Goldilocks.Store.fcRoot, hk] using hJ hk.1 hk.2
     · simpa [Goldilocks.Store.fcRoot, hk] using hFX
-  exact ⟨hFX, ⟨hX, hFX⟩, hroot, hh, ⟨hX, hFX, hroot, hh⟩⟩
+  obtain ⟨-, -, -, ⟨Bj, hBj, -, hBjhj⟩, hge, -, -⟩ :=
+    Goldilocks.Store.cache_invariants _ _ _ _ (Compose.fg_reachable hrun.toLocalRun hy i)
+  have hjlt : (tr.state y i).fg.hj < (tr.state y i).fg.hmax :=
+    hBjhj ▸ (Store.hj_lt_h (Compose.fg_reachable hrun.toLocalRun hy i) hBj).trans_le (hge Bj hBj)
+  have hv : (tr.state y i).fg.IsViable X := by
+    unfold Goldilocks.Store.IsViable
+    by_cases hcon : (tr.state y i).fg.Contest
+    · left
+      simpa only [Goldilocks.Store.headHeightFloor, ite_eq_left hcon] using hh
+    · simp only [Goldilocks.Store.headHeightFloor, ite_eq_right hcon] at hh
+      by_cases hmx : (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ X.root).h
+      · exact Or.inl hmx
+      · refine Or.inr ⟨by omega, ?_⟩
+        by_cases htop : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1
+        · exact Or.inr (hJ htop hcon)
+        · exact Or.inl (by omega)
+  exact ⟨hFX, ⟨hX, hFX⟩, hroot, hv, ⟨hX, hFX, hv⟩⟩
 
 /-- The origin-specialized form of strict-height finalized ancestry. -/
 theorem ResetPremisesUpTo.low_finalized_below_origin {b : Time}

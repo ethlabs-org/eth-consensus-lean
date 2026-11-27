@@ -66,7 +66,7 @@ theorem vote_viable_of_root (hrun : GoldilocksRun proposer dg H tr ini)
         hΦfB, D, hD, ?_, hΦBD⟩
       have hfD := hΦfB.trans hΦBD
       rw [hfr] at hDt hfD ⊢
-      exact ⟨hDt.1, hDt.2, Anc.mono (fun X hX => hX.1) hfD, hvD⟩
+      exact ⟨hDt.1, hDt.2, hvD⟩
     · exact Or.inr hBf
   · exact Or.inr h
 
