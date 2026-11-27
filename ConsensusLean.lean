@@ -800,6 +800,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Leaves
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Origins
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Participants
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Reach
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularClassification
