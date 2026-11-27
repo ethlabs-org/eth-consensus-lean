@@ -242,8 +242,8 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
       rcases hBS with hBS | hSB
       · obtain ⟨W, hW, hSW⟩ := frozen hS hqb hm (hFB.trans hBS)
         exact ⟨W, hW, hBS.trans hSW,
-          Outcome.high_of_anc_at' hp.run hp.noColl hS ht hle hy (hvt hW) hSW⟩
-      · exact ⟨B, hBv, .refl, Outcome.high_of_anc_at' hp.run hp.noColl hS ht hle hy hBt hSB⟩
+          Outcome.high_of_anc_at hp.run hp.noColl hS ht hle hy (hvt hW) hSW⟩
+      · exact ⟨B, hBv, .refl, Outcome.high_of_anc_at hp.run hp.noColl hS ht hle hy hBt hSB⟩
     by_cases hHm : (tr.state y i).fg.hmax ≤ HZ tr H g + 1
     · exact ⟨W, hWv, hBW, isViable_of_hmax_le (by omega)⟩
     · exact gapW (by omega) (by omega) hBt hFB
