@@ -45,7 +45,7 @@ theorem finalized_below_descendant_stock_at {lo hi : Time} {floor : Nat}
     Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F W := by
   have hjt := hrun.time_nonneg j
   have hbj : ∀ q < j, tr.time q ≤ tr.time j := fun q hq => hrun.time_mono hq.le
-  have hr := Compose.Growing.reachable_at' hrun hjt hy hbj
+  have hr := Compose.Growing.reachable_at hrun hjt hy hbj
   have hfl := hframe.floor_eq y j hy hjlo hjhi
   have hkind := hframe.kind_iff y j hy hjlo hjhi
   have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
@@ -53,7 +53,7 @@ theorem finalized_below_descendant_stock_at {lo hi : Time} {floor : Nat}
   by_cases hk : kindJ
   · have hFJ := (Store.cache_invariants' hr).2.2.1
     rw [hframe.root_eq y j hy hjlo hjhi hk] at hFJ
-    exact (hFJ.mono (Compose.Growing.tree_held_at' hjt hy hbj)).trans ((hwit.2 hk).trans hXW)
+    exact (hFJ.mono (Compose.Growing.tree_held_at hjt hy hbj)).trans ((hwit.2 hk).trans hXW)
   have hWh := Growing.le_height_of_honest_ancestor_at hrun hnc hx hz hX le_rfl hW hXW
   refine Growing.finalized_below_of_hj_lt_at hrun hnc hy hx hf hW ?_
   have hlt : (tr.state y j).fg.hj < floor := by
@@ -84,8 +84,8 @@ theorem windowWitness_of_stock
       hQ hwit hQy .refl, ?_⟩⟩
   have hjt := hrun.time_nonneg j
   have hbj : ∀ q < j, tr.time q ≤ tr.time j := fun q hq => hrun.time_mono hq.le
-  have hr := Compose.Growing.reachable_at' hrun hjt hy hbj
-  have hσ := Growing.σ_eq_honest_at' hrun hnc (hrun.time_nonneg c)
+  have hr := Compose.Growing.reachable_at hrun hjt hy hbj
+  have hσ := Growing.σ_eq_honest_at hrun hnc (hrun.time_nonneg c)
     (fun _ hq => hrun.time_mono hq.le) hz hjt hbj hy hQ hQy
   have hfl := hframe.floor_eq y j hy hlo hhi
   have hkind := hframe.kind_iff y j hy hlo hhi
@@ -104,7 +104,7 @@ theorem windowWitness_of_stock
     · right
       have hk := hkind.1 ⟨htop, hC⟩
       rw [hframe.root_eq y j hy hlo hhi hk]
-      exact Growing.store_anc_of_honest_anc_at' hrun hnc hjt hbj hy (hwit.2 hk) hQy
+      exact Growing.store_anc_of_honest_anc_at hrun hnc hjt hbj hy (hwit.2 hk) hQy
     · left
       omega
   · exact Or.inl hge
@@ -131,7 +131,7 @@ theorem stock_witness_of_floor_anchor_at {lo hi : Time} {floor : Nat} {kindJ : P
   refine ⟨Growing.le_height_of_honest_ancestor_at hrun hnc hy hp hPp hPfl.1 hQ hPQ, fun hk => ?_⟩
   have ht0 := hrun.time_nonneg a
   have hba : ∀ q < a, tr.time q ≤ tr.time a := fun q hq => hrun.time_mono hq.le
-  have hr := Compose.Growing.reachable_at' hrun ht0 hy hba
+  have hr := Compose.Growing.reachable_at hrun ht0 hy hba
   have hgt := Growing.le_height_of_honest_ancestor_at hrun hnc hy hp hPp (hPfl.2 hk) hQ hPQ
   obtain ⟨htop, hnC⟩ := (hframe.kind_iff y a hy hlo hhi).2 hk
   have hfl := hframe.floor_eq y a hy hlo hhi
@@ -141,7 +141,7 @@ theorem stock_witness_of_floor_anchor_at {lo hi : Time} {floor : Nat} {kindJ : P
     by_contra hnJ
     exact hnC ⟨htop, Q, hQ, hFQ, by omega, hnJ⟩
   rw [← hframe.root_eq y a hy hlo hhi hk]
-  exact hJy.mono (Compose.Growing.tree_held_at' ht0 hy hba)
+  exact hJy.mono (Compose.Growing.tree_held_at ht0 hy hba)
 
 /-- The frame geometry of a stock witness at a reader's cut (`witness_frame_at'` with the stock
 window and witness): the stock witness is P-U viable at every honest reader of the window. -/

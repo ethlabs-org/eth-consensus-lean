@@ -40,7 +40,7 @@ theorem update_call_of_awake_at
     ⟨4 * (u : Int) + 6, by rw [hT]; simp only [ACParams.ts]; ring⟩
     (hawake y T hy (by rw [hT]; linarith) hTb)
   obtain ⟨x, fgDue, hg⟩ := (RunTrace.tickAt_iff ..).1 hk
-  obtain ⟨hc, ht⟩ := Healing.tick_first_cut' hg
+  obtain ⟨hc, ht⟩ := Healing.tick_first_cut hg
   have hj := Core.joined_of_restart_le_at hrun.toCore hnc hy
     (by rw [hT]; linarith : sp.ts u + 4 * sp.Δ ≤ T)
     (fun r _ hyr hrs => (hnr y r hyr hrs).trans (by linarith)) ht

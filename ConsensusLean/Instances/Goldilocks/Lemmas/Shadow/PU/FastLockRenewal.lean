@@ -210,14 +210,14 @@ theorem toFG_candidate_pre_within_primed_at' {K : AC.CommitteeDict sp.n}
     intro k hjk hki
     have hkt := hrun.time_mono hki
     have hyk := hrun.antitone hkt hy
-    have hPk' : P ∈ (tr.state y k).fg.tree := Compose.Growing.tree_mono_at' hrun
+    have hPk' : P ∈ (tr.state y k).fg.tree := Compose.Growing.tree_mono_at hrun
       (hrun.time_nonneg k) hyk (fun q hq => hrun.time_mono hq.le) hjk hPj
     obtain ⟨hFP, hvP⟩ := hwit.held y k hyk
       (by have := hrun.time_mono hjk; rw [hjt] at this
           have := hts (show s₀ ≤ r by omega); linarith)
       (hkt.trans hhi) (sp.toParams.fg.faults_lt_quorum_margin
         (hf _ (hrun.time_nonneg k) (hkt.trans hib))) hPk'
-    have hFPs := store_anc_of_honest_anc_at' hrun hnc (hrun.time_nonneg k)
+    have hFPs := store_anc_of_honest_anc_at hrun hnc (hrun.time_nonneg k)
       (fun q hq => hrun.time_mono hq.le) hyk hFP hPk'
     have hPt : P ∈ (Node.frame (tr.state y k)).tree := by
       rw [Node.frame_eq, Store.toFrame_tree]

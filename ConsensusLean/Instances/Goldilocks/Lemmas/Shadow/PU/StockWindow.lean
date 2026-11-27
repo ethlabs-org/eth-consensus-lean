@@ -61,7 +61,7 @@ theorem toFrameWindow_of_noContest {lo hi : Time} {floor : Nat} {kindJ : Prop}
     have htop : (tr.state y i).fg.hmax ≠ (tr.state y i).fg.hj + 1 :=
       fun h => hk ((hw.kind_iff y i hy hlo hhi).1 ⟨h, hnc⟩)
     have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
-      (Compose.Growing.reachable_at' hrun (hrun.time_nonneg i) hy
+      (Compose.Growing.reachable_at hrun (hrun.time_nonneg i) hy
         (fun q hq => hrun.time_mono hq.le)).reachableWith
     have hfl := hw.floor_eq y i hy hlo hhi
     rw [Store.headHeightFloor, ite_eq_right hnc] at hfl

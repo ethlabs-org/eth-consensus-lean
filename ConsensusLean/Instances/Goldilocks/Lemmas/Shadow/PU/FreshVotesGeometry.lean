@@ -47,7 +47,7 @@ theorem viableHead_transfer_at {lo hi : Time} {M : Nat}
   have hwz := (tr.state z c).fg.viable_witness (hframe.M_eq z c hz hclo hchi)
     (hframe.top_iff z c hz hclo hchi) (hframe.root_eq z c hz hclo hchi) hvz
   have hW := Healing.windowWitness_of_frameWindow hrun hnc hframe hz hQz
-    ⟨hwz.1, fun ht he => (hwz.2 ht he).mono (Compose.Growing.tree_held_at' hct hz hbc)⟩
+    ⟨hwz.1, fun ht he => (hwz.2 ht he).mono (Compose.Growing.tree_held_at hct hz hbc)⟩
   rw [Node.frame_eq, Store.toFrame_tree] at hQ
   rw [Node.frame_eq, Store.toFrame_viableHeads]
   exact ⟨hQ.1, hQ.2, (hW.held y i hy hilo hihi hf hQ.1).2⟩

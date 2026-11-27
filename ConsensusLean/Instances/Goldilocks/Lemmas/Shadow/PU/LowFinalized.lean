@@ -66,10 +66,10 @@ theorem finalized_anc_of_lt_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hlt : ((tr.state y k).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h) :
     Goldilocks.Anc (tr.HonestBlocksAt H) F W := by
   have hfs := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
-  have hR₁ := (Compose.Growing.reachable_at' hrun ht hy hk).reachableWith
-  have hR₂ := (Compose.Growing.reachable_at' hrun hu hz hm).reachableWith
-  have hsub₁ := Compose.Growing.tree_held_at' ht hy hk
-  have hsub₂ := Compose.Growing.tree_held_at' hu hz hm
+  have hR₁ := (Compose.Growing.reachable_at hrun ht hy hk).reachableWith
+  have hR₂ := (Compose.Growing.reachable_at hrun hu hz hm).reachableWith
+  have hsub₁ := Compose.Growing.tree_held_at ht hy hk
+  have hsub₂ := Compose.Growing.tree_held_at hu hz hm
   have hU := Coherence.honestBlocksAt_coherent hrun hnc
   obtain ⟨c₁, hc₁, -, -, hσ₁⟩ := chain_state_of_chain_with hfs hR₁ X hX
   obtain ⟨c₂, hc₂, hl₂, hlast₂, hσ₂⟩ := chain_state_of_chain_with hfs hR₂ W hW

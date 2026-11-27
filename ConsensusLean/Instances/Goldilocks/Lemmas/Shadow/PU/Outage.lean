@@ -118,7 +118,7 @@ theorem hj_lt_hmax_of_reachable {acp₀ : Payload sp.n}
 theorem hj_lt_hmax_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d) :
     (tr.state y i).fg.hj < (tr.state y i).fg.hmax :=
-  hj_lt_hmax_of_reachable (reachable_at' hrun hd hy hi)
+  hj_lt_hmax_of_reachable (reachable_at hrun hd hy hi)
 
 end RunFacts'
 
@@ -193,7 +193,7 @@ theorem above_of_hi_height_at (D : OutageLockPremises tr H proposer dg ini) {i :
     (hX : X ∈ (tr.state y k).fg.tree)
     (hh : (tr.state y k).fg.hj + 1 ≤ ((tr.state y k).fg.σ X.root).h) :
     Anc (tr.HonestBlocksAt H) D.P X ∧ X.root ≠ D.P.root := by
-  have hU := honestBlocksAt_coherent D.hrun D.hnc
+  have hU := Coherence.honestBlocksAt_coherent D.hrun D.hnc
   have hr := D.hrun.upTo ht0
   have hnc' := D.hnc.upTo t
   have hfg := projFG_localRun' hr hnc'
@@ -233,7 +233,7 @@ theorem above_of_hi_height_at (D : OutageLockPremises tr H proposer dg ini) {i :
   have hnot : ¬ Anc (tr.HonestBlocksAt H) E D.P := by
     intro hE
     have hEJ := FrameGeometry.honest_held_anc' hr.toLocalRun hfg hy
-      (Consensus.Goldilocks.RunTrace.anc_upTo_of_right' D.hrun D.hnc
+      (Consensus.Goldilocks.RunTrace.anc_upTo_of_right D.hrun.toLocalRun D.hnc
         ht0 ⟨y, hy, k, hJt⟩ (hE.trans hPJ)) hJt
     obtain ⟨hJh, hJT, -⟩ :=
       FrameGeometry.justified_honest_source_before' hr.toLocalRun hfg hf hy hsrcF hj1
@@ -272,12 +272,12 @@ theorem anc_getHead_of_hi (D : OutageLockPremises tr H proposer dg ini) {i : Nat
   have ht : ∀ k < i, tr.time k ≤ tr.time i := fun _ hk => D.hrun.time_mono hk.le
   obtain ⟨hPJ, hJP⟩ := hiAt_iff.1 hHi
   rw [Node.frame_eq] at hdom hdomA hne hlocks ⊢
-  refine anc_getHead_of_hi_core (honestBlocksAt_coherent D.hrun D.hnc)
-    (by simpa [Node.frame_eq] using frameOK_at' D.hrun hd hw ht) (tree_held_at hd hw ht)
-    (hj_lt_hmax_at D.hrun hd hw ht) (hmax_block_of_reachable (reachable_at' D.hrun hd hw ht))
+  refine anc_getHead_of_hi_core (Coherence.honestBlocksAt_coherent D.hrun D.hnc)
+    (by simpa [Node.frame_eq] using frameOK_at D.hrun hd hw ht) (tree_held_at hd hw ht)
+    (hj_lt_hmax_at D.hrun hd hw ht) (hmax_block_of_reachable (reachable_at D.hrun hd hw ht))
     hPJ hJP (fun hX hh => above_of_hi_height_at D hinv le_rfl hd ht hw hf hHi hX hh)
     (hinv.caches_at_cut le_rfl hw).1
-    (fun hY hXY => held_anc_at D.hrun D.hnc hd hw ht hXY hY) A t V σ hdom hdomA hne hlocks
+    (fun hY hXY => Coherence.held_anc_at D.hrun D.hnc hd hw ht hXY hY) A t V σ hdom hdomA hne hlocks
 
 
 /-! ## The candidate step of the invariant (`viable`, OB-F)
@@ -336,7 +336,7 @@ theorem source_compatible_at
       Compatible (tr.HonestBlocksAt H) L B)
     {ℓ : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : AC.ToFGAt tr.projAC y k ℓ C) : Compatible (tr.HonestBlocksAt H) C B := by
-  have hU := honestBlocksAt_coherent hrun hnc
+  have hU := Coherence.honestBlocksAt_coherent hrun hnc
   obtain ⟨hpc, -, hC⟩ := h
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hy hpc
   rw [Consensus.Goldilocks.Shadow.PU.Growing.projAC_state_at hrun hy] at hC
@@ -359,7 +359,7 @@ theorem J_compatible_by (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propo
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hGB : ∀ D, G D → Compatible (tr.HonestBlocksAt H) D B) (hB : B ∈ tr.HonestBlocksAt H) :
     Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.J B := by
-  have hU := honestBlocksAt_coherent hrun hnc
+  have hU := Coherence.honestBlocksAt_coherent hrun hnc
   have hr := hrun.upTo ht0
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono ht0
   have hst := Trace.upTo_state tr y ht
@@ -394,7 +394,7 @@ theorem caches_compatible_by
     (hsrc : HonestRowsSourcedBy tr H (fun D => Compatible (tr.HonestBlocksAt H) D B) y n t) :
     Compatible (tr.HonestBlocksAt H) (tr.state y n).fg.F B ∧
       Compatible (tr.HonestBlocksAt H) (tr.state y n).fg.J B := by
-  have hU := honestBlocksAt_coherent hrun hnc
+  have hU := Coherence.honestBlocksAt_coherent hrun hnc
   have hst := Trace.upTo_state tr y ht
   have hJ := J_compatible_by hrun hnc ht0 ht hy hf hsrc (fun _ h => h) hBU
   have hR := Node.fg_reachable_at (hrun.upTo ht0).toLocalRun hy n
@@ -423,8 +423,8 @@ theorem held_candidate_of_rows_by
   have hBU : B ∈ (tr.upTo t).HonestBlocks (H t) := ⟨y, hy, i, by rw [hst]; exact hBt'.1⟩
   have h := FrameGeometry.held_candidate_of_rows' (hrun.upTo ht0).toLocalRun
     (projFG_localRun' (hrun.upTo ht0) (hnc.upTo _)) hf hy i (honestRowsSourcedBy_toFrame ht hsrc)
-    (fun D ⟨hD, hDU⟩ => (hGB D hD).imp (RunTrace.anc_upTo_of_right' hrun hnc ht0 hBU)
-      (RunTrace.anc_upTo_of_right' hrun hnc ht0 hDU))
+    (fun D ⟨hD, hDU⟩ => (hGB D hD).imp (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 hBU)
+      (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 hDU))
     (by rw [hst]; exact hBt)
   rwa [hst] at h
 

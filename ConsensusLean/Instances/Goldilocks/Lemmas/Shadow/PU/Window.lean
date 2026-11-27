@@ -160,7 +160,7 @@ theorem fcRoot_mono (hrun : GoldilocksRun proposer dg H tr ini)
     Anc (tr.HonestBlocks H) (Node.frame (tr.state y a)).fcRoot
       (Node.frame (tr.state y i)).fcRoot := by
   rw [Node.frame_eq, Node.frame_eq, Store.toFrame_fcRoot, Store.toFrame_fcRoot]
-  exact run_F_mono' hrun.toLocalRun hy hai
+  exact run_F_mono hrun.toLocalRun hy hai
 
 /-- V-B4: a write-frame viable head remains a viable head at later cuts in the P-U window.
 The only new geometric step is `finalized_below_viable'`; the rest is the stock persistence
@@ -181,7 +181,7 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.viableHead_persists'
   rw [Node.frame_of_projAC_at hrun.toLocalRun hy hc, Node.frame_eq,
     Store.toFrame_viableHeads] at hv
   have hQa : Q ∈ (tr.state y a).fg.tree := hv.1
-  have hQi := Compose.tree_mono' hrun.toLocalRun hy hai hQa
+  have hQi := Compose.tree_mono hrun.toLocalRun hy hai hQa
   have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocks H := fun B hB => ⟨y, hy, i, hB⟩
   have hvi : (tr.state y i).fg.IsViable Q := by
     apply isViable_of_window_data
@@ -200,7 +200,7 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.viableHead_persists'
         (Node.fg_reachable_at hrun.toLocalRun hy i).reachableWith
         (Coherence.honest_blocks_coherent hrun.toLocalRun hnc).1
         (fun _ hB => ⟨y, hy, a, hB⟩) hsub hQa hQi)
-      (fun h => h.mono (Compose.tree_mono' hrun.toLocalRun hy hai)) hv.2.2
+      (fun h => h.mono (Compose.tree_mono hrun.toLocalRun hy hai)) hv.2.2
   have hFQ := finalized_below_viable (Node.fg_reachable_at hrun.toLocalRun hy i)
     (Coherence.honest_blocks_coherent hrun.toLocalRun hnc) hsub hf
     (fun a b ha hb hv => held_atts_safe (Compose.projFG_localRun hrun hnc) hy hy i i a b
@@ -297,27 +297,27 @@ theorem held_of_relay_le_at_from
     rw [hs j hj, hs m le_rfl] at hheight
     have hjtime : ∀ k < j, tr.time k ≤ tr.time m := fun k hk => hrun.time_mono (by omega)
     exact (Store.F_anc_of_hmax_le_of_safe_with Store.finalitySpec_updateFinality
-      (Compose.Growing.reachable_at' hrun hm0 hz hjtime).reachableWith
-      (Compose.Growing.reachable_at' hrun hτ0 hx hτ).reachableWith
+      (Compose.Growing.reachable_at hrun hm0 hz hjtime).reachableWith
+      (Compose.Growing.reachable_at hrun hτ0 hx hτ).reachableWith
       (Coherence.honestBlocksAt_coherent hrun hnc)
-      (Compose.Growing.tree_held_at' hm0 hz hjtime)
-      (Compose.Growing.tree_held_at' hτ0 hx hτ) hf
+      (Compose.Growing.tree_held_at hm0 hz hjtime)
+      (Compose.Growing.tree_held_at hτ0 hx hτ) hf
       (fun a b ha hb hav => Shadow.held_atts_safe_at hrun hnc hm0 hjtime hz hτ0 hτ hx
         (le_max_right _ _) (le_max_left _ _) a b ha hb hav)
-      hB (hheight.trans hh)).mono (Compose.Growing.tree_held_at' hτ0 hx hτ)
+      hB (hheight.trans hh)).mono (Compose.Growing.tree_held_at hτ0 hx hτ)
   have hlift : ∀ k, k + 1 ≤ m → tr.AcceptAt z k B → B ∈ (tr.state z m).fg.tree := by
     intro k hkm ha
     have ha' : (tr.upTo (tr.time m)).AcceptAt z k B :=
       (RunTrace.upTo_acceptAt tr).mpr ⟨hrun.time_mono (by omega), ha⟩
     have hmem := Coherence.accept_mem_from hr hz ha'
-    have := Coherence.tree_mono' hr hz hkm hmem
+    have := Coherence.tree_mono hr hz hkm hmem
     rwa [hs m le_rfl] at this
   have hB' : B ∈ ((tr.upTo τ).state x i).fg.tree := by
     rwa [Trace.upTo_state tr x hτ]
   rcases Coherence.tree_accepted (hrun.upTo hτ0).toLocalRun hx hB' with he | ⟨k, hk, ha⟩
   · rw [he]
     exact Store.genesis_mem_with Store.finalitySpec_updateFinality
-      (Compose.Growing.reachable_at' hrun hm0 hz hm).reachableWith
+      (Compose.Growing.reachable_at hrun hm0 hz hm).reachableWith
   have ha := ((RunTrace.upTo_acceptAt tr).mp ha).2
   have hxk := hrun.antitone (hτ k hk) hx
   by_cases hg : g ≤ tr.time k
@@ -350,13 +350,13 @@ theorem frameKey''_lag_obs
   have hbm : ∀ k < m, tr.time k ≤ tr.time m := fun k hk => hrun.time_mono hk.le
   have hfm := hf _ hm hmb
   apply frameKey''_le_of_relay
-    (Compose.Growing.reachable_at' hrun hi hx hbi)
-    (Compose.Growing.reachable_at' hrun hm hz hbm)
+    (Compose.Growing.reachable_at hrun hi hx hbi)
+    (Compose.Growing.reachable_at hrun hm hz hbm)
     (Coherence.honestBlocksAt_coherent hrun hnc)
-    (Compose.Growing.tree_held_at' hi hx hbi) (Compose.Growing.tree_held_at' hm hz hbm) hfm
+    (Compose.Growing.tree_held_at hi hx hbi) (Compose.Growing.tree_held_at hm hz hbm) hfm
   · exact fun a b ha hb hav => Shadow.held_atts_safe_at hrun hnc hm hbm hz hi hbi hx
       le_rfl him a b ha hb hav
-  · exact fun _ _ h hC => store_anc_of_honest_anc_at' hrun hnc hm hbm hz h hC
+  · exact fun _ _ h hC => store_anc_of_honest_anc_at hrun hnc hm hbm hz h hC
   · intro B hB hh
     exact held_of_relay_le_at_from hrun hnc hsvc hcatch hi hx hz
       (by simpa only [max_eq_right him] using hfm) hB hh hbi hcall hcm
@@ -374,10 +374,10 @@ theorem J_eq_of_hj_eq_obs
   have hbi : ∀ k < i, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono hk.le
   have hbm : ∀ k < m, tr.time k ≤ tr.time m := fun k hk => hrun.time_mono hk.le
   exact Store.J_eq_of_cache_hj_eq_of_safe_with Store.finalitySpec_updateFinality
-    (Compose.Growing.reachable_at' hrun hi hy hbi).reachableWith
-    (Compose.Growing.reachable_at' hrun hm hz hbm).reachableWith
+    (Compose.Growing.reachable_at hrun hi hy hbi).reachableWith
+    (Compose.Growing.reachable_at hrun hm hz hbm).reachableWith
     (Coherence.honestBlocksAt_coherent hrun hnc)
-    (Compose.Growing.tree_held_at' hi hy hbi) (Compose.Growing.tree_held_at' hm hz hbm) hf
+    (Compose.Growing.tree_held_at hi hy hbi) (Compose.Growing.tree_held_at hm hz hbm) hf
     (fun a b ha hb hav => Shadow.held_atts_safe_at hrun hnc hi hbi hy hm hbm hz
       (le_max_left _ _) (le_max_right _ _) a b ha hb hav) he
 
@@ -438,7 +438,7 @@ theorem _root_.Consensus.Goldilocks.Healing.PU.service_syncACAt
       change tr.time k < tr.deadline y k (tr.time i) sp.Δ
       simpa only [he] using h3
   · intro x i B hx hacc hai _ y j ell hy hcj hdl hanc
-    apply Consensus.Goldilocks.Growing.LocalRun.acRelayAt' hrun.toLocalRun
+    apply Consensus.Goldilocks.Growing.LocalRun.acRelayAt hrun.toLocalRun
       (σ := tr.time i) hx hacc hy hcj hanc
     intro k hki hx' hk hj hF
     have hgi : g ≤ tr.time k := hki ▸ hg.trans hai
@@ -493,7 +493,7 @@ theorem CommitteeHalfUpTo.healthy_base_before_at' {K : AC.CommitteeDict sp.n}
     AC.CommitteeTAt.upTo hrun.antitone (hK.facts.committeeTAt' hrun hnc) d,
     fun s hgs hsd => hK.cs2 s hgs (hsd.trans hdb) d hd0 hdb⟩
   · -- Shadow driven execution (proposal and acceptance run laws).
-    have hdr := projection_driven_of_run' hpre (hnc.upTo d) hpre.genesis_root_ok
+    have hdr := projection_driven_of_run hpre (hnc.upTo d) hpre.genesis_root_ok
     rwa [RunTrace.upTo_projAC] at hdr
   · -- Restrict actual service witnesses to the read prefix.
     have hm := hrun.time_mono
@@ -527,7 +527,7 @@ theorem CommitteeHalfUpTo.healthy_base_before_at' {K : AC.CommitteeDict sp.n}
     rw [RunTrace.upTo_projAC] at ha hj ⊢
     obtain ⟨hid, ha'⟩ := ACTrace.upTo_acceptAt.mp ha
     obtain ⟨_, hj'⟩ := (Trace.upTo_callAt _).mp hj
-    obtain ⟨k, hkj, hak, hkt⟩ := hrun.toLocalRun.acCatchAt' hc
+    obtain ⟨k, hkj, hak, hkt⟩ := hrun.toLocalRun.acCatchAt hc
       (hrun.antitone hid hx) ha' hi (hrun.antitone hjd hy) hj' ht
       (hF.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono hd0))
     exact ⟨k, hkj,

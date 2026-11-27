@@ -154,7 +154,7 @@ theorem rise_reset_rounds_within_at
       simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
     have hz0 : z ∈ H (tr.time kP) := hrun.antitone (by rw [htP]; linarith) hz
     have hPm := proposal_mem_at hrun hnc hz0 hP
-    have hσ := σ_eq_honest_at' hrun hnc (hrun.time_nonneg kP)
+    have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg kP)
       (fun q hq => hrun.time_mono (by omega)) hz0 (hrun.time_nonneg kX)
       (fun q hq => hrun.time_mono (by omega)) hpx0 hPm hPX
     rw [← hσ] at hcross

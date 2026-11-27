@@ -36,7 +36,7 @@ theorem accept_of_proposesAt {ini : Fin sp.n → (goldilocksNode sp ro).State}
   · rw [RunTrace.groupAt_iff] at hg
     exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   have hreq := Compose.requirements_from sp ro (hrun.vstart p)
-  obtain ⟨hacc, -⟩ := Healing.own_block_accepted' h hreq hrun.genesis_root_ok hnc hp hg hpr hdp
+  obtain ⟨hacc, -⟩ := Healing.own_block_accepted h hreq hrun.genesis_root_ok hnc hp hg hpr hdp
   have he := hc.2.symm.trans hacc.2
   simp only [Option.some.injEq, Cut.fg.injEq, FGLabel.block.injEq] at he
   obtain rfl := he.2
@@ -58,8 +58,8 @@ theorem honestProposalRun_of_proposesAt {ini} (hrun : GoldilocksRun proposer dg 
     exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   have hreq := Compose.requirements_from sp ro (hrun.vstart (proposer s))
   obtain ⟨hc1, ht1, hst1⟩ := tick_proposal_call h hp hg hpr
-  obtain ⟨hacc, ht2⟩ := Healing.own_block_accepted' h hreq hrun.genesis_root_ok hnc hp hg hpr hdp
-  obtain ⟨hacc3, ht3, -⟩ := Healing.ac_block_after' h hp hacc
+  obtain ⟨hacc, ht2⟩ := Healing.own_block_accepted h hreq hrun.genesis_root_ok hnc hp hg hpr hdp
+  obtain ⟨hacc3, ht3, -⟩ := Healing.ac_block_after h hp hacc
   simp only [Node.acProposal_eq] at hc1
   simp only [Node.acProposal_eq, Node.tickStep_eq, Node.acCall_eq] at hacc3
   have hts : tr.time (j + 2) = sp.ts s := by

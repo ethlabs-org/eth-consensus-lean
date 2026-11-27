@@ -103,13 +103,13 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
       B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   have ht := hp.run.time_nonneg i
   have hle : ∀ c < i, tr.time c ≤ tr.time i := fun _ hc => hp.run.time_mono hc.le
-  have hR := Compose.Growing.reachable_at' hp.run ht hy hle
+  have hR := Compose.Growing.reachable_at hp.run ht hy hle
   have hs := hR.puSnapshot
   have hr := hR.reachableWith
   have hu := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   have hU := Coherence.honestBlocksAt_coherent hp.run hp.noColl
   have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocksAt H :=
-    Compose.Growing.tree_held_at' ht hy hle
+    Compose.Growing.tree_held_at ht hy hle
   have hanc : ∀ {X Y : AC.Blk sp.n (List (FG.Att sp.n))}, Anc (tr.HonestBlocksAt H) X Y →
       Y ∈ (tr.state y i).fg.tree → (tr.state y i).fg.Anc X Y :=
     fun h hY => Coherence.held_anc_at hp.run hp.noColl ht hy hle h hY
@@ -126,7 +126,7 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
       Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F O →
       ∃ W ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
         Anc (tr.HonestBlocksAt H) O W := fun ho hrb' hl hFO =>
-    KernelProof.high_origin_frozen_head_at' hp ho hrb' hy hcast hl (hFe ▸ hFO)
+    KernelProof.high_origin_frozen_head_at hp ho hrb' hy hcast hl (hFe ▸ hFO)
   -- the reduction: `B ⪯ Σ.F`, or `Σ.F ⪯ B` with a P-U viable frozen block above `B`
   suffices key : Anc (tr.HonestBlocksAt H) B (tr.state y i).fg.F ∨
       (Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F B ∧

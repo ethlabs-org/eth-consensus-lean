@@ -33,7 +33,7 @@ variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
 /-- The frame of every honest state is a frame inside the honest blocks. -/
 private theorem frameIn_state (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) (k : Nat) : A.FrameIn (tr.HonestBlocks H) (frame (tr.state y k)) := by
-  refine ⟨frameOK_state' h hy k, fun X hX => ⟨y, hy, k, ?_⟩⟩
+  refine ⟨frameOK_state h hy k, fun X hX => ⟨y, hy, k, ?_⟩⟩
   rw [frame_eq, Store.toFrame_tree] at hX
   exact hX.1
 
@@ -264,7 +264,7 @@ theorem pool_vote_emitted' (hrun : GoldilocksRun proposer dg H tr ini)
       simp [RunTrace.projAC, hrun.init y hy, Node.initWith, (hrun.vstart y).pool] at hv
     · rw [tr.projAC.state_of_lastCall hc hk hn] at hv
       have hlaw := (Node.cutStep_ac _ _ _ _ _).1 (hrun.cutLaw y hy k _ (projAC_callAt.mp hc))
-      have hΦ : FrameOK ℓ.frame := hlaw.1 ▸ frameOK_state' hrun.toLocalRun hy k
+      have hΦ : FrameOK ℓ.frame := hlaw.1 ▸ frameOK_state hrun.toLocalRun hy k
       have hex := hlaw.2.1
       rw [← projAC_state hrun.toLocalRun hy] at hex
       by_cases hr : ℓ.call = .restart

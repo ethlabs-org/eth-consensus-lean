@@ -177,7 +177,7 @@ private theorem own_accept (hq : ∀ y ∈ H, ({ A with initial := ini y } : Nod
   obtain rfl : j + 2 = i := by
     by_contra hne
     have hnew := (Coherence.accept_facts h hy hc).2.2.1
-    have := Coherence.tree_mono' h hy (show j + 2 + 1 ≤ i by omega) hfgB
+    have := Coherence.tree_mono h hy (show j + 2 + 1 ≤ i by omega) hfgB
     change (tr.state y i).fg.blocks B.root = some B at this
     rw [hnew] at this
     cases this

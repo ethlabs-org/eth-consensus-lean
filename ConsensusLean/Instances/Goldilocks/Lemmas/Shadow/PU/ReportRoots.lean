@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.HighOriginSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LowFinalized
@@ -31,43 +32,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time} {hold : Time}
   {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-
-/-- A high descendant cannot be held before the snapshot by a holder still honest there
-(`ProposalImpl.cutZ_lt_of_anc_at`). -/
-theorem ProposalImpl.cutZ_lt_of_anc_at'
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) {z : Fin sp.n} {k : Nat}
-    (hz : z ∈ H (max (tr.time k) (cutZ sp.toParams g)))
-    {W : AC.Blk sp.n (List (FG.Att sp.n))} (hW : W ∈ (tr.state z k).fg.tree)
-    (hBW : Anc (tr.HonestBlocksAt H) B W) :
-    cutZ sp.toParams g < tr.time k := by
-  classical
-  by_contra h
-  have hkZ : tr.time k ≤ cutZ sp.toParams g := not_lt.mp h
-  have hzZ : z ∈ H (cutZ sp.toParams g) := by
-    rwa [max_eq_right hkZ] at hz
-  have hZ0 : 0 ≤ cutZ sp.toParams g := (hp.run.time_nonneg k).trans hkZ
-  have hle : ∀ q < k, tr.time q ≤ cutZ sp.toParams g :=
-    fun _ hq => (hp.run.time_mono hq.le).trans hkZ
-  have hhigh := Outcome.high_of_anc_at' hp.run hp.noColl ho hZ0 hle hzZ hW hBW
-  obtain ⟨c, hc, _⟩ := hp.snapshot
-  have hkc : k ≤ c := by
-    by_contra hn
-    exact (not_lt_of_ge hkZ) (hc.2.trans_le (hp.run.time_mono (by omega)))
-  have hWc := Compose.Growing.tree_mono_at' hp.run hZ0 hzZ hc.1 hkc hW
-  have hs := σ_eq_honest_at' hp.run hp.noColl hZ0 hle hzZ hZ0 hc.1 hzZ hW hWc
-  have hbnd := (cache_invariants_with finalitySpec_updateFinality
-    (Compose.Growing.reachable_at' hp.run hZ0 hzZ hc.1).reachableWith).2.2.2.2.1 W hWc
-  have hmax : (tr.state z c).fg.hmax ≤ HZ tr H g := by
-    refine le_csSup (((Set.finite_range fun v => (tr.state v c).fg.hmax).subset ?_).bddAbove)
-      ⟨z, hzZ, c, hc, rfl⟩
-    rintro _ ⟨v, _, c', hc', rfl⟩
-    obtain rfl := hc'.unique hc
-    exact ⟨v, rfl⟩
-  rw [← hs] at hbnd
-  omega
-
 
 section Static
 
@@ -171,44 +135,6 @@ theorem cache_ahead_report {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 end Static
 
-/-- **A cache strictly ahead of a held target is backed by an earlier report**, at a strictly
-higher height, of a validator honest at the reading cut (`cache_ahead_report_at`). -/
-theorem cache_ahead_report_at' {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    (hf : (H (tr.time i))ᶜ.ncard < sp.toParams.fg.q)
-    {P X : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hX : X = (tr.state y i).fg.F ∨ X = (tr.state y i).fg.J)
-    (hP : P ∈ (tr.state y i).fg.tree)
-    (hPX : Anc (tr.HonestBlocksAt H) P X) (hne : P ≠ X) :
-    ∃ v, v ∈ H (tr.time i) ∧ ∃ j < i, ∃ k < i, ∃ att : FG.Att sp.n, ∃ ℓ C,
-      tr.SignAt v k att ∧ k = j + 1 ∧ tr.time j = tr.time k ∧ tr.time j ≤ tr.time i ∧
-      AC.ToFGAt tr.projAC v j ℓ C ∧ att.T = X.root ∧
-      X ∈ (tr.state v j).fg.tree ∧ Anc (tr.HonestBlocksAt H) X C ∧
-      ((tr.state v j).fg.σ C.root).Th = X.root ∧
-      ((tr.state v j).fg.σ C.root).h = ((tr.state y i).fg.σ X.root).h ∧
-      ((tr.state y i).fg.σ P.root).h < ((tr.state y i).fg.σ X.root).h := by
-  have hm := hrun.time_mono
-  have hd := hrun.time_nonneg i
-  have hst : ∀ z k, k ≤ i → (tr.upTo (tr.time i)).state z k = tr.state z k :=
-    fun z k hk => RunTrace.upTo_state_of_le hm (hm hk)
-  have hR := Compose.Growing.reachable_at' hrun hd hy (fun _ hk => hrun.time_mono hk.le)
-  have hXt : X ∈ (tr.state y i).fg.tree := by
-    rcases hX with rfl | rfl
-    · exact (cache_invariants_with finalitySpec_updateFinality hR.reachableWith).1
-    · exact (cache_invariants_with finalitySpec_updateFinality hR.reachableWith).2.1
-  have hXp : X ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) :=
-    ⟨y, hy, i, by rw [hst y i le_rfl]; exact hXt⟩
-  obtain ⟨v, hv, j, hji, k, hki, att, ℓ, C, hs, hkj, hjk, hjt, hto, haT, hXv, hXC, hTh, hCh,
-      hPh⟩ := cache_ahead_report (hrun.upTo hd) (hnc.upTo _) hf hy (X := X) (P := P)
-    (by rw [hst y i le_rfl]; exact hX) (by rw [hst y i le_rfl]; exact hP)
-    (RunTrace.anc_upTo_of_right' hrun hnc hd hXp hPX) hne
-  rw [hst v j hji.le] at hXv hTh hCh
-  rw [hst y i le_rfl] at hCh hPh
-  exact ⟨v, hv, j, hji, k, hki, att, ℓ, C, ((RunTrace.upTo_signAt tr).mp hs).2, hkj, hjk, hjt,
-    (toFGAt_upTo_iff hm (hm hji.le)).mp hto, haT, hXv,
-    hXC.mono (RunTrace.honestBlocks_upTo_subset hm hd), hTh, hCh, hPh⟩
-
 /-- A cut of a node honest at it, with a low justified height and a held high seed, has its
 finalized-chain root compatible with every held block compatible with the seed
 (`low_root_of_held_seed_at`). The root is the store's analysis `fcRoot`. -/
@@ -228,7 +154,7 @@ theorem ResetPremisesUpTo.low_analysis_root_of_held_seed_at
   have hU := Coherence.honestBlocksAt_coherent hrun hnc
   have hi0 := hrun.time_nonneg i
   have hlei : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
-  have hreach := (Compose.Growing.reachable_at' hrun hi0 hy hlei).reachableWith
+  have hreach := (Compose.Growing.reachable_at hrun hi0 hy hlei).reachableWith
   have hFS := hp.low_finalized_below_origin_at hi0 hlei hy hib hlow hS hqb
   have hSh := Outcome.high_of_anc_at' hrun hnc hS hi0 hlei hy hSy .refl
   have hJ : ∀ D ∈ (tr.state y i).fg.tree,
@@ -243,7 +169,7 @@ theorem ResetPremisesUpTo.low_analysis_root_of_held_seed_at
     have hJD : (tr.state y i).fg.Anc (tr.state y i).fg.J D := by
       by_contra hn
       exact hnc ⟨htop, D, hD,
-        store_anc_of_honest_anc_at' hrun hp.noColl hi0 hlei hy hFD hD, hDm, hn⟩
+        store_anc_of_honest_anc_at hrun hp.noColl hi0 hlei hy hFD hD, hDm, hn⟩
     exact hJD.mono fun X hX => ⟨y, i, tr.time i, hi0, hlei, hy, hX⟩
   unfold Store.fcRoot
   split_ifs with hactive

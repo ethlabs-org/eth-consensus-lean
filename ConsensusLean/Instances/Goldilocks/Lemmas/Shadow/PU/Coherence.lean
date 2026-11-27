@@ -407,7 +407,7 @@ theorem fg_step (h : LocalRun proposer dg H sg tr ini) {y : Fin P.n}
   · rw [Trace.state_succ_of_not _ fun c hc' => hc ⟨c, hc'⟩]
     exact Or.inl rfl
 
-theorem tree_mono' (h : LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+theorem tree_mono (h : LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
     {k i : Nat} (hki : k ≤ i) : (tr.state y k).fg.tree ⊆ (tr.state y i).fg.tree := by
   induction i, hki using Nat.le_induction with
   | base => exact subset_rfl
@@ -541,7 +541,7 @@ theorem honest_blocks_coherent (h : LocalRun proposer dg H sg tr ini)
   cases Option.some.inj hpar
   obtain rfl : Z = Y := tree_root_inj h hnc hy hy' hZt hY hZr
   exact (Store.accepted_tree_with Store.finalitySpec_updateFinality
-    (Node.fg_reachable_at h hy i).reachableWith).2.1.2 Z (tree_mono' h hy hki.le hZt) X hX hp
+    (Node.fg_reachable_at h hy i).reachableWith).2.1.2 Z (tree_mono h hy hki.le hZt) X hX hp
 
 theorem store_anc_of_honest_anc (h : LocalRun proposer dg H sg tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin P.n} (hy : y ∈ H) {k : Nat} {B C : A.Blk}
@@ -665,7 +665,7 @@ theorem honest_blocks_coherent_at
   obtain rfl : Z = Y := held_root_inj h hnc hZH hY hZr
   exact (Store.accepted_tree_with Store.finalitySpec_updateFinality
     (Node.fg_reachable_at hr hy i).reachableWith).2.1.2 Z
-    (tree_mono' hr hy hki.le hZt) X hXi hp
+    (tree_mono hr hy hki.le hZt) X hXi hp
 
 theorem honestBlocksAt_coherent
     (h : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)

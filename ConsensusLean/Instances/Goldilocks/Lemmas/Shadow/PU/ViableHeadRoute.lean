@@ -140,7 +140,7 @@ theorem FrameWindow.viableHead_persists_stock {lo hi : Time} {floor : Nat}
   obtain ⟨hQa, -, hva⟩ := hv
   set sa := (tr.state y a).fg with hsa
   set si := (tr.state y i).fg with hsi
-  have hQi : Q ∈ si.tree := Compose.tree_mono' hrun.toLocalRun hy hai hQa
+  have hQi : Q ∈ si.tree := Compose.tree_mono hrun.toLocalRun hy hai hQa
   have hsub : si.tree ⊆ tr.HonestBlocks H := fun B hB => ⟨y, hy, i, hB⟩
   have hRa := Node.fg_reachable_at hrun.toLocalRun hy a
   have hRi := Node.fg_reachable_at hrun.toLocalRun hy i
@@ -190,7 +190,7 @@ theorem FrameWindow.viableHead_persists_stock {lo hi : Time} {floor : Nat}
     exact ⟨g1, g2, (hframe.root_eq y hy i (halo.trans htime) hihi hk).trans
       (hframe.root_eq y hy a halo (htime.trans hihi) hk).symm⟩
   have hJmono : sa.Anc sa.J Q → si.Anc sa.J Q :=
-    fun h => h.mono (Compose.tree_mono' hrun.toLocalRun hy hai)
+    fun h => h.mono (Compose.tree_mono hrun.toLocalRun hy hai)
   have hkJ : kindJ → si.J = J := fun hk => hframe.root_eq y hy i (halo.trans htime) hihi hk
   have hJH : si.Anc si.J Q → kindJ → Anc (tr.HonestBlocks H) J Q :=
     fun h hk => hkJ hk ▸ h.mono hsub
@@ -329,7 +329,7 @@ theorem FrameWindow.root_witness_stock {lo hi g : Time} {floor : Nat}
       (Node.fg_reachable_at hrun.toLocalRun hy i).reachableWith
       (Coherence.honest_blocks_coherent hrun.toLocalRun hnc).1
       (fun _ hB => ⟨y, hy, a, hB⟩) (fun _ hB => ⟨y, hy, i, hB⟩) hQ
-      (Compose.tree_mono' hrun.toLocalRun hy hai hQ)).symm
+      (Compose.tree_mono hrun.toLocalRun hy hai hQ)).symm
   have hhσ : ((tr.state y i).fg.σ Q.root).h = ((tr.state y a).fg.σ Q.root).h := by rw [hσ]
   rcases hframe.viableHead_persists_stock hrun hnc hf hy hai halo hihi ha hv₀ with
     ⟨⟨hQi, hrooti, hvi⟩, ⟨hfl, hk⟩ | ⟨hlow, -⟩⟩ | ⟨hca, hma, hQf, -⟩

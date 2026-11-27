@@ -693,7 +693,7 @@ theorem rounds_le_warm_proposal_at {proposer : Nat → Fin sp.n}
   have hkey := hK z kP hzk (ht ▸ hlo) (ht ▸ hhi)
   have hle : ∀ q < kP, tr.time q ≤ tr.time kP := fun q hq => hrun.time_mono hq.le
   have hpos := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
-    (Compose.Growing.reachable_at' hrun (hrun.time_nonneg kP) hzk hle).reachableWith
+    (Compose.Growing.reachable_at hrun (hrun.time_nonneg kP) hzk hle).reachableWith
   have hfloor := Healing.le_floor_add_riseRounds (tr.state z kP).fg (by omega)
     (HZ := Healing.Growing.HZ tr H g) (by rw [hkey]; exact hv)
   rw [hkey, hwin.floor_eq z kP hzk (ht ▸ hlo) (ht ▸ hhi)] at hfloor

@@ -94,7 +94,7 @@ private theorem relayed_accept_before_at
     intro he
     subst a
     cases Option.some.inj (ha.2.symm.trans (Compose.projAC_callAt.mp hcy).2)
-  · obtain ⟨a, hlt, hacc, hat⟩ := hrun.toLocalRun.fgCatchAt' hcatch hxk ha
+  · obtain ⟨a, hlt, hacc, hat⟩ := hrun.toLocalRun.fgCatchAt hcatch hxk ha
       (not_le.mp hnew) hy hg hF
     exact ⟨a, hlt, hacc, lt_max_of_lt_right hat⟩
 
@@ -148,12 +148,12 @@ theorem frame_relay_before_at
     (hFstate ▸ hF)
   have ha' : (tr.upTo (tr.time j)).AcceptAt y a B :=
     (RunTrace.upTo_acceptAt _).mpr ⟨hrun.time_mono haj.le, ha⟩
-  obtain ⟨hacc, _, _⟩ := Healing.ac_block_after' hp.toLocalRun hy ha'
+  obtain ⟨hacc, _, _⟩ := Healing.ac_block_after hp.toLocalRun hy ha'
   have hBF : Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) elly.frame.F B := by
     obtain ⟨ella, hca, hba⟩ := hacc
     have ht := (AC.frameIn_of_callAt hac.localRun hy hca).2
       ((AC.accept_new sp hac.localRun hy ⟨ella, hca, hba⟩).1 ella hca)
-    exact RunTrace.anc_upTo_of_right' hrun hnc hd ht hF
+    exact RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd ht hF
   exact AC.mem_tree_of_acceptAtU sp hac.localRun.toU hy hacc (by omega) hc' hBF
 
 /-- An early frame witness has a pre-freeze stamp at a later honest cast
@@ -219,12 +219,12 @@ theorem frame_witness_readPoint_stamp_at
         rw [max_eq_left hnew, Compose.projAC_deadline] at hdead
         rw [max_eq_left ((AC.le_gbar g).trans hnew)] at hqd
         exact ⟨q, hqi', hq, by rw [hfz]; linarith only [hqd, hdead, hkt]⟩
-      · obtain ⟨q, hq, hacc, hqt⟩ := hrun.toLocalRun.fgCatchAt' hcatch hxk hk
+      · obtain ⟨q, hq, hacc, hqt⟩ := hrun.toLocalRun.fgCatchAt hcatch hxk hk
           (not_le.mp hnew) hy (by linarith only [hm, hti, hts, sp.toParams.hΔ]) (hfr ▸ hFQ)
         exact ⟨q, hq, hacc, by rw [hfz]; linarith only [hqt, hm, sp.toParams.hΔ]⟩
     obtain ⟨q, hqi, hq, hqt⟩ := accepted
     have hq' := (RunTrace.upTo_acceptAt (tr := tr)).mpr ⟨hrun.time_mono hqi.le, hq⟩
-    obtain ⟨hqa, htq, _⟩ := Healing.ac_block_after' hp.toLocalRun hy hq'
+    obtain ⟨hqa, htq, _⟩ := Healing.ac_block_after hp.toLocalRun hy hq'
     exact Or.inr ⟨q + 1, by rwa [RunTrace.upTo_projAC] at hqa,
       by change tr.time (q + 1) < _; rw [show tr.time (q + 1) = tr.time q from htq]; exact hqt⟩
   refine ⟨?_, ?_⟩
@@ -267,13 +267,13 @@ theorem finalized_anc_obs'
     (hlt : ((tr.state y m).fg.σ X.root).hF < ((tr.state x i).fg.σ W.root).h) :
     Anc (tr.HonestBlocksAt H) F W :=
   (Store.finalized_anc_of_safe_with Store.finalitySpec_updateFinality
-    (Compose.Growing.reachable_at' hrun hu hy hytime).reachableWith
-    (Compose.Growing.reachable_at' hrun ht hx hxtime).reachableWith
+    (Compose.Growing.reachable_at hrun hu hy hytime).reachableWith
+    (Compose.Growing.reachable_at hrun ht hx hxtime).reachableWith
     (Coherence.honest_blocks_coherent_at hrun hnc)
-    (Compose.Growing.tree_held_at' hu hy hytime) (Compose.Growing.tree_held_at' ht hx hxtime) hf
+    (Compose.Growing.tree_held_at hu hy hytime) (Compose.Growing.tree_held_at ht hx hxtime) hf
     (Consensus.Goldilocks.Healing.Growing.Shadow.held_atts_safe_at hrun hnc hu hytime hy ht
       hxtime hx (le_max_left _ _) (le_max_right _ _))
-    hX hFt hFr hW hlt).mono (Compose.Growing.tree_held_at' ht hx hxtime)
+    hX hFt hFr hW hlt).mono (Compose.Growing.tree_held_at ht hx hxtime)
 
 /-- **The finalized tip of an honest observation is below every held block strictly above its
 justified height** (the quorum branch of `finalized_below_floor_held_at`, read off the justified
@@ -290,10 +290,10 @@ theorem finalized_below_of_hj_lt_at
   have hb : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
   have htm := hrun.time_nonneg m
   have hbm : ∀ q < m, tr.time q ≤ tr.time m := fun q hq => hrun.time_mono hq.le
-  have hr := Compose.Growing.reachable_at' hrun ht hy hb
-  have hrz := Compose.Growing.reachable_at' hrun htm hz hbm
+  have hr := Compose.Growing.reachable_at hrun ht hy hb
+  have hrz := Compose.Growing.reachable_at hrun htm hz hbm
   have hU := Coherence.honest_blocks_coherent_at hrun hnc
-  have hsub := Compose.Growing.tree_held_at' ht hy hb
+  have hsub := Compose.Growing.tree_held_at ht hy hb
   have hcoh := hU.mono hsub
   obtain ⟨hF, hJm, hFJ, ⟨Bj, hBj, hBjJ, _⟩, hmax, -, X, hX, hXF⟩ := Store.cache_invariants' hr
   have hg := Store.genesis_mem_with Store.finalitySpec_updateFinality hr.reachableWith
@@ -301,7 +301,7 @@ theorem finalized_below_of_hj_lt_at
       Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F W := fun he => by
     rw [hcoh.1 hF hg he]
     exact ((Store.accepted_tree_with Store.finalitySpec_updateFinality
-      hrz.reachableWith).2.2.2 W hW).mono (Compose.Growing.tree_held_at' htm hz hbm)
+      hrz.reachableWith).2.2.2 W hW).mono (Compose.Growing.tree_held_at htm hz hbm)
   rcases Store.fin_pair_entry_with Store.finalitySpec_updateFinality hr.reachableWith hX with
     he | ⟨E, hE, hEr, _⟩
   · exact hgen (hXF.symm.trans he)
@@ -332,11 +332,11 @@ theorem le_height_of_honest_ancestor_at
     n ≤ ((tr.state x i).fg.σ W.root).h := by
   have hti := hrun.time_nonneg i
   have hbi : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
-  have hXt := mem_of_honest_anc_at' hrun hnc hti hbi hx hXW hW
-  have ha := store_anc_of_honest_anc_at' hrun hnc hti hbi hx hXW hW
+  have hXt := mem_of_honest_anc_at hrun hnc hti hbi hx hXW hW
+  have ha := store_anc_of_honest_anc_at hrun hnc hti hbi hx hXW hW
   have hle := Store.h_le_of_store_anc_with Store.finalitySpec_updateFinality
-    (Compose.Growing.reachable_at' hrun hti hx hbi).reachableWith ha
-  rw [← σ_eq_honest_at' hrun hnc (hrun.time_nonneg c)
+    (Compose.Growing.reachable_at hrun hti hx hbi).reachableWith ha
+  rw [← σ_eq_honest_at hrun hnc (hrun.time_nonneg c)
     (fun q hq => hrun.time_mono hq.le) hz hti hbi hx hX hXt] at hle
   exact hh.trans hle
 
@@ -372,13 +372,13 @@ theorem FrameWindow'.finalized_below_descendant_at {lo hi : Time} {M : Nat}
   have hM := hframe.M_eq y j hy hjlo hjhi
   have htop := hframe.top_iff y j hy hjlo hjhi
   have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
-    (Compose.Growing.reachable_at' hrun hjt hy hbj).reachableWith
+    (Compose.Growing.reachable_at hrun hjt hy hbj).reachableWith
   by_cases hcase : isTop ∧ ((tr.state z c).fg.σ X.root).h = M - 1
   · obtain ⟨ht, he⟩ := hcase
     have hJX := hwit.2 ht he
-    have hFJ := (Store.cache_invariants' (Compose.Growing.reachable_at' hrun hjt hy hbj)).2.2.1
+    have hFJ := (Store.cache_invariants' (Compose.Growing.reachable_at hrun hjt hy hbj)).2.2.1
     rw [hframe.root_eq y j hy hjlo hjhi ht] at hFJ
-    exact (hFJ.mono (Compose.Growing.tree_held_at' hjt hy hbj)).trans (hJX.trans hXW)
+    exact (hFJ.mono (Compose.Growing.tree_held_at hjt hy hbj)).trans (hJX.trans hXW)
   · have hWh := Growing.le_height_of_honest_ancestor_at hrun hnc hx hz hX le_rfl hW hXW
     refine Growing.finalized_below_of_hj_lt_at hrun hnc hy hx hf hW ?_
     by_cases ht : isTop
@@ -416,13 +416,13 @@ theorem witness_frame_of_held
   rcases AC.anc_total hU hFQ hXQ with hFX | hXF
   swap
   · exact Or.inl (by rwa [Node.frame_eq, Store.toFrame_F])
-  have hΦ := Compose.Growing.frameOK_at' hrun ht hy hb
+  have hΦ := Compose.Growing.frameOK_at hrun ht hy hb
   have hsub : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocksAt H := by
     rw [Node.frame_eq, Store.toFrame_tree]
     exact fun _ h => ⟨y, i, tr.time i, ht, hb, hy, h.1⟩
-  have hXy := Growing.mem_of_honest_anc_at' hrun hnc ht hb hy hXQ hQy
-  have hFXs := Growing.store_anc_of_honest_anc_at' hrun hnc ht hb hy hFX hXy
-  have hFQs := Growing.store_anc_of_honest_anc_at' hrun hnc ht hb hy (hFX.trans hXQ) hQy
+  have hXy := Growing.mem_of_honest_anc_at hrun hnc ht hb hy hXQ hQy
+  have hFXs := Growing.store_anc_of_honest_anc_at hrun hnc ht hb hy hFX hXy
+  have hFQs := Growing.store_anc_of_honest_anc_at hrun hnc ht hb hy (hFX.trans hXQ) hQy
   have hXt : X ∈ (Node.frame (tr.state y i)).tree := by
     rw [Node.frame_eq, Store.toFrame_tree]; exact ⟨hXy, hFXs⟩
   have hQt : Q ∈ (Node.frame (tr.state y i)).tree := by
@@ -452,7 +452,7 @@ private theorem isViable_of_frameWindow
     (tr.state y i).fg.IsViable Q := by
   have ht := hrun.time_nonneg i
   have hb : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hrun.time_mono hq.le
-  have hr := Compose.Growing.reachable_at' hrun ht hy hb
+  have hr := Compose.Growing.reachable_at hrun ht hy hb
   rw [Store.isViable_iff, hframe.M_eq y i hy hlo hhi]
   have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
     hr.reachableWith
@@ -463,7 +463,7 @@ private theorem isViable_of_frameWindow
     refine Or.inr ⟨by omega, ?_⟩
     by_cases ht' : isTop
     · right
-      have hJQ := Growing.store_anc_of_honest_anc_at' hrun hnc ht hb hy (hwit.2 ht' he) hQy
+      have hJQ := Growing.store_anc_of_honest_anc_at hrun hnc ht hb hy (hwit.2 ht' he) hQy
       rwa [hframe.root_eq y i hy hlo hhi ht']
     · left
       have := mt htop.1 ht'
@@ -524,7 +524,7 @@ theorem windowWitness_of_frameWindow
   refine ⟨fun y j hy hlo hhi hm hQy => ?_⟩
   have hwy : M - 1 ≤ ((tr.state y j).fg.σ Q.root).h ∧
       (isTop → ((tr.state y j).fg.σ Q.root).h = M - 1 → Anc (tr.HonestBlocksAt H) J Q) := by
-    rwa [← Growing.σ_eq_honest_at' hrun hnc (hrun.time_nonneg c)
+    rwa [← Growing.σ_eq_honest_at hrun hnc (hrun.time_nonneg c)
       (fun _ hq => hrun.time_mono hq.le) hz (hrun.time_nonneg j)
       (fun _ hq => hrun.time_mono hq.le) hy hQ hQy]
   exact ⟨hframe.finalized_below_descendant_at hrun hnc hy hy hy (by rwa [max_self]) hlo hhi
@@ -577,7 +577,7 @@ private theorem narrow_vote
   have hHdU := (AC.frameIn_of_callAt hr hx hc.1).2 hHd
   obtain ⟨W, hW, hWr, hBW⟩ := hext
   obtain rfl : W = Hd := hU.1 hW (subU hHdU) (hWr.trans hHdr.symm)
-  exact ⟨W, hHdU, hWr, RunTrace.anc_upTo_of_right' hrun hnc hd hHdU hBW⟩
+  exact ⟨W, hHdU, hWr, RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd hHdU hBW⟩
 
 /-- The witness clause carries to another honest holder of the witness (`witness_height`). -/
 private theorem witness_clause_at
@@ -590,7 +590,7 @@ private theorem witness_clause_at
       (isTop → ((tr.state z c).fg.σ Q.root).h = M - 1 → Anc (tr.HonestBlocksAt H) J Q)) :
     M - 1 ≤ ((tr.state y i).fg.σ Q.root).h ∧
       (isTop → ((tr.state y i).fg.σ Q.root).h = M - 1 → Anc (tr.HonestBlocksAt H) J Q) := by
-  rwa [← Healing.Growing.σ_eq_honest_at' hrun hnc (hrun.time_nonneg c)
+  rwa [← Healing.Growing.σ_eq_honest_at hrun hnc (hrun.time_nonneg c)
     (fun _ hq => hrun.time_mono hq.le) hz (hrun.time_nonneg i)
     (fun _ hq => hrun.time_mono hq.le) hy hQ hQy]
 
@@ -673,7 +673,7 @@ theorem unanimous_next_votes_of_windowWitness_at {K : AC.CommitteeDict sp.n}
     intro x hx k ev hv' hs' B hB hBr
     obtain ⟨W, hW, hWr, hXW⟩ := hG' x hx k ev hv' hs'
     obtain rfl : B = W := hr.coherent.1 hB hW (hBr.trans hWr.symm)
-    exact RunTrace.anc_upTo_of_right' hrun hnc ht0 hB (hFX.trans (hXW.mono subU))
+    exact RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 hB (hFX.trans (hXW.mono subU))
   have hrestart : ∀ k, ACTrace.RestartAt (tr.projAC.upTo (tr.time i)) y k →
       tr.time k ≤ gbar g := by
     intro k hk
@@ -818,7 +818,7 @@ theorem unanimous_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
     intro x hx k ev hv' hs' B hB hBr
     obtain ⟨W, hW, hWr, hXW⟩ := hG' x hx k ev hv' hs'
     obtain rfl : B = W := hr.coherent.1 hB hW (hBr.trans hWr.symm)
-    exact RunTrace.anc_upTo_of_right' hrun hnc ht0 hB (hFX.trans (hXW.mono subU))
+    exact RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 hB (hFX.trans (hXW.mono subU))
   have hrestart : ∀ k, ACTrace.RestartAt (tr.projAC.upTo (tr.time i)) y k →
       tr.time k ≤ gbar g := by
     intro k hk
@@ -1101,7 +1101,7 @@ theorem witness_voterBlockTree_at
   have ha : AC.AcceptedBefore (tr.projAC.upTo (tr.time i)) y Q (AC.freeze sp (s + 1)) := by
     rcases frame_block_acceptance_at hrun hw hcw hQw with hg | ⟨k, hka, hwk, hk⟩
     · exact Or.inl (congrArg Block.root hg)
-    obtain ⟨hk', htk, -⟩ := Healing.ac_block_after' (hrun.upTo (hrun.time_nonneg a)).toLocalRun hw
+    obtain ⟨hk', htk, -⟩ := Healing.ac_block_after (hrun.upTo (hrun.time_nonneg a)).toLocalRun hw
       ((RunTrace.upTo_acceptAt _).mpr ⟨hrun.time_mono hka.le, hk⟩)
     rw [RunTrace.upTo_projAC] at hk'
     have hacc := (ACTrace.upTo_acceptAt.mp hk').2
@@ -1121,7 +1121,7 @@ theorem witness_voterBlockTree_at
                 change tr.projAC.deadline y i (tr.time (k + 1)) ≤ tr.time i;
                 linarith only [this, hti, hts, hΔ]) hFQ
         exact ⟨q, hqi, hq, by rw [hfz]; exact hqt.trans (hdl q hqi _ hkt)⟩
-      · obtain ⟨q, hqi, hq, hqt⟩ := hrun.toLocalRun.acCatchAt' hcatch hwk' hacc
+      · obtain ⟨q, hqi, hq, hqt⟩ := hrun.toLocalRun.acCatchAt hcatch hwk' hacc
           (lt_of_not_ge hkg) hy hc.1 (by linarith only [hm, hti, hts, hΔ]) hFQ
         exact ⟨q, hqi, hq, by rw [hfz]; linarith only [hqt, hm, hΔ]⟩
     obtain ⟨q, hqi, hq, hqt⟩ := hex
@@ -1143,7 +1143,7 @@ theorem witness_voterBlockTree_at
       have hk : ACTrace.AcceptAt (tr.projAC.upTo (tr.time i)) y k Q := ⟨ella, hca, hba⟩
       have hQp := (AC.frameIn_of_callAt hr hy hca).2 ((AC.accept_new sp hr hy hk).1 _ hca)
       exact AC.mem_tree_of_acceptAtU sp hr.toU hy hk hki hc'.1
-        (RunTrace.anc_upTo_of_right' hrun hnc ht0 hQp hFQ)
+        (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 hQp hFQ)
   have hstamp := AC.readPoint_blockStamp_lt_of_acceptedBefore hr hrun.vstart hy hc' hQt
     (by simpa only [hs] using ha)
     (fun k hk hrk => by
