@@ -795,6 +795,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportCover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.S5Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Viability
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AdmitsAtTick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttGuard
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttUnforgeable
