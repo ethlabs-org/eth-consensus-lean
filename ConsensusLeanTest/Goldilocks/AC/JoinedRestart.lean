@@ -157,8 +157,6 @@ theorem order_Φ₀ : ro1.order 10 Φ₀ = [] := by
 /-- After the restart, `restart_time = 10`. -/
 theorem c1_restartTime : c1.1.restartTime = ((10 : Time) : WithBot Time) := by
   change (acRestart sp1 ro1 v0 c0.1 Φ₀ 10).1.restartTime = _
-  unfold acRestart
-  rw [order_Φ₀]
   rfl
 
 /-- At `19` (slot `4`), the restarted node is joined: `10 ≤ t_3 = 12`. -/

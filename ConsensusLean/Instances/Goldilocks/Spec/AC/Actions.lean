@@ -132,7 +132,7 @@ is never a fast candidate, but its block (or one below it) can be a deep candida
 re-stamps every held block other than genesis at the restart time, so a node has no deep
 candidate for at least `D` slots after each restart; one that restarts more often than every `D`
 slots never has one. Genesis is excluded by its own conjunct, whatever its stamp (`−∞` in the
-initial state, kept by a restart whose replay order skips it). -/
+initial state, kept by a restart, which stamps only non-genesis roots of the tree). -/
 def toFGDeepCandidates (D : Nat) (a : Blk sp.n FGP) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : Set (Blk sp.n FGP) :=
   {B | B ∈ Φ.viableTree Φ.tree ∧ Φ.Anc B a ∧ B.root ≠ sp.genesisRoot ∧

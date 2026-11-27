@@ -886,19 +886,7 @@ theorem acOnBlock_56 {A : ACState sp.n} (h : A.restartTime = ((56 : Time) : With
 /-- **The restart keeps the locks**, for every replay order. -/
 theorem restart_locks (ro : ReplayOrder sp Unit) (A : ACState sp.n) :
     (acRestart sp ro v0 A Φ 56).1.locks = A.locks := by
-  unfold acRestart
-  dsimp only
-  suffices ∀ (l : List (Blk sp.n Unit)) (acc : ACState sp.n × List (Em sp Unit)),
-      acc.1.restartTime = ((56 : Time) : WithBot Time) →
-      (l.foldl (fun acc B => let r := acOnBlock sp v0 acc.1 Φ 56 B; (r.1, acc.2 ++ r.2))
-        acc).1.locks = acc.1.locks from this _ _ rfl
-  intro l
-  induction l with
-  | nil => exact fun _ _ => rfl
-  | cons B l ih =>
-    intro acc hacc
-    rw [List.foldl_cons, ih _ (by dsimp only; rw [(acOnBlock_56 hacc B).2, hacc])]
-    exact (acOnBlock_56 hacc B).1
+  rfl
 
 /-- The live locks at a time of slot `14 = j₀ + k`, `15` from the locks a vetoed update leaves. -/
 theorem liveLocks_at {t : Time} {L : Set Lock} (hL : ∀ l ∈ L, l.block ≤ 3) :

@@ -88,7 +88,7 @@ structure ACInterface (P : Params) (FGP : Type) where
   confirmed : State → Frame P.n FGP Payload → Time → Block P.n FGP Payload
   /-- `ac_head(𝒜, Φ, t)`: the head. -/
   head : State → Frame P.n FGP Payload → Time → Block P.n FGP Payload
-  /-- `ac_restart(𝒜, Φ, t)` at validator `self`, with the emissions of its replay. -/
+  /-- `ac_restart(𝒜, Φ, t)` at validator `self`, with its emissions (none for the Goldilocks AC). -/
   restart : Fin P.n → State → Frame P.n FGP Payload → Time →
     State × List (Emission P.n FGP Payload State Msg)
 

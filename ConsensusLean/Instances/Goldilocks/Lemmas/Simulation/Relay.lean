@@ -1076,16 +1076,6 @@ private theorem tryVote_val {FGP : Type} (self : Fin sp.n) (A : AC.ACState sp.n)
   dsimp only
   split_ifs <;> simp
 
-private theorem foldl_emits_val {α σ ε : Type} (P : ε → Prop) (f : σ → α → σ × List ε)
-    (hf : ∀ s a, ∀ e ∈ (f s a).2, P e) :
-    ∀ (l : List α) (acc : σ × List ε), (∀ e ∈ acc.2, P e) →
-      ∀ e ∈ (l.foldl (fun acc a => ((f acc.1 a).1, acc.2 ++ (f acc.1 a).2)) acc).2, P e
-  | [], _, h => h
-  | a :: l, acc, h => foldl_emits_val P f hf l _ fun e he => by
-      rcases List.mem_append.mp he with he | he
-      · exact h e he
-      · exact hf _ _ e he
-
 /-- Every emission of the node's AC is a vote of its own validator. -/
 theorem emits_val (self : Fin sp.n) (s : (goldilocksNode sp ro).State)
     (Φ : (goldilocksNode sp ro).Frm) (t : Time) (c : (goldilocksNode sp ro).Call) :
@@ -1102,9 +1092,7 @@ theorem emits_val (self : Fin sp.n) (s : (goldilocksNode sp ro).State)
   | block B => exact tryVote_val _ _ _ _
   | restart =>
     change ∀ e ∈ (AC.acRestart sp ro self s Φ t).2, _
-    unfold AC.acRestart
-    exact foldl_emits_val _ (fun A B => AC.acOnBlock sp self A Φ t B)
-      (fun _ _ => tryVote_val _ _ _ _) _ _ (by simp)
+    exact fun _ he => False.elim (List.not_mem_nil he)
 
 /-- Every emission of an AC cut of a handler of `self` is a vote of `self`. -/
 theorem emits_val_of_mem_exec (proposer : Nat → Fin sp.n)

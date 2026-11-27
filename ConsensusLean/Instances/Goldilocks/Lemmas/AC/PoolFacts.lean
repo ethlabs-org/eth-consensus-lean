@@ -129,25 +129,7 @@ private theorem restart_admits (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : 
     (Φ : Frm sp.n FGP) (t : Time) :
     ∀ σ, ∀ x ∈ (acRestart sp ro self A Φ t).1.pool σ,
       x.slot + 1 = sp.slot t ∨ x.slot = sp.slot t := by
-  unfold acRestart
-  generalize ro.order t Φ = l
-  set A₀ : ACState sp.n := { ACState.initial sp.genesisRoot with
-    locks := A.locks, latestConfirmed := A.latestConfirmed, restartTime := (t : WithBot Time),
-    mayVote := A.mayVote }
-  suffices h : ∀ (l : List (Blk sp.n FGP)) (acc : ACState sp.n × List (Em sp FGP)),
-      Admits A₀ acc.1 t → Admits A₀ (l.foldl (fun acc B => let r := acOnBlock sp self acc.1 Φ t B;
-        (r.1, acc.2 ++ r.2)) acc).1 t by
-    intro σ x hx
-    rcases h l (A₀, []) (Admits.refl _ _) σ x hx with hx | hx
-    · simp [A₀, ACState.initial] at hx
-    · exact hx
-  intro l
-  induction l with
-  | nil => exact fun _ h => h
-  | cons B l ih =>
-    intro acc h
-    simp only [List.foldl_cons]
-    exact ih _ (h.trans (admits_acOnBlock _ _ _ _ _))
+  exact fun _ _ hx => False.elim (List.not_mem_nil hx)
 
 end Admission
 
@@ -379,19 +361,7 @@ private theorem acOnTick_vok_keep (self : Fin sp.n) {A : ACState sp.n} (h : VOK 
 
 private theorem acRestart_vok (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) : VOK (acRestart sp ro self A Φ t).1 := by
-  unfold acRestart
-  generalize ro.order t Φ = l
-  suffices h : ∀ (l : List (Blk sp.n FGP)) (acc : ACState sp.n × List (Em sp FGP)), VOK acc.1 →
-      VOK (l.foldl (fun acc B => let r := acOnBlock sp self acc.1 Φ t B;
-        (r.1, acc.2 ++ r.2)) acc).1 from
-    h l _ fun x hx => absurd rfl hx
-  intro l
-  induction l with
-  | nil => exact fun _ h => h
-  | cons B l ih =>
-    intro acc h
-    simp only [List.foldl_cons]
-    exact ih _ (acOnBlock_vok_keep self h Φ t B).1
+  exact fun _ hx => absurd rfl hx
 
 /-- The stamp invariant at a reachable state with frame `Φ`, inside `U`: held stamps, and every
 stamped root names a block of `U` that is in the tree or does not extend `Φ.F`. -/
