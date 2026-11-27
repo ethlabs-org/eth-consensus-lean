@@ -23,7 +23,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- A primed viable witness puts a separate finalized observation below every viable head. -/
 theorem finalized_anc_head_at_cast_at {lo hi : Time} {M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H lo hi M isTop J)
+    (hframe : Generic.FrameWindow tr H lo hi M isTop J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {z y : Fin sp.n} {c i : Nat}
@@ -79,7 +79,7 @@ theorem finalized_anc_head_at_cast_at {lo hi : Time} {M : Nat}
 /-- The primed frame root is F, so a separate root observation uses finalized ancestry. -/
 theorem fcRoot_anc_head_at_cast_at {lo hi : Time} {M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H lo hi M isTop J)
+    (hframe : Generic.FrameWindow tr H lo hi M isTop J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {z y : Fin sp.n} {c i : Nat}

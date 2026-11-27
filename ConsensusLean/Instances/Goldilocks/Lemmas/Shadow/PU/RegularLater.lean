@@ -15,14 +15,14 @@ public section
 
 /-! # P-U regular-later assembly
 
-The theorem below proves propagation over `FrameWindow'`. The result-supporter and
+The theorem below proves propagation over `Generic.FrameWindow`. The result-supporter and
 classification suppliers live in `RegularClassification` so that `RegularVotes` can
 consume them without a cycle. Its viable branch uses source viability instead of
 ancestry of an arbitrary lock origin above J.
 
 This does not discharge the ordinary viable-only branch when its head is a
 contest J-side block at floor−1, or the optimistic supporter's analogous witness
-extraction. A stock window does not imply a fixed-maximum `FrameWindow'`.
+extraction. A stock window does not imply a fixed-maximum `Generic.FrameWindow`.
 No reachable counterexample to propagation or extra milestone premise is claimed.
 -/
 
@@ -40,7 +40,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem regular_later_heads_at
     {g ΔF b : Time} {s₀ s N M : Nat} {isTop : Prop}
     {J D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
@@ -66,7 +66,7 @@ theorem regular_later_heads_at
     (AC.ts_le_iff sp).mpr (by exact_mod_cast hab)
   have hstep (a : Nat) : sp.ts (a + 1 : Nat) = sp.ts a + 4 * sp.Δ := AC.ts_succ a
   have hsub {lo hi : Time} (hl : sp.ts s₀ ≤ lo) (hh : hi ≤ sp.ts N + sp.Δ) :
-      FrameWindow' tr H lo hi M isTop J := hframe.mono hl hh
+      Generic.FrameWindow tr H lo hi M isTop J := hframe.mono hl hh
   have h6 : sp.ts s + 6 * sp.Δ ≤ sp.ts N + sp.Δ := by
     have ht := hts hsN
     rw [show s + 2 = (s + 1) + 1 by omega, hstep, hstep] at ht

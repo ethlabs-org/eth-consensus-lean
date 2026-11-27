@@ -76,7 +76,7 @@ theorem proposal_viable_at {proposer : Nat → Fin sp.n}
     (hnc : Compose.NoCollRun dg tr)
     {lo hi : Time} {M u : Nat} {isTop : Prop}
     {J B : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hwin : FrameWindow' tr H lo hi M isTop J)
+    (hwin : Generic.FrameWindow tr H lo hi M isTop J)
     {z : Fin sp.n} {kB : Nat} (hz : z ∈ H (sp.ts u)) (hdes : z = proposer u)
     (hB : tr.ProposesAt z kB B) (hBs : B.slot = u)
     (hlo : lo ≤ sp.ts u) (hhi : sp.ts u ≤ hi)
@@ -91,7 +91,7 @@ private theorem rounds_le_of_proposal_viable
     {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
     {lo hi : Time} {M v HZ : Nat} {isTop : Prop}
     {J B : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hwin : FrameWindow' tr H lo hi M isTop J)
+    (hwin : Generic.FrameWindow tr H lo hi M isTop J)
     {z : Fin sp.n} {kB : Nat} (hz : z ∈ H (tr.time kB))
     (hlo : lo ≤ tr.time kB) (hhi : tr.time kB ≤ hi)
     (hkey : Generic.frameKey'' (goldilocksNode sp ro) (tr.state z kB).fg = v) (hv : 2 * HZ ≤ v)
@@ -109,7 +109,7 @@ theorem rounds_le_warm_proposal_at {proposer : Nat → Fin sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g af len : Time} {u M v : Nat} {isTop : Prop}
     {J B : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hwin : FrameWindow' tr H af (af + len) M isTop J)
+    (hwin : Generic.FrameWindow tr H af (af + len) M isTop J)
     (hK : ∀ y i, y ∈ H (tr.time i) → af ≤ tr.time i → tr.time i ≤ af + len →
       Generic.frameKey'' (goldilocksNode sp ro) (tr.state y i).fg = v)
     (hv : 2 * HZ tr H g ≤ v) (hlo : af ≤ sp.ts u) (hhi : sp.ts u ≤ af + len)
@@ -155,7 +155,7 @@ private theorem reset_of_high_report_within_at {ini}
 theorem reset_of_high_proposal_within_at
     {g ΔF b D t₀ : Time} {s₀ u N M Gs : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) M
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) M
       isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
@@ -237,7 +237,7 @@ version also needs stock later-head transfer. -/
 theorem round_of_warm_within_at
     {g ΔF b T D t₀ : Time} {s₀ u x N M Gs : Nat} {isTop : Prop}
     {J P X : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))

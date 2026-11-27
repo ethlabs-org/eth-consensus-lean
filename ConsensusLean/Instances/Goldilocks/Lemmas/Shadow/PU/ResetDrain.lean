@@ -17,7 +17,7 @@ public section
 The finite-service reset bound of the growing kernel (`exists_reset_of_drain_rounds_awake_at`
 and its delayed form), with the callers' signatures, over the P-U window search
 `Shadow.exists_reset` (four attempts on the shadow key `frameKey''`), and the warm-proposal
-supplier `drainOutputs_of_service_at` on `FrameWindow'` windows. The core keeps the stock
+supplier `drainOutputs_of_service_at` on `Generic.FrameWindow` windows. The core keeps the stock
 prelude (the height-advance case split, the height range from the snapshot and the call lag)
 and runs the four-attempt search at horizon `B - 1`, `B` the stock five-attempt bound: the
 four-attempt budget is below the five-attempt one, and the reset is at most `B`. The bound
@@ -360,8 +360,8 @@ private theorem proposalGap_of_truncH {G s₀ N : Nat} {b : Time}
 
 private theorem frameWindow_of_truncH {lo hi b : Time} {M : Nat} {isTop : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hw : FrameWindow' tr (truncH H b) lo hi M isTop J)
-    (hhi : hi ≤ b) : FrameWindow' tr H lo hi M isTop J :=
+    (hw : Generic.FrameWindow tr (truncH H b) lo hi M isTop J)
+    (hhi : hi ≤ b) : Generic.FrameWindow tr H lo hi M isTop J :=
   ⟨fun y i hy hl hh => hw.M_eq y i ⟨hy, hh.trans hhi⟩ hl hh,
     fun y i hy hl hh => hw.top_iff y i ⟨hy, hh.trans hhi⟩ hl hh,
     fun y i hy hl hh => hw.root_eq y i ⟨hy, hh.trans hhi⟩ hl hh⟩

@@ -6,7 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 import ConsensusLean.Lemmas.Tactic.Linarith
 
-/-! # Fresh-vote proposal paths over the shadow run and `FrameWindow'`
+/-! # Fresh-vote proposal paths over the shadow run and `Generic.FrameWindow`
 
 The stock `FreshVotesPath` endpoints restated over `Growing.GoldilocksRun'` and the P-U window. -/
 
@@ -23,10 +23,10 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 variable {hold : Time}
 
 /-- Above both anchors, the proposer's actual winner remains the voter's winner.
-(`FrameWindow.proposal_suffix_before_at` over the shadow run and `FrameWindow'`). -/
+(`FrameWindow.proposal_suffix_before_at` over the shadow run and `Generic.FrameWindow`). -/
 theorem proposal_suffix_before_at {g ΔF b : Time} {s₀ s M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -75,10 +75,10 @@ theorem proposal_suffix_before_at {g ΔF b : Time} {s₀ s M : Nat}
   exact viableHead_transfer_at hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
 
 /-- The voter takes the proposal at its parent and has no eligible child beyond it.
-(`FrameWindow.proposal_stop_before_at` over the shadow run and `FrameWindow'`). -/
+(`FrameWindow.proposal_stop_before_at` over the shadow run and `Generic.FrameWindow`). -/
 theorem proposal_stop_before_at {g ΔF b : Time} {s₀ s M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -128,10 +128,10 @@ theorem proposal_stop_before_at {g ΔF b : Time} {s₀ s M : Nat}
   exact viableHead_transfer_at hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
 
 /-- Reaching the actual proposal-parent path determines the cast's head.
-(`FrameWindow.vote_head_eq_of_path_at` over the shadow run and `FrameWindow'`). -/
+(`FrameWindow.vote_head_eq_of_path_at` over the shadow run and `Generic.FrameWindow`). -/
 theorem vote_head_eq_of_path_at {g ΔF b : Time} {s₀ s M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -175,10 +175,10 @@ theorem vote_head_eq_of_path_at {g ΔF b : Time} {s₀ s M : Nat}
   exact viableHead_transfer_at hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
 
 /-- A deeper anchor already lies on the proposal path; a shallower one uses a prefix supplier.
-(`FrameWindow.vote_head_eq_of_start_prefix_at` over the shadow run and `FrameWindow'`). -/
+(`FrameWindow.vote_head_eq_of_start_prefix_at` over the shadow run and `Generic.FrameWindow`). -/
 theorem vote_head_eq_of_start_prefix_at {g ΔF b : Time} {s₀ s M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))

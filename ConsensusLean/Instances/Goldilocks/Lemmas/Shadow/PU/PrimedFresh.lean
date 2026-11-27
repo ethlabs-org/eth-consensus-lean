@@ -20,7 +20,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
   {K : AC.CommitteeDict sp.n} {g ΔF b : Time} {u M : Nat} {isTop : Prop}
   {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-  (hframe : FrameWindow' tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) M isTop J)
+  (hframe : Generic.FrameWindow tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) M isTop J)
   (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
     (AC.committeeStart sp.genesisRoot K))
   (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)

@@ -14,7 +14,7 @@ only `F ⪯ X ⪯ Q` with `Q` a P-U viable head, so the `J` clause moves from `X
 fails on a paper trace in a top-contest window (an optimistic lock on a contest-branch head); it is
 not a V-B fact and no conclusion here depends on it.
 
-A viable head of a node's shadow frame inside a `FrameWindow' … M isTop J` carries exactly:
+A viable head of a node's shadow frame inside a `Generic.FrameWindow … M isTop J` carries exactly:
 
 * `M − 1 ≤ σ(Q).h`;
 * `isTop → σ(Q).h = M − 1 → J ⪯ Q`.
@@ -58,7 +58,7 @@ window a witness at `M − 1` extends `J` among the blocks held while honest. -/
 theorem early_witness_viable
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {lo hi : Time} {M : Nat} {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hwin : Healing.FrameWindow' tr H lo hi M isTop J)
+    (hwin : Generic.FrameWindow tr H lo hi M isTop J)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a)) (hlo : lo ≤ tr.time a)
     (hhi : tr.time a ≤ hi) {ellw : ACLabel (goldilocksNode sp ro)}
     (hcw : tr.projAC.CallAt w a ellw) {Q : AC.Blk sp.n (List (FG.Att sp.n))}

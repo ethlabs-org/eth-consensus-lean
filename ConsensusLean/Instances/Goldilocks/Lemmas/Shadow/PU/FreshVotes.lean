@@ -20,7 +20,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem honest_vote_heads_eq_at
     {g ΔF b : Time} {s₀ u M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts u + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts u + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
