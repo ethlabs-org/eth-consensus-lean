@@ -361,6 +361,92 @@ theorem reset_of_high_proposal_within_at
   obtain ⟨a, ha, hat⟩ := reset_of_high_report_within_at hrun hlat hD hyD hq hR hhR
   exact ⟨a, ha, by linarith⟩
 
+/-- Leaf 10 over the stock window. This assembly still depends on the report-follow
+interface; its upstream stock-window supplier is not yet sorry-free. -/
+theorem reset_of_high_proposal_within_stock_at
+    {g ΔF b D t₀ : Time} {s₀ u N floor Gs : Nat} {kindJ : Prop}
+    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀)
+      (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) floor kindJ J)
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
+    (hN : u + 1 ≤ N) (hmb : sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ ≤ b)
+    (hH : (H b).Nonempty)
+    (hlat : Generic.VoteLatencyAt tr H D) (hD : 0 ≤ D)
+    (hDb : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) ≤ b)
+    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
+    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
+    (hh : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt' proposer dg H sign)
+    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
+    (hK : CommitteeHalfUpTo tr H K g b) :
+    ∃ a, IsReset tr H g a ∧ a ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) := by
+  have hΔ : 1 ≤ sp.Δ := sp.toParams.hΔ
+  have hGs0 : (0 : Time) ≤ (Gs : Time) * sp.Δ :=
+    mul_nonneg (Nat.cast_nonneg _) (zero_le_one.trans sp.toParams.hΔ)
+  have hts : sp.ts (u + 1 : Nat) ≤ sp.ts N := (AC.ts_le_iff sp).2 (by exact_mod_cast hN)
+  have hs₀ : sp.ts s₀ ≤ sp.ts (u + 1 : Nat) :=
+    (AC.ts_le_iff sp).2 (by exact_mod_cast (show s₀ ≤ u + 1 by omega))
+  have hmax : max (sp.ts N + 2 * sp.Δ) (sp.ts (u + 1 : Nat) + 2 * sp.Δ + (Gs : Time) * sp.Δ) ≤
+      sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ := max_le (by linarith) (by linarith)
+  have hshort : Generic.FrameWindow tr H (sp.ts s₀)
+      (max (sp.ts N + 2 * sp.Δ) (sp.ts (u + 1 : Nat) + 2 * sp.Δ + (Gs : Time) * sp.Δ))
+      floor kindJ J :=
+    ⟨fun y i hy hl hi => hframe.floor_eq y i hy hl (hi.trans hmax),
+      fun y i hy hl hi => hframe.kind_iff y i hy hl (hi.trans hmax),
+      fun y i hy hl hi => hframe.root_eq y i hy hl (hi.trans hmax)⟩
+  obtain ⟨y, hy⟩ := hH
+  obtain ⟨i, ell, R, hyi, hR, htil, hti, hPR, _⟩ :=
+    Goldilocks.Shadow.PU.Growing.proposal_report_follow_delayed_stock_at' hshort hrun hnc
+      hsvc hawake hf hcatch hnr hm hwarm hN (hmax.trans hmb) hz hdes hP hPs hcal hgap
+      (by linarith) (hrun.antitone (by linarith) hy) hK
+  have hcz : cutZ sp.toParams g ≤ tr.time i := by
+    have h4 : sp.ts (s₀ + 4 : Nat) ≤ sp.ts u :=
+      (AC.ts_le_iff sp).2 (by exact_mod_cast (show s₀ + 4 ≤ u by have := sp.two_le_k; omega))
+    have he : sp.ts (s₀ + 4 : Nat) = sp.ts s₀ + 16 * sp.Δ := by
+      simp only [ACParams.ts]; push_cast; ring
+    linarith [cutZ_le sp g]
+  have htime : tr.time kP = sp.ts u := by
+    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
+  have hzk : z ∈ H (tr.time kP) := hrun.antitone (by rw [htime]; linarith) hz
+  have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
+    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
+  have hPm := (Coherence.accept_of_proposesAt' (hrun.upTo (hrun.time_nonneg kP))
+    (hnc.upTo _) hzk hP').2.1
+  rw [Trace.upTo_state tr z (fun q hq => hrun.time_mono (by omega))] at hPm
+  have hRm : R ∈ (tr.state y i).fg.tree := by
+    have hsource := (AC.toFG_source hR.2.2).1.1
+    rw [Goldilocks.Shadow.PU.Growing.frame_of_projAC_at' hrun hyi hR.1,
+      Node.frame'_eq, Store.toFrame'_tree] at hsource
+    exact hsource.1
+  have hle : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
+  have hPy := mem_of_honest_anc_at' hrun hnc (hrun.time_nonneg i) hle hyi hPR hRm
+  have hσ := σ_eq_honest_at' hrun hnc (hrun.time_nonneg kP)
+    (fun q hq => hrun.time_mono (by omega)) hzk (hrun.time_nonneg i) hle hyi hPm hPy
+  rw [hσ] at hh
+  have hhR := hh.trans (Store.h_le_of_store_anc_with Store.finalitySpec_updateFinality'
+    (Compose.Growing.reachable_at' hrun (hrun.time_nonneg i) hyi hle).reachableWith
+    (store_anc_of_honest_anc_at' hrun hnc (hrun.time_nonneg i) hle hyi hPR hRm))
+  have hiD : tr.time i + D ≤ b := by linarith
+  have hcD : max (cutZ sp.toParams g) (tr.time i + D) = tr.time i + D :=
+    max_eq_right (by linarith)
+  have hyD : y ∈ H (max (cutZ sp.toParams g) (tr.time i + D)) := by
+    rw [hcD]; exact hrun.antitone hiD hy
+  have hq : (H (max (cutZ sp.toParams g) (tr.time i + D)))ᶜ.ncard < sp.toParams.fg.q := by
+    have hf' := hf _ (by linarith [hrun.time_nonneg i]) hiD
+    have hn := sp.toParams.hn
+    rw [hcD]
+    change (H (tr.time i + D))ᶜ.ncard < (2 * sp.n + 2) / 3
+    omega
+  obtain ⟨a, ha, hat⟩ := reset_of_high_report_within_at hrun hlat hD hyD hq hR hhR
+  exact ⟨a, ha, by linarith⟩
+
 /-- Leaf 11 over the P-U window. The proof must use `proposal_viable_at`: its height
 bound is `M - 1`, and in a top window equality supplies `J` ancestry. The stock
 `floor_le_warm_proposal_at` is false for P-U and is not a supplier for this statement.
