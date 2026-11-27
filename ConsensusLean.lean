@@ -856,6 +856,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WindowRounds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Witness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFloor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AdmitsAtTick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttGuard
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttUnforgeable
