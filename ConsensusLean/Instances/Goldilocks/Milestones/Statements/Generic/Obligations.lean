@@ -28,20 +28,20 @@ def ProposalHeadAt (tr : RunTrace A) (y : Fin P.n) (i : Nat)
   ∃ (ℓ : ACLabel A) (pay : A.Payload), tr.CallAt y i (.ac ℓ) ∧ ℓ.call = .proposal ∧
     (A.proposal (tr.state y i).ac ℓ.frame (tr.time i)).2 = some (d, pay)
 
-/-- Constant floor, root kind and conditional J on a real-time window. -/
+/-- Constant maximum height, top status and conditional J on a real-time window. -/
 structure FrameWindow (tr : RunTrace A) (H : Time → Set (Fin P.n))
-    (lo hi : Time) (floor : Nat) (kindJ : Prop) (J : A.Blk) : Prop where
-  floor_eq : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi →
-    (tr.state y i).fg.headHeightFloor = floor
-  kind_iff : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi →
-    (((tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ∧ ¬ (tr.state y i).fg.Contest) ↔ kindJ)
-  root_eq : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi → kindJ →
+    (lo hi : Time) (M : Nat) (isTop : Prop) (J : A.Blk) : Prop where
+  M_eq : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi →
+    (tr.state y i).fg.hmax = M
+  top_iff : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi →
+    ((tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 ↔ isTop)
+  root_eq : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i ≤ hi → isTop →
     (tr.state y i).fg.J = J
 
 /-- A slot window includes the last slot's report deadline. -/
 abbrev SlotWindow (tr : RunTrace A) (H : Time → Set (Fin P.n))
-    (s₀ N floor : Nat) (kindJ : Prop) (J : A.Blk) : Prop :=
-  FrameWindow tr H (P.slotTime s₀) (P.slotTime N + 2 * P.Δ) floor kindJ J
+    (s₀ N M : Nat) (isTop : Prop) (J : A.Blk) : Prop :=
+  FrameWindow tr H (P.slotTime s₀) (P.slotTime N + 2 * P.Δ) M isTop J
 
 /-- No signing strictly before T by a signer honest at it and at `c_z` exceeds the snapshot
 height. -/
@@ -180,8 +180,8 @@ def shiftDelay (P : Params) (d : Nat) (t : Time) : Time :=
 
 /-- A constant frame through the delayed report deadline. -/
 abbrev SlotWindowWithin (tr : RunTrace A) (H : Time → Set (Fin P.n))
-    (d s₀ N floor : Nat) (kindJ : Prop) (J : A.Blk) : Prop :=
-  FrameWindow tr H (P.slotTime s₀) (shiftDelay P d (P.slotTime N + 2 * P.Δ)) floor kindJ J
+    (d s₀ N M : Nat) (isTop : Prop) (J : A.Blk) : Prop :=
+  FrameWindow tr H (P.slotTime s₀) (shiftDelay P d (P.slotTime N + 2 * P.Δ)) M isTop J
 
 /-- A reset within a deep budget: with budget `m`, the slot after the reset's drain is at most
 `m` slots after `c_z`. Vacuous without a budget. -/
@@ -228,11 +228,11 @@ structure ACHealing (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg)
   and later honest proposal heads extend the report. Certificate: cert obligation open:
   honest committee members support an honest proposal after healing. -/
   report_follow : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time}
-    {s₀ N u floor : Nat} {kindJ : Prop} {J B : A.Blk} {z : Fin P.n} {kB : Nat},
+    {s₀ N u M : Nat} {isTop : Prop} {J B : A.Blk} {z : Fin P.n} {kB : Nat},
     βK ≤ 1 / 2 →
     runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold →
     FrameWindow tr H (P.slotTime s₀)
-      (shiftDelay P reportDelay (P.slotTime N + 2 * P.Δ)) floor kindJ J →
+      (shiftDelay P reportDelay (P.slotTime N + 2 * P.Δ)) M isTop J →
     gbar g + 4 * P.Δ ≤ P.slotTime s₀ → s₀ + warmup ≤ u →
     u + 1 ≤ N → shiftDelay P reportDelay (P.slotTime N + 2 * P.Δ) ≤ b →
     HonestProposal tr H proposer u z kB B →

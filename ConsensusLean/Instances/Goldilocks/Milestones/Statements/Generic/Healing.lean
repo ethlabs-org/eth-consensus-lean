@@ -21,9 +21,8 @@ variable {runs : ACRun A sg} {hold : Time}
 
 open Classical in
 /-- The merged frame key, restated without importing its proof module. -/
-noncomputable def frameKey' (st : Store P A.Payload) : Nat :=
-  let key := 3 * st.hmax + (if st.Contest then 2 else if st.hmax = st.hj + 1 then 1 else 0)
-  2 * (key / 3) + key % 3
+noncomputable def frameKey'' (st : Store P A.Payload) : Nat :=
+  2 * st.hmax + if st.hmax = st.hj + 1 then 1 else 0
 
 /-- Remaining rise rounds at merged key v. -/
 def riseRounds (hz v : Nat) : Nat := 2 - (v - 2 * hz) / 2
@@ -77,12 +76,12 @@ def reset_of_high_report_at (runs : ACRun A sg) : Prop :=
 not occur in its body; its proof uses the supplier's `proposal_floor`. Proved over any supplier by
 `rounds_le_warm_proposal_at_of_healing` (Lemmas/Generic/HealingRounds). -/
 def rounds_le_warm_proposal_at (_O : ACHealing A sg runs hold) : Prop :=
-  ∀ {cm proposer dg H tr} {g af len : Time} {u floor v : Nat} {kindJ : Prop} {J B : A.Blk}
+  ∀ {cm proposer dg H tr} {g af len : Time} {u M v : Nat} {isTop : Prop} {J B : A.Blk}
     {z : Fin P.n} {kB : Nat},
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
-    FrameWindow tr H af (af + len) floor kindJ J →
+    FrameWindow tr H af (af + len) M isTop J →
     (∀ y i, y ∈ H (tr.time i) → af ≤ tr.time i → tr.time i ≤ af + len →
-      frameKey' A (tr.state y i).fg = v) →
+      frameKey'' A (tr.state y i).fg = v) →
     2 * HZ tr H g ≤ v → af ≤ P.slotTime u → P.slotTime u ≤ af + len →
     z ∈ H (P.slotTime u) → z = proposer u → tr.ProposesAt z kB B → B.slot = u →
     (H (P.slotTime u))ᶜ.ncard < 2 * P.fg.q - P.n →
@@ -92,9 +91,9 @@ def rounds_le_warm_proposal_at (_O : ACHealing A sg runs hold) : Prop :=
 in its body; its proof uses the supplier's `proposal_floor` and `report_in_frame`. Proved over any
 supplier by `report_kind_of_warm_at_of_healing` (Lemmas/Generic/HealingRounds). -/
 def report_kind_of_warm_at (_O : ACHealing A sg runs hold) : Prop :=
-  ∀ {cm proposer dg H tr} {lo hi : Time} {floor u : Nat} {kindJ : Prop} {J B R : A.Blk}
+  ∀ {cm proposer dg H tr} {lo hi : Time} {M u : Nat} {isTop : Prop} {J B R : A.Blk}
     {z : Fin P.n} {kB : Nat} {y : Fin P.n} {i : Nat},
-    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → FrameWindow tr H lo hi floor kindJ J →
+    runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr → FrameWindow tr H lo hi M isTop J →
     z ∈ H (P.slotTime u) → z = proposer u → tr.ProposesAt z kB B → B.slot = u →
     lo ≤ P.slotTime u → P.slotTime u ≤ hi → (H (P.slotTime u))ᶜ.ncard < 2 * P.fg.q - P.n →
     y ∈ H (tr.time i) → ReportAt tr y i R → Anc (tr.HonestBlocksAt H) B R →
@@ -107,11 +106,11 @@ def report_kind_of_warm_at (_O : ACHealing A sg runs hold) : Prop :=
 /-- Leaf 10: a warm high proposal forces the next reset. Proved over any supplier by
 `reset_of_high_proposal_at_of_healing` (Lemmas/Generic/HealingRounds). -/
 def reset_of_high_proposal_at (O : ACHealing A sg runs hold) : Prop :=
-  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time} {s₀ u N floor : Nat}
-    {kindJ : Prop} {J B : A.Blk}
+  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time} {s₀ u N M : Nat}
+    {isTop : Prop} {J B : A.Blk}
     {z : Fin P.n} {kB : Nat},
     βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
-    SlotWindowWithin tr H O.reportDelay s₀ N floor kindJ J →
+    SlotWindowWithin tr H O.reportDelay s₀ N M isTop J →
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     Service tr H g ΔF b hold → (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →
@@ -128,10 +127,10 @@ def reset_of_high_proposal_at (O : ACHealing A sg runs hold) : Prop :=
 /-- Leaf 11: both compared heights are read in the later proposer's store. Proved over any
 supplier by `round_of_warm_at_of_healing` (Lemmas/Generic/HealingRounds). -/
 def round_of_warm_at (O : ACHealing A sg runs hold) : Prop :=
-  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b T : Time} {s₀ u x N floor : Nat} {kindJ : Prop}
+  ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b T : Time} {s₀ u x N M : Nat} {isTop : Prop}
     {J B X : A.Blk} {z : Fin P.n} {kB : Nat} {p : Fin P.n} {kX : Nat},
     βK ≤ 1 / 2 → CommitteeFaultsUpTo βK cm H g b →
-    SlotWindowWithin tr H O.reportDelay s₀ N floor kindJ J →
+    SlotWindowWithin tr H O.reportDelay s₀ N M isTop J →
     runs.Run cm proposer dg H tr → Compose.NoCollRun dg tr →
     Service tr H g ΔF b hold → (∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t) →
     (∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ P.n - 1) →

@@ -163,11 +163,11 @@ structure ACHealingNoHold (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun 
   and later honest proposal heads extend the report. Certificate: cert obligation open:
   honest committee members support an honest proposal after healing. -/
   report_follow : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time}
-    {s₀ N u floor : Nat} {kindJ : Prop} {J B : A.Blk} {z : Fin P.n} {kB : Nat},
+    {s₀ N u M : Nat} {isTop : Prop} {J B : A.Blk} {z : Fin P.n} {kB : Nat},
     βK ≤ 1 / 2 →
     runs.Run cm proposer dg H tr → PremisesNoHold tr H cm βK proposer dg sg g ΔF b →
     FrameWindow tr H (P.slotTime s₀)
-      (shiftDelay P reportDelay (P.slotTime N + 2 * P.Δ)) floor kindJ J →
+      (shiftDelay P reportDelay (P.slotTime N + 2 * P.Δ)) M isTop J →
     gbar g + 4 * P.Δ ≤ P.slotTime s₀ → s₀ + warmup ≤ u →
     u + 1 ≤ N → shiftDelay P reportDelay (P.slotTime N + 2 * P.Δ) ≤ b →
     HonestProposal tr H proposer u z kB B →
