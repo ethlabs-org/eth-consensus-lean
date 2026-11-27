@@ -1,4 +1,6 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Trace
 public import ConsensusLean.Instances.Goldilocks.Spec.AC.Views
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Tree
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Frame
@@ -96,19 +98,19 @@ section Static
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-  {ini : Fin sp.n → (goldilocksNode' sp ro).State} {g : Time}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g : Time}
 
 /-- The old stored-lock argument uses only F-root monotonicity and persistence of a
 write-frame viable witness; its AC write provenance is unchanged. -/
-private theorem old_lock_witness' {s₀ M : Nat} {hi : Time}
+private theorem old_lock_witness {s₀ M : Nat} {hi : Time}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr (fun _ => H) (sp.ts s₀) hi M isTop J)
     (hrun : Consensus.Goldilocks.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : Healing.NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi)
     (hgf : gbar g < AC.freeze sp e.msg.slot)
     {l : AC.Lock} (hl : l ∈ (tr.projAC.state y i).locks)
@@ -162,13 +164,13 @@ private theorem old_lock_witness' {s₀ M : Nat} {hi : Time}
   rcases hcase with hbelow | ⟨Q, hQ, hv, hAQ⟩
   · exfalso
     apply hstrict
-    have hroot := Healing.fcRoot_mono' hrun hy hai.le
-    rw [← Node.frame_of_projAC_at' hrun.toLocalRun' hy ha,
-      ← Node.frame_of_projAC_at' hrun.toLocalRun' hy hc.1] at hroot
+    have hroot := Healing.fcRoot_mono hrun hy hai.le
+    rw [← Node.frame_of_projAC_at hrun.toLocalRun' hy ha,
+      ← Node.frame_of_projAC_at hrun.toLocalRun' hy hc.1] at hroot
     exact hBA.trans ((hbelow.mono hPhi₀.2).trans hroot)
   · obtain ⟨hQt, -, hvQ⟩ :=
       hframe.viableHead_persists' hrun hnc hf hy hai.le htime.1 hihi ha hv
-    rw [← Node.frame_of_projAC_at' hrun.toLocalRun' hy hc.1] at hQt hvQ
+    rw [← Node.frame_of_projAC_at hrun.toLocalRun' hy hc.1] at hQt hvQ
     refine ⟨a, hai, ell₀, D, Q, ha, htime.1, htime.2, ho, hv,
       hBA.trans (hAQ.mono hPhi₀.2), hvQ, hQt, Or.inl ?_⟩
     apply AC.readPoint_blockStamp_lt_of_earlier_frame hr hrun.vstart hy ha hc hQ hQt htime.2
@@ -176,14 +178,14 @@ private theorem old_lock_witness' {s₀ M : Nat} {hi : Time}
     exact (hnr y hy r (Compose.projAC_restartAt.mp hrs)).trans_lt hgf
 
 /-- A live old read-point lock inherits the frozen viable witness of its stored origin. -/
-private theorem live_old_lock_witness' {s₀ M : Nat} {hi : Time}
+private theorem live_old_lock_witness {s₀ M : Nat} {hi : Time}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr (fun _ => H) (sp.ts s₀) hi M isTop J)
     (hrun : Consensus.Goldilocks.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : Healing.NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi)
     (hwarm : s₀ + sp.k ≤ e.msg.slot) (hpos : 0 < e.msg.slot)
     (hgf : gbar g < AC.freeze sp e.msg.slot)
@@ -216,21 +218,21 @@ private theorem live_old_lock_witness' {s₀ M : Nat} {hi : Time}
     intro h
     exact hstrict ((Anc.mono hPhi.2 (hLB.trans hBC)).trans h)
   obtain ⟨a, hai, ell₀, D, Q, -, -, -, -, -, hCQ, hvQ, hQv⟩ :=
-    old_lock_witness' hframe hrun hnc hf hnr hy hc hihi hgf hl₁ hlabel
+    old_lock_witness hframe hrun hnc hf hnr hy hc hihi hgf hl₁ hlabel
       (by rw [← hs₁, ← hsl]; exact hold) hC hCr hstrictC
   refine ⟨Q, hQv, hvQ, ?_⟩
   exact hLB.trans (hBC.trans (AC.anc_tree_of_anc_U hr.coherent hPhi.1 hPhi.2 hC hCQ hQv.1))
 
 /-- The contest-to-gap residue needs a new whole-tree witness, not persistence
 of the old frozen witness. AC's live-lock candidate supplies it at the voter. -/
-private theorem live_old_lock_witness_stock' {s₀ floor : Nat} {hi : Time}
+private theorem live_old_lock_witness_stock {s₀ floor : Nat} {hi : Time}
     {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow (tr := tr) (H := H) (sp.ts s₀) hi floor kindJ J)
     (hrun : Consensus.Goldilocks.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : Healing.NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi)
     (hwarm : s₀ + sp.k ≤ e.msg.slot) (hpos : 0 < e.msg.slot)
     (hgf : gbar g < AC.freeze sp e.msg.slot)
@@ -268,7 +270,7 @@ private theorem live_old_lock_witness_stock' {s₀ floor : Nat} {hi : Time}
     intro h
     exact hstrict ((Anc.mono hPhi.2 (hLB.trans hBC)).trans h)
   obtain ⟨a, hai, ell₀, D, Q, ha, halo, hat, ho, hv, hCQ, hcase⟩ :=
-    hframe.old_lock_witness_stock' hrun hnc hf hnr hy hc hihi hgf
+    hframe.old_lock_witness_stock hrun hnc hf hnr hy hc hihi hgf
       hl₁ hlabel hold₁ hC hCr hstrictC
   rcases hcase with ⟨hvQ, hQv, -⟩ | hresidue
   · exact Or.inl ⟨Q, hQv, hvQ, hLB.trans (hBC.trans
@@ -280,18 +282,18 @@ private theorem live_old_lock_witness_stock' {s₀ floor : Nat} {hi : Time}
     rcases AC.liveLockBlock_candidate hPhi.1 ⟨hL, l, hLive, hLr.symm⟩ with hcan | hbelow
     · obtain ⟨-, -, W, hW, hvW, hLW⟩ := hcan
       have hvStore := hvW
-      rw [Node.frame_of_projAC_at' hrun.toLocalRun' hy hc.1,
-        Node.frame'_eq, Store.toFrame'_viableHeads] at hvStore
+      rw [Node.frame_of_projAC_at hrun.toLocalRun' hy hc.1,
+        Node.frame_eq, Store.toFrame_viableHeads] at hvStore
       have hh : floor ≤ ((tr.state y i).fg.σ W.root).h := by
-        rcases (Store.isViable'_iff _ _).mp hvStore.2.2 with hh | ⟨hh, -⟩ <;> omega
+        rcases (Store.isViable_iff _ _).mp hvStore.2.2 with hh | ⟨hh, -⟩ <;> omega
       exact Or.inr ⟨W, hW, hvW, hLW, hh, fun hk => (hkind hk).elim⟩
     · exact (hstrict (hbelow.mono hPhi.2)).elim
 
-private theorem vote_head_classification_core'
+private theorem vote_head_classification_core
     (hrun : Consensus.Goldilocks.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     (hpos : 0 < e.msg.slot)
     (hrootWitness : ∃ Q ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
@@ -365,14 +367,14 @@ private theorem vote_head_classification_core'
 /-- Stock-window shadow classification. The fourth case carries a stock witness
 in the whole tree, not necessarily the frozen voter domain. The J clause is on
 that witness, not on the older lock head. -/
-theorem vote_head_classification' {s₀ floor : Nat} {hi : Time}
+theorem vote_head_classification {s₀ floor : Nat} {hi : Time}
     {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow (tr := tr) (H := H) (sp.ts s₀) hi floor kindJ J)
     (hrun : Consensus.Goldilocks.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : Healing.NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i a : Nat} (hai : a ≤ i)
-    {ell₀ ell : ACLabel (goldilocksNode' sp ro)}
+    {ell₀ ell : ACLabel (goldilocksNode sp ro)}
     (ha : tr.projAC.CallAt y a ell₀) {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     (halo : sp.ts s₀ ≤ tr.time a) (hihi : tr.time i ≤ hi)
@@ -414,7 +416,7 @@ theorem vote_head_classification' {s₀ floor : Nat} {hi : Time}
   · exact Or.inl (hwalk.1 hd)
   have hHd : Hd = A := hwalk.2 hd
   by_cases heq : A = ell.frame.fcRoot
-  · obtain ⟨Q, hQ, hv, hrQ⟩ := hframe.root_witness_of_earlier_call_stock'
+  · obtain ⟨Q, hQ, hv, hrQ⟩ := hframe.root_witness_of_earlier_call_stock
       hrun hnc hf hnr hy hai ha hc halo hihi hat hgf
     exact (hd ⟨Q, AC.voterBlockTree_subset_voteDomain hQ, hv, heq ▸ hrQ⟩).elim
   have hAm : A ∈ AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) := by
@@ -431,7 +433,7 @@ theorem vote_head_classification' {s₀ floor : Nat} {hi : Time}
     intro h
     exact heq (Anc.antisymm hr.coherent h (hroot.mono hPhi.2))
   by_cases hold : l.slot < e.msg.slot
-  · rcases live_old_lock_witness_stock' hframe hrun hnc hf hnr
+  · rcases live_old_lock_witness_stock hframe hrun hnc hf hnr
         hy hc hihi hwarm hpos hgf hl hold hA hlr.symm hstrict with
       ⟨W, hW, hvW, hAW⟩ | ⟨W, hW, hvW, hAW, hh, hJ⟩
     · exact (hd ⟨W, AC.voterBlockTree_subset_voteDomain hW, hvW, hAW⟩).elim
@@ -449,10 +451,10 @@ theorem vote_head_classification' {s₀ floor : Nat} {hi : Time}
   rw [hHd, hAB, ← hBL]
   exact (AC.viableAncestor_anc hPhi.1 hB).2
 
-private theorem prior_vote_call_before_freeze' {K : AC.CommitteeDict sp.n} {b : Time}
+private theorem prior_vote_call_before_freeze {K : AC.CommitteeDict sp.n} {b : Time}
     (hS : AC.HealthyBaseUpTo K tr.projAC H (tr.HonestBlocks H) proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hpos : 0 < e.msg.slot)
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts ((e.msg.slot - 1 : Nat) : Int))
     (hmb : sp.ts ((e.msg.slot - 1 : Nat) : Int) + sp.Δ ≤ b)
@@ -489,7 +491,7 @@ end Static
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
 
 /- R2 interface handoff: these exact signatures belong in Shadow/PU/RegularVotes.lean.
 They are comments, not declarations in this file. The shared variables and namespace
@@ -536,7 +538,7 @@ theorem regular_slow_next_votes_at' {s₀ s M : Nat}
 
 /-- Actual result provenance supplies an independently honest supporter through the
 shared window service and participant suppliers. -/
-theorem result_honest_supporter_before_at'
+theorem result_honest_supporter_before_at
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
@@ -607,7 +609,7 @@ theorem result_honest_supporter_before_at'
   exact ⟨z, q, hrun.antitone hqt hz, hqc, e, he, hmem, hes,
     R, hsub hR, hroot, hCR.mono hsub⟩
 
-theorem vote_head_classification_of_service_at' {s₀ M : Nat} {hi : Time}
+theorem vote_head_classification_of_service_at {s₀ M : Nat} {hi : Time}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) hi M isTop J)
     {K : AC.CommitteeDict sp.n}
@@ -619,7 +621,7 @@ theorem vote_head_classification_of_service_at' {s₀ M : Nat} {hi : Time}
     (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
     (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi) (hib : tr.time i ≤ b)
     (hwarm : s₀ + sp.k ≤ e.msg.slot) (hpos : 0 < e.msg.slot)
     (hs₀ : s₀ ≤ e.msg.slot - 1)
@@ -669,17 +671,17 @@ theorem vote_head_classification_of_service_at' {s₀ M : Nat} {hi : Time}
     rw [hpred, AC.ts_sub_one]
     linarith only [hti, sp.toParams.hΔ]
   obtain ⟨a, hai, ell₀, ha, halo, hat⟩ :=
-    prior_vote_call_before_freeze' hS' hy hc' hpos hm hprev hs₀
+    prior_vote_call_before_freeze hS' hy hc' hpos hm hprev hs₀
   have hnr' : Healing.NoRestartAfter (tr.upTo (tr.time i)) (H (tr.time i)) (gbar g) := by
     intro z hz j hj
     obtain ⟨hjt, hj⟩ := (RunTrace.upTo_restartAt tr).mp hj
     exact hnr z j (hrun.antitone hjt hz) hj
   obtain ⟨Hd, hHd, hHDr, hv | ⟨hA, l, hl, hs, c, hci, D, CV, ho, ht,
       L, hL, hLr, hHL, hLD⟩⟩ :=
-    vote_head_classification_core' hr (hnc.upTo _) hy hc' hpos
+    vote_head_classification_core hr (hnc.upTo _) hy hc' hpos
       (hframe'.root_witness_of_earlier_call' hr (hnc.upTo _) hmargin hnr'
         hy hai ha hc' halo le_rfl hat hgf)
-      (fun l hl hold L hL hLr hstrict => live_old_lock_witness' hframe' hr
+      (fun l hl hold L hL hLr hstrict => live_old_lock_witness hframe' hr
         (hnc.upTo _) hmargin hnr' hy hc' le_rfl hwarm hpos hgf hl hold hL hLr hstrict)
   · exact ⟨Hd, hHd, hHDr, Or.inl hv⟩
   obtain ⟨htop, hcount, -⟩ := AC.optimisticLockAt_spec hAC hy ho K
@@ -691,20 +693,20 @@ theorem vote_head_classification_of_service_at' {s₀ M : Nat} {hi : Time}
     dsimp only at hsel
     split_ifs at hsel
     have hDw := (AC.deepest_mem hsel).1.1
-    rw [Node.frame_of_projAC_at' hr.toLocalRun' hy hp.1,
-      Node.frame'_eq, Store.toFrame'_tree] at hDw
+    rw [Node.frame_of_projAC_at hr.toLocalRun' hy hp.1,
+      Node.frame_eq, Store.toFrame_tree] at hDw
     have hDi := Compose.tree_mono' hr.toLocalRun' hy hci hDw.1
     have hHD := (hHL.mono hPhi.2).trans hLD
     have hHdi := hHd
-    rw [Node.frame_of_projAC_at' hr.toLocalRun' hy hc'.1,
-      Node.frame'_eq, Store.toFrame'_tree] at hHdi
+    rw [Node.frame_of_projAC_at hr.toLocalRun' hy hc'.1,
+      Node.frame_eq, Store.toFrame_tree] at hHdi
     have hFD : Anc ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)))
         ((tr.upTo (tr.time i)).state y i).fg.F D :=
       (Anc.mono (show ((tr.upTo (tr.time i)).state y i).fg.tree ⊆
         (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) from
         fun B hB => ⟨y, hy, i, hB⟩) hHdi.2).trans hHD
-    rw [Node.frame_of_projAC_at' hr.toLocalRun' hy hc'.1,
-      Node.frame'_eq, Store.toFrame'_tree]
+    rw [Node.frame_of_projAC_at hr.toLocalRun' hy hc'.1,
+      Node.frame_eq, Store.toFrame_tree]
     exact ⟨hDi, Coherence.honest_held_anc' hr (hnc.upTo _) hy hFD hDi⟩
   have hLt : L ∈ ell.frame.tree := by
     by_cases he : Hd = L
@@ -727,11 +729,11 @@ open _root_.Consensus.Goldilocks.Healing.Growing
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
 
 /-- The four-case stock-window classification at a service cut. This is an addition,
 not a change to either stock classification or the fixed-height shadow form. -/
-theorem vote_head_classification_of_service_at' {s₀ floor : Nat} {hi : Time}
+theorem vote_head_classification_of_service_at {s₀ floor : Nat} {hi : Time}
     {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.Growing.FrameWindow tr H (sp.ts s₀) hi floor kindJ J)
     {K : AC.CommitteeDict sp.n}
@@ -743,7 +745,7 @@ theorem vote_head_classification_of_service_at' {s₀ floor : Nat} {hi : Time}
     (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
     (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi) (hib : tr.time i ≤ b)
     (hwarm : s₀ + sp.k ≤ e.msg.slot) (hpos : 0 < e.msg.slot)
     (hs₀ : s₀ ≤ e.msg.slot - 1)
@@ -799,12 +801,12 @@ theorem vote_head_classification_of_service_at' {s₀ floor : Nat} {hi : Time}
     rw [hpred, AC.ts_sub_one]
     linarith only [hti, sp.toParams.hΔ]
   obtain ⟨a, hai, ell₀, ha, halo, hat⟩ :=
-    prior_vote_call_before_freeze' hS' hy hc' hpos hm hprev hs₀
+    prior_vote_call_before_freeze hS' hy hc' hpos hm hprev hs₀
   have hnr' : Healing.NoRestartAfter (tr.upTo (tr.time i)) (H (tr.time i)) (gbar g) := by
     intro z hz j hj
     obtain ⟨hjt, hj⟩ := (RunTrace.upTo_restartAt tr).mp hj
     exact hnr z j (hrun.antitone hjt hz) hj
-  obtain ⟨Hd, hHd, hHDr, hclass⟩ := vote_head_classification' hframe' hr (hnc.upTo _)
+  obtain ⟨Hd, hHd, hHDr, hclass⟩ := vote_head_classification hframe' hr (hnc.upTo _)
     hmargin hnr' hy hai ha hc' halo le_rfl hat hwarm hpos hgf
   refine ⟨Hd, hHd, hHDr, ?_⟩
   rcases hclass with hv | hj | ho | hwhole
@@ -820,20 +822,20 @@ theorem vote_head_classification_of_service_at' {s₀ floor : Nat} {hi : Time}
       dsimp only at hsel
       split_ifs at hsel
       have hDw := (AC.deepest_mem hsel).1.1
-      rw [Node.frame_of_projAC_at' hr.toLocalRun' hy hp.1,
-        Node.frame'_eq, Store.toFrame'_tree] at hDw
+      rw [Node.frame_of_projAC_at hr.toLocalRun' hy hp.1,
+        Node.frame_eq, Store.toFrame_tree] at hDw
       have hDi := Compose.tree_mono' hr.toLocalRun' hy hci hDw.1
       have hHD := (hHL.mono hPhi.2).trans hLD
       have hHdi := hHd
-      rw [Node.frame_of_projAC_at' hr.toLocalRun' hy hc'.1,
-        Node.frame'_eq, Store.toFrame'_tree] at hHdi
+      rw [Node.frame_of_projAC_at hr.toLocalRun' hy hc'.1,
+        Node.frame_eq, Store.toFrame_tree] at hHdi
       have hFD : Anc ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)))
           ((tr.upTo (tr.time i)).state y i).fg.F D :=
         (Anc.mono (show ((tr.upTo (tr.time i)).state y i).fg.tree ⊆
           (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) from
           fun B hB => ⟨y, hy, i, hB⟩) hHdi.2).trans hHD
-      rw [Node.frame_of_projAC_at' hr.toLocalRun' hy hc'.1,
-        Node.frame'_eq, Store.toFrame'_tree]
+      rw [Node.frame_of_projAC_at hr.toLocalRun' hy hc'.1,
+        Node.frame_eq, Store.toFrame_tree]
       exact ⟨hDi, Coherence.honest_held_anc' hr (hnc.upTo _) hy hFD hDi⟩
     have hLt : L ∈ ell.frame.tree := by
       by_cases he : Hd = L

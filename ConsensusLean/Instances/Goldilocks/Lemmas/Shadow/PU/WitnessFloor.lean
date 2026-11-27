@@ -187,7 +187,7 @@ private theorem mem_addAtts {a : FG.Att P.n} {l : List (FG.Att P.n)}
 /-- Every attestation carried by a held block is in the pool. -/
 theorem payload_mem_atts (hr : st.Reachable' acp₀) :
     ∀ B ∈ st.tree, ∀ a ∈ B.fgPayload, a ∈ st.atts := by
-  rw [Store.reachable'_eq] at hr
+  rw [Store.reachable_eq] at hr
   induction hr with
   | refl =>
     intro B hB a ha
@@ -197,8 +197,8 @@ theorem payload_mem_atts (hr : st.Reachable' acp₀) :
     cases hB
     cases ha
   | @tail s s' _ hs ih =>
-    rcases (Store.step'_iff _ _).1 hs with ⟨B', hB'⟩ | ⟨b, rfl⟩
-    · rw [Store.onBlock'_eq_onBlockWith] at hB'
+    rcases (Store.step_iff _ _).1 hs with ⟨B', hB'⟩ | ⟨b, rfl⟩
+    · rw [Store.onBlock_eq_onBlockWith] at hB'
       obtain ⟨pr, σ', -, -, -, -, -, rfl⟩ := Store.onBlockWith_eq_some hB'
       have hspec := (Store.finalitySpec_iff _).1
         (Store.finalitySpec_updateFinality' (P := P) (ACP := ACP))
@@ -207,9 +207,9 @@ theorem payload_mem_atts (hr : st.Reachable' acp₀) :
         { s with blocks := Function.update s.blocks B'.root (some B'),
                  σ := Function.update s.σ B'.root σ' } with hst₁
       obtain ⟨hb, -, hat, -⟩ := hspec st₁ σ'
-      obtain ⟨hb2, -⟩ := Goldilocks.Store.addAtts_fields (Store.updateFinality' st₁ σ') B'.fgPayload
+      obtain ⟨hb2, -⟩ := Goldilocks.Store.addAtts_fields (Store.updateFinality st₁ σ') B'.fgPayload
       have hB2 : (Function.update s.blocks B'.root (some B')) B.root = some B := by
-        have : ((Store.updateFinality' st₁ σ').addAtts B'.fgPayload).blocks B.root = some B := hB
+        have : ((Store.updateFinality st₁ σ').addAtts B'.fgPayload).blocks B.root = some B := hB
         rw [hb2, hb] at this
         exact this
       by_cases hroot : B.root = B'.root
@@ -489,9 +489,9 @@ theorem proposal_crosses {W : NodeBlock P ACP} (hW : W ∈ st.tree)
 
 omit hr in
 /-- An accepted block's state is the transition of its parent's state. -/
-theorem onBlock'_σ {st' : Store P ACP} {B : NodeBlock P ACP} (h : st.onBlock' B = some st') :
+theorem onBlock_σ {st' : Store P ACP} {B : NodeBlock P ACP} (h : st.onBlock B = some st') :
     ∃ pr, B.parent = some pr ∧ P.fg.stateTransition (st.σ pr) B.fgView = some (st'.σ B.root) := by
-  rw [Store.onBlock'_eq_onBlockWith] at h
+  rw [Store.onBlock_eq_onBlockWith] at h
   obtain ⟨pr, σ', hp, -, -, -, ht, rfl⟩ := Store.onBlockWith_eq_some h
   refine ⟨pr, hp, ?_⟩
   set st₁ : Store P ACP :=
@@ -500,20 +500,20 @@ theorem onBlock'_σ {st' : Store P ACP} {B : NodeBlock P ACP} (h : st.onBlock' B
   have hspec := (Store.finalitySpec_iff _).1
     (Store.finalitySpec_updateFinality' (P := P) (ACP := ACP))
   obtain ⟨-, hσu, -⟩ := hspec st₁ σ'
-  obtain ⟨-, hσa, -⟩ := Goldilocks.Store.addAtts_fields (Store.updateFinality' st₁ σ') B.fgPayload
+  obtain ⟨-, hσa, -⟩ := Goldilocks.Store.addAtts_fields (Store.updateFinality st₁ σ') B.fgPayload
   rw [hσa, hσu]
   simpa [st₁] using ht
 
 /-- **The proposal floor at one store.** A block on a held P-U viable `D` that carries the
 store's `proposal_attestations` for `D` reaches the stock head height floor. -/
-theorem floor_le_of_isViable' {D : NodeBlock P ACP} (hD : D ∈ st.tree) (hv : st.IsViable' D)
+theorem floor_le_of_isViable {D : NodeBlock P ACP} (hD : D ∈ st.tree) (hv : st.IsViable D)
     {B : FGBlock P.n} (hB : B.atts = st.proposalAttestations D) {σ' : ChainState P.n}
     (hσ : P.fg.stateTransition (st.σ D.root) B = some σ') : st.headHeightFloor ≤ σ'.h := by
   classical
   have hmono : (st.σ D.root).h ≤ σ'.h := by
     rcases (step_rows hσ).2 with h | ⟨h, -⟩ <;> omega
   have hb := Store.headHeightFloor_bounds st
-  rcases (Store.isViable'_iff st D).1 hv with h | ⟨h, hcase⟩
+  rcases (Store.isViable_iff st D).1 hv with h | ⟨h, hcase⟩
   · omega
   · by_cases hc : st.Contest
     · have hfl : st.headHeightFloor = st.hmax := ite_eq_left hc
@@ -529,14 +529,14 @@ theorem floor_le_of_isViable' {D : NodeBlock P ACP} (hD : D ∈ st.tree) (hv : s
       omega
 
 /-- A proposal on a viable parent crosses the store's justified height. -/
-theorem hj_lt_of_isViable' {D : NodeBlock P ACP} (hD : D ∈ st.tree) (hv : st.IsViable' D)
+theorem hj_lt_of_isViable {D : NodeBlock P ACP} (hD : D ∈ st.tree) (hv : st.IsViable D)
     {B : FGBlock P.n} (hB : B.atts = st.proposalAttestations D) {σ' : ChainState P.n}
     (hσ : P.fg.stateTransition (st.σ D.root) B = some σ') : st.hj < σ'.h := by
   have hj := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality'
     hr.reachableWith
   have hmono : (st.σ D.root).h ≤ σ'.h := by
     rcases (step_rows hσ).2 with h | ⟨h, -⟩ <;> omega
-  rcases (Store.isViable'_iff st D).1 hv with h | ⟨h, hgap | hJD⟩
+  rcases (Store.isViable_iff st D).1 hv with h | ⟨h, hgap | hJD⟩
   · omega
   · omega
   · by_cases hlt : st.hj < (st.σ D.root).h
@@ -554,9 +554,9 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **`floor_le_warm_proposal_at` holds under P-U** (V-A7, `pu_cex_proposal_floor_top`:
 proved). The stock statement over the stock `FrameWindow`, for shadow runs: a designated honest
 proposal inside the window reaches the window's head height floor. -/
-theorem warm_proposal_bounds_at' {proposer : Nat → Fin sp.n}
+theorem warm_proposal_bounds_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace' sp ro} {ini}
+    {tr : GoldilocksTrace sp ro} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -577,14 +577,14 @@ theorem warm_proposal_bounds_at' {proposer : Nat → Fin sp.n}
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2.1, hP.2.2⟩
   have hleB : ∀ q < kP + 1, tr.time q ≤ tr.time kP :=
     fun q hq => hrun.time_mono (by omega)
-  obtain ⟨hacc, -, -⟩ := Coherence.accept_of_proposesAt' hr (hnc.upTo _) hzk hP'
+  obtain ⟨hacc, -, -⟩ := Coherence.accept_of_proposesAt hr (hnc.upTo _) hzk hP'
   obtain ⟨⟨⟨-, -⟩, hpos⟩, -, -⟩ := hP'
-  rcases Coherence.blockCall_cases' h hzk hacc with hg |
+  rcases Coherence.blockCall_cases h hzk hacc with hg |
     ⟨j, x, fgDue, rfl, hg, hpr, d, pay, hdp, hB, hacc', ⟨ℓ₀, h₀⟩, -, hst2⟩
-  · rw [RunTrace.groupAt'_iff] at hg
+  · rw [RunTrace.groupAt_iff] at hg
     exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
-  obtain ⟨hc1, ht1, hst1⟩ := Coherence.tick_proposal_call' h hzk hg hpr
-  simp only [Node.acProposal'_eq] at hc1
+  obtain ⟨hc1, ht1, hst1⟩ := Coherence.tick_proposal_call h hzk hg hpr
+  simp only [Node.acProposal_eq] at hc1
   set tu := tr.upTo (tr.time (j + 2)) with htu
   have hc := Compose.projAC_callAt.2 hc1
   have hj1 : tu.time (j + 1) = sp.ts u := by
@@ -596,37 +596,37 @@ theorem warm_proposal_bounds_at' {proposer : Nat → Fin sp.n}
     exact hz
   have hle1 : ∀ q < j + 1, tr.time q ≤ tr.time (j + 2) :=
     fun q hq => hrun.time_mono (by omega)
-  have hfr := Node.frame_of_projAC_at' h hzk hc
+  have hfr := Node.frame_of_projAC_at h hzk hc
   rw [Trace.upTo_state tr z hle1] at hfr
   have hac := (Compose.goldilocks_ac_projection_from' hr (hnc.upTo _)).localRun
   obtain ⟨Q, hQ, hv, hroot⟩ :=
-    Healing.Growing.Shadow.full_frame_viable_witness_at' hrun hnc hzi (by
+    Healing.Growing.Shadow.full_frame_viable_witness_at hrun hnc hzi (by
       have : tr.time (j + 1) = sp.ts u := hj1
       rw [this]
       exact hf)
   rw [← hfr] at hQ hv hroot
   have hd : (AC.acProposal sp (tu.projAC.state z (j + 1))
-      (Node.frame' (Node.tickStep' proposer dg z (tu.state z j) (tu.time (j + 2)) x
+      (Node.frame (Node.tickStep proposer dg z (tu.state z j) (tu.time (j + 2)) x
         .acTick).1) (tu.projAC.time (j + 1))).2 = some (d, pay) := by
     have ht1' : tu.projAC.time (j + 1) = tu.time (j + 2) := ht1
     rw [Compose.projAC_state' h hzk, hst1, ht1']
-    simpa only [Node.acProposal'_eq] using hdp
+    simpa only [Node.acProposal_eq] using hdp
   have hvd := Healing.proposal_head_viable hac hr.vstart hzk hc rfl
     (by rw [sp.slotTime_eq]; exact hj1) hd
     ⟨(AC.frameIn_of_callAt hac hzk hc).1.fcRoot_mem, .refl, Q, hQ, hv, hroot⟩
-  rw [hfr, Node.frame'_eq, Store.toFrame'_viableHeads] at hvd
+  rw [hfr, Node.frame_eq, Store.toFrame_viableHeads] at hvd
   obtain ⟨hDm, -, hDv⟩ := hvd
   -- the proposal's store, block and state
   have hfgj : (tr.state z (j + 1)).fg = (tu.state z j).fg := by
     rw [← Trace.upTo_state tr z hle1, tu.state_succ_of_call h₀,
-      ((Node.cutStep'_ac _ _ _ _ _).1 (h.cutLaw z hzk _ _ h₀)).2.2.1]
+      ((Node.cutStep_ac _ _ _ _ _).1 (h.cutLaw z hzk _ _ h₀)).2.2.1]
   obtain ⟨fg', hfg'⟩ := hacc'.1 rfl
   have hpost : (tu.state z (j + 2 + 1)).fg = fg' := by
-    have hcl := ((Node.cutStep'_block_true _ _ _ _ _).1 (h.cutLaw z hzk _ _ hacc)).2.1
+    have hcl := ((Node.cutStep_block_true _ _ _ _ _).1 (h.cutLaw z hzk _ _ hacc)).2.1
     rw [tu.state_succ_of_call hacc]
     rw [hst2, hfg'] at hcl
     exact (Option.some.inj hcl).symm
-  obtain ⟨pr, hpar, hσ'⟩ := onBlock'_σ hfg'
+  obtain ⟨pr, hpar, hσ'⟩ := onBlock_σ hfg'
   rw [← hpost, Trace.upTo_state tr z hleB] at hσ'
   -- the floor of the window at the proposal cut
   have hj1' : tr.time (j + 1) = sp.ts u := hj1
@@ -640,10 +640,10 @@ theorem warm_proposal_bounds_at' {proposer : Nat → Fin sp.n}
   have hatts : P.fgView.atts = (tu.state z j).fg.proposalAttestations d.head := by
     rw [hB]
     rfl
-  have hreach := Node.fg_reachable_at' h hzk j
+  have hreach := Node.fg_reachable_at h hzk j
   constructor
   · rw [← hfl, hfgj]
-    exact floor_le_of_isViable' hreach hDm hDv hatts hσ'
+    exact floor_le_of_isViable hreach hDm hDv hatts hσ'
   · intro hk
     obtain ⟨hmax, hcont⟩ :=
       (hframe.kind_iff z (j + 1) hzi (hj1' ▸ hlo) (hj1' ▸ hhi)).2 hk
@@ -652,12 +652,12 @@ theorem warm_proposal_bounds_at' {proposer : Nat → Fin sp.n}
       rw [hfgj]
       omega
     rw [hfloor]
-    exact hj_lt_of_isViable' hreach hDm hDv hatts hσ'
+    exact hj_lt_of_isViable hreach hDm hDv hatts hσ'
 
 /-- A warm shadow proposal reaches the unchanged stock window floor. -/
-theorem floor_le_warm_proposal_at' {proposer : Nat → Fin sp.n}
+theorem floor_le_warm_proposal_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace' sp ro} {ini}
+    {tr : GoldilocksTrace sp ro} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -667,14 +667,14 @@ theorem floor_le_warm_proposal_at' {proposer : Nat → Fin sp.n}
     (hlo : lo ≤ sp.ts u) (hhi : sp.ts u ≤ hi)
     (hf : (H (sp.ts u))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) :
     floor ≤ ((tr.state z (kP + 1)).fg.σ P.root).h :=
-  (warm_proposal_bounds_at' hrun hnc hframe hz hdes hP hPs hlo hhi hf).1
+  (warm_proposal_bounds_at hrun hnc hframe hz hdes hP hPs hlo hhi hf).1
 
 /-- **Leaf 8 `rounds_le_warm_proposal_at` holds under P-U** (V-A7, `pu_cex_leaf8_low`: proved).
 The stock statement over the stock `FrameWindow` and the stock key `frameKey'`, for shadow runs;
 the stock arithmetic `le_floor_add_riseRounds` and `floor_le_warm_proposal_at'`. -/
-theorem rounds_le_warm_proposal_at' {proposer : Nat → Fin sp.n}
+theorem rounds_le_warm_proposal_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace' sp ro} {ini}
+    {tr : GoldilocksTrace sp ro} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g af len : Time} {u floor v : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -698,7 +698,7 @@ theorem rounds_le_warm_proposal_at' {proposer : Nat → Fin sp.n}
     (HZ := Healing.Growing.HZ tr H g) (by rw [hkey]; exact hv)
   rw [hkey, hwin.floor_eq z kP hzk (ht ▸ hlo) (ht ▸ hhi)] at hfloor
   exact hfloor.trans (Nat.add_le_add_right
-    (floor_le_warm_proposal_at' hrun hnc hwin hz hdes hP hPs hlo hhi hf) _)
+    (floor_le_warm_proposal_at hrun hnc hwin hz hdes hP hPs hlo hhi hf) _)
 
 end Run
 

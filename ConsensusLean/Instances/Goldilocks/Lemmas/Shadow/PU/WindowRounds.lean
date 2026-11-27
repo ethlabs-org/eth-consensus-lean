@@ -20,13 +20,13 @@ open AC (ACParams ReplayOrder Payload gbar)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
 
 private theorem faults_lt_quorum {f n : Nat} (hn : 1 ≤ n) (hf : 3 * f ≤ n - 1) :
     f < 2 * ((2 * n + 2) / 3) - n := by omega
 
 /-- Leaf 11's wrapper for the reset induction, through the delayed report-follow interface. -/
-theorem round_of_warm_within_interface'
+theorem round_of_warm_within_interface
     {g ΔF b T D t₀ : Time} {s₀ u x N M Gs : Nat} {isTop : Prop}
     {J P X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J)
@@ -50,7 +50,7 @@ theorem round_of_warm_within_interface'
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX)) (hdx : p = proposer x)
     (hX : tr.ProposesAt p kX X) (hXs : X.slot = x)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt' proposer dg H sign)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
     (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
     (hK : CommitteeHalfUpTo tr H K g b) :
@@ -61,7 +61,7 @@ theorem round_of_warm_within_interface'
     hD hΔF hux hxN hmb hTb hna hT hz hdes hP hPs hp hdx hX hXs hcal hgap ht₀ hδG hK
 
 /-- Stock leaf 11's reset-induction interface, retaining the primed-window wrapper. -/
-theorem round_of_warm_within_stock_interface'
+theorem round_of_warm_within_stock_interface
     {g ΔF b T D t₀ : Time} {s₀ u x N floor Gs : Nat} {kindJ : Prop}
     {J P X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
@@ -85,7 +85,7 @@ theorem round_of_warm_within_stock_interface'
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX)) (hdx : p = proposer x)
     (hX : tr.ProposesAt p kX X) (hXs : X.slot = x)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt' proposer dg H sign)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
     (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
     (hK : CommitteeHalfUpTo tr H K g b) :
@@ -96,7 +96,7 @@ theorem round_of_warm_within_stock_interface'
     hD hΔF hux hxN hmb hTb hna hT hz hdes hP hPs hp hdx hX hXs hcal hgap ht₀ hδG hK
 
 /-- Proposal acceptance, read in the proposer's prefix rather than a stock run. -/
-theorem proposal_mem_at' {ini}
+theorem proposal_mem_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} {k : Nat}
     (hp : p ∈ H (tr.time k)) {P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -104,11 +104,11 @@ theorem proposal_mem_at' {ini}
   have hr := hrun.upTo (hrun.time_nonneg k)
   have hP' : (tr.upTo (tr.time k)).ProposesAt p k P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2.1, hP.2.2⟩
-  have hm := (Coherence.accept_of_proposesAt' hr (hnc.upTo _) hp hP').2.1
+  have hm := (Coherence.accept_of_proposesAt hr (hnc.upTo _) hp hP').2.1
   rwa [Trace.upTo_state tr p (fun q hq => hrun.time_mono (by omega))] at hm
 
 /-- V-B3's induction. Unresolved through warm crossing and proposal report-follow. -/
-theorem rise_reset_rounds_within_at'
+theorem rise_reset_rounds_within_at
     {g ΔF b T D t₀ : Time} {s₀ N G M Gs : Nat} {isTop : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) M
@@ -136,7 +136,7 @@ theorem rise_reset_rounds_within_at'
     {kP : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hrise : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + r)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt' proposer dg H sign)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
     (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
     (hK : CommitteeHalfUpTo tr H K g b) :
@@ -181,14 +181,14 @@ theorem rise_reset_rounds_within_at'
       have hlt : sp.ts (u + 1 : Nat) < sp.ts (u + (r + 1) * ρ + 1 : Nat) :=
         (AC.ts_lt_iff sp).2 (by exact_mod_cast (show u + 1 < u + (r + 1) * ρ + 1 by omega))
       linarith
-    obtain ⟨hPX, _, hcross⟩ := round_of_warm_within_interface' (N := N)
+    obtain ⟨hPX, _, hcross⟩ := round_of_warm_within_interface (N := N)
       (hframe.mono le_rfl (by linarith)) hrun hnc hsvc hawake hf hcatch hnr hm hwarm hδ hlat
       hD hΔF hxl (by omega) (by linarith) hTb hna hstrict hz hdes hP hPs hpx0 rfl hX hXs hcal
       hgap ht₀ hδG hK
     have htP : tr.time kP = sp.ts u := by
       simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
     have hz0 : z ∈ H (tr.time kP) := hrun.antitone (by rw [htP]; linarith) hz
-    have hPm := proposal_mem_at' hrun hnc hz0 hP
+    have hPm := proposal_mem_at hrun hnc hz0 hP
     have hσ := σ_eq_honest_at' hrun hnc (hrun.time_nonneg kP)
       (fun q hq => hrun.time_mono (by omega)) hz0 (hrun.time_nonneg kX)
       (fun q hq => hrun.time_mono (by omega)) hpx0 hPm hPX
@@ -199,7 +199,7 @@ theorem rise_reset_rounds_within_at'
     exact ⟨a, ha, hat.trans (by linarith [hts hnext])⟩
 
 /-- Same-tick specialization. The zero-latency run supplier is still an explicit premise. -/
-theorem rise_reset_rounds_at'
+theorem rise_reset_rounds_at
     {g ΔF b T t₀ : Time} {s₀ N G M Gs : Nat} {isTop : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) M
@@ -227,19 +227,19 @@ theorem rise_reset_rounds_at'
     {kP : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hrise : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h + r)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt' proposer dg H sign)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
     (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ a, IsReset tr H g a ∧
       a ≤ sp.ts (u + r * (sp.toParams.fg.δt + G - 1) + 1 : Nat) + 2 * sp.Δ +
         (Gs : Time) * sp.Δ := by
-  simpa only [zero_add] using rise_reset_rounds_within_at' hframe hrun hnc hsvc hawake hf hcatch
+  simpa only [zero_add] using rise_reset_rounds_within_at hframe hrun hnc hsvc hawake hf hcatch
     hnr hm hδ hG hlat le_rfl (by simpa only [zero_add] using hΔF) hgp hmb hH hTb hna r
     hwarm hN (by simpa only [zero_add] using hT) hz hdes hP hPs hrise hcal hgap ht₀ hδG hK
 
 /-- Four P-U attempts retain the six rise rounds of the stock five-attempt budget. -/
-theorem sum_riseLen_four' (d ρ s lam : Time) (HZ : Nat) :
+theorem sum_riseLen_four (d ρ s lam : Time) (HZ : Nat) :
     ∑ j ∈ Finset.range 4, (riseLen d ρ s HZ (2 * HZ + j) + lam) =
       4 * (d + s + lam) + 6 * ρ := by
   simp only [Finset.sum_range_succ, Finset.sum_range_zero, riseLen_eq, riseRounds_eq,
@@ -248,7 +248,7 @@ theorem sum_riseLen_four' (d ρ s lam : Time) (HZ : Nat) :
   ring
 
 /-- A warm proposal supplier on P-U windows. This is a premise, not a claimed drain proof. -/
-structure DrainOutputs' (tr : GoldilocksTrace' sp ro) (proposer : Nat → Fin sp.n)
+structure DrainOutputs (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n)
     (H : Time → Set (Fin sp.n)) (g : Time) (G Ld : Nat) (b : Time) : Prop where
   warm : ∀ {s₀ N M : Nat} {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))},
     FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J →
@@ -263,7 +263,7 @@ structure DrainOutputs' (tr : GoldilocksTrace' sp ro) (proposer : Nat → Fin sp
 
 /-- Assemble a reset from a supplied constant-key window and a warm drain proposal.
 This separates the round argument from the window-search budget, without assuming a reset. -/
-theorem exists_reset_in_window'
+theorem exists_reset_in_window
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -289,8 +289,8 @@ theorem exists_reset_in_window'
     (hna : ∀ w k att, w ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt w k att →
       tr.time k ≤ af + len → att.h ≤ HZ tr H g)
     (hN : s₀ + Ld + riseRounds (HZ tr H g) v * (sp.toParams.fg.δt + G - 1) + 1 ≤ N)
-    (hdrain : DrainOutputs' tr proposer H g G Ld b)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt' proposer dg H sign)
+    (hdrain : DrainOutputs tr proposer H g G Ld b)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
     (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
     (hK : CommitteeHalfUpTo tr H K g b) :
@@ -313,7 +313,7 @@ theorem exists_reset_in_window'
   have hrise := rounds_le_warm_proposal_at hrun hnc hwin hkey hv hulo huhi hz0 hdes hP hPs
     (faults_lt_quorum sp.toParams.hn
       (hf (sp.ts u) (by change 0 ≤ 4 * sp.Δ * (u : Time); positivity) (huhi.trans hmb)))
-  obtain ⟨a, ha, hat⟩ := rise_reset_rounds_within_at' hframe hrun hnc hsvc hawake hf hcatch hnr
+  obtain ⟨a, ha, hat⟩ := rise_reset_rounds_within_at hframe hrun hnc hsvc hawake hf hcatch hnr
     hm hδ hG hlat hD hΔF hgp (by linarith) hH hmb
     (fun w k att hw hs hk => hna w k att hw hs hk.le)
     (riseRounds (HZ tr H g) v) hwarm huN
@@ -322,7 +322,7 @@ theorem exists_reset_in_window'
 
 /-- Reset assembly from the four-attempt search. Range and relay calls remain explicit
 until the generic snapshot/awake wrappers are ported; no reset is assumed in either premise. -/
-theorem exists_reset'
+theorem exists_reset
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
@@ -349,8 +349,8 @@ theorem exists_reset'
       tr.time k ≤ b → att.h ≤ HZ tr H g)
     (hgp : ∀ s₀ N : Nat, lo ≤ sp.ts s₀ → sp.ts N + 2 * sp.Δ ≤ b →
       ProposalGap tr H proposer G s₀ N)
-    (hdrain : DrainOutputs' tr proposer H g G Ld b)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt' proposer dg H sign)
+    (hdrain : DrainOutputs tr proposer H g G Ld b)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ lo)
     (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
     (hK : CommitteeHalfUpTo tr H K g b) : ∃ a, IsReset tr H g a ∧ a ≤ b := by
@@ -396,7 +396,7 @@ theorem exists_reset'
     have halign := Int.le_sub_one_of_lt hshi
     dsimp [slack]
     linarith only [halign]
-  obtain ⟨a, ha, hat⟩ := exists_reset_in_window' hrun hnc hwin hkey hv hslo hfit hsvc hawake hf
+  obtain ⟨a, ha, hat⟩ := exists_reset_in_window hrun hnc hwin hkey hv hslo hfit hsvc hawake hf
     hcatch hnr (by linarith) hδ hG hlat hD hΔF
     (hgp s₀ N (by linarith) (by linarith)) hwinb hH
     (fun w k att hw hs hk => hna w k att hw hs (hk.trans hwinb))

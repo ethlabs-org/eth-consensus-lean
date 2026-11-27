@@ -14,11 +14,11 @@ open AC (ACParams ReplayOrder Payload gbar)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
 
 /-- The viable proposal parent transfers its primed-window witness to its child. -/
 theorem proposal_window_witness
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {lo hi : Time} {M u : Nat} {isTop : Prop}
@@ -39,7 +39,7 @@ theorem proposal_window_witness
   have hB' : (tr.upTo (tr.time kB)).ProposesAt z kB B :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hB.1⟩, hB.2.1, hB.2.2⟩
   obtain ⟨_, ip, ell, d, pay, hc, hcall, hd, hti, hpar, _⟩ :=
-    Coherence.honestProposalRun_of_proposesAt' hr (hnc.upTo _) hzk hdes hB' hBs
+    Coherence.honestProposalRun_of_proposesAt hr (hnc.upTo _) hzk hdes hB' hBs
   rw [← hdes] at hc hd
   have hip : tr.time ip = sp.ts u := hti
   have hzi : z ∈ H (tr.time ip) := hip ▸ hz
@@ -48,20 +48,20 @@ theorem proposal_window_witness
     exact (hrun.time_mono hq.le).trans (by rw [hip, htime])
   have hleB : ∀ q < kB + 1, tr.time q ≤ tr.time kB :=
     fun q hq => hrun.time_mono (by omega)
-  have hfr := Node.frame_of_projAC_at' hr.toLocalRun' hzk hc
-  have hfr' : ell.frame = Node.frame' (tr.state z ip) := by
+  have hfr := Node.frame_of_projAC_at hr.toLocalRun' hzk hc
+  have hfr' : ell.frame = Node.frame (tr.state z ip) := by
     rw [Trace.upTo_state tr z hleip] at hfr
     exact hfr
-  obtain ⟨Q, hQ, hv, hroot⟩ := Shadow.full_frame_viable_witness_at' hrun hnc hzi (hip ▸ hf)
+  obtain ⟨Q, hQ, hv, hroot⟩ := Shadow.full_frame_viable_witness_at hrun hnc hzi (hip ▸ hf)
   rw [← hfr'] at hQ hv hroot
   have hac := (Compose.goldilocks_ac_projection_from' hr (hnc.upTo _)).localRun
   have hvd := Healing.proposal_head_viable hac hr.vstart hzk hc hcall
     (by rw [sp.slotTime_eq]; exact hti) hd
     ⟨(AC.frameIn_of_callAt hac hzk hc).1.fcRoot_mem, .refl, Q, hQ, hv, hroot⟩
-  rw [hfr, Node.frame'_eq, Store.toFrame'_viableHeads] at hvd
+  rw [hfr, Node.frame_eq, Store.toFrame_viableHeads] at hvd
   obtain ⟨hDm, _, hDv⟩ := hvd
   have hBm : B ∈ ((tr.upTo (tr.time kB)).state z (kB + 1)).fg.tree :=
-    (Coherence.accept_of_proposesAt' hr (hnc.upTo _) hzk hB').2.1
+    (Coherence.accept_of_proposesAt hr (hnc.upTo _) hzk hB').2.1
   have hDhist : d.head ∈ (tr.upTo (tr.time kB)).HonestBlocks (H (tr.time kB)) :=
     ⟨z, hzk, ip, hDm⟩
   have hBhist : B ∈ (tr.upTo (tr.time kB)).HonestBlocks (H (tr.time kB)) :=
@@ -74,10 +74,10 @@ theorem proposal_window_witness
     · exact he ▸ hBm
     · exact (Anc.mem hDBs he).1
   have hσ := Store.σ_eq_of_mem_with
-    (Node.fg_reachable_at' hr.toLocalRun' hzk ip).reachableWith
+    (Node.fg_reachable_at hr.toLocalRun' hzk ip).reachableWith
     Store.finalitySpec_updateFinality'
-    (Node.fg_reachable_at' hr.toLocalRun' hzk (kB + 1)).reachableWith
-    (Coherence.honest_blocks_coherent' hr.toLocalRun' (hnc.upTo _)).1
+    (Node.fg_reachable_at hr.toLocalRun' hzk (kB + 1)).reachableWith
+    (Coherence.honest_blocks_coherent hr.toLocalRun' (hnc.upTo _)).1
     (fun _ hm => ⟨z, hzk, ip, hm⟩) (fun _ hm => ⟨z, hzk, kB + 1, hm⟩) hDm hDpost
   have hh := (Coherence.honest_held_height' hr (hnc.upTo _) hzk hDBs).1
   rw [← hσ] at hh
@@ -86,7 +86,7 @@ theorem proposal_window_witness
     exact hwin.M_eq z ip hzi (hip ▸ hlo) (hip ▸ hhi)
   have hpred : M - 1 ≤
       (((tr.upTo (tr.time kB)).state z ip).fg.σ d.head.root).h := by
-    rw [Store.isViable'_iff] at hDv
+    rw [Store.isViable_iff] at hDv
     rcases hDv with hh | ⟨hh, _⟩ <;> omega
   have hheight := hpred.trans hh
   rw [Trace.upTo_state tr z hleB] at hheight
@@ -101,7 +101,7 @@ theorem proposal_window_witness
     exact hwin.root_eq z ip hzi (hip ▸ hlo) (hip ▸ hhi) htop
   rw [Trace.upTo_state tr z hleB, heq] at hh
   have hJD : ((tr.upTo (tr.time kB)).state z ip).fg.Anc J d.head := by
-    rw [Store.isViable'_iff] at hDv
+    rw [Store.isViable_iff] at hDv
     rcases hDv with hh | ⟨hh, hgap | hJD⟩
     · omega
     · omega
@@ -111,8 +111,8 @@ theorem proposal_window_witness
   exact Anc.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono ht) (hJD'.trans hDB)
 
 /-- Relay or early membership preserves the primed proposal witness at an honest call. -/
-theorem proposal_viable_at_call_with_early_primed_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+theorem proposal_viable_at_call_with_early_at
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
     {g ΔF b hi : Time} {u M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts u) hi M isTop J)
@@ -124,7 +124,7 @@ theorem proposal_viable_at_call_with_early_primed_at'
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell)
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
     (hlo : sp.ts u ≤ tr.time i) (hhi : tr.time i ≤ hi)
     (hearly : tr.time i < sp.ts u + sp.Δ → P ∈ ell.frame.tree) :
     P ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.fcRoot P ∧ P ∈ ell.frame.viableHeads := by
@@ -136,7 +136,7 @@ theorem proposal_viable_at_call_with_early_primed_at'
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
   obtain ⟨_, ip, ellp, d, pay, hcp, hcall, hd, hti, hparent, _, _, _, ja, _, hacc, hta⟩ :=
-    Coherence.honestProposalRun_of_proposesAt' (hrun.upTo (hrun.time_nonneg kP))
+    Coherence.honestProposalRun_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
       (hnc.upTo _) hzk hdes hP' hPs
   rw [← hdes] at hacc
   have hja : tr.time ja = sp.ts u := hta
@@ -147,10 +147,10 @@ theorem proposal_viable_at_call_with_early_primed_at'
   have hra := hac.upTo (hrun.time_nonneg ja)
   have hca'' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hca'⟩
   have hPt := (AC.accept_new sp hra.localRun hzja ⟨ella, hca'', hblock⟩).1 ella hca''
-  have hfa := Goldilocks.Shadow.PU.Growing.frame_of_projAC_at' hrun hzja hca'
-  have hfi := Goldilocks.Shadow.PU.Growing.frame_of_projAC_at' hrun hy hc
-  rw [hfa, Node.frame'_eq, Store.toFrame'_tree] at hPt
-  have hPm := (Coherence.accept_of_proposesAt' (hrun.upTo (hrun.time_nonneg kP))
+  have hfa := Goldilocks.Shadow.PU.Growing.frame_of_projAC_at hrun hzja hca'
+  have hfi := Goldilocks.Shadow.PU.Growing.frame_of_projAC_at hrun hy hc
+  rw [hfa, Node.frame_eq, Store.toFrame_tree] at hPt
+  have hPm := (Coherence.accept_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
     (hnc.upTo _) hzk hP').2.1
   rw [Trace.upTo_state tr z (fun q hq => hrun.time_mono (by omega))] at hPm
   have hσ := σ_eq_honest_at' hrun hnc (hrun.time_nonneg kP)
@@ -168,13 +168,13 @@ theorem proposal_viable_at_call_with_early_primed_at'
       (by linarith only [hphi.trans hib, sp.toParams.hΔ]))
   rw [hσ] at hw
   have hlow : sp.ts u ≤ tr.time i := by linarith [sp.toParams.hΔ]
-  have hFP := FrameWindow'.finalized_below_descendant_at'
+  have hFP := FrameWindow'.finalized_below_descendant_at
     hframe hrun hnc hy hzja hzja
     (hmf _ ((hrun.time_nonneg i).trans (le_max_left _ _))
       (max_le (hhi.trans hib) (by rw [hja]; linarith [sp.toParams.hΔ])))
     hlow hhi hPt.1 hw hPt.1 .refl
   have hFP' : Anc (tr.HonestBlocksAt H) ell.frame.F P := by
-    rw [hfi, Node.frame'_eq, Store.toFrame'_F]
+    rw [hfi, Node.frame_eq, Store.toFrame_F]
     exact hFP
   have hri := hac.upTo (hrun.time_nonneg i)
   have hci := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩
@@ -189,24 +189,24 @@ theorem proposal_viable_at_call_with_early_primed_at'
       exact ⟨ellq, (Trace.upTo_callAt _).mpr ⟨hrun.time_mono hqi, hcq⟩, heq⟩
     exact AC.mem_tree_of_acceptAtU sp hri.localRun.toU hy haq' hqi hci hFP'
   have hPyi : P ∈ (tr.state y i).fg.tree := by
-    rw [hfi, Node.frame'_eq, Store.toFrame'_tree] at hPy
+    rw [hfi, Node.frame_eq, Store.toFrame_tree] at hPy
     exact hPy.1
-  have hv := (windowWitness_of_frameWindow'
+  have hv := (windowWitness_of_frameWindow
     hrun hnc hframe hzja hPt.1 hw).held y i hy hlow hhi
       (hmf _ (hrun.time_nonneg i) (hhi.trans hib)) hPyi
   have hstore := store_anc_of_honest_anc_at' hrun hnc (hrun.time_nonneg i)
     (fun q hq => hrun.time_mono hq.le) hy hFP hPyi
   refine ⟨hPy, ?_, ?_⟩
-  · rw [hfi, Node.frame'_eq, Store.toFrame'_fcRoot]
-    change Anc (tr.state y i).fg.toFrame'.tree _ _
-    rw [Store.toFrame'_tree]
+  · rw [hfi, Node.frame_eq, Store.toFrame_fcRoot]
+    change Anc (tr.state y i).fg.toFrame.tree _ _
+    rw [Store.toFrame_tree]
     exact Anc.restrict .refl hstore
-  · rw [hfi, Node.frame'_eq, Store.toFrame'_viableHeads]
+  · rw [hfi, Node.frame_eq, Store.toFrame_viableHeads]
     exact ⟨hPyi, hstore, hv.2⟩
 
 /-- Late calls obtain proposal membership from relay. -/
 theorem proposal_viable_at_call_primed_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
     {g ΔF b hi : Time} {u M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts u) hi M isTop J)
@@ -218,16 +218,16 @@ theorem proposal_viable_at_call_primed_at'
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell)
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
     (hlo : sp.ts u + sp.Δ ≤ tr.time i) (hhi : tr.time i ≤ hi) :
     P ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.fcRoot P ∧ P ∈ ell.frame.viableHeads := by
-  exact proposal_viable_at_call_with_early_primed_at' hframe hrun hnc hsvc hf hnr hgu hphi hib
+  exact proposal_viable_at_call_with_early_at hframe hrun hnc hsvc hf hnr hgu hphi hib
     hz hdes hP hPs hy hc (by linarith [sp.toParams.hΔ]) hhi
     (fun h => absurd h (not_lt.mpr hlo))
 
 /-- An honest cast retains the proposal in its voter-domain viable tree. -/
 theorem proposal_viable_at_cast_primed_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
     {g ΔF b : Time} {s₀ p M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts p + sp.Δ) M isTop J)
@@ -240,7 +240,7 @@ theorem proposal_viable_at_cast_primed_at'
     {z : Fin sp.n} (hz : z ∈ H (sp.ts p + sp.Δ)) (hdes : z = proposer p)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = p)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p) :
     P ∈ ell.frame.viableHeads ∧
       P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame p) := by
@@ -256,7 +256,7 @@ theorem proposal_viable_at_cast_primed_at'
     change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at ht
     rwa [hslot'] at ht
   have hts : sp.ts s₀ ≤ sp.ts p := (AC.ts_le_iff sp).2 (by exact_mod_cast hsp)
-  obtain ⟨hPy, hroot, hv⟩ := proposal_viable_at_call_with_early_primed_at'
+  obtain ⟨hPy, hroot, hv⟩ := proposal_viable_at_call_with_early_at
     (hframe.mono hts le_rfl) hrun hnc hsvc hf hnr (hm.trans hts) le_rfl hpb
     hz hdes hP hPs hy hc.1 hpT hhigh (fun hearly => by
       obtain ⟨⟨Q, hQ, hQs, _⟩, -⟩ :=

@@ -21,7 +21,7 @@ open AC (ACParams ReplayOrder Payload gbar)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
 
 section Passage
 
@@ -41,7 +41,7 @@ variable
     {z : Fin sp.n} (hz : z ∈ H (sp.ts p + sp.Δ)) (hdes : z = proposer p)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = p)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p)
     (hmargin : s₀ + 2 * sp.k ≤ p)
     {l : AC.Lock} (hl : l ∈ e.readPoint.locks) (hlive : p ≤ l.slot + sp.k)
@@ -52,7 +52,7 @@ include hframe hrun hnc hsvc hawake hf hcatch hnr hm hsp hp0 hpb hz hdes hP hPs
   hy hc hes hmargin hl hlive hB hBr hK
 
 /-- Older lock passage assembled from regular propagation and the writer's viable witness. -/
-private theorem older_lock_prefix_transfer_primed' (holder : l.slot < p) :
+private theorem older_lock_prefix_transfer_primed (holder : l.slot < p) :
     Anc (tr.HonestBlocksAt H) B P := by
   have rc := hrun.toCore
   have hΔ := sp.toParams.hΔ
@@ -116,7 +116,7 @@ private theorem older_lock_prefix_transfer_primed' (holder : l.slot < p) :
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
   obtain ⟨_, ip, ellp, d, pay, hcp, hcallp, hpay, hti, hparent, _⟩ :=
-    Coherence.honestProposalRun_of_proposesAt' (hrun.upTo (hrun.time_nonneg kP))
+    Coherence.honestProposalRun_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
       (hnc.upTo _) hzk hdes hP' hPs
   rw [← hdes] at hcp hpay
   have hip : tr.time ip = sp.ts p := hti
@@ -151,7 +151,7 @@ private theorem older_lock_prefix_transfer_primed' (holder : l.slot < p) :
       simp only [ACParams.ts] at ht hhigh
       push_cast at hhigh
       linarith
-    have hDP := (Healing.PU.regular_later_heads_at' hframe hrun hnc hsvc hawake
+    have hDP := (Healing.PU.regular_later_heads_at hframe hrun hnc hsvc hawake
       hf hcatch hnr hlabel (by omega) (by omega) hm hgap hpb hya horigin hK p
       (by omega) le_rfl).2 hgap z ip ellp hzip hcp₀ hcallp hip d pay hpay₀
     exact hBA.trans (hAD.trans (hDP.trans hHP))
@@ -175,7 +175,7 @@ private theorem older_lock_prefix_transfer_primed' (holder : l.slot < p) :
     dsimp only at hsel
     split_ifs at hsel with hn
     exact lt_of_not_ge (fun ht => hn (Or.inr (Or.inr (Or.inl (hsl ▸ ht)))))
-  have hAP := (Shadow.PU.Growing.optimistic_later_heads_of_early_witness_at' hrun hnc hsvc
+  have hAP := (Shadow.PU.Growing.optimistic_later_heads_of_early_witness_at hrun hnc hsvc
     hawake hf hcatch hnr (hm₀.trans hts) hpb (hframe.mono hts le_rfl) hya hop hAD
     hya hlow hearly ha₀ hQ hvQ (hAQ.mono hW.2) hK p (by omega) le_rfl).2
     z ip ellp hzip hcp₀ hcallp hip d pay hpay₀
@@ -202,7 +202,7 @@ theorem current_lock_passage_of_regular_base_primed_at' :
     obtain rfl : C = B := hcoh.1 hC (hPhi.2 hB) (hCr.trans hBr.symm)
     rw [hes] at hs hop ht
     exact Or.inr ⟨hs, a, hai, D, CV, hya, hop, ht, hCD⟩
-  · exact Or.inl (older_lock_prefix_transfer_primed' hframe hrun hnc hsvc hawake hf
+  · exact Or.inl (older_lock_prefix_transfer_primed hframe hrun hnc hsvc hawake hf
       hcatch hnr hm hsp hp0 hpb hz hdes hP hPs hy hc hes hmargin hl hlive hB hBr hK
       (Nat.lt_of_not_ge hcurrent))
 
