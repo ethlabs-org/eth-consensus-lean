@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignCalendar
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.StockWindow
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignedTick
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowWrite
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowSigned
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
@@ -30,7 +31,9 @@ early-witness family (`WitnessFamily`) and the regular and optimistic later-head
 (`FollowHeads`, `FollowWrite`, `RegularLater`). The later-head pair
 (`toFG_later_proposal_head_after_at'`, `_within_at'`) is proved here from `RegularLater`'s
 `regular_later_heads_at'` and `optimistic_write_later_proposal_head_at'`; it is unresolved while
-those are. The two endpoints have no proof yet.
+those are. The two endpoints are assembled from the stock proofs; they read lanes A, N and C's
+suppliers through named stubs (`honest_vote_heads_eq_stub`, `fresh_fast_lock_update_toFG_stub`,
+`toFG_candidate_pre_within_stub`) until those land.
 
 The milestone form reads the stock window (`Generic.FrameWindow … floor kindJ J`):
 `proposal_report_follow_stock_at'` and `proposal_report_follow_delayed_stock_at'` reduce it to the
@@ -369,6 +372,94 @@ private theorem root_ne_genesis_of_anc' {ini : Fin sp.n → (goldilocksNode' sp 
   · exact hPg (by rw [← h]; exact hg)
   · simp [hcG.2.2] at hGp
 
+/-! ### Supplier stubs (lanes A, N, C)
+
+The exact contracts sent to the supplier lanes, as named stubs until they land: each is its
+stock statement over the shadow run and the P-U window. Replaced by the suppliers' exports. -/
+
+/-- Stub for lane A's `Healing.Growing.Shadow.honest_vote_heads_eq_at'` (stock
+`honest_vote_heads_eq_at`, FreshVotes). -/
+theorem honest_vote_heads_eq_stub
+    {g ΔF b : Time} {s₀ u M : Nat} {isTop : Prop}
+    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (_hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts u + sp.Δ) M isTop J)
+    {K : AC.CommitteeDict sp.n}
+    (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (_hnc : Compose.NoCollRun dg tr) (_hsvc : ResetService tr H g ΔF b hold)
+    (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (_hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (_hcatch : CatchRun tr H g (2 * sp.Δ)) (_hnr : NoRestartAfter tr H (gbar g))
+    (_hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (_hwarm : s₀ + 2 * sp.k ≤ u)
+    (_hmb : sp.ts u + sp.Δ ≤ b)
+    {z : Fin sp.n} (_hz : z ∈ H (sp.ts u + sp.Δ)) (_hdes : z = proposer u)
+    {kP : Nat} (_hP : tr.ProposesAt z kP P) (_hPs : P.slot = u)
+    (_hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = u →
+      e.msg.head = P.root := by
+  sorry
+
+/-- Stub for lane N's `fresh_fast_lock_update_toFG_at'` (stock `fresh_fast_lock_update_toFG_at`,
+FreshEndpoint). -/
+theorem fresh_fast_lock_update_toFG_stub {K : AC.CommitteeDict sp.n}
+    {g ΔF b : Time} {u M : Nat} {isTop : Prop}
+    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (_hnc : Compose.NoCollRun dg tr) (_hsvc : ResetService tr H g ΔF b hold)
+    (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (_hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (_hcatch : CatchRun tr H g (2 * sp.Δ)) (_hnr : NoRestartAfter tr H (gbar g))
+    (_hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
+    (_hjoin : ∀ y, y ∈ H (sp.ts u + sp.Δ) →
+      AC.JoinedAt tr.projAC y (sp.ts u + sp.Δ))
+    (_hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
+    (_hframe : Healing.FrameWindow' tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ)
+      M isTop J)
+    {z : Fin sp.n} (_hz : z ∈ H (sp.ts u + sp.Δ)) (_hdes : z = proposer u)
+    {kP : Nat} (_hP : tr.ProposesAt z kP P) (_hPs : P.slot = u)
+    (_hun : ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e →
+      e.msg.slot = u → e.msg.head = P.root)
+    {sign : Fin sp.n → Time → Bool} (_hcal : tr.SignCalendarAt' proposer dg H sign)
+    {y : Fin sp.n} (_hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ))
+    (_hsign : sign y (sp.ts (u + 1 : Nat) + 2 * sp.Δ) = true)
+    (_hK : CommitteeHalfUpTo tr H K g b) :
+    ∃ k ell ell', AC.UpdateAt tr.projAC y k u ell ∧
+      tr.projAC.CallAt y (k + 1) ell' ∧ ell'.call = .toFG ∧
+      tr.time (k + 1) = sp.ts (u + 1 : Nat) + 2 * sp.Δ ∧
+      ell'.frame = ell.frame ∧
+      AC.getConfirmation sp (tr.projAC.state y k) ell.frame u = some P ∧
+      ¬ AC.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P ∧
+      AC.fastSelect sp (tr.projAC.state y k) ell.frame u P = some P ∧
+      ell'.frame.viableAncestor P = P ∧
+      P ∈ ell'.frame.viableTree ell'.frame.tree ∧
+      ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.post k).locks ∧
+        (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.state y (k + 1)).locks := by
+  sorry
+
+/-- Stub for lane C's `toFG_candidate_pre_within_at'` (stock `toFG_candidate_pre_within_at`,
+FastLockRenewal). -/
+theorem toFG_candidate_pre_within_stub {K : AC.CommitteeDict sp.n}
+    {g ΔF b hi : Time} {s₀ u M : Nat} {isTop : Prop}
+    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (_hframe : Healing.FrameWindow' tr H (sp.ts s₀) hi M isTop J)
+    (_hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (_hnc : Compose.NoCollRun dg tr) (_hsvc : ResetService tr H g ΔF b hold)
+    (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (_hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (_hcatch : CatchRun tr H g (2 * sp.Δ)) (_hnr : NoRestartAfter tr H (gbar g))
+    (_hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (_hwarm : s₀ + 2 * sp.k ≤ u) (_hhib : hi ≤ b)
+    {z : Fin sp.n} (_hz : z ∈ H (sp.ts u + sp.Δ)) (_hdes : z = proposer u)
+    {kP : Nat} (_hP : tr.ProposesAt z kP P) (_hPs : P.slot = u)
+    (_hK : CommitteeHalfUpTo tr H K g b)
+    {y : Fin sp.n} {i : Nat} (_hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp ro)}
+    (_hc : tr.projAC.CallAt y i ell)
+    (_hlo : sp.ts (u + 1 : Nat) + 2 * sp.Δ < tr.time i) (_hhi : tr.time i ≤ hi) :
+    ∃ B ∈ AC.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i),
+      Anc (tr.HonestBlocksAt H) P B := by
+  sorry
+
 /-- **The fresh candidate yields an actual report**, followed by later honest proposal heads
 (`proposal_report_follow_at` over the shadow run). -/
 theorem proposal_report_follow_at'
@@ -397,7 +488,81 @@ theorem proposal_report_follow_at'
         tr.projAC.CallAt w c ellp → ellp.call = .proposal → tr.time c = sp.ts x →
         ∀ d pay, (AC.acProposal sp (tr.projAC.state w c) ellp.frame (tr.time c)).2 =
           some (d, pay) → Anc (tr.HonestBlocksAt H) R d.head := by
-  sorry
+  have hΔ := sp.toParams.hΔ
+  have hk := sp.two_le_k
+  have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
+    (AC.ts_le_iff sp).2 (by exact_mod_cast hpq)
+  have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ sp.ts N + 2 * sp.Δ := by
+    have := hts hN
+    linarith only [this]
+  have huN := hts (show u ≤ N by omega)
+  have hun := honest_vote_heads_eq_stub (hframe.mono le_rfl (by linarith only [huN, hΔ]))
+    hrun hnc hsvc hawake hf hcatch hnr hm hwarm (by linarith only [huN, hΔ, hmb])
+    hz hdes hP hPs hK
+  have hshort := hframe.mono (hts (by omega : s₀ ≤ u)) hT
+  have hjoin := fun w hw => joined_voteTime_of_warm_frame_at' hrun hnr hm
+    (by omega : s₀ + 1 ≤ u) (y := w) hw
+  have hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u := by
+    have := hts (show s₀ ≤ u by omega)
+    linarith only [hm, this, hΔ]
+  obtain ⟨k, ell, ell', hu, hc, hto, ht, _, _, _, _, hva, hv, e, he, _, hl⟩ :=
+    fresh_fast_lock_update_toFG_stub hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin
+      (hT.trans hmb) hshort hz hdes hP hPs hun hcal hy hsign hK
+  have hyc : y ∈ H (tr.time (k + 1)) := ht ▸ hy
+  have hPc := Healing.fresh_lock_toFG_candidate hv hva hl he ht
+  have hr := (Compose.Growing.goldilocks_ac_projection_from' hrun hnc).upTo
+    (hrun.time_nonneg (k + 1))
+  have hj : AC.joined sp (tr.projAC.state y (k + 1)) (tr.time (k + 1)) := by
+    have hs := Trace.upTo_state tr.projAC y (d := tr.time (k + 1)) (i := k + 1)
+      (fun q hq => hrun.time_mono hq.le)
+    unfold AC.joined
+    rcases AC.restartTime_stateU hr.localRun.toU hrun.vstart hyc (k + 1) with h | ⟨q, _, hq, h⟩
+    · rw [hs] at h
+      rw [h]; exact bot_le
+    · rw [hs] at h
+      rw [h]
+      apply WithBot.coe_le_coe.mpr
+      have hq0 := ((ACTrace.upTo_restartAt (tr := tr.projAC)).mp hq).2
+      have hqt := ((ACTrace.upTo_restartAt (tr := tr.projAC)).mp hq).1
+      have hqy := hrun.antitone hqt hyc
+      have hqg := hnr y q hqy (Compose.projAC_restartAt.mp hq0)
+      have hslot : sp.slot (tr.time (k + 1)) = u + 1 := by
+        rw [ht]
+        apply AC.slot_of_mem sp (u + 1)
+        all_goals simp only [ACParams.ts]; push_cast; linarith only [hΔ]
+      rw [hslot]
+      have hcast : ((u + 1 : Nat) : Int) - 1 = u := by omega
+      rw [hcast]
+      exact hqg.trans (by linarith only [hmargin, hΔ])
+  have hptime : tr.time kP = sp.ts u := by
+    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
+  have hzk : z ∈ H (tr.time kP) := hrun.antitone (by rw [hptime]; linarith only [hΔ]) hz
+  have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
+    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
+  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hacc, _⟩ :=
+    Coherence.honestProposalRun_of_proposesAt' (hrun.upTo (hrun.time_nonneg kP))
+      (hnc.upTo _) hzk hdes hP' hPs
+  rw [← hdes] at hacc
+  have hPg := AC.accept_ne_genesisU sp
+    (Compose.goldilocks_ac_projection_from' (hrun.upTo (hrun.time_nonneg kP))
+      (hnc.upTo _)).localRun.toU hzk hacc
+  obtain ⟨i, ellr, R, hR, htime, hPR⟩ := report_of_compatible_candidate_of_run_at'
+    hrun hnc hyc hc hto hj hPg hPc
+    (toFG_candidates_compatible_at_call_at' hrun hnc hyc hc hPc)
+  have hyi := hrun.antitone htime hyc
+  have hit := htime.trans ht.le
+  refine ⟨i, ellr, R, hyi, hR,
+    toFG_time_ge_of_ancestor_slot_at' hrun hnc hyi hR hPs hPR,
+    hit, hPR, ?_⟩
+  intro x hx hNx w c ellp hw hcp hcall htc d pay hd
+  have hbound : tr.time i ≤ sp.ts N + sp.Δ := by
+    have htx := hts (show u + 2 ≤ N by omega)
+    have hstep := AC.ts_succ (u + 1) (sp := sp)
+    linarith only [hit, htx, hstep, hΔ]
+  exact toFG_later_proposal_head_within_at' (e := 0)
+    (hframe.mono le_rfl (by linarith only [hΔ])) hrun hnc hsvc hawake hf hcatch hnr hm hwarm
+    (by linarith only [hmb, hΔ]) hyi hR hPs hPR hbound (by simpa using hit) (by omega) hNx hw
+    hcp hcall htc hd hK
 
 /-- **The delayed report follow** at signing gap `G` (`proposal_report_follow_delayed_at` over the
 shadow run). -/
@@ -430,7 +595,77 @@ theorem proposal_report_follow_delayed_at'
         tr.projAC.CallAt w c ellp → ellp.call = .proposal → tr.time c = sp.ts x →
         ∀ d pay, (AC.acProposal sp (tr.projAC.state w c) ellp.frame (tr.time c)).2 =
           some (d, pay) → Anc (tr.HonestBlocksAt H) R d.head := by
-  sorry
+  have hΔ := sp.toParams.hΔ
+  have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
+    (AC.ts_le_iff sp).2 (by exact_mod_cast hpq)
+  have hstep (a : Nat) : sp.ts (a + 1 : Nat) = sp.ts a + 4 * sp.Δ := AC.ts_succ a
+  set T := sp.ts (u + 1 : Nat) + 2 * sp.Δ with hTdef
+  have hT : T = sp.ts u + 6 * sp.Δ := by rw [hTdef, hstep]; ring
+  have hG0 : (0 : Time) ≤ (G : Time) * sp.Δ := by positivity
+  have hu0 : 0 ≤ sp.ts u := by simp only [ACParams.ts]; positivity
+  have hpub : sp.toParams.IsPublic T := ⟨4 * (u : Int) + 6, by
+    rw [hT]; simp only [ACParams.ts]; ring⟩
+  obtain ⟨t', htl, htr, hpub', hs'⟩ := hgap.of_public (y := y) ht₀ hpub
+  have hyt' : y ∈ H t' := hrun.antitone htr hy
+  have hsu := hts (show s₀ ≤ u by omega)
+  have hgu : gbar g ≤ sp.ts u := by linarith
+  have hm1 := le_max_left (sp.ts N + 2 * sp.Δ) (T + (G : Time) * sp.Δ)
+  have hm2 := le_max_right (sp.ts N + 2 * sp.Δ) (T + (G : Time) * sp.Δ)
+  rcases htl.eq_or_lt with heq | hlt
+  · -- the calendar lets the node sign at the warm update itself
+    rw [← heq] at hs'
+    obtain ⟨i, ell, R, hyi, hR, hlo, hhi, hPR, hheads⟩ :=
+      proposal_report_follow_at' (hframe.mono le_rfl hm1) hrun hnc hsvc hawake hf hcatch hnr hm
+        hwarm hN (hm1.trans hmb) hz hdes hP hPs hcal (hrun.antitone (by linarith) hy) hs' hK
+    exact ⟨i, ell, R, hyi, hR, hlo, hhi.trans (by linarith), hPR,
+      fun x hx => hheads x (by omega)⟩
+  -- a later signing time: a renewed fast lock above `P` is a candidate there
+  have ht'b : t' ≤ b := htr.trans (hm2.trans hmb)
+  obtain ⟨i, ell, hc, hcall, hti, hjoin⟩ := toFG_call_of_sign_at' hrun hnc hnr hcal hyt' hgu
+    (by rw [← hT]; exact htl) hpub' (hawake y t' hyt' (by linarith) ht'b) hs'
+  have hyi : y ∈ H (tr.time i) := by rw [hti]; exact hyt'
+  obtain ⟨B, hB, hPB⟩ := toFG_candidate_pre_within_stub hframe hrun hnc hsvc hawake hf hcatch
+    hnr hm hwarm hmb hz hdes hP hPs hK hyi hc (by rw [hti]; exact hlt)
+    (by rw [hti]; exact htr.trans hm2)
+  -- `P` is not genesis: it was accepted by its honest proposer
+  have hptime : tr.time kP = sp.ts u := by
+    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
+  have hzk : z ∈ H (tr.time kP) := hrun.antitone (by rw [hptime]; linarith only [hΔ]) hz
+  have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
+    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
+  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hacc, _⟩ :=
+    Coherence.honestProposalRun_of_proposesAt' (hrun.upTo (hrun.time_nonneg kP))
+      (hnc.upTo _) hzk hdes hP' hPs
+  rw [← hdes] at hacc
+  have hPg := AC.accept_ne_genesisU sp
+    (Compose.goldilocks_ac_projection_from' (hrun.upTo (hrun.time_nonneg kP))
+      (hnc.upTo _)).localRun.toU hzk hacc
+  have hBg := root_ne_genesis_of_anc' hrun hnc hyi hc hPg hPB hB.1.1
+  obtain ⟨r, ellr, R, hR, hrt, hBR⟩ := report_of_compatible_candidate_of_run_at' hrun hnc hyi hc
+    hcall hjoin hBg hB (toFG_candidates_compatible_at_call_at' hrun hnc hyi hc hB)
+  have hPR := hPB.trans hBR
+  have hrlo := toFG_time_ge_of_ancestor_slot_at' hrun hnc (hrun.antitone hrt hyi) hR hPs hPR
+  have hrhi : tr.time r ≤ T + (G : Time) * sp.Δ := hrt.trans (by rw [hti]; exact htr)
+  refine ⟨r, ellr, R, hrun.antitone hrt hyi, hR, hrlo, hrhi, hPR, ?_⟩
+  intro x hx hxN w c ellp hw hcp hcallp htc d pay hd
+  -- a head witness puts `t_N` after the delayed report
+  have he : (G : Time) * sp.Δ ≤ sp.ts (u + 1 + (G + 3) / 4 : Nat) - sp.ts (u + 1 : Nat) := by
+    have h4 : (G : Time) ≤ 4 * (((G + 3) / 4 : Nat) : Time) := by
+      have : G ≤ 4 * ((G + 3) / 4) := by omega
+      exact_mod_cast this
+    have hte : sp.ts (u + 1 + (G + 3) / 4 : Nat) =
+        sp.ts (u + 1 : Nat) + 4 * sp.Δ * (((G + 3) / 4 : Nat) : Time) := by
+      simp only [ACParams.ts]; push_cast; ring
+    have hm4 : (G : Time) * sp.Δ ≤ 4 * sp.Δ * (((G + 3) / 4 : Nat) : Time) := by
+      nlinarith
+    linarith
+  have hxN' := hts (show u + 1 + (G + 3) / 4 + 1 ≤ N by omega)
+  have hxs := hstep (u + 1 + (G + 3) / 4)
+  have hNΔ : sp.ts N + sp.Δ ≤ max (sp.ts N + 2 * sp.Δ) (T + (G : Time) * sp.Δ) := by
+    linarith
+  exact toFG_later_proposal_head_within_at' (e := (G + 3) / 4) (hframe.mono le_rfl hNΔ) hrun
+    hnc hsvc hawake hf hcatch hnr hm hwarm (hNΔ.trans hmb) (hrun.antitone hrt hyi) hR hPs hPR
+    (by linarith) (by linarith) (by omega) hxN hw hcp hcallp htc hd hK
 
 /-- **The report follow over the stock window** (`proposal_report_follow_at` with the shadow
 run): the stock window's J-kind, or its non-J-kind without a contest, is a P-U window
