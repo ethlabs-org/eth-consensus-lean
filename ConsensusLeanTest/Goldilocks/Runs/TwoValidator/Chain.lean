@@ -931,12 +931,12 @@ theorem fgGood_onBlock {fg : Store sp.toParams N.Payload} {τ : Nat} (h : FGGood
 /-! ## The frames -/
 
 /-- A frame over the chain: the tree is the blocks of slots `f … τ`, `Φ.F` the block of slot
-`f`, the fork-choice root the block of slot `j`, and the viable heads the blocks of slots
+`f`, which is also the fork-choice root, and the viable heads the blocks of slots
 `j … τ`. -/
 structure ChainFrame (Φ : N.Frm) (f j τ : Nat) : Prop where
   tree : ∀ B, B ∈ Φ.tree ↔ ∃ m, f ≤ m ∧ m ≤ τ ∧ B = blk m
   F : Φ.F = blk f
-  fcRoot : Φ.fcRoot = blk j
+  fcRoot : Φ.fcRoot = blk f
   heads : ∀ B, B ∈ Φ.viableHeads ↔ ∃ m, j ≤ m ∧ m ≤ τ ∧ B = blk m
   fj : f ≤ j
   jτ : j ≤ τ
@@ -972,15 +972,14 @@ theorem head_mem (h : ChainFrame Φ f j τ) {m : Nat} (h1 : j ≤ m) (h2 : m ≤
 fork-choice root to the tip. -/
 theorem mem_viableTree (h : ChainFrame Φ f j τ) {S : Set N.Blk} (hS : blk τ ∈ S)
     {m : Nat} (h1 : j ≤ m) (h2 : m ≤ τ) (hm : blk m ∈ S) : blk m ∈ Φ.viableTree S :=
-  ⟨hm, by rw [h.fcRoot]; exact h.anc h.fj h1 h2, blk τ, hS, h.head_mem h.jτ le_rfl,
+  ⟨hm, by rw [h.fcRoot]; exact h.anc le_rfl (h.fj.trans h1) h2, blk τ, hS,
+    h.head_mem h.jτ le_rfl,
     h.anc (by have := h.fj; omega) h2 le_rfl⟩
 
 theorem viableTree_sub (h : ChainFrame Φ f j τ) {S : Set N.Blk} (hS : S ⊆ Φ.tree) {B : N.Blk}
-    (hB : B ∈ Φ.viableTree S) : ∃ m, j ≤ m ∧ m ≤ τ ∧ B = blk m := by
-  obtain ⟨hBS, hanc, -⟩ := hB
-  obtain ⟨m, -, hm, rfl⟩ := (h.tree B).1 (hS hBS)
-  rw [h.fcRoot] at hanc
-  exact ⟨m, h.le_of_anc hanc, hm, rfl⟩
+    (hB : B ∈ Φ.viableTree S) : ∃ m, f ≤ m ∧ m ≤ τ ∧ B = blk m := by
+  obtain ⟨hBS, -, -⟩ := hB
+  exact (h.tree B).1 (hS hBS)
 
 end ChainFrame
 
@@ -1011,31 +1010,33 @@ theorem fgGood_frame {fg : Store sp.toParams N.Payload} {τ : Nat} (h : FGGood f
       exact ⟨m, le_of_anc_blk (onChain_tree h.blocks) ha, hm, rfl⟩
     · rintro ⟨m, h1, h2, rfl⟩
       exact ⟨⟨m, h2, rfl⟩, anc_tree h.blocks h1 h2⟩
-  have hjm : ∀ m ≤ τ, hgt τ ≤ hgt m → jx τ ≤ m := fun m _ hh => jx_le_of_hgt hh
-  have hnc : ¬ fg.Contest := by
-    rintro ⟨-, B, hB, -, hh, hna⟩
-    obtain ⟨m, hm, rfl⟩ := (hmem _).1 hB
-    rw [h.sigma m hm, csN_eq, cs_h, h.hmax] at hh
-    apply hna
-    rw [h.J]
-    exact anc_tree h.blocks (hjm m hm hh.ge) hm
-  have hfc : fg.fcRoot = blk (jx τ) := by
-    unfold Store.fcRoot
-    rw [ite_eq_left ⟨by rw [h.hmax, h.hj]; have := hgt_pos τ; omega, hnc⟩, h.J]
-  have hfloor : fg.headHeightFloor = hgt τ - 1 := by
-    unfold Store.headHeightFloor; rw [ite_eq_right hnc, h.hmax]
-  refine ⟨f, ⟨htree, hFe, hfc, fun B => ?_, hf, jx_le τ⟩⟩
-  change (B ∈ fg.tree ∧ fg.Anc fg.F B ∧ fg.Anc fg.fcRoot B ∧ fg.IsViable B) ↔ _
-  rw [hfc, hFe]
-  constructor
-  · rintro ⟨hB, -, ha, -⟩
-    obtain ⟨m, hm, rfl⟩ := (hmem _).1 hB
-    exact ⟨m, le_of_anc_blk (onChain_tree h.blocks) ha, hm, rfl⟩
-  · rintro ⟨m, h1, h2, rfl⟩
-    refine ⟨(hmem _).2 ⟨m, h2, rfl⟩, anc_tree h.blocks (by omega) h2, anc_tree h.blocks h1 h2, ?_⟩
+  have hviable : ∀ m ≤ τ, fg.IsViable (blk m) ↔ jx τ ≤ m := by
+    intro m hm
+    have hJ : fg.Anc fg.J (blk m) ↔ jx τ ≤ m := by
+      rw [h.J]; exact ⟨le_of_anc_blk (onChain_tree h.blocks), fun h1 => anc_tree h.blocks h1 hm⟩
     unfold Store.IsViable
-    rw [hfloor, h.sigma m h2, csN_eq, cs_h]
-    exact hgt_ge_of_jx h1
+    rw [hJ, h.sigma m hm, csN_eq, cs_h, h.hmax, h.hj]
+    have := hgt_pos τ
+    constructor
+    · rintro (hh | ⟨-, hg | hj⟩)
+      · exact jx_le_of_hgt hh
+      · omega
+      · exact hj
+    · intro h1
+      have := hgt_ge_of_jx h1
+      have := hgt_mono hm
+      by_cases hh : hgt τ ≤ hgt m
+      · exact Or.inl hh
+      · exact Or.inr ⟨by omega, Or.inr h1⟩
+  refine ⟨f, ⟨htree, hFe, hFe, fun B => ?_, hf, jx_le τ⟩⟩
+  change (B ∈ fg.tree ∧ fg.Anc fg.F B ∧ fg.IsViable B) ↔ _
+  rw [hFe]
+  constructor
+  · rintro ⟨hB, -, hv⟩
+    obtain ⟨m, hm, rfl⟩ := (hmem _).1 hB
+    exact ⟨m, (hviable m hm).1 hv, hm, rfl⟩
+  · rintro ⟨m, h1, h2, rfl⟩
+    exact ⟨(hmem _).2 ⟨m, h2, rfl⟩, anc_tree h.blocks (by omega) h2, (hviable m h2).2 h1⟩
 
 /-! ## The rows on the chain -/
 
