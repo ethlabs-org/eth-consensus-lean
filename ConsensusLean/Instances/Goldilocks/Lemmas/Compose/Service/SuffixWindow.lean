@@ -185,14 +185,11 @@ theorem vote_viable_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : 
       exact (Store.accepted_tree _ _ _ _ (fg_reachable hrun.toLocalRun hy j)).2.2.2 B hB
     · exact honest_held_anc hrun hnc hy hJB hB
   have hpred : (tr.state y j).fg.hmax - 1 ≤ ((tr.state y j).fg.σ B.root).h := by
-    have hfloor : (tr.state y j).fg.hmax - 1 ≤ (tr.state y j).fg.headHeightFloor := by
-      unfold Store.headHeightFloor
-      split_ifs <;> omega
     rcases floor_or_crossing_scoped hrun hnc hf hy
       (fun X hX a ha hav _ => honestRowsSourced_iff.1 hsrc X hX a ha hav)
       (fun D D' hD hD' => Anc.total hU (hGB D hD) (hGB D' hD'))
       (fun D hD => Or.inl (hGB D hD)) hB with hle | ⟨D, E, -, hD, hDs, hE, -, hEh, -⟩
-    · exact hfloor.trans hle
+    · exact hle
     obtain ⟨x, hx, k, -, -, hED, -, -⟩ := honest_source_entry hrun hnc hDs ⟨y, hy, j, hE⟩ rfl
     have hEB :=
       honest_held_anc hrun hnc hy ((hED.mono (fg_tree_subset_honest hx k)).trans (hGB D hD)) hB
@@ -502,8 +499,16 @@ private theorem competitor_reflect_before {a₀ κ b : Time}
   refine ⟨hBt, hfB, B, hBt, ?_, .refl⟩
   rw [frame_of_projAC hrun hp hc] at hXv hBt ⊢
   have hXBs := honest_held_anc hrun hnc hp hXB hBt.1
-  exact ⟨hBt.1, hBt.2, hXv.2.2.1.trans hXBs,
-    le_trans hXv.2.2.2 (honest_held_height hrun hnc hp hXBs).1⟩
+  refine ⟨hBt.1, hBt.2, ?_⟩
+  have hh := (honest_held_height hrun hnc hp hXBs).1
+  rcases hXv.2.2 with hmax | ⟨hpred, hgap | hJX⟩
+  · exact Or.inl (hmax.trans hh)
+  · by_cases hm : (tr.state p i).fg.hmax ≤ ((tr.state p i).fg.σ B.root).h
+    · exact Or.inl hm
+    · exact Or.inr ⟨by omega, Or.inl hgap⟩
+  · by_cases hm : (tr.state p i).fg.hmax ≤ ((tr.state p i).fg.σ B.root).h
+    · exact Or.inl hm
+    · exact Or.inr ⟨by omega, Or.inr (hJX.trans hXBs)⟩
 
 omit hsl hP hPs hpj hcall hy hcy hes in
 /-- **The winner is on the walk**: the proposer's best child at a block `X ≠ Q` of the suffix
@@ -759,8 +764,16 @@ theorem old_child_ineligible_of {a₀ κ b : Time}
     have hBt' := hBt
     rw [frame_of_projAC hrun hp hc] at hQv' hBt' ⊢
     have hQBs' := honest_held_anc hrun hnc hp hQB hBt'.1
-    exact ⟨hBt'.1, hBt'.2, hQv'.2.2.1.trans hQBs',
-      le_trans hQv'.2.2.2 (honest_held_height hrun hnc hp hQBs').1⟩
+    refine ⟨hBt'.1, hBt'.2, ?_⟩
+    have hh := (honest_held_height hrun hnc hp hQBs').1
+    rcases hQv'.2.2 with hmax | ⟨hpred, hgap | hJQ⟩
+    · exact Or.inl (hmax.trans hh)
+    · by_cases hm : (tr.state p i).fg.hmax ≤ ((tr.state p i).fg.σ B.root).h
+      · exact Or.inl hm
+      · exact Or.inr ⟨by omega, Or.inl hgap⟩
+    · by_cases hm : (tr.state p i).fg.hmax ≤ ((tr.state p i).fg.σ B.root).h
+      · exact Or.inl hm
+      · exact Or.inr ⟨by omega, Or.inr (hJQ.trans hQBs')⟩
   -- the proposal walk stopped at `Q`, so `B` has no majority in the proposal's view
   have hslot : sp.slot (tr.time i) = s := by
     rw [hti]; exact AC.slot_of_mem sp s le_rfl ((AC.ts_lt_iff sp).2 (by push_cast; omega))
