@@ -6,6 +6,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Kernel
 import ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Floor
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 
 public section
 
@@ -279,20 +281,8 @@ theorem Outcome.fastLock_time_lt_at' {ini : Fin sp.n → (goldilocksNode' sp ro)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     {x : Fin sp.n} {r m u : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (AC.Vote sp.n)} (hfl : AC.FastLockAt tr.projAC x r m D CV)
-    (hmu : m < u) (htr : tr.time r ≤ sp.ts u + sp.Δ) : tr.time r < sp.ts u := by
-  rcases hfl with ⟨ell, C, ⟨_, _, ht, _⟩, _⟩ | ⟨ell, A, _, hsl, _⟩
-  · change tr.time r = sp.ts m + 6 * sp.Δ at ht
-    have htwo : (m : Int) + 2 ≤ u := by
-      have := Compose.ts_add_two_le (ht ▸ htr)
-      exact_mod_cast this
-    have hDelta := sp.toParams.hΔ
-    rw [ht]
-    simp only [ACParams.ts] at htr ⊢
-    linarith only [mul_le_mul_of_nonneg_left htwo (show (0 : Time) ≤ 4 * sp.Δ by linarith), hDelta]
-  · change sp.slot (tr.time r) = m at hsl
-    by_contra h
-    have := (AC.ts_le_iff_le_slot sp (hrun.time_nonneg r) u).mp (not_lt.mp h)
-    omega
+    (hmu : m < u) (htr : tr.time r ≤ sp.ts u + sp.Δ) : tr.time r < sp.ts u :=
+  hrun.toCore.fastLock_time_lt_at hfl hmu htr
 
 /-- **The voter's height floor** over the shadow run (`reset_vote_floor_above_old_or_covered_at`):
 a pre-slot origin bound and a label-bounded cover bound reach the voter's height floor. -/

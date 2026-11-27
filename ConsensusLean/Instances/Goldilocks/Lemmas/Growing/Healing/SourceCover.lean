@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HealedMe
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.CoreStock
 
 public section
 
@@ -154,6 +155,19 @@ theorem CoveredUpTo.onHealedChain {m : Nat} {E : AC.Blk sp.n (List (FG.Att sp.n)
   let ⟨_, C, s, hC, _, hEC⟩ := h
   Compose.Growing.onHealedChain_iff.2 ⟨C, s, hC, hEC⟩
 
+/-- `CoveredUpTo.compatible_highOrigin` over the run-facts bundle. -/
+theorem _root_.Consensus.Goldilocks.GoldilocksRunCore.compatible_highOrigin_of_covered
+    {uf : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
+    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))} {ini}
+    (rc : GoldilocksRunCore uf frameOf proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {m : Nat} {E : AC.Blk sp.n (List (FG.Att sp.n))}
+    (h : CoveredUpTo tr H g a b m E) {x : Fin sp.n} {i j : Nat}
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hib : tr.time i ≤ b)
+    (ho : HighOrigin tr H g x i j B) : Compatible (tr.HonestBlocksAt H) E B :=
+  let ⟨hc, C, s, hC, _, hEC⟩ := h
+  Compose.Growing.compatible_of_anc_left (rc.coherent hnc) hEC
+    (hc.s1 C s B j hC (Compose.Growing.HealedOrigin.of_high hib ho))
+
 /-- **A covered block is compatible with every high origin written by `b`** (S1, the high
 origin being a member of the healed family). -/
 theorem CoveredUpTo.compatible_highOrigin {ini : Fin sp.n → (goldilocksNode sp ro).State}
@@ -162,9 +176,7 @@ theorem CoveredUpTo.compatible_highOrigin {ini : Fin sp.n → (goldilocksNode sp
     (h : CoveredUpTo tr H g a b m E) {x : Fin sp.n} {i j : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hib : tr.time i ≤ b)
     (ho : HighOrigin tr H g x i j B) : Compatible (tr.HonestBlocksAt H) E B :=
-  let ⟨hc, C, s, hC, _, hEC⟩ := h
-  Compose.Growing.compatible_of_anc_left (Compose.Growing.honestBlocksAt_coherent hrun hnc) hEC
-    (hc.s1 C s B j hC (Compose.Growing.HealedOrigin.of_high hib ho))
+  hrun.toCore.compatible_highOrigin_of_covered hnc h hib ho
 
 /-- **A high report is a stored high origin, or on the healed chain under the cover.** For a high
 report `C` of a node honest at its report and at `c_z`, within `b`: either the quarantine form of
