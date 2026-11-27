@@ -24,6 +24,12 @@ open Classical in
 noncomputable def frameKey'' (st : Store P A.Payload) : Nat :=
   2 * st.hmax + if st.hmax = st.hj + 1 then 1 else 0
 
+open Classical in
+/-- Characterise the merged frame key without unfolding its imported definition. -/
+theorem frameKey''_eq (st : Store P A.Payload) :
+    frameKey'' A st = 2 * st.hmax + if st.hmax = st.hj + 1 then 1 else 0 := by
+  rfl
+
 /-- Remaining rise rounds at merged key v. -/
 def riseRounds (hz v : Nat) : Nat := 2 - (v - 2 * hz) / 2
 
