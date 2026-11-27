@@ -54,7 +54,7 @@ private theorem proposal_no_attest' (y : Fin P.n) (st : NodeState A) (t : Time) 
   · simp
 
 /-- An `fg_attest` cut is in a tick (a copy of `exec_attest`). -/
-private theorem exec_attest' (y : Fin P.n) (st : NodeState A) (t : Time) (e : Event A)
+theorem exec_attest' (y : Fin P.n) (st : NodeState A) (t : Time) (e : Event A)
     {C : A.Blk} {s : Option (FG.Att P.n)}
     (h : Cut.fg (.attest C s) ∈ (exec' proposer dg y st t e).2) : ∃ x, e = .tick x true := by
   cases e with

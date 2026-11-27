@@ -675,6 +675,33 @@ theorem round_cross_at_from'
 
 end RoundCross
 
+/-- Interim leaf-4 interface, replaced by the shared `LocalRunCore` proof in Step 3.
+No stock execution premise is substituted for the shadow run. -/
+theorem row_or_high_of_attest_at_from' {sp : AC.ACParams}
+    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
+    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g T : Time}
+    (hf : ∀ t, 0 ≤ t → t < T → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hna : NoAdvance tr H g T)
+    {y : Fin sp.n} {k : Nat} {C B : AC.Blk sp.n (List (FG.Att sp.n))}
+    {s : Option (FG.Att sp.n)}
+    (hyz : y ∈ H (max (Healing.cutZ sp.toParams g) (tr.time k)))
+    (hc : tr.CallAt y k (.fg (.attest C s))) (hkT : tr.time k < T)
+    (hCm : C ∈ (tr.state y k).fg.tree) (hBC : Anc (tr.HonestBlocksAt H) B C)
+    (hkind : ((tr.state y k).fg.σ C.root).h = ((tr.state y k).fg.σ B.root).h →
+      ((tr.state y k).fg.σ B.root).h = Healing.Growing.HZ tr H g ∨
+      (tr.state y k).fg.hj < ((tr.state y k).fg.σ B.root).h ∨
+      ((tr.state y k).fg.hj = ((tr.state y k).fg.σ B.root).h ∧
+        (tr.state y k).fg.Anc (tr.state y k).fg.J C)) :
+    B ∈ (tr.state y k).fg.tree ∧ C ∈ (tr.state y k).fg.tree ∧
+      ((∃ j att, y ∈ H (tr.time j) ∧ tr.SignAt y j att ∧ tr.time j ≤ tr.time k ∧
+        att.h = ((tr.state y k).fg.σ B.root).h ∧
+        att.T = ((tr.state y k).fg.σ B.root).Th) ∨
+        ((tr.state y k).fg.σ B.root).h < ((tr.state y k).fg.σ C.root).h) := by
+  sorry
+
 end Consensus.Goldilocks.Generic.Shadow
 
 end

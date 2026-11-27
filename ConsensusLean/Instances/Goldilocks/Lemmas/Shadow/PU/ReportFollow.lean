@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignCalendar
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignedTick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowSigned
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
@@ -29,29 +31,7 @@ early-witness family (`WitnessFamily`) and the regular and optimistic later-head
 `regular_later_heads_at'` and `optimistic_write_later_proposal_head_at'`; it is unresolved while
 those are. The two endpoints have no proof yet.
 
-The signing calendar of a shadow run is read through the shadow tick groups
-(`RunTrace.GroupAt'`), not the stock ones: `SignCalendarAt'` is the stock `SignCalendarAt` with
-`GroupAt'`. The signing gap `SignGapAt` reads only the calendar and is reused. -/
-
-namespace Consensus.Goldilocks.RunTrace
-
-variable {P : Params} {A : NodeAC P} (tr : RunTrace A)
-
-/-- **The signing calendar of a shadow run** (`SignCalendarAt` over the shadow groups): each tick
-of a node honest at its time runs the FG update exactly when the calendar allows it then. -/
-def SignCalendarAt' (proposer : Nat → Fin P.n) (dg : Digest (List (FG.Att P.n)) A.Payload)
-    (H : Time → Set (Fin P.n)) (sign : Fin P.n → Time → Bool) : Prop :=
-  ∀ y j t x fgDue, y ∈ H t → tr.GroupAt' proposer dg y j t (.tick x fgDue) → fgDue = sign y t
-
-theorem signCalendarAt'_iff {proposer : Nat → Fin P.n}
-    {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Time → Set (Fin P.n)}
-    {sign : Fin P.n → Time → Bool} :
-    tr.SignCalendarAt' proposer dg H sign ↔
-      ∀ y j t x fgDue, y ∈ H t → tr.GroupAt' proposer dg y j t (.tick x fgDue) →
-        fgDue = sign y t :=
-  Iff.rfl
-
-end Consensus.Goldilocks.RunTrace
+The signing calendar of a shadow run, `RunTrace.SignCalendarAt'`, is in `SignCalendar`. -/
 
 namespace Consensus.Goldilocks.Shadow.PU.Growing
 
@@ -336,6 +316,51 @@ theorem toFG_later_proposal_head_within_at'
     linarith only [ht, hlo, hstep, sp.toParams.hΔ]
   exact toFG_later_proposal_head_after_at' hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm
     hmb hy hto hPs hPR hihi hlt hrN hz hcp hcall hti hd hK
+
+/-- At a public signing time after a warm update deadline, a node honest then executes a joined
+`ac_to_fg` call (`toFG_call_of_sign_at` over the shadow run and its calendar). -/
+theorem toFG_call_of_sign_at' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g : Time} (hnr : NoRestartAfter tr H (gbar g))
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt' proposer dg H sign)
+    {y : Fin sp.n} {t : Time} {u : Nat} (hy : y ∈ H t) (hgu : gbar g ≤ sp.ts u)
+    (ht : sp.ts u + 6 * sp.Δ ≤ t) (hpub : sp.toParams.IsPublic t) (hawake : tr.awake y t)
+    (hsign : sign y t = true) :
+    ∃ i ell, tr.projAC.CallAt y i ell ∧ ell.call = .toFG ∧ tr.time i = t ∧
+      AC.joined sp (tr.projAC.state y i) (tr.time i) := by
+  have hΔ := sp.toParams.hΔ
+  have ht0 : 0 ≤ t := by
+    have hu0 : 0 ≤ sp.ts u := by simp only [ACParams.ts]; positivity
+    linarith
+  obtain ⟨j, hj⟩ := signTickAt_of_calendar_at' hrun hcal hy ht0 hpub hawake hsign
+  obtain ⟨x, hg⟩ := (RunTrace.signTickAt'_iff tr proposer dg y j t).1 hj
+  obtain ⟨k, ell, hc, hcall, htime⟩ := Healing.toFG_call_of_signing_tick' hg
+  exact ⟨j + k, ell, hc, hcall, htime, joined_of_restart_le_at' hrun hnc hy (by linarith)
+    (fun r _ hyr hrs => (hnr y r hyr hrs).trans hgu) htime⟩
+
+/-- A block of an honest frame above a non-genesis block is not genesis
+(`root_ne_genesis_of_anc` over the shadow run). -/
+private theorem root_ne_genesis_of_anc' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
+    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell)
+    {P B : AC.Blk sp.n (List (FG.Att sp.n))} (hPg : P.root ≠ sp.genesisRoot)
+    (hPB : Anc (tr.HonestBlocksAt H) P B) (hB : B ∈ ell.frame.tree) :
+    B.root ≠ sp.genesisRoot := by
+  intro hg
+  have hr := (Compose.goldilocks_ac_projection_from' (hrun.upTo (hrun.time_nonneg i))
+    (hnc.upTo (tr.time i))).localRun
+  rw [RunTrace.upTo_projAC] at hr
+  have hc' : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
+    (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
+  obtain ⟨G, hGU, hGr, hGp⟩ := AC.genesis_mem_of_callU sp hr.toU hy _ _ hc'
+  have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono (hrun.time_nonneg i)
+  have hU := Coherence.honestBlocksAt_coherent' hrun hnc
+  have hBU : B ∈ tr.HonestBlocksAt H := hsub ((AC.frameIn_of_callAt hr hy hc').2 hB)
+  obtain rfl : B = G := hU.1 hBU (hsub hGU) (hg.trans hGr.symm)
+  rcases (Relation.ReflTransGen.cases_tail_iff _ _ _).1 hPB with h | ⟨c, -, hcG⟩
+  · exact hPg (by rw [← h]; exact hg)
+  · simp [hcG.2.2] at hGp
 
 /-- **The fresh candidate yields an actual report**, followed by later honest proposal heads
 (`proposal_report_follow_at` over the shadow run). -/

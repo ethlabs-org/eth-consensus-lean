@@ -188,7 +188,7 @@ private theorem mem_addAtts {ACP : Type} {st : Store P ACP} {a : FG.Att P.n}
       · exact ih (Or.inr h)
 
 /-- The fields of a shadow acceptance (a copy of `Store.onBlock_fields`). -/
-private theorem onBlock'_fields {ACP : Type} {st st' : Store P ACP} {B : NodeBlock P ACP}
+theorem onBlock'_fields {ACP : Type} {st st' : Store P ACP} {B : NodeBlock P ACP}
     (h : st.onBlock' B = some st') :
     ∃ (pr : Nat) (σ' : FG.ChainState P.n), st.blocks B.root = none ∧ (st.blocks pr).isSome ∧
       B.parent = some pr ∧

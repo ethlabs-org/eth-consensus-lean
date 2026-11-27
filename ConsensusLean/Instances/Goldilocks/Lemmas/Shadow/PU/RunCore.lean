@@ -6,6 +6,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Participants
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FGProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Rows
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 
 public section
 
@@ -15,10 +17,9 @@ The shadow instances of the Option B bundles, at `Store.updateFinality'` and `No
 `GoldilocksRun'.toStaticCore`, `Growing.GoldilocksRun'.toCore` and
 `Healing.Growing.ResetPremisesUpTo'.toCore`, every field from the proved shadow lemmas.
 
-**Pending (work in progress).** The private `*_pending` theorems are placeholders with the exact
-types of the fields whose shadow proofs are still being written: `report_attest`,
-`signed_before_attest` (copies over `exec'`), and `driven` (lane W's
-`Healing.projection_driven_of_run'`). -/
+**Pending.** `driven_pending` is a placeholder with the exact type of the `driven` field, for lane
+W's `Healing.projection_driven_of_run'`. The handler facts over `exec'` behind `report_attest`,
+`signed_tick`, `late_tick` and `signed_before_attest` are private copies of the stock ones. -/
 
 namespace Consensus.Goldilocks
 
@@ -130,6 +131,233 @@ private theorem tick_no_message' (y : Fin sp.n) (st : NodeState (goldilocksNode'
       · simp only [Node.attest] at hm'
         split at hm' <;> simp at hm'
 
+
+/-- An attestation in the pool of an honest node was processed by it at an earlier cut (a copy of
+`pool_processed`). -/
+private theorem pool_processed' (hrun : GoldilocksRun' proposer dg H tr ini) {y : Fin sp.n}
+    (hy : y ∈ H) {m : Nat} {a : FG.Att sp.n}
+    (ha : a ∈ (tr.state y m).fg.atts) : ∃ k < m, tr.ProcessAttAt y k a := by
+  induction m with
+  | zero =>
+    change a ∈ (tr.init y).fg.atts at ha
+    rw [hrun.init y hy] at ha
+    cases ha
+  | succ m ih =>
+    have lift : a ∈ (tr.state y m).fg.atts → ∃ k < m + 1, tr.ProcessAttAt y k a := fun ha =>
+      let ⟨k, hk, hp⟩ := ih ha
+      ⟨k, by omega, hp⟩
+    rcases Coherence.fg_step' hrun.toLocalRun' hy m with he | ⟨B, hA, hB⟩ | ⟨b, hb, he⟩
+    · exact lift (he ▸ ha)
+    · rcases (Healing.onBlock'_fields hB).choose_spec.choose_spec.2.2.2.2.2.2 a ha with ha | ha
+      · exact lift ha
+      · exact ⟨m, by omega, Or.inr ⟨B, hA, ha⟩⟩
+    · rw [he] at ha
+      rcases (Store.onAttestation_fields _ b).2.2 a ha with ha | rfl
+      · exact lift ha
+      · exact ⟨m, by omega, Or.inl hb⟩
+
+/-- The only block that `on_block(B')` processes is `B'`. -/
+private theorem onBlock_cuts' {y : Fin sp.n} {st : NodeState (goldilocksNode' sp ro)} {t : Time}
+    {B B' : AC.Blk sp.n (List (FG.Att sp.n))} {acc : Bool}
+    (h : Cut.fg (.block B acc) ∈ (Node.onBlock' y st t B').2) : B = B' := by
+  rw [Node.onBlock'_eq] at h
+  by_cases hs : sp.toParams.slotOf t < B'.slot
+  · simp [hs] at h
+  · rcases ho : st.fg.onBlock' B' with _ | fg' <;> simp [hs, ho, Node.acCall'_eq] at h <;>
+      exact h.1
+
+/-- The only block a tick processes is the own proposal, whose attestations come from the pool
+at the start of the tick (a copy of `tick_block_payload`). -/
+private theorem tick_block_payload' {y : Fin sp.n} {st : NodeState (goldilocksNode' sp ro)}
+    {t : Time} {x : Nat} {fgDue : Bool} {B : AC.Blk sp.n (List (FG.Att sp.n))} {acc : Bool}
+    (h : Cut.fg (.block B acc) ∈ (Node.exec' proposer dg y st t (.tick x fgDue)).2) :
+    ∀ a ∈ B.fgPayload, a ∈ st.fg.atts := by
+  have hprop : ∀ {st₀ : NodeState (goldilocksNode' sp ro)}, st₀.fg = st.fg →
+      Cut.fg (.block B acc) ∈ (Node.tickStep' proposer dg y st₀ t x .proposal).2 →
+      ∀ a ∈ B.fgPayload, a ∈ st.fg.atts := by
+    intro st₀ hst₀ h
+    simp only [Node.tickStep'_eq] at h
+    split_ifs at h
+    · split at h
+      · simp [Node.acProposal'_eq] at h
+      · simp only [Node.acProposal'_eq, List.mem_cons, reduceCtorEq, false_or,
+          Node.proposeBlock'_eq] at h
+        rw [onBlock_cuts' h]
+        intro a ha
+        have := (List.mem_filter.1 ha).1
+        rwa [hst₀] at this
+    · simp at h
+  have hst : (Node.tickStep' proposer dg y st t x .acTick).1.fg = st.fg := by
+    simp only [Node.tickStep'_eq, Node.acCall'_eq]
+  cases fgDue
+  case false =>
+    simp only [Node.exec'_eq, Node.onTick'_eq, Node.runSteps'_eq, Node.tickSteps,
+      Bool.false_eq_true, ↓reduceIte, List.foldl_cons, List.foldl_nil, List.nil_append,
+      List.mem_append] at h
+    rcases h with h | h
+    · simp [Node.tickStep'_eq, Node.acCall'_eq] at h
+    · exact hprop hst h
+  simp only [Node.exec'_eq, Node.onTick'_eq, Node.runSteps'_eq, Node.tickSteps, ↓reduceIte,
+    List.foldl_cons, List.foldl_nil, List.nil_append, List.mem_append] at h
+  rcases h with (h | h) | h
+  · simp [Node.tickStep'_eq, Node.acCall'_eq] at h
+  · exact hprop hst h
+  · simp only [Node.tickStep'_eq] at h
+    split at h
+    · simp [Node.acToFG'_eq] at h
+    · simp only [Node.acToFG'_eq, List.mem_cons, reduceCtorEq, false_or, Node.attest] at h
+      split at h <;> simp at h
+
+/-- An `fg_attest` cut lies in a tick, after the earlier cuts of that tick (a copy of
+`tick_of_attest`). -/
+private theorem tick_of_attest' (hrun : GoldilocksRun' proposer dg H tr ini) {y : Fin sp.n}
+    (hy : y ∈ H) {k : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Option (FG.Att sp.n)}
+    (hc : tr.CallAt y k (.fg (.attest C s))) :
+    ∃ j₀ ≤ k, ∃ x, tr.TickAt' proposer dg y j₀ (tr.time k) ∧
+      ∀ i, j₀ ≤ i → i ≤ k →
+        ∃ c ∈ (Node.exec' proposer dg y (tr.state y j₀) (tr.time k) (.tick x true)).2,
+          tr.label i = some c := by
+  obtain ⟨j₀, e, kk, hg, hk, hkk⟩ := Coherence.call_in_group' hrun.toLocalRun' hy hc
+  obtain ⟨x, rfl⟩ := Compose.exec_attest' (proposer := proposer) (dg := dg) y _ _ e
+    (List.mem_of_getElem? hkk)
+  have hg' := (RunTrace.groupAt'_iff _ _ _ _ _ _ _).1 hg
+  refine ⟨j₀, by omega, x, (RunTrace.tickAt'_iff _ _ _ _ _ _).2 ⟨x, true, hg⟩,
+    fun i hi hik => ?_⟩
+  have hlen := (List.getElem?_eq_some_iff.1 hkk).1
+  have hl := (hg'.2.1 (i - j₀) (by omega)).2.2.2.2
+  rw [Nat.add_sub_cancel' hi] at hl
+  exact ⟨_, List.getElem_mem _, hl⟩
+
+
+/-- Only the FG update calls `ac_to_fg` (a copy of `toFG_not_mem`). -/
+private theorem toFG_not_mem' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp ro)) (t : Time)
+    (x : Nat) {ℓ : ACLabel (goldilocksNode' sp ro)} (hc : ℓ.call = .toFG)
+    (h : Cut.ac ℓ ∈ (Node.tickStep' proposer dg y st t x .acTick).2 ++
+      (Node.tickStep' proposer dg y (Node.tickStep' proposer dg y st t x .acTick).1 t x
+        .proposal).2) :
+    False := by
+  rcases List.mem_append.1 h with h | h
+  · simp only [Node.tickStep'_eq, Node.acCall'_eq, List.mem_singleton, Cut.ac.injEq] at h
+    rw [h] at hc
+    cases hc
+  · revert h
+    simp only [Node.tickStep'_eq]
+    split_ifs
+    · split
+      · simp only [Node.acProposal'_eq, List.mem_singleton, Cut.ac.injEq]
+        rintro rfl
+        cases hc
+      · simp only [Node.proposeBlock'_eq, Node.onBlock'_eq]
+        split_ifs
+        · intro h
+          simp only [Node.acProposal'_eq, Node.acCall'_eq, List.mem_cons, Cut.ac.injEq,
+            List.not_mem_nil, or_false] at h
+          subst h
+          cases hc
+        · split
+          · intro h
+            simp only [Node.acProposal'_eq, Node.acCall'_eq, List.mem_cons, Cut.ac.injEq,
+              reduceCtorEq, List.not_mem_nil, or_false] at h
+            subst h
+            cases hc
+          · intro h
+            simp only [Node.acProposal'_eq, Node.acCall'_eq, List.mem_cons, Cut.ac.injEq,
+              reduceCtorEq, List.not_mem_nil, or_false, false_or] at h
+            rcases h with rfl | rfl <;> cases hc
+    · simp
+
+/-- The cut after an `ac_to_fg` cut of a handler is its `fg_attest` (a copy of `toFG_next`). -/
+private theorem toFG_next' (y : Fin sp.n) (st : NodeState (goldilocksNode' sp ro)) (t : Time)
+    (e : Node.Event (goldilocksNode' sp ro)) {k : Nat} {ℓ : ACLabel (goldilocksNode' sp ro)}
+    (hk : (Node.exec' proposer dg y st t e).2[k]? = some (.ac ℓ)) (hc : ℓ.call = .toFG) :
+    ∃ st₁, Node.CutChain' y t st ((Node.exec' proposer dg y st t e).2.take k) st₁ ∧
+      ℓ.frame = Node.frame' st₁ ∧
+      ∀ C, ((goldilocksNode' sp ro).toFG st₁.ac (Node.frame' st₁) t).2 = some C →
+        ∃ s, (Node.exec' proposer dg y st t e).2[k + 1]? = some (.fg (.attest C s)) := by
+  cases e with
+  | block B =>
+    have h := List.mem_of_getElem? hk
+    simp only [Node.exec'_eq, Node.onBlock'_eq, Node.acCall'_eq] at h
+    split_ifs at h
+    · simp at h
+    · split at h
+      · simp at h
+      · simp only [List.mem_cons, reduceCtorEq, Cut.ac.injEq, false_or] at h
+        rcases h with h | h
+        · rw [h] at hc
+          cases hc
+        · simp at h
+  | message m =>
+    have h := List.mem_of_getElem? hk
+    simp only [Node.exec'_eq, Node.onMessage'_eq, Node.acCall'_eq, List.mem_singleton,
+      Cut.ac.injEq] at h
+    rw [h] at hc
+    cases hc
+  | attestation a =>
+    have h := List.mem_of_getElem? hk
+    simp [Node.exec'_eq, Node.onAttestation] at h
+  | restart =>
+    have h := List.mem_of_getElem? hk
+    simp only [Node.exec'_eq, Node.restart'_eq, Node.acCall'_eq, List.mem_singleton,
+      Cut.ac.injEq] at h
+    rw [h] at hc
+    cases hc
+  | tick x fgDue =>
+    have hsign : fgDue = true := by
+      cases fgDue with
+      | false =>
+        have hm := List.mem_of_getElem? hk
+        exact (toFG_not_mem' (proposer := proposer) (dg := dg) y st t x hc (List.mem_append.2
+          (by simpa [Node.exec'_eq, Node.onTick'_eq, Node.runSteps'_eq, Node.tickSteps]
+            using hm))).elim
+      | true => rfl
+    subst fgDue
+    have hcuts : (Node.exec' proposer dg y st t (.tick x true)).2 =
+        (Node.tickStep' proposer dg y st t x .acTick).2 ++
+        (Node.tickStep' proposer dg y (Node.tickStep' proposer dg y st t x .acTick).1 t x
+          .proposal).2 ++
+        (Node.tickStep' proposer dg y
+          (Node.tickStep' proposer dg y (Node.tickStep' proposer dg y st t x .acTick).1 t x
+            .proposal).1 t x .fgUpdate).2 := by
+      simp [Node.exec'_eq, Node.onTick'_eq, Node.runSteps'_eq, Node.tickSteps]
+    rw [hcuts] at hk ⊢
+    set l := (Node.tickStep' proposer dg y st t x .acTick).2 ++
+      (Node.tickStep' proposer dg y (Node.tickStep' proposer dg y st t x .acTick).1 t x
+        .proposal).2 with hl
+    set st₁ := (Node.tickStep' proposer dg y (Node.tickStep' proposer dg y st t x .acTick).1 t x
+      .proposal).1
+    have hch : Node.CutChain' y t st l st₁ :=
+      Compose.chain_append' y (Compose.tickStep_chain' proposer dg y st t x _)
+        (Compose.tickStep_chain' proposer dg y (Node.tickStep' proposer dg y st t x .acTick).1 t x
+          .proposal)
+    have hn : l.length ≤ k := by
+      by_contra hlt
+      rw [List.getElem?_append_left (by omega)] at hk
+      exact toFG_not_mem' y st t x hc (List.mem_of_getElem? hk)
+    rw [List.getElem?_append_right hn] at hk
+    rw [List.getElem?_append_right (by omega)]
+    obtain ⟨m, rfl⟩ := Nat.exists_eq_add_of_le hn
+    rw [Nat.add_sub_cancel_left] at hk
+    rw [show l.length + m + 1 - l.length = m + 1 by omega]
+    simp only [Node.tickStep'_eq, Node.acToFG'_eq] at hk ⊢
+    have hm : m = 0 := by
+      split at hk
+      · rcases m with _ | m <;> simp_all
+      · simp only [Node.attest] at hk
+        split at hk
+        · rcases m with _ | _ | m <;> simp_all
+        · rcases m with _ | _ | _ | m <;> simp_all
+    subst hm
+    refine ⟨st₁, by rw [Nat.add_zero, List.take_left' rfl]; exact hch, ?_, fun C hC => ?_⟩
+    · split at hk
+      all_goals
+        simp only [List.getElem?_cons_zero, Option.some.injEq, Cut.ac.injEq] at hk
+        subst hk
+        rfl
+    · rw [hC]
+      simp only [Node.attest]
+      split <;> simp
+
 /-! ### Pending fields (placeholders with the fields' exact types) -/
 
 private theorem hj_mono_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
@@ -170,7 +398,29 @@ private theorem report_attest_pending (hrun : GoldilocksRun' proposer dg H tr in
     ((goldilocksNode sp ro).toFG (tr.state y k).ac ℓ.frame (tr.time k)).2 = some C →
     ∃ s, tr.CallAt y (k + 1) (.fg (.attest C s)) ∧ tr.time (k + 1) = tr.time k ∧
       (tr.state y (k + 1)).fg = (tr.state y k).fg := by
-  sorry
+  intro y hy k ℓ C hk hc hC
+  have h := hrun.toLocalRun'
+  obtain ⟨j₀, e, k', hg, rfl, hk'⟩ := Coherence.call_in_group' h hy hk
+  obtain ⟨st₁, hch, hfr, hnext⟩ := toFG_next' y _ _ e hk' hc
+  have hg' := (RunTrace.groupAt'_iff _ _ _ _ _ _ _).1 hg
+  have hlen := (List.getElem?_eq_some_iff.1 hk').1
+  have hst : tr.state y (j₀ + k') = st₁ := by
+    have := Compose.cutChain_run' h hy hch j₀ rfl fun m hm => by
+      rw [List.length_take] at hm
+      obtain ⟨hn, ht, -, -, hl⟩ := hg'.2.1 m (by omega)
+      exact ⟨hn, ht, by rw [hl, List.getElem_take]⟩
+    rwa [List.length_take, min_eq_left hlen.le] at this
+  rw [hst, hfr] at hC
+  obtain ⟨s, hs⟩ := hnext C hC
+  obtain ⟨hs', hc'⟩ := List.getElem?_eq_some_iff.1 hs
+  obtain ⟨hn, ht, -, -, hl⟩ := hg'.2.1 (k' + 1) hs'
+  obtain ⟨-, ht₀, -, -, -⟩ := hg'.2.1 k' hlen
+  refine ⟨s, ⟨by rw [← add_assoc] at hn; exact hn, ?_⟩, by rw [← add_assoc] at ht; rw [ht, ht₀],
+    ?_⟩
+  · rw [← add_assoc] at hl
+    rw [hl, hc']
+  · rw [tr.state_succ_of_call hk]
+    exact ((Node.cutStep'_ac _ _ _ _ _).1 (h.cutLaw y hy _ _ hk)).2.2.1
 
 private theorem signed_tick_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
     ∀ y ∈ H, ∀ {d C a}, tr.CallAt y d (.fg (.attest C (some a))) →
@@ -236,7 +486,33 @@ private theorem signed_before_attest_pending (hrun : GoldilocksRun' proposer dg 
     ∀ y ∈ H, ∀ {k C s}, tr.CallAt y k (.fg (.attest C s)) →
     ∀ {Y}, Y ∈ (tr.state y k).fg.tree → ∀ {a}, a ∈ Y.fgPayload → a.val ∈ H →
       ∃ j, tr.SignAt a.val j a ∧ tr.time j < tr.time k := by
-  sorry
+  intro y hy k C s hc Y hY a ha haH
+  have h := hrun.toLocalRun'
+  rcases Coherence.tree_accepted' h hy hY with rfl | ⟨i, hik, hA⟩
+  · cases ha
+  obtain ⟨j, hji, hj⟩ := hrun.att_unforgeable y hy i a (Or.inr ⟨Y, ⟨true, hA⟩, ha⟩) haH
+  by_cases hlt : tr.time i < tr.time k
+  · exact ⟨j, hj, lt_of_le_of_lt (hrun.time_mono hji.le) hlt⟩
+  have hti : tr.time i = tr.time k := le_antisymm (hrun.time_mono hik.le) (not_lt.1 hlt)
+  obtain ⟨j₀, hj₀k, x, ht, hl⟩ := tick_of_attest' hrun hy hc
+  have nfg : ∀ m < j₀, ∀ ℓ, tr.CallAt y m (.fg ℓ) → tr.time m = tr.time k → False :=
+    fun m hm ℓ hcm htm => by
+      obtain ⟨ℓ', he, -⟩ := Compose.before_tick' h hy ht hcm hm htm
+      cases he
+  rcases lt_or_ge i j₀ with hij₀ | hij₀
+  · exact (nfg i hij₀ _ hA hti).elim
+  obtain ⟨c, hcm, hci⟩ := hl i hij₀ hik.le
+  rw [hA.2] at hci
+  cases hci
+  obtain ⟨m, hmj₀, hm⟩ := pool_processed' hrun hy (tick_block_payload' hcm a ha)
+  obtain ⟨j', hj'm, hj'⟩ := hrun.att_unforgeable y hy m a
+    (hm.imp_right fun ⟨B, hB, haB⟩ => ⟨B, ⟨true, hB⟩, haB⟩) haH
+  have htm : tr.time m < tr.time k := by
+    refine lt_of_le_of_ne (hrun.time_mono (by omega)) fun htm => ?_
+    rcases hm with hm | ⟨B, hB, -⟩
+    · exact nfg m hmj₀ _ hm htm
+    · exact nfg m hmj₀ _ hB htm
+  exact ⟨j', hj', lt_of_le_of_lt (hrun.time_mono hj'm.le) htm⟩
 
 private theorem driven_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
     Compose.NoCollRun dg tr → AC.Driven proposer tr.projAC H := by
@@ -263,6 +539,11 @@ theorem GoldilocksRun'.toStaticCore (hrun : GoldilocksRun' proposer dg H tr ini)
     obtain ⟨C, hc⟩ := hs
     obtain ⟨j, -, ht⟩ := Compose.attestCall_tick' hrun.toLocalRun' hy hc
     exact hrun.tick_public y hy j _ ht
+  signed_run v hv i := by
+    obtain ⟨hinit, hexec⟩ := Compose.fg_exec' hrun.toLocalRun'
+    obtain ⟨inputs, hin, hs⟩ := Healing.signed_run' hinit hexec hv i
+    exact ⟨inputs, hin, fun j hj a ha =>
+      hs j hj a ⟨_, Compose.projFG_callAt.mpr ha.choose_spec⟩⟩
   reachable y hy i := (Node.fg_reachable_at' hrun.toLocalRun' hy i).reachableWith
   frameOK y hy i := Compose.frameOK_state' hrun.toLocalRun' hy i
   projAC_state y hy i := Compose.projAC_state' hrun.toLocalRun' hy i
