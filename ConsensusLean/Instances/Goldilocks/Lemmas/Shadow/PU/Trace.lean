@@ -16,9 +16,9 @@ This file copies the stock trace laws that read the node's execution, over `gold
 * the FG execution law `FGLabel.Step'` and the FG trace contract `FGLocalRun'` (static) and
   `Growing.FGLocalRun'`, copies of `FGLabel.Step`, `FGLocalRun` and `Growing.FGLocalRun` with
   `Store.onBlock'` in place of `Store.onBlock`;
-* the component state `Compose.projFG_state'` (`Compose.projAC_state'` and
-  `Compose.honest_blocks_coherent'` are in `Shadow/PU/Node`), the FG execution
-  `Compose.fg_exec'` and the FG projection `Compose.fg_projection_from'`;
+* the component state `Compose.projFG_state'` (`Compose.projAC_state'` is in
+  `Shadow/PU/Node`), and the FG execution `Compose.fg_exec'`; the proved honest-tree
+  coherence and `Compose.fg_projection_from'` are in `Shadow/PU/Coherence`;
 * (the AC projection `Compose.goldilocks_ac_projection_from'` is in `Shadow/PU/ACProjection`);
 * the run laws under growing faults, `Growing.LocalRun'` and `Growing.GoldilocksRun'`, copies of
   `Growing.LocalRun` and `Growing.GoldilocksRun` with the shadow cut law and groups;
@@ -272,41 +272,6 @@ theorem fg_tick_order' (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC 
       P.slotTime B.slot = tr.projFG.time i → ∀ a ∈ B.fgPayload,
         a ∈ (tr.projFG.store y i).atts) := by
   sorry
-
-/-- **C0.5 (c), the shadow FG projection**, from any starts `ini` at which the AC meets the
-requirements (a copy of `fg_projection_from`). -/
-theorem fg_projection_from' (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P).Requirements)
-    (hg₀ : (P.genesisBlock A.genesisPayload).RootOk dg) (h : Node.LocalRun' proposer dg H sg tr ini)
-    (hnc : NoCollRun dg tr) : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG := by
-  obtain ⟨hpub, hfirst, horder, hpay⟩ := fg_tick_order' hq hg₀ h hnc
-  refine
-    { coherent := honest_blocks_coherent' h hnc
-      init := (fg_exec' h).1
-      exec := (fg_exec' h).2
-      tree_subset := fun y hy i X hX => ⟨y, hy, i, by
-        rw [FGTrace.store, projFG_state' h hy] at hX
-        exact hX⟩
-      time_nonneg := h.time_nonneg
-      time_mono := h.time_mono
-      attest_public := hpub
-      own_first := hfirst
-      attest_order := horder
-      own_payload := hpay
-      unforgeable := fun y hy i a ⟨ℓ, hc, ha⟩ hv => ?_ }
-  have hc := projFG_callAt.1 hc
-  have hpr : tr.AttCallAt y i a ∨ ∃ B, tr.BlockCallAt y i B ∧ a ∈ B.fgPayload := by
-    cases ℓ with
-    | block B acc =>
-      cases acc with
-      | true => exact Or.inr ⟨B, ⟨true, hc⟩, ha⟩
-      | false => cases ha
-    | attestation a' =>
-      rw [FGLabel.processed, List.mem_singleton] at ha
-      subst ha
-      exact Or.inl hc
-    | attest C s => cases ha
-  obtain ⟨j, hj, src, hs⟩ := h.att_unforgeable y hy i a hpr hv
-  exact ⟨j, hj, src, projFG_callAt.2 hs⟩
 
 end Consensus.Goldilocks.Compose
 

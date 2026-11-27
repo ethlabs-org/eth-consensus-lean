@@ -13,7 +13,8 @@ shadow node is the stock AC with the shadow frame `Node.frame'`, so the conclusi
 AC trace contract `ACLocalRun` and the stock `AC.ACRun`, at the frames `fg_to_ac'`.
 
 **Reused, not copied:** `ACLocalRun`, `AC.ACRun`, `projAC`, `projAC_callAt`, `Trace.state_succ_*`
-(generic); `Compose.projAC_state'`, `accept_next'`, `honest_blocks_coherent'` (Shadow/PU/Node);
+(generic); `Compose.projAC_state'` (Shadow/PU/Node), `Coherence.accept_next'` and
+`Coherence.honest_blocks_coherent'` (Shadow/PU/Coherence);
 `Compose.frameOK_state'` (Shadow/PU/Run, from the shadow cache invariant).
 
 **Pending suppliers.** The private `*_pending` theorems below are placeholders, each with the
@@ -112,7 +113,7 @@ private theorem frame_flat' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fi
               exact heq
       · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩]
         exact Or.inl heq
-    · obtain ⟨ℓ, hℓ, -⟩ := accept_next' h hy hB
+    · obtain ⟨ℓ, hℓ, -⟩ := Coherence.accept_next' h hy hB
       exact absurd hℓ (hno (b' + 1) (by omega) (by omega) ℓ)
 
 /-- The call law for an AC call of `y` at `i` after the frame of `a`, without AC calls of `y`
@@ -127,7 +128,7 @@ private theorem callOK_from' (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
   have same (hnb : ∀ B, ℓ.call ≠ .block B) : ℓ.frame = frame' (tr.state y a) := by
     rcases frame_flat' h hy hai hno with heq | ⟨b', rfl, -, ⟨B, hB⟩, -⟩
     · exact hfr.trans heq
-    · obtain ⟨ℓ', hℓ', hb, -⟩ := accept_next' h hy hB
+    · obtain ⟨ℓ', hℓ', hb, -⟩ := Coherence.accept_next' h hy hB
       cases callAt_unique hc hℓ'
       exact absurd hb (hnb B)
   refine ⟨hfr ▸ frameIn_state' h hy i, ?_⟩
@@ -142,7 +143,7 @@ private theorem callOK_from' (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
       rcases frame_flat' h hy hai' fun k hk hki => hno k hk (by omega) with heq | ⟨b', rfl, -,
         ⟨B', hB'⟩, -⟩
       · exact heq
-      · obtain ⟨ℓ', hℓ', -⟩ := accept_next' h hy hB'
+      · obtain ⟨ℓ', hℓ', -⟩ := Coherence.accept_next' h hy hB'
         cases callAt_unique hacc hℓ'
     have hlaw := (cutStep'_block_true _ _ _ _ _).1 (h.cutLaw y hy i' _ hacc)
     refine ⟨?_, own_block_payload_pending hpay h hy hacc, hti ▸ hlaw.1⟩
@@ -160,7 +161,7 @@ theorem ac_projection' (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
     ACLocalRun A H (tr.HonestBlocks H) tr.projAC ini := by
   classical
   refine
-    { coherent := honest_blocks_coherent' h hnc
+    { coherent := Coherence.honest_blocks_coherent' h hnc
       init := fun y hy => by simp [RunTrace.projAC, h.init y hy, Node.initWith]
       exec := fun i ℓ hl hH => ?_
       frameLaw := fun y hy i ℓ hc => ?_
