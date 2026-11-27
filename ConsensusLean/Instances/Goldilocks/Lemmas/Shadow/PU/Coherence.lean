@@ -275,6 +275,42 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
+/-- A proposer's tick calls AC proposal immediately after AC tick. -/
+theorem tick_proposal_call' (h : LocalRun' proposer dg H sg tr ini)
+    {y : Fin P.n} (hy : y ∈ H) {j : Nat} {t : Time} {x : Nat} {fgDue : Bool}
+    (hg : tr.GroupAt' proposer dg y j t (.tick x fgDue))
+    (hP : Proposes proposer y t) :
+    tr.CallAt y (j + 1)
+        (acProposal' (tickStep' proposer dg y (tr.state y j) t x .acTick).1 t).2.1 ∧
+      tr.time (j + 1) = t ∧
+      (tr.state y (j + 1)).ac = (tickStep' proposer dg y (tr.state y j) t x .acTick).1.ac := by
+  have h1 : (exec' proposer dg y (tr.state y j) t (.tick x fgDue)).2[1]? =
+      some (acProposal' (tickStep' proposer dg y (tr.state y j) t x .acTick).1 t).2.1 := by
+    simp only [exec'_eq, onTick'_eq, runSteps'_eq, tickSteps]
+    cases fgDue <;> simp only [Bool.false_eq_true, ↓reduceIte, List.foldl_cons,
+      List.foldl_nil, List.nil_append, tickStep'_eq, hP]
+    all_goals split <;> simp [acProposal'_eq, acCall'_eq]
+  rw [RunTrace.groupAt'_iff] at hg
+  have get {k : Nat} {c : Cut A}
+      (hk : (exec' proposer dg y (tr.state y j) t (.tick x fgDue)).2[k]? = some c) :
+      tr.CallAt y (j + k) c ∧ tr.time (j + k) = t := by
+    obtain ⟨hk', hc⟩ := List.getElem?_eq_some_iff.1 hk
+    obtain ⟨hn, ht, -, -, hl⟩ := hg.2.1 k hk'
+    exact ⟨⟨hn, hl.trans (congrArg some hc)⟩, ht⟩
+  obtain ⟨hc, ht⟩ := get h1
+  have h0 : (exec' proposer dg y (tr.state y j) t (.tick x fgDue)).2[0]? =
+      some (.ac ⟨.tick, frame' (tr.state y j),
+        (A.step y (tr.state y j).ac (frame' (tr.state y j)) t .tick).2⟩) := by
+    cases fgDue <;>
+      simp [exec'_eq, onTick'_eq, runSteps'_eq, tickSteps, tickStep'_eq, acCall'_eq]
+  obtain ⟨hc0, ht0⟩ := get h0
+  simp only [Nat.add_zero] at hc0 ht0
+  refine ⟨hc, ht, ?_⟩
+  rw [tr.state_succ_of_call hc0, tickStep'_eq, acCall'_eq]
+  have hl := h.cutLaw y hy j _ hc0
+  rw [cutStep'_ac, ht0] at hl
+  exact (congrArg Prod.fst hl.2.1).symm
+
 theorem call_in_group' (h : LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
     {i : Nat} {c : Cut A} (hc : tr.CallAt y i c) :
     ∃ j e k, tr.GroupAt' proposer dg y j (tr.time i) e ∧ i = j + k ∧
@@ -389,6 +425,12 @@ theorem tree_accepted' (h : LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
       · exact lift hB
     · rw [he, (Store.tree_grows_with Store.finalitySpec_updateFinality').2 a] at hB
       exact lift hB
+
+/-- Stock tree-cases interface: every non-genesis held block was accepted earlier. -/
+theorem tree_cases' (h : LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+    (hy : y ∈ H) {m : Nat} {B : A.Blk} (hB : B ∈ (tr.state y m).fg.tree) :
+    B = P.genesisBlock A.genesisPayload ∨ ∃ k < m, tr.AcceptAt y k B :=
+  tree_accepted' h hy hB
 
 theorem accept_mem_from' (h : LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {k : Nat} {B : A.Blk} (hA : tr.AcceptAt y k B) :
@@ -632,5 +674,61 @@ theorem held_anc_at'
 end Growing
 
 end Consensus.Goldilocks.Coherence
+
+namespace Consensus.Goldilocks.Compose
+
+variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
+
+/-- The shadow FG projection uses the proved honest-tree coherence supplier. -/
+theorem fg_projection_from' (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P).Requirements)
+    (hg₀ : (P.genesisBlock A.genesisPayload).RootOk dg) (h : Node.LocalRun' proposer dg H sg tr ini)
+    (hnc : NoCollRun dg tr) : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG := by
+  obtain ⟨hpub, hfirst, horder, hpay⟩ := fg_tick_order' hq hg₀ h hnc
+  refine
+    { coherent := Coherence.honest_blocks_coherent' h hnc
+      init := (fg_exec' h).1
+      exec := (fg_exec' h).2
+      tree_subset := fun y hy i X hX => ⟨y, hy, i, by
+        rw [FGTrace.store, projFG_state' h hy] at hX
+        exact hX⟩
+      time_nonneg := h.time_nonneg
+      time_mono := h.time_mono
+      attest_public := hpub
+      own_first := hfirst
+      attest_order := horder
+      own_payload := hpay
+      unforgeable := fun y hy i a ⟨ℓ, hc, ha⟩ hv => ?_ }
+  have hc := projFG_callAt.1 hc
+  have hpr : tr.AttCallAt y i a ∨ ∃ B, tr.BlockCallAt y i B ∧ a ∈ B.fgPayload := by
+    cases ℓ with
+    | block B acc =>
+      cases acc with
+      | true => exact Or.inr ⟨B, ⟨true, hc⟩, ha⟩
+      | false => cases ha
+    | attestation a' =>
+      rw [FGLabel.processed, List.mem_singleton] at ha
+      subst ha
+      exact Or.inl hc
+    | attest C s => cases ha
+  obtain ⟨j, hj, src, hs⟩ := h.att_unforgeable y hy i a hpr hv
+  exact ⟨j, hj, src, projFG_callAt.2 hs⟩
+
+open AC (ACParams ReplayOrder Payload)
+
+theorem honest_row_signed_before' {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+    {ini} (hrun : GoldilocksRun' proposer dg H tr ini) (_hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {X : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hX : X ∈ (tr.state y i).fg.tree) {a : FG.Att sp.n} (ha : a ∈ X.fgPayload) (hav : a.val ∈ H) :
+    ∃ m < i, tr.AcceptAt y m X ∧ ∃ k < m, tr.SignAt a.val k a := by
+  rcases Coherence.tree_accepted' hrun.toLocalRun' hy hX with rfl | ⟨m, hm, hA⟩
+  · simp [Params.genesisBlock] at ha
+  · exact ⟨m, hm, hA,
+      hrun.att_unforgeable y hy m a (Or.inr ⟨X, ⟨true, hA⟩, ha⟩) hav⟩
+
+end Consensus.Goldilocks.Compose
 
 end

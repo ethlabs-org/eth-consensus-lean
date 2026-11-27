@@ -347,7 +347,7 @@ theorem above_of_hi_height_at' (D : OutageLockPremises' tr H proposer dg ini) {i
   have hnot : ¬ Anc (tr.HonestBlocksAt H) E D.P := by
     intro hE
     have hEJ := FrameGeometry.honest_held_anc' hr.toLocalRun' hfg hy
-      (Consensus.Goldilocks.Shadow.PU.Growing.anc_upTo_of_right_stub D.hrun.toLocalRun' D.hnc
+      (Consensus.Goldilocks.RunTrace.anc_upTo_of_right' D.hrun D.hnc
         ht0 ⟨y, hy, k, hJt⟩ (hE.trans hPJ)) hJt
     obtain ⟨hJh, hJT, -⟩ :=
       FrameGeometry.justified_honest_source_before' hr.toLocalRun' hfg hf hy hsrcF hj1
