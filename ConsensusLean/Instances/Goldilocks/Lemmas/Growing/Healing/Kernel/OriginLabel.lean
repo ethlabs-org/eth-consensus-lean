@@ -6,6 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.LockWrit
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.CoreStock
 
 public section
 
@@ -29,91 +30,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 variable {hold : Time}
   {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
   {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
-
-/-- **No genesis block is above a high origin**: genesis is low at the snapshot cut, read by the
-origin's writer, honest at `c_z`. The growing form of `genesis_not_high`. -/
-theorem ResetPremisesUpTo.not_genesis_above_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B)
-    {G : AC.Blk sp.n (List (FG.Att sp.n))} (hGU : G ∈ tr.HonestBlocksAt H)
-    (hBG : Anc (tr.HonestBlocksAt H) B G) (hg : G.root = sp.genesisRoot) : False := by
-  have hm := hp.run.time_mono
-  have hi0 := hp.run.time_nonneg i
-  have hle : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hm hq.le
-  have hx := hp.run.antitone (le_max_right _ _) ho.1
-  have hreach := fg_reachable_at hp.run hi0 hle hx
-  have heq : G = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
-    (Compose.Growing.honest_blocks_coherent hp.run hp.noColl).1 hGU
-      ⟨x, i, tr.time i, hi0, hle, hx, (Store.accepted_tree _ _ _ _ hreach).2.2.1⟩ hg
-  have hGx : G ∈ (tr.state x i).fg.tree := heq ▸ (Store.accepted_tree _ _ _ _ hreach).2.2.1
-  have hh := hp.high_of_anc_at ho hi0 hle hx hGx hBG
-  rw [heq, show (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).root =
-      sp.toParams.genesisRoot from rfl, Store.σ_genesis hreach] at hh
-  change HZ tr H g + 1 ≤ 1 at hh
-  obtain ⟨kZ, hkZ, _⟩ := hp.snapshot
-  have hxZ := hp.run.antitone (le_max_left _ _) ho.1
-  have hZ0 : 0 ≤ cutZ sp.toParams g := by
-    linarith [lt_cutZ sp g, Healing.gbar_nonneg g, sp.toParams.hΔ]
-  have hreachZ := fg_reachable_at hp.run hZ0 hkZ.1 hxZ
-  have hGZ := (Store.accepted_tree _ _ _ _ hreachZ).2.2.1
-  have hbnd := (Store.cache_invariants _ _ _ _ hreachZ).2.2.2.2.1 _ hGZ
-  rw [show (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).root =
-      sp.toParams.genesisRoot from rfl, Store.σ_genesis hreachZ] at hbnd
-  have hmax : (tr.state x kZ).fg.hmax ≤ HZ tr H g := by
-    refine le_csSup (((Set.finite_range fun v => (tr.state v kZ).fg.hmax).subset ?_).bddAbove)
-      ⟨x, hxZ, kZ, hkZ, rfl⟩
-    rintro _ ⟨v, _, c', hc', rfl⟩
-    obtain rfl := hc'.unique hkZ
-    exact ⟨v, rfl⟩
-  change 1 ≤ (tr.state x kZ).fg.hmax at hbnd
-  omega
-
-/-- **The label bound of a high origin** (`c_z ≤ t_j`). A counted head was accepted by the
-writer before `t_j + 2Δ`; it is above the origin, so not genesis, and its acceptance is after
-`c_z`, the writer being honest at `c_z`. -/
-theorem ResetPremisesUpTo.cutZ_le_ts_of_highOrigin_at
-    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x i j B) :
-    cutZ sp.toParams g ≤ sp.ts j := by
-  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
-  have hx := hp.run.antitone (le_max_right _ _) ho.1
-  have hxZ := hp.run.antitone (le_max_left _ _) ho.1
-  obtain ⟨CV, ell, D, hci, hfl, rfl⟩ := ho.2.2.1
-  obtain ⟨ell', hc', -⟩ := Healing.fastLock_mem hfl
-  obtain rfl : ell = ell' := Option.some.inj (hci.2.symm.trans hc'.2)
-  obtain ⟨-, hPhiTree⟩ := frame_tree_subset_at hp.run hp.noColl hx hci
-  have hBD := (AC.anc_viableAncestor ell.frame D).mono fun C hC =>
-    (⟨x, i, tr.time i, hp.run.time_nonneg i, fun _ hq => hp.run.time_mono hq.le, hx,
-      hPhiTree hC⟩ : C ∈ tr.HonestBlocksAt H)
-  obtain ⟨v, hv⟩ := Healing.fastLock_counted_nonempty
-    hp.committee_pos hfl
-  obtain ⟨-, -, Hv, hHvU, -, hDHv, hacc⟩ :=
-    fastLock_writer_at hac.localRun hac.vstart hx hfl v hv
-  have hBHv := hBD.trans hDHv
-  rcases hacc with hg | ⟨q, hxq, ⟨ellq, hcq, heq⟩, hqt⟩
-  · exact (hp.not_genesis_above_at ho hHvU hBHv hg).elim
-  have hrq := hac.localRun.upTo (hp.run.time_nonneg q)
-  have hcq' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcq)
-  have hHvq : Hv ∈ (tr.state x q).fg.tree :=
-    (frame_tree_subset_at hp.run hp.noColl hxq hcq).2
-      ((AC.accept_new sp hrq hxq ⟨ellq, hcq', heq⟩).1 ellq hcq')
-  have hxmax : x ∈ H (max (tr.time q) (cutZ sp.toParams g)) := by
-    rcases le_total (tr.time q) (cutZ sp.toParams g) with h | h
-    · rw [max_eq_right h]; exact hxZ
-    · rw [max_eq_left h]; exact hxq
-  have hck := cutZ_lt_of_anc_at hp ho hxmax hHvq hBHv
-  have hqt' : tr.time q < sp.ts j + 2 * sp.Δ := hqt
-  rw [cutZ_eq] at hck ⊢
-  refine (AC.ts_le_iff sp).2 ?_
-  by_contra hlt
-  have h₂ := (AC.ts_le_iff sp).2
-    (show (j : Int) + 1 ≤ ((sp.slot (AC.gbar g) + 3 : Nat) : Int) by clear * - hlt; omega)
-  have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
-  simp only [ACParams.ts] at h₂ hck hqt'
-  linarith
 
 /-- `not_genesis_above_at` over the run-facts bundle. -/
 theorem ResetRunCore.not_genesis_above_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
@@ -153,6 +69,16 @@ theorem ResetRunCore.not_genesis_above_at {cm : Time → Finset (Fin sp.n)} {βK
     exact ⟨v, rfl⟩
   change 1 ≤ (tr.state x kZ).fg.hmax at hbnd
   omega
+
+/-- **No genesis block is above a high origin**: genesis is low at the snapshot cut, read by the
+origin's writer, honest at `c_z`. The growing form of `genesis_not_high`. -/
+theorem ResetPremisesUpTo.not_genesis_above_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B)
+    {G : AC.Blk sp.n (List (FG.Att sp.n))} (hGU : G ∈ tr.HonestBlocksAt H)
+    (hBG : Anc (tr.HonestBlocksAt H) B G) (hg : G.root = sp.genesisRoot) : False :=
+  hp.toCore.not_genesis_above_at ho hGU hBG hg
 
 /-- `cutZ_le_ts_of_highOrigin_at` over the run-facts bundle. -/
 theorem ResetRunCore.cutZ_le_ts_of_highOrigin_at
@@ -198,6 +124,17 @@ theorem ResetRunCore.cutZ_le_ts_of_highOrigin_at
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   simp only [ACParams.ts] at h₂ hck hqt'
   linarith
+
+/-- **The label bound of a high origin** (`c_z ≤ t_j`). A counted head was accepted by the
+writer before `t_j + 2Δ`; it is above the origin, so not genesis, and its acceptance is after
+`c_z`, the writer being honest at `c_z`. -/
+theorem ResetPremisesUpTo.cutZ_le_ts_of_highOrigin_at
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (ho : HighOrigin tr H g x i j B) :
+    cutZ sp.toParams g ≤ sp.ts j :=
+  hp.toCore.cutZ_le_ts_of_highOrigin_at ho
 
 end Consensus.Goldilocks.Healing.Growing
 

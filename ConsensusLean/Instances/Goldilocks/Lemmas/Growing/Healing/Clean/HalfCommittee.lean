@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.CommitteeFaults
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
@@ -6,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.CoreStock
 
 public section
 
@@ -29,6 +31,16 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {hold : Time}
+  {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
+  {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+
+/-- `committee_cs2_at` over the reset core. -/
+theorem ResetRunCore.committee_cs2_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetRunCore tr H u frameOf proposer dg g ΔF a b cm βK hold) {s : Nat}
+    (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b) {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
+    2 * ((Generic.dictOfTime sp cm).committee s ∩ (H d)ᶜ).ncard < sp.committeeSize :=
+  hp.committeeFaults.committee_cs2_at hp.beta_le hp.committee_pos (hp.committeeFacts.hsize s)
+    hgs hsb hd0 hdb
 
 /-- **CS2 at a slot committee** from the committee fault bound: fewer than half of the slot-`s`
 committee is faulty at any `d ∈ [0, b]`, for a slot starting from `ḡ` by `b`. -/
@@ -36,8 +48,7 @@ theorem ResetPremisesUpTo.committee_cs2_at {cm : Time → Finset (Fin sp.n)} {β
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {s : Nat}
     (hgs : gbar g ≤ sp.ts s) (hsb : sp.ts s ≤ b) {d : Time} (hd0 : 0 ≤ d) (hdb : d ≤ b) :
     2 * ((Generic.dictOfTime sp cm).committee s ∩ (H d)ᶜ).ncard < sp.committeeSize :=
-  hp.committeeFaults.committee_cs2_at hp.beta_le hp.committee_pos (hp.committeeFacts.hsize s)
-    hgs hsb hd0 hdb
+  hp.toCore.committee_cs2_at hgs hsb hd0 hdb
 
 /-- A slot committee from `ḡ` by `b` has a member honest at any `d ∈ [0, b]` (CS2). -/
 theorem ResetPremisesUpTo.committee_honest_nonempty_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
