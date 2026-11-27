@@ -1,12 +1,12 @@
 module
 public import ConsensusLeanTest.Goldilocks.AC.FastUpdate
-public import ConsensusLean.Instances.Goldilocks.Proofs.ACSteps.Main
+public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.AC.Main
 @[expose] public section
 
-/-! # Witness for the premises of the Goldilocks ACSteps statement A1.8 `ResultTransfer`
+/-! # Witness for the growing Goldilocks AC step A1.8 `ResultTransfer`
 
 Kind (a), joint satisfiability (CONTRIBUTING "Statements"): the hypotheses of A1.8
-`ResultTransfer` (`Statements/AC/Steps.lean`) hold together on the AC projection of the
+`ResultTransfer` (`Statements/AC/Growing.lean`) hold together on the AC projection of the
 one-validator tick run of `Goldilocks/Runs/OneValidator/Premises` (`n = 1`, `Δ = 1`, `t_s = 4s`,
 `k = c = 2`, a tick at every time, no restart), so the proved milestone is not vacuous. For every
 slot `s ≥ 1`:
@@ -24,7 +24,8 @@ slot `s ≥ 1`:
 `resultTransfer_premises_satisfiable` states, at `sp1`, `FGP := List (FG.Att sp1.n)`, `ro1`,
 that there are values of all the statement's universally bound variables satisfying `ACRun` and
 every hypothesis (copied from the statement), at `s = 1` (update cut `80`, vote cut `67`);
-`resultTransfer_on_witness` applies the proved milestone (`acStepsAt`). The vote (time
+`resultTransfer_on_witness` applies `Growing.acStepsAt` with constant `H := fun _ => Set.univ`.
+The vote (time
 `t_{s+1} = 4s + 4`) precedes the update (time `4s + 6`): the statement does not order `i₀` and
 `i`, and the claims allow a result that is later than the vote.
 
@@ -125,6 +126,31 @@ theorem resultTransfer_premises_satisfiable :
   exact ⟨Set.univ, _, _, fun _ => v0, 1, v0, v0, _, _, blk 1, {cv 1}, ℓ, e, acRun,
     Set.mem_univ _, hr, Set.mem_univ _, hc, hsl, hca, hv, hl, hm⟩
 
+private theorem constant_run : AC.Growing.ACRun (fun _ => v0) (tickRun N1 dg1).projAC
+    (fun _ => Set.univ) ((tickRun N1 dg1).HonestBlocks Set.univ) := by
+  let h := acRun
+  let l := h.localRun
+  refine ⟨{
+    antitone := fun _ _ _ => Set.Subset.rfl
+    coherent := l.coherent
+    init := l.init
+    exec := l.exec
+    frameLaw := fun y i ℓ hy => l.frameLaw y hy i ℓ
+    time_nonneg := l.time_nonneg
+    time_mono := l.time_mono
+    awake_of_call := fun y i ℓ hy => l.awake_of_call y hy i ℓ
+    restart_of_sleep := fun y i ℓ u hy => l.restart_of_sleep y hy i ℓ u
+    restart_at_wake := fun y u v hy => l.restart_at_wake y hy u v
+    sleep_of_restart := fun y i ℓ hy => l.sleep_of_restart y hy i ℓ }, {
+    pool_vote := fun y i σ hy => h.honest.pool_vote y hy i σ
+    message_vote := fun y i ℓ v hy => h.honest.message_vote y hy i ℓ v
+    proposer := ?_
+    one_block := ?_ }, h.vstart⟩
+  · rintro B ⟨y, i, ℓ, hy, hc, hB⟩
+    exact h.honest.proposer B ⟨y, hy, i, ℓ, hc, hB⟩
+  · intro y i ℓ B y' i' ℓ' B' hy hc hB hy' hc' hB'
+    exact h.honest.one_block B B' ⟨y, hy, i, ℓ, hc, hB⟩ ⟨y', hy', i', ℓ', hc', hB'⟩
+
 /-- (a) A1.8 on the run: for every slot `s ≥ 1`, the slot-`(s + 1)` vote at cut
 `8 · t_{s+1} + 3` extends the result `blk s` of the update of slot `s`. -/
 theorem resultTransfer_on_witness {s : Nat} (hs : 1 ≤ s) :
@@ -132,7 +158,8 @@ theorem resultTransfer_on_witness {s : Nat} (hs : 1 ≤ s) :
       CastAt (tickRun N1 dg1).projAC v0 (8 * (4 * (s + 1)) + 3) ℓ e ∧
       VoteExtends ((tickRun N1 dg1).HonestBlocks Set.univ) e.msg (blk s) := by
   obtain ⟨ℓ, e, hr, hc, hsl, hca, hv, hl, hm⟩ := resultTransfer_premises_update hs
-  exact ⟨ℓ, e, hc, (acStepsAt sp1).resultTransfer _ ro1 Set.univ _ _ (fun _ => v0) acRun s v0
+  exact ⟨ℓ, e, hc, (AC.Growing.acStepsAt sp1).resultTransfer _ ro1 (fun _ => Set.univ) _ _
+    (fun _ => v0) constant_run s v0
     v0 _ _ (blk s) {cv s} ℓ e (Set.mem_univ _) hr (Set.mem_univ _) hc hsl hca hv hl hm⟩
 
 end Consensus.Goldilocks.Witness.One

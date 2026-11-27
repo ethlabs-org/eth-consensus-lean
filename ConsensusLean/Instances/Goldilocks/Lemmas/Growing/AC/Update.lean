@@ -19,9 +19,8 @@ theorem optimistic_next_update (sp : ACParams) : OptimisticNextUpdate sp := by
   have hs : (tr.upTo (tr.time k)).state z k = tr.state z k :=
     Trace.upTo_state tr z fun _ hi => hm hi.le
   rw [← hs]
-  apply AC.optimistic_next_update sp FGP ro (H (tr.time k)) U (tr.upTo (tr.time k))
-    proposer hr K (hP.upTo hm hrun.localRun.antitone (tr.time k))
-    (hT.upTo hrun.localRun.antitone (tr.time k)) hsize s z k B ℓ hf
+  apply AC.update_extends_of_resolved_votes hr K
+    ((hP.upTo hm hrun.localRun.antitone (tr.time k)).1 z hz k (s + 1)) hf
   · intro x hx j e hv hslot
     obtain ⟨hjt, hv⟩ := upTo_voteAt.mp hv
     exact hext x j e (hrun.localRun.antitone hjt hx) hv hslot
