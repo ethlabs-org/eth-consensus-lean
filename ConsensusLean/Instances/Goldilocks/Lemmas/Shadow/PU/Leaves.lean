@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalViable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
@@ -81,84 +82,7 @@ theorem proposal_viable_at {proposer : Nat → Fin sp.n}
     M - 1 ≤ ((tr.state z (kB + 1)).fg.σ B.root).h ∧
       (isTop → ((tr.state z (kB + 1)).fg.σ B.root).h = M - 1 →
         Anc (tr.HonestBlocksAt H) J B) := by
-  have htime : tr.time kB = sp.ts u := by
-    simpa only [sp.slotTime_eq, hBs, ACParams.ts] using hB.2.2
-  have hzk : z ∈ H (tr.time kB) := htime ▸ hz
-  have ht := hrun.time_nonneg kB
-  have hr := hrun.upTo ht
-  have hB' : (tr.upTo (tr.time kB)).ProposesAt z kB B :=
-    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hB.1⟩, hB.2.1, hB.2.2⟩
-  obtain ⟨_, ip, ell, d, pay, hc, hcall, hd, hti, hpar, _⟩ :=
-    Coherence.honestProposalRun_of_proposesAt' hr (hnc.upTo _) hzk hdes hB' hBs
-  rw [← hdes] at hc hd
-  have hip : tr.time ip = sp.ts u := hti
-  have hzi : z ∈ H (tr.time ip) := hip ▸ hz
-  have hleip : ∀ q < ip, tr.time q ≤ tr.time kB := by
-    intro q hq
-    exact (hrun.time_mono hq.le).trans (by rw [hip, htime])
-  have hleB : ∀ q < kB + 1, tr.time q ≤ tr.time kB :=
-    fun q hq => hrun.time_mono (by omega)
-  have hfr := Node.frame_of_projAC_at' hr.toLocalRun' hzk hc
-  have hfr' : ell.frame = Node.frame' (tr.state z ip) := by
-    rw [Trace.upTo_state tr z hleip] at hfr
-    exact hfr
-  obtain ⟨Q, hQ, hv, hroot⟩ := full_frame_viable_witness_at' hrun hnc hzi (hip ▸ hf)
-  rw [← hfr'] at hQ hv hroot
-  have hac := (Compose.goldilocks_ac_projection_from' hr (hnc.upTo _)).localRun
-  have hvd := Healing.proposal_head_viable hac hr.vstart hzk hc hcall
-    (by rw [sp.slotTime_eq]; exact hti) hd
-    ⟨(AC.frameIn_of_callAt hac hzk hc).1.fcRoot_mem, .refl, Q, hQ, hv, hroot⟩
-  rw [hfr, Node.frame'_eq, Store.toFrame'_viableHeads] at hvd
-  obtain ⟨hDm, _, hDv⟩ := hvd
-  have hBm : B ∈ ((tr.upTo (tr.time kB)).state z (kB + 1)).fg.tree := by
-    exact (Coherence.accept_of_proposesAt' hr (hnc.upTo _) hzk hB').2.1
-  have hDhist : d.head ∈ (tr.upTo (tr.time kB)).HonestBlocks (H (tr.time kB)) :=
-    ⟨z, hzk, ip, hDm⟩
-  have hBhist : B ∈ (tr.upTo (tr.time kB)).HonestBlocks (H (tr.time kB)) :=
-    ⟨z, hzk, kB + 1, hBm⟩
-  have hDB : Anc ((tr.upTo (tr.time kB)).HonestBlocks (H (tr.time kB))) d.head B :=
-    .single ⟨hDhist, hBhist, hpar⟩
-  have hDBs := Coherence.honest_held_anc' hr (hnc.upTo _) hzk hDB hBm
-  have hDpost : d.head ∈ ((tr.upTo (tr.time kB)).state z (kB + 1)).fg.tree := by
-    by_cases he : d.head = B
-    · exact he ▸ hBm
-    · exact (Anc.mem hDBs he).1
-  have hσ := Store.σ_eq_of_mem_with
-    (Node.fg_reachable_at' hr.toLocalRun' hzk ip).reachableWith
-    Store.finalitySpec_updateFinality'
-    (Node.fg_reachable_at' hr.toLocalRun' hzk (kB + 1)).reachableWith
-    (Coherence.honest_blocks_coherent' hr.toLocalRun' (hnc.upTo _)).1
-    (fun _ hm => ⟨z, hzk, ip, hm⟩) (fun _ hm => ⟨z, hzk, kB + 1, hm⟩) hDm hDpost
-  have hh := (Coherence.honest_held_height' hr (hnc.upTo _) hzk hDBs).1
-  rw [← hσ] at hh
-  have hM : ((tr.upTo (tr.time kB)).state z ip).fg.hmax = M := by
-    rw [Trace.upTo_state tr z hleip]
-    exact hwin.M_eq z ip hzi (hip ▸ hlo) (hip ▸ hhi)
-  have hpred : M - 1 ≤
-      (((tr.upTo (tr.time kB)).state z ip).fg.σ d.head.root).h := by
-    rw [Store.isViable'_iff] at hDv
-    rcases hDv with hh | ⟨hh, _⟩ <;> omega
-  have hheight := hpred.trans hh
-  rw [Trace.upTo_state tr z hleB] at hheight
-  refine ⟨hheight, ?_⟩
-  intro htop heq
-  have htop' : ((tr.upTo (tr.time kB)).state z ip).fg.hmax =
-      ((tr.upTo (tr.time kB)).state z ip).fg.hj + 1 := by
-    rw [Trace.upTo_state tr z hleip]
-    exact (hwin.top_iff z ip hzi (hip ▸ hlo) (hip ▸ hhi)).2 htop
-  have hJ : ((tr.upTo (tr.time kB)).state z ip).fg.J = J := by
-    rw [Trace.upTo_state tr z hleip]
-    exact hwin.root_eq z ip hzi (hip ▸ hlo) (hip ▸ hhi) htop
-  rw [Trace.upTo_state tr z hleB, heq] at hh
-  have hJD : ((tr.upTo (tr.time kB)).state z ip).fg.Anc J d.head := by
-    rw [Store.isViable'_iff] at hDv
-    rcases hDv with hh | ⟨hh, hgap | hJD⟩
-    · omega
-    · omega
-    · exact hJ ▸ hJD
-  have hJD' : Anc ((tr.upTo (tr.time kB)).HonestBlocks (H (tr.time kB))) J d.head :=
-    Anc.mono (fun _ hm => ⟨z, hzk, ip, hm⟩) hJD
-  exact Anc.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono ht) (hJD'.trans hDB)
+  exact KernelProof.proposal_window_witness hrun hnc hwin hz hdes hB hBs hlo hhi hf
 
 /-- Leaf 8's arithmetic assembly, conditional on actual proposal viability. -/
 private theorem rounds_le_of_proposal_viable
