@@ -785,6 +785,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowEntry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowParents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowPlacement
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Key
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.S5Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AdmitsAtTick
