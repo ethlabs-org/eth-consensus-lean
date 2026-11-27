@@ -18,7 +18,8 @@ time `t`, with `tip t` the latest accepted slot):
   `blk (k + 1)` and the node signs `att (k + 1)`.
 * `tick_B0` (`t = 1`): the vote of slot `0` on genesis.
 * `tick_C` (`t = t_s + 2Δ`): the confirmation update, which keeps the locks on chain blocks.
-* `tick_noop`: the other ticks change nothing; `ac_to_fg` returns `⊥` once the tip is reported. -/
+* `tick_noop`: the other ticks preserve the state; repeated `ac_to_fg` reads may return the tip,
+  and the FG client refuses to sign its already recorded entry. -/
 
 namespace Consensus.Goldilocks.Witness.One
 
@@ -204,15 +205,14 @@ structure Same (A A' : ACState sp1.n) : Prop where
   voteStamp : A'.voteStamp = A.voteStamp
   blockStamp : A'.blockStamp = A.blockStamp
   votedSlot : A'.votedSlot = A.votedSlot
-  fgReported : A'.fgReported = A.fgReported
   restartTime : A'.restartTime = A.restartTime
   mayVote : A'.mayVote = A.mayVote
 
-theorem Same.refl (A : ACState sp1.n) : Same A A := ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+theorem Same.refl (A : ACState sp1.n) : Same A A := ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 theorem Same.trans {A A' A'' : ACState sp1.n} (h : Same A A') (h' : Same A' A'') : Same A A'' :=
   ⟨h'.pool.trans h.pool, h'.voteStamp.trans h.voteStamp, h'.blockStamp.trans h.blockStamp,
-    h'.votedSlot.trans h.votedSlot, h'.fgReported.trans h.fgReported,
+    h'.votedSlot.trans h.votedSlot,
     h'.restartTime.trans h.restartTime, h'.mayVote.trans h.mayVote⟩
 
 /-- With `k = 2` every new fast lock of slot `s` expires after `s + 2`. -/
@@ -243,7 +243,7 @@ theorem optimisticConfirmation_cases (A : ACState sp1.n) (Φ : N1.Frm) (t : Time
       { A with locks := (addLocks sp1 A.locks Φ t (sp1.slot t)
         {(B.root, true, sp1.slot t + 2)}) } Φ B
     rw [hc]
-    exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inr ⟨B, hB, rfl⟩⟩
+    exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inr ⟨B, hB, rfl⟩⟩
 
 theorem optimisticConfirmation_of_none {A : ACState sp1.n} {Φ : N1.Frm} {t : Time}
     (h : optimisticSelect sp1 A Φ t = none) : optimisticConfirmation sp1 A Φ t = A := by
@@ -299,7 +299,7 @@ theorem updateConfirmation_cases (A : ACState sp1.n) (Φ : N1.Frm) (t : Time) (s
   unfold updateConfirmation
   dsimp only
   split
-  · exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inl rfl⟩
+  · exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inl rfl⟩
   · rename_i C hC
     obtain ⟨c, hc⟩ := updateLatestConfirmed_eq
       { A with saved := Function.update A.saved s ((getConfirmation sp1 A Φ s).map Block.root) }
@@ -307,7 +307,7 @@ theorem updateConfirmation_cases (A : ACState sp1.n) (Φ : N1.Frm) (t : Time) (s
     split_ifs
     all_goals
       try rw [hc]
-      refine ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inr ⟨_, ?_, rfl⟩⟩
+      refine ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inr ⟨_, ?_, rfl⟩⟩
       rintro p (⟨B, hB, rfl⟩ | ⟨B, hB, rfl⟩)
       · exact ⟨⟨B, (deepest_mem hB).1.1.1.1, rfl⟩, fastExpiry_le sp1 _ _ _ _⟩
       · exact ⟨⟨B, (deepest_mem hB).1.1.1.1, rfl⟩, le_rfl⟩
@@ -435,7 +435,7 @@ theorem optimisticConfirmation_of_some {A : ACState sp1.n} {Φ : N1.Frm} {t : Ti
     { A with locks := (addLocks sp1 A.locks Φ t (sp1.slot t)
       {(B.root, true, sp1.slot t + 2)}) } Φ B
   rw [hc]
-  exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, rfl⟩
+  exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, rfl⟩
 
 /-- `ac_on_tick` by the residue of the time modulo a slot. -/
 theorem acOnTick_eq (A : ACState sp1.n) (Φ : N1.Frm) (n : Nat) (hj : A.restartTime = ⊥) :
@@ -628,8 +628,6 @@ theorem vote_admitted {A' : ACState sp1.n} {Φ : N1.Frm} {f k : Nat}
       Function.update A'.voteStamp (cv (k + 1)) (ETime.of ((4 * (k + 1) : Nat) : Int)) ∧
     (optimisticConfirmation sp1 (admitVote sp1 A' ((4 * (k + 1) : Nat) : Int) (cv (k + 1))) Φ
         ((4 * (k + 1) : Nat) : Int)).blockStamp = A'.blockStamp ∧
-    (optimisticConfirmation sp1 (admitVote sp1 A' ((4 * (k + 1) : Nat) : Int) (cv (k + 1))) Φ
-        ((4 * (k + 1) : Nat) : Int)).fgReported = A'.fgReported ∧
     LocksLe (optimisticConfirmation sp1 (admitVote sp1 A' ((4 * (k + 1) : Nat) : Int)
         (cv (k + 1))) Φ ((4 * (k + 1) : Nat) : Int)).locks (k + 1) ∧
     (⟨(blk (k + 1)).root, k + 1, true, k + 1 + 2⟩ : Lock) ∈ (optimisticConfirmation sp1
@@ -645,7 +643,7 @@ theorem vote_admitted {A' : ACState sp1.n} {Φ : N1.Frm} {f k : Nat}
     (Function.update_self _ _ _)
   obtain ⟨hsame, hlocks⟩ := optimisticConfirmation_of_some hsel (fun l hl => (hL l hl).2)
   refine ⟨hsame.restartTime.trans hj, hsame.votedSlot, hsame.pool, hsame.voteStamp,
-    hsame.blockStamp, hsame.fgReported, ?_, ?_⟩
+    hsame.blockStamp, ?_, ?_⟩
   · rw [hlocks]
     refine addLocks_le h
       (fun l hl => ⟨(hL l hl).1.imp fun m hm => ⟨by omega, hm.2⟩, (hL l hl).2⟩) le_rfl _ _ ?_
@@ -670,7 +668,7 @@ theorem acOnBlock_tick {A : ACState sp1.n} {Φ : N1.Frm} {f k : Nat}
         Function.update A.voteStamp (cv (k + 1)) (ETime.of ((4 * (k + 1) : Nat) : Int)) ∧
       A₃.blockStamp = Function.update A.blockStamp (blk (k + 1)).root
         (ETime.of ((4 * (k + 1) : Nat) : Int)) ∧
-      A₃.fgReported = A.fgReported ∧ LocksLe A₃.locks (k + 1) ∧
+      LocksLe A₃.locks (k + 1) ∧
       (⟨(blk (k + 1)).root, k + 1, true, k + 1 + 2⟩ : Lock) ∈ A₃.locks := by
   have hs : sp1.slot (((4 * (k + 1) : Nat) : Int)) = k + 1 := by rw [slot_nat]; omega
   unfold acOnBlock blockReceipt
@@ -684,10 +682,8 @@ theorem acOnBlock_tick {A : ACState sp1.n} {Φ : N1.Frm} {f k : Nat}
 /-- `ac_to_fg` after the own block of slot `k + 1`: the source is the new tip. -/
 theorem acToFG_tick {A : ACState sp1.n} {Φ : N1.Frm} {f k : Nat}
     (h : ChainFrame Φ f (jexp (k + 1)) (k + 1)) (hj : A.restartTime = ⊥)
-    (htip : (⟨(blk (k + 1)).root, k + 1, true, k + 1 + 2⟩ : Lock) ∈ A.locks)
-    (hrep : A.fgReported = (blk k).root) :
-    (AC.acToFG sp1 A Φ ((4 * (k + 1) : Nat) : Int)).1 =
-        { A with fgReported := (blk (k + 1)).root } ∧
+    (htip : (⟨(blk (k + 1)).root, k + 1, true, k + 1 + 2⟩ : Lock) ∈ A.locks) :
+    (AC.acToFG sp1 A Φ ((4 * (k + 1) : Nat) : Int)).1 = A ∧
       (AC.acToFG sp1 A Φ ((4 * (k + 1) : Nat) : Int)).2 = some (blk (k + 1)) := by
   have hs : sp1.slot (((4 * (k + 1) : Nat) : Int)) = k + 1 := by rw [slot_nat]; omega
   have hf : f ≤ k + 1 := le_trans h.fj (jexp_le _)
@@ -701,34 +697,27 @@ theorem acToFG_tick {A : ACState sp1.n} {Φ : N1.Frm} {f k : Nat}
     · intro B hB
       obtain ⟨m, -, hm, rfl⟩ := h.eq_of_mem hB.1.1
       exact ⟨m, hm, rfl⟩
-  have hn : ¬ AncR Φ (blk (k + 1)) A.fgReported := by
-    rintro ⟨R, hR, hr, ha⟩
-    rw [hrep] at hr
-    obtain ⟨rfl, -, -⟩ := h.eq_of_root hR hr
-    have := h.le_of_anc ha; omega
   unfold AC.acToFG AC.fgSource
   rw [ite_neg (not_not.2 (joined_of_bot hj _))]
   dsimp only
   rw [hd]
   dsimp only
-  rw [ite_neg hn]
   exact ⟨rfl, rfl⟩
 
-/-- `ac_to_fg` returns nothing once the tip is reported. -/
-theorem acToFG_none {A : ACState sp1.n} {Φ : N1.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ)
-    (hrep : A.fgReported = (blk τ).root) (t : Time) :
-    (AC.acToFG sp1 A Φ t).1 = A ∧ (AC.acToFG sp1 A Φ t).2 = none := by
-  unfold AC.acToFG
-  split_ifs
-  all_goals try exact ⟨rfl, rfl⟩
-  · split
-    · exact ⟨rfl, rfl⟩
-    · rename_i C hC
-      have hCt := (deepest_mem hC).1.1.1
-      obtain ⟨m, -, hm, rfl⟩ := h.eq_of_mem hCt
-      rw [ite_pos ⟨blk τ, h.mem (le_trans h.fj h.jτ) le_rfl, hrep.symm,
-        h.anc (le_trans (h.mem_iff.1 hCt).1 le_rfl) hm le_rfl⟩]
-      exact ⟨rfl, rfl⟩
+/-- The read keeps AC state and returns only a chain block, even after a previous report. -/
+theorem acToFG_read {A : ACState sp1.n} {Φ : N1.Frm} {f j τ : Nat}
+    (h : ChainFrame Φ f j τ) (t : Time) :
+    (AC.acToFG sp1 A Φ t).1 = A ∧
+      ∀ C, (AC.acToFG sp1 A Φ t).2 = some C → ∃ m, f ≤ m ∧ m ≤ τ ∧ C = blk m := by
+  constructor
+  · unfold AC.acToFG; split <;> rfl
+  · intro C hc
+    unfold AC.acToFG at hc
+    by_cases hj : joined sp1 A t
+    · simp only [hj, not_true_eq_false, ↓reduceIte] at hc
+      exact h.eq_of_mem (deepest_mem hc).1.1.1
+    · simp only [hj, not_false_eq_true, ↓reduceIte] at hc
+      cases hc
 
 /-! ## The ticks -/
 
@@ -745,7 +734,7 @@ structure ACGood (A : ACState sp1.n) (t : Nat) : Prop where
   bstamp : ∀ m ≤ tip t, A.blockStamp (blk m).root < ⊤
   locks : LocksLe A.locks (tip t)
   tipLock : 1 ≤ tip t → (⟨(blk (tip t)).root, tip t, true, tip t + 2⟩ : Lock) ∈ A.locks
-  reported : A.fgReported = (blk (tip t)).root
+  zeroLocks : tip t = 0 → A.locks = ∅
 
 /-- The node state before the tick of time `t`. -/
 structure Good (st : NodeState N1) (t : Nat) : Prop where
@@ -761,7 +750,7 @@ theorem good_init : Good (Node.init N1) 0 :=
         obtain rfl : m = 0 := by simp [tip] at hm; omega
         change (if (0 : Nat) = 0 then (⊥ : ETime) else ⊤) < ⊤
         simp,
-      fun l hl => absurd hl (Set.notMem_empty _), fun h => by simp [tip] at h, rfl⟩⟩
+      fun l hl => absurd hl (Set.notMem_empty _), fun h => by simp [tip] at h, fun _ => rfl⟩⟩
 
 theorem good_frame {st : NodeState N1} {t : Nat} (h : Good st t) :
     ∃ f, ChainFrame (Node.frame st) f (jexp (tip t)) (tip t) := fgGood_frame h.fg
@@ -793,47 +782,66 @@ theorem tickStep_proposal_no {st : NodeState N1} {n : Nat} (h : ¬ (n % 4 = 0 �
   simp only [tickStep]
   rw [ite_neg (fun hp => h ((proposes_iff n).1 hp))]
 
-theorem tickStep_fgUpdate_none {st : NodeState N1} {t : Nat} (hg : Good st t) (n : Nat) (x : Nat) :
+/-- Repeated reads still call the FG client; its refusal is an observable cut. -/
+noncomputable def readCuts (st : NodeState N1) (t : Time) : List (Cut N1) :=
+  [.ac ⟨.toFG, Node.frame st, []⟩] ++
+    match (AC.acToFG sp1 st.ac (Node.frame st) t).2 with
+    | none => []
+    | some C => [.fg (.attest C none)]
+
+theorem tickStep_fgUpdate_refused {st : NodeState N1} (n : Time) (x : Nat)
+    (hatt : ∀ C, (AC.acToFG sp1 st.ac (Node.frame st) n).2 = some C →
+      st.fg.attest st.record v0 C = none) :
     tickStep (fun _ => v0) dg1 v0 st (n : Int) x .fgUpdate =
-      (st, [.ac ⟨.toFG, Node.frame st, []⟩]) := by
-  obtain ⟨f, hf⟩ := good_frame hg
-  obtain ⟨h1, h2⟩ := acToFG_none hf hg.ac.reported (n : Int)
+      (st, readCuts st n) := by
+  have h1 : (AC.acToFG sp1 st.ac (Node.frame st) n).1 = st.ac := by
+    unfold AC.acToFG; split <;> rfl
   simp only [tickStep, Node.acToFG]
   split
   · rename_i heq
     change ({ st with ac := (AC.acToFG sp1 st.ac (Node.frame st) n).1 }, _) = _
-    rw [h1]
+    simp [h1, readCuts, heq]
   · rename_i C heq
-    exact absurd (heq.symm.trans h2) (by simp)
+    simp [h1, Node.attest, hatt C heq, readCuts, heq]
 
 /-- A tick with no AC call that changes anything but the locks. -/
 theorem good_of_same {st st' : NodeState N1} {t : Nat} (h : Good st t) (hfg : st'.fg = st.fg)
     (hr : st'.record = st.record) (hs : Same st.ac st'.ac) (hL : LocksLe st'.ac.locks (tip t))
     (htip : 1 ≤ tip t → (⟨(blk (tip t)).root, tip t, true, tip t + 2⟩ : Lock) ∈ st'.ac.locks)
+    (hzero : tip t = 0 → st'.ac.locks = ∅)
     (h1 : tip (t + 1) = tip t) (h2 : t ≤ 1 ↔ t + 1 ≤ 1) (h3 : 2 ≤ t ↔ 2 ≤ t + 1) :
     Good st' (t + 1) := by
   obtain ⟨hfg', hatts, hrec, hac⟩ := h
   refine ⟨hfg ▸ h1 ▸ hfg', by rw [hfg, hatts, h1], by rw [hr, h1]; exact hrec, ?_⟩
   refine ⟨hs.mayVote.trans hac.permission,
     hs.restartTime.trans hac.restart, ?_, fun σ => ?_, fun σ h2' hσ => ?_,
-    fun m hm => ?_, h1 ▸ hL, h1 ▸ htip, ?_⟩
+    fun m hm => ?_, h1 ▸ hL, h1 ▸ htip, h1 ▸ hzero⟩
   · rw [hs.votedSlot, hac.voted, h1]; simp only [h2]
   · rw [hs.pool, hac.pool, h1]; simp only [h3]
   · rw [hs.voteStamp]; exact hac.vstamp σ (h3.2 h2') (h1 ▸ hσ)
   · rw [hs.blockStamp]; exact hac.bstamp m (h1 ▸ hm)
-  · rw [hs.fgReported, hac.reported, h1]
 
 theorem tickStep_fgUpdate_none' {st : NodeState N1} {f j τ : Nat}
-    (hf : ChainFrame (Node.frame st) f j τ) (hrep : st.ac.fgReported = (blk τ).root) (n x : Nat) :
+    (hf : ChainFrame (Node.frame st) f j τ) (hfg : FGGood st.fg τ)
+    (hrec : RecGood st.record τ) (hzero : τ = 0 → st.ac.locks = ∅) (n x : Nat) :
     tickStep (fun _ => v0) dg1 v0 st (n : Int) x .fgUpdate =
-      (st, [.ac ⟨.toFG, Node.frame st, []⟩]) := by
-  obtain ⟨h1, h2⟩ := acToFG_none hf hrep (n : Int)
-  simp only [tickStep, Node.acToFG]
-  split
-  · change ({ st with ac := (AC.acToFG sp1 st.ac (Node.frame st) n).1 }, _) = _
-    rw [h1]
-  · rename_i C heq
-    exact absurd (heq.symm.trans h2) (by simp)
+      (st, readCuts st n) := by
+  apply tickStep_fgUpdate_refused
+  intro C hc
+  by_cases hz : τ = 0
+  · have he : AC.toFGCandidates sp1 st.ac (Node.frame st) n = ∅ := by
+      ext B
+      simp [AC.toFGCandidates, hzero hz, AC.liveLocks]
+    unfold AC.acToFG at hc
+    by_cases hj : joined sp1 st.ac n
+    · simp only [hj, not_true_eq_false, ↓reduceIte, AC.fgSource] at hc
+      have hm := (deepest_mem hc).1
+      rw [he] at hm
+      exact False.elim hm
+    · simp only [hj, not_false_eq_true, ↓reduceIte] at hc
+      cases hc
+  obtain ⟨m, -, hm, rfl⟩ := (acToFG_read hf n).2 C hc
+  exact attest_old hfg hrec hm (by unfold hexp; split_ifs <;> omega)
 
 theorem tickStep_acTick (st : NodeState N1) (t : Time) (x : Nat) :
     tickStep (fun _ => v0) dg1 v0 st t x .acTick =
@@ -846,7 +854,7 @@ theorem tip_of_mod1 {n : Nat} (h : n % 4 = 1) : tip n = n / 4 := by unfold tip; 
 theorem tick_noop {st : NodeState N1} {n : Nat} (hg : Good st n) (h1 : n ≠ 1)
     (hA : ¬ (n % 4 = 0 ∧ 4 ≤ n)) (hC : ¬ (n % 4 = 2 ∧ 4 ≤ n)) :
     Node.onTick (fun _ => v0) dg1 v0 st (n : Int) 0 true =
-      (st, [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩]) ∧ Good st (n + 1) := by
+      (st, [.ac ⟨.tick, Node.frame st, []⟩] ++ readCuts st n) ∧ Good st (n + 1) := by
   obtain ⟨f, hf⟩ := good_frame hg
   have hstep : acOnTick sp1 v0 st.ac (Node.frame st) n = (st.ac, []) := by
     rw [acOnTick_eq _ _ _ hg.ac.restart, ite_neg hC]
@@ -857,14 +865,15 @@ theorem tick_noop {st : NodeState N1} {n : Nat} (hg : Good st n) (h1 : n ≠ 1)
   rw [onTick_eq', tickStep_acTick, hstep]
   dsimp only
   rw [show ({ fg := st.fg, ac := st.ac, record := st.record } : NodeState N1) = st from rfl,
-    tickStep_proposal_no hA, tickStep_fgUpdate_none' hf hg.ac.reported]
-  refine ⟨rfl, good_of_same hg rfl rfl (Same.refl _) hg.ac.locks hg.ac.tipLock ?_ ?_ ?_⟩ <;>
+    tickStep_proposal_no hA, tickStep_fgUpdate_none' hf hg.fg hg.record hg.ac.zeroLocks]
+  refine ⟨rfl, good_of_same hg rfl rfl (Same.refl _) hg.ac.locks hg.ac.tipLock
+    hg.ac.zeroLocks ?_ ?_ ?_⟩ <;>
     (try simp only [tip]) <;> omega
 
 /-- The tick of `t_s + 2Δ`: the confirmation update of slot `s − 1`. -/
 theorem tick_C {st : NodeState N1} {n : Nat} (hg : Good st n) (hC : n % 4 = 2 ∧ 4 ≤ n) :
     ∃ A', Node.onTick (fun _ => v0) dg1 v0 st (n : Int) 0 true =
-      ({ st with ac := A' }, [.ac ⟨.tick, Node.frame st, []⟩, .ac ⟨.toFG, Node.frame st, []⟩]) ∧
+      ({ st with ac := A' }, [.ac ⟨.tick, Node.frame st, []⟩] ++ readCuts { st with ac := A' } n) ∧
       Good { st with ac := A' } (n + 1) := by
   obtain ⟨f, hf⟩ := good_frame hg
   have hA : ¬ (n % 4 = 0 ∧ 4 ≤ n) := by omega
@@ -887,8 +896,9 @@ theorem tick_C {st : NodeState N1} {n : Nat} (hg : Good st n) (hC : n % 4 = 2 �
   rw [onTick_eq', tickStep_acTick, hstep]
   dsimp only
   rw [tickStep_proposal_no hA, tickStep_fgUpdate_none' (st := { st with ac := A' }) hf
-    (hsame.fgReported.trans hg.ac.reported)]
-  refine ⟨A', rfl, good_of_same hg rfl rfl hsame hL htip ?_ ?_ ?_⟩ <;>
+    hg.fg hg.record (fun hz => by unfold tip at hz; omega)]
+  refine ⟨A', rfl, good_of_same hg rfl rfl hsame hL htip
+    (fun hz => by unfold tip at hz; omega) ?_ ?_ ?_⟩ <;>
     (try simp only [tip]) <;> omega
 
 /-- The tick of time `1`: the vote of slot `0`. -/
@@ -918,7 +928,27 @@ theorem tick_B0 {st : NodeState N1} (hg : Good st 1) :
   rw [onTick_eq', tickStep_acTick, hstep]
   dsimp only
   rw [tickStep_proposal_no (by omega), tickStep_fgUpdate_none' (st := { st with ac := A' })
-    (f := 0) (j := jexp 0) (τ := 0) hf (by rw [hA']; exact hg.ac.reported)]
+    (f := 0) (j := jexp 0) (τ := 0) hf hg.fg hg.record
+    (fun _ => by rw [hA']; exact hg.ac.zeroLocks rfl)]
+  have hread : readCuts { st with ac := A' } 1 = [.ac ⟨.toFG, Node.frame st, []⟩] := by
+    classical
+    have hlocks : A'.locks = ∅ := by rw [hA']; exact hg.ac.zeroLocks rfl
+    have he : AC.toFGCandidates sp1 A' (Node.frame st) 1 = ∅ := by
+      ext B; simp [AC.toFGCandidates, AC.liveLocks, hlocks]
+    have hd : deepest (Node.frame st) (∅ : Set N1.Blk) = none := by
+      unfold deepest; rw [dite_neg' (by rintro ⟨B, hB⟩; exact hB.1)]
+    have hc : (AC.acToFG sp1 A' (Node.frame st) 1).2 = none := by
+      unfold AC.acToFG AC.fgSource
+      change (if ¬ joined sp1 A' 1 then (A', none)
+        else (A', deepest (Node.frame st) (AC.toFGCandidates sp1 A' (Node.frame st) 1))).2 = _
+      rw [he, hd]; split_ifs <;> rfl
+    change [Cut.ac (A := N1) ⟨.toFG, Node.frame st, []⟩] ++
+      (match (AC.acToFG sp1 A' (Node.frame st) 1).2 with
+       | none => [] | some C => [Cut.fg (A := N1) (.attest C none)]) = _
+    rw [hc]; rfl
+  dsimp only
+  change ∃ A'' e, (_, _ ++ [] ++ readCuts { st with ac := A' } 1) = _ ∧ _
+  rw [hread]
   refine ⟨A', _, rfl, rfl, rfl, ?_⟩
   obtain ⟨hfg, hatts, hrec, hac⟩ := hg
   have htip2 : tip 2 = 0 := rfl
@@ -926,7 +956,7 @@ theorem tick_B0 {st : NodeState N1} (hg : Good st 1) :
   rw [hA']
   refine ⟨hac.permission, hac.restart, by rw [htip2]; rfl,
     fun σ => ?_, fun σ _ hσ => ?_, fun m hm => ?_,
-    hac.locks, hac.tipLock, hac.reported⟩
+    hac.locks, hac.tipLock, hac.zeroLocks⟩
   · rw [htip2]
     by_cases h0 : σ = 0
     · subst h0; simp
@@ -981,7 +1011,7 @@ theorem tick_A {st : NodeState N1} {k : Nat} (hg : Good st (4 * (k + 1))) :
   obtain ⟨fg', hob, hfg', hatts'⟩ := fgGood_onBlock hfg
     (fun a ha => hatts ▸ payload_mem_attList k a ha)
   obtain ⟨f', hf'⟩ := fgGood_frame hfg'
-  obtain ⟨A₃, e, hblk, he, hrp, -, h3r, h3v, h3p, h3vs, h3bs, h3rep, h3L, h3tip⟩ :=
+  obtain ⟨A₃, e, hblk, he, hrp, -, h3r, h3v, h3p, h3vs, h3bs, h3L, h3tip⟩ :=
     acOnBlock_tick (A := { st.ac with locks := L₁ }) (by simp only [hac.permission])
       hf' hac.restart
       (by rw [hac.voted, ite_neg (by omega), tip_A]) hpool1
@@ -989,7 +1019,6 @@ theorem tick_A {st : NodeState N1} {k : Nat} (hg : Good st (4 * (k + 1))) :
       hL₁ htip₁
   -- `ac_to_fg`
   obtain ⟨hto1, hto2⟩ := acToFG_tick hf' h3r h3tip
-    (h3rep.trans (by rw [hac.reported, tip_A]))
   -- the attestation
   obtain ⟨Λ', hatt, hrec'⟩ := attest_blk (s := k + 1) (by omega) hfg'
     (by rw [Nat.add_sub_cancel]; exact hrec)
@@ -1017,17 +1046,16 @@ theorem tick_A {st : NodeState N1} {k : Nat} (hg : Good st (4 * (k + 1))) :
     dsimp only [ACInterface.step]
     rw [hblk]
   have s3 : tickStep (fun _ => v0) dg1 v0 ⟨fg', A₃, st.record⟩ (t : Int) 0 .fgUpdate =
-      (⟨fg', { A₃ with fgReported := (blk (k + 1)).root }, Λ'⟩,
+      (⟨fg', A₃, Λ'⟩,
         [.ac ⟨.toFG, fg'.toFrame, []⟩, .fg (.attest (blk (k + 1)) (some (att (k + 1))))]) := by
     simp only [tickStep, Node.acToFG, Node.frame]
     rw [hto2]
     dsimp only
     simp only [Node.attest]
     rw [hto1]
-    dsimp only
     rw [hatt]
   refine ⟨fg', e,
-    ⟨fg'.onAttestation (att (k + 1)), { A₃ with fgReported := (blk (k + 1)).root }, Λ'⟩,
+    ⟨fg'.onAttestation (att (k + 1)), A₃, Λ'⟩,
     hob, hfg', ?_, he, hrp, ?_⟩
   · rw [stockTick, onTick_eq', tickStep_acTick, hstep]
     dsimp only
@@ -1044,7 +1072,7 @@ theorem tick_A {st : NodeState N1} {k : Nat} (hg : Good st (4 * (k + 1))) :
           fg'.toFrame ((4 * (k + 1) : Nat) : Int) (.block (blk (k + 1)))
         simpa only [goldilocksAC, ACInterface.step, hblk] using hp
       refine ⟨hperm.trans hac.permission, h3r, ?_, fun σ => ?_,
-        fun σ _ hσ => ?_, fun m hm => ?_, ?_, fun _ => ?_, ?_⟩
+        fun σ _ hσ => ?_, fun m hm => ?_, ?_, fun _ => ?_, fun hz => by rw [ht1] at hz; omega⟩
       · rw [h3v, ht1, ite_neg (by omega)]
       · rw [ht1]
         change A₃.pool σ = _
@@ -1072,7 +1100,6 @@ theorem tick_A {st : NodeState N1} {k : Nat} (hg : Good st (4 * (k + 1))) :
           exact hac.bstamp m (by rw [tip_A]; omega)
       · rw [ht1]; exact h3L
       · rw [ht1]; exact h3tip
-      · rw [ht1]
 
 end Consensus.Goldilocks.Witness.One
 

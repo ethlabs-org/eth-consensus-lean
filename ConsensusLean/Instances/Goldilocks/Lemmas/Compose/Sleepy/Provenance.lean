@@ -183,13 +183,7 @@ private theorem good_proposal {A : AC.ACState sp.n}
 private theorem good_toFG {A : AC.ACState sp.n} (h : Good R G A) (t : Time) :
     Good R G (AC.acToFG sp A Φ t).1 := by
   unfold AC.acToFG
-  split_ifs
-  · split
-    · exact h
-    · split_ifs
-      · exact h
-      · exact h
-  · exact h
+  split_ifs <;> exact h
 
 end Handlers
 

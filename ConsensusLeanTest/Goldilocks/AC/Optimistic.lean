@@ -489,7 +489,7 @@ def S2 : ACState sp1.n :=
     locks := insert lock2 S1.locks }
 
 /-- The state after cut 2. -/
-def S3 : ACState sp1.n := { S2 with fgReported := 1 }
+def S3 : ACState sp1.n := S2
 
 theorem mem_S1_locks {l : Lock} (hl : l ∈ S1.locks) : l = lock1 := by
   rcases hl with rfl | h
@@ -557,7 +557,6 @@ theorem toFG_S2 : (acToFG sp1 S2 Φ₁ 12).1 = S3 ∧ (acToFG sp1 S2 Φ₁ 12).2
   unfold acToFG fgSource
   rw [ite_eq_right (not_not.2 (joined_bot rfl 12)), hc]
   dsimp only
-  rw [ite_eq_right (show ¬ AncR Φ₁ B1 S2.fgReported from notAncR_B1_0)]
   exact ⟨rfl, rfl⟩
 
 theorem r3_eq : r3 = (updateConfirmation sp1 S3 Φ₁ 14 2, []) := by

@@ -213,7 +213,8 @@ theorem floor_acOnTick (self : Fin sp.n) {A : ACState sp.n} (hΦ : FrameOK Φ)
     | exact floor_updateConfirmation hΦ hB0 hva0 hk h
     | exact floor_updateConfirmation hΦ hB0 hva0 hk hv
 
-/-- `ac_proposal` keeps the floor (the slot-`(slot(t) − 1)` pool view). -/
+/-- `ac_proposal` keeps the floor by leaving the stored state unchanged; its unlock is
+confined to the working copy used for the parent and anchor. -/
 theorem floor_acProposal {A : ACState sp.n}
     (h : ∃ l ∈ A.locks, l.slot = j ∧ m ≤ l.expiry ∧
       ∃ B ∈ Φ.tree, B.root = l.block ∧ Φ.Anc B₀ B) :

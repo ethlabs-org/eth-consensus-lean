@@ -12,7 +12,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 calls over two slots and a sleep, through the trusted handlers (`acOnTick`, `acOnMessage`,
 `tryVote`, `optimisticConfirmation`, `updateConfirmation`, `acRestart`), at `k = 6`, `c = 2`,
 four validators, `Δ = 1`, `t_s = 4s`. The node is `v0`; it is never the slot proposer, so it
-makes no `ac_proposal` call, and its FG updates (`ac_to_fg`, which writes only `fg_reported`)
+makes no `ac_proposal` call, and its FG reads (`ac_to_fg`, which leaves the AC state unchanged)
 are left out.
 
 The tree: genesis `g` (root `0`), `B1` (root `1`, slot `1`) on `g`, and the conflicting children
@@ -239,7 +239,6 @@ def S0 : ACState sp.n where
   saved := fun _ => some 2
   locks := ∅
   latestConfirmed := 0
-  fgReported := 0
   votedSlot := 8
   restartTime := ⊥
 

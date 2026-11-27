@@ -76,11 +76,7 @@ theorem mem_updateConfirmation_of_keep {A : ACState sp.n} {s : Nat} (hl : l ∈ 
 /-- `ac_to_fg` keeps the locks. -/
 theorem acToFG_locks_eq (A : ACState sp.n) : (acToFG sp A Φ t).1.locks = A.locks := by
   unfold acToFG
-  split_ifs
-  · split
-    · rfl
-    · split_ifs <;> rfl
-  · rfl
+  split_ifs <;> rfl
 
 /-! ## The keep lemma with the view that `unlock` reads
 

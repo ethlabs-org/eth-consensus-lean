@@ -53,7 +53,6 @@
 \newcommand{\savedConfirmation}{\mathsf{saved\_confirmation}}
 \newcommand{\locks}{\mathsf{locks}}
 \newcommand{\restartTime}{\mathsf{restart\_time}}
-\newcommand{\fgReported}{\mathsf{fg\_reported}}
 \newcommand{\votedSlot}{\mathsf{voted\_slot}}
 
 \title{Goldilocks}
@@ -315,7 +314,7 @@ confirmation freeze (Section~\ref{sec:ac-confirmation}).}
 \[
 \begin{split}
  \AC=(&\headVotes[\cdot],\timestamp[\cdot],\savedConfirmation[\cdot],\\
- &\locks,\latestConfirmed,\fgReported,\\
+ &\locks,\latestConfirmed,\\
  &\votedSlot,\restartTime).
 \end{split}
 \]
@@ -343,8 +342,6 @@ $\locks$ & the locks $(B,j,f,e)$: a block, the slot of its confirmation, the fas
   anchor, veto, unlocking, \fname{ac\_to\_fg} & kept\\
 $\latestConfirmed$ & the stored confirmed block, for the confirmed tip &
   \textsc{update\_\allowbreak latest\_\allowbreak confirmed} & \textsc{update\_\allowbreak latest\_\allowbreak confirmed}, \fname{ac\_confirmed} & kept\\
-$\fgReported$ & the latest block other than~$\bot$ that the node gave to the FG &
-  \fname{ac\_to\_fg} & \fname{ac\_to\_fg} & reset\\
 $\votedSlot$ & the latest slot in which the node ran its vote, also when it is not in $\committee_s$ and sends no vote &
   \textsc{try\_\allowbreak vote} & \textsc{try\_\allowbreak vote} & reset\\
 $\restartTime$ & the time of the latest restart & \fname{ac\_restart} &
@@ -364,7 +361,7 @@ opponents, the anchor, and $\mathit{fg\_confirmed}$.
 The initial state is $\Call{initial\_ac}{}$ (Figure~\ref{alg:ac-initial}):
 empty pools and locks, $\bot$ as the saved confirmation of every integer
 slot, also a negative one, and
-$\genesis$ as $\AC.\latestConfirmed$ and as $\AC.\fgReported$.
+$\genesis$ as $\AC.\latestConfirmed$.
 
 \emph{Joined.}  The node is \emph{joined} at time~$t$ when
 $\AC.\restartTime\leq t_{\slot(t)-1}$: it has been awake, with no restart,
@@ -379,7 +376,7 @@ from~$t_{j+2}$.
 \Function{initial\_ac}{}
   \State $\AC.\headVotes[s]\gets$ an empty pool, and $\AC.\savedConfirmation[s]\gets\bot$, for every integer $s$
   \State $\AC.\timestamp\gets\{\genesis\mapsto-\infty\}$;\quad $\AC.\locks\gets\emptyset$
-  \State $\AC.\latestConfirmed\gets\genesis$;\quad $\AC.\fgReported\gets\genesis$
+  \State $\AC.\latestConfirmed\gets\genesis$
   \State $\AC.\votedSlot\gets-1$;\quad $\AC.\restartTime\gets-\infty$
   \State \Return $\AC$
 \EndFunction
@@ -1160,7 +1157,7 @@ once through the ordinary block handler, from the unchanged pre-proposal state,
 so it can vote at~$t_s$; that vote unlocks with its own frame and merged view.
 
 \emph{The block for the FG.}  When its calendar allows the FG update,
-a joined node gives the FG a new block when it has one.  The candidates are the blocks of the live
+a joined node gives the FG the selected block when it has one.  The candidates are the blocks of the live
 fast locks of slot $\slot(t)-2$ or later that are in the full viable
 tree.  When there is none and $D\neq\bot$, the node computes
 $\Call{deep\_anchor}{}$, the highest live lock.  When it is not $\bot$, the deep candidates are the
@@ -1172,11 +1169,11 @@ slot at any time.  A restart stamps every held block other than $\genesis$
 with the restart time (Section~\ref{sec:ac-joining}), so a node gives no deep
 candidate for at least $D$ slots after a restart, and a validator that restarts
 more often than once every $D$ slots never has one.  $\genesis$ keeps the
-stamp $-\infty$; the condition $B\neq\genesis$ excludes it.  The node gives the deepest candidate when it exists and is not an
-ancestor of $\AC.\fgReported$, the block that it gave last, or equal to it
-(a block given earlier that left $\Fr.\tree$ blocks nothing), and records
-it in $\AC.\fgReported$.  A tick that skips the FG update neither queries
-$\Call{ac\_to\_fg}{}$ nor writes $\AC.\fgReported$ for that duty.
+stamp $-\infty$; the condition $B\neq\genesis$ excludes it from the deep
+candidates, not the fast candidates.  The node gives the deepest candidate
+when it exists, even if it gave that block before or gave a deeper block
+earlier.  The query does not change the AC state.  A tick that skips the FG
+update does not query $\Call{ac\_to\_fg}{}$ for that duty.
 
 \captionof{figure}{Goldilocks: block, tick, proposal and FG update}\label{alg:ac-events}
 \nopagebreak
@@ -1239,10 +1236,6 @@ $\Call{ac\_to\_fg}{}$ nor writes $\AC.\fgReported$ for that duty.
   \EndIf
   \If{$\mathit{cands}=\emptyset$} \State \Return $\bot$ \EndIf
   \State $C\gets$ the deepest block of $\mathit{cands}$
-  \If{$\AC.\fgReported\in\Fr.\tree$ and $C\preceq\AC.\fgReported$} \State \Return $\bot$
-    \Comment{nothing new}
-  \EndIf
-  \State $\AC.\fgReported\gets C$
   \State \Return $C$
 \EndFunction
 \end{algorithmic}

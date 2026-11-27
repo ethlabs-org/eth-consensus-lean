@@ -786,7 +786,7 @@ private theorem step_voteStep {L : Set Lock} {ro : ReplayOrder sp FGP} (self : F
   | message m => exact Or.inr (acOnMessage_voteStep _ _ _ _ _)
   | block B => exact Or.inr (acOnBlock_voteStep _ _ _ _ _)
   | restart =>
-    obtain ⟨he, -, -, -, -, -, hr, -⟩ := restart_state sp FGP ro self A Φ t hΦ ht
+    obtain ⟨he, -, -, -, -, hr, -⟩ := restart_state sp FGP ro self A Φ t hΦ ht
     exact Or.inl ⟨he, hr⟩
 
 variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (Blk sp.n FGP)}
@@ -941,7 +941,7 @@ private theorem restartTime_geU
       rw [hexec]
     by_cases hr : ℓ.call = .restart
     · rw [hpost, hr]
-      obtain ⟨-, -, -, -, -, -, hrt, -⟩ :=
+      obtain ⟨-, -, -, -, -, hrt, -⟩ :=
         restart_state sp FGP ro y (tr.state y i) ℓ.frame (tr.time i) hΦ (h.time_nonneg i)
       change (tr.time j : WithBot Time) ≤ (acRestart sp ro y _ _ _).1.restartTime
       rw [hrt]

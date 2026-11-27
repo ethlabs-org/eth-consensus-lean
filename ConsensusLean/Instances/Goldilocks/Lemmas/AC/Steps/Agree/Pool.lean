@@ -123,11 +123,7 @@ private theorem grow_step
   | toFG =>
     change Grow t A (acToFG sp A Φ t).1
     unfold acToFG
-    split_ifs
-    · split
-      · exact Grow.of_eq rfl rfl
-      · split_ifs <;> exact Grow.of_eq rfl rfl
-    · exact Grow.of_eq rfl rfl
+    split_ifs <;> exact Grow.of_eq rfl rfl
   | message m =>
     exact ((grow_admitVote _ _ _).trans (grow_optimistic _ _ _)).trans
       (grow_tryVote (wm := wm) _ _ _ _)
@@ -216,7 +212,7 @@ theorem pool_origin_sentU
           (frameOK_of_callU hr hy hc) (hr.time_nonneg c)
         change (acRestart sp ro y (tr.state y c) ℓ.frame (tr.time c)) = _ at he
         rw [he] at hR
-        rw [hR.2.2.2.2.2.2.2.2.1] at hx
+        rw [hR.2.2.2.2.2.2.2.1] at hx
         exact absurd hx List.not_mem_nil
       · have hg := grow_callU hr hy hc hrs
         by_cases hx' : x ∈ (tr.state y c).pool x.slot

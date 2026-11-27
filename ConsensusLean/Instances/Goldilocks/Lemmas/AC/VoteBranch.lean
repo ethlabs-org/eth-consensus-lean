@@ -208,7 +208,7 @@ theorem stepWithM_voteBranch {L : Set Lock} (self : Fin sp.n)
   | message v => exact ofTry (Or.inr (Or.inl ⟨v, rfl⟩)) hs rfl
   | block B => exact ofTry (Or.inr (Or.inr ⟨B, rfl⟩)) hs rfl
   | restart =>
-    obtain ⟨he, -, -, -, -, hv, -⟩ := restart_state sp FGP ro self A Φ t hΦ ht
+    obtain ⟨he, -, -, -, hv, -⟩ := restart_state sp FGP ro self A Φ t hΦ ht
     change acRestart sp ro self A Φ t = (A', es) at hs
     rw [hs] at he hv
     exact Or.inl ⟨he, Or.inr hv⟩

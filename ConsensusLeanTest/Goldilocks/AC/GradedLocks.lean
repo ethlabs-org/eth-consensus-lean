@@ -403,7 +403,6 @@ def base (L : Set Lock) : ACState sp.n where
   saved := fun _ => some 1
   locks := L
   latestConfirmed := 0
-  fgReported := 0
   votedSlot := 3
   restartTime := ⊥
 

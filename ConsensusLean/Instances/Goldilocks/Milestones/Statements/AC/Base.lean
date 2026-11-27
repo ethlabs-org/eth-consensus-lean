@@ -236,7 +236,7 @@ def InterfaceRequirements : Prop :=
     (goldilocksAC sp FGP ro).ReqSource ∧ (goldilocksAC sp FGP ro).ReqOutputs
 
 /-- **A0.7, restart.** After `ac_restart` at `t ≥ 0` with a well-formed frame: the locks and
-`latest_confirmed` are kept; the saved results, `fg_reported` and `voted_slot` are initial;
+`latest_confirmed` are kept; the saved results and `voted_slot` are initial;
 `restart_time = t`; the pools are empty (the replay admits no declared head vote); every vote
 stamp is `t` or unset; every block stamp is initial or `t` for a non-genesis block of the tree;
 the node is not joined at `t`, so the replay sends nothing. -/
@@ -246,7 +246,7 @@ def RestartState : Prop :=
     let r := acRestart sp ro self A Φ t
     let I : ACState sp.n := ACState.initial sp.genesisRoot
     r.2 = [] ∧ r.1.locks = A.locks ∧ r.1.latestConfirmed = A.latestConfirmed ∧
-    r.1.saved = I.saved ∧ r.1.fgReported = I.fgReported ∧ r.1.votedSlot = I.votedSlot ∧
+    r.1.saved = I.saved ∧ r.1.votedSlot = I.votedSlot ∧
     r.1.restartTime = (t : WithBot Time) ∧ ¬ joined sp r.1 t ∧
     (∀ σ, r.1.pool σ = []) ∧
     (∀ x, r.1.voteStamp x = ⊤ ∨ r.1.voteStamp x = ETime.of t) ∧
