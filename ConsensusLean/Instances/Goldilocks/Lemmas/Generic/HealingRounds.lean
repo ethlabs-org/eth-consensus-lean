@@ -392,6 +392,11 @@ variable {P : Params} {A : NodeAC P} {sg : A.Msg → Fin P.n} {runs : ACRun A sg
 open Healing (cutZ)
 open Healing.Growing (HZ IsReset)
 
+/-- The origin cap at a time holds at every earlier time. -/
+private theorem originInCap_mono {P : Params} {budget : Option Nat} {g t t' : Time}
+    (h : t' ≤ t) (hc : OriginInCap P budget g t) : OriginInCap P budget g t' :=
+  fun m hm => h.trans (hc m hm)
+
 /-- A high report, by a reader honest at it and at `c_z`, by the horizon of a premised reset, has
 a high origin no later (`ACHealing.report_origin`); every entry below the report in the reader's
 store is below the origin in the origin's store, with the same replay state. -/
@@ -400,7 +405,8 @@ private theorem origin_below_report {hold : Time}
     {g ΔF a b : Time} (hβ : βK ≤ 1 / 2) (hrun : runs.Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg sg g ΔF b hold) (hres : IsReset tr H g a) (hab : a ≤ b)
     {y : Fin P.n} {i : Nat} {R E : A.Blk} (hyz : y ∈ H (max (cutZ P g) (tr.time i)))
-    (hib : tr.time i ≤ b) (hR : ReportAt tr y i R)
+    (hib : tr.time i ≤ b) (hcap : OriginInCap P O.deepBudget g (tr.time i))
+    (hR : ReportAt tr y i R)
     (hh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) (hE : E ∈ (tr.state y i).fg.tree)
     (hER : (tr.state y i).fg.Anc E R) :
     ∃ r ≤ i, ∃ l Og, HighOrigin A sg O tr H g y r l Og ∧ E ∈ (tr.state y r).fg.tree ∧
@@ -410,7 +416,8 @@ private theorem origin_below_report {hold : Time}
   have hy := hl.antitone (le_max_right _ _) hyz
   have hi0 := hl.time_nonneg i
   have hlei : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hl.time_mono hq.le
-  obtain ⟨r, hri, l, Og, -, hO, hOg, hROg⟩ := O.report_origin hβ hrun hp hres hab hy hib hR hh
+  obtain ⟨r, hri, l, Og, -, hO, hOg, hROg⟩ :=
+    O.report_origin hβ hrun hp hres hab hy hib hcap hR hh
   have hler : ∀ q < r, tr.time q ≤ tr.time i := fun q hq => hl.time_mono (by omega)
   have hRi := (O.report_in_frame hrun hy hR).1
   have hRr := mem_of_honest_anc_at_from hl hnc hi0 hler hy hROg hOg
@@ -430,13 +437,14 @@ reset, has a high origin strictly before it holding the signed entry. The signin
 report at the same time (leaf 7), whose origin `ACHealing.report_origin` supplies. -/
 theorem high_row_source_at_of_healing {hold : Time}
     (O : ACHealing A sg runs hold) : high_row_source_at A sg O := by
-  intro cm proposer dg H tr βK g ΔF a b v d att hβ hrun hp hres hab hvz hdb hs hh
+  intro cm proposer dg H tr βK g ΔF a b v d att hβ hrun hp hres hab hvz hdb hcap hs hh
   have hl := runs.run_local hrun
   obtain ⟨i, hid, R, hR, hti, hhR, E, hE, hER, hEr, hEh, hETh⟩ :=
     sign_from_report_at_from hl (runs.run_requirements hrun) (hl.antitone (le_max_right _ _) hvz)
       hs
   obtain ⟨r, hri, l, Og, ho, hEm, hEOg, hσ⟩ := origin_below_report O hβ hrun hp hres hab
-    (by rw [hti]; exact hvz) (by rw [hti]; exact hdb) hR (hh.trans hhR) hE hER
+    (by rw [hti]; exact hvz) (by rw [hti]; exact hdb) (by rw [hti]; exact hcap) hR
+    (hh.trans hhR) hE hER
   exact ⟨r, by omega, l, Og, ho, E, hEm, hEOg, hEr, by rw [hσ, hEh], by rw [hσ, hETh]⟩
 
 end HighRowSource
@@ -459,13 +467,14 @@ private theorem origin_of_left_entry {hold : Time}
     {g ΔF a b : Time} (hβ : βK ≤ 1 / 2) (hrun : runs.Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg sg g ΔF b hold) (hres : IsReset tr H g a) (hab : a ≤ b)
     {y : Fin P.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
-    (hyt : y ∈ H t) (htb : t ≤ b) (hq : (H (max (cutZ P g) t))ᶜ.ncard < P.fg.q)
+    (hyt : y ∈ H t) (htb : t ≤ b) (hcap : OriginInCap P O.deepBudget g t)
+    (hq : (H (max (cutZ P g) t))ᶜ.ncard < P.fg.q)
     {E C : A.Blk} (hE : E ∈ (tr.state y k).fg.tree)
     (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
     (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h)
     (hEC : (tr.state y k).fg.Anc E C)
     (hlt : ((tr.state y k).fg.σ E.root).h < ((tr.state y k).fg.σ C.root).h) :
-    ∃ v r l Og, HighOrigin A sg O tr H g v r l Og ∧ tr.time r ≤ b ∧
+    ∃ v r l Og, HighOrigin A sg O tr H g v r l Og ∧ tr.time r ≤ b ∧ tr.time r ≤ t ∧
       Anc (tr.HonestBlocksAt H) E Og := by
   have hl := runs.run_local hrun
   have hnc := hp.noColl
@@ -486,8 +495,10 @@ private theorem origin_of_left_entry {hold : Time}
   have hσE := σ_eq_honest_at_from hl hnc hi0 hlei hvi ht hle hyt hE' hE
   rw [hσE] at hE'h
   obtain ⟨r, hri, l, Og, ho, -, hEOg, -⟩ := origin_below_report O hβ hrun hp hres hab
-    (hl.antitone (max_le_max le_rfl hit) haH) (hit.trans htb) hR (by omega) hE' hE'R
+    (hl.antitone (max_le_max le_rfl hit) haH) (hit.trans htb) (originInCap_mono hit hcap) hR
+    (by omega) hE' hE'R
   exact ⟨att.val, r, l, Og, ho, (hl.time_mono hri).trans (hit.trans htb),
+    (hl.time_mono hri).trans hit,
     honest_anc_of_store_anc_at_from hi0 (fun q hq => hl.time_mono (by omega)) hvi hEOg⟩
 
 /-- Leaf 13: by the horizon of a premised reset, no honest store contests at `h_max ≥ HZ + 2`.
@@ -497,7 +508,7 @@ of `C` at `h_j` is another. Both are left by held blocks, so both lie below high
 two entries equal, so `J` is below `C`. -/
 theorem no_high_contest_at_of_healing {hold : Time}
     (O : ACHealing A sg runs hold) : no_high_contest_at A sg O := by
-  intro cm proposer dg H tr βK g ΔF a b p i hβ hrun hp ha hab hpH hib
+  intro cm proposer dg H tr βK g ΔF a b p i hβ hrun hp ha hab hacap hpH hib hcap
   rintro ⟨⟨hmj, C, hC, -, hCh, hJC⟩, hmax⟩
   have hrl := runs.run_local hrun
   have ht := hrl.time_nonneg i
@@ -517,12 +528,13 @@ theorem no_high_contest_at_of_healing {hold : Time}
   have hjlt := Healing.Store.hj_lt_h hreach hBj
   obtain ⟨EC, hEC, hECC, hECh, hECT⟩ := Healing.entry_at_height hreach hC
     (h := (tr.state p i).fg.hj) (by omega) (by omega)
-  obtain ⟨v₁, r₁, l₁, B₁, ho₁, hr₁b, hJB₁⟩ := origin_of_left_entry O hβ hrun hp ha hab
-    ht hi hpH hib hq hEJ hJT (by omega) hEJB (by omega)
-  obtain ⟨v₂, r₂, l₂, B₂, ho₂, hr₂b, hECB₂⟩ := origin_of_left_entry O hβ hrun hp ha hab
-    ht hi hpH hib hq hEC hECT (by omega) hECC (by omega)
+  obtain ⟨v₁, r₁, l₁, B₁, ho₁, hr₁b, hr₁t, hJB₁⟩ := origin_of_left_entry O hβ hrun hp ha hab
+    ht hi hpH hib hcap hq hEJ hJT (by omega) hEJB (by omega)
+  obtain ⟨v₂, r₂, l₂, B₂, ho₂, hr₂b, hr₂t, hECB₂⟩ := origin_of_left_entry O hβ hrun hp ha hab
+    ht hi hpH hib hcap hq hEC hECT (by omega) hECC (by omega)
   have he := high_entry_eq_at_from hrl hp.noColl
-    (O.origins_comparable hβ hrun hp ha hab ho₁.1 ho₁.2.1 hr₁b ho₁.2.2 ho₂.1 ho₂.2.1 hr₂b
+    (O.origins_comparable hβ hrun hp ha hab hacap ho₁.1 ho₁.2.1 hr₁b
+      (originInCap_mono hr₁t hcap) ho₁.2.2 ho₂.1 ho₂.2.1 hr₂b (originInCap_mono hr₂t hcap)
       ho₂.2.2)
     hJB₁ hECB₂ ht hi hpH ht hi hpH hEJ hEC (by omega) hJT hECT
   have heq : EC = (tr.state p i).fg.J := hU.1 (hsub hEC) (hsub hEJ) he.symm
@@ -542,9 +554,10 @@ theorem high_entry_eq_at_of_healing {runs : ACRun A sg} {hold : Time}
     (O : ACHealing A sg runs hold) :
     high_entry_eq_at A sg O := by
   intro cm proposer dg H tr βK g ΔF a b x x' i j i' j' B B' Z₁ Z₂ y₁ y₂ m₁ m₂ t₁ t₂ hβ hrun hP
-    hr hab ho hib ho' hi'b h₁ h₂ ht₁ hle₁ hy₁ ht₂ hle₂ hy₂ hZ₁ hZ₂ hh hT₁ hT₂
+    hr hab hacap ho hib hcap ho' hi'b hcap' h₁ h₂ ht₁ hle₁ hy₁ ht₂ hle₂ hy₂ hZ₁ hZ₂ hh hT₁ hT₂
   exact high_entry_eq_at_from (runs.run_local hrun) hP.noColl
-    (O.origins_comparable hβ hrun hP hr hab ho.1 ho.2.1 hib ho.2.2 ho'.1 ho'.2.1 hi'b ho'.2.2)
+    (O.origins_comparable hβ hrun hP hr hab hacap
+      ho.1 ho.2.1 hib hcap ho.2.2 ho'.1 ho'.2.1 hi'b hcap' ho'.2.2)
     h₁ h₂ ht₁ hle₁ hy₁ ht₂ hle₂ hy₂ hZ₁ hZ₂ hh hT₁ hT₂
 
 end HighEntrySupplier

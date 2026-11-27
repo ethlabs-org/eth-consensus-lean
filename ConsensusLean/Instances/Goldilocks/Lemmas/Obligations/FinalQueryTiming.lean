@@ -190,7 +190,7 @@ theorem final_window_slots (run : (Sys (goldilocks S) V).Run)
     push_cast
     ring
   have hL : (0 : Time) < G.slotLen := G.slotLen_pos
-  have hi : (1 : Time) ≤ ((index : Nat) : Time) := by exact_mod_cast index.pos
+  have hi : (1 : Time) ≤ ((index : Nat) : Time) := by exact_mod_cast index.1.pos
   have hq :
       max (max ((Sys (goldilocks S) V).ready (K S A) gst run) 0) 0 ≤
         query := by
@@ -336,7 +336,7 @@ theorem final_reset_bounds_within (run : (Sys (goldilocks S) V).Run)
   have hBeq : B = ready + (20 * (Ld : Time) + 24 * S.δt + 24 * X + 40) * D + 5 * d := by
     change resetBoundRounds ready D (2 * D) sp.toParams.fg.δt X Ld + 5 * d = _
     rw [resetBoundRounds_eq, hδeq]; ring
-  have hX1 : (1 : Time) ≤ X := by exact_mod_cast index.pos
+  have hX1 : (1 : Time) ≤ X := by exact_mod_cast index.1.pos
   have hLd0 : (0 : Time) ≤ Ld := Nat.cast_nonneg _
   have hBc : B + (12 * (c : Time) - 2) * D ≤ run.2.horizon := by
     have hfit := final_heal_horizon_fit_within (k := (S.k : Time)) (Ld := (Ld : Time)) hD

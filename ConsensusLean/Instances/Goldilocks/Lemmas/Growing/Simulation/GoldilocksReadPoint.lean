@@ -185,10 +185,11 @@ private theorem localData_eqs
     {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg) :
     (∀ cm proposer dg H (tr : GoldilocksTrace sp ro), C.run.Run cm proposer dg H tr →
       (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr) ∧
-    C.healing.drain = 2 * sp.k + 5 ∧ C.catchUp = 18 * sp.Δ ∧ C.hold = sp.Δ ∧
-    C.margin = 6 * sp.Δ ∧ C.latency = 6 * sp.Δ := by
-  obtain ⟨⟨⟨hrunEq, -⟩, -, -, -, hdrain, -⟩, -, hcatch, -, -, hhold, hmargin, hlat, -⟩ := hdata
-  refine ⟨fun cm proposer dg H tr hrun => ?_, hdrain, hcatch, hhold, hmargin, hlat⟩
+    C.healing.drain = 2 * sp.k + 5 ∧ C.healing.deepBudget = sp.deepDepth ∧
+    C.catchUp = 18 * sp.Δ ∧ C.hold = sp.Δ ∧ C.margin = 6 * sp.Δ ∧ C.latency = 6 * sp.Δ := by
+  obtain ⟨⟨⟨hrunEq, -⟩, -, -, -, hdrain, hbudget, -⟩, -, hcatch, -, -, hhold, hmargin, hlat, -⟩ :=
+    hdata
+  refine ⟨fun cm proposer dg H tr hrun => ?_, hdrain, hbudget, hcatch, hhold, hmargin, hlat⟩
   rw [hrunEq] at hrun
   exact (goldilocksRunInterface_run_iff cm).mpr hrun
 
@@ -202,6 +203,7 @@ private theorem goldilocks_healed_compatible
     (hβ : βK ≤ 1 / 2) (hrun : C.run.Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b fgHold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
+    (hbud : ResetInBudget sp.toParams C.healing.deepBudget C.healing.drain g a)
     (hs₁ : sp.toParams.slotOf a + C.healing.drain ≤ s₁)
     (hX : ∃ z k X, HonestProposal tr H proposer s₁ z k X)
     (hTb : sp.toParams.slotTime s₁ + 6 * sp.Δ ≤ b)
@@ -210,11 +212,12 @@ private theorem goldilocks_healed_compatible
     (ht : sp.toParams.slotTime s₁ + C.margin < t) (hu : sp.toParams.slotTime s₁ + C.margin < u)
     (hy : ReadyReadPoint tr H b C.catchUp y i t) (hz : ReadyReadPoint tr H b C.catchUp z j u) :
     Compatible (tr.HonestBlocksAt H) (confirmedRead tr y i t) (confirmedRead tr z j u) := by
-  obtain ⟨hrunI, hdrain, hcatch, -, hmargin, -⟩ := localData_eqs hdata
-  rw [hdrain] at hs₁
+  obtain ⟨hrunI, hdrain, hbudget, hcatch, -, hmargin, -⟩ := localData_eqs hdata
+  rw [hdrain] at hs₁ hbud
+  rw [hbudget] at hbud
   rw [hmargin] at ht hu
   rw [hcatch] at hy hz
-  have hq := resetPremisesUpTo_of_premises hβ (hrunI _ _ _ _ _ hrun) hp hr hab
+  have hq := resetPremisesUpTo_of_premises_budget hβ (hrunI _ _ _ _ _ hrun) hp hr hab hbud
   have hts : sp.toParams.slotTime s₁ = sp.ts s₁ := by
     rw [sp.slotTime_eq]; simp [ACParams.ts]
   rw [hts] at hTb hgu ht hu
@@ -242,17 +245,19 @@ private theorem goldilocks_healed_proposal
     (hβ : βK ≤ 1 / 2) (hrun : C.run.Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b fgHold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
+    (hbud : ResetInBudget sp.toParams C.healing.deepBudget C.healing.drain g a)
     (hs₁ : sp.toParams.slotOf a + C.healing.drain ≤ s₁)
     {z : Fin sp.n} {k : Nat} {X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : HonestProposal tr H proposer s₁ z k X)
     {y : Fin sp.n} {j : Nat} {t : Time} (ht : tr.time k + C.margin ≤ t)
     (hy : ReadyReadPoint tr H b C.catchUp y j t) (hjt : t < tr.time j) :
     Anc (tr.HonestBlocksAt H) X (confirmedRead tr y j t) := by
-  obtain ⟨hrunI, hdrain, hcatch, -, hmargin, -⟩ := localData_eqs hdata
-  rw [hdrain] at hs₁
+  obtain ⟨hrunI, hdrain, hbudget, hcatch, -, hmargin, -⟩ := localData_eqs hdata
+  rw [hdrain] at hs₁ hbud
+  rw [hbudget] at hbud
   rw [hmargin] at ht
   rw [hcatch] at hy
-  have hq := resetPremisesUpTo_of_premises hβ (hrunI _ _ _ _ _ hrun) hp hr hab
+  have hq := resetPremisesUpTo_of_premises_budget hβ (hrunI _ _ _ _ _ hrun) hp hr hab hbud
   have hts : sp.toParams.slotTime s₁ = sp.ts s₁ := by
     rw [sp.slotTime_eq]; simp [ACParams.ts]
   have hP := hX.designated ▸ hX.proposes
@@ -278,6 +283,7 @@ private theorem goldilocks_proposal_read
     (hβ : βK ≤ 1 / 2) (hrun : C.run.Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b fgHold)
     (hr : Healing.Growing.IsReset tr H g a) (hab : a ≤ b)
+    (hbud : ResetInBudget sp.toParams C.healing.deepBudget C.healing.drain g a)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} {k : Nat} {y : Fin sp.n} {j : Nat} {t : Time}
     (hB : ReadyProposal tr H C.catchUp C.hold B k)
     (hBs : sp.toParams.slotOf a + C.healing.drain ≤ B.slot)
@@ -285,12 +291,13 @@ private theorem goldilocks_proposal_read
     (ht : tr.time k + C.latency ≤ t)
     (hy : ReadyReadPoint tr H b C.catchUp y j t) (hjt : t < tr.time j) :
     Anc (tr.HonestBlocksAt H) B (confirmedRead tr y j t) := by
-  obtain ⟨hrunI, hdrain, hcatch, hhold, -, hlat⟩ := localData_eqs hdata
-  rw [hdrain] at hBs
+  obtain ⟨hrunI, hdrain, hbudget, hcatch, hhold, -, hlat⟩ := localData_eqs hdata
+  rw [hdrain] at hBs hbud
+  rw [hbudget] at hbud
   rw [hlat] at ht
   rw [hcatch] at hy
   rw [hhold] at hB
-  have hq := resetPremisesUpTo_of_premises hβ (hrunI _ _ _ _ _ hrun) hp hr hab
+  have hq := resetPremisesUpTo_of_premises_budget hβ (hrunI _ _ _ _ _ hrun) hp hr hab hbud
   obtain ⟨hP, -, hheld⟩ := hB
   have hts : sp.toParams.slotTime B.slot = sp.ts B.slot := by
     rw [sp.slotTime_eq]; simp [ACParams.ts]
@@ -311,13 +318,13 @@ theorem goldilocks_healthyReadPoint
     {fgHold : Time} (C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold)
     {sign : Fin sp.n → Time → Bool} {G : Nat}
     {Rg : Nat} (hdata : GoldilocksLocalData sp ro C sign G Rg) : HealthyReadPoint C where
-  healed := fun _ _ _ _ _ _ _ _ _ _ _ hβ hrun hp hr hab hs₁ _ _ =>
+  healed := fun _ _ _ _ _ _ _ _ _ _ _ hβ hrun hp hr hab hbud hs₁ _ _ =>
     ⟨fun hX hTb hgu _ _ _ _ _ _ ht hu hy hz _ _ =>
-      goldilocks_healed_compatible C hdata hβ hrun hp hr hab hs₁ hX hTb hgu ht hu hy hz,
+      goldilocks_healed_compatible C hdata hβ hrun hp hr hab hbud hs₁ hX hTb hgu ht hu hy hz,
      fun _ _ _ hX _ _ _ _ _ ht hy _ hjt =>
-      goldilocks_healed_proposal C hdata hβ hrun hp hr hab hs₁ hX ht hy hjt⟩
-  proposal := fun _ _ _ _ _ _ _ _ _ _ _ hβ hrun hp hr hab _ _ _ _ _ _ hB hBs hgu _ _ _ _ ht hy _
-    hjt => goldilocks_proposal_read C hdata hβ hrun hp hr hab hB hBs hgu ht hy hjt
+      goldilocks_healed_proposal C hdata hβ hrun hp hr hab hbud hs₁ hX ht hy hjt⟩
+  proposal := fun _ _ _ _ _ _ _ _ _ _ _ hβ hrun hp hr hab hbud _ _ _ _ _ _ hB hBs hgu _ _ _ _ ht hy
+    _ hjt => goldilocks_proposal_read C hdata hβ hrun hp hr hab hbud hB hBs hgu ht hy hjt
 
 end Consensus.Goldilocks.Generic
 

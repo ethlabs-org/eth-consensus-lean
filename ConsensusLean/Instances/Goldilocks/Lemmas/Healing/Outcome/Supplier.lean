@@ -29,67 +29,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF a : Time}
 
-/-- Every bounded honest cast agrees with an actual honest proposal after the reset drain. -/
-theorem ResetPremisesUpTo.operational_unanimous {b : Time}
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hpH : p ∈ H) (hdesignated : p = proposer u) (hactual : tr.ProposesAt p k P)
-    (hPs : P.slot = u) (hR : drainTime sp a ≤ sp.ts u) (hub : sp.ts u ≤ b) :
-    ∀ y ∈ H, ∀ j e, AC.VoteAt tr.projAC y j e → e.msg.slot = u → tr.time j ≤ b →
-      e.msg.head = P.root := by
-  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  obtain ⟨s, rfl, hu, hg, hgu, hjoin⟩ := post_drain_slot (cutZ_lt_reset_of_snapshot hp.run
-    (by obtain ⟨k, hk, _⟩ := hp.snapshot; exact ⟨k, hk⟩) hp.reset) hR
-  obtain ⟨_, i, ellp, d, pay, hci, hcall, hd, hti, hPQ, _, _, hpay, _⟩ :=
-    honestProposalRun_of_proposesAt hp.run hp.noColl hpH hdesignated hactual hPs
-  rw [← hdesignated] at hci hd
-  change tr.time i = sp.ts (s + 1 : Nat) at hti
-  change (AC.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay) at hd
-  have hib : tr.time i ≤ b := hti ▸ hub
-  obtain ⟨D, hsD, hDQ, hviab, hvot⟩ := hp.reset_pivot hc hpH hactual hR hci hcall hd hti hib hPQ
-  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hpH hci
-  obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
-  have hQt : d.head ∈ ellp.frame.tree := by
-    rcases eq_or_ne d.start d.head with he | he
-    · exact he ▸ hst
-    · exact (Anc.mem hsQ he).2
-  have hslot : sp.slot (tr.time i) = s + 1 := by
-    rw [hti]; simpa using (AC.slot_arithmetic sp (s + 1)).1 0 (by omega)
-  intro y hy j
-  induction j using Nat.strong_induction_on generalizing y with
-  | _ j ih =>
-    intro e hv hes hjb
-    obtain ⟨elly, hcy, hey⟩ := hv
-    have hcy : AC.CastAt tr.projAC y j elly e := ⟨hcy, hey⟩
-    have hE : ∀ x ∈ H, ∀ j' < j, ∀ e', AC.VoteAt tr.projAC x j' e' →
-        e'.msg.slot = s + 1 → e'.msg.head = P.root :=
-      fun x hx j' hj' e' hv' hs' => ih j' hj' x hx e' hv' hs'
-        ((hp.run.time_mono hj'.le).trans hjb)
-    obtain ⟨hPsi, hPsiU⟩ := AC.frameIn_of_callAt hr hy hcy.1
-    have hjt : sp.ts (s + 1 : Nat) ≤ tr.time j := by
-      apply (AC.ts_le_iff_le_slot sp (hr.time_nonneg j) _).2
-      have := (AC.castAt_specU hr.toU hy hcy).2.1
-      rw [hes] at this
-      exact_mod_cast this.le
-    have hgj := hgu.trans hjt
-    have hroot := hp.reset_vote_root_below_proposal hc hpH hactual hR hci hcall hd hti hib
-      hPQ hy hcy hes hjb
-    have hPy := hp.reset_proposal_frame hc hpH hdesignated hactual hPs (by omega) hy hcy hes
-      hjb hgj (hjoin.trans hjt) ((hPsi.F_anc_fcRoot.mono hPsiU).trans hroot)
-    have hPv := hp.reset_proposal_viable hc hpH hactual hPs hR hci hcall hd hti hib hPQ
-      hy hcy hes hjb hPy
-    obtain ⟨hstep, hP₀⟩ := hp.reset_stop_at_parent hc hpH hdesignated hactual hPs hR
-      hci hcall hd hti hpay hPQ hy hcy hes hib hjb hPv hg (hti ▸ hgu) hgj
-      (hti ▸ hjoin) (hjoin.trans hjt) hQt (hviab _ hDQ .refl)
-    obtain ⟨X, hXc, haX, hXend⟩ := hvot y hy j elly e hcy hes hjb hE
-    have hspec := AC.castAt_head_of_viableU hr.toU hy hcy (hes ▸ ⟨P, hPv⟩)
-    rw [hes] at hspec
-    exact hspec.trans (congrArg (·.root) (voter_head_eq_proposal hPhi hPsi hd hslot hsD hXc haX
-      hXend hPv hstep hP₀ fun B C hXB hDB hBQ hne hCQ hC => hp.reset_suffix_best hc hpH
-        hdesignated hactual hPs hci hcall hd hti hpay hPQ hy hcy hes hib hjb hPv hg (hti ▸ hgu)
-        hgj (hti ▸ hjoin) (hjoin.trans hjt) hQt hBQ hne (hviab _ hDB hBQ) hCQ
-        ((haX.mono hPsiU).trans (hXB.mono hPhiU)) hC))
-
 /-- Every awake honest node executes the joined update, whether or not its tick signs. -/
 theorem update_call_of_awake {ini}
     (hrun : GoldilocksRun proposer dg H tr ini)
@@ -166,6 +105,14 @@ theorem ResetPremisesUpTo.update_toFG_calls {b : Time}
     rw [hi, hslot]
     simpa using hrestart.trans hu
 
+/-- With a fast-lock candidate, `ac_to_fg` considers the deepest one, deep sources on or off. -/
+private theorem fgSource_of_fast {FGP : Type} {A : AC.ACState sp.n} {Φ : AC.Frm sp.n FGP}
+    {t : Time} {C : AC.Blk sp.n FGP}
+    (h : AC.deepest Φ (AC.toFGCandidates sp A Φ t) = some C) :
+    AC.fgSource sp A Φ t = some C := by
+  unfold AC.fgSource
+  split <;> simp [h]
+
 /-- A deepest candidate extending a non-genesis block gives an actual report by this call's
 time, including the historical report that suppresses a new return. -/
 theorem report_of_deepest_candidate_of_run
@@ -199,7 +146,7 @@ theorem report_of_deepest_candidate_of_run
   · refine ⟨j, ell, C, ⟨hc, hcall, ?_⟩, le_rfl, hPC.mono hPhiU⟩
     change (AC.acToFG sp (tr.projAC.state y j) ell.frame (tr.time j)).2 = some C
     unfold AC.acToFG
-    simp only [hjoin, not_true_eq_false, ↓reduceIte, hC, hrep]
+    simp only [hjoin, not_true_eq_false, ↓reduceIte, fgSource_of_fast hC, hrep]
 
 /-- A live report candidate compatible with every other candidate supplies an actual report
 extending it. An earlier report suppressing this call is included in the conclusion. -/

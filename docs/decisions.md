@@ -313,6 +313,36 @@ detail in `TRUST.md`.
   progress window (`healthyLive`, `healedSafe`, `prog [ready, …]`) earlier, so a catch-up change can make those
   rows incomparable with the former ones. The outage participation catch-up is the maximum of `cDur` and
   `η·ΔAC − 1`, so reducing `cDur` below the latter does not change outage participation.
+- **Deep FG sources share one outer gap (scope S1).** With deep sources on
+  (`Setup.deepDepth = some D`), the heal-time argument needs `11 + healMargin(X) ≤ 4D`: no deep source at a height
+  above `H_z` is old enough before the heal. The contract admits only those gaps (`DeepAdmits`, the index
+  `{X : ℕ+ // DeepAdmits S A X}`), and one shared `X` indexes every row, because `Contract` has a single `Idx` that
+  every row family quantifies over, and `ProgressReq` has no conjunction to carry a per-family bound. Splitting the
+  rows needs a second headline conjunct in the instance statements (S2) or a per-family index filter in the core
+  `Contract` (S3). The cost: under `some D` the sleepy, healthy and healed-safety rows all lose the gaps
+  `X > xMax(D) = ⌊(4D − 331)/48⌋` at `k = 2`, `δ_t = 6`, `G = 0` (`D = 300` keeps `X ≤ 18`), although the paper
+  sketch gives Sleepy safety and liveness under the live-lock anchor with no gap bound. S2 or S3 is the upgrade path;
+  proving the healthy rows for every `X` (S4) would remove the restriction. At `deepDepth = none` every gap is
+  admitted (`deep_final` is vacuous), up to the reindexing `{X // DeepAdmits S A X} ≃ ℕ+`. The depth must admit the
+  final pattern's tolerance gap `3·finalSlots + 2` (`deep_final`; `ProgressTolerant` needs `span + 2 ≤ gap` for every
+  provided capability), so `4D ≥ 48k + 28δ_t + 144·finalSlots + 163 + 5G`: at stock numbers `D ≥ 179`, where
+  `X ≤ 8` (`xMax(179) = 8`, exactly the final pattern's gap). S2 keeps this bound, since `ProgressTolerant` is
+  checked at the restricted headline contract; S3 would keep the stock least depth at `D ≥ 95` (gap `1` admitted),
+  since its tolerance witness comes from the unrestricted index while the healthy rows read only admitted gaps.
+  At stock numbers (`k = 2`, `δ_t = 6`, `finalSlots = 2`, `G = 0`) the bound is `715 ≤ 4D`, and the least such
+  depth is `D = 179` (`4D = 716`).
+- **Deep FG sources: a reset budget and an origin cap in the generic healing contract.** A deep
+  candidate of state height above `H_z` is excluded only until the end `c_z + 4DΔ` of the deep quarantine, after
+  which a high source need not be a fast lock. `ACHealing` therefore gains `deepBudget : Option Nat` (default
+  `none`), a budget in slots after `c_z`. It bounds the admissible resets: `ResetInBudget` says the slot after the
+  reset's drain is at most `deepBudget` slots after `c_z`, and `heal_after_reset`, `HealthyReadPoint.healed`,
+  `HealthyReadPoint.proposal`, `HighCanonicalSupply` and `ResetHealBudgetSupply` take or provide it. It also caps
+  the times the origin fields speak about: `OriginInCap` on `report_origin`, `origins_comparable` and the leaves
+  `high_row_source_at`, `no_high_contest_at` and `high_entry_eq_at`, with `HighCanonical` read at the capped
+  horizon `originCapTime`. `Origin` stays fast-only (a joined node's stored fast-lock write) and is not
+  generalized to deep sources. The Goldilocks supplier
+  fixes `deepBudget = sp.deepDepth` (`GoldilocksHealingData`). With `deepBudget = none` every new premise is
+  vacuous and `originCapTime` is the horizon, so the stock contract is unchanged.
 
 ## Regimes
 

@@ -176,7 +176,7 @@ theorem clean_optimistic_writer_candidate_interval_at
     linarith
   intro e hqe hen
   have hRe := writer_mem_frame_between_at hrun hnc ht0 hnt hy hqe hen hRq' hRn
-  apply hp.guarded_seed_ancestor_candidate_at_state_at ht0
+  apply hp.guarded_seed_ancestor_candidate_at_state_covered_at ht0
     (fun j hj => hnt j (lt_of_lt_of_le hj hen)) hy htb hRe hseed hrb
   · intro hFS
     have hFq : Anc (tr.HonestBlocksAt H) ell.frame.F S := by
@@ -188,9 +188,12 @@ theorem clean_optimistic_writer_candidate_interval_at
     rw [hst q (by omega), hst e hen] at h
     exact h (hframe ▸ hSq).1
   · exact hp.clean_source_compatible_high_origin_at hyq (Or.inr hop) hs hqb hseed hrb
-  · intro x j u B hje ho
-    exact hp.clean_source_compatible_high_origin_at hyq (Or.inr hop) hs hqb ho
-      ((hnt j (lt_of_lt_of_le hje hen)).trans htb)
+  · refine Healing.Growing.ResetPremisesUpTo.compatibleWithOrigins_iff.2 ⟨?_, ?_⟩
+    · intro x j u B hje ho
+      exact hp.clean_source_compatible_high_origin_at hyq (Or.inr hop) hs hqb ho
+        ((hnt j (lt_of_lt_of_le hje hen)).trans htb)
+    · exact fun hc _ _ hD _ =>
+        hp.clean_source_compatible_healed_at hyq (Or.inr hop) hs hqb .refl hc hD.healedOrigin
 
 open Healing.Growing in
 /-- Even a retained writer before the repair update was created no earlier than the opening slot:

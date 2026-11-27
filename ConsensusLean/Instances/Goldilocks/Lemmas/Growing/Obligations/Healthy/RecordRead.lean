@@ -104,6 +104,24 @@ theorem current_record_read_of_context_at (D : RepairSchedule tr H proposer dg g
     C.joined C.sync C.catchup C.latest C.reset_le (fun R hR =>
       ⟨healthy_current_live_candidates_at D C hR, ?_⟩)
       D.reset.committeeFacts C.label_le C.fault
+  by_cases hc : Healing.Growing.HighSourceCover tr H g D.resetTime b
+  · apply read_source_of_healed_result_at D.reset
+      (rL := Healing.Growing.healedLockFloor sp D.resetTime)
+      (rO := Healing.Growing.healedOriginFloor sp D.resetTime)
+      (fun _ => Compose.Growing.healedVotesBelow_iff.mpr
+        (fun B s hB z q e hv hqb hs _ => hc.s2 B s hB z q e hv hqb hs)) C.time_bound
+    by_cases hfc : (Node.frame (tr.state y n)).Anc R (Node.frame (tr.state y n)).fcRoot
+    · exact Or.inl (hfc.trans ((AC.anc_getAnchor hΦ (healthy_current_live_chain_at D C)).2 _
+        (Or.inr rfl)))
+    rcases healthy_current_mature_or_anchor_at D C hupd hR with
+      ha | ⟨x, r, s, B, CV, hx, hr, hRB, hrb, hs, hlate, hL⟩
+    · exact Or.inl ha
+    have hfloor : Healing.Growing.healedOriginFloor sp D.resetTime ≤ s := by
+      change Healing.cleanLabel sp D.resetTime + sp.k + 2 + sp.k - 1 ≤ s
+      rw [← D.cleanLabel_eq]
+      omega
+    exact Or.inr ⟨healthy_current_record_viable_at D C hx hr hRB hrb hs hL hfc hR,
+      x, r, s, B, CV, hx, hr, hRB, hrb, hfloor, hL⟩
   apply read_source_of_recent_result_at D.reset C.time_bound
   by_cases hfc : (Node.frame (tr.state y n)).Anc R (Node.frame (tr.state y n)).fcRoot
   · exact Or.inl (hfc.trans ((AC.anc_getAnchor hΦ (healthy_current_live_chain_at D C)).2 _
@@ -113,8 +131,42 @@ theorem current_record_read_of_context_at (D : RepairSchedule tr H proposer dg g
   · exact Or.inl ha
   exact Or.inr ⟨healthy_current_record_viable_at D C hx hr hRB hrb hs hL hfc hR,
     x, r, s, B, CV, hx, hr, hRB, hrb, hs, hL,
-    healthy_current_vote_domain_at D hx hr hRB hrb (clean_add_k_two_le sp.two_le_k hlate),
+    healthy_current_vote_domain_of_quarantine_at D hx hr hRB hrb
+      (clean_add_k_two_le sp.two_le_k hlate)
+      (fun Dd hD => (D.reset.deepCover Dd hD).resolve_right hc),
     healthy_current_stored_locks_at D hx hr hRB hrb hlate⟩
+
+/-- The current-record read with the healed-frontier vote arm. The opening's recent results
+are above the origin floor, so S2 replaces the fast-origin domain and stored-lock induction. -/
+theorem current_record_read_of_healed_context_at
+    (D : RepairSchedule tr H proposer dg g b cm βK)
+    {O : RepairOpening D} {y : Fin sp.n} {n : Nat} {t : Time} (C : RepairReadContext D O y n t)
+    (hV : ∀ m, Compose.Growing.HealedVotesBelow tr H g
+      (D.cleanLabel + sp.k + 2) (D.cleanLabel + 2 * sp.k + 1) m b)
+    (hupd : ∀ u : Nat, sp.ts (sp.slot (AC.gbar g) + 1 : Nat) ≤ sp.ts u →
+      sp.ts u + 6 * sp.Δ ≤ t → sp.ts u + 6 * sp.Δ < tr.time n →
+      ∃ j ell, AC.UpdateAt tr.projAC y j u ell ∧ j < n) :
+    Regimes.readAfter tr y n t =
+      (AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
+        (tr.state y n).fg.F := by
+  have hrun := D.reset.run
+  have hnc := D.reset.noColl
+  have hΦ : FrameOK (Node.frame (tr.state y n)) := by
+    have h := Compose.frameOK_state (hrun.upTo C.time_nonneg).toLocalRun C.honest n
+    rwa [Trace.upTo_state tr _ C.readPoint.1] at h
+  refine read_eq_record_of_current_votes_at hrun hnc C.time_nonneg C.honest C.readPoint C.awake
+    C.joined C.sync C.catchup C.latest C.reset_le (fun R hR =>
+      ⟨healthy_current_live_candidates_at D C hR, ?_⟩)
+      D.reset.committeeFacts C.label_le C.fault
+  apply read_source_of_healed_result_at D.reset hV C.time_bound
+  by_cases hfc : (Node.frame (tr.state y n)).Anc R (Node.frame (tr.state y n)).fcRoot
+  · exact Or.inl (hfc.trans ((AC.anc_getAnchor hΦ (healthy_current_live_chain_at D C)).2 _
+      (Or.inr rfl)))
+  rcases healthy_current_mature_or_anchor_at D C hupd hR with
+    ha | ⟨x, r, s, B, CV, hx, hr, hRB, hrb, hs, hlate, hL⟩
+  · exact Or.inl ha
+  exact Or.inr ⟨healthy_current_record_viable_at D C hx hr hRB hrb hs hL hfc hR,
+    x, r, s, B, CV, hx, hr, hRB, hrb, hlate, hL⟩
 
 /-- **The read context** at a read point `(n, t)` by the horizon of a reader honest at `t` and
 awake over its catch-up window `[t − c − 1, t]` (`c + 1 ≥ 8Δ`), at or after the opening's

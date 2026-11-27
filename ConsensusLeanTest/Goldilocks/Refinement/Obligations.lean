@@ -117,12 +117,19 @@ theorem assumptions_small : Nonempty (ContractAssumptions setupSmall) := ⟨assu
 /-- (a) The acceptance assumptions are satisfiable at `k = 6, δt = 8`. -/
 theorem assumptions_large : Nonempty (ContractAssumptions setupLarge) := ⟨assumptionsLarge⟩
 
-/-- (a) With stock signing and release, the assumptions hold exactly when `6 ≤ δt`. -/
+/-- With stock signing/release, assumptions exist iff 6 ≤ δt and deep_final holds at fgSlots=2,
+G=R=0 (vacuous at none). -/
 theorem assumptions_iff (S : Setup) : S.sign = (fun _ _ _ => true) →
     S.release = (fun _ _ _ => true) →
-    (Nonempty (ContractAssumptions S) ↔ 6 ≤ S.δt) := by
+    (Nonempty (ContractAssumptions S) ↔ 6 ≤ S.δt ∧
+      ∀ D, S.deepDepth = some D →
+        48 * S.k + 28 * S.δt + 67 + 5 * 0 +
+          48 * (3 * ((6 + (4 * 2 - 6) + 0 + 0 + 3) / 4) + 2) ≤ 4 * D) := by
   intro hsign hrelease
-  refine ⟨fun ⟨A⟩ => A.six_le_δt, fun h => ⟨?_⟩⟩
+  refine ⟨fun ⟨A⟩ => ⟨A.six_le_δt, fun D hD => ?_⟩, fun h => ⟨?_⟩⟩
+  · have := A.deep_final D hD
+    have := A.two_le_fgSlots
+    omega
   exact {
     fgSlots := 2
     two_le_fgSlots := le_rfl
@@ -130,7 +137,8 @@ theorem assumptions_iff (S : Setup) : S.sign = (fun _ _ _ => true) →
       obtain ⟨t', h1, h2, h3⟩ := stock_sign_liveness pub y t ht
       exact ⟨t', h1, h2, h3, by rw [hsign]⟩
     release_liveness := fun pub y t _ => ⟨t, le_rfl, by simp, by rw [hrelease]⟩
-    timeout := by simpa using h }
+    timeout := by simpa using h.1
+    deep_final := h.2 }
 
 /-- (a) Rejection: an always-false signing calendar admits no contract assumptions. -/
 theorem assumptions_empty_of_never_sign :
@@ -140,7 +148,9 @@ theorem assumptions_empty_of_never_sign :
   obtain ⟨t', -, -, -, hs⟩ := A.sign_liveness pub ⟨0, by decide⟩ 0 le_rfl
   cases hs
 
-/-- (a) General realizability requires finite signing and release gaps and an admitted timeout. -/
+/-- For any signing/release calendars, assumptions exist iff the signing and release gaps
+are finite, the timeout is admitted and deep_final holds at the calendar's fgSlots, G and R
+(vacuous at none). -/
 theorem assumptions_iff_calendar (S : Setup) : Nonempty (ContractAssumptions S) ↔
     ∃ c G R : Nat, 2 ≤ c ∧
       (∀ (pub : Model.Public) (y : Fin pub.n) (t : Time), 0 ≤ t →
@@ -148,13 +158,16 @@ theorem assumptions_iff_calendar (S : Setup) : Nonempty (ContractAssumptions S) 
           pub.ΔAC ∣ t' ∧ S.sign pub y t' = true) ∧
       (∀ (pub : Model.Public) (y : Fin pub.n) (t : Time), 0 ≤ t →
         ∃ t', t ≤ t' ∧ t' ≤ t + (R : Time) * pub.ΔAC ∧ S.release pub y t' = true) ∧
-      3 * ((6 + (4 * c - 6) + R + G + 3) / 4) ≤ S.δt := by
+      3 * ((6 + (4 * c - 6) + R + G + 3) / 4) ≤ S.δt ∧
+      ∀ D, S.deepDepth = some D →
+        48 * S.k + 28 * S.δt + 67 + 5 * G +
+          48 * (3 * ((6 + (4 * c - 6) + R + G + 3) / 4) + 2) ≤ 4 * D := by
   constructor
   · rintro ⟨A⟩
     exact ⟨A.fgSlots, A.signGap, A.releaseGap, A.two_le_fgSlots, A.sign_liveness,
-      A.release_liveness, A.timeout⟩
-  · rintro ⟨c, G, R, hc, hs, hr, ht⟩
-    exact ⟨⟨c, hc, G, hs, R, hr, ht⟩⟩
+      A.release_liveness, A.timeout, A.deep_final⟩
+  · rintro ⟨c, G, R, hc, hs, hr, ht, hd⟩
+    exact ⟨⟨c, hc, G, hs, R, hr, ht, hd⟩⟩
 
 /-- (a) Rejection: a timeout of five is not admitted. -/
 theorem assumptions_empty_of_timeout (S : Setup) (h : S.δt = 5) :
@@ -414,7 +427,8 @@ theorem goldilocksCorrectWithExcuses_nonvacuous :
           (compiled (goldilocks { setupSmall with vote := AsChainShape.stock }))
           (Fin 5)).trace r).Monotone
           g 0) := by
-  obtain ⟨r, hw, _⟩ := goldilocksCorrect_realizable_small.sleepy .available 1 2 2
+  obtain ⟨r, hw, _⟩ := goldilocksCorrect_realizable_small.sleepy
+    .available ⟨1, assumptionsSmall.deepAdmits_one⟩ 2 2
     (by decide) (by decide)
   have hv := r.2.executionValid_iff_structuralValid.mp hw.1.1
   have hf : ¬ r.2.BindingFailure := by

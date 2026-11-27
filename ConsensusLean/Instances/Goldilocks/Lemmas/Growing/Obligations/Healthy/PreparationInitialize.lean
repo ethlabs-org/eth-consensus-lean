@@ -40,12 +40,14 @@ theorem healthy_preparation_initialize_late_at
     (hGs : (contract_catchUp S A : Nat) +
         (healthyResetCoeff S Q.index + 8 * S.k + 4 * (Q.index : Nat) + 34) + 3 + 5 * Gs ≤
       contract_heal S A Q.cap Q.index)
-    (hGsT : 4 * A.fgSlots + A.releaseGap + Gs ≤ 4 * S.δt) :
+    (hGsT : 4 * A.fgSlots + A.releaseGap + Gs ≤ 4 * S.δt)
+    (hcover : HealthyQueryCover S A V Q) :
     ∃ W : HealthyBaseTimingAt S A V Q,
         ∃ D : HealthyPreparationScheduleAt
         S A V Q W,
       D.query + (4 * (Q.index : Time) + 14) * Q.params.Δ + 2 ≤ Q.heal := by
-  obtain ⟨ΔF, a, hreset, ha⟩ := healthy_preparation_reset_at S A V Q hb hp hcal hgap hδG hGs hGsT
+  obtain ⟨ΔF, a, hreset, ha⟩ :=
+    healthy_preparation_reset_at S A V Q hb hp hcal hgap hδG hGs hGsT hcover
   obtain ⟨v, r, l, O, hO, hra, hla⟩ := hreset.reset_seed_at
   obtain ⟨⟨_, k, _, _, _, _, hka⟩, _⟩ := hreset.reset
   have ha0 : 0 ≤ a := hka ▸ hreset.run.time_nonneg k
@@ -84,12 +86,13 @@ theorem healthy_preparation_initialize_at
     (hGs : (contract_catchUp S A : Nat) +
         (healthyResetCoeff S Q.index + 8 * S.k + 4 * (Q.index : Nat) + 34) + 3 + 5 * Gs ≤
       contract_heal S A Q.cap Q.index)
-    (hGsT : 4 * A.fgSlots + A.releaseGap + Gs ≤ 4 * S.δt) :
+    (hGsT : 4 * A.fgSlots + A.releaseGap + Gs ≤ 4 * S.δt)
+    (hcover : HealthyQueryCover S A V Q) :
     ∃ W : HealthyBaseTimingAt S A V Q,
         Nonempty (HealthyPreparationScheduleAt
         S A V Q W) :=
   let ⟨W, D, _⟩ := healthy_preparation_initialize_late_at S A V Q h0 hb hp hcal hgap hδG hGs
-    hGsT
+    hGsT hcover
   ⟨W, ⟨D⟩⟩
 
 end Consensus.Goldilocks.Obligations.Growing

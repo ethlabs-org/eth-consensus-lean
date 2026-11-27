@@ -200,41 +200,26 @@ theorem attestation_source {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   rw [(hrun.cutLaw x hx j _ hcj).1] at hC
   have hΦ : FrameOK (Node.frame (tr.state x j)) :=
     (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hx j)).1
-  -- the source is the deepest candidate: the viable ancestor of a stored fast lock block
-  have hcand : src ∈ AC.toFGCandidates sp (tr.state x j).ac (Node.frame (tr.state x j))
-      (tr.time j) := by
-    have hC' : (AC.acToFG sp (tr.state x j).ac (Node.frame (tr.state x j)) (tr.time j)).2 =
-        some src := hC
-    unfold AC.acToFG at hC'
-    rcases hd : AC.deepest (Node.frame (tr.state x j))
-      (AC.toFGCandidates sp (tr.state x j).ac (Node.frame (tr.state x j)) (tr.time j)) with
-      _ | D
-    · simp only [hd] at hC'
-      split_ifs at hC'
-    · simp only [hd] at hC'
-      split_ifs at hC'
-      cases hC'
-      exact (AC.deepest_mem hd).1
-  obtain ⟨hsv, l, hl, hlb, -, -⟩ := hcand
-  obtain ⟨l₀, hl₀, B, hB, hBr, -, rfl⟩ := hl
-  obtain ⟨hVt, hVB⟩ := AC.viableAncestor_anc hΦ hB
-  obtain rfl : src = (Node.frame (tr.state x j)).viableAncestor B :=
-    hΦ.coherent.1 hsv.1 hVt hlb.symm
+  -- the source is in the viable tree, at or below the viable ancestor of a stored lock block
+  obtain ⟨hsv, a, ha, hsa⟩ := AC.toFG_source_below_lock (sp := sp) hC
+  obtain ⟨l₀, hl₀, B, hB, hBr, -, rfl⟩ := AC.mem_liveLockBlocks hΦ ha
+  obtain ⟨-, hVB⟩ := AC.viableAncestor_anc hΦ hB
   obtain ⟨L, hL, hLr, C, hCo, hLC⟩ := lock_origin hrun hnc hx j l₀ hl₀
   obtain rfl : L = B :=
     (projFG_localRun hrun hnc).coherent.1 ⟨x, hx, j, hL⟩ ⟨x, hx, j, hB.1⟩ (hLr.trans hBr.symm)
   -- the attestation names the entry of the source's state
   have hatt := (hrun.cutLaw x hx (j + 1) _ hcall).1
   have hT := createAtt_T hatt
-  have hst : (Node.frame (tr.state x j)).viableAncestor L ∈ (tr.state x (j + 1)).fg.tree := by
-    rw [hfg]; exact hVt.1
+  have hst : src ∈ (tr.state x (j + 1)).fg.tree := by
+    rw [hfg]; exact hsv.1.1
   obtain ⟨⟨E, -, hEr, -, -, hET⟩, -⟩ :=
     Store.entry_state_of_source _ _ _ _ (fg_reachable hrun.toLocalRun hx (j + 1)) _ hst
   rw [← hEr, hET] at hT
   obtain ⟨z, hz, c, hc, CV, ho⟩ := originBefore_iff.1 hCo
-  exact ⟨_, ⟨x, hx, j, hVt.1⟩, ⟨x, hx, j + 1, hst, hT.symm⟩, C, l₀.slot,
+  exact ⟨_, ⟨x, hx, j, hsv.1.1⟩, ⟨x, hx, j + 1, hst, hT.symm⟩, C, l₀.slot,
     originBefore_iff.2 ⟨z, hz, c, by omega, CV, ho⟩,
-    (Anc.mono (T := tr.HonestBlocks H) (fun _ hZ => ⟨x, hx, j, hZ.1⟩) hVB).trans hLC⟩
+    (Anc.mono (T := tr.HonestBlocks H) (fun _ hZ => ⟨x, hx, j, hZ.1⟩) (hsa.trans hVB)).trans
+      hLC⟩
 
 end Consensus.Goldilocks.Compose
 

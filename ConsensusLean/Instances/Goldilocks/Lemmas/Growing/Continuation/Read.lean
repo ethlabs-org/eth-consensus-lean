@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Invariant
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Rows
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Regimes
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Engine.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
@@ -243,7 +243,7 @@ theorem seeded_stale_record_viable_at (hrun : Growing.GoldilocksRun proposer dg 
     (hR : AC.lookup (Node.frame (tr.state y j)) (tr.state y j).ac.latestConfirmed = some R)
     (hRf : ¬ (Node.frame (tr.state y j)).Anc R (Node.frame (tr.state y j)).fcRoot) :
     R ∈ (Node.frame (tr.state y j)).viableTree (Node.frame (tr.state y j)).tree := by
-  have hcall := seeded_reader_called_at hrun hseed hy hdt hrp.2
+  have hcall := seeded_reader_called_at hrun hseed.toHandoverCore hy hdt hrp.2
   have hRc : OnHealedChain tr H g r (r + sp.k - 1) R b := by
     have h := effective_record_on_healed_chain_at hinv ht₁ htb hy hrp hcall
     rwa [hR, Option.getD_some] at h
@@ -395,7 +395,7 @@ theorem seeded_ready_read_record_at (hrun : Growing.GoldilocksRun proposer dg H 
       linarith
     have := (AC.ts_le_iff_le_slot sp ht0 _).1 h8
     omega
-  have hcallj := seeded_reader_called_at hrun hseed hready.1 hdt hrp.2
+  have hcallj := seeded_reader_called_at hrun hseed.toHandoverCore hready.1 hdt hrp.2
   obtain ⟨L, hL, hLs, hLt, hL6⟩ :=
     latest_label_at (A := (tr.state y j).ac) (Φ := Node.frame (tr.state y j)) ht0 (by omega)
   have hrL : r ≤ L := by omega
@@ -507,7 +507,7 @@ theorem seeded_ready_read_record_at (hrun : Growing.GoldilocksRun proposer dg H 
       have hcm : ∃ c < m, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
           sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c := by
         rcases hmj.lt_or_eq with hmj' | rfl
-        · exact seeded_reader_called_at hrun hseed (hrun.antitone (hrp.1 m hmj') hy)
+        · exact seeded_reader_called_at hrun hseed.toHandoverCore (hrun.antitone (hrp.1 m hmj') hy)
             (hqs.trans (hrun.time_mono hqm)) le_rfl
         · exact hcallj
       exact hinv.viable y m t ht₁ (hrd m hmj) htb hy hcm R
@@ -586,12 +586,12 @@ theorem continued_safe_on_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     fun y i j t t' hi hj _ _ hij htt ht htb hy hy' => ?_⟩
   · rw [hread hi ht htb hy, hread hj ht' htb' hz]
     exact seeded_records_compatible_at hrun hnc hinv (ht₁.trans ht) htb hy.1 hi
-      (seeded_reader_called_at hrun hseed hy.1 (hdt₁.trans (ht₁.trans ht)) hi.2)
+      (seeded_reader_called_at hrun hseed.toHandoverCore hy.1 (hdt₁.trans (ht₁.trans ht)) hi.2)
       (ht₁.trans ht') htb' hz.1 hj
-      (seeded_reader_called_at hrun hseed hz.1 (hdt₁.trans (ht₁.trans ht')) hj.2)
+      (seeded_reader_called_at hrun hseed.toHandoverCore hz.1 (hdt₁.trans (ht₁.trans ht')) hj.2)
   · rw [hread hi ht (htt.trans htb) hy, hread hj (ht.trans htt) htb hy']
     exact seeded_effective_record_mono_at hrun hnc hinv ht₁ hdt' hi hj hij htt ht htb hy.1 hy'.1
-      (seeded_reader_called_at hrun hseed hy.1 (hdt₁.trans (ht₁.trans ht)) hi.2)
+      (seeded_reader_called_at hrun hseed.toHandoverCore hy.1 (hdt₁.trans (ht₁.trans ht)) hi.2)
 
 end Consensus.Goldilocks.Compose.Growing
 

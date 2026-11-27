@@ -51,16 +51,46 @@ theorem ResetPremisesUpTo.late_result_prefix_votes_before_at
         AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
   exact KernelProof.late_result_prefix_votes_before_at hp hx hres hBC hrb hts hdomain hstored
 
+/-- The healed-frontier arm of the finite result-prefix boundary. -/
+theorem ResetPremisesUpTo.late_result_prefix_votes_of_healed_at
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (_hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {rL rO s : Nat} {B C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hC : Compose.Growing.HealedOrigin tr H g rL rO C s b)
+    (hBC : Anc (tr.HonestBlocksAt H) B C)
+    (hV : ∀ m, Compose.Growing.HealedVotesBelow tr H g rL rO m b) :
+    ∀ i, tr.time i ≤ b → ∀ y, y ∈ H (tr.time i) → ∀ ell e,
+      AC.CastAt tr.projAC y i ell e → s < e.msg.slot →
+        AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
+  exact KernelProof.late_result_prefix_votes_of_healed_at hC hBC hV
+
 /-- R2: every later-label honest cast extends each high origin within the finite horizon.
-The origin write need not precede the cast; its writer's honesty is carried by HighOrigin. -/
+The origin write need not precede the cast; its writer's honesty is carried by HighOrigin. Inside
+the deep quarantine by the domain induction; under the high-source cover by S2. -/
 theorem ResetPremisesUpTo.high_origin_votes_before_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) :
     ∀ k, tr.time k ≤ b → ∀ x i j B, HighOrigin tr H g x i j B → tr.time i ≤ b →
       ∀ y ell e, y ∈ H (tr.time k) → AC.CastAt tr.projAC y k ell e → j < e.msg.slot →
         AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
-  exact KernelProof.high_origin_votes_of_domain_before_at hp
-    (KernelProof.held_target_vote_domain_before_at hp)
+  have hcase : (∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ) ∨
+      HighSourceCover tr H g a b := by
+    cases hdd : sp.deepDepth with
+    | none => exact Or.inl fun D hD => by cases hD
+    | some D =>
+      rcases hp.deepCover D hdd with hb | hc
+      · exact Or.inl fun D' hD' => by cases hD'; exact hb
+      · exact Or.inr hc
+  rcases hcase with hpre | hc
+  · -- inside the deep quarantine: the domain induction
+    exact KernelProof.high_origin_votes_of_domain_before_at hp
+      (fun hx hy hBx hrb _ _ hcast hib hheld hS hqb hm hBS hcompare hseedCompare hpair =>
+        KernelProof.held_target_vote_domain_before_of_quarantine_at hp hx hy hBx hrb hcast hib
+          hheld hS hqb hm hBS hcompare hseedCompare hpair hpre)
+  · -- under the high-source cover: S2, a high origin being a member of the healed family
+    intro k hkb x i j B ho hib y ell e hy hc' hj
+    exact hc.s2 B j (Compose.Growing.HealedOrigin.of_high hib ho) y k e
+      (Compose.Growing.hVoteAt_iff.2 ⟨hy, ell, hc'⟩) hkb hj
 
 /-- R1: high origins within the horizon are comparable, with each writer honest at its write. -/
 theorem ResetPremisesUpTo.origins_compatible_at
@@ -76,8 +106,9 @@ theorem ResetPremisesUpTo.origins_compatible_at
   obtain ⟨ell, hc⟩ := hv
   exact hp.high_origin_votes_before_at c hcb x₀ i₀ j₀ B₀ ho₀ hi₀ y ell e hy hc hj
 
-/-- Finite domain reduction with independently honest source and cast observations. -/
-theorem ResetPremisesUpTo.held_target_vote_domain_before_at
+/-- Finite domain reduction with independently honest source and cast observations,
+inside the deep quarantine (`hpre`). -/
+theorem ResetPremisesUpTo.held_target_vote_domain_before_of_quarantine_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -95,11 +126,12 @@ theorem ResetPremisesUpTo.held_target_vote_domain_before_at
       Compatible (tr.HonestBlocksAt H) S O)
     (hpair : ∀ z d n O, d < i → HighOrigin tr H g z d n O →
       ∀ z' d' n' O', d' < i → HighOrigin tr H g z' d' n' O' →
-      Compatible (tr.HonestBlocksAt H) O O') :
+      Compatible (tr.HonestBlocksAt H) O O')
+    (hpre : ∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
     Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
       B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
-  exact KernelProof.held_target_vote_domain_before_at hp hx hy hBx hrb hcast hib hheld
-    hS hqb hm hBS hcompare hseedCompare hpair
+  exact KernelProof.held_target_vote_domain_before_of_quarantine_at hp hx hy hBx hrb hcast hib
+    hheld hS hqb hm hBS hcompare hseedCompare hpair hpre
 
 /-- An actual bounded supporter compares its target with an older bounded high origin. -/
 theorem ResetPremisesUpTo.target_compatible_older_origin_at

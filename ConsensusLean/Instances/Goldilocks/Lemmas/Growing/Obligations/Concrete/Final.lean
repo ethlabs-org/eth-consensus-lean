@@ -19,6 +19,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.SignCalendar
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.SignGap
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.NetworkTransport
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.QueryCover
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -99,6 +100,11 @@ theorem final_window_extract_at
     (Generic.voteLatency_zero_from (simTraceAt_goldilocksRun S Q.run.2 Q.hn Q.valid).toLocalRun)
     (by linarith [mul_le_mul_of_nonneg_left hT hΔ.le])
     hcal (final_signGap_at S A V Q le_rfl) (signGap_δt A)
+    (hd5 := by
+      have h1 : (1 : Time) ≤ Q.params.Δ := Int.add_one_le_iff.2 Q.params.toParams.hΔ
+      linarith)
+    (hcover := fun _ _ hpT hT hd hTb =>
+      final_query_cover_at Q (FinalQueryAt.hsSharedUpTo_at Q) hpT hT hd hTb)
   have hdel : 6 * Q.params.Δ + (A.signGap : Time) * Q.params.Δ +
       (protoFGDelay (Model.pubOf Q.run.1) + (A.releaseGap : Time) * Q.params.Δ) ≤
         4 * Q.params.Δ * (A.finalSlots : Time) := hfin

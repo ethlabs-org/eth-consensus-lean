@@ -12,6 +12,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.St
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportCover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalUnanimous
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Effective
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionCover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
@@ -192,10 +193,19 @@ theorem operational_update_read_after_at
           have h := Compose.frameOK_state hrT.toLocalRun hy e
           rwa [hst e heJ] at h
         apply AC.viableAncestor_self hΦe (hPe e hje heJ)
-        exact (hp.held_target_ancestor_candidate_at_state_at hT0 (hle e heJ) hy hTb
-          (hPe e hje heJ) hseed hrb hSP (fun x q l B hqe ho =>
-            (high_origin_compatible_before_update_at hp hPU hPs hu hun hgu hRnext hTb ho
-              (hle e heJ q hqe)).symm)).symm
+        have hslot : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=
+          AC.slot_of_mem sp (u + 1)
+            (by simp only [AC.ACParams.ts]; push_cast; linarith only [hΔ])
+            (by simp only [AC.ACParams.ts]; push_cast; linarith only [hΔ])
+        exact (hp.held_target_ancestor_candidate_at_state_covered_at hT0 (hle e heJ) hy hTb
+          (hPe e hje heJ) hseed hrb hSP
+          (Healing.Growing.ResetPremisesUpTo.compatibleWithOrigins_iff.2
+            ⟨fun x q l B hqe ho =>
+              (high_origin_compatible_before_update_at hp hPU hPs hu hun hgu hRnext hTb ho
+                (hle e heJ q hqe)).symm,
+            fun hc D l hD hl =>
+              (Healing.Growing.healed_member_compatible_before_update_at hp hc hPU hPs hu hun
+                hgu hRnext hTb D l hD.healedOrigin (by omega)).symm⟩)).symm
       have hlock' : (⟨P.root, u, true, ex⟩ : AC.Lock) ∈ (tr.state y (j + 1)).ac.locks := by
         rw [← hstAC (j + 1) (by omega), tr.projAC.state_succ_of_call hup.1]
         exact hlock

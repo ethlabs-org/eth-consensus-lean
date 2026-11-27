@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Ha
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Transport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Healed
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.AC.Growing
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.Growing.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
@@ -135,6 +136,22 @@ theorem late_result_prefix_votes_before_at
       (by rw [← hm]; exact Or.inl hv)
       (fun z q hq hz e' he hslot => hprior z q e' hq
         (Compose.Growing.hVoteAt_iff.2 ⟨hz, he⟩) (by omega))
+
+/-- A prefix of a healed member is extended by later votes directly from the healed frontier.
+The member's label, rather than a fast-lock provenance witness, controls which votes are later.
+This arm needs neither the result-prefix domain induction nor its stored-lock comparisons. -/
+theorem late_result_prefix_votes_of_healed_at
+    {rL rO s : Nat} {B C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hC : Compose.Growing.HealedOrigin tr H g rL rO C s b)
+    (hBC : Anc (tr.HonestBlocksAt H) B C)
+    (hV : ∀ m, Compose.Growing.HealedVotesBelow tr H g rL rO m b) :
+    ∀ i, tr.time i ≤ b → ∀ y, y ∈ H (tr.time i) → ∀ ell e,
+      AC.CastAt tr.projAC y i ell e → s < e.msg.slot →
+        AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
+  intro i hib y hy ell e hc hs
+  obtain ⟨D, hD, hDr, hCD⟩ := Compose.Growing.healedVotesBelow_iff.mp (hV e.msg.slot)
+    C s hC y i e (Compose.Growing.hVoteAt_iff.mpr ⟨hy, ell, hc⟩) hib hs le_rfl
+  exact ⟨D, hD, hDr, hBC.trans hCD⟩
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

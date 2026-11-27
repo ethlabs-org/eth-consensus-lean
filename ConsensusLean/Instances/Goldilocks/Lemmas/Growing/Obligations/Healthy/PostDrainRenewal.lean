@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportCover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.UnanimousNext
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.FoundationSources
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionMembers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameFrozen
@@ -51,6 +53,42 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {hold : Time}
+
+/-- A member written before the reader has a same-label supporter before that reader. -/
+private theorem member_supporter_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {C : AC.Blk sp.n (List (FG.Att sp.n))} {s k : Nat}
+    (hcut : cutZ sp.toParams g ≤ sp.ts s) (hC : HealedMemberBefore tr H g a b C s k) :
+    ∃ z q e, q < k ∧ z ∈ H (tr.time q) ∧ AC.VoteAt tr.projAC z q e ∧
+      e.msg.slot = s ∧ AC.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
+  have source {x r O CV} (hrk : r < k) (hx : x ∈ H (tr.time r)) (hrb : tr.time r ≤ b)
+      (ho : AC.ResultAt tr.projAC x r s O CV ∨ AC.OptimisticLockAt tr.projAC x r s O CV)
+      (hCO : Anc (tr.HonestBlocksAt H) C O) :
+      ∃ z q e, q < k ∧ z ∈ H (tr.time q) ∧ AC.VoteAt tr.projAC z q e ∧
+        e.msg.slot = s ∧ AC.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
+    rcases ho with hres | hop
+    · obtain ⟨z, hz, q, hqr, e, hv, _, hs, hVC⟩ :=
+        ProposalImpl.result_supporter_at hp hx hres hCO hrb hcut
+      exact ⟨z, q, e, by omega, hp.run.antitone (hp.run.time_mono hqr.le) hz, hv, hs, hVC⟩
+    · obtain ⟨_, z, q, hz, hqr, e, hv, hs, B, hB, hBr, hOB⟩ :=
+        hp.optimistic_supporter_at hx hrb (by linarith [lt_cutZ sp g, sp.toParams.hΔ]) hop
+      exact ⟨z, q, e, by omega, hp.run.antitone (hp.run.time_mono hqr) hz, hv, hs,
+        B, hB, hBr, hCO.trans hOB⟩
+  rcases healedMemberBefore_iff.1 hC with
+    ⟨_, x, r, CV, hrk, hx, hrb, ho⟩ | ⟨_, x, r, hrk, hx, hrb, hl⟩ | ⟨x, r, hrk, hrb, ho⟩
+  · exact source hrk hx hrb ho .refl
+  · obtain ⟨O, CV, ho, hCO⟩ := Compose.Growing.lock_below_origin_at hp.run hp.noColl hx hl
+    exact source hrk hx hrb ho hCO
+  · obtain ⟨CV, ell, D, hc, hf, hC⟩ := ho.2.2.1
+    have hx := hp.run.antitone (le_max_right _ _) ho.1
+    obtain ⟨O, OV, ho, hDO⟩ := Compose.Growing.lock_below_origin_at hp.run hp.noColl hx
+      (Or.inl ⟨CV, hf⟩)
+    have hPhiU := (frame_tree_subset_at hp.run hp.noColl hx hc).2
+    have hsub : ell.frame.tree ⊆ tr.HonestBlocksAt H := fun B hB =>
+      ⟨x, r, tr.time r, hp.run.time_nonneg r, fun _ hq => hp.run.time_mono hq.le, hx, hPhiU hB⟩
+    apply source hrk hx hrb ho
+    rw [hC]
+    exact ((AC.anc_viableAncestor ell.frame D).mono hsub).trans hDO
 
 /-- **The higher-report escape by `T`**: a node honest at its report and at `c_z` reports, by
 `T`, a descendant of `P` at a strictly greater height than `P` (in its store at the report). -/
@@ -342,6 +380,36 @@ theorem reset_le_ts_of_drain {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   obtain ⟨hlt, -, hu⟩ := warm_slot_after_reset hp hR
   exact hlt.le.trans ((AC.ts_le_iff sp).2 (by omega))
 
+/-- Pre-cut members are compared using pre-cut supporters, never future writes. -/
+private theorem member_compatible_post_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    (hc : HighSourceCover tr H g a b)
+    {u m k : Nat} {P C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hP : P ∈ tr.HonestBlocksAt H)
+    (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
+      e.msg.slot = u → e.msg.head = P.root)
+    (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
+    (hub : sp.ts u + sp.Δ ≤ b)
+    (hext : ∀ s, u + 1 ≤ s → s ≤ m → ∀ z q e, q < k → z ∈ H (tr.time q) →
+      AC.VoteAt tr.projAC z q e → e.msg.slot = s →
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg P)
+    {s : Nat} (hC : HealedMemberBefore tr H g a b C s k) (hsm : s ≤ m) :
+    Compatible (tr.HonestBlocksAt H) C P := by
+  by_cases hsu : s ≤ u
+  · exact Or.inl (healed_members_through_slot_below_at hp hc hP hun hgu hR hub
+      C s hC.healedOrigin hsu)
+  have hcz : cutZ sp.toParams g ≤ sp.ts s := by
+    have := hp.cutZ_lt_reset_at
+    have := reset_le_ts_of_drain hp hR
+    have hts := (AC.ts_le_iff sp).2 (show (u : Int) ≤ s by omega)
+    linarith
+  obtain ⟨z, q, e, hqk, hz, hv, hs, B, hB, hBr, hCB⟩ :=
+    member_supporter_before_at hp hcz hC
+  obtain ⟨B', hB', hB'r, hPB'⟩ := hext s (by omega) hsm z q e hqk hz hv hs
+  have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
+  obtain rfl : B' = B := hU.1 hB' hB (hB'r.trans hBr.symm)
+  exact AC.anc_total hU hCB hPB'
+
 /-- **Finality below `P` after the drain**, unless a strictly higher report extends `P` by then:
 at a cut of a node honest at it from `t_u` on, before the slot `M + 1` whose earlier slots'
 honest votes extend `P`, the finalized block is below a high origin written by the cut, which is
@@ -362,20 +430,32 @@ theorem finalized_below_post_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       Anc (tr.HonestBlocksAt H) (tr.state y k).fg.F P := by
   have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
   have ha : a ≤ tr.time k := (reset_le_ts_of_drain hp hR).trans hk
-  obtain ⟨x, r, l, B, ho, hrk, hrb, hFB⟩ :=
-    ProposalImpl.finalized_below_high_origin_at hp hy ha hkb
-  have hBP := high_origin_compatible_post_at hp hP hun hgu hR hub ho hrb
-    fun z q e hqr hz hv hs hl => by
-      obtain ⟨-, -, ⟨CV, ell, D, -, hfl, -⟩, -⟩ := ho
-      have hlr := ProposalImpl.ts_le_of_fastLock_at hp.run hfl
-      have hlM : l ≤ M := by
-        have := (AC.ts_lt_iff sp).1 (show sp.ts l < sp.ts (M + 1 : Nat) by linarith)
-        omega
-      exact hext l hl hlM z q e hz hv ((hp.run.time_mono hqr).trans hrk) hs
   have hFc : Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F P := by
-    rcases hBP with h | h
-    · exact Or.inl (hFB.trans h)
-    · exact AC.anc_total hU hFB h
+    rcases ProposalImpl.finalized_below_high_origin_or_covered_before_at hp hy ha hkb with
+      ⟨x, r, l, B, ho, hrk, hrb, hFB⟩ | hcov
+    · have hBP := high_origin_compatible_post_at hp hP hun hgu hR hub ho hrb
+        fun z q e hqr hz hv hs hl => by
+          obtain ⟨-, -, ⟨CV, ell, D, -, hfl, -⟩, -⟩ := ho
+          have hlr := ProposalImpl.ts_le_of_fastLock_at hp.run hfl
+          have hlM : l ≤ M := by
+            have := (AC.ts_lt_iff sp).1
+              (show sp.ts l < sp.ts (M + 1 : Nat) by linarith)
+            omega
+          exact hext l hl hlM z q e hz hv ((hp.run.time_mono hqr).trans hrk) hs
+      rcases hBP with h | h
+      · exact Or.inl (hFB.trans h)
+      · exact AC.anc_total hU hFB h
+    · obtain ⟨hc, C, s, hC, hsk, hFC⟩ := coveredBefore_iff.1 hcov
+      have hsM : s ≤ M := by
+        have := (AC.ts_le_iff_le_slot sp (hp.run.time_nonneg k) (M + 1 : Nat)).not.mp
+          (not_le.mpr hkM)
+        omega
+      have hCP := member_compatible_post_at hp hc hP hun hgu hR hub
+        (fun s hs hsM z q e hq hz hv hes =>
+          hext s hs hsM z q e hz hv (hp.run.time_mono hq.le) hes) hC hsM
+      rcases hCP with h | h
+      · exact Or.inl (hFC.trans h)
+      · exact AC.anc_total hU hFC h
   rcases hp.finality_below_or_higher_report_at hy hkb hFc with
     h | ⟨z, r, l, C, hz, hrk, hto, hPC, hlt⟩
   · exact Or.inr h
@@ -455,12 +535,19 @@ theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : �
     rfl
   -- the fork-choice root is compatible with `P`
   have hroot : Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot P := by
-    rcases hp.reset_vote_root_source_at hRm hy hc hs hjb with hg | ⟨v, r, l, O, ho, hrt, -, hO⟩
+    rcases hp.reset_vote_root_source_or_covered_at hRm hy hc hs hjb with
+      hg | ⟨v, r, l, O, ho, hrt, -, hO⟩ | ⟨hcover, C, s, hC, hsm, hRC⟩
     · exact Or.inl (ProposalImpl.genesis_root_anc_at hp.run hp.noColl (hPhiU hPhi.fcRoot_mem)
         hg hP)
     · rcases hbefore v r l O ho (by linarith) (Or.inr hrt) with h | h
       · exact Or.inl (hO.trans h)
       · exact AC.anc_total hU hO h
+    · have hCP := member_compatible_post_at hp hcover hP hun hgu hR hub
+        (fun s hs hsm z q e hq hz hv hes =>
+          hprev s hs hsm z q e hz hv (hm hq.le) hes) hC (by omega)
+      rcases hCP with h | h
+      · exact Or.inl (hRC.trans h)
+      · exact AC.anc_total hU hRC h
   by_cases hrootP : Anc (tr.HonestBlocksAt H) ell.frame.fcRoot P
   · -- `P` is accepted before the freeze, so it is in the voter block tree
     have hnr : ∀ r ≤ j, tr.RestartAt y r → tr.time r ≤ AC.gbar g := fun r hrj hrs =>
@@ -504,11 +591,21 @@ theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : �
       obtain ⟨v, q, l, S, hseed, hqb, -, hqt⟩ := hp.reset_seed_before_slot_at hR
       have hSP := high_origins_before_next_slot_below_at hp hP hun hgu hR hub hseed hqt hqb
       obtain ⟨x, r, ell', C, hx, hrj, hto, hPC, hlt⟩ :=
-        hp.held_target_high_floor_report_before_at hy hjb hstore hseed hSP
+        hp.held_target_high_floor_report_before_covered_at hy hjb hstore hseed hSP
           (fun x r l B hrj ho x' r' l' B' hr'j ho' => hp.origins_compatible_at ho
             ((hm hrj.le).trans hjb) ho' ((hm hr'j.le).trans hjb))
           (fun x r l B hrj ho => hp.origins_compatible_at hseed hqb ho ((hm hrj.le).trans hjb))
-          (fun x r l B hrj ho => (hbefore x r l B ho (hm hrj.le) (Or.inl hrj)).symm)
+          (ResetPremisesUpTo.compatibleWithOrigins_iff.2 ⟨
+            fun x r l B hrj ho => (hbefore x r l B ho (hm hrj.le) (Or.inl hrj)).symm,
+            fun hcover C s hC hsm => (member_compatible_post_at hp hcover hP hun hgu hR hub
+              (m := m + 1) (fun s hs hsm z q e hq hz hv hes => by
+                by_cases hsm' : s ≤ m
+                · exact hprev s hs hsm' z q e hz hv (hm hq.le) hes
+                · exact hearlier z q e hq hz hv (by convert hes using 1; omega))
+              hC (by
+                have := (AC.ts_le_iff_le_slot sp hd (m + 2 : Nat)).not.mp
+                  (not_le.mpr (by have := @hstep (m + 1); linarith))
+                omega)).symm⟩)
           (lt_of_not_ge hfloor)
       exact Or.inl ⟨x, r, ell', C, hx, hto, hm hrj.le, hPC, hlt⟩
   · -- `P` is below the root; the finality is below `P` or a higher report finalized above it
@@ -574,10 +671,15 @@ theorem post_drain_votes_extend_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
       (next_cs2 hp hgu)
       (fun _ _ _ _ hy hcast hs hjb => hp.reset_vote_root_below_bound_at hR hP
         (fun _ _ _ _ ho ht hrb => high_origins_before_next_slot_below_at hp hP hun hgu hR hub
-          ho ht hrb) hy hcast hs hjb)
-      (fun _ _ _ _ hy hcast hs hjb hstore => hp.reset_vote_floor_above_old_at hy hR hcast hs hjb
+          ho ht hrb)
+        (fun hc C s hC hs => healed_members_through_slot_below_at hp hc hP hun hgu hR hub
+          C s hC.healedOrigin (by omega)) hy hcast hs hjb)
+      (fun _ _ _ _ hy hcast hs hjb hstore =>
+        hp.reset_vote_floor_above_old_or_covered_at hy hR hcast hs hjb
         hstore (fun _ _ _ _ ho ht hrb => high_origins_before_next_slot_below_at hp hP hun hgu hR
-          hub ho ht hrb)) y j e hy hv (hjT.trans hTb) hs
+          hub ho ht hrb)
+        (fun hc C s hC hs => healed_members_through_slot_below_at hp hc hP hun hgu hR hub
+          C s hC.healedOrigin (by omega))) y j e hy hv (hjT.trans hTb) hs
   | succ m hum ih =>
     intro hmN
     have hprev := ih (by omega)
@@ -759,10 +861,14 @@ theorem viable_head_post_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     have hz := hp.cutZ_lt_reset_at
     have := reset_le_ts_of_drain hp hR
     rwa [max_eq_right (by linarith)]
-  rcases held_target_viableHeads_or_higher_report_at hp hyz hkb hPt hseed hqb hSP
-      (fun x r l B hrk ho => (high_origin_compatible_post_at hp hP hun hgu hR hub ho
+  rcases held_target_viableHeads_or_higher_report_covered_at hp hyz hkb hPt hseed hqb hSP
+      (ResetPremisesUpTo.compatibleWithOrigins_iff.2 ⟨
+        fun x r l B hrk ho => (high_origin_compatible_post_at hp hP hun hgu hR hub ho
         ((hm hrk.le).trans hkb) fun z q e hqr hz hv hs hl =>
-          hext l hl z q e hz hv ((hm hqr).trans ((hm hrk.le).trans hkT)) hs).symm) with
+          hext l hl z q e hz hv ((hm hqr).trans ((hm hrk.le).trans hkT)) hs).symm,
+        fun hc C s hC hsm => (member_compatible_post_at hp hc hP hun hgu hR hub
+          (fun s hs _ z q e hq hz hv hes =>
+            hext s hs z q e hz hv ((hm hq.le).trans hkT) hes) hC hsm).symm⟩) with
     h | ⟨x, r, ell', C, hx, hrk, hto, hPC, hlt⟩
   · exact Or.inr h
   · exact Or.inl ⟨x, r, ell', C, hx, hto, (hm hrk.le).trans hkT, hPC, hlt⟩

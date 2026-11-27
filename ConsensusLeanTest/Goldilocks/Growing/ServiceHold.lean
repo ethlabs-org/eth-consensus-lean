@@ -144,6 +144,7 @@ structure ACHealingNoHold (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun 
   follow : Nat
   reportDelay : Nat
   drain : Nat
+  deepBudget : Option Nat := none
   Origin : RunTrace A → Fin P.n → Nat → Nat → A.Blk → Prop
   follow_le : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF b : Time},
     runs.Run cm proposer dg H tr → PremisesNoHold tr H cm βK proposer dg sg g ΔF b → follow ≤ P.δt
@@ -182,7 +183,8 @@ structure ACHealingNoHold (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun 
     {y : Fin P.n} {i : Nat} {R : A.Blk},
     βK ≤ 1 / 2 →
     runs.Run cm proposer dg H tr → PremisesNoHold tr H cm βK proposer dg sg g ΔF b →
-    IsReset tr H g a → a ≤ b → y ∈ H (tr.time i) → tr.time i ≤ b → ReportAt tr y i R →
+    IsReset tr H g a → a ≤ b → y ∈ H (tr.time i) → tr.time i ≤ b →
+    OriginInCap P deepBudget g (tr.time i) → ReportAt tr y i R →
     HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h →
     ∃ r ≤ i, ∃ j B, y ∈ H (tr.time r) ∧ Origin tr y r j B ∧
       B ∈ (tr.state y r).fg.tree ∧ Anc (tr.HonestBlocksAt H) R B
@@ -193,10 +195,12 @@ structure ACHealingNoHold (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun 
     {i j i' j' : Nat} {B B' : A.Blk},
     βK ≤ 1 / 2 →
     runs.Run cm proposer dg H tr → PremisesNoHold tr H cm βK proposer dg sg g ΔF b →
-    IsReset tr H g a → a ≤ b →
+    IsReset tr H g a → a ≤ b → OriginInCap P deepBudget g a →
     x ∈ H (max (cutZ P g) (tr.time i)) → Origin tr x i j B → tr.time i ≤ b →
+    OriginInCap P deepBudget g (tr.time i) →
     HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h →
     x' ∈ H (max (cutZ P g) (tr.time i')) → Origin tr x' i' j' B' → tr.time i' ≤ b →
+    OriginInCap P deepBudget g (tr.time i') →
     HZ tr H g + 1 ≤ ((tr.state x' i').fg.σ B'.root).h →
     Compatible (tr.HonestBlocksAt H) B B'
   /-- Canonical high sources yield chained honest proposals after the AC's drain bound.
@@ -204,19 +208,20 @@ structure ACHealingNoHold (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun 
   heal_after_reset : ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time},
     βK ≤ 1 / 2 →
     runs.Run cm proposer dg H tr → PremisesNoHold tr H cm βK proposer dg sg g ΔF b →
-    IsReset tr H g a → a ≤ b →
-    HighCanonical Origin tr H g b → HealedFrom tr H proposer (P.slotOf a + drain) b
+    IsReset tr H g a → a ≤ b → ResetInBudget P deepBudget drain g a →
+    HighCanonical Origin tr H g (originCapTime P deepBudget g b) →
+    HealedFrom tr H proposer (P.slotOf a + drain) b
 
 /-- **At hold `0`, `ACHealing` is the healing record before the hold.** -/
 def acHealingZeroEquiv (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun A sg) :
     ACHealing A sg runs ≃ ACHealingNoHold A sg runs where
-  toFun O := ⟨O.warmup, O.follow, O.reportDelay, O.drain, O.Origin,
+  toFun O := ⟨O.warmup, O.follow, O.reportDelay, O.drain, O.deepBudget, O.Origin,
     fun hr hp => O.follow_le hr (premises_zero_iff.mpr hp), O.report_in_frame, O.proposal_floor,
     fun hβ hr hp => O.report_follow hβ hr (premises_zero_iff.mpr hp),
     fun hβ hr hp => O.report_origin hβ hr (premises_zero_iff.mpr hp),
     fun hβ hr hp => O.origins_comparable hβ hr (premises_zero_iff.mpr hp),
     fun hβ hr hp => O.heal_after_reset hβ hr (premises_zero_iff.mpr hp)⟩
-  invFun O := ⟨O.warmup, O.follow, O.reportDelay, O.drain, O.Origin,
+  invFun O := ⟨O.warmup, O.follow, O.reportDelay, O.drain, O.deepBudget, O.Origin,
     fun hr hp => O.follow_le hr (premises_zero_iff.mp hp), O.report_in_frame, O.proposal_floor,
     fun hβ hr hp => O.report_follow hβ hr (premises_zero_iff.mp hp),
     fun hβ hr hp => O.report_origin hβ hr (premises_zero_iff.mp hp),
@@ -287,6 +292,7 @@ def high_row_source_atNoHold (O : ACHealing A sg runs) : Prop :=
     βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
     PremisesNoHold tr H cm βK proposer dg sg g ΔF b → IsReset tr H g a → a ≤ b →
     v ∈ H (max (cutZ P g) (tr.time d)) → tr.time d ≤ b →
+    OriginInCap P O.deepBudget g (tr.time d) →
     tr.SignAt v d att → HZ tr H g + 1 ≤ att.h →
     ∃ r < d, ∃ l Og, HighOrigin A sg O tr H g v r l Og ∧
       ∃ E ∈ (tr.state v r).fg.tree, (tr.state v r).fg.Anc E Og ∧
@@ -294,11 +300,12 @@ def high_row_source_atNoHold (O : ACHealing A sg runs) : Prop :=
         ((tr.state v r).fg.σ E.root).Th = E.root
 
 /-- `no_high_contest_at` as stated before the release hold. -/
-def no_high_contest_atNoHold (_O : ACHealing A sg runs) : Prop :=
+def no_high_contest_atNoHold (O : ACHealing A sg runs) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {p : Fin P.n} {i : Nat},
     βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
     PremisesNoHold tr H cm βK proposer dg sg g ΔF b → IsReset tr H g a → a ≤ b →
-    p ∈ H (tr.time i) → tr.time i ≤ b →
+    OriginInCap P O.deepBudget g a →
+    p ∈ H (tr.time i) → tr.time i ≤ b → OriginInCap P O.deepBudget g (tr.time i) →
     ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax)
 
 /-- `high_entry_eq_at` as stated before the release hold. -/
@@ -307,8 +314,10 @@ def high_entry_eq_atNoHold (O : ACHealing A sg runs) : Prop :=
     {B B' Z₁ Z₂ : A.Blk} {y₁ y₂ : Fin P.n} {m₁ m₂ : Nat} {t₁ t₂ : Time},
     βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
     PremisesNoHold tr H cm βK proposer dg sg g ΔF b → IsReset tr H g a → a ≤ b →
-    HighOrigin A sg O tr H g x i j B → tr.time i ≤ b →
+    OriginInCap P O.deepBudget g a →
+    HighOrigin A sg O tr H g x i j B → tr.time i ≤ b → OriginInCap P O.deepBudget g (tr.time i) →
     HighOrigin A sg O tr H g x' i' j' B' → tr.time i' ≤ b →
+    OriginInCap P O.deepBudget g (tr.time i') →
     Anc (tr.HonestBlocksAt H) Z₁ B → Anc (tr.HonestBlocksAt H) Z₂ B' →
     0 ≤ t₁ → (∀ q < m₁, tr.time q ≤ t₁) → y₁ ∈ H t₁ →
     0 ≤ t₂ → (∀ q < m₂, tr.time q ≤ t₂) → y₂ ∈ H t₂ →
@@ -426,7 +435,8 @@ structure HealthyReadPointNoHold {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A 
   healed : ∀ cm βK proposer dg H (tr : RunTrace A) ΔF g a b s₁,
     βK ≤ 1 / 2 →
     C.run.Run cm proposer dg H tr → PremisesNoHold tr H cm βK proposer dg sg g ΔF b →
-    IsReset tr H g a → a ≤ b → P.slotOf a + C.healing.drain ≤ s₁ →
+    IsReset tr H g a → a ≤ b → ResetInBudget P C.healing.deepBudget C.healing.drain g a →
+    P.slotOf a + C.healing.drain ≤ s₁ →
     HealedFrom tr H proposer s₁ b →
     max g 0 ≤ P.slotTime s₁ →
     ((∃ z k X, HonestProposal tr H proposer s₁ z k X) →
@@ -444,7 +454,8 @@ structure HealthyReadPointNoHold {sg : A.Msg → Fin P.n} (C : ACCorrectLocal A 
   proposal : ∀ cm βK proposer dg H (tr : RunTrace A) ΔF g a b healed,
     βK ≤ 1 / 2 →
     C.run.Run cm proposer dg H tr → PremisesNoHold tr H cm βK proposer dg sg g ΔF b →
-    IsReset tr H g a → a ≤ b → max g 0 + C.margin ≤ healed →
+    IsReset tr H g a → a ≤ b → ResetInBudget P C.healing.deepBudget C.healing.drain g a →
+    max g 0 + C.margin ≤ healed →
     ∀ B k y j t, ReadyProposal tr H C.catchUp C.hold B k →
     P.slotOf a + C.healing.drain ≤ B.slot → gbar g + 4 * P.Δ ≤ P.slotTime B.slot →
     0 ≤ tr.time k → tr.time k ≤ b → tr.time k + C.hold ≤ b → healed ≤ tr.time k →
@@ -522,7 +533,9 @@ def HighCanonicalSupplyNoHold (M : RunMap rho payload) (K : Contract ProgressReq
   PremisesNoHold M.trace M.honest M.committee K.params.βK M.proposer M.digest M.signer
     gst E.ΔFG rho.horizon →
   Healing.Growing.IsReset M.trace M.honest gst a → a ≤ rho.horizon →
-  HighCanonical C.healing.Origin M.trace M.honest gst rho.horizon
+  ResetInBudget P C.healing.deepBudget C.healing.drain gst a →
+  HighCanonical C.healing.Origin M.trace M.honest gst
+    (originCapTime P C.healing.deepBudget gst rho.horizon)
 
 /-- `PreparationPremisesSupply` as stated before the release hold. -/
 def PreparationPremisesSupplyNoHold (M : RunMap rho payload) (K : Contract ProgressReq) : Prop :=

@@ -60,13 +60,15 @@ read at the later of each cut and `c_z`, the charge of a high origin's writer. -
 theorem local_sources
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) (g b : Time) :
+    (hnc : Compose.NoCollRun dg tr) (g b : Time)
+    (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))
+    (hdeep : ∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
     LocalSources.Sources (fun v i => (tr.state v i).fg) tr.time
       (fun t => H (max (cutZ sp.toParams g) t)) tr.SignAt
       (HighOrigin tr H g) tr.JoinedAt (tr.HonestBlocksAt H) (HZ tr H g) b := by
   intro v d att hvz hdb hs hh
   obtain ⟨r, hrd, l, O, ho, E0, hE0, hEO, hEr, hEh, hETh⟩ :=
-    high_row_source_at hrun hnc hvz hs hh
+    high_row_source_at hrun hnc hvz hs hh hsnap fun D hD => hdb.trans (hdeep D hD)
   have hv := hrun.antitone (le_max_right _ _) ho.1
   have hr0 := hrun.time_nonneg r
   have hler : ∀ q < r, tr.time q ≤ tr.time r := fun q hq => hrun.time_mono hq.le

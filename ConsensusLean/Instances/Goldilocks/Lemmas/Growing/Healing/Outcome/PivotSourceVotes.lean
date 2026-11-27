@@ -38,8 +38,9 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 variable {hold : Time}
 
-/-- The proposal root is genesis or below a bounded pre-slot historical origin. -/
-theorem reset_proposal_root_source_at
+/-- The proposal root is genesis, below a bounded pre-slot historical origin, or, under the
+high-source cover, below a healed member of a label strictly below the proposal slot. -/
+theorem reset_proposal_root_source_or_healed_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {p : Fin sp.n} {u i : Nat} (hpH : p ∈ H (tr.time i))
@@ -50,26 +51,44 @@ theorem reset_proposal_root_source_at
     (hd : (AC.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b) :
     ell.frame.fcRoot.root = sp.genesisRoot ∨
-      ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b ∧
-        Anc (tr.HonestBlocksAt H) ell.frame.fcRoot O := by
+      (∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b ∧
+        Anc (tr.HonestBlocksAt H) ell.frame.fcRoot O) ∨
+      (HighSourceCover tr H g a b ∧ ∃ C s, HealedMemberBefore tr H g a b C s i ∧ s < u ∧
+        Anc (tr.HonestBlocksAt H) ell.frame.fcRoot C) := by
   have ht := hp.run.time_nonneg i
   have hi : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hp.run.time_mono hq.le
   have hfr := Outcome.frame_of_call hp.run hpH hci
   rw [hfr]
-  refine (fcRoot_genesis_or_below_source (fg_reachable_at hp.run ht hi hpH)
+  have hreach := fg_reachable_at hp.run ht hi hpH
+  rcases fcRoot_genesis_or_below_source hreach
     (Compose.Growing.honest_blocks_coherent hp.run hp.noColl)
     (fun _ hX => ⟨p, i, tr.time i, ht, hi, hpH, hX⟩)
-    (fun O => ∃ v r l, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b)
-    (fun E hE C hET hEh hEC hlt =>
-      hp.proposal_entry_below_old_at hpH hci hcall hti hib hE hET hEh hEC hlt)
-    (fun O ⟨_, _, _, ho, _⟩ W hW hOW =>
-      Outcome.high_of_anc_at hp.run hp.noColl ho ht hi hpH hW hOW) fun hlow => ?_).imp
-    (congrArg Block.root) fun ⟨O, ⟨v, r, l, ho, hrt, hrb⟩, hO⟩ => ⟨v, r, l, O, ho, hrt, hrb, hO⟩
-  obtain ⟨v, r, l, O, ho, hrb, _, hrt⟩ := hp.reset_seed_before_slot_at hR
-  have hheld := hp.proposal_holds_old_at hpH hci hcall hd hti hib ho hrt
-  rw [hfr] at hheld
-  exact ⟨O, ⟨v, r, l, ho, hrt, hrb⟩, hp.low_finalized_below_origin_at ht hi hpH hib hlow ho hrb,
-    hheld⟩
+    (fun O =>
+      (∃ v r l, HighOrigin tr H g v r l O ∧ tr.time r < sp.ts u ∧ tr.time r ≤ b) ∨
+      (HighSourceCover tr H g a b ∧ ∃ s, HealedMemberBefore tr H g a b O s i ∧ s < u ∧
+        ∃ E ∈ (tr.state p i).fg.tree, HZ tr H g + 1 ≤ ((tr.state p i).fg.σ E.root).h ∧
+          Anc (tr.HonestBlocksAt H) E O))
+    (fun E hE C hET hEh hEC hlt => by
+      rcases hp.proposal_entry_below_old_or_healed_at hpH hci hcall hti hib hE hET hEh hEC hlt
+        with ⟨O, hO, hEO⟩ | ⟨hc, M, s, hM, hsu, hEM⟩
+      · exact ⟨O, Or.inl hO, hEO⟩
+      · exact ⟨M, Or.inr ⟨hc, s, hM, hsu, E, hE, hEh, hEM⟩, hEM⟩)
+    (fun O hO W hW hOW => by
+      rcases hO with ⟨_, _, _, ho, _⟩ | ⟨_, s, _, _, E, hE, hEh, hEO⟩
+      · exact Outcome.high_of_anc_at hp.run hp.noColl ho ht hi hpH hW hOW
+      · exact hEh.trans (Healing.h_le_of_store_anc hreach
+          (store_anc_of_honest_anc_at hp.run hp.noColl ht hi hpH (hEO.trans hOW) hW)))
+    (fun hlow => by
+      obtain ⟨v, r, l, O, ho, hrb, _, hrt⟩ := hp.reset_seed_before_slot_at hR
+      have hheld := hp.proposal_holds_old_at hpH hci hcall hd hti hib ho hrt
+      rw [hfr] at hheld
+      exact ⟨O, Or.inl ⟨v, r, l, ho, hrt, hrb⟩,
+        hp.low_finalized_below_origin_at ht hi hpH hib hlow ho hrb, hheld⟩) with
+    hg | ⟨O, hO, hfO⟩
+  · exact Or.inl (congrArg Block.root hg)
+  · rcases hO with ⟨v, r, l, ho, hrt, hrb⟩ | ⟨hc, s, hM, hsu, -⟩
+    · exact Or.inr (Or.inl ⟨v, r, l, O, ho, hrt, hrb, hfO⟩)
+    · exact Or.inr (Or.inr ⟨hc, O, s, hM, hsu, hfO⟩)
 
 /-- Actual bounded casts extend the start of a drained operational proposal. -/
 theorem proposal_start_supported_at
@@ -116,15 +135,17 @@ theorem proposal_start_supported_at
       (hstate ▸ AC.locksWF_stateU (hr := hr.toU) hac.vstart hpH i) hR hti hd
     with hroot | ⟨l₁, hl₁, hlo, B₁, hB₁, hB₁r, hsB₁⟩
   · rw [hroot]
-    rcases hp.reset_proposal_root_source_at hpH hR hci hcall hd hti hib with
-      hg | ⟨x, r, l, O, ho, hOld, hrb, hfO⟩
+    rcases hp.reset_proposal_root_source_or_healed_at hpH hR hci hcall hd hti hib with
+      hg | ⟨x, r, l, O, ho, hOld, hrb, hfO⟩ | ⟨hc, C, s, hC, hsu, hfC⟩
     · exact ProposalImpl.genesis_root_anc_at hp.run hp.noColl (hPhiU hPhi.fcRoot_mem) hg
         (hPsiU hhead)
-    apply hfO.trans (extend O ?_)
-    have hri : r < i :=
-      lt_of_not_ge fun h => (hp.run.time_mono h).not_gt (hOld.trans_eq hti.symm)
-    have hlu := hp.origin_label_lt_at_proposal_at hpH hci hcall hti hib hri ho
-    exact hp.high_origin_votes_before_at j hjb x r l O ho hrb y elly e hy hcy (by omega)
+    · apply hfO.trans (extend O ?_)
+      have hri : r < i :=
+        lt_of_not_ge fun h => (hp.run.time_mono h).not_gt (hOld.trans_eq hti.symm)
+      have hlu := hp.origin_label_lt_at_proposal_at hpH hci hcall hti hib hri ho
+      exact hp.high_origin_votes_before_at j hjb x r l O ho hrb y elly e hy hcy (by omega)
+    · refine hfC.trans (extend C (hc.s2 C s hC.healedOrigin y j e
+        (Compose.Growing.hVoteAt_iff.2 ⟨hy, elly, hcy⟩) hjb (by omega)))
   obtain ⟨r, hri, D, horig, L, hLU, hLr, hLD⟩ :
       ∃ r < i, ∃ D,
         ((∃ CV, AC.FastLockAt tr.projAC p r l₁.slot D CV) ∨

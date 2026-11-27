@@ -116,25 +116,6 @@ theorem drain_stored_lock_label {l : AC.Lock} {t : Time}
 
 /-! ### The clean fast transfer -/
 
-/-- The reset supplies an actual bounded high-origin seed, not merely an eventual origin. -/
-theorem ResetPremisesUpTo.reset_seed {b : Time}
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) :
-    ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ a ∧ l ≤ sp.slot a := by
-  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  obtain ⟨⟨y, hy, k, att, hs, hh, hka⟩, -⟩ := hp.reset
-  obtain ⟨r, hrk, l, O, ho, -⟩ := hp.high_row_source hy hs hh.ge
-  obtain ⟨-, D, CV, -, hfl, -⟩ := hp.highOrigin_mem ho
-  have htime : sp.ts l ≤ tr.time r := by
-    have hΔ := sp.toParams.hΔ
-    rcases hfl with ⟨ell, C, ⟨-, -, ht, -⟩, -⟩ | ⟨ell, A, -, hsl, -⟩
-    · have ht' : tr.time r = sp.ts l + 6 * sp.Δ := ht
-      rw [ht']; linarith only [hΔ]
-    · exact (AC.ts_le_iff_le_slot sp (hr.time_nonneg r) l).mpr (by clear * - hsl; omega)
-  have hra : tr.time r ≤ a := (hr.time_mono hrk.le).trans hka.le
-  refine ⟨y, r, l, O, ho, hra, ?_⟩
-  have ha0 : 0 ≤ a := hka ▸ hr.time_nonneg k
-  exact_mod_cast (AC.ts_le_iff_le_slot sp ha0 l).mp (htime.trans hra)
-
 /-! ### The clean slow transfer -/
 
 /-- **`Sync` from `ḡ`** over the AC projection, from finite reset service (message processing
@@ -257,85 +238,6 @@ theorem ResetPremisesUpTo.result_supporter {b : Time}
   exact AC.result_honest_supporter_of_participants sp
     (Compose.goldilocks_ac_projection_from hp.run hp.noColl) hx ⟨ell, hu, hconf, hCV⟩
     hBC hparts.le
-
-/-- Finite raw-prefix domain from actual bounded source and cast witnesses. -/
-theorem ResetPremisesUpTo.result_prefix_vote_domain_before {b : Time}
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
-    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {r s i : Nat}
-    {B C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hres : AC.ResultAt tr.projAC x r s C CV) (hBC : Anc (tr.HonestBlocks H) B C)
-    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hcast : AC.CastAt tr.projAC y i ell e) (hsi : s < e.msg.slot) (hib : tr.time i ≤ b)
-    (hprior : ∀ z ∈ H, ∀ q < i, ∀ e', AC.VoteAt tr.projAC z q e' →
-      s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocks H) e'.msg B) :
-    Anc (tr.HonestBlocks H) B ell.frame.fcRoot ∨
-      B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
-  have hac := Compose.goldilocks_ac_projection_from hp.run hp.noColl
-  have hr := hac.localRun
-  have hsync := sync_window_of_service hp.run hp.sync
-  have hΔ := sp.toParams.hΔ
-  obtain ⟨v, d, m, S, hseed, hda, hm⟩ := hp.reset_seed
-  have hdb := hda.trans hp.reset_le
-  have hms : m < s := by rw [cleanLabel_eq] at hs; (clear * - hs hm; omega)
-  have hts : cutZ sp.toParams g ≤ sp.ts s :=
-    (hp.cutZ_le_ts_of_highOrigin hseed).trans ((AC.ts_le_iff sp).mpr (by clear * - hms; omega))
-  have hgs : AC.gbar g ≤ sp.ts s := by have := lt_cutZ sp g; linarith only [hΔ, hts, this]
-  obtain ⟨z, hz, q, hqr, ev, hv, _, hvs, hVB⟩ :=
-    hp.result_supporter hx hres hBC hrb hts
-  have hqb := (hp.run.time_mono hqr.le).trans hrb
-  obtain ⟨ellX, hupd, hconf, -⟩ := hres
-  have hCx := hp.frame_tree_subset hx hupd.1 (AC.deepest_mem hconf).1.1
-  have hBx := hp.mem_tree_of_anc hx hBC hCx
-  have hreset : ∀ w ∈ H, ∀ c, tr.time c ≤ b → tr.projAC.RestartAt w c →
-      tr.time c ≤ sp.ts s := by
-    intro w hw c hcb hrestart
-    apply (restart_le_before hp hw (Compose.projAC_restartAt.mp hrestart) hcb).trans
-    have hh := (AC.ts_le_iff sp).mp ((cutZ_eq sp g) ▸ hts)
-    exact (AC.ts_le_iff sp).mpr (by clear * - hh; omega)
-  apply hp.held_target_vote_domain_before hx hy hBx hcast ?_ hseed (by clear * - hsi hms; omega)
-    (hp.target_compatible_older_origin hseed hdb hz hv hqb hvs hms hVB) ?_ ?_ ?_
-  · intro hF
-    exact raw_writer_voterBlockTree_window_before hp.committee_pos hr hp.run.vstart hsync
-      (catch_window_of_run hp.run hc) hx hy
-      (Or.inl ⟨ellX, hupd, hconf, rfl⟩) hBC hcast (by clear * - hsi; omega) hib
-      (by
-        have := (AC.ts_le_iff sp).mpr (show (s : Int) ≤ e.msg.slot - 1 by clear * - hsi; omega)
-        linarith only [hΔ, hgs, this]) hF
-  · intro w c n O hci ho
-    have hcb := (hp.run.time_mono hci.le).trans hib
-    rcases lt_trichotomy n s with hn | rfl | hn
-    · exact hp.target_compatible_older_origin ho hcb hz hv hqb hvs hn hVB
-    · obtain ⟨CV', hst⟩ := ho.2.2.1
-      obtain ⟨_, D, hfl, hOD⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
-      have hcomp : Compatible (tr.HonestBlocks H) C D := by
-        rcases hfl with ⟨ellD, R, huD, hR, hfast, _⟩ | hop
-        · have hDR := ((AC.deepest_mem hfast).1.1.2.2).mono
-            (AC.frameIn_of_callAt hr ho.1 huD.1).2
-          have hRR := AC.result_result_compatible_window_before hac hsync hgs
-            hx ho.1 ⟨ellX, hupd, hconf, rfl⟩ ⟨ellD, huD, hR, rfl⟩ hrb hcb
-            (fun w hw c' hle hrest => hreset w hw c'
-              ((hp.run.time_mono hle).trans (by
-                rcases le_total r c with h | h
-                · simpa only [max_eq_right h] using hcb
-                · simpa only [max_eq_left h] using hrb)) hrest)
-          rcases hRR with h | h
-          · exact AC.anc_total hr.coherent h hDR
-          · exact Or.inr (hDR.trans h)
-        · exact AC.result_optimistic_compatible_window_before_of_voters hac hsync hgs
-            hx ho.1 ⟨ellX, hupd, hconf, rfl⟩ hop hrb
-            (fun c' hle hrest => hreset x hx c' ((hp.run.time_mono hle).trans hrb) hrest)
-            ((Set.ncard_le_ncard (t := K.committee _) (by
-                rintro _ ⟨v, hv, rfl⟩; exact hp.hP.1 x hx r _ v hv)).trans (hp.hsize _).le)
-      rcases hcomp with h | h
-      · exact AC.anc_total hr.coherent (hBC.trans h) hOD
-      · exact AC.anc_total hr.coherent hBC (hOD.trans h)
-    · exact hp.target_compatible_later_origin_before ho hci hn hprior
-  · intro w c n O hci ho
-    exact hp.origins_compatible hseed hdb ho ((hp.run.time_mono hci.le).trans hib)
-  · intro w c n O hci ho w' c' n' O' hci' ho'
-    exact hp.origins_compatible ho ((hp.run.time_mono hci.le).trans hib)
-      ho' ((hp.run.time_mono hci'.le).trans hib)
 
 /-- Finite recent-result induction. Current vote domains and first-successor stored-lock
 comparisons are the explicit inputs `hdomain` and `hstored`, rather than whole-history

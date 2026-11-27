@@ -136,6 +136,33 @@ theorem read_source_of_recent_result_at
   · exact Or.inr ⟨hv,
       hp.latest_votes_of_recent_result_at hx hres hRC hrb hts hd hl htb hsL⟩
 
+/-- The read-source arm from S2: a recent result above the healed origin floor is itself a
+family member. Its record prefix therefore needs no fast high-origin witness. -/
+theorem read_source_of_healed_result_at
+    {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+    {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+    {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {g ΔF a b t : Time}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {rL rO : Nat}
+    (hV : ∀ m, Compose.Growing.HealedVotesBelow tr H g rL rO m b)
+    {y : Fin sp.n} {i L : Nat} {R : AC.Blk sp.n (List (FG.Att sp.n))} (htb : t ≤ b)
+    (hsource : (Node.frame (tr.state y i)).Anc R
+        (AC.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
+      (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
+        ∃ x r s C CV, x ∈ H (tr.time r) ∧ AC.ResultAt tr.projAC x r s C CV ∧
+          Anc (tr.HonestBlocksAt H) R C ∧ tr.time r ≤ b ∧ rO ≤ s ∧ s < L)) :
+    (Node.frame (tr.state y i)).Anc R
+        (AC.getAnchor sp (tr.state y i).ac (Node.frame (tr.state y i)) t) ∨
+      (R ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree ∧
+        ∀ z q e, Compose.Growing.HVoteAt tr H z q e → tr.time q ≤ t → e.msg.slot = L →
+          AC.VoteExtends (tr.HonestBlocksAt H) e.msg R) := by
+  rcases hsource with ha | ⟨hv, x, r, s, C, CV, hx, hr, hRC, hrb, hs, hsL⟩
+  · exact Or.inl ha
+  · have hC : Compose.Growing.HealedOrigin tr H g rL rO C s b :=
+      .of_origin hs (Compose.Growing.originWithin_iff.mpr ⟨x, r, CV, hx, hrb, Or.inl hr⟩)
+    exact Or.inr ⟨hv, hp.latest_votes_of_healed_at hC hRC hV htb hsL⟩
+
 variable (S : Setup) (A : ContractAssumptions S) (V : Type)
   [Fintype V] [DecidableEq V]
 
@@ -202,10 +229,11 @@ theorem healthy_repair_schedule_at
     (hGs : (contract_catchUp S A : Nat) +
       (healthyResetCoeff S Q.index + 8 * S.k + 4 * (Q.index : Nat) + 34) + 3 + 5 * Gs ≤
         contract_heal S A Q.cap Q.index)
-    (hGsT : 4 * A.fgSlots + A.releaseGap + Gs ≤ 4 * S.δt) :
+    (hGsT : 4 * A.fgSlots + A.releaseGap + Gs ≤ 4 * S.δt)
+    (hcover : HealthyQueryCover S A V Q) :
     Nonempty (HealthyRepairScheduleAt S A V Q) := by
   obtain ⟨W', ⟨Dprep⟩⟩ := healthy_preparation_initialize_at S A V Q h0 hb hp hcal hgap hδG hGs
-    hGsT
+    hGsT hcover
   obtain ⟨D, -⟩ := healthy_repair_schedule_of_preparation_at S A V Q W' Dprep
   exact ⟨D⟩
 

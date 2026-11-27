@@ -183,7 +183,9 @@ def HighCanonicalSupply (M : RunMap rho payload) (K : Contract ProgressReq) {fgH
   Premises M.trace M.honest M.committee K.params.βK M.proposer M.digest M.signer
     gst ΔF rho.horizon fgHold →
   Healing.Growing.IsReset M.trace M.honest gst a → a ≤ rho.horizon →
-  HighCanonical C.healing.Origin M.trace M.honest gst rho.horizon
+  ResetInBudget P C.healing.deepBudget C.healing.drain gst a →
+  HighCanonical C.healing.Origin M.trace M.honest gst
+    (originCapTime P C.healing.deepBudget gst rho.horizon)
 
 /-- Full-horizon preparation from `healthy_preparation_service_at`,
 `healthy_preparation_awake_at`, `healthy_preparation_faults_at`,
@@ -223,6 +225,7 @@ def ResetHealBudgetSupply (M : RunMap rho payload) (K : Contract ProgressReq)
     ((Sys F V).heal K cap idx gst ⟨E, rho⟩) ⟨E, rho⟩ →
   (Sys F V).heal K cap idx gst ⟨E, rho⟩ ≤ rho.horizon →
   ∃ a, Healing.Growing.IsReset M.trace M.honest gst a ∧ a ≤ rho.horizon ∧
+    ResetInBudget P C.healing.deepBudget C.healing.drain gst a ∧
     max gst 0 ≤ P.slotTime (P.slotOf a + C.healing.drain) ∧
     P.slotTime (P.slotOf a + C.healing.drain) + C.margin + 1 ≤
       (Sys F V).heal K cap idx gst ⟨E, rho⟩ ∧

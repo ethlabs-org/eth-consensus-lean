@@ -162,15 +162,8 @@ theorem report_root_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
     R ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot R := by
   have hret := hR.2.2
   change (AC.acToFG sp _ _ _).2 = some R at hret
-  have hroot : R ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.fcRoot R := by
-    unfold AC.acToFG at hret
-    split_ifs at hret
-    split at hret
-    · cases hret
-    · rename_i C hC
-      split_ifs at hret
-      cases hret
-      exact ⟨(AC.deepest_mem hC).1.1.1, (AC.deepest_mem hC).1.1.2.1⟩
+  have hroot : R ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.fcRoot R :=
+    ⟨(AC.toFG_source hret).1.1, (AC.toFG_source hret).1.2.1⟩
   have hfr := (hrun.cutLaw y i (.ac ell) (Compose.projAC_callAt.mp hR.1) hy).1
   rw [hfr] at hroot
   exact ⟨hroot.1.1, hroot.2.mono (fun _ h => h.1)⟩

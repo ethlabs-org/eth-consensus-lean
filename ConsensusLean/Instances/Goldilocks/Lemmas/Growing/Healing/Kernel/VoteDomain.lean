@@ -46,7 +46,8 @@ private theorem held_target_vote_domain_of_row_bound_before_at
       Compatible (tr.HonestBlocksAt H) O O')
     (hrow : ∀ W ∈ (tr.state y i).fg.tree, ∀ att ∈ W.fgPayload,
       ∀ z d, z ∈ H (tr.time d) → tr.SignAt z d att → d < i → ∀ c l O,
-        c < d → HighOrigin tr H g z c l O → l < e.msg.slot) :
+        c < d → HighOrigin tr H g z c l O → l < e.msg.slot)
+    (hpre : ∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
     Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
       B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   have ht := hp.run.time_nonneg i
@@ -54,8 +55,9 @@ private theorem held_target_vote_domain_of_row_bound_before_at
   have hroot : Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
     by_cases hlow : (tr.state y i).fg.hj ≤ HZ tr H g
     · exact low_root_of_seed_before_at hp hx hBx hrb hy hib hS hqb hcast hm hlow hBS hheld
-    · exact hp.high_J_root_of_held_at_call_before_at hx hBx hy hib hcast.1
-        (by omega) hcompare
+    · rw [Outcome.frame_of_call hp.run hy hcast.1]
+      exact hp.high_J_root_of_held_before_quarantine_at hx hBx hy hib (by omega)
+        (fun D hD => hib.trans (hpre D hD)) hcompare
   by_cases hcovered : Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot
   · exact Or.inl hcovered
   have hkeep : ∃ W ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
@@ -88,8 +90,8 @@ private theorem held_target_vote_domain_of_row_bound_before_at
         exact hSf
       exact raw_target_frozen_witness_at hp hS hqb hy hcast hm hFB hBS' hSy .refl hSf'
     · obtain ⟨z, d, n, O, E, hd, ho, hn, hE, hEO, _, hEf⟩ :=
-        high_floor_source_core_of_row_bound_at hp hS hy hib hrow hpair hseedCompare
-          (lt_of_not_ge hSf)
+        high_floor_source_core_of_quarantine_at hp hS hy hib hrow hpair hseedCompare
+          (lt_of_not_ge hSf) hpre
       have hBO : Anc (tr.HonestBlocksAt H) B O := by
         rcases hcompare z d n O hd ho with h | h
         · exact h
@@ -100,8 +102,9 @@ private theorem held_target_vote_domain_of_row_bound_before_at
         ((hp.run.time_mono hd.le).trans hib) hy hcast hn hFB hBO hE hEO hEf
   exact (vote_viable_of_root_at hp.run hp.noColl hy hcast hroot (Or.inl hkeep)).symm
 
-/-- Finite domain reduction with exactly the frozen earlier-comparison inputs. -/
-theorem held_target_vote_domain_before_at
+/-- Finite domain reduction with exactly the frozen earlier-comparison inputs, inside the deep
+quarantine (`hpre`). -/
+theorem held_target_vote_domain_before_of_quarantine_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -119,13 +122,15 @@ theorem held_target_vote_domain_before_at
       Compatible (tr.HonestBlocksAt H) S O)
     (hpair : ∀ z d n O, d < i → HighOrigin tr H g z d n O →
       ∀ z' d' n' O', d' < i → HighOrigin tr H g z' d' n' O' →
-      Compatible (tr.HonestBlocksAt H) O O') :
+      Compatible (tr.HonestBlocksAt H) O O')
+    (hpre : ∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
     Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
       B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   apply held_target_vote_domain_of_row_bound_before_at hp hx hy hBx hrb hcast hib hheld
     hS hqb hm hBS hcompare hseedCompare hpair
-  intro W hW att ha z d hz hs hdi c l O hcd ho
-  exact row_origin_label_lt_at hp hy hcast hW ha hz hs hdi hcd ho
+  · intro W hW att ha z d hz hs hdi c l O hcd ho
+    exact row_origin_label_lt_at hp hy hcast hW ha hz hs hdi hcd ho
+  · exact hpre
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 

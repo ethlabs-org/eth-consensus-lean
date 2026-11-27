@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowServi
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HealedC4
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.FinalWindowDefs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.DeepQuarantine
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
@@ -191,7 +192,9 @@ theorem crossed_parents_above_upTo_at {g ΔF a b : Time}
       (Healing.Growing.store_anc_of_honest_anc_at hrun hnc ht hle hy hCPr hPrk)
     rw [Healing.Growing.σ_eq_honest_at hrun hnc hk0 hleR hz ht hle hy hCz hCk] at hlt
     omega
-  obtain ⟨hCf, l, hl, hlb, hlf, -⟩ := toFG_live_fast_lock hto
+  -- the report sits at or below the block of a live lock, fast or slow (a fast-lock candidate,
+  -- or a deep source under the deep anchor)
+  obtain ⟨-, A, ⟨hAt, l, hl, hlA⟩, hCA⟩ := AC.toFG_source_below_lock hto.2.2
   obtain ⟨l₀, hl₀, B, hB, hBr, hlive', rfl⟩ := hl
   have hU' := RunTrace.honestBlocks_upTo_subset hrun.time_mono (H := H) hk0
   have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hk0) (hnc.upTo _)).localRun
@@ -207,20 +210,39 @@ theorem crossed_parents_above_upTo_at {g ΔF a b : Time}
   have hlive : sp.slot (tr.time r) ≤ l₀.slot + sp.k := le_trans hlive' (hwf.cap hl₀)
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hz hck
   have hvB := AC.viableAncestor_anc hPhi hB
-  obtain rfl : C = ell.frame.viableAncestor B :=
-    hr.coherent.1 (hPhiU hCf) (hPhiU hvB.1) hlb.symm
-  obtain ⟨r', hrk, CV, ℓ', D, hcr, hfl, L, hL, hLr, hLD⟩ :=
-    Healing.stored_fast_lock_provenance hr hrun.vstart hz r l₀ hl₀' hlf
-  rw [hr.coherent.1 hL (hPhiU hB) (hLr.trans hBr.symm)] at hLD
-  obtain ⟨ell', hc', hD⟩ := Healing.fastLock_mem hfl
-  obtain rfl : ell' = ℓ' := Option.some.inj (hc'.2.symm.trans hcr.2)
-  obtain ⟨hPhi', hPhiU'⟩ := AC.frameIn_of_callAt hr hz hc'
-  have hXD : Anc (tr.HonestBlocksAt H) (ell.frame.viableAncestor B) D :=
-    Anc.mono hU' ((hvB.2.mono hPhiU).trans
-      (hLD.trans ((AC.viableAncestor_anc hPhi' hD).2.mono hPhiU')))
+  obtain rfl : A = ell.frame.viableAncestor B :=
+    hr.coherent.1 (hPhiU hAt) (hPhiU hvB.1) hlA.symm
+  have hCB : Anc (tr.HonestBlocksAt H) C (ell.frame.viableAncestor B) :=
+    Anc.mono hU' (hCA.mono hPhiU)
+  -- the lock's write by the reporter, at an earlier cut
+  obtain ⟨r', hrk, D, hsrc, hXD⟩ : ∃ r' < r, ∃ D,
+      ((∃ CV, AC.FastLockAt tr.projAC z r' l₀.slot D CV) ∨
+        AC.SlowLockAt tr.projAC z r' l₀.slot D) ∧
+      Anc (tr.HonestBlocksAt H) (ell.frame.viableAncestor B) D := by
+    cases hlf : l₀.fast
+    · obtain ⟨r', hrk, D, ⟨ℓu, C', hu, hC', hD'⟩, L, hL, hLr, hLD⟩ :=
+        AC.slow_lock_provenance hr hrun.vstart hz r l₀ hl₀' hlf
+      rw [hr.coherent.1 hL (hPhiU hB) (hLr.trans hBr.symm)] at hLD
+      rw [RunTrace.upTo_projAC] at hu hC' hD'
+      obtain ⟨hrt, hu⟩ := (AC.upTo_updateAt hrun.time_mono).1 hu
+      have hs' : (tr.projAC.upTo (tr.time r)).state z r' = tr.projAC.state z r' :=
+        Trace.upTo_state _ z fun _ hq => (hrun.time_mono hq.le).trans hrt
+      rw [hs'] at hC' hD'
+      rw [Trace.upTo_time] at hD'
+      exact ⟨r', hrk, D, Or.inr ⟨ℓu, C', hu, hC', hD'⟩,
+        Anc.mono hU' ((hvB.2.mono hPhiU).trans hLD)⟩
+    · obtain ⟨r', hrk, CV, ℓ', D, hcr, hfl, L, hL, hLr, hLD⟩ :=
+        Healing.stored_fast_lock_provenance hr hrun.vstart hz r l₀ hl₀' hlf
+      rw [hr.coherent.1 hL (hPhiU hB) (hLr.trans hBr.symm)] at hLD
+      obtain ⟨ell', hc', hD⟩ := Healing.fastLock_mem hfl
+      obtain rfl : ell' = ℓ' := Option.some.inj (hc'.2.symm.trans hcr.2)
+      obtain ⟨hPhi', hPhiU'⟩ := AC.frameIn_of_callAt hr hz hc'
+      have hrt : tr.time r' ≤ tr.time r := hrun.time_mono hrk.le
+      exact ⟨r', hrk, D,
+        Or.inl ⟨CV, (Healing.Growing.fastLockAt_upTo_iff hrun.time_mono hrt).mp hfl⟩,
+        Anc.mono hU' ((hvB.2.mono hPhiU).trans
+          (hLD.trans ((AC.viableAncestor_anc hPhi' hD).2.mono hPhiU')))⟩
   have hrt : tr.time r' ≤ tr.time r := hrun.time_mono hrk.le
-  have hflt : AC.FastLockAt tr.projAC z r' l₀.slot D CV :=
-    (Healing.Growing.fastLockAt_upTo_iff hrun.time_mono hrt).mp hfl
   have hzr : z ∈ H (tr.time r') := hrun.antitone hrt hz
   obtain ⟨hpH, i, ell₂, dd, pay, hci, hcall, hdd, hti, hpar, -⟩ := hP
   change tr.time i = sp.ts s at hti
@@ -240,7 +262,7 @@ theorem crossed_parents_above_upTo_at {g ΔF a b : Time}
   have hRs : Healing.drainTime sp a ≤ sp.ts s := by
     rw [Healing.drainTime_eq]; exact (AC.ts_le_iff sp).2 (by push_cast; omega)
   have hQ : Anc (tr.HonestBlocksAt H) D dd.head → ∃ Pr ∈ tr.HonestBlocksAt H,
-      P.parent = some Pr.root ∧ Anc (tr.HonestBlocksAt H) (ell.frame.viableAncestor B) Pr := by
+      P.parent = some Pr.root ∧ Anc (tr.HonestBlocksAt H) C Pr := by
     intro hDQ
     have h0i := hrun.time_nonneg i
     have hri := (Compose.goldilocks_ac_projection_from (hrun.upTo h0i) (hnc.upTo _)).localRun
@@ -254,13 +276,13 @@ theorem crossed_parents_above_upTo_at {g ΔF a b : Time}
       · exact he ▸ hst'
       · exact (Anc.mem hsQ he).2
     exact ⟨dd.head, RunTrace.honestBlocks_upTo_subset hrun.time_mono h0i (hPhiPU hQt), hpar,
-      hXD.trans hDQ⟩
+      hCB.trans (hXD.trans hDQ)⟩
   have hclean : l₀.slot + 2 ≤ s → Anc (tr.HonestBlocksAt H) D dd.head := fun h2 =>
-    hp.clean_source_proposal_parent_before_at hzr hpi (Or.inl ⟨CV, hflt⟩) hlab h2 hrb hRs
+    hp.clean_source_proposal_parent_before_at hzr hpi hsrc hlab h2 hrb hRs
       hci hcall hdd hti hib
-  rcases hflt with hup | hop
-  · obtain ⟨-, -, ⟨-, -, ht, -⟩, -⟩ := hup
-    have ht' : tr.time r' = sp.ts l₀.slot + 6 * sp.Δ := ht
+  -- a regular write (fast update or slow lock) is at `t_{s'} + 6Δ`, so before `t_{s'+2}`
+  have hreg : tr.time r' = sp.ts l₀.slot + 6 * sp.Δ → Anc (tr.HonestBlocksAt H) D dd.head := by
+    intro ht'
     have h2 : l₀.slot + 2 ≤ s := by
       have hlt : sp.ts (l₀.slot + 1 : Nat) < sp.ts s := by
         have : sp.ts (l₀.slot + 1 : Nat) = sp.ts l₀.slot + 4 * sp.Δ := by
@@ -268,7 +290,10 @@ theorem crossed_parents_above_upTo_at {g ΔF a b : Time}
         linarith
       have := (AC.ts_lt_iff sp).1 hlt
       omega
-    exact hQ (hclean h2)
+    exact hclean h2
+  rcases hsrc with ⟨CV, hup | hop⟩ | hsl
+  · obtain ⟨-, -, ⟨-, -, ht, -⟩, -⟩ := hup
+    exact hQ (hreg ht)
   · rcases Nat.lt_or_ge (l₀.slot + 1) s with h2 | h1
     · exact hQ (hclean (by omega))
     · have hsl : sp.slot (tr.time r') = l₀.slot := hop.choose_spec.choose_spec.2.1
@@ -276,6 +301,8 @@ theorem crossed_parents_above_upTo_at {g ΔF a b : Time}
       obtain rfl : s = l₀.slot + 1 := by omega
       exact hQ (hp.clean_optimistic_proposal_parent_at hzr hpi hop hlab hrb hRs hci hcall hdd
         hti hib)
+  · obtain ⟨-, -, ⟨-, -, ht, -⟩, -⟩ := hsl
+    exact hQ (hreg ht)
 
 end Consensus.Goldilocks.Obligations.Growing
 

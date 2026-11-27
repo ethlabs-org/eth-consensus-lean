@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.RootBound
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.MemberTiming
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalMembers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalPasses
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
@@ -72,9 +74,22 @@ theorem reset_vote_root_below_proposal_at {cm : Time → Finset (Fin sp.n)} {βK
       (Store.tree_grows _ _ _ _ (fg_reachable_at hp.run (hp.run.time_nonneg k)
         (fun q hq => hp.run.time_mono hq.le) hpk)).1 P _ (hp.run.cutLaw p k _ hacc hpk).2.1]
     exact Set.mem_insert _ _
-  apply hp.reset_vote_root_below_bound_at hR hPU (fun x r l O ho hrt _ => ?_) hy hcy hes hjb
-  exact (hp.reset_proposal_passes_at hpi hR hci hcall hd hti hib O ⟨x, r, l, ho, hrt⟩).trans
-    (.single ⟨hQU, hPU, hPQ⟩)
+  have hjupper : tr.time j ≤ sp.ts u + sp.Δ := by
+    have hr := hac.localRun.upTo (hp.run.time_nonneg j)
+    have hcy' := AC.upTo_castAt.mpr (And.intro le_rfl hcy)
+    have hsl := (AC.castAt_specU hr.toU hy hcy').2.1
+    change e.msg.slot = sp.slot (tr.time j) at hsl
+    have ht := AC.vote_time_leU hr.toU hy ⟨elly, hcy'⟩
+    change tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ at ht
+    simpa only [← hsl, hes] using ht
+  exact hp.reset_vote_root_below_bound_at hR hPU
+    (fun x r l O ho hrt _ =>
+      (hp.reset_proposal_passes_at hpi hR hci hcall hd hti hib O ⟨x, r, l, ho, hrt⟩).trans
+        (.single ⟨hQU, hPU, hPQ⟩))
+    (fun hc C s hC hs =>
+      (hp.reset_proposal_passes_member_before_at hc hpi hR hci hcall hd hti hib
+        (hp.member_before_proposal_of_cast_deadline_at hti hjupper hC hs) hs).trans
+          (.single ⟨hQU, hPU, hPQ⟩)) hy hcy hes hjb
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 

@@ -395,6 +395,62 @@ theorem result_compatible_at {i : Nat} (hinv : OutageVoteInv D i) {y : Fin sp.n}
 
 end OutageVoteInv
 
+/-- **An unpolluted result has an honest extending supporter**: the result `C` of an update of a
+label `m ≤ j₀` or `m ≥ r` by a node honest at it has a counted supporter honest at the update,
+whose vote, cast at an earlier cut at which it was honest, is of slot `m` and extends `C`. The
+count is the one of `result_compatible_at`: the slot-`m` committee members honest at the update
+and awake and joined at `t_m + Δ` are voters there (pre-`b₀` service for `m ≤ j₀`, `PG` for
+`m ≥ r`), and outnumber its compromised members. -/
+theorem result_extending_vote_at (D : OutageLockPremises tr H proposer dg ini) {y : Fin sp.n}
+    {k m : Nat} (hy : y ∈ H (tr.time k)) {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    {CV : Set (Vote sp.n)} (hR : AC.ResultAt tr.projAC y k m C CV) (hm : m ≤ D.j₀ ∨ D.r ≤ m) :
+    ∃ x j e, j < k ∧ HVoteAt tr H x j e ∧ e.msg.slot = m ∧
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg C := by
+  obtain ⟨ℓ, hu, -, -⟩ := id hR
+  have ht : tr.time k = sp.ts m + 6 * sp.Δ := hu.2.2.1
+  have hΔ : 0 < sp.Δ := sp.toParams.hΔ
+  have hcall : ∃ x i, x ∈ H (tr.time i) ∧ tr.IsCall x i ∧ tr.time k ≤ tr.time i :=
+    ⟨y, k, hy, ⟨_, projAC_callAt.1 hu.1⟩, le_rfl⟩
+  have hmemCV : ∀ v ∈ CV, v.val ∈ D.K.committee m := by
+    obtain ⟨ℓ', -, -, hCV⟩ := id hR
+    intro v hv
+    rw [hCV] at hv
+    exact D.facts.hP.1 (tr.time k) y hy k (fun _ hk' => D.hrun.time_mono hk'.le) m v hv.1
+  have hslot : (D.K.committee m ∩ (H (tr.time k))ᶜ).ncard <
+      (D.K.committee m ∩ {x | x ∈ H (tr.time k) ∧ tr.projAC.awake x (sp.ts m + sp.Δ) ∧
+        AC.JoinedAt tr.projAC x (sp.ts m + sp.Δ)}).ncard :=
+    (D.hBK _ hcall).slotK m (tr.time k) (Nat.zero_le _) (by rw [ht]; linarith) le_rfl ht.le
+  have hT : D.K.committee m ∩ {x | x ∈ H (tr.time k) ∧ tr.projAC.awake x (sp.ts m + sp.Δ) ∧
+      AC.JoinedAt tr.projAC x (sp.ts m + sp.Δ)} ⊆
+      AC.voters {v | v ∈ (tr.projAC.state y k).pool m} := by
+    rcases hm with hm | hm
+    · -- the voters awake and joined at `t_m + Δ` reach the update by the early cutoff `≤ b₀`
+      have hd := D.hrun.time_nonneg k
+      have hsvc := (SleepyServiceBefore.upTo D.hrun D.hpreSvc hd).ac
+      have hmb : sp.ts m + 2 * sp.Δ ≤ D.b₀ :=
+        le_trans (by linarith [ts_le_ts (sp := sp) hm]) D.hj₀.1
+      intro x hx
+      obtain ⟨hxK, hx, hwj⟩ := hx
+      obtain ⟨hw, hj⟩ := (mem_awakeJoined_projAC D.hrun).1 hwj
+      have h := awake_participant_early (D.hrun.upTo hd) (D.hnc.upTo _) hsvc
+        (le_min hmb (by rw [ht]; linarith)) hy
+        (by rw [RunTrace.upTo_projAC]; exact (ac_updateAt_upTo D.hrun.time_mono).mpr ⟨le_rfl, hu⟩)
+        hx (mayVote_upTo D.hrun (mayVote_of_committee D.facts.hGate hd hx hxK))
+        ⟨hw, by rw [ht]; linarith⟩
+        (joinedAt_upTo hj)
+      rwa [RunTrace.upTo_projAC, projAC_upTo_state D.hrun le_rfl] at h
+    · intro x hx
+      obtain ⟨hxK, hx, hwj⟩ := hx
+      obtain ⟨hw, hj⟩ := (mem_awakeJoined_projAC D.hrun).1 hwj
+      exact OutageVoteInv.voter_of_ready D hy hu hm (D.hrun.antitone (by rw [ht]; linarith) hx)
+        hxK hw hj
+  obtain ⟨v, hv, hvT⟩ := Compose.exists_counted_of_participants hR hT hslot
+  have hvH : v.val ∈ H (tr.time k) :=
+    hvT.elim (fun h => h.2.1) fun h => not_not.1 fun hn => h ⟨hmemCV v hv, hn⟩
+  obtain ⟨j, hj, e, hve, rfl, hvs, R, hRU, hRr, hCR⟩ :=
+    counted_honest_vote_at D.hrun D.hnc hy hR hv hvH
+  exact ⟨e.msg.val, j, e, hj, hve, hvs, R, hRU, hRr, hCR⟩
+
 end Consensus.Goldilocks.Compose.Growing
 
 end

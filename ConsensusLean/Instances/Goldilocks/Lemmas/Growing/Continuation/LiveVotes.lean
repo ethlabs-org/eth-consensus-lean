@@ -305,7 +305,7 @@ theorem seeded_vote_anchor
         (by change l.slot ≠ sp.slot (tr.time j); rw [hsj]; exact hls)
     have hlr : r ≤ l₁.slot := by
       rw [← hs₁]
-      exact handover_live_lock_label_at hS.seed hy hcy (by omega)
+      exact handover_live_lock_label_at hS.seed.toHandoverCore hy hcy (by omega)
         ({ l with block := (ℓy.frame.viableAncestor B).root } : AC.Lock)
         ⟨l, hl, B, hB, hBr, hlive, rfl⟩
     obtain rfl : B' = B := hΦ.coherent.1 hB' hB (hB'r.trans hBr.symm)

@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksBridge
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.GoldilocksHealing
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Supply.CappedOrigins
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.CommitteeFaults
@@ -82,15 +83,24 @@ theorem goldilocks_report_origin {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (_hr : IsReset tr H g a) (_hab : a ≤ b) (hy : y ∈ H (tr.time i)) (_hib : tr.time i ≤ b)
-    (hR : ReportAt tr y i R) (_hh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
+    (hcap : OriginInCap sp.toParams sp.deepDepth g (tr.time i))
+    (hR : ReportAt tr y i R) (hh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
     ∃ r ≤ i, ∃ j B, y ∈ H (tr.time r) ∧
       (tr.JoinedAt y (tr.time r) ∧ ∃ CV, Compose.StoredFastLockAt tr y r j B CV) ∧
       B ∈ (tr.state y r).fg.tree ∧ Anc (tr.HonestBlocksAt H) R B := by
   have hr := ((goldilocksRunInterface_run_iff cm).mp hrun).1
   have hnc := hp.noColl
   obtain ⟨ℓ, hto⟩ := (reportAt_iff_toFGAt hr hy).mp hR
-  obtain ⟨r, hri, j, ellw, D, CV, hyr, hcw, hD, hfl, hRB⟩ :=
-    Healing.Growing.toFG_fast_candidate_origin_at hr hnc hy hto
+  obtain ⟨r, hri, j, ellw, D, CV, hyr, hcw, hD, hfl, hRB⟩ | hdeep
+    := Healing.Growing.toFG_fast_candidate_origin_at hr hnc hy hto
+  swap
+  · have hfast := high_report_fast_of_cap hr hp hy hto hh (goldilocks_origin_cap_bound hcap)
+    rw [← Compose.Growing.projAC_state_at hr hy] at hfast
+    obtain ⟨hΦ, -⟩ := Healing.Growing.frame_tree_subset_at hr hnc hy hto.1
+    obtain ⟨B, hB⟩ := AC.exists_deepest hΦ (fun C hC => hC.1.1) ⟨R, hfast⟩
+    obtain ⟨_, _, _, hn, -⟩ := hdeep
+    rw [hn] at hB
+    cases hB
   have hj : tr.JoinedAt y (tr.time r) :=
     (Healing.Growing.joinedAt_upTo_iff le_rfl).mp
       (Healing.joinedAt_of_fastLockAt (hr.upTo (hr.time_nonneg r)) (hnc.upTo _) hyr
@@ -192,6 +202,7 @@ theorem goldilocks_ac_healing {Rg : Nat} (hδ : 3 + (G + 3) / 4 ≤ sp.toParams.
       follow := 3 + (G + 3) / 4
       reportDelay := G
       drain := 2 * sp.k + 5
+      deepBudget := sp.deepDepth
       Origin := fun tr x i j B => tr.JoinedAt x (tr.time i) ∧
         ∃ CV, Compose.StoredFastLockAt tr x i j B CV
       follow_le := fun _ _ => hδ
@@ -200,10 +211,10 @@ theorem goldilocks_ac_healing {Rg : Nat} (hδ : 3 + (G + 3) / 4 ≤ sp.toParams.
       report_follow := goldilocks_report_follow
       report_origin := goldilocks_report_origin
       origins_comparable := goldilocks_origins_comparable
-      heal_after_reset := fun hβ hr hp hres hab _ =>
-        goldilocks_heal_after_reset hβ hr hp hres hab }
+      heal_after_reset := fun hβ hr hp hres hab hbudget _ =>
+        goldilocks_heal_after_reset hβ hr hp hres hab hbudget }
   exact ⟨goldilocksRunInterface sp ro sign G, O, goldilocksRunInterface_data,
-    rfl, rfl, rfl, rfl, rfl⟩
+    rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 end Consensus.Goldilocks.Generic
 

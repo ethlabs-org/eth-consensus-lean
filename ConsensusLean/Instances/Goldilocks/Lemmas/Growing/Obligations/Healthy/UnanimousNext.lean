@@ -7,6 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.OriginLabel
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.SameSlot
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionOrigins
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionMembers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Next
@@ -49,8 +50,9 @@ the run, `ResetService`, `Catch(2Δ)` and `ḡ ≤ t_u`, with its remaining inpu
 
 Under the reset premises the votes come from `honest_votes_in_slot_at`, the fault bound from the
 restart cutoff, and the fork-choice root and floor from the reset (`reset_vote_root_below_bound_at`,
-`reset_vote_floor_above_old_at`, with the old-origin bound `high_origins_before_next_slot_below_at`
-of `Healing/SelectionOrigins`). Each node is honest at its own cut. -/
+`reset_vote_floor_above_old_or_covered_at`, with the old-origin bound
+`high_origins_before_next_slot_below_at` of `Healing/SelectionOrigins`). Each node is honest at its
+own cut. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
@@ -147,9 +149,13 @@ theorem unanimous_next_optimistic_compatible_at
       (by have := (AC.ts_le_iff sp).2 (show (u : Int) ≤ (u + 1 : Nat) by omega)
           linarith [sp.toParams.hΔ]) (hti.trans hib)
       (hp.run.time_nonneg i) hib)
-    (fun _ _ _ _ hy hcast hs hjb => hp.reset_vote_root_below_bound_at hR hP hbound hy hcast hs hjb)
+    (fun _ _ _ _ hy hcast hs hjb => hp.reset_vote_root_below_bound_at hR hP hbound
+      (fun hcover C s hC hsu => healed_members_through_slot_below_at hp hcover
+        hP hun hgu hR hub C s hC.healedOrigin (by omega)) hy hcast hs hjb)
     (fun _ _ _ _ hy hcast hs hjb hstore =>
-      hp.reset_vote_floor_above_old_at hy hR hcast hs hjb hstore hbound) hy hopt hjb
+      hp.reset_vote_floor_above_old_or_covered_at hy hR hcast hs hjb hstore hbound
+        (fun hcover C s hC hsu => healed_members_through_slot_below_at hp hcover
+          hP hun hgu hR hub C s hC.healedOrigin (by omega))) hy hopt hjb
 
 end Consensus.Goldilocks.Healing.Growing
 

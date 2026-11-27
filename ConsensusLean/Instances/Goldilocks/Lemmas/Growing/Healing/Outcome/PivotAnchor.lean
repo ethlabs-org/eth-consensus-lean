@@ -24,13 +24,15 @@ other live locks and the finalized root are bounded by the supplied historical p
 theorem reset_vote_anchor_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {u : Nat} {P Q D : AC.Blk sp.n (List (FG.Att sp.n))}
+    {u j : Nat} {P Q D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPU : P ∈ tr.HonestBlocksAt H) (hR : drainTime sp a ≤ sp.ts u)
     (hPQ : P.parent = some Q.root) (hQU : Q ∈ tr.HonestBlocksAt H)
     (hDQ : Anc (tr.HonestBlocksAt H) D Q) (hDU : D ∈ tr.HonestBlocksAt H)
     (hDold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
       Anc (tr.HonestBlocksAt H) O D)
-    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
+    (hDcov : HighSourceCover tr H g a b → ∀ C s, HealedMemberBefore tr H g a b C s j → s < u →
+      Anc (tr.HonestBlocksAt H) C D)
+    {y : Fin sp.n} (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcy : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
     (hE : ∀ x j' e', x ∈ H (tr.time j') → j' < j → AC.VoteAt tr.projAC x j' e' →
@@ -55,7 +57,7 @@ theorem reset_vote_anchor_at
   rcases haS with ⟨_, l', hl', hl'r⟩ | haf
   swap
   · rw [Set.mem_singleton_iff.1 haf]
-    exact Or.inl (hp.reset_vote_root_below_bound_at hR hDU hDold hy hcy hes hjb)
+    exact Or.inl (hp.reset_vote_root_below_bound_at hR hDU hDold hDcov hy hcy hes hjb)
   obtain ⟨l, hl, B, hB, hBr, hlive, rfl⟩ := hl'
   obtain rfl : an = ell.frame.viableAncestor B :=
     hPhi.coherent.1 hat (AC.viableAncestor_anc hPhi hB).1 hl'r.symm

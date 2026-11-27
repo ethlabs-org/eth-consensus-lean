@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.DeepQuarantine
 
 public section
 
@@ -125,14 +126,16 @@ theorem high_of_anc_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- **A high report has a stored high origin written before it**, under growing faults: the
 report's block `C` of a node honest at its report and at `c_z` is below the stored viable image
-`O` of an earlier fast-lock write of the same node, and `O` is high as `C ⪯ O` is. -/
-theorem high_report_origin_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+`O` of an earlier fast-lock write of the same node, and `O` is high as `C ⪯ O` is. This is the
+form inside the deep quarantine (`hq`); past it use `high_source_cover_at`. -/
+theorem high_report_origin_of_quarantine_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {z : Fin sp.n} {r : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time r)))
     {ell : ACLabel (goldilocksNode sp ro)}
     {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hrep : AC.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
-    (hhC : HZ tr H g + 1 ≤ ((tr.state z r).fg.σ C.root).h) :
+    (hhC : HZ tr H g + 1 ≤ ((tr.state z r).fg.σ C.root).h)
+    (hq : ∀ D, sp.deepDepth = some D → tr.time r ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
     ∃ io < r, ∃ jo O D CV, HighOrigin tr H g z io jo O ∧ tr.time io ≤ b ∧
       AC.FastLockAt tr.projAC z io jo D CV ∧ Anc (tr.HonestBlocksAt H) C O ∧
       Anc (tr.HonestBlocksAt H) O D := by
@@ -145,7 +148,13 @@ theorem high_report_origin_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hr := (Compose.goldilocks_ac_projection_from hrun' (hnc.upTo _)).localRun
   have hrep' := (toFGAt_upTo_iff hrun.time_mono le_rfl).mpr hrep
   obtain ⟨hpc, _, hC'⟩ := hrep'
-  obtain ⟨hCv, l, hl, hlb, hlf, _⟩ := AC.toFG_candidate hC'
+  -- before the deep quarantine ends (`b ≤ c_z + 4DΔ`) the high source is a fast-lock candidate
+  have hcand := Healing.Growing.KernelProof.high_toFG_fast_at hrun hnc
+    (hp.snapshot.imp fun _ h => h.1) hzz hrep hhC hq
+  rw [← Compose.Growing.projAC_state_at hrun hz,
+    ← Compose.Growing.projAC_upTo_state hrun (d := tr.time r) le_rfl,
+    ← RunTrace.upTo_projAC] at hcand
+  obtain ⟨hCv, l, hl, hlb, hlf, _⟩ := hcand
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, _, rfl⟩ := hl
   obtain ⟨io, hio, CV, ellw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
     Healing.stored_fast_lock_provenance hr hrun.vstart hz r l₀ hl₀ hlf

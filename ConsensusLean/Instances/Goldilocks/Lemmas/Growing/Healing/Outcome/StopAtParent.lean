@@ -2,6 +2,8 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Floor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Frames
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.SuffixBest
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.MemberTiming
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalMembers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.StopCore
@@ -35,7 +37,10 @@ theorem reset_parent_viable_of_children_at
     (hPv : P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame u))
     (hBv : B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame u))
     (hQold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
-      Anc (tr.HonestBlocksAt H) O Q) : Q ∈ ell.frame.viableHeads := by
+      Anc (tr.HonestBlocksAt H) O Q)
+    (hQcovered : HighSourceCover tr H g a b → ∀ C s,
+      HealedMemberBefore tr H g a b C s j → s < u → Anc (tr.HonestBlocksAt H) C Q) :
+    Q ∈ ell.frame.viableHeads := by
   have hU := Compose.Growing.honest_blocks_coherent hp.run hp.noColl
   have hPhi := Outcome.frame_realized hp.run hy hc.1
   have hPhiU := Outcome.frame_tree_subset hp.run hy hc.1
@@ -43,7 +48,7 @@ theorem reset_parent_viable_of_children_at
     hPv.1.1 hPv.2.1 hBv.1.1 hBv.2.1
   rw [Outcome.frame_of_call hp.run hy hc.1] at hQt hfQ' ⊢
   exact ⟨hQt.1, hQt.2, hfQ'.mono (fun X hX => hX.1),
-    hp.reset_vote_floor_above_old_at hy hR hc hes hjb hQt.1 hQold⟩
+    hp.reset_vote_floor_above_old_or_covered_at hy hR hc hes hjb hQt.1 hQold hQcovered⟩
 
 open Regimes.Growing (hold)
 
@@ -149,6 +154,11 @@ theorem reset_stop_at_parent_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     have hQvy := hp.reset_parent_viable_of_children_at hy hR hcy hes hjb (hPhiU hQt) hPQ hBQ
       hBP hPv hB (fun x r l O ho ht _ => hp.reset_proposal_passes_at hpI hR hci hcall hd
         hti hib O ⟨x, r, l, ho, ht⟩)
+      (fun hc C t hC ht => hp.reset_proposal_passes_member_before_at hc hpI hR hci hcall hd
+        hti hib (hp.member_before_proposal_of_cast_deadline_at hti (by
+          have htime := AC.vote_time_leU hr.toU hy ⟨elly, hcy'⟩
+          change tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ at htime
+          simpa only [hsj] using htime) hC ht) ht)
     exact hp.reset_old_child_ineligible_at hpH hdesignated hactual hPs hci hcall hd hti
       hpay hPQ hy hcy hes hib hjb hPv.1.1 hg hgi hgj hjoi hjoj hQt hQv hQvy hB hBQ hBs
   refine ⟨⟨⟨hPv, hPQ, Or.inr (Or.inl (hPs.trans hsj.symm))⟩, ?_⟩, ?_⟩

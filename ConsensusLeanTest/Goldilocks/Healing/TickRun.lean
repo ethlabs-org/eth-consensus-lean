@@ -102,10 +102,10 @@ theorem reset_bundle :
 
 /-- (b) **HR.1 on the tick run** at `g = 0`, `Δ_F = 1`, with `c_z = 12` and `H_z = 3`. Part (a):
 every honest attestation signed at or before `12` has height `≤ 3`, and from `12` on `ac_to_fg`
-returns live fast locks; part (b): a chain of state height `≥ 5` carries an honest attestation of
-height `4`; part (c), at the reset `a_z = 16`: `12 < 16`, the honest pairs of height `≥ 4` are
-signed from `16` on, the rows signed at `16` have height `≤ 4`, and the first clause of (K1)
-holds with `T₀ = 16 − Δ = 15`. -/
+returns live fast locks (deep sources are off at `sp1`, so HR.1 (a)'s deep arm is empty); part
+(b): a chain of state height `≥ 5` carries an honest attestation of height `4`; part (c), at the
+reset `a_z = 16`: `12 < 16`, the honest pairs of height `≥ 4` are signed from `16` on, the rows
+signed at `16` have height `≤ 4`, and the first clause of (K1) holds with `T₀ = 16 − Δ = 15`. -/
 theorem tickRun_cutAndReset :
     (12 : Time) ≤ 0 + 12 * sp1.Δ ∧
     (∀ y ∈ (Set.univ : Set (Fin sp1.n)), ∀ k att, (tickRun N1 dg1).SignAt y k att →
@@ -136,7 +136,9 @@ theorem tickRun_cutAndReset :
     tickRun_goldilocksRun (tickRun_healthy 0) (dg1_noColl _)
   rw [cutZ_zero, hz_zero, gbar_zero] at h
   obtain ⟨h1, h2, h3, h4, h5⟩ := h
-  exact ⟨h1, h2, h3, h4, h5 16 reset_bundle.1⟩
+  exact ⟨h1, h2, fun x hx i ℓ C hto hi =>
+    (h3 x hx i ℓ C hto hi).resolve_right fun ⟨_, _, hD, _⟩ => (nomatch hD), h4,
+    h5 16 reset_bundle.1⟩
 
 end Consensus.Goldilocks.Witness.One
 

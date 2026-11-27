@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.RootSources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.HighFloor
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Frames
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
@@ -21,8 +23,9 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 variable {hold : Time}
 
 /-- The held-target proposal domain, with the high floor source of the proposal call as an
-explicit input. -/
-theorem held_target_proposal_domain_before_of_sources_at
+explicit input, with the high-source cover: the floor source may be a covered entry, and the
+target is compared with the healed members too (`CompatibleWithOrigins`). -/
+theorem held_target_proposal_domain_before_of_sources_covered_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x p : Fin sp.n} {r i u : Nat} (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
@@ -35,16 +38,17 @@ theorem held_target_proposal_domain_before_of_sources_at
     (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree)
     (hseed : ∃ v q m S, HighOrigin tr H g v q m S ∧ tr.time q < sp.ts u ∧
       Compatible (tr.HonestBlocksAt H) B S)
-    (hcompare : ∀ v q m O, q < i → HighOrigin tr H g v q m O →
-      Compatible (tr.HonestBlocksAt H) B O)
+    (hcompare : ResetPremisesUpTo.CompatibleWithOrigins tr H g a b i (sp.slot (tr.time i)) B)
     (hfloorSource : ∀ v q m S, HighOrigin tr H g v q m S → tr.time q ≤ b →
       ((tr.state v q).fg.σ S.root).h < (tr.state p i).fg.headHeightFloor →
-      ∃ z q' n O E, q' < i ∧ HighOrigin tr H g z q' n O ∧ n < u ∧
+      (∃ z q' n O E, q' < i ∧ HighOrigin tr H g z q' n O ∧ n < u ∧
         E ∈ (tr.state p i).fg.tree ∧ Anc (tr.HonestBlocksAt H) E O ∧
         Anc (tr.HonestBlocksAt H) S O ∧
-        (tr.state p i).fg.headHeightFloor ≤ ((tr.state p i).fg.σ E.root).h) :
+        (tr.state p i).fg.headHeightFloor ≤ ((tr.state p i).fg.σ E.root).h) ∨
+      (∃ E ∈ (tr.state p i).fg.tree, CoveredBefore tr H g a b (sp.slot (tr.time i)) i E ∧
+        (tr.state p i).fg.headHeightFloor ≤ ((tr.state p i).fg.σ E.root).h)) :
     Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨ B ∈ ell.frame.viableTree ell.frame.tree := by
-  have hroot := held_target_proposal_root_before_at hp hx hpH hBx hci hcall hd hti hib
+  have hroot := held_target_proposal_root_before_covered_at hp hx hpH hBx hci hcall hd hti hib
     hheld hseed hcompare
   by_cases hcovered : Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot
   · exact Or.inl hcovered
@@ -91,10 +95,27 @@ theorem held_target_proposal_domain_before_of_sources_at
         (fun _ hq => hp.run.time_mono hq.le) hv ht hle hpH hSsrc
         ((frame_tree_subset_at hp.run hp.noColl hpH hci).2 hSt)]
       exact hSf
-    · obtain ⟨z, q', n, O, E, hqi, ho, hn, hE, hEO, _, hEf⟩ :=
-        hfloorSource v q m S hS (hqt.le.trans (hti ▸ hib)) (lt_of_not_ge hSf)
+    · rcases hfloorSource v q m S hS (hqt.le.trans (hti ▸ hib)) (lt_of_not_ge hSf) with
+        ⟨z, q', n, O, E, hqi, ho, hn, hE, hEO, _, hEf⟩ | ⟨E, hE, hcov, hEf⟩
+      swap
+      · -- a covered floor entry: the target is below it (S1 against its member, and height)
+        obtain ⟨hc, C, s, hC, hsl, hEC⟩ := coveredBefore_iff.1 hcov
+        have hBE : Anc (tr.HonestBlocksAt H) B E := by
+          have hBC := (ResetPremisesUpTo.compatibleWithOrigins_iff.1 hcompare).2 hc C s hC hsl
+          rcases Compose.Growing.compatible_of_anc_left hac.localRun.coherent hEC hBC.symm with
+            h | h
+          · have hh := h_le_of_store_anc hreach
+              (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hpH h hBy)
+            omega
+          · exact h
+        have hEt : E ∈ ell.frame.tree := by
+          rw [hfr]
+          rw [hfr] at hBt
+          exact ⟨hE, hBt.2.trans
+            (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hpH hBE hE)⟩
+        exact ⟨E, hEt, hBE, hEf⟩
       have hBO : Anc (tr.HonestBlocksAt H) B O := by
-        rcases hcompare z q' n O hqi ho with h | h
+        rcases (ResetPremisesUpTo.compatibleWithOrigins_iff.1 hcompare).1 z q' n O hqi ho with h | h
         · exact h
         · have hh := h_le_of_store_anc hreach
             (store_anc_of_honest_anc_at hp.run hp.noColl ht hle hpH (hEO.trans h) hBy)
@@ -131,9 +152,9 @@ theorem held_target_proposal_domain_before_of_sources_at
   rw [hfr] at hrootC ⊢
   exact ⟨hCf.1, hCf.2, Anc.mono (fun _ h => h.1) hrootC, hCv⟩
 
-/-- The held-target proposal domain, with independently honest source holder and proposer;
-the floor source is `high_floor_source_at_proposal_at`. -/
-theorem held_target_proposal_domain_before_at
+/-- The held-target proposal domain, with the high-source cover (`CompatibleWithOrigins`
+for the target). -/
+theorem held_target_proposal_domain_before_covered_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x p : Fin sp.n} {r i u : Nat} (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
@@ -146,12 +167,11 @@ theorem held_target_proposal_domain_before_at
     (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree)
     (hseed : ∃ v q m S, HighOrigin tr H g v q m S ∧ tr.time q < sp.ts u ∧
       Compatible (tr.HonestBlocksAt H) B S)
-    (hcompare : ∀ v q m O, q < i → HighOrigin tr H g v q m O →
-      Compatible (tr.HonestBlocksAt H) B O) :
-    Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨ B ∈ ell.frame.viableTree ell.frame.tree := by
-  exact held_target_proposal_domain_before_of_sources_at hp hx hpH hBx hci hcall hd hti hib
-    hheld hseed hcompare (fun _ _ _ _ ho hrb hfloor =>
-      high_floor_source_at_proposal_at hp ho hpH hci hcall hti hrb hib hfloor)
+    (hcompare : ResetPremisesUpTo.CompatibleWithOrigins tr H g a b i (sp.slot (tr.time i)) B) :
+    Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨ B ∈ ell.frame.viableTree ell.frame.tree :=
+  held_target_proposal_domain_before_of_sources_covered_at hp hx hpH hBx hci hcall hd hti hib
+    hheld hseed hcompare fun _ _ _ _ ho hrb hfloor =>
+      high_floor_source_at_proposal_or_covered_at hp ho hpH hci hcall hti hrb hib hfloor
 
 end Consensus.Goldilocks.Healing.Growing.ProposalImpl
 

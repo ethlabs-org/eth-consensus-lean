@@ -1,5 +1,6 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Seed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.Seed
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Count
@@ -40,7 +41,7 @@ field. After `T`, the caller's tick at `t_{r−k−3}` is an earlier call whose 
 later one, hence below `S`; there `S` is in the frame, so in the FG tree, which only grows. -/
 theorem seed_held_through_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
+    (hseed : HandoverCore tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
       (hTb : T ≤ b) :
     ∃ x i j B, Healing.Growing.HighOrigin tr H g x i j B ∧ tr.time i ≤ b ∧
       ∀ y c (ell : ACLabel (goldilocksNode sp ro)), y ∈ H (tr.time c) →

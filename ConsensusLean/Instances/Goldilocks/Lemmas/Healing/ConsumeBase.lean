@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Source
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Projection.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Relay
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -85,15 +86,8 @@ theorem slot_le_of_anc {S : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (hS : Cohere
 
 /-- The block that `ac_to_fg` returns is in the frame of the call. -/
 theorem toFG_mem_frame {FGP : Type} {A : AC.ACState sp.n} {Φ : AC.Frm sp.n FGP}
-    {t : Time} {C : AC.Blk sp.n FGP} (h : (AC.acToFG sp A Φ t).2 = some C) : C ∈ Φ.tree := by
-  unfold AC.acToFG at h
-  split_ifs at h
-  split at h
-  · cases h
-  · rename_i C' hC'
-    split_ifs at h
-    cases h
-    exact (AC.deepest_mem hC').1.1.1
+    {t : Time} {C : AC.Blk sp.n FGP} (h : (AC.acToFG sp A Φ t).2 = some C) : C ∈ Φ.tree :=
+  (AC.toFG_source h).1.1
 
 /-- A source of an honest node is in its FG tree. -/
 theorem toFG_mem_tree {ini} (hrun : GoldilocksRun proposer dg H tr ini)

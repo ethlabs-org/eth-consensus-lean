@@ -21,8 +21,8 @@ theorem goldilocks_highCanonicalSupply (S : Setup) {E : Env V}
     {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (Model.pubOf E) hn) (S.ro _))
       (goldilocksRunMap S rho hn hv).signer fgHold) {ΔF : Time} :
     HighCanonicalSupply (goldilocksRunMap S rho hn hv) K C ΔF := by
-  intro hβ _ _ _ _ _ hr hp ha hab
-  exact highCanonical C.healing hβ hr hp ha hab
+  intro hβ _ _ _ _ _ hr hp ha hab hbudget
+  exact highCanonical C.healing hβ hr hp ha hab hbudget
 
 end Consensus.Goldilocks.Simulation
 

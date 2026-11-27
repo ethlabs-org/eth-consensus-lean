@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.So
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.High
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Compatible.Later
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HalfCommittee
@@ -105,6 +106,28 @@ theorem clean_source_compatible_high_origin_at
     rcases hEC with h | h
     · exact Or.inr (hDE.trans h)
     · exact AC.anc_total hU h hDE
+
+/-- **A clean raw source compares with every healed member, under the cover.** A clean source of
+label at least the origin floor is itself a member of the healed family (an origin), so S1 makes it
+compatible with every member written through the horizon, and a block below it is too. -/
+theorem clean_source_compatible_healed_at
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {x : Fin sp.n} {r s : Nat} (hx : x ∈ H (tr.time r))
+    {C R : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
+    (hC : AC.ResultAt tr.projAC x r s C CV ∨ AC.OptimisticLockAt tr.projAC x r s C CV)
+    (hs : cleanLabel sp a + 2 * sp.k + 1 ≤ s) (hrb : tr.time r ≤ b)
+    (hRC : Anc (tr.HonestBlocksAt H) R C) (hc : HighSourceCover tr H g a b)
+    {D : AC.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
+    (hD : Compose.Growing.HealedOrigin tr H g (healedLockFloor sp a) (healedOriginFloor sp a) D j
+      b) : Compatible (tr.HonestBlocksAt H) R D := by
+  have hCmem : Compose.Growing.HealedOrigin tr H g (healedLockFloor sp a) (healedOriginFloor sp a)
+      C s b :=
+    Compose.Growing.HealedOrigin.of_origin
+      (by simp only [healedOriginFloor, healedLockFloor]; omega)
+      (Compose.Growing.originWithin_iff.2 ⟨x, r, CV, hx, hrb, hC⟩)
+  exact Compose.Growing.compatible_of_anc_left
+    (Compose.Growing.honestBlocksAt_coherent hp.run hp.noColl) hRC (hc.s1 C s D j hCmem hD)
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 

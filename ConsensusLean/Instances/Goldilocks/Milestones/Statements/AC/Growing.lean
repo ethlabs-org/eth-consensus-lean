@@ -172,8 +172,12 @@ def SourceAge : Prop :=
     ∀ (τ : Time) (x : Fin sp.n) (i : Nat) (ℓ : ACLabel (goldilocksAC sp FGP ro))
       (C : Blk sp.n FGP),
     x ∈ H (tr.time i) → ToFGAt tr x i ℓ C → sp.slot τ + 3 ≤ sp.slot (tr.time i) →
-    ∃ j ≤ i, ∃ s' B' CV', FastLockAt tr x j s' B' CV' ∧ τ < tr.time j ∧
-      sp.slot (tr.time i) ≤ s' + 2 ∧ Anc U C B'
+    (∃ j ≤ i, ∃ s' B' CV', FastLockAt tr x j s' B' CV' ∧ τ < tr.time j ∧
+      sp.slot (tr.time i) ≤ s' + 2 ∧ Anc U C B') ∨
+    (∃ D a, sp.deepDepth = some D ∧
+      deepest ℓ.frame (toFGCandidates sp (tr.state x i) ℓ.frame (tr.time i)) = none ∧
+      deepAnchor sp (tr.state x i) ℓ.frame (tr.time i) = some a ∧
+      C ∈ toFGDeepCandidates sp D a (tr.state x i) ℓ.frame (tr.time i))
 
 /-- **A1.8 under growing faults, result transfer (per vote).** The writer is honest at its
 update, the voter at its vote; no participation bound. -/

@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportCover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalUnanimous
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UpdateCalls
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionCover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
@@ -96,17 +97,21 @@ theorem operational_update_fresh_lock_at
   have hSP := high_origins_before_next_slot_below_at hp hPU hun hgu hRnext
     (by linarith only [hTb, hΔ]) hseed hrt hrb
   have hjb : tr.time j ≤ b := ht ▸ hTb
-  have hva : (Node.frame (tr.state y j)).viableAncestor P = P := by
-    apply AC.viableAncestor_self (frameOK_state_at hp.run hy) hPj
-    exact (hp.held_target_ancestor_candidate_at_state_at (hp.run.time_nonneg j)
-      (fun q hq => hp.run.time_mono hq.le) hy hjb hPj hseed hrb hSP
-      (fun x q l B hqe ho => (high_origin_compatible_before_update_at hp hPU hPs hu hun
-        hgu hRnext hTb ho ((hp.run.time_mono hqe.le).trans ht.le)).symm)).symm
   have hslot : sp.slot (tr.time j) = u + 1 := by
     rw [ht]
     apply AC.slot_of_mem sp (u + 1)
     · simp only [AC.ACParams.ts]; push_cast; linarith only [hΔ]
     · simp only [AC.ACParams.ts]; push_cast; linarith only [hΔ]
+  have hva : (Node.frame (tr.state y j)).viableAncestor P = P := by
+    apply AC.viableAncestor_self (frameOK_state_at hp.run hy) hPj
+    exact (hp.held_target_ancestor_candidate_at_state_covered_at (hp.run.time_nonneg j)
+      (fun q hq => hp.run.time_mono hq.le) hy hjb hPj hseed hrb hSP
+      (Healing.Growing.ResetPremisesUpTo.compatibleWithOrigins_iff.2
+        ⟨fun x q l B hqe ho => (high_origin_compatible_before_update_at hp hPU hPs hu hun
+          hgu hRnext hTb ho ((hp.run.time_mono hqe.le).trans ht.le)).symm,
+        fun hc D l hD hl =>
+          (Healing.Growing.healed_member_compatible_before_update_at hp hc hPU hPs hu hun
+            hgu hRnext hTb D l hD.healedOrigin (by omega)).symm⟩)).symm
   rw [hpost]
   exact fastLock_mem_updateConfirmation_floor hPt (hframe ▸ hva) hconf hnv hfast
     (by rw [hslot]; exact Nat.le_succ _)

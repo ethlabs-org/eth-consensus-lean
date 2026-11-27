@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.FloorSource
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Ancestry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
@@ -16,15 +18,15 @@ public section
 The growing forms of the report lemmas of `Healing/Retention/Records` and the held-target floor
 report of `Healing/Outcome/SupplierFrames`, with each node honest at its own cut and a held-state
 reader honest at an observation time after the state's cuts. Each higher report is by a node
-honest at it and at `c_z`, so that its high descendant has a high origin (`high_report_origin_at`):
+honest at it and at `c_z`, so that its high descendant has a high origin (`high_source_cover_at`):
 
 * `ResetPremisesUpTo.higher_report_of_signed_entry_at`: an attestation, signed while honest and
   honest at `c_z`, naming a held entry strictly above the target yields a strictly higher report
   of its signer;
 * `ResetPremisesUpTo.finality_below_or_higher_report_at`: finality compatible with the target is
   below it, or an earlier strictly higher report extends it;
-* `ResetPremisesUpTo.held_target_high_floor_report_before_at`: a held target below the head-height
-  floor yields an earlier strictly higher report.
+* `ResetPremisesUpTo.held_target_high_floor_report_before_covered_at`: a held target below the
+  head-height floor yields an earlier strictly higher report.
 
 The finalization quorum of a held chain meets the validators honest at the later of the reader's
 cut and `c_z`; each signature is then read on the prefix through its own signing. -/
@@ -215,8 +217,9 @@ theorem finality_below_or_higher_report_at {cm : Time → Finset (Fin sp.n)} {β
 /-- **A held target below the head-height floor yields an earlier strictly higher report**, at a
 cut `i ≤ b` of a node honest at it, when the target is above a high seed and compatible with every
 earlier high origin, and the earlier high origins are pairwise compatible and compatible with the
-seed. -/
-theorem held_target_high_floor_report_before_at
+seed; under the high-source cover, also with every member of the healed family of a label at most
+the cut's slot (`CompatibleWithOrigins`). -/
+theorem held_target_high_floor_report_before_covered_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hy : y ∈ H (tr.time i)) (hib : tr.time i ≤ b)
@@ -227,8 +230,7 @@ theorem held_target_high_floor_report_before_at
         Compatible (tr.HonestBlocksAt H) B B')
     (hseedcomp : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
       Compatible (tr.HonestBlocksAt H) S B)
-    (hcompare : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
-      Compatible (tr.HonestBlocksAt H) P B)
+    (hcompare : CompatibleWithOrigins tr H g a b i (sp.slot (tr.time i)) P)
     (hfloor : ((tr.state y i).fg.σ P.root).h < (tr.state y i).fg.headHeightFloor) :
     ∃ x r ell C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
       AC.ToFGAt tr.projAC x r ell C ∧ Anc (tr.HonestBlocksAt H) P C ∧
@@ -246,8 +248,7 @@ theorem held_target_high_floor_report_before_at
     rw [σ_eq_honest_at hrun hp.noColl (hrun.time_nonneg q) (fun _ hk => hrun.time_mono hk.le)
       (hrun.antitone (le_max_right _ _) hseed.1) hd hle hy hSs hSy]
     omega
-  obtain ⟨x, r, l, B, E, hri, ho, -, hE, hEB, -, hEf, d, att, hrd, hdi, hxd, hs, hT⟩ :=
-    hp.high_floor_signed_source_of_row_bound_at hseed hd hle hy hib
+  rcases hp.high_floor_signed_source_or_covered_before_at hseed hd hle hy hib
       (u := sp.slot (tr.time i) + 1)
       (fun W hW att ha z d hz hd' hdi r' l O hrd ho => by
         obtain ⟨-, -, ⟨CV, ℓ, D, -, hfl, -⟩, -⟩ := ho
@@ -259,10 +260,26 @@ theorem held_target_high_floor_report_before_at
             exact (AC.ts_le_iff_le_slot sp (hrun.time_nonneg r') l).2 (by omega)
         have hlabel := (AC.ts_le_iff_le_slot sp hd l).1
           (ht.trans (hrun.time_mono (by omega)))
-        omega) hpair hseedcomp hSf
+        omega) hpair hseedcomp hSf with
+    ⟨x, r, l, B, E, hri, ho, -, hE, hEB, -, hEf, d, att, hrd, hdi, hxd, hs, hT⟩ |
+      ⟨E, hE, hcov, hEf, x, d, att, hdi, hxz, hs, hT⟩
+  swap
+  · -- under the cover: the member above `E` is compatible with `P`, and `E` is not below `P`
+    obtain ⟨hc, C, s, hC, hsl, hEC⟩ := coveredBefore_iff.1 hcov
+    have hPE : Anc (tr.HonestBlocksAt H) P E := by
+      rcases Compose.Growing.compatible_of_anc_left hU hEC
+          ((compatibleWithOrigins_iff.1 hcompare).2 hc C s hC hsl).symm with h | h
+      · have := Healing.h_le_of_store_anc hr
+          (store_anc_of_honest_anc_at hrun hp.noColl hd hle hy h hPy)
+        omega
+      · exact h
+    obtain ⟨j, ell, C', hxj, hji, hto, hPC, hh⟩ :=
+      hp.higher_report_of_signed_entry_at hd hle hy
+        (hrun.antitone (max_le_max le_rfl (hle d hdi)) hxz) hPy hE hs hdi hT hPE (by omega)
+    exact ⟨x, j, ell, C', hxj, hji, hto, hPC, hh⟩
   have hPE : Anc (tr.HonestBlocksAt H) P E := by
     have hcomp : Compatible (tr.HonestBlocksAt H) P E := by
-      rcases hcompare x r l B hri ho with h | h
+      rcases (compatibleWithOrigins_iff.1 hcompare).1 x r l B hri ho with h | h
       · exact AC.anc_total hU h hEB
       · exact Or.inr (hEB.trans h)
     rcases hcomp with h | h

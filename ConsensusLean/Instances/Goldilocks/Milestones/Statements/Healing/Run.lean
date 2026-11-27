@@ -308,7 +308,10 @@ end Goldilocks
 (a) every honest attestation signed at or before `c_z` has a height pair of height `≤ H_z`; from
 `c_z` on, every block `C` that `ac_to_fg` returns at an honest `x` is the block of a live fast
 lock of `x` whose label `j` has a fast-lock write at `x` after `ḡ` on a descendant of `C` (A1.5
-with `τ = ḡ`; the lock's block is the written block moved back to an ancestor);
+with `τ = ḡ`; the lock's block is the written block moved back to an ancestor), or, with deep
+sources on and no fast-lock candidate, a deep candidate under the deep anchor, which, when its
+state height is `≥ H_z + 1`, `x` received after `c_z` (its stamp is later than `c_z`, so with
+the deep age guard it is unusable before `D` slots after `c_z`);
 (b) the chain of an honest accepted block of state height `≥ H_z + 2` carries an honest
 attestation whose height pair has height `H_z + 1`;
 (c) if `a` is the reset `a_z`: `a > c_z` and no honest height pair of height `≥ H_z + 1` is
@@ -326,10 +329,16 @@ def CutAndReset : Prop :=
     (∀ y ∈ H, ∀ k att, tr.SignAt y k att → tr.time k ≤ cutZ sp.toParams g →
       att.h ≤ HZ tr H g) ∧
     (∀ x ∈ H, ∀ i ℓ C, AC.ToFGAt tr.projAC x i ℓ C → cutZ sp.toParams g ≤ tr.time i →
-      ∃ l ∈ AC.liveLocks sp (tr.state x i).ac.locks ℓ.frame (tr.time i),
+      (∃ l ∈ AC.liveLocks sp (tr.state x i).ac.locks ℓ.frame (tr.time i),
         l.fast = true ∧ l.block = C.root ∧
         ∃ i' < i, ∃ B CV, AC.FastLockAt tr.projAC x i' l.slot B CV ∧ gbar g < tr.time i' ∧
-          Anc (tr.HonestBlocks H) C B) ∧
+          Anc (tr.HonestBlocks H) C B) ∨
+      (∃ D a, sp.deepDepth = some D ∧
+        AC.deepest ℓ.frame (AC.toFGCandidates sp (tr.state x i).ac ℓ.frame (tr.time i)) = none ∧
+        AC.deepAnchor sp (tr.state x i).ac ℓ.frame (tr.time i) = some a ∧
+        C ∈ AC.toFGDeepCandidates sp D a (tr.state x i).ac ℓ.frame (tr.time i) ∧
+        (HZ tr H g + 1 ≤ ((tr.state x i).fg.σ C.root).h →
+          AC.ETime.of (cutZ sp.toParams g) < (tr.state x i).ac.blockStamp C.root))) ∧
     (∀ y ∈ H, ∀ i, ∀ X ∈ (tr.state y i).fg.tree, HZ tr H g + 2 ≤ ((tr.state y i).fg.σ X.root).h →
       ∃ Y, (tr.state y i).fg.Anc Y X ∧ ∃ att ∈ Y.fgPayload, att.val ∈ H ∧ att.h = HZ tr H g + 1) ∧
     ∀ a, IsReset tr H g a →

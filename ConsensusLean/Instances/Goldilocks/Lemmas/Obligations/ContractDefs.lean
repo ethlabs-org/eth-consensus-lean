@@ -114,7 +114,7 @@ theorem goldilocksContract_params_eq {S : Setup} (A : ContractAssumptions S)
     (C : ContractCoefficients) :
     (goldilocksContract A C).params =
       { Params.standard C.catchUp (4 * S.k + 6)
-        (4 * S.k - 5) C.heal C.latency with
+        (4 * S.k - 5) (fun cap X => C.heal cap X.1) (fun cap X => C.latency cap X.1) with
         η := 12 * S.k + 7, recovery := 9,
         fgDelay := A.fgDelay, ahead := 5, committeeAhead := 5 } := by rfl
 
@@ -141,7 +141,13 @@ theorem meetsObligations_progressTolerant (S : Setup) (A : ContractAssumptions S
     ProgressTolerant schema (K S A) := by
   intro cap _ N
   let P := if cap = .final then finalWindow A else Pattern.single
-  exact ⟨⟨P.span + 2, by omega⟩, Nat.le_refl _⟩
+  refine ⟨⟨⟨P.span + 2, by omega⟩, A.deepAdmits_final.mono ?_⟩, Nat.le_refl _⟩
+  change P.span + 2 ≤ 3 * A.finalSlots + 2
+  by_cases hc : cap = .final
+  · simp only [P, hc, ite_true, finalWindow_span, le_refl]
+  · simp only [P, hc, ite_false]
+    change 0 + 2 ≤ _
+    omega
 
 /-- Fixed thresholds and positive finite catch-up/budget are admissible. -/
 theorem meetsObligations_admissible (S : Setup) (A : ContractAssumptions S) :

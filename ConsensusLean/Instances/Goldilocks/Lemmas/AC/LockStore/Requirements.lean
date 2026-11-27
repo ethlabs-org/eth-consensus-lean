@@ -191,9 +191,39 @@ private theorem headOK_of {ro : ReplayOrder sp FGP} {U : Set (Blk sp.n FGP)} (hU
   obtain ⟨-, hah, hv⟩ := getHead_spec hΦ hdom hdomA V σ ha
   exact ⟨(hanc Φ.fcRoot (Or.inr rfl)).trans hah, hv⟩
 
-/-- A block that `ac_to_fg` returns is a candidate. -/
-theorem toFG_candidate {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
-    {C : Blk sp.n FGP} (h : (acToFG sp A Φ t).2 = some C) : C ∈ toFGCandidates sp A Φ t := by
+/-- Membership in the deep candidates of `ac_to_fg`. -/
+theorem mem_toFGDeepCandidates {D : Nat} {a : Blk sp.n FGP} {A : ACState sp.n}
+    {Φ : Frm sp.n FGP} {t : Time} {B : Blk sp.n FGP} :
+    B ∈ toFGDeepCandidates sp D a A Φ t ↔ B ∈ Φ.viableTree Φ.tree ∧ Φ.Anc B a ∧
+      B.root ≠ sp.genesisRoot ∧ A.blockStamp B.root ≤ ETime.of (sp.ts ((sp.slot t : Int) - D)) :=
+  Iff.rfl
+
+/-- The block `ac_to_fg` considers is a fast-lock candidate, or, with deep sources on and no
+fast-lock candidate, a deep candidate under the deep anchor. -/
+theorem fgSource_spec {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time} {C : Blk sp.n FGP}
+    (h : fgSource sp A Φ t = some C) :
+    C ∈ toFGCandidates sp A Φ t ∨ ∃ D a, sp.deepDepth = some D ∧ deepAnchor sp A Φ t = some a ∧
+      deepest Φ (toFGCandidates sp A Φ t) = none ∧ C ∈ toFGDeepCandidates sp D a A Φ t := by
+  unfold fgSource at h
+  split at h
+  · exact Or.inl (deepest_mem h).1
+  · rename_i D hD
+    cases hf : deepest Φ (toFGCandidates sp A Φ t) with
+    | some C' =>
+      rw [hf] at h
+      cases h
+      exact Or.inl (deepest_mem hf).1
+    | none =>
+      rw [hf] at h
+      cases ha : deepAnchor sp A Φ t with
+      | none => rw [ha] at h; cases h
+      | some a =>
+        rw [ha] at h
+        exact Or.inr ⟨D, a, hD, rfl, rfl, (deepest_mem h).1⟩
+
+/-- The block `ac_to_fg` returns is the block `ac_to_fg` considers. -/
+private theorem fgSource_of_toFG {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+    {C : Blk sp.n FGP} (h : (acToFG sp A Φ t).2 = some C) : fgSource sp A Φ t = some C := by
   unfold acToFG at h
   split_ifs at h
   split at h
@@ -201,7 +231,39 @@ theorem toFG_candidate {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
   · rename_i C' hC'
     split_ifs at h
     cases h
-    exact (deepest_mem hC').1
+    exact hC'
+
+/-- **The source of a block that `ac_to_fg` returns:** a viable block that is a fast-lock
+candidate, or, with deep sources on (`deepDepth = some D`) and no fast-lock candidate, a deep
+candidate at depth `D` under the deep anchor. -/
+theorem toFG_source {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time} {C : Blk sp.n FGP}
+    (h : (acToFG sp A Φ t).2 = some C) :
+    C ∈ Φ.viableTree Φ.tree ∧ (C ∈ toFGCandidates sp A Φ t ∨
+      ∃ D a, sp.deepDepth = some D ∧ deepAnchor sp A Φ t = some a ∧
+        deepest Φ (toFGCandidates sp A Φ t) = none ∧ C ∈ toFGDeepCandidates sp D a A Φ t) := by
+  have hs := fgSource_spec (fgSource_of_toFG h)
+  refine ⟨?_, hs⟩
+  rcases hs with hC | ⟨_, _, _, _, _, hC⟩
+  · exact hC.1
+  · exact hC.1
+
+/-- A block that `ac_to_fg` returns is viable and at or below the block of a live lock. -/
+theorem toFG_source_below_lock {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+    {C : Blk sp.n FGP} (h : (acToFG sp A Φ t).2 = some C) :
+    C ∈ Φ.viableTree Φ.tree ∧ ∃ a ∈ liveLockBlocks sp A.locks Φ t, Φ.Anc C a := by
+  obtain ⟨hCv, hs⟩ := toFG_source h
+  refine ⟨hCv, ?_⟩
+  rcases hs with ⟨-, l, hl, hlb, -⟩ | ⟨D, a, -, ha, -, hC⟩
+  · exact ⟨C, ⟨hCv.1, l, hl, hlb⟩, Relation.ReflTransGen.refl⟩
+  · exact ⟨a, (deepest_mem ha).1, hC.2.1⟩
+
+/-- With deep sources off, a block that `ac_to_fg` returns is a fast-lock candidate. -/
+theorem toFG_candidate {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
+    {C : Blk sp.n FGP} (hD : sp.deepDepth = none) (h : (acToFG sp A Φ t).2 = some C) :
+    C ∈ toFGCandidates sp A Φ t := by
+  rcases (toFG_source h).2 with hC | ⟨_, _, hD', _⟩
+  · exact hC
+  · rw [hD] at hD'; cases hD'
 
 /-- The voter block tree is closed under ancestors when block stamps grow along parent edges. -/
 private theorem voterBlockTree_closed {A : ACState sp.n} {Φ : Frm sp.n FGP}
@@ -255,7 +317,7 @@ theorem interface_requirements_from (FGP : Type) (ro : ReplayOrder sp FGP) {s₀
   · -- requirement 2: the block for the FG
     intro x U hU A Φ t₀ hr t ht C hC
     change (acToFG sp A Φ t).2 = some C at hC
-    exact (toFG_candidate hC).1
+    exact (toFG_source hC).1
   · -- requirement 3: the head and the confirmed tip
     intro x U hU A Φ t₀ hr t _
     obtain ⟨⟨hΦ, hΦU⟩, -, h⟩ :=

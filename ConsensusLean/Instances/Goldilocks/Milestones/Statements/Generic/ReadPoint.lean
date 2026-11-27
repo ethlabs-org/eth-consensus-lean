@@ -69,7 +69,8 @@ structure HealthyReadPoint {sg : A.Msg → Fin P.n} {fgHold : Time} (C : ACCorre
   healed : ∀ cm βK proposer dg H (tr : RunTrace A) ΔF g a b s₁,
     βK ≤ 1 / 2 →
     C.run.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b fgHold →
-    IsReset tr H g a → a ≤ b → P.slotOf a + C.healing.drain ≤ s₁ →
+    IsReset tr H g a → a ≤ b → ResetInBudget P C.healing.deepBudget C.healing.drain g a →
+    P.slotOf a + C.healing.drain ≤ s₁ →
     HealedFrom tr H proposer s₁ b →
     max g 0 ≤ P.slotTime s₁ →
     ((∃ z k X, HonestProposal tr H proposer s₁ z k X) →
@@ -87,7 +88,8 @@ structure HealthyReadPoint {sg : A.Msg → Fin P.n} {fgHold : Time} (C : ACCorre
   proposal : ∀ cm βK proposer dg H (tr : RunTrace A) ΔF g a b healed,
     βK ≤ 1 / 2 →
     C.run.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b fgHold →
-    IsReset tr H g a → a ≤ b → max g 0 + C.margin ≤ healed →
+    IsReset tr H g a → a ≤ b → ResetInBudget P C.healing.deepBudget C.healing.drain g a →
+    max g 0 + C.margin ≤ healed →
     ∀ B k y j t, ReadyProposal tr H C.catchUp C.hold B k →
     P.slotOf a + C.healing.drain ≤ B.slot → gbar g + 4 * P.Δ ≤ P.slotTime B.slot →
     0 ≤ tr.time k → tr.time k ≤ b → tr.time k + C.hold ≤ b → healed ≤ tr.time k →

@@ -12,6 +12,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLocks
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HealedMembers
 
 public section
 
@@ -161,6 +162,23 @@ theorem slow_source_votes_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ
   have hm := hp.run.time_mono
   have hxU : (tr.state x r).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨x, r, tr.time r, hp.run.time_nonneg r, fun _ hq => hm hq.le, hx, h⟩
+  have hcase : (∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ) ∨
+      HighSourceCover tr H g a b := by
+    cases hdd : sp.deepDepth with
+    | none => exact Or.inl fun D hD => by cases hD
+    | some D =>
+      rcases hp.deepCover D hdd with hb | hc
+      · exact Or.inl fun D' hD' => by cases hD'; exact hb
+      · exact Or.inr hc
+  rcases hcase with hpre | hc
+  swap
+  · -- under the high-source cover: S2, the slow lock past the drain being a member
+    intro i hib y hy ell e hcast hsi
+    exact Compose.Growing.healed_source_votes_at hc.s2
+      (Compose.Growing.HealedOrigin.of_lock (rL := healedLockFloor sp a)
+        (rO := healedOriginFloor sp a) hs
+        (Compose.Growing.lockWithin_iff.2 ⟨x, r, hx, hrb, Or.inr hslow⟩)) .refl
+      (Compose.Growing.hVoteAt_iff.2 ⟨hy, ell, hcast⟩) hib hsi
   obtain ⟨ellX, C, hupd, hconf, hdeep⟩ := id hslow
   have hBC := ((AC.deepest_mem hdeep).1.1.2.2).mono
     ((frame_tree_subset_at hp.run hp.noColl hx hupd.1).2.trans hxU)
@@ -170,9 +188,9 @@ theorem slow_source_votes_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ
   apply hp.late_result_prefix_votes_before_at hx hres hBC hrb
     (hp.clean_window_timing_at hs s (by have := sp.two_le_k; clear * - this; omega))
   · intro y i ell e hy hcast hib hsi hprior
-    exact ProposalImpl.result_prefix_vote_domain_before_at hp hx hy hres hBC hs hrb hcast hsi
-      hib fun z q hz hqi e' hv hse => hprior z q e' hqi
-        (Compose.Growing.hVoteAt_iff.mpr ⟨hz, hv⟩) hse
+    exact ProposalImpl.result_prefix_vote_domain_before_of_quarantine_at hp hx hy hres hBC hs hrb
+      hcast hsi hib (fun z q hz hqi e' hv hse => hprior z q e' hqi
+        (Compose.Growing.hVoteAt_iff.mpr ⟨hz, hv⟩) hse) hpre
   · intro y i ell e hy hcast hib hfirst
     have hi0 := hp.run.time_nonneg i
     have hcast' : AC.CastAt (tr.projAC.upTo (tr.time i)) y i ell e :=

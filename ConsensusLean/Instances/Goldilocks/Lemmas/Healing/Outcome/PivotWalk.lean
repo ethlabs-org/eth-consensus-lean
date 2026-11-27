@@ -51,73 +51,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-! ### The proposal walk and fork-choice roots -/
 
-/-- Stored proposal high locks compare with every high origin in the finite horizon. -/
-theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old {b : Time}
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} (hpH : p ∈ H) {i u : Nat} (hR : drainTime sp a ≤ sp.ts u)
-    {ell : ACLabel (goldilocksNode sp ro)} (hci : tr.projAC.CallAt p i ell)
-    (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
-    {x : Fin sp.n} {q j : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x q j O) (hqb : tr.time q ≤ b) :
-    AC.HighLocksCompatible (tr.HonestBlocks H) (tr.projAC.state p i)
-      (tr.time i) (u - 1) O := by
-  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  rw [AC.highLocksCompatible_iff]
-  intro l hl _ hlabel L hL hLr
-  obtain ⟨r, hri, D, hwrite, L', hL', hL'r, hLD⟩ :=
-    AC.lock_provenanceU hr.toU hp.run.vstart hpH i l hl
-  obtain rfl : L' = L := hr.coherent.1 hL' hL (hL'r.trans hLr.symm)
-  have hrt : tr.time r ≤ sp.ts u := hti ▸ hp.run.time_mono hri.le
-  rcases hwrite with ⟨CV, hop⟩ | ⟨ell', hupd⟩
-  · have hle : l.slot ≤ u := by
-      obtain ⟨_, _, _, hsl, _⟩ := id hop
-      have ht : sp.ts l.slot ≤ tr.time r :=
-        (AC.ts_le_iff_le_slot sp (hr.time_nonneg r) l.slot).mpr (by omega)
-      exact_mod_cast (AC.ts_le_iff sp).mp (ht.trans hrt)
-    have hclean : cleanLabel sp a + sp.k + 2 ≤ l.slot := by
-      change u - 1 ≤ l.slot at hlabel
-      rw [drainTime_eq] at hR
-      have := (AC.ts_le_iff sp).mp hR
-      have := sp.two_le_k
-      rw [cleanLabel_eq]
-      omega
-    have hl1 := slot_gbar_lt_of_cutZ_le
-      (hp.clean_window_timing hclean l.slot (by have := sp.two_le_k; omega))
-    have hne : l.slot ≠ u := fun he =>
-      Compose.proposal_no_optimistic_of hp.run hp.noColl hp.hP (hp.cs2 (he ▸ hl1)) hpH hci hcall
-        hti p hpH r hri D CV (he ▸ hop)
-    rcases hp.protected_source_compatible_high_origin hc hpH (Or.inl ⟨CV, Or.inr hop⟩)
-        hclean ((hp.run.time_mono hri.le).trans hib) ho hqb with h | h
-    · exact Or.inl (hLD.trans h)
-    · exact AC.anc_total hr.coherent hLD h
-  · have ht : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
-    have hslots : sp.ts u ≤ sp.ts (l.slot + 1 : Nat) :=
-      (AC.ts_le_iff sp).mpr (by clear * - hlabel; omega)
-    have hsucc : sp.ts (l.slot + 1 : Nat) = sp.ts l.slot + 4 * sp.Δ := by
-      simp only [AC.ACParams.ts]; push_cast; ring
-    rw [hsucc] at hslots
-    have := sp.toParams.hΔ
-    linarith only [hrt, ht, hslots, this]
-
-/-- At proposal time, stored high locks can only come from an optimistic write of the
-previous label. Regular updates are too late and current-label optimism is excluded. -/
-theorem proposal_stored_locks_compatible_old
-    (hp : ResetPremises tr H K proposer dg g ΔF a)
-    (_hc : CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hP : ReadyProposal tr H proposer p k u P) (_hR : drainTime sp a ≤ sp.ts u)
-    {i : Nat} {ℓp : ACLabel (goldilocksNode sp ro)}
-    (hci : tr.projAC.CallAt p i ℓp) (hcall : ℓp.call = .proposal)
-    (hti : tr.time i = sp.ts u) :
-    ∀ O, OldSrc tr H g u O →
-      AC.HighLocksCompatible (tr.HonestBlocks H) (tr.projAC.state p i)
-        (tr.time i) (u - 1) O := by
-  intro O hO
-  obtain ⟨_, _, _, ho, hqt⟩ := oldSrc_iff.1 hO
-  exact (hp.toUpTo tr H (le_max_left a (tr.time i))).proposal_stored_locks_compatible_old
-    _hc hP.1 _hR hci hcall hti (le_max_right _ _) ho
-    ((hqt.trans_eq hti.symm).le.trans (le_max_right _ _))
-
 /-- A non-current read-point lock sits below a raw source of the receiver. Its source
 precedes the receiving cast, not necessarily the proposal. -/
 theorem ResetPremisesUpTo.vote_old_lock_source_before {b : Time}
@@ -203,52 +136,6 @@ theorem vote_old_lock_source_before (hp : ResetPremises tr H K proposer dg g ΔF
       Anc (tr.HonestBlocks H) (ell.frame.viableAncestor L) D :=
   (hp.toUpTo tr H (le_refl a)).vote_old_lock_source_before hy hc hes hR hl hne hlive hL hLr
 
-/-- A finite noncurrent voter lock lies below the actual proposal parent. -/
-theorem ResetPremisesUpTo.vote_old_live_lock_below_parent {b : Time}
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
-    {p : Fin sp.n} (hpH : p ∈ H) {u i : Nat} (hR : drainTime sp a ≤ sp.ts u)
-    {ellp : ACLabel (goldilocksNode sp ro)}
-    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
-    (hci : tr.projAC.CallAt p i ellp) (hcall : ellp.call = .proposal)
-    (hd : (AC.acProposal sp (tr.projAC.state p i) ellp.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
-    {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {elly : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hcy : AC.CastAt tr.projAC y j elly e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
-    {l : AC.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
-    (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k)
-    {L : AC.Blk sp.n (List (FG.Att sp.n))} (hL : L ∈ elly.frame.tree) (hLr : L.root = l.block) :
-    Anc (tr.HonestBlocks H) (elly.frame.viableAncestor L) d.head := by
-  obtain ⟨r, D, hrj, hclean, hlu, hsource, hLD⟩ :=
-    hp.vote_old_lock_source_before hy hcy hes hR hl hne hlive hL hLr
-  have hrb := (hp.run.time_mono hrj.le).trans hjb
-  apply hLD.trans
-  by_cases hgap : l.slot + 2 ≤ u
-  · exact hp.clean_source_proposal_parent_before hc hy hpH hsource hclean hgap hrb hR
-      hci hcall hd hti hib
-  have he : u = l.slot + 1 := by clear * - hlu hgap; omega
-  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  have htj := (Compose.cast_head_fcRoot hr hp.run.vstart hy hcy).2
-  rw [hes, he] at htj
-  have hrt := hp.run.time_mono hrj.le
-  have hts : sp.ts (l.slot + 1 : Nat) = sp.ts l.slot + 4 * sp.Δ := by
-    simp only [AC.ACParams.ts]; push_cast; ring
-  have hΔ := sp.toParams.hΔ
-  rcases hsource with ⟨CV, hfast⟩ | ⟨ellX, C, hupd, _⟩
-  · rcases hfast with ⟨ellX, C, hupd, _⟩ | hop
-    · have ht : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
-      rw [hts] at htj
-      change tr.time j ≤ _ at htj
-      exfalso
-      linarith only [hrt, hΔ, ht, htj]
-    · exact hp.clean_optimistic_proposal_parent hc hy hpH hop hclean hrb (he ▸ hR)
-        hci hcall hd (he ▸ hti) hib
-  · have ht : tr.time r = sp.ts l.slot + 6 * sp.Δ := hupd.2.2.1
-    rw [hts] at htj
-    change tr.time j ≤ _ at htj
-    exfalso
-    linarith only [hrt, hΔ, ht, htj]
-
 section Support
 
 variable (hp : ResetPremises tr H K proposer dg g ΔF a)
@@ -266,20 +153,6 @@ variable (hp : ResetPremises tr H K proposer dg g ΔF a)
   (hE : ∀ x ∈ H, ∀ j' < j, ∀ e', AC.VoteAt tr.projAC x j' e' →
     e'.msg.slot = u → e'.msg.head = P.root)
 
-include hp hc hP hR hci hcall hd hti hPQ hy hcy hes hE in
-set_option linter.unusedSectionVars false in
-/-- Non-current live locks move back below the proposal parent. -/
-theorem vote_old_live_lock_below_parent
-    {l : AC.Lock} (hl : l ∈ e.readPoint.locks) (hne : l.slot ≠ u)
-    (hlive : sp.slot (tr.time j) ≤ l.slot + sp.k)
-    {L : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hL : L ∈ ℓy.frame.tree) (hLr : L.root = l.block) :
-    Anc (tr.HonestBlocks H) (ℓy.frame.viableAncestor L) d.head :=
-  (hp.toUpTo tr H (le_max_left a (max (tr.time i) (tr.time j)))).vote_old_live_lock_below_parent
-    hc hP.1 hR hci hcall hd hti ((le_max_left _ _).trans (le_max_right _ _)) hy hcy hes
-    ((le_max_right _ _).trans (le_max_right _ _)) hl hne hlive hL hLr
-
 end Support
-
 
 end Consensus.Goldilocks.Healing

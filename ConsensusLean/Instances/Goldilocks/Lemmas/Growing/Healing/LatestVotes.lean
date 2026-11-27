@@ -54,6 +54,23 @@ theorem ResetPremisesUpTo.latest_votes_of_recent_result_at {b t : Time}
   exact hp.late_result_prefix_votes_before_at hx hres hBC hrb hts hdomain hstored q
     (hqt.trans htb) z hz ell e hcast (he ▸ hsL)
 
+/-- S2 supplies the latest votes for a prefix of a healed member without fast-source
+provenance, vote-domain premises, or stored-lock comparisons. -/
+theorem ResetPremisesUpTo.latest_votes_of_healed_at {b t : Time}
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {rL rO s L : Nat} {B C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hC : Compose.Growing.HealedOrigin tr H g rL rO C s b)
+    (hBC : Anc (tr.HonestBlocksAt H) B C)
+    (hV : ∀ m, Compose.Growing.HealedVotesBelow tr H g rL rO m b)
+    (htb : t ≤ b) (hsL : s < L) :
+    ∀ z q e, Compose.Growing.HVoteAt tr H z q e → tr.time q ≤ t →
+      e.msg.slot = L → AC.VoteExtends (tr.HonestBlocksAt H) e.msg B := by
+  intro z q e hv hqt he
+  obtain ⟨hz, ell, hcast⟩ := Compose.Growing.hVoteAt_iff.mp hv
+  exact hp.late_result_prefix_votes_of_healed_at hC hBC hV q
+    (hqt.trans htb) z hz ell e hcast (he ▸ hsL)
+
 end Consensus.Goldilocks.Healing.Growing
 
 end

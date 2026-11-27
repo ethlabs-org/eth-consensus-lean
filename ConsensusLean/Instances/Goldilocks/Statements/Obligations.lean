@@ -25,13 +25,17 @@ release gap `R`, and the outer gap `X`.
   bound is `fgDelay = 4·fgSlots − 6`): the FG attestations of a round reach every node within
   `fgSlots` slots, the paper's `c_F = ⌈(6Δ + Δ_F)/(4Δ)⌉ ≤ fgSlots`. `Setup` fixes the genesis root,
   `δ_t`, the lock window `k ≥ 2`, the fast increment `c ≥ 2` (read by no coefficient), the
-  optimistic switch (on by default; read by no coefficient) and the restart replay order, vote
-  binding, signing calendar and release schedule.
+  optimistic switch (on by default; read by no coefficient), the deep-source depth `D` (off by
+  default) and the restart replay order, vote binding, signing calendar and release schedule.
+  With deep sources on (`deepDepth = some D`), `D` admits the gap `3·finalSlots + 2`,
+  the largest a progress pattern needs to tolerate a bad slot
+  (`11 + healMargin (3·finalSlots + 2) ≤ 4D`, `deep_final`), and so every smaller gap.
   The endpoint and headlines hold at every vote binding for calendars and schedules satisfying
   the gap bounds.
 * **Contract** (`goldilocksContract`): the standard thresholds, the FG delay bound, the outage
   numbers, and the progress patterns (`finalWindow A` for the final output, one honest ready
-  proposer for the others, in every window of the outer gap).
+  proposer for the others, in every window of the outer gap). One shared outer gap `X` indexes
+  every row; with deep sources on, only the gaps with `11 + healMargin X ≤ 4D` (`DeepAdmits`).
 * **Coefficients** (`contract_coefficients`): catch-up `contract_catchUp`, heal `contract_heal`
   and latency `contract_latency`. Only the final latency depends on `finalSlots`; the heal
   coefficient includes `5G` for signing waits and no release term (a held attestation delays
@@ -77,6 +81,14 @@ structure ContractAssumptions (S : Setup) where
   release_liveness : ∀ (pub : Public) (y : Fin pub.n) (t : Time), 0 ≤ t →
     ∃ t', t ≤ t' ∧ t' ≤ t + (releaseGap : Time) * pub.ΔAC ∧ S.release pub y t' = true
   timeout : 3 * ((6 + (4 * fgSlots - 6) + releaseGap + signGap + 3) / 4) ≤ S.δt
+  /-- With deep sources on (`S.deepDepth = some D`), the depth admits the outer gap
+  `3·finalSlots + 2`, the largest a progress pattern needs to tolerate a bad slot:
+  `11 + healMargin S A (3·finalSlots + 2) ≤ 4D`, expanded. Vacuous for the stock setup
+  (`deepDepth = none`). -/
+  deep_final : ∀ D, S.deepDepth = some D →
+      48 * S.k + 28 * S.δt + 67 + 5 * signGap +
+        48 * (3 * ((6 + (4 * fgSlots - 6) + releaseGap + signGap + 3) / 4) + 2) ≤ 4 * D := by
+    intro _ h; cases h
 
 /-- The contract's FG delay bound `4·fgSlots − 6` (positive, `fgSlots ≥ 2`): the healthy regime's
 `ΔFG ≤ (4·fgSlots − 6)·ΔAC` is `6·ΔAC + ΔFG ≤ 4·fgSlots·ΔAC`. -/
@@ -94,6 +106,38 @@ def finalWindow {S : Setup} (A : ContractAssumptions S) : Pattern :=
 /-- The heal margin `20 L_drain + 8k + 28δ_t + 28X + 56 + 5G` allows for five signing waits. -/
 def healMargin (S : Setup) (A : ContractAssumptions S) (X : ℕ+) : Nat :=
   20 * healthyDrainLen S X + 8 * S.k + 28 * S.δt + 28 * X + 56 + 5 * A.signGap
+
+/-- The outer gaps a deep-source depth admits: with `S.deepDepth = some D`, the heal time of gap
+`X` fits in the deep-source age, `11 + healMargin S A X ≤ 4D`. Every gap is admitted for the stock
+setup (`deepDepth = none`). -/
+def DeepAdmits (S : Setup) (A : ContractAssumptions S) (X : ℕ+) : Prop :=
+  ∀ D, S.deepDepth = some D → 11 + healMargin S A X ≤ 4 * D
+
+/-- Admissibility is closed downward: a depth that admits a gap admits every smaller one. -/
+theorem DeepAdmits.mono {S : Setup} {A : ContractAssumptions S} {X Y : ℕ+} (h : DeepAdmits S A X)
+    (hYX : (Y : Nat) ≤ X) : DeepAdmits S A Y := by
+  intro D hD
+  have := h D hD
+  change 11 + (20 * (2 * S.k + (X : Nat)) + 8 * S.k + 28 * S.δt + 28 * (X : Nat) + 56 +
+    5 * A.signGap) ≤ 4 * D at this
+  change 11 + (20 * (2 * S.k + (Y : Nat)) + 8 * S.k + 28 * S.δt + 28 * (Y : Nat) + 56 +
+    5 * A.signGap) ≤ 4 * D
+  omega
+
+/-- The final pattern's tolerance gap `3·finalSlots + 2` is admitted (`deep_final`). -/
+theorem ContractAssumptions.deepAdmits_final {S : Setup} (A : ContractAssumptions S) :
+    DeepAdmits S A ⟨3 * A.finalSlots + 2, by omega⟩ := by
+  intro D h
+  have := A.deep_final D h
+  change 11 + (20 * (2 * S.k + (3 * ((6 + (4 * A.fgSlots - 6) + A.releaseGap + A.signGap + 3) / 4)
+    + 2)) + 8 * S.k + 28 * S.δt + 28 * (3 * ((6 + (4 * A.fgSlots - 6) + A.releaseGap +
+    A.signGap + 3) / 4) + 2) + 56 + 5 * A.signGap) ≤ 4 * D
+  omega
+
+/-- The gap `1` is admitted (`deepAdmits_final`, `DeepAdmits.mono`). -/
+theorem ContractAssumptions.deepAdmits_one {S : Setup} (A : ContractAssumptions S) :
+    DeepAdmits S A 1 :=
+  A.deepAdmits_final.mono (by change 1 ≤ 3 * A.finalSlots + 2; omega)
 
 /-- Only guarantees are chosen: positive finite catch-up and finite heal/latency
 coefficients at every capability and outer gap. -/
@@ -130,7 +174,8 @@ noncomputable def contract_coefficients (S : Setup) (A : ContractAssumptions S) 
   latency := contract_latency S A
 
 /-- Standard fixed resilience fractions, the coefficient record `C`, and the numbers below.
-Final progress is the chosen local pattern at every positive outer gap.
+Final progress is the chosen local pattern at every positive outer gap the deep-source depth
+admits (`DeepAdmits`; every gap for the stock setup). One shared gap `X` indexes every row.
 An abbreviation exposes the index type for the adapter signatures.
 
 * FG delay bound `A.fgDelay = 4·fgSlots − 6`: the healthy regime assumes
@@ -162,10 +207,11 @@ The growing-fault windows (`docs/decisions.md` §"Adversary growth"):
 These numbers are not claimed minimal. -/
 abbrev goldilocksContract {S : Setup} (A : ContractAssumptions S)
     (C : ContractCoefficients) : Contract ProgressReq where
-  Idx := ℕ+
-  idx_nonempty := ⟨1⟩
+  Idx := {X : ℕ+ // DeepAdmits S A X}
+  idx_nonempty := ⟨⟨1, A.deepAdmits_one⟩⟩
   params := { Params.standard (catchUp := C.catchUp) (lag := 4 * S.k + 6)
-      (budget := 4 * S.k - 5) (heal := C.heal) (latency := C.latency) with
+      (budget := 4 * S.k - 5) (heal := fun cap X => C.heal cap X.1)
+      (latency := fun cap X => C.latency cap X.1) with
     η := 12 * S.k + 7
     recovery := 9
     fgDelay := A.fgDelay
@@ -174,7 +220,7 @@ abbrev goldilocksContract {S : Setup} (A : ContractAssumptions S)
   progress := fun cap X =>
     .recur
       { pattern := if cap = .final then finalWindow A else Pattern.single
-        gap := X
+        gap := X.1
         hold := 1 }
 
 /-- **Goldilocks meets the obligations**, the concrete endpoint: for every setup and every

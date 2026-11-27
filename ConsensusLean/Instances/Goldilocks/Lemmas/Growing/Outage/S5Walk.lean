@@ -14,6 +14,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Core
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Honest
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Saved
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
@@ -340,6 +341,60 @@ private theorem fastLock_extending_vote_at {c s : Nat} {y : Fin sp.n} (hy : y �
   obtain ⟨hvs, R, hR, hRr, -, hBR⟩ := hCV _ hv
   exact ⟨e.msg.val, j, e, hve, hvs, R, hR, hRr, hBR⟩
 
+include D in
+/-- **A stored slow lock has an extending supporter**: a slow lock of label `s` that a node honest
+at cut `i` stores names a block `L` held while honest, written by an update at a cut `c < i`
+(at `t_s + 6Δ`), and an honest vote of a slot `≤ s`, cast while honest, extends `L`. The slow
+test puts `L` below the results of the window `s − k + 1, …, s`; the labels in `(j₀, r)` number
+at most `k − 1`, so `s` or `j₀` is an unpolluted label of the window, whose result has an
+honest extending supporter (`result_extending_vote_at`). -/
+private theorem slowLock_extending_vote_at {x : Fin sp.n} {i : Nat} (hx : x ∈ H (tr.time i))
+    {l : AC.Lock} (hl : l ∈ (tr.state x i).ac.locks) (hlf : l.fast = false) :
+    ∃ L ∈ tr.HonestBlocksAt H, L.root = l.block ∧
+      ∃ c < i, tr.time c = sp.ts l.slot + 6 * sp.Δ ∧
+        ∃ w jw ew, HVoteAt tr H w jw ew ∧ ew.msg.slot ≤ l.slot ∧
+          AC.VoteExtends (tr.HonestBlocksAt H) ew.msg L := by
+  have hrun := D.hrun
+  have ht0 := hrun.time_nonneg i
+  have ht : ∀ k < i, tr.time k ≤ tr.time i := fun _ hk => hrun.time_mono hk.le
+  have hsub := upTo_subset hrun ht0
+  have hr := (acRun_upTo hrun D.hnc ht0).localRun
+  have hl' : l ∈ ((tr.projAC.upTo (tr.time i)).state x i).locks := by
+    have h := projAC_state (hrun.upTo ht0).toLocalRun hx i
+    rw [RunTrace.upTo_projAC, Trace.upTo_state tr x ht] at h
+    rw [h]; exact hl
+  obtain ⟨c, hci, ℓ, C, CV, huU, hCU, Lb, hLb, hLbC, ⟨L, hL, hLr, hLLb⟩, hsave⟩ :=
+    AC.slow_lock_saved hr hrun.vstart hx i l hl' hlf
+  obtain ⟨-, hΦU⟩ := AC.frameIn_of_callAt hr hx huU.1
+  obtain ⟨-, hu⟩ := (ac_updateAt_upTo hrun.time_mono).mp huU
+  obtain ⟨-, hC⟩ := (ac_resultAt_upTo hrun.time_mono).mp hCU
+  have htc : tr.time c = sp.ts l.slot + 6 * sp.Δ := hu.2.2.1
+  have hxc : x ∈ H (tr.time c) := hrun.antitone (hrun.time_mono hci.le) hx
+  have hLLb' : Anc (tr.HonestBlocksAt H) L Lb := hLLb.mono hsub
+  -- a vote extending a result above `Lb` extends `L`
+  have extend : ∀ (S : AC.Blk sp.n (List (FG.Att sp.n))), Anc (tr.HonestBlocksAt H) Lb S →
+      ∀ (ew : AC.Em sp (List (FG.Att sp.n))),
+        AC.VoteExtends (tr.HonestBlocksAt H) ew.msg S →
+        AC.VoteExtends (tr.HonestBlocksAt H) ew.msg L := by
+    rintro S hLbS ew ⟨Hd, hHd, hHdr, hSHd⟩
+    exact ⟨Hd, hHd, hHdr, hLLb'.trans (hLbS.trans hSHd)⟩
+  refine ⟨L, hsub hL, hLr, c, hci, htc, ?_⟩
+  by_cases hun : l.slot ≤ D.j₀ ∨ D.r ≤ l.slot
+  · obtain ⟨w, jw, ew, -, hvw, hws, hext⟩ := result_extending_vote_at D hxc hC hun
+    exact ⟨w, jw, ew, hvw, hws.le, extend C ((Anc.mono hΦU hLbC).mono hsub) ew hext⟩
+  · -- `j₀` is in the window `(s − k, s)`, as `s < r ≤ j₀ + k`
+    push Not at hun
+    have hrk := D.hrk
+    obtain ⟨S, hS, hsaved, hLbS⟩ := hsave (D.j₀ : Int) (by omega) (by omega)
+    obtain ⟨k', hk'c, C', CV', hC', hroot⟩ := AC.saved_resultU hr.toU hrun.vstart hx c D.j₀ hsaved
+    obtain ⟨ℓ', hu', hconf, -⟩ := id hC'
+    have hC'mem := (AC.frameIn_of_callAt hr hx hu'.1).2 (AC.deepest_mem hconf).1.1
+    obtain rfl : C' = S := hr.coherent.1 hC'mem (hΦU hS) hroot
+    obtain ⟨-, hC''⟩ := (ac_resultAt_upTo hrun.time_mono).mp hC'
+    have hxk : x ∈ H (tr.time k') := hrun.antitone (hrun.time_mono (hk'c.trans hci).le) hx
+    obtain ⟨w, jw, ew, -, hvw, hws, hext⟩ := result_extending_vote_at D hxk hC'' (Or.inl le_rfl)
+    exact ⟨w, jw, ew, hvw, by omega, extend C' ((Anc.mono hΦU hLbS).mono hsub) ew hext⟩
+
 /-- **The attestations at a restored vote are supported** (source support): at a slot-`(q+1)`
 vote of `y` honest at its cut `i`, every attestation of `y`'s tree by a validator honest at `t_i`
 has a source compatible with `P` ((SRC) before `i`), held by its signer, and extended by a vote,
@@ -383,9 +438,9 @@ theorem rows_supported_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
   have hfr := (hrun.cutLaw a.val j _ hcj hav').1
   have hto : AC.ToFGAt tr.projAC a.val j ℓz src :=
     ⟨projAC_callAt.2 hcj, hcl, by rw [projAC_state_at hrun hav']; exact hC⟩
-  have hcand := toFG_candidate hC
+  have hsrc := AC.toFG_source hC
   have hst' : src ∈ (tr.state a.val (j + 1)).fg.tree := by
-    have h' := hcand.1.1
+    have h' := hsrc.1.1
     rw [hfr] at h'
     rw [hfg]
     exact h'.1
@@ -396,12 +451,26 @@ theorem rows_supported_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n}
   rw [← hEr, hET] at hT
   refine ⟨src, ⟨hinv.sources a.val j (by omega) hav' ℓz src hto, ?_⟩, a.val, j + 1, hav, hj1,
     hst', hT.symm⟩
-  -- the source is the viable ancestor of a fast stored lock
+  -- the source (fast or deep) is at or below the viable ancestor of a stored lock's block `B`
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun D.hnc hav' (projAC_callAt.2 hcj)
-  obtain ⟨hsv, l, hl, hlb, hlf, -⟩ := hcand
-  obtain ⟨l₀, hl₀, B, hB, hBr, -, rfl⟩ := hl
-  obtain ⟨hVt, hVB⟩ := AC.viableAncestor_anc hΦ hB
-  obtain rfl : src = ℓz.frame.viableAncestor B := hΦ.coherent.1 hsv.1 hVt hlb.symm
+  obtain ⟨-, a, ⟨haT, l, ⟨l₀, hl₀, B, hB, hBr, -, rfl⟩, hla⟩, hsa⟩ :=
+    AC.toFG_source_below_lock hC
+  obtain ⟨hVt, hva⟩ := AC.viableAncestor_anc hΦ hB
+  obtain rfl : a = ℓz.frame.viableAncestor B := hΦ.coherent.1 haT hVt hla.symm
+  have hVB := hsa.trans hva
+  cases hlf : l₀.fast
+  · -- a slow lock: an extending supporter of an unpolluted label of its window
+    obtain ⟨L, hLU, hLr, c, hcj', htc, w, jw, ew, hvw, hws, Hd, hHd, hHdr, hLHd⟩ :=
+      slowLock_extending_vote_at D hav' hl₀ hlf
+    obtain rfl : L = B := hU.1 hLU (hΦU hB) (hLr.trans hBr.symm)
+    refine ⟨w, jw, ew, hvw, ?_, Hd, hHd, hHdr, (Anc.mono hΦU hVB).trans hLHd⟩
+    -- the update of the lock's label is before the vote: `t_s + 6Δ ≤ t_i ≤ t_q + 5Δ`
+    refine hws.trans ?_
+    by_contra hlt
+    push Not at hlt
+    have hci : tr.time c ≤ tr.time i := hm (by omega)
+    have := ts_le_ts (sp := sp) hlt.le
+    linarith only [htc, this, hci, hti, hΔ]
   obtain ⟨j', hj'j, B', CV, hfl, hyj', L, hLU, hLr, hLB'⟩ :=
     fastLock_provenance_at hrun D.hnc (hrun.time_nonneg j) (fun _ hk => hm hk.le) hav' hl₀ hlf
   obtain rfl : L = B := hU.1 hLU (hΦU hB) (hLr.trans hBr.symm)

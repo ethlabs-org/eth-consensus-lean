@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.RootProposal
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.MemberTiming
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalMembers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Floor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Frames
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalPasses
@@ -15,8 +17,8 @@ public section
 `reset_proposal_viable` (`Healing/Outcome/SupplierViews`): the proposer honest through
 `t_u + hold`, the voter at its cast. The cast's `fc_root` is below the proposal
 (`reset_vote_root_below_proposal_at`), the proposal is in the voter's block tree as a current-slot
-block, and its height reaches the voter's floor (`reset_vote_floor_above_old_at`): every earlier
-high origin is below the proposal's parent (`reset_proposal_passes_at`). -/
+block, and its height reaches the voter's floor (`reset_vote_floor_above_old_or_covered_at`): every
+earlier high origin is below the proposal's parent (`reset_proposal_passes_at`). -/
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
@@ -60,7 +62,18 @@ theorem reset_proposal_viable_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have hPyStore : P ∈ (tr.state y j).fg.tree := by
     rw [hfr] at hPy
     exact hPy.1
-  have hfloor := hp.reset_vote_floor_above_old_at hy hR hcy hes hjb hPyStore
+  obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
+  have hQt : d.head ∈ ellp.frame.tree := Compose.mem_of_anc_left hsQ hst
+  have hjupper : tr.time j ≤ sp.ts u + sp.Δ := by
+    have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
+    have hr := hac.localRun.upTo (hp.run.time_nonneg j)
+    have hcy' := AC.upTo_castAt.mpr (And.intro le_rfl hcy)
+    have hsl := (AC.castAt_specU hr.toU hy hcy').2.1
+    change e.msg.slot = sp.slot (tr.time j) at hsl
+    have ht := AC.vote_time_leU hr.toU hy ⟨elly, hcy'⟩
+    change tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ at ht
+    simpa only [← hsl, hes] using ht
+  have hfloor := hp.reset_vote_floor_above_old_or_covered_at hy hR hcy hes hjb hPyStore
     (fun x r l O ho ht _ => by
       have hOQ := hp.reset_proposal_passes_at hpi hR hci hcall hd hti hib O ⟨x, r, l, ho, ht⟩
       obtain ⟨hst, hsQ⟩ := Compose.acProposal_start_anc_head hPhi hd
@@ -69,6 +82,10 @@ theorem reset_proposal_viable_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
         · exact he ▸ hst
         · exact (Anc.mem hsQ he).2
       exact hOQ.trans (.single ⟨hPhiU hQt, hPsiU hPy, hPQ⟩))
+    (fun hc C s hC hs =>
+      (hp.reset_proposal_passes_member_before_at hc hpi hR hci hcall hd hti hib
+        (hp.member_before_proposal_of_cast_deadline_at hti hjupper hC hs) hs).trans
+          (.single ⟨hPhiU hQt, hPsiU hPy, hPQ⟩))
   refine ⟨hPt, hroot', P, hPt, ?_, .refl⟩
   rw [hfr] at hPy hroot' ⊢
   exact ⟨hPy.1, hPy.2, hroot'.mono (fun X hX => hX.1), hfloor⟩

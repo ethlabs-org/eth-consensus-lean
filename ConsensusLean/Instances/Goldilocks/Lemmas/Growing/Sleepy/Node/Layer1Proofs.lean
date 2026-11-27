@@ -107,25 +107,41 @@ theorem goldilocks_source_provenance :
     rw [projAC_state_at hrun hy]
     exact hB
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hy hcA
-  obtain ⟨hCv, l, ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩, hlC, hfast, -⟩ :=
-    AC.toFG_candidate htoA.2.2
-  have hCe : B = ℓ.frame.viableAncestor B₀ :=
-    hΦ.coherent.1 hCv.1 (AC.viableAncestor_anc hΦ hB₀).1 hlC.symm
+  -- the source (fast or deep) is at or below the viable ancestor of a stored lock's block
+  obtain ⟨-, a, ⟨haT, l, ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩, hla⟩, hBa⟩ :=
+    AC.toFG_source_below_lock htoA.2.2
+  have hae : a = ℓ.frame.viableAncestor B₀ :=
+    hΦ.coherent.1 haT (AC.viableAncestor_anc hΦ hB₀).1 hla.symm
   have hstate := projAC_upTo_state hrun (y := y) (le_refl (tr.time i))
-  obtain ⟨k, hki, D, CV, hlock, L, hL, hLr, hLD⟩ :=
-    AC.fast_lock_provenance hr.localRun hr.vstart hy i l₀
-      (hstate.symm ▸ hl₀) hfast
-  obtain ⟨hkt, hlock⟩ := (AC.upTo_fastLockAt hrun.time_mono).1 hlock
+  -- the stored lock, fast or slow, sits below a lock write of the node at an earlier cut
+  obtain ⟨k, hki, D, hkt, hlock, L, hL, hLr, hLD⟩ : ∃ k < i, ∃ D, tr.time k ≤ tr.time i ∧
+      ((∃ CV, AC.FastLockAt tr.projAC y k l₀.slot D CV) ∨
+        AC.SlowLockAt tr.projAC y k l₀.slot D) ∧
+      ∃ L ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)), L.root = l₀.block ∧
+        Anc ((tr.upTo (tr.time i)).HonestBlocks (H (tr.time i))) L D := by
+    cases hfast : l₀.fast
+    · obtain ⟨k, hki, D, ⟨ℓu, C, hu, hC, hD⟩, L, hL, hLr, hLD⟩ :=
+        AC.slow_lock_provenance hr.localRun hr.vstart hy i l₀ (hstate.symm ▸ hl₀) hfast
+      obtain ⟨hkt, hu⟩ := (AC.upTo_updateAt hrun.time_mono).1 hu
+      have hs : (tr.projAC.upTo (tr.time i)).state y k = tr.projAC.state y k :=
+        Trace.upTo_state _ y fun _ hq => (hrun.time_mono hq.le).trans hkt
+      rw [hs] at hC hD
+      rw [Trace.upTo_time] at hD
+      exact ⟨k, hki, D, hkt, Or.inr ⟨ℓu, C, hu, hC, hD⟩, L, hL, hLr, hLD⟩
+    · obtain ⟨k, hki, D, CV, hlock, L, hL, hLr, hLD⟩ :=
+        AC.fast_lock_provenance hr.localRun hr.vstart hy i l₀ (hstate.symm ▸ hl₀) hfast
+      obtain ⟨hkt, hlock⟩ := (AC.upTo_fastLockAt hrun.time_mono).1 hlock
+      exact ⟨k, hki, D, hkt, Or.inl ⟨CV, hlock⟩, L, hL, hLr, hLD⟩
   have hyk := hrun.antitone hkt hy
-  obtain ⟨E, EV, hevent, hDE⟩ := lock_below_origin_at hrun hnc hyk (Or.inl ⟨CV, hlock⟩)
+  obtain ⟨E, EV, hevent, hDE⟩ := lock_below_origin_at hrun hnc hyk hlock
   have hLU := upTo_subset hrun hd hL
   obtain rfl : B₀ = L := (Compose.Growing.honest_blocks_coherent_local hrun.toLocalRun hnc).1
     (hΦU hB₀) hLU (hB₀r.trans hLr.symm)
   right
   refine ⟨k, l₀.slot, E, hki.le, hyk, hkt.trans hib,
     goldilocksEvents_confirmedEvent_iff.2 ⟨EV, hevent⟩, ?_⟩
-  rw [hCe]
-  exact ((AC.viableAncestor_anc hΦ hB₀).2.mono hΦU).trans
+  rw [hae] at hBa
+  exact (Anc.mono hΦU (hBa.trans (AC.viableAncestor_anc hΦ hB₀).2)).trans
     ((hLD.mono (upTo_subset hrun hd)).trans hDE)
 
 /-- The finite sleepy service at `Δ` from the generic AC service at the Goldilocks

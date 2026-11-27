@@ -76,7 +76,7 @@ The pattern is `[0]`, with span zero and hold one; the end budget is exactly `ts
 This does not assert a supplier for arbitrary contracts or progress forms. -/
 theorem healthy_preparation_gap_at (run : (Sys (goldilocks S) V).Run)
     (hn : 1 ≤ Fintype.card V) (hv : (Sys (goldilocks S) V).Valid run)
-    (hnc : ¬ run.2.HashCollision) {cap : Capability} {idx : ℕ+} {ready heal : Time}
+    (hnc : ¬ run.2.HashCollision) {cap : Capability} {idx : (K S A).Idx} {ready heal : Time}
     (hcap : cap = .available ∨ cap = .stable) (hb : heal ≤ run.2.horizon)
     (hp : (Sys (goldilocks S) V).prog (shapeProgress (goldilocks S) V)
       (K S A) cap idx ready heal run)
@@ -84,8 +84,8 @@ theorem healthy_preparation_gap_at (run : (Sys (goldilocks S) V).Run)
     (hs : max ready 0 + 4 * (S.params (Model.pubOf run.1) hn).Δ ≤
       (S.params (Model.pubOf run.1) hn).ts s₀)
     (hN : (S.params (Model.pubOf run.1) hn).ts N ≤ heal) :
-    ∀ a, s₀ ≤ a → a + (idx : Nat) ≤ N + 1 →
-      ∃ x, a ≤ x ∧ x < a + (idx : Nat) ∧
+    ∀ a, s₀ ≤ a → a + (idx.1 : Nat) ≤ N + 1 →
+      ∃ x, a ≤ x ∧ x < a + (idx.1 : Nat) ∧
         ∃ k P, runProposer S run.2 hn x ∈
             honestKeysAt S run.2
               ((S.params (Model.pubOf run.1) hn).ts x + (S.params (Model.pubOf run.1) hn).Δ) ∧
@@ -118,8 +118,8 @@ theorem healthy_preparation_gap_at (run : (Sys (goldilocks S) V).Run)
   have hΔ := sp.toParams.hΔ
   intro a ha haN
   obtain ⟨x, hxl, hxr, hx⟩ := hgap a ha haN
-  have hxr : x < a + (idx : Nat) := hxr
-  have haN : a + (idx : Nat) ≤ N + 1 := haN
+  have hxr : x < a + (idx.1 : Nat) := hxr
+  have haN : a + (idx.1 : Nat) ≤ N + 1 := haN
   have hx0 : 0 < x := by
     rcases Nat.eq_zero_or_pos x with h | h
     · exfalso

@@ -12,6 +12,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Arith
 import ConsensusLean.Lemmas.Tactic.Linarith
 
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.HealedMembers
 public section
 
 /-! # Clean fast sources and their votes, under growing faults
@@ -26,7 +27,7 @@ through the horizon, by strong induction on the cast's cut.
 * A later vote is the growing next transfer (`AC.Growing.next_transfer`) over the half committee
   of the previous label.
 * The vote domain is the result-prefix domain for a fast update and the optimistic vote domain
-  (`optimistic_vote_domain_before_at`) for an optimistic lock. -/
+  (`optimistic_vote_domain_before_of_quarantine_at`) for an optimistic lock. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
@@ -140,15 +141,33 @@ theorem fast_source_votes_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ
   have hm := hp.run.time_mono
   have hxU : (tr.state x r).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun _ h => ⟨x, r, tr.time r, hp.run.time_nonneg r, fun _ hq => hm hq.le, hx, h⟩
+  have hcase : (∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ) ∨
+      HighSourceCover tr H g a b := by
+    cases hdd : sp.deepDepth with
+    | none => exact Or.inl fun D hD => by cases hD
+    | some D =>
+      rcases hp.deepCover D hdd with hb | hc
+      · exact Or.inl fun D' hD' => by cases hD'; exact hb
+      · exact Or.inr hc
+  rcases hcase with hpre | hc
+  swap
+  · -- under the high-source cover: S2, the fast lock past the drain being a member
+    intro i hib y hy ell e hcast hsi
+    exact Compose.Growing.healed_source_votes_at hc.s2
+      (Compose.Growing.HealedOrigin.of_lock (rL := healedLockFloor sp a)
+        (rO := healedOriginFloor sp a) hs
+        (Compose.Growing.lockWithin_iff.2 ⟨x, r, hx, hrb, Or.inl ⟨CV, hfast⟩⟩)) .refl
+      (Compose.Growing.hVoteAt_iff.2 ⟨hy, ell, hcast⟩) hib hsi
   apply hp.fast_source_votes_of_domain_before_at hx hfast
     (hp.clean_window_timing_at hs s (by have := sp.two_le_k; clear * - this; omega))
   intro y i ell e hy hcast hib hsi hprior
   rcases hfast with ⟨ellX, C, hupd, hconf, hdeep, _⟩ | hop
   · have hBC := ((AC.deepest_mem hdeep).1.1.2.2).mono
       ((frame_tree_subset_at hp.run hp.noColl hx hupd.1).2.trans hxU)
-    exact ProposalImpl.result_prefix_vote_domain_before_at hp hx hy ⟨ellX, hupd, hconf, rfl⟩
-      hBC hs hrb hcast hsi hib hprior
-  · exact hp.optimistic_vote_domain_before_at hx hy hop hs hrb hcast hsi hib hprior
+    exact ProposalImpl.result_prefix_vote_domain_before_of_quarantine_at hp hx hy
+      ⟨ellX, hupd, hconf, rfl⟩ hBC hs hrb hcast hsi hib hprior hpre
+  · exact hp.optimistic_vote_domain_before_of_quarantine_at hx hy hop hs hrb hcast hsi hib hprior
+      hpre
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 

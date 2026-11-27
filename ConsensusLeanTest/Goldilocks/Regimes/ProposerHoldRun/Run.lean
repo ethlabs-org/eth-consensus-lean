@@ -277,7 +277,7 @@ every window of one slot holds a slot whose proposer is ready and honest at its 
 theorem run_prog_zero (A : ContractAssumptions S) (C : ContractCoefficients) :
     (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).prog
       (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 5))
-      (holdContract A C 0) .available 1 0
+      (holdContract A C 0) .available ⟨1, A.deepAdmits_one⟩ 0
       ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).pt (run S)).horizon
       (run S) := by
   change PatternRecurrence (rho S).point (rho S).key (fun s => (rho S).sel (.proposer s))
@@ -322,7 +322,7 @@ proposer is compromised at `t_1 + ΔAC = 15`. So the run does not refute hold `1
 theorem run_not_prog_hold_one (A : ContractAssumptions S) (C : ContractCoefficients) :
     ¬ (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).prog
       (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 5))
-      (goldilocksContract A C) .available 1 0 41 (run S) := by
+      (goldilocksContract A C) .available ⟨1, A.deepAdmits_one⟩ 0 41 (run S) := by
   intro h
   change PatternRecurrence (rho S).point (rho S).key (fun s => (rho S).sel (.proposer s))
     (goldilocks { S with vote := AsChainShape.stock } (pubOf env)).skel.grid

@@ -44,9 +44,12 @@ theorem held_high_origin_viable_at
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hpH hc'
   have hroot : Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
     by_cases hhigh : HZ tr H g + 1 ≤ (tr.state p c).fg.hj
-    · exact hp.high_J_root_of_held_at_call_before_at hpH hBf.1 hpH hcb hc hhigh
-        (fun _ r _ _ hrc hO => hp.origins_compatible_at ho hib hO
-          ((hp.run.time_mono hrc.le).trans hcb))
+    · exact hp.high_J_root_of_held_at_call_before_covered_at hpH hBf.1 hpH hcb hc hhigh
+        (ResetPremisesUpTo.compatibleWithOrigins_iff.2
+          ⟨fun _ r _ _ hrc hO => hp.origins_compatible_at ho hib hO
+            ((hp.run.time_mono hrc.le).trans hcb),
+          fun hcov C s hC _ => (hcov.s1 C s B j hC.healedOrigin
+            (Compose.Growing.HealedOrigin.of_high hib ho)).symm⟩)
     rw [hfr]
     change Compatible _ (tr.state p c).fg.fcRoot B
     unfold Store.fcRoot
@@ -83,13 +86,15 @@ theorem held_high_origin_viable_at
     obtain ⟨_, _, _, _, _, ⟨C, hC, hCh⟩, _⟩ := Store.cache_invariants _ _ _ _ hreach
     obtain ⟨E, hE, hEC, hEh, hET⟩ := entry_at_height hreach hC
       (h := (tr.state p c).fg.hmax - 1) (by omega) (by omega)
-    obtain ⟨_, _, _, _, v, d, _, hdc, _, _, r, hrd, l, O, hoO, hEO⟩ :=
-      hp.left_entry_origin_at ht hle hpH hcb hE hET (by omega) hEC (by omega)
+    obtain ⟨_, _, _, _, v, d, _, hdc, _, _, hor⟩ :=
+      hp.left_entry_origin_or_covered_at ht hle hpH hcb hE hET (by omega) hEC (by omega)
     have hcmp : Compatible (tr.HonestBlocksAt H) E B := by
-      rcases hp.origins_compatible_at hoO
-          ((hp.run.time_mono (show r ≤ c by omega)).trans hcb) ho hib with h | h
-      · exact Or.inl (hEO.trans h)
-      · exact Anc.total hU hEO h
+      rcases hor with ⟨r, hrd, l, O, hoO, hEO⟩ | ⟨-, hcov⟩
+      · rcases hp.origins_compatible_at hoO
+            ((hp.run.time_mono (show r ≤ c by omega)).trans hcb) ho hib with h | h
+        · exact Or.inl (hEO.trans h)
+        · exact Anc.total hU hEO h
+      · exact hcov.compatible_highOrigin hp.run hp.noColl hib ho
     have hBE : Anc (tr.HonestBlocksAt H) B E := by
       rcases hcmp with h | h
       · have hh := h_le_of_store_anc hreach

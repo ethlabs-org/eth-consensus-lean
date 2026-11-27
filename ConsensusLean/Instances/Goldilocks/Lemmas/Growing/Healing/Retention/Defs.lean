@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GoldilocksBridge
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Healed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
 
 public section
 
@@ -16,6 +18,29 @@ open AC (ACParams ReplayOrder Payload gbar)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+
+/-- The healed floors of the reset `a`: lock members from `cleanLabel a + k + 2`, origins from
+`k − 1` labels later (the floors `(r, r + k − 1)` of `Continuation`). -/
+abbrev healedLockFloor (sp : ACParams) (a : Time) : Nat := cleanLabel sp a + sp.k + 2
+
+/-- The origin floor of the healed family of the reset `a`. -/
+abbrev healedOriginFloor (sp : ACParams) (a : Time) : Nat := healedLockFloor sp a + sp.k - 1
+
+/-- **The high-source cover through `b`** after the deep quarantine: the deep quarantine ends at
+least `4Δ` before the drain of `a` is over (`drain_le`, the slack the seeded hand-over needs), and
+the healed family of `a` satisfies S1 (members are pairwise compatible) and S2 (an honest vote
+of a slot after a member's label extends it) through `b`. -/
+structure HighSourceCover (g a b : Time) : Prop where
+  drain_le : ∀ D, sp.deepDepth = some D →
+    drainTime sp a + 4 * sp.Δ ≤ cutZ sp.toParams g + 4 * D * sp.Δ
+  s1 : ∀ C s C' s',
+    Compose.Growing.HealedOrigin tr H g (healedLockFloor sp a) (healedOriginFloor sp a) C s b →
+    Compose.Growing.HealedOrigin tr H g (healedLockFloor sp a) (healedOriginFloor sp a) C' s' b →
+      Compatible (tr.HonestBlocksAt H) C C'
+  s2 : ∀ C s,
+    Compose.Growing.HealedOrigin tr H g (healedLockFloor sp a) (healedOriginFloor sp a) C s b →
+    ∀ y i e, Compose.Growing.HVoteAt tr H y i e → tr.time i ≤ b → s < e.msg.slot →
+      AC.VoteExtends (tr.HonestBlocksAt H) e.msg C
 
 /-- GST service, with signed rows consumed by the finite horizon. With a release hold `hold > 0`
 a signing is served only when its signer is still honest at `max (time i) g + hold`
@@ -107,6 +132,11 @@ structure ResetPremisesUpTo (proposer : Nat → Fin sp.n)
   timeoutDelay : ∀ s, sp.toParams.slotTime s + 6 * sp.Δ + ΔF ≤
     sp.toParams.slotTime (s + sp.toParams.δt)
   nonempty : (H b).Nonempty
+  /-- With deep FG sources on at depth `D`: the horizon is within the deep quarantine after `c_z`
+  (`c_z + 4DΔ`), so no high deep FG source is used by `b`; or the high sources are covered by the
+  healed family of `a`, with S1 and S2 through `b`. -/
+  deepCover : ∀ D, sp.deepDepth = some D →
+    b ≤ cutZ sp.toParams g + 4 * D * sp.Δ ∨ HighSourceCover tr H g a b
 
 end Consensus.Goldilocks.Healing.Growing
 

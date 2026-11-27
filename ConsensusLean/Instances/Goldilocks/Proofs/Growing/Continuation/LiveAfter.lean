@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Statements.Obligations
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Live
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Query
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Members
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Accountable
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.ConvictedRun
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Handover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.PSync
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Transport

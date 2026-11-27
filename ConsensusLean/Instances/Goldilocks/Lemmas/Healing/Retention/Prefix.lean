@@ -10,7 +10,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
-/-! # Goldilocks Healing, HR.4: origins before a cut and the sources of left entries
+/-! # Goldilocks Healing, HR.4: origins before a cut and left entries
 
 * **Prefix comparison before a cut** (`origins_compatible_before`): with `VoteInv` at every cut
   `< k`, a high origin written before `k` is comparable with every high origin active before `k`
@@ -20,18 +20,15 @@ public section
 * **The entries of a chain** (`entry_at_height`): every height `1 ≤ h ≤ σ[C].h` has its entry on
   `C`'s chain; a chain that left an entry carries an honest attestation naming it
   (`honest_att_of_left`, the contrapositive of `Store.entry_kept`).
-* **The source of a left high entry** (`left_entry_origin`): such an attestation, on a block of an
-  honest store before cut `k`, was signed before `k`, and its entry lies below a high origin
-  written by its signer before the signing (`high_row_source`).
-* **The report-time bound** (`row_origin_label_lt`): that origin's label is below the slot of an
-  honest vote at cut `k`. For an optimistic origin of the vote's own slot `m`
-  (`row_origin_not_current`, the run's event order): the attestation is signed once
-  (`sign_unique`), in a tick, at a public time in `[t_m, t_m + Δ]`; at `t_m + Δ` the voter's tick
-  precedes its acceptance of the carrying block and casts its vote
+* **The report-time bound** (`row_origin_label_lt`): the label of a high origin written by the
+  signer of a left high entry is below the slot of an honest vote at cut `k`. For an optimistic
+  origin of the vote's own slot `m` (`row_origin_not_current`, the run's event order): the
+  attestation is signed once (`sign_unique`), in a tick, at a public time in `[t_m, t_m + Δ]`; at
+  `t_m + Δ` the voter's tick precedes its acceptance of the carrying block and casts its vote
   (`vote_before_late_delivery`); at `t_m` the write is in the signer's tick, whose pools hold
   slot-`m` votes of the signer only, so `n = 1` and the signer is the voter, with its vote before
-  the attestation (`slot_start_optimistic`). These run facts are in `Retention/PrefixSteps`,
-  which the growing-fault siblings share. -/
+  the attestation (`slot_start_optimistic`). These run facts are in `Retention/PrefixSteps`, which
+  the growing-fault siblings share. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -155,50 +152,6 @@ theorem origins_compatible_before (hp : ResetPremises tr H K proposer dg g ΔF a
     ho hz hact ho' hrk
   · exact (le_max_left _ _).trans (le_max_right _ _)
   · exact (le_max_right _ _).trans (le_max_right _ _)
-
-/-- **The source of a left high entry**: a high entry `E` of an honest
-store before cut `k` that a held chain has left is named by an honest attestation on a block of
-that store, signed before `k`, whose entry `E` lies below a high origin written by its signer
-before the signing (`high_row_source`). -/
-theorem ResetPremisesUpTo.left_entry_origin {b : Time}
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {y : Fin sp.n} (hy : y ∈ H)
-    {k : Nat} {E C : AC.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ (tr.state y k).fg.tree)
-    (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
-    (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h) (hEC : (tr.state y k).fg.Anc E C)
-    (hlt : ((tr.state y k).fg.σ E.root).h < ((tr.state y k).fg.σ C.root).h) :
-    ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v ∈ H, ∃ d < k, tr.SignAt v d att ∧
-      att.T = E.root ∧ ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧
-        Anc (tr.HonestBlocks H) E O := by
-  have hU := hp.honest_coherent
-  have hq : Hᶜ.ncard < sp.toParams.fg.q := by
-    have h3 := hp.faults
-    have hn := sp.toParams.hn
-    change 3 * Hᶜ.ncard ≤ sp.toParams.n - 1 at h3
-    change Hᶜ.ncard < (2 * sp.toParams.n + 2) / 3
-    clear * - hn h3; omega
-  obtain ⟨W, hW, att, ha, haT, haH⟩ := honest_att_of_left
-    (Compose.fg_reachable hp.run.toLocalRun hy k) hq hET hEC hlt
-  rcases tree_accepted hp.run.toLocalRun hy hW with rfl | ⟨i', hi', hA⟩
-  · cases ha
-  obtain ⟨d, hdi, hsd⟩ := hp.run.att_unforgeable y hy i' att (Or.inr ⟨W, ⟨true, hA⟩, ha⟩) haH
-  obtain ⟨E', hE', hE'r, hE'h⟩ := signAt_entry hp.run haH hsd
-  obtain rfl : E' = E := hU.1 ⟨_, haH, d, hE'⟩ ⟨y, hy, k, hE⟩ (hE'r.trans haT)
-  obtain ⟨r, hrd, l, O, hoO, E₀, hE₀, hE₀O, hE₀r, -⟩ :=
-    hp.high_row_source haH hsd (by rw [← hE'h, hp.σ_eq_run haH hy hE' hE]; exact hEh)
-  obtain rfl : E₀ = E' := hU.1 ⟨_, haH, r, hE₀⟩ ⟨y, hy, k, hE⟩ (hE₀r.trans haT)
-  exact ⟨W, hW, att, ha, att.val, haH, d, by clear * - hi' hdi; omega, hsd, haT, r, hrd, l, O, hoO,
-    hE₀O.mono fun X hX => ⟨_, haH, r, hX⟩⟩
-
-/-- Whole-run specialization of left-entry provenance. -/
-theorem left_entry_origin (hp : ResetPremises tr H K proposer dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
-    {k : Nat} {E C : AC.Blk sp.n (List (FG.Att sp.n))} (hE : E ∈ (tr.state y k).fg.tree)
-    (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
-    (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h) (hEC : (tr.state y k).fg.Anc E C)
-    (hlt : ((tr.state y k).fg.σ E.root).h < ((tr.state y k).fg.σ C.root).h) :
-    ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v ∈ H, ∃ d < k, tr.SignAt v d att ∧
-      att.T = E.root ∧ ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧
-        Anc (tr.HonestBlocks H) E O :=
-  (hp.toUpTo tr H (le_refl a)).left_entry_origin hy hE hET hEh hEC hlt
 
 /-- **No optimistic source of the vote's own slot** (R4's report-time
 argument bounds `l ≤ m − 1` before this vote; a label-`(j+1)` optimistic source cannot be

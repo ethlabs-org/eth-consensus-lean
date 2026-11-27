@@ -130,8 +130,9 @@ theorem result_prefix_vote_domain_before_of_domain_at
     exact hp.origins_compatible_at ho ((hp.run.time_mono hci.le).trans hib)
       ho' ((hp.run.time_mono hci'.le).trans hib)
 
-/-- A result prefix has the frozen vote domain, with the finite domain supplier proved. -/
-theorem result_prefix_vote_domain_before_at
+/-- A result prefix has the frozen vote domain, with the finite domain supplier proved inside the
+deep quarantine (`hpre`). -/
+theorem result_prefix_vote_domain_before_of_quarantine_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {r s i : Nat} (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
@@ -141,11 +142,14 @@ theorem result_prefix_vote_domain_before_at
     {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcast : AC.CastAt tr.projAC y i ell e) (hsi : s < e.msg.slot) (hib : tr.time i ≤ b)
     (hprior : ∀ z q, z ∈ H (tr.time q) → q < i → ∀ e', AC.VoteAt tr.projAC z q e' →
-      s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
+      s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
+    (hpre : ∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
     Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
       B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   exact result_prefix_vote_domain_before_of_domain_at hp
-    (KernelProof.held_target_vote_domain_before_at hp) hx hy hres hBC hs hrb hcast hsi hib
+    (fun hx hy hBx hrb _ _ hcast hib hheld hS hqb hm hBS hcompare hseedCompare hpair =>
+      KernelProof.held_target_vote_domain_before_of_quarantine_at hp hx hy hBx hrb hcast hib
+        hheld hS hqb hm hBS hcompare hseedCompare hpair hpre) hx hy hres hBC hs hrb hcast hsi hib
     (fun z q e' hqi hv hslot =>
       let ⟨hz, hv⟩ := Compose.Growing.hVoteAt_iff.mp hv
       hprior z q hz hqi e' hv hslot)

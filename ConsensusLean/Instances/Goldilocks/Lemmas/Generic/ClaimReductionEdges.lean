@@ -506,10 +506,10 @@ theorem healedSafetyReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
     obtain ⟨hpv, hbv, hnv, hrv, hmv⟩ := hread v j hj hv'
     rw [hru, hrv]
     have hP := hprep hβ hv hc cap idx gst hcap hH hprog hb
-    obtain ⟨a, ha, hab, -, -, s₁, z, k, X, hs₁, hgs₁, h6, hms₁, hX⟩ :=
+    obtain ⟨a, ha, hab, hbudget, -, -, s₁, z, k, X, hs₁, hgs₁, h6, hms₁, hX⟩ :=
       hbud hv hc cap idx gst hcap hH hprog hb
-    have hcan := hhc hcf hv hc gst a hH hrun hP ha hab
-    have hheal := L.healing.heal_after_reset hcf hrun hP ha hab hcan
+    have hcan := hhc hcf hv hc gst a hH hrun hP ha hab hbudget
+    have hheal := L.healing.heal_after_reset hcf hrun hP ha hab hbudget hcan
     have hheal₁ : HealedFrom M.trace M.honest M.proposer s₁ rho.horizon :=
       fun s s' z z' k k' X X' hs => hheal s s' z z' k k' X X' (hs₁.trans hs)
     have hmono : ∀ {y i t}, ReadyReadPoint M.trace M.honest rho.horizon (c - 1) y i t →
@@ -520,7 +520,7 @@ theorem healedSafetyReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold)
       have := P.hΔ
       unfold AC.gbar at hgs₁
       linarith
-    have hcomp := ((hHR.healed _ _ _ _ _ _ _ _ _ _ _ hcf hrun hP ha hab hs₁ hheal₁ hg0).1
+    have hcomp := ((hHR.healed _ _ _ _ _ _ _ _ _ _ _ hcf hrun hP ha hab hbudget hs₁ hheal₁ hg0).1
       ⟨z, k, X, hX⟩ h6 hgs₁ _ _ _ _ _ _
       (by have := hi.2; change heal ≤ rho.cutTime i at this; linarith)
       (by have := hj.2; change heal ≤ rho.cutTime j at this; linarith)
@@ -649,7 +649,7 @@ theorem healthyLivenessReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold
   have hheal : heal ≤ rho.horizon := ht.trans (htD'.trans htD)
   have hprog' := (shapeProgress F V).mono le_rfl hheal hprog
   have hP := hprep hβ hv hc _ idx gst hcap hH hprog' hheal
-  obtain ⟨a, ha, hab, -, hdrain, s₁, -, -, -, -, hgs₁, -, hms₁, -⟩ :=
+  obtain ⟨a, ha, hab, hbudget, -, hdrain, s₁, -, -, -, -, hgs₁, -, hms₁, -⟩ :=
     hbud hv hc _ idx gst hcap hH hprog' hheal
   obtain ⟨X, k, htk, hXr, hkm, hroot, hk0, hkh, hkr⟩ :=
     hpw.healthy hv hc _ idx gst t hcap hH hprog ht htD hex
@@ -665,7 +665,7 @@ theorem healthyLivenessReduction {fgHold : Time} (C : ACCorrectLocal A sg fgHold
   refine ⟨M.trace.time k, M.keyIndex X.proposer, M.header X, htk,
     by rw [M.key_eq]; exact hkr, hpp.proposal _ _ hXr.1 hXr.2.1.1, fun w hwr => ?_⟩
   obtain ⟨-, hlt, hp, hbd⟩ := hSR.end_read hv c hc0 w D hD0 htD hwr
-  have hanc := hHR.proposal _ _ _ _ _ _ _ _ _ _ heal hcf hrun hP ha hab
+  have hanc := hHR.proposal _ _ _ _ _ _ _ _ _ _ heal hcf hrun hP ha hab hbudget
     (hfit.healthy_start _ idx gst hcap) X k _ _ D hXr hdX
     (by change AC.gbar gst + 4 * P.Δ ≤ P.slotTime s₁ at hgs₁; linarith) hk0
     (by linarith [hkh, L.durations.2.2.2.2]) hkh (by linarith)

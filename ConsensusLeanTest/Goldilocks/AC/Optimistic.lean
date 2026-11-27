@@ -545,7 +545,7 @@ theorem toFG_S2 : (acToFG sp1 S2 Φ₁ 12).1 = S3 ∧ (acToFG sp1 S2 Φ₁ 12).2
         · rw [slot_12]; exact ⟨rfl, by decide⟩
         · rw [mem_S1_locks hl, slot_12]; exact ⟨rfl, by decide⟩
     · rw [slot_12]; decide
-  unfold acToFG
+  unfold acToFG fgSource
   rw [ite_eq_right (not_not.2 (joined_bot rfl 12)), hc]
   dsimp only
   rw [ite_eq_right (show ¬ AncR Φ₁ B1 S2.fgReported from notAncR_B1_0)]
@@ -985,12 +985,13 @@ theorem optimisticNextUpdate_on_witness :
   exact ⟨C, hC, hBC, hD (by decide)⟩
 
 /-- A1.5 on the run: `B1`, returned by `ac_to_fg` at cut 2, is at or below the block of a fast
-lock of a slot `s'` with `slot(12) ≤ s' + 2`, written after time `0`. -/
+lock of a slot `s'` with `slot(12) ≤ s' + 2`, written after time `0` (deep sources are off at
+`sp1`, so the deep disjunct is empty). -/
 theorem sourceAge_on_witness :
     ∃ j ≤ 2, ∃ s' B' CV', FastLockAt trW v0 j s' B' CV' ∧ (0 : Time) < trW.time j ∧
       sp1.slot (trW.time 2) ≤ s' + 2 ∧ Anc U₁ B1 B' :=
-  (acStepsAt sp1).sourceAge Unit ro1 Set.univ U₁ trW acRun_W.localRun 0 v0 2 ℓ2 B1 trivial
-    toFG_W (by decide)
+  ((acStepsAt sp1).sourceAge Unit ro1 Set.univ U₁ trW acRun_W.localRun 0 v0 2 ℓ2 B1 trivial
+    toFG_W (by decide)).resolve_right fun ⟨_, _, hD, _⟩ => nomatch hD
 
 end Consensus.Goldilocks.AC.Test
 

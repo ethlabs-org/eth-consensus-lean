@@ -1161,9 +1161,10 @@ still be vetoed or moved back).  The protocol's note has the same gap in~(b).}
 {A0.3, A0.4, A0.8, A1.1, G0.4 (frame), G0.3 (frame)}{AC \S Node actions, note ``Why an optimistic confirmation
 is a fast confirmation''~(29eb7209) (paper sketch); new in Lean.}{M.}
 
-\dagnode{A1.5}{Source age}{From slot $\slot(\tau)+3$ on, every block that
-$\fname{ac\_to\_fg}$ returns at an honest node is the block of a fast lock
-written after~$\tau$.}
+\dagnode{A1.5}{Source age}{From slot $\slot(\tau)+3$ on, with $D=\bot$, every
+block that $\fname{ac\_to\_fg}$ returns at an honest node is the block of a fast
+lock written after~$\tau$.  With $D\neq\bot$, every such block is either that
+or a deep candidate.}
 {A0.4, A0.7}{AC \S Node actions ``Why the FG can take every confirmation''~(29eb7209).}{S.}
 
 \dagnode{A1.8}{Result transfer (step)}{Let an honest node~$X$, joined at
@@ -1208,17 +1209,19 @@ joined at $t_{s+1}+\Delta$ runs that tick and votes by then, C0.4; otherwise it
 was asleep then or restarted after~$t_s$.  The hypothesis must not be read as
 vacuous when $x$ makes no unlocking in slot $s+1$: that reading is false.)  Then the $\mathit{fg\_confirmed}\neq\bot$ that
 $\fname{ac\_to\_fg}$ returns at~$x$ at~$t$ is compatible with~$B$.
-(The source at~$t$ is a fast lock of slot at least $\slot(t)-2$, written by an
+(With $D=\bot$, the source at~$t$ is a fast lock of slot at least $\slot(t)-2$, written by an
 update that reads votes of an earlier slot, or by an optimistic confirmation
 that reads votes that precede the call; so the hypothesis covers every vote
-that the lock can read.)  (Its fast
+that the lock can read.  With $D\neq\bot$ the source can instead be a deep
+candidate (A1.5); its compatibility with~$B$ is a paper claim, not established
+in Lean.)  (Its fast
 locks of slot $s-2$ and $s-1$ that conflict with~$B$ are moved back at its
 unlocking in slot $s+1$, where $S$ are opponents; a conflicting fast or
 optimistic lock of slot~$s$ needs, under $\mathsf{Sync}$, support that
 contradicts $B$'s fast test; one of a later slot needs at least $n/2$
 non-equivocating supporters (resp.\ $3n/4$ voters) of a conflicting block,
 but the honest votes extend~$B$ and $f<n/2$.  In case~(ii) $x$ is joined at~$t$
-only if $\slot(t)\geq s+2$, so its sources have slot at least~$s$ and its old
+only if $\slot(t)\geq s+2$, so its fast-lock sources have slot at least~$s$ and its old
 fast locks of slots $s-2$ and $s-1$ are not sources.)}
 {A0.3, A0.4, A0.7, A0.8, A1.5, G0.4 (frame), G0.3 (frame)}{AC \S Node actions ``The block for the FG'', ``Why
 an optimistic confirmation is a fast confirmation''~(29eb7209).}{M.}
@@ -1921,7 +1924,11 @@ greatest $\Sigma.\hmax$ of the honest nodes after all events at~$c_z$.
 (a) Every honest attestation signed at or before $c_z$ has a height pair of
 height at most $H_z$.  From $c_z$ on, every block that $\fname{ac\_to\_fg}$
 returns at an honest node is the block of a fast lock written after
-$\bar g$ (A1.5 with $\tau=\bar g$).
+$\bar g$ (A1.5 with $\tau=\bar g$).  With $D\neq\bot$ this holds at heights
+$\geq H_z+1$ before $c_z+4D\Delta$: no honest tree holds a block of state height
+$\geq H_z+1$ at $c_z$, so a deep candidate at such a height has stamp $>c_z$ and
+is not old enough before $c_z+4D\Delta$.  Deep sources at heights $\leq H_z$
+may occur.
 (b) The chain of an accepted block of state height $\geq H_z+2$ includes an
 honest attestation whose height pair has height $H_z+1$ (G0.2 (f), $q>f$).
 (c) Suppose such an attestation is ever signed.  Let the \emph{reset} $a_z$
@@ -2267,8 +2274,8 @@ look-back without requiring every honest participant to remain awake.
 The headline \texttt{GoldilocksCorrect} (consensus-lean
 \texttt{Statements/Obligations}) states, for every setup~$S$ (genesis root,
 $\delta_{\mathrm t}$, lock window $k\geq2$, fast increment $c_{\mathrm{fast}}\geq2$,
-optimistic switch, restart replay order, vote binding, signing calendar and
-release schedule),
+optimistic switch, deep-source depth $D$, restart replay order, vote binding,
+signing calendar and release schedule),
 every assumption set
 of \S\ref{sec:obligations} and every finite validator
 set, that the Goldilocks family run by the general execution model is an L0
@@ -2277,8 +2284,17 @@ set, that the Goldilocks family run by the general execution model is an L0
 \S\ref{sec:obligations}, whose fractions are $\tfrac12$, $\tfrac13$,
 $\tfrac12$ (\texttt{OptimalFaultTolerance}).  With the optimistic switch off no
 honest node writes an optimistic lock or record, so the optimistic cases of
-A1.2, A1.4 and A1.9 have nothing to apply to.  This subsection states its rows in the terms of
-this file.  Each row is for every outer gap $X\geq1$ (the contract's index)
+A1.2, A1.4 and A1.9 have nothing to apply to.  With deep sources on
+($D\neq\bot$) the contract admits only the outer gaps with
+$11+\mathrm{healMargin}(X)\leq4D$, so that $c_z+4D\Delta\geq\mathrm{heal}(g)$: no
+deep source at a height above $H_z$ is old enough before the heal; one gap $X$
+indexes every row (at $k=2$, $\delta_{\mathrm t}=6$, $G=0$: $X\leq\lfloor(4D-331)/48\rfloor$).
+The depth must admit the gap $3c'+2$ that the final pattern needs to tolerate a
+bad proposer slot, $11+\mathrm{healMargin}(3c'+2)\leq4D$ (with
+$c'=\mathit{finalSlots}$; at $k=2$, $\delta_{\mathrm t}=6$, $\mathit{fgSlots}=2$,
+$R=G=0$: $D\geq179$).
+This subsection states its rows in the terms of
+this file.  Each row is for every admitted outer gap $X\geq1$ (the contract's index)
 and every valid run (an execution with unforgeable signatures,
 credentials and an admissible selection), and holds unless a hash collision is observed in the run
 (two distinct items with one digest, both occurring in objects that honest
@@ -2882,14 +2898,18 @@ A1.4 & \texttt{AC.OptimisticTransfer}, \texttt{AC.OptimisticNextUpdate} &
   optimistic confirmation of~$B$: it keeps only $f<n/2$, (a)'s conclusion
   (every honest slot-$(s+1)$ vote extends~$B$) and the updating node's
   premises\\
-A1.5 & \texttt{AC.SourceAge} & proved (\texttt{acSteps}); stronger than
+A1.5 & \texttt{AC.SourceAge} & proved (\texttt{acSteps}) at every
+  \texttt{deepDepth}: a fast-lock block written after~$\tau$, or, with
+  $D\neq\bot$ and no fast-lock candidate, a deep candidate under the deep
+  anchor (no claim on when it was written); stronger than
   A1.5 in form: over every AC trace with the local contract
   (\texttt{ACLocalRun}), without the honest-object facts of
   \texttt{ACRun} (signature provenance, slot proposer)\\
-A1.9 & \texttt{AC.SourceCompatible} & proved (\texttt{acSteps}), per call,
-  without the public time, without $\Fr.F$ and $\fcroot$ compatible
-  with~$B$ at the call, and in~(i) with only $\Fr.F$ compatible at the
-  vote's call\\
+A1.9 & --- & retired as a milestone statement (no field of
+  \texttt{ACSteps}); its source cases remain lemmas on fast locks
+  (\texttt{AC.fastLock\_same\_slot}, \texttt{AC.fastLock\_compatible\_of\_votes},
+  \texttt{AC.fastLock\_counted}), at every \texttt{deepDepth}; with
+  $D\neq\bot$ a deep-candidate source is not one of these cases\\
 A1.8 & \texttt{AC.ResultTransfer} & proved (\texttt{acSteps}), per vote under
   its premises\\
 A1.6 & \texttt{Compose.HeadExtendsRecord} & proved
@@ -2937,7 +2957,10 @@ HS.5 & --- & not stated in Lean: $\mathsf{Producer}(A)$ and its
 H.1, corollary & --- & not stated in Lean\\
 H.2 & --- & not stated in Lean\\
 H.2 (run) & --- & not stated in Lean\\
-HR.1 & \texttt{Healing.CutAndReset} & proved (\texttt{cut\_and\_reset})\\
+HR.1 & \texttt{Healing.CutAndReset} & proved (\texttt{cut\_and\_reset}) at
+  every \texttt{deepDepth}; with $D\neq\bot$, (a) allows a deep candidate
+  under the deep anchor when there is no fast-lock candidate, stamped after
+  $c_z$ when its state height is $\geq H_z+1$\\
 HR.2 & \texttt{Healing.PhaseCount} & proved (\texttt{phase\_count})\\
 HR.3 & --- & retired (owner decision)\\
 HR.4 & --- & retired (owner decision)\\

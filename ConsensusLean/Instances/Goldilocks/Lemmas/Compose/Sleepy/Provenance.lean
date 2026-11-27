@@ -27,10 +27,10 @@ comparability: it holds of every Goldilocks run, by the handlers alone.
   and the lock functions only move locks back (`AC.locks_move_back`). `AC.lock_provenance` does
   not tie an update's locks to its result, so both facts come from one induction over the cuts
   of the node (`good_state`), which follows each AC handler (`Good`, `Down`).
-* Every FG source at a cut within `b` is a live fast lock block, so on the chain of the origins
-  within `b` (`source_on_chain_upTo`); every honest attestation signed at a cut within `b` names
-  the entry of its source's state, an ancestor of the source (`row_on_chain_upTo`); every `Σ.F`
-  and `Σ.J` is genesis or an entry with a target quorum (`cache_quorum`). -/
+* Every FG source at a cut within `b` is at or below a live lock block, so on the chain of the
+  origins within `b` (`source_on_chain_upTo`); every honest attestation signed at a cut within
+  `b` names the entry of its source's state, an ancestor of the source (`row_on_chain_upTo`); every
+  `Σ.F` and `Σ.J` is genesis or an entry with a target quorum (`cache_quorum`). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -477,18 +477,11 @@ private theorem good_state {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩] at ih' ⊢
       exact ih'
 
-/-- `ac_to_fg` returns one of its candidates. -/
-theorem toFG_candidate {A : AC.ACState sp.n} {Φ : AC.Frm sp.n (List (FG.Att sp.n))}
-    {t : Time} {C : AC.Blk sp.n (List (FG.Att sp.n))} (h : (AC.acToFG sp A Φ t).2 = some C) :
-    C ∈ AC.toFGCandidates sp A Φ t := by
-  unfold AC.acToFG at h
-  split_ifs at h
-  split at h
-  · cases h
-  · rename_i C' hC'
-    split_ifs at h
-    cases h
-    exact (AC.deepest_mem hC').1
+/-- With deep sources off, `ac_to_fg` returns one of its fast-lock candidates. -/
+theorem toFG_candidate (hD : sp.deepDepth = none) {A : AC.ACState sp.n}
+    {Φ : AC.Frm sp.n (List (FG.Att sp.n))} {t : Time} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (h : (AC.acToFG sp A Φ t).2 = some C) : C ∈ AC.toFGCandidates sp A Φ t :=
+  AC.toFG_candidate hD h
 
 /-! ### The justified and finalized blocks of a chain have a quorum of attestations -/
 
@@ -608,8 +601,9 @@ theorem lock_origin {ini} (hrun : GoldilocksRun proposer dg H tr ini)
       ∃ C, OriginBefore tr H C l.slot i ∧ Anc (tr.HonestBlocks H) L C :=
   (good_state hrun hnc hy i).2
 
-/-- **Every FG source at a cut within `b` is on the chain of the origins within `b`**: it is the
-block of a live fast lock. -/
+/-- **Every FG source at a cut within `b` is on the chain of the origins within `b`**: it is at or
+below a live lock block (a fast-lock candidate is one; a deep candidate is below the deep anchor,
+the deepest live lock block). -/
 theorem source_on_chain_upTo {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {b : Time} (hi : ∀ k < i, tr.time k ≤ b)
@@ -618,12 +612,13 @@ theorem source_on_chain_upTo {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   obtain ⟨hpc, -, hC⟩ := h
   obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt (ac_run hrun hnc) hy hpc
   rw [projAC_state hrun.toLocalRun hy i] at hC
-  obtain ⟨hCv, l, ⟨l₀, hl₀, B, hB, hBr, -, rfl⟩, hlC, -, -⟩ := toFG_candidate hC
-  obtain ⟨hvt, hva⟩ := AC.viableAncestor_anc hΦ hB
-  obtain rfl : C = ℓ.frame.viableAncestor B := hΦ.coherent.1 hCv.1 hvt hlC.symm
+  obtain ⟨-, a, ha, hCa⟩ := AC.toFG_source_below_lock hC
+  obtain ⟨l₀, hl₀, B, hB, hBr, -, rfl⟩ := AC.mem_liveLockBlocks hΦ ha
+  have hva := (AC.viableAncestor_anc hΦ hB).2
   obtain ⟨L, hL, hLr, C', hC', hLC'⟩ := lock_origin hrun hnc hy i l₀ hl₀
   obtain rfl : B = L := (honest_coherent hrun hnc).1 (hΦU hB) ⟨y, hy, i, hL⟩ (hBr.trans hLr.symm)
-  exact onOriginChainWithin_iff.2 (Or.inr ⟨C', _, hC'.within hi, (hva.mono hΦU).trans hLC'⟩)
+  exact onOriginChainWithin_iff.2
+    (Or.inr ⟨C', _, hC'.within hi, ((hCa.mono hΦU).trans (hva.mono hΦU)).trans hLC'⟩)
 
 /-- **Every honest attestation signed at a cut within `b` names a block on the chain of the origins
 within `b`**: an honest attestation's height pair names the entry of its source's state, an
@@ -639,7 +634,7 @@ theorem row_on_chain_upTo {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   have hch := source_on_chain_upTo hrun hnc hx (fun k' hk' => hk k' (by omega))
     ⟨hpc, hcall, by rw [projAC_state hrun.toLocalRun hx j]; exact hsrc⟩
   have hsrcT : src ∈ (tr.state x (j + 1)).fg.tree := by
-    have h' := (toFG_candidate hsrc).1.1
+    have h' := (AC.toFG_source_below_lock hsrc).1.1
     rw [(hrun.cutLaw x hx j _ hcj).1] at h'
     rw [hfg]
     exact h'.1

@@ -151,12 +151,14 @@ theorem sleepyQuery_fields (A : ContractAssumptions S) (C : ContractCoefficients
         (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).prog
             (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 2))
             (goldilocksContract A C)
-          .available (1 : ℕ+) 0 r.2.horizon r ∧ (0 : Time) ≤ 0) ∧
-      (0 : Time) + ((goldilocksContract A C).params.latency .available (1 : ℕ+) : Time) * r.1.ΔAC ≤
+          .available ⟨1, A.deepAdmits_one⟩ 0 r.2.horizon r ∧ (0 : Time) ≤ 0) ∧
+      (0 : Time) + ((goldilocksContract A C).params.latency
+        .available ⟨1, A.deepAdmits_one⟩ : Time) * r.1.ΔAC ≤
         r.2.horizon ∧
       ∃ v, r.2.point.Ready ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).cDur
         (goldilocksContract A C) r) v
-        ((0 : Time) + ((goldilocksContract A C).params.latency .available (1 : ℕ+) : Time) *
+        ((0 : Time) + ((goldilocksContract A C).params.latency
+          .available ⟨1, A.deepAdmits_one⟩ : Time) *
           r.1.ΔAC) := by
   have hH0 : 0 ≤ H := le_trans (by positivity) hH
   obtain ⟨⟨E, rho⟩, hE, hp, hs, hk, hv, hc, hsl⟩ := sleepy_run S A C H hH0

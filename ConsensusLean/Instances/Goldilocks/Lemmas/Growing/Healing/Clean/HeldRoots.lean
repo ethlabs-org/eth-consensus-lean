@@ -1,10 +1,12 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SourceCover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetSource
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Frames
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.High
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.LocalSources
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.LeftEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Boot
@@ -20,8 +22,9 @@ and every other node is read at its own cut. A high justified height places the 
 (`cutZ_le_of_high_hj_at`), and the high-root law reads honesty at the later of each cut and `c_z`,
 the charge of a high origin's writer.
 
-* `high_J_root_of_held_at_call_before_at`: with a high justified height, `Σ.J` (hence `Σ.F` and
-  `fc_root`) is compatible with a held block `B` compatible with every earlier high origin. A row
+* `high_J_root_of_held_at_call_before_covered_at`: with a high justified height, `Σ.J` (hence
+  `Σ.F` and `fc_root`) is compatible with a held block `B` compatible with every earlier high
+  origin. A row
   in the caller's tree naming a high entry incompatible with `B`, by a signer honest at the call
   (after `c_z`), was signed at an earlier cut, from a high origin (`high_row_source_at`) earlier
   than the call, so compatible with `B`: such rows have no signer honest at the call, and fewer
@@ -82,15 +85,108 @@ theorem cutZ_le_of_high_hj_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   have := hp.cutZ_lt_reset_at
   linarith
 
+/-- **A held block compatible with the earlier origins.** `B` is compatible with every high origin
+written before the cut `k`, and, under the high-source cover, with every member of the healed
+family of label at most `m` written before `k`. -/
+def CompatibleWithOrigins (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (g a b : Time)
+    (k m : Nat) (B : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
+  (∀ v r l O, r < k → HighOrigin tr H g v r l O → Compatible (tr.HonestBlocksAt H) B O) ∧
+  (HighSourceCover tr H g a b → ∀ C s, HealedMemberBefore tr H g a b C s k →
+      s ≤ m → Compatible (tr.HonestBlocksAt H) B C)
+
+theorem compatibleWithOrigins_iff {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
+    {g a b : Time} {k m : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} :
+    CompatibleWithOrigins tr H g a b k m B ↔
+      ((∀ v r l O, r < k → HighOrigin tr H g v r l O → Compatible (tr.HonestBlocksAt H) B O) ∧
+      (HighSourceCover tr H g a b → ∀ C s, HealedMemberBefore tr H g a b C s k →
+          s ≤ m → Compatible (tr.HonestBlocksAt H) B C)) :=
+  Iff.rfl
+
+/-- **The finalized-chain root of a reader under the high-source cover**: with a high justified
+height, a reader honest at `t ≤ b` has the root of its store compatible with every held block
+compatible with the healed members of label at most the slot of `t` written before `k`. A row
+naming a high entry incompatible with `B` has a signer honest at `t` only if the entry is below
+such a member (`signed_row_covered_before_at`), and fewer than `q` are faulty at `t`. -/
+theorem high_J_root_of_held_cover_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {x y : Fin sp.n} {i k : Nat} {t t' : Time} {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t) (htb : t ≤ b)
+    (ht' : 0 ≤ t') (hle' : ∀ q < i, tr.time q ≤ t') (hx : x ∈ H t')
+    (hBx : B ∈ (tr.state x i).fg.tree)
+    (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj) (hc : HighSourceCover tr H g a b)
+    (hcompare : ∀ C s, HealedMemberBefore tr H g a b C s k →
+        s ≤ sp.slot t → Compatible (tr.HonestBlocksAt H) B C) :
+    Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.fcRoot B := by
+  have hrun := hp.run
+  have hnc := hp.noColl
+  have hU := Compose.Growing.honest_blocks_coherent hrun hnc
+  have hreach := fg_reachable_at hrun ht hle hy
+  have hsub : (tr.state y k).fg.tree ⊆ tr.HonestBlocksAt H :=
+    fun X hX => ⟨y, k, t, ht, hle, hy, hX⟩
+  have hgB := ((Store.accepted_tree _ _ _ _ (fg_reachable_at hrun ht' hle' hx)).2.2.2 B hBx).mono
+    (fun X hX => (⟨x, i, t', ht', hle', hx, hX⟩ : X ∈ tr.HonestBlocksAt H))
+  have hcz := hp.cutZ_le_of_high_hj_at ht hle hy hhigh
+  have hrow : ∀ E ∈ (tr.state y k).fg.tree,
+      HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h →
+      ((tr.state y k).fg.σ E.root).Th = E.root → ¬ Compatible (tr.HonestBlocksAt H) E B →
+      ∀ W ∈ (tr.state y k).fg.tree, ∀ att ∈ W.fgPayload, att.T = E.root →
+        att.val ∉ H t := by
+    intro E hE hEh _ hncE W hW att ha haT haH
+    have he := Trace.upTo_state tr y hle
+    have hW' : W ∈ ((tr.upTo t).state y k).fg.tree := by rwa [he]
+    rcases Healing.tree_accepted (hrun.upTo ht).toLocalRun hy hW' with rfl | ⟨i', hi', hA⟩
+    · cases ha
+    have hA' := ((RunTrace.upTo_acceptAt tr).mp hA).2
+    obtain ⟨d, hdi, hs⟩ := hrun.toLocalRun.att_unforgeable y i' att
+      (hrun.antitone (hle i' hi') hy) (Or.inr ⟨W, ⟨true, hA'⟩, ha⟩)
+      (hrun.antitone (hle i' hi') haH)
+    have hdk : d < k := hdi.trans hi'
+    have hv := hrun.antitone (hle d hdk) haH
+    obtain ⟨E', hE', hE'r, hE'h⟩ := Healing.signAt_entry
+      (hrun.upTo (hrun.time_nonneg d)) hv ((RunTrace.upTo_signAt tr).mpr ⟨le_rfl, hs⟩)
+    have he' := Trace.upTo_state tr att.val (fun q (hq : q < d) => hrun.time_mono hq.le)
+    rw [he'] at hE' hE'h
+    have hsub' : (tr.state att.val d).fg.tree ⊆ tr.HonestBlocksAt H :=
+      fun _ h => ⟨att.val, d, tr.time d, hrun.time_nonneg d,
+        fun q hq => hrun.time_mono hq.le, hv, h⟩
+    obtain rfl : E' = E := hU.1 (hsub' hE') (hsub hE) (hE'r.trans haT)
+    have hσ := σ_eq_honest_at hrun hnc (hrun.time_nonneg d)
+      (fun q hq => hrun.time_mono hq.le) hv ht hle hy hE' hE
+    obtain ⟨E₁, hE₁H, hE₁r, hcov⟩ := Outcome.signed_row_covered_before_at hrun hnc
+      (hrun.antitone (max_le hcz (hle d hdk)) haH) hs (by rw [← hE'h, hσ]; exact hEh)
+      (hp.snapshot.imp fun _ h => h.1) hc ((hle d hdk).trans htb)
+    obtain rfl : E₁ = E' := hU.1 hE₁H (hsub' hE') (hE₁r.trans haT)
+    obtain ⟨-, C, s, hC, hs', hEC⟩ := coveredBefore_iff.1 hcov
+    rcases hcompare C s (hC.mono hdk.le)
+        (hs'.trans (AC.slot_mono sp (hrun.time_nonneg d) (hle d hdk))) with
+      hBC | hCB
+    · exact hncE (AC.anc_total hU hEC hBC)
+    · exact hncE (Or.inl (hEC.trans hCB))
+  have hq : (H t)ᶜ.ncard < sp.toParams.fg.q := by
+    have hf := hp.faults t ht htb
+    have hn := sp.toParams.hn
+    change 3 * (H t)ᶜ.ncard ≤ sp.toParams.n - 1 at hf
+    change (H t)ᶜ.ncard < (2 * sp.toParams.n + 2) / 3
+    clear * - hn hf; omega
+  have hJ := Store.J_compatible_of_rows hreach hq hU hsub hgB hrow hhigh
+  have hF : Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F B := by
+    obtain ⟨-, -, hFJ, -⟩ := Store.cache_invariants _ _ _ _ hreach
+    rcases hJ with hJB | hBJ
+    · exact Or.inl ((hFJ.mono hsub).trans hJB)
+    · exact AC.anc_total hU (hFJ.mono hsub) hBJ
+  unfold Store.fcRoot
+  split_ifs <;> assumption
+
 /-- A cut of a node honest at it, with a high justified height, has its store's finalized-chain
-root compatible with every held block compatible with the earlier high origins. The cut is after
-`c_z` (`cutZ_le_of_high_hj_at`). -/
-theorem high_J_root_of_held_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+root compatible with every held block compatible with the earlier high origins, when the cut is
+inside the deep quarantine. The cut is after `c_z` (`cutZ_le_of_high_hj_at`). -/
+theorem high_J_root_of_held_before_quarantine_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {i k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H (tr.time k))
     (hkb : tr.time k ≤ b)
     (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
+    (hpre : ∀ D, sp.deepDepth = some D → tr.time k ≤ cutZ sp.toParams g + 4 * D * sp.Δ)
     (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
       Compatible (tr.HonestBlocksAt H) B O) :
     Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y k)).fcRoot B := by
@@ -115,26 +211,61 @@ theorem high_J_root_of_held_before_at {cm : Time → Finset (Fin sp.n)} {βK : �
     clear * - hn hf; omega
   exact LocalSources.high_frame_root_before (goldilocksNode sp ro).genesisPayload
     (fun v i => (tr.state v i).fg) tr.time (fun t => H (max (cutZ sp.toParams g) t)) tr.SignAt
-    (HighOrigin tr H g) tr.JoinedAt (tr.HonestBlocksAt H) (HZ tr H g) b hU hrun.time_mono
+    (HighOrigin tr H g) tr.JoinedAt (tr.HonestBlocksAt H) (HZ tr H g) (tr.time k) hU
+    hrun.time_mono
     (fun v i hv _ X hX => ⟨v, i, tr.time i, hrun.time_nonneg i,
       fun q hq => hrun.time_mono hq.le, hrun.antitone (le_max_right _ _) hv, hX⟩)
-    (Outcome.local_observations hrun hnc _ _ b) (Outcome.local_sources hrun hnc g b)
-    y k B (Node.frame (tr.state y k)) hyz hkb hreach hgB hq hhigh
+    (Outcome.local_observations hrun hnc _ _ (tr.time k))
+    (Outcome.local_sources hrun hnc g (tr.time k) (hp.snapshot.imp fun _ h => h.1) hpre)
+    y k B (Node.frame (tr.state y k)) hyz le_rfl hreach hgB hq hhigh
     (fun v r l O hrk _ ho => hcompare v r l O hrk ho) rfl
 
-/-- `high_J_root_of_held_before_at` at an AC call, whose frame is the store's. -/
-theorem high_J_root_of_held_at_call_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+/-- A cut of a node honest at it, with a high justified height, has its store's finalized-chain
+root compatible with every held block compatible with the earlier origins: the high origins, and
+under the high-source cover the healed members up to the slot of the cut. -/
+theorem high_J_root_of_held_before_covered_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {x y : Fin sp.n} {i k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hx : x ∈ H (tr.time i)) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H (tr.time k))
+    (hkb : tr.time k ≤ b)
+    (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
+    (hcompare : CompatibleWithOrigins tr H g a b k (sp.slot (tr.time k)) B) :
+    Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y k)).fcRoot B := by
+  rcases hp.quarantine_or_cover_at hkb with hpre | hc
+  · exact hp.high_J_root_of_held_before_quarantine_at hx hBx hy hkb hhigh hpre
+      (compatibleWithOrigins_iff.1 hcompare).1
+  · exact hp.high_J_root_of_held_cover_at (hp.run.time_nonneg k)
+      (fun _ hq => hp.run.time_mono hq.le) hy hkb (hp.run.time_nonneg i)
+      (fun _ hq => hp.run.time_mono hq.le) hx hBx hhigh hc
+      ((compatibleWithOrigins_iff.1 hcompare).2 hc)
+
+/-- `high_J_root_of_held_before_quarantine_at` at an AC call, whose frame is the store's. -/
+theorem high_J_root_of_held_at_call_before_quarantine_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {i k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H (tr.time k))
     (hkb : tr.time k ≤ b) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y k ell)
     (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
+    (hpre : ∀ D, sp.deepDepth = some D → tr.time k ≤ cutZ sp.toParams g + 4 * D * sp.Δ)
     (hcompare : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
       Compatible (tr.HonestBlocksAt H) B O) :
     Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
   rw [Outcome.frame_of_call hp.run hy hc]
-  exact hp.high_J_root_of_held_before_at hx hBx hy hkb hhigh hcompare
+  exact hp.high_J_root_of_held_before_quarantine_at hx hBx hy hkb hhigh hpre hcompare
+
+/-- `high_J_root_of_held_before_covered_at` at an AC call. -/
+theorem high_J_root_of_held_at_call_before_covered_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {x y : Fin sp.n} {i k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hx : x ∈ H (tr.time i)) (hBx : B ∈ (tr.state x i).fg.tree) (hy : y ∈ H (tr.time k))
+    (hkb : tr.time k ≤ b) {ell : ACLabel (goldilocksNode sp ro)}
+    (hc : tr.projAC.CallAt y k ell)
+    (hhigh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj)
+    (hcompare : CompatibleWithOrigins tr H g a b k (sp.slot (tr.time k)) B) :
+    Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
+  rw [Outcome.frame_of_call hp.run hy hc]
+  exact hp.high_J_root_of_held_before_covered_at hx hBx hy hkb hhigh hcompare
 
 /-- A cut of a node honest at it, with a low justified height and a held high seed, has its
 finalized-chain root compatible with every held block compatible with the seed. -/

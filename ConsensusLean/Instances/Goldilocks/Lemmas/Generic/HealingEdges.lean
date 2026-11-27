@@ -104,22 +104,48 @@ theorem reset_or_noAdvance {hold : Time} :
     by_contra h
     exact hadv ⟨v, k, att, hv, hs, hk, by omega⟩
 
-/-- Canonical high entries by the horizon of a premised reset, field by field from leaves 13, 12
-and 14 over the supplier `O`. -/
+/-- A reset within the budget is within the origin cap. -/
+private theorem originInCap_of_resetInBudget {P : Params} {budget : Option Nat} {drain : Nat}
+    {g a : Time} (ha0 : 0 ≤ a) (h : ResetInBudget P budget drain g a) :
+    OriginInCap P budget g a := by
+  intro m hm
+  have hb := h m hm
+  have hspec := (slotOfSpec_iff.mp slotOf_spec) P
+  exact (hspec a ha0).2.le.trans (P.slotTime_strictMono.monotone (by omega))
+
+/-- A time within the capped horizon is within the horizon and the origin cap. -/
+private theorem le_originCapTime {P : Params} {budget : Option Nat} {g b t : Time}
+    (h : t ≤ originCapTime P budget g b) : t ≤ b ∧ OriginInCap P budget g t := by
+  cases budget with
+  | none => exact ⟨h, fun m hm => by cases hm⟩
+  | some m =>
+    simp only [originCapTime] at h
+    exact ⟨h.trans (min_le_left _ _), fun m' hm' => by cases hm'; exact h.trans (min_le_right _ _)⟩
+
+/-- Canonical high entries by the capped horizon of a premised reset within the budget, field by
+field from leaves 13, 12 and 14 over the supplier `O`. -/
 theorem highCanonical {hold : Time} (O : ACHealing A sg runs hold) :
     ∀ {cm βK tr H proposer dg g ΔF b a}, βK ≤ 1 / 2 →
       runs.Run cm proposer dg H tr → Premises tr H cm βK proposer dg sg g ΔF b hold →
-      IsReset tr H g a → a ≤ b → HighCanonical O.Origin tr H g b := by
-  intro cm βK tr H proposer dg g ΔF b a hβ hrun hP hr hab
-  refine ⟨fun _ _ hp hib => no_high_contest_at_of_healing O hβ hrun hP hr hab hp hib,
+      IsReset tr H g a → a ≤ b → ResetInBudget P O.deepBudget O.drain g a →
+      HighCanonical O.Origin tr H g (originCapTime P O.deepBudget g b) := by
+  intro cm βK tr H proposer dg g ΔF b a hβ hrun hP hr hab hbudget
+  have hacap : OriginInCap P O.deepBudget g a := by
+    obtain ⟨y, k, att, -, -, -, hk⟩ := hr.1
+    exact originInCap_of_resetInBudget (hk ▸ (runs.run_local hrun).time_nonneg k) hbudget
+  refine ⟨fun _ _ hp hib => no_high_contest_at_of_healing O hβ hrun hP hr hab hacap hp
+      (le_originCapTime hib).1 (le_originCapTime hib).2,
     fun _ _ _ hy hs hkb hh => ?_, ?_⟩
   · obtain ⟨r, hrk, l, Og, ⟨hyr, hO, hOh⟩, E, hE, hEO, hEr, hEh, hET⟩ :=
-      high_row_source_at_of_healing O hβ hrun hP hr hab hy hkb hs hh
+      high_row_source_at_of_healing O hβ hrun hP hr hab hy (le_originCapTime hkb).1
+        (le_originCapTime hkb).2 hs hh
     exact ⟨r, hrk, l, Og, hO, hyr, hOh, E, hE, hEO, hEr, hEh, hET⟩
   · intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hx hO hib hBh hx' hO' hi'b hB'h h₁ h₂ ht₁ hle₁ hy₁
       ht₂ hle₂ hy₂ hZ₁ hZ₂ hh hT₁ hT₂
-    exact high_entry_eq_at_of_healing O hβ hrun hP hr hab ⟨hx, hO, hBh⟩ hib ⟨hx', hO', hB'h⟩
-      hi'b h₁ h₂ ht₁ hle₁ hy₁ ht₂ hle₂ hy₂ hZ₁ hZ₂ hh hT₁ hT₂
+    exact high_entry_eq_at_of_healing O hβ hrun hP hr hab hacap ⟨hx, hO, hBh⟩
+      (le_originCapTime hib).1 (le_originCapTime hib).2 ⟨hx', hO', hB'h⟩
+      (le_originCapTime hi'b).1 (le_originCapTime hi'b).2
+      h₁ h₂ ht₁ hle₁ hy₁ ht₂ hle₂ hy₂ hZ₁ hZ₂ hh hT₁ hT₂
 
 /-- The rise contract over the supplier `O`, by induction on the remaining rounds `r`. A warm
 proposal at or above `HZ + 1` gives the reset by leaf 10. Otherwise the proposal gap gives an
@@ -421,12 +447,15 @@ theorem generic_healing {hold : Time} (O : ACHealing A sg runs hold) :
       gbar g ≤ P.slotTime s → cutZ P g ≤ P.slotTime s →
       ProposalGap tr H proposer Gp s (s + resetSlots O.warmup Gp P.δt O.reportDelay) →
       P.slotTime (s + resetSlots O.warmup Gp P.δt O.reportDelay) ≤ b →
+      (∀ a, IsReset tr H g a →
+        a ≤ P.slotTime (s + resetSlots O.warmup Gp P.δt O.reportDelay) →
+        ResetInBudget P O.deepBudget O.drain g a) →
       ∃ a, IsReset tr H g a ∧ a ≤ P.slotTime (s + resetSlots O.warmup Gp P.δt O.reportDelay) ∧
         HealedFrom tr H proposer (P.slotOf a + O.drain) b := by
-  intro cm βK tr H proposer dg g ΔF b Gp s hβ hsp hrun hP hGp hgs hcs hgp hb
+  intro cm βK tr H proposer dg g ΔF b Gp s hβ hsp hrun hP hGp hgs hcs hgp hb hbudget
   obtain ⟨a, ha, hat⟩ := exists_reset O hβ hsp hrun hP hGp hgs hcs hgp hb
   exact ⟨a, ha, hat, O.heal_after_reset hβ hrun hP ha (hat.trans hb)
-    (highCanonical O hβ hrun hP ha (hat.trans hb))⟩
+    (hbudget a ha hat) (highCanonical O hβ hrun hP ha (hat.trans hb) (hbudget a ha hat))⟩
 
 /-! ## Truncation after the horizon -/
 

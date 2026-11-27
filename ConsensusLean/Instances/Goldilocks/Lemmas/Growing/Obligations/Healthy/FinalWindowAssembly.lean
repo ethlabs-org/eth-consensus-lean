@@ -45,7 +45,7 @@ theorem finalGridAt_slotTime (Q : FinalQueryAt S A V) (s : Nat) :
 theorem final_latency_gap_at (Q : FinalQueryAt S A V) :
     Q.query + 4 * ((Q.index : Nat) + 3 * A.finalSlots) * Q.params.Δ + Q.params.Δ ≤ Q.deadline := by
   have hd : (1 : Time) ≤ Q.run.1.ΔAC := Q.run.1.ΔAC_pos
-  have hi : (1 : Time) ≤ ((Q.index : Nat) : Time) := by exact_mod_cast Q.index.pos
+  have hi : (1 : Time) ≤ ((Q.index : Nat) : Time) := by exact_mod_cast Q.index.1.pos
   change _ ≤ Q.query + ((K S A).params.latency .final Q.index : Time) * Q.run.1.ΔAC
   rw [show (K S A).params.latency .final Q.index = contract_latency S A .final Q.index from
     congrFun (congrFun (contract_coefficients_latency S A) .final) Q.index,

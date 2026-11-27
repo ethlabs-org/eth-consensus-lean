@@ -6,6 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Cur
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.Effective
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.NoColl
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.Sleepy
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.QueryCover
 
 public section
 
@@ -55,6 +56,8 @@ theorem healthy_cut_tips_ancestor_at
       (Regimes.readAfter Q.trace (Q.run.2.ownKey v)
         (cutMap S Q.run.2 Q.hn (lastOwn S Q.run.2 v j)) (stateAt S Q.run.2 Q.hn v j).now) := by
   obtain ⟨D⟩ := healthy_repair_schedule_at S A V Q h0 hb hp hcal hgap hδG hGs hGsT
+    fun _ _ hpT hT hd hTb =>
+      healthy_query_cover_at Q hpT hT hd hTb
   obtain ⟨O⟩ := healthy_bounded_repairing_opening_at S A V Q hb hp D
   have hnn := cutMap_mono S Q.run.2 Q.hn (lastOwn_mono S Q.run.2 v hij)
   have htt := now_mono S Q.run.2 Q.hn Q.valid v hij

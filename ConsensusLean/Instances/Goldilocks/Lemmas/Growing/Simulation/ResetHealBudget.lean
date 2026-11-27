@@ -11,6 +11,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.SignCalendar
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.SignGap
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.SignGap
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.QueryCover
 
 public section
 
@@ -44,9 +45,10 @@ theorem goldilocks_resetHealBudgetSupply (S : Setup) (A : ContractAssumptions S)
     (hsg : (fun v => v.val) = (goldilocksRunMap S rho hn hv).signer) :
     ResetHealBudgetSupply (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C) := by
   classical
-  obtain ⟨hmargin, hdrainC⟩ := Generic.ACCorrectLocal.cast_signer hsg C
-    (fun _ C' => C'.margin = C.margin ∧ C'.healing.drain = C.healing.drain) ⟨rfl, rfl⟩
-  obtain ⟨-, -, -, -, hdrain, -⟩ := hC.healing
+  obtain ⟨hmargin, hdrainC, hdeepC⟩ := Generic.ACCorrectLocal.cast_signer hsg C
+    (fun _ C' => C'.margin = C.margin ∧ C'.healing.drain = C.healing.drain ∧
+      C'.healing.deepBudget = C.healing.deepBudget) ⟨rfl, rfl, rfl⟩
+  obtain ⟨-, -, -, -, hdrain, hdeep, -⟩ := hC.healing
   have hm := hC.margin
   intro hv' hnc cap idx gst hcap hH hp hhb
   rw [goldilocksRunMap_trace, goldilocksRunMap_honest, goldilocksRunMap_proposer]
@@ -73,7 +75,8 @@ theorem goldilocks_resetHealBudgetSupply (S : Setup) (A : ContractAssumptions S)
   obtain ⟨W, Dprep, hlate⟩ := healthy_preparation_initialize_late_at S A V Q hheal0 hhb hp
     (simTraceAt_signCalendar S rho hn _) (Obligations.signGapAt_of_assumptions A _ _)
     (Obligations.signGap_δt A) (Obligations.contract_heal_ge_reset_signGap A Q.cap Q.index)
-    A.fgSlots_releaseGap_signGap_le
+    A.fgSlots_releaseGap_signGap_le fun _ _ hpT hT hd hTb =>
+      Obligations.Growing.healthy_query_cover_at Q hpT hT hd hTb
   obtain ⟨D, -, -, hDq⟩ := healthy_repair_schedule_of_preparation_at S A V Q W Dprep
   obtain ⟨O⟩ := healthy_bounded_repairing_opening_at S A V Q hhb hp D
   have hts : ∀ s : Nat, sp.toParams.slotTime s = sp.ts s := fun s => by
@@ -97,7 +100,7 @@ theorem goldilocks_resetHealBudgetSupply (S : Setup) (A : ContractAssumptions S)
     have h' := (AC.ts_le_iff_le_slot sp ha0 _).mp (not_lt.mp h)
     push_cast at h'
     omega
-  have hX : (1 : Time) ≤ (idx : Nat) := by exact_mod_cast idx.pos
+  have hX : (1 : Time) ≤ (idx : Nat) := by exact_mod_cast idx.1.pos
   have hbound := O.bounded
   have hres : D.query + (4 * ((idx : Nat) : Time) + 14) * sp.Δ + 2 ≤ Q.heal := by
     rw [hDq]; exact hlate
@@ -106,7 +109,48 @@ theorem goldilocks_resetHealBudgetSupply (S : Setup) (A : ContractAssumptions S)
   have hs₁ : sp.slot D.resetTime + 2 * sp.k + 5 ≤ O.slot := by
     rw [Healing.drainTime_eq] at hsd
     exact_mod_cast (AC.ts_le_iff sp).mp hsd
-  refine ⟨D.resetTime, D.reset.reset, D.reset.reset_le, ?_, ?_, O.slot,
+  -- the reset is within the deep budget: its drain slot fits in the deep quarantine
+  have hbudget : Generic.ResetInBudget sp.toParams (hsg ▸ C).healing.deepBudget
+      (hsg ▸ C).healing.drain gst D.resetTime := by
+    intro m hm
+    rw [hdeepC, hdeep] at hm
+    have hadm : 11 + healMargin S A idx.1 ≤ 4 * m := idx.2 m hm
+    have h2 : Healing.drainTime sp D.resetTime + 6 * sp.Δ + 1 ≤ Q.heal := by
+      linarith [mul_nonneg (zero_le_one.trans hX) hΔ.le]
+    have hHeal : Q.heal = max gst 0 + (19 + (healMargin S A idx.1 : Time)) * sp.Δ := by
+      change max gst 0 + ((K S A).params.heal cap idx : Time) * E.ΔAC = _
+      have hΔE : E.ΔAC = sp.Δ := rfl
+      rw [hΔE]
+      change max gst 0 + ((contract_heal S A cap idx.1 : Nat) : Time) * sp.Δ = _
+      rw [contract_heal_val, contract_catchUp_val]
+      push_cast
+      ring
+    have hcz' : sp.toParams.slotOf (Healing.cutZ sp.toParams gst) = sp.slot (AC.gbar gst) + 3 := by
+      rw [Healing.cutZ_eq]
+      exact AC.slot_of_mem sp _ le_rfl
+        (by simp only [AC.ACParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+    have hmΔ' : (11 + (healMargin S A idx.1 : Time)) ≤ 4 * (m : Time) := by exact_mod_cast hadm
+    rw [hcz', hslot, hdrainC, hdrain]
+    have hcut : Healing.drainTime sp D.resetTime + 4 * sp.Δ ≤
+        sp.ts (sp.slot (AC.gbar gst) + 3 + m : Nat) := by
+      have hlt := Healing.lt_cutZ (sp := sp) gst
+      rw [Healing.cutZ_eq] at hlt
+      have h4 : (0 : Time) ≤ 4 * (m : Time) * sp.Δ := by positivity
+      have hge : max gst 0 ≤ AC.gbar gst := by unfold AC.gbar; linarith [le_max_left gst 0]
+      simp only [AC.ACParams.ts] at hlt ⊢
+      push_cast at hlt ⊢
+      rw [hHeal] at h2
+      nlinarith [mul_le_mul_of_nonneg_right hmΔ' hΔ.le]
+    have hfin : sp.ts ((sp.slot D.resetTime + (2 * sp.k + 5) + 1 : Nat) : Int) ≤
+        sp.ts ((sp.slot (AC.gbar gst) + 3 + m : Nat) : Int) := by
+      rw [Healing.drainTime_eq] at hcut
+      simp only [AC.ACParams.ts] at hcut ⊢
+      all_goals push_cast at hcut ⊢
+      all_goals linarith
+    have := (AC.ts_le_iff sp).mp hfin
+    have hk : (S.params (pubOf E) hn).k = sp.k := rfl
+    omega
+  refine ⟨D.resetTime, D.reset.reset, D.reset.reset_le, hbudget, ?_, ?_, O.slot,
     runProposer S rho hn O.slot, O.cut, O.block, ?_, ?_, ?_, ?_,
     ⟨O.held, rfl, O.proposes, O.label⟩⟩
   · rw [hdt]

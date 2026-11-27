@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.UnanimousNext
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionCover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.OldSources
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -94,8 +95,20 @@ theorem finalized_compatible_before_update_at
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) (ha : a ≤ tr.time k)
     (ht : tr.time k ≤ sp.ts u + 6 * sp.Δ) :
     Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F P := by
-  obtain ⟨x, r, m, B, ho, hrk, _, hFB⟩ :=
-    ProposalImpl.finalized_below_high_origin_at hp hy ha (ht.trans hTb)
+  rcases ProposalImpl.finalized_below_high_origin_or_covered_at hp hy ha (ht.trans hTb) with
+    ⟨x, r, m, B, ho, hrk, _, hFB⟩ | hcov
+  swap
+  · obtain ⟨hc, C, s, hC, hsk, hFC⟩ := coveredUpTo_iff.1 hcov
+    have hdeadline : sp.slot (sp.ts u + 6 * sp.Δ) = u + 1 :=
+      AC.slot_of_mem sp (u + 1)
+        (by simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+        (by simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ])
+    have hsu := hsk.trans (AC.slot_mono sp (hp.run.time_nonneg k) ht)
+    rw [hdeadline] at hsu
+    rcases healed_member_compatible_before_update_at hp hc hP hslot hu hun hgu hR hTb
+        C s hC hsu with hCP | hPC
+    · exact Or.inl (hFC.trans hCP)
+    · exact AC.anc_total (Compose.Growing.honest_blocks_coherent hp.run hp.noColl) hFC hPC
   rcases high_origin_compatible_before_update_at hp hP hslot hu hun hgu hR hTb ho
       (hrk.trans ht) with h | h
   · exact Or.inl (hFB.trans h)

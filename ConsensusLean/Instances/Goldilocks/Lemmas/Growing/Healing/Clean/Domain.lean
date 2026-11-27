@@ -14,7 +14,8 @@ public section
 
 The growing form of `Healing.ResetPremisesUpTo.clean_source_proposal_domain_before`. The source's
 writer is honest at its write, the proposer at its call. The source block is held by the writer;
-the held-target domain (`held_target_proposal_domain_before_at`) needs it held by the proposer
+the held-target domain (`held_target_proposal_domain_before_covered_at`) needs it held by the
+proposer
 when the proposer's finalized block is below it (`raw_writer_held_at_slot_start_at`), compatible
 with a reset seed written before the proposal and with every high origin written before the call
 (`protected_source_compatible_high_origin_at`). -/
@@ -76,15 +77,19 @@ theorem clean_source_proposal_domain_before_at {cm : Time → Finset (Fin sp.n)}
     have ha0 : 0 ≤ a := (hp.run.time_nonneg q).trans hqa
     have := (AC.ts_le_iff_le_slot sp ha0 u).mp ((not_lt.mp h).trans hqa)
     clear * - this hau; omega
-  refine ProposalImpl.held_target_proposal_domain_before_at hp hx hpH hBx hci hcall hd hti hib
-    ?_ ?_ ?_
+  refine ProposalImpl.held_target_proposal_domain_before_covered_at hp hx hpH hBx hci hcall hd hti
+    hib ?_ ?_ ?_
   · exact ProposalImpl.raw_writer_held_at_slot_start_at hp hx hpH hw hBC htiming hsu hci hti hib
   · exact ⟨v, q, m, S, hS, hqt,
       ProposalImpl.protected_source_compatible_high_origin_at hp hx hsource hs hrb hS
         (hqa.trans hp.reset_le)⟩
-  · intro v q m O hqi ho
-    exact ProposalImpl.protected_source_compatible_high_origin_at hp hx hsource hs hrb ho
-      ((hm hqi.le).trans hib)
+  · refine ResetPremisesUpTo.compatibleWithOrigins_iff.2 ⟨fun v q m O hqi ho => ?_, ?_⟩
+    · exact ProposalImpl.protected_source_compatible_high_origin_at hp hx hsource hs hrb ho
+        ((hm hqi.le).trans hib)
+    · -- the protected source is itself a lock member of the healed family
+      exact fun hc D j hD _ => hc.s1 B s D j
+        (Compose.Growing.HealedOrigin.of_lock (by simp only [healedLockFloor]; omega)
+          (Compose.Growing.lockWithin_iff.2 ⟨x, r, hx, hrb, hsource⟩)) hD.healedOrigin
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 

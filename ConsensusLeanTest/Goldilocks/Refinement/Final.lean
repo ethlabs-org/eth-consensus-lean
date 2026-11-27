@@ -68,16 +68,19 @@ theorem finalQuery_fields (A : ContractAssumptions S) (C : ContractCoefficients)
       (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).prog
           (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 2))
           (goldilocksContract A C)
-        .final (1 : ℕ+) ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).ready
+        .final ⟨1, A.deepAdmits_one⟩
+        ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).ready
           (goldilocksContract A C) 0 r)
         r.2.horizon r ∧
       (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).heal
-        (goldilocksContract A C) .final (1 : ℕ+) 0 r ≤ query ∧
-      query + ((goldilocksContract A C).params.latency .final (1 : ℕ+) : Time) * r.1.ΔAC ≤
+        (goldilocksContract A C) .final ⟨1, A.deepAdmits_one⟩ 0 r ≤ query ∧
+      query + ((goldilocksContract A C).params.latency
+        .final ⟨1, A.deepAdmits_one⟩ : Time) * r.1.ΔAC ≤
         r.2.horizon ∧
       ∃ v, r.2.point.Ready ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 2)).cDur
         (goldilocksContract A C) r) v
-        (query + ((goldilocksContract A C).params.latency .final (1 : ℕ+) : Time) * r.1.ΔAC) := by
+        (query + ((goldilocksContract A C).params.latency
+          .final ⟨1, A.deepAdmits_one⟩ : Time) * r.1.ΔAC) := by
   let H : Time := (C.heal .final 1 : Time) * 2 + (C.latency .final 1 : Time) * 2
   have hH0 : 0 ≤ H := by positivity
   obtain ⟨⟨E, rho⟩, hE, hp, hs, hk, hv, hc, hhl⟩ := healthy_run S A C H hH0

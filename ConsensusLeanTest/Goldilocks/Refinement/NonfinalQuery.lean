@@ -50,7 +50,7 @@ abbrev Ss : Setup := { S with vote := AsChainShape.stock }
 /-- The contract assumptions of `S`, at its population binding. -/
 abbrev As : ContractAssumptions (Ss S) :=
   ⟨A.fgSlots, A.two_le_fgSlots, A.signGap, A.sign_liveness,
-    A.releaseGap, A.release_liveness, A.timeout⟩
+    A.releaseGap, A.release_liveness, A.timeout, A.deep_final⟩
 
 /-! ## Fidelity: the endpoint hypotheses build the queries -/
 
@@ -101,11 +101,12 @@ theorem outageQuery_applies {V : Type} [Fintype V] [DecidableEq V]
 
 /-- The heal point of `.available` at index 1, GST 0, engine `Δ = 2`. -/
 noncomputable abbrev healT : Time :=
-  ((K (Ss S) (As S A)).params.heal .available (1 : ℕ+) : Time) * 2
+  ((K (Ss S) (As S A)).params.heal .available ⟨1, (As S A).deepAdmits_one⟩ : Time) * 2
 
 /-- The latency deadline after `healT`. -/
 noncomputable abbrev horizonT : Time :=
-  healT S A + ((K (Ss S) (As S A)).params.latency .available (1 : ℕ+) : Time) * 2
+  healT S A + ((K (Ss S) (As S A)).params.latency
+    .available ⟨1, (As S A).deepAdmits_one⟩ : Time) * 2
 
 theorem horizonT_nonneg : 0 ≤ horizonT S A := by positivity
 
@@ -125,7 +126,7 @@ theorem healthy_run_prog {H : Time}
     (hp : r.2.point = point H) (hs : r.2.sel = sel S H) (a b : Time) :
     (Sys (goldilocks (Ss S)) (Fin 2)).prog
       (shapeProgress (goldilocks (Ss S)) (Fin 2)) (K (Ss S) (As S A)) .available
-      (1 : ℕ+) a b r := by
+      ⟨1, (As S A).deepAdmits_one⟩ a b r := by
   change PatternRecurrence r.2.point r.2.key (fun s => r.2.sel (ShapeRole.proposer s)) _ _ _ _ _
   apply patternRecurrence_of_all
   intro s j _
@@ -140,7 +141,7 @@ theorem healthyPreparationQuery_witness (H : Time) (hH : 0 ≤ H) :
       Q.run.2.sel = sel S H ∧ Q.run.1 = (point H).env := by
   obtain ⟨r, hE, hp, hs, hv, hc, hh⟩ := healthy_run_K S A H hH
   obtain ⟨Q, hQ, -⟩ := healthyPreparationQuery_applies S A r one_le_card .available
-    (Or.inl rfl) (1 : ℕ+) 0 hv hc hh
+    (Or.inl rfl) ⟨1, (As S A).deepAdmits_one⟩ 0 hv hc hh
   exact ⟨Q, hQ ▸ hp, hQ ▸ hs, hQ ▸ hE⟩
 
 /-- (a) The reset fit of `healthy_preparation_reset_fit_at` on that query, with `ready < heal`
@@ -164,7 +165,8 @@ point). -/
 theorem confirmedQuery_healthy :
     ∃ Q : ConfirmedQueryAt (Ss S) (As S A) (Fin 2), Q.run.1 = (point (horizonT S A)).env ∧
       Q.run.2.point = point (horizonT S A) ∧ Q.run.2.sel = sel S (horizonT S A) ∧
-      Q.cap = .available ∧ Q.index = (1 : ℕ+) ∧ Q.gst = 0 ∧ Q.query = healT S A ∧
+      Q.cap = .available ∧ Q.index
+        = ⟨1, (As S A).deepAdmits_one⟩ ∧ Q.gst = 0 ∧ Q.query = healT S A ∧
       (Sys (goldilocks (Ss S)) (Fin 2)).Healthy
           (shapeProgress (goldilocks (Ss S)) (Fin 2)).toExternal
           (K (Ss S) (As S A)) 0 Q.run := by
@@ -173,7 +175,7 @@ theorem confirmedQuery_healthy :
   subst hE
   have hhor : rho.horizon = horizonT S A := congrArg EnvPoint.horizon hp
   let Q : ConfirmedQueryAt (Ss S) (As S A) (Fin 2) := ⟨⟨_, rho⟩, one_le_card, .available,
-    Or.inl rfl, (1 : ℕ+), 0, healT S A, hv, hc,
+    Or.inl rfl, ⟨1, (As S A).deepAdmits_one⟩, 0, healT S A, hv, hc,
     Or.inr (Or.inl ⟨hh, healthy_run_prog S A hp hs _ _,
       by change max (0 : Time) 0 + _ * 2 ≤ healT S A; simp⟩),
     by rw [hhor]; change healT S A + _ * 2 ≤ horizonT S A; exact le_rfl,
@@ -188,7 +190,7 @@ theorem confirmedQuery_producer :
       Nonempty (ConfirmedProducerSlotAt (Ss S) (As S A) (Fin 2) Q) := by
   obtain ⟨Q, hE, hp, hs, hc, hi, hg, hq, hh⟩ := confirmedQuery_healthy S A
   obtain ⟨P, hPr, -, hPi, hPg, -⟩ := healthyPreparationQuery_applies S A Q.run Q.hn .available
-    (Or.inl rfl) (1 : ℕ+) 0 Q.valid Q.noCollision hh
+    (Or.inl rfl) ⟨1, (As S A).deepAdmits_one⟩ 0 Q.valid Q.noCollision hh
   have hfit := healthy_preparation_reset_fit_at (Ss S) (As S A) (Fin 2) P
   have hR : (0 : Time) ≤ healthyResetCoeff (Ss S) P.index := Nat.cast_nonneg _
   have hΔ : (0 : Time) < P.params.Δ := P.params.toParams.hΔ
@@ -202,7 +204,8 @@ theorem confirmedQuery_producer :
     change (Sys (goldilocks (Ss S)) (Fin 2)).heal (K (Ss S) (As S A)) P.cap P.index P.gst P.run = _
     rw [hPi, hPg, hPr]
     change max (0 : Time) 0 +
-      ((K (Ss S) (As S A)).params.heal .available (1 : ℕ+) : Time) * Q.run.1.ΔAC = _
+      ((K (Ss S) (As S A)).params.heal
+        .available ⟨1, (As S A).deepAdmits_one⟩ : Time) * Q.run.1.ΔAC = _
     rw [hE]; simp only [max_self, zero_add]; rfl
   have h0 : 0 ≤ (Sys (goldilocks (Ss S)) (Fin 2)).ready (K (Ss S) (As S A)) 0 Q.run := by
     change 0 ≤ max (0 : Time) 0 +
@@ -226,10 +229,11 @@ theorem no_confirmedQuery_short :
           (shapeProgress (goldilocks (Ss S)) (Fin 2)).toExternal (K (Ss S) (As S A)) 0 r ∧
       (Sys (goldilocks (Ss S)) (Fin 2)).prog
         (shapeProgress (goldilocks (Ss S)) (Fin 2)) (K (Ss S) (As S A)) .available
-        (1 : ℕ+) ((Sys (goldilocks (Ss S)) (Fin 2)).ready (K (Ss S) (As S A)) 0 r)
+        ⟨1, (As S A).deepAdmits_one⟩
+        ((Sys (goldilocks (Ss S)) (Fin 2)).ready (K (Ss S) (As S A)) 0 r)
         r.2.horizon r ∧
       ∀ Q : ConfirmedQueryAt (Ss S) (As S A) (Fin 2), Q.run = r → Q.cap = .available →
-        Q.index = (1 : ℕ+) → healT S A ≤ Q.query → False := by
+        Q.index = ⟨1, (As S A).deepAdmits_one⟩ → healT S A ≤ Q.query → False := by
   have hH : 0 ≤ healT S A := by positivity
   obtain ⟨⟨E, rho⟩, hE, hp, hs, hv, hc, hh⟩ := healthy_run_K S A (healT S A) hH
   subst hE

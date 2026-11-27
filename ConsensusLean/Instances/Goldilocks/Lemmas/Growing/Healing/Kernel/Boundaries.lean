@@ -56,10 +56,12 @@ theorem resetPremisesUpTo_of_reset_at
     (hΔF : 6 * sp.Δ + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time)) (hH : (H b).Nonempty)
     (hfacts : Compose.Growing.CommitteeFacts tr H (Generic.dictOfTime sp cm))
     (hβ : βK ≤ 1 / 2) (hpos : 0 < sp.committeeSize)
-    (hcf : Generic.CommitteeFaultsUpTo βK cm H g b) :
+    (hcf : Generic.CommitteeFaultsUpTo βK cm H g b)
+    (hdeep : ∀ D, sp.deepDepth = some D →
+      b ≤ cutZ sp.toParams g + 4 * D * sp.Δ ∨ HighSourceCover tr H g a b) :
     ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold := by
   refine ⟨hβ, hrun, hpos, hfacts, hcf, hnc, hsvc, hawake, hf, hreset, hab,
-    hsnapshot, hcatch, noRestartUpTo_iff.mp hnr, fun s => ?_, hH⟩
+    hsnapshot, hcatch, noRestartUpTo_iff.mp hnr, fun s => ?_, hH, hdeep⟩
   have hδ : (sp.toParams.δt : Time) = sp.toParams.fg.δt := rfl
   rw [sp.slotTime_eq, sp.slotTime_eq]
   push_cast

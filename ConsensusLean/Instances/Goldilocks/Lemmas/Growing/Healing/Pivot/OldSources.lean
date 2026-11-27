@@ -70,24 +70,27 @@ theorem finalized_compatible_high_origin_at
         (hsub hJm) (congrArg (·.root) hg)
         ⟨x, i, tr.time i, hp.run.time_nonneg i, fun _ hq => hp.run.time_mono hq.le,
           hp.run.antitone (le_max_right _ _) ho.1, highOrigin_mem_at hp.run hp.noColl ho⟩))
-    · obtain ⟨_, _, _, _, v, d, _, hdc, _, _, r, hrd, m, B, hB, hJB⟩ :=
-        hp.left_entry_origin_at ht hle hz hcb hJm hJT (by omega) hEC
+    · obtain ⟨_, _, _, _, v, d, _, hdc, _, _, hor⟩ :=
+        hp.left_entry_origin_or_covered_at ht hle hz hcb hJm hJT (by omega) hEC
           (by have := Store.hj_lt_h hr hC; omega)
-      have hFB := (hFJ.mono hsub).trans hJB
-      rcases hp.origins_compatible_at hB
-          ((hp.run.time_mono (show r ≤ c by omega)).trans hcb) ho hib with h | h
-      · exact Or.inl (hFB.trans h)
-      · exact Anc.total hU hFB h
+      rcases hor with ⟨r, hrd, m, B, hB, hJB⟩ | ⟨-, hcov⟩
+      · have hFB := (hFJ.mono hsub).trans hJB
+        rcases hp.origins_compatible_at hB
+            ((hp.run.time_mono (show r ≤ c by omega)).trans hcb) ho hib with h | h
+        · exact Or.inl (hFB.trans h)
+        · exact Anc.total hU hFB h
+      · exact (hcov.of_anc (hFJ.mono hsub)).compatible_highOrigin hp.run hp.noColl hib ho
   · exact Or.inl (hp.low_finalized_below_origin_at ht hle hz hcb (by omega) ho hib)
 
-/-- After the reset, a finalized cache is below an actual high origin written by the horizon. -/
-theorem finalized_below_high_origin_at
+/-- After the reset, finality is below an earlier high origin or a label-bounded healed member. -/
+theorem finalized_below_high_origin_or_covered_before_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     (ha : a ≤ tr.time k) (hkb : tr.time k ≤ b) :
-    ∃ x r l B, HighOrigin tr H g x r l B ∧ tr.time r ≤ tr.time k ∧ tr.time r ≤ b ∧
-      Anc (tr.HonestBlocksAt H) (tr.state y k).fg.F B := by
+    (∃ x r l B, HighOrigin tr H g x r l B ∧ tr.time r ≤ tr.time k ∧ tr.time r ≤ b ∧
+      Anc (tr.HonestBlocksAt H) (tr.state y k).fg.F B) ∨
+      CoveredBefore tr H g a b (sp.slot (tr.time k)) k (tr.state y k).fg.F := by
   have ht := hp.run.time_nonneg k
   have hle : ∀ q < k, tr.time q ≤ tr.time k := fun _ hq => hp.run.time_mono hq.le
   have hr := fg_reachable_at hp.run ht hle hy
@@ -102,20 +105,34 @@ theorem finalized_below_high_origin_at
     have hFG := (Store.accepted_tree _ _ _ _ hr).2.2.2 _ hFm
     rw [← hg] at hFG
     have he := (hFJ.mono hsub).antisymm hU (hFG.mono hsub)
-    exact ⟨v, r, l, B, ho, hra.trans ha, hra.trans hp.reset_le,
+    exact Or.inl ⟨v, r, l, B, ho, hra.trans ha, hra.trans hp.reset_le,
       genesis_root_anc_at hp.run hp.noColl (hsub hFm)
         (congrArg (·.root) (he.trans hg))
         ⟨v, r, tr.time r, hp.run.time_nonneg r, fun _ hq => hp.run.time_mono hq.le,
           hp.run.antitone (le_max_right _ _) ho.1, highOrigin_mem_at hp.run hp.noColl ho⟩⟩
   by_cases hh : HZ tr H g + 1 ≤ (tr.state y k).fg.hj
-  · obtain ⟨_, _, _, _, v, d, _, hdk, _, _, r, hrd, l, B, ho, hJB⟩ :=
-      hp.left_entry_origin_at ht hle hy hkb hJm hJT (by omega) hEC
+  · obtain ⟨_, _, _, _, v, d, _, hdk, _, _, hor⟩ :=
+      hp.left_entry_origin_or_covered_before_at ht hle hy hkb hJm hJT (by omega) hEC
         (by have := Store.hj_lt_h hr hC; omega)
-    have hrk := hp.run.time_mono (show r ≤ k by omega)
-    exact ⟨v, r, l, B, ho, hrk, hrk.trans hkb, (hFJ.mono hsub).trans hJB⟩
+    rcases hor with ⟨r, hrd, l, B, ho, hJB⟩ | ⟨_, hcov⟩
+    · have hrk := hp.run.time_mono (show r ≤ k by omega)
+      exact Or.inl ⟨v, r, l, B, ho, hrk, hrk.trans hkb, (hFJ.mono hsub).trans hJB⟩
+    · exact Or.inr (hcov.of_anc (hFJ.mono hsub))
   obtain ⟨v, r, l, B, ho, hra, _⟩ := hp.reset_seed_at
-  exact ⟨v, r, l, B, ho, hra.trans ha, hra.trans hp.reset_le,
+  exact Or.inl ⟨v, r, l, B, ho, hra.trans ha, hra.trans hp.reset_le,
     hp.low_finalized_below_origin_at ht hle hy hkb (by omega) ho (hra.trans hp.reset_le)⟩
+
+/-- The pre-cut finality source, forgetting the writer cut. -/
+theorem finalized_below_high_origin_or_covered_at
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
+    (ha : a ≤ tr.time k) (hkb : tr.time k ≤ b) :
+    (∃ x r l B, HighOrigin tr H g x r l B ∧ tr.time r ≤ tr.time k ∧ tr.time r ≤ b ∧
+      Anc (tr.HonestBlocksAt H) (tr.state y k).fg.F B) ∨
+      CoveredUpTo tr H g a b (sp.slot (tr.time k)) (tr.state y k).fg.F :=
+  (finalized_below_high_origin_or_covered_before_at hp hy ha hkb).imp_right
+    CoveredBefore.coveredUpTo
 
 end Consensus.Goldilocks.Healing.Growing.ProposalImpl
 

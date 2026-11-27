@@ -9,6 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Unlock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Views
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 import ConsensusLean.Lemmas.Tactic.Linarith
 
@@ -457,23 +458,15 @@ theorem first_transfer : FirstTransfer sp :=
 
 end Stock
 
-/-- A block that `ac_to_fg` returns is a candidate. -/
-private theorem mem_toFGCandidates {FGP : Type} {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
-    {C : Blk sp.n FGP} (h : (acToFG sp A Φ t).2 = some C) : C ∈ toFGCandidates sp A Φ t := by
-  unfold acToFG at h
-  split_ifs at h
-  split at h
-  · cases h
-  · rename_i C' hC'
-    split_ifs at h
-    cases h
-    exact (deepest_mem hC').1
-
 /-- **A1.5.** -/
 theorem source_age : SourceAge sp := by
   intro FGP ro H U tr hrun τ x i ℓ C hx hto hslot
   obtain ⟨hc, -, hC⟩ := hto
-  obtain ⟨hCv, l, hl, hlb, hlf, hls⟩ := mem_toFGCandidates sp hC
+  obtain ⟨-, hfast | ⟨D, a, hD, ha, hnf, hdeep⟩⟩ := toFG_source hC
+  rotate_left
+  · exact Or.inr ⟨D, a, hD, hnf, ha, hdeep⟩
+  left
+  obtain ⟨hCv, l, hl, hlb, hlf, hls⟩ := hfast
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
   obtain ⟨j, hj, B', CV', hfl, L, hL, hLr, hLB'⟩ :=
     fast_lock_provenance hrun (fun _ => voteStart_initial _) hx i l₀ hl₀ hlf

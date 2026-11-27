@@ -7,6 +7,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Chain
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ETimeOrder
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -108,16 +110,7 @@ theorem signAt_report_entry {ini} (hrun : GoldilocksRun proposer dg H tr ini) {v
   obtain ⟨C, hc⟩ := hs
   obtain ⟨j, rfl, ℓ, hj, hcall, ht, hret, hfg⟩ := Compose.attest_source hrun.toLocalRun hv hc
   have hpc : tr.projAC.CallAt v j ℓ := Compose.projAC_callAt.2 hj
-  have hC : C ∈ ℓ.frame.tree := by
-    change (AC.acToFG sp _ _ _).2 = some C at hret
-    unfold AC.acToFG at hret
-    split_ifs at hret
-    split at hret
-    · cases hret
-    · rename_i C' hC'
-      split_ifs at hret
-      cases hret
-      exact (AC.deepest_mem hC').1.1.1
+  have hC : C ∈ ℓ.frame.tree := (AC.toFG_source_below_lock hret).1.1
   have hCt : C ∈ (tr.state v j).fg.tree := by
     rw [(hrun.cutLaw v hv j _ hj).1] at hC
     exact hC.1
@@ -226,22 +219,90 @@ theorem signed_le_HZ (hrun : GoldilocksRun proposer dg H tr ini) (hh : tr.Health
     (hk : tr.time k ≤ cutZ sp.toParams g) : att.h ≤ HZ tr H g :=
   signed_le_HZ_of_snapshot hrun (exists_firstCutAfter hrun hh hy) hy hs hk
 
+/-- A block of state height `≥ H_z + 1` in the tree of an honest node at a cut `i` was accepted
+by it at a cut after `c_z`, so its AC stamp at an AC call of `i` other than the block's own
+receipt is later than `c_z` (`H_z` bounds the honest frontier after all events at `c_z`). -/
+private theorem cutZ_lt_blockStamp_of_high (hrun : GoldilocksRun proposer dg H tr ini)
+    (hh : tr.HealthyRun H ΔF g) (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} (hx : x ∈ H)
+    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt x i ℓ)
+    (hcall : ℓ.call = .toFG) {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hCt : C ∈ (tr.state x i).fg.tree) (hg : C.root ≠ sp.genesisRoot)
+    (hhC : HZ tr H g + 1 ≤ ((tr.state x i).fg.σ C.root).h) :
+    AC.ETime.of (cutZ sp.toParams g) < (tr.state x i).ac.blockStamp C.root := by
+  have hacr := Compose.goldilocks_ac_projection_from hrun hnc
+  rcases tree_accepted hrun.toLocalRun hx hCt with rfl | ⟨k, hki, hA⟩
+  · exact absurd rfl hg
+  obtain ⟨ℓ', hc', hcall', ht'⟩ := Compose.accept_next hrun.toLocalRun hx hA
+  have hk1 : k + 1 < i := by
+    rcases (Nat.succ_le_of_lt hki).lt_or_eq with h | h
+    · exact h
+    · subst h
+      obtain ⟨-, hl⟩ := Compose.projAC_callAt.1 hc
+      rw [hc'.2] at hl
+      cases Option.some.inj hl
+      rw [hcall'] at hcall
+      cases hcall
+  -- the acceptance is after `c_z`
+  have hkz : cutZ sp.toParams g < tr.time k := by
+    by_contra hle
+    push Not at hle
+    obtain ⟨j, hj⟩ := exists_firstCutAfter hrun hh hx
+    have hkj : k + 1 ≤ j := by
+      by_contra h
+      have := hrun.time_mono (show j ≤ k by omega)
+      linarith [hj.2]
+    have hCk := accept_mem_from hrun.toLocalRun hx hA
+    have hR := Compose.fg_reachable hrun.toLocalRun hx (k + 1)
+    obtain ⟨-, -, -, -, hge, -, -⟩ := Store.cache_invariants _ _ _ _ hR
+    have hinj := hacr.localRun.coherent.1
+    have hσ := Store.σ_eq_of_mem hR (Compose.fg_reachable hrun.toLocalRun hx i) hinj
+      (fun B hB => ⟨x, hx, k + 1, hB⟩) (fun B hB => ⟨x, hx, i, hB⟩) hCk hCt
+    have := (hge C hCk).trans ((hmax_mono hrun.toLocalRun hx hkj).trans (hmax_le_HZ hx hj))
+    rw [hσ] at this
+    omega
+  have hst := Compose.projAC_state hrun.toLocalRun hx i
+  have hge := Compose.blockStamp_ge_of_accept hacr.localRun hx
+    ⟨ℓ', Compose.projAC_callAt.2 hc', hcall'⟩ hg i hk1
+  rw [hst] at hge
+  change AC.ETime.of (tr.time (k + 1)) ≤ _ at hge
+  rw [ht'] at hge
+  exact lt_of_lt_of_le (AC.etime_of_lt_of.2 hkz) hge
+
 /-- **HR.1 (a), second part (A1.5 with `τ = ḡ`).** From `c_z` on, a block `C` that `ac_to_fg`
 returns at an honest node is the block of one of its live fast locks, whose label has a fast-lock
-write at that node after `ḡ`, on a descendant of `C`. -/
-theorem toFG_fastLock (hrun : GoldilocksRun proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
+write at that node after `ḡ`, on a descendant of `C`; or, with deep sources on and no fast-lock
+candidate, a deep candidate under the deep anchor whose stamp, when its state height is
+`≥ H_z + 1`, is later than `c_z`. -/
+theorem toFG_fastLock (hrun : GoldilocksRun proposer dg H tr ini) (hh : tr.HealthyRun H ΔF g)
+    (hnc : Compose.NoCollRun dg tr)
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {C : AC.Blk sp.n (List (FG.Att sp.n))} (hto : AC.ToFGAt tr.projAC x i ℓ C)
     (hi : cutZ sp.toParams g ≤ tr.time i) :
-    ∃ l ∈ AC.liveLocks sp (tr.state x i).ac.locks ℓ.frame (tr.time i),
+    (∃ l ∈ AC.liveLocks sp (tr.state x i).ac.locks ℓ.frame (tr.time i),
       l.fast = true ∧ l.block = C.root ∧
       ∃ i' < i, ∃ B CV, AC.FastLockAt tr.projAC x i' l.slot B CV ∧ gbar g < tr.time i' ∧
-        Anc (tr.HonestBlocks H) C B := by
+        Anc (tr.HonestBlocks H) C B) ∨
+    (∃ D a, sp.deepDepth = some D ∧
+      AC.deepest ℓ.frame (AC.toFGCandidates sp (tr.state x i).ac ℓ.frame (tr.time i)) = none ∧
+      AC.deepAnchor sp (tr.state x i).ac ℓ.frame (tr.time i) = some a ∧
+      C ∈ AC.toFGDeepCandidates sp D a (tr.state x i).ac ℓ.frame (tr.time i) ∧
+      (HZ tr H g + 1 ≤ ((tr.state x i).fg.σ C.root).h →
+        AC.ETime.of (cutZ sp.toParams g) < (tr.state x i).ac.blockStamp C.root)) := by
   have hacr := Compose.goldilocks_ac_projection_from hrun hnc
-  obtain ⟨hc, -, hC⟩ := hto
-  obtain ⟨hCv, l, hl, hlb, hlf, hls⟩ := AC.toFG_candidate hC
+  obtain ⟨hc, hcall, hC⟩ := hto
   have hst := Compose.projAC_state hrun.toLocalRun hx i
-  rw [hst] at hl
+  rw [hst] at hC
+  obtain ⟨hCv, hfast | ⟨D, a, hD, ha, hnf, hdeep⟩⟩ := AC.toFG_source hC
+  rotate_left
+  · refine Or.inr ⟨D, a, hD, hnf, ha, hdeep, cutZ_lt_blockStamp_of_high hrun hh hnc hx hc hcall
+      ?_ hdeep.2.2.1⟩
+    have hj := Compose.projAC_callAt.1 hc
+    have hfr := (hrun.cutLaw x hx i _ hj).1
+    have h := hdeep.1.1
+    rw [hfr] at h
+    exact h.1
+  left
+  obtain ⟨-, l, hl, hlb, hlf, hls⟩ := hfast
   refine ⟨l, hl, hlf, hlb, ?_⟩
   obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
   obtain ⟨j, hj, B', CV', hfl, L, hL, hLr, hLB'⟩ :=
@@ -410,7 +471,7 @@ theorem namers_lt_q (hrun : GoldilocksRun proposer dg H tr ini) (hh : tr.Healthy
 theorem cut_and_reset : CutAndReset := by
   intro sp ro proposer dg H tr g ΔF hrun hh hnc
   refine ⟨cutZ_le sp g, fun y hy k att hs hk => signed_le_HZ hrun hh hy hs hk,
-    fun x hx i ℓ C hto hi => toFG_fastLock hrun hnc hx hto hi,
+    fun x hx i ℓ C hto hi => toFG_fastLock hrun hh hnc hx hto hi,
     fun y hy i X hX hXh => honest_row_of_height hrun hh hy i hX hXh, fun a hR => ?_⟩
   refine ⟨cutZ_lt_reset hrun hh hR,
     fun y hy k att hs hatt => reset_le_of_high hrun hh hR hy hs hatt,

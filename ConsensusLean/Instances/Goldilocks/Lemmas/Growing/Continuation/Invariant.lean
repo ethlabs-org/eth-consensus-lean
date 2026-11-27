@@ -1,9 +1,11 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Frontier
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Rows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.Frontier
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Record
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.SeedHeld
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Foundation
@@ -39,7 +41,7 @@ vote cut after the split slot, has such a call (`seeded_reader_called_at`).
 `b ≥ T`, and conviction below a third, with `t₁ ≥ t_{r+k}` the later of the seed's cover start and
 the drain `t_{r+k}`. Every field is proved: the record cover after `T` (`Continuation/Record`), the
 held seed after `T` (`Continuation/SeedHeld`), and the cache facts and the full-read viability
-(`Continuation/Rows`). -/
+(`Healing/Frontier/Rows`). -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
@@ -166,8 +168,9 @@ theorem seeded_locks_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc
   exact onHealedChain_iff.2 ⟨D, l₀.slot, .of_lock hlab (hD.mono htb),
     ((AC.anc_viableAncestor _ B₀).mono hΦU).trans hL₀D⟩
 
-/-- **FG sources from the drain on are on the healed chain**: a source is the viable ancestor of
-the block of a live fast lock, below its holder's lock write of a label `≥ r`. -/
+/-- **FG sources from the drain on are on the healed chain**: a source is at or below the viable
+ancestor of the block of a live lock, fast or slow (`AC.toFG_source_below_lock`), below its
+holder's lock write of a label `≥ r`. -/
 theorem seeded_sources_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {T : Time} {r σ : Nat} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
@@ -185,17 +188,18 @@ theorem seeded_sources_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
   have hwf : AC.LocksWF sp (tr.state y i).ac.locks := by
     have h := Compose.locksWF_state (hrun.upTo hd) (hnc.upTo _) hy i
     rwa [RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
-  obtain ⟨hCv, l, hlm, hlC, -, -⟩ := Compose.toFG_candidate hC
+  obtain ⟨-, A, ⟨hAt, l, hlm, hlA⟩, hCA⟩ := AC.toFG_source_below_lock hC
   have hlab : r ≤ l.slot := by
     rw [hr]
     exact Healing.drain_live_locks (a := a) hwf (hdrain ▸ hdt) l hlm
   obtain ⟨l₀, hl₀, B, hB, hBr, -, rfl⟩ := hlm
   obtain ⟨hvt, hva⟩ := AC.viableAncestor_anc hΦ hB
-  obtain rfl : C = ℓ.frame.viableAncestor B := hΦ.coherent.1 hCv.1 hvt hlC.symm
+  obtain rfl : A = ℓ.frame.viableAncestor B := hΦ.coherent.1 hAt hvt hlA.symm
   obtain ⟨L, hL, hLr, D, hD, hLD⟩ :=
     lock_write_at hrun hnc hd (fun _ hk => hrun.time_mono hk.le) hy l₀ hl₀
   obtain rfl : B = L := hU.1 (hΦU hB) (mem_honestBlocksAt hrun hy hL) (hBr.trans hLr.symm)
-  exact onHealedChain_iff.2 ⟨D, l₀.slot, .of_lock hlab (hD.mono hib), (hva.mono hΦU).trans hLD⟩
+  exact onHealedChain_iff.2 ⟨D, l₀.slot, .of_lock hlab (hD.mono hib),
+    (Anc.mono hΦU (hCA.trans hva)).trans hLD⟩
 
 /-! ### Open frame facts -/
 
@@ -232,8 +236,8 @@ private theorem seeded_members_compatible (hrun : Growing.GoldilocksRun proposer
     ∀ C s C' s', HealedOrigin tr H g r (r + sp.k - 1) C s b →
       HealedOrigin tr H g r (r + sp.k - 1) C' s' b → Compatible (tr.HonestBlocksAt H) C C' :=
   fun C s C' s' h h' => healedOriginsBelow_iff.1
-    (healed_frontier_at hrun hnc hseed hTb hsvc hB hcv hK hKB (max s s' + 1)).1 C s C' s'
-      (by omega) (by omega) h h'
+    (healed_frontier_at hrun hnc hseed.toHandoverCore hTb hsvc hB (hcv.upTo _) hK hKB
+      (max s s' + 1)).1 C s C' s' (by omega) (by omega) h h'
 
 /-- **The seeded cache facts.** For a reader honest at `t ∈ [t₁, b]` that has called from
 `t_{r−k−3}` on before its read, `Σ.F` is on the healed chain, and `fc_root` is compatible with
@@ -255,7 +259,7 @@ theorem seeded_caches_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hn
         C ∈ (Node.frame (tr.state y i)).tree →
         Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).fcRoot C :=
   have ht0 : 0 ≤ t := (ts_natCast_nonneg _).trans (hdt.trans ht₁)
-  seeded_caches_of hrun hnc hcv hseed hTb
+  seeded_caches_of hrun hnc hseed.toHandoverCore (hcv.upTo _) hTb
     (seeded_members_compatible hrun hnc hseed hTb hsvc hB hcv hK hKB) ht0 hi htb hy
     (hB.two t ht0 htb) hcall
 
@@ -278,7 +282,7 @@ theorem seeded_viable_at (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hn
       (Node.frame (tr.state y i)).Anc C (Node.frame (tr.state y i)).fcRoot ∨
         C ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree :=
   have ht0 : 0 ≤ t := (ts_natCast_nonneg _).trans (hdt.trans ht₁)
-  fun _ hC hCt => seeded_viable_of hrun hnc hcv hseed hTb
+  fun _ hC hCt => seeded_viable_of hrun hnc hseed.toHandoverCore (hcv.upTo _) hTb
     (seeded_members_compatible hrun hnc hseed hTb hsvc hB hcv hK hKB) ht0 hi htb hy
     (hB.two t ht0 htb) hcall hC hCt
 
@@ -294,7 +298,7 @@ theorem seed_held_past_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
       ∀ y c (ell : ACLabel (goldilocksNode sp ro)), y ∈ H (tr.time c) →
         tr.projAC.CallAt y c ell → sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c → tr.time c ≤ b →
         Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree := by
-  exact seed_held_through_at hrun hnc hseed hTb
+  exact seed_held_through_at hrun hnc hseed.toHandoverCore hTb
 
 /-! ### The seeded invariant -/
 
@@ -318,7 +322,7 @@ theorem seeded_invariant_of_cover_at (hrun : Growing.GoldilocksRun proposer dg H
     (hKB : CommitteeBoundsFrom tr H K r b) :
     SeededInvariant tr H g r (r + sp.k - 1) (max tc (sp.ts (r + sp.k : Nat))) b := by
   have hdt : sp.ts (r + sp.k : Nat) ≤ max tc (sp.ts (r + sp.k : Nat)) := le_max_right _ _
-  have hF := healed_frontier_at hrun hnc hseed hTb hsvc hB hcv hK hKB
+  have hF := healed_frontier_at hrun hnc hseed.toHandoverCore hTb hsvc hB (hcv.upTo _) hK hKB
   exact ⟨seeded_members_compatible hrun hnc hseed hTb hsvc hB hcv hK hKB,
     fun C s hC y i e he hib hs =>
       healedVotesBelow_iff.1 (hF e.msg.slot).2 C s hC y i e he hib hs le_rfl,

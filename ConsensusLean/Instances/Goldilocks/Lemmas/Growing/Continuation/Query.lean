@@ -1,10 +1,12 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation.RunCommittee
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Seed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.Seed
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.SeedCover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Invariant
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Continuation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Binding
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Engine.Members
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.QueryCover
 
 public section
 
@@ -103,7 +105,8 @@ theorem handover_invariant_at
           Compose.Growing.ChainConvictedBelow Q.trace Q.keys →
           Compose.Growing.SeededInvariant Q.trace Q.keys Q.gst r (r + Q.params.k - 1) t₁ b := by
   obtain ⟨r, σ, ΔF, hΔF, hseed, t₀, ht₀T, hdt₀, hlate, hcov⟩ :=
-    handover_seed_cover_at S A V Q h0 hb hp
+    handover_seed_cover_at S A V Q h0 hb hp fun _ _ hpT hT hd hTb =>
+      healthy_query_cover_at Q hpT hT hd hTb
   obtain ⟨a, _, hpr, -⟩ := hseed.reset
   have hΔ := Q.params.toParams.hΔ
   refine ⟨r, σ, ΔF, hΔF, hseed, max t₀ (Q.params.ts (r + Q.params.k : Nat)),

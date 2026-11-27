@@ -22,8 +22,9 @@ public section
 The growing form of `Healing.ResetPremisesUpTo.optimistic_vote_domain_before`: a clean optimistic
 source, written by a node honest at its write, is below the frame root of a later vote of a node
 honest at it, or viable in its voter block tree, given the earlier votes of nodes honest at them.
-The held-target vote domain (`held_target_vote_domain_before_at`) receives the source held by its
-writer, its availability to the voter (`raw_writer_voterBlockTree_window_before_at`, under the
+The held-target vote domain (`held_target_vote_domain_before_of_quarantine_at`) receives the
+source held by its writer, its availability to the voter
+(`raw_writer_voterBlockTree_window_before_at`, under the
 reset service and the catch-up), the reset seed, and the comparisons with every high origin
 written before the vote: an older one through an honest supporter of the source, one of the
 source's label through the same-label comparisons, a later one through the earlier votes. -/
@@ -51,8 +52,9 @@ private theorem catch_ac {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   exact hp.run.toLocalRun.acCatchAt hp.catchUp hqH hq hg hpH hci hti hFD
 
 /-- **A clean optimistic source has the vote domain** of every later vote of a node honest at it
-through the horizon, given the earlier votes of nodes honest at them. -/
-theorem optimistic_vote_domain_before_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+through the horizon, given the earlier votes of nodes honest at them, inside the deep quarantine
+(`hpre`). -/
+theorem optimistic_vote_domain_before_of_quarantine_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {r s i : Nat}
     (hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
@@ -62,7 +64,8 @@ theorem optimistic_vote_domain_before_at {cm : Time → Finset (Fin sp.n)} {βK 
     {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcast : AC.CastAt tr.projAC y i ell e) (hsi : s < e.msg.slot) (hib : tr.time i ≤ b)
     (hprior : ∀ z q, z ∈ H (tr.time q) → q < i → ∀ e', AC.VoteAt tr.projAC z q e' →
-      s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B) :
+      s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocksAt H) e'.msg B)
+    (hpre : ∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
     Anc (tr.HonestBlocksAt H) B ell.frame.fcRoot ∨
       B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   have hm := hp.run.time_mono
@@ -78,8 +81,9 @@ theorem optimistic_vote_domain_before_at {cm : Time → Finset (Fin sp.n)} {βK 
   have hms : m < s := by rw [cleanLabel_eq] at hs; omega
   have hts := hp.clean_window_timing_at hs s (by have := sp.two_le_k; clear * - this; omega)
   have hgs : AC.gbar g + 8 * sp.Δ < sp.ts s := (Healing.lt_cutZ sp g).trans_le hts
-  apply hp.held_target_vote_domain_before_at hx hy hBx hrb hcast hib ?_ hseed hdb (by omega)
-    (hp.target_compatible_older_origin_at hseed hdb hzq hv hqb hvs hms hVB) ?_ ?_ ?_
+  apply hp.held_target_vote_domain_before_of_quarantine_at hx hy hBx hrb hcast hib ?_ hseed hdb
+    (by omega) (hp.target_compatible_older_origin_at hseed hdb hzq hv hqb hvs hms hVB) ?_ ?_ ?_
+    hpre
   · intro hF
     have hle := (AC.ts_le_iff sp).mpr (show (s : Int) ≤ e.msg.slot - 1 by omega)
     exact AC.Growing.raw_writer_voterBlockTree_window_before_at

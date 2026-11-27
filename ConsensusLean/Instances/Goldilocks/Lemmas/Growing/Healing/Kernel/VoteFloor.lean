@@ -18,8 +18,9 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 variable {hold : Time}
 
-/-- Specialize the shared floor source to the vote's slot with an explicit causal row bound. -/
-theorem high_floor_source_core_of_row_bound_at
+/-- Inside the deep quarantine (`hpre`): specialize the shared floor source to the vote's slot
+with an explicit causal row bound. -/
+theorem high_floor_source_core_of_quarantine_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {i j k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -33,14 +34,15 @@ theorem high_floor_source_core_of_row_bound_at
       Compatible (tr.HonestBlocksAt H) O O')
     (hcomp : ∀ v r l O, r < k → HighOrigin tr H g v r l O →
       Compatible (tr.HonestBlocksAt H) B O)
-    (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor) :
+    (hfloor : ((tr.state x i).fg.σ B.root).h < (tr.state y k).fg.headHeightFloor)
+    (hpre : ∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
     ∃ v r l O E, r < k ∧ HighOrigin tr H g v r l O ∧ l < e.msg.slot ∧
       E ∈ (tr.state y k).fg.tree ∧ Anc (tr.HonestBlocksAt H) E O ∧
       Anc (tr.HonestBlocksAt H) B O ∧
       (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h := by
   obtain ⟨v, r, l, O, E, hr, hO, hl, hE, hEO, hBO, hf, -⟩ :=
-    hp.high_floor_signed_source_of_row_bound_at ho (hp.run.time_nonneg k)
-      (fun _ hq => hp.run.time_mono hq.le) hy hkb hrow hpair hcomp hfloor
+    hp.high_floor_signed_source_of_quarantine_at ho (hp.run.time_nonneg k)
+      (fun _ hq => hp.run.time_mono hq.le) hy hkb hrow hpair hcomp hfloor hpre
   exact ⟨v, r, l, O, E, hr, hO, hl, hE, hEO, hBO, hf⟩
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof

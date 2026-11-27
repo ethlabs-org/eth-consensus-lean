@@ -36,9 +36,19 @@ theorem ResetPremisesUpTo.reset_seed_at
   have hCa' : HZ tr H g + 1 ≤ ((tr.state y r).fg.σ C.root).h := by
     rw [RunTrace.upTo_state_of_le hp.run.time_mono hrt'] at hCa
     omega
-  obtain ⟨io, hio, l, O, D, CV, ho, _, hfl, _, _⟩ := hp.high_report_origin_at
+  -- the reset time is inside the deep quarantine: below `b`, or below the drain of `a`
+  have hq : ∀ D, sp.deepDepth = some D → tr.time r ≤ cutZ sp.toParams g + 4 * D * sp.Δ := by
+    intro D hD
+    refine (hrt'.trans hka.le).trans ?_
+    rcases hp.deepCover D hD with hbq | hc
+    · exact hp.reset_le.trans hbq
+    · have := Healing.lt_drainTime (sp := sp) ((hp.run.time_nonneg k).trans hka.le)
+      have := hc.drain_le D hD
+      have := sp.toParams.hΔ
+      linarith
+  obtain ⟨io, hio, l, O, D, CV, ho, _, hfl, _, _⟩ := hp.high_report_origin_of_quarantine_at
     (hp.run.antitone (max_le_max le_rfl hrt') hyz) ((toFGAt_upTo_iff hp.run.time_mono hrt').mp hto)
-    (hrt'.trans (hka.le.trans hp.reset_le)) hCa'
+    (hrt'.trans (hka.le.trans hp.reset_le)) hCa' hq
   have htime : sp.ts l ≤ tr.time io := by
     rcases hfl with ⟨ell', C', ⟨_, _, ht, _⟩, _⟩ | ⟨ell', A, _, hsl, _⟩
     · have ht' : tr.time io = sp.ts l + 6 * sp.Δ := ht

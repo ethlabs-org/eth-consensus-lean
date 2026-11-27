@@ -4,16 +4,12 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.ClientSteps
 
 public section
 
-/-! # Goldilocks Healing, HR.4: the sources of the high attestations
+/-! # Goldilocks Healing, HR.4: honest ancestry, stored fast locks and joined writes
 
-**Temporal source provenance** (`high_row_source`). An honest attestation
-signed at cut `d` names the entry `E` of its source `Q`, the block that the node's `ac_to_fg`
-returned at the cut before (`Compose.attest_source`): `Q` is the viable ancestor of a live fast
-lock's block, which sits below the stored block `O` of a fast-lock write of the same node at a cut
-`r < d` (`stored_fast_lock_provenance`), so `E ⪯ Q ⪯ O`. A high attestation (`att.h ≥ H_z + 1`) has
-a high source, so `O` is high (heights do not decrease along ancestry), the write is joined
-(`joined_of_fastLockAt`, `JoinedProjection`), and `(O, l)` is a high origin written by the signer
-before the signing. -/
+Run facts read by the retention and growing-fault source arguments: honest ancestry in a node's
+store (`store_anc_of_honest_anc`, `mem_of_honest_anc`, `σ_eq_honest`), a frame's tree in the
+caller's store (`mem_tree_of_frame`), the stored block of a fast lock (`storedFastLock_mem`) and a
+joined fast-lock write (`joinedAt_of_fastLockAt`). -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -98,85 +94,6 @@ theorem joinedAt_of_fastLockAt {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   exact hj
 
 /-! ## The source of an honest attestation -/
-
-/-- **Temporal source provenance of a high attestation**. An honest
-attestation of height `≥ H_z + 1` signed at cut `d` names the entry `E` (at its height) of the chain
-of a high origin `(O, l)` written by the signer at a cut `r < d`: `E ⪯ Q ⪯ O` for the attestation's
-source `Q`. -/
-theorem ResetPremisesUpTo.high_row_source {b : Time}
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {v : Fin sp.n} (hv : v ∈ H)
-    {d : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hh : HZ tr H g + 1 ≤ att.h) :
-    ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧ ∃ E ∈ (tr.state v r).fg.tree,
-      (tr.state v r).fg.Anc E O ∧ E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
-      ((tr.state v r).fg.σ E.root).Th = E.root := by
-  have hacr := Compose.goldilocks_ac_projection_from hp.run hp.noColl
-  have hr := hacr.localRun
-  have hU := hr.coherent
-  obtain ⟨C, hcall⟩ := hs
-  obtain ⟨d', rfl, ℓ, hc', hto, -, hC, hfgeq⟩ :=
-    Compose.attest_source hp.run.toLocalRun hv hcall
-  have hpc : tr.projAC.CallAt v d' ℓ := Compose.projAC_callAt.mpr hc'
-  have hC' : (AC.acToFG sp (tr.projAC.state v d') ℓ.frame (tr.time d')).2 = some C := by
-    rw [Compose.projAC_state hp.run.toLocalRun hv]
-    exact hC
-  obtain ⟨hCv, l, hl, hlb, hlf, -⟩ := AC.toFG_candidate hC'
-  obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
-  obtain ⟨r, hrd, CV, ℓw, D, hcw, hfl, L, hL, hLr, hLO⟩ :=
-    stored_fast_lock_provenance hr hp.run.vstart hv d' l₀ hl₀ hlf
-  obtain ⟨hΦ, hΦU⟩ := AC.frameIn_of_callAt hr hv hpc
-  obtain ⟨hΦw, -⟩ := AC.frameIn_of_callAt hr hv hcw
-  -- the source is the viable ancestor of the live lock's block, below the stored block
-  have hCt : C ∈ ℓ.frame.tree := hCv.1
-  obtain ⟨hvat, hva⟩ := AC.viableAncestor_anc hΦ hB₀
-  obtain rfl : C = ℓ.frame.viableAncestor B₀ := hU.1 (hΦU hCt) (hΦU hvat) hlb.symm
-  obtain rfl : L = B₀ := hU.1 hL (hΦU hB₀) (hLr.trans hB₀r.symm)
-  set O := ℓw.frame.viableAncestor D with hO
-  have hCO : Anc (tr.HonestBlocks H) (ℓ.frame.viableAncestor L) O := (hva.mono hΦU).trans hLO
-  have hOt : O ∈ (tr.state v r).fg.tree :=
-    mem_tree_of_frame hp.run hv hcw (AC.viableAncestor_anc hΦw (fastLockAt_frame_mem hfl hcw)).1
-  -- the entry of the source, in the store at the signing
-  set st := (tr.state v (d' + 1)).fg with hst
-  have hreach := Compose.fg_reachable hp.run.toLocalRun hv (d' + 1)
-  have hCst : ℓ.frame.viableAncestor L ∈ st.tree := by
-    rw [hfgeq]
-    exact mem_tree_of_frame hp.run hv hpc hCt
-  have hcut := (hp.run.cutLaw v hv (d' + 1) _ hcall).1
-  obtain ⟨hah, haT⟩ := Store.createAtt_eq hcut
-  obtain ⟨⟨E, hE, hEr, hEC, hEh, hETh⟩, -⟩ :=
-    Store.entry_state_of_source sp.toParams (Payload sp.n) _ st hreach _ hCst
-  have hEh' : (st.σ E.root).h = att.h := by rw [hah, hEr]
-  have hETh' : (st.σ E.root).Th = E.root := by rw [hETh, hEr]
-  have hEr' : E.root = att.T := by
-    rw [haT]
-    change E.root = (st.σ (st.σ _).Th).Th
-    rw [← hEr, hETh']
-  -- the stored block is high
-  have hOst : O ∈ st.tree := Compose.tree_mono hp.run.toLocalRun hv (by omega) hOt
-  have hCOst := store_anc_of_honest_anc hp.run hp.noColl hv hCO hOst
-  have hσO := σ_eq_honest hp.run hp.noColl hv hv hOst hOt
-  have hOh : HZ tr H g + 1 ≤ ((tr.state v r).fg.σ O.root).h := by
-    rw [← hσO]
-    have := h_le_of_store_anc hreach hCOst
-    rw [← hEh] at this
-    omega
-  -- the entry in the writer's store
-  have hsub : st.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨v, hv, d' + 1, hX⟩
-  have hEO : Anc (tr.HonestBlocks H) E O := (hEC.mono hsub).trans hCO
-  have hEt := mem_of_honest_anc hp.run hp.noColl hv hEO hOt
-  have hσE := σ_eq_honest hp.run hp.noColl hv hv hEt hE
-  have hoO : HighOrigin tr H g v r l₀.slot O := by
-    unfold HighOrigin Compose.StoredFastLockAt
-    exact ⟨hv, joinedAt_of_fastLockAt hp.run hp.noColl hv hfl, ⟨CV, ℓw, D, hcw, hfl, rfl⟩, hOh⟩
-  refine ⟨r, by omega, l₀.slot, O, hoO, E, hEt, store_anc_of_honest_anc hp.run hp.noColl hv hEO hOt,
-    hEr', by rw [hσE, hEh'], by rw [hσE, hETh']⟩
-
-/-- Whole-run specialization of actual signed-attestation provenance. -/
-theorem high_row_source (hp : ResetPremises tr H K proposer dg g ΔF a) {v : Fin sp.n} (hv : v ∈ H)
-    {d : Nat} {att : FG.Att sp.n} (hs : tr.SignAt v d att) (hh : HZ tr H g + 1 ≤ att.h) :
-    ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧ ∃ E ∈ (tr.state v r).fg.tree,
-      (tr.state v r).fg.Anc E O ∧ E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
-      ((tr.state v r).fg.σ E.root).Th = E.root :=
-  (hp.toUpTo tr H (le_refl a)).high_row_source hv hs hh
 
 end Consensus.Goldilocks.Healing
 

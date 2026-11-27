@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.ProposalReceipt
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 
@@ -16,12 +17,12 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 variable {hold : Time}
 
-/-- Compare the actual root without requiring the target's independent read to precede it. -/
-theorem held_target_proposal_root_before_at
+/-- The root comparison, given the high-height case. -/
+private theorem held_target_proposal_root_of_high
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {x p : Fin sp.n} {r i u : Nat} (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
-    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
+    {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i))
+    {B : AC.Blk sp.n (List (FG.Att sp.n))}
     {ell : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
@@ -30,8 +31,8 @@ theorem held_target_proposal_root_before_at
     (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree)
     (hseed : ∃ v q m S, HighOrigin tr H g v q m S ∧ tr.time q < sp.ts u ∧
       Compatible (tr.HonestBlocksAt H) B S)
-    (hcompare : ∀ v q m O, q < i → HighOrigin tr H g v q m O →
-      Compatible (tr.HonestBlocksAt H) B O) :
+    (hhighroot : ¬ (tr.state p i).fg.hj ≤ HZ tr H g →
+      Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B) :
     Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B := by
   have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hr := hac.localRun.upTo (hp.run.time_nonneg i)
@@ -64,7 +65,28 @@ theorem held_target_proposal_root_before_at
         exact he ▸ hPhi.rooted.1
     exact hp.low_root_of_held_seed_at_call_at hpH hBy hib hpH hib hS hqb hci
       ((frame_tree_subset_at hp.run hp.noColl hpH hci).2 hSt) hlow hBS hheld
-  · exact hp.high_J_root_of_held_at_call_before_at hx hBx hpH hib hci (by omega) hcompare
+  · exact hhighroot hlow
+
+/-- The held-target proposal root for a target compatible with the earlier high origins
+and, under the high-source cover, the healed members up to the slot of the call. -/
+theorem held_target_proposal_root_before_covered_at
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {x p : Fin sp.n} {r i u : Nat} (hx : x ∈ H (tr.time r)) (hpH : p ∈ H (tr.time i))
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hBx : B ∈ (tr.state x r).fg.tree)
+    {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
+    (hd : (AC.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
+    (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree)
+    (hseed : ∃ v q m S, HighOrigin tr H g v q m S ∧ tr.time q < sp.ts u ∧
+      Compatible (tr.HonestBlocksAt H) B S)
+    (hcompare : ResetPremisesUpTo.CompatibleWithOrigins tr H g a b i (sp.slot (tr.time i)) B) :
+    Compatible (tr.HonestBlocksAt H) ell.frame.fcRoot B :=
+  held_target_proposal_root_of_high hp hpH hci hcall hd hti hib hheld hseed
+    fun hlow => hp.high_J_root_of_held_at_call_before_covered_at hx hBx hpH hib hci
+      (by omega) hcompare
 
 end Consensus.Goldilocks.Healing.Growing.ProposalImpl
 

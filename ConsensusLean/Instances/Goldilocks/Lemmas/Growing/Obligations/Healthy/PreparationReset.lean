@@ -9,6 +9,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HealthyPreparationT
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ResetOfDrainRounds
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Supply.Fields
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.SignGap
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.BoundariesCover
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -20,6 +21,20 @@ namespace Consensus.Goldilocks.Obligations.Growing
 open AsChainShape Simulation Blocks Shape
 
 variable (S : Setup) (A : ContractAssumptions S) (V : Type) [Fintype V] [DecidableEq V]
+
+/-- **A high-source cover supplier of a healthy query** (the `hcover` of
+`resetPremisesUpTo_of_reset_cover_at` at the query's bound): from every reset record up to `T` at
+most the bound, inside the deep quarantine, with the drain of its reset `4Δ` before `T`, the
+high-source cover through the bound. Supplied above Continuation (`healthy_query_cover_at`). -/
+abbrev HealthyQueryCover (Q : HealthyPreparationQueryAt S A V) : Prop :=
+  ∀ a T, Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
+      (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst
+      (protoFGDelay (Model.pubOf Q.run.1) + (A.releaseGap : Time) * Q.params.Δ) a T
+      (runCommittee S Q.run.2 Q.hn) (K S A).params.βK ((A.releaseGap : Time) * Q.params.Δ) →
+    (∀ D, Q.params.deepDepth = some D →
+      T ≤ Healing.cutZ Q.params.toParams Q.gst + 4 * D * Q.params.Δ) →
+    Healing.drainTime Q.params a + 4 * Q.params.Δ ≤ T → T ≤ Q.bound →
+    Healing.Growing.HighSourceCover Q.trace Q.keys Q.gst a Q.bound
 
 /-- The parameter-only healing coefficient covers the reset envelope. -/
 theorem healthy_preparation_reset_fit_at
@@ -58,7 +73,8 @@ theorem healthy_preparation_reset_at
     (hGs : (contract_catchUp S A : Nat) +
         (healthyResetCoeff S Q.index + 8 * S.k + 4 * (Q.index : Nat) + 34) + 3 + 5 * Gs ≤
       contract_heal S A Q.cap Q.index)
-    (hGsT : 4 * A.fgSlots + A.releaseGap + Gs ≤ 4 * S.δt) :
+    (hGsT : 4 * A.fgSlots + A.releaseGap + Gs ≤ 4 * S.δt)
+    (hcover : HealthyQueryCover S A V Q) :
     ∃ ΔF a, Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
         (runProposer S Q.run.2 Q.hn)
         (digestOf S Q.run.2) Q.gst ΔF a Q.bound
@@ -162,7 +178,7 @@ theorem healthy_preparation_reset_at
     hstart hnc hf hs
     haw hcatch hnr hH (by rw [hδeq]; have := A.six_le_δt; omega)
     htimeoutG
-    hr0 hgr Q.index.pos hcz (hBGh.trans hb) (fun s₀ N hs₀ hN => by
+    hr0 hgr Q.index.1.pos hcz (hBGh.trans hb) (fun s₀ N hs₀ hN => by
       apply Healing.Growing.proposalGap_iff.mpr
       intro c hc hcN
       obtain ⟨x, hxl, hxr, k, P, hx, hP, _, hPs⟩ := healthy_preparation_gap_at S A V
@@ -177,13 +193,74 @@ theorem healthy_preparation_reset_at
     exact ⟨haw y t (hrun.antitone htb hy) ht htb, htb⟩
   obtain ⟨j, hj, hjt⟩ := Healing.snapshot_of_awake (hrun.upTo hb0).toLocalRun haw' hH
     (by linarith only [hcz, h4B, hb])
-  refine ⟨_, a, Healing.Growing.resetPremisesUpTo_of_reset_at
-    hstart hnc hs haw hf ha
+  have ha0 : 0 ≤ a := by
+    obtain ⟨⟨_, k, _, _, _, _, hka⟩, _⟩ := ha
+    rw [← hka]; exact hrun.time_nonneg k
+  -- the drain of the reset ends before the deep quarantine (`DeepAdmits` of the index)
+  have hdrain : ∀ D, Q.params.deepDepth = some D →
+      Healing.drainTime Q.params a + 4 * Q.params.Δ ≤
+        Healing.cutZ Q.params.toParams Q.gst + 4 * D * Q.params.Δ := by
+    intro D hD
+    have hadm := Q.index.2 D hD
+    rw [healMargin_val, healthyDrainLen_val] at hadm
+    have hadm' : ((11 + (20 * (2 * S.k + (Q.index.1 : Nat)) + 8 * S.k + 28 * S.δt +
+        28 * (Q.index.1 : Nat) + 56 + 5 * A.signGap) : Nat) : Time) ≤ ((4 * D : Nat) : Time) := by
+      exact_mod_cast hadm
+    push_cast at hadm'
+    have hready' : Q.ready =
+        max Q.gst 0 + ((contract_catchUp S A : Nat) : Time) * Q.run.1.ΔAC + 1 := by
+      change max Q.gst 0 + (((contract_coefficients S A).catchUp : Nat) : Time) * Q.run.1.ΔAC +
+        1 = _
+      rw [contract_coefficients_catchUp]
+    rw [contract_catchUp_val] at hready'
+    have hDe : Q.params.Δ = Q.run.1.ΔAC := rfl
+    have hz := Healing.lt_cutZ Q.params Q.gst
+    have hsa : Q.params.ts (Q.params.slot a : Int) ≤ a :=
+      (AC.ts_le_iff_le_slot Q.params ha0 _).2 le_rfl
+    have hdr : Healing.drainTime Q.params a =
+        Q.params.ts (Q.params.slot a : Int) + 4 * Q.params.Δ * (2 * (Q.params.k : Time) + 5) := by
+      rw [Healing.drainTime_eq]; simp only [AC.ACParams.ts]; push_cast; ring
+    have hδ6 : (6 : Time) ≤ S.δt := by exact_mod_cast A.six_le_δt
+    have hX1 : (1 : Time) ≤ (Q.index.1 : Nat) := by exact_mod_cast Q.index.1.pos
+    have hΔ0 : (0 : Time) ≤ Q.params.Δ := hΔ.le
+    have e1 := mul_le_mul_of_nonneg_right hadm' hΔ0
+    have e2 := mul_le_mul_of_nonneg_right hδ6 hΔ0
+    have e3 := mul_le_mul_of_nonneg_right hX1 hΔ0
+    have hGΔ : (0 : Time) ≤ (A.signGap : Time) * Q.params.Δ :=
+      mul_nonneg (Nat.cast_nonneg _) hΔ0
+    -- the signing wait of the reset bound is paid by the heal coefficient (`hGs`)
+    have hGs' := hGs
+    rw [contract_heal_val, contract_catchUp_val, healthyResetCoeff_val, healMargin_val,
+      healthyDrainLen_val] at hGs'
+    have hGs'' : ((19 + (20 * (2 * S.k + (Q.index.1 : Nat)) + 24 * (S.δt + (Q.index.1 : Nat)) +
+        40 + 8 * S.k + 4 * (Q.index.1 : Nat) + 34) + 3 + 5 * Gs : Nat) : Time) ≤
+        ((19 + (20 * (2 * S.k + (Q.index.1 : Nat)) + 8 * S.k + 28 * S.δt +
+          28 * (Q.index.1 : Nat) + 56 + 5 * A.signGap) : Nat) : Time) := by
+      exact_mod_cast hGs'
+    push_cast at hGs''
+    have e4 := mul_le_mul_of_nonneg_right hGs'' hΔ0
+    have hab' := hab
+    rw [resetBoundRounds_eq, healthyDrainLen_val] at hab'
+    rw [hdr]
+    have hkk : (Q.params.k : Time) = S.k := rfl
+    have hδδ : (Q.params.toParams.fg.δt : Time) = S.δt := by exact_mod_cast hδeq
+    rw [hδδ, hready', ← hDe] at hab'
+    have hmax : max Q.gst 0 = AC.gbar Q.gst := rfl
+    rw [hmax] at hab'
+    rw [hkk]
+    push_cast at hab'
+    generalize Healing.cutZ Q.params.toParams Q.gst = z at hz ⊢
+    generalize Q.params.ts (Q.params.slot a : Int) = w at hsa ⊢
+    have h1 : (1 : Time) ≤ Q.params.Δ := Int.add_one_le_iff.2 hΔ
+    ring_nf at hab' e1 e2 e3 e4 hz hGΔ ⊢
+    linarith
+  refine ⟨_, a, Healing.Growing.resetPremisesUpTo_of_reset_cover_at
+    hstart hnc hs haw hf ha ha0
     (hab.trans (hBGh.trans hb)) ⟨j, hj, hjt⟩ hcatch hnr
     htimeout hH
     (runCommittee_facts S Q.run.2 Q.hn Q.valid hnc)
     (by rw [goldilocksContract_params_eq]; exact le_rfl)
-    (S.committeeSize_pos (Model.pubOf Q.run.1) Q.hn) hcf, ?_⟩
+    (S.committeeSize_pos (Model.pubOf Q.run.1) Q.hn) hcf hdrain (hcover a), ?_⟩
   rw [hBeq] at hab
   linarith only [hab, hr]
 

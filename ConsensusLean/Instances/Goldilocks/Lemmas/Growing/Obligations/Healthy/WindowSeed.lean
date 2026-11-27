@@ -6,6 +6,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.WindowCrossing
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalUnanimous
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Seed
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SourceCover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportCover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.OperationalPersistence
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
@@ -256,15 +257,14 @@ private theorem seed_height_of_reports_at {g ΔR a b gS ΔF hold : Time}
     rw [hσQ] at hle ⊢
     omega
   have hrb : tr.time r ≤ b := by linarith
-  obtain ⟨io, -, jo, O', -, -, ho', hiob, -, hCO, -⟩ :=
-    hp.high_report_origin_at hzrz hrep hrb (by rw [hRh]; exact hEhT)
+  have ho' := hp.high_or_covered_at hzrz hrep hrb (by rw [hRh]; exact hEhT)
+  have hB : R ∈ tr.HonestBlocksAt H := Compose.Growing.mem_honestBlocksAt hrun hzr hRm
   have hER := hEQh.trans hQR
-  have hEO := hER.trans hCO
   obtain ⟨j, att, hsg, hjt, hah⟩ :=
-    hp.sign_of_report_at hzrz hrep hrb h0 hle0 hpH hE rfl hETe hEhT hER hRh ho' hiob hEO
+    hp.sign_of_report_at hzrz hrep hrb h0 hle0 hpH hE rfl hETe hEhT hER hRh ho' hB hER
   obtain ⟨-, haT, -⟩ :=
     hp.row_target_of_sign_at (hrun.antitone (max_le_max le_rfl hjt) hzrz) hsg (hjt.trans hrb) h0
-      hle0 hpH hE rfl hETe hEhT ho' hiob hEO hah
+      hle0 hpH hE rfl hETe hEhT ho' hB hER hah
   exact ⟨j, att, hzH', hsg, hjt.trans hrt', hah.trans (hEh.trans hPr1.symm),
     haT.trans hPrTh.symm⟩
 

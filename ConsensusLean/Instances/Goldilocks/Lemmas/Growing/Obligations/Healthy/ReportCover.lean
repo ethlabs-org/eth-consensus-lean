@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionCompatibility
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionCover
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionPool
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.UnanimousPool
 public import
@@ -8,6 +9,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CandidateReport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HigherReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierViews
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.SupplierFrames
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.FiniteSources
@@ -48,7 +50,7 @@ at a time after the state's cuts.
 
 The update of the node honest at `t_u + 6Δ` holds `P` (`unanimous_head_held_at_call_at`), with
 finality below `P` (`finality_alternative_before_update_at`), in its full viable tree
-(`unanimous_viable_or_higher_report_at`, `held_target_viable_or_higher_report_at`). Its pool
+(`unanimous_viable_or_higher_report_at`, `held_target_viable_or_higher_report_covered_at`). Its pool
 counts every validator honest at the update, so it confirms `P` and reports it at the adjacent
 `ac_to_fg` call (`report_of_viable_unanimous_pool_at`).
 
@@ -131,18 +133,21 @@ theorem unanimous_head_held_at_call_at {cm : Time → Finset (Fin sp.n)} {βK : 
     (fun r hrj hrs => hp.noRestart y r (hrun.antitone (hrun.time_mono hrj) hy) hrs
       ((hrun.time_mono hrj).trans hjb)) hv.1 hcall hHd (by linarith) (by linarith) hF
 
-/-- **A held target above a high seed is fully viable, or an earlier strictly higher report
-extends it**, at any cut of a node honest at it and at `c_z` by the horizon, when the target is
-compatible with every earlier high origin. The reporter is honest at its report and at `c_z`:
-the call is after `c_z`, as the caller holds the target above the seed. -/
-theorem held_target_viableHeads_or_higher_report_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+/-- The viability alternative, given the high-height root comparison and the higher report below
+the head-height floor. -/
+private theorem held_target_viableHeads_or_higher_report_of_cases
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ (Node.frame (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)
     (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocksAt H) S P)
-    (hcompare : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
-      Compatible (tr.HonestBlocksAt H) P B) :
+    (hhighroot : ¬ (tr.state y i).fg.hj ≤ HZ tr H g →
+      Compatible (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).fcRoot P)
+    (hfloorrep : ((tr.state y i).fg.σ P.root).h < (tr.state y i).fg.headHeightFloor →
+      ∃ x r ell' C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
+        AC.ToFGAt tr.projAC x r ell' C ∧ Anc (tr.HonestBlocksAt H) P C ∧
+        ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h) :
     (P ∈ (Node.frame (tr.state y i)).tree ∧
       (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot P ∧
       P ∈ (Node.frame (tr.state y i)).viableHeads) ∨
@@ -164,17 +169,13 @@ theorem held_target_viableHeads_or_higher_report_at {cm : Time → Finset (Fin s
     · exact hp.low_root_of_held_seed_at hy hib hseed hqb
         (mem_of_honest_anc_at hrun hp.noColl hd hle hy hSP hPy) hlow (Or.inr hSP)
         (fun _ => hPt)
-    · exact hp.high_J_root_of_held_before_at hy hPy hy hib (by omega) hcompare
+    · exact hhighroot hlow
   by_cases hrootP : Anc (tr.HonestBlocksAt H) (Node.frame (tr.state y i)).fcRoot P
   · by_cases hfloor : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ P.root).h
     · have hrootf := AC.anc_tree_of_anc_U hU hPhi hPhiU hPhi.fcRoot_mem hrootP hPt
       exact Or.inl ⟨hPt, hrootf, hPy, hPt.2,
         hrootf.mono (fun X hX => hX.1), hfloor⟩
-    · exact Or.inr (hp.held_target_high_floor_report_before_at hy hib hPy hseed hSP
-        (fun x r l B hri ho x' r' l' B' hr'i ho' => hp.origins_compatible_at ho
-          ((hrun.time_mono hri.le).trans hib) ho' ((hrun.time_mono hr'i.le).trans hib))
-        (fun x r l B hri ho => hp.origins_compatible_at hseed hqb ho
-          ((hrun.time_mono hri.le).trans hib)) hcompare (lt_of_not_ge hfloor))
+    · exact Or.inr (hfloorrep (lt_of_not_ge hfloor))
   · have hPR := hroot.resolve_left hrootP
     have hne : P ≠ (Node.frame (tr.state y i)).fcRoot := fun he => hrootP (he ▸ .refl)
     have hJ : (Node.frame (tr.state y i)).fcRoot = (tr.state y i).fg.J := by
@@ -200,23 +201,52 @@ theorem held_target_viableHeads_or_higher_report_at {cm : Time → Finset (Fin s
       hrun.antitone (max_le hcz.le (hrun.time_mono hri.le)) hx, hri, hto,
       hPR.trans hJC, by rw [← hσ, hCh]; exact hPh⟩
 
-/-- The any-cut viability alternative read through the frame of an AC call. -/
-theorem held_target_viable_or_higher_report_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+/-- **A held target above a high seed is fully viable, or an earlier strictly higher report
+extends it**, for a target compatible with the earlier high origins and, under the high-source
+cover, the healed members up to the slot of the cut written before it. -/
+theorem held_target_viableHeads_or_higher_report_covered_at
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
+    (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hPt : P ∈ (Node.frame (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)
+    (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocksAt H) S P)
+    (hcompare : ResetPremisesUpTo.CompatibleWithOrigins tr H g a b i (sp.slot (tr.time i)) P) :
+    (P ∈ (Node.frame (tr.state y i)).tree ∧
+      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot P ∧
+      P ∈ (Node.frame (tr.state y i)).viableHeads) ∨
+      ∃ x r ell' C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
+        AC.ToFGAt tr.projAC x r ell' C ∧ Anc (tr.HonestBlocksAt H) P C ∧
+        ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h :=
+  have hy := hp.run.antitone (le_max_right _ _) hyz
+  have hrun := hp.run
+  held_target_viableHeads_or_higher_report_of_cases hp hyz hib hPt hseed hqb hSP
+    (fun _ => hp.high_J_root_of_held_before_covered_at hy hPt.1 hy hib (by omega) hcompare)
+    (fun hfl => hp.held_target_high_floor_report_before_covered_at hy hib hPt.1 hseed hSP
+      (fun x r l B hri ho x' r' l' B' hr'i ho' => hp.origins_compatible_at ho
+        ((hrun.time_mono hri.le).trans hib) ho' ((hrun.time_mono hr'i.le).trans hib))
+      (fun x r l B hri ho => hp.origins_compatible_at hseed hqb ho
+        ((hrun.time_mono hri.le).trans hib)) hcompare hfl)
+
+/-- The any-cut viability alternative read through the frame of an AC call, for a target
+compatible with the earlier high origins and, under the high-source cover, the healed members up
+to the slot of the cut. -/
+theorem held_target_viable_or_higher_report_covered_at
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y i ell)
     (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ ell.frame.tree) (hseed : HighOrigin tr H g v q m S)
     (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocksAt H) S P)
-    (hcompare : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
-      Compatible (tr.HonestBlocksAt H) P B) :
+    (hcompare : ResetPremisesUpTo.CompatibleWithOrigins tr H g a b i (sp.slot (tr.time i)) P) :
     P ∈ ell.frame.viableTree ell.frame.tree ∨
       ∃ x r ell' C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
         AC.ToFGAt tr.projAC x r ell' C ∧ Anc (tr.HonestBlocksAt H) P C ∧
         ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
   rw [frame_eq_at hp.run (hp.run.antitone (le_max_right _ _) hyz) hcall] at hPt ⊢
-  rcases held_target_viableHeads_or_higher_report_at hp hyz hib hPt hseed hqb hSP hcompare
-      with ⟨hPt, hroot, hhead⟩ | hreport
+  rcases held_target_viableHeads_or_higher_report_covered_at hp hyz hib hPt hseed hqb hSP
+      hcompare with ⟨hPt, hroot, hhead⟩ | hreport
   · exact Or.inl ⟨hPt, hroot, P, hPt, hhead, .refl⟩
   · exact Or.inr hreport
 
@@ -256,12 +286,21 @@ theorem unanimous_viable_or_higher_report_at
   obtain ⟨v, q, m, S, ho, hqb, _, hqt⟩ := hp.reset_seed_before_slot_at hR
   have hSP := high_origins_before_next_slot_below_at hp hP hun hgu hR
     (by linarith [sp.toParams.hΔ]) ho hqt hqb
-  have hcompare : ∀ x r l B, r < j → HighOrigin tr H g x r l B →
-      Compatible (tr.HonestBlocksAt H) P B := fun x r l B hrj horig =>
-    (high_origin_compatible_before_update_at hp hP hslot hu hun hgu hR hTb
-      horig ((hp.run.time_mono hrj.le).trans ht.le)).symm
-  rcases held_target_viable_or_higher_report_at hp (by rwa [max_eq_right hcz]) hcall hjb hPt ho
-      hqb hSP hcompare with
+  have hslotj : sp.slot (tr.time j) = u + 1 := by
+    rw [ht]
+    apply AC.slot_of_mem sp (u + 1)
+    · simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ]
+    · simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ]
+  have hcompare : ResetPremisesUpTo.CompatibleWithOrigins tr H g a b j (sp.slot (tr.time j)) P :=
+    ResetPremisesUpTo.compatibleWithOrigins_iff.2
+      ⟨fun x r l B hrj horig =>
+        (high_origin_compatible_before_update_at hp hP hslot hu hun hgu hR hTb
+          horig ((hp.run.time_mono hrj.le).trans ht.le)).symm,
+      fun hc D l hD hl =>
+        (healed_member_compatible_before_update_at hp hc hP hslot hu hun hgu hR hTb D l
+          hD.healedOrigin (by omega)).symm⟩
+  rcases held_target_viable_or_higher_report_covered_at hp (by rwa [max_eq_right hcz]) hcall
+      hjb hPt ho hqb hSP hcompare with
     hv | ⟨x, r, e, C, hx, hrj, hto, hPC, hh⟩
   · exact Or.inl hv
   · exact Or.inr ⟨x, r, e, C, hx, hrj, hto, (hp.run.time_mono hrj.le).trans ht.le, hPC, hh⟩

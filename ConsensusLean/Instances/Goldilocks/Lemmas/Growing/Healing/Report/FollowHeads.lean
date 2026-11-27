@@ -7,6 +7,11 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.SlowLock
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.Trees
 
 public section
 
@@ -48,8 +53,59 @@ theorem FrameWindow.toFG_later_proposal_head_after_at
     (hd : (AC.acProposal sp (tr.projAC.state z c) ellp.frame (tr.time c)).2 =
       some (d, pay)) (hK : CommitteeHalfUpTo tr H K g b) :
     Anc (tr.HonestBlocksAt H) R d.head := by
-  obtain ⟨a, hai, j, ellw, D, CV, hya, ha, hD, hfast, hRA⟩ :=
-    toFG_fast_candidate_origin_at hrun hnc hy hto
+  have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
+    (AC.ts_le_iff sp).2 (by exact_mod_cast hpq)
+  have hk := sp.two_le_k
+  obtain ⟨a, hai, j, ellw, D, CV, hya, ha, hD, hfast, hRA⟩ | ⟨Dd, A, -, -, hanc, hRdeep, hslow⟩
+    := toFG_fast_candidate_origin_at hrun hnc hy hto
+  swap
+  · -- A deep source at or below the deep anchor `A`, whose live locks are all slow. A slow lock
+    -- on `A` is live at the report, so its label is at least `slot(t_i) - k ≥ u - k ≥ s₀ + k`;
+    -- it was written at `t_{s+1} + 2Δ < t_r`. Later honest proposal heads extend its block.
+    have hi0 := hrun.time_nonneg i
+    have hr := Compose.Growing.acRun_upTo hrun hnc hi0
+    obtain ⟨hΦ, hΦU⟩ := Compose.Growing.frameIn_at hrun hnc hy hto.1
+    obtain ⟨hRv, hRA, -, -⟩ := hRdeep
+    obtain ⟨hAt, l, hl, hlA⟩ := (AC.deepest_mem hanc).1
+    have hlf := hslow l hl hlA
+    have hstate := Compose.Growing.projAC_upTo_state hrun (y := y) (le_refl (tr.time i))
+    have hwf : AC.LocksWF sp (tr.projAC.state y i).locks := by
+      have h := AC.locksWF_state hr.localRun hr.vstart hy i
+      rwa [hstate] at h
+    have hslot := hwf.slot_le_of_live hl
+    obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := hl
+    change sp.slot (tr.time i) ≤ l₀.slot + sp.k at hslot
+    change l₀.fast = false at hlf
+    obtain ⟨k, hki, D', ⟨ℓu, C, hu, hC, hD'⟩, L, hL, hLr, hLD⟩ :=
+      AC.slow_lock_provenance hr.localRun hr.vstart hy i l₀ (hstate.symm ▸ hl₀) hlf
+    obtain ⟨hkt, hu⟩ := (AC.upTo_updateAt hrun.time_mono).1 hu
+    change tr.time k ≤ tr.time i at hkt
+    have hs : (tr.projAC.upTo (tr.time i)).state y k = tr.projAC.state y k :=
+      Trace.upTo_state _ y fun _ hq => (hrun.time_mono hq.le).trans hkt
+    rw [hs] at hC hD'
+    rw [Trace.upTo_time] at hD'
+    obtain rfl : A = ell.frame.viableAncestor B₀ :=
+      hΦ.coherent.1 hAt (AC.viableAncestor_anc hΦ hB₀).1 hlA.symm
+    obtain rfl : B₀ = L := (Compose.Growing.honest_blocks_coherent_local hrun.toLocalRun hnc).1
+      (hΦU hB₀) (Compose.Growing.upTo_subset hrun hi0 hL) (hB₀r.trans hLr.symm)
+    have hRD : Anc (tr.HonestBlocksAt H) R D' :=
+      (Anc.mono hΦU (hRA.trans (AC.viableAncestor_anc hΦ hB₀).2)).trans
+        (hLD.mono (Compose.Growing.upTo_subset hrun hi0))
+    -- the label: `u ≤ R.slot ≤ slot(t_i) ≤ l₀.slot + k`, and the write precedes `t_r`
+    have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
+    have hPR' := (Anc.slot_le hac.localRun.coherent hPR).1
+    have hRs := Compose.Growing.frame_slot_le_at hrun hnc hy hto.1 R hRv.1
+    have hsr : l₀.slot + 2 ≤ r := by
+      by_contra hn
+      have hlo := hts (show r ≤ l₀.slot + 1 by omega)
+      have hstep := AC.ts_succ l₀.slot (sp := sp)
+      have hwrite : tr.time k = sp.ts l₀.slot + 6 * sp.Δ := hu.2.2.1
+      push_cast at hstep hlo
+      linarith only [hlo, hstep, hwrite, hkt, ht, sp.toParams.hΔ]
+    exact hRD.trans ((hframe.regular_later_heads_at hrun hnc hsvc hawake hf hcatch hnr
+      (s := l₀.slot) (by omega) (by omega) (by omega) hm (by omega) hmb
+      (hrun.antitone hkt hy) (Or.inr ⟨ℓu, C, hu, hC, hD'⟩) hK r (by omega) hrN).2 hsr
+      z c ellp hz hcp hcall hti d pay hd)
   have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := hac.upTo (hrun.time_nonneg a)
   have ha' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, ha⟩
@@ -66,9 +122,6 @@ theorem FrameWindow.toFG_later_proposal_head_after_at
       linarith only [he, sp.toParams.hΔ]
     · have hs' : sp.slot (tr.time a) = j := hs
       exact (AC.ts_le_iff_le_slot sp (hrun.time_nonneg a) _).2 (by rw [hs'])
-  have hts {p q : Nat} (hpq : p ≤ q) : sp.ts p ≤ sp.ts q :=
-    (AC.ts_le_iff sp).2 (by exact_mod_cast hpq)
-  have hk := sp.two_le_k
   have hPD := (Anc.slot_le hac.localRun.coherent (hPR.trans hRD)).1
   -- the label is after the window start, so after GST (`hm`), before the count:
   -- `u ≤ D.slot ≤ slot(t_a) ≤ j + 1`

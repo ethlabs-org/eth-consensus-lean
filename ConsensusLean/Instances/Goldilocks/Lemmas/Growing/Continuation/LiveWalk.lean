@@ -1,6 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Invariant
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Rows
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Agree
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.LocksWF
@@ -90,7 +90,7 @@ theorem SeededRun.called
     (hti : t ≤ tr.time i) :
     ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
       sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c :=
-  seeded_reader_called_at hS.run hS.seed hy ht hti
+  seeded_reader_called_at hS.run hS.seed.toHandoverCore hy ht hti
 
 /-- **A live lock of a node honest at a cut at a time `≥ t_{r+k}` has label at least `r`**: its
 expiry is at most `k` slots after its label (`LocksWF`). -/

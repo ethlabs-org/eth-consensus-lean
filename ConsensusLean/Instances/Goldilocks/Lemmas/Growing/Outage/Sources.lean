@@ -5,6 +5,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Client
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 
 public section
 
@@ -44,12 +45,13 @@ theorem source_compatible_at {ini}
   obtain ⟨hpc, -, hC⟩ := h
   obtain ⟨hΦ, hΦU⟩ := frameIn_at hrun hnc hy hpc
   rw [projAC_state_at hrun hy] at hC
-  obtain ⟨hCv, l, ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩, hlC, -, -⟩ := toFG_candidate hC
-  obtain ⟨hvt, hva⟩ := AC.viableAncestor_anc hΦ hB₀
-  obtain rfl : C = ℓ.frame.viableAncestor B₀ := hΦ.coherent.1 hCv.1 hvt hlC.symm
+  obtain ⟨-, a, ha, hCa⟩ := AC.toFG_source_below_lock hC
+  obtain ⟨l₀, hl₀, B₀, hB₀, hB₀r, -, rfl⟩ := AC.mem_liveLockBlocks hΦ ha
+  obtain ⟨-, hva⟩ := AC.viableAncestor_anc hΦ hB₀
   obtain ⟨L, hL, hLr, hLB⟩ := hlocks l₀ hl₀
   obtain rfl : B₀ = L := hU.1 (hΦU hB₀) (mem_honestBlocksAt hrun hy hL) (hB₀r.trans hLr.symm)
-  exact compatible_of_head_anc hU (hva.mono hΦU) hLB
+  have hCB : ℓ.frame.Anc C B₀ := hCa.trans hva
+  exact compatible_of_head_anc hU (hCB.mono hΦU) hLB
 
 /-- **The rows are sourced by compatible blocks, at a read time**: with every FG source, at a cut
 before `n` of a node honest then, compatible with `B`, every attestation of the tree at cut `n` of
@@ -82,7 +84,7 @@ theorem rows_sourced_by {ini}
   have hto : AC.ToFGAt tr.projAC a.val j ℓ src :=
     ⟨projAC_callAt.2 hcj, hcl, by rw [projAC_state_at hrun hav']; exact hC⟩
   have hst' : src ∈ (tr.state a.val (j + 1)).fg.tree := by
-    have h' := (toFG_candidate hC).1.1
+    have h' := (AC.toFG_source_below_lock hC).1.1
     rw [hfr] at h'
     rw [hfg]
     exact h'.1

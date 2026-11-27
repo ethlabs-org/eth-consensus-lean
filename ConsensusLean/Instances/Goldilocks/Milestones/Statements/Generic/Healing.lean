@@ -165,21 +165,23 @@ def high_row_source_at (O : ACHealing A sg runs hold) : Prop :=
     βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
     Premises tr H cm βK proposer dg sg g ΔF b hold → IsReset tr H g a → a ≤ b →
     v ∈ H (max (cutZ P g) (tr.time d)) → tr.time d ≤ b →
+    OriginInCap P O.deepBudget g (tr.time d) →
     tr.SignAt v d att → HZ tr H g + 1 ≤ att.h →
     ∃ r < d, ∃ l Og, HighOrigin A sg O tr H g v r l Og ∧
       ∃ E ∈ (tr.state v r).fg.tree, (tr.state v r).fg.Anc E Og ∧
         E.root = att.T ∧ ((tr.state v r).fg.σ E.root).h = att.h ∧
         ((tr.state v r).fg.σ E.root).Th = E.root
 
-/-- Leaf 13: no high contest. The Prop is parameterized by a healing supplier whose value does not
-occur in its body; its proof uses the supplier's `report_origin`, `report_in_frame` and
+/-- Leaf 13: no high contest, for a reset and an observation within the supplier's origin cap.
+Its proof uses the supplier's `report_origin`, `report_in_frame` and
 `origins_comparable`. Proved over any supplier by `no_high_contest_at_of_healing`
 (Lemmas/Generic/HealingRounds). -/
-def no_high_contest_at (_O : ACHealing A sg runs hold) : Prop :=
+def no_high_contest_at (O : ACHealing A sg runs hold) : Prop :=
   ∀ {cm proposer dg H tr} {βK : ℚ} {g ΔF a b : Time} {p : Fin P.n} {i : Nat},
     βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
     Premises tr H cm βK proposer dg sg g ΔF b hold → IsReset tr H g a → a ≤ b →
-    p ∈ H (tr.time i) → tr.time i ≤ b →
+    OriginInCap P O.deepBudget g a →
+    p ∈ H (tr.time i) → tr.time i ≤ b → OriginInCap P O.deepBudget g (tr.time i) →
     ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax)
 
 /-- Leaf 14: independently bounded historical readers, not event-only readers. Proved over any
@@ -189,8 +191,10 @@ def high_entry_eq_at (O : ACHealing A sg runs hold) : Prop :=
     {B B' Z₁ Z₂ : A.Blk} {y₁ y₂ : Fin P.n} {m₁ m₂ : Nat} {t₁ t₂ : Time},
     βK ≤ 1 / 2 → runs.Run cm proposer dg H tr →
     Premises tr H cm βK proposer dg sg g ΔF b hold → IsReset tr H g a → a ≤ b →
-    HighOrigin A sg O tr H g x i j B → tr.time i ≤ b →
+    OriginInCap P O.deepBudget g a →
+    HighOrigin A sg O tr H g x i j B → tr.time i ≤ b → OriginInCap P O.deepBudget g (tr.time i) →
     HighOrigin A sg O tr H g x' i' j' B' → tr.time i' ≤ b →
+    OriginInCap P O.deepBudget g (tr.time i') →
     Anc (tr.HonestBlocksAt H) Z₁ B → Anc (tr.HonestBlocksAt H) Z₂ B' →
     0 ≤ t₁ → (∀ q < m₁, tr.time q ≤ t₁) → y₁ ∈ H t₁ →
     0 ≤ t₂ → (∀ q < m₂, tr.time q ≤ t₂) → y₂ ∈ H t₂ →

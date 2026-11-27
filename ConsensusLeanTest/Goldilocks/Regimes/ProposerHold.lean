@@ -80,17 +80,18 @@ theorem sleepyLive_hold_zero_false (A : ContractAssumptions S) :
               (holdContract A (contract_coefficients S A) 0) r ∧
           (Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).prog
             (shapeProgress (goldilocks { S with vote := AsChainShape.stock }) (Fin 5))
-            (holdContract A (contract_coefficients S A) 0) .available 1 0
+            (holdContract A (contract_coefficients S A) 0) .available ⟨1, A.deepAdmits_one⟩ 0
             ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).pt r).horizon r)
         (fun r => ProposalLiveReady r.2
           ((Sys (goldilocks { S with vote := AsChainShape.stock }) (Fin 5)).cDur
             (holdContract A (contract_coefficients S A) 0) r)
           Out.confirmed 0
-          ((holdContract A (contract_coefficients S A) 0).params.latency .available 1)) := by
+          ((holdContract A (contract_coefficients S A) 0).params.latency .available
+            ⟨1, A.deepAdmits_one⟩)) := by
   intro h
   rcases h (run S) (rho_valid S) ⟨run_sleepy A _ 0, run_prog_zero A _⟩ with hP | hE
   · have hD : (11 : Time) + (((holdContract A (contract_coefficients S A) 0).params.latency
-        .available 1 : Nat) : Time) * env.ΔAC = 41 := rfl
+        .available ⟨1, A.deepAdmits_one⟩ : Nat) : Time) * env.ΔAC = 41 := rfl
     obtain ⟨τ, k, hh, -, -, hprop, hin⟩ := hP 11 (by norm_num)
       (by rw [hD, rho_horizon]) ⟨2, by rw [hD]; exact rho_ready_two _⟩
     rw [hD] at hin
@@ -102,7 +103,8 @@ variable (S) in
 theorem claims_hold_zero_false (A : ContractAssumptions S) :
     ¬ ShapeClaimsAt (goldilocks { S with vote := AsChainShape.stock })
       (holdContract A (contract_coefficients S A) 0) (Fin 5) :=
-  fun hc => sleepyLive_hold_zero_false S A (hc.sleepyLive .available .confirmed (Or.inl rfl) rfl 1)
+  fun hc => sleepyLive_hold_zero_false S A
+    (hc.sleepyLive .available .confirmed (Or.inl rfl) rfl ⟨1, A.deepAdmits_one⟩)
 
 /-- **The shape obligations fail at proposer hold `0`** (kind (c)), at `setupSmall`. -/
 theorem obligations_hold_zero_false :

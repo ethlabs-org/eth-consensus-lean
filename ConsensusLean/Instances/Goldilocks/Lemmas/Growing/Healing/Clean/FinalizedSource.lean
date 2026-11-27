@@ -53,15 +53,27 @@ theorem finalized_compatible_clean_source_at
       have hJC := ((Store.accepted_tree _ _ _ _ hrx).2.2.2 C hCx).mono subx
       rw [← he] at hJC
       exact Or.inl ((hFJ.mono hsub).trans hJC)
-    · obtain ⟨_, _, _, _, v, d, _, hdn, _, _, q, hqd, u, D, ho, hJD⟩ :=
-        hp.left_entry_origin_at ht hle hy htb hJm hJT (by omega) hEW
+    · obtain ⟨_, _, _, _, v, d, _, hdn, _, _, hor⟩ :=
+        hp.left_entry_origin_or_covered_at ht hle hy htb hJm hJT (by omega) hEW
           (by have := Store.hj_lt_h hr hW; omega)
-      have hFD := (hFJ.mono hsub).trans hJD
-      have hcomp := hp.clean_source_compatible_high_origin_at hx hC hs hrb ho
-        ((hle q (by omega)).trans htb)
-      rcases hcomp with h | h
-      · exact AC.anc_total hU hFD h
-      · exact Or.inl (hFD.trans h)
+      rcases hor with ⟨q, hqd, u, D, ho, hJD⟩ | ⟨-, hcov⟩
+      · have hFD := (hFJ.mono hsub).trans hJD
+        have hcomp := hp.clean_source_compatible_high_origin_at hx hC hs hrb ho
+          ((hle q (by omega)).trans htb)
+        rcases hcomp with h | h
+        · exact AC.anc_total hU hFD h
+        · exact Or.inl (hFD.trans h)
+      · -- the clean source is a member of the healed family (its label is past the origin
+        -- floor), compared with the member above `J` by S1
+        obtain ⟨hc, C₀, s₀, h₀, -, hJC₀⟩ := coveredUpTo_iff.1 hcov
+        have hCm : Compose.Growing.HealedOrigin tr H g (healedLockFloor sp a)
+            (healedOriginFloor sp a) C s b :=
+          Compose.Growing.HealedOrigin.of_origin
+            (by simp only [healedOriginFloor, healedLockFloor]; omega)
+            (Compose.Growing.originWithin_iff.2 ⟨x, r, CV, hx, hrb, hC⟩)
+        exact Compose.Growing.compatible_of_anc_left
+          (Compose.Growing.honestBlocksAt_coherent hp.run hp.noColl)
+          ((hFJ.mono hsub).trans hJC₀) (hc.s1 C₀ s₀ C s h₀ hCm)
   · obtain ⟨v, q, u, D, ho, hqa, _⟩ := hp.reset_seed_at
     have hqb := hqa.trans hp.reset_le
     have hFD := hp.low_finalized_below_origin_at ht hle hy htb (by omega) ho hqb

@@ -525,6 +525,7 @@ def ResetHealBudgetSupplyOld (M : RunMap rho payload) (K : Contract ProgressReq)
     ((Sys F V).heal K cap idx gst ⟨E, rho⟩) ⟨E, rho⟩ →
   (Sys F V).heal K cap idx gst ⟨E, rho⟩ ≤ rho.horizon →
   ∃ a, Healing.Growing.IsReset M.trace M.honest gst a ∧ a ≤ rho.horizon ∧
+    ResetInBudget P C.healing.deepBudget C.healing.drain gst a ∧
     max gst 0 ≤ P.slotTime (P.slotOf a + C.healing.drain) ∧
     P.slotTime (P.slotOf a + C.healing.drain) + C.margin + 1 ≤
       (Sys F V).heal K cap idx gst ⟨E, rho⟩ ∧

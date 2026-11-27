@@ -33,16 +33,12 @@ The healed-safety checks on a reader's current state at a read point after the
 repair window (`RepairReadContext`), with the reader honest at its read time and every source
 writer honest at its own cut:
 
-* `guarded_seed_ancestor_candidate_at_state_at`: a target compatible with a bounded high seed,
-  held whenever it is above finalization, and with every earlier high origin, is an ancestor
-  candidate of the reader's frame (the argument is
-  `ResetPremisesUpTo.guarded_seed_ancestor_candidate_at_state_at`);
 * `healthy_current_live_candidates_at`: the reader's live lock blocks and fork-choice root are
   compatible with its looked-up record;
 * `healthy_current_record_viable_at`: a looked-up record not below the fork-choice root is
   viable;
-* `healthy_current_vote_domain_at`, `healthy_current_stored_locks_at`: the vote-domain and
-  stored-lock arms of a recent actual result;
+* `healthy_current_vote_domain_of_quarantine_at`, `healthy_current_stored_locks_at`: the
+  vote-domain and stored-lock arms of a recent actual result;
 * `healthy_current_live_chain_at`: the reader's live lock blocks are pairwise compatible.
 
 The record's clean source comes from the receiver repair
@@ -52,33 +48,6 @@ The record's clean source comes from the receiver repair
 namespace Consensus.Goldilocks.Obligations.Growing
 
 open AsChainShape Simulation Blocks Shape
-
-section Guarded
-
-variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
-  {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {g ΔF a b : Time}
-variable {hold : Time}
-
-/-- **A comparable bounded high seed, held whenever it is above finalization, supplies current
-candidacy**, at a state of a reader honest at a read time `t ≤ b`, every earlier cut at a time
-`≤ t`. A local signed entry witnesses any higher floor. -/
-theorem guarded_seed_ancestor_candidate_at_state_at
-    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {y v : Fin sp.n} {i q m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ r < i, tr.time r ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hPt : P ∈ (Node.frame (tr.state y i)).tree)
-    (hseed : Healing.Growing.HighOrigin tr H g v q m S) (hqb : tr.time q ≤ b)
-    (hhold : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F S →
-      S ∈ (tr.state y i).fg.tree)
-    (hPS : Compatible (tr.HonestBlocksAt H) P S)
-    (hcompare : ∀ x r l B, r < i → Healing.Growing.HighOrigin tr H g x r l B →
-      Compatible (tr.HonestBlocksAt H) P B) :
-    (Node.frame (tr.state y i)).AncestorCandidate P :=
-  hp.guarded_seed_ancestor_candidate_at_state_at ht hle hy htb hPt hseed hqb hhold hPS hcompare
-
-end Guarded
 
 section Repair
 
@@ -172,9 +141,12 @@ theorem healthy_current_live_candidates_at (D : RepairSchedule tr H proposer dg 
         Goldilocks.Compatible (tr.HonestBlocksAt H) R B₀ := fun z r l B₀ hrb' ho =>
       tips_comparable_of_origin_witnesses_at hU hRB .refl
         (D.reset.clean_source_compatible_high_origin_at hx hsrc hs' hqb ho hrb')
-    have hcandidate := guarded_seed_ancestor_candidate_at_state_at D.reset C.time_nonneg
+    have hcandidate := D.reset.guarded_seed_ancestor_candidate_at_state_covered_at C.time_nonneg
       C.readPoint.1 C.honest C.time_bound hRm hseed hrb hhold (hcmp z r l S₀ hrb hseed)
-      (fun z r l B₀ hrn ho => hcmp z r l B₀ ((C.readPoint.1 r hrn).trans C.time_bound) ho)
+      (Healing.Growing.ResetPremisesUpTo.compatibleWithOrigins_iff.2 ⟨fun z r l B₀ hrn ho =>
+        hcmp z r l B₀ ((C.readPoint.1 r hrn).trans C.time_bound) ho,
+        fun hc _ _ hD _ => D.reset.clean_source_compatible_healed_at hx hsrc hs' hqb hRB hc
+          hD.healedOrigin⟩)
     exact hcandidate.elim Or.inr (fun h => Or.inl h.2.1)
 
 set_option linter.unusedVariables false in
@@ -211,22 +183,26 @@ theorem healthy_current_record_viable_at (D : RepairSchedule tr H proposer dg g 
       Goldilocks.Compatible (tr.HonestBlocksAt H) R B₀ := fun z r l B₀ hrb' ho =>
     tips_comparable_of_origin_witnesses_at hU hRE .refl
       (D.reset.clean_source_compatible_high_origin_at hz hsrc hl' hqb ho hrb')
-  rcases guarded_seed_ancestor_candidate_at_state_at D.reset C.time_nonneg C.readPoint.1
-    C.honest C.time_bound hRm hseed hqSb hhold (hcmp zS qS lS S₀ hqSb hseed)
-    (fun z r l B₀ hrn ho => hcmp z r l B₀ ((C.readPoint.1 r hrn).trans C.time_bound) ho) with
-    hroot | hviable
+  rcases D.reset.guarded_seed_ancestor_candidate_at_state_covered_at C.time_nonneg
+    C.readPoint.1 C.honest C.time_bound hRm hseed hqSb hhold (hcmp zS qS lS S₀ hqSb hseed)
+    (Healing.Growing.ResetPremisesUpTo.compatibleWithOrigins_iff.2 ⟨fun z r l B₀ hrn ho =>
+      hcmp z r l B₀ ((C.readPoint.1 r hrn).trans C.time_bound) ho,
+      fun hc _ _ hD _ => D.reset.clean_source_compatible_healed_at hz hsrc hl' hqb hRE hc
+        hD.healedOrigin⟩)
+    with hroot | hviable
   · exact absurd hroot hfc
   · exact hviable
 
 /-- **The vote-domain arm of a recent actual result**: the result's prefix is below the
 fork-choice root or in the viable voter tree of every later cast of a node honest at it, given the
-earlier later-label votes extend it. -/
-theorem healthy_current_vote_domain_at (D : RepairSchedule tr H proposer dg g b cm βK)
+earlier later-label votes extend it; inside the deep quarantine (`hpre`). -/
+theorem healthy_current_vote_domain_of_quarantine_at (D : RepairSchedule tr H proposer dg g b cm βK)
     {R B : AC.Blk sp.n (List (FG.Att sp.n))} {x : Fin sp.n} {r s : Nat}
     {CV : Set (AC.Vote sp.n)}
     (hx : x ∈ H (tr.time r)) (hr : AC.ResultAt tr.projAC x r s B CV)
     (hRB : Anc (tr.HonestBlocksAt H) R B) (hrb : tr.time r ≤ b)
-    (hs : D.cleanLabel + sp.k + 2 ≤ s) :
+    (hs : D.cleanLabel + sp.k + 2 ≤ s)
+    (hpre : ∀ Dd, sp.deepDepth = some Dd → b ≤ Healing.cutZ sp.toParams g + 4 * Dd * sp.Δ) :
     ∀ z q ell e, z ∈ H (tr.time q) → AC.CastAt tr.projAC z q ell e →
       tr.time q ≤ b → s < e.msg.slot →
       (∀ w p e', p < q → Compose.Growing.HVoteAt tr H w p e' → s < e'.msg.slot →
@@ -234,10 +210,11 @@ theorem healthy_current_vote_domain_at (D : RepairSchedule tr H proposer dg g b 
       Anc (tr.HonestBlocksAt H) R ell.frame.fcRoot ∨
         R ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   intro z q ell e hz he hqb hse hprior
-  exact Healing.Growing.ProposalImpl.result_prefix_vote_domain_before_at D.reset hx hz hr hRB
+  exact Healing.Growing.ProposalImpl.result_prefix_vote_domain_before_of_quarantine_at D.reset
+    hx hz hr hRB
     (by simpa only [D.cleanLabel_eq] using hs) hrb he hse hqb
     (fun w p hw hpq e' hv hs' => hprior w p e' hpq
-      (Compose.Growing.hVoteAt_iff.mpr ⟨hw, hv⟩) hs')
+      (Compose.Growing.hVoteAt_iff.mpr ⟨hw, hv⟩) hs') hpre
 
 /-- **The stored-lock arm of a recent actual result**: the time-live stored locks at a cast of the
 successor label, of a node honest at it, compare with the result's prefix. -/

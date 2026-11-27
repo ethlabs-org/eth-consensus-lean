@@ -255,6 +255,11 @@ The parameters are these.
   is a lock of a confirmation update.  A single validator may still evaluate the
   optimistic test as a local observation: it writes no lock and no record and
   changes no vote and no FG source.
+\item The deep-source depth $D\in\{\bot\}\cup\mathbb N$ slots, one value for the
+  whole protocol, $\bot$ by default.  With $D=\bot$ the FG's sources are the
+  blocks of fast locks only.  With $D\neq\bot$ a node with no fast candidate
+  may give the FG a block at or below the block of a live lock that it
+  accepted at least $D$ slots ago (Section~\ref{sec:ac-actions}).
 \item The FG window $K_W=2$ and the timeout delay $\delta_{\mathrm{t}}\geq0$
   slots (Section~\ref{sec:fg-state}).
 \end{itemize}
@@ -329,7 +334,7 @@ $\headVotes[s]$ & the accepted slot-$s$ votes, at most two distinct votes
 $\timestamp[x]$ & the time at which the AC accepted the vote or block~$x$;
   $\timestamp[\genesis]=-\infty$ &
   \fname{on\_head\_vote}, \fname{ac\_on\_block} &
-  resolution, voter block tree & reset\\
+  resolution, voter block tree, \fname{ac\_to\_fg} (deep candidates) & reset\\
 $\savedConfirmation[s]$ & the result of the slot-$s$ update, a block
   or~$\bot$, also when a lock vetoes it & \textsc{update\_\allowbreak confirmation} &
   the slow test & reset\\
@@ -653,6 +658,12 @@ such block.  $\Call{get\_anchor}{}$ computes it.  A live lock vetoes a confirmat
 result~$C$ (Section~\ref{sec:ac-confirmation}) when $C$ conflicts with a
 locked block, that is, with the block of a lock of $\Call{live\_locks}{}$;
 $\Call{conflicts\_with\_lock}{}$ is this test.
+With $D\neq\bot$, the \emph{deep anchor} $\Call{deep\_anchor}{}$ is the
+deepest block of a live lock, fast or not, with no fallback: it is $\bot$
+when no lock is live.  The live lock blocks lie on one chain, so a block is
+at or below the deep anchor when it is at or below the block of some live
+lock.  The deep anchor bounds the deep candidates of $\Call{ac\_to\_fg}{}$;
+$\Call{get\_anchor}{}$ and the head walks do not change.
 
 \emph{Adding locks.}  The two confirmations (Section~\ref{sec:ac-confirmation})
 add their locks of slot~$s$ through $\Call{add\_locks}{}$.  It returns the
@@ -699,6 +710,13 @@ not live.
   \State $\mathit{blocks}\gets\{B:(B,j,f,e)\in\Call{live\_locks}{\AC.\locks,\Fr,t}\}$
   \Comment{each viable, or at or below $\Fr.\fcroot$}
   \State \Return the deepest block of $\mathit{blocks}\cup\{\Fr.\fcroot\}$
+\EndFunction
+\vspace{1pt}
+\Function{deep\_anchor}{$\AC,\Fr,t$}
+  \Comment{with $D\neq\bot$: the deepest live lock block, or $\bot$; no $\Fr.\fcroot$ fallback}
+  \State $\mathit{blocks}\gets\{B:(B,j,f,e)\in\Call{live\_locks}{\AC.\locks,\Fr,t}\}$
+  \If{$\mathit{blocks}=\emptyset$} \State \Return $\bot$ \EndIf
+  \State \Return the deepest block of $\mathit{blocks}$
 \EndFunction
 \vspace{1pt}
 \Function{fast\_expiry}{$\mathit{locks},\Fr,t,s$}
@@ -865,7 +883,11 @@ locks are stored moved back (Section~\ref{sec:ac-locks}).
 \emph{The fast locks for the FG.}  A live fast lock of slot~$j$ is a
 source for the FG in the slots $j$, $j+1$ and~$j+2$
 (Section~\ref{sec:ac-actions}), at its block as $\Call{live\_locks}{}$
-reads it.  A lock that is not fast is never a source.
+reads it.  A lock that is not fast is never a fast candidate.  With
+$D\neq\bot$ its block, like that of a fast lock, bounds the deep candidates.
+Since $\preceq$ includes equality, the block of a live lock, fast or not, that
+is viable, other than $\genesis$ and accepted at least $D$ slots ago is itself
+a deep candidate and can be returned as the source.
 
 \emph{The optimistic confirmation.}  When the optimistic switch is on, in a
 slot $s>0$, before $t_s+2\Delta$, a joined node checks after each receipt
@@ -1129,7 +1151,17 @@ the frame and the view of the vote.
 \emph{The block for the FG.}  When its calendar allows the FG update,
 a joined node gives the FG a new block when it has one.  The candidates are the blocks of the live
 fast locks of slot $\slot(t)-2$ or later that are in the full viable
-tree.  The node gives the deepest candidate when it exists and is not an
+tree.  When there is none and $D\neq\bot$, the node computes
+$\Call{deep\_anchor}{}$.  When it is not $\bot$, the deep candidates are the
+blocks $B\neq\genesis$ of the full viable tree with $B\preceq$ the deep anchor
+and $\AC.\timestamp[B]\leq t_{\slot(t)-D}$: blocks the node accepted at least
+$D$ slots ago, the anchor block included.  Only the node's own receipt counts,
+not the block's slot, because a faulty proposer can publish a block of an old
+slot at any time.  A restart stamps every held block other than $\genesis$
+with the restart time (Section~\ref{sec:ac-joining}), so a node gives no deep
+candidate for at least $D$ slots after a restart, and a validator that restarts
+more often than once every $D$ slots never has one.  $\genesis$ keeps the
+stamp $-\infty$; the condition $B\neq\genesis$ excludes it.  The node gives the deepest candidate when it exists and is not an
 ancestor of $\AC.\fgReported$, the block that it gave last, or equal to it
 (a block given earlier that left $\Fr.\tree$ blocks nothing), and records
 it in $\AC.\fgReported$.  A tick that skips the FG update neither queries
@@ -1184,6 +1216,15 @@ $\Call{ac\_to\_fg}{}$ nor writes $\AC.\fgReported$ for that duty.
   \Comment{called only on a tick that allows the FG update}
   \If{not \Call{joined}{$\AC,t$}} \State \Return $\bot$ \EndIf
   \State $\mathit{cands}\gets\{B:(B,j,\mathsf{true},e)\in\Call{live\_locks}{\AC.\locks,\Fr,t},\ \slot(t)\leq j+2,\ B\in\filtered(\Fr,\Fr.\tree)\}$
+  \If{$\mathit{cands}=\emptyset$ and $D\neq\bot$}
+    \State $A\gets\Call{deep\_anchor}{\AC,\Fr,t}$
+    \Comment{only without a fast candidate}
+    \If{$A\neq\bot$}
+      \State $\mathit{cands}\gets\{B\in\filtered(\Fr,\Fr.\tree):B\neq\genesis,\ B\preceq A,\
+        \AC.\timestamp[B]\leq t_{\slot(t)-D}\}$
+      \Comment{deep candidates, the anchor block included}
+    \EndIf
+  \EndIf
   \If{$\mathit{cands}=\emptyset$} \State \Return $\bot$ \EndIf
   \State $C\gets$ the deepest block of $\mathit{cands}$
   \If{$\AC.\fgReported\in\Fr.\tree$ and $C\preceq\AC.\fgReported$} \State \Return $\bot$
@@ -1202,7 +1243,8 @@ every other part of~$\AC$ to its initial value.  It sets
 $\AC.\restartTime$ to the time of the restart, and it calls
 $\Call{ac\_on\_block}{}$ at that time for every block of $\Fr.\tree$ other
 than~$\genesis$, in parent order; the order of siblings is not fixed.
-These blocks get that stamp; their declarations are not admitted, so the
+These blocks get that stamp, so every deep candidate's age restarts;
+$\genesis$ keeps $-\infty$.  Their declarations are not admitted, so the
 restarted pools hold only votes received after the restart.  A joined
 voter of slot~$s$ restarted by $t_{s-1}$, so it lost no slot-$(s-1)$ vote:
 admission refuses such a vote before~$t_{s-1}$.  A lock written before a

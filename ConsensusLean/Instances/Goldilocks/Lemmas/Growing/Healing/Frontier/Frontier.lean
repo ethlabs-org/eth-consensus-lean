@@ -1,8 +1,9 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Seed
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.VoteFrame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.Seed
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Compare
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.VoteFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Induction
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.Rows
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Frontier.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ProposalService
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
@@ -16,7 +17,7 @@ public section
 The sleepy label induction (`frontier_at`) run from the hand-over seed instead of genesis, over the
 healed family at the floors `(r, r + k − 1)`, through any bound `b ≥ T`.
 
-* `HandoverSeed.frontier_upTo`: the seed's frontier through `σ + 1` up to `T` is the frontier
+* `HandoverCore.frontier_upTo`: the seed's frontier through `σ + 1` up to `T` is the frontier
   through `σ + 1` up to every `b ≥ T`: every family member of label `≤ σ` is written by
   `t_σ + 6Δ ≤ T`, and every vote of a slot `≤ σ + 1` is cast before `t_{σ+2} = t_σ + 8Δ ≤ T`.
 * `healed_frontier_at`: `frontier_at` from `s₀ = σ + 1` with the counts from `r`, the service
@@ -95,9 +96,9 @@ private theorem vote_time_lt (hrun : Growing.GoldilocksRun proposer dg H tr ini)
 /-- **The seed's frontier holds through any bound `b ≥ T`**: every member of a label `≤ σ` is
 written by `t_σ + 6Δ ≤ T`, and every honest vote of a slot `≤ σ + 1` is cast before
 `t_{σ+2} = t_σ + 8Δ ≤ T`. -/
-theorem HandoverSeed.frontier_upTo (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+theorem HandoverCore.frontier_upTo (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {T : Time} {r σ : Nat}
-    (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time} :
+    (hseed : HandoverCore tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time} :
     HealedOriginsBelow tr H g r (r + sp.k - 1) (σ + 1) b ∧
       HealedVotesBelow tr H g r (r + sp.k - 1) (σ + 1) b := by
   have hT := hseed.timing.1
@@ -126,16 +127,16 @@ private theorem CommitteeBoundsFrom.of_le {K : AC.CommitteeDict sp.n} {σ₀ σ�
 `(r, r + k − 1)`): from the hand-over seed, with the reset service and the slot counts
 from `r` through `b ≥ T`, every finite frontier of the healed family holds up to `b`. The label
 induction (`frontier_at`) starts at `σ + 1`: the seed's frontier holds up to `b`
-(`HandoverSeed.frontier_upTo`); `r + k − 1 ≤ σ + 1`; the service is the sleepy service from `ḡ`
+(`HandoverCore.frontier_upTo`); `r + k − 1 ≤ σ + 1`; the service is the sleepy service from `ḡ`
 with the seed's catch-up (`sleepyServiceFrom_of_reset`, `ḡ + 2Δ ≤ t_r ≤ t_{σ+1}`); the live locks
 at the votes after `σ` have labels `≥ r` (`handover_live_lock_label_at`); the frozen witness is
 `seeded_vote_frame_at`. -/
 theorem healed_frontier_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    {T : Time} {r σ : Nat} (hseed : HandoverSeed tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK))
+    {T : Time} {r σ : Nat} (hseed : HandoverCore tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK))
       {b : Time}
     (hTb : T ≤ b) (hsvc : Healing.Growing.ACResetService tr H g ΔF)
-    (hB : SleepyBoundsFrom tr H r b) (hcv : ChainConvictedBelow tr H)
+    (hB : SleepyBoundsFrom tr H r b) (hcv : ChainConvictedBelowUpTo tr H b)
     {K : AC.CommitteeDict sp.n} (hK : CommitteeFacts tr H K)
     (hKB : CommitteeBoundsFrom tr H K r b) :
     ∀ s, HealedOriginsBelow tr H g r (r + sp.k - 1) s b ∧

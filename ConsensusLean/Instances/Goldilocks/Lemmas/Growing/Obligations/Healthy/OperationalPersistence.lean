@@ -4,6 +4,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Heal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Selection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SourceCover
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.Proposal
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.OptimisticParent
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Cut.Store
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportCover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
@@ -32,9 +35,112 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {fgHold : Time}
 
-/-- **A post-drain operational proposal is below every bounded honest proposal parent at least
-two slots later**, under growing faults. -/
-theorem UpTo.operational_proposal_below_later_parent_at
+private theorem report_below_later_duty_head
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK fgHold)
+    {z : Fin sp.n} {r : Nat} (hz : z ∈ H (tr.time r))
+    {ellr : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hto : AC.ToFGAt tr.projAC z r ellr C) (hR : Healing.drainTime sp a ≤ tr.time r)
+    {y : Fin sp.n} {i v : Nat} (hy : y ∈ H (tr.time i))
+    {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt y i ell) (hcall : ell.call = .proposal)
+    (hd : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts v) (hib : tr.time i ≤ b)
+    (hs : tr.time r + sp.Δ ≤ sp.ts v) : Anc (tr.HonestBlocksAt H) C d.head := by
+  have hrun := hp.run
+  have hnc := hp.noColl
+  have hΔ := sp.toParams.hΔ
+  have hk0 := hrun.time_nonneg r
+  have hleR : ∀ q < r, tr.time q ≤ tr.time r := fun _ hq => hrun.time_mono hq.le
+  obtain ⟨-, A, ⟨hAt, l, hl, hlA⟩, hCA⟩ := AC.toFG_source_below_lock hto.2.2
+  obtain ⟨l₀, hl₀, B, hB, hBr, hlive', rfl⟩ := hl
+  have hU' := RunTrace.honestBlocks_upTo_subset hrun.time_mono (H := H) hk0
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hk0) (hnc.upTo _)).localRun
+  have hst : (tr.upTo (tr.time r)).projAC.state z r = tr.projAC.state z r := by
+    rw [RunTrace.upTo_projAC]
+    exact Trace.upTo_state tr.projAC z hleR
+  have hck : (tr.upTo (tr.time r)).projAC.CallAt z r ellr := by
+    rw [RunTrace.upTo_projAC]
+    exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hto.1
+  have hl₀' : l₀ ∈ ((tr.upTo (tr.time r)).projAC.state z r).locks := by rw [hst]; exact hl₀
+  have hwf := AC.locksWF_stateU (hr := hr.toU) hrun.vstart hz r
+  rw [hst] at hwf
+  have hlive : sp.slot (tr.time r) ≤ l₀.slot + sp.k := le_trans hlive' (hwf.cap hl₀)
+  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hz hck
+  have hvB := AC.viableAncestor_anc hPhi hB
+  obtain rfl : A = ellr.frame.viableAncestor B :=
+    hr.coherent.1 (hPhiU hAt) (hPhiU hvB.1) hlA.symm
+  have hCB : Anc (tr.HonestBlocksAt H) C (ellr.frame.viableAncestor B) :=
+    Anc.mono hU' (hCA.mono hPhiU)
+  obtain ⟨r', hrk, D, hsrc, hXD⟩ : ∃ r' < r, ∃ D,
+      ((∃ CV, AC.FastLockAt tr.projAC z r' l₀.slot D CV) ∨
+        AC.SlowLockAt tr.projAC z r' l₀.slot D) ∧
+      Anc (tr.HonestBlocksAt H) (ellr.frame.viableAncestor B) D := by
+    cases hlf : l₀.fast
+    · obtain ⟨r', hrk, D, ⟨ℓu, C', hu, hC', hD'⟩, L, hL, hLr, hLD⟩ :=
+        AC.slow_lock_provenance hr hrun.vstart hz r l₀ hl₀' hlf
+      rw [hr.coherent.1 hL (hPhiU hB) (hLr.trans hBr.symm)] at hLD
+      rw [RunTrace.upTo_projAC] at hu hC' hD'
+      obtain ⟨hrt, hu⟩ := (AC.upTo_updateAt hrun.time_mono).1 hu
+      have hs' : (tr.projAC.upTo (tr.time r)).state z r' = tr.projAC.state z r' :=
+        Trace.upTo_state _ z fun _ hq => (hrun.time_mono hq.le).trans hrt
+      rw [hs'] at hC' hD'
+      rw [Trace.upTo_time] at hD'
+      exact ⟨r', hrk, D, Or.inr ⟨ℓu, C', hu, hC', hD'⟩,
+        Anc.mono hU' ((hvB.2.mono hPhiU).trans hLD)⟩
+    · obtain ⟨r', hrk, CV, ℓ', D, hcr, hfl, L, hL, hLr, hLD⟩ :=
+        Healing.stored_fast_lock_provenance hr hrun.vstart hz r l₀ hl₀' hlf
+      rw [hr.coherent.1 hL (hPhiU hB) (hLr.trans hBr.symm)] at hLD
+      obtain ⟨ell', hc', hD⟩ := Healing.fastLock_mem hfl
+      obtain rfl : ell' = ℓ' := Option.some.inj (hc'.2.symm.trans hcr.2)
+      obtain ⟨hPhi', hPhiU'⟩ := AC.frameIn_of_callAt hr hz hc'
+      have hrt : tr.time r' ≤ tr.time r := hrun.time_mono hrk.le
+      exact ⟨r', hrk, D,
+        Or.inl ⟨CV, (Healing.Growing.fastLockAt_upTo_iff hrun.time_mono hrt).mp hfl⟩,
+        Anc.mono hU' ((hvB.2.mono hPhiU).trans
+          (hLD.trans ((AC.viableAncestor_anc hPhi' hD).2.mono hPhiU')))⟩
+  have hrt : tr.time r' ≤ tr.time r := hrun.time_mono hrk.le
+  have hzr := hrun.antitone hrt hz
+  have hrb : tr.time r' ≤ b := by linarith
+  have hRk := hR
+  rw [Healing.drainTime_eq] at hRk
+  have hsk := (AC.ts_le_iff_le_slot sp hk0 _).1 hRk
+  have hks' : ¬ sp.ts v ≤ tr.time r := by linarith
+  rw [AC.ts_le_iff_le_slot sp hk0] at hks'
+  have hlab : Healing.cleanLabel sp a + sp.k + 2 ≤ l₀.slot := by
+    rw [Healing.cleanLabel_eq]; omega
+  have hRv : Healing.drainTime sp a ≤ sp.ts v := by linarith
+  have hclean : l₀.slot + 2 ≤ v → Anc (tr.HonestBlocksAt H) D d.head := fun h2 =>
+    hp.clean_source_proposal_parent_before_at hzr hy hsrc hlab h2 hrb hRv
+      hci hcall hd hti hib
+  have hreg : tr.time r' = sp.ts l₀.slot + 6 * sp.Δ →
+      Anc (tr.HonestBlocksAt H) D d.head := by
+    intro ht'
+    have hlt : sp.ts (l₀.slot + 1 : Nat) < sp.ts v := by
+      rw [AC.ts_succ]
+      linarith
+    have := (AC.ts_lt_iff sp).1 hlt
+    exact hclean (by omega)
+  apply hCB.trans
+  apply hXD.trans
+  rcases hsrc with ⟨CV, hup | hop⟩ | hsl
+  · obtain ⟨-, -, ⟨-, -, ht, -⟩, -⟩ := hup
+    exact hreg ht
+  · rcases Nat.lt_or_ge (l₀.slot + 1) v with h2 | h1
+    · exact hclean (by omega)
+    · have hsl : sp.slot (tr.time r') = l₀.slot := hop.choose_spec.choose_spec.2.1
+      have hsm := AC.slot_mono sp (hrun.time_nonneg r') hrt
+      obtain rfl : v = l₀.slot + 1 := by omega
+      exact hp.clean_optimistic_proposal_parent_at hzr hy hop hlab hrb hRv hci hcall hd hti hib
+  · obtain ⟨-, -, ⟨-, -, ht, -⟩, -⟩ := hsl
+    exact hreg ht
+
+/-- A post-drain operational proposal persists when high reports have either a fast origin or
+a healed-chain source, and the later proposal passes each such healed source. The latter
+premise separates proposal retention and viability from source provenance; membership alone
+does not bound the label of the member covering a source. -/
+theorem UpTo.operational_proposal_below_later_parent_of_source_cover_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK fgHold)
     {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -46,7 +152,17 @@ theorem UpTo.operational_proposal_below_later_parent_at
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt y i ell) (hcall : ell.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
-    (hti : tr.time i = sp.ts v) (hib : tr.time i ≤ b) :
+    (hti : tr.time i = sp.ts v) (hib : tr.time i ≤ b)
+    {Source : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
+    (hsource : ∀ z r ellr C,
+      z ∈ H (max (Healing.cutZ sp.toParams g) (tr.time r)) →
+      AC.ToFGAt tr.projAC z r ellr C → tr.time r ≤ sp.ts u + 6 * sp.Δ →
+      Healing.Growing.HZ tr H g + 1 ≤ ((tr.state z r).fg.σ C.root).h →
+      (∃ io < r, ∃ jo O, Healing.Growing.HighOrigin tr H g z io jo O ∧
+        Anc (tr.HonestBlocksAt H) C O) ∨
+        Source C)
+    (hpasses : ∀ C, Source C →
+      Anc (tr.HonestBlocksAt H) C d.head) :
     Anc (tr.HonestBlocksAt H) P d.head := by
   have hDelta := sp.toParams.hΔ
   have hrun := hp.run
@@ -134,18 +250,20 @@ theorem UpTo.operational_proposal_below_later_parent_at
       z ∈ H (max (Healing.cutZ sp.toParams g) (tr.time r)) →
       AC.ToFGAt tr.projAC z r ellr C → tr.time r ≤ sp.ts u + 6 * sp.Δ →
       Anc (tr.HonestBlocksAt H) P C →
-      ∃ z io jo O, Healing.Growing.HighOrigin tr H g z io jo O ∧
+      ∃ z io jo O, (Healing.Growing.HighOrigin tr H g z io jo O ∨
+        Source O) ∧
         tr.time io ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P O := by
     intro z r ellr C hzz hrep hrt hPC
     have hz := hrun.antitone (le_max_right _ _) hzz
     have hCt := Healing.Growing.toFG_mem_tree_at hrun hz hrep
     have hhigh := hp.high_of_anc_at ho (hrun.time_nonneg r)
       (fun _ hq => hrun.time_mono hq.le) hz hCt (hSP.trans hPC)
-    obtain ⟨io, hior, jo, O, _, _, hO, _, _, hCO, _⟩ :=
-      hp.high_report_origin_at hzz hrep (hrt.trans hTb) hhigh
-    exact ⟨z, io, jo, O, hO, (hrun.time_mono hior.le).trans hrt, hPC.trans hCO⟩
+    rcases hsource z r ellr C hzz hrep hrt hhigh with ⟨io, hior, jo, O, hO, hCO⟩ | hC
+    · exact ⟨z, io, jo, O, Or.inl hO, (hrun.time_mono hior.le).trans hrt, hPC.trans hCO⟩
+    · exact ⟨z, r, 0, C, Or.inr hC, hrt, hPC⟩
   obtain ⟨z, io, jo, O, hO, hOt, hPO⟩ :
-      ∃ z io jo O, Healing.Growing.HighOrigin tr H g z io jo O ∧
+      ∃ z io jo O, (Healing.Growing.HighOrigin tr H g z io jo O ∨
+        Source O) ∧
         tr.time io ≤ sp.ts u + 6 * sp.Δ ∧ Anc (tr.HonestBlocksAt H) P O := by
     rcases Healing.Growing.finality_alternative_before_update_at hp hPU hPs hu hun hgu
         hRnext hTb hwj hafter htj.le with hFP | ⟨z, r, ellr, C, hz, _, hr, ht, hPC, _⟩
@@ -186,7 +304,7 @@ theorem UpTo.operational_proposal_below_later_parent_at
     have hPm := (Healing.Growing.frame_tree_subset_at hrun hnc hwj hup.1).2 hPt
     have hhigh := hp.high_of_anc_at ho (hrun.time_nonneg j)
       (fun _ hq => hrun.time_mono hq.le) hwj hPm hSP
-    exact ⟨w, j, u, P, ⟨hwz, hjoined,
+    exact ⟨w, j, u, P, Or.inl ⟨hwz, hjoined,
       ⟨_, ellj, P, hup.1, hfl, (AC.viableAncestor_self hPhi hPt (Or.inl hPv)).symm⟩,
       hhigh⟩, htj.le, .refl⟩
   have hTv : sp.ts u + 6 * sp.Δ < sp.ts v := by
@@ -195,8 +313,54 @@ theorem UpTo.operational_proposal_below_later_parent_at
     push_cast at hle
     linarith
   have hRv := hR.trans ((AC.ts_le_iff sp).2 (show (u : Int) ≤ v by omega))
-  exact hPO.trans (hp.reset_proposal_passes_at hy hRv hci hcall hd hti hib O
-    ⟨z, io, jo, hO, hOt.trans_lt hTv⟩)
+  rcases hO with hO | hO
+  · exact hPO.trans (hp.reset_proposal_passes_at hy hRv hci hcall hd hti hib O
+      ⟨z, io, jo, hO, hOt.trans_lt hTv⟩)
+  · exact hPO.trans (hpasses O hO)
+
+/-- **A post-drain operational proposal is below every bounded honest proposal parent at least
+two slots later**, under growing faults. -/
+theorem UpTo.operational_proposal_below_later_parent_at
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : Healing.Growing.ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK fgHold)
+    {p : Fin sp.n} {k u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hpH : p ∈ H (sp.ts u + Regimes.Growing.hold sp)) (hdesignated : p = proposer u)
+    (hactual : tr.ProposesAt p k P) (hPs : P.slot = u) (hR : Healing.drainTime sp a ≤ sp.ts u)
+    (hTb : sp.ts u + 6 * sp.Δ ≤ b)
+    {y : Fin sp.n} {i v : Nat} (hy : y ∈ H (tr.time i)) (huv : u + 2 ≤ v)
+    {ell : ACLabel (goldilocksNode sp ro)}
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hci : tr.projAC.CallAt y i ell) (hcall : ell.call = .proposal)
+    (hd : (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay))
+    (hti : tr.time i = sp.ts v) (hib : tr.time i ≤ b) :
+    Anc (tr.HonestBlocksAt H) P d.head := by
+  refine operational_proposal_below_later_parent_of_source_cover_at hp hpH hdesignated hactual
+    hPs hR hTb hy huv hci hcall hd hti hib
+    (Source := fun C =>
+      Compose.Growing.OnHealedChain tr H g (Healing.Growing.healedLockFloor sp a)
+        (Healing.Growing.healedOriginFloor sp a) C b ∧
+      ∃ z r ellr, z ∈ H (tr.time r) ∧ AC.ToFGAt tr.projAC z r ellr C ∧
+        Healing.drainTime sp a ≤ tr.time r ∧ tr.time r ≤ sp.ts u + 6 * sp.Δ) ?_ ?_
+  · intro z r ellr C hzz hrep hrt hhigh
+    rcases hp.high_source_cover_at hzz hrep (hrt.trans hTb) hhigh with
+      ⟨io, hior, jo, O, D, CV, hO, _, _, hCO, _⟩ | ⟨hcover, hchain⟩
+    · exact Or.inl ⟨io, hior, jo, O, hO, hCO⟩
+    · by_cases hafter : Healing.drainTime sp a ≤ tr.time r
+      · exact Or.inr ⟨hchain, z, r, ellr,
+          hp.run.antitone (le_max_right _ _) hzz, hrep, hafter, hrt⟩
+      · obtain ⟨io, hior, jo, O, D, CV, hO, _, _, hCO, _⟩ :=
+          hp.high_report_origin_of_quarantine_at hzz hrep (hrt.trans hTb) hhigh (by
+            intro D hD
+            have := hcover.drain_le D hD
+            have := sp.toParams.hΔ
+            linarith)
+        exact Or.inl ⟨io, hior, jo, O, hO, hCO⟩
+  · rintro C ⟨_, z, r, ellr, hz, hrep, hafter, hrt⟩
+    apply report_below_later_duty_head hp hz hrep hafter hy hci hcall hd hti hib
+    have hle : sp.ts (u + 2 : Nat) ≤ sp.ts v := (AC.ts_le_iff sp).2 (by omega)
+    rw [show u + 2 = (u + 1) + 1 by omega, AC.ts_succ, AC.ts_succ] at hle
+    have := sp.toParams.hΔ
+    linarith
 
 /-- **No reorg two slots on, through the horizon**, under growing faults. -/
 theorem honest_proposal_below_later_upTo_at

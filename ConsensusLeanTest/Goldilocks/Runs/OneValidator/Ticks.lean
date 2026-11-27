@@ -685,7 +685,7 @@ theorem acToFG_tick {A : ACState sp1.n} {Φ : N1.Frm} {f k : Nat}
     rw [hrep] at hr
     obtain ⟨rfl, -, -⟩ := h.eq_of_root hR hr
     have := h.le_of_anc ha; omega
-  unfold AC.acToFG
+  unfold AC.acToFG AC.fgSource
   rw [ite_neg (not_not.2 (joined_of_bot hj _))]
   dsimp only
   rw [hd]

@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.ReportCover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Domain
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SelectionCover
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -197,7 +198,7 @@ theorem UpTo.operational_proposal_below_next_parent_at
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hci'
   have hdom : Anc (tr.HonestBlocksAt H) P ell.frame.fcRoot ∨
       P ∈ ell.frame.viableTree ell.frame.tree := by
-    refine Healing.Growing.ProposalImpl.held_target_proposal_domain_before_at hp
+    refine Healing.Growing.ProposalImpl.held_target_proposal_domain_before_covered_at hp
       (by rw [hkt']; exact hpk') hy hPx hci hcall hd hti hib ?_ ?_ ?_
     · intro hFP
       rw [Compose.frame_of_projAC (hp.run.upTo hi0) hy hci'',
@@ -208,13 +209,22 @@ theorem UpTo.operational_proposal_below_next_parent_at
       exact ⟨x, q, m, S, ho, hqt.trans (by rw [hσ]; linarith),
         Or.inr (Healing.Growing.old_origin_below_unanimous_at hp hPU hun hgu hRnext hσb ho
           hqt)⟩
-    · intro v q m O hqi ho
-      have hq : tr.time q ≤ sp.ts u + 6 * sp.Δ := by
-        have := hmono hqi.le
-        rw [hti, hσ] at this
-        linarith
-      exact (Healing.Growing.high_origin_compatible_before_update_at hp hPU hPs hu hun hgu
-        hRnext hTb ho hq).symm
+    · have hslotu : sp.slot (tr.time i) = u + 1 := by
+        rw [hti]
+        apply AC.slot_of_mem sp (u + 1)
+        · simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ]
+        · simp only [ACParams.ts]; push_cast; linarith [sp.toParams.hΔ]
+      refine Healing.Growing.ResetPremisesUpTo.compatibleWithOrigins_iff.2 ⟨?_, ?_⟩
+      · intro v q m O hqi ho
+        have hq : tr.time q ≤ sp.ts u + 6 * sp.Δ := by
+          have := hmono hqi.le
+          rw [hti, hσ] at this
+          linarith
+        exact (Healing.Growing.high_origin_compatible_before_update_at hp hPU hPs hu hun hgu
+          hRnext hTb ho hq).symm
+      · exact fun hc D j hD hj =>
+          (Healing.Growing.healed_member_compatible_before_update_at hp hc hPU hPs hu hun hgu
+            hRnext hTb D j hD.healedOrigin (by omega)).symm
   rcases hdom with hBF | hV
   · obtain ⟨_, hhead⟩ := Compose.acProposal_start_anc_head hPhi hd
     obtain ⟨A₁, hstart⟩ := acProposal_start_anchor hd

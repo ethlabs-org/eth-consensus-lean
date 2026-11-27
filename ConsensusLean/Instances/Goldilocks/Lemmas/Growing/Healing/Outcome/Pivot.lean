@@ -24,6 +24,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.BestChild
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Provenance
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.PivotSourceVotes
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ProposalMembers
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.MemberTiming
 
 public section
 
@@ -47,7 +49,9 @@ theorem proposal_floor_above_old_at
     (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state p i).fg.tree)
     (hBold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
-      Anc (tr.HonestBlocksAt H) O B) :
+      Anc (tr.HonestBlocksAt H) O B)
+    (hBcov : HighSourceCover tr H g a b → ∀ C s, HealedMemberBefore tr H g a b C s i → s < u →
+      Anc (tr.HonestBlocksAt H) C B) :
     (tr.state p i).fg.headHeightFloor ≤ ((tr.state p i).fg.σ B.root).h := by
   have ht := hp.run.time_nonneg i
   have hj : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hp.run.time_mono hq.le
@@ -55,10 +59,11 @@ theorem proposal_floor_above_old_at
   refine headHeightFloor_le_of_entries_below (fg_reachable_at hp.run ht hj hpH)
     (Outcome.high_of_anc_at hp.run hp.noColl ho₀ ht hj hpH hB (hBold v₀ r₀ l₀ O₀ ho₀ hrt hrb))
     (Outcome.no_high_contest_at hp hpH hib) fun E hE C hET hEh hEC hlt => ?_
-  obtain ⟨O, ⟨v, r, l, ho, hrt, hrb⟩, hEO⟩ :=
-    hp.proposal_entry_below_old_at hpH hci hcall hti hib hE hET hEh hEC hlt
-  exact store_anc_of_honest_anc_at hp.run hp.noColl ht hj hpH
-    (hEO.trans (hBold v r l O ho hrt hrb)) hB
+  refine store_anc_of_honest_anc_at hp.run hp.noColl ht hj hpH ?_ hB
+  rcases hp.proposal_entry_below_old_or_healed_at hpH hci hcall hti hib hE hET hEh hEC hlt with
+    ⟨O, ⟨v, r, l, ho, hrt, hrb⟩, hEO⟩ | ⟨hc, M, s, hM, hsu, hEM⟩
+  · exact hEO.trans (hBold v r l O ho hrt hrb)
+  · exact hEM.trans (hBcov hc M s hM hsu)
 
 /-- The proposal suffix above all pre-slot high origins consists of viable heads. -/
 theorem reset_suffix_viable_at
@@ -73,12 +78,15 @@ theorem reset_suffix_viable_at
     (D : AC.Blk sp.n (List (FG.Att sp.n))) (hDt : D ∈ ell.frame.tree)
     (hsD : ell.frame.Anc d.start D)
     (hDold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
-      Anc (tr.HonestBlocksAt H) O D) :
+      Anc (tr.HonestBlocksAt H) O D)
+    (hDcov : HighSourceCover tr H g a b → ∀ C s, HealedMemberBefore tr H g a b C s i → s < u →
+      Anc (tr.HonestBlocksAt H) C D) :
     ∀ X, ell.frame.Anc D X → ell.frame.Anc X d.head → X ∈ ell.frame.viableHeads :=
   proposal_suffix_viable_of_floor (Outcome.frame_realized hp.run hpH hci)
     (Outcome.frame_tree_subset hp.run hpH hci) (Outcome.frame_of_call hp.run hpH hci) hd hDt hsD
     fun _ hX hDX => hp.proposal_floor_above_old_at hpH hR hci hcall hti hib hX
-      fun x r l O ho hrt hrb => (hDold x r l O ho hrt hrb).trans hDX
+      (fun x r l O ho hrt hrb => (hDold x r l O ho hrt hrb).trans hDX)
+      fun hc C s hM hs => (hDcov hc C s hM hs).trans hDX
 
 /-- Pivot construction with the independently supplied proposal-start support. -/
 theorem reset_pivot_of_start_supported_at
@@ -132,20 +140,39 @@ theorem reset_pivot_of_start_supported_at
       (Store.tree_grows _ _ _ _ (Compose.fg_reachable hret.toLocalRun hpK _)).1 P _
         (hret.toLocalRun.cutLaw p hpK _ _ hacc).2.1]
     exact Set.mem_insert _ _
+  have hjupper : ∀ {y j elly e}, y ∈ H (tr.time j) → AC.CastAt tr.projAC y j elly e →
+      e.msg.slot = u → tr.time j ≤ sp.ts u + sp.Δ := fun {y j elly e} hy hcy hes => by
+    have hrj := hr.upTo (hp.run.time_nonneg j)
+    have hcy' := AC.upTo_castAt.mpr (And.intro le_rfl hcy)
+    have hsl := (AC.castAt_specU hrj.toU hy hcy').2.1
+    change e.msg.slot = sp.slot (tr.time j) at hsl
+    have ht := AC.vote_time_leU hrj.toU hy ⟨elly, hcy'⟩
+    change tr.time j ≤ sp.ts (sp.slot (tr.time j)) + sp.Δ at ht
+    simpa only [← hsl, hes] using ht
   refine (proposal_pivot_of_supports (tr := tr) (u := u) hr.coherent hPhi hPhiU hd hPQ
-    {O | ∃ x r l, HighOrigin tr H g x r l O ∧ tr.time r < sp.ts u}
+    {O | (∃ x r l, HighOrigin tr H g x r l O ∧ tr.time r < sp.ts u) ∨
+      (HighSourceCover tr H g a b ∧ ∃ s, HealedMemberBefore tr H g a b O s i ∧ s < u)}
     (fun y j elly e => y ∈ H (tr.time j) ∧ AC.CastAt tr.projAC y j elly e ∧ e.msg.slot = u ∧
       tr.time j ≤ b ∧ ∀ x j' e', x ∈ H (tr.time j') → j' < j → AC.VoteAt tr.projAC x j' e' →
         e'.msg.slot = u → e'.msg.head = P.root)
-    (hp.reset_proposal_passes_at hpI hR hci hcall hd hti hib)
+    (fun O hO => hO.elim
+      (fun ⟨x, r, l, ho, hrt⟩ => hp.reset_proposal_passes_at hpI hR hci hcall hd hti hib O
+        ⟨x, r, l, ho, hrt⟩)
+      fun ⟨hc, s, hM, hs⟩ => hp.reset_proposal_passes_member_before_at hc hpI hR hci hcall hd
+        hti hib hM hs)
     (fun D hDt hsD hDold => hp.reset_suffix_viable_at hpI hR hci hcall hd hti hib D hDt hsD
-      fun x r l O ho hrt _ => hDold O ⟨x, r, l, ho, hrt⟩)
+      (fun x r l O ho hrt _ => hDold O (Or.inl ⟨x, r, l, ho, hrt⟩))
+      fun hc C s hM hs => hDold C (Or.inr ⟨hc, s, hM, hs⟩))
     (fun _ _ _ _ h => ⟨Outcome.frame_realized hp.run h.1 h.2.1.1,
       Outcome.frame_tree_subset hp.run h.1 h.2.1.1⟩)
     (fun _ j _ _ h => h.2.2.1 ▸ (AC.castAt_specU (hr.upTo (hp.run.time_nonneg j)).toU h.1
       (AC.upTo_castAt.mpr ⟨le_rfl, h.2.1⟩)).2.2.2)
     (fun y j elly e h => hstart y j elly e h.1 h.2.1 h.2.2.1 h.2.2.2.1)
-    (fun O ⟨x, r, l, ho, hrt⟩ y j elly e ⟨hy, hcy, hes, hjb, _⟩ => by
+    (fun O hO y j elly e ⟨hy, hcy, hes, hjb, _⟩ => by
+      rcases hO with ⟨x, r, l, ho, hrt⟩ | ⟨hc, s, hM, hs⟩
+      swap
+      · exact hc.s2 O s hM.healedOrigin y j e
+          (Compose.Growing.hVoteAt_iff.2 ⟨hy, elly, hcy⟩) hjb (by omega)
       have hri : r < i :=
         lt_of_not_ge fun h => (hp.run.time_mono h).not_gt (hrt.trans_eq hti.symm)
       have hlu := hp.origin_label_lt_at_proposal_at hpI hci hcall hti hib hri ho
@@ -153,7 +180,10 @@ theorem reset_pivot_of_start_supported_at
         ((hp.run.time_mono hri.le).trans hib) y elly e hy hcy (by omega))
     (fun D hDU hQU hDQ hDold y j elly e ⟨hy, hcy, hes, hjb, hE⟩ =>
       hp.reset_vote_anchor_at hPU hR hPQ hQU hDQ hDU
-        (fun x r l O ho hrt _ => hDold O ⟨x, r, l, ho, hrt⟩) hy hcy hes hjb hE
+        (fun x r l O ho hrt _ => hDold O (Or.inl ⟨x, r, l, ho, hrt⟩))
+        (fun hc C s hM hs => hDold C (Or.inr ⟨hc, s,
+          hp.member_before_proposal_of_cast_deadline_at hti (hjupper hy hcy hes) hM hs, hs⟩))
+        hy hcy hes hjb hE
         fun l hl hne hlive L hL hLr => ProposalImpl.vote_old_live_lock_below_parent_at hp
           hpI hR hci hcall hd hti hib hy hcy hes hjb hl hne hlive hL hLr)).imp
     fun D ⟨hsD, hDQ, hV, h⟩ =>

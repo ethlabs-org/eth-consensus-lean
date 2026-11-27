@@ -141,6 +141,9 @@ not the cut output.  $\Call{ac\_head}{}$ is a new output with no Lean
 counterpart: the fork choice at read time, with every held vote of the
 latest slot whose votes are due (slot~$s-1$ before $t_s+2\Delta$, slot~$s$
 from then on), on the current frame and locks.  It saves no head.
+A vote received after the $t_s+2\Delta$ freeze can still grow the head
+without confirming, and so without writing a lock that would anchor a deep
+candidate; no rule depends on this.
 This form has continuous time and stamps an object with its receipt
 time; the Lean model stamps it with the time of the last tick
 (\texttt{State.now}).  They agree while the node is awake: every stamp
@@ -276,8 +279,10 @@ claims covers these changes.
   block, at any depth relative to each other.
 \item[(P6)] \emph{The FG source.}  $\fname{ac\_to\_fg}$ returns the
   deepest viable block under a live fast lock of slot $\slot(t)-2$ or
-  later, when it is new.  There is no fast-confirmed field and no
-  optimistic-confirmed field.
+  later, when it is new; with $D\neq\bot$ and no such block, the deepest
+  viable non-genesis block at or below the deepest live lock block (that
+  block included) accepted by $t_{\slot(t)-D}$.  There is no fast-confirmed
+  field and no optimistic-confirmed field.
 \item[(P7)] \emph{The confirmed tip} is the deepest common ancestor of the
   record and the head.
 \item[(P8)] \emph{Loose BJ} (\texttt{shared/fg.tex}).  A justification at

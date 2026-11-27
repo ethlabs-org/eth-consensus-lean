@@ -159,18 +159,23 @@ def OptimisticNextUpdate : Prop :=
         ∃ D, fastSelect sp (tr.state z k) ℓ.frame (s + 1) C = some D ∧ Anc U B D)
 
 /-- **A1.5, source age.** From slot `slot(τ) + 3` on, every block that `ac_to_fg` returns at an
-honest node is the block of a fast lock that node wrote after `τ`: at or below the block of a
-fast lock of a slot `s'` with `slot(t) ≤ s' + 2`, written at a cut after `τ`. It needs only the
-AC trace contract (`ACLocalRun`), not the honest-object facts of `ACRun` (signature provenance,
-slot proposer). -/
+honest node is the block of a fast lock that node wrote after `τ` (at or below the block of a
+fast lock of a slot `s'` with `slot(t) ≤ s' + 2`, written at a cut after `τ`), or, with deep
+sources on (`deepDepth = some D`) and no fast-lock candidate, a deep candidate of the call under
+its deep anchor (no claim on when it was written). It needs only the AC trace contract
+(`ACLocalRun`), not the honest-object facts of `ACRun` (signature provenance, slot proposer). -/
 def SourceAge : Prop :=
   ∀ (FGP : Type) (ro : ReplayOrder sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (tr : GTrace sp FGP ro),
     ACLocalRun (goldilocksAC sp FGP ro) H U tr → ∀ (τ : Time) (x : Fin sp.n) (i : Nat)
       (ℓ : ACLabel (goldilocksAC sp FGP ro)) (C : Blk sp.n FGP),
     x ∈ H → ToFGAt tr x i ℓ C → sp.slot τ + 3 ≤ sp.slot (tr.time i) →
-    ∃ j ≤ i, ∃ s' B' CV', FastLockAt tr x j s' B' CV' ∧ τ < tr.time j ∧
-      sp.slot (tr.time i) ≤ s' + 2 ∧ Anc U C B'
+    (∃ j ≤ i, ∃ s' B' CV', FastLockAt tr x j s' B' CV' ∧ τ < tr.time j ∧
+      sp.slot (tr.time i) ≤ s' + 2 ∧ Anc U C B') ∨
+    (∃ D a, sp.deepDepth = some D ∧
+      deepest ℓ.frame (toFGCandidates sp (tr.state x i) ℓ.frame (tr.time i)) = none ∧
+      deepAnchor sp (tr.state x i) ℓ.frame (tr.time i) = some a ∧
+      C ∈ toFGDeepCandidates sp D a (tr.state x i) ℓ.frame (tr.time i))
 
 /-- **A1.8, result transfer (per vote).** Let an honest `X`, joined at `t_s + 6Δ`, get a result
 `C ≠ ⊥` from `get_confirmation` for slot `s` (fast, slow, vetoed or not) with counted votes

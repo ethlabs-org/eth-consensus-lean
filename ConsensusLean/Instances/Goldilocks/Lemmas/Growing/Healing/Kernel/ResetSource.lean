@@ -38,7 +38,7 @@ private theorem hmax_le_snapshot {y : Fin sp.n} (hy : y ∈ H (cutZ sp.toParams 
 reset at or before `c_z` signs from its own entry of height `H_z + 1`, which it still holds at the
 snapshot cut, where its height is at most `H_z`. The growing form of `cutZ_lt_reset_of_snapshot`;
 no fault count. -/
-private theorem cutZ_lt_reset_of_snapshot_at
+theorem cutZ_lt_reset_of_snapshot_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     (hsnapshot : ∃ j, FirstCutAfter tr j (cutZ sp.toParams g))

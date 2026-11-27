@@ -12,6 +12,8 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinalQueryTiming
 import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.HonestNonempty
 import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.RunSchedule
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.CallLag
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.BoundariesCover
+import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.ResetOfDrainRounds
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -78,7 +80,15 @@ theorem final_reset_premises_of_shared_within_at
     {sign : Fin Q.params.n → Time → Bool}
     (hcal : Q.trace.SignCalendarAt (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.keys sign)
     (hgap : SignGapAt Q.params.toParams sign Gs 0)
-    (hδG : 3 + (Gs + 3) / 4 ≤ Q.params.toParams.fg.δt) :
+    (hδG : 3 + (Gs + 3) / 4 ≤ Q.params.toParams.fg.δt)
+    (hd5 : 5 * d + 1 ≤ 20 * Q.params.Δ)
+    (hcover : ∀ a T, Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
+        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a T
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK hold →
+      (∀ D, Q.params.deepDepth = some D →
+        T ≤ Healing.cutZ Q.params.toParams Q.gst + 4 * D * Q.params.Δ) →
+      Healing.drainTime Q.params a + 4 * Q.params.Δ ≤ T → T ≤ Q.run.2.horizon →
+      Healing.Growing.HighSourceCover Q.trace Q.keys Q.gst a Q.run.2.horizon) :
     ∃ ΔR a : Time,
       Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
         (runProposer S Q.run.2 Q.hn)
@@ -138,22 +148,70 @@ theorem final_reset_premises_of_shared_within_at
     (Healing.Growing.noRestartUpTo_iff.mpr hs.noRestart) hH
     (by rw [hδeq]; exact (Nat.le_mul_of_pos_right 3 ((by decide : 0 < 2).trans_le hc2)).trans h3c)
     hlat hd0 (by rw [hδeq]; exact htimeout)
-    hr0 hgr Q.index.pos hcz hBh
+    hr0 hgr Q.index.1.pos hcz hBh
     (fun s₀ N hs₀ hN => Healing.Growing.proposalGap_iff.mpr <| final_query_gap_at S A V Q hpat
       (by rw [max_eq_left hr0]; exact hs₀) (hgapN N hN))
     hdrain hcal hgap hr0 hδG hhalf
   obtain ⟨j, hj, hjt⟩ := Healing.snapshot_of_awake (hrun.upTo hb0).toLocalRun
     (fun y hy t ht htb => ⟨hs.awake y t (hrun.antitone htb hy) ht htb, htb⟩) hH
     (b := Q.run.2.horizon) (by linarith only [hcz, h4B, hBh])
-  refine ⟨ΔF, a, Healing.Growing.resetPremisesUpTo_of_reset_at
-    hstart hs.noColl hs.sync
-    hs.awake hs.faults ha (hab.trans hBh) ⟨j, hj, hjt⟩ hcatch
-    (Healing.Growing.noRestartUpTo_iff.mpr hs.noRestart) (by rw [hδeq]; exact hs.timeoutDelay) hH
-    hfacts hβ (S.committeeSize_pos (Model.pubOf Q.run.1) Q.hn) hcf, ?_⟩
-  -- the placement (H3)
   have ha0 : 0 ≤ a := by
     obtain ⟨⟨_, k, _, _, _, _, hka⟩, _⟩ := ha
     rw [← hka]; exact hrun.time_nonneg k
+  -- the drain of the reset ends before the deep quarantine (`DeepAdmits` of the index)
+  have hdrain : ∀ D, Q.params.deepDepth = some D →
+      Healing.drainTime Q.params a + 4 * Q.params.Δ ≤
+        Healing.cutZ Q.params.toParams Q.gst + 4 * D * Q.params.Δ := by
+    intro D hD
+    have hadm := Q.index.2 D hD
+    rw [healMargin_val, healthyDrainLen_val] at hadm
+    have hadm' : ((11 + (20 * (2 * S.k + (Q.index.1 : Nat)) + 8 * S.k + 28 * S.δt +
+        28 * (Q.index.1 : Nat) + 56 + 5 * A.signGap) : Nat) : Time) ≤ ((4 * D : Nat) : Time) := by
+      exact_mod_cast hadm
+    push_cast at hadm'
+    have hready : (Sys (goldilocks S) V).ready (K S A) Q.gst Q.run =
+        max Q.gst 0 + ((contract_catchUp S A : Nat) : Time) * Q.run.1.ΔAC + 1 := by
+      change max Q.gst 0 + (((contract_coefficients S A).catchUp : Nat) : Time) * Q.run.1.ΔAC +
+        1 = _
+      rw [contract_coefficients_catchUp]
+    rw [contract_catchUp_val] at hready
+    have hDe : Q.params.Δ = Q.run.1.ΔAC := rfl
+    have hz := Healing.lt_cutZ Q.params Q.gst
+    have hgb : AC.gbar Q.gst = max Q.gst 0 := rfl
+    have hsa : Q.params.ts (Q.params.slot a : Int) ≤ a :=
+      (AC.ts_le_iff_le_slot Q.params ha0 _).2 le_rfl
+    have hdr : Healing.drainTime Q.params a =
+        Q.params.ts (Q.params.slot a : Int) + 4 * Q.params.Δ * (2 * (Q.params.k : Time) + 5) := by
+      rw [Healing.drainTime_eq]; simp only [AC.ACParams.ts]; push_cast; ring
+    have hδ6 : (6 : Time) ≤ S.δt := by exact_mod_cast A.six_le_δt
+    have hX1 : (1 : Time) ≤ (Q.index.1 : Nat) := by exact_mod_cast Q.index.1.pos
+    have hGs : (Gs : Time) ≤ A.signGap := by exact_mod_cast hGsA
+    have hΔ0 : (0 : Time) ≤ Q.params.Δ :=
+      (show (0 : Time) < Q.params.Δ from Q.params.toParams.hΔ).le
+    -- the linear facts in `Δ`-units
+    have e1 := mul_le_mul_of_nonneg_right hadm' hΔ0
+    have e2 := mul_le_mul_of_nonneg_right hδ6 hΔ0
+    have e3 := mul_le_mul_of_nonneg_right hX1 hΔ0
+    have e4 := mul_le_mul_of_nonneg_right hGs hΔ0
+    rw [resetBoundRounds_eq, healthyDrainLen_val] at hab
+    rw [hdr]
+    have hkk : (Q.params.k : Time) = S.k := by exact_mod_cast hk
+    have hδδ : (Q.params.toParams.fg.δt : Time) = S.δt := by exact_mod_cast hδeq
+    rw [hδδ] at hab
+    have hmax : max Q.gst 0 = AC.gbar Q.gst := rfl
+    rw [hready, hmax, ← hDe] at hab
+    rw [hkk]
+    push_cast at hab
+    generalize Healing.cutZ Q.params.toParams Q.gst = z at hz ⊢
+    generalize Q.params.ts (Q.params.slot a : Int) = w at hsa ⊢
+    ring_nf at hab e1 e2 e3 e4 hz ⊢
+    linarith
+  refine ⟨ΔF, a, Healing.Growing.resetPremisesUpTo_of_reset_cover_at
+    hstart hs.noColl hs.sync
+    hs.awake hs.faults ha ha0 (hab.trans hBh) ⟨j, hj, hjt⟩ hcatch
+    (Healing.Growing.noRestartUpTo_iff.mpr hs.noRestart) (by rw [hδeq]; exact hs.timeoutDelay) hH
+    hfacts hβ (S.committeeSize_pos (Model.pubOf Q.run.1) Q.hn) hcf hdrain (hcover a), ?_⟩
+  -- the placement (H3)
   exact hplace a ha0 hab
 
 /-- The reset premises and placement of a final query on a responsive calendar (signing gap 0). -/
@@ -166,7 +224,14 @@ theorem final_reset_premises_of_shared_at
       Q.run.2.horizon hold)
     {sign : Fin Q.params.n → Time → Bool}
     (hcal : Q.trace.SignCalendarAt (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.keys sign)
-    (hgap : SignGapAt Q.params.toParams sign 0 0) :
+    (hgap : SignGapAt Q.params.toParams sign 0 0)
+    (hcover : ∀ a T, Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
+        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst ΔF a T
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK hold →
+      (∀ D, Q.params.deepDepth = some D →
+        T ≤ Healing.cutZ Q.params.toParams Q.gst + 4 * D * Q.params.Δ) →
+      Healing.drainTime Q.params a + 4 * Q.params.Δ ≤ T → T ≤ Q.run.2.horizon →
+      Healing.Growing.HighSourceCover Q.trace Q.keys Q.gst a Q.run.2.horizon) :
     ∃ ΔR a : Time,
       Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
         (runProposer S Q.run.2 Q.hn)
@@ -188,13 +253,24 @@ theorem final_reset_premises_of_shared_at
     (by simpa only [add_zero, Nat.cast_zero, zero_mul] using hs.timeoutDelay) hcal hgap
     (by have : 2 * 3 ≤ 3 * c := by omega
         change 3 + (0 + 3) / 4 ≤ S.δt; omega)
+    (hd5 := by
+      have h1 : (1 : Time) ≤ Q.params.Δ := Int.add_one_le_iff.2 Q.params.toParams.hΔ
+      linarith) (hcover := hcover)
 
 /-- **The reset premises and the placement of a final query**, under growing faults. -/
 theorem final_reset_premises_at
     (Q : FinalQueryAt S A V)
     {sign : Fin Q.params.n → Time → Bool}
     (hcal : Q.trace.SignCalendarAt (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.keys sign)
-    (hgap : SignGapAt Q.params.toParams sign 0 0) :
+    (hgap : SignGapAt Q.params.toParams sign 0 0)
+    (hcover : ∀ a T, Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
+        (runProposer S Q.run.2 Q.hn) (digestOf S Q.run.2) Q.gst
+        (protoFGDelay (Model.pubOf Q.run.1) + (A.releaseGap : Time) * Q.run.1.ΔAC) a T
+        (runCommittee S Q.run.2 Q.hn) (K S A).params.βK ((A.releaseGap : Time) * Q.run.1.ΔAC) →
+      (∀ D, Q.params.deepDepth = some D →
+        T ≤ Healing.cutZ Q.params.toParams Q.gst + 4 * D * Q.params.Δ) →
+      Healing.drainTime Q.params a + 4 * Q.params.Δ ≤ T → T ≤ Q.run.2.horizon →
+      Healing.Growing.HighSourceCover Q.trace Q.keys Q.gst a Q.run.2.horizon) :
     ∃ ΔR a : Time,
       Healing.Growing.ResetPremisesUpTo Q.trace Q.keys
         (runProposer S Q.run.2 Q.hn)
@@ -215,7 +291,7 @@ theorem final_reset_premises_at
     (by have := A.two_le_fgSlots; rw [ContractAssumptions.finalSlots, A.fgDelay_val]; omega)
     (by rw [ContractAssumptions.finalSlots, A.fgDelay_val]; exact A.timeout)
     (finalWindow_offsets A)
-    (FinalQueryAt.hsSharedUpTo_at Q) hcal hgap
+    (FinalQueryAt.hsSharedUpTo_at Q) hcal hgap hcover
 
 end Consensus.Goldilocks.Obligations.Growing
 

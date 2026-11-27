@@ -29,22 +29,6 @@ private theorem catch_time_le {x : Time} (h : AC.gbar g ≤ x) :
     AC.gbar g + 2 * sp.Δ ≤ x + 3 * sp.Δ :=
   add_le_add h (mul_le_mul_of_nonneg_right (by norm_num) sp.toParams.hΔ.le)
 
-/-- A clean-label bound places the whole slow window after the high-origin cutoff. -/
-theorem ResetPremisesUpTo.clean_window_timing
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {s : Nat}
-    (hs : cleanLabel sp a + sp.k + 2 ≤ s) :
-    ∀ j : Nat, (s : Int) - sp.k < j → cutZ sp.toParams g ≤ sp.ts j := by
-  obtain ⟨v, r, l, O, ho, _, hl⟩ := hp.reset_seed
-  rw [cleanLabel_eq] at hs
-  intro j hj
-  exact (hp.cutZ_le_ts_of_highOrigin ho).trans ((AC.ts_le_iff sp).mpr (by omega))
-
-/-- `clean_window_timing` at the label itself. -/
-private theorem ResetPremisesUpTo.clean_timing
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) {s : Nat}
-    (hs : cleanLabel sp a + sp.k + 2 ≤ s) : cutZ sp.toParams g ≤ sp.ts s :=
-  hp.clean_window_timing hs s (by have := sp.two_le_k; omega)
-
 /-- Finite same-label comparison with either kind of actual raw source. -/
 theorem ResetPremisesUpTo.result_source_compatible
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
@@ -169,116 +153,6 @@ theorem ResetPremisesUpTo.optimistic_supporter
     AC.optimisticPoint_pool_voteU hrun.toU hx hpt (hsl ▸ hv) hvH
   exact ⟨_, hvH, q, hqr, e, he, hvs.trans hsl, R, hU hR, hRr, hBR.mono hU⟩
 
-/-- The prospective vote domain of an optimistic source uses only earlier receiving cuts. -/
-theorem ResetPremisesUpTo.optimistic_vote_domain_before
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
-    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {r s i : Nat}
-    {B : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hop : AC.OptimisticLockAt tr.projAC x r s B CV)
-    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hcast : AC.CastAt tr.projAC y i ell e) (hsi : s < e.msg.slot) (hib : tr.time i ≤ b)
-    (hprior : ∀ z ∈ H, ∀ q < i, ∀ e', AC.VoteAt tr.projAC z q e' →
-      s < e'.msg.slot → AC.VoteExtends (tr.HonestBlocks H) e'.msg B) :
-    Anc (tr.HonestBlocks H) B ell.frame.fcRoot ∨
-      B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
-  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  have hΔ := sp.toParams.hΔ
-  have hts := hp.clean_timing hs
-  have hs1 := slot_gbar_lt_of_cutZ_le hts
-  obtain ⟨hBx, z, hz, q, hqr, ev, hv, hvs, hVB⟩ := hp.optimistic_supporter hx hs1 hop
-  have hqb := (hp.run.time_mono hqr).trans hrb
-  obtain ⟨v, d, m, S, hseed, hda, hm⟩ := hp.reset_seed
-  have hdb := hda.trans hp.reset_le
-  have hms : m < s := by rw [cleanLabel_eq] at hs; omega
-  have hgs : AC.gbar g ≤ sp.ts s := gbar_le_of_cutZ_le sp hts
-  apply hp.held_target_vote_domain_before hx hy hBx hcast ?_ hseed (by omega)
-    (hp.target_compatible_older_origin hseed hdb hz hv hqb hvs hms hVB) ?_ ?_ ?_
-  · intro hF
-    exact raw_writer_voterBlockTree_window_before hp.committee_pos hr hp.run.vstart
-      (sync_window_of_service hp.run hp.sync) (catch_window_of_run hp.run hc) hx hy
-      (Or.inr (Or.inr hop)) .refl hcast (by omega) hib (catch_time_le (hgs.trans
-        ((AC.ts_le_iff sp).mpr (show (s : Int) ≤ e.msg.slot - 1 by omega)))) hF
-  · intro w c n O hci ho
-    have hcb := (hp.run.time_mono hci.le).trans hib
-    rcases lt_trichotomy n s with hn | rfl | hn
-    · exact hp.target_compatible_older_origin ho hcb hz hv hqb hvs hn hVB
-    · obtain ⟨CV', hst⟩ := ho.2.2.1
-      obtain ⟨_, D, hfl, hOD⟩ := storedFastLock_mem hp.run hp.noColl ho.1 hst
-      have hcomp : Compatible (tr.HonestBlocks H) B D := by
-        rcases hfl with ⟨ellD, R, huD, hR, hfast, _⟩ | hop'
-        · have hDR := ((AC.deepest_mem hfast).1.1.2.2).mono
-            (AC.frameIn_of_callAt hr ho.1 huD.1).2
-          have hRB := hp.result_source_compatible ho.1 hx
-            ⟨ellD, huD, hR, rfl⟩ (Or.inr hop) hcb hrb hts
-          rcases hRB with h | h
-          · exact Or.inr (hDR.trans h)
-          · exact AC.anc_total hr.coherent h hDR
-        · exact hp.optimistic_sources_compatible hx ho.1 hs1 hop hop'
-      rcases hcomp with h | h
-      · exact AC.anc_total hr.coherent h hOD
-      · exact Or.inr (hOD.trans h)
-    · exact hp.target_compatible_later_origin_before ho hci hn hprior
-  · intro w c n O hci ho
-    exact hp.origins_compatible hseed hdb ho ((hp.run.time_mono hci.le).trans hib)
-  · intro w c n O hci ho w' c' n' O' hci' ho'
-    exact hp.origins_compatible ho ((hp.run.time_mono hci.le).trans hib)
-      ho' ((hp.run.time_mono hci'.le).trans hib)
-
-/-- A bounded slow write compares with every older live stored lock through the horizon. -/
-theorem ResetPremisesUpTo.slow_stored_locks
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b)
-    {x y : Fin sp.n} (hx : x ∈ H) (hy : y ∈ H) {r s i : Nat}
-    {D : AC.Blk sp.n (List (FG.Att sp.n))} (hsl : AC.SlowLockAt tr.projAC x r s D)
-    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b) (hib : tr.time i ≤ b)
-    (hi : s + 1 ≤ sp.slot (tr.time i)) :
-    ∀ l ∈ (tr.projAC.state y i).locks, sp.slot (tr.time i) ≤ l.slot + sp.k → l.slot ≤ s →
-      ∀ Y ∈ tr.HonestBlocks H, Y.root = l.block → Compatible (tr.HonestBlocks H) Y D := by
-  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  intro l hl hlive hle Y hY hYr
-  obtain ⟨L, hL, hLr, O, hLO, k, hki, CV, hO⟩ := AC.lock_below_origin hr
-      hp.run.vstart hy i l hl
-  obtain rfl : Y = L := hr.coherent.1 hY hL (hYr.trans hLr.symm)
-  obtain ⟨q, R, RV, hR, hDR⟩ := AC.slow_window_results hr
-    hp.run.vstart hx hsl l.slot (by omega) hle
-  have hqb : tr.time q ≤ b := by
-    obtain ⟨_, hu, _, _⟩ := hR
-    have ht : tr.time q = sp.ts l.slot + 6 * sp.Δ := hu.2.2.1
-    -- A slow write uses the update of its label.
-    obtain ⟨ell, C, hupdate, _⟩ := hsl
-    have ht' : tr.time r = sp.ts s + 6 * sp.Δ := hupdate.2.2.1
-    have := (AC.ts_le_iff sp).mpr (show (l.slot : Int) ≤ s by omega)
-    exact ht.trans_le ((add_le_add this le_rfl).trans (ht'.symm.trans_le hrb))
-  have hcomp := hp.result_source_compatible hx hy hR hO hqb
-    ((hp.run.time_mono hki.le).trans hib) (hp.clean_window_timing hs l.slot (by omega))
-  rcases hcomp with h | h
-  · exact AC.anc_total hr.coherent hLO (hDR.trans h)
-  · exact AC.anc_total hr.coherent (hLO.trans h) hDR
-
-/-- A clean slow source retains its prefix in every later vote through the fixed horizon. -/
-theorem ResetPremisesUpTo.slow_source_votes_before
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
-    {x : Fin sp.n} (hx : x ∈ H) {r s : Nat}
-    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hslow : AC.SlowLockAt tr.projAC x r s B)
-    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b) :
-    ∀ i, tr.time i ≤ b → ∀ y ∈ H, ∀ ell e, AC.CastAt tr.projAC y i ell e →
-      s < e.msg.slot → AC.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-  obtain ⟨ellX, C, hupd, hconf, hdeep⟩ := id hslow
-  have hBC := ((AC.deepest_mem hdeep).1.1.2.2).mono
-    (AC.frameIn_of_callAt hr hx hupd.1).2
-  have hres : AC.ResultAt tr.projAC x r s C
-      (AC.fastCounted sp (tr.projAC.state x r) ellX.frame s C) :=
-    ⟨ellX, hupd, hconf, rfl⟩
-  apply hp.late_result_prefix_votes_before hc hx hres hBC hrb
-    (hp.clean_timing hs)
-  · intro y hy i ell e hcast hib hsi hprior
-    exact hp.result_prefix_vote_domain_before hc hx hy hres hBC hs hrb hcast hsi hib hprior
-  · intro y hy i ell e hcast hib hfirst
-    exact hp.slow_stored_locks hx hy hslow hs hrb hib (by
-      change s + 1 ≤ sp.slot (tr.projAC.time i)
-      rw [← (AC.castAt_specU hr.toU hy hcast).2.1, hfirst])
-
 /-- Finite fast-source transfer, with its prospective domain supplied at earlier cuts. -/
 theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
     (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
@@ -375,26 +249,6 @@ theorem ResetPremisesUpTo.fast_source_votes_of_domain_before
           (hgs.trans ((AC.ts_le_iff sp).mpr (by omega))))) ?_
       rw [← hm]
       exact Or.inl hv
-
-/-- Clean fast sources retain their raw selected block through the horizon. -/
-theorem ResetPremisesUpTo.fast_source_votes_before
-    (hp : ResetPremisesUpTo tr H K proposer dg g ΔF a b) (hc : CatchRun tr H g (2 * sp.Δ))
-    {x : Fin sp.n} (hx : x ∈ H) {r s : Nat}
-    {B : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
-    (hfast : AC.FastLockAt tr.projAC x r s B CV)
-    (hs : cleanLabel sp a + sp.k + 2 ≤ s) (hrb : tr.time r ≤ b) :
-    ∀ i, tr.time i ≤ b → ∀ y ∈ H, ∀ ell e, AC.CastAt tr.projAC y i ell e →
-      s < e.msg.slot → AC.VoteExtends (tr.HonestBlocks H) e.msg B := by
-  apply hp.fast_source_votes_of_domain_before hc hx hfast
-    (hp.clean_timing hs)
-  intro y hy i ell e hcast hib hsi hprior
-  rcases hfast with ⟨ellX, C, hupd, hconf, hdeep, _⟩ | hop
-  · have hr := (Compose.goldilocks_ac_projection_from hp.run hp.noColl).localRun
-    have hBC := ((AC.deepest_mem hdeep).1.1.2.2).mono
-      (AC.frameIn_of_callAt hr hx hupd.1).2
-    exact hp.result_prefix_vote_domain_before hc hx hy ⟨ellX, hupd, hconf, rfl⟩ hBC
-      hs hrb hcast hsi hib hprior
-  · exact hp.optimistic_vote_domain_before hc hx hy hop hs hrb hcast hsi hib hprior
 
 end Consensus.Goldilocks.Healing
 

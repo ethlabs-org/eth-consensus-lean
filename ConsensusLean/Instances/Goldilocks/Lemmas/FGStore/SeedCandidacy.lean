@@ -15,7 +15,7 @@ if the seed does, else the origin's entry, oriented above `P` by height monotoni
 
 The store geometry is all that is used: honesty, the run and the source of the high entry are the
 callers' premises
-(`Healing.Growing.ResetPremisesUpTo.guarded_seed_ancestor_candidate_at_state_at`). -/
+(`Healing.Growing.ResetPremisesUpTo.guarded_seed_ancestor_candidate_at_state_covered_at`). -/
 
 namespace Consensus.Goldilocks.Store
 

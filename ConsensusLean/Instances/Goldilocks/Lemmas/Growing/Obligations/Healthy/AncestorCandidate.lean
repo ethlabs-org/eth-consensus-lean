@@ -11,14 +11,14 @@ public section
 
 /-! # A held target is an ancestor candidate, under growing faults
 
-`held_target_ancestor_candidate_at_state_at`, the growing form of
+`held_target_ancestor_candidate_at_state_covered_at`, the growing form of
 The held-target ancestor candidate: at a state of a reader honest at an
 observation `t ≤ b`, every earlier cut at a time `≤ t`, a held target above a bounded high seed
 and compatible with every earlier high origin is an ancestor candidate of the reader's frame.
 
 The seed is held because it lies below the held target (`mem_of_honest_anc_at`), so this is the
-guarded-seed candidacy `guarded_seed_ancestor_candidate_at_state_at` with the target above the
-seed. -/
+guarded-seed candidacy `guarded_seed_ancestor_candidate_at_state_covered_at` with the target
+above the seed. -/
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
@@ -30,19 +30,19 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 variable {hold : Time}
 
 /-- **A held target is an ancestor candidate.** At a state of a reader honest at `t ≤ b`, every
-earlier cut at a time `≤ t`, a target held in the reader's frame above a bounded high seed and
-compatible with every earlier high origin is an ancestor candidate of the frame. -/
-theorem held_target_ancestor_candidate_at_state_at
+earlier cut at a time `≤ t`, a target held in the reader's frame above a bounded high seed,
+compatible with the earlier high origins and, under the high-source cover, the healed members up
+to the slot of `t`, is an ancestor candidate of the frame. -/
+theorem held_target_ancestor_candidate_at_state_covered_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ r < i, tr.time r ≤ t)
     (hy : y ∈ H t) (htb : t ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ (Node.frame (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)
     (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocksAt H) S P)
-    (hcompare : ∀ x r l B, r < i → HighOrigin tr H g x r l B →
-      Compatible (tr.HonestBlocksAt H) P B) :
+    (hcompare : CompatibleWithOrigins tr H g a b i (sp.slot t) P) :
     (Node.frame (tr.state y i)).AncestorCandidate P :=
-  hp.guarded_seed_ancestor_candidate_at_state_at ht hle hy htb hPt hseed hqb
+  hp.guarded_seed_ancestor_candidate_at_state_covered_at ht hle hy htb hPt hseed hqb
     (fun _ => mem_of_honest_anc_at hp.run hp.noColl ht hle hy hSP hPt.1) (Or.inr hSP) hcompare
 
 end Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo

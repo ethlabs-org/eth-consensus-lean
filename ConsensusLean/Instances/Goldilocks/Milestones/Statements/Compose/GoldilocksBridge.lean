@@ -44,6 +44,7 @@ def GoldilocksHealingData (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.
     (sign : Fin sp.n → Time → Bool := fun _ _ => true) (G : Nat := 0) : Prop :=
   GoldilocksRunData sp ro R sign G ∧
     O.warmup = 2 * sp.k ∧ O.follow = 3 + (G + 3) / 4 ∧ O.reportDelay = G ∧ O.drain = 2 * sp.k + 5 ∧
+    O.deepBudget = sp.deepDepth ∧
     O.Origin = (fun tr x i j B => tr.JoinedAt x (tr.time i) ∧
       ∃ CV, Compose.StoredFastLockAt tr x i j B CV)
 

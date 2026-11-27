@@ -99,9 +99,11 @@ theorem seeded_votes_succ_extend
     exact later_transfer_step_at hS.run hS.noColl
         hS.facts hS.sync hS.committee (g := g) (rL := r)
       (rO := r + sp.k - 1) hrs' hsa hx ⟨hc, he⟩ hes hjb
-      (fun l hl _ => handover_live_lock_label_at hS.seed hx ⟨hc, he⟩ (by omega) l hl) hBc
-      (fun hw => seeded_vote_frame_of hS.run hS.noColl hS.seed hS.horizon hS.service hS.bounds
-        hS.conv hs hPb hx ⟨hc, he⟩ hes hjb (fun C l hC hl => hBc C l hC hl)
+      (fun l hl _ => handover_live_lock_label_at hS.seed.toHandoverCore hx ⟨hc, he⟩ (by omega) l
+        hl) hBc
+      (fun hw => seeded_vote_frame_of hS.run hS.noColl hS.seed.toHandoverCore hS.horizon hS.service
+        hS.bounds
+        (hS.conv.upTo _) hs hPb hx ⟨hc, he⟩ hes hjb (fun C l hC hl => hBc C l hC hl)
         hw hS.facts hS.committee)
       (fun x k e' hv hs => ⟨P, hPU, (hall x k e' hv hs).symm, .refl⟩)
       (fun z j' hj' hz e' hv' hs' => ih j' hj' z e' (hVoteAt_iff.2 ⟨hz, hv'⟩) hs'
@@ -148,7 +150,7 @@ theorem seeded_updater_F_anc
   have hFJ' := Healing.Growing.honest_anc_of_store_anc_at hd hi hy hFJ
   by_cases hlow : (tr.state y k₀).fg.hj ≤ Healing.Growing.HZ tr H g
   · obtain ⟨x, q, l, S, hS', hqT, hl, hFS, -, -⟩ :=
-      low_seed_held hrun hnc hS.conv hS.seed hd hi hy hcall hlow
+      low_seed_held hrun hnc hS.conv hS.seed.toHandoverCore hd hi hy hcall hlow
     exact Or.inl (hFS.trans (hmem (.of_high (hqT.trans hS.horizon) hS') (by omega)))
   -- the high rows, sourced below members compatible with `P`
   have hst := Trace.upTo_state tr y hi
@@ -163,7 +165,7 @@ theorem seeded_updater_F_anc
   have hzd : Healing.cutZ sp.toParams g ≤ tr.time k₀ := by
     have := ts_le_ts (sp := sp) (show r ≤ r + sp.k by omega)
     linarith [Healing.cutZ_le sp g, hS.seed.timing.2.2]
-  have hsrc := rowsAbove_of hrun hnc hS.seed hd hzd hi hy (Q := fun C _ => R C)
+  have hsrc := rowsAbove_of hrun hnc hS.seed.toHandoverCore hd hzd hi hy (Q := fun C _ => R C)
     fun m hm X hX a ha hav k hkm hsg c hck C l O OV hC hO => by
       have hck₀ : tr.time c ≤ tr.time k₀ := hrun.time_mono (by omega)
       have hCb := hC.mono (hck₀.trans hb)

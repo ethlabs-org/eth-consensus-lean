@@ -5,7 +5,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AgreeSetting
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Records
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.FinPair
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Service
 
 public section
 
@@ -32,25 +31,26 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
 
-/-- **A report is a live fast lock block.** If `ac_to_fg` returns `C` at the call of `z` at
-cut `r`, then `C` is in the frame and some live fast lock `l` of that call has
-`l.block = C.root` (and slot `≥ slot(t_r) − 2`). -/
+/-- **A report is a live fast lock block, or a deep candidate.** If `ac_to_fg` returns `C` at the
+call of `z` at cut `r`, then `C` is in the frame and either some live fast lock `l` of that call
+has `l.block = C.root` (and slot `≥ slot(t_r) − 2`), or, with deep sources on
+(`deepDepth = some D`) and no fast-lock candidate, `C` is a deep candidate under the deep anchor. -/
 theorem toFG_live_fast_lock {z : Fin sp.n} {r : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     {C : AC.Blk sp.n (List (FG.Att sp.n))} (hto : AC.ToFGAt tr.projAC z r ell C) :
     C ∈ ell.frame.tree ∧
-      ∃ l ∈ AC.liveLocks sp (tr.projAC.state z r).locks ell.frame (tr.time r),
-        l.block = C.root ∧ l.fast = true ∧ sp.slot (tr.time r) ≤ l.slot + 2 := by
+      ((∃ l ∈ AC.liveLocks sp (tr.projAC.state z r).locks ell.frame (tr.time r),
+        l.block = C.root ∧ l.fast = true ∧ sp.slot (tr.time r) ≤ l.slot + 2) ∨
+      ∃ D a, sp.deepDepth = some D ∧
+        AC.deepest ell.frame (AC.toFGCandidates sp (tr.projAC.state z r) ell.frame
+          (tr.projAC.time r)) = none ∧
+        AC.deepAnchor sp (tr.projAC.state z r) ell.frame (tr.projAC.time r) = some a ∧
+        C ∈ AC.toFGDeepCandidates sp D a (tr.projAC.state z r) ell.frame (tr.projAC.time r)) := by
   obtain ⟨-, -, h⟩ := hto
-  have hC : C ∈ AC.toFGCandidates sp (tr.projAC.state z r) ell.frame (tr.projAC.time r) := by
-    unfold AC.acToFG at h
-    split_ifs at h
-    split at h
-    · cases h
-    · rename_i C' hC'
-      split_ifs at h
-      cases h
-      exact (AC.deepest_mem hC').1
-  exact ⟨hC.1.1, hC.2⟩
+  obtain ⟨hCv, hs⟩ := AC.toFG_source h
+  refine ⟨hCv.1, ?_⟩
+  rcases hs with hC | ⟨D, a, hD, ha, hn, hC⟩
+  · exact Or.inl hC.2
+  · exact Or.inr ⟨D, a, hD, hn, ha, hC⟩
 
 end Consensus.Goldilocks.Obligations
 
