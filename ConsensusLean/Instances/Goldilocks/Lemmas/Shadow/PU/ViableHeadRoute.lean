@@ -207,7 +207,7 @@ theorem FrameWindow.viableHead_persists_stock {lo hi : Time} {floor : Nat}
       exact Or.inl (by omega)
     · -- top clean at the call: a maximum-height block above `F` extends `J`
       obtain ⟨g1, g2, hJ⟩ := hkind' hk
-      have hle : (sa.σ Q.root).h ≤ sa.hmax := (Store.cache_invariants' hRa).2.2.2.2.1 Q hQa
+      have hle : (sa.σ Q.root).h ≤ sa.hmax := (Store.cache_invariants _ _ _ _ hRa).2.2.2.2.1 Q hQa
       have hFQ := finalized_below_viable hRa
         (Coherence.honest_blocks_coherent hrun.toLocalRun hnc) (fun _ hB => ⟨y, hy, a, hB⟩) hf
         (fun x z hx hz hv => held_atts_safe (Compose.projFG_localRun hrun hnc) hy hy a a x z
@@ -239,8 +239,8 @@ theorem FrameWindow.viableHead_persists_stock {lo hi : Time} {floor : Nat}
         omega
       have hhji := hci.1
       -- same justified height: the same `J` (safety)
-      obtain ⟨-, hJa, -, ⟨Ba, hBa, hBaJ, hBahj⟩, -⟩ := Store.cache_invariants' hRa
-      obtain ⟨-, hJi, -, ⟨Bi, hBi, hBiJ, hBihj⟩, -⟩ := Store.cache_invariants' hRi
+      obtain ⟨-, hJa, -, ⟨Ba, hBa, hBaJ, hBahj⟩, -⟩ := Store.cache_invariants _ _ _ _ hRa
+      obtain ⟨-, hJi, -, ⟨Bi, hBi, hBiJ, hBihj⟩, -⟩ := Store.cache_invariants _ _ _ _ hRi
       have hjeq : sa.hj = si.hj := by omega
       have hroots := Store.J_eq_of_hj_eq_of_safe_with hu hRa.reachableWith hRi.reachableWith
         hf (fun x z hx hz hv => held_atts_safe (Compose.projFG_localRun hrun hnc) hy hy a i x z
@@ -305,7 +305,7 @@ theorem FrameWindow.root_witness_stock {lo hi g : Time} {floor : Nat}
       floor ≤ ((tr.state y i).fg.σ Q.root).h ∧ (kindJ → Anc (tr.HonestBlocks H) J Q) := by
   have hr := (Compose.goldilocks_ac_projection_from' hrun hnc).localRun
   have hR := Node.fg_reachable_at hrun.toLocalRun hy a
-  obtain ⟨-, -, -, -, -, ⟨Q, hQ, hQh⟩, -⟩ := Store.cache_invariants' hR
+  obtain ⟨-, -, -, -, -, ⟨Q, hQ, hQh⟩, -⟩ := Store.cache_invariants _ _ _ _ hR
   have hv : (tr.state y a).fg.IsViable Q :=
     (Store.isViable_iff _ _).mpr (Or.inl hQh.ge)
   have hFQ := finalized_below_viable hR
@@ -553,8 +553,8 @@ theorem J_eq_of_top_same_hmax (hrun : GoldilocksRun proposer dg H tr ini)
   have hRa := Node.fg_reachable_at hrun.toLocalRun hy a
   have hRi := Node.fg_reachable_at hrun.toLocalRun hx i
   have hu := Store.finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
-  obtain ⟨-, hJa, -, ⟨Ba, hBa, hBaJ, hBahj⟩, -⟩ := Store.cache_invariants' hRa
-  obtain ⟨-, hJi, -, ⟨Bi, hBi, hBiJ, hBihj⟩, -⟩ := Store.cache_invariants' hRi
+  obtain ⟨-, hJa, -, ⟨Ba, hBa, hBaJ, hBahj⟩, -⟩ := Store.cache_invariants _ _ _ _ hRa
+  obtain ⟨-, hJi, -, ⟨Bi, hBi, hBiJ, hBihj⟩, -⟩ := Store.cache_invariants _ _ _ _ hRi
   have hroots := Store.J_eq_of_hj_eq_of_safe_with hu hRa.reachableWith hRi.reachableWith
     hf (fun u v hu' hv' hval => held_atts_safe (Compose.projFG_localRun hrun hnc) hy hx a i u v
         (by simpa only [Compose.store_eq hrun hy] using hu')

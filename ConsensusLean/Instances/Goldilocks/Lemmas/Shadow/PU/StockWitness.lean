@@ -51,7 +51,7 @@ theorem finalized_below_descendant_stock_at {lo hi : Time} {floor : Nat}
   have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
     hr.reachableWith
   by_cases hk : kindJ
-  · have hFJ := (Store.cache_invariants' hr).2.2.1
+  · have hFJ := (Store.cache_invariants _ _ _ _ hr).2.2.1
     rw [hframe.root_eq y j hy hjlo hjhi hk] at hFJ
     exact (hFJ.mono (Compose.Growing.tree_held_at hjt hy hbj)).trans ((hwit.2 hk).trans hXW)
   have hWh := Growing.le_height_of_honest_ancestor_at hrun hnc hx hz hX le_rfl hW hXW
@@ -136,7 +136,7 @@ theorem stock_witness_of_floor_anchor_at {lo hi : Time} {floor : Nat} {kindJ : P
   obtain ⟨htop, hnC⟩ := (hframe.kind_iff y a hy hlo hhi).2 hk
   have hfl := hframe.floor_eq y a hy hlo hhi
   rw [Store.headHeightFloor, ite_eq_right hnC] at hfl
-  have hle := (Store.cache_invariants' hr).2.2.2.2.1 Q hQ
+  have hle := (Store.cache_invariants _ _ _ _ hr).2.2.2.2.1 Q hQ
   have hJy : (tr.state y a).fg.Anc (tr.state y a).fg.J Q := by
     by_contra hnJ
     exact hnC ⟨htop, Q, hQ, hFQ, by omega, hnJ⟩

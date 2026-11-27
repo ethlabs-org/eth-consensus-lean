@@ -47,7 +47,7 @@ theorem own_block_payload (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
     exact Node.fg_reachable_at h hy j
   have hs := (Node.step_iff _ _ _ _ _ _ _).mp hstep
   have hR' := ACInterface.ReachableAtFrom.step .tick hR (ht₀.trans hs.1)
-    ⟨⟨by simpa only [Node.frame_eq] using Store.frame_realization' _ _ hfg,
+    ⟨⟨by simpa only [Node.frame_eq] using (Store.frame_realization _ _ _ _ hfg).1,
       fun _ hX => by rw [Node.frame_eq, Store.toFrame_tree] at hX; exact hX.1⟩, rfl⟩
   rw [← hst] at hdp
   have hts : tr.time i = P.slotTime (P.slotOf (tr.time i)) := hp.2.1

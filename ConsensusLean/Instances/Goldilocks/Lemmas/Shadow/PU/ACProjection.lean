@@ -68,7 +68,7 @@ private theorem frame_flat (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin 
           | attestation a =>
             left
             rw [frame_eq, ((cutStep_attestation _ _ _ _ _).1 hlaw).1,
-              (Store.accept_is_frame_step' _ _ (fg_reachable_at h hy b)).2 a, ← frame_eq]
+              (Store.accept_is_frame_step _ _ _ _ (fg_reachable_at h hy b)).2 a, ← frame_eq]
             exact heq
           | attest C s =>
             cases s with
@@ -114,7 +114,7 @@ private theorem callOK_from (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
     have hlaw := (cutStep_block_true _ _ _ _ _).1 (h.cutLaw y hy i' _ hacc)
     refine ⟨?_, own_block_payload hpay h hy hacc, hti ▸ hlaw.1⟩
     rw [← hfr', hfr, tr.state_succ_of_call hacc, frame_eq, frame_eq]
-    exact (Store.accept_is_frame_step' _ _ (fg_reachable_at h hy i')).1 B _ hlaw.2.1
+    exact (Store.accept_is_frame_step _ _ _ _ (fg_reachable_at h hy i')).1 B _ hlaw.2.1
   | message m =>
     obtain ⟨j, hg⟩ := msgCall_group h hy hc rfl
     exact ⟨same (fun _ hb => by cases hb), h.wire y hy j _ _ hg⟩

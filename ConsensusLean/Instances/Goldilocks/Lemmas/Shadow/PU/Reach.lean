@@ -150,7 +150,7 @@ private theorem NInv.fgAtt {st : NodeState A} {t : Time} (h : NInv dg self s₀ 
   have hr := h.fg
   have htree := (Store.tree_grows_with (st := st.fg)
     Store.finalitySpec_updateFinality).2 a
-  have hfr := (Store.accept_is_frame_step' A.genesisPayload st.fg hr).2 a
+  have hfr := (Store.accept_is_frame_step _ _ A.genesisPayload st.fg hr).2 a
   refine ⟨?_, fun hq => ?_, fun hq b hb => ?_, fun hg => ?_⟩
   · rw [Store.reachable_eq] at hr ⊢
     exact hr.tail ((Store.step_iff _ _).2 (Or.inr ⟨a, rfl⟩))
@@ -185,7 +185,7 @@ private theorem NInv.onBlock {st : NodeState A} {t : Time} (h : NInv dg self s�
   have hb' := hb
   rw [Store.onBlock_eq_onBlockWith] at hb'
   have htree := (Store.tree_grows_with Store.finalitySpec_updateFinality).1 B fg' hb'
-  have hstep := (Store.accept_is_frame_step' A.genesisPayload st.fg hr).1 B fg' hb
+  have hstep := (Store.accept_is_frame_step _ _ A.genesisPayload st.fg hr).1 B fg' hb
   refine ⟨hr', fun hq => ?_, fun hq a ha => ?_, fun hg X hX => ?_⟩
   · obtain ⟨t₀, ht₀, hR⟩ := h.ac hq
     refine ⟨t, le_rfl, ?_⟩

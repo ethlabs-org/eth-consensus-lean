@@ -83,7 +83,7 @@ private theorem cutZ_lt_of_anc
   have hs := σ_eq_honest_at hp.run hp.noColl hZ0
     (fun _ hq => (hp.run.time_mono hq.le).trans hkZ) hzZ hZ0 hc.1 hzZ hW hWc
   have hreach := Compose.Growing.reachable_at hp.run hZ0 hzZ hc.1
-  have hbnd := (Store.cache_invariants' hreach).2.2.2.2.1 W hWc
+  have hbnd := (Store.cache_invariants _ _ _ _ hreach).2.2.2.2.1 W hWc
   have hmax : (tr.state z c).fg.hmax ≤ HZ tr H g := by
     refine le_csSup (((Set.finite_range fun v => (tr.state v c).fg.hmax).subset ?_).bddAbove)
       ⟨z, hzZ, c, hc, rfl⟩
@@ -122,7 +122,7 @@ private theorem not_genesis_above
   have hreachZ := Compose.Growing.reachable_at hp.run hZ0 hxZ hkZ.1
   have hGZ := (Store.accepted_tree_with Store.finalitySpec_updateFinality
     hreachZ.reachableWith).2.2.1
-  have hbnd := (Store.cache_invariants' hreachZ).2.2.2.2.1 _ hGZ
+  have hbnd := (Store.cache_invariants _ _ _ _ hreachZ).2.2.2.2.1 _ hGZ
   rw [show (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).root =
       sp.toParams.genesisRoot from rfl,
     Store.σ_genesis_with Store.finalitySpec_updateFinality hreachZ.reachableWith] at hbnd

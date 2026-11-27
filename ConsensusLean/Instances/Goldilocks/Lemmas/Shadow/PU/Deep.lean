@@ -268,7 +268,7 @@ theorem high_toFG_fast_at
       linarith [hj.2]
     have hk1d : ∀ q < k + 1, tr.time q ≤ d := fun q hq => hrd q (by omega)
     rw [hst _ hk1d] at hCk
-    obtain ⟨-, -, -, -, hge, -, -⟩ := Store.cache_invariants' (hreach _ hk1d)
+    obtain ⟨-, -, -, -, hge, -, -⟩ := Store.cache_invariants _ _ _ _ (hreach _ hk1d)
     have hmono := Coherence.hmax_mono hrun'.toLocalRun hzz hkj
     simp only at hmono
     rw [hst _ hk1d, hst _ hjd] at hmono

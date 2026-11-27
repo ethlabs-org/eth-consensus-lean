@@ -100,17 +100,17 @@ section RunFacts'
 
 variable {d : Time} {y : Fin sp.n} {i : Nat}
 
-/-- A shadow-reachable store has a block of state height `h_max` (lane C0's `cache_invariants'`). -/
+/-- A reachable store has a block of state height `h_max` (`Store.cache_invariants`). -/
 theorem hmax_block_of_reachable {acp₀ : Payload sp.n}
     {st : Store sp.toParams (Payload sp.n)} (h : st.Reachable acp₀) :
     ∃ B ∈ st.tree, (st.σ B.root).h = st.hmax :=
-  (Store.cache_invariants' h).2.2.2.2.2.1
+  (Store.cache_invariants _ _ _ _ h).2.2.2.2.2.1
 
 /-- `h_j < h_max` at a shadow-reachable store: the cached justification is the state of a held
 block, whose `h_j` is below its height, which is at most `h_max`. -/
 theorem hj_lt_hmax_of_reachable {acp₀ : Payload sp.n}
     {st : Store sp.toParams (Payload sp.n)} (h : st.Reachable acp₀) : st.hj < st.hmax := by
-  obtain ⟨-, -, -, ⟨Bj, hBj, -, hBjhj⟩, hge, -, -⟩ := Store.cache_invariants' h
+  obtain ⟨-, -, -, ⟨Bj, hBj, -, hBjhj⟩, hge, -, -⟩ := Store.cache_invariants _ _ _ _ h
   exact hBjhj ▸ (Store.hj_lt_h_with Store.finalitySpec_updateFinality h.reachableWith hBj).trans_le
     (hge Bj hBj)
 
@@ -202,7 +202,7 @@ theorem above_of_hi_height_at (D : OutageLockPremises tr H proposer dg ini) {i :
   have hst := Trace.upTo_state tr y ht
   obtain ⟨hPJ, hJP⟩ := hiAt_iff.1 hHi
   rw [← hst] at hX hh hPJ hJP
-  obtain ⟨-, hJt, -, -⟩ := Store.cache_invariants' (Node.fg_reachable_at hr.toLocalRun hy k)
+  obtain ⟨-, hJt, -, -⟩ := Store.cache_invariants _ _ _ _ (Node.fg_reachable_at hr.toLocalRun hy k)
   -- `h_j ≥ 1`: at `h_j = 0`, `Σ.J` is genesis, and nothing is strictly below genesis
   have hj1 : 1 ≤ ((tr.upTo t).state y k).fg.hj := by
     by_contra h0
@@ -373,7 +373,7 @@ theorem J_compatible_by (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propo
       (projFG_localRun' hr (hnc.upTo _)) hf hy (honestRowsSourcedBy_toFrame ht hsrc)
       (by rw [hst]; omega)
   rw [hst] at hDs
-  have hJ := (Store.cache_invariants' (Node.fg_reachable_at hr.toLocalRun hy i)).2.1
+  have hJ := (Store.cache_invariants _ _ _ _ (Node.fg_reachable_at hr.toLocalRun hy i)).2.1
   rw [hst] at hJ
   obtain ⟨x, hx, k, -, -, hJD, -, -⟩ := FrameGeometry.honest_source_entry' hr.toLocalRun
     (projFG_localRun' hr (hnc.upTo _)) hDs ⟨y, hy, i, by rw [hst]; exact hJ⟩ rfl
@@ -399,7 +399,7 @@ theorem caches_compatible_by
   have hJ := J_compatible_by hrun hnc ht0 ht hy hf hsrc (fun _ h => h) hBU
   have hR := Node.fg_reachable_at (hrun.upTo ht0).toLocalRun hy n
   rw [hst] at hR
-  obtain ⟨-, -, hFJ, -⟩ := Store.cache_invariants' hR
+  obtain ⟨-, -, hFJ, -⟩ := Store.cache_invariants _ _ _ _ hR
   have hsub : (tr.state y n).fg.tree ⊆ tr.HonestBlocksAt H := fun X hX =>
     RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono ht0 ⟨y, hy, n, by rw [hst]; exact hX⟩
   exact ⟨compatible_of_head_anc hU (hFJ.mono hsub) hJ, hJ⟩

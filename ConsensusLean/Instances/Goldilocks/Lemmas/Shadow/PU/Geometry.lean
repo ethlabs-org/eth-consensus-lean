@@ -258,7 +258,7 @@ theorem justified_genesis' (hr : Node.LocalRun proposer dg H sg tr ini)
     {y : Fin P.n} {i : Nat} (h0 : (tr.state y i).fg.hj = 0) (hy : y ∈ H) :
     (tr.state y i).fg.J = P.genesisBlock A.genesisPayload := by
   have hR := Node.fg_reachable_at hr hy i
-  obtain ⟨-, hJ, -, ⟨Z, hZ, hZJ, hZj⟩, -⟩ := cache_invariants' hR
+  obtain ⟨-, hJ, -, ⟨Z, hZ, hZJ, hZj⟩, -⟩ := cache_invariants _ _ _ _ hR
   obtain ⟨-, hcoh, hg, -⟩ := accepted_tree_with finalitySpec_updateFinality hR.reachableWith
   exact hcoh.1 hJ hg (hZJ.symm.trans ((honest_held_chain' hr hy hZ).2.2 (hZj.trans h0)))
 
@@ -316,7 +316,7 @@ theorem justified_honest_source_of' (hr : Node.LocalRun proposer dg H sg tr ini)
       ((tr.state y i).fg.σ (tr.state y i).fg.J.root).Th = (tr.state y i).fg.J.root ∧
       ∃ D, G D ∧ IsHonestSource tr H D (tr.state y i).fg.J.root := by
   have hR := Node.fg_reachable_at hr hy i
-  obtain ⟨-, hJ, -, ⟨Z, hZ, hZJ, hZj⟩, -⟩ := cache_invariants' hR
+  obtain ⟨-, hJ, -, ⟨Z, hZ, hZJ, hZj⟩, -⟩ := cache_invariants _ _ _ _ hR
   have hcoh := (accepted_tree_with finalitySpec_updateFinality hR.reachableWith).2.1
   obtain ⟨E, hE, hEr, hEZ, hEh, hET⟩ := J_entry hR hZ (by omega)
   have hEJ : E = (tr.state y i).fg.J := hcoh.1 hE hJ (hEr.trans hZJ)
@@ -385,7 +385,7 @@ theorem floor_or_crossing_of' (hr : Node.LocalRun proposer dg H sg tr ini)
   · exact Or.inl hle
   right
   obtain ⟨-, -, -, ⟨Z, hZ, -, hZj⟩, hZm, ⟨X, hX, hXh⟩, -⟩ :=
-    cache_invariants' (Node.fg_reachable_at hr hy i)
+    cache_invariants _ _ _ _ (Node.fg_reachable_at hr hy i)
   have hB1 := (honest_held_chain' hr hy hB).1
   have hZ1 := (honest_held_chain' hr hy hZ).2.1
   have hZ2 := hZm Z hZ
@@ -408,7 +408,7 @@ theorem J_compatible' (hr : Node.LocalRun proposer dg H sg tr ini)
   · rw [justified_genesis' hr h0 hy]
     exact Or.inl (honest_genesis_anc' hr hB).2
   obtain ⟨-, -, D, hD, hDs⟩ := justified_honest_source_of' hr hf hbound hy hsrc (by omega)
-  have hJ := (cache_invariants' (Node.fg_reachable_at hr hy i)).2.1
+  have hJ := (cache_invariants _ _ _ _ (Node.fg_reachable_at hr hy i)).2.1
   obtain ⟨x, hx, k, -, -, hJD, -, -⟩ := honest_source_entry' hr hf hDs ⟨y, hy, i, hJ⟩ rfl
   have hJDU : Anc (tr.HonestBlocks H) (tr.state y i).fg.J D :=
     hJD.mono (fg_tree_subset_honest hx k)

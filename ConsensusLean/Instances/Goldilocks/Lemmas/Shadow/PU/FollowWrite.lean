@@ -171,7 +171,7 @@ theorem F_anc_of_viable_stock_at {lo hi : Time} {floor : Nat} {kindJ : Prop}
   have hrz := Compose.Growing.reachable_at hrun hct hz hbc
   have hjmz := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
     hrz.reachableWith
-  have hFJ := ((Store.cache_invariants' hry).2.2.1).mono (Compose.Growing.tree_held_at hit hy hbi)
+  have hFJ := ((Store.cache_invariants _ _ _ _ hry).2.2.1).mono (Compose.Growing.tree_held_at hit hy hbi)
   by_cases hgt : (tr.state y i).fg.hj < ((tr.state z c).fg.σ X.root).h
   · exact Healing.Growing.finalized_below_of_hj_lt_at hrun hnc hy hz hf hX hgt
   have hflz := hframe.floor_eq z c hz hclo hchi

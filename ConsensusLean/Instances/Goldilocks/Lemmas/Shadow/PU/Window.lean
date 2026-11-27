@@ -69,7 +69,7 @@ theorem finalized_below_viable {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
       hR.reachableWith hR.reachableWith hU hsub hsub hV hsafe hQ (by omega)
   · exact Store.F_anc_of_hj_lt_of_safe_with Store.finalitySpec_updateFinality
       hR.reachableWith hR.reachableWith hU hsub hsub hV hsafe hQ (by omega)
-  · exact (Store.cache_invariants' hR).2.2.1.trans hJ
+  · exact (Store.cache_invariants _ _ _ _ hR).2.2.1.trans hJ
 
 /-- Viability transport within fixed numerical frame data. The caller separately supplies
 finalized ancestry at the receiving cut, using `finalized_below_viable'`. -/
@@ -108,8 +108,8 @@ theorem frameKey''_le_of_relay {acp₀ : A.Payload} {stx stz : Store P A.Payload
   have hrx := hRx.reachableWith
   have hrz := hRz.reachableWith
   obtain ⟨-, hJx, -, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, ⟨Bh, hBh, hBhh⟩, -⟩ :=
-    Store.cache_invariants' hRx
-  obtain ⟨-, -, -, -, hgez, -, -⟩ := Store.cache_invariants' hRz
+    Store.cache_invariants _ _ _ _ hRx
+  obtain ⟨-, -, -, -, hgez, -, -⟩ := Store.cache_invariants _ _ _ _ hRz
   by_cases hlt : stx.hmax < stz.hmax
   · rw [Generic.frameKey''_eq, Generic.frameKey''_eq]
     split_ifs <;> omega
@@ -237,7 +237,7 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.root_witness_of_earlier_
       Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc ell.frame.fcRoot Q := by
   have hr := (Compose.goldilocks_ac_projection_from' hrun hnc).localRun
   have hR := Node.fg_reachable_at hrun.toLocalRun hy a
-  obtain ⟨-, -, -, -, -, ⟨Q, hQ, hQh⟩, -⟩ := Store.cache_invariants' hR
+  obtain ⟨-, -, -, -, -, ⟨Q, hQ, hQh⟩, -⟩ := Store.cache_invariants _ _ _ _ hR
   have hv : (tr.state y a).fg.IsViable Q :=
     (Store.isViable_iff _ _).mpr (Or.inl hQh.ge)
   have hFQ := finalized_below_viable hR

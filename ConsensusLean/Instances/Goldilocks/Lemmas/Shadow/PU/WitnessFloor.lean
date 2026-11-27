@@ -367,7 +367,7 @@ theorem proposal_crosses {W : NodeBlock P ACP} (hW : W ∈ st.tree)
   have hroot : ∀ {X Y : NodeBlock P ACP}, X ∈ st.tree → Y ∈ st.tree → X.root = Y.root →
       X = Y := fun hX hY he => hcoh.1 hX hY he
   have hjh := hj_lt_h_with hu hR hW
-  obtain ⟨-, hJm, -, ⟨X, hX, hXJ, hXj⟩, -⟩ := cache_invariants' hr
+  obtain ⟨-, hJm, -, ⟨X, hX, hXJ, hXj⟩, -⟩ := cache_invariants _ _ _ _ hr
   obtain ⟨hJcase, -⟩ := store_J_entry_with hu hR
   have hJ : (st.σ st.J.root).h = st.hj ∧ (st.σ st.J.root).Th = st.J.root := by
     rcases hJcase with ⟨-, h0⟩ | h

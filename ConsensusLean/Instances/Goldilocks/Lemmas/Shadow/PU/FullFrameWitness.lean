@@ -18,7 +18,7 @@ private theorem full_frame_viable_witness_of_max {acp₀ : ACP}
     (hF : ∀ Q ∈ st.tree, (st.σ Q.root).h = st.hmax → st.Anc st.F Q) :
     ∃ Q ∈ st.toFrame.tree, Q ∈ st.toFrame.viableHeads ∧
       st.toFrame.Anc st.toFrame.fcRoot Q := by
-  obtain ⟨_, _, _, _, _, ⟨Q, hQ, hheight⟩, _⟩ := Store.cache_invariants' hr
+  obtain ⟨_, _, _, _, _, ⟨Q, hQ, hheight⟩, _⟩ := Store.cache_invariants _ _ _ _ hr
   have hFQ := hF Q hQ hheight
   refine ⟨Q, ?_, ?_, ?_⟩
   · rw [Store.toFrame_tree]
