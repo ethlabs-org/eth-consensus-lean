@@ -409,10 +409,11 @@ theorem toFG_later_proposal_head_after_stock_at'
       have hwrite : tr.time k = sp.ts l₀.slot + 6 * sp.Δ := hu.2.2.1
       push_cast at hstep hlo
       linarith only [hlo, hstep, hwrite, hkt, ht, sp.toParams.hΔ]
-    exact hRD.trans ((Healing.PU.StockWindow.regular_later_heads_at' hframeK hrun hnc hsvc hawake
-      hf hcatch
+    exact hRD.trans ((Healing.PU.StockWindow.regular_later_heads_of_floor_ancestor_at' hframeK
+      hrun hnc hsvc hawake hf hcatch
       hnr (s := l₀.slot) (by omega) (by omega) (by omega) hm (by omega) hmb
-      (hrun.antitone hkt hy) (Or.inr ⟨ℓu, C, hu, hC, hD'⟩) hK r (by omega) hrN).2 hsr
+      (hrun.antitone hkt hy) (Or.inr ⟨ℓu, C, hu, hC, hD'⟩) hp hPp hPfl
+      (hPR.trans hRD) hK r (by omega) hrN).2 hsr
       z c ellp hz hcp hcall hti d pay hd)
   have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
   have hr := hac.upTo (hrun.time_nonneg a)
@@ -465,11 +466,11 @@ theorem toFG_later_proposal_head_after_stock_at'
       have hwrite : tr.time a = sp.ts j + 6 * sp.Δ := hu.2.2.1
       push_cast at hstep hlo
       linarith only [hlo, hstep, hwrite, hatime, ht, sp.toParams.hΔ]
-    exact hRD.trans ((Healing.PU.StockWindow.regular_later_heads_at' hframeK hrun hnc hsvc hawake
-      hf hcatch
+    exact hRD.trans ((Healing.PU.StockWindow.regular_later_heads_of_floor_ancestor_at' hframeK
+      hrun hnc hsvc hawake hf hcatch
       hnr (by omega) (by omega) (by omega) hm (by omega) hmb hya
-      (Or.inl ⟨CV, hreg⟩) hK r (by omega) hrN).2 (by omega) z c ellp hz hcp hcall hti d pay
-      hd)
+      (Or.inl ⟨CV, hreg⟩) hp hPp hPfl (hPR.trans hRD) hK r (by omega) hrN).2 (by omega) z c ellp
+      hz hcp hcall hti d pay hd)
   · have halo : sp.ts s₀ ≤ tr.time a := hs₀j.trans hjtime
     have ho := (AC.upTo_optimisticLockAt hrun.time_mono).mpr ⟨le_rfl, hopt⟩
     have hat := (AC.optimisticLockAt_spec hr hya ho (AC.CommitteeDict.full sp.n)
