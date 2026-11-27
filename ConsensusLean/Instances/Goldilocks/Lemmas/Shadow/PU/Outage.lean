@@ -93,8 +93,8 @@ theorem projAC_upTo_state
 /-! ## Run facts over the shadow run (`RunFacts'`)
 
 The stock facts the Hi walk reads, restated over `Growing.GoldilocksRun'`, each with the stock
-signature (`Growing/Outage/Local`, `Count`, `S5Geometry`; `Healing/M1/FrameKey`). A proof still to
-be written is a `sorry` here; none is assumed elsewhere. -/
+signature (`Growing/Outage/Local`, `Count`, `S5Geometry`; `Healing/M1/FrameKey`). These facts
+are proved below. -/
 
 section RunFacts'
 
