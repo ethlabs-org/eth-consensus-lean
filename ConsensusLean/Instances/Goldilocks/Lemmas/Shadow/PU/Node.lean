@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 
 public section
 
@@ -593,6 +594,52 @@ theorem attest_source' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n
 theorem honest_blocks_coherent' (h : Node.LocalRun' proposer dg H sg tr ini)
     (hnc : NoCollRun dg tr) : Coherent (tr.HonestBlocks H) := by
   sorry
+
+end Consensus.Goldilocks.Compose
+
+namespace Consensus.Goldilocks.Healing
+
+open AC (ACParams ReplayOrder Payload)
+
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+
+theorem toFG_mem_tree' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    {ℓ : ACLabel (goldilocksNode' sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hto : AC.ToFGAt tr.projAC y k ℓ C) : C ∈ (tr.state y k).fg.tree := by
+  have hmem := (AC.toFG_source hto.2.2).1.1
+  rw [Node.frame_of_projAC_at' hrun.toLocalRun' hy hto.1, Node.frame'_eq,
+    Store.toFrame'_tree] at hmem
+  exact hmem.1
+
+end Consensus.Goldilocks.Healing
+
+namespace Consensus.Goldilocks.Compose
+
+open AC (ACParams ReplayOrder Payload)
+
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+
+theorem honest_eq_genesis' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+    (hU : Coherent (tr.HonestBlocks H))
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocks H)
+    (hr : B.root = sp.genesisRoot) :
+    B = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload := by
+  sorry
+
+theorem honest_row_signed_before' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+    (_hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {X : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hX : X ∈ (tr.state y i).fg.tree) {a : FG.Att sp.n} (ha : a ∈ X.fgPayload) (hav : a.val ∈ H) :
+    ∃ m < i, tr.AcceptAt y m X ∧ ∃ k < m, tr.SignAt a.val k a := by
+  rcases Healing.tree_accepted' hrun.toLocalRun' hy hX with rfl | ⟨m, hm, hA⟩
+  · simp [Params.genesisBlock] at ha
+  · exact ⟨m, hm, hA,
+      hrun.att_unforgeable y hy m a (Or.inr ⟨X, ⟨true, hA⟩, ha⟩) hav⟩
 
 end Consensus.Goldilocks.Compose
 
