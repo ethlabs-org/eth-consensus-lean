@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Gol
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.GenericRun
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
 
 public section
 
@@ -15,10 +16,11 @@ This file copies the stock trace laws that read the node's execution, over `gold
 * the FG execution law `FGLabel.Step'` and the FG trace contract `FGLocalRun'` (static) and
   `Growing.FGLocalRun'`, copies of `FGLabel.Step`, `FGLocalRun` and `Growing.FGLocalRun` with
   `Store.onBlock'` in place of `Store.onBlock`;
-* the component state `Compose.projFG_state'` (`Compose.projAC_state'` and
-  `Compose.honest_blocks_coherent'` are in `Shadow/PU/Node`), the FG execution
-  `Compose.fg_exec'` and the FG projection `Compose.fg_projection_from'`;
-* the AC projection `Compose.goldilocks_ac_projection_from'`;
+* the component state `Compose.projFG_state'` (`Compose.projAC_state'` is in
+  `Shadow/PU/Node`, the proved honest-tree coherence in `Shadow/PU/Coherence`), the FG
+  execution `Compose.fg_exec'` (the FG projection `Compose.fg_projection_from'` is in
+  `Shadow/PU/FGProjection`);
+* (the AC projection `Compose.goldilocks_ac_projection_from'` is in `Shadow/PU/ACProjection`);
 * the run laws under growing faults, `Growing.LocalRun'` and `Growing.GoldilocksRun'`, copies of
   `Growing.LocalRun` and `Growing.GoldilocksRun` with the shadow cut law and groups;
 * the prefix transport `Growing.GoldilocksRun'.upTo`.
@@ -29,10 +31,7 @@ in the AC interface, and the shadow changes only the FG store and the frame. The
 conclude the stock `AC.ACRun`. The run carrier `RunTrace' = RunTrace` is shared, so the pure trace
 predicates (`SyncRunAt`, `GSTRunAt`, `HealthyRunAt`, `CatchRun`, `NoCollRun`, `projAC_callAt`,
 `projFG_callAt`, `HonestBlocks`, `Trace.upTo`, `projFG`) are reused as they are; only the lemmas
-that read the run laws are copied.
-
-**Open (shadow work in progress).** The proofs marked `sorry` are copies still to be written;
-each is named after its stock counterpart with a prime. -/
+that read the run laws are copied. -/
 
 namespace Consensus.Goldilocks
 
@@ -253,79 +252,93 @@ theorem fg_exec' (h : Node.LocalRun' proposer dg H sg tr ini) :
       have hlaw := (cutStep'_attest_some _ _ _ _ _ _).1 hlaw
       exact ⟨hlaw.2.1, by simp [hlaw.1]⟩
 
-/-- The tick order through the FG calls for a shadow run: the FG laws `attest_public`,
-`own_first`, `attest_order` and `own_payload` of the projection (copies of `attestCall_tick`,
-`own_accept`, `before_tick` and `fg_before_attest` over the shadow groups). -/
-theorem fg_tick_order' (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P).Requirements)
-    (hg₀ : (P.genesisBlock A.genesisPayload).RootOk dg)
-    (h : Node.LocalRun' proposer dg H sg tr ini) (hnc : NoCollRun dg tr) :
-    (∀ y ∈ H, ∀ i src signed, tr.projFG.CallAt y i (.attest src signed) →
-      P.IsPublic (tr.projFG.time i)) ∧
-    (∀ y ∈ H, ∀ i B, tr.projFG.CallAt y i (.block B true) → B.proposer = y →
-      P.slotTime B.slot = tr.projFG.time i → ∀ k < i, ∀ ℓ, tr.projFG.CallAt y k ℓ →
-        tr.projFG.time k < tr.projFG.time i) ∧
-    (∀ y ∈ H, ∀ j src signed, tr.projFG.CallAt y j (.attest src signed) →
-      ∀ i ℓ, i < j → tr.projFG.CallAt y i ℓ → tr.projFG.time i = tr.projFG.time j →
-        ∃ B acc, ℓ = .block B acc ∧ B.proposer = y ∧ P.slotTime B.slot = tr.projFG.time j) ∧
-    (∀ y ∈ H, ∀ i B, tr.projFG.CallAt y i (.block B true) → B.proposer = y →
-      P.slotTime B.slot = tr.projFG.time i → ∀ a ∈ B.fgPayload,
-        a ∈ (tr.projFG.store y i).atts) := by
-  sorry
-
-/-- **C0.5 (c), the shadow FG projection**, from any starts `ini` at which the AC meets the
-requirements (a copy of `fg_projection_from`). -/
-theorem fg_projection_from' (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P).Requirements)
-    (hg₀ : (P.genesisBlock A.genesisPayload).RootOk dg) (h : Node.LocalRun' proposer dg H sg tr ini)
-    (hnc : NoCollRun dg tr) : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG := by
-  obtain ⟨hpub, hfirst, horder, hpay⟩ := fg_tick_order' hq hg₀ h hnc
-  refine
-    { coherent := honest_blocks_coherent' h hnc
-      init := (fg_exec' h).1
-      exec := (fg_exec' h).2
-      tree_subset := fun y hy i X hX => ⟨y, hy, i, by
-        rw [FGTrace.store, projFG_state' h hy] at hX
-        exact hX⟩
-      time_nonneg := h.time_nonneg
-      time_mono := h.time_mono
-      attest_public := hpub
-      own_first := hfirst
-      attest_order := horder
-      own_payload := hpay
-      unforgeable := fun y hy i a ⟨ℓ, hc, ha⟩ hv => ?_ }
-  have hc := projFG_callAt.1 hc
-  have hpr : tr.AttCallAt y i a ∨ ∃ B, tr.BlockCallAt y i B ∧ a ∈ B.fgPayload := by
-    cases ℓ with
-    | block B acc =>
-      cases acc with
-      | true => exact Or.inr ⟨B, ⟨true, hc⟩, ha⟩
-      | false => cases ha
-    | attestation a' =>
-      rw [FGLabel.processed, List.mem_singleton] at ha
-      subst ha
-      exact Or.inl hc
-    | attest C s => cases ha
-  obtain ⟨j, hj, src, hs⟩ := h.att_unforgeable y hy i a hpr hv
-  exact ⟨j, hj, src, projFG_callAt.2 hs⟩
-
 end Consensus.Goldilocks.Compose
 
-namespace Consensus.Goldilocks.Compose
+namespace Consensus.Goldilocks.RunTrace
 
-open AC (ACParams ReplayOrder Payload)
+variable {P : Params} {A : NodeAC P} (tr : RunTrace A) {d : Time}
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {proposer : Nat → Fin sp.n}
-  {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace' sp ro} {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+/-- A shadow group of the prefix is a shadow group of the run at a time `≤ d`, and conversely (a
+copy of `upTo_groupAt`). -/
+theorem upTo_groupAt' (hmono : Monotone tr.time) {proposer : Nat → Fin P.n}
+    {dg : Digest (List (FG.Att P.n)) A.Payload} {y : Fin P.n} {j : Nat} {t : Time}
+    {e : Node.Event A} :
+    (tr.upTo d).GroupAt' proposer dg y j t e ↔ t ≤ d ∧ tr.GroupAt' proposer dg y j t e := by
+  rw [groupAt'_iff, groupAt'_iff]
+  constructor
+  · rintro ⟨hne, hcuts, hev⟩
+    have h0 := hcuts 0 (List.length_pos_of_ne_nil hne)
+    have ht : tr.time j = t := h0.2.1
+    have hl : (tr.upTo d).label j ≠ none := by
+      change (tr.upTo d).label (j + 0) ≠ none
+      rw [h0.2.2.2.2]
+      exact Option.some_ne_none _
+    have hjd : tr.time j ≤ d := by
+      by_contra hc
+      exact hl (by simp [RunTrace.upTo, Trace.upTo_label, hc])
+    have hs := upTo_state_of_le (y := y) hmono hjd
+    rw [hs] at hne hcuts hev
+    refine ⟨ht ▸ hjd, hne, fun k hk => ?_, hev⟩
+    obtain ⟨h1, h2, h3, h4, h5⟩ := hcuts k hk
+    have hkd : tr.time (j + k) ≤ d := by
+      rw [show tr.time (j + k) = t from h2, ← ht]
+      exact hjd
+    exact ⟨h1, h2, h3, h4, by simpa [RunTrace.upTo, Trace.upTo_label, hkd] using h5⟩
+  · rintro ⟨htd, hne, hcuts, hev⟩
+    have h0 := hcuts 0 (List.length_pos_of_ne_nil hne)
+    have ht : tr.time j = t := h0.2.1
+    have hs := upTo_state_of_le (y := y) hmono (d := d) (ht ▸ htd)
+    refine ⟨?_, fun k hk => ?_, ?_⟩
+    · rw [hs]; exact hne
+    · rw [hs] at hk
+      obtain ⟨h1, h2, h3, h4, h5⟩ := hcuts k hk
+      have hkd : tr.time (j + k) ≤ d := by
+        rw [show tr.time (j + k) = t from h2]
+        exact htd
+      refine ⟨h1, h2, h3, h4, ?_⟩
+      simp only [RunTrace.upTo, Trace.upTo_label, hkd, ite_true]
+      rw [h5]
+      simp [hs]
+    · rw [hs]; exact hev
 
-/-- **The honest-object facts of a shadow run's AC projection**, from starts up to the vote
-permission (a copy of `goldilocks_ac_projection_from`; it concludes the stock `AC.ACRun`, the AC
-being the stock one). -/
-theorem goldilocks_ac_projection_from' (hrun : GoldilocksRun' proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) :
-    AC.ACRun proposer tr.projAC H (tr.HonestBlocks H) ini := by
-  sorry
+theorem upTo_inGroup' (hmono : Monotone tr.time) {proposer : Nat → Fin P.n}
+    {dg : Digest (List (FG.Att P.n)) A.Payload} {y : Fin P.n} {j i : Nat} {t : Time}
+    {e : Node.Event A} (htd : t ≤ d) (h : tr.InGroup' proposer dg y j i t e) :
+    (tr.upTo d).InGroup' proposer dg y j i t e := by
+  rw [inGroup'_iff] at h ⊢
+  obtain ⟨hg, hji, hlt⟩ := h
+  have hne := ((groupAt'_iff _ _ _ _ _ _ _).1 hg).1
+  have ht : tr.time j = t :=
+    (((groupAt'_iff _ _ _ _ _ _ _).1 hg).2.1 0 (List.length_pos_of_ne_nil hne)).2.1
+  refine ⟨(upTo_groupAt' tr hmono).mpr ⟨htd, hg⟩, hji, ?_⟩
+  rwa [upTo_state_of_le hmono (ht ▸ htd)]
 
-end Consensus.Goldilocks.Compose
+theorem upTo_tickAt' (hmono : Monotone tr.time) {proposer : Nat → Fin P.n}
+    {dg : Digest (List (FG.Att P.n)) A.Payload} {y : Fin P.n} {j : Nat} {t : Time} :
+    (tr.upTo d).TickAt' proposer dg y j t ↔ t ≤ d ∧ tr.TickAt' proposer dg y j t := by
+  simp only [tickAt'_iff, upTo_groupAt' tr hmono, exists_and_left]
+
+/-- A shadow own publication of the run at a time `≤ d` is one of the prefix (a copy of
+`upTo_ownPublicationAt`). -/
+theorem upTo_ownPublicationAt' (hmono : Monotone tr.time) {proposer : Nat → Fin P.n}
+    {dg : Digest (List (FG.Att P.n)) A.Payload} {y : Fin P.n} {j : Nat} {t : Time}
+    (htd : t ≤ d) (h : tr.OwnPublicationAt' proposer dg y j t) :
+    (tr.upTo d).OwnPublicationAt' proposer dg y j t := by
+  rw [ownPublicationAt'_iff] at h ⊢
+  obtain ⟨a, hg, hav, hn, j₀, x, f, hg₀, hle, hk⟩ := h
+  have hg1 := (groupAt'_iff _ _ _ _ _ _ _).1 hg
+  have hg01 := (groupAt'_iff _ _ _ _ _ _ _).1 hg₀
+  have hj : tr.time j = t := (hg1.2.1 0 (List.length_pos_of_ne_nil hg1.1)).2.1
+  have hj₀ : tr.time j₀ = t := (hg01.2.1 0 (List.length_pos_of_ne_nil hg01.1)).2.1
+  have hs := upTo_state_of_le (y := y) hmono (d := d) (hj ▸ htd)
+  have hs₀ := upTo_state_of_le (y := y) hmono (d := d) (hj₀ ▸ htd)
+  refine ⟨a, (upTo_groupAt' tr hmono).mpr ⟨htd, hg⟩, hav, hs ▸ hn, j₀, x, f,
+    (upTo_groupAt' tr hmono).mpr ⟨htd, hg₀⟩, hs₀ ▸ hle, fun k hk₁ hk₂ => ?_⟩
+  obtain ⟨hnk, b, hb, hl⟩ := hk k (hs₀ ▸ hk₁) hk₂
+  exact ⟨hnk, b, hb, (Trace.upTo_label_eq_some _).mpr
+    ⟨(hmono hk₂.le).trans (hj ▸ htd), hl⟩⟩
+
+end Consensus.Goldilocks.RunTrace
 
 namespace Consensus.Goldilocks.Growing
 
@@ -341,7 +354,85 @@ a static shadow run for the validators honest at `d`, from the same starts (a co
 theorem GoldilocksRun'.upTo {ini : Fin sp.n → (goldilocksNode' sp ro).State}
     (h : Growing.GoldilocksRun' proposer dg H tr ini) {d : Time} (hd : 0 ≤ d) :
     Consensus.Goldilocks.GoldilocksRun' proposer dg (H d) (tr.upTo d) ini := by
-  sorry
+  have hm := h.time_mono
+  have anti : ∀ {t}, t ≤ d → H d ⊆ H t := fun ht => h.antitone ht
+  refine
+    { init := fun y hy => h.init y (anti hd hy)
+      grouped := fun y hy i c hc => ?_
+      cutLaw := fun y hy i c hc => ?_
+      wire := fun y hy j t e he => ?_
+      proposerCredential := fun y hy j t B hB => ?_
+      time_nonneg := h.time_nonneg
+      time_mono := hm
+      finite := fun T => (h.finite T).subset fun i ⟨hl, hT⟩ => ⟨fun hn => hl (by
+        simp [Trace.upTo_label, hn]), hT⟩
+      phase_order := fun y hy y' hy' j j' t e e' he he' hjj hop => ?_
+      tick_public := fun y hy j t ht => ?_
+      tick_unique := fun y hy j j' t ht ht' => ?_
+      tick_of_awake := fun y hy t ht hp ha => ?_
+      awake_in_horizon := fun y hy t ha => ?_
+      awake_of_call := fun y hy i hc => ?_
+      restart_of_sleep := fun y hy i u hc hu hui hs hb => ?_
+      restart_at_wake := fun y hy u v hu huv hs hv => ?_
+      sleep_of_restart := fun y hy i hr => ?_
+      block_unforgeable := fun y hy i B hB hp => ?_
+      att_unforgeable := fun y hy i a ha hv => ?_
+      msg_unforgeable := fun y hy i m hc hs => ?_
+      vstart := h.vstart
+      genesis_root_ok := h.genesis_root_ok }
+  · obtain ⟨hid, hc⟩ := (Trace.upTo_callAt _).mp hc
+    obtain ⟨j, e, hg⟩ := h.grouped y i c hc (anti hid hy)
+    exact ⟨j, e, RunTrace.upTo_inGroup' _ hm hid hg⟩
+  · obtain ⟨hid, hc⟩ := (Trace.upTo_callAt _).mp hc
+    rw [RunTrace.upTo_state_of_le hm hid]
+    exact h.cutLaw y i c hc (anti hid hy)
+  · obtain ⟨htd, he⟩ := (RunTrace.upTo_groupAt' _ hm).mp he
+    exact h.wire y j t e (anti htd hy) he
+  · obtain ⟨htd, hB⟩ := (RunTrace.upTo_groupAt' _ hm).mp hB
+    exact h.proposerCredential y j t B (anti htd hy) hB
+  · obtain ⟨htd, he⟩ := (RunTrace.upTo_groupAt' _ hm).mp he
+    obtain ⟨-, he'⟩ := (RunTrace.upTo_groupAt' _ hm).mp he'
+    exact h.phase_order y y' j j' t e e' (anti htd hy) (anti htd hy') he he' hjj
+      (hop.imp_right fun hn hp => hn (RunTrace.upTo_ownPublicationAt' _ hm htd hp))
+  · obtain ⟨htd, ht⟩ := (RunTrace.upTo_tickAt' _ hm).mp ht
+    exact h.tick_public y j t (anti htd hy) ht
+  · obtain ⟨htd, ht⟩ := (RunTrace.upTo_tickAt' _ hm).mp ht
+    obtain ⟨-, ht'⟩ := (RunTrace.upTo_tickAt' _ hm).mp ht'
+    exact h.tick_unique y j j' t (anti htd hy) ht ht'
+  · obtain ⟨ha, htd⟩ := ha
+    obtain ⟨j, hj⟩ := h.tick_of_awake y t (anti htd hy) ht hp ha
+    exact ⟨j, (RunTrace.upTo_tickAt' _ hm).mpr ⟨htd, hj⟩⟩
+  · obtain ⟨ha, htd⟩ := ha
+    exact RunTrace.upTo_inHorizon htd (h.awake_in_horizon y t (anti htd hy) ha)
+  · obtain ⟨hid, hc⟩ := (RunTrace.upTo_isCall _).mp hc
+    exact ⟨h.awake_of_call y i (anti hid hy) hc, hid⟩
+  · obtain ⟨hid, hc⟩ := (RunTrace.upTo_isCall _).mp hc
+    refine (RunTrace.upTo_restartAt _).mpr ⟨hid, h.restart_of_sleep y i u (anti hid hy) hc hu hui
+      (fun ha => hs ⟨ha, hui.le.trans hid⟩) fun j hj hcj => hb j hj ?_⟩
+    exact (RunTrace.upTo_isCall _).mpr ⟨(hm hj.le).trans hid, hcj⟩
+  · obtain ⟨hv, hvd⟩ := hv
+    obtain ⟨k, hk, huk, hkv⟩ := h.restart_at_wake y u v (anti hvd hy) hu huv
+      (fun ha => hs ⟨ha, huv.le.trans hvd⟩) hv
+    exact ⟨k, (RunTrace.upTo_restartAt _).mpr ⟨hkv.trans hvd, hk⟩, huk, hkv⟩
+  · obtain ⟨hid, hr⟩ := (RunTrace.upTo_restartAt _).mp hr
+    obtain ⟨u, hu, hui, hs, hb⟩ := h.sleep_of_restart y i (anti hid hy) hr
+    refine ⟨u, hu, hui, fun ha => hs ha.1, fun j hj hcj => hb j hj ?_⟩
+    exact ((RunTrace.upTo_isCall _).mp hcj).2
+  · obtain ⟨hid, hB⟩ := (RunTrace.upTo_blockCallAt _).mp hB
+    obtain ⟨j, hji, hj⟩ := h.block_unforgeable y i B (anti hid hy) hB (anti hid hp)
+    exact ⟨j, hji, (RunTrace.upTo_ownBlockAt _).mpr ⟨(hm hji).trans hid, hj⟩⟩
+  · have hid : tr.time i ≤ d := by
+      rcases ha with ha | ⟨B, hB, _⟩
+      exacts [((RunTrace.upTo_attCallAt _).mp ha).1, ((RunTrace.upTo_blockCallAt _).mp hB).1]
+    have ha' : tr.AttCallAt y i a ∨ ∃ B, tr.BlockCallAt y i B ∧ a ∈ B.fgPayload := by
+      rcases ha with ha | ⟨B, hB, haB⟩
+      exacts [Or.inl ((RunTrace.upTo_attCallAt _).mp ha).2,
+        Or.inr ⟨B, ((RunTrace.upTo_blockCallAt _).mp hB).2, haB⟩]
+    obtain ⟨j, hji, hj⟩ := h.att_unforgeable y i a (anti hid hy) ha' (anti hid hv)
+    exact ⟨j, hji, (RunTrace.upTo_signAt _).mpr ⟨(hm hji.le).trans hid, hj⟩⟩
+  · obtain ⟨hid, hc⟩ := (RunTrace.upTo_msgCallAt _).mp hc
+    obtain ⟨j, hji, hj⟩ := h.msg_unforgeable y i m (anti hid hy) hc (anti hid hs)
+    exact ⟨j, hji, (RunTrace.upTo_emitAt _).mpr ⟨(hm hji.le).trans hid, hj⟩⟩
 
 end Consensus.Goldilocks.Growing
 

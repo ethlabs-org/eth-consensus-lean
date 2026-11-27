@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Groups
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 
 public section
 
@@ -204,6 +205,94 @@ noncomputable def exec' (proposer : Nat → Fin P.n)
   | .message m => onMessage' self st t m
   | .attestation a => onAttestation st a
   | .restart => restart' self st t
+
+theorem acCall'_eq (self : Fin P.n) (st : NodeState A) (t : Time) (c : A.Call) :
+    acCall' self st t c =
+      (let Φ := frame' st
+       let r := A.step self st.ac Φ t c
+       ({ st with ac := r.1 }, .ac ⟨c, Φ, r.2⟩)) := by rfl
+
+theorem acProposal'_eq (st : NodeState A) (t : Time) :
+    acProposal' st t =
+      (let Φ := frame' st
+       let r := A.proposal st.ac Φ t
+       ({ st with ac := r.1 }, .ac ⟨.proposal, Φ, []⟩, r.2)) := by rfl
+
+theorem acToFG'_eq (st : NodeState A) (t : Time) :
+    acToFG' st t =
+      (let Φ := frame' st
+       let r := A.toFG st.ac Φ t
+       ({ st with ac := r.1 }, .ac ⟨.toFG, Φ, []⟩, r.2)) := by rfl
+
+theorem onBlock'_eq (self : Fin P.n) (st : NodeState A) (t : Time) (B : A.Blk) :
+    onBlock' self st t B =
+      (if P.slotOf t < B.slot then (st, [])
+       else match st.fg.onBlock' B with
+       | none => (st, [.fg (.block B false)])
+       | some fg' =>
+           let r := acCall' self { st with fg := fg' } t (.block B)
+           (r.1, [.fg (.block B true), r.2])) := by rfl
+
+theorem onMessage'_eq (self : Fin P.n) (st : NodeState A) (t : Time) (m : A.Msg) :
+    onMessage' self st t m =
+      (let r := acCall' self st t (.message m); (r.1, [r.2])) := by rfl
+
+theorem restart'_eq (self : Fin P.n) (st : NodeState A) (t : Time) :
+    restart' self st t =
+      (let r := acCall' self st t .restart; (r.1, [r.2])) := by rfl
+
+theorem proposeBlock'_eq (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+    (st : NodeState A) (t : Time) (x : Nat) (H : A.Blk) (p : A.Payload) :
+    proposeBlock' dg self st t x H p = onBlock' self st t (mkBlock dg self st.fg t x H p) := by
+  rfl
+
+theorem tickStep'_eq (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+    (st : NodeState A) (t : Time) (x : Nat) (step : TickStep) :
+    tickStep' proposer dg self st t x step =
+      (match step with
+       | .acTick => let r := acCall' self st t .tick; (r.1, [r.2])
+       | .proposal =>
+           if Proposes proposer self t then
+             let r := acProposal' st t
+             match r.2.2 with
+             | none => (r.1, [r.2.1])
+             | some (d, p) =>
+                 let r' := proposeBlock' dg self r.1 t x d.head p
+                 (r'.1, r.2.1 :: r'.2)
+           else (st, [])
+       | .fgUpdate =>
+           let r := acToFG' st t
+           match r.2.2 with
+           | none => (r.1, [r.2.1])
+           | some C =>
+               let r' := attest self r.1 C
+               (r'.1, r.2.1 :: r'.2)) := by rfl
+
+theorem runSteps'_eq (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+    (st : NodeState A) (t : Time) (x : Nat) (steps : List TickStep) :
+    runSteps' proposer dg self st t x steps =
+      steps.foldl (fun acc step =>
+        let r := tickStep' proposer dg self acc.1 t x step
+        (r.1, acc.2 ++ r.2)) (st, []) := by rfl
+
+theorem onTick'_eq (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+    (st : NodeState A) (t : Time) (x : Nat) (fgDue : Bool) :
+    onTick' proposer dg self st t x fgDue =
+      runSteps' proposer dg self st t x (tickSteps fgDue) := by rfl
+
+theorem exec'_eq (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+    (st : NodeState A) (t : Time) (e : Event A) :
+    exec' proposer dg self st t e =
+      (match e with
+       | .tick x fgDue => onTick' proposer dg self st t x fgDue
+       | .block B => onBlock' self st t B
+       | .message m => onMessage' self st t m
+       | .attestation a => onAttestation st a
+       | .restart => restart' self st t) := by rfl
 
 def CutStep' (self : Fin P.n) (t : Time) (st : NodeState A) : Cut A → NodeState A → Prop
   | .ac ℓ, st' =>
@@ -472,42 +561,6 @@ theorem frame_of_projAC_at' {proposer : Nat → Fin P.n}
 
 end Consensus.Goldilocks.Node
 
-namespace Consensus.Goldilocks.Healing
-
-open AC (ACParams ReplayOrder Payload)
-
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-
-/-- Shadow operational extraction; proof pending the copied handler-cut lemmas. -/
-theorem honestProposalRun_of_proposesAt' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr)
-    {p : Fin sp.n} {kP s : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hp : p ∈ H) (hpp : p = proposer s) (hP : tr.ProposesAt p kP P)
-    (hPs : P.slot = s) : HonestProposalRun tr H proposer s P := by
-  sorry
-
-/-- Shadow ancestry transfer, with the stock run and collision premises. -/
-theorem honest_held_anc' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {A W : AC.Blk sp.n (List (FG.Att sp.n))}
-    (h : Anc (tr.HonestBlocks H) A W) (hW : W ∈ (tr.state y i).fg.tree) :
-    (tr.state y i).fg.Anc A W := by
-  sorry
-
-/-- Shadow height transfer, including equal-height entry preservation. -/
-theorem honest_held_height' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n}
-    (hy : y ∈ H) {i : Nat} {A W : AC.Blk sp.n (List (FG.Att sp.n))}
-    (h : (tr.state y i).fg.Anc A W) :
-    ((tr.state y i).fg.σ A.root).h ≤ ((tr.state y i).fg.σ W.root).h ∧
-      (((tr.state y i).fg.σ W.root).h = ((tr.state y i).fg.σ A.root).h →
-        ((tr.state y i).fg.σ W.root).Th = ((tr.state y i).fg.σ A.root).Th) := by
-  sorry
-
-end Consensus.Goldilocks.Healing
-
 namespace Consensus.Goldilocks.Compose
 
 variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
@@ -551,49 +604,21 @@ end Consensus.Goldilocks.Compose
 
 namespace Consensus.Goldilocks.Healing
 
-variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
-  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
-  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
+open AC (ACParams ReplayOrder Payload)
 
-theorem tree_accepted' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
-    (hy : y ∈ H) {m : Nat} {B : A.Blk} (hB : B ∈ (tr.state y m).fg.tree) :
-    B = P.genesisBlock A.genesisPayload ∨ ∃ k < m, tr.AcceptAt y k B := by
-  sorry
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
 
-theorem accept_mem_from' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
-    (hy : y ∈ H) {k : Nat} {B : A.Blk} (hA : tr.AcceptAt y k B) :
-    B ∈ (tr.state y (k + 1)).fg.tree := by
-  sorry
-
-theorem hmax_mono' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H) :
-    Monotone fun m => (tr.state y m).fg.hmax := by
-  sorry
+theorem toFG_mem_tree' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+    {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
+    {ℓ : ACLabel (goldilocksNode' sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hto : AC.ToFGAt tr.projAC y k ℓ C) : C ∈ (tr.state y k).fg.tree := by
+  have hmem := (AC.toFG_source hto.2.2).1.1
+  rw [Node.frame_of_projAC_at' hrun.toLocalRun' hy hto.1, Node.frame'_eq,
+    Store.toFrame'_tree] at hmem
+  exact hmem.1
 
 end Consensus.Goldilocks.Healing
-
-namespace Consensus.Goldilocks.Compose
-
-variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
-  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
-  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
-
-theorem accept_next' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
-    {i : Nat} {B : A.Blk} (hc : tr.CallAt y i (.fg (.block B true))) :
-    ∃ ℓ : ACLabel A, tr.CallAt y (i + 1) (.ac ℓ) ∧ ℓ.call = .block B ∧
-      tr.time (i + 1) = tr.time i := by
-  sorry
-
-theorem attest_source' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
-    {j : Nat} {C : A.Blk} {a : FG.Att P.n} (hc : tr.CallAt y j (.fg (.attest C (some a)))) :
-    ∃ j', j = j' + 1 ∧ ∃ ℓ : ACLabel A, tr.CallAt y j' (.ac ℓ) ∧ ℓ.call = .toFG ∧
-      tr.time j' = tr.time j ∧ (A.toFG (tr.state y j').ac ℓ.frame (tr.time j')).2 = some C ∧
-      (tr.state y j).fg = (tr.state y j').fg := by
-  sorry
-
-theorem honest_blocks_coherent' (h : Node.LocalRun' proposer dg H sg tr ini)
-    (hnc : NoCollRun dg tr) : Coherent (tr.HonestBlocks H) := by
-  sorry
-
-end Consensus.Goldilocks.Compose
 
 end
