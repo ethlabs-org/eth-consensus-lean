@@ -21,11 +21,11 @@ open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
   {hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
-private theorem ts_le_of_fastLock'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+private theorem ts_le_of_fastLock
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     {x : Fin sp.n} {r l : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (AC.Vote sp.n)} (hf : AC.FastLockAt tr.projAC x r l D CV) :
@@ -38,8 +38,8 @@ private theorem ts_le_of_fastLock'
   · change sp.slot (tr.time r) = l at hs
     exact (AC.ts_le_iff_le_slot sp (hrun.time_nonneg r) l).mpr (by omega)
 
-private theorem highOrigin_raw_head'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+private theorem highOrigin_raw_head
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {x : Fin sp.n} {r l : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -50,12 +50,12 @@ private theorem highOrigin_raw_head'
   have hx := hrun.antitone (le_max_right _ _) hxz
   obtain ⟨ell', hc', hD⟩ := Healing.fastLock_mem hf
   obtain rfl : ell = ell' := Option.some.inj (hc.2.symm.trans hc'.2)
-  obtain ⟨hok, hsub⟩ := Shadow.PU.Growing.frame_tree_subset_at' hrun hnc hx hc
+  obtain ⟨hok, hsub⟩ := Shadow.PU.Growing.frame_tree_subset_at hrun hnc hx hc
   refine ⟨ell, D, CV, hc, hf, (AC.viableAncestor_anc hok hD).2.mono ?_⟩
   exact fun _ hB => ⟨x, r, tr.time r, hrun.time_nonneg r,
     fun _ hq => hrun.time_mono hq.le, hx, hsub hB⟩
 
-private theorem cutZ_lt_of_anc'
+private theorem cutZ_lt_of_anc
     (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) {z : Fin sp.n} {k : Nat}
@@ -92,7 +92,7 @@ private theorem cutZ_lt_of_anc'
   rw [← hs] at hbnd
   omega
 
-private theorem not_genesis_above'
+private theorem not_genesis_above
     (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B)
@@ -105,12 +105,12 @@ private theorem not_genesis_above'
   have hreach := Compose.Growing.reachable_at' hp.run hi0 hx hle
   have hgen := (Store.accepted_tree_with Store.finalitySpec_updateFinality'
     hreach.reachableWith).2.2.1
-  have heq : G = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload :=
-    (Coherence.honestBlocksAt_coherent' hp.run hp.noColl).1 hGU
+  have heq : G = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
+    (Coherence.honestBlocksAt_coherent hp.run hp.noColl).1 hGU
       ⟨x, i, tr.time i, hi0, hle, hx, hgen⟩ hg
   have hGx : G ∈ (tr.state x i).fg.tree := heq ▸ hgen
   have hh := Outcome.high_of_anc_at' hp.run hp.noColl ho hi0 hle hx hGx hBG
-  rw [heq, show (sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload).root =
+  rw [heq, show (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).root =
       sp.toParams.genesisRoot from rfl,
     Store.σ_genesis_with Store.finalitySpec_updateFinality' hreach.reachableWith] at hh
   change HZ tr H g + 1 ≤ 1 at hh
@@ -122,7 +122,7 @@ private theorem not_genesis_above'
   have hGZ := (Store.accepted_tree_with Store.finalitySpec_updateFinality'
     hreachZ.reachableWith).2.2.1
   have hbnd := (Store.cache_invariants' hreachZ).2.2.2.2.1 _ hGZ
-  rw [show (sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload).root =
+  rw [show (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).root =
       sp.toParams.genesisRoot from rfl,
     Store.σ_genesis_with Store.finalitySpec_updateFinality' hreachZ.reachableWith] at hbnd
   have hmax : (tr.state x kZ).fg.hmax ≤ HZ tr H g := by
@@ -134,7 +134,7 @@ private theorem not_genesis_above'
   change 1 ≤ (tr.state x kZ).fg.hmax at hbnd
   omega
 
-private theorem cutZ_le_ts_of_highOrigin'
+private theorem cutZ_le_ts_of_highOrigin
     (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) : cutZ sp.toParams g ≤ sp.ts j := by
@@ -144,7 +144,7 @@ private theorem cutZ_le_ts_of_highOrigin'
   obtain ⟨CV, ell, D, hci, hfl, rfl⟩ := ho.2.2.1
   obtain ⟨ell', hc', -⟩ := Healing.fastLock_mem hfl
   obtain rfl : ell = ell' := Option.some.inj (hci.2.symm.trans hc'.2)
-  obtain ⟨-, hPhiTree⟩ := Shadow.PU.Growing.frame_tree_subset_at' hp.run hp.noColl hx hci
+  obtain ⟨-, hPhiTree⟩ := Shadow.PU.Growing.frame_tree_subset_at hp.run hp.noColl hx hci
   have hBD := (AC.anc_viableAncestor ell.frame D).mono fun C hC =>
     (⟨x, i, tr.time i, hp.run.time_nonneg i, fun _ hq => hp.run.time_mono hq.le, hx,
       hPhiTree hC⟩ : C ∈ tr.HonestBlocksAt H)
@@ -153,17 +153,17 @@ private theorem cutZ_le_ts_of_highOrigin'
     fastLock_writer_at hac.localRun hac.vstart hx hfl v hv
   have hBHv := hBD.trans hDHv
   rcases hacc with hg | ⟨q, hxq, ⟨ellq, hcq, heq⟩, hqt⟩
-  · exact (not_genesis_above' hp ho hHvU hBHv hg).elim
+  · exact (not_genesis_above hp ho hHvU hBHv hg).elim
   have hrq := hac.localRun.upTo (hp.run.time_nonneg q)
   have hcq' := (Trace.upTo_callAt tr.projAC).mpr (And.intro le_rfl hcq)
   have hHvq : Hv ∈ (tr.state x q).fg.tree :=
-    (Shadow.PU.Growing.frame_tree_subset_at' hp.run hp.noColl hxq hcq).2
+    (Shadow.PU.Growing.frame_tree_subset_at hp.run hp.noColl hxq hcq).2
       ((AC.accept_new sp hrq hxq ⟨ellq, hcq', heq⟩).1 ellq hcq')
   have hxmax : x ∈ H (max (tr.time q) (cutZ sp.toParams g)) := by
     rcases le_total (tr.time q) (cutZ sp.toParams g) with h | h
     · rw [max_eq_right h]; exact hxZ
     · rw [max_eq_left h]; exact hxq
-  have hck := cutZ_lt_of_anc' hp ho hxmax hHvq hBHv
+  have hck := cutZ_lt_of_anc hp ho hxmax hHvq hBHv
   have hqt' : tr.time q < sp.ts j + 2 * sp.Δ := hqt
   rw [cutZ_eq] at hck ⊢
   refine (AC.ts_le_iff sp).2 ?_
@@ -174,11 +174,11 @@ private theorem cutZ_le_ts_of_highOrigin'
   simp only [ACParams.ts] at h₂ hck hqt'
   linarith
 
-private theorem frame_relay'
+private theorem frame_relay
     (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
     {x y : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (hacc : tr.projAC.AcceptAt x i B) (hgi : g ≤ tr.time i)
-    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode' sp ro)}
+    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y j ell)
     (hdl : tr.projAC.deadline y j (tr.time i) ≤ tr.time j)
     (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
@@ -197,7 +197,7 @@ theorem KernelProof.relay_mem_voterBlockTree_at'
     {w y : Fin sp.n} {kw i s : Nat} {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hw : w ∈ H (tr.time kw)) (hkw : tr.projAC.AcceptAt w kw W)
     (hg : g ≤ tr.time kw) (hkwt : tr.time kw < sp.ts s + 2 * sp.Δ)
-    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp ro)}
+    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ell e)
     (hs : s + 1 ≤ e.msg.slot) (hF : Anc (tr.HonestBlocksAt H) ell.frame.F W) :
     W ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
@@ -236,7 +236,7 @@ theorem KernelProof.relay_mem_voterBlockTree_at'
     change tr.projAC.deadline y k (tr.time kw) ≤
       max (tr.time kw) (sp.ts ((e.msg.slot : Int) - 1)) + sp.Δ at h₁
     linarith only [h₂, h₁]
-  obtain ⟨ky, hky, hacc, hkyt⟩ := frame_relay' hp hw hkw hg hy hc.1
+  obtain ⟨ky, hky, hacc, hkyt⟩ := frame_relay hp hw hkw hg hy hc.1
     (by linarith only [hΔ, hslot, hti, hdl i le_rfl]) hF
   have hkyt' : tr.time ky < AC.freeze sp e.msg.slot := by
     have := hdl ky hky
@@ -269,19 +269,19 @@ theorem KernelProof.high_origin_frozen_head_at'
     {x y : Fin sp.n} {r l k : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x r l O) (hrb : tr.time r ≤ b)
     (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) (hl : l < e.msg.slot)
     (hFO : Anc (tr.HonestBlocksAt H) ell.frame.F O) :
     ∃ D ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
       Anc (tr.HonestBlocksAt H) O D := by
   have hm := hp.run.time_mono
   have hac := Compose.Growing.goldilocks_ac_projection_from' hp.run hp.noColl
-  obtain ⟨ellX, D, CV, hcx, hfl, hOD⟩ := highOrigin_raw_head' hp.run hp.noColl ho
+  obtain ⟨ellX, D, CV, hcx, hfl, hOD⟩ := highOrigin_raw_head hp.run hp.noColl ho
   have hr := hac.upTo (hp.run.time_nonneg r)
-  have hlab := cutZ_le_ts_of_highOrigin' hp ho
+  have hlab := cutZ_le_ts_of_highOrigin hp ho
   have hf := hp.committeeFaults.committee_cs2_at hp.beta_le hp.committee_pos
     (hp.committeeFacts.hsize l) (Healing.gbar_le_of_cutZ_le sp hlab)
-    ((ts_le_of_fastLock' hp.run hfl).trans hrb) (hp.run.time_nonneg r) hrb
+    ((ts_le_of_fastLock hp.run hfl).trans hrb) (hp.run.time_nonneg r) hrb
   obtain ⟨z, hz, j, ev, hv, hes, W, hW, hWr, hDW⟩ :=
     AC.fastLock_honest_vote hr _
       (AC.CommitteePAt.upTo hm hp.run.antitone hp.committeeFacts.hP _)
@@ -299,14 +299,14 @@ theorem KernelProof.high_origin_frozen_head_at'
   subst W'
   have hOW := hOD.trans hDW
   have hzZ : z ∈ H (max (tr.time j) (cutZ sp.toParams g)) :=
-    hp.run.antitone (max_le hjr (hlab.trans (ts_le_of_fastLock' hp.run hfl))) hz
+    hp.run.antitone (max_le hjr (hlab.trans (ts_le_of_fastLock hp.run hfl))) hz
   have hWz : W ∈ (tr.state z j).fg.tree :=
-    (Shadow.PU.Growing.frame_tree_subset_at' hp.run hp.noColl hzj hcz).2 hW't
-  have hZj := cutZ_lt_of_anc' hp ho hzZ hWz hOW
+    (Shadow.PU.Growing.frame_tree_subset_at hp.run hp.noColl hzj hcz).2 hW't
+  have hZj := cutZ_lt_of_anc hp ho hzZ hWz hOW
   have hjt' : tr.time j ≤ sp.ts l + sp.Δ := by rw [hes] at hjt; exact hjt
   rcases Compose.frame_anc_acceptedU hrj.toU hzj j ellZ hcz' W hW't W .refl with hg |
       ⟨c, hcj, hacc⟩
-  · exact (not_genesis_above' hp ho
+  · exact (not_genesis_above hp ho
       ⟨z, j, tr.time j, hp.run.time_nonneg j, fun _ hq => hm hq.le, hzj, hWz⟩ hOW hg).elim
   have hctj : tr.time c ≤ tr.time j := hm hcj
   have hacc₀ := ACTrace.upTo_acceptAt.mp hacc |>.2
@@ -317,10 +317,10 @@ theorem KernelProof.high_origin_frozen_head_at'
     obtain ⟨ellC, hcC, heC⟩ := hacc₀
     have hrC := (hac.upTo (hp.run.time_nonneg c)).localRun
     have hcC' := Trace.upTo_callAt tr.projAC |>.mpr (And.intro le_rfl hcC)
-    exact (Shadow.PU.Growing.frame_tree_subset_at' hp.run hp.noColl hzc₀ hcC).2
+    exact (Shadow.PU.Growing.frame_tree_subset_at hp.run hp.noColl hzc₀ hcC).2
       ((AC.accept_new sp hrC hzc₀ ⟨ellC, hcC', heC⟩).1 ellC hcC')
   have hgc : g ≤ tr.time c := by
-    have hcZ := cutZ_lt_of_anc' hp ho hzc hWc hOW
+    have hcZ := cutZ_lt_of_anc hp ho hzc hWc hOW
     have := lt_cutZ sp g
     have := le_gbar g
     have := sp.toParams.hΔ

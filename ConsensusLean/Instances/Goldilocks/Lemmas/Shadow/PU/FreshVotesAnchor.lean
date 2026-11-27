@@ -17,10 +17,10 @@ open AC (ACParams ReplayOrder Payload gbar)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
 
 /-- Current-slot residue is bounded using only casts strictly before the receiving cast. -/
-theorem read_locks_below_of_earlier_heads_primed_at'
+theorem read_locks_below_of_earlier_heads_at
     {g ΔF b : Time} {s₀ p M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts p + sp.Δ) M isTop J)
@@ -36,7 +36,7 @@ theorem read_locks_below_of_earlier_heads_primed_at'
     {z : Fin sp.n} (hz : z ∈ H (sp.ts p + sp.Δ)) (hdes : z = proposer p)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = p)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p)
     (hmargin : s₀ + 2 * sp.k ≤ p)
     (hIH : ∀ x j ev, j < i → x ∈ H (tr.time j) → AC.VoteAt tr.projAC x j ev →
@@ -77,7 +77,7 @@ theorem read_locks_below_of_earlier_heads_primed_at'
     (hPhi.2 hB) hBr
 
 /-- The deepest live read-lock image, or the F-root, lies below the primed warm proposal. -/
-theorem vote_anchor_below_of_earlier_heads_primed_at'
+theorem vote_anchor_below_of_earlier_heads_at
     {g ΔF b : Time} {s₀ p M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts p + sp.Δ) M isTop J)
@@ -93,7 +93,7 @@ theorem vote_anchor_below_of_earlier_heads_primed_at'
     {z : Fin sp.n} (hz : z ∈ H (sp.ts p + sp.Δ)) (hdes : z = proposer p)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = p)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p)
     (hmargin : s₀ + 2 * sp.k ≤ p)
     (hIH : ∀ x j ev, j < i → x ∈ H (tr.time j) → AC.VoteAt tr.projAC x j ev →
@@ -115,7 +115,7 @@ theorem vote_anchor_below_of_earlier_heads_primed_at'
     obtain ⟨l, hl, B₀, hB₀, hB₀r, hlive, rfl⟩ := AC.mem_liveLockBlocks_of_wf hPhi.1
       (AC.castAt_readPoint_locksWF hri.localRun hrun.vstart hy hcast) hB
     have hslot := (AC.castAt_specU hri.localRun.toU hy hcast).2.1
-    have hB₀P := read_locks_below_of_earlier_heads_primed_at' hframe hrun hnc hsvc hawake hf hcatch
+    have hB₀P := read_locks_below_of_earlier_heads_at hframe hrun hnc hsvc hawake hf hcatch
       hnr hm hsp hp0 hpb hz hdes hP hPs hy hc hes hmargin hIH hl
       (by rw [← hes, hslot]; exact hlive) hB₀ hB₀r hK
     exact (Anc.mono hPhi.2 (AC.viableAncestor_anc hPhi.1 hB₀).2).trans hB₀P

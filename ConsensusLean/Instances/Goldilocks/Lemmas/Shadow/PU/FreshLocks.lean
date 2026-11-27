@@ -14,7 +14,7 @@ open AC (ACParams ReplayOrder Payload gbar)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
 
 /-- Selection, next-slot extension and old-lock compatibility discharge the shared no-veto proof. -/
 theorem unanimous_update_no_veto_at' {K : AC.CommitteeDict sp.n}
@@ -35,7 +35,7 @@ theorem unanimous_update_no_veto_at' {K : AC.CommitteeDict sp.n}
     (hun : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e →
       e.msg.slot = u → e.msg.head = P.root)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hu : AC.UpdateAt tr.projAC y k u ell)
+    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k u ell)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ¬ AC.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P := by
   apply Core.unanimous_update_no_veto_at hrun.toCore hnc hsvc hawake hf hcatch
@@ -46,7 +46,7 @@ theorem unanimous_update_no_veto_at' {K : AC.CommitteeDict sp.n}
     exact ⟨hv, hc⟩
   · exact unanimous_next_votes_at' hframe hrun hnc hsvc hawake hf hcatch hnr
       hmargin hjoin hTb hz hdes hP hPs hun hK
-  · exact FrameWindow.older_locks_compatible_at_update_at' hframe hrun hnc hsvc hawake hf hcatch hnr
+  · exact FrameWindow.older_locks_compatible_at_update_at hframe hrun hnc hsvc hawake hf hcatch hnr
       hmargin hjoin hTb hz hdes hP hPs hun hy hu hK
 
 end Consensus.Goldilocks.Healing.Growing.Shadow

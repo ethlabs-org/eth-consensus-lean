@@ -479,21 +479,21 @@ theorem tickRun_inv (t₀ : Time) :
   · obtain ⟨f, hf⟩ := state_frame i
     rw [hfr]
     have hτ : j ≤ stTip i := le_trans (tip_ge hji) (tip_le_stTip i)
-    rcases Nat.lt_or_ge m (jexp (stTip i)) with hmj | hmj
-    · left; rw [hf.fcRoot]; exact anc_honest hmj.le
+    rcases Nat.lt_or_ge m f with hmf | hmf
+    · left; rw [hf.fcRoot]; exact anc_honest hmf.le
     · right
-      exact hf.mem_viableTree (hf.mem (le_trans hf.fj hf.jτ) le_rfl) hmj (by omega)
-        (hf.mem (le_trans hf.fj hmj) (by omega))
+      exact hf.mem_viableTree' (hf.mem (le_trans hf.fj hf.jτ) le_rfl) hmf (by omega)
+        (hf.mem hmf (by omega))
   · rcases emit_cases hl he with ⟨rfl, -, -⟩ | ⟨k, fg', rfl, hfr', hfg', -, hm', -⟩
     · omega
     · obtain ⟨f', hf'⟩ := fgGood_frame hfg'
       rw [hfr', hm']
       have hk : j ≤ k := by omega
-      rcases Nat.lt_or_ge m (jexp (k + 1)) with hmj | hmj
-      · right; rw [hf'.fcRoot]; exact anc_honest hmj.le
+      rcases Nat.lt_or_ge m f' with hmf | hmf
+      · right; rw [hf'.fcRoot]; exact anc_honest hmf.le
       · left
-        exact hf'.mem_viableTree (mem_voterBlockTree hf' _ (le_trans hf'.fj (jexp_le _)) le_rfl)
-          hmj (by omega) (mem_voterBlockTree hf' _ (le_trans hf'.fj hmj) (by omega))
+        exact hf'.mem_viableTree' (mem_voterBlockTree hf' _ (le_trans hf'.fj (jexp_le _)) le_rfl)
+          hmf (by omega) (mem_voterBlockTree hf' _ hmf (by omega))
 
 theorem hmax_state (i : Nat) : ((tickRun N1 dg1).state v0 i).fg.hmax = hexp (stTip i) :=
   (state_fgGood i).hmax

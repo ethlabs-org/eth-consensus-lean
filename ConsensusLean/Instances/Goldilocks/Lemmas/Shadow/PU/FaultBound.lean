@@ -16,12 +16,12 @@ open Consensus.Goldilocks.Healing.Growing
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- The stock committee count uses only honesty, awake service and restart bounds. -/
-theorem faultBoundK_of_service_at' {K : AC.CommitteeDict sp.n} {g b : Time}
+theorem faultBoundK_of_service_at {K : AC.CommitteeDict sp.n} {g b : Time}
     (hK : CommitteeHalfUpTo tr H K g b)
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Growing.GoldilocksRun' proposer dg H tr ini)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hnr : Healing.Growing.NoRestartAfter tr H (gbar g)) {s : Nat}
