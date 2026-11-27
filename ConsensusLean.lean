@@ -180,6 +180,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.EngineEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.LocalRunCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.OutageSupply
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyFG
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.SleepyGlue
@@ -428,6 +429,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.S
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.WitnessRelay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.ResetHeld
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Restart
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.RowService
@@ -548,6 +550,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Sources
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Const
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.Premises
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.SignGap
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.UpTo
