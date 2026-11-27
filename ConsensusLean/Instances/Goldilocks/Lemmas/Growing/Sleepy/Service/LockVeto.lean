@@ -32,7 +32,8 @@ theorem not_conflicts_of_compatible {ini}
     (h : ∀ l ∈ L, ∀ B ∈ Φ.tree, B.root = l.block → Compatible (tr.HonestBlocksAt H) C B)
     (t : Time) : ¬ AC.conflictsWithLock sp L Φ t C := by
   have hcoh := honestBlocksAt_coherent hrun hnc
-  rintro ⟨V, hV, hconf⟩
+  apply AC.not_conflictsWithLock_of_forall
+  intro V hV
   obtain ⟨l, hl, B₀, hB₀, hB₀r, -, rfl⟩ := AC.mem_liveLockBlocks hΦ hV
   obtain ⟨hVt, hVB⟩ := AC.viableAncestor_anc hΦ hB₀
   have hVB' := hVB.mono hHB
@@ -40,7 +41,6 @@ theorem not_conflicts_of_compatible {ini}
     rcases h l hl B₀ hB₀ hB₀r with h | h
     · exact AC.anc_total hcoh h hVB'
     · exact Or.inr (hVB'.trans h)
-  apply hconf
   rcases hCV with h | h
   · exact Or.inl (AC.anc_tree_of_anc_U hcoh hΦ hHB hCt h hVt)
   · exact Or.inr (AC.anc_tree_of_anc_U hcoh hΦ hHB hVt h hCt)
