@@ -13,7 +13,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowWrite
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
@@ -72,7 +74,7 @@ private theorem toFG_fast_candidate_origin_at
       R ∈ AC.toFGDeepCandidates sp D a (tr.projAC.state y i) ell.frame (tr.time i) ∧
       ∀ l ∈ AC.liveLocks sp (tr.projAC.state y i).locks ell.frame (tr.time i),
         l.block = a.root → l.fast = false := by
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo (hrun.time_nonneg i)).localRun
   have hc := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hto.1⟩
   have hs := Trace.upTo_state tr.projAC y (d := tr.time i) (i := i)
@@ -128,7 +130,7 @@ private theorem fast_selection_slot_le {H₀ : Set (Fin sp.n)}
     {D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (ho : AC.FastLockAt tr.projAC x a j D CV)
     (hcs2 : 2 * (K.committee j ∩ H₀ᶜ).ncard < sp.committeeSize) : D.slot ≤ j := by
-  have hac := Compose.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.goldilocks_ac_projection_from hrun hnc
   obtain ⟨y, hy, i, e, hv, hs, W, hW, hWr, hDW⟩ :=
     AC.fastLock_honest_vote hac K hPK hx ho hcs2
   obtain ⟨W', hW', hW'r, hWs⟩ := AC.honest_headU hac.toU hy hv
@@ -220,7 +222,7 @@ theorem toFG_later_proposal_head_after_at
       hnr (s := l₀.slot) (by omega) (by omega) (by omega) hm (by omega) hmb
       (hrun.antitone hkt hy) (Or.inr ⟨ℓu, C, hu, hC, hD'⟩) hK r (by omega) hrN).2 hsr
       z c ellp hz hcp hcall hti d pay hd)
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := hac.upTo (hrun.time_nonneg a)
   have ha' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, ha⟩
   have hW := AC.frameIn_of_callAt hr.localRun hya ha'
@@ -358,7 +360,7 @@ private theorem root_ne_genesis_of_anc {ini : Fin sp.n → (goldilocksNode sp ro
     (hPB : Anc (tr.HonestBlocksAt H) P B) (hB : B ∈ ell.frame.tree) :
     B.root ≠ sp.genesisRoot := by
   intro hg
-  have hr := (Compose.goldilocks_ac_projection_from' (hrun.upTo (hrun.time_nonneg i))
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg i))
     (hnc.upTo (tr.time i))).localRun
   rw [RunTrace.upTo_projAC] at hr
   have hc' : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
@@ -423,7 +425,7 @@ theorem proposal_report_follow_at
       hcatch hnr hmargin hjoin (hT.trans hmb) hshort hz hdes hP hPs hun hcal hy hsign hK
   have hyc : y ∈ H (tr.time (k + 1)) := ht ▸ hy
   have hPc := Healing.fresh_lock_toFG_candidate hv hva hl he ht
-  have hr := (Compose.Growing.goldilocks_ac_projection_from' hrun hnc).upTo
+  have hr := (Compose.Growing.goldilocks_ac_projection_from hrun hnc).upTo
     (hrun.time_nonneg (k + 1))
   have hj : AC.joined sp (tr.projAC.state y (k + 1)) (tr.time (k + 1)) := by
     have hs := Trace.upTo_state tr.projAC y (d := tr.time (k + 1)) (i := k + 1)
@@ -457,7 +459,7 @@ theorem proposal_report_follow_at
       (hnc.upTo _) hzk hdes hP' hPs
   rw [← hdes] at hacc
   have hPg := AC.accept_ne_genesisU sp
-    (Compose.goldilocks_ac_projection_from' (hrun.upTo (hrun.time_nonneg kP))
+    (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg kP))
       (hnc.upTo _)).localRun.toU hzk hacc
   obtain ⟨i, ellr, R, hR, htime, hPR⟩ := report_of_compatible_candidate_of_run_at
     hrun hnc hyc hc hto hj hPg hPc
@@ -556,7 +558,7 @@ theorem proposal_report_follow_delayed_at
       (hnc.upTo _) hzk hdes hP' hPs
   rw [← hdes] at hacc
   have hPg := AC.accept_ne_genesisU sp
-    (Compose.goldilocks_ac_projection_from' (hrun.upTo (hrun.time_nonneg kP))
+    (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg kP))
       (hnc.upTo _)).localRun.toU hzk hacc
   have hBg := root_ne_genesis_of_anc hrun hnc hyi hc hPg hPB hB.1.1
   obtain ⟨r, ellr, R, hR, hrt, hBR⟩ := report_of_compatible_candidate_of_run_at hrun hnc hyi hc

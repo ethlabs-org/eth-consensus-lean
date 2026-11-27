@@ -52,7 +52,7 @@ theorem proposal_start_prefix_at {s₀ s M : Nat}
     ell.frame.Anc d.start (AC.getHead sp e.readPoint ell.frame (tr.time i)
       (ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
       (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)) s) := by
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hci : (tr.projAC.upTo (tr.time i)).CallAt y i ell :=
     (Trace.upTo_callAt _).mpr ⟨le_rfl, hc.1⟩
   have hri := (hac.upTo (hrun.time_nonneg i)).localRun

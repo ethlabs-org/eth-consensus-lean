@@ -53,7 +53,7 @@ theorem KernelProof.vote_viable_of_root_at' {ini : Fin sp.n → (goldilocksNode 
     B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   have hd := hrun.time_nonneg k
   have hle : ∀ q < k, tr.time q ≤ tr.time k := fun _ hq => hrun.time_mono hq.le
-  have hr := (Compose.goldilocks_ac_projection_from' (hrun.upTo hd) (hnc.upTo _)).localRun
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)).localRun
   have hc' : AC.CastAt (tr.upTo (tr.time k)).projAC y k ell e := by
     rw [RunTrace.upTo_projAC]
     exact AC.upTo_castAt.mpr ⟨le_rfl, hc⟩

@@ -598,7 +598,7 @@ theorem warm_proposal_bounds_at {proposer : Nat → Fin sp.n}
     fun q hq => hrun.time_mono (by omega)
   have hfr := Node.frame_of_projAC_at h hzk hc
   rw [Trace.upTo_state tr z hle1] at hfr
-  have hac := (Compose.goldilocks_ac_projection_from' hr (hnc.upTo _)).localRun
+  have hac := (Compose.goldilocks_ac_projection_from hr (hnc.upTo _)).localRun
   obtain ⟨Q, hQ, hv, hroot⟩ :=
     Healing.Growing.Shadow.full_frame_viable_witness_at hrun hnc hzi (by
       have : tr.time (j + 1) = sp.ts u := hj1

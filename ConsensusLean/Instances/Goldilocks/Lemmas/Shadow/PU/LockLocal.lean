@@ -42,7 +42,7 @@ theorem live_lock_selection_origin_at'
         AC.SlowLockAt tr.projAC x a l.slot D ∨
         ∃ CV, AC.OptimisticLockAt tr.projAC x a l.slot D CV) := by
   have hd := hrun.time_nonneg i
-  have hr := (Compose.Growing.goldilocks_ac_projection_from' hrun hnc).upTo hd
+  have hr := (Compose.Growing.goldilocks_ac_projection_from hrun hnc).upTo hd
   have hs := Trace.upTo_state tr.projAC x (d := tr.time i) (i := i)
     (fun k hk => hrun.time_mono hk.le)
   have hc' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩

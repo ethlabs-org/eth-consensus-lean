@@ -1,7 +1,9 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteRelay
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Origins
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.VoteReceipt
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.LockWriter
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.CommitteeFaults
@@ -139,7 +141,7 @@ private theorem cutZ_le_ts_of_highOrigin
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {x : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) : cutZ sp.toParams g ≤ sp.ts j := by
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hp.run hp.noColl
+  have hac := Compose.Growing.goldilocks_ac_projection_from hp.run hp.noColl
   have hx := hp.run.antitone (le_max_right _ _) ho.1
   have hxZ := hp.run.antitone (le_max_left _ _) ho.1
   obtain ⟨CV, ell, D, hci, hfl, rfl⟩ := ho.2.2.1

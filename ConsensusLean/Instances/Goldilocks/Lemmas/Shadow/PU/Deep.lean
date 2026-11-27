@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Healing.Growing.Run
@@ -61,7 +62,7 @@ theorem toFG_candidates_compatible_at_call (hrun : GoldilocksRun proposer dg H t
     (hP : P ∈ AC.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i)) :
     ∀ C ∈ AC.toFGCandidates sp (tr.projAC.state y i) ell.frame (tr.time i),
       Compatible (tr.HonestBlocks H) C P := by
-  have hr := (Compose.goldilocks_ac_projection_from' hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hPhi := AC.frameIn_of_callAt hr hy hc
   obtain ⟨Phi, t, hreach, _, hok⟩ := Compose.pre_reachable hr hy hc
   obtain ⟨hin, _, hinv⟩ := AC.lockInv_of_reachable hr.coherent (hrun.vstart y) hreach
@@ -96,7 +97,7 @@ theorem report_of_deepest_candidate_of_run
       ell.frame (tr.time j)) = some C) (hPC : ell.frame.Anc P C) :
     ∃ r ell' R, AC.ToFGAt tr.projAC y r ell' R ∧ tr.time r ≤ tr.time j ∧
       Anc (tr.HonestBlocks H) P R := by
-  have hr := (Compose.goldilocks_ac_projection_from' hrun hnoColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnoColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hc
   by_cases hrep : AC.AncR ell.frame C (tr.projAC.state y j).fgReported
   · obtain ⟨R, hRt, hRr, hCR⟩ := hrep
@@ -132,7 +133,7 @@ theorem report_of_compatible_candidate_of_run
       Compatible (tr.HonestBlocks H) C P) :
     ∃ r ell' R, AC.ToFGAt tr.projAC y r ell' R ∧ tr.time r ≤ tr.time j ∧
       Anc (tr.HonestBlocks H) P R := by
-  have hr := (Compose.goldilocks_ac_projection_from' hrun hnoColl).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnoColl).localRun
   obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hc
   have hsub : AC.toFGCandidates sp (tr.projAC.state y j) ell.frame (tr.time j) ⊆
       ell.frame.tree := fun _ h => h.1.1
@@ -159,7 +160,7 @@ private theorem cut_lt_blockStamp_of_late {Hs : Set (Fin sp.n)}
     (hCt : C ∈ (tr.state x i).fg.tree) (hg : C.root ≠ sp.genesisRoot) {c : Time}
     (hlate : ∀ k < i, tr.time k ≤ c → C ∉ (tr.state x (k + 1)).fg.tree) :
     AC.ETime.of c < (tr.state x i).ac.blockStamp C.root := by
-  have hacr := Compose.goldilocks_ac_projection_from' hrun hnc
+  have hacr := Compose.goldilocks_ac_projection_from hrun hnc
   rcases Coherence.tree_accepted hrun.toLocalRun hx hCt with rfl | ⟨k, hki, hA⟩
   · exact absurd rfl hg
   obtain ⟨ℓ', hc', hcall', ht'⟩ := Coherence.accept_next hrun.toLocalRun hx hA
@@ -245,7 +246,7 @@ theorem high_toFG_fast_at
   have hjd : ∀ k < j, tr.time k ≤ d := fun k hk => (hj.1 k hk).trans (le_max_left _ _)
   have hrd : ∀ k < r, tr.time k ≤ d := fun k hk => (hm hk.le).trans (le_max_right _ _)
   have hinj :=
-    (Compose.goldilocks_ac_projection_from' hrun' hnc').localRun.coherent.1
+    (Compose.goldilocks_ac_projection_from hrun' hnc').localRun.coherent.1
   have hreach : ∀ m, (∀ k < m, tr.time k ≤ d) → (tr.state z m).fg.Reachable _ := fun m h => by
     rw [← hst m h]; exact Node.fg_reachable_at hrun'.toLocalRun hzz m
   have hHZ : (tr.state z j).fg.hmax ≤ HZ tr H g := by
@@ -393,7 +394,7 @@ theorem toFG_time_ge_of_ancestor_slot_at
     · rw [RunTrace.upTo_projAC]
       exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hR.1⟩
     · simpa only [RunTrace.upTo_projAC, hs, Trace.upTo_time] using hR.2.2
-  have hac := Compose.goldilocks_ac_projection_from' (hrun.upTo hd) (hnc.upTo (tr.time i))
+  have hac := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo (tr.time i))
   have hRc := (AC.toFG_source hR'.2.2).1.1
   have hRs : R.slot ≤ sp.slot (tr.time i) := AC.frame_slot_leU sp hac.localRun.toU hy hR'.1 R hRc
   have hPR' := RunTrace.anc_upTo_of_right hrun.toLocalRun hnc hd
@@ -411,7 +412,7 @@ theorem frame_tree_subset_at
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ℓ) :
     FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ (tr.state y k).fg.tree := by
   have hd := hrun.time_nonneg k
-  have hr := (Compose.goldilocks_ac_projection_from' (hrun.upTo hd) (hnc.upTo _)).localRun
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)).localRun
   have hc' : (tr.upTo (tr.time k)).projAC.CallAt y k ℓ := by
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hc

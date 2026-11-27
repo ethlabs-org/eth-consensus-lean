@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.FrameBase
 public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Growing
@@ -694,27 +695,5 @@ theorem held_anc_at
 end Growing
 
 end Consensus.Goldilocks.Coherence
-
-namespace Consensus.Goldilocks.Compose
-
-variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
-  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
-  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
-
-open AC (ACParams ReplayOrder Payload)
-
-theorem honest_row_signed_before' {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-    {ini} (hrun : GoldilocksRun proposer dg H tr ini) (_hnc : NoCollRun dg tr)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {X : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hX : X ∈ (tr.state y i).fg.tree) {a : FG.Att sp.n} (ha : a ∈ X.fgPayload) (hav : a.val ∈ H) :
-    ∃ m < i, tr.AcceptAt y m X ∧ ∃ k < m, tr.SignAt a.val k a := by
-  rcases Coherence.tree_accepted hrun.toLocalRun hy hX with rfl | ⟨m, hm, hA⟩
-  · simp [Params.genesisBlock] at ha
-  · exact ⟨m, hm, hA,
-      hrun.att_unforgeable y hy m a (Or.inr ⟨X, ⟨true, hA⟩, ha⟩) hav⟩
-
-end Consensus.Goldilocks.Compose
 
 end

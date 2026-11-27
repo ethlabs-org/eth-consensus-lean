@@ -41,7 +41,7 @@ theorem own_block_payload (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
       ⟨j, x, f, -, hg, hp, d, p, hdp, rfl, -⟩
   · exact (h.wire y hy i _ _ hg).2.2
   obtain ⟨cfg, hreach, hst, hstep⟩ := group_step h hy hg
-  obtain ⟨hcoh, t₀, ht₀, hR⟩ := ac_states_reachable' proposer dg y (hpay y hy) hreach
+  obtain ⟨hcoh, t₀, ht₀, hR⟩ := ac_states_reachable proposer dg y (hpay y hy) cfg hreach
   have hfg : cfg.st.fg.Reachable A.genesisPayload := by
     rw [hst]
     exact Node.fg_reachable_at h hy j
