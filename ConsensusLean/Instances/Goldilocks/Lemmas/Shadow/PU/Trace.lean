@@ -67,7 +67,6 @@ theorem FGLabel.step_attest (v : Fin P.n) (s s' : FGState P ACP) (src : NodeBloc
       | some (a, Λ') => signed = some a ∧ s'.2 = Λ'
       | none => signed = none ∧ s'.2 = s.2 := by rfl
 
-/-- The shadow FG trace contract (a copy of `FGLocalRun` with `FGLabel.Step'`). -/
 namespace Growing
 
 /-- The shadow FG trace contract under growing faults (a copy of `Growing.FGLocalRun`). -/
