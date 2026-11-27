@@ -99,30 +99,6 @@ theorem high_origin_frozen_head_at
     (hFO.trans hOW)
   exact ⟨W, hWT, hOW⟩
 
-/-- A high origin supplies a frozen viable head above a target and a held floor witness. -/
-theorem raw_target_frozen_witness_at
-    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {x y : Fin sp.n} {r l k : Nat} {B O E : AC.Blk sp.n (List (FG.Att sp.n))}
-    (ho : HighOrigin tr H g x r l O) (hrb : tr.time r ≤ b)
-    (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y k ell e) (hl : l < e.msg.slot)
-    (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B)
-    (hBO : Anc (tr.HonestBlocksAt H) B O) (_hE : E ∈ (tr.state y k).fg.tree)
-    (hEO : Anc (tr.HonestBlocksAt H) E O)
-    (hfloor : (tr.state y k).fg.headHeightFloor ≤ ((tr.state y k).fg.σ E.root).h) :
-    ∃ D ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
-      Anc (tr.HonestBlocksAt H) B D ∧ (tr.state y k).fg.IsViable D := by
-  have hm := hp.run.time_mono
-  obtain ⟨W, hWT, hOW⟩ := high_origin_frozen_head_at hp ho hrb hy hc hl (hFB.trans hBO)
-  have hWy := (frame_tree_subset_at hp.run hp.noColl hy hc.1).2 hWT.1
-  have hh := Healing.h_le_of_store_anc
-    (fg_reachable_at hp.run (hp.run.time_nonneg k) (fun _ hq => hm hq.le) hy)
-    (store_anc_of_honest_anc_at hp.run hp.noColl (hp.run.time_nonneg k)
-      (fun _ hq => hm hq.le) hy (hEO.trans hOW) hWy)
-  exact ⟨W, hWT, hBO.trans hOW, hfloor.trans hh⟩
-
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
 end
