@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Continuation.LiveReader
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Service.Held
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Family
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Rows
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.ReadPoint
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
@@ -42,6 +43,22 @@ variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ} {K : AC.CommitteeDict sp.
   {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
   {T : Time} {r σ : Nat} {t₁ b : Time}
+
+private theorem frame_root_anc_analysis_root
+    (hrun : Growing.GoldilocksRun proposer dg H tr ini)
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) :
+    Anc (tr.HonestBlocksAt H) (Node.frame (tr.state y j)).fcRoot
+      (tr.state y j).fg.fcRoot := by
+  have ht := hrun.time_nonneg j
+  have hi : ∀ q < j, tr.time q ≤ tr.time j := fun _ h => hrun.time_mono h.le
+  have hreach := Healing.Growing.fg_reachable_at hrun ht hi hy
+  have hFJ := (Store.cache_invariants _ _ _ _ hreach).2.2.1
+  have hFJ' := Healing.Growing.honest_anc_of_store_anc_at ht hi hy hFJ
+  change Anc _ (tr.state y j).fg.F _
+  rw [Store.fcRoot]
+  split_ifs
+  · exact hFJ'
+  · exact .refl
 
 /-- A result of label `l` written at a time `≤ t_s + Δ` has `l ≤ s − 2`. -/
 private theorem result_label_le {x : Fin sp.n} {c l s : Nat}
@@ -208,7 +225,8 @@ theorem seeded_start_old
       (by omega) (by linarith) hb
     exact ⟨O, hO, hLD'.trans hD'O⟩
   · rw [Set.mem_singleton_iff.1 hf, frame_of_projAC_at hrun hp hc]
-    exact hold.1
+    obtain ⟨O, hO, hfO⟩ := hold.1
+    exact ⟨O, hO, (frame_root_anc_analysis_root hrun hp).trans hfO⟩
 
 /-- **A voter's anchor is below a block above the old family, or on `P`'s chain above it**, at a
 vote of slot `s ≥ σ + 1` at a time in `[t₁, b]` whose earlier slot-`s` votes by nodes honest at
@@ -252,7 +270,7 @@ theorem seeded_vote_anchor
   · left
     rw [Set.mem_singleton_iff.1 haf, hfr]
     obtain ⟨O, hO, hfO⟩ := hold.1
-    exact hfO.trans (hDold O hO)
+    exact (frame_root_anc_analysis_root hrun hy).trans (hfO.trans (hDold O hO))
   obtain rfl : a = ℓy.frame.viableAncestor B :=
     hΦ.coherent.1 hat (AC.viableAncestor_anc hΦ hB).1 hl'r.symm
   have haB : Anc (tr.HonestBlocksAt H) (ℓy.frame.viableAncestor B) B :=
@@ -341,7 +359,7 @@ private theorem seeded_voter_facts
   refine ⟨?_, fun B hB hQB => hR.2 B hB fun O hO => (hpass O hO).trans hQB⟩
   rw [frame_of_projAC_at hS.run hy hcy.1]
   obtain ⟨O, hO, hfO⟩ := hR.1
-  exact hfO.trans (hpass O hO)
+  exact (frame_root_anc_analysis_root hS.run hy).trans (hfO.trans (hpass O hO))
 
 /-- **The honest votes of a slot `s ≥ σ + 1` after a hand-over are the proposal**: for the
 proposal `P` of slot `s` at `t_s ≥ t₁` by a proposer honest at `t_s + Δ ≤ b`, every slot-`s` vote
