@@ -2901,7 +2901,8 @@ A1.4 & \texttt{AC.OptimisticTransfer}, \texttt{AC.OptimisticNextUpdate} &
 A1.5 & \texttt{AC.SourceAge} & proved (\texttt{acSteps}) at every
   \texttt{deepDepth}: a fast-lock block written after~$\tau$, or, with
   $D\neq\bot$ and no fast-lock candidate, a deep candidate under the deep
-  anchor (no claim on when it was written); stronger than
+  anchor, accepted by $t_{\slot(t)-D}$ (no claim on a fast-lock write
+  after~$\tau$); stronger than
   A1.5 in form: over every AC trace with the local contract
   (\texttt{ACLocalRun}), without the honest-object facts of
   \texttt{ACRun} (signature provenance, slot proposer)\\

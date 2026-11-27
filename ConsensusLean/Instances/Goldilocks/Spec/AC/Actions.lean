@@ -131,8 +131,9 @@ node accepted them, or its last restart) is at most `t_{slot(t) − D}`. So a lo
 is never a fast candidate, but its block (or one below it) can be a deep candidate. A restart
 re-stamps every held block other than genesis at the restart time, so a node has no deep
 candidate for at least `D` slots after each restart; one that restarts more often than every `D`
-slots never has one. Genesis keeps its stamp `−∞` and is excluded by its own conjunct (the
-`fg_reported` test excludes it only when the reported block is in the frame's tree). -/
+slots never has one. Genesis is excluded by its own conjunct, whatever its stamp (`−∞` in the
+initial state, kept by a restart whose replay order skips it); the `fg_reported` test excludes it
+only when the reported block is in the frame's tree. -/
 def toFGDeepCandidates (D : Nat) (a : Blk sp.n FGP) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : Set (Blk sp.n FGP) :=
   {B | B ∈ Φ.viableTree Φ.tree ∧ Φ.Anc B a ∧ B.root ≠ sp.genesisRoot ∧

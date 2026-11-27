@@ -319,7 +319,8 @@ detail in `TRUST.md`.
   `{X : ℕ+ // DeepAdmits S A X}`), and one shared `X` indexes every row, because `Contract` has a single `Idx` that
   every row family quantifies over, and `ProgressReq` has no conjunction to carry a per-family bound. Splitting the
   rows needs a second headline conjunct in the instance statements (S2) or a per-family index filter in the core
-  `Contract` (S3). The cost: under `some D` the sleepy, healthy and healed-safety rows all lose the gaps
+  `Contract` (S3). The cost: under `some D` the sleepy, healthy and healed-safety rows, and the continuation
+  rows of `GoldilocksContinues` (stated at the same headline contract), all lose the gaps
   `X > xMax(D) = ⌊(4D − 331)/48⌋` at `k = 2`, `δ_t = 6`, `G = 0` (`D = 300` keeps `X ≤ 18`), although the paper
   sketch gives Sleepy safety and liveness under the live-lock anchor with no gap bound. S2 or S3 is the upgrade path;
   proving the healthy rows for every `X` (S4) would remove the restriction. At `deepDepth = none` every gap is
@@ -330,7 +331,8 @@ detail in `TRUST.md`.
   checked at the restricted headline contract; S3 would keep the stock least depth at `D ≥ 95` (gap `1` admitted),
   since its tolerance witness comes from the unrestricted index while the healthy rows read only admitted gaps.
   At stock numbers (`k = 2`, `δ_t = 6`, `finalSlots = 2`, `G = 0`) the bound is `715 ≤ 4D`, and the least such
-  depth is `D = 179` (`4D = 716`).
+  depth is `D = 179` (`4D = 716`). Every claim at the headline contract, `GoldilocksContinues` included, holds
+  only for assumption sets `A` that satisfy `deep_final` (a field of `ContractAssumptions`) and at admitted gaps.
 - **Deep FG sources: a reset budget and an origin cap in the generic healing contract.** A deep
   candidate of state height above `H_z` is excluded only until the end `c_z + 4DΔ` of the deep quarantine, after
   which a high source need not be a fast lock. `ACHealing` therefore gains `deepBudget : Option Nat` (default
