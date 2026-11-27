@@ -275,6 +275,42 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
+/-- A proposer's tick calls AC proposal immediately after AC tick. -/
+theorem tick_proposal_call' (h : LocalRun' proposer dg H sg tr ini)
+    {y : Fin P.n} (hy : y ∈ H) {j : Nat} {t : Time} {x : Nat} {fgDue : Bool}
+    (hg : tr.GroupAt' proposer dg y j t (.tick x fgDue))
+    (hP : Proposes proposer y t) :
+    tr.CallAt y (j + 1)
+        (acProposal' (tickStep' proposer dg y (tr.state y j) t x .acTick).1 t).2.1 ∧
+      tr.time (j + 1) = t ∧
+      (tr.state y (j + 1)).ac = (tickStep' proposer dg y (tr.state y j) t x .acTick).1.ac := by
+  have h1 : (exec' proposer dg y (tr.state y j) t (.tick x fgDue)).2[1]? =
+      some (acProposal' (tickStep' proposer dg y (tr.state y j) t x .acTick).1 t).2.1 := by
+    simp only [exec'_eq, onTick'_eq, runSteps'_eq, tickSteps]
+    cases fgDue <;> simp only [Bool.false_eq_true, ↓reduceIte, List.foldl_cons,
+      List.foldl_nil, List.nil_append, tickStep'_eq, hP]
+    all_goals split <;> simp [acProposal'_eq, acCall'_eq]
+  rw [RunTrace.groupAt'_iff] at hg
+  have get {k : Nat} {c : Cut A}
+      (hk : (exec' proposer dg y (tr.state y j) t (.tick x fgDue)).2[k]? = some c) :
+      tr.CallAt y (j + k) c ∧ tr.time (j + k) = t := by
+    obtain ⟨hk', hc⟩ := List.getElem?_eq_some_iff.1 hk
+    obtain ⟨hn, ht, -, -, hl⟩ := hg.2.1 k hk'
+    exact ⟨⟨hn, hl.trans (congrArg some hc)⟩, ht⟩
+  obtain ⟨hc, ht⟩ := get h1
+  have h0 : (exec' proposer dg y (tr.state y j) t (.tick x fgDue)).2[0]? =
+      some (.ac ⟨.tick, frame' (tr.state y j),
+        (A.step y (tr.state y j).ac (frame' (tr.state y j)) t .tick).2⟩) := by
+    cases fgDue <;>
+      simp [exec'_eq, onTick'_eq, runSteps'_eq, tickSteps, tickStep'_eq, acCall'_eq]
+  obtain ⟨hc0, ht0⟩ := get h0
+  simp only [Nat.add_zero] at hc0 ht0
+  refine ⟨hc, ht, ?_⟩
+  rw [tr.state_succ_of_call hc0, tickStep'_eq, acCall'_eq]
+  have hl := h.cutLaw y hy j _ hc0
+  rw [cutStep'_ac, ht0] at hl
+  exact (congrArg Prod.fst hl.2.1).symm
+
 theorem call_in_group' (h : LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
     {i : Nat} {c : Cut A} (hc : tr.CallAt y i c) :
     ∃ j e k, tr.GroupAt' proposer dg y j (tr.time i) e ∧ i = j + k ∧
@@ -389,6 +425,12 @@ theorem tree_accepted' (h : LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
       · exact lift hB
     · rw [he, (Store.tree_grows_with Store.finalitySpec_updateFinality').2 a] at hB
       exact lift hB
+
+/-- Stock tree-cases interface: every non-genesis held block was accepted earlier. -/
+theorem tree_cases' (h : LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+    (hy : y ∈ H) {m : Nat} {B : A.Blk} (hB : B ∈ (tr.state y m).fg.tree) :
+    B = P.genesisBlock A.genesisPayload ∨ ∃ k < m, tr.AcceptAt y k B :=
+  tree_accepted' h hy hB
 
 theorem accept_mem_from' (h : LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) {k : Nat} {B : A.Blk} (hA : tr.AcceptAt y k B) :
