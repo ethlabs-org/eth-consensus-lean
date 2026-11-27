@@ -35,8 +35,8 @@ goldilocks-spec.tex §"Node actions" (Figures "Goldilocks: the vote and the vote
   viable tree under a live fast lock of slot `slot(t) − 2` or later); when there is none, deep
   sources are on (`deepDepth = some D`) and there is a deep anchor `a` (`deepAnchor`), the deepest
   deep candidate (a block of the full viable tree at or below `a`, not genesis, that the node
-  accepted by `t_{slot(t) − D}`). The block is returned when it is not at or below `fg_reported`
-  (in the tree), which it then records. -/
+  accepted by `t_{slot(t) − D}`). The selected block is returned without changing the AC state,
+  even if it was returned before. Genesis is allowed as a fast candidate, not a deep one. -/
 
 namespace Consensus.Goldilocks.AC
 
@@ -132,8 +132,7 @@ is never a fast candidate, but its block (or one below it) can be a deep candida
 re-stamps every held block other than genesis at the restart time, so a node has no deep
 candidate for at least `D` slots after each restart; one that restarts more often than every `D`
 slots never has one. Genesis is excluded by its own conjunct, whatever its stamp (`−∞` in the
-initial state, kept by a restart whose replay order skips it); the `fg_reported` test excludes it
-only when the reported block is in the frame's tree. -/
+initial state, kept by a restart whose replay order skips it). -/
 def toFGDeepCandidates (D : Nat) (a : Blk sp.n FGP) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     (t : Time) : Set (Blk sp.n FGP) :=
   {B | B ∈ Φ.viableTree Φ.tree ∧ Φ.Anc B a ∧ B.root ≠ sp.genesisRoot ∧

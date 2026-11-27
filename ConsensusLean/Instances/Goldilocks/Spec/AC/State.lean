@@ -18,7 +18,7 @@ goldilocks-spec.tex §"State" and §"Votes and views".
   `Vote` triples (the slot is the implicit `B.slot − 1`; a declaration is not a signed vote and
   is never admitted), and the support list, the entries the bits mark.
 * The state `𝒜 = (head_votes[·], timestamp[·], saved_confirmation[·], locks, latest_confirmed,
-  fg_reported, voted_slot, restart_time)`, with the vote permission `mayVote`. The AC holds
+  voted_slot, restart_time)`, with the vote permission `mayVote`. The AC holds
   blocks only by name (root). Stamps are on the extended time line `ETime` (`⊥ = −∞`,
   `⊤ = +∞`): `timestamp[genesis] = −∞`, and a vote or block the AC never accepted reads `+∞` (no
   rule reads such a stamp at a reachable state). `restart_time` is `−∞` before any restart.
@@ -89,7 +89,7 @@ namespace ACState
 variable {n : Nat}
 
 /-- `initial_ac()`: empty pools and locks, `⊥` saved everywhere, `timestamp = {genesis ↦ −∞}`,
-genesis as the confirmed and the reported block, `voted_slot = −1`, `restart_time = −∞`. -/
+genesis as the confirmed block, `voted_slot = −1`, `restart_time = −∞`. -/
 def initial (g : Nat) : ACState n where
   pool := fun _ => []
   voteStamp := fun _ => ⊤

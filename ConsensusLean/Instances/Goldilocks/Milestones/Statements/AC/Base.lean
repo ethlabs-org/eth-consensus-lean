@@ -237,7 +237,7 @@ def InterfaceRequirements : Prop :=
     (goldilocksAC sp FGP ro).ReqParent
 
 /-- **A0.7, restart.** After `ac_restart` at `t ≥ 0` with a well-formed frame: the locks and
-`latest_confirmed` are kept; the saved results, `fg_reported` and `voted_slot` are initial;
+`latest_confirmed` are kept; the saved results and `voted_slot` are initial;
 `restart_time = t`; the pools are empty (the replay admits no declared head vote); every vote
 stamp is `t` or unset; every block stamp is initial or `t` for a non-genesis block of the tree;
 the node is not joined at `t`, so the replay sends nothing. -/
