@@ -22,6 +22,10 @@ def finalityPreview (gp : FGParams) (σ : ChainState gp.n) (slot : Nat)
     (atts : List (Att gp.n)) : Nat :=
   (gp.finalizePrune (atts.foldl ChainState.processAtt { σ with s := slot })).F
 
+theorem finalityPreview_eq (gp : FGParams) (σ : ChainState gp.n) (slot : Nat)
+    (atts : List (Att gp.n)) : gp.finalityPreview σ slot atts =
+      (gp.finalizePrune (atts.foldl ChainState.processAtt { σ with s := slot })).F := by rfl
+
 private theorem heightEvents_F (gp : FGParams) (σ : ChainState gp.n) :
     (gp.heightEvents σ).F = (gp.finalizePrune σ).F := by
   unfold heightEvents
