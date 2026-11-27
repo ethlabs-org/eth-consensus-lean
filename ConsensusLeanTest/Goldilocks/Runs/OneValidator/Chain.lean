@@ -720,12 +720,12 @@ theorem payload_mem_attList (τ : Nat) : ∀ a ∈ (blk (τ + 1)).fgPayload, a �
 /-! ## The frames -/
 
 /-- A frame over the chain: the tree is the blocks of slots `f … τ`, `Φ.F` the block of slot
-`f`, the fork-choice root the block of slot `j`, and the viable heads the blocks of slots
+`f`, which is also the fork-choice root, and the viable heads the blocks of slots
 `j … τ`. -/
 structure ChainFrame (Φ : N1.Frm) (f j τ : Nat) : Prop where
   tree : ∀ B, B ∈ Φ.tree ↔ ∃ m, f ≤ m ∧ m ≤ τ ∧ B = blk m
   F : Φ.F = blk f
-  fcRoot : Φ.fcRoot = blk j
+  fcRoot : Φ.fcRoot = blk f
   heads : ∀ B, B ∈ Φ.viableHeads ↔ ∃ m, j ≤ m ∧ m ≤ τ ∧ B = blk m
   fj : f ≤ j
   jτ : j ≤ τ
@@ -761,15 +761,21 @@ theorem head_mem (h : ChainFrame Φ f j τ) {m : Nat} (h1 : j ≤ m) (h2 : m ≤
 fork-choice root to the tip. -/
 theorem mem_viableTree (h : ChainFrame Φ f j τ) {S : Set N1.Blk} (hS : blk τ ∈ S)
     {m : Nat} (h1 : j ≤ m) (h2 : m ≤ τ) (hm : blk m ∈ S) : blk m ∈ Φ.viableTree S :=
-  ⟨hm, by rw [h.fcRoot]; exact h.anc h.fj h1 h2, blk τ, hS, h.head_mem h.jτ le_rfl,
+  ⟨hm, by rw [h.fcRoot]; exact h.anc le_rfl (h.fj.trans h1) h2, blk τ, hS,
+    h.head_mem h.jτ le_rfl,
     h.anc (by have := h.fj; omega) h2 le_rfl⟩
 
+/-- The viable tree of a domain holding the tip and inside the tree contains every block of the
+tree in the domain: the fork-choice root is `Σ.F`. -/
+theorem mem_viableTree' (h : ChainFrame Φ f j τ) {S : Set N1.Blk} (hS : blk τ ∈ S)
+    {m : Nat} (h1 : f ≤ m) (h2 : m ≤ τ) (hm : blk m ∈ S) : blk m ∈ Φ.viableTree S :=
+  ⟨hm, by rw [h.fcRoot]; exact h.anc le_rfl h1 h2, blk τ, hS, h.head_mem h.jτ le_rfl,
+    h.anc h1 h2 le_rfl⟩
+
 theorem viableTree_sub (h : ChainFrame Φ f j τ) {S : Set N1.Blk} (hS : S ⊆ Φ.tree) {B : N1.Blk}
-    (hB : B ∈ Φ.viableTree S) : ∃ m, j ≤ m ∧ m ≤ τ ∧ B = blk m := by
-  obtain ⟨hBS, hanc, -⟩ := hB
-  obtain ⟨m, -, hm, rfl⟩ := (h.tree B).1 (hS hBS)
-  rw [h.fcRoot] at hanc
-  exact ⟨m, h.le_of_anc hanc, hm, rfl⟩
+    (hB : B ∈ Φ.viableTree S) : ∃ m, f ≤ m ∧ m ≤ τ ∧ B = blk m := by
+  obtain ⟨hBS, -, -⟩ := hB
+  exact (h.tree B).1 (hS hBS)
 
 end ChainFrame
 
@@ -788,31 +794,22 @@ theorem fgGood_frame {fg : Store sp1.toParams N1.Payload} {τ : Nat} (h : FGGood
       exact ⟨m, le_of_anc_blk (onChain_tree h.blocks) ha, hm, rfl⟩
     · rintro ⟨m, h1, h2, rfl⟩
       exact ⟨⟨m, h2, rfl⟩, anc_tree h.blocks h1 h2⟩
-  have hnc : ¬ fg.Contest := by
-    rintro ⟨-, B, hB, -, hh, hna⟩
-    obtain ⟨m, hm, rfl⟩ := (hmem _).1 hB
-    rw [(h.sigma m hm).h, h.hmax] at hh
-    apply hna
-    rw [h.J]
-    refine anc_tree h.blocks ?_ hm
-    unfold hexp at hh; unfold jexp; split_ifs at hh ⊢ <;> omega
-  have hfc : fg.fcRoot = blk (jexp τ) := by
-    unfold Store.fcRoot
-    rw [ite_pos ⟨by rw [h.hmax, h.hj]; unfold hexp; split_ifs <;> omega, hnc⟩, h.J]
-  have hfloor : fg.headHeightFloor = hexp τ - 1 := by
-    unfold Store.headHeightFloor; rw [ite_neg hnc, h.hmax]
-  refine ⟨f, ⟨htree, hFe, hfc, fun B => ?_, hf, jexp_le τ⟩⟩
-  change (B ∈ fg.tree ∧ fg.Anc fg.F B ∧ fg.Anc fg.fcRoot B ∧ fg.IsViable B) ↔ _
-  rw [hfc, hFe]
-  constructor
-  · rintro ⟨hB, -, ha, -⟩
-    obtain ⟨m, hm, rfl⟩ := (hmem _).1 hB
-    exact ⟨m, le_of_anc_blk (onChain_tree h.blocks) ha, hm, rfl⟩
-  · rintro ⟨m, h1, h2, rfl⟩
-    refine ⟨(hmem _).2 ⟨m, h2, rfl⟩, anc_tree h.blocks (by omega) h2, anc_tree h.blocks h1 h2, ?_⟩
+  have hviable : ∀ m ≤ τ, fg.IsViable (blk m) ↔ jexp τ ≤ m := by
+    intro m hm
+    have hJ : fg.Anc fg.J (blk m) ↔ jexp τ ≤ m := by
+      rw [h.J]; exact ⟨le_of_anc_blk (onChain_tree h.blocks), fun h1 => anc_tree h.blocks h1 hm⟩
     unfold Store.IsViable
-    rw [hfloor, (h.sigma m h2).h]
-    unfold hexp; unfold jexp at h1; split_ifs at h1 ⊢ <;> omega
+    rw [hJ, (h.sigma m hm).h, h.hmax, h.hj]
+    unfold hexp jexp; split_ifs <;> constructor <;> intro <;> omega
+  refine ⟨f, ⟨htree, hFe, hFe, fun B => ?_, hf, jexp_le τ⟩⟩
+  change (B ∈ fg.tree ∧ fg.Anc fg.F B ∧ fg.IsViable B) ↔ _
+  rw [hFe]
+  constructor
+  · rintro ⟨hB, -, hv⟩
+    obtain ⟨m, hm, rfl⟩ := (hmem _).1 hB
+    exact ⟨m, (hviable m hm).1 hv, hm, rfl⟩
+  · rintro ⟨m, h1, h2, rfl⟩
+    exact ⟨(hmem _).2 ⟨m, h2, rfl⟩, anc_tree h.blocks (by omega) h2, (hviable m h2).2 h1⟩
 
 end Consensus.Goldilocks.Witness.One
 
