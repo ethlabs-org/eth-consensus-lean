@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Mod
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignCalendar
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.SignedTickCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Handlers
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Driven
@@ -46,47 +47,6 @@ theorem joined_of_restart_le_at {ini}
   Healing.Growing.Core.joined_of_restart_le_at hrun.toCore hnc hy ht hres htime
 
 end Consensus.Goldilocks.Shadow.PU.Growing
-
-namespace Consensus.Goldilocks.Healing
-
-open Node
-
-variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
-  {tr : RunTrace A} {proposer : Nat → Fin P.n}
-
-/-- A shadow signing tick executes `ac_to_fg` at its own time. -/
-theorem toFG_call_of_signing_tick' {y : Fin P.n} {j : Nat} {t : Time} {x : Nat}
-    (hg : tr.GroupAt proposer dg y j t (.tick x true)) :
-    ∃ k ell, tr.projAC.CallAt y (j + k) ell ∧ ell.call = .toFG ∧ tr.time (j + k) = t := by
-  let st₁ := (tickStep proposer dg y (tr.state y j) t x .acTick).1
-  let st₂ := (tickStep proposer dg y st₁ t x .proposal).1
-  have hcuts : (exec proposer dg y (tr.state y j) t (.tick x true)).2 =
-      (tickStep proposer dg y (tr.state y j) t x .acTick).2 ++
-      (tickStep proposer dg y st₁ t x .proposal).2 ++
-      (tickStep proposer dg y st₂ t x .fgUpdate).2 := by
-    simp only [exec_eq, onTick_eq, runSteps_eq, tickSteps, ↓reduceIte,
-      List.foldl_cons, List.foldl_nil, List.nil_append, st₁, st₂]
-  have hmem : (acToFG st₂ t).2.1 ∈ (tickStep proposer dg y st₂ t x .fgUpdate).2 := by
-    simp only [tickStep_eq]
-    split <;> simp
-  obtain ⟨ell, he⟩ : ∃ ell : ACLabel A, (acToFG st₂ t).2.1 = .ac ell := by
-    rw [acToFG_eq]
-    exact ⟨_, rfl⟩
-  rw [he] at hmem
-  have hcall : ell.call = .toFG := by
-    rw [acToFG_eq] at he
-    cases he
-    rfl
-  have hmem' : Cut.ac ell ∈ (exec proposer dg y (tr.state y j) t (.tick x true)).2 := by
-    rw [hcuts]
-    exact List.mem_append_right _ hmem
-  obtain ⟨k, hk, he⟩ := List.getElem_of_mem hmem'
-  have hget : (exec proposer dg y (tr.state y j) t (.tick x true)).2[k]? = some (.ac ell) :=
-    List.getElem?_eq_some_iff.2 ⟨hk, he⟩
-  obtain ⟨hc, ht⟩ := Compose.group_cut hg hget
-  exact ⟨k, ell, Compose.projAC_callAt.2 hc, hcall, ht⟩
-
-end Consensus.Goldilocks.Healing
 
 namespace Consensus.Goldilocks.Shadow.PU.Growing
 
