@@ -396,9 +396,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.F
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshUpdate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVeto
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshViable
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotes
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesAnchor
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesFinality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesGeometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesLocal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesPath
