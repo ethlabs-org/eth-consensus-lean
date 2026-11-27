@@ -22,6 +22,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockKeepStep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockProvenance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Chain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Requirements
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Unlock
@@ -820,6 +821,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshEndpoint
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshLocks
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshNext
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshSupport
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshToFG
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshViable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frontier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness

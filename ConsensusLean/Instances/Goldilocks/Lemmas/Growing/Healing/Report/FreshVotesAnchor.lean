@@ -122,7 +122,7 @@ theorem FrameWindow.vote_anchor_below_of_earlier_heads_at
       hnr hm hsp hp0 hpb hz hdes hP hPs hy hc hes hmargin hIH hl
       (by rw [← hes, hslot]; exact hlive) hB₀ hB₀r hK
     exact (Anc.mono hPhi.2 (AC.viableAncestor_anc hPhi.1 hB₀).2).trans hB₀P
-  unfold AC.getAnchor
+  rw [AC.getAnchor_eq_deepest_union hPhi.1]
   rcases hD : AC.deepest ell.frame
       (AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) ∪ {ell.frame.fcRoot})
       with _ | D

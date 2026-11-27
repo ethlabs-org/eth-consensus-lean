@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 
 public section
 
@@ -37,7 +38,8 @@ theorem anc_getHead {U : Set (Blk sp.n FGP)} (hU : Coherent U) {Φ : Frm sp.n FG
   -- the anchor is a live lock block or `fc_root`, and at least as deep as `fc_root`
   obtain ⟨haS, hdep⟩ : a ∈ liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot} ∧
       depth Φ Φ.fcRoot ≤ depth Φ a := by
-    unfold a getAnchor
+    dsimp only [a]
+    rw [getAnchor_eq_deepest_union hΦ]
     cases hd : deepest Φ (liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) with
     | none => exact ⟨Or.inr rfl, le_rfl⟩
     | some D =>

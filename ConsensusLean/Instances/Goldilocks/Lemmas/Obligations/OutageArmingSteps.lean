@@ -24,16 +24,6 @@ AC formation of a slow lock (`updateConfirmation_slow_lock_effective`). -/
 
 namespace Consensus.Goldilocks.AC
 
-/-- An ancestor of a block that conflicts with no live lock conflicts with no live lock. -/
-private theorem not_conflictsWithLock_of_anc {FGP : Type} {sp : ACParams} {L : Set Lock}
-    {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {C D : Blk sp.n FGP} (hCD : Φ.Anc C D)
-    (hnv : ¬ conflictsWithLock sp L Φ t D) : ¬ conflictsWithLock sp L Φ t C := by
-  rintro ⟨W, hW, hCW⟩
-  refine hnv ⟨W, hW, fun hDW => hCW ?_⟩
-  rcases hDW with h | h
-  · exact Or.inl (hCD.trans h)
-  · exact anc_total hΦ.coherent hCD h
-
 /-- **Slow formation** (independent writes): attestations above `C`, a result `D ⪰ C`, and no
 live lock conflicting with `C` store the slow lock of slot `s` and expiry `s + k` on the viable
 ancestor of the deepest unvetoed slow-test block `X`, `C ⪯ X ⪯ D`. A veto of `D` stops only the
