@@ -141,11 +141,7 @@ private theorem adds_step {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : ACSta
   | toFG =>
     change Adds A (acToFG sp A Φ t).1 _
     unfold acToFG
-    split_ifs
-    · split
-      · exact Adds.of_eq rfl
-      · split_ifs <;> exact Adds.of_eq rfl
-    · exact Adds.of_eq rfl
+    split_ifs <;> exact Adds.of_eq rfl
   | message m =>
     exact ((adds_admitVote A t m).trans_eq (AC.optimistic_pool_eq _ _ _)).trans
       (adds_tryVote _ _ _ _) (fun _ h => Or.inl (h ▸ rfl)) (fun _ h => Or.inr h)
@@ -285,7 +281,7 @@ theorem pool_vote_emitted (hrun : GoldilocksRun proposer dg H tr ini)
         have hp : (AC.acRestart sp ro y (tr.projAC.state y k) ℓ.frame (tr.time k)).1 =
             tr.projAC.post k := by
           simpa [hr, ACInterface.step, RunTrace.projAC] using congrArg Prod.fst hex
-        rw [← hp, hs.2.2.2.2.2.2.2.2.1 σ] at hv
+        rw [← hp, hs.2.2.2.2.2.2.2.1 σ] at hv
         exact absurd hv List.not_mem_nil
       · have ha := adds_step (ro := ro) y (tr.projAC.state y k) ℓ.frame (tr.time k) ℓ.call hr
         rw [hex] at ha

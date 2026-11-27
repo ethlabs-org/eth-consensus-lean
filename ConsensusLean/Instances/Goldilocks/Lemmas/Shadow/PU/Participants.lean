@@ -255,7 +255,7 @@ private theorem restartTime_eq' {ini} (h : GoldilocksRun' proposer dg H tr ini)
           rw [hr]
           have hΦ : FrameOK ℓ.frame := hlaw.1 ▸ frameOK_state' h.toLocalRun' hy i
           exact (AC.restart_state sp _ ro y _ ℓ.frame (tr.time i) hΦ
-            (h.time_nonneg i)).2.2.2.2.2.2.1
+            (h.time_nonneg i)).2.2.2.2.2.1
         · exact AC.step_restartTime y _ _ _ _ fun hr => hR ⟨ℓ, hc, hr⟩
       | fg ℓ =>
         split_ifs with hR

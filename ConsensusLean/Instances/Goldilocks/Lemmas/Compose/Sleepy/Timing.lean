@@ -106,7 +106,7 @@ theorem blockStamp_ge_of_accept {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP r
     | restart =>
       change _ ≤ (AC.acRestart sp ro y (T.state y c) ℓ.frame (T.time c)).1.blockStamp B.root
       rcases ((AC.restart_state sp) FGP ro y (T.state y c) ℓ.frame (T.time c) hΦ
-        (hr.time_nonneg c)).2.2.2.2.2.2.2.2.2.2 B.root with h | ⟨h, -⟩
+        (hr.time_nonneg c)).2.2.2.2.2.2.2.2.2 B.root with h | ⟨h, -⟩
       · rw [h]; simp [AC.ACState.initial, hB]
       · rw [h]; exact htk
     | tick => rw [hoth (fun _ => by simp) (by simp)]; exact hpre.resolve_left (by simp)

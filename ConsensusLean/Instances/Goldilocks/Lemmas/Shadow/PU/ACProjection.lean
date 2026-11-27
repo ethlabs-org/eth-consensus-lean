@@ -282,7 +282,7 @@ theorem pool_vote_emitted' (hrun : GoldilocksRun' proposer dg H tr ini)
         have hp : (AC.acRestart sp ro y (tr.projAC.state y k) ℓ.frame (tr.time k)).1 =
             tr.projAC.post k := by
           simpa [hr, ACInterface.step, RunTrace.projAC] using congrArg Prod.fst hex
-        rw [← hp, hs.2.2.2.2.2.2.2.2.1 σ] at hv
+        rw [← hp, hs.2.2.2.2.2.2.2.1 σ] at hv
         exact absurd hv List.not_mem_nil
       · have hv' : v ∈ ((goldilocksAC sp _ ro).step y (tr.projAC.state y k) ℓ.frame (tr.time k)
             ℓ.call).1.pool σ := by

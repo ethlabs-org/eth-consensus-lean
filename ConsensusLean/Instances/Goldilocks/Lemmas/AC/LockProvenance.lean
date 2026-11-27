@@ -104,11 +104,7 @@ theorem FromP.of_proposalWith
 theorem toFG_locks (A : ACState sp.n) (t : Time) :
     (acToFG sp A Φ t).1.locks = A.locks := by
   unfold acToFG
-  split_ifs
-  · split
-    · rfl
-    · split_ifs <;> rfl
-  · rfl
+  split_ifs <;> rfl
 
 theorem Below.of_sitsBelow (hU : Coherent U) {l' l : Lock} {B : Blk sp.n FGP}
     (h : SitsBelow U l' l) (hB : Below U l B) : Below U l' B := by

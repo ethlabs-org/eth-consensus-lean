@@ -9,7 +9,6 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Statements.Compose.G
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AnchorPrefix
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.Supplier
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.ConsumeBase
-import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AcquireSources
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.DeepQuarantine
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowLocal
@@ -90,32 +89,16 @@ theorem report_of_deepest_candidate_of_run'
     (hc : tr.projAC.CallAt y j ell) (hcall : ell.call = .toFG)
     (hjoin : AC.joined sp (tr.projAC.state y j) (tr.time j))
     {P C : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hPg : P.root ≠ sp.genesisRoot)
+    (_hPg : P.root ≠ sp.genesisRoot)
     (hC : AC.deepest ell.frame (AC.toFGCandidates sp (tr.projAC.state y j)
       ell.frame (tr.time j)) = some C) (hPC : ell.frame.Anc P C) :
     ∃ r ell' R, AC.ToFGAt tr.projAC y r ell' R ∧ tr.time r ≤ tr.time j ∧
       Anc (tr.HonestBlocks H) P R := by
   have hr := (Compose.goldilocks_ac_projection_from' hrun hnoColl).localRun
-  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hy hc
-  by_cases hrep : AC.AncR ell.frame C (tr.projAC.state y j).fgReported
-  · obtain ⟨R, hRt, hRr, hCR⟩ := hrep
-    have hPR : ell.frame.Anc P R := hPC.trans hCR
-    rcases Healing.fgReported_origin hr hrun.vstart hy j with hgen | ⟨r, hrj, ell', R', hto, hR'r⟩
-    · have hG := Store.genesis_mem_with Store.finalitySpec_updateFinality'
-        (Node.fg_reachable_at' hrun.toLocalRun' hy j).reachableWith
-      have he := hr.coherent.1 (hPhiU hRt) ⟨y, hy, j, hG⟩ (hRr.trans hgen)
-      rw [he] at hPR
-      rcases Relation.ReflTransGen.cases_tail hPR with heq | ⟨Y, _, hY⟩
-      · exact False.elim (hPg (by rw [← heq]; rfl))
-      · exact False.elim (Option.some_ne_none _ (hY.2.2.symm.trans rfl))
-    have hR't := toFG_mem_tree' hrun hy hto
-    obtain rfl : R' = R := hr.coherent.1 ⟨y, hy, r, hR't⟩ (hPhiU hRt)
-      (hR'r.trans hRr.symm)
-    exact ⟨r, ell', R', hto, hrun.time_mono hrj.le, hPR.mono hPhiU⟩
-  · refine ⟨j, ell, C, ⟨hc, hcall, ?_⟩, le_rfl, hPC.mono hPhiU⟩
-    change (AC.acToFG sp (tr.projAC.state y j) ell.frame (tr.time j)).2 = some C
-    unfold AC.acToFG
-    simp only [hjoin, not_true_eq_false, ↓reduceIte, fgSource_of_fast hC, hrep]
+  have hPhiU := (AC.frameIn_of_callAt hr hy hc).2
+  refine ⟨j, ell, C, ⟨hc, hcall, ?_⟩, le_rfl, hPC.mono hPhiU⟩
+  change (AC.acToFG sp (tr.projAC.state y j) ell.frame (tr.time j)).2 = some C
+  simp only [AC.acToFG, hjoin, not_true_eq_false, ↓reduceIte, fgSource_of_fast hC]
 
 /-- **A live report candidate compatible with every other candidate gives an actual report**
 extending it (`Healing.report_of_compatible_candidate_of_run`). Path candidates only enlarge the

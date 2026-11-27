@@ -53,8 +53,9 @@ open AC Node ChainFrame
 /-- The cut `8 · (4s + 6)` is the `ac_on_tick` of the tick of `4s + 6`, with no emission. -/
 theorem update_label (s : Nat) : (tickRun N1 dg1).label (8 * (4 * s + 6)) =
     some (.ac ⟨.tick, Node.frame (tickState N1 dg1 (4 * s + 6)), []⟩) := by
+  obtain ⟨st, he, _⟩ := tickCuts_other (t := 4 * s + 6) (by omega) (by omega)
   rw [tickRun_label, show 8 * (4 * s + 6) / 8 = 4 * s + 6 by omega,
-    show 8 * (4 * s + 6) % 8 = 0 by omega, tickCuts_other (by omega) (by omega)]
+    show 8 * (4 * s + 6) % 8 = 0 by omega, he]
   rfl
 
 theorem update_callAt (s : Nat) : (tickRun N1 dg1).projAC.CallAt v0 (8 * (4 * s + 6))

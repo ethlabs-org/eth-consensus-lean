@@ -73,11 +73,7 @@ theorem acToFG_keeps (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (acToFG sp A Φ t).1.votedSlot = A.votedSlot ∧
       (acToFG sp A Φ t).1.restartTime = A.restartTime := by
   unfold acToFG
-  split_ifs
-  · split
-    · exact ⟨rfl, rfl⟩
-    · split_ifs <;> exact ⟨rfl, rfl⟩
-  · exact ⟨rfl, rfl⟩
+  split_ifs <;> exact ⟨rfl, rfl⟩
 
 /-- Receipt admission never changes the execution-installed permission. -/
 theorem admitVote_mayVote (A : ACState sp.n) (t : Time) (v : Vote sp.n) :
@@ -155,11 +151,7 @@ private theorem acProposal_mayVote (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : T
 theorem acToFG_mayVote (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (acToFG sp A Φ t).1.mayVote = A.mayVote := by
   unfold acToFG
-  split_ifs
-  · split
-    · rfl
-    · split_ifs <;> rfl
-  · rfl
+  split_ifs <;> rfl
 
 /-- Restart replays receipts without changing the installed permission. -/
 theorem acRestart_mayVote (ro : ReplayOrder sp FGP) (self : Fin sp.n)

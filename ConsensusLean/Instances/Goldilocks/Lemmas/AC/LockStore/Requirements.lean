@@ -225,13 +225,10 @@ theorem fgSource_spec {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time} {C : Blk
 private theorem fgSource_of_toFG {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     {C : Blk sp.n FGP} (h : (acToFG sp A Φ t).2 = some C) : fgSource sp A Φ t = some C := by
   unfold acToFG at h
-  split_ifs at h
-  split at h
-  · cases h
-  · rename_i C' hC'
-    split_ifs at h
+  by_cases hj : joined sp A t
+  · simpa only [hj, not_true_eq_false, ↓reduceIte] using h
+  · simp only [hj, not_false_eq_true, ↓reduceIte] at h
     cases h
-    exact hC'
 
 /-- **The source of a block that `ac_to_fg` returns:** a viable block that is a fast-lock
 candidate, or, with deep sources on (`deepDepth = some D`) and no fast-lock candidate, a deep

@@ -63,7 +63,6 @@ structure RestartInv {FGP : Type} (A₀ : ACState sp.n) (Φ : Frm sp.n FGP) (t :
   latestConfirmed : A.latestConfirmed = A₀.latestConfirmed
   restartTime : A.restartTime = (t : WithBot Time)
   saved : A.saved = (ACState.initial sp.genesisRoot : ACState sp.n).saved
-  fgReported : A.fgReported = (ACState.initial sp.genesisRoot : ACState sp.n).fgReported
   votedSlot : A.votedSlot = (ACState.initial sp.genesisRoot : ACState sp.n).votedSlot
   pool : ∀ σ, A.pool σ = []
   voteStamp : ∀ x, A.voteStamp x = ⊤ ∨ A.voteStamp x = ETime.of t
@@ -74,7 +73,7 @@ structure RestartInv {FGP : Type} (A₀ : ACState sp.n) (Φ : Frm sp.n FGP) (t :
 theorem RestartInv.blockReceipt {FGP : Type} {A₀ A : ACState sp.n} {Φ : Frm sp.n FGP}
     {t : Time} (h : RestartInv sp A₀ Φ t A) {B : Blk sp.n FGP} (hB : B ∈ Φ.tree)
     (hg : B.root ≠ sp.genesisRoot) : RestartInv sp A₀ Φ t (AC.blockReceipt sp A t B) := by
-  exact ⟨h.locks, h.latestConfirmed, h.restartTime, h.saved, h.fgReported, h.votedSlot, h.pool,
+  exact ⟨h.locks, h.latestConfirmed, h.restartTime, h.saved, h.votedSlot, h.pool,
     h.voteStamp, fun q => by
       simp only [AC.blockReceipt, Function.update_apply]
       split_ifs with hq
@@ -111,7 +110,7 @@ theorem restart_state : RestartState sp := by
   have h₀ : RestartInv sp A Φ t { ACState.initial sp.genesisRoot with
       locks := A.locks, latestConfirmed := A.latestConfirmed,
       restartTime := (t : WithBot Time), mayVote := A.mayVote } :=
-    ⟨rfl, rfl, rfl, rfl, rfl, rfl, fun σ => rfl,
+    ⟨rfl, rfl, rfl, rfl, rfl, fun σ => rfl,
       fun x => Or.inl rfl, fun q => Or.inl rfl⟩
   have key : ∀ l : List (Blk sp.n FGP), (∀ B ∈ l, B ∈ Φ.tree ∧ B.root ≠ sp.genesisRoot) →
       ∀ acc : ACState sp.n × List (Em sp FGP), acc.2 = [] → RestartInv sp A Φ t acc.1 →
@@ -130,7 +129,7 @@ theorem restart_state : RestartState sp := by
       · simp only [h₁.acOnBlock sp ht hB hg self]
         exact h₁.blockReceipt sp hB hg
   obtain ⟨hr2, hr1⟩ := key (ro.order t Φ) (fun B hB => (hl.2.1 B).mp hB) (_, []) rfl h₀
-  exact ⟨hr2, hr1.locks, hr1.latestConfirmed, hr1.saved, hr1.fgReported, hr1.votedSlot,
+  exact ⟨hr2, hr1.locks, hr1.latestConfirmed, hr1.saved, hr1.votedSlot,
     hr1.restartTime, not_joined_of_restartTime sp ht hr1.restartTime,
     hr1.pool, hr1.voteStamp,
     hr1.blockStamp⟩

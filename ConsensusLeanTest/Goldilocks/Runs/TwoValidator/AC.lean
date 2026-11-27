@@ -13,7 +13,8 @@ The AC calls of the run on chain frames (`ChainFrame`), for either validator `y`
 * `admitVote_fresh` and the optimistic check: one vote of the slot locks nothing
   (`optimisticSelect_one`), both votes lock the tip (`optimisticSelect_two`);
 * `getConfirmation_tick`: the confirmation of slot `σ` is the block of slot `σ`;
-* `acToFG_tick`, `acToFG_none`: `ac_to_fg` returns the new tip once, then nothing. -/
+* `acToFG_tick`, `acToFG_read`: `ac_to_fg` returns the current tip without changing the AC state,
+  including on repeated reads. -/
 
 namespace Consensus.Goldilocks.Witness.TwoRun
 
@@ -201,7 +202,8 @@ theorem tryVote_blk {y : Fin sp.n} {A : ACState sp.n} {Φ : N.Frm} {f k : Nat}
       (admitVote sp { A with locks := L₁, votedSlot := (k + 1 : Nat) }
         ((4 * (k + 1) : Nat) : Int) (vote y (k + 1)),
         [⟨vote y (k + 1), { A with locks := L₁, votedSlot := (k + 1 : Nat) }, some d⟩]) ∧
-      LocksLe L₁ k ∧ (1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ L₁) := by
+      LocksLe L₁ k ∧ (1 ≤ k → (⟨(blk k).root, k, true, k + 2⟩ : Lock) ∈ L₁) ∧
+      (A.locks = ∅ → L₁ = ∅) := by
   have hs := slot4 k
   have hf : f ≤ k := le_trans h.fj (jx_succ_le k)
   unfold tryVote
@@ -252,7 +254,8 @@ theorem tryVote_blk {y : Fin sp.n} {A : ACState sp.n} {Φ : N.Frm} {f k : Nat}
     rw [Function.update_self, hpool]; rfl
   exact ⟨L₁, ⟨blk (k + 1), getAnchor sp { A with locks := L₁ } Φ ((4 * (k + 1) : Nat) : Int),
     voteDomain sp { A with locks := L₁ } Φ (k + 1)⟩,
-    Prod.ext (optimisticConfirmation_of_none (optimisticSelect_one hadm)) rfl, hL₁, htip₁⟩
+    Prod.ext (optimisticConfirmation_of_none (optimisticSelect_one hadm)) rfl, hL₁, htip₁,
+    fun he => by ext l; simp [L₁, unlock, liveLocks, he]⟩
 
 /-- The resolution time of a vote on a chain block of the tree, of the block's slot. -/
 theorem resolutionTime_vote {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ) {A : ACState sp.n}
@@ -311,12 +314,32 @@ theorem acProposal_tick {A : ACState sp.n} {Φ : N.Frm} {f k : Nat}
   obtain ⟨m, -, hm, rfl⟩ := h.eq_of_mem hB.1
   exact ⟨m, hm, rfl⟩
 
-/-- `ac_to_fg` with the tip `τ` locked and the previous slot reported: the source is the tip. -/
+/-- `ac_to_fg` with the tip `τ` locked: the source is the tip, with no state write. -/
+theorem acToFG_tip {A : ACState sp.n} {Φ : N.Frm} {f j τ b : Nat} {t : Time}
+    (h : ChainFrame Φ f j τ) (hj : A.restartTime = ⊥) (hf : f ≤ b)
+    (hjb : j ≤ b) (hb : b ≤ τ) (hst : sp.slot t ≤ b + 2)
+    (hL : LocksLe A.locks b)
+    (htip : (⟨(blk b).root, b, true, b + 2⟩ : Lock) ∈ A.locks) :
+    (AC.acToFG sp A Φ t).1 = A ∧
+      (AC.acToFG sp A Φ t).2 = some (blk b) := by
+  have htip' := h.mem hf hb
+  have hd : deepest Φ (toFGCandidates sp A Φ t) = some (blk b) := by
+    apply h.deepest_eq (fun B hB => hB.1.1)
+    · exact ⟨h.mem_viableTree (h.mem (hf.trans hb) le_rfl) hjb hb htip', _,
+        h.mem_liveLocks htip hf hb rfl hst, rfl, rfl, hst⟩
+    · intro B hB
+      obtain ⟨l, hl, hr, -, -⟩ := hB.2
+      exact h.liveLockBlocks_le hL ⟨hB.1.1, l, hl, hr⟩
+  unfold AC.acToFG AC.fgSource
+  rw [ite_eq_right (not_not.2 (joined_of_bot hj _))]
+  dsimp only
+  rw [hd]
+  exact ⟨rfl, rfl⟩
+
 theorem acToFG_tick {A : ACState sp.n} {Φ : N.Frm} {f τ : Nat} {t : Time}
     (h : ChainFrame Φ f (jx τ) τ) (hj : A.restartTime = ⊥) (hst : sp.slot t = τ)
-    (htip : (⟨(blk τ).root, τ, true, τ + 2⟩ : Lock) ∈ A.locks)
-    {r : Nat} (hr : r < τ) (hrep : A.fgReported = (blk r).root) :
-    (AC.acToFG sp A Φ t).1 = { A with fgReported := (blk τ).root } ∧
+    (htip : (⟨(blk τ).root, τ, true, τ + 2⟩ : Lock) ∈ A.locks) :
+    (AC.acToFG sp A Φ t).1 = A ∧
       (AC.acToFG sp A Φ t).2 = some (blk τ) := by
   have hf : f ≤ τ := le_trans h.fj (jx_le _)
   have htip' := h.mem hf (le_refl τ)
@@ -328,39 +351,31 @@ theorem acToFG_tick {A : ACState sp.n} {Φ : N.Frm} {f τ : Nat} {t : Time}
     · intro B hB
       obtain ⟨m, -, hm, rfl⟩ := h.eq_of_mem hB.1.1
       exact ⟨m, hm, rfl⟩
-  have hn : ¬ AncR Φ (blk τ) A.fgReported := by
-    rintro ⟨R, hR, hr', ha⟩
-    rw [hrep] at hr'
-    obtain ⟨rfl, -, -⟩ := h.eq_of_root hR hr'
-    have := h.le_of_anc ha; omega
   unfold AC.acToFG AC.fgSource
   rw [ite_eq_right (not_not.2 (joined_of_bot hj _))]
   dsimp only
   rw [hd]
-  dsimp only
-  rw [ite_eq_right hn]
   exact ⟨rfl, rfl⟩
 
-/-- `ac_to_fg` returns nothing when every lock is at or below the reported block. -/
-theorem acToFG_none {A : ACState sp.n} {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ)
-    {b : Nat} (hL : LocksLe A.locks b) (hb : f ≤ b) (hbτ : b ≤ τ)
-    (hrep : A.fgReported = (blk b).root) (t : Time) :
-    (AC.acToFG sp A Φ t).1 = A ∧ (AC.acToFG sp A Φ t).2 = none := by
-  unfold AC.acToFG
-  split_ifs
-  all_goals try exact ⟨rfl, rfl⟩
-  · split
-    · exact ⟨rfl, rfl⟩
-    · rename_i C hC
-      obtain ⟨⟨hCv, l, hl, hlb, -, -⟩, -⟩ := deepest_mem hC
-      have hCt := hCv.1
-      obtain ⟨m, hm1, hm, rfl⟩ := h.eq_of_mem hCt
+/-- A read keeps the state; every returned source is bounded by the live locks. -/
+theorem acToFG_read {A : ACState sp.n} {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f j τ)
+    {b : Nat} (hL : LocksLe A.locks b) (t : Time) :
+    (AC.acToFG sp A Φ t).1 = A ∧ ∀ C, (AC.acToFG sp A Φ t).2 = some C →
+      ∃ m, f ≤ m ∧ m ≤ τ ∧ m ≤ b ∧ C = blk m := by
+  constructor
+  · unfold AC.acToFG; split <;> rfl
+  · intro C hc
+    unfold AC.acToFG at hc
+    by_cases hj : joined sp A t
+    · simp only [hj, not_true_eq_false, ↓reduceIte] at hc
+      obtain ⟨hCv, l, hl, hlb, -, -⟩ := (deepest_mem hc).1
+      obtain ⟨m, hm1, hm, rfl⟩ := h.eq_of_mem hCv.1
       obtain ⟨hlL, -, -⟩ := h.liveLocks_sub hl
       obtain ⟨⟨m', hm', hr'⟩, -⟩ := hL l hlL
-      obtain ⟨-, hm'1, hm'2⟩ := h.eq_of_root hCt (hlb.symm.trans hr')
       have hmm : m = m' := blk_root_inj (hlb.symm.trans hr')
-      rw [ite_eq_left ⟨blk b, h.mem hb hbτ, hrep.symm, h.anc hm1 (by omega) hbτ⟩]
-      exact ⟨rfl, rfl⟩
+      exact ⟨m, hm1, hm, by omega, rfl⟩
+    · simp only [hj, not_false_eq_true, ↓reduceIte] at hc
+      cases hc
 
 theorem fin2_cases (i y : Fin sp.n) : i = y ∨ i = other y := by
   have key : ∀ i y : Fin sp.n, i = y ∨ i = other y := by unfold other; decide
@@ -464,7 +479,7 @@ theorem updateConfirmation_tick {Φ : N.Frm} {f j τ : Nat} (h : ChainFrame Φ f
       { A with saved := Function.update A.saved σ (some (blk σ).root) } := by
     unfold updateLatestConfirmed; rw [ite_eq_left (by dsimp only; rw [hlat]; exact hanc)]
   simp only [Option.map_some, hul, ite_self]
-  refine ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, trivial, trivial, _, ?_, rfl⟩
+  refine ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, trivial, trivial, _, ?_, rfl⟩
   rintro p (⟨B, hB, rfl⟩ | ⟨B, hB, rfl⟩)
   · exact ⟨⟨B, (deepest_mem hB).1.1.1.1, rfl⟩, fastExpiry_le sp _ _ _ _⟩
   · exact ⟨⟨B, (deepest_mem hB).1.1.1.1, rfl⟩, le_rfl⟩
