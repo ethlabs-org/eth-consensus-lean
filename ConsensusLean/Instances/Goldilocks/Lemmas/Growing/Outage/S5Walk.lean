@@ -30,8 +30,8 @@ At a vote of `y` at cut `i`, `y` honest at `t_i`, from `OutageLockInv D i`:
 
 * `vote_extends_of_hi_at` (H1, vote form): under Hi the walk over the viable vote domain passes
   `P`; every viable head is strictly above `P` by G3′ (`above_of_hi_height_at`, counted at `t_i`);
-* `J_anc_of_lo_at`, `not_contest_of_lo_at`: Lo is `Σ.J ⪯ P`, with no contest, at a cut read at
-  a time at which its node is honest after every earlier cut;
+* `J_anc_of_lo_at`: Lo is `Σ.J ⪯ P`, at a cut read at a time at which its node is honest after
+  every earlier cut;
 * `readPoint_liveLockBlocks_compatible_at`: the read point's live locks are compatible with every
   block below `P`; a stored lock by (L) at `t_i`, an optimistic lock of the cast by the fast-lock
   count at the cast's cut;
@@ -59,6 +59,26 @@ private theorem eq_of_anc_sibling {S : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (
   have h₁ := (Anc.slot_le hS hY'Z).1
   have h₂ := hS.2 Z hZ Y' hY' (hpar.trans hZY.2.2)
   omega
+
+/-- **Under Hi, every viable head is strictly above `P`.** By height (`hmax ≤ σ(W).h`, or
+`σ(W).h + 1 = hmax` with `hj + 1 < hmax`, both at least `hj + 1`, so G3′ applies) or by the J clause
+(`P ≺ J ⪯ W`). -/
+private theorem hi_viable_head_above {U : Set (AC.Blk sp.n (List (FG.Att sp.n)))} (hU : Coherent U)
+    {st : Store sp.toParams (Payload sp.n)} (hst : st.tree ⊆ U) (hjm : st.hj < st.hmax)
+    {Pb : AC.Blk sp.n (List (FG.Att sp.n))} (hPJ : Anc U Pb st.J) (hJP : st.J.root ≠ Pb.root)
+    (above : ∀ {X}, X ∈ st.tree → st.hj + 1 ≤ (st.σ X.root).h →
+      Anc U Pb X ∧ X.root ≠ Pb.root)
+    {W : AC.Blk sp.n (List (FG.Att sp.n))} (hW : W ∈ st.tree) (hv : st.IsViable W) :
+    Anc U Pb W ∧ W.root ≠ Pb.root := by
+  rcases hv with h | ⟨h1, h2 | h2⟩
+  · exact above hW (by omega)
+  · exact above hW (by omega)
+  · have hJW : Anc U st.J W := h2.mono hst
+    refine ⟨hPJ.trans hJW, fun hr => hJP ?_⟩
+    have hPne : Pb ≠ st.J := fun h => hJP (by rw [h])
+    have hPU : Pb ∈ U := (Anc.mem hPJ hPne).1
+    obtain rfl : W = Pb := hU.1 (hst hW) hPU hr
+    exact congrArg (·.root) (Anc.antisymm hU hJW hPJ)
 
 variable (D : OutageLockPremises tr H proposer dg ini)
 
@@ -88,7 +108,7 @@ private theorem anc_getHead_of_hi {i : Nat} (hinv : OutageLockInv D i) {w : Fin 
   have hΦ : FrameOK Φ := frameOK_at D.hrun hd hw ht
   have hΦU : Φ.tree ⊆ tr.HonestBlocksAt H := fun Z hZ => tree_held_at hd hw ht hZ.1
   have hR := reachable_at D.hrun hd hw ht
-  obtain ⟨-, hJt, -, -, -, ⟨Bm, hBmt, hBmh⟩, -⟩ := Store.cache_invariants _ _ _ _ hR
+  obtain ⟨-, -, -, -, -, ⟨Bm, hBmt, hBmh⟩, -⟩ := Store.cache_invariants _ _ _ _ hR
   have hjm : st.hj < st.hmax := by
     have h := Healing.hj_lt_hmax (D.hrun.upTo hd) hw i
     rwa [Trace.upTo_state tr w ht] at h
@@ -111,29 +131,11 @@ private theorem anc_getHead_of_hi {i : Nat} (hinv : OutageLockInv D i) {w : Fin 
       · exact he ▸ hWt
       · exact (Anc.mem h he).1
     exact ⟨hPt, held_anc_at D.hrun D.hnc hd hw ht hFP hPt⟩
-  by_cases hcond : st.hmax = st.hj + 1 ∧ ¬ st.Contest
-  · -- `fc_root = Σ.J ⪰ P`: no viable block is below `P`
-    have hfc : Φ.fcRoot = st.J := Store.fcRoot_of_not_contest st hcond.1 hcond.2
-    have hJΦ : st.J ∈ Φ.tree := hfc ▸ hΦ.fcRoot_mem
-    have hPt := hPΦ st.J hJt hPJ
-    refine Anc.mono hΦU (AC.anc_getHead hU hΦ hΦU A t V σ hdom hdomA
-      (Or.inr (hfc ▸ AC.anc_tree_of_anc_U hU hΦ hΦU hPt hPJ hJΦ)) hlocks ?_)
-    intro X Cx hCx _ hCxP
-    have hJP' : Anc (tr.HonestBlocksAt H) st.J D.P := Anc.mono hΦU ((hfc ▸ hCx.2.1).trans hCxP)
-    exact absurd (congrArg (·.root) (Anc.antisymm hU hJP' hPJ)) hJP
-  -- `fc_root = Σ.F ≺ P`, and the head height floor is at least `h_j + 1`
-  have hfc : Φ.fcRoot = st.F := by
-    change st.fcRoot = st.F
-    unfold Store.fcRoot
-    simp only [hcond, ↓reduceIte]
-  have hfl : st.hj + 1 ≤ st.headHeightFloor := by
-    unfold Store.headHeightFloor
-    split_ifs with hc
-    · omega
-    · have : st.hmax ≠ st.hj + 1 := fun h => hcond ⟨h, hc⟩
-      omega
+  -- `fc_root = Σ.F ≺ P`, and every viable head is strictly above `P`
+  have hfc : Φ.fcRoot = st.F := rfl
   have hvh : ∀ W ∈ Φ.viableHeads, Anc (tr.HonestBlocksAt H) D.P W ∧ W.root ≠ D.P.root :=
-    fun W hW => above hW.1 (hfl.trans hW.2.2.2)
+    fun W hW => hi_viable_head_above hU (fun Z hZ => tree_held_at hd hw ht hZ) hjm hPJ hJP above
+      hW.1 hW.2.2
   have hFΦ : st.F ∈ Φ.tree := hfc ▸ hΦ.fcRoot_mem
   -- a viable head in the domain, strictly above `P`
   obtain ⟨W, hWd, hWv⟩ : ∃ W ∈ dom, W ∈ Φ.viableHeads := by
@@ -141,13 +143,7 @@ private theorem anc_getHead_of_hi {i : Nat} (hinv : OutageLockInv D i) {w : Fin 
     · exact ⟨W, hWd, hWv⟩
     · have hFBm := held_anc_at D.hrun D.hnc hd hw ht (hFP.trans (above hBmt
         (show st.hj + 1 ≤ (st.σ Bm.root).h by omega)).1) hBmt
-      refine ⟨Bm, hsub ⟨hBmt, hFBm⟩, hBmt, hFBm, ?_, ?_⟩
-      · change st.Anc st.fcRoot Bm
-        rw [show st.fcRoot = st.F from hfc]
-        exact hFBm
-      · change st.headHeightFloor ≤ (st.σ Bm.root).h
-        unfold Store.headHeightFloor
-        split_ifs <;> omega
+      exact ⟨Bm, hsub ⟨hBmt, hFBm⟩, hBmt, hFBm, Or.inl hBmh.ge⟩
   have hPW := (hvh W hWv).1
   have hWΦ : W ∈ Φ.tree := hdom hWd
   have hPt := hPΦ W hWΦ.1 hPW
@@ -207,7 +203,7 @@ theorem vote_extends_of_hi_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n
 
 /-- **Lo is `Σ.J ⪯ P`**: `Σ.J`, read at a time at which its node is honest after every earlier
 cut, is compatible with `P` (OB-F) and not strictly above it. -/
-private theorem J_anc_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} {k : Nat}
+theorem J_anc_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} {k : Nat}
     {t : Time} (hk : k ≤ i) (ht0 : 0 ≤ t) (ht : ∀ k' < k, tr.time k' ≤ t) (hy : y ∈ H t)
     (hLo : ¬ HiAt tr H D.P y k) :
     Anc (tr.HonestBlocksAt H) (tr.state y k).fg.J D.P := by
@@ -219,54 +215,6 @@ private theorem J_anc_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.
       rw [hU.1 (tree_held_at ht0 hy ht hJt) D.hP.1 hr]
       exact .refl
     · exact absurd (hiAt_iff.2 ⟨h, hr⟩) hLo
-
-/-- **Lo has no contest**, read at a time `t` at which the node is honest after every earlier
-cut, with `2 f_t < n`: a contest block's `h_j`-entry is compatible with `P` (its source, held while
-honest at `t`, is) and is not `Σ.J`; with `Σ.J ⪯ P` it would be `Σ.J` or above `Σ.J`. -/
-theorem not_contest_of_lo_at {i : Nat} (hinv : OutageLockInv D i) {y : Fin sp.n} {k : Nat}
-    {t : Time} (hk : k ≤ i) (ht0 : 0 ≤ t) (ht : ∀ k' < k, tr.time k' ≤ t) (hy : y ∈ H t)
-    (hf : 2 * (H t)ᶜ.ncard < sp.n) (hLo : ¬ HiAt tr H D.P y k) :
-    ¬ (tr.state y k).fg.Contest := by
-  have hU := D.coherent
-  have hr := D.hrun.upTo ht0
-  have hnc' := D.hnc.upTo t
-  have hsub := upTo_subset D.hrun ht0
-  have hst := Trace.upTo_state tr y ht
-  have hJP := J_anc_of_lo_at D hinv hk ht0 ht hy hLo
-  have hsrc := (rows_sourced_by D.hrun D.hnc (B := D.P) (n := k)
-    (fun x k' hk' hx => hinv.sources x k' (by omega) hx) ht0 ht hy).upTo_held ht
-  rw [← hst] at hJP ⊢
-  rintro ⟨hm, X, hX, -, hXh, hJX⟩
-  have hR := fg_reachable hr.toLocalRun hy k
-  have hJt := (Store.cache_invariants _ _ _ _ hR).2.1
-  have hJU : ((tr.upTo t).state y k).fg.J ∈ (tr.upTo t).HonestBlocks (H t) := ⟨y, hy, k, hJt⟩
-  by_cases h0 : ((tr.upTo t).state y k).fg.hj = 0
-  · rw [justified_genesis hr (i := k) h0 hy] at hJX
-    exact hJX ((Store.accepted_tree _ _ _ _ hR).2.2.2 X hX)
-  obtain ⟨hJh, hJT, -⟩ := justified_honest_source_before hr hnc' hf hy hsrc (by omega)
-  obtain ⟨E, hEt, hEX, hEh, hET, D', ⟨hD'P, -⟩, hD's⟩ :=
-    frame_crossing_source_before hr hnc' hf hy (i := k) hsrc hX
-      (j := ((tr.upTo t).state y k).fg.hj) (by omega)
-      (Nat.lt_of_lt_of_eq (Nat.lt_succ_self _) (hXh.trans hm).symm)
-  have hEU : E ∈ (tr.upTo t).HonestBlocks (H t) := fg_tree_subset_honest hy k hEt
-  obtain ⟨x, hx, k', -, -, hED', -, -⟩ := honest_source_entry hr hnc' hD's hEU rfl
-  have hEP : Compatible (tr.HonestBlocksAt H) E D.P :=
-    compatible_of_head_anc hU (hED'.mono ((fg_tree_subset_honest hx k').trans hsub)) hD'P
-  have back := fun {A W} (hW : W ∈ ((tr.upTo t).state y k).fg.tree)
-      (h : Anc (tr.HonestBlocksAt H) A W) =>
-    honest_held_anc hr hnc' hy (RunTrace.anc_upTo_of_right D.hrun.toLocalRun D.hnc ht0
-      ⟨y, hy, k, hW⟩ h) hW
-  rcases hEP with hEP | hPE
-  · rcases Anc.total hU hEP hJP with h | h
-    · have hEJ := back hJt h
-      obtain rfl : E = ((tr.upTo t).state y k).fg.J :=
-        held_entry_unique hr hnc' hy hJt hEJ .refl (hEh.trans hJh.symm) hET hJT
-      exact hJX hEX
-    · have hJE := back hEt h
-      obtain rfl : ((tr.upTo t).state y k).fg.J = E :=
-        held_entry_unique hr hnc' hy hEt hJE .refl (hJh.trans hEh.symm) hJT hET
-      exact hJX hEX
-  · exact hJX ((back hEt (hJP.trans hPE)).trans hEX)
 
 /-- **The read point's live locks are compatible with every block below `P`**, at a vote of a
 node honest at its cut `i`, of a positive slot: a stored lock by (L) at `t_i`, the cast's

@@ -4,7 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.VoteReceipt
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RowLabel
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowLabel
 
 public section
 
@@ -147,7 +147,7 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
     intro E C hE hET hEh hEC hlt
     obtain ⟨W, hW, att, ha, v', d, hv', hd, hs', -, r', hrd, l', O, ho, hEO⟩ :=
       hp.left_entry_origin_of_quarantine_at' ht hle hy hib hE hET hEh hEC hlt hpre
-    have hl := KernelProof.row_origin_label_lt_at' hp hy hcast hW ha
+    have hl := KernelProof.row_origin_label_lt_at hp hy hcast hW ha
       (hp.run.antitone (hp.run.time_mono hd.le) hv') hs' hd hrd ho
     exact ⟨v', r', l', O, ho, by omega, (hp.run.time_mono (show r' ≤ i by omega)).trans hib,
       hl, hEO⟩

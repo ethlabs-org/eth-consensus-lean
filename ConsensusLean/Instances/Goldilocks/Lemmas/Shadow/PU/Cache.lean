@@ -124,27 +124,6 @@ theorem updateFinality_eq_G :
   rw [updateFinality_eq]
   rfl
 
-theorem Reachable.reachableWith' {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable acp₀) :
-    ReachableWith updateFinality acp₀ st := by
-  rw [reachableWith_eq]
-  have h' : Relation.ReflTransGen Step (init acp₀) st := by rw [← reachable_eq]; exact h
-  clear h
-  induction h' with
-  | refl => exact .refl
-  | tail _ hs ih =>
-    refine ih.tail ((stepWith_iff _ _ _).2 ?_)
-    rcases (step_iff _ _).1 hs with ⟨B, hB⟩ | ⟨a, ha⟩
-    · exact Or.inl ⟨B, (onBlock_eq_onBlockWith _ B) ▸ hB⟩
-    · exact Or.inr ⟨a, ha⟩
-
-/-- `finalized_monotone_with` for the shadow handlers: `onBlock'` extends `F`, an attestation
-keeps it. -/
-theorem finalized_monotone' (st : Store P ACP) :
-    (∀ B st', st.onBlock B = some st' → st'.Anc st.F st'.F) ∧
-      ∀ a, (st.onAttestation a).F = st.F := by
-  simp only [onBlock_eq_onBlockWith]
-  exact finalized_monotone_with finalitySpec_updateFinality
-
 /-- **The shadow cache invariant**: every shadow-reachable store satisfies `CacheGood`; the
 `_with` lemmas apply with `finalitySpec_updateFinality'` and `Reachable'.reachableWith`. -/
 theorem Reachable.good {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable acp₀) :

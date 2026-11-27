@@ -16,11 +16,7 @@ top reader at height `h_max − 1` the window is in its J-kind, where `J` is pin
 is split and no constant `h_max` or top is read. The `hvQ` forms are kept.
 
 The stock window and witness give a `WindowWitness` (`windowWitness_of_stock`), and each stock form
-is the window-free core of its `hvQ` form (`…_of_windowWitness_at'`) at it.
-
-`optimistic_supporter_later_heads_stock_at'` is open: its witness is a P-U viable head of the
-supporter's cast frame (the anchor's viable descendant), not a stock witness. At a contesting
-caster (`h_max = floor`) it can sit at `floor − 1`, below the stock witness's floor. -/
+is the window-free core of its `hvQ` form (`…_of_windowWitness_at'`) at it. -/
 
 namespace Consensus.Goldilocks.Healing
 
@@ -446,37 +442,6 @@ theorem optimistic_later_heads_of_stock_witness_at {K : AC.CommitteeDict sp.n}
       (sp.toParams.fg.faults_lt_quorum_margin
         (hf _ ((hrun.time_nonneg i).trans (le_max_left _ _)) (max_le (hhi.trans hmb)
           (hahi.trans hmb)))) hlo hhi hQ ⟨hh, hJ⟩ hQ .refl) hXQ hK r hrlo hrN
-
-/-- `optimistic_supporter_later_heads_at'` with the stock window. -/
-theorem optimistic_supporter_later_heads_stock_at {s₀ s N floor : Nat}
-    {kindJ : Prop} {J L D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
-    (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    (hm : gbar g ≤ sp.ts s) (hs₀ : s₀ ≤ s) (hsN : s + 1 ≤ N)
-    (hmb : sp.ts N + sp.Δ ≤ b)
-    {x : Fin sp.n} {i a : Nat} (hx : x ∈ H (tr.time i)) (hxa : x ∈ H (tr.time a))
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC x i ell e) (hes : e.msg.slot = s)
-    (hanchor : L = AC.getAnchor sp e.readPoint ell.frame (tr.time i))
-    {CV : Set (AC.Vote sp.n)} (hop : AC.OptimisticLockAt tr.projAC x a s D CV)
-    (hLD : Anc (tr.HonestBlocksAt H) L D) (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ r, s + 1 ≤ r → r ≤ N →
-      (∀ y j ev, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j ev → ev.msg.slot = r →
-        AC.VoteExtends (tr.HonestBlocksAt H) ev.msg L) ∧
-      (∀ y j ell', y ∈ H (tr.time j) → tr.projAC.CallAt y j ell' → ell'.call = .proposal →
-        tr.time j = sp.ts r → ∀ d pay,
-        (AC.acProposal sp (tr.projAC.state y j) ell'.frame (tr.time j)).2 = some (d, pay) →
-          Anc (tr.HonestBlocksAt H) L d.head) := by
-  -- The supporter's witness is the anchor's P-U viable head in its cast frame, possibly at
-  -- `floor − 1` at a contesting caster; route (i) needs `floor ≤ σ(Q).h`. Open.
-  sorry
 
 /-- **An optimistic supporter's anchor over the stock window, above a floor anchor**
 (`optimistic_supporter_later_heads_at'` with the stock window): the anchor `L` extends an honestly

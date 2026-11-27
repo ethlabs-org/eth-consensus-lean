@@ -28,16 +28,6 @@ variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
   {proposer : Nat → Fin P.n} {H : Set (Fin P.n)} {sg : A.Msg → Fin P.n} {tr : RunTrace A}
   {ini : Fin P.n → A.State}
 
-/-- **An AC block call follows the FG cut that accepts the block** (a copy of `acBlock_prev`). -/
-private theorem acBlock_prev (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
-    (hy : y ∈ H) {i : Nat} {ℓ : ACLabel A} {B : A.Blk} (hc : tr.CallAt y i (.ac ℓ))
-    (hb : ℓ.call = .block B) :
-    ∃ i', i = i' + 1 ∧ tr.CallAt y i' (.fg (.block B true)) ∧ tr.time i' = tr.time i := by
-  obtain ⟨j, e, k, hg, rfl, hk⟩ := Coherence.call_in_group h hy hc
-  obtain ⟨k', rfl, hk'⟩ := Coherence.exec_acBlock_prev proposer dg y _ _ e hk hb
-  obtain ⟨hc', ht⟩ := group_cut hg hk'
-  exact ⟨j + k', rfl, hc', ht⟩
-
 /-! ### The frame between AC calls -/
 
 /-- The frame of every honest state is a frame inside the honest blocks. -/
