@@ -22,6 +22,19 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
   {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {g ΔF a : Time}
 
+/-- Viability passes to a store descendant of at least the same height. -/
+private theorem isViable_of_anc {P : Params} {ACP : Type} {st : Store P ACP}
+    {X B : NodeBlock P ACP} (hv : st.IsViable X) (hXB : st.Anc X B)
+    (hh : (st.σ X.root).h ≤ (st.σ B.root).h) : st.IsViable B := by
+  rcases hv with hm | ⟨hX, hgap | hJX⟩
+  · exact Or.inl (hm.trans hh)
+  · by_cases hm : st.hmax ≤ (st.σ B.root).h
+    · exact Or.inl hm
+    · exact Or.inr ⟨by omega, Or.inl hgap⟩
+  · by_cases hm : st.hmax ≤ (st.σ B.root).h
+    · exact Or.inl hm
+    · exact Or.inr ⟨by omega, Or.inr (hJX.trans hXB)⟩
+
 /-- A voter competitor other than the proposal, below a predecessor of its parent, reflects into the
 proposer's viable tree. Frozen candidates use guarded relay; current-slot candidates use the
 actual proposal's uniqueness. -/
@@ -64,8 +77,8 @@ theorem reset_competitor_reflect
   refine ⟨hBt, hfB, B, hBt, ?_, .refl⟩
   rw [Compose.frame_of_projAC hp.run hP.1 hci] at hXv hBt ⊢
   have hXBs := Compose.honest_held_anc hp.run hp.noColl hP.1 hXB hBt.1
-  exact ⟨hBt.1, hBt.2, hXv.2.2.1.trans hXBs,
-    le_trans hXv.2.2.2 (Compose.honest_held_height hp.run hp.noColl hP.1 hXBs).1⟩
+  exact ⟨hBt.1, hBt.2, isViable_of_anc hXv.2.2 hXBs
+    (Compose.honest_held_height hp.run hp.noColl hP.1 hXBs).1⟩
 
 /-- Finite winner transport along the viable proposal chain. -/
 theorem ResetPremisesUpTo.reset_winner_voter_tree {b : Time}
@@ -146,8 +159,8 @@ theorem ResetPremisesUpTo.reset_competitor_reflect {b : Time}
   refine ⟨hBt, hfB, B, hBt, ?_, .refl⟩
   rw [Compose.frame_of_projAC hp.run hpH hci] at hXv hBt ⊢
   have hXBs := Compose.honest_held_anc hp.run hp.noColl hpH hXB hBt.1
-  exact ⟨hBt.1, hBt.2, hXv.2.2.1.trans hXBs,
-    le_trans hXv.2.2.2 (Compose.honest_held_height hp.run hp.noColl hpH hXBs).1⟩
+  exact ⟨hBt.1, hBt.2, isViable_of_anc hXv.2.2 hXBs
+    (Compose.honest_held_height hp.run hp.noColl hpH hXBs).1⟩
 
 /-- A best child on the proposal-parent path stays best at the voter. The winner is
 transported through the viable proposal, while competitors reflect through guarded relay. -/
