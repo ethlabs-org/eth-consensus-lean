@@ -722,6 +722,59 @@ theorem optimistic_later_heads_of_early_witness_at' {K : AC.CommitteeDict sp.n}
         (hf _ ((hrun.time_nonneg i).trans (le_max_left _ _)) (max_le (hhi.trans hmb)
           (hahi.trans hmb)))) hlo hhi hQ hwit hQ .refl) hXQ hK r hrlo hrN
 
+/-- **The viable head above a supporter's anchor**: a cast of slot `s` of a node honest at it
+is in slot `s` before its vote deadline, and its anchor `L` is below a P-U viable head of the
+cast's frame. The window-free extraction step of `optimistic_supporter_later_heads_at'` and its
+stock form. -/
+theorem supporter_anchor_viable_head_at'
+    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {b : Time}
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    {s : Nat} (hsb : sp.ts s + sp.Δ ≤ b) {L : AC.Blk sp.n (List (FG.Att sp.n))}
+    {x : Fin sp.n} {i : Nat} (hx : x ∈ H (tr.time i))
+    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC x i ell e) (hes : e.msg.slot = s)
+    (hanchor : L = AC.getAnchor sp e.readPoint ell.frame (tr.time i)) :
+    sp.ts s ≤ tr.time i ∧ tr.time i ≤ sp.ts s + sp.Δ ∧
+      ∃ Q ∈ ell.frame.tree, Q ∈ ell.frame.viableHeads ∧ Anc (tr.HonestBlocksAt H) L Q := by
+  have ht0 := hrun.time_nonneg i
+  have hac := Compose.goldilocks_ac_projection_from' (hrun.upTo ht0) (hnc.upTo _)
+  rw [RunTrace.upTo_projAC] at hac
+  have hr := hac.localRun
+  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
+  have subU := RunTrace.honestBlocks_upTo_subset hrun.time_mono (H := H) ht0
+  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hx hc'.1
+  have hslot := (AC.castAt_specU hr.toU hx hc').2.1.symm.trans hes
+  change sp.slot (tr.time i) = s at hslot
+  have hlo : sp.ts s ≤ tr.time i := (AC.ts_le_iff_le_slot sp ht0 _).2 (by rw [hslot])
+  have hhi : tr.time i ≤ sp.ts s + sp.Δ := by
+    have h := AC.vote_time_leU hr.toU hx ⟨ell, hc'⟩
+    change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at h
+    rwa [hslot] at h
+  have hib : tr.time i ≤ b := hhi.trans hsb
+  have hroot : ell.frame.Anc ell.frame.fcRoot L := by
+    rw [hanchor]; exact AC.fcRoot_anc_getAnchor hPhi _ _
+  have hvL : L ∈ ell.frame.viableTree ell.frame.tree := by
+    have hR := proposal_root_viable_at' hrun hnc hx (quorum_excess' (hf _ ht0 hib)) hc.1
+    have he : L = ell.frame.fcRoot ∨
+        L ∈ AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) := by
+      rw [hanchor]
+      unfold AC.getAnchor
+      cases hd : AC.deepest ell.frame _ with
+      | none => exact Or.inl rfl
+      | some B =>
+        rcases (AC.deepest_mem hd).1 with h | h
+        · exact Or.inr h
+        · exact Or.inl (Set.mem_singleton_iff.mp h)
+    rcases he with he | h
+    · exact he ▸ hR
+    rcases AC.liveLockBlock_candidate hPhi h with hv | hb
+    · exact hv
+    · exact Anc.antisymm hPhi.coherent hb hroot ▸ hR
+  obtain ⟨Q, hQ, hvQ, hLQ⟩ := hvL.2.2
+  exact ⟨hlo, hhi, Q, hQ, hvQ, hLQ.mono (hPhiU.trans subU)⟩
+
 /-- An optimistic supporter's anchor propagates to independently honest later calls. -/
 theorem optimistic_supporter_later_heads_at' {s₀ s N M : Nat}
     {isTop : Prop} {J L D : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -749,47 +802,14 @@ theorem optimistic_supporter_later_heads_at' {s₀ s N M : Nat}
         tr.time j = sp.ts r → ∀ d pay,
         (AC.acProposal sp (tr.projAC.state y j) ell'.frame (tr.time j)).2 = some (d, pay) →
           Anc (tr.HonestBlocksAt H) L d.head) := by
-  have ht0 := hrun.time_nonneg i
-  have hac := Compose.goldilocks_ac_projection_from' (hrun.upTo ht0) (hnc.upTo _)
-  rw [RunTrace.upTo_projAC] at hac
-  have hr := hac.localRun
-  have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
-  have subU := RunTrace.honestBlocks_upTo_subset hrun.time_mono (H := H) ht0
-  obtain ⟨hPhi, hPhiU⟩ := AC.frameIn_of_callAt hr hx hc'.1
-  have hslot := (AC.castAt_specU hr.toU hx hc').2.1.symm.trans hes
-  change sp.slot (tr.time i) = s at hslot
-  have hlo : sp.ts s ≤ tr.time i := (AC.ts_le_iff_le_slot sp ht0 _).2 (by rw [hslot])
-  have hhi : tr.time i ≤ sp.ts s + sp.Δ := by
-    have h := AC.vote_time_leU hr.toU hx ⟨ell, hc'⟩
-    change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at h
-    rwa [hslot] at h
   have hts : sp.ts s₀ ≤ sp.ts s := (AC.ts_le_iff sp).2 (by exact_mod_cast hs₀)
   have htN : sp.ts s ≤ sp.ts N :=
     (AC.ts_le_iff sp).2 (by exact_mod_cast (show s ≤ N by omega))
-  have hib : tr.time i ≤ b := by linarith [sp.toParams.hΔ]
-  have hroot : ell.frame.Anc ell.frame.fcRoot L := by
-    rw [hanchor]; exact AC.fcRoot_anc_getAnchor hPhi _ _
-  have hvL : L ∈ ell.frame.viableTree ell.frame.tree := by
-    have hR := proposal_root_viable_at' hrun hnc hx (quorum_excess' (hf _ ht0 hib)) hc.1
-    have he : L = ell.frame.fcRoot ∨
-        L ∈ AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) := by
-      rw [hanchor]
-      unfold AC.getAnchor
-      cases hd : AC.deepest ell.frame _ with
-      | none => exact Or.inl rfl
-      | some B =>
-        rcases (AC.deepest_mem hd).1 with h | h
-        · exact Or.inr h
-        · exact Or.inl (Set.mem_singleton_iff.mp h)
-    rcases he with he | h
-    · exact he ▸ hR
-    rcases AC.liveLockBlock_candidate hPhi h with hv | hb
-    · exact hv
-    · exact Anc.antisymm hPhi.coherent hb hroot ▸ hR
-  obtain ⟨Q, hQ, hvQ, hLQ⟩ := hvL.2.2
+  obtain ⟨hlo, hhi, Q, hQ, hvQ, hLQ⟩ := supporter_anchor_viable_head_at' hrun hnc hf
+    (by linarith only [htN, hmb]) hx hc hes hanchor
   exact optimistic_later_heads_of_early_witness_at' hrun hnc hsvc hawake hf hcatch hnr hm hmb
     (hframe.mono hts le_rfl) hxa hop hLD hx hlo
-    (by linarith [sp.toParams.hΔ]) hc.1 hQ hvQ (hLQ.mono (hPhiU.trans subU)) hK
+    (by linarith [sp.toParams.hΔ]) hc.1 hQ hvQ hLQ hK
 
 end Consensus.Goldilocks.Shadow.PU.Growing
 
