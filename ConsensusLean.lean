@@ -784,7 +784,9 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowAnchor
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowEntry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowParents
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowPlacement
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
@@ -802,6 +804,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Viability
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Witness
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AdmitsAtTick
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttGuard
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Simulation.AttUnforgeable

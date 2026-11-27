@@ -2,10 +2,15 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.S5Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Geometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Defs
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Candidate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Geometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 
 public section
 
@@ -24,6 +29,7 @@ shadow run facts it reads. Those facts that are not yet proved are the named stu
 namespace Consensus.Goldilocks.Shadow.PU
 
 open Consensus.Goldilocks.Compose Consensus.Goldilocks.Compose.Growing
+open Consensus.Goldilocks.Coherence
 open AC (ACParams ReplayOrder Payload Vote)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
@@ -213,33 +219,6 @@ section RunFacts'
 
 variable {d : Time} {y : Fin sp.n} {i : Nat}
 
-/-- Stub (V-A4 at a read time): the shadow frame of a node honest at `d` is well formed. -/
-theorem frameOK_at' (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
-    (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d) :
-    FrameOK (Node.frame' (tr.state y i)) := by
-  sorry
-
-/-- The shadow store of a node honest at `d` is `Reachable'`: the static fact on the prefix through
-`d` (`Growing.GoldilocksRun'.upTo`, lane B0b). -/
-theorem reachable_at' (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
-    (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d) :
-    (tr.state y i).fg.Reachable' (goldilocksNode' sp ro).genesisPayload := by
-  have h := Node.fg_reachable_at' (hrun.upTo hd).toLocalRun' hy i
-  rwa [Trace.upTo_state tr y hi] at h
-
-/-- Stub: ancestry in the honest blocks, ending in the tree, is ancestry in the store. -/
-theorem held_anc_at' (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d)
-    {A W : AC.Blk sp.n (List (FG.Att sp.n))} (h : Anc (tr.HonestBlocksAt H) A W)
-    (hW : W ∈ (tr.state y i).fg.tree) : (tr.state y i).fg.Anc A W := by
-  sorry
-
-/-- Stub: the honest blocks are coherent. -/
-theorem honestBlocksAt_coherent'
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
-    (hnc : NoCollRun dg tr) : Coherent (tr.HonestBlocksAt H) := by
-  sorry
-
 /-- A shadow-reachable store has a block of state height `h_max` (lane C0's `cache_invariants'`). -/
 theorem hmax_block_of_reachable' {acp₀ : Payload sp.n}
     {st : Store sp.toParams (Payload sp.n)} (h : st.Reachable' acp₀) :
@@ -262,9 +241,59 @@ theorem hj_lt_hmax_at' (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' propo
 
 end RunFacts'
 
-/-- **G3′ over the shadow run (stub).** Under Hi at cut `k`, read at a time `t` at which the node
-is honest after every earlier cut, with `2 f_t < n`, every block of its tree at state height at
-least `h_j + 1` is strictly above `P` (stock `above_of_hi_height_at`). Not yet proved. -/
+/-- **The rows are sourced by compatible blocks, at a read time** (stock `rows_sourced_by`): with
+every FG source, at a cut before `n` of a node honest then, compatible with `B`, every attestation
+of the tree at cut `n` of a node honest at a time `t ≥ 0` after every cut before `n`, by a
+validator honest at `t`, has a source compatible with `B`, held by that validator at its signing
+cut. The frame enters only through the signed source lying in the signer's tree, which is the
+store's tree above `F` (`Store.toFrame'_tree`). Reads `Compose.attest_source'` (lane C). -/
+theorem rows_sourced_by' {ini}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : NoCollRun dg tr) {B : AC.Blk sp.n (List (FG.Att sp.n))} {n : Nat}
+    (hsrc : ∀ x k, k < n → x ∈ H (tr.time k) → ∀ ℓ C, AC.ToFGAt tr.projAC x k ℓ C →
+      Compatible (tr.HonestBlocksAt H) C B)
+    {y : Fin sp.n} {t : Time} (ht0 : 0 ≤ t) (ht : ∀ k < n, tr.time k ≤ t) (hy : y ∈ H t) :
+    HonestRowsSourcedBy tr H (fun D => Compatible (tr.HonestBlocksAt H) D B) y n t := by
+  have hr := hrun.upTo ht0
+  refine honestRowsSourcedBy_iff.2 fun X hX a ha hav => ?_
+  obtain ⟨m, hmn, -, k, hkm, src, hcall⟩ :=
+    honest_row_signed_before' hr (hnc.upTo _) hy (by rw [Trace.upTo_state tr y ht]; exact hX) ha
+      hav
+  obtain ⟨j, rfl, ℓ, hcj, hcl, -, hC, hfg⟩ := attest_source' hr.toLocalRun' hav hcall
+  have hj1 : j + 1 < n := by omega
+  have hjt : ∀ k' < j + 1, tr.time k' ≤ t := fun k' hk' => ht k' (by omega)
+  have hjt' : ∀ k' < j, tr.time k' ≤ t := fun k' hk' => ht k' (by omega)
+  obtain ⟨hjd, hcj⟩ := (Trace.upTo_callAt _).mp hcj
+  obtain ⟨-, hcall⟩ := (Trace.upTo_callAt _).mp hcall
+  rw [Trace.upTo_state tr a.val hjt'] at hC
+  rw [Trace.upTo_state tr a.val hjt, Trace.upTo_state tr a.val hjt'] at hfg
+  have hav' : a.val ∈ H (tr.time j) := hrun.antitone hjd hav
+  have hav1 : a.val ∈ H (tr.time (j + 1)) := hrun.antitone (ht _ hj1) hav
+  have hfr := ((Node.cutStep'_ac _ _ _ _ _).1 (hrun.cutLaw a.val j _ hcj hav')).1
+  have hto : AC.ToFGAt tr.projAC a.val j ℓ src :=
+    ⟨projAC_callAt.2 hcj, hcl, by
+      rw [Consensus.Goldilocks.Shadow.PU.Growing.projAC_state_at' hrun hav']
+      exact hC⟩
+  have hst' : src ∈ (tr.state a.val (j + 1)).fg.tree := by
+    have h' := (AC.toFG_source_below_lock hC).1.1
+    rw [hfr, Node.frame'_eq, Store.toFrame'_tree] at h'
+    rw [hfg]
+    exact h'.1
+  have hR := Node.fg_reachable_at' hr.toLocalRun' hav (j + 1)
+  rw [Trace.upTo_state tr a.val hjt] at hR
+  obtain ⟨⟨E, -, hEr, -, -, hET⟩, -⟩ :=
+    Store.entry_state_of_source_with Store.finalitySpec_updateFinality' hR.reachableWith _ hst'
+  have hT := createAtt_T ((Node.cutStep'_attest_some _ _ _ _ _ _).1
+    (hrun.cutLaw a.val (j + 1) _ hcall hav1)).1
+  rw [← hEr, hET] at hT
+  exact ⟨src, hsrc a.val j (by omega) hav' ℓ src hto,
+    isHonestSourceAt_iff.2 ⟨a.val, j + 1, hav, hjt, hst', hT.symm⟩⟩
+
+/-- **G3′ over the shadow run.** Under Hi at cut `k`, read at a time `t` at which the node is
+honest after every earlier cut, with `2 f_t < n`, every block of its tree at state height at least
+`h_j + 1` is strictly above `P` (stock `above_of_hi_height_at`). The stock proof reads only the
+accepted tree, the states `σ` and their entries, so it ports with the primed geometry of
+`Shadow/PU/Geometry`; it never reads viability. -/
 theorem above_of_hi_height_at' (D : OutageLockPremises' tr H proposer dg ini) {i : Nat}
     (hinv : OutageLockInv' D i) {y : Fin sp.n} {k : Nat} {t : Time} (hk : k ≤ i) (ht0 : 0 ≤ t)
     (ht : ∀ k' < k, tr.time k' ≤ t) (hy : y ∈ H t) (hf : 2 * (H t)ᶜ.ncard < sp.n)
@@ -272,7 +301,66 @@ theorem above_of_hi_height_at' (D : OutageLockPremises' tr H proposer dg ini) {i
     (hX : X ∈ (tr.state y k).fg.tree)
     (hh : (tr.state y k).fg.hj + 1 ≤ ((tr.state y k).fg.σ X.root).h) :
     Anc (tr.HonestBlocksAt H) D.P X ∧ X.root ≠ D.P.root := by
-  sorry
+  have hU := honestBlocksAt_coherent' D.hrun D.hnc
+  have hr := D.hrun.upTo ht0
+  have hnc' := D.hnc.upTo t
+  have hfg := projFG_localRun' hr hnc'
+  have hsub : (tr.upTo t).HonestBlocks (H t) ⊆ tr.HonestBlocksAt H :=
+    RunTrace.honestBlocks_upTo_subset D.hrun.time_mono ht0
+  have hst := Trace.upTo_state tr y ht
+  obtain ⟨hPJ, hJP⟩ := hiAt_iff.1 hHi
+  rw [← hst] at hX hh hPJ hJP
+  obtain ⟨-, hJt, -, -⟩ := Store.cache_invariants' (Node.fg_reachable_at' hr.toLocalRun' hy k)
+  -- `h_j ≥ 1`: at `h_j = 0`, `Σ.J` is genesis, and nothing is strictly below genesis
+  have hj1 : 1 ≤ ((tr.upTo t).state y k).fg.hj := by
+    by_contra h0
+    have hJg := FrameGeometry.justified_genesis' hr.toLocalRun' (i := k) (by omega) hy
+    by_cases hPJe : D.P = ((tr.upTo t).state y k).fg.J
+    · exact hJP (by rw [hPJe])
+    have := (Anc.slot_le hU hPJ).2 hPJe
+    rw [hJg] at this
+    exact Nat.not_lt_zero _ this
+  -- the height-`h_j` entry below `X`, with a source compatible with `P`, held while honest at `t`
+  have hsrc := (rows_sourced_by' D.hrun D.hnc (B := D.P) (n := k)
+    (fun x k' hk' hx => hinv.sources x k' (by omega) hx) ht0 ht hy).upTo_held ht
+  have hsrcF : FrameGeometry.HonestRowsSourced (tr.upTo t) (H t)
+      (fun D' => Compatible (tr.HonestBlocksAt H) D' D.P ∧ D' ∈ (tr.upTo t).HonestBlocks (H t))
+      y k :=
+    FrameGeometry.honestRowsSourced_iff.2 fun X hX a ha hav => by
+      obtain ⟨D', hD', hDs⟩ := Compose.honestRowsSourced_iff.1 hsrc X hX a ha hav
+      exact ⟨D', hD', FrameGeometry.isHonestSource_iff.2 (Compose.isHonestSource_iff.1 hDs)⟩
+  obtain ⟨E, hEt, hEX, hEh, hET, D', ⟨hD'P, -⟩, hD's⟩ :=
+    FrameGeometry.frame_crossing_source_before' hr.toLocalRun' hf hy hsrcF hX hj1
+      (Nat.lt_of_succ_le hh)
+  have hEU : E ∈ (tr.upTo t).HonestBlocks (H t) := FrameGeometry.fg_tree_subset_honest hy k hEt
+  obtain ⟨x, hx, k', -, -, hED', -, -⟩ :=
+    FrameGeometry.honest_source_entry' hr.toLocalRun' hfg hD's hEU rfl
+  have hED : Anc (tr.HonestBlocksAt H) E D' :=
+    hED'.mono ((FrameGeometry.fg_tree_subset_honest hx k').trans hsub)
+  have hEP : Compatible (tr.HonestBlocksAt H) E D.P := by
+    rcases hD'P with h | h
+    · exact Or.inl (hED.trans h)
+    · exact Anc.total hU hED h
+  have hEXU : Anc (tr.HonestBlocksAt H) E X :=
+    hEX.mono ((FrameGeometry.fg_tree_subset_honest hy k).trans hsub)
+  -- `E` is not below `P`: else `E ⪯ Σ.J`, two entries of height `h_j` below `Σ.J`, so `E = Σ.J`
+  have hnot : ¬ Anc (tr.HonestBlocksAt H) E D.P := by
+    intro hE
+    have hEJ := FrameGeometry.honest_held_anc' hr.toLocalRun' hfg hy
+      (Consensus.Goldilocks.Shadow.PU.Growing.anc_upTo_of_right_stub D.hrun.toLocalRun' D.hnc
+        ht0 ⟨y, hy, k, hJt⟩ (hE.trans hPJ)) hJt
+    obtain ⟨hJh, hJT, -⟩ :=
+      FrameGeometry.justified_honest_source_before' hr.toLocalRun' hfg hf hy hsrcF hj1
+    have hEJe : E = ((tr.upTo t).state y k).fg.J :=
+      FrameGeometry.held_entry_unique' hr.toLocalRun' hfg hy hJt hEJ Relation.ReflTransGen.refl
+        (hEh.trans hJh.symm) hET hJT
+    subst hEJe
+    exact hJP (congrArg (·.root) (Anc.antisymm hU hE hPJ))
+  have hPE : Anc (tr.HonestBlocksAt H) D.P E := hEP.resolve_left hnot
+  refine ⟨hPE.trans hEXU, fun hXr => hnot ?_⟩
+  have hXP : X = D.P :=
+    hU.1 (hsub (FrameGeometry.fg_tree_subset_honest hy k hX)) D.hP.1 hXr
+  exact hXP ▸ hEXU
 
 /-- **The Hi walk over the shadow run.** Under Hi at cut `i`, `w` honest at `t_i` with
 `2 f_{t_i} < n`, a head walk of the shadow frame over the viable tree of an ancestor-closed domain
