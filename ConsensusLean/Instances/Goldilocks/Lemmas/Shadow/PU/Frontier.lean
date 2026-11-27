@@ -24,8 +24,8 @@ puts `B` below `Σ.J`, which is a P-U viable head (`J_mem_viableHeads'`) with a 
 witness of `Σ.J`'s honest source). Everywhere else, a witness at height `≥ h_max − 1` is P-U viable:
 by height, by the gap, or because it extends `Σ.J`.
 
-The growing items (`no_high_contest_at'`, `reset_vote_floor_above_old_or_covered_at'`,
-`held_high_origin_viable_at'`) are over `Growing.GoldilocksRun'` and `ResetPremisesUpTo'`. They read
+The growing items (`no_high_contest_at'` and `held_high_origin_viable_at'`) are over
+`Growing.GoldilocksRun'` and `ResetPremisesUpTo'`. They read
 the run-level origin family (left entries, high origins, healed covers) from `Shadow/PU/Origins`,
 the row label bound from `Growing/Healing/Kernel/RowLabel`, the reset seed from
 `Growing/Healing/Kernel/Seed`, and the row entry member from `Growing/Healing/Outcome/Floor`.
@@ -33,8 +33,8 @@ the row label bound from `Growing/Healing/Kernel/RowLabel`, the reset seed from
 * `no_high_contest_at'` is an FG-state fact. Its proof compares the two entries at `h_j` through
   their origins or covers directly (pairwise compatible above, so compatible), instead of through a
   common held block; it reads no viability.
-* `reset_vote_floor_above_old_or_covered_at'` keeps the stock conclusion (`headHeightFloor`, an
-  FG-state notion) and the stock proof.
+* `ResetPremisesUpTo.reset_vote_floor_above_old_or_covered_at` is supplied by the canonical
+  `Growing/Healing/Outcome/Floor` module.
 * `held_high_origin_viable_at'` (Pivot/Viability): the shadow frame's root is `Σ.F`, so a block of
   the frame is above the root and the stock root comparison drops out. A block at height `h_max − 1`
   in a top frame is viable when it extends `Σ.J`, and otherwise lies below `Σ.J`, which is viable;
@@ -248,62 +248,6 @@ theorem Outcome.no_high_contest_at'
       rw [← hECT, ← hJT, this]
   have heq : EC = (tr.state p i).fg.J := hU.1 (hsub hEC) (hsub hJm) he
   exact hJC (heq ▸ hECC)
-
-theorem ResetPremisesUpTo.reset_vote_floor_above_old_or_covered_at
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {y : Fin sp.n} {j u : Nat} (hy : y ∈ H (tr.time j)) (hR : drainTime sp a ≤ sp.ts u)
-    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
-    (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
-    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y j).fg.tree)
-    (hBold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
-      Anc (tr.HonestBlocksAt H) O B)
-    (hcovered : HighSourceCover tr H g a b → ∀ C s,
-      HealedMemberBefore tr H g a b C s j → s < u → Anc (tr.HonestBlocksAt H) C B) :
-    (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
-  have ht := hp.run.time_nonneg j
-  have hj : ∀ q < j, tr.time q ≤ tr.time j := fun q hq => hp.run.time_mono hq.le
-  have hreach := (Compose.Growing.reachable_at hp.run ht hy hj).reachableWith
-  have hu := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
-  obtain ⟨v₀, r₀, l₀, O₀, ho₀, hrb, _, hrt⟩ := hp.reset_seed_before_slot_at hR
-  have hBh := Outcome.high_of_anc_at hp.run hp.noColl ho₀ ht hj hy hB
-    (hBold v₀ r₀ l₀ O₀ ho₀ hrt hrb)
-  have hnc := Outcome.no_high_contest_at' hp hy hjb
-  by_contra hle
-  have hfloor := lt_of_not_ge hle
-  have hcon : ¬ (tr.state y j).fg.Contest := fun hcon => by
-    unfold Store.headHeightFloor at hfloor
-    simp only [hcon, ↓reduceIte] at hfloor
-    exact hnc ⟨hcon, by omega⟩
-  have hfl : (tr.state y j).fg.headHeightFloor = (tr.state y j).fg.hmax - 1 := by
-    unfold Store.headHeightFloor
-    simp only [hcon, ↓reduceIte]
-  rw [hfl] at hfloor
-  obtain ⟨_, _, _, _, _, ⟨C, hC, hCh⟩, _⟩ := cache_invariants_with hu hreach
-  obtain ⟨E, hE, hEC, hEh, hET⟩ := entry_at_height_with hu hreach hC
-    (h := (tr.state y j).fg.hmax - 1) (by omega) (by omega)
-  obtain ⟨W, hW, att, ha, v, d, hv, hdj, hs, hT, hsource⟩ :=
-    hp.left_entry_origin_or_covered_at ht hj hy hjb hE hET (by omega) hEC (by omega)
-  have hc' : (tr.upTo (tr.time j)).projAC.CallAt y j ell := by
-    rw [RunTrace.upTo_projAC]
-    exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc.1⟩
-  have hr := (Compose.goldilocks_ac_projection_from (hp.run.upTo ht) (hp.noColl.upTo _)).localRun
-  have htupper : tr.time j ≤ sp.ts u + sp.Δ :=
-    hes ▸ (Compose.cast_head_fcRoot hr (hp.run.upTo ht).vstart hy ⟨hc', hc.2⟩).2
-  have hEB : Anc (tr.HonestBlocksAt H) E B := by
-    rcases hsource with ⟨r, hrd, l, O, ho, hEO⟩ | ⟨_, hcov⟩
-    · have hlu : l < u := hes ▸ KernelProof.row_origin_label_lt_at hp hy hc hW ha
-        (hp.run.antitone (hp.run.time_mono hdj.le) hv) hs hdj hrd ho
-      obtain ⟨CV, ellw, D, _, hf, _⟩ := ho.2.2.1
-      have hrj := hp.run.time_mono (show r ≤ j by omega)
-      have hrt := Outcome.fastLock_time_lt_at hp.run hf hlu (hrj.trans htupper)
-      exact hEO.trans (hBold v r l O ho hrt (hrj.trans hjb))
-    · obtain ⟨hcov, _⟩ := coveredUpTo_iff.1 hcov
-      obtain ⟨C, s, hC, hsu, hEC⟩ := Outcome.row_entry_member_before_cast_at hp hy hjb hc hW ha
-        ‹v ∈ H (max (cutZ sp.toParams g) (tr.time j))› hs hdj hE hT (by omega) hcov
-      exact hEC.trans (hcovered hcov C s hC (hes ▸ hsu))
-  have hh := h_le_of_store_anc_with hu hreach
-    (Coherence.held_anc_at hp.run hp.noColl ht hy hj hEB hB)
-  omega
 
 /-- **A held origin is viable at its independently honest reader** over the shadow run
 (`ProposalImpl.held_high_origin_viable_at`, Pivot/Viability). -/
