@@ -164,6 +164,14 @@ theorem exec_acBlock_prev' (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin 
     ∃ k', k = k' + 1 ∧ (exec' proposer dg y st t e).2[k']? = some (.fg (.block B true)) :=
   (paired_exec proposer dg y st t e).2 k ℓ B hk hb
 
+/-- Every successful FG block cut is followed by its matching AC block call. -/
+theorem exec_accept_next' (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
+    (st : NodeState A) (t : Time) (e : Event A) {k : Nat} {B : A.Blk}
+    (hk : (exec' proposer dg y st t e).2[k]? = some (.fg (.block B true))) :
+    ∃ ℓ : ACLabel A, (exec' proposer dg y st t e).2[k + 1]? = some (.ac ℓ) ∧
+      ℓ.call = .block B :=
+  (paired_exec proposer dg y st t e).1 k B hk
+
 private theorem onBlock_block {y : Fin P.n} {st : NodeState A} {t : Time} {B' B : A.Blk}
     {acc : Bool} {k : Nat} (hk : (onBlock' y st t B').2[k]? = some (.fg (.block B acc))) :
     k = 0 ∧ B' = B := by
