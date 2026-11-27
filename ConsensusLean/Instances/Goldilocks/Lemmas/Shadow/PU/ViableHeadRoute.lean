@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PreAdvance
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -553,5 +554,55 @@ theorem J_eq_of_top_same_hmax' (hrun : GoldilocksRun' proposer dg H tr ini)
     ⟨y, hy, a, hJa⟩ ⟨x, hx, i, hJi⟩ hroots
 
 end Consensus.Goldilocks.Healing
+
+
+namespace Consensus.Goldilocks.Healing.Growing.KernelProof
+
+open AC (ACParams ReplayOrder Payload gbar)
+
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+
+/-- **Interface only, unresolved**: the shared optimistic contest residue. An optimistic write
+of label `m` by `z` at cut `a`, in a contest at `h_max = floor`, whose P-U viable head `Q` above
+the write's viable ancestor `A` is the P-U-only head (`σ(Q).h + 1 = floor`, `Σ.J ⪯ Q`), with
+`A ⪯ D` held. Claimed: every honest vote of a slot `r ∈ [m+1, N]` extends `A`, and every honest
+proposal at `ts r` has `A ⪯ d.head` (the stock optimistic later heads for `A`, without the stock
+witness `floor ≤ σ(Q).h`). The stock witness fails at the write and the contest/gap geometry
+(`Store.contest_gap_residue'`) does not supply it; no proof is known. -/
+theorem optimistic_contest_residue'
+    {g ΔF b : Time} {s₀ m N floor : Nat} {kindJ : Prop}
+    {J D Q : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hmb : sp.ts N + sp.Δ ≤ b)
+    (hlabel : s₀ ≤ m) (hmN : m < N)
+    {z : Fin sp.n} {a : Nat} (hza : z ∈ H (tr.time a))
+    {ellw : ACLabel (goldilocksNode' sp ro)} (ha : tr.projAC.CallAt z a ellw)
+    {CV : Set (AC.Vote sp.n)} (hop : AC.OptimisticLockAt tr.projAC z a m D CV)
+    (hAD : Anc (tr.HonestBlocksAt H) (ellw.frame.viableAncestor D) D)
+    (hQ : Q ∈ ellw.frame.viableHeads)
+    (hAQ : Anc (tr.HonestBlocksAt H) (ellw.frame.viableAncestor D) Q)
+    (hcon : (tr.state z a).fg.Contest) (hmax : (tr.state z a).fg.hmax = floor)
+    (hQh : ((tr.state z a).fg.σ Q.root).h + 1 = floor)
+    (hJQ : (tr.state z a).fg.Anc (tr.state z a).fg.J Q)
+    (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ r, m + 1 ≤ r → r ≤ N →
+      (∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → e.msg.slot = r →
+        AC.VoteExtends (tr.HonestBlocksAt H) e.msg (ellw.frame.viableAncestor D)) ∧
+      (∀ y j ell, y ∈ H (tr.time j) → tr.projAC.CallAt y j ell →
+        ell.call = .proposal → tr.time j = sp.ts r → ∀ d pay,
+        (AC.acProposal sp (tr.projAC.state y j) ell.frame (tr.time j)).2 = some (d, pay) →
+          Anc (tr.HonestBlocksAt H) (ellw.frame.viableAncestor D) d.head) := by
+  sorry
+
+end Consensus.Goldilocks.Healing.Growing.KernelProof
 
 end
