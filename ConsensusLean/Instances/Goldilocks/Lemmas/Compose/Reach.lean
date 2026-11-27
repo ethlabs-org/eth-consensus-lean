@@ -46,13 +46,13 @@ private theorem step_fg {t : Time} {st st' : NodeState A} {c : Cut A}
       cases acc with
       | true =>
         obtain ⟨-, hb, -, -⟩ := h
-        refine ⟨hr.tail (Or.inl ⟨B, hb⟩), ?_, (Store.finalized_monotone P _ _ _ hr).1 B _ hb⟩
+        refine ⟨hr.tail (Or.inl ⟨B, hb⟩), ?_, (Store.finalized_monotone P _ _).1 B _ hb⟩
         rw [(Store.tree_grows P _ _ _ hr).1 B _ hb]
         exact Set.subset_insert _ _
       | false => obtain ⟨-, rfl⟩ := h; exact same rfl
     | attestation a =>
       obtain ⟨he, -, -⟩ := h
-      rw [he, (Store.finalized_monotone P _ _ _ hr).2 a, (Store.tree_grows P _ _ _ hr).2 a]
+      rw [he, (Store.finalized_monotone P _ _).2 a, (Store.tree_grows P _ _ _ hr).2 a]
       exact ⟨hr.tail (Or.inr ⟨a, rfl⟩), subset_rfl, .refl⟩
     | attest C s =>
       cases s with
