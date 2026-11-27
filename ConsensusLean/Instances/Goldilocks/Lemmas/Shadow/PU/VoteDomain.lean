@@ -37,19 +37,19 @@ open Consensus.Goldilocks.Store
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
   {hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- **A viable frozen descendant puts the target in the vote's viable tree** over the shadow
 frame (`KernelProof.vote_viable_of_root_at`; the shadow root is `Σ.F`). -/
-theorem KernelProof.vote_viable_of_root_at' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+theorem KernelProof.vote_viable_of_root_at' {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {B D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B)
     (hD : D ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
-    (hBD : Anc (tr.HonestBlocksAt H) B D) (hvD : (tr.state y k).fg.IsViable' D) :
+    (hBD : Anc (tr.HonestBlocksAt H) B D) (hvD : (tr.state y k).fg.IsViable D) :
     B ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) := by
   have hd := hrun.time_nonneg k
   have hle : ∀ q < k, tr.time q ≤ tr.time k := fun _ hq => hrun.time_mono hq.le
@@ -57,25 +57,25 @@ theorem KernelProof.vote_viable_of_root_at' {ini : Fin sp.n → (goldilocksNode'
   have hc' : AC.CastAt (tr.upTo (tr.time k)).projAC y k ell e := by
     rw [RunTrace.upTo_projAC]
     exact AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
-  have hfr := Shadow.PU.Growing.frame_of_projAC_at' hrun hy hc.1
-  have hFe : ell.frame.F = (tr.state y k).fg.F := by rw [hfr, Node.frame'_eq, toFrame'_F]
+  have hfr := Shadow.PU.Growing.frame_of_projAC_at hrun hy hc.1
+  have hFe : ell.frame.F = (tr.state y k).fg.F := by rw [hfr, Node.frame_eq, toFrame_F]
   have hDs : D ∈ (tr.state y k).fg.tree ∧ (tr.state y k).fg.Anc (tr.state y k).fg.F D := by
     have h := hfr ▸ hD.1
-    rwa [Node.frame'_eq, toFrame'_tree] at h
-  have hBDs := Coherence.held_anc_at' hrun hnc hd hy hle hBD hDs.1
+    rwa [Node.frame_eq, toFrame_tree] at h
+  have hBDs := Coherence.held_anc_at hrun hnc hd hy hle hBD hDs.1
   have hBs := Compose.FrameGeometry.anc_mem hBDs hDs.1
-  have hFBs := Coherence.held_anc_at' hrun hnc hd hy hle (hFe ▸ hFB) hBs
+  have hFBs := Coherence.held_anc_at hrun hnc hd hy hle (hFe ▸ hFB) hBs
   have hΦBD : ell.frame.Anc B D := by
-    rw [hfr, Node.frame'_eq]
-    simp only [Frame.Anc, toFrame'_tree]
+    rw [hfr, Node.frame_eq]
+    simp only [Frame.Anc, toFrame_tree]
     exact Anc.restrict hFBs hBDs
   have hΦFB : ell.frame.Anc ell.frame.fcRoot B := by
-    rw [hfr, Node.frame'_eq]
-    simp only [Frame.Anc, toFrame'_tree, toFrame'_fcRoot]
+    rw [hfr, Node.frame_eq]
+    simp only [Frame.Anc, toFrame_tree, toFrame_fcRoot]
     exact Anc.restrict .refl hFBs
   refine ⟨AC.voterBlockTree_ancU hr.toU (hrun.upTo hd).vstart hy hc' D hD B hΦBD,
     hΦFB, D, hD, ?_, hΦBD⟩
-  rw [hfr, Node.frame'_eq, toFrame'_viableHeads]
+  rw [hfr, Node.frame_eq, toFrame_viableHeads]
   exact ⟨hDs.1, hDs.2, hvD⟩
 
 /-- **The finite vote-domain reduction inside the deep quarantine**, over the shadow run
@@ -85,7 +85,7 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
     {x y v : Fin sp.n} {r i q m : Nat} {B S : AC.Blk sp.n (List (FG.Att sp.n))}
     (_hx : x ∈ H (tr.time r)) (hy : y ∈ H (tr.time i))
     (_hBx : B ∈ (tr.state x r).fg.tree) (_hrb : tr.time r ≤ b)
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hcast : AC.CastAt tr.projAC y i ell e) (hib : tr.time i ≤ b)
     (hheld : Anc (tr.HonestBlocksAt H) ell.frame.F B →
       B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot)
@@ -107,20 +107,20 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
   have hs := hR.puSnapshot
   have hr := hR.reachableWith
   have hu := finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
-  have hU := Coherence.honestBlocksAt_coherent' hp.run hp.noColl
+  have hU := Coherence.honestBlocksAt_coherent hp.run hp.noColl
   have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocksAt H :=
     Compose.Growing.tree_held_at' ht hy hle
   have hanc : ∀ {X Y : AC.Blk sp.n (List (FG.Att sp.n))}, Anc (tr.HonestBlocksAt H) X Y →
       Y ∈ (tr.state y i).fg.tree → (tr.state y i).fg.Anc X Y :=
-    fun h hY => Coherence.held_anc_at' hp.run hp.noColl ht hy hle h hY
-  have hfr := Shadow.PU.Growing.frame_of_projAC_at' hp.run hy hcast.1
-  have hFe : ell.frame.F = (tr.state y i).fg.F := by rw [hfr, Node.frame'_eq, toFrame'_F]
+    fun h hY => Coherence.held_anc_at hp.run hp.noColl ht hy hle h hY
+  have hfr := Shadow.PU.Growing.frame_of_projAC_at hp.run hy hcast.1
+  have hFe : ell.frame.F = (tr.state y i).fg.F := by rw [hfr, Node.frame_eq, toFrame_F]
   have hroot : ell.frame.fcRoot = (tr.state y i).fg.F := by
-    rw [hfr, Node.frame'_eq, toFrame'_fcRoot]
+    rw [hfr, Node.frame_eq, toFrame_fcRoot]
   have hvt : ∀ {W : AC.Blk sp.n (List (FG.Att sp.n))},
       W ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot →
       W ∈ (tr.state y i).fg.tree := fun hW =>
-    (Shadow.PU.Growing.frame_tree_subset_at' hp.run hp.noColl hy hcast.1).2 hW.1
+    (Shadow.PU.Growing.frame_tree_subset_at hp.run hp.noColl hy hcast.1).2 hW.1
   have frozen : ∀ {x' : Fin sp.n} {r' l' : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))},
       HighOrigin tr H g x' r' l' O → tr.time r' ≤ b → l' < e.msg.slot →
       Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F O →
@@ -131,7 +131,7 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
   suffices key : Anc (tr.HonestBlocksAt H) B (tr.state y i).fg.F ∨
       (Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F B ∧
         ∃ D ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
-          Anc (tr.HonestBlocksAt H) B D ∧ (tr.state y i).fg.IsViable' D) by
+          Anc (tr.HonestBlocksAt H) B D ∧ (tr.state y i).fg.IsViable D) by
     rcases key with h | ⟨hFB, D, hD, hBD, hvD⟩
     · exact Or.inl (hroot ▸ h)
     · exact Or.inr (KernelProof.vote_viable_of_root_at' hp.run hp.noColl hy hcast
@@ -156,12 +156,12 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
       HZ tr H g + 1 ≤ (tr.state y i).fg.hmax - 1 → B ∈ (tr.state y i).fg.tree →
       Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F B →
       ∃ D ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
-        Anc (tr.HonestBlocksAt H) B D ∧ (tr.state y i).fg.IsViable' D := by
+        Anc (tr.HonestBlocksAt H) B D ∧ (tr.state y i).fg.IsViable D := by
     intro hgap hHZ hBt hFB
     have viab : ∀ {W : AC.Blk sp.n (List (FG.Att sp.n))}, W ∈ (tr.state y i).fg.tree →
         (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ W.root).h →
-        (tr.state y i).fg.IsViable' W := fun {W} _ hh => by
-      rw [isViable'_iff]
+        (tr.state y i).fg.IsViable W := fun {W} _ hh => by
+      rw [isViable_iff]
       by_cases hm' : (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ W.root).h
       · exact Or.inl hm'
       · exact Or.inr ⟨by omega, Or.inl hgap⟩
@@ -212,10 +212,10 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
     · exact gapW hgap (by omega) hBt hFB
     -- top frame: a block extending `Σ.J` at height `≥ h_j` is viable
     have viabJ : ∀ {W : AC.Blk sp.n (List (FG.Att sp.n))}, W ∈ (tr.state y i).fg.tree →
-        (tr.state y i).fg.Anc (tr.state y i).fg.J W → (tr.state y i).fg.IsViable' W := by
+        (tr.state y i).fg.Anc (tr.state y i).fg.J W → (tr.state y i).fg.IsViable W := by
       intro W hW hJW
       have := hs.height_mono hJW
-      rw [isViable'_iff]
+      rw [isViable_iff]
       by_cases hm' : (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ W.root).h
       · exact Or.inl hm'
       · exact Or.inr ⟨by omega, Or.inr hJW⟩
@@ -245,7 +245,7 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
           Outcome.high_of_anc_at' hp.run hp.noColl hS ht hle hy (hvt hW) hSW⟩
       · exact ⟨B, hBv, .refl, Outcome.high_of_anc_at' hp.run hp.noColl hS ht hle hy hBt hSB⟩
     by_cases hHm : (tr.state y i).fg.hmax ≤ HZ tr H g + 1
-    · exact ⟨W, hWv, hBW, isViable'_of_hmax_le (by omega)⟩
+    · exact ⟨W, hWv, hBW, isViable_of_hmax_le (by omega)⟩
     · exact gapW (by omega) (by omega) hBt hFB
 
 end Consensus.Goldilocks.Healing.Growing

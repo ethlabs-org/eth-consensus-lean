@@ -40,24 +40,24 @@ open Consensus.Goldilocks.Healing.Growing
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
 
 /-- The shadow FG catch-up bridge supplies the stock AC acceptance witness. -/
-theorem service_catch_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+theorem service_catch_at
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Growing.GoldilocksRun' proposer dg H tr ini)
     {g : Time} (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
     {w : Fin sp.n} {kw : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hw : w ∈ H (tr.time kw))
     (ha : tr.projAC.AcceptAt w kw B) (hkw : tr.time kw < gbar g) {y : Fin sp.n} {i : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} (hy : y ∈ H (tr.time i))
+    {ell : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time i))
     (hcy : tr.projAC.CallAt y i ell) (hi : gbar g + 2 * sp.Δ ≤ tr.time i)
     (hanc : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     ∃ k ≤ i, tr.projAC.AcceptAt y k B ∧ tr.time k < gbar g + 2 * sp.Δ :=
   KernelProof.Core.service_catch_at hrun.toCore hcatch hw ha hkw hy hcy hi hanc
 
 /-- The shared AC service proof transfers a fast lock at the next cast. -/
-private theorem first_transfer_service_at'
+private theorem first_transfer_service_at
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
@@ -69,7 +69,7 @@ private theorem first_transfer_service_at'
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
     {B D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (hfl : AC.FastLockAt tr.projAC x c s D CV) (hBD : Anc (tr.HonestBlocksAt H) B D)
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B)
     (hviab : AC.ViableAtVote ell e (s + 1) B)
@@ -80,8 +80,8 @@ private theorem first_transfer_service_at'
     hx hy hfl hBD hc hs hib hFB hviab hearlier hK
 
 /-- The shared service proof carries counted result votes to the next reader. -/
-private theorem result_carry_service_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+private theorem result_carry_service_at
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
@@ -90,7 +90,7 @@ private theorem result_carry_service_at'
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (AC.Vote sp.n)}
     (hres : AC.ResultAt tr.projAC x c s C CV)
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hFC : Anc (tr.HonestBlocksAt H) ell.frame.F C) :
     AC.CarryAt tr.projAC (tr.HonestBlocksAt H) y i e s CV := by
@@ -98,14 +98,14 @@ private theorem result_carry_service_at'
     hx hy hres hc hes hFC
 
 /-- The shared service proof compares merged votes with the result writer. -/
-private theorem writer_merged_service_at'
-    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+private theorem writer_merged_service_at
+    {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
     {s : Nat} (hm : gbar g ≤ sp.ts s)
     {x y : Fin sp.n} {c i : Nat} (hx : x ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
-    {ellx ell : ACLabel (goldilocksNode' sp ro)}
+    {ellx ell : ACLabel (goldilocksNode sp ro)}
     (hu : AC.UpdateAt tr.projAC x c s ellx) {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1) :
     ∀ v ∈ (AC.mergedVoteView sp e.readPoint ell.frame (s + 1)).votes, v.slot = s →
@@ -114,7 +114,7 @@ private theorem writer_merged_service_at'
   exact KernelProof.Core.writer_merged_service_at hrun.toCore hnc hsvc hm hx hy hu hc hs
 
 /-- Stored slow-window locks compare with the slow origin. -/
-private theorem slow_live_locks_service_at'
+private theorem slow_live_locks_service_at
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
@@ -123,7 +123,7 @@ private theorem slow_live_locks_service_at'
     {D : AC.Blk sp.n (List (FG.Att sp.n))} (hsl : AC.SlowLockAt tr.projAC x c s D)
     (hm : gbar g ≤ sp.ts ((s : Int) - sp.k + 1))
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hs : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b)
     (hE : ∀ z k ev, k < i → z ∈ H (tr.time k) → AC.VoteAt tr.projAC z k ev →
@@ -144,10 +144,10 @@ private theorem slow_live_locks_service_at'
     constructor
     · intro x k v hx hv hk y j ell hy hj _ hdl
       exact (AC.messageServedBefore_iff _ _ _ _).mpr (Or.inl
-        ((service_syncACAt' hrun hsvc (lo := g) le_rfl).1
+        ((service_syncACAt hrun hsvc (lo := g) le_rfl).1
           x k v hx hv hk le_rfl y j ell hy hj hdl))
     · intro x k B hx hB hk y j ell hy hj _ hdl hanc
-      exact (service_syncACAt' hrun hsvc (lo := g) le_rfl).2
+      exact (service_syncACAt hrun hsvc (lo := g) le_rfl).2
         x k B hx hB hk le_rfl y j ell hy hj hdl hanc
   apply AC.live_locks_of_stored_before hr K
     (AC.CommitteePAt.upTo hrun.time_mono hrun.antitone hK.facts.hP _)
@@ -211,7 +211,7 @@ private theorem slow_live_locks_service_at'
     exact hE z k ev hki (hrun.antitone hkt hz) he hes
 
 /-- The stock fast transfer applied to the shared shadow early-witness induction. -/
-theorem regular_fast_next_votes_of_early_witness_at'
+theorem regular_fast_next_votes_of_early_witness_at
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
@@ -229,7 +229,7 @@ theorem regular_fast_next_votes_of_early_witness_at'
     (hXD : Anc (tr.HonestBlocksAt H) X D) (hCQ : Anc (tr.HonestBlocksAt H) C Q)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hvQ : Q ∈ ellw.frame.viableHeads)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
@@ -246,17 +246,17 @@ theorem regular_fast_next_votes_of_early_witness_at'
   have hc' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
   have hPhiU := (AC.frameIn_of_callU hr.toU hx hc').2
   have hDC := ((AC.deepest_mem hsel).1.1.2.2).mono hPhiU
-  apply Shadow.PU.Growing.next_votes_of_early_witness_at' hrun hnc hsvc hawake hf hcatch hm
+  apply Shadow.PU.Growing.next_votes_of_early_witness_at hrun hnc hsvc hawake hf hcatch hm
     (by rw [AC.ts_succ]; linarith only [sp.toParams.hΔ]) hmb hframe hw halo hat hcw hQw hvQ
       (hXD.trans (hDC.trans hCQ))
   intro y i ell e hy hc hs hhigh hFX hviab ih
-  exact first_transfer_service_at' hrun hnc hsvc hawake hcatch hnr hm hx hy
+  exact first_transfer_service_at hrun hnc hsvc hawake hcatch hnr hm hx hy
     (Or.inl ⟨ellx, C, hu, hconf, hsel, hCV⟩) hXD hc hs (hhigh.trans hmb)
-    (by rwa [Shadow.PU.Growing.frame_of_projAC_at' hrun hy hc.1]) hviab
+    (by rwa [Shadow.PU.Growing.frame_of_projAC_at hrun hy hc.1]) hviab
     (fun z k hki hz ev hv hes => ih z k ev hki hz hv hes) hK
 
 /-- The stock slow transfer applied to the shared shadow early-witness induction. -/
-theorem regular_slow_next_votes_of_early_witness_at'
+theorem regular_slow_next_votes_of_early_witness_at
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
@@ -275,7 +275,7 @@ theorem regular_slow_next_votes_of_early_witness_at'
     (hCQ : Anc (tr.HonestBlocksAt H) C Q)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
     (hQw : Q ∈ ellw.frame.tree) (hvQ : Q ∈ ellw.frame.viableHeads)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
@@ -293,20 +293,20 @@ theorem regular_slow_next_votes_of_early_witness_at'
   have hc' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
   have hPhiU := (AC.frameIn_of_callU hr.toU hx hc').2
   have hDC := ((AC.deepest_mem hsel).1.1.2.2).mono hPhiU
-  apply Shadow.PU.Growing.next_votes_of_early_witness_at' hrun hnc hsvc hawake hf hcatch hm
+  apply Shadow.PU.Growing.next_votes_of_early_witness_at hrun hnc hsvc hawake hf hcatch hm
     (by rw [AC.ts_succ]; linarith only [sp.toParams.hΔ]) hmb hframe hw halo hat hcw hQw hvQ
       (hDC.trans hCQ)
   intro y i ell e hy hc hs hhigh hFD hviab ih
   have hFC : Anc (tr.HonestBlocksAt H) ell.frame.F C := by
-    rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hy hc.1]
+    rw [Shadow.PU.Growing.frame_of_projAC_at hrun hy hc.1]
     exact hFD.trans hDC
   exact AC.Growing.result_transfer_anc hac hx hres hDC hy hc hs
-    (result_carry_service_at' hrun hnc hsvc hcatch hm hx hy hres hc hs hFC) hviab
-    (slow_live_locks_service_at' hrun hnc hsvc hx hsl hslow hy hc hs (hhigh.trans hmb) ih hK)
-    (writer_merged_service_at' hrun hnc hsvc hm hx hy hu hc hs)
+    (result_carry_service_at hrun hnc hsvc hcatch hm hx hy hres hc hs hFC) hviab
+    (slow_live_locks_service_at hrun hnc hsvc hx hsl hslow hy hc hs (hhigh.trans hmb) ih hK)
+    (writer_merged_service_at hrun hnc hsvc hm hx hy hu hc hs)
 
 /-- The shared supporter proof consumes the shadow two-case classification. -/
-theorem next_votes_of_supporter_at' {s₀ s M : Nat}
+theorem next_votes_of_supporter_at {s₀ s M : Nat}
     {isTop : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
@@ -321,7 +321,7 @@ theorem next_votes_of_supporter_at' {s₀ s M : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts ((s - 1 : Nat) : Int))
     (hmb : sp.ts s + 6 * sp.Δ ≤ b)
     {z : Fin sp.n} {q : Nat} (hz : z ∈ H (tr.time q))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC z q ell e) (hes : e.msg.slot = s)
     (hQU : Q ∈ tr.HonestBlocksAt H) (hQr : Q.root = e.msg.head)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q)
@@ -347,7 +347,7 @@ theorem next_votes_of_supporter_at' {s₀ s M : Nat}
   have hqhi : tr.time q ≤ sp.ts s + 6 * sp.Δ := by
     change tr.time q ≤ sp.ts s + sp.Δ at htq
     linarith
-  obtain ⟨Hd, hHd, hHdr, hclass⟩ := vote_head_classification_of_service_at' hframe
+  obtain ⟨Hd, hHd, hHdr, hclass⟩ := vote_head_classification_of_service_at hframe
     hrun hnc hsvc hawake hf hcatch hnr hz hc hqhi (hqhi.trans hmb)
     (hes ▸ hwarm) (hes ▸ hpos) (hes ▸ hs₀) (by simpa only [hes] using hm) (by
       rw [hes]; simp only [AC.freeze]
@@ -360,7 +360,7 @@ theorem next_votes_of_supporter_at' {s₀ s M : Nat}
   exact hclass.elim (fun hv => Or.inl hv.2) (fun ho => Or.inr (Or.inr ho))
 
 /-- A regular fast selection constrains next-slot votes. -/
-theorem regular_fast_next_votes_at' {s₀ s M : Nat}
+theorem regular_fast_next_votes_at {s₀ s M : Nat}
     {isTop : Prop} {J X D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
@@ -388,7 +388,7 @@ theorem regular_fast_next_votes_at' {s₀ s M : Nat}
   have hprev : sp.ts ((s - 1 : Nat) : Int) = sp.ts s - 4 * sp.Δ := by
     rw [Nat.cast_sub (by omega : 1 ≤ s), Nat.cast_one, AC.ts_sub_one]
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
-    result_honest_supporter_before_at' hrun hnc hsvc hawake hf hcatch hnr (by linarith)
+    result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr (by linarith)
       hx hres (hu.2.2.1.trans_le hmb) hK
   have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
   have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
@@ -403,21 +403,21 @@ theorem regular_fast_next_votes_at' {s₀ s M : Nat}
   rw [hslot] at htq
   have halo : sp.ts s ≤ tr.time q :=
     (AC.ts_le_iff_le_slot sp (hrun.time_nonneg q) _).2 (by rw [hslot])
-  apply next_votes_of_supporter_at' hframe hrun hnc hsvc hawake hf hcatch hnr
+  apply next_votes_of_supporter_at hframe hrun hnc hsvc hawake hf hcatch hnr
     hwarm hpos hs₀ hm hmb hz ⟨hc, he⟩ hes hQU hQr (hXD.trans (hDC.trans hCQ)) ?_ ?_ hK
   · intro hQ hvQ
-    exact regular_fast_next_votes_of_early_witness_at' hrun hnc hsvc hawake hf hcatch hnr
+    exact regular_fast_next_votes_of_early_witness_at hrun hnc hsvc hawake hf hcatch hnr
       (by linarith) hmb (hframe.mono ((AC.ts_le_iff sp).mpr (by omega)) le_rfl)
       hx hfast hres hXD hCQ hz halo (by linarith) hc hQ hvQ hK
   · intro hA a D' CV' hza hop hQD
     have hts := AC.ts_succ s (sp := sp)
-    exact (Shadow.PU.Growing.optimistic_supporter_later_heads_at'
+    exact (Shadow.PU.Growing.optimistic_supporter_later_heads_at
       (hframe.mono le_rfl (by linarith)) hrun hnc hsvc hawake hf hcatch hnr
       (by linarith) (by omega) (by omega) (by linarith)
       hz hza ⟨hc, he⟩ hes hA hop hQD hK (s + 1) le_rfl le_rfl).1
 
 /-- A regular slow selection constrains next-slot votes. -/
-theorem regular_slow_next_votes_at' {s₀ s M : Nat}
+theorem regular_slow_next_votes_at {s₀ s M : Nat}
     {isTop : Prop} {J D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
@@ -448,7 +448,7 @@ theorem regular_slow_next_votes_at' {s₀ s M : Nat}
   have hres : AC.ResultAt tr.projAC x c s C
       (AC.fastCounted sp (tr.projAC.state x c) ellx.frame s C) := ⟨ellx, hu, hconf, rfl⟩
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
-    result_honest_supporter_before_at' hrun hnc hsvc hawake hf hcatch hnr (by linarith)
+    result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr (by linarith)
       hx hres (hu.2.2.1.trans_le hmb) hK
   have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
   have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
@@ -463,21 +463,21 @@ theorem regular_slow_next_votes_at' {s₀ s M : Nat}
   rw [hslot] at htq
   have halo : sp.ts s ≤ tr.time q :=
     (AC.ts_le_iff_le_slot sp (hrun.time_nonneg q) _).2 (by rw [hslot])
-  apply next_votes_of_supporter_at' hframe hrun hnc hsvc hawake hf hcatch hnr
+  apply next_votes_of_supporter_at hframe hrun hnc hsvc hawake hf hcatch hnr
     hwarm hpos hs₀ hm' hmb hz ⟨hc, he⟩ hes hQU hQr (hDC.trans hCQ) ?_ ?_ hK
   · intro hQ hvQ
-    exact regular_slow_next_votes_of_early_witness_at' hrun hnc hsvc hawake hf hcatch
+    exact regular_slow_next_votes_of_early_witness_at hrun hnc hsvc hawake hf hcatch
       (by linarith) hslow hmb (hframe.mono ((AC.ts_le_iff sp).mpr (by omega)) le_rfl)
       hx hsl hres hCQ hz halo (by linarith) hc hQ hvQ hK
   · intro hA a D' CV' hza hop hQD
     have hts := AC.ts_succ s (sp := sp)
-    exact (Shadow.PU.Growing.optimistic_supporter_later_heads_at'
+    exact (Shadow.PU.Growing.optimistic_supporter_later_heads_at
       (hframe.mono le_rfl (by linarith)) hrun hnc hsvc hawake hf hcatch hnr
       (by linarith) (by omega) (by omega) (by linarith)
       hz hza ⟨hc, he⟩ hes hA hop hQD hK (s + 1) le_rfl le_rfl).1
 
 /-- Fast transfer needs a stock witness held at the early cast cut, not a frozen witness. -/
-theorem regular_fast_next_votes_of_stock_witness_at'
+theorem regular_fast_next_votes_of_stock_witness_at
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
@@ -495,7 +495,7 @@ theorem regular_fast_next_votes_of_stock_witness_at'
     (hXD : Anc (tr.HonestBlocksAt H) X D) (hCW : Anc (tr.HonestBlocksAt H) C W)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
     (hWw : W ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ W.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocksAt H) J W)
     (hK : CommitteeHalfUpTo tr H K g b) :
@@ -513,17 +513,17 @@ theorem regular_fast_next_votes_of_stock_witness_at'
   have hc' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
   have hPhiU := (AC.frameIn_of_callU hr.toU hx hc').2
   have hDC := ((AC.deepest_mem hsel).1.1.2.2).mono hPhiU
-  apply Shadow.PU.Growing.next_votes_of_stock_witness_at' hrun hnc hsvc hawake hf hcatch hm
+  apply Shadow.PU.Growing.next_votes_of_stock_witness_at hrun hnc hsvc hawake hf hcatch hm
     (by rw [AC.ts_succ]; linarith only [sp.toParams.hΔ]) hmb hframe hw halo hat hcw hWw hh hJ
       (hXD.trans (hDC.trans hCW))
   intro y i ell e hy hc hs hhigh hFX hviab ih
-  exact first_transfer_service_at' hrun hnc hsvc hawake hcatch hnr hm hx hy
+  exact first_transfer_service_at hrun hnc hsvc hawake hcatch hnr hm hx hy
     (Or.inl ⟨ellx, C, hu, hconf, hsel, hCV⟩) hXD hc hs (hhigh.trans hmb)
-    (by rwa [Shadow.PU.Growing.frame_of_projAC_at' hrun hy hc.1]) hviab
+    (by rwa [Shadow.PU.Growing.frame_of_projAC_at hrun hy hc.1]) hviab
     (fun z k hki hz ev hv hes => ih z k ev hki hz hv hes) hK
 
 /-- Slow transfer keeps its original lock target when the stock witness is a descendant. -/
-theorem regular_slow_next_votes_of_stock_witness_at'
+theorem regular_slow_next_votes_of_stock_witness_at
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
@@ -542,7 +542,7 @@ theorem regular_slow_next_votes_of_stock_witness_at'
     (hCW : Anc (tr.HonestBlocksAt H) C W)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a))
     (halo : sp.ts s ≤ tr.time a) (hat : tr.time a < sp.ts s + 2 * sp.Δ)
-    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt w a ellw)
+    {ellw : ACLabel (goldilocksNode sp ro)} (hcw : tr.projAC.CallAt w a ellw)
     (hWw : W ∈ ellw.frame.tree) (hh : floor ≤ ((tr.state w a).fg.σ W.root).h)
     (hJ : kindJ → Anc (tr.HonestBlocksAt H) J W)
     (hK : CommitteeHalfUpTo tr H K g b) :
@@ -561,17 +561,17 @@ theorem regular_slow_next_votes_of_stock_witness_at'
   have hc' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
   have hPhiU := (AC.frameIn_of_callU hr.toU hx hc').2
   have hDC := ((AC.deepest_mem hsel).1.1.2.2).mono hPhiU
-  apply Shadow.PU.Growing.next_votes_of_stock_witness_at' hrun hnc hsvc hawake hf hcatch hm
+  apply Shadow.PU.Growing.next_votes_of_stock_witness_at hrun hnc hsvc hawake hf hcatch hm
     (by rw [AC.ts_succ]; linarith only [sp.toParams.hΔ]) hmb hframe hw halo hat hcw hWw hh hJ
       (hDC.trans hCW)
   intro y i ell e hy hc hs hhigh hFD hviab ih
   have hFC : Anc (tr.HonestBlocksAt H) ell.frame.F C := by
-    rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hy hc.1]
+    rw [Shadow.PU.Growing.frame_of_projAC_at hrun hy hc.1]
     exact hFD.trans hDC
   exact AC.Growing.result_transfer_anc hac hx hres hDC hy hc hs
-    (result_carry_service_at' hrun hnc hsvc hcatch hm hx hy hres hc hs hFC) hviab
-    (slow_live_locks_service_at' hrun hnc hsvc hx hsl hslow hy hc hs (hhigh.trans hmb) ih hK)
-    (writer_merged_service_at' hrun hnc hsvc hm hx hy hu hc hs)
+    (result_carry_service_at hrun hnc hsvc hcatch hm hx hy hres hc hs hFC) hviab
+    (slow_live_locks_service_at hrun hnc hsvc hx hsl hslow hy hc hs (hhigh.trans hmb) ih hK)
+    (writer_merged_service_at hrun hnc hsvc hm hx hy hu hc hs)
 
 namespace StockWindow
 
@@ -584,7 +584,7 @@ private theorem restrict_window {lo lo' hi hi' : Time} {floor : Nat} {kindJ : Pr
    fun y i hy hlo hhi => h.root_eq y i hy (hl.trans hlo) (hhi.trans hh)⟩
 
 /-- The stock classification's fourth case uses a held descendant witness, not the cast head. -/
-theorem next_votes_of_supporter_at' {s₀ s floor : Nat}
+theorem next_votes_of_supporter_at {s₀ s floor : Nat}
     {kindJ : Prop} {J X Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
@@ -599,7 +599,7 @@ theorem next_votes_of_supporter_at' {s₀ s floor : Nat}
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts ((s - 1 : Nat) : Int))
     (hmb : sp.ts s + 6 * sp.Δ ≤ b)
     {z : Fin sp.n} {q : Nat} (hz : z ∈ H (tr.time q))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC z q ell e) (hes : e.msg.slot = s)
     (hQU : Q ∈ tr.HonestBlocksAt H) (hQr : Q.root = e.msg.head)
     (hXQ : Anc (tr.HonestBlocksAt H) X Q)
@@ -634,13 +634,13 @@ theorem next_votes_of_supporter_at' {s₀ s floor : Nat}
   have hframe' : Healing.Growing.FrameWindow tr H (sp.ts s₀)
       (sp.ts s + 6 * sp.Δ) floor kindJ J :=
     ⟨hframe.floor_eq, hframe.kind_iff, hframe.root_eq⟩
-  obtain ⟨Hd, hHd, hHdr, hclass⟩ := vote_head_classification_of_service_at' hframe'
+  obtain ⟨Hd, hHd, hHdr, hclass⟩ := vote_head_classification_of_service_at hframe'
     hrun hnc hsvc hawake hf hcatch hnr hz hc hqhi (hqhi.trans hmb)
     (hes ▸ hwarm) (hes ▸ hpos) (hes ▸ hs₀) (by simpa only [hes] using hm) (by
       rw [hes]; simp only [AC.freeze]
       have hcast : ((s - 1 : Nat) : Int) = (s : Int) - 1 := by omega
       rw [← hcast]; linarith only [hΔ, hm]) hK
-  have hEQ : Hd = Q := (Coherence.honestBlocksAt_coherent' hrun hnc).1
+  have hEQ : Hd = Q := (Coherence.honestBlocksAt_coherent hrun hnc).1
     (hPhiU hHd) hQU (hHdr.trans hQr.symm)
   subst Hd
   rcases hclass with hv | hj | ho | ⟨-, -, W, hW, -, hQW, hh, hJ⟩
@@ -654,7 +654,7 @@ theorem next_votes_of_supporter_at' {s₀ s floor : Nat}
   · exact hbase W hW hh hJ (hQW.mono hPhiU)
 
 /-- Stock-window fast votes; the viable-head residue is still unresolved. -/
-theorem regular_fast_next_votes_at' {s₀ s floor : Nat}
+theorem regular_fast_next_votes_at {s₀ s floor : Nat}
     {kindJ : Prop} {J X D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
@@ -681,7 +681,7 @@ theorem regular_fast_next_votes_at' {s₀ s floor : Nat}
   have hprev : sp.ts ((s - 1 : Nat) : Int) = sp.ts s - 4 * sp.Δ := by
     rw [Nat.cast_sub (by omega : 1 ≤ s), Nat.cast_one, AC.ts_sub_one]
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
-    result_honest_supporter_before_at' hrun hnc hsvc hawake hf hcatch hnr (by linarith)
+    result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr (by linarith)
       hx hres (hu.2.2.1.trans_le hmb) hK
   have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
   have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
@@ -696,28 +696,28 @@ theorem regular_fast_next_votes_at' {s₀ s floor : Nat}
   rw [hslot] at htq
   have halo : sp.ts s ≤ tr.time q :=
     (AC.ts_le_iff_le_slot sp (hrun.time_nonneg q) _).2 (by rw [hslot])
-  apply next_votes_of_supporter_at' hframe hrun hnc hsvc hawake hf hcatch hnr
+  apply next_votes_of_supporter_at hframe hrun hnc hsvc hawake hf hcatch hnr
     hwarm hpos hs₀ hm hmb hz ⟨hc, he⟩ hes hQU hQr (hXD.trans (hDC.trans hCQ)) ?_ ?_ ?_ ?_ hK
   · intro W hW hh hJ hQW
-    exact regular_fast_next_votes_of_stock_witness_at' hrun hnc hsvc hawake hf hcatch hnr
+    exact regular_fast_next_votes_of_stock_witness_at hrun hnc hsvc hawake hf hcatch hnr
       (by linarith) hmb (restrict_window hframe ((AC.ts_le_iff sp).mpr (by omega)) le_rfl)
       hx hfast hres hXD (hCQ.trans hQW) hz halo (by linarith) hc hW hh hJ hK
   · intro hQ hvQ
     -- A viable head may be at floor - 1 in a contest. The contest-gap residue is needed.
     sorry
   · intro hk hQJ
-    exact Consensus.Goldilocks.Healing.PU.regular_fast_next_votes_at'
-      (Healing.toFrameWindow'_of_kind hframe hk) hrun hnc hsvc hawake hf hcatch hnr
+    exact Consensus.Goldilocks.Healing.PU.regular_fast_next_votes_at
+      (Healing.toFrameWindow_of_kind hframe hk) hrun hnc hsvc hawake hf hcatch hnr
       hwarm hpos hs₀ hm hmb hx hfast hXD hK
   · intro hA a D' CV' hza hop hQD
     have hts := AC.ts_succ s (sp := sp)
-    exact (Shadow.PU.Growing.optimistic_supporter_later_heads_stock_at'
+    exact (Shadow.PU.Growing.optimistic_supporter_later_heads_stock_at
       (restrict_window hframe le_rfl (by linarith)) hrun hnc hsvc hawake hf hcatch hnr
       (by linarith) (by omega) (by omega) (by linarith)
       hz hza ⟨hc, he⟩ hes hA hop hQD hK (s + 1) le_rfl le_rfl).1
 
 /-- Stock-window slow votes; the viable-head residue is still unresolved. -/
-theorem regular_slow_next_votes_at' {s₀ s floor : Nat}
+theorem regular_slow_next_votes_at {s₀ s floor : Nat}
     {kindJ : Prop} {J D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
@@ -747,7 +747,7 @@ theorem regular_slow_next_votes_at' {s₀ s floor : Nat}
   have hres : AC.ResultAt tr.projAC x c s C
       (AC.fastCounted sp (tr.projAC.state x c) ellx.frame s C) := ⟨ellx, hu, hconf, rfl⟩
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
-    result_honest_supporter_before_at' hrun hnc hsvc hawake hf hcatch hnr (by linarith)
+    result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr (by linarith)
       hx hres (hu.2.2.1.trans_le hmb) hK
   have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
   have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
@@ -762,28 +762,28 @@ theorem regular_slow_next_votes_at' {s₀ s floor : Nat}
   rw [hslot] at htq
   have halo : sp.ts s ≤ tr.time q :=
     (AC.ts_le_iff_le_slot sp (hrun.time_nonneg q) _).2 (by rw [hslot])
-  apply next_votes_of_supporter_at' hframe hrun hnc hsvc hawake hf hcatch hnr
+  apply next_votes_of_supporter_at hframe hrun hnc hsvc hawake hf hcatch hnr
     hwarm hpos hs₀ hm' hmb hz ⟨hc, he⟩ hes hQU hQr (hDC.trans hCQ) ?_ ?_ ?_ ?_ hK
   · intro W hW hh hJ hQW
-    exact regular_slow_next_votes_of_stock_witness_at' hrun hnc hsvc hawake hf hcatch
+    exact regular_slow_next_votes_of_stock_witness_at hrun hnc hsvc hawake hf hcatch
       (by linarith) hslow hmb (restrict_window hframe ((AC.ts_le_iff sp).mpr (by omega)) le_rfl)
       hx hsl hres (hCQ.trans hQW) hz halo (by linarith) hc hW hh hJ hK
   · intro hQ hvQ
     -- The same viable-head contest-gap residue as in the fast endpoint.
     sorry
   · intro hk hQJ
-    exact Consensus.Goldilocks.Healing.PU.regular_slow_next_votes_at'
-      (Healing.toFrameWindow'_of_kind hframe hk) hrun hnc hsvc hawake hf hcatch hnr
+    exact Consensus.Goldilocks.Healing.PU.regular_slow_next_votes_at
+      (Healing.toFrameWindow_of_kind hframe hk) hrun hnc hsvc hawake hf hcatch hnr
       hwarm hpos hs₀ hm hmb hx hsl hK
   · intro hA a D' CV' hza hop hQD
     have hts := AC.ts_succ s (sp := sp)
-    exact (Shadow.PU.Growing.optimistic_supporter_later_heads_stock_at'
+    exact (Shadow.PU.Growing.optimistic_supporter_later_heads_stock_at
       (restrict_window hframe le_rfl (by linarith)) hrun hnc hsvc hawake hf hcatch hnr
       (by linarith) (by omega) (by omega) (by linarith)
       hz hza ⟨hc, he⟩ hes hA hop hQD hK (s + 1) le_rfl le_rfl).1
 
 /-- A held floor ancestor of the fast target supplies a stock early witness directly. -/
-theorem regular_fast_next_votes_of_floor_ancestor_at' {s₀ s floor : Nat}
+theorem regular_fast_next_votes_of_floor_ancestor_at {s₀ s floor : Nat}
     {kindJ : Prop} {J X D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
@@ -815,7 +815,7 @@ theorem regular_fast_next_votes_of_floor_ancestor_at' {s₀ s floor : Nat}
   have hprev : sp.ts ((s - 1 : Nat) : Int) = sp.ts s - 4 * sp.Δ := by
     rw [Nat.cast_sub (by omega : 1 ≤ s), Nat.cast_one, AC.ts_sub_one]
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
-    result_honest_supporter_before_at' hrun hnc hsvc hawake hf hcatch hnr (by linarith)
+    result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr (by linarith)
       hx hres (hu.2.2.1.trans_le hmb) hK
   have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
   have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
@@ -834,22 +834,22 @@ theorem regular_fast_next_votes_of_floor_ancestor_at' {s₀ s floor : Nat}
     (Or.inr rfl) (fun L hL => (AC.liveLockBlock_candidate
       (AC.frameIn_of_callU hr.toU hz hc'.1).1 hL).elim
         (fun h => Or.inr h.2.1) Or.inl) .refl
-  have hEQ : Q' = Q := (Coherence.honestBlocksAt_coherent' hrun hnc).1
+  have hEQ : Q' = Q := (Coherence.honestBlocksAt_coherent hrun hnc).1
     ((AC.frameIn_of_callU hr.toU hz hc'.1).2 hQt) hQU (hQr'.trans hQr.symm)
   subst Q'
   have hQstore : Q ∈ (tr.state z q).fg.tree := by
-    rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hz hc, Node.frame'_eq,
-      Store.toFrame'_tree] at hQt
+    rw [Shadow.PU.Growing.frame_of_projAC_at hrun hz hc, Node.frame_eq,
+      Store.toFrame_tree] at hQt
     exact hQt.1
   have hPQ := hPX.trans (hXD.trans (hDC.trans hCQ))
-  have hhQ := Healing.Growing.le_height_of_honest_ancestor_at' hrun hnc hz hp hP hhP hQstore hPQ
-  exact regular_fast_next_votes_of_stock_witness_at' hrun hnc hsvc hawake hf hcatch hnr
+  have hhQ := Healing.Growing.le_height_of_honest_ancestor_at hrun hnc hz hp hP hhP hQstore hPQ
+  exact regular_fast_next_votes_of_stock_witness_at hrun hnc hsvc hawake hf hcatch hnr
     (by linarith) hmb (restrict_window hframe
       ((AC.ts_le_iff sp).mpr (by exact_mod_cast (hs₀.trans (Nat.sub_le s 1)))) le_rfl)
     hx hfast hres hXD hCQ hz halo (by linarith) hc hQt hhQ (fun hk => (hJP hk).trans hPQ) hK
 
 /-- The slow target's held floor ancestor supplies the stock early witness. -/
-theorem regular_slow_next_votes_of_floor_ancestor_at' {s₀ s floor : Nat}
+theorem regular_slow_next_votes_of_floor_ancestor_at {s₀ s floor : Nat}
     {kindJ : Prop} {J D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
@@ -884,7 +884,7 @@ theorem regular_slow_next_votes_of_floor_ancestor_at' {s₀ s floor : Nat}
   have hres : AC.ResultAt tr.projAC x c s C
       (AC.fastCounted sp (tr.projAC.state x c) ellx.frame s C) := ⟨ellx, hu, hconf, rfl⟩
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
-    result_honest_supporter_before_at' hrun hnc hsvc hawake hf hcatch hnr (by linarith)
+    result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr (by linarith)
       hx hres (hu.2.2.1.trans_le hmb) hK
   have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
   have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
@@ -903,20 +903,20 @@ theorem regular_slow_next_votes_of_floor_ancestor_at' {s₀ s floor : Nat}
     (Or.inr rfl) (fun L hL => (AC.liveLockBlock_candidate
       (AC.frameIn_of_callU hr.toU hz hc'.1).1 hL).elim
         (fun h => Or.inr h.2.1) Or.inl) .refl
-  have hEQ : Q' = Q := (Coherence.honestBlocksAt_coherent' hrun hnc).1
+  have hEQ : Q' = Q := (Coherence.honestBlocksAt_coherent hrun hnc).1
     ((AC.frameIn_of_callU hr.toU hz hc'.1).2 hQt) hQU (hQr'.trans hQr.symm)
   subst Q'
   have hQt' := hQt
-  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hz hc, Node.frame'_eq,
-    Store.toFrame'_tree] at hQt
+  rw [Shadow.PU.Growing.frame_of_projAC_at hrun hz hc, Node.frame_eq,
+    Store.toFrame_tree] at hQt
   have hPQ := hPD.trans (hDC.trans hCQ)
-  have hhQ := Healing.Growing.le_height_of_honest_ancestor_at' hrun hnc hz hp hP hhP hQt.1 hPQ
-  exact regular_slow_next_votes_of_stock_witness_at' hrun hnc hsvc hawake hf hcatch
+  have hhQ := Healing.Growing.le_height_of_honest_ancestor_at hrun hnc hz hp hP hhP hQt.1 hPQ
+  exact regular_slow_next_votes_of_stock_witness_at hrun hnc hsvc hawake hf hcatch
     (by linarith) hslow hmb (restrict_window hframe ((AC.ts_le_iff sp).mpr (by omega)) le_rfl)
     hx hsl hres hCQ hz halo (by linarith) hc hQt' hhQ (fun hk => (hJP hk).trans hPQ) hK
 
 /-- A strict floor anchor suffices without an explicit J-ancestry premise. -/
-theorem regular_fast_next_votes_of_strict_floor_ancestor_at' {s₀ s floor : Nat}
+theorem regular_fast_next_votes_of_strict_floor_ancestor_at {s₀ s floor : Nat}
     {kindJ : Prop} {J X D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
@@ -941,14 +941,14 @@ theorem regular_fast_next_votes_of_strict_floor_ancestor_at' {s₀ s floor : Nat
     ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       AC.VoteExtends (tr.HonestBlocksAt H) e.msg X := by
   by_cases hk : kindJ
-  · exact Consensus.Goldilocks.Healing.PU.regular_fast_next_votes_at'
-      (Healing.toFrameWindow'_of_kind hframe hk) hrun hnc hsvc hawake hf hcatch hnr
+  · exact Consensus.Goldilocks.Healing.PU.regular_fast_next_votes_at
+      (Healing.toFrameWindow_of_kind hframe hk) hrun hnc hsvc hawake hf hcatch hnr
       hwarm hpos hs₀ hm hmb hx hfast hXD hK
-  · exact regular_fast_next_votes_of_floor_ancestor_at' hframe hrun hnc hsvc hawake hf hcatch hnr
+  · exact regular_fast_next_votes_of_floor_ancestor_at hframe hrun hnc hsvc hawake hf hcatch hnr
       hwarm hpos hs₀ hm hmb hx hfast hXD hp hP hPfl.1 (fun h => (hk h).elim) hPX hK
 
 /-- The strict floor-anchor interface for regular slow next votes. -/
-theorem regular_slow_next_votes_of_strict_floor_ancestor_at' {s₀ s floor : Nat}
+theorem regular_slow_next_votes_of_strict_floor_ancestor_at {s₀ s floor : Nat}
     {kindJ : Prop} {J D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) floor kindJ J)
     {K : AC.CommitteeDict sp.n}
@@ -971,10 +971,10 @@ theorem regular_slow_next_votes_of_strict_floor_ancestor_at' {s₀ s floor : Nat
     ∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = s + 1 →
       AC.VoteExtends (tr.HonestBlocksAt H) e.msg D := by
   by_cases hk : kindJ
-  · exact Consensus.Goldilocks.Healing.PU.regular_slow_next_votes_at'
-      (Healing.toFrameWindow'_of_kind hframe hk) hrun hnc hsvc hawake hf hcatch hnr
+  · exact Consensus.Goldilocks.Healing.PU.regular_slow_next_votes_at
+      (Healing.toFrameWindow_of_kind hframe hk) hrun hnc hsvc hawake hf hcatch hnr
       hwarm hpos hs₀ hm hmb hx hsl hK
-  · exact regular_slow_next_votes_of_floor_ancestor_at' hframe hrun hnc hsvc hawake hf hcatch hnr
+  · exact regular_slow_next_votes_of_floor_ancestor_at hframe hrun hnc hsvc hawake hf hcatch hnr
       hwarm hpos hs₀ hm hmb hx hsl hp hP hPfl.1 (fun h => (hk h).elim) hPD hK
 
 end StockWindow

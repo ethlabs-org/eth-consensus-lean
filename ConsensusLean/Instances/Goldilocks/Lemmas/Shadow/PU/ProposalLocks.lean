@@ -34,7 +34,7 @@ open Compose.Growing
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 variable {hold : Time}
 
 /-- **Proposal lock cases over the shadow run** (`proposal_lock_prefix_cases_at`): a warm live
@@ -53,7 +53,7 @@ theorem proposal_lock_prefix_cases_at'
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀)
     (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
     {z : Fin sp.n} {i : Nat} (hz : z ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt z i ell)
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt z i ell)
     (hti : tr.time i = sp.ts (s + 1 : Nat))
     {l : AC.Lock} (hl : l ∈ AC.liveLocks sp (tr.projAC.state z i).locks ell.frame (tr.time i))
     (hwarm : s₀ + sp.k ≤ l.slot) (hpos : 0 < l.slot)
@@ -93,7 +93,7 @@ theorem proposal_lock_prefix_cases_at'
       simp only [ACParams.ts] at ht htime
       push_cast at htime
       linarith only [hΔ, ht, htime]
-    have hall := (Healing.PU.StockWindow.regular_later_heads_at' hframe hrun hnc hsvc hawake hf
+    have hall := (Healing.PU.StockWindow.regular_later_heads_at hframe hrun hnc hsvc hawake hf
       hcatch hnr hwarm hpos hpred hm hgap hmb hza ho hK s (by omega) (by omega)).1
     intro y j e hy hv hs
     obtain ⟨R, hR, hRr, hDR⟩ := hall y j e hy hv hs
@@ -116,12 +116,12 @@ theorem proposal_lock_prefix_cases_at'
   obtain ⟨Q, hQ, hvQ, hAQ⟩ := hAv.2.2
   -- the writer's head `Q` at the writer's own cut
   have hv := hvQ
-  rw [rc.frame_of_projAC_at hza ha, Node.frame'_eq, Store.toFrame'_viableHeads] at hv
+  rw [rc.frame_of_projAC_at hza ha, Node.frame_eq, Store.toFrame_viableHeads] at hv
   obtain ⟨hQa, hFQ, hva⟩ := hv
   have hle : ∀ q < a, tr.time q ≤ tr.time a := fun _ hq => rc.time_mono hq.le
   have hra := rc.reachable_at (rc.time_nonneg a) hza hle
   have hQle := (Store.cache_invariants_with rc.finalitySpec hra).2.2.2.2.1 Q hQa
-  have hja := Shadow.PU.hj_lt_hmax_at' hrun (rc.time_nonneg a) hza hle
+  have hja := Shadow.PU.hj_lt_hmax_at hrun (rc.time_nonneg a) hza hle
   have hfa := hframe.floor_eq z a hza halo hahi
   have hka := hframe.kind_iff z a hza halo hahi
   have hbd := Store.headHeightFloor_bounds (tr.state z a).fg
@@ -140,7 +140,7 @@ theorem proposal_lock_prefix_cases_at'
       ((tr.state z a).fg.Contest ∧ (tr.state z a).fg.hmax = floor ∧
         ((tr.state z a).fg.σ Q.root).h + 1 = floor ∧
         (tr.state z a).fg.Anc (tr.state z a).fg.J Q) := by
-    rcases (Store.isViable'_iff _ Q).mp hva with hge | ⟨heq, hgap | hJQ⟩
+    rcases (Store.isViable_iff _ Q).mp hva with hge | ⟨heq, hgap | hJQ⟩
     · refine Or.inl ⟨by omega, fun hk => hJkind hk ?_⟩
       obtain ⟨g1, g2⟩ := hka.mpr hk
       by_contra hn
@@ -167,14 +167,14 @@ theorem proposal_lock_prefix_cases_at'
       dsimp only at hsel
       split_ifs at hsel with hn
       exact lt_of_not_ge (fun ht => hn (Or.inr (Or.inr (Or.inl (hsl ▸ ht)))))
-    have hall := (Shadow.PU.Growing.optimistic_later_heads_of_stock_witness_at' hrun hnc hsvc
+    have hall := (Shadow.PU.Growing.optimistic_later_heads_of_stock_witness_at hrun hnc hsvc
       hawake hf hcatch hnr (by linarith only [hm, hts, hΔ]) hmb hsub hza hop hAD hza hlw hat ha
       hQ hh hJ (Anc.mono hW.2 hAQ) hK s (by omega) (by omega)).1
     refine Or.inr (Or.inl ?_)
     intro y j e hy hv hes
     obtain ⟨R, hR, hRr, hAR⟩ := hall y j e hy hv hes
     exact ⟨R, hR, hRr, hXA.trans hAR⟩
-  · have hall := (optimistic_contest_residue' hframe hrun hnc hsvc hawake hf hcatch hnr hm hmb
+  · have hall := (optimistic_contest_residue hframe hrun hnc hsvc hawake hf hcatch hnr hm hmb
       hlabel (by omega) hza ha hop hAD hvQ (Anc.mono hW.2 hAQ) hcon hmax hQh hJQ hK s (by omega)
       (by omega)).1
     refine Or.inr (Or.inl ?_)
@@ -186,7 +186,7 @@ theorem proposal_lock_prefix_cases_at'
 `FrameWindow'`): a warm live lock is below the root, followed by votes, or from a current
 optimistic write. The P-U window pins `h_max`, so the writer's P-U viable head is a window
 witness and no contest/gap residue arises. -/
-theorem proposal_lock_prefix_cases_window_at'
+theorem proposal_lock_prefix_cases_window_at
     {g ΔF b : Time} {s₀ s M : Nat} {isTop : Prop}
     {J X B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
@@ -200,7 +200,7 @@ theorem proposal_lock_prefix_cases_window_at'
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀)
     (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
     {z : Fin sp.n} {i : Nat} (hz : z ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt z i ell)
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt z i ell)
     (hti : tr.time i = sp.ts (s + 1 : Nat))
     {l : AC.Lock} (hl : l ∈ AC.liveLocks sp (tr.projAC.state z i).locks ell.frame (tr.time i))
     (hwarm : s₀ + sp.k ≤ l.slot) (hpos : 0 < l.slot)
@@ -240,7 +240,7 @@ theorem proposal_lock_prefix_cases_window_at'
       simp only [ACParams.ts] at ht htime
       push_cast at htime
       linarith only [hΔ, ht, htime]
-    have hall := (Healing.PU.regular_later_heads_at' hframe hrun hnc hsvc hawake hf
+    have hall := (Healing.PU.regular_later_heads_at hframe hrun hnc hsvc hawake hf
       hcatch hnr hwarm hpos hpred hm hgap hmb hza ho hK s (by omega) (by omega)).1
     intro y j e hy hv hs
     obtain ⟨R, hR, hRr, hDR⟩ := hall y j e hy hv hs
@@ -267,7 +267,7 @@ theorem proposal_lock_prefix_cases_window_at'
     dsimp only at hsel
     split_ifs at hsel with hn
     exact lt_of_not_ge (fun ht => hn (Or.inr (Or.inr (Or.inl (hsl ▸ ht)))))
-  have hall := (Shadow.PU.Growing.optimistic_later_heads_of_early_witness_at' hrun hnc hsvc
+  have hall := (Shadow.PU.Growing.optimistic_later_heads_of_early_witness_at hrun hnc hsvc
     hawake hf hcatch hnr (by linarith only [hm, hts, hΔ]) hmb (hframe.mono hts le_rfl) hza hop
     hAD hza hlw hat ha hQ hvQ (Anc.mono hW.2 hAQ) hK s (by omega) (by omega)).1
   refine Or.inr (Or.inl ?_)

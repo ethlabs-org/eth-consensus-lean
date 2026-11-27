@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AnchorPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesFinality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesPrefix
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalLocks
@@ -17,10 +18,10 @@ open AC (ACParams ReplayOrder Payload gbar)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
 
 /-- Primed finality and the actual proposal's live lock put its start below the cast head. -/
-theorem proposal_start_prefix_primed_at' {s₀ s M : Nat}
+theorem proposal_start_prefix_at {s₀ s M : Nat}
     {isTop : Prop} {J P : AC.Blk sp.n (List (FG.Att sp.n))} {g ΔF b : Time}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
@@ -35,14 +36,14 @@ theorem proposal_start_prefix_primed_at' {s₀ s M : Nat}
     (hmb : sp.ts (s + 1 : Nat) + sp.Δ ≤ b)
     {z : Fin sp.n} (hz : z ∈ H (sp.ts (s + 1 : Nat) + sp.Δ))
     (hdes : z = proposer (s + 1)) {ip : Nat}
-    {ellp : ACLabel (goldilocksNode' sp ro)}
+    {ellp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
     (hti : tr.time ip = sp.ts (s + 1 : Nat))
     (hpay : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 = some (d, pay))
     (hparent : P.parent = some d.head.root)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hPv : P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame (s + 1)))
     (hvP : P ∈ ell.frame.viableHeads)
@@ -91,14 +92,14 @@ theorem proposal_start_prefix_primed_at' {s₀ s M : Nat}
     sp.toParams.fg.faults_lt_quorum_margin (hf _
       (le_max_of_le_left (hrun.time_nonneg ip)) ((max_le hphi hhi).trans hmb))
   have hroot (hSr : Anc (tr.HonestBlocksAt H) d.start ellp.frame.fcRoot) := by
-    have hrootE := fcRoot_anc_head_at_cast_primed_at' hframe hrun hnc hz' hy hfmax
+    have hrootE := fcRoot_anc_head_at_cast_at hframe hrun hnc hz' hy hfmax
       hplo hphi hlo hhi hcp hc (hes ▸ hPv.1) hvP ((Anc.mono hPhi.2 haS).trans hSr)
     have hSE := hSr.trans hrootE
     rw [hes, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by omega] at hSE
     exact AC.anc_tree_of_anc_U hac.localRun.coherent hPhi.1 hPhi.2 hSv.1.1 hSE
       (AC.getHead_mem hPhi.1 (fun X hX => hX.1.1) _ _ _ _)
   rcases Core.actual_proposal_start_live_origin_at hrun.toCore hnc
-    (fun ht => Healing.actual_proposal_start_live_origin' (hrun.upTo ht) (hnc.upTo _))
+    (fun ht => Healing.actual_proposal_start_live_origin (hrun.upTo ht) (hnc.upTo _))
     (by
       have ht : sp.ts s₀ ≤ sp.ts (s + 1 : Nat) := (AC.ts_le_iff sp).2 (by omega)
       linarith [sp.toParams.hΔ]) (hphi.trans hmb) (by omega)
@@ -117,7 +118,7 @@ theorem proposal_start_prefix_primed_at' {s₀ s M : Nat}
     have hsl : sp.slot (tr.time ip) = s + 1 := AC.proposal_slot (tr := tr.projAC) hti
     rw [hsl] at hcap
     exact hcap
-  rcases KernelProof.proposal_lock_prefix_cases_window_at' hframe hrun hnc hsvc hawake hf hcatch
+  rcases KernelProof.proposal_lock_prefix_cases_window_at hframe hrun hnc hsvc hawake hf hcatch
     hnr hm hmb hz' hcp hti (hdes.symm ▸ hl) (by omega) (by omega) (by omega) hold hB hBr hSB
     hK with hbelow | hheads | ⟨a, _, D, CV, hza, hop, hSD⟩
   · exact hroot hbelow

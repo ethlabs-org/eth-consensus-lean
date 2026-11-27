@@ -27,31 +27,6 @@ private theorem held_σ_eq {z : Fin P.n} (hz : z ∈ H) {j : Nat} {B : A.Blk}
   rw [← store_eq hr hz j] at hBz ⊢
   exact Store.σ_eq_of_held hfg hy hz hBy hBz
 
-private theorem source_entry_eq {D D' E E' : A.Blk}
-    (hDD' : Compatible (tr.HonestBlocks H) D D') (hD : IsHonestSource tr H D E.root)
-    (hD' : IsHonestSource tr H D' E'.root) (hE : E ∈ (tr.state y i).fg.tree)
-    (hE' : E' ∈ (tr.state y i).fg.tree)
-    (hh : ((tr.state y i).fg.σ E.root).h = ((tr.state y i).fg.σ E'.root).h) : E = E' := by
-  have key : ∀ {D D' E E' : A.Blk}, Anc (tr.HonestBlocks H) D D' →
-      IsHonestSource tr H D E.root → IsHonestSource tr H D' E'.root → E ∈ (tr.state y i).fg.tree →
-      E' ∈ (tr.state y i).fg.tree →
-      ((tr.state y i).fg.σ E.root).h = ((tr.state y i).fg.σ E'.root).h → E = E' := by
-    intro D D' E E' hDD hD hD' hE hE' hh
-    obtain ⟨x, hx, k, -, hEt, hED, -, hET⟩ := honest_source_entry hr hfg hD ⟨y, hy, i, hE⟩ rfl
-    obtain ⟨x', hx', k', hD't, hE't, hE'D', -, hE'T⟩ :=
-      honest_source_entry hr hfg hD' ⟨y, hy, i, hE'⟩ rfl
-    have hED' : (tr.state x' k').fg.Anc E D' :=
-      honest_held_anc hr hfg hx' ((hED.mono (fg_tree_subset_honest hx k)).trans hDD) hD't
-    have hEt' := anc_mem hED' hD't
-    refine held_entry_unique hr hfg hx' hD't hED' hE'D' ?_ ?_ hE'T
-    · rw [held_σ_eq hr hfg hx' hy hEt' hE, held_σ_eq hr hfg hx' hy hE't hE']
-      exact hh
-    · rw [held_σ_eq hr hfg hx' hx hEt' hEt]
-      exact hET
-  rcases hDD' with h | h
-  · exact key h hD hD' hE hE' hh
-  · exact (key h hD' hD hE' hE hh.symm).symm
-
 private theorem below_entry {B D E : A.Blk}
     (hB : B ∈ (tr.state y i).fg.tree) (hE : E ∈ (tr.state y i).fg.tree)
     (hD : IsHonestSource tr H D E.root) (hDB : Compatible (tr.HonestBlocks H) D B)
@@ -70,22 +45,6 @@ private theorem below_entry {B D E : A.Blk}
 
 include hf
 
-private theorem frame_no_contest_of (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
-    (hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D') :
-    ¬ (tr.state y i).fg.Contest := by
-  rintro ⟨hm, X, hX, -, hXh, hJX⟩
-  have hR := fg_reachable hr hy i
-  by_cases h0 : (tr.state y i).fg.hj = 0
-  · rw [justified_genesis hr h0 hy] at hJX
-    exact hJX ((Store.accepted_tree _ _ _ _ hR).2.2.2 X hX)
-  obtain ⟨hJh, hJT, D, hD, hDs⟩ := justified_honest_source_of hr hfg hf hy hsrc (by omega)
-  obtain ⟨E, hE, hEX, hEh, hET, D', hD', hD's⟩ :=
-    frame_crossing_source_of hr hfg hf hy hsrc hX (j := (tr.state y i).fg.hj) le_rfl (by omega)
-      (by omega)
-  have hJ := (Store.cache_invariants _ _ _ _ hR).2.1
-  rw [source_entry_eq hr hfg hy (hGG D D' hD hD') hDs hD's hJ hE (hJh.trans hEh.symm)] at hJX
-  exact hJX hEX
-
 /-- Compatibility with all relevant row sources implies compatibility with the justification. -/
 theorem J_compatible (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
     {B : A.Blk} (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
@@ -103,22 +62,17 @@ theorem J_compatible (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
   · exact Or.inl (hJDU.trans h)
   · exact Anc.total hfg.coherent hJDU h
 
-/-- A held block reaches the floor or a source entry at the floor with a viable carrier. -/
-theorem floor_or_crossing_of (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
-    (hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D')
+/-- A held block reaches `h_max − 1` or lies below a source entry at `h_max − 1` with a carrier of
+height `h_max`, which is viable. -/
+private theorem floor_or_crossing_core (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
     {B : A.Blk} (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
     (hB : B ∈ (tr.state y i).fg.tree) :
-    (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ B.root).h ∨
+    (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ B.root).h ∨
       ∃ D E X, G D ∧ IsHonestSource tr H D E.root ∧ E ∈ (tr.state y i).fg.tree ∧
         (tr.state y i).fg.Anc B E ∧
-        ((tr.state y i).fg.σ E.root).h = (tr.state y i).fg.headHeightFloor ∧
+        ((tr.state y i).fg.σ E.root).h = (tr.state y i).fg.hmax - 1 ∧
         X ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc E X ∧ (tr.state y i).fg.IsViable X := by
-  have hfl : (tr.state y i).fg.headHeightFloor = (tr.state y i).fg.hmax - 1 := by
-    unfold Store.headHeightFloor
-    split_ifs with h
-    · exact absurd h (frame_no_contest_of hr hfg hf hy hsrc hGG)
-    · rfl
-  by_cases hle : (tr.state y i).fg.headHeightFloor ≤ ((tr.state y i).fg.σ B.root).h
+  by_cases hle : (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ B.root).h
   · exact Or.inl hle
   right
   obtain ⟨-, -, -, ⟨Z, hZ, -, hZj⟩, hZm, ⟨X, hX, hXh⟩, -⟩ :=
@@ -129,14 +83,39 @@ theorem floor_or_crossing_of (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
   obtain ⟨E, hE, hEX, hEh, -, D, hD, hDs⟩ :=
     frame_crossing_source_of hr hfg hf hy hsrc hX (j := (tr.state y i).fg.hmax - 1) (by omega)
       (by omega) (by omega)
-  refine ⟨D, E, X, hD, hDs, hE, below_entry hr hfg hy hB hE hDs (hGB D hD) (by omega),
-    hEh.trans hfl.symm, hX, hEX, ?_⟩
-  change (tr.state y i).fg.headHeightFloor ≤ _
-  omega
+  exact ⟨D, E, X, hD, hDs, hE, below_entry hr hfg hy hB hE hDs (hGB D hD) (by omega), hEh, hX,
+    hEX, Or.inl hXh.ge⟩
 
-/-- Compatible source geometry makes a held block an ancestor of the floor or fully viable. -/
-theorem held_viable_of (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
-    (hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D')
+/-- A held block reaches `h_max − 1` or lies below a source entry at `h_max − 1` with a carrier of
+height `h_max`, which is viable. The sources need not be pairwise compatible. -/
+theorem floor_or_crossing_of (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
+    (_hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D')
+    {B : A.Blk} (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
+    (hB : B ∈ (tr.state y i).fg.tree) :
+    (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ B.root).h ∨
+      ∃ D E X, G D ∧ IsHonestSource tr H D E.root ∧ E ∈ (tr.state y i).fg.tree ∧
+        (tr.state y i).fg.Anc B E ∧
+        ((tr.state y i).fg.σ E.root).h = (tr.state y i).fg.hmax - 1 ∧
+        X ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc E X ∧ (tr.state y i).fg.IsViable X :=
+  floor_or_crossing_core hr hfg hf hy hsrc hGB hB
+
+/-- In a top frame (`h_max = h_j + 1`), `Σ.J` is viable: its height is `h_j` (or it is genesis,
+of height `1 = h_max`). -/
+theorem J_viable_of_top (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
+    (htop : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1) :
+    (tr.state y i).fg.IsViable (tr.state y i).fg.J := by
+  have hJm := (Store.cache_invariants _ _ _ _ (fg_reachable hr hy i)).2.1
+  by_cases h0 : (tr.state y i).fg.hj = 0
+  · have h1 := (honest_held_chain hr hy hJm).1
+    exact Or.inl (by omega)
+  obtain ⟨hJh, -, -⟩ := justified_honest_source_of hr hfg hf hy hsrc (by omega)
+  exact Or.inr ⟨by omega, Or.inr .refl⟩
+
+/-- Compatible source geometry makes a held block of the frame a member of its viable tree. A
+block below `h_max − 1` is below a viable carrier; a block at `h_max − 1` is viable, or in a top
+frame compatible with `Σ.J` and strictly below it, where `Σ.J` is viable. The sources need not be
+pairwise compatible. -/
+theorem held_viable_of_rows (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
     {B : A.Blk} (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
     (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
     (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
@@ -147,24 +126,48 @@ theorem held_viable_of (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
   have hΦU : (Node.frame (tr.state y i)).tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX.1⟩
   have hΦs : (Node.frame (tr.state y i)).tree ⊆ (tr.state y i).fg.tree := fun X hX => hX.1
   have hsU := fg_tree_subset_honest (tr := tr) hy i
-  have hfc : Compatible (tr.HonestBlocks H) (Node.frame (tr.state y i)).fcRoot B := by
-    change Compatible _ (tr.state y i).fg.fcRoot B
-    unfold Store.fcRoot
-    split_ifs
-    · exact J_compatible hr hfg hf hy hsrc hGB (hsU hBt.1)
-    · exact Or.inl (hBt.2.mono hsU)
-  rcases hfc with hfB | hBf
-  swap
-  · exact Or.inl (Frame.anc_tree_of_anc_U hU hΦ hΦU hBt hBf hΦ.fcRoot_mem)
-  have hΦfB := Frame.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem hfB hBt
-  right
-  rcases floor_or_crossing_of hr hfg hf hy hsrc hGG hGB hBt.1 with hle | ⟨-, E, X, -, -, -, hBE,
-    -, hX, hEX, hXv⟩
-  · exact ⟨hBt, hΦfB, B, hBt, ⟨hBt.1, hBt.2, Anc.mono hΦs hΦfB, hle⟩, .refl⟩
-  · have hBX := hBE.trans hEX
-    have hXΦ : X ∈ (Node.frame (tr.state y i)).tree := ⟨hX, hBt.2.trans hBX⟩
-    exact ⟨hBt, hΦfB, X, hXΦ, ⟨hX, hXΦ.2, (Anc.mono hΦs hΦfB).trans hBX, hXv⟩,
-      Frame.anc_tree_of_anc_U hU hΦ hΦU hBt (Anc.mono hsU hBX) hXΦ⟩
+  have hR := fg_reachable hr hy i
+  obtain ⟨-, hJm, -, ⟨Z, hZ, -, hZj⟩, hmax, -⟩ := Store.cache_invariants _ _ _ _ hR
+  have hjm : (tr.state y i).fg.hj < (tr.state y i).fg.hmax := by
+    have := (honest_held_chain hr hy hZ).2.1
+    have := hmax Z hZ
+    omega
+  -- a viable held descendant of `B`
+  have hW : ∃ W ∈ (tr.state y i).fg.tree, (tr.state y i).fg.Anc B W ∧
+      (tr.state y i).fg.IsViable W := by
+    rcases floor_or_crossing_core hr hfg hf hy hsrc hGB hBt.1 with hpred |
+        ⟨-, E, X, -, -, -, hBE, -, hX, hEX, hXv⟩
+    swap
+    · exact ⟨X, hX, hBE.trans hEX, hXv⟩
+    by_cases hv : (tr.state y i).fg.IsViable B
+    · exact ⟨B, hBt.1, .refl, hv⟩
+    have hBm := hmax B hBt.1
+    have hlt : ¬ (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ B.root).h := fun hh => hv (Or.inl hh)
+    have htop : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 := by
+      by_contra hn
+      exact hv (by
+        by_cases hh : (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ B.root).h
+        · exact Or.inl hh
+        · exact Or.inr ⟨by omega, Or.inl (by omega)⟩)
+    have hJv := J_viable_of_top hr hfg hf hy hsrc htop
+    rcases J_compatible hr hfg hf hy hsrc hGB (hsU hBt.1) with h | h
+    · exact absurd (Or.inr ⟨by omega, Or.inr (honest_held_anc hr hfg hy h hBt.1)⟩) hv
+    · exact ⟨_, hJm, honest_held_anc hr hfg hy h hJm, hJv⟩
+  obtain ⟨W, hWs, hBW, hWv⟩ := hW
+  have hΦfB : (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot B :=
+    Frame.anc_tree_of_anc_U hU hΦ hΦU hΦ.fcRoot_mem (hBt.2.mono hsU) hBt
+  have hWΦ : W ∈ (Node.frame (tr.state y i)).tree := ⟨hWs, hBt.2.trans hBW⟩
+  exact Or.inr ⟨hBt, hΦfB, W, hWΦ, ⟨hWs, hWΦ.2, hWv⟩,
+    Frame.anc_tree_of_anc_U hU hΦ hΦU hBt (hBW.mono hsU) hWΦ⟩
+
+/-- `held_viable_of_rows`, with the stock premise that the sources are pairwise compatible. -/
+theorem held_viable_of (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
+    (_hGG : ∀ D D', G D → G D' → Compatible (tr.HonestBlocks H) D D')
+    {B : A.Blk} (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
+    (hBt : B ∈ (Node.frame (tr.state y i)).tree) :
+    (Node.frame (tr.state y i)).Anc B (Node.frame (tr.state y i)).fcRoot ∨
+      B ∈ (Node.frame (tr.state y i)).viableTree (Node.frame (tr.state y i)).tree :=
+  held_viable_of_rows hr hfg hf hy hsrc hGB hBt
 
 end Consensus.Goldilocks.Compose.FrameGeometry
 

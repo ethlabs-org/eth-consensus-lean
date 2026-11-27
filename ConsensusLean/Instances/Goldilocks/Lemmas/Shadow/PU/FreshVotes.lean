@@ -14,10 +14,10 @@ open AC (ACParams ReplayOrder Payload gbar)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
 
 /-- The actual warm proposal walk determines every honest cast's head in a primed window. -/
-theorem honest_vote_heads_eq_at'
+theorem honest_vote_heads_eq_at
     {g ΔF b : Time} {s₀ u M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts u + sp.Δ) M isTop J)
@@ -50,7 +50,7 @@ theorem honest_vote_heads_eq_at'
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
   obtain ⟨_, ip, ellp, d, pay, hcp, hcall, hpay, hti, hparent, _, _, hpayload, _⟩ :=
-    Coherence.honestProposalRun_of_proposesAt' (hrun.upTo (hrun.time_nonneg kP))
+    Coherence.honestProposalRun_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
       (hnc.upTo _) hzk hdes hP' hPs
   rw [← hdes] at hcp hpay
   have hip : tr.time ip = sp.ts (s + 1 : Nat) := hti
@@ -83,13 +83,13 @@ theorem honest_vote_heads_eq_at'
     rw [hslot] at hhigh
     obtain ⟨hvP, hPv⟩ := KernelProof.proposal_viable_at_cast_primed_at' hframe hrun hnc hsvc hf hnr
       (by linarith [sp.toParams.hΔ]) hsp (by omega) hmb hz hdes hP hPs hy hcast hes
-    have haP := vote_anchor_below_of_earlier_heads_primed_at' hframe hrun hnc hsvc hawake hf hcatch
+    have haP := vote_anchor_below_of_earlier_heads_at hframe hrun hnc hsvc hawake hf hcatch
       hnr hm hsp (by omega) hmb hz hdes hP hPs hy hcast hes hwarm
       (fun x j ev hji hx hv hs => ih j hji x ev hx hv hs) hK
-    apply vote_head_eq_of_start_prefix_primed_at' hframe hrun hnc hsvc hawake hf hcatch hnr hms hsp
+    apply vote_head_eq_of_start_prefix_at hframe hrun hnc hsvc hawake hf hcatch hnr hms hsp
       hz hdes hP hPs hcp0 hcall hip hpay0 hpayload hparent hy hcast hes hhigh
       (hhigh.trans hmb) hPv haP ?_ hK
-    exact fun haS => proposal_start_prefix_primed_at' hframe hrun hnc hsvc hawake hf hcatch hnr
+    exact fun haS => proposal_start_prefix_at hframe hrun hnc hsvc hawake hf hcatch hnr
       hm (by omega) hwarm hmb hz hdes hcp0 hcall hip hpay0 hparent hy hcast hes hPv hvP haS
       hK
 

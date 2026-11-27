@@ -21,13 +21,13 @@ open AC (ACParams ReplayOrder Payload gbar)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-  {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 variable {hold : Time}
 
 /-- A viable head transfers between warm frames whenever the receiving tree holds it.
 (`FrameWindow.viableHead_transfer_at` over the shadow run and `FrameWindow'`). -/
-theorem viableHead_transfer_primed_at' {lo hi : Time} {M : Nat}
+theorem viableHead_transfer_at {lo hi : Time} {M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow' tr H lo hi M isTop J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
@@ -37,24 +37,24 @@ theorem viableHead_transfer_primed_at' {lo hi : Time} {M : Nat}
     (hilo : lo ≤ tr.time i) (hihi : tr.time i ≤ hi)
     (hclo : lo ≤ tr.time c) (hchi : tr.time c ≤ hi)
     {Q : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hv : Q ∈ (Node.frame' (tr.state z c)).viableHeads)
-    (hQ : Q ∈ (Node.frame' (tr.state y i)).tree) :
-    Q ∈ (Node.frame' (tr.state y i)).viableHeads := by
+    (hv : Q ∈ (Node.frame (tr.state z c)).viableHeads)
+    (hQ : Q ∈ (Node.frame (tr.state y i)).tree) :
+    Q ∈ (Node.frame (tr.state y i)).viableHeads := by
   have hct := hrun.time_nonneg c
   have hbc : ∀ q < c, tr.time q ≤ tr.time c := fun q hq => hrun.time_mono hq.le
-  rw [Node.frame'_eq, Store.toFrame'_viableHeads] at hv
+  rw [Node.frame_eq, Store.toFrame_viableHeads] at hv
   obtain ⟨hQz, -, hvz⟩ := hv
-  have hwz := (tr.state z c).fg.viable'_witness (hframe.M_eq z c hz hclo hchi)
+  have hwz := (tr.state z c).fg.viable_witness (hframe.M_eq z c hz hclo hchi)
     (hframe.top_iff z c hz hclo hchi) (hframe.root_eq z c hz hclo hchi) hvz
-  have hW := Healing.windowWitness_of_frameWindow' hrun hnc hframe hz hQz
+  have hW := Healing.windowWitness_of_frameWindow hrun hnc hframe hz hQz
     ⟨hwz.1, fun ht he => (hwz.2 ht he).mono (Compose.Growing.tree_held_at' hct hz hbc)⟩
-  rw [Node.frame'_eq, Store.toFrame'_tree] at hQ
-  rw [Node.frame'_eq, Store.toFrame'_viableHeads]
+  rw [Node.frame_eq, Store.toFrame_tree] at hQ
+  rw [Node.frame_eq, Store.toFrame_viableHeads]
   exact ⟨hQ.1, hQ.2, (hW.held y i hy hilo hihi hf hQ.1).2⟩
 
 /-- A frozen competing child reflects into the actual proposer's full viable tree.
 (`FrameWindow.frozen_competitor_reflect_at` over the shadow run and `FrameWindow'`). -/
-theorem frozen_competitor_reflect_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
+theorem frozen_competitor_reflect_at {g ΔF b : Time} {s₀ s M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
@@ -66,14 +66,14 @@ theorem frozen_competitor_reflect_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
     (hdesignated : z = proposer (s + 1))
     {k : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hactual : tr.ProposesAt z k P) (hPs : P.slot = s + 1)
-    {ip : Nat} {ellp : ACLabel (goldilocksNode' sp ro)}
+    {ip : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hcp : tr.projAC.CallAt z ip ellp) (hcall : ellp.call = .proposal)
     (hti : tr.time ip = sp.ts (s + 1 : Nat))
     (hpay : (AC.acProposal sp (tr.projAC.state z ip) ellp.frame (tr.time ip)).2 = some (d, pay))
     (hparent : P.parent = some d.head.root)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = s + 1)
     (hhigh : tr.time i ≤ sp.ts (s + 1 : Nat) + sp.Δ) (hpb : sp.ts (s + 1 : Nat) ≤ b)
     {X B : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -84,13 +84,13 @@ theorem frozen_competitor_reflect_primed_at' {g ΔF b : Time} {s₀ s M : Nat}
   refine Healing.Growing.Core.frozen_competitor_reflect_at hrun.toCore hnc hsvc hcatch hnr hf hm hs₀
     ?_ (fun hx hm' hc hcall hti hp =>
       Healing.Growing.Core.proposal_parent_viable_full_frame_at hrun.toCore hnc hx hm'
-        (fun y i hy hf => full_frame_viable_witness_at' hrun hnc hy hf) hc hcall hti hp)
+        (fun y i hy hf => full_frame_viable_witness_at hrun hnc hy hf) hc hcall hti hp)
     hz hdesignated hactual hPs hcp hcall hti hpay hparent hy hc hes hhigh hpb hX hrootX hBX
     hne hB
   intro x w j q ellx ellw W hx hw hm' hjl hjh hql hqh hcx hcw hv hW
-  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hx hcx] at hW ⊢
-  rw [Shadow.PU.Growing.frame_of_projAC_at' hrun hw hcw] at hv
-  exact viableHead_transfer_primed_at' hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
+  rw [Shadow.PU.Growing.frame_of_projAC_at hrun hx hcx] at hW ⊢
+  rw [Shadow.PU.Growing.frame_of_projAC_at hrun hw hcw] at hv
+  exact viableHead_transfer_at hframe hrun hnc hx hw hm' hjl hjh hql hqh hv hW
 
 end Consensus.Goldilocks.Healing.Growing.Shadow
 

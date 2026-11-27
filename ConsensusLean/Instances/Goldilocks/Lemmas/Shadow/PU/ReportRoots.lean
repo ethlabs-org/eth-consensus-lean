@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LowFinalized
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Origins
@@ -28,7 +29,7 @@ open Consensus.Goldilocks.Store Consensus.Goldilocks.Shadow.PU
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace' sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time} {hold : Time}
+  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time} {hold : Time}
   {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- A high descendant cannot be held before the snapshot by a holder still honest there
@@ -73,7 +74,7 @@ section Static
 variable {Hs : Set (Fin sp.n)}
 
 /-- An honest attestation names a report entry (`signAt_report_entry`). -/
-theorem signAt_report_entry' {ini} (hrun : GoldilocksRun' proposer dg Hs tr ini) {v : Fin sp.n}
+theorem signAt_report_entry {ini} (hrun : GoldilocksRun' proposer dg Hs tr ini) {v : Fin sp.n}
     (hv : v ∈ Hs) {k : Nat} {a : FG.Att sp.n} (hs : tr.SignAt v k a) :
     ∃ j, k = j + 1 ∧ tr.time j = tr.time k ∧
       ∃ ℓ C E, AC.ToFGAt tr.projAC v j ℓ C ∧
@@ -84,16 +85,16 @@ theorem signAt_report_entry' {ini} (hrun : GoldilocksRun' proposer dg Hs tr ini)
         ((tr.state v j).fg.σ E.root).h = ((tr.state v j).fg.σ C.root).h ∧
         ((tr.state v j).fg.σ C.root).h = a.h := by
   obtain ⟨C, hc⟩ := hs
-  obtain ⟨j, rfl, ℓ, hj, hcall, ht, hret, hfg⟩ := Coherence.attest_source' hrun.toLocalRun' hv hc
+  obtain ⟨j, rfl, ℓ, hj, hcall, ht, hret, hfg⟩ := Coherence.attest_source hrun.toLocalRun' hv hc
   have hpc : tr.projAC.CallAt v j ℓ := Compose.projAC_callAt.2 hj
   have hC : C ∈ ℓ.frame.tree := (AC.toFG_source_below_lock hret).1.1
   have hCt : C ∈ (tr.state v j).fg.tree := by
-    rw [((Node.cutStep'_ac _ _ _ _ _).1 (hrun.cutLaw v hv j _ hj)).1] at hC
-    exact (mem_frame'_tree.1 hC).1
-  have hsigned := ((Node.cutStep'_attest_some _ _ _ _ _ _).1 (hrun.cutLaw v hv (j + 1) _ hc)).1
+    rw [((Node.cutStep_ac _ _ _ _ _).1 (hrun.cutLaw v hv j _ hj)).1] at hC
+    exact (mem_frame_tree.1 hC).1
+  have hsigned := ((Node.cutStep_attest_some _ _ _ _ _ _).1 (hrun.cutLaw v hv (j + 1) _ hc)).1
   rw [hfg] at hsigned
   obtain ⟨E, hE, hEr, hEC, hTh, hET, hEh, hCa⟩ := entry_of_createAtt_with
-    finalitySpec_updateFinality' (Node.fg_reachable_at' hrun.toLocalRun' hv j).reachableWith
+    finalitySpec_updateFinality' (Node.fg_reachable_at hrun.toLocalRun' hv j).reachableWith
     hCt hsigned
   refine ⟨j, rfl, ht, ℓ, C, E, ⟨hpc, hcall, ?_⟩, hCt, hE, hEr, hEC, hTh, hET, hEh, hCa⟩
   rw [Compose.projAC_state' hrun.toLocalRun' hv j]
@@ -101,7 +102,7 @@ theorem signAt_report_entry' {ini} (hrun : GoldilocksRun' proposer dg Hs tr ini)
 
 /-- A cache strictly ahead of a held target is backed by an actual earlier honest report at a
 strictly higher height (`cache_ahead_report`). -/
-theorem cache_ahead_report' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+theorem cache_ahead_report {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : GoldilocksRun' proposer dg Hs tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hsᶜ.ncard < sp.toParams.fg.q)
     {y : Fin sp.n} (hy : y ∈ Hs) {i : Nat}
@@ -117,15 +118,15 @@ theorem cache_ahead_report' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
       ((tr.state v j).fg.σ C.root).h = ((tr.state y i).fg.σ X.root).h ∧
       ((tr.state y i).fg.σ P.root).h < ((tr.state y i).fg.σ X.root).h := by
   have hfs := finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
-  have hr := (Node.fg_reachable_at' hrun.toLocalRun' hy i).reachableWith
-  have hU := Coherence.honest_blocks_coherent' hrun.toLocalRun' hnc
+  have hr := (Node.fg_reachable_at hrun.toLocalRun' hy i).reachableWith
+  have hU := Coherence.honest_blocks_coherent hrun.toLocalRun' hnc
   have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocks Hs := fun _ h => ⟨y, hy, i, h⟩
   have hXt : X ∈ (tr.state y i).fg.tree := by
     rcases hX with rfl | rfl
     · exact (cache_invariants_with hfs hr).1
     · exact (cache_invariants_with hfs hr).2.1
   rcases cache_quorum_with hfs hr X (hX.elim Or.inr Or.inl) with hg | ⟨q, hq, hrows⟩
-  · have he := Coherence.honest_eq_genesis' hrun hU (hsub hXt) hg
+  · have he := Coherence.honest_eq_genesis hrun hU (hsub hXt) hg
     rw [he] at hPX
     rcases Relation.ReflTransGen.cases_tail hPX with heq | ⟨Y, _, hY⟩
     · exact False.elim (hne (heq.symm.trans he.symm))
@@ -141,12 +142,12 @@ theorem cache_ahead_report' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
   have haH : a.val ∈ Hs := hav ▸ hv
   obtain ⟨m, hmi, _, k, hkm, hs⟩ := Compose.honest_row_signed_before' hrun hnc hy hB ha haH
   obtain ⟨j, hkj, ht, ℓ, C, E, hto, hC, hE, hEr, hEC, hTh, hET, hEh, _⟩ :=
-    signAt_report_entry' hrun haH hs
+    signAt_report_entry hrun haH hs
   have hsubv : (tr.state a.val j).fg.tree ⊆ tr.HonestBlocks Hs :=
     fun _ h => ⟨a.val, haH, j, h⟩
   have he : E = X := hU.1 (hsubv hE) (hsub hXt) (hEr.trans haX)
   subst E
-  have hrv := (Node.fg_reachable_at' hrun.toLocalRun' haH j).reachableWith
+  have hrv := (Node.fg_reachable_at hrun.toLocalRun' haH j).reachableWith
   have hσ := σ_eq_of_mem_with hr hfs hrv hU.1 hsub hsubv hXt hE
   have hfg := Compose.projFG_localRun' hrun hnc
   have hPX' := Compose.FrameGeometry.honest_held_anc' hrun.toLocalRun' hfg haH hPX hE
@@ -172,7 +173,7 @@ end Static
 
 /-- **A cache strictly ahead of a held target is backed by an earlier report**, at a strictly
 higher height, of a validator honest at the reading cut (`cache_ahead_report_at`). -/
-theorem cache_ahead_report_at' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+theorem cache_ahead_report_at' {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     (hf : (H (tr.time i))ᶜ.ncard < sp.toParams.fg.q)
@@ -199,7 +200,7 @@ theorem cache_ahead_report_at' {ini : Fin sp.n → (goldilocksNode' sp ro).State
   have hXp : X ∈ (tr.upTo (tr.time i)).HonestBlocks (H (tr.time i)) :=
     ⟨y, hy, i, by rw [hst y i le_rfl]; exact hXt⟩
   obtain ⟨v, hv, j, hji, k, hki, att, ℓ, C, hs, hkj, hjk, hjt, hto, haT, hXv, hXC, hTh, hCh,
-      hPh⟩ := cache_ahead_report' (hrun.upTo hd) (hnc.upTo _) hf hy (X := X) (P := P)
+      hPh⟩ := cache_ahead_report (hrun.upTo hd) (hnc.upTo _) hf hy (X := X) (P := P)
     (by rw [hst y i le_rfl]; exact hX) (by rw [hst y i le_rfl]; exact hP)
     (RunTrace.anc_upTo_of_right' hrun hnc hd hXp hPX) hne
   rw [hst v j hji.le] at hXv hTh hCh
@@ -220,11 +221,11 @@ theorem ResetPremisesUpTo'.low_root_of_held_seed_at'
     (hlow : (tr.state y i).fg.hj ≤ HZ tr H g)
     (hBS : Compatible (tr.HonestBlocksAt H) B S)
     (hheld : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F B →
-      B ∈ (Node.frame' (tr.state y i)).tree) :
+      B ∈ (Node.frame (tr.state y i)).tree) :
     Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot B := by
   have hrun := hp.run
   have hnc := hp.noColl
-  have hU := Coherence.honestBlocksAt_coherent' hrun hnc
+  have hU := Coherence.honestBlocksAt_coherent hrun hnc
   have hi0 := hrun.time_nonneg i
   have hlei : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
   have hs := (Compose.Growing.reachable_at' hrun hi0 hy hlei).puSnapshot
@@ -250,7 +251,7 @@ theorem ResetPremisesUpTo'.low_root_of_held_seed_at'
         (hJ S hSy hFS (Outcome.high_of_anc_at' hrun hp.noColl hS hi0 hlei hy hSy .refl)
           hactive.1 hactive.2) hBS
     · have hFB := hFS.trans hSB
-      have hB := (mem_frame'_tree.1 (hheld hFB)).1
+      have hB := (mem_frame_tree.1 (hheld hFB)).1
       exact Or.inl (hJ B hB hFB
         (Outcome.high_of_anc_at' hrun hp.noColl hS hi0 hlei hy hB hSB)
         hactive.1 hactive.2)

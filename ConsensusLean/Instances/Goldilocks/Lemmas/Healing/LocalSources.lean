@@ -68,7 +68,7 @@ theorem high_frame_root_before (acp₀ : ACP)
   intro hU hmono hsub hobs hsource y k B frame hy hkb hreach hgen hq hhigh hprior hframe
   rw [hframe]
   exact (high_roots_before acp₀ st time H Sign Origin Joined U Hz b
-    hU hmono hsub hobs hsource y k B hy hkb hreach hgen hq hhigh hprior).2.2
+    hU hmono hsub hobs hsource y k B hy hkb hreach hgen hq hhigh hprior).2.1
 
 end Consensus.Goldilocks.LocalSources
 
