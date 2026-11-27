@@ -138,7 +138,7 @@ theorem rows_sourced_by {ini}
   have hr := hrun.upTo ht0
   refine honestRowsSourcedBy_iff.2 fun X hX a ha hav => ?_
   obtain ⟨m, hmn, -, k, hkm, src, hcall⟩ :=
-    honest_row_signed_before' hr (hnc.upTo _) hy (by rw [Trace.upTo_state tr y ht]; exact hX) ha
+    honest_row_signed_before hr (hnc.upTo _) hy (by rw [Trace.upTo_state tr y ht]; exact hX) ha
       hav
   obtain ⟨j, rfl, ℓ, hcj, hcl, -, hC, hfg⟩ := Coherence.attest_source hr.toLocalRun hav hcall
   have hj1 : j + 1 < n := by omega
@@ -313,7 +313,7 @@ theorem honestAt_genesis_anc
 theorem acRun_upTo (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) (hd : 0 ≤ d) :
     AC.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) ini := by
-  have h := Compose.goldilocks_ac_projection_from' (hrun.upTo hd) (hnc.upTo d)
+  have h := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d)
   rwa [RunTrace.upTo_projAC] at h
 
 /-- A frame of a call of a node honest then is well formed, inside the blocks held while honest

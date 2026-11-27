@@ -303,7 +303,7 @@ theorem FrameWindow.root_witness_stock {lo hi g : Time} {floor : Nat}
     ∃ Q ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
       Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc ell.frame.fcRoot Q ∧
       floor ≤ ((tr.state y i).fg.σ Q.root).h ∧ (kindJ → Anc (tr.HonestBlocks H) J Q) := by
-  have hr := (Compose.goldilocks_ac_projection_from' hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have hR := Node.fg_reachable_at hrun.toLocalRun hy a
   obtain ⟨-, -, -, -, -, ⟨Q, hQ, hQh⟩, -⟩ := Store.cache_invariants _ _ _ _ hR
   have hv : (tr.state y a).fg.IsViable Q :=
@@ -397,7 +397,7 @@ theorem FrameWindow.old_lock_witness_or_contest_gap {s₀ floor : Nat} {hi g : T
       Anc (tr.HonestBlocks H) L Q ∧
       (tr.state y a).fg.Contest ∧ (tr.state y a).fg.hmax = floor ∧
       ((tr.state y a).fg.σ Q.root).h + 1 = floor ∧ (tr.state y i).fg.hmax = floor + 1 := by
-  have hr := (Compose.goldilocks_ac_projection_from' hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have htvote := AC.vote_time_leU hr.toU hy ⟨ell, hc⟩
   change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at htvote
   have hslot : e.msg.slot = sp.slot (tr.time i) := (AC.castAt_specU hr.toU hy hc).2.1
@@ -483,7 +483,7 @@ theorem FrameWindow.old_lock_witness_stock {s₀ floor : Nat} {hi g : Time}
               (tr.state y i).fg.Anc (tr.state y i).fg.J Q))) ∨
         ((tr.state y a).fg.Contest ∧ (tr.state y a).fg.hmax = floor ∧
           ((tr.state y a).fg.σ Q.root).h + 1 = floor ∧ (tr.state y i).fg.hmax = floor + 1)) := by
-  have hr := (Compose.goldilocks_ac_projection_from' hrun hnc).localRun
+  have hr := (Compose.goldilocks_ac_projection_from hrun hnc).localRun
   have htvote := AC.vote_time_leU hr.toU hy ⟨ell, hc⟩
   change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at htvote
   have hslot : e.msg.slot = sp.slot (tr.time i) := (AC.castAt_specU hr.toU hy hc).2.1

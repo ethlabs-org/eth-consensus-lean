@@ -113,7 +113,7 @@ theorem frame_relay_before_at
   have hc' : (tr.upTo (tr.time j)).projAC.CallAt y j elly := by
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hcy⟩
-  have hac := Compose.goldilocks_ac_projection_from' hp (hnc.upTo _)
+  have hac := Compose.goldilocks_ac_projection_from hp (hnc.upTo _)
   have hPh := AC.frameIn_of_callAt hac.localRun hy hc'
   have hFstate : elly.frame.F = (tr.state y j).fg.F := by
     rw [frame_of_projAC_at hrun hy hcy, Node.frame_eq, Store.toFrame_F]
@@ -125,7 +125,7 @@ theorem frame_relay_before_at
         rw [RunTrace.upTo_projAC]
         exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hcx⟩
       exact RunTrace.honestBlocks_upTo_subset hrun.time_mono hq0
-        ((AC.frameIn_of_callAt (Compose.goldilocks_ac_projection_from' (hrun.upTo hq0)
+        ((AC.frameIn_of_callAt (Compose.goldilocks_ac_projection_from (hrun.upTo hq0)
           (hnc.upTo _)).localRun hx hcx').2 hB)
     have hcoh := Coherence.honestBlocksAt_coherent hrun hnc
     have he : B = G := hcoh.1 hBU
@@ -169,7 +169,7 @@ theorem frame_witness_readPoint_stamp_at
     (hFQ : Anc (tr.HonestBlocksAt H) ell.frame.F Q) :
     Q ∈ (tr.state y i).fg.tree ∧
       e.readPoint.blockStamp Q.root < AC.ETime.of (AC.freeze sp (s + 1)) := by
-  have hr := (Compose.goldilocks_ac_projection_from' (hrun.upTo (hrun.time_nonneg i))
+  have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg i))
     (hnc.upTo _)).localRun
   rw [RunTrace.upTo_projAC] at hr
   have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
@@ -544,7 +544,7 @@ private theorem acRun_prefix
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {d : Time} (hd : 0 ≤ d) :
     AC.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) ini := by
-  have h := Compose.goldilocks_ac_projection_from' (hrun.upTo hd) (hnc.upTo d)
+  have h := Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo d)
   rwa [RunTrace.upTo_projAC] at h
 
 /-- Fewer than a third faulty is below the replay quorum excess. -/
@@ -961,7 +961,7 @@ theorem later_heads_of_windowWitness_at {K : AC.CommitteeDict sp.n}
       (by linarith only [ht, hmb]) hwin hXQ ?_ hprior hK, ?_⟩
     · intro y i e hy hv hes
       obtain ⟨ell, hc⟩ := hv
-      have hr := (Compose.goldilocks_ac_projection_from' (hrun.upTo (hrun.time_nonneg i))
+      have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo (hrun.time_nonneg i))
         (hnc.upTo _)).localRun
       rw [RunTrace.upTo_projAC] at hr
       have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩

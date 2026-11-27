@@ -39,7 +39,7 @@ theorem proposal_viable_at_call_at'
     (hearly : tr.time i < sp.ts p + sp.Δ → P ∈ ell.frame.tree) :
     P ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.fcRoot P ∧ P ∈ ell.frame.viableHeads := by
   have rc := hrun.toCore
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hts : sp.ts s₀ ≤ sp.ts p := (AC.ts_le_iff sp).2 (by exact_mod_cast hsp)
   have hlow := hts.trans hpT
   have htime : tr.time kP = sp.ts p := by
@@ -159,7 +159,7 @@ theorem proposal_viable_at_cast_at'
     (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p) :
     P ∈ ell.frame.viableHeads ∧
       P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame p) := by
-  have hri := (Compose.Growing.goldilocks_ac_projection_from' hrun hnc).upTo
+  have hri := (Compose.Growing.goldilocks_ac_projection_from hrun hnc).upTo
     (hrun.time_nonneg i)
   have hci := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hslot : e.msg.slot = sp.slot (tr.time i) := (AC.castAt_specU hri.localRun.toU hy hci).2.1

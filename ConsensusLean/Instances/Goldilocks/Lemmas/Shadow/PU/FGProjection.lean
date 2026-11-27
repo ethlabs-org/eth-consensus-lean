@@ -153,7 +153,7 @@ private theorem own_accept (hq : ∀ y ∈ H, ({ A with initial := ini y } : Nod
     exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   -- C0.3: the own block is accepted at its tick
   obtain ⟨cfg, hreach, hst, hstep⟩ := group_step h hy hg
-  have hC03 := honest_block_accepted_from' proposer dg y (hq y hy) hg₀ cfg _ (tr.time (j + 2)) x f
+  have hC03 := honest_block_accepted_from proposer dg y (hq y hy) hg₀ cfg _ (tr.time (j + 2)) x f
     hreach hstep hpr d p (by rw [hst]; exact hdp)
   simp only [hst] at hC03
   have hfg₀ : (acProposal (tickStep proposer dg y (tr.state y j) (tr.time (j + 2)) x .acTick).1

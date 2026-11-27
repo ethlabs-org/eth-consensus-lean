@@ -2,7 +2,9 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.StockWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Geo
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -47,7 +49,7 @@ private theorem proposal_parent_viable_at
   have hfr : ell.frame = Node.frame (tr.state z c) := frame_of_projAC_at hrun hz hc
   obtain ⟨Q, hQ, hv, hroot⟩ := Healing.Growing.Shadow.full_frame_viable_witness_at hrun hnc hz hf
   rw [← hfr] at hQ hv hroot
-  have hac := (Compose.goldilocks_ac_projection_from' hr (hnc.upTo _)).localRun
+  have hac := (Compose.goldilocks_ac_projection_from hr (hnc.upTo _)).localRun
   rw [RunTrace.upTo_projAC] at hac
   apply Healing.proposal_head_viable hac hr.vstart hz hc' hcall
     (by rw [Trace.upTo_time, sp.slotTime_eq]; exact hti)

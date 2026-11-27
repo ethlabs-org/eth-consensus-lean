@@ -4,7 +4,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularVotes
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.StockWitness
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Agree.Opponents
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
@@ -82,7 +84,7 @@ theorem regular_later_heads_at
         hwarm hpos hs₀ (hm.trans (hts hs₀)) (h6.trans hmb) hx hfast .refl hK
     · exact regular_slow_next_votes_at (hsub le_rfl h6) hrun hnc hsvc hawake hf hcatch hnr
         hwarm hpos hs₀ hm (h6.trans hmb) hx hslow hK
-  have hAC := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hAC := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   obtain ⟨C, CV, hres, hDC⟩ : ∃ C CV, AC.ResultAt tr.projAC x c s C CV ∧
       Anc (tr.HonestBlocksAt H) D C := by
     rcases horigin with ⟨CV, ell, C, hu, hconf, hsel, -⟩ | ⟨ell, C, hu, hconf, hsel⟩
@@ -180,7 +182,7 @@ theorem later_heads_of_older_lock_witness_at {K : AC.CommitteeDict sp.n}
         (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
           Anc (tr.HonestBlocksAt H) D d.head) := by
   have hPhi := AC.frameIn_of_callU
-    (Compose.Growing.goldilocks_ac_projection_from' hrun hnc |>.upTo
+    (Compose.Growing.goldilocks_ac_projection_from hrun hnc |>.upTo
       (hrun.time_nonneg q)).localRun.toU hz
     ((Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩)
   exact Shadow.PU.Growing.later_heads_of_stock_witness_at hrun hnc hsvc hawake hf hcatch
@@ -234,7 +236,7 @@ theorem regular_later_heads_of_floor_ancestor_at
     have ht := hts hsN
     rw [show s + 2 = (s + 1) + 1 by omega, hstep, hstep] at ht
     linarith
-  have hAC := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hAC := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   obtain ⟨C, CV, hres, hDC⟩ : ∃ C CV, AC.ResultAt tr.projAC x c s C CV ∧
       Anc (tr.HonestBlocksAt H) D C := by
     rcases horigin with ⟨CV, ell, C, hu, hconf, hsel, -⟩ | ⟨ell, C, hu, hconf, hsel⟩

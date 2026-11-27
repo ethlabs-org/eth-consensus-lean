@@ -7,7 +7,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularT
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.StockWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.GoldilocksAC
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularClassification
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FaultBound
@@ -131,7 +133,7 @@ private theorem slow_live_locks_service_at
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∀ L ∈ AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i),
       Compatible (tr.HonestBlocksAt H) L D := by
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := hac.upTo (hrun.time_nonneg i)
   have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have hslot : sp.slot (tr.time i) = s + 1 :=
@@ -241,7 +243,7 @@ theorem regular_fast_next_votes_of_early_witness_at
     subst ell'
     exact Option.some.inj (hconf.symm.trans hconf')
   subst C'
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo (hrun.time_nonneg c)).localRun
   have hc' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
   have hPhiU := (AC.frameIn_of_callU hr.toU hx hc').2
@@ -288,7 +290,7 @@ theorem regular_slow_next_votes_of_early_witness_at
     exact Option.some.inj (hconf.symm.trans hconf')
   subst C'
   have hsl : AC.SlowLockAt tr.projAC x c s D := ⟨ellx, C, hu, hconf, hsel⟩
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo (hrun.time_nonneg c)).localRun
   have hc' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
   have hPhiU := (AC.frameIn_of_callU hr.toU hx hc').2
@@ -336,7 +338,7 @@ theorem next_votes_of_supporter_at {s₀ s M : Nat}
     ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
       AC.VoteExtends (tr.HonestBlocksAt H) ev.msg X := by
   have hΔ := sp.toParams.hΔ
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo (hrun.time_nonneg q)).localRun
   have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have htq := AC.vote_time_leU hr.toU hz ⟨ell, hc'.1, hc'.2⟩
@@ -390,7 +392,7 @@ theorem regular_fast_next_votes_at {s₀ s M : Nat}
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
     result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr (by linarith)
       hx hres (hu.2.2.1.trans_le hmb) hK
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
   have hcx := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
   have hDC := ((AC.deepest_mem hsel).1.1.2.2).mono (AC.frameIn_of_callU hrx.toU hx hcx).2
@@ -450,7 +452,7 @@ theorem regular_slow_next_votes_at {s₀ s M : Nat}
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
     result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr (by linarith)
       hx hres (hu.2.2.1.trans_le hmb) hK
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
   have hcx := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
   have hDC := ((AC.deepest_mem hsel).1.1.2.2).mono (AC.frameIn_of_callU hrx.toU hx hcx).2
@@ -508,7 +510,7 @@ theorem regular_fast_next_votes_of_stock_witness_at
     subst ell'
     exact Option.some.inj (hconf.symm.trans hconf')
   subst C'
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo (hrun.time_nonneg c)).localRun
   have hc' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
   have hPhiU := (AC.frameIn_of_callU hr.toU hx hc').2
@@ -556,7 +558,7 @@ theorem regular_slow_next_votes_of_stock_witness_at
     exact Option.some.inj (hconf.symm.trans hconf')
   subst C'
   have hsl : AC.SlowLockAt tr.projAC x c s D := ⟨ellx, C, hu, hconf, hsel⟩
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo (hrun.time_nonneg c)).localRun
   have hc' := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
   have hPhiU := (AC.frameIn_of_callU hr.toU hx hc').2
@@ -621,7 +623,7 @@ theorem next_votes_of_supporter_at {s₀ s floor : Nat}
     ∀ y i ev, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i ev → ev.msg.slot = s + 1 →
       AC.VoteExtends (tr.HonestBlocksAt H) ev.msg X := by
   have hΔ := sp.toParams.hΔ
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hr := (hac.upTo (hrun.time_nonneg q)).localRun
   have hc' := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
   have htq := AC.vote_time_leU hr.toU hz ⟨ell, hc'.1, hc'.2⟩
@@ -688,7 +690,7 @@ theorem regular_fast_next_votes_of_floor_ancestor_at {s₀ s floor : Nat}
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
     result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr (by linarith)
       hx hres (hu.2.2.1.trans_le hmb) hK
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
   have hcx := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
   have hDC := ((AC.deepest_mem hsel).1.1.2.2).mono (AC.frameIn_of_callU hrx.toU hx hcx).2
@@ -757,7 +759,7 @@ theorem regular_slow_next_votes_of_floor_ancestor_at {s₀ s floor : Nat}
   obtain ⟨z, q, hz, hqc, e, ⟨ell, hc, he⟩, -, hes, Q, hQU, hQr, hCQ⟩ :=
     result_honest_supporter_before_at hrun hnc hsvc hawake hf hcatch hnr (by linarith)
       hx hres (hu.2.2.1.trans_le hmb) hK
-  have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
+  have hac := Compose.Growing.goldilocks_ac_projection_from hrun hnc
   have hrx := (hac.upTo (hrun.time_nonneg c)).localRun
   have hcx := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hu.1⟩
   have hDC := ((AC.deepest_mem hsel).1.1.2.2).mono (AC.frameIn_of_callU hrx.toU hx hcx).2
