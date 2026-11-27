@@ -175,14 +175,10 @@ private theorem good_onTick (hΦ : FrameOK Φ) (hD : Down Φ G) (x : Fin sp.n) {
   · exact h
   · exact h
 
-private theorem good_proposal (hΦ : FrameOK Φ) (hD : Down Φ G) {A : AC.ACState sp.n}
+private theorem good_proposal {A : AC.ACState sp.n}
     (h : Good R G A) (t : Time) : Good R G (AC.acProposal sp A Φ t).1 := by
   unfold AC.acProposal
-  dsimp only
-  split_ifs
-  all_goals first
-    | exact h
-    | exact ⟨h.1, good_movesBack hD ((AC.locks_move_back sp FGP Φ A.locks t hΦ).2.2 _ _) h.2⟩
+  split_ifs <;> exact h
 
 private theorem good_toFG {A : AC.ACState sp.n} (h : Good R G A) (t : Time) :
     Good R G (AC.acToFG sp A Φ t).1 := by
@@ -294,7 +290,7 @@ private theorem good_acCall {ini} (hrun : GoldilocksRun proposer dg H tr ini)
       originBefore_iff.2 ⟨y, hy, i, Nat.lt_succ_self i, _, Or.inl hr⟩
     exact ⟨⟨C, hΦT hCt, rfl, Or.inr ⟨_, hOb⟩⟩, fun D hD hDC f e =>
       ⟨D, hΦT hD, rfl, C, hOb, hDC.mono (hΦT.trans hTU)⟩⟩
-  | proposal => exact good_proposal hΦ hD h _
+  | proposal => exact good_proposal h _
   | toFG => exact good_toFG h _
   | message m =>
     rw [hcall] at hem
@@ -393,7 +389,7 @@ theorem record_step_origin {ini : Fin sp.n → (goldilocksNode sp).State}
           ring
         exact ⟨Or.inr ⟨C, hΦT (AC.deepest_mem hC).1.1, rfl, _, _,
           Or.inl ⟨ℓ, hu, hps ▸ hC, rfl⟩⟩, fun _ _ _ _ _ => trivial⟩
-      | proposal => exact (good_proposal hΦ hD h _).1
+      | proposal => exact (good_proposal h _).1
       | toFG => exact (good_toFG h _).1
       | message m =>
         rw [hcall] at hem

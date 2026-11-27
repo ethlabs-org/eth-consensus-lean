@@ -137,7 +137,7 @@ noncomputable def proposal (L : Set Lock) (A : ACState sp.n) (Φ : Frm sp.n FGP)
     let V := View.ofLists p
     let A₁ := { A with locks := L }
     let H := walk A₁ Φ t (Φ.viableTree Φ.tree) V (s - 1)
-    (A₁, some (⟨H, anchor A₁ Φ t, Φ.tree⟩, p))
+    (A, some (⟨H, anchor A₁ Φ t, Φ.tree⟩, p))
 
 open Classical in
 noncomputable def toFG (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
@@ -165,7 +165,7 @@ noncomputable def stepWith (m : WriteMode) (self : Fin sp.n)
     (L : Set Lock) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     (goldilocksAC sp FGP).Call → ACState sp.n × List (Em sp FGP)
   | .tick => tick m self L A Φ t
-  | .proposal => ((proposal L A Φ t).1, [])
+  | .proposal => (A, [])
   | .toFG => ((toFG A Φ t).1, [])
   | .message v => tryVote self L (optimistic (admitVote sp A t v) Φ t) Φ t
   | .block B => tryVote self L (optimistic (blockReceipt sp A t B) Φ t) Φ t
@@ -398,10 +398,7 @@ theorem stepWith_eq_inv (m : WriteMode) (self : Fin sp.n)
   cases c with
   | tick => exact tick_eq_inv hU hΦ hΦU m h hL hw t hu self
   | proposal =>
-    refine ⟨congrArg (fun r => (r.1, [])) (proposal_eq hΦ L A t), ?_⟩
-    change LockInv U (acProposalWith sp L A Φ t).1 Φ
-    unfold acProposalWith
-    split_ifs <;> assumption
+    exact ⟨rfl, h⟩
   | toFG =>
     refine ⟨congrArg (fun r => (r.1, [])) (toFG_eq A Φ t), ?_⟩
     change LockInv U (acToFG sp A Φ t).1 Φ

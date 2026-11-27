@@ -448,10 +448,10 @@ theorem tickRun_syncOn (W Wr : Time → Prop) (eff : Time → Time) (heff : ∀ 
 
 /-! ## A ready proposal at every slot -/
 
-/-- The Goldilocks node's AC meets requirements 1–5. -/
+/-- The Goldilocks node's AC meets requirements 1–3 and 5. -/
 theorem n1_requirements : N1.Requirements :=
   have h := AC.interface_requirements sp1 (List (FG.Att sp1.n))
-  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, AC.proposal_payload_valid sp1 _ ⟩
+  ⟨h.1, h.2.1, h.2.2, AC.proposal_payload_valid sp1 _⟩
 
 /-- The validator never restarts, so its restart time stays `⊥`. -/
 theorem tickRun_restartTime : ∀ i, ((tickRun N1 dg1).state v0 i).ac.restartTime = ⊥

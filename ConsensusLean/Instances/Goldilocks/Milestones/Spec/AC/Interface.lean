@@ -18,7 +18,7 @@ restart stamping is inside the restart call. Reachability is indexed by its star
 `ReachableAtFrom s₀` is the same from a given start state `s₀`, and `ReachableAt` is it at
 `A.initial`.
 
-`Requirements` is requirements 1–4 of composition.tex §"The available chain" (claims A0.6) and
+`Requirements` is requirements 1–3 of composition.tex §"The available chain" (claims A0.6) and
 requirement 5, the proposal payload (claims A0.9), each at every reachable state and every
 later time. (A well-formed frame is finite, `FrameOK.finite`: the AC's "deepest" choices and
 head walks are functions on finite trees.) -/
@@ -105,12 +105,6 @@ def ReqOutputs : Prop :=
     Φ.Anc Φ.fcRoot (A.head s Φ t) ∧ Φ.Anc Φ.F (A.confirmed s Φ t) ∧
       Φ.Anc (A.confirmed s Φ t) (A.head s Φ t)
 
-/-- **Requirement 4.** The parent of a proposal (at a slot start) is a head of the AC at that
-time: the head of `ac_head` at the state the proposal leaves. -/
-def ReqParent : Prop :=
-  A.AtReachable fun _ _ s Φ t₀ => ∀ σ : Nat, t₀ ≤ P.slotTime σ → ∀ s' d p,
-    A.proposal s Φ (P.slotTime σ) = (s', some (d, p)) → d.head = A.head s' Φ (P.slotTime σ)
-
 /-- **Requirement 5** (claims A0.9). The payload of a proposal at the start of slot `σ` passes
 `ac_valid_payload` in every block of slot `σ` that carries it. -/
 def ReqPayload : Prop :=
@@ -126,13 +120,12 @@ def ReqPayloadFrom (s₀ : A.State) (self : Fin P.n) : Prop :=
     ∀ σ : Nat, t₀ ≤ P.slotTime σ → ∀ d p, (A.proposal s Φ (P.slotTime σ)).2 = some (d, p) →
       ∀ B : A.Blk, B.slot = σ → B.acPayload = p → A.validPayload B
 
-/-- The interface requirements 1–5 (claims A0.6 with A0.9): what the FG and the node may
+/-- The interface requirements 1–3 and 5 (claims A0.6 with A0.9): what the FG and the node may
 assume of an AC. -/
 structure Requirements : Prop where
   heads : A.ReqHeads
   source : A.ReqSource
   outputs : A.ReqOutputs
-  parent : A.ReqParent
   payload : A.ReqPayload
 
 end ACInterface

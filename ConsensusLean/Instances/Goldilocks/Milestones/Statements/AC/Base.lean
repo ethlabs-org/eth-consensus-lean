@@ -8,7 +8,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.AC.Premises
 Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex`, the
 L0 nodes of the AC module: F.1 (a)–(c)
 (the AC's schedule arithmetic, lock expiry, joining), A0.1–A0.5, A0.7, A0.8 (pool, resolution,
-counting, lock store, lock to tip, restart, one vote per slot), A0.6 (requirements 1–4 of
+counting, lock store, lock to tip, restart, one vote per slot), A0.6 (requirements 1–3 of
 composition.tex §"The available chain" over reachable AC states) and A0.9 (requirement 5: the
 proposal payload is valid), against the AC of `Spec/AC` and the AC interface and traces of
 `Spec/AC`. One more statement is not a claims node: `LocalRunReachable`, that the AC trace contract
@@ -229,12 +229,11 @@ def LockToTip : Prop :=
     ∀ t, ∀ B ∈ liveLockBlocks sp A.locks Φ t,
       Φ.Anc B ((lookup Φ A.latestConfirmed).getD Φ.F)
 
-/-- **A0.6, the interface requirements 1–4** of composition.tex §"The available chain", for the
+/-- **A0.6, the interface requirements 1–3** of composition.tex §"The available chain", for the
 Goldilocks AC, at every reachable state. -/
 def InterfaceRequirements : Prop :=
   ∀ (FGP : Type) , (goldilocksAC sp FGP).ReqHeads ∧
-    (goldilocksAC sp FGP).ReqSource ∧ (goldilocksAC sp FGP).ReqOutputs ∧
-    (goldilocksAC sp FGP).ReqParent
+    (goldilocksAC sp FGP).ReqSource ∧ (goldilocksAC sp FGP).ReqOutputs
 
 /-- **A0.7, restart.** After `ac_restart` at `t ≥ 0` with a well-formed frame: the locks and
 `latest_confirmed` are kept; the saved results and `voted_slot` are initial;

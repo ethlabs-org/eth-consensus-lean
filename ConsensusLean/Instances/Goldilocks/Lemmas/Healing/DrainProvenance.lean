@@ -154,7 +154,7 @@ private theorem call_fromPU
         ring
       obtain ⟨D, ⟨C, h1, h2⟩, rfl⟩ := hW hf
       exact ⟨D, slowLockAtW_iff.2 ⟨ℓ, C, hu, hA ▸ h1, hA ▸ h2⟩, rfl⟩
-  | proposal => rw [hcall] at hlaw; exact FromP.of_proposalWith hΦ hΦU A _ hlaw
+  | proposal => exact FromP.of_eq rfl
   | toFG => exact FromP.of_eq (toFG_locks A _)
   | message m =>
     rw [hcall] at hlaw

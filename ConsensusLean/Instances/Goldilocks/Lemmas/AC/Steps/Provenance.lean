@@ -319,7 +319,7 @@ private theorem call_candidate_fromPU
         obtain ⟨C', hC', hdeep'⟩ := hsl hf
         exact ⟨⟨ℓ, C', hu, hA ▸ hC', hA ▸ hdeep'⟩,
           ℓ, C, _, hu, ⟨ℓ, hu, hA ▸ hC, rfl⟩, hD, hBC, hA ▸ hsave⟩
-  | proposal => rw [hcall] at hlaw; exact FromP.of_proposalWith hΦ hΦU A _ hlaw
+  | proposal => exact FromP.of_eq rfl
   | toFG => exact FromP.of_eq (toFG_locks A _)
   | message m =>
     rw [hcall] at hemits hlaw

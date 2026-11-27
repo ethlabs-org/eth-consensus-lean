@@ -37,7 +37,7 @@ component traces (`ACProjection`, `FGProjection`, `GoldilocksACProjection`) also
 the objects of the run, the blocks that occur in it and genesis (`NoCollRun`, over
 `Compose.NoCollOn`); F.5 (run), F.4, `GroupStatesReachable`, `SyncProjection` and
 `JoinedProjection` take none. The two projections of an arbitrary AC also take the AC's
-requirements 1–5 and, for the FG projection, the genesis root, as C0.5 (a) and C0.3 do.
+requirements 1–3 and 5 and, for the FG projection, the genesis root, as C0.5 (a) and C0.3 do.
 `docs/goldilocks-mapping.md` §"Persist" maps each statement to its node.
 
 Statements only: no proofs here. -/

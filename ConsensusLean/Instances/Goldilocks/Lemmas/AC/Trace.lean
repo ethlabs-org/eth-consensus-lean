@@ -781,8 +781,7 @@ private theorem step_voteStep {L : Set Lock} (self : Fin sp.n) {A A' :
   cases c with
   | tick => exact Or.inr (acOnTick_voteStep _ _ _ _)
   | proposal =>
-    exact Or.inr ((VoteStep.refl A t).post (acProposalWith_keeps L _ _ _).1 (acProposalWith_keeps
-        L _ _ _).2)
+    exact Or.inr (VoteStep.refl A t)
   | toFG => exact Or.inr ((VoteStep.refl A t).post (acToFG_keeps _ _ _).1 (acToFG_keeps _ _ _).2)
   | message m => exact Or.inr (acOnMessage_voteStep _ _ _ _ _)
   | block B => exact Or.inr (acOnBlock_voteStep _ _ _ _ _)
@@ -908,7 +907,7 @@ theorem stepWith_restartTime (self : Fin sp.n) (L : Set Lock)
     (hc : c ≠ .restart) : (stepWithM sp wm self L A Φ t c).1.restartTime = A.restartTime := by
   cases c with
   | tick => exact (acOnTick_voteStep (L := L) self A Φ t).1
-  | proposal => exact (acProposalWith_keeps L A Φ t).2
+  | proposal => rfl
   | toFG => exact (acToFG_keeps A Φ t).2
   | message m => exact (acOnMessage_voteStep (L := L) self A Φ t m).1
   | block B => exact (acOnBlock_voteStep (L := L) self A Φ t B).1

@@ -496,13 +496,10 @@ theorem reclock_onTick {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r�
   · rw [ite_eq_left hj]
     exact ⟨KeepAll.of_eq rfl, h.mono (fun _ h => Or.inl h) fun _ h => Or.inl h⟩
 
-theorem proposal_keeps {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) (A : AC.ACState sp.n)
+theorem proposal_keeps {Φ : AC.Frm sp.n FGP} (A : AC.ACState sp.n)
     (t : Time) : KeepAll Φ t A (AC.acProposal sp A Φ t).1 := by
   unfold AC.acProposal
-  dsimp only
-  split_ifs
-  · exact keepAll_unlock hΦ rfl
-  · exact KeepAll.of_eq rfl
+  split_ifs <;> exact KeepAll.of_eq rfl
 
 theorem toFG_locks (A : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time) :
     (AC.acToFG sp A Φ t).1.locks = A.locks := by
@@ -548,8 +545,8 @@ theorem call_reclock {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U tr ini)
     · obtain ⟨e, he', hsel⟩ := h.resolve_left id
       exact ⟨_, ℓ, _, ⟨hc, Or.inr (Or.inr ⟨e, hemits ▸ he', rfl⟩)⟩, rfl, hsel, rfl⟩
   | proposal =>
-    exact ⟨proposal_keeps hΦ A _, h₀.mono (fun _ h => h.elim) (fun _ h => h.elim) |>.keep hΦ
-      (proposal_keeps hΦ A _) (proposal_latestConfirmed A _ _)⟩
+    exact ⟨proposal_keeps A _, h₀.mono (fun _ h => h.elim) (fun _ h => h.elim) |>.keep hΦ
+      (proposal_keeps A _) (proposal_latestConfirmed A _ _)⟩
   | toFG =>
     exact ⟨KeepAll.of_eq (toFG_locks A _ _), h₀.mono (fun _ h => h.elim) (fun _ h => h.elim)
       |>.keep hΦ (KeepAll.of_eq (toFG_locks A _ _)) (toFG_latestConfirmed A _ _)⟩

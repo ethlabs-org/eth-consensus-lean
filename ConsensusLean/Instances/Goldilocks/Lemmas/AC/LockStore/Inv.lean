@@ -261,10 +261,7 @@ private theorem LockInv.step {A : ACState sp.n} (h : LockInv U A Φ)
   | proposal =>
     change LockInv U (acProposal sp A Φ t).1 Φ
     unfold acProposal
-    dsimp only
-    split_ifs
-    · exact h.unlock hU hΦ hΦU _ _ _
-    · exact h
+    split_ifs <;> exact h
   | toFG =>
     change LockInv U (acToFG sp A Φ t).1 Φ
     unfold acToFG

@@ -14,7 +14,7 @@ On `Spec/AC` and `Spec/AC`, labelled by kind (CONTRIBUTING "Statements"), with o
 * (a) `initial_reachable`: the initial AC state is reachable with the genesis frame inside the
   coherent set `{genesis}` (the hypothesis of every `AtReachable` statement: A0.1–A0.6, A0.9).
 * (a) `proposal_at_slot_one`: from it, `ac_proposal` at `t_1` returns a proposal (the hypothesis
-  of requirements 4 and 5, `ReqParent` and `ReqPayload`).
+  of the proposal clauses of `ReqHeads` and `ReqPayload`).
 * (a) `localRun_one_tick`: an AC trace in which the validator makes one `on_tick` call at time
   `0` satisfies the AC trace contract `ACLocalRun` (the hypothesis of F.1 (c), A0.7's joined
   clause and A0.8).

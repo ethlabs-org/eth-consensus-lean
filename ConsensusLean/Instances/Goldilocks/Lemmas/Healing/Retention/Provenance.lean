@@ -196,14 +196,11 @@ private theorem StoredFrom.of_onTick (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU 
   · exact StoredFrom.of_eq rfl
   · exact StoredFrom.of_eq rfl
 
-private theorem StoredFrom.of_proposal (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (A : ACState sp.n)
+private theorem StoredFrom.of_proposal (A : ACState sp.n)
     (t : Time) {New : Nat → Bool → Blk sp.n FGP → Prop} :
     StoredFrom U A.locks (acProposal sp A Φ t).1.locks New := by
   unfold acProposal
-  dsimp only
-  split_ifs
-  · exact StoredFrom.of_movesBack hΦU (((locks_move_back sp) FGP Φ A.locks t hΦ).2.2 _ _)
-  · exact StoredFrom.of_eq rfl
+  split_ifs <;> exact StoredFrom.of_eq rfl
 
 /-! ## Over an AC trace -/
 
@@ -247,7 +244,7 @@ private theorem call_storedFrom (hr : ACLocalRun (goldilocksAC sp FGP) H U tr in
       intro hf
       obtain ⟨C₀, D₀, hC₀, hD₀, hO⟩ := hC hf
       exact ⟨_, ℓ, D₀, hc, Or.inl ⟨ℓ, C₀, hu, hA ▸ hC₀, hA ▸ hD₀, rfl⟩, hO⟩
-  | proposal => exact StoredFrom.of_proposal hΦ hΦU A _
+  | proposal => exact StoredFrom.of_proposal A _
   | toFG => exact StoredFrom.of_eq (AC.toFG_locks A _)
   | message m =>
     rw [hcall] at hemits

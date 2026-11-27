@@ -9,5 +9,5 @@ public section
 Unlocking is idempotent (`LockStore/Unlock`); at reachable states the live locks lie on one
 chain and are viable or at or below `fc_root`, the FG candidates lie on one chain below the
 anchor, and every live lock is below the effective record (`LockStore/Chain`, from the lock
-invariant of `LockStore/Inv`); and the AC meets the interface requirements 1–4
+invariant of `LockStore/Inv`); and the AC meets the interface requirements 1–3
 (`LockStore/Requirements`). -/

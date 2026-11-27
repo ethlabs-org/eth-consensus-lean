@@ -7,8 +7,9 @@ public section
 /-! # Goldilocks AC: the lock-provenance toolkit
 
 `FromP U L L' New`: every lock of `L'` sits below (inside `U`) a lock of `L` with its slot and
-fast bit, or below a block `B` with `New l'.slot l'.fast B`. The AC functions that only move
-locks back keep `FromP` (`FromP.of_movesBack`, `FromP.of_proposalWith`, `toFG_locks`), and it
+fast bit, or below a block `B` with `New l'.slot l'.fast B`. Moving locks back keeps `FromP`
+(`FromP.of_movesBack`). Proposal construction unlocks only a working copy, so its stored locks
+are unchanged; reporting also keeps them (`toFG_locks`). The relation
 composes (`FromP.trans`). Shared by the fast-lock provenance (`AC/Steps/Provenance`) and the slow
 and stored slow-lock provenance (`Healing/AC/SlowLock`, `Healing/DrainProvenance`), which add
 their own `New` for the writing functions. -/
@@ -87,19 +88,6 @@ theorem FromP.of_movesBack {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
     hA.mono hΦ⟩⟩
 
 variable {U : Set (Blk sp.n FGP)} {Φ : Frm sp.n FGP}
-
-/-- The proposal with the unlock given keeps `FromP`: it only moves locks back. -/
-theorem FromP.of_proposalWith
-    {L : Set Lock} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (A : ACState sp.n)
-    (t : Time) {New : Nat → Bool → Blk sp.n FGP → Prop}
-    (hL : UnlockRel sp A.locks Φ t ((sp.slot t : Int) - 1)
-      (View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤)) L) :
-    FromP U A.locks (acProposalWith sp L A Φ t).1.locks New := by
-  unfold acProposalWith
-  dsimp only
-  split_ifs
-  · exact FromP.of_movesBack hΦU (hL.movesBack hΦ)
-  · exact FromP.of_eq rfl
 
 theorem toFG_locks (A : ACState sp.n) (t : Time) :
     (acToFG sp A Φ t).1.locks = A.locks := by
