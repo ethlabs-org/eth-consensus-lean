@@ -16,6 +16,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.PoolFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.FastExpiry
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.ExpiryFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Transport
@@ -362,7 +363,8 @@ theorem RecLock.write {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r₀
   hr.elim (h.keep hΦ hk) fun h' => Or.inr ⟨C, hC, h', hnew⟩
 
 theorem reclock_optimistic {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r₀ : Nat}
-    {Res Opt : AC.Blk sp.n FGP → Prop} {A : AC.ACState sp.n} (h : RecLock Φ t r₀ Res Opt A) :
+    {Res Opt : AC.Blk sp.n FGP → Prop} {A : AC.ACState sp.n} (h : RecLock Φ t r₀ Res Opt A)
+    (hcap : ∀ l ∈ A.locks, l.expiry ≤ l.slot + sp.k) :
     KeepAll Φ t A (AC.optimisticConfirmation sp A Φ t) ∧
       RecLock Φ t r₀ Res (fun B => Opt B ∨ AC.optimisticSelect sp A Φ t = some B)
         (AC.optimisticConfirmation sp A Φ t) := by
@@ -380,7 +382,7 @@ theorem reclock_optimistic {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} 
       keepAll_addLocks hΦ (by rw [AC.updateLatestConfirmed_keeps_locks])
     refine ⟨hk, (h.mono (fun _ h => h) fun _ h => Or.inl h).write hΦ hk hBt (ulc_rec _ _ _)
       (Or.inr ⟨Or.inr rfl, ?_⟩)⟩
-    have he := AC.le_fastExpiry (sp := sp) A.locks Φ t (sp.slot t)
+    have he := AC.le_fastExpiry (sp := sp) A.locks Φ t (sp.slot t) hcap le_rfl
     refine ⟨_, he, ?_⟩
     rw [AC.updateLatestConfirmed_keeps_locks]
     exact ⟨⟨B.root, sp.slot t, true, _⟩, Or.inr ⟨_, Set.mem_singleton _, rfl⟩, B, hBt, rfl,
@@ -388,7 +390,8 @@ theorem reclock_optimistic {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} 
 
 theorem reclock_opt_admit {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r₀ : Nat}
     {Res Opt : AC.Blk sp.n FGP → Prop} {A A₂ : AC.ACState sp.n} (h : RecLock Φ t r₀ Res Opt A)
-    (hk : KeepAll Φ t A A₂) (hr : A₂.latestConfirmed = A.latestConfirmed) (v : Vote sp.n) :
+    (hk : KeepAll Φ t A A₂) (hr : A₂.latestConfirmed = A.latestConfirmed) (v : Vote sp.n)
+    (hcap : ∀ l ∈ A₂.locks, l.expiry ≤ l.slot + sp.k) :
     KeepAll Φ t A (AC.optimisticConfirmation sp (AC.admitVote sp A₂ t v) Φ t) ∧
       RecLock Φ t r₀ Res (fun B => Opt B ∨
           AC.optimisticSelect sp (AC.admitVote sp A₂ t v) Φ t = some B)
@@ -397,11 +400,12 @@ theorem reclock_opt_admit {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {
     hk.trans (KeepAll.of_eq (AC.admitVote_locks_eq _ _ _))
   obtain ⟨hk₂, hr₂⟩ := reclock_optimistic hΦ
     (h.keep hΦ hk' ((admitVote_latestConfirmed _ _ _).trans hr))
+    (by rw [AC.admitVote_locks_eq]; exact hcap)
   exact ⟨hk'.trans hk₂, hr₂⟩
 
 theorem reclock_tryVote {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r₀ : Nat}
     {Res Opt : AC.Blk sp.n FGP → Prop} {A : AC.ACState sp.n} (h : RecLock Φ t r₀ Res Opt A)
-    (x : Fin sp.n) :
+    (x : Fin sp.n) (hcap : ∀ l ∈ A.locks, l.expiry ≤ l.slot + sp.k) :
     KeepAll Φ t A (AC.tryVote sp x A Φ t).1 ∧
       RecLock Φ t r₀ Res (fun B => Opt B ∨ ∃ e ∈ (AC.tryVote sp x A Φ t).2,
           AC.optimisticSelect sp (AC.admitVote sp e.readPoint t e.msg) Φ t = some B)
@@ -420,20 +424,24 @@ theorem reclock_tryVote {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r�
   · rw [ite_eq_left h₃]
     by_cases hm : A.mayVote (sp.slot t) = true
     · simp only [hm, ite_true]
-      refine (reclock_opt_admit hΦ h ?_ ?_ _).imp id fun hr => hr.mono
+      refine (reclock_opt_admit hΦ h ?_ ?_ _ ?_).imp id fun hr => hr.mono
         (fun _ h => h) fun B h => h.imp_right fun h => ⟨_, List.mem_singleton_self _, h⟩
       · exact keepAll_unlock hΦ rfl
       · rfl
+      · rintro _ ⟨l, ⟨l₀, hl₀, B, hB, hr, ht, rfl⟩, hs, B₁, hB₁, hr₁, rfl⟩
+        have := hcap l₀ hl₀
+        split_ifs <;> exact this
     · simp only [hm, Bool.false_eq_true, ite_false]
       refine ⟨keepAll_unlock hΦ rfl, RecLock.mono ?_ (fun _ h => h) fun _ h => Or.inl h⟩
       exact h.keep hΦ (keepAll_unlock hΦ rfl) rfl
   · rw [ite_eq_right h₃]
     by_cases hm : A.mayVote (sp.slot t) = true
     · simp only [hm, ite_true]
-      refine (reclock_opt_admit hΦ h ?_ ?_ _).imp id fun hr => hr.mono
+      refine (reclock_opt_admit hΦ h ?_ ?_ _ ?_).imp id fun hr => hr.mono
         (fun _ h => h) fun B h => h.imp_right fun h => ⟨_, List.mem_singleton_self _, h⟩
       · exact KeepAll.of_eq rfl
       · rfl
+      · exact hcap
     · simp only [hm, Bool.false_eq_true, ite_false]
       exact ⟨KeepAll.of_eq rfl,
         (h.keep hΦ (KeepAll.of_eq rfl) rfl).mono
@@ -462,7 +470,7 @@ theorem reclock_update {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r�
 
 theorem reclock_onTick {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r₀ : Nat}
     {Res Opt : AC.Blk sp.n FGP → Prop} {A : AC.ACState sp.n} (h : RecLock Φ t r₀ Res Opt A)
-    (x : Fin sp.n) :
+    (x : Fin sp.n) (hcap : ∀ l ∈ A.locks, l.expiry ≤ l.slot + sp.k) :
     KeepAll Φ t A (AC.acOnTick sp x A Φ t).1 ∧
       RecLock Φ t r₀ (fun C => Res C ∨ (t = sp.ts (sp.slot t) + 2 * sp.Δ ∧ 0 < sp.slot t ∧
           AC.joined sp A t ∧ AC.getConfirmation sp A Φ (sp.slot t - 1) = some C))
@@ -480,7 +488,8 @@ theorem reclock_onTick {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) {t : Time} {r�
         have := sp.toParams.hΔ
         linarith [ht.1.symm.trans hu]
       · rw [ite_eq_right ht]
-        exact (reclock_tryVote hΦ h x).imp id fun hr => hr.mono (fun _ h => Or.inl h) fun _ h => h
+        exact (reclock_tryVote hΦ h x hcap).imp id fun hr => hr.mono
+          (fun _ h => Or.inl h) fun _ h => h
     · rw [ite_eq_right hu]
       by_cases ht : t = sp.ts (sp.slot t) + 2 * sp.Δ ∧ 0 < sp.slot t
       · rw [ite_eq_left ht]
@@ -512,7 +521,8 @@ theorem toFG_locks (A : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time) :
 the record unchanged or names a block of the frame that it wrote, as a result of its update, or
 as the selection of one of its optimistic checks with that slot's fast lock on its viable
 ancestor. -/
-theorem call_reclock {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini) {x : Fin sp.n}
+theorem call_reclock {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
     (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ) :
     KeepAll ℓ.frame (tr.time i) (tr.state x i) (tr.post i) ∧
       RecLock ℓ.frame (tr.time i) (tr.state x i).latestConfirmed
@@ -525,13 +535,16 @@ theorem call_reclock {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr i
   have hemits := congrArg Prod.snd he
   simp only at hpost hemits
   rw [← hpost]
+  have hwf := AC.locksWF_state hr hini hx i
   generalize hA : tr.state x i = A at hpost hemits
+  rw [hA] at hwf
   have h₀ : RecLock ℓ.frame (tr.time i) A.latestConfirmed (fun _ => False) (fun _ => False) A :=
     Or.inl rfl
   cases hcall : ℓ.call with
   | tick =>
     rw [hcall] at hemits
-    refine (reclock_onTick hΦ h₀ x).imp id fun h => h.mono (fun C h => ?_) fun C h => ?_
+    refine (reclock_onTick hΦ h₀ x (fun l hl => hwf.cap hl)).imp id
+      fun h => h.mono (fun C h => ?_) fun C h => ?_
     · obtain ⟨ht, hs0, hj, hC⟩ := h.resolve_left id
       have hu : AC.UpdateAt tr x i (sp.slot (tr.time i) - 1) ℓ := by
         refine ⟨hc, hcall, ?_, hA ▸ hj⟩
@@ -551,7 +564,11 @@ theorem call_reclock {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr i
   | message m =>
     rw [hcall] at hemits
     obtain ⟨hk₁, hr₁⟩ := reclock_opt_admit hΦ h₀ (KeepAll.of_eq rfl) rfl m
+      (fun l hl => hwf.cap hl)
+    have hwf₁ : AC.LocksWF sp (AC.admitVote sp A (tr.time i) m).locks := by
+      rw [AC.admitVote_locks_eq]; exact hwf
     obtain ⟨hk₂, hr₂⟩ := reclock_tryVote hΦ hr₁ x
+      (fun l hl => (hwf₁.optimisticConfirmation ℓ.frame (tr.time i)).cap hl)
     refine ⟨hk₁.trans hk₂, hr₂.mono (fun _ h => h.elim) fun C h => ?_⟩
     rcases h with (h | h) | ⟨e, he', hsel⟩
     · exact h.elim
@@ -563,7 +580,11 @@ theorem call_reclock {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr i
       KeepAll.of_eq (AC.blockReceipt_locks _ _ _)
     obtain ⟨hk₁, hr₁⟩ := reclock_optimistic hΦ
       (h₀.keep hΦ hk₀ (blockReceipt_latestConfirmed _ _ _))
+      (by rw [AC.blockReceipt_locks]; exact fun l hl => hwf.cap hl)
+    have hwf₁ : AC.LocksWF sp (AC.blockReceipt sp A (tr.time i) B).locks := by
+      rw [AC.blockReceipt_locks]; exact hwf
     obtain ⟨hk₂, hr₂⟩ := reclock_tryVote hΦ hr₁ x
+      (fun l hl => (hwf₁.optimisticConfirmation ℓ.frame (tr.time i)).cap hl)
     refine ⟨hk₀.trans (hk₁.trans hk₂), hr₂.mono (fun _ h => h.elim) fun C h => ?_⟩
     rcases h with (h | h) | ⟨e, he', hsel⟩
     · exact h.elim
@@ -576,6 +597,7 @@ theorem call_reclock {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr i
 /-- A changed record has an actual writer in this call. An optimistic writer also
 leaves its normalized fast lock in the post-state; no read invariant is required. -/
 theorem call_record_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
+    (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
     {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ)
     (hne : (tr.post i).latestConfirmed ≠ (tr.state x i).latestConfirmed) :
@@ -584,7 +606,7 @@ theorem call_record_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H 
         ((∃ CV, AC.OptimisticLockAt tr x i (sp.slot (tr.time i)) C CV) ∧
           ∃ e, (⟨(ℓ.frame.viableAncestor C).root, sp.slot (tr.time i), true, e⟩ : AC.Lock) ∈
             (tr.post i).locks)) :=
-  ((call_reclock hr hx hc).2.resolve_left hne).imp fun _ ⟨hC, hr, h⟩ =>
+  ((call_reclock hr hini hx hc).2.resolve_left hne).imp fun _ ⟨hC, hr, h⟩ =>
     ⟨hC, hr, h.imp_right fun ⟨ho, e, _, hl⟩ => ⟨ho, e, hl⟩⟩
 
 end Writes
