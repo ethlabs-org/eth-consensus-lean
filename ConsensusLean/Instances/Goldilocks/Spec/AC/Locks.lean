@@ -9,7 +9,8 @@ public import ConsensusLean.Instances.Goldilocks.Spec.AC.Views
 goldilocks-spec.tex §"Locks" (Figure "Goldilocks: locks and unlocking"). A lock `(B, j, f, e)` is
 live at `t` when `slot(t) ≤ e` and `B ∈ Φ.tree`; its expiry `e` is fixed at its write: `j + k`
 for a slow lock, and for a fast lock the node's fast deadline (the latest expiry of its live fast
-locks of earlier slots) plus `c`, at least `j + 2` and at most `j + k` (`fastExpiry`); every rule
+locks of earlier slots) plus `c`, at least `j + 2` on lawful runs and at most `j + k`
+(`fastExpiry`); every rule
 reads the locks through `live_locks`, which moves each live lock back to its viable ancestor
 (`Frame.viableAncestor`, the frame-level definition of claims G0.4 (frame), which goldilocks-spec
 §"Locks" also gives). The highest live lock is the deepest live lock block. The anchor is the
@@ -34,11 +35,11 @@ def liveLocks (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) : Set Lock :=
 
 open Classical in
 /-- The expiry of a new fast lock of slot `s`: the node's fast deadline `E` (the latest expiry
-of its live fast locks of earlier slots) plus `c`, at least `s + 2`, at most `s + k`; `s + 2`
-when no such lock is live. -/
+of its live fast locks of earlier slots) plus `c`, at most `s + k`; `s + 2` when no such lock is
+live. -/
 noncomputable def fastExpiry (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) (s : Nat) : Nat :=
   let E := {e | ∃ l ∈ liveLocks sp L Φ t, l.fast = true ∧ l.slot < s ∧ e = l.expiry}
-  min (s + sp.k) (if E.Nonempty then max (s + 2) (sSup E + sp.c) else s + 2)
+  min (s + sp.k) (if E.Nonempty then sSup E + sp.c else s + 2)
 
 /-- The blocks of the live locks (the locked blocks are their ancestors). -/
 def liveLockBlocks (L : Set Lock) (Φ : Frm sp.n FGP) (t : Time) : Set (Blk sp.n FGP) :=
