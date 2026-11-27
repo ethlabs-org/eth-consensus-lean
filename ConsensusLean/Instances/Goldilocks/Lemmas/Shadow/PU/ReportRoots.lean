@@ -113,12 +113,12 @@ theorem cache_ahead_report {ini : Fin sp.n → (goldilocksNode sp ro).State}
   subst E
   have hrv := (Node.fg_reachable_at hrun.toLocalRun haH j).reachableWith
   have hσ := σ_eq_of_mem_with hr hfs hrv hU.1 hsub hsubv hXt hE
-  have hfg := Compose.projFG_localRun' hrun hnc
-  have hPX' := Compose.FrameGeometry.honest_held_anc' hrun.toLocalRun hfg haH hPX hE
+  have hfg := Compose.projFG_localRun hrun hnc
+  have hPX' := Compose.FrameGeometry.honest_held_anc hrun.toLocalRun hfg haH hPX hE
   have hPv : P ∈ (tr.state a.val j).fg.tree := (Anc.mem hPX' hne).1
   have hσP := σ_eq_of_mem_with hr hfs hrv hU.1 hsub hsubv hP hPv
   have hlt : ((tr.state a.val j).fg.σ P.root).h < ((tr.state a.val j).fg.σ X.root).h := by
-    obtain ⟨hle, heq⟩ := Compose.FrameGeometry.honest_held_height' hrun.toLocalRun haH hPX'
+    obtain ⟨hle, heq⟩ := Compose.FrameGeometry.honest_held_height hrun.toLocalRun haH hPX'
     apply lt_of_le_of_ne hle
     intro hh
     have hentry := (heq hh.symm).symm.trans hET

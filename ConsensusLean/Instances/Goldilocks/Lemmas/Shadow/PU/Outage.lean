@@ -196,7 +196,7 @@ theorem above_of_hi_height_at (D : OutageLockPremises tr H proposer dg ini) {i :
   have hU := Coherence.honestBlocksAt_coherent D.hrun D.hnc
   have hr := D.hrun.upTo ht0
   have hnc' := D.hnc.upTo t
-  have hfg := projFG_localRun' hr hnc'
+  have hfg := projFG_localRun hr hnc'
   have hsub : (tr.upTo t).HonestBlocks (H t) ⊆ tr.HonestBlocksAt H :=
     RunTrace.honestBlocks_upTo_subset D.hrun.time_mono ht0
   have hst := Trace.upTo_state tr y ht
@@ -206,7 +206,7 @@ theorem above_of_hi_height_at (D : OutageLockPremises tr H proposer dg ini) {i :
   -- `h_j ≥ 1`: at `h_j = 0`, `Σ.J` is genesis, and nothing is strictly below genesis
   have hj1 : 1 ≤ ((tr.upTo t).state y k).fg.hj := by
     by_contra h0
-    have hJg := FrameGeometry.justified_genesis' hr.toLocalRun (i := k) (by omega) hy
+    have hJg := FrameGeometry.justified_genesis hr.toLocalRun (i := k) (by omega) hy
     by_cases hPJe : D.P = ((tr.upTo t).state y k).fg.J
     · exact hJP (by rw [hPJe])
     have := (Anc.slot_le hU hPJ).2 hPJe
@@ -216,11 +216,11 @@ theorem above_of_hi_height_at (D : OutageLockPremises tr H proposer dg ini) {i :
   have hsrcF := honestRowsSourcedBy_toFrame ht (rows_sourced_by D.hrun D.hnc (B := D.P) (n := k)
     (fun x k' hk' hx => hinv.sources x k' (by omega) hx) ht0 ht hy)
   obtain ⟨E, hEt, hEX, hEh, hET, D', ⟨hD'P, -⟩, hD's⟩ :=
-    FrameGeometry.frame_crossing_source_before' hr.toLocalRun hf hy hsrcF hX hj1
+    FrameGeometry.frame_crossing_source_before hr.toLocalRun hf hy hsrcF hX hj1
       (Nat.lt_of_succ_le hh)
   have hEU : E ∈ (tr.upTo t).HonestBlocks (H t) := FrameGeometry.fg_tree_subset_honest hy k hEt
   obtain ⟨x, hx, k', -, -, hED', -, -⟩ :=
-    FrameGeometry.honest_source_entry' hr.toLocalRun hfg hD's hEU rfl
+    FrameGeometry.honest_source_entry hr.toLocalRun hfg hD's hEU rfl
   have hED : Anc (tr.HonestBlocksAt H) E D' :=
     hED'.mono ((FrameGeometry.fg_tree_subset_honest hx k').trans hsub)
   have hEP : Compatible (tr.HonestBlocksAt H) E D.P := by
@@ -232,13 +232,13 @@ theorem above_of_hi_height_at (D : OutageLockPremises tr H proposer dg ini) {i :
   -- `E` is not below `P`: else `E ⪯ Σ.J`, two entries of height `h_j` below `Σ.J`, so `E = Σ.J`
   have hnot : ¬ Anc (tr.HonestBlocksAt H) E D.P := by
     intro hE
-    have hEJ := FrameGeometry.honest_held_anc' hr.toLocalRun hfg hy
+    have hEJ := FrameGeometry.honest_held_anc hr.toLocalRun hfg hy
       (Consensus.Goldilocks.RunTrace.anc_upTo_of_right D.hrun.toLocalRun D.hnc
         ht0 ⟨y, hy, k, hJt⟩ (hE.trans hPJ)) hJt
     obtain ⟨hJh, hJT, -⟩ :=
-      FrameGeometry.justified_honest_source_before' hr.toLocalRun hfg hf hy hsrcF hj1
+      FrameGeometry.justified_honest_source_before hr.toLocalRun hfg hf hy hsrcF hj1
     have hEJe : E = ((tr.upTo t).state y k).fg.J :=
-      FrameGeometry.held_entry_unique' hr.toLocalRun hfg hy hJt hEJ Relation.ReflTransGen.refl
+      FrameGeometry.held_entry_unique hr.toLocalRun hfg hy hJt hEJ Relation.ReflTransGen.refl
         (hEh.trans hJh.symm) hET hJT
     subst hEJe
     exact hJP (congrArg (·.root) (Anc.antisymm hU hE hPJ))
@@ -305,7 +305,7 @@ theorem honestAt_genesis_anc
       Anc (tr.HonestBlocksAt H)
         (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) B := by
   obtain ⟨t, ht, hBt⟩ := exists_upTo_of_mem hB
-  obtain ⟨hg, hanc⟩ := FrameGeometry.honest_genesis_anc' (hrun.upTo ht).toLocalRun hBt
+  obtain ⟨hg, hanc⟩ := FrameGeometry.honest_genesis_anc (hrun.upTo ht).toLocalRun hBt
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono ht
   exact ⟨hsub hg, hanc.mono hsub⟩
 
@@ -364,19 +364,19 @@ theorem J_compatible_by (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propo
   have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono ht0
   have hst := Trace.upTo_state tr y ht
   by_cases h0 : (tr.state y i).fg.hj = 0
-  · have hJ := FrameGeometry.justified_genesis' hr.toLocalRun (i := i) (by rw [hst]; exact h0) hy
+  · have hJ := FrameGeometry.justified_genesis hr.toLocalRun (i := i) (by rw [hst]; exact h0) hy
     rw [hst] at hJ
     rw [hJ]
     exact Or.inl (honestAt_genesis_anc hrun hB).2
   obtain ⟨-, -, D, ⟨hD, -⟩, hDs⟩ :=
-    FrameGeometry.justified_honest_source_before' hr.toLocalRun
-      (projFG_localRun' hr (hnc.upTo _)) hf hy (honestRowsSourcedBy_toFrame ht hsrc)
+    FrameGeometry.justified_honest_source_before hr.toLocalRun
+      (projFG_localRun hr (hnc.upTo _)) hf hy (honestRowsSourcedBy_toFrame ht hsrc)
       (by rw [hst]; omega)
   rw [hst] at hDs
   have hJ := (Store.cache_invariants _ _ _ _ (Node.fg_reachable_at hr.toLocalRun hy i)).2.1
   rw [hst] at hJ
-  obtain ⟨x, hx, k, -, -, hJD, -, -⟩ := FrameGeometry.honest_source_entry' hr.toLocalRun
-    (projFG_localRun' hr (hnc.upTo _)) hDs ⟨y, hy, i, by rw [hst]; exact hJ⟩ rfl
+  obtain ⟨x, hx, k, -, -, hJD, -, -⟩ := FrameGeometry.honest_source_entry hr.toLocalRun
+    (projFG_localRun hr (hnc.upTo _)) hDs ⟨y, hy, i, by rw [hst]; exact hJ⟩ rfl
   have hJDU : Anc (tr.HonestBlocksAt H) (tr.state y i).fg.J D :=
     (hJD.mono (FrameGeometry.fg_tree_subset_honest hx k)).mono hsub
   rcases hGB D hD with h | h
@@ -422,7 +422,7 @@ theorem held_candidate_of_rows_by
   rw [Node.frame_eq, Store.toFrame_tree] at hBt'
   have hBU : B ∈ (tr.upTo t).HonestBlocks (H t) := ⟨y, hy, i, by rw [hst]; exact hBt'.1⟩
   have h := FrameGeometry.held_candidate_of_rows' (hrun.upTo ht0).toLocalRun
-    (projFG_localRun' (hrun.upTo ht0) (hnc.upTo _)) hf hy i (honestRowsSourcedBy_toFrame ht hsrc)
+    (projFG_localRun (hrun.upTo ht0) (hnc.upTo _)) hf hy i (honestRowsSourcedBy_toFrame ht hsrc)
     (fun D ⟨hD, hDU⟩ => (hGB D hD).imp (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 hBU)
       (RunTrace.anc_upTo_of_right hrun.toLocalRun hnc ht0 hDU))
     (by rw [hst]; exact hBt)

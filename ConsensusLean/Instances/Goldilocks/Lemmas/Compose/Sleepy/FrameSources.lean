@@ -25,9 +25,10 @@ variable {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   (hf : 2 * Hᶜ.ncard < sp.n)
   {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop}
 
-include hrun hnc hf hy in
 /-- A crossing quorum has an honest attestation, whose source satisfies `G`. -/
-theorem frame_crossing_source_of {h₀ : Nat} (hsrc : RowsAbove tr H G y i h₀)
+theorem frame_crossing_source_of (hrun : GoldilocksRun proposer dg H tr ini)
+    (_hnc : NoCollRun dg tr) (hf : 2 * Hᶜ.ncard < sp.n) (hy : y ∈ H)
+    {h₀ : Nat} (hsrc : RowsAbove tr H G y i h₀)
     {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y i).fg.tree) {j : Nat} (hj0 : h₀ ≤ j) (hj1 : 1 ≤ j)
     (hj2 : j < ((tr.state y i).fg.σ W.root).h) :
@@ -36,8 +37,7 @@ theorem frame_crossing_source_of {h₀ : Nat} (hsrc : RowsAbove tr H G y i h₀)
       ∃ D, G D ∧ IsHonestSource tr H D E.root := by
   have hs := hsrc.toFrameGeometry
   obtain ⟨E, hE, hEW, hEh, hET, D, hD, hDs⟩ :=
-    FrameGeometry.frame_crossing_source_of hrun.toLocalRun (projFG_localRun hrun hnc)
-      hf hy hs hW hj0 hj1 hj2
+    FrameGeometry.frame_crossing_source_of hrun.toLocalRun hf hy hs hW hj0 hj1 hj2
   exact ⟨E, hE, hEW, hEh, hET, D, hD, isHonestSource_iff.2 (FrameGeometry.isHonestSource_iff.1 hDs)⟩
 
 include hrun hnc hf hy in

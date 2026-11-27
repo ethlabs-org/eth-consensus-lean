@@ -1,6 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Projection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Parametric
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.CutBase
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Invariants
 
@@ -44,34 +46,16 @@ theorem honest_held_anc {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
   rw [← store_eq hr hy i] at hW ⊢
   exact Store.anc_of_U hf hy h hW
 
-private theorem anc_height {ACP : Type} {acp₀ : ACP} {H₀ : Set (Fin P.n)}
-    {U : Set (NodeBlock P ACP)} {ftr : FGTrace P ACP}
-    (hr : FGLocalRun acp₀ H₀ U ftr) {y : Fin P.n} (hy : y ∈ H₀)
-    {m : Nat} {B W : NodeBlock P ACP} (h : (ftr.store y m).Anc B W) :
-    ((ftr.store y m).σ B.root).h ≤ ((ftr.store y m).σ W.root).h ∧
-      (((ftr.store y m).σ W.root).h = ((ftr.store y m).σ B.root).h →
-        ((ftr.store y m).σ W.root).Th = ((ftr.store y m).σ B.root).Th) := by
-  induction h with
-  | refl => exact ⟨le_rfl, fun _ => rfl⟩
-  | tail _ hYW ih =>
-    obtain ⟨c, -, -, -, hc⟩ := Store.chain_state_of_chain P ACP acp₀ _
-      (Store.store_reachable hr hy m) _ hYW.1
-    obtain ⟨h1, -, -, h4, -⟩ := FG.height_step P.fg _ _ _ _ hc (Store.step_σ hr hy hYW.2.1 hYW.2.2)
-    have := ih.1
-    rcases h1 with h1 | h1
-    · exact ⟨by omega, fun _ => (h4 h1).1.trans (ih.2 (by omega))⟩
-    · exact ⟨by omega, fun _ => by omega⟩
-
 /-- Height is monotone along ancestry, with constant entries on height plateaus. -/
 theorem honest_held_height {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
-    (hf : FGLocalRun A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
     {y : Fin P.n} (hy : y ∈ H) {i : Nat} {B W : A.Blk}
     (h : (tr.state y i).fg.Anc B W) :
     ((tr.state y i).fg.σ B.root).h ≤ ((tr.state y i).fg.σ W.root).h ∧
       (((tr.state y i).fg.σ W.root).h = ((tr.state y i).fg.σ B.root).h →
         ((tr.state y i).fg.σ W.root).Th = ((tr.state y i).fg.σ B.root).Th) := by
-  rw [← store_eq hr hy i] at h ⊢
-  exact anc_height hf hy h
+  have hR := (fg_reachable hr hy i).reachableWith
+  exact ⟨Store.h_le_of_store_anc_with Store.finalitySpec_updateFinality hR h,
+    fun he => Store.Th_eq_of_anc_with Store.finalitySpec_updateFinality hR h he⟩
 
 /-- Two entry blocks of one height below one held block coincide. -/
 theorem held_entry_unique {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
@@ -85,8 +69,8 @@ theorem held_entry_unique {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
   have coh : Coherent (tr.state y i).fg.tree := hf.coherent.mono (fg_tree_subset_honest hy i)
   apply coh.1 (anc_mem hE hW) (anc_mem hE' hW)
   rcases Anc.total coh hE hE' with h | h
-  · exact hT.symm.trans (((honest_held_height hr hf hy h).2 hh.symm).symm.trans hT')
-  · exact hT.symm.trans (((honest_held_height hr hf hy h).2 hh).trans hT')
+  · exact hT.symm.trans (((honest_held_height hr hy h).2 hh.symm).symm.trans hT')
+  · exact hT.symm.trans (((honest_held_height hr hy h).2 hh).trans hT')
 
 /-- The chain invariants of a held block need no AC projection law. -/
 theorem honest_held_chain {ini} (hr : Node.LocalRun proposer dg H sg tr ini)
