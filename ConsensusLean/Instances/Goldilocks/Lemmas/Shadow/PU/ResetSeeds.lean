@@ -16,7 +16,7 @@ open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
   {hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- The reset signing supplies a high origin strictly before every post-drain slot. -/
@@ -58,10 +58,10 @@ theorem ResetPremisesUpTo'.reset_seed_before_slot_at'
 namespace Outcome
 
 /-- A held signed row's lock is older than the cast, including optimistic writes. -/
-private theorem row_lock_label_lt_at'
+private theorem row_lock_label_lt_at
     (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)
     {v : Fin sp.n} {d : Nat} (hv : v ∈ H (tr.time d)) (hs : tr.SignAt v d att)
@@ -97,7 +97,7 @@ private theorem row_lock_label_lt_at'
 theorem row_entry_member_before_cast_at'
     (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) (hkb : tr.time k ≤ b)
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state y k).fg.tree) {att : FG.Att sp.n} (ha : att ∈ W.fgPayload)
     {v : Fin sp.n} {d : Nat} (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time k)))
@@ -128,7 +128,7 @@ theorem row_entry_member_before_cast_at'
   have he₀ : E₀ = E := hU.1 hE₀ (hsub hE) (hE₀r.trans hT)
   subst E₀
   exact ⟨C, s, hC.mono hdk.le,
-    row_lock_label_lt_at' hp hy hc hW ha hvd hs hdk hrd hlock, hEC⟩
+    row_lock_label_lt_at hp hy hc hW ha hvd hs hdk hrd hlock, hEC⟩
 
 end Outcome
 

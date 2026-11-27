@@ -27,13 +27,13 @@ variable {P : Params} {ACP : Type}
 
 /-- A block at or above the stock head-height floor is P-U viable, if in a top-clean store it is
 above the floor or extends `Σ.J`. -/
-theorem isViable'_of_floor (st : Store P ACP) (hjm : st.hj < st.hmax) {Q : NodeBlock P ACP}
+theorem isViable_of_floor (st : Store P ACP) (hjm : st.hj < st.hmax) {Q : NodeBlock P ACP}
     (hfl : st.headHeightFloor ≤ (st.σ Q.root).h)
     (hk : st.hmax = st.hj + 1 → ¬ st.Contest →
       st.headHeightFloor + 1 ≤ (st.σ Q.root).h ∨ st.Anc st.J Q) :
-    st.IsViable' Q := by
+    st.IsViable Q := by
   classical
-  rw [isViable'_iff]
+  rw [isViable_iff]
   have hb := headHeightFloor_bounds st
   by_cases hge : st.hmax ≤ (st.σ Q.root).h
   · exact Or.inl hge
@@ -51,17 +51,17 @@ theorem isViable'_of_floor (st : Store P ACP) (hjm : st.hj < st.hmax) {Q : NodeB
 the viable heads are exactly the blocks of height at least `floor`: a block `Q` is in the
 viable tree of the shadow frame only below such a viable head `W`; otherwise it is outside that
 viable tree. -/
-theorem contest_gap_residue' (st : Store P ACP) {floor : Nat} (hgap : st.hmax = floor + 1)
+theorem contest_gap_residue (st : Store P ACP) {floor : Nat} (hgap : st.hmax = floor + 1)
     (Q : NodeBlock P ACP) :
-    (∃ W ∈ st.toFrame'.viableHeads, st.Anc Q W ∧ floor ≤ (st.σ W.root).h) ∨
-      Q ∉ st.toFrame'.viableTree st.toFrame'.tree := by
-  by_cases h : Q ∈ st.toFrame'.viableTree st.toFrame'.tree
+    (∃ W ∈ st.toFrame.viableHeads, st.Anc Q W ∧ floor ≤ (st.σ W.root).h) ∨
+      Q ∉ st.toFrame.viableTree st.toFrame.tree := by
+  by_cases h : Q ∈ st.toFrame.viableTree st.toFrame.tree
   · obtain ⟨-, -, W, -, hWv, hQW⟩ := h
     refine Or.inl ⟨W, hWv, hQW.mono fun _ hB => ?_, ?_⟩
-    · rw [toFrame'_tree] at hB
+    · rw [toFrame_tree] at hB
       exact hB.1
-    · rw [toFrame'_viableHeads] at hWv
-      rcases (isViable'_iff st W).mp hWv.2.2 with hh | ⟨hh, -⟩ <;> omega
+    · rw [toFrame_viableHeads] at hWv
+      rcases (isViable_iff st W).mp hWv.2.2 with hh | ⟨hh, -⟩ <;> omega
   · exact Or.inr h
 
 end Consensus.Goldilocks.Store
@@ -105,8 +105,8 @@ open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
-  {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- **Persistence over the stock window, per regime, with the stock witness.** A P-U viable head
 `Q` of an earlier call frame inside a stock `FrameWindow` is, at the later cut,
@@ -115,18 +115,18 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 `h_max = floor` with `Σ.J ⪯ Q` (the P-U-only head, kept by safety); or
 (C) the P-U-only head of a contest at the call whose reader has since entered the gap
 `h_max = floor + 1`. -/
-theorem FrameWindow.viableHead_persists_stock' {lo hi : Time} {floor : Nat}
+theorem FrameWindow.viableHead_persists_stock {lo hi : Time} {floor : Nat}
     {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
     (hrun : GoldilocksRun' proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
     (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y a ell)
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y a ell)
     {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hv : Q ∈ ell.frame.viableHeads) :
-    ((Q ∈ (Node.frame' (tr.state y i)).tree ∧
-      (Node.frame' (tr.state y i)).Anc (Node.frame' (tr.state y i)).fcRoot Q ∧
-      Q ∈ (Node.frame' (tr.state y i)).viableHeads) ∧
+    ((Q ∈ (Node.frame (tr.state y i)).tree ∧
+      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot Q ∧
+      Q ∈ (Node.frame (tr.state y i)).viableHeads) ∧
       ((floor ≤ ((tr.state y i).fg.σ Q.root).h ∧ (kindJ → Anc (tr.HonestBlocks H) J Q)) ∨
         (((tr.state y i).fg.σ Q.root).h + 1 = floor ∧ (tr.state y i).fg.Contest ∧
           (tr.state y i).fg.hmax = floor ∧ (tr.state y i).fg.Anc (tr.state y i).fg.J Q))) ∨
@@ -134,19 +134,19 @@ theorem FrameWindow.viableHead_persists_stock' {lo hi : Time} {floor : Nat}
       ((tr.state y a).fg.σ Q.root).h + 1 = floor ∧ (tr.state y i).fg.hmax = floor + 1) := by
   classical
   have htime := hrun.time_mono hai
-  rw [Node.frame_of_projAC_at' hrun.toLocalRun' hy hc, Node.frame'_eq,
-    Store.toFrame'_viableHeads] at hv
+  rw [Node.frame_of_projAC_at hrun.toLocalRun' hy hc, Node.frame_eq,
+    Store.toFrame_viableHeads] at hv
   obtain ⟨hQa, -, hva⟩ := hv
   set sa := (tr.state y a).fg with hsa
   set si := (tr.state y i).fg with hsi
   have hQi : Q ∈ si.tree := Compose.tree_mono' hrun.toLocalRun' hy hai hQa
   have hsub : si.tree ⊆ tr.HonestBlocks H := fun B hB => ⟨y, hy, i, hB⟩
-  have hRa := Node.fg_reachable_at' hrun.toLocalRun' hy a
-  have hRi := Node.fg_reachable_at' hrun.toLocalRun' hy i
+  have hRa := Node.fg_reachable_at hrun.toLocalRun' hy a
+  have hRi := Node.fg_reachable_at hrun.toLocalRun' hy i
   have hu := Store.finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
   have hσ : si.σ Q.root = sa.σ Q.root :=
     (Store.σ_eq_of_mem_with hRa.reachableWith hu hRi.reachableWith
-      (Coherence.honest_blocks_coherent' hrun.toLocalRun' hnc).1
+      (Coherence.honest_blocks_coherent hrun.toLocalRun' hnc).1
       (fun _ hB => ⟨y, hy, a, hB⟩) hsub hQa hQi).symm
   have hh : (si.σ Q.root).h = (sa.σ Q.root).h := by rw [hσ]
   have hfa : sa.headHeightFloor = floor := hframe.floor_eq y hy a halo (htime.trans hihi)
@@ -162,22 +162,22 @@ theorem FrameWindow.viableHead_persists_stock' {lo hi : Time} {floor : Nat}
   have hnocontest : ∀ {st : Store sp.toParams (Payload sp.n)}, ¬ st.Contest →
       st.headHeightFloor = st.hmax - 1 := fun hc => ite_eq_right hc
   -- the viable alternative from P-U viability at the later store
-  have finish : si.IsViable' Q →
-      (Q ∈ (Node.frame' (tr.state y i)).tree ∧
-        (Node.frame' (tr.state y i)).Anc (Node.frame' (tr.state y i)).fcRoot Q ∧
-        Q ∈ (Node.frame' (tr.state y i)).viableHeads) := by
+  have finish : si.IsViable Q →
+      (Q ∈ (Node.frame (tr.state y i)).tree ∧
+        (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot Q ∧
+        Q ∈ (Node.frame (tr.state y i)).viableHeads) := by
     intro hvi
-    have hFQ := finalized_below_viable' hRi
-      (Coherence.honest_blocks_coherent' hrun.toLocalRun' hnc) hsub hf
+    have hFQ := finalized_below_viable hRi
+      (Coherence.honest_blocks_coherent hrun.toLocalRun' hnc) hsub hf
       (fun a b ha hb hv => held_atts_safe' hrun hnc hy hy i i a b ha hb hv) hQi hvi
     refine ⟨?_, ?_, ?_⟩
-    · rw [Node.frame'_eq, Store.toFrame'_tree]
+    · rw [Node.frame_eq, Store.toFrame_tree]
       exact ⟨hQi, hFQ⟩
-    · rw [Node.frame'_eq, Store.toFrame'_fcRoot]
-      change Anc (tr.state y i).fg.toFrame'.tree _ _
-      rw [Store.toFrame'_tree]
+    · rw [Node.frame_eq, Store.toFrame_fcRoot]
+      change Anc (tr.state y i).fg.toFrame.tree _ _
+      rw [Store.toFrame_tree]
       exact Anc.restrict .refl hFQ
-    · rw [Node.frame'_eq, Store.toFrame'_viableHeads]
+    · rw [Node.frame_eq, Store.toFrame_viableHeads]
       exact ⟨hQi, hFQ, hvi⟩
   -- a kind-J later store has the earlier `J` and the earlier height
   have hkind : si.hmax = si.hj + 1 → ¬ si.Contest →
@@ -195,9 +195,9 @@ theorem FrameWindow.viableHead_persists_stock' {lo hi : Time} {floor : Nat}
     obtain ⟨g1, g2⟩ := hka.mpr hk
     exact ⟨g1, g2, (hkJ hk).trans
       (hframe.root_eq y hy a halo (htime.trans hihi) hk).symm⟩
-  rcases (Store.isViable'_iff sa Q).mp hva with hge | ⟨heq, hgap | hJQ⟩
+  rcases (Store.isViable_iff sa Q).mp hva with hge | ⟨heq, hgap | hJQ⟩
   · -- at or above `h_max`
-    refine Or.inl ⟨finish (Store.isViable'_of_floor si hji (by omega) fun h1 h2 => ?_),
+    refine Or.inl ⟨finish (Store.isViable_of_floor si hji (by omega) fun h1 h2 => ?_),
       Or.inl ⟨by omega, fun hk => ?_⟩⟩
     · obtain ⟨g1, g2, -⟩ := hkind h1 h2
       have := hnocontest g2
@@ -205,8 +205,8 @@ theorem FrameWindow.viableHead_persists_stock' {lo hi : Time} {floor : Nat}
     · -- top clean at the call: a maximum-height block above `F` extends `J`
       obtain ⟨g1, g2, hJ⟩ := hkind' hk
       have hle : (sa.σ Q.root).h ≤ sa.hmax := (Store.cache_invariants' hRa).2.2.2.2.1 Q hQa
-      have hFQ := finalized_below_viable' hRa
-        (Coherence.honest_blocks_coherent' hrun.toLocalRun' hnc) (fun _ hB => ⟨y, hy, a, hB⟩) hf
+      have hFQ := finalized_below_viable hRa
+        (Coherence.honest_blocks_coherent hrun.toLocalRun' hnc) (fun _ hB => ⟨y, hy, a, hB⟩) hf
         (fun x z hx hz hv => held_atts_safe' hrun hnc hy hy a a x z hx hz hv) hQa hva
       have hJQ : sa.Anc sa.J Q := by
         by_contra hn
@@ -215,7 +215,7 @@ theorem FrameWindow.viableHead_persists_stock' {lo hi : Time} {floor : Nat}
   · -- a gap at the call
     have hnc' : ¬ sa.Contest := fun h => by have := h.1; omega
     have := hnocontest hnc'
-    refine Or.inl ⟨finish (Store.isViable'_of_floor si hji (by omega) fun h1 h2 => ?_),
+    refine Or.inl ⟨finish (Store.isViable_of_floor si hji (by omega) fun h1 h2 => ?_),
       Or.inl ⟨by omega, fun hk => ?_⟩⟩
     · obtain ⟨g1, -, -⟩ := hkind h1 h2
       omega
@@ -242,13 +242,13 @@ theorem FrameWindow.viableHead_persists_stock' {lo hi : Time} {floor : Nat}
         (by rw [hBahj, hBihj]; exact hjeq)
       rw [hBaJ, hBiJ] at hroots
       have hJeq : sa.J = si.J :=
-        (Coherence.honest_blocks_coherent' hrun.toLocalRun' hnc).1
+        (Coherence.honest_blocks_coherent hrun.toLocalRun' hnc).1
           ⟨y, hy, a, hJa⟩ (hsub hJi) hroots
       have hJQi : si.Anc si.J Q := hJeq ▸ hJmono hJQ
-      exact Or.inl ⟨finish ((Store.isViable'_iff si Q).mpr (Or.inr ⟨by omega, Or.inr hJQi⟩)),
+      exact Or.inl ⟨finish ((Store.isViable_iff si Q).mpr (Or.inr ⟨by omega, Or.inr hJQi⟩)),
         Or.inr ⟨by omega, hci, hmi, hJQi⟩⟩
     · have hfl := hnocontest hca
-      refine Or.inl ⟨finish (Store.isViable'_of_floor si hji (by omega) fun h1 h2 => ?_),
+      refine Or.inl ⟨finish (Store.isViable_of_floor si hji (by omega) fun h1 h2 => ?_),
         Or.inl ⟨by omega, fun hk => ?_⟩⟩
       · obtain ⟨-, -, hJ⟩ := hkind h1 h2
         exact Or.inr (hJ ▸ hJmono hJQ)
@@ -259,35 +259,35 @@ theorem FrameWindow.viableHead_persists_stock' {lo hi : Time} {floor : Nat}
 frame inside a stock `FrameWindow` is a viable head of the later shadow frame, or it is the
 P-U-only head of a contest at the call and the reader has since left that contest into the gap
 `h_max = floor + 1`. -/
-theorem FrameWindow.viableHead_persists_or_contest_gap' {lo hi : Time} {floor : Nat}
+theorem FrameWindow.viableHead_persists_or_contest_gap {lo hi : Time} {floor : Nat}
     {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
     (hrun : GoldilocksRun' proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
     (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y a ell)
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y a ell)
     {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hv : Q ∈ ell.frame.viableHeads) :
-    (Q ∈ (Node.frame' (tr.state y i)).tree ∧
-      (Node.frame' (tr.state y i)).Anc (Node.frame' (tr.state y i)).fcRoot Q ∧
-      Q ∈ (Node.frame' (tr.state y i)).viableHeads) ∨
+    (Q ∈ (Node.frame (tr.state y i)).tree ∧
+      (Node.frame (tr.state y i)).Anc (Node.frame (tr.state y i)).fcRoot Q ∧
+      Q ∈ (Node.frame (tr.state y i)).viableHeads) ∨
     ((tr.state y a).fg.Contest ∧ (tr.state y a).fg.hmax = floor ∧
       ((tr.state y a).fg.σ Q.root).h + 1 = floor ∧ (tr.state y i).fg.hmax = floor + 1) :=
-  (hframe.viableHead_persists_stock' hrun hnc hf hy hai halo hihi hc hv).imp_left (·.1)
+  (hframe.viableHead_persists_stock hrun hnc hf hy hai halo hihi hc hv).imp_left (·.1)
 
 /-- **H-wit over the stock window, with the stock witness**
 (`FrameWindow.root_witness_of_earlier_call` for shadow runs, route (i)). An earlier action cut
 supplies a frozen viable descendant of the shadow root `F`, with the stock witness. The
 witness has maximum height at the earlier cut, so the contest → gap alternative cannot occur, and
 the stock non-kind-J premise is not needed. -/
-theorem FrameWindow.root_witness_stock' {lo hi g : Time} {floor : Nat}
+theorem FrameWindow.root_witness_stock {lo hi g : Time} {floor : Nat}
     {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
     (hrun : GoldilocksRun' proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : NoRestartAfter tr H (AC.gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
-    {ell₀ ell : ACLabel (goldilocksNode' sp ro)}
+    {ell₀ ell : ACLabel (goldilocksNode sp ro)}
     (ha : tr.projAC.CallAt y a ell₀) {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
@@ -297,34 +297,34 @@ theorem FrameWindow.root_witness_stock' {lo hi g : Time} {floor : Nat}
       Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc ell.frame.fcRoot Q ∧
       floor ≤ ((tr.state y i).fg.σ Q.root).h ∧ (kindJ → Anc (tr.HonestBlocks H) J Q) := by
   have hr := (Compose.goldilocks_ac_projection_from' hrun hnc).localRun
-  have hR := Node.fg_reachable_at' hrun.toLocalRun' hy a
+  have hR := Node.fg_reachable_at hrun.toLocalRun' hy a
   obtain ⟨-, -, -, -, -, ⟨Q, hQ, hQh⟩, -⟩ := Store.cache_invariants' hR
-  have hv : (tr.state y a).fg.IsViable' Q :=
-    (Store.isViable'_iff _ _).mpr (Or.inl hQh.ge)
-  have hFQ := finalized_below_viable' hR
-    (Coherence.honest_blocks_coherent' hrun.toLocalRun' hnc)
+  have hv : (tr.state y a).fg.IsViable Q :=
+    (Store.isViable_iff _ _).mpr (Or.inl hQh.ge)
+  have hFQ := finalized_below_viable hR
+    (Coherence.honest_blocks_coherent hrun.toLocalRun' hnc)
     (fun B hB => ⟨y, hy, a, hB⟩) hf
     (fun b c h₁ h₂ hv => held_atts_safe' hrun hnc hy hy a a b c h₁ h₂ hv) hQ hv
   have hQt : Q ∈ ell₀.frame.tree := by
-    rw [Node.frame_of_projAC_at' hrun.toLocalRun' hy ha, Node.frame'_eq,
-      Store.toFrame'_tree]
+    rw [Node.frame_of_projAC_at hrun.toLocalRun' hy ha, Node.frame_eq,
+      Store.toFrame_tree]
     exact ⟨hQ, hFQ⟩
   have hv₀ : Q ∈ ell₀.frame.viableHeads := by
-    rw [Node.frame_of_projAC_at' hrun.toLocalRun' hy ha, Node.frame'_eq,
-      Store.toFrame'_viableHeads]
+    rw [Node.frame_of_projAC_at hrun.toLocalRun' hy ha, Node.frame_eq,
+      Store.toFrame_viableHeads]
     exact ⟨hQ, hFQ, hv⟩
   have hfa := hframe.floor_eq y hy a halo ((hrun.time_mono hai).trans hihi)
   have hba := Store.headHeightFloor_bounds (tr.state y a).fg
   have hσ : (tr.state y i).fg.σ Q.root = (tr.state y a).fg.σ Q.root :=
     (Store.σ_eq_of_mem_with hR.reachableWith Store.finalitySpec_updateFinality'
-      (Node.fg_reachable_at' hrun.toLocalRun' hy i).reachableWith
-      (Coherence.honest_blocks_coherent' hrun.toLocalRun' hnc).1
+      (Node.fg_reachable_at hrun.toLocalRun' hy i).reachableWith
+      (Coherence.honest_blocks_coherent hrun.toLocalRun' hnc).1
       (fun _ hB => ⟨y, hy, a, hB⟩) (fun _ hB => ⟨y, hy, i, hB⟩) hQ
       (Compose.tree_mono' hrun.toLocalRun' hy hai hQ)).symm
   have hhσ : ((tr.state y i).fg.σ Q.root).h = ((tr.state y a).fg.σ Q.root).h := by rw [hσ]
-  rcases hframe.viableHead_persists_stock' hrun hnc hf hy hai halo hihi ha hv₀ with
+  rcases hframe.viableHead_persists_stock hrun hnc hf hy hai halo hihi ha hv₀ with
     ⟨⟨hQi, hrooti, hvi⟩, ⟨hfl, hk⟩ | ⟨hlow, -⟩⟩ | ⟨hca, hma, hQf, -⟩
-  · rw [← Node.frame_of_projAC_at' hrun.toLocalRun' hy hc.1] at hQi hrooti hvi
+  · rw [← Node.frame_of_projAC_at hrun.toLocalRun' hy hc.1] at hQi hrooti hvi
     refine ⟨Q, ⟨hQi, Or.inl ?_⟩, hvi, hrooti, hfl, hk⟩
     apply AC.readPoint_blockStamp_lt_of_earlier_frame hr hrun.vstart hy ha hc hQt hQi hat
     intro r _ hrs
@@ -338,14 +338,14 @@ theorem FrameWindow.root_witness_stock' {lo hi g : Time} {floor : Nat}
 route (i)). An earlier action cut supplies a frozen viable descendant of the shadow root `F`. The
 witness has maximum height at the earlier cut, so the contest → gap alternative cannot occur, and
 the stock non-kind-J premise is not needed. -/
-theorem FrameWindow.root_witness_of_earlier_call_stock' {lo hi g : Time} {floor : Nat}
+theorem FrameWindow.root_witness_of_earlier_call_stock {lo hi g : Time} {floor : Nat}
     {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) lo hi floor kindJ J)
     (hrun : GoldilocksRun' proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
     (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : NoRestartAfter tr H (AC.gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
-    {ell₀ ell : ACLabel (goldilocksNode' sp ro)}
+    {ell₀ ell : ACLabel (goldilocksNode sp ro)}
     (ha : tr.projAC.CallAt y a ell₀) {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e)
     (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
@@ -354,21 +354,21 @@ theorem FrameWindow.root_witness_of_earlier_call_stock' {lo hi g : Time} {floor 
     ∃ Q ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
       Q ∈ ell.frame.viableHeads ∧ ell.frame.Anc ell.frame.fcRoot Q :=
   let ⟨Q, hQ, hv, hr, _⟩ :=
-    hframe.root_witness_stock' hrun hnc hf hnr hy hai ha hc halo hihi hat hgf
+    hframe.root_witness_stock hrun hnc hf hnr hy hai ha hc halo hihi hat hgf
   ⟨Q, hQ, hv, hr⟩
 
 /-- **The stored-lock witness over the stock window** (`FrameWindow.old_lock_witness`, route
 (i)): the stock conclusion, or the writer's frozen witness is the P-U-only J-side head of a contest
 at the write and the voter has since entered the gap `h_max = floor + 1` (the one regime switch
 that the stock window allows and that P-U persistence does not survive). -/
-theorem FrameWindow.old_lock_witness_or_contest_gap' {s₀ floor : Nat} {hi g : Time}
+theorem FrameWindow.old_lock_witness_or_contest_gap {s₀ floor : Nat} {hi g : Time}
     {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) hi floor kindJ J)
     (hrun : GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : NoRestartAfter tr H (AC.gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi)
     (hgf : AC.gbar g < AC.freeze sp e.msg.slot)
     {l : AC.Lock} (hl : l ∈ (tr.projAC.state y i).locks)
@@ -427,13 +427,13 @@ theorem FrameWindow.old_lock_witness_or_contest_gap' {s₀ floor : Nat} {hi g : 
   rcases hcase with hbelow | ⟨Q, hQ, hv, hAQ⟩
   · exfalso
     apply hstrict
-    have hroot := Healing.fcRoot_mono' hrun hy hai.le
-    rw [← Node.frame_of_projAC_at' hrun.toLocalRun' hy ha,
-      ← Node.frame_of_projAC_at' hrun.toLocalRun' hy hc.1] at hroot
+    have hroot := Healing.fcRoot_mono hrun hy hai.le
+    rw [← Node.frame_of_projAC_at hrun.toLocalRun' hy ha,
+      ← Node.frame_of_projAC_at hrun.toLocalRun' hy hc.1] at hroot
     exact hBA.trans ((hbelow.mono hPhi₀.2).trans hroot)
-  · rcases hframe.viableHead_persists_or_contest_gap' hrun hnc hf hy hai.le htime.1 hihi ha hv
+  · rcases hframe.viableHead_persists_or_contest_gap hrun hnc hf hy hai.le htime.1 hihi ha hv
       with ⟨hQt, -, hvQ⟩ | ⟨hca, hma, hQf, hmi⟩
-    · rw [← Node.frame_of_projAC_at' hrun.toLocalRun' hy hc.1] at hQt hvQ
+    · rw [← Node.frame_of_projAC_at hrun.toLocalRun' hy hc.1] at hQt hvQ
       refine Or.inl ⟨a, hai, ell₀, D, Q, ha, htime.1, htime.2, ho, hv,
         hBA.trans (hAQ.mono hPhi₀.2), hvQ, hQt, Or.inl ?_⟩
       apply AC.readPoint_blockStamp_lt_of_earlier_frame hr hrun.vstart hy ha hc hQ hQt htime.2
@@ -446,14 +446,14 @@ theorem FrameWindow.old_lock_witness_or_contest_gap' {s₀ floor : Nat} {hi g : 
 route (i)). The writer's frozen witness `Q` is (A) viable at the voter with the stock witness,
 (B) viable at the voter as the P-U-only J-side head of the voter's contest, or (C) the P-U-only
 head of a contest at the write while the voter is in the gap `h_max = floor + 1`. -/
-theorem FrameWindow.old_lock_witness_stock' {s₀ floor : Nat} {hi g : Time}
+theorem FrameWindow.old_lock_witness_stock {s₀ floor : Nat} {hi g : Time}
     {kindJ : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow (tr := tr) (H := H) (sp.ts s₀) hi floor kindJ J)
     (hrun : GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : NoRestartAfter tr H (AC.gbar g))
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ell e) (hihi : tr.time i ≤ hi)
     (hgf : AC.gbar g < AC.freeze sp e.msg.slot)
     {l : AC.Lock} (hl : l ∈ (tr.projAC.state y i).locks)
@@ -513,15 +513,15 @@ theorem FrameWindow.old_lock_witness_stock' {s₀ floor : Nat} {hi g : Time}
   rcases hcase with hbelow | ⟨Q, hQ, hv, hAQ⟩
   · exfalso
     apply hstrict
-    have hroot := Healing.fcRoot_mono' hrun hy hai.le
-    rw [← Node.frame_of_projAC_at' hrun.toLocalRun' hy ha,
-      ← Node.frame_of_projAC_at' hrun.toLocalRun' hy hc.1] at hroot
+    have hroot := Healing.fcRoot_mono hrun hy hai.le
+    rw [← Node.frame_of_projAC_at hrun.toLocalRun' hy ha,
+      ← Node.frame_of_projAC_at hrun.toLocalRun' hy hc.1] at hroot
     exact hBA.trans ((hbelow.mono hPhi₀.2).trans hroot)
   · refine ⟨a, hai, ell₀, D, Q, ha, htime.1, htime.2, ho, hv,
       hBA.trans (hAQ.mono hPhi₀.2), ?_⟩
-    rcases hframe.viableHead_persists_stock' hrun hnc hf hy hai.le htime.1 hihi ha hv
+    rcases hframe.viableHead_persists_stock hrun hnc hf hy hai.le htime.1 hihi ha hv
       with ⟨⟨hQt, -, hvQ⟩, hw⟩ | hres
-    · rw [← Node.frame_of_projAC_at' hrun.toLocalRun' hy hc.1] at hQt hvQ
+    · rw [← Node.frame_of_projAC_at hrun.toLocalRun' hy hc.1] at hQt hvQ
       refine Or.inl ⟨hvQ, ⟨hQt, Or.inl ?_⟩, hw⟩
       apply AC.readPoint_blockStamp_lt_of_earlier_frame hr hrun.vstart hy ha hc hQ hQt htime.2
       intro r _ hrs
@@ -534,15 +534,15 @@ theorem FrameWindow.old_lock_witness_stock' {s₀ floor : Nat} {hi g : Time}
 same justification cache `J` (safety, `J_eq_of_hj_eq_of_safe_with`). Combined with
 `FrameWindow.viableHead_persists_stock'` case (B): a reader still in the contest at
 `h_max = floor` keeps the writer's `J`, and the P-U-only head `Q` at `floor − 1` stays viable. -/
-theorem J_eq_of_top_same_hmax' (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem J_eq_of_top_same_hmax (hrun : GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     {y x : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H) {a i : Nat}
     (hta : (tr.state y a).fg.hmax = (tr.state y a).fg.hj + 1)
     (hti : (tr.state x i).fg.hmax = (tr.state x i).fg.hj + 1)
     (hm : (tr.state y a).fg.hmax = (tr.state x i).fg.hmax) :
     (tr.state y a).fg.J = (tr.state x i).fg.J := by
-  have hRa := Node.fg_reachable_at' hrun.toLocalRun' hy a
-  have hRi := Node.fg_reachable_at' hrun.toLocalRun' hx i
+  have hRa := Node.fg_reachable_at hrun.toLocalRun' hy a
+  have hRi := Node.fg_reachable_at hrun.toLocalRun' hx i
   have hu := Store.finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
   obtain ⟨-, hJa, -, ⟨Ba, hBa, hBaJ, hBahj⟩, -⟩ := Store.cache_invariants' hRa
   obtain ⟨-, hJi, -, ⟨Bi, hBi, hBiJ, hBihj⟩, -⟩ := Store.cache_invariants' hRi
@@ -550,7 +550,7 @@ theorem J_eq_of_top_same_hmax' (hrun : GoldilocksRun' proposer dg H tr ini)
     hf (fun u v hu' hv' hval => held_atts_safe' hrun hnc hy hx a i u v hu' hv' hval) hBa hBi
     (by rw [hBahj, hBihj]; omega)
   rw [hBaJ, hBiJ] at hroots
-  exact (Coherence.honest_blocks_coherent' hrun.toLocalRun' hnc).1
+  exact (Coherence.honest_blocks_coherent hrun.toLocalRun' hnc).1
     ⟨y, hy, a, hJa⟩ ⟨x, hx, i, hJi⟩ hroots
 
 end Consensus.Goldilocks.Healing
@@ -562,7 +562,7 @@ open AC (ACParams ReplayOrder Payload gbar)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
 
 /-- **Interface only, unresolved**: the shared optimistic contest residue. An optimistic write
 of label `m` by `z` at cut `a`, in a contest at `h_max = floor`, whose P-U viable head `Q` above
@@ -575,7 +575,7 @@ this lemma level: a caller-valid sketch (`n ≥ 4`, one fault, a withheld timeou
 before `ts (m+1)` that moves every honest store to the gap at `floor + 1`, and only X-side next
 proposals) leaves no early viable witness extending `D`. Not a believed-true stub; do not build on
 it. -/
-theorem optimistic_contest_residue'
+theorem optimistic_contest_residue
     {g ΔF b : Time} {s₀ m N floor : Nat} {kindJ : Prop}
     {J D Q : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
@@ -589,7 +589,7 @@ theorem optimistic_contest_residue'
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hmb : sp.ts N + sp.Δ ≤ b)
     (hlabel : s₀ ≤ m) (hmN : m < N)
     {z : Fin sp.n} {a : Nat} (hza : z ∈ H (tr.time a))
-    {ellw : ACLabel (goldilocksNode' sp ro)} (ha : tr.projAC.CallAt z a ellw)
+    {ellw : ACLabel (goldilocksNode sp ro)} (ha : tr.projAC.CallAt z a ellw)
     {CV : Set (AC.Vote sp.n)} (hop : AC.OptimisticLockAt tr.projAC z a m D CV)
     (hAD : Anc (tr.HonestBlocksAt H) (ellw.frame.viableAncestor D) D)
     (hQ : Q ∈ ellw.frame.viableHeads)

@@ -1,4 +1,7 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Growing
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
@@ -15,7 +18,7 @@ namespace Consensus.Goldilocks.Healing
 
 variable {P : Params} {ACP : Type} {st : Store P ACP}
 
-private theorem entry_input' {acp₀ : ACP} (hr : st.Reachable' acp₀) (r : Nat) :
+private theorem entry_input {acp₀ : ACP} (hr : st.Reachable' acp₀) (r : Nat) :
     1 ≤ (st.σ r).h ∧ (st.σ r).hj < (st.σ r).h ∧
       ∀ p ∈ (st.σ r).pending, p.1 < (st.σ r).h := by
   have hR := hr.reachableWith
@@ -31,45 +34,45 @@ private theorem entry_input' {acp₀ : ACP} (hr : st.Reachable' acp₀) (r : Nat
   obtain ⟨h1, _, h2, _, _, _, _, h3, _⟩ := FG.chain_invariants P.fg c _ hc
   exact ⟨h1, h2, fun p hp => (h3 p hp).2.trans_lt h2⟩
 
-private theorem call_step' {H : Set (Fin P.n)}
+private theorem call_step {H : Set (Fin P.n)}
     {tr : FGTrace P ACP}
     (hexec : ∀ i ℓ, tr.label i = some ℓ → tr.node i ∈ H →
-      FGLabel.Step' (tr.node i) (tr.state (tr.node i) i) ℓ (tr.post i))
+      FGLabel.Step (tr.node i) (tr.state (tr.node i) i) ℓ (tr.post i))
     {y : Fin P.n} (hy : y ∈ H) {i : Nat}
     (hn : tr.node i = y ∧ tr.label i ≠ none) :
-    ∃ ℓ, tr.label i = some ℓ ∧ FGLabel.Step' y (tr.state y i) ℓ (tr.post i) := by
+    ∃ ℓ, tr.label i = some ℓ ∧ FGLabel.Step y (tr.state y i) ℓ (tr.post i) := by
   obtain ⟨ℓ, hℓ⟩ := Option.ne_none_iff_exists'.1 hn.2
   refine ⟨ℓ, hℓ, ?_⟩
   rw [← hn.1]
   exact hexec i ℓ hℓ (hn.1 ▸ hy)
 
-private theorem fg_store_reachable' {acp₀ : ACP} {H : Set (Fin P.n)}
+private theorem fg_store_reachable {acp₀ : ACP} {H : Set (Fin P.n)}
     {tr : FGTrace P ACP}
     (hinit : ∀ y ∈ H, tr.init y = (Store.init acp₀, FG.Record.empty))
     (hexec : ∀ i ℓ, tr.label i = some ℓ → tr.node i ∈ H →
-      FGLabel.Step' (tr.node i) (tr.state (tr.node i) i) ℓ (tr.post i))
+      FGLabel.Step (tr.node i) (tr.state (tr.node i) i) ℓ (tr.post i))
     {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
     (tr.store y i).Reachable' acp₀ := by
-  rw [Store.reachable'_eq]
+  rw [Store.reachable_eq]
   induction i with
   | zero =>
-    change Relation.ReflTransGen Store.Step' (Store.init acp₀) (tr.init y).1
+    change Relation.ReflTransGen Store.Step (Store.init acp₀) (tr.init y).1
     rw [hinit y hy]
   | succ i ih =>
     rw [FGTrace.store, Trace.state]
     split_ifs with hnode
-    · obtain ⟨ℓ, _, hs⟩ := call_step' hexec hy hnode
+    · obtain ⟨ℓ, _, hs⟩ := call_step hexec hy hnode
       cases ℓ with
       | block B acc =>
-        rw [FGLabel.step'_block] at hs
+        rw [FGLabel.step_block] at hs
         rcases hs with ⟨_, h, _⟩ | ⟨_, _, he⟩
-        exacts [ih.tail ((Store.step'_iff _ _).2 (Or.inl ⟨B, h⟩)), he ▸ ih]
+        exacts [ih.tail ((Store.step_iff _ _).2 (Or.inl ⟨B, h⟩)), he ▸ ih]
       | attestation a =>
-        rw [FGLabel.step'_attestation] at hs
+        rw [FGLabel.step_attestation] at hs
         rw [hs]
-        exact ih.tail ((Store.step'_iff _ _).2 (Or.inr ⟨a, rfl⟩))
+        exact ih.tail ((Store.step_iff _ _).2 (Or.inr ⟨a, rfl⟩))
       | attest src signed =>
-        rw [FGLabel.step'_attest] at hs
+        rw [FGLabel.step_attest] at hs
         rw [hs.1]
         exact ih
     · exact ih
@@ -89,10 +92,10 @@ private theorem record_run_append {n : Nat} (v : Fin n) (Λ : FG.Record)
 
 /-- A shadow client's signatures belong to one run over valid entry states. Only FG
 execution is read; no equivalence with the stock block handler is assumed. -/
-theorem signed_run' {acp₀ : ACP} {H : Set (Fin P.n)} {tr : FGTrace P ACP}
+theorem signed_run {acp₀ : ACP} {H : Set (Fin P.n)} {tr : FGTrace P ACP}
     (hinit : ∀ y ∈ H, tr.init y = (Store.init acp₀, FG.Record.empty))
     (hexec : ∀ i ℓ, tr.label i = some ℓ → tr.node i ∈ H →
-      FGLabel.Step' (tr.node i) (tr.state (tr.node i) i) ℓ (tr.post i))
+      FGLabel.Step (tr.node i) (tr.state (tr.node i) i) ℓ (tr.post i))
     {v : Fin P.n} (hv : v ∈ H) (i : Nat) :
     ∃ inputs, FG.EntryInputs P.fg inputs ∧
       ∀ j < i, ∀ a, tr.SignAt v j a → a ∈ (FG.Record.run v FG.Record.empty inputs).2 := by
@@ -118,17 +121,17 @@ theorem signed_run' {acp₀ : ACP} {H : Set (Fin P.n)} {tr : FGTrace P ACP}
         exact absurd h (h₀ a src hn)
     rw [Trace.state]
     split_ifs with hnode
-    · obtain ⟨ℓ, hℓ, hs⟩ := call_step' hexec hv hnode
+    · obtain ⟨ℓ, hℓ, hs⟩ := call_step hexec hv hnode
       cases ℓ with
       | block B acc =>
-        rw [FGLabel.step'_block] at hs
+        rw [FGLabel.step_block] at hs
         refine ⟨inputs, hin, ?_, sign_of fun a src _ h => by rw [hℓ] at h; cases h⟩
         rcases hs with ⟨_, _, h⟩ | ⟨_, _, h⟩ <;> rw [h, hrec]
       | attestation a =>
-        rw [FGLabel.step'_attestation] at hs
+        rw [FGLabel.step_attestation] at hs
         exact ⟨inputs, hin, hs ▸ hrec, sign_of fun a src _ h => by rw [hℓ] at h; cases h⟩
       | attest src signed =>
-        rw [FGLabel.step'_attest] at hs
+        rw [FGLabel.step_attest] at hs
         obtain ⟨_, hs⟩ := hs
         set σe := (tr.state v i).1.σ ((tr.state v i).1.σ src.root).Th
         rw [show (tr.state v i).1.attest (tr.state v i).2 v src =
@@ -137,7 +140,7 @@ theorem signed_run' {acp₀ : ACP} {H : Set (Fin P.n)} {tr : FGTrace P ACP}
         · rcases List.mem_append.1 hσ with h | h
           · exact hin σ h
           · rw [List.mem_singleton.1 h]
-            exact entry_input' (fg_store_reachable' hinit hexec hv i) _
+            exact entry_input (fg_store_reachable hinit hexec hv i) _
         rw [record_run_append, ← hrec]
         rcases hc : (tr.state v i).2.createAtt v σe with _ | ⟨a, Λ'⟩ <;> rw [hc] at hs
         · exact ⟨hs.2.trans hrec, sign_of fun a src' _ h => by simp [hℓ, hs.1] at h⟩
@@ -157,14 +160,14 @@ open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-private theorem held_att_signed' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+private theorem held_att_signed {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {a : FG.Att sp.n}
     (ha : ∃ Y ∈ (tr.state y i).fg.tree, a ∈ Y.fgPayload) (hav : a.val ∈ H) :
     ∃ k < i, tr.SignAt a.val k a := by
   obtain ⟨X, hX, haX⟩ := ha
-  rcases Coherence.tree_accepted' hrun.toLocalRun' hy hX with rfl | ⟨k, hk, hacc⟩
+  rcases Coherence.tree_accepted hrun.toLocalRun' hy hX with rfl | ⟨k, hk, hacc⟩
   · cases haX
   · obtain ⟨k', hk', hs⟩ := hrun.att_unforgeable y hy k a
       (Or.inr ⟨X, ⟨true, hacc⟩, haX⟩) hav
@@ -178,11 +181,11 @@ theorem held_atts_safe' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
     (ha : ∃ Y ∈ (tr.state y i).fg.tree, a ∈ Y.fgPayload)
     (hb : ∃ Y ∈ (tr.state z j).fg.tree, b ∈ Y.fgPayload) (hav : a.val ∈ H) :
     ¬ FG.slashable a b := fun hab => by
-  obtain ⟨k, hk, hka⟩ := held_att_signed' hrun hy ha hav
-  obtain ⟨l, hl, hlb⟩ := held_att_signed' hrun hz hb (hab.1 ▸ hav)
+  obtain ⟨k, hk, hka⟩ := held_att_signed hrun hy ha hav
+  obtain ⟨l, hl, hlb⟩ := held_att_signed hrun hz hb (hab.1 ▸ hav)
   rw [← hab.1] at hlb
   obtain ⟨hinit, hexec⟩ := Compose.fg_exec' hrun.toLocalRun'
-  obtain ⟨inputs, hin, hs⟩ := signed_run' hinit hexec hav (max k l + 1)
+  obtain ⟨inputs, hin, hs⟩ := signed_run hinit hexec hav (max k l + 1)
   exact FG.client_safety sp.toParams.fg a.val inputs hin
     a (hs k (by omega) a ⟨_, Compose.projFG_callAt.mpr hka.choose_spec⟩)
     b (hs l (by omega) b ⟨_, Compose.projFG_callAt.mpr hlb.choose_spec⟩) hab
@@ -195,9 +198,9 @@ open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-private theorem held_att_signed_at' {proposer : Nat → Fin sp.n}
+private theorem held_att_signed_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace' sp ro} {ini}
+    {tr : GoldilocksTrace sp ro} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) {a : FG.Att sp.n}
@@ -207,7 +210,7 @@ private theorem held_att_signed_at' {proposer : Nat → Fin sp.n}
   have hXt : X ∈ ((tr.upTo t).state y i).fg.tree := by
     rw [Trace.upTo_state tr y hle]
     exact hX
-  rcases Coherence.tree_accepted' (hrun.upTo ht).toLocalRun' hy hXt with
+  rcases Coherence.tree_accepted (hrun.upTo ht).toLocalRun' hy hXt with
     rfl | ⟨k, hk, hacc⟩
   · cases haX
   · have hacc' := ((Trace.upTo_callAt tr).mp hacc).2
@@ -218,9 +221,9 @@ private theorem held_att_signed_at' {proposer : Nat → Fin sp.n}
 
 /-- Client safety for two honest observations of the shadow execution. A signer remains
 honest through both observations, but the two holders need not remain honest together. -/
-theorem held_atts_safe_at' {proposer : Nat → Fin sp.n}
+theorem held_atts_safe_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace' sp ro} {ini}
+    {tr : GoldilocksTrace sp ro} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (_hnc : Compose.NoCollRun dg tr)
     {y x : Fin sp.n} {m i : Nat} {u t d : Time}
@@ -230,9 +233,9 @@ theorem held_atts_safe_at' {proposer : Nat → Fin sp.n}
     (a b : FG.Att sp.n) (ha : ∃ Y ∈ (tr.state y m).fg.tree, a ∈ Y.fgPayload)
     (hb : ∃ Y ∈ (tr.state x i).fg.tree, b ∈ Y.fgPayload) (hav : a.val ∈ H d) :
     ¬ FG.slashable a b := fun hab => by
-  obtain ⟨k, hk, hka⟩ := held_att_signed_at' hrun hu hytime hy ha
+  obtain ⟨k, hk, hka⟩ := held_att_signed_at hrun hu hytime hy ha
     (hrun.antitone hud hav)
-  obtain ⟨l, hl, hlb⟩ := held_att_signed_at' hrun ht hxtime hx hb
+  obtain ⟨l, hl, hlb⟩ := held_att_signed_at hrun ht hxtime hx hb
     (hab.1 ▸ hrun.antitone htd hav)
   rw [← hab.1] at hlb
   have hka' : (tr.upTo d).SignAt a.val k a :=
@@ -241,7 +244,7 @@ theorem held_atts_safe_at' {proposer : Nat → Fin sp.n}
     (RunTrace.upTo_signAt tr).mpr ⟨(hxtime l hl).trans htd, hlb⟩
   have hr := hrun.upTo (hu.trans hud)
   obtain ⟨hinit, hexec⟩ := Compose.fg_exec' hr.toLocalRun'
-  obtain ⟨inputs, hin, hs⟩ := signed_run' hinit hexec hav (max k l + 1)
+  obtain ⟨inputs, hin, hs⟩ := signed_run hinit hexec hav (max k l + 1)
   exact FG.client_safety sp.toParams.fg a.val inputs hin
     a (hs k (by omega) a ⟨_, Compose.projFG_callAt.mpr hka'.choose_spec⟩)
     b (hs l (by omega) b ⟨_, Compose.projFG_callAt.mpr hlb'.choose_spec⟩) hab

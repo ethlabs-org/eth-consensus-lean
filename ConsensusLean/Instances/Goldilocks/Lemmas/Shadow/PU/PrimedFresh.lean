@@ -14,7 +14,7 @@ open AC (ACParams ReplayOrder Payload gbar)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
   {K : AC.CommitteeDict sp.n} {g ΔF b : Time} {u M : Nat} {isTop : Prop}
   {J P : AC.Blk sp.n (List (FG.Att sp.n))}
   (hframe : FrameWindow' tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) M isTop J)
@@ -37,7 +37,7 @@ include hframe hrun hnc hsvc hf hnr hmargin hTb hz hdes hP hPs in
 /-- Late honest calls retain the primed proposal's full-frame geometry. -/
 theorem proposal_viable_after_votes_primed_at'
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y k ell)
+    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ell)
     (hlo : sp.ts u + 2 * sp.Δ ≤ tr.time k)
     (hhi : tr.time k ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ) :
     P ∈ ell.frame.viableTree ell.frame.tree ∧ ell.frame.viableAncestor P = P ∧
@@ -53,7 +53,7 @@ include hframe hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin hTb hz hdes hP h
 /-- Primed geometry supplies the window-free unanimous selection proof. -/
 theorem unanimous_update_selection_primed_at'
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hu : AC.UpdateAt tr.projAC y k u ell) :
+    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k u ell) :
     P ∈ ell.frame.viableTree ell.frame.tree ∧
       AC.getConfirmation sp (tr.projAC.state y k) ell.frame u = some P ∧
       AC.fastSelect sp (tr.projAC.state y k) ell.frame u P = some P ∧
@@ -95,7 +95,7 @@ include hframe hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin hTb hz hdes hP h
 /-- Primed selection and geometry discharge the shared lock-veto proof. -/
 theorem unanimous_update_no_veto_primed_at'
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode' sp ro)} (hu : AC.UpdateAt tr.projAC y k u ell) :
+    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k u ell) :
     ¬ AC.conflictsWithLock sp (tr.projAC.state y k).locks ell.frame (tr.time k) P := by
   apply Core.unanimous_update_no_veto_at hrun.toCore hnc hsvc hawake hf hcatch
     hmargin hTb hun hy hu hK
@@ -112,7 +112,7 @@ theorem unanimous_update_no_veto_primed_at'
 
 include hframe hrun hnc hsvc hawake hf hcatch hnr hmargin hjoin hTb hz hdes hP hPs hun hK in
 /-- An awake honest update installs the fresh unanimous lock over the primed window. -/
-theorem fresh_fast_lock_update_primed_at'
+theorem fresh_fast_lock_update_at
     {y : Fin sp.n} (hy : y ∈ H (sp.ts (u + 1 : Nat) + 2 * sp.Δ)) :
     ∃ k ell, AC.UpdateAt tr.projAC y k u ell ∧
       AC.getConfirmation sp (tr.projAC.state y k) ell.frame u = some P ∧
@@ -122,7 +122,7 @@ theorem fresh_fast_lock_update_primed_at'
       P ∈ ell.frame.viableTree ell.frame.tree ∧
       ∃ e, u + 2 ≤ e ∧ (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.post k).locks ∧
         (⟨P.root, u, true, e⟩ : AC.Lock) ∈ (tr.projAC.state y (k + 1)).locks := by
-  obtain ⟨k, ell, hu⟩ := KernelProof.update_call_of_awake_at' hrun hnc hawake hnr hmargin hTb hy
+  obtain ⟨k, ell, hu⟩ := KernelProof.update_call_of_awake_at hrun hnc hawake hnr hmargin hTb hy
   have hyk : y ∈ H (tr.time k) := by
     have ht : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
     have hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ = sp.ts u + 6 * sp.Δ := by

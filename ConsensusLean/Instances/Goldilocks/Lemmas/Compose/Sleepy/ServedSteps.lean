@@ -830,10 +830,8 @@ theorem head_support_at {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc :
       exact ⟨hX, hI.anc _ _ (hΦU hX) (hva.mono hΦU) hLc⟩
     · rw [Set.mem_singleton_iff.1 hX]
       refine ⟨hΦ.fcRoot_mem, ?_⟩
-      change Ch (tr.state y i).fg.fcRoot
-      unfold Store.fcRoot
-      split_ifs
-      exacts [hI.caches.2, hI.caches.1]
+      change Ch (tr.state y i).fg.F
+      exact hI.caches.1
   have hcomp : ∀ X Y, X ∈ Φ.tree → Y ∈ Φ.tree → Ch X → Ch Y →
       Compatible Φ.tree X Y := fun X Y hX hY hXc hYc =>
     (hI.compat _ _ (hΦU hX) (hΦU hY) hXc hYc).imp

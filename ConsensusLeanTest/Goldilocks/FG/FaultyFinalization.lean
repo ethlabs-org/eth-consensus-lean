@@ -263,7 +263,7 @@ theorem onBlock_B₃ : s₂.onBlock B₃ = some s₃ := by
   have hv : ({ u₃ with hmax := max u₃.hmax σ₃.h, J := B₂, hj := σ₃.hj } :
       Store P₄ Unit).HasViableDescendant B₁ :=
     ⟨B₃, mem_tree rfl, anc_tail hB₁B₂ h₂ (mem_tree rfl) rfl,
-      (headHeightFloor_le _).trans (by decide)⟩
+      Or.inl (by decide)⟩
   have hu : u₃.updateFinality σ₃ =
       { u₃ with hmax := max u₃.hmax σ₃.h, J := B₂, hj := σ₃.hj, F := B₁ } :=
     updateFinality_JF u₃ σ₃ rfl (hGB₁.tail ⟨h₁, h₂, rfl⟩) (Or.inl (by decide)) rfl hGB₁

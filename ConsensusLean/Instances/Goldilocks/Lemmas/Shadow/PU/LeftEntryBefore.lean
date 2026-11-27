@@ -16,7 +16,7 @@ open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {g ΔF a b hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- **Left-entry provenance, with the cover read before the cut**, over the shadow run

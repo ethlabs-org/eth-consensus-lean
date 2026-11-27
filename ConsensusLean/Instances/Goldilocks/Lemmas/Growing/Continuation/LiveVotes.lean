@@ -331,7 +331,7 @@ private theorem seeded_voter_facts
     (hes : e.msg.slot = s) (ht₁ : t₁ ≤ tr.time j) (hjb : tr.time j ≤ b) :
     Anc (tr.HonestBlocksAt H) ℓy.frame.fcRoot Q ∧
       ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocksAt H) Q B →
-        (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
+        (tr.state y j).fg.IsViable B := by
   have hdt : sp.ts (r + sp.k : Nat) ≤ tr.time j := hS.drain.trans ht₁
   have hjt : tr.time j ≤ sp.ts s + sp.Δ := hes ▸ (cast_head_fcRoot_at hS.run hS.noColl hy hcy).2
   have hs0 : 0 < s := by have := hS.seed.timing.2.1; omega
@@ -404,7 +404,7 @@ theorem seeded_votes_eq_proposal
         fun O hO => (hDold O hO).trans (Anc.mono hΦpU hDX)
       rw [frame_of_projAC_at hrun hpi hc] at hXt hfX ⊢
       obtain ⟨hXs, hFX⟩ := hXt
-      exact ⟨hXs, hFX, Anc.mono (fun _ h => h.1) hfX, hfl⟩)
+      exact ⟨hXs, hFX, hfl⟩)
     (fun D hDt hDQ hDold y j ℓy e hy hcy hjb hes hE =>
       seeded_vote_anchor hS hs hPU ((Anc.mono hΦpU hDQ).trans hQP) hDold hy hcy hes
         (hvt₁ y j ℓy e hy hcy hes) hjb hE)
