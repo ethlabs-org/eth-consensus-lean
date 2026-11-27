@@ -349,6 +349,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.SuffixFrames
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.ViewsAgree
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.VoteReceipt
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.OwnBlockReady
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Domain
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.Foundation
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Pivot.FoundationSources
@@ -739,6 +740,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Finality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.High
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.OwnBlockReady
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Prefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.PrefixSteps
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Provenance

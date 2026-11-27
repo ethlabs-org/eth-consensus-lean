@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 
 public section
 
@@ -112,6 +113,67 @@ theorem onBlock_preview_head_retained {P : Params} {ACP : Type}
   obtain ⟨atts, he⟩ := addAtts_eq (added.updateFinality σ') B.fgPayload
   rw [he]
   exact hm
+
+/-- In a reachable store, successful import resolves the preview to a held
+ancestor of the imported block, independently of cache adoption. -/
+theorem onBlock_preview_resolves {P : Params} {ACP : Type} {acp₀ : ACP}
+    {st st' : Store P ACP} {B : NodeBlock P ACP} {pr : Nat}
+    (hr : st.Reachable acp₀) (h : st.onBlock B = some st')
+    (hp : B.parent = some pr) :
+    ∃ F ∈ st'.tree, F.root = P.fg.finalityPreview (st.σ pr) B.slot B.fgPayload ∧
+      st'.Anc F B := by
+  have hr' : st'.Reachable acp₀ := hr.tail (Or.inl ⟨B, h⟩)
+  obtain ⟨pr', σ', hp', _, _, _, hσ, he⟩ := onBlock_eq_some h
+  obtain rfl : pr' = pr := Option.some.inj (hp'.symm.trans hp)
+  have hB : B ∈ st'.tree := by
+    rw [he]
+    obtain ⟨atts, ha⟩ := addAtts_eq _ B.fgPayload
+    rw [ha]
+    change (updateFinality _ σ').blocks B.root = some B
+    rw [(updateFinality_spec _ σ').1]
+    exact Function.update_self ..
+  have hs : st'.σ B.root = σ' := by
+    rw [he]
+    obtain ⟨atts, ha⟩ := addAtts_eq _ B.fgPayload
+    rw [ha]
+    change (updateFinality _ σ').σ B.root = σ'
+    rw [(updateFinality_spec _ σ').2.1]
+    exact Function.update_self ..
+  obtain ⟨_, ⟨F, hF, hf, hFB⟩, _⟩ := entry_state_of_source P ACP acp₀ st' hr' B hB
+  exact ⟨F, hF, hf.trans (hs ▸ P.fg.stateTransition_finalityPreview hσ), hFB⟩
+
+/-- The preview and the reader's old finality are comparable after import.
+The reader may already be beyond the preview; strict adoption is then unnecessary. -/
+theorem onBlock_preview_comparable {P : Params} {ACP : Type} {acp₀ : ACP}
+    {st st' : Store P ACP} {B : NodeBlock P ACP} {pr : Nat}
+    (hr : st.Reachable acp₀) (h : st.onBlock B = some st')
+    (hp : B.parent = some pr) :
+    ∃ F ∈ st'.tree, F.root = P.fg.finalityPreview (st.σ pr) B.slot B.fgPayload ∧
+      (st'.Anc st.F F ∨ st'.Anc F st.F) := by
+  obtain ⟨F, hF, hf, hFB⟩ := onBlock_preview_resolves hr h hp
+  obtain ⟨_, _, _, _, _, hOld, _, _⟩ := onBlock_eq_some h
+  have ht := (tree_grows P ACP acp₀ st hr).1 B st' h
+  have hr' : st'.Reachable acp₀ := hr.tail (Or.inl ⟨B, h⟩)
+  exact ⟨F, hF, hf, Goldilocks.Anc.total
+    (accepted_tree P ACP acp₀ st' hr').2.1 (ht ▸ hOld) hFB⟩
+
+/-- Once a checkpoint is below store finality, any later reachable FG steps
+keep it below finality. No service or viability premise is needed for persistence. -/
+theorem preview_covered_persists {P : Params} {ACP : Type} {acp₀ : ACP}
+    {st st' : Store P ACP} {F : NodeBlock P ACP}
+    (hr : st.Reachable acp₀) (hsteps : Relation.ReflTransGen Step st st')
+    (hF : st.Anc F st.F) : st'.Anc F st'.F := by
+  induction hsteps with
+  | refl => exact hF
+  | @tail next last steps step ih =>
+    have hn : next.Reachable acp₀ := hr.trans steps
+    rcases step with ⟨B, hB⟩ | ⟨a, rfl⟩
+    · have ht := (tree_grows P ACP acp₀ next hn).1 B last hB
+      exact (ih.mono (ht ▸ Set.subset_insert _ _)).trans
+        ((finalized_monotone P ACP acp₀ next hn).1 B last hB)
+    · obtain ⟨atts, he⟩ := onAttestation_eq next a
+      rw [he]
+      exact ih
 
 end Store
 
