@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Key
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
 
@@ -221,6 +222,105 @@ theorem frameKey''_le_of_relay {ACP : Type} {acp₀ : ACP} {stx stz : Store P AC
     omega
   rw [frameKey''_def, frameKey''_def]
   split_ifs <;> omega
+
+open AC (ACParams ReplayOrder Payload)
+
+section Persistence
+
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+
+/-- Unresolved run bridge: the stock held-attestation safety fact on shadow executions. -/
+theorem held_atts_safe_window' (hrun : GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
+    {a b : FG.Att sp.n} (ha : ∃ Y ∈ (tr.state y i).fg.tree, a ∈ Y.fgPayload)
+    (hb : ∃ Y ∈ (tr.state y i).fg.tree, b ∈ Y.fgPayload) (hv : a.val ∈ H) :
+    ¬ FG.slashable a b := by
+  sorry
+
+/-- V-B4: a write-frame viable head remains a viable head at later cuts in the P-U window.
+The only new geometric step is `finalized_below_viable'`; the rest is the stock persistence
+argument, with fixed maximum height and top status in place of the old merged floor. -/
+theorem FrameWindow'.viableHead_persists' {lo hi : Time} {M : Nat}
+    {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow' tr (fun _ => H) lo hi M isTop J)
+    (hrun : GoldilocksRun' proposer dg H tr ini) (hnc : Compose.NoCollRun dg tr)
+    (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {y : Fin sp.n} (hy : y ∈ H) {a i : Nat} (hai : a ≤ i)
+    (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
+    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y a ell)
+    {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hv : Q ∈ ell.frame.viableHeads) :
+    Q ∈ (Node.frame' (tr.state y i)).tree ∧
+      (Node.frame' (tr.state y i)).Anc (Node.frame' (tr.state y i)).fcRoot Q ∧
+      Q ∈ (Node.frame' (tr.state y i)).viableHeads := by
+  have htime := hrun.time_mono hai
+  rw [Node.frame_of_projAC_at' hrun.toLocalRun' hy hc, Node.frame'_eq,
+    Store.toFrame'_viableHeads] at hv
+  have hQa : Q ∈ (tr.state y a).fg.tree := hv.1
+  have hQi := Compose.tree_mono' hrun.toLocalRun' hy hai hQa
+  have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocks H := fun B hB => ⟨y, hy, i, hB⟩
+  have hvi : (tr.state y i).fg.IsViable' Q := by
+    apply isViable'_of_window_data
+      ((hframe.M_eq y a hy halo (htime.trans hihi)).trans
+        (hframe.M_eq y i hy (halo.trans htime) hihi).symm)
+      ((hframe.top_iff y a hy halo (htime.trans hihi)).trans
+        (hframe.top_iff y i hy (halo.trans htime) hihi).symm)
+      (fun ht => (hframe.root_eq y a hy halo (htime.trans hihi)
+        ((hframe.top_iff y a hy halo (htime.trans hihi)).mp ht)).trans
+        (hframe.root_eq y i hy (halo.trans htime) hihi
+          ((hframe.top_iff y a hy halo (htime.trans hihi)).mp ht)).symm)
+      (hj_lt_hmax' hrun hy i) (σ_eq_honest' hrun hnc hy hy hQa hQi)
+      (fun h => h.mono (Compose.tree_mono' hrun.toLocalRun' hy hai)) hv.2.2
+  have hFQ := finalized_below_viable' (Node.fg_reachable_at' hrun.toLocalRun' hy i)
+    (Compose.honest_blocks_coherent' hrun.toLocalRun' hnc) hsub hf
+    (fun a b ha hb hv => held_atts_safe_window' hrun hnc hy i ha hb hv) hQi hvi
+  have hQt : Q ∈ (tr.state y i).fg.toFrame'.tree := by
+    rw [Store.toFrame'_tree]
+    exact ⟨hQi, hFQ⟩
+  refine ⟨?_, ?_, ?_⟩
+  · rwa [Node.frame'_eq]
+  · rw [Node.frame'_eq, Store.toFrame'_fcRoot]
+    change Anc (tr.state y i).fg.toFrame'.tree _ _
+    rw [Store.toFrame'_tree]
+    exact Anc.restrict .refl hFQ
+  · rw [Node.frame'_eq, Store.toFrame'_viableHeads]
+    exact ⟨hQi, hFQ, hvi⟩
+
+end Persistence
+
+namespace Growing
+
+variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {ini : Fin sp.n → (goldilocksNode' sp ro).State} {hold : Time}
+
+/-- V-B2, unresolved run supplier. The four-attempt combinatorial core is
+`exists_frameWindow'_seq_of_mem`; the open obligations are service relay and J agreement
+at two independently honest shadow observations. -/
+theorem exists_frameWindow'_seq_of_service_proof_at
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b κ : Time}
+    (hf : ∀ t, 0 ≤ t → t ≤ b → (H t)ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    (hsvc : ResetService tr H g ΔF b hold) (hcatch : CatchRun tr H g κ)
+    {lo lam T : Time} {hz : Nat} (len : Nat → Time)
+    (hlen : ∀ v, 0 ≤ len v) (hlam : 0 ≤ lam) (hlo : AC.gbar g + κ ≤ lo) (hTb : T ≤ b)
+    (hrange : ∀ y i, y ∈ H (tr.time i) → lo ≤ tr.time i → tr.time i < T →
+      hz ≤ (tr.state y i).fg.hmax ∧ (tr.state y i).fg.hmax ≤ hz + 1)
+    (hcall : ∀ z i m, z ∈ H (tr.time m) → lo ≤ tr.time i →
+      tr.time i + lam ≤ tr.time m → tr.time m < T →
+      ∃ j < m, tr.IsCall z j ∧ tr.deadline z j (max (tr.time i) g) sp.Δ ≤ tr.time j)
+    (hT : lo + ∑ j ∈ Finset.range 4, (len (2 * hz + j) + lam) < T) :
+    ∃ v, 2 * hz ≤ v ∧ v ≤ 2 * hz + 3 ∧ ∃ a, lo + lam ≤ a ∧
+      a + len v ≤ lo + ∑ j ∈ Finset.range (v - 2 * hz + 1), (len (2 * hz + j) + lam) ∧
+      (∀ y i, y ∈ H (tr.time i) → a ≤ tr.time i → tr.time i ≤ a + len v →
+        frameKey'' (tr.state y i).fg = v) ∧
+      ∃ M isTop J, FrameWindow' tr H a (a + len v) M isTop J := by
+  sorry
+
+end Growing
 
 end Consensus.Goldilocks.Healing
 
