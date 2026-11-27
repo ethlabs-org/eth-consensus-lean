@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Basic
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 public import Mathlib.Data.Set.Card
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.State
 @[expose] public section
@@ -541,7 +542,8 @@ theorem slow_iff (L : Set Lock) {B : Blk sp.n Unit} :
 /-- A live lock on `B1` vetoes no ancestor of `B2`. -/
 theorem not_conflicts_u {B : Blk sp.n Unit} (hB : Φ.Anc B B2) :
     ¬ conflictsWithLock sp ({⟨1, 2, true, 6⟩} : Set Lock) Φ 18 B := by
-  rintro ⟨L', ⟨hL', l, hl, hr⟩, hnc⟩
+  intro hc
+  obtain ⟨L', ⟨hL', l, hl, hr⟩, hnc⟩ := exists_of_conflictsWithLock hc
   rw [liveLocks_Φ (by rintro l rfl; exact ⟨by decide, by decide⟩)] at hl
   obtain rfl : l = _ := hl
   rw [eq_of_root hL' B1_mem hr.symm] at hnc
@@ -552,12 +554,19 @@ theorem conflicts_v {B : Blk sp.n Unit} :
     conflictsWithLock sp ({⟨3, 2, true, 5⟩} : Set Lock) Φ 18 B ↔ ¬ Compatible U B B3 := by
   have hlive : liveLocks sp ({⟨3, 2, true, 5⟩} : Set Lock) Φ 18 = {⟨3, 2, true, 5⟩} :=
     liveLocks_Φ (by rintro l rfl; exact ⟨by decide, by decide⟩)
+  have htop : highestLiveLock sp ({⟨3, 2, true, 5⟩} : Set Lock) Φ 18 = some B3 :=
+    deepest_top ⟨B3_mem, ⟨3, 2, true, 5⟩, by rw [hlive]; rfl, rfl⟩ B3_mem
+      fun C ⟨hC, l, hl, hr⟩ => by
+        rw [hlive] at hl
+        obtain rfl : l = _ := hl
+        rw [eq_of_root hC B3_mem hr.symm]
+        exact Relation.ReflTransGen.refl
   constructor
-  · rintro ⟨L', ⟨hL', l, hl, hr⟩, hnc⟩
-    rw [hlive] at hl
-    obtain rfl : l = _ := hl
-    rwa [eq_of_root hL' B3_mem hr.symm] at hnc
-  · exact fun h => ⟨B3, ⟨B3_mem, ⟨3, 2, true, 5⟩, by rw [hlive]; rfl, rfl⟩, h⟩
+  · rintro ⟨H, hH, hnc⟩
+    rw [htop] at hH
+    obtain rfl := Option.some.inj hH
+    exact hnc
+  · exact fun h => ⟨B3, htop, h⟩
 
 /-- The unvetoed update: a live fast lock of slot `2` on `B1` with expiry `6`. -/
 def Au : ACState sp.n := base {⟨1, 2, true, 6⟩}

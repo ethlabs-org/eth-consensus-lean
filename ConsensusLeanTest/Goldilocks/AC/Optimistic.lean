@@ -1,6 +1,7 @@
 module
 public import ConsensusLeanTest.Goldilocks.AC.Base
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 public import ConsensusLean.Instances.Goldilocks.Proofs.Growing.AC.Main
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
 import ConsensusLean.Lemmas.Tactic.Linarith
@@ -178,11 +179,12 @@ theorem liveLocks_eq {L : Set Lock} {t : Time}
     rfl
 
 theorem not_conflicts {L : Set Lock} {t : Time} {B : Blk sp1.n Unit} (hB : B ∈ U₁) :
-    ¬ conflictsWithLock sp1 L Φ₁ t B :=
-  fun ⟨_, hC, hnc⟩ => hnc (compatible_U₁ hB hC.1)
+    ¬ conflictsWithLock sp1 L Φ₁ t B := fun hc =>
+  let ⟨_, hC, hnc⟩ := exists_of_conflictsWithLock hc
+  hnc (compatible_U₁ hB hC.1)
 
 theorem getAnchor_mem (A : ACState sp1.n) (t : Time) : getAnchor sp1 A Φ₁ t ∈ U₁ := by
-  unfold getAnchor
+  rw [getAnchor_eq_deepest_union frameOK_Φ₁]
   cases h : deepest Φ₁ (liveLockBlocks sp1 A.locks Φ₁ t ∪ {Φ₁.fcRoot}) with
   | none => exact g_mem
   | some D =>
