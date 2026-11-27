@@ -120,6 +120,26 @@ variable {b : Time}
 variable {hold : Time}
 
 /-- `high_of_anc_at` over the run-facts bundle. -/
+theorem _root_.Consensus.Goldilocks.GoldilocksRunCore.high_of_anc_at
+    {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
+    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))} {ini}
+    (rc : GoldilocksRunCore u frameOf proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n}
+    {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
+    {z : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
+    (hz : z ∈ H t) {W : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hW : W ∈ (tr.state z k).fg.tree) (hBW : Anc (tr.HonestBlocksAt H) B W) :
+    HZ tr H g + 1 ≤ ((tr.state z k).fg.σ W.root).h := by
+  have hBx := rc.highOrigin_mem_at hnc ho
+  have hBz := rc.mem_of_honest_anc_at hnc ht hz hle hBW hW
+  have h₁ := Store.h_le_of_store_anc_with rc.finalitySpec (rc.reachable_at ht hz hle)
+    (rc.held_anc_at hnc ht hz hle hBW hW)
+  rw [← rc.σ_eq_honest_at hnc (rc.time_nonneg i)
+    (fun _ hq => rc.time_mono hq.le) (rc.antitone (le_max_right _ _) ho.1) ht hle hz hBx
+    hBz] at h₁
+  exact ho.2.2.2.trans h₁
+
+/-- `high_of_anc_at` over the run-facts bundle. -/
 theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.high_of_anc_at
     {u : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
     {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
@@ -129,16 +149,8 @@ theorem _root_.Consensus.Goldilocks.Healing.Growing.ResetRunCore.high_of_anc_at
     {z : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
     (hz : z ∈ H t) {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hW : W ∈ (tr.state z k).fg.tree) (hBW : Anc (tr.HonestBlocksAt H) B W) :
-    HZ tr H g + 1 ≤ ((tr.state z k).fg.σ W.root).h := by
-  have rc := hp.core
-  have hBx := rc.highOrigin_mem_at hp.noColl ho
-  have hBz := rc.mem_of_honest_anc_at hp.noColl ht hz hle hBW hW
-  have h₁ := Store.h_le_of_store_anc_with rc.finalitySpec (rc.reachable_at ht hz hle)
-    (rc.held_anc_at hp.noColl ht hz hle hBW hW)
-  rw [← rc.σ_eq_honest_at hp.noColl (rc.time_nonneg i)
-    (fun _ hq => rc.time_mono hq.le) (rc.antitone (le_max_right _ _) ho.1) ht hle hz hBx
-    hBz] at h₁
-  exact ho.2.2.2.trans h₁
+    HZ tr H g + 1 ≤ ((tr.state z k).fg.σ W.root).h :=
+  hp.core.high_of_anc_at hp.noColl ho ht hle hz hW hBW
 
 /-- A held descendant of a high origin has high state height, at a holder honest at an
 observation time after the held state's cuts. -/
