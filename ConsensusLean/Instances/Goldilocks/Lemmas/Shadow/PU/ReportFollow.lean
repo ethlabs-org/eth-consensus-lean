@@ -626,6 +626,8 @@ theorem toFG_candidate_pre_within_stub {K : AC.CommitteeDict sp.n}
     (_hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (_hwarm : s₀ + 2 * sp.k ≤ u) (_hhib : hi ≤ b)
     {z : Fin sp.n} (_hz : z ∈ H (sp.ts u + sp.Δ)) (_hdes : z = proposer u)
     {kP : Nat} (_hP : tr.ProposesAt z kP P) (_hPs : P.slot = u)
+    (_hun : ∀ x j e, x ∈ H (tr.time j) → AC.VoteAt tr.projAC x j e →
+      e.msg.slot = u → e.msg.head = P.root)
     (_hK : CommitteeHalfUpTo tr H K g b)
     {y : Fin sp.n} {i : Nat} (_hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode' sp ro)}
     (_hc : tr.projAC.CallAt y i ell)
@@ -820,8 +822,12 @@ theorem proposal_report_follow_delayed_at'
   obtain ⟨i, ell, hc, hcall, hti, hjoin⟩ := toFG_call_of_sign_at' hrun hnc hnr hcal hyt' hgu
     (by rw [← hT]; exact htl) hpub' (hawake y t' hyt' (by linarith) ht'b) hs'
   have hyi : y ∈ H (tr.time i) := by rw [hti]; exact hyt'
+  have huN' : sp.ts u ≤ sp.ts N := (AC.ts_le_iff sp).2 (by exact_mod_cast (show u ≤ N by omega))
+  have hun := honest_vote_heads_eq_stub (hframe.mono le_rfl (by linarith only [huN', hΔ, hm1]))
+    hrun hnc hsvc hawake hf hcatch hnr hm hwarm (by linarith only [huN', hΔ, hm1, hmb]) hz hdes
+    hP hPs hK
   obtain ⟨B, hB, hPB⟩ := toFG_candidate_pre_within_stub hframe hrun hnc hsvc hawake hf hcatch
-    hnr hm hwarm hmb hz hdes hP hPs hK hyi hc (by rw [hti]; exact hlt)
+    hnr hm hwarm hmb hz hdes hP hPs hun hK hyi hc (by rw [hti]; exact hlt)
     (by rw [hti]; exact htr.trans hm2)
   -- `P` is not genesis: it was accepted by its honest proposer
   have hptime : tr.time kP = sp.ts u := by
