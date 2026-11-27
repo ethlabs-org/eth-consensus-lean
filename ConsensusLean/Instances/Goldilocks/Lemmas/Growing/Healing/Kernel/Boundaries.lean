@@ -2,20 +2,17 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.FrameWindowExists
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Sleepy.Timing
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.FrameWindow
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.DrainWarm
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetRounds
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ResetDrain
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
 
 /-! # The growing drain kernel's steps
 
-The warm proposals, forwarded to their proof (the `KernelProof` form in `Kernel/DrainWarm`); the
-frame window is `exists_frameWindow_seq_of_service_proof_at` in `Kernel/FrameWindow`. Together they
-give the finite reset record with the reset bound `exists_reset_of_drain_rounds_awake_at` of
-`Kernel/ResetRounds`. The finite reset lower bound is
-proved in `Kernel/ResetSource`. No deadline is lengthened here.
+The warm proposals, forwarded to their proof (the `KernelProof` form in `Shadow/PU/ResetDrain`),
+on `FrameWindow'` windows; with the P-U window search they give the finite reset record with the
+reset bound `exists_reset_of_drain_rounds_awake_at` of `Shadow/PU/ResetDrain`. The finite reset
+lower bound is proved in `Kernel/ResetSource`. No deadline is lengthened here.
 -/
 
 namespace Consensus.Goldilocks.Healing.Growing
@@ -36,7 +33,7 @@ theorem drainOutputs_of_service_at
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hcatch : CatchRun tr H g (2 * sp.Δ))
     {G Ld : Nat} (hLd : 2 * sp.k + G ≤ Ld + 1) :
-    DrainOutputs tr proposer H g G Ld b := by
+    Shadow.DrainOutputs tr proposer H g G Ld b := by
   exact KernelProof.drainOutputs_of_service_at hrun hnc hsvc hawake hf hcatch hLd
 
 /-- Step 4 packaging: a bounded reset and a snapshot supply the finite reset record at a

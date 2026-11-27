@@ -5,14 +5,9 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FaultBound
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowLaterBoundary
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowRelay
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowFinality
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.WitnessUnanimity
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.RegularSupport
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 
 public section

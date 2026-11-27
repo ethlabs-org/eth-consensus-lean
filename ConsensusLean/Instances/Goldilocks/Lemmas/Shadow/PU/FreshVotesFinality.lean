@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.WitnessFamily
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Origin
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.FloorHead

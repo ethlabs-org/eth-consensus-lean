@@ -421,7 +421,7 @@ theorem _root_.Consensus.Goldilocks.Healing.PU.service_syncACAt
     have hsa' : tr.SendOrAdmitAt x i m := by
       obtain ⟨ell₀, hc₀, hm⟩ := hsa
       refine ⟨ell₀, Compose.projAC_callAt.1 hc₀, ?_⟩
-      have hs := Compose.projAC_state' (hrun.upTo (hrun.time_nonneg i)).toLocalRun hx i
+      have hs := Compose.projAC_state (hrun.upTo (hrun.time_nonneg i)).toLocalRun hx i
       rw [RunTrace.upTo_projAC,
         Trace.upTo_state tr.projAC x (fun k hk => hrun.time_mono hk.le),
         RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at hs

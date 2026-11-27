@@ -137,7 +137,7 @@ theorem final_reset_premises_of_shared_within_at
     exact catchRun_of_psync_at S Q.run.2 Q.hn Q.valid hs.noColl hnet
       (fun v t ht hb _ hv => Q.healthy.2.1.2 v t ht hb hv)
   -- the drain
-  have hdrain : Healing.Growing.DrainOutputs Q.trace
+  have hdrain : Healing.Growing.Shadow.DrainOutputs Q.trace
       (runProposer S Q.run.2 Q.hn) H Q.gst
       (Q.index : Nat) (healthyDrainLen S Q.index) Q.run.2.horizon :=
     Healing.Growing.drainOutputs_of_service_at hrun hs.noColl hs.sync hs.awake hs.faults hcatch
