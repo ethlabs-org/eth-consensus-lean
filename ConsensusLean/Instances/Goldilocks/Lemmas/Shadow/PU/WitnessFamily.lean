@@ -266,8 +266,8 @@ theorem finalized_anc_obs'
     (Compose.Growing.reachable_at' hrun ht hx hxtime).reachableWith
     (Coherence.honest_blocks_coherent_at' hrun hnc)
     (Compose.Growing.tree_held_at' hu hy hytime) (Compose.Growing.tree_held_at' ht hx hxtime) hf
-    (Consensus.Goldilocks.Healing.Growing.Shadow.held_atts_safe_at' hrun hnc hu hytime hy ht hxtime hx
-      (le_max_left _ _) (le_max_right _ _))
+    (Consensus.Goldilocks.Healing.Growing.Shadow.held_atts_safe_at' hrun hnc hu hytime hy ht
+      hxtime hx (le_max_left _ _) (le_max_right _ _))
     hX hFt hFr hW hlt).mono (Compose.Growing.tree_held_at' ht hx hxtime)
 
 /-- **The finalized tip of an honest observation is below every held block strictly above its
