@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FrameSourceGeometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FGProjection
@@ -411,6 +412,59 @@ theorem J_compatible' (hr : Node.LocalRun' proposer dg H sg tr ini)
   rcases hGB D hD with h | h
   · exact Or.inl (hJDU.trans h)
   · exact Anc.total hf.coherent hJDU h
+
+
+/-- **A held block compatible with every honest source stays a shadow candidate**
+(`held_candidate_of_rows`): in the shadow frame, rooted at `F`, a block of the frame's tree
+compatible with the row sources is in the viable tree. Over the shadow frame the viable heads are
+the blocks of height `h_max`, or of height `h_max − 1` with `J ⪯` them or a gap above `h_j`, so the
+stock case analysis on a contest is not needed: a block below the floor lies below the entry
+at the floor of a maximal block (`floor_or_crossing_of'`), whose carrier has height `h_max`; a block
+at the floor is viable, or compatible with `J` and strictly below it in a top frame, where `J` is a
+viable head. -/
+theorem held_candidate_of_rows' (hr : Node.LocalRun' proposer dg H sg tr ini)
+    (hfg : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
+    (hf : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) (i : Nat)
+    {G : A.Blk → Prop} (hsrc : HonestRowsSourced tr H G y i) {B : A.Blk}
+    (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
+    (hBt : B ∈ (Node.frame' (tr.state y i)).tree) :
+    (Node.frame' (tr.state y i)).Anc B (Node.frame' (tr.state y i)).fcRoot ∨
+      B ∈ (Node.frame' (tr.state y i)).viableTree (Node.frame' (tr.state y i)).tree := by
+  rw [Node.frame'_eq] at hBt ⊢
+  rw [Store.toFrame'_tree] at hBt
+  obtain ⟨hB, hFB⟩ := hBt
+  right
+  rw [Store.mem_viableTree'_iff]
+  refine ⟨hB, hFB, ?_⟩
+  suffices h : ∃ W ∈ (tr.state y i).fg.tree, (tr.state y i).fg.Anc B W ∧
+      (tr.state y i).fg.IsViable' W by
+    obtain ⟨W, hW, hBW, hv⟩ := h
+    exact ⟨W, hW, hFB.trans hBW, hv, hBW⟩
+  have hR := Node.fg_reachable_at' hr hy i
+  have hs := hR.puSnapshot
+  have hjm := hs.hj_lt_hmax
+  rcases floor_or_crossing_of' hr hfg hf hy (hsrc.above _) hGB hB with hpred |
+      ⟨-, E, X, -, -, -, hBE, -, hX, hEX, hXv⟩
+  swap
+  · exact ⟨X, hX, hBE.trans hEX, hXv⟩
+  by_cases hv : (tr.state y i).fg.IsViable' B
+  · exact ⟨B, hB, .refl, hv⟩
+  have htop : (tr.state y i).fg.hmax = (tr.state y i).fg.hj + 1 := by
+    by_contra hn
+    refine hv (((tr.state y i).fg.isViable'_iff B).2 ?_)
+    by_cases hh : (tr.state y i).fg.hmax ≤ ((tr.state y i).fg.σ B.root).h
+    · exact Or.inl hh
+    · exact Or.inr ⟨by omega, Or.inl (by omega)⟩
+  have hJB := J_compatible' hr hfg hf hy (hsrc.above _) hGB (fg_tree_subset_honest hy i hB)
+  have hcomp : Compatible (tr.state y i).fg.tree (tr.state y i).fg.J B := by
+    rcases hJB with h | h
+    · exact Or.inl (honest_held_anc' hr hfg hy h hB)
+    · exact Or.inr (honest_held_anc' hr hfg hy h hs.J_mem)
+  obtain ⟨hBJ, -⟩ := (Store.isViable'_or_lt_J_of_pred_le hpred hcomp).resolve_left hv
+  refine ⟨_, hs.J_mem, hBJ, ?_⟩
+  have := Store.J_mem_viableHeads' hs htop
+  rw [Store.toFrame'_viableHeads] at this
+  exact this.2.2
 
 end Consensus.Goldilocks.Compose.FrameGeometry
 
