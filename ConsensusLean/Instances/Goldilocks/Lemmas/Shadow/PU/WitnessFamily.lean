@@ -350,7 +350,8 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- **A window's witness places every honest finalized tip in it below an independently held
 descendant** (`FrameWindow.finalized_below_descendant_at` over the shadow run, with the witness
 clause on `X` in place of `floor ≤ σ(X).h` and `kindJ → J ⪯ X`). -/
-theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.finalized_below_descendant_at {lo hi : Time} {M : Nat}
+theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.finalized_below_descendant_at
+    {lo hi : Time} {M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : Generic.FrameWindow tr H lo hi M isTop J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
@@ -435,8 +436,8 @@ theorem witness_frame_of_held
   rw [Node.frame_eq, Store.toFrame_fcRoot]
   exact hFX
 
-/-- In a `Generic.FrameWindow`, a held block carrying the P-U witness clause at the reader is P-U viable
-in the reader's store. -/
+/-- In a `Generic.FrameWindow`, a held block carrying the P-U witness clause at the reader is P-U
+viable in the reader's store. -/
 private theorem isViable_of_frameWindow
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {M : Nat} {isTop : Prop}
@@ -468,9 +469,9 @@ private theorem isViable_of_frameWindow
   · exact Or.inl hge
 
 /-- **The frame geometry of a viable witness at a reader's cut** (`witness_frame_at` over the
-shadow frame): for a reader honest at its call in a `Generic.FrameWindow`, holding a descendant `Q` of `X`
-that carries the witness clause, either `X` is below its finalized tip, or `X` and `Q` are in its
-frame above `F` with `Q` a P-U viable head. The witness clause is exactly P-U viability at the
+shadow frame): for a reader honest at its call in a `Generic.FrameWindow`, holding a descendant `Q`
+of `X` that carries the witness clause, either `X` is below its finalized tip, or `X` and `Q` are in
+its frame above `F` with `Q` a P-U viable head. The witness clause is exactly P-U viability at the
 window's `M` and `J`; no `fc_root = J` case arises. -/
 theorem witness_frame_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
