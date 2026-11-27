@@ -3,7 +3,7 @@ public import ConsensusLeanTest.Goldilocks.Runs.OneValidator.Ticks
 import ConsensusLean.Lemmas.Tactic.Linarith
 @[expose] public section
 
-/-! # The one-validator tick run: the reset and the bridge
+/-! # The one-validator tick run: the reset and `Inv`
 
 The remaining facts of the healing premises on the tick run of
 `Goldilocks/Runs/OneValidator/Premises`, proved outright:
@@ -14,13 +14,10 @@ The remaining facts of the healing premises on the tick run of
   own block (`emit_cases`); every pool vote of slot `σ` is `cv σ` (`pool_cv`).
 * **The reset** (`tickRun_isReset`): `H_z = slot(ḡ) + 3` (`hz_eq`) and `a_z = t_{slot(ḡ)+4}`
   (`aZ`), the time of `att (slot(ḡ) + 4)`.
-* **The bridge** (`tickRun_bridgeAt`, for `a + T_b ≥ 0`): every protected block of slot `j` is a
-  chain block of slot `≤ j` (`protected_le`), so `Inv(t₀)` holds for every `t₀` (`tickRun_inv`).
-  `Geo` is required of no proposal: no proposal of a slot `p ≥ 2` and its votes lie in one settled
-  effective phase (`not_inSettledPhase`), because the own block, accepted between the proposal and
-  the vote at `t_p`, raises the frontier `h_max` from `p − 1` to `p`. (`Geo` itself fails here for
-  `p ≥ 4`: by `fgGood_frame`, the block of slot `p − 2` is a viable head of the proposer's frame and
-  not of the voter's, and it is in the voter block tree.)
+* **`Inv`** (`tickRun_inv`): every protected block of slot `j` is a chain block of slot `≤ j`
+  (`protected_le`), so `Inv(t₀)` holds for every `t₀`. (`Geo` itself fails here for `p ≥ 4`: by
+  `fgGood_frame`, the block of slot `p − 2` is a viable head of the proposer's frame and not of the
+  voter's, and it is in the voter block tree.)
 With `n = 1` and `f = 0` this shows the premises consistent, not met with faults. -/
 
 namespace Consensus.Goldilocks.Witness.One
@@ -463,7 +460,7 @@ theorem protected_le {t₀ : Time} {B : N1.Blk} {j : Nat}
     have h' : ((4 * (k' + 1 : Nat) : Int) : Int) = 4 * ((j : Nat) : Int) := hti
     omega
 
-/-! ## The bridge: `Inv` holds from every time, and no proposal lies in one settled phase -/
+/-! ## `Inv` holds from every time -/
 
 theorem tip_ge {j i : Nat} (h : 4 * (j + 1) ≤ i / 8) : j ≤ tip (i / 8) := by unfold tip; omega
 
@@ -500,44 +497,6 @@ theorem tickRun_inv (t₀ : Time) :
 
 theorem hmax_state (i : Nat) : ((tickRun N1 dg1).state v0 i).fg.hmax = hexp (stTip i) :=
   (state_fgGood i).hmax
-
-/-- No proposal of a slot `p ≥ 2` lies in one settled effective phase: the own block raises the
-frontier between the proposal and the vote. -/
-theorem not_inSettledPhase (g : Time) {p : Nat} (hp : 2 ≤ p) :
-    ¬ Healing.InSettledPhase (tickRun N1 dg1) Set.univ g p := by
-  rintro ⟨w, m, c, -, hw, hall⟩
-  have ht : ∀ r, r < 8 → (tickRun N1 dg1).time (8 * (4 * p) + r) = sp1.ts p := fun r hr => by
-    rw [tickRun_time, ts_nat, show (8 * (4 * p) + r) / 8 = 4 * p by omega]; push_cast; ring
-  have front : ∀ r, r < 8 → hexp (stTip (8 * (4 * p) + r)) = m := fun r hr => by
-    have h := hall (8 * (4 * p) + r) (by rw [ht r hr]; exact hw) (Or.inl (ht r hr).le)
-    have hf : Healing.FrontierAt (tickRun N1 dg1).projFG Set.univ (8 * (4 * p) + r) m := by
-      cases c <;> exact h.1
-    obtain ⟨y, -, hy⟩ := hf.1
-    rw [eq_v0 rfl y] at hy
-    change ((tickRun N1 dg1).projFG.state v0 _).1.hmax = m at hy
-    rw [Compose.projFG_state tickRun_goldilocksRun.toLocalRun (Set.mem_univ _)] at hy
-    rw [← hy, hmax_state]
-  have h0 := front 0 (by omega)
-  have h3 := front 3 (by omega)
-  unfold stTip at h0 h3
-  rw [ite_neg (by omega)] at h0
-  rw [ite_pos ⟨by omega, by omega, by omega⟩] at h3
-  rw [← h3, show 8 * (4 * p) + 3 = 8 * (4 * p) + 0 + 3 by omega] at h0
-  rw [show (8 * (4 * p) + 0) / 8 = 4 * p by omega,
-    show (8 * (4 * p) + 0 + 3) / 8 = 4 * p by omega] at h0
-  unfold tip hexp at h0
-  split_ifs at h0 <;> omega
-
-/-- **H.3 (c)'s bridge `BridgeAt` holds on the tick run** for every reset time `a` and offset `T_b`
-with `a + T_b ≥ 0`: `Inv` holds from every time, and `Geo` is required of no proposal, since no
-proposal and its votes lie in one settled effective phase (`not_inSettledPhase`). -/
-theorem tickRun_bridgeAt (g a Tb : Time) (h : 0 ≤ a + Tb) :
-    Healing.BridgeAt (tickRun N1 dg1) Set.univ (fun _ => v0) g a Tb := by
-  refine ⟨tickRun_inv _, fun p P _ hts hset => absurd hset (not_inSettledPhase g ?_)⟩
-  rw [ts_nat] at hts
-  have hts' : a + Tb + 2 * (4 * ((2 : Nat) + 1 : Int) * 1) + 8 * 1 ≤ 4 * (p : Int) := hts
-  have : (8 : Int) ≤ 4 * (p : Int) := by linarith
-  omega
 
 /-! ## The reset -/
 

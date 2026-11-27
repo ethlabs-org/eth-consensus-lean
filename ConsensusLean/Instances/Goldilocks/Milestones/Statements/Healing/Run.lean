@@ -9,10 +9,10 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Growing.Gol
 /-! # Goldilocks milestone Healing: the run-level healing statements (statements)
 
 Transcribed from `specs/goldilocks/tex/goldilocks-claims.tex` §"Healing: top-level
-statements" (HR.1–HR.4, H.3's bridge and `T_heal`) and §"Healing: phase service" (the
+statements" (HR.1, HR.2, `HighOrigin` and `T_heal`) and §"Healing: phase service" (the
 HS shared premises, the settled predicate and the constants `D`, `C`, `A`), over the Goldilocks run
-(`Spec/Run`, `GoldilocksRun`) and, for HR.2, over FG traces (`FGLocalRun`). The run bundle, H.3's
-FG non-interference, HR.3 (reset existence), H.4 and the phase-service statements HS.0–HS.5 are
+(`Spec/Run`, `GoldilocksRun`) and, for HR.2, over FG traces (`FGLocalRun`). The run bundle, H.3
+including its bridge vocabulary, HR.3 and HR.4, H.4 and the phase-service statements HS.0–HS.5 are
 retired as milestone statements; the statements here are the types of the lemmas the recovery
 proofs read.
 
@@ -269,38 +269,6 @@ def HighOrigin (g : Time) (x : Fin sp.n) (i j : Nat) (B : AC.Blk sp.n (List (FG.
     (∃ CV, Compose.StoredFastLockAt tr x i j B CV) ∧
     HZ tr H g + 1 ≤ ((tr.state x i).fg.σ B.root).h
 
-/-- **(R1)–(R4) of HR.4** for the reset `a`. -/
-structure RetentionAt (g a : Time) : Prop where
-  /-- (R1) The blocks of any two high origins are comparable. -/
-  comparable : ∀ x i j B x' i' j' B', HighOrigin tr H g x i j B → HighOrigin tr H g x' i' j' B' →
-    Compatible (tr.HonestBlocks H) B B'
-  /-- (R1) Every honest attestation signed at or after `a` whose height pair has height
-  `h ≥ H_z + 1` names the entry at `h` of a high origin's chain. -/
-  fgAtts : ∀ y ∈ H, ∀ k att, tr.SignAt y k att → a ≤ tr.time k → HZ tr H g + 1 ≤ att.h →
-    ∃ x i j B, HighOrigin tr H g x i j B ∧ ∃ E ∈ (tr.state x i).fg.tree,
-      (tr.state x i).fg.Anc E B ∧ E.root = att.T ∧ ((tr.state x i).fg.σ E.root).h = att.h ∧
-      ((tr.state x i).fg.σ E.root).Th = E.root
-  /-- (R2) After every cut of an honest node at a time `≥ a` (from its tick at `a` on), its
-  `Σ.F`, and its `Σ.J` when `Σ.h_j ≥ H_z + 1`, are compatible with every high origin written at
-  that cut or earlier. -/
-  caches : ∀ y ∈ H, ∀ k, tr.IsCall y k → a ≤ tr.time k →
-    ∀ x i j B, HighOrigin tr H g x i j B → i ≤ k →
-      Compatible (tr.HonestBlocks H) (tr.post k).fg.F B ∧
-      (HZ tr H g + 1 ≤ (tr.post k).fg.hj → Compatible (tr.HonestBlocks H) (tr.post k).fg.J B)
-  /-- (R3) For a high origin `(B, j)`, every honest vote of a slot `> j` extends `B`, and at that
-  vote `B` is in the voter's viable voter block tree or `B ⪯ fc_root` (block order inside the
-  honest blocks, not ancestry inside the frame tree, which `B` leaves once `Σ.F` passes it). -/
-  votes : ∀ x i j B, HighOrigin tr H g x i j B → ∀ y ∈ H, ∀ k ℓ e,
-    AC.CastAt tr.projAC y k ℓ e → j < e.msg.slot →
-      AC.VoteExtends (tr.HonestBlocks H) e.msg B ∧
-      (B ∈ ℓ.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓ.frame e.msg.slot) ∨
-        Anc (tr.HonestBlocks H) B ℓ.frame.fcRoot)
-  /-- (R4) For every `h ≥ H_z + 1`, the nonempty target, timeout and lock entries at `h` of the
-  honest client records name at most one block. -/
-  records : ∀ h, HZ tr H g + 1 ≤ h →
-    {r | ∃ y ∈ H, ∃ i, (tr.state y i).record.target h = some r ∨
-      r ∈ (tr.state y i).record.timeout h ∨ (tr.state y i).record.lock h = some r}.Subsingleton
-
 end Goldilocks
 
 /-- **HR.1, cut and reset.** In a Goldilocks run (unforgeable signatures, durable records) under
@@ -383,27 +351,6 @@ def Unanimous (p : Nat) (P : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
 def HonestProposalRun (proposer : Nat → Fin sp.n)
     (p : Nat) (P : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
   proposer p ∈ H ∧ AC.HonestProposal tr.projAC (proposer p) p P
-
-/-- The proposal of slot `p` and the honest slot-`p` votes lie in one effective phase in which
-every honest node is settled (HS definitions, with `κ = 2Δ`): the run is settled at some
-`w ≤ t_p`, and the effective phase is the same at every cut from `w` through `t_p` and through
-the last honest vote of slot `p`. -/
-def InSettledPhase (g : Time) (p : Nat) : Prop :=
-  ∃ w m c, SettledAt tr H g (2 * sp.Δ) w ∧ w ≤ sp.ts p ∧
-    ∀ i, w ≤ tr.time i →
-      (tr.time i ≤ sp.ts p ∨ ∃ y ∈ H, ∃ i' e, i ≤ i' ∧ AC.VoteAt tr.projAC y i' e ∧
-        e.msg.slot = p) →
-      PhaseAt tr.projFG H i m c
-
-/-- **The bridge of H.3 (c)** with offset `T_b` from the reset `a`: the AC projection satisfies
-`Inv(a + T_b)`, and `Geo(P)` holds for every honest proposal `P` of a slot
-`p ≥ s_AC(a + T_b)` (`t_p ≥ a + T_b + 2Θ + 8Δ`) whose proposal and votes lie in one settled
-effective phase. -/
-def BridgeAt (proposer : Nat → Fin sp.n) (g a Tb : Time) : Prop :=
-  AC.Inv proposer tr.projAC H (tr.HonestBlocks H) (a + Tb) ∧
-    ∀ (p : Nat) P, HonestProposalRun tr H proposer p P →
-      a + Tb + 2 * AC.Θ sp + 8 * sp.Δ ≤ sp.ts p →
-      InSettledPhase tr H g p → AC.Geo proposer tr.projAC H p P
 
 end Top
 

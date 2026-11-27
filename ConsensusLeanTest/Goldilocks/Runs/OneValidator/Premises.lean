@@ -11,7 +11,7 @@ import ConsensusLean.Lemmas.Tactic.Linarith
 /-! # A one-validator run of the Goldilocks node: the healing premises are consistent
 
 Non-vacuity of the healing premises: a
-`GoldilocksRun` meeting the HS shared premises, the reset and H.3 (c)'s bridge of the healing
+`GoldilocksRun` meeting the HS shared premises, and the reset of the healing
 statements. With
 one validator (`n = 1`, `f = 0`) this shows the premises **consistent**, not met with faults (a
 witness with a faulty validator, e.g. `n = 4`, `f = 1` silent, is a follow-up).
@@ -31,12 +31,9 @@ witness with a faulty validator, e.g. `n = 4`, `f = 1` silent, is a follow-up).
   `Sync` for every window, `Healthy(g)`, `Catch(κ)` and the HS shared premises hold on it; (a) a
   ready proposal at every slot `s ≥ 1` (`tickRun_readyProposal`) and `Prop⁺(G_p)` for `G_p ≥ 4Δ`
   (`tickRun_propPlus`).
-* **The reset and the bridge.** `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Run` proves the
-  reset (`tickRun_isReset`, `a_z = aZ g`) and H.3 (c)'s bridge (`tickRun_bridgeAt`) for this run,
-  over `Goldilocks/Runs/OneValidator/Chain` and `Goldilocks/Runs/OneValidator/Ticks`. Caveat:
-  `BridgeAt`'s `Geo` part holds vacuously here (`not_inSettledPhase`: the own block, accepted at
-  `t_p` between `ac_proposal` and the vote, raises `h_max`, so no proposal and its votes lie in one
-  settled phase); the witness does not exercise `Geo`. -/
+* **The reset.** `ConsensusLeanTest/Goldilocks/Runs/OneValidator/Run` proves the reset
+  (`tickRun_isReset`, `a_z = aZ g`) for this run, over `Goldilocks/Runs/OneValidator/Chain` and
+  `Goldilocks/Runs/OneValidator/Ticks`. -/
 
 namespace Consensus.Goldilocks.Witness
 
