@@ -473,7 +473,16 @@ theorem acCatchAt' (hrun : LocalRun' proposer dg H sg tr ini) {g κ : Time}
     (hy : y ∈ H (tr.time j)) (hc : tr.projAC.CallAt y j ℓ) (hj : AC.gbar g + κ ≤ tr.time j)
     (hanc : Anc (tr.HonestBlocksAt H) ℓ.frame.F B) :
     ∃ k ≤ j, tr.projAC.AcceptAt y k B ∧ tr.time k < AC.gbar g + κ := by
-  sorry
+  obtain ⟨ℓ₀, hc₀, hb⟩ := ha
+  obtain ⟨q, _, hq, ht⟩ := acBlock_prev' hrun hx (Compose.projAC_callAt.mp hc₀) hb
+  have hF : ℓ.frame.F = (tr.state y j).fg.F := by
+    rw [((Node.cutStep'_ac _ _ _ _ _).mp
+      (hrun.cutLaw y j _ (Compose.projAC_callAt.mp hc) hy)).1, Node.frame'_eq]
+    exact Store.toFrame'_F _
+  obtain ⟨k, hk, hak, hkt⟩ := fgCatchAt' hrun hcatch (ht ▸ hx) hq (ht ▸ hi) hy hj (hF ▸ hanc)
+  obtain ⟨ℓ', hc', hb', ht'⟩ :=
+    accept_next' hrun (hrun.antitone (hrun.time_mono hk.le) hy) hak
+  exact ⟨k + 1, hk, ⟨ℓ', Compose.projAC_callAt.mpr hc', hb'⟩, ht'.symm ▸ hkt⟩
 
 end Consensus.Goldilocks.Growing.LocalRun'
 

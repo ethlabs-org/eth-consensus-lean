@@ -2,7 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Geometry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.VoteDomain
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Kernel
 import ConsensusLean.Instances.Goldilocks.Lemmas.Frame.Ancestry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Persist.Vote
 import ConsensusLean.Lemmas.Tactic.Linarith
