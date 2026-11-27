@@ -35,15 +35,15 @@ public section
 
 The suffix steps, generic in the service start. The leaves read the service as
 `SuffixService` (the AC service window from a start `a₀` with the catch-up of older acceptances
-before `a₀ + κ ≤ t_{s−1}`), and the voter's facts at `Q` (its `fc_root` below `Q`, its head height
-floor at most the height of every block of its tree above `Q`) as premises:
+before `a₀ + κ ≤ t_{s−1}`), and the voter's facts at `Q` (its `fc_root` below `Q`, and every
+held descendant of `Q` viable) as premises:
 
 * `relay_mem_window_before`: the acceptance relay into a frame under the window and its catch-up;
 * `suffix_agree_of`: on the suffix from the pivot, the proposer's best child is the voter's;
 * `old_child_ineligible_of`: no old child of `Q` is eligible at the voter;
 * `proposal_at_voter_of`: `P` is in the voter's viable voter block tree;
-* `head_slot_lt`, `vote_floor_le_of`: the duty head is below slot `s`, and the head height floor at
-  an honest vote is at most the height of every block above the old origins.
+* `head_slot_lt`, `vote_viable_of`: the duty head is below slot `s`, and every held block above
+  the old origins is viable at an honest vote.
 
 The growing-fault forms apply them on a prefix. -/
 
@@ -120,7 +120,7 @@ every honest attestation an honest slot-`s` voter holds was signed before the vo
 below an origin before the signing (`attestation_source`); a regular one of label `l` is written at
 `t_l + 6Δ ≤ t_s + Δ`, so `l ≤ s − 2`; an optimistic one has label at most `s`, and not `s`
 (`no_optimistic_before_held_row_of`, under the slot committee half bound). -/
-private theorem vote_rows_old {ini} (hrun : GoldilocksRun proposer dg H tr ini)
+theorem vote_rows_old {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {s : Nat} (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
@@ -157,12 +157,9 @@ private theorem vote_rows_old {ini} (hrun : GoldilocksRun proposer dg H tr ini)
       hsize hfK hy hyK hc hes
       hm hmj hav hkm hsg hz hck hOp).elim
 
-/-- **The head height floor at an honest vote is at most the height of a held block above every old
-origin** (`floor ≤ ht(D_s)` at the vote reads): the sources of the voter's honest attestations are
-below old origins (`vote_rows_old`), so below the block; so there is no contest, and the carrier of
-`h_max` crossed `h_max − 1` with such a source, whose entry, below the block, has height
-`h_max − 1`, under the slot committee premises of `vote_rows_old`. -/
-theorem vote_floor_le_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
+/-- A held block above every old origin is viable: it extends the justification and reaches
+the predecessor height of the maximal carrier. -/
+theorem vote_viable_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {s : Nat} (hs0 : 0 < s) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y j ℓ e) (hes : e.msg.slot = s) {B : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -171,21 +168,37 @@ theorem vote_floor_le_of {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc 
     (K : AC.CommitteeDict sp.n) (hP : AC.CommitteeP K tr.projAC H)
     (hsize : ∀ σ, (K.committee σ).ncard = sp.committeeSize)
     (hfK : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize) (hyK : y ∈ K.committee s) :
-    (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h := by
+    (tr.state y j).fg.IsViable B := by
   have hsrc := vote_rows_old hrun hnc hs0 hy hc hes K hP hsize hfK hyK
   have hU := (projFG_localRun hrun hnc).coherent
   have hGB : ∀ D, (∃ O, OldOrigin tr H s O ∧ Anc (tr.HonestBlocks H) D O) →
       Anc (tr.HonestBlocks H) D B := fun D ⟨O, hO, hDO⟩ => hDO.trans (hold O hO)
-  rcases floor_or_crossing_scoped hrun hnc hf hy
+  have hJB : (tr.state y j).fg.Anc (tr.state y j).fg.J B := by
+    rcases justified_of_rows_of hrun hnc hf hy
+      (R := fun X => Anc (tr.HonestBlocks H) X B)
+      (fun _ _ hXY hYB => hXY.trans hYB)
+      (honestRowsSourced_iff.2 fun X hX a ha hav => by
+        obtain ⟨D, hD, hDs⟩ := honestRowsSourced_iff.1 hsrc X hX a ha hav
+        exact ⟨D, hGB D hD, hDs⟩) with hg | hJB
+    · have hJt := (Store.cache_invariants _ _ _ _ (fg_reachable hrun.toLocalRun hy j)).2.1
+      rw [honest_eq_genesis hrun hU ⟨y, hy, j, hJt⟩ hg]
+      exact (Store.accepted_tree _ _ _ _ (fg_reachable hrun.toLocalRun hy j)).2.2.2 B hB
+    · exact honest_held_anc hrun hnc hy hJB hB
+  have hpred : (tr.state y j).fg.hmax - 1 ≤ ((tr.state y j).fg.σ B.root).h := by
+    rcases floor_or_crossing_scoped hrun hnc hf hy
       (fun X hX a ha hav _ => honestRowsSourced_iff.1 hsrc X hX a ha hav)
       (fun D D' hD hD' => Anc.total hU (hGB D hD) (hGB D' hD'))
       (fun D hD => Or.inl (hGB D hD)) hB with hle | ⟨D, E, -, hD, hDs, hE, -, hEh, -⟩
-  · exact hle
-  obtain ⟨x, hx, k, -, -, hED, -, -⟩ := honest_source_entry hrun hnc hDs ⟨y, hy, j, hE⟩ rfl
-  have hEB :=
-    honest_held_anc hrun hnc hy ((hED.mono (fg_tree_subset_honest hx k)).trans (hGB D hD)) hB
-  have := (honest_held_height hrun hnc hy hEB).1
-  omega
+    · exact hle
+    obtain ⟨x, hx, k, -, -, hED, -, -⟩ := honest_source_entry hrun hnc hDs ⟨y, hy, j, hE⟩ rfl
+    have hEB :=
+      honest_held_anc hrun hnc hy ((hED.mono (fg_tree_subset_honest hx k)).trans (hGB D hD)) hB
+    have := (honest_held_height hrun hnc hy hEB).1
+    omega
+  change _ ∨ (_ ∧ _)
+  by_cases hh : (tr.state y j).fg.hmax ≤ ((tr.state y j).fg.σ B.root).h
+  · exact Or.inl hh
+  · exact Or.inr ⟨by omega, Or.inr hJB⟩
 
 /-- **The voter holds the proposal**: an early vote is ready, with a block of slot `s` in its
 frame (`AC.cast_readyU`), which is `P` (`eq_of_slot`); a vote at `t_s + Δ` follows the relay of
@@ -378,12 +391,11 @@ omit hsl hpj hcall hd hti hsD hDQ hviab in
 ancestor of `Q` (so of `P`) is in the voter's viable voter block tree. The voter holds `P`
 (`voter_holds_proposal_before`), and `C ⪯ P` extends `fc_root` (below the voter's anchor, below
 `X`), so `C` is in the voter block tree as an ancestor of the slot-`s` block `P`; and `P` is a
-viable head of the voter: every old origin is below `Q`, so the floor at the vote is at most the
-height of `P` (`vote_floor_le_of`). -/
+viable head of the voter because every held descendant of `Q` is viable. -/
 private theorem winner_voter_tree_before {a₀ κ b : Time}
     (hsync : SuffixService H tr a₀ κ b s) (hjb : tr.time j ≤ b)
     (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocks H) d.head B →
-      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h)
+      (tr.state y j).fg.IsViable B)
     {X C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hXQ : ℓp.frame.Anc X d.head)
     (hanc : Anc (tr.HonestBlocks H) (AC.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X)
@@ -415,7 +427,7 @@ private theorem winner_voter_tree_before {a₀ κ b : Time}
     P, ⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩, ?_, hCPy⟩
   -- `P` is a viable head of the voter
   rw [frame_of_projAC hrun hy hcy.1] at hPt hfP ⊢
-  exact ⟨hPt.1, hPt.2, Anc.mono (fun X hX => hX.1) hfP, hflQ P hPt.1 hQP⟩
+  exact ⟨hPt.1, hPt.2, hflQ P hPt.1 hQP⟩
 
 omit hsl hpj hsD hDQ in
 /-- **Competitors reflect**: a child `B` of a block `X ≠ Q` of the suffix in the voter's viable
@@ -487,8 +499,16 @@ private theorem competitor_reflect_before {a₀ κ b : Time}
   refine ⟨hBt, hfB, B, hBt, ?_, .refl⟩
   rw [frame_of_projAC hrun hp hc] at hXv hBt ⊢
   have hXBs := honest_held_anc hrun hnc hp hXB hBt.1
-  exact ⟨hBt.1, hBt.2, hXv.2.2.1.trans hXBs,
-    le_trans hXv.2.2.2 (honest_held_height hrun hnc hp hXBs).1⟩
+  refine ⟨hBt.1, hBt.2, ?_⟩
+  have hh := (honest_held_height hrun hnc hp hXBs).1
+  rcases hXv.2.2 with hmax | ⟨hpred, hgap | hJX⟩
+  · exact Or.inl (hmax.trans hh)
+  · by_cases hm : (tr.state p i).fg.hmax ≤ ((tr.state p i).fg.σ B.root).h
+    · exact Or.inl hm
+    · exact Or.inr ⟨by omega, Or.inl hgap⟩
+  · by_cases hm : (tr.state p i).fg.hmax ≤ ((tr.state p i).fg.σ B.root).h
+    · exact Or.inl hm
+    · exact Or.inr ⟨by omega, Or.inr (hJX.trans hXBs)⟩
 
 omit hsl hP hPs hpj hcall hy hcy hes in
 /-- **The winner is on the walk**: the proposer's best child at a block `X ≠ Q` of the suffix
@@ -660,16 +680,16 @@ leaves): a child `B ≠ P` of `Q` (of a slot below `s`) in the voter's viable vo
 stamped before the vote freeze (it is not an ancestor of the slot-`s` block `P`), so it is in the
 proposer's tree, and a viable head there (its height is at least `Q`'s, a proposer viable head);
 the proposal walk stopped at `Q`, so `B` has no strict majority in the proposal's view; the views
-agree on `B` (`views_agree_before`), and `Q` is a viable head of the voter (`vote_floor_le_of`), so
+agree on `B` (`views_agree_before`), and `Q` is a viable head of the voter, so
 `B` is ineligible at the voter too. Under the suffix service from `a₀` with its catch-up
-(`SuffixService`), given the voter's `fc_root` below `Q` and its head height floor at most the
-height of every block of its tree above `Q`. -/
+(`SuffixService`), given the voter's `fc_root` below `Q` and viability of every held descendant
+of `Q`. -/
 theorem old_child_ineligible_of {a₀ κ b : Time}
     (hsync : SuffixService H tr a₀ κ b s)
     (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b)
     (hfcQ : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot d.head)
     (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocks H) d.head B →
-      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h)
+      (tr.state y j).fg.IsViable B)
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s))
     (hBQ : B.parent = some d.head.root) (hBs : B.slot < s) :
@@ -744,8 +764,16 @@ theorem old_child_ineligible_of {a₀ κ b : Time}
     have hBt' := hBt
     rw [frame_of_projAC hrun hp hc] at hQv' hBt' ⊢
     have hQBs' := honest_held_anc hrun hnc hp hQB hBt'.1
-    exact ⟨hBt'.1, hBt'.2, hQv'.2.2.1.trans hQBs',
-      le_trans hQv'.2.2.2 (honest_held_height hrun hnc hp hQBs').1⟩
+    refine ⟨hBt'.1, hBt'.2, ?_⟩
+    have hh := (honest_held_height hrun hnc hp hQBs').1
+    rcases hQv'.2.2 with hmax | ⟨hpred, hgap | hJQ⟩
+    · exact Or.inl (hmax.trans hh)
+    · by_cases hm : (tr.state p i).fg.hmax ≤ ((tr.state p i).fg.σ B.root).h
+      · exact Or.inl hm
+      · exact Or.inr ⟨by omega, Or.inl hgap⟩
+    · by_cases hm : (tr.state p i).fg.hmax ≤ ((tr.state p i).fg.σ B.root).h
+      · exact Or.inl hm
+      · exact Or.inr ⟨by omega, Or.inr (hJQ.trans hQBs')⟩
   -- the proposal walk stopped at `Q`, so `B` has no majority in the proposal's view
   have hslot : sp.slot (tr.time i) = s := by
     rw [hti]; exact AC.slot_of_mem sp s le_rfl ((AC.ts_lt_iff sp).2 (by push_cast; omega))
@@ -782,7 +810,7 @@ theorem old_child_ineligible_of {a₀ κ b : Time}
     hΦy.fcRoot_mem (below _ (hB.2.1.mono hΦyU) hfP) hQty
   have hQvy : d.head ∈ ℓy.frame.viableHeads := by
     rw [frame_of_projAC hrun hy hcy.1] at hQty hfQy ⊢
-    exact ⟨hQty.1, hQty.2, Anc.mono (fun X hX => hX.1) hfQy, hflQ _ hQty.1 .refl⟩
+    exact ⟨hQty.1, hQty.2, hflQ _ hQty.1 .refl⟩
   -- the views agree on `B`
   obtain ⟨heq, hvot, hsup⟩ :=
     views_agree_before hrun hnc hp hP hPs hc hcall hd hti hPQ hy hcy hes hsync hib hjb hPt
@@ -797,7 +825,7 @@ theorem old_child_ineligible_of {a₀ κ b : Time}
 end Leaves
 
 /-- **The suffix** under the suffix service from `a₀` with its catch-up (`SuffixService`), given
-the voter's head height floor at most the height of every block of its tree above `Q`. -/
+viability of every held descendant of `Q` at the voter. -/
 theorem suffix_agree_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini}
     (hrun : GoldilocksRun proposer dg H tr ini)
@@ -817,7 +845,7 @@ theorem suffix_agree_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     (hcy : AC.CastAt tr.projAC y j ℓy e) (hes : e.msg.slot = s)
     (hib : tr.time i ≤ b) (hjb : tr.time j ≤ b)
     (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocks H) d.head B →
-      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h) :
+      (tr.state y j).fg.IsViable B) :
     ∀ X, ℓp.frame.Anc D X → ℓp.frame.Anc X d.head →
       Anc (tr.HonestBlocks H) (AC.getAnchor sp e.readPoint ℓy.frame (tr.time j)) X →
       X ≠ d.head →
@@ -857,8 +885,8 @@ theorem suffix_agree_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
         hs hib hDX hXQ hne hBX hB) hC
 
 /-- **`P` is in the voter's viable voter block tree** under the suffix service from `a₀` with its
-catch-up (`SuffixService`), given the voter's `fc_root` below `Q` and its head height floor at most
-the height of every block of its tree above `Q`. -/
+catch-up (`SuffixService`), given the voter's `fc_root` below `Q` and viability of every held
+descendant of `Q`. -/
 theorem proposal_at_voter_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {ini}
     (hrun : GoldilocksRun proposer dg H tr ini)
@@ -875,7 +903,7 @@ theorem proposal_at_voter_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
     (hes : e.msg.slot = s) (hjb : tr.time j ≤ b)
     (hfcQ : Anc (tr.HonestBlocks H) ℓy.frame.fcRoot d.head)
     (hflQ : ∀ B ∈ (tr.state y j).fg.tree, Anc (tr.HonestBlocks H) d.head B →
-      (tr.state y j).fg.headHeightFloor ≤ ((tr.state y j).fg.σ B.root).h) :
+      (tr.state y j).fg.IsViable B) :
     P ∈ ℓy.frame.viableTree (AC.voterBlockTree sp e.readPoint ℓy.frame s) := by
   have hr := (goldilocks_ac_projection_from hrun hnc).localRun
   have hU : Coherent (tr.HonestBlocks H) := hr.coherent
@@ -898,7 +926,7 @@ theorem proposal_at_voter_of {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   refine ⟨⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩, hfPy, P, ⟨hPt, Or.inr ⟨P, hPt, hPs, .refl⟩⟩, ?_,
     .refl⟩
   rw [frame_of_projAC hrun hy hcy.1] at hPt hfPy ⊢
-  exact ⟨hPt.1, hPt.2, Anc.mono (fun X hX => hX.1) hfPy, hflQ P hPt.1 hQP⟩
+  exact ⟨hPt.1, hPt.2, hflQ P hPt.1 hQP⟩
 end Consensus.Goldilocks.Compose
 
 end

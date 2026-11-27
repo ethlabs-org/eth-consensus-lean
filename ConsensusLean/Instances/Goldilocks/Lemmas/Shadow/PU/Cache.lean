@@ -124,11 +124,7 @@ theorem updateFinality_eq_G :
   rw [updateFinality_eq]
   rfl
 
-/-- The shadow finality update has the stock shape. -/
-theorem finalitySpec_updateFinality' : FinalitySpec (P := P) (ACP := ACP) updateFinality :=
-  updateFinality_eq_G ▸ finalitySpec_updateFinalityG _
-
-theorem Reachable'.reachableWith {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable' acp₀) :
+theorem Reachable.reachableWith' {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable acp₀) :
     ReachableWith updateFinality acp₀ st := by
   rw [reachableWith_eq]
   have h' : Relation.ReflTransGen Step (init acp₀) st := by rw [← reachable_eq]; exact h
@@ -147,22 +143,22 @@ theorem finalized_monotone' (st : Store P ACP) :
     (∀ B st', st.onBlock B = some st' → st'.Anc st.F st'.F) ∧
       ∀ a, (st.onAttestation a).F = st.F := by
   simp only [onBlock_eq_onBlockWith]
-  exact finalized_monotone_with finalitySpec_updateFinality'
+  exact finalized_monotone_with finalitySpec_updateFinality
 
 /-- **The shadow cache invariant**: every shadow-reachable store satisfies `CacheGood`; the
 `_with` lemmas apply with `finalitySpec_updateFinality'` and `Reachable'.reachableWith`. -/
-theorem Reachable'.good {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable' acp₀) :
+theorem Reachable.good {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable acp₀) :
     CacheGood acp₀ st :=
-  h.reachableWith.good finalitySpec_updateFinality'
+  h.reachableWith.good finalitySpec_updateFinality
 
 /-- `cache_invariants` over the shadow `Reachable'`. -/
-theorem cache_invariants' {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable' acp₀) :
+theorem cache_invariants' {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable acp₀) :
     st.F ∈ st.tree ∧ st.J ∈ st.tree ∧ st.Anc st.F st.J ∧
       (∃ B ∈ st.tree, (st.σ B.root).J = st.J.root ∧ (st.σ B.root).hj = st.hj) ∧
       (∀ B ∈ st.tree, (st.σ B.root).h ≤ st.hmax) ∧
       (∃ B ∈ st.tree, (st.σ B.root).h = st.hmax) ∧
       ∃ B ∈ st.tree, (st.σ B.root).F = st.F.root :=
-  cache_invariants_with finalitySpec_updateFinality' h.reachableWith
+  cache_invariants_with finalitySpec_updateFinality h.reachableWith
 
 /-- Every store reached with a finality update of the stock shape is a `PUSnapshot`. -/
 theorem ReachableWith.puSnapshot {u : Store P ACP → FG.ChainState P.n → Store P ACP}
@@ -182,9 +178,9 @@ theorem ReachableWith.puSnapshot {u : Store P ACP → FG.ChainState P.n → Stor
     rfl
 
 /-- Every shadow-reachable store is a `PUSnapshot`. -/
-theorem Reachable'.puSnapshot {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable' acp₀) :
+theorem Reachable.puSnapshot {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable acp₀) :
     st.PUSnapshot acp₀ :=
-  h.reachableWith.puSnapshot finalitySpec_updateFinality'
+  h.reachableWith.puSnapshot finalitySpec_updateFinality
 
 
 /-! ## The justification cache is maximal (`Healing.JMax`) over `ReachableWith` (lane W)
@@ -363,10 +359,10 @@ theorem jMax_of_reachable_with {st : Store P ACP} (hu : FinalitySpec u) (hhjU : 
   | tail hr hs ih => exact jMax_step hu hhjU (by rw [reachableWith_eq]; exact hr) ih hs
 
 /-- `Healing.JMax` at every shadow-reachable store. -/
-theorem Reachable'.jMax {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable' acp₀) :
+theorem Reachable.jMax {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable acp₀) :
     Healing.JMax st :=
   (Healing.jMax_iff st).2
-    (jMax_of_reachable_with finalitySpec_updateFinality' hjMaxSpec_updateFinality h.reachableWith)
+    (jMax_of_reachable_with finalitySpec_updateFinality hjMaxSpec_updateFinality h.reachableWith)
 
 end JMaxWith
 

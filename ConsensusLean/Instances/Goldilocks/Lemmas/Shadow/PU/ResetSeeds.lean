@@ -20,8 +20,8 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- The reset signing supplies a high origin strictly before every post-drain slot. -/
-theorem ResetPremisesUpTo'.reset_seed_before_slot_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold) {u : Nat}
+theorem ResetPremisesUpTo.reset_seed_before_slot_at'
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold) {u : Nat}
     (hR : drainTime sp a ≤ sp.ts u) :
     ∃ v r l O, HighOrigin tr H g v r l O ∧ tr.time r ≤ b ∧ l < u ∧
       tr.time r < sp.ts u := by
@@ -59,7 +59,7 @@ namespace Outcome
 
 /-- A held signed row's lock is older than the cast, including optimistic writes. -/
 private theorem row_lock_label_lt_at
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {W : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -95,7 +95,7 @@ private theorem row_lock_label_lt_at
 
 /-- A high signed entry is below a healed member strictly before the cast's slot. -/
 theorem row_entry_member_before_cast_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) (hkb : tr.time k ≤ b)
     {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) {W : AC.Blk sp.n (List (FG.Att sp.n))}

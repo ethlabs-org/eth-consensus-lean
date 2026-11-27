@@ -31,7 +31,7 @@ theorem round_of_warm_within_interface
     {J P X : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -60,44 +60,9 @@ theorem round_of_warm_within_interface
   round_of_warm_within_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm hδ hlat
     hD hΔF hux hxN hmb hTb hna hT hz hdes hP hPs hp hdx hX hXs hcal hgap ht₀ hδG hK
 
-/-- Stock leaf 11's reset-induction interface, retaining the primed-window wrapper. -/
-theorem round_of_warm_within_stock_interface
-    {g ΔF b T D t₀ : Time} {s₀ u x N floor Gs : Nat} {kindJ : Prop}
-    {J P X : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ) floor kindJ J)
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
-    (hδ : 3 ≤ sp.toParams.fg.δt)
-    (hlat : Generic.VoteLatencyAt tr H D) (hD : 0 ≤ D)
-    (hΔF : 6 * sp.Δ + (D + (Gs : Time) * sp.Δ) + ΔF ≤ 4 * sp.Δ * (sp.toParams.fg.δt : Time))
-    (hux : u + sp.toParams.fg.δt ≤ x) (hxN : x ≤ N) (hmb : sp.ts N + 2 * sp.Δ ≤ b)
-    (hTb : T ≤ b)
-    (hna : ∀ v k att, v ∈ H (max (cutZ sp.toParams g) (tr.time k)) → tr.SignAt v k att →
-      tr.time k < T → att.h ≤ HZ tr H g)
-    (hT : sp.ts (u + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) < T)
-    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
-    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
-    {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX)) (hdx : p = proposer x)
-    (hX : tr.ProposesAt p kX X) (hXs : X.slot = x)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
-    (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
-    (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    P ∈ (tr.state p (kX + 1)).fg.tree ∧ X ∈ (tr.state p (kX + 1)).fg.tree ∧
-      ((tr.state p (kX + 1)).fg.σ P.root).h + 1 ≤
-        ((tr.state p (kX + 1)).fg.σ X.root).h :=
-  round_of_warm_within_stock_at hframe hrun hnc hsvc hawake hf hcatch hnr hm hwarm hδ hlat
-    hD hΔF hux hxN hmb hTb hna hT hz hdes hP hPs hp hdx hX hXs hcal hgap ht₀ hδG hK
-
 /-- Proposal acceptance, read in the proposer's prefix rather than a stock run. -/
 theorem proposal_mem_at {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} {k : Nat}
     (hp : p ∈ H (tr.time k)) {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hP : tr.ProposesAt p k P) : P ∈ (tr.state p (k + 1)).fg.tree := by
@@ -114,7 +79,7 @@ theorem rise_reset_rounds_within_at
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) M
       isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -205,7 +170,7 @@ theorem rise_reset_rounds_at
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ) M
       isTop J)
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -265,7 +230,7 @@ structure DrainOutputs (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n
 This separates the round argument from the window-search budget, without assuming a reset. -/
 theorem exists_reset_in_window
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b af len D t₀ : Time}
     {s₀ N G Ld M v Gs : Nat} {isTop : Prop}
@@ -324,7 +289,7 @@ theorem exists_reset_in_window
 until the generic snapshot/awake wrappers are ported; no reset is assumed in either premise. -/
 theorem exists_reset
     {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b lo D t₀ : Time} {G Ld Gs : Nat}
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)

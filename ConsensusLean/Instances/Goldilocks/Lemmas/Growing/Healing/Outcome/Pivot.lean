@@ -40,8 +40,8 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 variable {fgHold : Time}
 
-/-- A held block above every pre-slot high origin reaches the proposal reader's floor. -/
-theorem proposal_floor_above_old_at
+/-- A held block above every pre-slot high origin is viable at the proposal reader. -/
+theorem proposal_viable_above_old_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK fgHold)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i)) (hR : drainTime sp a ≤ sp.ts u)
@@ -52,13 +52,13 @@ theorem proposal_floor_above_old_at
       Anc (tr.HonestBlocksAt H) O B)
     (hBcov : HighSourceCover tr H g a b → ∀ C s, HealedMemberBefore tr H g a b C s i → s < u →
       Anc (tr.HonestBlocksAt H) C B) :
-    (tr.state p i).fg.headHeightFloor ≤ ((tr.state p i).fg.σ B.root).h := by
+    (tr.state p i).fg.IsViable B := by
   have ht := hp.run.time_nonneg i
   have hj : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hp.run.time_mono hq.le
   obtain ⟨v₀, r₀, l₀, O₀, ho₀, hrb, _, hrt⟩ := hp.reset_seed_before_slot_at hR
-  refine headHeightFloor_le_of_entries_below (fg_reachable_at hp.run ht hj hpH)
+  refine isViable_of_entries_below (fg_reachable_at hp.run ht hj hpH) hB
     (Outcome.high_of_anc_at hp.run hp.noColl ho₀ ht hj hpH hB (hBold v₀ r₀ l₀ O₀ ho₀ hrt hrb))
-    (Outcome.no_high_contest_at hp hpH hib) fun E hE C hET hEh hEC hlt => ?_
+    fun E hE C hET hEh hEC hlt => ?_
   refine store_anc_of_honest_anc_at hp.run hp.noColl ht hj hpH ?_ hB
   rcases hp.proposal_entry_below_old_or_healed_at hpH hci hcall hti hib hE hET hEh hEC hlt with
     ⟨O, ⟨v, r, l, ho, hrt, hrb⟩, hEO⟩ | ⟨hc, M, s, hM, hsu, hEM⟩
@@ -84,7 +84,7 @@ theorem reset_suffix_viable_at
     ∀ X, ell.frame.Anc D X → ell.frame.Anc X d.head → X ∈ ell.frame.viableHeads :=
   proposal_suffix_viable_of_floor (Outcome.frame_realized hp.run hpH hci)
     (Outcome.frame_tree_subset hp.run hpH hci) (Outcome.frame_of_call hp.run hpH hci) hd hDt hsD
-    fun _ hX hDX => hp.proposal_floor_above_old_at hpH hR hci hcall hti hib hX
+    fun _ hX hDX => hp.proposal_viable_above_old_at hpH hR hci hcall hti hib hX
       (fun x r l O ho hrt hrb => (hDold x r l O ho hrt hrb).trans hDX)
       fun hc C s hM hs => (hDcov hc C s hM hs).trans hDX
 

@@ -279,13 +279,11 @@ theorem vote_anchor_cases_of_old {ini} (hrun : GoldilocksRun proposer dg H tr in
         have hjj : sp.slot (tr.projAC.time j) = sp.slot (tr.time j) := rfl
         omega
     exact (haB.trans (Anc.mono hΦU hB'B₁)).trans (hL₁O.trans (hDold O hOld))
-/-- **The proposal walk from `D` to `Q` is through viable heads** (at `t_s`,
-`F ⪯ fc_root ⪯ D_s` and the head height floor is at most `ht(D_s)`, heights increase along the
-path), for `D` above every old origin. `fc_root` is genesis or below an old origin
-(`proposal_fcRoot_old_of`), so below `D ⪯ X`. The proposer's honest attestations have sources below
-old origins, hence below `D` and pairwise compatible (`proposal_rows_old_of`), so with no contest
-the floor is reached by `X`, or a crossing entry `E ⪰ X` of the floor's height is below its source,
-below `D ⪯ X`, and `E = X` (`floor_or_crossing`). -/
+/-- **The proposal walk from `D` to `Q` is through viable heads**, for `D` above every old
+origin. The proposer's honest row sources are below old origins (`proposal_rows_old_of`), hence
+below `D ⪯ X`. Their justified entry is below `X`, and `X` reaches height `h_max − 1`: a crossing
+entry above `X` at that height is also below its source, hence below `X`. These two facts give
+P-U viability. -/
 theorem proposal_suffix_viable_of {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     (hf : 2 * Hᶜ.ncard < sp.n) {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
@@ -313,7 +311,23 @@ theorem proposal_suffix_viable_of {ini} (hrun : GoldilocksRun proposer dg H tr i
   have hsrc := proposal_rows_old_of hrun hnc hp hc hcall hd hti hP hfK
   rw [frame_of_projAC hrun hp hc] at hXt hfX ⊢
   obtain ⟨hXs, hFX⟩ := hXt
-  refine ⟨hXs, hFX, Anc.mono (fun _ h => h.1) hfX, ?_⟩
+  refine ⟨hXs, hFX, ?_⟩
+  have hJX : (tr.state p i).fg.Anc (tr.state p i).fg.J X := by
+    rcases justified_of_rows_of hrun hnc hf hp
+      (R := fun Y => Anc (tr.HonestBlocks H) Y X)
+      (fun _ _ hAB hBX => hAB.trans hBX)
+      (honestRowsSourced_iff.2 fun B hB a ha hav => by
+        obtain ⟨D', ⟨O, hO, hD'O⟩, hDs⟩ := honestRowsSourced_iff.1 hsrc B hB a ha hav
+        exact ⟨D', (hD'O.trans (hDold O hO)).trans hDXU, hDs⟩) with hg | hJX
+    · have hJt := (Store.cache_invariants _ _ _ _ (fg_reachable hrun.toLocalRun hp i)).2.1
+      rw [honest_eq_genesis hrun hU ⟨p, hp, i, hJt⟩ hg]
+      exact (Store.accepted_tree _ _ _ _ (fg_reachable hrun.toLocalRun hp i)).2.2.2 X hXs
+    · exact honest_held_anc hrun hnc hp hJX hXs
+  suffices hh : (tr.state p i).fg.hmax - 1 ≤ ((tr.state p i).fg.σ X.root).h by
+    change _ ∨ (_ ∧ _)
+    by_cases hm : (tr.state p i).fg.hmax ≤ ((tr.state p i).fg.σ X.root).h
+    · exact Or.inl hm
+    · exact Or.inr ⟨by omega, Or.inr hJX⟩
   rcases floor_or_crossing_scoped hrun hnc hf hp
       (fun X hX a ha hav _ => honestRowsSourced_iff.1 hsrc X hX a ha hav)
       (fun D₁ D₂ ⟨O₁, hO₁, h₁⟩ ⟨O₂, hO₂, h₂⟩ =>

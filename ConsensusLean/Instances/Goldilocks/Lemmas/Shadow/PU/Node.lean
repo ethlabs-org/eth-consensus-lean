@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Reachable
 public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Handlers
 public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
@@ -28,11 +29,6 @@ and accepted-block handler; the AC, payloads, signatures and event order are unc
 namespace Consensus.Goldilocks.Store
 
 variable {P : Params} {ACP : Type}
-
-open Classical in
-open Classical in
-def Reachable' (acp₀ : ACP) : Store P ACP → Prop :=
-  Relation.ReflTransGen Step (init acp₀)
 
 open Classical in
 theorem updateFinality_eq (st : Store P ACP) (σ : FG.ChainState P.n) :
@@ -77,7 +73,7 @@ theorem step_iff (st st' : Store P ACP) :
   rfl
 
 theorem reachable_eq (acp₀ : ACP) :
-    Reachable' (P := P) acp₀ = Relation.ReflTransGen Step (init acp₀) := by
+    Reachable (P := P) acp₀ = Relation.ReflTransGen Step (init acp₀) := by
   rfl
 
 end Consensus.Goldilocks.Store
@@ -174,54 +170,38 @@ theorem exec_eq (proposer : Nat → Fin P.n)
        | .attestation a => onAttestation st a
        | .restart => restart self st t) := by rfl
 
-def CutStep' (self : Fin P.n) (t : Time) (st : NodeState A) : Cut A → NodeState A → Prop
-  | .ac ℓ, st' =>
-      ℓ.frame = frame st ∧ A.step self st.ac ℓ.frame t ℓ.call = (st'.ac, ℓ.emits) ∧
-        st'.fg = st.fg ∧ st'.record = st.record
-  | .fg (.block B true), st' =>
-      B.slot ≤ P.slotOf t ∧ st.fg.onBlock B = some st'.fg ∧ st'.ac = st.ac ∧
-        st'.record = st.record
-  | .fg (.block B false), st' => st.fg.onBlock B = none ∧ st' = st
-  | .fg (.attestation a), st' =>
-      st'.fg = st.fg.onAttestation a ∧ st'.ac = st.ac ∧ st'.record = st.record
-  | .fg (.attest C none), st' => st.fg.attest st.record self C = none ∧ st' = st
-  | .fg (.attest C (some a)), st' =>
-      st.fg.attest st.record self C = some (a, st'.record) ∧ st'.fg = st.fg ∧ st'.ac = st.ac
-
 theorem cutStep_ac (self : Fin P.n) (t : Time) (st st' : NodeState A) (ℓ : ACLabel A) :
-    CutStep' self t st (.ac ℓ) st' ↔
+    CutStep self t st (.ac ℓ) st' ↔
       ℓ.frame = frame st ∧ A.step self st.ac ℓ.frame t ℓ.call = (st'.ac, ℓ.emits) ∧
         st'.fg = st.fg ∧ st'.record = st.record := by rfl
 
 theorem cutStep_block_true (self : Fin P.n) (t : Time) (st st' : NodeState A) (B : A.Blk) :
-    CutStep' self t st (.fg (.block B true)) st' ↔
+    CutStep self t st (.fg (.block B true)) st' ↔
       B.slot ≤ P.slotOf t ∧ st.fg.onBlock B = some st'.fg ∧ st'.ac = st.ac ∧
         st'.record = st.record := by rfl
 
 theorem cutStep_block_false (self : Fin P.n) (t : Time) (st st' : NodeState A) (B : A.Blk) :
-    CutStep' self t st (.fg (.block B false)) st' ↔ st.fg.onBlock B = none ∧ st' = st := by
+    CutStep self t st (.fg (.block B false)) st' ↔ st.fg.onBlock B = none ∧ st' = st := by
   rfl
 
 theorem cutStep_attestation (self : Fin P.n) (t : Time) (st st' : NodeState A)
     (a : FG.Att P.n) :
-    CutStep' self t st (.fg (.attestation a)) st' ↔
+    CutStep self t st (.fg (.attestation a)) st' ↔
       st'.fg = st.fg.onAttestation a ∧ st'.ac = st.ac ∧ st'.record = st.record := by rfl
 
 theorem cutStep_attest_none (self : Fin P.n) (t : Time) (st st' : NodeState A) (C : A.Blk) :
-    CutStep' self t st (.fg (.attest C none)) st' ↔
+    CutStep self t st (.fg (.attest C none)) st' ↔
       st.fg.attest st.record self C = none ∧ st' = st := by rfl
 
 theorem cutStep_attest_some (self : Fin P.n) (t : Time) (st st' : NodeState A)
     (C : A.Blk) (a : FG.Att P.n) :
-    CutStep' self t st (.fg (.attest C (some a))) st' ↔
+    CutStep self t st (.fg (.attest C (some a))) st' ↔
       st.fg.attest st.record self C = some (a, st'.record) ∧ st'.fg = st.fg ∧ st'.ac = st.ac := by
   rfl
 
 end Consensus.Goldilocks.Node
 
 namespace Consensus.Goldilocks
-
-abbrev RunTrace' {P : Params} (A : NodeAC P) := RunTrace A
 
 end Consensus.Goldilocks
 
@@ -273,44 +253,6 @@ namespace Consensus.Goldilocks.Node
 
 variable {P : Params}
 
-/-- The stock local run laws, copied with the shadow execution and cut law. -/
-structure LocalRun' {A : NodeAC P} (proposer : Nat → Fin P.n)
-    (dg : Digest (List (FG.Att P.n)) A.Payload)
-    (H : Set (Fin P.n)) (sg : A.Msg → Fin P.n) (tr : RunTrace A)
-    (ini : Fin P.n → A.State := fun _ => A.initial) : Prop where
-  init : ∀ y ∈ H, tr.init y = Node.initWith A (ini y)
-  grouped : ∀ y ∈ H, ∀ i c, tr.CallAt y i c →
-    ∃ j e, tr.InGroup proposer dg y j i (tr.time i) e
-  cutLaw : ∀ y ∈ H, ∀ i c, tr.CallAt y i c → CutStep' y (tr.time i) (tr.state y i) c (tr.post i)
-  wire : ∀ y ∈ H, ∀ j t e, tr.GroupAt proposer dg y j t e → WireOK dg e
-  proposerCredential : ∀ y ∈ H, ∀ j t B, tr.GroupAt proposer dg y j t (.block B) →
-    B.proposer = proposer B.slot
-  time_nonneg : ∀ i, 0 ≤ tr.time i
-  time_mono : Monotone tr.time
-  finite : ∀ T : Time, {i | tr.label i ≠ none ∧ tr.time i ≤ T}.Finite
-  phase_order : ∀ y ∈ H, ∀ y' ∈ H, ∀ j j' t e e', tr.GroupAt proposer dg y j t e →
-    tr.GroupAt proposer dg y' j' t e' → j < j' →
-    (y = y' ∨ ¬ tr.OwnPublicationAt proposer dg y j t) → e.phase ≤ e'.phase
-  tick_public : ∀ y ∈ H, ∀ j t, tr.TickAt proposer dg y j t → P.IsPublic t
-  tick_unique : ∀ y ∈ H, ∀ j j' t,
-    tr.TickAt proposer dg y j t → tr.TickAt proposer dg y j' t → j = j'
-  tick_of_awake : ∀ y ∈ H, ∀ t, 0 ≤ t → P.IsPublic t → tr.awake y t →
-    ∃ j, tr.TickAt proposer dg y j t
-  awake_in_horizon : ∀ y ∈ H, ∀ t, tr.awake y t → tr.InHorizon t
-  awake_of_call : ∀ y ∈ H, ∀ i, tr.IsCall y i → tr.awake y (tr.time i)
-  restart_of_sleep : ∀ y ∈ H, ∀ i (u : Time), tr.IsCall y i → 0 ≤ u → u < tr.time i →
-    ¬ tr.awake y u → (∀ j < i, tr.IsCall y j → tr.time j < u) → tr.RestartAt y i
-  restart_at_wake : ∀ y ∈ H, ∀ u v : Time, 0 ≤ u → u < v → ¬ tr.awake y u → tr.awake y v →
-    ∃ k, tr.RestartAt y k ∧ u < tr.time k ∧ tr.time k ≤ v
-  sleep_of_restart : ∀ y ∈ H, ∀ i, tr.RestartAt y i →
-    ∃ u : Time, 0 ≤ u ∧ u < tr.time i ∧ ¬ tr.awake y u ∧ ∀ j < i, tr.IsCall y j → tr.time j < u
-  block_unforgeable : ∀ y ∈ H, ∀ i B, tr.BlockCallAt y i B → B.proposer ∈ H →
-    ∃ j ≤ i, tr.OwnBlockAt B.proposer j B
-  att_unforgeable : ∀ y ∈ H, ∀ i a,
-    (tr.AttCallAt y i a ∨ ∃ B, tr.BlockCallAt y i B ∧ a ∈ B.fgPayload) → a.val ∈ H →
-      ∃ j < i, tr.SignAt a.val j a
-  msg_unforgeable : ∀ y ∈ H, ∀ i m, tr.MsgCallAt y i m → sg m ∈ H → ∃ j < i, tr.EmitAt (sg m) j m
-
 end Consensus.Goldilocks.Node
 
 namespace Consensus.Goldilocks
@@ -319,15 +261,6 @@ open AC (ACParams ReplayOrder Vote Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-structure GoldilocksRun' (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro)
-    (ini : Fin sp.n → (goldilocksNode sp ro).State := fun _ => (goldilocksNode sp ro).initial) :
-    Prop
-    extends Node.LocalRun' proposer dg H (fun v : Vote sp.n => v.val) tr ini where
-  genesis_root_ok : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg
-  vstart : ∀ y, AC.VoteStart sp.genesisRoot (ini y)
-
 end Consensus.Goldilocks
 
 namespace Consensus.Goldilocks.Node
@@ -335,7 +268,7 @@ namespace Consensus.Goldilocks.Node
 variable {P : Params} {A : NodeAC P}
 
 theorem cutStep_fg {self : Fin P.n} {t : Time} {st st' : NodeState A} {c : Cut A}
-    (h : CutStep' self t st c st') : st'.fg = st.fg ∨ Store.Step st.fg st'.fg := by
+    (h : CutStep self t st c st') : st'.fg = st.fg ∨ Store.Step st.fg st'.fg := by
   cases c with
   | ac ℓ => exact Or.inl h.2.2.1
   | fg ℓ =>
@@ -353,8 +286,8 @@ theorem cutStep_fg {self : Fin P.n} {t : Time} {st st' : NodeState A} {c : Cut A
 theorem fg_reachable_at {proposer : Nat → Fin P.n}
     {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
     {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
-    (h : LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
-    (tr.state y i).fg.Reachable' A.genesisPayload := by
+    (h : LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
+    (tr.state y i).fg.Reachable A.genesisPayload := by
   rw [Store.reachable_eq]
   induction i with
   | zero => rw [Trace.state, h.init y hy]; exact .refl
@@ -371,7 +304,7 @@ theorem fg_reachable_at {proposer : Nat → Fin P.n}
 theorem frame_of_call_at {proposer : Nat → Fin P.n}
     {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
     {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
-    (h : LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+    (h : LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel A} (hc : tr.CallAt y i (.ac ℓ)) :
     ℓ.frame = frame (tr.state y i) :=
   (h.cutLaw y hy i (.ac ℓ) hc).1
@@ -379,7 +312,7 @@ theorem frame_of_call_at {proposer : Nat → Fin P.n}
 theorem frame_of_projAC_at {proposer : Nat → Fin P.n}
     {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
     {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
-    (h : LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+    (h : LocalRun proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
     {i : Nat} {ℓ : ACLabel A} (hc : tr.projAC.CallAt y i ℓ) :
     ℓ.frame = frame (tr.state y i) := by
   apply frame_of_call_at h hy
@@ -403,7 +336,7 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
-theorem projAC_state' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+theorem projAC_state' (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n}
     (hy : y ∈ H) (i : Nat) : tr.projAC.state y i = (tr.state y i).ac := by
   induction i with
   | zero => simp [Trace.state, RunTrace.projAC, h.init y hy]
@@ -446,12 +379,12 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-theorem toFG_mem_tree' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem toFG_mem_tree' {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hto : AC.ToFGAt tr.projAC y k ℓ C) : C ∈ (tr.state y k).fg.tree := by
   have hmem := (AC.toFG_source hto.2.2).1.1
-  rw [Node.frame_of_projAC_at hrun.toLocalRun' hy hto.1, Node.frame_eq,
+  rw [Node.frame_of_projAC_at hrun.toLocalRun hy hto.1, Node.frame_eq,
     Store.toFrame_tree] at hmem
   exact hmem.1
 

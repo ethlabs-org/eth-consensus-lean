@@ -83,7 +83,7 @@ root and floor premises are the stock ones, read from the store; the conclusion 
 `Anc fcRoot P` conjunct (the shadow root is `F`). -/
 theorem held_target_viableHeads_or_higher_report_of_cases
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ (Node.frame (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)
@@ -105,7 +105,7 @@ theorem held_target_viableHeads_or_higher_report_of_cases
   have hd := hrun.time_nonneg i
   have hle : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
   have hreach := (Compose.Growing.reachable_at' hrun hd hy hle).reachableWith
-  have hfs := Store.finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
+  have hfs := Store.finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   obtain ⟨hPy, hFP⟩ := Shadow.PU.mem_frame_tree.1 hPt
   have hcz := ProposalImpl.cutZ_lt_of_anc_at' hp hseed (by rwa [max_comm]) hPy hSP
   have hroot : Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot P := by
@@ -148,7 +148,7 @@ theorem held_target_viableHeads_or_higher_report_of_cases
 
 private theorem high_root_of_held_seed_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPy : P ∈ (tr.state y i).fg.tree) (hseed : HighOrigin tr H g v q m S)
@@ -249,7 +249,7 @@ private theorem high_root_of_held_seed_at
 (`ReportCover.held_target_viableHeads_or_higher_report_covered_at` over the shadow frame). -/
 theorem held_target_viableHeads_or_higher_report_covered_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ (Node.frame (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)
@@ -338,7 +338,7 @@ theorem held_target_viableHeads_or_higher_report_covered_at
 `held_target_viable_or_higher_report_covered_at` over the shadow frame. -/
 theorem held_target_viable_or_higher_report_covered_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y i ell)
     (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}

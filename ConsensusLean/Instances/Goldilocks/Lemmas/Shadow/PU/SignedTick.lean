@@ -24,7 +24,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- An awake honest node has a signing tick when its calendar signs. -/
 theorem signTickAt_of_calendar_at {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     {y : Fin sp.n} {t : Time} (hy : y ∈ H t) (ht : 0 ≤ t)
     (hpub : sp.toParams.IsPublic t) (hawake : tr.awake y t) (hsign : sign y t = true) :
@@ -37,7 +37,7 @@ theorem signTickAt_of_calendar_at {ini}
 
 /-- A shadow node joins after every preceding restart is at least one slot old. -/
 theorem joined_of_restart_le_at {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {t : Time} {s : Nat} (hy : y ∈ H t)
     (ht : sp.ts s + 4 * sp.Δ ≤ t)
     (hres : ∀ r, tr.time r ≤ t → y ∈ H (tr.time r) → tr.RestartAt y r → tr.time r ≤ sp.ts s)
@@ -100,7 +100,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- At an update deadline, a signing tick's report immediately follows its AC tick,
 with the same frame because the AC tick leaves the finality store unchanged. -/
 theorem signing_tick_toFG_cuts_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign) {T : Time}
     (hT : ∃ u : Nat, T = sp.ts (u + 1 : Nat) + 2 * sp.Δ) {y : Fin sp.n} (hy : y ∈ H T)
     (haw : tr.awake y T) (hsig : sign y T = true) :

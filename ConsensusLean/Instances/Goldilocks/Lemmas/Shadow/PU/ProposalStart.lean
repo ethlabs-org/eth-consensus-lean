@@ -17,7 +17,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
-private theorem proposal_call_tick (h : Node.LocalRun' proposer dg H
+private theorem proposal_call_tick (h : Node.LocalRun proposer dg H
     (fun v : Vote sp.n => v.val) tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.CallAt y i (.ac ell)) (hp : ell.call = .proposal) :
@@ -130,13 +130,13 @@ private theorem proposal_call_tick (h : Node.LocalRun' proposer dg H
     subst hm
     cases hp
 
-private theorem proposal_before_holder (hrun : GoldilocksRun' proposer dg H tr ini)
+private theorem proposal_before_holder (hrun : GoldilocksRun proposer dg H tr ini)
     {p : Fin sp.n} (hpH : p ∈ H) {kP s : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hcP : tr.projAC.CallAt p kP ell) (hcall : ell.call = .proposal)
     (htP : tr.time kP = sp.ts s) (hs1 : 1 ≤ s) {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPs : P.slot = s) (hPprop : P.proposer = p) {z : Fin sp.n} (hz : z ∈ H) {k : Nat}
     (hPz : P ∈ (tr.state z k).fg.tree) : kP < k := by
-  have hl := hrun.toLocalRun'
+  have hl := hrun.toLocalRun
   rcases Coherence.tree_cases hl hz hPz with hg | ⟨a, hak, ha⟩
   · have := congrArg (·.slot) hg
     simp only [Params.genesisBlock] at this
@@ -157,7 +157,7 @@ private theorem proposal_before_holder (hrun : GoldilocksRun' proposer dg H tr i
     exact (RunTrace.tickAt_iff ..).2 ⟨x, fgDue, hg⟩)
   omega
 
-private theorem frame_tree (hrun : GoldilocksRun' proposer dg H tr ini)
+private theorem frame_tree (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y i ell) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ ell.frame.tree) : B ∈ (tr.state y i).fg.tree := by
@@ -167,7 +167,7 @@ private theorem frame_tree (hrun : GoldilocksRun' proposer dg H tr ini)
   exact hB.1
 
 /-- The shadow proposal cut precedes every honest vote of its slot. -/
-theorem proposal_cut_lt' (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem proposal_cut_lt' (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {kP s : Nat} {ellp : ACLabel (goldilocksNode sp ro)}
     (hpH : proposer s ∈ H) (hcP : tr.projAC.CallAt (proposer s) kP ellp)
@@ -175,7 +175,7 @@ theorem proposal_cut_lt' (hrun : GoldilocksRun' proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hv : AC.CastAt tr.projAC y k ell e)
     (he : e.msg.slot = s) : kP < k := by
-  have hl := hrun.toLocalRun'
+  have hl := hrun.toLocalRun
   have hac := Compose.goldilocks_ac_projection_from' hrun hnc
   have hr := hac.localRun
   have hU := Coherence.honest_blocks_coherent hl hnc
@@ -186,7 +186,7 @@ theorem proposal_cut_lt' (hrun : GoldilocksRun' proposer dg H tr ini)
     have hfU := (AC.frameIn_of_callAt hr hy hv.1).2
     have hroot : P'.root ≠ sp.genesisRoot := by
       intro hg
-      have hG := Store.genesis_mem_with Store.finalitySpec_updateFinality'
+      have hG := Store.genesis_mem_with Store.finalitySpec_updateFinality
         (Node.fg_reachable_at hl hy k).reachableWith
       obtain rfl := hU.1 (hfU hP') ⟨y, hy, k, hG⟩ hg
       simp [Params.genesisBlock] at hP's
@@ -198,7 +198,7 @@ theorem proposal_cut_lt' (hrun : GoldilocksRun' proposer dg H tr ini)
     have := hl.time_mono (not_lt.1 hn)
     linarith only [htP, hΔ, hearly, this]
 
-private theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun' proposer dg H tr ini)
+private theorem stored_lock_lt_at_proposal (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {K : AC.CommitteeDict sp.n}
     (hPK : AC.CommitteeP K tr.projAC H)
     {s i : Nat} (hs1 : 1 ≤ s) (hcs2 : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize)
