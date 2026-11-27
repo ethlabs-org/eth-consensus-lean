@@ -19,6 +19,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Network.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Trace
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AC.Setting
+import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.SeedCandidacy
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Committee
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Committee
@@ -659,7 +660,7 @@ theorem cast_viable_or_escape_post_at {cm : Time → Finset (Fin sp.n)} {βK : �
         · exact False.elim (hrootAnalysis hFP)
       have hf : (H (tr.time j))ᶜ.ncard < sp.toParams.fg.q := by
         have hf := hp.faults _ hd hjb
-        have hn := sp.toParams.hn
+        have hn : 0 < sp.n := sp.toParams.hn
         change (H (tr.time j))ᶜ.ncard < (2 * sp.n + 2) / 3
         omega
       obtain ⟨x, hx, r, hrj, d, _, att, ell', C, _, _, _, _, hto, _, hJx, hJC, _, hCh, hPh⟩ :=

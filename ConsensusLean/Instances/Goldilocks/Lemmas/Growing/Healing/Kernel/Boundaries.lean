@@ -10,9 +10,8 @@ public section
 /-! # The growing drain kernel's steps
 
 The warm proposals, forwarded to their proof (the `KernelProof` form in `Shadow/PU/ResetDrain`),
-on `Generic.FrameWindow` windows; with the P-U window search they give the finite reset
-record with the
-reset bound `exists_reset_of_drain_rounds_awake_at` of `Shadow/PU/ResetDrain`. The finite reset
+on `Generic.FrameWindow` windows; with the P-U window search they give the finite reset record with
+the reset bound `exists_reset_of_drain_rounds_awake_at` of `Shadow/PU/ResetDrain`. The finite reset
 lower bound is proved in `Kernel/ResetSource`. No deadline is lengthened here.
 -/
 

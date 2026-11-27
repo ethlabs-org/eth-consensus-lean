@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.FloorSource
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetFacts
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.High
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
@@ -78,7 +79,10 @@ private theorem guarded_seed_ancestor_candidate_of_root
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun X hX => ⟨y, i, t, ht, hle, hy, hX⟩
-  have hanc := Store.anc_of_anc_universe hreach hU hsub
+  have hanc : ∀ {A C : AC.Blk sp.n (List (FG.Att sp.n))},
+      Anc (tr.HonestBlocksAt H) A C → C ∈ (tr.state y i).fg.tree →
+      (tr.state y i).fg.Anc A C :=
+    fun h hC => Store.anc_of_anc_universe hreach hU hsub h hC
   have hSy : S ∈ (tr.state y i).fg.tree := by
     rcases hPS with hPS | hSP
     · exact hhold ((hPt.2.mono hsub).trans hPS)
@@ -140,7 +144,8 @@ theorem guarded_seed_ancestor_candidate_at_state_covered_at
   have hpred : (tr.state y i).fg.hmax - 1 ≤ (tr.state y i).fg.headHeightFloor := by
     unfold Store.headHeightFloor
     split_ifs <;> omega
-  rcases hp.high_floor_signed_source_or_covered_before_at hseed ht hle hy htb
+  rcases Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo.high_floor_signed_source_or_covered_before_at
+      hp hseed ht hle hy htb
       (u := sp.slot t + 1)
       (guarded_row_bound hp ht hle)
       (fun x r l B hri ho x' r' l' B' hr'i ho' => hp.origins_compatible_at ho
