@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.Contest
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.RowLabel
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Outcome.RootFloor
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LeftEntry
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.CoreStock
@@ -158,6 +159,48 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 variable {hold : Time}
 
+/-- A left entry of the voter's store below a higher block lies below every block above the
+pre-slot origins and the label-bounded covers. -/
+private theorem reset_left_entry_below_at
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {y : Fin sp.n} {j u : Nat} (hy : y ∈ H (tr.time j))
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
+    {B E C : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hBold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
+      Anc (tr.HonestBlocksAt H) O B)
+    (hcovered : HighSourceCover tr H g a b → ∀ C s,
+      HealedMemberBefore tr H g a b C s j → s < u → Anc (tr.HonestBlocksAt H) C B)
+    (hE : E ∈ (tr.state y j).fg.tree) (hET : ((tr.state y j).fg.σ E.root).Th = E.root)
+    (hEh : HZ tr H g + 1 ≤ ((tr.state y j).fg.σ E.root).h)
+    (hEC : (tr.state y j).fg.Anc E C)
+    (hlt : ((tr.state y j).fg.σ E.root).h < ((tr.state y j).fg.σ C.root).h) :
+    Anc (tr.HonestBlocksAt H) E B := by
+  have ht := hp.run.time_nonneg j
+  have hj : ∀ q < j, tr.time q ≤ tr.time j := fun q hq => hp.run.time_mono hq.le
+  obtain ⟨W, hW, att, ha, v, d, hv, hdj, hs, hT, hsource⟩ :=
+    hp.left_entry_origin_or_covered_at ht hj hy hjb hE hET hEh hEC hlt
+  have hc' : (tr.upTo (tr.time j)).projAC.CallAt y j ell := by
+    rw [RunTrace.upTo_projAC]
+    exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc.1⟩
+  have hr := (Compose.goldilocks_ac_projection_from (hp.run.upTo ht) (hp.noColl.upTo _)).localRun
+  have htupper : tr.time j ≤ sp.ts u + sp.Δ :=
+    hes ▸ (Compose.cast_head_fcRoot hr (hp.run.upTo ht).vstart hy ⟨hc', hc.2⟩).2
+  have hEB : Anc (tr.HonestBlocksAt H) E B := by
+    rcases hsource with ⟨r, hrd, l, O, ho, hEO⟩ | ⟨_, hcov⟩
+    · have hlu : l < u := hes ▸ KernelProof.row_origin_label_lt_at hp hy hc hW ha
+        (hp.run.antitone (hp.run.time_mono hdj.le) hv) hs hdj hrd ho
+      obtain ⟨CV, ellw, D, _, hf, _⟩ := ho.2.2.1
+      have hrj := hp.run.time_mono (show r ≤ j by omega)
+      have hrt := Outcome.fastLock_time_lt_at hp.run hf hlu (hrj.trans htupper)
+      exact hEO.trans (hBold v r l O ho hrt (hrj.trans hjb))
+    · obtain ⟨hcov, _⟩ := coveredUpTo_iff.1 hcov
+      obtain ⟨C, s, hC, hsu, hEC⟩ := Outcome.row_entry_member_before_cast_at hp hy hjb hc hW ha
+        ‹v ∈ H (max (cutZ sp.toParams g) (tr.time j))› hs hdj hE hT (by omega) hcov
+      exact hEC.trans (hcovered hcov C s hC (hes ▸ hsu))
+  exact hEB
+
 /-- A pre-slot origin bound and a label-bounded cover bound reach the voter's height floor. -/
 theorem reset_vote_floor_above_old_or_covered_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
@@ -191,29 +234,35 @@ theorem reset_vote_floor_above_old_or_covered_at
   obtain ⟨_, _, _, _, _, ⟨C, hC, hCh⟩, _⟩ := Store.cache_invariants _ _ _ _ hreach
   obtain ⟨E, hE, hEC, hEh, hET⟩ := Healing.entry_at_height hreach hC
     (h := (tr.state y j).fg.hmax - 1) (by omega) (by omega)
-  obtain ⟨W, hW, att, ha, v, d, hv, hdj, hs, hT, hsource⟩ :=
-    hp.left_entry_origin_or_covered_at ht hj hy hjb hE hET (by omega) hEC (by omega)
-  have hc' : (tr.upTo (tr.time j)).projAC.CallAt y j ell := by
-    rw [RunTrace.upTo_projAC]
-    exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc.1⟩
-  have hr := (Compose.goldilocks_ac_projection_from (hp.run.upTo ht) (hp.noColl.upTo _)).localRun
-  have htupper : tr.time j ≤ sp.ts u + sp.Δ :=
-    hes ▸ (Compose.cast_head_fcRoot hr (hp.run.upTo ht).vstart hy ⟨hc', hc.2⟩).2
-  have hEB : Anc (tr.HonestBlocksAt H) E B := by
-    rcases hsource with ⟨r, hrd, l, O, ho, hEO⟩ | ⟨_, hcov⟩
-    · have hlu : l < u := hes ▸ KernelProof.row_origin_label_lt_at hp hy hc hW ha
-        (hp.run.antitone (hp.run.time_mono hdj.le) hv) hs hdj hrd ho
-      obtain ⟨CV, ellw, D, _, hf, _⟩ := ho.2.2.1
-      have hrj := hp.run.time_mono (show r ≤ j by omega)
-      have hrt := Outcome.fastLock_time_lt_at hp.run hf hlu (hrj.trans htupper)
-      exact hEO.trans (hBold v r l O ho hrt (hrj.trans hjb))
-    · obtain ⟨hcov, _⟩ := coveredUpTo_iff.1 hcov
-      obtain ⟨C, s, hC, hsu, hEC⟩ := Outcome.row_entry_member_before_cast_at hp hy hjb hc hW ha
-        ‹v ∈ H (max (cutZ sp.toParams g) (tr.time j))› hs hdj hE hT (by omega) hcov
-      exact hEC.trans (hcovered hcov C s hC (hes ▸ hsu))
+  have hEB := reset_left_entry_below_at hp hy hc hes hjb hBold hcovered hE hET (by omega) hEC
+    (by omega)
   have hh := Healing.h_le_of_store_anc hreach
     (store_anc_of_honest_anc_at hp.run hp.noColl ht hj hy hEB hB)
   omega
+
+/-- A pre-slot origin bound and a label-bounded cover bound make a held block viable at the voter
+(P-U viability): it is above every high left entry of the store. -/
+theorem reset_vote_viable_above_old_or_covered_at
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {y : Fin sp.n} {j u : Nat} (hy : y ∈ H (tr.time j)) (hR : drainTime sp a ≤ sp.ts u)
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y j ell e) (hes : e.msg.slot = u) (hjb : tr.time j ≤ b)
+    {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ (tr.state y j).fg.tree)
+    (hBold : ∀ x r l O, HighOrigin tr H g x r l O → tr.time r < sp.ts u → tr.time r ≤ b →
+      Anc (tr.HonestBlocksAt H) O B)
+    (hcovered : HighSourceCover tr H g a b → ∀ C s,
+      HealedMemberBefore tr H g a b C s j → s < u → Anc (tr.HonestBlocksAt H) C B) :
+    (tr.state y j).fg.IsViable B := by
+  have ht := hp.run.time_nonneg j
+  have hj : ∀ q < j, tr.time q ≤ tr.time j := fun q hq => hp.run.time_mono hq.le
+  obtain ⟨v₀, r₀, l₀, O₀, ho₀, hrb, _, hrt⟩ := hp.reset_seed_before_slot_at hR
+  refine isViable_of_entries_below (fg_reachable_at hp.run ht hj hy) hB
+    (Outcome.high_of_anc_at hp.run hp.noColl ho₀ ht hj hy hB
+      (hBold v₀ r₀ l₀ O₀ ho₀ hrt hrb))
+    fun E hE C hET hEh hEC hlt => ?_
+  exact store_anc_of_honest_anc_at hp.run hp.noColl ht hj hy
+    (reset_left_entry_below_at hp hy hc hes hjb hBold hcovered hE hET hEh hEC hlt) hB
 
 end ResetPremisesUpTo
 
