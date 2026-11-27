@@ -46,6 +46,56 @@ theorem isViable'_of_floor (st : Store P ACP) (hjm : st.hj < st.hmax) {Q : NodeB
     · exact Or.inr ⟨by omega, Or.inr h⟩
   · exact Or.inr ⟨by omega, Or.inl (by omega)⟩
 
+/-- **The contest → gap residue dichotomy** (store level). In a P-U store at `h_max = floor + 1`
+the viable heads are exactly the blocks of height at least `floor`: a block `Q` is in the
+viable tree of the shadow frame only below such a viable head `W`; otherwise it is outside that
+viable tree. -/
+theorem contest_gap_residue' (st : Store P ACP) {floor : Nat} (hgap : st.hmax = floor + 1)
+    (Q : NodeBlock P ACP) :
+    (∃ W ∈ st.toFrame'.viableHeads, st.Anc Q W ∧ floor ≤ (st.σ W.root).h) ∨
+      Q ∉ st.toFrame'.viableTree st.toFrame'.tree := by
+  by_cases h : Q ∈ st.toFrame'.viableTree st.toFrame'.tree
+  · obtain ⟨-, -, W, -, hWv, hQW⟩ := h
+    refine Or.inl ⟨W, hWv, hQW.mono fun _ hB => ?_, ?_⟩
+    · rw [toFrame'_tree] at hB
+      exact hB.1
+    · rw [toFrame'_viableHeads] at hWv
+      rcases (isViable'_iff st W).mp hWv.2.2 with hh | ⟨hh, -⟩ <;> omega
+  · exact Or.inr h
+
+end Consensus.Goldilocks.Store
+
+namespace Consensus.Goldilocks
+
+variable {n : Nat} {FGP ACP : Type}
+
+/-- **Locks above a block outside the viable tree project strictly below it.** In a well-formed
+frame, if `Q` is in the tree, not at or below `fc_root`, and outside the viable tree of the whole
+tree, then every block `B ⪰ Q` of the tree has its viable ancestor strictly below `Q` (the
+viable-ancestor candidates are at or below `fc_root` or in the whole-tree viable tree). So every
+live lock on a block at or above `Q` is moved strictly below `Q` (`AC.liveLocks`). -/
+theorem viableAncestor_lt_of_not_viableTree {Φ : Frame n FGP ACP} (hΦ : FrameOK Φ)
+    {Q B : Block n FGP ACP} (hQ : Q ∈ Φ.tree) (hQF : ¬ Φ.Anc Q Φ.fcRoot)
+    (hnv : Q ∉ Φ.viableTree Φ.tree) (hB : B ∈ Φ.tree) (hQB : Φ.Anc Q B) :
+    Φ.Anc (Φ.viableAncestor B) Q ∧ Φ.viableAncestor B ≠ Q := by
+  obtain ⟨hAB, hcand, -⟩ := AC.viableAncestor_spec hΦ hB
+  have hup : ¬ Φ.Anc Q (Φ.viableAncestor B) := by
+    intro hQA
+    rcases hcand with hAF | ⟨-, hFA, W, hW, hWv, hAW⟩
+    · exact hQF (hQA.trans hAF)
+    · apply hnv
+      refine ⟨hQ, ?_, W, hW, hWv, hQA.trans hAW⟩
+      rcases Anc.total hΦ.coherent hFA hQA with h | h
+      · exact h
+      · exact absurd h hQF
+  rcases Anc.total hΦ.coherent hAB hQB with h | h
+  · exact ⟨h, fun he => hup (he ▸ .refl)⟩
+  · exact absurd h hup
+
+end Consensus.Goldilocks
+
+namespace Consensus.Goldilocks.Store
+
 end Consensus.Goldilocks.Store
 
 namespace Consensus.Goldilocks.Healing
@@ -476,6 +526,31 @@ theorem FrameWindow.old_lock_witness_stock' {s₀ floor : Nat} {hi g : Time}
       intro r _ hrs
       exact (hnr y hy r (Compose.projAC_restartAt.mp hrs)).trans_lt hgf
     · exact Or.inr hres
+
+
+/-- **The C′ case: a same-height contest keeps `J`.** Two cuts of honest nodes (writer `y` at
+`a`, reader `x` at `i`) whose stores are both at `h_max = h_j + 1` with the same `h_max` have the
+same justification cache `J` (safety, `J_eq_of_hj_eq_of_safe_with`). Combined with
+`FrameWindow.viableHead_persists_stock'` case (B): a reader still in the contest at
+`h_max = floor` keeps the writer's `J`, and the P-U-only head `Q` at `floor − 1` stays viable. -/
+theorem J_eq_of_top_same_hmax' (hrun : GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
+    {y x : Fin sp.n} (hy : y ∈ H) (hx : x ∈ H) {a i : Nat}
+    (hta : (tr.state y a).fg.hmax = (tr.state y a).fg.hj + 1)
+    (hti : (tr.state x i).fg.hmax = (tr.state x i).fg.hj + 1)
+    (hm : (tr.state y a).fg.hmax = (tr.state x i).fg.hmax) :
+    (tr.state y a).fg.J = (tr.state x i).fg.J := by
+  have hRa := Node.fg_reachable_at' hrun.toLocalRun' hy a
+  have hRi := Node.fg_reachable_at' hrun.toLocalRun' hx i
+  have hu := Store.finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
+  obtain ⟨-, hJa, -, ⟨Ba, hBa, hBaJ, hBahj⟩, -⟩ := Store.cache_invariants' hRa
+  obtain ⟨-, hJi, -, ⟨Bi, hBi, hBiJ, hBihj⟩, -⟩ := Store.cache_invariants' hRi
+  have hroots := Store.J_eq_of_hj_eq_of_safe_with hu hRa.reachableWith hRi.reachableWith
+    hf (fun u v hu' hv' hval => held_atts_safe' hrun hnc hy hx a i u v hu' hv' hval) hBa hBi
+    (by rw [hBahj, hBihj]; omega)
+  rw [hBaJ, hBiJ] at hroots
+  exact (Coherence.honest_blocks_coherent' hrun.toLocalRun' hnc).1
+    ⟨y, hy, a, hJa⟩ ⟨x, hx, i, hJi⟩ hroots
 
 end Consensus.Goldilocks.Healing
 
