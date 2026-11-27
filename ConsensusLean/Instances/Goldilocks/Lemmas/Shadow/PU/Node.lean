@@ -206,6 +206,94 @@ noncomputable def exec' (proposer : Nat → Fin P.n)
   | .attestation a => onAttestation st a
   | .restart => restart' self st t
 
+theorem acCall'_eq (self : Fin P.n) (st : NodeState A) (t : Time) (c : A.Call) :
+    acCall' self st t c =
+      (let Φ := frame' st
+       let r := A.step self st.ac Φ t c
+       ({ st with ac := r.1 }, .ac ⟨c, Φ, r.2⟩)) := by rfl
+
+theorem acProposal'_eq (st : NodeState A) (t : Time) :
+    acProposal' st t =
+      (let Φ := frame' st
+       let r := A.proposal st.ac Φ t
+       ({ st with ac := r.1 }, .ac ⟨.proposal, Φ, []⟩, r.2)) := by rfl
+
+theorem acToFG'_eq (st : NodeState A) (t : Time) :
+    acToFG' st t =
+      (let Φ := frame' st
+       let r := A.toFG st.ac Φ t
+       ({ st with ac := r.1 }, .ac ⟨.toFG, Φ, []⟩, r.2)) := by rfl
+
+theorem onBlock'_eq (self : Fin P.n) (st : NodeState A) (t : Time) (B : A.Blk) :
+    onBlock' self st t B =
+      (if P.slotOf t < B.slot then (st, [])
+       else match st.fg.onBlock' B with
+       | none => (st, [.fg (.block B false)])
+       | some fg' =>
+           let r := acCall' self { st with fg := fg' } t (.block B)
+           (r.1, [.fg (.block B true), r.2])) := by rfl
+
+theorem onMessage'_eq (self : Fin P.n) (st : NodeState A) (t : Time) (m : A.Msg) :
+    onMessage' self st t m =
+      (let r := acCall' self st t (.message m); (r.1, [r.2])) := by rfl
+
+theorem restart'_eq (self : Fin P.n) (st : NodeState A) (t : Time) :
+    restart' self st t =
+      (let r := acCall' self st t .restart; (r.1, [r.2])) := by rfl
+
+theorem proposeBlock'_eq (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+    (st : NodeState A) (t : Time) (x : Nat) (H : A.Blk) (p : A.Payload) :
+    proposeBlock' dg self st t x H p = onBlock' self st t (mkBlock dg self st.fg t x H p) := by
+  rfl
+
+theorem tickStep'_eq (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+    (st : NodeState A) (t : Time) (x : Nat) (step : TickStep) :
+    tickStep' proposer dg self st t x step =
+      (match step with
+       | .acTick => let r := acCall' self st t .tick; (r.1, [r.2])
+       | .proposal =>
+           if Proposes proposer self t then
+             let r := acProposal' st t
+             match r.2.2 with
+             | none => (r.1, [r.2.1])
+             | some (d, p) =>
+                 let r' := proposeBlock' dg self r.1 t x d.head p
+                 (r'.1, r.2.1 :: r'.2)
+           else (st, [])
+       | .fgUpdate =>
+           let r := acToFG' st t
+           match r.2.2 with
+           | none => (r.1, [r.2.1])
+           | some C =>
+               let r' := attest self r.1 C
+               (r'.1, r.2.1 :: r'.2)) := by rfl
+
+theorem runSteps'_eq (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+    (st : NodeState A) (t : Time) (x : Nat) (steps : List TickStep) :
+    runSteps' proposer dg self st t x steps =
+      steps.foldl (fun acc step =>
+        let r := tickStep' proposer dg self acc.1 t x step
+        (r.1, acc.2 ++ r.2)) (st, []) := by rfl
+
+theorem onTick'_eq (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+    (st : NodeState A) (t : Time) (x : Nat) (fgDue : Bool) :
+    onTick' proposer dg self st t x fgDue =
+      runSteps' proposer dg self st t x (tickSteps fgDue) := by rfl
+
+theorem exec'_eq (proposer : Nat → Fin P.n)
+    (dg : Digest (List (FG.Att P.n)) A.Payload) (self : Fin P.n)
+    (st : NodeState A) (t : Time) (e : Event A) :
+    exec' proposer dg self st t e =
+      (match e with
+       | .tick x fgDue => onTick' proposer dg self st t x fgDue
+       | .block B => onBlock' self st t B
+       | .message m => onMessage' self st t m
+       | .attestation a => onAttestation st a
+       | .restart => restart' self st t) := by rfl
+
 def CutStep' (self : Fin P.n) (t : Time) (st : NodeState A) : Cut A → NodeState A → Prop
   | .ac ℓ, st' =>
       ℓ.frame = frame' st ∧ A.step self st.ac ℓ.frame t ℓ.call = (st'.ac, ℓ.emits) ∧
