@@ -316,6 +316,9 @@ theorem toLocalRunCore (rc : GoldilocksRunCore u frameOf proposer dg H tr ini) :
   reachable_at := fun {y k t} ht hle hy => by
     have h := (rc.upTo ht).reachable y hy k
     rwa [Trace.upTo_state tr y hle] at h
+  jmax_at := fun {y k t} ht hle hy => by
+    have h := (rc.upTo ht).jmax y hy k
+    rwa [Trace.upTo_state tr y hle] at h
   coherent := rc.coherent
   held_anc_at hnc := fun ht hle hy hBW hW => rc.held_anc_at hnc ht hy hle hBW hW
   tree_mono_at := fun {y k i t} ht hle hy hki => by
