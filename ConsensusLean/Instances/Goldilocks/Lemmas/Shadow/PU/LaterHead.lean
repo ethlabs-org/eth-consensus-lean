@@ -24,7 +24,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A report lies in the reporter's tree above the actual P-U frame root, `F`. -/
 theorem report_root_at {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : AC.ToFGAt tr.projAC y i ell R) :
@@ -250,7 +250,7 @@ private theorem acOnTick_emits {self : Fin sp.n} {A : AC.ACState sp.n}
   dsimp only at he
   split_ifs at he <;> first | assumption | simp at he
 
-private theorem honest_vote_call {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+private theorem honest_vote_call {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ℓ e) :
@@ -273,7 +273,7 @@ private theorem honest_vote_call {ini} (hrun : GoldilocksRun' proposer dg H tr i
 
 /-- No honest optimistic check of slot `s` precedes its honest proposal. The honest voter
 in an optimistic quorum must cast after the proposal cut of that same tick. -/
-theorem proposal_no_optimistic_of' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem proposal_no_optimistic_of' {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {s : Nat} {K : AC.CommitteeDict sp.n} (hP : AC.CommitteeP K tr.projAC H)
     (hfK : 2 * (K.committee s ∩ Hᶜ).ncard < sp.committeeSize)
@@ -284,7 +284,7 @@ theorem proposal_no_optimistic_of' {ini} (hrun : GoldilocksRun' proposer dg H tr
   intro z hz c hci C CV hO
   have hr' := goldilocks_ac_projection_from' hrun hnc
   have hr := hr'.localRun
-  have hl := hrun.toLocalRun'
+  have hl := hrun.toLocalRun
   have hΔ : (0 : Int) < sp.Δ := sp.toParams.hΔ
   obtain ⟨gi, ei, ki, hgi, rfl, hki⟩ := Coherence.call_in_group hl hp (projAC_callAt.1 hc)
   rw [hti] at hgi hki
@@ -357,7 +357,7 @@ theorem proposal_no_optimistic_of' {ini} (hrun : GoldilocksRun' proposer dg H tr
 
 set_option linter.unusedVariables false in
 /-- All locks stored at an honest proposal have strictly earlier slots. -/
-theorem proposal_locks_slot_of' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem proposal_locks_slot_of' {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {p : Fin sp.n} (hp : p ∈ H) {s i : Nat}
     {ℓp : ACLabel (goldilocksNode sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}

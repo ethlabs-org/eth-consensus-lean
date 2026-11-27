@@ -177,11 +177,11 @@ private theorem exec_restart (y : Fin sp.n) (st : NodeState (goldilocksNode sp r
 
 /-- A call that is not a restart is in a group of a tick or a delivery (a copy of
 `group_not_restart`). -/
-private theorem group_not_restart {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+private theorem group_not_restart {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} (hc : tr.IsCall y i) (hnr : ¬ tr.RestartAt y i) :
     ∃ j e, j ≤ i ∧ tr.GroupAt proposer dg y j (tr.time i) e ∧ 0 < e.phase := by
   obtain ⟨c, hc⟩ := hc
-  obtain ⟨j, e, k, hg, rfl, hk⟩ := Coherence.call_in_group hrun.toLocalRun' hy hc
+  obtain ⟨j, e, k, hg, rfl, hk⟩ := Coherence.call_in_group hrun.toLocalRun hy hc
   refine ⟨j, e, by omega, hg, ?_⟩
   cases e with
   | restart =>
@@ -190,11 +190,11 @@ private theorem group_not_restart {ini} (hrun : GoldilocksRun' proposer dg H tr 
   | _ => simp [Node.Event.phase]
 
 /-- A restart call is a restart group of its own (a copy of `restartCall_group`). -/
-private theorem restartCall_group {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+private theorem restartCall_group {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat} (hk : tr.RestartAt y k) :
     tr.GroupAt proposer dg y k (tr.time k) .restart := by
   obtain ⟨ℓ, hc, hr⟩ := hk
-  obtain ⟨j, e, m, hg, rfl, hm⟩ := Coherence.call_in_group hrun.toLocalRun' hy hc
+  obtain ⟨j, e, m, hg, rfl, hm⟩ := Coherence.call_in_group hrun.toLocalRun hy hc
   obtain rfl := exec_restart y _ _ e (List.mem_of_getElem? hm) hr
   rcases m with _ | m
   · exact hg
@@ -212,7 +212,7 @@ private theorem lastBefore_succ (tr : GoldilocksTrace sp ro) (y : Fin sp.n) (i :
       if tr.RestartAt y i then (tr.time i : WithBot Time) else lastBefore tr y i := by
   cases i <;> rfl
 
-private theorem lastBefore_le {ini} (h : GoldilocksRun' proposer dg H tr ini)
+private theorem lastBefore_le {ini} (h : GoldilocksRun proposer dg H tr ini)
     (y : Fin sp.n) (x : Time) :
     ∀ i, lastBefore tr y i ≤ x ↔ ∀ k < i, tr.RestartAt y k → tr.time k ≤ x := by
   intro i
@@ -228,7 +228,7 @@ private theorem lastBefore_le {ini} (h : GoldilocksRun' proposer dg H tr ini)
       rcases Nat.lt_succ_iff_lt_or_eq.1 hk with hk | rfl
       exacts [hall k hk hk', absurd hk' hr]
 
-private theorem restartTime_eq {ini} (h : GoldilocksRun' proposer dg H tr ini)
+private theorem restartTime_eq {ini} (h : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) :
     ∀ i, (tr.state y i).ac.restartTime = lastBefore tr y i := by
   intro i
@@ -254,7 +254,7 @@ private theorem restartTime_eq {ini} (h : GoldilocksRun' proposer dg H tr ini)
         · obtain ⟨ℓ', hℓ', hr⟩ := hR
           cases Option.some.inj (hc.2.symm.trans hℓ'.2)
           rw [hr]
-          have hΦ : FrameOK ℓ.frame := hlaw.1 ▸ frameOK_state' h.toLocalRun' hy i
+          have hΦ : FrameOK ℓ.frame := hlaw.1 ▸ frameOK_state' h.toLocalRun hy i
           exact (AC.restart_state sp _ ro y _ ℓ.frame (tr.time i) hΦ
             (h.time_nonneg i)).2.2.2.2.2.2.1
         · exact AC.step_restartTime y _ _ _ _ fun hr => hR ⟨ℓ, hc, hr⟩
@@ -281,7 +281,7 @@ private theorem restartTime_eq {ini} (h : GoldilocksRun' proposer dg H tr ini)
 
 /-- At a call other than a restart at `t`, the run's joined test is the AC state's (the
 second part of a copy of `joined_projection_from`). -/
-theorem joined_at_call {ini} (h : GoldilocksRun' proposer dg H tr ini)
+theorem joined_at_call {ini} (h : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {t : Time} (i : Nat) (hi : tr.IsCall y i)
     (hnr : ¬ tr.RestartAt y i) (hit : tr.time i = t) :
     tr.JoinedAt y t ↔ AC.joined sp (tr.state y i).ac t := by
@@ -308,7 +308,7 @@ theorem joined_at_call {ini} (h : GoldilocksRun' proposer dg H tr ini)
 
 /-- An honest validator awake and joined at `t_s + Δ` votes in slot `s`, at or before
 `t_s + Δ` (a copy of `vote_of_awake_joined`). -/
-theorem vote_of_awake_joined' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem vote_of_awake_joined' {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {s : Nat} (hmv : ∀ i, (tr.state y i).ac.mayVote s = true)
     (hw : tr.awake y (sp.ts s + sp.Δ)) (hj : tr.JoinedAt y (sp.ts s + sp.Δ)) :
@@ -351,16 +351,16 @@ theorem vote_of_awake_joined' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
     rw [h, hcall] at hr'
     cases hr'
   have hjo : AC.joined sp (tr.projAC.state y j) (tr.projAC.time j) := by
-    rw [projAC_state' hrun.toLocalRun' hy j, htj]
+    rw [projAC_state' hrun.toLocalRun hy j, htj]
     exact (joined_at_call hrun hy j ⟨_, hn0, hl⟩ hnr ht0).1 hj
   rcases acOnTick_votes y _ ℓ.frame hjo (by rw [htj, hslot])
-      (by rw [htj, hslot, projAC_state' hrun.toLocalRun' hy j]; exact hmv j) with
+      (by rw [htj, hslot, projAC_state' hrun.toLocalRun hy j]; exact hmv j) with
     hv | ⟨e, he', hes⟩
   · rw [htj, hslot] at hv
     rcases AC.cast_of_votedSlotU hr.toU hrun.vstart hy j s hv with
       ⟨k, hk, e, hve, hes⟩ | hmf
     · exact ⟨k, e, hve, hes, (hr.time_mono hk.le).trans htj.le⟩
-    · rw [projAC_state' hrun.toLocalRun' hy j, hmv j] at hmf
+    · rw [projAC_state' hrun.toLocalRun hy j, hmv j] at hmf
       exact absurd hmf (by decide)
   · refine ⟨j, e, ⟨ℓ, hc, hemit ▸ he'⟩, ?_, htj.le⟩
     rwa [htj, hslot] at hes
@@ -368,7 +368,7 @@ theorem vote_of_awake_joined' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
 /-- Awake joined validators participate in a result observed before the finite deadline cutoff
 (a copy of `awake_participant_window_before`). -/
 private theorem awake_participant_window_before {ini}
-    (hrun : GoldilocksRun' proposer dg H tr ini) (hnc : NoCollRun dg tr) {s : Nat} {a b : Time}
+    (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr) {s : Nat} {a b : Time}
     (hsync : AC.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC)
     (ha : a ≤ sp.ts s)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
@@ -412,7 +412,7 @@ private theorem awake_participant_window_before {ini}
 /-- Awake joined validators participate in a result whose update may be after `b`: the votes are
 due by `t_s + 2Δ ≤ b`, so only the early cutoff needs to be within the service horizon (a copy of
 `awake_participant_early`). -/
-theorem awake_participant_early' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem awake_participant_early' {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {s : Nat} {b : Time}
     (hsync : AC.ServiceBefore H (tr.HonestBlocks H) b tr.projAC) (hb : sp.ts s + 2 * sp.Δ ≤ b)
     {X : Fin sp.n} (hX : X ∈ H) {i₀ : Nat}
@@ -454,7 +454,7 @@ theorem awake_participant_early' {ini} (hrun : GoldilocksRun' proposer dg H tr i
 /-- If every honest member of the slot-`s` committee is awake, joined and permitted to vote,
 windowed forwarding makes the faulty participants of the actual update pool fewer than half of
 its participants (a copy of `honest_participants_window_before`). -/
-theorem honest_participants_window_before' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem honest_participants_window_before' {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {K : AC.CommitteeDict sp.n}
     {a b : Time} {s : Nat}
     (hsync : AC.ServiceWindowBefore H (tr.HonestBlocks H) a b tr.projAC)

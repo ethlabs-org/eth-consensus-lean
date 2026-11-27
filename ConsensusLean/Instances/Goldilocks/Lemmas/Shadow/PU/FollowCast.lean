@@ -25,7 +25,7 @@ theorem proposal_viable_at_call_at'
     {g ΔF b hi : Time} {s₀ p floor : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) hi floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hnr : NoRestartAfter tr H (gbar g))
@@ -83,7 +83,7 @@ theorem proposal_viable_at_call_at'
   rw [hσ] at hh hstrict
   have hreach := Compose.Growing.reachable_at' hrun (hrun.time_nonneg i) hy
     (fun q hq => hrun.time_mono hq.le)
-  have hj := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality'
+  have hj := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
     hreach.reachableWith
   have hfl := hframe.floor_eq y i hy hlow hhigh
   have hkind := hframe.kind_iff y i hy hlow hhigh
@@ -145,7 +145,7 @@ theorem proposal_viable_at_cast_at'
     {g ΔF b : Time} {s₀ p floor : Nat} {kindJ : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts p + sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hnr : NoRestartAfter tr H (gbar g))

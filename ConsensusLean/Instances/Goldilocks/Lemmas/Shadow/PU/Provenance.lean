@@ -214,7 +214,7 @@ private theorem down_lockOK {T : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
 
 /-- At an AC call of an honest node, `Good` passes from the state before to the state after,
 with the origins of the call's own selections (a copy of `good_acCall`). -/
-private theorem good_acCall {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+private theorem good_acCall {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.CallAt y i (.ac ℓ))
     (h : Good (RecOK tr H (tr.state y i).fg.tree (i + 1))
@@ -222,14 +222,14 @@ private theorem good_acCall {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
     Good (RecOK tr H (tr.state y i).fg.tree (i + 1))
       (LockOK tr H (tr.state y i).fg.tree (i + 1)) (tr.post i).ac := by
   obtain ⟨hfr, hstep, -, -⟩ := (Node.cutStep_ac _ _ _ _ _).1 (hrun.cutLaw y hy i _ hc)
-  have hΦ : FrameOK ℓ.frame := hfr ▸ frameOK_state' hrun.toLocalRun' hy i
+  have hΦ : FrameOK ℓ.frame := hfr ▸ frameOK_state' hrun.toLocalRun hy i
   have hΦT : ℓ.frame.tree ⊆ (tr.state y i).fg.tree := by
     rw [hfr, Node.frame_eq, Store.toFrame_tree]
     exact fun X hX => hX.1
   have hTU : (tr.state y i).fg.tree ⊆ tr.HonestBlocks H := fun X hX => ⟨y, hy, i, hX⟩
-  have hD := down_lockOK (Coherence.honest_blocks_coherent hrun.toLocalRun' hnc) hTU hΦT (i + 1)
+  have hD := down_lockOK (Coherence.honest_blocks_coherent hrun.toLocalRun hnc) hTU hΦT (i + 1)
   have hpc : tr.projAC.CallAt y i ℓ := ⟨hc.1, by simp [RunTrace.projAC, hc.2, RunTrace.acLabel]⟩
-  have hps : tr.projAC.state y i = (tr.state y i).ac := projAC_state' hrun.toLocalRun' hy i
+  have hps : tr.projAC.state y i = (tr.state y i).ac := projAC_state' hrun.toLocalRun hy i
   -- the optimistic selections of the call
   have opt : ∀ A₀, AC.OptimisticPoint tr.projAC y i ℓ A₀ → ∀ B,
       AC.optimisticSelect sp A₀ ℓ.frame (tr.time i) = some B →
@@ -301,7 +301,7 @@ private theorem good_acCall {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
       exact h.2
 
 /-- An FG cut of an honest node leaves its AC state (a copy of `ac_of_fg`). -/
-private theorem ac_of_fg {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+private theorem ac_of_fg {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ℓ : FGLabel sp.toParams (Payload sp.n)} (hc : tr.CallAt y i (.fg ℓ)) :
     (tr.post i).ac = (tr.state y i).ac := by
@@ -318,7 +318,7 @@ private theorem ac_of_fg {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
     · exact ((Node.cutStep_attest_some _ _ _ _ _ _).1 hlaw).2.2
 
 /-- `Good` at every cut of an honest node (a copy of `good_state`). -/
-private theorem good_state {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+private theorem good_state {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {y : Fin sp.n}
     (hy : y ∈ H) (i : Nat) :
     Good (RecOK tr H (tr.state y i).fg.tree i) (LockOK tr H (tr.state y i).fg.tree i)
@@ -327,15 +327,15 @@ private theorem good_state {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
   | zero =>
     have h0 : tr.state y 0 = Node.initWith _ (ini y) := hrun.init y hy
     obtain ⟨m, hm⟩ := AC.voteStart_iff.1 (hrun.vstart y)
-    obtain ⟨-, -, hg, -⟩ := Store.accepted_tree_with Store.finalitySpec_updateFinality'
-      (Node.fg_reachable_at hrun.toLocalRun' hy 0).reachableWith
+    obtain ⟨-, -, hg, -⟩ := Store.accepted_tree_with Store.finalitySpec_updateFinality
+      (Node.fg_reachable_at hrun.toLocalRun hy 0).reachableWith
     refine ⟨⟨_, hg, ?_, Or.inl rfl⟩, ?_⟩
     · rw [h0, hm]
       rfl
     · rw [h0, hm]
       exact fun l hl => absurd hl (Set.notMem_empty l)
   | succ i ih =>
-    have ih' := good_mono ih (Coherence.tree_mono' hrun.toLocalRun' hy (Nat.le_succ i))
+    have ih' := good_mono ih (Coherence.tree_mono' hrun.toLocalRun hy (Nat.le_succ i))
       (Nat.le_succ i)
     by_cases hc : ∃ c, tr.CallAt y i c
     · obtain ⟨c, hc⟩ := hc

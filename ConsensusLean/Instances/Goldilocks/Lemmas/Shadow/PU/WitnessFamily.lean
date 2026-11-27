@@ -50,7 +50,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- A block in an honest frame has an earlier honest FG acceptance, or is genesis
 (`frame_block_acceptance_at`). -/
 theorem frame_block_acceptance_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n} {q : Nat}
     (hx : x ∈ H (tr.time q)) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt x q ell) {B : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -62,7 +62,7 @@ theorem frame_block_acceptance_at
     rw [RunTrace.upTo_state_of_le hrun.time_mono le_rfl]
     rw [frame_of_projAC_at hrun hx hc, Node.frame_eq, Store.toFrame_tree] at hB
     exact hB.1
-  rcases Coherence.tree_accepted (hrun.upTo hd).toLocalRun' hx ht with hg | ⟨k, hk, ha⟩
+  rcases Coherence.tree_accepted (hrun.upTo hd).toLocalRun hx ht with hg | ⟨k, hk, ha⟩
   · exact Or.inl hg
   · exact Or.inr ⟨k, hk, hrun.antitone (hrun.time_mono hk.le) hx,
       ((RunTrace.upTo_acceptAt _).mp ha).2⟩
@@ -70,7 +70,7 @@ theorem frame_block_acceptance_at
 /-- An honest acceptance reaches a later honest caller, after GST by relay and before it by
 catch-up (`relayed_accept_before_at`). -/
 private theorem relayed_accept_before_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold) (hcatch : CatchRun tr H g (2 * sp.Δ))
     {x y : Fin sp.n} {k j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hxk : x ∈ H (tr.time k)) (ha : tr.AcceptAt x k B) (hy : y ∈ H (tr.time j))
@@ -94,14 +94,14 @@ private theorem relayed_accept_before_at
     intro he
     subst a
     cases Option.some.inj (ha.2.symm.trans (Compose.projAC_callAt.mp hcy).2)
-  · obtain ⟨a, hlt, hacc, hat⟩ := hrun.toLocalRun'.fgCatchAt' hcatch hxk ha
+  · obtain ⟨a, hlt, hacc, hat⟩ := hrun.toLocalRun.fgCatchAt' hcatch hxk ha
       (not_le.mp hnew) hy hg hF
     exact ⟨a, hlt, hacc, lt_max_of_lt_right hat⟩
 
 /-- Historical frame membership relays without requiring the sender to remain honest
 (`frame_relay_before_at` over the shadow run). -/
 theorem frame_relay_before_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
     (hcatch : CatchRun tr H g (2 * sp.Δ))
@@ -148,7 +148,7 @@ theorem frame_relay_before_at
     (hFstate ▸ hF)
   have ha' : (tr.upTo (tr.time j)).AcceptAt y a B :=
     (RunTrace.upTo_acceptAt _).mpr ⟨hrun.time_mono haj.le, ha⟩
-  obtain ⟨hacc, _, _⟩ := Healing.ac_block_after' hp.toLocalRun' hy ha'
+  obtain ⟨hacc, _, _⟩ := Healing.ac_block_after' hp.toLocalRun hy ha'
   have hBF : Anc ((tr.upTo (tr.time j)).HonestBlocks (H (tr.time j))) elly.frame.F B := by
     obtain ⟨ella, hca, hba⟩ := hacc
     have ht := (AC.frameIn_of_callAt hac.localRun hy hca).2
@@ -159,7 +159,7 @@ theorem frame_relay_before_at
 /-- An early frame witness has a pre-freeze stamp at a later honest cast
 (`frame_witness_readPoint_stamp_at` over the shadow run). -/
 theorem frame_witness_readPoint_stamp_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold) (hcatch : CatchRun tr H g (2 * sp.Δ))
     (hnr : NoRestartAfter tr H (gbar g))
@@ -219,12 +219,12 @@ theorem frame_witness_readPoint_stamp_at
         rw [max_eq_left hnew, Compose.projAC_deadline] at hdead
         rw [max_eq_left ((AC.le_gbar g).trans hnew)] at hqd
         exact ⟨q, hqi', hq, by rw [hfz]; linarith only [hqd, hdead, hkt]⟩
-      · obtain ⟨q, hq, hacc, hqt⟩ := hrun.toLocalRun'.fgCatchAt' hcatch hxk hk
+      · obtain ⟨q, hq, hacc, hqt⟩ := hrun.toLocalRun.fgCatchAt' hcatch hxk hk
           (not_le.mp hnew) hy (by linarith only [hm, hti, hts, sp.toParams.hΔ]) (hfr ▸ hFQ)
         exact ⟨q, hq, hacc, by rw [hfz]; linarith only [hqt, hm, sp.toParams.hΔ]⟩
     obtain ⟨q, hqi, hq, hqt⟩ := accepted
     have hq' := (RunTrace.upTo_acceptAt (tr := tr)).mpr ⟨hrun.time_mono hqi.le, hq⟩
-    obtain ⟨hqa, htq, _⟩ := Healing.ac_block_after' hp.toLocalRun' hy hq'
+    obtain ⟨hqa, htq, _⟩ := Healing.ac_block_after' hp.toLocalRun hy hq'
     exact Or.inr ⟨q + 1, by rwa [RunTrace.upTo_projAC] at hqa,
       by change tr.time (q + 1) < _; rw [show tr.time (q + 1) = tr.time q from htq]; exact hqt⟩
   refine ⟨?_, ?_⟩
@@ -256,7 +256,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- A finalized tip of one honest observation is below a block held by another, strictly higher
 than its finalized height (`finalized_anc_obs` over the shadow run). -/
 theorem finalized_anc_obs'
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y x : Fin sp.n} {m i : Nat} {u t : Time}
     (hu : 0 ≤ u) (hytime : ∀ k < m, tr.time k ≤ u) (hy : y ∈ H u)
     (ht : 0 ≤ t) (hxtime : ∀ k < i, tr.time k ≤ t) (hx : x ∈ H t)
@@ -266,7 +266,7 @@ theorem finalized_anc_obs'
     (hW : W ∈ (tr.state x i).fg.tree)
     (hlt : ((tr.state y m).fg.σ X.root).hF < ((tr.state x i).fg.σ W.root).h) :
     Anc (tr.HonestBlocksAt H) F W :=
-  (Store.finalized_anc_of_safe_with Store.finalitySpec_updateFinality'
+  (Store.finalized_anc_of_safe_with Store.finalitySpec_updateFinality
     (Compose.Growing.reachable_at' hrun hu hy hytime).reachableWith
     (Compose.Growing.reachable_at' hrun ht hx hxtime).reachableWith
     (Coherence.honest_blocks_coherent_at hrun hnc)
@@ -279,7 +279,7 @@ theorem finalized_anc_obs'
 justified height** (the quorum branch of `finalized_below_floor_held_at`, read off the justified
 height instead of the stock head-height floor). -/
 theorem finalized_below_of_hj_lt_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {i m : Nat}
     (hy : y ∈ H (tr.time i)) (hz : z ∈ H (tr.time m))
     (hf : (H (max (tr.time i) (tr.time m)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
@@ -296,25 +296,25 @@ theorem finalized_below_of_hj_lt_at
   have hsub := Compose.Growing.tree_held_at' ht hy hb
   have hcoh := hU.mono hsub
   obtain ⟨hF, hJm, hFJ, ⟨Bj, hBj, hBjJ, _⟩, hmax, -, X, hX, hXF⟩ := Store.cache_invariants' hr
-  have hg := Store.genesis_mem_with Store.finalitySpec_updateFinality' hr.reachableWith
+  have hg := Store.genesis_mem_with Store.finalitySpec_updateFinality hr.reachableWith
   have hgen : (tr.state y i).fg.F.root = sp.toParams.genesisRoot →
       Anc (tr.HonestBlocksAt H) (tr.state y i).fg.F W := fun he => by
     rw [hcoh.1 hF hg he]
-    exact ((Store.accepted_tree_with Store.finalitySpec_updateFinality'
+    exact ((Store.accepted_tree_with Store.finalitySpec_updateFinality
       hrz.reachableWith).2.2.2 W hW).mono (Compose.Growing.tree_held_at' htm hz hbm)
-  rcases Store.fin_pair_entry_with Store.finalitySpec_updateFinality' hr.reachableWith hX with
+  rcases Store.fin_pair_entry_with Store.finalitySpec_updateFinality hr.reachableWith hX with
     he | ⟨E, hE, hEr, _⟩
   · exact hgen (hXF.symm.trans he)
   obtain rfl : E = (tr.state y i).fg.F := hcoh.1 hE hF (hEr.trans hXF)
   obtain ⟨J, hJt, hJr, -, hcase⟩ :=
-    Store.J_entry_with Store.finalitySpec_updateFinality' hr.reachableWith hBj
+    Store.J_entry_with Store.finalitySpec_updateFinality hr.reachableWith hBj
   obtain rfl : J = (tr.state y i).fg.J := hcoh.1 hJt hJm (hJr.trans hBjJ)
   rcases hcase with he | ⟨hJh, -⟩
-  · have hgF := (Store.accepted_tree_with Store.finalitySpec_updateFinality'
+  · have hgF := (Store.accepted_tree_with Store.finalitySpec_updateFinality
       hr.reachableWith).2.2.2 _ hF
     rw [he] at hFJ
     exact hgen (congrArg Block.root (Anc.antisymm hcoh hFJ hgF))
-  have hFh := Store.h_le_of_store_anc_with Store.finalitySpec_updateFinality'
+  have hFh := Store.h_le_of_store_anc_with Store.finalitySpec_updateFinality
     hr.reachableWith hFJ
   have hstrict : ((tr.state y i).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h := by
     omega
@@ -323,7 +323,7 @@ theorem finalized_below_of_hj_lt_at
 /-- A height bound on an honest witness carries to an honestly held descendant
 (`floor_le_of_honest_ancestor_at` over the shadow run). -/
 theorem le_height_of_honest_ancestor_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x z : Fin sp.n} {i c : Nat}
     (hx : x ∈ H (tr.time i)) (hz : z ∈ H (tr.time c))
     {X W : AC.Blk sp.n (List (FG.Att sp.n))} {n : Nat}
@@ -334,7 +334,7 @@ theorem le_height_of_honest_ancestor_at
   have hbi : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
   have hXt := mem_of_honest_anc_at' hrun hnc hti hbi hx hXW hW
   have ha := store_anc_of_honest_anc_at' hrun hnc hti hbi hx hXW hW
-  have hle := Store.h_le_of_store_anc_with Store.finalitySpec_updateFinality'
+  have hle := Store.h_le_of_store_anc_with Store.finalitySpec_updateFinality
     (Compose.Growing.reachable_at' hrun hti hx hbi).reachableWith ha
   rw [← σ_eq_honest_at' hrun hnc (hrun.time_nonneg c)
     (fun q hq => hrun.time_mono hq.le) hz hti hbi hx hX hXt] at hle
@@ -357,7 +357,7 @@ clause on `X` in place of `floor ≤ σ(X).h` and `kindJ → J ⪯ X`). -/
 theorem FrameWindow'.finalized_below_descendant_at {lo hi : Time} {M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H lo hi M isTop J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y x z : Fin sp.n} {j i c : Nat}
     (hy : y ∈ H (tr.time j)) (hx : x ∈ H (tr.time i)) (hz : z ∈ H (tr.time c))
     (hf : (H (max (tr.time j) (tr.time i)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
@@ -371,7 +371,7 @@ theorem FrameWindow'.finalized_below_descendant_at {lo hi : Time} {M : Nat}
   have hbj : ∀ q < j, tr.time q ≤ tr.time j := fun q hq => hrun.time_mono hq.le
   have hM := hframe.M_eq y j hy hjlo hjhi
   have htop := hframe.top_iff y j hy hjlo hjhi
-  have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality'
+  have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
     (Compose.Growing.reachable_at' hrun hjt hy hbj).reachableWith
   by_cases hcase : isTop ∧ ((tr.state z c).fg.σ X.root).h = M - 1
   · obtain ⟨ht, he⟩ := hcase
@@ -397,7 +397,7 @@ holding a descendant `Q` of `X` with `F ⪯ Q` and `Q` P-U viable in its store, 
 its finalized tip, or `X` and `Q` are in its frame above `F` with `Q` a P-U viable head. The
 window-free core of `witness_frame_at'` and `witness_frame_stock_at'`. -/
 theorem witness_frame_of_held
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y i ell)
@@ -441,7 +441,7 @@ theorem witness_frame_of_held
 /-- In a `FrameWindow'`, a held block carrying the P-U witness clause at the reader is P-U viable
 in the reader's store. -/
 private theorem isViable_of_frameWindow
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {M : Nat} {isTop : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))} (hframe : FrameWindow' tr H lo hi M isTop J)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) (hlo : lo ≤ tr.time i)
@@ -454,7 +454,7 @@ private theorem isViable_of_frameWindow
   have hb : ∀ q < i, tr.time q ≤ tr.time i := fun _ hq => hrun.time_mono hq.le
   have hr := Compose.Growing.reachable_at' hrun ht hy hb
   rw [Store.isViable_iff, hframe.M_eq y i hy hlo hhi]
-  have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality'
+  have hjm := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality
     hr.reachableWith
   have hM := hframe.M_eq y i hy hlo hhi
   have htop := hframe.top_iff y i hy hlo hhi
@@ -476,7 +476,7 @@ that carries the witness clause, either `X` is below its finalized tip, or `X` a
 frame above `F` with `Q` a P-U viable head. The witness clause is exactly P-U viability at the
 window's `M` and `J`; no `fc_root = J` case arises. -/
 theorem witness_frame_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {M : Nat} {isTop : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))} (hframe : FrameWindow' tr H lo hi M isTop J)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
@@ -513,7 +513,7 @@ theorem WindowWitness.mono {lo hi lo' hi' : Time} {Q : AC.Blk sp.n (List (FG.Att
 
 /-- The P-U witness clause of a held block is a witness of a `FrameWindow'`. -/
 theorem windowWitness_of_frameWindow
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {M : Nat} {isTop : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))} (hframe : FrameWindow' tr H lo hi M isTop J)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c)) {Q : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -546,7 +546,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The static AC run of the prefix through `d` of the nodes honest at `d`. -/
 private theorem acRun_prefix
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {d : Time} (hd : 0 ≤ d) :
     AC.ACRun proposer (tr.projAC.upTo d) (H d) ((tr.upTo d).HonestBlocks (H d)) ini := by
   have h := Compose.goldilocks_ac_projection_from' (hrun.upTo hd) (hnc.upTo d)
@@ -563,7 +563,7 @@ private theorem quorum_excess {t : Time} (h : 3 * (H t)ᶜ.ncard ≤ sp.n - 1) :
 /-- A prefix vote by a node honest at `d` extends `B` in the prefix's honest blocks when it does
 in the run's (`narrow_vote`). -/
 private theorem narrow_vote
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {d : Time} (hd : 0 ≤ d) {x : Fin sp.n} (hx : x ∈ H d)
     {k : Nat} {e : AC.Em sp (List (FG.Att sp.n))} (hv : AC.VoteAt (tr.projAC.upTo d) x k e)
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -581,7 +581,7 @@ private theorem narrow_vote
 
 /-- The witness clause carries to another honest holder of the witness (`witness_height`). -/
 private theorem witness_clause_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {z y : Fin sp.n} {c i M : Nat} {isTop : Prop}
     {J Q : AC.Blk sp.n (List (FG.Att sp.n))} (hz : z ∈ H (tr.time c))
     (hy : y ∈ H (tr.time i)) (hQ : Q ∈ (tr.state z c).fg.tree)
@@ -597,7 +597,7 @@ private theorem witness_clause_at
 /-- Prior votes extending a prefix propagate through a window witness: the window-free core of
 `unanimous_next_votes_of_witness_at'` and `unanimous_next_votes_of_stock_witness_at'`. -/
 theorem unanimous_next_votes_of_windowWitness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -722,7 +722,7 @@ theorem unanimous_next_votes_of_windowWitness_at {K : AC.CommitteeDict sp.n}
 /-- Prior votes extending a prefix propagate through a frozen viable witness
 (`unanimous_next_votes_of_witness_at` over the shadow run, witness clause on `Q`). -/
 theorem unanimous_next_votes_of_witness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -752,7 +752,7 @@ theorem unanimous_next_votes_of_witness_at {K : AC.CommitteeDict sp.n}
 /-- The same prefix reaches an actual next-slot proposal head through a window witness: the
 window-free core of `unanimous_next_proposal_of_witness_at'` and its stock form. -/
 theorem unanimous_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -860,7 +860,7 @@ theorem unanimous_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
   · apply AC.highLocksCompatible_iff.mpr
     intro l hl _ hlm L hL hLr
     have hl' : l ∈ ((tr.upTo (tr.time i)).state y i).ac.locks := by
-      have h := Compose.projAC_state' hpre.toLocalRun' hy i
+      have h := Compose.projAC_state' hpre.toLocalRun hy i
       rw [RunTrace.upTo_projAC] at h
       rwa [h] at hl
     have hls := Compose.proposal_locks_slot_of' hpre (hnc.upTo _) hy
@@ -878,7 +878,7 @@ theorem unanimous_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
 /-- The same prefix reaches an actual next-slot proposal head
 (`unanimous_next_proposal_of_witness_at` over the shadow run, witness clause on `Q`). -/
 theorem unanimous_next_proposal_of_witness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -911,7 +911,7 @@ theorem unanimous_next_proposal_of_witness_at {K : AC.CommitteeDict sp.n}
 `later_heads_of_early_witness_at'` and `later_heads_of_stock_witness_at'`, from a window witness
 and the finalized tips below the witness. -/
 theorem later_heads_of_windowWitness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -999,7 +999,7 @@ theorem later_heads_of_windowWitness_at {K : AC.CommitteeDict sp.n}
 witness's call frame (`hvQ`), read inside the window (`halo`); `floor ≤ σ(Q).h` and
 `kindJ → J ⪯ X` are replaced by it (`early_witness_viable'`). -/
 theorem later_heads_of_early_witness_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -1044,7 +1044,7 @@ theorem later_heads_of_early_witness_at {K : AC.CommitteeDict sp.n}
 /-- A frame of a call of a node honest then is well formed, inside the blocks held while honest
 (`frameIn_at`). -/
 private theorem frameIn_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ) :
     FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ tr.HonestBlocksAt H := by
@@ -1055,7 +1055,7 @@ private theorem frameIn_at
 /-- Joinedness of the cast bounds its relay deadlines (`witness_voterBlockTree_at` over the
 shadow run): an early frame witness is in the next-slot voter's block tree. -/
 theorem witness_voterBlockTree_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) {s : Nat} (hm : gbar g ≤ sp.ts s)
     {w y : Fin sp.n} {a i : Nat} (hw : w ∈ H (tr.time a)) (hy : y ∈ H (tr.time i))
@@ -1101,7 +1101,7 @@ theorem witness_voterBlockTree_at
   have ha : AC.AcceptedBefore (tr.projAC.upTo (tr.time i)) y Q (AC.freeze sp (s + 1)) := by
     rcases frame_block_acceptance_at hrun hw hcw hQw with hg | ⟨k, hka, hwk, hk⟩
     · exact Or.inl (congrArg Block.root hg)
-    obtain ⟨hk', htk, -⟩ := Healing.ac_block_after' (hrun.upTo (hrun.time_nonneg a)).toLocalRun' hw
+    obtain ⟨hk', htk, -⟩ := Healing.ac_block_after' (hrun.upTo (hrun.time_nonneg a)).toLocalRun hw
       ((RunTrace.upTo_acceptAt _).mpr ⟨hrun.time_mono hka.le, hk⟩)
     rw [RunTrace.upTo_projAC] at hk'
     have hacc := (ACTrace.upTo_acceptAt.mp hk').2
@@ -1121,7 +1121,7 @@ theorem witness_voterBlockTree_at
                 change tr.projAC.deadline y i (tr.time (k + 1)) ≤ tr.time i;
                 linarith only [this, hti, hts, hΔ]) hFQ
         exact ⟨q, hqi, hq, by rw [hfz]; exact hqt.trans (hdl q hqi _ hkt)⟩
-      · obtain ⟨q, hqi, hq, hqt⟩ := hrun.toLocalRun'.acCatchAt' hcatch hwk' hacc
+      · obtain ⟨q, hqi, hq, hqt⟩ := hrun.toLocalRun.acCatchAt' hcatch hwk' hacc
           (lt_of_not_ge hkg) hy hc.1 (by linarith only [hm, hti, hts, hΔ]) hFQ
         exact ⟨q, hqi, hq, by rw [hfz]; linarith only [hqt, hm, hΔ]⟩
     obtain ⟨q, hqi, hq, hqt⟩ := hex
@@ -1158,7 +1158,7 @@ theorem witness_voterBlockTree_at
 /-- A window witness propagates its prefix to next-slot votes: the window-free core of
 `next_votes_of_early_witness_at'` and `next_votes_of_stock_witness_at'`. -/
 theorem next_votes_of_windowWitness_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
@@ -1249,7 +1249,7 @@ theorem next_votes_of_windowWitness_at
 /-- Common early-witness induction with the lock-specific transfer supplied by the caller
 (`next_votes_of_early_witness_at` over the shadow run, witness `hvQ` read inside the window). -/
 theorem next_votes_of_early_witness_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time} (hsvc : ResetService tr H g ΔF b hold)
     (_hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)

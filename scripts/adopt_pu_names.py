@@ -219,6 +219,9 @@ def tokens(text, atoms):
 
 
 def body_equal(left, right, texts, atoms):
+    if any(tokens(getattr(left, field), atoms) != tokens(getattr(right, field), atoms)
+           for field in ("signature", "context")):
+        return False
     def body(d):
         text = code_mask(texts[d.path][d.start:d.end])
         # Compare the declared command/body, excluding the declaration name.
@@ -313,6 +316,72 @@ def import_cycles(texts):
     return found
 
 
+def structure_plan(texts, decls, atoms):
+    """Reviewed central rebinding; preserve unresolved methods for lane review."""
+    names = {"LocalRun'", "GoldilocksRun'", "ResetPremisesUpTo'", "RunTrace'",
+             "Reachable'", "CutStep'", "toLocalRun'", "finalitySpec_updateFinality'"}
+    active = {a: unprime(a) for a in names}
+    targets = {map_name(d.name, active): d for d in decls
+               if not d.path.startswith(SOURCE + "/")}
+    removed = []
+    methods = []
+    for d in decls:
+        if not d.path.startswith(SOURCE + "/"):
+            continue
+        target = map_name(d.name, active)
+        if target == d.name:
+            continue
+        stock = targets.get(target)
+        if stock is None:
+            continue
+        leaf = d.name.split(".")[-1]
+        if leaf in names:
+            # Alias expansion for these two definitions was read back against
+            # Reaches and RunTrace; every structure field is token-compared.
+            aliases = {"Consensus.Goldilocks.RunTrace", "Consensus.Goldilocks.Node.Reachable"}
+            if target not in aliases and leaf != "finalitySpec_updateFinality'":
+                left = tokens(code_mask(texts[d.path][d.start:d.end]), atoms)
+                right = tokens(code_mask(texts[stock.path][stock.start:stock.end]), atoms)
+                if left != right:
+                    raise ValueError(f"Structure fields differ: {d.name}")
+            removed.append((d, stock))
+        elif not leaf.endswith("'"):
+            methods.append(d)
+    result = dict(texts)
+    for path in result:
+        edits = []
+        for d, _ in removed:
+            if d.path == path:
+                # Include attached doc comments and command-scoped opens.
+                start = d.start
+                prefix = result[path][:start]
+                while True:
+                    opening = re.search(r"(?s)(/--(?:(?!-/).)*-/\s*|open [^\n]+ in\s*)$", prefix)
+                    if opening is None:
+                        break
+                    start = opening.start()
+                    prefix = prefix[:start]
+                edits.append((start, d.end, ""))
+        for d in methods:
+            if d.path == path:
+                command = COMMAND.search(code_mask(result[path][d.start:d.end]))
+                start = d.start + command.start(2)
+                # Preserve the namespace qualification of the declaration.
+                edits.append((start, d.start + command.end(2), command.group(2) + "'"))
+        text = result[path]
+        for start, end, value in sorted(edits, reverse=True):
+            text = text[:start] + value + text[end:]
+        text = rewrite(text, active)
+        imports = {stock.path.removesuffix(".lean").replace("/", ".")
+                   for d, stock in removed if d.path == path}
+        imports -= set(re.findall(r"(?m)^(?:public )?import (\S+)", text))
+        if imports:
+            text = text.replace("module\n", "module\n" + "".join(
+                f"public import {mod}\n" for mod in sorted(imports)), 1)
+        result[path] = text
+    return {p: t for p, t in result.items() if t != texts[p]}, methods
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
@@ -321,10 +390,17 @@ def main():
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
     parser.add_argument("--approved-subset", action="store_true",
                         help="apply a/b/d-matching only; exclude c and d-mismatch component renames")
+    parser.add_argument("--structures", action="store_true",
+                        help="apply the reviewed central structure rebinding only")
     args = parser.parse_args()
     texts, decls, atoms = inventory(args.root)
     clashes = collisions(decls, atoms)
     changed, unresolved, removed = plan(texts, decls, atoms)
+    if args.structures:
+        changed, methods = structure_plan(texts, decls, atoms)
+        unresolved = {}
+        for d in methods:
+            print(f"METHOD {d.path}: {d.name} -> trailing prime", file=sys.stderr)
     cycles = import_cycles(texts | changed)
     if args.report:
         print(json.dumps({"source": SOURCE, "scope": [*SCOPES, *ROOTS],

@@ -54,7 +54,7 @@ a block finalized by the state of a held `X` of a reader honest at `t` is an anc
 block held by a reader honest at `u` above the finalized height, when fewer than `2q − n`
 validators are faulty at `max t u`. -/
 theorem finalized_anc_of_lt_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {k m : Nat} {t u : Time}
     (ht : 0 ≤ t) (hk : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
     (hu : 0 ≤ u) (hm : ∀ q < m, tr.time q ≤ u) (hz : z ∈ H u)
@@ -64,7 +64,7 @@ theorem finalized_anc_of_lt_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hFr : F.root = ((tr.state y k).fg.σ X.root).F) (hW : W ∈ (tr.state z m).fg.tree)
     (hlt : ((tr.state y k).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h) :
     Goldilocks.Anc (tr.HonestBlocksAt H) F W := by
-  have hfs := finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
+  have hfs := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   have hR₁ := (Compose.Growing.reachable_at' hrun ht hy hk).reachableWith
   have hR₂ := (Compose.Growing.reachable_at' hrun hu hz hm).reachableWith
   have hsub₁ := Compose.Growing.tree_held_at' ht hy hk
@@ -109,8 +109,8 @@ theorem finalized_anc_of_lt_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- **A low finalized block is below every bounded high origin** over the shadow run
 (`ResetPremisesUpTo.low_finalized_below_origin_at`). -/
-theorem ResetPremisesUpTo'.low_finalized_below_origin_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+theorem ResetPremisesUpTo.low_finalized_below_origin_at'
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < m, tr.time q ≤ t)
     (hy : y ∈ H t) (htb : t ≤ b) (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) {x : Fin sp.n}
     {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
@@ -118,7 +118,7 @@ theorem ResetPremisesUpTo'.low_finalized_below_origin_at'
     Anc (tr.HonestBlocksAt H) (tr.state y m).fg.F B := by
   have hrun := hp.run
   have hnc := hp.noColl
-  have hfs := finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
+  have hfs := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
   have hi0 := hrun.time_nonneg i
   have hlei : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
   have hx := hrun.antitone (le_max_right _ _) ho.1

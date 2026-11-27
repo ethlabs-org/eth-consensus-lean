@@ -19,7 +19,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- The viable proposal parent transfers its primed-window witness to its child. -/
 theorem proposal_window_witness
     {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {lo hi : Time} {M u : Nat} {isTop : Prop}
     {J B : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -48,7 +48,7 @@ theorem proposal_window_witness
     exact (hrun.time_mono hq.le).trans (by rw [hip, htime])
   have hleB : ∀ q < kB + 1, tr.time q ≤ tr.time kB :=
     fun q hq => hrun.time_mono (by omega)
-  have hfr := Node.frame_of_projAC_at hr.toLocalRun' hzk hc
+  have hfr := Node.frame_of_projAC_at hr.toLocalRun hzk hc
   have hfr' : ell.frame = Node.frame (tr.state z ip) := by
     rw [Trace.upTo_state tr z hleip] at hfr
     exact hfr
@@ -74,10 +74,10 @@ theorem proposal_window_witness
     · exact he ▸ hBm
     · exact (Anc.mem hDBs he).1
   have hσ := Store.σ_eq_of_mem_with
-    (Node.fg_reachable_at hr.toLocalRun' hzk ip).reachableWith
-    Store.finalitySpec_updateFinality'
-    (Node.fg_reachable_at hr.toLocalRun' hzk (kB + 1)).reachableWith
-    (Coherence.honest_blocks_coherent hr.toLocalRun' (hnc.upTo _)).1
+    (Node.fg_reachable_at hr.toLocalRun hzk ip).reachableWith
+    Store.finalitySpec_updateFinality
+    (Node.fg_reachable_at hr.toLocalRun hzk (kB + 1)).reachableWith
+    (Coherence.honest_blocks_coherent hr.toLocalRun (hnc.upTo _)).1
     (fun _ hm => ⟨z, hzk, ip, hm⟩) (fun _ hm => ⟨z, hzk, kB + 1, hm⟩) hDm hDpost
   have hh := (Coherence.honest_held_height' hr (hnc.upTo _) hzk hDBs).1
   rw [← hσ] at hh
@@ -116,7 +116,7 @@ theorem proposal_viable_at_call_with_early_at
     {g ΔF b hi : Time} {u M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts u) hi M isTop J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hnr : NoRestartAfter tr H (gbar g)) (hgu : gbar g ≤ sp.ts u)
@@ -210,7 +210,7 @@ theorem proposal_viable_at_call_primed_at'
     {g ΔF b hi : Time} {u M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts u) hi M isTop J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hnr : NoRestartAfter tr H (gbar g)) (hgu : gbar g ≤ sp.ts u)
@@ -231,7 +231,7 @@ theorem proposal_viable_at_cast_primed_at'
     {g ΔF b : Time} {s₀ p M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts p + sp.Δ) M isTop J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hnr : NoRestartAfter tr H (gbar g))

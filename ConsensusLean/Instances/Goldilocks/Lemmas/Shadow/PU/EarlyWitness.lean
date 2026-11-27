@@ -56,7 +56,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 a viable head `Q` of the call's frame (the shadow frame) is at least `M − 1` high, and in a top
 window a witness at `M − 1` extends `J` among the blocks held while honest. -/
 theorem early_witness_viable
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {lo hi : Time} {M : Nat} {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hwin : Healing.FrameWindow' tr H lo hi M isTop J)
     {w : Fin sp.n} {a : Nat} (hw : w ∈ H (tr.time a)) (hlo : lo ≤ tr.time a)

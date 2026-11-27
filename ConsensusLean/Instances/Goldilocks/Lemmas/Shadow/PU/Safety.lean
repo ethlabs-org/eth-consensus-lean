@@ -18,11 +18,11 @@ namespace Consensus.Goldilocks.Healing
 
 variable {P : Params} {ACP : Type} {st : Store P ACP}
 
-private theorem entry_input {acp₀ : ACP} (hr : st.Reachable' acp₀) (r : Nat) :
+private theorem entry_input {acp₀ : ACP} (hr : st.Reachable acp₀) (r : Nat) :
     1 ≤ (st.σ r).h ∧ (st.σ r).hj < (st.σ r).h ∧
       ∀ p ∈ (st.σ r).pending, p.1 < (st.σ r).h := by
   have hR := hr.reachableWith
-  have hu := Store.finalitySpec_updateFinality' (P := P) (ACP := ACP)
+  have hu := Store.finalitySpec_updateFinality (P := P) (ACP := ACP)
   obtain ⟨c, hc⟩ : ∃ c, P.fg.chainState c = some (st.σ r) := by
     rcases hb : st.blocks r with _ | X
     · exact ⟨[], by rw [Store.σ_of_blocks_none_with hu hR hb]; rfl⟩
@@ -52,7 +52,7 @@ private theorem fg_store_reachable {acp₀ : ACP} {H : Set (Fin P.n)}
     (hexec : ∀ i ℓ, tr.label i = some ℓ → tr.node i ∈ H →
       FGLabel.Step (tr.node i) (tr.state (tr.node i) i) ℓ (tr.post i))
     {y : Fin P.n} (hy : y ∈ H) (i : Nat) :
-    (tr.store y i).Reachable' acp₀ := by
+    (tr.store y i).Reachable acp₀ := by
   rw [Store.reachable_eq]
   induction i with
   | zero =>
@@ -162,12 +162,12 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
-private theorem held_att_signed {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+private theorem held_att_signed {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {a : FG.Att sp.n}
     (ha : ∃ Y ∈ (tr.state y i).fg.tree, a ∈ Y.fgPayload) (hav : a.val ∈ H) :
     ∃ k < i, tr.SignAt a.val k a := by
   obtain ⟨X, hX, haX⟩ := ha
-  rcases Coherence.tree_accepted hrun.toLocalRun' hy hX with rfl | ⟨k, hk, hacc⟩
+  rcases Coherence.tree_accepted hrun.toLocalRun hy hX with rfl | ⟨k, hk, hacc⟩
   · cases haX
   · obtain ⟨k', hk', hs⟩ := hrun.att_unforgeable y hy k a
       (Or.inr ⟨X, ⟨true, hacc⟩, haX⟩) hav
@@ -175,7 +175,7 @@ private theorem held_att_signed {ini} (hrun : GoldilocksRun' proposer dg H tr in
 
 /-- Two honest readers' held attestations from an honest signer are not slashable in
 the shadow execution. The collision premise matches the run-level safety interface. -/
-theorem held_atts_safe' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem held_atts_safe' {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (_hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H)
     (i j : Nat) (a b : FG.Att sp.n)
     (ha : ∃ Y ∈ (tr.state y i).fg.tree, a ∈ Y.fgPayload)
@@ -184,7 +184,7 @@ theorem held_atts_safe' {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
   obtain ⟨k, hk, hka⟩ := held_att_signed hrun hy ha hav
   obtain ⟨l, hl, hlb⟩ := held_att_signed hrun hz hb (hab.1 ▸ hav)
   rw [← hab.1] at hlb
-  obtain ⟨hinit, hexec⟩ := Compose.fg_exec' hrun.toLocalRun'
+  obtain ⟨hinit, hexec⟩ := Compose.fg_exec' hrun.toLocalRun
   obtain ⟨inputs, hin, hs⟩ := signed_run hinit hexec hav (max k l + 1)
   exact FG.client_safety sp.toParams.fg a.val inputs hin
     a (hs k (by omega) a ⟨_, Compose.projFG_callAt.mpr hka.choose_spec⟩)
@@ -201,7 +201,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 private theorem held_att_signed_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} {t : Time} (ht : 0 ≤ t)
     (hle : ∀ k < i, tr.time k ≤ t) (hy : y ∈ H t) {a : FG.Att sp.n}
     (ha : ∃ Y ∈ (tr.state y i).fg.tree, a ∈ Y.fgPayload) (hav : a.val ∈ H t) :
@@ -210,7 +210,7 @@ private theorem held_att_signed_at {proposer : Nat → Fin sp.n}
   have hXt : X ∈ ((tr.upTo t).state y i).fg.tree := by
     rw [Trace.upTo_state tr y hle]
     exact hX
-  rcases Coherence.tree_accepted (hrun.upTo ht).toLocalRun' hy hXt with
+  rcases Coherence.tree_accepted (hrun.upTo ht).toLocalRun hy hXt with
     rfl | ⟨k, hk, hacc⟩
   · cases haX
   · have hacc' := ((Trace.upTo_callAt tr).mp hacc).2
@@ -224,7 +224,7 @@ honest through both observations, but the two holders need not remain honest tog
 theorem held_atts_safe_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
     {tr : GoldilocksTrace sp ro} {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (_hnc : Compose.NoCollRun dg tr)
     {y x : Fin sp.n} {m i : Nat} {u t d : Time}
     (hu : 0 ≤ u) (hytime : ∀ k < m, tr.time k ≤ u) (hy : y ∈ H u)
@@ -243,7 +243,7 @@ theorem held_atts_safe_at {proposer : Nat → Fin sp.n}
   have hlb' : (tr.upTo d).SignAt a.val l b :=
     (RunTrace.upTo_signAt tr).mpr ⟨(hxtime l hl).trans htd, hlb⟩
   have hr := hrun.upTo (hu.trans hud)
-  obtain ⟨hinit, hexec⟩ := Compose.fg_exec' hr.toLocalRun'
+  obtain ⟨hinit, hexec⟩ := Compose.fg_exec' hr.toLocalRun
   obtain ⟨inputs, hin, hs⟩ := signed_run hinit hexec hav (max k l + 1)
   exact FG.client_safety sp.toParams.fg a.val inputs hin
     a (hs k (by omega) a ⟨_, Compose.projFG_callAt.mpr hka'.choose_spec⟩)

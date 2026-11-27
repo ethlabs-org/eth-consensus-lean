@@ -21,7 +21,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A high signing yields the first signing at the reset height in a shadow run. -/
 theorem reset_of_height_advance_at_from
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g : Time} {y : Fin sp.n} {k : Nat} {att : FG.Att sp.n}
     (hq : (H (max (Healing.cutZ sp.toParams g) (tr.time k)))ᶜ.ncard < sp.toParams.fg.q)
     (hyz : y ∈ H (max (Healing.cutZ sp.toParams g) (tr.time k)))
@@ -31,7 +31,7 @@ theorem reset_of_height_advance_at_from
 
 /-- A high source yields a reset even when the shadow client suppresses its signature. -/
 theorem reset_of_high_source_at_from
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g : Time} {y : Fin sp.n} {k : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     {s : Option (FG.Att sp.n)}
     (hyz : y ∈ H (max (Healing.cutZ sp.toParams g) (tr.time k)))
@@ -43,7 +43,7 @@ theorem reset_of_high_source_at_from
 
 /-- A high report yields a reset within the trace-level vote-latency deadline. -/
 theorem reset_of_high_report_within_from
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g D : Time} {y : Fin sp.n} {i : Nat} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hlat : VoteLatencyAt tr H D)
     (hyz : y ∈ H (max (Healing.cutZ sp.toParams g) (tr.time i + D)))
@@ -55,7 +55,7 @@ theorem reset_of_high_report_within_from
 
 /-- Delivered historical rows cross one height in the shadow Goldilocks run. -/
 theorem round_cross_at_from
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hq : ∀ y, ({ goldilocksNode sp ro with initial := ini y } :
       NodeAC sp.toParams).Requirements)
     (hroot : (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload).RootOk dg)
@@ -90,7 +90,7 @@ theorem round_cross_at_from
 
 /-- A shadow attest call supplies a historical row or a higher source. -/
 theorem row_or_high_of_attest_at_from
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g T : Time}
     (hf : ∀ t, 0 ≤ t → t < T → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
     (hna : NoAdvance tr H g T)

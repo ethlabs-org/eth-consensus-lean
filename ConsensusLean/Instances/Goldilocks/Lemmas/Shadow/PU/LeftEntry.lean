@@ -21,7 +21,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- The stock local RowSource extraction, keeping joinedness as the AC trace predicate. -/
-theorem signed_entry_source {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem signed_entry_source {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {v : Fin sp.n} (hv : v ∈ H) {d : Nat}
     {att : FG.Att sp.n} (hs : tr.SignAt v d att)
     (hfast : ∀ d' ell C, d' < d → AC.ToFGAt tr.projAC v d' ell C →
@@ -52,7 +52,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The stock RowSource wrapper, using the proved shadow deep quarantine. -/
 theorem high_row_source_at {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g : Time} {v : Fin sp.n} {d : Nat}
     {att : FG.Att sp.n} (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d)))
     (hs : tr.SignAt v d att) (hh : HZ tr H g + 1 ≤ att.h)
@@ -65,7 +65,7 @@ theorem high_row_source_at {ini}
   Outcome.high_row_source_at_core hrun.toCore hnc hvz hs hh hsnap hq
 
 theorem signed_row_lock_member {ini}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g a b : Time} {v : Fin sp.n} {d : Nat}
     {att : FG.Att sp.n} (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d)))
     (hs : tr.SignAt v d att) (hh : HZ tr H g + 1 ≤ att.h)
@@ -90,16 +90,16 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {g ΔF a b hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- At a time bounded by the reset horizon, deep quarantine or the high-source cover holds. -/
-theorem ResetPremisesUpTo'.quarantine_or_cover_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+theorem ResetPremisesUpTo.quarantine_or_cover_at'
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {t : Time} (htb : t ≤ b) :
     (∀ D, sp.deepDepth = some D → t ≤ cutZ sp.toParams g + 4 * D * sp.Δ) ∨
       HighSourceCover tr H g a b :=
   hp.toCore.quarantine_or_cover_at htb
 
 /-- Inside the deep quarantine a left high entry has a prior high origin above it. -/
-theorem ResetPremisesUpTo'.left_entry_origin_of_quarantine_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+theorem ResetPremisesUpTo.left_entry_origin_of_quarantine_at'
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
     (hy : y ∈ H t) (htb : t ≤ b) {E C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hE : E ∈ (tr.state y k).fg.tree) (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
@@ -113,8 +113,8 @@ theorem ResetPremisesUpTo'.left_entry_origin_of_quarantine_at'
 
 /-- A left high entry has an earlier high origin, or is covered after the deep quarantine.
 This is the stock left-entry contract over the shadow execution. -/
-theorem ResetPremisesUpTo'.left_entry_origin_or_covered_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+theorem ResetPremisesUpTo.left_entry_origin_or_covered_at'
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
     (hy : y ∈ H t) (htb : t ≤ b) {E C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hE : E ∈ (tr.state y k).fg.tree) (hET : ((tr.state y k).fg.σ E.root).Th = E.root)

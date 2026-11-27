@@ -43,18 +43,18 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- A source of an honest node is in its FG tree (`Healing.toFG_mem_tree`): the shadow frame's
 tree is the store's tree above `F`. -/
-theorem toFG_mem_tree' (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem toFG_mem_tree' (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {k : Nat}
     {ℓ : ACLabel (goldilocksNode sp ro)} {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hto : AC.ToFGAt tr.projAC y k ℓ C) : C ∈ (tr.state y k).fg.tree := by
   have h := Healing.toFG_mem_frame hto.2.2
-  rw [Node.frame_of_projAC_at hrun.toLocalRun' hy hto.1, Node.frame_eq,
+  rw [Node.frame_of_projAC_at hrun.toLocalRun hy hto.1, Node.frame_eq,
     Store.toFrame_tree] at h
   exact h.1
 
 /-- **Candidates at one honest call are compatible** (`Healing.toFG_candidates_compatible_at_call`),
 path candidates included: the AC lock invariant holds for every lawful frame. -/
-theorem toFG_candidates_compatible_at_call (hrun : GoldilocksRun' proposer dg H tr ini)
+theorem toFG_candidates_compatible_at_call (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ell)
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -86,7 +86,7 @@ private theorem fgSource_of_fast {FGP : Type} {A : AC.ACState sp.n} {Φ : AC.Frm
 /-- A deepest candidate extending a non-genesis block gives an actual report by this call's
 time (`Healing.report_of_deepest_candidate_of_run`). -/
 theorem report_of_deepest_candidate_of_run
-    (hrun : GoldilocksRun' proposer dg H tr ini) (hnoColl : Compose.NoCollRun dg tr)
+    (hrun : GoldilocksRun proposer dg H tr ini) (hnoColl : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y j ell) (hcall : ell.call = .toFG)
     (hjoin : AC.joined sp (tr.projAC.state y j) (tr.time j))
@@ -102,8 +102,8 @@ theorem report_of_deepest_candidate_of_run
   · obtain ⟨R, hRt, hRr, hCR⟩ := hrep
     have hPR : ell.frame.Anc P R := hPC.trans hCR
     rcases Healing.fgReported_origin hr hrun.vstart hy j with hgen | ⟨r, hrj, ell', R', hto, hR'r⟩
-    · have hG := Store.genesis_mem_with Store.finalitySpec_updateFinality'
-        (Node.fg_reachable_at hrun.toLocalRun' hy j).reachableWith
+    · have hG := Store.genesis_mem_with Store.finalitySpec_updateFinality
+        (Node.fg_reachable_at hrun.toLocalRun hy j).reachableWith
       have he := hr.coherent.1 (hPhiU hRt) ⟨y, hy, j, hG⟩ (hRr.trans hgen)
       rw [he] at hPR
       rcases Relation.ReflTransGen.cases_tail hPR with heq | ⟨Y, _, hY⟩
@@ -122,7 +122,7 @@ theorem report_of_deepest_candidate_of_run
 extending it (`Healing.report_of_compatible_candidate_of_run`). Path candidates only enlarge the
 candidate set; the deepest candidate still extends `P`. -/
 theorem report_of_compatible_candidate_of_run
-    (hrun : GoldilocksRun' proposer dg H tr ini) (hnoColl : Compose.NoCollRun dg tr)
+    (hrun : GoldilocksRun proposer dg H tr ini) (hnoColl : Compose.NoCollRun dg tr)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat} {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y j ell) (hcall : ell.call = .toFG)
     (hjoin : AC.joined sp (tr.projAC.state y j) (tr.time j))
@@ -152,7 +152,7 @@ theorem report_of_compatible_candidate_of_run
 /-- At an honest `ac_to_fg` call, a non-genesis block of the caller's tree that the caller did not
 hold after any cut at a time `≤ c` has a stamp later than `c` (`cut_lt_blockStamp_of_late`). -/
 private theorem cut_lt_blockStamp_of_late {Hs : Set (Fin sp.n)}
-    (hrun : GoldilocksRun' proposer dg Hs tr ini) (hnc : Compose.NoCollRun dg tr)
+    (hrun : GoldilocksRun proposer dg Hs tr ini) (hnc : Compose.NoCollRun dg tr)
     {x : Fin sp.n} (hx : x ∈ Hs) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt x i ℓ) (hcall : ℓ.call = .toFG)
     {C : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -160,9 +160,9 @@ private theorem cut_lt_blockStamp_of_late {Hs : Set (Fin sp.n)}
     (hlate : ∀ k < i, tr.time k ≤ c → C ∉ (tr.state x (k + 1)).fg.tree) :
     AC.ETime.of c < (tr.state x i).ac.blockStamp C.root := by
   have hacr := Compose.goldilocks_ac_projection_from' hrun hnc
-  rcases Coherence.tree_accepted hrun.toLocalRun' hx hCt with rfl | ⟨k, hki, hA⟩
+  rcases Coherence.tree_accepted hrun.toLocalRun hx hCt with rfl | ⟨k, hki, hA⟩
   · exact absurd rfl hg
-  obtain ⟨ℓ', hc', hcall', ht'⟩ := Coherence.accept_next hrun.toLocalRun' hx hA
+  obtain ⟨ℓ', hc', hcall', ht'⟩ := Coherence.accept_next hrun.toLocalRun hx hA
   have hk1 : k + 1 < i := by
     rcases (Nat.succ_le_of_lt hki).lt_or_eq with h | h
     · exact h
@@ -174,10 +174,10 @@ private theorem cut_lt_blockStamp_of_late {Hs : Set (Fin sp.n)}
       cases hcall
   have hkc : c < tr.time k := by
     by_contra hle
-    exact hlate k hki (not_lt.1 hle) (Coherence.accept_mem_from hrun.toLocalRun' hx hA)
+    exact hlate k hki (not_lt.1 hle) (Coherence.accept_mem_from hrun.toLocalRun hx hA)
   have hge := Compose.blockStamp_ge_of_accept hacr.localRun hx
     ⟨ℓ', Compose.projAC_callAt.2 hc', hcall'⟩ hg i hk1
-  rw [Compose.projAC_state' hrun.toLocalRun' hx i] at hge
+  rw [Compose.projAC_state' hrun.toLocalRun hx i] at hge
   change AC.ETime.of (tr.time (k + 1)) ≤ _ at hge
   rw [ht'] at hge
   exact lt_of_lt_of_le (AC.etime_of_lt_of.2 hkc) hge
@@ -196,19 +196,19 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- The AC state of a node honest at its cut is its projection (`projAC_state_at`). -/
-theorem projAC_state_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+theorem projAC_state_at (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i)) :
     tr.projAC.state y i = (tr.state y i).ac := by
-  have h := Compose.projAC_state' (hrun.upTo (hrun.time_nonneg i)).toLocalRun' hy i
+  have h := Compose.projAC_state' (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy i
   rwa [RunTrace.upTo_projAC, Trace.upTo_state tr.projAC y (fun k hk => hrun.time_mono hk.le),
     RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
 
 /-- The frame of an AC call of a node honest at it is the shadow frame (`frame_of_projAC_at`). -/
 theorem frame_of_projAC_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini) {y : Fin sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y i ℓ) : ℓ.frame = Node.frame (tr.state y i) := by
-  have h := Node.frame_of_projAC_at (hrun.upTo (hrun.time_nonneg i)).toLocalRun' hy
+  have h := Node.frame_of_projAC_at (hrun.upTo (hrun.time_nonneg i)).toLocalRun hy
     (by rw [RunTrace.upTo_projAC]; exact (Trace.upTo_callAt_of_le _ le_rfl).mpr hc)
   rwa [RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at h
 
@@ -217,7 +217,7 @@ source that `ac_to_fg` returns at a node honest at it and at `c_z`, of state hei
 a fast-lock candidate of the shadow frame. Path candidates are fast-lock candidates too; the proof
 reads only the source split, the frame's tree and the stamps. -/
 theorem high_toFG_fast_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g : Time}
     (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))
     {z : Fin sp.n} {r : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time r)))
@@ -246,8 +246,8 @@ theorem high_toFG_fast_at
   have hrd : ∀ k < r, tr.time k ≤ d := fun k hk => (hm hk.le).trans (le_max_right _ _)
   have hinj :=
     (Compose.goldilocks_ac_projection_from' hrun' hnc').localRun.coherent.1
-  have hreach : ∀ m, (∀ k < m, tr.time k ≤ d) → (tr.state z m).fg.Reachable' _ := fun m h => by
-    rw [← hst m h]; exact Node.fg_reachable_at hrun'.toLocalRun' hzz m
+  have hreach : ∀ m, (∀ k < m, tr.time k ≤ d) → (tr.state z m).fg.Reachable _ := fun m h => by
+    rw [← hst m h]; exact Node.fg_reachable_at hrun'.toLocalRun hzz m
   have hHZ : (tr.state z j).fg.hmax ≤ HZ tr H g := by
     refine le_csSup (((Set.finite_range fun y => (tr.state y j).fg.hmax).subset ?_).bddAbove)
       ⟨z, hzc, j, hj, rfl⟩
@@ -269,11 +269,11 @@ theorem high_toFG_fast_at
     have hk1d : ∀ q < k + 1, tr.time q ≤ d := fun q hq => hrd q (by omega)
     rw [hst _ hk1d] at hCk
     obtain ⟨-, -, -, -, hge, -, -⟩ := Store.cache_invariants' (hreach _ hk1d)
-    have hmono := Coherence.hmax_mono hrun'.toLocalRun' hzz hkj
+    have hmono := Coherence.hmax_mono hrun'.toLocalRun hzz hkj
     simp only at hmono
     rw [hst _ hk1d, hst _ hjd] at hmono
     have hσ := Store.σ_eq_of_mem_with (hreach _ hk1d).reachableWith
-      Store.finalitySpec_updateFinality' (hreach r hrd).reachableWith hinj
+      Store.finalitySpec_updateFinality (hreach r hrd).reachableWith hinj
       (fun B hB => ⟨z, hzz, k + 1, by rw [hst _ hk1d]; exact hB⟩)
       (fun B hB => ⟨z, hzz, r, by rw [hst r hrd]; exact hB⟩) hCk hCt
     have := (hge C hCk).trans (hmono.trans hHZ)
@@ -309,7 +309,7 @@ theorem high_toFG_fast_at
 
 /-- A warm node is joined at the vote deadline (`joined_voteTime_of_warm_frame_at`). -/
 theorem joined_voteTime_of_warm_frame_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g : Time} {s₀ u : Nat} (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hs : s₀ + 1 ≤ u)
     {y : Fin sp.n} (hy : y ∈ H (sp.ts u + sp.Δ)) :
@@ -329,7 +329,7 @@ theorem joined_voteTime_of_warm_frame_at
 /-- `joined_voteTime_of_warm_frame_at'` with restarts bounded only up to `b`
 (`joined_voteTime_of_warm_frame_upTo_at`). -/
 theorem joined_voteTime_of_warm_frame_upTo_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {g b : Time} {s₀ u : Nat} (hnr : Healing.Growing.NoRestartUpTo tr H (gbar g) b)
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hs : s₀ + 1 ≤ u) (hb : sp.ts u + sp.Δ ≤ b)
     {y : Fin sp.n} (hy : y ∈ H (sp.ts u + sp.Δ)) :
@@ -350,7 +350,7 @@ theorem joined_voteTime_of_warm_frame_upTo_at
 /-- **Candidates at one honest call are compatible** in the historical block universe
 (`toFG_candidates_compatible_at_call_at`), path candidates included. -/
 theorem toFG_candidates_compatible_at_call_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i : Nat}
     (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt y i ell) {P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -378,7 +378,7 @@ theorem toFG_candidates_compatible_at_call_at
 /-- **An actual report above a slot-`u` block cannot precede slot `u`**
 (`toFG_time_ge_of_ancestor_slot_at`). -/
 theorem toFG_time_ge_of_ancestor_slot_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {i u : Nat}
     (hy : y ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode sp ro)} {P R : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -406,7 +406,7 @@ theorem toFG_time_ge_of_ancestor_slot_at
 /-- The frame of an honest call is well formed and its tree is the caller's
 (`frame_tree_subset_at`). -/
 theorem frame_tree_subset_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
     {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ℓ) :
     FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ (tr.state y k).fg.tree := by
@@ -423,7 +423,7 @@ theorem frame_tree_subset_at
 extending it, by the call, for a node honest at the call
 (`report_of_compatible_candidate_of_run_at`), path candidates included. -/
 theorem report_of_compatible_candidate_of_run_at
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
     {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
     (hcall : ell.call = .toFG) (hjoin : AC.joined sp (tr.projAC.state y j) (tr.time j))

@@ -19,17 +19,17 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 /-- The shadow frame root is the finalized tip, so its monotonicity needs no window premise. -/
 theorem fcRoot_mono_at'
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {a i : Nat} (hy : y ∈ H (tr.time i)) (hai : a ≤ i) :
     Anc (tr.HonestBlocksAt H) (Node.frame (tr.state y a)).fcRoot
       (Node.frame (tr.state y i)).fcRoot := by
   rw [Node.frame_eq, Node.frame_eq, Store.toFrame_fcRoot, Store.toFrame_fcRoot]
-  exact hrun.toLocalRun'.finalized_mono_on_prefix' (hrun.time_nonneg i) hy hai
+  exact hrun.toLocalRun.finalized_mono_on_prefix' (hrun.time_nonneg i) hy hai
     (fun k hk => hrun.time_mono hk.le)
 
 /-- A live remapped lock records a selection made before this same reader's compromise. -/
 theorem live_lock_selection_origin_at'
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {i : Nat}
     (hx : x ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
     (hc : tr.projAC.CallAt x i ell) {l : AC.Lock}
@@ -84,7 +84,7 @@ theorem live_lock_selection_origin_at'
 
 /-- A historical write below its finalized frame root stays below the reader's frame root. -/
 theorem unlocked_image_below_write_root_at'
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {a i : Nat}
     (hy : y ∈ H (tr.time i)) (hai : a ≤ i)
     {ellw ell : ACLabel (goldilocksNode sp ro)}

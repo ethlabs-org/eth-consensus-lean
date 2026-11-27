@@ -21,7 +21,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 theorem finalized_anc_head_at_cast_at {lo hi : Time} {M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H lo hi M isTop J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {z y : Fin sp.n} {c i : Nat}
     (hz : z ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))
@@ -77,7 +77,7 @@ theorem finalized_anc_head_at_cast_at {lo hi : Time} {M : Nat}
 theorem fcRoot_anc_head_at_cast_at {lo hi : Time} {M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow' tr H lo hi M isTop J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {z y : Fin sp.n} {c i : Nat}
     (hz : z ∈ H (tr.time c)) (hy : y ∈ H (tr.time i))

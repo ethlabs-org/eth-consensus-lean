@@ -36,7 +36,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 /-- The stored block of a high origin is held at its actual honest write
 (`Outcome.high_origin_mem_at`). -/
 theorem Outcome.high_origin_mem_at' {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {i j : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B) :
     B ∈ (tr.state x i).fg.tree :=
@@ -44,7 +44,7 @@ theorem Outcome.high_origin_mem_at' {ini : Fin sp.n → (goldilocksNode sp ro).S
 
 /-- A held descendant of a high origin is high (`Outcome.high_of_anc_at`). -/
 theorem Outcome.high_of_anc_at' {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x z : Fin sp.n} {i j k : Nat} {t : Time}
     {B W : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hz : z ∈ H t)
@@ -55,7 +55,7 @@ theorem Outcome.high_of_anc_at' {ini : Fin sp.n → (goldilocksNode sp ro).State
 /-- **A covered block is compatible with every high origin written by `b`**
 (`CoveredUpTo.compatible_highOrigin`; S1 of the cover, the origin being a healed member). -/
 theorem CoveredUpTo.compatible_highOrigin' {ini : Fin sp.n → (goldilocksNode sp ro).State}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {m : Nat} {E : AC.Blk sp.n (List (FG.Att sp.n))}
     (h : CoveredUpTo tr H g a b m E) {x : Fin sp.n} {i j : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hib : tr.time i ≤ b)

@@ -55,7 +55,7 @@ theorem mem_viableTree_iff {X : NodeBlock P ACP} :
 
 /-- Gap frames have exactly the stock viable tree. -/
 theorem frame_realization' (acp₀ : ACP) (st : Store P ACP)
-    (hr : st.Reachable' acp₀) : FrameOK st.toFrame :=
+    (hr : st.Reachable acp₀) : FrameOK st.toFrame :=
   frameOK_toFrame hr.puSnapshot
 
 private theorem frame_ext {n : Nat} {FGP ACP : Type} {a b : Frame n FGP ACP}
@@ -79,7 +79,7 @@ private theorem onBlock_F {st st' : Store P ACP} {B : NodeBlock P ACP}
               σ := Function.update st.σ B.root σ' }
   obtain ⟨atts, he⟩ := addAtts_eq (updateFinality st₁ σ') B.fgPayload
   obtain ⟨hb, hσ, -, -, -, hF⟩ :=
-    (finalitySpec_iff _).1 finalitySpec_updateFinality' st₁ σ'
+    (finalitySpec_iff _).1 finalitySpec_updateFinality st₁ σ'
   have ht : ({ updateFinality st₁ σ' with atts := atts } : Store P ACP).tree = st₁.tree := by
     simp only [tree, hb]
   have h₁ : st₁.σ B.root = σ' := Function.update_self ..
@@ -124,15 +124,15 @@ private theorem shadow_frameStep_of {n : Nat} {FGP ACP : Type}
 
 /-- Accepting a block is a frame step even when shadow finalization advances F. -/
 theorem accept_is_frame_step' (acp₀ : ACP) (st : Store P ACP)
-    (hr : st.Reachable' acp₀) :
+    (hr : st.Reachable acp₀) :
     (∀ B st', st.onBlock B = some st' → FrameStep st.toFrame B st'.toFrame) ∧
       ∀ a, (st.onAttestation a).toFrame = st.toFrame := by
   refine ⟨fun B st' h => ?_, fun a => ?_⟩
-  · have hu := finalitySpec_updateFinality' (P := P) (ACP := ACP)
+  · have hu := finalitySpec_updateFinality (P := P) (ACP := ACP)
     have hw : st.onBlockWith updateFinality B = some st' := by
       rwa [← onBlock_eq_onBlockWith]
     obtain ⟨pr, -, hpr, hnew, hpr', hFB, -, -⟩ := onBlockWith_eq_some hw
-    have hr' : st'.Reachable' acp₀ := by
+    have hr' : st'.Reachable acp₀ := by
       rw [reachable_eq] at hr ⊢
       exact hr.tail ((step_iff _ _).2 (Or.inl ⟨B, h⟩))
     have hT' : st'.tree = insert B st.tree := (tree_grows_with hu).1 B st' hw
