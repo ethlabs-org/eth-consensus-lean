@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Trace.UpTo
 
@@ -43,9 +44,104 @@ theorem frameOK_state' (h : Node.LocalRun' proposer dg H sg tr ini)
   rw [Node.frame'_eq]
   exact Store.frameOK_toFrame' (Node.fg_reachable_at' h hy i).puSnapshot
 
+/-- Accepted blocks pass the AC payload requirement, from the wire or their own proposal. -/
+theorem own_block_payload' (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
+    (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
+    {i : Nat} {B : A.Blk} (hacc : tr.CallAt y i (.fg (.block B true))) : A.validPayload B := by
+  rcases Coherence.blockCall_cases' h hy hacc with hg |
+      ⟨j, x, f, -, hg, hp, d, p, hdp, rfl, -⟩
+  · exact (h.wire y hy i _ _ hg).2.2
+  obtain ⟨cfg, hreach, hst, hstep⟩ := group_step' h hy hg
+  obtain ⟨hcoh, t₀, ht₀, hR⟩ := ac_states_reachable' proposer dg y (hpay y hy) hreach
+  have hfg : cfg.st.fg.Reachable' A.genesisPayload := by
+    rw [hst]
+    exact Node.fg_reachable_at' h hy j
+  have hs := (Node.step'_iff _ _ _ _ _ _ _).mp hstep
+  have hR' := ACInterface.ReachableAtFrom.step .tick hR (ht₀.trans hs.1)
+    ⟨⟨by simpa only [Node.frame'_eq] using Store.frame_realization' _ _ hfg,
+      fun _ hX => by rw [Node.frame'_eq, Store.toFrame'_tree] at hX; exact hX.1⟩, rfl⟩
+  rw [← hst] at hdp
+  have hts : tr.time i = P.slotTime (P.slotOf (tr.time i)) := hp.2.1
+  refine hpay y hy _ hcoh _ _ _ hR' (P.slotOf (tr.time i)) hts.le d p ?_ _ rfl rfl
+  rw [← hts]
+  simpa only [Node.acProposal'_eq, Node.tickStep'_eq, Node.acCall'_eq,
+    Node.frame'_eq] using hdp
+
 end Consensus.Goldilocks.Compose
 
 namespace Consensus.Goldilocks.Healing
+
+open Node
+
+section OwnBlock
+
+variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
+
+/-- The own block of a shadow proposal is accepted immediately after its proposal cut. -/
+theorem own_block_accepted' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
+    (hq : ({ A with initial := ini y } : NodeAC P).Requirements)
+    (hroot : (P.genesisBlock A.genesisPayload).RootOk dg) (hnc : Compose.NoCollRun dg tr)
+    (hy : y ∈ H) {j : Nat} {t : Time} {x : Nat} {fgDue : Bool}
+    (hg : tr.GroupAt' proposer dg y j t (.tick x fgDue)) (hP : Proposes proposer y t)
+    {d : DutyHead P.n (List (FG.Att P.n)) A.Payload} {pay : A.Payload}
+    (hr : (acProposal' (tickStep' proposer dg y (tr.state y j) t x .acTick).1 t).2.2 =
+      some (d, pay)) :
+    tr.AcceptAt y (j + 2) (mkBlock dg y
+      (acProposal' (tickStep' proposer dg y (tr.state y j) t x .acTick).1 t).1.fg
+        t x d.head pay) ∧ tr.time (j + 2) = t := by
+  let st := (acProposal' (tickStep' proposer dg y (tr.state y j) t x .acTick).1 t).1
+  let B := mkBlock dg y st.fg t x d.head pay
+  have hs : ¬ P.slotOf t < B.slot := lt_irrefl _
+  have cuts (acc : Bool) (hb : (onBlock' y st t B).2[0]? = some (.fg (.block B acc))) :
+      (exec' proposer dg y (tr.state y j) t (.tick x fgDue)).2[2]? =
+        some (.fg (.block B acc)) := by
+    have hp : (tickStep' proposer dg y
+        (tickStep' proposer dg y (tr.state y j) t x .acTick).1 t x .proposal).2 =
+        (acProposal' (tickStep' proposer dg y (tr.state y j) t x .acTick).1 t).2.1 ::
+          (onBlock' y st t B).2 := by
+      simp only [tickStep'_eq proposer dg y _ t x .proposal, hP, ↓reduceIte, hr,
+        proposeBlock'_eq, st, B]
+    have h0 : (tickStep' proposer dg y (tr.state y j) t x .acTick).2.length = 1 := by
+      simp only [tickStep'_eq, List.length_singleton]
+    have hlen : 2 < ((tickStep' proposer dg y (tr.state y j) t x .acTick).2 ++
+        (acProposal' (tickStep' proposer dg y (tr.state y j) t x .acTick).1 t).2.1 ::
+          (onBlock' y st t B).2).length := by
+      have := (List.getElem?_eq_some_iff.mp hb).1
+      simp only [List.length_append, List.length_cons, h0]
+      omega
+    cases fgDue <;>
+      simp only [exec'_eq, onTick'_eq, runSteps'_eq, tickSteps, Bool.false_eq_true,
+        ↓reduceIte, List.foldl_cons, List.foldl_nil]
+    all_goals simp only [List.nil_append, hp]
+    · rw [List.getElem?_append_right (by omega)]
+      simpa only [h0, Nat.reduceSub, List.getElem?_cons_succ] using hb
+    · rw [List.getElem?_append_left hlen, List.getElem?_append_right (by omega)]
+      simpa only [h0, Nat.reduceSub, List.getElem?_cons_succ] using hb
+  have hoc : tr.Occurs B := by
+    cases hb : st.fg.onBlock' B with
+    | none =>
+      exact ⟨y, j + 2, false, (Compose.group_cut' hg (cuts false (by
+        simp [onBlock'_eq, hs, hb]))).1⟩
+    | some fg' =>
+      exact ⟨y, j + 2, true, (Compose.group_cut' hg (cuts true (by
+        simp [onBlock'_eq, hs, hb]))).1⟩
+  obtain ⟨cfg, hR, hst, hS⟩ := Compose.group_step' h hy hg
+  have hacc := Compose.honest_block_accepted_from' proposer dg y hq hroot
+    cfg _ t x fgDue hR hS hP d pay (by rw [hst]; exact hr)
+  simp only [hst] at hacc
+  have hsub : insert B st.fg.tree ⊆
+      insert (P.genesisBlock A.genesisPayload) {B | tr.Occurs B} := by
+    have he : st.fg = (tr.state y j).fg := by
+      simp [st, acProposal'_eq, tickStep'_eq, acCall'_eq]
+    rw [he]
+    exact Set.insert_subset (Set.mem_insert_of_mem _ hoc) (Coherence.tree_subset_run' h hy j)
+  obtain ⟨-, fg', hb⟩ := hacc.2.2.2.2.2.2 (Compose.NoCollOn.mono hnc hsub)
+  change st.fg.onBlock' B = some fg' at hb
+  exact Compose.group_cut' hg (cuts true (by simp [onBlock'_eq, hs, hb]))
+
+end OwnBlock
 
 open AC (ACParams ReplayOrder Payload)
 
