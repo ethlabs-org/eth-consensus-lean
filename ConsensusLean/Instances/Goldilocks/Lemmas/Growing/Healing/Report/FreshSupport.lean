@@ -1,5 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVeto
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshViable
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreStock
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -22,9 +24,12 @@ variable {hold : Time}
 
 /-- Every member of the slot committee `K u` still honest at the next-slot read supports the
 unanimous proposal in the merged view of the receiver's next-slot vote branch, for a run from
-`K`'s committee start. -/
-theorem unanimous_next_cast_supporters_at {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+`K`'s committee start, over a run bundle. -/
+theorem Core.unanimous_next_cast_supporters_at
+    {uf : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
+    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {K : AC.CommitteeDict sp.n}
+    (hrun : GoldilocksRunCore uf frameOf proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
     (hsvc : ResetService tr H g ΔF b hold)
@@ -49,14 +54,13 @@ theorem unanimous_next_cast_supporters_at {K : AC.CommitteeDict sp.n}
       x ∈ AC.supporters ell.frame (AC.mergedVoteView sp R ell.frame (u + 1)) u P := by
   have hΔ := sp.toParams.hΔ
   have hgu : gbar g ≤ sp.ts u := by linarith
-  have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch (hrun.time_nonneg j) hjb
+  have hS := hK.healthy_base_before_at_core hrun hnc hsvc hawake hf hcatch (hrun.time_nonneg j) hjb
   have hr := hS.run.localRun
   have hb' : AC.VoteBranchAt (tr.projAC.upTo (tr.time j)) y j ell R :=
     (voteBranchAt_upTo_iff hrun.time_mono).2 ⟨le_rfl, hb⟩
   have hPhi := AC.frameIn_of_callAt hr hy hb'.callAt
-  have hsub := RunTrace.honestBlocks_upTo_subset (H := H) hrun.time_mono
-    (hrun.time_nonneg j)
-  obtain ⟨q, hqj, haq, hqt⟩ := accepted_relay_before_at hrun hsvc hnr hz ha
+  have hsub := hrun.upTo_subset (hrun.time_nonneg j)
+  obtain ⟨q, hqj, haq, hqt⟩ := Core.accepted_relay_before_at hrun hsvc hnr hz ha
     (hta ▸ hgu) hy hb.callAt (by rw [hta]; linarith)
     ((hPhi.1.rooted.2 P hPt).mono (fun Q hQ => hsub (hPhi.2 hQ)))
   have haq' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time j)) y q P := by
@@ -92,15 +96,50 @@ theorem unanimous_next_cast_supporters_at {K : AC.CommitteeDict sp.n}
     (AC.honest_not_equivocator_branchU hS.run.toU hy hb' (hval ▸ hx))
   rwa [hval] at hsupp
 
+/-- Every member of the slot committee `K u` still honest at the next-slot read supports the
+unanimous proposal in the merged view of the receiver's next-slot vote branch, for a run from
+`K`'s committee start. -/
+theorem unanimous_next_cast_supporters_at {K : AC.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
+    (hsvc : ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    {u : Nat} (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
+    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPs : P.slot = u)
+    (hun : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e →
+      e.msg.slot = u → e.msg.head = P.root)
+    {z : Fin sp.n} {a : Nat} (hz : z ∈ H (tr.time a))
+    (ha : tr.projAC.AcceptAt z a P) (hta : tr.time a = sp.ts u)
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
+    {ell : ACLabel (goldilocksNode sp ro)} {R : AC.ACState sp.n}
+    (hb : AC.VoteBranchAt tr.projAC y j ell R) (hjs : sp.slot (tr.time j) = u + 1)
+    (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j) (hjb : tr.time j ≤ b)
+    (hPt : P ∈ ell.frame.tree)
+    (hvotes : ∀ x, x ∈ H (tr.time j) → x ∈ K.committee u → ∃ i ev,
+      AC.VoteAt tr.projAC x i ev ∧ ev.msg.slot = u ∧ tr.time i ≤ tr.time j)
+    (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ x, x ∈ H (tr.time j) → x ∈ K.committee u →
+      x ∈ AC.supporters ell.frame (AC.mergedVoteView sp R ell.frame (u + 1)) u P :=
+  Core.unanimous_next_cast_supporters_at hrun.toCore hnc hsvc hawake hf hcatch hnr hmargin hPs hun
+    hz ha hta hy hb hjs ht hjb hPt hvotes hK
+
 /-- The receiver's next-slot vote branch clears every older incompatible lock before the update,
 including labels surviving an intervening update, at the slot committees `K` of a run from `K`'s
 committee start. The honest members of `K u` support the proposal at the branch's unlock and are
 more than half of `K u`. The receiver need not vote in either slot. -/
-theorem FrameWindow.older_locks_compatible_at_update_at {K : AC.CommitteeDict sp.n}
-    {g ΔF b : Time} {u floor : Nat} {kindJ : Prop}
-    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+theorem Core.older_locks_compatible_at_update_at
+    {uf : Store sp.toParams (Payload sp.n) → FG.ChainState sp.n → Store sp.toParams (Payload sp.n)}
+    {frameOf : NodeState (goldilocksNode sp ro) → AC.Frm sp.n (List (FG.Att sp.n))}
+    {K : AC.CommitteeDict sp.n}
+    {g ΔF b : Time} {u : Nat} {P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hviable : ∀ {y' : Fin sp.n} {j' : Nat} {ell' : ACLabel (goldilocksNode sp ro)},
+      y' ∈ H (tr.time j') → tr.projAC.CallAt y' j' ell' →
+      sp.ts u + 2 * sp.Δ ≤ tr.time j' → tr.time j' ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ →
+      P ∈ ell'.frame.viableTree ell'.frame.tree)
+    (hrun : GoldilocksRunCore uf frameOf proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
@@ -119,6 +158,7 @@ theorem FrameWindow.older_locks_compatible_at_update_at {K : AC.CommitteeDict sp
     ∀ l ∈ (tr.projAC.state y k).locks, l.slot < u →
       ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
         Compatible (tr.HonestBlocksAt H) L P := by
+  have _ := hdes
   have hΔ := sp.toParams.hΔ
   have hgu : gbar g ≤ sp.ts u := by linarith
   have hkt : tr.time k = sp.ts u + 6 * sp.Δ := hu.2.2.1
@@ -127,7 +167,7 @@ theorem FrameWindow.older_locks_compatible_at_update_at {K : AC.CommitteeDict sp
   have hnext : sp.ts (u + 1 : Nat) + sp.Δ ≤ tr.time k := by
     rw [hkt]; simp only [ACParams.ts]; push_cast; linarith
   have hkb : tr.time k ≤ b := by rw [hkt, ← hT]; exact hTb
-  have hS := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch
+  have hS := hK.healthy_base_before_at_core hrun hnc hsvc hawake hf hcatch
     (show 0 ≤ sp.ts (u + 1 : Nat) + sp.Δ by
       have ht : sp.ts u ≤ sp.ts (u + 1 : Nat) := (AC.ts_le_iff sp).2 (by omega)
       linarith [AC.gbar_nonneg g]) (hnext.trans hkb)
@@ -159,19 +199,28 @@ theorem FrameWindow.older_locks_compatible_at_update_at {K : AC.CommitteeDict sp
   have hjfinite : tr.time j ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by linarith
   have hyj := hrun.antitone (hrun.time_mono hjk.le) hy
   have hshort : sp.ts u + sp.Δ ≤ tr.time j := by linarith
-  have hS0 := hK.healthy_base_before_at hrun hnc hsvc hawake hf hcatch
+  have hS0 := hK.healthy_base_before_at_core hrun hnc hsvc hawake hf hcatch
     (show 0 ≤ sp.ts u + sp.Δ by linarith [AC.gbar_nonneg g])
     (hshort.trans (hrun.time_mono hjk.le |>.trans hkb))
   have hvotes := honest_votes_of_joined_before_at hS0 hgu hjoin
-  obtain ⟨hvi, _, _⟩ := hframe.proposal_viable_after_votes_at hrun hnc hsvc hf hnr hgu hTb hz hdes
-    hP hPs hyj hb.callAt hjlate hjfinite
-  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, a, _, ha, hta⟩ :=
-    honestProposalRun_of_proposesAt_at hrun hnc hz hdes hP hPs
-  change tr.time a = sp.ts u at hta
-  have hza : proposer u ∈ H (tr.time a) :=
-    hrun.antitone (by rw [hta]; linarith) (hdes ▸ hz)
+  have hvi := hviable hyj hb.callAt hjlate hjfinite
+  have htime : tr.time kP = sp.ts u := by
+    simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
+  have hzk : z ∈ H (tr.time kP) :=
+    hrun.antitone (by rw [htime]; linarith) hz
+  have hp := hrun.upTo (hrun.time_nonneg kP)
+  have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
+    ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
+  have hacc := (hp.accept_of_proposesAt (hnc.upTo _) hzk hP').1
+  obtain ⟨ha', hta', _⟩ := hp.ac_block_after z hzk hacc
+  have ha : tr.projAC.AcceptAt z (kP + 1) P := by
+    rw [RunTrace.upTo_projAC] at ha'
+    obtain ⟨ella, hca, hea⟩ := ha'
+    exact ⟨ella, ((Trace.upTo_callAt _).mp hca).2, hea⟩
+  have hta : tr.time (kP + 1) = sp.ts u := hta'.trans htime
+  have hza : z ∈ H (tr.time (kP + 1)) := hta' ▸ hzk
   have hjb := (hrun.time_mono hjk.le).trans hkb
-  have hsupp := unanimous_next_cast_supporters_at hrun hnc hsvc hawake hf hcatch hnr
+  have hsupp := Core.unanimous_next_cast_supporters_at hrun hnc hsvc hawake hf hcatch hnr
     hmargin hPs hun hza ha hta hyj hb hjs hjlate hjb hvi.1
     (fun x hx hxK => by
       obtain ⟨i, ev, hv, hes, hit⟩ := hvotes x (hrun.antitone hshort hx) hxK
@@ -184,8 +233,40 @@ theorem FrameWindow.older_locks_compatible_at_update_at {K : AC.CommitteeDict sp
       exact Set.ncard_inter_add_ncard_sdiff_eq_ncard _ _ (Set.toFinite _)
     have hcs := hK.cs2 u hgu (by linarith) (tr.time j) (hrun.time_nonneg j) hjb
     omega
-  exact older_locks_compatible_after_unlock_at hrun hnc hy hb hjs hjk hvi.1
+  exact Core.older_locks_compatible_after_unlock_at hrun hnc hy hb hjs hjk hvi.1
     (fun x hx => Or.inr (hsupp x hx.2 hx.1).2) hhalf
+
+/-- The receiver's next-slot vote branch clears every older incompatible lock before the update,
+including labels surviving an intervening update, at the slot committees `K` of a run from `K`'s
+committee start. The honest members of `K u` support the proposal at the branch's unlock and are
+more than half of `K u`. The receiver need not vote in either slot. -/
+theorem FrameWindow.older_locks_compatible_at_update_at {K : AC.CommitteeDict sp.n}
+    {g ΔF b : Time} {u floor : Nat} {kindJ : Prop}
+    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow tr H (sp.ts u) (sp.ts (u + 1 : Nat) + 2 * sp.Δ) floor kindJ J)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hmargin : gbar g + 2 * sp.Δ ≤ sp.ts u)
+    (hjoin : ∀ x, x ∈ H (sp.ts u + sp.Δ) → AC.JoinedAt tr.projAC x (sp.ts u + sp.Δ))
+    (hTb : sp.ts (u + 1 : Nat) + 2 * sp.Δ ≤ b)
+    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
+    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
+    (hun : ∀ x i e, x ∈ H (tr.time i) → AC.VoteAt tr.projAC x i e →
+      e.msg.slot = u → e.msg.head = P.root)
+    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
+    {ell : ACLabel (goldilocksNode sp ro)} (hu : AC.UpdateAt tr.projAC y k u ell)
+    (hK : CommitteeHalfUpTo tr H K g b) :
+    ∀ l ∈ (tr.projAC.state y k).locks, l.slot < u →
+      ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
+        Compatible (tr.HonestBlocksAt H) L P :=
+  Core.older_locks_compatible_at_update_at
+    (fun hy' hc' hlo hhi => (hframe.proposal_viable_after_votes_at hrun hnc hsvc hf hnr
+      (by linarith [sp.toParams.hΔ]) hTb hz hdes hP hPs hy' hc' hlo hhi).1)
+    hrun.toCore hnc hsvc hawake hf hcatch hnr hmargin hjoin hTb hz hdes hP hPs hun hy hu hK
 
 end Consensus.Goldilocks.Healing.Growing
 
