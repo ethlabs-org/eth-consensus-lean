@@ -409,6 +409,21 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
   {g ΔF a b hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
+/-- At a time bounded by the reset horizon, deep quarantine or the high-source cover holds. -/
+theorem ResetPremisesUpTo'.quarantine_or_cover_at'
+    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    {t : Time} (htb : t ≤ b) :
+    (∀ D, sp.deepDepth = some D → t ≤ cutZ sp.toParams g + 4 * D * sp.Δ) ∨
+      HighSourceCover tr H g a b := by
+  cases hdd : sp.deepDepth with
+  | none => exact Or.inl fun D hD => by cases hD
+  | some D =>
+    rcases hp.deepCover D hdd with hb | hc
+    · refine Or.inl fun D' hD' => ?_
+      cases hD'
+      exact htb.trans hb
+    · exact Or.inr hc
+
 /-- Inside the deep quarantine a left high entry has a prior high origin above it. -/
 theorem ResetPremisesUpTo'.left_entry_origin_of_quarantine_at'
     (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
