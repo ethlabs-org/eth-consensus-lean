@@ -44,26 +44,6 @@ variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
   {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
-namespace Stub
-
-/-- **Interface stub** for lane O's `floor_or_crossing_of'` (`Shadow/PU/Geometry`): the stock
-`floor_or_crossing_of` with the floor `h_max − 1` and `IsViable'`, without the contest case. -/
-theorem floor_or_crossing_of' (hr : Node.LocalRun' proposer dg H sg tr ini)
-    (hfg : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG)
-    (hf : 2 * Hᶜ.ncard < P.n) {y : Fin P.n} (hy : y ∈ H) {i : Nat} {G : A.Blk → Prop}
-    (hsrc : RowsAbove tr H G y i (tr.state y i).fg.hj)
-    {B : A.Blk} (hGB : ∀ D, G D → Compatible (tr.HonestBlocks H) D B)
-    (hB : B ∈ (tr.state y i).fg.tree) :
-    (tr.state y i).fg.hmax - 1 ≤ ((tr.state y i).fg.σ B.root).h ∨
-      ∃ D E X, G D ∧ IsHonestSource tr H D E.root ∧ E ∈ (tr.state y i).fg.tree ∧
-        (tr.state y i).fg.Anc B E ∧
-        ((tr.state y i).fg.σ E.root).h = (tr.state y i).fg.hmax - 1 ∧
-        X ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc E X ∧
-        (tr.state y i).fg.IsViable' X := by
-  sorry
-
-end Stub
-
 /-- **S3 over sources `G`, with frozen witnesses in `T`, over the shadow node**
 (`viable_of_frozen_witnesses`): a block `B` of the honest blocks, compatible with every source of
 the node's honest rows at heights `≥ h_j` (sources pairwise compatible), is in the viable tree of
@@ -163,7 +143,7 @@ theorem viable_of_frozen_witnesses' (hr : Node.LocalRun' proposer dg H sg tr ini
     · exact Or.inl hm
     refine Or.inr ⟨by omega, hcase.imp id fun hJB => ?_⟩
     exact honest_held_anc' hr hfg hy (hJB.trans (hBW''.mono hsU)) hW'
-  rcases Stub.floor_or_crossing_of' hr hfg hf hy hsrc hGB hBt with hle | ⟨D, E, -, hD, hDs, hE,
+  rcases floor_or_crossing_of' hr hfg hf hy hsrc hGB hBt with hle | ⟨D, E, -, hD, hDs, hE,
     hBE, hEh, -⟩
   · exact head W hW hΦBW (viab W hWt.1 (hΦs _ _ hΦBW)
       (hle.trans (honest_held_height' hr hy (hΦs _ _ hΦBW)).1))
@@ -249,13 +229,13 @@ private theorem entries_compatible
     (h₂ : (∃ r < d₂, ∃ l O, HighOrigin tr H g v₂ r l O ∧ Anc (tr.HonestBlocksAt H) E₂ O) ∨
       CoveredUpTo tr H g a b m₂ E₂) :
     Compatible (tr.HonestBlocksAt H) E₁ E₂ := by
-  have hU := Shadow.PU.honestBlocksAt_coherent' hp.run hp.noColl
+  have hU := Coherence.honestBlocksAt_coherent' hp.run hp.noColl
   have hb : ∀ {r d}, r < d → d < c → tr.time r ≤ b := fun hr hd =>
     (hp.run.time_mono (show _ ≤ c by omega)).trans hcb
   rcases h₁ with ⟨r₁, hr₁, l₁, O₁, ho₁, hEO₁⟩ | hc₁
   · rcases h₂ with ⟨r₂, hr₂, l₂, O₂, ho₂, hEO₂⟩ | hc₂
     · exact compatible_of_below hU hEO₁ hEO₂
-        (ResetPremisesUpTo'.origins_compatible_at' hp ho₁ (hb hr₁ hd₁) ho₂ (hb hr₂ hd₂))
+        (hp.origins_compatible_at' ho₁ (hb hr₁ hd₁) ho₂ (hb hr₂ hd₂))
     · exact compatible_of_below hU hEO₁ .refl
         (CoveredUpTo.compatible_highOrigin' hp.run hp.noColl hc₂ (hb hr₁ hd₁) ho₁).symm
   · rcases h₂ with ⟨r₂, hr₂, l₂, O₂, ho₂, hEO₂⟩ | hc₂
@@ -272,7 +252,7 @@ theorem Outcome.no_high_contest_at'
     ¬ ((tr.state p i).fg.Contest ∧ HZ tr H g + 2 ≤ (tr.state p i).fg.hmax) := by
   have ht := hp.run.time_nonneg i
   have hi : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hp.run.time_mono hq.le
-  have hU := Shadow.PU.honestBlocksAt_coherent' hp.run hp.noColl
+  have hU := Coherence.honestBlocksAt_coherent' hp.run hp.noColl
   have hr := (Compose.Growing.reachable_at' hp.run ht hpH hi).reachableWith
   have hu := finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
   have hsub : (tr.state p i).fg.tree ⊆ tr.HonestBlocksAt H :=
@@ -288,19 +268,19 @@ theorem Outcome.no_high_contest_at'
   have hJlt : ((tr.state p i).fg.σ (tr.state p i).fg.J.root).h <
       ((tr.state p i).fg.σ Bj.root).h := by have := hj_lt_h_with hu hr hBj; omega
   obtain ⟨-, -, -, -, v₁, d₁, -, hd₁, -, -, h₁⟩ :=
-    ResetPremisesUpTo'.left_entry_origin_or_covered_at' hp ht hi hpH hib hEC hECT (by omega) hECC (by omega)
+    hp.left_entry_origin_or_covered_at' ht hi hpH hib hEC hECT (by omega) hECC (by omega)
   obtain ⟨-, -, -, -, v₂, d₂, -, hd₂, -, -, h₂⟩ :=
-    ResetPremisesUpTo'.left_entry_origin_or_covered_at' hp ht hi hpH hib hJm hJT (by omega) hEJB hJlt
+    hp.left_entry_origin_or_covered_at' ht hi hpH hib hJm hJT (by omega) hEJB hJlt
   have hcmp := entries_compatible hp hib hd₁ hd₂ (h₁.imp_right And.right) (h₂.imp_right And.right)
   have hh : ((tr.state p i).fg.σ (tr.state p i).fg.J.root).h =
       ((tr.state p i).fg.σ EC.root).h := by rw [hJh, hBjhj, hECh]
   have he : EC.root = (tr.state p i).fg.J.root := by
     rcases hcmp with h | h
     · have := Th_eq_of_anc_with hu hr
-        (Shadow.PU.held_anc_at' hp.run hp.noColl ht hpH hi h hJm) hh
+        (Coherence.held_anc_at' hp.run hp.noColl ht hpH hi h hJm) hh
       rw [← hECT, ← hJT, this]
     · have := Th_eq_of_anc_with hu hr
-        (Shadow.PU.held_anc_at' hp.run hp.noColl ht hpH hi h hEC) hh.symm
+        (Coherence.held_anc_at' hp.run hp.noColl ht hpH hi h hEC) hh.symm
       rw [← hECT, ← hJT, this]
   have heq : EC = (tr.state p i).fg.J := hU.1 (hsub hEC) (hsub hJm) he
   exact hJC (heq ▸ hECC)
@@ -361,7 +341,7 @@ theorem ResetPremisesUpTo'.reset_vote_floor_above_old_or_covered_at'
   obtain ⟨E, hE, hEC, hEh, hET⟩ := entry_at_height_with hu hreach hC
     (h := (tr.state y j).fg.hmax - 1) (by omega) (by omega)
   obtain ⟨W, hW, att, ha, v, d, hv, hdj, hs, hT, hsource⟩ :=
-    ResetPremisesUpTo'.left_entry_origin_or_covered_at' hp ht hj hy hjb hE hET (by omega) hEC (by omega)
+    hp.left_entry_origin_or_covered_at' ht hj hy hjb hE hET (by omega) hEC (by omega)
   have hc' : (tr.upTo (tr.time j)).projAC.CallAt y j ell := by
     rw [RunTrace.upTo_projAC]
     exact (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc.1⟩
@@ -381,7 +361,7 @@ theorem ResetPremisesUpTo'.reset_vote_floor_above_old_or_covered_at'
         ‹v ∈ H (max (cutZ sp.toParams g) (tr.time j))› hs hdj hE hT (by omega) hcov
       exact hEC.trans (hcovered hcov C s hC (hes ▸ hsu))
   have hh := h_le_of_store_anc_with hu hreach
-    (Shadow.PU.held_anc_at' hp.run hp.noColl ht hy hj hEB hB)
+    (Coherence.held_anc_at' hp.run hp.noColl ht hy hj hEB hB)
   omega
 
 /-- **A held origin is viable at its independently honest reader** over the shadow run
@@ -399,10 +379,10 @@ theorem ProposalImpl.held_high_origin_viable_at'
   have hle : ∀ q < c, tr.time q ≤ tr.time c := fun _ hq => hp.run.time_mono hq.le
   have hR := Compose.Growing.reachable_at' hp.run ht hpH hle
   have hs := hR.puSnapshot
-  have hU := Shadow.PU.honestBlocksAt_coherent' hp.run hp.noColl
+  have hU := Coherence.honestBlocksAt_coherent' hp.run hp.noColl
   have hanc : ∀ {X Y : AC.Blk sp.n (List (FG.Att sp.n))}, Anc (tr.HonestBlocksAt H) X Y →
       Y ∈ (tr.state p c).fg.tree → (tr.state p c).fg.Anc X Y :=
-    fun h hY => Shadow.PU.held_anc_at' hp.run hp.noColl ht hpH hle h hY
+    fun h hY => Coherence.held_anc_at' hp.run hp.noColl ht hpH hle h hY
   rw [Shadow.PU.Growing.frame_of_projAC_at' hp.run hpH hc, Node.frame'_eq] at hBt ⊢
   rw [toFrame'_tree] at hBt
   obtain ⟨hBs, hFB⟩ := hBt
@@ -419,9 +399,9 @@ theorem ProposalImpl.held_high_origin_viable_at'
       (st.σ E.root).h < (st.σ W.root).h → Compatible (tr.HonestBlocksAt H) E B := by
     intro E W hE hET hEh hEW hlt
     obtain ⟨_, _, _, _, v, d, _, hdc, _, _, hor⟩ :=
-      ResetPremisesUpTo'.left_entry_origin_or_covered_at' hp ht hle hpH hcb hE hET hEh hEW hlt
+      hp.left_entry_origin_or_covered_at' ht hle hpH hcb hE hET hEh hEW hlt
     rcases hor with ⟨r, hrd, l, O, hoO, hEO⟩ | ⟨-, hcov⟩
-    · rcases ResetPremisesUpTo'.origins_compatible_at' hp hoO
+    · rcases hp.origins_compatible_at' hoO
           ((hp.run.time_mono (show r ≤ c by omega)).trans hcb) ho hib with h | h
       · exact Or.inl (hEO.trans h)
       · exact Anc.total hU hEO h
