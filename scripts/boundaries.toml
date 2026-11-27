@@ -753,7 +753,9 @@ prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC",
             "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run",
             "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Simulation",
             "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy",
-            "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Trace"]
+            "ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Trace",
+            # the P-U proof tree of the adoption, at its shadow paths until relocated
+            "ConsensusLean.Instances.Goldilocks.Lemmas.Shadow"]
 allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
          "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
          "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.GoldilocksAC",
@@ -773,9 +775,10 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Milestones.Spec.WriteModes",
          "Instances.Goldilocks.Milestones.Statements.Generic",
          "Instances.Goldilocks.Lemmas.Generic"]
-about = """growing-fault siblings of the Goldilocks lemmas: they may use every static lemma layer, and no
-static layer, trusted layer, Main or Solution may import them, so the static proofs do not depend on
-them"""
+about = """growing-fault siblings of the Goldilocks lemmas, and the P-U proof tree of the adoption at its
+shadow paths (Lemmas/Shadow, one layer with Lemmas/Growing until it is relocated): they may use every
+static lemma layer, and no static layer, trusted layer, Main or Solution may import them, so the static
+proofs do not depend on them"""
 
 [[layer]]
 name = "Instances.Goldilocks.Lemmas.Growing.Continuation"
@@ -804,36 +807,6 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances
 about = """continuation support (the side property GoldilocksContinues, not part of correctness): the
 growing-fault lemmas plus the continuation statements; only the continuation milestone and the tests
 import it, so no correctness proof depends on the side property"""
-
-[[layer]]
-name = "Instances.Goldilocks.Lemmas.Shadow"
-prefixes = ["ConsensusLean.Instances.Goldilocks.Lemmas.Shadow"]
-sorry = true
-allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Instances.Goldilocks.Spec.Common",
-         "Instances.Goldilocks.Spec.FG", "Instances.Goldilocks.Spec.Frame", "Instances.Goldilocks.Spec.FGStore",
-         "Instances.Goldilocks.Spec.AC", "Instances.Goldilocks.Spec.GoldilocksAC",
-         "Instances.Goldilocks.Spec.Node",
-         "Instances.Goldilocks.Spec.Run", "Instances.Goldilocks.AsChainShape",
-         "Instances.Goldilocks.Statements.Obligations", "Instances.Goldilocks.Milestones.Spec.Common",
-         "Instances.Goldilocks.Milestones.Spec.FG", "Instances.Goldilocks.Milestones.Spec.Frame",
-         "Instances.Goldilocks.Milestones.Spec.Trace", "Instances.Goldilocks.Milestones.Spec.FGStore",
-         "Instances.Goldilocks.Milestones.Spec.AC", "Instances.Goldilocks.Milestones.Spec.GoldilocksAC",
-         "Instances.Goldilocks.Milestones.Spec.Node", "Instances.Goldilocks.Milestones.Spec.Run",
-         "Instances.Goldilocks.Milestones.Statements.FG", "Instances.Goldilocks.Milestones.Statements.FGStore",
-         "Instances.Goldilocks.Milestones.Statements.AC", "Instances.Goldilocks.Milestones.Statements.ComposeAnyAC",
-         "Instances.Goldilocks.Milestones.Statements.Compose", "Instances.Goldilocks.Milestones.Spec.Continuation",
-         "Instances.Goldilocks.Milestones.Statements.Continuation", "Instances.Goldilocks.Lemmas.Common",
-         "Instances.Goldilocks.Lemmas.FGChain", "Instances.Goldilocks.Lemmas.FGStore",
-         "Instances.Goldilocks.Lemmas.AC", "Instances.Goldilocks.Lemmas.Compose", "Instances.Goldilocks.Lemmas.Frame",
-         "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
-         "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
-         "Instances.Goldilocks.Lemmas.Growing.Continuation",
-         "Instances.Goldilocks.Milestones.Spec.WriteModes",
-         "Instances.Goldilocks.Milestones.Statements.Generic",
-         "Instances.Goldilocks.Lemmas.Generic"]
-about = """shadow investigation of the FG simplification (P-U, step V, work branch only, never landed): a
-copy of the node and its runs over the shadow frame, and the existing frame facts restated over it;
-nothing else imports it"""
 
 [[layer]]
 name = "Instances.Goldilocks.Proofs.FGSafety"
@@ -1197,7 +1170,6 @@ allow = ["Init", "ToMathlib", "Core", "Spec", "Statements", "Lemmas", "Proofs.Be
          "Instances.Goldilocks.Lemmas.Healing", "Instances.Goldilocks.Lemmas.Simulation",
          "Instances.Goldilocks.Lemmas.Obligations", "Instances.Goldilocks.Lemmas.Growing",
          "Instances.Goldilocks.Lemmas.Growing.Continuation",
-         "Instances.Goldilocks.Lemmas.Shadow",
          "Instances.Goldilocks.Proofs.FGSafety", "Instances.Goldilocks.Proofs.FGStore",
          "Instances.Goldilocks.Proofs.ACBase",
          "Instances.Goldilocks.Proofs.ComposeAnyAC",

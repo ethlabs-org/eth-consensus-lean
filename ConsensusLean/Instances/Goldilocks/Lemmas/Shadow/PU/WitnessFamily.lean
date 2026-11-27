@@ -860,10 +860,10 @@ theorem unanimous_next_proposal_of_windowWitness_at {K : AC.CommitteeDict sp.n}
   · apply AC.highLocksCompatible_iff.mpr
     intro l hl _ hlm L hL hLr
     have hl' : l ∈ ((tr.upTo (tr.time i)).state y i).ac.locks := by
-      have h := Compose.projAC_state' hpre.toLocalRun hy i
+      have h := Compose.projAC_state hpre.toLocalRun hy i
       rw [RunTrace.upTo_projAC] at h
       rwa [h] at hl
-    have hls := Compose.proposal_locks_slot_of' hpre (hnc.upTo _) hy
+    have hls := Compose.proposal_locks_slot_of hpre (hnc.upTo _) hy
       (by rw [RunTrace.upTo_projAC]; exact hcp) hcall
       (by rw [RunTrace.upTo_projAC]; exact hdp) hti (by rw [RunTrace.upTo_projAC]; exact hS.hP)
       (hS.cs2 (m + 1) (by linarith) (by linarith)) l hl'

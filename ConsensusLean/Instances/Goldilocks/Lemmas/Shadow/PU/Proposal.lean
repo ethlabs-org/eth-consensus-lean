@@ -70,7 +70,7 @@ theorem honestProposalRun_of_proposesAt {ini} (hrun : GoldilocksRun proposer dg 
     d, pay, Compose.projAC_callAt.2 hc1, rfl, ?_, ht1.trans hts, rfl, hPs, rfl,
     rfl, j + 3, by omega, hacc3, ht3.trans (ht2.trans hts)⟩
   have ht1' : tr.projAC.time (j + 1) = tr.time (j + 2) := ht1
-  rw [Compose.projAC_state' h hp, hst1, ht1']
+  rw [Compose.projAC_state h hp, hst1, ht1']
   simpa only [Node.acProposal_eq] using hdp
 
 end Proposals
@@ -162,8 +162,8 @@ private theorem attest_prev (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin
   set l₁ := (tickStep proposer dg y st t x .acTick).2 with hl₁
   set r₂ := tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1 t x .proposal
   have hch : CutChain y t st (l₁ ++ r₂.2) r₂.1 :=
-    Compose.chain_append' y (Compose.tickStep_chain' proposer dg y st t x _)
-      (Compose.tickStep_chain' proposer dg y _ t x _)
+    Compose.chain_append y (Compose.tickStep_chain proposer dg y st t x _)
+      (Compose.tickStep_chain proposer dg y _ t x _)
   have hn : (l₁ ++ r₂.2).length ≤ k := by
     by_contra hlt
     rw [List.getElem?_append_left (by omega)] at hk
@@ -187,7 +187,7 @@ theorem attest_source (h : Node.LocalRun proposer dg H sg tr ini) {y : Fin P.n} 
   have hlen := (List.getElem?_eq_some_iff.1 hk').1
   have hst : tr.state y (j₀ + k') = st₁ := by
     have hg' := (RunTrace.groupAt_iff _ _ _ _ _ _ _).1 hg
-    have := Compose.cutChain_run' h hy hch j₀ rfl fun m hm => by
+    have := Compose.cutChain_run h hy hch j₀ rfl fun m hm => by
       rw [List.length_take] at hm
       obtain ⟨hn, ht, -, -, hl⟩ := hg'.2.1 m (by omega)
       exact ⟨hn, ht, by rw [hl, List.getElem_take]⟩

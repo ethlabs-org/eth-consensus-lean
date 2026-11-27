@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LowFinalized
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Origins
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.Accountable
@@ -106,63 +107,6 @@ theorem finalized_anc_of_lt_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
   obtain ⟨a, ha, b, hb, rfl, hab⟩ := hSv v hvS
   exact Shadow.held_atts_safe_at hrun hnc ht hk hy hu hm hz (le_max_left _ _)
     (le_max_right _ _) a b (chainAtts_held hc₁ ha) (chainAtts_held hc₂ hb) hv hab
-
-/-- **A low finalized block is below every bounded high origin** over the shadow run
-(`ResetPremisesUpTo.low_finalized_below_origin_at`). -/
-theorem ResetPremisesUpTo.low_finalized_below_origin_at'
-    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < m, tr.time q ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) {x : Fin sp.n}
-    {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
-    (hib : tr.time i ≤ b) :
-    Anc (tr.HonestBlocksAt H) (tr.state y m).fg.F B := by
-  have hrun := hp.run
-  have hnc := hp.noColl
-  have hfs := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
-  have hi0 := hrun.time_nonneg i
-  have hlei : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
-  have hx := hrun.antitone (le_max_right _ _) ho.1
-  have hBt := Outcome.high_origin_mem_at' hrun hnc ho
-  have hreach := (Compose.Growing.reachable_at hrun ht hy hle).reachableWith
-  have hU := Coherence.honestBlocksAt_coherent hrun hnc
-  have hsub := Compose.Growing.tree_held_at ht hy hle
-  have hcoh : Coherent (tr.state y m).fg.tree := hU.mono hsub
-  have hg := genesis_mem_with hfs hreach
-  have hgB : Anc (tr.HonestBlocksAt H)
-      (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) B :=
-    ((accepted_tree_with hfs
-      (Compose.Growing.reachable_at hrun hi0 hx hlei).reachableWith).2.2.2 B hBt).mono
-        (Compose.Growing.tree_held_at hi0 hx hlei)
-  obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, -, ⟨Bf, hBf, hBfF⟩⟩ :=
-    cache_invariants_with hfs hreach
-  have hgF : (tr.state y m).fg.Anc
-      (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) (tr.state y m).fg.F :=
-    (accepted_tree_with hfs hreach).2.2.2 _ hFm
-  -- a genesis `Σ.F` is below `B`
-  have hgen : (tr.state y m).fg.F.root = sp.toParams.genesisRoot →
-      Anc (tr.HonestBlocksAt H) (tr.state y m).fg.F B := fun he => by
-    rw [hcoh.1 hFm hg he]
-    exact hgB
-  rcases fin_pair_entry_with hfs hreach hBf with he | ⟨W, hW, hWr, hWh⟩
-  · exact hgen (hBfF.symm.trans he)
-  obtain rfl : W = (tr.state y m).fg.F := hcoh.1 hW hFm (hWr.trans hBfF)
-  obtain ⟨E, hE, hEr, -, hcase⟩ := J_entry_with hfs hreach hBj
-  obtain rfl : E = (tr.state y m).fg.J := hcoh.1 hE hJm (hEr.trans hBjJ)
-  rcases hcase with hEg | ⟨hEh, -⟩
-  · -- `Σ.J` is genesis, so is `Σ.F ⪯ Σ.J`
-    rw [hEg] at hFJ
-    exact hgen (congrArg Block.root (Anc.antisymm hcoh hFJ hgF))
-  have h₁ := h_le_of_store_anc_with hfs hreach hFJ
-  -- G1.2 at strict height, the faults counted at the later observation
-  have hH : (H (max t (tr.time i)))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.toParams.n := by
-    have h3 := hp.faults (max t (tr.time i)) (ht.trans (le_max_left _ _)) (max_le htb hib)
-    change 3 * _ ≤ sp.toParams.n - 1 at h3
-    have hn := sp.toParams.hn
-    change _ < 2 * ((2 * sp.toParams.n + 2) / 3) - sp.toParams.n
-    clear * - h3 hn; omega
-  have hhigh := ho.2.2.2
-  exact finalized_anc_of_lt_at hrun hnc ht hle hy hi0 hlei hx hH hBf hFm hBfF.symm hBt
-    (by omega)
 
 end Consensus.Goldilocks.Healing.Growing
 

@@ -33,16 +33,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
   {hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
-⟩ := hB
-  have hfs := finalitySpec_updateFinality (P := sp.toParams) (ACP := Payload sp.n)
-  have hr := (Compose.Growing.reachable_at hrun ht hy hle).reachableWith
-  have hh := (accepted_tree_with hfs hr).2.2.2 B hBt
-  have hsub := Compose.Growing.tree_held_at ht hy hle
-  have he : G = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
-    (Coherence.honestBlocksAt_coherent hrun hnc).1 hG (hsub (genesis_mem_with hfs hr)) hg
-  rw [he]
-  exact hh.mono hsub
-
 end Consensus.Goldilocks.Healing.Growing
 
 end

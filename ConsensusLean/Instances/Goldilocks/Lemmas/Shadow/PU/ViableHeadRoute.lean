@@ -3,6 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Window
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.PreAdvance
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.Defs
 import ConsensusLean.Lemmas.Tactic.Linarith
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 
 public section
 
@@ -169,7 +170,9 @@ theorem FrameWindow.viableHead_persists_stock {lo hi : Time} {floor : Nat}
     intro hvi
     have hFQ := finalized_below_viable hRi
       (Coherence.honest_blocks_coherent hrun.toLocalRun hnc) hsub hf
-      (fun a b ha hb hv => held_atts_safe' hrun hnc hy hy i i a b ha hb hv) hQi hvi
+      (fun a b ha hb hv => held_atts_safe (Compose.projFG_localRun hrun hnc) hy hy i i a b
+        (by simpa only [Compose.store_eq hrun hy] using ha)
+        (by simpa only [Compose.store_eq hrun hy] using hb) hv) hQi hvi
     refine ⟨?_, ?_, ?_⟩
     · rw [Node.frame_eq, Store.toFrame_tree]
       exact ⟨hQi, hFQ⟩
@@ -207,7 +210,9 @@ theorem FrameWindow.viableHead_persists_stock {lo hi : Time} {floor : Nat}
       have hle : (sa.σ Q.root).h ≤ sa.hmax := (Store.cache_invariants' hRa).2.2.2.2.1 Q hQa
       have hFQ := finalized_below_viable hRa
         (Coherence.honest_blocks_coherent hrun.toLocalRun hnc) (fun _ hB => ⟨y, hy, a, hB⟩) hf
-        (fun x z hx hz hv => held_atts_safe' hrun hnc hy hy a a x z hx hz hv) hQa hva
+        (fun x z hx hz hv => held_atts_safe (Compose.projFG_localRun hrun hnc) hy hy a a x z
+        (by simpa only [Compose.store_eq hrun hy] using hx)
+        (by simpa only [Compose.store_eq hrun hy] using hz) hv) hQa hva
       have hJQ : sa.Anc sa.J Q := by
         by_contra hn
         exact g2 ⟨g1, Q, hQa, hFQ, by omega, hn⟩
@@ -238,7 +243,9 @@ theorem FrameWindow.viableHead_persists_stock {lo hi : Time} {floor : Nat}
       obtain ⟨-, hJi, -, ⟨Bi, hBi, hBiJ, hBihj⟩, -⟩ := Store.cache_invariants' hRi
       have hjeq : sa.hj = si.hj := by omega
       have hroots := Store.J_eq_of_hj_eq_of_safe_with hu hRa.reachableWith hRi.reachableWith
-        hf (fun x z hx hz hv => held_atts_safe' hrun hnc hy hy a i x z hx hz hv) hBa hBi
+        hf (fun x z hx hz hv => held_atts_safe (Compose.projFG_localRun hrun hnc) hy hy a i x z
+        (by simpa only [Compose.store_eq hrun hy] using hx)
+        (by simpa only [Compose.store_eq hrun hy] using hz) hv) hBa hBi
         (by rw [hBahj, hBihj]; exact hjeq)
       rw [hBaJ, hBiJ] at hroots
       have hJeq : sa.J = si.J :=
@@ -304,7 +311,9 @@ theorem FrameWindow.root_witness_stock {lo hi g : Time} {floor : Nat}
   have hFQ := finalized_below_viable hR
     (Coherence.honest_blocks_coherent hrun.toLocalRun hnc)
     (fun B hB => ⟨y, hy, a, hB⟩) hf
-    (fun b c h₁ h₂ hv => held_atts_safe' hrun hnc hy hy a a b c h₁ h₂ hv) hQ hv
+    (fun b c h₁ h₂ hv => held_atts_safe (Compose.projFG_localRun hrun hnc) hy hy a a b c
+        (by simpa only [Compose.store_eq hrun hy] using h₁)
+        (by simpa only [Compose.store_eq hrun hy] using h₂) hv) hQ hv
   have hQt : Q ∈ ell₀.frame.tree := by
     rw [Node.frame_of_projAC_at hrun.toLocalRun hy ha, Node.frame_eq,
       Store.toFrame_tree]
@@ -547,7 +556,9 @@ theorem J_eq_of_top_same_hmax (hrun : GoldilocksRun proposer dg H tr ini)
   obtain ⟨-, hJa, -, ⟨Ba, hBa, hBaJ, hBahj⟩, -⟩ := Store.cache_invariants' hRa
   obtain ⟨-, hJi, -, ⟨Bi, hBi, hBiJ, hBihj⟩, -⟩ := Store.cache_invariants' hRi
   have hroots := Store.J_eq_of_hj_eq_of_safe_with hu hRa.reachableWith hRi.reachableWith
-    hf (fun u v hu' hv' hval => held_atts_safe' hrun hnc hy hx a i u v hu' hv' hval) hBa hBi
+    hf (fun u v hu' hv' hval => held_atts_safe (Compose.projFG_localRun hrun hnc) hy hx a i u v
+        (by simpa only [Compose.store_eq hrun hy] using hu')
+        (by simpa only [Compose.store_eq hrun hx] using hv') hval) hBa hBi
     (by rw [hBahj, hBihj]; omega)
   rw [hBaJ, hBiJ] at hroots
   exact (Coherence.honest_blocks_coherent hrun.toLocalRun hnc).1
@@ -555,58 +566,5 @@ theorem J_eq_of_top_same_hmax (hrun : GoldilocksRun proposer dg H tr ini)
 
 end Consensus.Goldilocks.Healing
 
-
-namespace Consensus.Goldilocks.Healing.Growing.KernelProof
-
-open AC (ACParams ReplayOrder Payload gbar)
-
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {hold : Time}
-
-/-- **Interface only, unresolved**: the shared optimistic contest residue. An optimistic write
-of label `m` by `z` at cut `a`, in a contest at `h_max = floor`, whose P-U viable head `Q` above
-the write's viable ancestor `A` is the P-U-only head (`σ(Q).h + 1 = floor`, `Σ.J ⪯ Q`), with
-`A ⪯ D` held. Claimed: every honest vote of a slot `r ∈ [m+1, N]` extends `A`, and every honest
-proposal at `ts r` has `A ⪯ d.head` (the stock optimistic later heads for `A`, without the stock
-witness `floor ≤ σ(Q).h`). The stock witness fails at the write and the contest/gap geometry
-(`Store.contest_gap_residue'`) does not supply it; no proof is known. **Suspected false** at
-this lemma level: a caller-valid sketch (`n ≥ 4`, one fault, a withheld timeout crossing released
-before `ts (m+1)` that moves every honest store to the gap at `floor + 1`, and only X-side next
-proposals) leaves no early viable witness extending `D`. Not a believed-true stub; do not build on
-it. -/
-theorem optimistic_contest_residue
-    {g ΔF b : Time} {s₀ m N floor : Nat} {kindJ : Prop}
-    {J D Q : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
-      (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hmb : sp.ts N + sp.Δ ≤ b)
-    (hlabel : s₀ ≤ m) (hmN : m < N)
-    {z : Fin sp.n} {a : Nat} (hza : z ∈ H (tr.time a))
-    {ellw : ACLabel (goldilocksNode sp ro)} (ha : tr.projAC.CallAt z a ellw)
-    {CV : Set (AC.Vote sp.n)} (hop : AC.OptimisticLockAt tr.projAC z a m D CV)
-    (hAD : Anc (tr.HonestBlocksAt H) (ellw.frame.viableAncestor D) D)
-    (hQ : Q ∈ ellw.frame.viableHeads)
-    (hAQ : Anc (tr.HonestBlocksAt H) (ellw.frame.viableAncestor D) Q)
-    (hcon : (tr.state z a).fg.Contest) (hmax : (tr.state z a).fg.hmax = floor)
-    (hQh : ((tr.state z a).fg.σ Q.root).h + 1 = floor)
-    (hJQ : (tr.state z a).fg.Anc (tr.state z a).fg.J Q)
-    (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ r, m + 1 ≤ r → r ≤ N →
-      (∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → e.msg.slot = r →
-        AC.VoteExtends (tr.HonestBlocksAt H) e.msg (ellw.frame.viableAncestor D)) ∧
-      (∀ y j ell, y ∈ H (tr.time j) → tr.projAC.CallAt y j ell →
-        ell.call = .proposal → tr.time j = sp.ts r → ∀ d pay,
-        (AC.acProposal sp (tr.projAC.state y j) ell.frame (tr.time j)).2 = some (d, pay) →
-          Anc (tr.HonestBlocksAt H) (ellw.frame.viableAncestor D) d.head) := by
-  sorry
-
-end Consensus.Goldilocks.Healing.Growing.KernelProof
 
 end

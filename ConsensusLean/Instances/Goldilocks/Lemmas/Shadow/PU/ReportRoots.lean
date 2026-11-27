@@ -61,7 +61,7 @@ theorem signAt_report_entry {ini} (hrun : GoldilocksRun proposer dg Hs tr ini) {
     finalitySpec_updateFinality (Node.fg_reachable_at hrun.toLocalRun hv j).reachableWith
     hCt hsigned
   refine ⟨j, rfl, ht, ℓ, C, E, ⟨hpc, hcall, ?_⟩, hCt, hE, hEr, hEC, hTh, hET, hEh, hCa⟩
-  rw [Compose.projAC_state' hrun.toLocalRun hv j]
+  rw [Compose.projAC_state hrun.toLocalRun hv j]
   exact hret
 
 /-- A cache strictly ahead of a held target is backed by an actual earlier honest report at a
@@ -155,7 +155,7 @@ theorem ResetPremisesUpTo.low_root_of_held_seed_at'
   have hi0 := hrun.time_nonneg i
   have hlei : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
   have hreach := (Compose.Growing.reachable_at hrun hi0 hy hlei).reachableWith
-  have hFS := hp.low_finalized_below_origin_at' hi0 hlei hy hib hlow hS hqb
+  have hFS := hp.low_finalized_below_origin_at hi0 hlei hy hib hlow hS hqb
   have hSh := Outcome.high_of_anc_at' hrun hnc hS hi0 hlei hy hSy .refl
   have hJ : ∀ D ∈ (tr.state y i).fg.tree,
       (tr.state y i).fg.Anc (tr.state y i).fg.F D →

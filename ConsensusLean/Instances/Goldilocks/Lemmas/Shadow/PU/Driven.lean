@@ -25,7 +25,7 @@ theorem onTick_cuts (y : Fin P.n) (st : NodeState A) (t : Time) (x : Nat) (fgDue
       (if fgDue then (tickStep proposer dg y
         (tickStep proposer dg y (tickStep proposer dg y st t x .acTick).1
           t x .proposal).1 t x .fgUpdate).2 else []) := by
-  cases fgDue <;> simp [onTick_eq, runSteps_eq, tickSteps]
+  cases fgDue <;> simp [onTick_eq]
 
 private theorem onBlock_call (y : Fin P.n) (st : NodeState A) (t : Time) (B : A.Blk)
     {ℓ : ACLabel A} (hm : Cut.ac ℓ ∈ (onBlock y st t B).2) : ℓ.call = .block B := by
@@ -167,7 +167,7 @@ private theorem honest_proposal_of_tick (hrun : GoldilocksRun proposer dg H tr i
     d, pay, Compose.projAC_callAt.2 hc1, rfl, ?_, ht1.trans hts, rfl, rfl, rfl, rfl,
     j + 3, by omega, hacc3, ht3.trans (ht2.trans hts)⟩
   have ht1' : tr.projAC.time (j + 1) = t := ht1
-  rw [Compose.projAC_state' h hp, hst1, ht1']
+  rw [Compose.projAC_state h hp, hst1, ht1']
   simpa only [acProposal_eq] using hr
 
 end Goldilocks

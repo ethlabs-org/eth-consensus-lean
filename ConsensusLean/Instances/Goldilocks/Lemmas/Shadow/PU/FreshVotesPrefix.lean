@@ -3,7 +3,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.AnchorPrefix
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshVotesFinality
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshVotesPrefix
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalLocks
-import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalStart
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.DrainProposal
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 import ConsensusLean.Lemmas.Tactic.Linarith

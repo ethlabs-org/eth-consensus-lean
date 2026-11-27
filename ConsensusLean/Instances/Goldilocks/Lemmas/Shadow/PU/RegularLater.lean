@@ -187,36 +187,6 @@ theorem later_heads_of_older_lock_witness_at {K : AC.CommitteeDict sp.n}
     hnr hm hmb ⟨hframe.floor_eq, hframe.kind_iff, hframe.root_eq⟩ hz halo hat hc hW hh hJ
     (hDH.trans (hHW.mono hPhi.2)) hbase hK
 
-/-- Unresolved stock-window V-B8 endpoint. The fourth classification alternative
-can follow D through its independent stock witness W, using D ⪯ Hd ⪯ W.
-The viable-only contest alternative and optimistic supporter extraction still
-need stock-window witness transport; this declaration does not certify them. -/
-theorem regular_later_heads_at
-    {g ΔF b : Time} {s₀ s N floor : Nat} {kindJ : Prop}
-    {J D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.Growing.FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
-    {K : AC.CommitteeDict sp.n}
-    (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
-    (hnc : Compose.NoCollRun dg tr) (hsvc : Healing.Growing.ResetService tr H g ΔF b hold)
-    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
-    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
-    (hcatch : Healing.Growing.CatchRun tr H g (2 * sp.Δ))
-    (hnr : Healing.Growing.NoRestartAfter tr H (gbar g))
-    (hwarm : s₀ + sp.k ≤ s) (hpos : 0 < s) (hs₀ : s₀ ≤ s - 1)
-    (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hsN : s + 2 ≤ N)
-    (hmb : sp.ts N + sp.Δ ≤ b)
-    {x : Fin sp.n} {c : Nat} (hx : x ∈ H (tr.time c))
-    (horigin : (∃ CV, AC.FastUpdateAt tr.projAC x c s D CV) ∨
-      AC.SlowLockAt tr.projAC x c s D) (hK : CommitteeHalfUpTo tr H K g b) :
-    ∀ r, s + 1 ≤ r → r ≤ N →
-      (∀ y i e, y ∈ H (tr.time i) → AC.VoteAt tr.projAC y i e → e.msg.slot = r →
-        AC.VoteExtends (tr.HonestBlocksAt H) e.msg D) ∧
-      (s + 2 ≤ r → ∀ y i ell, y ∈ H (tr.time i) → tr.projAC.CallAt y i ell →
-        ell.call = .proposal → tr.time i = sp.ts r → ∀ d pay,
-        (AC.acProposal sp (tr.projAC.state y i) ell.frame (tr.time i)).2 = some (d, pay) →
-          Anc (tr.HonestBlocksAt H) D d.head) := by
-  sorry
-
 /-- A stock-window regular origin above an independently held floor witness propagates.
 The witness holder need not precede the origin: honest height agreement transports
 its bound to the result's honest supporter. This extra premise is not inferred from
