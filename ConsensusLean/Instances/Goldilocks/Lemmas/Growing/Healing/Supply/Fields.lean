@@ -6,7 +6,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Components
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Sleepy.Node.Lift
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.CommitteeFaults
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowReportOrigin
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowSigned
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Fields
 import ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Kernel.ResetRounds
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.HighReports
@@ -54,24 +54,21 @@ theorem reportAt_iff_toFGAt {ini}
   rw [Compose.projAC_callAt]
   rfl
 
-/-- **The `proposal_floor` field** at the Goldilocks run interface: an honest designated proposal
-inside a frame window, under the FG fault bound at its slot, has height at least the window's
-floor at its proposer right after the proposal. -/
+/-- **The `proposal_floor` field** at the Goldilocks run interface: an honest designated proposal,
+under the FG fault bound at its slot, reaches the predecessor of its proposer's pre-proposal
+maximum height and exceeds its pre-proposal justification height
+(`Shadow.PU.Growing.goldilocks_proposal_floor`). -/
 theorem goldilocks_proposal_floor {cm : Time → Finset (Fin sp.n)} {lo hi : Time}
-    {floor u : Nat} {kindJ : Prop} {J B : AC.Blk sp.n (List (FG.Att sp.n))} {z : Fin sp.n}
+    {M u : Nat} {isTop : Prop} {J B : AC.Blk sp.n (List (FG.Att sp.n))} {z : Fin sp.n}
     {kB : Nat} (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
-    (hnc : Compose.NoCollRun dg tr) (hframe : FrameWindow tr H lo hi floor kindJ J)
+    (hnc : Compose.NoCollRun dg tr) (hframe : FrameWindow tr H lo hi M isTop J)
     (hz : z ∈ H (sp.toParams.slotTime u)) (hdes : z = proposer u) (hP : tr.ProposesAt z kB B)
     (hBs : B.slot = u) (hlo : lo ≤ sp.toParams.slotTime u) (hhi : sp.toParams.slotTime u ≤ hi)
     (hf : (H (sp.toParams.slotTime u))ᶜ.ncard < 2 * sp.toParams.fg.q - sp.n) :
-    floor ≤ ((tr.state z (kB + 1)).fg.σ B.root).h := by
-  have hts : sp.toParams.slotTime u = sp.ts u := by
-    rw [sp.slotTime_eq]
-    rfl
-  rw [hts] at hz hlo hhi hf
-  exact Healing.Growing.KernelProof.floor_le_warm_proposal_at
-    ((goldilocksRunInterface_run_iff cm).mp hrun).1 hnc
-    ⟨hframe.floor_eq, hframe.kind_iff, hframe.root_eq⟩ hz hdes hP hBs hlo hhi hf
+    (tr.state z kB).fg.hmax - 1 ≤ ((tr.state z (kB + 1)).fg.σ B.root).h ∧
+      (tr.state z kB).fg.hj < ((tr.state z (kB + 1)).fg.σ B.root).h :=
+  Shadow.PU.Growing.goldilocks_proposal_floor ((goldilocksRunInterface_run_iff cm).mp hrun).1
+    hnc hframe hz hdes hP hBs hlo hhi hf
 
 /-- **The `report_origin` field** at the Goldilocks run interface: a high report of a node honest
 at it extends the stored block of an earlier joined fast-lock write of the same node, held by it
@@ -134,15 +131,15 @@ theorem committeeHalf_of_committeeFaults {cm : Time → Finset (Fin sp.n)} {βK 
 
 /-- **The `report_follow` field** at the Goldilocks run interface: after warmup the proposal is
 reported by nodes honest at the delayed report deadline, and the same report is an ancestor of
-later honest proposal heads. -/
+later honest proposal heads (`Shadow.PU.Growing.goldilocks_report_follow`). -/
 theorem goldilocks_report_follow {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     {hold : Time} {g ΔF b : Time}
-    {s₀ N u floor : Nat} {kindJ : Prop} {J B : AC.Blk sp.n (List (FG.Att sp.n))} {z : Fin sp.n}
+    {s₀ N u M : Nat} {isTop : Prop} {J B : AC.Blk sp.n (List (FG.Att sp.n))} {z : Fin sp.n}
     {kB : Nat} (hβ : βK ≤ 1 / 2)
     (hrun : (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr)
     (hp : Premises tr H cm βK proposer dg (fun v => v.val) g ΔF b hold)
     (hframe : FrameWindow tr H (sp.toParams.slotTime s₀)
-      (shiftDelay sp.toParams G (sp.toParams.slotTime N + 2 * sp.toParams.Δ)) floor kindJ J)
+      (shiftDelay sp.toParams G (sp.toParams.slotTime N + 2 * sp.toParams.Δ)) M isTop J)
     (hm : gbar g + 4 * sp.toParams.Δ ≤ sp.toParams.slotTime s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (hN : u + 1 ≤ N)
     (hmb : shiftDelay sp.toParams G (sp.toParams.slotTime N + 2 * sp.toParams.Δ) ≤ b)
@@ -154,43 +151,9 @@ theorem goldilocks_report_follow {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
         ∀ x, u + (3 + (G + 3) / 4) ≤ x → x ≤ N → ∀ w c d, w ∈ H (tr.time c) →
           ProposalHeadAt tr w c d → tr.time c = sp.toParams.slotTime x →
           Anc (tr.HonestBlocksAt H) R d.head := by
-  intro y hy
   obtain ⟨hr, -, -, -, hcal, hgap⟩ := (goldilocksRunInterface_run_iff cm).mp hrun
-  have hts (s : Nat) : sp.toParams.slotTime s = sp.ts s := by
-    rw [sp.slotTime_eq]
-    rfl
-  obtain ⟨hz, hdes, hP, hPs⟩ := hB
-  rw [hts] at hz hm
-  rw [shiftDelay_eq_add, hts] at hy
-  rw [hts, hts] at hframe
-  rw [hts] at hmb
-  have hmax : max (sp.ts N + 2 * sp.Δ)
-      (sp.ts (u + 1 : Nat) + 2 * sp.Δ + (G : Time) * sp.Δ) ≤
-      shiftDelay sp.toParams G (sp.ts N + 2 * sp.Δ) := by
-    rw [shiftDelay_eq_add]
-    have hG : 0 ≤ (G : Time) * sp.Δ := mul_nonneg (by positivity) sp.toParams.hΔ.le
-    have hmono := sp.toParams.slotTime_strictMono.monotone hN
-    rw [hts, hts] at hmono
-    exact max_le (by linarith) (by linarith)
-  have ht₀ : 0 ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ := by
-    have hΔ := sp.toParams.hΔ
-    simp only [ACParams.ts]
-    positivity
-  obtain ⟨i, ell, R, hyi, hto, hlo, hhi, hPR, hheads⟩ :=
-    Healing.Growing.proposal_report_follow_delayed_at
-      ⟨fun w j hw hl hh => hframe.floor_eq w j hw hl (hh.trans hmax),
-        fun w j hw hl hh => hframe.kind_iff w j hw hl (hh.trans hmax),
-        fun w j hw hl hh => hframe.root_eq w j hw hl (hh.trans hmax)⟩ hr hp.noColl
-      ⟨hp.sync.deltaF, hp.sync.message, hp.sync.block, hp.sync.relay, hp.sync.signedRow,
-      hp.sync.hold_le⟩
-      hp.awake hp.faults hp.catchUp hp.noRestart hm hwarm hN (hmax.trans hmb) hz hdes hP hPs
-      hcal hgap ht₀ hy
-      (committeeHalf_of_committeeFaults hβ hrun hp.noColl hp.committee)
-  refine ⟨i, R, hyi, (reportAt_iff_toFGAt hr hyi).mpr ⟨ell, hto⟩, (hts u).symm ▸ hlo,
-    by rw [shiftDelay_eq_add, hts]; exact hhi, hPR, ?_⟩
-  intro x hx hxN w c d hw ⟨ℓ, pay, hc, hcall, hd⟩ htc
-  exact hheads x (by omega) hxN w c ℓ hw (Compose.projAC_callAt.mpr hc) hcall
-    (htc.trans (hts x)) d pay (by rw [Compose.Growing.projAC_state_at hr hw]; exact hd)
+  exact Shadow.PU.Growing.goldilocks_report_follow hr hcal hgap
+    (committeeHalf_of_committeeFaults hβ hrun hp.noColl hp.committee) hp hframe hm hwarm hN hmb hB
 
 /-- The Goldilocks healing witness, with the committee-start run interface and the exact
 warmup, follow, drain and joined stored-fast-lock origin equations. -/
