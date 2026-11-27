@@ -119,6 +119,38 @@ theorem sibling_votes_created (v : Fin 4) :
       some (e, ((Record.empty.recordAtt g).recordAtt j).recordAtt e) := by
   constructor <;> rfl
 
+/-- The off-J branch after its first timeout crossing. -/
+def contestBranch : ChainState 4 :=
+  (gp.stateTransition (siblingState 20) ⟨40, 4, 0, siblingTimeouts⟩).getD
+    (ChainState.init gp)
+
+/-- A second timeout quorum creates the gap without raising justification. -/
+def nextTimeouts : List (Att 4) :=
+  ([0, 1, 2] : List (Fin 4)).map fun v => ⟨v, 3, 40, true, none⟩
+
+/-- The persistence candidate's second crossing: height four, still no non-genesis J
+on the off-J branch. A store holding the other branch can retain its height-two J. -/
+theorem gap_timeout_crossing :
+    ((gp.stateTransition contestBranch ⟨50, 6, 0, nextTimeouts⟩).map
+      (fun s => (s.h, s.hj, s.J))) = some (4, 1, 0) := by
+  decide
+
+/-- A timeout at height three requires a prior target of the other height-three entry.
+The earlier height-two sibling timeout suppresses the J finality pair, so it is `none`. -/
+theorem gap_votes_created (v : Fin 4) :
+    let g : Att 4 := ⟨v, 1, 0, false, none⟩
+    let j : Att 4 := ⟨v, 2, 10, false, some (1, 0)⟩
+    let e : Att 4 := ⟨v, 2, 20, true, some (1, 0)⟩
+    let r := ((Record.empty.recordAtt g).recordAtt j).recordAtt e
+    let a : Att 4 := ⟨v, 3, 30, false, none⟩
+    let b : Att 4 := ⟨v, 3, 40, true, none⟩
+    let s := (gp.stateTransition (siblingState 10) ⟨30, 4, 0, justifyVotes⟩).getD
+      (ChainState.init gp)
+    r.createAtt v s = some (a, r.recordAtt a) ∧
+      (r.recordAtt a).createAtt v contestBranch =
+        some (b, (r.recordAtt a).recordAtt b) := by
+  constructor <;> rfl
+
 end Consensus.Goldilocks.Shadow.PU.Witness
 
 end
