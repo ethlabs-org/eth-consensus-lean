@@ -15,6 +15,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
+import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.HeldSafety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Driven
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
@@ -202,7 +203,9 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.viableHead_persists'
       (fun h => h.mono (Compose.tree_mono' hrun.toLocalRun hy hai)) hv.2.2
   have hFQ := finalized_below_viable (Node.fg_reachable_at hrun.toLocalRun hy i)
     (Coherence.honest_blocks_coherent hrun.toLocalRun hnc) hsub hf
-    (fun a b ha hb hv => held_atts_safe' hrun hnc hy hy i i a b ha hb hv) hQi hvi
+    (fun a b ha hb hv => held_atts_safe (Compose.projFG_localRun hrun hnc) hy hy i i a b
+      (by simpa only [Compose.store_eq hrun hy] using ha)
+      (by simpa only [Compose.store_eq hrun hy] using hb) hv) hQi hvi
   have hQt : Q ∈ (tr.state y i).fg.toFrame.tree := by
     rw [Store.toFrame_tree]
     exact ⟨hQi, hFQ⟩
@@ -240,7 +243,9 @@ theorem _root_.Consensus.Goldilocks.Generic.FrameWindow.root_witness_of_earlier_
   have hFQ := finalized_below_viable hR
     (Coherence.honest_blocks_coherent hrun.toLocalRun hnc)
     (fun B hB => ⟨y, hy, a, hB⟩) hf
-    (fun b c h₁ h₂ hv => held_atts_safe' hrun hnc hy hy a a b c h₁ h₂ hv) hQ hv
+    (fun b c h₁ h₂ hv => held_atts_safe (Compose.projFG_localRun hrun hnc) hy hy a a b c
+      (by simpa only [Compose.store_eq hrun hy] using h₁)
+      (by simpa only [Compose.store_eq hrun hy] using h₂) hv) hQ hv
   have hQt : Q ∈ ell₀.frame.tree := by
     rw [Node.frame_of_projAC_at hrun.toLocalRun hy ha, Node.frame_eq,
       Store.toFrame_tree]

@@ -154,44 +154,6 @@ theorem signed_run {acp₀ : ACP} {H : Set (Fin P.n)} {tr : FGTrace P ACP}
 
 end Consensus.Goldilocks.Healing
 
-namespace Consensus.Goldilocks.Healing
-
-open AC (ACParams ReplayOrder Payload)
-
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-
-private theorem held_att_signed {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {a : FG.Att sp.n}
-    (ha : ∃ Y ∈ (tr.state y i).fg.tree, a ∈ Y.fgPayload) (hav : a.val ∈ H) :
-    ∃ k < i, tr.SignAt a.val k a := by
-  obtain ⟨X, hX, haX⟩ := ha
-  rcases Coherence.tree_accepted hrun.toLocalRun hy hX with rfl | ⟨k, hk, hacc⟩
-  · cases haX
-  · obtain ⟨k', hk', hs⟩ := hrun.att_unforgeable y hy k a
-      (Or.inr ⟨X, ⟨true, hacc⟩, haX⟩) hav
-    exact ⟨k', hk'.trans hk, hs⟩
-
-/-- Two honest readers' held attestations from an honest signer are not slashable in
-the shadow execution. The collision premise matches the run-level safety interface. -/
-theorem held_atts_safe' {ini} (hrun : GoldilocksRun proposer dg H tr ini)
-    (_hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H)
-    (i j : Nat) (a b : FG.Att sp.n)
-    (ha : ∃ Y ∈ (tr.state y i).fg.tree, a ∈ Y.fgPayload)
-    (hb : ∃ Y ∈ (tr.state z j).fg.tree, b ∈ Y.fgPayload) (hav : a.val ∈ H) :
-    ¬ FG.slashable a b := fun hab => by
-  obtain ⟨k, hk, hka⟩ := held_att_signed hrun hy ha hav
-  obtain ⟨l, hl, hlb⟩ := held_att_signed hrun hz hb (hab.1 ▸ hav)
-  rw [← hab.1] at hlb
-  obtain ⟨hinit, hexec⟩ := Compose.fg_exec' hrun.toLocalRun
-  obtain ⟨inputs, hin, hs⟩ := signed_run hinit hexec hav (max k l + 1)
-  exact FG.client_safety sp.toParams.fg a.val inputs hin
-    a (hs k (by omega) a ⟨_, Compose.projFG_callAt.mpr hka.choose_spec⟩)
-    b (hs l (by omega) b ⟨_, Compose.projFG_callAt.mpr hlb.choose_spec⟩) hab
-
-end Consensus.Goldilocks.Healing
-
 namespace Consensus.Goldilocks.Healing.Growing.Shadow
 
 open AC (ACParams ReplayOrder Payload)
@@ -243,8 +205,8 @@ theorem held_atts_safe_at {proposer : Nat → Fin sp.n}
   have hlb' : (tr.upTo d).SignAt a.val l b :=
     (RunTrace.upTo_signAt tr).mpr ⟨(hxtime l hl).trans htd, hlb⟩
   have hr := hrun.upTo (hu.trans hud)
-  obtain ⟨hinit, hexec⟩ := Compose.fg_exec' hr.toLocalRun
-  obtain ⟨inputs, hin, hs⟩ := signed_run hinit hexec hav (max k l + 1)
+  have hfg := Compose.fg_exec hr.toLocalRun
+  obtain ⟨inputs, hin, hs⟩ := signed_run hfg.init hfg.exec hav (max k l + 1)
   exact FG.client_safety sp.toParams.fg a.val inputs hin
     a (hs k (by omega) a ⟨_, Compose.projFG_callAt.mpr hka'.choose_spec⟩)
     b (hs l (by omega) b ⟨_, Compose.projFG_callAt.mpr hlb'.choose_spec⟩) hab

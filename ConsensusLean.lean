@@ -806,7 +806,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Obligations.WindowPlacem
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.CurrentPassage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Driven
@@ -864,7 +863,6 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportFollow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportRoots
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ResetSeeds
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RowBefore
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RowLabel
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore

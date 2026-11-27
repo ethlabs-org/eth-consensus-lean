@@ -368,9 +368,9 @@ theorem finalized_mono_on_prefix' (h : LocalRun proposer dg H sg tr ini) {d : Ti
       rcases Node.cutStep_fg (h.cutLaw y j c hc (h.antitone (hj j (by omega)) hy)) with he | hs
       · rw [he]
       · rcases (Store.step_iff _ _).mp hs with ⟨B, hB⟩ | ⟨a, ha⟩
-        · exact ((Store.finalized_monotone' _).1 B _ hB).mono fun X hX =>
+        · exact ((Store.finalized_monotone _ _ _).1 B _ hB).mono fun X hX =>
             ⟨y, j + 1, d, hd, hj, hy, by rw [tr.state_succ_of_call hc]; exact hX⟩
-        · rw [ha, (Store.finalized_monotone' _).2 a]
+        · rw [ha, (Store.finalized_monotone _ _ _).2 a]
     · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩]
 
 private theorem acBlock_prev' (h : LocalRun proposer dg H sg tr ini)
