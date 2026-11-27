@@ -259,8 +259,8 @@ theorem fastExpiry_capped : fastExpiry sp {⟨0, 3, true, 9⟩} Φ 16 4 = 10 := 
     e = l.expiry} = {9} by ext; simp, ite_eq_left (Set.singleton_nonempty 9), csSup_singleton]
   decide
 
-/-- **No floor outside a legal write.** A live fast lock of slot `3` with expiry `4`, read at slot `4`,
-gives a write of the illegal slot `5` the expiry `4 + c = 6`. The earlier formula had the floor
+/-- **No floor outside a legal write.** A live fast lock of slot `3` with expiry `4`, read at slot
+`4`, gives a write of the illegal slot `5` the expiry `4 + c = 6`. The earlier formula had the floor
 `s + 2 = 7` there; on a legal write (`s ≤ slot t`) the two agree. -/
 theorem fastExpiry_illegal_slot : fastExpiry sp {⟨0, 3, true, 4⟩} Φ 16 5 = 6 := by
   have hE : {e | ∃ l ∈ ({⟨0, 3, true, 4⟩} : Set Lock), l.fast = true ∧ l.slot < 5 ∧
