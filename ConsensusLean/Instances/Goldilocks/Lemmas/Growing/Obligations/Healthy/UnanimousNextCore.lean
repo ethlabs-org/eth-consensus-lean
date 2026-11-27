@@ -363,14 +363,18 @@ theorem unanimous_next_vote_viable_core_at
   · exact Or.inl hgap
   right
   have htop : (tr.state y j).fg.hmax = (tr.state y j).fg.hj + 1 := by
-    have := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality hreach.reachableWith
+    obtain ⟨C, hC, -, hCh⟩ := hcache.2.2.2.1
+    have := Store.hj_lt_h hreach hC
+    have := hcache.2.2.2.2.1 C hC
     omega
   have hnc : ¬ (tr.state y j).fg.Contest := by
     intro hc
     have hf : (tr.state y j).fg.headHeightFloor = (tr.state y j).fg.hmax := by
-      simp only [Store.headHeightFloor, if_pos hc]
+      simp only [Store.headHeightFloor, ite_eq_left hc]
     omega
-  simpa only [Store.fcRoot, if_pos ⟨htop, hnc⟩] using hrootStore
+  simpa only [Store.fcRoot, ite_eq_left (show
+    (tr.state y j).fg.hmax = (tr.state y j).fg.hj + 1 ∧ ¬ (tr.state y j).fg.Contest from
+      ⟨htop, hnc⟩)] using hrootStore
 
 
 /-! ### Every slot-`(u+1)` vote extends `P` -/

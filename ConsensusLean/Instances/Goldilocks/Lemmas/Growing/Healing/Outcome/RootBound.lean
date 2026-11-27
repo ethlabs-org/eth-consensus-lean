@@ -18,6 +18,26 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
 variable {hold : Time}
 
+/-- An honest cast's actual frame root is below its store's analysis root. -/
+theorem cast_root_anc_analysis_root_at
+    {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
+    (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y j ell e) :
+    Anc (tr.HonestBlocksAt H) ell.frame.fcRoot (tr.state y j).fg.fcRoot := by
+  rw [Outcome.frame_of_call hp.run hy hc.1]
+  have hr := fg_reachable_at hp.run (hp.run.time_nonneg j)
+    (fun _ hq => hp.run.time_mono hq.le) hy
+  have hFJ := (Store.cache_invariants _ _ _ _ hr).2.2.1.mono
+    (fun X hX => (⟨y, j, tr.time j, hp.run.time_nonneg j,
+      fun _ hq => hp.run.time_mono hq.le, hy, hX⟩ : X ∈ tr.HonestBlocksAt H))
+  change Anc _ (tr.state y j).fg.F _
+  unfold Store.fcRoot
+  split_ifs
+  · exact hFJ
+  · exact .refl
+
 /-- The post-drain cast root is genesis, below a pre-slot origin, or below a healed member
 whose label is strictly below the cast slot. -/
 theorem reset_vote_root_source_or_covered_at
@@ -102,7 +122,7 @@ theorem reset_vote_root_source_or_covered_at
     exact hJO.mono hsub
   · exact hFO
 
-/-- Every bounded pre-slot high origin below a target bounds the actual cast root. -/
+/-- Every bounded pre-slot high origin below a target bounds the analysis cast root. -/
 theorem reset_vote_root_below_bound_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)

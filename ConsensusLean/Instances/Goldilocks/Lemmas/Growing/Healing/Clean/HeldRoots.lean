@@ -378,10 +378,25 @@ theorem high_J_root_of_held_before_covered_at {cm : Time → Finset (Fin sp.n)} 
   rcases hp.quarantine_or_cover_at hkb with hpre | hc
   · exact hp.high_J_root_of_held_before_quarantine_at hx hBx hy hkb hhigh hpre
       (compatibleWithOrigins_iff.1 hcompare).1
-  · exact hp.high_J_root_of_held_cover_at (hp.run.time_nonneg k)
+  · have hroot := hp.high_J_root_of_held_cover_at (hp.run.time_nonneg k)
       (fun _ hq => hp.run.time_mono hq.le) hy hkb (hp.run.time_nonneg i)
       (fun _ hq => hp.run.time_mono hq.le) hx hBx hhigh hc
       ((compatibleWithOrigins_iff.1 hcompare).2 hc)
+    have hr := fg_reachable_at hp.run (hp.run.time_nonneg k)
+      (fun _ hq => hp.run.time_mono hq.le) hy
+    have hFJ := (Store.cache_invariants _ _ _ _ hr).2.2.1.mono
+      (fun X hX => (⟨y, k, tr.time k, hp.run.time_nonneg k,
+        fun _ hq => hp.run.time_mono hq.le, hy, hX⟩ : X ∈ tr.HonestBlocksAt H))
+    have hFroot : Anc (tr.HonestBlocksAt H) (tr.state y k).fg.F
+        (tr.state y k).fg.fcRoot := by
+      unfold Store.fcRoot
+      split_ifs
+      · exact hFJ
+      · exact .refl
+    change Compatible _ (tr.state y k).fg.F B
+    rcases hroot with h | h
+    · exact Or.inl (hFroot.trans h)
+    · exact AC.anc_total (Compose.Growing.honest_blocks_coherent hp.run hp.noColl) hFroot h
 
 /-- `high_J_root_of_held_before_quarantine_at` at an AC call, whose frame is the store's. -/
 theorem high_J_root_of_held_at_call_before_quarantine_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
