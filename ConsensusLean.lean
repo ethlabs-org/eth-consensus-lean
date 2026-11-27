@@ -798,6 +798,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Reach
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RegularLater
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportCover
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportFollow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.S5Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Trace
