@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
 
 public section
@@ -18,8 +18,8 @@ with `X = J` applies). The open case "top-clean, `σ(P).h = h_j`, `J ⋠ P`" is 
 root premise, supplied today by `high_J_root_of_held_before_covered_at` (high `h_j`) and
 `low_root_of_held_seed_at` (low `h_j`), forces `P ⪯ J`. No new hypothesis is needed.
 
-The run-level statements take the shadow reset premises `ResetPremisesUpTo'` (Lane C's
-`Shadow/PU/Run`), stubbed here until it lands: they are unresolved (`sorryAx`) until then. -/
+The run-level statements take the shadow reset premises `ResetPremisesUpTo'` (`Shadow/PU/Run`);
+their proofs are still `sorry` (unresolved) until the primed root suppliers land. -/
 
 namespace Consensus.Goldilocks.Store
 
@@ -66,18 +66,6 @@ open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
-namespace Stub
-
-/-- Stub for Lane C's `ResetPremisesUpTo'` (`Shadow/PU/Run`): the stock
-`Healing.Growing.ResetPremisesUpTo` with `run` over the growing shadow run. -/
-def ResetPremisesUpTo' (tr : GoldilocksTrace' sp ro) (H : Time → Set (Fin sp.n))
-    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (g ΔF a b : Time) (committee : Time → Finset (Fin sp.n)) (beta : ℚ) (hold : Time := 0) :
-    Prop := by
-  sorry
-
-end Stub
-
 variable {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {g ΔF a b hold : Time}
@@ -88,7 +76,7 @@ root and floor premises are the stock ones, read from the store; the conclusion 
 `Anc fcRoot P` conjunct (the shadow root is `F`). -/
 theorem held_target_viableHeads'_or_higher_report_of_cases
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Stub.ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ (Node.frame' (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)
@@ -109,7 +97,7 @@ theorem held_target_viableHeads'_or_higher_report_of_cases
 (`ReportCover.held_target_viableHeads_or_higher_report_covered_at` over the shadow frame). -/
 theorem held_target_viableHeads'_or_higher_report_covered_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Stub.ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ (Node.frame' (tr.state y i)).tree) (hseed : HighOrigin tr H g v q m S)
@@ -125,7 +113,7 @@ theorem held_target_viableHeads'_or_higher_report_covered_at
 `held_target_viable_or_higher_report_covered_at` over the shadow frame. -/
 theorem held_target_viable'_or_higher_report_covered_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
-    (hp : Stub.ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
     {ell : ACLabel (goldilocksNode' sp ro)} (hcall : tr.projAC.CallAt y i ell)
     (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
