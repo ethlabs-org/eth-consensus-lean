@@ -11,8 +11,8 @@ public section
 
 /-! # Shadow P-U: proposal lock cases (`KernelProof.proposal_lock_prefix_cases_at`)
 
-The stock `Report/ProposalLocks` statement over the P-U window `Generic.FrameWindow`. The live lock's
-write origin and the unlocked image are `LockLocal`'s; the regular write reads
+The stock `Report/ProposalLocks` statement over the P-U window `Generic.FrameWindow`. The live
+lock's write origin and the unlocked image are `LockLocal`'s; the regular write reads
 `Healing.PU.regular_later_heads_at`, and the older optimistic write reads the writer's own P-U
 viable head as an early witness. The P-U window pins `h_max`, so no contest/gap residue arises. -/
 
