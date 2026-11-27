@@ -78,7 +78,10 @@ private theorem guarded_seed_ancestor_candidate_of_root
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have hsub : (tr.state y i).fg.tree ⊆ tr.HonestBlocksAt H :=
     fun X hX => ⟨y, i, t, ht, hle, hy, hX⟩
-  have hanc := Store.anc_of_anc_universe hreach hU hsub
+  have hanc : ∀ {A C : AC.Blk sp.n (List (FG.Att sp.n))},
+      Anc (tr.HonestBlocksAt H) A C → C ∈ (tr.state y i).fg.tree →
+      (tr.state y i).fg.Anc A C :=
+    fun h hC => Store.anc_of_anc_universe hreach hU hsub h hC
   have hSy : S ∈ (tr.state y i).fg.tree := by
     rcases hPS with hPS | hSP
     · exact hhold ((hPt.2.mono hsub).trans hPS)
