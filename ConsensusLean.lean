@@ -815,6 +815,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FaultBound
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowCast
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowWrite
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frame
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FreshViable
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frontier
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FullFrameWitness
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.GenericReset
