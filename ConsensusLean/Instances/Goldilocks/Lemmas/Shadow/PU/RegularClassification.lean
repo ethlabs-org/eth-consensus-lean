@@ -106,7 +106,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 write-frame viable witness; its AC write provenance is unchanged. -/
 private theorem old_lock_witness {s₀ M : Nat} {hi : Time}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr (fun _ => H) (sp.ts s₀) hi M isTop J)
+    (hframe : Generic.FrameWindow tr (fun _ => H) (sp.ts s₀) hi M isTop J)
     (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : Healing.NoRestartAfter tr H (gbar g))
@@ -181,7 +181,7 @@ private theorem old_lock_witness {s₀ M : Nat} {hi : Time}
 /-- A live old read-point lock inherits the frozen viable witness of its stored origin. -/
 private theorem live_old_lock_witness {s₀ M : Nat} {hi : Time}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr (fun _ => H) (sp.ts s₀) hi M isTop J)
+    (hframe : Generic.FrameWindow tr (fun _ => H) (sp.ts s₀) hi M isTop J)
     (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.fg.q - sp.n)
     (hnr : Healing.NoRestartAfter tr H (gbar g))
@@ -354,7 +354,7 @@ are those above. R2 also owns their next-supporter and early-base dependencies.
 
 theorem regular_fast_next_votes_at' {s₀ s M : Nat}
     {isTop : Prop} {J X D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
@@ -374,7 +374,7 @@ theorem regular_fast_next_votes_at' {s₀ s M : Nat}
 
 theorem regular_slow_next_votes_at' {s₀ s M : Nat}
     {isTop : Prop} {J D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts s + 6 * sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun' proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
@@ -466,7 +466,7 @@ theorem result_honest_supporter_before_at
 
 theorem vote_head_classification_of_service_at {s₀ M : Nat} {hi : Time}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : FrameWindow' tr H (sp.ts s₀) hi M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) hi M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Growing.GoldilocksRun proposer dg H tr (AC.committeeStart sp.genesisRoot K))
     (hnc : Compose.NoCollRun dg tr) {g ΔF b : Time}
@@ -493,7 +493,7 @@ theorem vote_head_classification_of_service_at {s₀ M : Nat} {hi : Time}
   have hd := hrun.time_nonneg i
   have hS := hK.healthy_base_before_at' hrun hnc hsvc hawake hf hcatch hd hib
   have hr := hrun.upTo hd
-  have hframe' : FrameWindow' (tr.upTo (tr.time i)) (fun _ => H (tr.time i))
+  have hframe' : Generic.FrameWindow (tr.upTo (tr.time i)) (fun _ => H (tr.time i))
       (sp.ts s₀) (tr.time i) M isTop J := by
     refine ⟨?_, ?_, ?_⟩
     · intro z j hz hlo hhi

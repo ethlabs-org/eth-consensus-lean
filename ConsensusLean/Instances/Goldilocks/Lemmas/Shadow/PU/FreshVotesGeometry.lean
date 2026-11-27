@@ -7,10 +7,10 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.EarlyWitness
 import ConsensusLean.Instances.Goldilocks.Lemmas.FGChain.QuorumMargin
 import ConsensusLean.Lemmas.Tactic.Linarith
 
-/-! # Fresh-vote geometry over the shadow run and `FrameWindow'`
+/-! # Fresh-vote geometry over the shadow run and `Generic.FrameWindow`
 
 The stock `FreshVotesGeometry` endpoints restated over `Growing.GoldilocksRun'` and the P-U window
-`FrameWindow' … M isTop J`: a P-U viable head transfers between readers of the window
+`Generic.FrameWindow … M isTop J`: a P-U viable head transfers between readers of the window
 (`WindowWitness`), and a frozen competitor reflects into the proposer's full viable tree. -/
 
 public section
@@ -26,10 +26,10 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 variable {hold : Time}
 
 /-- A viable head transfers between warm frames whenever the receiving tree holds it.
-(`FrameWindow.viableHead_transfer_at` over the shadow run and `FrameWindow'`). -/
+(`FrameWindow.viableHead_transfer_at` over the shadow run and `Generic.FrameWindow`). -/
 theorem viableHead_transfer_at {lo hi : Time} {M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H lo hi M isTop J)
+    (hframe : Generic.FrameWindow tr H lo hi M isTop J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {i c : Nat}
     (hy : y ∈ H (tr.time i)) (hz : z ∈ H (tr.time c))
@@ -53,10 +53,10 @@ theorem viableHead_transfer_at {lo hi : Time} {M : Nat}
   exact ⟨hQ.1, hQ.2, (hW.held y i hy hilo hihi hf hQ.1).2⟩
 
 /-- A frozen competing child reflects into the actual proposer's full viable tree.
-(`FrameWindow.frozen_competitor_reflect_at` over the shadow run and `FrameWindow'`). -/
+(`FrameWindow.frozen_competitor_reflect_at` over the shadow run and `Generic.FrameWindow`). -/
 theorem frozen_competitor_reflect_at {g ΔF b : Time} {s₀ s M : Nat}
     {isTop : Prop} {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
     (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (AC.gbar g))

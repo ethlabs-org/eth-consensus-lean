@@ -7,6 +7,7 @@ import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Outcome.LeftEnt
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.LeftEntry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Frontier
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.StaticCoreFacts
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Obligations.Healthy.CandidateReport
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
 
 public section

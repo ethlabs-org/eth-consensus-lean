@@ -60,7 +60,7 @@ private theorem proposal_parent_viable_at
 (`FrameWindow.fcRoot_anc_proposal_head_at` over the shadow frame, where `fc_root = F`). -/
 private theorem F_anc_proposal_head_at {lo hi : Time} {M : Nat} {isTop : Prop}
     {J : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H lo hi M isTop J)
+    (hframe : Generic.FrameWindow tr H lo hi M isTop J)
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y z : Fin sp.n} {i c s : Nat}
     (hy : y ∈ H (tr.time i)) (hz : z ∈ H (tr.time c))
@@ -91,7 +91,7 @@ viable-ancestor alternative: `A ⪯ F`, or `A` below a P-U viable head `Q` of th
 theorem optimistic_write_later_proposal_head_at
     {g ΔF b : Time} {s₀ j N M : Nat} {isTop : Prop}
     {J R A D : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))

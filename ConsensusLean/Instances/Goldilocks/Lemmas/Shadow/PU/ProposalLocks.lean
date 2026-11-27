@@ -11,7 +11,8 @@ public section
 
 /-! # Shadow P-U: proposal lock cases (`KernelProof.proposal_lock_prefix_cases_at`)
 
-The stock `Report/ProposalLocks` statement over the P-U window `FrameWindow'`. The live lock's
+The stock `Report/ProposalLocks` statement over the P-U window `Generic.FrameWindow`.
+The live lock's
 write origin and the unlocked image are `LockLocal`'s; the regular write reads
 `Healing.PU.regular_later_heads_at`, and the older optimistic write reads the writer's own P-U
 viable head as an early witness. The P-U window pins `h_max`, so no contest/gap residue arises. -/
@@ -27,13 +28,13 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 variable {hold : Time}
 
 /-- **Proposal lock cases over the P-U window** (`proposal_lock_prefix_cases_at` with
-`FrameWindow'`): a warm live lock is below the root, followed by votes, or from a current
+`Generic.FrameWindow`): a warm live lock is below the root, followed by votes, or from a current
 optimistic write. The P-U window pins `h_max`, so the writer's P-U viable head is a window
 witness and no contest/gap residue arises. -/
 theorem proposal_lock_prefix_cases_window_at
     {g ΔF b : Time} {s₀ s M : Nat} {isTop : Prop}
     {J X B : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
+    (hframe : Generic.FrameWindow tr H (sp.ts s₀) (sp.ts (s + 1 : Nat) + sp.Δ) M isTop J)
     {K : AC.CommitteeDict sp.n}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr
       (AC.committeeStart sp.genesisRoot K))

@@ -16,7 +16,8 @@ Classification of the three V-A7 candidates:
 * `pu_cex_leaf8_low`: **proved**, by the same supplier:
   `Consensus.Goldilocks.Shadow.PU.Witness.rounds_le_warm_proposal_at'`.
 * `pu_cex_viableHead_persists`: **unresolved**. The old-window fact is superseded by the proved
-  `FrameWindow'.viableHead_persists'` (V-B4) and no shadow theorem uses it; whether it needs a
+  `Generic.FrameWindow.viableHead_persists'` (V-B4) and no shadow theorem uses it;
+  whether it needs a
   verdict is a scope decision with the owner. A paper candidate run (not built) is recorded in
   the lane report.
 
