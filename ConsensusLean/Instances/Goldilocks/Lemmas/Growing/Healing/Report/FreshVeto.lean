@@ -1,5 +1,6 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FreshViable
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 
 public section
 
@@ -43,7 +44,8 @@ theorem no_veto_of_lock_roots_compatible_at
     rintro X Y hXY (h | h)
     · exact Or.inl (hXY.trans h)
     · exact AC.anc_total hU hXY h
-  rintro ⟨L, hLive, hconflict⟩
+  intro hconf
+  obtain ⟨L, hLive, hconflict⟩ := AC.exists_of_conflictsWithLock hconf
   obtain ⟨hLt, l', ⟨l, hl, B, hB, hBr, _, rfl⟩, hLr⟩ := hLive
   have hanc := AC.anc_viableAncestor ell.frame B
   have hLva : L = ell.frame.viableAncestor B :=

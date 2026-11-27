@@ -40,13 +40,45 @@ private theorem LockInv.movesBack (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦU : 
   obtain rfl : X = B' := hU.1 hX (hΦU hB') (hXr.trans hB'r.symm)
   exact (Anc.mono hΦU hA).trans (hlE l hl B (hΦU hB) hBr)
 
+/-- A nonempty set of blocks of a well-formed frame's tree has a deepest block. -/
+theorem exists_deepest {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {S : Set (Blk sp.n FGP)}
+    (hS : S ⊆ Φ.tree) (hne : S.Nonempty) : ∃ D, deepest Φ S = some D := by
+  have hfin : S.Finite := hΦ.finite.subset hS
+  obtain ⟨D, hD, hmax⟩ := hfin.exists_maximalFor (depth Φ) S hne
+  obtain ⟨D', ⟨hD'S, hD'd⟩, hmin⟩ :=
+    (hfin.subset (Set.sep_subset S fun C => depth Φ C = depth Φ D)).exists_minimalFor
+      Block.root _ ⟨D, hD, rfl⟩
+  have h : ∃ D, IsDeepest Φ S D := by
+    refine ⟨D', hD'S, fun C hC hne => ?_⟩
+    rcases lt_or_ge (depth Φ C) (depth Φ D') with h | h
+    · exact Or.inl h
+    have hCd : depth Φ C = depth Φ D' := le_antisymm (hD'd ▸ hmax hC (hD'd ▸ h)) h
+    refine Or.inr ⟨hCd, lt_of_le_of_ne ?_ fun hr => hne (hΦ.coherent.1 (hS hC) (hS hD'S) hr.symm)⟩
+    exact le_of_not_gt fun hlt => (hmin ⟨hC, hCd.trans hD'd⟩ hlt.le).not_gt hlt
+  unfold deepest
+  split_ifs
+  exact ⟨_, rfl⟩
+
 /-- A conflicting member of a chain of live lock blocks witnesses a lock conflict. -/
-private theorem conflictsWithLock_of_mem {Φ : Frm sp.n FGP} (_hΦ : FrameOK Φ)
+private theorem conflictsWithLock_of_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ)
     {L : Set Lock} {t : Time}
-    (_hch : ∀ B ∈ liveLockBlocks sp L Φ t, ∀ D ∈ liveLockBlocks sp L Φ t,
+    (hch : ∀ B ∈ liveLockBlocks sp L Φ t, ∀ D ∈ liveLockBlocks sp L Φ t,
       Compatible Φ.tree B D) {C B : Blk sp.n FGP}
     (hB : B ∈ liveLockBlocks sp L Φ t) (hCB : ¬ Compatible Φ.tree C B) :
-    conflictsWithLock sp L Φ t C := ⟨B, hB, hCB⟩
+    conflictsWithLock sp L Φ t C := by
+  obtain ⟨D, hD⟩ := exists_deepest hΦ (fun _ h => h.1) ⟨B, hB⟩
+  have hd := deepest_mem hD
+  have hBD : Φ.Anc B D := by
+    rcases hch B hB D hd.1 with h | h
+    · exact h
+    · by_cases he : D = B
+      · exact he ▸ Relation.ReflTransGen.refl
+      · have hlt := depth_lt_of_anc hΦ h he hB.1
+        rcases hd.2 B hB (Ne.symm he) with hb | ⟨hb, -⟩ <;> omega
+  refine ⟨D, hD, fun hc => hCB ?_⟩
+  rcases hc with hCD | hDC
+  · exact anc_total hΦ.coherent hCD hBD
+  · exact Or.inr (hBD.trans hDC)
 
 open Classical in
 /-- **New locks below a new record.** The record moves to `C` (unless `C` is below it), and the
@@ -188,6 +220,7 @@ private theorem LockInv.update {A : ACState sp.n} (h : LockInv U A Φ) (t : Time
     split_ifs with hconf
     · -- vetoed: the record stays; a written path block is below the live lock `C` conflicts with
       obtain ⟨L, hL, hCL⟩ := hconf
+      have hLm := (deepest_mem hL).1
       refine (h.of_eq (A' := { A with saved := Function.update A.saved s (some C.root) }) rfl rfl
         ).addLocks_below hU hΦ hΦU rfl (fun p hp => ?_) rfl
       have hp' : ∃ Y, (Y ∈ confirmationPath sp Φ C ∧ ¬ conflictsWithLock sp A.locks Φ t Y) ∧
@@ -195,7 +228,7 @@ private theorem LockInv.update {A : ACState sp.n} (h : LockInv U A Φ) (t : Time
         rcases hp with ⟨D, hD, rfl⟩ | ⟨D, hD, rfl⟩ <;> exact ⟨D, (deepest_mem hD).1.1, rfl⟩
       obtain ⟨Y, hYt, hYr, hYC, hnc⟩ :=
         hN {p} (fun q hq => (Set.mem_singleton_iff.1 hq) ▸ hp') p rfl
-      refine ⟨Y, hYt, hYr, L, hL, ?_⟩
+      refine ⟨Y, hYt, hYr, L, hLm, ?_⟩
       rcases (show Compatible Φ.tree Y L by by_contra h'; exact hnc ⟨L, hL, h'⟩) with hYL | hLY
       · exact hYL
       · exact absurd (Or.inr (hLY.trans hYC)) hCL
