@@ -208,7 +208,7 @@ theorem deep_eq (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
 
 theorem source_eq (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     source A Φ t = fgSource sp A Φ t := by
-  simp only [source, fgSource, deep_eq] <;> rfl
+  rfl
 
 theorem walk_eq {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (A : ACState sp.n) (t : Time)
     (tree : Set (Blk sp.n FGP)) (V : View sp.n) (s : Int) :

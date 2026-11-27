@@ -62,7 +62,9 @@ theorem late_reader_record_cover
       rw [post_of_update hr hy hu]
       unfold AC.updateConfirmation
       simp only [hCR]
-      rw [ite_eq_left ⟨L, hL, hCL⟩]
+      change AC.conflictsWithLock sp (tr.projAC.state y c).locks ell.frame
+        (tr.projAC.time c) C at hnv
+      rw [ite_eq_left hnv]
       change Anc (tr.HonestBlocks H) B
         ((AC.lookup ell.frame (tr.projAC.state y c).latestConfirmed).getD ell.frame.F)
       rw [hlookup]
