@@ -18,7 +18,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote Payload declaredHeadVotes)
+open AC (ACParams Vote Payload declaredHeadVotes)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
@@ -60,11 +60,11 @@ by the delivery's `process` (`process_relay`) and relayed by the delivery's goss
 (`deliver_relays`), as a carried object of a released relay wrapper. -/
 theorem relays_of_cut (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)} {k : Nat}
     (hnode : (simTrace S rho hn).node k = y) (hl : (simTrace S rho hn).label k ≠ none)
-    (hdel : ∀ r : CutRec (S.params (pubOf E) hn) (S.ro _), (allCuts S rho hn)[k]? = some r →
+    (hdel : ∀ r : CutRec (S.params (pubOf E) hn) , (allCuts S rho hn)[k]? = some r →
       (r.pos = 0 ∧ ∃ ℓ, r.label = .fg ℓ) ∨ ∃ ℓ m, r.label = .ac ℓ ∧ ℓ.call = .message m)
-    (hown : ∀ r : CutRec (S.params (pubOf E) hn) (S.ro _), (allCuts S rho hn)[k]? = some r →
+    (hown : ∀ r : CutRec (S.params (pubOf E) hn) , (allCuts S rho hn)[k]? = some r →
       ∀ a, r.label = .fg (.attestation a) → ∀ v i t, r ∉ tickTail S rho hn v i t) :
-    ∃ r : CutRec (S.params (pubOf E) hn) (S.ro _),
+    ∃ r : CutRec (S.params (pubOf E) hn) ,
       (simTrace S rho hn).label k = some r.label ∧ (simTrace S rho hn).post k = r.post ∧
       ∀ x, ((∃ B, r.label = .fg (.block B true) ∧ x = blockObj (S.params (pubOf E) hn) B) ∨
           (∃ a, r.label = .fg (.attestation a) ∧ x = attObj a)) →

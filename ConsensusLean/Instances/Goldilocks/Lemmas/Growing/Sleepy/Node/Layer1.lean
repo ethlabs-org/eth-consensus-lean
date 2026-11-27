@@ -14,21 +14,21 @@ unconditional instance of the generic event-safety contract.
 
 namespace Consensus.Goldilocks.Generic.SleepyLayer1
 
-open AC (ACParams ReplayOrder)
+open AC (ACParams)
 
 /-- Updates, including vetoed results, and optimistic locks are confirmation events. -/
-def goldilocksEvents (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :
-    Data (goldilocksNode sp ro) where
+def goldilocksEvents (sp : ACParams) :
+    Data (goldilocksNode sp) where
   ConfirmedEvent tr x k s B :=
     ∃ CV, AC.ResultAt tr.projAC x k s B CV ∨ AC.OptimisticLockAt tr.projAC x k s B CV
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {sign : Fin sp.n → Time → Bool} {G : Nat}
 
 
 /-- The event projection records results and optimistic locks, without exposing the data body. -/
-theorem goldilocksEvents_confirmedEvent_iff {tr : GoldilocksTrace sp ro} {x k s B} :
-    (goldilocksEvents sp ro).ConfirmedEvent tr x k s B ↔
+theorem goldilocksEvents_confirmedEvent_iff {tr : GoldilocksTrace sp} {x k s B} :
+    (goldilocksEvents sp).ConfirmedEvent tr x k s B ↔
       ∃ CV, AC.ResultAt tr.projAC x k s B CV ∨ AC.OptimisticLockAt tr.projAC x k s B CV := by
   rfl
 
@@ -37,22 +37,22 @@ def GoldilocksOutputProvenance (sign : Fin sp.n → Time → Bool := fun _ _ => 
     (G : Nat := 0) :
     Prop :=
   ∀ cm proposer dg H tr b,
-    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+    (goldilocksRunInterface sp sign G).Run cm proposer dg H tr →
       Compose.NoCollRun dg tr →
     ∀ y i t, HonestReadPoint tr H b y i t → ReadBoundary tr y i →
       confirmedRead tr y i t ∈ (tr.state y i).fg.tree ∧
-      (Anchored (goldilocksEvents sp ro) tr H b t (confirmedRead tr y i t) ∨
+      (Anchored (goldilocksEvents sp) tr H b t (confirmedRead tr y i t) ∨
         Anc (tr.HonestBlocksAt H) (confirmedRead tr y i t) (tr.state y i).fg.F)
 
 /-- The output-provenance obligation at the actual evaluation time. -/
 theorem goldilocksOutputProvenance_iff :
-    GoldilocksOutputProvenance (sp := sp) (ro := ro) sign G ↔
+    GoldilocksOutputProvenance (sp := sp) sign G ↔
       ∀ cm proposer dg H tr b,
-        (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+        (goldilocksRunInterface sp sign G).Run cm proposer dg H tr →
           Compose.NoCollRun dg tr →
         ∀ y i t, HonestReadPoint tr H b y i t → ReadBoundary tr y i →
           confirmedRead tr y i t ∈ (tr.state y i).fg.tree ∧
-          (Anchored (goldilocksEvents sp ro) tr H b t (confirmedRead tr y i t) ∨
+          (Anchored (goldilocksEvents sp) tr H b t (confirmedRead tr y i t) ∨
             Anc (tr.HonestBlocksAt H) (confirmedRead tr y i t) (tr.state y i).fg.F) := by
   rfl
 
@@ -61,28 +61,28 @@ def GoldilocksSourceProvenance (sign : Fin sp.n → Time → Bool := fun _ _ => 
     (G : Nat := 0) :
     Prop :=
   ∀ cm proposer dg H tr b,
-    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+    (goldilocksRunInterface sp sign G).Run cm proposer dg H tr →
       Compose.NoCollRun dg tr →
     ∀ y i B, y ∈ H (tr.time i) → tr.time i ≤ b → ReportAt tr y i B →
     B.root = sp.genesisRoot ∨ ∃ k s B', k ≤ i ∧ y ∈ H (tr.time k) ∧ tr.time k ≤ b ∧
-      (goldilocksEvents sp ro).ConfirmedEvent tr y k s B' ∧ Anc (tr.HonestBlocksAt H) B B'
+      (goldilocksEvents sp).ConfirmedEvent tr y k s B' ∧ Anc (tr.HonestBlocksAt H) B B'
 
 /-- The source-provenance obligation retains the reporter and source ancestry. -/
 theorem goldilocksSourceProvenance_iff :
-    GoldilocksSourceProvenance (sp := sp) (ro := ro) sign G ↔
+    GoldilocksSourceProvenance (sp := sp) sign G ↔
       ∀ cm proposer dg H tr b,
-        (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+        (goldilocksRunInterface sp sign G).Run cm proposer dg H tr →
           Compose.NoCollRun dg tr →
         ∀ y i B, y ∈ H (tr.time i) → tr.time i ≤ b → ReportAt tr y i B →
         B.root = sp.genesisRoot ∨ ∃ k s B', k ≤ i ∧ y ∈ H (tr.time k) ∧ tr.time k ≤ b ∧
-          (goldilocksEvents sp ro).ConfirmedEvent tr y k s B' ∧
+          (goldilocksEvents sp).ConfirmedEvent tr y k s B' ∧
             Anc (tr.HonestBlocksAt H) B B' := by
   rfl
 
 /-- Numerical data and the concrete finite sleepy service; no local correctness supplier is
 assumed by these adapters. The generic `SleepyServicePrefix` reaches the service through
 `sleepyServiceBefore_of_prefix`. -/
-def GoldilocksWindowPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+def GoldilocksWindowPremises (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (p : EnvPoint (Fin sp.n)) (cm : Time → Finset (Fin sp.n))
     (c look committeeLook ΔF b : Time) : Prop :=
   RunPointBinding tr H p ∧ b ≤ p.horizon ∧
@@ -98,7 +98,7 @@ def GoldilocksWindowPremises (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin
     (p.retain d).ReadyAbove (1 / 2) c t)
 
 /-- The independent population and committee windows used by the concrete adapters. -/
-theorem goldilocksWindowPremises_iff {tr : GoldilocksTrace sp ro}
+theorem goldilocksWindowPremises_iff {tr : GoldilocksTrace sp}
     {H : Time → Set (Fin sp.n)} {p : EnvPoint (Fin sp.n)}
     {cm : Time → Finset (Fin sp.n)} {c look committeeLook ΔF b : Time} :
     GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b ↔
@@ -120,7 +120,7 @@ def GoldilocksInvariantAdapter (sign : Fin sp.n → Time → Bool := fun _ _ => 
     (G : Nat := 0) :
     Prop :=
   ∀ cm proposer dg H tr p c look committeeLook ΔF b,
-    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+    (goldilocksRunInterface sp sign G).Run cm proposer dg H tr →
       Compose.NoCollRun dg tr →
     Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
     GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
@@ -128,9 +128,9 @@ def GoldilocksInvariantAdapter (sign : Fin sp.n → Time → Bool := fun _ _ => 
 
 /-- The invariant adapter applies the existing induction to the supplied windows. -/
 theorem goldilocksInvariantAdapter_iff :
-    GoldilocksInvariantAdapter (sp := sp) (ro := ro) sign G ↔
+    GoldilocksInvariantAdapter (sp := sp) sign G ↔
       ∀ cm proposer dg H tr p c look committeeLook ΔF b,
-        (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+        (goldilocksRunInterface sp sign G).Run cm proposer dg H tr →
           Compose.NoCollRun dg tr →
         Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
         GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
@@ -142,24 +142,24 @@ def GoldilocksEventSafety (sign : Fin sp.n → Time → Bool := fun _ _ => true)
     (G : Nat := 0) :
     Prop :=
   ∀ cm proposer dg H tr p c look committeeLook ΔF b,
-    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+    (goldilocksRunInterface sp sign G).Run cm proposer dg H tr →
       Compose.NoCollRun dg tr →
     Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
     GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
-    AnchoredFrames (goldilocksEvents sp ro) tr H b →
-    ∀ B B', EventWithin (goldilocksEvents sp ro) tr H b b B →
-      EventWithin (goldilocksEvents sp ro) tr H b b B' → Compatible (tr.HonestBlocksAt H) B B'
+    AnchoredFrames (goldilocksEvents sp) tr H b →
+    ∀ B B', EventWithin (goldilocksEvents sp) tr H b b B →
+      EventWithin (goldilocksEvents sp) tr H b b B' → Compatible (tr.HonestBlocksAt H) B B'
 
 /-- Event safety compares events on the supplied run and windows. -/
-theorem goldilocksEventSafety_iff : GoldilocksEventSafety (sp := sp) (ro := ro) sign G ↔
+theorem goldilocksEventSafety_iff : GoldilocksEventSafety (sp := sp) sign G ↔
     ∀ cm proposer dg H tr p c look committeeLook ΔF b,
-      (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+      (goldilocksRunInterface sp sign G).Run cm proposer dg H tr →
         Compose.NoCollRun dg tr →
       Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
       GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
-      AnchoredFrames (goldilocksEvents sp ro) tr H b →
-      ∀ B B', EventWithin (goldilocksEvents sp ro) tr H b b B →
-        EventWithin (goldilocksEvents sp ro) tr H b b B' →
+      AnchoredFrames (goldilocksEvents sp) tr H b →
+      ∀ B B', EventWithin (goldilocksEvents sp) tr H b b B →
+        EventWithin (goldilocksEvents sp) tr H b b B' →
           Compatible (tr.HonestBlocksAt H) B B' := by
   rfl
 
@@ -168,23 +168,23 @@ def GoldilocksExtension (sign : Fin sp.n → Time → Bool := fun _ _ => true)
     (G : Nat := 0) :
     Prop :=
   ∀ cm proposer dg H tr p c look committeeLook ΔF b,
-    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+    (goldilocksRunInterface sp sign G).Run cm proposer dg H tr →
       Compose.NoCollRun dg tr →
     Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
     GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
-    AnchoredFrames (goldilocksEvents sp ro) tr H b →
+    AnchoredFrames (goldilocksEvents sp) tr H b →
     ∀ y i j t u, ReadyReadPoint tr H b c y i t → ReadyReadPoint tr H b c y j u →
       ReadBoundary tr y i → ReadBoundary tr y j → i ≤ j → t ≤ u →
       Anc (tr.HonestBlocksAt H) (confirmedRead tr y i t) (confirmedRead tr y j u)
 
 /-- Extension keeps both actual read points and their ordering. -/
-theorem goldilocksExtension_iff : GoldilocksExtension (sp := sp) (ro := ro) sign G ↔
+theorem goldilocksExtension_iff : GoldilocksExtension (sp := sp) sign G ↔
     ∀ cm proposer dg H tr p c look committeeLook ΔF b,
-      (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+      (goldilocksRunInterface sp sign G).Run cm proposer dg H tr →
         Compose.NoCollRun dg tr →
       Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
       GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
-      AnchoredFrames (goldilocksEvents sp ro) tr H b →
+      AnchoredFrames (goldilocksEvents sp) tr H b →
       ∀ y i j t u, ReadyReadPoint tr H b c y i t → ReadyReadPoint tr H b c y j u →
         ReadBoundary tr y i → ReadBoundary tr y j → i ≤ j → t ≤ u →
         Anc (tr.HonestBlocksAt H) (confirmedRead tr y i t) (confirmedRead tr y j u) := by
@@ -198,12 +198,12 @@ def GoldilocksProposalCoverage (sign : Fin sp.n → Time → Bool := fun _ _ => 
     (G : Nat := 0) :
     Prop :=
   ∀ cm proposer dg H tr p c look committeeLook ΔF b hold margin,
-    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+    (goldilocksRunInterface sp sign G).Run cm proposer dg H tr →
       Compose.NoCollRun dg tr →
     Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
     GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
     sp.Δ ≤ hold → 6 * sp.Δ ≤ margin →
-    AnchoredFrames (goldilocksEvents sp ro) tr H b →
+    AnchoredFrames (goldilocksEvents sp) tr H b →
     ∀ B k y j t, ReadyProposal tr H c hold B k → 0 ≤ tr.time k →
     tr.time k + hold ≤ b → tr.time k ≤ b → tr.time k + margin ≤ t →
     ReadyReadPoint tr H b c y j t → ReadBoundary tr y j → t < tr.time j →
@@ -211,14 +211,14 @@ def GoldilocksProposalCoverage (sign : Fin sp.n → Time → Bool := fun _ _ => 
 
 /-- Proposal coverage preserves the proposal, hold, margin and actual read. -/
 theorem goldilocksProposalCoverage_iff :
-    GoldilocksProposalCoverage (sp := sp) (ro := ro) sign G ↔
+    GoldilocksProposalCoverage (sp := sp) sign G ↔
     ∀ cm proposer dg H tr p c look committeeLook ΔF b hold margin,
-      (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr →
+      (goldilocksRunInterface sp sign G).Run cm proposer dg H tr →
         Compose.NoCollRun dg tr →
       Compose.Growing.CommitteeFacts tr H (dictOfTime sp cm) →
       GoldilocksWindowPremises tr H p cm c look committeeLook ΔF b →
       sp.Δ ≤ hold → 6 * sp.Δ ≤ margin →
-      AnchoredFrames (goldilocksEvents sp ro) tr H b →
+      AnchoredFrames (goldilocksEvents sp) tr H b →
       ∀ B k y j t, ReadyProposal tr H c hold B k → 0 ≤ tr.time k →
       tr.time k + hold ≤ b → tr.time k ≤ b → tr.time k + margin ≤ t →
       ReadyReadPoint tr H b c y j t → ReadBoundary tr y j → t < tr.time j →

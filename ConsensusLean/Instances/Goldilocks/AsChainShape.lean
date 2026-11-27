@@ -11,7 +11,7 @@ public import Mathlib.Tactic.Ring
 The Goldilocks protocol of `Spec/Run/Goldilocks` (the node of `Spec/Node` over `goldilocksAC`),
 written as a generic `ChainShape` so that the engine (`Spec/Model/Run`) runs it and the generic
 L1 theorems (`System.NonFraming`, …) apply to it. The simulation statements
-(`Lemmas/Simulation/Interface`) say that every engine run of `compile (goldilocksShape sp ro)` is
+(`Lemmas/Simulation/Interface`) say that every engine run of `compile (goldilocksShape sp)` is
 simulated by a `GoldilocksRun` (claims C0.4 kept) and bind the evidence (G1.5). Decisions
 (`docs/decisions.md` §"Goldilocks model choices"):
 
@@ -64,7 +64,7 @@ simulated by a `GoldilocksRun` (claims C0.4 kept) and bind the evidence (G1.5). 
   delivery's own time (`Model.Run.deliver`), as the spec's relay rule sends them.
   Fresh vote insertions instead queue `.voteForward` envelopes, signed by the admitting node
   and stamped with its admission time. The envelope carries the canonical vote, which recursive
-  delivery visits again. Restart replay does not create vote envelopes.
+  delivery visits again. Restart stamping does not create vote envelopes.
   Separately, successful block acceptance cuts queue fresh signed `.forward` wrappers, including
   own proposals. The durable node-root map supplies exact same-origin parent wrappers. A selected
   `pollBatch` emits its ordinary body, block wrappers in acceptance order, then vote envelopes;
@@ -86,7 +86,7 @@ namespace Consensus.Goldilocks.AsChainShape
 
 open Blocks Shape
 open Consensus.Model (Public Key SelSpec Obj Msg)
-open AC (ACParams ReplayOrder goldilocksAC Vote Payload)
+open AC (ACParams goldilocksAC Vote Payload)
 
 /-! ## Wire types -/
 
@@ -300,7 +300,7 @@ theorem VoteBinding.installVote_mayVote (B : VoteBinding) (h : B.participationKi
 /-- The single wire carrier, parameterised by the vote binding. -/
 abbrev Wire (n : Nat) (binding : VoteBinding := stock) := ShapeObj n binding.Kind Info Body
 
-variable (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+variable (sp : ACParams)
   {binding : optParam VoteBinding stock}
 
 /-- The exact dependency reference of a parent-bearing forwarding shape. This computable
@@ -451,7 +451,7 @@ structure State (binding : VoteBinding := stock) where
   /-- The own validator index. -/
   self : Fin sp.n
   /-- The node state. -/
-  node : NodeState (goldilocksNode sp ro)
+  node : NodeState (goldilocksNode sp)
   /-- The time of the last tick (or restart). -/
   now : Time
   /-- Bodies to sign and release, oldest first. -/
@@ -476,7 +476,7 @@ structure State (binding : VoteBinding := stock) where
   clock): held attestations are released and processed only after it. -/
   ticked : Bool := false
 
-variable {sp ro}
+variable {sp}
 
 /-- The own evidence for an own vote: the node's issuer in the vote's role. -/
 def ownToken (io : VoteAuth sp.n binding) (v : Vote sp.n) : Option Nat :=
@@ -484,16 +484,16 @@ def ownToken (io : VoteAuth sp.n binding) (v : Vote sp.n) : Option Nat :=
 
 /-- The votes the cuts emit, as bodies to release, each with its own evidence; a vote without
 evidence is not released. -/
-def emitted (io : VoteAuth sp.n binding) (cs : List (Cut (goldilocksNode sp ro))) : List Body :=
+def emitted (io : VoteAuth sp.n binding) (cs : List (Cut (goldilocksNode sp))) : List Body :=
   cs.flatMap fun
     | .ac ℓ => ℓ.emits.filterMap fun e =>
         (ownToken (binding := binding) io e.msg).map fun z => .vote (encodeVote e.msg) z
     | .fg _ => []
 
 /-- Queue `o` for relay if `c`. -/
-def relayIf (st : State sp ro (binding := binding))
+def relayIf (st : State sp (binding := binding))
     (c : Prop) [Decidable c] (o : Wire sp.n (binding := binding)) :
-    State sp ro (binding := binding) :=
+    State sp (binding := binding) :=
   if c then { st with relayBuf := st.relayBuf ++ [o] } else st
 
 variable (sp) in
@@ -527,8 +527,8 @@ def forwardObj (origin : Fin sp.n) (acceptedAt : Time)
 /-- Queue a wrapper only for an actual successful block cut. Parent lookup uses node roots;
 the wire encoding stays in `blockObj`. A missing non-genesis parent leaves the queue unchanged:
 the reachable-state invariant must rule out that case, rather than minting an orphan wrapper. -/
-def queueAccepted (st : State sp ro (binding := binding))
-    (B : Blk sp) : State sp ro (binding := binding) :=
+def queueAccepted (st : State sp (binding := binding))
+    (B : Blk sp) : State sp (binding := binding) :=
   match B.parent with
   | none => st
   | some root =>
@@ -544,13 +544,13 @@ def queueAccepted (st : State sp ro (binding := binding))
 
 /-- Record handler state and emissions, then queue successful acceptances and fresh vote
 insertions. Candidate votes come from message calls and own emissions (a block call admits no
-vote, and neither does restart replay). The pool difference preserves admission's duplicate and
+vote, and neither does restart stamping). The pool difference preserves admission's duplicate and
 two-vote-cap checks. A fresh received vote is queued with the exact object it arrived in
 (`origin`); a fresh own vote with its own signed object and the same evidence as its release. -/
-def apply (st : State sp ro (binding := binding))
+def apply (st : State sp (binding := binding))
     (origin : Option (Wire sp.n (binding := binding)))
-    (r : NodeState (goldilocksNode sp ro) × List (Cut (goldilocksNode sp ro))) :
-    State sp ro (binding := binding) :=
+    (r : NodeState (goldilocksNode sp) × List (Cut (goldilocksNode sp))) :
+    State sp (binding := binding) :=
   let publications := r.2.foldl (fun s c => match c with
     | .fg (.block B true) => queueAccepted s B
     | _ => s) st
@@ -595,9 +595,9 @@ def decodeAttObj :
   | _ => none
 
 /-- The Goldilocks header payload and carried objects, with vote and attestation decoding. -/
-def wireCodec (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) (binding : VoteBinding)
+def wireCodec (sp : ACParams) (binding : VoteBinding)
     (io : VoteAuth sp.n binding) :
-    NodeAsChainShape.WireCodec (goldilocksNode sp ro) binding.Kind Info Body where
+    NodeAsChainShape.WireCodec (goldilocksNode sp) binding.Kind Info Body where
   encode := encodeInfo
   decode := decodeInfo sp.n
   carried := payloadObjs (binding := binding)
@@ -605,12 +605,12 @@ def wireCodec (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) (bindin
   attestation := decodeAttObj sp (binding := binding)
 
 /-- Connect node handlers to the Goldilocks clock, duty flag and publication queues. -/
-noncomputable def nodeAdapter (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+noncomputable def nodeAdapter (sp : ACParams)
     (binding : VoteBinding)
     (sign : Fin sp.n → Time → Bool := fun _ _ => true)
     (release : Fin sp.n → Time → Bool := fun _ _ => true) :
-    NodeAsChainShape.Adapter (goldilocksNode sp ro) binding.Kind Info Body
-      (State sp ro binding) where
+    NodeAsChainShape.Adapter (goldilocksNode sp) binding.Kind Info Body
+      (State sp binding) where
   self := State.self
   node := State.node
   now := State.now
@@ -625,14 +625,14 @@ noncomputable def nodeAdapter (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att
     else { st with node, held := st.held ++ [a] }
   sign := sign
 
-variable (sp ro) in
+variable (sp) in
 /-- The node's top-level event a received object stands for, given the digests `hs`: the block,
 vote or attestation it is the canonical object of; none for anything else (dropped). -/
 noncomputable def canonEvent
     (io : VoteAuth sp.n binding)
     (hs : List (Header Info × Nat)) (o : Wire sp.n (binding := binding)) :
-    Option (Node.Event (goldilocksNode sp ro)) :=
-  NodeAsChainShape.canonEvent (wireCodec sp ro binding io) hs o
+    Option (Node.Event (goldilocksNode sp)) :=
+  NodeAsChainShape.canonEvent (wireCodec sp binding io) hs o
 
 open Classical in
 /-- Processing one received object through its canonical node handler. A block the call newly
@@ -641,9 +641,9 @@ receipt, including a block already held, is not relayed (composition.tex §"Mode
 insertions use the signed queue in `apply`. Noncanonical wrappers make no call; their carried
 objects are processed separately. -/
 noncomputable def processOne (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
-    (st : State sp ro (binding := binding)) (o : Wire sp.n (binding := binding)) :
-    State sp ro (binding := binding) :=
-  NodeAsChainShape.processOne (wireCodec sp ro binding io) (nodeAdapter sp ro binding) hs st o
+    (st : State sp (binding := binding)) (o : Wire sp.n (binding := binding)) :
+    State sp (binding := binding) :=
+  NodeAsChainShape.processOne (wireCodec sp binding io) (nodeAdapter sp binding) hs st o
 
 /-- A block-shaped object: one that says a header item, as a block's canonical object does
 (`blockObj`). Every other object is a vote, an attestation or a wrapper body. -/
@@ -654,8 +654,8 @@ def BlockShaped : Wire sp.n (binding := binding) → Prop := NodeAsChainShape.Bl
 objects, attestations or AC payload), or is a canonical block that `on_block` drops as of a
 future slot or that the FG refuses (composition.tex §"Blocks"). -/
 def Refuses (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
-    (st : State sp ro (binding := binding)) (o : Wire sp.n (binding := binding)) : Prop :=
-  NodeAsChainShape.Refuses (wireCodec sp ro binding io) (nodeAdapter sp ro binding) hs st o
+    (st : State sp (binding := binding)) (o : Wire sp.n (binding := binding)) : Prop :=
+  NodeAsChainShape.Refuses (wireCodec sp binding io) (nodeAdapter sp binding) hs st o
 
 /-- The objects a delivery of `o` at `st` processes, in preorder, with the state after them: `o`,
 then, unless processing `o` refuses a block (`Refuses`), recursively every object it carries, each
@@ -667,28 +667,28 @@ processed before its payload votes and attestations, which receive their own mes
 calls when the block is accepted. Thus admitting a payload vote is followed by actual message
 processing at the same delivery time, rather than merely adding it to the AC pool. -/
 noncomputable def visit (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat)) :
-    State sp ro (binding := binding) → Wire sp.n (binding := binding) →
-      List (Wire sp.n (binding := binding)) × State sp ro (binding := binding) :=
-  NodeAsChainShape.visit (wireCodec sp ro binding io) (nodeAdapter sp ro binding) hs
+    State sp (binding := binding) → Wire sp.n (binding := binding) →
+      List (Wire sp.n (binding := binding)) × State sp (binding := binding) :=
+  NodeAsChainShape.visit (wireCodec sp binding io) (nodeAdapter sp binding) hs
 
 /-- `visit` of a list of carried objects, one after the other. -/
 noncomputable def visitList (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat)) :
-    State sp ro (binding := binding) → List (Wire sp.n (binding := binding)) →
-      List (Wire sp.n (binding := binding)) × State sp ro (binding := binding) :=
-  NodeAsChainShape.visitList (wireCodec sp ro binding io) (nodeAdapter sp ro binding) hs
+    State sp (binding := binding) → List (Wire sp.n (binding := binding)) →
+      List (Wire sp.n (binding := binding)) × State sp (binding := binding) :=
+  NodeAsChainShape.visitList (wireCodec sp binding io) (nodeAdapter sp binding) hs
 
 /-- The objects a delivery of `o` at `st` processes (`visit`). -/
 noncomputable def delivered (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
-    (st : State sp ro (binding := binding)) (o : Wire sp.n (binding := binding)) :
+    (st : State sp (binding := binding)) (o : Wire sp.n (binding := binding)) :
     List (Wire sp.n (binding := binding)) :=
-  NodeAsChainShape.delivered (wireCodec sp ro binding io) (nodeAdapter sp ro binding) hs st o
+  NodeAsChainShape.delivered (wireCodec sp binding io) (nodeAdapter sp binding) hs st o
 
 /-- Processing a delivered object: its `delivered` objects one by one through `processOne`. -/
 noncomputable def process
-    (st : State sp ro (binding := binding))
+    (st : State sp (binding := binding))
     (o : Wire sp.n (binding := binding)) (hs : List (Header Info × Nat)) :
-    State sp ro (binding := binding) :=
-  NodeAsChainShape.process (wireCodec sp ro binding st.voteIO) (nodeAdapter sp ro binding) st o hs
+    State sp (binding := binding) :=
+  NodeAsChainShape.process (wireCodec sp binding st.voteIO) (nodeAdapter sp binding) st o hs
 
 /-- Releasing a forwarding shape requires its exact parent wrapper to be held before
 the envelope. Raw blocks have no release dependency. This policy does not restrict arrivals:
@@ -715,47 +715,47 @@ def dependencies (n : Nat) {binding : optParam VoteBinding stock} :
 (now with its digest) goes through the own `on_block`, as `propose_block` does; a released vote
 or attestation was admitted when emitted or signed. -/
 noncomputable def recordOwn
-    (st : State sp ro (binding := binding))
+    (st : State sp (binding := binding))
     (o : Wire sp.n (binding := binding)) (hs : List (Header Info × Nat)) :
-    State sp ro (binding := binding) :=
+    State sp (binding := binding) :=
   match o with
   | .mk .none (.data .relay) _ => { st with relayBuf := [] }
   | .mk (.signed k (.proposer _)) (.item h) _ =>
-      NodeAsChainShape.recordBlock (wireCodec sp ro binding st.voteIO) (nodeAdapter sp ro binding)
+      NodeAsChainShape.recordBlock (wireCodec sp binding st.voteIO) (nodeAdapter sp binding)
         st k h hs
   | _ => st
 
 /-- The public tick queues `ac_on_tick` votes and sets the FG duty from the signing calendar. -/
 noncomputable def nodeTick
-    (st : State sp ro (binding := binding)) (sign : Fin sp.n → Time → Bool := fun _ _ => true) :
-    State sp ro (binding := binding) :=
-  NodeAsChainShape.nodeTick (nodeAdapter sp ro binding sign) st
+    (st : State sp (binding := binding)) (sign : Fin sp.n → Time → Bool := fun _ _ => true) :
+    State sp (binding := binding) :=
+  NodeAsChainShape.nodeTick (nodeAdapter sp binding sign) st
 
 /-- The slot proposal of the slot's proposer: `ac_proposal`; the header names the head and
 carries the proposal's attestations (`proposal_attestations`) and the AC payload. The engine
 writes the slot and the input and signs; the own `on_block` runs in `recordOwn`. -/
 noncomputable def propose
-    (st : State sp ro (binding := binding))
-    (_s : Slot) : State sp ro (binding := binding) ×
+    (st : State sp (binding := binding))
+    (_s : Slot) : State sp (binding := binding) ×
       Option (ParentRef × Info × List (Wire sp.n (binding := binding))) :=
-  NodeAsChainShape.propose (wireCodec sp ro binding st.voteIO) (nodeAdapter sp ro binding) st _s
+  NodeAsChainShape.propose (wireCodec sp binding st.voteIO) (nodeAdapter sp binding) st _s
 
 /-- The FG update: `ac_to_fg`, then `attest(C)` at the source `C` it returns (`fg_attest`; when
 it signs, the new record, the own `on_attestation` and the attestation queued), as
 `Node.tickStep … .fgUpdate`. -/
 noncomputable def fgUpdate
-    (st : State sp ro (binding := binding))
+    (st : State sp (binding := binding))
     (release : Fin sp.n → Time → Bool := fun _ _ => true) :
-    State sp ro (binding := binding) :=
-  NodeAsChainShape.fgUpdate (nodeAdapter sp ro binding (release := release)) st
+    State sp (binding := binding) :=
+  NodeAsChainShape.fgUpdate (nodeAdapter sp binding (release := release)) st
 
 /-- A poll step: the FG update when due (its attestation queued or held by `release`), then the
 oldest queued ordinary body.
 Clear the forwarding queue; `pollBatch` captures its contents before this step. -/
 noncomputable def poll
-    (st : State sp ro (binding := binding))
+    (st : State sp (binding := binding))
     (_ : Time) (release : Fin sp.n → Time → Bool := fun _ _ => true) :
-    State sp ro (binding := binding) ×
+    State sp (binding := binding) ×
       Option (Body × List (Wire sp.n (binding := binding))) :=
   let st₁ := if st.fgDue then fgUpdate st release else st
   match st₁.outbox with
@@ -769,9 +769,9 @@ own `on_attestation`, in that order, before the poll's FG update. The queues are
 polling; the FG update admits no votes. The engine signs the list and checks each candidate
 against its actual release prefix. -/
 noncomputable def pollBatch
-    (st : State sp ro (binding := binding))
+    (st : State sp (binding := binding))
     (t : Time) (release : Fin sp.n → Time → Bool := fun _ _ => true) :
-    State sp ro (binding := binding) ×
+    State sp (binding := binding) ×
       List (Body × List (Wire sp.n (binding := binding))) :=
   let flush := release st.self st.now && st.ticked
   let r := poll (if flush then
@@ -789,27 +789,27 @@ noncomputable def chainTo (blocks : Nat → Option (Blk sp)) : Nat → Blk sp �
 /-- The output chains of a node state at time `t`: `finalized` is `Σ.F`, `confirmed` is
 `ac_confirmed(𝒜, fg_to_ac(Σ), t)`; each as the chain of headers up to it (fuel: the slot, which
 bounds the height). -/
-noncomputable def outOf (st : NodeState (goldilocksNode sp ro)) (t : Time) : Out → Chain Info
+noncomputable def outOf (st : NodeState (goldilocksNode sp)) (t : Time) : Out → Chain Info
   | .finalized => chainTo st.fg.blocks (st.fg.F.slot + 1) st.fg.F
   | .confirmed =>
-    let C := (goldilocksNode sp ro).confirmed st.ac (Node.frame st) t
+    let C := (goldilocksNode sp).confirmed st.ac (Node.frame st) t
     chainTo st.fg.blocks (C.slot + 1) C
 
 /-- A restart at time `t`: `𝒜` becomes `ac_restart(𝒜, Φ, t)` (only the locks and the latest
 confirmation persist; its emissions are queued), the time is set, no FG update is due. `Σ`, `Λ`,
 the queued bodies, the relay queue and the forwarding state are kept. -/
 noncomputable def restore (k : Fin sp.n)
-    (d : State sp ro (binding := binding)) (t : Time) : State sp ro (binding := binding) :=
-  NodeAsChainShape.restore (nodeAdapter sp ro binding) k d t
+    (d : State sp (binding := binding)) (t : Time) : State sp (binding := binding) :=
+  NodeAsChainShape.restore (nodeAdapter sp binding) k d t
 
-variable (sp ro) in
+variable (sp) in
 /-- The Goldilocks engine operations at fixed protocol parameters and voting roles. -/
 noncomputable def nodeOps (binding : VoteBinding)
     (sign : Fin sp.n → Time → Bool := fun _ _ => true)
     (release : Fin sp.n → Time → Bool := fun _ _ => true) :
-    NodeAsChainShape.Ops sp.n binding.Kind Info Body Out (State sp ro binding) Nat WireVote where
-  init k p io := ⟨k, Node.initWith (goldilocksNode sp ro)
-    (binding.installVote p (goldilocksNode sp ro).initial),
+    NodeAsChainShape.Ops sp.n binding.Kind Info Body Out (State sp binding) Nat WireVote where
+  init k p io := ⟨k, Node.initWith (goldilocksNode sp)
+    (binding.installVote p (goldilocksNode sp).initial),
     0, [], [], false, fun _ => none, [], [], io, [], false⟩
   clock st t := { st with now := t, ticked := false }
   propose := propose
@@ -825,14 +825,14 @@ noncomputable def nodeOps (binding : VoteBinding)
   restore := restore
   out g st := outOf st.node st.now g
 
-variable (sp ro) in
+variable (sp) in
 /-- The Goldilocks node as a chain shape over already chosen protocol parameters.
 Its grid uses `sp.Δ` directly: only `Setup.params` converts the engine delay to protocol delay. -/
 noncomputable def goldilocksShape (binding : VoteBinding := stock) :
     ChainShape sp.pub Out Info :=
   NodeAsChainShape.shape { skeleton sp.pub (binding := binding) with
     grid := ⟨4 * sp.Δ, mul_pos (by decide) sp.toParams.hΔ⟩ }
-    (nodeOps sp ro binding) (voteClaim (binding := binding) sp.n) voteBody
+    (nodeOps sp binding) (voteClaim (binding := binding) sp.n) voteBody
     (presented (binding := binding)) (binding.candidateRole sp.n)
     (dependencies sp.n (binding := binding)) (conflicts (binding := binding))
     (isFGAtt (binding := binding))
@@ -841,7 +841,7 @@ noncomputable def goldilocksShape (binding : VoteBinding := stock) :
 
 /-- The parameters of the Goldilocks node not fixed by the public parameters:
 the genesis root, the FG timeout `δ_t`, the lock window `k`, the fast increment `c`, the
-optimistic switch, the deep-source depth, and the restart replay order and vote binding at every
+optimistic switch, the deep-source depth, and vote binding at every
 parameter set. -/
 structure Setup where
   /-- The genesis root. -/
@@ -854,9 +854,6 @@ structure Setup where
   /-- The fast increment `c ≥ 2` (`ACParams.c`). -/
   c : Nat
   two_le_c : 2 ≤ c
-  /-- The restart replay order depends on the validator count and fixed genesis root,
-  not on a proposer schedule or timing parameters. -/
-  ro : (n : Nat) → AC.ReplayOrderData n genesisRoot (List (FG.Att n))
   /-- Historical vote authentication, permission and threshold denominator. -/
   vote : VoteBinding
   /-- Whether a validator may run `ac_to_fg` and `fg_attest` at a public time.
@@ -903,7 +900,7 @@ abbrev Setup.params (S : Setup) (pub : Public) (hn : 1 ≤ pub.n) : ACParams whe
 is `Body`, `.skel.Kind` is `S.vote.Kind`, and a run's state at `hn` is `st hn : State …` without a
 cast. Without a validator there are no keys, no duties with an effect and no outputs. -/
 def PubState (S : Setup) (pub : Public) : Type :=
-  (hn : 1 ≤ pub.n) → State (S.params pub hn) (S.ro _) (binding := S.vote)
+  (hn : 1 ≤ pub.n) → State (S.params pub hn) (binding := S.vote)
 
 /-- The Goldilocks family: `goldilocksShape` at `S.params pub hn` for every `hn`, through
 `PubState`; the steps that output something (a proposal, a poll body, the gossip, the
@@ -913,7 +910,7 @@ noncomputable def goldilocks (S : Setup) :
   let binding := S.vote
   NodeAsChainShape.shape (skeleton pub (binding := binding))
     (NodeAsChainShape.familyOps fun hn =>
-      nodeOps (S.params pub hn) (S.ro _) binding (S.sign pub) (S.release pub))
+      nodeOps (S.params pub hn) binding (S.sign pub) (S.release pub))
     (voteClaim (binding := binding) pub.n) voteBody (presented (binding := binding))
     (binding.candidateRole pub.n) (dependencies pub.n (binding := binding))
     (conflicts (binding := binding)) (isFGAtt (binding := binding))
@@ -1036,26 +1033,26 @@ theorem decodeBlock_eq (hs : List (Header Info × Nat)) (o : Wire sp.n binding) 
 /-- Classify a receipt by trying the block, vote and attestation decoders in order. -/
 theorem canonEvent_eq (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
     (o : Wire sp.n binding) :
-    canonEvent sp ro io hs o =
+    canonEvent sp io hs o =
       (match decodeBlock sp hs o, decodeVoteObj sp io o, decodeAttObj sp o with
     | some B, _, _ => some (.block B)
     | none, some v, _ => some (.message v)
     | none, none, some a => some (.attestation a)
     | none, none, none => none) := by
   unfold canonEvent NodeAsChainShape.canonEvent
-  have hb : NodeAsChainShape.decodeBlock (wireCodec sp ro binding io).decode
-      (wireCodec sp ro binding io).carried
-      (goldilocksNode sp ro).validPayload hs o = decodeBlock sp hs o := rfl
-  have hv : (wireCodec sp ro binding io).message o = decodeVoteObj sp io o := rfl
-  have ha : (wireCodec sp ro binding io).attestation o = decodeAttObj sp o := rfl
+  have hb : NodeAsChainShape.decodeBlock (wireCodec sp binding io).decode
+      (wireCodec sp binding io).carried
+      (goldilocksNode sp).validPayload hs o = decodeBlock sp hs o := rfl
+  have hv : (wireCodec sp binding io).message o = decodeVoteObj sp io o := rfl
+  have ha : (wireCodec sp binding io).attestation o = decodeAttObj sp o := rfl
   rw [hb, hv, ha]
   cases decodeBlock sp hs o <;> cases decodeVoteObj sp io o <;> cases decodeAttObj sp o <;> rfl
 
 open Classical in
 /-- Dispatch a decoded receipt, relaying newly accepted blocks and attestations. -/
 theorem processOne_eq (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
-    (st : State sp ro binding) (o : Wire sp.n binding) :
-    processOne io hs st o = (match canonEvent sp ro io hs o with
+    (st : State sp binding) (o : Wire sp.n binding) :
+    processOne io hs st o = (match canonEvent sp io hs o with
     | some (.block B) =>
       let r := Node.onBlock st.self st.node st.now B
       relayIf (apply st none r)
@@ -1064,23 +1061,23 @@ theorem processOne_eq (io : VoteAuth sp.n binding) (hs : List (Header Info × Na
     | some (.attestation a) => relayIf (apply st none (Node.onAttestation st.node a)) True o
     | _ => st) := by
   unfold processOne NodeAsChainShape.processOne
-  have h : NodeAsChainShape.canonEvent (wireCodec sp ro binding io) hs o =
-      canonEvent sp ro io hs o := rfl
+  have h : NodeAsChainShape.canonEvent (wireCodec sp binding io) hs o =
+      canonEvent sp io hs o := rfl
   rw [h]
-  cases canonEvent sp ro io hs o with
+  cases canonEvent sp io hs o with
   | none => rfl
   | some e => cases e <;> rfl
 
 /-- Refuse block-shaped receipts unless they decode to a timely, FG-accepted block. -/
 theorem refuses_iff (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
-    (st : State sp ro binding) (o : Wire sp.n binding) :
-    Refuses io hs st o ↔ BlockShaped o ∧ ∀ B, canonEvent sp ro io hs o = some (.block B) →
+    (st : State sp binding) (o : Wire sp.n binding) :
+    Refuses io hs st o ↔ BlockShaped o ∧ ∀ B, canonEvent sp io hs o = some (.block B) →
       sp.toParams.slotOf st.now < B.slot ∨ st.node.fg.onBlock B = none := by rfl
 
 open Classical in
 /-- Visit the receipt first; descend into its carried objects only if it is not refused. -/
 theorem visit_eq (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
-    (st : State sp ro binding)
+    (st : State sp binding)
     (a : Model.Auth sp.n (ShapeRole binding.Kind)) (m : Msg (Header Info) Body)
     (cs : List (Wire sp.n binding)) :
     visit io hs st (.mk a m cs) =
@@ -1093,12 +1090,12 @@ theorem visit_eq (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
 
 /-- An empty carried list leaves the state unchanged. -/
 theorem visitList_nil_eq (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
-    (st : State sp ro binding) :
+    (st : State sp binding) :
     visitList io hs st [] = ([], st) := by rw [visitList, NodeAsChainShape.visitList]
 
 /-- Visit the first carried object before the rest, threading the state and receipt order. -/
 theorem visitList_cons_eq (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
-    (st : State sp ro binding) (o : Wire sp.n binding) (os : List (Wire sp.n binding)) :
+    (st : State sp binding) (o : Wire sp.n binding) (os : List (Wire sp.n binding)) :
     visitList io hs st (o :: os) =
       (let r := visit io hs st o; let r' := visitList io hs r.2 os; (r.1 ++ r'.1, r'.2)) := by
   rw [visitList, NodeAsChainShape.visitList]
@@ -1106,17 +1103,17 @@ theorem visitList_cons_eq (io : VoteAuth sp.n binding) (hs : List (Header Info �
 
 /-- Delivery records the ordered objects returned by the receipt walk. -/
 theorem delivered_eq (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
-    (st : State sp ro binding) (o : Wire sp.n binding) :
+    (st : State sp binding) (o : Wire sp.n binding) :
     delivered io hs st o = (visit io hs st o).1 := by rfl
 
 /-- Process the delivered objects in order, starting from the original state. -/
-theorem process_eq (st : State sp ro binding) (o : Wire sp.n binding)
+theorem process_eq (st : State sp binding) (o : Wire sp.n binding)
     (hs : List (Header Info × Nat)) :
     process st o hs =
       (delivered st.voteIO hs st o).foldl (processOne st.voteIO hs) st := by rfl
 
 /-- On own release, clear the relay queue or insert the block with its released digest. -/
-theorem recordOwn_eq (st : State sp ro binding) (o : Wire sp.n binding)
+theorem recordOwn_eq (st : State sp binding) (o : Wire sp.n binding)
     (hs : List (Header Info × Nat)) :
     recordOwn st o hs = (match o with
     | .mk .none (.data .relay) _ => { st with relayBuf := [] }
@@ -1142,7 +1139,7 @@ theorem recordOwn_eq (st : State sp ro binding) (o : Wire sp.n binding)
 
 open Classical in
 /-- At a public time, queue AC tick emissions and set the FG duty from the calendar. -/
-theorem nodeTick_eq (st : State sp ro binding)
+theorem nodeTick_eq (st : State sp binding)
     (sign : Fin sp.n → Time → Bool := fun _ _ => true) : nodeTick st sign =
     if sp.toParams.IsPublic st.now then
       let r := Node.acCall st.self st.node st.now .tick
@@ -1150,7 +1147,7 @@ theorem nodeTick_eq (st : State sp ro binding)
     else st := by rfl
 
 /-- A proposal updates node state and, if present, encodes the head and payloads. -/
-theorem propose_eq (st : State sp ro binding) (s : Slot) : propose st s =
+theorem propose_eq (st : State sp binding) (s : Slot) : propose st s =
     (let r := Node.acProposal st.node st.now
      let st' := { st with node := r.1 }
      match r.2.2 with
@@ -1167,7 +1164,7 @@ theorem propose_eq (st : State sp ro binding) (s : Slot) : propose st s =
 /-- Clear the FG duty flag; if AC supplies an attestable source, queue the attestation when the
 release schedule allows it at the node's time, processed by the own `on_attestation`, and hold
 it otherwise, with only the record changed. -/
-theorem fgUpdate_eq (st : State sp ro binding)
+theorem fgUpdate_eq (st : State sp binding)
     (release : Fin sp.n → Time → Bool := fun _ _ => true) : fgUpdate st release =
     (let r := Node.acToFG st.node st.now
      let st₁ := { st with node := r.1, fgDue := false }
@@ -1209,7 +1206,7 @@ theorem chainTo_succ_eq (blocks : Nat → Option (Blk sp)) (fuel : Nat) (B : Blk
   · cases B.parent.bind blocks <;> rfl
 
 /-- Restart through the node handler, installing the key and time and clearing the FG duty flag. -/
-theorem restore_eq (k : Fin sp.n) (d : State sp ro binding) (t : Time) : restore k d t =
+theorem restore_eq (k : Fin sp.n) (d : State sp binding) (t : Time) : restore k d t =
     (let r := Node.restart k d.node t
      { apply { d with self := k, now := t } none r with fgDue := false }) := by rfl
 

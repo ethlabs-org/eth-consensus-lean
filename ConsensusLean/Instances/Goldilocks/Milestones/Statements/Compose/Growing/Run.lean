@@ -21,7 +21,7 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder goldilocksAC Vote Payload)
+open AC (ACParams goldilocksAC Vote Payload)
 
 variable {P : Params} {A : NodeAC P}
 
@@ -52,9 +52,9 @@ def FGProjection : Prop :=
 
 /-- **The honest-object facts of the AC projection under growing faults.** -/
 def GoldilocksACProjection : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+    (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → NoCollRun dg tr →
       AC.Growing.ACRun proposer tr.projAC H (tr.HonestBlocksAt H)
 
@@ -70,9 +70,9 @@ def SyncProjection : Prop :=
 at `t` is the AC projection's, and the run's count of the validators honest at `d`, awake and
 joined at `t` is the AC projection's, at every `t` and `d`. -/
 def JoinedProjection : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+    (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr →
     (∀ y t, y ∈ H t →
       (tr.JoinedAt y t ↔ AC.JoinedAt tr.projAC y t) ∧

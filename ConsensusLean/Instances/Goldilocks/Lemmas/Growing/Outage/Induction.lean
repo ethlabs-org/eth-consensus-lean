@@ -28,12 +28,12 @@ call of the node at `i` its state is the one at `i`. At cut `0` the store is gen
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
   {D : OutageLockPremises tr H proposer dg ini}
 
 private theorem ts_add (a b : Nat) :
@@ -43,7 +43,7 @@ private theorem ts_add (a b : Nat) :
 /-- The time of the label-`(j₀ − 1)` update is `t_{j₀} + 2Δ ≤ b₀`. -/
 private theorem prev_update_time (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n}
     {c : Nat}
-    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))}
     (hu : AC.UpdateAt tr.projAC x c (D.j₀ - 1) ℓ) : tr.time c = sp.ts D.j₀ + 2 * sp.Δ := by
   have ht : tr.time c = sp.ts ((D.j₀ - 1 : Nat) : Int) + 6 * sp.Δ := hu.2.2.1
   have h := ts_add (sp := sp) (D.j₀ - 1) 1
@@ -65,7 +65,7 @@ private theorem before (hrun : Consensus.Goldilocks.Growing.GoldilocksRun propos
 honest, when `Σ.F ⪯ P` there: the label-`(j₀ − 1)` base put it in the tree earlier. -/
 private theorem prev_mem (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n}
     (hx : x ∈ D.A₀)
-    {c : Nat} (hxc : x ∈ H (tr.time c)) {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    {c : Nat} (hxc : x ∈ H (tr.time c)) {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))}
     (hu : AC.UpdateAt tr.projAC x c D.j₀ ℓ)
     (hFP : Anc (tr.HonestBlocksAt H) (tr.state x c).fg.F D.P) :
     D.P ∈ (Node.frame (tr.state x c)).tree := by
@@ -109,7 +109,7 @@ namespace OutageLockInv
 cut `≥ c`, the cover base holds at the label-`j₀` update at cut `c` of `x ∈ A₀`, honest then. -/
 private theorem cover_base_at {i : Nat} (hinv : OutageLockInv D i) {x : Fin sp.n} (hx : x ∈ D.A₀)
     {c : Nat} (hxc : x ∈ H (tr.time c)) (hci : c ≤ i)
-    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))}
     (hu : AC.UpdateAt tr.projAC x c D.j₀ ℓ)
     (hcond : Compatible (tr.HonestBlocksAt H) (tr.state x c).fg.F D.P →
      (Anc (tr.HonestBlocksAt H) (tr.state x c).fg.F D.P → ℓ.frame.AncestorCandidate D.P) →
@@ -184,7 +184,7 @@ at cut `c` of a node honest then, gives the protection at `c + 1` when `Σ.F` th
 with `P`. -/
 private theorem prot_of_lock (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n}
     {c q : Nat}
-    (hxc : x ∈ H (tr.time c)) {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    (hxc : x ∈ H (tr.time c)) {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))}
     (hu : AC.UpdateAt tr.projAC x c q ℓ)
     (hF : Compatible (tr.HonestBlocksAt H) (tr.state x (c + 1)).fg.F D.P)
     {l : AC.Lock} (hl : l ∈ (tr.state x (c + 1)).ac.locks) {j m : Nat} (hlj : l.slot = j)
@@ -209,7 +209,7 @@ private theorem prot_of_lock (D : OutageLockPremises tr H proposer dg ini) {x : 
 compatible with `P`. -/
 private theorem prot_of_prevBase (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n}
     {c j : Nat} (hxc : x ∈ H (tr.time c))
-    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))}
     (hu : AC.UpdateAt tr.projAC x c j ℓ)
     (hF : Compatible (tr.HonestBlocksAt H) (tr.state x (c + 1)).fg.F D.P)
     (hbase : ∃ L f, L ∈ ℓ.frame.tree ∧ ℓ.frame.Anc D.P L ∧
@@ -223,7 +223,7 @@ private theorem prot_of_prevBase (D : OutageLockPremises tr H proposer dg ini) {
 `c + 1`. -/
 private theorem prot_of_coverBase (D : OutageLockPremises tr H proposer dg ini) {x : Fin sp.n}
     (hx : x ∈ D.A₀) {c : Nat} (hxc : x ∈ H (tr.time c))
-    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))}
     (hu : AC.UpdateAt tr.projAC x c D.j₀ ℓ)
     (hFc : Compatible (tr.HonestBlocksAt H) (tr.state x c).fg.F D.P)
     (hF : Compatible (tr.HonestBlocksAt H) (tr.state x (c + 1)).fg.F D.P)
@@ -257,7 +257,7 @@ private theorem caches_zero (D : OutageLockPremises tr H proposer dg ini) {y : F
   have h0 : ∀ k < 0, tr.time k ≤ t := fun _ hk => absurd hk (Nat.not_lt_zero _)
   have hst := Trace.upTo_state tr y h0
   have hgen : ∀ X ∈ (tr.state y 0).fg.tree,
-      X = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload := fun X hX => by
+      X = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload := fun X hX => by
     rcases tree_cases (hrun.upTo hd).toLocalRun hy (i := 0) (by rw [hst]; exact hX) with
       h | ⟨k, hk, -⟩
     · exact h

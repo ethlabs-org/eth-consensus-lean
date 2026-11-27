@@ -35,11 +35,11 @@ stored (`call_record_writer`), with the keep and write toolkit (`KeepAll`, `RecL
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-! ### Record writes inside one call -/
 
@@ -187,14 +187,14 @@ theorem toFG_latestConfirmed (A : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : T
   unfold AC.acToFG
   split_ifs <;> rfl
 
-variable {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)}
-  {tr : AC.GTrace sp FGP ro}
+variable {H : Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)}
+  {tr : AC.GTrace sp FGP}
 
 /-- **The record writes of a call**: every candidate is the result of the call's update or the
 selection of one of its optimistic checks. -/
-theorem call_writes_guarded {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
+theorem call_writes_guarded {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U tr ini)
     {x : Fin sp.n}
-    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ) :
+    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)} (hc : tr.CallAt x i ℓ) :
     Writes ℓ.frame (fun C => ∃ s CV,
       (AC.ResultAt tr x i s C CV ∧
         ¬ AC.conflictsWithLock sp (tr.state x i).locks ℓ.frame (tr.time i) C) ∨
@@ -246,12 +246,12 @@ theorem call_writes_guarded {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H
     · obtain ⟨e, he', hsel⟩ := h
       exact opt C ⟨_, ℓ, _, ⟨hc, Or.inr (Or.inr ⟨e, hemits ▸ he', rfl⟩)⟩, rfl, hsel, rfl⟩
   | restart =>
-    exact .of_eq ((AC.restart_state sp) FGP ro x A ℓ.frame (tr.time i) hΦ
+    exact .of_eq ((AC.restart_state sp) FGP x A ℓ.frame (tr.time i) hΦ
       (hr.time_nonneg i)).2.2.1
 
 /-- Forgetting the regular update's non-veto guard gives the original write interface. -/
-theorem call_writes {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini) {x : Fin sp.n}
-    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ) :
+theorem call_writes {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U tr ini) {x : Fin sp.n}
+    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)} (hc : tr.CallAt x i ℓ) :
     Writes ℓ.frame (fun C => ∃ s CV, AC.ResultAt tr x i s C CV ∨ AC.OptimisticLockAt tr x i s C CV)
       (tr.state x i).latestConfirmed (tr.post i).latestConfirmed := by
   refine (call_writes_guarded hr hx hc).mono ?_
@@ -513,9 +513,9 @@ theorem toFG_locks (A : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time) :
 the record unchanged or names a block of the frame that it wrote, as a result of its update, or
 as the selection of one of its optimistic checks with that slot's fast lock on its viable
 ancestor. -/
-theorem call_reclock {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
+theorem call_reclock {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U tr ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y)) {x : Fin sp.n}
-    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ) :
+    (hx : x ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)} (hc : tr.CallAt x i ℓ) :
     KeepAll ℓ.frame (tr.time i) (tr.state x i) (tr.post i) ∧
       RecLock ℓ.frame (tr.time i) (tr.state x i).latestConfirmed
         (fun C => ∃ s CV, AC.ResultAt tr x i s C CV)
@@ -583,15 +583,15 @@ theorem call_reclock {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr i
     · exact ⟨_, ℓ, _, ⟨hc, Or.inr (Or.inl ⟨B, hcall, hA ▸ rfl⟩)⟩, rfl, h, rfl⟩
     · exact ⟨_, ℓ, _, ⟨hc, Or.inr (Or.inr ⟨e, hemits ▸ he', rfl⟩)⟩, rfl, hsel, rfl⟩
   | restart =>
-    have hrs := (AC.restart_state sp) FGP ro x A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)
+    have hrs := (AC.restart_state sp) FGP x A ℓ.frame (tr.time i) hΦ (hr.time_nonneg i)
     exact ⟨KeepAll.of_eq hrs.2.1, Or.inl hrs.2.2.1⟩
 
 /-- A changed record has an actual writer in this call. An optimistic writer also
 leaves its normalized fast lock in the post-state; no read invariant is required. -/
-theorem call_record_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
+theorem call_record_writer {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U tr ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} (hx : x ∈ H) {i : Nat}
-    {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} (hc : tr.CallAt x i ℓ)
+    {ℓ : ACLabel (AC.goldilocksAC sp FGP)} (hc : tr.CallAt x i ℓ)
     (hne : (tr.post i).latestConfirmed ≠ (tr.state x i).latestConfirmed) :
     ∃ C ∈ ℓ.frame.tree, (tr.post i).latestConfirmed = C.root ∧
       ((∃ s CV, AC.ResultAt tr x i s C CV) ∨

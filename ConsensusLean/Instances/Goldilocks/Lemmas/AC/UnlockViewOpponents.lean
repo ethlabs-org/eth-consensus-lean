@@ -80,14 +80,14 @@ private theorem mergedVoteView_subset {A : ACState sp.n} {s : Nat} {S : Set (Vot
 of `unlockView A Φ t c` lie in a set `S` that holds the pools of `A`, the pools of the state
 after the call, and the counted declarations of the slot-`slot(t)` blocks of `Φ.tree` whose
 validator equivocates in the pool before or after the call. -/
-theorem unlockView_subset_post {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A : ACState sp.n}
-    (c : (goldilocksAC sp FGP ro).Call) {S : Set (Vote sp.n)}
+theorem unlockView_subset_post (self : Fin sp.n) {A : ACState sp.n}
+    (c : (goldilocksAC sp FGP).Call) {S : Set (Vote sp.n)}
     (hpre : ∀ τ, ∀ v ∈ A.pool τ, v ∈ S)
-    (hpost : ∀ τ, ∀ v ∈ ((goldilocksAC sp FGP ro).step self A Φ t c).1.pool τ, v ∈ S)
+    (hpost : ∀ τ, ∀ v ∈ ((goldilocksAC sp FGP).step self A Φ t c).1.pool τ, v ∈ S)
     (htree : ∀ C ∈ Φ.tree, C.slot = sp.slot t → ∀ v,
       v ∈ declaredHeadVotes C ∨ v ∈ declaredSupportVotes C →
       v.val ∈ equivocators {w | w ∈ A.pool v.slot} ∨
-        v.val ∈ equivocators {w | w ∈ ((goldilocksAC sp FGP ro).step self A Φ t c).1.pool v.slot} →
+        v.val ∈ equivocators {w | w ∈ ((goldilocksAC sp FGP).step self A Φ t c).1.pool v.slot} →
       v ∈ S) :
     (unlockView A Φ t c).votes ⊆ S ∧ (unlockView A Φ t c).support ⊆ S := by
   have hpre' := fun C hC hCs v hv he => htree C hC hCs v hv (Or.inl he)

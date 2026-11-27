@@ -22,7 +22,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote Payload declaredHeadVotes)
+open AC (ACParams Vote Payload declaredHeadVotes)
 
 variable {binding : VoteBinding}
 
@@ -34,9 +34,9 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 /-- Each honest node starts from the initial node state with its own-role vote permission. -/
 theorem simTrace_init :
     ∀ y ∈ honestKeys S rho, (simTrace S rho hn).init y =
-      Node.initWith (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      Node.initWith (goldilocksNode (S.params (pubOf E) hn))
         (S.vote.installVote (fun r => decide (y ∈ rho.sel r))
-          (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).initial) :=
+          (goldilocksNode (S.params (pubOf E) hn)).initial) :=
   by
     intro y _
     rw [(simTrace_encoding S rho hn).1]
@@ -45,7 +45,7 @@ theorem simTrace_init :
     intro e _
     have hinit := NodeAsChainShape.CanonicalTrace.initial_eq e rho y
     have hf : (NodeAsChainShape.CanonicalTrace.initial e rho y).fg =
-        Store.init (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload := by
+        Store.init (goldilocksNode (S.params (pubOf E) hn)).genesisPayload := by
       rw [hinit]; rfl
     have hr : (NodeAsChainShape.CanonicalTrace.initial e rho y).record = FG.Record.empty := by
       rw [hinit]; rfl

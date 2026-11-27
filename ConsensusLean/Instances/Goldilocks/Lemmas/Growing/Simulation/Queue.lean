@@ -16,7 +16,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote Payload ACState)
+open AC (ACParams Vote Payload ACState)
 
 variable {binding : VoteBinding}
 
@@ -25,21 +25,21 @@ section Pools
 variable {sp : ACParams} {FGP : Type}
 
 /-- Restart replay can only add actual emissions to its cleared pools. -/
-theorem restart_pool_inventory (P : Vote sp.n → Prop) (ro : ReplayOrder sp FGP)
+theorem restart_pool_inventory (P : Vote sp.n → Prop)
     (self : Fin sp.n) (A : ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time)
-    (he : ∀ e ∈ (AC.acRestart sp ro self A Φ t).2, P e.msg) :
-    ∀ s, ∀ v ∈ (AC.acRestart sp ro self A Φ t).1.pool s, P v :=
-  Simulation.restart_pool_inventory P ro self A Φ t he
+    (he : ∀ e ∈ (AC.acRestart sp self A Φ t).2, P e.msg) :
+    ∀ s, ∀ v ∈ (AC.acRestart sp self A Φ t).1.pool s, P v :=
+  Simulation.restart_pool_inventory P self A Φ t he
 
 end Pools
 
 section ShapeInventory
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- A batch poll, including the due FG update and any flush of held attestations, leaves vote
 pools unchanged, at every release schedule. -/
-theorem poll_pool_eq {release : Fin sp.n → Time → Bool} (st : State sp ro binding) t :
+theorem poll_pool_eq {release : Fin sp.n → Time → Bool} (st : State sp binding) t :
     (pollBatch st t release).1.node.ac.pool = st.node.ac.pool :=
   Simulation.poll_pool_eq st t
 
@@ -84,7 +84,7 @@ theorem dutyStep_pool_subset (v : V)
   Simulation.dutyStep_pool_subset S rho hn v nd d σ
 
 omit [DecidableEq V] in
-/-- Duty execution never removes a stored vote; only restart replay can do so. -/
+/-- Duty execution never removes a stored vote; only restart can do so. -/
 theorem runDuties_pool_subset (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
     (ds : List (Model.protoOf (compiled (goldilocks S)) E).Duty) (σ : Nat) :

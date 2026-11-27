@@ -32,15 +32,15 @@ whose slot count and service are available. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- `u` has a slot-`s` vote whose head extends `D` (inside the blocks held while honest), which
 `X` sent or admitted while honest, at a time in `[t_s, t_s + 2Δ)`. -/
-private def Released (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)) (X : Fin sp.n)
+private def Released (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n)) (X : Fin sp.n)
     (s : Nat) (D : AC.Blk sp.n (List (FG.Att sp.n))) : Set (Fin sp.n) :=
   {u | ∃ v : Vote sp.n, v.val = u ∧ v.slot = s ∧
     (∃ R ∈ tr.HonestBlocksAt H, R.root = v.head ∧ Anc (tr.HonestBlocksAt H) D R) ∧
@@ -64,7 +64,7 @@ private theorem result_side_at {ini} (hrun : Growing.GoldilocksRun proposer dg H
     (hnc : NoCollRun dg tr) {Y : Fin sp.n} {c s : Nat} (hY : Y ∈ H (tr.time c))
     {D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hR : AC.ResultAt tr.projAC Y c s D CV) :
-    ∃ (ℓ : ACLabel (goldilocksNode sp ro)) (S : Set (Fin sp.n)),
+    ∃ (ℓ : ACLabel (goldilocksNode sp)) (S : Set (Fin sp.n)),
       tr.projAC.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
       (∀ k ≤ c, tr.projAC.RestartAt Y k → tr.time k ≤ sp.ts s) ∧
       (AC.voters {v | v ∈ (tr.projAC.state Y c).pool s}).ncard < 2 * S.ncard ∧
@@ -113,7 +113,7 @@ private theorem optimistic_side_at
     {X : Fin sp.n} {k s : Nat} (hX : X ∈ H (tr.time k))
     {D : AC.Blk sp.n (List (FG.Att sp.n))} {CV : Set (Vote sp.n)}
     (hfl : AC.OptimisticLockAt tr.projAC X k s D CV) :
-    ∃ (ℓ : ACLabel (goldilocksNode sp ro)) (A : AC.ACState sp.n),
+    ∃ (ℓ : ACLabel (goldilocksNode sp)) (A : AC.ACState sp.n),
       ℓ.frame.tree ⊆ tr.HonestBlocksAt H ∧
       3 * sp.committeeSize ≤ 4 * (AC.optimisticVoters sp A ℓ.frame s D).ncard ∧
       AC.optimisticVoters sp A ℓ.frame s D ⊆ K.committee s ∧
@@ -137,7 +137,7 @@ with its restarts at or before `t_s`: the writer holds it, or two other votes of
 The release is served with the sender honest at the release and the writer at its call. -/
 private theorem released_held_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
-    {X Y : Fin sp.n} {c s : Nat} (ha : a ≤ sp.ts s) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {X Y : Fin sp.n} {c s : Nat} (ha : a ≤ sp.ts s) {ℓ : ACLabel (goldilocksNode sp)}
     (hY : Y ∈ H (tr.time c))
     (hc : tr.projAC.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ) (hcb : tr.time c ≤ b)
     (hrs : ∀ k ≤ c, tr.projAC.RestartAt Y k → tr.time k ≤ sp.ts s)
@@ -175,7 +175,7 @@ validators `S` support `DY` without equivocating, the validators `T` with votes 
 incompatible with `DY`, released while honest by another node, are voters there, none in `S`. -/
 private theorem against_update_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
-    {X Y : Fin sp.n} {c s : Nat} (ha : a ≤ sp.ts s) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {X Y : Fin sp.n} {c s : Nat} (ha : a ≤ sp.ts s) {ℓ : ACLabel (goldilocksNode sp)}
     (hY : Y ∈ H (tr.time c))
     (hc : tr.projAC.CallAt Y c ℓ) (ht : tr.time c = sp.ts s + 6 * sp.Δ) (hcb : tr.time c ≤ b)
     (hrs : ∀ k ≤ c, tr.projAC.RestartAt Y k → tr.time k ≤ sp.ts s)

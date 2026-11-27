@@ -23,11 +23,11 @@ its own cut and a held-state reader honest at an observation time after the stat
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a : Time}
 
 /-! ### Prefix transport of call-local AC events -/
 
@@ -45,7 +45,7 @@ theorem fastLockAt_upTo_iff (hmono : Monotone tr.time) {d : Time} {x : Fin sp.n}
 
 /-- An `ac_to_fg` call at a cut by `d` is one of the prefix through `d`. -/
 theorem toFGAt_upTo_iff (hmono : Monotone tr.time) {d : Time} {x : Fin sp.n} {i : Nat}
-    (hi : tr.time i ≤ d) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hi : tr.time i ≤ d) {ℓ : ACLabel (goldilocksNode sp)}
     {C : AC.Blk sp.n (List (FG.Att sp.n))} :
     AC.ToFGAt (tr.upTo d).projAC x i ℓ C ↔ AC.ToFGAt tr.projAC x i ℓ C := by
   have hs : (tr.projAC.upTo d).state x i = tr.projAC.state x i :=
@@ -65,7 +65,7 @@ static `frameIn_of_callAt` and `frame_tree_subset` on the prefix through the cal
 theorem frame_tree_subset_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ℓ) :
+    {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y k ℓ) :
     FrameOK ℓ.frame ∧ ℓ.frame.tree ⊆ (tr.state y k).fg.tree := by
   have hd := hrun.time_nonneg k
   have hr := (Compose.goldilocks_ac_projection_from (hrun.upTo hd) (hnc.upTo _)).localRun
@@ -94,7 +94,7 @@ static `toFG_mem_tree` on the prefix through the report). -/
 theorem toFG_mem_tree_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {k : Nat}
-    (hy : y ∈ H (tr.time k)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time k)) {ℓ : ACLabel (goldilocksNode sp)}
     {C : AC.Blk sp.n (List (FG.Att sp.n))} (hto : AC.ToFGAt tr.projAC y k ℓ C) :
     C ∈ (tr.state y k).fg.tree := by
   have h := Healing.toFG_mem_tree (hrun.upTo (hrun.time_nonneg k)) hy
@@ -131,7 +131,7 @@ form inside the deep quarantine (`hq`); past it use `high_source_cover_at`. -/
 theorem high_report_origin_of_quarantine_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {z : Fin sp.n} {r : Nat} (hzz : z ∈ H (max (cutZ sp.toParams g) (tr.time r)))
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     {C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hrep : AC.ToFGAt tr.projAC z r ell C) (hrb : tr.time r ≤ b)
     (hhC : HZ tr H g + 1 ≤ ((tr.state z r).fg.σ C.root).h)

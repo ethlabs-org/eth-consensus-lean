@@ -22,11 +22,11 @@ global static cache-origin invariant.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- An earlier high origin has a label before the actual proposal slot. -/
@@ -34,7 +34,7 @@ theorem ResetPremisesUpTo.origin_label_lt_at_proposal_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
     {v : Fin sp.n} {r l : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -46,7 +46,7 @@ theorem ResetPremisesUpTo.proposal_holds_old_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)}
+    {ell : ACLabel (goldilocksNode sp)}
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
     (hd : (AC.acProposal sp (tr.projAC.state p i) ell.frame (tr.time i)).2 = some (d, pay))
@@ -61,7 +61,7 @@ theorem ResetPremisesUpTo.held_high_origin_viable_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {p : Fin sp.n} {c : Nat} (hpH : p ∈ H (tr.time c))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt p c ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt p c ell)
     (hcb : tr.time c ≤ b) {x : Fin sp.n} {i j : Nat}
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
     (hib : tr.time i ≤ b) (ht : sp.ts (j + 1 : Nat) ≤ tr.time c)
@@ -74,7 +74,7 @@ theorem ResetPremisesUpTo.proposal_stored_locks_compatible_old_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i))
-    (hR : drainTime sp a ≤ sp.ts u) {ell : ACLabel (goldilocksNode sp ro)}
+    (hR : drainTime sp a ≤ sp.ts u) {ell : ACLabel (goldilocksNode sp)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal)
     (hti : tr.time i = sp.ts u) (hib : tr.time i ≤ b)
     {x : Fin sp.n} {q j : Nat} {O : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -87,9 +87,9 @@ end Consensus.Goldilocks.Healing.Growing
 
 namespace Consensus.Goldilocks.AC.Growing
 
-variable {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
+variable {sp : ACParams} {FGP : Type}
   {proposer : Nat → Fin sp.n} {H : Time → Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {T : GTrace sp FGP ro}
+  {U : Set (Blk sp.n FGP)} {T : GTrace sp FGP}
 
 /-- An optimistic lock with its counted votes held at the next proposal puts its
 ancestor below the proposed head; writers and readers are separately honest. -/
@@ -102,7 +102,7 @@ theorem optimistic_first_proposal_anc_at
     {D B : Blk sp.n FGP} {CV : Set (Vote sp.n)}
     (hopt : OptimisticLockAt T X i₀ σ D CV) (hBD : Anc U B D)
     {x : Fin sp.n} (hx : x ∈ H (T.time i))
-    {ell : ACLabel (goldilocksAC sp FGP ro)} (hc : T.CallAt x i ell)
+    {ell : ACLabel (goldilocksAC sp FGP)} (hc : T.CallAt x i ell)
     (hslot : sp.slot (T.time i) = σ + 1) {d : DutyHead sp.n FGP (Payload sp.n)}
     {pay : Payload sp.n}
     (hprop : (acProposal sp (T.state x i) ell.frame (T.time i)).2 = some (d, pay))

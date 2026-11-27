@@ -7,7 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Spec.AC.Instance
 /-! # Goldilocks: the concrete Goldilocks node
 
 The Goldilocks protocol is the node (`Spec/Node`) with the Goldilocks AC as its AC
-(composition.tex §"Composition"): `goldilocksNode sp ro` is `goldilocksAC` at the FG payload
+(composition.tex §"Composition"): `goldilocksNode sp` is `goldilocksAC` at the FG payload
 the node uses, `List (FG.Att n)`.
 
 This module holds only what the Challenge statements reach; its runs (`GoldilocksTrace`,
@@ -16,15 +16,14 @@ This module holds only what the Challenge statements reach; its runs (`Goldilock
 
 namespace Consensus.Goldilocks
 
-open AC (ACParams ReplayOrder goldilocksAC Vote declaredHeadVotes Payload)
+open AC (ACParams goldilocksAC Vote declaredHeadVotes Payload)
 
 variable (sp : ACParams)
 
-/-- The Goldilocks node's AC: the AC at the node's FG payload type, with the replay order
-`ro`. -/
-noncomputable abbrev goldilocksNode (ro : ReplayOrder sp (List (FG.Att sp.n))) :
+/-- The Goldilocks node's AC: the AC at the node's FG payload type. -/
+noncomputable abbrev goldilocksNode :
     NodeAC sp.toParams :=
-  goldilocksAC sp (List (FG.Att sp.n)) ro
+  goldilocksAC sp (List (FG.Att sp.n))
 
 end Consensus.Goldilocks
 

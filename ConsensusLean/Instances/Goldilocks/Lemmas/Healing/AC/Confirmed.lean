@@ -19,8 +19,8 @@ namespace Consensus.Goldilocks.AC
 
 variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {g : Time} {proposer : Nat → Fin sp.n}
 
 /-! ## The record after the first update -/
 
@@ -65,7 +65,7 @@ needed. -/
 theorem unanimous_pool_before {K : AC.CommitteeDict sp.n}
     {b : Time} (hS : HealthyBaseUpTo K tr H U proposer g b)
     {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
-    {ell : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt y j ell) {s : Nat}
+    {ell : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt y j ell) {s : Nat}
     (hs : gbar g + 4 * sp.Δ ≤ sp.ts s) (ht : sp.ts s + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b)
     (hdeadline : ∀ k ≤ j, ∀ t, gbar g ≤ t → tr.deadline y k t ≤ max t (sp.ts s) + sp.Δ)
@@ -91,7 +91,7 @@ theorem unanimous_pool_before {K : AC.CommitteeDict sp.n}
   intro v' hv' hv'x
   obtain ⟨q, -, e', he', rfl⟩ := hS.run.honest.pool_vote y hy j s v' hv' (hv'x ▸ hx)
   rw [hv'x] at he'
-  obtain ⟨-, rfl⟩ := one_vote_per_slotU sp FGP ro H U tr hr.toU x hx q i e' e he' hv
+  obtain ⟨-, rfl⟩ := one_vote_per_slotU sp FGP H U tr hr.toU x hx q i e' e he' hv
     ((state_pool_slotU sp hr.toU hS.run.vstart hy j s _ hv').trans hes.symm)
   rfl
 

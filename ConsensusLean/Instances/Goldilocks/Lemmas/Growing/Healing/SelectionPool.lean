@@ -16,20 +16,20 @@ execution is retained; no reset, cache-origin or service invariant is made stati
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 variable {hold : Time}
 
 /-- The update handler's post-state conclusions follow from its selected confirmation.
 This is local execution, independent of the historical source of the pool or locks. -/
 theorem update_selection_of_confirmation_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {j u : Nat}
-    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp)}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hu : AC.UpdateAt tr.projAC y j u ell)
     (hconf : AC.getConfirmation sp (tr.projAC.state y j) ell.frame u = some P)
@@ -83,10 +83,10 @@ locks determine the honest update. Only the pool's voters at the reading cut are
 committee members, fewer than half of the committee is faulty, and the members honest at the cut
 all support `P`. -/
 theorem ready_update_selection_of_pool_core_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {K : AC.CommitteeDict sp.n}
-    {y : Fin sp.n} {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j u : Nat} {ell : ACLabel (goldilocksNode sp)}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time j))
     (hP : ∀ v ∈ (tr.projAC.state y j).pool u, v.val ∈ K.committee u)
@@ -191,7 +191,7 @@ its pool membership (P), size and CS2 at the reading cut (`committee_cs2_at`). -
 theorem ResetPremisesUpTo.ready_update_selection_of_pool_at {g ΔF a b : Time}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {y : Fin sp.n} {j u : Nat} {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j u : Nat} {ell : ACLabel (goldilocksNode sp)}
     {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time j)) (hjb : tr.time j ≤ b) (hgu : AC.gbar g ≤ sp.ts u)
     (hu : AC.UpdateAt tr.projAC y j u ell) (hPt : P ∈ ell.frame.tree)

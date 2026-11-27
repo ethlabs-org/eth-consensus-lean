@@ -58,19 +58,19 @@ The unanimous-slot selection helpers are imported from their growing proof homes
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-! ### Calls of a node honest at them -/
 
 /-- The frame of an AC call of a node honest at it is its store's frame. -/
-private theorem frame_eq_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem frame_eq_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
-    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) {ℓ : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt y k ℓ) : ℓ.frame = Node.frame (tr.state y k) := by
   have hc' : (tr.upTo (tr.time k)).projAC.CallAt y k ℓ := by
     rw [RunTrace.upTo_projAC]
@@ -79,15 +79,15 @@ private theorem frame_eq_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
     RunTrace.upTo_state_of_le hrun.time_mono le_rfl]
 
 /-- The cuts before `k` are at or before `tr.time k`. -/
-private theorem before_cut {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem before_cut {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (k : Nat) : ∀ q < k, tr.time q ≤ tr.time k := fun _ hq => hrun.time_mono hq.le
 
 /-- An AC call frame of a node honest at it lies in the blocks held while honest. -/
-private theorem frame_subset_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem frame_subset_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k))
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ℓ) :
+    {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y k ℓ) :
     ℓ.frame.tree ⊆ tr.HonestBlocksAt H := fun _ hX =>
   ⟨y, k, tr.time k, hrun.time_nonneg k, before_cut hrun k, hy,
     (frame_tree_subset_at hrun hnc hy hc).2 hX⟩
@@ -103,7 +103,7 @@ theorem unanimous_head_held_at_call_at {cm : Time → Finset (Fin sp.n)} {βK : 
     (hun : ∀ y j e, y ∈ H (tr.time j) → AC.VoteAt tr.projAC y j e → tr.time j ≤ b →
       e.msg.slot = u → e.msg.head = P.root)
     (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
-    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ell : ACLabel (goldilocksNode sp)}
     (hcall : tr.projAC.CallAt y j ell) (ht : sp.ts u + 2 * sp.Δ ≤ tr.time j)
     (hjb : tr.time j ≤ b) (hFP : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F P) :
     P ∈ ell.frame.tree := by
@@ -235,7 +235,7 @@ theorem held_target_viable_or_higher_report_covered_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y v : Fin sp.n} {i q m : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i)))
-    {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y i ell)
+    {ell : ACLabel (goldilocksNode sp)} (hcall : tr.projAC.CallAt y i ell)
     (hib : tr.time i ≤ b) {P S : AC.Blk sp.n (List (FG.Att sp.n))}
     (hPt : P ∈ ell.frame.tree) (hseed : HighOrigin tr H g v q m S)
     (hqb : tr.time q ≤ b) (hSP : Anc (tr.HonestBlocksAt H) S P)
@@ -262,7 +262,7 @@ theorem unanimous_viable_or_higher_report_at
       e.msg.slot = u → e.msg.head = P.root)
     (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
     (hTb : sp.ts u + 6 * sp.Δ ≤ b) {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} (hcall : tr.projAC.CallAt y j ell)
+    {ell : ACLabel (goldilocksNode sp)} (hcall : tr.projAC.CallAt y j ell)
     (ht : tr.time j = sp.ts u + 6 * sp.Δ)
     (hFP : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F P) :
     P ∈ ell.frame.viableTree ell.frame.tree ∨
@@ -335,7 +335,7 @@ theorem finality_alternative_before_update_at
 theorem report_of_viable_unanimous_pool_at {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
     {y : Fin sp.n} {j u : Nat} (hy : y ∈ H (tr.time j)) (hjb : tr.time j ≤ b)
-    {ell ell' : ACLabel (goldilocksNode sp ro)} {P : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ell ell' : ACLabel (goldilocksNode sp)} {P : AC.Blk sp.n (List (FG.Att sp.n))}
     (hu : AC.UpdateAt tr.projAC y j u ell)
     (hc : tr.projAC.CallAt y (j + 1) ell') (hto : ell'.call = .toFG)
     (hframe : ell'.frame = ell.frame) (htime : tr.time (j + 1) = tr.time j)
@@ -379,7 +379,7 @@ theorem report_at_update_of_unanimous_at {cm : Time → Finset (Fin sp.n)} {βK 
       e.msg.slot = u → e.msg.head = P.root)
     (hgu : AC.gbar g + 4 * sp.Δ ≤ sp.ts u) (hR : drainTime sp a ≤ sp.ts (u + 1 : Nat))
     (hTb : sp.ts u + 6 * sp.Δ ≤ b) {y : Fin sp.n} (hy : y ∈ H (sp.ts u + 6 * sp.Δ))
-    {j : Nat} {ell ell' : ACLabel (goldilocksNode sp ro)} (hup : AC.UpdateAt tr.projAC y j u ell)
+    {j : Nat} {ell ell' : ACLabel (goldilocksNode sp)} (hup : AC.UpdateAt tr.projAC y j u ell)
     (hto : tr.projAC.CallAt y (j + 1) ell') (htoeq : ell'.call = .toFG)
     (hnexttime : tr.time (j + 1) = sp.ts u + 6 * sp.Δ) (hframe : ell'.frame = ell.frame)
     (hjoined : AC.joined sp (tr.projAC.state y (j + 1)) (tr.time (j + 1))) :

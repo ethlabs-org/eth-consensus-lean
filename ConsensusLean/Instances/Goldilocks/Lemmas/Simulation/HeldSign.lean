@@ -20,16 +20,16 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
 section ShapeSign
 
-variable {binding : VoteBinding} {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {binding : VoteBinding} {sp : ACParams}
 
 /-- The FG update step's signing cut signs the attestation `fgSigned` names. -/
 theorem fgSigned_of_attest (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (x : Nat)
-    (st : State sp ro binding) {C} {a : FG.Att sp.n}
+    (st : State sp binding) {C} {a : FG.Att sp.n}
     (hc : Cut.fg (.attest C (some a)) ∈
       (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2) :
     fgSigned st = some a := by
@@ -55,7 +55,7 @@ theorem fgSigned_of_attest (proposer : Nat → Fin sp.n)
 attestation of the FG update step's signing cut. -/
 private theorem pollBatch_held_of_attest {release : Fin sp.n → Time → Bool}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (x : Nat)
-    (st : State sp ro binding) (k : Time) (hf : st.fgDue = true)
+    (st : State sp binding) (k : Time) (hf : st.fgDue = true)
     (hr : release st.self st.now = false) {C} {a : FG.Att sp.n}
     (hc : Cut.fg (.attest C (some a)) ∈
       (Node.tickStep proposer dg st.self st.node st.now x .fgUpdate).2) :
@@ -64,7 +64,7 @@ private theorem pollBatch_held_of_attest {release : Fin sp.n → Time → Bool}
   simp [hf, hr]
 
 /-- A batch poll at a time the schedule refuses release keeps the held queue. -/
-private theorem pollBatch_held_keep {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
+private theorem pollBatch_held_keep {release : Fin sp.n → Time → Bool} (st : State sp binding)
     (k : Time) (hr : release st.self st.now = false) {a : FG.Att sp.n} (ha : a ∈ st.held) :
     a ∈ (pollBatch st k release).1.held := by
   rw [pollBatch_held]
@@ -140,7 +140,7 @@ theorem tick_sign_held (hv : rho.ExecutionValid) {i : Nat} {v : V} {s : Time}
         (if sg then (Node.tickStep (runProposer S rho hn) dg (rho.ownKey v)
           (Node.tickStep (runProposer S rho hn) dg (rho.ownKey v) n1 s X .proposal).1 s X
           .fgUpdate).2 else []) :=
-    onTick_cuts (sp := S.params (pubOf E) hn) (ro := S.ro _)
+    onTick_cuts (sp := S.params (pubOf E) hn)
       (runProposer S rho hn) dg (rho.ownKey v) _ s X sg
   have hc' : Cut.fg (.attest C (some a)) ∈ (exec (runProposer S rho hn) dg (rho.ownKey v)
       (shapeOf S hn nd).node s (.tick X sg)).2 := hc
@@ -148,7 +148,7 @@ theorem tick_sign_held (hv : rho.ExecutionValid) {i : Nat} {v : V} {s : Time}
   have hprop : Cut.fg (.attest C (some a)) ∉
       (Node.tickStep (runProposer S rho hn) dg (rho.ownKey v) n1 s X .proposal).2 := by
     intro h
-    have hpb := tickStep_proposal_attBodies (sp := S.params (pubOf E) hn) (ro := S.ro _)
+    have hpb := tickStep_proposal_attBodies (sp := S.params (pubOf E) hn)
       (runProposer S rho hn) dg (rho.ownKey v) n1 s X
     have hat : Body.att (encodeAtt a) ∈ attBodies
         (Node.tickStep (runProposer S rho hn) dg (rho.ownKey v) n1 s X .proposal).2 := by

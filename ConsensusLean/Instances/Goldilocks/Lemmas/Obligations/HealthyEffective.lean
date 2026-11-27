@@ -121,7 +121,7 @@ theorem effective_record_frame_of_compatible (hU : Coherent U)
 
 /-- The frame adapter instantiated on actual states of one honest node. -/
 private theorem effective_record_frame_of_run
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+    {tr : GoldilocksTrace sp}
     {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
     {ini} (hrun : GoldilocksRun proposer dg H tr ini)
@@ -171,10 +171,10 @@ theorem effective_record_writes_of_compatible (hU : Coherent U)
 
 /-- An update tick runs exactly the preceding slot's update, without a vote attempt. -/
 theorem post_of_update
-    {ro : AC.ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : AC.GTrace sp FGP ro}
-    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
+    {H : Set (Fin sp.n)} {tr : AC.GTrace sp FGP}
+    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {c s : Nat}
-    {ell : ACLabel (AC.goldilocksAC sp FGP ro)} (hu : AC.UpdateAt tr y c s ell) :
+    {ell : ACLabel (AC.goldilocksAC sp FGP)} (hu : AC.UpdateAt tr y c s ell) :
     tr.post c = AC.updateConfirmation sp (tr.state y c) ell.frame (tr.time c) s := by
   have hΔ := sp.toParams.hΔ
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by
@@ -201,10 +201,10 @@ theorem post_of_update
 
 /-- A non-vetoed update covers its result in the effective post-call record. -/
 theorem effective_record_after_update
-    {ro : AC.ReplayOrder sp FGP} {H : Set (Fin sp.n)} {tr : AC.GTrace sp FGP ro}
-    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
+    {H : Set (Fin sp.n)} {tr : AC.GTrace sp FGP}
+    {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {c s : Nat}
-    {ell : ACLabel (AC.goldilocksAC sp FGP ro)} (hu : AC.UpdateAt tr y c s ell)
+    {ell : ACLabel (AC.goldilocksAC sp FGP)} (hu : AC.UpdateAt tr y c s ell)
     {C : AC.Blk sp.n FGP} {CV : Set (AC.Vote sp.n)} (hR : AC.ResultAt tr y c s C CV)
     (hnv : ¬ AC.conflictsWithLock sp (tr.state y c).locks ell.frame (tr.time c) C) :
     ell.frame.Anc C ((AC.lookup ell.frame (tr.post c).latestConfirmed).getD ell.frame.F) := by
@@ -236,7 +236,7 @@ theorem anc_acHead_of_current_certificate
     exact hF.trans ((hΦ.rooted.2 _ hH).mono hΦU)
   · exact (AC.anc_acHead hΦ hO hcomp hsup).mono hΦU
 
-variable {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+variable {tr : GoldilocksTrace sp}
   {H : Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {g ΔF a : Time}
 
@@ -245,7 +245,7 @@ decomposes into guarded writes in the old frame followed by a compatible floor c
 or supplies a replacement effective record extending the prefix (including restarts).
 The write predicate must include every actual write. No such provenance,
 restart preservation, or floor compatibility is inferred from a lock at one read. -/
-structure EffectiveRecordInterval (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+structure EffectiveRecordInterval (tr : GoldilocksTrace sp) (H : Set (Fin sp.n))
     (y : Fin sp.n) (i j : Nat) (O : AC.Blk sp.n (List (FG.Att sp.n))) : Prop where
   step : ∀ q, i ≤ q → q < j →
     (∃ New : AC.Blk sp.n (List (FG.Att sp.n)) → Prop,

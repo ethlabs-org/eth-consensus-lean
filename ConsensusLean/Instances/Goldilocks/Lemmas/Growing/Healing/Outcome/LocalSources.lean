@@ -9,16 +9,16 @@ public section
 
 namespace Consensus.Goldilocks.Healing.Growing.Outcome
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 /-- Actual accepted-tree rows are authentic for the cohort surviving at observation, with
 honesty read at the later of each cut and a cutoff `c`. -/
 theorem local_observations
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (c : Time) (Hz : Nat) (b : Time) :
     LocalSources.Observations (fun v i => (tr.state v i).fg) tr.time (fun t => H (max c t))
@@ -58,7 +58,7 @@ theorem local_observations
 stored fast-lock event on the source's own honest prefix, not inferred from highness. Honesty is
 read at the later of each cut and `c_z`, the charge of a high origin's writer. -/
 theorem local_sources
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) (g b : Time)
     (hsnap : ∃ k, FirstCutAfter tr k (cutZ sp.toParams g))

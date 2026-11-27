@@ -14,12 +14,12 @@ lifted into the historical block universe, without retaining historical writers.
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- A common frame kind makes the local root monotone through an honest reader cut. -/
 theorem fcRoot_mono_at {lo hi : Time} {floor : Nat} {kindJ : Prop}
@@ -50,7 +50,7 @@ theorem fcRoot_mono_at {lo hi : Time} {floor : Nat} {kindJ : Prop}
 theorem live_lock_selection_origin_at
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {x : Fin sp.n} {i : Nat}
-    (hx : x ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hx : x ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt x i ell) {l : AC.Lock}
     (hl : l ∈ AC.liveLocks sp (tr.projAC.state x i).locks ell.frame (tr.time i))
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ell.frame.tree)
@@ -91,7 +91,7 @@ theorem unlocked_image_below_write_root_at {lo hi : Time} {floor : Nat} {kindJ :
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {a i : Nat}
     (hy : y ∈ H (tr.time i)) (hai : a ≤ i)
-    {ellw ell : ACLabel (goldilocksNode sp ro)}
+    {ellw ell : ACLabel (goldilocksNode sp)}
     (hcw : tr.projAC.CallAt y a ellw) (hc : tr.projAC.CallAt y i ell)
     (halo : lo ≤ tr.time a) (hihi : tr.time i ≤ hi)
     {L B A : AC.Blk sp.n (List (FG.Att sp.n))}

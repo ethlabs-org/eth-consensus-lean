@@ -21,11 +21,11 @@ The three steps of "no optimistic check of slot `s + 1` before a row held at a s
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- An honest signing is at a public time (a cut of a tick), for any node AC. (As
 `Persist/Attest`'s `sign_public`.) -/
@@ -45,7 +45,7 @@ private theorem tick_votes (self : Fin sp.n) (A : AC.ACState sp.n)
     (Φ : AC.Frm sp.n (List (FG.Att sp.n))) {t : Time} (hj : AC.joined sp A t)
     (hv : A.votedSlot ≠ sp.slot t) (ht : t = sp.ts (sp.slot t) + sp.Δ)
     (hm : A.mayVote (sp.slot t) = true) :
-    ((AC.goldilocksAC sp (List (FG.Att sp.n)) ro).step self A Φ t .tick).2 ≠ [] := by
+    ((AC.goldilocksAC sp (List (FG.Att sp.n))).step self A Φ t .tick).2 ≠ [] := by
   change (AC.acOnTick sp self A Φ t).2 ≠ []
   unfold AC.acOnTick
   dsimp only
@@ -154,7 +154,7 @@ vote, no block with a row signed at `t_{s+1} + Δ` before the acceptance: the vo
 `t_{s+1} + Δ` precedes the acceptance and casts a slot-`(s+1)` vote, a second one. -/
 theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {s : Nat} {y : Fin sp.n} (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1)
     {X : AC.Blk sp.n (List (FG.Att sp.n))} {m : Nat} (hm : tr.AcceptAt y m X) (hmi : m < i)
     {k : Nat} (hkm : k < m) (hT : tr.time k = sp.ts s + 5 * sp.Δ) : False := by
@@ -192,7 +192,7 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
       simp [Node.Event.phase] at this
   -- the tick's first cut is `ac_on_tick`
   obtain ⟨ℓt, pc, uc, hlt, hcs, -, -⟩ :=
-    @tick_order sp.toParams (goldilocksNode sp ro) proposer dg y
+    @tick_order sp.toParams (goldilocksNode sp) proposer dg y
       (tr.state y jt) (tr.time m) xt fgDue
   have hlen : 0 < (Node.exec proposer dg y (tr.state y jt)
       (tr.time m) (.tick xt fgDue)).2.length := by
@@ -213,7 +213,7 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   by_cases hvs : (tr.projAC.state y jt).votedSlot = ((s + 1 : Nat) : Int)
   · rcases AC.cast_of_votedSlotU hr.toU hrun.vstart hy jt (s + 1) hvs with
       ⟨j, hj, e', hv', hes'⟩ | hmf
-    · have := (AC.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy j i e' e hv' hvi
+    · have := (AC.one_vote_per_slotU sp _ H _ tr.projAC hr.toU y hy j i e' e hv' hvi
         (hes'.trans hs.symm)).1
       omega
     · exact absurd hmay (by rw [hmf]; decide)
@@ -243,7 +243,7 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
       ht₀).mp hjr
   have hexec := hr.exec jt ℓt hpt0.2 (hpt0.1 ▸ hy)
   rw [hpt0.1, hlt] at hexec
-  have hne := tick_votes (ro := ro) y (tr.projAC.state y jt) ℓt.frame hjoined
+  have hne := tick_votes y (tr.projAC.state y jt) ℓt.frame hjoined
     (by rw [hslm]; exact hvs)
     (by rw [hslm, htm]; simp only [ACParams.ts]; push_cast; ring)
     (by rw [hslm]; exact hmay)
@@ -252,7 +252,7 @@ theorem held_row_late_absurd {ini} (hrun : GoldilocksRun proposer dg H tr ini)
   obtain ⟨e₀, he₀⟩ := List.exists_mem_of_ne_nil _ hne
   have hsl₀ : e₀.msg.slot = sp.slot (tr.time m) := (AC.castAt_specU hr.toU hy ⟨hpt0, he₀⟩).2.1.trans
     (by rw [show tr.projAC.time jt = tr.time m from ht₀])
-  have := (AC.one_vote_per_slotU sp _ ro H _ tr.projAC hr.toU y hy jt i e₀ e ⟨ℓt, hpt0, he₀⟩ hvi
+  have := (AC.one_vote_per_slotU sp _ H _ tr.projAC hr.toU y hy jt i e₀ e ⟨ℓt, hpt0, he₀⟩ hvi
     (hsl₀.trans (hslm.trans hs.symm))).1
   omega
 
@@ -284,7 +284,7 @@ theorem held_row_early_count
   obtain ⟨src, hsgc⟩ := hsg
   have htc : tr.time c = tr.time k := le_antisymm hck' (hT0 ▸ hc0)
   obtain ⟨gx, ex, kx, hgx, hkeq, hkx⟩ := call_in_group hl hav hsgc
-  obtain ⟨xt, rfl⟩ := @signed_only_in_ticks sp.toParams (goldilocksNode sp ro) proposer dg a.val
+  obtain ⟨xt, rfl⟩ := @signed_only_in_ticks sp.toParams (goldilocksNode sp) proposer dg a.val
     (tr.state a.val gx) (tr.time k) ex src a (List.mem_of_getElem? hkx)
   have hklen := (List.getElem?_eq_some_iff.1 hkx).1
   unfold AC.optimisticSelect at hsel

@@ -180,11 +180,8 @@ theorem unlockNoFallback_equivocation :
 
 /-! ## A reachable run with a graded optimistic lock -/
 
-/-- A replay order for restarts. -/
-noncomputable abbrev ro : ReplayOrder sp Unit := ReplayOrder.choice sp
-
 /-- The Goldilocks AC with the fixture's parameters. -/
-noncomputable abbrev GA : ACInterface sp.toParams Unit := goldilocksAC sp Unit ro
+noncomputable abbrev GA : ACInterface sp.toParams Unit := goldilocksAC sp Unit
 
 /-- The genesis frame. -/
 def Φ₀ : Frm sp.n Unit := ⟨{g}, g, g, {g}⟩
@@ -680,16 +677,16 @@ theorem liveLocksChain_applies (h : LiveLocksChain sp) : ∀ t, 8 ≤ t →
     (∀ B ∈ liveLockBlocks sp S2.locks Φ₁ t, ∀ C ∈ liveLockBlocks sp S2.locks Φ₁ t,
       Compatible Φ₁.tree B C) ∧
     ∀ B ∈ liveLockBlocks sp S2.locks Φ₁ t, B ∈ Φ₁.viableTree Φ₁.tree ∨ Φ₁.Anc B Φ₁.fcRoot :=
-  fun t _ => h Unit ro v0 U coherent_U S2 Φ₁ 8 reachable_S2 t
+  fun t _ => h Unit v0 U coherent_U S2 Φ₁ 8 reachable_S2 t
 
 theorem candidatesChain_applies (h : CandidatesChain sp) : ∀ t, 8 ≤ t →
     (∀ B ∈ toFGCandidates sp S2 Φ₁ t, ∀ C ∈ toFGCandidates sp S2 Φ₁ t,
       Compatible Φ₁.tree B C) ∧
     ∀ B ∈ toFGCandidates sp S2 Φ₁ t, Φ₁.Anc B (getAnchor sp S2 Φ₁ t) :=
-  fun t _ => h Unit ro v0 U coherent_U S2 Φ₁ 8 reachable_S2 t
+  fun t _ => h Unit v0 U coherent_U S2 Φ₁ 8 reachable_S2 t
 
 theorem lockToTip_applies (h : LockToTip sp) : ∀ t, 8 ≤ t →
     ∀ B ∈ liveLockBlocks sp S2.locks Φ₁ t, Φ₁.Anc B ((lookup Φ₁ S2.latestConfirmed).getD Φ₁.F) :=
-  fun t _ => h Unit ro v0 U coherent_U S2 Φ₁ 8 reachable_S2 t
+  fun t _ => h Unit v0 U coherent_U S2 Φ₁ 8 reachable_S2 t
 
 end Consensus.Goldilocks.AC.Test.LockRule

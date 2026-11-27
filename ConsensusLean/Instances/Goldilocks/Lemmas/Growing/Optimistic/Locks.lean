@@ -22,11 +22,11 @@ Every step is proved. -/
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- **The proposal is an origin within `b`**, held while honest, for a horizon `b ≥ t_s + 6Δ`: the
 update of slot `s` at `t_s + 6Δ` of a node honest, awake and joined then returns it. -/
@@ -68,7 +68,7 @@ theorem proposal_not_conflicts_point_at {ini} (hrun : Growing.GoldilocksRun prop
     (hP : tr.ProposesAt p k P) (hPs : P.slot = s) (hsb : sp.ts s + 6 * sp.Δ ≤ b)
     {K : AC.CommitteeDict sp.n} (hKB : CommitteeFacts tr H K)
     (hBK : CommitteeBoundsFrom tr H K 0 b)
-    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {j : Nat} (hy : y ∈ H (tr.time j)) {ℓ : ACLabel (goldilocksNode sp)}
     {A : AC.ACState sp.n} (hpt : AC.OptimisticPoint tr.projAC y j ℓ A) (hb : tr.time j ≤ b)
     (hPt : P ∈ ℓ.frame.tree) (hpos : 0 < sp.slot (tr.time j))
     (hbelow : ∀ D CV, AC.OptimisticLockAt tr.projAC y j (sp.slot (tr.time j)) D CV →

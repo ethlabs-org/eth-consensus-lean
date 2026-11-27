@@ -36,7 +36,7 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar declaredSupportVotes)
+open AC (ACParams Payload gbar declaredSupportVotes)
 open Regimes.Growing (hold)
 
 section Vocabulary
@@ -74,8 +74,8 @@ end Vocabulary
 
 section Goldilocks
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+variable {sp : ACParams}
+  (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
 
 /-- **A high origin** `(B, j)` under growing faults: written by `x` honest at its write and at
 `c_z`. -/
@@ -110,10 +110,10 @@ that cut, with fewer than a third of the validators compromised by the cut (`3 f
 where it is consumed), `F* = σ[B].F` satisfies `F* ⪯ Σ.F` after that `fg_on_block` call. (The
 claims' reset and height bound are not needed, as in the static HR.5.) -/
 def CacheAcceptance : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams)
     (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (ini : Fin sp.n → (goldilocksNode sp ro).State),
+    (tr : GoldilocksTrace sp) (ini : Fin sp.n → (goldilocksNode sp).State),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini →
     Compose.NoCollRun dg tr →
       ∀ y k B, y ∈ H (tr.time k) → 3 * (H (tr.time k))ᶜ.ncard ≤ sp.n - 1 →
@@ -123,8 +123,8 @@ def CacheAcceptance : Prop :=
 
 section Top
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+variable {sp : ACParams}
+  (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
 
 /-- `P` is the honest proposal of slot `p`, by a proposer honest through `t_p + hold`. -/
 def HonestProposalRun (proposer : Nat → Fin sp.n)

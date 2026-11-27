@@ -23,12 +23,12 @@ Each compatibility comes into the prefix from the blocks held while honest (`com
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
   {D : OutageLockPremises tr H proposer dg ini}
 
 /-- **The record interval after a restored update, in the prefix through `t`**: from a cut `i`
@@ -110,7 +110,7 @@ whose result `C` extends `P`, the effective record of the updater extends `P` at
 `i` read at a time `t` at which it is honest (every cut before `i` at a time `≤ t`), whether the
 result is accepted or vetoed. -/
 theorem record_above_from_at (hinv : ∀ i, OutageLockInv D i) {w : Fin sp.n} {c m : Nat}
-    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)) ro)}
+    {ℓ : ACLabel (AC.goldilocksAC sp (List (FG.Att sp.n)))}
     (hu : AC.UpdateAt tr.projAC w c m ℓ) {C : AC.Blk sp.n (List (FG.Att sp.n))}
     {CV : Set (Vote sp.n)} (hR : AC.ResultAt tr.projAC w c m C CV) (hrm : D.r ≤ m)
     (hPC : Anc (tr.HonestBlocksAt H) D.P C) :

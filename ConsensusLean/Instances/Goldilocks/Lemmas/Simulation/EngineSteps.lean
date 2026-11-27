@@ -37,11 +37,11 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
 variable {binding : VoteBinding}
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 section Engine
 
@@ -55,18 +55,18 @@ each canonical object in order, nothing for a dropped object (the state `deliver
 noncomputable def deliverState (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (io : VoteAuth sp.n binding)
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) :
-    List (Wire sp.n binding) → NodeState (goldilocksNode sp ro) → NodeState (goldilocksNode sp ro)
+    List (Wire sp.n binding) → NodeState (goldilocksNode sp) → NodeState (goldilocksNode sp)
   | [], st => st
   | o :: os, st =>
-      match canonEvent sp ro io hs o with
+      match canonEvent sp io hs o with
       | some e => deliverState proposer dg io hs self t os (exec proposer dg self st t e).1
       | none => deliverState proposer dg io hs self t os st
 
 /-- The canonical event of a wire object, if any, is a block, a message or an attestation. -/
 theorem canonEvent_cases (io : VoteAuth sp.n binding) hs (o : Wire sp.n binding) :
-    canonEvent sp ro io hs o = none ∨ (∃ B, canonEvent sp ro io hs o = some (.block B)) ∨
-      (∃ v, canonEvent sp ro io hs o = some (.message v)) ∨
-      (∃ a, canonEvent sp ro io hs o = some (.attestation a)) := by
+    canonEvent sp io hs o = none ∨ (∃ B, canonEvent sp io hs o = some (.block B)) ∨
+      (∃ v, canonEvent sp io hs o = some (.message v)) ∨
+      (∃ a, canonEvent sp io hs o = some (.attestation a)) := by
   rw [canonEvent_eq]
   split <;> simp
 
@@ -74,25 +74,25 @@ theorem canonEvent_cases (io : VoteAuth sp.n binding) hs (o : Wire sp.n binding)
 -/
 theorem processOne_node (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (io : VoteAuth sp.n binding) hs
-    (st : State sp ro binding) o :
+    (st : State sp binding) o :
     (processOne io hs st o).node =
-      match canonEvent sp ro io hs o with
+      match canonEvent sp io hs o with
       | some e => (exec proposer dg st.self st.node st.now e).1
       | none => st.node := by
-  rcases canonEvent_cases (ro := ro) io hs o with h | ⟨B, h⟩ | ⟨v, h⟩ | ⟨a, h⟩ <;>
+  rcases canonEvent_cases io hs o with h | ⟨B, h⟩ | ⟨v, h⟩ | ⟨a, h⟩ <;>
     simp [processOne_eq, h, relayIf_node, apply_node, exec]
 
 /-- Processing a list of delivered objects runs `deliverState` on the node state. -/
 theorem foldl_processOne_node (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (io : VoteAuth sp.n binding) hs
-    (os : List (Wire sp.n binding)) (st : State sp ro binding) :
+    (os : List (Wire sp.n binding)) (st : State sp binding) :
     (os.foldl (processOne io hs) st).node =
       deliverState proposer dg io hs st.self st.now os st.node := by
   induction os generalizing st with
   | nil => rfl
   | cons o os ih =>
     rw [List.foldl_cons, ih, processOne_self, processOne_now, processOne_node proposer dg]
-    rcases canonEvent_cases (ro := ro) io hs o with h | ⟨B, h⟩ | ⟨v, h⟩ | ⟨a, h⟩ <;>
+    rcases canonEvent_cases io hs o with h | ⟨B, h⟩ | ⟨v, h⟩ | ⟨a, h⟩ <;>
       simp only [deliverState, h]
 
 /-- **`SimulatesAt.deliver`'s node step.** An engine delivery to an honest node runs the handlers of
@@ -296,7 +296,7 @@ theorem blockOf_eq_mkBlock (k : Fin (Fintype.card V))
         ⟨parentRef (S.params (pubOf E) hn).genesisRoot (some H.root), s, x,
           encodeInfo (fg.proposalAttestations H) p⟩
         k (fg.proposalAttestations H) p =
-      mkBlock (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _)) (digestOf S rho) k fg t x
+      mkBlock (A := goldilocksNode (S.params (pubOf E) hn)) (digestOf S rho) k fg t x
         H p := by
   subst hslot
   simp only [blockOf_eq, mkBlock, digestOf_eq]
@@ -391,7 +391,7 @@ theorem dutyStep_propose_node (v : V) (nd : Model.Node (Model.protoOf (compiled
 /-! ## The node state across a tick -/
 
 /-- The poll runs the FG update exactly when it is due. -/
-theorem poll_node_eq {release : Fin sp.n → Time → Bool} (st : State sp ro binding) (t : Time) :
+theorem poll_node_eq {release : Fin sp.n → Time → Bool} (st : State sp binding) (t : Time) :
     (poll st t release).1.node = if st.fgDue then (fgUpdate st release).node else st.node := by
   cases h : st.fgDue
   · exact poll_node_of_fgDue st t h
@@ -400,7 +400,7 @@ theorem poll_node_eq {release : Fin sp.n → Time → Bool} (st : State sp ro bi
     split <;> rfl
 
 /-- The node's tick at a public time runs the AC's tick on the node state. -/
-theorem nodeTick_node_public (st : State sp ro binding) (h : sp.toParams.IsPublic st.now)
+theorem nodeTick_node_public (st : State sp binding) (h : sp.toParams.IsPublic st.now)
     {sign : Fin sp.n → Time → Bool} :
     (nodeTick st sign).node = (Node.acCall st.self st.node st.now .tick).1 := by
   rw [nodeTick_eq (sign := _)]
@@ -410,7 +410,7 @@ theorem nodeTick_node_public (st : State sp ro binding) (h : sp.toParams.IsPubli
 /-- `ac_to_fg` and `fg_attest` do not read the pool. -/
 private theorem tickStep_fgUpdate_atts (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
-    (n : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) (l : List (FG.Att sp.n)) :
+    (n : NodeState (goldilocksNode sp)) (t : Time) (x : Nat) (l : List (FG.Att sp.n)) :
     (Node.tickStep proposer dg self { n with fg := { n.fg with atts := l } } t x .fgUpdate).1 =
       { (Node.tickStep proposer dg self n t x .fgUpdate).1 with
         fg := { (Node.tickStep proposer dg self n t x .fgUpdate).1.fg with atts := l } } := by
@@ -429,7 +429,7 @@ private theorem tickStep_fgUpdate_atts (proposer : Nat → Fin sp.n)
 /-- The FG update keeps the FG store. -/
 theorem tickStep_fgUpdate_fg (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
-    (n : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) :
+    (n : NodeState (goldilocksNode sp)) (t : Time) (x : Nat) :
     (Node.tickStep proposer dg self n t x .fgUpdate).1.fg = n.fg := by
   simp only [Node.tickStep]
   split
@@ -440,7 +440,7 @@ theorem tickStep_fgUpdate_fg (proposer : Nat → Fin sp.n)
 pool except through `on_attestation`. -/
 private theorem tickStep_fgUpdate_foldl (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n) (t : Time) (x : Nat)
-    (l : List (FG.Att sp.n)) (n : NodeState (goldilocksNode sp ro)) :
+    (l : List (FG.Att sp.n)) (n : NodeState (goldilocksNode sp)) :
     (Node.tickStep proposer dg self (l.foldl (fun n a => (Node.onAttestation n a).1) n) t x
       .fgUpdate).1 =
       l.foldl (fun n a => (Node.onAttestation n a).1)
@@ -466,7 +466,7 @@ when the release schedule allows release at the node's time, the own `on_attesta
 attestation it signs. -/
 theorem fgUpdate_node {release : Fin sp.n → Time → Bool} (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (x : Nat)
-    (st : State sp ro binding) :
+    (st : State sp binding) :
     (fgUpdate st release).node =
       (if release st.self st.now then (fgSigned st).toList else []).foldl
         (fun n a => (Node.onAttestation n a).1)
@@ -487,7 +487,7 @@ attestations, oldest first, and then of the one the FG update signs when the sch
 it. Processing an attestation changes only the pool, which `ac_to_fg` and `fg_attest` neither
 read nor write (`tickStep_fgUpdate_foldl`), so the flush commutes past the FG update. -/
 theorem pollBatch_node_eq {release : Fin sp.n → Time → Bool} (proposer : Nat → Fin sp.n)
-    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (x : Nat) (st : State sp ro binding)
+    (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (x : Nat) (st : State sp binding)
     (t : Time) : (pollBatch st t release).1.node =
       (pollFlush st release ++
         if (st.fgDue && release st.self st.now) = true then (fgSigned st).toList else []).foldl
@@ -550,7 +550,7 @@ omit [DecidableEq V] in
 theorem releaseAll_node_eq (k : Fin (Fintype.card V)) :
     ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
       (cs : List (Model.protoOf (compiled (goldilocks S)) E).Object),
-      (∀ c ∈ cs, ∀ (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) hs,
+      (∀ c ∈ cs, ∀ (st : State (S.params (pubOf E) hn) S.vote) hs,
         (recordOwn st c hs).node = st.node) →
       (shapeOf S hn (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd
         cs).1).node = (shapeOf S hn nd).node
@@ -725,13 +725,13 @@ theorem tick_node_eq (v : V) (nd : Model.Node (Model.protoOf (compiled (goldiloc
 /-- The AC-tick step is the AC's tick. -/
 theorem tickStep_acTick (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
-    (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) :
+    (st : NodeState (goldilocksNode sp)) (t : Time) (x : Nat) :
     (Node.tickStep proposer dg self st t x .acTick).1 = (Node.acCall self st t .tick).1 := rfl
 
 /-- The proposal step of a key that does not propose at `t` keeps the node state. -/
 theorem tickStep_proposal_not (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
-    (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
+    (st : NodeState (goldilocksNode sp)) (t : Time) (x : Nat)
     (h : ¬ Proposes (P := sp.toParams) proposer self t) :
     (Node.tickStep proposer dg self st t x .proposal).1 = st := by
   unfold Node.tickStep
@@ -740,7 +740,7 @@ theorem tickStep_proposal_not (proposer : Nat → Fin sp.n)
 omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `recordOwn` and `propose` is preserved by the
 engine's `propose` duty step. -/
-theorem dutyStep_propose_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
+theorem dutyStep_propose_pres (Q : State (S.params (pubOf E) hn) S.vote → Prop)
     (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
     (hprop : ∀ st s, Q st → Q (propose st s).1) (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) (s : Slot) (hs : 0 < s)

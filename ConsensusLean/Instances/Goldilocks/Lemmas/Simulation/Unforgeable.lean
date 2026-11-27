@@ -166,19 +166,19 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
-private theorem tick_block_fields {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+private theorem tick_block_fields {sp : ACParams}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
+    (self : Fin sp.n) (st : NodeState (goldilocksNode sp)) (t : Time) (x : Nat)
     {fgDue : Bool} {B : Blk sp} {acc : Bool} {k : Nat}
     (hk : k < (exec proposer dg self st t (.tick x fgDue)).2.length)
     (hc : (exec proposer dg self st t (.tick x fgDue)).2[k] = .fg (.block B acc)) :
     B.proposer = self ∧ B.RootOk dg ∧ B.parent ≠ none ∧ k ≠ 0 :=
-  Compose.tick_block_cut_fields (P := sp.toParams) (A := goldilocksNode sp ro)
+  Compose.tick_block_cut_fields (P := sp.toParams) (A := goldilocksNode sp)
     proposer dg self st t x fgDue ((List.getElem?_eq_getElem hk).trans (congrArg some hc))
 
 private theorem ownBlock_of_tick_cut {i : Nat} {v : V} {t : Time}
@@ -312,7 +312,7 @@ theorem blockCall_ownBlock_of_released (hv : rho.ExecutionValid) {y : Fin (Finty
     (fun hs hp hd hb => hrel hs hp hd (hobj B ▸ hb))
 
 private theorem emit_of_record {i : Nat} {ev}
-    (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
+    (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn)}
     (hr : r ∈ eventCuts S rho hn i) {ℓ} (hl : r.label = .ac ℓ)
     {em} (hem : em ∈ ℓ.emits) :
     ∃ k < cutMap S rho hn (i + 1),

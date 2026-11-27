@@ -25,11 +25,11 @@ and after every cut before `i` (the read-time form): each is the static fact on 
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
   {y : Fin sp.n} {i : Nat} {d : Time}
 
 theorem tree_held_at (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d) :
@@ -38,7 +38,7 @@ theorem tree_held_at (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k 
 
 theorem reachable_at {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hd : 0 ≤ d) (hy : y ∈ H d) (hi : ∀ k < i, tr.time k ≤ d) :
-    (tr.state y i).fg.Reachable (goldilocksNode sp ro).genesisPayload := by
+    (tr.state y i).fg.Reachable (goldilocksNode sp).genesisPayload := by
   have h := fg_reachable (hrun.upTo hd).toLocalRun hy i
   rwa [Trace.upTo_state tr y hi] at h
 

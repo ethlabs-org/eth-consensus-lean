@@ -22,7 +22,7 @@ facts. No voter tree, vote domain or vote head is read: the late-cast arm uses
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 /-! ### Deadlines -/
 
@@ -45,14 +45,14 @@ end Deadline
 
 section Node
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP} {proposer : Nat → Fin sp.n}
 
 /-- D2 (L1, message half). An honest slot-`q` vote is in the receiver's pool, with a stamp
 before `t_q + 2Δ`, at every receiver call from `t_q + 2Δ` with no restart after `t_q`. -/
 theorem vote_pooled_before_early {ini} (hrun : AC.ACRun proposer T H U ini)
     {g : Time} {y : Fin sp.n} (hy : y ∈ H) (hS : ReceiverServiceAfter H U g y T)
-    {q c : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} (hc : T.CallAt y c ℓ)
+    {q c : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)} (hc : T.CallAt y c ℓ)
     (hct : sp.ts q + 2 * sp.Δ ≤ T.time c) (hg : g ≤ sp.ts q + sp.Δ)
     (hres : ∀ k ≤ c, T.RestartAt y k → T.time k ≤ sp.ts q)
     {x : Fin sp.n} (hx : x ∈ H) {j : Nat} {e : AC.Em sp FGP} (hv : AC.VoteAt T x j e)
@@ -108,7 +108,7 @@ theorem vote_pooled_before_early {ini} (hrun : AC.ACRun proposer T H U ini)
         have hyx : y = x := by
           rw [← (AC.vote_signer_slot hr hy hv₁).1, he₁m, hxv]
         rw [hyx] at hv₁
-        obtain ⟨rfl, -⟩ := AC.one_vote_per_slotU sp FGP ro H U T hr.toU x hx k₁ j e₁ e hv₁ hv
+        obtain ⟨rfl, -⟩ := AC.one_vote_per_slotU sp FGP H U T hr.toU x hx k₁ j e₁ e hv₁ hv
           (by rw [he₁m])
         linarith only [htj, hΔ]
       · exact absurd (AC.pool_mono hr hy (show k' + 1 ≤ k₁ by omega)

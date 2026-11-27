@@ -12,8 +12,8 @@ public section
 
 namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {g t₀ : Time} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {g t₀ : Time} {proposer : Nat → Fin sp.n}
 
 /-- `Carry_y` for a set of votes is `Carry_y` for each of them (the fields are per vote), at a
 vote where `y` is awake and joined. -/

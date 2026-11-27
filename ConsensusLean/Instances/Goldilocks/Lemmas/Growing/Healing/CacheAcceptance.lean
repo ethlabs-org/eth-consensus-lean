@@ -18,14 +18,14 @@ namespace Consensus.Goldilocks.Healing.Growing
 /-- **G1.9 (b) under growing faults:** every acceptance by a node honest at its cut caches its
 replay-finalized target, when fewer than a third of the validators are compromised by the cut. -/
 theorem cache_acceptance : CacheAcceptance := by
-  intro sp ro proposer dg H tr ini hrun hnc y k B hy hf3 hB Fs hFs hroot
+  intro sp proposer dg H tr ini hrun hnc y k B hy hf3 hB Fs hFs hroot
   set d := tr.time k
   have hd : 0 ≤ d := hrun.time_nonneg k
   have hrd := hrun.upTo hd
   have hBd : (tr.upTo d).AcceptAt y k B := (Trace.upTo_callAt tr).mpr ⟨le_rfl, hB⟩
   have hpost : (tr.upTo d).post k = tr.post k := rfl
   have hfg := Compose.fg_projection_from
-    (fun y _ => Compose.requirements_from sp ro (hrd.vstart y)) hrd.genesis_root_ok
+    (fun y _ => Compose.requirements_from sp (hrd.vstart y)) hrd.genesis_root_ok
     hrd.toLocalRun (hnc.upTo d)
   have hst : ∀ i, (tr.upTo d).projFG.store y i = ((tr.upTo d).state y i).fg :=
     fun i => by simp only [FGTrace.store, Compose.projFG_state hrd.toLocalRun hy i]

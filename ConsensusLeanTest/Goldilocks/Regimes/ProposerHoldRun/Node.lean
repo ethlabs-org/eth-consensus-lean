@@ -207,7 +207,7 @@ theorem headerOf_of_twin
 /-! ### Votes of the faulty keys in honest pools -/
 
 section ACStep
-variable {sp : AC.ACParams} {FGP : Type} {ro : AC.ReplayOrder sp FGP}
+variable {sp : AC.ACParams} {FGP : Type}
 
 theorem admitVote_pool_sub {A : AC.ACState sp.n} {t : Time} {v x : AC.Vote sp.n} {σ : Nat}
     (h : x ∈ (AC.admitVote sp A t v).pool σ) : x ∈ A.pool σ ∨ x = v := by
@@ -241,8 +241,8 @@ theorem tryVote_pool_sub (self : Fin sp.n) {A : AC.ACState sp.n} {Φ : AC.Frm sp
 /-- **A vote new in a pool after a call** is the received vote or the node's own (a block call
 only stamps the block). -/
 theorem step_pool_new (self : Fin sp.n) (A : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP) (t : Time)
-    (c : (AC.goldilocksAC sp FGP ro).Call) (hc : c ≠ .restart) {x : AC.Vote sp.n} {σ : Nat}
-    (h : x ∈ ((AC.goldilocksAC sp FGP ro).step self A Φ t c).1.pool σ) (hn : x ∉ A.pool σ) :
+    (c : (AC.goldilocksAC sp FGP).Call) (hc : c ≠ .restart) {x : AC.Vote sp.n} {σ : Nat}
+    (h : x ∈ ((AC.goldilocksAC sp FGP).step self A Φ t c).1.pool σ) (hn : x ∉ A.pool σ) :
     c = .message x ∨ x.val = self := by
   cases c with
   | tick =>
@@ -308,7 +308,7 @@ theorem pool_vote_slot {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) (c : Na
     {x : AC.Vote (Fintype.card (Fin 5))} (hx : x ∈ ((tr S).state y c).ac.pool x.slot)
     (hxH : x.val ∉ H S) : x.slot ≤ 1 := by
   have hac :=
-    (Compose.goldilocks_ac_projection _ _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
+    (Compose.goldilocks_ac_projection _ _ _ _ _ (rhoc_run (S := S)) rhoc_noColl).localRun
   rw [← Compose.projAC_state rhoc_run.toLocalRun hy] at hx
   rcases AC.pool_origin hac (fun _ => AC.voteStart_initial _) hy c x hx with
     ⟨k, -, ⟨ℓ, hc, hsa⟩, -, -⟩ | ⟨k, -, ℓ, hc, hrs, -⟩
@@ -323,7 +323,7 @@ theorem pool_vote_slot {y : Fin (Fintype.card (Fin 5))} (hy : y ∈ H S) (c : Na
       rw [← hp] at hpost
       rcases step_pool_new
         (sp := ({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card)
-        (ro := S.ro _) y ((tr S).projAC.state y k) ℓ.frame ((tr S).projAC.time k)
+        y ((tr S).projAC.state y k) ℓ.frame ((tr S).projAC.time k)
         ℓ.call hnr (x := x) (σ := x.slot) hpost hpre with hm | hval
       · obtain ⟨i, w, o, t, hi, z, hcont⟩ := msg_delivered ⟨ℓ, Compose.projAC_callAt.mp hc, hm⟩
         obtain ⟨i', hi'⟩ := rhoc_deliver hi

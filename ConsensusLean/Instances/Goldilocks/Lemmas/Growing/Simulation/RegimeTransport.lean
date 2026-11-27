@@ -45,10 +45,10 @@ release hold `A.releaseGap·Δ_AC`. -/
 theorem goldilocks_regimeTransport (S : Setup) (A : ContractAssumptions S) {E : Env V}
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn))
       (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G Rg)
+    {Rg : Nat} (hC : GoldilocksLocalData (S.params (pubOf E) hn) C sign G Rg)
     (hsg : (fun v => v.val) = (goldilocksRunMap S rho hn hv).signer) :
     RegimeTransport (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C)
       ((A.releaseGap : Time) * E.ΔAC) := by

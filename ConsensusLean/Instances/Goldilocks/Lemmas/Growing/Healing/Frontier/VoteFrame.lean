@@ -24,14 +24,14 @@ seed (`GoldilocksRun.finalized_anc_of_lt_conv` for `Σ.F`, no contest at the see
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF : Time}
 
 /-- **S3 at a vote after the hand-over (the seeded frozen witness).** At an honest vote of a
 slot `s + 1` with `s ≥ σ + 1`, cast at a time `≤ b`, a member `B` of the healed family within `b`
@@ -45,7 +45,7 @@ theorem seeded_vote_frame_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hsvc : Healing.Growing.ACResetService tr H g ΔF) (hB : SleepyBoundsFrom tr H r b)
     (hcv : ChainConvictedBelowUpTo tr H b) {s : Nat} (hs : σ + 1 ≤ s)
     (hP : HealedOriginsBelow tr H g r (r + sp.k - 1) (s + 1) b) {y : Fin sp.n} {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ℓ : ACLabel (goldilocksNode sp)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : AC.CastAt tr.projAC y i ℓ e) (hes : e.msg.slot = s + 1)
     (hib : tr.time i ≤ b) {B : AC.Blk sp.n (List (FG.Att sp.n))} {j : Nat}
     (hBm : HealedOrigin tr H g r (r + sp.k - 1) B j b) (hj : j ≤ s)

@@ -17,10 +17,10 @@ The source's lock history is local to the caller, so retention at the call prese
 namespace Consensus.Goldilocks.AC.Growing
 
 private theorem source_age_const (sp : ACParams)
-    {FGP : Type} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro}
-    (hrun : ACLocalRun (goldilocksAC sp FGP ro) H U tr)
-    (τ : Time) (x : Fin sp.n) (i : Nat) (ℓ : ACLabel (goldilocksAC sp FGP ro))
+    {FGP : Type} {H : Set (Fin sp.n)}
+    {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP}
+    (hrun : ACLocalRun (goldilocksAC sp FGP) H U tr)
+    (τ : Time) (x : Fin sp.n) (i : Nat) (ℓ : ACLabel (goldilocksAC sp FGP))
     (C : Blk sp.n FGP) (hx : x ∈ H) (hto : ToFGAt tr x i ℓ C)
     (hslot : sp.slot τ + 3 ≤ sp.slot (tr.time i)) :
     (∃ j ≤ i, ∃ s' B' CV', FastLockAt tr x j s' B' CV' ∧ τ < tr.time j ∧
@@ -69,7 +69,7 @@ private theorem source_age_const (sp : ACParams)
     exact (Anc.mono hΦU hva).trans hLB'
 
 theorem source_age (sp : ACParams) : SourceAge sp := by
-  intro FGP ro H U tr hr τ x i ℓ C hx hto hslot
+  intro FGP H U tr hr τ x i ℓ C hx hto hslot
   rcases source_age_const sp
       (hr.upTo (hr.time_nonneg i)) τ x i ℓ C hx
       ((upTo_toFGAt hr.time_mono).mpr ⟨le_rfl, hto⟩) hslot with

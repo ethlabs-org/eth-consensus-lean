@@ -13,7 +13,7 @@ All counts are charged at the updater's cut. Its retained pool is unchanged.
 namespace Consensus.Goldilocks.AC.Growing
 
 theorem optimistic_next_update (sp : ACParams) : OptimisticNextUpdate sp := by
-  intro FGP ro H U tr proposer hrun K hP hT hsize s z k B ℓ hf hext hz hup hh hres
+  intro FGP H U tr proposer hrun K hP hT hsize s z k B ℓ hf hext hz hup hh hres
   have hm := hrun.localRun.time_mono
   have hr := hrun.upTo (hrun.localRun.time_nonneg k)
   have hs : (tr.upTo (tr.time k)).state z k = tr.state z k :=

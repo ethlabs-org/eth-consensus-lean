@@ -20,15 +20,15 @@ public section
 namespace Consensus.Goldilocks.Healing.Growing
 variable {hold : Time}
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
 /-- A report above a warm proposal is carried by the head of any strictly later honest proposal
 in the frame window. A regular fast origin has paid six ticks before the report; an optimistic
 origin needs only the next slot. -/
 theorem FrameWindow.toFG_later_proposal_head_after_at
-    {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {sp : ACParams}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
     {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop}
     {J P R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
@@ -42,12 +42,12 @@ theorem FrameWindow.toFG_later_proposal_head_after_at
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (hmb : sp.ts N + sp.Δ ≤ b)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} (hto : AC.ToFGAt tr.projAC y i ell R)
+    {ell : ACLabel (goldilocksNode sp)} (hto : AC.ToFGAt tr.projAC y i ell R)
     (hPs : P.slot = u) (hPR : Anc (tr.HonestBlocksAt H) P R)
     (hihi : tr.time i ≤ sp.ts N + sp.Δ)
     {r : Nat} (ht : tr.time i < sp.ts r) (hrN : r ≤ N)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
-    {ellp : ACLabel (goldilocksNode sp ro)} (hcp : tr.projAC.CallAt z c ellp)
+    {ellp : ACLabel (goldilocksNode sp)} (hcp : tr.projAC.CallAt z c ellp)
     (hcall : ellp.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state z c) ellp.frame (tr.time c)).2 =
@@ -190,9 +190,9 @@ theorem FrameWindow.toFG_later_proposal_head_after_at
 
 /-- Reports up to `e` slots after `t_{u+1} + 2Δ` precede proposals from slot `u + 3 + e`. -/
 theorem FrameWindow.toFG_later_proposal_head_within_at
-    {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {sp : ACParams}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
     {g ΔF b : Time} {s₀ u N floor e : Nat} {kindJ : Prop}
     {J P R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
@@ -206,13 +206,13 @@ theorem FrameWindow.toFG_later_proposal_head_within_at
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (hmb : sp.ts N + sp.Δ ≤ b)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} (hto : AC.ToFGAt tr.projAC y i ell R)
+    {ell : ACLabel (goldilocksNode sp)} (hto : AC.ToFGAt tr.projAC y i ell R)
     (hPs : P.slot = u) (hPR : Anc (tr.HonestBlocksAt H) P R)
     (hihi : tr.time i ≤ sp.ts N + sp.Δ)
     (ht : tr.time i ≤ sp.ts (u + 1 + e : Nat) + 2 * sp.Δ)
     {r : Nat} (hrlo : u + 3 + e ≤ r) (hrN : r ≤ N)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
-    {ellp : ACLabel (goldilocksNode sp ro)} (hcp : tr.projAC.CallAt z c ellp)
+    {ellp : ACLabel (goldilocksNode sp)} (hcp : tr.projAC.CallAt z c ellp)
     (hcall : ellp.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state z c) ellp.frame (tr.time c)).2 =
@@ -230,9 +230,9 @@ theorem FrameWindow.toFG_later_proposal_head_within_at
 /-- A report's own fast origin supplies its later-head route, including an earlier report
 (`toFG_later_proposal_head_within_at` at `e = 0`). -/
 theorem FrameWindow.toFG_later_proposal_head_at
-    {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {sp : ACParams}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+    {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
     {g ΔF b : Time} {s₀ u N floor : Nat} {kindJ : Prop}
     {J P R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hframe : FrameWindow tr H (sp.ts s₀) (sp.ts N + sp.Δ) floor kindJ J)
@@ -246,13 +246,13 @@ theorem FrameWindow.toFG_later_proposal_head_at
     (hm : gbar g + 4 * sp.Δ ≤ sp.ts s₀) (hwarm : s₀ + 2 * sp.k ≤ u)
     (hmb : sp.ts N + sp.Δ ≤ b)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
-    {ell : ACLabel (goldilocksNode sp ro)} (hto : AC.ToFGAt tr.projAC y i ell R)
+    {ell : ACLabel (goldilocksNode sp)} (hto : AC.ToFGAt tr.projAC y i ell R)
     (hPs : P.slot = u) (hPR : Anc (tr.HonestBlocksAt H) P R)
     (hihi : tr.time i ≤ sp.ts N + sp.Δ)
     (ht : tr.time i ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ)
     {r : Nat} (hrlo : u + 3 ≤ r) (hrN : r ≤ N)
     {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
-    {ellp : ACLabel (goldilocksNode sp ro)} (hcp : tr.projAC.CallAt z c ellp)
+    {ellp : ACLabel (goldilocksNode sp)} (hcp : tr.projAC.CallAt z c ellp)
     (hcall : ellp.call = .proposal) (hti : tr.time c = sp.ts r)
     {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
     (hd : (AC.acProposal sp (tr.projAC.state z c) ellp.frame (tr.time c)).2 =

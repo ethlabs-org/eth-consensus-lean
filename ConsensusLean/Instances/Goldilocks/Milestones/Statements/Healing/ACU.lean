@@ -14,12 +14,12 @@ and the healthy base at a write mode `m` (`HealthyBaseU`). The lemmas about them
 
 namespace Consensus.Goldilocks.AC
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
+variable {FGP : Type} {sp : ACParams}
 
 /-- `HonestProposal` with the unlock given: `p`'s `ac_proposal` at `t_s`, at the locks `u k` of
 its call, returns a head `d` and the payload `pay`, and `p` passes `P` (on that head, with that
 payload) to its own `ac_on_block` at `t_s`. -/
-abbrev HonestProposalU (u : Nat → Set Lock) (tr : GTrace sp FGP ro) (p : Fin sp.n) (s : Nat)
+abbrev HonestProposalU (u : Nat → Set Lock) (tr : GTrace sp FGP) (p : Fin sp.n) (s : Nat)
     (P : Blk sp.n FGP) : Prop :=
   ∃ k ℓ d pay, tr.CallAt p k ℓ ∧ ℓ.call = .proposal ∧
     (acProposalWith sp (u k) (tr.state p k) ℓ.frame (tr.time k)).2 = some (d, pay) ∧
@@ -28,7 +28,7 @@ abbrev HonestProposalU (u : Nat → Set Lock) (tr : GTrace sp FGP ro) (p : Fin s
 
 /-- `Driven` with the unlock given: the honest proposals are `HonestProposalU`. -/
 structure DrivenU (u : Nat → Set Lock) (proposer : Nat → Fin sp.n)
-    (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) : Prop where
+    (tr : GTrace sp FGP) (H : Set (Fin sp.n)) : Prop where
   /-- (a) Blocks have their slot's proposer, a slot not in the future, and an earlier parent. -/
   blocks : ∀ y ∈ H, ∀ i B, tr.AcceptAt y i B → B.root ≠ sp.genesisRoot →
     B.proposer = proposer B.slot ∧ B.slot ≤ sp.slot (tr.time i) ∧
@@ -57,7 +57,7 @@ structure DrivenU (u : Nat → Set Lock) (proposer : Nat → Fin sp.n)
 
 /-- **`Healthy(g)` without its fault clause**: the message and acceptance-relay service and the
 awake honest validators of `HealthyAC`, verbatim; the faults are bounded separately. -/
-structure HealthyACCore (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
+structure HealthyACCore (tr : GTrace sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (g : Time) : Prop where
   message : ∀ x ∈ H, ∀ i m, tr.SendOrAdmit x i m →
     ∀ y ∈ H, ∀ j ℓ, tr.CallAt y j ℓ → tr.deadline y j (max (tr.time i) g) ≤ tr.time j →
@@ -70,7 +70,7 @@ structure HealthyACCore (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (B
 
 /-- `HealthyBase` with the writes of the mode `m` and the unlock given by the oracle `u`, and
 with the fault bound the cone uses, `f < n/2`, in place of `3f ≤ n − 1`. -/
-structure HealthyBaseU (m : WriteMode) (u : Nat → Set Lock) (tr : GTrace sp FGP ro)
+structure HealthyBaseU (m : WriteMode) (u : Nat → Set Lock) (tr : GTrace sp FGP)
     (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (proposer : Nat → Fin sp.n) (g : Time) :
     Prop where
   run : ACRunU m u proposer tr H U

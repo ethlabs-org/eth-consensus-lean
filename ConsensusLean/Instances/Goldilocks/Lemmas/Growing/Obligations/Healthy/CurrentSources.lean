@@ -38,8 +38,8 @@ namespace Consensus.Goldilocks.Obligations.Growing
 
 open AsChainShape Simulation Blocks Shape
 
-variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
+variable {sp : AC.ACParams}
+  {tr : GoldilocksTrace sp} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)} {g b : Time}
   {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
@@ -68,10 +68,10 @@ private theorem finalized_safe_read (D : RepairSchedule tr H proposer dg g b cm 
   have hnc := D.reset.noColl
   have hU := Compose.Growing.honest_blocks_coherent hrun hnc
   have fg : Consensus.Goldilocks.Growing.FGLocalRun
-      (goldilocksNode sp ro).genesisPayload H
+      (goldilocksNode sp).genesisPayload H
       (tr.HonestBlocksAt H) tr.projFG :=
     Compose.Growing.fg_projection _ _ _ _ _ _ _
-      (fun y => Compose.requirements_from _ _ (hrun.vstart y))
+      (fun y => Compose.requirements_from _ (hrun.vstart y))
       hrun.genesis_root_ok hrun.toLocalRun hnc
   have store_eq : ∀ {x : Fin sp.n} {m : Nat} {s : Time}, 0 ≤ s →
       (∀ k < m, tr.time k ≤ s) → x ∈ H s →

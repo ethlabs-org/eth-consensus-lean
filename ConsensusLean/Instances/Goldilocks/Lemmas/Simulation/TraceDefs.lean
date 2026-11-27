@@ -30,7 +30,7 @@ open AsChainShape
 
 open Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
 /-- A bound setup's committee is nonempty at every population with a validator: the population
 binding's committee is the population, a committee binding's by `VoteBinding.committeeSize_pos`. -/
@@ -53,14 +53,14 @@ theorem _root_.Consensus.Goldilocks.AsChainShape.Setup.committeeSize_pos (S : Se
 variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
   (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {binding : VoteBinding}
+variable {sp : ACParams} {binding : VoteBinding}
 
 /-- A canonical object contributes its group, then the rest from the handler's state. -/
 theorem deliverRecs_cons_some (io : VoteAuth sp.n binding) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) (o : Wire sp.n binding)
-    (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
-    (e : Event (goldilocksNode sp ro)) (he : canonEvent sp ro io hs o = some e) :
+    (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp)) (sub : Nat)
+    (e : Event (goldilocksNode sp)) (he : canonEvent sp io hs o = some e) :
     deliverRecs io proposer dg hs self t i (o :: os) st sub =
       groupRecs proposer dg self st t (Nat.pair i sub) e ++
         deliverRecs io proposer dg hs self t i os (exec proposer dg self st t e).1 (sub + 1) := by
@@ -70,20 +70,20 @@ theorem deliverRecs_cons_some (io : VoteAuth sp.n binding) (proposer : Nat → F
 theorem deliverRecs_cons_none (io : VoteAuth sp.n binding) (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (hs : List (Header Info × Nat)) (self : Fin sp.n) (t : Time) (i : Nat) (o : Wire sp.n binding)
-    (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
-    (he : canonEvent sp ro io hs o = none) :
+    (os : List (Wire sp.n binding)) (st : NodeState (goldilocksNode sp)) (sub : Nat)
+    (he : canonEvent sp io hs o = none) :
     deliverRecs io proposer dg hs self t i (o :: os) st sub =
       deliverRecs io proposer dg hs self t i os st (sub + 1) := by
   rw [deliverRecs_cons, he]
 
 /-- A cut of the own-admission groups is a cut of the `.attestation` group of one of the admitted
 attestations, under an event id `Nat.pair i s` with `sub ≤ s`. -/
-theorem mem_admitRecs {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+theorem mem_admitRecs {sp : ACParams}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
     (t : Time) (i : Nat) :
-    ∀ (as : List (FG.Att sp.n)) (st : NodeState (goldilocksNode sp ro)) (sub : Nat)
-      (r : CutRec sp ro), r ∈ admitRecs proposer dg self t i as st sub →
-      ∃ a ∈ as, ∃ (st' : NodeState (goldilocksNode sp ro)) (s : Nat), sub ≤ s ∧
+    ∀ (as : List (FG.Att sp.n)) (st : NodeState (goldilocksNode sp)) (sub : Nat)
+      (r : CutRec sp), r ∈ admitRecs proposer dg self t i as st sub →
+      ∃ a ∈ as, ∃ (st' : NodeState (goldilocksNode sp)) (s : Nat), sub ≤ s ∧
         r ∈ groupRecs proposer dg self st' t (Nat.pair i s) (.attestation a)
   | [], _, _, _, h => by rw [admitRecs_nil] at h; exact absurd h List.not_mem_nil
   | a :: as, st, sub, r, h => by
@@ -97,7 +97,7 @@ theorem mem_admitRecs {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 during the tick, one `.attestation` group each from its node after the tick (`postTick`), under
 the event ids `Nat.pair i 1`, `Nat.pair i 2`, …. -/
 noncomputable def tickTail (v : V) (i : Nat) (t : Time) :
-    List (CutRec (S.params (pubOf E) hn) (S.ro _)) :=
+    List (CutRec (S.params (pubOf E) hn)) :=
   admitRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) t i (admitsAt S rho hn v i)
     (postTick S rho hn v i t) 1
 
@@ -108,10 +108,10 @@ theorem tickTail_eq (v : V) (i : Nat) (t : Time) : tickTail S rho hn v i t =
 
 /-- A cut of a tick tail is a cut of the `.attestation` group of an attestation the engine admits
 to the node's pool during the tick, under the event id `Nat.pair i s`, `1 ≤ s`. -/
-theorem mem_tickTail (v : V) (i : Nat) (t : Time) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
+theorem mem_tickTail (v : V) (i : Nat) (t : Time) {r : CutRec (S.params (pubOf E) hn)}
     (h : r ∈ tickTail S rho hn v i t) :
     ∃ a ∈ admitsAt S rho hn v i,
-      ∃ (st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _))) (s : Nat), 1 ≤ s ∧
+      ∃ (st : NodeState (goldilocksNode (S.params (pubOf E) hn))) (s : Nat), 1 ≤ s ∧
         r ∈ groupRecs (runProposer S rho hn) (digestOf S rho) (rho.ownKey v) st t (Nat.pair i s)
           (.attestation a) := by
   rw [tickTail_eq] at h

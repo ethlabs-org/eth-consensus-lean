@@ -52,11 +52,8 @@ abbrev sp1 : ACParams where
 /-- The validator. -/
 abbrev v0 : Fin sp1.n := ⟨0, Nat.one_pos⟩
 
-/-- A replay order for restarts. -/
-noncomputable abbrev ro1 : ReplayOrder sp1 Unit := ReplayOrder.choice sp1
-
 /-- The Goldilocks AC with these parameters. -/
-noncomputable abbrev GA1 : ACInterface sp1.toParams Unit := goldilocksAC sp1 Unit ro1
+noncomputable abbrev GA1 : ACInterface sp1.toParams Unit := goldilocksAC sp1 Unit
 
 /-- Genesis: root `0`, no parent, slot `0`, empty payloads. -/
 def g : Blk sp1.n Unit := ⟨0, none, 0, v0, 0, (), ([], [])⟩
@@ -93,7 +90,7 @@ theorem proposal_at_slot_one :
 
 /-- The one-tick trace: validator `0` makes one `on_tick` call at time `0` with the genesis
 frame, then the AC stutters; the validator is always awake. -/
-noncomputable def oneTick : GTrace sp1 Unit ro1 where
+noncomputable def oneTick : GTrace sp1 Unit where
   init := fun _ => ACState.initial 0
   node := fun _ => v0
   time := fun _ => 0
@@ -141,16 +138,16 @@ slot-`m` vote extends `B`, the honest slot-`m` voters are at least half of the c
 in `y`'s viable voter block tree or at or below its `fc_root`, and every honest slot-`(m+1)` vote at
 an earlier cut extends `B`, then `e`'s vote extends `B`. -/
 def CaseOneA13 (sp : ACParams) : Prop :=
-  ∀ (FGP : Type) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP)) (ro : ReplayOrder sp FGP)
-    (tr : GTrace sp FGP ro),
-    ACLocalRun (goldilocksAC sp FGP ro) H U tr →
-    ∀ (m : Nat) (B : Blk sp.n FGP) (y : Fin sp.n) (i : Nat) (ℓ : ACLabel (goldilocksAC sp FGP ro))
+  ∀ (FGP : Type) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
+    (tr : GTrace sp FGP),
+    ACLocalRun (goldilocksAC sp FGP) H U tr →
+    ∀ (m : Nat) (B : Blk sp.n FGP) (y : Fin sp.n) (i : Nat) (ℓ : ACLabel (goldilocksAC sp FGP))
       (e : Em sp FGP), y ∈ H → tr.CallAt y i ℓ → e ∈ ℓ.emits → e.msg.slot = m + 1 →
     (∀ x ∈ H, ∀ j e', VoteAt tr x j e' → e'.msg.slot = m → VoteExtends U e'.msg B) →
     sp.n ≤ 2 * {x | x ∈ H ∧ ∃ j e', VoteAt tr x j e' ∧ e'.msg.slot = m}.ncard →
     CarryAt tr U y i e m {v | ∃ x ∈ H, ∃ j e', VoteAt tr x j e' ∧ e'.msg = v ∧ v.slot = m} →
     FaultBound tr H (tr.time i) →
-    SyncAC (goldilocksAC sp FGP ro) H U (sp.ts m) (tr.time i) tr →
+    SyncAC (goldilocksAC sp FGP) H U (sp.ts m) (tr.time i) tr →
     (B ∈ ℓ.frame.viableTree (voterBlockTree sp e.readPoint ℓ.frame (m + 1)) ∨
       ℓ.frame.Anc B ℓ.frame.fcRoot) →
     (∀ x ∈ H, ∀ j < i, ∀ e', VoteAt tr x j e' → e'.msg.slot = m + 1 → VoteExtends U e'.msg B) →
@@ -196,8 +193,8 @@ theorem acRun_one_tick : ACRun (fun _ => 0) oneTick Set.univ ({g} : Set (Blk sp1
 The numerical readpoint data are the source-time counterexample: admission at 4, a new
 source at 5, and recipient deadline 8. This checks the adapter on those reduced facts,
 not a replay of the engine execution supplying them. -/
-theorem earlier_admission_served {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
-    (tr : GTrace sp FGP ro) (y : Fin sp.n) (v : Vote sp.n) {q j : Nat}
+theorem earlier_admission_served {sp : ACParams} {FGP : Type}
+    (tr : GTrace sp FGP) (y : Fin sp.n) (v : Vote sp.n) {q j : Nat}
     (hqj : q ≤ j) (hp : v ∈ (tr.state y q).pool v.slot)
     (hst : (tr.state y q).voteStamp v = ETime.of 4)
     (hd : tr.deadline y j 5 = 8)

@@ -10,7 +10,7 @@ public section
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder)
+open AC (ACParams)
 open Consensus.Goldilocks.Generic
 
 variable {sp : ACParams}
@@ -196,7 +196,7 @@ private theorem outage_committee_count {A : NodeAC sp.toParams} {tr : RunTrace A
   exact outage_retained_count hanti hb htd (fun y hy hw => hjoin y _ hy ht0 hw)
     (le_min hdl (hdb.trans hbh)) (cm (sp.ts s)) h
 
-variable {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+variable {tr : GoldilocksTrace sp}
   {H : Time → Set (Fin sp.n)} {p : EnvPoint (Fin sp.n)}
 
 /-- The shifted outage family supplies the ordinary population and slot-committee bounds.
@@ -260,9 +260,9 @@ theorem outage_bounds {proposer : Nat → Fin sp.n}
 
 /-- Population bounds from precisely the local supplier's L9 participation premises. -/
 theorem outage_bounds_of_local
-    {fgHold : Time} {C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold}
+    {fgHold : Time} {C : ACCorrectLocal (goldilocksNode sp) (fun v => v.val) fgHold}
     {sign : Fin sp.n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hC : GoldilocksLocalData sp ro C sign G Rg) {cm : Time → Finset (Fin sp.n)}
+    {Rg : Nat} (hC : GoldilocksLocalData sp C sign G Rg) {cm : Time → Finset (Fin sp.n)}
     {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
     (hrun : C.run.Run cm proposer dg H tr) (hb : RunPointBinding tr H p)
     (hp : p.EtaSleepyOn C.θ C.outageEta (max C.catchUp (C.outageEta - 1))

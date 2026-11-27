@@ -108,13 +108,13 @@ theorem received_att_processAt
         rw [NodeAsChainShape.CanonicalTrace.receiverCodec_eq,
           NodeAsChainShape.CanonicalTrace.voteIOAt_eq]
         refine ⟨attObj (binding := S.vote) a, ?_,
-          canonEvent_attObj (sp := S.params (Model.pubOf E) hn) (ro := S.ro _) _ _ a hwf⟩
+          canonEvent_attObj (sp := S.params (Model.pubOf E) hn) _ _ a hwf⟩
         rw [NodeAsChainShape.CanonicalTrace.stateAt_eq]
         rw (config := { transparency := .default }) [NodeAsChainShape.CanonicalTrace.wireOf_eq]
         rw [stateAt_voteIO S rho hn, stateAt_eq] at hc
         exact (congrArg (attObj (binding := S.vote) a ∈ ·)
           (delivered_nodeAdapter_sign
-            (wireCodec (S.params (Model.pubOf E) hn) (S.ro _) S.vote (rho.voteIO v))
+            (wireCodec (S.params (Model.pubOf E) hn) S.vote (rho.voteIO v))
             (S.sign (Model.pubOf E)) (Model.digests rho.hash receipt)
             ((rho.stateBefore i v).st.1 hn) receipt)).mpr hc)
   simpa only [(simTrace_encoding S rho hn).1, (simTrace_encoding S rho hn).2] using ⟨k, hk, hp, ht⟩

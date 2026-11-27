@@ -16,14 +16,14 @@ right before it), so its target names an ancestor of the source
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder goldilocksAC Vote Payload)
+open AC (ACParams goldilocksAC Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))} {tr : GoldilocksTrace sp ro}
+variable {sp : ACParams} {tr : GoldilocksTrace sp}
   {H : Set (Fin sp.n)} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
   {proposer : Nat → Fin sp.n}
 
 /-- An honest signing is at a public time (it is a cut of a tick, C0.5 (c)). -/
-theorem sign_public {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem sign_public {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n} (hy : y ∈ H) {j : Nat}
     {C : AC.Blk sp.n (List (FG.Att sp.n))} {a : FG.Att sp.n}
     (hc : tr.CallAt y j (.fg (.attest C (some a)))) : sp.toParams.IsPublic (tr.time j) := by
@@ -31,7 +31,7 @@ theorem sign_public {ini : Fin sp.n → (goldilocksNode sp ro).State}
   have hm : Cut.fg (.attest C (some a)) ∈
       (Node.exec proposer dg y (tr.state y j₀) (tr.time j) e).2 :=
     List.mem_of_getElem? hk
-  obtain ⟨xt, he⟩ := @signed_only_in_ticks sp.toParams (goldilocksNode sp ro) proposer dg y
+  obtain ⟨xt, he⟩ := @signed_only_in_ticks sp.toParams (goldilocksNode sp) proposer dg y
     (tr.state y j₀) (tr.time j) e C a hm
   subst he
   exact hrun.tick_public y hy j₀ (tr.time j) ⟨xt, true, hg⟩
@@ -41,11 +41,11 @@ variable {ΔF : Time} {x : Fin sp.n} {i₀ s m : Nat} {B : AC.Blk sp.n (List (FG
 
 /-- At `t = t_{slot(t)} + Δ`, `ac_on_tick` of a joined node that has not voted in the slot
 casts a vote. -/
-theorem acOnTick_votes {FGP : Type} {ro' : ReplayOrder sp FGP} (self : Fin sp.n)
+theorem acOnTick_votes {FGP : Type} (self : Fin sp.n)
     (A : AC.ACState sp.n) (Φ : AC.Frm sp.n FGP) {t : Time} (hj : AC.joined sp A t)
     (hv : A.votedSlot ≠ sp.slot t) (hm : A.mayVote (sp.slot t) = true)
     (ht : t = sp.ts (sp.slot t) + sp.Δ) :
-    ((goldilocksAC sp FGP ro').step self A Φ t .tick).2 ≠ [] := by
+    ((goldilocksAC sp FGP).step self A Φ t .tick).2 ≠ [] := by
   change (AC.acOnTick sp self A Φ t).2 ≠ []
   unfold AC.acOnTick
   dsimp only

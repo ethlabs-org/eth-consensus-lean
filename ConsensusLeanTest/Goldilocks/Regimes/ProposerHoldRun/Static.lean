@@ -90,7 +90,7 @@ theorem rhoc_sleepyOn (c W : Time) : (rhoc S).point.SleepyOn (1 / 2) c W 0 41 :=
 variable (S) in
 /-- The node trace of the retained run. -/
 noncomputable abbrev tr : GoldilocksTrace
-    (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card) (S.ro _) :=
+    (({ S with vote := AsChainShape.stock } : Setup).params (pubOf env) one_le_card) :=
   simTrace { S with vote := stock } (rhoc S) one_le_card
 
 theorem rhoc_run : GoldilocksRun (runProposer { S with vote := stock } (rhoc S) one_le_card)

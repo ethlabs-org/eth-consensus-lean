@@ -18,11 +18,11 @@ of the run (`goldilocks_ac_projection`). -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- **Honest held votes do not equivocate per slot.** At an AC cut `j` of an honest node `y`, two
 votes of the same honest validator and the same slot among the votes held across the cut are
@@ -59,7 +59,7 @@ theorem heldVotes_honest_unique {ini} (hrun : GoldilocksRun proposer dg H tr ini
       obtain ⟨k₂, -, e₂, he₂, hm₂⟩ := hrun'.honest.pool_vote y hy (j + 1) _ w₂ hw₂ (hw₂v ▸ hvH)
       rw [hw₁v] at he₁
       rw [hw₂v] at he₂
-      have := (AC.one_vote_per_slotU sp _ ro H _ _ hr.toU _ hvH k₁ k₂ e₁ e₂ he₁ he₂
+      have := (AC.one_vote_per_slotU sp _ H _ _ hr.toU _ hvH k₁ k₂ e₁ e₂ he₁ he₂
         (by rw [hm₁, hm₂, hs₁, hs₂])).2
       exact hne (hm₁.symm.trans
         ((congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg) this).trans hm₂))
@@ -67,7 +67,7 @@ theorem heldVotes_honest_unique {ini} (hrun : GoldilocksRun proposer dg H tr ini
   obtain ⟨k', e', he', rfl⟩ := hem x' hx' (hval ▸ hxH)
   rw [hval] at he'
   exact congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg)
-    (AC.one_vote_per_slotU sp _ ro H _ _ hr.toU _ hxH k k' e e' he he' hs).2
+    (AC.one_vote_per_slotU sp _ H _ _ hr.toU _ hxH k k' e e' he he' hs).2
 
 end Consensus.Goldilocks.Compose
 

@@ -15,10 +15,10 @@ ancestry (`h_le_of_store_anc`, `Cut/Store`), ancestry below a held block is ance
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Vote Payload gbar)
+open AC (ACParams Vote Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
+variable {sp : ACParams}
+  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
   {proposer : Nat → Fin sp.n}
 
@@ -160,7 +160,7 @@ include hp
 
 /-- An actual AC frame is contained in its node's held tree. -/
 theorem frame_tree_subset {y : Fin sp.n} (hy : y ∈ H)
-    {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ℓ) :
+    {k : Nat} {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y k ℓ) :
     ℓ.frame.tree ⊆ (tr.state y k).fg.tree := by
   rw [Compose.frame_of_projAC hp.run hy hc]
   exact fun B hB => hB.1
@@ -214,7 +214,7 @@ end ResetPremisesUpTo
 
 /-- The frame of an honest AC call is inside the node's FG tree. -/
 theorem frame_tree_subset (hp : ResetPremises tr H K proposer dg g ΔF a) {y : Fin sp.n} (hy : y ∈ H)
-    {k : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y k ℓ) :
+    {k : Nat} {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y k ℓ) :
     ℓ.frame.tree ⊆ (tr.state y k).fg.tree :=
   (hp.toUpTo tr H (le_refl a)).frame_tree_subset hy hc
 

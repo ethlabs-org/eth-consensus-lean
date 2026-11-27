@@ -17,14 +17,14 @@ not equivocate there, and `AC.carried_supporterU` on the prefix through `y`'s vo
 
 namespace Consensus.Goldilocks.AC.Growing
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP}
-  {tr : GTrace sp FGP ro} {H : Time → Set (Fin sp.n)}
+variable {FGP : Type} {sp : ACParams}
+  {tr : GTrace sp FGP} {H : Time → Set (Fin sp.n)}
   {U : Set (Blk sp.n FGP)} {proposer : Nat → Fin sp.n}
 
 /-- **Carrying a fast count carries its supporters** to each ancestor `B` of the counted block. -/
 theorem carried_counted_supporters {ini} (hrun : ACRun proposer tr H U ini)
     {X y : Fin sp.n} {i₀ i s : Nat} (hX : X ∈ H (tr.time i₀)) (hy : y ∈ H (tr.time i))
-    {B C : Blk sp.n FGP} {ℓX ℓ : ACLabel (goldilocksAC sp FGP ro)} {e : Em sp FGP}
+    {B C : Blk sp.n FGP} {ℓX ℓ : ACLabel (goldilocksAC sp FGP)} {e : Em sp FGP}
     (hcX : tr.CallAt X i₀ ℓX) (hc : CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1)
     (hBC : Anc U B C)
     (hcarry : CarryAt tr U y i e s (fastCounted sp (tr.state X i₀) ℓX.frame s C))
@@ -101,7 +101,7 @@ theorem carried_counted_supporters {ini} (hrun : ACRun proposer tr H U ini)
       linarith
     rcases hacc Hv Relation.ReflTransGen.refl with hg | ⟨k, hk, ht⟩
     · exact Or.inl hg
-    · exact Or.inr ⟨k, (ACTrace.upTo_acceptAt (A := goldilocksAC sp FGP ro)).mpr
+    · exact Or.inr ⟨k, (ACTrace.upTo_acceptAt (A := goldilocksAC sp FGP)).mpr
         ⟨ht.le.trans hT.le, hk⟩, ht⟩
   refine carried_supporterU hry.toU hy hc' hs hCt hvs hheld
     ⟨Hv, hHv, hHvr, hvs ▸ hHds, hBC.trans hCHd, hacc'⟩ fun hq => ?_

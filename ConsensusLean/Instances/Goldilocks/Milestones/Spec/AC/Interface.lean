@@ -14,7 +14,7 @@ surface.
 the states reached from the initial state and frame by calls at nondecreasing
 times that obey the call law `CallOK`, inside one coherent set `U` (at a node, the accepted tree
 `Σ.T`, which only grows). That an honest node's AC states are reachable is claims C0.5. The
-restart replay is inside the restart call. Reachability is indexed by its start:
+restart stamping is inside the restart call. Reachability is indexed by its start:
 `ReachableAtFrom s₀` is the same from a given start state `s₀`, and `ReachableAt` is it at
 `A.initial`.
 

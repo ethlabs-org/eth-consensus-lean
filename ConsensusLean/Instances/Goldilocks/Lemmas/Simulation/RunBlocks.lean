@@ -17,7 +17,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote Payload declaredHeadVotes)
+open AC (ACParams Vote Payload declaredHeadVotes)
 
 variable {binding : VoteBinding}
 
@@ -31,7 +31,7 @@ omit [DecidableEq V] in
 root. -/
 theorem simTrace_genesis_root_ok :
     ((S.params (pubOf E) hn).toParams.genesisBlock
-      (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload).RootOk
+      (goldilocksNode (S.params (pubOf E) hn)).genesisPayload).RootOk
         (digestOf S rho) := by
   have hd : NodeAsChainShape.CanonicalTrace.digestOf (traceEncoding S hn) rho = digestOf S rho := by
     apply traceEncoding_induction S hn (fun e _ _ =>
@@ -49,12 +49,12 @@ ids is a `GroupAt` / `DeliverSeq` of the trace. -/
 
 section
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   (proposer : Nat → Fin sp.n)
   (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
 
 /-- A restart makes a cut (`ac_restart`). -/
-theorem exec_restart_ne_nil (st : NodeState (goldilocksNode sp ro)) (t : Time) :
+theorem exec_restart_ne_nil (st : NodeState (goldilocksNode sp)) (t : Time) :
     (exec proposer dg self st t .restart).2 ≠ [] := by
   simp [Node.exec, Node.restart]
 
@@ -66,8 +66,8 @@ private theorem state_of_group
     (proposer : Nat → Fin (S.params (pubOf E) hn).n)
     (dg : Digest (List (FG.Att (S.params (pubOf E) hn).n)) (Payload (S.params (pubOf E) hn).n))
     {y : Fin (S.params (pubOf E) hn).n} {j0 : Nat}
-    {st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _))} {t : Time} {id : Nat}
-    {e : Event (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
+    {st : NodeState (goldilocksNode (S.params (pubOf E) hn))} {t : Time} {id : Nat}
+    {e : Event (goldilocksNode (S.params (pubOf E) hn))}
     (hcut : ∀ k < (groupRecs proposer dg y st t id e).length,
       (allCuts S rho hn)[j0 + k]? = (groupRecs proposer dg y st t id e)[k]?)
     (h0 : (simTrace S rho hn).state y j0 = st) :
@@ -87,7 +87,7 @@ private theorem state_of_group
     List.take_length, foldl_cutPost_exec]
 
 /-- The event id of an existing cut is its record's. -/
-private theorem event_of_getElem? {k : Nat} {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
+private theorem event_of_getElem? {k : Nat} {r : CutRec (S.params (pubOf E) hn)}
     (hr : (allCuts S rho hn)[k]? = some r) : (simTrace S rho hn).event k = r.event := by
   rw [simTrace_event, hr]; rfl
 
@@ -114,8 +114,8 @@ theorem groupAt_of_group
     (proposer : Nat → Fin (S.params (pubOf E) hn).n)
     (dg : Digest (List (FG.Att (S.params (pubOf E) hn).n)) (Payload (S.params (pubOf E) hn).n))
     {y : Fin (S.params (pubOf E) hn).n} {j0 : Nat}
-    {st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _))} {t : Time} {id : Nat}
-    {e : Event (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
+    {st : NodeState (goldilocksNode (S.params (pubOf E) hn))} {t : Time} {id : Nat}
+    {e : Event (goldilocksNode (S.params (pubOf E) hn))}
     (hcut : ∀ k < (groupRecs proposer dg y st t id e).length,
       (allCuts S rho hn)[j0 + k]? = (groupRecs proposer dg y st t id e)[k]?)
     (h0 : (simTrace S rho hn).state y j0 = st) (hne : (exec proposer dg y st t e).2 ≠ [])
@@ -149,7 +149,7 @@ theorem deliverSeq_of_recs
     {y : Fin (S.params (pubOf E) hn).n} {t : Time} {i : Nat}
     (io : VoteAuth (S.params (pubOf E) hn).n S.vote)
     (hs : List (Header Info × Nat)) (os : List (Wire (S.params (pubOf E) hn).n S.vote)) :
-    ∀ (j0 sub : Nat) (st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _))),
+    ∀ (j0 sub : Nat) (st : NodeState (goldilocksNode (S.params (pubOf E) hn))),
     (∀ k < (deliverRecs io proposer dg hs y t i os st sub).length,
       (allCuts S rho hn)[j0 + k]? = (deliverRecs io proposer dg hs y t i os st sub)[k]?) →
     (simTrace S rho hn).state y j0 = st →
@@ -164,7 +164,7 @@ theorem deliverSeq_of_recs
     exact .nil j0
   | cons o os ih =>
     intro j0 sub st hcut h0 huniq
-    cases he : canonEvent (S.params (pubOf E) hn) (S.ro _) io hs o with
+    cases he : canonEvent (S.params (pubOf E) hn) io hs o with
     | none =>
       rw [deliverRecs_cons_none io _ _ _ _ _ _ _ _ _ _ he] at hcut huniq ⊢
       exact .drop he (ih j0 (sub + 1) st hcut h0 fun k s hk hs => huniq k s hk (by omega))

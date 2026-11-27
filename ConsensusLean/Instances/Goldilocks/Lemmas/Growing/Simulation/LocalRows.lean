@@ -24,10 +24,10 @@ variable {V : Type} [Fintype V] [DecidableEq V]
 theorem goldilocks_outageServiceSupply (S : Setup) (A : ContractAssumptions S) {E : Env V}
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn))
       (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G Rg)
+    {Rg : Nat} (hC : GoldilocksLocalData (S.params (pubOf E) hn) C sign G Rg)
     (hsg : (fun v => v.val) = (goldilocksRunMap S rho hn hv).signer) :
     OutageServiceSupply (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C) := by
   classical
@@ -56,10 +56,10 @@ theorem goldilocks_outageServiceSupply (S : Setup) (A : ContractAssumptions S) {
 theorem goldilocks_claimDeadlineFit (S : Setup) (A : ContractAssumptions S) {E : Env V}
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn))
       (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G Rg)
+    {Rg : Nat} (hC : GoldilocksLocalData (S.params (pubOf E) hn) C sign G Rg)
     (hsg : (fun v => v.val) = (goldilocksRunMap S rho hn hv).signer) :
     ClaimDeadlineFit (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C) := by
   have hdata : (hsg ▸ C).catchUp = 18 * E.ΔAC ∧ (hsg ▸ C).latency = 6 * E.ΔAC ∧
@@ -128,10 +128,10 @@ private theorem query_proposal_witness (S : Setup) (A : ContractAssumptions S)
 theorem goldilocks_proposalWitnessRefinement (S : Setup) (A : ContractAssumptions S) {E : Env V}
     (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
     (hv : rho.ExecutionValid)
-    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+    {fgHold : Time} (C : ACCorrectLocal (goldilocksNode (S.params (pubOf E) hn))
       (fun v => v.val) fgHold)
     {sign : Fin (S.params (pubOf E) hn).n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hC : GoldilocksLocalData (S.params (pubOf E) hn) (S.ro _) C sign G Rg)
+    {Rg : Nat} (hC : GoldilocksLocalData (S.params (pubOf E) hn) C sign G Rg)
     (hsg : (fun v => v.val) = (goldilocksRunMap S rho hn hv).signer) :
     ProposalWitnessRefinement (goldilocksRunMap S rho hn hv) (K S A) (hsg ▸ C) := by
   obtain ⟨hcatch, hmargin, hhold⟩ := Generic.ACCorrectLocal.cast_signer hsg C

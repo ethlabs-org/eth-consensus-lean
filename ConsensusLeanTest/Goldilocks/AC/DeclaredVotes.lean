@@ -7,7 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Common.Block
 /-! # Golden cases of declared head votes
 
 A slot-`s` block declares previous-slot head votes, with a support list (the Lean form of the
-support bits). A declaration is not a vote: block receipt and restart replay pool nothing, a
+support bits). A declaration is not a vote: block receipt and restart stamping pool nothing, a
 block carries no vote object, and a voter counts a declaration only when its pool holds the exact
 vote or two distinct votes of its validator (`ShouldCountDeclaredVote`). An early vote needs every
 declaration of every slot-`s` proposal counted (`voteReady`); at `t_s + Δ` the voter votes and
@@ -277,10 +277,10 @@ theorem message_admits : (admitVote sp3 (ACState.initial 0) 8 a).pool 1 = [a] :=
 
 /-- A restart admits no declaration, whatever the frame and the retained replay order:
 the pools are empty and nothing is emitted. -/
-theorem acRestart_pools_empty (ro : ReplayOrder sp3 Unit) (self : Fin sp3.n) (A : ACState sp3.n)
+theorem acRestart_pools_empty (self : Fin sp3.n) (A : ACState sp3.n)
     (Φ : Frm sp3.n Unit) :
-    (acRestart sp3 ro self A Φ 10).1.pool = (fun _ => []) ∧
-      (acRestart sp3 ro self A Φ 10).2 = [] := by
+    (acRestart sp3 self A Φ 10).1.pool = (fun _ => []) ∧
+      (acRestart sp3 self A Φ 10).2 = [] := by
   exact ⟨rfl, rfl⟩
 
 /-- A block's AC payload carries no vote object: only its attestations are carried (under the

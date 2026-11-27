@@ -32,18 +32,18 @@ between its events, ready at `t` (honest at `t`, every cut before `i` at a time 
 
 namespace Consensus.Goldilocks.Regimes.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 open Compose.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- Ready-reader safety of the confirmed output under growing faults, at the read points of
 times in `[t₀, t₁]` between the reader's events: each reader is ready at its read time (honest
 then, with every earlier cut at a time `≤ t`), and ancestry is read inside the blocks held while
 honest. -/
-structure ReadySafeOn (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+structure ReadySafeOn (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (c t₀ t₁ : Time) : Prop where
   /-- Agreement of the reads of two ready nodes. -/
   agree : ∀ y z i j t t', ReadPoint tr i t → ReadPoint tr j t' → Boundary tr y i →

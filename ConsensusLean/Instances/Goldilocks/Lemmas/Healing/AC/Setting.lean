@@ -32,13 +32,13 @@ namespace Consensus.Goldilocks.AC
 
 variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {g : Time} {proposer : Nat → Fin sp.n}
 
 /-- **The healthy premises** over an AC trace of the AC: the trace
 contract with the honest-object facts, a driven trace, `Healthy(g)` and `Catch(2Δ)` (no
 assumption on the frames). -/
-structure HealthyBase (tr : GTrace sp FGP ro) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
+structure HealthyBase (tr : GTrace sp FGP) (H : Set (Fin sp.n)) (U : Set (Blk sp.n FGP))
     (proposer : Nat → Fin sp.n) (g : Time) : Prop where
   run : ACRun proposer tr H U
   driven : Driven proposer tr H
@@ -52,7 +52,7 @@ remain conditional on actual awake witnesses, so they assert no activity beyond 
 run starts at `K`'s committee start (a node may vote exactly in its committees' slots), its pools
 and merged views hold committee votes (P, T), and fewer than half of each slot committee from `ḡ`
 through `b` is faulty. The stock committee is `CommitteeDict.full`. -/
-structure HealthyBaseUpTo (K : CommitteeDict sp.n) (tr : GTrace sp FGP ro) (H : Set (Fin sp.n))
+structure HealthyBaseUpTo (K : CommitteeDict sp.n) (tr : GTrace sp FGP) (H : Set (Fin sp.n))
     (U : Set (Blk sp.n FGP)) (proposer : Nat → Fin sp.n) (g b : Time) : Prop where
   run : ACRun proposer tr H U (committeeStart sp.genesisRoot K)
   driven : Driven proposer tr H
@@ -99,8 +99,8 @@ private theorem rt_blockReceipt (A : ACState sp.n) (t : Time) (B : Blk sp.n FGP)
 /-- A call other than a restart keeps `restart_time`. -/
 private theorem rt_step
     {L : Set Lock} (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (c : (goldilocksAC sp FGP ro).Call) (hc : c ≠ .restart) :
-    (stepWithM sp ro wm self L A Φ t c).1.restartTime = A.restartTime := by
+    (c : (goldilocksAC sp FGP).Call) (hc : c ≠ .restart) :
+    (stepWithM sp wm self L A Φ t c).1.restartTime = A.restartTime := by
   cases c with
   | tick =>
     change (acOnTickWithM sp wm self L A Φ t).1.restartTime = _
@@ -146,7 +146,7 @@ theorem restartTime_stateU
       have he := hr.exec i ℓ hℓ (hn.1 ▸ hy)
       rw [hn.1] at he
       have hpost : tr.post i =
-          (stepWithM sp ro wm y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
+          (stepWithM sp wm y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 := by
         rw [he]
       rw [hst, hpost]
       by_cases hrs : ℓ.call = .restart
@@ -154,7 +154,7 @@ theorem restartTime_stateU
         have hΦ := (frameIn_of_callAtU hr hy hc).1
         refine ⟨i, Nat.lt_succ_self i, ⟨ℓ, hc, hrs⟩, ?_⟩
         rw [hrs]
-        exact ((restart_state sp) FGP ro y (tr.state y i) ℓ.frame (tr.time i) hΦ
+        exact ((restart_state sp) FGP y (tr.state y i) ℓ.frame (tr.time i) hΦ
           (hr.time_nonneg i)).2.2.2.2.2.1
       · rw [rt_step (L := u i) y _ _ _ _ hrs]
         exact ih.imp_right fun ⟨k, hk, h⟩ => ⟨k, hk.trans (Nat.lt_succ_self i), h⟩
@@ -285,7 +285,7 @@ theorem joined_state {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
 
 /-- `Sync[a, b]` for every `a ≥ ḡ`. -/
 theorem syncAC {a : Time} (ha : gbar g ≤ a) (b : Time) :
-    SyncAC (goldilocksAC sp FGP ro) H U a b tr := by
+    SyncAC (goldilocksAC sp FGP) H U a b tr := by
   have hg : ∀ τ, a ≤ τ → g ≤ τ := fun τ h => (le_gbar g).trans (ha.trans h)
   refine ⟨fun x hx i m hm hai _ y hy j ℓ hc hdl => ?_,
     fun x hx i B hB hai _ y hy j ℓ hc hdl hF =>
@@ -319,7 +319,7 @@ theorem joined_state {y : Fin sp.n} (hy : y ∈ H) (i : Nat)
 
 /-- `Sync[a, b]` for every `a ≥ ḡ`. -/
 theorem syncAC {a : Time} (ha : gbar g ≤ a) (b : Time) :
-    SyncAC (goldilocksAC sp FGP ro) H U a b tr :=
+    SyncAC (goldilocksAC sp FGP) H U a b tr :=
   hS.toU.syncAC ha b
 
 end HealthyBase

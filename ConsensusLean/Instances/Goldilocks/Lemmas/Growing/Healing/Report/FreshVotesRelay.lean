@@ -16,22 +16,22 @@ Only the receiver's execution is retained through the receiving call.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 variable {hold : Time}
 
 /-- A block in an honest frame has a genuine earlier honest FG acceptance, or is genesis. -/
 theorem frame_block_acceptance_at {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {x : Fin sp.n} {q : Nat}
-    (hx : x ∈ H (tr.time q)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hx : x ∈ H (tr.time q)) {ell : ACLabel (goldilocksNode sp)}
     (hc : tr.projAC.CallAt x q ell) {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ ell.frame.tree) :
-    B = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload ∨
+    B = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload ∨
       ∃ k < q, x ∈ H (tr.time k) ∧ tr.AcceptAt x k B := by
   have hr := hrun.toLocalRun
   have hd := hr.time_nonneg q
@@ -52,7 +52,7 @@ theorem accepted_relay_before_at
     {x y : Fin sp.n} {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hx : x ∈ H (tr.time i)) (ha : tr.projAC.AcceptAt x i B)
     (hgi : gbar g ≤ tr.time i) (hy : y ∈ H (tr.time j))
-    {ell : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y j ell)
+    {ell : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y j ell)
     (hij : tr.time i + sp.Δ ≤ tr.time j)
     (hFB : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     ∃ k ≤ j, tr.projAC.AcceptAt y k B ∧ tr.time k < tr.time i + sp.Δ := by
@@ -81,7 +81,7 @@ private theorem relayed_accept_before_at {ini}
     {x y : Fin sp.n} {k j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hxk : x ∈ H (tr.time k)) (ha : tr.AcceptAt x k B) (hy : y ∈ H (tr.time j))
     (hnr : ∀ r ≤ j, tr.RestartAt y r → tr.time r ≤ gbar g)
-    {elly : ACLabel (goldilocksNode sp ro)} (hcy : tr.projAC.CallAt y j elly)
+    {elly : ACLabel (goldilocksNode sp)} (hcy : tr.projAC.CallAt y j elly)
     (hg : gbar g + 2 * sp.Δ ≤ tr.time j) (hkt : tr.time k + sp.Δ ≤ tr.time j)
     (hF : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B) :
     ∃ a < j, tr.AcceptAt y a B ∧ tr.time a < max (tr.time k + sp.Δ) (gbar g + 2 * sp.Δ) := by
@@ -112,7 +112,7 @@ theorem frame_relay_before_at {ini}
     (hcatch : CatchRun tr H g (2 * sp.Δ))
     {x y : Fin sp.n} {q j : Nat} (hx : x ∈ H (tr.time q)) (hy : y ∈ H (tr.time j))
     (hnr : ∀ r ≤ j, tr.RestartAt y r → tr.time r ≤ gbar g)
-    {ellx elly : ACLabel (goldilocksNode sp ro)}
+    {ellx elly : ACLabel (goldilocksNode sp)}
     (hcx : tr.projAC.CallAt x q ellx) (hcy : tr.projAC.CallAt y j elly)
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ellx.frame.tree)
     (hg : gbar g + 2 * sp.Δ ≤ tr.time j)

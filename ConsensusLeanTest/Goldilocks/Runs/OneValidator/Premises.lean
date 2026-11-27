@@ -67,11 +67,8 @@ abbrev sp1 : ACParams where
   c := 2
   two_le_c := le_rfl
 
-/-- A replay order (never used: nobody restarts). -/
-noncomputable abbrev ro1 : ReplayOrder sp1 (List (FG.Att sp1.n)) := ReplayOrder.choice sp1
-
 /-- The node: the Goldilocks AC with these parameters. -/
-noncomputable abbrev N1 : NodeAC sp1.toParams := goldilocksNode sp1 ro1
+noncomputable abbrev N1 : NodeAC sp1.toParams := goldilocksNode sp1
 
 instance (n : Nat) : Countable (FG.Att n) :=
   Function.Injective.countable (f := fun a : FG.Att n => (a.val, a.h, a.T, a.timeout, a.fin))
@@ -260,7 +257,7 @@ theorem tickRun_ownAdmission_wf (t : Nat) (a : FG.Att sp1.n)
 
 /-- **The one-validator tick run is a Goldilocks run.** -/
 theorem tickRun_goldilocksRun :
-    GoldilocksRun (sp := sp1) (ro := ro1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) where
+    GoldilocksRun (sp := sp1) (fun _ => v0) dg1 Set.univ (tickRun N1 dg1) where
   toLocalRun := tickRun_localRun rfl rfl _ tickRun_ownAdmission_wf
   genesis_root_ok := dg1_genesis
   vstart := fun _ => AC.voteStart_initial _
@@ -453,8 +450,8 @@ theorem tickRun_syncOn (W Wr : Time → Prop) (eff : Time → Time) (heff : ∀ 
 
 /-- The Goldilocks node's AC meets requirements 1–5. -/
 theorem n1_requirements : N1.Requirements :=
-  have h := AC.interface_requirements sp1 (List (FG.Att sp1.n)) ro1
-  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, AC.proposal_payload_valid sp1 _ ro1⟩
+  have h := AC.interface_requirements sp1 (List (FG.Att sp1.n))
+  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, AC.proposal_payload_valid sp1 _ ⟩
 
 /-- The validator never restarts, so its restart time stays `⊥`. -/
 theorem tickRun_restartTime : ∀ i, ((tickRun N1 dg1).state v0 i).ac.restartTime = ⊥
@@ -556,7 +553,7 @@ theorem tickRun_readyProposal (s : Nat) (hs : 1 ≤ s) :
     rw [hmid] at hσ
     obtain ⟨jx, hjx, ℓ, hcall, e, he, hem⟩ := tickRun_votes (8 * t + 1) σ x hσ
     have hcAC : (tickRun N1 dg1).projAC.CallAt v0 jx ℓ := Compose.projAC_callAt.2 hcall
-    have hrAC := (Compose.goldilocks_ac_projection sp1 ro1 dg1 Set.univ
+    have hrAC := (Compose.goldilocks_ac_projection sp1 dg1 Set.univ
       (tickRun N1 dg1) (fun _ => v0) hrun hnc).localRun
     obtain ⟨⟨Hd, hHdt, hHdr, -⟩, hjxt⟩ := Compose.cast_head_fcRoot hrAC
         (fun _ => AC.voteStart_initial _) (Set.mem_univ v0) ⟨hcAC, he⟩

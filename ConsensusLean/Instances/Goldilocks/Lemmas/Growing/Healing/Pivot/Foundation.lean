@@ -12,15 +12,15 @@ acceptance obligations survive the writer's later compromise.
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Vote)
+open AC (ACParams Vote)
 
-variable {sp : ACParams} {FGP : Type} {ro : ReplayOrder sp FGP}
+variable {sp : ACParams} {FGP : Type}
   {H : Time → Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)}
-  {T : AC.GTrace sp FGP ro}
+  {T : AC.GTrace sp FGP}
 
 /-- A raw writer supplies a counted head, with honesty charged at its actual acceptance. -/
 theorem raw_writer_relay_source_at (hcommittee : 0 < sp.committeeSize)
-    {ini} (hr : Consensus.Goldilocks.Growing.ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+    {ini} (hr : Consensus.Goldilocks.Growing.ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
     {x : Fin sp.n} {i s : Nat} (hx : x ∈ H (T.time i))
     {B C : AC.Blk sp.n FGP} {CV : Set (Vote sp.n)}

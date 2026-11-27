@@ -23,15 +23,15 @@ the payload of a proposal is the proposer's view of the previous slot's pool (`p
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n}
 
 section Run
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time}
+  {tr : GoldilocksTrace sp} {ΔF : Time}
 
 /-- **An honest node accepts its own proposal** (C0.3, under `NoColl`). -/
 theorem proposal_accepted {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr)
@@ -43,7 +43,7 @@ theorem proposal_accepted {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc
   · exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
   obtain ⟨cfg, hreach, hst, hstep⟩ := group_step h hp hg
   have hC03 := honest_block_accepted_from proposer dg p
-    (requirements_from sp ro (hrun.vstart p)) hrun.genesis_root_ok cfg _
+    (requirements_from sp (hrun.vstart p)) hrun.genesis_root_ok cfg _
     (tr.time (j + 2)) x fgDue hreach hstep hpr d pay (by rw [hst]; exact hdp)
   simp only [hst] at hC03
   have key : NoCollOn dg (insert P (tr.state p j).fg.tree) →

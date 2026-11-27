@@ -24,7 +24,7 @@ precedes the signing (`attestation_source`). `Frame` imports this module publicl
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
 /-! ### Chain geometry in one honest store -/
 
@@ -46,17 +46,17 @@ theorem step_J {gp : FG.FGParams} {σ σ' : FG.ChainState gp.n} {B : FG.FGBlock 
 
 end Store
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-! ### The FG projection of a run -/
 
 /-- The FG projection of a Goldilocks run is an FG local run inside the honest blocks. -/
 theorem projFG_localRun {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) :
-    FGLocalRun (goldilocksNode sp ro).genesisPayload H (tr.HonestBlocks H) tr.projFG :=
-  fg_projection_from (fun y _ => requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok
+    FGLocalRun (goldilocksNode sp).genesisPayload H (tr.HonestBlocks H) tr.projFG :=
+  fg_projection_from (fun y _ => requirements_from sp (hrun.vstart y)) hrun.genesis_root_ok
     hrun.toLocalRun hnc
 
 theorem store_eq {ini} (hrun : GoldilocksRun proposer dg H tr ini)
@@ -125,7 +125,7 @@ theorem honest_row_signed_before {ini} (hrun : GoldilocksRun proposer dg H tr in
 
 /-- `D` is an honest source naming the entry `T`: a block of an honest node's tree whose state
 has the entry `T`. -/
-def IsHonestSource (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+def IsHonestSource (tr : GoldilocksTrace sp) (H : Set (Fin sp.n))
     (D : AC.Blk sp.n (List (FG.Att sp.n))) (T : Nat) : Prop :=
   ∃ x ∈ H, ∃ k, D ∈ (tr.state x k).fg.tree ∧ ((tr.state x k).fg.σ D.root).Th = T
 
@@ -135,7 +135,7 @@ theorem isHonestSource_iff {D : AC.Blk sp.n (List (FG.Att sp.n))} {T : Nat} :
   Iff.rfl
 
 /-- Every honest attestation on a block of `y`'s tree before cut `i` has a source satisfying `G`. -/
-def HonestRowsSourced (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+def HonestRowsSourced (tr : GoldilocksTrace sp) (H : Set (Fin sp.n))
     (G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop) (y : Fin sp.n) (i : Nat) : Prop :=
   ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H → ∃ D, G D ∧ IsHonestSource tr H D a.T
 
@@ -150,7 +150,7 @@ theorem honestRowsSourced_iff {G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop} {y
 attestations the geometry reads at the crossing heights `≥ h₀`. An attestation may name a root
 the reader does not hold (a finality-pair attestation of a longer chain); the geometry never
 reads those. -/
-def RowsAbove (tr : GoldilocksTrace sp ro) (H : Set (Fin sp.n))
+def RowsAbove (tr : GoldilocksTrace sp) (H : Set (Fin sp.n))
     (G : AC.Blk sp.n (List (FG.Att sp.n)) → Prop) (y : Fin sp.n) (i h₀ : Nat) : Prop :=
   ∀ X ∈ (tr.state y i).fg.tree, ∀ a ∈ X.fgPayload, a.val ∈ H →
     (∃ E ∈ (tr.state y i).fg.tree, E.root = a.T) →

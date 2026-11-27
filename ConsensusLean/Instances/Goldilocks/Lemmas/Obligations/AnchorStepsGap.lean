@@ -15,7 +15,7 @@ at gap `c` are `anchorSteps_gap_at` (`Growing/Obligations/Healthy/AnchorStepsGap
 namespace Consensus.Goldilocks.Obligations
 open AsChainShape Simulation
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
 variable {sp : ACParams}
 

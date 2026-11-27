@@ -18,17 +18,17 @@ delivery, at signing and at `c_z`, even if other historical holders have since b
 
 namespace Consensus.Goldilocks.Healing.Growing.Outcome
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g : Time}
 
 /-- A high entry left by a held chain was named by an earlier signer honest at it and at `c_z`;
 the quorum budget is read at the later of the observation and `c_z`. The source origin's
 honesty is at its write and at `c_z`, not the reader's later observation. -/
 theorem left_entry_origin_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {y : Fin sp.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
@@ -106,7 +106,7 @@ of label `s` by the signer itself at a cut `r` before the signing: its high orig
 quarantine, or, after the drain, its own stored lock above its source report. The writer and the
 cut sharpen the member's label against later slots. -/
 theorem signed_row_lock_member_before_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {a b : Time} {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
     (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
@@ -218,7 +218,7 @@ theorem signed_row_lock_member_before_at
 
 /-- `signed_row_lock_member_before_at`, with the member read in the healed family. -/
 theorem signed_row_lock_member_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {a b : Time} {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
     (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
@@ -236,7 +236,7 @@ theorem signed_row_lock_member_at
 entry is below a member of the healed family written before the signing
 (`signed_row_lock_member_before_at`), of label at most the signing's slot. -/
 theorem signed_row_covered_before_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {a b : Time} {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
     (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
@@ -255,7 +255,7 @@ theorem signed_row_covered_before_at
 member of the healed family of label at most the signing's slot
 (`signed_row_covered_before_at`). -/
 theorem signed_row_covered_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {a b : Time} {v : Fin sp.n} {d : Nat} {att : FG.Att sp.n}
     (hvz : v ∈ H (max (cutZ sp.toParams g) (tr.time d))) (hs : tr.SignAt v d att)
@@ -270,7 +270,7 @@ theorem signed_row_covered_at
 attestation whose signer is honest at the observation and at `c_z`, and it is covered up to the
 slot of the observation time. -/
 theorem left_entry_covered_before_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {a b : Time} {y : Fin sp.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)
@@ -320,7 +320,7 @@ theorem left_entry_covered_before_at
 
 /-- `left_entry_covered_before_at`, with the cover read up to the label only. -/
 theorem left_entry_covered_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {a b : Time} {y : Fin sp.n} {k : Nat} {t : Time}
     (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t) (hy : y ∈ H t)

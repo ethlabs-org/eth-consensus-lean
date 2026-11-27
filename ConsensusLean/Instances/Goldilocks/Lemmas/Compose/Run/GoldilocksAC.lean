@@ -19,7 +19,7 @@ there is one. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload Vote ACState Blk Frm admitVote blockReceipt
+open AC (ACParams Payload Vote ACState Blk Frm admitVote blockReceipt
   tryVote optimisticConfirmation updateConfirmation acOnTick acProposal acToFG goldilocksAC)
 
 /-! ### The votes an AC call adds to the pools -/
@@ -116,10 +116,10 @@ theorem tryVote_emission_mem_pool (x : Fin sp.n) (A : ACState sp.n)
 
 /-- A call other than a restart adds to the pools only its message and its emissions (a block
 call admits none of its declared head votes). -/
-private theorem adds_step {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : ACState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP ro).Call) (hc : c ≠ .restart) :
-    Adds A ((goldilocksAC sp FGP ro).step self A Φ t c).1 (fun v => c = .message v ∨
-      ∃ e ∈ ((goldilocksAC sp FGP ro).step self A Φ t c).2, e.msg = v) := by
+private theorem adds_step (self : Fin sp.n) (A : ACState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP).Call) (hc : c ≠ .restart) :
+    Adds A ((goldilocksAC sp FGP).step self A Φ t c).1 (fun v => c = .message v ∨
+      ∃ e ∈ ((goldilocksAC sp FGP).step self A Φ t c).2, e.msg = v) := by
   cases c with
   | tick =>
     change Adds A (acOnTick sp self A Φ t).1
@@ -152,12 +152,12 @@ private theorem adds_step {ro : ReplayOrder sp FGP} (self : Fin sp.n) (A : ACSta
 
 /-- A fresh non-restart pool insertion is a message or an own emission (a block call admits
 no vote). This is the exact candidate set used by the forwarding queue. -/
-theorem step_pool_insertion_source {ro : ReplayOrder sp FGP} (self : Fin sp.n)
+theorem step_pool_insertion_source (self : Fin sp.n)
     (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time)
-    (c : (goldilocksAC sp FGP ro).Call) (hc : c ≠ .restart) (m : Vote sp.n)
+    (c : (goldilocksAC sp FGP).Call) (hc : c ≠ .restart) (m : Vote sp.n)
     (hold : m ∉ A.pool m.slot)
-    (hnew : m ∈ ((goldilocksAC sp FGP ro).step self A Φ t c).1.pool m.slot) :
-    c = .message m ∨ ∃ e ∈ ((goldilocksAC sp FGP ro).step self A Φ t c).2, e.msg = m :=
+    (hnew : m ∈ ((goldilocksAC sp FGP).step self A Φ t c).1.pool m.slot) :
+    c = .message m ∨ ∃ e ∈ ((goldilocksAC sp FGP).step self A Φ t c).2, e.msg = m :=
   (adds_step self A Φ t c hc m.slot m hnew).resolve_left hold
 
 end Adds
@@ -166,23 +166,23 @@ end Adds
 
 /-- The Goldilocks node's AC started at a start up to the vote permission meets the interface
 requirements 1–5 (A0.6, A0.9), at the states reachable from that start. -/
-theorem requirements_from (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+theorem requirements_from (sp : ACParams)
     {s₀ : AC.ACState sp.n} (h₀ : AC.VoteStart sp.genesisRoot s₀) :
-    ({ goldilocksNode sp ro with initial := s₀ } : NodeAC sp.toParams).Requirements :=
-  have h := AC.interface_requirements_from sp (List (FG.Att sp.n)) ro h₀
+    ({ goldilocksNode sp with initial := s₀ } : NodeAC sp.toParams).Requirements :=
+  have h := AC.interface_requirements_from sp (List (FG.Att sp.n)) h₀
   ⟨h.1, h.2.1, h.2.2.1, h.2.2.2, fun self U _ s Φ t₀ hr =>
     AC.proposal_payload_valid_from sp h₀.pool self U s Φ t₀ (ACInterface.reachableAtFrom_iff.2 hr)⟩
 
 /-- The Goldilocks node's AC meets the interface requirements 1–5 (A0.6, A0.9):
 `requirements_from` at the initial state. -/
-theorem requirements (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n))) :
-    (goldilocksNode sp ro).Requirements :=
-  requirements_from sp ro (s₀ := AC.ACState.initial sp.genesisRoot) (AC.voteStart_initial _)
+theorem requirements (sp : ACParams) :
+    (goldilocksNode sp).Requirements :=
+  requirements_from sp (s₀ := AC.ACState.initial sp.genesisRoot) (AC.voteStart_initial _)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- Every projected send/admission has precisely one of the forwarding supplier's
 sources: an emission, or a fresh message insertion. Restart replay is excluded. -/
@@ -196,7 +196,7 @@ theorem sendOrAdmit_forward_source (hrun : GoldilocksRun proposer dg H tr ini)
   · exact Or.inl ⟨ℓ, projAC_callAt.mp hc, he⟩
   · have hex := (hrun.cutLaw y hy k _ (projAC_callAt.mp hc)).2.1
     rw [← projAC_state hrun.toLocalRun hy] at hex
-    have ha := adds_step (ro := ro) y (tr.projAC.state y k) ℓ.frame (tr.time k) ℓ.call hnr
+    have ha := adds_step y (tr.projAC.state y k) ℓ.frame (tr.time k) ℓ.call hnr
     rw [hex] at ha
     have hold' : m ∉ (tr.projAC.state y k).pool m.slot := hold
     have hnew' : m ∈ (tr.post k).ac.pool m.slot := hnew
@@ -209,7 +209,7 @@ theorem sendOrAdmit_forward_source (hrun : GoldilocksRun proposer dg H tr ini)
 /-- The frame of an honest AC call is inside the node's tree. -/
 private theorem frame_tree (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H) {i : Nat}
-    {ℓ : ACLabel (goldilocksNode sp ro)} (hc : tr.projAC.CallAt y i ℓ)
+    {ℓ : ACLabel (goldilocksNode sp)} (hc : tr.projAC.CallAt y i ℓ)
     {B : Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ ℓ.frame.tree) :
     B ∈ (tr.state y i).fg.tree := by
   obtain ⟨hf, -⟩ := hrun.cutLaw y hy i _ (projAC_callAt.1 hc)
@@ -251,7 +251,7 @@ theorem emitted_slot_not_received (hrun : GoldilocksRun proposer dg H tr ini)
 
 private theorem message_vote (hrun : GoldilocksRun proposer dg H tr ini) {y : Fin sp.n}
     (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} {v : Vote sp.n}
+    {i : Nat} {ℓ : ACLabel (goldilocksNode sp)} {v : Vote sp.n}
     (hc : tr.projAC.CallAt y i ℓ) (hm : ℓ.call = .message v) (hval : v.val ∈ H) :
     ∃ j < i, ∃ e, AC.VoteAt tr.projAC v.val j e ∧ e.msg = v := by
   obtain ⟨j, hj, he⟩ := hrun.msg_unforgeable y hy i v ⟨ℓ, projAC_callAt.1 hc, hm⟩ hval
@@ -276,21 +276,21 @@ theorem pool_vote_emitted (hrun : GoldilocksRun proposer dg H tr ini)
       have hex := (hrun.cutLaw y hy k _ (projAC_callAt.mp hc)).2.1
       rw [← projAC_state hrun.toLocalRun hy] at hex
       by_cases hr : ℓ.call = .restart
-      · have hs := AC.restart_state sp _ ro y (tr.projAC.state y k) ℓ.frame
+      · have hs := AC.restart_state sp _ y (tr.projAC.state y k) ℓ.frame
           (tr.time k) hΦ (hrun.time_nonneg k)
-        have hp : (AC.acRestart sp ro y (tr.projAC.state y k) ℓ.frame (tr.time k)).1 =
+        have hp : (AC.acRestart sp y (tr.projAC.state y k) ℓ.frame (tr.time k)).1 =
             tr.projAC.post k := by
           simpa [hr, ACInterface.step, RunTrace.projAC] using congrArg Prod.fst hex
         rw [← hp, hs.2.2.2.2.2.2.2.1 σ] at hv
         exact absurd hv List.not_mem_nil
-      · have ha := adds_step (ro := ro) y (tr.projAC.state y k) ℓ.frame (tr.time k) ℓ.call hr
+      · have ha := adds_step y (tr.projAC.state y k) ℓ.frame (tr.time k) ℓ.call hr
         rw [hex] at ha
         rcases ha σ v hv with hv | hm | ⟨e, he, hev⟩
         · obtain ⟨j, hj, he⟩ := ih k hk hv
           exact ⟨j, hj.trans hk, he⟩
         · obtain ⟨j, hj, he⟩ := message_vote hrun hy hc hm hval
           exact ⟨j, hj.trans hk, he⟩
-        · have he' : e ∈ ((goldilocksAC sp _ ro).step y (tr.projAC.state y k)
+        · have he' : e ∈ ((goldilocksAC sp _).step y (tr.projAC.state y k)
               ℓ.frame (tr.time k) ℓ.call).2 := by rw [hex]; exact he
           have hs := AC.step_emission_signer y _ _ _ _ hΦ (hrun.time_nonneg k) he'
           have hvy : v.val = y := hev ▸ hs
@@ -310,7 +310,7 @@ theorem state_pool_cap (hrun : GoldilocksRun proposer dg H tr ini)
     · rw [tr.projAC.state_of_lastCall hc hk hn]
       have hex := (hrun.cutLaw y hy k _ (projAC_callAt.mp hc)).2.1
       rw [← projAC_state hrun.toLocalRun hy] at hex
-      have h := AC.step_pool_cap ro y (tr.projAC.state y k) ℓ.frame (tr.time k)
+      have h := AC.step_pool_cap y (tr.projAC.state y k) ℓ.frame (tr.time k)
         ℓ.call (ih k hk)
       rw [hex] at h
       exact h
@@ -358,7 +358,7 @@ theorem emitted_vote_mem_post (hrun : GoldilocksRun proposer dg H tr ini)
   have hv : tr.EmitAt y i e.msg := ⟨ℓ, hc, e, he, rfl⟩
   have hex := (hrun.cutLaw y hy i _ hc).2.1
   rw [← projAC_state hrun.toLocalRun hy] at hex
-  have hem : e ∈ ((goldilocksAC sp _ ro).step y (tr.projAC.state y i)
+  have hem : e ∈ ((goldilocksAC sp _).step y (tr.projAC.state y i)
       ℓ.frame (tr.time i) ℓ.call).2 := by rw [hex]; exact he
   have hcap := state_pool_cap hrun hy i
   have hf : ∀ m ∈ (tr.projAC.state y i).pool e.msg.slot, m.val ≠ y := by
@@ -369,7 +369,7 @@ theorem emitted_vote_mem_post (hrun : GoldilocksRun proposer dg H tr ini)
     emitted_slot_not_received hrun hy hy le_rfl hv hm hs
   have hΦ : FrameOK ℓ.frame := (hrun.cutLaw y hy i _ hc).1 ▸
     (Store.frame_realization _ _ _ _ (fg_reachable hrun.toLocalRun hy i)).1
-  have hgoal : e.msg ∈ ((goldilocksAC sp _ ro).step y (tr.projAC.state y i)
+  have hgoal : e.msg ∈ ((goldilocksAC sp _).step y (tr.projAC.state y i)
       ℓ.frame (tr.time i) ℓ.call).1.pool e.msg.slot := by
     cases hcall : ℓ.call with
     | tick =>
@@ -403,9 +403,9 @@ theorem emitted_vote_mem_post (hrun : GoldilocksRun proposer dg H tr ini)
     | toFG => simp [hcall, ACInterface.step] at hem
     | restart =>
       rw [hcall] at hem
-      have hn := (AC.restart_state sp _ ro y (tr.projAC.state y i) ℓ.frame (tr.time i) hΦ
+      have hn := (AC.restart_state sp _ y (tr.projAC.state y i) ℓ.frame (tr.time i) hΦ
         (hrun.time_nonneg i)).1
-      change e ∈ (AC.acRestart sp ro y _ ℓ.frame (tr.time i)).2 at hem
+      change e ∈ (AC.acRestart sp y _ ℓ.frame (tr.time i)).2 at hem
       rw [hn] at hem
       exact False.elim (List.not_mem_nil hem)
   rw [hex] at hgoal
@@ -414,7 +414,7 @@ theorem emitted_vote_mem_post (hrun : GoldilocksRun proposer dg H tr ini)
 /-- A block of an honest frame is genesis or was accepted by an honest node. -/
 private theorem frame_block_cases (hrun : GoldilocksRun proposer dg H tr ini)
     {B : Blk sp.n (List (FG.Att sp.n))} (hB : AC.HonestFrameBlock tr.projAC H B) :
-    B = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload ∨
+    B = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload ∨
       ∃ y ∈ H, ∃ k, tr.AcceptAt y k B := by
   obtain ⟨y, hy, i, ℓ, hc, hB⟩ := hB
   rcases tree_cases hrun.toLocalRun hy (frame_tree hrun hy hc hB) with h | ⟨k, -, hk⟩
@@ -475,7 +475,7 @@ theorem goldilocks_ac_projection_from (hrun : GoldilocksRun proposer dg H tr ini
 /-- **The honest-object facts of the Goldilocks run's AC projection**:
 `goldilocks_ac_projection_from` at the initial starts. -/
 theorem goldilocks_ac_projection : GoldilocksACProjection :=
-  fun _ _ _ _ _ _ hrun hnc =>
+  fun _ _ _ _ _ hrun hnc =>
     goldilocks_ac_projection_from hrun hnc
 
 end Consensus.Goldilocks.Compose

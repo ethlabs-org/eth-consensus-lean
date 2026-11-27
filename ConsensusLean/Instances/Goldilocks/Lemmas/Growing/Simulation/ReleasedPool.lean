@@ -41,8 +41,8 @@ variable {V : Type} [Fintype V] [DecidableEq V] {E : Env V} (S : Setup)
 omit [Fintype V] [DecidableEq V] in
 /-- Processing attestations keeps the pool and adds each processed attestation. -/
 private theorem mem_foldl_onAttestation {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {a : FG.Att sp.n} :
-    ∀ (l : List (FG.Att sp.n)) (n : NodeState (goldilocksNode sp ro)),
+    {a : FG.Att sp.n} :
+    ∀ (l : List (FG.Att sp.n)) (n : NodeState (goldilocksNode sp)),
       a ∈ l ∨ a ∈ n.fg.atts →
         a ∈ (l.foldl (fun n a => (Node.onAttestation n a).1) n).fg.atts
   | [], _, h => h.resolve_left List.not_mem_nil
@@ -164,7 +164,7 @@ private theorem held_mem_trailing (hv : rho.ExecutionValid) {i : Nat} {v : V} {t
     simp only [nodeTick_held, pollBatch_held, pollBatch_ticked, Bool.and_false,
       Bool.false_eq_true, ↓reduceIte]
     exact List.mem_append_left _ (List.mem_append_left _ ha)
-  have hP : ∀ (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop),
+  have hP : ∀ (Q : State (S.params (pubOf E) hn) S.vote → Prop),
       (∀ st o hs, Q st → Q (recordOwn st o hs)) → (∀ st s, Q st → Q (propose st s).1) →
       Q (shapeOf S hn (atProposal S rho v nd t)) →
       Q (shapeOf S hn (rho.runDuties v (atProposal S rho v nd t) Pr).1) := by
@@ -244,7 +244,7 @@ private theorem sign_mem_trailing (hv : rho.ExecutionValid) {i : Nat} {v : V} {s
         (if sg then (Node.tickStep (runProposer S rho hn) dg (rho.ownKey v)
           (Node.tickStep (runProposer S rho hn) dg (rho.ownKey v) n1 s X .proposal).1 s X
           .fgUpdate).2 else []) :=
-    onTick_cuts (sp := S.params (pubOf E) hn) (ro := S.ro _)
+    onTick_cuts (sp := S.params (pubOf E) hn)
       (runProposer S rho hn) dg (rho.ownKey v) _ s X sg
   have hc' : Cut.fg (.attest C (some a)) ∈ (exec (runProposer S rho hn) dg (rho.ownKey v)
       (shapeOf S hn nd).node s (.tick X sg)).2 := hc
@@ -252,7 +252,7 @@ private theorem sign_mem_trailing (hv : rho.ExecutionValid) {i : Nat} {v : V} {s
   have hprop : Cut.fg (.attest C (some a)) ∉
       (Node.tickStep (runProposer S rho hn) dg (rho.ownKey v) n1 s X .proposal).2 := by
     intro h
-    have hpb := tickStep_proposal_attBodies (sp := S.params (pubOf E) hn) (ro := S.ro _)
+    have hpb := tickStep_proposal_attBodies (sp := S.params (pubOf E) hn)
       (runProposer S rho hn) dg (rho.ownKey v) n1 s X
     have hat : Body.att (encodeAtt a) ∈ attBodies
         (Node.tickStep (runProposer S rho hn) dg (rho.ownKey v) n1 s X .proposal).2 := by
@@ -331,7 +331,7 @@ private theorem sign_mem_trailing (hv : rho.ExecutionValid) {i : Nat} {v : V} {s
 omit [DecidableEq V] in
 /-- No attestation body is an emitted vote. -/
 private theorem att_not_mem_emitted {io : VoteAuth (S.params (pubOf E) hn).n S.vote}
-    {cs : List (Cut (goldilocksNode (S.params (pubOf E) hn) (S.ro _)))} {w : WireAtt} :
+    {cs : List (Cut (goldilocksNode (S.params (pubOf E) hn)))} {w : WireAtt} :
     Body.att w ∉ emitted io cs := by
   intro h
   obtain ⟨c, -, hc⟩ := List.mem_flatMap.mp h
@@ -452,8 +452,8 @@ private theorem released_att_mem_pool (hv : rho.ExecutionValid) {i : Nat}
 omit [Fintype V] [DecidableEq V] in
 /-- An attestation in the pool after processing a list was in the pool before or in the list. -/
 private theorem mem_of_mem_foldl_onAttestation {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {a : FG.Att sp.n} :
-    ∀ (l : List (FG.Att sp.n)) (n : NodeState (goldilocksNode sp ro)),
+    {a : FG.Att sp.n} :
+    ∀ (l : List (FG.Att sp.n)) (n : NodeState (goldilocksNode sp)),
       a ∈ (l.foldl (fun n a => (Node.onAttestation n a).1) n).fg.atts → a ∈ n.fg.atts ∨ a ∈ l
   | [], _, h => Or.inl h
   | b :: l, n, h => by

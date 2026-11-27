@@ -16,7 +16,7 @@ of an honest node runs an FG handler; the fork-choice lemmas (`AC.anc_acHead`,
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 /-- The frame of an honest node before every cut is well formed. -/
 theorem frameOK_state {P : Params} {A : NodeAC P}

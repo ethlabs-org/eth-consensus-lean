@@ -44,7 +44,7 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder goldilocksAC Vote Payload)
+open AC (ACParams goldilocksAC Vote Payload)
 
 variable {P : Params} {A : NodeAC P}
 
@@ -54,9 +54,9 @@ latest restart is at or before `t − c − 1`, or there is none, and `t − t_{
 Times are from `0` (`t < 0` makes the awake interval empty, and no run law forces a node to be
 awake before `0`). -/
 def ReadyImpliesJoined : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+    (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n),
     GoldilocksRun proposer dg H tr → ∀ y ∈ H, ∀ (t c : Time), 0 ≤ t → 8 * sp.Δ ≤ c + 1 →
       (∀ u : Time, max 0 (t - c - 1) ≤ u → u ≤ t → tr.awake y u) →
       tr.awake y t ∧ tr.JoinedAt y t
@@ -67,9 +67,9 @@ Every non-genesis frame block's proposer is its slot's by the run's credential l
 one block per honest proposer and slot by the proposal schedule, honest votes by the
 run's unforgeability. -/
 def GoldilocksACProjection : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+    (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n),
     GoldilocksRun proposer dg H tr → NoCollRun dg tr →
       AC.ACRun proposer tr.projAC H (tr.HonestBlocks H)
 
@@ -78,9 +78,9 @@ by the run's restarts (`RunTrace.JoinedAt`) exactly when the AC's joined test on
 holds at every cut at `t` other than a restart (a restart cut sets `restart_time` only in its
 post-state), and the run's `h_t` and `f < h_t` are the AC projection's. -/
 def JoinedProjection : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+    (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n),
     GoldilocksRun proposer dg H tr → ∀ y ∈ H, ∀ t,
       (tr.JoinedAt y t ↔ AC.JoinedAt tr.projAC y t) ∧
       (∀ i, tr.IsCall y i → ¬ tr.RestartAt y i → tr.time i = t →

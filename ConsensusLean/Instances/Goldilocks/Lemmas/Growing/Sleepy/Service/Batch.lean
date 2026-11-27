@@ -21,17 +21,17 @@ voters `VotersAt s (t_s + 6Δ)` of the update's count):
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- The restarts of a node honest at its update of slot `s` (joined), up to the update, are at or
 before `t_s`. -/
 theorem update_restarts_at {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
-    {y : Fin sp.n} {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     (hy : y ∈ H (tr.time k₀)) (hu : AC.UpdateAt tr.projAC y k₀ s ℓ) :
     ∀ k ≤ k₀, tr.projAC.RestartAt y k → tr.time k ≤ sp.ts s := by
   intro k hk hrk
@@ -63,7 +63,7 @@ when every slot-`s` vote of a node honest at its vote names `P ∈ Φ`, every su
 validator still honest at the update is in the updater's pool, resolved before `t_s + 2Δ`. -/
 theorem honest_batch_at_update_from {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
-    {y : Fin sp.n} {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀))
+    {y : Fin sp.n} {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp)} (hy : y ∈ H (tr.time k₀))
     (hu : AC.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) (ha : a ≤ sp.ts s)
     (hκ : a + κ ≤ sp.ts s + 2 * sp.Δ)
     {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPt : P ∈ ℓ.frame.tree)
@@ -107,7 +107,7 @@ block held while honest) is above the update's `Σ.F`, is in the pool, resolved 
 theorem honest_vote_at_update_from {ini} (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {a κ b : Time} (hsync : SleepyServiceFrom tr H ΔF a κ b)
     {y : Fin sp.n}
-    {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp ro)} (hy : y ∈ H (tr.time k₀))
+    {k₀ s : Nat} {ℓ : ACLabel (goldilocksNode sp)} (hy : y ∈ H (tr.time k₀))
     (hu : AC.UpdateAt tr.projAC y k₀ s ℓ) (hb : tr.time k₀ ≤ b) (ha : a ≤ sp.ts s)
     (hκ : a + κ ≤ sp.ts s + 2 * sp.Δ)
     {Q : AC.Blk sp.n (List (FG.Att sp.n))} (hQU : Q ∈ tr.HonestBlocksAt H)

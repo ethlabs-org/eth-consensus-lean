@@ -15,11 +15,11 @@ restart and block-stamp laws; the growing service supplies the cross-node relay.
 
 namespace Consensus.Goldilocks.Healing.Growing.KernelProof
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- A historical acceptance before `t_s + 2Δ` reaches every later-slot honest vote's freeze. -/
@@ -29,7 +29,7 @@ theorem relay_mem_voterBlockTree_at
     {w y : Fin sp.n} {kw i s : Nat} {W : AC.Blk sp.n (List (FG.Att sp.n))}
     (hw : w ∈ H (tr.time kw)) (hkw : tr.projAC.AcceptAt w kw W)
     (hg : g ≤ tr.time kw) (hkwt : tr.time kw < sp.ts s + 2 * sp.Δ)
-    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    (hy : y ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hc : AC.CastAt tr.projAC y i ell e)
     (hs : s + 1 ≤ e.msg.slot) (hF : Anc (tr.HonestBlocksAt H) ell.frame.F W) :
     W ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot := by
@@ -53,7 +53,7 @@ theorem relay_mem_voterBlockTree_at
       rw [AC.restartTime_of_castAtU hr.toU hy hc']
       exact hyj
     intro k hk hrk
-    have := ((AC.joined_awakeU sp) _ ro _ _ _ hr.toU y hy i ell hc'.1 hj').2 k hk
+    have := ((AC.joined_awakeU sp) _ _ _ _ hr.toU y hy i ell hc'.1 hj').2 k hk
       (ACTrace.upTo_restartAt.mpr ⟨hm hk, hrk⟩)
     change tr.time k ≤ sp.ts ((sp.slot (tr.time i) : Int) - 1) at this
     rwa [← hys] at this

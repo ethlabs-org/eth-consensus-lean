@@ -22,11 +22,11 @@ nodes honest at them, at times `≤ t`; the latest view's committee count is cha
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- The committee majority at a read cut `m` of the prefix through `t`: with every vote of the
 latest view's slot `L` of a node honest at it extending `R`, the slot-`L` committee's fault bound

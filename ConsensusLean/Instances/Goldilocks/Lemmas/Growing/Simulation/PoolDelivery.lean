@@ -20,12 +20,12 @@ the joined updater's read. No honesty of the voter after its cast is used.
 
 namespace Consensus.Goldilocks.Simulation
 
-open AC (ACParams ReplayOrder)
+open AC (ACParams)
 
 private theorem pool_evidence_at_update {sp : ACParams} {FGP : Type}
-    {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)}
-    {tr : AC.GTrace sp FGP ro} {ini : Fin sp.n → AC.ACState sp.n}
-    (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr ini)
+    {H : Set (Fin sp.n)} {U : Set (AC.Blk sp.n FGP)}
+    {tr : AC.GTrace sp FGP} {ini : Fin sp.n → AC.ACState sp.n}
+    (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U tr ini)
     {w : Fin sp.n} (hw : w ∈ H) {c m : Nat} {ℓ}
     (hu : AC.UpdateAt tr w c m ℓ) {k : Nat} {v : AC.Vote sp.n}
     (hkc : k ≤ c) (hlo : sp.ts m ≤ tr.time k)
@@ -54,10 +54,10 @@ private theorem pool_evidence_at_update {sp : ACParams} {FGP : Type}
   exact AC.backed_mono (P := {u | u ∈ (tr.state w (k + 1)).pool m})
     (Q := {u | u ∈ (tr.state w c).pool m}) (fun _ hu => hm hu) h
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 private theorem pool_evidence_at_update_at (hr : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)

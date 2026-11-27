@@ -24,7 +24,7 @@ theorem simTraceAt_vote_released (hv : rho.ExecutionValid) :
   intro y k m _ hc
   obtain ⟨ℓ, hcall, em, hem, rfl⟩ := hc
   obtain ⟨-, hstep, -, -⟩ := simTraceAt_cutLaw S rho hn hv y k (.ac ℓ) hcall
-  have hgate := AC.emits_mayVote (S.ro _) y _ ℓ.frame _ ℓ.call em (by rw [hstep]; exact hem)
+  have hgate := AC.emits_mayVote y _ ℓ.frame _ ℓ.call em (by rw [hstep]; exact hem)
   rw [simTraceAt_mayVote S rho hn hv y k] at hgate
   rw [simTraceAt_eq] at hcall ⊢
   apply emit_released_of S rho hn hv

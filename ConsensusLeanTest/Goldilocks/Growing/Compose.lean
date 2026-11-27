@@ -36,11 +36,11 @@ end Consensus.Goldilocks.Compose.Growing.Test
 
 namespace Consensus.Goldilocks.Regimes.Growing.Test
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- A Goldilocks run over the fixed honest set `H` is a growing-fault run at `fun _ => H`. -/
 theorem goldilocksRun_const (h : Consensus.Goldilocks.GoldilocksRun proposer dg H tr) :
@@ -64,13 +64,13 @@ theorem outputsNested_const (hrun : Consensus.Goldilocks.GoldilocksRun proposer 
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     (tr.state y i).fg.Anc (tr.finalizedAt y i) (tr.confirmedAt y i) ∧
       (tr.state y i).fg.Anc (tr.confirmedAt y i) (tr.headAt y i) :=
-  always_statements.outputsNested sp ro dg _ tr proposer (goldilocksRun_const hrun) y i hy
+  always_statements.outputsNested sp dg _ tr proposer (goldilocksRun_const hrun) y i hy
 
 /-- R.8 `finalMonotone` over a fixed honest set, from the growing row. -/
 theorem finalizedMonotone_const (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H tr)
     {y : Fin sp.n} (hy : y ∈ H) {i j : Nat} (hij : i ≤ j) :
     (tr.state y j).fg.Anc (tr.finalizedAt y i) (tr.finalizedAt y j) :=
-  always_statements.finalizedMonotone sp ro dg _ tr proposer (goldilocksRun_const hrun) y i j hij
+  always_statements.finalizedMonotone sp dg _ tr proposer (goldilocksRun_const hrun) y i j hij
     hy
 
 /-- R.8 `outputValid` over a fixed honest set, from the growing row. -/
@@ -78,7 +78,7 @@ theorem outputsValid_const (hrun : Consensus.Goldilocks.GoldilocksRun proposer d
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     ValidOutput tr proposer dg y i (tr.finalizedAt y i) ∧
       ValidOutput tr proposer dg y i (tr.confirmedAt y i) :=
-  always_statements.outputsValid sp ro dg _ tr proposer (goldilocksRun_const hrun) y i hy
+  always_statements.outputsValid sp dg _ tr proposer (goldilocksRun_const hrun) y i hy
 
 /-- R.7 `finalAccountable` over a fixed honest set, from the growing row. -/
 theorem finalAccountable_const (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H tr)
@@ -88,14 +88,14 @@ theorem finalAccountable_const (hrun : Consensus.Goldilocks.GoldilocksRun propos
       ∃ S : Finset (Fin sp.n), 2 * sp.toParams.q - sp.n ≤ S.card ∧
         ∀ v ∈ S, ∃ a ∈ ChainAtts tr y i X₁ ∪ ChainAtts tr z j X₂,
           ∃ b ∈ ChainAtts tr y i X₁ ∪ ChainAtts tr z j X₂, a.val = v ∧ FG.slashable a b :=
-  always_statements.finalAccountable sp ro dg _ tr proposer (goldilocksRun_const hrun) hnc
+  always_statements.finalAccountable sp dg _ tr proposer (goldilocksRun_const hrun) hnc
     y z i j hy hz fun h => hne (compatible_of_const h)
 
 /-- R.7 `nonFraming` over a fixed honest set, from the growing row. -/
 theorem nonFraming_const (hrun : Consensus.Goldilocks.GoldilocksRun proposer dg H tr)
     {v : Fin sp.n} (hv : v ∈ H) {k k' : Nat} {a b : FG.Att sp.n} (ha : tr.SignAt v k a)
     (hb : tr.SignAt v k' b) : ¬ FG.slashable a b :=
-  always_statements.nonFraming sp ro dg _ tr proposer (goldilocksRun_const hrun) v k k' a b
+  always_statements.nonFraming sp dg _ tr proposer (goldilocksRun_const hrun) v k k' a b
     ha hb hv
 
 /-- R.7 `finalized_safe_below_third` over a fixed honest set, from the growing row. -/
@@ -103,7 +103,7 @@ theorem finalizedSafe_const (hrun : Consensus.Goldilocks.GoldilocksRun proposer 
     (hnc : Compose.NoCollRun dg tr) (hf : Hᶜ.ncard < 2 * sp.toParams.q - sp.n)
     {y z : Fin sp.n} (hy : y ∈ H) (hz : z ∈ H) (i j : Nat) :
     Compatible (tr.HonestBlocks H) (tr.finalizedAt y i) (tr.finalizedAt z j) :=
-  compatible_of_const (always_statements.finalizedSafe sp ro dg _ tr proposer
+  compatible_of_const (always_statements.finalizedSafe sp dg _ tr proposer
     (goldilocksRun_const hrun) hnc y z i j hy hz hf)
 
 end Consensus.Goldilocks.Regimes.Growing.Test

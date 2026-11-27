@@ -18,11 +18,11 @@ crossing supplier of the proposer's fork-choice root and height floor
 
 namespace Consensus.Goldilocks.Healing.Growing.ResetPremisesUpTo
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- A high proposer entry is below a pre-slot high origin, or covered up to the proposal slot.
@@ -30,7 +30,7 @@ The bounded cover retains the member's healed floors and its label for later S2 
 theorem proposal_entry_below_old_or_covered_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts u)
     (hib : tr.time i ≤ b) {E C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hE : E ∈ (tr.state p i).fg.tree) (hET : ((tr.state p i).fg.σ E.root).Th = E.root)
@@ -75,7 +75,7 @@ same-slot optimistic write is excluded by the proposal (`proposal_no_optimistic_
 private theorem lock_label_lt_at_proposal_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts u)
     (hib : tr.time i ≤ b) {v : Fin sp.n} {r l : Nat} {D : AC.Blk sp.n (List (FG.Att sp.n))}
     (hri : r < i) (hv : v ∈ H (tr.time r)) (hcz : cutZ sp.toParams g ≤ sp.ts l)
@@ -121,7 +121,7 @@ by its write time, or, for a same-slot optimistic write, by the proposal itself.
 theorem proposal_entry_below_old_or_healed_at
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hp : ResetPremisesUpTo tr H proposer dg g ΔF a b cm βK hold)
-    {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp ro)}
+    {p : Fin sp.n} {i u : Nat} (hpH : p ∈ H (tr.time i)) {ell : ACLabel (goldilocksNode sp)}
     (hci : tr.projAC.CallAt p i ell) (hcall : ell.call = .proposal) (hti : tr.time i = sp.ts u)
     (hib : tr.time i ≤ b) {E C : AC.Blk sp.n (List (FG.Att sp.n))}
     (hE : E ∈ (tr.state p i).fg.tree) (hET : ((tr.state p i).fg.σ E.root).Th = E.root)

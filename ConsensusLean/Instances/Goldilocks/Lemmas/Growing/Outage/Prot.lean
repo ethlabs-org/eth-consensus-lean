@@ -33,11 +33,11 @@ at `k` and `k + 1` are the run's.
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- A held honest vote across an AC cut was cast by its validator. -/
 private theorem held_vote_cast {ini} (hrun : GoldilocksRun proposer dg H tr ini)
@@ -64,7 +64,7 @@ private theorem held_vote_cast {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     obtain ⟨k', -, e', he', rfl⟩ := hrun'.honest.pool_vote y hy (j + 1) _ x' hx' (hx'v ▸ hvH)
     rw [hx'v, ← hxv] at he'
     exact absurd (congrArg (fun e : AC.Em sp (List (FG.Att sp.n)) => e.msg)
-      (AC.one_vote_per_slotU sp _ ro H _ _ hr.toU _ (hxv ▸ hvH) k k' e e' he he'
+      (AC.one_vote_per_slotU sp _ H _ _ hr.toU _ (hxv ▸ hvH) k k' e e' he he'
         (hxs.trans hx's.symm)).2) hne
 
 /-- **`unlock` keeps `B` against the honest votes outside `W`**: at an AC cut `j` of an honest
@@ -87,7 +87,7 @@ theorem unlockKeeps_of_voteCompat {ini} (hrun : GoldilocksRun proposer dg H tr i
   have hU := hr.coherent
   obtain ⟨hfr, hst, -, -⟩ := hrun.cutLaw y hy j _ hcall
   rw [hfr] at hst
-  have hA' : ((AC.goldilocksAC sp (List (FG.Att sp.n)) ro).step y (tr.state y j).ac
+  have hA' : ((AC.goldilocksAC sp (List (FG.Att sp.n))).step y (tr.state y j).ac
       (Node.frame (tr.state y j)) (tr.time j) ℓ.call).1 = (tr.state y (j + 1)).ac := by
     rw [tr.state_succ_of_call hcall, hst]
   have hpool : ∀ m τ, ∀ v ∈ (tr.state y m).ac.pool τ, v.slot = τ := fun m τ v hv => by
@@ -145,12 +145,12 @@ end Consensus.Goldilocks.Compose
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {d : Time}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {d : Time}
+  {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- A vote compatibility of a vote cast in the prefix by a node honest at `d`, with a block of the
 prefix's honest blocks, comes down into the prefix. -/

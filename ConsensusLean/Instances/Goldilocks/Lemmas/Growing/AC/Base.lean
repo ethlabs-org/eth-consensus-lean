@@ -14,34 +14,34 @@ the indicated cut. No assertion is made about that node after compromise.
 namespace Consensus.Goldilocks.AC.Growing
 
 theorem joined_awake (sp : ACParams) : JoinedAwake sp := by
-  intro FGP ro H U tr hr y i ℓ hy hc hj
+  intro FGP H U tr hr y i ℓ hy hc hj
   have hm := hr.time_mono
   have hpost : (tr.upTo (tr.time i)).post i = tr.post i := by
     rw [Trace.upTo_post]
-  obtain ⟨ha, hb⟩ := AC.joined_awake sp FGP ro (H (tr.time i)) U
+  obtain ⟨ha, hb⟩ := AC.joined_awake sp FGP (H (tr.time i)) U
     (tr.upTo (tr.time i)) (hr.upTo (hr.time_nonneg i)) y hy i ℓ
     ((Trace.upTo_callAt tr).mpr ⟨le_rfl, hc⟩) (hpost.symm ▸ hj)
   exact ⟨fun u hu hi => (ha u hu hi).1, fun j hji hj => hb j hji
-    ((ACTrace.upTo_restartAt (A := goldilocksAC sp FGP ro)).mpr ⟨hm hji, hj⟩)⟩
+    ((ACTrace.upTo_restartAt (A := goldilocksAC sp FGP)).mpr ⟨hm hji, hj⟩)⟩
 
 theorem joined_keeps_votes (sp : ACParams) : JoinedKeepsVotes sp := by
-  intro FGP ro H U tr hr y i ℓ hy hc hj j hji hjr σ x hx
+  intro FGP H U tr hr y i ℓ hy hc hj j hji hjr σ x hx
   have hm := hr.time_mono
   have hpost : (tr.upTo (tr.time i)).post i = tr.post i := by
     rw [Trace.upTo_post]
   have hs : (tr.upTo (tr.time i)).state y j = tr.state y j :=
     Trace.upTo_state tr y fun _ hk => hm (hk.le.trans hji)
-  exact AC.joined_keeps_votes sp FGP ro (H (tr.time i)) U
+  exact AC.joined_keeps_votes sp FGP (H (tr.time i)) U
     (tr.upTo (tr.time i)) (hr.upTo (hr.time_nonneg i)) y hy i ℓ
     ((Trace.upTo_callAt tr).mpr ⟨le_rfl, hc⟩) (hpost.symm ▸ hj) j hji
-    ((ACTrace.upTo_restartAt (A := goldilocksAC sp FGP ro)).mpr ⟨hm hji, hjr⟩)
+    ((ACTrace.upTo_restartAt (A := goldilocksAC sp FGP)).mpr ⟨hm hji, hjr⟩)
     σ x (hs.symm ▸ hx)
 
 theorem one_vote_per_slot (sp : ACParams) : OneVotePerSlot sp := by
-  intro FGP ro H U tr hr y i j e e' hy hv hv' he
+  intro FGP H U tr hr y i j e e' hy hv hv' he
   have hd : 0 ≤ max (tr.time i) (tr.time j) :=
     (hr.time_nonneg i).trans (le_max_left _ _)
-  exact AC.one_vote_per_slot sp FGP ro (H (max (tr.time i) (tr.time j))) U
+  exact AC.one_vote_per_slot sp FGP (H (max (tr.time i) (tr.time j))) U
     (tr.upTo (max (tr.time i) (tr.time j))) (hr.upTo hd) y hy i j e e'
     (upTo_voteAt.mpr ⟨le_max_left _ _, hv⟩)
     (upTo_voteAt.mpr ⟨le_max_right _ _, hv'⟩) he

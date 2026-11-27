@@ -22,12 +22,12 @@ existing reports into rows. -/
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 /-- **Row supply within `D`**, with signers honest a hold `E` later, through the horizon `b`. -/
-structure RowSupplyWithin (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+structure RowSupplyWithin (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (g b D E : Time) : Prop where
   supply : ∀ {T : AC.Blk sp.n (List (FG.Att sp.n))} {y : Fin sp.n} {m : Nat} {t : Time},
     0 ≤ t → (∀ q < m, tr.time q ≤ t) → y ∈ H t → T ∈ (tr.state y m).fg.tree →
@@ -46,7 +46,7 @@ structure RowSupplyWithin (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp
 namespace ResetPremisesUpTo
 
 variable {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp} {g ΔF a b : Time}
 variable {hold : Time}
 
 /-- Actual same-height reports supply exact rows within any nonnegative delay. The quorum is

@@ -32,9 +32,9 @@ private theorem honest_zero (hv : rho.ExecutionValid) {y : Fin (Fintype.card V)}
 own-role vote permission installed by the binding (`simTrace_init`). For the population
 binding it is the default start. -/
 noncomputable abbrev simIni :
-    Fin (Fintype.card V) → (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).State :=
+    Fin (Fintype.card V) → (goldilocksNode (S.params (pubOf E) hn)).State :=
   fun y => S.vote.installVote (fun r => decide (y ∈ rho.sel r))
-    (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).initial
+    (goldilocksNode (S.params (pubOf E) hn)).initial
 
 omit [DecidableEq V] in
 /-- `simIni` changes only the own-role vote permission (`VoteBinding.installVote`): it is a start
@@ -60,7 +60,7 @@ theorem simIni_eq_committeeStart (hv : rho.ExecutionValid) {K : AC.CommitteeDict
     rw [show (simIni S rho hn y).mayVote s = _ from congrFun h0 s]
     simp
   refine (S.vote.installVote_eq_mayVote _ _).trans ?_
-  change { (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).initial with
+  change { (goldilocksNode (S.params (pubOf E) hn)).initial with
     mayVote := (simIni S rho hn y).mayVote } = _
   rw [hm]
   rfl

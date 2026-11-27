@@ -26,14 +26,14 @@ node's run, so `S` is in the tree at `c`, and the frame there holds every tree b
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF : Time}
 
 /-- **The held seed through `b ≥ T`**: the seed's high origin `S` is in the frame of every honest
 call at a time in `[t_{r−k−3}, b]` whose `Σ.F` it extends. Up to `T` this is the seed's bounded
@@ -44,7 +44,7 @@ theorem seed_held_through_at (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hseed : HandoverCore tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK)) {b : Time}
       (hTb : T ≤ b) :
     ∃ x i j B, Healing.Growing.HighOrigin tr H g x i j B ∧ tr.time i ≤ b ∧
-      ∀ y c (ell : ACLabel (goldilocksNode sp ro)), y ∈ H (tr.time c) →
+      ∀ y c (ell : ACLabel (goldilocksNode sp)), y ∈ H (tr.time c) →
         tr.projAC.CallAt y c ell → sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c → tr.time c ≤ b →
         Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree := by
   obtain ⟨x, i, j, B, hB, hiT, hheld⟩ := hseed.seedHeld

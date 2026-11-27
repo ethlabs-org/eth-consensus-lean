@@ -63,15 +63,15 @@ else its finalized block `Σ.F`.
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 variable {hold : Time}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
-  {ini : Fin sp.n → (goldilocksNode sp ro).State} {g ΔF : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
+  {ini : Fin sp.n → (goldilocksNode sp).State} {g ΔF : Time}
 
 /-- **The record cover from `t₁` through `b`**: the effective record of a reader honest at a read
 point `t ∈ [t₁, b]` is its `Σ.F`, or below a result or optimistic selection of label `≥ rO`
@@ -103,7 +103,7 @@ written before the read is a member of the family. -/
 theorem effective_record_on_healed_chain_at {rL rO : Nat} {t₁ b : Time}
     (hinv : SeededInvariant tr H g rL rO t₁ b) {y : Fin sp.n} {n : Nat} {t : Time}
     (ht₁ : t₁ ≤ t) (htb : t ≤ b) (hy : y ∈ H t) (hrp : Regimes.ReadPoint tr n t)
-    (hcall : ∃ c < n, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
+    (hcall : ∃ c < n, ∃ ell : ACLabel (goldilocksNode sp), tr.projAC.CallAt y c ell ∧
       sp.ts (rL - sp.k - 3 : Nat) ≤ tr.time c) :
     OnHealedChain tr H g rL rO
       ((AC.lookup (Node.frame (tr.state y n)) (tr.state y n).ac.latestConfirmed).getD
@@ -122,10 +122,10 @@ theorem seeded_records_compatible_at (hrun : Growing.GoldilocksRun proposer dg H
     (hnc : NoCollRun dg tr) {rL rO : Nat} {t₁ b : Time}
     (hinv : SeededInvariant tr H g rL rO t₁ b) {y z : Fin sp.n} {i j : Nat} {t t' : Time}
     (ht₁ : t₁ ≤ t) (htb : t ≤ b) (hy : y ∈ H t) (hi : Regimes.ReadPoint tr i t)
-    (hci : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
+    (hci : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp), tr.projAC.CallAt y c ell ∧
       sp.ts (rL - sp.k - 3 : Nat) ≤ tr.time c)
     (ht₁' : t₁ ≤ t') (htb' : t' ≤ b) (hz : z ∈ H t') (hj : Regimes.ReadPoint tr j t')
-    (hcj : ∃ c < j, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt z c ell ∧
+    (hcj : ∃ c < j, ∃ ell : ACLabel (goldilocksNode sp), tr.projAC.CallAt z c ell ∧
       sp.ts (rL - sp.k - 3 : Nat) ≤ tr.time c) :
     Compatible (tr.HonestBlocksAt H)
       ((AC.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
@@ -179,7 +179,7 @@ theorem seeded_effective_record_mono_at (hrun : Growing.GoldilocksRun proposer d
     (hdt : sp.ts (rO + 1 : Nat) ≤ t₀) {y : Fin sp.n} {i j : Nat} {t t' : Time}
     (hi : Regimes.ReadPoint tr i t) (hj : Regimes.ReadPoint tr j t') (hij : i ≤ j)
     (htt : t ≤ t') (ht₀ : t₀ ≤ t) (ht'b : t' ≤ b) (hy : y ∈ H t) (hy' : y ∈ H t')
-    (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
+    (hcall : ∃ c < i, ∃ ell : ACLabel (goldilocksNode sp), tr.projAC.CallAt y c ell ∧
       sp.ts (rL - sp.k - 3 : Nat) ≤ tr.time c) :
     Anc (tr.HonestBlocksAt H)
       ((AC.lookup (Node.frame (tr.state y i)) (tr.state y i).ac.latestConfirmed).getD
@@ -453,7 +453,7 @@ theorem seeded_ready_read_record_at (hrun : Growing.GoldilocksRun proposer dg H 
       apply hRf
       have htree := Store.accepted_tree _ _ _ _
         (Healing.Growing.fg_reachable_at hrun ht0 hrp.1 hy)
-      have heq : R = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
+      have heq : R = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload :=
         htree.2.1.1 hRm.1 htree.2.2.1 hgen
       have hRF : Anc (tr.HonestBlocksAt H) R (tr.state y j).fg.F := by
         rw [heq]
@@ -504,7 +504,7 @@ theorem seeded_ready_read_record_at (hrun : Growing.GoldilocksRun proposer dg H 
         ((AC.ts_le_iff_le_slot sp (hrun.time_nonneg q) _).2 le_rfl)
     have hcand : ∀ m, q ≤ m → m ≤ j → (Node.frame (tr.state y m)).AncestorCandidate R := by
       intro m hqm hmj
-      have hcm : ∃ c < m, ∃ ell : ACLabel (goldilocksNode sp ro), tr.projAC.CallAt y c ell ∧
+      have hcm : ∃ c < m, ∃ ell : ACLabel (goldilocksNode sp), tr.projAC.CallAt y c ell ∧
           sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c := by
         rcases hmj.lt_or_eq with hmj' | rfl
         · exact seeded_reader_called_at hrun hseed.toHandoverCore (hrun.antitone (hrp.1 m hmj') hy)

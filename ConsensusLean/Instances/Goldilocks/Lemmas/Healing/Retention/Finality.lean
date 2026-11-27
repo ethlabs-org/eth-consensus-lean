@@ -19,7 +19,7 @@ the justified height), so a store's `Σ.F ⪯ Σ.J` is finalized at a height `�
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
 namespace Store
 
@@ -263,10 +263,10 @@ theorem accepted_replay_finalized_cached {P : Params} {ACP : Type} {acp₀ : ACP
   rw [htree, ← hF] at hc
   exact hc.mono sub
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
+variable {sp : ACParams}
+  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
-  {proposer : Nat → Fin sp.n} {ini : Fin sp.n → (goldilocksNode sp ro).State}
+  {proposer : Nat → Fin sp.n} {ini : Fin sp.n → (goldilocksNode sp).State}
 
 /-- **G1.2 over the run** (claims G1.2, G1.3, G0.5). A block `F` finalized by
 the state of a held `X` in an honest store is an ancestor of every honest block `W` whose state
@@ -283,7 +283,7 @@ theorem finalized_anc_of_height_lt_of_run (hrun : GoldilocksRun proposer dg H tr
     (hlt : ((tr.state y k).fg.σ X.root).hF < ((tr.state z m).fg.σ W.root).h) :
     Anc (tr.HonestBlocks H) F W := by
   have hfg := Compose.fg_projection_from
-    (fun y _ => Compose.requirements_from sp ro (hrun.vstart y))
+    (fun y _ => Compose.requirements_from sp (hrun.vstart y))
     hrun.genesis_root_ok hrun.toLocalRun hnc
   have hst : ∀ {w : Fin sp.n}, w ∈ H → ∀ i, tr.projFG.store w i = (tr.state w i).fg :=
     fun hw i => by simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hw i]
@@ -315,13 +315,13 @@ theorem low_finalized_below_high_block_of_run (hrun : GoldilocksRun proposer dg 
   have hcoh : Coherent (tr.state y m).fg.tree := hU.mono hsub
   have hg := Store.genesis_mem hreach
   have hgB : Anc (tr.HonestBlocks H)
-      (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) B :=
+      (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload) B :=
     ((Goldilocks.Store.accepted_tree _ _ _ _
       (Compose.fg_reachable hrun.toLocalRun hx i)).2.2.2 B hBt).mono
         (fun X hX => (⟨x, hx, i, hX⟩ : X ∈ tr.HonestBlocks H))
   obtain ⟨hFm, hJm, hFJ, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, -, ⟨Bf, hBf, hBfF⟩⟩ :=
     Goldilocks.Store.cache_invariants _ _ _ _ hreach
-  have hgF : (tr.state y m).fg.Anc (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload)
+  have hgF : (tr.state y m).fg.Anc (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload)
       (tr.state y m).fg.F := (Goldilocks.Store.accepted_tree _ _ _ _ hreach).2.2.2 _ hFm
   -- a genesis `Σ.F` is below `B`
   have hgen : (tr.state y m).fg.F.root = sp.toParams.genesisRoot →
@@ -390,7 +390,7 @@ private theorem finalized_below_floor_held (hrun : GoldilocksRun proposer dg H t
       simp only [Goldilocks.Store.headHeightFloor, ite_eq_right hcon] at hheight
       omega
   have hfg := Compose.fg_projection_from
-    (fun y _ => Compose.requirements_from sp ro (hrun.vstart y))
+    (fun y _ => Compose.requirements_from sp (hrun.vstart y))
     hrun.genesis_root_ok hrun.toLocalRun hnc
   have hst : ∀ {v : Fin sp.n}, v ∈ H → ∀ j, tr.projFG.store v j = (tr.state v j).fg :=
     fun hv j => by simp only [FGTrace.store, Compose.projFG_state hrun.toLocalRun hv j]

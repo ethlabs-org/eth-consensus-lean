@@ -23,7 +23,7 @@ block (entry constancy, `entry_root_eq`). -/
 
 namespace Consensus.Goldilocks.Healing
 
-open AC (ACParams ReplayOrder Vote Payload gbar)
+open AC (ACParams Vote Payload gbar)
 
 /-- Two self-entries at the same height below one held carrier are the same block. -/
 theorem self_entries_eq {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
@@ -112,8 +112,8 @@ theorem chain_pairs_entry {P : Params} {ACP : Type} {acp₀ : ACP} {st : Store P
         exact ⟨Z, hZ, hZY.tail hYW, hZr, hZh, hZT⟩
       · exact ⟨E, hE, hEY.tail hYW, hEr, hEh, hET'⟩
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {tr : GoldilocksTrace sp ro} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
+variable {sp : ACParams}
+  {tr : GoldilocksTrace sp} {K : AC.CommitteeDict sp.n} {H : Set (Fin sp.n)}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {g ΔF a : Time}
   {proposer : Nat → Fin sp.n}
 
@@ -124,7 +124,7 @@ private theorem tree_subset_honest {y : Fin sp.n} (hy : y ∈ H) {k : Nat} :
 which only an `fg_attest` that signs changes): a target or timeout entry `r` at `h` was the height
 pair `(h, r)` of an attestation the node signed earlier, a lock entry `r` at `h` its finality
 pair `(h, r)`. -/
-theorem client_record_origin_of_run {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem client_record_origin_of_run {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H)
     (h r : Nat) : ∀ i,
@@ -144,7 +144,7 @@ private theorem client_record_origin (hp : ResetPremises tr H K proposer dg g Δ
   client_record_origin_of_run hp.run hy h r i
 
 /-- An honest record changes only when the node signs, by recording the signed attestation. -/
-theorem record_step_of_run {ini : Fin sp.n → (goldilocksNode sp ro).State}
+theorem record_step_of_run {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) (i : Nat) :
     (tr.state y (i + 1)).record = (tr.state y i).record ∨

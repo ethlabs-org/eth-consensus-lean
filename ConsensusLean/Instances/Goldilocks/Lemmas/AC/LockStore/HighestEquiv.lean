@@ -8,7 +8,8 @@ public section
 
 /-! # The highest-live-lock and fast-expiry rules agree with the previous rules on lawful runs
 
-The old handlers use the old reads and expiry rule at each site.
+The old handlers use the old reads and expiry rule at each site. Restart is held fixed
+to the production bulk stamp on both sides, so the comparison concerns the lock and expiry rules.
 The relational run uses the same unlock choices on both sides. The stock run makes those
 choices itself; its unlock sees identical inputs on both sides. `LockInv` carries the live
 lock chain across frame advances and between reads within a call. `LocksWF` supplies the
@@ -144,47 +145,36 @@ noncomputable def toFG (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
   if ¬ joined sp A t then (A, none)
   else (A, source A Φ t)
 
-private noncomputable def restart (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) : ACState sp.n × List (Em sp FGP) :=
-  let A' : ACState sp.n := { ACState.initial sp.genesisRoot with
-    locks := A.locks, latestConfirmed := A.latestConfirmed, restartTime := (t : WithBot Time)
-    mayVote := A.mayVote }
-  (ro.order t Φ).foldl (fun acc B =>
-    let A₁ := optimistic (blockReceipt sp acc.1 t B) Φ t
-    let r := tryVote self
-      (unlock sp A₁.locks Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp A₁ Φ (sp.slot t))) A₁ Φ t
-    (r.1, acc.2 ++ r.2)) (A', [])
-
-noncomputable def input {ro : ReplayOrder sp FGP} (A : ACState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) : (goldilocksAC sp FGP ro).Call → ACState sp.n
+noncomputable def input (A : ACState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) : (goldilocksAC sp FGP).Call → ACState sp.n
   | .message v => optimistic (admitVote sp A t v) Φ t
   | .block B => optimistic (blockReceipt sp A t B) Φ t
   | _ => A
 
-noncomputable def view {ro : ReplayOrder sp FGP} (A : ACState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) (c : (goldilocksAC sp FGP ro).Call) : View sp.n :=
+noncomputable def view (A : ACState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) (c : (goldilocksAC sp FGP).Call) : View sp.n :=
   match c with
   | .proposal => View.ofLists (voteViewList A Φ ((sp.slot t : Int) - 1) ⊤)
   | _ => mergedVoteView sp (input A Φ t c) Φ (sp.slot t)
 
-noncomputable def unlockFor {ro : ReplayOrder sp FGP} (A : ACState sp.n) (Φ : Frm sp.n FGP)
-    (t : Time) (c : (goldilocksAC sp FGP ro).Call) : Set Lock :=
+noncomputable def unlockFor (A : ACState sp.n) (Φ : Frm sp.n FGP)
+    (t : Time) (c : (goldilocksAC sp FGP).Call) : Set Lock :=
   unlock sp (input A Φ t c).locks Φ t ((sp.slot t : Int) - 1) (view A Φ t c)
 
-noncomputable def stepWith (ro : ReplayOrder sp FGP) (m : WriteMode) (self : Fin sp.n)
+noncomputable def stepWith (m : WriteMode) (self : Fin sp.n)
     (L : Set Lock) (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
-    (goldilocksAC sp FGP ro).Call → ACState sp.n × List (Em sp FGP)
+    (goldilocksAC sp FGP).Call → ACState sp.n × List (Em sp FGP)
   | .tick => tick m self L A Φ t
   | .proposal => ((proposal L A Φ t).1, [])
   | .toFG => ((toFG A Φ t).1, [])
   | .message v => tryVote self L (optimistic (admitVote sp A t v) Φ t) Φ t
   | .block B => tryVote self L (optimistic (blockReceipt sp A t B) Φ t) Φ t
-  | .restart => restart ro self A Φ t
+  | .restart => acRestart sp self A Φ t
 
-noncomputable def step (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP ro).Call) :
+noncomputable def step (self : Fin sp.n) (A : ACState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) (c : (goldilocksAC sp FGP).Call) :
     ACState sp.n × List (Em sp FGP) :=
-  stepWith ro (WriteMode.parent sp) self (unlockFor A Φ t c) A Φ t c
+  stepWith (WriteMode.parent sp) self (unlockFor A Φ t c) A Φ t c
 
 theorem conflicts_iff {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
     (hU : Coherent U) (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U) (h : LockInv U A Φ)
@@ -354,36 +344,8 @@ private theorem tick_eq_inv (m : WriteMode) {A : ACState sp.n} {L : Set Lock} (h
       update_inv hU hΦ hΦU m hir _ _⟩
   · exact ⟨rfl, hir⟩
 
-omit hU hΦ hΦU in
-private theorem restart_eq (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
-    (Φ : Frm sp.n FGP) (hf : FrameOK Φ) {t : Time} (ht : 0 ≤ t) :
-    restart ro self A Φ t = acRestart sp ro self A Φ t := by
-  rw [acRestart_eq_stamp sp ro self A Φ t hf ht,
-    ← restartReplay_eq_stamp sp ro self A Φ t hf ht]
-  have key (l : List (Blk sp.n FGP)) (acc : ACState sp.n × List (Em sp FGP))
-      (hr : acc.1.restartTime = (t : WithBot Time)) :
-      l.foldl (fun acc B =>
-        let A₁ := optimistic (blockReceipt sp acc.1 t B) Φ t
-        let r := tryVote self
-          (unlock sp A₁.locks Φ t ((sp.slot t : Int) - 1) (mergedVoteView sp A₁ Φ (sp.slot t)))
-          A₁ Φ t
-        (r.1, acc.2 ++ r.2)) acc =
-      l.foldl (fun acc B =>
-        let r := acOnBlock sp self acc.1 Φ t B
-        (r.1, acc.2 ++ r.2)) acc := by
-    induction l generalizing acc with
-    | nil => rfl
-    | cons B l ih =>
-      have hnj : ¬ joined sp (blockReceipt sp acc.1 t B) t := not_joined_of_restartTime sp ht hr
-      simp only [List.foldl_cons, acOnBlock, optimistic, select, optimisticConfirmation,
-        optimisticSelect, hnj, not_false_eq_true, true_or, ite_true, tryVote, AC.tryVote]
-      exact ih _ hr
-  rw [restartReplay_eq]
-  unfold restart
-  exact key _ _ rfl
-
-private theorem input_eq_inv {ro : ReplayOrder sp FGP} {A : ACState sp.n} (h : LockInv U A Φ)
-    (hw : LocksWF sp A.locks) (t : Time) (c : (goldilocksAC sp FGP ro).Call) :
+private theorem input_eq_inv {A : ACState sp.n} (h : LockInv U A Φ)
+    (hw : LocksWF sp A.locks) (t : Time) (c : (goldilocksAC sp FGP).Call) :
     input A Φ t c = callInput sp A Φ t c ∧ LockInv U (callInput sp A Φ t c) Φ ∧
       LocksWF sp (callInput sp A Φ t c).locks := by
   cases c with
@@ -399,35 +361,35 @@ private theorem input_eq_inv {ro : ReplayOrder sp FGP} {A : ACState sp.n} (h : L
       LocksWF.optimisticConfirmation (A := blockReceipt sp A t B) hw Φ t⟩
   | _ => exact ⟨rfl, h, hw⟩
 
-theorem view_eq {ro : ReplayOrder sp FGP} {A : ACState sp.n} (h : LockInv U A Φ)
-    (hw : LocksWF sp A.locks) (t : Time) (c : (goldilocksAC sp FGP ro).Call) :
+theorem view_eq {A : ACState sp.n} (h : LockInv U A Φ)
+    (hw : LocksWF sp A.locks) (t : Time) (c : (goldilocksAC sp FGP).Call) :
     view A Φ t c = callView sp A Φ t c := by
   have he := (input_eq_inv hU hΦ hΦU h hw t c).1
   cases c <;> first | rfl | exact congrArg (fun S => mergedVoteView sp S Φ (sp.slot t)) he
 
-private theorem unlockFor_eq {ro : ReplayOrder sp FGP} {A : ACState sp.n} (h : LockInv U A Φ)
-    (hw : LocksWF sp A.locks) (t : Time) (c : (goldilocksAC sp FGP ro).Call) :
+private theorem unlockFor_eq {A : ACState sp.n} (h : LockInv U A Φ)
+    (hw : LocksWF sp A.locks) (t : Time) (c : (goldilocksAC sp FGP).Call) :
     unlockFor A Φ t c = parentUnlock sp A Φ t c := by
   unfold unlockFor parentUnlock
   rw [(input_eq_inv hU hΦ hΦU h hw t c).1, view_eq hU hΦ hΦU h hw t c]
 
 omit hU hΦU in
 /-- The proposal result includes the duty head and payload, not just the state in `step`. -/
-theorem stockProposal_eq {ro : ReplayOrder sp FGP} {A : ACState sp.n}
-    (t : Time) : proposal (unlockFor A Φ t (.proposal : (goldilocksAC sp FGP ro).Call)) A Φ t =
+theorem stockProposal_eq {A : ACState sp.n}
+    (t : Time) : proposal (unlockFor A Φ t (.proposal : (goldilocksAC sp FGP).Call)) A Φ t =
       acProposal sp A Φ t := by
   rw [proposal_eq hΦ, acProposal_eq_acProposalWith]
   rfl
 
 /-- A call in any write mode gives equal post-states and emissions for the same lawful unlock,
 and preserves the invariant needed for the next call. -/
-theorem stepWith_eq_inv {ro : ReplayOrder sp FGP} (m : WriteMode) (self : Fin sp.n)
+theorem stepWith_eq_inv (m : WriteMode) (self : Fin sp.n)
     {A : ACState sp.n} (h : LockInv U A Φ) (hw : LocksWF sp A.locks) {t : Time} (ht : 0 ≤ t)
-    (c : (goldilocksAC sp FGP ro).Call) {L : Set Lock}
+    (c : (goldilocksAC sp FGP).Call) {L : Set Lock}
     (hu : UnlockRel sp (callInputM sp m A Φ t c).locks Φ t ((sp.slot t : Int) - 1)
       (callViewM sp m A Φ t c) L) :
-    stepWith ro m self L A Φ t c = stepWithM sp ro m self L A Φ t c ∧
-      LockInv U (stepWithM sp ro m self L A Φ t c).1 Φ := by
+    stepWith m self L A Φ t c = stepWithM sp m self L A Φ t c ∧
+      LockInv U (stepWithM sp m self L A Φ t c).1 Φ := by
   change UnlockRel sp (callInput sp A Φ t c).locks Φ t ((sp.slot t : Int) - 1)
     (callView sp A Φ t c) L at hu
   obtain ⟨he, hi, hwi⟩ := input_eq_inv hU hΦ hΦU h hw t c
@@ -454,13 +416,13 @@ theorem stepWith_eq_inv {ro : ReplayOrder sp FGP} (m : WriteMode) (self : Fin sp
     rw [show optimistic (blockReceipt sp A t B) Φ t = _ from he]
     exact tryVote_eq_inv hU hΦ hΦU m hi hL hwi (hwi.unlockRel hu) self t
   | restart =>
-    obtain ⟨-, hl, hr, -⟩ := (restart_state sp) FGP ro self A Φ t hΦ ht
-    exact ⟨restart_eq ro self A Φ hΦ ht, h.of_eq hl hr⟩
+    obtain ⟨-, hl, hr, -⟩ := (restart_state sp) FGP self A Φ t hΦ ht
+    exact ⟨rfl, h.of_eq hl hr⟩
 
-theorem step_eq {ro : ReplayOrder sp FGP} (self : Fin sp.n) {A : ACState sp.n}
+theorem step_eq (self : Fin sp.n) {A : ACState sp.n}
     (h : LockInv U A Φ) (hw : LocksWF sp A.locks) {t : Time} (ht : 0 ≤ t)
-    (c : (goldilocksAC sp FGP ro).Call) :
-    step ro self A Φ t c = (goldilocksAC sp FGP ro).step self A Φ t c := by
+    (c : (goldilocksAC sp FGP).Call) :
+    step self A Φ t c = (goldilocksAC sp FGP).step self A Φ t c := by
   rw [step, unlockFor_eq hU hΦ hΦU h hw, step_eq_stepWith, ← stepWithM_parent]
   refine (stepWith_eq_inv hU hΦ hΦU _ self h hw ht c ?_).1
   rw [callInputM_parent, callViewM_parent]
@@ -470,9 +432,9 @@ omit hU hΦ hΦU
 
 /-- The invariant required of a custom start is at the initial frame, not just a chain of the
 locks currently visible there. Stored locks may become visible when a later call grows the tree. -/
-theorem voteStart_lockInv {ro : ReplayOrder sp FGP} {A : ACState sp.n}
+theorem voteStart_lockInv {A : ACState sp.n}
     (h : VoteStart sp.genesisRoot A) {Φ : Frm sp.n FGP}
-    (hi : (goldilocksAC sp FGP ro).InitialFrame Φ) (hf : (goldilocksAC sp FGP ro).FrameIn U Φ) :
+    (hi : (goldilocksAC sp FGP).InitialFrame Φ) (hf : (goldilocksAC sp FGP).FrameIn U Φ) :
     LockInv U A Φ := by
   obtain ⟨m, rfl⟩ := voteStart_iff.1 h
   have hF : Φ.F ∈ Φ.tree := hi.1 ▸ rfl
@@ -480,14 +442,14 @@ theorem voteStart_lockInv {ro : ReplayOrder sp FGP} {A : ACState sp.n}
     fun l hl => (Set.notMem_empty l hl).elim⟩
 
 /-- The lock invariant holds after any prefix of calls with lawful unlock choices. -/
-theorem reachable_lockInv {ro : ReplayOrder sp FGP} {m : WriteMode} {s₀ : ACState sp.n}
+theorem reachable_lockInv {m : WriteMode} {s₀ : ACState sp.n}
     {self : Fin sp.n} (hU : Coherent U)
-    (h₀ : ∀ Φ, (goldilocksAC sp FGP ro).InitialFrame Φ →
-      (goldilocksAC sp FGP ro).FrameIn U Φ → LockInv U s₀ Φ)
+    (h₀ : ∀ Φ, (goldilocksAC sp FGP).InitialFrame Φ →
+      (goldilocksAC sp FGP).FrameIn U Φ → LockInv U s₀ Φ)
     (hw₀ : LocksWF sp s₀.locks)
     {A : ACState sp.n} {Φ : Frm sp.n FGP} {t : Time}
-    (h : ReachableAtUFrom (ro := ro) m s₀ self U A Φ t) :
-    (goldilocksAC sp FGP ro).FrameIn U Φ ∧ 0 ≤ t ∧ LockInv U A Φ ∧ LocksWF sp A.locks := by
+    (h : ReachableAtUFrom m s₀ self U A Φ t) :
+    (goldilocksAC sp FGP).FrameIn U Φ ∧ 0 ≤ t ∧ LockInv U A Φ ∧ LocksWF sp A.locks := by
   induction h with
   | init Ψ hi hf => exact ⟨hf, le_rfl, h₀ Ψ hi hf, hw₀⟩
   | step c L _ ht hok hl ih =>
@@ -497,15 +459,15 @@ theorem reachable_lockInv {ro : ReplayOrder sp FGP} {m : WriteMode} {s₀ : ACSt
     exact ⟨hok.1, ht', hi, (hw.stepWith self hok.1.1 ht' c hl).1⟩
 
 /-- The invariant in the actual call frame, before the handler performs any reads. -/
-theorem localRunU_call_lockInv {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat → Set Lock}
-    {H : Set (Fin sp.n)} {tr : GTrace sp FGP ro} {ini : Fin sp.n → ACState sp.n}
+theorem localRunU_call_lockInv {m : WriteMode} {u : Nat → Set Lock}
+    {H : Set (Fin sp.n)} {tr : GTrace sp FGP} {ini : Fin sp.n → ACState sp.n}
     (h : ACLocalRunU m u H U tr ini)
-    (h₀ : ∀ y ∈ H, ∀ Φ, (goldilocksAC sp FGP ro).InitialFrame Φ →
-      (goldilocksAC sp FGP ro).FrameIn U Φ → LockInv U (ini y) Φ)
+    (h₀ : ∀ y ∈ H, ∀ Φ, (goldilocksAC sp FGP).InitialFrame Φ →
+      (goldilocksAC sp FGP).FrameIn U Φ → LockInv U (ini y) Φ)
     (hw₀ : ∀ y ∈ H, LocksWF sp (ini y).locks)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     (hc : tr.CallAt y i ℓ) :
-    (goldilocksAC sp FGP ro).FrameIn U ℓ.frame ∧ LockInv U (tr.state y i) ℓ.frame ∧
+    (goldilocksAC sp FGP).FrameIn U ℓ.frame ∧ LockInv U (tr.state y i) ℓ.frame ∧
       LocksWF sp (tr.state y i).locks := by
   rcases h.frameLaw y hy i ℓ hc with ⟨hn, Ψ, hi, hf, hok⟩ | ⟨j, ℓ', hj, hc', hn, hok⟩
   · rw [tr.state_of_noCall hn, h.init y hy]
@@ -517,13 +479,13 @@ theorem localRunU_call_lockInv {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Na
 
 /-- The same relational trace is executable by the old handlers, with all its states and
 emissions unchanged. Both sides use the same lawful unlock oracle. -/
-theorem localRunU_beforeHighest {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat → Set Lock}
-    {H : Set (Fin sp.n)} {tr : GTrace sp FGP ro} {ini : Fin sp.n → ACState sp.n}
+theorem localRunU_beforeHighest {m : WriteMode} {u : Nat → Set Lock}
+    {H : Set (Fin sp.n)} {tr : GTrace sp FGP} {ini : Fin sp.n → ACState sp.n}
     (h : ACLocalRunU m u H U tr ini)
-    (h₀ : ∀ y ∈ H, ∀ Φ, (goldilocksAC sp FGP ro).InitialFrame Φ →
-      (goldilocksAC sp FGP ro).FrameIn U Φ → LockInv U (ini y) Φ)
+    (h₀ : ∀ y ∈ H, ∀ Φ, (goldilocksAC sp FGP).InitialFrame Φ →
+      (goldilocksAC sp FGP).FrameIn U Φ → LockInv U (ini y) Φ)
     (hw₀ : ∀ y ∈ H, LocksWF sp (ini y).locks) :
-    ACLocalRunStep m u (fun _ => stepWith ro m) H U tr ini := by
+    ACLocalRunStep m u (fun _ => stepWith m) H U tr ini := by
   refine { h with exec := ?_ }
   intro i ℓ hl hy
   obtain ⟨hf, hx, hw⟩ := localRunU_call_lockInv h h₀ hw₀ hy ⟨rfl, hl⟩
@@ -532,30 +494,30 @@ theorem localRunU_beforeHighest {ro : ReplayOrder sp FGP} {m : WriteMode} {u : N
   exact he.trans (h.exec i ℓ hl hy)
 
 /-- In particular all the vote-permission starts of `ACRunU` are supported. -/
-theorem runU_beforeHighest {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat → Set Lock}
-    {proposer : Nat → Fin sp.n} {H : Set (Fin sp.n)} {tr : GTrace sp FGP ro}
+theorem runU_beforeHighest {m : WriteMode} {u : Nat → Set Lock}
+    {proposer : Nat → Fin sp.n} {H : Set (Fin sp.n)} {tr : GTrace sp FGP}
     {ini : Fin sp.n → ACState sp.n} (h : ACRunU m u proposer tr H U ini) :
-    ACLocalRunStep m u (fun _ => stepWith ro m) H U tr ini :=
+    ACLocalRunStep m u (fun _ => stepWith m) H U tr ini :=
   localRunU_beforeHighest h.localRun (fun y _ _ => voteStart_lockInv (h.vstart y))
     (fun y _ => VoteStart.locksWF (h.vstart y))
 
 /-- Conversely, an old execution on the same lawful unlocks is a new execution. Inductively
 replaying its prefix establishes the invariant before reusing the old label's outputs. -/
-theorem localRunU_iff {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat → Set Lock}
-    {H : Set (Fin sp.n)} {tr : GTrace sp FGP ro} {ini : Fin sp.n → ACState sp.n}
-    (h₀ : ∀ y ∈ H, ∀ Φ, (goldilocksAC sp FGP ro).InitialFrame Φ →
-      (goldilocksAC sp FGP ro).FrameIn U Φ → LockInv U (ini y) Φ)
+theorem localRunU_iff {m : WriteMode} {u : Nat → Set Lock}
+    {H : Set (Fin sp.n)} {tr : GTrace sp FGP} {ini : Fin sp.n → ACState sp.n}
+    (h₀ : ∀ y ∈ H, ∀ Φ, (goldilocksAC sp FGP).InitialFrame Φ →
+      (goldilocksAC sp FGP).FrameIn U Φ → LockInv U (ini y) Φ)
     (hw₀ : ∀ y ∈ H, LocksWF sp (ini y).locks) :
-    ACLocalRunStep m u (fun _ => stepWith ro m) H U tr ini ↔ ACLocalRunU m u H U tr ini := by
+    ACLocalRunStep m u (fun _ => stepWith m) H U tr ini ↔ ACLocalRunU m u H U tr ini := by
   refine ⟨fun h => { h with exec := ?_ }, fun h => localRunU_beforeHighest h h₀ hw₀⟩
   have replay (y : Fin sp.n) (hy : y ∈ H) (i : Nat) : ∀ ℓ, tr.CallAt y i ℓ →
-      stepWithM sp ro m y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call = (tr.post i, ℓ.emits) ∧
-      ReachableAtUFrom (ro := ro) m (ini y) y U (tr.post i) ℓ.frame (tr.time i) := by
+      stepWithM sp m y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call = (tr.post i, ℓ.emits) ∧
+      ReachableAtUFrom m (ini y) y U (tr.post i) ℓ.frame (tr.time i) := by
     induction i using Nat.strong_induction_on with
     | _ i ih =>
       intro ℓ hc
-      have hpre : ∃ Ψ t, ReachableAtUFrom (ro := ro) m (ini y) y U (tr.state y i) Ψ t ∧
-          t ≤ tr.time i ∧ (goldilocksAC sp FGP ro).CallOK U Ψ (tr.time i) ℓ.call ℓ.frame := by
+      have hpre : ∃ Ψ t, ReachableAtUFrom m (ini y) y U (tr.state y i) Ψ t ∧
+          t ≤ tr.time i ∧ (goldilocksAC sp FGP).CallOK U Ψ (tr.time i) ℓ.call ℓ.frame := by
         rcases h.frameLaw y hy i ℓ hc with ⟨hn, Ψ, hi, hf, hok⟩ | ⟨j, ℓ', hj, hc', hn, hok⟩
         · rw [tr.state_of_noCall hn, h.init y hy]
           exact ⟨Ψ, 0, .init Ψ hi hf, h.time_nonneg _, hok⟩
@@ -568,35 +530,35 @@ theorem localRunU_iff {ro : ReplayOrder sp FGP} {m : WriteMode} {u : Nat → Set
       obtain ⟨hf, hu, hx, hw⟩ := reachable_lockInv h.coherent (h₀ y hy) (hw₀ y hy) hp
       have he' := (stepWith_eq_inv h.coherent hok.1.1 hok.1.2 m y
         (hx.callOK h.coherent hf hok) hw (hu.trans ht) ℓ.call hl).1.symm.trans he
-      have hs : (stepWithM sp ro m y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 =
+      have hs : (stepWithM sp m y (u i) (tr.state y i) ℓ.frame (tr.time i) ℓ.call).1 =
           tr.post i := congrArg Prod.fst he'
       exact ⟨he', hs ▸ ReachableAtUFrom.step ℓ.call (u i) hp ht hok hl⟩
   exact fun i ℓ hl hy => (replay _ hy i ℓ ⟨rfl, hl⟩).1
 
 /-- The stock AC, without any unlock oracle, agrees at each lawful next call. The actual
 committee start is `voteStart_initial`; the same statement allows custom vote permissions. -/
-theorem reachable_stock_step_eq {ro : ReplayOrder sp FGP} {self : Fin sp.n} {s₀ : ACState sp.n}
+theorem reachable_stock_step_eq {self : Fin sp.n} {s₀ : ACState sp.n}
     {A : ACState sp.n} {Φ Φ' : Frm sp.n FGP} {t t' : Time} (hU : Coherent U)
     (h₀ : VoteStart sp.genesisRoot s₀)
-    (h : (goldilocksAC sp FGP ro).ReachableAtFrom s₀ self U A Φ t)
-    (ht : t ≤ t') (c : (goldilocksAC sp FGP ro).Call)
-    (hok : (goldilocksAC sp FGP ro).CallOK U Φ t' c Φ') :
-    step ro self A Φ' t' c = (goldilocksAC sp FGP ro).step self A Φ' t' c := by
+    (h : (goldilocksAC sp FGP).ReachableAtFrom s₀ self U A Φ t)
+    (ht : t ≤ t') (c : (goldilocksAC sp FGP).Call)
+    (hok : (goldilocksAC sp FGP).CallOK U Φ t' c Φ') :
+    step self A Φ' t' c = (goldilocksAC sp FGP).step self A Φ' t' c := by
   obtain ⟨hf, hu, hx, hw⟩ := reachable_lockInv hU (fun _ => voteStart_lockInv h₀)
     (VoteStart.locksWF h₀) h.toU
   exact step_eq hU hok.1.1 hok.1.2 self (hx.callOK hU hf hok) hw (hu.trans ht) c
 
 /-- Every honest call on a stock trace has the same post-state and emissions when the old
 handler computes its own unlock. -/
-theorem stockRun_exec {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-    {tr : GTrace sp FGP ro} {ini : Fin sp.n → ACState sp.n}
-    (h : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini)
-    (h₀ : ∀ y ∈ H, ∀ Φ, (goldilocksAC sp FGP ro).InitialFrame Φ →
-      (goldilocksAC sp FGP ro).FrameIn U Φ → LockInv U (ini y) Φ)
+theorem stockRun_exec {H : Set (Fin sp.n)}
+    {tr : GTrace sp FGP} {ini : Fin sp.n → ACState sp.n}
+    (h : ACLocalRun (goldilocksAC sp FGP) H U tr ini)
+    (h₀ : ∀ y ∈ H, ∀ Φ, (goldilocksAC sp FGP).InitialFrame Φ →
+      (goldilocksAC sp FGP).FrameIn U Φ → LockInv U (ini y) Φ)
     (hw₀ : ∀ y ∈ H, LocksWF sp (ini y).locks)
-    {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP ro)}
+    {i : Nat} {ℓ : ACLabel (goldilocksAC sp FGP)}
     (hl : tr.label i = some ℓ) (hy : tr.node i ∈ H) :
-    step ro (tr.node i) (tr.state (tr.node i) i) ℓ.frame (tr.time i) ℓ.call =
+    step (tr.node i) (tr.state (tr.node i) i) ℓ.frame (tr.time i) ℓ.call =
       (tr.post i, ℓ.emits) := by
   obtain ⟨hf, hx, hw⟩ := localRunU_call_lockInv h.toU h₀ hw₀ hy ⟨rfl, hl⟩
   exact (step_eq h.coherent hf.1 hf.2 _ hx hw (h.time_nonneg i) ℓ.call).trans (h.exec i ℓ hl hy)

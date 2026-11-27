@@ -20,18 +20,17 @@ concrete sleepy adapters read it from here.
 
 namespace Consensus.Goldilocks.Generic
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 open Healing Healing.Growing
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 /-- The shared Goldilocks run interface, starting each node with its committee permission. -/
 noncomputable def goldilocksRunInterface (sp : ACParams)
-    (ro : ReplayOrder sp (List (FG.Att sp.n)))
     (sign : Fin sp.n → Time → Bool := fun _ _ => true) (G : Nat := 0) :
-    ACRun (goldilocksNode sp ro) (fun v => v.val) where
+    ACRun (goldilocksNode sp) (fun v => v.val) where
   Run cm proposer dg H tr := Growing.GoldilocksRun proposer dg H tr
     (AC.committeeStart sp.genesisRoot (dictOfTime sp cm)) ∧
     0 < sp.committeeSize ∧
@@ -40,7 +39,7 @@ noncomputable def goldilocksRunInterface (sp : ACParams)
     tr.SignCalendarAt proposer dg H sign ∧ SignGapAt sp.toParams sign G 0
   start cm := AC.committeeStart sp.genesisRoot (dictOfTime sp cm)
   run_local h := h.1.toLocalRun
-  run_requirements h y := Compose.requirements_from sp ro (h.1.vstart y)
+  run_requirements h y := Compose.requirements_from sp (h.1.vstart y)
   run_root h := h.1.genesis_root_ok
   run_truncH h b := ⟨KernelProof.goldilocksRun_truncH h.1 b, h.2.1, h.2.2.1,
     (fun hnc => (h.2.2.2.1 hnc).truncH b),
@@ -49,7 +48,7 @@ noncomputable def goldilocksRunInterface (sp : ACParams)
 /-- The run projection uses the committee-indexed initial AC states. -/
 theorem goldilocksRunInterface_run_iff (cm : Time → Finset (Fin sp.n))
     {sign : Fin sp.n → Time → Bool} {G : Nat} :
-    (goldilocksRunInterface sp ro sign G).Run cm proposer dg H tr ↔
+    (goldilocksRunInterface sp sign G).Run cm proposer dg H tr ↔
       Growing.GoldilocksRun proposer dg H tr
         (AC.committeeStart sp.genesisRoot (dictOfTime sp cm)) ∧
       0 < sp.committeeSize ∧
@@ -59,7 +58,7 @@ theorem goldilocksRunInterface_run_iff (cm : Time → Finset (Fin sp.n))
 
 /-- The shared run interface has the exact Goldilocks run and start equations. -/
 theorem goldilocksRunInterface_data {sign : Fin sp.n → Time → Bool} {G : Nat} :
-    GoldilocksRunData sp ro (goldilocksRunInterface sp ro sign G) sign G := by
+    GoldilocksRunData sp (goldilocksRunInterface sp sign G) sign G := by
   exact ⟨rfl, rfl⟩
 
 end Consensus.Goldilocks.Generic

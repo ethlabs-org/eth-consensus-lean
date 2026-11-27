@@ -20,7 +20,7 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
 variable {binding : VoteBinding}
 
@@ -28,26 +28,26 @@ variable {binding : VoteBinding}
 
 section
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (self : Fin sp.n)
 
 /-- One post-state per cut. -/
-theorem length_cutPosts (t : Time) (cs : List (Cut (goldilocksNode sp ro)))
-    (st : NodeState (goldilocksNode sp ro)) : (cutPosts self t cs st).length = cs.length := by
+theorem length_cutPosts (t : Time) (cs : List (Cut (goldilocksNode sp)))
+    (st : NodeState (goldilocksNode sp)) : (cutPosts self t cs st).length = cs.length := by
   induction cs generalizing st with
   | nil => simp only [cutPosts_nil, List.length_nil]
   | cons c cs ih => simp only [cutPosts_cons, List.length_cons, ih]
 
 /-- A group has one cut per handler cut. -/
-theorem length_groupRecs (st : NodeState (goldilocksNode sp ro)) (t : Time) (id : Nat)
-    (e : Event (goldilocksNode sp ro)) :
+theorem length_groupRecs (st : NodeState (goldilocksNode sp)) (t : Time) (id : Nat)
+    (e : Event (goldilocksNode sp)) :
     (groupRecs proposer dg self st t id e).length = (exec proposer dg self st t e).2.length := by
   simp [groupRecs_eq, length_cutPosts]
 
 /-- The cut at position `k` of a group: the node, time and event id of the group, position `k`,
 the handler's cut `k`. -/
-theorem getElem_groupRecs (st : NodeState (goldilocksNode sp ro)) (t : Time) (id : Nat)
-    (e : Event (goldilocksNode sp ro)) (k : Nat)
+theorem getElem_groupRecs (st : NodeState (goldilocksNode sp)) (t : Time) (id : Nat)
+    (e : Event (goldilocksNode sp)) (k : Nat)
     (hk : k < (groupRecs proposer dg self st t id e).length) :
     (groupRecs proposer dg self st t id e)[k].node = self ∧
       (groupRecs proposer dg self st t id e)[k].time = t ∧
@@ -60,8 +60,8 @@ theorem getElem_groupRecs (st : NodeState (goldilocksNode sp ro)) (t : Time) (id
   exact ⟨rfl, rfl, rfl, rfl, rfl⟩
 
 /-- A cut of a group is at the group's node, time and event id. -/
-theorem mem_groupRecs {st : NodeState (goldilocksNode sp ro)} {t : Time} {id : Nat}
-    {e : Event (goldilocksNode sp ro)} {r : CutRec sp ro}
+theorem mem_groupRecs {st : NodeState (goldilocksNode sp)} {t : Time} {id : Nat}
+    {e : Event (goldilocksNode sp)} {r : CutRec sp}
     (hr : r ∈ groupRecs proposer dg self st t id e) :
     r.node = self ∧ r.time = t ∧ r.event = id := by
   obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hr
@@ -72,13 +72,13 @@ theorem mem_groupRecs {st : NodeState (goldilocksNode sp ro)} {t : Time} {id : N
 from `sub` on. -/
 theorem mem_deliverRecs (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
     (t : Time) (i : Nat)
-    {os : List (Wire sp.n binding)} {st : NodeState (goldilocksNode sp ro)} {sub : Nat}
-    {r : CutRec sp ro} (hr : r ∈ deliverRecs io proposer dg hs self t i os st sub) :
+    {os : List (Wire sp.n binding)} {st : NodeState (goldilocksNode sp)} {sub : Nat}
+    {r : CutRec sp} (hr : r ∈ deliverRecs io proposer dg hs self t i os st sub) :
     r.node = self ∧ r.time = t ∧ ∃ s, sub ≤ s ∧ r.event = Nat.pair i s := by
   induction os generalizing st sub with
   | nil => simp [deliverRecs_nil] at hr
   | cons o os ih =>
-    cases he : canonEvent sp ro io hs o with
+    cases he : canonEvent sp io hs o with
     | none =>
       rw [deliverRecs_cons_none io proposer dg hs self t i o os st sub he] at hr
       obtain ⟨h1, h2, s, hs', h3⟩ := ih hr
@@ -133,7 +133,7 @@ theorem allCuts_getElem?_add (i j : Nat) (hi : i < rho.events.length)
     NodeAsChainShape.CanonicalTrace.allCuts_getElem?_add _ _ i j hi hj]
 
 /-- A node cut that exists is a cut of an engine event `i`, the event at index `i`. -/
-theorem exists_event_of_getElem? {k : Nat} {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
+theorem exists_event_of_getElem? {k : Nat} {r : CutRec (S.params (pubOf E) hn)}
     (hr : (allCuts S rho hn)[k]? = some r) :
     ∃ i ev, rho.events[i]? = some ev ∧ cutMap S rho hn i ≤ k ∧ k < cutMap S rho hn (i + 1) ∧
       (eventCuts S rho hn i)[k - cutMap S rho hn i]? = some r := by
@@ -146,7 +146,7 @@ node `w` of a tick event `j ≤ i` at the same time, under an id `Nat.pair j s` 
 cut of the actual trace's event `i` that is an own admission has `j = i` and `w = ev.node`:
 `mem_eventCuts`.) -/
 def OwnAdmitCut (i : Nat) (ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object)
-    (r : CutRec (S.params (pubOf E) hn) (S.ro _)) : Prop :=
+    (r : CutRec (S.params (pubOf E) hn)) : Prop :=
   (∃ v, ev = .tick v ev.time) ∧ (∃ a, r.label = .fg (.attestation a)) ∧
     ∃ j ≤ i, ∃ w : V, rho.events[j]? = some (.tick w ev.time) ∧ r.node = rho.ownKey w ∧
       ∃ s, 1 ≤ s ∧ r.event = Nat.pair j s
@@ -155,14 +155,14 @@ omit [DecidableEq V] in
 /-- An own admission cut is an `.attestation` cut. -/
 theorem OwnAdmitCut.label {i : Nat}
     {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
-    {r : CutRec (S.params (pubOf E) hn) (S.ro _)} (h : OwnAdmitCut S rho hn i ev r) :
+    {r : CutRec (S.params (pubOf E) hn)} (h : OwnAdmitCut S rho hn i ev r) :
     ∃ a, r.label = .fg (.attestation a) := h.2.1
 
 omit [DecidableEq V] in
 /-- `OwnAdmitCut` unfolded. -/
 theorem ownAdmitCut_iff {i : Nat}
     {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
-    {r : CutRec (S.params (pubOf E) hn) (S.ro _)} : OwnAdmitCut S rho hn i ev r ↔
+    {r : CutRec (S.params (pubOf E) hn)} : OwnAdmitCut S rho hn i ev r ↔
       (∃ v, ev = .tick v ev.time) ∧ (∃ a, r.label = .fg (.attestation a)) ∧
         ∃ j ≤ i, ∃ w : V, rho.events[j]? = some (.tick w ev.time) ∧ r.node = rho.ownKey w ∧
           ∃ s, 1 ≤ s ∧ r.event = Nat.pair j s := Iff.rfl
@@ -171,7 +171,7 @@ theorem ownAdmitCut_iff {i : Nat}
 `Nat.pair i s` (a tick's own admissions included). -/
 theorem mem_eventCuts {i : Nat}
     {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
-    (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
+    (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn)}
     (hr : r ∈ eventCuts S rho hn i) :
     r.time = ev.time ∧ r.node = rho.ownKey ev.node ∧ ∃ s, r.event = Nat.pair i s := by
   obtain ⟨q, hq, _, -, hn', ht, hid⟩ := eventCuts_source S rho hn i hr
@@ -184,12 +184,12 @@ event's phase: if its label is the first cut of the handler of `e` (at any state
 phase of the engine event. -/
 theorem phase_of_pos_zero {i : Nat}
     {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
-    (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
+    (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn)}
     (hr : r ∈ eventCuts S rho hn i) (h0 : r.pos = 0)
     {dg : Digest (List (FG.Att (Fintype.card V))) (Payload (Fintype.card V))}
-    {y : Fin (Fintype.card V)} {st : NodeState (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
-    {t : Time} {e : Event (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
-    {cs : List (Cut (goldilocksNode (S.params (pubOf E) hn) (S.ro _)))}
+    {y : Fin (Fintype.card V)} {st : NodeState (goldilocksNode (S.params (pubOf E) hn))}
+    {t : Time} {e : Event (goldilocksNode (S.params (pubOf E) hn))}
+    {cs : List (Cut (goldilocksNode (S.params (pubOf E) hn)))}
     {proposer : Nat → Fin (Fintype.card V)}
     (hcs : (exec proposer dg y st t e).2 = r.label :: cs) :
     e.phase = ev.phase ∨ ((∃ v t, ev = .tick v t) ∧ e.phase = 2) := by
@@ -200,8 +200,8 @@ theorem phase_of_pos_zero {i : Nat}
 /-- An `ac_restart` cut is a cut of an engine restart. -/
 theorem restart_of_mem_eventCuts {i : Nat}
     {ev : Model.Event V (Model.protoOf (compiled (goldilocks S)) E).Object}
-    (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn) (S.ro _)}
-    (hr : r ∈ eventCuts S rho hn i) {ℓ : ACLabel (goldilocksNode (S.params (pubOf E) hn) (S.ro _))}
+    (he : rho.events[i]? = some ev) {r : CutRec (S.params (pubOf E) hn)}
+    (hr : r ∈ eventCuts S rho hn i) {ℓ : ACLabel (goldilocksNode (S.params (pubOf E) hn))}
     (hl : r.label = .ac ℓ) (hℓ : ℓ.call = .restart) : ∃ v t, ev = .restart v t := by
   obtain ⟨q, hq, _, hlabel, _⟩ := eventCuts_source S rho hn i hr
   exact NodeAsChainShape.CanonicalTrace.restart_of_mem_eventCuts (traceEncoding S hn) rho he hq

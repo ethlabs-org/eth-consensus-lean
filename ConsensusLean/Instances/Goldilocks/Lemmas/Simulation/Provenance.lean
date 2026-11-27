@@ -54,9 +54,9 @@ private theorem onBlock_reachable {P : Params} {A : NodeAC P} (self : Fin P.n)
     · rename_i fg' he
       exact h.tail (Or.inl ⟨B, he⟩)
 
-private theorem processOne_record {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
+private theorem processOne_record {sp : AC.ACParams}
     (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
-    (st : State sp ro binding) (o : Wire sp.n binding) :
+    (st : State sp binding) (o : Wire sp.n binding) :
     (processOne io hs st o).node.record = st.node.record := by
   rw [processOne_eq]
   split
@@ -66,8 +66,8 @@ private theorem processOne_record {sp : AC.ACParams} {ro : AC.ReplayOrder sp (Li
   · rfl
   · rfl
 
-private theorem recordOwn_record {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-    (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat)) :
+private theorem recordOwn_record {sp : AC.ACParams}
+    (st : State sp binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat)) :
     (recordOwn st o hs).node.record = st.node.record := by
   rw [recordOwn_eq]
   split
@@ -79,11 +79,10 @@ private theorem recordOwn_record {sp : AC.ACParams} {ro : AC.ReplayOrder sp (Lis
 
 /-- Every canonical receipt handler preserves FG-store reachability. -/
 theorem processOne_reachable {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (io : VoteAuth sp.n binding) (hs : List (Header Info × Nat))
-    (st : State sp ro binding) (o : Wire sp.n binding)
-    (h : st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload) :
-    (processOne io hs st o).node.fg.Reachable (goldilocksNode sp ro).genesisPayload := by
+    (st : State sp binding) (o : Wire sp.n binding)
+    (h : st.node.fg.Reachable (goldilocksNode sp).genesisPayload) :
+    (processOne io hs st o).node.fg.Reachable (goldilocksNode sp).genesisPayload := by
   rw [processOne_eq]
   split
   · simp only [relayIf, apply]
@@ -93,10 +92,9 @@ theorem processOne_reachable {sp : AC.ACParams}
   · exact h
 
 private theorem recordOwn_reachable {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-    (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat))
-    (h : st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload) :
-    (recordOwn st o hs).node.fg.Reachable (goldilocksNode sp ro).genesisPayload := by
+    (st : State sp binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat))
+    (h : st.node.fg.Reachable (goldilocksNode sp).genesisPayload) :
+    (recordOwn st o hs).node.fg.Reachable (goldilocksNode sp).genesisPayload := by
   rw [recordOwn_eq]
   split
   · exact h
@@ -125,16 +123,16 @@ private theorem client_run_append {n : Nat} (v : Fin n) (Λ : FG.Record)
       split <;> rfl
 
 private theorem fgUpdate_history {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
+    (st : State sp binding)
     (release : Fin sp.n → Time → Bool)
-    (hreach : st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload)
+    (hreach : st.node.fg.Reachable (goldilocksNode sp).genesisPayload)
     (inputs : List (FG.ChainState sp.n)) (hi : FG.EntryInputs sp.toParams.fg inputs)
     (hr : st.node.record = (FG.Record.run st.self FG.Record.empty inputs).1) :
     ∃ inputs' : List (FG.ChainState sp.n), FG.EntryInputs sp.toParams.fg inputs' ∧
       (fgUpdate st release).node.record = (FG.Record.run st.self FG.Record.empty inputs').1 ∧
       (FG.Record.run st.self FG.Record.empty inputs).2 ⊆
         (FG.Record.run st.self FG.Record.empty inputs').2 ∧
-      (fgUpdate st release).node.fg.Reachable (goldilocksNode sp ro).genesisPayload := by
+      (fgUpdate st release).node.fg.Reachable (goldilocksNode sp).genesisPayload := by
   simp only [fgUpdate_eq]
   split
   · exact ⟨inputs, hi, hr, fun _ h => h, hreach⟩
@@ -162,8 +160,7 @@ private theorem fgUpdate_history {sp : AC.ACParams}
         · exact hreach
 
 private theorem process_record {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-    (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat)) :
+    (st : State sp binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat)) :
     (process st o hs).node.record = st.node.record := by
   rw [process_eq]
   generalize st.voteIO = io
@@ -174,10 +171,9 @@ private theorem process_record {sp : AC.ACParams}
     rw [List.foldl_cons, ih, processOne_record]
 
 private theorem process_reachable {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-    (st : State sp ro binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat))
-    (h : st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload) :
-    (process st o hs).node.fg.Reachable (goldilocksNode sp ro).genesisPayload := by
+    (st : State sp binding) (o : Wire sp.n binding) (hs : List (Header Info × Nat))
+    (h : st.node.fg.Reachable (goldilocksNode sp).genesisPayload) :
+    (process st o hs).node.fg.Reachable (goldilocksNode sp).genesisPayload := by
   rw [process_eq]
   generalize st.voteIO = io
   generalize delivered io hs st o = os
@@ -185,17 +181,17 @@ private theorem process_reachable {sp : AC.ACParams}
   | nil => exact h
   | cons x xs ih => exact ih _ (processOne_reachable io hs st x h)
 
-private def HasHistory {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-    (key : Fin sp.n) (st : State sp ro binding) (signed : FG.Att sp.n → Prop := fun _
+private def HasHistory {sp : AC.ACParams}
+    (key : Fin sp.n) (st : State sp binding) (signed : FG.Att sp.n → Prop := fun _
         => False) : Prop :=
-  st.self = key ∧ st.node.fg.Reachable (goldilocksNode sp ro).genesisPayload ∧
+  st.self = key ∧ st.node.fg.Reachable (goldilocksNode sp).genesisPayload ∧
     ∃ inputs : List (FG.ChainState sp.n), FG.EntryInputs sp.toParams.fg inputs ∧
       st.node.record = (FG.Record.run key FG.Record.empty inputs).1 ∧
       ∀ a, signed a → a ∈ (FG.Record.run key FG.Record.empty inputs).2
 
 private theorem history_recordOwn {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {key : Fin sp.n}
-    {st : State sp ro binding} {signed : FG.Att sp.n → Prop} (h : HasHistory key st signed)
+    {key : Fin sp.n}
+    {st : State sp binding} {signed : FG.Att sp.n → Prop} (h : HasHistory key st signed)
         (o : Wire sp.n binding)
     (hs : List (Header Info × Nat)) : HasHistory key (recordOwn st o hs) signed := by
   obtain ⟨hk, hr, ins, hi, he, hout⟩ := h
@@ -203,8 +199,8 @@ private theorem history_recordOwn {sp : AC.ACParams}
     ins, hi, (recordOwn_record _ _ _).trans he, hout⟩
 
 private theorem history_poll {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {key : Fin sp.n}
-    {st : State sp ro binding} {signed : FG.Att sp.n → Prop} (h : HasHistory key st signed)
+    {key : Fin sp.n}
+    {st : State sp binding} {signed : FG.Att sp.n → Prop} (h : HasHistory key st signed)
         (t : Time) (release : Fin sp.n → Time → Bool) :
     HasHistory key (poll st t release).1 signed := by
   obtain ⟨hk, hr, ins, hi, he, hout⟩ := h
@@ -223,8 +219,8 @@ private theorem history_poll {sp : AC.ACParams}
   · exact ⟨hk, hr, ins, hi, he, hout⟩
 
 private theorem history_poll_sign {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {key : Fin sp.n}
-    {st : State sp ro binding} {signed : FG.Att sp.n → Prop} (h : HasHistory key st signed)
+    {key : Fin sp.n}
+    {st : State sp binding} {signed : FG.Att sp.n → Prop} (h : HasHistory key st signed)
     (t : Time) (release : Fin sp.n → Time → Bool) (hdue : st.fgDue = true) {C}
     {a : FG.Att sp.n} {Λ'}
     (hC : (Node.acToFG st.node st.now).2.2 = some C)
@@ -261,14 +257,14 @@ private theorem history_poll_sign {sp : AC.ACParams}
 /-- The flush of a batch poll keeps the history: it changes only `held` and the pool, through the
 own `on_attestation`. -/
 private theorem history_heldDrain {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {key : Fin sp.n}
-    {st : State sp ro binding} {signed : FG.Att sp.n → Prop} (h : HasHistory key st signed) :
+    {key : Fin sp.n}
+    {st : State sp binding} {signed : FG.Att sp.n → Prop} (h : HasHistory key st signed) :
     HasHistory key (heldDrain st) signed := by
   obtain ⟨hk, hr, ins, hi, he, hout⟩ := h
-  have hreach : ∀ (l : List (FG.Att sp.n)) (n : NodeState (goldilocksNode sp ro)),
-      n.fg.Reachable (goldilocksNode sp ro).genesisPayload →
+  have hreach : ∀ (l : List (FG.Att sp.n)) (n : NodeState (goldilocksNode sp)),
+      n.fg.Reachable (goldilocksNode sp).genesisPayload →
       (l.foldl (fun n a => (Node.onAttestation n a).1) n).fg.Reachable
-        (goldilocksNode sp ro).genesisPayload := by
+        (goldilocksNode sp).genesisPayload := by
     intro l
     induction l with
     | nil => exact fun _ h => h
@@ -281,8 +277,8 @@ private theorem history_heldDrain {sp : AC.ACParams}
     exact he
 
 private theorem history_pollBatch {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {key : Fin sp.n}
-    {st : State sp ro binding} {signed : FG.Att sp.n → Prop} (h : HasHistory key st signed)
+    {key : Fin sp.n}
+    {st : State sp binding} {signed : FG.Att sp.n → Prop} (h : HasHistory key st signed)
     (t : Time) (release : Fin sp.n → Time → Bool) :
     HasHistory key (pollBatch st t release).1 signed := by
   rw [pollBatch_fst]
@@ -291,8 +287,8 @@ private theorem history_pollBatch {sp : AC.ACParams}
   · exact history_poll h t release
 
 private theorem history_pollBatch_sign {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {key : Fin sp.n}
-    {st : State sp ro binding} {signed : FG.Att sp.n → Prop} (h : HasHistory key st signed)
+    {key : Fin sp.n}
+    {st : State sp binding} {signed : FG.Att sp.n → Prop} (h : HasHistory key st signed)
     (t : Time) (release : Fin sp.n → Time → Bool) (hdue : st.fgDue = true) {C}
     {a : FG.Att sp.n} {Λ'}
     (hC : (Node.acToFG st.node st.now).2.2 = some C)
@@ -433,7 +429,7 @@ private theorem history_step (w : V → Model.Node (Model.protoOf (compiled (gol
     · simpa only [Model.Run.step, Function.update_of_ne heq] using h
 
 private theorem history_mono {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {key : Fin sp.n} {st : State sp ro binding}
+    {key : Fin sp.n} {st : State sp binding}
     {p q : FG.Att sp.n → Prop} (h : HasHistory key st p) (hp : ∀ a, q a → p a) :
     HasHistory key st q := by
   obtain ⟨hk, hr, ins, hi, he, hout⟩ := h
@@ -729,7 +725,7 @@ private theorem history_events (v : V) (i : Nat) :
 /-- The FG store at every engine event boundary is reachable, independently of wire validity. -/
 theorem stateAt_fg_reachable (v : V) (i : Nat) :
     (stateAt S rho hn v i).node.fg.Reachable
-      (goldilocksNode (S.params (pubOf E) hn) (S.ro _)).genesisPayload := by
+      (goldilocksNode (S.params (pubOf E) hn)).genesisPayload := by
   simpa only [stateAt_eq] using (history_events S rho hn v i).2.1
 
 /-- **Implementation event-boundary history.** This is the pre-event
@@ -782,8 +778,8 @@ theorem engineSignsAt_wellFormed {v : V} {j q : Nat} {a : FG.Att (Fintype.card V
     (hout j q a (Nat.lt_succ_self j) hs)
 
 private theorem emitted_no_att {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding)
-    (cs : List (Cut (goldilocksNode sp ro))) (a : WireAtt) :
+    (io : VoteAuth sp.n binding)
+    (cs : List (Cut (goldilocksNode sp))) (a : WireAtt) :
     Body.att a ∉ emitted io cs := by
   simp only [emitted, List.mem_flatMap]
   rintro ⟨c, _, hc⟩
@@ -794,13 +790,13 @@ private theorem emitted_no_att {sp : AC.ACParams}
     cases ownToken io e.msg <;> simp at he
 
 private theorem apply_att {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
+    (st : State sp binding)
     (origin) (r) (a : WireAtt) :
     Body.att a ∈ (apply st origin r).outbox ↔ Body.att a ∈ st.outbox := by
   simp only [apply, List.mem_append, emitted_no_att, or_false]
 
 private theorem processOne_att {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io) (hs) (st : State sp ro binding) (o)
+    (io) (hs) (st : State sp binding) (o)
         (a : WireAtt) :
     Body.att a ∈ (processOne io hs st o).outbox ↔ Body.att a ∈ st.outbox := by
   rw [processOne_eq]
@@ -812,7 +808,7 @@ private theorem processOne_att {sp : AC.ACParams}
   · rfl
 
 private theorem recordOwn_att {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (o) (hs)
+    (st : State sp binding) (o) (hs)
         (a : WireAtt) :
     Body.att a ∈ (recordOwn st o hs).outbox ↔ Body.att a ∈ st.outbox := by
   rw [recordOwn_eq]
@@ -824,7 +820,7 @@ private theorem recordOwn_att {sp : AC.ACParams}
   · rfl
 
 private theorem process_att {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (o) (hs)
+    (st : State sp binding) (o) (hs)
         (a : WireAtt) :
     Body.att a ∈ (process st o hs).outbox ↔ Body.att a ∈ st.outbox := by
   rw [process_eq]
@@ -835,14 +831,14 @@ private theorem process_att {sp : AC.ACParams}
   | cons x xs ih => rw [List.foldl_cons, ih, processOne_att]
 
 private theorem propose_att {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (s) (a : WireAtt) :
+    (st : State sp binding) (s) (a : WireAtt) :
     Body.att a ∈ (propose st s).1.outbox ↔ Body.att a ∈ st.outbox := by
   rw [propose_eq]
   dsimp only
   split <;> rfl
 
 private theorem nodeTick_att {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (a : WireAtt)
+    (st : State sp binding) (a : WireAtt)
     {sign : Fin sp.n → Time → Bool} :
     Body.att a ∈ (nodeTick st sign).outbox ↔ Body.att a ∈ st.outbox := by
   rw [nodeTick_eq (sign := _)]
@@ -851,7 +847,7 @@ private theorem nodeTick_att {sp : AC.ACParams}
   · rfl
 
 private theorem restore_att {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (k t) (a : WireAtt) :
+    (st : State sp binding) (k t) (a : WireAtt) :
     Body.att a ∈ (restore k st t).outbox ↔ Body.att a ∈ st.outbox := by
   rw [restore_eq]
   exact apply_att { st with self := k, now := t } none _ a
@@ -867,13 +863,13 @@ theorem createAtt_val {n : Nat} {Λ Λ' : FG.Record} {v : Fin n} {σ : FG.ChainS
 
 /-- Every attestation body queued in `outbox`, and every attestation in `held`, is the node's
 own and satisfies `signed`. -/
-private def Queued {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-    (st : State sp ro binding) (signed : FG.Att sp.n → Prop) : Prop :=
+private def Queued {sp : AC.ACParams}
+    (st : State sp binding) (signed : FG.Att sp.n → Prop) : Prop :=
   (∀ w, Body.att w ∈ st.outbox → ∃ a, w = encodeAtt a ∧ a.val = st.self ∧ signed a) ∧
     ∀ a ∈ st.held, a.val = st.self ∧ signed a
 
 private theorem poll_queued {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (t : Time)
+    (st : State sp binding) (t : Time)
     (release : Fin sp.n → Time → Bool) {signed : FG.Att sp.n → Prop} (h : Queued st signed) :
     let p := fun a => signed a ∨ st.fgDue = true ∧ ∃ C Λ',
       (Node.acToFG st.node st.now).2.2 = some C ∧
@@ -928,7 +924,7 @@ private theorem poll_queued {sp : AC.ACParams}
       exact ⟨a, hw, rfl, hv.trans hself, hs⟩
 
 private theorem queued_mono {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {st : State sp ro binding}
+    {st : State sp binding}
     {p q : FG.Att sp.n → Prop} (h : Queued st p) (hp : ∀ a, p a → q a) : Queued st q :=
   ⟨fun w hw => (h.1 w hw).imp fun a ⟨he, hv, ha⟩ => ⟨he, hv, hp a ha⟩,
     fun a ha => ⟨(h.2 a ha).1, hp a (h.2 a ha).2⟩⟩
@@ -938,7 +934,7 @@ ordinary emission or a flushed held attestation, is the node's own and either sa
 before the poll or was generated by this poll's FG update; the queues it leaves keep the same
 property. Forwarding and vote envelopes are not attestation bodies. -/
 private theorem pollBatch_queued {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (t : Time)
+    (st : State sp binding) (t : Time)
     (release : Fin sp.n → Time → Bool) {signed : FG.Att sp.n → Prop} (h : Queued st signed) :
     let p := fun a => signed a ∨ st.fgDue = true ∧ ∃ C Λ',
       (Node.acToFG st.node st.now).2.2 = some C ∧
@@ -947,7 +943,7 @@ private theorem pollBatch_queued {sp : AC.ACParams}
     Queued (pollBatch st t release).1 p ∧ ∀ w cs, (Body.att w, cs) ∈ (pollBatch st t release).2 →
       ∃ a, w = encodeAtt a ∧ cs = [] ∧ a.val = st.self ∧ p a := by
   dsimp only
-  have hsig : ∀ (u : State sp ro binding) a, (∃ C Λ', (Node.acToFG u.node u.now).2.2 = some C ∧
+  have hsig : ∀ (u : State sp binding) a, (∃ C Λ', (Node.acToFG u.node u.now).2.2 = some C ∧
       (Node.acToFG u.node u.now).1.fg.attest (Node.acToFG u.node u.now).1.record u.self C =
         some (a, Λ')) ↔ fgSigned u = some a := by
     intro u a
@@ -1006,7 +1002,7 @@ private theorem pollBatch_queued {sp : AC.ACParams}
 /-- A step that keeps the key and the held queue and queues no new attestation body keeps
 `Queued`. -/
 private theorem queued_transfer {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {st st' : State sp ro binding}
+    {st st' : State sp binding}
     {p : FG.Att sp.n → Prop} (hs : st'.self = st.self)
     (ho : ∀ w, Body.att w ∈ st'.outbox → Body.att w ∈ st.outbox) (hh : st'.held = st.held)
     (h : Queued st p) : Queued st' p :=

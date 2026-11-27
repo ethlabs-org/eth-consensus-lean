@@ -15,11 +15,11 @@ blocks (`OnOriginChainWithin.of_anc`). -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- The honest blocks of a run are coherent. -/
 theorem honest_coherent {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr) :
@@ -30,9 +30,9 @@ theorem honest_coherent {ini} (hrun : GoldilocksRun proposer dg H tr ini) (hnc :
 theorem honest_genesis_anc {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hB : B ∈ tr.HonestBlocks H) :
-    sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload ∈ tr.HonestBlocks H ∧
+    sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload ∈ tr.HonestBlocks H ∧
       Anc (tr.HonestBlocks H)
-        (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload) B := by
+        (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload) B := by
   obtain ⟨y, hy, i, hBt⟩ := hB
   obtain ⟨-, -, hg, hanc⟩ :=
     Store.accepted_tree _ _ _ _ (fg_reachable hrun.toLocalRun hy i)
@@ -43,14 +43,14 @@ theorem honest_eq_genesis {ini} (hrun : GoldilocksRun proposer dg H tr ini)
     (hU : Coherent (tr.HonestBlocks H))
     {B : AC.Blk sp.n (List (FG.Att sp.n))} (hB : B ∈ tr.HonestBlocks H)
     (hr : B.root = sp.genesisRoot) :
-    B = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
+    B = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload :=
   hU.1 hB (honest_genesis_anc hrun hB).1 hr
 
 /-- Genesis has no parent, so its only ancestor is itself. -/
 private theorem anc_genesis {S : Set (AC.Blk sp.n (List (FG.Att sp.n)))}
     {A : AC.Blk sp.n (List (FG.Att sp.n))}
-    (h : Anc S A (sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload)) :
-    A = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload := by
+    (h : Anc S A (sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload)) :
+    A = sp.toParams.genesisBlock (goldilocksNode sp).genesisPayload := by
   rcases Relation.ReflTransGen.cases_tail h with heq | ⟨Y, -, hY⟩
   · exact heq.symm
   · exact absurd hY.2.2 (by simp [Params.genesisBlock])

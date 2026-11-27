@@ -10,7 +10,7 @@ public section
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder)
+open AC (ACParams)
 open Generic
 
 /-- The outage window starts one arming lag before the outage, clamped to the horizon. -/
@@ -97,15 +97,14 @@ theorem outageRestoredLabel_spec (hT : 0 ≤ T)
   simp only [outageRestoredLabel_eq, h, ↓reduceDIte]
   exact ⟨Nat.find_spec h, fun s hs => Nat.find_min' h hs⟩
 
-variable {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  {fgHold : Time} {C : ACCorrectLocal (goldilocksNode sp ro) (fun v => v.val) fgHold}
+variable {fgHold : Time} {C : ACCorrectLocal (goldilocksNode sp) (fun v => v.val) fgHold}
   {cm : Time → Finset (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp}
 
 /-- The local outage durations in node units, with the budget written without Nat subtraction. -/
 theorem outage_durations_of_local {sign : Fin sp.n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hC : GoldilocksLocalData sp ro C sign G Rg) :
+    {Rg : Nat} (hC : GoldilocksLocalData sp C sign G Rg) :
     C.catchUp = 18 * sp.Δ ∧ C.outageEta = (12 * sp.k + 7) * sp.Δ ∧
       C.outageLag = (4 * sp.k + 6) * sp.Δ ∧
       C.outageBudget = (4 * (sp.k : Time) - 5) * sp.Δ ∧ C.recovery = 9 * sp.Δ := by
@@ -120,7 +119,7 @@ theorem outage_durations_of_local {sign : Fin sp.n → Time → Bool} {G : Nat}
 
 /-- The L9 local run supplies its canonical committee start and membership facts. -/
 theorem outage_inputs_of_local {sign : Fin sp.n → Time → Bool} {G : Nat}
-    {Rg : Nat} (hC : GoldilocksLocalData sp ro C sign G Rg)
+    {Rg : Nat} (hC : GoldilocksLocalData sp C sign G Rg)
     (hrun : C.run.Run cm proposer dg H tr) (hnc : NoCollRun dg tr)
     {p : EnvPoint (Fin sp.n)} (hb : RunPointBinding tr H p)
     {ΔF b₀ : Time} (hs : ACServiceBefore C tr H ΔF b₀) :

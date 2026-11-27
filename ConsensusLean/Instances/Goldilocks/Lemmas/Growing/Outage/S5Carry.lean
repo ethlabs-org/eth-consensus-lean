@@ -29,11 +29,11 @@ At an honest slot-`(q+1)` vote of `y` at cut `i`, under receiver service from `g
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Payload Vote)
+open AC (ACParams Payload Vote)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- **An honest head of a slot at most `q` is accepted by `y` before the freeze `t_q + 3Δ`**,
 under receiver service from `g ≤ t_q + Δ`, at a slot-`(q+1)` vote of `y` honest at its cut whose
@@ -44,7 +44,7 @@ theorem honest_head_accepted_after_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {g : Time} {y : Fin sp.n} (hS : ReceiverServiceAfterAt H (tr.HonestBlocksAt H) g y tr.projAC)
-    {q : Nat} (hg : g ≤ sp.ts q + sp.Δ) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {q : Nat} (hg : g ≤ sp.ts q + sp.Δ) {i : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
     (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = q + 1) {x : Fin sp.n} {k : Nat}
     {e' : AC.Em sp (List (FG.Att sp.n))} (hv : HVoteAt tr H x k e') (hs' : e'.msg.slot ≤ q)
@@ -89,7 +89,7 @@ theorem carryAt_after_at
     {ini} (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr)
     {g : Time} {y : Fin sp.n} (hS : ReceiverServiceAfterAt H (tr.HonestBlocksAt H) g y tr.projAC)
-    {s : Nat} (hg : g ≤ sp.ts s + sp.Δ) {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {s : Nat} (hg : g ≤ sp.ts s + sp.Δ) {i : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))} (hy : y ∈ H (tr.time i))
     (hc : AC.CastAt tr.projAC y i ℓ e) (hs : e.msg.slot = s + 1) {CV : Set (Vote sp.n)}
     (hCV : ∀ v ∈ CV, ∃ x k e', HVoteAt tr H x k e' ∧ e'.msg = v ∧ v.slot = s ∧
@@ -102,7 +102,7 @@ theorem carryAt_after_at
   have hΔ : 0 < sp.Δ := sp.toParams.hΔ
   have hm := hrun.time_mono
   -- the receiver's side is read on the prefix through `t_i`
-  set T : ACTrace (AC.goldilocksAC sp (List (FG.Att sp.n)) ro) := tr.projAC.upTo (tr.time i)
+  set T : ACTrace (AC.goldilocksAC sp (List (FG.Att sp.n))) := tr.projAC.upTo (tr.time i)
   have hr := (acRun_upTo hrun hnc hd).localRun
   have hcT : AC.CastAt T y i ℓ e := ac_castAt_upTo.mpr ⟨le_rfl, hc⟩
   have hts : sp.ts (s + 1 : Nat) = sp.ts s + 4 * sp.Δ := by

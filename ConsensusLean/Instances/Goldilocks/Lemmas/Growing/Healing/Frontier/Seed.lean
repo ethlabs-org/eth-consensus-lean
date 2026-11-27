@@ -49,9 +49,9 @@ The seed of a healed-safety query is `Continuation/SeedCover` (`handover_seed_co
 
 namespace Consensus.Goldilocks.Compose.Growing
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 variable {hold : Time}
 
 variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
@@ -69,7 +69,7 @@ variable {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
   store below a family member.
 * `seedHeld`: a high origin written up to `T` is in the frame of every honest call at a time in
   `[t_{r−k−3}, T]` whose finalized block it extends (`t_{r−k−3} = t_{slot a + 2} ≥ a + Δ`). -/
-structure HandoverCore (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+structure HandoverCore (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (g ΔF T : Time) (r σ : Nat)
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ} : Prop where
@@ -85,7 +85,7 @@ structure HandoverCore (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)
     ∃ C s, HealedOrigin tr H g r (r + sp.k - 1) C s T ∧ ∃ E ∈ (tr.state y k).fg.tree,
       E.root = att.T ∧ Anc (tr.HonestBlocksAt H) E C
   seedHeld : ∃ x i j B, Healing.Growing.HighOrigin tr H g x i j B ∧ tr.time i ≤ T ∧
-    ∀ y c (ell : ACLabel (goldilocksNode sp ro)), y ∈ H (tr.time c) → tr.projAC.CallAt y c ell →
+    ∀ y c (ell : ACLabel (goldilocksNode sp)), y ∈ H (tr.time c) → tr.projAC.CallAt y c ell →
       sp.ts (r - sp.k - 3 : Nat) ≤ tr.time c → tr.time c ≤ T →
       Anc (tr.HonestBlocksAt H) ell.frame.F B → B ∈ ell.frame.tree
 
@@ -93,7 +93,7 @@ structure HandoverCore (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)
 record of every reader honest at a read point up to `T` is its finalized block or below an origin
 of label `≥ r + k − 1` written before the read. The healed frontier (`healed_frontier_at`) needs
 only the core. -/
-structure HandoverSeed (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+structure HandoverSeed (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
     (g ΔF T : Time) (r σ : Nat)
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ} : Prop
@@ -104,7 +104,7 @@ structure HandoverSeed (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n)
         (tr.state y n).fg.F)
 
 variable {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n} {g ΔF a b : Time}
 
 /-! ### Family members below origins, their supporters and their later votes -/
 
@@ -120,7 +120,7 @@ private theorem healedOrigin_cases {rL rO : Nat} {C : AC.Blk sp.n (List (FG.Att 
 
 /-- Every member of the healed family is below an origin of its label, written by a node honest
 at its cut, at a time `≤ b` (`HealedOrigin.below_origin`). -/
-private theorem member_below_origin {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem member_below_origin {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : NoCollRun dg tr) {rL rO : Nat} {C : AC.Blk sp.n (List (FG.Att sp.n))} {s : Nat}
     (hC : HealedOrigin tr H g rL rO C s b) :
@@ -240,7 +240,7 @@ private theorem member_compatible
 
 /-- **A high row signed after the drain is below a healed member** (fast or slow lock write, label
 past the drain), through its own source: the signed target is the source's entry. -/
-private theorem signed_row_on_healed_chain_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem signed_row_on_healed_chain_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Growing.GoldilocksRun proposer dg H tr ini) (hnc : NoCollRun dg tr) {rO : Nat}
     {b : Time} {y : Fin sp.n} {k : Nat} {att : FG.Att sp.n} (hy : y ∈ H (tr.time k))
     (hs : tr.SignAt y k att) (hdk : Healing.drainTime sp a ≤ tr.time k) (hkb : tr.time k ≤ b) :
@@ -350,7 +350,7 @@ theorem HandoverSeed.of_reset {T : Time} {r σ : Nat}
 theorem handover_live_lock_label_at {T : Time} {r σ : Nat}
     {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
     (hseed : HandoverCore tr H proposer dg g ΔF T r σ (cm := cm) (βK := βK))
-    {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp ro)}
+    {y : Fin sp.n} {i : Nat} {ℓ : ACLabel (goldilocksNode sp)}
     {e : AC.Em sp (List (FG.Att sp.n))}
     (hy : y ∈ H (tr.time i)) (hc : AC.CastAt tr.projAC y i ℓ e) (hs : σ < e.msg.slot) :
     ∀ l ∈ AC.liveLocks sp e.readPoint.locks ℓ.frame (tr.time i), r ≤ l.slot := by

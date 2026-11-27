@@ -22,11 +22,11 @@ open AsChainShape
 
 open Blocks Shape Node
 open Consensus.Model (pubOf)
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
 variable {binding : VoteBinding}
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
 
 section Engine
 
@@ -43,13 +43,13 @@ theorem poll_selected (hv : rho.ExecutionValid) (v : V) :
 
 /-- The shape's state at `hn` inside an engine node. -/
 abbrev shapeOf (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E)) :
-    State (S.params (pubOf E) hn) (S.ro _) S.vote :=
+    State (S.params (pubOf E) hn) S.vote :=
   nd.st.1 hn
 
 omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `recordOwn` is preserved by `releaseAll`: the
 engine records each released object with `recordOwn` and drops the rest. -/
-theorem releaseAll_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
+theorem releaseAll_pres (Q : State (S.params (pubOf E) hn) S.vote → Prop)
     (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs)) (k : Fin (Fintype.card V)) :
     ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
       (cs : List (Model.protoOf (compiled (goldilocks S)) E).Object), Q (shapeOf S hn nd) →
@@ -89,7 +89,7 @@ private theorem shapeOf_act_poll
 omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `recordOwn`, `propose`, `nodeTick` and `poll` is
 preserved by every duty step of the engine. -/
-theorem dutyStep_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
+theorem dutyStep_pres (Q : State (S.params (pubOf E) hn) S.vote → Prop)
     (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
     (hprop : ∀ st s, Q st → Q (propose st s).1)
     (htick : ∀ st, Q st → Q { nodeTick st (S.sign (pubOf E)) with ticked := true })
@@ -119,7 +119,7 @@ theorem dutyStep_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Pro
 omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `recordOwn`, `propose`, `nodeTick` and `poll` is
 preserved by running a list of duties. -/
-theorem runDuties_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
+theorem runDuties_pres (Q : State (S.params (pubOf E) hn) S.vote → Prop)
     (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
     (hprop : ∀ st s, Q st → Q (propose st s).1)
     (htick : ∀ st, Q st → Q { nodeTick st (S.sign (pubOf E)) with ticked := true })
@@ -150,7 +150,7 @@ omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `recordOwn`, `propose`, `nodeTick` and `poll` holds
 after an engine tick if it holds for the clocked state before it: an asleep node's tick leaves the
 state clocked, an awake node's runs the duties and the gossip. -/
-theorem tick_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
+theorem tick_pres (Q : State (S.params (pubOf E) hn) S.vote → Prop)
     (hrec : ∀ st o hs, Q st → Q (recordOwn st o hs))
     (hprop : ∀ st s, Q st → Q (propose st s).1)
     (htick : ∀ st, Q st → Q { nodeTick st (S.sign (pubOf E)) with ticked := true })
@@ -176,7 +176,7 @@ theorem runDuties_fst_append (v : V) (nd : Model.Node (Model.protoOf (compiled
 /-! ## Duty steps and the node state -/
 
 /-- Recording an own signed data body changes nothing: the shape keeps no record of it. -/
-theorem recordOwn_data (st : State sp ro binding) (k : Fin sp.n) (r : ShapeRole binding.Kind)
+theorem recordOwn_data (st : State sp binding) (k : Fin sp.n) (r : ShapeRole binding.Kind)
     (b : Body)
     (cs : List (Wire sp.n binding)) hs : recordOwn st (.mk (.signed k r) (.data b) cs) hs = st := by
   cases r <;> rfl
@@ -186,7 +186,7 @@ omit [DecidableEq V] in
 theorem releaseAll_shape_eq (k : Fin (Fintype.card V)) :
     ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
       (cs : List (Model.protoOf (compiled (goldilocks S)) E).Object),
-      (∀ c ∈ cs, ∀ (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) hs, recordOwn st c hs = st)
+      (∀ c ∈ cs, ∀ (st : State (S.params (pubOf E) hn) S.vote) hs, recordOwn st c hs = st)
           →
       shapeOf S hn
           (Model.releaseAll (Model.protoOf (compiled (goldilocks S)) E) rho.hash k nd cs).1 =
@@ -204,7 +204,7 @@ omit [DecidableEq V] in
 private theorem signedCandidate_poll_recordOwn (v : V) (t : Nat)
     (o : List (Body × List (Model.protoOf (compiled (goldilocks S)) E).Object)) :
     ∀ c ∈ rho.signedCandidate v (.poll t) (o.map fun bc => (.data bc.1, bc.2)),
-      ∀ (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) hs, recordOwn st c hs = st := by
+      ∀ (st : State (S.params (pubOf E) hn) S.vote) hs, recordOwn st c hs = st := by
   intro c hc st hs
   obtain ⟨m, cs, hm, _, _, rfl⟩ := rho.mem_signedCandidate.mp hc
   obtain ⟨⟨b, bs⟩, _, he⟩ := List.mem_map.mp hm
@@ -263,21 +263,21 @@ theorem runDuties_fst_nil (v : V) (nd : Model.Node (Model.protoOf (compiled
     (rho.runDuties v nd []).1 = nd := rfl
 
 /-- Recording an unsigned own object keeps the node state. -/
-theorem recordOwn_none_node (st : State sp ro binding) (m : Model.Msg (Header Info) Body)
+theorem recordOwn_none_node (st : State sp binding) (m : Model.Msg (Header Info) Body)
     (cs : List (Wire sp.n binding)) hs : (recordOwn st (.mk .none m cs) hs).node = st.node := by
   cases m with
   | data b => cases b <;> rfl
   | item h => rfl
 
 /-- A poll step with no FG update due keeps the node state. -/
-theorem poll_node_of_fgDue {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
+theorem poll_node_of_fgDue {release : Fin sp.n → Time → Bool} (st : State sp binding)
     (t : Time) (h : st.fgDue = false) : (poll st t release).1.node = st.node := by
   unfold poll
   simp only [h, Bool.false_eq_true, ite_false]
   split <;> rfl
 
 /-- A batch poll with no FG update due that flushes nothing keeps the node state. -/
-theorem pollBatch_node_of_fgDue {release : Fin sp.n → Time → Bool} (st : State sp ro binding)
+theorem pollBatch_node_of_fgDue {release : Fin sp.n → Time → Bool} (st : State sp binding)
     (t : Time) (h : st.fgDue = false) (hf : pollFlush st release = []) :
     (pollBatch st t release).1.node = st.node := by
   rw [pollBatch_fst]
@@ -307,7 +307,7 @@ theorem deliverDuties_eq_nil (t : Time) (ht : t < 0) :
 omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `recordOwn` of the candidates is preserved by
 `releaseAll` of them. -/
-theorem releaseAll_pres_mem (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
+theorem releaseAll_pres_mem (Q : State (S.params (pubOf E) hn) S.vote → Prop)
     (k : Fin (Fintype.card V)) :
     ∀ (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
       (cs : List (Model.protoOf (compiled (goldilocks S)) E).Object),
@@ -322,7 +322,7 @@ omit [DecidableEq V] in
 /-- A property of the shape's state preserved by `poll` and by `recordOwn` of unsigned objects
 holds after an engine delivery if it holds for the processed state: the delivery runs one poll
 step (at `t ≥ 0`) and the gossip, whose candidates are unsigned. -/
-theorem deliver_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop)
+theorem deliver_pres (Q : State (S.params (pubOf E) hn) S.vote → Prop)
     (hpoll : ∀ st t, Q st → Q (pollBatch st t (S.release (pubOf E))).1)
     (hrec : ∀ st m cs hs, Q st → Q (recordOwn st (.mk .none m cs) hs)) (v : V)
     (nd : Model.Node (Model.protoOf (compiled (goldilocks S)) E))
@@ -354,7 +354,7 @@ theorem deliver_pres (Q : State (S.params (pubOf E) hn) (S.ro _) S.vote → Prop
 /-- The shape's state before the first event is its initial state at the own key. -/
 theorem stateAt_zero (v : V) :
     stateAt S rho hn v 0 =
-      (goldilocksShape (S.params (pubOf E) hn) (S.ro _) S.vote).init (rho.ownKey v)
+      (goldilocksShape (S.params (pubOf E) hn) S.vote).init (rho.ownKey v)
         (fun r => decide (rho.ownKey v ∈ rho.sel r)) (rho.voteIO v) := by
   rw [stateAt_eq]
   rfl

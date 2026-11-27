@@ -125,9 +125,9 @@ private theorem admits_acOnTick (self : Fin sp.n) (A : ACState sp.n) (Φ : Frm s
     | exact (admits_tryVote _ _ _ _).trans (Admits.of_pool_eq (updateConfirmation_pool_eq _ _ _ _))
 
 /-- A restart's pools hold only votes of slot `slot(t) − 1` or `slot(t)`. -/
-private theorem restart_admits (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
+private theorem restart_admits (self : Fin sp.n) (A : ACState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) :
-    ∀ σ, ∀ x ∈ (acRestart sp ro self A Φ t).1.pool σ,
+    ∀ σ, ∀ x ∈ (acRestart sp self A Φ t).1.pool σ,
       x.slot + 1 = sp.slot t ∨ x.slot = sp.slot t := by
   exact fun _ _ hx => False.elim (List.not_mem_nil hx)
 
@@ -359,8 +359,8 @@ private theorem acOnTick_vok_keep (self : Fin sp.n) {A : ACState sp.n} (h : VOK 
     | with_reducible exact hu _ h
     | with_reducible exact ⟨(hu _ hv.1).1, hv.2.trans (hu _ hv.1).2⟩
 
-private theorem acRestart_vok (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
-    (Φ : Frm sp.n FGP) (t : Time) : VOK (acRestart sp ro self A Φ t).1 := by
+private theorem acRestart_vok (self : Fin sp.n) (A : ACState sp.n)
+    (Φ : Frm sp.n FGP) (t : Time) : VOK (acRestart sp self A Φ t).1 := by
   exact fun _ hx => absurd rfl hx
 
 /-- The stamp invariant at a reachable state with frame `Φ`, inside `U`: held stamps, and every
@@ -382,11 +382,11 @@ private theorem acToFG_pv (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
   split_ifs <;> exact ⟨rfl, rfl⟩
 
 /-- Every call other than the restart keeps the held stamps and grows the pools. -/
-private theorem step_vok_keep (ro : ReplayOrder sp FGP) (self : Fin sp.n) {A : ACState sp.n}
-    (h : VOK A) (Φ : Frm sp.n FGP) (t : Time) {c : (goldilocksAC sp FGP ro).Call}
+private theorem step_vok_keep (self : Fin sp.n) {A : ACState sp.n}
+    (h : VOK A) (Φ : Frm sp.n FGP) (t : Time) {c : (goldilocksAC sp FGP).Call}
     (hc : c ≠ .restart) :
-    VOK ((goldilocksAC sp FGP ro).step self A Φ t c).1 ∧
-      Keep A ((goldilocksAC sp FGP ro).step self A Φ t c).1 := by
+    VOK ((goldilocksAC sp FGP).step self A Φ t c).1 ∧
+      Keep A ((goldilocksAC sp FGP).step self A Φ t c).1 := by
   cases c with
   | tick => exact acOnTick_vok_keep self h Φ t
   | message m => exact acOnMessage_vok_keep self h Φ t m
@@ -431,10 +431,10 @@ theorem VoteClosed.acOnBlock {P : ACState sp.n → Prop} (hP : VoteClosed P) (se
   exact hP.tryVote self Φ t (hP.congr _ _ (optimistic_pool_eq _ _ _) (optimistic_vs _ _ _)
     (hP.congr A _ rfl rfl h))
 
-theorem VoteClosed.step {P : ACState sp.n → Prop} (hP : VoteClosed P) (ro : ReplayOrder sp FGP)
+theorem VoteClosed.step {P : ACState sp.n → Prop} (hP : VoteClosed P)
     (self : Fin sp.n) {A : ACState sp.n} (Φ : Frm sp.n FGP) (t : Time)
-    {c : (goldilocksAC sp FGP ro).Call} (hc : c ≠ .restart) (h : P A) :
-    P ((goldilocksAC sp FGP ro).step self A Φ t c).1 := by
+    {c : (goldilocksAC sp FGP).Call} (hc : c ≠ .restart) (h : P A) :
+    P ((goldilocksAC sp FGP).step self A Φ t c).1 := by
   cases c with
   | block B => exact hP.acOnBlock self Φ t B h
   | message m =>
@@ -466,11 +466,11 @@ end Stamps
 
 /-- **A0.1, admission slots.** -/
 theorem admission_slots : AdmissionSlots sp := by
-  intro FGP ro self A Φ' t c
+  intro FGP self A Φ' t c
   dsimp only
   intro σ x hx
   cases c with
-  | restart => exact Or.inr (restart_admits ro self A Φ' t σ x hx)
+  | restart => exact Or.inr (restart_admits self A Φ' t σ x hx)
   | tick => exact (admits_acOnTick self A Φ' t σ x hx).imp_left fun h => ⟨h, by simp⟩
   | message m => exact (admits_acOnMessage self A Φ' t m σ x hx).imp_left fun h => ⟨h, by simp⟩
   | block B => exact (admits_acOnBlock self A Φ' t B σ x hx).imp_left fun h => ⟨h, by simp⟩
@@ -543,11 +543,11 @@ private theorem admitVote_nodup {A : ACState sp.n} (h : ∀ σ, (A.pool σ).Nodu
 
 /-- Every pool is free of duplicates at a state reachable from one with empty pools (and the
 time of the last call is not negative). -/
-private theorem pool_nodup_from {FGP : Type} {ro : ReplayOrder sp FGP}
-    {s₀ : (goldilocksAC sp FGP ro).State} (h₀ : ∀ σ, (s₀ : ACState sp.n).pool σ = [])
-    {self : Fin sp.n} {U : Set (Blk sp.n FGP)} {A : (goldilocksAC sp FGP ro).State}
-    {Φ : (goldilocksAC sp FGP ro).Frm} {t₀ : Time}
-    (hr : (goldilocksAC sp FGP ro).ReachableAtFrom s₀ self U A Φ t₀) :
+private theorem pool_nodup_from {FGP : Type}
+    {s₀ : (goldilocksAC sp FGP).State} (h₀ : ∀ σ, (s₀ : ACState sp.n).pool σ = [])
+    {self : Fin sp.n} {U : Set (Blk sp.n FGP)} {A : (goldilocksAC sp FGP).State}
+    {Φ : (goldilocksAC sp FGP).Frm} {t₀ : Time}
+    (hr : (goldilocksAC sp FGP).ReachableAtFrom s₀ self U A Φ t₀) :
     0 ≤ t₀ ∧ ∀ σ, ((A : ACState sp.n).pool σ).Nodup := by
   have hP : VoteClosed (fun A : ACState sp.n => ∀ σ, (A.pool σ).Nodup) :=
     ⟨fun A t v h => admitVote_nodup sp h t v, fun A A' hp _ h σ => hp ▸ h σ⟩
@@ -559,29 +559,29 @@ private theorem pool_nodup_from {FGP : Type} {ro : ReplayOrder sp FGP}
     by_cases hc : c = .restart
     · subst hc
       intro σ
-      change ((acRestart sp ro self A Φ' t').1.pool σ).Nodup
-      rw [acRestart_eq_stamp sp ro self A Φ' t' hok.1.1 h0, restartStamp_eq]
+      change ((acRestart sp self A Φ' t').1.pool σ).Nodup
+      rw [acRestart_eq_stamp sp self A Φ' t' hok.1.1 h0, restartStamp_eq]
       exact List.nodup_nil
-    · exact hP.step ro self Φ' t' hc ih.2
+    · exact hP.step self Φ' t' hc ih.2
 
 /-- **A0.9 from a start `s₀` with empty pools** (the initial state, or a start that differs from
 it only in `mayVote`). The payload of a proposal at `t_σ` is the slot-`(σ−1)` vote view of the
 pool, whose votes are of slot `σ − 1` (the pool form, kept by every call) and whose support is
 among its votes. -/
-theorem proposal_payload_valid_from {FGP : Type} {ro : ReplayOrder sp FGP}
-    {s₀ : (goldilocksAC sp FGP ro).State} (h₀ : ∀ σ, (s₀ : ACState sp.n).pool σ = [])
-    (self : Fin sp.n) (U : Set (Blk sp.n FGP)) (A : (goldilocksAC sp FGP ro).State)
-    (Φ : (goldilocksAC sp FGP ro).Frm) (t₀ : Time)
-    (hr : (goldilocksAC sp FGP ro).ReachableAtFrom s₀ self U A Φ t₀) :
+theorem proposal_payload_valid_from {FGP : Type}
+    {s₀ : (goldilocksAC sp FGP).State} (h₀ : ∀ σ, (s₀ : ACState sp.n).pool σ = [])
+    (self : Fin sp.n) (U : Set (Blk sp.n FGP)) (A : (goldilocksAC sp FGP).State)
+    (Φ : (goldilocksAC sp FGP).Frm) (t₀ : Time)
+    (hr : (goldilocksAC sp FGP).ReachableAtFrom s₀ self U A Φ t₀) :
     ∀ σ : Nat, t₀ ≤ sp.toParams.slotTime σ → ∀ d p,
-      ((goldilocksAC sp FGP ro).proposal A Φ (sp.toParams.slotTime σ)).2 = some (d, p) →
+      ((goldilocksAC sp FGP).proposal A Φ (sp.toParams.slotTime σ)).2 = some (d, p) →
       ∀ B : Blk sp.n FGP, B.slot = σ → B.acPayload = p → validPayload B := by
   have hpool : ∀ σ, (∀ m ∈ (A : ACState sp.n).pool σ, m.slot = σ) ∧
       ∀ x : Fin sp.n,
         (((A : ACState sp.n).pool σ).filter (fun m => m.val = x)).dedup.length ≤ 2 := by
     induction hr with
     | init => intro σ; simp [h₀]
-    | step c _ _ _ ih => exact step_pool_cap ro self _ _ _ c ih
+    | step c _ _ _ ih => exact step_pool_cap self _ _ _ c ih
   intro σ _ d p hp B hBs hBp
   have hσ : sp.slot (sp.toParams.slotTime σ) = σ := by
     rw [sp.slotTime_eq]
@@ -621,15 +621,15 @@ theorem proposal_payload_valid_from {FGP : Type} {ro : ReplayOrder sp FGP}
 
 /-- **A0.9.** `proposal_payload_valid_from` at the initial state. -/
 theorem proposal_payload_valid : ProposalPayloadValid sp :=
-  fun _ _ self U _ A Φ t₀ hr => proposal_payload_valid_from sp (fun _ => rfl) self U A Φ t₀ hr
+  fun _ self U _ A Φ t₀ hr => proposal_payload_valid_from sp (fun _ => rfl) self U A Φ t₀ hr
 
 /-- At a reachable state, every pool vote is of a slot at most the slot of the last call's time
 (admission at `t` takes votes of slot `slot(t) − 1` or `slot(t)`, and calls are at nondecreasing
 times from `0`). -/
-private theorem pool_slot_le {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp.n}
-    {U : Set (Blk sp.n FGP)} {A : (goldilocksAC sp FGP ro).State}
-    {Φ : (goldilocksAC sp FGP ro).Frm} {t₀ : Time}
-    (h : (goldilocksAC sp FGP ro).ReachableAt self U A Φ t₀) :
+private theorem pool_slot_le {FGP : Type} {self : Fin sp.n}
+    {U : Set (Blk sp.n FGP)} {A : (goldilocksAC sp FGP).State}
+    {Φ : (goldilocksAC sp FGP).Frm} {t₀ : Time}
+    (h : (goldilocksAC sp FGP).ReachableAt self U A Φ t₀) :
     0 ≤ t₀ ∧ ∀ σ, ∀ x ∈ (A : ACState sp.n).pool σ, x.slot ≤ sp.slot t₀ := by
   induction h with
   | init Φ _ _ =>
@@ -639,17 +639,17 @@ private theorem pool_slot_le {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin 
   | @step A Φ Φ' t t' c hr ht hok ih =>
     obtain ⟨h0, hle⟩ := ih
     refine ⟨le_trans h0 ht, fun σ x hx => ?_⟩
-    rcases admission_slots sp FGP ro self A Φ' t' c σ x hx with
+    rcases admission_slots sp FGP self A Φ' t' c σ x hx with
       ⟨hx, -⟩ | hx | hx
     · exact le_trans (hle σ x hx) (slot_mono sp h0 ht)
     · omega
     · omega
 
 /-- The stamp invariant holds at every reachable state. -/
-private theorem sinv_of_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {self : Fin sp.n}
-    {U : Set (Blk sp.n FGP)} (hU : Coherent U) {A : (goldilocksAC sp FGP ro).State}
-    {Φ : (goldilocksAC sp FGP ro).Frm} {t₀ : Time}
-    (h : (goldilocksAC sp FGP ro).ReachableAt self U A Φ t₀) : SInv U A Φ := by
+private theorem sinv_of_reachable {FGP : Type} {self : Fin sp.n}
+    {U : Set (Blk sp.n FGP)} (hU : Coherent U) {A : (goldilocksAC sp FGP).State}
+    {Φ : (goldilocksAC sp FGP).Frm} {t₀ : Time}
+    (h : (goldilocksAC sp FGP).ReachableAt self U A Φ t₀) : SInv U A Φ := by
   induction h with
   | init Φ hi hf =>
     obtain ⟨htree, hroot, -, hpar, -⟩ := hi
@@ -671,17 +671,17 @@ private theorem sinv_of_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {self :
         · exact Or.inl (hret.2 X hX hF)
         · exact Or.inr hF
       · exact Or.inr fun hF => hX (hret.1.trans hF)
-    have hstep := step_blockStamp_eq ro self A hΦ'.1 h0 c
+    have hstep := step_blockStamp_eq self A hΦ'.1 h0 c
     by_cases hc : c = .restart
     · subst hc
-      refine ⟨acRestart_vok ro self A Φ' t', fun r hr' => ?_, hΦ', ih.genesis⟩
-      rcases (restart_state sp FGP ro self A Φ' t' hΦ'.1 h0).2.2.2.2.2.2.2.2.2 r with
+      refine ⟨acRestart_vok self A Φ' t', fun r hr' => ?_, hΦ', ih.genesis⟩
+      rcases (restart_state sp FGP self A Φ' t' hΦ'.1 h0).2.2.2.2.2.2.2.2.2 r with
         hq | ⟨-, -, X, hX, hXr⟩
       · obtain ⟨G, hG, hGr, hGp⟩ := ih.genesis
         have hg : r = sp.genesisRoot := by
           by_contra hne
           refine hr' ?_
-          change (acRestart sp ro self A Φ' t').1.blockStamp r = ⊤
+          change (acRestart sp self A Φ' t').1.blockStamp r = ⊤
           rw [hq]
           simp [ACState.initial, hne]
         refine ⟨G, hG, hGr.trans hg.symm, ?_⟩
@@ -693,7 +693,7 @@ private theorem sinv_of_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {self :
             cases hpar
         · exact Or.inr hA
       · exact ⟨X, hΦ'.2 hX, hXr, Or.inl hX⟩
-    refine ⟨(step_vok_keep ro self ih.vok Φ' t' hc).1, fun r hr' => ?_, hΦ', ih.genesis⟩
+    refine ⟨(step_vok_keep self ih.vok Φ' t' hc).1, fun r hr' => ?_, hΦ', ih.genesis⟩
     by_cases hb : ∃ B, c = .block B
     · obtain ⟨B, rfl⟩ := hb
       rw [hstep.1 B rfl] at hr'
@@ -712,12 +712,12 @@ private theorem sinv_of_reachable {FGP : Type} {ro : ReplayOrder sp FGP} {self :
 
 /-- **A0.1, stamps.** -/
 theorem stamp_stable : StampStable sp := by
-  intro FGP ro self U hU A Φ t₀ hr c Φ' t ht hok hc
+  intro FGP self U hU A Φ t₀ hr c Φ' t ht hok hc
   dsimp only
   have h := sinv_of_reachable sp hU hr
   have h0 : 0 ≤ t := (pool_slot_le sp hr).1.trans ht
-  refine ⟨fun x hx => (step_vok_keep ro self h.vok Φ' t hc).2.2 x (h.vok x hx), fun r hr' => ?_⟩
-  have hstep := step_blockStamp_eq ro self A hok.1.1 h0 c
+  refine ⟨fun x hx => (step_vok_keep self h.vok Φ' t hc).2.2 x (h.vok x hx), fun r hr' => ?_⟩
+  have hstep := step_blockStamp_eq self A hok.1.1 h0 c
   by_cases hb : ∃ B, c = .block B
   · obtain ⟨B, rfl⟩ := hb
     rw [hstep.1 B rfl]
@@ -742,8 +742,8 @@ theorem stamp_stable : StampStable sp := by
 node had been asleep after its previous call (at `t'`), so the votes it erased are of slot at most
 `slot(t') < slot(t) − 1`. -/
 theorem joined_keeps_votes : JoinedKeepsVotes sp := by
-  intro FGP ro H U tr h y hy i ℓ hc hj j hji hr σ x hx
-  have hle := (joined_awake sp FGP ro H U tr h y hy i ℓ hc hj).2 j hji hr
+  intro FGP H U tr h y hy i ℓ hc hj j hji hr σ x hx
+  have hle := (joined_awake sp FGP H U tr h y hy i ℓ hc hj).2 j hji hr
   obtain ⟨ℓr, hcr, hrr⟩ := hr
   obtain ⟨u, -, hu, -, hbefore⟩ := h.sleep_of_restart y hy j ℓr hcr hrr
   rcases tr.noCall_or_lastCall y j with hn | ⟨j', hj', ℓ', hc', hnb⟩

@@ -21,21 +21,21 @@ and every live lock is viable and compatible with `B`, the successor vote extend
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote Payload)
+open AC (ACParams Vote Payload)
 
 /-! ### Over an AC trace -/
 
 section AC
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (AC.Blk sp.n FGP)} {tr : AC.GTrace sp FGP ro} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {tr : AC.GTrace sp FGP} {proposer : Nat → Fin sp.n}
 
 /-- The later-batch walk for a selected honest slot-`s` batch: its votes extend `B`, are
 carried at the read point, and outnumber half of a set covering all merged voters.
 Viability and compatibility of all live locks then make the successor vote extend `B`. -/
 theorem vote_extends_of_counted_batch {ini} (hrun : AC.ACRun proposer tr H U ini)
     {s : Nat} {y : Fin sp.n} (hy : y ∈ H)
-    {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)} {e : AC.Em sp FGP}
+    {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)} {e : AC.Em sp FGP}
     (hc : AC.CastAt tr y i ℓ e) (hs : e.msg.slot = s + 1) {B : AC.Blk sp.n FGP}
     (hviab : AC.ViableAtVote ℓ e (s + 1) B)
     {SX W : Set (Fin sp.n)} (hSXH : SX ⊆ H)
@@ -84,7 +84,7 @@ theorem vote_extends_of_counted_batch {ini} (hrun : AC.ACRun proposer tr H U ini
           · simpa [AC.freeze] using hu.2
         obtain ⟨j₁, -, e₁, hv₁', he₁⟩ :=
           AC.honest_merged_voteU hrun.toU hy hc (hm v₁ hs₁ hh₁) (hv₁.trans hvw ▸ hw)
-        have := (AC.one_vote_per_slotU sp) FGP ro H U tr hr.toU w hw j₁ j e₁ e'
+        have := (AC.one_vote_per_slotU sp) FGP H U tr hr.toU w hw j₁ j e₁ e'
           (hv₁.trans hvw ▸ hv₁') hv (by rw [he₁, hs₁, hvs])
         exact h1 (he₁ ▸ this.2 ▸ rfl)
     obtain ⟨Hv, hHv, hHvr, hacc⟩ := hcarry.heads _ hmem
@@ -114,9 +114,9 @@ end AC
 
 /-! ### Over a run -/
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 variable {b : Time} {s₀ : Nat}
 

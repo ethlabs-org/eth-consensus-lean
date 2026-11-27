@@ -403,7 +403,6 @@ example := ``Consensus.Goldilocks.AC.OneVotePerSlot
 example := ``Consensus.Goldilocks.AC.OpponentsMonotone
 example := ``Consensus.Goldilocks.AC.OptimisticChain
 example := ``Consensus.Goldilocks.AC.Payload
-example := ``Consensus.Goldilocks.AC.ReplayOrder
 example := ``Consensus.Goldilocks.AC.PoolCap
 example := ``Consensus.Goldilocks.AC.ProposalPayloadValid
 example := ``Consensus.Goldilocks.AC.ResolutionStable

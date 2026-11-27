@@ -222,7 +222,7 @@ theorem vote_emitted_forwarded (H : Time) (hH : 2 ≤ H) :
     exact ⟨rfl, h0, by rw [hhor]; exact h2.trans hH⟩
   have h0 : (0 : Time) ≤ sp.ts 0 + sp.Δ := by rw [ht]; decide
   have hc8 : 8 * sp.Δ ≤ 8 * sp.Δ + 1 := Int.le_add_one le_rfl
-  obtain ⟨hw, hj⟩ := Compose.ready_implies_joined sp _ _ _ _ _ hrun y hy (sp.ts 0 + sp.Δ)
+  obtain ⟨hw, hj⟩ := Compose.ready_implies_joined sp _ _ _ _ hrun y hy (sp.ts 0 + sp.Δ)
     (8 * sp.Δ) h0 hc8 (fun u hu hu' =>
       hawake u ((le_max_left _ _).trans hu) (hu'.trans ht.le))
   obtain ⟨k, e, ⟨ℓ, hcall, he⟩, hslot, htime⟩ :=

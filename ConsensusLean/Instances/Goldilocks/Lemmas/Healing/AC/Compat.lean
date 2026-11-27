@@ -26,8 +26,8 @@ namespace Consensus.Goldilocks.AC
 
 variable {wm : AC.WriteMode}
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP ro} {g : Time} {proposer : Nat → Fin sp.n}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (Blk sp.n FGP)} {tr : GTrace sp FGP} {g : Time} {proposer : Nat → Fin sp.n}
 
 /-- **The result side**, with the unlock given. At an honest update of slot `s` with result `C`:
 its supporters `S` of `C` are more than half of its voters; each has a vote in its pool, extending
@@ -38,7 +38,7 @@ theorem result_sideU
     (hY : Y ∈ H)
         {c s : Nat}
     {C : Blk sp.n FGP} {CV : Set (Vote sp.n)} (hR : ResultAt tr Y c s C CV) :
-    ∃ (ℓ : ACLabel (goldilocksAC sp FGP ro)) (S : Set (Fin sp.n)),
+    ∃ (ℓ : ACLabel (goldilocksAC sp FGP)) (S : Set (Fin sp.n)),
       tr.CallAt Y c ℓ ∧ tr.time c = sp.ts s + 6 * sp.Δ ∧
       (voters {v | v ∈ (tr.state Y c).pool s}).ncard < 2 * S.ncard ∧
       S ⊆ Fwd tr U Y s C ∧
@@ -111,10 +111,10 @@ theorem result_optimistic_compatibleU
   omega
 
 private theorem fwd_reaches_update_window_before {ini}
-    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {a b : Time} {s : Nat}
+    (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini) {a b : Time} {s : Nat}
     (hsync : SyncACWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
     {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt Y c ℓ)
+    {ℓ : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt Y c ℓ)
     (ht : tr.time c = sp.ts s + 6 * sp.Δ) (hb : tr.time c ≤ b)
     (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s)
     {D : Blk sp.n FGP} {u : Fin sp.n} (hu : u ∈ Fwd tr U X s D) :
@@ -132,10 +132,10 @@ private theorem fwd_reaches_update_window_before {ini}
   rwa [hvs] at h
 
 private theorem against_update_window_before {ini}
-    (hr : ACLocalRun (goldilocksAC sp FGP ro) H U tr ini) {a b : Time} {s : Nat}
+    (hr : ACLocalRun (goldilocksAC sp FGP) H U tr ini) {a b : Time} {s : Nat}
     (hsync : SyncACWindowBefore H U a b tr) (ha : a ≤ sp.ts s)
     {X Y : Fin sp.n} (hX : X ∈ H) (hY : Y ∈ H) {c : Nat}
-    {ℓ : ACLabel (goldilocksAC sp FGP ro)} (hc : tr.CallAt Y c ℓ)
+    {ℓ : ACLabel (goldilocksAC sp FGP)} (hc : tr.CallAt Y c ℓ)
     (ht : tr.time c = sp.ts s + 6 * sp.Δ) (hb : tr.time c ≤ b)
     (hrs : ∀ k ≤ c, tr.RestartAt Y k → tr.time k ≤ sp.ts s)
     {D DY : Blk sp.n FGP} {S T : Set (Fin sp.n)}

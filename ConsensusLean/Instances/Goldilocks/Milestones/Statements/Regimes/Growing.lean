@@ -33,7 +33,7 @@ Statements only: no proofs here. -/
 
 namespace Consensus.Goldilocks.Regimes.Growing
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 /-- The sleepy look-ahead of the Goldilocks contract (`ahead = 5`) at `Δp = Δe`. -/
 def ahead (sp : ACParams) : Time := 5 * sp.Δ
@@ -43,8 +43,8 @@ def hold (sp : ACParams) : Time := sp.Δ
 
 section Defs
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-  (tr : GoldilocksTrace sp ro) (H : Time → Set (Fin sp.n))
+variable {sp : ACParams}
+  (tr : GoldilocksTrace sp) (H : Time → Set (Fin sp.n))
 
 /-- `y` is ready at `t` with catch-up `c`: honest at `t` and awake throughout
 `[max(0, t − c − 1), t]`. -/
@@ -67,9 +67,9 @@ end Defs
 
 /-- **R.8, `nested`, under growing faults**, at every cut of a node honest at its time. -/
 def OutputsNested : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+    (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr →
     ∀ y i, y ∈ H (tr.time i) →
       (tr.state y i).fg.Anc (tr.finalizedAt y i) (tr.confirmedAt y i) ∧
@@ -77,18 +77,18 @@ def OutputsNested : Prop :=
 
 /-- **R.8, `finalMonotone`, under growing faults**, for a node honest at the later cut. -/
 def FinalizedMonotone : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+    (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr →
     ∀ y i j, i ≤ j → y ∈ H (tr.time j) →
       (tr.state y j).fg.Anc (tr.finalizedAt y i) (tr.finalizedAt y j)
 
 /-- **R.8, `outputValid`, under growing faults**, at every cut of a node honest at its time. -/
 def OutputsValid : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+    (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr →
     ∀ y i, y ∈ H (tr.time i) →
       ValidOutput tr proposer dg y i (tr.finalizedAt y i) ∧
@@ -99,9 +99,9 @@ honest at its own cut, conflict inside the blocks held while honest, at least `2
 validators each have a slashable pair among the attestations included on two chains the two
 readers hold. No fault bound. -/
 def FinalAccountable : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+    (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
     ∀ y z i j, y ∈ H (tr.time i) → z ∈ H (tr.time j) →
       ¬ Compatible (tr.HonestBlocksAt H) (tr.finalizedAt y i) (tr.finalizedAt z j) →
@@ -113,9 +113,9 @@ def FinalAccountable : Prop :=
 /-- **R.7, `nonFraming`, under growing faults.** A validator honest at the later of two of its
 signings signs no slashable pair with them. -/
 def NonFraming : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+    (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr →
     ∀ v k k' a b, tr.SignAt v k a → tr.SignAt v k' b → v ∈ H (max (tr.time k) (tr.time k')) →
       ¬ FG.slashable a b
@@ -124,9 +124,9 @@ def NonFraming : Prop :=
 validators compromised by the later of the two reads, the finalized tips of two nodes, each honest
 at its own cut, never conflict. -/
 def FinalizedSafe : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n),
+    (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n),
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
     ∀ y z i j, y ∈ H (tr.time i) → z ∈ H (tr.time j) →
       (H (max (tr.time i) (tr.time j)))ᶜ.ncard < 2 * sp.toParams.q - sp.n →

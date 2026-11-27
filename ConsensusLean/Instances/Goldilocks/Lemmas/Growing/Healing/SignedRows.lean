@@ -21,17 +21,17 @@ its row (`ResetService.signedRow`) and its validity need:
 
 namespace Consensus.Goldilocks.Healing.Growing
 
-open AC (ACParams ReplayOrder Payload gbar)
+open AC (ACParams Payload gbar)
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {proposer : Nat → Fin sp.n}
 
 /-- A row signed by `v` by a signer honest at `v + hold` (so at its signing) is processed by an
 honest proposer before a proposal at `t ≥ v + ΔF` within the horizon (no restart of the proposer
 after `ḡ`), under the signed-row service with release hold `hold ≥ 0`. -/
 private theorem rows_delivered_upTo_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g ΔF b hold : Time}
     (hsvc : ResetService tr H g ΔF b hold) (hhold : 0 ≤ hold) {v : Time}
     (hv : gbar g ≤ v) {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
@@ -62,13 +62,13 @@ of the prefix is a local run, the store after the cut holds `X` and its parent `
 states, and every row the proposer processed before the cut that names
 `Pr`'s entry is in `X`'s payload or on `Pr`'s chain. -/
 private theorem proposal_rows_placed_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
     {X Pr : AC.Blk sp.n (List (FG.Att sp.n))}
     (hX : tr.ProposesAt p kX X) (hpar : X.parent = some Pr.root)
     (hPr : Pr ∈ (tr.state p kX).fg.tree) :
-    FGLocalRun (goldilocksNode sp ro).genesisPayload (H (tr.time kX))
+    FGLocalRun (goldilocksNode sp).genesisPayload (H (tr.time kX))
         ((tr.upTo (tr.time kX)).HonestBlocks (H (tr.time kX))) (tr.upTo (tr.time kX)).projFG ∧
       X ∈ ((tr.upTo (tr.time kX)).projFG.store p (kX + 1)).tree ∧
       Pr ∈ ((tr.upTo (tr.time kX)).projFG.store p (kX + 1)).tree ∧
@@ -92,7 +92,7 @@ private theorem proposal_rows_placed_at
     ⟨hrun.time_mono hk'.le, hproc⟩⟩ hah haT
 
 /-- A row signed by a signer honest at its signing names its signer. -/
-private theorem signAt_val_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
+private theorem signAt_val_at {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {y : Fin sp.n} {k : Nat} (hy : y ∈ H (tr.time k)) {att : FG.Att sp.n}
     (hs : tr.SignAt y k att) : att.val = y :=
@@ -101,7 +101,7 @@ private theorem signAt_val_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
 
 /-- No restart of a node honest at a proposal cut within the horizon after `ḡ`. -/
 private theorem no_restart_before {g ΔF b hold : Time} {hs : HSSharedUpTo tr H dg g ΔF b hold}
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX)) (hkb : tr.time kX ≤ b) :
     ∀ r ≤ kX, tr.RestartAt p r → tr.time r ≤ gbar g := fun r hr hrs =>
@@ -111,7 +111,7 @@ private theorem no_restart_before {g ΔF b hold : Time} {hs : HSSharedUpTo tr H 
 attestations signed by `v`, each by a signer honest at `v + hold` (so at its signing), delivered
 by the HS premises with release hold `hold ≥ 0` through the horizon. -/
 theorem justify_of_signed_rows'_upTo_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g ΔF v b hold : Time}
     (hs : HSSharedUpTo tr H dg g ΔF b hold) (hhold : 0 ≤ hold) (hv : gbar g ≤ v)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))
@@ -156,7 +156,7 @@ theorem justify_of_signed_rows'_upTo_at
 parent's entry signed by `v`, each by a signer honest at `v + hold`, once the entry is `δt`
 slots old. -/
 theorem cross_of_signed_rows_upTo_at
-    {ini : Fin sp.n → (goldilocksNode sp ro).State}
+    {ini : Fin sp.n → (goldilocksNode sp).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr ini) {g ΔF v b hold : Time}
     (hs : HSSharedUpTo tr H dg g ΔF b hold) (hhold : 0 ≤ hold) (hv : gbar g ≤ v)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX))

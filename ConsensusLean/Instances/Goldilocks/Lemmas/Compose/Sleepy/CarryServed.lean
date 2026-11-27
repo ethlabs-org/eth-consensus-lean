@@ -17,15 +17,15 @@ window, and the growing-fault transports). -/
 
 namespace Consensus.Goldilocks.Compose
 
-open AC (ACParams ReplayOrder Vote)
+open AC (ACParams Vote)
 
-variable {FGP : Type} {sp : ACParams} {ro : ReplayOrder sp FGP} {H : Set (Fin sp.n)}
-  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP ro}
+variable {FGP : Type} {sp : ACParams} {H : Set (Fin sp.n)}
+  {U : Set (AC.Blk sp.n FGP)} {T : AC.GTrace sp FGP}
 
 /-- At an honest vote, the pool of a slot other than the vote's, and the stamps of its votes,
 are those of the state after the vote's call. -/
-private theorem readPoint_slot {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
-    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)}
+private theorem readPoint_slot {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)}
     {e : AC.Em sp FGP} (hc : AC.CastAt T y i ℓ e) {σ : Nat} (hσ : e.msg.slot ≠ σ) :
     (T.state y (i + 1)).pool σ = e.readPoint.pool σ ∧
       ∀ u : Vote sp.n, u.slot = σ → (T.state y (i + 1)).voteStamp u = e.readPoint.voteStamp u := by
@@ -52,13 +52,13 @@ of slot `s`, has a release time `τ ∈ [t_s, t_s + 2Δ)` at which it is served 
 deadline for `τ` is at or before the vote), and has a head that is relayed to `y` from a time
 before `t_s + 2Δ` (likewise) or that `y` accepted before the freeze `t_s + 3Δ` (genesis
 included), then `Carry_y(s, ·, ·)` holds for the counted votes. -/
-theorem carryAt_of_served {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U T ini)
+theorem carryAt_of_served {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP) H U T ini)
     (hini : ∀ y, AC.VoteStart sp.genesisRoot (ini y))
     {y : Fin sp.n} -- supplier: `frame_anc_acceptedU`
-    (hframe : ∀ k (ℓ : ACLabel (AC.goldilocksAC sp FGP ro)), T.CallAt y k ℓ →
+    (hframe : ∀ k (ℓ : ACLabel (AC.goldilocksAC sp FGP)), T.CallAt y k ℓ →
       ∀ B ∈ ℓ.frame.tree, ∀ X, Anc U X B →
         X.root = sp.genesisRoot ∨ ∃ k' ≤ k, T.AcceptAt y k' X)
-    (hy : y ∈ H) {s i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP ro)}
+    (hy : y ∈ H) {s i : Nat} {ℓ : ACLabel (AC.goldilocksAC sp FGP)}
     {e : AC.Em sp FGP} (hc : AC.CastAt T y i ℓ e) (hs : e.msg.slot = s + 1)
     {CV : Set (Vote sp.n)}
     (hW : ∀ v ∈ CV, v.slot = s ∧
@@ -82,7 +82,7 @@ theorem carryAt_of_served {ini} (hr : ACLocalRun (AC.goldilocksAC sp FGP ro) H U
     have hj' : AC.joined sp (T.post i) (T.time i) := by
       unfold AC.joined; rw [AC.restartTime_of_castAtU hr.toU hy hc]; exact hyj
     intro k hk hrk
-    have := (AC.joined_awakeU sp FGP ro H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
+    have := (AC.joined_awakeU sp FGP H U T hr.toU y hy i ℓ hc.1 hj').2 k hk hrk
     rwa [hsi, show ((s + 1 : Nat) : Int) - 1 = (s : Int) by push_cast; ring] at this
   have hdl : ∀ k ≤ i, ∀ τ, τ < sp.ts s + 2 * sp.Δ → T.deadline y k τ < sp.ts s + 3 * sp.Δ := by
     intro k hk τ hτ

@@ -18,13 +18,13 @@ the default start (`AC.committeeStart_full`), its committee facts hold at the po
 
 namespace Consensus.Goldilocks.Regimes.Growing.Test
 
-open AC (ACParams ReplayOrder Payload)
+open AC (ACParams Payload)
 
 /-- R.2 inclusion under growing faults at population-sized committees, over the default start. -/
 def PopulationIncludeSleepy : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time),
+    (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n) (ΔF : Time),
     sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
     tr.SleepyRunAt H ΔF (ahead sp) →
@@ -34,9 +34,9 @@ def PopulationIncludeSleepy : Prop :=
 
 /-- R.2 growth under growing faults at population-sized committees, over the default start. -/
 def PopulationGrowSleepy : Prop :=
-  ∀ (sp : ACParams) (ro : ReplayOrder sp (List (FG.Att sp.n)))
+  ∀ (sp : ACParams)
     (dg : Digest (List (FG.Att sp.n)) (Payload sp.n)) (H : Time → Set (Fin sp.n))
-    (tr : GoldilocksTrace sp ro) (proposer : Nat → Fin sp.n) (ΔF : Time) (k : Nat),
+    (tr : GoldilocksTrace sp) (proposer : Nat → Fin sp.n) (ΔF : Time) (k : Nat),
     sp.committeeSize = sp.n →
     Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr → Compose.NoCollRun dg tr →
     tr.SleepyRunAt H ΔF (ahead sp) → 1 ≤ k →
@@ -51,9 +51,9 @@ def PopulationGrowSleepy : Prop :=
           ReadyAt tr H (catchUp sp) y (t + D) → CutAfter tr j (t + D) →
           Anc (tr.HonestBlocksAt H) (readAfter tr x jx t) (readAfter tr y j (t + D))
 
-variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+variable {sp : ACParams}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace sp ro} {ΔF : Time} {proposer : Nat → Fin sp.n}
+  {tr : GoldilocksTrace sp} {ΔF : Time} {proposer : Nat → Fin sp.n}
 
 /-- The default start is the full committee's start. -/
 theorem run_full (hrun : Consensus.Goldilocks.Growing.GoldilocksRun proposer dg H tr) :
@@ -73,14 +73,14 @@ theorem committeeSleepy_full (hrun : Consensus.Goldilocks.Growing.GoldilocksRun 
 
 /-- **New ⇒ old at `K = full`: inclusion.** -/
 theorem includeSleepy_full (h : IncludeSleepy) : PopulationIncludeSleepy :=
-  fun sp ro dg H tr proposer ΔF hstock hrun hnc hsl =>
-    h sp ro dg H tr proposer ΔF _ (run_full hrun) hnc
+  fun sp dg H tr proposer ΔF hstock hrun hnc hsl =>
+    h sp dg H tr proposer ΔF _ (run_full hrun) hnc
       (Compose.Growing.CommitteeFacts.of_full hrun hnc hstock) hsl (committeeSleepy_full hrun hsl)
 
 /-- **New ⇒ old at `K = full`: growth.** -/
 theorem growSleepy_full (h : GrowSleepy) : PopulationGrowSleepy :=
-  fun sp ro dg H tr proposer ΔF k hstock hrun hnc hsl =>
-    h sp ro dg H tr proposer ΔF k _ (run_full hrun) hnc
+  fun sp dg H tr proposer ΔF k hstock hrun hnc hsl =>
+    h sp dg H tr proposer ΔF k _ (run_full hrun) hnc
       (Compose.Growing.CommitteeFacts.of_full hrun hnc hstock) hsl (committeeSleepy_full hrun hsl)
 
 /-- The population inclusion row, from the committee row. -/

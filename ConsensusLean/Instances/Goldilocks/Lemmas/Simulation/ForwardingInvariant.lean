@@ -25,19 +25,19 @@ variable {binding : VoteBinding}
 /-- Pending block payloads have the canonical parent/child shape. This says nothing about
 whether their guards succeed or whether the parent has already been published. -/
 def ForwardQueueCanonical {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) : Prop :=
+    (st : State sp binding) : Prop :=
   ∀ q ∈ st.forwards, ∃ p : Option (Wire sp.n binding), ∃ B, q.2 = p.toList ++ [blockObj sp B]
 
 /-- Expose only the queue-shape proposition, not the definition body. -/
 theorem forwardQueueCanonical_iff {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) :
+    (st : State sp binding) :
     ForwardQueueCanonical st ↔
       ∀ q ∈ st.forwards, ∃ p : Option (Wire sp.n binding), ∃ B,
         q.2 = p.toList ++ [blockObj sp B] := by rfl
 
 /-- The handler's acceptance fold preserves canonical payload shape. -/
 private theorem forwardQueueCanonical_apply {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) origin r
+    (st : State sp binding) origin r
     (h : ForwardQueueCanonical st) : ForwardQueueCanonical (apply st origin r) := by
   rw [forwardQueueCanonical_iff] at h ⊢
   intro q hq
@@ -47,7 +47,7 @@ private theorem forwardQueueCanonical_apply {sp : AC.ACParams}
 
 /-- Canonical queue payloads become canonical signed forwarding objects. -/
 private theorem forwardQueueCanonical_pending {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding)
+    (st : State sp binding)
     (h : ForwardQueueCanonical st) :
     ∀ o ∈ pendingWrappers st, ∃ t p B, o = forwardObj sp st.self t p B := by
   rw [forwardQueueCanonical_iff] at h
@@ -58,7 +58,7 @@ private theorem forwardQueueCanonical_pending {sp : AC.ACParams}
   exact ⟨q.1, p, B, by simp only [he, forwardObj]⟩
 
 private theorem canonical_recordOwn {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) o hs
+    (st : State sp binding) o hs
     (h : ForwardQueueCanonical st) : ForwardQueueCanonical (recordOwn st o hs) := by
   rw [AsChainShape.recordOwn_eq]
   split
@@ -69,8 +69,8 @@ private theorem canonical_recordOwn {sp : AC.ACParams}
   · exact h
 
 private theorem canonical_processOne {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding)
-    (st : State sp ro binding) o hs
+    (io : VoteAuth sp.n binding)
+    (st : State sp binding) o hs
     (h : ForwardQueueCanonical st) : ForwardQueueCanonical (processOne io hs st o) := by
   rw [AsChainShape.processOne_eq]
   split
@@ -84,8 +84,8 @@ private theorem canonical_processOne {sp : AC.ACParams}
   · exact h
 
 private theorem canonical_poll {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} {release : Fin sp.n → Time → Bool}
-    (st : State sp ro binding) t :
+    {release : Fin sp.n → Time → Bool}
+    (st : State sp binding) t :
     ForwardQueueCanonical (pollBatch st t release).1 := by
   rw [forwardQueueCanonical_iff, (poll_wrappers st t).2]
   exact fun q h => False.elim (List.not_mem_nil h)
@@ -127,7 +127,7 @@ private theorem stateAt_forwardQueueCanonical {V : Type} [Fintype V] [DecidableE
             (fun st m cs hs h => canonical_recordOwn st _ hs h)
           have hf : ∀ (io : VoteAuth (S.params (pubOf E) hn).n S.vote)
         (xs : List (Wire (Fintype.card V) S.vote)),
-              ∀ st : State (S.params (pubOf E) hn) (S.ro _) S.vote, ForwardQueueCanonical st →
+              ∀ st : State (S.params (pubOf E) hn) S.vote, ForwardQueueCanonical st →
                 ForwardQueueCanonical (xs.foldl (processOne io (digests rho.hash o)) st) := by
             intro io xs
             induction xs with
@@ -345,7 +345,7 @@ private theorem deliver_forwardInventory {V : Type} [Fintype V] {E : Env V} (S :
       (process (shapeOf S hn nd) o (digests rho.hash o)) := by
     have hf : ∀ (io : VoteAuth (S.params (pubOf E) hn).n S.vote)
         (xs : List (Wire (Fintype.card V) S.vote)),
-        ∀ st : State (S.params (pubOf E) hn) (S.ro _) S.vote, ForwardQueueCanonical st →
+        ∀ st : State (S.params (pubOf E) hn) S.vote, ForwardQueueCanonical st →
           ForwardQueueCanonical (xs.foldl (processOne io (digests rho.hash o)) st) := by
       intro io xs
       induction xs with
@@ -474,7 +474,7 @@ private theorem delivery_pending_released {V : Type} [Fintype V] [DecidableEq V]
   have hcanon : ForwardQueueCanonical (shapeOf S hn nd) := by
     have hf : ∀ (io : VoteAuth (S.params (pubOf E) hn).n S.vote)
         (xs : List (Wire (Fintype.card V) S.vote)),
-        ∀ st : State (S.params (pubOf E) hn) (S.ro _) S.vote, ForwardQueueCanonical st →
+        ∀ st : State (S.params (pubOf E) hn) S.vote, ForwardQueueCanonical st →
           ForwardQueueCanonical (xs.foldl (processOne io (digests rho.hash o)) st) := by
       intro io xs
       induction xs with
@@ -626,7 +626,7 @@ theorem delivery_pending_publication {V : Type} [Fintype V] [DecidableEq V] {E :
 
 /-- Enqueuing a new acceptance never removes an earlier pending block wrapper. -/
 private theorem queueAccepted_forwards_mono {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) (B : Blk sp) :
+    (st : State sp binding) (B : Blk sp) :
     st.forwards ⊆ (queueAccepted st B).forwards := by
   unfold queueAccepted
   split
@@ -639,9 +639,9 @@ private theorem queueAccepted_forwards_mono {sp : AC.ACParams}
 
 /-- Handler folds retain pending block wrappers even when later calls refuse input. -/
 private theorem apply_forwards_mono {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (st : State sp ro binding) origin r :
+    (st : State sp binding) origin r :
     st.forwards ⊆ (apply st origin r).forwards := by
-  have hf : ∀ cs : List (Cut (goldilocksNode sp ro)), ∀ s : State sp ro binding,
+  have hf : ∀ cs : List (Cut (goldilocksNode sp)), ∀ s : State sp binding,
       s.forwards ⊆ (cs.foldl (fun s c => match c with
         | .fg (.block B true) => queueAccepted s B | _ => s) s).forwards := by
     intro cs
@@ -664,8 +664,8 @@ private theorem apply_forwards_mono {sp : AC.ACParams}
 
 /-- Recursive receipt calls retain every wrapper already queued in this event. -/
 private theorem processOne_forwards_mono {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding)
-    (st : State sp ro binding) hs o :
+    (io : VoteAuth sp.n binding)
+    (st : State sp binding) hs o :
     st.forwards ⊆ (processOne io hs st o).forwards := by
   rw [AsChainShape.processOne_eq]
   split
@@ -680,9 +680,9 @@ private theorem processOne_forwards_mono {sp : AC.ACParams}
 
 /-- A wrapper queued at an intermediate receipt cut survives the remaining traversal. -/
 private theorem process_fold_forwards_mono {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding)
+    (io : VoteAuth sp.n binding)
     (hs : List (Header Info × Nat))
-    (xs : List (Wire sp.n binding)) (st : State sp ro binding) :
+    (xs : List (Wire sp.n binding)) (st : State sp binding) :
     st.forwards ⊆ (xs.foldl (processOne io hs) st).forwards := by
   induction xs generalizing st with
   | nil => exact List.Subset.refl _
@@ -691,10 +691,10 @@ private theorem process_fold_forwards_mono {sp : AC.ACParams}
 /-- A successful block call in a receipt leaves its exact stamped child in the final
 queue, even when subsequent calls are refused or queue further children. -/
 private theorem processOne_acceptance_pending {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (io : VoteAuth sp.n binding)
-    (st : State sp ro binding) hs o (B : Blk sp)
+    (io : VoteAuth sp.n binding)
+    (st : State sp binding) hs o (B : Blk sp)
     (tail : List (Wire sp.n binding)) (hcover : WrappersCover st)
-    (he : canonEvent sp ro io hs o = some (.block B))
+    (he : canonEvent sp io hs o = some (.block B))
     (ha : .fg (.block B true) ∈ (Node.onBlock st.self st.node st.now B).2) :
     ∃ p : Option (Wire sp.n binding), (st.now, p.toList ++ [blockObj sp B]) ∈
       (tail.foldl (processOne io hs) (processOne io hs st o)).forwards := by
@@ -711,11 +711,11 @@ private theorem processOne_acceptance_pending {sp : AC.ACParams}
 /-- Every successful block record in a recursive receipt traversal leaves a matching
 stamped child in its final queue. Coverage is threaded through actual intermediate states. -/
 theorem deliverRecs_acceptance_pending {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))} (proposer : Nat → Fin sp.n)
+    (proposer : Nat → Fin sp.n)
     (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n)) (io : VoteAuth sp.n binding)
     (hs : List (Header Info × Nat))
-    (event : Nat) (xs : List (Wire sp.n binding)) (st : State sp ro binding) (sub : Nat)
-    (hcover : WrappersCover st) (r : CutRec sp ro) (B : Blk sp)
+    (event : Nat) (xs : List (Wire sp.n binding)) (st : State sp binding) (sub : Nat)
+    (hcover : WrappersCover st) (r : CutRec sp) (B : Blk sp)
     (hr : r ∈ deliverRecs io proposer dg hs st.self st.now event xs st.node sub)
     (hb : r.label = .fg (.block B true)) :
     ∃ p : Option (Wire sp.n binding), (st.now, p.toList ++ [blockObj sp B]) ∈
@@ -723,7 +723,7 @@ theorem deliverRecs_acceptance_pending {sp : AC.ACParams}
   induction xs generalizing st sub with
   | nil => simp only [deliverRecs_nil, List.not_mem_nil] at hr
   | cons o os ih =>
-    cases he : canonEvent sp ro io hs o with
+    cases he : canonEvent sp io hs o with
     | none =>
       rw [deliverRecs_cons_none _ _ _ _ _ _ _ _ _ _ _ he] at hr
       simpa only [List.foldl_cons, AsChainShape.processOne_eq, he] using ih st (sub + 1) hcover hr
@@ -736,7 +736,7 @@ theorem deliverRecs_acceptance_pending {sp : AC.ACParams}
         have ha : .fg (.block B true) ∈ (Node.exec proposer dg st.self st.node st.now e).2 := by
           rw [hkr, hb] at hl
           exact hl.symm ▸ List.getElem_mem _
-        rcases canonEvent_cases (ro := ro) io hs o with hn | ⟨C, hc⟩ | ⟨m, hm⟩ | ⟨a, ha'⟩
+        rcases canonEvent_cases io hs o with hn | ⟨C, hc⟩ | ⟨m, hm⟩ | ⟨a, ha'⟩
         · rw [hn] at he; cases he
         · have ee := Option.some.inj (he.symm.trans hc)
           subst e
@@ -966,7 +966,7 @@ private theorem proposal_acceptance_recording_handler {V : Type} [Fintype V] {E 
     · erw [hr] at ha
       simp only [List.mem_cons, Node.acProposal, reduceCtorEq, false_or,
         Node.proposeBlock] at ha
-      have heq : Node.mkBlock (A := goldilocksNode (S.params (pubOf E) hn) (S.ro _))
+      have heq : Node.mkBlock (A := goldilocksNode (S.params (pubOf E) hn))
           (digestOf S rho) (rho.ownKey v)
           (Node.acProposal (shapeOf S hn nd).node (shapeOf S hn nd).now).1.fg
           (shapeOf S hn nd).now (encodeTxs nd.st.2) d.head p = B := by
@@ -983,7 +983,7 @@ private theorem proposal_acceptance_recording_handler {V : Type} [Fintype V] {E 
 Unlike receipt decoding, own recording has no payload-validation guard. -/
 theorem recordOwn_canonical_block {V : Type} [Fintype V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (st : State (S.params (pubOf E) hn) (S.ro _) S.vote) (B : Blk (S.params (pubOf E) hn))
+    (st : State (S.params (pubOf E) hn) S.vote) (B : Blk (S.params (pubOf E) hn))
     (hpar : B.parent ≠ none) (hroot : B.RootOk (digestOf S rho)) :
     recordOwn st (blockObj (S.params (pubOf E) hn) B)
         (digests rho.hash (blockObj (S.params (pubOf E) hn) B)) =
@@ -1039,9 +1039,8 @@ private theorem dutyStep_propose_accepted_pending {V : Type} [Fintype V] {E : En
 
 /-- Proposal cuts carry the digest and parent of the block just constructed by the node. -/
 private theorem proposal_acceptance_block_fields {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
-    (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat)
+    (self : Fin sp.n) (st : NodeState (goldilocksNode sp)) (t : Time) (x : Nat)
     (B : Blk sp)
     (ha : .fg (.block B true) ∈ (Node.tickStep proposer dg self st t x .proposal).2) :
     B.RootOk dg ∧ B.parent ≠ none := by
@@ -1084,9 +1083,8 @@ theorem dutyStep_propose_acceptance_queued {V : Type} [Fintype V] {E : Env V}
 
 /-- A block acceptance in a tick belongs to the proposal step, not the AC tick or FG update. -/
 theorem tick_acceptance_proposal {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (AC.Payload sp.n))
-    (self : Fin sp.n) (st : NodeState (goldilocksNode sp ro)) (t : Time) (x : Nat) {fgDue : Bool}
+    (self : Fin sp.n) (st : NodeState (goldilocksNode sp)) (t : Time) (x : Nat) {fgDue : Bool}
     (B : Blk sp)
     (ha : .fg (.block B true) ∈ (Node.exec proposer dg self st t (.tick x fgDue)).2) :
     .fg (.block B true) ∈
@@ -1130,8 +1128,7 @@ the decoded child of a same-origin wrapper, whose stamp does not exceed the loca
 Recursive decoding certifies parent identity, strict parent slot order and nondecreasing
 parent timestamps. Reachability and correspondence with the held-block map remain separate. -/
 structure WrappersDecoded {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
-    (tables : Wire sp.n binding → List (Header Info × Nat)) (st : State sp ro binding) : Prop where
+    (tables : Wire sp.n binding → List (Header Info × Nat)) (st : State sp binding) : Prop where
   stored : ∀ root o, st.wrappers root = some o →
     ∃ t p B, decodeForward sp (tables o) o = some (st.self, t, p, B) ∧
       B.root = root ∧ t ≤ st.now
@@ -1141,9 +1138,8 @@ structure WrappersDecoded {sp : AC.ACParams}
 /-- Changes outside the durable map and queue, and forward clock movement, preserve decoding.
 This covers state-only handler work without treating it as a new publication. -/
 theorem WrappersDecoded.mono {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)}
-    {st st' : State sp ro binding} (h : WrappersDecoded tables st)
+    {st st' : State sp binding} (h : WrappersDecoded tables st)
     (hself : st'.self = st.self) (hmap : st'.wrappers = st.wrappers)
     (hqueue : st'.forwards = st.forwards) (ht : st.now ≤ st'.now) :
     WrappersDecoded tables st' := by
@@ -1159,9 +1155,8 @@ theorem WrappersDecoded.mono {sp : AC.ACParams}
 
 /-- Empty runtime maps and queues satisfy the decoder invariant without wire premises. -/
 theorem wrappersDecoded_empty {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     (tables : Wire sp.n binding → List (Header Info × Nat))
-    (st : State sp ro binding) (hm : ∀ root, st.wrappers root = none) (hq : st.forwards = []) :
+    (st : State sp binding) (hm : ∀ root, st.wrappers root = none) (hq : st.forwards = []) :
     WrappersDecoded tables st := by
   constructor
   · intro root o ho
@@ -1173,9 +1168,8 @@ theorem wrappersDecoded_empty {sp : AC.ACParams}
 /-- Enqueuing a decoded child preserves both decoder inventories. The new child's
 decoding must be established from its accepted payload and the selected parent's facts. -/
 theorem WrappersDecoded.enqueue {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)}
-    {st : State sp ro binding} (h : WrappersDecoded tables st) (B : Blk sp)
+    {st : State sp binding} (h : WrappersDecoded tables st) (B : Blk sp)
     (root : Nat) (p : Option (Wire sp.n binding)) (hr : B.parent = some root)
     (hp : (if root = sp.genesisRoot then some none else
       (st.wrappers root).map some) = some p)
@@ -1210,7 +1204,7 @@ theorem WrappersDecoded.enqueue {sp : AC.ACParams}
 the new wrapper. Parent slot order is explicit until supplied by the held-block invariant. -/
 theorem WrappersDecoded.engine_enqueue {V : Type} [Fintype V] {E : Env V}
     (S : Setup) (rho : Model.Run (compiled (goldilocks S)) E) (hn : 1 ≤ Fintype.card V)
-    (st : State (S.params (pubOf E) hn) (S.ro _) S.vote)
+    (st : State (S.params (pubOf E) hn) S.vote)
     (h : WrappersDecoded (digests (P := protoOf (compiled (goldilocks S)) E) rho.hash) st)
     (B : Blk (S.params (pubOf E) hn)) (root : Nat) (p : Option (Wire (Fintype.card V) S.vote))
     (hr : B.parent = some root)
@@ -1251,9 +1245,8 @@ theorem WrappersDecoded.engine_enqueue {V : Type} [Fintype V] {E : Env V}
 /-- Draining pending traffic preserves durable decoding; retained candidates inherit their
 old witnesses. This applies to a poll's queue clear without assuming a publication occurred. -/
 theorem WrappersDecoded.drain {sp : AC.ACParams}
-    {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
     {tables : Wire sp.n binding → List (Header Info × Nat)}
-    {st st' : State sp ro binding} (h : WrappersDecoded tables st)
+    {st st' : State sp binding} (h : WrappersDecoded tables st)
     (hself : st'.self = st.self) (hmap : st'.wrappers = st.wrappers)
     (hqueue : pendingWrappers st' ⊆ pendingWrappers st) (ht : st.now ≤ st'.now) :
     WrappersDecoded tables st' := by
