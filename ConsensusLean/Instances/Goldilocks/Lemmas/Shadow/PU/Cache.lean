@@ -1,4 +1,14 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Spec.Run.Goldilocks
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.CoreStock
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.FG.Store.Handlers
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Node.Handlers
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Goldilocks
+public import ConsensusLean.Instances.Goldilocks.Milestones.Spec.Run.Model
+public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.Handlers
+public import ConsensusLean.Instances.Goldilocks.Spec.FG.Store.View
+public import ConsensusLean.Instances.Goldilocks.Spec.Node.Handlers
+public import ConsensusLean.Instances.Goldilocks.Spec.Node.State
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Parametric
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Viability
@@ -107,42 +117,36 @@ theorem finalitySpec_updateFinalityG (g : Store P ACP → NodeBlock P ACP → Pr
       · rw [fJ] at h4 ⊢
         exact (hanc jb _ _).1 h4
 
-theorem updateFinality'_eq_G :
-    updateFinality' (P := P) (ACP := ACP) =
-      updateFinalityG (fun st X => st.HasViableDescendant' X) := by
+theorem updateFinality_eq_G :
+    updateFinality (P := P) (ACP := ACP) =
+      updateFinalityG (fun st X => st.HasViableDescendant X) := by
   funext st σ
-  rw [updateFinality'_eq]
+  rw [updateFinality_eq]
   rfl
 
 /-- The shadow finality update has the stock shape. -/
-theorem finalitySpec_updateFinality' : FinalitySpec (P := P) (ACP := ACP) updateFinality' :=
-  updateFinality'_eq_G ▸ finalitySpec_updateFinalityG _
+theorem finalitySpec_updateFinality' : FinalitySpec (P := P) (ACP := ACP) updateFinality :=
+  updateFinality_eq_G ▸ finalitySpec_updateFinalityG _
 
-theorem onBlock'_eq_onBlockWith (st : Store P ACP) (B : NodeBlock P ACP) :
-    st.onBlock' B = st.onBlockWith updateFinality' B := by
-  rw [onBlock'_eq, onBlockWith_eq]
-  rfl
-
-/-- A shadow-reachable store is reached with the finality update `updateFinality'`. -/
 theorem Reachable'.reachableWith {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable' acp₀) :
-    ReachableWith updateFinality' acp₀ st := by
+    ReachableWith updateFinality acp₀ st := by
   rw [reachableWith_eq]
-  have h' : Relation.ReflTransGen Step' (init acp₀) st := by rw [← reachable'_eq]; exact h
+  have h' : Relation.ReflTransGen Step (init acp₀) st := by rw [← reachable_eq]; exact h
   clear h
   induction h' with
   | refl => exact .refl
   | tail _ hs ih =>
     refine ih.tail ((stepWith_iff _ _ _).2 ?_)
-    rcases (step'_iff _ _).1 hs with ⟨B, hB⟩ | ⟨a, ha⟩
-    · exact Or.inl ⟨B, (onBlock'_eq_onBlockWith _ B) ▸ hB⟩
+    rcases (step_iff _ _).1 hs with ⟨B, hB⟩ | ⟨a, ha⟩
+    · exact Or.inl ⟨B, (onBlock_eq_onBlockWith _ B) ▸ hB⟩
     · exact Or.inr ⟨a, ha⟩
 
 /-- `finalized_monotone_with` for the shadow handlers: `onBlock'` extends `F`, an attestation
 keeps it. -/
 theorem finalized_monotone' (st : Store P ACP) :
-    (∀ B st', st.onBlock' B = some st' → st'.Anc st.F st'.F) ∧
+    (∀ B st', st.onBlock B = some st' → st'.Anc st.F st'.F) ∧
       ∀ a, (st.onAttestation a).F = st.F := by
-  simp only [onBlock'_eq_onBlockWith]
+  simp only [onBlock_eq_onBlockWith]
   exact finalized_monotone_with finalitySpec_updateFinality'
 
 /-- **The shadow cache invariant**: every shadow-reachable store satisfies `CacheGood`; the
@@ -235,8 +239,8 @@ theorem hjMaxSpec_updateFinalityG (g : Store P ACP → NodeBlock P ACP → Prop)
   rw [hhj]
   exact ⟨h1, fun X hX hXr ha => h2 X hX hXr ha⟩
 
-theorem hjMaxSpec_updateFinality' : HjMaxSpec (P := P) (ACP := ACP) updateFinality' :=
-  updateFinality'_eq_G ▸ hjMaxSpec_updateFinalityG _
+theorem hjMaxSpec_updateFinality : HjMaxSpec (P := P) (ACP := ACP) updateFinality :=
+  updateFinality_eq_G ▸ hjMaxSpec_updateFinalityG _
 
 section JMaxWith
 
@@ -263,7 +267,7 @@ private theorem anc_of_anc_insert {st : Store P ACP} (hu : FinalitySpec u)
       cases hZ
     · exact (ih hY).tail ⟨hY, hX, hYX.2.2⟩
 
-private theorem jMax_init' : JMaxW (Store.init (P := P) acp₀) := by
+private theorem jMax_init : JMaxW (Store.init (P := P) acp₀) := by
   intro B _ _ _ _ _
   change (FG.ChainState.init P.fg).hj ≤ 0
   rfl
@@ -355,14 +359,14 @@ theorem jMax_of_reachable_with {st : Store P ACP} (hu : FinalitySpec u) (hhjU : 
     (hr : ReachableWith u acp₀ st) : JMaxW st := by
   rw [reachableWith_eq] at hr
   induction hr with
-  | refl => exact jMax_init'
+  | refl => exact jMax_init
   | tail hr hs ih => exact jMax_step hu hhjU (by rw [reachableWith_eq]; exact hr) ih hs
 
 /-- `Healing.JMax` at every shadow-reachable store. -/
 theorem Reachable'.jMax {acp₀ : ACP} {st : Store P ACP} (h : st.Reachable' acp₀) :
     Healing.JMax st :=
   (Healing.jMax_iff st).2
-    (jMax_of_reachable_with finalitySpec_updateFinality' hjMaxSpec_updateFinality' h.reachableWith)
+    (jMax_of_reachable_with finalitySpec_updateFinality' hjMaxSpec_updateFinality h.reachableWith)
 
 end JMaxWith
 

@@ -21,11 +21,11 @@ variable {P : Params} {ACP : Type} {st : Store P ACP}
 
 /-- Transported parent viability bounds the proposal and its top-window ancestry. -/
 theorem proposal_viable_of_parent {Q B : NodeBlock P ACP}
-    (hv : st.IsViable' Q) (hh : (st.σ Q.root).h ≤ (st.σ B.root).h)
+    (hv : st.IsViable Q) (hh : (st.σ Q.root).h ≤ (st.σ B.root).h)
     (hQB : st.Anc Q B) :
     st.hmax - 1 ≤ (st.σ B.root).h ∧
       (st.hmax = st.hj + 1 → (st.σ B.root).h = st.hmax - 1 → st.Anc st.J B) := by
-  rw [Store.isViable'_iff] at hv
+  rw [Store.isViable_iff] at hv
   constructor
   · rcases hv with hv | ⟨hv, -⟩ <;> omega
   · intro htop hB
@@ -69,7 +69,7 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 suppliers are being assembled; no stock execution premise replaces the shadow run. -/
 theorem proposal_viable_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace' sp ro} {ini}
+    {tr : GoldilocksTrace sp ro} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {lo hi : Time} {M u : Nat} {isTop : Prop}
@@ -86,7 +86,7 @@ theorem proposal_viable_at {proposer : Nat → Fin sp.n}
 
 /-- Leaf 8's arithmetic assembly, conditional on actual proposal viability. -/
 private theorem rounds_le_of_proposal_viable
-    {tr : GoldilocksTrace' sp ro} {H : Time → Set (Fin sp.n)}
+    {tr : GoldilocksTrace sp ro} {H : Time → Set (Fin sp.n)}
     {lo hi : Time} {M v HZ : Nat} {isTop : Prop}
     {J B : AC.Blk sp.n (List (FG.Att sp.n))}
     (hwin : FrameWindow' tr H lo hi M isTop J)
@@ -103,7 +103,7 @@ private theorem rounds_le_of_proposal_viable
 /-- The shadow key bounds the height deficit at an honest proposal cut. -/
 theorem rounds_le_warm_proposal_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace' sp ro} {ini}
+    {tr : GoldilocksTrace sp ro} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {g af len : Time} {u M v : Nat} {isTop : Prop}
     {J B : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -126,7 +126,7 @@ theorem rounds_le_warm_proposal_at {proposer : Nat → Fin sp.n}
 is strictly above the reader's justified height. Only report membership is needed. -/
 theorem report_kind_of_warm_at {proposer : Nat → Fin sp.n}
     {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-    {tr : GoldilocksTrace' sp ro} {ini}
+    {tr : GoldilocksTrace sp ro} {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr) {lo hi : Time} {floor u : Nat} {kindJ : Prop}
     {J B R : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -147,7 +147,7 @@ theorem report_kind_of_warm_at {proposer : Nat → Fin sp.n}
   have hzk : z ∈ H (tr.time kB) := ht ▸ hz
   have hB' : (tr.upTo (tr.time kB)).ProposesAt z kB B :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hB.1⟩, hB.2⟩
-  have hBm := (Coherence.accept_of_proposesAt' (hrun.upTo (hrun.time_nonneg kB))
+  have hBm := (Coherence.accept_of_proposesAt (hrun.upTo (hrun.time_nonneg kB))
     (hnc.upTo _) hzk hB').2.1
   rw [Trace.upTo_state tr z (fun q hq => hrun.time_mono (by omega))] at hBm
   have hle : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
@@ -155,7 +155,7 @@ theorem report_kind_of_warm_at {proposer : Nat → Fin sp.n}
   have hσ := σ_eq_honest_at' hrun hnc (hrun.time_nonneg kB)
     (fun q hq => hrun.time_mono (by omega)) hzk (hrun.time_nonneg i) hle hy hBm hBy
   obtain ⟨hfloor, hstrict⟩ :=
-    Goldilocks.Shadow.PU.Witness.warm_proposal_bounds_at' hrun hnc hframe hz hdes hB hBs
+    Goldilocks.Shadow.PU.Witness.warm_proposal_bounds_at hrun hnc hframe hz hdes hB hBs
       hlo hhi hf
   rw [hσ] at hfloor hstrict
   have hreach := (Compose.Growing.reachable_at' hrun (hrun.time_nonneg i) hy hle).reachableWith
@@ -182,11 +182,11 @@ theorem report_kind_of_warm_at {proposer : Nat → Fin sp.n}
 section Reset
 
 open AC (gbar)
-open Consensus.Goldilocks.Shadow.PU.Growing (proposal_report_follow_delayed_at')
+open Consensus.Goldilocks.Shadow.PU.Growing (proposal_report_follow_delayed_at)
 
 variable {proposer : Nat → Fin sp.n}
   {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)} {H : Time → Set (Fin sp.n)}
-  {tr : GoldilocksTrace' sp ro} {hold : Time}
+  {tr : GoldilocksTrace sp ro} {hold : Time}
 
 /-- The latency deadline of a high report is also a reset deadline for a shadow run. -/
 private theorem reset_of_high_report_within_at {ini}
@@ -194,7 +194,7 @@ private theorem reset_of_high_report_within_at {ini}
     (hlat : Generic.VoteLatencyAt tr H D) (hD : 0 ≤ D)
     {y : Fin sp.n} {i : Nat} (hyz : y ∈ H (max (cutZ sp.toParams g) (tr.time i + D)))
     (hq : (H (max (cutZ sp.toParams g) (tr.time i + D)))ᶜ.ncard < sp.toParams.fg.q)
-    {ell : ACLabel (goldilocksNode' sp ro)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {R : AC.Blk sp.n (List (FG.Att sp.n))}
     (hR : AC.ToFGAt tr.projAC y i ell R)
     (hh : HZ tr H g + 1 ≤ ((tr.state y i).fg.σ R.root).h) :
     ∃ a, IsReset tr H g a ∧ a ≤ tr.time i + D := by
@@ -203,7 +203,7 @@ private theorem reset_of_high_report_within_at {ini}
   apply Generic.Shadow.reset_of_high_report_within_from hrun hlat hyz hq ?_ hh
   refine ⟨ell, Compose.projAC_callAt.mp hc, hto, ?_⟩
   change (AC.acToFG sp (tr.state y i).ac ell.frame (tr.time i)).2 = some R
-  rw [← Goldilocks.Shadow.PU.Growing.projAC_state_at' hrun hy]
+  rw [← Goldilocks.Shadow.PU.Growing.projAC_state_at hrun hy]
   exact hres
 
 /-- A high proposal yields a reset by its delayed report and vote-latency deadline. -/
@@ -227,7 +227,7 @@ theorem reset_of_high_proposal_within_at
     {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     (hh : HZ tr H g + 1 ≤ ((tr.state z (kP + 1)).fg.σ P.root).h)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt' proposer dg H sign)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
     (hK : CommitteeHalfUpTo tr H K g b) :
     ∃ a, IsReset tr H g a ∧ a ≤ sp.ts (u + 1 : Nat) + 2 * sp.Δ + (D + (Gs : Time) * sp.Δ) := by
@@ -241,7 +241,7 @@ theorem reset_of_high_proposal_within_at
       sp.ts N + 2 * sp.Δ + (Gs : Time) * sp.Δ := max_le (by linarith) (by linarith)
   obtain ⟨y, hy⟩ := hH
   obtain ⟨i, ell, R, hyi, hR, htil, hti, hPR, _⟩ :=
-    proposal_report_follow_delayed_at' (hframe.mono le_rfl hmax) hrun hnc hsvc hawake hf
+    proposal_report_follow_delayed_at (hframe.mono le_rfl hmax) hrun hnc hsvc hawake hf
       hcatch hnr hm hwarm hN (hmax.trans hmb) hz hdes hP hPs hcal hgap (by linarith)
       (hrun.antitone (by linarith) hy) hK
   have hcz : cutZ sp.toParams g ≤ tr.time i := by
@@ -256,12 +256,12 @@ theorem reset_of_high_proposal_within_at
   have hr := hrun.upTo (hrun.time_nonneg kP)
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
-  have hPm := (Coherence.accept_of_proposesAt' hr (hnc.upTo _) hzk hP').2.1
+  have hPm := (Coherence.accept_of_proposesAt hr (hnc.upTo _) hzk hP').2.1
   rw [Trace.upTo_state tr z (fun q hq => hrun.time_mono (by omega))] at hPm
   have hRm : R ∈ (tr.state y i).fg.tree := by
     have hsource := (AC.toFG_source hR.2.2).1.1
-    rw [Goldilocks.Shadow.PU.Growing.frame_of_projAC_at' hrun hyi hR.1,
-      Node.frame'_eq, Store.toFrame'_tree] at hsource
+    rw [Goldilocks.Shadow.PU.Growing.frame_of_projAC_at hrun hyi hR.1,
+      Node.frame_eq, Store.toFrame_tree] at hsource
     exact hsource.1
   have hle : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
   have hPy := mem_of_honest_anc_at' hrun hnc (hrun.time_nonneg i) hle hyi hPR hRm
@@ -313,7 +313,7 @@ theorem round_of_warm_within_at
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {p : Fin sp.n} {kX : Nat} (hp : p ∈ H (tr.time kX)) (hdx : p = proposer x)
     (hX : tr.ProposesAt p kX X) (hXs : X.slot = x)
-    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt' proposer dg H sign)
+    {sign : Fin sp.n → Time → Bool} (hcal : tr.SignCalendarAt proposer dg H sign)
     (hgap : SignGapAt sp.toParams sign Gs t₀) (ht₀ : t₀ ≤ sp.ts s₀)
     (hδG : 3 + (Gs + 3) / 4 ≤ sp.toParams.fg.δt)
     (hK : CommitteeHalfUpTo tr H K g b) :
@@ -362,7 +362,7 @@ theorem round_of_warm_within_at
     simpa only [sp.slotTime_eq, hPs, ACParams.ts] using hP.2.2
   have hP' : (tr.upTo (tr.time kP)).ProposesAt z kP P :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hP.1⟩, hP.2⟩
-  have hPm := (Coherence.accept_of_proposesAt' (hrun.upTo (hrun.time_nonneg kP))
+  have hPm := (Coherence.accept_of_proposesAt (hrun.upTo (hrun.time_nonneg kP))
     (hnc.upTo _) (htimeP ▸ hz0) hP').2.1
   rw [Trace.upTo_state tr z (fun q hq => hrun.time_mono (by omega))] at hPm
   have hPH : P ∈ tr.HonestBlocksAt H :=
@@ -372,7 +372,7 @@ theorem round_of_warm_within_at
   have hX' : (tr.upTo (tr.time kX)).ProposesAt p kX X :=
     ⟨(RunTrace.upTo_ownBlockAt _).mpr ⟨le_rfl, hX.1⟩, hX.2⟩
   obtain ⟨_, c, ellp, d, pay, hc, hcall, hd, htc, hpar, _⟩ :=
-    Coherence.honestProposalRun_of_proposesAt' hr (hnc.upTo _) hp hdx hX' hXs
+    Coherence.honestProposalRun_of_proposesAt hr (hnc.upTo _) hp hdx hX' hXs
   rw [← hdx] at hc hd
   have hct : tr.time c = sp.ts x := htc
   have hpc := hrun.antitone (show tr.time c ≤ tr.time kX by rw [hct, htX]) hp
@@ -385,11 +385,11 @@ theorem round_of_warm_within_at
       (fun q hq => (hrun.time_mono hq.le).trans (by rw [hct, htX]))] at hd
     exact hd
   have hfol := fun y (hy : y ∈ H (tr.time kX)) =>
-    proposal_report_follow_delayed_at' (hframe.mono le_rfl (max_le le_rfl hTN)) hrun hnc
+    proposal_report_follow_delayed_at (hframe.mono le_rfl (max_le le_rfl hTN)) hrun hnc
       hsvc hawake hf hcatch hnr hm hwarm huN (max_le hmb (hTN.trans hmb)) hz hdes hP hPs hcal
       hgap (by linarith [hts (show s₀ ≤ u + 1 by omega)]) (hrun.antitone hTx hy) hK
   obtain ⟨i₀, ell₀, R₀, _, _, _, _, hPR₀, hR₀d⟩ := hfol p hp
-  refine Generic.Shadow.round_cross_at_from' hrun
+  refine Generic.Shadow.round_cross_at_from hrun
     (fun y => Compose.requirements_from sp ro (hrun.vstart y)) hrun.genesis_root_ok hnc
     hsvc.signedRow hsvc.hold_le hnr hPH
     (hPR₀.trans (hR₀d x (by omega) hxN p c ellp hpc hc' hcall hct d pay hd')) hpar hp hX
@@ -403,7 +403,7 @@ theorem round_of_warm_within_at
   have hreport : Generic.ReportAt tr y i R :=
     ⟨ell, Compose.projAC_callAt.mp hR.1, hR.2.1,
       by change (AC.acToFG sp (tr.state y i).ac ell.frame (tr.time i)).2 = some R
-         rw [← Goldilocks.Shadow.PU.Growing.projAC_state_at' hrun hyi]
+         rw [← Goldilocks.Shadow.PU.Growing.projAC_state_at hrun hyi]
          exact hR.2.2⟩
   obtain ⟨k, hik, hk, C, s, hatt, _, hRC, j, hij, hjk, ellC, hcC, htoC, hretC⟩ :=
     hlat.attests y i R hreport (hrun.antitone (by linarith) hy)
@@ -416,12 +416,12 @@ theorem round_of_warm_within_at
   have hC : AC.ToFGAt tr.projAC y j ellC C :=
     ⟨Compose.projAC_callAt.mpr hcC, htoC,
       by change (AC.acToFG sp (tr.projAC.state y j) ellC.frame (tr.time j)).2 = some C
-         rw [Goldilocks.Shadow.PU.Growing.projAC_state_at' hrun hyj]
+         rw [Goldilocks.Shadow.PU.Growing.projAC_state_at hrun hyj]
          exact hretC⟩
   have hCj : C ∈ (tr.state y j).fg.tree := by
     have hsrc := (AC.toFG_source hC.2.2).1.1
-    rw [Goldilocks.Shadow.PU.Growing.frame_of_projAC_at' hrun hyj hC.1,
-      Node.frame'_eq, Store.toFrame'_tree] at hsrc
+    rw [Goldilocks.Shadow.PU.Growing.frame_of_projAC_at hrun hyj hC.1,
+      Node.frame_eq, Store.toFrame_tree] at hsrc
     exact hsrc.1
   have hkle : ∀ q < k, tr.time q ≤ tr.time k := fun q hq => hrun.time_mono hq.le
   have hk0 := hrun.time_nonneg k
@@ -437,7 +437,7 @@ theorem round_of_warm_within_at
   have hkhi : tr.time k ≤ sp.ts N + 2 * sp.Δ := by linarith [hts hxN]
   have hM := hframe.M_eq y k hyk hklo hkhi
   have hkind := hframe.top_iff y k hyk hklo hkhi
-  obtain ⟨hPy, hCy, hor⟩ := Generic.Shadow.row_or_high_of_attest_at_from' hrun hnc
+  obtain ⟨hPy, hCy, hor⟩ := Generic.Shadow.row_or_high_of_attest_at_from hrun hnc
     (fun t ht htT => hf t ht (htT.le.trans hTb)) hna
     (by rwa [max_eq_right (hcu.trans (htil.trans htk))]) hatt (by linarith) hCk hPC (fun _ => by
       right
@@ -460,7 +460,7 @@ theorem round_of_warm_within_at
   · exact Or.inl ⟨y, k, hyk, hPy, l, att, hyl, hs, by linarith, hah, haT⟩
   · have hshort := hframe.mono le_rfl (show sp.ts N + sp.Δ ≤ sp.ts N + 2 * sp.Δ by
         linarith)
-    have hChead := Goldilocks.Shadow.PU.Growing.toFG_later_proposal_head_after_at'
+    have hChead := Goldilocks.Shadow.PU.Growing.toFG_later_proposal_head_after_at
       hshort hrun hnc hsvc hawake hf hcatch hnr hm hwarm (by linarith) hyj hC hPs hPC
       (by linarith [hts hxN]) (htjk.trans_lt htkx) hxN hpc hc' hcall hct hd' hK
     exact Or.inr ⟨C, hChead, y, k, hyk, hPy, hCy, hh⟩

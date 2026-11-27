@@ -18,7 +18,7 @@ open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- The stock local RowSource extraction, keeping joinedness as the AC trace predicate. -/
 theorem signed_entry_source {ini} (hrun : GoldilocksRun' proposer dg H tr ini)
@@ -48,7 +48,7 @@ open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
 
 /-- The stock RowSource wrapper, using the proved shadow deep quarantine. -/
 theorem high_row_source_at {ini}
@@ -86,7 +86,7 @@ open AC (ACParams ReplayOrder Payload)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro}
   {g ΔF a b hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- At a time bounded by the reset horizon, deep quarantine or the high-source cover holds. -/

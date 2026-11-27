@@ -2046,14 +2046,14 @@ def Consensus.Goldilocks.Store.Contest : {P : Consensus.Goldilocks.Params} → {
   #2523043794/525184255
 def Consensus.Goldilocks.Store.HasViableDescendant : {P : Consensus.Goldilocks.Params} → {ACP : Type} → Consensus.Goldilocks.Store P ACP → Consensus.Goldilocks.NodeBlock P ACP → Prop := fun {P} {ACP} st B => Exists.{1} fun B' => And (Membership.mem.{0, 0} st.tree B') (And (st.Anc B B') (st.IsViable B'))
   #3602863347/1326965588
-def Consensus.Goldilocks.Store.IsViable : {P : Consensus.Goldilocks.Params} → {ACP : Type} → Consensus.Goldilocks.Store P ACP → Consensus.Goldilocks.NodeBlock P ACP → Prop := fun {P} {ACP} st B => LE.le.{0} st.headHeightFloor (st.σ B.root).h
-  #3602863347/2623884848
+def Consensus.Goldilocks.Store.IsViable : {P : Consensus.Goldilocks.Params} → {ACP : Type} → Consensus.Goldilocks.Store P ACP → Consensus.Goldilocks.NodeBlock P ACP → Prop := fun {P} {ACP} st B => Or (LE.le.{0} st.hmax (st.σ B.root).h) (And (Eq.{1} (HAdd.hAdd.{0, 0, 0} (st.σ B.root).h 1) st.hmax) (Or (LT.lt.{0} (HAdd.hAdd.{0, 0, 0} st.hj 1) st.hmax) (st.Anc st.J B)))
+  #3602863347/1385524795
 def Consensus.Goldilocks.Store.fcRoot : {P : Consensus.Goldilocks.Params} → {ACP : Type} → Consensus.Goldilocks.Store P ACP → Consensus.Goldilocks.NodeBlock P ACP := fun {P} {ACP} st => ite.{1} (And (Eq.{1} st.hmax (HAdd.hAdd.{0, 0, 0} st.hj 1)) (Not st.Contest)) st.J st.F
   #3527639638/1655714924
 def Consensus.Goldilocks.Store.headHeightFloor : {P : Consensus.Goldilocks.Params} → {ACP : Type} → Consensus.Goldilocks.Store P ACP → Nat := fun {P} {ACP} st => ite.{1} st.Contest st.hmax (HSub.hSub.{0, 0, 0} st.hmax 1)
   #1523471990/1283584729
-def Consensus.Goldilocks.Store.toFrame : {P : Consensus.Goldilocks.Params} → {ACP : Type} → Consensus.Goldilocks.Store P ACP → Consensus.Goldilocks.Frame P.n (List.{0} (Consensus.Goldilocks.FG.Att P.n)) ACP := fun {P} {ACP} st => { tree := Set.ofPred.{0} fun B => And (Membership.mem.{0, 0} st.tree B) (st.Anc st.F B), F := st.F, fcRoot := st.fcRoot, viableHeads := Set.ofPred.{0} fun B => And (Membership.mem.{0, 0} st.tree B) (And (st.Anc st.F B) (And (st.Anc st.fcRoot B) (st.IsViable B))) }
-  #3703356568/2865095284
+def Consensus.Goldilocks.Store.toFrame : {P : Consensus.Goldilocks.Params} → {ACP : Type} → Consensus.Goldilocks.Store P ACP → Consensus.Goldilocks.Frame P.n (List.{0} (Consensus.Goldilocks.FG.Att P.n)) ACP := fun {P} {ACP} st => { tree := Set.ofPred.{0} fun B => And (Membership.mem.{0, 0} st.tree B) (st.Anc st.F B), F := st.F, fcRoot := st.F, viableHeads := Set.ofPred.{0} fun B => And (Membership.mem.{0, 0} st.tree B) (And (st.Anc st.F B) (st.IsViable B)) }
+  #3703356568/1505083611
 ## ConsensusLean.Instances.Goldilocks.Spec.Frame
 induct Consensus.Goldilocks.Frame : Nat → Type → Type → Type
   #3152367867/-

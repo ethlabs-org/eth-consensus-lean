@@ -955,14 +955,10 @@ theorem cache_quorum_with :
 theorem frame_realization_with :
     FrameOK st.toFrame ∧ (st.headHeightFloor = st.hmax ∨ st.headHeightFloor = st.hmax - 1) := by
   obtain ⟨hfin, hcoh, -, -⟩ := accepted_tree_with hu hr
-  obtain ⟨hF, hJ, hFJ, -⟩ := cache_invariants_with hu hr
-  have hfc : st.fcRoot ∈ st.tree ∧ st.Anc st.F st.fcRoot := by
-    unfold fcRoot
-    split_ifs
-    exacts [⟨hJ, hFJ⟩, ⟨hF, .refl⟩]
+  obtain ⟨hF, -, -, -⟩ := cache_invariants_with hu hr
   refine ⟨⟨hfin.subset fun _ h => h.1, hcoh.mono fun _ h => h.1,
-    ⟨⟨hF, .refl⟩, fun _ hC => Anc.restrict .refl hC.2⟩, hfc,
-    Anc.restrict .refl hfc.2, fun _ h => ⟨h.1, h.2.1⟩, fun _ h => Anc.restrict hfc.2 h.2.2.1⟩,
+    ⟨⟨hF, .refl⟩, fun _ hC => Anc.restrict .refl hC.2⟩, ⟨hF, .refl⟩,
+    Anc.restrict .refl .refl, fun _ h => ⟨h.1, h.2.1⟩, fun _ h => Anc.restrict .refl h.2.1⟩,
     ?_⟩
   unfold headHeightFloor
   split_ifs

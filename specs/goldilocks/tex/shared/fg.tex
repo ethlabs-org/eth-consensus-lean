@@ -68,14 +68,13 @@ state.  The FG frame is derived from it when used.
 $\Sigma.\hmax=\Sigma.h_j+1$ and some accepted block that
 extends~$\Sigma.F$, with state height~$\Sigma.\hmax$, does not
 extend~$\Sigma.J$.  The test reads the whole tree and the finality caches,
-never the tree of a voter.  In a contest, the fork-choice root is~$\Sigma.F$ and the head height floor
-is~$\Sigma.\hmax$.  Otherwise the fork-choice root is~$\Sigma.J$ when
-$\Sigma.\hmax=\Sigma.h_j+1$ and $\Sigma.F$ when not, and the head height floor
-is $\Sigma.\hmax-1$.  The head height floor gives the viable heads: the blocks
-at or above the fork-choice root whose state height is at least the head height floor.
-A block is \emph{viable} when its state height is at least the head height
-floor.  Finality acceptance uses the same test: $\Sigma.F$ advances only to
-a block with a viable descendant.
+never the tree of a voter.  The fork-choice root is~$\Sigma.F$.  A block~$B$
+is \emph{viable} when $\Sigma.\sigma[B].h\geq\Sigma.\hmax$, or
+$\Sigma.\sigma[B].h=\Sigma.\hmax-1$ and ($\Sigma.h_j+1<\Sigma.\hmax$ or
+$\Sigma.J\preceq B$).  The viable heads are the viable blocks of the tree.
+Finality acceptance uses the same test: $\Sigma.F$ advances only to a block
+with a viable descendant.  The contest test and the head height floor are
+notions of the analysis; the protocol does not read them.
 
 \captionof{figure}{FG: handlers, finality caches and frame}\label{alg:fg-store}
 \nopagebreak
@@ -126,6 +125,7 @@ a block with a viable descendant.
 \EndFunction
 \vspace{1pt}
 \Function{fg\_contest}{$\Sigma$}
+  \Comment{analysis only; the protocol does not read it}
   \If{$\Sigma.\hmax\neq\Sigma.h_j+1$} \State \Return $\mathsf{false}$ \EndIf
   \State $\mathit{hmax\_blocks}\gets\{B\in\Sigma.\T:\Sigma.F\preceq B,\
     \Sigma.\sigma[B].h=\Sigma.\hmax\}$
@@ -133,20 +133,10 @@ a block with a viable descendant.
   \State \Return $\exists B\in\mathit{hmax\_blocks},\ \Sigma.J\not\preceq B$
 \EndFunction
 \vspace{1pt}
-\Function{head\_height\_floor}{$\Sigma$}
-  \If{$\Call{fg\_contest}{\Sigma}$} \State \Return $\Sigma.\hmax$ \EndIf
-  \State \Return $\Sigma.\hmax-1$
-\EndFunction
-\vspace{1pt}
-\Function{get\_fc\_root}{$\Sigma$}
-  \If{$\Sigma.\hmax=\Sigma.h_j+1$ \textbf{and not} $\Call{fg\_contest}{\Sigma}$}
-    \State \Return $\Sigma.J$
-  \EndIf
-  \State \Return $\Sigma.F$
-\EndFunction
-\vspace{1pt}
 \Function{is\_viable}{$\Sigma,B$}
-  \State \Return $\Sigma.\sigma[B].h\geq\Call{head\_height\_floor}{\Sigma}$
+  \State \Return $\Sigma.\sigma[B].h\geq\Sigma.\hmax$ \textbf{or}
+    ($\Sigma.\sigma[B].h+1=\Sigma.\hmax$ \textbf{and}
+    ($\Sigma.h_j+1<\Sigma.\hmax$ \textbf{or} $\Sigma.J\preceq B$))
 \EndFunction
 \vspace{1pt}
 \Function{has\_viable\_descendant}{$\Sigma,B$}
@@ -156,9 +146,9 @@ a block with a viable descendant.
 \vspace{1pt}
 \Function{fg\_to\_ac}{$\Sigma$}
   \State $\mathit{tree}\gets\{B\in\Sigma.\T:\Sigma.F\preceq B\}$
-  \State $\mathit{fc\_root}\gets\Call{get\_fc\_root}{\Sigma}$
+  \State $\mathit{fc\_root}\gets\Sigma.F$
   \State $\mathit{viable\_heads}\gets\{B\in\mathit{tree}:
-    \mathit{fc\_root}\preceq B,\ \Call{is\_viable}{\Sigma,B}\}$
+    \Call{is\_viable}{\Sigma,B}\}$
   \State \Return $(\mathit{tree},\mathit{fc\_root},\mathit{viable\_heads})$
 \EndFunction
 \vspace{1pt}

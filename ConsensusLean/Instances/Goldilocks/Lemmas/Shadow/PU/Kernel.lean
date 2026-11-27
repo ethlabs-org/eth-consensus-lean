@@ -27,7 +27,7 @@ open Consensus.Goldilocks.Store
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
-  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro} {g ΔF a b : Time}
+  {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace sp ro} {g ΔF a b : Time}
   {hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
 /-- A high origin above a later honest cast's finalized tip is in its voter block tree
@@ -38,7 +38,7 @@ theorem ResetPremisesUpTo'.high_origin_held_at_vote_at'
     {x y : Fin sp.n} {i j k : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))}
     (ho : HighOrigin tr H g x i j B) (hib : tr.time i ≤ b)
     (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
     (hc : AC.CastAt tr.projAC y k ell e) (_hkb : tr.time k ≤ b)
     (hj : j < e.msg.slot) (hF : Anc (tr.HonestBlocksAt H) ell.frame.F B) :
     B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot :=
@@ -52,7 +52,7 @@ theorem KernelProof.high_origin_votes_of_domain_before_at'
       {B S : AC.Blk sp.n (List (FG.Att sp.n))},
       x ∈ H (tr.time r) → y ∈ H (tr.time i) →
       B ∈ (tr.state x r).fg.tree → tr.time r ≤ b →
-      ∀ {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))},
+      ∀ {ell : ACLabel (goldilocksNode sp ro)} {e : AC.Em sp (List (FG.Att sp.n))},
       AC.CastAt tr.projAC y i ell e → tr.time i ≤ b →
       (Anc (tr.HonestBlocksAt H) ell.frame.F B →
         B ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot) →
@@ -107,7 +107,7 @@ theorem ResetPremisesUpTo'.origins_compatible_at'
   hp.toCore.origins_compatible_of_votes_at hp.high_origin_votes_before_at' ho hib hO hrb
 
 /-- A held block with the genesis root is below every held block (`genesis_root_anc_at`). -/
-private theorem genesis_root_anc_at' {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+private theorem genesis_root_anc_at {ini : Fin sp.n → (goldilocksNode sp ro).State}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : Compose.NoCollRun dg tr)
     {G B : AC.Blk sp.n (List (FG.Att sp.n))} (hG : G ∈ tr.HonestBlocksAt H)
@@ -118,8 +118,8 @@ private theorem genesis_root_anc_at' {ini : Fin sp.n → (goldilocksNode' sp ro)
   have hr := (Compose.Growing.reachable_at' hrun ht hy hle).reachableWith
   have hh := (accepted_tree_with hfs hr).2.2.2 B hBt
   have hsub := Compose.Growing.tree_held_at' ht hy hle
-  have he : G = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload :=
-    (Coherence.honestBlocksAt_coherent' hrun hnc).1 hG (hsub (genesis_mem_with hfs hr)) hg
+  have he : G = sp.toParams.genesisBlock (goldilocksNode sp ro).genesisPayload :=
+    (Coherence.honestBlocksAt_coherent hrun hnc).1 hG (hsub (genesis_mem_with hfs hr)) hg
   rw [he]
   exact hh.mono hsub
 
@@ -135,14 +135,14 @@ theorem ProposalImpl.finalized_compatible_high_origin_at'
   have hle : ∀ q < c, tr.time q ≤ tr.time c := fun _ hq => hp.run.time_mono hq.le
   have hfs := finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
   have hr := (Compose.Growing.reachable_at' hp.run ht hz hle).reachableWith
-  have hU := Coherence.honestBlocksAt_coherent' hp.run hp.noColl
+  have hU := Coherence.honestBlocksAt_coherent hp.run hp.noColl
   have hsub := Compose.Growing.tree_held_at' ht hz hle
   by_cases hh : HZ tr H g + 1 ≤ (tr.state z c).fg.hj
   · obtain ⟨_, hJm, hFJ, ⟨C, hC, hCJ, _⟩, _⟩ := cache_invariants_with hfs hr
     obtain ⟨E, hE, hEr, hEC, hcase⟩ := J_entry_with hfs hr hC
     obtain rfl : E = (tr.state z c).fg.J := hU.1 (hsub hE) (hsub hJm) (hEr.trans hCJ)
     rcases hcase with hg | ⟨hJh, hJT⟩
-    · exact Or.inl ((hFJ.mono hsub).trans (genesis_root_anc_at' hp.run hp.noColl
+    · exact Or.inl ((hFJ.mono hsub).trans (genesis_root_anc_at hp.run hp.noColl
         (hsub hJm) (congrArg (·.root) hg)
         ⟨x, i, tr.time i, hp.run.time_nonneg i, fun _ hq => hp.run.time_mono hq.le,
           hp.run.antitone (le_max_right _ _) ho.1,
