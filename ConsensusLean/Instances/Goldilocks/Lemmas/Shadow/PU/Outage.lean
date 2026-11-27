@@ -8,6 +8,8 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Candidate
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.S5Geometry
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Local
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Count
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Outage.Induction
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Deep
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
@@ -17,10 +19,11 @@ public section
 
 /-! # P-U shadow, V-B7: the Outage lock premises and the run-level Hi walk
 
-The stock premise package `OutageLockPremises` and the cut invariant `OutageLockInv`
-(`Growing/Outage/Defs`) copied over the shadow run: the same fields, with `hrun` a
-`Growing.GoldilocksRun'` and the viability field over `Node.frame'`. The shadow trace type is the
-stock one (`GoldilocksTrace' = GoldilocksTrace`), so every trace-level notion
+The stock premise package and cut invariant (`Growing/Outage/Defs`) at the shadow run bundle
+`Growing.GoldilocksRun'.toCore` (`Shadow/PU/RunCore`): `hrun` is a `Growing.GoldilocksRun'` and the
+viability field is over `Node.frame'`; the chain of `Growing/Outage/{Count,Locks,Prot,Induction}`
+is shared, and `outage_lock_inv_at'` below supplies the one shadow step. The shadow trace type is
+the stock one (`GoldilocksTrace' = GoldilocksTrace`), so every trace-level notion
 (`HVoteAt`, `HonestBlocksAt`, `PrevBaseAt`, `CommitteeFacts`, `HiAt`) is reused.
 
 The run-level Hi walk `anc_getHead_of_hi'` is the snapshot core of `Shadow/PU/S5Walk` with the
@@ -34,94 +37,6 @@ open Consensus.Goldilocks.Coherence
 open AC (ACParams ReplayOrder Payload Vote)
 
 variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
-
-/-- **The premise package of the outage lock module under growing faults**, at trace level, from
-the starts `ini`. -/
-structure OutageLockPremises' (tr : GoldilocksTrace' sp ro) (H : Time → Set (Fin sp.n))
-    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
-    (ini : Fin sp.n → (goldilocksNode' sp ro).State) where
-  /-- The outage start and stop. -/
-  b₀ : Time
-  b₁ : Time
-  /-- The proof window `[a, z]`; `z` is also the time the holders and opponents are
-  retained at. -/
-  a : Time
-  z : Time
-  /-- The protected block. -/
-  P : AC.Blk sp.n (List (FG.Att sp.n))
-  /-- The label of `P` as an origin, the last early label `j₀`, the first restored label `r`. -/
-  σ : Nat
-  j₀ : Nat
-  r : Nat
-  /-- The holders `A₀`, awake throughout `[a, z]`, and the look-back opponents `W` (other
-  validators awake in the window), both honest at `z`. -/
-  A₀ : Set (Fin sp.n)
-  W : Set (Fin sp.n)
-  hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini
-  /-- The slot committees: the run's selection for each slot's vote role. -/
-  K : AC.CommitteeDict sp.n
-  /-- Size, P, frames and the gate for `K`. -/
-  facts : CommitteeFacts tr H K
-  hnc : NoCollRun dg tr
-  hj₀ : sp.ts j₀ + 2 * sp.Δ ≤ b₀ ∧ b₀ < sp.ts (j₀ + 1 : Nat) + 2 * sp.Δ
-  hr : b₁ ≤ sp.ts r + sp.Δ ∧ ∀ s : Nat, b₁ ≤ sp.ts s + sp.Δ → r ≤ s
-  hσ : σ + sp.k < j₀
-  hrk : j₀ + 1 ≤ r ∧ r ≤ j₀ + sp.k
-  hgap : b₁ - b₀ ≤ (4 * (sp.k : Time) - 5) * sp.Δ
-  hb₀ : b₀ ≤ b₁
-  /-- `P` is held while honest: genesis, or an origin within `b₀` of label `σ`. -/
-  hP : P ∈ tr.HonestBlocksAt H ∧ (P.root = sp.genesisRoot ∨ OriginWithin tr H P σ b₀)
-  /-- The Sleepy invariant up to `b₀`. -/
-  hpre : SleepyInvariantUpTo tr H b₀
-  /-- The pre-`b₀` service. -/
-  hpreSvc : SleepyServiceBefore tr H sp.Δ b₀
-  /-- The two count shapes through every horizon that an honest call reaches. -/
-  hB : ∀ b, (∃ x i, x ∈ H (tr.time i) ∧ tr.IsCall x i ∧ b ≤ tr.time i) → SleepyBoundsFrom tr H 0 b
-  /-- CS and current-slot CS2 inside the slot committees, through every horizon that an honest
-  call reaches. -/
-  hBK : ∀ b, (∃ x i, x ∈ H (tr.time i) ∧ tr.IsCall x i ∧ b ≤ tr.time i) →
-    CommitteeBoundsFrom tr H K 0 b
-  /-- The holders and opponents, retained at `z`. -/
-  hA₀ : A₀ ⊆ H z
-  hW : W ⊆ H z ∧ Disjoint A₀ W
-  /-- Inside each slot committee of the band, the holders outnumber the compromised and the
-  look-back opponents, at every label that an honest call reaches. -/
-  hopponentsK : ∀ m, j₀ ≤ m → m ≤ j₀ + sp.k →
-    (∃ x i, x ∈ H (tr.time i) ∧ tr.IsCall x i ∧ sp.ts m ≤ tr.time i) →
-    (K.committee m ∩ ((H z)ᶜ ∪ W)).ncard < (K.committee m ∩ A₀).ncard
-  /-- Every validator honest at `z` and awake in `[a, z]` is in `A₀` or in `W`. -/
-  hawake : ∀ x t, a ≤ t → t ≤ z → x ∈ H z → tr.awake x t → x ∈ A₀ ∪ W
-  /-- `A₀` is awake throughout `[a, z]`; a restart of `A₀` up to `z` is at most `a + Δ`. -/
-  hA₀awake : ∀ x ∈ A₀, ∀ t, a ≤ t → t ≤ z → tr.awake x t
-  hA₀join : ∀ x ∈ A₀, ∀ k, tr.RestartAt x k → tr.time k ≤ z → tr.time k ≤ a + sp.Δ
-  ha : a + sp.Δ ≤ sp.ts j₀
-  /-- Every holder and opponent count is inside the window: a time up to `t_{j₀+k} + 6Δ` that an
-  honest call reaches is at or before `z`. -/
-  hzc : ∀ t, t ≤ sp.ts (j₀ + sp.k : Nat) + 6 * sp.Δ →
-    (∃ x i, x ∈ H (tr.time i) ∧ tr.IsCall x i ∧ t ≤ tr.time i) → t ≤ z
-  /-- Arming: the label-`(j₀ − 1)` lock of every member of `A₀`, when `P` is not genesis and the
-  gate is reached by an honest call. -/
-  lockPrev : ∀ x ∈ A₀, P.root ≠ sp.genesisRoot →
-    (∃ y i, y ∈ H (tr.time i) ∧ tr.IsCall y i ∧ sp.ts j₀ + 2 * sp.Δ ≤ tr.time i) →
-    ∃ c ℓ, AC.UpdateAt tr.projAC x c (j₀ - 1) ℓ ∧ PrevBaseAt tr H P (j₀ - 1) x c ℓ
-  /-- Arming: the label-`j₀` cover at the first label-`j₀` update of every member of `A₀`, given
-  (F), (VA) and (N), when `P` is not genesis and the gate is reached by an honest call. -/
-  lockCover : ∀ x ∈ A₀, P.root ≠ sp.genesisRoot →
-    (∃ y i, y ∈ H (tr.time i) ∧ tr.IsCall y i ∧ sp.ts j₀ + 6 * sp.Δ ≤ tr.time i) →
-    ∃ c ℓ, AC.UpdateAt tr.projAC x c j₀ ℓ ∧
-    (∀ k < c, ∀ ℓ', ¬ AC.UpdateAt tr.projAC x k j₀ ℓ') ∧
-    (Compatible (tr.HonestBlocksAt H) (tr.state x c).fg.F P →
-     (Anc (tr.HonestBlocksAt H) (tr.state x c).fg.F P → ℓ.frame.AncestorCandidate P) →
-     (∀ y ∈ A₀, ∀ j e, HVoteAt tr H y j e → e.msg.slot = j₀ + 1 → j < c →
-        AC.VoteExtends (tr.HonestBlocksAt H) e.msg P) →
-     CoverBaseAt tr H P j₀ x c ℓ)
-  /-- Post-GST pool delivery: an update of a restored label by a node honest at it holds every
-  vote of that slot cast by a node honest at its cast, or two other votes of that slot by the
-  same validator (which may be compromised after its cast). -/
-  PG : ∀ w c m ℓ, w ∈ H (tr.time c) → AC.UpdateAt tr.projAC w c m ℓ → r ≤ m →
-    ∀ x i e, HVoteAt tr H x i e → e.msg.slot = m → e.msg ∈ (tr.state w c).ac.pool m ∨
-      e.msg.val ∈ AC.equivocators {v | v ∈ (tr.state w c).ac.pool m}
-
 
 variable {tr : GoldilocksTrace' sp ro} {H : Time → Set (Fin sp.n)} {proposer : Nat → Fin sp.n}
   {ini : Fin sp.n → (goldilocksNode' sp ro).State}
@@ -143,115 +58,34 @@ theorem frame'_anc_iff {st : NodeState (goldilocksNode' sp ro)}
 theorem frame'_F (st : NodeState (goldilocksNode' sp ro)) : (Node.frame' st).F = st.fg.F := by
   rw [Node.frame'_eq, Store.toFrame'_F]
 
-/-- The floor at node `y`, cut `i`: a lock of label `j` and expiry at least `m` on a block `⪰ B₀`
-of the shadow frame's tree (`FloorAt` over `Node.frame'`). -/
-abbrev FloorAt' (tr : GoldilocksTrace' sp ro) (y : Fin sp.n) (i : Nat)
-    (B₀ : AC.Blk sp.n (List (FG.Att sp.n))) (j m : Nat) : Prop :=
-  ∃ l ∈ (tr.state y i).ac.locks, l.slot = j ∧ m ≤ l.expiry ∧
-    ∃ B ∈ (Node.frame' (tr.state y i)).tree, B.root = l.block ∧
-      (Node.frame' (tr.state y i)).Anc B₀ B
+/-- **The premise package of the outage lock module under growing faults**, at trace level, from
+the starts `ini`, on a shadow run: the generic package `OutageLockPremisesOver` at the shadow run
+bundle `Growing.GoldilocksRun'.toCore` (`Store.updateFinality'`, `Node.frame'`). -/
+abbrev OutageLockPremises' (tr : GoldilocksTrace' sp ro) (H : Time → Set (Fin sp.n))
+    (proposer : Nat → Fin sp.n) (dg : Digest (List (FG.Att sp.n)) (Payload sp.n))
+    (ini : Fin sp.n → (goldilocksNode' sp ro).State) :=
+  OutageLockPremisesOver (R := Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (u := Store.updateFinality') (frameOf := Node.frame') tr H proposer dg ini
+    (fun h => h.toCore)
 
-/-- The unlock premise at node `y`, cut `j`: `unlock` at the view of the AC call at `j` does not
-move `B` (`UnlockKeeps` over the shadow frame). -/
-abbrev UnlockKeeps' (tr : GoldilocksTrace' sp ro) (y : Fin sp.n) (j : Nat)
-    (B : AC.Blk sp.n (List (FG.Att sp.n))) : Prop :=
-  ∀ ℓ, tr.CallAt y j (.ac ℓ) → AC.unlockTarget sp (Node.frame' (tr.state y j))
-    (AC.unlockView (ro := ro) (tr.state y j).ac (Node.frame' (tr.state y j)) (tr.time j) ℓ.call)
-    ((sp.slot (tr.time j) : Int) - 1) B = B
+/-- The vote half of the invariant at the cuts before `i`. -/
+abbrev OutageVoteInv' (D : OutageLockPremises' tr H proposer dg ini) (i : Nat) : Prop :=
+  OutageVoteInvOver D i
 
-/-- The protection of `x` at cut `i` with label `j` through slot `m`: a lock of label `j` and
-expiry at least `m` on a frame block above `P`, or root cover (`P ⪯ Σ.F`). -/
-def Prot' (D : OutageLockPremises' tr H proposer dg ini) (x : Fin sp.n) (i j m : Nat) : Prop :=
-  FloorAt' tr x i D.P j m ∨ Anc (tr.HonestBlocksAt H) D.P (tr.state x i).fg.F
+/-- **The outage lock invariant** at the cuts before `i`. -/
+abbrev OutageLockInv' (D : OutageLockPremises' tr H proposer dg ini) (i : Nat) : Prop :=
+  OutageLockInvOver D i
 
-theorem prot'_iff {D : OutageLockPremises' tr H proposer dg ini} {x : Fin sp.n} {i j m : Nat} :
-    Prot' D x i j m ↔ FloorAt' tr x i D.P j m ∨ Anc (tr.HonestBlocksAt H) D.P (tr.state x i).fg.F :=
-  Iff.rfl
+/-- The restored-vote step that the lock module consumes. -/
+abbrev OutageS5StepAt' (D : OutageLockPremises' tr H proposer dg ini) : Prop :=
+  OutageS5StepAtOver D
 
-/-- The vote half of the invariant at the cuts before `i`: (H) and S5V, over votes cast by nodes
-honest at their cast. -/
-structure OutageVoteInv' (D : OutageLockPremises' tr H proposer dg ini) (i : Nat) : Prop where
-  /-- (H) votes of slots in `(σ, j₀ + k]` cast at or before `b₀` or by `A₀` extend `P`. -/
-  votes : ∀ x k, k < i → ∀ e, HVoteAt tr H x k e → D.σ < e.msg.slot →
-    e.msg.slot ≤ D.j₀ + sp.k → (tr.time k ≤ D.b₀ ∨ x ∈ D.A₀) →
-    AC.VoteExtends (tr.HonestBlocksAt H) e.msg D.P
-  /-- S5V at the cuts before `i`: head compatibility with `P` past the lock lifetime. -/
-  late : ∀ x k, k < i → ∀ e, HVoteAt tr H x k e → D.j₀ + sp.k < e.msg.slot →
-    VoteCompat (tr.HonestBlocksAt H) e.msg D.P
-
-/-- **The outage lock invariant** at the cuts before `i`, every field at the cut of its event or
-state. -/
-structure OutageLockInv' (D : OutageLockPremises' tr H proposer dg ini) (i : Nat) : Prop
-    extends OutageVoteInv' D i where
-  /-- (R) results at unpolluted labels, by nodes honest at their update, are compatible with
-  `P`. -/
-  results : ∀ y k, k < i → y ∈ H (tr.time k) → ∀ m C CV, AC.ResultAt tr.projAC y k m C CV →
-    (m ≤ D.j₀ ∨ D.r ≤ m) → Compatible (tr.HonestBlocksAt H) C D.P
-  /-- (L) every lock stored at a cut `k`, read at a time `t` at which its node is honest and after
-  every cut before `k`, names a held block compatible with `P`. -/
-  locks : ∀ y k t, k ≤ i → 0 ≤ t → (∀ k' < k, tr.time k' ≤ t) → y ∈ H t →
-    ∀ l ∈ (tr.state y k).ac.locks,
-      ∃ L ∈ (tr.state y k).fg.tree, L.root = l.block ∧ Compatible (tr.HonestBlocksAt H) L D.P
-  /-- (SRC) every FG source of a node honest at its call is compatible with `P`. -/
-  sources : ∀ y k, k < i → y ∈ H (tr.time k) → ∀ ℓ C, AC.ToFGAt tr.projAC y k ℓ C →
-    Compatible (tr.HonestBlocksAt H) C D.P
-  /-- (OB-F) the caches at a cut `k`, read at a time `t` at which their node is honest and after
-  every cut before `k`, are compatible with `P`. -/
-  caches : ∀ y k t, k ≤ i → 0 ≤ t → (∀ k' < k, tr.time k' ≤ t) → y ∈ H t →
-    Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F D.P ∧
-      Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.J D.P
-  /-- (VA) `P`, when in the frame of a node at a cut `k` read at a time `t` at which it is honest
-  and after every cut before `k`, is a viable-ancestor candidate. -/
-  viable : ∀ y k t, k ≤ i → 0 ≤ t → (∀ k' < k, tr.time k' ≤ t) → y ∈ H t →
-    D.P ∈ (Node.frame' (tr.state y k)).tree →
-    (Node.frame' (tr.state y k)).AncestorCandidate D.P
-  /-- (Prot) `A₀` keeps its label-`(j₀ − 1)` lock, or root cover, through its lifetime, at the
-  cuts at which it is honest. -/
-  protPrev : ∀ x ∈ D.A₀, ∀ c ℓ, AC.UpdateAt tr.projAC x c (D.j₀ - 1) ℓ →
-    PrevBaseAt tr H D.P (D.j₀ - 1) x c ℓ →
-    ∀ k, c < k → k ≤ i → x ∈ H (tr.time k) → sp.slot (tr.time (k - 1)) ≤ D.j₀ - 1 + sp.k →
-      Prot' D x k (D.j₀ - 1) (D.j₀ - 1 + sp.k)
-  /-- (Prot) `A₀` keeps its label-`j₀` lock, or root cover, through slot `j₀ + k`, after a
-  label-`j₀` update with the cover base, at the cuts at which it is honest. -/
-  protCover : ∀ x ∈ D.A₀, ∀ c ℓ, AC.UpdateAt tr.projAC x c D.j₀ ℓ →
-    CoverBaseAt tr H D.P D.j₀ x c ℓ →
-    ∀ k, c < k → k ≤ i → x ∈ H (tr.time k) → sp.slot (tr.time (k - 1)) ≤ D.j₀ + sp.k →
-      Prot' D x k D.j₀ (D.j₀ + sp.k)
-
-namespace OutageLockInv'
-
-variable {D : OutageLockPremises' tr H proposer dg ini} {i : Nat}
-
-/-- The lock field read at the cut's own time. -/
-theorem locks_at_cut (hinv : OutageLockInv' D i) {y : Fin sp.n} {k : Nat} (hk : k ≤ i)
-    (hy : y ∈ H (tr.time k)) : ∀ l ∈ (tr.state y k).ac.locks,
-      ∃ L ∈ (tr.state y k).fg.tree, L.root = l.block ∧ Compatible (tr.HonestBlocksAt H) L D.P :=
-  hinv.locks y k (tr.time k) hk (D.hrun.time_nonneg k) (fun _ hk' => D.hrun.time_mono hk'.le) hy
-
-/-- The cache field read at the cut's own time. -/
-theorem caches_at_cut (hinv : OutageLockInv' D i) {y : Fin sp.n} {k : Nat} (hk : k ≤ i)
-    (hy : y ∈ H (tr.time k)) : Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.F D.P ∧
-      Compatible (tr.HonestBlocksAt H) (tr.state y k).fg.J D.P :=
-  hinv.caches y k (tr.time k) hk (D.hrun.time_nonneg k) (fun _ hk' => D.hrun.time_mono hk'.le) hy
-
-/-- The viability field read at the cut's own time. -/
-theorem viable_at_cut (hinv : OutageLockInv' D i) {y : Fin sp.n} {k : Nat} (hk : k ≤ i)
-    (hy : y ∈ H (tr.time k)) : D.P ∈ (Node.frame' (tr.state y k)).tree →
-      (Node.frame' (tr.state y k)).AncestorCandidate D.P :=
-  hinv.viable y k (tr.time k) hk (D.hrun.time_nonneg k) (fun _ hk' => D.hrun.time_mono hk'.le) hy
-
-end OutageLockInv'
-
-/-- The restored-vote step that the lock module consumes: from the invariant at `i`, the votes
-of cut `i` past the lock lifetime, by nodes honest then, have heads compatible with `P`. -/
-def OutageS5StepAt' (D : OutageLockPremises' tr H proposer dg ini) : Prop :=
-  ∀ i, OutageLockInv' D i → ∀ y e, HVoteAt tr H y i e →
-    D.j₀ + sp.k < e.msg.slot → VoteCompat (tr.HonestBlocksAt H) e.msg D.P
-
-theorem outageS5StepAt'_iff {D : OutageLockPremises' tr H proposer dg ini} :
-    OutageS5StepAt' D ↔ ∀ i, OutageLockInv' D i → ∀ y e, HVoteAt tr H y i e →
-      D.j₀ + sp.k < e.msg.slot → VoteCompat (tr.HonestBlocksAt H) e.msg D.P :=
-  Iff.rfl
+/-- The AC state of the prefix before a cut at a time `≤ d` is the run's. -/
+theorem projAC_upTo_state'
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini) {d : Time}
+    {y : Fin sp.n} {i : Nat} (hi : tr.time i ≤ d) :
+    (tr.projAC.upTo d).state y i = tr.projAC.state y i :=
+  hrun.toCore.projAC_upTo_state hi
 
 /-! ## Run facts over the shadow run (`RunFacts'`)
 
@@ -611,6 +445,14 @@ theorem caches_and_viable_at' (D : OutageLockPremises' tr H proposer dg ini) {n 
       (rows_sourced_by' D.hrun D.hnc hsrc ht0 ht hy) (fun _ h => h) hPt⟩
 
 end Candidate'
+
+/-- **The outage lock invariant at every cut**: from the premise package and the step
+`OutageS5StepAt'` at each cut. -/
+theorem outage_lock_inv_at' (D : OutageLockPremises' tr H proposer dg ini)
+    (hS5 : OutageS5StepAt' D) :
+    ∀ i, OutageLockInv' D i :=
+  outage_lock_inv_at_with D hS5 fun _ _ hsrc _ ht0 ht hy hf =>
+    caches_and_viable_at' D hsrc ht0 ht hy hf
 
 end Consensus.Goldilocks.Shadow.PU
 
