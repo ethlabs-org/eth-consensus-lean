@@ -33,7 +33,8 @@ theorem anc_getHead_of_compat {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {A : ACStat
     · exact (Set.mem_singleton_iff.1 hX) ▸ hΦ.fcRoot_mem
   have hCt := hS hC
   obtain ⟨D, hD⟩ := exists_deepest hΦ hS ⟨C, hC⟩
-  have hA : getAnchor sp A Φ t = D := by unfold getAnchor; rw [hD]; rfl
+  have hA : getAnchor sp A Φ t = D := by
+    rw [getAnchor_eq_deepest_union hΦ, hD]; rfl
   obtain ⟨hDS, hmax⟩ := deepest_mem hD
   have hDC : Compatible Φ.tree D C := by
     rcases hDS with hDl | hDf

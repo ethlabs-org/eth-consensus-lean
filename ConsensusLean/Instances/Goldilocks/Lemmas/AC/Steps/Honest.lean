@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Carry
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Writer
+import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 
 public section
 
@@ -25,7 +26,7 @@ theorem getHead_mem {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) {T : Set (Blk sp.n FG
     (hT : T ⊆ Φ.tree) (A : ACState sp.n) (t : Time) (V : View sp.n) (σ : Int) :
     getHead sp A Φ t T V σ ∈ Φ.tree := by
   have ha : getAnchor sp A Φ t ∈ Φ.tree := by
-    unfold getAnchor
+    rw [getAnchor_eq_deepest_union hΦ]
     cases hd : deepest Φ (liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) with
     | none => exact hΦ.fcRoot_mem
     | some D =>
