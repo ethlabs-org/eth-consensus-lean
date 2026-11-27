@@ -29,7 +29,8 @@ open AC Node
 theorem plan_cases (Q : Nat → Prop) (h1 : Q 1) (h4 : ∀ s, 1 ≤ s → Q (4 * s))
     (h4r : ∀ s, 1 ≤ s → s % 10 = 1 → Q (4 * s + 1))
     (h41 : ∀ s, 1 ≤ s → s % 10 ≠ 1 → Q (4 * s + 1))
-    (hq : ∀ t, plan t = [(w0, .tick 0 true, tickSk []), (w1, .tick 0 true, tickSk [])] → Q t)
+    (hq : ∀ t, plan t = [(w0, .tick 0 true, tickSk [] ++ refusedSk (tip t)),
+      (w1, .tick 0 true, tickSk [] ++ refusedSk (tip t))] → Q t)
     (t : Nat) :
     Q t := by
   by_cases t1 : t = 1
@@ -80,7 +81,8 @@ theorem plan_ev {t j : Nat} {p : Fin sp.n × Node.Event N × List Sk}
     rcases j with _ | _ | _ | _ | j <;> simp at hp <;> subst hp <;> simp [Event.phase]
   | h4 s hs =>
     rw [plan_four hs] at hp
-    split_ifs at hp with h10 <;>
+    unfold refusedSk at hp
+    split_ifs at hp <;>
     rcases j with _ | _ | _ | _ | _ | _ | j <;> simp at hp <;> subst hp <;>
       simp [Event.phase] <;> first | exact ⟨s, hs, rfl⟩ | exact ⟨w1, s / 10, by omega, rfl⟩
   | h4r s hs h10 =>
@@ -106,7 +108,8 @@ theorem plan_fgBlock {t j k : Nat} {p : Fin sp.n × Node.Event N × List Sk}
       rcases k with _ | _ | _ | _ | _ | _ | k <;> simp [tickSk] at hc
   | h4 s hs =>
     rw [plan_four hs] at hp
-    split_ifs at hp with h10 <;>
+    unfold refusedSk at hp
+    split_ifs at hp <;>
     rcases j with _ | _ | _ | _ | _ | _ | j <;> simp at hp <;> subst hp <;>
       rcases k with _ | _ | _ | _ | _ | _ | k <;> simp [tickSk] at hc <;>
       exact ⟨s, hs, rfl, hc.1.symm, by omega⟩
@@ -120,6 +123,8 @@ theorem plan_fgBlock {t j k : Nat} {p : Fin sp.n × Node.Event N × List Sk}
       rcases k with _ | _ | _ | _ | _ | _ | k <;> simp [tickSk] at hc
   | hq t h =>
     rw [h] at hp
+    unfold refusedSk at hp
+    split_ifs at hp <;>
     rcases j with _ | _ | j <;> simp at hp <;> subst hp <;>
       rcases k with _ | _ | _ | _ | _ | _ | k <;> simp [tickSk] at hc
 
@@ -135,10 +140,11 @@ theorem plan_fgAtt {t j k : Nat} {p : Fin sp.n × Node.Event N × List Sk}
       rcases k with _ | _ | _ | _ | _ | _ | k <;> simp [tickSk] at hc
   | h4 s hs =>
     rw [plan_four hs] at hp
-    split_ifs at hp with h10 <;>
+    unfold refusedSk at hp
+    split_ifs at hp <;>
     rcases j with _ | _ | _ | _ | _ | _ | j <;> simp at hp <;> subst hp <;>
       rcases k with _ | _ | _ | _ | _ | _ | k <;> simp [tickSk] at hc
-    exact ⟨w1, s / 10, by omega, hc.symm, by rw [w1_val]; unfold rt; omega⟩
+    all_goals exact ⟨w1, s / 10, by omega, hc.symm, by rw [w1_val]; unfold rt; omega⟩
   | h4r s hs h10 =>
     rw [plan_four1_row hs h10] at hp
     rcases j with _ | _ | _ | _ | _ | j <;> simp at hp <;> subst hp <;>
@@ -152,6 +158,8 @@ theorem plan_fgAtt {t j k : Nat} {p : Fin sp.n × Node.Event N × List Sk}
       rcases k with _ | _ | _ | _ | _ | _ | k <;> simp [tickSk] at hc
   | hq t h =>
     rw [h] at hp
+    unfold refusedSk at hp
+    split_ifs at hp <;>
     rcases j with _ | _ | j <;> simp at hp <;> subst hp <;>
       rcases k with _ | _ | _ | _ | _ | _ | k <;> simp [tickSk] at hc
 
@@ -175,7 +183,8 @@ theorem plan_msg {t j k : Nat} {p : Fin sp.n × Node.Event N × List Sk}
     · exact ⟨w1, 0, hc.1.symm, by unfold emitIdx; rw [w1_val]; split_ifs <;> omega⟩
   | h4 s hs =>
     rw [plan_four hs] at hp
-    split_ifs at hp with h10 <;>
+    unfold refusedSk at hp
+    split_ifs at hp <;>
     rcases j with _ | _ | _ | _ | _ | _ | j <;> simp at hp <;> subst hp <;>
       rcases k with _ | _ | _ | _ | _ | _ | k <;> simp [tickSk] at hc
     all_goals first
@@ -191,6 +200,8 @@ theorem plan_msg {t j k : Nat} {p : Fin sp.n × Node.Event N × List Sk}
       rcases k with _ | _ | _ | _ | _ | _ | k <;> simp [tickSk] at hc
   | hq t h =>
     rw [h] at hp
+    unfold refusedSk at hp
+    split_ifs at hp <;>
     rcases j with _ | _ | j <;> simp at hp <;> subst hp <;>
       rcases k with _ | _ | _ | _ | _ | _ | k <;> simp [tickSk] at hc
 
@@ -233,7 +244,7 @@ theorem emit_of_plan {t j k i : Nat} (hj : j < 128) (hk : k < 8) (hi : i = 1024 
 /-- `v0`'s tick at `t_s`. -/
 theorem plan_four_zero {s : Nat} (hs : 1 ≤ s) : (plan (4 * s))[0]? =
     some (w0, .tick 0 true, [.ac .tick [], .ac .proposal [], .fg (.block (blk s) true),
-      .ac (.block (blk s)) [vote w0 s], .ac .toFG []]) := by
+      .ac (.block (blk s)) [vote w0 s], .ac .toFG []] ++ refusedSk (s - 1)) := by
   rw [plan_four hs]; simp
 
 /-- `v1`'s receipt of `blk s` at `t_s`. -/

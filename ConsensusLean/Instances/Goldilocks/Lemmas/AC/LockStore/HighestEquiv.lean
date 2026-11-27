@@ -142,12 +142,7 @@ open Classical in
 noncomputable def toFG (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     ACState sp.n × Option (Blk sp.n FGP) :=
   if ¬ joined sp A t then (A, none)
-  else
-    match source A Φ t with
-    | none => (A, none)
-    | some C =>
-      if AncR Φ C A.fgReported then (A, none)
-      else ({ A with fgReported := C.root }, some C)
+  else (A, source A Φ t)
 
 private noncomputable def restart (ro : ReplayOrder sp FGP) (self : Fin sp.n) (A : ACState sp.n)
     (Φ : Frm sp.n FGP) (t : Time) : ACState sp.n × List (Em sp FGP) :=
@@ -233,9 +228,6 @@ theorem proposal_eq {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (L : Set Lock)
 theorem toFG_eq (A : ACState sp.n) (Φ : Frm sp.n FGP) (t : Time) :
     toFG A Φ t = acToFG sp A Φ t := by
   simp only [toFG, acToFG, source_eq]
-  split_ifs with hj
-  · cases fgSource sp A Φ t <;> rfl
-  · rfl
 
 variable (hU : Coherent U) {Φ : Frm sp.n FGP} (hΦ : FrameOK Φ) (hΦU : Φ.tree ⊆ U)
 include hU hΦ hΦU
@@ -448,11 +440,7 @@ theorem stepWith_eq_inv {ro : ReplayOrder sp FGP} (m : WriteMode) (self : Fin sp
     refine ⟨congrArg (fun r => (r.1, [])) (toFG_eq A Φ t), ?_⟩
     change LockInv U (acToFG sp A Φ t).1 Φ
     unfold acToFG
-    split
-    · exact h
-    · split
-      · exact h
-      · split_ifs <;> exact h.of_eq rfl rfl
+    split <;> exact h
   | message v =>
     simp only [stepWith, stepWithM, acOnMessageWithM]
     rw [show optimistic (admitVote sp A t v) Φ t = _ from he]

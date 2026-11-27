@@ -158,11 +158,7 @@ theorem pool_step_inventory (P : Vote sp.n → Prop) (ro : ReplayOrder sp FGP) (
   | toFG =>
     change PoolIn P (AC.acToFG sp A Φ t).1
     unfold AC.acToFG
-    split_ifs
-    · split
-      · exact h
-      · split_ifs <;> exact h
-    · exact h
+    split_ifs <;> exact h
 
 end Pools
 
@@ -302,18 +298,10 @@ private theorem inventory_toFG {io : VoteAuth sp.n binding} {P : Wire sp.n bindi
   refine ⟨h.reachable, h.blocks, ?_, h.atts, fun m hm => h.gate m ?_⟩
   · change PoolIn _ (AC.acToFG sp st.ac (frame st) t).1
     unfold AC.acToFG
-    split_ifs
-    · split
-      · exact h.votes
-      · split_ifs <;> exact h.votes
-    · exact h.votes
+    split_ifs <;> exact h.votes
   · change (AC.acToFG sp st.ac (frame st) t).1.mayVote m.slot = true at hm
     unfold AC.acToFG at hm
-    split_ifs at hm
-    · split at hm
-      · exact hm
-      · split_ifs at hm <;> exact hm
-    · exact hm
+    split_ifs at hm <;> exact hm
 
 private theorem proposal_inventory {P : Wire sp.n binding → Prop} (st : State sp ro binding)
     (h : Inventory st.voteIO P st.node) (s : Slot) {par : ParentRef} {info : Info}

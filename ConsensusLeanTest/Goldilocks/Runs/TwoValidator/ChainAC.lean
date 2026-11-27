@@ -25,11 +25,12 @@ structure RecGood (Λ : FG.Record) (n : Nat) : Prop where
   lock : ∀ h, Λ.lock h = if 1 ≤ h ∧ h + 1 ≤ n then some (blk (ent h)).root else none
   sent : ∀ c ∈ Λ.sent, c.1 ≤ n
   sent_top : 1 ≤ n → ∃ c ∈ Λ.sent, c.1 = n
+  sent_height : ∀ h, 1 ≤ h → h ≤ n → ∃ c ∈ Λ.sent, c.1 = h
 
 theorem recGood_empty : RecGood FG.Record.empty 0 :=
   ⟨fun _ => by simp [FG.Record.empty]; omega, fun _ => rfl,
     fun _ => by simp [FG.Record.empty], fun _ h => by simp [FG.Record.empty] at h,
-    fun h => absurd h (by omega)⟩
+    fun h => absurd h (by omega), fun _ h1 h2 => by omega⟩
 
 theorem ent_ent_hgt {q : Nat} (hq : 1 ≤ q) : ent (hgt (ent q)) = ent q := by rw [hgt_ent hq]
 
@@ -86,7 +87,8 @@ theorem attest_new {fg : Store sp.toParams N.Payload} {τ s : Nat} (h : FGGood f
     dsimp only
     rw [ite_eq_right hsent, hfin]
     rfl
-  · refine ⟨fun h' => ?_, fun h' => ?_, fun h' => ?_, fun c hc => ?_, fun _ => ?_⟩
+  · refine ⟨fun h' => ?_, fun h' => ?_, fun h' => ?_, fun c hc => ?_, fun _ => ?_,
+      fun h' h1 h2 => ?_⟩
     · unfold FG.Record.recordAtt
       dsimp only
       rw [ite_eq_left ⟨by simp [row_timeout], by rw [row_h, hΛ.target, ite_eq_right (by omega)]⟩,
@@ -116,6 +118,33 @@ theorem attest_new {fg : Store sp.toParams N.Payload} {τ s : Nat} (h : FGGood f
         change (row y q).h ≤ q
         rw [row_h]
     · exact ⟨(row y q).content, by unfold FG.Record.recordAtt; simp, rfl⟩
+    · by_cases he : h' = q
+      · subst he
+        exact ⟨(row y q).content, by unfold FG.Record.recordAtt; simp, rfl⟩
+      · obtain ⟨c, hc, hh⟩ := hΛ.sent_height h' h1 (by omega)
+        exact ⟨c, List.mem_append_left _ hc, hh⟩
+
+/-- All previously signed entry heights are refused, not only the most recent one. -/
+theorem attest_signed {fg : Store sp.toParams N.Payload} {τ s nr : Nat} (h : FGGood fg τ)
+    (hs : s ≤ τ) (y : Fin sp.n) {Λ : FG.Record} (hΛ : RecGood Λ nr) (hh : hgt s ≤ nr) :
+    fg.attest Λ y (blk s) = none := by
+  have hq := hgt_pos s
+  set q := hgt s with hqd
+  have hent := entry_state h hs
+  rw [← hqd] at hent
+  have he_h : (csN (ent q)).h = q := by rw [csN_eq, cs_h, hgt_ent hq]
+  have he_Th : (csN (ent q)).Th = (blk (ent q)).root := by rw [csN_eq, cs_Th, hgt_ent hq]
+  unfold Store.attest FG.Record.createAtt
+  rw [hent, he_h, he_Th]
+  unfold FG.Record.heightPair
+  by_cases hl : Λ.lock q ≠ none ∧ Λ.lock q ≠ some (blk (ent q)).root
+  · rw [ite_eq_left hl]
+  · rw [ite_eq_right hl, ite_eq_right (by rw [hΛ.timeout]; simp),
+      ite_eq_left (Or.inr (by rw [hΛ.target, ite_eq_left ⟨hq, hh⟩]))]
+    dsimp only
+    rw [ite_eq_left (by
+      obtain ⟨c, hc, he⟩ := hΛ.sent_height q hq hh
+      exact List.any_eq_true.2 ⟨c, hc, by simp [he]⟩)]
 
 /-- **An old row**: once the row of the height of its source is signed, the node signs
 nothing. -/
@@ -322,15 +351,14 @@ structure Same (A A' : ACState sp.n) : Prop where
   voteStamp : A'.voteStamp = A.voteStamp
   blockStamp : A'.blockStamp = A.blockStamp
   votedSlot : A'.votedSlot = A.votedSlot
-  fgReported : A'.fgReported = A.fgReported
   restartTime : A'.restartTime = A.restartTime
 
-theorem Same.refl (A : ACState sp.n) : Same A A := ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+theorem Same.refl (A : ACState sp.n) : Same A A := ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 theorem Same.trans {A A' A'' : ACState sp.n} (h : Same A A') (h' : Same A' A'') : Same A A'' :=
   ⟨h'.mayVote.trans h.mayVote,
     h'.pool.trans h.pool, h'.voteStamp.trans h.voteStamp, h'.blockStamp.trans h.blockStamp,
-    h'.votedSlot.trans h.votedSlot, h'.fgReported.trans h.fgReported,
+    h'.votedSlot.trans h.votedSlot,
     h'.restartTime.trans h.restartTime⟩
 
 /-- With `k = 2` every new fast lock of slot `s` expires after `s + 2`. -/
@@ -361,7 +389,7 @@ theorem optimisticConfirmation_cases (A : ACState sp.n) (Φ : N.Frm) (t : Time)
       { A with locks := (addLocks sp A.locks Φ t (sp.slot t)
         {(B.root, true, sp.slot t + 2)}) } Φ B
     rw [hc]
-    exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inr ⟨B, hB, rfl⟩⟩
+    exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inr ⟨B, hB, rfl⟩⟩
 
 theorem optimisticConfirmation_of_none {A : ACState sp.n} {Φ : N.Frm} {t : Time}
     (h : optimisticSelect sp A Φ t = none) : optimisticConfirmation sp A Φ t = A := by
@@ -394,7 +422,7 @@ theorem updateConfirmation_cases (A : ACState sp.n) (Φ : N.Frm) (t : Time) (s :
   unfold updateConfirmation
   dsimp only
   split
-  · exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inl rfl⟩
+  · exact ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inl rfl⟩
   · rename_i C hC
     obtain ⟨c, hc⟩ := updateLatestConfirmed_eq
       { A with saved := Function.update A.saved s ((getConfirmation sp A Φ s).map Block.root) }
@@ -402,7 +430,7 @@ theorem updateConfirmation_cases (A : ACState sp.n) (Φ : N.Frm) (t : Time) (s :
     split_ifs
     all_goals
       try rw [hc]
-      refine ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inr ⟨_, ?_, rfl⟩⟩
+      refine ⟨⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, Or.inr ⟨_, ?_, rfl⟩⟩
       rintro p (⟨B, hB, rfl⟩ | ⟨B, hB, rfl⟩)
       · exact ⟨⟨B, (deepest_mem hB).1.1.1.1, rfl⟩, fastExpiry_le sp _ _ _ _⟩
       · exact ⟨⟨B, (deepest_mem hB).1.1.1.1, rfl⟩, le_rfl⟩

@@ -159,11 +159,7 @@ theorem step_voteStep (ro : ReplayOrder sp (List (FG.Att sp.n))) (self : Fin sp.
     have h : (AC.acToFG sp A Φ t).1.votedSlot = A.votedSlot ∧
         (AC.acToFG sp A Φ t).1.restartTime = A.restartTime := by
       unfold AC.acToFG
-      split_ifs
-      · split
-        · exact ⟨rfl, rfl⟩
-        · split_ifs <;> exact ⟨rfl, rfl⟩
-      · exact ⟨rfl, rfl⟩
+      split_ifs <;> exact ⟨rfl, rfl⟩
     exact ⟨h.2, Or.inl h.1, Nat.zero_le _, fun _ h => absurd h List.not_mem_nil⟩
   | message m =>
     right
