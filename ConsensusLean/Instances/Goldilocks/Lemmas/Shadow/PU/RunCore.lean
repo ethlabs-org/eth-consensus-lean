@@ -2,6 +2,7 @@ module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Core
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Run.CoreLocal
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Driven
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ACProjection
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Participants
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Provenance
@@ -16,11 +17,10 @@ public section
 
 The shadow instances of the Option B bundles, at `Store.updateFinality'` and `Node.frame'`:
 `GoldilocksRun'.toStaticCore`, `Growing.GoldilocksRun'.toCore` and
-`Healing.Growing.ResetPremisesUpTo'.toCore`, every field from the proved shadow lemmas.
-
-**Pending.** `driven_pending` is a placeholder with the exact type of the `driven` field, for lane
-W's `Healing.projection_driven_of_run'`. The handler facts over `exec'` behind `report_attest`,
-`signed_tick`, `late_tick` and `signed_before_attest` are private copies of the stock ones. -/
+`Healing.Growing.ResetPremisesUpTo'.toCore` and `Growing.GoldilocksRun'.toLocalRunCore`, every
+field from the proved shadow lemmas (`driven` from `Healing.projection_driven_of_run'`). The handler
+facts over `exec'` behind `report_attest`, `signed_tick`, `late_tick` and `signed_before_attest` are
+private copies of the stock ones. -/
 
 namespace Consensus.Goldilocks
 
@@ -515,10 +515,6 @@ private theorem signed_before_attest_pending (hrun : GoldilocksRun' proposer dg 
     · exact nfg m hmj₀ _ hB htm
   exact ⟨j', hj', lt_of_le_of_lt (hrun.time_mono hj'm.le) htm⟩
 
-private theorem driven_pending (hrun : GoldilocksRun' proposer dg H tr ini) :
-    Compose.NoCollRun dg tr → AC.Driven proposer tr.projAC H := by
-  sorry
-
 /-! ### The instances -/
 
 /-- **The static core of a shadow Goldilocks run.** -/
@@ -568,7 +564,7 @@ theorem GoldilocksRun'.toStaticCore (hrun : GoldilocksRun' proposer dg H tr ini)
     · rw [RunTrace.groupAt'_iff] at hg
       exact absurd (by simpa using (hg.2.1 0 (List.length_pos_iff.2 hg.1)).2.2.2.1) hpos
     · exact ⟨d.head, by rw [hB]; rfl, by rw [hfgj, hB]; rfl⟩
-  driven := driven_pending hrun
+  driven := fun hnc => Healing.projection_driven_of_run' hrun hnc hrun.genesis_root_ok
   lock_origin hnc y hy i := Compose.lock_origin' hrun hnc hy i
   vote_of_awake_joined hnc y hy _ hmv hw hj := Compose.vote_of_awake_joined' hrun hnc hy hmv hw hj
   awake_participant_early hnc _ _ hsync hb _ hX _ _ hu y hy hmv hw hj :=
