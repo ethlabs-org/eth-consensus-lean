@@ -15,7 +15,8 @@ This file copies the stock trace laws that read the node's execution, over `gold
 * the FG execution law `FGLabel.Step'` and the FG trace contract `FGLocalRun'` (static) and
   `Growing.FGLocalRun'`, copies of `FGLabel.Step`, `FGLocalRun` and `Growing.FGLocalRun` with
   `Store.onBlock'` in place of `Store.onBlock`;
-* the component states `Compose.projAC_state'`, `Compose.projFG_state'`, the FG execution
+* the component state `Compose.projFG_state'` (`Compose.projAC_state'` and
+  `Compose.honest_blocks_coherent'` are in `Shadow/PU/Node`), the FG execution
   `Compose.fg_exec'` and the FG projection `Compose.fg_projection_from'`;
 * the AC projection `Compose.goldilocks_ac_projection_from'`;
 * the run laws under growing faults, `Growing.LocalRun'` and `Growing.GoldilocksRun'`, copies of
@@ -188,42 +189,6 @@ variable {P : Params} {A : NodeAC P}
 variable {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
   {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
 
-/-- **The AC projection's state is the AC part of the run's state** (honest node; a copy of
-`projAC_state`). -/
-theorem projAC_state' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
-    (i : Nat) :
-    tr.projAC.state y i = (tr.state y i).ac := by
-  induction i with
-  | zero => simp [Trace.state, RunTrace.projAC, h.init y hy]
-  | succ i ih =>
-    by_cases hn : tr.node i = y
-    · cases hl : tr.label i with
-      | none =>
-        rw [tr.state_succ_of_not fun ℓ hc => by simp [hc.2] at hl]
-        rw [← ih]
-        simp [Trace.state, RunTrace.projAC, hl]
-      | some c =>
-        have hc : tr.CallAt y i c := ⟨hn, hl⟩
-        have hlaw := h.cutLaw y hy i c hc
-        rw [tr.state_succ_of_call hc]
-        cases c with
-        | ac ℓ => simp [Trace.state, RunTrace.projAC, hn, hl, RunTrace.acLabel]
-        | fg ℓ =>
-          rw [show (tr.post i).ac = (tr.state y i).ac by
-            cases ℓ with
-            | block B acc =>
-              cases acc
-              · rw [((cutStep'_block_false _ _ _ _ _).1 hlaw).2]
-              · exact ((cutStep'_block_true _ _ _ _ _).1 hlaw).2.2.1
-            | attestation a => exact ((cutStep'_attestation _ _ _ _ _).1 hlaw).2.1
-            | attest C s =>
-              cases s
-              · rw [((cutStep'_attest_none _ _ _ _ _).1 hlaw).2]
-              · exact ((cutStep'_attest_some _ _ _ _ _ _).1 hlaw).2.2, ← ih]
-          simp [Trace.state, RunTrace.projAC, hl, RunTrace.acLabel]
-    · rw [tr.state_succ_of_not fun ℓ hc => hn hc.1, ← ih]
-      simp [Trace.state, RunTrace.projAC, hn]
-
 /-- **The FG projection's state is the FG part and the record of the run's state** (honest
 node; a copy of `projFG_state`). -/
 theorem projFG_state' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n} (hy : y ∈ H)
@@ -287,12 +252,6 @@ theorem fg_exec' (h : Node.LocalRun' proposer dg H sg tr ini) :
     | some a =>
       have hlaw := (cutStep'_attest_some _ _ _ _ _ _).1 hlaw
       exact ⟨hlaw.2.1, by simp [hlaw.1]⟩
-
-/-- **The honest blocks of a shadow run are coherent** under `NoColl` (a copy of
-`honest_blocks_coherent`). -/
-theorem honest_blocks_coherent' (h : Node.LocalRun' proposer dg H sg tr ini)
-    (hnc : NoCollRun dg tr) : Coherent (tr.HonestBlocks H) := by
-  sorry
 
 /-- The tick order through the FG calls for a shadow run: the FG laws `attest_public`,
 `own_first`, `attest_order` and `own_payload` of the projection (copies of `attestCall_tick`,
