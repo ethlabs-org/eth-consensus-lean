@@ -626,4 +626,60 @@ end Growing
 
 end Consensus.Goldilocks.Coherence
 
+namespace Consensus.Goldilocks.Compose
+
+variable {P : Params} {A : NodeAC P} {proposer : Nat → Fin P.n}
+  {dg : Digest (List (FG.Att P.n)) A.Payload} {H : Set (Fin P.n)}
+  {sg : A.Msg → Fin P.n} {tr : RunTrace A} {ini : Fin P.n → A.State}
+
+/-- The shadow FG projection uses the proved honest-tree coherence supplier. -/
+theorem fg_projection_from' (hq : ∀ y ∈ H, ({ A with initial := ini y } : NodeAC P).Requirements)
+    (hg₀ : (P.genesisBlock A.genesisPayload).RootOk dg) (h : Node.LocalRun' proposer dg H sg tr ini)
+    (hnc : NoCollRun dg tr) : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG := by
+  obtain ⟨hpub, hfirst, horder, hpay⟩ := fg_tick_order' hq hg₀ h hnc
+  refine
+    { coherent := Coherence.honest_blocks_coherent' h hnc
+      init := (fg_exec' h).1
+      exec := (fg_exec' h).2
+      tree_subset := fun y hy i X hX => ⟨y, hy, i, by
+        rw [FGTrace.store, projFG_state' h hy] at hX
+        exact hX⟩
+      time_nonneg := h.time_nonneg
+      time_mono := h.time_mono
+      attest_public := hpub
+      own_first := hfirst
+      attest_order := horder
+      own_payload := hpay
+      unforgeable := fun y hy i a ⟨ℓ, hc, ha⟩ hv => ?_ }
+  have hc := projFG_callAt.1 hc
+  have hpr : tr.AttCallAt y i a ∨ ∃ B, tr.BlockCallAt y i B ∧ a ∈ B.fgPayload := by
+    cases ℓ with
+    | block B acc =>
+      cases acc with
+      | true => exact Or.inr ⟨B, ⟨true, hc⟩, ha⟩
+      | false => cases ha
+    | attestation a' =>
+      rw [FGLabel.processed, List.mem_singleton] at ha
+      subst ha
+      exact Or.inl hc
+    | attest C s => cases ha
+  obtain ⟨j, hj, src, hs⟩ := h.att_unforgeable y hy i a hpr hv
+  exact ⟨j, hj, src, projFG_callAt.2 hs⟩
+
+open AC (ACParams ReplayOrder Payload)
+
+theorem honest_row_signed_before' {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
+    {proposer : Nat → Fin sp.n} {dg : Digest (List (FG.Att sp.n)) (Payload sp.n)}
+    {H : Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
+    {ini} (hrun : GoldilocksRun' proposer dg H tr ini) (_hnc : NoCollRun dg tr)
+    {y : Fin sp.n} (hy : y ∈ H) {i : Nat} {X : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hX : X ∈ (tr.state y i).fg.tree) {a : FG.Att sp.n} (ha : a ∈ X.fgPayload) (hav : a.val ∈ H) :
+    ∃ m < i, tr.AcceptAt y m X ∧ ∃ k < m, tr.SignAt a.val k a := by
+  rcases Coherence.tree_accepted' hrun.toLocalRun' hy hX with rfl | ⟨m, hm, hA⟩
+  · simp [Params.genesisBlock] at ha
+  · exact ⟨m, hm, hA,
+      hrun.att_unforgeable y hy m a (Or.inr ⟨X, ⟨true, hA⟩, ha⟩) hav⟩
+
+end Consensus.Goldilocks.Compose
+
 end
