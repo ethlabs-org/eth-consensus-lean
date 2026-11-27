@@ -177,8 +177,8 @@ theorem ready_update_selection_of_pool_core_at
       (fun B hB C hC => AC.anc_total hPhi.coherent (hall B hB) (hall C hC)) hD P hPS
     rw [hD, Anc.antisymm hPhi.coherent hDP hPD]
   have hnv : ¬ AC.conflictsWithLock sp A.locks ell.frame (tr.time j) P := by
-    rintro ⟨L, hL, hnc⟩
-    apply hnc
+    apply AC.not_conflictsWithLock_of_forall
+    intro L hL
     rcases hlocks L hL with h | h
     · exact Or.inr (AC.anc_tree_of_anc_U hU hPhi hPhiU hL.1 h hPt)
     · exact Or.inl (AC.anc_tree_of_anc_U hU hPhi hPhiU hPt h hL.1)

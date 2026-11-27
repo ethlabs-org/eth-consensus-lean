@@ -302,7 +302,7 @@ theorem stamp_origin {ini} (h : ACLocalRun (AC.goldilocksAC sp FGP ro) H U tr in
 `fc_root` or the deepest live lock block, a candidate at least as deep as `fc_root`. -/
 theorem getAnchor_viable {Φ : AC.Frm sp.n FGP} (hΦ : FrameOK Φ) (A : AC.ACState sp.n) (t : Time)
     (hfc : Φ.fcRoot ∈ Φ.viableTree Φ.tree) : AC.getAnchor sp A Φ t ∈ Φ.viableTree Φ.tree := by
-  unfold AC.getAnchor
+  rw [AC.getAnchor_eq_deepest_union hΦ]
   rcases hD : AC.deepest Φ (AC.liveLockBlocks sp A.locks Φ t ∪ {Φ.fcRoot}) with _ | D
   · exact hfc
   · obtain ⟨hDS, hmax⟩ := AC.deepest_mem hD

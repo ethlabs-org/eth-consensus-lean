@@ -139,7 +139,7 @@ theorem optimistic_supporter_later_heads_at {s₀ s N floor : Nat}
     have he : L = ell.frame.fcRoot ∨
         L ∈ AC.liveLockBlocks sp e.readPoint.locks ell.frame (tr.time i) := by
       rw [hanchor]
-      unfold AC.getAnchor
+      rw [AC.getAnchor_eq_deepest_union hPhi]
       cases hd : AC.deepest ell.frame _ with
       | none => exact Or.inl rfl
       | some B =>
