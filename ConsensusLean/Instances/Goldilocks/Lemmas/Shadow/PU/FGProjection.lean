@@ -289,7 +289,7 @@ theorem fg_projection_from' (hq : ∀ y ∈ H, ({ A with initial := ini y } : No
     (hnc : NoCollRun dg tr) : FGLocalRun' A.genesisPayload H (tr.HonestBlocks H) tr.projFG := by
   obtain ⟨hpub, hfirst, horder, hpay⟩ := fg_tick_order' hq hg₀ h hnc
   refine
-    { coherent := honest_blocks_coherent' h hnc
+    { coherent := Coherence.honest_blocks_coherent' h hnc
       init := (fg_exec' h).1
       exec := (fg_exec' h).2
       tree_subset := fun y hy i X hX => ⟨y, hy, i, by

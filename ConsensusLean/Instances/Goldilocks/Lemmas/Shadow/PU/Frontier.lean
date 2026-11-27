@@ -23,7 +23,7 @@ The growing items (`no_high_contest_at'`, `reset_vote_floor_above_old_or_covered
 `held_high_origin_viable_at'`) are over `Growing.GoldilocksRun'` and `ResetPremisesUpTo'`. They read
 the run-level origin family (left entries, high origins, healed covers) from `Shadow/PU/Origins`,
 and three further facts through the named **interface stubs** of section `Stub` below, each the
-stock lemma over the shadow run; a theorem reading a stub is unresolved (`sorryAx`) until it is
+stock lemma over the shadow run; a theorem reading a stub stays unresolved until that stub is
 proved.
 
 * `no_high_contest_at'` is an FG-state fact. Its proof compares the two entries at `h_j` through
