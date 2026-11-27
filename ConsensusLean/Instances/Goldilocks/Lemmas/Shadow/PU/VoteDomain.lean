@@ -1,5 +1,5 @@
 module
-public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Origins
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LowFinalized
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Common.Order
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Emission
@@ -40,20 +40,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
 
 namespace Stub
 
-/-- **Interface stub** (lane L, `Clean/LeftEntry.left_entry_origin_of_quarantine_at`). -/
-theorem left_entry_origin_of_quarantine_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
-    {y : Fin sp.n} {k : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < k, tr.time q ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) {E C : AC.Blk sp.n (List (FG.Att sp.n))}
-    (hE : E ∈ (tr.state y k).fg.tree) (hET : ((tr.state y k).fg.σ E.root).Th = E.root)
-    (hEh : HZ tr H g + 1 ≤ ((tr.state y k).fg.σ E.root).h) (hEC : (tr.state y k).fg.Anc E C)
-    (hlt : ((tr.state y k).fg.σ E.root).h < ((tr.state y k).fg.σ C.root).h)
-    (hpre : ∀ D, sp.deepDepth = some D → b ≤ cutZ sp.toParams g + 4 * D * sp.Δ) :
-    ∃ W ∈ (tr.state y k).fg.tree, ∃ att ∈ W.fgPayload, ∃ v d, v ∈ H t ∧ d < k ∧
-      tr.SignAt v d att ∧ att.T = E.root ∧ ∃ r < d, ∃ l O, HighOrigin tr H g v r l O ∧
-        Anc (tr.HonestBlocksAt H) E O := by
-  sorry
-
 /-- **Interface stub** (`KernelProof.high_origin_frozen_head_at`, `Kernel/VoteReceipt`). -/
 theorem high_origin_frozen_head_at'
     (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
@@ -65,16 +51,6 @@ theorem high_origin_frozen_head_at'
     (hFO : Anc (tr.HonestBlocksAt H) ell.frame.F O) :
     ∃ D ∈ AC.voterBlockTree sp e.readPoint ell.frame e.msg.slot,
       Anc (tr.HonestBlocksAt H) O D := by
-  sorry
-
-/-- **Interface stub** (`ResetPremisesUpTo.low_finalized_below_origin_at`, `Clean/LowFinalized`). -/
-theorem low_finalized_below_origin_at'
-    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
-    {y : Fin sp.n} {m : Nat} {t : Time} (ht : 0 ≤ t) (hle : ∀ q < m, tr.time q ≤ t)
-    (hy : y ∈ H t) (htb : t ≤ b) (hlow : (tr.state y m).fg.hj ≤ HZ tr H g) {x : Fin sp.n}
-    {i j : Nat} {B : AC.Blk sp.n (List (FG.Att sp.n))} (ho : HighOrigin tr H g x i j B)
-    (hib : tr.time i ≤ b) :
-    Anc (tr.HonestBlocksAt H) (tr.state y m).fg.F B := by
   sorry
 
 /-- **Interface stub** (`KernelProof.row_origin_label_lt_at`, `Kernel/RowLabel`). -/
@@ -197,7 +173,7 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
         l' < e.msg.slot ∧ Anc (tr.HonestBlocksAt H) E O := by
     intro E C hE hET hEh hEC hlt
     obtain ⟨W, hW, att, ha, v', d, hv', hd, hs', -, r', hrd, l', O, ho, hEO⟩ :=
-      Stub.left_entry_origin_of_quarantine_at' hp ht hle hy hib hE hET hEh hEC hlt hpre
+      hp.left_entry_origin_of_quarantine_at' ht hle hy hib hE hET hEh hEC hlt hpre
     have hl := Stub.row_origin_label_lt_at' hp hy hcast hW ha
       (hp.run.antitone (hp.run.time_mono hd.le) hv') hs' hd hrd ho
     exact ⟨v', r', l', O, ho, by omega, (hp.run.time_mono (show r' ≤ i by omega)).trans hib,
@@ -276,7 +252,7 @@ theorem KernelProof.held_target_vote_domain_before_of_quarantine_at'
       obtain ⟨W, hW, hOW⟩ := frozen ho hrb' hl (hFJU.trans hJO)
       exact ⟨W, hW, hBJ.trans (hJO.trans hOW), viabJ (hvt hW) (hanc (hJO.trans hOW) (hvt hW))⟩
   · -- low `h_j`: `Σ.F` is below the seed
-    have hFS := Stub.low_finalized_below_origin_at' hp ht hle hy hib (by omega) hS hqb
+    have hFS := hp.low_finalized_below_origin_at' ht hle hy hib (by omega) hS hqb
     have hFB : Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.F B := by
       rcases hBS with h | h
       · exact Anc.total hU hFS h
