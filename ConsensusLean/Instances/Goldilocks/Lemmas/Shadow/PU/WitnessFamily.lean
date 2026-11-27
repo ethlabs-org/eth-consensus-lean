@@ -4,6 +4,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FaultBound
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.LaterHead
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowLaterBoundary
 import ConsensusLean.Lemmas.Tactic.Linarith
 import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.Run
@@ -471,20 +472,6 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
   {ini : Fin sp.n → (goldilocksNode' sp ro).State} {hold : Time}
 
-/-- Stub (owner to be set; stock `Compose.proposal_locks_slot_of` over the static shadow run,
-through `lock_origin`): the locks at an honest proposal call of slot `s` are of earlier slots. -/
-theorem proposal_locks_slot_of_stub {H₀ : Set (Fin sp.n)}
-    (_hrun : GoldilocksRun' proposer dg H₀ tr ini) (_hnc : Compose.NoCollRun dg tr)
-    {p : Fin sp.n} (_hp : p ∈ H₀) {s i : Nat}
-    {ℓp : ACLabel (goldilocksNode' sp ro)} {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)}
-    {pay : Payload sp.n} (_hc : tr.projAC.CallAt p i ℓp) (_hcall : ℓp.call = .proposal)
-    (_hd : (AC.acProposal sp (tr.projAC.state p i) ℓp.frame (tr.time i)).2 = some (d, pay))
-    (_hti : tr.time i = sp.ts s) {K : AC.CommitteeDict sp.n}
-    (_hP : AC.CommitteeP K tr.projAC H₀)
-    (_hfK : 2 * (K.committee s ∩ H₀ᶜ).ncard < sp.committeeSize) :
-    ∀ l ∈ (tr.state p i).ac.locks, l.slot < s := by
-  sorry
-
 /-- The static AC run of the prefix through `d` of the nodes honest at `d`. -/
 private theorem acRun_prefix'
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
@@ -783,7 +770,7 @@ theorem unanimous_next_proposal_of_witness_at' {K : AC.CommitteeDict sp.n}
       have h := Compose.projAC_state' hpre.toLocalRun' hy i
       rw [RunTrace.upTo_projAC] at h
       rwa [h] at hl
-    have hls := proposal_locks_slot_of_stub hpre (hnc.upTo _) hy
+    have hls := Compose.proposal_locks_slot_of' hpre (hnc.upTo _) hy
       (by rw [RunTrace.upTo_projAC]; exact hcp) hcall
       (by rw [RunTrace.upTo_projAC]; exact hdp) hti (by rw [RunTrace.upTo_projAC]; exact hS.hP)
       (hS.cs2 (m + 1) (by linarith) (by linarith)) l hl'

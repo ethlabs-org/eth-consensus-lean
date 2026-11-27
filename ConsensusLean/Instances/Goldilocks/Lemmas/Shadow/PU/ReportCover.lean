@@ -1,5 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportRoots
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Clean.HeldRoots
 
 public section
@@ -91,7 +94,53 @@ theorem held_target_viableHeads'_or_higher_report_of_cases
       ∃ x r ell' C, x ∈ H (max (cutZ sp.toParams g) (tr.time r)) ∧ r < i ∧
         AC.ToFGAt tr.projAC x r ell' C ∧ Anc (tr.HonestBlocksAt H) P C ∧
         ((tr.state x r).fg.σ P.root).h < ((tr.state x r).fg.σ C.root).h := by
-  sorry
+  have hrun := hp.run
+  have hnc := hp.noColl
+  have hy := hrun.antitone (le_max_right _ _) hyz
+  have hU := Coherence.honestBlocksAt_coherent' hrun hnc
+  have hd := hrun.time_nonneg i
+  have hle : ∀ q < i, tr.time q ≤ tr.time i := fun q hq => hrun.time_mono hq.le
+  have hreach := (Compose.Growing.reachable_at' hrun hd hy hle).reachableWith
+  have hfs := Store.finalitySpec_updateFinality' (P := sp.toParams) (ACP := Payload sp.n)
+  obtain ⟨hPy, hFP⟩ := Shadow.PU.mem_frame'_tree.1 hPt
+  have hcz := ProposalImpl.cutZ_lt_of_anc_at' hp hseed (by rwa [max_comm]) hPy hSP
+  have hroot : Compatible (tr.HonestBlocksAt H) (tr.state y i).fg.fcRoot P := by
+    by_cases hlow : (tr.state y i).fg.hj ≤ HZ tr H g
+    · exact hp.low_root_of_held_seed_at' hy hib hseed hqb
+        (mem_of_honest_anc_at' hrun hnc hd hle hy hSP hPy) hlow (Or.inr hSP)
+        (fun _ => hPt)
+    · exact hhighroot hlow
+  have hFt := (Store.cache_invariants_with hfs hreach).1
+  have hJt := (Store.cache_invariants_with hfs hreach).2.1
+  have hrt : (tr.state y i).fg.fcRoot ∈ (tr.state y i).fg.tree := by
+    unfold Store.fcRoot
+    split_ifs <;> assumption
+  have hrootS : (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot P ∨
+      (tr.state y i).fg.Anc P (tr.state y i).fg.fcRoot :=
+    hroot.imp (fun h => Coherence.held_anc_at' hrun hnc hd hy hle h hPy)
+      (fun h => Coherence.held_anc_at' hrun hnc hd hy hle h hrt)
+  rcases Store.isViable'_or_lt_floor_or_below_J (tr.state y i).fg
+      (Shadow.PU.hj_lt_hmax_at' hrun hd hy hle) hrootS with hv | hfl | ⟨hPJ, hPne⟩
+  · left
+    rw [Node.frame'_eq, Store.toFrame'_viableHeads]
+    exact ⟨hPy, hFP, hv⟩
+  · exact Or.inr (hfloorrep hfl)
+  · right
+    have hPR : Anc (tr.HonestBlocksAt H) P (tr.state y i).fg.J :=
+      hPJ.mono fun X hX => ⟨y, i, tr.time i, hd, hle, hy, hX⟩
+    have hf : (H (tr.time i))ᶜ.ncard < sp.toParams.fg.q := by
+      have hf := hp.faults _ hd hib
+      have hn : 0 < sp.n := sp.toParams.hn
+      change (H (tr.time i))ᶜ.ncard < (2 * sp.n + 2) / 3
+      omega
+    obtain ⟨x, hx, r, hri, d, _, att, ell', C, _, _, _, _, hto, _, hJx, hJC, _, hCh, hPh⟩ :=
+      cache_ahead_report_at' hrun hnc hy hf (Or.inr rfl) hPy hPR hPne
+    have hxle : ∀ k < r, tr.time k ≤ tr.time i := fun k hk => hrun.time_mono (by omega)
+    have hPx := mem_of_honest_anc_at' hrun hnc hd hxle hx hPR hJx
+    have hσ := σ_eq_honest_at' hrun hnc hd hle hy hd hxle hx hPy hPx
+    exact ⟨x, r, ell', C,
+      hrun.antitone (max_le hcz.le (hrun.time_mono hri.le)) hx, hri, hto,
+      hPR.trans hJC, by rw [← hσ, hCh]; exact hPh⟩
 
 /-- The covered form: the root and floor premises discharged from `CompatibleWithOrigins`
 (`ReportCover.held_target_viableHeads_or_higher_report_covered_at` over the shadow frame). -/

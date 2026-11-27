@@ -123,6 +123,9 @@ structure StaticRunCore
       ∃ j < i, tr.SignAt a.val j a
   /-- `LocalRun.awake_of_call`. -/
   awake_of_call : ∀ y ∈ H, ∀ i, tr.IsCall y i → tr.awake y (tr.time i)
+  /-- `LocalRun.sleep_of_restart`. -/
+  sleep_of_restart : ∀ y ∈ H, ∀ i, tr.RestartAt y i →
+    ∃ u : Time, 0 ≤ u ∧ u < tr.time i ∧ ¬ tr.awake y u ∧ ∀ j < i, tr.IsCall y j → tr.time j < u
   /-- Honest signings are at public times (`FGLocalRun.attest_public` of the projection). -/
   sign_public : ∀ y ∈ H, ∀ k a, tr.SignAt y k a → sp.toParams.IsPublic (tr.time k)
   /-- `Compose.fg_reachable`. -/

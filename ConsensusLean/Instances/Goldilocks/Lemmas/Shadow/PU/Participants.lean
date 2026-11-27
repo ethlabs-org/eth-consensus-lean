@@ -280,7 +280,7 @@ private theorem restartTime_eq' {ini} (h : GoldilocksRun' proposer dg H tr ini)
 
 /-- At a call other than a restart at `t`, the run's joined test is the AC state's (the
 second part of a copy of `joined_projection_from`). -/
-private theorem joined_at_call' {ini} (h : GoldilocksRun' proposer dg H tr ini)
+theorem joined_at_call' {ini} (h : GoldilocksRun' proposer dg H tr ini)
     {y : Fin sp.n} (hy : y ∈ H) {t : Time} (i : Nat) (hi : tr.IsCall y i)
     (hnr : ¬ tr.RestartAt y i) (hit : tr.time i = t) :
     tr.JoinedAt y t ↔ AC.joined sp (tr.state y i).ac t := by
