@@ -162,38 +162,6 @@ theorem update_result_extends_of_finalized_at {K : AC.CommitteeDict sp.n}
   rw [hst] at hconf hfs
   exact ⟨C, hconf, hPC.mono hsub, D, hfs, hPD.mono hsub⟩
 
-private theorem older_locks_compatible_after_unlock_slot_at
-    (hrun : GoldilocksRunCore u frameOf proposer dg H tr ini)
-    (hnc : Compose.NoCollRun dg tr)
-    {y : Fin sp.n} {j k r : Nat} (hy : y ∈ H (tr.time k))
-    {ell : ACLabel (goldilocksNode sp ro)} {R : AC.ACState sp.n}
-    (hb : AC.VoteBranchAt tr.projAC y j ell R) (hs : sp.slot (tr.time j) = r + 1) (hjk : j < k)
-    {P : AC.Blk sp.n (List (FG.Att sp.n))} (hPt : P ∈ ell.frame.tree)
-    {S : Set (Fin sp.n)}
-    (hS : ∀ x ∈ S,
-      x ∈ AC.equivocators (AC.mergedVoteView sp R ell.frame (r + 1)).votes ∨
-        ∃ v ∈ (AC.mergedVoteView sp R ell.frame (r + 1)).support,
-          v.val = x ∧ (v.slot : Int) = r ∧ AC.AncR ell.frame P v.head)
-    (hhalf : sp.committeeSize ≤ 2 * S.ncard) :
-    ∀ l ∈ (tr.projAC.state y k).locks, l.slot < r →
-      ∀ L ∈ tr.HonestBlocksAt H, L.root = l.block →
-        Compatible (tr.HonestBlocksAt H) L P := by
-  have hd := hrun.time_nonneg k
-  have hr := (hrun.acRun_upTo hnc hd).localRun
-  have hb' : AC.VoteBranchAt (tr.projAC.upTo (tr.time k)) y j ell R :=
-    (voteBranchAt_upTo_iff hrun.time_mono).2 ⟨hrun.time_mono hjk.le, hb⟩
-  have hstate := Trace.upTo_state tr.projAC y (i := k)
-    (fun q hq => hrun.time_mono hq.le)
-  have hsub := hrun.upTo_subset hd
-  intro l hl hls L hL hLr
-  have hl' : l ∈ ((tr.projAC.upTo (tr.time k)).state y k).locks := by rwa [hstate]
-  obtain ⟨_, _, _, _, B, hB, hBr, _⟩ :=
-    AC.lock_provenanceU (hr := hr.toU) hrun.vstart hy k l hl'
-  have hLB : L = B := (hrun.coherent hnc).1 hL (hsub hB) (hLr.trans hBr.symm)
-  subst L
-  exact (AC.older_locks_compatible_after_unlock_branch hr hy hb' hs hjk hPt hS hhalf
-    l hl' hls B hB hBr).imp (Anc.mono hsub) (Anc.mono hsub)
-
 /-- Every stored label at the later-slot update is compatible with the common vote floor. -/
 theorem update_locks_compatible_of_finalized_at {K : AC.CommitteeDict sp.n}
     {lo hi hold : Time}
@@ -354,7 +322,8 @@ theorem update_locks_compatible_of_finalized_at {K : AC.CommitteeDict sp.n}
       omega
     obtain ⟨x₀, hx₀⟩ : (K.committee (s + 1) ∩ H (tr.time j)).Nonempty :=
       Set.nonempty_of_ncard_ne_zero (by omega)
-    exact older_locks_compatible_after_unlock_slot_at hrun hnc hy hb (r := s + 1) (by omega) hjk
+    exact older_locks_compatible_after_unlock_at hrun hnc hy hb
+      (show sp.slot (tr.time j) = (s + 1) + 1 by omega) hjk
       (hsupp x₀ hx₀).2 (fun x hx => Or.inr (hsupp x hx).1.2) hhalf l hl hlt L hL hLr
   have hle : l.slot ≤ s + 2 := by
     obtain ⟨r, hrk, B, horig, _⟩ := AC.lock_provenanceU (hr := hr.toU) hrun.vstart hy k l hl'
