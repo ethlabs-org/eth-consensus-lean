@@ -831,6 +831,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportFollow
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ReportRoots
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Rows
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.S5Walk
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.SignCalendar
