@@ -165,6 +165,7 @@ complete type and proof closure with the existing negative and proof-body contro
 
 [[exception]]
 from = ["ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingLeaves",
+        "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.LocalRunCoreStock",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingRounds",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.HealingEdges",
         "ConsensusLean.Instances.Goldilocks.Lemmas.Generic.ClaimReductionEdges"]
@@ -193,7 +194,7 @@ to = ["ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.FGProjection",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.PreAdvanceFacts",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow",
       "ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Retention.Prefix"]
-reason = """the generic healing leaves over any NodeAC use these AC-generic run facts; their closure reaches
+reason = """the generic healing leaves over any NodeAC (and LocalRunCoreStock, the stock instance of their run-facts bundle LocalRunCore) use these AC-generic run facts; their closure reaches
 Lemmas.AC (Compose.Reach) and some of these modules also hold AC lemmas, so the cut guard
 ConsensusLeanTest.Goldilocks.Generic.HealingLeavesCut checks the theorems' constants. Compose.Run.Deadline: the
 RunTrace definitions live in Milestones.Spec.Run, which no Common or FG lemma layer may import, so the two RunTrace
