@@ -29,6 +29,13 @@ variable {FGP : Type} {sp : ACParams}
 def LocksWF (sp : ACParams) (L : Set Lock) : Prop :=
   ∀ l ∈ L, l.slot + 2 ≤ l.expiry ∧ l.expiry ≤ l.slot + sp.k
 
+/-- A vote-permission start has no locks. -/
+theorem VoteStart.locksWF {A : ACState sp.n} (h : VoteStart sp.genesisRoot A) :
+    LocksWF sp A.locks := by
+  obtain ⟨_, rfl⟩ := voteStart_iff.1 h
+  intro l hl
+  exact (Set.notMem_empty l hl).elim
+
 /-- The floor half: a lock of a well-formed set lives through `slot + 2`. -/
 theorem LocksWF.floor {L : Set Lock} (h : LocksWF sp L) {l : Lock} (hl : l ∈ L) :
     l.slot + 2 ≤ l.expiry :=
@@ -196,10 +203,8 @@ theorem locksWF_stateU
     (hy : y ∈ H) (i : Nat) : LocksWF sp (tr.state y i).locks := by
   induction i with
   | zero =>
-    obtain ⟨m, hm⟩ := hini y
-    rw [Trace.state, hr.init y hy, hm]
-    intro l hl
-    exact absurd hl (Set.notMem_empty l)
+    rw [Trace.state, hr.init y hy]
+    exact VoteStart.locksWF (hini y)
   | succ i ih =>
     rw [Trace.state]
     split
