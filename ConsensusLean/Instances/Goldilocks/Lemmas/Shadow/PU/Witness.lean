@@ -66,6 +66,59 @@ theorem fresh_participation_stays :
       ChainState.h) = some 2 := by
   decide
 
+/-- Three real client votes on the common genesis entry, shared by both sibling chains. -/
+def genesisVotes : List (Att 4) :=
+  ([0, 1, 2] : List (Fin 4)).map fun v => ⟨v, 1, 0, false, none⟩
+
+/-- The height-two entry state of a sibling, produced from the common genesis quorum. -/
+def siblingState (root : Nat) : ChainState 4 :=
+  (gp.stateTransition (ChainState.init gp) ⟨root, 2, 0, genesisVotes⟩).getD
+    (ChainState.init gp)
+
+/-- Both siblings enter height two while still justifying only genesis. -/
+theorem shared_genesis_entries :
+    ∀ root, (siblingState root).h = 2 ∧ (siblingState root).Th = root ∧
+      (siblingState root).hj = 1 ∧ (siblingState root).J = 0 := by
+  intro root
+  exact ⟨rfl, rfl, rfl, rfl⟩
+
+/-- The actual genesis client produces each attestation used in the shared quorum. -/
+theorem genesis_votes_created :
+    ∀ v : Fin 4, Record.empty.createAtt v (ChainState.init gp) =
+      some (⟨v, 1, 0, false, none⟩,
+        Record.empty.recordAtt (⟨v, 1, 0, false, none⟩ : Att 4)) := by
+  intro v
+  rfl
+
+/-- Votes on J's entry finalize genesis and justify J at height two. -/
+def justifyVotes : List (Att 4) :=
+  ([0, 1, 2] : List (Fin 4)).map fun v => ⟨v, 2, 10, false, some (1, 0)⟩
+
+/-- The competing sibling is crossed by timeouts, not target votes. -/
+def siblingTimeouts : List (Att 4) :=
+  ([0, 1, 2] : List (Fin 4)).map fun v => ⟨v, 2, 20, true, some (1, 0)⟩
+
+/-- At slot four, the J branch justifies height two while the sibling only times out.
+These are transition certificates; the honest AC source/signing prefix is still missing. -/
+theorem justify_and_timeout_crossings :
+    ((gp.stateTransition (siblingState 10) ⟨30, 4, 0, justifyVotes⟩).map
+      (fun s => (s.h, s.hj, s.J))) = some (3, 2, 10) ∧
+    ((gp.stateTransition (siblingState 20) ⟨40, 4, 0, siblingTimeouts⟩).map
+      (fun s => (s.h, s.hj, s.J))) = some (3, 1, 0) := by
+  decide
+
+/-- Each signer first targets J's real entry and then times out on its sibling's entry,
+starting with the record left by its genesis signature. This checks the finality pair too. -/
+theorem sibling_votes_created (v : Fin 4) :
+    let g : Att 4 := ⟨v, 1, 0, false, none⟩
+    let j : Att 4 := ⟨v, 2, 10, false, some (1, 0)⟩
+    let e : Att 4 := ⟨v, 2, 20, true, some (1, 0)⟩
+    (Record.empty.recordAtt g).createAtt v (siblingState 10) =
+      some (j, (Record.empty.recordAtt g).recordAtt j) ∧
+    ((Record.empty.recordAtt g).recordAtt j).createAtt v (siblingState 20) =
+      some (e, ((Record.empty.recordAtt g).recordAtt j).recordAtt e) := by
+  constructor <;> rfl
+
 end Consensus.Goldilocks.Shadow.PU.Witness
 
 end
