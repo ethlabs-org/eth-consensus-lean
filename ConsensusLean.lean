@@ -842,6 +842,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.OptimisticWitn
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Origins
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Outage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Participants
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.PrimedCurrentPassage
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.PrimedFresh
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Proposal
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.ProposalLocks

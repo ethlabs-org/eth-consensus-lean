@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.FollowCast
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.RunCore
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Report.FollowProposal
 import ConsensusLean.Lemmas.Tactic.Linarith
 
 public section
@@ -109,8 +110,8 @@ theorem proposal_window_witness
     Anc.mono (fun _ hm => ⟨z, hzk, ip, hm⟩) hJD
   exact Anc.mono (RunTrace.honestBlocks_upTo_subset hrun.time_mono ht) (hJD'.trans hDB)
 
-/-- Relay preserves the primed proposal witness at every late honest call. -/
-theorem proposal_viable_at_call_primed_at'
+/-- Relay or early membership preserves the primed proposal witness at an honest call. -/
+theorem proposal_viable_at_call_with_early_primed_at'
     {ini : Fin sp.n → (goldilocksNode' sp ro).State}
     {g ΔF b hi : Time} {u M : Nat} {isTop : Prop}
     {J P : AC.Blk sp.n (List (FG.Att sp.n))}
@@ -124,7 +125,8 @@ theorem proposal_viable_at_call_primed_at'
     {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
     {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
     {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell)
-    (hlo : sp.ts u + sp.Δ ≤ tr.time i) (hhi : tr.time i ≤ hi) :
+    (hlo : sp.ts u ≤ tr.time i) (hhi : tr.time i ≤ hi)
+    (hearly : tr.time i < sp.ts u + sp.Δ → P ∈ ell.frame.tree) :
     P ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.fcRoot P ∧ P ∈ ell.frame.viableHeads := by
   have hac := Compose.Growing.goldilocks_ac_projection_from' hrun hnc
   have htime : tr.time kP = sp.ts u := by
@@ -176,12 +178,16 @@ theorem proposal_viable_at_call_primed_at'
     exact hFP
   have hri := hac.upTo (hrun.time_nonneg i)
   have hci := (Trace.upTo_callAt tr.projAC).mpr ⟨le_rfl, hc⟩
-  obtain ⟨q, hqi, haq, _⟩ := Core.accepted_relay_before_at hrun.toCore hsvc hnr hzja
-    ⟨ella, hca', hblock⟩ (by rw [hja]; exact hgu) hy hc (by rwa [hja]) hFP'
-  have haq' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time i)) y q P := by
-    obtain ⟨ellq, hcq, heq⟩ := haq
-    exact ⟨ellq, (Trace.upTo_callAt _).mpr ⟨hrun.time_mono hqi, hcq⟩, heq⟩
-  have hPy := AC.mem_tree_of_acceptAtU sp hri.localRun.toU hy haq' hqi hci hFP'
+  have hPy : P ∈ ell.frame.tree := by
+    by_cases ht : tr.time i < sp.ts u + sp.Δ
+    · exact hearly ht
+    obtain ⟨q, hqi, haq, _⟩ := Core.accepted_relay_before_at hrun.toCore hsvc hnr hzja
+      ⟨ella, hca', hblock⟩ (by rw [hja]; exact hgu) hy hc
+      (by rw [hja]; exact not_lt.mp ht) hFP'
+    have haq' : ACTrace.AcceptAt (tr.projAC.upTo (tr.time i)) y q P := by
+      obtain ⟨ellq, hcq, heq⟩ := haq
+      exact ⟨ellq, (Trace.upTo_callAt _).mpr ⟨hrun.time_mono hqi, hcq⟩, heq⟩
+    exact AC.mem_tree_of_acceptAtU sp hri.localRun.toU hy haq' hqi hci hFP'
   have hPyi : P ∈ (tr.state y i).fg.tree := by
     rw [hfi, Node.frame'_eq, Store.toFrame'_tree] at hPy
     exact hPy.1
@@ -197,6 +203,70 @@ theorem proposal_viable_at_call_primed_at'
     exact Anc.restrict .refl hstore
   · rw [hfi, Node.frame'_eq, Store.toFrame'_viableHeads]
     exact ⟨hPyi, hstore, hv.2⟩
+
+/-- Late calls obtain proposal membership from relay. -/
+theorem proposal_viable_at_call_primed_at'
+    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {g ΔF b hi : Time} {u M : Nat} {isTop : Prop}
+    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow' tr H (sp.ts u) hi M isTop J)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hnr : NoRestartAfter tr H (gbar g)) (hgu : gbar g ≤ sp.ts u)
+    (hphi : sp.ts u + sp.Δ ≤ hi) (hib : hi ≤ b)
+    {z : Fin sp.n} (hz : z ∈ H (sp.ts u + sp.Δ)) (hdes : z = proposer u)
+    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = u)
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
+    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt y i ell)
+    (hlo : sp.ts u + sp.Δ ≤ tr.time i) (hhi : tr.time i ≤ hi) :
+    P ∈ ell.frame.tree ∧ ell.frame.Anc ell.frame.fcRoot P ∧ P ∈ ell.frame.viableHeads := by
+  exact proposal_viable_at_call_with_early_primed_at' hframe hrun hnc hsvc hf hnr hgu hphi hib
+    hz hdes hP hPs hy hc (by linarith [sp.toParams.hΔ]) hhi
+    (fun h => absurd h (not_lt.mpr hlo))
+
+/-- An honest cast retains the proposal in its voter-domain viable tree. -/
+theorem proposal_viable_at_cast_primed_at'
+    {ini : Fin sp.n → (goldilocksNode' sp ro).State}
+    {g ΔF b : Time} {s₀ p M : Nat} {isTop : Prop}
+    {J P : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : FrameWindow' tr H (sp.ts s₀) (sp.ts p + sp.Δ) M isTop J)
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g ≤ sp.ts s₀) (hsp : s₀ ≤ p) (hp0 : 0 < p)
+    (hpb : sp.ts p + sp.Δ ≤ b)
+    {z : Fin sp.n} (hz : z ∈ H (sp.ts p + sp.Δ)) (hdes : z = proposer p)
+    {kP : Nat} (hP : tr.ProposesAt z kP P) (hPs : P.slot = p)
+    {y : Fin sp.n} {i : Nat} (hy : y ∈ H (tr.time i))
+    {ell : ACLabel (goldilocksNode' sp ro)} {e : AC.Em sp (List (FG.Att sp.n))}
+    (hc : AC.CastAt tr.projAC y i ell e) (hes : e.msg.slot = p) :
+    P ∈ ell.frame.viableHeads ∧
+      P ∈ ell.frame.viableTree (AC.voterBlockTree sp e.readPoint ell.frame p) := by
+  have hri := (Compose.Growing.goldilocks_ac_projection_from' hrun hnc).upTo
+    (hrun.time_nonneg i)
+  have hci := AC.upTo_castAt.mpr ⟨le_rfl, hc⟩
+  have hslot : e.msg.slot = sp.slot (tr.time i) := (AC.castAt_specU hri.localRun.toU hy hci).2.1
+  have hslot' := hslot.symm.trans hes
+  have hpT : sp.ts p ≤ tr.time i :=
+    (AC.ts_le_iff_le_slot sp (hrun.time_nonneg i) _).2 (by rw [hslot'])
+  have hhigh : tr.time i ≤ sp.ts p + sp.Δ := by
+    have ht := AC.vote_time_leU hri.localRun.toU hy ⟨ell, hci⟩
+    change tr.time i ≤ sp.ts (sp.slot (tr.time i)) + sp.Δ at ht
+    rwa [hslot'] at ht
+  have hts : sp.ts s₀ ≤ sp.ts p := (AC.ts_le_iff sp).2 (by exact_mod_cast hsp)
+  obtain ⟨hPy, hroot, hv⟩ := proposal_viable_at_call_with_early_primed_at'
+    (hframe.mono hts le_rfl) hrun hnc hsvc hf hnr (hm.trans hts) le_rfl hpb
+    hz hdes hP hPs hy hc.1 hpT hhigh (fun hearly => by
+      obtain ⟨⟨Q, hQ, hQs, _⟩, -⟩ :=
+        AC.cast_readyU hri.localRun.toU hy hci (by rw [hes]; exact hearly)
+      rw [hes] at hQs
+      exact Core.proposal_frame_unique_at hrun.toCore hnc hz hdes hP hPs hp0 hy hc.1
+        hhigh hQ hQs ▸ hQ)
+  have hdom : P ∈ AC.voterBlockTree sp e.readPoint ell.frame p :=
+    ⟨hPy, Or.inr ⟨P, hPy, hPs, .refl⟩⟩
+  exact ⟨hv, hdom, hroot, P, hdom, hv, .refl⟩
 
 end Consensus.Goldilocks.Healing.Growing.KernelProof
 
