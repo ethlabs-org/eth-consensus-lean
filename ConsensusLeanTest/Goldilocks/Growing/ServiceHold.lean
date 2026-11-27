@@ -150,7 +150,7 @@ structure ACHealingNoHold (A : NodeAC P) (sg : A.Msg → Fin P.n) (runs : ACRun 
     runs.Run cm proposer dg H tr → PremisesNoHold tr H cm βK proposer dg sg g ΔF b → follow ≤ P.δt
   report_in_frame : ∀ {cm proposer dg H tr} {y : Fin P.n} {i : Nat} {R : A.Blk},
     runs.Run cm proposer dg H tr → y ∈ H (tr.time i) → ReportAt tr y i R →
-    R ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc (tr.state y i).fg.fcRoot R
+    R ∈ (tr.state y i).fg.tree ∧ (tr.state y i).fg.Anc (tr.state y i).fg.F R
   /-- The proposal reaches the predecessor of the maximum height and exceeds justification. -/
   proposal_floor : ∀ {cm proposer dg H tr} {lo hi : Time} {M u : Nat} {isTop : Prop}
     {J B : A.Blk} {z : Fin P.n} {kB : Nat},
