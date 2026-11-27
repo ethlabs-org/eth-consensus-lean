@@ -157,6 +157,13 @@ private theorem paired_exec (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin
     simpa only [exec'_eq, restart'_eq, acCall'_eq] using
       (paired_ac (c := .restart) fun _ h => by cases h)
 
+/-- Every AC block call is preceded by the matching successful FG block cut. -/
+theorem exec_acBlock_prev' (dg : Digest (List (FG.Att P.n)) A.Payload) (y : Fin P.n)
+    (st : NodeState A) (t : Time) (e : Event A) {k : Nat} {ℓ : ACLabel A} {B : A.Blk}
+    (hk : (exec' proposer dg y st t e).2[k]? = some (.ac ℓ)) (hb : ℓ.call = .block B) :
+    ∃ k', k = k' + 1 ∧ (exec' proposer dg y st t e).2[k']? = some (.fg (.block B true)) :=
+  (paired_exec proposer dg y st t e).2 k ℓ B hk hb
+
 private theorem onBlock_block {y : Fin P.n} {st : NodeState A} {t : Time} {B' B : A.Blk}
     {acc : Bool} {k : Nat} (hk : (onBlock' y st t B').2[k]? = some (.fg (.block B acc))) :
     k = 0 ∧ B' = B := by

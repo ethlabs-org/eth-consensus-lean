@@ -22,7 +22,7 @@ which `early_witness_viable'` supplies from `Q ∈ ellw.frame.viableHeads`. A sh
 lemmas are re-proved per cut, not instantiated: split on `σ(Q) ≥ M` (the stock contest and gap
 argument) and `σ(Q) = M − 1` in a top window (`J ⪯ Q`).
 
-Interface first: every statement below is a `sorry` (unresolved) until proved. The frame-relay
+Interface first: every statement below without a proof is unresolved until proved. The frame-relay
 and stamp lemmas read only the frame's tree and `F`, which the shadow frame shares with the stock
 one. The optimistic variants follow in this file. -/
 
@@ -45,19 +45,6 @@ theorem ac_block_after_stub {P : Params} {A : NodeAC P} {tr : RunTrace A}
     {B : A.Blk} (_ha : tr.AcceptAt y k B) :
     tr.projAC.AcceptAt y (k + 1) B ∧ tr.time (k + 1) = tr.time k ∧
       ¬ tr.RestartAt y (k + 1) := by
-  sorry
-
-/-- Stub (Lane C `Run`): `Compose.Growing.fgCatchAt` over the shadow run. -/
-theorem fgCatchAt_stub {P : Params} {A : NodeAC P} {tr : RunTrace A}
-    {proposer : Nat → Fin P.n} {dg : Digest (List (FG.Att P.n)) A.Payload}
-    {H : Time → Set (Fin P.n)} {sg : A.Msg → Fin P.n} {ini}
-    (_h : Consensus.Goldilocks.Growing.LocalRun' proposer dg H sg tr ini) {g κ : Time}
-    (_hcatch : CatchRun tr H g κ)
-    {x y : Fin P.n} {i j : Nat} {B : A.Blk}
-    (_hx : x ∈ H (tr.time i)) (_ha : tr.AcceptAt x i B) (_hi : tr.time i < AC.gbar g)
-    (_hy : y ∈ H (tr.time j)) (_hj : AC.gbar g + κ ≤ tr.time j)
-    (_hanc : Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B) :
-    ∃ k < j, tr.AcceptAt y k B ∧ tr.time k < AC.gbar g + κ := by
   sorry
 
 /-- A block in an honest frame has an earlier honest FG acceptance, or is genesis
@@ -107,7 +94,7 @@ private theorem relayed_accept_before_at'
     intro he
     subst a
     cases Option.some.inj (ha.2.symm.trans (Compose.projAC_callAt.mp hcy).2)
-  · obtain ⟨a, hlt, hacc, hat⟩ := fgCatchAt_stub hrun.toLocalRun' hcatch hxk ha
+  · obtain ⟨a, hlt, hacc, hat⟩ := hrun.toLocalRun'.fgCatchAt' hcatch hxk ha
       (not_le.mp hnew) hy hg hF
     exact ⟨a, hlt, hacc, lt_max_of_lt_right hat⟩
 
@@ -166,7 +153,7 @@ theorem frame_relay_before_at'
     obtain ⟨ella, hca, hba⟩ := hacc
     have ht := (AC.frameIn_of_callAt hac.localRun hy hca).2
       ((AC.accept_new sp hac.localRun hy ⟨ella, hca, hba⟩).1 ella hca)
-    exact anc_upTo_of_right_stub hrun.toLocalRun' hnc hd ht hF
+    exact RunTrace.anc_upTo_of_right' hrun hnc hd ht hF
   exact AC.mem_tree_of_acceptAtU sp hac.localRun.toU hy hacc (by omega) hc' hBF
 
 /-- An early frame witness has a pre-freeze stamp at a later honest cast

@@ -19,7 +19,7 @@ root premise, supplied today by `high_J_root_of_held_before_covered_at` (high `h
 `low_root_of_held_seed_at` (low `h_j`), forces `P ⪯ J`. No new hypothesis is needed.
 
 The run-level statements take the shadow reset premises `ResetPremisesUpTo'` (`Shadow/PU/Run`);
-their proofs are still `sorry` (unresolved) until the primed root suppliers land. -/
+their proofs are still open (unresolved) until the primed root suppliers land. -/
 
 namespace Consensus.Goldilocks.Store
 

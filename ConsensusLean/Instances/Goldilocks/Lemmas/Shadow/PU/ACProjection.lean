@@ -1,7 +1,8 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Run
 import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Reach
-import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Compose.GoldilocksAC
+import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Coherence
+import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.AC.UpTo
 
 public section
 
@@ -18,9 +19,7 @@ AC trace contract `ACLocalRun` and the stock `AC.ACRun`, at the frames `fg_to_ac
 
 **Pending suppliers.** The private `*_pending` theorems below are placeholders, each with the
 exact type of a supplier owned by another lane; each is replaced by an import when it lands:
-`Store.accept_is_frame_step'`, `acBlock_prev'`, `msgCall_group'` (Frame,
-Handlers), `own_block_payload'` (Reach), `tree_cases'`, `accept_facts'`, `blockCall_cases'`
-(Coherence). -/
+`acBlock_prev'`, `msgCall_group'` (Handlers), `own_block_payload'` (Run). -/
 
 namespace Consensus.Goldilocks.Compose
 
@@ -31,14 +30,6 @@ variable {P : Params} {A : NodeAC P} {dg : Digest (List (FG.Att P.n)) A.Payload}
   {ini : Fin P.n → A.State}
 
 /-! ### Pending suppliers (placeholders with the suppliers' exact types) -/
-
-/-- Placeholder for `Store.accept_is_frame_step'` (Frame): accepting a block is a frame step of
-the shadow frame, and a processed attestation leaves it unchanged. -/
-private theorem accept_is_frame_step_pending {ACP : Type} (acp₀ : ACP) (st : Store P ACP)
-    (hr : st.Reachable' acp₀) :
-    (∀ B st', st.onBlock' B = some st' → FrameStep st.toFrame' B st'.toFrame') ∧
-      ∀ a, (st.onAttestation a).toFrame' = st.toFrame' := by
-  sorry
 
 /-- Placeholder for `acBlock_prev'` (Handlers). -/
 private theorem acBlock_prev_pending (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
@@ -101,7 +92,7 @@ private theorem frame_flat' (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fi
           | attestation a =>
             left
             rw [frame'_eq, ((cutStep'_attestation _ _ _ _ _).1 hlaw).1,
-              (accept_is_frame_step_pending _ _ (fg_reachable_at' h hy b)).2 a, ← frame'_eq]
+              (Store.accept_is_frame_step' _ _ (fg_reachable_at' h hy b)).2 a, ← frame'_eq]
             exact heq
           | attest C s =>
             cases s with
@@ -147,7 +138,7 @@ private theorem callOK_from' (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
     have hlaw := (cutStep'_block_true _ _ _ _ _).1 (h.cutLaw y hy i' _ hacc)
     refine ⟨?_, own_block_payload_pending hpay h hy hacc, hti ▸ hlaw.1⟩
     rw [← hfr', hfr, tr.state_succ_of_call hacc, frame'_eq, frame'_eq]
-    exact (accept_is_frame_step_pending _ _ (fg_reachable_at' h hy i')).1 B _ hlaw.2.1
+    exact (Store.accept_is_frame_step' _ _ (fg_reachable_at' h hy i')).1 B _ hlaw.2.1
   | message m =>
     obtain ⟨j, hg⟩ := msgCall_group_pending h hy hc rfl
     exact ⟨same (fun _ hb => by cases hb), h.wire y hy j _ _ hg⟩
@@ -227,37 +218,6 @@ theorem ac_projection' (hpay : ∀ y ∈ H, A.ReqPayloadFrom (ini y) y)
     exact ⟨k, ⟨ℓ, projAC_callAt.2 hℓ, hr⟩, hk⟩
   · obtain ⟨u, hu, hui, hs, hb⟩ := h.sleep_of_restart y hy i ⟨ℓ, projAC_callAt.1 hc, hr⟩
     exact ⟨u, hu, hui, hs, fun j hj ℓ' hj' => hb j hj ⟨_, projAC_callAt.1 hj'⟩⟩
-
-/-! ### Pending suppliers from Coherence -/
-
-/-- Placeholder for `tree_cases'` (Coherence; a copy of `tree_cases`). -/
-private theorem tree_cases_pending (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
-    (hy : y ∈ H) {i : Nat} {X : A.Blk} (hX : X ∈ (tr.state y i).fg.tree) :
-    X = P.genesisBlock A.genesisPayload ∨ ∃ k < i, tr.AcceptAt y k X := by
-  sorry
-
-/-- Placeholder for `accept_facts'` (Coherence; a copy of `accept_facts`). -/
-private theorem accept_facts_pending (h : Node.LocalRun' proposer dg H sg tr ini) {y : Fin P.n}
-    (hy : y ∈ H) {k : Nat} {X : A.Blk} (hk : tr.AcceptAt y k X) :
-    X.RootOk dg ∧ X.proposer = proposer X.slot ∧ (tr.state y k).fg.blocks X.root = none ∧
-      X.root ≠ P.genesisRoot := by
-  sorry
-
-/-- Placeholder for `blockCall_cases'` (Coherence; a copy of `blockCall_cases` over the shadow
-groups and handlers). -/
-private theorem blockCall_cases_pending (h : Node.LocalRun' proposer dg H sg tr ini)
-    {y : Fin P.n} (hy : y ∈ H) {i : Nat} {B : A.Blk} {acc : Bool}
-    (hc : tr.CallAt y i (.fg (.block B acc))) :
-    tr.GroupAt' proposer dg y i (tr.time i) (.block B) ∨
-    ∃ j x fgDue, i = j + 2 ∧ tr.GroupAt' proposer dg y j (tr.time i) (.tick x fgDue) ∧
-      Proposes proposer y (tr.time i) ∧ ∃ d p,
-      (acProposal' (tickStep' proposer dg y (tr.state y j) (tr.time i) x .acTick).1
-        (tr.time i)).2.2 = some (d, p) ∧
-      B = mkBlock dg y (tr.state y j).fg (tr.time i) x d.head p ∧
-      (acc = true ↔ ∃ fg', (tr.state y j).fg.onBlock' B = some fg') ∧
-      (∃ ℓ : ACLabel A, tr.CallAt y j (.ac ℓ)) ∧ (∃ ℓ : ACLabel A, tr.CallAt y (j + 1) (.ac ℓ)) ∧
-      (tr.state y i).fg = (tr.state y j).fg := by
-  sorry
 
 end Consensus.Goldilocks.Compose
 
@@ -366,7 +326,8 @@ private theorem frame_block_cases' (hrun : GoldilocksRun' proposer dg H tr ini)
     B = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload ∨
       ∃ y ∈ H, ∃ k, tr.AcceptAt y k B := by
   obtain ⟨y, hy, i, ℓ, hc, hB⟩ := hB
-  rcases tree_cases_pending hrun.toLocalRun' hy (frame_tree' hrun hy hc hB) with h | ⟨k, -, hk⟩
+  rcases Coherence.tree_accepted' hrun.toLocalRun' hy (frame_tree' hrun hy hc hB) with
+    h | ⟨k, -, hk⟩
   · exact Or.inl h
   · exact Or.inr ⟨y, hy, k, hk⟩
 
@@ -379,7 +340,8 @@ private theorem own_tick' (hrun : GoldilocksRun' proposer dg H tr ini) {y : Fin 
       tr.CallAt B.proposer (j₀ + 2) (.fg (.block B acc)) ∧ 0 < B.slot ∧
       tr.time (j₀ + 2) = sp.toParams.slotTime B.slot := by
   obtain ⟨j, -, ⟨acc, hc⟩, hpos⟩ := hrun.block_unforgeable y hy k B ⟨true, hk⟩ hp
-  rcases blockCall_cases_pending hrun.toLocalRun' hp hc with hg | ⟨j₀, x, f, rfl, ht, hP, d, p, -,
+  rcases Coherence.blockCall_cases' hrun.toLocalRun' hp hc with
+    hg | ⟨j₀, x, f, rfl, ht, hP, d, p, -,
     hB, -⟩
   · have hg := (RunTrace.groupAt'_iff _ _ _ _ _ _ _).1 hg
     exact absurd (by simpa using (hg.2.1 0 (List.length_pos_of_ne_nil hg.1)).2.2.2.1) hpos
@@ -421,7 +383,7 @@ theorem goldilocks_ac_projection_from' (hrun : GoldilocksRun' proposer dg H tr i
     fun B B' hB hB' hp hpr hs => one_block' hrun hB hB' hp hpr hs⟩, hrun.vstart⟩
   rcases frame_block_cases' hrun hB with rfl | ⟨y, hy, k, hk⟩
   · exact absurd rfl hr
-  · exact (accept_facts_pending hrun.toLocalRun' hy hk).2.1
+  · exact (Coherence.accept_facts' hrun.toLocalRun' hy hk).2.1
 
 end Consensus.Goldilocks.Compose
 
@@ -433,12 +395,153 @@ variable {sp : AC.ACParams} {ro : AC.ReplayOrder sp (List (FG.Att sp.n))}
   {ini : Fin sp.n → (goldilocksNode' sp ro).State}
 
 /-- **The honest-object facts of a shadow run's AC projection under growing faults** (a copy of
-`Growing.goldilocks_ac_projection_from`; the conclusion is the stock growing `AC.Growing.ACRun`). -/
+`Growing.goldilocks_ac_projection_from` and of the growing `ac_projection` inlined, by
+retention through `Growing.GoldilocksRun'.upTo`; the conclusion is the stock `AC.Growing.ACRun`). -/
 theorem goldilocks_ac_projection_from'
     (h : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     (hnc : NoCollRun dg tr) :
     AC.Growing.ACRun proposer tr.projAC H (tr.HonestBlocksAt H) ini := by
-  sorry
+  have hpay {H' : Set (Fin sp.n)} :
+      ∀ y ∈ H', (goldilocksNode' sp ro).ReqPayloadFrom (ini y) y :=
+    fun y _ U _ s Φ t₀ h' => AC.proposal_payload_valid_from _ (h.vstart y).pool y U s Φ t₀ h'
+  have retained (i : Nat) :=
+    Compose.goldilocks_ac_projection_from' (h.upTo (h.time_nonneg i)) (hnc.upTo _)
+  have retainedLocal (i : Nat) := Compose.ac_projection' hpay
+    (h.upTo (h.time_nonneg i)).toLocalRun' (hnc.upTo (tr.time i))
+  have call {y i ℓ} (hc : tr.projAC.CallAt y i ℓ) :
+      (tr.upTo (tr.time i)).projAC.CallAt y i ℓ := by
+    rw [RunTrace.upTo_projAC]
+    exact (Trace.upTo_callAt _).mpr ⟨le_rfl, hc⟩
+  have frame {i Φ} (hf : (goldilocksNode' sp ro).FrameIn ((tr.upTo (tr.time i)).HonestBlocks
+      (H (tr.time i))) Φ) : (goldilocksNode' sp ro).FrameIn (tr.HonestBlocksAt H) Φ :=
+    ⟨hf.1, fun _ hx => RunTrace.honestBlocks_upTo_subset h.time_mono (h.time_nonneg i)
+      (hf.2 hx)⟩
+  have lawful {i Φ Φ' c} (hc : (goldilocksNode' sp ro).CallOK ((tr.upTo (tr.time i)).HonestBlocks
+      (H (tr.time i))) Φ (tr.time i) c Φ') :
+      (goldilocksNode' sp ro).CallOK (tr.HonestBlocksAt H) Φ (tr.time i) c Φ' :=
+    ⟨frame hc.1, hc.2⟩
+  have emission {i v} (hv : ∃ j < i, ∃ e,
+      AC.VoteAt (tr.upTo (tr.time i)).projAC v.val j e ∧ e.msg = v) :
+      ∃ j < i, ∃ e, AC.VoteAt tr.projAC v.val j e ∧ e.msg = v := by
+    obtain ⟨j, hj, e, he, hev⟩ := hv
+    rw [RunTrace.upTo_projAC] at he
+    exact ⟨j, hj, e, (AC.upTo_voteAt.mp he).2, hev⟩
+  have hloc : Consensus.Goldilocks.Growing.ACLocalRun (goldilocksNode' sp ro) H
+      (tr.HonestBlocksAt H) tr.projAC ini := by
+    refine
+      { antitone := h.antitone
+        coherent := Coherence.honestBlocksAt_coherent' h hnc
+        init := fun y hy => by simp only [RunTrace.projAC]; rw [h.init y hy]; rfl
+        exec := fun i ℓ hl hy => ?_
+        frameLaw := fun y i ℓ hy hc => ?_
+        time_nonneg := h.time_nonneg
+        time_mono := h.time_mono
+        awake_of_call := fun y i ℓ hy hc =>
+          h.awake_of_call y i hy ⟨_, Compose.projAC_callAt.mp hc⟩
+        restart_of_sleep := fun y i ℓ u hy hc hu hui hs hb => ?_
+        restart_at_wake := fun y u v hy hu huv hs hw => ?_
+        sleep_of_restart := fun y i ℓ hy hc hr => ?_ }
+    · have he := (retainedLocal i).exec i ℓ (call ⟨rfl, hl⟩).2 hy
+      rw [RunTrace.upTo_projAC, Trace.upTo_node, Trace.upTo_post,
+        Trace.upTo_state tr.projAC (tr.projAC.node i) (i := i)
+          (fun k hk => h.time_mono hk.le)] at he
+      exact he
+    · have back {j ℓ'} (hc' : (tr.upTo (tr.time i)).projAC.CallAt y j ℓ') := by
+        rw [RunTrace.upTo_projAC] at hc'
+        exact ((Trace.upTo_callAt _).mp hc').2
+      have nocall {a} (hn : (tr.upTo (tr.time i)).projAC.NoCallBetween y a i) :
+          tr.projAC.NoCallBetween y a i := by
+        intro j haj hji ℓ' hc'
+        apply hn j haj hji ℓ'
+        rw [RunTrace.upTo_projAC]
+        exact (Trace.upTo_callAt _).mpr ⟨h.time_mono hji.le, hc'⟩
+      rcases (retainedLocal i).frameLaw y hy i ℓ (call hc) with
+        ⟨hn, Φ, hi, hf, hok⟩ | ⟨j, ℓ', hj, hc', hn, hok⟩
+      · exact Or.inl ⟨nocall hn, Φ, hi, frame hf, lawful hok⟩
+      · exact Or.inr ⟨j, ℓ', hj, back hc', nocall hn, lawful hok⟩
+    · apply (retainedLocal i).restart_of_sleep y hy i ℓ u (call hc) hu hui
+        (fun hw => hs hw.1)
+      intro j hj ℓ' hc'
+      rw [RunTrace.upTo_projAC] at hc'
+      exact hb j hj ℓ' ((Trace.upTo_callAt _).mp hc').2
+    · have hr := Compose.ac_projection' hpay (h.upTo (hu.trans huv.le)).toLocalRun'
+        (hnc.upTo v)
+      obtain ⟨k, ⟨ℓ, hc, hrestart⟩, huk, hkv⟩ :=
+        hr.restart_at_wake y hy u v hu huv (fun hw => hs hw.1) ⟨hw, le_rfl⟩
+      rw [RunTrace.upTo_projAC] at hc
+      exact ⟨k, ⟨ℓ, ((Trace.upTo_callAt _).mp hc).2, hrestart⟩, huk, hkv⟩
+    · obtain ⟨u, hu, hui, hs, hb⟩ := (retainedLocal i).sleep_of_restart y hy i ℓ (call hc) hr
+      refine ⟨u, hu, hui, fun hw => hs ⟨hw, hui.le⟩, fun j hj ℓ' hc' => ?_⟩
+      apply hb j hj ℓ'
+      rw [RunTrace.upTo_projAC]
+      exact (Trace.upTo_callAt _).mpr ⟨h.time_mono hj.le, hc'⟩
+  refine ⟨hloc,
+    { pool_vote := fun y i σ hy v hv hval => ?_
+      message_vote := fun y i ℓ v hy hc hm hv =>
+        emission ((retained i).honest.message_vote y hy i ℓ v (call hc) hm hv)
+      proposer := fun B hB hng => ?_
+      one_block := fun y i ℓ B y' i' ℓ' B' hy hc hB hy' hc' hB' hp hprop hslot => ?_ },
+    h.vstart⟩
+  · apply emission
+    apply (retained i).honest.pool_vote y hy i σ v
+    · simpa only [RunTrace.upTo_projAC,
+        Trace.upTo_state tr.projAC y (i := i) (fun k hk => h.time_mono hk.le)] using hv
+    · exact hval
+  · obtain ⟨y, i, ℓ, hy, hc, hB⟩ := hB
+    exact (retained i).honest.proposer B ⟨y, hy, i, ℓ, call hc, hB⟩ hng
+  · -- Each reader retains its own prefix; only the proposer is retained at both horizons.
+    have hpi := h.antitone (le_max_left _ _) hp
+    have hpi' := h.antitone (le_max_right _ _) hp
+    have frame_cases {y i ℓ B} (hy : y ∈ H (tr.time i))
+        (hc : tr.projAC.CallAt y i ℓ) (hB : B ∈ ℓ.frame.tree) :
+        B = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload ∨
+          ∃ k < i, tr.AcceptAt y k B := by
+      have ht : B ∈ ((tr.upTo (tr.time i)).state y i).fg.tree :=
+        frame_tree' (h.upTo (h.time_nonneg i)) hy (call hc) hB
+      rcases Coherence.tree_accepted' (h.upTo (h.time_nonneg i)).toLocalRun' hy ht with
+        hg | ⟨k, hk, ha⟩
+      · exact Or.inl hg
+      · exact Or.inr ⟨k, hk, ((RunTrace.upTo_acceptAt _).mp ha).2⟩
+    have own {y i ℓ B} (hy : y ∈ H (tr.time i)) (hc : tr.projAC.CallAt y i ℓ)
+        (hB : B ∈ ℓ.frame.tree) (hp : B.proposer ∈ H (tr.time i))
+        (hng : B ≠ sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload) :
+        ∃ j acc, tr.CallAt B.proposer j (.fg (.block B acc)) ∧
+          ∃ j₀, tr.TickAt' proposer dg B.proposer j₀ (sp.toParams.slotTime B.slot) ∧
+            j = j₀ + 2 ∧ 0 < B.slot ∧ sp.toParams.slotTime B.slot ≤ tr.time i := by
+      obtain ⟨k, hk, ha⟩ := (frame_cases hy hc hB).resolve_left hng
+      have ha' := (RunTrace.upTo_acceptAt _).mpr ⟨h.time_mono hk.le, ha⟩
+      obtain ⟨j, hjk, ⟨acc, hj⟩, hpos⟩ :=
+        (h.upTo (h.time_nonneg i)).block_unforgeable y hy k B ⟨true, ha'⟩ hp
+      rcases Coherence.blockCall_cases' (h.upTo (h.time_nonneg i)).toLocalRun' hp hj with
+        hg | ⟨j₀, x, f, rfl, ht, hP, d, p, _, hBdef, _⟩
+      · have hg := (RunTrace.groupAt'_iff _ _ _ _ _ _ _).1 hg
+        exact absurd (by simpa using (hg.2.1 0 (List.length_pos_of_ne_nil hg.1)).2.2.2.1) hpos
+      · have hs : B.slot = sp.toParams.slotOf (tr.time (j₀ + 2)) := by rw [hBdef]; rfl
+        have htime : sp.toParams.slotTime B.slot = tr.time (j₀ + 2) := hs ▸ hP.2.1.symm
+        refine ⟨j₀ + 2, acc, ((Trace.upTo_callAt _).mp hj).2, j₀, ?_, rfl, hs ▸ hP.1,
+          htime ▸ (h.time_mono (hjk.trans hk.le))⟩
+        have ht' := (RunTrace.upTo_tickAt' tr h.time_mono).mp
+          ((RunTrace.tickAt'_iff _ _ _ _ _ _).2 ⟨x, f, ht⟩)
+        have ht'' : tr.TickAt' proposer dg B.proposer j₀ (tr.time (j₀ + 2)) := ht'.2
+        rw [← htime] at ht''
+        exact ht''
+    by_cases hg : B = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload
+    · by_cases hg' : B' = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload
+      · exact hg.trans hg'.symm
+      · obtain ⟨_, _, _, _, _, _, hs, _⟩ := own hy' hc' hB' (hprop ▸ hpi') hg'
+        simp only [hg, Params.genesisBlock] at hslot
+        omega
+    · obtain ⟨j, acc, hj, j₀, ht, hje, hs, htime⟩ := own hy hc hB hpi hg
+      by_cases hg' : B' = sp.toParams.genesisBlock (goldilocksNode' sp ro).genesisPayload
+      · simp only [hg', Params.genesisBlock] at hslot
+        omega
+      · obtain ⟨j', acc', hj', j₀', ht', hje', _, _⟩ := own hy' hc' hB' (hprop ▸ hpi') hg'
+        have hpstart := h.antitone htime hpi
+        rw [hslot] at hpstart
+        rw [hprop, hslot] at ht
+        have he := h.tick_unique B'.proposer j₀ j₀' _ (hprop ▸ hpstart) ht ht'
+        rw [hje, he, ← hje', hprop] at hj
+        exact (Cut.fg.inj (Option.some.inj (hj.2.symm.trans hj'.2)) |> FGLabel.block.inj).1
 
 end Consensus.Goldilocks.Compose.Growing
 
