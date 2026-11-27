@@ -983,6 +983,40 @@ theorem optimistic_supporter_later_heads_at' {s₀ s N M : Nat}
           Anc (tr.HonestBlocksAt H) L d.head) := by
   sorry
 
+/-- **A remapped optimistic write is followed by later honest proposal heads**
+(`FrameWindow.optimistic_write_later_proposal_head_at` over the shadow run). The stock source
+premise `A ⪯ fc_root ∨ ∃ Q, floor ≤ σ(Q).h ∧ (kindJ → J ⪯ A) ∧ A ⪯ Q` becomes the shadow frame's
+viable-ancestor alternative: `A ⪯ F`, or `A` below a P-U viable head `Q` of the writer's frame
+(`early_witness_viable'` gives `Q`'s witness clause inside the window); no `J ⪯ A` is asked. -/
+theorem optimistic_write_later_proposal_head_at'
+    {g ΔF b : Time} {s₀ j N M : Nat} {isTop : Prop}
+    {J R A D : AC.Blk sp.n (List (FG.Att sp.n))}
+    (hframe : Healing.FrameWindow' tr H (sp.ts s₀) (sp.ts N + sp.Δ) M isTop J)
+    {K : AC.CommitteeDict sp.n}
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr
+      (AC.committeeStart sp.genesisRoot K))
+    (hnc : Compose.NoCollRun dg tr) (hsvc : ResetService tr H g ΔF b hold)
+    (hawake : ∀ y t, y ∈ H t → gbar g ≤ t → t ≤ b → tr.awake y t)
+    (hf : ∀ t, 0 ≤ t → t ≤ b → 3 * (H t)ᶜ.ncard ≤ sp.n - 1)
+    (hcatch : CatchRun tr H g (2 * sp.Δ)) (hnr : NoRestartAfter tr H (gbar g))
+    (hm : gbar g ≤ sp.ts s₀) (hmb : sp.ts N + sp.Δ ≤ b) (hj : s₀ ≤ j)
+    {y : Fin sp.n} {a : Nat} (hy : y ∈ H (tr.time a)) {CV : Set (AC.Vote sp.n)}
+    {ellw : ACLabel (goldilocksNode' sp ro)} (hcw : tr.projAC.CallAt y a ellw)
+    (halo : sp.ts s₀ ≤ tr.time a) (hat : tr.time a < sp.ts j + 2 * sp.Δ)
+    (hopt : AC.OptimisticLockAt tr.projAC y a j D CV)
+    (hRA : Anc (tr.HonestBlocksAt H) R A) (hAD : Anc (tr.HonestBlocksAt H) A D)
+    (hsource : ellw.frame.Anc A ellw.frame.F ∨
+      ∃ Q ∈ ellw.frame.viableHeads, ellw.frame.Anc A Q)
+    {r : Nat} (hrlo : j + 1 ≤ r) (hrN : r ≤ N)
+    {z : Fin sp.n} {c : Nat} (hz : z ∈ H (tr.time c))
+    {ell : ACLabel (goldilocksNode' sp ro)} (hc : tr.projAC.CallAt z c ell)
+    (hcall : ell.call = .proposal) (hti : tr.time c = sp.ts r)
+    {d : DutyHead sp.n (List (FG.Att sp.n)) (Payload sp.n)} {pay : Payload sp.n}
+    (hd : (AC.acProposal sp (tr.projAC.state z c) ell.frame (tr.time c)).2 =
+      some (d, pay)) (hK : CommitteeHalfUpTo tr H K g b) :
+    Anc (tr.HonestBlocksAt H) R d.head := by
+  sorry
+
 end Consensus.Goldilocks.Shadow.PU.Growing
 
 end
