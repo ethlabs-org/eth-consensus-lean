@@ -7,6 +7,7 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Healing.Retention.Defs
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Growing.Trace.UpTo
 import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.Settle
+import ConsensusLean.Instances.Goldilocks.Lemmas.Compose.Run.Projection
 
 public section
 
@@ -395,6 +396,45 @@ theorem finalized_mono_on_prefix' (h : LocalRun' proposer dg H sg tr ini) {d : T
         · rw [ha, (Store.finalized_monotone' _).2 a]
     · rw [tr.state_succ_of_not fun c hc' => hc ⟨c, hc'⟩]
 
+private theorem acBlock_prev' (h : LocalRun' proposer dg H sg tr ini)
+    {y : Fin P.n} {i : Nat} (hy : y ∈ H (tr.time i)) {ℓ : ACLabel A} {B : A.Blk}
+    (hc : tr.CallAt y i (.ac ℓ)) (hb : ℓ.call = .block B) :
+    ∃ i', i = i' + 1 ∧ tr.AcceptAt y i' B ∧ tr.time i' = tr.time i := by
+  obtain ⟨j, e, hg⟩ := h.grouped y i _ hc hy
+  rw [RunTrace.inGroup'_iff] at hg
+  obtain ⟨hg, hji, hij⟩ := hg
+  have hk : (Node.exec' proposer dg y (tr.state y j) (tr.time i) e).2[i - j]? =
+      some (.ac ℓ) := by
+    have hc' := Compose.group_cut' hg (k := i - j) (List.getElem?_eq_some_iff.mpr
+      ⟨by omega, rfl⟩)
+    rw [Nat.add_sub_cancel' hji] at hc'
+    exact List.getElem?_eq_some_iff.mpr ⟨by omega,
+      Option.some.inj (hc'.1.2.symm.trans hc.2)⟩
+  obtain ⟨k, hk', hacc⟩ := Coherence.exec_acBlock_prev' proposer dg y _ _ _ hk hb
+  obtain ⟨hc', ht⟩ := Compose.group_cut' hg hacc
+  exact ⟨j + k, by omega, hc', ht⟩
+
+private theorem accept_next' (h : LocalRun' proposer dg H sg tr ini)
+    {y : Fin P.n} {i : Nat} (hy : y ∈ H (tr.time i)) {B : A.Blk}
+    (hc : tr.AcceptAt y i B) :
+    ∃ ℓ : ACLabel A, tr.CallAt y (i + 1) (.ac ℓ) ∧ ℓ.call = .block B ∧
+      tr.time (i + 1) = tr.time i := by
+  obtain ⟨j, e, hg⟩ := h.grouped y i _ hc hy
+  rw [RunTrace.inGroup'_iff] at hg
+  obtain ⟨hg, hji, hij⟩ := hg
+  have hk : (Node.exec' proposer dg y (tr.state y j) (tr.time i) e).2[i - j]? =
+      some (.fg (.block B true)) := by
+    have hc' := Compose.group_cut' hg (k := i - j)
+      (List.getElem?_eq_some_iff.mpr ⟨by omega, rfl⟩)
+    rw [Nat.add_sub_cancel' hji] at hc'
+    exact List.getElem?_eq_some_iff.mpr ⟨by omega,
+      Option.some.inj (hc'.1.2.symm.trans hc.2)⟩
+  obtain ⟨ℓ, hnext, hb⟩ := Coherence.exec_accept_next' proposer dg y _ _ _ hk
+  obtain ⟨hc', ht⟩ := Compose.group_cut' hg hnext
+  have he : j + (i - j + 1) = i + 1 := by omega
+  rw [he] at hc' ht
+  exact ⟨ℓ, hc', hb, ht⟩
+
 theorem acRelayAt' (hrun : LocalRun' proposer dg H sg tr ini)
     {x y : Fin P.n} {i j : Nat} {B : A.Blk} {ℓ : ACLabel A} {σ : Time}
     (hx : x ∈ H (tr.time i)) (hacc : tr.projAC.AcceptAt x i B)
@@ -404,7 +444,15 @@ theorem acRelayAt' (hrun : LocalRun' proposer dg H sg tr ini)
       tr.IsCall y j → Anc (tr.HonestBlocksAt H) (tr.state y j).fg.F B →
       tr.BlockAcceptedBy y j σ B) :
     ∃ k ≤ j, tr.projAC.AcceptAt y k B ∧ tr.time k < tr.projAC.deadline y k σ := by
-  sorry
+  obtain ⟨ℓ₀, hc₀, hb⟩ := hacc
+  have hc := Compose.projAC_callAt.mp hc
+  obtain ⟨i', rfl, hi', hti⟩ := acBlock_prev' hrun hx (Compose.projAC_callAt.mp hc₀) hb
+  have hfr : ℓ.frame.F = (tr.state y j).fg.F := by
+    rw [((Node.cutStep'_ac _ _ _ _ _).mp (hrun.cutLaw y j _ hc hy)).1, Node.frame'_eq]
+    exact Store.toFrame'_F _
+  exact Compose.acRelay_of_acceptNext (Compose.projAC_callAt.mpr hc)
+    (relay i' hti (hti ▸ hx) hi' ⟨_, hc⟩ (hfr ▸ hanc))
+    (fun _ hkj => accept_next' hrun (hrun.antitone (hrun.time_mono hkj) hy))
 
 theorem fgCatchAt' (hrun : LocalRun' proposer dg H sg tr ini) {g κ : Time}
     (hcatch : Healing.Growing.CatchRun tr H g κ)
