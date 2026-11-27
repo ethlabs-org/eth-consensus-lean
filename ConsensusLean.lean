@@ -165,10 +165,12 @@ public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Frame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Handlers
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.HeldChains
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Invariant
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Parametric
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Run
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Safety
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.SeedCandidacy
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Service
+public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.StepBits
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Strict
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.TopFrame
 public import ConsensusLean.Instances.Goldilocks.Lemmas.FGStore.Window
