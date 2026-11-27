@@ -491,6 +491,41 @@ theorem exists_frameWindow'_seq_of_service_proof_at
       (max_le (hi.le.trans hTb) (hm.le.trans hTb))
   · exact hT
 
+/-- Finite shadow service projects to the unchanged AC synchrony contract. -/
+theorem _root_.Consensus.Goldilocks.Healing.PU.service_syncACAt'
+    (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
+    {g ΔF b lo hi : Time} (hsvc : ResetService tr H g ΔF b hold) (hg : g ≤ lo) :
+    SyncACAt (goldilocksNode' sp ro) H (tr.HonestBlocksAt H) lo hi tr.projAC := by
+  refine ⟨?_, ?_⟩
+  · intro x i m hx hsa hai _ y j ell hy hcj hdl
+    have hsa' : tr.SendOrAdmitAt x i m := by
+      obtain ⟨ell₀, hc₀, hm⟩ := hsa
+      refine ⟨ell₀, Compose.projAC_callAt.1 hc₀, ?_⟩
+      have hs := Compose.projAC_state' (hrun.upTo (hrun.time_nonneg i)).toLocalRun' hx i
+      rw [RunTrace.upTo_projAC,
+        Trace.upTo_state tr.projAC x (fun k hk => hrun.time_mono hk.le),
+        RunTrace.upTo_state_of_le hrun.time_mono le_rfl] at hs
+      rwa [hs] at hm
+    have he : max (tr.time i) g = tr.time i := max_eq_left (hg.trans hai)
+    rw [Compose.projAC_deadline] at hdl
+    obtain ⟨k, hk, h1, h2, h3⟩ := hsvc.message x i m hx hsa' y j hy
+      ⟨_, Compose.projAC_callAt.1 hcj⟩ (by rw [he]; exact hdl)
+    refine ⟨k, hk, h1, ?_, ?_⟩
+    · rcases h2 with ⟨ell', hc', hm'⟩ | ⟨ell', hc', e, he', hem⟩
+      · exact ⟨ell', Compose.projAC_callAt.2 hc', Or.inl hm'⟩
+      · exact ⟨ell', Compose.projAC_callAt.2 hc', Or.inr ⟨e, he', hem⟩⟩
+    · rw [Compose.projAC_deadline]
+      change tr.time k < tr.deadline y k (tr.time i) sp.Δ
+      simpa only [he] using h3
+  · intro x i B hx hacc hai _ y j ell hy hcj hdl hanc
+    apply Consensus.Goldilocks.Growing.LocalRun'.acRelayAt' hrun.toLocalRun'
+      (σ := tr.time i) hx hacc hy hcj hanc
+    intro k hki hx' hk hj hF
+    have hgi : g ≤ tr.time k := hki ▸ hg.trans hai
+    have he : max (tr.time k) g = tr.time i := (max_eq_left hgi).trans hki
+    simpa only [he] using hsvc.relay x k B hx' hk hgi y j hy hj
+      (by rw [he, ← Compose.projAC_deadline]; exact hdl) hF
+
 /-- Pool membership and declared backing give committee membership for every counted vote
 on the shadow AC projection. -/
 theorem _root_.Consensus.Goldilocks.Compose.Growing.CommitteeFacts.committeeTAt'
