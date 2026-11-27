@@ -542,6 +542,37 @@ theorem tree_grows_with :
     rw [he]
     rfl
 
+omit hr in
+private theorem anc_F_spec (st₁ : Store P ACP) (σ : FG.ChainState P.n)
+    (atts : List (FG.Att P.n)) :
+    ({ u st₁ σ with atts := atts } : Store P ACP).Anc st₁.F (u st₁ σ).F := by
+  obtain ⟨hb, -, -, -, -, hF⟩ := hu st₁ σ
+  have ht : ({ u st₁ σ with atts := atts } : Store P ACP).tree = st₁.tree := by
+    ext Y
+    change (u st₁ σ).blocks Y.root = some Y ↔ st₁.blocks Y.root = some Y
+    rw [hb]
+  simp only [Store.Anc, ht]
+  rcases hF with h | ⟨-, h, -, -⟩
+  · rw [h]
+    exact .refl
+  · exact h
+
+omit hr in
+/-- **The finalized tip only moves up** with the finality update `u`: a block extends it, an
+attestation keeps it (the `F` part of the stock `exec_fg`). -/
+theorem finalized_monotone_with :
+    (∀ B st', st.onBlockWith u B = some st' → st'.Anc st.F st'.F) ∧
+      ∀ a, (st.onAttestation a).F = st.F := by
+  refine ⟨fun B st' hB => ?_, fun a => ?_⟩
+  · obtain ⟨pr, σ', -, -, -, -, -, rfl⟩ := onBlockWith_eq_some hB
+    obtain ⟨atts, he⟩ := addAtts_eq (u { st with
+      blocks := Function.update st.blocks B.root (some B),
+      σ := Function.update st.σ B.root σ' } σ') B.fgPayload
+    rw [he]
+    exact anc_F_spec hu _ σ' atts
+  · obtain ⟨atts, he⟩ := st.onAttestation_eq a
+    rw [he]
+
 /-- **G0.3**, `cache_invariants` over `ReachableWith`. -/
 theorem cache_invariants_with :
     st.F ∈ st.tree ∧ st.J ∈ st.tree ∧ st.Anc st.F st.J ∧
@@ -1399,6 +1430,14 @@ theorem Reachable'.reachableWith {acp₀ : ACP} {st : Store P ACP} (h : st.Reach
     rcases (step'_iff _ _).1 hs with ⟨B, hB⟩ | ⟨a, ha⟩
     · exact Or.inl ⟨B, (onBlock'_eq_onBlockWith _ B) ▸ hB⟩
     · exact Or.inr ⟨a, ha⟩
+
+/-- `finalized_monotone_with` for the shadow handlers: `onBlock'` extends `F`, an attestation
+keeps it. -/
+theorem finalized_monotone' (st : Store P ACP) :
+    (∀ B st', st.onBlock' B = some st' → st'.Anc st.F st'.F) ∧
+      ∀ a, (st.onAttestation a).F = st.F := by
+  simp only [onBlock'_eq_onBlockWith]
+  exact finalized_monotone_with finalitySpec_updateFinality'
 
 /-- **The shadow cache invariant**: every shadow-reachable store satisfies `CacheGood`; the
 `_with` lemmas apply with `finalitySpec_updateFinality'` and `Reachable'.reachableWith`. -/
