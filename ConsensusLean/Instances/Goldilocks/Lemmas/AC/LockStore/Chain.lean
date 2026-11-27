@@ -1,4 +1,5 @@
 module
+public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Inv
 public import ConsensusLean.Instances.Goldilocks.Lemmas.AC.LockStore.Highest
 import ConsensusLean.Instances.Goldilocks.Lemmas.AC.Steps.Walk
 
