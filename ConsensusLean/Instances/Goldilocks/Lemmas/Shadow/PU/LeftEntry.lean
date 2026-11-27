@@ -226,65 +226,6 @@ theorem high_row_source_at {ini}
   exact ⟨r, hrd, l, O, ⟨hrun.antitone (max_le_max le_rfl hrt) hvz, hj',
     ⟨CV, ell, D, hc', hfl', hO⟩, hh.trans hOh⟩, E, hE, hEO, hEr, hEh, hETh⟩
 
-private theorem honest_att_of_left {P : Params} {ACP : Type} {acp₀ : ACP}
-    {st : Store P ACP} (hr : st.Reachable' acp₀) {V : Set (Fin P.n)}
-    (hq : Vᶜ.ncard < P.fg.q) {E C : NodeBlock P ACP}
-    (hET : (st.σ E.root).Th = E.root) (hEC : st.Anc E C)
-    (hlt : (st.σ E.root).h < (st.σ C.root).h) :
-    ∃ W ∈ st.tree, ∃ att ∈ W.fgPayload, att.T = E.root ∧ att.val ∈ V := by
-  by_contra hn
-  push Not at hn
-  have hcard : ∀ p : Finset (Fin P.n), (∀ v ∈ p, v ∉ V) → p.card < P.fg.q := by
-    intro p hp
-    have := Set.ncard_le_ncard (s := (p : Set (Fin P.n))) (t := Vᶜ) hp (Set.toFinite _)
-    rw [Set.ncard_coe_finset] at this
-    omega
-  have hr' := hr.reachableWith
-  have hU : ∀ W, st.Anc (P.genesisBlock acp₀) W →
-      (st.σ W.root).target ⊆ (st.σ W.root).prog ∧ ∀ v ∈ (st.σ W.root).prog,
-        ∃ W' ∈ st.tree, st.Anc W' W ∧ ∃ a ∈ W'.fgPayload, a.val = v ∧
-          a.T = (st.σ W.root).Th := by
-    intro W hW
-    induction hW with
-    | refl =>
-      rw [show (P.genesisBlock acp₀).root = P.genesisRoot from rfl,
-        σ_genesis_with finalitySpec_updateFinality' hr']
-      exact ⟨fun _ h => h, fun v hv => (Finset.notMem_empty v hv).elim⟩
-    | tail _ hpar ih =>
-      obtain ⟨-, h2, hp⟩ := id hpar
-      obtain ⟨-, -, -, ht⟩ := step_σ_with finalitySpec_updateFinality' hr' h2 hp
-      obtain ⟨htp, p, hpv, hcase⟩ := Goldilocks.Store.step_prog ht ih.1
-      refine ⟨htp, ?_⟩
-      rcases hcase with ⟨-, hTh, hpe⟩ | ⟨-, hpe⟩
-      · rw [hpe, hTh]
-        intro v hv
-        rcases hpv v hv with hv | ⟨a, ha, hav, haT⟩
-        · obtain ⟨W', hW't, hW', a, ha, h'⟩ := ih.2 v hv
-          exact ⟨W', hW't, hW'.tail hpar, a, ha, h'⟩
-        · exact ⟨_, h2, .refl, a, ha, hav, haT⟩
-      · rw [hpe]
-        exact fun v hv => (Finset.notMem_empty v hv).elim
-  have hg := (accepted_tree_with finalitySpec_updateFinality' hr').2.2.2
-  have kept : (st.σ C.root).h = (st.σ E.root).h ∧ (st.σ C.root).Th = E.root := by
-    clear hlt
-    induction hEC with
-    | refl => exact ⟨rfl, hET⟩
-    | tail _ hpar ih =>
-      obtain ⟨h1, h2, hp⟩ := hpar
-      obtain ⟨-, -, -, ht⟩ := step_σ_with finalitySpec_updateFinality' hr' h2 hp
-      obtain ⟨ihh, ihT⟩ := ih
-      obtain ⟨-, p, hpv, hcase⟩ := Goldilocks.Store.step_prog ht (hU _ (hg _ h1)).1
-      have hpn : ∀ v ∈ p, v ∉ V := by
-        intro v hv
-        rcases hpv v hv with hv | ⟨a, ha, hav, haT⟩
-        · obtain ⟨W', hW't, -, a, ha, hav, haT⟩ := (hU _ (hg _ h1)).2 v hv
-          exact hav ▸ hn W' hW't a ha (haT.trans ihT)
-        · exact hav ▸ hn _ h2 a ha (haT.trans ihT)
-      rcases hcase with ⟨hh, hTh, -⟩ | ⟨hq', -⟩
-      · exact ⟨hh.trans ihh, hTh.trans ihT⟩
-      · exact absurd hq' (not_le.2 (hcard p hpn))
-  omega
-
 private theorem attest_source {ini}
     (hrun : Consensus.Goldilocks.Growing.GoldilocksRun' proposer dg H tr ini)
     {v : Fin sp.n} {d : Nat} (hv : v ∈ H (tr.time d))
@@ -468,6 +409,21 @@ variable {sp : ACParams} {ro : ReplayOrder sp (List (FG.Att sp.n))}
   {H : Time → Set (Fin sp.n)} {tr : GoldilocksTrace' sp ro}
   {g ΔF a b hold : Time} {cm : Time → Finset (Fin sp.n)} {βK : ℚ}
 
+/-- At a time bounded by the reset horizon, deep quarantine or the high-source cover holds. -/
+theorem ResetPremisesUpTo'.quarantine_or_cover_at'
+    (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
+    {t : Time} (htb : t ≤ b) :
+    (∀ D, sp.deepDepth = some D → t ≤ cutZ sp.toParams g + 4 * D * sp.Δ) ∨
+      HighSourceCover tr H g a b := by
+  cases hdd : sp.deepDepth with
+  | none => exact Or.inl fun D hD => by cases hD
+  | some D =>
+    rcases hp.deepCover D hdd with hb | hc
+    · refine Or.inl fun D' hD' => ?_
+      cases hD'
+      exact htb.trans hb
+    · exact Or.inr hc
+
 /-- Inside the deep quarantine a left high entry has a prior high origin above it. -/
 theorem ResetPremisesUpTo'.left_entry_origin_of_quarantine_at'
     (hp : ResetPremisesUpTo' tr H proposer dg g ΔF a b cm βK hold)
@@ -490,8 +446,10 @@ theorem ResetPremisesUpTo'.left_entry_origin_of_quarantine_at'
     change (H (max (cutZ sp.toParams g) t))ᶜ.ncard < (2 * sp.toParams.n + 2) / 3
     omega
   have hU := Coherence.honest_blocks_coherent_at' hrun hnc
-  obtain ⟨W, hW, att, ha, haT, haHz⟩ := ShadowLeft.honest_att_of_left
-    (Compose.Growing.reachable_at' hrun ht hy hle) hq hET hEC hlt
+  obtain ⟨W, hW, att, ha, haT, haHz⟩ := Healing.honest_att_of_left_with
+    Goldilocks.Store.finalitySpec_updateFinality'
+    (Compose.Growing.reachable_at' hrun ht hy hle).reachableWith
+    hq hET hEC hlt
   have haH := hrun.antitone (le_max_right _ _) haHz
   have hW' : W ∈ ((tr.upTo t).state y k).fg.tree := by
     rwa [Trace.upTo_state tr y hle]
@@ -553,8 +511,10 @@ theorem ResetPremisesUpTo'.left_entry_origin_or_covered_at'
     change (H (max (cutZ sp.toParams g) t))ᶜ.ncard < (2 * sp.toParams.n + 2) / 3
     omega
   have hU := Coherence.honest_blocks_coherent_at' hrun hnc
-  obtain ⟨W, hW, att, ha, haT, haHz⟩ := ShadowLeft.honest_att_of_left
-    (Compose.Growing.reachable_at' hrun ht hy hle) hq hET hEC hlt
+  obtain ⟨W, hW, att, ha, haT, haHz⟩ := Healing.honest_att_of_left_with
+    Goldilocks.Store.finalitySpec_updateFinality'
+    (Compose.Growing.reachable_at' hrun ht hy hle).reachableWith
+    hq hET hEC hlt
   have haH := hrun.antitone (le_max_right _ _) haHz
   have he := Trace.upTo_state tr y hle
   have hW' : W ∈ ((tr.upTo t).state y k).fg.tree := by rwa [he]
