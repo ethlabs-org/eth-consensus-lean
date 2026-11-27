@@ -50,6 +50,46 @@ def FinalitySpec (u : Store P ACP → FG.ChainState P.n → Store P ACP) : Prop 
       (st.blocks σ.F = some (u st σ).F ∧ st.Anc st.F (u st σ).F ∧
         st.F ≠ (u st σ).F ∧ st.Anc (u st σ).F (u st σ).J))
 
+theorem finalitySpec_iff (u : Store P ACP → FG.ChainState P.n → Store P ACP) :
+    FinalitySpec u ↔ ∀ st σ, (u st σ).blocks = st.blocks ∧ (u st σ).σ = st.σ ∧
+      (u st σ).atts = st.atts ∧ (u st σ).hmax = max st.hmax σ.h ∧
+      (((u st σ).J = st.J ∧ (u st σ).hj = st.hj) ∨
+        (st.blocks σ.J = some (u st σ).J ∧ (u st σ).hj = σ.hj ∧
+          st.Anc st.F (u st σ).J ∧ LexLt (st.hj, st.J.root) (σ.hj, σ.J))) ∧
+      ((u st σ).F = st.F ∨
+        (st.blocks σ.F = some (u st σ).F ∧ st.Anc st.F (u st σ).F ∧
+          st.F ≠ (u st σ).F ∧ st.Anc (u st σ).F (u st σ).J)) := Iff.rfl
+
+namespace FinalitySpec
+
+variable {u : Store P ACP → FG.ChainState P.n → Store P ACP}
+
+theorem blocks (hu : FinalitySpec u) (st : Store P ACP) (σ : FG.ChainState P.n) :
+    (u st σ).blocks = st.blocks := (hu st σ).1
+
+theorem σ_eq (hu : FinalitySpec u) (st : Store P ACP) (σ : FG.ChainState P.n) :
+    (u st σ).σ = st.σ := (hu st σ).2.1
+
+theorem atts (hu : FinalitySpec u) (st : Store P ACP) (σ : FG.ChainState P.n) :
+    (u st σ).atts = st.atts := (hu st σ).2.2.1
+
+theorem hmax (hu : FinalitySpec u) (st : Store P ACP) (σ : FG.ChainState P.n) :
+    (u st σ).hmax = max st.hmax σ.h := (hu st σ).2.2.2.1
+
+theorem J_hj (hu : FinalitySpec u) (st : Store P ACP) (σ : FG.ChainState P.n) :
+    ((u st σ).J = st.J ∧ (u st σ).hj = st.hj) ∨
+      (st.blocks σ.J = some (u st σ).J ∧ (u st σ).hj = σ.hj ∧
+        st.Anc st.F (u st σ).J ∧ LexLt (st.hj, st.J.root) (σ.hj, σ.J)) :=
+  (hu st σ).2.2.2.2.1
+
+theorem F (hu : FinalitySpec u) (st : Store P ACP) (σ : FG.ChainState P.n) :
+    (u st σ).F = st.F ∨
+      (st.blocks σ.F = some (u st σ).F ∧ st.Anc st.F (u st σ).F ∧
+        st.F ≠ (u st σ).F ∧ st.Anc (u st σ).F (u st σ).J) :=
+  (hu st σ).2.2.2.2.2
+
+end FinalitySpec
+
 theorem finalitySpec_updateFinality : FinalitySpec (P := P) (ACP := ACP) updateFinality :=
   updateFinality_spec
 
@@ -1405,6 +1445,10 @@ state whose justification is a held block extending `Σ.F`. -/
 def HjMaxSpec (u : Store P ACP → FG.ChainState P.n → Store P ACP) : Prop :=
   ∀ st σ, st.hj ≤ (u st σ).hj ∧
     ∀ X ∈ st.tree, X.root = σ.J → st.Anc st.F X → σ.hj ≤ (u st σ).hj
+
+theorem hjMaxSpec_iff (u : Store P ACP → FG.ChainState P.n → Store P ACP) :
+    HjMaxSpec u ↔ ∀ st σ, st.hj ≤ (u st σ).hj ∧
+      ∀ X ∈ st.tree, X.root = σ.J → st.Anc st.F X → σ.hj ≤ (u st σ).hj := Iff.rfl
 
 private theorem hj_jUpd (st₁ : Store P ACP) (σ : FG.ChainState P.n) :
     st₁.hj ≤ (jUpd st₁ σ).hj ∧
