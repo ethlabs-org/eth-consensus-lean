@@ -1,6 +1,7 @@
 module
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Node
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Key
+public import ConsensusLean.Instances.Goldilocks.Lemmas.Shadow.PU.Cache
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.FrameWindowCore
 public import ConsensusLean.Instances.Goldilocks.Lemmas.Healing.M1.RiseWindow
 
@@ -127,6 +128,99 @@ theorem le_pred_add_riseRounds (st : Store P A.Payload) {hz : Nat}
   classical
   rw [riseRounds_eq, frameKey''_def] at *
   split_ifs at * <;> omega
+
+/-- A P-U viable held block is above finality. In the predecessor-height top case use
+`F ⪯ J ⪯ Q`; all other cases are strictly above `hj` and use the existing G1.2 proof. -/
+theorem finalized_below_viable' {ACP : Type} {acp₀ : ACP} {st : Store P ACP}
+    (hR : st.Reachable' acp₀) {U : Set (NodeBlock P ACP)} (hU : Coherent U)
+    (hsub : st.tree ⊆ U) {V : Set (Fin P.n)}
+    (hV : Vᶜ.ncard < 2 * P.fg.q - P.n)
+    (hsafe : ∀ a b, (∃ Y ∈ st.tree, a ∈ Y.fgPayload) →
+      (∃ Y ∈ st.tree, b ∈ Y.fgPayload) → a.val ∈ V → ¬ FG.slashable a b)
+    {Q : NodeBlock P ACP} (hQ : Q ∈ st.tree) (hv : st.IsViable' Q) : st.Anc st.F Q := by
+  have hj := Store.hj_lt_hmax_of_reachable_with Store.finalitySpec_updateFinality'
+    hR.reachableWith
+  rcases (Store.isViable'_iff st Q).mp hv with hh | ⟨hh, hgap | hJ⟩
+  · exact Store.F_anc_of_hj_lt_of_safe_with Store.finalitySpec_updateFinality'
+      hR.reachableWith hR.reachableWith hU hsub hsub hV hsafe hQ (by omega)
+  · exact Store.F_anc_of_hj_lt_of_safe_with Store.finalitySpec_updateFinality'
+      hR.reachableWith hR.reachableWith hU hsub hsub hV hsafe hQ (by omega)
+  · exact (Store.cache_invariants' hR).2.2.1.trans hJ
+
+/-- Viability transport within fixed numerical frame data. The caller separately supplies
+finalized ancestry at the receiving cut, using `finalized_below_viable'`. -/
+theorem isViable'_of_window_data {ACP : Type} {a b : Store P ACP} {Q : NodeBlock P ACP}
+    (hm : a.hmax = b.hmax) (ht : (a.hmax = a.hj + 1) ↔ (b.hmax = b.hj + 1))
+    (hJ : a.hmax = a.hj + 1 → a.J = b.J) (hb : b.hj < b.hmax)
+    (hσ : a.σ Q.root = b.σ Q.root)
+    (hanc : a.Anc a.J Q → b.Anc a.J Q) (hv : a.IsViable' Q) : b.IsViable' Q := by
+  rw [Store.isViable'_iff] at hv ⊢
+  rcases hv with hh | ⟨hh, hgap | hAQ⟩
+  · exact Or.inl (by rw [← hm, ← hσ]; exact hh)
+  · refine Or.inr ⟨by rw [← hm, ← hσ]; exact hh, Or.inl ?_⟩
+    have hnot : ¬ b.hmax = b.hj + 1 := fun h => by
+      have := ht.mpr h
+      omega
+    omega
+  · refine Or.inr ⟨by rw [← hm, ← hσ]; exact hh, ?_⟩
+    by_cases htop : a.hmax = a.hj + 1
+    · exact Or.inr (hJ htop ▸ hanc hAQ)
+    · exact Or.inl (by have := ht.not.mp htop; omega)
+
+/-- The shadow key lag needs only the maximum-height and J carriers. The stock contest
+witness is unnecessary: contest and clean top frames have the same shadow key. -/
+theorem frameKey''_le_of_relay {ACP : Type} {acp₀ : ACP} {stx stz : Store P ACP}
+    (hRx : stx.Reachable' acp₀) (hRz : stz.Reachable' acp₀)
+    {U : Set (NodeBlock P ACP)} (hU : Coherent U)
+    (hsubx : stx.tree ⊆ U) (hsubz : stz.tree ⊆ U) {V : Set (Fin P.n)}
+    (hV : Vᶜ.ncard < 2 * P.fg.q - P.n)
+    (hsafe : ∀ a b, (∃ Y ∈ stz.tree, a ∈ Y.fgPayload) →
+      (∃ Y ∈ stx.tree, b ∈ Y.fgPayload) → a.val ∈ V → ¬ FG.slashable a b)
+    (hjmax : ∀ B ∈ stz.tree, ∀ X ∈ stz.tree, (stz.σ B.root).J = X.root →
+      stz.Anc stz.F X → (stz.σ B.root).hj ≤ stz.hj)
+    (hancz : ∀ A C, Anc U A C → C ∈ stz.tree → stz.Anc A C)
+    (hheld : ∀ B ∈ stx.tree, stz.hmax ≤ (stx.σ B.root).h → B ∈ stz.tree) :
+    frameKey'' stx ≤ frameKey'' stz := by
+  classical
+  have hu := Store.finalitySpec_updateFinality' (P := P) (ACP := ACP)
+  have hrx := hRx.reachableWith
+  have hrz := hRz.reachableWith
+  obtain ⟨-, hJx, -, ⟨Bj, hBj, hBjJ, hBjhj⟩, -, ⟨Bh, hBh, hBhh⟩, -⟩ :=
+    Store.cache_invariants' hRx
+  obtain ⟨-, -, -, -, hgez, -, -⟩ := Store.cache_invariants' hRz
+  by_cases hlt : stx.hmax < stz.hmax
+  · rw [frameKey''_def, frameKey''_def]
+    split_ifs <;> omega
+  have hle : stz.hmax ≤ stx.hmax := not_lt.mp hlt
+  have hheld' : ∀ {B : NodeBlock P ACP}, B ∈ stx.tree → stx.hmax ≤ (stx.σ B.root).h →
+      B ∈ stz.tree := fun hB hh => hheld _ hB (hle.trans hh)
+  have hσ : ∀ {B : NodeBlock P ACP}, B ∈ stz.tree → B ∈ stx.tree →
+      stz.σ B.root = stx.σ B.root :=
+    fun hBz hBx => Store.σ_eq_of_mem_with hrz hu hrx hU.1 hsubz hsubx hBz hBx
+  have hBhz := hheld' hBh hBhh.ge
+  have heq : stz.hmax = stx.hmax := by
+    have := hgez Bh hBhz
+    rw [hσ hBhz hBh] at this
+    omega
+  have hjz := Store.hj_lt_hmax_of_reachable_with hu hrz
+  have htop : stx.hmax = stx.hj + 1 → stz.hmax = stz.hj + 1 := by
+    intro htx
+    have hBjh := Store.hj_lt_h_with hu hrx hBj
+    have hBjz := hheld' hBj (by omega)
+    obtain ⟨E, hE, hEr, hEB, -⟩ := Store.J_entry_with hu hrx hBj
+    obtain rfl : E = stx.J := hU.1 (hsubx hE) (hsubx hJx) (hEr.trans hBjJ)
+    have hJz : stx.J ∈ stz.tree := mem_of_anc (hancz _ _ (hEB.mono hsubx) hBjz) hBjz
+    have hJh := Store.J_height_le_with hu hrx hBj hJx hBjJ.symm
+    by_contra hn
+    have hzlt : stz.hj < stx.hj := by omega
+    have hFJ := hancz _ _ ((Store.F_anc_of_hj_lt_of_safe_with hu hrz hrx hU hsubz hsubx
+      hV hsafe hJx (by rw [hBjhj] at hJh; omega)).mono hsubx) hJz
+    have hσj := hσ hBjz hBj
+    have := hjmax Bj hBjz _ hJz (by rw [hσj, hBjJ]) hFJ
+    rw [hσj] at this
+    omega
+  rw [frameKey''_def, frameKey''_def]
+  split_ifs <;> omega
 
 end Consensus.Goldilocks.Healing
 
